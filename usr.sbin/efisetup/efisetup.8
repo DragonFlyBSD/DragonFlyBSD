@@ -33,7 +33,9 @@
 .Op Fl S Ar serialno
 .Ar drive
 .Sh DESCRIPTION
-This program will create a fresh UEFI install of DragonFly on a drive.
+This program will create a fresh UEFI install of
+.Dx
+on a drive.
 The drive will be completely reformatted and any prior contents will be
 lost!
 .Bl -tag -width 20m
@@ -73,7 +75,9 @@ for more information on how to build a fresh system.
 .Nm
 will create a fresh GPT slice table with two slices,
 install the required EFI boot files on slice 0, and
-install a DragonFly 64-bit disklabel on slice 1.
+install a
+.Dx
+64-bit disklabel on slice 1.
 The program will then proceed to create partitions 'a', 'b', and 'c'
 in the disklabel, mount them, and install the world and kernel.
 .Pp

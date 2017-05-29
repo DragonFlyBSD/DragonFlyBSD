@@ -158,7 +158,8 @@ In almost all cases you will want to leave chflags mode enabled
 and use 'chflags cache' on governing directories to control which
 directory subtrees file data should be cached for.
 .Pp
-DragonFly uses generously large kern.maxvnodes values,
+.Dx
+uses generously large kern.maxvnodes values,
 typically in excess of 400K vnodes, but large numbers
 of small files can still cause problems for swapcache.
 When operating on a filesystem containing a large number of
@@ -273,7 +274,8 @@ paging operations.
 .El
 .Pp
 It is important to ensure that your swap partition is nicely aligned.
-The standard DragonFly
+The standard
+.Dx
 .Xr disklabel 8
 program guarantees high alignment (~1MB) automatically.
 Swap-on HDDs benefit because HDDs tend to use a larger physical sector size
