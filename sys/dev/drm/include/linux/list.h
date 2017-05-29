@@ -3,7 +3,7 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -93,8 +93,13 @@ list_last(const struct list_head *head)
 static inline int
 list_empty(const struct list_head *head)
 {
-
 	return (head->next == head);
+}
+
+static inline int
+list_empty_careful(const struct list_head *head)
+{
+	return (head == head->next) && (head == head->prev);
 }
 
 static inline void
