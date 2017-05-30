@@ -378,6 +378,7 @@ MAN=	aac.4 \
 	uvisor.4 \
 	uvscom.4 \
 	vga.4 \
+	vga_switcheroo.4 \
 	vge.4 \
 	viapm.4 \
 	vinum.4 \
@@ -546,6 +547,7 @@ MLINKS+=upmap.4 kpmap.4
 #MLINKS+=ural.4 if_ural.4
 MLINKS+=urndis.4 if_urndis.4
 MLINKS+=urtwn.4 if_urtwn.4
+MLINKS+=vga_switcheroo.4 apple_gmux.4
 MLINKS+=vge.4 if_vge.4
 MLINKS+=vlan.4 if_vlan.4
 MLINKS+=vpo.4 imm.4

@@ -1,0 +1,106 @@
+.\"
+.\" Copyright (c) 2017 The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd May 30, 2017
+.Dt VGA_SWITCHEROO 4
+.Os
+.Sh NAME
+.Nm vga_switcheroo ,
+.Nm apple_gmux
+.Nd support for Apple laptops with dual GPUs
+.Sh SYNOPSIS
+To enable support of dual GPUs in kernel, include the following
+line in the kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "options VGA_SWITCHEROO"
+.Ed
+.Pp
+When the system has booted, load the apple_gmux
+driver before the native graphics drivers, for example
+.Xr i915 4 .
+.Pp
+Alternatively, you can put these two lines in
+.Xr rc.conf 5 :
+.Bd -literal -offset indent
+apple_gmux_load="YES"
+i915_load="YES"
+.Ed
+.Pp
+As a result, vga_switcheroo switches the gmux controller so that all
+output comes from the IGD.
+.Sh DESCRIPTION
+Apple MacBook Pro laptops have hybrid graphics, i.e.\& two GPUs, one being
+the integrated graphics device (IGD) and the other being the discrete
+graphics device (DIS), sometimes called the dedicated graphics device.
+Gmux is a microcontroller that controls the output of these GPUs.
+.Pp
+.Nm vga_switcheroo
+is the higher level module that facilitates switching between the two
+GPUs using the lower level
+.Nm apple_gmux
+driver.
+When the system boots and
+.Nm vga_switcheroo
+is enabled,
+.Nm apple_gmux
+registers with it.
+It then acts as a handler.
+The two graphics adapters will also detect the presence of
+.Nm vga_switcheroo
+and register as clients.
+.Sh IMPLEMENTATION NOTES
+In the current
+.Dx
+specific implementation, upon detecting the presence of
+.Nm apple_gmux ,
+the Intel driver will call
+.Nm
+to switch the gmux so that all output comes from the IGD.
+Switching to DIS is not yet supported.
+.Sh HARDWARE
+Apple MacBook Pro laptops with dual GPUs.
+.Sh SEE ALSO
+.Xr i915 4 ,
+.Xr rc.conf 5
+.Pp
+.Pa https://01.org/linuxgraphics/gfx-docs/drm/gpu/vga-switcheroo.html
+.Sh HISTORY
+The
+.Nm
+driver was added in
+.Dx 4.9 .
+.Sh AUTHORS
+The
+.Nm
+driver was ported to
+.Dx
+from linux 4.8 by
+.An Peeter Must .
+He also wrote this manual page.
