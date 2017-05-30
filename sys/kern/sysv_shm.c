@@ -105,7 +105,22 @@ struct	shminfo shminfo = {
 	0
 };
 
-static int shm_allow_removed;
+/*
+ * allow-removed    Allow a shared memory segment to be attached by its shmid
+ *		    even after it has been deleted, as long as it was still
+ *		    being referenced by someone.  This is a trick used by
+ *		    chrome and other applications to avoid leaving shm
+ *		    segments hanging around after the application is killed
+ *		    or seg-faults unexpectedly.
+ *
+ * use-phys	    Shared memory segments are to use physical memory by
+ *		    default, which allows the kernel to optimize (remove)
+ *		    pv_entry management structures for the related PTEs and
+ *		    prevents paging.  This has distinctly different and
+ *		    usually desireable characteristics verses mmap()ing
+ *		    anonymous memory.
+ */
+static int shm_allow_removed = 1;
 static int shm_use_phys = 1;
 
 TUNABLE_LONG("kern.ipc.shmmin", &shminfo.shmmin);
