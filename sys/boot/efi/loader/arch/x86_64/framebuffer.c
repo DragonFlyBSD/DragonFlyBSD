@@ -34,8 +34,7 @@
 
 #include <efi.h>
 #include <efilib.h>
-#include <efiuga.h>
-#include <efipciio.h>
+
 #include <machine/metadata.h>
 
 #include "framebuffer.h"
@@ -427,7 +426,7 @@ efifb_from_uga(struct efi_fb *efifb, EFI_UGA_DRAW_PROTOCOL *uga)
 int
 efi_find_framebuffer(struct efi_fb *efifb)
 {
-	EFI_GRAPHICS_OUTPUT *gop;
+	EFI_GRAPHICS_OUTPUT_PROTOCOL *gop;
 	EFI_UGA_DRAW_PROTOCOL *uga;
 	EFI_STATUS status;
 
@@ -467,7 +466,7 @@ static int
 command_gop(int argc, char *argv[])
 {
 	struct efi_fb efifb;
-	EFI_GRAPHICS_OUTPUT *gop;
+	EFI_GRAPHICS_OUTPUT_PROTOCOL *gop;
 	EFI_STATUS status;
 	u_int mode;
 

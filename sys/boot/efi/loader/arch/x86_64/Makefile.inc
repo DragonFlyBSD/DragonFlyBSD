@@ -10,4 +10,5 @@ SRCS+=	nullconsole.c \
 	comconsole.c
 
 CFLAGS+=	-fPIC
+CFLAGS+=	-I${.CURDIR}/../../../contrib/edk2/Include
 LDFLAGS+=	-Wl,-znocombreloc

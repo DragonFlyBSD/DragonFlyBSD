@@ -40,19 +40,25 @@ Revision History
 #define EFI_FIRMWARE_MINOR_REVISION 62
 #define EFI_FIRMWARE_REVISION ((EFI_FIRMWARE_MAJOR_REVISION <<16) | (EFI_FIRMWARE_MINOR_REVISION))
 
+#define	PACKED
+#define	GUID	EFI_GUID
+
 #include "efibind.h"
 #include "efidef.h"
 #include "efidevp.h"
-#include "efiprot.h"
-#include "eficon.h"
-#include "efiser.h"
 #include "efi_nii.h"
 #include "efipxebc.h"
 #include "efinet.h"
+#include <Protocol/GraphicsOutput.h>
+#include <Protocol/PciIo.h>
+#include <Protocol/SerialIo.h>
+#include <Protocol/SimpleTextIn.h>
+#include <Protocol/SimpleTextOut.h>
+#include <Protocol/UgaDraw.h>
 #include "efiapi.h"
+#include "efiprot.h"
 #include "efifs.h"
 #include "efierr.h"
-#include "efigop.h"
 
 #define EFI_STRINGIZE(a)                #a 
 #define EFI_PROTOCOL_DEFINITION(a)      EFI_STRINGIZE(Protocol/a/a.h) 

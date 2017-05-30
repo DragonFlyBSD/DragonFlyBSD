@@ -13,6 +13,7 @@ CFLAGS+=	-I.
 CFLAGS+=	-I${.CURDIR}/../include
 CFLAGS+=	-I${.CURDIR}/../include/${MACHINE}
 CFLAGS+=	-I${.CURDIR}/../../../contrib/dev/acpica/source/include
+CFLAGS+=	-I${.CURDIR}/../../../contrib/edk2/Include
 CFLAGS+=	-I${.CURDIR}/../../..
 CFLAGS+=	-DEFI_UFS_BOOT
 .ifdef(EFI_DEBUG)

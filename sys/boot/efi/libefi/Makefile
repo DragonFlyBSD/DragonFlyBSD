@@ -12,6 +12,7 @@ CFLAGS+= -fPIC -mno-red-zone
 .endif
 CFLAGS+= -I${.CURDIR}/../include
 CFLAGS+= -I${.CURDIR}/../include/${MACHINE}
+CFLAGS+= -I${.CURDIR}/../../../contrib/edk2/Include
 CFLAGS+= -I${.CURDIR}/../../../../lib/libstand
 
 # Pick up the bootstrap header for some interface items

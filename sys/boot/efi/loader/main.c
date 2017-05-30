@@ -64,7 +64,7 @@ EFI_GUID hoblist = HOB_LIST_TABLE_GUID;
 EFI_GUID memtype = MEMORY_TYPE_INFORMATION_TABLE_GUID;
 EFI_GUID debugimg = DEBUG_IMAGE_INFO_TABLE_GUID;
 EFI_GUID fdtdtb = FDT_TABLE_GUID;
-EFI_GUID inputid = SIMPLE_TEXT_INPUT_PROTOCOL;
+EFI_GUID inputid = SIMPLE_INPUT_PROTOCOL;
 
 /*
  * Need this because EFI uses UTF-16 unicode string constants, but we
