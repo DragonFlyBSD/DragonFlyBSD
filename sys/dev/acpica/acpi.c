@@ -905,16 +905,15 @@ acpi_child_pnpinfo_str_method(device_t cbdev, device_t child, char *buf,
 {
     ACPI_DEVICE_INFO *adinfo;
     struct acpi_device *dinfo = device_get_ivars(child);
-    char *end;
 
     if (ACPI_FAILURE(AcpiGetObjectInfo(dinfo->ad_handle, &adinfo))) {
 	ksnprintf(buf, buflen, "unknown");
     } else {
-	ksnprintf(buf, buflen, "_HID=%s _UID=%lu",
+	ksnprintf(buf, buflen, "_HID=%s _UID=%s",
 		 (adinfo->Valid & ACPI_VALID_HID) ?
-		 adinfo->HardwareId.String : "none",
+		  adinfo->HardwareId.String : "none",
 		 (adinfo->Valid & ACPI_VALID_UID) ?
-		 strtoul(adinfo->UniqueId.String, &end, 10) : 0);
+		  adinfo->UniqueId.String : "0");
 	if (adinfo)
 	    AcpiOsFree(adinfo);
     }
