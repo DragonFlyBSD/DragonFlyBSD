@@ -100,6 +100,7 @@
 #include <net/if_poll.h>
 #include <net/if_types.h>
 #include <net/ifq_var.h>
+#include <net/if_ringmap.h>
 #include <net/toeplitz.h>
 #include <net/toeplitz2.h>
 #include <net/vlan/if_vlan_var.h>
@@ -466,9 +467,6 @@ static int	bce_sysctl_rx_bds_int(SYSCTL_HANDLER_ARGS);
 static int	bce_sysctl_rx_bds(SYSCTL_HANDLER_ARGS);
 static int	bce_sysctl_rx_ticks_int(SYSCTL_HANDLER_ARGS);
 static int	bce_sysctl_rx_ticks(SYSCTL_HANDLER_ARGS);
-#ifdef IFPOLL_ENABLE
-static int	bce_sysctl_npoll_offset(SYSCTL_HANDLER_ARGS);
-#endif
 static int	bce_sysctl_coal_change(SYSCTL_HANDLER_ARGS,
 		    uint32_t *, uint32_t);
 
@@ -696,9 +694,6 @@ bce_attach(device_t dev)
 	int i, j;
 	struct mii_probe_args mii_args;
 	uintptr_t mii_priv = 0;
-#ifdef IFPOLL_ENABLE
-	int offset, offset_def;
-#endif
 
 	sc->bce_dev = dev;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
@@ -942,25 +937,6 @@ bce_attach(device_t dev)
 		goto fail;
 	}
 
-#ifdef IFPOLL_ENABLE
-	/*
-	 * NPOLLING RX/TX CPU offset
-	 */
-	if (sc->rx_ring_cnt2 == ncpus2) {
-		offset = 0;
-	} else {
-		offset_def = (sc->rx_ring_cnt2 * device_get_unit(dev)) % ncpus2;
-		offset = device_getenv_int(dev, "npoll.offset", offset_def);
-		if (offset >= ncpus2 ||
-		    offset % sc->rx_ring_cnt2 != 0) {
-			device_printf(dev, "invalid npoll.offset %d, use %d\n",
-			    offset, offset_def);
-			offset = offset_def;
-		}
-	}
-	sc->npoll_ofs = offset;
-#endif
-
 	/* Allocate PCI IRQ resources. */
 	rc = bce_alloc_intr(sc);
 	if (rc != 0)
@@ -1004,8 +980,8 @@ bce_attach(device_t dev)
 	ifq_set_subq_cnt(&ifp->if_snd, sc->tx_ring_cnt);
 
 	if (sc->tx_ring_cnt > 1) {
-		ifp->if_mapsubq = ifq_mapsubq_mask;
-		ifq_set_subq_mask(&ifp->if_snd, sc->tx_ring_cnt - 1);
+		ifp->if_mapsubq = ifq_mapsubq_modulo;
+		ifq_set_subq_divisor(&ifp->if_snd, sc->tx_ring_cnt);
 	}
 
 	/*
@@ -1126,6 +1102,11 @@ bce_detach(device_t dev)
 
 	if (sc->serializes != NULL)
 		kfree(sc->serializes, M_DEVBUF);
+
+	if (sc->tx_rmap != NULL)
+		if_ringmap_free(sc->tx_rmap);
+	if (sc->rx_rmap != NULL)
+		if_ringmap_free(sc->rx_rmap);
 
 	return 0;
 }
@@ -5288,25 +5269,27 @@ bce_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	if (info != NULL) {
+		int cpu;
+
 		info->ifpi_status.status_func = bce_npoll_status;
 		info->ifpi_status.serializer = &sc->main_serialize;
 
 		for (i = 0; i < sc->tx_ring_cnt; ++i) {
 			struct bce_tx_ring *txr = &sc->tx_rings[i];
-			int idx = i + sc->npoll_ofs;
 
-			KKASSERT(idx < ncpus2);
-			info->ifpi_tx[idx].poll_func = bce_npoll_tx;
-			info->ifpi_tx[idx].arg = txr;
-			info->ifpi_tx[idx].serializer = &txr->tx_serialize;
-			ifsq_set_cpuid(txr->ifsq, idx);
+			cpu = if_ringmap_cpumap(sc->tx_rmap, i);
+			KKASSERT(cpu < netisr_ncpus);
+			info->ifpi_tx[cpu].poll_func = bce_npoll_tx;
+			info->ifpi_tx[cpu].arg = txr;
+			info->ifpi_tx[cpu].serializer = &txr->tx_serialize;
+			ifsq_set_cpuid(txr->ifsq, cpu);
 		}
 
 		for (i = 0; i < sc->rx_ring_cnt2; ++i) {
 			struct bce_rx_ring *rxr = &sc->rx_rings[i];
-			int idx = i + sc->npoll_ofs;
 
-			KKASSERT(idx < ncpus2);
+			cpu = if_ringmap_cpumap(sc->rx_rmap, i);
+			KKASSERT(cpu < netisr_ncpus);
 			if (i == 0 && sc->rx_ring_cnt2 != sc->rx_ring_cnt) {
 				/*
 				 * If RSS is enabled, the packets whose
@@ -5318,15 +5301,15 @@ bce_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 				 */
 				if (bootverbose) {
 					if_printf(ifp, "npoll pack last "
-					    "RX ring on cpu%d\n", idx);
+					    "RX ring on cpu%d\n", cpu);
 				}
-				info->ifpi_rx[idx].poll_func =
+				info->ifpi_rx[cpu].poll_func =
 				    bce_npoll_rx_pack;
 			} else {
-				info->ifpi_rx[idx].poll_func = bce_npoll_rx;
+				info->ifpi_rx[cpu].poll_func = bce_npoll_rx;
 			}
-			info->ifpi_rx[idx].arg = rxr;
-			info->ifpi_rx[idx].serializer = &rxr->rx_serialize;
+			info->ifpi_rx[cpu].arg = rxr;
+			info->ifpi_rx[cpu].serializer = &rxr->rx_serialize;
 		}
 
 		if (ifp->if_flags & IFF_RUNNING) {
@@ -6099,11 +6082,23 @@ bce_add_sysctls(struct bce_softc *sc)
 	    	CTLFLAG_RW, &sc->tx_rings[0].tx_wreg, 0,
 		"# segments before write to hardware registers");
 
+	if (sc->bce_irq_type == PCI_INTR_TYPE_MSIX) {
+		SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "tx_cpumap",
+		    CTLTYPE_OPAQUE | CTLFLAG_RD, sc->tx_rmap, 0,
+		    if_ringmap_cpumap_sysctl, "I", "TX ring CPU map");
+		SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "rx_cpumap",
+		    CTLTYPE_OPAQUE | CTLFLAG_RD, sc->rx_rmap, 0,
+		    if_ringmap_cpumap_sysctl, "I", "RX ring CPU map");
+	} else {
 #ifdef IFPOLL_ENABLE
-	SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "npoll_offset",
-	    CTLTYPE_INT|CTLFLAG_RW, sc, 0, bce_sysctl_npoll_offset,
-	    "I", "NPOLLING cpu offset");
+		SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "tx_poll_cpumap",
+		    CTLTYPE_OPAQUE | CTLFLAG_RD, sc->tx_rmap, 0,
+		    if_ringmap_cpumap_sysctl, "I", "TX poll CPU map");
+		SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "rx_poll_cpumap",
+		    CTLTYPE_OPAQUE | CTLFLAG_RD, sc->rx_rmap, 0,
+		    if_ringmap_cpumap_sysctl, "I", "RX poll CPU map");
 #endif
+	}
 
 #ifdef BCE_RSS_DEBUG
 	SYSCTL_ADD_INT(ctx, children, OID_AUTO, "rss_debug",
@@ -6738,36 +6733,6 @@ bce_deserialize_skipmain(struct bce_softc *sc)
 	lwkt_serialize_array_exit(sc->serializes, sc->serialize_cnt, 1);
 }
 
-#ifdef IFPOLL_ENABLE
-
-static int
-bce_sysctl_npoll_offset(SYSCTL_HANDLER_ARGS)
-{
-	struct bce_softc *sc = (void *)arg1;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int error, off;
-
-	off = sc->npoll_ofs;
-	error = sysctl_handle_int(oidp, &off, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
-	if (off < 0)
-		return EINVAL;
-
-	ifnet_serialize_all(ifp);
-	if (off >= ncpus2 || off % sc->rx_ring_cnt2 != 0) {
-		error = EINVAL;
-	} else {
-		error = 0;
-		sc->npoll_ofs = off;
-	}
-	ifnet_deserialize_all(ifp);
-
-	return error;
-}
-
-#endif	/* IFPOLL_ENABLE */
-
 static void
 bce_set_timer_cpuid(struct bce_softc *sc, boolean_t polling)
 {
@@ -6805,34 +6770,18 @@ static void
 bce_try_alloc_msix(struct bce_softc *sc)
 {
 	struct bce_msix_data *msix;
-	int offset, i, error;
+	int i, error;
 	boolean_t setup = FALSE;
 
 	if (sc->rx_ring_cnt == 1)
 		return;
 
-	if (sc->rx_ring_cnt2 == ncpus2) {
-		offset = 0;
-	} else {
-		int offset_def =
-		    (sc->rx_ring_cnt2 * device_get_unit(sc->bce_dev)) % ncpus2;
-
-		offset = device_getenv_int(sc->bce_dev,
-		    "msix.offset", offset_def);
-		if (offset >= ncpus2 || offset % sc->rx_ring_cnt2 != 0) {
-			device_printf(sc->bce_dev,
-			    "invalid msix.offset %d, use %d\n",
-			    offset, offset_def);
-			offset = offset_def;
-		}
-	}
-
 	msix = &sc->bce_msix[0];
 	msix->msix_serialize = &sc->main_serialize;
 	msix->msix_func = bce_intr_msi_oneshot;
 	msix->msix_arg = sc;
-	KKASSERT(offset < ncpus2);
-	msix->msix_cpuid = offset;
+	msix->msix_cpuid = if_ringmap_cpumap(sc->rx_rmap, 0);
+	KKASSERT(msix->msix_cpuid < netisr_ncpus);
 	ksnprintf(msix->msix_desc, sizeof(msix->msix_desc), "%s combo",
 	    device_get_nameunit(sc->bce_dev));
 
@@ -6843,8 +6792,9 @@ bce_try_alloc_msix(struct bce_softc *sc)
 
 		msix->msix_serialize = &rxr->rx_serialize;
 		msix->msix_arg = rxr;
-		msix->msix_cpuid = offset + (i % sc->rx_ring_cnt2);
-		KKASSERT(msix->msix_cpuid < ncpus2);
+		msix->msix_cpuid = if_ringmap_cpumap(sc->rx_rmap,
+		    i % sc->rx_ring_cnt2);
+		KKASSERT(msix->msix_cpuid < netisr_ncpus);
 
 		if (i < sc->tx_ring_cnt) {
 			msix->msix_func = bce_intr_msix_rxtx;
@@ -6906,87 +6856,45 @@ back:
 static void
 bce_setup_ring_cnt(struct bce_softc *sc)
 {
-	int msix_enable, ring_max, msix_cnt2, msix_cnt, i;
+	int msix_enable, msix_cnt, msix_ring;
+	int ring_max, ring_cnt;
 
-	sc->rx_ring_cnt = 1;
-	sc->rx_ring_cnt2 = 1;
-	sc->tx_ring_cnt = 1;
+	sc->rx_rmap = if_ringmap_alloc(sc->bce_dev, 1, 1);
 
 	if (BCE_CHIP_NUM(sc) != BCE_CHIP_NUM_5709 &&
 	    BCE_CHIP_NUM(sc) != BCE_CHIP_NUM_5716)
-		return;
+		goto skip_rx;
 
 	msix_enable = device_getenv_int(sc->bce_dev, "msix.enable",
 	    bce_msix_enable);
 	if (!msix_enable)
-		return;
+		goto skip_rx;
 
-	if (ncpus2 == 1)
-		return;
-
-	msix_cnt = pci_msix_count(sc->bce_dev);
-	if (msix_cnt <= 1)
-		return;
-
-	i = 0;
-	while ((1 << (i + 1)) <= msix_cnt)
-		++i;
-	msix_cnt2 = 1 << i;
+	if (netisr_ncpus == 1)
+		goto skip_rx;
 
 	/*
 	 * One extra RX ring will be needed (see below), so make sure
 	 * that there are enough MSI-X vectors.
 	 */
-	if (msix_cnt == msix_cnt2) {
-		/*
-		 * XXX
-		 * This probably will not happen; 5709/5716
-		 * come with 9 MSI-X vectors.
-		 */
-		msix_cnt2 >>= 1;
-		if (msix_cnt2 <= 1) {
-			device_printf(sc->bce_dev,
-			    "MSI-X count %d could not be used\n", msix_cnt);
-			return;
-		}
-		device_printf(sc->bce_dev, "MSI-X count %d is power of 2\n",
-		    msix_cnt);
-	}
+	msix_cnt = pci_msix_count(sc->bce_dev);
+	if (msix_cnt <= 2)
+		goto skip_rx;
+	msix_ring = msix_cnt - 1;
 
 	/*
 	 * Setup RX ring count
 	 */
 	ring_max = BCE_RX_RING_MAX;
-	if (ring_max > msix_cnt2)
-		ring_max = msix_cnt2;
-	sc->rx_ring_cnt2 = device_getenv_int(sc->bce_dev, "rx_rings",
-	    bce_rx_rings);
-	sc->rx_ring_cnt2 = if_ring_count2(sc->rx_ring_cnt2, ring_max);
+	if (ring_max > msix_ring)
+		ring_max = msix_ring;
+	ring_cnt = device_getenv_int(sc->bce_dev, "rx_rings", bce_rx_rings);
 
-	/*
-	 * Don't use MSI-X, if the effective RX ring count is 1.
-	 * Since if the effective RX ring count is 1, the TX ring
-	 * count will be 1.  This RX ring and the TX ring must be
-	 * bundled into one MSI-X vector, so the hot path will be
-	 * exact same as using MSI.  Besides, the first RX ring
-	 * must be fully populated, which only accepts packets whose
-	 * RSS hash can't calculated, e.g. ARP packets; waste of
-	 * resource at least.
-	 */
-	if (sc->rx_ring_cnt2 == 1)
-		return;
+	if_ringmap_free(sc->rx_rmap);
+	sc->rx_rmap = if_ringmap_alloc(sc->bce_dev, ring_cnt, ring_max);
 
-	/*
-	 * One extra RX ring is allocated, since the first RX ring
-	 * could not be used for RSS hashed packets whose masked
-	 * hash is 0.  The first RX ring is only used for packets
-	 * whose RSS hash could not be calculated, e.g. ARP packets.
-	 * This extra RX ring will be used for packets whose masked
-	 * hash is 0.  The effective RX ring count involved in RSS
-	 * is still sc->rx_ring_cnt2.
-	 */
-	KKASSERT(sc->rx_ring_cnt2 + 1 <= msix_cnt);
-	sc->rx_ring_cnt = sc->rx_ring_cnt2 + 1;
+skip_rx:
+	sc->rx_ring_cnt2 = if_ringmap_count(sc->rx_rmap);
 
 	/*
 	 * Setup TX ring count
@@ -6997,13 +6905,39 @@ bce_setup_ring_cnt(struct bce_softc *sc)
 	 * status index and various other MSI-X related stuffs.
 	 */
 	ring_max = BCE_TX_RING_MAX;
-	if (ring_max > msix_cnt2)
-		ring_max = msix_cnt2;
 	if (ring_max > sc->rx_ring_cnt2)
 		ring_max = sc->rx_ring_cnt2;
-	sc->tx_ring_cnt = device_getenv_int(sc->bce_dev, "tx_rings",
-	    bce_tx_rings);
-	sc->tx_ring_cnt = if_ring_count2(sc->tx_ring_cnt, ring_max);
+	ring_cnt = device_getenv_int(sc->bce_dev, "tx_rings", bce_tx_rings);
+
+	sc->tx_rmap = if_ringmap_alloc(sc->bce_dev, ring_cnt, ring_max);
+	if_ringmap_align(sc->bce_dev, sc->rx_rmap, sc->tx_rmap);
+
+	sc->tx_ring_cnt = if_ringmap_count(sc->tx_rmap);
+
+	if (sc->rx_ring_cnt2 == 1) {
+		/*
+		 * Don't use MSI-X, if the effective RX ring count is 1.
+		 * Since if the effective RX ring count is 1, the TX ring
+		 * count will be 1.  This RX ring and the TX ring must be
+		 * bundled into one MSI-X vector, so the hot path will be
+		 * exact same as using MSI.  Besides, the first RX ring
+		 * must be fully populated, which only accepts packets whose
+		 * RSS hash can't calculated, e.g. ARP packets; waste of
+		 * resource at least.
+		 */
+		sc->rx_ring_cnt = 1;
+	} else {
+		/*
+		 * One extra RX ring is allocated, since the first RX ring
+		 * could not be used for RSS hashed packets whose masked
+		 * hash is 0.  The first RX ring is only used for packets
+		 * whose RSS hash could not be calculated, e.g. ARP packets.
+		 * This extra RX ring will be used for packets whose masked
+		 * hash is 0.  The effective RX ring count involved in RSS
+		 * is still sc->rx_ring_cnt2.
+		 */
+		sc->rx_ring_cnt = sc->rx_ring_cnt2 + 1;
+	}
 }
 
 static void
@@ -7160,15 +7094,14 @@ bce_init_rss(struct bce_softc *sc)
 	 * - The last RX ring, whose "queue ID" is (sc->rx_ring_cnt - 2)
 	 *   will be used for packets whose masked hash is 0.
 	 *   (see also: comment in bce_setup_ring_cnt())
-	 *
-	 * The redirect table is configured in following fashion, except
-	 * for the masked hash 0, which is noted above:
-	 * (hash & ring_cnt_mask) == rdr_table[(hash & rdr_table_mask)]
 	 */
+	if_ringmap_rdrtable(sc->rx_rmap, sc->rdr_table,
+	    BCE_RXP_SCRATCH_RSS_TBL_MAX_ENTRIES);
 	for (i = 0; i < BCE_RXP_SCRATCH_RSS_TBL_MAX_ENTRIES; i++) {
 		int shift = (i % 8) << 2, qid;
 
-		qid = i % sc->rx_ring_cnt2;
+		qid = sc->rdr_table[i];
+		KKASSERT(qid >= 0 && qid < sc->rx_ring_cnt2);
 		if (qid > 0)
 			--qid;
 		else

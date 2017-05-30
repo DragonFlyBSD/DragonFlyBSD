@@ -6076,12 +6076,14 @@ struct bce_softc {
 	struct lwkt_serialize	main_serialize;
 
 	int			rss_debug;
-	int			npoll_ofs;
 	int			tx_ring_cnt;
 	int			rx_ring_cnt;
 	int			rx_ring_cnt2;
 	struct bce_tx_ring	*tx_rings;
 	struct bce_rx_ring	*rx_rings;
+
+	struct if_ringmap	*rx_rmap;
+	struct if_ringmap	*tx_rmap;
 
 	int			bce_if_flags;
 
@@ -6146,6 +6148,8 @@ struct bce_softc {
 	uint32_t com_no_buffers;
 
 	struct bce_msix_data	bce_msix[BCE_MSIX_MAX];
+
+	int			rdr_table[BCE_RXP_SCRATCH_RSS_TBL_MAX_ENTRIES];
 };
 
 #define BCE_COALMASK_TX_BDS_INT		0x01

@@ -28,7 +28,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/bce.4,v 1.7 2007/02/09 18:26:13 brueffer Exp $
 .\"
-.Dd November 28, 2014
+.Dd June 1, 2017
 .Dt BCE 4
 .Os
 .Sh NAME
@@ -232,26 +232,11 @@ Default value is 2.
 How many transmission descriptor pages should be used.
 One transmission descriptor page holds 256 transmission descriptors.
 Default value is 2.
-.It Va hw.bceX.msix.offset
-For BCM5709 and BCM5716,
-if MSI-X is used,
-this tunable specifies the leading target CPU for transmission and reception
-queues processing.
-The value specificed must be aligned to the number of reception queues
-enabled and must be less than the power of 2 number of CPUs.
-.It Va hw.bceX.npoll.offset
-This tunable specifies the leading target CPU for transmission and reception
-queues
-.Xr polling 4
-processing.
-The value specificed must be aligned to the number of reception queues
-enabled and must be less than the power of 2 number of CPUs.
 .It Va hw.bce.rx_rings Va hw.bceX.rx_rings
 For BCM5709 and BCM5716,
 if MSI-X is used,
 this tunable specifies the number of reception queues to be enabled.
-Maximum allowed value for these tunables is 8 and
-it must be power of 2 aligned.
+Maximum allowed value for these tunables is 8.
 Setting these tunables to 0 allows the driver to enable as many reception queues
 as allowed by the number of CPUs.
 .It Va hw.bce.tx_rings Va hw.bceX.tx_rings
@@ -259,7 +244,6 @@ For BCM5709 and BCM5716,
 if MSI-X is used,
 this tunable specifies the number of transmission queues to be enabled.
 Maximum allowed value for these tunables is 8,
-it must be power of 2 aligned
 and it must be less than or equal to the number of reception queues enabled.
 Setting these tunables to 0 allows the driver to enable as many transmission queues
 as allowed by the number of CPUs and number reception queues enabled.
@@ -340,14 +324,6 @@ to configure it.
 .It Va tx_wreg
 See the tunable
 .Va hw.bce.tx_wreg .
-.It Va npoll_offset
-.Xr polling 4
-reception and transmission queues' leading target CPU.
-It has the same constraints as the tunable
-.Va hw.bceX.npoll.offset .
-The set value will take effect the next time
-.Xr polling 4
-is enabled on the device.
 .It Va stat_*
 Various hardware statistics.
 .El
