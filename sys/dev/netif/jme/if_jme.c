@@ -3534,12 +3534,7 @@ jme_enable_rss(struct jme_softc *sc)
 		sc->jme_cdata.jme_rx_ring_cnt == JME_NRXRING_4,
 		("%s: invalid # of RX rings (%d)",
 		 sc->arpcom.ac_if.if_xname, sc->jme_cdata.jme_rx_ring_cnt));
-
-	rssc = RSSC_HASH_128_ENTRY;
-	rssc |= RSSC_HASH_IPV4 | RSSC_HASH_IPV4_TCP;
-	rssc |= sc->jme_cdata.jme_rx_ring_cnt >> 1;
-	JME_RSS_DPRINTF(sc, 1, "rssc 0x%08x\n", rssc);
-	CSR_WRITE_4(sc, JME_RSSC, rssc);
+	jme_disable_rss(sc);
 
 	toeplitz_get_key(key, sizeof(key));
 	for (i = 0; i < RSSKEY_NREGS; ++i) {
@@ -3572,6 +3567,15 @@ jme_enable_rss(struct jme_softc *sc)
 		JME_RSS_DPRINTF(sc, 1, "ind 0x%08x\n", ind);
 		CSR_WRITE_4(sc, RSSTBL_REG(j), ind);
 	}
+
+	/*
+	 * Enable RSS.
+	 */
+	rssc = RSSC_HASH_128_ENTRY;
+	rssc |= RSSC_HASH_IPV4 | RSSC_HASH_IPV4_TCP;
+	rssc |= sc->jme_cdata.jme_rx_ring_cnt >> 1;
+	JME_RSS_DPRINTF(sc, 1, "rssc 0x%08x\n", rssc);
+	CSR_WRITE_4(sc, JME_RSSC, rssc);
 }
 
 static void
