@@ -770,7 +770,7 @@ jme_attach(device_t dev)
 
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
-	callout_init(&sc->jme_tick_ch);
+	callout_init_mp(&sc->jme_tick_ch);
 
 #ifndef BURN_BRIDGES
 	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
