@@ -245,7 +245,8 @@ mod_delayed_work(struct workqueue_struct *wq, struct delayed_work *dwork,
 static inline bool
 flush_work(struct work_struct *work)
 {
-	taskqueue_drain(work->taskqueue, &work->work_task);
+	if (work->taskqueue != NULL)
+		taskqueue_drain(work->taskqueue, &work->work_task);
 	return true;
 }
 
