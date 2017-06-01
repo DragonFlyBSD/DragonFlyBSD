@@ -3548,6 +3548,8 @@ if_ringmap_set_grid(device_t dev, struct if_ringmap *rm, int grid)
 	int i, offset;
 
 	KASSERT(grid > 0, ("invalid if_ringmap grid %d", grid));
+	KASSERT(grid >= rm->rm_cnt, ("invalid if_ringmap grid %d, count %d",
+	    grid, rm->rm_cnt));
 	rm->rm_grid = grid;
 
 	offset = (rm->rm_grid * device_get_unit(dev)) % netisr_ncpus;
