@@ -3566,7 +3566,7 @@ if_ringmap_alloc_flags(device_t dev, int ring_cnt, int ring_cntmax,
     uint32_t flags)
 {
 	struct if_ringmap *rm;
-	int i, grid = 0;
+	int i, grid = 0, prev_grid;
 
 	ring_cnt = if_ringcnt_fixup(ring_cnt, ring_cntmax);
 	rm = kmalloc(__offsetof(struct if_ringmap, rm_cpumap[ring_cnt]),
@@ -3576,19 +3576,21 @@ if_ringmap_alloc_flags(device_t dev, int ring_cnt, int ring_cntmax,
 	if (flags & RINGMAP_FLAG_POWEROF2)
 		rm->rm_cnt = 1 << (fls(rm->rm_cnt) - 1);
 
+	prev_grid = netisr_ncpus;
 	for (i = 0; i < netisr_ncpus; ++i) {
 		if (netisr_ncpus % (i + 1) != 0)
 			continue;
 
-		if (rm->rm_cnt > netisr_ncpus / (i + 2)) {
-			grid = netisr_ncpus / (i + 1);
-			if (rm->rm_cnt > grid)
-				rm->rm_cnt = grid;
+		grid = netisr_ncpus / (i + 1);
+		if (rm->rm_cnt > grid) {
+			grid = prev_grid;
 			break;
 		}
+
+		if (rm->rm_cnt > netisr_ncpus / (i + 2))
+			break;
+		prev_grid = grid;
 	}
-	if (flags & RINGMAP_FLAG_POWEROF2)
-		rm->rm_cnt = 1 << (fls(rm->rm_cnt) - 1);
 	if_ringmap_set_grid(dev, rm, grid);
 
 	return (rm);
