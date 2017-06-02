@@ -260,4 +260,11 @@ extern struct workqueue_struct *system_wq;
 extern struct workqueue_struct *system_long_wq;
 extern struct workqueue_struct *system_power_efficient_wq;
 
+static inline unsigned int
+work_busy(struct work_struct *work)
+{
+	/* Just pretend nothing is busy, this function is unreliable anyway */
+	return 0;
+}
+
 #endif	/* _LINUX_WORKQUEUE_H_ */
