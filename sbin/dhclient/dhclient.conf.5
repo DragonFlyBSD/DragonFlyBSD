@@ -440,7 +440,8 @@ interface "ep0" {
     supersede domain-name "fugue.com rc.vix.com home.vix.com";
     prepend domain-name-servers 127.0.0.1;
     request subnet-mask, broadcast-address, time-offset, routers,
-	    domain-name, domain-name-servers, host-name;
+	    classless-routes, domain-name, domain-name-servers,
+	    host-name;
     require subnet-mask, domain-name-servers;
     script "/etc/dhclient-script";
 }

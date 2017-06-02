@@ -155,6 +155,7 @@ struct dhcp_packet {
 #define DHO_DHCP_CLIENT_IDENTIFIER	61
 #define DHO_TFTP_SERVER			66
 #define DHO_DHCP_USER_CLASS_ID		77
+#define DHO_CLASSLESS_ROUTES		121
 #define DHO_END				255
 
 /* DHCP message types. */

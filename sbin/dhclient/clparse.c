@@ -74,6 +74,8 @@ read_client_conf(void)
 	config->requested_options
 	    [config->requested_option_count++] = DHO_TIME_OFFSET;
 	config->requested_options
+	    [config->requested_option_count++] = DHO_CLASSLESS_ROUTES;
+	config->requested_options
 	    [config->requested_option_count++] = DHO_ROUTERS;
 	config->requested_options
 	    [config->requested_option_count++] = DHO_DOMAIN_NAME;

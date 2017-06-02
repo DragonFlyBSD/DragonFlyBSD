@@ -183,7 +183,7 @@ const struct option dhcp_options[256] = {
 	/* 118 */ { "option-118", "X" },
 	/* 119 */ { "option-119", "X" },
 	/* 120 */ { "option-120", "X" },
-	/* 121 */ { "option-121", "X" },
+	/* 121 */ { "classless-routes", "BA" },
 	/* 122 */ { "option-122", "X" },
 	/* 123 */ { "option-123", "X" },
 	/* 124 */ { "option-124", "X" },
