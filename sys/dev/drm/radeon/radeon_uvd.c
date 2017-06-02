@@ -47,7 +47,7 @@
 #define FIRMWARE_CYPRESS	"radeonkmsfw_CYPRESS_uvd"
 #define FIRMWARE_SUMO		"radeonkmsfw_SUMO_uvd"
 #define FIRMWARE_TAHITI		"radeonkmsfw_TAHITI_uvd"
-#define FIRMWARE_BONAIRE_LEGACY	"radeonkmsfw/BONAIRE_uvd"
+#define FIRMWARE_BONAIRE_LEGACY	"radeonkmsfw_BONAIRE_uvd"
 #define FIRMWARE_BONAIRE	"radeonkmsfw_bonaire_uvd"
 
 MODULE_FIRMWARE(FIRMWARE_R600);

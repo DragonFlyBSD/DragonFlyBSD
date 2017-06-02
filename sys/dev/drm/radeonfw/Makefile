@@ -145,6 +145,7 @@ SUBDIR=									\
 	TAHITI_rlc							\
 	TAHITI_smc							\
 	TAHITI_uvd							\
+	TAHITI_vce							\
 	TURKS_mc							\
 	TURKS_me							\
 	TURKS_pfp							\
@@ -164,6 +165,7 @@ SUBDIR=									\
 	bonaire_rlc							\
 	bonaire_sdma							\
 	bonaire_smc							\
+	bonaire_uvd							\
 	hainan_ce							\
 	hainan_mc							\
 	hainan_me							\
