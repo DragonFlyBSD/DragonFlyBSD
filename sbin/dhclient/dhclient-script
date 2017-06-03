@@ -26,6 +26,7 @@ delete_old_address() {
 	if [ -n "$old_ip_address" ]; then
 		ifconfig $interface inet $old_ip_address delete
 		#route delete "$old_ip_address" 127.0.0.1 >/dev/null 2>&1
+	fi
 	if [ -n "$old_classless_routes" ]; then
 		fill_classless_routes "$old_classless_routes"
 		set $classless_routes
