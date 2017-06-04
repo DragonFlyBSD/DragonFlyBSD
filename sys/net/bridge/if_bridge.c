@@ -111,71 +111,72 @@
  *
  *      CPU0           CPU1         CPU2          CPU3
  *
- *                               tcp_thread2
+ *                                 netisr2
  *                                    |
  *                                alloc nmsg
  *                    snd nmsg        |
  *                    w/o rtinfo      |
- *      ifnet0<-----------------------+
+ *     netisr0<-----------------------+
  *        |                           :
  *    lookup dst                      :
  *   rtnode exists?(Y)free nmsg       :
  *        |(N)                        :
- *        |
- *  alloc rtinfo
- *  alloc rtnode
- * install rtnode
- *        |
- *        +---------->ifnet1
- *        : fwd nmsg    |
- *        : w/ rtinfo   |
- *        :             |
- *        :             |
- *                 alloc rtnode
- *               (w/ nmsg's rtinfo)
- *                install rtnode
- *                      |
- *                      +---------->ifnet2
- *                      : fwd nmsg    |
- *                      : w/ rtinfo   |
- *                      :             |
- *                      :         same as ifnet1
+ *        |                           :
+ *  alloc rtinfo                      :
+ *  alloc rtnode                      :
+ * install rtnode                     :
+ *        |                           :
+ *        +---------->netisr1         :
+ *        : fwd nmsg     |            :
+ *        : w/ rtinfo    |            :
+ *        :              |            :
+ *        :              |            :
+ *                  alloc rtnode      :
+ *                (w/ nmsg's rtinfo)  :
+ *                 install rtnode     :
+ *                       |            :
+ *                       +----------->|
+ *                       : fwd nmsg   |
+ *                       : w/ rtinfo  |
+ *                       :            |
+ *                       :     same as netisr1
  *                                    |
- *                                    +---------->ifnet3
- *                                    : fwd nmsg    |
- *                                    : w/ rtinfo   |
- *                                    :             |
- *                                    :         same as ifnet1
+ *                                    +---------->netisr3
+ *                                    : fwd nmsg     |
+ *                                    : w/ rtinfo    |
+ *                                    :              |
+ *                                    :       same as netisr1
  *                                               free nmsg
- *                                                  :
- *                                                  :
+ *                                                   :
+ *                                                   :
  *
- * The netmsgs forwarded between protocol threads and ifnet threads are
- * allocated with (M_WAITOK|M_NULLOK), so it will not fail under most
- * cases (route information is too precious to be not installed :).
- * Since multiple threads may try to install route information for the
- * same dst eaddr, we look up route information in ifnet0.  However, this
- * looking up only need to be performed on ifnet0, which is the start
- * point of the route information installation process.
+ * The netmsgs forwarded between netisr2 are allocated with
+ * (M_WAITOK|M_NULLOK), so it will not fail under most cases (route
+ * information is too precious to be not installed :).  Since multiple
+ * netisrs may try to install route information for the same dst eaddr,
+ * we look up route information in netisr0.  However, this looking up
+ * only need to be performed on netisr0, which is the start point of
+ * the route information installation process.
  *
  *
  * Bridge route information deleting/flushing:
  *
- *  CPU0            CPU1             CPU2             CPU3
+ *  CPU0            CPU1              CPU2             CPU3
  *
  * netisr0
- *   |
- * find suitable rtnodes,
- * mark their rtinfo dead
- *   |
- *   | domsg <------------------------------------------+
- *   |                                                  | replymsg
- *   |                                                  |
- *   V     fwdmsg           fwdmsg           fwdmsg     |
- * ifnet0 --------> ifnet1 --------> ifnet2 --------> ifnet3
- * delete rtnodes   delete rtnodes   delete rtnodes   delete rtnodes
- * w/ dead rtinfo   w/ dead rtinfo   w/ dead rtinfo   w/ dead rtinfo
- *                                                    free dead rtinfos
+ *    |
+ *  find suitable rtnodes,
+ *  mark their rtinfo dead
+ *    |
+ *    | domsg <-------------------------------------------+
+ *    : delete rtnodes                                    | replymsg
+ *    : w/ dead rtinfo                                    |
+ *    :                                                   |
+ *    :  fwdmsg             fwdmsg            fwdmsg      |
+ *    :----------> netisr1 --------> netisr2 --------> netisr3
+ *              delete rtnodes    delete rtnodes    delete rtnodes
+ *              w/ dead rtinfo    w/ dead rtinfo    w/ dead rtinfo
+ *                                                 free dead rtinfos
  *
  * All deleting/flushing operations are serialized by netisr0, so each
  * operation only reaps the route information marked dead by itself.
@@ -183,11 +184,12 @@
  *
  * Bridge route information adding/deleting/flushing:
  * Since all operation is serialized by the fixed message flow between
- * ifnet threads, it is not possible to create corrupted per-cpu route
+ * netisrs, it is not possible to create corrupted per-cpu route
  * information.
  *
  *
  *
+ * XXX This no longer applies.
  * Percpu member interface list iteration with blocking operation:
  * Since one bridge could only delete one member interface at a time and
  * the deleted member interface is not freed after netmsg_service_sync(),
