@@ -66,16 +66,17 @@
  * - Vlan is linked/unlinked onto parent interface's trunk using following
  *   way:
  *
- *       CPU0             CPU1             CPU2             CPU3
+ *       CPU0             CPU1              CPU2              CPU3
  *
- *      netisr0 <---------------------------------------------+
- *  (config/unconfig)                                         |
- *         |                                                  |
- *         | domsg                                            | replymsg
- *         |                                                  |
- *         V     fwdmsg           fwdmsg           fwdmsg     |
- *       ifnet0 --------> ifnet1 --------> ifnet2 --------> ifnet3
- *    (link/unlink)    (link/unlink)    (link/unlink)    (link/unlink)
+ *      netisr0 <----------------------------------------------+
+ *  (config/unconfig)                                          |
+ *         |                                                   |
+ *         | domsg                                             | replymsg
+ *         : (link/unlink)                                     |
+ *         :                                                   |
+ *         :   fwdmsg             fwdmsg            fwdmsg     |
+ *         :-----------> netisr1 --------> netisr2 --------> netisr3
+ *                    (link/unlink)     (link/unlink)     (link/unlink)
  *
  * - Parent interface's trunk is destroyed in the following lockless way:
  *
