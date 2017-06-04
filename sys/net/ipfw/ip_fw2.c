@@ -99,16 +99,11 @@ do { \
  *
  * netisr0 <------------------------------------+
  *  domsg                                       |
- *    |                                         |
- *    | netmsg                                  |
- *    |                                         |
- *    V                                         |
- *  ifnet0                                      |
- *    :                                         | netmsg
+ *    :                                         |
  *    :(delete/add...)                          |
  *    :                                         |
- *    :         netmsg                          |
- *  forwardmsg---------->ifnet1                 |
+ *    :         netmsg                          | netmsg
+ *  forwardmsg---------->netisr1                |
  *                          :                   |
  *                          :(delete/add...)    |
  *                          :                   |
@@ -117,10 +112,10 @@ do { \
  *
  *
  *
- *
  * Rules which will not create states (dyn rules) [2 CPU case]
  *
  *    CPU0               CPU1
+ *
  * layer3_chain       layer3_chain
  *     |                  |
  *     V                  V
@@ -136,22 +131,23 @@ do { \
  *
  * ip_fw.sibling:
  * 1) Ease statistics calculation during IP_FW_GET.  We only need to
- *    iterate layer3_chain on CPU0; the current rule's duplication on
- *    the other CPUs could safely be read-only accessed by using
- *    ip_fw.sibling
+ *    iterate layer3_chain in netisr0; the current rule's duplication
+ *    to the other CPUs could safely be read-only accessed through
+ *    ip_fw.sibling.
  * 2) Accelerate rule insertion and deletion, e.g. rule insertion:
- *    a) In netisr0 (on CPU0) rule3 is determined to be inserted between
- *       rule1 and rule2.  To make this decision we need to iterate the
- *       layer3_chain on CPU0.  The netmsg, which is used to insert the
- *       rule, will contain rule1 on CPU0 as prev_rule and rule2 on CPU0
- *       as next_rule
- *    b) After the insertion on CPU0 is done, we will move on to CPU1.
- *       But instead of relocating the rule3's position on CPU1 by
- *       iterating the layer3_chain on CPU1, we set the netmsg's prev_rule
- *       to rule1->sibling and next_rule to rule2->sibling before the
- *       netmsg is forwarded to CPU1 from CPU0
- *       
- *    
+ *    a) In netisr0 rule3 is determined to be inserted between rule1
+ *       and rule2.  To make this decision we need to iterate the
+ *       layer3_chain in netisr0.  The netmsg, which is used to insert
+ *       the rule, will contain rule1 in netisr0 as prev_rule and rule2
+ *       in netisr0 as next_rule.
+ *    b) After the insertion in netisr0 is done, we will move on to
+ *       netisr1.  But instead of relocating the rule3's position in
+ *       netisr1 by iterating the layer3_chain in netisr1, we set the
+ *       netmsg's prev_rule to rule1->sibling and next_rule to
+ *       rule2->sibling before the netmsg is forwarded to netisr1 from
+ *       netisr0.
+ *
+ *
  *
  * Rules which will create states (dyn rules) [2 CPU case]
  * (unnecessary parts are omitted; they are same as in the previous figure)
@@ -274,8 +270,8 @@ static int ipfw_refcnt;
 MALLOC_DEFINE(M_IPFW, "IpFw/IpAcct", "IpFw/IpAcct chain's");
 
 /*
- * Following two global variables are accessed and
- * updated only on CPU0
+ * Following two global variables are accessed and updated only
+ * in netisr0.
  */
 static uint32_t static_count;	/* # of static rules */
 static uint32_t static_ioc_len;	/* bytes of static rules */
@@ -499,7 +495,6 @@ is_icmp_query(struct ip *ip)
  *
  * The code is sometimes optimized not to store additional variables.
  */
-
 static int
 flags_match(ipfw_insn *cmd, uint8_t bits)
 {
@@ -870,8 +865,8 @@ hash_packet(struct ipfw_flow_id *id)
 	return i;
 }
 
-/**
- * unlink a dynamic rule from a chain. prev is a pointer to
+/*
+ * Unlink a dynamic rule from a chain. prev is a pointer to
  * the previous one, q is a pointer to the rule to delete,
  * head is a pointer to the head of the queue.
  * Modifies q and potentially also head.
@@ -897,7 +892,7 @@ do {									\
 
 #define TIME_LEQ(a, b)	((int)((a) - (b)) <= 0)
 
-/**
+/*
  * Remove dynamic rules pointing to "rule", or all of them if rule == NULL.
  *
  * If keep_me == NULL, rules are deleted even if not expired,
@@ -975,8 +970,8 @@ next:
 #undef FORCE
 }
 
-/**
- * lookup a dynamic rule.
+/*
+ * Lookup a dynamic rule.
  */
 static ipfw_dyn_rule *
 lookup_dyn_rule(struct ipfw_flow_id *pkt, int *match_direction,
@@ -1184,7 +1179,7 @@ realloc_dynamic_table(void)
 		++dyn_buckets_gen;
 }
 
-/**
+/*
  * Install state of type 'type' for a dynamic session.
  * The hash table contains two type of rules:
  * - regular rules (O_KEEP_STATE)
@@ -1244,8 +1239,8 @@ add_dyn_rule(struct ipfw_flow_id *id, uint8_t dyn_type, struct ip_fw *rule)
 	return r;
 }
 
-/**
- * lookup dynamic parent rule using pkt and rule as search keys.
+/*
+ * Lookup dynamic parent rule using pkt and rule as search keys.
  * If the lookup fails, then install one.
  */
 static ipfw_dyn_rule *
@@ -1273,7 +1268,7 @@ lookup_dyn_parent(struct ipfw_flow_id *pkt, struct ip_fw *rule)
 	return add_dyn_rule(pkt, O_LIMIT_PARENT, rule);
 }
 
-/**
+/*
  * Install dynamic state for rule type cmd->o.opcode
  *
  * Returns 1 (failure) if state is not installed because of errors or because
@@ -1494,7 +1489,7 @@ send_pkt(struct ipfw_flow_id *id, uint32_t seq, uint32_t ack, int flags)
 }
 
 /*
- * sends a reject message, consuming the mbuf passed as an argument.
+ * Send a reject message, consuming the mbuf passed as an argument.
  */
 static void
 send_reject(struct ip_fw_args *args, int code, int offset, int ip_len)
@@ -1523,8 +1518,7 @@ send_reject(struct ip_fw_args *args, int code, int offset, int ip_len)
 	args->m = NULL;
 }
 
-/**
- *
+/*
  * Given an ip_fw *, lookup_next_rule will return a pointer
  * to the next rule, which can be either the jump
  * target (for skipto instructions) or the next one in the list (in
@@ -1537,7 +1531,6 @@ send_reject(struct ip_fw_args *args, int code, int offset, int ip_len)
  * the next rule is returned. When the ruleset is changed,
  * pointers are flushed so we are always correct.
  */
-
 static struct ip_fw *
 lookup_next_rule(struct ip_fw *me)
 {
@@ -1655,7 +1648,6 @@ ipfw_match_uid(const struct ipfw_flow_id *fid, struct ifnet *oif,
  *	IP_FW_TEE	Tee the packet to port (args->cookie)
  *	IP_FW_DUMMYNET	Send the packet to pipe/queue (args->cookie)
  */
-
 static int
 ipfw_chk(struct ip_fw_args *args)
 {
@@ -2504,7 +2496,6 @@ ipfw_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 /*
  * When a rule is added/deleted, clear the next_rule pointers in all rules.
  * These will be reconstructed on the fly as packets are matched.
- * Must be called at splimp().
  */
 static void
 ipfw_flush_rule_ptrs(struct ipfw_context *ctx)
@@ -2757,14 +2748,13 @@ ipfw_add_rule(struct ipfw_ioc_rule *ioc_rule, uint32_t rule_flags)
 		rule->rulenum, static_count);
 }
 
-/**
+/*
  * Free storage associated with a static rule (including derived
  * dynamic rules).
  * The caller is in charge of clearing rule pointers to avoid
  * dangling pointers.
  * @return a pointer to the next entry.
  * Arguments are not checked, so they better be correct.
- * Must be called at splimp().
  */
 static struct ip_fw *
 ipfw_delete_rule(struct ipfw_context *ctx,
@@ -2863,7 +2853,6 @@ ipfw_disable_rule_state_dispatch(netmsg_t nmsg)
 /*
  * Deletes all rules from a chain (including the default rule
  * if the second argument is set).
- * Must be called at splimp().
  */
 static void
 ipfw_flush(int kill_default)
@@ -3316,7 +3305,7 @@ ipfw_alt_swap_ruleset(uint8_t set1, uint8_t set2)
 	return 0;
 }
 
-/**
+/*
  * Remove all rules with given number, and also do set manipulation.
  *
  * The argument is an uint32_t. The low 16 bit are the rule or set number,
@@ -3427,7 +3416,7 @@ ipfw_zero_entry_dispatch(netmsg_t nmsg)
 	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
-/**
+/*
  * Reset some or all counters on firewall rules.
  * @arg frwl is null to clear all entries, or contains a specific
  * rule number.
@@ -3899,7 +3888,7 @@ ipfw_ctl_set_disable(uint32_t disable, uint32_t enable)
 	netisr_domsg(&nmsg, 0);
 }
 
-/**
+/*
  * {set|get}sockopt parser.
  */
 static int
