@@ -68,10 +68,12 @@ for (i = 1; i < ARGC; i++) {
 					break;
 				}
 				else {
-					if (++i < ARGC)
+					if (++i < ARGC) {
 						opt_c = ARGV[i];
-					else
+						break;
+					} else {
 						usage();
+					}
 				}
 			} else if (o == "m") {
 				if (length(ARGV[i]) > j) {
@@ -79,10 +81,12 @@ for (i = 1; i < ARGC; i++) {
 					break;
 				}
 				else {
-					if (++i < ARGC)
+					if (++i < ARGC) {
 						opt_m = ARGV[i];
-					else
+						break;
+					} else {
 						usage();
+					}
 				}
 			} else if (o == "l") {
 				if (length(ARGV[i]) > j) {
@@ -90,10 +94,12 @@ for (i = 1; i < ARGC; i++) {
 					break;
 				}
 				else {
-					if (++i < ARGC)
+					if (++i < ARGC) {
 						opt_l = ARGV[i];
-					else
+						break;
+					} else {
 						usage();
+					}
 				}
 			} else
 				usage();
