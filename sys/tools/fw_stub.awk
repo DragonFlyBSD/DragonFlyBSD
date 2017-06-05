@@ -33,7 +33,7 @@
 
 function usage ()
 {
-	print "usage: fw_stub <firmware:name>* [-l name] [-m modname] [-c outfile]";
+	print "usage: fw_stub <firmware:name[:version[:parent]]>* [-l name] [-c outfile] -m modname";
 	exit 1;
 }
 
