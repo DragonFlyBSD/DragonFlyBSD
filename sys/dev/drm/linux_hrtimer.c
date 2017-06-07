@@ -37,8 +37,14 @@ __hrtimer_function(void *arg)
 		restart = timer->function(timer);
 	}
 
-	if (restart == HRTIMER_NORESTART)
-		timer->function = NULL;
+	if (restart == HRTIMER_RESTART) {
+		/*
+		 * XXX Not implemented yet, we would need to store the
+		 *     expiration period, to do the callout_reset here.
+		 */
+	} else {
+		timer->active = false;
+	}
 }
 
 void hrtimer_init(struct hrtimer *timer, clockid_t clock_id,
