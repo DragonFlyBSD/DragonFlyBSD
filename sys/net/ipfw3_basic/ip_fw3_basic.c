@@ -1061,15 +1061,6 @@ ipfw_tick(void *dummy __unused)
 		/* ipfw_timeout_netmsg's handler reset this callout */
 	}
 	crit_exit();
-
-	struct netmsg_base *msg;
-	struct netmsg_base the_msg;
-	msg = &the_msg;
-	bzero(msg,sizeof(struct netmsg_base));
-
-	netmsg_init(msg, NULL, &curthread->td_msgport, 0,
-			ipfw_cleanup_expired_state);
-	netisr_domsg(msg, 0);
 }
 
 static void
@@ -1085,6 +1076,11 @@ ipfw_tick_dispatch(netmsg_t nmsg)
 
 	callout_reset(&ipfw_tick_callout,
 			state_expiry_check_interval * hz, ipfw_tick, NULL);
+
+	struct netmsg_base msg;
+	netmsg_init(&msg, NULL, &curthread->td_msgport, 0,
+			ipfw_cleanup_expired_state);
+	netisr_domsg(&msg, 0);
 }
 
 static void
