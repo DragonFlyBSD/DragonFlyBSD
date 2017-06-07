@@ -1077,14 +1077,14 @@ pmap_init_pat(void)
 		/*
 		 * If we support the PAT then set-up entries for
 		 * WRITE_PROTECTED and WRITE_COMBINING using bit patterns
-		 * 4 and 5.
+		 * 5 and 6.
 		 */
-		pat_msr = (pat_msr & ~PAT_MASK(4)) |
-			  PAT_VALUE(4, PAT_WRITE_PROTECTED);
 		pat_msr = (pat_msr & ~PAT_MASK(5)) |
-			  PAT_VALUE(5, PAT_WRITE_COMBINING);
-		pat_pte_index[PAT_WRITE_PROTECTED] = X86_PG_PTE_PAT | 0;
-		pat_pte_index[PAT_WRITE_COMBINING] = X86_PG_PTE_PAT | X86_PG_NC_PWT;
+			  PAT_VALUE(5, PAT_WRITE_PROTECTED);
+		pat_msr = (pat_msr & ~PAT_MASK(6)) |
+			  PAT_VALUE(6, PAT_WRITE_COMBINING);
+		pat_pte_index[PAT_WRITE_PROTECTED] = X86_PG_PTE_PAT | X86_PG_NC_PWT;
+		pat_pte_index[PAT_WRITE_COMBINING] = X86_PG_PTE_PAT | X86_PG_NC_PCD;
 
 		/*
 		 * Then enable the PAT
