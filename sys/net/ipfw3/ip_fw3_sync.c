@@ -434,10 +434,6 @@ ipfw_sync_send_state(struct ip_fw_state *state, int cpu, int hash)
 	int error, i, len, nsize;
 	struct cmd_send_state cmd;
 
-	if ((sync_ctx.running & 2) == 0) {
-		/* ipfw3sync: centre not running */
-		return;
-	}
 	len = sizeof(struct cmd_send_state);
 	m = m_getl(len, M_WAITOK, MT_DATA, M_PKTHDR, &nsize);
 	if (m == NULL) {

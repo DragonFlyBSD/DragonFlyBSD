@@ -74,6 +74,7 @@
 #define TIME_LEQ(a, b)	((int)((a) - (b)) <= 0)
 
 extern struct ipfw_context	*ipfw_ctx[MAXCPU];
+extern struct ipfw_sync_context sync_ctx;
 extern int fw_verbose;
 extern ipfw_basic_delete_state_t *ipfw_basic_flush_state_prt;
 extern ipfw_basic_append_state_t *ipfw_basic_append_state_prt;
@@ -392,7 +393,10 @@ install_state(struct ip_fw *rule, ipfw_insn *cmd, struct ip_fw_args *args)
 		state_ctx->state = state;
 	state_ctx->last = state;
 	state_ctx->count++;
-	ipfw_sync_send_state_prt(state, mycpuid, hash);
+
+	if (sync_ctx.running & 2) {
+		ipfw_sync_send_state_prt(state, mycpuid, hash);
+	}
 	return state;
 }
 
