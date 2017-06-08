@@ -435,7 +435,7 @@ ipfw_sync_send_state(struct ip_fw_state *state, int cpu, int hash)
 	struct cmd_send_state cmd;
 
 	if ((sync_ctx.running & 2) == 0) {
-		kprintf("ipfw3sync: centre not running\n");
+		/* ipfw3sync: centre not running */
 		return;
 	}
 	len = sizeof(struct cmd_send_state);
