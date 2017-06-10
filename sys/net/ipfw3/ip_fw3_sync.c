@@ -152,7 +152,9 @@ int
 ipfw_ctl_sync_edge_conf(struct sockopt *sopt)
 {
 	struct ipfw_ioc_sync_edge *ioc_edge;
+	struct thread *td;
 	size_t size;
+	int error;
 
 	size = sopt->sopt_valsize;
 	ioc_edge = sopt->sopt_val;
@@ -161,6 +163,14 @@ ipfw_ctl_sync_edge_conf(struct sockopt *sopt)
 	}
 	sync_ctx.edge_port = ioc_edge->port;
 	sync_ctx.hw_same = ioc_edge->hw_same;
+
+	td = curthread->td_proc ? curthread : &thread0;
+	error = socreate(AF_INET, &sync_ctx.edge_sock,
+			SOCK_DGRAM, IPPROTO_UDP, td);
+	if (error) {
+		kprintf("ipfw3sync edge socreate failed: %d\n", error);
+		return (error);
+	}
 	return 0;
 }
 
@@ -222,13 +232,6 @@ ipfw_ctl_sync_edge_start(struct sockopt *sopt)
 		return 0;
 	}
 	td = curthread->td_proc ? curthread : &thread0;
-	error = socreate(AF_INET, &sync_ctx.edge_sock,
-			SOCK_DGRAM, IPPROTO_UDP, td);
-	if (error) {
-		kprintf("ipfw3sync edge socreate failed: %d\n", error);
-		return (error);
-	}
-
 	bzero(&sin, sizeof(struct sockaddr_in));
 	sin.sin_family = AF_INET;
 	sin.sin_len = sizeof(struct sockaddr_in);
