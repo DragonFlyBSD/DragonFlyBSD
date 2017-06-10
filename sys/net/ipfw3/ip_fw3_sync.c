@@ -340,6 +340,7 @@ ipfw_ctl_sync_centre_test(struct sockopt *sopt)
 			return -1;
 		}
 	}
+	m_free(m);
 	return 0;
 }
 int
