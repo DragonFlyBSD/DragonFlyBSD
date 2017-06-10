@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 - 2016 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2014 - 2017 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@dragonflybsd.org>
@@ -800,10 +800,9 @@ check_keep_state(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	int limited = 0;
 
 	*cmd_ctl = IP_FW_CTL_NO;
+	*cmd_val = IP_FW_MATCH;
 	state = lookup_state(*args, cmd, &limited, 1);
-	if (limited == 1) {
-		*cmd_val = IP_FW_NOT_MATCH;
-	} else {
+	if (limited != 1) {
 		if (state == NULL)
 			state = install_state(*f, cmd, *args);
 
@@ -811,9 +810,6 @@ check_keep_state(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 			state->pcnt++;
 			state->bcnt += ip_len;
 			state->timestamp = time_second;
-			*cmd_val = IP_FW_MATCH;
-		} else {
-			*cmd_val = IP_FW_NOT_MATCH;
 		}
 	}
 }
