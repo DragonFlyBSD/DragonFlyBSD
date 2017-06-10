@@ -97,6 +97,17 @@ static struct char_int_map ether_types[] = {
 };
 
 
+int
+match_token(struct char_int_map *table, char *string)
+{
+	while (table->key) {
+		if (strcmp(table->key, string) == 0) {
+			return table->val;
+		}
+		table++;
+	}
+	return 0;
+}
 
 static char *
 match_token2(struct char_int_map *table, int val)
