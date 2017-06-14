@@ -60,23 +60,47 @@
 
 static int ig4iic_pci_detach(device_t dev);
 
-#define PCI_CHIP_LYNXPT_LP_I2C_1	0x9c618086
-#define PCI_CHIP_LYNXPT_LP_I2C_2	0x9c628086
+struct {
+	const uint16_t device_id;
+	const char *name;
+} intel_i2c_ids[] = {
+	/* Haswell */
+	{ 0x9c61, "Intel Lynx Point-LP I2C Controller-1" },
+	{ 0x9c62, "Intel Lynx Point-LP I2C Controller-2" },
+
+	/* Skylake-U/Y and Kaby Lake-U/Y CPUs */
+	{ 0x9d60, "Intel Sunrise Point-LP I2C Controller-0" },
+	{ 0x9d61, "Intel Sunrise Point-LP I2C Controller-1" },
+	{ 0x9d62, "Intel Sunrise Point-LP I2C Controller-2" },
+	{ 0x9d63, "Intel Sunrise Point-LP I2C Controller-3" },
+	{ 0x9d64, "Intel Sunrise Point-LP I2C Controller-4" },
+	{ 0x9d65, "Intel Sunrise Point-LP I2C Controller-5" },
+};
 
 static
 int
 ig4iic_pci_probe(device_t dev)
 {
-	switch(pci_get_devid(dev)) {
-	case PCI_CHIP_LYNXPT_LP_I2C_1:
-		device_set_desc(dev, "Intel Lynx Point-LP I2C Controller-1");
-		break;
-	case PCI_CHIP_LYNXPT_LP_I2C_2:
-		device_set_desc(dev, "Intel Lynx Point-LP I2C Controller-2");
-		break;
-	default:
-		return(ENXIO);
+	int i;
+	uint16_t devid;
+	const char *name = NULL;
+
+	if (pci_get_vendor(dev) != PCI_VENDOR_INTEL)
+		return (ENXIO);
+
+	devid = pci_get_devid(dev);
+	for (i = 0; i < NELEM(intel_i2c_ids); i++) {
+		if (intel_i2c_ids[i].device_id == devid) {
+			name = intel_i2c_ids[i].name;
+			break;
+		}
 	}
+	if (name != NULL) {
+		device_set_desc(dev, name);
+	} else {
+		return (ENXIO);
+	}
+
 	return BUS_PROBE_DEFAULT;
 }
 
