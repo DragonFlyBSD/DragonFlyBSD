@@ -60,9 +60,9 @@
 
 static int ig4iic_pci_detach(device_t dev);
 
-struct {
-	const uint16_t device_id;
-	const char *name;
+static const struct {
+	uint16_t id;
+	char *name;
 } intel_i2c_ids[] = {
 	/* Haswell */
 	{ 0x9c61, "Intel Lynx Point-LP I2C Controller-1" },
@@ -82,15 +82,15 @@ int
 ig4iic_pci_probe(device_t dev)
 {
 	int i;
-	uint16_t devid;
+	uint16_t device_id;
 	const char *name = NULL;
 
 	if (pci_get_vendor(dev) != PCI_VENDOR_INTEL)
 		return (ENXIO);
 
-	devid = pci_get_devid(dev);
+	device_id = pci_get_device(dev);
 	for (i = 0; i < NELEM(intel_i2c_ids); i++) {
-		if (intel_i2c_ids[i].device_id == devid) {
+		if (intel_i2c_ids[i].id == device_id) {
 			name = intel_i2c_ids[i].name;
 			break;
 		}
