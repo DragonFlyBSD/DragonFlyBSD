@@ -681,7 +681,7 @@ vniocattach_swap(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
  * to this "disk" is essentially as root.  Note that credentials may change
  * if some other uid can write directly to the mapped file (NFS).
  */
-int
+static int
 vnsetcred(struct vn_softc *vn, struct ucred *cred)
 {
 	char *tmpbuf;
@@ -722,7 +722,7 @@ vnsetcred(struct vn_softc *vn, struct ucred *cred)
 	return (error);
 }
 
-void
+static void
 vnclear(struct vn_softc *vn)
 {
 	IFOPT(vn, VN_FOLLOW)

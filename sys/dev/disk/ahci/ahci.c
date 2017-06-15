@@ -3690,7 +3690,7 @@ failcmd:
 	return (ATA_S_ERROR);
 }
 
-void
+static void
 ahci_ata_cmd_done(struct ahci_ccb *ccb)
 {
 	struct ata_xfer	*xa = &ccb->ccb_xa;

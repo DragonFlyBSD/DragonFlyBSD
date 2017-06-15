@@ -2139,7 +2139,7 @@ cxm_write_ivar(device_t dev, device_t child, int index, uintptr_t val)
 /*
  *
  */
-int
+static int
 cxm_open(struct dev_open_args *ap)
 {
 	cdev_t		dev = ap->a_head.a_dev;
@@ -2171,7 +2171,7 @@ cxm_open(struct dev_open_args *ap)
 /*
  *
  */
-int
+static int
 cxm_close(struct dev_close_args *ap)
 {
 	cdev_t		dev = ap->a_head.a_dev;
@@ -2208,7 +2208,7 @@ cxm_close(struct dev_close_args *ap)
 /*
  *
  */
-int
+static int
 cxm_read(struct dev_read_args *ap)
 {
 	cdev_t		dev = ap->a_head.a_dev;
@@ -2302,7 +2302,7 @@ cxm_read(struct dev_read_args *ap)
 /*
  *
  */
-int
+static int
 cxm_ioctl(struct dev_ioctl_args *ap)
 {
 	cdev_t		dev = ap->a_head.a_dev;

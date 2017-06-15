@@ -239,7 +239,7 @@ ext2_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
 /*
  * Initial UFS filesystems, done only once.
  */
-int
+static int
 ext2_init(struct vfsconf *vfsp)
 {
 	static int done;

@@ -152,7 +152,7 @@ kbdmux_kbd_getc(kbdmux_state_t *state)
 /*
  * Interrupt handler task
  */
-void
+static void
 kbdmux_kbd_intr(void *xkbd, int pending)
 {
 	keyboard_t	*kbd = (keyboard_t *) xkbd;
@@ -169,7 +169,7 @@ kbdmux_kbd_intr(void *xkbd, int pending)
 /*
  * Schedule interrupt handler on timeout. Called with locked state.
  */
-void
+static void
 kbdmux_kbd_intr_timo(void *xkbd)
 {
 	keyboard_t	*kbd = (keyboard_t *) xkbd;

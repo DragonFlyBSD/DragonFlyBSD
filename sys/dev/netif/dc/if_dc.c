@@ -1042,7 +1042,7 @@ dc_crc_mask(struct dc_softc *sc)
  * frames. We also sneak the broadcast address into the hash filter since
  * we need that too.
  */
-void
+static void
 dc_setfilt_21143(struct dc_softc *sc)
 {
 	struct dc_desc		*sframe;
@@ -1114,7 +1114,7 @@ dc_setfilt_21143(struct dc_softc *sc)
 	return;
 }
 
-void
+static void
 dc_setfilt_admtek(struct dc_softc *sc)
 {
 	struct ifnet		*ifp;
@@ -1181,7 +1181,7 @@ dc_setfilt_admtek(struct dc_softc *sc)
 	return;
 }
 
-void
+static void
 dc_setfilt_asix(struct dc_softc *sc)
 {
 	struct ifnet		*ifp;
@@ -1254,7 +1254,7 @@ dc_setfilt_asix(struct dc_softc *sc)
 	return;
 }
 
-void
+static void
 dc_setfilt_xircom(struct dc_softc *sc)
 {
 	struct dc_desc		*sframe;

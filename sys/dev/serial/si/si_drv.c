@@ -2047,7 +2047,7 @@ si_lstart(void *arg)
 /*
  * Stop output on a line. called at spltty();
  */
-void
+static void
 si_stop(struct tty *tp, int rw)
 {
 	volatile struct si_channel *ccbp;

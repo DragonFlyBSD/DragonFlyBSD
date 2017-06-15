@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_conn.c,v 1.1.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.20 2006/12/20 18:14:44 dillon Exp $
  */
 
 /*
@@ -268,7 +267,7 @@ smb_co_gone(struct smb_connobj *cp, struct smb_cred *scred)
 		cp->co_free(cp);
 }
 
-void
+static void
 smb_co_ref(struct smb_connobj *cp)
 {
 	SMB_CO_LOCK(cp);
@@ -276,7 +275,7 @@ smb_co_ref(struct smb_connobj *cp)
 	SMB_CO_UNLOCK(cp);
 }
 
-void
+static void
 smb_co_rele(struct smb_connobj *cp, struct smb_cred *scred)
 {
 	SMB_CO_LOCK(cp);
@@ -302,7 +301,7 @@ smb_co_rele(struct smb_connobj *cp, struct smb_cred *scred)
 	}
 }
 
-int
+static int
 smb_co_get(struct smb_connobj *cp, int flags, struct smb_cred *scred)
 {
 	int error;
@@ -335,7 +334,7 @@ smb_co_get(struct smb_connobj *cp, int flags, struct smb_cred *scred)
 	return 0;
 }
 
-void
+static void
 smb_co_put(struct smb_connobj *cp, struct smb_cred *scred)
 {
 	SMB_CO_LOCK(cp);
@@ -364,13 +363,13 @@ smb_co_put(struct smb_connobj *cp, struct smb_cred *scred)
 	}
 }
 
-int
+static int
 smb_co_lockstatus(struct smb_connobj *cp, struct thread *td)
 {
 	return lockstatus(&cp->co_lock, td);
 }
 
-int
+static int
 smb_co_lock(struct smb_connobj *cp, int flags)
 {
 	int error;
@@ -393,7 +392,7 @@ smb_co_lock(struct smb_connobj *cp, int flags)
 	return (error);
 }
 
-void
+static void
 smb_co_unlock(struct smb_connobj *cp, int flags)
 {
 	lockmgr(&cp->co_lock, flags | LK_RELEASE);
@@ -676,7 +675,7 @@ smb_vc_connect(struct smb_vc *vcp, struct smb_cred *scred)
  * Destroy VC to server, invalidate shares linked with it.
  * Transport should be locked on entry.
  */
-int
+static int
 smb_vc_disconnect(struct smb_vc *vcp)
 {
 

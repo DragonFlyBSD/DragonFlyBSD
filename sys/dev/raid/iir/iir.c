@@ -1647,7 +1647,7 @@ iir_intr(void *arg)
     }
 }
 
-int
+static int
 gdt_async_event(struct gdt_softc *gdt, int service)
 {
     struct gdt_ccb *gccb;
@@ -1706,7 +1706,7 @@ gdt_async_event(struct gdt_softc *gdt, int service)
     return (0);
 }
 
-int
+static int
 gdt_sync_event(struct gdt_softc *gdt, int service,
                u_int8_t index, struct gdt_ccb *gccb)
 {

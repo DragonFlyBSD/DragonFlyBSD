@@ -407,7 +407,7 @@ tlphy_auto(struct tlphy_softc *sc, int waitfor)
 	return (error);
 }
 
-void
+static void
 tlphy_acomp(struct tlphy_softc *sc)
 {
 	int aner, anlpar;

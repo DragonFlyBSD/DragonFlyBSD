@@ -5017,7 +5017,7 @@ bge_get_eaddr(struct bge_softc *sc, uint8_t eaddr[])
 /*
  * NOTE: 'm' is not freed upon failure
  */
-struct mbuf *
+static struct mbuf *
 bge_defrag_shortdma(struct mbuf *m)
 {
 	struct mbuf *n;

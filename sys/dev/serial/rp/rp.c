@@ -935,7 +935,7 @@ rp_releaseresource(CONTROLLER_t *ctlp)
 	lwkt_reltoken(&tty_token);
 }
 
-int
+static int
 rpopen(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
@@ -1103,7 +1103,7 @@ out2:
 	return(error);
 }
 
-int
+static int
 rpclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
@@ -1225,7 +1225,7 @@ rpdtrwakeup(void *chan)
 	lwkt_reltoken(&tty_token);
 }
 
-int
+static int
 rpioctl(struct dev_ioctl_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;

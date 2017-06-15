@@ -1069,7 +1069,7 @@ again:
 	ifp->if_timer = 5;
 }
 
-void
+static void
 pcn_setfilt(struct ifnet *ifp)
 {
 	struct pcn_softc	*sc;

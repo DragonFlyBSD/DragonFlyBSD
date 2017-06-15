@@ -1018,7 +1018,7 @@ es1370_init(struct es_info *es)
 }
 
 /* ES1371 specific */
-int
+static int
 es1371_init(struct es_info *es)
 {
 	uint32_t cssr, devid, revid, subdev;

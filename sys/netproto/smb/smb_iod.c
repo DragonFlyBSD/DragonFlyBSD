@@ -661,7 +661,7 @@ smb_iod_main(struct smbiod *iod)
 #define	kthread_create_compat	smb_kthread_create
 #define kthread_exit_compat	smb_kthread_exit
 
-void
+static void
 smb_iod_thread(void *arg)
 {
 	struct smbiod *iod = arg;

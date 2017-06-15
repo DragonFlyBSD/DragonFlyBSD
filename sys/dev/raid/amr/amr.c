@@ -509,7 +509,7 @@ amr_ioctl_buffer_length(unsigned long len)
     return (len);
 }
 
-int
+static int
 amr_linux_ioctl_int(struct cdev *dev, u_long cmd, caddr_t addr, int32_t flag,
     struct sysmsg *sm)
 {

@@ -867,7 +867,7 @@ sk_newbuf_std(struct sk_if_softc *sc_if, int idx, int wait)
 /*
  * Allocate a jumbo buffer.
  */
-struct sk_jpool_entry *
+static struct sk_jpool_entry *
 sk_jalloc(struct sk_if_softc *sc_if)
 {
 	struct sk_chain_data *cd = &sc_if->sk_cdata;
@@ -890,7 +890,7 @@ sk_jalloc(struct sk_if_softc *sc_if)
 /*
  * Release a jumbo buffer.
  */
-void
+static void
 sk_jfree(void *arg)
 {
 	struct sk_jpool_entry *entry = arg;

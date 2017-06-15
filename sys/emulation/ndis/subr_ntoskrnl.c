@@ -2913,7 +2913,7 @@ RtlInitUnicodeString(unicode_string *dst, uint16_t *src)
 	}
 }
 
-ndis_status
+static ndis_status
 RtlUnicodeStringToInteger(unicode_string *ustr, uint32_t base, uint32_t *val)
 {
 	uint16_t		*uchr;

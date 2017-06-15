@@ -3404,7 +3404,7 @@ emx_is_valid_eaddr(const uint8_t *addr)
 /*
  * Enable PCI Wake On Lan capability
  */
-void
+static void
 emx_enable_wol(device_t dev)
 {
 	uint16_t cap, status;

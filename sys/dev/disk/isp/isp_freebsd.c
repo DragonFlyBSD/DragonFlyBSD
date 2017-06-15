@@ -5731,7 +5731,7 @@ isp_common_dmateardown(ispsoftc_t *isp, struct ccb_scsiio *csio, uint32_t hdl)
 	bus_dmamap_unload(isp->isp_osinfo.dmat, PISP_PCMD(csio)->dmap);
 }
 
-void
+static void
 isp_timer(void *arg)
 {
 	ispsoftc_t *isp = arg;

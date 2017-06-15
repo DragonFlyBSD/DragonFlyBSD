@@ -120,7 +120,7 @@ miibus_no_phy(device_t dev, const struct mii_probe_args *args, int phyno)
  * to the network interface driver parent.
  */
 
-int
+static int
 miibus_probe(device_t dev)
 {
 	struct mii_attach_args ma, *args;
@@ -167,7 +167,7 @@ miibus_probe(device_t dev)
 	return 0;
 }
 
-int
+static int
 miibus_attach(device_t dev)
 {
 	const struct mii_probe_args *probe_args;
@@ -184,7 +184,7 @@ miibus_attach(device_t dev)
 	return 0;
 }
 
-int
+static int
 miibus_detach(device_t dev)
 {
 	struct mii_data *mii;

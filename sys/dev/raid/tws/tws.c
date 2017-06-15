@@ -106,7 +106,7 @@ static struct dev_ops tws_ops = {
  * attach routine when we create the /dev entry.
  */
 
-int
+static int
 tws_open(struct dev_open_args *ap)
 {
     cdev_t dev = ap->a_head.a_dev;
@@ -117,7 +117,7 @@ tws_open(struct dev_open_args *ap)
     return (0);
 }
 
-int
+static int
 tws_close(struct dev_close_args *ap)
 {
     cdev_t dev = ap->a_head.a_dev;
@@ -128,7 +128,7 @@ tws_close(struct dev_close_args *ap)
     return (0);
 }
 
-int
+static int
 tws_read(struct dev_read_args *ap)
 {
     cdev_t dev = ap->a_head.a_dev;
@@ -139,7 +139,7 @@ tws_read(struct dev_read_args *ap)
     return (0);
 }
 
-int
+static int
 tws_write(struct dev_write_args *ap)
 {
     cdev_t dev = ap->a_head.a_dev;

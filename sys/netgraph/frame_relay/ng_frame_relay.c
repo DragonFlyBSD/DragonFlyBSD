@@ -319,7 +319,7 @@ ngfrm_newhook(node_p node, hook_p hook, const char *name)
 /*
  * Count up the size of the address header if we don't already know
  */
-int
+static int
 ngfrm_addrlen(char *hdr)
 {
 	if (hdr[0] & BYTEX_EA)

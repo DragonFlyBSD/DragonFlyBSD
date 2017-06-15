@@ -167,7 +167,7 @@ nsgphy_attach(device_t dev)
 	return(0);
 }
 
-int
+static int
 nsgphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 {
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;

@@ -85,7 +85,7 @@ cdev_t	vinum_daemon_dev;
  * to do is allocate enough space for devices to be configured later, and
  * add devsw entries.
  */
-void
+static void
 vinumattach(void *dummy)
 {
     char *cp, *cp1, *cp2, **drives;

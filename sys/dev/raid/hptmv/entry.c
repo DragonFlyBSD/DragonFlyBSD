@@ -2240,7 +2240,7 @@ ccb_done(union ccb *ccb)
  *					ccb - Pointer to SCSI command structure.
  ****************************************************************/
 
-void
+static void
 hpt_action(struct cam_sim *sim, union ccb *ccb)
 {
 	IAL_ADAPTER_T * pAdapter = (IAL_ADAPTER_T *) cam_sim_softc(sim);
@@ -2505,7 +2505,7 @@ launch_worker_thread(void)
 
 /********************************************************************************/
 
-int HPTLIBAPI fOsBuildSgl(_VBUS_ARG PCommand pCmd, FPSCAT_GATH pSg, int logical)
+static int HPTLIBAPI fOsBuildSgl(_VBUS_ARG PCommand pCmd, FPSCAT_GATH pSg, int logical)
 {
 	union ccb *ccb = (union ccb *)pCmd->pOrgCommand;
 	bus_dma_segment_t *sgList = (bus_dma_segment_t *)ccb->csio.data_ptr;

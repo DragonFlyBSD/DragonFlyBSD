@@ -841,7 +841,7 @@ vinum_scandisk(char *devicename[], int drives)
  * Return 1 if a < b, 0 if a == b, 01 if a > b: in other
  * words, sort backwards.
  */
-int
+static int
 drivecmp(const void *va, const void *vb)
 {
     const struct drive *a = &DRIVE[*(const int *) va];

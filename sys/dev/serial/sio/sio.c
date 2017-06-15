@@ -1732,7 +1732,7 @@ sioinput(struct com_s *com)
 		outb(com->modem_ctl_port, com->mcr_image |= MCR_RTS);
 }
 
-void
+static void
 siointr(void *arg)
 {
 	lwkt_gettoken(&tty_token);
@@ -3143,7 +3143,7 @@ siocncheckc(void *private)
 }
 
 
-int
+static int
 siocngetc(void *private)
 {
 	int	c;
@@ -3173,7 +3173,7 @@ siocngetc(void *private)
 	return (c);
 }
 
-void
+static void
 siocnputc(void *private, int c)
 {
 	int	unit = (int)(intptr_t)private;

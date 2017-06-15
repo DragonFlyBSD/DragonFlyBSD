@@ -445,7 +445,7 @@ ad_init(device_t dev)
 	atadev->max_iosize = DEV_BSIZE;
 }
 
-void
+static void
 ad_describe(device_t dev)
 {
     struct ata_channel *ch = device_get_softc(device_get_parent(dev));

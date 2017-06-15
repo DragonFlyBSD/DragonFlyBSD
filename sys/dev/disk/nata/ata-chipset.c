@@ -483,7 +483,7 @@ ata_ahci_ident(device_t dev)
 /*
  * AHCI v1.x compliant SATA chipset support functions
  */
-int
+static int
 ata_ahci_chipinit(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);

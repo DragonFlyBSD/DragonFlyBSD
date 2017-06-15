@@ -279,7 +279,7 @@ rp_pci_aiop2off(int aiop, int offset)
 }
 
 /* Read the int status for a PCI controller. */
-unsigned char
+static unsigned char
 rp_pci_ctlmask(CONTROLLER_t *ctlp)
 {
 	return sPCIGetControllerIntStatus(ctlp);

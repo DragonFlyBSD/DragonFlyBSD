@@ -353,7 +353,7 @@ static int get_disk_info(PVDevice pVDevice, PDEVICE_INFO pDiskInfo)
 	return 0;
 }
 
-int hpt_get_driver_capabilities(PDRIVER_CAPABILITIES cap)
+static int hpt_get_driver_capabilities(PDRIVER_CAPABILITIES cap)
 {
 	ZeroMemory(cap, sizeof(DRIVER_CAPABILITIES));
 	cap->dwSize = sizeof(DRIVER_CAPABILITIES);
@@ -398,7 +398,7 @@ int hpt_get_driver_capabilities(PDRIVER_CAPABILITIES cap)
 	return 0;
 }
 
-int hpt_get_controller_count(void)
+static int hpt_get_controller_count(void)
 {
 	IAL_ADAPTER_T    *pAdapTemp = gIal_Adapter;
 	int iControllerCount = 0;
@@ -412,7 +412,7 @@ int hpt_get_controller_count(void)
 	return iControllerCount;
 }
 
-int hpt_get_controller_info(int id, PCONTROLLER_INFO pInfo)
+static int hpt_get_controller_info(int id, PCONTROLLER_INFO pInfo)
 {
 	IAL_ADAPTER_T    *pAdapTemp;
 	int iControllerCount = 0;
@@ -443,7 +443,7 @@ int hpt_get_controller_info(int id, PCONTROLLER_INFO pInfo)
 }
 
 
-int hpt_get_channel_info(int id, int bus, PCHANNEL_INFO pInfo)
+static int hpt_get_channel_info(int id, int bus, PCHANNEL_INFO pInfo)
 {
 	IAL_ADAPTER_T    *pAdapTemp = gIal_Adapter;
 	int i,iControllerCount = 0;
@@ -476,7 +476,7 @@ found:
 
 }
 
-int hpt_get_logical_devices(DEVICEID * pIds, int nMaxCount)
+static int hpt_get_logical_devices(DEVICEID * pIds, int nMaxCount)
 {
 	int count = 0;
 	int	i,j;
@@ -509,7 +509,7 @@ done:
 	return count;
 }
 
-int hpt_get_device_info(DEVICEID id, PLOGICAL_DEVICE_INFO pInfo)
+static int hpt_get_device_info(DEVICEID id, PLOGICAL_DEVICE_INFO pInfo)
 {
 	PVDevice pVDevice = ID_TO_VDEV(id);
 
@@ -533,7 +533,7 @@ int hpt_get_device_info(DEVICEID id, PLOGICAL_DEVICE_INFO pInfo)
 	return get_disk_info(pVDevice, &pInfo->u.device);
 }
 
-int hpt_get_device_info_v2(DEVICEID id, PLOGICAL_DEVICE_INFO_V2 pInfo)
+static int hpt_get_device_info_v2(DEVICEID id, PLOGICAL_DEVICE_INFO_V2 pInfo)
 {
 	PVDevice pVDevice = ID_TO_VDEV(id);
 
@@ -560,7 +560,7 @@ int hpt_get_device_info_v2(DEVICEID id, PLOGICAL_DEVICE_INFO_V2 pInfo)
 }
 
 #ifdef SUPPORT_ARRAY
-DEVICEID hpt_create_array_v2(_VBUS_ARG PCREATE_ARRAY_PARAMS_V2 pParam)
+static DEVICEID hpt_create_array_v2(_VBUS_ARG PCREATE_ARRAY_PARAMS_V2 pParam)
 {
 	ULONG Stamp = GetStamp();
 	int	i,j;
@@ -810,7 +810,7 @@ error:
 	return INVALID_DEVICEID;
 }
 
-DEVICEID hpt_create_array(_VBUS_ARG PCREATE_ARRAY_PARAMS pParam)
+static DEVICEID hpt_create_array(_VBUS_ARG PCREATE_ARRAY_PARAMS pParam)
 {
 	CREATE_ARRAY_PARAMS_V2 param2;
 	param2.ArrayType = pParam->ArrayType;
@@ -981,7 +981,7 @@ find:
 	return 0;
 }
 
-int hpt_add_spare_disk(_VBUS_ARG DEVICEID idDisk)
+static int hpt_add_spare_disk(_VBUS_ARG DEVICEID idDisk)
 {
 	PVDevice pVDevice = ID_TO_VDEV(idDisk);
 	DECLARE_BUFFER(PUCHAR, pbuffer);
@@ -1002,7 +1002,7 @@ int hpt_add_spare_disk(_VBUS_ARG DEVICEID idDisk)
 	return 0;
 }
 
-int hpt_remove_spare_disk(_VBUS_ARG DEVICEID idDisk)
+static int hpt_remove_spare_disk(_VBUS_ARG DEVICEID idDisk)
 {
 	PVDevice pVDevice = ID_TO_VDEV(idDisk);
 
@@ -1017,7 +1017,7 @@ int hpt_remove_spare_disk(_VBUS_ARG DEVICEID idDisk)
 	return 0;
 }
 
-int hpt_set_array_info(_VBUS_ARG DEVICEID idArray, PALTERABLE_ARRAY_INFO pInfo)
+static int hpt_set_array_info(_VBUS_ARG DEVICEID idArray, PALTERABLE_ARRAY_INFO pInfo)
 {
 	PVDevice pVDevice = ID_TO_VDEV(idArray);
 

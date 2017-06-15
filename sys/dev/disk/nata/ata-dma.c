@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.147 2007/04/08 21:53:52 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-dma.c,v 1.5 2007/07/23 19:26:09 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -266,7 +265,7 @@ ata_dmaload(device_t dev, caddr_t data, int32_t count, int dir,
     return 0;
 }
 
-int
+static int
 ata_dmaunload(device_t dev)
 {
     struct ata_channel *ch = device_get_softc(dev);

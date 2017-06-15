@@ -2463,7 +2463,7 @@ rt2661_init(void *priv)
 		ieee80211_start_all(ic);		/* start all vap's */
 }
 
-void
+static void
 rt2661_stop_locked(struct rt2661_softc *sc)
 {
 	volatile int *flags = &sc->sc_flags;
@@ -2512,7 +2512,7 @@ rt2661_stop_locked(struct rt2661_softc *sc)
 	}
 }
 
-void
+static void
 rt2661_stop(void *priv)
 {
 	struct rt2661_softc *sc = priv;

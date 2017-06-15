@@ -2152,7 +2152,7 @@ static void arcmsr_iop_parking(struct AdapterControlBlock *acb)
 **
 ************************************************************************
 */
-u_int32_t arcmsr_iop_ioctlcmd(struct AdapterControlBlock *acb, u_int32_t ioctl_cmd, caddr_t arg)
+static u_int32_t arcmsr_iop_ioctlcmd(struct AdapterControlBlock *acb, u_int32_t ioctl_cmd, caddr_t arg)
 {
 	struct CMD_MESSAGE_FIELD *pcmdmessagefld;
 	u_int32_t retvalue = EINVAL;
@@ -2340,7 +2340,7 @@ static void arcmsr_free_srb(struct CommandControlBlock *srb)
 **************************************************************************
 **************************************************************************
 */
-struct CommandControlBlock *arcmsr_get_freesrb(struct AdapterControlBlock *acb)
+static struct CommandControlBlock *arcmsr_get_freesrb(struct AdapterControlBlock *acb)
 {
 	struct CommandControlBlock *srb = NULL;
 	u_int32_t workingsrb_startindex, workingsrb_doneindex;

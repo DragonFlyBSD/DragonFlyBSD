@@ -3115,7 +3115,7 @@ ndis_80211ioctl(struct ieee80211com *ic, u_long cmd, void *data)
 	return (error);
 }
 
-int
+static int
 ndis_del_key(struct ieee80211vap *vap, const struct ieee80211_key *key)
 {
 	struct ndis_softc	*sc = vap->iv_ic->ic_softc;

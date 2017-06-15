@@ -1183,7 +1183,7 @@ tws_poll(struct cam_sim *sim)
     tws_intr(sc);
 }
 
-void
+static void
 tws_timeout(void *arg)
 {
     struct tws_request *req = (struct tws_request *)arg;

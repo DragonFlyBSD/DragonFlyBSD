@@ -1353,7 +1353,7 @@ bt_intr(void *arg)
 	lockmgr(&bt->lock, LK_RELEASE);
 }
 
-void
+static void
 bt_intr_locked(struct bt_softc *bt)
 {
 	u_int	intstat;
@@ -2131,7 +2131,7 @@ btpoll(struct cam_sim *sim)
 	bt_intr_locked(cam_sim_softc(sim));
 }
 
-void
+static void
 bttimeout(void *arg)
 {
 	struct bt_ccb	*bccb;
