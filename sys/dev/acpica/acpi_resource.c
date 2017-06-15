@@ -678,7 +678,8 @@ acpi_sysres_probe(device_t dev)
 	return (ENXIO);
 
     device_set_desc(dev, "System Resource");
-    device_quiet(dev);
+    if (bootverbose == 0)
+	    device_quiet(dev);
     return (BUS_PROBE_DEFAULT);
 }
 
