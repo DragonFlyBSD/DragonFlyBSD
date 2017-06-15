@@ -46,6 +46,12 @@
 
 enum ig4_op { IG4_IDLE, IG4_READ, IG4_WRITE };
 
+enum ig4_vers {
+	IG4_HASWELL = 0,
+	IG4_ATOM,	/* Bay Trail, Braswell, Cherryview */
+	IG4_SKYLAKE,	/* Skylake-U/Y and Kaby Lake-U/Y */
+};
+
 struct ig4iic_softc {
 	device_t	dev;
 	device_t	smb;
@@ -58,6 +64,7 @@ struct ig4iic_softc {
 	int		intr_rid;
 	void		*intr_handle;
 	int		intr_type;
+	enum ig4_vers	version;
 	enum ig4_op	op;
 	int		cmd;
 	int		rnext;

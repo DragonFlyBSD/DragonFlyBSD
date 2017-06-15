@@ -63,18 +63,19 @@ static int ig4iic_pci_detach(device_t dev);
 static const struct {
 	uint16_t id;
 	char *name;
+	enum ig4_vers version;
 } intel_i2c_ids[] = {
 	/* Haswell */
-	{ 0x9c61, "Intel Lynx Point-LP I2C Controller-1" },
-	{ 0x9c62, "Intel Lynx Point-LP I2C Controller-2" },
+	{ 0x9c61, "Intel Lynx Point-LP I2C Controller-1", IG4_HASWELL },
+	{ 0x9c62, "Intel Lynx Point-LP I2C Controller-2", IG4_HASWELL },
 
 	/* Skylake-U/Y and Kaby Lake-U/Y CPUs */
-	{ 0x9d60, "Intel Sunrise Point-LP I2C Controller-0" },
-	{ 0x9d61, "Intel Sunrise Point-LP I2C Controller-1" },
-	{ 0x9d62, "Intel Sunrise Point-LP I2C Controller-2" },
-	{ 0x9d63, "Intel Sunrise Point-LP I2C Controller-3" },
-	{ 0x9d64, "Intel Sunrise Point-LP I2C Controller-4" },
-	{ 0x9d65, "Intel Sunrise Point-LP I2C Controller-5" },
+	{ 0x9d60, "Intel Sunrise Point-LP I2C Controller-0", IG4_SKYLAKE },
+	{ 0x9d61, "Intel Sunrise Point-LP I2C Controller-1", IG4_SKYLAKE },
+	{ 0x9d62, "Intel Sunrise Point-LP I2C Controller-2", IG4_SKYLAKE },
+	{ 0x9d63, "Intel Sunrise Point-LP I2C Controller-3", IG4_SKYLAKE },
+	{ 0x9d64, "Intel Sunrise Point-LP I2C Controller-4", IG4_SKYLAKE },
+	{ 0x9d65, "Intel Sunrise Point-LP I2C Controller-5", IG4_SKYLAKE },
 };
 
 static
@@ -110,12 +111,21 @@ ig4iic_pci_attach(device_t dev)
 {
 	ig4iic_softc_t *sc = device_get_softc(dev);
 	u_int irq_flags;
+	uint16_t device_id;
 	int msi_enable = 1;
-	int error;
+	int error, i;
 
 	bzero(sc, sizeof(*sc));
 
 	lockinit(&sc->lk, "ig4iic", 0, LK_CANRECURSE);
+
+	device_id = pci_get_device(dev);
+	for (i = 0; i < NELEM(intel_i2c_ids); i++) {
+		if (intel_i2c_ids[i].id == device_id) {
+			sc->version = intel_i2c_ids[i].version;
+			break;
+		}
+	}
 
 	sc->dev = dev;
 	sc->regs_rid = PCIR_BAR(0);
