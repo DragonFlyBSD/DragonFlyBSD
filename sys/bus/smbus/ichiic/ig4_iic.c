@@ -613,7 +613,7 @@ ig4iic_attach(ig4iic_softc_t *sc)
 		device_printf(sc->dev, "controller error during attach-1\n");
 	if (set_controller(sc, IG4_I2C_ENABLE))
 		device_printf(sc->dev, "controller error during attach-2\n");
-	error = bus_setup_intr(sc->dev, sc->intr_res, 0,
+	error = bus_setup_intr(sc->dev, sc->intr_res, INTR_MPSAFE,
 			       ig4iic_intr, sc, &sc->intr_handle, NULL);
 	if (error) {
 		device_printf(sc->dev,
