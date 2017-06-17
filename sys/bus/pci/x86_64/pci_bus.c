@@ -595,6 +595,7 @@ DRIVER_MODULE(pcib, legacy, legacy_pcib_driver, hostb_devclass, NULL, NULL);
  */
 static struct isa_pnp_id pcibus_pnp_ids[] = {
 	{ 0x030ad041 /* PNP0A03 */, "PCI Bus" },
+	{ 0x080ad041 /* PNP0A08 */, "PCIe Bus" },
 	{ 0 }
 };
 

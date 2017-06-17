@@ -130,7 +130,7 @@ acpi_pcib_acpi_probe(device_t dev)
 {
     int error;
 
-    static char *pcib_ids[] = { "PNP0A03", NULL };
+    static char *pcib_ids[] = { "PNP0A03", "PNP0A08", NULL };
 
     if (acpi_disabled("pcib") ||
 	ACPI_ID_PROBE(device_get_parent(dev), dev, pcib_ids) == NULL)
