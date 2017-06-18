@@ -2208,7 +2208,6 @@ options 	KBD_MAXWAIT=6
 options 	KBD_RESETDELAY=201
 #options 	KERN_TIMESTAMP
 options 	KEY
-#options 	LINPROCFS
 options 	LOCKF_DEBUG
 #options	MAXFILES=xxx
 options		MBUF_DEBUG
