@@ -144,6 +144,7 @@ lo_clone_destroy(struct ifnet *ifp)
 
 	bpfdetach(ifp);
 	if_detach(ifp);
+	kfree(ifp, M_IFNET);
 	return (0);
 }
 
