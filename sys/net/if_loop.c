@@ -73,10 +73,10 @@
 static int	lo_clone_create(struct if_clone *, int, caddr_t);
 static int	lo_clone_destroy(struct ifnet *);
 
-static int	looutput(struct ifnet *, struct mbuf *, struct sockaddr *,
-			 struct rtentry *);
-static int	loioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static void	lortrequest(int, struct rtentry *);
+static int	lo_output(struct ifnet *, struct mbuf *, struct sockaddr *,
+		    struct rtentry *);
+static int	lo_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
+static void	lo_rtrequest(int, struct rtentry *);
 #ifdef ALTQ
 static void	lo_altqstart(struct ifnet *, struct ifaltq_subque *);
 #endif
@@ -117,8 +117,8 @@ lo_clone_create(struct if_clone *ifc __unused, int unit, caddr_t param __unused)
 	ifp->if_capabilities = IFCAP_HWCSUM | IFCAP_RSS;
 	ifp->if_hwassist = LO_CSUM_FEATURES;
 	ifp->if_capenable = ifp->if_capabilities;
-	ifp->if_ioctl = loioctl;
-	ifp->if_output = looutput;
+	ifp->if_ioctl = lo_ioctl;
+	ifp->if_output = lo_output;
 	ifp->if_type = IFT_LOOP;
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 	ifq_set_ready(&ifp->if_snd);
@@ -148,8 +148,8 @@ lo_clone_destroy(struct ifnet *ifp)
 }
 
 static int
-looutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
-	 struct rtentry *rt)
+lo_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+    struct rtentry *rt)
 {
 	M_ASSERTPKTHDR(m);
 
@@ -167,7 +167,7 @@ looutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	case AF_INET6:
 		break;
 	default:
-		kprintf("looutput: af=%d unexpected\n", dst->sa_family);
+		kprintf("lo_output: af=%d unexpected\n", dst->sa_family);
 		m_freem(m);
 		return (EAFNOSUPPORT);
 	}
@@ -335,7 +335,7 @@ lo_altqstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 /* ARGSUSED */
 static void
-lortrequest(int cmd, struct rtentry *rt)
+lo_rtrequest(int cmd, struct rtentry *rt)
 {
 	if (rt) {
 		rt->rt_rmx.rmx_mtu = rt->rt_ifp->if_mtu; /* for ISO */
@@ -353,7 +353,7 @@ lortrequest(int cmd, struct rtentry *rt)
  */
 /* ARGSUSED */
 static int
-loioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
+lo_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct ifaddr *ifa;
 	struct ifreq *ifr = (struct ifreq *)data;
@@ -363,7 +363,7 @@ loioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	case SIOCSIFADDR:
 		ifp->if_flags |= IFF_UP | IFF_RUNNING;
 		ifa = (struct ifaddr *)data;
-		ifa->ifa_rtrequest = lortrequest;
+		ifa->ifa_rtrequest = lo_rtrequest;
 		/*
 		 * Everything else is done at a higher level.
 		 */
