@@ -1259,7 +1259,7 @@ nd6_rtrequest(int req, struct rtentry *rt)
 				SDL(gate)->sdl_alen = ifp->if_addrlen;
 			}
 			if (nd6_useloopback) {
-				rt->rt_ifp = &loif[0];	/* XXX */
+				rt->rt_ifp = loif;	/* XXX */
 				/*
 				 * Make sure rt_ifa be equal to the ifaddr
 				 * corresponding to the address.

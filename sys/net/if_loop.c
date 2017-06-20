@@ -50,6 +50,7 @@
 
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/if_clone.h>
 #include <net/ifq_var.h>
 #include <net/netisr.h>
 #include <net/route.h>
@@ -69,7 +70,9 @@
 #include <netinet/ip6.h>
 #endif
 
-static void	loopattach(void *);
+static int	lo_clone_create(struct if_clone *, int, caddr_t);
+static int	lo_clone_destroy(struct ifnet *);
+
 static int	looutput(struct ifnet *, struct mbuf *, struct sockaddr *,
 			 struct rtentry *);
 static int	loioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
@@ -77,7 +80,6 @@ static void	lortrequest(int, struct rtentry *);
 #ifdef ALTQ
 static void	lo_altqstart(struct ifnet *, struct ifaltq_subque *);
 #endif
-PSEUDO_SET(loopattach, if_loop);
 
 #ifdef TINY_LOMTU
 #define	LOMTU	(1024+512)
@@ -89,33 +91,60 @@ PSEUDO_SET(loopattach, if_loop);
 
 #define LO_CSUM_FEATURES	(CSUM_IP | CSUM_UDP | CSUM_TCP)
 
-struct	ifnet loif[NLOOP];
+struct ifnet	*loif;
 
-/* ARGSUSED */
+static struct if_clone lo_cloner = IF_CLONE_INITIALIZER("lo",
+    lo_clone_create, lo_clone_destroy, NLOOP, IF_MAXUNIT);
+
 static void
-loopattach(void *dummy)
+lo_sysinit(void *dummy __unused)
+{
+
+	if_clone_attach(&lo_cloner);
+}
+SYSINIT(lo_sysinit, SI_SUB_PSEUDO, SI_ORDER_ANY, lo_sysinit, NULL);
+
+static int
+lo_clone_create(struct if_clone *ifc __unused, int unit, caddr_t param __unused)
 {
 	struct ifnet *ifp;
-	int i;
 
-	for (i = 0, ifp = loif; i < NLOOP; i++, ifp++) {
-		if_initname(ifp, "lo", i);
-		ifp->if_mtu = LOMTU;
-		ifp->if_flags = IFF_LOOPBACK | IFF_MULTICAST;
-		ifp->if_capabilities = IFCAP_HWCSUM | IFCAP_RSS;
-		ifp->if_hwassist = LO_CSUM_FEATURES;
-		ifp->if_capenable = ifp->if_capabilities;
-		ifp->if_ioctl = loioctl;
-		ifp->if_output = looutput;
-		ifp->if_type = IFT_LOOP;
-		ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
-		ifq_set_ready(&ifp->if_snd);
+	ifp = kmalloc(sizeof(*ifp), M_IFNET, M_WAITOK | M_ZERO);
+
+	if_initname(ifp, "lo", unit);
+	ifp->if_mtu = LOMTU;
+	ifp->if_flags = IFF_LOOPBACK | IFF_MULTICAST;
+	ifp->if_capabilities = IFCAP_HWCSUM | IFCAP_RSS;
+	ifp->if_hwassist = LO_CSUM_FEATURES;
+	ifp->if_capenable = ifp->if_capabilities;
+	ifp->if_ioctl = loioctl;
+	ifp->if_output = looutput;
+	ifp->if_type = IFT_LOOP;
+	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
+	ifq_set_ready(&ifp->if_snd);
 #ifdef ALTQ
-	        ifp->if_start = lo_altqstart;
+	ifp->if_start = lo_altqstart;
 #endif
-		if_attach(ifp, NULL);
-		bpfattach(ifp, DLT_NULL, sizeof(u_int));
+	if_attach(ifp, NULL);
+	bpfattach(ifp, DLT_NULL, sizeof(u_int));
+
+	if (loif == NULL) {
+		KASSERT(unit == 0, ("loif is %s", ifp->if_xname));
+		loif = ifp;
 	}
+	return (0);
+}
+
+static int
+lo_clone_destroy(struct ifnet *ifp)
+{
+
+	if (loif == ifp)
+		return (EPERM);
+
+	bpfdetach(ifp);
+	if_detach(ifp);
+	return (0);
 }
 
 static int

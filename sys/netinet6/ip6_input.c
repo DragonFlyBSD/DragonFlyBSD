@@ -255,7 +255,7 @@ ip6_input(netmsg_t msg)
 #define M2MMAX	NELEM(ip6stat.ip6s_m2m)
 		if (m->m_next) {
 			if (m->m_flags & M_LOOP) {
-				ip6stat.ip6s_m2m[loif[0].if_index]++; /* XXX */
+				ip6stat.ip6s_m2m[loif->if_index]++; /* XXX */
 			} else if (m->m_pkthdr.rcvif->if_index < M2MMAX)
 				ip6stat.ip6s_m2m[m->m_pkthdr.rcvif->if_index]++;
 			else

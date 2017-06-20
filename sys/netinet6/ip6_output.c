@@ -653,7 +653,7 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 				in6_ifstat_inc(ifp, ifs6_out_discard);
 				goto bad;
 			} else {
-				ifp = &loif[0];
+				ifp = loif;
 			}
 		}
 
@@ -2611,7 +2611,7 @@ ip6_setmoptions(int optname, struct ip6_moptions **im6op, struct mbuf *m)
 			 *   XXX: is it a good approach?
 			 */
 			if (IN6_IS_ADDR_MC_INTFACELOCAL(&mreq->ipv6mr_multiaddr)) {
-				ifp = &loif[0];
+				ifp = loif;
 			} else {
 				ro.ro_rt = NULL;
 				dst = (struct sockaddr_in6 *)&ro.ro_dst;
@@ -3270,7 +3270,7 @@ ip6_setpktoptions(struct mbuf *control, struct ip6_pktopts *opt,
  * Routine called from ip6_output() to loop back a copy of an IP6 multicast
  * packet to the input queue of a specified interface.  Note that this
  * calls the output routine of the loopback "driver", but with an interface
- * pointer that might NOT be &loif -- easier than replicating that code here.
+ * pointer that might NOT be loif -- easier than replicating that code here.
  */
 void
 ip6_mloopback(struct ifnet *ifp, struct mbuf *m, struct sockaddr_in6 *dst)

@@ -239,7 +239,7 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 		struct ifnet *ifp = mopts ? mopts->im6o_multicast_ifp : NULL;
 
 		if (ifp == NULL && IN6_IS_ADDR_MC_INTFACELOCAL(dst)) {
-			ifp = &loif[0];
+			ifp = loif;
 		}
 
 		if (ifp) {

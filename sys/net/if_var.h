@@ -896,7 +896,7 @@ const struct ifnet_array *ifnet_array_get(void);
 int			ifnet_array_isempty(void);
 
 extern	int ifqmaxlen;
-extern	struct ifnet loif[];
+extern	struct ifnet *loif;
 
 struct ip;
 struct tcphdr;
