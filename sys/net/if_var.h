@@ -242,8 +242,8 @@ enum ifnet_serialize {
  * properly (assume QCOUNT is power of 2):
  *
  *	ifq_set_subq_cnt(&ifp->if_snd, QCOUNT);
- *      ifp->if_mapsubq = ifq_mapsubq_mask;
- *	ifq_set_subq_mask(&ifp->if_snd, QCOUNT - 1);
+ *	ifp->if_mapsubq = ifq_mapsubq_modulo;
+ *	ifq_set_subq_divisor(&ifp->if_snd, QCOUNT);
  *
  * After the type specific attach, driver should setup the subqueues owner
  * cpu, serializer and watchdog properly:
@@ -970,8 +970,6 @@ struct	ifmultiaddr *ifmaof_ifpforaddr(struct sockaddr *, struct ifnet *);
 int	if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen);
 void	if_devstart(struct ifnet *ifp); /* COMPAT */
 void	if_devstart_sched(struct ifnet *ifp); /* COMPAT */
-
-int	if_ring_count2(int cnt, int cnt_max);
 
 void	ifnet_lock(void);
 void	ifnet_unlock(void);

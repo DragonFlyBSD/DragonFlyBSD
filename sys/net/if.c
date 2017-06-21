@@ -3327,13 +3327,6 @@ ifq_mapsubq_default(struct ifaltq *ifq __unused, int cpuid __unused)
 }
 
 int
-ifq_mapsubq_mask(struct ifaltq *ifq, int cpuid)
-{
-
-	return (cpuid & ifq->altq_subq_mappriv);
-}
-
-int
 ifq_mapsubq_modulo(struct ifaltq *ifq, int cpuid)
 {
 
@@ -3823,12 +3816,4 @@ if_ringmap_cpumap_sysctl(SYSCTL_HANDLER_ARGS)
 			break;
 	}
 	return (error);
-}
-
-int
-if_ring_count2(int ring_cnt, int ring_cntmax)
-{
-
-	ring_cnt = if_ringcnt_fixup(ring_cnt, ring_cntmax);
-	return (1 << (fls(ring_cnt) - 1));
 }
