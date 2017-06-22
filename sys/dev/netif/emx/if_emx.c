@@ -312,7 +312,7 @@ static int	emx_debug_sbp = 0;
 static int	emx_82573_workaround = 1;
 static int	emx_msi_enable = 1;
 
-static char	emx_flowctrl[IFM_ETH_FC_STRLEN] = IFM_ETH_FC_RXPAUSE;
+static char	emx_flowctrl[IFM_ETH_FC_STRLEN] = IFM_ETH_FC_NONE;
 
 TUNABLE_INT("hw.emx.int_throttle_ceil", &emx_int_throttle_ceil);
 TUNABLE_INT("hw.emx.rxd", &emx_rxd);

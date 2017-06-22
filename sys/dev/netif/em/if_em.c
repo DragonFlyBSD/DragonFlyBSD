@@ -379,7 +379,7 @@ static int	em_debug_sbp = FALSE;
 static int	em_82573_workaround = 1;
 static int	em_msi_enable = 1;
 
-static char	em_flowctrl[IFM_ETH_FC_STRLEN] = IFM_ETH_FC_RXPAUSE;
+static char	em_flowctrl[IFM_ETH_FC_STRLEN] = IFM_ETH_FC_NONE;
 
 TUNABLE_INT("hw.em.int_throttle_ceil", &em_int_throttle_ceil);
 TUNABLE_INT("hw.em.rxd", &em_rxd);
