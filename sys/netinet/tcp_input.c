@@ -1498,7 +1498,7 @@ after_listen:
 					tp->t_flags |= TF_ONOUTPUTQ;
 					tp->tt_cpu = mycpu->gd_cpuid;
 					TAILQ_INSERT_TAIL(
-					    &tcpcbackq[tp->tt_cpu],
+					    &tcpcbackq[tp->tt_cpu].head,
 					    tp, t_outputq);
 				}
 			} else {

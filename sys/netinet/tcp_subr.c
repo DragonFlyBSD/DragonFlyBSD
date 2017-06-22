@@ -158,7 +158,7 @@ KTR_INFO(KTR_TCP, tcp, delayed, 2, "tcp execute delayed ops", 0);
 #define TCP_IW_CAPSEGS_DFLT	4
 
 struct inpcbinfo tcbinfo[MAXCPU];
-struct tcpcbackqhead tcpcbackq[MAXCPU];
+struct tcpcbackq tcpcbackq[MAXCPU];
 
 int tcp_mssdflt = TCP_MSS;
 SYSCTL_INT(_net_inet_tcp, TCPCTL_MSSDFLT, mssdflt, CTLFLAG_RW,
@@ -400,7 +400,7 @@ tcp_init(void)
 		ticb->localgrphashbase = hashinit(hashsize, M_PCB,
 						  &ticb->localgrphashmask);
 		ticb->ipi_size = sizeof(struct inp_tp);
-		TAILQ_INIT(&tcpcbackq[cpu]);
+		TAILQ_INIT(&tcpcbackq[cpu].head);
 	}
 
 	tcp_reass_maxseg = nmbclusters / 16;
@@ -439,12 +439,12 @@ static void
 tcp_willblock(void)
 {
 	struct tcpcb *tp;
-	int cpu = mycpu->gd_cpuid;
+	int cpu = mycpuid;
 
-	while ((tp = TAILQ_FIRST(&tcpcbackq[cpu])) != NULL) {
+	while ((tp = TAILQ_FIRST(&tcpcbackq[cpu].head)) != NULL) {
 		KKASSERT(tp->t_flags & TF_ONOUTPUTQ);
 		tp->t_flags &= ~TF_ONOUTPUTQ;
-		TAILQ_REMOVE(&tcpcbackq[cpu], tp, t_outputq);
+		TAILQ_REMOVE(&tcpcbackq[cpu].head, tp, t_outputq);
 		tcp_output(tp);
 	}
 }
@@ -921,7 +921,7 @@ tcp_close(struct tcpcb *tp)
 
 	if (tp->t_flags & TF_ONOUTPUTQ) {
 		KKASSERT(tp->tt_cpu == mycpu->gd_cpuid);
-		TAILQ_REMOVE(&tcpcbackq[tp->tt_cpu], tp, t_outputq);
+		TAILQ_REMOVE(&tcpcbackq[tp->tt_cpu].head, tp, t_outputq);
 		tp->t_flags &= ~TF_ONOUTPUTQ;
 	}
 

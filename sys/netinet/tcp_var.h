@@ -632,10 +632,12 @@ SYSCTL_DECL(_net_inet_tcp);
 #define TCP_SACK_BLKEND(len, thflags) \
 	((len) + (((thflags) & TH_FIN) != 0))
 
-TAILQ_HEAD(tcpcbackqhead,tcpcb);
+struct tcpcbackq {
+	TAILQ_HEAD(, tcpcb)	head;
+} __cachealign;
 
 extern	struct inpcbinfo tcbinfo[];
-extern	struct tcpcbackqhead tcpcbackq[];
+extern	struct tcpcbackq tcpcbackq[];
 
 extern	int tcp_mssdflt;	/* XXX */
 extern	int tcp_minmss;
