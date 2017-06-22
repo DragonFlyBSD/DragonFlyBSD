@@ -89,16 +89,26 @@
 #define	TCPTV_KEEPCNT	8			/* max probes before drop */
 
 /*
- * TCPTV_MIN represents the minimum allowed retransmit interval.  It
- * is currently one second but will ultimately be reduced to 3 ticks
- * for algorithmic stability, leaving the 200ms variance to deal with
- * delayed-acks, protocol overheads.  A 1 second minimum badly breaks
- * throughput on any network faster then a modem that has minor but
- * continuous packet loss unrelated to congestion, such as on a wireless
- * network.
+ * Minimum retransmit timer is 3 ticks, for algorithmic stability.
+ * TCPT_RANGESET() will add another TCPTV_CPU_VAR to deal with
+ * the expected worst-case processing variances by the kernels
+ * representing the end points.  Such variances do not always show
+ * up in the srtt because the timestamp is often calculated at
+ * the interface rather then at the TCP layer.  This value is
+ * typically 50ms.  However, it is also possible that delayed
+ * acks (typically 100ms) could create issues so we set the slop
+ * to ~160ms to try to cover it.  Note that, properly speaking,
+ * delayed-acks should not create a major issue for interactive
+ * environments which 'P'ush the last segment, at least as
+ * long as implementations do the required 'at least one ack
+ * for every two packets' for the non-interactive streaming case.
+ *
+ * The prior minimum of 1*hz (1 second) badly breaks throughput
+ * on any networks faster then a modem that has minor (e.g. 1%)
+ * packet loss.
  */
-#define	TCPTV_MIN	( hz/2 )		/* minimum allowable value */
-#define TCPTV_CPU_VAR	( hz/10)		/* cpu variance (100ms) */
+#define	TCPTV_MIN	( hz/33 )		/* minimum allowable value */
+#define	TCPTV_CPU_VAR	( hz/6 )		/* cpu variance (~160ms) */
 #define	TCPTV_REXMTMAX	( 64*hz)		/* max allowable REXMT value */
 
 #define TCPTV_TWTRUNC	8			/* RTO factor to truncate TW */

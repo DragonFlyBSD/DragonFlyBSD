@@ -376,6 +376,8 @@ tcp_init(void)
 	tcp_maxpersistidle = TCPTV_KEEP_IDLE;
 	tcp_msl = TCPTV_MSL;
 	tcp_rexmit_min = TCPTV_MIN;
+	if (tcp_rexmit_min < 1) /* if kern.hz is too low */
+		tcp_rexmit_min = 1;
 	tcp_rexmit_slop = TCPTV_CPU_VAR;
 
 	TUNABLE_INT_FETCH("net.inet.tcp.tcbhashsize", &hashsize);
