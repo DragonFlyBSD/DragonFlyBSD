@@ -444,10 +444,19 @@ inetdomain_init(void)
 }
 
 struct domain inetdomain = {
-	AF_INET, "internet", inetdomain_init, NULL, NULL,
-	inetsw, &inetsw[NELEM(inetsw)],
-	SLIST_ENTRY_INITIALIZER,
-	in_inithead, 32, sizeof(struct sockaddr_in),
+	.dom_family		= AF_INET,
+	.dom_name		= "internet",
+	.dom_init		= inetdomain_init,
+	.dom_externalize	= NULL,
+	.dom_dispose		= NULL,
+	.dom_protosw		= inetsw,
+	.dom_protoswNPROTOSW	= &inetsw[NELEM(inetsw)],
+	.dom_next		= SLIST_ENTRY_INITIALIZER,
+	.dom_rtattach		= in_inithead,
+	.dom_rtoffset		= 32,
+	.dom_maxrtkey		= sizeof(struct sockaddr_in),
+	.dom_ifattach		= NULL,
+	.dom_ifdetach		= NULL
 };
 
 DOMAIN_SET(inet);

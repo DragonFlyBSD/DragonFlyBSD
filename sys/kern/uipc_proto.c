@@ -74,8 +74,19 @@ static struct protosw localsw[] = {
 };
 
 struct domain localdomain = {
-	AF_LOCAL, "local", unp_init, unp_externalize, unp_dispose,
-	localsw, &localsw[NELEM(localsw)],
+	.dom_family		= AF_LOCAL,
+	.dom_name		= "local",
+	.dom_init		= unp_init,
+	.dom_externalize	= unp_externalize,
+	.dom_dispose		= unp_dispose,
+	.dom_protosw		= localsw,
+	.dom_protoswNPROTOSW	= &localsw[NELEM(localsw)],
+	.dom_next		= SLIST_ENTRY_INITIALIZER,
+	.dom_rtattach		= NULL,
+	.dom_rtoffset		= 0,
+	.dom_maxrtkey		= 0,
+	.dom_ifattach		= NULL,
+	.dom_ifdetach		= NULL
 };
 
 DOMAIN_SET(local);

@@ -1689,8 +1689,19 @@ static struct protosw routesw[] = {
 };
 
 static struct domain routedomain = {
-	PF_ROUTE, "route", NULL, NULL, NULL,
-	routesw, &routesw[(sizeof routesw)/(sizeof routesw[0])],
+	.dom_family		= AF_ROUTE,
+	.dom_name		= "route",
+	.dom_init		= NULL,
+	.dom_externalize	= NULL,
+	.dom_dispose		= NULL,
+	.dom_protosw		= routesw,
+	.dom_protoswNPROTOSW	= &routesw[(sizeof routesw)/(sizeof routesw[0])],
+	.dom_next		= SLIST_ENTRY_INITIALIZER,
+	.dom_rtattach		= NULL,
+	.dom_rtoffset		= 0,
+	.dom_maxrtkey		= 0,
+	.dom_ifattach		= NULL,
+	.dom_ifdetach		= NULL
 };
 
 DOMAIN_SET(route);
