@@ -1146,7 +1146,7 @@ findpcb:
 		}
 		/*
 		 * SYN appears to be valid; create compressed TCP state
-		 * for syncache, or perform t/tcp connection.
+		 * for syncache.
 		 */
 		if (so->so_qlen <= so->so_qlimit) {
 			tcp_dooptions(&to, optp, optlen, TRUE, th->th_ack);
