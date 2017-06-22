@@ -284,7 +284,7 @@ static int	ix_txd = IX_PERF_TXD;
 static int	ix_rxd = IX_PERF_RXD;
 static int	ix_unsupported_sfp = 0;
 
-static char	ix_flowctrl[IFM_ETH_FC_STRLEN] = IFM_ETH_FC_FULL;
+static char	ix_flowctrl[IFM_ETH_FC_STRLEN] = IFM_ETH_FC_NONE;
 
 TUNABLE_INT("hw.ix.msi.enable", &ix_msi_enable);
 TUNABLE_INT("hw.ix.msix.enable", &ix_msix_enable);
