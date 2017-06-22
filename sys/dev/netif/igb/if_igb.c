@@ -277,7 +277,7 @@ static int	igb_msi_enable = 1;
 static int	igb_msix_enable = 1;
 static int	igb_eee_disabled = 1;	/* Energy Efficient Ethernet */
 
-static char	igb_flowctrl[IFM_ETH_FC_STRLEN] = IFM_ETH_FC_RXPAUSE;
+static char	igb_flowctrl[IFM_ETH_FC_STRLEN] = IFM_ETH_FC_NONE;
 
 /*
  * DMA Coalescing, only for i350 - default to off,
