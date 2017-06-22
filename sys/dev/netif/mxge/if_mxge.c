@@ -108,7 +108,7 @@ static int mxge_multi_tx = 1;
  */
 static int mxge_use_rss = 0;
 
-static char mxge_flowctrl[IFM_ETH_FC_STRLEN] = IFM_ETH_FC_FORCE_FULL;
+static char mxge_flowctrl[IFM_ETH_FC_STRLEN] = IFM_ETH_FC_FORCE_NONE;
 
 static const char *mxge_fw_unaligned = "mxge_ethp_z8e";
 static const char *mxge_fw_aligned = "mxge_eth_z8e";
