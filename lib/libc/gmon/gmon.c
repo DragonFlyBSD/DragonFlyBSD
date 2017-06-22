@@ -34,6 +34,7 @@
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/gmon.h>
+#include <sys/mman.h>
 #include <sys/sysctl.h>
 
 #include <err.h>
@@ -45,12 +46,6 @@
 #include "un-namespace.h"
 
 #include "libc_private.h"
-
-#if defined(__x86_64__)
-extern char *minbrk __asm (".minbrk");
-#else
-extern char *minbrk __asm ("minbrk");
-#endif
 
 struct gmonparam _gmonparam = { .state = GMON_PROF_OFF };
 
@@ -87,8 +82,9 @@ monstartup(u_long lowpc, u_long highpc)
 		p->tolimit = MAXARCS;
 	p->tossize = p->tolimit * sizeof(struct tostruct);
 
-	cp = sbrk(p->kcountsize + p->fromssize + p->tossize);
-	if (cp == (char *)-1) {
+	cp = mmap(NULL, p->kcountsize + p->fromssize + p->tossize,
+		PROT_READ | PROT_WRITE, MAP_ANON, -1, 0);
+	 if (cp == MAP_FAILED) {
 		ERR("monstartup: out of memory\n");
 		return;
 	}
@@ -101,7 +97,6 @@ monstartup(u_long lowpc, u_long highpc)
 	cp += p->kcountsize;
 	p->froms = (u_short *)cp;
 
-	minbrk = sbrk(0);
 	p->tos[0].link = 0;
 
 	o = p->highpc - p->lowpc;
