@@ -1533,8 +1533,8 @@ after_listen:
 		if ((thflags & TH_ACK) &&
 		    (SEQ_LEQ(th->th_ack, tp->snd_una) ||
 		     SEQ_GT(th->th_ack, tp->snd_max))) {
-				rstreason = BANDLIM_RST_OPENPORT;
-				goto dropwithreset;
+			rstreason = BANDLIM_RST_OPENPORT;
+			goto dropwithreset;
 		}
 		break;
 
