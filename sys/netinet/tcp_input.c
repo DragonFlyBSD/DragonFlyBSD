@@ -2921,7 +2921,7 @@ tcp_xmit_timer(struct tcpcb *tp, int rtt, tcp_seq ack)
 	 * firing of the timer.  The bias will give us exactly the
 	 * 1.5 tick we need.  But, because the bias is
 	 * statistical, we have to test that we don't drop below
-	 * the minimum feasible timer (which is 1 tick).
+	 * the minimum feasible timer (which is 2 ticks).
 	 */
 	TCPT_RANGESET(tp->t_rxtcur, TCP_REXMTVAL(tp),
 		      max(tp->t_rttmin, rtt + 2), TCPTV_REXMTMAX);
