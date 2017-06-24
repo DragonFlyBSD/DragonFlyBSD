@@ -462,19 +462,28 @@ rel_buffer(buffer_info_t buffer)
 }
 
 /*
- * Retrieve a pointer to a buffer data given a buffer offset.  The underlying
- * bufferp is freed if isnew or the offset is out of range of the cached data.
- * If bufferp is freed a referenced buffer is loaded into it.
+ * Retrieve a pointer to a buffer data given a zone-X buffer offset.
+ * The underlying bufferp is freed if isnew or the corresponding zone-2
+ * offset is out of range of the cached data.  If bufferp is freed,
+ * a referenced buffer is loaded into it.
  */
 void *
 get_buffer_data(hammer_off_t buf_offset, buffer_info_t *bufferp, int isnew)
 {
-	hammer_off_t xor;
+	hammer_off_t xor = 0;
+	hammer_volume_ondisk_t ondisk;
 
 	if (*bufferp != NULL) {
-		/* XXX xor is always non zero for indirect zones */
-		xor = HAMMER_OFF_LONG_ENCODE(buf_offset) ^
-		      HAMMER_OFF_LONG_ENCODE((*bufferp)->zone2_offset);
+		if (hammer_is_zone_undo(buf_offset)) {
+			ondisk = (*bufferp)->volume->ondisk;
+			xor = hammer_xlate_to_undo(ondisk, buf_offset) ^
+				(*bufferp)->zone2_offset;
+		} else if (hammer_is_zone_direct_xlated(buf_offset)) {
+			xor = HAMMER_OFF_LONG_ENCODE(buf_offset) ^
+			      HAMMER_OFF_LONG_ENCODE((*bufferp)->zone2_offset);
+		} else {
+			assert(0);
+		}
 		if (isnew > 0 || (xor & ~HAMMER_BUFMASK64)) {
 			rel_buffer(*bufferp);
 			*bufferp = NULL;
