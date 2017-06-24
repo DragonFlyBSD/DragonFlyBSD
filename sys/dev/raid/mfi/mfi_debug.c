@@ -38,7 +38,6 @@
 #include <sys/bus.h>
 #include <sys/buf2.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/malloc.h>
 #include <sys/taskqueue.h>
 #include <sys/uio.h>

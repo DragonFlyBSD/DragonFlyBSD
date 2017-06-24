@@ -36,7 +36,6 @@
 #include <sys/kernel.h>
 #include <sys/queue.h>
 #include <sys/malloc.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
 

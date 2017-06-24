@@ -141,7 +141,6 @@ typedef struct {
 
 #include <sys/types.h>
 #include <sys/ddidmareq.h>
-#include <sys/mutex.h>
 #include <sys/scsi/scsi.h>
 /*#define	_KERNEL */
 #include <sys/dditypes.h>
