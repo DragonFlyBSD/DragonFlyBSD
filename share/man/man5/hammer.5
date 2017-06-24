@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd September 21, 2015
+.Dd July 7, 2017
 .Dt HAMMER 5
 .Os
 .Sh NAME
@@ -275,7 +275,6 @@ commands:
 A pseudo-filesystem, PFS for short, is a sub file system in a
 .Nm
 file system.
-Each PFS has independent inode numbers.
 All disk space in a
 .Nm
 file system is shared between all PFSs in it,
@@ -287,7 +286,7 @@ The root of a
 .Nm
 file system is PFS# 0, it is called the root PFS and is always a master PFS.
 .Pp
-A PFS can be either master or slave.
+A non-root PFS can be either master or slave.
 Slaves are always read-only,
 so they can't be updated by normal file operations, only by
 .Xr hammer 8
