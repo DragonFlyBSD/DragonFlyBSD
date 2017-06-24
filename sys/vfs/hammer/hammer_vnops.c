@@ -1140,7 +1140,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	nlen = i;
 
 	/*
-	 * If this is a PFS softlink we dive into the PFS
+	 * If this is a PFS we dive into the PFS root inode
 	 */
 	if (ispfs && nlen == 0) {
 		ip = hammer_get_inode(&trans, dip, HAMMER_OBJID_ROOT,
