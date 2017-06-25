@@ -1220,7 +1220,7 @@ after_listen:
 		}
 		if (!(to.to_flags & TOF_MSS))
 			to.to_mss = 0;
-		tcp_mss(tp, to.to_mss);
+		tcp_rmx_init(tp, to.to_mss);
 		/*
 		 * Only set the TF_SACK_PERMITTED per-connection flag
 		 * if we got a SACK_PERMITTED option from the other side
@@ -2971,8 +2971,6 @@ tcp_xmit_timer(struct tcpcb *tp, int rtt, tcp_seq ack)
  * of the interface), as we can't discover anything about intervening
  * gateways or networks.  We also initialize the congestion/slow start
  * window to be a single segment if the destination isn't local.
- * While looking at the routing entry, we also initialize other path-dependent
- * parameters from pre-set or cached values in the routing entry.
  *
  * Also take into account the space needed for options that we
  * send regularly.  Make maxseg shorter by that amount to assure
@@ -2983,12 +2981,11 @@ tcp_xmit_timer(struct tcpcb *tp, int rtt, tcp_seq ack)
  * NOTE that this routine is only called when we process an incoming
  * segment, for outgoing segments only tcp_mssopt is called.
  */
-void
-tcp_mss(struct tcpcb *tp, int offer)
+static void
+tcp_rmx_mss(struct tcpcb *tp, struct rtentry *rt, int offer)
 {
-	struct rtentry *rt;
 	struct ifnet *ifp;
-	int rtt, mss;
+	int mss;
 	u_long bufsize;
 	struct inpcb *inp = tp->t_inpcb;
 	struct socket *so;
@@ -3002,10 +2999,6 @@ tcp_mss(struct tcpcb *tp, int offer)
 	const size_t min_protoh = sizeof(struct tcpiphdr);
 #endif
 
-	if (isipv6)
-		rt = tcp_rtlookup6(&inp->inp_inc);
-	else
-		rt = tcp_rtlookup(&inp->inp_inc);
 	if (rt == NULL) {
 		tp->t_maxopd = tp->t_maxseg =
 		    (isipv6 ? tcp_v6mssdflt : tcp_mssdflt);
@@ -3047,35 +3040,6 @@ tcp_mss(struct tcpcb *tp, int offer)
 	offer = max(offer, 64);
 
 	rt->rt_rmx.rmx_mssopt = offer;
-
-	/*
-	 * While we're here, check if there's an initial rtt
-	 * or rttvar.  Convert from the route-table units
-	 * to scaled multiples of the slow timeout timer.
-	 */
-	if (tp->t_srtt == 0 && (rtt = rt->rt_rmx.rmx_rtt)) {
-		/*
-		 * XXX the lock bit for RTT indicates that the value
-		 * is also a minimum value; this is subject to time.
-		 */
-		if (rt->rt_rmx.rmx_locks & RTV_RTT)
-			tp->t_rttmin = rtt / (RTM_RTTUNIT / hz);
-		tp->t_srtt = rtt / (RTM_RTTUNIT / (hz * TCP_RTT_SCALE));
-		tp->t_rttbest = tp->t_srtt + TCP_RTT_SCALE;
-		tcpstat.tcps_usedrtt++;
-		if (rt->rt_rmx.rmx_rttvar) {
-			tp->t_rttvar = rt->rt_rmx.rmx_rttvar /
-			    (RTM_RTTUNIT / (hz * TCP_RTTVAR_SCALE));
-			tcpstat.tcps_usedrttvar++;
-		} else {
-			/* default variation is +- 1 rtt */
-			tp->t_rttvar =
-			    tp->t_srtt * TCP_RTTVAR_SCALE / TCP_RTT_SCALE;
-		}
-		TCPT_RANGESET(tp->t_rxtcur,
-			      ((tp->t_srtt >> 2) + tp->t_rttvar) >> 1,
-			      tp->t_rttmin, TCPTV_REXMTMAX);
-	}
 
 	/*
 	 * if there's an mtu associated with the route, use it
@@ -3166,6 +3130,64 @@ tcp_mss(struct tcpcb *tp, int offer)
 		tp->snd_ssthresh = max(2 * mss, rt->rt_rmx.rmx_ssthresh);
 		tcpstat.tcps_usedssthresh++;
 	}
+}
+
+static void
+tcp_rmx_rtt(struct tcpcb *tp, struct rtentry *rt)
+{
+	int rtt;
+
+	if (rt == NULL)
+		return;
+
+	/*
+	 * Check if there's an initial rtt or rttvar.  Convert
+	 * from the route-table units to scaled multiples of
+	 * the slow timeout timer.
+	 */
+	if (tp->t_srtt == 0 && (rtt = rt->rt_rmx.rmx_rtt)) {
+		/*
+		 * XXX the lock bit for RTT indicates that the value
+		 * is also a minimum value; this is subject to time.
+		 */
+		if (rt->rt_rmx.rmx_locks & RTV_RTT)
+			tp->t_rttmin = rtt / (RTM_RTTUNIT / hz);
+		tp->t_srtt = rtt / (RTM_RTTUNIT / (hz * TCP_RTT_SCALE));
+		tp->t_rttbest = tp->t_srtt + TCP_RTT_SCALE;
+		tcpstat.tcps_usedrtt++;
+		if (rt->rt_rmx.rmx_rttvar) {
+			tp->t_rttvar = rt->rt_rmx.rmx_rttvar /
+			    (RTM_RTTUNIT / (hz * TCP_RTTVAR_SCALE));
+			tcpstat.tcps_usedrttvar++;
+		} else {
+			/* default variation is +- 1 rtt */
+			tp->t_rttvar =
+			    tp->t_srtt * TCP_RTTVAR_SCALE / TCP_RTT_SCALE;
+		}
+		TCPT_RANGESET(tp->t_rxtcur,
+			      ((tp->t_srtt >> 2) + tp->t_rttvar) >> 1,
+			      tp->t_rttmin, TCPTV_REXMTMAX);
+	}
+}
+
+void
+tcp_rmx_init(struct tcpcb *tp, int offer)
+{
+	struct inpcb *inp = tp->t_inpcb;
+#ifdef INET6
+	boolean_t isipv6 = INP_ISIPV6(inp);
+#else
+	const boolean_t isipv6 = FALSE;
+#endif
+	struct rtentry *rt;
+
+	if (isipv6)
+		rt = tcp_rtlookup6(&inp->inp_inc);
+	else
+		rt = tcp_rtlookup(&inp->inp_inc);
+
+	tcp_rmx_mss(tp, rt, offer);
+	tcp_rmx_rtt(tp, rt);
 }
 
 /*

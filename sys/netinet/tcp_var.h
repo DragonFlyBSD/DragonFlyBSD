@@ -669,7 +669,7 @@ void	 tcp_drain (void);
 void	 tcp_init (void);
 void	 tcp_thread_init (void);
 int	 tcp_input (struct mbuf **, int *, int);
-void	 tcp_mss (struct tcpcb *, int);
+void	 tcp_rmx_init (struct tcpcb *, int);
 int	 tcp_mssopt (struct tcpcb *);
 void	 tcp_drop_syn_sent (struct inpcb *, int);
 void	 tcp_mtudisc (struct inpcb *, int);

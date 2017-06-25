@@ -868,7 +868,7 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 #endif /* TCP_SIGNATURE */
 
 	tp->t_rxtsyn = sc->sc_rxtused;
-	tcp_mss(tp, sc->sc_peer_mss);
+	tcp_rmx_init(tp, sc->sc_peer_mss);
 
 	/*
 	 * Inherit some properties from the listen socket
