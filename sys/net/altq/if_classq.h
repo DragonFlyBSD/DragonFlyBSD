@@ -74,6 +74,30 @@ classq_get(struct if_classq *q)
 	return (m0);
 }
 
+static __inline void
+classq_concat(struct if_classq *to, struct if_classq *from)
+{
+	struct mbuf *head, *tail;
+
+	if (classq_tail(from) == NULL)
+		return;
+	if (classq_tail(to) == NULL) {
+		tail = classq_tail(from);
+		goto done;
+	}
+
+	head = classq_head(to);
+
+	tail = classq_tail(to);
+	tail->m_nextpkt = classq_head(from);
+
+	tail = classq_tail(from);
+	tail->m_nextpkt = head;
+done:
+	classq_tail(to) = tail;
+	classq_tail(from) = NULL;
+}
+
 #endif	/* _KERNEL */
 
 #endif	/* !_NET_IF_CLASSQ_H_ */
