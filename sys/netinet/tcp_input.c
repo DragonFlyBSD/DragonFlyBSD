@@ -3188,6 +3188,11 @@ tcp_rmx_init(struct tcpcb *tp, int offer)
 
 	tcp_rmx_mss(tp, rt, offer);
 	tcp_rmx_rtt(tp, rt);
+
+	if (rt != NULL && !tcp_ncr_linklocal && (rt->rt_flags & RTF_LLINFO)) {
+		/* Don't enable NCR on link-local network. */
+		tp->t_flags &= ~TF_NCR;
+	}
 }
 
 /*

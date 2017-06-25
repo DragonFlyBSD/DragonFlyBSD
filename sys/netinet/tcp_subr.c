@@ -278,6 +278,11 @@ static int tcp_do_ncr = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, ncr, CTLFLAG_RW,
     &tcp_do_ncr, 0, "Non-Congestion Robustness (RFC 4653)");
 
+int tcp_ncr_linklocal = 0;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, ncr_linklocal, CTLFLAG_RW,
+    &tcp_ncr_linklocal, 0,
+    "Enable Non-Congestion Robustness (RFC 4653) on link local network");
+
 int tcp_ncr_rxtthresh_max = 16;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, ncr_rxtthresh_max, CTLFLAG_RW,
     &tcp_ncr_rxtthresh_max, 0,

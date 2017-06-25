@@ -78,6 +78,7 @@
  */
 extern int tcp_do_rfc1323;
 extern int tcp_low_rtobase;
+extern int tcp_ncr_linklocal;
 extern int tcp_ncr_rxtthresh_max;
 extern int tcp_do_sack;
 extern int tcp_do_smartsack;
