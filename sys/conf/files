@@ -415,7 +415,202 @@ dev/disk/isp/isp_freebsd.c	optional isp
 dev/disk/isp/isp_library.c	optional isp
 dev/disk/isp/isp_pci.c		optional isp pci
 dev/disk/isp/isp_target.c	optional isp
-dev/disk/ispfw/ispfw.c		optional ispfw
+isp_1040.c		optional ispfw					\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk isp_1040.fw:isp_1040:1 -misp_1040 -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"isp_1040.c"
+isp_1040.fwo	optional ispfw						\
+	dependency	"isp_1040.fw"					\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"isp_1040.fwo"
+isp_1040.fw		optional ispfw					\
+	dependency	"$S/contrib/dev/isp/isp_1040.fw.uu"        	\
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"isp_1040.fw"
+isp_1040_it.c		optional ispfw					\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk isp_1040_it.fw:isp_1040_it:1 -misp_1040_it -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"isp_1040_it.c"
+isp_1040_it.fwo	optional ispfw						\
+	dependency	"isp_1040_it.fw"				\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"isp_1040_it.fwo"
+isp_1040_it.fw		optional ispfw					\
+	dependency	"$S/contrib/dev/isp/isp_1040_it.fw.uu"        	\
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"isp_1040_it.fw"
+isp_1080.c		optional ispfw					\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk isp_1080.fw:isp_1080:1 -misp_1080 -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"isp_1080.c"
+isp_1080.fwo	optional ispfw						\
+	dependency	"isp_1080.fw"					\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"isp_1080.fwo"
+isp_1080.fw		optional ispfw					\
+	dependency	"$S/contrib/dev/isp/isp_1080.fw.uu"        	\
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"isp_1080.fw"
+isp_1080_it.c		optional ispfw					\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk isp_1080_it.fw:isp_1080_it:1 -misp_1080_it -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"isp_1080_it.c"
+isp_1080_it.fwo	optional ispfw						\
+	dependency	"isp_1080_it.fw"				\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"isp_1080_it.fwo"
+isp_1080_it.fw		optional ispfw					\
+	dependency	"$S/contrib/dev/isp/isp_1080_it.fw.uu"        	\
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"isp_1080_it.fw"
+isp_12160.c		optional ispfw					\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk isp_12160.fw:isp_12160:1 -misp_12160 -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"isp_12160.c"
+isp_12160.fwo	optional ispfw						\
+	dependency	"isp_12160.fw"					\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"isp_12160.fwo"
+isp_12160.fw		optional ispfw					\
+	dependency	"$S/contrib/dev/isp/isp_12160.fw.uu"        	\
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"isp_12160.fw"
+isp_12160_it.c		optional ispfw					\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk isp_12160_it.fw:isp_12160_it:1 -misp_12160_it -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"isp_12160_it.c"
+isp_12160_it.fwo	optional ispfw					\
+	dependency	"isp_12160_it.fw"				\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"isp_12160_it.fwo"
+isp_12160_it.fw		optional ispfw					\
+	dependency	"$S/contrib/dev/isp/isp_12160_it.fw.uu"        	\
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"isp_12160_it.fw"
+isp_2100.c		optional ispfw					\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk isp_2100.fw:isp_2100:1 -misp_2100 -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"isp_2100.c"
+isp_2100.fwo	optional ispfw						\
+	dependency	"isp_2100.fw"					\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"isp_2100.fwo"
+isp_2100.fw		optional ispfw					\
+	dependency	"$S/contrib/dev/isp/isp_2100.fw.uu"        	\
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"isp_2100.fw"
+isp_2200.c		optional ispfw					\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk isp_2200.fw:isp_2200:1 -misp_2200 -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"isp_2200.c"
+isp_2200.fwo	optional ispfw						\
+	dependency	"isp_2200.fw"					\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"isp_2200.fwo"
+isp_2200.fw		optional ispfw					\
+	dependency	"$S/contrib/dev/isp/isp_2200.fw.uu"        	\
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"isp_2200.fw"
+isp_2300.c		optional ispfw					\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk isp_2300.fw:isp_2300:1 -misp_2300 -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"isp_2300.c"
+isp_2300.fwo	optional ispfw						\
+	dependency	"isp_2300.fw"					\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"isp_2300.fwo"
+isp_2300.fw		optional ispfw					\
+	dependency	"$S/contrib/dev/isp/isp_2300.fw.uu"        	\
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"isp_2300.fw"
+isp_2322.c		optional ispfw					\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk isp_2322.fw:isp_2322:1 -misp_2322 -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"isp_2322.c"
+isp_2322.fwo	optional ispfw						\
+	dependency	"isp_2322.fw"					\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"isp_2322.fwo"
+isp_2322.fw		optional ispfw					\
+	dependency	"$S/contrib/dev/isp/isp_2322.fw.uu"        	\
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"isp_2322.fw"
+isp_2400.c		optional ispfw					\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk isp_2400.fw:isp_2400:1 -misp_2400 -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"isp_2400.c"
+isp_2400.fwo	optional ispfw						\
+	dependency	"isp_2400.fw"					\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"isp_2400.fwo"
+isp_2400.fw		optional ispfw					\
+	dependency	"$S/contrib/dev/isp/isp_2400.fw.uu"        	\
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"isp_2400.fw"
+isp_2400_multi.c		optional ispfw				\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk isp_2400_multi.fw:isp_2400_multi:1 -misp_2400_multi -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"isp_2400_multi.c"
+isp_2400_multi.fwo	optional ispfw					\
+	dependency	"isp_2400_multi.fw"				\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"isp_2400_multi.fwo"
+isp_2400_multi.fw		optional ispfw				\
+	dependency	"$S/contrib/dev/isp/isp_2400_multi.fw.uu"       \
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"isp_2400_multi.fw"
+isp_2500.c		optional ispfw					\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk isp_2500.fw:isp_2500:1 -misp_2500 -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"isp_2500.c"
+isp_2500.fwo	optional ispfw						\
+	dependency	"isp_2500.fw"					\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"isp_2500.fwo"
+isp_2500.fw		optional ispfw					\
+	dependency	"$S/contrib/dev/isp/isp_2500.fw.uu"        	\
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"isp_2500.fw"
+isp_2500_multi.c		optional ispfw				\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk isp_2500_multi.fw:isp_2500_multi:1 -misp_2500_multi -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"isp_2500_multi.c"
+isp_2500_multi.fwo	optional ispfw					\
+	dependency	"isp_2500_multi.fw"				\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"isp_2500_multi.fwo"
+isp_2500_multi.fw		optional ispfw				\
+	dependency	"$S/contrib/dev/isp/isp_2500_multi.fw.uu"       \
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"isp_2500_multi.fw"
 dev/raid/iir/iir.c		optional iir
 dev/raid/iir/iir_ctrl.c	optional iir
 dev/raid/iir/iir_pci.c	optional iir pci

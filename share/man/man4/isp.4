@@ -29,7 +29,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/isp.4,v 1.29 2010/10/08 12:40:16 uqs Exp $
 .\"
-.Dd April 7, 2012
+.Dd June 28, 2017
 .Dt ISP 4
 .Os
 .Sh NAME
@@ -42,13 +42,28 @@ kernel configuration file:
 .Bd -ragged -offset indent
 .Cd "device scbus"
 .Cd "device isp"
+.Cd "device ispfw"
 .Ed
 .Pp
 Alternatively, to load the driver as a
-module at boot time, place the following line in
+module at boot time, place the following lines in
 .Xr loader.conf 5 :
 .Bd -literal -offset indent
 isp_load="YES"
+isp_1040_load="YES"
+isp_1040_it_load="YES"
+isp_1080_load="YES"
+isp_1080_it_load="YES"
+isp_12160_load="YES"
+isp_12160_it_load="YES"
+isp_2100_load="YES"
+isp_2200_load="YES"
+isp_2300_load="YES"
+isp_2322_load="YES"
+isp_2400_load="YES"
+isp_2400_multi_load="YES"
+isp_2500_load="YES"
+isp_2500_multi_load="YES"
 .Ed
 .Sh DESCRIPTION
 This driver provides access to
@@ -80,15 +95,14 @@ Fabric
 support for 2100 cards has been so problematic and these cards are so
 old now that it is just not worth your time to try it.
 .Sh FIRMWARE
-Firmware is available if the
-.Xr ispfw 4
-module is loaded during bootstrap (q.v.).
+Firmware is available if the appropriate firmware module
+is loaded during bootstrap (see
+.Xr ispfw 4 ) .
 .Pp
 It is
-.Ar strongly
-recommended that you use the firmware available
-from
-.Xr ispfw 4
+.Em strongly
+recommended that you use the firmware supplied with
+.Dx
 as it is the most likely to have been tested with this driver.
 .Sh HARDWARE
 Cards supported by the

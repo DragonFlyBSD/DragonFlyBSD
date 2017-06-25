@@ -22,7 +22,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ispfw.4,v 1.7 2006/05/20 09:39:28 brueffer Exp $
 .\"
-.Dd January 3, 2012
+.Dd June 28, 2017
 .Dt ISPFW 4
 .Os
 .Sh NAME
@@ -36,11 +36,29 @@ kernel configuration file:
 .Cd "device ispfw"
 .Ed
 .Pp
+.Pp
+This will compile firmware images for all
+.Xr isp 4
+devices into the kernel.
+.Pp
 Alternatively, to load the driver as a
-module at boot time, place the following line in
+module at boot time, place the following lines in
 .Xr loader.conf 5 :
 .Bd -literal -offset indent
-ispfw_load="YES"
+isp_1040_load="YES"
+isp_1040_it_load="YES"
+isp_1080_load="YES"
+isp_1080_it_load="YES"
+isp_12160_load="YES"
+isp_12160_it_load="YES"
+isp_2100_load="YES"
+isp_2200_load="YES"
+isp_2300_load="YES"
+isp_2322_load="YES"
+isp_2400_load="YES"
+isp_2400_multi_load="YES"
+isp_2500_load="YES"
+isp_2500_multi_load="YES"
 .Ed
 .Sh DESCRIPTION
 This trivial driver provides access to firmware sets for the Qlogic

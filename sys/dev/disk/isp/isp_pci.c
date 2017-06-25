@@ -860,6 +860,11 @@ isp_pci_attach(device_t dev)
 	}
 	if (isp->isp_osinfo.fw == NULL) {
 		ksnprintf(fwname, sizeof (fwname), "isp_%04x", did);
+#ifdef USE_SMALLER_2100_FIRMWARE
+		if (IS_21XX(isp)) {
+			ksnprintf(fwname, sizeof (fwname), "%s_variant_1", fwname);
+		}
+#endif
 		isp->isp_osinfo.fw = firmware_get(fwname);
 	}
 	if (isp->isp_osinfo.fw != NULL) {
