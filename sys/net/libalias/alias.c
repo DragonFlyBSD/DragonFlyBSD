@@ -1255,7 +1255,8 @@ LibAliasInLocked(struct libalias *la, char *ptr, int maxpacketsize,
 		la->packetAliasMode |= PKT_ALIAS_REVERSE;
 		goto getout;
 	}
-	HouseKeeping(la);
+	/* stop house keeping for each packet */
+	/* HouseKeeping(la); */
 	ClearCheckNewLink(la);
 	pip = (struct ip *)ptr;
 	alias_addr = pip->ip_dst;
@@ -1381,7 +1382,8 @@ LibAliasOutLocked(struct libalias *la, char *ptr,	/* valid IP packet */
 		la->packetAliasMode |= PKT_ALIAS_REVERSE;
 		goto getout;
 	}
-	HouseKeeping(la);
+	/* stop house keeping for each packet */
+	/* HouseKeeping(la); */
 	ClearCheckNewLink(la);
 	pip = (struct ip *)ptr;
 

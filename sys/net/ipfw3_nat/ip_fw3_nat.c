@@ -82,6 +82,7 @@ struct ipfw_nat_context	*ipfw_nat_ctx[MAXCPU];
 static struct callout ipfw3_nat_cleanup_callout;
 extern struct ipfw_context *ipfw_ctx[MAXCPU];
 extern ip_fw_ctl_t *ipfw_ctl_nat_ptr;
+extern libalias_housekeeping_t *libalias_housekeeping_prt;
 
 static int fw3_nat_cleanup_interval = 5;
 
@@ -774,7 +775,15 @@ nat_init_ctx_dispatch(netmsg_t msg)
 static void
 ipfw3_nat_cleanup_func_dispatch(netmsg_t nmsg)
 {
-	/* TODO cleanup the libalias records */
+	struct ipfw_nat_context *nctx;
+	struct cfg_nat *ptr, *tmp;
+
+	nctx = ipfw_nat_ctx[mycpuid];
+	LIST_FOREACH_MUTABLE(ptr, &(nctx->nat), _next, tmp) {
+		if (libalias_housekeeping_prt != NULL) {
+			(*libalias_housekeeping_prt)(ptr->lib);
+		}
+	}
 	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
