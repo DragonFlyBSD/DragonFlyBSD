@@ -79,6 +79,7 @@
 
 
 struct ipfw_nat_context	*ipfw_nat_ctx[MAXCPU];
+static struct callout ipfw3_nat_cleanup_callout;
 extern struct ipfw_context *ipfw_ctx[MAXCPU];
 extern ip_fw_ctl_t *ipfw_ctl_nat_ptr;
 
@@ -770,6 +771,27 @@ nat_init_ctx_dispatch(netmsg_t msg)
 	netisr_forwardmsg(&msg->base, mycpuid + 1);
 }
 
+static void
+ipfw3_nat_cleanup_func_dispatch(netmsg_t nmsg)
+{
+	/* TODO cleanup the libalias records */
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
+}
+
+static void
+ipfw3_nat_cleanup_func(void *dummy __unused)
+{
+	struct netmsg_base msg;
+	netmsg_init(&msg, NULL, &curthread->td_msgport, 0,
+			ipfw3_nat_cleanup_func_dispatch);
+	netisr_domsg(&msg, 0);
+
+	callout_reset(&ipfw3_nat_cleanup_callout,
+			fw3_nat_cleanup_interval * hz,
+			ipfw3_nat_cleanup_func,
+			NULL);
+}
+
 static
 int ipfw_nat_init(void)
 {
@@ -781,6 +803,12 @@ int ipfw_nat_init(void)
 	netmsg_init(&msg, NULL, &curthread->td_msgport,
 			0, nat_init_ctx_dispatch);
 	netisr_domsg(&msg, 0);
+
+	callout_init_mp(&ipfw3_nat_cleanup_callout);
+	callout_reset(&ipfw3_nat_cleanup_callout,
+			fw3_nat_cleanup_interval * hz,
+			ipfw3_nat_cleanup_func,
+			NULL);
 	return 0;
 }
 
@@ -790,6 +818,8 @@ ipfw_nat_fini(void)
 	struct cfg_nat *ptr, *tmp;
 	struct ipfw_nat_context *ctx;
 	int cpu;
+
+	callout_stop(&ipfw3_nat_cleanup_callout);
 
 	for (cpu = 0; cpu < ncpus; cpu++) {
 		ctx = ipfw_nat_ctx[cpu];
