@@ -1,4 +1,9 @@
-/*-
+/*
+ * Copyright (c) 2015 - 2017 The DragonFly Project.  All rights reserved.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Bill Yuan <bycn82@dragonflybsd.org>
+ *
  * Copyright (c) 2001 Charles Mott <cm@linktel.net>
  * All rights reserved.
  *
@@ -25,7 +30,6 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/netinet/libalias/alias_db.c,v 1.71.2.2.2.1 2008/11/25 02:59:29 kensmith Exp $");
 
 /*
 	Alias_db.c encapsulates all data structures used for storing
@@ -206,6 +210,8 @@ static		LIST_HEAD(, libalias) instancehead = LIST_HEAD_INITIALIZER(instancehead)
 #define NO_DEST_PORT	 1
 #define NO_SRC_PORT	  1
 
+libalias_housekeeping_t *libalias_housekeeping_prt;
+
 /* Clean up procedure. */
 static void finishoff(void);
 
@@ -223,11 +229,13 @@ alias_mod_handler(module_t mod, int type, void *data)
 	switch (type) {
 	case MOD_LOAD:
 		error = 0;
+		libalias_housekeeping_prt = HouseKeeping;
 		handler_chain_init();
 		break;
 	case MOD_UNLOAD:
-			handler_chain_destroy();
-			finishoff();
+		libalias_housekeeping_prt = NULL;
+		handler_chain_destroy();
+		finishoff();
 		error = 0;
 		break;
 	default:

@@ -1,6 +1,9 @@
-/* lint -save -library Flexelint comment for external headers */
-
-/*-
+/*
+ * Copyright (c) 2015 - 2017 The DragonFly Project.  All rights reserved.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Bill Yuan <bycn82@dragonflybsd.org>
+ *
  * Copyright (c) 2001 Charles Mott <cm@linktel.net>
  * All rights reserved.
  *
@@ -24,8 +27,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/netinet/libalias/alias.h,v 1.34.6.1 2008/11/25 02:59:29 kensmith Exp $
  */
 
 /*
@@ -389,7 +390,5 @@ struct mbuf	*m_megapullup(struct mbuf *, int);
 #define	PKT_ALIAS_FOUND_HEADER_FRAGMENT	4
 
 
-
+typedef void libalias_housekeeping_t(struct libalias *la);
 #endif				/* !_ALIAS_H_ */
-
-/* lint -restore */
