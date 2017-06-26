@@ -166,4 +166,21 @@ typedef struct	_ipfw_insn_nat {
 	LIST_INSERT_HEAD(b, p, _next);			\
 } while (0)
 
+#ifdef _KERNEL
+void check_nat(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void add_alias_link_dispatch(netmsg_t nat_del_msg);
+int ipfw_nat(struct ip_fw_args *args, struct cfg_nat *t, struct mbuf *m);
+void nat_add_dispatch(netmsg_t msg);
+int ipfw_ctl_nat_add(struct sockopt *sopt);
+void nat_del_dispatch(netmsg_t msg);
+int ipfw_ctl_nat_del(struct sockopt *sopt);
+int ipfw_ctl_nat_flush(struct sockopt *sopt);
+int ipfw_ctl_nat_sockopt(struct sockopt *sopt);
+void nat_init_ctx_dispatch(netmsg_t msg);
+int ipfw_ctl_nat_get_cfg(struct sockopt *sopt);
+void del_redir_spool_cfg(struct cfg_nat *n, struct redir_chain *head);
+int add_redir_spool_cfg(char *buf, struct cfg_nat *ptr);
+int ipfw_ctl_nat_get_record(struct sockopt *sopt);
+#endif
 #endif
