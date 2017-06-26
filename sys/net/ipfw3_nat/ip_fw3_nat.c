@@ -82,6 +82,11 @@ struct ipfw_nat_context	*ipfw_nat_ctx[MAXCPU];
 extern struct ipfw_context *ipfw_ctx[MAXCPU];
 extern ip_fw_ctl_t *ipfw_ctl_nat_ptr;
 
+static int fw3_nat_cleanup_interval = 5;
+
+SYSCTL_NODE(_net_inet_ip, OID_AUTO, fw3_nat, CTLFLAG_RW, 0, "ipfw3 NAT");
+SYSCTL_INT(_net_inet_ip_fw3_nat, OID_AUTO, cleanup_interval, CTLFLAG_RW,
+		&fw3_nat_cleanup_interval, 0, "default life time");
 
 void
 check_nat(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
