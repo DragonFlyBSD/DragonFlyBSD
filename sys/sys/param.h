@@ -152,9 +152,10 @@
  * 400900 - 4.9 development
  * 400901 - moved sigtramp, NX protection + associated sysctls
  * 400902 - change CPU_SETSIZE to signed; allow proc to change self affinity
+ * 400903 - malloc_type cleanup
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400902	/* propagated to newvers */
+#define __DragonFly_version 400903	/* propagated to newvers */
 
 #include <sys/_null.h>
 

@@ -666,7 +666,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	malloc_init(type);
 	crit_exit();
     }
-    ++type->ks_calls;
+    ++type->ks_use[gd->gd_cpuid].calls;
 
     if (flags & M_POWEROF2)
 	size = powerof2_size(size);

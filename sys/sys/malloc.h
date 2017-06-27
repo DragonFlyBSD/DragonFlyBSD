@@ -104,20 +104,17 @@
 struct malloc_use {
 	size_t	memuse;
 	size_t	inuse;
+	__int64_t calls;	/* total packets of this type ever allocated */
+	size_t	reserved;
 } __cachealign;
 
 struct malloc_type {
 	struct malloc_type *ks_next;	/* next in list */
 	size_t	ks_loosememuse;		/* (inaccurate) aggregate memuse */
 	size_t	ks_limit;	/* most that are allowed to exist */
-	long	ks_size;	/* sizes of this thing that are allocated */
 	struct malloc_use  ks_use[SMP_MAXCPU];
-	__int64_t ks_calls;	/* total packets of this type ever allocated */
-	long	ks_maxused;	/* maximum number ever used */
 	__uint32_t ks_magic;	/* if it's not magic, don't touch it */
 	const char *ks_shortdesc;	/* short description */
-	__uint16_t ks_limblocks; /* number of times blocked for hitting limit */
-	__uint16_t ks_mapblocks; /* number of times blocked for kernel map */
 	long	ks_reserved[4];	/* future use (module compatibility) */
 };
 
@@ -126,17 +123,18 @@ typedef struct malloc_type	*malloc_type_t;
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define	MALLOC_DEFINE(type, shortdesc, longdesc)			\
 	struct malloc_type type[1] = {					\
-	    { NULL, 0, 0, 0, { { 0, 0 } }, 0, 0, M_MAGIC, shortdesc,	\
-		0, 0, { 0 } }						\
+	    { NULL, 0, 0, { { 0, 0, 0, 0 } }, M_MAGIC, shortdesc,	\
+		{ 0 } }							\
 	};								\
 	SYSINIT(type##_init, SI_BOOT1_KMALLOC, SI_ORDER_ANY,		\
 	    malloc_init, type);						\
 	SYSUNINIT(type##_uninit, SI_BOOT1_KMALLOC, SI_ORDER_ANY,	\
 	    malloc_uninit, type)
 #else
-#define	MALLOC_DEFINE(type, shortdesc, longdesc)	\
-	struct malloc_type type[1] = {			\
-	    { NULL, 0, 0, 0, { { 0, 0 } }, 0, 0, M_MAGIC, shortdesc, 0, 0 } \
+#define	MALLOC_DEFINE(type, shortdesc, longdesc)			\
+	struct malloc_type type[1] = {					\
+	    { NULL, 0, 0, { { 0, 0, 0, 0 } }, M_MAGIC, shortdesc,	\
+	        { 0 } }							\
 	}
 #endif
 
