@@ -77,6 +77,7 @@
  *	(if PAGE_SIZE is 4K the maximum zone allocation is 16383)
  *
  *	Allocations >= ZoneLimit go directly to kmem.
+ *	(n * PAGE_SIZE, n > 2) allocations go directly to kmem.
  *
  * Alignment properties:
  * - All power-of-2 sized allocations are power-of-2 aligned.
