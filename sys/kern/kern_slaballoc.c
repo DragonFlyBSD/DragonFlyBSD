@@ -523,8 +523,7 @@ zoneindex(unsigned long *bytes, unsigned long *align)
     return(0);
 }
 
-static __inline
-void
+static __inline void
 clean_zone_rchunks(SLZone *z)
 {
     SLChunk *bchunk;
@@ -558,8 +557,7 @@ clean_zone_rchunks(SLZone *z)
  * Since this code can be called from an IPI callback, do *NOT* try to mess
  * with kernel_map here.  Hysteresis will be performed at kmalloc() time.
  */
-static __inline
-SLZone *
+static __inline SLZone *
 check_zone_free(SLGlobalData *slgd, SLZone *z)
 {
     SLZone *znext;
@@ -1127,8 +1125,7 @@ kstrndup(const char *str, size_t maxlen, struct malloc_type *type)
  * we own.  RCount will be bumped so the memory should be good, but validate
  * that it really is.
  */
-static
-void
+static void
 kfree_remote(void *ptr)
 {
     SLGlobalData *slgd;
@@ -1469,8 +1466,7 @@ slab_cleanup(void)
 /*
  * Helper routines for sanity checks
  */
-static
-void
+static void
 chunk_mark_allocated(SLZone *z, void *chunk)
 {
     int bitdex = ((char *)chunk - (char *)z->z_BasePtr) / z->z_ChunkSize;
@@ -1486,8 +1482,7 @@ chunk_mark_allocated(SLZone *z, void *chunk)
     *bitptr |= 1 << bitdex;
 }
 
-static
-void
+static void
 chunk_mark_free(SLZone *z, void *chunk)
 {
     int bitdex = ((char *)chunk - (char *)z->z_BasePtr) / z->z_ChunkSize;
