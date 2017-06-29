@@ -510,7 +510,7 @@ static void hpt_io_dmamap_callback(void *arg, bus_dma_segment_t *segs, int nsegs
 		panic("busdma error");
 
 	HPT_ASSERT(nsegs<=os_max_sg_descriptors);
-	
+
 	if (nsegs != 0) {
 		for (idx = 0; idx < nsegs; idx++, psg++) {
 			psg->addr.bus = segs[idx].ds_addr;
@@ -518,7 +518,7 @@ static void hpt_io_dmamap_callback(void *arg, bus_dma_segment_t *segs, int nsegs
 			psg->eot = 0;
 		}
 			psg[-1].eot = 1;
-		
+
 		if (pCmd->flags.data_in) {
 			bus_dmamap_sync(ext->vbus_ext->io_dmat, ext->dma_map,
 			    BUS_DMASYNC_PREREAD);
@@ -713,8 +713,8 @@ static void hpt_scsi_io(PVBUS_EXT vbus_ext, union ccb *ccb)
 		pCmd->buildsgl = os_buildsgl;
 		pCmd->psg = ext->psg;
 		pCmd->flags.physical_sg = 1;
-		error = bus_dmamap_load_ccb(vbus_ext->io_dmat, 
-					ext->dma_map, 
+		error = bus_dmamap_load_ccb(vbus_ext->io_dmat,
+					ext->dma_map,
 					ccb,
 					hpt_io_dmamap_callback, pCmd,
 			    		BUS_DMA_WAITOK
