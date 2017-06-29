@@ -1164,32 +1164,7 @@ kfree_remote(void *ptr)
 	TAILQ_INSERT_HEAD(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
     }
 
-    /*
-     * If the zone becomes totally free and is not the only zone listed for a
-     * chunk size we move it to the FreeZones list.  We always leave at least
-     * one zone per chunk size listed, even if it is freeable.
-     *
-     * Since this code can be called from an IPI callback, do *NOT* try to
-     * mess with kernel_map here.  Hysteresis will be performed at malloc()
-     * time.
-     *
-     * Do not move the zone if there is an IPI in_flight (z_RCount != 0),
-     * otherwise MP races can result in our free_remote code accessing a
-     * destroyed zone.  The remote end interlocks z_RCount with z_RChunks
-     * so one has to test both z_NFree and z_RCount.
-     */
-    if (z->z_NFree == z->z_NMax && z->z_RCount == 0 &&
-	(TAILQ_FIRST(&slgd->ZoneAry[z->z_ZoneIndex]) != z ||
-	 TAILQ_NEXT(z, z_Entry))) {
-	int *kup;
-
-	TAILQ_REMOVE(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
-	z->z_Magic = -1;
-	TAILQ_INSERT_HEAD(&slgd->FreeZones, z, z_Entry);
-	++slgd->NFreeZones;
-	kup = btokup(z);
-	*kup = 0;
-    }
+    check_zone_free(slgd, z);
     logmemory(free_rem_end, z, NULL, 0L, 0);
 }
 
