@@ -105,7 +105,14 @@ struct malloc_use {
 	size_t	memuse;
 	size_t	inuse;
 	__int64_t calls;	/* total packets of this type ever allocated */
-	size_t	reserved;
+
+	/*
+	 * This value will be added to ks_loosememuse and resetted,
+	 * once it goes above certain threshold (ZoneSize).  This
+	 * is intended to reduce frequency of ks_loosememuse (global)
+	 * updates.
+	 */
+	size_t	loosememuse;
 } __cachealign;
 
 struct malloc_type {

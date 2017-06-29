@@ -956,7 +956,12 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 done:
     ++type->ks_use[gd->gd_cpuid].inuse;
     type->ks_use[gd->gd_cpuid].memuse += size;
-    type->ks_loosememuse += size;	/* not MP synchronized */
+    type->ks_use[gd->gd_cpuid].loosememuse += size;
+    if (type->ks_use[gd->gd_cpuid].loosememuse >= ZoneSize) {
+	/* not MP synchronized */
+	type->ks_loosememuse += type->ks_use[gd->gd_cpuid].loosememuse;
+	type->ks_use[gd->gd_cpuid].loosememuse = 0;
+    }
     crit_exit();
 
     if (flags & M_ZERO)
@@ -1171,9 +1176,11 @@ kfree_remote(void *ptr)
 /*
  * free (SLAB ALLOCATOR)
  *
- * Free a memory block previously allocated by malloc.  Note that we do not
- * attempt to update ks_loosememuse as MP races could prevent us from
- * checking memory limits in malloc.
+ * Free a memory block previously allocated by malloc.
+ *
+ * Note: We do not attempt to update ks_loosememuse as MP races could
+ * prevent us from checking memory limits in malloc.   YYY we may
+ * consider updating ks_cpu.loosememuse.
  *
  * MPSAFE
  */
