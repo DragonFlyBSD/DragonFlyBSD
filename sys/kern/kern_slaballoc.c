@@ -469,6 +469,7 @@ static __inline int
 zoneindex(unsigned long *bytes, unsigned long *align)
 {
     unsigned int n = (unsigned int)*bytes;	/* unsigned for shift opt */
+
     if (n < 128) {
 	*bytes = n = (n + 7) & ~7;
 	*align = 8;
@@ -565,8 +566,7 @@ check_zone_free(SLGlobalData *slgd, SLZone *z)
 
     znext = TAILQ_NEXT(z, z_Entry);
     if (z->z_NFree == z->z_NMax && z->z_RCount == 0 &&
-	(TAILQ_FIRST(&slgd->ZoneAry[z->z_ZoneIndex]) != z || znext)
-    ) {
+	(TAILQ_FIRST(&slgd->ZoneAry[z->z_ZoneIndex]) != z || znext)) {
 	int *kup;
 
 	TAILQ_REMOVE(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
@@ -1183,8 +1183,7 @@ kfree_remote(void *ptr)
      */
     if (z->z_NFree == z->z_NMax && z->z_RCount == 0 &&
 	(TAILQ_FIRST(&slgd->ZoneAry[z->z_ZoneIndex]) != z ||
-	 TAILQ_NEXT(z, z_Entry))
-    ) {
+	 TAILQ_NEXT(z, z_Entry))) {
 	int *kup;
 
 	TAILQ_REMOVE(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
@@ -1268,8 +1267,7 @@ kfree(void *ptr, struct malloc_type *type)
 	--type->ks_use[gd->gd_cpuid].inuse;
 	type->ks_use[gd->gd_cpuid].memuse -= size;
 	if (mycpu->gd_intr_nesting_level ||
-	    (gd->gd_curthread->td_flags & TDF_INTTHREAD))
-	{
+	    (gd->gd_curthread->td_flags & TDF_INTTHREAD)) {
 	    logmemory(free_ovsz_delayed, ptr, type, size, 0);
 	    z = (SLZone *)ptr;
 	    z->z_Magic = ZALLOC_OVSZ_MAGIC;
@@ -1356,8 +1354,8 @@ kfree(void *ptr, struct malloc_type *type)
 	 * We can use a passive IPI to reduce overhead even further.
 	 */
 	if (bchunk == NULL && rsignal) {
-		logmemory(free_request, ptr, type,
-			  (unsigned long)z->z_ChunkSize, 0);
+	    logmemory(free_request, ptr, type,
+		      (unsigned long)z->z_ChunkSize, 0);
 	    lwkt_send_ipiq_passive(z->z_CpuGd, kfree_remote, z);
 	    /* z can get ripped out from under us from this point on */
 	} else if (rsignal) {
@@ -1401,7 +1399,7 @@ kfree(void *ptr, struct malloc_type *type)
     chunk->c_Next = z->z_LChunks;
     z->z_LChunks = chunk;
     if (chunk->c_Next == NULL)
-	    z->z_LChunksp = &chunk->c_Next;
+	z->z_LChunksp = &chunk->c_Next;
 
 #ifdef INVARIANTS
     if (chunk->c_Next && (vm_offset_t)chunk->c_Next < KvaStart)
@@ -1418,9 +1416,9 @@ kfree(void *ptr, struct malloc_type *type)
      */
     if (z->z_NFree++ == 0) {
 	if (SlabFreeToTail)
-		TAILQ_INSERT_TAIL(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
+	    TAILQ_INSERT_TAIL(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
 	else
-		TAILQ_INSERT_HEAD(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
+	    TAILQ_INSERT_HEAD(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
     }
 
     --type->ks_use[z->z_Cpu].inuse;
