@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/hptrr/hptrr_os_bsd.c,v 1.4 2008/03/08 18:06:48 scottl Exp $
+ * $FreeBSD: head/sys/dev/hptrr/hptrr_os_bsd.c 296135 2016-02-27 03:34:01Z jhibbits $
  */
 #include <dev/raid/hptrr/hptrr_config.h>
 /* $Id: os_bsd.c,v 1.11 2005/06/03 14:06:38 kdh Exp $
@@ -98,8 +98,8 @@ void *os_map_pci_bar(
     else
 	hba->pcibar[index].type = SYS_RES_MEMORY;
 
-    hba->pcibar[index].res = bus_alloc_resource(hba->pcidev,
-		hba->pcibar[index].type, &hba->pcibar[index].rid, 0, ~0, length, RF_ACTIVE);
+    hba->pcibar[index].res = bus_alloc_resource_any(hba->pcidev,
+		hba->pcibar[index].type, &hba->pcibar[index].rid, RF_ACTIVE);
 
 	hba->pcibar[index].base = (char *)rman_get_virtual(hba->pcibar[index].res) + offset;
 	return hba->pcibar[index].base;
@@ -256,21 +256,7 @@ int os_revalidate_device(void *osext, int id)
 
 int os_query_remove_device(void *osext, int id)
 {
-	PVBUS_EXT				vbus_ext = (PVBUS_EXT)osext;
-	struct cam_periph		*periph = NULL;
-    struct cam_path			*path;
-    int						status,retval = 0;
-
-    status = xpt_create_path(&path, NULL, vbus_ext->sim->path_id, id, 0);
-    if (status == CAM_REQ_CMP) {
-		if((periph = cam_periph_find(path, "da")) != NULL){
-			if(periph->refcount >= 1)
-				retval = -1;
-		}
-		xpt_free_path(path);
-    }
-
-    return retval;
+	return 0;
 }
 
 HPT_U8 os_get_vbus_seq(void *osext)

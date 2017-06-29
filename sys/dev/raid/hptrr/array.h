@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/hptrr/array.h,v 1.2 2008/02/06 00:59:37 scottl Exp $
+ * $FreeBSD: head/sys/dev/hptrr/array.h 176018 2008-02-06 01:02:20Z scottl $
  */
 #include <dev/raid/hptrr/hptrr_config.h>
 /*

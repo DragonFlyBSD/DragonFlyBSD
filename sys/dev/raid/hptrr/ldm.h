@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/hptrr/ldm.h,v 1.3 2008/03/08 18:06:48 scottl Exp $
+ * $FreeBSD: head/sys/dev/hptrr/ldm.h 313554 2017-02-10 15:18:41Z pfg $
  */
 #include <dev/raid/hptrr/hptrr_config.h>
 /*
@@ -57,10 +57,6 @@ extern "C" {
 #if defined(__MAX_PARTITIONS_PER_DISK) && MAX_PARTITIONS_PER_DISK > __MAX_PARTITIONS_PER_DISK
 #error "Please redefine MAX_PARTITIONS_PER_DISK!!!"
 #endif
-
-#define MAX(a,b) (((a)>(b))?(a):(b))
-#define MIN(a,b) (((a)<(b))?(a):(b))
-
 
 typedef char check_HPT_TIME_is_unsigned[ (HPT_TIME)(-1) > 0 ? 1 : -1 ];
 

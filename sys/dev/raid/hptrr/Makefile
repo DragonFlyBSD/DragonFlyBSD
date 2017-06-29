@@ -1,5 +1,5 @@
 # $Id: Makefile.def,v 1.18 2007/03/22 11:20:15 gmm Exp $
-# $FreeBSD: src/sys/modules/hptrr/Makefile,v 1.2 2010/08/23 06:13:29 imp Exp $
+# $FreeBSD: head/sys/modules/hptrr/Makefile 314651 2017-03-04 10:10:17Z ngie $
 
 KMOD = hptrr
 SRCS = opt_scsi.h opt_cam.h bus_if.h device_if.h pci_if.h os_bsd.h

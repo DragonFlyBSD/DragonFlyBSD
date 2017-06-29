@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/hptrr/os_bsd.h,v 1.3 2010/01/28 08:41:30 mav Exp $
+ * $FreeBSD: head/sys/dev/hptrr/os_bsd.h 269615 2014-08-05 23:47:26Z jhb $
  */
 #include <dev/raid/hptrr/hptrr_config.h>
 /* $Id: os_bsd.h,v 1.18 2006/04/11 08:19:02 gmm Exp $
@@ -53,7 +53,6 @@
 
 #include <sys/kthread.h>
 #include <sys/module.h>
-#include <sys/mplock2.h>
 
 #include <sys/eventhandler.h>
 #include <sys/bus.h>
@@ -155,6 +154,7 @@ typedef struct _os_cmdext {
 	struct _os_cmdext *next;
 	union ccb         *ccb;
 	bus_dmamap_t       dma_map;
+	struct callout     timeout;
 	SG                 psg[os_max_sg_descriptors];
 }
 OS_CMDEXT, *POS_CMDEXT;
@@ -187,6 +187,7 @@ VBUS_EXT, *PVBUS_EXT;
 
 #define hpt_lock_vbus(vbus_ext)   lockmgr(&(vbus_ext)->lock, LK_EXCLUSIVE)
 #define hpt_unlock_vbus(vbus_ext) lockmgr(&(vbus_ext)->lock, LK_RELEASE)
+#define hpt_assert_vbus_locked(vbus_ext)   KKASSERT(lockstatus(&(vbus_ext)->lock, curthread) == LK_EXCLUSIVE)
 
 #define HPTRR_DFLTPHYS  (64 * 1024)
 
