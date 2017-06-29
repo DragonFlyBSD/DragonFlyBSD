@@ -49,6 +49,9 @@
 
 #include <machine/md_var.h>
 
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
+
 #define MAX_BPAGES	1024
 
 /*
@@ -840,6 +843,21 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 	callback(callback_arg, segments, nsegs, error);
 	bus_dma_tag_unlock(dmat);
 	return 0;
+}
+
+int
+bus_dmamap_load_ccb(bus_dma_tag_t dmat, bus_dmamap_t map, union ccb *ccb,
+    bus_dmamap_callback_t *callback, void *callback_arg, int flags)
+{
+	const struct ccb_scsiio *csio;
+
+	KASSERT(ccb->ccb_h.func_code == XPT_SCSI_IO ||
+	    ccb->ccb_h.func_code == XPT_CONT_TARGET_IO,
+	    ("invalid ccb func_code %u", ccb->ccb_h.func_code));
+	csio = &ccb->csio;
+
+	return (bus_dmamap_load(dmat, map, csio->data_ptr, csio->dxfer_len,
+	    callback, callback_arg, flags));
 }
 
 /*
