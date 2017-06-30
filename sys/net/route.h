@@ -209,13 +209,18 @@ struct ortentry {
 /*
  * Routing statistics.
  */
-struct	rtstatistics {
+struct rtstatistics {
 	u_long	rts_badredirect;	/* bogus redirect calls */
 	u_long	rts_dynamic;		/* routes created by redirects */
 	u_long	rts_newgateway;		/* routes modified by redirects */
 	u_long	rts_unreach;		/* lookups which failed */
 	u_long	rts_wildcard;		/* lookups satisfied by a wildcard */
+	u_long	rts_pad[3];		/* pad to cache line size (64B) */
 };
+#ifdef _KERNEL
+CTASSERT((sizeof(struct rtstatistics) & __VM_CACHELINE_MASK) == 0);
+#endif
+
 /*
  * Structures for routing messages.
  */

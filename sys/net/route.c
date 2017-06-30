@@ -92,7 +92,7 @@
 #include <netproto/mpls/mpls.h>
 #endif
 
-static struct rtstatistics rtstatistics_percpu[MAXCPU];
+static struct rtstatistics rtstatistics_percpu[MAXCPU] __cachealign;
 #define rtstat	rtstatistics_percpu[mycpuid]
 
 struct radix_node_head *rt_tables[MAXCPU][AF_MAX+1];
