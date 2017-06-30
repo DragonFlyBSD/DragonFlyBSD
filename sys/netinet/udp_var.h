@@ -115,6 +115,9 @@ struct	udpstat {
 	u_long	udps_noportmcast;
 	u_long	udps_pad[3];		/* pad to cache line size (64B) */
 };
+#ifdef _KERNEL
+CTASSERT((sizeof(struct udpstat) & __VM_CACHELINE_MASK) == 0);
+#endif
 
 /*
  * Names for UDP sysctl objects

@@ -451,6 +451,9 @@ struct tcp_stats {
 
 	u_long	tcps_pad[6];		/* pad to cache line size (64B) */
 };
+#ifdef _KERNEL
+CTASSERT((sizeof(struct tcp_stats) & __VM_CACHELINE_MASK) == 0);
+#endif
 
 #ifdef _KERNEL
 

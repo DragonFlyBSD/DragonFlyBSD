@@ -147,6 +147,9 @@ struct	ip_stats {
 	u_long	ips_badaddr;		/* invalid address on header */
 	u_long	ips_pad[3];		/* pad to cache line size (64B) */
 };
+#ifdef _KERNEL
+CTASSERT((sizeof(struct ip_stats) & __VM_CACHELINE_MASK) == 0);
+#endif
 
 #ifdef _KERNEL
 
