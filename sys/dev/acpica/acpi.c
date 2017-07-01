@@ -352,12 +352,20 @@ acpi_Startup(void)
 	return_VALUE (AE_OK);
     started = 1;
 
+    /* Start up the ACPICA subsystem. */
+    status = AcpiInitializeSubsystem();
+    if (ACPI_FAILURE(status)) {
+	kprintf("ACPI: Subsystem initialization failed: %s\n",
+	    AcpiFormatException(status));
+	return_VALUE (status);
+    }
+
     /*
      * Pre-allocate space for RSDT/XSDT and DSDT tables and allow resizing
      * if more tables exist.
      */
     if (ACPI_FAILURE(status = AcpiInitializeTables(NULL, 2, TRUE))) {
-	kprintf("ACPI: Table initialisation failed: %s\n",
+	kprintf("ACPI: Table initialization failed: %s\n",
 	    AcpiFormatException(status));
 	return_VALUE (status);
     }
@@ -520,14 +528,6 @@ acpi_attach(device_t dev)
      */
     AcpiDbgLevel &= ~ACPI_LV_DEBUG_OBJECT;
 #endif
-
-    /* Start up the ACPICA subsystem. */
-    status = AcpiInitializeSubsystem();
-    if (ACPI_FAILURE(status)) {
-	device_printf(dev, "Could not initialize Subsystem: %s\n",
-		      AcpiFormatException(status));
-	goto out;
-    }
 
     /* Override OS interfaces if the user requested. */
     acpi_reset_interfaces(dev);
