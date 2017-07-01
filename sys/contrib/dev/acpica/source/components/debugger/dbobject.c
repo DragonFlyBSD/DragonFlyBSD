@@ -590,7 +590,7 @@ AcpiDbDecodeLocals (
 
     if (DisplayLocals)
     {
-        AcpiOsPrintf ("\nInitialized Local Variables for method [%4.4s]:\n",
+        AcpiOsPrintf ("\nInitialized Local Variables for Method [%4.4s]:\n",
             AcpiUtGetNodeName (Node));
 
         for (i = 0; i < ACPI_METHOD_NUM_LOCALS; i++)
@@ -606,7 +606,7 @@ AcpiDbDecodeLocals (
     else
     {
         AcpiOsPrintf (
-            "No Local Variables are initialized for method [%4.4s]\n",
+            "No Local Variables are initialized for Method [%4.4s]\n",
             AcpiUtGetNodeName (Node));
     }
 }
@@ -669,7 +669,7 @@ AcpiDbDecodeArguments (
         AcpiOsPrintf (
             "Initialized Arguments for Method [%4.4s]:  "
             "(%X arguments defined for method invocation)\n",
-            AcpiUtGetNodeName (Node), ObjDesc->Method.ParamCount);
+            AcpiUtGetNodeName (Node), Node->Object->Method.ParamCount);
 
         for (i = 0; i < ACPI_METHOD_NUM_ARGS; i++)
         {

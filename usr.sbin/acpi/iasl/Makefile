@@ -59,6 +59,7 @@ SRCS=	\
 	asloperands.c \
 	aslopt.c \
 	asloptions.c \
+	aslparseop.c \
 	aslpld.c \
 	aslpredef.c \
 	aslprepkg.c \
@@ -98,6 +99,7 @@ SRCS=	\
 	dmresrcl2.c \
 	dmresrcs.c \
 	dmrestag.c \
+	dmswitch.c \
 	dmtable.c \
 	dmtables.c \
 	dmtbdump.c \
@@ -201,6 +203,7 @@ SRCS=	\
 	utobject.c \
 	utownerid.c \
 	utpredef.c \
+	utresdecode.c \
 	utresrc.c \
 	utstate.c \
 	utstring.c \

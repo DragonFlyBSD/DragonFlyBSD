@@ -13,6 +13,7 @@ MAN=	acpiexec.8
 
 SRCS=	\
 	aeexec.c \
+	aeexception.c \
 	aehandlers.c \
 	aeinitfile.c \
 	aemain.c \
@@ -198,6 +199,7 @@ SRCS+=	\
 	utosi.c \
 	utownerid.c \
 	utpredef.c \
+	utresdecode.c \
 	utresrc.c \
 	utstate.c \
 	utstring.c \
