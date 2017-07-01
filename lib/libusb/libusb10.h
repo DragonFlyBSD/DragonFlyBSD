@@ -74,8 +74,8 @@ struct libusb_super_transfer {
 #define	LIBUSB_SUPER_XFER_ST_PEND 1
 };
 
-struct libusb_hotplug_callback_handle {
-	TAILQ_ENTRY(libusb_hotplug_callback_handle) entry;
+struct libusb_hotplug_callback_handle_struct {
+	TAILQ_ENTRY(libusb_hotplug_callback_handle_struct) entry;
 	int events;
 	int vendor;
 	int product;
@@ -100,7 +100,7 @@ struct libusb_context {
 
 	TAILQ_HEAD(, libusb_super_pollfd) pollfds;
 	TAILQ_HEAD(, libusb_super_transfer) tr_done;
-	TAILQ_HEAD(, libusb_hotplug_callback_handle) hotplug_cbh;
+	TAILQ_HEAD(, libusb_hotplug_callback_handle_struct) hotplug_cbh;
 	TAILQ_HEAD(, libusb_device) hotplug_devs;
 
 	struct libusb_super_pollfd ctx_poll;
