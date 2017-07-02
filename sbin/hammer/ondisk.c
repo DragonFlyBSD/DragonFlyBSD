@@ -478,6 +478,8 @@ get_buffer_data(hammer_off_t buf_offset, buffer_info_t *bufferp, int isnew)
 		if (isnew > 0 || (xor & ~HAMMER_BUFMASK64)) {
 			rel_buffer(*bufferp);
 			*bufferp = NULL;
+		} else {
+			hammer_cache_used(&(*bufferp)->cache);
 		}
 	}
 
