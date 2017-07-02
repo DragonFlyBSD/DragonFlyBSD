@@ -254,7 +254,6 @@ struct ipfw_context {
 	 * default rule and CANNOT be disabled.
 	 */
 	uint32_t	ipfw_set_disable;
-	uint32_t	ipfw_gen;		/* generation of rule list */
 };
 
 static struct ipfw_context	*ipfw_ctx[MAXCPU];
@@ -1096,29 +1095,12 @@ done:
 
 static struct ip_fw *
 lookup_rule(struct ipfw_flow_id *pkt, int *match_direction, struct tcphdr *tcp,
-	    uint16_t len, int *deny)
+    uint16_t len)
 {
 	struct ip_fw *rule = NULL;
 	ipfw_dyn_rule *q;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-	uint32_t gen;
-
-	*deny = 0;
-	gen = ctx->ipfw_gen;
 
 	lockmgr(&dyn_lock, LK_SHARED);
-
-	if (ctx->ipfw_gen != gen) {
-		/*
-		 * Static rules had been change when we were waiting
-		 * for the dynamic hash table lock; deny this packet,
-		 * since it is _not_ known whether it is safe to keep
-		 * iterating the static rules.
-		 */
-		*deny = 1;
-		goto back;
-	}
-
 	q = lookup_dyn_rule(pkt, match_direction, tcp);
 	if (q == NULL) {
 		rule = NULL;
@@ -1130,7 +1112,6 @@ lookup_rule(struct ipfw_flow_id *pkt, int *match_direction, struct tcphdr *tcp,
 		q->pcnt++;
 		q->bcnt += len;
 	}
-back:
 	lockmgr(&dyn_lock, LK_RELEASE);
 	return rule;
 }
@@ -1375,23 +1356,12 @@ install_state_locked(struct ip_fw *rule, ipfw_insn_limit *cmd,
 }
 
 static int
-install_state(struct ip_fw *rule, ipfw_insn_limit *cmd,
-	      struct ip_fw_args *args, int *deny)
+install_state(struct ip_fw *rule, ipfw_insn_limit *cmd, struct ip_fw_args *args)
 {
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-	uint32_t gen;
-	int ret = 0;
-
-	*deny = 0;
-	gen = ctx->ipfw_gen;
+	int ret;
 
 	lockmgr(&dyn_lock, LK_EXCLUSIVE);
-	if (ctx->ipfw_gen != gen) {
-		/* See the comment in lookup_rule() */
-		*deny = 1;
-	} else {
-		ret = install_state_locked(rule, cmd, args);
-	}
+	ret = install_state_locked(rule, cmd, args);
 	lockmgr(&dyn_lock, LK_RELEASE);
 
 	return ret;
@@ -1554,7 +1524,7 @@ lookup_next_rule(struct ip_fw *me)
 }
 
 static int
-_ipfw_match_uid(const struct ipfw_flow_id *fid, struct ifnet *oif,
+ipfw_match_uid(const struct ipfw_flow_id *fid, struct ifnet *oif,
 		enum ipfw_opcodes opcode, uid_t uid)
 {
 	struct in_addr src_ip, dst_ip;
@@ -1598,26 +1568,6 @@ _ipfw_match_uid(const struct ipfw_flow_id *fid, struct ifnet *oif,
 	} else  {
 		return groupmember(uid, pcb->inp_socket->so_cred);
 	}
-}
-
-static int
-ipfw_match_uid(const struct ipfw_flow_id *fid, struct ifnet *oif,
-	       enum ipfw_opcodes opcode, uid_t uid, int *deny)
-{
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-	uint32_t gen;
-	int match = 0;
-
-	*deny = 0;
-	gen = ctx->ipfw_gen;
-
-	if (gen != ctx->ipfw_gen) {
-		/* See the comment in lookup_rule() */
-		*deny = 1;
-	} else {
-		match = _ipfw_match_uid(fid, oif, opcode, uid);
-	}
-	return match;
 }
 
 /*
@@ -1887,7 +1837,7 @@ again:
 		skip_or = 0;
 		for (l = f->cmd_len, cmd = f->cmd; l > 0;
 		     l -= cmdlen, cmd += cmdlen) {
-			int match, deny;
+			int match;
 
 			/*
 			 * check_body is a jump target used when we find a
@@ -1940,10 +1890,7 @@ check_body:
 
 				match = ipfw_match_uid(&args->f_id, oif,
 					cmd->opcode,
-					(uid_t)((ipfw_insn_u32 *)cmd)->d[0],
-					&deny);
-				if (deny)
-					return IP_FW_DENY;
+					(uid_t)((ipfw_insn_u32 *)cmd)->d[0]);
 				break;
 
 			case O_RECV:
@@ -2241,15 +2188,10 @@ check_body:
 					goto next_rule;
 				}
 				if (install_state(f,
-				    (ipfw_insn_limit *)cmd, args, &deny)) {
-					if (deny)
-						return IP_FW_DENY;
-
+				    (ipfw_insn_limit *)cmd, args)) {
 					retval = IP_FW_DENY;
 					goto done; /* error/limit violation */
 				}
-				if (deny)
-					return IP_FW_DENY;
 				match = 1;
 				break;
 
@@ -2269,9 +2211,7 @@ check_body:
 						&dyn_dir,
 						proto == IPPROTO_TCP ?
 						L3HDR(struct tcphdr, ip) : NULL,
-						ip_len, &deny);
-					if (deny)
-						return IP_FW_DENY;
+						ip_len);
 					if (dyn_f != NULL) {
 						/*
 						 * Found a rule from a dynamic
@@ -2577,12 +2517,6 @@ ipfw_add_rule_dispatch(netmsg_t nmsg)
 	rule = ipfw_create_rule(fwmsg->ioc_rule, fwmsg->stub);
 
 	/*
-	 * Bump generation after ipfw_create_rule(),
-	 * since this function is blocking
-	 */
-	ctx->ipfw_gen++;
-
-	/*
 	 * Insert rule into the pre-determined position
 	 */
 	if (fwmsg->prev_rule != NULL) {
@@ -2630,9 +2564,6 @@ ipfw_enable_state_dispatch(netmsg_t nmsg)
 {
 	struct lwkt_msg *lmsg = &nmsg->lmsg;
 	struct ip_fw *rule = lmsg->u.ms_resultp;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-
-	ctx->ipfw_gen++;
 
 	KKASSERT(rule->cpuid == mycpuid);
 	KKASSERT(rule->stub != NULL && rule->stub->rule[mycpuid] == rule);
@@ -2763,8 +2694,6 @@ ipfw_delete_rule(struct ipfw_context *ctx,
 	struct ip_fw *n;
 	struct ip_fw_stub *stub;
 
-	ctx->ipfw_gen++;
-
 	/* STATE flag should have been cleared before we reach here */
 	KKASSERT((rule->rule_flags & IPFW_RULE_F_STATE) == 0);
 
@@ -2823,8 +2752,6 @@ ipfw_disable_rule_state_dispatch(netmsg_t nmsg)
 	struct netmsg_del *dmsg = (struct netmsg_del *)nmsg;
 	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
 	struct ip_fw *rule;
-
-	ctx->ipfw_gen++;
 
 	rule = dmsg->start_rule;
 	if (rule != NULL) {
@@ -3095,8 +3022,6 @@ ipfw_disable_ruleset_state_dispatch(netmsg_t nmsg)
 #ifdef INVARIANTS
 	int cleared = 0;
 #endif
-
-	ctx->ipfw_gen++;
 
 	for (rule = ctx->ipfw_layer3_chain; rule; rule = rule->next) {
 		if (rule->set == dmsg->from_set) {
@@ -3862,7 +3787,6 @@ ipfw_set_disable_dispatch(netmsg_t nmsg)
 	struct lwkt_msg *lmsg = &nmsg->lmsg;
 	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
 
-	ctx->ipfw_gen++;
 	ctx->ipfw_set_disable = lmsg->u.ms_result32;
 
 	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
