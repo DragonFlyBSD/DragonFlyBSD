@@ -498,7 +498,7 @@ get_buffer_data(hammer_off_t buf_offset, buffer_info_t *bufferp, int isnew)
 			return(NULL);
 	}
 
-	return(((char *)(*bufferp)->ondisk) +
+	return((char *)(*bufferp)->ondisk +
 		((int32_t)buf_offset & HAMMER_BUFMASK));
 }
 
