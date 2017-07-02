@@ -74,8 +74,12 @@
 #define CNAME(csym)		csym
 #define HIDENAME(asmsym)	.asmsym
 
+#if defined(__x86_64__)
+#define _START_ENTRY	.text; .p2align 4,0x90
+#else
 /* XXX should use .p2align 4,0x90 for -m486. */
 #define _START_ENTRY	.text; .p2align 2,0x90
+#endif
 
 #define _ENTRY(x)	_START_ENTRY; \
 			.globl CNAME(x); .type CNAME(x),@function; CNAME(x):
