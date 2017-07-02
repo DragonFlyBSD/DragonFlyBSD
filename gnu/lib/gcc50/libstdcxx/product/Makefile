@@ -47,6 +47,14 @@ libstdc++.a: ${SRCS:.cc=.o} script.ar
 	rm -f ${.TARGET}
 	${AR} -M < script.ar
 	mv libstdcxx.a ${.TARGET}
+	${RANLIB} ${.TARGET}
+
+libstdc++_p.a: ${SRCS:.cc=.po} script_p.ar
+	@${ECHO} building profiled ${LIB} library via script
+	rm -f ${.TARGET}
+	${AR} -M < script_p.ar
+	mv libstdcxx_p.a ${.TARGET}
+	${RANLIB} ${.TARGET}
 
 ${PROBLEMSXX}: ${PROBLEMS}
 	cp ${SRCDIR}/src/c++11/${.TARGET:S|xx|++|} ${.TARGET}
@@ -65,11 +73,23 @@ script.ar:
 	@echo "SAVE"			>> ${.TARGET}
 	@echo "END"			>> ${.TARGET}
 
+# XXX for now no profiled CONVARCS libs
+script_p.ar:
+	@echo "CREATE libstdcxx_p.a" 	>  ${.TARGET}
+.for arc in ${CONVARCS}
+	@echo "ADDLIB ${arc}"		>> ${.TARGET}
+.endfor
+.for obj in ${SRCS:.cc=.po}
+	@echo "ADDMOD ${obj}"		>> ${.TARGET}
+.endfor
+	@echo "SAVE"			>> ${.TARGET}
+	@echo "END"			>> ${.TARGET}
+
 libstdcxx.map: ${PREDIR}/gnu.ver ${PREDIR}/float128.ver
 	cat ${.ALLSRC} | grep -E -v '^[ 	]*#(#| |$)' | \
 	${CC} -E -P -include ${.CURDIR}/../headers/config.h - > ${.TARGET}
 
-GENFILES=	gstdint.h script.ar ${PROBLEMSXX} libstdcxx.map
+GENFILES=	gstdint.h script.ar script_p.ar ${PROBLEMSXX} libstdcxx.map
 CLEANFILES=	${GENFILES}
 beforedepend:	${GENFILES}
 
