@@ -4,8 +4,8 @@
 
 LIB=			elf
 INTERNALLIB=		yes
+INTERNALLIBPROF=	yes
 INSTALL_PIC_ARCHIVE=	yes
-NOPROFILE=		yes
 TOOLCHAINDIR=		${.CURDIR}/../../contrib/elftoolchain
 SRCDIR=			${TOOLCHAINDIR}/libelf
 COMMON=			${TOOLCHAINDIR}/common
