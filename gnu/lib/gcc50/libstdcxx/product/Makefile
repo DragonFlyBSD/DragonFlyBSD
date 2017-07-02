@@ -42,6 +42,7 @@ SRCS=		${libstdc___la_SOURCES:S|++|xx|}
 PROBLEMS=	${libstdc___la_SOURCES:M*++*}
 PROBLEMSXX=	${PROBLEMS:S|++|xx|}
 
+# Override bsd.lib.mk scripts
 libstdc++.a: ${SRCS:.cc=.o} script.ar
 	@${ECHO} building static ${LIB} library via script
 	rm -f ${.TARGET}
@@ -73,10 +74,9 @@ script.ar:
 	@echo "SAVE"			>> ${.TARGET}
 	@echo "END"			>> ${.TARGET}
 
-# XXX for now no profiled CONVARCS libs
 script_p.ar:
 	@echo "CREATE libstdcxx_p.a" 	>  ${.TARGET}
-.for arc in ${CONVARCS}
+.for arc in ${CONVARCS:.a=_p.a}
 	@echo "ADDLIB ${arc}"		>> ${.TARGET}
 .endfor
 .for obj in ${SRCS:.cc=.po}

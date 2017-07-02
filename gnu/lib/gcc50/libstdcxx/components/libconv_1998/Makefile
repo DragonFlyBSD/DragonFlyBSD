@@ -5,7 +5,7 @@ SRCDIR=	${GCCDIR}/libstdc++-v3
 
 LIB=			cxx98convenience
 INTERNALLIB=		yes
-NOPROFILE=		yes
+INTERNALLIBPROF=	yes
 INSTALL_PIC_ARCHIVE=	yes
 
 .PATH:	${SRCDIR}
