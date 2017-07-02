@@ -136,7 +136,7 @@ OBJS+=  ${SRCS:N*.h:N*.patch:R:S/$/.o/g}
 .if defined(LIB) && !empty(LIB)
 _LIBS=		lib${LIB}.a
 
-.if ! target(lib${LIB}.a)
+. if ! target(lib${LIB}.a)
 lib${LIB}.a: ${OBJS} ${STATICOBJS}
 	@${ECHO} building static ${LIB} library
 	rm -f ${.TARGET}
@@ -145,15 +145,19 @@ lib${LIB}.a: ${OBJS} ${STATICOBJS}
 . endif
 .endif
 
-.if !defined(INTERNALLIB) && !defined(NOPROFILE) && defined(LIB) && !empty(LIB)
+.if !defined(INTERNALLIB) || defined(INTERNALLIBPROF)
+. if !defined(NOPROFILE) && defined(LIB) && !empty(LIB)
 _LIBS+=		lib${LIB}_p.a
 POBJS+=		${OBJS:.o=.po} ${STATICOBJS:.o=.po}
 
+.  if ! target(lib${LIB}_p.a)
 lib${LIB}_p.a: ${POBJS}
 	@${ECHO} building profiled ${LIB} library
 	rm -f ${.TARGET}
 	${AR} cq ${.TARGET} `lorder ${POBJS} | tsort -q` ${ARADD}
 	${RANLIB} ${.TARGET}
+.  endif
+. endif
 .endif
 
 .if !defined(INTERNALLIB) && defined(SHLIB_NAME) || \
@@ -288,10 +292,12 @@ clean:
     defined(INSTALL_PIC_ARCHIVE) && defined(LIB) && !empty(LIB)
 	rm -f ${SOBJS} ${SOBJS:.So=.so} ${SOBJS:S/$/.tmp/}
 .endif
-.if !defined(INTERNALLIB)
+.if !defined(INTERNALLIB) || defined(INTERNALLIBPROF)
 .if !defined(NOPROFILE) && defined(LIB) && !empty(LIB)
 	rm -f ${POBJS} ${POBJS:S/$/.tmp/}
 .endif
+.endif # !defined(INTERNALLIB) || defined(INTERNALLIBPROF)
+.if !defined(INTERNALLIB)
 .if defined(SHLIB_NAME)
 .if defined(SHLIB_LINK)
 	rm -f ${SHLIB_LINK}
