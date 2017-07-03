@@ -50,7 +50,8 @@ AcpiOsPredefinedOverride (
 	return (AE_BAD_PARAMETER);
 
     *NewVal = NULL;
-    if (strncmp(InitVal->Name, "_OS_", 4) == 0 && strlen(acpi_osname) > 0) {
+    if (ACPI_COMPARE_NAME(InitVal->Name, "_OS_") &&
+	InitVal->Type == ACPI_TYPE_STRING && strlen(acpi_osname) > 0) {
 	kprintf("ACPI: Overriding _OS definition with \"%s\"\n", acpi_osname);
 	*NewVal = acpi_osname;
     }
