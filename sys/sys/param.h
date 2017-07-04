@@ -150,13 +150,14 @@
  * 400713 - add sysctl kern.cp_times
  * 400800 - 4.8 release
  * 400900 - 4.9 development
- * 400901 - moved sigtramp, NX protection + associated sysctls
+ * 400901 - moved sigtramp, NX protection, sigtramp sysctl
  * 400902 - change CPU_SETSIZE to signed; allow proc to change self affinity
  * 400903 - malloc_type cleanup
  * 400904 - pad rtstatistics
+ * 400905 - PTHREAD_STACK_MIN increase: 1024 => 16384
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400904	/* propagated to newvers */
+#define __DragonFly_version 400905	/* propagated to newvers */
 
 #include <sys/_null.h>
 
