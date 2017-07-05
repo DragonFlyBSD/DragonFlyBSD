@@ -1240,8 +1240,6 @@ kern_getsockopt(int s, struct sockopt *sopt)
 		return (EFAULT);
 	if (sopt->sopt_val != NULL && sopt->sopt_valsize == 0)
 		return (EINVAL);
-	if (sopt->sopt_valsize > SOMAXOPT_SIZE) /* unsigned */
-		return (EINVAL);
 
 	error = holdsock(p->p_fd, s, &fp);
 	if (error)
@@ -1261,8 +1259,8 @@ int
 sys_getsockopt(struct getsockopt_args *uap)
 {
 	struct thread *td = curthread;
-	struct	sockopt sopt;
-	int	error, valsize;
+	struct sockopt sopt;
+	int error, valsize, valszmax, mflag = 0;
 
 	if (uap->val) {
 		error = copyin(uap->avalsize, &valsize, sizeof(valsize));
@@ -1278,10 +1276,19 @@ sys_getsockopt(struct getsockopt_args *uap)
 	sopt.sopt_td = td;
 	sopt.sopt_val = NULL;
 
-	if (sopt.sopt_valsize > SOMAXOPT_SIZE) /* unsigned */
+	if (td->td_proc->p_ucred->cr_uid == 0) {
+		valszmax = SOMAXOPT_SIZE0;
+		mflag = M_NULLOK;
+	} else {
+		valszmax = SOMAXOPT_SIZE;
+	}
+	if (sopt.sopt_valsize > valszmax) /* unsigned */
 		return (EINVAL);
 	if (uap->val) {
-		sopt.sopt_val = kmalloc(sopt.sopt_valsize, M_TEMP, M_WAITOK);
+		sopt.sopt_val = kmalloc(sopt.sopt_valsize, M_TEMP,
+		    M_WAITOK | mflag);
+		if (sopt.sopt_val == NULL)
+			return (ENOBUFS);
 		error = copyin(uap->val, sopt.sopt_val, sopt.sopt_valsize);
 		if (error)
 			goto out;

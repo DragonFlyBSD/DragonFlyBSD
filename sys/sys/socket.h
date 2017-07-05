@@ -348,6 +348,7 @@ struct sockaddr_storage {
  * Maximum setsockopt buffer size
  */
 #define	SOMAXOPT_SIZE	65536
+#define	SOMAXOPT_SIZE0	(32 * 1024 * 1024)	/* for root getsockopt */
 
 /*
  * Message header for recvmsg and sendmsg calls.
