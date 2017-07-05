@@ -1836,6 +1836,7 @@ kern_chroot(struct nchandle *nch)
 	error = checkvp_chdir(vp, td);
 	vn_unlock(vp);			/* leave reference intact */
 	if (error == 0) {
+		lwkt_gettoken(&p->p_token);
 		vrele(fdp->fd_rdir);
 		fdp->fd_rdir = vp;	/* reference inherited by fd_rdir */
 		cache_drop(&fdp->fd_nrdir);
@@ -1845,6 +1846,12 @@ kern_chroot(struct nchandle *nch)
 			vref(fdp->fd_jdir);
 			cache_copy(nch, &fdp->fd_njdir);
 		}
+		if ((p->p_flags & P_DIDCHROOT) == 0) {
+			p->p_flags |= P_DIDCHROOT;
+			if (p->p_depth <= 65535 - 32)
+				p->p_depth += 32;
+		}
+		lwkt_reltoken(&p->p_token);
 	} else {
 		vrele(vp);
 	}

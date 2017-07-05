@@ -519,3 +519,35 @@ plimit_copy(struct plimit *olimit, struct plimit *nlimit)
 	nlimit->p_exclusive = 0;
 }
 
+/*
+ * This routine returns the value of a resource, downscaled based on
+ * the processes fork depth and chroot depth (up to 50%).  This mechanism
+ * is designed to prevent run-aways from blowing up unrelated processes
+ * running under the same UID.
+ *
+ * NOTE: Currently only applicable to RLIMIT_NPROC.  We could also limit
+ *	 file descriptors but we shouldn't have to as these are allocated
+ *	 dynamically.
+ */
+u_int64_t
+plimit_getadjvalue(int i)
+{
+	struct proc *p = curproc;
+	struct plimit *limit;
+	uint64_t v;
+	uint32_t depth;
+
+	limit = p->p_limit;
+	v = limit->pl_rlimit[i].rlim_cur;
+	if (i == RLIMIT_NPROC) {
+		/*
+		 * 10% per chroot (around 1/3% per fork depth), with a
+		 * maximum of 50% downscaling of the resource limit.
+		 */
+		depth = p->p_depth;
+		if (depth > 32 * 5)
+			depth = 32 * 5;
+		v -= v * depth / 320;
+	}
+	return v;
+}

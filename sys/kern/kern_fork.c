@@ -384,19 +384,24 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	atomic_add_int(&nprocs, 1);
 
 	/*
-	 * Increment the count of procs running with this uid. Don't allow
-	 * a nonprivileged user to exceed their current limit.
+	 * Increment the count of procs running with this uid.  This also
+	 * applies to root.
 	 */
 	ok = chgproccnt(lp1->lwp_thread->td_ucred->cr_ruidinfo, 1,
-		(uid != 0) ? p1->p_rlimit[RLIMIT_NPROC].rlim_cur : 0);
+			plimit_getadjvalue(RLIMIT_NPROC));
 	if (!ok) {
 		/*
 		 * Back out the process count
 		 */
 		atomic_add_int(&nprocs, -1);
-		if (ppsratecheck(&lastfail, &curfail, 1))
-			kprintf("maxproc limit exceeded by uid %d, please "
-			       "see tuning(7) and login.conf(5).\n", uid);
+		if (ppsratecheck(&lastfail, &curfail, 1)) {
+			kprintf("maxproc limit of %jd "
+				"exceeded by \"%s\" uid %d, "
+				"please see tuning(7) and login.conf(5).\n",
+				plimit_getadjvalue(RLIMIT_NPROC),
+				p1->p_comm,
+				uid);
+		}
 		tsleep(&forksleep, 0, "fork", hz / 2);
 		error = EAGAIN;
 		goto done;
@@ -539,6 +544,12 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	}
 	p2->p_fdtol = fdtol;
 	p2->p_limit = plimit_fork(p1);
+
+	/*
+	 * Adjust depth for resource downscaling
+	 */
+	if ((p2->p_depth & 31) != 31)
+		++p2->p_depth;
 
 	/*
 	 * Preserve some more flags in subprocess.  P_PROFIL has already

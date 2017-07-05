@@ -133,6 +133,7 @@ void	uihashinit (void);
 
 void plimit_init0(struct plimit *);
 struct plimit *plimit_fork(struct proc *);
+u_int64_t plimit_getadjvalue(int i);
 void plimit_lwp_fork(struct proc *);
 int plimit_testcpulimit(struct plimit *, u_int64_t);
 void plimit_modify(struct proc *, int, struct rlimit *);

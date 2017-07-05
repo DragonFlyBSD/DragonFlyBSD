@@ -310,6 +310,7 @@ struct	proc {
 	struct rtprio	p_rtprio;	/* Realtime priority. */
 	struct pargs	*p_args;
 	u_short		p_xstat;	/* Exit status or last stop signal */
+	u_short		p_depth;	/* Used to downscale resource limits */
 
 	int		p_ionice;
 	void		*p_unused02;
@@ -384,7 +385,7 @@ struct	proc {
 #define	P_SIGVTALRM	0x02000000 /* signal SIGVTALRM pending due to itimer */
 #define	P_SIGPROF	0x04000000 /* signal SIGPROF pending due to itimer */
 #define	P_INEXEC	0x08000000 /* Process is in execve(). */
-#define P_UNUSED28	0x10000000
+#define P_DIDCHROOT	0x10000000 /* Did at least one chroot */
 #define	P_UNUSED29	0x20000000
 #define P_XCPU		0x40000000 /* SIGXCPU */
 
