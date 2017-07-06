@@ -1120,44 +1120,20 @@ static void
 realloc_dynamic_table(void)
 {
 	ipfw_dyn_rule **old_dyn_v;
-	uint32_t old_curr_dyn_buckets;
 
 	KASSERT(dyn_buckets <= 65536 && (dyn_buckets & (dyn_buckets - 1)) == 0,
 		("invalid dyn_buckets %d", dyn_buckets));
 
 	/* Save the current buckets array for later error recovery */
 	old_dyn_v = ipfw_dyn_v;
-	old_curr_dyn_buckets = curr_dyn_buckets;
 
 	curr_dyn_buckets = dyn_buckets;
-	for (;;) {
-		ipfw_dyn_v = kmalloc(curr_dyn_buckets * sizeof(ipfw_dyn_rule *),
-				     M_IPFW, M_NOWAIT | M_ZERO);
-		if (ipfw_dyn_v != NULL || curr_dyn_buckets <= 2)
-			break;
+	ipfw_dyn_v = kmalloc(curr_dyn_buckets * sizeof(ipfw_dyn_rule *),
+	    M_IPFW, M_WAITOK | M_ZERO);
 
-		curr_dyn_buckets /= 2;
-		if (curr_dyn_buckets <= old_curr_dyn_buckets &&
-		    old_dyn_v != NULL) {
-			/*
-			 * Don't try allocating smaller buckets array, reuse
-			 * the old one, which alreay contains enough buckets
-			 */
-			break;
-		}
-	}
-
-	if (ipfw_dyn_v != NULL) {
-		if (old_dyn_v != NULL)
-			kfree(old_dyn_v, M_IPFW);
-	} else {
-		/* Allocation failed, restore old buckets array */
-		ipfw_dyn_v = old_dyn_v;
-		curr_dyn_buckets = old_curr_dyn_buckets;
-	}
-
-	if (ipfw_dyn_v != NULL)
-		++dyn_buckets_gen;
+	if (old_dyn_v != NULL)
+		kfree(old_dyn_v, M_IPFW);
+	++dyn_buckets_gen;
 }
 
 /*
@@ -1179,12 +1155,11 @@ add_dyn_rule(struct ipfw_flow_id *id, uint8_t dyn_type, struct ip_fw *rule)
 	if (ipfw_dyn_v == NULL ||
 	    (dyn_count == 0 && dyn_buckets != curr_dyn_buckets)) {
 		realloc_dynamic_table();
-		if (ipfw_dyn_v == NULL)
-			return NULL; /* failed ! */
+		KKASSERT(ipfw_dyn_v != NULL);
 	}
 	i = hash_packet(id);
 
-	r = kmalloc(sizeof(*r), M_IPFW, M_NOWAIT | M_ZERO);
+	r = kmalloc(sizeof(*r), M_IPFW, M_INTWAIT | M_NULLOK | M_ZERO);
 	if (r == NULL)
 		return NULL;
 
