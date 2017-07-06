@@ -369,10 +369,17 @@ static struct callout ipfw_timeout_h;
 
 /*
  * Timeouts for various events in handing dynamic rules.
+ *
+ * NOTE:
+ * 1 == 0~1 second.
+ * 2 == 1~2 second(s).
+ *
+ * We use 2 seconds for FIN lifetime, so that the states will not be
+ * ripped prematurely.
  */
 static uint32_t dyn_ack_lifetime = 300;
 static uint32_t dyn_syn_lifetime = 20;
-static uint32_t dyn_fin_lifetime = 1;
+static uint32_t dyn_fin_lifetime = 2;
 static uint32_t dyn_rst_lifetime = 1;
 static uint32_t dyn_udp_lifetime = 10;
 static uint32_t dyn_short_lifetime = 5;
