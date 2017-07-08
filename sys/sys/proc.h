@@ -173,7 +173,7 @@ struct lwp {
 	struct vmspace	*lwp_vmspace;	/* Inherited from p_vmspace */
 	struct vkernel_lwp *lwp_vkernel;/* VKernel support, lwp part */
 
-	lwpid_t		lwp_tid;	/* Our thread id */
+	lwpid_t		lwp_tid;	/* Our thread id, >= 1 */
 
 	u_int		lwp_flags;	/* LWP_*    flags */
 	u_int		lwp_mpflags;	/* LWP_MP_* flags */

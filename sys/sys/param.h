@@ -155,9 +155,10 @@
  * 400903 - malloc_type cleanup
  * 400904 - pad rtstatistics
  * 400905 - PTHREAD_STACK_MIN increase: 1024 => 16384
+ * 400906 - lwpid_t >=1, instead of >=0
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400905	/* propagated to newvers */
+#define __DragonFly_version 400906	/* propagated to newvers */
 
 #include <sys/_null.h>
 

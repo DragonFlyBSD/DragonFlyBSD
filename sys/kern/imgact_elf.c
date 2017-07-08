@@ -1479,11 +1479,6 @@ elf_putallnotes(struct lwp *corelp, elf_buf_t target, int sig,
 		status->pr_fpregsetsz = sizeof(fpregset_t);
 		status->pr_osreldate = osreldate;
 		status->pr_cursig = sig;
-		/*
-		 * XXX GDB needs unique pr_pid for each LWP and does not
-		 * not support pr_pid==0 but lwp_tid can be 0, so hack unique
-		 * value.
-		 */
 		status->pr_pid = corelp->lwp_tid;
 		fill_regs(corelp, &status->pr_reg);
 		fill_fpregs(corelp, fpregs);

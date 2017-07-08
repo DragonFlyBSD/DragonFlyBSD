@@ -423,7 +423,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 */
 	mycpu->gd_forkid += ncpus;
 	p2->p_forkid = mycpu->gd_forkid + mycpu->gd_cpuid;
-	p2->p_lasttid = -1;	/* first tid will be 0 */
+	p2->p_lasttid = 0;	/* first tid will be 1 */
 	p2->p_stat = SIDL;
 
 	/*
@@ -786,7 +786,7 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags,
 	}
 
 	do {
-		if (++lp->lwp_tid < 0)
+		if (++lp->lwp_tid <= 0)
 			lp->lwp_tid = 1;
 	} while (lwp_rb_tree_RB_INSERT(&destproc->p_lwp_tree, lp) != NULL);
 
