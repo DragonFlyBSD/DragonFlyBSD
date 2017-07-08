@@ -337,6 +337,23 @@ checkline(char *buf)
 		checkip(str + 25, "preauth", "an invalid user");
 		return;
 	}
+
+	/*
+	 * Maximum authentication attempts exceeded
+	 */
+	if ((str = strstr(buf, "maximum authentication "
+			       "attempts exceeded for ")) != NULL &&
+	    strstr(buf, "[preauth]") != NULL) {
+		str += 45;
+		while (*str == ' ')
+			++str;
+		while (*str && *str != ' ')
+			++str;
+		if (strncmp(str, " from", 5) == 0) {
+			checkip(str + 5, "login", "many attempts");
+		}
+		return;
+	}
 }
 
 /*
