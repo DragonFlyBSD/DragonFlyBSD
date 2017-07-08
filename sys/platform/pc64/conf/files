@@ -54,11 +54,21 @@ ${OSACPI_MD_DIR}/acpi_machdep.c		optional        acpi
 ${OSACPI_MD_DIR}/acpi_pstate_machdep.c	optional	acpi
 ${OSACPI_MD_DIR}/acpi_cstate_machdep.c	optional	acpi
 ${OSACPI_MD_DIR}/acpi_wakeup.c		optional        acpi
-acpi_wakecode.h				optional        acpi		\
-	dependency	"$S/${OSACPI_MD_DIR}/acpi_wakecode.S"		\
-	compile-with	"${MAKE} -f $S/${OSACPI_MD_DIR}/Makefile MAKESRCPATH=$S/${OSACPI_MD_DIR}" \
-	no-obj no-implicit-rule before-depend				\
-	clean           "acpi_wakecode.h acpi_wakecode.o acpi_wakecode.bin"
+#acpi_wakecode.o				optional	acpi		\
+#	dependency	"$S/platform/pc64/acpica/acpi_wakecode.S assym.s" \
+#	compile-with	"${NORMAL_S}"					\
+#	no-obj no-implicit-rule before-depend				\
+#	clean		"acpi_wakecode.o"
+#acpi_wakecode.bin			optional	acpi		\
+#	dependency	"acpi_wakecode.o"				\
+#	compile-with	"${OBJCOPY} -S -O binary acpi_wakecode.o ${.TARGET}" \
+#	no-obj no-implicit-rule	before-depend				\
+#	clean		"acpi_wakecode.bin"
+#acpi_wakecode.h				optional	acpi		\
+#	dependency	"acpi_wakecode.bin"				\
+#	compile-with	"file2c -sx 'static char wakecode[] = {' '};' < acpi_wakecode.bin > ${.TARGET}" \
+#	no-obj no-implicit-rule	before-depend				\
+#	clean		"acpi_wakecode.h"
 #
 dev/crypto/aesni/aesencdec_x86_64.S	optional	aesni
 dev/crypto/aesni/aeskeys_x86_64.S	optional	aesni

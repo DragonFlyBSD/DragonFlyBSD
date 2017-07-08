@@ -105,16 +105,19 @@ SRCS+=	acpi_cstate_machdep.c
 # Machine-specific code for CPU
 SRCS+=	acpi_cpu_machdep.c
 # Machine-specific code such as sleep/wakeup
-SRCS+=	acpi_machdep.c acpi_wakecode.h
-SRCS+=	acpi_wakeup.c
+SRCS+=	acpi_machdep.c acpi_wakeup.c
 .if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	pmtimer.c
 .endif
-CLEANFILES+=	acpi_wakecode.h acpi_wakecode.o acpi_wakecode.bin
+#SRCS+=	acpi_wakecode.h
+#CLEANFILES+=	acpi_wakecode.h acpi_wakecode.o acpi_wakecode.bin
 
-acpi_wakecode.h: acpi_wakecode.S
-	${MAKE} -f ${SYSDIR}/${OSACPI_MD_DIR}/Makefile \
-		MAKESRCPATH=${SYSDIR}/${OSACPI_MD_DIR}
+#acpi_wakecode.h: acpi_wakecode.bin
+#	file2c -sx 'static char wakecode[] = {' '};' < acpi_wakecode.bin > ${.TARGET}
+#acpi_wakecode.bin: acpi_wakecode.o
+#	objcopy -S -O binary acpi_wakecode.o ${.TARGET}
+
+#acpi_wakecode.o: acpi_wakecode.S
 
 SUBDIR=	acpi_asus acpi_dock acpi_fujitsu acpi_hp acpi_panasonic acpi_pvpanic
 SUBDIR+=acpi_sony acpi_thinkpad acpi_toshiba acpi_video acpi_wmi aibs
