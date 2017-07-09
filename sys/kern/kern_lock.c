@@ -74,9 +74,6 @@ SYSCTL_PROC(_kern, OID_AUTO, cancel_test, CTLTYPE_INT|CTLFLAG_RW, 0, 0,
 #define COUNT(td, x)
 #endif
 
-#define LOCK_WAIT_TIME 100
-#define LOCK_SAMPLE_WAIT 7
-
 /*
  * Set, change, or release a lock.
  */
