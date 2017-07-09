@@ -723,7 +723,7 @@ zoneindex(size_t *bytes, size_t *chunking)
  * malloc() - call internal slab allocator
  */
 void *
-malloc(size_t size)
+__malloc(size_t size)
 {
 	void *ptr;
 
@@ -741,7 +741,7 @@ malloc(size_t size)
  * calloc() - call internal slab allocator
  */
 void *
-calloc(size_t number, size_t size)
+__calloc(size_t number, size_t size)
 {
 	void *ptr;
 
@@ -767,7 +767,7 @@ calloc(size_t number, size_t size)
  * zone.
  */
 void *
-realloc(void *ptr, size_t size)
+__realloc(void *ptr, size_t size)
 {
 	void *ret;
 	ret = _slabrealloc(ptr, size);
@@ -789,7 +789,7 @@ realloc(void *ptr, size_t size)
  * zone matching the requirements, and _vmem_alloc() otherwise.
  */
 int
-posix_memalign(void **memptr, size_t alignment, size_t size)
+__posix_memalign(void **memptr, size_t alignment, size_t size)
 {
 	bigalloc_t *bigp;
 	bigalloc_t big;
@@ -890,7 +890,7 @@ posix_memalign(void **memptr, size_t alignment, size_t size)
  * free() (SLAB ALLOCATOR) - do the obvious
  */
 void
-free(void *ptr)
+__free(void *ptr)
 {
 	UTRACE(ptr, 0, 0);
 	_slabfree(ptr, 0, NULL);
@@ -1852,3 +1852,9 @@ _mpanic(const char *ctl, ...)
 	}
 	abort();
 }
+
+__weak_reference(__malloc, malloc);
+__weak_reference(__calloc, calloc);
+__weak_reference(__posix_memalign, posix_memalign);
+__weak_reference(__realloc, realloc);
+__weak_reference(__free, free);
