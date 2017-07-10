@@ -222,7 +222,7 @@ _pthread_attr_getscope(const pthread_attr_t *attr, int *contentionscope)
 		ret = EINVAL;
 
 	else
-		*contentionscope = (*attr)->flags & PTHREAD_SCOPE_SYSTEM ?
+		*contentionscope = ((*attr)->flags & PTHREAD_SCOPE_SYSTEM) ?
 		    PTHREAD_SCOPE_SYSTEM : PTHREAD_SCOPE_PROCESS;
 
 	return(ret);
