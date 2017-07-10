@@ -156,10 +156,10 @@ static void	ipflow_free(struct ipflow *);
 static unsigned
 ipflow_hash(struct in_addr dst, struct in_addr src, unsigned tos)
 {
-	unsigned hash = tos;
+	unsigned hash = tos + src.s_addr;
 	int idx;
 
-	for (idx = 0; idx < 32; idx += IPFLOW_HASHBITS)
+	for (idx = IPFLOW_HASHBITS; idx < 32; idx += IPFLOW_HASHBITS)
 		hash += (dst.s_addr >> (32 - idx)) + (src.s_addr >> idx);
 	return hash & (IPFLOW_HASHSIZE-1);
 }
