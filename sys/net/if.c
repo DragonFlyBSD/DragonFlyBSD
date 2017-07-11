@@ -772,6 +772,7 @@ if_purgeaddrs_nolink_dispatch(netmsg_t nmsg)
 		/* XXX: Ugly!! ad hoc just for INET */
 		if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET) {
 			struct ifaliasreq ifr;
+			struct sockaddr_in saved_addr, saved_dst;
 #ifdef IFADDR_DEBUG_VERBOSE
 			int i;
 
@@ -781,6 +782,15 @@ if_purgeaddrs_nolink_dispatch(netmsg_t nmsg)
 			kprintf("\n");
 #endif
 
+			/* Save information for panic. */
+			memcpy(&saved_addr, ifa->ifa_addr, sizeof(saved_addr));
+			if (ifa->ifa_dstaddr != NULL) {
+				memcpy(&saved_dst, ifa->ifa_dstaddr,
+				    sizeof(saved_dst));
+			} else {
+				memset(&saved_dst, 0, sizeof(saved_dst));
+			}
+
 			bzero(&ifr, sizeof ifr);
 			ifr.ifra_addr = *ifa->ifa_addr;
 			if (ifa->ifa_dstaddr)
@@ -788,6 +798,11 @@ if_purgeaddrs_nolink_dispatch(netmsg_t nmsg)
 			if (in_control(SIOCDIFADDR, (caddr_t)&ifr, ifp,
 				       NULL) == 0)
 				continue;
+
+			/* MUST NOT HAPPEN */
+			panic("%s: in_control failed %x, dst %x", ifp->if_xname,
+			    ntohl(saved_addr.sin_addr.s_addr),
+			    ntohl(saved_dst.sin_addr.s_addr));
 		}
 #endif /* INET */
 #ifdef INET6
