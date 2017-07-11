@@ -770,7 +770,7 @@ if_purgeaddrs_nolink_dispatch(netmsg_t nmsg)
 			continue;
 #ifdef INET
 		/* XXX: Ugly!! ad hoc just for INET */
-		if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET) {
+		if (ifa->ifa_addr->sa_family == AF_INET) {
 			struct ifaliasreq ifr;
 			struct sockaddr_in saved_addr, saved_dst;
 #ifdef IFADDR_DEBUG_VERBOSE
@@ -806,7 +806,7 @@ if_purgeaddrs_nolink_dispatch(netmsg_t nmsg)
 		}
 #endif /* INET */
 #ifdef INET6
-		if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET6) {
+		if (ifa->ifa_addr->sa_family == AF_INET6) {
 #ifdef IFADDR_DEBUG_VERBOSE
 			int i;
 
