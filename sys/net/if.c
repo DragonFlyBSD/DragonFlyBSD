@@ -777,8 +777,10 @@ if_purgeaddrs_nolink_dispatch(netmsg_t nmsg)
 			int i;
 
 			kprintf("purge in4 addr %p: ", ifa);
-			for (i = 0; i < ncpus; ++i)
-				kprintf("%d ", ifa->ifa_containers[i].ifa_refcnt);
+			for (i = 0; i < ncpus; ++i) {
+				kprintf("%d ",
+				    ifa->ifa_containers[i].ifa_refcnt);
+			}
 			kprintf("\n");
 #endif
 
@@ -811,8 +813,10 @@ if_purgeaddrs_nolink_dispatch(netmsg_t nmsg)
 			int i;
 
 			kprintf("purge in6 addr %p: ", ifa);
-			for (i = 0; i < ncpus; ++i)
-				kprintf("%d ", ifa->ifa_containers[i].ifa_refcnt);
+			for (i = 0; i < ncpus; ++i) {
+				kprintf("%d ",
+				    ifa->ifa_containers[i].ifa_refcnt);
+			}
 			kprintf("\n");
 #endif
 
