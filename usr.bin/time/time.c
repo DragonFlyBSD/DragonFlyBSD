@@ -107,6 +107,8 @@ main(int argc, char **argv)
 		err(1, "could not fork");
 		/* NOTREACHED */
 	case 0:				/* child */
+		if (ofn)
+			fclose(out);
 		execvp(*argv, argv);
 		err(errno == ENOENT ? 127 : 126, "%s", *argv);
 		/* NOTREACHED */
