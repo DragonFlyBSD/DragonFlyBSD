@@ -57,6 +57,7 @@ static void siginfo(int);
 
 static void usage(void);
 
+static sig_atomic_t siginfo_recvd;
 static char decimal_point;
 struct timeval before_tv;
 static int hflag, pflag;
@@ -123,10 +124,18 @@ main(int argc, char **argv)
 		err(1, "signal failed");	
 	if (signal(SIGQUIT, SIG_IGN) == SIG_ERR)
 		err(1, "signal failed");
+	siginfo_recvd = 0;
 	if (signal(SIGINFO, siginfo) == SIG_ERR)
 		err(1, "signal failed"); 
-	while (wait4(pid, &status, 0, &ru) != pid)		/* XXX use waitpid */
-		;
+	siginterrupt(SIGINFO,1 );
+	while (wait4(pid, &status, 0, &ru) != pid){ 
+		if (siginfo_recvd) {
+			siginfo_recvd = 0;
+			gettimeofday(&after, NULL);
+			getrusage(RUSAGE_CHILDREN, &ru);
+			showtime(stdout, &before_tv, &after, &ru);
+		}
+	}
 	if (gettimeofday(&after, NULL) == -1)
 		err(1, "gettimeofday failed");
 	if (!WIFEXITED(status))
@@ -269,10 +278,5 @@ showtime(FILE *out, struct timeval *before, struct timeval *after,
 static void
 siginfo(int sig __unused)
 {
-	struct timeval after;
-	struct rusage ru;
-
-	gettimeofday(&after, (struct timezone *)NULL);
-	getrusage(RUSAGE_CHILDREN, &ru);
-	showtime(stdout, &before, &after, &ru);
+	siginfo_recvd = 1;
 }
