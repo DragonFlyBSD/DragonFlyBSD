@@ -51,7 +51,7 @@
 #include <unistd.h>
 
 static void humantime(FILE *, long, long);
-static void showtime(FILE *, struct timeval *, struct timeval *,
+static void showtime(FILE *, struct timespec *, struct timespec *,
     struct rusage *);
 static void siginfo(int);
 
@@ -59,7 +59,7 @@ static void usage(void);
 
 static sig_atomic_t siginfo_recvd;
 static char decimal_point;
-struct timeval before_tv;
+struct timespec before_ts;
 static int hflag, pflag;
 
 int
@@ -68,7 +68,7 @@ main(int argc, char **argv)
 	pid_t pid;
 	int aflag, ch, lflag, status;
 	int exit_on_sig;
-	struct timeval after;
+	struct timespec after;
 	struct rusage ru;
 	FILE *out = stderr;
 	const char *ofn = NULL;
@@ -108,8 +108,8 @@ main(int argc, char **argv)
 		setvbuf(out, NULL, _IONBF, (size_t)0);
 	}
 
-	if (gettimeofday(&before_tv, NULL) == -1)
-		err(1, "gettimeofday failed");
+	if (clock_gettime(CLOCK_MONOTONIC, &before_ts) == -1)
+		err(1, "clock_gettime failed");
 	switch (pid = fork()) {
 	case -1:			/* error */
 		err(1, "could not fork");
@@ -131,17 +131,18 @@ main(int argc, char **argv)
 	while (wait4(pid, &status, 0, &ru) != pid){ 
 		if (siginfo_recvd) {
 			siginfo_recvd = 0;
-			gettimeofday(&after, NULL);
+			if (clock_gettime(CLOCK_MONOTONIC, &after) == -1)
+				err(1, "clock_gettime failed");
 			getrusage(RUSAGE_CHILDREN, &ru);
-			showtime(stdout, &before_tv, &after, &ru);
+			showtime(stdout, &before_ts, &after, &ru);
 		}
 	}
-	if (gettimeofday(&after, NULL) == -1)
-		err(1, "gettimeofday failed");
+	if (clock_gettime(CLOCK_MONOTONIC, &after) == -1)
+		err(1, "clock_gettime failed");
 	if (!WIFEXITED(status))
 		warnx("command terminated abnormally");
 	exit_on_sig = WIFSIGNALED(status) ? WTERMSIG(status) : 0;
-	showtime(out, &before_tv, &after, &ru);
+	showtime(out, &before_ts, &after, &ru);
 	if (lflag) {
 		int hz;
 		u_long ticks;
@@ -233,14 +234,14 @@ humantime(FILE *out, long sec, long usec)
 }
 
 static void
-showtime(FILE *out, struct timeval *before, struct timeval *after,
+showtime(FILE *out, struct timespec *before, struct timespec *after,
     struct rusage *ru)
 {
 
 	after->tv_sec -= before->tv_sec;
-	after->tv_usec -= before->tv_usec;
-	if (after->tv_usec < 0)
-		after->tv_sec--, after->tv_usec += 1000000;
+	after->tv_nsec -= before->tv_nsec;
+	if (after->tv_nsec < 0)
+		after->tv_sec--, after->tv_nsec += 1000000000L;
 
 	if (pflag) {
 		/* POSIX wants output that must look like
@@ -248,7 +249,7 @@ showtime(FILE *out, struct timeval *before, struct timeval *after,
 		at least two digits after the radix. */
 		fprintf(out, "real %jd%c%02ld\n",
 			(intmax_t)after->tv_sec, decimal_point,
-			after->tv_usec/10000);
+			after->tv_nsec/10000000L);
 		fprintf(out, "user %jd%c%02ld\n",
 			(intmax_t)ru->ru_utime.tv_sec, decimal_point,
 			ru->ru_utime.tv_usec/10000);
@@ -256,7 +257,7 @@ showtime(FILE *out, struct timeval *before, struct timeval *after,
 			(intmax_t)ru->ru_stime.tv_sec, decimal_point,
 			ru->ru_stime.tv_usec/10000);
 	} else if (hflag) {
-		humantime(out, after->tv_sec, after->tv_usec/10000);
+		humantime(out, after->tv_sec, after->tv_nsec/10000000);
 		fprintf(out, " real\t");
 		humantime(out, ru->ru_utime.tv_sec, ru->ru_utime.tv_usec/10000);
 		fprintf(out, " user\t");
@@ -265,7 +266,7 @@ showtime(FILE *out, struct timeval *before, struct timeval *after,
 	} else {
 		fprintf(out, "%9jd%c%02ld real ",
 			(intmax_t)after->tv_sec, decimal_point,
-			after->tv_usec/10000);
+			after->tv_nsec/10000000);
 		fprintf(out, "%9jd%c%02ld user ",
 			(intmax_t)ru->ru_utime.tv_sec, decimal_point,
 			ru->ru_utime.tv_usec/10000);
