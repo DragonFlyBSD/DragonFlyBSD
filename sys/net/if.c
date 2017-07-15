@@ -825,7 +825,7 @@ if_purgeaddrs_nolink_dispatch(netmsg_t nmsg)
 			continue;
 		}
 #endif /* INET6 */
-		if_printf(ifp, "destrot ifaddr family %d\n",
+		if_printf(ifp, "destroy ifaddr family %d\n",
 		    ifa->ifa_addr->sa_family);
 		ifa_ifunlink(ifa, ifp);
 		ifa_destroy(ifa);
