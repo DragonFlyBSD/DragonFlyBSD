@@ -51,6 +51,10 @@
 #include <unistd.h>
 
 static void humantime(FILE *, long, long);
+static void showtime(FILE *, struct timeval *, struct timeval *,
+    struct rusage *);
+static void siginfo(int);
+
 static void usage(void);
 
 static char decimal_point;
@@ -61,9 +65,9 @@ int
 main(int argc, char **argv)
 {
 	pid_t pid;
-	int aflag, ch, hflag, lflag, status, pflag;
+	int aflag, ch, lflag, status;
 	int exit_on_sig;
-	struct timeval before, after;
+	struct timeval after;
 	struct rusage ru;
 	FILE *out = stderr;
 	const char *ofn = NULL;
@@ -119,6 +123,8 @@ main(int argc, char **argv)
 		err(1, "signal failed");	
 	if (signal(SIGQUIT, SIG_IGN) == SIG_ERR)
 		err(1, "signal failed");
+	if (signal(SIGINFO, siginfo) == SIG_ERR)
+		err(1, "signal failed"); 
 	while (wait4(pid, &status, 0, &ru) != pid)		/* XXX use waitpid */
 		;
 	if (gettimeofday(&after, NULL) == -1)
@@ -268,5 +274,5 @@ siginfo(int sig __unused)
 
 	gettimeofday(&after, (struct timezone *)NULL);
 	getrusage(RUSAGE_CHILDREN, &ru);
-	showtime(stdout, &before_tv, &after, &ru);
+	showtime(stdout, &before, &after, &ru);
 }
