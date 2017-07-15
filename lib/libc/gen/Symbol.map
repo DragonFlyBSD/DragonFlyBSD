@@ -459,6 +459,11 @@ DF404.0 {
     wordfree;
 };
 
+DF410.0 {
+	/* pthread stubs */
+    pthread_getthreadid_np;
+};
+
 DFprivate_1.0 {
 	/* pthread stubs */
     _pthread_atfork;
@@ -516,6 +521,7 @@ DFprivate_1.0 {
     _pthread_getprio;
     _pthread_getschedparam;
     _pthread_getspecific;
+    _pthread_getthreadid_np;
     _pthread_init;
     _pthread_init_early;
     _pthread_join;

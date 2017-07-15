@@ -72,6 +72,7 @@ SRCS+= \
 	uthread_getschedparam.c \
 	uthread_getsockname.c \
 	uthread_getsockopt.c \
+	uthread_getthreadid_np.c \
 	uthread_info.c \
 	uthread_init.c \
 	uthread_ioctl.c \

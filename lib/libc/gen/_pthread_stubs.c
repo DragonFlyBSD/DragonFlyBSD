@@ -102,6 +102,7 @@ WR(stub_zero, pthread_getconcurrency);
 WR(stub_zero, pthread_getprio);
 WR(stub_zero, pthread_getschedparam);
 WR(stub_null, pthread_getspecific);
+WR(stub_zero, pthread_getthreadid_np);
 WR(stub_empty, pthread_init_early);
 WR(stub_zero, pthread_join);
 WR(stub_zero, pthread_key_create);

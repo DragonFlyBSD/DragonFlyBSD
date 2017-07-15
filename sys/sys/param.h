@@ -156,9 +156,10 @@
  * 400904 - pad rtstatistics
  * 400905 - PTHREAD_STACK_MIN increase: 1024 => 16384
  * 400906 - lwpid_t >=1, instead of >=0
+ * 400907 - pthread_getthreadid_np()
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400906	/* propagated to newvers */
+#define __DragonFly_version 400907	/* propagated to newvers */
 
 #include <sys/_null.h>
 

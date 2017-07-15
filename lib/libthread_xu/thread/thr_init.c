@@ -111,6 +111,8 @@ STATIC_LIB_REQUIRE(_pthread_getaffinity_np);
 STATIC_LIB_REQUIRE(_pthread_getprio);
 /* thr_getschedparam.c */
 STATIC_LIB_REQUIRE(_pthread_getschedparam);
+/* thr_getthreadid_np.c */
+STATIC_LIB_REQUIRE(_pthread_getthreadid_np);
 /* thr_info.c */
 STATIC_LIB_REQUIRE(_pthread_set_name_np);
 /* thr_init.c */

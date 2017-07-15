@@ -390,3 +390,9 @@ LIBTHREAD_1_1 {
 global:
 	ppoll;
 };
+
+LIBTHREAD_1_2 {
+global:
+	_pthread_getthreadid_np;
+	pthread_getthreadid_np;
+};

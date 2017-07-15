@@ -112,6 +112,7 @@
 #undef		pthread_getprio
 #undef		pthread_getschedparam
 #undef		pthread_getspecific
+#undef		pthread_getthreadid_np
 #undef		pthread_join
 #undef		pthread_key_create
 #undef		pthread_key_delete
