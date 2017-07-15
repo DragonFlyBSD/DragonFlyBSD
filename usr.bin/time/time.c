@@ -46,6 +46,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -53,6 +54,8 @@ static void humantime(FILE *, long, long);
 static void usage(void);
 
 static char decimal_point;
+struct timeval before_tv;
+static int hflag, pflag;
 
 int
 main(int argc, char **argv)
@@ -100,7 +103,7 @@ main(int argc, char **argv)
 		setvbuf(out, NULL, _IONBF, (size_t)0);
 	}
 
-	if (gettimeofday(&before, NULL) == -1)
+	if (gettimeofday(&before_tv, NULL) == -1)
 		err(1, "gettimeofday failed");
 	switch (pid = fork()) {
 	case -1:			/* error */
@@ -125,41 +128,7 @@ main(int argc, char **argv)
 	if (!WIFEXITED(status))
 		warnx("command terminated abnormally");
 	exit_on_sig = WIFSIGNALED(status) ? WTERMSIG(status) : 0;
-	after.tv_sec -= before.tv_sec;
-	after.tv_usec -= before.tv_usec;
-	if (after.tv_usec < 0)
-		after.tv_sec--, after.tv_usec += 1000000;
-	if (pflag) {
-		/* POSIX wants output that must look like
-		"real %f\nuser %f\nsys %f\n" and requires
-		at least two digits after the radix. */
-		fprintf(out, "real %ld%c%02ld\n",
-			after.tv_sec, decimal_point,
-			after.tv_usec / 10000);
-		fprintf(out, "user %ld%c%02ld\n",
-			ru.ru_utime.tv_sec, decimal_point,
-			ru.ru_utime.tv_usec / 10000);
-		fprintf(out, "sys %ld%c%02ld\n",
-			ru.ru_stime.tv_sec, decimal_point,
-			ru.ru_stime.tv_usec / 10000);
-	} else if (hflag) {
-		humantime(out, after.tv_sec, after.tv_usec / 10000);
-		fprintf(out, " real\t");
-		humantime(out, ru.ru_utime.tv_sec, ru.ru_utime.tv_usec / 10000);
-		fprintf(out, " user\t");
-		humantime(out, ru.ru_stime.tv_sec, ru.ru_stime.tv_usec / 10000);
-		fprintf(out, " sys\n");
-	} else {
-		fprintf(out, "%9ld%c%02ld real ",
-			after.tv_sec, decimal_point,
-			after.tv_usec / 10000);
-		fprintf(out, "%9ld%c%02ld user ",
-			ru.ru_utime.tv_sec, decimal_point,
-			ru.ru_utime.tv_usec / 10000);
-		fprintf(out, "%9ld%c%02ld sys\n",
-			ru.ru_stime.tv_sec, decimal_point,
-			ru.ru_stime.tv_usec / 10000);
-	}
+	showtime(out, &before_tv, &after, &ru);
 	if (lflag) {
 		int hz;
 		u_long ticks;
@@ -248,4 +217,58 @@ humantime(FILE *out, long sec, long usec)
 	if (mins)
 		fprintf(out, "%ldm", mins);
 	fprintf(out, "%ld%c%02lds", sec, decimal_point, usec);
+}
+
+static void
+showtime(FILE *out, struct timeval *before, struct timeval *after,
+    struct rusage *ru)
+{
+
+	after->tv_sec -= before->tv_sec;
+	after->tv_usec -= before->tv_usec;
+	if (after->tv_usec < 0)
+		after->tv_sec--, after->tv_usec += 1000000;
+
+	if (pflag) {
+		/* POSIX wants output that must look like
+		"real %f\nuser %f\nsys %f\n" and requires
+		at least two digits after the radix. */
+		fprintf(out, "real %jd%c%02ld\n",
+			(intmax_t)after->tv_sec, decimal_point,
+			after->tv_usec/10000);
+		fprintf(out, "user %jd%c%02ld\n",
+			(intmax_t)ru->ru_utime.tv_sec, decimal_point,
+			ru->ru_utime.tv_usec/10000);
+		fprintf(out, "sys %jd%c%02ld\n",
+			(intmax_t)ru->ru_stime.tv_sec, decimal_point,
+			ru->ru_stime.tv_usec/10000);
+	} else if (hflag) {
+		humantime(out, after->tv_sec, after->tv_usec/10000);
+		fprintf(out, " real\t");
+		humantime(out, ru->ru_utime.tv_sec, ru->ru_utime.tv_usec/10000);
+		fprintf(out, " user\t");
+		humantime(out, ru->ru_stime.tv_sec, ru->ru_stime.tv_usec/10000);
+		fprintf(out, " sys\n");
+	} else {
+		fprintf(out, "%9jd%c%02ld real ",
+			(intmax_t)after->tv_sec, decimal_point,
+			after->tv_usec/10000);
+		fprintf(out, "%9jd%c%02ld user ",
+			(intmax_t)ru->ru_utime.tv_sec, decimal_point,
+			ru->ru_utime.tv_usec/10000);
+		fprintf(out, "%9jd%c%02ld sys\n",
+			(intmax_t)ru->ru_stime.tv_sec, decimal_point,
+			ru->ru_stime.tv_usec/10000);
+	}
+}
+
+static void
+siginfo(int sig __unused)
+{
+	struct timeval after;
+	struct rusage ru;
+
+	gettimeofday(&after, (struct timezone *)NULL);
+	getrusage(RUSAGE_CHILDREN, &ru);
+	showtime(stdout, &before_tv, &after, &ru);
 }
