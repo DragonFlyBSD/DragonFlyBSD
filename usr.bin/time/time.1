@@ -26,9 +26,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)time.1	8.1 (Berkeley) 6/6/93
-.\" $FreeBSD: src/usr.bin/time/time.1,v 1.13.2.5 2002/12/29 16:35:40 schweikh Exp $
+.\" $FreeBSD: head/usr.bin/time/time.1 314436 2017-02-28 23:42:47Z imp $
 .\"
-.Dd June 6, 1993
+.Dd July 16, 2017
 .Dt TIME 1
 .Os
 .Sh NAME
@@ -58,8 +58,8 @@ the time used to execute the
 .Ar utility
 process and the time consumed by system overhead.
 .Pp
-Available options:
-.Bl -tag -width Ds
+The following options are available:
+.Bl -tag -width indent
 .It Fl a
 If the
 .Fl o
@@ -69,7 +69,7 @@ Otherwise, this option has no effect.
 .It Fl h
 Print times in a human friendly format.
 Times are printed in minutes, hours,
-etc. as appropriate.
+etc.\& as appropriate.
 .It Fl l
 The contents of the
 .Em rusage
@@ -95,6 +95,23 @@ command which is similar or identical to this utility.
 Consult the
 .Xr builtin 1
 manual page.
+.Pp
+If
+.Nm
+receives a
+.Dv SIGINFO
+(see the status argument for
+.Xr stty 1 )
+signal, the current time the given command is running will be written to the
+standard output.
+.Sh ENVIRONMENT
+The
+.Ev PATH
+environment variable is used to locate the requested
+.Ar utility
+if the name contains no
+.Ql /
+characters.
 .Sh EXIT STATUS
 If
 .Ar utility
@@ -125,5 +142,5 @@ utility is expected to conform to ISO/IEC 9945-2:1993 (``POSIX'').
 .Sh HISTORY
 A
 .Nm
-command appeared in
+utility appeared in
 .At v3 .
