@@ -3182,7 +3182,7 @@ ifa_iflink_dispatch(netmsg_t nmsg)
 
 	crit_exit();
 
-	netisr_forwardmsg(&nmsg->base, cpu + 1);
+	netisr_forwardmsg_all(&nmsg->base, cpu + 1);
 }
 
 void
@@ -3220,7 +3220,7 @@ ifa_ifunlink_dispatch(netmsg_t nmsg)
 
 	crit_exit();
 
-	netisr_forwardmsg(&nmsg->base, cpu + 1);
+	netisr_forwardmsg_all(&nmsg->base, cpu + 1);
 }
 
 void
@@ -3242,7 +3242,7 @@ ifa_destroy_dispatch(netmsg_t nmsg)
 	struct netmsg_ifaddr *msg = (struct netmsg_ifaddr *)nmsg;
 
 	IFAFREE(msg->ifa);
-	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
+	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
 void

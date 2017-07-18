@@ -531,7 +531,7 @@ ipflow_ifaddr_handler(netmsg_t nmsg)
 			IPFLOW_FREE(ipf);
 		}
 	}
-	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
+	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
 static void

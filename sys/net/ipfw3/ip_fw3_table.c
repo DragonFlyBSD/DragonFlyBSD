@@ -107,7 +107,7 @@ table_create_dispatch(netmsg_t nmsg)
                 goto done;
         }
 done:
-	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
+	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
 /*
@@ -135,7 +135,7 @@ table_delete_dispatch(netmsg_t nmsg)
                 rnh->rnh_walktree(rnh, flush_table_mac_entry, rnh);
         }
 	table_ctx->type = 0;
-	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
+	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
 static void
@@ -193,7 +193,7 @@ table_append_dispatch(netmsg_t nmsg)
         }
 
 done:
-	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
+	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
 static void
@@ -230,7 +230,7 @@ table_remove_dispatch(netmsg_t nmsg)
 		kfree(ent, M_IPFW3_TABLE);
 	}
 done:
-	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
+	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
 int
@@ -275,7 +275,7 @@ table_flush_dispatch(netmsg_t nmsg)
 	table_ctx->count = 0;
 
 	rnh->rnh_walktree(rnh, flush_table_ip_entry, rnh);
-	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
+	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
 /*
@@ -293,7 +293,7 @@ table_rename_dispatch(netmsg_t nmsg)
 	table_ctx = ctx->table_ctx;
 	table_ctx += ioc_tbl->id;
 	strlcpy(table_ctx->name, ioc_tbl->name, IPFW_TABLE_NAME_LEN);
-	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
+	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
 /*
@@ -594,7 +594,7 @@ table_init_ctx_dispatch(netmsg_t nmsg)
 	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
 	ctx->table_ctx = kmalloc(sizeof(struct ipfw_table_context) * IPFW_TABLES_MAX,
 			M_IPFW3_TABLE, M_WAITOK | M_ZERO);
-	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
+	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
 /*

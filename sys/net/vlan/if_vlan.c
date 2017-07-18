@@ -643,7 +643,7 @@ vlan_link_dispatch(netmsg_t msg)
 	LIST_INSERT_HEAD(&trunk->vlan_list, entry, ifv_link);
 	crit_exit();
 
-	netisr_forwardmsg(&vmsg->base, cpu + 1);
+	netisr_forwardmsg_all(&vmsg->base, cpu + 1);
 }
 
 static void
@@ -801,7 +801,7 @@ vlan_unlink_dispatch(netmsg_t msg)
 	LIST_REMOVE(entry, ifv_link);
 	crit_exit();
 
-	netisr_forwardmsg(&vmsg->base, cpu + 1);
+	netisr_forwardmsg_all(&vmsg->base, cpu + 1);
 }
 
 static void

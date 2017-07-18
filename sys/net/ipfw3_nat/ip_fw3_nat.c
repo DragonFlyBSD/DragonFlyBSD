@@ -603,7 +603,7 @@ nat_add_dispatch(netmsg_t nat_add_msg)
 
 	nat_ctx = ipfw_nat_ctx[mycpuid];
 	HOOK_NAT(&(nat_ctx->nat), ptr);
-	netisr_forwardmsg(&msg->base, mycpuid + 1);
+	netisr_forwardmsg_all(&msg->base, mycpuid + 1);
 }
 
 int
@@ -769,7 +769,7 @@ nat_init_ctx_dispatch(netmsg_t msg)
 	tmp = kmalloc(sizeof(struct ipfw_nat_context),
 				M_IPFW_NAT, M_WAITOK | M_ZERO);
 	ipfw_nat_ctx[mycpuid] = tmp;
-	netisr_forwardmsg(&msg->base, mycpuid + 1);
+	netisr_forwardmsg_all(&msg->base, mycpuid + 1);
 }
 
 static void
@@ -784,7 +784,7 @@ ipfw3_nat_cleanup_func_dispatch(netmsg_t nmsg)
 			(*libalias_housekeeping_prt)(ptr->lib);
 		}
 	}
-	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
+	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
 static void

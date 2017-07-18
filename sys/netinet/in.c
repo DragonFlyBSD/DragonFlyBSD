@@ -269,7 +269,7 @@ in_ialink_dispatch(netmsg_t msg)
 
 	crit_exit();
 
-	netisr_forwardmsg(&msg->base, cpu + 1);
+	netisr_forwardmsg_all(&msg->base, cpu + 1);
 }
 
 static void
@@ -293,7 +293,7 @@ in_iaunlink_dispatch(netmsg_t msg)
 
 	crit_exit();
 
-	netisr_forwardmsg(&msg->base, cpu + 1);
+	netisr_forwardmsg_all(&msg->base, cpu + 1);
 }
 
 static void
@@ -318,7 +318,7 @@ in_iahashins_dispatch(netmsg_t msg)
 
 	crit_exit();
 
-	netisr_forwardmsg(&msg->base, cpu + 1);
+	netisr_forwardmsg_all(&msg->base, cpu + 1);
 }
 
 static void
@@ -342,7 +342,7 @@ in_iahashrem_dispatch(netmsg_t msg)
 
 	crit_exit();
 
-	netisr_forwardmsg(&msg->base, cpu + 1);
+	netisr_forwardmsg_all(&msg->base, cpu + 1);
 }
 
 static void

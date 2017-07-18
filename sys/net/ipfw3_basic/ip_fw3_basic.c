@@ -173,7 +173,7 @@ adjust_hash_size_dispatch(netmsg_t nmsg)
 				sizeof(struct ipfw_state_context),
 				M_IPFW3_BASIC, M_WAITOK | M_ZERO);
 	ctx->state_hash_size = state_hash_size;
-	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
+	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
 
@@ -1045,7 +1045,7 @@ ipfw_cleanup_expired_state(netmsg_t nmsg)
 			}
 		}
 	}
-	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
+	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
 static void

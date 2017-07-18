@@ -167,8 +167,11 @@ netisr_replymsg(struct netmsg_base *nm, int error)
 	lwkt_replymsg(&nm->lmsg, error);
 }
 
+/*
+ * To all netisrs, instead of netisr_ncpus.
+ */
 static __inline void
-netisr_forwardmsg(struct netmsg_base *nm, int next_cpu)
+netisr_forwardmsg_all(struct netmsg_base *nm, int next_cpu)
 {
 
 	KKASSERT(next_cpu > mycpuid && next_cpu <= ncpus);
