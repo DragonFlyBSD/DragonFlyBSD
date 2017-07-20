@@ -33,6 +33,7 @@
 
 #include <sys/queue.h>
 #include <sys/time.h>
+#include <sys/types.h>
 
 #define DEVSTAT_NAME_LEN  16
 

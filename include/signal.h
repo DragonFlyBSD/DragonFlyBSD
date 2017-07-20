@@ -35,9 +35,9 @@
 #define	_SIGNAL_H_
 
 #include <sys/cdefs.h>
-#include <machine/stdint.h>
 #include <sys/signal.h>
 #include <sys/time.h>
+#include <sys/types.h>
 
 #if __BSD_VISIBLE
 extern const char * const sys_signame[NSIG];
