@@ -134,6 +134,10 @@ netisr_hashport(uint16_t hash)
 #define ASSERT_CANDOMSG_NETISR0(td) \
 	KASSERT((td)->td_type != TD_TYPE_NETISR || IS_NETISR((td), 0), \
 	    ("can't domsg to netisr0 from thread %p", (td)))
+#define ASSERT_NETISR_NCPUS(td, n) \
+	KASSERT((n) < netisr_ncpus && IS_NETISR((td), (n)), \
+	    ("thread %p cpu%d is not within netisr_ncpus %d", \
+	     (td), (n), netisr_ncpus))
 
 static __inline int
 netisr_domsg_port(struct netmsg_base *nm, lwkt_port_t port)
@@ -176,6 +180,20 @@ netisr_forwardmsg_all(struct netmsg_base *nm, int next_cpu)
 
 	KKASSERT(next_cpu > mycpuid && next_cpu <= ncpus);
 	if (next_cpu < ncpus)
+		lwkt_forwardmsg(netisr_cpuport(next_cpu), &nm->lmsg);
+	else
+		netisr_replymsg(nm, 0);
+}
+
+/*
+ * To netisr_ncpus.
+ */
+static __inline void
+netisr_forwardmsg(struct netmsg_base *nm, int next_cpu)
+{
+
+	KKASSERT(next_cpu > mycpuid && next_cpu <= netisr_ncpus);
+	if (next_cpu < netisr_ncpus)
 		lwkt_forwardmsg(netisr_cpuport(next_cpu), &nm->lmsg);
 	else
 		netisr_replymsg(nm, 0);
