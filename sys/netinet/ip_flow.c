@@ -93,19 +93,24 @@ struct ipflow {
 	u_long ipf_dropped;		/* ENOBUFS returned by if_output */
 	u_long ipf_errors;		/* other errors returned by if_output */
 	u_long ipf_last_uses;		/* number of uses in last period */
-};
+} __cachealign;
 LIST_HEAD(ipflowhead, ipflow);
 
 #define IPFLOW_FLAG_ONLIST	0x1
 
-#define ipflow_inuse		ipflow_inuse_pcpu[mycpuid]
-#define ipflowtable		ipflowtable_pcpu[mycpuid]
-#define ipflowlist		ipflowlist_pcpu[mycpuid]
+struct ipflow_pcpu {
+	struct ipflowhead	ipf_table[IPFLOW_HASHSIZE];
+	struct ipflowhead	ipf_list;
+	int			ipf_inuse;
+	struct netmsg_base	ipf_timo_netmsg;
+} __cachealign;
 
-static struct ipflowhead	ipflowtable_pcpu[MAXCPU][IPFLOW_HASHSIZE];
-static struct ipflowhead	ipflowlist_pcpu[MAXCPU];
-static int			ipflow_inuse_pcpu[MAXCPU];
-static struct netmsg_base	ipflow_timo_netmsgs[MAXCPU];
+static struct ipflow_pcpu	*ipflow_pcpu_data;
+
+#define ipflow_inuse		ipflow_pcpu_data[mycpuid].ipf_inuse
+#define ipflowtable		ipflow_pcpu_data[mycpuid].ipf_table
+#define ipflowlist		ipflow_pcpu_data[mycpuid].ipf_list
+
 static int			ipflow_active = 0;
 
 #define IPFLOW_REFCNT_INIT	1
@@ -422,7 +427,7 @@ ipflow_timo_dispatch(netmsg_t nmsg)
 static void
 ipflow_timo_ipi(void *arg __unused)
 {
-	struct lwkt_msg *msg = &ipflow_timo_netmsgs[mycpuid].lmsg;
+	struct lwkt_msg *msg = &ipflow_pcpu_data[mycpuid].ipf_timo_netmsg.lmsg;
 
 	crit_enter();
 	if (msg->ms_flags & MSGF_DONE)
@@ -438,7 +443,7 @@ ipflow_slowtimo(void)
 
 	CPUMASK_ASSZERO(mask);
 	for (i = 0; i < netisr_ncpus; ++i) {
-		if (ipflow_inuse_pcpu[i])
+		if (ipflow_pcpu_data[i].ipf_inuse)
 			CPUMASK_ORBIT(mask, i);
 	}
 	CPUMASK_ANDMASK(mask, smp_active_mask);
@@ -578,16 +583,21 @@ ipflow_init(void)
 	char oid_name[32];
 	int i;
 
+	ipflow_pcpu_data = kmalloc(sizeof(struct ipflow_pcpu) * netisr_ncpus,
+	    M_IPFLOW, M_WAITOK | M_ZERO);
+
 	for (i = 0; i < netisr_ncpus; ++i) {
-		netmsg_init(&ipflow_timo_netmsgs[i], NULL, &netisr_adone_rport,
+		struct ipflow_pcpu *pcpu = &ipflow_pcpu_data[i];
+
+		netmsg_init(&pcpu->ipf_timo_netmsg, NULL, &netisr_adone_rport,
 			    MSGF_PRIORITY, ipflow_timo_dispatch);
 
 		ksnprintf(oid_name, sizeof(oid_name), "inuse%d", i);
 
 		SYSCTL_ADD_INT(NULL,
-		SYSCTL_STATIC_CHILDREN(_net_inet_ip_ipflow),
-		OID_AUTO, oid_name, CTLFLAG_RD, &ipflow_inuse_pcpu[i], 0,
-		"# of ip flow being used");
+		    SYSCTL_STATIC_CHILDREN(_net_inet_ip_ipflow), OID_AUTO,
+		    oid_name, CTLFLAG_RD, &pcpu->ipf_inuse, 0,
+		    "# of ip flow being used");
 	}
 	EVENTHANDLER_REGISTER(ifaddr_event, ipflow_ifaddr, NULL,
 			      EVENTHANDLER_PRI_ANY);
