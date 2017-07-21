@@ -31,7 +31,6 @@
  *
  *	@(#)glob.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/glob.h,v 1.10 2006/05/22 05:57:39 ache Exp $
- * $DragonFly: src/include/glob.h,v 1.4 2005/12/07 02:28:15 corecode Exp $
  */
 
 #ifndef _GLOB_H_
@@ -95,7 +94,7 @@ typedef struct {
 #define	GLOB_PERIOD	0x4000	/* Names with leading dots match as well */
 
 /* source compatibility, these are the old names */
-#define GLOB_MAXPATH	GLOB_LIMIT
+#define	GLOB_MAXPATH	GLOB_LIMIT
 #define	GLOB_ABEND	GLOB_ABORTED
 #endif /* __BSD_VISIBLE */
 
