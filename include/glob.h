@@ -37,7 +37,7 @@
 #define	_GLOB_H_
 
 #include <sys/cdefs.h>
-#include <sys/types.h>
+#include <machine/stdint.h>
 
 #ifndef	_SIZE_T_DECLARED
 typedef	__size_t	size_t;
@@ -80,7 +80,7 @@ typedef struct {
 #define	GLOB_NOSPACE	(-1)	/* Malloc call failed. */
 #define	GLOB_ABORTED	(-2)	/* Unignored error. */
 #define	GLOB_NOMATCH	(-3)	/* No match and GLOB_NOCHECK was not set. */
-#define	GLOB_NOSYS	(-4)	/* Obsolete: source comptability only. */
+#define	GLOB_NOSYS	(-4)	/* Obsolete: source compatibility only. */
 #endif /* __POSIX_VISIBLE >= 199209 */
 
 #if __BSD_VISIBLE
@@ -99,7 +99,8 @@ typedef struct {
 #endif /* __BSD_VISIBLE */
 
 __BEGIN_DECLS
-int	glob(const char *, int, int (*)(const char *, int), glob_t *);
+int	glob(const char * __restrict, int, int (*)(const char *, int),
+	    glob_t * __restrict);
 void	globfree(glob_t *);
 __END_DECLS
 

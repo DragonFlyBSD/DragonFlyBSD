@@ -33,8 +33,10 @@
 #ifndef _SYS_TIME_H_
 #define _SYS_TIME_H_
 
-#ifndef _SYS_TYPES_H_
+#ifdef _KERNEL
 #include <sys/types.h>
+#else
+#include <machine/stdint.h>
 #endif
 
 #include <sys/_timespec.h>
