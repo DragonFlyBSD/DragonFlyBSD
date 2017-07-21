@@ -190,6 +190,8 @@ ipflow_fastforward(struct mbuf *m)
 	struct ifnet *ifp;
 	int error, iplen;
 
+	ASSERT_NETISR_NCPUS(curthread, mycpuid);
+
 	/*
 	 * Are we forwarding packets?
 	 */
@@ -435,7 +437,7 @@ ipflow_slowtimo(void)
 	int i;
 
 	CPUMASK_ASSZERO(mask);
-	for (i = 0; i < ncpus; ++i) {
+	for (i = 0; i < netisr_ncpus; ++i) {
 		if (ipflow_inuse_pcpu[i])
 			CPUMASK_ORBIT(mask, i);
 	}
@@ -450,6 +452,8 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 	const struct ip *const ip = mtod(m, struct ip *);
 	struct ipflow *ipf;
 	unsigned hash;
+
+	ASSERT_NETISR_NCPUS(curthread, mycpuid);
 
 	/*
 	 * Don't create cache entries for ICMP messages.
@@ -512,6 +516,14 @@ ipflow_flush_oncpu(void)
 {
 	struct ipflow *ipf;
 
+	/*
+	 * FIXME: netisr_ncpus
+	 * Change this into assert, after routes are duplicated
+	 * to only netisr_ncpus.
+	 */
+	if (mycpuid >= netisr_ncpus)
+		return;
+
 	while ((ipf = LIST_FIRST(&ipflowlist)) != NULL) {
 		IPFLOW_REMOVE(ipf);
 		IPFLOW_FREE(ipf);
@@ -531,7 +543,7 @@ ipflow_ifaddr_handler(netmsg_t nmsg)
 			IPFLOW_FREE(ipf);
 		}
 	}
-	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
 static void
@@ -566,7 +578,7 @@ ipflow_init(void)
 	char oid_name[32];
 	int i;
 
-	for (i = 0; i < ncpus; ++i) {
+	for (i = 0; i < netisr_ncpus; ++i) {
 		netmsg_init(&ipflow_timo_netmsgs[i], NULL, &netisr_adone_rport,
 			    MSGF_PRIORITY, ipflow_timo_dispatch);
 
