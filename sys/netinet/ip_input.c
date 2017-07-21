@@ -1424,7 +1424,6 @@ void
 ip_slowtimo(void)
 {
 	ipfrag_slowtimo();
-	ipflow_slowtimo();
 }
 
 /*

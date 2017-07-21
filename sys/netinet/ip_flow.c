@@ -60,7 +60,10 @@
 #include <netinet/ip_var.h>
 #include <netinet/ip_flow.h>
 
-#define	IPFLOW_TIMER		(5 * PR_SLOWHZ)
+#define IPFLOW_TIMEOUT_FREQ	2	/* 2/second */
+#define IPFLOW_TIMEOUT		(hz / IPFLOW_TIMEOUT_FREQ)
+
+#define	IPFLOW_TIMER		(5 * IPFLOW_TIMEOUT_FREQ)
 #define IPFLOW_HASHBITS		6	/* should not be a multiple of 8 */
 #define	IPFLOW_HASHSIZE		(1 << IPFLOW_HASHBITS)
 #define	IPFLOW_MAX		256
@@ -102,7 +105,8 @@ struct ipflow_pcpu {
 	struct ipflowhead	ipf_table[IPFLOW_HASHSIZE];
 	struct ipflowhead	ipf_list;
 	int			ipf_inuse;
-	struct netmsg_base	ipf_timo_netmsg;
+	struct callout		ipf_timeo;
+	struct netmsg_base	ipf_timeo_netmsg;
 } __cachealign;
 
 static struct ipflow_pcpu	*ipflow_pcpu_data;
@@ -157,6 +161,7 @@ SYSCTL_INT(_net_inet_ip, IPCTL_FASTFORWARDING, fastforwarding, CTLFLAG_RW,
 static MALLOC_DEFINE(M_IPFLOW, "ip_flow", "IP flow");
 
 static void	ipflow_free(struct ipflow *);
+static void	ipflow_timeo(void *);
 
 static unsigned
 ipflow_hash(struct in_addr dst, struct in_addr src, unsigned tos)
@@ -401,9 +406,13 @@ done:
 }
 
 static void
-ipflow_timo_dispatch(netmsg_t nmsg)
+ipflow_timeo_dispatch(netmsg_t nmsg)
 {
 	struct ipflow *ipf, *next_ipf;
+	struct ipflow_pcpu *pcpu;
+	int cpuid = mycpuid;
+
+	ASSERT_NETISR_NCPUS(curthread, cpuid);
 
 	crit_enter();
 	lwkt_replymsg(&nmsg->lmsg, 0);	/* reply ASAP */
@@ -422,33 +431,21 @@ ipflow_timo_dispatch(netmsg_t nmsg)
 			ipf->ipf_uses = 0;
 		}
 	}
+
+	pcpu = &ipflow_pcpu_data[cpuid];
+	callout_reset(&pcpu->ipf_timeo, IPFLOW_TIMEOUT, ipflow_timeo, pcpu);
 }
 
 static void
-ipflow_timo_ipi(void *arg __unused)
+ipflow_timeo(void *xpcpu)
 {
-	struct lwkt_msg *msg = &ipflow_pcpu_data[mycpuid].ipf_timo_netmsg.lmsg;
+	struct ipflow_pcpu *pcpu = xpcpu;
+	struct lwkt_msg *msg = &pcpu->ipf_timeo_netmsg.lmsg;
 
 	crit_enter();
 	if (msg->ms_flags & MSGF_DONE)
 		lwkt_sendmsg_oncpu(netisr_cpuport(mycpuid), msg);
 	crit_exit();
-}
-
-void
-ipflow_slowtimo(void)
-{
-	cpumask_t mask;
-	int i;
-
-	CPUMASK_ASSZERO(mask);
-	for (i = 0; i < netisr_ncpus; ++i) {
-		if (ipflow_pcpu_data[i].ipf_inuse)
-			CPUMASK_ORBIT(mask, i);
-	}
-	CPUMASK_ANDMASK(mask, smp_active_mask);
-	if (CPUMASK_TESTNZERO(mask))
-		lwkt_send_ipiq_mask(mask, ipflow_timo_ipi, NULL);
 }
 
 void
@@ -589,8 +586,9 @@ ipflow_init(void)
 	for (i = 0; i < netisr_ncpus; ++i) {
 		struct ipflow_pcpu *pcpu = &ipflow_pcpu_data[i];
 
-		netmsg_init(&pcpu->ipf_timo_netmsg, NULL, &netisr_adone_rport,
-			    MSGF_PRIORITY, ipflow_timo_dispatch);
+		netmsg_init(&pcpu->ipf_timeo_netmsg, NULL, &netisr_adone_rport,
+		    MSGF_PRIORITY, ipflow_timeo_dispatch);
+		callout_init_mp(&pcpu->ipf_timeo);
 
 		ksnprintf(oid_name, sizeof(oid_name), "inuse%d", i);
 
@@ -598,6 +596,9 @@ ipflow_init(void)
 		    SYSCTL_STATIC_CHILDREN(_net_inet_ip_ipflow), OID_AUTO,
 		    oid_name, CTLFLAG_RD, &pcpu->ipf_inuse, 0,
 		    "# of ip flow being used");
+
+		callout_reset_bycpu(&pcpu->ipf_timeo, IPFLOW_TIMEOUT,
+		    ipflow_timeo, pcpu, i);
 	}
 	EVENTHANDLER_REGISTER(ifaddr_event, ipflow_ifaddr, NULL,
 			      EVENTHANDLER_PRI_ANY);
