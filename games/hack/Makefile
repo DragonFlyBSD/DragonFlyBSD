@@ -29,6 +29,8 @@ FILESDIR=	/var/games/hackdir
 CLEANFILES=	hack.onames.h makedefs.nx makedefs.no
 NO_STRICT_ALIASING=
 
+VARGAMES=	yes
+
 build-tools: makedefs.nx
 
 hack.onames.h: makedefs.nx def.objects.h

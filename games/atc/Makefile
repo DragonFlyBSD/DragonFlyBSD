@@ -16,6 +16,14 @@ FILES=		Game_List Killer crossover default easy game_2
 FILESDIR=	${SHAREDIR}/games/atc
 .endif
 
+VARGAMES=	yes
+
+beforeinstall:
+.if !exists(${DESTDIR}/var/games/atc_score)
+	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 664 /dev/null \
+	    ${DESTDIR}/var/games/atc_score
+.endif
+
 .PATH: ${.CURDIR}/games
 
 .include <bsd.prog.mk>

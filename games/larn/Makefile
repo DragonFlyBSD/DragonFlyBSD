@@ -59,6 +59,8 @@ FILES=		larnmaze larnopts larn.help
 FILESDIR=	${SHAREDIR}/games/larn
 .endif
 
+VARGAMES=	yes
+
 .PATH: ${.CURDIR}/datfiles
 
 beforeinstall:

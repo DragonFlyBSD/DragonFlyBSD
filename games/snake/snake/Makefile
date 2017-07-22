@@ -11,6 +11,8 @@ LDADD=	-lm -lprivate_ncurses
 CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
+VARGAMES=	yes
+
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/snakerawscores)
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 664 /dev/null \

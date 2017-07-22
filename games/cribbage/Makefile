@@ -15,6 +15,8 @@ FILESNAME_cribbage.n=	cribbage.instr
 .endif
 MAN=	cribbage.6
 
+VARGAMES=	yes
+
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/criblog)
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 664 /dev/null \

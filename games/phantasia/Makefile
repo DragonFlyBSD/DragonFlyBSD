@@ -11,6 +11,8 @@ CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 NXLDLIBS=	-lm
+
+VARGAMES=	yes
 DATAFILES=	characs gold lastdead mess monsters motd scoreboard void
 CLEANFILES=	${DATAFILES} cross-phantglobs.no map setup.nx setup.no \
 		stamp.setuprun
