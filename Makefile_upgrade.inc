@@ -3184,6 +3184,7 @@ TO_REMOVE+=/usr/share/examples/portal
 TO_REMOVE+=/usr/share/man/man8/mount_portal.8.gz
 TO_REMOVE+=/boot/kernel/ncv.ko
 TO_REMOVE+=/boot/kernel/nsp.ko
+TO_REMOVE+=/boot/kernel/scsi_low.ko
 TO_REMOVE+=/boot/kernel/stg.ko
 TO_REMOVE+=/usr/include/bus/cam/scsi/scsi_dvcfg.h
 TO_REMOVE+=/usr/include/bus/cam/scsi/scsi_low.h
