@@ -3283,6 +3283,13 @@ TO_REMOVE+=/usr/share/calendar/de_DE.ISO_8859-1
 TO_REMOVE+=/usr/share/calendar/de_DE.ISO_8859-15
 TO_REMOVE+=/usr/share/calendar/hr_HR.ISO_8859-2
 TO_REMOVE+=/usr/share/man/man7/mailaddr.7.gz
+TO_REMOVE+=/etc/dm.conf
+TO_REMOVE+=/etc/nogames
+TO_REMOVE+=/usr/games/dm
+TO_REMOVE+=/usr/games/hide
+TO_REMOVE+=/usr/share/examples/etc/dm.conf
+TO_REMOVE+=/usr/share/man/man5/dm.conf.5.gz
+TO_REMOVE+=/usr/share/man/man8/dm.8.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

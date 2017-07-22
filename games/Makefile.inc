@@ -10,11 +10,3 @@ WARNS?=		6
 BINGRP=		games
 BINMODE=	550
 .endif
-
-.if defined(HIDEGAME)
-ORIGBINDIR:=	${BINDIR}
-BINDIR:=	${BINDIR}/hide
-ORIGBINGRP:=	${BINGRP}
-BINGRP=		games
-BINMODE=	550
-.endif

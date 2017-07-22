@@ -8,8 +8,6 @@
     bin
     ..
     games
-        hide            gname=games mode=0550
-        ..
     ..
     include
     ..

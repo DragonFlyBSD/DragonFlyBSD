@@ -116,10 +116,6 @@ _proginstall:
 	    ${_INSTALLFLAGS} ${PROG} ${DESTDIR}${BINDIR}
 .endif
 .endif
-.if defined(HIDEGAME)
-	(cd ${DESTDIR}${ORIGBINDIR}; ${LN} -fs dm ${PROG}; \
-	    chown -h ${BINOWN}:${ORIGBINGRP} ${PROG})
-.endif
 .endif # !target(realinstall) && !defined(INTERNALPROG)
 
 .if defined(SCRIPTS) && !empty(SCRIPTS)

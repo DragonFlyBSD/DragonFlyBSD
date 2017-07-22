@@ -21,7 +21,6 @@ devd.conf	- configuration file for devd(8)
 devtab		- label conversion file for device paths
 dhclient.conf	- DHCP client configuration file
 disktab		- disk description file
-dm.conf		- configuration file for games (see dm(6))
 dntpd.conf	- configuration file for dntpd(8)
 fbtab		- configuration file for login(1)
 ftpusers	- user restriction file for ftpd(8)

@@ -23,7 +23,7 @@ BINUPDATE+=${.CURDIR}/../usr.bin/mail/misc/mail.rc \
 #
 BIN1=	auth.conf auto_master \
 	crontab csh.cshrc csh.login csh.logout \
-	devtab dhclient.conf dm.conf dntpd.conf \
+	devtab dhclient.conf dntpd.conf \
 	ftpusers group \
 	hosts hosts.allow hosts.equiv hosts.lpd \
 	inetd.conf login.access login.conf \
