@@ -97,7 +97,7 @@ gethdate(const char *name)
 /* old version - for people short of space */
 	char *np;
 
-	name = "/usr/games/hide/hack";
+	name = "/usr/games/hack";
 	if (stat(name, &hbuf))
 		error("Cannot get status of %s.",
 		      (np = strrchr(name, '/')) ? np + 1 : name);

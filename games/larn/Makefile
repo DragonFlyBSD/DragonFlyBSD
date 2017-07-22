@@ -58,7 +58,6 @@ LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 FILES=		larnmaze larnopts larn.help
 FILESDIR=	${SHAREDIR}/games/larn
 .endif
-HIDEGAME=	hidegame
 
 .PATH: ${.CURDIR}/datfiles
 

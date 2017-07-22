@@ -12,7 +12,6 @@ LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 NXLDLIBS=	-lm
 DATAFILES=	characs gold lastdead mess monsters motd scoreboard void
-HIDEGAME=	hidegame
 CLEANFILES=	${DATAFILES} cross-phantglobs.no map setup.nx setup.no \
 		stamp.setuprun
 

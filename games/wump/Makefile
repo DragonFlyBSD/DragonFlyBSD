@@ -6,6 +6,5 @@ PROG=	wump
 FILES=	wump.info
 .endif
 MAN=	wump.6
-HIDEGAME=hidegame
 
 .include <bsd.prog.mk>

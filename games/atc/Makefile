@@ -15,7 +15,6 @@ LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 FILES=		Game_List Killer crossover default easy game_2
 FILESDIR=	${SHAREDIR}/games/atc
 .endif
-HIDEGAME=	hidegame
 
 .PATH: ${.CURDIR}/games
 

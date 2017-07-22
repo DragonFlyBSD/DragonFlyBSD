@@ -6,6 +6,5 @@ PROG=	fish
 FILES=	fish.instr
 .endif
 MAN=	fish.6
-HIDEGAME=hidegame
 
 .include <bsd.prog.mk>

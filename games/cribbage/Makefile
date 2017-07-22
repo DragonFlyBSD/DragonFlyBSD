@@ -14,7 +14,6 @@ FILES=	cribbage.n
 FILESNAME_cribbage.n=	cribbage.instr
 .endif
 MAN=	cribbage.6
-HIDEGAME=hidegame
 
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/criblog)

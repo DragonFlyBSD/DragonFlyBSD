@@ -26,7 +26,6 @@ FILES=		rumors help hh data
 FILESMODE_rumors=	440
 FILESGRP=	${BINGRP}
 FILESDIR=	/var/games/hackdir
-HIDEGAME=	hidegame
 CLEANFILES=	hack.onames.h makedefs.nx makedefs.no
 NO_STRICT_ALIASING=
 

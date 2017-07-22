@@ -11,7 +11,6 @@ FILES=	africa america areas arith asia babies bard chinese collectives \
 	sexes sov spell state trek ucc
 FILESDIR=	${SHAREDIR}/games/quiz.db
 .endif
-HIDEGAME=hidegame
 
 .PATH: ${.CURDIR}/datfiles
 

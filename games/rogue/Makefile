@@ -12,7 +12,6 @@ LDADD=	-lprivate_ncurses
 CFLAGS+=	-DUNIX
 CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
-HIDEGAME=	hidegame
 
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/rogue.scores)

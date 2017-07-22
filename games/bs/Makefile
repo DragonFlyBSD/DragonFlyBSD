@@ -7,6 +7,5 @@ LDADD=	-lprivate_ncurses
 
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
-HIDEGAME=	hidegame
 
 .include <bsd.prog.mk>
