@@ -91,16 +91,16 @@ to create any PFSs other than "LOCAL".
 Generally speaking this command is not used to create clusters.  It is used
 to format volumes which are then made available for additional clustering
 commands.
-Once formatted the device@LOCAL volume can be mounted in order to make the
-block device available to the cluster.
-You can then use
+Once formatted the device@LOCAL volume can be mounted in order to make it
+and all other PFSs created on the volume available to the cluster.
+.Pp
+You can use
 .Xr hammer2 8
 directives to construct your cluster, including the creation of additional
 PFSs within various volumes.
 If you are managing several machines, or a large number of machines,
 .Fl L Ar none
-is typically specified and each machine's ROOT is individually named,
-for example, "FUBAR-ROOT".
+is typically specified to reduce clutter.
 .Pp
 .Nm HAMMER2
 file systems are sector-size agnostic, however the
@@ -184,12 +184,18 @@ you may specify the version with this option.
 .It Fl L Ar label
 By default
 .Nm
-creates three local master PFSs on the new volume: "LOCAL", "BOOT", and "ROOT".
-If you specify one or more label options
+always creates a local master PFSs on the new volume called "LOCAL",
+and will conditionally also create "BOOT", "ROOT", or "DATA" depending
+on the partition ('b' creates "BOOT", 'd' creates "ROOT", and any other
+partition creates "DATA").
+.Pp
+If you specify one or more label options to create your own named local
+PFSs,
 .Nm
-will not automatically create "BOOT" or "ROOT".
-"LOCAL" is always created and should never be specified.
-If you don't want any extra PFSs to be created, use
+will not create any conditional PFSs.
+However, "LOCAL" is still always created and should not be
+specified with this option.
+If you don't want any PFSs to be created (other than "LOCAL"), use
 .Fl L Ar none .
 .Pp
 Typically simple HAMMER2 filesystems just use the defaults and

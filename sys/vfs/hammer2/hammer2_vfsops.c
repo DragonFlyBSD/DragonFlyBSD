@@ -1839,15 +1839,8 @@ hammer2_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 		else
 			bzero(&bref, sizeof(bref));
 
-		mp->mnt_stat.f_files = bref.inode_count;
+		mp->mnt_stat.f_files = bref.embed.stats.inode_count;
 		mp->mnt_stat.f_ffree = 0;
-#if 0
-		mp->mnt_stat.f_blocks = (bref.data_count +
-					 hmp->voldata.allocator_free) /
-					mp->mnt_vstat.f_bsize;
-		mp->mnt_stat.f_bfree =  hmp->voldata.allocator_free /
-					mp->mnt_vstat.f_bsize;
-#endif
 		mp->mnt_stat.f_blocks = hmp->voldata.allocator_size /
 					mp->mnt_vstat.f_bsize;
 		mp->mnt_stat.f_bfree = hmp->voldata.allocator_free /
@@ -1890,15 +1883,8 @@ hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 			bzero(&bref, sizeof(bref));
 
 		mp->mnt_vstat.f_bsize = HAMMER2_PBUFSIZE;
-		mp->mnt_vstat.f_files = bref.inode_count;
+		mp->mnt_vstat.f_files = bref.embed.stats.inode_count;
 		mp->mnt_vstat.f_ffree = 0;
-#if 0
-		mp->mnt_vstat.f_blocks = (bref.data_count +
-					 hmp->voldata.allocator_free) /
-					mp->mnt_vstat.f_bsize;
-		mp->mnt_vstat.f_bfree = hmp->voldata.allocator_free /
-					mp->mnt_vstat.f_bsize;
-#endif
 		mp->mnt_vstat.f_blocks = hmp->voldata.allocator_size /
 					mp->mnt_vstat.f_bsize;
 		mp->mnt_vstat.f_bfree = hmp->voldata.allocator_free /

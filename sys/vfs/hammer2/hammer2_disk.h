@@ -525,6 +525,22 @@ typedef struct dmsg_lnk_hammer2_volconf dmsg_lnk_hammer2_volconf_t;
 
 #define H2_LNK_VOLCONF(msg)	((dmsg_lnk_hammer2_volconf_t *)(msg)->any.buf)
 
+#if 0
+/*
+ * HAMMER2 directory entry header (embedded in blockref)  exactly 16 bytes
+ */
+struct hammer2_dirent_head {
+	hammer2_tid_t		inum;		/* inode number */
+	uint16_t		namlen;		/* name length */
+	uint8_t			type;		/* OBJTYPE_*	*/
+	uint8_t			unused0B;
+	uint8_t			unused0C[4];
+} __packed;
+
+typedef struct hammer2_dirent_head hammer2_dirent_head_t;
+
+#endif
+
 /*
  * The media block reference structure.  This forms the core of the HAMMER2
  * media topology recursion.  This 128-byte data structure is embedded in the
@@ -589,9 +605,33 @@ struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 	hammer2_tid_t	mirror_tid;	/* media flush topology & freemap */
 	hammer2_tid_t	modify_tid;	/* clc modify (not propagated) */
 	hammer2_off_t	data_off;	/* low 6 bits is phys size (radix)*/
-	hammer2_key_t	data_count;	/* statistics aggregation */
-	hammer2_key_t	inode_count;	/* statistics aggregation */
 	hammer2_tid_t	update_tid;	/* clc modify (propagated upward) */
+	union {
+		char	buf[16];
+#if 0
+		/*
+		 * Directory entry header (BREF_TYPE_DIRENT)
+		 *
+		 * NOTE: check.buf contains filename if <= 64 bytes.  Longer
+		 *	 filenames are stored in a data reference of size
+		 *	 HAMMER2_ALLOC_MIN (at least 256, typically 1024).
+		 *
+		 * NOTE: inode structure may contain a copy of a recently
+		 *	 associated filename, for recovery purposes.
+		 *
+		 * NOTE: Superroot entries are INODEs, not DIRENTs.  Code
+		 *	 allows both cases.
+		 */
+		hammer2_dirent_head_t dirent;
+#endif
+		/*
+		 * Statistics aggregation (BREF_TYPE_INODE, BREF_TYPE_INDIRECT)
+		 */
+		struct {
+			hammer2_key_t	data_count;
+			hammer2_key_t	inode_count;
+		} stats;
+	} embed;
 	union {				/* check info */
 		char	buf[64];
 		struct {

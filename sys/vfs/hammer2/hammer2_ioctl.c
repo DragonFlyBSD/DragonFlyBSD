@@ -830,10 +830,16 @@ hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 	ino->inode_count = 0;
 	for (i = 0; i < ip->cluster.nchains; ++i) {
 		if ((chain = ip->cluster.array[i].chain) != NULL) {
-			if (ino->data_count < chain->bref.data_count)
-				ino->data_count = chain->bref.data_count;
-			if (ino->inode_count < chain->bref.inode_count)
-				ino->inode_count = chain->bref.inode_count;
+			if (ino->data_count <
+			    chain->bref.embed.stats.data_count) {
+				ino->data_count =
+					chain->bref.embed.stats.data_count;
+			}
+			if (ino->inode_count <
+			    chain->bref.embed.stats.inode_count) {
+				ino->inode_count =
+					chain->bref.embed.stats.inode_count;
+			}
 		}
 	}
 	bzero(&ino->ip_data, sizeof(ino->ip_data));

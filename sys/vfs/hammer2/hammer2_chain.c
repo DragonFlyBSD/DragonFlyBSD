@@ -4527,6 +4527,7 @@ hammer2_base_delete(hammer2_chain_t *parent,
 		    int *cache_indexp, hammer2_chain_t *chain)
 {
 	hammer2_blockref_t *elm = &chain->bref;
+	hammer2_blockref_t *scan;
 	hammer2_key_t key_next;
 	int i;
 
@@ -4539,10 +4540,11 @@ hammer2_base_delete(hammer2_chain_t *parent,
 	key_next = 0; /* max range */
 	i = hammer2_base_find(parent, base, count, cache_indexp,
 			      &key_next, elm->key, elm->key);
-	if (i == count || base[i].type == 0 ||
-	    base[i].key != elm->key ||
+	scan = &base[i];
+	if (i == count || scan->type == 0 ||
+	    scan->key != elm->key ||
 	    ((chain->flags & HAMMER2_CHAIN_BMAPUPD) == 0 &&
-	     base[i].keybits != elm->keybits)) {
+	     scan->keybits != elm->keybits)) {
 		hammer2_spin_unex(&parent->core.spin);
 		panic("delete base %p element not found at %d/%d elm %p\n",
 		      base, i, count, elm);
@@ -4552,14 +4554,24 @@ hammer2_base_delete(hammer2_chain_t *parent,
 	/*
 	 * Update stats and zero the entry
 	 */
-	parent->bref.data_count -= base[i].data_count;
-	parent->bref.data_count -= (hammer2_off_t)1 <<
-			(int)(base[i].data_off & HAMMER2_OFF_MASK_RADIX);
-	parent->bref.inode_count -= base[i].inode_count;
-	if (base[i].type == HAMMER2_BREF_TYPE_INODE)
-		parent->bref.inode_count -= 1;
+	parent->bref.embed.stats.data_count -= (hammer2_off_t)1 <<
+			(int)(scan->data_off & HAMMER2_OFF_MASK_RADIX);
+	switch(scan->type) {
+	case HAMMER2_BREF_TYPE_INODE:
+		parent->bref.embed.stats.inode_count -= 1;
+		/* fall through */
+	case HAMMER2_BREF_TYPE_DATA:
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		parent->bref.embed.stats.data_count -=
+			scan->embed.stats.data_count;
+		parent->bref.embed.stats.inode_count -=
+			scan->embed.stats.inode_count;
+		break;
+	default:
+		break;
+	}
 
-	bzero(&base[i], sizeof(*base));
+	bzero(scan, sizeof(*scan));
 
 	/*
 	 * We can only optimize parent->core.live_zero for live chains.
@@ -4625,12 +4637,22 @@ hammer2_base_insert(hammer2_chain_t *parent,
 	/*
 	 * Update stats and zero the entry
 	 */
-	parent->bref.data_count += elm->data_count;
-	parent->bref.data_count += (hammer2_off_t)1 <<
+	parent->bref.embed.stats.data_count += (hammer2_off_t)1 <<
 			(int)(elm->data_off & HAMMER2_OFF_MASK_RADIX);
-	parent->bref.inode_count += elm->inode_count;
-	if (elm->type == HAMMER2_BREF_TYPE_INODE)
-		parent->bref.inode_count += 1;
+	switch(elm->type) {
+	case HAMMER2_BREF_TYPE_INODE:
+		parent->bref.embed.stats.inode_count += 1;
+		/* fall through */
+	case HAMMER2_BREF_TYPE_DATA:
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		parent->bref.embed.stats.data_count +=
+			elm->embed.stats.data_count;
+		parent->bref.embed.stats.inode_count +=
+			elm->embed.stats.inode_count;
+		break;
+	default:
+		break;
+	}
 
 
 	/*

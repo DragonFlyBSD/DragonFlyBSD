@@ -318,8 +318,11 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 	} else {
 		for (i = 0; i < ip->cluster.nchains; ++i) {
 			if ((chain = ip->cluster.array[i].chain) != NULL) {
-				if (vap->va_bytes < chain->bref.data_count)
-					vap->va_bytes = chain->bref.data_count;
+				if (vap->va_bytes <
+				    chain->bref.embed.stats.data_count) {
+					vap->va_bytes =
+					    chain->bref.embed.stats.data_count;
+				}
 			}
 		}
 	}
