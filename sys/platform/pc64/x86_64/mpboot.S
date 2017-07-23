@@ -64,7 +64,7 @@ mptramp_start:
 
 	/* Enable protected mode */
 	movl	$CR0_PE, %eax
-	mov	%eax, %cr0 
+	mov	%eax, %cr0
 
 	/*
 	 * Now execute a far jump to turn on protected mode.  This
@@ -121,7 +121,7 @@ protmode:
 	 * Finally, switch to long bit mode by enabling paging.  We have
 	 * to be very careful here because all the segmentation disappears
 	 * out from underneath us.  The spec says we can depend on the
-	 * subsequent pipelined branch to execute, but *only if* everthing
+	 * subsequent pipelined branch to execute, but *only if* everything
 	 * is still identity mapped.  If any mappings change, the pipeline
 	 * will flush.
 	 */
@@ -130,7 +130,7 @@ protmode:
 	mov	%eax, %cr0
 
 	/*
-	 * At this point paging is enabled, and we are in "compatability" mode.
+	 * At this point paging is enabled, and we are in "compatibility" mode.
 	 * We do another far jump to reload %cs with the 64 bit selector.
 	 * %cr3 points to a 4-level page table page.
 	 * We cannot yet jump all the way to the kernel because we can only
@@ -191,7 +191,7 @@ bootcode:
 	 * are interpreted slightly differently.
 	 * %ds:  +A, +W, -E, DPL=0, +P, +D, +G
 	 * %ss:  +A, +W, -E, DPL=0, +P, +B, +G
-	 * Accessed, Writeable, Expand up, Present, 32 bit, 4GB 
+	 * Accessed, Writeable, Expand up, Present, 32 bit, 4GB
 	 * For %ds, +D means 'default operand size is 32 bit'.
 	 * For %ss, +B means the stack register is %esp rather than %sp.
 	 */
@@ -212,7 +212,7 @@ mptramp_pagetables:
 	/*
 	 * The pseudo descriptor for lgdt to use.
 	 */
-lgdt_desc:	
+lgdt_desc:
 	.word	gdtend-gdt		/* Length */
 	.long	gdt-mptramp_start	/* Offset plus %ds << 4 */
 
@@ -239,7 +239,7 @@ entry_64:
 	 * has conveniently been set as curthread.  Remember, %rax must
 	 * contain the target thread and %rbx must contain the originating
 	 * thread (which we just set the same since we have no originating
-	 * thread).  BSP/AP synchronization occurs in ap_init().  We do 
+	 * thread).  BSP/AP synchronization occurs in ap_init().  We do
 	 * not need to mess with the BGL for this because LWKT threads are
 	 * self-contained on each cpu (or, at least, the idlethread is!).
 	 */

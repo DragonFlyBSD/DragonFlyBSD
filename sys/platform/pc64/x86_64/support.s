@@ -143,14 +143,14 @@ ENTRY(bcopy)
 	ret
 
 ENTRY(reset_dbregs)
-	movq	$0x200,%rax   /* the manual says that bit 10 must be set to 1 */
-	movq    %rax,%dr7     /* disable all breapoints first */
-	movq    $0,%rax
-	movq    %rax,%dr0
-	movq    %rax,%dr1
-	movq    %rax,%dr2
-	movq    %rax,%dr3
-	movq    %rax,%dr6
+	movq	$0x200,%rax	/* the manual says that bit 10 must be set to 1 */
+	movq	%rax,%dr7	/* disable all breapoints first */
+	movq	$0,%rax
+	movq	%rax,%dr0
+	movq	%rax,%dr1
+	movq	%rax,%dr2
+	movq	%rax,%dr3
+	movq	%rax,%dr6
 	ret
 
 /*
@@ -172,10 +172,10 @@ ENTRY(memcpy)
 	movq	%r8,%rax
 	ret
 
-/* fillw(pat, base, cnt) */  
+/* fillw(pat, base, cnt) */
 /*       %rdi,%rsi, %rdx */
 ENTRY(fillw)
-	movq	%rdi,%rax   
+	movq	%rdi,%rax
 	movq	%rsi,%rdi
 	movq	%rdx,%rcx
 	cld
@@ -733,7 +733,7 @@ ENTRY(wrmsr_safe)
 	movq	PCPU(curthread),%r8
 	movq	TD_PCB(%r8), %r8
 	movq	$msr_onfault,PCB_ONFAULT(%r8)
-	movq    %rsp,PCB_ONFAULT_SP(%r8)
+	movq	%rsp,PCB_ONFAULT_SP(%r8)
 	movl	%edi,%ecx
 	movl	%esi,%eax
 	sarq	$32,%rsi

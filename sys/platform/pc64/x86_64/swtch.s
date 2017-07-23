@@ -1,14 +1,14 @@
 /*
  * Copyright (c) 2003,2004,2008 The DragonFly Project.  All rights reserved.
  * Copyright (c) 2008 Jordan Gordeev.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -18,7 +18,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -31,7 +31,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  * Copyright (c) 1990 The Regents of the University of California.
  * All rights reserved.
  *
@@ -80,7 +80,7 @@
 
 #include "assym.s"
 
-#define MPLOCKED        lock ;
+#define	MPLOCKED	lock ;
 
 /*
  * PREEMPT_OPTIMIZE
@@ -218,26 +218,26 @@ ENTRY(cpu_heavy_switch)
 	/*
 	 * Save debug regs if necessary
 	 */
-	movq    PCB_FLAGS(%rdx),%rax
-	andq    $PCB_DBREGS,%rax
-	jz      1f                              /* no, skip over */
-	movq    %dr7,%rax                       /* yes, do the save */
-	movq    %rax,PCB_DR7(%rdx)
+	movq	PCB_FLAGS(%rdx),%rax
+	andq	$PCB_DBREGS,%rax
+	jz	1f				/* no, skip over */
+	movq	%dr7,%rax			/* yes, do the save */
+	movq	%rax,PCB_DR7(%rdx)
 	/* JG correct value? */
-	andq    $0x0000fc00, %rax               /* disable all watchpoints */
-	movq    %rax,%dr7
-	movq    %dr6,%rax
-	movq    %rax,PCB_DR6(%rdx)
-	movq    %dr3,%rax
-	movq    %rax,PCB_DR3(%rdx)
-	movq    %dr2,%rax
-	movq    %rax,PCB_DR2(%rdx)
-	movq    %dr1,%rax
-	movq    %rax,PCB_DR1(%rdx)
-	movq    %dr0,%rax
-	movq    %rax,PCB_DR0(%rdx)
+	andq	$0x0000fc00, %rax		/* disable all watchpoints */
+	movq	%rax,%dr7
+	movq	%dr6,%rax
+	movq	%rax,PCB_DR6(%rdx)
+	movq	%dr3,%rax
+	movq	%rax,PCB_DR3(%rdx)
+	movq	%dr2,%rax
+	movq	%rax,PCB_DR2(%rdx)
+	movq	%dr1,%rax
+	movq	%rax,PCB_DR1(%rdx)
+	movq	%dr0,%rax
+	movq	%rax,PCB_DR0(%rdx)
 1:
- 
+
 #if 1
 	/*
 	 * Save the FP state if we have used the FP.  Note that calling
@@ -337,7 +337,7 @@ ENTRY(cpu_exit_switch)
  * cpu_heavy_restore()	(current thread in %rax on entry, old thread in %rbx)
  *
  *	Restore the thread after an LWKT switch.  This entry is normally
- *	called via the LWKT switch restore function, which was pulled 
+ *	called via the LWKT switch restore function, which was pulled
  *	off the thread stack and jumped to.
  *
  *	This entry is only called if the thread was previously saved
@@ -345,7 +345,7 @@ ENTRY(cpu_exit_switch)
  *	or when a new process is initially scheduled.
  *
  *	NOTE: The lwp may be in any state, not necessarily LSRUN, because
- *	a preemption switch may interrupt the process and then return via 
+ *	a preemption switch may interrupt the process and then return via
  *	cpu_heavy_restore.
  *
  *	YYY theoretically we do not have to restore everything here, a lot
@@ -569,28 +569,28 @@ ENTRY(cpu_heavy_restore)
 	/*
 	 * Restore the DEBUG register state if necessary.
 	 */
-	movq    PCB_FLAGS(%rdx),%rax
-	andq    $PCB_DBREGS,%rax
-	jz      1f                              /* no, skip over */
-	movq    PCB_DR6(%rdx),%rax              /* yes, do the restore */
-	movq    %rax,%dr6
-	movq    PCB_DR3(%rdx),%rax
-	movq    %rax,%dr3
-	movq    PCB_DR2(%rdx),%rax
-	movq    %rax,%dr2
-	movq    PCB_DR1(%rdx),%rax
-	movq    %rax,%dr1
-	movq    PCB_DR0(%rdx),%rax
-	movq    %rax,%dr0
-	movq	%dr7,%rax                /* load dr7 so as not to disturb */
+	movq	PCB_FLAGS(%rdx),%rax
+	andq	$PCB_DBREGS,%rax
+	jz	1f				/* no, skip over */
+	movq	PCB_DR6(%rdx),%rax		/* yes, do the restore */
+	movq	%rax,%dr6
+	movq	PCB_DR3(%rdx),%rax
+	movq	%rax,%dr3
+	movq	PCB_DR2(%rdx),%rax
+	movq	%rax,%dr2
+	movq	PCB_DR1(%rdx),%rax
+	movq	%rax,%dr1
+	movq	PCB_DR0(%rdx),%rax
+	movq	%rax,%dr0
+	movq	%dr7,%rax		/* load dr7 so as not to disturb */
 	/* JG correct value? */
-	andq    $0x0000fc00,%rax         /*   reserved bits               */
+	andq	$0x0000fc00,%rax	/*   reserved bits               */
 	/* JG we've got more registers on x86_64 */
-	movq    PCB_DR7(%rdx),%rcx
+	movq	PCB_DR7(%rdx),%rcx
 	/* JG correct value? */
 	andq	$~0x0000fc00,%rcx
-	orq     %rcx,%rax
-	movq    %rax,%dr7
+	orq	%rcx,%rax
+	movq	%rax,%dr7
 
 	/*
 	 * Clear the QUICKRET flag when restoring a user process context
@@ -655,7 +655,7 @@ ENTRY(savectx)
 	popq	%rcx
 
 	movq	$PCB_SAVEFPU_SIZE,%rdx
-	leaq    PCB_SAVEFPU(%rcx),%rcx
+	leaq	PCB_SAVEFPU(%rcx),%rcx
 	movq	%rcx,%rsi
 	movq	%rax,%rdi
 	call	bcopy
@@ -822,7 +822,7 @@ ENTRY(cpu_lwkt_switch)
  *
  * Standard LWKT restore function.  This function is always called
  * while in a critical section.
- *	
+ *
  * WARNING! Due to preemption the restore function can be used to 'return'
  *	    to the original thread.   Interrupt disablement must be
  *	    protected through the switch so we cannot run splz here.

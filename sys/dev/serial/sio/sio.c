@@ -263,7 +263,7 @@ static	int	siogdbunit = -1;
 static	bool_t	sio_registered;
 static	int	sio_timeout;
 static	int	sio_timeouts_until_log;
-static	struct	callout	sio_timeout_handle;
+static	struct	callout sio_timeout_handle;
 static	int	sio_numunits;
 
 #ifdef COM_ESP
@@ -274,7 +274,7 @@ static	Port_t	likely_esp_ports[] = { 0x140, 0x180, 0x280, 0 };
 
 /*
  * handle sysctl read/write requests for console speed
- * 
+ *
  * In addition to setting comdefaultrate for I/O through /dev/console,
  * also set the initial and lock values for the /dev/ttyXX device
  * if there is one associated with the console.  Finally, if the /dev/tty
@@ -394,7 +394,7 @@ sio_pci_kludge_unit(device_t dev)
 
 	unit = 0;
 	start = 0;
-	while (resource_int_value("sio", unit, "port", &start) == 0 && 
+	while (resource_int_value("sio", unit, "port", &start) == 0 &&
 	    start > 0)
 		unit++;
 	if (device_get_unit(dev) < unit) {
@@ -1136,7 +1136,6 @@ sioattach(device_t dev, int xrid, u_long rclk)
 
 		break;
 	}
-	
 #ifdef COM_ESP
 	if (com->esp) {
 		/*
@@ -1761,7 +1760,7 @@ siointr(void *arg)
 			 * XXX com_lock();
 			 * would it work here, or be counter-productive?
 			 */
-			if (com != NULL 
+			if (com != NULL
 			    && !com->gone
 			    && (inb(com->int_id_port) & IIR_IMASK)
 			       != IIR_NOPEND) {
@@ -1798,8 +1797,8 @@ siointr1(struct com_s *com)
 			modem_status = inb(com->modem_status_port);
 		        if ((modem_status ^ com->last_modem_status) & MSR_DCD) {
 				count = sys_cputimer->count();
-				pps_event(&com->pps, count, 
-				    (modem_status & MSR_DCD) ? 
+				pps_event(&com->pps, count,
+				    (modem_status & MSR_DCD) ?
 				    PPS_CAPTUREASSERT : PPS_CAPTURECLEAR);
 			}
 		}
@@ -1996,7 +1995,7 @@ cont:
 #ifdef COM_MULTIPORT
 		return;
 #else
-		if (inb(com->int_id_port) & IIR_NOPEND) 
+		if (inb(com->int_id_port) & IIR_NOPEND)
 			return;
 #endif
 	}
@@ -3023,7 +3022,7 @@ siocnprobe(struct consdev *cp)
 
 			/*
 			 * Initialize the divisor latch.  We can't rely on
-			 * siocnopen() to do this the first time, since it 
+			 * siocnopen() to do this the first time, since it
 			 * avoids writing to the latch if the latch appears
 			 * to have the correct value.  Also, if we didn't
 			 * just read the speed from the hardware, then we
@@ -3065,7 +3064,7 @@ siocnprobe(struct consdev *cp)
 #if defined(__i386__) || defined(__x86_64__)
 #if DDB > 0
 	/*
-	 * XXX Ugly Compatability.
+	 * XXX Ugly Compatibility.
 	 * If no gdb port has been specified, set it to be the console
 	 * as some configuration files don't specify the gdb port.
 	 */

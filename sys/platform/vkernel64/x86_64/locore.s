@@ -75,14 +75,14 @@ esigcode:
 
 /* void reset_dbregs() */
 ENTRY(reset_dbregs)
-	movq	$0x200,%rax   /* the manual says that bit 10 must be set to 1 */
-	movq    %rax,%dr7     /* disable all breapoints first */
-	movq    $0,%rax
-	movq    %rax,%dr0
-	movq    %rax,%dr1
-	movq    %rax,%dr2
-	movq    %rax,%dr3
-	movq    %rax,%dr6
+	movq	$0x200,%rax	/* the manual says that bit 10 must be set to 1 */
+	movq	%rax,%dr7	/* disable all breapoints first */
+	movq	$0,%rax
+	movq	%rax,%dr0
+	movq	%rax,%dr1
+	movq	%rax,%dr2
+	movq	%rax,%dr3
+	movq	%rax,%dr6
 	ret
 
 	.data

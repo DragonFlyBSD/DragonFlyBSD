@@ -80,7 +80,7 @@
 
 #include "assym.s"
 
-#define MPLOCKED        lock ;
+#define	MPLOCKED	lock ;
 
 	.data
 
@@ -168,24 +168,24 @@ ENTRY(cpu_heavy_switch)
 	/*
 	 * Save debug regs if necessary
 	 */
-	movq    PCB_FLAGS(%rdx),%rax
-	andq    $PCB_DBREGS,%rax
-	jz      1f                              /* no, skip over */
-	movq    %dr7,%rax                       /* yes, do the save */
-	movq    %rax,PCB_DR7(%rdx)
+	movq	PCB_FLAGS(%rdx),%rax
+	andq	$PCB_DBREGS,%rax
+	jz	1f				/* no, skip over */
+	movq	%dr7,%rax			/* yes, do the save */
+	movq	%rax,PCB_DR7(%rdx)
 	/* JG correct value? */
-	andq    $0x0000fc00, %rax               /* disable all watchpoints */
-	movq    %rax,%dr7
-	movq    %dr6,%rax
-	movq    %rax,PCB_DR6(%rdx)
-	movq    %dr3,%rax
-	movq    %rax,PCB_DR3(%rdx)
-	movq    %dr2,%rax
-	movq    %rax,PCB_DR2(%rdx)
-	movq    %dr1,%rax
-	movq    %rax,PCB_DR1(%rdx)
-	movq    %dr0,%rax
-	movq    %rax,PCB_DR0(%rdx)
+	andq	$0x0000fc00, %rax		/* disable all watchpoints */
+	movq	%rax,%dr7
+	movq	%dr6,%rax
+	movq	%rax,PCB_DR6(%rdx)
+	movq	%dr3,%rax
+	movq	%rax,PCB_DR3(%rdx)
+	movq	%dr2,%rax
+	movq	%rax,PCB_DR2(%rdx)
+	movq	%dr1,%rax
+	movq	%rax,PCB_DR1(%rdx)
+	movq	%dr0,%rax
+	movq	%rax,PCB_DR0(%rdx)
 1:
 
 #if 1
@@ -327,15 +327,15 @@ ENTRY(cpu_heavy_restore)
 	movq	PCPU(cpumask)+24, %rsi
 	MPLOCKED orq	%rsi, VM_PMAP+PM_ACTIVE+24(%rcx)
 
-	movl    VM_PMAP+PM_ACTIVE_LOCK(%rcx),%esi
+	movl	VM_PMAP+PM_ACTIVE_LOCK(%rcx),%esi
 	testl	$CPULOCK_EXCL,%esi
 	jz	1f
 
-	movq    %rax,%r12		/* save newthread ptr */
-	movq    %rcx,%rdi               /* (found to be set) */
-	call    pmap_interlock_wait     /* pmap_interlock_wait(%rdi:vm) */
-	movq    %r12,%rax
-	movq    TD_PCB(%rax),%rdx       /* RDX = PCB */
+	movq	%rax,%r12		/* save newthread ptr */
+	movq	%rcx,%rdi		/* (found to be set) */
+	call	pmap_interlock_wait	/* pmap_interlock_wait(%rdi:vm) */
+	movq	%r12,%rax
+	movq	TD_PCB(%rax),%rdx	/* RDX = PCB */
 1:
 	/*
 	 * Restore the MMU address space.  If it is the same as the last
@@ -486,28 +486,28 @@ ENTRY(cpu_heavy_restore)
 	/*
 	 * Restore the DEBUG register state if necessary.
 	 */
-	movq    PCB_FLAGS(%rdx),%rax
-	andq    $PCB_DBREGS,%rax
-	jz      1f                              /* no, skip over */
-	movq    PCB_DR6(%rdx),%rax              /* yes, do the restore */
-	movq    %rax,%dr6
-	movq    PCB_DR3(%rdx),%rax
-	movq    %rax,%dr3
-	movq    PCB_DR2(%rdx),%rax
-	movq    %rax,%dr2
-	movq    PCB_DR1(%rdx),%rax
-	movq    %rax,%dr1
-	movq    PCB_DR0(%rdx),%rax
-	movq    %rax,%dr0
-	movq	%dr7,%rax                /* load dr7 so as not to disturb */
+	movq	PCB_FLAGS(%rdx),%rax
+	andq	$PCB_DBREGS,%rax
+	jz	1f				/* no, skip over */
+	movq	PCB_DR6(%rdx),%rax		/* yes, do the restore */
+	movq	%rax,%dr6
+	movq	PCB_DR3(%rdx),%rax
+	movq	%rax,%dr3
+	movq	PCB_DR2(%rdx),%rax
+	movq	%rax,%dr2
+	movq	PCB_DR1(%rdx),%rax
+	movq	%rax,%dr1
+	movq	PCB_DR0(%rdx),%rax
+	movq	%rax,%dr0
+	movq	%dr7,%rax		/* load dr7 so as not to disturb */
 	/* JG correct value? */
-	andq    $0x0000fc00,%rax         /*   reserved bits               */
+	andq	$0x0000fc00,%rax	/*   reserved bits               */
 	/* JG we've got more registers on x86_64 */
 	movq    PCB_DR7(%rdx),%rcx
 	/* JG correct value? */
 	andq	$~0x0000fc00,%rcx
-	orq     %rcx,%rax
-	movq    %rax,%dr7
+	orq	%rcx,%rax
+	movq	%rax,%dr7
 1:
 	movq	%rbx,%rax
 	movq	PCB_RBX(%rdx),%rbx
@@ -564,7 +564,7 @@ ENTRY(savectx)
 	popq	%rcx
 
 	movq	$PCB_SAVEFPU_SIZE,%rdx
-	leaq    PCB_SAVEFPU(%rcx),%rcx
+	leaq	PCB_SAVEFPU(%rcx),%rcx
 	movq	%rcx,%rsi
 	movq	%rax,%rdi
 	call	bcopy
@@ -599,8 +599,8 @@ ENTRY(cpu_idle_restore)
 	movl	$0,%ebp
 	/* JG push RBP? */
 	pushq	$0
-	cmpl    $0,PCPU(cpuid)
-	je      1f
+	cmpl	$0,PCPU(cpuid)
+	je	1f
 	andl	$~TDF_RUNNING,TD_FLAGS(%rbx)
 	orl	$TDF_RUNNING,TD_FLAGS(%rax)	/* manual, no switch_return */
 	call	ap_init

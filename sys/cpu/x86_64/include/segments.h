@@ -59,7 +59,7 @@
 #ifndef LOCORE
 
 /*
- * User segment descriptors (%cs, %ds etc for compatability apps. 64 bit wide)
+ * User segment descriptors (%cs, %ds etc for compatibility apps. 64 bit wide)
  * For long-mode apps, %cs only has the conforming bit in sd_type, the sd_dpl,
  * sd_p, sd_l and sd_def32 which must be zero).  %ds only has sd_p.
  */

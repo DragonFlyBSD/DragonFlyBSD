@@ -64,15 +64,15 @@
  * This is equivalent to the i386 port's use of SDT_SYS386TGT.
  *
  * The cpu will push a certain amount of state onto the kernel stack for
- * the current process.  See x86_64/include/frame.h.  
- * This includes the current RFLAGS (status register, which includes 
+ * the current process.  See x86_64/include/frame.h.
+ * This includes the current RFLAGS (status register, which includes
  * the interrupt disable state prior to the trap), the code segment register,
- * and the return instruction pointer are pushed by the cpu.  The cpu 
- * will also push an 'error' code for certain traps.  We push a dummy 
- * error code for those traps where the cpu doesn't in order to maintain 
+ * and the return instruction pointer are pushed by the cpu.  The cpu
+ * will also push an 'error' code for certain traps.  We push a dummy
+ * error code for those traps where the cpu doesn't in order to maintain
  * a consistent frame.  We also push a contrived 'trap number'.
  *
- * The cpu does not push the general registers, we must do that, and we 
+ * The cpu does not push the general registers, we must do that, and we
  * must restore them prior to calling 'iret'.  The cpu adjusts the %cs and
  * %ss segment registers, but does not mess with %ds, %es, or %fs.  Thus we
  * must load them with appropriate values for supervisor mode operation.
@@ -349,7 +349,7 @@ IDTVEC(fast_syscall)
 
 /*
  * Here for CYA insurance, in case a "syscall" instruction gets
- * issued from 32 bit compatability mode. MSR_CSTAR has to point
+ * issued from 32 bit compatibility mode. MSR_CSTAR has to point
  * to *something* if EFER_SCE is enabled.
  */
 IDTVEC(fast_syscall32)
@@ -440,7 +440,7 @@ nmi_restoreregs:
 /*
  * This function is what cpu_heavy_restore jumps to after a new process
  * is created.  The LWKT subsystem switches while holding a critical
- * section and we maintain that abstraction here (e.g. because 
+ * section and we maintain that abstraction here (e.g. because
  * cpu_heavy_restore needs it due to PCB_*() manipulation), then get out of
  * it before calling the initial function (typically fork_return()) and/or
  * returning to user mode.
@@ -501,7 +501,7 @@ ENTRY(fork_trampoline)
  * included.
  */
 
-#ifdef COMPAT_IA32
+#if 0 /* COMPAT_IA32 */
 	.data
 	.p2align 4
 	.text
@@ -531,4 +531,3 @@ MCOUNT_LABEL(bintr)
 
 	.text
 MCOUNT_LABEL(eintr)
-
