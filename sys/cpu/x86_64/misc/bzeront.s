@@ -53,3 +53,4 @@ ENTRY(bzeront)
 	subq $1,%rsi
 	jne 1b
 	retq
+END(bzeront)

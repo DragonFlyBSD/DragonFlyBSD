@@ -96,3 +96,4 @@ ENTRY(fork_trampoline)
 	movq	%rsp,%rdi	/* pass by reference */
 	call	go_user
 	/* NOT REACHED */
+END(fork_trampoline)

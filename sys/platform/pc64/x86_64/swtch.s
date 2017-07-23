@@ -269,6 +269,7 @@ ENTRY(cpu_heavy_switch)
 	movq	%rax,PCPU(curthread)
 	movq	TD_SP(%rax),%rsp
 	ret
+END(cpu_heavy_switch)
 
 /*
  *  cpu_exit_switch(struct thread *next)
@@ -332,6 +333,7 @@ ENTRY(cpu_exit_switch)
 	movq	%rax,PCPU(curthread)
 	movq	TD_SP(%rax),%rsp
 	ret
+END(cpu_exit_switch)
 
 /*
  * cpu_heavy_restore()	(current thread in %rax on entry, old thread in %rbx)
@@ -601,6 +603,7 @@ ENTRY(cpu_heavy_restore)
 	movq	%rbx,%rax
 	movq	PCB_RBX(%rdx),%rbx
 	ret
+END(cpu_heavy_restore)
 
 /*
  * savectx(struct pcb *pcb)
@@ -663,6 +666,7 @@ ENTRY(savectx)
 
 1:
 	ret
+END(savectx)
 
 /*
  * cpu_idle_restore()	(current thread in %rax on entry, old thread in %rbx)
@@ -715,6 +719,7 @@ ENTRY(cpu_idle_restore)
 	call	lwkt_switch_return
 	popq	%rax
 	jmp	cpu_idle
+END(cpu_idle_restore)
 
 /*
  * cpu_kthread_restore() (current thread is %rax on entry, previous is %rbx)
@@ -765,6 +770,7 @@ ENTRY(cpu_kthread_restore)
 	movq	PCB_RBX(%r13),%rax	/* thread function */
 	/* note: top of stack return address inherited by function */
 	jmp	*%rax
+END(cpu_kthread_restore)
 
 /*
  * cpu_lwkt_switch(struct thread *)
@@ -816,6 +822,7 @@ ENTRY(cpu_lwkt_switch)
 	movq	%rax,PCPU(curthread)
 	movq	TD_SP(%rax),%rsp
 	ret
+END(cpu_lwkt_switch)
 
 /*
  * cpu_lwkt_restore()	(current thread in %rax on entry)
@@ -872,3 +879,4 @@ ENTRY(cpu_lwkt_restore)
 	popq	%rbx
 	popq	%rbp
 	ret
+END(cpu_lwkt_restore)

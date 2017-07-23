@@ -84,6 +84,7 @@ ENTRY(reset_dbregs)
 	movq	%rax,%dr3
 	movq	%rax,%dr6
 	ret
+END(reset_dbregs)
 
 	.data
 	.globl	szsigcode

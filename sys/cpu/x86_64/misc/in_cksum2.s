@@ -83,3 +83,4 @@ ENTRY(asm_ones32)
 	jnz	3b
 4:
 	ret
+END(asm_ones32)

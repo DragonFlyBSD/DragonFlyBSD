@@ -61,6 +61,7 @@ ENTRY(bzero)
 	rep
 	stosb
 	ret
+END(bzero)
 
 /*
  * pagezero(ptr:%rdi)
@@ -78,6 +79,7 @@ ENTRY(pagezero)
 	rep
 	stosq
 	ret
+END(pagezero)
 
 /*
  * bcmp(ptr:%rdi, ptr:%rsi, bytes:%rdx)
@@ -98,6 +100,7 @@ ENTRY(bcmp)
 	setne	%al
 	movsbl	%al,%eax
 	ret
+END(bcmp)
 
 /*
  * bcopy(src:%rdi, dst:%rsi, cnt:%rdx)
@@ -141,6 +144,7 @@ ENTRY(bcopy)
 	movsq
 	cld
 	ret
+END(bcopy)
 
 ENTRY(reset_dbregs)
 	movq	$0x200,%rax	/* the manual says that bit 10 must be set to 1 */
@@ -152,6 +156,7 @@ ENTRY(reset_dbregs)
 	movq	%rax,%dr3
 	movq	%rax,%dr6
 	ret
+END(reset_dbregs)
 
 /*
  * memcpy(dst:%rdi, src:%rsi, bytes:%rdx)
@@ -171,6 +176,7 @@ ENTRY(memcpy)
 	movsb
 	movq	%r8,%rax
 	ret
+END(memcpy)
 
 /* fillw(pat, base, cnt) */
 /*       %rdi,%rsi, %rdx */
@@ -182,6 +188,7 @@ ENTRY(fillw)
 	rep
 	stosw
 	ret
+END(fillw)
 
 /*****************************************************************************/
 /* copyout and fubyte family                                                 */
@@ -257,6 +264,7 @@ copyout_fault:
 	movq	$0,PCB_ONFAULT(%rdx)
 	movq	$EFAULT,%rax
 	ret
+END(std_copyout)
 
 /*
  * std_copyin(from_user, to_kernel, len) - MP SAFE
@@ -306,6 +314,7 @@ copyin_fault:
 	movq	$0,PCB_ONFAULT(%rdx)
 	movq	$EFAULT,%rax
 	ret
+END(std_copyin)
 
 /*
  * casu32 - Compare and set user integer.  Returns -1 or the current value.
@@ -335,6 +344,7 @@ ENTRY(casu32)
 	movq	TD_PCB(%rcx), %rcx
 	movq	$0,PCB_ONFAULT(%rcx)
 	ret
+END(casu32)
 
 /*
  * swapu32 - Swap int in user space.  ptr = %rdi, val = %rsi
@@ -362,6 +372,7 @@ ENTRY(std_swapu32)
 	movq	TD_PCB(%rcx), %rcx
 	movq	$0,PCB_ONFAULT(%rcx)
 	ret
+END(std_swapu32)
 
 /*
  * casu64 - Compare and set user word.  Returns -1 or the current value.
@@ -391,6 +402,7 @@ ENTRY(casu64)
 	movq	TD_PCB(%rcx), %rcx
 	movq	$0,PCB_ONFAULT(%rcx)
 	ret
+END(casu64)
 
 /*
  * swapu64 - Swap long in user space.  ptr = %rdi, val = %rsi
@@ -418,6 +430,7 @@ ENTRY(std_swapu64)
 	movq	TD_PCB(%rcx), %rcx
 	movq	$0,PCB_ONFAULT(%rcx)
 	ret
+END(std_swapu64)
 
 /*
  * Fetch (load) a 64-bit word, a 32-bit word, a 16-bit word, or an 8-bit
@@ -438,6 +451,7 @@ ENTRY(std_fuword64)
 	movq	(%rdi),%rax
 	movq	$0,PCB_ONFAULT(%rcx)
 	ret
+END(std_fuword64)
 
 ENTRY(std_fuword32)
 	movq	PCPU(curthread),%rcx
@@ -452,6 +466,7 @@ ENTRY(std_fuword32)
 	movl	(%rdi),%eax
 	movq	$0,PCB_ONFAULT(%rcx)
 	ret
+END(std_fuword32)
 
 ENTRY(std_fubyte)
 	movq	PCPU(curthread),%rcx
@@ -475,6 +490,7 @@ fusufault:
 	movq	%rax,PCB_ONFAULT(%rcx)
 	decq	%rax
 	ret
+END(std_fubyte)
 
 /*
  * Store a 64-bit word, a 32-bit word, a 16-bit word, or an 8-bit byte to
@@ -500,6 +516,7 @@ ENTRY(std_suword64)
 	movq	TD_PCB(%rcx), %rcx
 	movq	%rax,PCB_ONFAULT(%rcx)
 	ret
+END(std_suword64)
 
 /*
  * Write an int
@@ -520,6 +537,7 @@ ENTRY(std_suword32)
 	movq	TD_PCB(%rcx), %rcx
 	movq	%rax,PCB_ONFAULT(%rcx)
 	ret
+END(std_suword32)
 
 ENTRY(std_subyte)
 	movq	PCPU(curthread),%rcx
@@ -538,6 +556,7 @@ ENTRY(std_subyte)
 	movq	TD_PCB(%rcx), %rcx
 	movq	%rax,PCB_ONFAULT(%rcx)
 	ret
+END(std_subyte)
 
 /*
  * std_copyinstr(from, to, maxlen, int *lencopied) - MP SAFE
@@ -609,7 +628,7 @@ cpystrflt_x:
 	movq	%r8,(%r9)
 1:
 	ret
-
+END(std_copyinstr)
 
 /*
  * copystr(from, to, maxlen, int *lencopied) - MP SAFE
@@ -646,6 +665,7 @@ ENTRY(copystr)
 	movq	%r8,(%rcx)
 7:
 	ret
+END(copystr)
 
 /*
  * Handling of special x86_64 registers and descriptor tables etc
@@ -673,6 +693,7 @@ ENTRY(lgdt)
 	pushq	%rax
 	MEXITCOUNT
 	lretq
+END(lgdt)
 
 /*****************************************************************************/
 /* setjmp, longjmp                                                           */
@@ -690,6 +711,7 @@ ENTRY(setjmp)
 	movq	%rdx,56(%rdi)			/* save rip */
 	xorl	%eax,%eax			/* return(0); */
 	ret
+END(setjmp)
 
 ENTRY(longjmp)
 	movq	0(%rdi),%rbx			/* restore rbx */
@@ -704,6 +726,7 @@ ENTRY(longjmp)
 	xorl	%eax,%eax			/* return(1); */
 	incl	%eax
 	ret
+END(longjmp)
 
 /*
  * Support for reading MSRs in the safe manner.
@@ -724,6 +747,7 @@ ENTRY(rdmsr_safe)
 	xorq	%rax,%rax
 	movq	%rax,PCB_ONFAULT(%r8)
 	ret
+END(rdmsr_safe)
 
 /*
  * Support for writing MSRs in the safe manner.
@@ -743,6 +767,7 @@ ENTRY(wrmsr_safe)
 	xorq	%rax,%rax
 	movq	%rax,PCB_ONFAULT(%r8)
 	ret
+END(wrmsr_safe)
 
 /*
  * MSR operations fault handler

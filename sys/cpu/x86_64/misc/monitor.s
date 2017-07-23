@@ -58,6 +58,7 @@ ENTRY(cpu_mmw_pause_int)
 	mwait
 1:
 	ret
+END(cpu_mmw_pause_int)
 
 /*
  * void cpu_mmw_pause_long(long *addr, long oldval, int cstate, int intrbrk)
@@ -77,3 +78,4 @@ ENTRY(cpu_mmw_pause_long)
 	mwait
 1:
 	ret
+END(cpu_mmw_pause_long)
