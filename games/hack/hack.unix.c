@@ -162,7 +162,7 @@ getlock(void)
 	fflush(stdout);
 
 	/* we ignore QUIT and INT at this point */
-	if (link(HLOCK, LLOCK) == -1) {
+	if ((link(HLOCK, LLOCK) == -1) && (symlink(HLOCK, LLOCK) == -1)) {
 		int errnosv = errno;
 
 		perror(HLOCK);
