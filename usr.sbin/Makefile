@@ -51,7 +51,6 @@ SUBDIR= 802_11 \
 	jls \
 	kbdcontrol \
 	kbdmap \
-	kernbb \
 	lastlogin \
 	mailwrapper \
 	makewhatis \

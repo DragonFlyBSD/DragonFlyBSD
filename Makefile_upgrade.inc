@@ -3213,6 +3213,8 @@ TO_REMOVE+=/usr/share/zoneinfo/Pacific/Johnston
 TO_REMOVE+=/usr/libexec/uucp
 TO_REMOVE+=/usr/include/bus/cam/scsi/scsi_iu.h
 TO_REMOVE+=/boot/kernel/ispfw.ko
+TO_REMOVE+=/usr/sbin/kernbb
+TO_REMOVE+=/usr/share/man/man8/kernbb.8.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
