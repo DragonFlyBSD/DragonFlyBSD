@@ -256,7 +256,6 @@ struct hammer2_iocb {
 	TAILQ_ENTRY(hammer2_iocb) entry;
 	void (*callback)(struct hammer2_iocb *iocb);
 	struct hammer2_io	*dio;
-	struct hammer2_cluster	*cluster;
 	struct hammer2_chain	*chain;
 	void			*ptr;
 	off_t			lbase;
@@ -716,7 +715,6 @@ struct hammer2_inode {
 	uint8_t			comp_heuristic;
 	hammer2_inode_meta_t	meta;		/* copy of meta-data */
 	hammer2_off_t		osize;
-	hammer2_cluster_t	*cluster_cache;
 };
 
 typedef struct hammer2_inode hammer2_inode_t;
@@ -913,11 +911,6 @@ struct hammer2_xop_nresolve {
 	hammer2_key_t		lhc;	/* if name is NULL used lhc */
 };
 
-struct hammer2_xop_nlink {
-	hammer2_xop_head_t	head;
-	int			nlinks_delta;
-};
-
 struct hammer2_xop_unlink {
 	hammer2_xop_head_t	head;
 	int			isdir;
@@ -984,7 +977,6 @@ struct hammer2_xop_flush {
 
 typedef struct hammer2_xop_readdir hammer2_xop_readdir_t;
 typedef struct hammer2_xop_nresolve hammer2_xop_nresolve_t;
-typedef struct hammer2_xop_nlink hammer2_xop_nlink_t;
 typedef struct hammer2_xop_unlink hammer2_xop_unlink_t;
 typedef struct hammer2_xop_nrename hammer2_xop_nrename_t;
 typedef struct hammer2_xop_ipcluster hammer2_xop_ipcluster_t;
@@ -1004,7 +996,6 @@ union hammer2_xop {
 	hammer2_xop_ipcluster_t	xop_ipcluster;
 	hammer2_xop_readdir_t	xop_readdir;
 	hammer2_xop_nresolve_t	xop_nresolve;
-	hammer2_xop_nlink_t	xop_nlink;
 	hammer2_xop_unlink_t	xop_unlink;
 	hammer2_xop_nrename_t	xop_nrename;
 	hammer2_xop_strategy_t	xop_strategy;
@@ -1578,7 +1569,6 @@ void hammer2_xop_readdir(hammer2_thread_t *thr, hammer2_xop_t *xop);
 void hammer2_xop_nresolve(hammer2_thread_t *thr, hammer2_xop_t *xop);
 void hammer2_xop_unlink(hammer2_thread_t *thr, hammer2_xop_t *xop);
 void hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *xop);
-void hammer2_xop_nlink(hammer2_thread_t *thr, hammer2_xop_t *xop);
 void hammer2_xop_scanlhc(hammer2_thread_t *thr, hammer2_xop_t *xop);
 void hammer2_xop_scanall(hammer2_thread_t *thr, hammer2_xop_t *xop);
 void hammer2_xop_lookup(hammer2_thread_t *thr, hammer2_xop_t *xop);
@@ -1637,7 +1627,6 @@ int hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t lokey,
 			int flags);
 void hammer2_cluster_resolve(hammer2_cluster_t *cluster);
 void hammer2_cluster_forcegood(hammer2_cluster_t *cluster);
-hammer2_cluster_t *hammer2_cluster_copy(hammer2_cluster_t *ocluster);
 void hammer2_cluster_unlock(hammer2_cluster_t *cluster);
 
 int hammer2_bulkfree_pass(hammer2_dev_t *hmp,

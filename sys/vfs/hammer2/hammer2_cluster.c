@@ -1109,50 +1109,6 @@ hammer2_cluster_forcegood(hammer2_cluster_t *cluster)
 }
 
 /*
- * Copy a cluster, returned a ref'd cluster.  All underlying chains
- * are also ref'd, but not locked.  Focus state is also copied.
- *
- * Original cluster does not have to be locked but usually is.
- * New cluster will not be flagged as locked.
- *
- * Callers using this function to initialize a new cluster from an inode
- * generally lock and resolve the resulting cluster.
- *
- * Callers which use this function to save/restore a cluster structure
- * generally retain the focus state and do not re-resolve it.  Caller should
- * not try to re-resolve internal (cparent) node state during an iteration
- * as the individual tracking elements of cparent in an iteration may not
- * match even though they are correct.
- */
-hammer2_cluster_t *
-hammer2_cluster_copy(hammer2_cluster_t *ocluster)
-{
-	hammer2_pfs_t *pmp = ocluster->pmp;
-	hammer2_cluster_t *ncluster;
-	hammer2_chain_t *chain;
-	int i;
-
-	ncluster = kmalloc(sizeof(*ncluster), M_HAMMER2, M_WAITOK | M_ZERO);
-	ncluster->pmp = pmp;
-	ncluster->nchains = ocluster->nchains;
-	ncluster->refs = 1;
-
-	for (i = 0; i < ocluster->nchains; ++i) {
-		chain = ocluster->array[i].chain;
-		ncluster->array[i].chain = chain;
-		ncluster->array[i].flags = ocluster->array[i].flags;
-		if (chain)
-			hammer2_chain_ref(chain);
-	}
-	ncluster->focus_index = ocluster->focus_index;
-	ncluster->focus = ocluster->focus;
-	ncluster->flags = ocluster->flags & ~(HAMMER2_CLUSTER_LOCKED |
-					      HAMMER2_CLUSTER_INODE);
-
-	return (ncluster);
-}
-
-/*
  * Unlock a cluster.  Refcount and focus is maintained.
  */
 void

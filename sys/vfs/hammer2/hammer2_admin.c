@@ -512,26 +512,7 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
 	 * All collectors are gone, we can cleanup and dispose of the XOP.
 	 * Note that this can wind up being a frontend OR a backend.
 	 * Pending chains are locked shared and not owned by any thread.
-	 */
-#if 0
-	/*
-	 * Cache the terminating cluster.
-	 */
-	hammer2_inode_t *ip;
-	if ((ip = xop->ip1) != NULL) {
-		hammer2_cluster_t *tmpclu;
-
-		tmpclu = hammer2_cluster_copy(&xop->cluster);
-		hammer2_spin_ex(&ip->cluster_spin);
-		tmpclu = atomic_swap_ptr((volatile void **)&ip->cluster_cache,
-					 tmpclu);
-		hammer2_spin_unex(&ip->cluster_spin);
-		if (tmpclu)
-			hammer2_cluster_drop(tmpclu);
-	}
-#endif
-
-	/*
+	 *
 	 * Cleanup the collection cluster.
 	 */
 	for (i = 0; i < xop->cluster.nchains; ++i) {

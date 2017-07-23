@@ -907,7 +907,6 @@ _hammer2_io_new(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 	hammer2_iocb_t iocb;
 
 	iocb.callback = hammer2_iocb_new_callback;
-	iocb.cluster = NULL;
 	iocb.chain = NULL;
 	iocb.ptr = NULL;
 	iocb.lbase = lbase;
@@ -1016,7 +1015,6 @@ hammer2_io_bread(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 	hammer2_iocb_t iocb;
 
 	iocb.callback = hammer2_iocb_bread_callback;
-	iocb.cluster = NULL;
 	iocb.chain = NULL;
 	iocb.ptr = NULL;
 	iocb.lbase = lbase;
