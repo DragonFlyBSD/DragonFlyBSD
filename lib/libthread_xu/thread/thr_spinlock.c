@@ -55,7 +55,7 @@ static int			initialized;
 static void	init_spinlock(spinlock_t *lck);
 
 /*
- * These are for compatability only.  Spinlocks of this type
+ * These are for compatibility only.  Spinlocks of this type
  * are deprecated.
  */
 
