@@ -1650,7 +1650,7 @@ static struct rmc_funcs {
 	NULL,			NULL
 };
 
-static chari *
+static char *
 rmc_funcname(void *func)
 {
 	struct rmc_funcs *fp;
