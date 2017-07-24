@@ -52,16 +52,17 @@
 #include <sys/errno.h>
 #include <sys/time.h>
 #include <sys/thread.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
+#include <net/netmsg2.h>
+#include <net/netisr2.h>
 
 #include <net/altq/altq.h>
 #include <net/altq/altq_rmclass.h>
 #include <net/altq/altq_rmclass_debug.h>
 #include <net/altq/altq_red.h>
 #include <net/altq/altq_rio.h>
-
-#include <sys/thread2.h>
 
 #ifdef CBQ_TRACE
 static struct cbqtrace cbqtrace_buffer[NCBQTRACE+1];
@@ -96,6 +97,7 @@ static int	rmc_under_limit(struct rm_class *, struct timeval *);
 static void	rmc_tl_satisfied(struct rm_ifdat *, struct timeval *);
 static void	rmc_drop_action(struct rm_class *);
 static void	rmc_restart(void *);
+static void	rmc_restart_dispatch(netmsg_t);
 static void	rmc_root_overlimit(struct rm_class *, struct rm_class *);
 
 #define	BORROW_OFFTIME
@@ -216,6 +218,10 @@ rmc_newclass(int pri, struct rm_ifdat *ifd, u_int nsecPerByte,
 
 	cl = kmalloc(sizeof(*cl), M_ALTQ, M_WAITOK | M_ZERO);
 	callout_init(&cl->callout_);
+	netmsg_init(&cl->callout_nmsg_, NULL, &netisr_adone_rport,
+	    MSGF_PRIORITY, rmc_restart_dispatch);
+	cl->callout_nmsg_.lmsg.u.ms_resultp = cl;
+
 	cl->q_ = kmalloc(sizeof(*cl->q_), M_ALTQ, M_WAITOK | M_ZERO);
 
 	/*
@@ -1513,7 +1519,7 @@ rmc_delay_action(struct rm_class *cl, struct rm_class *borrow)
 			t = (delay + ustick - 1) / ustick;
 		else
 			t = 2;
-		callout_reset(&cl->callout_, t, rmc_restart, cl);
+		callout_reset_bycpu(&cl->callout_, t, rmc_restart, cl, 0);
 	}
 }
 
@@ -1539,11 +1545,17 @@ rmc_delay_action(struct rm_class *cl, struct rm_class *borrow)
  */
 
 static void
-rmc_restart(void *arg)
+rmc_restart_dispatch(netmsg_t nmsg)
 {
-	struct rm_class *cl = arg;
+	struct rm_class *cl = nmsg->lmsg.u.ms_resultp;
 	struct rm_ifdat *ifd = cl->ifdat_;
 	struct ifaltq_subque *ifsq = &ifd->ifq_->altq_subq[0];
+
+	ASSERT_NETISR_NCPUS(curthread, 0);
+
+	crit_enter();
+	lwkt_replymsg(&nmsg->lmsg, 0);	/* reply ASAP */
+	crit_exit();
 
 	ALTQ_SQ_LOCK(ifsq);
 	if (cl->sleeping_) {
@@ -1556,6 +1568,19 @@ rmc_restart(void *arg)
 		}
 	}
 	ALTQ_SQ_UNLOCK(ifsq);
+}
+
+static void
+rmc_restart(void *xcl)
+{
+	struct rm_class *cl = xcl;
+	struct lwkt_msg *lmsg = &cl->callout_nmsg_.lmsg;
+
+	KASSERT(mycpuid == 0, ("not on cpu0"));
+	crit_enter();
+	if (lmsg->ms_flags & MSGF_DONE)
+		lwkt_sendmsg_oncpu(netisr_cpuport(0), lmsg);
+	crit_exit();
 }
 
 /*

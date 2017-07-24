@@ -169,6 +169,7 @@ struct rm_class {
 	struct timeval	last_;		/* time last packet sent */
 	struct timeval	overtime_;
 	struct callout	callout_; 	/* for timeout() calls */
+	struct netmsg_base callout_nmsg_;
 
 	rm_class_stats_t stats_;	/* Class Statistics */
 };

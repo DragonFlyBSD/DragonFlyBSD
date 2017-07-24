@@ -50,6 +50,8 @@
 
 #include <net/if.h>
 #include <net/ifq_var.h>
+#include <net/netmsg2.h>
+#include <net/netisr2.h>
 #include <netinet/in.h>
 
 #include <net/pf/pfvar.h>
