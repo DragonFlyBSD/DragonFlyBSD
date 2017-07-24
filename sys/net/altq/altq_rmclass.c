@@ -532,11 +532,20 @@ void
 rmc_delete_class(struct rm_ifdat *ifd, struct rm_class *cl)
 {
 	struct rm_class *p, *head, *previous;
+	struct netmsg_base smsg;
+	struct ifaltq_subque *ifsq =
+	    &ifd->ifq_->altq_subq[ALTQ_SUBQ_INDEX_DEFAULT];
 
 	KKASSERT(cl->children_ == NULL);
 
-	if (cl->sleeping_)
-		callout_stop(&cl->callout_);
+	ALTQ_SQ_ASSERT_LOCKED(ifsq);
+	ALTQ_SQ_UNLOCK(ifsq);
+	callout_stop_sync(&cl->callout_);
+	/* Make sure that cl->callout_nmsg_ stops. */
+	netmsg_init(&smsg, NULL, &curthread->td_msgport, 0,
+	    netmsg_sync_handler);
+	lwkt_domsg(netisr_cpuport(0), &smsg.lmsg, 0);
+	ALTQ_SQ_LOCK(ifsq);
 
 	crit_enter();
 
@@ -1549,7 +1558,8 @@ rmc_restart_dispatch(netmsg_t nmsg)
 {
 	struct rm_class *cl = nmsg->lmsg.u.ms_resultp;
 	struct rm_ifdat *ifd = cl->ifdat_;
-	struct ifaltq_subque *ifsq = &ifd->ifq_->altq_subq[0];
+	struct ifaltq_subque *ifsq =
+	    &ifd->ifq_->altq_subq[ALTQ_SUBQ_INDEX_DEFAULT];
 
 	ASSERT_NETISR_NCPUS(curthread, 0);
 

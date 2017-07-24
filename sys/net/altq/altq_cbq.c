@@ -261,11 +261,15 @@ cbq_add_altq(struct pf_altq *a)
 int
 cbq_remove_altq(struct pf_altq *a)
 {
-	cbq_state_t	*cbqp;
+	cbq_state_t *cbqp;
+	struct ifaltq *ifq;
 
 	if ((cbqp = a->altq_disc) == NULL)
 		return (EINVAL);
 	a->altq_disc = NULL;
+
+	ifq = cbqp->ifnp.ifq_;
+	CBQ_LOCK(ifq);
 
 	cbq_clear_interface(cbqp);
 
@@ -273,6 +277,8 @@ cbq_remove_altq(struct pf_altq *a)
 		cbq_class_destroy(cbqp, cbqp->ifnp.default_);
 	if (cbqp->ifnp.root_)
 		cbq_class_destroy(cbqp, cbqp->ifnp.root_);
+
+	CBQ_UNLOCK(ifq);
 
 	/* deallocate cbq_state_t */
 	kfree(cbqp, M_ALTQ);
