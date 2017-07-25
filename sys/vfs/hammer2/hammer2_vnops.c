@@ -642,6 +642,11 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 					     dtype,
 					     bref.embed.dirent.namlen,
 					     dname);
+			if (r)
+				break;
+			if (cookies)
+				cookies[cookie_index] = saveoff;
+			++cookie_index;
 		} else {
 			/* XXX chain error */
 			kprintf("bad chain type readdir %d\n", bref.type);
