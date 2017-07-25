@@ -435,7 +435,7 @@ hammer2_strategy_read_completion(hammer2_chain_t *chain, char *data,
 
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		/*
-		 * Data is embedded in the inode (copy from inode).
+		 * Copy from in-memory inode structure.
 		 */
 		bcopy(((hammer2_inode_data_t *)data)->u.data,
 		      bp->b_data, HAMMER2_EMBEDDED_BYTES);
@@ -774,7 +774,7 @@ retry:
 			dedup_off = hammer2_dedup_lookup(chain->hmp, datap,
 							 pblksize);
 			if (chain->bytes != pblksize) {
-				hammer2_chain_resize(ip, *parentp, chain,
+				hammer2_chain_resize(chain,
 						     mtid, dedup_off,
 						     pradix,
 						     HAMMER2_MODIFY_OPTDATA);

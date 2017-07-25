@@ -192,6 +192,8 @@ hammer2_freemap_reserve(hammer2_chain_t *chain, int radix)
  *
  * ip and bpref are only used as a heuristic to determine locality of
  * reference.  bref->key may also be used heuristically.
+ *
+ * This function is a NOP if bytes is 0.
  */
 int
 hammer2_freemap_alloc(hammer2_chain_t *chain, size_t bytes)
@@ -204,6 +206,15 @@ hammer2_freemap_alloc(hammer2_chain_t *chain, size_t bytes)
 	int error;
 	unsigned int hindex;
 	hammer2_fiterate_t iter;
+
+	/*
+	 * If allocating or downsizing to zero we just get rid of whatever
+	 * data_off we had.
+	 */
+	if (bytes == 0) {
+		chain->bref.data_off = 0;
+		return 0;
+	}
 
 	mtid = hammer2_trans_sub(hmp->spmp);
 
@@ -810,6 +821,8 @@ hammer2_freemap_iterate(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
  * as allocated) blocks whos freemap upates might not have been committed
  * in the last crash and is used by the bulk freemap scan to stage frees.
  *
+ * WARNING! Cannot be called with a empty-data bref (radix == 0).
+ *
  * XXX currently disabled when how == 0 (the normal real-time case).  At
  * the moment we depend on the bulk freescan to actually free blocks.  It
  * will still call this routine with a non-zero how to stage possible frees
@@ -849,14 +862,18 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref,
 	mtid = hammer2_trans_sub(hmp->spmp);
 
 	radix = (int)data_off & HAMMER2_OFF_MASK_RADIX;
+	KKASSERT(radix != 0);
 	data_off &= ~HAMMER2_OFF_MASK_RADIX;
 	KKASSERT(radix <= HAMMER2_RADIX_MAX);
 
-	bytes = (size_t)1 << radix;
+	if (radix)
+		bytes = (size_t)1 << radix;
+	else
+		bytes = 0;
 	class = (bref->type << 8) | hammer2_devblkradix(radix);
 
 	/*
-	 * We can't adjust thre freemap for data allocations made by
+	 * We can't adjust the freemap for data allocations made by
 	 * newfs_hammer2.
 	 */
 	if (data_off < hmp->voldata.allocator_beg)

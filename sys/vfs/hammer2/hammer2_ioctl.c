@@ -536,14 +536,8 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 					 &cache_index,
 					 HAMMER2_LOOKUP_SHARED);
 	while (chain) {
-		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
-			ripdata = &chain->data->ipdata;
-			if (ripdata->meta.name_len == len &&
-			    bcmp(ripdata->filename, pfs->name, len) == 0) {
-				break;
-			}
-			ripdata = NULL;	/* safety */
-		}
+		if (hammer2_chain_dirent_test(chain, pfs->name, len))
+			break;
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next,
 					   lhc + HAMMER2_DIRHASH_LOMASK,
@@ -555,6 +549,7 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 	 * Load the data being returned by the ioctl.
 	 */
 	if (chain) {
+		KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_INODE);
 		ripdata = &chain->data->ipdata;
 		pfs->name_key = ripdata->meta.name_key;
 		pfs->pfs_type = ripdata->meta.pfs_type;

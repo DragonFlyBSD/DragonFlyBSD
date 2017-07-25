@@ -515,6 +515,7 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
 	 * it's a problem if it does.  (Or L0 (2MB) for that matter).
 	 */
 	radix = (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
+	KKASSERT(radix != 0);
 	bytes = (size_t)1 << radix;
 	class = (bref->type << 8) | hammer2_devblkradix(radix);
 

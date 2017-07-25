@@ -511,7 +511,6 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	int ncookies;
 	int error;
 	int eofflag;
-	int dtype;
 	int r;
 
 	LOCKSTART;
@@ -597,6 +596,8 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 
 	for (;;) {
 		const hammer2_inode_data_t *ripdata;
+		const char *dname;
+		int dtype;
 
 		error = hammer2_xop_collect(&xop->head, 0);
 		if (error)
@@ -608,10 +609,12 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 			xop->head.cluster.focus,
 			(xop->head.cluster.focus ?
 			 xop->head.cluster.focus->data : (void *)-1));
-		ripdata = &hammer2_cluster_rdata(&xop->head.cluster)->ipdata;
 		hammer2_cluster_bref(&xop->head.cluster, &bref);
+
 		if (bref.type == HAMMER2_BREF_TYPE_INODE) {
-			dtype = hammer2_get_dtype(ripdata);
+			ripdata =
+			    &hammer2_cluster_rdata(&xop->head.cluster)->ipdata;
+			dtype = hammer2_get_dtype(ripdata->meta.type);
 			saveoff = bref.key & HAMMER2_DIRHASH_USERMSK;
 			r = vop_write_dirent(&error, uio,
 					     ripdata->meta.inum &
@@ -624,6 +627,21 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 			if (cookies)
 				cookies[cookie_index] = saveoff;
 			++cookie_index;
+		} else if (bref.type == HAMMER2_BREF_TYPE_DIRENT) {
+			dtype = hammer2_get_dtype(bref.embed.dirent.type);
+			saveoff = bref.key & HAMMER2_DIRHASH_USERMSK;
+			if (bref.embed.dirent.namlen <=
+			    sizeof(bref.check.buf)) {
+				dname = bref.check.buf;
+			} else {
+				dname =
+				 hammer2_cluster_rdata(&xop->head.cluster)->buf;
+			}
+			r = vop_write_dirent(&error, uio,
+					     bref.embed.dirent.inum,
+					     dtype,
+					     bref.embed.dirent.namlen,
+					     dname);
 		} else {
 			/* XXX chain error */
 			kprintf("bad chain type readdir %d\n", bref.type);
@@ -1297,20 +1315,16 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 
 	/*
 	 * Create the actual inode as a hidden file in the iroot, then
-	 * create the directory entry as a hardlink to it.  The creation
-	 * of the actual inode sets its nlinks to 1 which is the value
-	 * we desire.
+	 * create the directory entry.  The creation of the actual inode
+	 * sets its nlinks to 1 which is the value we desire.
 	 */
 	nip = hammer2_inode_create(dip->pmp->iroot, dip, ap->a_vap, ap->a_cred,
 				   NULL, 0, inum,
 				   inum, 0, 0,
 				   0, &error);
 	if (error == 0) {
-		hammer2_inode_create(dip, dip, NULL, NULL,
-				     name, name_len, 0,
-				     nip->meta.inum,
-				     HAMMER2_OBJTYPE_HARDLINK, nip->meta.type,
-				     0, &error);
+		error = hammer2_dirent_create(dip, name, name_len,
+					      nip->meta.inum, nip->meta.type);
 	}
 
 	if (error) {
@@ -1434,14 +1448,11 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	hammer2_inode_lock(ip, 0);
 
 	/*
-	 * Create the hardlink target and bump nlinks.
+	 * Create the directory entry and bump nlinks.
 	 */
 	if (error == 0) {
-		hammer2_inode_create(tdip, tdip, NULL, NULL,
-				     name, name_len, 0,
-				     ip->meta.inum,
-				     HAMMER2_OBJTYPE_HARDLINK, ip->meta.type,
-				     0, &error);
+		error = hammer2_dirent_create(tdip, name, name_len,
+					      ip->meta.inum, ip->meta.type);
 		hammer2_inode_modify(ip);
 		++ip->meta.nlinks;
 	}
@@ -1502,9 +1513,8 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 
 	/*
 	 * Create the actual inode as a hidden file in the iroot, then
-	 * create the directory entry as a hardlink to it.  The creation
-	 * of the actual inode sets its nlinks to 1 which is the value
-	 * we desire.
+	 * create the directory entry.  The creation of the actual inode
+	 * sets its nlinks to 1 which is the value we desire.
 	 */
 	nip = hammer2_inode_create(dip->pmp->iroot, dip, ap->a_vap, ap->a_cred,
 				   NULL, 0, inum,
@@ -1512,11 +1522,8 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 				   0, &error);
 
 	if (error == 0) {
-		hammer2_inode_create(dip, dip, NULL, NULL,
-				     name, name_len, 0,
-				     nip->meta.inum,
-				     HAMMER2_OBJTYPE_HARDLINK, nip->meta.type,
-				     0, &error);
+		error = hammer2_dirent_create(dip, name, name_len,
+					      nip->meta.inum, nip->meta.type);
 	}
 	if (error) {
 		KKASSERT(nip == NULL);
@@ -1578,10 +1585,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	hammer2_trans_init(dip->pmp, 0);
 
 	/*
-	 * The device node is entered as the directory entry itself and not
-	 * as a hardlink to an inode.  Since one cannot obtain a
-	 * file handle on the filesystem entry representing the device, we
-	 * do not have to worry about indexing its inode.
+	 * Create the device inode and then create the directory entry.
 	 */
 	inum = hammer2_trans_newinum(dip->pmp);
 	nip = hammer2_inode_create(dip->pmp->iroot, dip, ap->a_vap, ap->a_cred,
@@ -1589,11 +1593,8 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 				   inum, 0, 0,
 				   0, &error);
 	if (error == 0) {
-		hammer2_inode_create(dip, dip, NULL, NULL,
-				     name, name_len, 0,
-				     nip->meta.inum,
-				     HAMMER2_OBJTYPE_HARDLINK, nip->meta.type,
-				     0, &error);
+		error = hammer2_dirent_create(dip, name, name_len,
+					      nip->meta.inum, nip->meta.type);
 	}
 
 
@@ -1656,10 +1657,8 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	ap->a_vap->va_type = VLNK;	/* enforce type */
 
 	/*
-	 * The softlink is entered into the directory itself and not
-	 * as a hardlink to an inode.  Since one cannot obtain a
-	 * file handle on the softlink itself we do not have to worry
-	 * about indexing its inode.
+	 * Create the softlink as an inode and then create the directory
+	 * entry.
 	 */
 	inum = hammer2_trans_newinum(dip->pmp);
 
@@ -1668,11 +1667,8 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 				   inum, 0, 0,
 				   0, &error);
 	if (error == 0) {
-		hammer2_inode_create(dip, dip, NULL, NULL,
-				     name, name_len, 0,
-				     nip->meta.inum,
-				     HAMMER2_OBJTYPE_HARDLINK, nip->meta.type,
-				     0, &error);
+		error = hammer2_dirent_create(dip, name, name_len,
+					      nip->meta.inum, nip->meta.type);
 	}
 
 

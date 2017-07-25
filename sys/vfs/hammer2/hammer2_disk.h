@@ -436,6 +436,10 @@ typedef uint32_t hammer2_crc32_t;
  * minimum allocation chunk size is 1KB (a radix of 10), so HAMMER2 sets
  * HAMMER2_RADIX_MIN to 10.  The maximum radix is currently 16 (64KB), but
  * we fully intend to support larger extents in the future.
+ *
+ * WARNING! A radix of 0 (such as when data_off is all 0's) is a special
+ *	    case which means no data associated with the blockref, and
+ *	    not the '1 byte' it would otherwise calculate to.
  */
 #define HAMMER2_OFF_BAD		((hammer2_off_t)-1)
 #define HAMMER2_OFF_MASK	0xFFFFFFFFFFFFFFC0ULL
@@ -525,7 +529,6 @@ typedef struct dmsg_lnk_hammer2_volconf dmsg_lnk_hammer2_volconf_t;
 
 #define H2_LNK_VOLCONF(msg)	((dmsg_lnk_hammer2_volconf_t *)(msg)->any.buf)
 
-#if 0
 /*
  * HAMMER2 directory entry header (embedded in blockref)  exactly 16 bytes
  */
@@ -538,8 +541,6 @@ struct hammer2_dirent_head {
 } __packed;
 
 typedef struct hammer2_dirent_head hammer2_dirent_head_t;
-
-#endif
 
 /*
  * The media block reference structure.  This forms the core of the HAMMER2
@@ -608,7 +609,7 @@ struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 	hammer2_tid_t	update_tid;	/* clc modify (propagated upward) */
 	union {
 		char	buf[16];
-#if 0
+
 		/*
 		 * Directory entry header (BREF_TYPE_DIRENT)
 		 *
@@ -623,7 +624,7 @@ struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 		 *	 allows both cases.
 		 */
 		hammer2_dirent_head_t dirent;
-#endif
+
 		/*
 		 * Statistics aggregation (BREF_TYPE_INODE, BREF_TYPE_INDIRECT)
 		 */
@@ -687,7 +688,7 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 #define HAMMER2_BREF_TYPE_INODE		1
 #define HAMMER2_BREF_TYPE_INDIRECT	2
 #define HAMMER2_BREF_TYPE_DATA		3
-#define HAMMER2_BREF_TYPE_UNUSED04	4
+#define HAMMER2_BREF_TYPE_DIRENT	4
 #define HAMMER2_BREF_TYPE_FREEMAP_NODE	5
 #define HAMMER2_BREF_TYPE_FREEMAP_LEAF	6
 #define HAMMER2_BREF_TYPE_FREEMAP	254	/* pseudo-type */
@@ -1013,7 +1014,7 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 #define HAMMER2_OBJTYPE_CDEV		5
 #define HAMMER2_OBJTYPE_BDEV		6
 #define HAMMER2_OBJTYPE_SOFTLINK	7
-#define HAMMER2_OBJTYPE_HARDLINK	8	/* dummy entry for hardlink */
+#define HAMMER2_OBJTYPE_UNUSED08	8
 #define HAMMER2_OBJTYPE_SOCKET		9
 #define HAMMER2_OBJTYPE_WHITEOUT	10
 

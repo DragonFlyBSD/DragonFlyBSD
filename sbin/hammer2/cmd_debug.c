@@ -443,6 +443,9 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 	case HAMMER2_BREF_TYPE_EMPTY:
 		type_str = "empty";
 		break;
+	case HAMMER2_BREF_TYPE_DIRENT:
+		type_str = "dirent";
+		break;
 	case HAMMER2_BREF_TYPE_INODE:
 		type_str = "inode";
 		break;
@@ -477,9 +480,10 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 	if (bref->flags)
 		printf("flags=%02x ", bref->flags);
 
-	bytes = (size_t)1 << (bref->data_off & HAMMER2_OFF_MASK_RADIX);
-
-	{
+	bytes = (bref->data_off & HAMMER2_OFF_MASK_RADIX);
+	if (bytes)
+		bytes = (size_t)1 << bytes;
+	if (bytes) {
 		hammer2_off_t io_off;
 		hammer2_off_t io_base;
 		size_t io_bytes;
@@ -519,8 +523,12 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 	 * a quick meta-data scan.  Meta-data integrity is always checked.
 	 * (Also see the check above that ensures the media data is loaded,
 	 * otherwise there's no data to check!).
+	 *
+	 * WARNING! bref->check state may be used for other things when
+	 *	    bref has no data (bytes == 0).
 	 */
-	if (bref->type != HAMMER2_BREF_TYPE_DATA || VerboseOpt >= 1) {
+	if (bytes &&
+	    (bref->type != HAMMER2_BREF_TYPE_DATA || VerboseOpt >= 1)) {
 		switch(HAMMER2_DEC_CHECK(bref->methods)) {
 		case HAMMER2_CHECK_NONE:
 			printf("(meth %02x) ", bref->methods);
@@ -574,6 +582,24 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 	case HAMMER2_BREF_TYPE_EMPTY:
 		obrace = 0;
 		break;
+	case HAMMER2_BREF_TYPE_DIRENT:
+		printf("{\n");
+		if (bref->embed.dirent.namlen <= sizeof(bref->check.buf)) {
+			tabprintf(tab, "filename \"%*.*s\"\n",
+				bref->embed.dirent.namlen,
+				bref->embed.dirent.namlen,
+				bref->check.buf);
+		} else {
+			tabprintf(tab, "filename \"%*.*s\"\n",
+				bref->embed.dirent.namlen,
+				bref->embed.dirent.namlen,
+				media.buf);
+		}
+		tabprintf(tab, "inum 0x%016jx\n",
+			(uintmax_t)bref->embed.dirent.inum);
+		tabprintf(tab, "type     %s\n",
+			  hammer2_iptype_to_str(bref->embed.dirent.type));
+		break;
 	case HAMMER2_BREF_TYPE_INODE:
 		printf("{\n");
 		if (media.ipdata.meta.op_flags & HAMMER2_OPFLAG_DIRECTDATA) {
@@ -608,13 +634,8 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 			  hammer2_uuid_to_str(&media.ipdata.meta.uid, &str));
 		tabprintf(tab, "gid      %s\n",
 			  hammer2_uuid_to_str(&media.ipdata.meta.gid, &str));
-		if (media.ipdata.meta.type == HAMMER2_OBJTYPE_HARDLINK)
-			tabprintf(tab, "type     %s (%s)\n",
-			      hammer2_iptype_to_str(media.ipdata.meta.type),
-			      hammer2_iptype_to_str(media.ipdata.meta.target_type));
-		else
-			tabprintf(tab, "type     %s\n",
-			      hammer2_iptype_to_str(media.ipdata.meta.type));
+		tabprintf(tab, "type     %s\n",
+			  hammer2_iptype_to_str(media.ipdata.meta.type));
 		tabprintf(tab, "opflgs   0x%02x\n",
 			  media.ipdata.meta.op_flags);
 		tabprintf(tab, "capflgs  0x%04x\n",
@@ -658,11 +679,11 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 		tabprintf(tab, "data_quota  %ju\n",
 			  (uintmax_t)media.ipdata.meta.data_quota);
 		tabprintf(tab, "data_count  %ju\n",
-			  (uintmax_t)bref->data_count);
+			  (uintmax_t)bref->embed.stats.data_count);
 		tabprintf(tab, "inode_quota %ju\n",
 			  (uintmax_t)media.ipdata.meta.inode_quota);
 		tabprintf(tab, "inode_count %ju\n",
-			  (uintmax_t)bref->inode_count);
+			  (uintmax_t)bref->embed.stats.inode_count);
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
 		bscan = &media.npdata[0];

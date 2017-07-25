@@ -72,19 +72,21 @@ checkdirempty(hammer2_chain_t *oparent, hammer2_chain_t *ochain, int clindex)
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	hammer2_key_t key_next;
+	hammer2_key_t inum;
 	int cache_index = -1;
 	int error;
 
 	error = 0;
 	chain = hammer2_chain_lookup_init(ochain, 0);
 
-	if (chain->data->ipdata.meta.type == HAMMER2_OBJTYPE_HARDLINK) {
+	if (chain->bref.type == HAMMER2_BREF_TYPE_DIRENT) {
 		if (oparent)
 			hammer2_chain_unlock(oparent);
-
+		inum = chain->bref.embed.dirent.inum;
 		parent = NULL;
-		error = hammer2_chain_hardlink_find(&parent, &chain,
-						    clindex, 0);
+		error = hammer2_chain_inode_find(chain->pmp, inum,
+						 clindex, 0,
+						 &parent, &chain);
 		if (parent) {
 			hammer2_chain_unlock(parent);
 			hammer2_chain_drop(parent);
@@ -103,6 +105,10 @@ checkdirempty(hammer2_chain_t *oparent, hammer2_chain_t *ochain, int clindex)
 		}
 	}
 
+	/*
+	 * Determine if the directory is empty or not by checking its
+	 * visible namespace (the area which contains directory entries).
+	 */
 	parent = chain;
 	chain = NULL;
 	if (parent) {
@@ -221,7 +227,6 @@ hammer2_xop_nresolve(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	hammer2_xop_nresolve_t *xop = &arg->xop_nresolve;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
-	const hammer2_inode_data_t *ripdata;
 	const char *name;
 	size_t name_len;
 	hammer2_key_t key_next;
@@ -251,12 +256,8 @@ hammer2_xop_nresolve(hammer2_thread_t *thr, hammer2_xop_t *arg)
 				     HAMMER2_LOOKUP_ALWAYS |
 				     HAMMER2_LOOKUP_SHARED);
 	while (chain) {
-		ripdata = &chain->data->ipdata;
-		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
-		    ripdata->meta.name_len == name_len &&
-		    bcmp(ripdata->filename, name, name_len) == 0) {
+		if (hammer2_chain_dirent_test(chain, name, name_len))
 			break;
-		}
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next,
 					   lhc + HAMMER2_DIRHASH_LOMASK,
@@ -270,10 +271,14 @@ hammer2_xop_nresolve(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	 */
 	error = 0;
 	if (chain) {
-		if (chain->data->ipdata.meta.type == HAMMER2_OBJTYPE_HARDLINK) {
-			error = hammer2_chain_hardlink_find(&parent, &chain,
-							    thr->clindex,
-							HAMMER2_LOOKUP_SHARED);
+		if (chain->bref.type == HAMMER2_BREF_TYPE_DIRENT) {
+			lhc = chain->bref.embed.dirent.inum;
+			error = hammer2_chain_inode_find(chain->pmp,
+							 lhc,
+							 thr->clindex,
+							 HAMMER2_LOOKUP_SHARED,
+							 &parent,
+							 &chain);
 		}
 	}
 done:
@@ -292,19 +297,17 @@ done:
  * Backend for hammer2_vop_nremove(), hammer2_vop_nrmdir(), helper
  * for hammer2_vop_nrename(), and backend for pfs_delete.
  *
- * This function locates and removes a directory entry.  If the entry is
- * a hardlink pointer, this function does NOT remove the hardlink target,
- * but will lookup and return the hardlink target.
+ * This function locates and removes a directory entry, and will lookup
+ * and return the underlying inode.  For directory entries the underlying
+ * inode is not removed.  If the directory entry is the actual inode itself,
+ * it may be conditonally removed and returned.
  *
- * Note that any hardlink target's nlinks may not be synchronized to the
- * in-memory inode.  hammer2_inode_unlink_finisher() is responsible for the
- * final disposition of the hardlink target.
+ * WARNING!  Any target inode's nlinks may not be synchronized to the
+ *	     in-memory inode.  hammer2_inode_unlink_finisher() is
+ *	     responsible for the final disposition of the actual inode.
  *
- * If an inode pointer we lookup and return the actual inode.  If not, we
- * return the deleted directory entry.
- *
- * The frontend is responsible for moving open inodes to the hidden directory
- * and for decrementing nlinks.
+ * The frontend is responsible for moving open-but-deleted inodes to the
+ * mount's hidden directory and for decrementing nlinks.
  */
 void
 hammer2_xop_unlink(hammer2_thread_t *thr, hammer2_xop_t *arg)
@@ -312,7 +315,6 @@ hammer2_xop_unlink(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	hammer2_xop_unlink_t *xop = &arg->xop_unlink;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
-	const hammer2_inode_data_t *ripdata;
 	const char *name;
 	size_t name_len;
 	hammer2_key_t key_next;
@@ -344,12 +346,8 @@ again:
 				     &cache_index,
 				     HAMMER2_LOOKUP_ALWAYS);
 	while (chain) {
-		ripdata = &chain->data->ipdata;
-		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
-		    ripdata->meta.name_len == name_len &&
-		    bcmp(ripdata->filename, name, name_len) == 0) {
+		if (hammer2_chain_dirent_test(chain, name, name_len))
 			break;
-		}
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next,
 					   lhc + HAMMER2_DIRHASH_LOMASK,
@@ -358,8 +356,10 @@ again:
 	}
 
 	/*
-	 * The directory entry will almost always be a hardlink pointer,
-	 * which we permanently delete.  Otherwise we go by xop->dopermanent.
+	 * The directory entry will either be a BREF_TYPE_DIRENT or a
+	 * BREF_TYPE_INODE.  We always permanently delete DIRENTs, but
+	 * must go by xop->dopermanent for BREF_TYPE_INODE.
+	 *
 	 * Note that the target chain's nlinks may not be synchronized with
 	 * the in-memory hammer2_inode_t structure, so we don't try to do
 	 * anything fancy here.
@@ -373,16 +373,16 @@ again:
 		/*
 		 * If the directory entry is the actual inode then use its
 		 * type for the directory typing tests, otherwise if it is
-		 * a hardlink pointer then use the secondary type field for
-		 * directory typing tests.
+		 * a directory entry, pull the type field from the entry.
 		 *
-		 * Also, hardlink pointers are always permanently deleted
+		 * Directory entries are always permanently deleted
 		 * (because they aren't the actual inode).
 		 */
-		type = chain->data->ipdata.meta.type;
-		if (type == HAMMER2_OBJTYPE_HARDLINK) {
-			type = chain->data->ipdata.meta.target_type;
+		if (chain->bref.type == HAMMER2_BREF_TYPE_DIRENT) {
+			type = chain->bref.embed.dirent.type;
 			dopermanent |= HAMMER2_DELETE_PERMANENT;
+		} else {
+			type = chain->data->ipdata.meta.type;
 		}
 
 		/*
@@ -422,9 +422,8 @@ again:
 			error = EISDIR;
 		} else {
 			/*
-			 * This deletes the directory entry itself, which is
-			 * also the inode when nlinks == 1.  Hardlink targets
-			 * are handled in the next conditional.
+			 * Delete the directory entry.  chain might also
+			 * be a directly-embedded inode.
 			 */
 			error = chain->error;
 			hammer2_chain_delete(parent, chain,
@@ -433,22 +432,21 @@ again:
 	}
 
 	/*
-	 * If the entry is a hardlink pointer, resolve it.  We do not try
-	 * to manipulate the contents of the hardlink target as it might
-	 * not be synchronized with the front-end hammer2_inode_t.  Nor do
-	 * we try to lookup the front-end hammer2_inode_t here (we are the
-	 * backend!).
+	 * If chain is a directory entry we must resolve it.  We do not try
+	 * to manipulate the contents as it might not be synchronized with
+	 * the frontend hammer2_inode_t, nor do we try to lookup the
+	 * frontend hammer2_inode_t here (we are the backend!).
 	 */
-	if (chain &&
-	    chain->data->ipdata.meta.type == HAMMER2_OBJTYPE_HARDLINK) {
+	if (chain && chain->bref.type == HAMMER2_BREF_TYPE_DIRENT) {
 		int error2;
 
-		lhc = chain->data->ipdata.meta.inum;
+		lhc = chain->bref.embed.dirent.inum;
 
-		error2 = hammer2_chain_hardlink_find(&parent, &chain,
-						     thr->clindex, 0);
+		error2 = hammer2_chain_inode_find(chain->pmp, lhc,
+						  thr->clindex, 0,
+						  &parent, &chain);
 		if (error2) {
-			kprintf("hardlink_find: %016jx %p failed\n",
+			kprintf("inode_find: %016jx %p failed\n",
 				lhc, chain);
 			error2 = 0;	/* silently ignore */
 		}
@@ -478,7 +476,7 @@ done:
  * Backend for hammer2_vop_nrename()
  *
  * This handles the final step of renaming, either renaming the
- * actual inode or renaming the hardlink pointer.
+ * actual inode or renaming the directory entry.
  */
 void
 hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
@@ -496,8 +494,8 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	/*
 	 * We need the precise parent chain to issue the deletion.
 	 *
-	 * If this is not a hardlink target we can act on the inode,
-	 * otherwise we have to locate the hardlink pointer.
+	 * If this is a directory entry we must locate the underlying
+	 * inode.  If it is an embedded inode we can act directly on it.
 	 */
 	ip = xop->head.ip2;
 	pmp = ip->pmp;
@@ -524,10 +522,9 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		}
 	} else {
 		/*
-		 * The hardlink pointer for the head.ip1 hardlink target
+		 * The directory entry for the head.ip1 inode
 		 * is in fdip, do a namespace search.
 		 */
-		const hammer2_inode_data_t *ripdata;
 		hammer2_key_t lhc;
 		hammer2_key_t key_next;
 		const char *name;
@@ -552,12 +549,8 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 					     &cache_index,
 					     HAMMER2_LOOKUP_ALWAYS);
 		while (chain) {
-			ripdata = &chain->data->ipdata;
-			if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
-			    ripdata->meta.name_len == name_len &&
-			    bcmp(ripdata->filename, name, name_len) == 0) {
+			if (hammer2_chain_dirent_test(chain, name, name_len))
 				break;
-			}
 			chain = hammer2_chain_next(&parent, chain, &key_next,
 						   key_next,
 						   lhc + HAMMER2_DIRHASH_LOMASK,
@@ -585,31 +578,56 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 
 	/*
 	 * Ok, back to the deleted chain.  We must reconnect this chain
-	 * to tdir (ip3).  The chain (a real inode or a hardlink pointer)
-	 * is not otherwise modified.
+	 * to tdir (ip3) and adjust the filename.  The chain (a real inode
+	 * or a directory entry) is not otherwise modified.
 	 *
-	 * Frontend is expected to replicate the same inode meta data
-	 * modifications.
-	 *
-	 * NOTE!  This chain may not represent the actual inode, it
-	 *	  can be a hardlink pointer.
-	 *
-	 * XXX in-inode parent directory specification?
+	 * The frontend is expected to replicate the same inode meta data
+	 * modifications if necessary.
 	 */
-	if (chain->data->ipdata.meta.name_key != xop->lhc ||
+	if (chain->bref.key != xop->lhc ||
 	    xop->head.name1_len != xop->head.name2_len ||
 	    bcmp(xop->head.name1, xop->head.name2, xop->head.name1_len) != 0) {
-		hammer2_inode_data_t *wipdata;
+		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
+			hammer2_inode_data_t *wipdata;
 
-		hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
-		wipdata = &chain->data->ipdata;
+			hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
+			wipdata = &chain->data->ipdata;
 
-		bzero(wipdata->filename, sizeof(wipdata->filename));
-		bcopy(xop->head.name2, wipdata->filename, xop->head.name2_len);
-		wipdata->meta.name_key = xop->lhc;
-		wipdata->meta.name_len = xop->head.name2_len;
+			bzero(wipdata->filename, sizeof(wipdata->filename));
+			bcopy(xop->head.name2, wipdata->filename,
+			      xop->head.name2_len);
+			wipdata->meta.name_key = xop->lhc;
+			wipdata->meta.name_len = xop->head.name2_len;
+		}
+		if (chain->bref.type == HAMMER2_BREF_TYPE_DIRENT) {
+			if (xop->head.name2_len <= sizeof(chain->bref.check.buf)) {
+				hammer2_chain_resize(chain, xop->head.mtid, 0,
+						     0, 0);
+				hammer2_chain_modify(chain, xop->head.mtid,
+						     0, 0);
+				bzero(chain->bref.check.buf,
+				      sizeof(chain->bref.check.buf));
+				bcopy(xop->head.name2, chain->bref.check.buf,
+				      xop->head.name2_len);
+			} else {
+				hammer2_chain_resize(chain, xop->head.mtid, 0,
+				     hammer2_getradix(HAMMER2_ALLOC_MIN), 0);
+				hammer2_chain_modify(chain, xop->head.mtid,
+						     0, 0);
+				bzero(chain->data->buf,
+				      sizeof(chain->data->buf));
+				bcopy(xop->head.name2, chain->data->buf,
+				      xop->head.name2_len);
+			}
+			chain->bref.embed.dirent.namlen = xop->head.name2_len;
+		}
 	}
-	if (chain->data->ipdata.meta.iparent != xop->head.ip3->meta.inum) {
+
+	/*
+	 * If an embedded inode, adjust iparent directly.
+	 */
+	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
+	    chain->data->ipdata.meta.iparent != xop->head.ip3->meta.inum) {
 		hammer2_inode_data_t *wipdata;
 
 		hammer2_chain_modify(chain, xop->head.mtid, 0, 0);

@@ -166,7 +166,17 @@ hammer2_chain_alloc(hammer2_dev_t *hmp, hammer2_pfs_t *pmp,
 		    hammer2_blockref_t *bref)
 {
 	hammer2_chain_t *chain;
-	u_int bytes = 1U << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
+	u_int bytes;
+
+	/*
+	 * Special case - radix of 0 indicates a chain that does not
+	 * need a data reference (context is completely embedded in the
+	 * bref).
+	 */
+	if ((int)(bref->data_off & HAMMER2_OFF_MASK_RADIX))
+		bytes = 1U << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
+	else
+		bytes = 0;
 
 	atomic_add_long(&hammer2_chain_allocs, 1);
 
@@ -174,6 +184,7 @@ hammer2_chain_alloc(hammer2_dev_t *hmp, hammer2_pfs_t *pmp,
 	 * Construct the appropriate system structure.
 	 */
 	switch(bref->type) {
+	case HAMMER2_BREF_TYPE_DIRENT:
 	case HAMMER2_BREF_TYPE_INODE:
 	case HAMMER2_BREF_TYPE_INDIRECT:
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
@@ -838,7 +849,9 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	TIMER(22);
 
 	/*
-	 * Do we have to resolve the data?
+	 * Do we have to resolve the data?  This is generally only
+	 * applicable to HAMMER2_BREF_TYPE_DATA which is special-cased.
+	 * Other BREF types expects the data to be there.
 	 */
 	switch(how & HAMMER2_RESOLVE_MASK) {
 	case HAMMER2_RESOLVE_NEVER:
@@ -939,9 +952,12 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 	int error;
 
 	/*
-	 * Degenerate case, data already present.
+	 * Degenerate case, data already present, or chain is not expected
+	 * to have any data.
 	 */
 	if (chain->data)
+		return;
+	if ((chain->bref.data_off & HAMMER2_OFF_MASK_RADIX) == 0)
 		return;
 	TIMER(23);
 
@@ -1094,8 +1110,11 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 		/*
 		 * Copy data from bp to embedded buffer
 		 */
-		panic("hammer2_chain_lock: called on unresolved volume header");
+		panic("hammer2_chain_load_data: unresolved volume header");
 		break;
+	case HAMMER2_BREF_TYPE_DIRENT:
+		KKASSERT(chain->bytes != 0);
+		/* fall through */
 	case HAMMER2_BREF_TYPE_INODE:
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 	case HAMMER2_BREF_TYPE_INDIRECT:
@@ -1314,13 +1333,17 @@ hammer2_chain_countbrefs(hammer2_chain_t *chain,
 
 /*
  * Resize the chain's physical storage allocation in-place.  This function does
- * not adjust the data pointer and must be followed by (typically) a
+ * not usually adjust the data pointer and must be followed by (typically) a
  * hammer2_chain_modify() call to copy any old data over and adjust the
  * data pointer.
  *
  * Chains can be resized smaller without reallocating the storage.  Resizing
  * larger will reallocate the storage.  Excess or prior storage is reclaimed
  * asynchronously at a later time.
+ *
+ * An nradix value of 0 is special-cased to mean that the storage should
+ * be disassociated, that is the chain is being resized to 0 bytes (not 1
+ * byte).
  *
  * Must be passed an exclusively locked parent and chain.
  *
@@ -1332,8 +1355,7 @@ hammer2_chain_countbrefs(hammer2_chain_t *chain,
  * XXX return error if cannot resize.
  */
 void
-hammer2_chain_resize(hammer2_inode_t *ip,
-		     hammer2_chain_t *parent, hammer2_chain_t *chain,
+hammer2_chain_resize(hammer2_chain_t *chain,
 		     hammer2_tid_t mtid, hammer2_off_t dedup_off,
 		     int nradix, int flags)
 {
@@ -1349,14 +1371,14 @@ hammer2_chain_resize(hammer2_inode_t *ip,
 	 */
 	KKASSERT(chain != &hmp->vchain);
 	KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_DATA ||
-		 chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT);
-	KKASSERT(chain->parent == parent);
+		 chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
+		 chain->bref.type == HAMMER2_BREF_TYPE_DIRENT);
 
 	/*
 	 * Nothing to do if the element is already the proper size
 	 */
 	obytes = chain->bytes;
-	nbytes = 1U << nradix;
+	nbytes = (nradix) ? (1U << nradix) : 0;
 	if (obytes == nbytes)
 		return;
 
@@ -1374,11 +1396,12 @@ hammer2_chain_resize(hammer2_inode_t *ip,
 	 * Relocate the block, even if making it smaller (because different
 	 * block sizes may be in different regions).
 	 *
-	 * (data blocks only, we aren't copying the storage here).
+	 * NOTE: Operation does not copy the data and may only be used
+	 *	  to resize data blocks in-place, or directory entry blocks
+	 *	  which are about to be modified in some manner.
 	 */
 	hammer2_freemap_alloc(chain, nbytes);
 	chain->bytes = nbytes;
-	/*ip->delta_dcount += (ssize_t)(nbytes - obytes);*/ /* XXX atomic */
 
 	/*
 	 * We don't want the followup chain_modify() to try to copy data
@@ -1387,7 +1410,8 @@ hammer2_chain_resize(hammer2_inode_t *ip,
 	 * originator already has the data to write in-hand.
 	 */
 	if (chain->dio) {
-		KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_DATA);
+		KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_DATA ||
+			 chain->bref.type == HAMMER2_BREF_TYPE_DIRENT);
 		hammer2_io_brelse(&chain->dio);
 		chain->data = NULL;
 	}
@@ -1406,7 +1430,15 @@ modified_needs_new_allocation(hammer2_chain_t *chain)
 	/*
 	 * We only live-dedup data, we do not live-dedup meta-data.
 	 */
-	if (chain->bref.type != HAMMER2_BREF_TYPE_DATA)
+	if (chain->bref.type != HAMMER2_BREF_TYPE_DATA &&
+	    chain->bref.type != HAMMER2_BREF_TYPE_DIRENT) {
+		return 0;
+	}
+
+	/*
+	 * If chain has no data, then there is nothing to live-dedup.
+	 */
+	if (chain->bytes == 0)
 		return 0;
 
 	/*
@@ -1485,7 +1517,8 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 	 * Data must be resolved if already assigned, unless explicitly
 	 * flagged otherwise.
 	 */
-	if (chain->data == NULL && (flags & HAMMER2_MODIFY_OPTDATA) == 0 &&
+	if (chain->data == NULL && chain->bytes != 0 &&
+	    (flags & HAMMER2_MODIFY_OPTDATA) == 0 &&
 	    (chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX)) {
 		hammer2_chain_load_data(chain);
 	}
@@ -1519,7 +1552,8 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 		 * NOTE! This data-block cannot be used as a de-duplication
 		 *	 source when the check mode is set to NONE.
 		 */
-		if (chain->bref.type == HAMMER2_BREF_TYPE_DATA &&
+		if ((chain->bref.type == HAMMER2_BREF_TYPE_DATA ||
+		     chain->bref.type == HAMMER2_BREF_TYPE_DIRENT) &&
 		    (chain->flags & HAMMER2_CHAIN_INITIAL) == 0 &&
 		    HAMMER2_DEC_CHECK(chain->bref.methods) ==
 		     HAMMER2_CHECK_NONE &&
@@ -1560,10 +1594,13 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 	 * to reset it to a fully allocated state to force two bulkfree
 	 * passes to free it again.
 	 *
+	 * NOTE: Only applicable when chain->bytes != 0.
+	 *
 	 * XXX can a chain already be marked MODIFIED without a data
 	 * assignment?  If not, assert here instead of testing the case.
 	 */
-	if (chain != &hmp->vchain && chain != &hmp->fchain) {
+	if (chain != &hmp->vchain && chain != &hmp->fchain &&
+	    chain->bytes) {
 		if ((chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX) == 0 ||
 		     newmod
 		) {
@@ -1612,6 +1649,8 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 	 * that the modifications are being done via the logical buffer cache.
 	 * The INITIAL flag relates only to the device data buffer and thus
 	 * remains unchange in this situation.
+	 *
+	 * This code also handles bytes == 0 (most dirents).
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_DATA &&
 	    (flags & HAMMER2_MODIFY_OPTDATA) &&
@@ -1647,6 +1686,15 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 		 */
 		KKASSERT(chain->dio == NULL);
 		break;
+	case HAMMER2_BREF_TYPE_DIRENT:
+		/*
+		 * The data might be fully embedded.
+		 */
+		if (chain->bytes == 0) {
+			KKASSERT(chain->dio == NULL);
+			break;
+		}
+		/* fall through */
 	case HAMMER2_BREF_TYPE_INODE:
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 	case HAMMER2_BREF_TYPE_DATA:
@@ -2854,10 +2902,11 @@ hammer2_chain_create(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
 		 * processed when we call hammer2_chain_modify().
 		 *
 		 * Recalculate bytes to reflect the actual media block
-		 * allocation.
+		 * allocation.  Handle special case radix 0 == 0 bytes.
 		 */
-		bytes = (hammer2_off_t)1 <<
-			(int)(chain->bref.data_off & HAMMER2_OFF_MASK_RADIX);
+		bytes = (size_t)(chain->bref.data_off & HAMMER2_OFF_MASK_RADIX);
+		if (bytes)
+			bytes = (hammer2_off_t)1 << bytes;
 		chain->bytes = bytes;
 
 		switch(type) {
@@ -2876,6 +2925,7 @@ hammer2_chain_create(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
 		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 			KKASSERT(bytes == sizeof(chain->data->bmdata));
 			/* fall through */
+		case HAMMER2_BREF_TYPE_DIRENT:
 		case HAMMER2_BREF_TYPE_INODE:
 		case HAMMER2_BREF_TYPE_DATA:
 		default:
@@ -3028,6 +3078,7 @@ again:
 		switch(chain->bref.type) {
 		case HAMMER2_BREF_TYPE_DATA:
 		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		case HAMMER2_BREF_TYPE_DIRENT:
 		case HAMMER2_BREF_TYPE_INODE:
 			hammer2_chain_modify(chain, mtid, dedup_off,
 					     HAMMER2_MODIFY_OPTDATA);
@@ -3120,11 +3171,14 @@ hammer2_chain_rename(hammer2_blockref_t *bref,
 	 * Now create a duplicate of the chain structure, associating
 	 * it with the same core, making it the same size, pointing it
 	 * to the same bref (the same media block).
+	 *
+	 * NOTE: Handle special radix == 0 case (means 0 bytes).
 	 */
 	if (bref == NULL)
 		bref = &chain->bref;
-	bytes = (hammer2_off_t)1 <<
-		(int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
+	bytes = (size_t)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
+	if (bytes)
+		bytes = (hammer2_off_t)1 << bytes;
 
 	/*
 	 * If parent is not NULL the duplicated chain will be entered under
@@ -3205,10 +3259,7 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 			/*
 			 * Access the inode's block array.  However, there
 			 * is no block array if the inode is flagged
-			 * DIRECTDATA.  The DIRECTDATA case typicaly only
-			 * occurs when a hardlink has been shifted up the
-			 * tree and the original inode gets replaced with
-			 * an OBJTYPE_HARDLINK placeholding inode.
+			 * DIRECTDATA.
 			 */
 			if (parent->data &&
 			    (parent->data->ipdata.meta.op_flags &
@@ -3449,9 +3500,13 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 		keybits = hammer2_chain_indkey_file(parent, &key, keybits,
 						    base, count, ncount);
 		break;
+	case HAMMER2_BREF_TYPE_DIRENT:
 	case HAMMER2_BREF_TYPE_INODE:
 		keybits = hammer2_chain_indkey_dir(parent, &key, keybits,
 						   base, count, ncount);
+		break;
+	default:
+		panic("illegal indirect block for bref type %d", for_type);
 		break;
 	}
 
@@ -4552,10 +4607,14 @@ hammer2_base_delete(hammer2_chain_t *parent,
 	}
 
 	/*
-	 * Update stats and zero the entry
+	 * Update stats and zero the entry.
+	 *
+	 * NOTE: Handle radix == 0 (0 bytes) case.
 	 */
-	parent->bref.embed.stats.data_count -= (hammer2_off_t)1 <<
-			(int)(scan->data_off & HAMMER2_OFF_MASK_RADIX);
+	if ((int)(scan->data_off & HAMMER2_OFF_MASK_RADIX)) {
+		parent->bref.embed.stats.data_count -= (hammer2_off_t)1 <<
+				(int)(scan->data_off & HAMMER2_OFF_MASK_RADIX);
+	}
 	switch(scan->type) {
 	case HAMMER2_BREF_TYPE_INODE:
 		parent->bref.embed.stats.inode_count -= 1;
@@ -4637,8 +4696,10 @@ hammer2_base_insert(hammer2_chain_t *parent,
 	/*
 	 * Update stats and zero the entry
 	 */
-	parent->bref.embed.stats.data_count += (hammer2_off_t)1 <<
-			(int)(elm->data_off & HAMMER2_OFF_MASK_RADIX);
+	if ((int)(elm->data_off & HAMMER2_OFF_MASK_RADIX)) {
+		parent->bref.embed.stats.data_count += (hammer2_off_t)1 <<
+				(int)(elm->data_off & HAMMER2_OFF_MASK_RADIX);
+	}
 	switch(elm->type) {
 	case HAMMER2_BREF_TYPE_INODE:
 		parent->bref.embed.stats.inode_count += 1;
@@ -5005,26 +5066,26 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 }
 
 /*
- * The caller presents a shared-locked (parent, chain) where the chain
- * is of type HAMMER2_OBJTYPE_HARDLINK.
+ * Acquire the chain and parent representing the specified inode for the
+ * device at the specified cluster index.
  *
- * The flags passed in are LOOKUP flags, not RESOLVE flags.  Only
- * HAMMER2_LOOKUP_SHARED is supported.
+ * The flags passed in are LOOKUP flags, not RESOLVE flags.
  *
- * We locate the actual inode chain & parent.
+ * If we are unable to locate the hardlink, INVAL is returned and *chainp
+ * will be NULL.  *parentp may still be set error or not, or NULL if the
+ * parent itself could not be resolved.
  *
- * If we are unable to locate the hardlink, EIO is returned and
- * (*chainp) is unlocked and dropped.
+ * Caller must pass-in a valid or NULL *parentp or *chainp.  The passed-in
+ * *parentp and *chainp will be unlocked if not NULL.
  */
 int
-hammer2_chain_hardlink_find(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
-			    int clindex, int flags)
+hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,
+			 int clindex, int flags,
+			 hammer2_chain_t **parentp, hammer2_chain_t **chainp)
 {
 	hammer2_chain_t *parent;
 	hammer2_chain_t *rchain;
-	hammer2_pfs_t *pmp;
 	hammer2_key_t key_dummy;
-	hammer2_key_t lhc;
 	int cache_index = -1;
 	int resolve_flags;
 
@@ -5032,28 +5093,33 @@ hammer2_chain_hardlink_find(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
 			HAMMER2_RESOLVE_SHARED : 0;
 
 	/*
-	 * Obtain the key for the hardlink from *chainp.
+	 * Caller expects us to replace these.
 	 */
-	rchain = *chainp;
-	pmp = rchain->pmp;
-	lhc = rchain->data->ipdata.meta.inum;
-	hammer2_chain_unlock(rchain);
-	hammer2_chain_drop(rchain);
-	rchain = NULL;
-
-	/*
-	 * Hardlinks hang off of iroot
-	 */
+	if (*chainp) {
+		hammer2_chain_unlock(*chainp);
+		hammer2_chain_drop(*chainp);
+		*chainp = NULL;
+	}
 	if (*parentp) {
 		hammer2_chain_unlock(*parentp);
 		hammer2_chain_drop(*parentp);
+		*parentp = NULL;
 	}
+
+	/*
+	 * Inodes hang off of the iroot (bit 63 is clear, differentiating
+	 * inodes from root directory entries in the key lookup).
+	 */
 	parent = hammer2_inode_chain(pmp->iroot, clindex, resolve_flags);
-	rchain = hammer2_chain_lookup(&parent, &key_dummy,
-				      lhc, lhc,
-				      &cache_index, flags);
+	rchain = NULL;
+	if (parent) {
+		rchain = hammer2_chain_lookup(&parent, &key_dummy,
+					      inum, inum,
+					      &cache_index, flags);
+	}
 	*parentp = parent;
 	*chainp = rchain;
+
 	return (rchain ? 0 : EINVAL);
 }
 
@@ -5202,4 +5268,37 @@ hammer2_chain_snapshot(hammer2_chain_t *chain, hammer2_ioc_pfs_t *pmp,
 		hammer2_inode_unlock(nip);
 	}
 	return (error);
+}
+
+/*
+ * Returns non-zero if the chain (INODE or DIRENT) matches the
+ * filename.
+ */
+int
+hammer2_chain_dirent_test(hammer2_chain_t *chain, const char *name,
+			  size_t name_len)
+{
+	const hammer2_inode_data_t *ripdata;
+	const hammer2_dirent_head_t *den;
+
+	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
+		ripdata = &chain->data->ipdata;
+		if (ripdata->meta.name_len == name_len &&
+		    bcmp(ripdata->filename, name, name_len) == 0) {
+			return 1;
+		}
+	}
+	if (chain->bref.type == HAMMER2_BREF_TYPE_DIRENT &&
+	   chain->bref.embed.dirent.namlen == name_len) {
+		den = &chain->bref.embed.dirent;
+		if (name_len > sizeof(chain->bref.check.buf) &&
+		    bcmp(chain->data->buf, name, name_len) == 0) {
+			return 1;
+		}
+		if (name_len <= sizeof(chain->bref.check.buf) &&
+		    bcmp(chain->bref.check.buf, name, name_len) == 0) {
+			return 1;
+		}
+	}
+	return 0;
 }

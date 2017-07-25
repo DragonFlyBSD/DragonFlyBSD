@@ -528,14 +528,8 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 			 * update to compatible content first but we do not
 			 * synchronize modify_tid until the entire recursion
 			 * has completed successfully.
-			 *
-			 * NOTE: Do not try to access hardlink pointers as if
-			 *	 they were normal inodes, the inode cache will
-			 *	 get seriously confused.
 			 */
-			if (focus->bref.type == HAMMER2_BREF_TYPE_INODE &&
-			    focus->data->ipdata.meta.type !=
-			    HAMMER2_OBJTYPE_HARDLINK) {
+			if (focus->bref.type == HAMMER2_BREF_TYPE_INODE) {
 				nerror = hammer2_sync_replace(
 						thr, parent, chain,
 						0,
@@ -564,14 +558,8 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 			 * compatible content first but we do not synchronize
 			 * modify_tid until the entire recursion has
 			 * completed successfully.
-			 *
-			 * NOTE: Do not try to access hardlink pointers as if
-			 *	 they were normal inodes, the inode cache will
-			 *	 get seriously confused.
 			 */
-			if (focus->bref.type == HAMMER2_BREF_TYPE_INODE &&
-			    focus->data->ipdata.meta.type !=
-			    HAMMER2_OBJTYPE_HARDLINK) {
+			if (focus->bref.type == HAMMER2_BREF_TYPE_INODE) {
 				nerror = hammer2_sync_insert(
 						thr, &parent, &chain,
 						0,
@@ -804,6 +792,18 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 		bcopy(focus->data, chain->data, chain->bytes);
 		hammer2_chain_setcheck(chain, chain->data);
 		break;
+	case HAMMER2_BREF_TYPE_DIRENT:
+		/*
+		 * Directory entries embed data in the blockref.
+		 */
+		if (chain->bytes) {
+			bcopy(focus->data, chain->data, chain->bytes);
+			hammer2_chain_setcheck(chain, chain->data);
+		} else {
+			chain->bref.check = focus->bref.check;
+		}
+		chain->bref.embed = focus->bref.embed;
+		break;
 	default:
 		KKASSERT(0);
 		break;
@@ -813,7 +813,7 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 	*chainp = chain;			/* will be returned locked */
 
 	/*
-	 * Avoid ordering deadlock when relocking shared.
+	 * Avoid an ordering deadlock when relocking shared.
 	 */
 	hammer2_chain_unlock(*parentp);
 	hammer2_chain_lock(*parentp, HAMMER2_RESOLVE_SHARED |
@@ -910,9 +910,7 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 	if (chain->bytes != focus->bytes) {
 		/* XXX what if compressed? */
 		nradix = hammer2_getradix(chain->bytes);
-		hammer2_chain_resize(NULL, parent, chain,
-				     mtid, 0,
-				     nradix, 0);
+		hammer2_chain_resize(chain, mtid, 0, nradix, 0);
 	}
 	hammer2_chain_modify(chain, mtid, 0, 0);
 	otype = chain->bref.type;
@@ -1008,6 +1006,18 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 	case HAMMER2_BREF_TYPE_DATA:
 		bcopy(focus->data, chain->data, chain->bytes);
 		hammer2_chain_setcheck(chain, chain->data);
+		break;
+	case HAMMER2_BREF_TYPE_DIRENT:
+		/*
+		 * Directory entries embed data in the blockref.
+		 */
+		if (chain->bytes) {
+			bcopy(focus->data, chain->data, chain->bytes);
+			hammer2_chain_setcheck(chain, chain->data);
+		} else {
+			chain->bref.check = focus->bref.check;
+		}
+		chain->bref.embed = focus->bref.embed;
 		break;
 	default:
 		KKASSERT(0);

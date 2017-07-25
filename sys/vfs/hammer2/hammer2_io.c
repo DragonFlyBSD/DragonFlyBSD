@@ -1119,6 +1119,7 @@ dio_write_stats_update(hammer2_io_t *dio)
 	case HAMMER2_BREF_TYPE_DATA:
 		counterp = &hammer2_iod_file_write;
 		break;
+	case HAMMER2_BREF_TYPE_DIRENT:
 	case HAMMER2_BREF_TYPE_INODE:
 		counterp = &hammer2_iod_meta_write;
 		break;

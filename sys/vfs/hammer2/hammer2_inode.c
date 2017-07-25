@@ -645,14 +645,15 @@ again:
 }
 
 /*
- * Create a new inode in the specified directory using the vattr to
- * figure out the type.  A non-zero type field overrides vattr.
+ * MESSY! CLEANUP!
+ *
+ * Create a new inode using the vattr to figure out the type.  A non-zero
+ * type field overrides vattr.  We need the directory to set iparent or to
+ * use when the inode is directly embedded in a directory (typically super-root
+ * entries), but note that this really only applies OBJTYPE_DIRECTORY as
+ * non-directory inodes can be hardlinked.
  *
  * If no error occurs the new inode with its cluster locked is returned.
- * However, when creating an OBJTYPE_HARDLINK, the caller can assume
- * that NULL will be returned (that is, the caller already has the inode
- * in-hand and is creating a hardlink to it, we do not need to return a
- * representitive ip).
  *
  * If vap and/or cred are NULL the related fields are not set and the
  * inode type defaults to a directory.  This is used when creating PFSs
@@ -664,13 +665,9 @@ again:
  *	 super-root entries for snapshots and PFSs.  When used to create a
  *	 snapshot the inode will be temporarily associated with the spmp.
  *
- * NOTE: When creating a normal file or directory the caller must call this
- *	 function twice, once to create the actual inode and once to create
- *	 the hardlink representing the directory entry.  This function is
- *	 only called once when creating a softlink.  The softlink itself.
- *
- * NOTE: When creating a hardlink target (a real inode), name/name_len is
- *	 passed as NULL/0, and caller should pass lhc as inum.
+ * NOTE: When creating a normal file or directory the name/name_len/lhc
+ *	 is optional, but is typically specified to make debugging and
+ *	 recovery easeier.
  */
 hammer2_inode_t *
 hammer2_inode_create(hammer2_inode_t *dip, hammer2_inode_t *pip,
@@ -816,8 +813,7 @@ hammer2_inode_create(hammer2_inode_t *dip, hammer2_inode_t *pip,
 	 * the size is extended past the embedded limit.
 	 */
 	if (xop->meta.type == HAMMER2_OBJTYPE_REGFILE ||
-	    xop->meta.type == HAMMER2_OBJTYPE_SOFTLINK ||
-	    xop->meta.type == HAMMER2_OBJTYPE_HARDLINK) {
+	    xop->meta.type == HAMMER2_OBJTYPE_SOFTLINK) {
 		xop->meta.op_flags |= HAMMER2_OPFLAG_DIRECTDATA;
 	}
 	if (name) {
@@ -854,19 +850,99 @@ hammer2_inode_create(hammer2_inode_t *dip, hammer2_inode_t *pip,
 	 *
 	 * NOTE: nipdata will have chain's blockset data.
 	 */
-	if (type != HAMMER2_OBJTYPE_HARDLINK) {
-		nip = hammer2_inode_get(dip->pmp, dip, &xop->head.cluster, -1);
-		nip->comp_heuristic = 0;
-	} else {
-		nip = NULL;
-	}
-
+	nip = hammer2_inode_get(dip->pmp, dip, &xop->head.cluster, -1);
+	nip->comp_heuristic = 0;
 done:
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 done2:
 	hammer2_inode_unlock(dip);
 
 	return (nip);
+}
+
+/*
+ * Create a directory entry under dip with the specified name, inode number,
+ * and OBJTYPE (type).
+ */
+int
+hammer2_dirent_create(hammer2_inode_t *dip, const char *name, size_t name_len,
+		      hammer2_key_t inum, uint8_t type)
+{
+	hammer2_xop_mkdirent_t *xop;
+	hammer2_key_t lhc;
+	int error;
+
+	lhc = 0;
+	error = 0;
+
+	KKASSERT(name != NULL);
+	lhc = hammer2_dirhash(name, name_len);
+
+	/*
+	 * Locate the inode or indirect block to create the new
+	 * entry in.  At the same time check for key collisions
+	 * and iterate until we don't get one.
+	 *
+	 * Lock the directory exclusively for now to guarantee that
+	 * we can find an unused lhc for the name.  Due to collisions,
+	 * two different creates can end up with the same lhc so we
+	 * cannot depend on the OS to prevent the collision.
+	 */
+	hammer2_inode_lock(dip, 0);
+
+	/*
+	 * If name specified, locate an unused key in the collision space.
+	 * Otherwise use the passed-in lhc directly.
+	 */
+	{
+		hammer2_xop_scanlhc_t *sxop;
+		hammer2_key_t lhcbase;
+
+		lhcbase = lhc;
+		sxop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
+		sxop->lhc = lhc;
+		hammer2_xop_start(&sxop->head, hammer2_xop_scanlhc);
+		while ((error = hammer2_xop_collect(&sxop->head, 0)) == 0) {
+			if (lhc != sxop->head.cluster.focus->bref.key)
+				break;
+			++lhc;
+		}
+		hammer2_xop_retire(&sxop->head, HAMMER2_XOPMASK_VOP);
+
+		if (error) {
+			if (error != ENOENT)
+				goto done2;
+			++lhc;
+			error = 0;
+		}
+		if ((lhcbase ^ lhc) & ~HAMMER2_DIRHASH_LOMASK) {
+			error = ENOSPC;
+			goto done2;
+		}
+	}
+
+	/*
+	 * Create the directory entry with the lhc as the key.
+	 */
+	xop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
+	xop->lhc = lhc;
+	bzero(&xop->dirent, sizeof(xop->dirent));
+	xop->dirent.inum = inum;
+	xop->dirent.type = type;
+	xop->dirent.namlen = name_len;
+
+	KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
+	hammer2_xop_setname(&xop->head, name, name_len);
+
+	hammer2_xop_start(&xop->head, hammer2_inode_xop_mkdirent);
+
+	error = hammer2_xop_collect(&xop->head, 0);
+
+	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+done2:
+	hammer2_inode_unlock(dip);
+
+	return error;
 }
 
 /*
@@ -1211,6 +1287,77 @@ hammer2_inode_run_sideq(hammer2_pfs_t *pmp)
 }
 
 /*
+ * Helper to create a directory entry.
+ */
+void
+hammer2_inode_xop_mkdirent(hammer2_thread_t *thr, hammer2_xop_t *arg)
+{
+	hammer2_xop_mkdirent_t *xop = &arg->xop_mkdirent;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_key_t key_next;
+	size_t data_len;
+	int cache_index = -1;
+	int error;
+
+	if (hammer2_debug & 0x0001)
+		kprintf("dirent_create lhc %016jx clindex %d\n",
+			xop->lhc, thr->clindex);
+
+	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
+				     HAMMER2_RESOLVE_ALWAYS);
+	if (parent == NULL) {
+		error = EIO;
+		chain = NULL;
+		goto fail;
+	}
+	chain = hammer2_chain_lookup(&parent, &key_next,
+				     xop->lhc, xop->lhc,
+				     &cache_index, 0);
+	if (chain) {
+		error = EEXIST;
+		goto fail;
+	}
+
+	/*
+	 * We may be able to embed the directory entry directly in the
+	 * blockref.
+	 */
+	if (xop->dirent.namlen <= sizeof(chain->bref.check.buf))
+		data_len = 0;
+	else
+		data_len = HAMMER2_ALLOC_MIN;
+
+	error = hammer2_chain_create(&parent, &chain,
+				     xop->head.ip1->pmp, HAMMER2_METH_DEFAULT,
+				     xop->lhc, 0,
+				     HAMMER2_BREF_TYPE_DIRENT,
+				     data_len,
+				     xop->head.mtid, 0, 0);
+	if (error == 0) {
+		hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
+
+		chain->bref.embed.dirent = xop->dirent;
+		if (xop->dirent.namlen <= sizeof(chain->bref.check.buf))
+			bcopy(xop->head.name1, chain->bref.check.buf,
+			      xop->dirent.namlen);
+		else
+			bcopy(xop->head.name1, chain->data->buf,
+			      xop->dirent.namlen);
+	}
+fail:
+	if (parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+	}
+	hammer2_xop_feed(&xop->head, chain, thr->clindex, error);
+	if (chain) {
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+	}
+}
+
+/*
  * Inode create helper (threaded, backend)
  *
  * Used by ncreate, nmknod, nsymlink, nmkdir.
@@ -1510,6 +1657,7 @@ hammer2_inode_xop_chain_sync(hammer2_thread_t *thr, hammer2_xop_t *arg)
 			 * Degenerate embedded case, nothing to loop on
 			 */
 			switch (chain->bref.type) {
+			case HAMMER2_BREF_TYPE_DIRENT:
 			case HAMMER2_BREF_TYPE_INODE:
 				KKASSERT(0);
 				break;

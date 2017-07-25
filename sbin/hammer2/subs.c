@@ -186,8 +186,6 @@ hammer2_iptype_to_str(uint8_t type)
 		return("BDEV");
 	case HAMMER2_OBJTYPE_SOFTLINK:
 		return("SOFTLINK");
-	case HAMMER2_OBJTYPE_HARDLINK:
-		return("HARDLINK");
 	case HAMMER2_OBJTYPE_SOCKET:
 		return("SOCKET");
 	case HAMMER2_OBJTYPE_WHITEOUT:

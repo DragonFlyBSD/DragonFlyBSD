@@ -2028,6 +2028,7 @@ hammer2_recovery_scan(hammer2_dev_t *hmp, hammer2_chain_t *parent,
 		hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
 		hammer2_chain_unlock(parent);
 		break;
+	case HAMMER2_BREF_TYPE_DIRENT:
 	case HAMMER2_BREF_TYPE_DATA:
 	case HAMMER2_BREF_TYPE_FREEMAP:
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:

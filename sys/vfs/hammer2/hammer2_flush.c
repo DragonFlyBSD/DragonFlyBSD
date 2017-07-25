@@ -769,6 +769,16 @@ again:
 			KKASSERT((chain->flags & HAMMER2_CHAIN_EMBEDDED) == 0);
 			hammer2_chain_setcheck(chain, chain->data);
 			break;
+		case HAMMER2_BREF_TYPE_DIRENT:
+			/*
+			 * A directory entry can use the check area to store
+			 * the filename for filenames <= 64 bytes, don't blow
+			 * it up!
+			 */
+			KKASSERT((chain->flags & HAMMER2_CHAIN_EMBEDDED) == 0);
+			if (chain->bytes)
+				hammer2_chain_setcheck(chain, chain->data);
+			break;
 		case HAMMER2_BREF_TYPE_INODE:
 			/*
 			 * NOTE: We must call io_setdirty() to make any late

@@ -69,13 +69,8 @@ hammer2_dev_unlock(hammer2_dev_t *hmp)
  * ip must be locked sh/ex.
  */
 int
-hammer2_get_dtype(const hammer2_inode_data_t *ipdata)
+hammer2_get_dtype(uint8_t type)
 {
-	uint8_t type;
-
-	if ((type = ipdata->meta.type) == HAMMER2_OBJTYPE_HARDLINK)
-		type = ipdata->meta.target_type;
-
 	switch(type) {
 	case HAMMER2_OBJTYPE_UNKNOWN:
 		return (DT_UNKNOWN);
@@ -91,8 +86,6 @@ hammer2_get_dtype(const hammer2_inode_data_t *ipdata)
 		return (DT_BLK);
 	case HAMMER2_OBJTYPE_SOFTLINK:
 		return (DT_LNK);
-	case HAMMER2_OBJTYPE_HARDLINK:	/* (never directly associated w/vp) */
-		return (DT_UNKNOWN);
 	case HAMMER2_OBJTYPE_SOCKET:
 		return (DT_SOCK);
 	case HAMMER2_OBJTYPE_WHITEOUT:	/* not supported */
@@ -124,8 +117,6 @@ hammer2_get_vtype(uint8_t type)
 		return (VBLK);
 	case HAMMER2_OBJTYPE_SOFTLINK:
 		return (VLNK);
-	case HAMMER2_OBJTYPE_HARDLINK:	/* XXX */
-		return (VBAD);
 	case HAMMER2_OBJTYPE_SOCKET:
 		return (VSOCK);
 	case HAMMER2_OBJTYPE_WHITEOUT:	/* not supported */
@@ -294,13 +285,19 @@ hammer2_allocsize(size_t bytes)
 #endif
 
 /*
- * Convert bytes to radix with no limitations
+ * Convert bytes to radix with no limitations.
+ *
+ * 0 bytes is special-cased to a radix of zero (which would normally
+ * translate to (1 << 0) == 1).
  */
 int
 hammer2_getradix(size_t bytes)
 {
 	int radix;
 
+	/*
+	 * Optimize the iteration by pre-checking commonly used radii.
+	 */
 	if (bytes == HAMMER2_PBUFSIZE)
 		radix = HAMMER2_PBUFRADIX;
 	else if (bytes >= HAMMER2_LBUFSIZE)
@@ -310,6 +307,10 @@ hammer2_getradix(size_t bytes)
 	else
 		radix = 0;
 
+	/*
+	 * Iterate as needed.  Note that bytes == 0 is expected to return
+	 * a radix of 0 as a special case.
+	 */
 	while (((size_t)1 << radix) < bytes)
 		++radix;
 	return (radix);
@@ -379,6 +380,7 @@ hammer2_adjreadcounter(hammer2_blockref_t *bref, size_t bytes)
 	case HAMMER2_BREF_TYPE_DATA:
 		counterp = &hammer2_iod_file_read;
 		break;
+	case HAMMER2_BREF_TYPE_DIRENT:
 	case HAMMER2_BREF_TYPE_INODE:
 		counterp = &hammer2_iod_meta_read;
 		break;
