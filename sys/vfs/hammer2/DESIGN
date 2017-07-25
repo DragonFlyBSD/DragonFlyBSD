@@ -4,6 +4,7 @@
 				Matthew Dillon
 			     dillon@backplane.com
 
+			       24-Jul-2017 (v5)
 			       09-Jul-2016 (v4)
 			       03-Apr-2015 (v3)
 			       14-May-2013 (v2)
@@ -16,7 +17,7 @@
   - Compression		- operational
   - Snapshots		- operational
   - Deduper		- live operational, batch specced
-  - Subhierarchy quotas - (may have to be discarded)
+  - Subhierarchy quotas - scrapped (still possible on a limited basis)
   - Logical Encryption	- not specced yet
   - Copies		- not specced yet
   - fsync bypass	- not specced yet
@@ -30,81 +31,163 @@
   - Transaction replay	- not specced yet
   - Cache coherency	- not specced yet
 
-				    Feature List
+			    Intended Feature List
+		       (not all features yet implemented)
 
-* Block topology (both the main topology and the freemap) use a copy-on-write
-  design.  Media-level block frees are delayed and flushes rotate between
-  4 volume headers (maxes out at 4 if the filesystem is > ~8GB).  Flushes
-  will allocate new blocks up to the root in order to propagate block table
-  changes and transaction ids.
+* Standard filesystem semantics with full hardlink and softlink support.
 
-* Incremental synchronization is queueless and trivial by design.
+* Filesystems can be constructed across multiple nodes.  Each low-level
+  H2 device can accomodate nodes belonging to multiple cluster components
+  as well as nodes that are simply local to the device or machine.
 
-* Multiple roots, with many features.  This is implemented via the super-root
-  concept.  When mounting a HAMMER2 filesystem you specify a device path and
-  a directory name in the super-root.  (HAMMER1 had only one root).
+* A dynamic radix tree on each formatted device is used to index the
+  topology, with 64-bit keys.  Elements can be ranged in powers of 2.
+  The tree is built efficiently, bottom-up.  Indirect blocks are only
+  created when a layer fills up.
 
-* All cluster types and multiple PFSs (belonging to the same or different
-  clusters) can be mixed on one physical filesystem.
+* Utilizes a copy-on-write block mechanic for both the main topology
+  and the freemap.  Media-level block frees are delayed and flushes rotate
+  between 4 volume headers (maxes out at 4 if the filesystem is > ~8GB).
+  Flushes will allocate new blocks up to the root in order to propagate
+  block table changes and transaction ids.  Recovery will choose the most
+  recent valid volume root and can thus work around failures which cause
+  partial volume header writes.
 
-  This allows independent cluster components to be configured within a
-  single formatted H2 filesystem.  Each component is a super-root entry,
-  a cluster identifier, and a unique identifier.  The network protocl
-  integrates the component into the cluster when it is created
+* Utilizes a fat blockref structure (128 bytes) which can store up to
+  64 bytes (512 bits) of check code data.  Defaults to simpler 64-bit
+  hashes.
 
-* Roots are really no different from snapshots (HAMMER1 distinguished between
-  its root mount and its PFS's.  HAMMER2 does not).
+* 1024 byte fat inode structure also contains helpful meta-data for
+  debugging catastrophic recovery, up to 512 bytes of direct-data for
+  small files, or 4 indirect blocks (instead of the direct-data) as
+  the data root.
 
-* I/O and chain locking thread separation.  I/O stalls and lock stalls can
-  cause any filesystem which purports to operate over multiple physical and
-  network devices to implode.  HAMMER2 incorporates a frontend/backend design
-  which separates media operations into support threads and allows the
-  frontend to validate the cluster, proceed with an operation, and disconnect
-  any remaining running operation even when backend ops have not completed
-  on all nodes.  This allows the frontend to return 'early' (so to speak).
+  Inodes are stored as hidden elements under each node directory in the
+  super-root.  H2 originally tried to embed inodes in the directories in
+  which they resides, or in the nearest common parent directory when multiple
+  hardlinks were present, but this wound up being too difficult to get
+  right and made NFS support impossible (would have required adding more
+  complexity to index inode numbers, which I didn't want to do).
 
-* Early return on best data-path supported by virtue of the above.  In a
-  multi-master system, frontend ops will issue I/O on all cluster elements
-  concurrently and will return the instant incoming data validates the
-  cluster.
+* Directory entries are indexed in the radix tree just like everything
+  else based on a hash of the filename plus an iterator to deal with
+  collisions nicely.  Directory entries with filenames <= 64 bytes
+  fit entirely within the 128-byte blockref structure without requiring
+  a data reference for highly optimal directory scans.  In the optimal
+  case the directory entry simply uses the 64-byte check field to store
+  the filename (since there is no data reference).
 
-* Snapshots are writable (in HAMMER1 snapshots were read-only).
+  Directory entries record inode number, file type, and filename.
 
-* Snapshots are explicit but trivial to create.  In HAMMER1 snapshots were
-  both explicit and fine-grained/automatic.  HAMMER2 does not implement
-  automatic fine-grained snapshots.  H2 snapshots are cheap enough that you
-  can create fine-grained snapshots if you desire.
+* The top-level for each formatted device is called the super-root.  The
+  top-level cannot be directly mounted.  Instead, it contains inodes
+  representing pieces of nodes in the cluster which can be individually
+  mounted.
 
-* HAMMER2 formalizes a synchronization point for the flush, does a pre-flush
-  that does not update the volume root, then waits for all running modifying
-  operations to complete to memory (not to disk) while temporarily stalling
-  new modifying operation initiations.  The final flush is then executed.
+  This means that H2 filesystems can create multiple roots if desired.
+  In fact, snapshots are stored as discretely mountable nodes at this
+  level, so it is possible to boot from or mount root from a snapshot.
 
-  At the moment we do not allow concurrent modifying operations during the
-  final flush phase.  Ultimately I would like to, but doing so can be complex.
+  (HAMMER1 had only one root, but multiple 'PFS's, but they weren't nearly
+  as flexible).
 
-* HAMMER2 flushes and synchronization points do not bisect VOPs (system calls).
-  (HAMMER1 flushes could wind up bisecting VOPs).  This means the H2 flushes
-  leave the filesystem in a far more consistent state than H1 flushes did.
+  Each formatted H2 device can hold pieces of or whole nodes belonging
+  to multiple filesystems.  This allows independent cluster components to
+  be configured within a single formatted H2 filesystem.  Each component is
+  a super-root entry, a cluster identifier, and a unique identifier.  The
+  network protocl integrates the component into the cluster when it is
+  created
 
-* Directory sub-hierarchy-based quotas for space and inode usage tracking.
-  Any directory can be used.
+* Snapshots are implemented as nodes under the super-root.  Snapshots
+  are writable and easy to create (in HAMMER1 snapshots were read-only).
+  However, HAMMER2 snapshots are not as fine-grained as HAMMER1 snapshots,
+  and also not automatic.  They must be explicitly created but are cheap
+  enough that fine-grained H2 snapshots can be created on a schedule if
+  desired.
+
+* Utilizes a Frontend-Backend operational design with multiple dedicated
+  threads for each cluster component.  This allows the frontend to dispatch
+  parallel ops to backend components and then finalize the frontend operation
+  the instant a sufficient number of components agree (depending on the
+  replication mode), even if other nodes in the cluster are stalled.
+
+  H2 can deal with stalled backend threads without stalling the frontend.
+
+* Flush handling is really difficult to deal with because we want to
+  utilize the system's normal buffer cache for efficiency.  This means
+  that some flush elements (dirty data buffer cache buffers) are not
+  necessarily in sync with dirty meta-data tracked by the filesystem code.
+
+  If H2 locks the entire filesystem during a flush, then many front-end
+  operations can wind up stalling for a very long time (depending on how
+  much dirty data the filesystem and operating system lets build up).
+
+  Currently HAMMER2 tries to deal with by allowing for an almost-fully
+  asynchronous flush.  Essentially, everything related to data and meta-data
+  except the volume header itself can be flushed asynchronously.  This
+  means it can also be flushed concurrently with front-end operations.
+
+  In order to make the 'final' flush of the volume header itself meaningful,
+  the flush code will first attempt to asynchronously flush all pending
+  buffers and meta-data, then will lock the filesystem and do a second
+  flush of anything that slipped through while the first flush was running.
+  And then will flush the volume header.
+
+  CURRENT STATUS: This work is still in progress and there are still
+  stall issues in the handling of flushes.
 
 * Low memory footprint.  Except for the volume header, the buffer cache
   is completely asynchronous and dirty buffers can be retired by the OS
   directly to backing store with no further interactions with the filesystem.
 
-* Background synchronization and mirroring occurs at the logical level.
-  When a failure occurs or a normal validation scan comes up with
-  discrepancies, the synchronization thread will use the quorum to figure
-  out which information is not correct and update accordingly.
+* Compression support.  Multiple algorithms are supported and can be
+  configured on a subdirectory hierarchy or individual file basis.
+  Block compression up to 64KB will be used.  Only compression ratios at
+  powers of 2 that are at least 2:1 (e.g. 2:1, 4:1, 8:1, etc) will work in
+  this scheme because physical block allocations in HAMMER2 are always
+  power-of-2.  Modest compression can be achieved with low overhead, is
+  turned on by default, and is compatible with deduplication.
 
-* Support for multiple compression algorithms configured on a subdirectory
-  tree basis and on a file basis.  Block compression up to 64KB will be used.
-  Only compression ratios at powers of 2 that are at least 2:1 (e.g. 2:1,
-  4:1, 8:1, etc) will work in this scheme because physical block allocations
-  in HAMMER2 are always power-of-2.  Modest compression can be achieved with
-  low overhead, is turned on by default, and is compatible with deduplication.
+* De-duplication support.  HAMMER2 uses a relatively simple freemap
+  scheme that allows the filesystem to discard block references
+  asynchronously, and the same scheme allows essentially unlimited
+  references to the same data block in the hierarchy.  Thus, both live
+  de-duplication and bulk deduplication is relatively easy to implement.
+
+* Zero detection on write (writing all-zeros), which requires the data
+  buffer to be scanned, is fully supported.  This allows the writing of 0's
+  to create holes.
+
+  Generally speaking pre-writing zerod blocks to reserve space doesn't work
+  well on copy-on-write filesystems.  However, if both compression and
+  check codes are disabled on a file, H2 will also disable zero-detection,
+  allow pre-reservation of file blocks (by pre-zeroing), and allow data
+  overwrites to write to the same sector.
+
+* In addition to the above, sector overwrites (avoiding the copy-on-write)
+  are also allowed when multiple writes to the same block occur in-between
+  flush operations.
+
+* Incremental synchronization via highest-transaction id propagation
+  within the radix tree.  This is a queueless, incremental design.
+
+  CURRENT STATUS: Due to the flat inode hierarchy now being employed,
+  the current synchronization code which silently recurses indirect nodes
+  will be inefficient due to the fact that all the inodes are at the
+  same logical level in the topology.  To fix this, the code will need
+  to explicitly iterate indirect nodes and keep track of the related
+  key ranges to match them up on an indirect-block basis, which would
+  be incredibly efficient.
+
+* Background synchronization and mirroring occurs at the logical layer
+  rather than the physical layer.  This allows cluster components to
+  have differing storage arrangements.
+
+  In addition, this mechanism will fully correct any out of sync nodes
+  in the cluster as long as a sufficient number of other nodes agree on
+  what the proper state should be.
+
+			DESIGN PENDING ON THESE FEATURES
 
 * Encryption.  Whole-disk encryption is supported by another layer, but I
   intend to give H2 an encryption feature at the logical layer which works
@@ -136,67 +219,46 @@
   solution is to format a filesystem within an encrypted file by treating it
   as a block device, but I digress.
 
-* Zero detection on write (writing all-zeros), which requires the data
-  buffer to be scanned, is fully supported.  This allows the writing of 0's
-  to create holes.
+* Device ganging, copies for redundancy, and file splitting.
 
-* Allow sector overwrite (avoid copy-on-write) under certain circumstances.
-  This is allowed on file data blocks if the file check mode is set to NONE,
-  as long as the data block's modify_tid does not violate the last snapshot
-  taken (if it does, a copy is made and overwrites are allowed on the copy
-  until the next snapshot).
+  Device ganging - The idea here is not to gang devices into a single
+  physical volume but to instead format each device independently
+  and allow crossover-references in the blockref to other devices in
+  the set.
 
-* Copies support for redundancy within a single physical filesystem.
-  Up to 256 physical disks and/or partitions can be ganged to form a
-  single physical filesystem.  If you use a disk or RAID aggregation 
-  layer then the actual number of physical disks that can be associated
-  with a single H2 filesystem is unbounded.
+  One of the things we want to accomplish is to ensure that a failed
+  device does not prevent access to radix tree elements in other devices
+  in the gang, and that the failed device can be reconstructed.  To do
+  this, each device implements complete reachability from the node root
+  to all elements underneath it.  When a device fails, the sychronization
+  code can theoretically reconstruct the missing material in other
+  devices making up the gang.  New devices can be added to the gang and
+  existing devices can be removed from the gang.
 
-  H2 puts an 8-bit copyid in the blockref structure to represent potentially
-  multiple copies of a block.  The copyid corresponds to a configuration
-  specification in the volume header.  The full algorithm has not been
-  specced yet.
-
-  Copies support is implemented by having multiple blockref entries for
-  the same key, each with a different copyid.  The copyid represents which
-  of the 256 slots is used.  Meta-data is also subject to the copies
-  mechanism.  However, for both meta-data and data, each copy should be
-  identical so the check fields in the blockref for all copies should wind
-  up being the same, and any valid copy can be used by the block-level
-  hammer2_chain code to access the filesystem.  File accesses will attempt
-  to use the same copy.  If an I/O read error occurs, a different copy will
-  be chosen.  Modifying operations must update all copies and/or create
-  new copies as needed.  If a write error occurs on a copy and other copies
-  are available, the errored target will be taken offline.
-
-  It is possible to configure H2 to write out fewer copies on-write and then
-  use a background scan to beef-up the number of copies to improve real-time
-  throughput.
+  Redundant copies - This is actually a fairly tough problem.  The
+  solution I would like to implement is to use the device ganging feature
+  to also implement redundancy, that way if a device fails within the
+  gang there's a good chance that it can still remain completely functional
+  without having to resynchronize.  But making this work is difficult to say
+  the least.
 
 * MESI Cache coherency for multi-master/multi-client clustering operations.
   The servers hosting the MASTERs are also responsible for keeping track of
   the cache state.
 
-* Hardlinks and softlinks are supported.  Hardlinks are somewhat complex to
-  deal with and there is still an edge case.  I am trying to avoid storing
-  the hardlinks at the root level because that messes up my concept for
-  sub-tree quotas and is unnecessarily burdensome in terms of SMP collisions
-  under heavy loads.
+  This is a feature that we would need to implement coherent cross-machine
+  multi-threading and migration.
 
-* The media blockref structure is now large enough to support up to a 192-bit
-  check value, which would typically be a cryptographic hash of some sort.
-  Multiple check value algorithms will be supported with the default being
-  a simple 32-bit iSCSI CRC.
+* Implement unverified de-duplication (where only the check code is tested,
+  avoiding having to actually read data blocks to calculate a de-duplication.
+  This would make use of the blockref structure's widest check field
+  (512 bits).
 
-* Fully verified deduplication will be supported and automatic (and
-  necessary in many respects).
-
-* Unverified de-duplication will be supported as a configurable option on a
-  file or subdirectory tree.  Unverified deduplication must use the largest
-  available check code (192 bits).  It will not verify that data content with
-  the same check code is actually identical during the dedup pass, resulting
-  in approximately 100x to 1000x the deduplication performance but at the cost
-  of potentially corrupting some data.
+  Out of necessity this type of feature would be settable on a file or
+  recursive directory tree basis, but should only be used when the data
+  is throw-away or can be reconstructed since data corruption (mismatched
+  duplicates with the same hash) is still possible even with a 512-bit
+  check code.
 
   The Unverified dedup feature is intended only for those files where
   occassional corruption is ok, such as in a web-crawler data store or
@@ -207,21 +269,60 @@
 
 HAMMER2 generally implements a copy-on-write block design for the filesystem,
 which is very different from HAMMER1's B-Tree design.  Because the design
-is copy-on-write it can be trivially snapshotted simply by referencing an
-existing block, and because the media structures logically match a standard
-filesystem directory/file hierarchy snapshots and other similar operations
-can be trivially performed on an entire subdirectory tree at any level in
-the filesystem.
+is copy-on-write it can be trivially snapshotted simply by making a copy
+of the block table we desire to snapshot.  Snapshotting the root inode
+effectively snapshots the entire filesystem, whereas snapshotting a file
+inode only snapshots that one file.  Snapshotting a directory inode is
+generally unhelpful since it only contains directory entries and the
+underlying files are not arranged under it in the radix tree.
 
-The copy-on-write design implements a block table in a radix-tree format,
-with a small 8x fan-out in the volume header and inode and a large 256x or
-1024x fan-out for indirect blocks.  The table is built bottom-up.
-Intermediate radii are only created when necessary so small files will use
-much shallower radix block trees.  The inode itself can accomodate files
-up 512KB (65536x8).  Directories also use a radix block table and directory
-inodes can accomodate up to 8 entries before pushing an indirect radix block.
+The copy-on-write design implements a block table as a radix-tree,
+with a small fan-out in the volume header and inode (typically 4x) and
+a large fan-out for indirect blocks (typically 128x and 512x depending).
+The table is built bottom-up.  Intermediate radii are only created when
+necessary so small files and directories will have a much shallower radix
+tree.
 
-The copy-on-write nature of the filesystem implies that any modification
+HAMMER2 implements several space optimizations:
+
+  1. Directory entries with filenames <= 64 characters will fit entirely
+     in the 128-byte blockref structure and do not require additional data
+     block references.  Since blockrefs are the core elements making up
+     block tables, most directories should have good locality of reference
+     for directory scans.
+
+  2. Inodes embed 4 blockrefs, so files up to 256KB and directories with
+     up to four directory entries (not including "." or "..") can be
+     accomodated without requiring any indirecct blocks.
+
+  3. Indirect blocks can be sized to any power of two up to 65536 bytes,
+     and H2 typically uses 16384 and 65536 bytes.  The smaller size is
+     used for initial indirect blocks to reduce storage overhead for
+     medium-sized files and directories.
+
+  4. The File inode itself can directly hold the data for small
+     files <= 512 bytes in size.
+
+  5. The last block in a file will have a storage allocation in powers
+     of 2 from 1KB to 64KB as needed.  Thus a small file in excess of
+     512 bytes but less than 64KB will not waste a full 64KB block.
+
+  6. When compression is enabled, small physical blocks will be allocated
+     when possible.  However, only reductions in powers of 2 are supported.
+     So if a 64KB data block can be compressed to (16KB+1) to 32KB, then
+     a 32KB block will be used.  This gives H2 modest compression at very
+     low cost without too much added complexity.
+
+  7. Live de-dup will attempt to share data blocks when file copying is
+     detected, significantly reducing actual physical writes to storage
+     and the storage used.  Bulk de-dup (when implemented), will catch
+     other cases of de-duplication.
+
+Directories contain directory entries which are indexed using a hash of
+their filename.  The hash is carefully designed to maintain some natural
+sort ordering.
+
+The copy-on-write nature of the filesystem means that any modification
 whatsoever will have to eventually synchronize new disk blocks all the way
 to the super-root of the filesystem and the volume header itself.  This forms
 the basis for crash recovery and also ensures that recovery occurs on a
@@ -231,13 +332,19 @@ all writes to run asynchronously and concurrently prior to and during a flush,
 and then just doing a final synchronization and volume header update at the
 end.  Many of HAMMER2s features are enabled by this core design feature.
 
-Clearly this method requires intermediate modifications to the chain to be
-cached so multiple modifications can be aggregated prior to being
-synchronized.  One advantage, however, is that the normal buffer cache can
-be used and intermediate elements can be retired to disk by H2 or the OS
-at any time.  This means that HAMMER2 has very low resource overhead from the
-point of view of the operating system.  Unlike HAMMER1 which had to lock
-dirty buffers in memory for long periods of time, HAMMER2 has no such
+The Freemap is also implemented using a radix tree via a set of pre-reserved
+blocks (approximately 4MB for every 2GB of storage), and also cycles through
+multiple copies to ensure that crash recovery can restore the state of the
+filesystem quickly at mount time.
+
+HAMMER2 tries to maintain a small footprint and one way it does this is
+by using the normal buffer cache for data and meta-data, and allowing the
+kernel to asynchronously flush device buffers at any time (even during
+synchronization).  The volume root is flushed separately, separated from
+the asynchronous flushes by a synchronizing BUF_CMD_FLUSH op.  This means
+that HAMMER2 has very low resource overhead from the point of view of the
+operating system and is very much unlike HAMMER1 which had to lock dirty
+buffers into memory for long periods of time.  HAMMER2 has no such
 requirement.
 
 Buffer cache overhead is very well bounded and can handle filesystem
@@ -254,15 +361,16 @@ again during normal operation of the filesystem.
 
 			MIRROR_TID, MODIFY_TID, UPDATE_TID
 
-In HAMMER2, the core block reference is 128-byte structure called a blockref.
+In HAMMER2, the core block reference is a 128-byte structure called a blockref.
 The blockref contains various bits of information including the 64-bit radix
 key (typically a directory hash if a directory entry, inode number if a
-hidden hardlink target, or file offset if a file block), 64-bit data offset
-with the physical block size radix encoded in it (physical block size can be
-different from logical block size due to compression), three 64-bit
-transaction ids, type information, and up to 512 bits worth of check data
-for the block being reference which can be anything from a simple CRC to
-a strong cryptographic hash.
+hidden hardlink target, or file offset if a file block), number of significant
+key bits for ranged recursion of indirect blocks, a 64-bit device seek that
+encodes the radix of the physical block size in the low bits (physical block
+size can be different from logical block size due to compression),
+three 64-bit transaction ids, type information, and up to 512 bits worth
+of check data for the block being reference which can be anything from
+a simple CRC to a strong cryptographic hash.
 
 mirror_tid - This is a media-centric (as in physical disk partition)
 	     transaction id which tracks media-level updates.  The mirror_tid
@@ -313,7 +421,7 @@ not propagate up, instead serving as a seed for update_tid.
   (when not 0).
 
 * The synchronization code can be interrupted and restarted at any time,
-  and is able to pick up where it left off with very little overhead.
+  and is able to pick up where it left off with very low overhead.
 
 * The synchronization code does not inhibit media flushes.  Media flushes
   can occur (and must occur) while synchronization is ongoing.
@@ -330,29 +438,22 @@ without adding to the I/O we already have to do.
 
 			    DIRECTORIES AND INODES
 
-Directories are hashed, and another major design element is that directory
-entries ARE inodes.  They are one and the same, with a special placemarker
-for hardlinks.  Inodes are 1KB.
+Directories are hashed.  In HAMMER2, a directory can contain a mix of
+directory entries AND embedded inodes.  In the first iteration of HAMMER2
+I tried really hard to embed inodes (since most files are not usually
+hardlinked), but this created huge problems for NFS exports.  At the
+moment the super-root directory utilizes embedded inodes and filesystems
+under the super-root typically use normal directory entries.  The real
+inodes are in the mounted root directory as hidden entries.
 
-Hardlinks are implemented with placemarkers as directory entries which simply
-represent the inode number.  The actual file resides in a parent directory
-that is common to all hardlinks to that file.  If the hardlinks are all within
-a single directory, the actual hardlink inode is in that directory.  The
-hardlink target, as we call it, is a hidden directory entry in a common parent
-whos key is basically just the inode number itself, so lookups are fast.
+However, I reserve the right to implement embedded inodes within a
+mount to create export domains which can serve as mini-roots.  Such
+mini-roots would be able to have their own quotas and would be separately
+snapshottable, but would also have to be exported separately from the
+primary mount they exist under.
 
-Half of the inode structure (512 bytes) is used to hold top-level blockrefs
-to the radix block tree representing the file contents.  Files which are
-less than or equal to 512 bytes in size will simply store the file contents
-in this area instead of a blockref array.  So files <= 512 bytes take only
-1KB of space inclusive of the inode.
-
-Inode numbers are not spatially referenced, which complicates NFS servers
-but doesn't complicate anything else.  The inode number is stored in the
-inode itself, an absolute necessity required to properly support HAMMER2s
-hugely flexible snapshots.  I would like to support NFS services but it
-would require (probably) a lookaside index in the root for inode lookups
-and might not happen quickly.
+Hardlinks are implemented normally, with directory entries and the maintenance
+of a nlinks count in the target inode.
 
 				    RECOVERY
 
@@ -367,7 +468,7 @@ HAMMER2 will then run an incremental scan of the topology for mirror_tid
 transaction ids between the last freemap flush tid and the last topology
 flush tid in order to synchronize the freemap.  Because this scan is
 incremental the time it takes to run will be relatively short and well-bounded
-at mount-time.  This is NOT fsck.  Freemap flushes can be avoided for any
+at mount-time.  This is NOT an fsck.  Freemap flushes can be avoided for any
 number of normal topology flushes but should still occur frequently enough
 to avoid long recovery times in case of a crash.
 
@@ -381,17 +482,21 @@ indirect blocks, and larger data blocks into separate segments.  The idea is
 to greatly improve I/O performance (particularly by laying inodes down next
 to each other which has a huge effect on directory scans).
 
-The current implementation of HAMMER2 implements a fixed block size of 64KB
-in order to allow the mapping of hammer2_dio's in its IO subsystem to
-conumers that might desire different sizes.  This way we don't have to
+The current implementation of HAMMER2 implements a fixed I/O block size
+of 64KB in order to allow the mapping of hammer2_dio's in its IO subsystem
+to conumers that might desire different sizes.  This way we don't have to
 worry about matching the buffer cache / DIO cache to the variable block
-size of underlying elements.
+size of underlying elements.  In addition, 64KB I/Os allow compatibility
+with physical sector sizes up to 64KB in the underlying physical storage
+with no change in the byte-by-byte format of the filesystem.
 
 The biggest issue we are avoiding by having a fixed 64KB I/O size is not
 actually to help nominal front-end access issue but instead to reduce the
-complexity when blocks are freed and reused for another purpose.  HAMMER1
-had to have specialized code to check for and invalidate buffer cache buffers
-in the free/reuse case.  HAMMER2 does not need such code.
+complexity of having to deal with mixed block sizes in the buffer cache,
+particularly when blocks are freed and then later reused with a different
+block size.  HAMMER1 had to have specialized code to check for and
+invalidate buffer cache buffers in the free/reuse case.  HAMMER2 does not
+need such code.
 
 That said, HAMMER2 places no major restrictions on mixing block sizes within
 a 64KB block.  The only restriction is that a HAMMER2 block cannot cross
@@ -763,5 +868,5 @@ The solutions (for modifying transactions):
 
 Keeping a short-term transaction log, much less being able to properly replay
 it, is fraught with difficulty and I've made it a separate development task.
-    
+For now HAMMER2 does not have one.
 
