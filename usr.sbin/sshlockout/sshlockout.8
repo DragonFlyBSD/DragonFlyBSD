@@ -37,10 +37,19 @@
 .Nm sshlockout
 .Nd utility to block port 22 on preauth failures
 .Sh SYNOPSIS
-.Nm
-.Ar table
+.Pp
+(/etc/pf.conf)
+.Cd table <lockout> persist { }
+.Pp
+(and later in /etc/pf.conf - see below)
+.Cd block in quick on $ext_if proto tcp from <lockout> to any port 22
+.Cd block in quick on $ext_if proto tcp from <lockout> to any port 22
+.Pp
+(/etc/syslog.conf)
 .Cd auth.info;authpriv.info		|exec /usr/sbin/sshlockout -pf "lockout"
-.Cd 3 3 * * *       pfctl -tlockout -Tflush
+.Pp
+(root crontab)
+.Cd 3 3 * * *       pfctl -tlockout -T expire 86400
 .Sh DESCRIPTION
 This program is generally installed in
 .Pa /etc/syslog.conf
@@ -48,12 +57,16 @@ as a pipe to parse the
 .Xr sshd 8
 demons error log in realtime.
 In addition, a root crontab entry should generally be created to clean
-out the
+out stale entries in the
 .Xr pf 4
 .Ar table
-at least once a day. The
+at least once a day.
+Using expire instead of flush will maintain a rolling window of locked out
+IPs.
+The
 .Xr pf 4
-module must be loaded and operational as well.
+module must be loaded and running with the table and rules properly
+configured.
 .Pp
 This program will monitor the ssh syslog output and keep track of attempts
 to login to unknown users as well as preauth failures.
@@ -68,6 +81,12 @@ The cron entry you create cleans the block list out typically once a day.
 .Pp
 This program generally limits brute-force attempts to break into a machine
 via ssh.
+.Pp
+When setting up the PF rules, note that the table will be filled based on
+failed ssh connections destined to that particular machine.  If the machine
+is acting as a router you can decide whether you want the PF rule to lockout
+that suspect IP to just the machine, or to everything it routes to.  We
+usually recommend an unconditional blocking rule.
 .Sh NOTICE
 This program is still a work in progress.
 .Sh SEE ALSO
