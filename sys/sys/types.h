@@ -105,7 +105,6 @@ typedef	__off_t		off_t;		/* file offset */
 typedef	__pid_t		pid_t;		/* process id */
 #define	_PID_T_DECLARED
 #endif
-typedef	__pid_t		lwpid_t;	/* light weight process id */
 typedef	quad_t		rlim_t;		/* resource limit */
 typedef	__segsz_t	segsz_t;	/* segment size */
 #ifndef _SUSECONDS_T_DECLARED
@@ -195,6 +194,13 @@ typedef	__clock_t	clock_t;
 #ifndef _CLOCKID_T_DECLARED
 #define	_CLOCKID_T_DECLARED
 typedef	__clockid_t	clockid_t;
+#endif
+
+#if __BSD_VISIBLE
+#ifndef _LWPID_T_DECLARED
+#define	_LWPID_T_DECLARED
+typedef	__pid_t		lwpid_t;	/* light weight process id */
+#endif
 #endif
 
 #ifndef _SIZE_T_DECLARED
