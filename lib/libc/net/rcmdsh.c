@@ -160,7 +160,7 @@ rcmdsh(char **ahost, int rport, const char *locuser, const char *remuser,
 		/* Parent. close sp[1], return sp[0]. */
 		close(sp[1]);
 		/* Reap child. */
-		wait(NULL);
+		waitpid(cpid, NULL, 0);
 		return (sp[0]);
 	}
 	/* NOTREACHED */
