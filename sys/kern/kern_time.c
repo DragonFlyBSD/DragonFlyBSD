@@ -180,9 +180,8 @@ get_process_usertime(struct proc *p, struct timespec *ats)
 }
 
 static void
-get_curthread_cputime(struct timespec *ats)
+get_thread_cputime(struct thread *td, struct timespec *ats)
 {
-	struct thread *td = curthread;
 	struct timeval sys, user;
 
 	calcru(td->td_lwp, &user, &sys);
@@ -229,7 +228,7 @@ kern_clock_gettime(clockid_t clock_id, struct timespec *ats)
 		ats->tv_nsec = 0;
 		break;
 	case CLOCK_THREAD_CPUTIME_ID:
-		get_curthread_cputime(ats);
+		get_thread_cputime(curthread, ats);
 		break;
 	default:
 		return (EINVAL);
