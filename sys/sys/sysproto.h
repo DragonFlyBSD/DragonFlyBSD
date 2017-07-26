@@ -2348,6 +2348,14 @@ struct	lwp_create2_args {
 	struct lwp_params *	params;	char params_[PAD_(struct lwp_params *)];
 	const cpumask_t *	mask;	char mask_[PAD_(const cpumask_t *)];
 };
+struct	getcpuclockid_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	pid_t	pid;	char pid_[PAD_(pid_t)];
+	lwpid_t	lwp_id;	char lwp_id_[PAD_(lwpid_t)];
+	clockid_t *	clock_id;	char clock_id_[PAD_(clockid_t *)];
+};
 struct	olseek_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -2844,6 +2852,7 @@ int	sys_ppoll (struct ppoll_args *);
 int	sys_lwp_setaffinity (struct lwp_setaffinity_args *);
 int	sys_lwp_getaffinity (struct lwp_getaffinity_args *);
 int	sys_lwp_create2 (struct lwp_create2_args *);
+int	sys_getcpuclockid (struct getcpuclockid_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

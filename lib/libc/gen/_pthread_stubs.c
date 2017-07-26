@@ -99,6 +99,7 @@ WR(stub_true, pthread_equal);
 WR(stub_exit, pthread_exit);
 WR(stub_zero, pthread_getaffinity_np);
 WR(stub_zero, pthread_getconcurrency);
+WR(stub_zero, pthread_getcpuclockid);
 WR(stub_zero, pthread_getprio);
 WR(stub_zero, pthread_getschedparam);
 WR(stub_null, pthread_getspecific);

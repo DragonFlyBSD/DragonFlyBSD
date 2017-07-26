@@ -393,6 +393,8 @@ global:
 
 LIBTHREAD_1_2 {
 global:
+	_pthread_getcpuclockid;
 	_pthread_getthreadid_np;
+	pthread_getcpuclockid;
 	pthread_getthreadid_np;
 };

@@ -107,6 +107,8 @@ STATIC_LIB_REQUIRE(_pthread_atfork);
 STATIC_LIB_REQUIRE(_fork);
 /* thr_affinity.c */
 STATIC_LIB_REQUIRE(_pthread_getaffinity_np);
+/* thr_getcpuclockid.c */
+STATIC_LIB_REQUIRE(_pthread_getcpuclockid);
 /* thr_getprio.c */
 STATIC_LIB_REQUIRE(_pthread_getprio);
 /* thr_getschedparam.c */

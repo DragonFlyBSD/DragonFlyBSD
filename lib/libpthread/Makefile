@@ -18,6 +18,7 @@ MAN+=	\
 	pthread_cleanup_pop.3 \
 	pthread_cleanup_push.3 \
 	pthread_getconcurrency.3 \
+	pthread_getcpuclockid.3 \
 	pthread_condattr.3 \
 	pthread_cond_broadcast.3 \
 	pthread_cond_destroy.3 \

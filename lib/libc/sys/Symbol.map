@@ -320,6 +320,10 @@ DF408.0 {
     lwp_setaffinity;
 };
 
+DF410.0 {
+    getcpuclockid;
+};
+
 DFprivate_1.0 {
     __fork;
 
@@ -402,6 +406,7 @@ DFprivate_1.0 {
     __sys_futimens;
     __sys_futimes;
     __sys_get_tls_area;
+    __sys_getcpuclockid;
     __sys_getdents;
     __sys_getdirentries;
     __sys_getdtablesize;
@@ -700,6 +705,7 @@ DFprivate_1.0 {
     _futimens;
     _futimes;
     _get_tls_area;
+    _getcpuclockid;
     _getdents;
     _getdirentries;
     _getdtablesize;

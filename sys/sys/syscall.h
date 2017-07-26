@@ -381,4 +381,5 @@
 #define	SYS_lwp_setaffinity	544
 #define	SYS_lwp_getaffinity	545
 #define	SYS_lwp_create2	546
-#define	SYS_MAXSYSCALL	547
+#define	SYS_getcpuclockid	547
+#define	SYS_MAXSYSCALL	548

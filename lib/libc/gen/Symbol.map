@@ -460,7 +460,9 @@ DF404.0 {
 };
 
 DF410.0 {
+    clock_getcpuclockid;
 	/* pthread stubs */
+    pthread_getcpuclockid;
     pthread_getthreadid_np;
 };
 
@@ -518,6 +520,7 @@ DFprivate_1.0 {
     _pthread_exit;
     _pthread_getaffinity_np;
     _pthread_getconcurrency;
+    _pthread_getcpuclockid;
     _pthread_getprio;
     _pthread_getschedparam;
     _pthread_getspecific;

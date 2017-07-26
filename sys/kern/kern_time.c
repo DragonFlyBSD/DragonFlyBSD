@@ -54,6 +54,12 @@
 
 extern struct spinlock ntp_spin;
 
+#define CPUCLOCK_BIT			0x80000000
+#define	CPUCLOCK_ID_MASK		~CPUCLOCK_BIT
+#define	CPUCLOCK2LWPID(clock_id)	(((clockid_t)(clock_id) >> 32) & CPUCLOCK_ID_MASK)
+#define	CPUCLOCK2PID(clock_id)		((clock_id) & CPUCLOCK_ID_MASK)
+#define MAKE_CPUCLOCK(pid, lwp_id)	((clockid_t)(lwp_id) << 32 | (pid) | CPUCLOCK_BIT)
+
 struct timezone tz;
 
 /*
@@ -196,6 +202,8 @@ int
 kern_clock_gettime(clockid_t clock_id, struct timespec *ats)
 {
 	struct proc *p;
+	struct lwp *lp;
+	lwpid_t lwp_id;
 
 	p = curproc;
 	switch(clock_id) {
@@ -231,7 +239,25 @@ kern_clock_gettime(clockid_t clock_id, struct timespec *ats)
 		get_thread_cputime(curthread, ats);
 		break;
 	default:
-		return (EINVAL);
+		if ((clock_id & CPUCLOCK_BIT) == 0)
+			return (EINVAL);
+		if ((p = pfind(CPUCLOCK2PID(clock_id))) == NULL)
+			return (EINVAL);
+		lwp_id = CPUCLOCK2LWPID(clock_id);
+		if (lwp_id == 0) {
+			get_process_cputime(p, ats);
+		} else {
+			lwkt_gettoken(&p->p_token);
+			lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree, lwp_id);
+			if (lp == NULL) {
+				lwkt_reltoken(&p->p_token);
+				PRELE(p);
+				return (EINVAL);
+			}
+			get_thread_cputime(lp->lwp_thread, ats);
+			lwkt_reltoken(&p->p_token);
+		}
+		PRELE(p);
 	}
 	return (0);
 }
@@ -330,7 +356,10 @@ kern_clock_getres(clockid_t clock_id, struct timespec *ts)
 		ts->tv_nsec = 1000;
 		break;
 	default:
-		return (EINVAL);
+		if ((clock_id & CPUCLOCK_BIT) != 0)
+			ts->tv_nsec = 1000;
+		else
+			return (EINVAL);
 	}
 
 	return (0);
@@ -348,6 +377,53 @@ sys_clock_getres(struct clock_getres_args *uap)
 	error = kern_clock_getres(uap->clock_id, &ts);
 	if (error == 0)
 		error = copyout(&ts, uap->tp, sizeof(ts));
+
+	return (error);
+}
+
+static int
+kern_getcpuclockid(pid_t pid, lwpid_t lwp_id, clockid_t *clock_id)
+{
+	struct proc *p;
+	int error = 0;
+
+	if (pid == 0) {
+		p = curproc;
+		pid = p->p_pid;
+		PHOLD(p);
+	} else {
+		p = pfind(pid);
+		if (p == NULL)
+			return (ESRCH);
+	}
+	/* lwp_id can be 0 when called by clock_getcpuclockid() */
+	if (lwp_id < 0) {
+		error = EINVAL;
+		goto out;
+	}
+	lwkt_gettoken(&p->p_token);
+	if (lwp_id > 0 &&
+	    lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree, lwp_id) == NULL) {
+		lwkt_reltoken(&p->p_token);
+		error = ESRCH;
+		goto out;
+	}
+	*clock_id = MAKE_CPUCLOCK(pid, lwp_id);
+	lwkt_reltoken(&p->p_token);
+out:
+	PRELE(p);
+	return (error);
+}
+
+int
+sys_getcpuclockid(struct getcpuclockid_args *uap)
+{
+	clockid_t clk_id;
+	int error;
+
+	error = kern_getcpuclockid(uap->pid, uap->lwp_id, &clk_id);
+	if (error == 0)
+		error = copyout(&clk_id, uap->clock_id, sizeof(clockid_t));
 
 	return (error);
 }

@@ -55,7 +55,7 @@
 #define	_POSIX_BARRIERS			200112L	/* mandatory */
 #define	_POSIX_CHOWN_RESTRICTED		1
 #define	_POSIX_CLOCK_SELECTION		-1	/* XXX mandatory */
-#define	_POSIX_CPUTIME			-1	/* [CPT] */
+#define	_POSIX_CPUTIME			200112L	/* [CPT] */
 #define	_POSIX_FSYNC			200112L	/* [FSC] */
 #define	_POSIX_IPV6			0
 #define	_POSIX_JOB_CONTROL		1	/* mandatory */
@@ -75,6 +75,7 @@
 #define	_POSIX_SPIN_LOCKS		200112L	/* mandatory */
 #define	_POSIX_SPORADIC_SERVER		-1	/* [SS] */
 #define	_POSIX_SYNCHRONIZED_IO		-1	/* [SIO] */
+#define	_POSIX_THREAD_CPUTIME		200112L	/* [TCT] */
 #define	_POSIX_TIMEOUTS			200112L	/* mandatory */
 #define	_POSIX_TIMERS			200112L	/* mandatory */
 #define	_POSIX_TYPED_MEMORY_OBJECTS	-1	/* [TYM] */

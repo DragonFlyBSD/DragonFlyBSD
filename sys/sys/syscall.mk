@@ -310,4 +310,5 @@ MIASM =  \
 	ppoll.o \
 	lwp_setaffinity.o \
 	lwp_getaffinity.o \
-	lwp_create2.o
+	lwp_create2.o \
+	getcpuclockid.o

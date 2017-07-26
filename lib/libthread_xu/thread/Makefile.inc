@@ -19,6 +19,7 @@ SRCS+= \
 	thr_event.c \
 	thr_exit.c \
 	thr_fork.c \
+	thr_getcpuclockid.c \
 	thr_getprio.c \
 	thr_getschedparam.c \
 	thr_getthreadid_np.c \
