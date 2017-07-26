@@ -3215,6 +3215,9 @@ TO_REMOVE+=/usr/include/bus/cam/scsi/scsi_iu.h
 TO_REMOVE+=/boot/kernel/ispfw.ko
 TO_REMOVE+=/usr/sbin/kernbb
 TO_REMOVE+=/usr/share/man/man8/kernbb.8.gz
+TO_REMOVE+=/usr/include/stab.h
+TO_REMOVE+=/usr/share/man/man5/stab.5.gz
+TO_REMOVE+=/usr/include/struct.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

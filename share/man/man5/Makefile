@@ -50,7 +50,6 @@ MAN=	acct.5 \
 	resolver.5 \
 	services.5 \
 	shells.5 \
-	stab.5 \
 	sysctl.conf.5 \
 	tmpfs.5 \
 	autofs.5 \
