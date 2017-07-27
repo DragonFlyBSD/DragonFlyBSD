@@ -165,6 +165,13 @@ netisr_sendmsg(struct netmsg_base *nm, int cpu)
 }
 
 static __inline void
+netisr_sendmsg_oncpu(struct netmsg_base *nm)
+{
+
+	lwkt_sendmsg_oncpu(netisr_cpuport(mycpuid), &nm->lmsg);
+}
+
+static __inline void
 netisr_replymsg(struct netmsg_base *nm, int error)
 {
 
