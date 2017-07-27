@@ -294,8 +294,8 @@ done:
 }
 
 /*
- * Backend for hammer2_vop_nremove(), hammer2_vop_nrmdir(), helper
- * for hammer2_vop_nrename(), and backend for pfs_delete.
+ * Backend for hammer2_vop_nremove(), hammer2_vop_nrmdir(), and
+ * backend for pfs_delete.
  *
  * This function locates and removes a directory entry, and will lookup
  * and return the underlying inode.  For directory entries the underlying
@@ -303,11 +303,8 @@ done:
  * it may be conditonally removed and returned.
  *
  * WARNING!  Any target inode's nlinks may not be synchronized to the
- *	     in-memory inode.  hammer2_inode_unlink_finisher() is
- *	     responsible for the final disposition of the actual inode.
- *
- * The frontend is responsible for moving open-but-deleted inodes to the
- * mount's hidden directory and for decrementing nlinks.
+ *	     in-memory inode.  The frontend's hammer2_inode_unlink_finisher()
+ *	     is responsible for the final disposition of the actual inode.
  */
 void
 hammer2_xop_unlink(hammer2_thread_t *thr, hammer2_xop_t *arg)
@@ -362,7 +359,8 @@ again:
 	 *
 	 * Note that the target chain's nlinks may not be synchronized with
 	 * the in-memory hammer2_inode_t structure, so we don't try to do
-	 * anything fancy here.
+	 * anything fancy here.  The frontend deals with nlinks
+	 * synchronization.
 	 */
 	error = 0;
 	if (chain) {
@@ -475,8 +473,12 @@ done:
 /*
  * Backend for hammer2_vop_nrename()
  *
- * This handles the final step of renaming, either renaming the
- * actual inode or renaming the directory entry.
+ * This handles the backend rename operation.  Typically this renames
+ * directory entries but can also be used to rename embedded inodes.
+ *
+ * NOTE! The frontend is responsible for updating the inode meta-data in
+ *	 the file being renamed and for decrementing the target-replaced
+ *	 inode's nlinks, if present.
  */
 void
 hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
@@ -487,7 +489,7 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	hammer2_chain_t *chain;
 	hammer2_chain_t *tmp;
 	hammer2_inode_t *ip;
-	hammer2_key_t key_dummy;
+	hammer2_key_t key_next;
 	int cache_index = -1;
 	int error;
 
@@ -526,7 +528,6 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		 * is in fdip, do a namespace search.
 		 */
 		hammer2_key_t lhc;
-		hammer2_key_t key_next;
 		const char *name;
 		size_t name_len;
 
@@ -577,12 +578,12 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	parent = NULL;		/* safety */
 
 	/*
-	 * Ok, back to the deleted chain.  We must reconnect this chain
-	 * to tdir (ip3) and adjust the filename.  The chain (a real inode
-	 * or a directory entry) is not otherwise modified.
+	 * Adjust fields in the deleted chain appropriate for the rename
+	 * operation.
 	 *
-	 * The frontend is expected to replicate the same inode meta data
-	 * modifications if necessary.
+	 * NOTE! For embedded inodes, the frontend will officially replicate
+	 *	 the field adjustments, but we also do it here to maintain
+	 *	 consistency in case of a crash.
 	 */
 	if (chain->bref.key != xop->lhc ||
 	    xop->head.name1_len != xop->head.name2_len ||
@@ -624,7 +625,9 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	}
 
 	/*
-	 * If an embedded inode, adjust iparent directly.
+	 * The frontend will replicate this operation and is the real final
+	 * authority, but adjust the inode's iparent field too if the inode
+	 * is embedded in the directory.
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
 	    chain->data->ipdata.meta.iparent != xop->head.ip3->meta.inum) {
@@ -637,7 +640,9 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	}
 
 	/*
-	 * We must seek parent properly for the create.
+	 * Destroy any matching target(s) before creating the new entry.
+	 * This will result in some ping-ponging of the directory key
+	 * iterator but that is ok.
 	 */
 	parent = hammer2_inode_chain(xop->head.ip3, thr->clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
@@ -645,16 +650,32 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		error = EIO;
 		goto done;
 	}
-	tmp = hammer2_chain_lookup(&parent, &key_dummy,
-				   xop->lhc, xop->lhc,
-				   &cache_index, 0);
-	if (tmp) {
-		hammer2_chain_unlock(tmp);
-		hammer2_chain_drop(tmp);
-		error = EEXIST;
-		goto done;
+
+	tmp = hammer2_chain_lookup(&parent, &key_next,
+				   xop->lhc & ~HAMMER2_DIRHASH_LOMASK,
+				   xop->lhc | HAMMER2_DIRHASH_LOMASK,
+				   &cache_index,
+				   HAMMER2_LOOKUP_ALWAYS);
+	while (tmp) {
+		if (hammer2_chain_dirent_test(tmp, xop->head.name2,
+					      xop->head.name2_len)) {
+			hammer2_chain_delete(parent, tmp, xop->head.mtid, 0);
+		}
+		tmp = hammer2_chain_next(&parent, tmp, &key_next,
+					 key_next,
+					 xop->lhc | HAMMER2_DIRHASH_LOMASK,
+					 &cache_index,
+					 HAMMER2_LOOKUP_ALWAYS);
 	}
 
+	/*
+	 * A relookup is required before the create to properly position
+	 * the parent chain.
+	 */
+	tmp = hammer2_chain_lookup(&parent, &key_next,
+				   xop->lhc, xop->lhc,
+				   &cache_index, 0);
+	KKASSERT(tmp == NULL);
 	error = hammer2_chain_create(&parent, &chain,
 				     pmp, HAMMER2_METH_DEFAULT,
 				     xop->lhc, 0,

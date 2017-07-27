@@ -710,7 +710,7 @@ hammer2_inode_create(hammer2_inode_t *dip, hammer2_inode_t *pip,
 	pip_mode = pip->meta.mode;
 	pip_comp_algo = pip->meta.comp_algo;
 	pip_check_algo = pip->meta.check_algo;
-	pip_inum = (pip == pip->pmp->iroot) ? 0 : pip->meta.inum;
+	pip_inum = (pip == pip->pmp->iroot) ? 1 : pip->meta.inum;
 
 	/*
 	 * If name specified, locate an unused key in the collision space.

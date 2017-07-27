@@ -1901,15 +1901,15 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 {
 	struct namecache *fncp;
 	struct namecache *tncp;
-	hammer2_inode_t *fdip;
-	hammer2_inode_t *tdip;
-	hammer2_inode_t *ip;
+	hammer2_inode_t *fdip;	/* source directory */
+	hammer2_inode_t *tdip;	/* target directory */
+	hammer2_inode_t *ip;	/* file being renamed */
+	hammer2_inode_t *tip;	/* replaced target during rename or NULL */
 	const uint8_t *fname;
 	size_t fname_len;
 	const uint8_t *tname;
 	size_t tname_len;
 	int error;
-	int tnch_error;
 	int update_tdip;
 	int update_fdip;
 	hammer2_key_t tlhc;
@@ -1940,27 +1940,51 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	update_tdip = 0;
 	update_fdip = 0;
 
-	/*
-	 * ip is the inode being renamed.  If this is a hardlink then
-	 * ip represents the actual file and not the hardlink marker.
-	 */
 	ip = VTOI(fncp->nc_vp);
+	hammer2_inode_ref(ip);		/* extra ref */
 
-	KKASSERT((ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE) == 0);
+	/*
+	 * Lookup the target name to determine if a directory entry
+	 * is being overwritten.  We only hold related inode locks
+	 * temporarily, the operating system is expected to protect
+	 * against rename races.
+	 */
+	tip = tncp->nc_vp ? VTOI(tncp->nc_vp) : NULL;
+	if (tip)
+		hammer2_inode_ref(tip);	/* extra ref */
 
 	/*
 	 * Can return NULL and error == EXDEV if the common parent
 	 * crosses a directory with the xlink flag set.
+	 *
+	 * For now try to avoid deadlocks with a simple pointer address
+	 * test.  (tip) can be NULL.
 	 */
 	error = 0;
-	hammer2_inode_lock(fdip, 0);
-	hammer2_inode_lock(tdip, 0);
-	hammer2_inode_ref(ip);		/* extra ref */
+	if (fdip <= tdip) {
+		hammer2_inode_lock(fdip, 0);
+		hammer2_inode_lock(tdip, 0);
+	} else {
+		hammer2_inode_lock(tdip, 0);
+		hammer2_inode_lock(fdip, 0);
+	}
+	if (tip) {
+		if (ip <= tip) {
+			hammer2_inode_lock(ip, 0);
+			hammer2_inode_lock(tip, 0);
+		} else {
+			hammer2_inode_lock(tip, 0);
+			hammer2_inode_lock(ip, 0);
+		}
+	} else {
+		hammer2_inode_lock(ip, 0);
+	}
 
-	hammer2_inode_lock(ip, 0);
-
+#if 0
 	/*
 	 * Delete the target namespace.
+	 *
+	 * REMOVED - NOW FOLDED INTO XOP_NRENAME OPERATION
 	 */
 	{
 		hammer2_xop_unlink_t *xop2;
@@ -2006,11 +2030,13 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 		}
 		update_tdip = 1;
 	}
+#endif
 
 	/*
 	 * Resolve the collision space for (tdip, tname, tname_len)
 	 *
-	 * tdip must be held exclusively locked to prevent races.
+	 * tdip must be held exclusively locked to prevent races since
+	 * multiple filenames can end up in the same collision space.
 	 */
 	{
 		hammer2_xop_scanlhc_t *sxop;
@@ -2041,15 +2067,13 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	}
 
 	/*
-	 * Everything is setup, do the rename.
+	 * Ready to go, issue the rename to the backend.  Note that meta-data
+	 * updates to the related inodes occur separately from the rename
+	 * operation.
 	 *
-	 * We have to synchronize ip->meta to the underlying operation.
-	 *
-	 * NOTE: To avoid deadlocks we cannot lock (ip) while we are
-	 *	 unlinking elements from their directories.  Locking
-	 *	 the nlinks field does not lock the whole inode.
+	 * NOTE: While it is not necessary to update ip->meta.name*, doing
+	 *	 so aids catastrophic recovery and debugging.
 	 */
-	/* hammer2_inode_lock(ip, 0); */
 	if (error == 0) {
 		hammer2_xop_nrename_t *xop4;
 
@@ -2067,18 +2091,39 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 
 		if (error == ENOENT)
 			error = 0;
+
+		/*
+		 * Update inode meta-data.
+		 *
+		 * WARNING!  The in-memory inode (ip) structure does not
+		 *	     maintain a copy of the inode's filename buffer.
+		 */
 		if (error == 0 &&
 		    (ip->meta.name_key & HAMMER2_DIRHASH_VISIBLE)) {
 			hammer2_inode_modify(ip);
 			ip->meta.name_len = tname_len;
 			ip->meta.name_key = tlhc;
-
+		}
+		if (error == 0) {
+			hammer2_inode_modify(ip);
+			ip->meta.iparent = tdip->meta.inum;
 		}
 		update_fdip = 1;
-		update_fdip = 1;
+		update_tdip = 1;
 	}
 
 done2:
+	/*
+	 * If no error, the backend has replaced the target directory entry.
+	 * We must adjust nlinks on the original replace target if it exists.
+	 */
+	if (error == 0 && tip) {
+		int isopen;
+
+		isopen = cache_isopen(ap->a_tnch);
+		hammer2_inode_unlink_finisher(tip, isopen);
+	}
+
 	/*
 	 * Update directory mtimes to represent the something changed.
 	 */
@@ -2095,6 +2140,10 @@ done2:
 			tdip->meta.mtime = mtime;
 		}
 	}
+	if (tip) {
+		hammer2_inode_unlock(tip);
+		hammer2_inode_drop(tip);
+	}
 	hammer2_inode_unlock(ip);
 	hammer2_inode_unlock(tdip);
 	hammer2_inode_unlock(fdip);
@@ -2107,7 +2156,7 @@ done2:
 	 * Issue the namecache update after unlocking all the internal
 	 * hammer structures, otherwise we might deadlock.
 	 */
-	if (tnch_error == 0) {
+	if (error == 0 && tip) {
 		cache_unlink(ap->a_tnch);
 		cache_setunresolved(ap->a_tnch);
 	}

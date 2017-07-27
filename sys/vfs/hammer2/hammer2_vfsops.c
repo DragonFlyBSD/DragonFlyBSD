@@ -399,6 +399,8 @@ hammer2_pfsalloc(hammer2_chain_t *chain,
 	 */
 	if ((iroot = pmp->iroot) == NULL) {
 		iroot = hammer2_inode_get(pmp, NULL, NULL, -1);
+		if (ripdata)
+			iroot->meta = ripdata->meta;
 		pmp->iroot = iroot;
 		hammer2_inode_ref(iroot);
 		hammer2_inode_unlock(iroot);
