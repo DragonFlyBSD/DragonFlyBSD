@@ -124,12 +124,11 @@ main(int ac, char *av[])
 	devpath = strdup(av[0]);
 	mountpt = av[1];
 
+	/*
+	 * Automatically add @LOCAL if no label specified.
+	 */
 	if (strchr(devpath, '@') == NULL) {
-		fprintf(stderr,
-			"hammer2_mount: no @LABEL specified: \"%s\"\n"
-			"typical labels are @LOCAL, @ROOT\n",
-			devpath);
-		exit(1);
+		asprintf(&devpath, "%s@LOCAL", devpath);
 	}
 
 	/*

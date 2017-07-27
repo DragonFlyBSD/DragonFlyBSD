@@ -890,17 +890,20 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			return (error);
 	}
 
-	/* Extract device and label */
+	/*
+	 * Extract device and label, automatically mount @LOCAL if no
+	 * label specified.
+	 */
 	dev = devstr;
 	label = strchr(devstr, '@');
-	if (label == NULL ||
-	    ((label + 1) - dev) > done) {
+	if (label && ((label + 1) - dev) > done)
 		return (EINVAL);
+	if (label == NULL || label[1] == 0) {
+		label = "LOCAL";	/* not modified after this point */
+	} else {
+		*label = '\0';
+		label++;
 	}
-	*label = '\0';
-	label++;
-	if (*label == '\0')
-		return (EINVAL);
 
 	kprintf("hammer2_mount: dev=\"%s\" label=\"%s\"\n",
 		dev, label);
