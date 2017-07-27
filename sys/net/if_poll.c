@@ -300,7 +300,7 @@ static __inline void
 ifpoll_sendmsg_oncpu(netmsg_t msg)
 {
 	if (msg->lmsg.ms_flags & MSGF_DONE)
-		lwkt_sendmsg_oncpu(netisr_cpuport(mycpuid), &msg->lmsg);
+		netisr_sendmsg_oncpu(&msg->base);
 }
 
 static __inline void
@@ -340,15 +340,10 @@ ifpoll_init_pcpu(int cpuid)
 static void
 ifpoll_init_handler(netmsg_t msg)
 {
-	int cpu = mycpuid, nextcpu;
+	int cpu = mycpuid;
 
 	ifpoll_init_pcpu(cpu);
-
-	nextcpu = cpu + 1;
-	if (nextcpu < netisr_ncpus)
-		lwkt_forwardmsg(netisr_cpuport(nextcpu), &msg->base.lmsg);
-	else
-		lwkt_replymsg(&msg->base.lmsg, 0);
+	netisr_forwardmsg(&msg->base, cpu + 1);
 }
 
 static void
@@ -357,7 +352,7 @@ ifpoll_sysinit(void *dummy __unused)
 	struct netmsg_base msg;
 
 	netmsg_init(&msg, NULL, &curthread->td_msgport, 0, ifpoll_init_handler);
-	lwkt_domsg(netisr_cpuport(0), &msg.lmsg, 0);
+	netisr_domsg(&msg, 0);
 }
 SYSINIT(ifpoll, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, ifpoll_sysinit, NULL);
 
@@ -399,7 +394,7 @@ ifpoll_register(struct ifnet *ifp)
 		    0, ifpoll_register_handler);
 	nmsg.lmsg.u.ms_resultp = info;
 
-	error = lwkt_domsg(netisr_cpuport(0), &nmsg.lmsg, 0);
+	error = netisr_domsg(&nmsg, 0);
 	if (error) {
 		if (!ifpoll_deregister(ifp)) {
 			if_printf(ifp, "ifpoll_register: "
@@ -434,7 +429,7 @@ ifpoll_deregister(struct ifnet *ifp)
 		    0, ifpoll_deregister_handler);
 	nmsg.lmsg.u.ms_resultp = ifp;
 
-	error = lwkt_domsg(netisr_cpuport(0), &nmsg.lmsg, 0);
+	error = netisr_domsg(&nmsg, 0);
 	if (!error) {
 		ifnet_serialize_all(ifp);
 		ifp->if_npoll(ifp, NULL);
@@ -447,7 +442,7 @@ static void
 ifpoll_register_handler(netmsg_t nmsg)
 {
 	const struct ifpoll_info *info = nmsg->lmsg.u.ms_resultp;
-	int cpuid = mycpuid, nextcpu;
+	int cpuid = mycpuid;
 	int error;
 
 	KKASSERT(cpuid < netisr_ncpus);
@@ -472,21 +467,17 @@ ifpoll_register_handler(netmsg_t nmsg)
 	/* Adjust polling frequency, after all registration is done */
 	poll_comm_adjust_pollhz(poll_common[cpuid]);
 
-	nextcpu = cpuid + 1;
-	if (nextcpu < netisr_ncpus)
-		lwkt_forwardmsg(netisr_cpuport(nextcpu), &nmsg->lmsg);
-	else
-		lwkt_replymsg(&nmsg->lmsg, 0);
+	netisr_forwardmsg(&nmsg->base, cpuid + 1);
 	return;
 failed:
-	lwkt_replymsg(&nmsg->lmsg, error);
+	netisr_replymsg(&nmsg->base, error);
 }
 
 static void
 ifpoll_deregister_handler(netmsg_t nmsg)
 {
 	struct ifnet *ifp = nmsg->lmsg.u.ms_resultp;
-	int cpuid = mycpuid, nextcpu;
+	int cpuid = mycpuid;
 
 	KKASSERT(cpuid < netisr_ncpus);
 	KKASSERT(&curthread->td_msgport == netisr_cpuport(cpuid));
@@ -500,11 +491,7 @@ ifpoll_deregister_handler(netmsg_t nmsg)
 	/* Adjust polling frequency, after all deregistration is done */
 	poll_comm_adjust_pollhz(poll_common[cpuid]);
 
-	nextcpu = cpuid + 1;
-	if (nextcpu < netisr_ncpus)
-		lwkt_forwardmsg(netisr_cpuport(nextcpu), &nmsg->lmsg);
-	else
-		lwkt_replymsg(&nmsg->lmsg, 0);
+	netisr_forwardmsg(&nmsg->base, cpuid + 1);
 }
 
 static void
@@ -544,7 +531,7 @@ stpoll_handler(netmsg_t msg)
 	crit_enter_quick(td);
 
 	/* Reply ASAP */
-	lwkt_replymsg(&msg->lmsg, 0);
+	netisr_replymsg(&msg->base, 0);
 
 	if (st_ctx->poll_handlers == 0) {
 		crit_exit_quick(td);
@@ -827,7 +814,7 @@ rxpoll_handler(netmsg_t msg)
 	crit_enter_quick(td);
 
 	/* Reply ASAP */
-	lwkt_replymsg(&msg->lmsg, 0);
+	netisr_replymsg(&msg->base, 0);
 
 	if (io_ctx->poll_handlers == 0) {
 		crit_exit_quick(td);
@@ -889,7 +876,7 @@ txpoll_handler(netmsg_t msg)
 	crit_enter_quick(td);
 
 	/* Reply ASAP */
-	lwkt_replymsg(&msg->lmsg, 0);
+	netisr_replymsg(&msg->base, 0);
 
 	if (io_ctx->poll_handlers == 0) {
 		crit_exit_quick(td);
@@ -958,7 +945,7 @@ rxpollmore_handler(netmsg_t msg)
 	crit_enter_quick(td);
 
 	/* Replay ASAP */
-	lwkt_replymsg(&msg->lmsg, 0);
+	netisr_replymsg(&msg->base, 0);
 
 	if (io_ctx->poll_handlers == 0) {
 		crit_exit_quick(td);
@@ -1029,7 +1016,7 @@ txpollmore_handler(netmsg_t msg)
 	crit_enter_quick(td);
 
 	/* Replay ASAP */
-	lwkt_replymsg(&msg->lmsg, 0);
+	netisr_replymsg(&msg->base, 0);
 
 	if (io_ctx->poll_handlers == 0) {
 		crit_exit_quick(td);
@@ -1127,7 +1114,7 @@ sysctl_burstmax_handler(netmsg_t nmsg)
 	if (io_ctx->residual_burst > io_ctx->poll_burst_max)
 		io_ctx->residual_burst = io_ctx->poll_burst_max;
 
-	lwkt_replymsg(&nmsg->lmsg, 0);
+	netisr_replymsg(&nmsg->base, 0);
 }
 
 static int
@@ -1152,8 +1139,7 @@ sysctl_burstmax(SYSCTL_HANDLER_ARGS)
 	msg.base.lmsg.u.ms_result = burst_max;
 	msg.ctx = io_ctx;
 
-	return lwkt_domsg(netisr_cpuport(io_ctx->poll_cpuid),
-	    &msg.base.lmsg, 0);
+	return netisr_domsg(&msg.base, io_ctx->poll_cpuid);
 }
 
 static void
@@ -1173,7 +1159,7 @@ sysctl_eachburst_handler(netmsg_t nmsg)
 		each_burst = 1;
 	io_ctx->poll_each_burst = each_burst;
 
-	lwkt_replymsg(&nmsg->lmsg, 0);
+	netisr_replymsg(&nmsg->base, 0);
 }
 
 static int
@@ -1194,8 +1180,7 @@ sysctl_eachburst(SYSCTL_HANDLER_ARGS)
 	msg.base.lmsg.u.ms_result = each_burst;
 	msg.ctx = io_ctx;
 
-	return lwkt_domsg(netisr_cpuport(io_ctx->poll_cpuid),
-	    &msg.base.lmsg, 0);
+	return netisr_domsg(&msg.base, io_ctx->poll_cpuid);
 }
 
 static int
@@ -1417,7 +1402,7 @@ sysctl_pollhz(SYSCTL_HANDLER_ARGS)
 		    0, sysctl_pollhz_handler);
 	nmsg.lmsg.u.ms_result = phz;
 
-	return lwkt_domsg(netisr_cpuport(comm->poll_cpuid), &nmsg.lmsg, 0);
+	return netisr_domsg(&nmsg, comm->poll_cpuid);
 }
 
 static void
@@ -1442,7 +1427,7 @@ sysctl_pollhz_handler(netmsg_t nmsg)
 	 */
 	poll_comm_adjust_pollhz(comm);
 
-	lwkt_replymsg(&nmsg->lmsg, 0);
+	netisr_replymsg(&nmsg->base, 0);
 }
 
 static int
@@ -1465,7 +1450,7 @@ sysctl_stfrac(SYSCTL_HANDLER_ARGS)
 		    0, sysctl_stfrac_handler);
 	nmsg.lmsg.u.ms_result = stfrac - 1;
 
-	return lwkt_domsg(netisr_cpuport(comm->poll_cpuid), &nmsg.lmsg, 0);
+	return netisr_domsg(&nmsg, comm->poll_cpuid);
 }
 
 static void
@@ -1482,7 +1467,7 @@ sysctl_stfrac_handler(netmsg_t nmsg)
 		comm->stfrac_count = comm->poll_stfrac;
 	crit_exit();
 
-	lwkt_replymsg(&nmsg->lmsg, 0);
+	netisr_replymsg(&nmsg->base, 0);
 }
 
 static int
@@ -1503,7 +1488,7 @@ sysctl_txfrac(SYSCTL_HANDLER_ARGS)
 		    0, sysctl_txfrac_handler);
 	nmsg.lmsg.u.ms_result = txfrac - 1;
 
-	return lwkt_domsg(netisr_cpuport(comm->poll_cpuid), &nmsg.lmsg, 0);
+	return netisr_domsg(&nmsg, comm->poll_cpuid);
 }
 
 static void
@@ -1520,7 +1505,7 @@ sysctl_txfrac_handler(netmsg_t nmsg)
 		comm->txfrac_count = comm->poll_txfrac;
 	crit_exit();
 
-	lwkt_replymsg(&nmsg->lmsg, 0);
+	netisr_replymsg(&nmsg->base, 0);
 }
 
 void
