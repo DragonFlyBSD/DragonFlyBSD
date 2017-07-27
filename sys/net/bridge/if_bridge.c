@@ -678,9 +678,9 @@ bridge_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	sc->sc_bstptimemsg.lmsg.u.ms_resultp = sc;
 
 	/* Initialize per-cpu member iface lists */
-	sc->sc_iflists = kmalloc(sizeof(*sc->sc_iflists) * ncpus,
+	sc->sc_iflists = kmalloc(sizeof(*sc->sc_iflists) * netisr_ncpus,
 				 M_DEVBUF, M_WAITOK);
-	for (cpu = 0; cpu < ncpus; ++cpu)
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu)
 		TAILQ_INIT(&sc->sc_iflists[cpu]);
 
 	TAILQ_INIT(&sc->sc_spanlist);
@@ -2103,6 +2103,7 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 	int alt_priority;
 
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
+	ASSERT_NETISR_NCPUS(curthread, mycpuid);
 	mbuftrackid(m, 65);
 
 	/*
@@ -2300,6 +2301,7 @@ bridge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_ALTQ_SQ_SERIALIZED_HW(ifsq);
+	ASSERT_NETISR_NCPUS(curthread, mycpuid);
 
 	ifsq_set_oactive(ifsq);
 	for (;;) {
@@ -2528,6 +2530,7 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	struct mbuf *mc, *mc2;
 
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
+	ASSERT_NETISR_NCPUS(curthread, mycpuid);
 	mbuftrackid(m, 67);
 
 	/*
@@ -3168,7 +3171,7 @@ bridge_span(struct bridge_softc *sc, struct mbuf *m)
 static void
 bridge_rtmsg_sync_handler(netmsg_t msg)
 {
-	netisr_forwardmsg_all(&msg->base, mycpuid + 1);
+	netisr_forwardmsg(&msg->base, mycpuid + 1);
 }
 
 static void
@@ -3275,7 +3278,7 @@ bridge_rtinstall_handler(netmsg_t msg)
 		netisr_replymsg(&brmsg->base, 0);
 		return;
 	}
-	netisr_forwardmsg_all(&brmsg->base, mycpuid + 1);
+	netisr_forwardmsg(&brmsg->base, mycpuid + 1);
 }
 
 /*
@@ -3365,7 +3368,7 @@ bridge_rtreap_handler(netmsg_t msg)
 		if (brt->brt_info->bri_dead)
 			bridge_rtnode_destroy(sc, brt);
 	}
-	netisr_forwardmsg_all(&msg->base, mycpuid + 1);
+	netisr_forwardmsg(&msg->base, mycpuid + 1);
 }
 
 static void
@@ -3630,9 +3633,9 @@ bridge_rtable_init(struct bridge_softc *sc)
 	/*
 	 * Initialize per-cpu hash tables
 	 */
-	sc->sc_rthashs = kmalloc(sizeof(*sc->sc_rthashs) * ncpus,
+	sc->sc_rthashs = kmalloc(sizeof(*sc->sc_rthashs) * netisr_ncpus,
 				 M_DEVBUF, M_WAITOK);
-	for (cpu = 0; cpu < ncpus; ++cpu) {
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu) {
 		int i;
 
 		sc->sc_rthashs[cpu] =
@@ -3647,9 +3650,10 @@ bridge_rtable_init(struct bridge_softc *sc)
 	/*
 	 * Initialize per-cpu lists
 	 */
-	sc->sc_rtlists = kmalloc(sizeof(struct bridge_rtnode_head) * ncpus,
-				 M_DEVBUF, M_WAITOK);
-	for (cpu = 0; cpu < ncpus; ++cpu)
+	sc->sc_rtlists =
+	    kmalloc(sizeof(struct bridge_rtnode_head) * netisr_ncpus,
+	    M_DEVBUF, M_WAITOK);
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu)
 		LIST_INIT(&sc->sc_rtlists[cpu]);
 }
 
@@ -3666,7 +3670,7 @@ bridge_rtable_fini(struct bridge_softc *sc)
 	/*
 	 * Free per-cpu hash tables
 	 */
-	for (cpu = 0; cpu < ncpus; ++cpu)
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu)
 		kfree(sc->sc_rthashs[cpu], M_DEVBUF);
 	kfree(sc->sc_rthashs, M_DEVBUF);
 
@@ -3808,7 +3812,7 @@ bridge_rtnode_destroy(struct bridge_softc *sc, struct bridge_rtnode *brt)
 	LIST_REMOVE(brt, brt_hash);
 	LIST_REMOVE(brt, brt_list);
 
-	if (mycpuid + 1 == ncpus) {
+	if (mycpuid + 1 == netisr_ncpus) {
 		/* Free rtinfo associated with rtnode on the last cpu */
 		kfree(brt->brt_info, M_DEVBUF);
 	}
@@ -4421,7 +4425,7 @@ bridge_add_bif_handler(netmsg_t msg)
 
 	TAILQ_INSERT_HEAD(&sc->sc_iflists[mycpuid], bif, bif_next);
 
-	netisr_forwardmsg_all(&amsg->base, mycpuid + 1);
+	netisr_forwardmsg(&amsg->base, mycpuid + 1);
 }
 
 static void
@@ -4464,7 +4468,7 @@ bridge_del_bif_handler(netmsg_t msg)
 	/* Save the removed bif for later freeing */
 	TAILQ_INSERT_HEAD(dmsg->br_bif_list, bif, bif_next);
 
-	netisr_forwardmsg_all(&dmsg->base, mycpuid + 1);
+	netisr_forwardmsg(&dmsg->base, mycpuid + 1);
 }
 
 static void
