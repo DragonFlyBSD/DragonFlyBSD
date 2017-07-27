@@ -902,11 +902,24 @@ hammer2_compress_and_write(char *data, hammer2_inode_t *ip,
 	char *comp_buffer;
 	char *bdata;
 
-	if (test_block_zeros(data, pblksize)) {
+	/*
+	 * An all-zeros write creates a hole unless the check code
+	 * is disabled.  When the check code is disabled all writes
+	 * are done in-place, including any all-zeros writes.
+	 *
+	 * NOTE: A snapshot will still force a copy-on-write
+	 *	 (see the HAMMER2_CHECK_NONE in hammer2_chain.c).
+	 */
+	if (check_algo != HAMMER2_CHECK_NONE &&
+	    test_block_zeros(data, pblksize)) {
 		zero_write(data, ip, parentp, lbase, mtid, errorp);
 		return;
 	}
 
+	/*
+	 * Compression requested.  Try to compress the block.  We store
+	 * the data normally if we cannot sufficiently compress it.
+	 */
 	comp_size = 0;
 	comp_buffer = NULL;
 
@@ -1162,9 +1175,21 @@ hammer2_zero_check_and_write(char *data, hammer2_inode_t *ip,
 {
 	hammer2_chain_t *chain;
 
-	if (test_block_zeros(data, pblksize)) {
+	if (check_algo != HAMMER2_CHECK_NONE &&
+	    test_block_zeros(data, pblksize)) {
+		/*
+		 * An all-zeros write creates a hole unless the check code
+		 * is disabled.  When the check code is disabled all writes
+		 * are done in-place, including any all-zeros writes.
+		 *
+		 * NOTE: A snapshot will still force a copy-on-write
+		 *	 (see the HAMMER2_CHECK_NONE in hammer2_chain.c).
+		 */
 		zero_write(data, ip, parentp, lbase, mtid, errorp);
 	} else {
+		/*
+		 * Normal write
+		 */
 		chain = hammer2_assign_physical(ip, parentp, lbase, pblksize,
 						mtid, &data, errorp);
 		if (data) {
