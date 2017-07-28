@@ -23,6 +23,7 @@ SRCS+=	\
 	dsinit.c \
 	dsmthdat.c \
 	dsobject.c \
+	dspkginit.c \
 	dsutils.c \
 	dswload.c \
 	dswload2.c \

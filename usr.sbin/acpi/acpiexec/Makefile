@@ -60,6 +60,7 @@ SRCS+=	\
 	dsmthdat.c \
 	dsobject.c \
 	dsopcode.c \
+	dspkginit.c \
 	dsutils.c \
 	dswexec.c \
 	dswload.c \

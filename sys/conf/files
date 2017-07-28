@@ -2575,6 +2575,7 @@ ${ACPICA_COMP_DIR}/dispatcher/dsmethod.c	optional acpi
 ${ACPICA_COMP_DIR}/dispatcher/dsmthdat.c	optional acpi
 ${ACPICA_COMP_DIR}/dispatcher/dsobject.c	optional acpi
 ${ACPICA_COMP_DIR}/dispatcher/dsopcode.c	optional acpi
+${ACPICA_COMP_DIR}/dispatcher/dspkginit.c	optional acpi
 ${ACPICA_COMP_DIR}/dispatcher/dsutils.c		optional acpi
 ${ACPICA_COMP_DIR}/dispatcher/dswexec.c		optional acpi
 ${ACPICA_COMP_DIR}/dispatcher/dswload.c		optional acpi
