@@ -44,10 +44,6 @@
 #include <machine/param.h>	/* for SMP_MAXCPU */
 #endif
 
-#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-
-#endif	/* _KERNEL */
-
 /*
  * flags to malloc.
  */
