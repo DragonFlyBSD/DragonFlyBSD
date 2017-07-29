@@ -47,6 +47,7 @@
 #include <sys/sysctl.h>
 #include <sys/lock.h>
 #include <sys/uio.h>
+#include <sys/kcollect.h>
 #ifdef KTRACE
 #include <sys/ktrace.h>
 #endif
@@ -1265,13 +1266,23 @@ loadav_count_runnable(struct lwp *lp, void *data)
 	return(0);
 }
 
+/*
+ * Regular data collection
+ */
+static uint64_t
+collect_load_callback(int n)
+{
+	return (averunnable.ldavg[0] * 100 / averunnable.fscale);
+}
+
 /* ARGSUSED */
 static void
 sched_setup(void *dummy)
 {
 	callout_init_mp(&loadav_callout);
 	callout_init_mp(&schedcpu_callout);
-
+	kcollect_register(KCOLLECT_LOAD, "load", collect_load_callback,
+			  KCOLLECT_SCALE(KCOLLECT_LOAD_FORMAT, 0));
 	/* Kick off timeout driven events by calling first time. */
 	schedcpu(NULL);
 	loadav(NULL);
