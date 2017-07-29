@@ -277,6 +277,7 @@ do_single(int argc, char **argv, int action)
 			disks[i++] = cp;
 		else {
 			warnx("%s: %s", cp, strerror(j));
+			free(disks);
 			return (1);
 		}
 	}
