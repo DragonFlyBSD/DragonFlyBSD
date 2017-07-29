@@ -252,12 +252,11 @@ dump_text(kcollect_t *ary, size_t count, size_t total_count)
 				/*
 				 * Megabytes
 				 */
-				value = value * 1000000;
 				humanize_number(buf, sizeof(buf), value, "",
 						2,
 						HN_FRACTIONAL |
 						HN_NOSPACE);
-				printf("%s", buf);
+				printf("%8.8s", buf);
 				break;
 			case 'c':
 				/*

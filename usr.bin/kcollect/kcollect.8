@@ -1,0 +1,91 @@
+.\" Copyright (c) 2017 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd July 29, 2017
+.Dt KCOLLECT 8
+.Os
+.Sh NAME
+.Nm kcollect
+.Nd extract kernel-collected statistics
+.Sh SYNOPSIS
+.Nm
+.Op Fl o Ar fields
+.Op Fl b Ar file
+.Op Fl f
+.Op Fl l
+.Op Fl g
+.Op Fl G
+.Op Fl x Ar gnuplot_options
+.Sh DESCRIPTION
+The
+.Nm
+utility extracts regularly collected statistics accumulated by the kernel.
+The kernel typically keeps around 23 hours worth of statistics.
+If no specific output option is specified, a human-readable text dump
+of the accumulated statistics will be output starting with the most recent
+collection and then going back in time.
+.Pp
+The following options are available:
+.Bl -tag -width indent
+.It Fl o Ar fields
+Indicate which fields to extract.  If not specified, all available
+fields are extracted.  Unknown fields are ignored.
+.It Fl b Ar file
+Dump the data to a dbm database, creating the database if necessary.
+Data is indexed by gmt time, which will be calculated from the ticks.
+Any existing data records for the specified time will be overwritten,
+but
+.Nm
+is smart and will not overwrite the record if it exactly matches what
+would be written.
+.It Fl g
+Generate gnuplot output for the data.
+NOT YET - UNDER CONSTRUCTION.
+.It Fl x
+Generate gnuplot output for the data and pipe it to gnuplot for display
+to X11.
+Any options specified after this option will be passed into gnuplot.
+NOT YET - UNDER CONSTRUCTION.
+.It Fl l
+List all available fields and the field format
+.It Fl f
+Dump available output then enter a 60-second sleep/collection loop
+to incrementally collect and output more data.
+If outputting to gnuplot, the plot will be updated regularly.
+.It Fl G
+Timestamps for text output will be in GMT instead of localtime.
+.El
+.Pp
+.Sh SEE ALSO
+.Xr systat 1
+.Sh HISTORY
+A
+.Nm
+utility appeared in
+.Dx 4.9 .
