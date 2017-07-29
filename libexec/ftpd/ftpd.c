@@ -178,7 +178,6 @@ char	*pid_file = NULL; /* means default location to pidfile(3) */
  * A limit of 0 indicates the number of pathnames is unlimited.
  */
 #define MAXGLOBARGS	16384
-#
 
 /*
  * Timeout intervals for retrying connections
