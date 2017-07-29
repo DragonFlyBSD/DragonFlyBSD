@@ -41,6 +41,9 @@
 .Op Fl l
 .Op Fl g
 .Op Fl G
+.Op Fl W Ar width
+.Op Fl H Ar height
+.Op Fl w Ar plotfile
 .Op Fl x Ar gnuplot_options
 .Sh DESCRIPTION
 The
@@ -55,31 +58,45 @@ The following options are available:
 .Bl -tag -width indent
 .It Fl o Ar fields
 Indicate which fields to extract.  If not specified, all available
-fields are extracted.  Unknown fields are ignored.
+fields are extracted.  Unknown fields are ignored.  Note that not
+all commands will filter based on the field list.
+.Pp
+You may specify space or comma-separated fieldnames.  Whitespace is
+ignored.  Use the
+.Fl l
+option to get a list of available fields.
 .It Fl b Ar file
 Dump the data to a dbm database, creating the database if necessary.
 Data is indexed by gmt time, which will be calculated from the ticks.
-Any existing data records for the specified time will be overwritten,
-but
+Duplicate tuples are ignored.  The database will retain data from prior
+runs.
+.Pp
+THIS IS A TODO OPTION, NOT YET IMPLEMENTED.
 .Nm
 is smart and will not overwrite the record if it exactly matches what
 would be written.
 .It Fl g
 Generate gnuplot output for the data.
-NOT YET - UNDER CONSTRUCTION.
 .It Fl x
 Generate gnuplot output for the data and pipe it to gnuplot for display
 to X11.
-Any options specified after this option will be passed into gnuplot.
-NOT YET - UNDER CONSTRUCTION.
 .It Fl l
 List all available fields and the field format
 .It Fl f
 Dump available output then enter a 60-second sleep/collection loop
 to incrementally collect and output more data.
-If outputting to gnuplot, the plot will be updated regularly.
+If outputting to gnuplot, the plot will be updated regularly.  However,
+please note that this is fairly expensive since the plot data has to
+be completely re-sent to gunplot on each update.
+.It Fl w Ar plotfile
+Generate gnuplot output to a .png or .jpg file, depending on the extension
+of the filename you supply.
 .It Fl G
 Timestamps for text output will be in GMT instead of localtime.
+.It Fl W Ar width
+.It Fl H Ar height
+Set the width and height of the output plot for the plotfile or for X.
+The default is 512x512.
 .El
 .Pp
 .Sh SEE ALSO

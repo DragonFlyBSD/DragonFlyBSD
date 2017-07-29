@@ -29,27 +29,19 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/types.h>
-#include <sys/sysctl.h>
-#include <sys/kcollect.h>
-#include <time.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <unistd.h>
-#include <string.h>
-#include <libutil.h>
+#include "kcollect.h"
 
 #define SLEEP_INTERVAL	60	/* minimum is KCOLLECT_INTERVAL */
 
 static void dump_text(kcollect_t *ary, size_t count, size_t total_count);
-static void dump_gnuplot(kcollect_t *ary, size_t count);
 static void dump_dbm(kcollect_t *ary, size_t count, const char *datafile);
 static void dump_fields(kcollect_t *ary);
-static void start_gnuplot(int ac, char **av);
+static void adjust_fields(kcollect_t *ent, const char *fields);
 
-static const char *Fields = NULL;
-static int UseGmt = 0;
+FILE *OutFP;
+int UseGMT;
+int OutputWidth = 1024;
+int OutputHeight = 1024;
 
 int
 main(int ac, char **av)
@@ -59,11 +51,14 @@ main(int ac, char **av)
 	size_t count;
 	size_t total_count;
 	const char *datafile = NULL;
+	const char *fields = NULL;
 	int cmd = 't';
 	int ch;
 	int keepalive = 0;
 	int last_ticks;
 	int loops = 0;
+
+	OutFP = stdout;
 
 	sysctlbyname("kern.collect_data", NULL, &bytes, NULL, 0);
 	if (bytes == 0) {
@@ -71,10 +66,10 @@ main(int ac, char **av)
 		exit(1);
 	}
 
-	while ((ch = getopt(ac, av, "o:b:flgx")) != -1) {
+	while ((ch = getopt(ac, av, "o:b:flgxw:GW:H:")) != -1) {
 		switch(ch) {
 		case 'o':
-			Fields = optarg;
+			fields = optarg;
 			break;
 		case 'b':
 			datafile = optarg;
@@ -86,6 +81,10 @@ main(int ac, char **av)
 		case 'l':
 			cmd = 'l';
 			break;
+		case 'w':
+			datafile = optarg;
+			cmd = 'w';
+			break;
 		case 'g':
 			cmd = 'g';
 			break;
@@ -93,7 +92,13 @@ main(int ac, char **av)
 			cmd = 'x';
 			break;
 		case 'G':
-			UseGmt = 1;
+			UseGMT = 1;
+			break;
+		case 'W':
+			OutputWidth = strtol(optarg, NULL, 0);
+			break;
+		case 'H':
+			OutputHeight = strtol(optarg, NULL, 0);
 			break;
 		default:
 			fprintf(stderr, "Unknown option %c\n", ch);
@@ -108,9 +113,11 @@ main(int ac, char **av)
 	}
 
 	total_count = 0;
+	last_ticks = 0;
 
-	if (cmd == 'x')
+	if (cmd == 'x' || cmd == 'w')
 		start_gnuplot(ac - optind, av + optind);
+
 	do {
 		/*
 		 * Snarf as much data as we can.  If we are looping,
@@ -132,6 +139,9 @@ main(int ac, char **av)
 
 		ary = malloc(bytes);
 		sysctlbyname("kern.collect_data", ary, &bytes, NULL, 0);
+
+		if (fields)
+			adjust_fields(&ary[1], fields);
 
 		count = bytes / sizeof(kcollect_t);
 		if (loops) {
@@ -157,26 +167,51 @@ main(int ac, char **av)
 			break;		/* NOT REACHED */
 		case 'g':
 			if (count > 2)
-				dump_gnuplot(ary, count);
+				dump_gnuplot(ary, count, NULL);
+			break;
+		case 'w':
+			if (count >= 2)
+				dump_gnuplot(ary, count, datafile);
 			break;
 		case 'x':
 			if (count > 2)
-				dump_gnuplot(ary, count);
+				dump_gnuplot(ary, count, NULL);
 			break;
 		}
 		if (keepalive) {
+			fflush(OutFP);
 			fflush(stdout);
-			sleep(1);
+			switch(cmd) {
+			case 't':
+				sleep(1);
+				break;
+			case 'x':
+			case 'g':
+			case 'w':
+				sleep(60);
+				break;
+			default:
+				sleep(10);
+				break;
+			}
 		}
 		last_ticks = ary[2].ticks;
 		if (count >= 2)
 			total_count += count - 2;
-		++loops;
+
+		/*
+		 * Loop for incremental aquisition.  When outputting to
+		 * gunplot, we have to send the whole data-set again so
+		 * do not increment loops in that case.
+		 */
+		if (cmd != 'g' && cmd != 'x' && cmd != 'w')
+			++loops;
+
 		free(ary);
 	} while (keepalive);
 
 	if (cmd == 'x')
-		pclose(stdout);
+		pclose(OutFP);
 }
 
 static
@@ -208,7 +243,7 @@ dump_text(kcollect_t *ary, size_t count, size_t total_count)
 		 * Timestamp
 		 */
 		t = ary[i].realtime.tv_sec;
-		if (UseGmt)
+		if (UseGMT)
 			tmv = gmtime(&t);
 		else
 			tmv = localtime(&t);
@@ -300,17 +335,7 @@ dump_text(kcollect_t *ary, size_t count, size_t total_count)
 }
 
 static void
-dump_gnuplot(kcollect_t *ary __unused, size_t count __unused)
-{
-}
-
-static void
 dump_dbm(kcollect_t *ary __unused, size_t count __unused, const char *datafile __unused)
-{
-}
-
-static void
-start_gnuplot(int ac __unused, char **av __unused)
 {
 }
 
@@ -325,5 +350,32 @@ dump_fields(kcollect_t *ary)
 		printf("%8.8s %c\n",
 		       (char *)&ary[1].data[j],
 		       KCOLLECT_GETFMT(ary[0].data[j]));
+	}
+}
+
+static void
+adjust_fields(kcollect_t *ent, const char *fields)
+{
+	char *copy = strdup(fields);
+	char *word;
+	int selected[KCOLLECT_ENTRIES];
+	int j;
+
+	bzero(selected, sizeof(selected));
+
+	word = strtok(copy, ", \t");
+	while (word) {
+		for (j = 0; j < KCOLLECT_ENTRIES; ++j) {
+			if (strncmp(word, (char *)&ent->data[j], 8) == 0) {
+				selected[j] = 1;
+				break;
+			}
+		}
+		word = strtok(NULL, ", \t");
+	}
+	free(copy);
+	for (j = 0; j < KCOLLECT_ENTRIES; ++j) {
+		if (!selected[j])
+			ent->data[j] = 0;
 	}
 }

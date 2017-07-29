@@ -1,6 +1,7 @@
 
 PROG=	kcollect
-MAN= kcollect.8
+SRCS=	kcollect.c gnuplot.c
+MAN=	kcollect.8
 
 DPADD=	${LIBUTIL}
 LDADD=	-lutil
