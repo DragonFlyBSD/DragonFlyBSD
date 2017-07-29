@@ -912,7 +912,6 @@ amdstart(struct amd_softc *amd, struct amd_srb *pSRB)
 	u_int command;
 	u_int target;
 	u_int lun;
-	int tagged;
 
 	pccb = pSRB->pccb;
 	pcsio = &pccb->csio;
@@ -937,7 +936,6 @@ amdstart(struct amd_softc *amd, struct amd_srb *pSRB)
 		identify_msg |= MSG_IDENTIFY_DISCFLAG;
 
 	amd_write8(amd, SCSIFIFOREG, identify_msg);
-	tagged = 0;
 	if ((targ_info->disc_tag & AMD_CUR_TAGENB) == 0
 	  || (identify_msg & MSG_IDENTIFY_DISCFLAG) == 0)
 		pccb->ccb_h.flags &= ~CAM_TAG_ACTION_VALID;
@@ -951,7 +949,6 @@ amdstart(struct amd_softc *amd, struct amd_srb *pSRB)
 		pSRB->SRBState = SRB_START;
 		amd_write8(amd, SCSIFIFOREG, pcsio->tag_action);
 		amd_write8(amd, SCSIFIFOREG, pSRB->TagNumber);
-		tagged++;
 	} else {
 		command = SEL_W_ATN;
 		pSRB->SRBState = SRB_START;

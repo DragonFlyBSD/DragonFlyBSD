@@ -695,11 +695,8 @@ vinum_scandisk(char *devicename[], int drives)
     for (driveno = 0; driveno < drives; driveno++) {
 	char part, has_part = 0;			    /* UNIX partition */
 	int slice;
-	int founddrive;					    /* flag when we find a vinum drive */
 	int has_slice = -1;
 	char *tmp;
-
-	founddrive = 0;					    /* no vinum drive found yet on this spindle */
 
 	/*
 	 * If the device path contains a slice we do not try to tack on
@@ -741,7 +738,6 @@ vinum_scandisk(char *devicename[], int drives)
 		    drivelist[gooddrives] = drive->driveno;	/* keep the drive index */
 		    drive->flags &= ~VF_NEWBORN;	    /* which is no longer newly born */
 		    gooddrives++;
-		    founddrive++;
 		}
 	    }
 	}

@@ -5107,7 +5107,6 @@ ncr_timeout (void *arg)
 	ncb_p	np = arg;
 	time_t	thistime = time_uptime;
 	ticks_t	step  = np->ticks;
-	u_long	count = 0;
 	long t;
 	nccb_p cp;
 
@@ -5155,7 +5154,6 @@ ncr_timeout (void *arg)
 			**	look for timed out nccbs.
 			*/
 			if (!cp->host_status) continue;
-			count++;
 			if (cp->tlimit > thistime) continue;
 
 			/*

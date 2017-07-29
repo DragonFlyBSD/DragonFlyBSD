@@ -3011,7 +3011,6 @@ static void
 pf_clear_states(void)
 {
 	struct pf_state		*s, *nexts;
-	u_int			killed = 0;
 	globaldata_t save_gd = mycpu;
 	int nn;
 
@@ -3023,7 +3022,6 @@ pf_clear_states(void)
 			/* don't send out individual delete messages */
 			s->sync_flags = PFSTATE_NOSYNC;
 			pf_unlink_state(s);
-			killed++;
 		}
                         
 	}
