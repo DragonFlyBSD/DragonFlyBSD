@@ -85,12 +85,14 @@
 #include <sys/timex.h>
 #include <sys/timepps.h>
 #include <sys/upmap.h>
-#include <vm/vm.h>
 #include <sys/lock.h>
+#include <sys/sysctl.h>
+#include <sys/kcollect.h>
+
+#include <vm/vm.h>
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 #include <vm/vm_extern.h>
-#include <sys/sysctl.h>
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
@@ -349,6 +351,49 @@ initclocks_pcpu(void)
 }
 
 /*
+ * Called on a 10-second interval after the system is operational.
+ * Return the collection data for USERPCT and install the data for
+ * SYSTPCT and IDLEPCT.
+ */
+static
+uint64_t
+collect_cputime_callback(int n)
+{
+	static long cpu_base[CPUSTATES];
+	long cpu_states[CPUSTATES];
+	long total;
+	long acc;
+	long lsb;
+
+	bzero(cpu_states, sizeof(cpu_states));
+	for (n = 0; n < ncpus; ++n) {
+		cpu_states[CP_USER] += cputime_percpu[n].cp_user;
+		cpu_states[CP_NICE] += cputime_percpu[n].cp_nice;
+		cpu_states[CP_SYS] += cputime_percpu[n].cp_sys;
+		cpu_states[CP_INTR] += cputime_percpu[n].cp_intr;
+		cpu_states[CP_IDLE] += cputime_percpu[n].cp_idle;
+	}
+
+	acc = 0;
+	for (n = 0; n < CPUSTATES; ++n) {
+		total = cpu_states[n] - cpu_base[n];
+		cpu_base[n] = cpu_states[n];
+		cpu_states[n] = total;
+		acc += total;
+	}
+	if (acc == 0)		/* prevent degenerate divide by 0 */
+		acc = 1;
+	lsb = acc / (10000 * 2);
+	kcollect_setvalue(KCOLLECT_SYSTPCT,
+			  (cpu_states[CP_SYS] + lsb) * 10000 / acc);
+	kcollect_setvalue(KCOLLECT_IDLEPCT,
+			  (cpu_states[CP_IDLE] + lsb) * 10000 / acc);
+	kcollect_setvalue(KCOLLECT_INTRPCT,
+			  (cpu_states[CP_INTR] + lsb) * 10000 / acc);
+	return((cpu_states[CP_USER] + cpu_states[CP_NICE] + lsb) * 10000 / acc);
+}
+
+/*
  * This routine is called on just the BSP, just after SMP initialization
  * completes to * finish initializing any clocks that might contend/block
  * (e.g. like on a token).  We can't do this in initclocks_pcpu() because
@@ -387,6 +432,16 @@ initclocks_other(void *dummy)
 					  NULL, ESTCPUFREQ);
 	}
 	lwkt_setcpu_self(ogd);
+
+	/*
+	 * Regular data collection
+	 */
+	kcollect_register(KCOLLECT_USERPCT, "user", collect_cputime_callback,
+			  KCOLLECT_SCALE(KCOLLECT_USERPCT_FORMAT, 0));
+	kcollect_register(KCOLLECT_SYSTPCT, "syst", NULL,
+			  KCOLLECT_SCALE(KCOLLECT_SYSTPCT_FORMAT, 0));
+	kcollect_register(KCOLLECT_IDLEPCT, "idle", NULL,
+			  KCOLLECT_SCALE(KCOLLECT_IDLEPCT_FORMAT, 0));
 }
 SYSINIT(clocks2, SI_BOOT2_POST_SMP, SI_ORDER_ANY, initclocks_other, NULL);
 

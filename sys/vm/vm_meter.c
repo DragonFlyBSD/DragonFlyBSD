@@ -39,6 +39,7 @@
 #include <sys/kernel.h>
 #include <sys/resource.h>
 #include <sys/vmmeter.h>
+#include <sys/kcollect.h>
 
 #include <vm/vm.h>
 #include <vm/vm_page.h>
@@ -442,6 +443,74 @@ do_vmmeter_pcpu(SYSCTL_HANDLER_ARGS)
 }
 
 /*
+ * Callback for long-term slow data collection on 10-second interval.
+ *
+ * Return faults, set data for other entries.
+ */
+static uint64_t
+collect_vmstats_callback(int n)
+{
+	static struct vmmeter last_vmm;
+	struct vmmeter cur_vmm;
+	const int boffset = offsetof(struct vmmeter, vmmeter_uint_begin);
+	const int eoffset = offsetof(struct vmmeter, vmmeter_uint_end);
+	uint64_t total;
+
+	/*
+	 * The hardclock already rolls up vmstats for us.
+	 */
+	kcollect_setvalue(KCOLLECT_MEMFRE, vmstats.v_free_count);
+	kcollect_setvalue(KCOLLECT_MEMCAC, vmstats.v_cache_count);
+	kcollect_setvalue(KCOLLECT_MEMINA, vmstats.v_inactive_count);
+	kcollect_setvalue(KCOLLECT_MEMACT, vmstats.v_active_count);
+	kcollect_setvalue(KCOLLECT_MEMWIR, vmstats.v_wire_count);
+
+	/*
+	 * Collect pcpu statistics for things like faults.
+	 */
+	bzero(&cur_vmm, sizeof(cur_vmm));
+        for (n = 0; n < ncpus; ++n) {
+                struct globaldata *gd = globaldata_find(n);
+                int off;
+
+                for (off = boffset; off <= eoffset; off += sizeof(u_int)) {
+                        *(u_int *)((char *)&cur_vmm + off) +=
+                                *(u_int *)((char *)&gd->gd_cnt + off);
+                }
+
+        }
+
+	total = cur_vmm.v_cow_faults - last_vmm.v_cow_faults;
+	last_vmm.v_cow_faults = cur_vmm.v_cow_faults;
+	kcollect_setvalue(KCOLLECT_COWFAULT, total);
+
+	total = cur_vmm.v_zfod - last_vmm.v_zfod;
+	last_vmm.v_zfod = cur_vmm.v_zfod;
+	kcollect_setvalue(KCOLLECT_ZFILL, total);
+
+	total = cur_vmm.v_syscall - last_vmm.v_syscall;
+	last_vmm.v_syscall = cur_vmm.v_syscall;
+	kcollect_setvalue(KCOLLECT_SYSCALLS, total);
+
+	total = cur_vmm.v_intr - last_vmm.v_intr;
+	last_vmm.v_intr = cur_vmm.v_intr;
+	kcollect_setvalue(KCOLLECT_INTR, total);
+
+	total = cur_vmm.v_ipi - last_vmm.v_ipi;
+	last_vmm.v_ipi = cur_vmm.v_ipi;
+	kcollect_setvalue(KCOLLECT_IPI, total);
+
+	total = cur_vmm.v_timer - last_vmm.v_timer;
+	last_vmm.v_timer = cur_vmm.v_timer;
+	kcollect_setvalue(KCOLLECT_TIMER, total);
+
+	total = cur_vmm.v_vm_faults - last_vmm.v_vm_faults;
+	last_vmm.v_vm_faults = cur_vmm.v_vm_faults;
+
+	return total;
+}
+
+/*
  * Called from the low level boot code only.
  */
 static void
@@ -468,6 +537,34 @@ vmmeter_init(void *dummy __unused)
 				gd, sizeof(struct vmmeter), do_vmmeter_pcpu,
 				"S,vmmeter", "System per-cpu statistics");
 	}
+	kcollect_register(KCOLLECT_VMFAULT, "fault", collect_vmstats_callback,
+			  KCOLLECT_SCALE(KCOLLECT_VMFAULT_FORMAT,
+					 vmstats.v_page_count));
+	kcollect_register(KCOLLECT_COWFAULT, "cow", NULL,
+			  KCOLLECT_SCALE(KCOLLECT_COWFAULT_FORMAT, 0));
+	kcollect_register(KCOLLECT_ZFILL, "zfill", NULL,
+			  KCOLLECT_SCALE(KCOLLECT_ZFILL_FORMAT, 0));
+
+	kcollect_register(KCOLLECT_MEMFRE, "free", NULL,
+			  KCOLLECT_SCALE(KCOLLECT_MEMFRE_FORMAT, 0));
+	kcollect_register(KCOLLECT_MEMCAC, "cache", NULL,
+			  KCOLLECT_SCALE(KCOLLECT_MEMCAC_FORMAT, 0));
+	kcollect_register(KCOLLECT_MEMINA, "inact", NULL,
+			  KCOLLECT_SCALE(KCOLLECT_MEMINA_FORMAT, 0));
+	kcollect_register(KCOLLECT_MEMACT, "act", NULL,
+			  KCOLLECT_SCALE(KCOLLECT_MEMACT_FORMAT, 0));
+	kcollect_register(KCOLLECT_MEMWIR, "wired", NULL,
+			  KCOLLECT_SCALE(KCOLLECT_MEMWIR_FORMAT, 0));
+
+	kcollect_register(KCOLLECT_SYSCALLS, "syscalls", NULL,
+			  KCOLLECT_SCALE(KCOLLECT_SYSCALLS_FORMAT, 0));
+
+	kcollect_register(KCOLLECT_INTR, "intr", NULL,
+			  KCOLLECT_SCALE(KCOLLECT_INTR_FORMAT, 0));
+	kcollect_register(KCOLLECT_IPI, "ipi", NULL,
+			  KCOLLECT_SCALE(KCOLLECT_IPI_FORMAT, 0));
+	kcollect_register(KCOLLECT_TIMER, "timer", NULL,
+			  KCOLLECT_SCALE(KCOLLECT_TIMER_FORMAT, 0));
 }
 SYSINIT(vmmeter, SI_SUB_PSEUDO, SI_ORDER_ANY, vmmeter_init, 0);
 

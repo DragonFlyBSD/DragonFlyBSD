@@ -106,7 +106,7 @@
 #include <sys/sysctl.h>
 #include <sys/blist.h>
 #include <sys/lock.h>
-#include <sys/thread2.h>
+#include <sys/kcollect.h>
 
 #include <unistd.h>
 #include "opt_swap.h"
@@ -120,6 +120,7 @@
 #include <vm/vm_zone.h>
 #include <vm/vnode_pager.h>
 
+#include <sys/thread2.h>
 #include <sys/buf2.h>
 #include <vm/vm_page2.h>
 
@@ -328,6 +329,30 @@ swp_sizecheck(void)
 }
 
 /*
+ * Long-term data collection on 10-second interval.  Return the value
+ * for KCOLLECT_SWAPPCT and set the values for SWAPANO and SWAPCCAC.
+ *
+ * Return total swap in the scale field.  This can change if swap is
+ * regularly added or removed and may cause some historical confusion
+ * in that case, but SWAPPCT will always be historically accurate.
+ */
+static uint64_t
+collect_swap_callback(int n)
+{
+	uint64_t total = vm_swap_size;
+	uint64_t anon = vm_swap_anon_use;
+	uint64_t cache = vm_swap_cache_use;
+
+	if (total == 0)		/* avoid divide by zero */
+		total = 1;
+	kcollect_setvalue(KCOLLECT_SWAPANO, anon * PAGE_SIZE);
+	kcollect_setvalue(KCOLLECT_SWAPCAC, cache * PAGE_SIZE);
+	kcollect_setscale(KCOLLECT_SWAPANO, total);
+	kcollect_setscale(KCOLLECT_SWAPCAC, total);
+	return (((anon + cache) * 10000 + (total >> 1)) / total);
+}
+
+/*
  * SWAP_PAGER_INIT() -	initialize the swap pager!
  *
  *	Expected to be started from system init.  NOTE:  This code is run 
@@ -339,6 +364,12 @@ swp_sizecheck(void)
 static void
 swap_pager_init(void *arg __unused)
 {
+	kcollect_register(KCOLLECT_SWAPPCT, "swapuse", collect_swap_callback,
+			  KCOLLECT_SCALE(KCOLLECT_SWAPPCT_FORMAT, 0));
+	kcollect_register(KCOLLECT_SWAPANO, "swapmem", NULL,
+			  KCOLLECT_SCALE(KCOLLECT_SWAPANO_FORMAT, 0));
+	kcollect_register(KCOLLECT_SWAPCAC, "swapcsh", NULL,
+			  KCOLLECT_SCALE(KCOLLECT_SWAPCAC_FORMAT, 0));
 }
 SYSINIT(vm_mem, SI_BOOT1_VM, SI_ORDER_THIRD, swap_pager_init, NULL);
 

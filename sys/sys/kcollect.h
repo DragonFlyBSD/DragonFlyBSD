@@ -35,33 +35,54 @@ typedef struct {
 #define KCOLLECT_USERPCT	1	/* whole machine user % */
 #define KCOLLECT_SYSTPCT	2	/* whole machine sys % */
 #define KCOLLECT_IDLEPCT	3	/* whole machine idle % */
-#define KCOLLECT_SWAPPCT	4	/* total swap used % */
-#define KCOLLECT_SWAPANO	5	/* anonymous swap used MB */
-#define KCOLLECT_SWAPCAC	6	/* swapcache swap used MB */
-#define KCOLLECT_VMFAULT	7	/* all vm faults incl zero-fill */
-#define KCOLLECT_ZFILL		8	/* zero-fill faults */
-#define KCOLLECT_MEMFRE		9	/* amount of free memory, bytes */
-#define KCOLLECT_MEMCAC		10	/* amount of almost free memory */
-#define KCOLLECT_MEMINA		11	/* amount of inactive memory */
-#define KCOLLECT_MEMACT		12	/* amount of active memory */
-#define KCOLLECT_MEMWIR		13	/* amount of wired/kernel memory */
+#define KCOLLECT_INTRPCT	4	/* whole machine intr % (or other) */
+#define KCOLLECT_SWAPPCT	5	/* total swap used % */
+#define KCOLLECT_SWAPANO	6	/* anonymous swap used MB */
+#define KCOLLECT_SWAPCAC	7	/* swapcache swap used MB */
 
-#define KCOLLECT_DYNAMIC_START	16	/* dynamic entries */
+#define KCOLLECT_VMFAULT	8	/* all vm faults incl zero-fill */
+#define KCOLLECT_COWFAULT	9	/* all vm faults incl zero-fill */
+#define KCOLLECT_ZFILL		10	/* zero-fill faults */
+
+#define KCOLLECT_MEMFRE		11	/* amount of free memory, bytes */
+#define KCOLLECT_MEMCAC		12	/* amount of almost free memory */
+#define KCOLLECT_MEMINA		13	/* amount of inactive memory */
+#define KCOLLECT_MEMACT		14	/* amount of active memory */
+#define KCOLLECT_MEMWIR		15	/* amount of wired/kernel memory */
+
+#define KCOLLECT_SYSCALLS	16	/* system calls */
+#define KCOLLECT_NLOOKUP	17	/* path lookups */
+
+#define KCOLLECT_INTR		18	/* nominal external interrupts */
+#define KCOLLECT_IPI		19	/* inter-cpu interrupts */
+#define KCOLLECT_TIMER		20	/* timer interrupts */
+
+#define KCOLLECT_DYNAMIC_START	24	/* dynamic entries */
 
 #define KCOLLECT_LOAD_FORMAT	'2'	/* N.NN (modulo 100) */
 #define KCOLLECT_USERPCT_FORMAT	'p'	/* percentage of single cpu x 100 */
 #define KCOLLECT_SYSTPCT_FORMAT	'p'	/* percentage of single cpu x 100 */
 #define KCOLLECT_IDLEPCT_FORMAT	'p'	/* percentage of single cpu x 100 */
+
 #define KCOLLECT_SWAPPCT_FORMAT	'p'	/* percentage of single cpu x 100 */
 #define KCOLLECT_SWAPANO_FORMAT	'm'	/* in megabytes (1024*1024) */
 #define KCOLLECT_SWAPCAC_FORMAT	'm'	/* in megabytes (1024*1024) */
+
 #define KCOLLECT_VMFAULT_FORMAT	'c'	/* count over period */
+#define KCOLLECT_COWFAULT_FORMAT 'c'	/* count over period */
 #define KCOLLECT_ZFILL_FORMAT 	'c'	/* count over period */
+
 #define KCOLLECT_MEMFRE_FORMAT 	'b'	/* total bytes */
 #define KCOLLECT_MEMCAC_FORMAT 	'b'	/* total bytes */
 #define KCOLLECT_MEMINA_FORMAT 	'b'	/* total bytes */
 #define KCOLLECT_MEMACT_FORMAT 	'b'	/* total bytes */
 #define KCOLLECT_MEMWIR_FORMAT 	'b'	/* total bytes */
+
+#define KCOLLECT_SYSCALLS_FORMAT 	'c'	/* count over period */
+#define KCOLLECT_NLOOKUP_FORMAT 	'c'	/* count over period */
+#define KCOLLECT_INTR_FORMAT	 	'c'	/* count over period */
+#define KCOLLECT_IPI_FORMAT 		'c'	/* count over period */
+#define KCOLLECT_TIMER_FORMAT 		'c'	/* count over period */
 
 #define KCOLLECT_SCALE(fmt, scale)	((fmt) | ((uint64_t)(scale) << 8))
 #define KCOLLECT_GETFMT(scale)		((char)(scale))
@@ -75,6 +96,7 @@ int kcollect_register(int which, const char *id,
 			kcallback_t func, uint64_t scale);
 void kcollect_unregister(int n);
 void kcollect_setvalue(int n, uint64_t value);
+void kcollect_setscale(int n, uint64_t value);
 
 #endif
 

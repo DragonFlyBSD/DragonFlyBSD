@@ -130,6 +130,18 @@ kcollect_setvalue(int n, uint64_t value)
 	}
 }
 
+/*
+ * Callback to change scale adjustment, if necessary.  Certain statistics
+ * have scale info available (such as KCOLLECT_SWAPANO and SWAPCAC).
+ */
+void
+kcollect_setscale(int n, uint64_t value)
+{
+	if (n >= 0 && n < KCOLLECT_ENTRIES) {
+		kcollect_scale.data[n] = value;
+	}
+}
+
 static
 void
 kcollect_thread(void *dummy)

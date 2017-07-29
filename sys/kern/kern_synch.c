@@ -1272,7 +1272,9 @@ loadav_count_runnable(struct lwp *lp, void *data)
 static uint64_t
 collect_load_callback(int n)
 {
-	return (averunnable.ldavg[0] * 100 / averunnable.fscale);
+	int fscale = averunnable.fscale;
+
+	return ((averunnable.ldavg[0] * 100 + (fscale >> 1)) / fscale);
 }
 
 /* ARGSUSED */

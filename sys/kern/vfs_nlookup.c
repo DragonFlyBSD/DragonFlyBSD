@@ -64,6 +64,7 @@
 #include <sys/stat.h>
 #include <sys/objcache.h>
 #include <sys/file.h>
+#include <sys/kcollect.h>
 
 #ifdef KTRACE
 #include <sys/ktrace.h>
@@ -1476,3 +1477,37 @@ naccess_va(struct vattr *va, int nflags, struct ucred *cred)
     return(0);
 }
 
+/*
+ * Long-term (10-second interval) statistics collection
+ */
+static
+uint64_t
+collect_nlookup_callback(int n)
+{
+	static uint64_t last_total;
+	uint64_t save;
+	uint64_t total;
+
+	total = 0;
+	for (n = 0; n < ncpus; ++n) {
+		globaldata_t gd = globaldata_find(n);
+		struct nchstats *sp;
+
+		if ((sp = gd->gd_nchstats) != NULL)
+			total += sp->ncs_longhits + sp->ncs_longmiss;
+	}
+	save = total;
+	total = total - last_total;
+	last_total = save;
+
+	return total;
+}
+
+static
+void
+nlookup_collect_init(void *dummy __unused)
+{
+	kcollect_register(KCOLLECT_NLOOKUP, "nlookup", collect_nlookup_callback,
+			  KCOLLECT_SCALE(KCOLLECT_NLOOKUP_FORMAT, 0));
+}
+SYSINIT(collect_nlookup, SI_SUB_PROP, SI_ORDER_ANY, nlookup_collect_init, 0);
