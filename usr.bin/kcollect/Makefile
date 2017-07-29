@@ -1,5 +1,8 @@
 
 PROG=	kcollect
-NOMAN=	TRUE
+MAN= kcollect.8
+
+DPADD=	${LIBUTIL}
+LDADD=	-lutil
 
 .include <bsd.prog.mk>

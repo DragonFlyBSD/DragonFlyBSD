@@ -85,6 +85,7 @@ SUBDIR=	alias \
 	ipcs \
 	join \
 	jot \
+	kcollect \
 	kdump \
 	kenv \
 	keylogin \

@@ -5,7 +5,7 @@
 #ifndef _SYS_KCOLLECT_H_
 #define _SYS_KCOLLECT_H_
 
-#define KCOLLECT_ENTRIES        31
+#define KCOLLECT_ENTRIES        29
 
 /*
  * Record format.
@@ -28,6 +28,7 @@
 typedef struct {
 	uint32_t	ticks;
 	uint32_t	hz;			/* record #0 only */
+	struct timeval	realtime;
 	uint64_t	data[KCOLLECT_ENTRIES];
 } kcollect_t;
 
@@ -72,11 +73,11 @@ typedef struct {
 #define KCOLLECT_COWFAULT_FORMAT 'c'	/* count over period */
 #define KCOLLECT_ZFILL_FORMAT 	'c'	/* count over period */
 
-#define KCOLLECT_MEMFRE_FORMAT 	'b'	/* total bytes */
-#define KCOLLECT_MEMCAC_FORMAT 	'b'	/* total bytes */
-#define KCOLLECT_MEMINA_FORMAT 	'b'	/* total bytes */
-#define KCOLLECT_MEMACT_FORMAT 	'b'	/* total bytes */
-#define KCOLLECT_MEMWIR_FORMAT 	'b'	/* total bytes */
+#define KCOLLECT_MEMFRE_FORMAT 	'b'	/* total bytes (not pages) */
+#define KCOLLECT_MEMCAC_FORMAT 	'b'	/* total bytes (not pages) */
+#define KCOLLECT_MEMINA_FORMAT 	'b'	/* total bytes (not pages) */
+#define KCOLLECT_MEMACT_FORMAT 	'b'	/* total bytes (not pages) */
+#define KCOLLECT_MEMWIR_FORMAT 	'b'	/* total bytes (not pages) */
 
 #define KCOLLECT_SYSCALLS_FORMAT 	'c'	/* count over period */
 #define KCOLLECT_NLOOKUP_FORMAT 	'c'	/* count over period */
@@ -87,6 +88,8 @@ typedef struct {
 #define KCOLLECT_SCALE(fmt, scale)	((fmt) | ((uint64_t)(scale) << 8))
 #define KCOLLECT_GETFMT(scale)		((char)(scale))
 #define KCOLLECT_GETSCALE(scale)	((scale) >> 8)
+
+#define KCOLLECT_INTERVAL		10	/* in seconds */
 
 #ifdef _KERNEL
 

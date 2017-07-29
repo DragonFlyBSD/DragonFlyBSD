@@ -153,7 +153,10 @@ kcollect_thread(void *dummy)
 		lockmgr(&kcollect_lock, LK_EXCLUSIVE);
 		i = kcollect_index % kcollect_samples;
 		bzero(&kcollect_ary[i], sizeof(kcollect_ary[i]));
+		crit_enter();
 		kcollect_ary[i].ticks = ticks;
+		getmicrotime(&kcollect_ary[i].realtime);
+		crit_exit();
 		for (n = 0; n < KCOLLECT_ENTRIES; ++n) {
 			if (kcollect_callback[n]) {
 				kcollect_ary[i].data[n] =
@@ -163,7 +166,7 @@ kcollect_thread(void *dummy)
 		cpu_sfence();
 		++kcollect_index;
 		lockmgr(&kcollect_lock, LK_RELEASE);
-		tsleep(&dummy, 0, "sleep", hz*10);
+		tsleep(&dummy, 0, "sleep", hz * KCOLLECT_INTERVAL);
 	}
 }
 

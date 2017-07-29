@@ -447,6 +447,8 @@ do_vmmeter_pcpu(SYSCTL_HANDLER_ARGS)
  *
  * Return faults, set data for other entries.
  */
+#define PTOB(value)	((uint64_t)(value) << PAGE_SHIFT)
+
 static uint64_t
 collect_vmstats_callback(int n)
 {
@@ -459,11 +461,11 @@ collect_vmstats_callback(int n)
 	/*
 	 * The hardclock already rolls up vmstats for us.
 	 */
-	kcollect_setvalue(KCOLLECT_MEMFRE, vmstats.v_free_count);
-	kcollect_setvalue(KCOLLECT_MEMCAC, vmstats.v_cache_count);
-	kcollect_setvalue(KCOLLECT_MEMINA, vmstats.v_inactive_count);
-	kcollect_setvalue(KCOLLECT_MEMACT, vmstats.v_active_count);
-	kcollect_setvalue(KCOLLECT_MEMWIR, vmstats.v_wire_count);
+	kcollect_setvalue(KCOLLECT_MEMFRE, PTOB(vmstats.v_free_count));
+	kcollect_setvalue(KCOLLECT_MEMCAC, PTOB(vmstats.v_cache_count));
+	kcollect_setvalue(KCOLLECT_MEMINA, PTOB(vmstats.v_inactive_count));
+	kcollect_setvalue(KCOLLECT_MEMACT, PTOB(vmstats.v_active_count));
+	kcollect_setvalue(KCOLLECT_MEMWIR, PTOB(vmstats.v_wire_count));
 
 	/*
 	 * Collect pcpu statistics for things like faults.
@@ -538,23 +540,27 @@ vmmeter_init(void *dummy __unused)
 				"S,vmmeter", "System per-cpu statistics");
 	}
 	kcollect_register(KCOLLECT_VMFAULT, "fault", collect_vmstats_callback,
-			  KCOLLECT_SCALE(KCOLLECT_VMFAULT_FORMAT,
-					 vmstats.v_page_count));
+			  KCOLLECT_SCALE(KCOLLECT_VMFAULT_FORMAT, 0));
 	kcollect_register(KCOLLECT_COWFAULT, "cow", NULL,
 			  KCOLLECT_SCALE(KCOLLECT_COWFAULT_FORMAT, 0));
 	kcollect_register(KCOLLECT_ZFILL, "zfill", NULL,
 			  KCOLLECT_SCALE(KCOLLECT_ZFILL_FORMAT, 0));
 
 	kcollect_register(KCOLLECT_MEMFRE, "free", NULL,
-			  KCOLLECT_SCALE(KCOLLECT_MEMFRE_FORMAT, 0));
+			  KCOLLECT_SCALE(KCOLLECT_MEMFRE_FORMAT,
+					 PTOB(vmstats.v_page_count)));
 	kcollect_register(KCOLLECT_MEMCAC, "cache", NULL,
-			  KCOLLECT_SCALE(KCOLLECT_MEMCAC_FORMAT, 0));
+			  KCOLLECT_SCALE(KCOLLECT_MEMCAC_FORMAT,
+					 PTOB(vmstats.v_page_count)));
 	kcollect_register(KCOLLECT_MEMINA, "inact", NULL,
-			  KCOLLECT_SCALE(KCOLLECT_MEMINA_FORMAT, 0));
+			  KCOLLECT_SCALE(KCOLLECT_MEMINA_FORMAT,
+					 PTOB(vmstats.v_page_count)));
 	kcollect_register(KCOLLECT_MEMACT, "act", NULL,
-			  KCOLLECT_SCALE(KCOLLECT_MEMACT_FORMAT, 0));
+			  KCOLLECT_SCALE(KCOLLECT_MEMACT_FORMAT,
+					 PTOB(vmstats.v_page_count)));
 	kcollect_register(KCOLLECT_MEMWIR, "wired", NULL,
-			  KCOLLECT_SCALE(KCOLLECT_MEMWIR_FORMAT, 0));
+			  KCOLLECT_SCALE(KCOLLECT_MEMWIR_FORMAT,
+					 PTOB(vmstats.v_page_count)));
 
 	kcollect_register(KCOLLECT_SYSCALLS, "syscalls", NULL,
 			  KCOLLECT_SCALE(KCOLLECT_SYSCALLS_FORMAT, 0));

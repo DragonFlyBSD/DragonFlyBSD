@@ -336,6 +336,9 @@ swp_sizecheck(void)
  * regularly added or removed and may cause some historical confusion
  * in that case, but SWAPPCT will always be historically accurate.
  */
+
+#define PTOB(value)	((uint64_t)(value) << PAGE_SHIFT)
+
 static uint64_t
 collect_swap_callback(int n)
 {
@@ -345,10 +348,12 @@ collect_swap_callback(int n)
 
 	if (total == 0)		/* avoid divide by zero */
 		total = 1;
-	kcollect_setvalue(KCOLLECT_SWAPANO, anon * PAGE_SIZE);
-	kcollect_setvalue(KCOLLECT_SWAPCAC, cache * PAGE_SIZE);
-	kcollect_setscale(KCOLLECT_SWAPANO, total);
-	kcollect_setscale(KCOLLECT_SWAPCAC, total);
+	kcollect_setvalue(KCOLLECT_SWAPANO, PTOB(anon));
+	kcollect_setvalue(KCOLLECT_SWAPCAC, PTOB(cache));
+	kcollect_setscale(KCOLLECT_SWAPANO,
+			  KCOLLECT_SCALE(KCOLLECT_SWAPANO_FORMAT, PTOB(total)));
+	kcollect_setscale(KCOLLECT_SWAPCAC,
+			  KCOLLECT_SCALE(KCOLLECT_SWAPCAC_FORMAT, PTOB(total)));
 	return (((anon + cache) * 10000 + (total >> 1)) / total);
 }
 
@@ -366,9 +371,9 @@ swap_pager_init(void *arg __unused)
 {
 	kcollect_register(KCOLLECT_SWAPPCT, "swapuse", collect_swap_callback,
 			  KCOLLECT_SCALE(KCOLLECT_SWAPPCT_FORMAT, 0));
-	kcollect_register(KCOLLECT_SWAPANO, "swapmem", NULL,
+	kcollect_register(KCOLLECT_SWAPANO, "swapano", NULL,
 			  KCOLLECT_SCALE(KCOLLECT_SWAPANO_FORMAT, 0));
-	kcollect_register(KCOLLECT_SWAPCAC, "swapcsh", NULL,
+	kcollect_register(KCOLLECT_SWAPCAC, "swapcac", NULL,
 			  KCOLLECT_SCALE(KCOLLECT_SWAPCAC_FORMAT, 0));
 }
 SYSINIT(vm_mem, SI_BOOT1_VM, SI_ORDER_THIRD, swap_pager_init, NULL);
