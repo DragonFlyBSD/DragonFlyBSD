@@ -44,6 +44,7 @@ extern FILE *OutFP;
 extern int UseGMT;
 extern int OutputWidth;
 extern int OutputHeight;
+extern int SmoothOpt;
 
 void start_gnuplot(int ac, char **av);
 void dump_gnuplot(kcollect_t *ary, size_t count, const char *plotfile);

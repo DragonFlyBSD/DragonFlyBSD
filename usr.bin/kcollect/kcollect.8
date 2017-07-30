@@ -40,6 +40,7 @@
 .Op Fl f
 .Op Fl l
 .Op Fl g
+.Op Fl s
 .Op Fl t Ar time
 .Op Fl G
 .Op Fl W Ar width
@@ -78,6 +79,10 @@ is smart and will not overwrite the record if it exactly matches what
 would be written.
 .It Fl g
 Generate gnuplot output for the data.
+.It Fl s
+Smooth plot output (only applicable to gunplot).
+This may make it more readable.  Data is smoothed using an exponential
+average over 10 samples (~100 seconds).
 .It Fl t Ar time
 Specify the number of seconds worth of recent data to extract.
 The 'm', 'h', and 'd' suffixes can be used to specify the value in minutes,

@@ -134,6 +134,7 @@ dump_gnuplot(kcollect_t *ary, size_t count, const char *plotfile)
 	for (jj = 0; jj < (int)(sizeof(plot1) / sizeof(plot1[0])); ++jj) {
 		j = plot1[jj];
 
+		smoothed_dv = 0.0;
 		for (i = count - 1; i >= 2; --i) {
 			/*
 			 * Timestamp
@@ -153,6 +154,20 @@ dump_gnuplot(kcollect_t *ary, size_t count, const char *plotfile)
 				dv = (double)value / 1e9;
 			} else {
 				dv = (double)value / 100.0;
+			}
+			if (SmoothOpt) {
+				if (i == (int)(count - 1)) {
+					smoothed_dv = dv;
+				} else if (smoothed_dv < dv) {
+					smoothed_dv =
+					 (smoothed_dv * 5.0 + 5 * dv) /
+					 10.0;
+				} else {
+					smoothed_dv =
+					 (smoothed_dv * 9.0 + 1 * dv) /
+					 10.0;
+				}
+				dv = smoothed_dv;
 			}
 			fprintf(OutFP, "%s %6.2f\n", buf, dv);
 		}
@@ -199,14 +214,33 @@ dump_gnuplot(kcollect_t *ary, size_t count, const char *plotfile)
 				for (k = jj + 1; k <= 3; ++k)
 					value += ary[i].data[plot2[k]];
 				dv = (double)value / 100.0;
+				if (SmoothOpt) {
+					if (i == (int)(count - 1)) {
+						smoothed_dv = dv;
+					} else if (smoothed_dv < dv) {
+						smoothed_dv =
+						 (smoothed_dv * 5.0 + 5 * dv) /
+					         10.0;
+					} else {
+						smoothed_dv =
+						 (smoothed_dv * 9.0 + 1 * dv) /
+					         10.0;
+					}
+					dv = smoothed_dv;
+				}
 			} else {
 				dv = (double)value / KCOLLECT_INTERVAL;
 				dv = dv / 1e6;
-				if (i == (int)(count - 1))
+				if (i == (int)(count - 1)) {
 					smoothed_dv = dv;
-				else
+				} else if (smoothed_dv < dv) {
+					smoothed_dv =
+					 (smoothed_dv * 5.0 + 5 * dv) /
+					 10.0;
+				} else {
 					smoothed_dv = (smoothed_dv * 9.0 + dv) /
 						      10.0;
+				}
 				dv = smoothed_dv;
 			}
 			fprintf(OutFP, "%s %6.2f\n", buf, dv);

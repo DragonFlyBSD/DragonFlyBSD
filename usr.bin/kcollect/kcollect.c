@@ -42,6 +42,7 @@ FILE *OutFP;
 int UseGMT;
 int OutputWidth = 1024;
 int OutputHeight = 1024;
+int SmoothOpt;
 
 int
 main(int ac, char **av)
@@ -67,7 +68,7 @@ main(int ac, char **av)
 		exit(1);
 	}
 
-	while ((ch = getopt(ac, av, "o:b:flgt:xw:GW:H:")) != -1) {
+	while ((ch = getopt(ac, av, "o:b:flsgt:xw:GW:H:")) != -1) {
 		char *suffix;
 
 		switch(ch) {
@@ -83,6 +84,9 @@ main(int ac, char **av)
 			break;
 		case 'l':
 			cmd = 'l';
+			break;
+		case 's':
+			SmoothOpt = 1;
 			break;
 		case 'w':
 			datafile = optarg;
