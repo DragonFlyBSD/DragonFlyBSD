@@ -44,12 +44,19 @@ start_gnuplot(int ac __unused, char **av __unused)
 void
 dump_gnuplot(kcollect_t *ary, size_t count, const char *plotfile)
 {
-	int plot1[] = { KCOLLECT_MEMWIR, KCOLLECT_MEMACT,
-			KCOLLECT_MEMINA, KCOLLECT_MEMCAC,
-			KCOLLECT_MEMFRE, KCOLLECT_LOAD };
-	int plot2[] = { KCOLLECT_USERPCT, KCOLLECT_SYSTPCT,
-			KCOLLECT_INTRPCT, KCOLLECT_IDLEPCT,
+	int plot1[] = { KCOLLECT_MEMFRE, KCOLLECT_MEMCAC,
+			KCOLLECT_MEMINA, KCOLLECT_MEMACT,
+			KCOLLECT_MEMWIR, KCOLLECT_LOAD };
+	int plot2[] = { KCOLLECT_IDLEPCT, KCOLLECT_INTRPCT,
+			KCOLLECT_SYSTPCT, KCOLLECT_USERPCT,
 			KCOLLECT_VMFAULT, KCOLLECT_SYSCALLS, KCOLLECT_NLOOKUP };
+	const char *id1[] = {
+			"free", "cache",
+			"inact", "active",
+			"wired", "load" };
+	const char *id2[] = {
+			"idle", "intr", "system", "user",
+			"faults", "syscalls", "nlookups" };
 	struct tm *tmv;
 	char buf[64];
 	uint64_t value;
@@ -116,12 +123,13 @@ dump_gnuplot(kcollect_t *ary, size_t count, const char *plotfile)
 
 	fprintf(OutFP,
 		"plot "
-		"\"-\" using 1:3 title \"wired\" with boxes lw 1, "
-		"\"-\" using 1:3 title \"active\" with boxes lw 1, "
-		"\"-\" using 1:3 title \"inact\" with boxes lw 1, "
-		"\"-\" using 1:3 title \"cache\" with boxes lw 1, "
-		"\"-\" using 1:3 title \"free\" with boxes lw 1, "
-		"\"-\" using 1:3 axes x1y2 title \"load\" with lines lw 1\n");
+		"\"-\" using 1:3 title \"%s\" with boxes lw 1, "
+		"\"-\" using 1:3 title \"%s\" with boxes lw 1, "
+		"\"-\" using 1:3 title \"%s\" with boxes lw 1, "
+		"\"-\" using 1:3 title \"%s\" with boxes lw 1, "
+		"\"-\" using 1:3 title \"%s\" with boxes lw 1, "
+		"\"-\" using 1:3 axes x1y2 title \"%s\" with lines lw 1\n",
+		id1[0], id1[1], id1[2], id1[3], id1[4], id1[5]);
 
 	for (jj = 0; jj < (int)(sizeof(plot1) / sizeof(plot1[0])); ++jj) {
 		j = plot1[jj];
@@ -160,14 +168,14 @@ dump_gnuplot(kcollect_t *ary, size_t count, const char *plotfile)
 
 	fprintf(OutFP,
 		"plot "
-		"\"-\" using 1:3 title \"user\" with boxes lw 1, "
-		"\"-\" using 1:3 title \"system\" with boxes lw 1, "
-		"\"-\" using 1:3 title \"intr\" with boxes lw 1, "
-		"\"-\" using 1:3 title \"idle\" with boxes lw 1, "
-		"\"-\" using 1:3 axes x1y2 title \"faults\" with lines lw 1, "
-		"\"-\" using 1:3 axes x1y2 title \"syscalls\" with lines lw 1, "
-		"\"-\" using 1:3 axes x1y2 title \"nlookup\" with lines lw 1\n"
-	);
+		"\"-\" using 1:3 title \"%s\" with boxes lw 1, "
+		"\"-\" using 1:3 title \"%s\" with boxes lw 1, "
+		"\"-\" using 1:3 title \"%s\" with boxes lw 1, "
+		"\"-\" using 1:3 title \"%s\" with boxes lw 1, "
+		"\"-\" using 1:3 axes x1y2 title \"%s\" with lines lw 1, "
+		"\"-\" using 1:3 axes x1y2 title \"%s\" with lines lw 1, "
+		"\"-\" using 1:3 axes x1y2 title \"%s\" with lines lw 1\n",
+		id2[0], id2[1], id2[2], id2[3], id2[4], id2[5], id2[6]);
 
 	for (jj = 0; jj < (int)(sizeof(plot2) / sizeof(plot2[0])); ++jj) {
 		j = plot2[jj];
@@ -194,7 +202,11 @@ dump_gnuplot(kcollect_t *ary, size_t count, const char *plotfile)
 			} else {
 				dv = (double)value / KCOLLECT_INTERVAL;
 				dv = dv / 1e6;
-				smoothed_dv = (smoothed_dv * 9.0 + dv) / 10.0;
+				if (i == (int)(count - 1))
+					smoothed_dv = dv;
+				else
+					smoothed_dv = (smoothed_dv * 9.0 + dv) /
+						      10.0;
 				dv = smoothed_dv;
 			}
 			fprintf(OutFP, "%s %6.2f\n", buf, dv);
