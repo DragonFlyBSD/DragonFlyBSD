@@ -1,5 +1,5 @@
 #
-# $FreeBSD$
+# $FreeBSD: head/sys/modules/virtio/scsi/Makefile 285068 2015-07-03 01:50:26Z imp $
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -23,6 +23,9 @@
 # SUCH DAMAGE.
 #
 
-SUBDIR= virtio pci block net scsi
+KMOD=	virtio_scsi
+SRCS=	virtio_scsi.c
+SRCS+=	virtio_bus_if.h virtio_if.h
+SRCS+=	bus_if.h device_if.h opt_scsi.h opt_cam.h
 
-.include <bsd.subdir.mk>
+.include <bsd.kmod.mk>
