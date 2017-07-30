@@ -140,7 +140,7 @@ createmonster(int mon)
 		nap(3000);
 		return;
 	}
-	while (monster[mon].genocided && mon < MAXMONST)	/* genocided? */
+	while (mon < MAXMONST && monster[mon].genocided)	/* genocided? */
 		mon++;
 	for (k = rnd(8), i = -8; i < 0; i++, k++) {	/* choose direction, then try all */
 		if (k > 8)	/* wraparound the diroff arrays */

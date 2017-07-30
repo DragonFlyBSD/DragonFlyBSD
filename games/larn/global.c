@@ -208,7 +208,7 @@ makemonst(int lev)
 			tmp = rnd((x = monstlevel[lev - 1] - monstlevel[lev - 4])
 			    ? x : 1) + monstlevel[lev - 4];
 
-	while (monster[tmp].genocided && tmp < MAXMONST)	/* genocided? */
+	while (tmp < MAXMONST && monster[tmp].genocided)	/* genocided? */
 		tmp++;
 	return (tmp);
 }
