@@ -342,7 +342,7 @@ swp_sizecheck(void)
 static uint64_t
 collect_swap_callback(int n)
 {
-	uint64_t total = vm_swap_size;
+	uint64_t total = vm_swap_max;
 	uint64_t anon = vm_swap_anon_use;
 	uint64_t cache = vm_swap_cache_use;
 
