@@ -46,5 +46,5 @@ extern int OutputWidth;
 extern int OutputHeight;
 extern int SmoothOpt;
 
-void start_gnuplot(int ac, char **av);
-void dump_gnuplot(kcollect_t *ary, size_t count, const char *plotfile);
+void start_gnuplot(int ac, char **av, const char *plotfile);
+void dump_gnuplot(kcollect_t *ary, size_t count);

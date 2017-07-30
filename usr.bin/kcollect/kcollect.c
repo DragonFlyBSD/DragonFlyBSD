@@ -143,7 +143,7 @@ main(int ac, char **av)
 	last_ticks = 0;
 
 	if (cmd == 'x' || cmd == 'w')
-		start_gnuplot(ac - optind, av + optind);
+		start_gnuplot(ac - optind, av + optind, datafile);
 
 	do {
 		/*
@@ -212,15 +212,15 @@ main(int ac, char **av)
 			break;		/* NOT REACHED */
 		case 'g':
 			if (count > 2)
-				dump_gnuplot(ary, count, NULL);
+				dump_gnuplot(ary, count);
 			break;
 		case 'w':
 			if (count >= 2)
-				dump_gnuplot(ary, count, datafile);
+				dump_gnuplot(ary, count);
 			break;
 		case 'x':
 			if (count > 2)
-				dump_gnuplot(ary, count, NULL);
+				dump_gnuplot(ary, count);
 			break;
 		}
 		if (keepalive) {

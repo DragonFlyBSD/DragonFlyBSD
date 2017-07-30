@@ -32,41 +32,13 @@
 #include "kcollect.h"
 
 void
-start_gnuplot(int ac __unused, char **av __unused)
+start_gnuplot(int ac __unused, char **av __unused, const char *plotfile)
 {
 	OutFP = popen("gnuplot", "w");
 	if (OutFP == NULL) {
 		fprintf(stderr, "can't find gnuplot\n");
 		exit(1);
 	}
-}
-
-void
-dump_gnuplot(kcollect_t *ary, size_t count, const char *plotfile)
-{
-	int plot1[] = { KCOLLECT_MEMFRE, KCOLLECT_MEMCAC,
-			KCOLLECT_MEMINA, KCOLLECT_MEMACT,
-			KCOLLECT_MEMWIR, KCOLLECT_LOAD };
-	int plot2[] = { KCOLLECT_IDLEPCT, KCOLLECT_INTRPCT,
-			KCOLLECT_SYSTPCT, KCOLLECT_USERPCT,
-			KCOLLECT_VMFAULT, KCOLLECT_SYSCALLS, KCOLLECT_NLOOKUP };
-	const char *id1[] = {
-			"free", "cache",
-			"inact", "active",
-			"wired", "load" };
-	const char *id2[] = {
-			"idle", "intr", "system", "user",
-			"faults", "syscalls", "nlookups" };
-	struct tm *tmv;
-	char buf[64];
-	uint64_t value;
-	time_t t;
-	double dv;
-	double smoothed_dv;
-	int i;
-	int j;
-	int jj;
-	int k;
 
 	/*
 	 * If plotfile is specified allow .jpg or .JPG or .png or .PNG
@@ -96,6 +68,34 @@ dump_gnuplot(kcollect_t *ary, size_t count, const char *plotfile)
 		fprintf(OutFP, "set terminal x11 persist size %d,%d\n",
 			OutputWidth, OutputHeight);
 	}
+}
+
+void
+dump_gnuplot(kcollect_t *ary, size_t count)
+{
+	int plot1[] = { KCOLLECT_MEMFRE, KCOLLECT_MEMCAC,
+			KCOLLECT_MEMINA, KCOLLECT_MEMACT,
+			KCOLLECT_MEMWIR, KCOLLECT_LOAD };
+	int plot2[] = { KCOLLECT_IDLEPCT, KCOLLECT_INTRPCT,
+			KCOLLECT_SYSTPCT, KCOLLECT_USERPCT,
+			KCOLLECT_VMFAULT, KCOLLECT_SYSCALLS, KCOLLECT_NLOOKUP };
+	const char *id1[] = {
+			"free", "cache",
+			"inact", "active",
+			"wired", "load" };
+	const char *id2[] = {
+			"idle", "intr", "system", "user",
+			"faults", "syscalls", "nlookups" };
+	struct tm *tmv;
+	char buf[64];
+	uint64_t value;
+	time_t t;
+	double dv;
+	double smoothed_dv;
+	int i;
+	int j;
+	int jj;
+	int k;
 
 	/*
 	 * NOTE: be sure to reset any fields adjusted by the second plot,
