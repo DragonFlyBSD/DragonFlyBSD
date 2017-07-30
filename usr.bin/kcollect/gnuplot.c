@@ -78,6 +78,7 @@ dump_gnuplot(kcollect_t *ary, size_t count)
 			KCOLLECT_MEMWIR, KCOLLECT_LOAD };
 	int plot2[] = { KCOLLECT_IDLEPCT, KCOLLECT_INTRPCT,
 			KCOLLECT_SYSTPCT, KCOLLECT_USERPCT,
+			KCOLLECT_SWAPPCT,
 			KCOLLECT_VMFAULT, KCOLLECT_SYSCALLS, KCOLLECT_NLOOKUP };
 	const char *id1[] = {
 			"free", "cache",
@@ -85,6 +86,7 @@ dump_gnuplot(kcollect_t *ary, size_t count)
 			"wired", "load" };
 	const char *id2[] = {
 			"idle", "intr", "system", "user",
+			"swap",
 			"faults", "syscalls", "nlookups" };
 	struct tm *tmv;
 	char buf[64];
@@ -187,10 +189,11 @@ dump_gnuplot(kcollect_t *ary, size_t count)
 		"\"-\" using 1:3 title \"%s\" with boxes lw 1, "
 		"\"-\" using 1:3 title \"%s\" with boxes lw 1, "
 		"\"-\" using 1:3 title \"%s\" with boxes lw 1, "
+		"\"-\" using 1:3 title \"%s\" with lines lw 1, "
 		"\"-\" using 1:3 axes x1y2 title \"%s\" with lines lw 1, "
 		"\"-\" using 1:3 axes x1y2 title \"%s\" with lines lw 1, "
 		"\"-\" using 1:3 axes x1y2 title \"%s\" with lines lw 1\n",
-		id2[0], id2[1], id2[2], id2[3], id2[4], id2[5], id2[6]);
+		id2[0], id2[1], id2[2], id2[3], id2[4], id2[5], id2[6], id2[7]);
 
 	for (jj = 0; jj < (int)(sizeof(plot2) / sizeof(plot2[0])); ++jj) {
 		j = plot2[jj];
@@ -211,6 +214,9 @@ dump_gnuplot(kcollect_t *ary, size_t count)
 			value = ary[i].data[j];
 
 			if (jj <= 3) {
+				/*
+				 * intr/sys/user/idle percentages
+				 */
 				for (k = jj + 1; k <= 3; ++k)
 					value += ary[i].data[plot2[k]];
 				dv = (double)value / 100.0;
@@ -229,8 +235,14 @@ dump_gnuplot(kcollect_t *ary, size_t count)
 					dv = smoothed_dv;
 				}
 			} else {
-				dv = (double)value / KCOLLECT_INTERVAL;
-				dv = dv / 1e6;
+				if (jj >= 5) {
+					/* fault counters */
+					dv = (double)value / KCOLLECT_INTERVAL;
+					dv = dv / 1e6;
+				} else {
+					/* swap percentage (line graph) */
+					dv = (double)value / 100.0;
+				}
 				if (i == (int)(count - 1)) {
 					smoothed_dv = dv;
 				} else if (smoothed_dv < dv) {
