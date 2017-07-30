@@ -57,6 +57,7 @@ main(int ac, char **av)
 	int keepalive = 0;
 	int last_ticks;
 	int loops = 0;
+	int maxtime = 0;
 
 	OutFP = stdout;
 
@@ -66,7 +67,9 @@ main(int ac, char **av)
 		exit(1);
 	}
 
-	while ((ch = getopt(ac, av, "o:b:flgxw:GW:H:")) != -1) {
+	while ((ch = getopt(ac, av, "o:b:flgt:xw:GW:H:")) != -1) {
+		char *suffix;
+
 		switch(ch) {
 		case 'o':
 			fields = optarg;
@@ -90,6 +93,26 @@ main(int ac, char **av)
 			break;
 		case 'x':
 			cmd = 'x';
+			break;
+		case 't':
+			maxtime = strtol(optarg, &suffix, 0);
+			switch(*suffix) {
+			case 'd':
+				maxtime *= 24;
+				/* fall through */
+			case 'h':
+				maxtime *= 60;
+				/* fall through */
+			case 'm':
+				maxtime *= 60;
+				break;
+			case 0:
+				break;
+			default:
+				fprintf(stderr,
+					"Illegal suffix in -t option\n");
+				exit(1);
+			}
 			break;
 		case 'G':
 			UseGMT = 1;
@@ -144,10 +167,28 @@ main(int ac, char **av)
 			adjust_fields(&ary[1], fields);
 
 		count = bytes / sizeof(kcollect_t);
+
+		/*
+		 * Delete duplicate entries when looping
+		 */
 		if (loops) {
 			while (count > 2) {
 				if ((int)(ary[count-1].ticks - last_ticks) > 0)
 					break;
+				--count;
+			}
+		}
+
+		/*
+		 * Delete any entries beyond the time limit
+		 */
+		if (maxtime) {
+			maxtime *= ary[0].hz;
+			while (count > 2) {
+				if ((int)(ary[0].ticks - ary[count-1].ticks) <
+				    maxtime) {
+					break;
+				}
 				--count;
 			}
 		}

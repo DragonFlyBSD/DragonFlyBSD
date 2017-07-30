@@ -40,6 +40,7 @@
 .Op Fl f
 .Op Fl l
 .Op Fl g
+.Op Fl t Ar time
 .Op Fl G
 .Op Fl W Ar width
 .Op Fl H Ar height
@@ -77,6 +78,10 @@ is smart and will not overwrite the record if it exactly matches what
 would be written.
 .It Fl g
 Generate gnuplot output for the data.
+.It Fl t Ar time
+Specify the number of seconds worth of recent data to extract.
+The 'm', 'h', and 'd' suffixes can be used to specify the value in minutes,
+hours, or days.
 .It Fl x
 Generate gnuplot output for the data and pipe it to gnuplot for display
 to X11.
