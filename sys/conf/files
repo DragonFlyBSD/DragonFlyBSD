@@ -2920,6 +2920,7 @@ dev/virtual/hyperv/vmbus/vmbus.c	optional vmbus
 # virtio support
 #
 dev/virtual/virtio/block/virtio_blk.c	optional virtio_blk virtio
+dev/virtual/virtio/scsi/virtio_scsi.c	optional virtio_scsi virtio
 dev/virtual/virtio/net/if_vtnet.c	optional vtnet virtio
 dev/virtual/virtio/pci/virtio_pci.c	optional virtio_pci virtio
 dev/virtual/virtio/virtio/virtio.c	optional virtio

@@ -22,9 +22,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/virtio.4,v 1.5 2012/11/17 01:50:49 svnexp Exp $
+.\" $FreeBSD: head/share/man/man4/virtio.4 273515 2014-10-23 04:47:32Z bryanv $
 .\"
-.Dd January 6, 2013
+.Dd July 30, 2017
 .Dt VIRTIO 4
 .Os
 .Sh NAME
@@ -62,7 +62,7 @@ available to the VM.
 This device provides the probing, configuration, and
 interrupt notifications needed to interact with the hypervisor.
 .Dx
-supports the following VirtIO device(s):
+supports the following VirtIO devices:
 .Bl -hang -offset indent -width xxxxxxxx
 .It Nm Ethernet
 An emulated Ethernet device is provided by the
@@ -72,10 +72,10 @@ device driver.
 An emulated disk controller is provided by the
 .Xr virtio_blk 4
 device driver.
-.\".It Nm SCSI
-.\"An emulated SCSI HBA is provided by the
-.\".Xr virtio_scsi 4
-.\"device driver.
+.It Nm SCSI
+An emulated SCSI HBA is provided by the
+.Xr virtio_scsi 4
+device driver.
 .\".It Nm Balloon
 .\"A pseudo-device to allow the VM to release memory back to the hypervisor is
 .\"provided by the
@@ -94,8 +94,9 @@ The default value is 0 (use MSI-X interrupts if available).
 .El
 .Sh SEE ALSO
 .\".Xr virtio_balloon 4 ,
-.Xr virtio_blk 4
-.\".Xr virtio_scsi 4 ,
+.Xr virtio_blk 4 ,
+.\".Xr virtio_console 4 ,
+.Xr virtio_scsi 4 ,
 .Xr vtnet 4
 .Sh HISTORY
 Support for VirtIO first appeared in
@@ -104,4 +105,4 @@ Support for VirtIO first appeared in
 .An -nosplit
 .Fx
 support for VirtIO was first added by
-.An Bryan Venteicher Aq Mt bryanv@daemoninthecloset.org .
+.An Bryan Venteicher Aq Mt bryanv@FreeBSD.org .
