@@ -855,7 +855,7 @@ dainit(void)
 	} else {
 		/* Register our shutdown event handler */
 		if ((EVENTHANDLER_REGISTER(shutdown_post_sync, dashutdown, 
-					   NULL, SHUTDOWN_PRI_DEFAULT)) == NULL)
+					   NULL, SHUTDOWN_PRI_SECOND)) == NULL)
 			kprintf("%s: shutdown event registration failed!\n",
 			    __func__);
 	}
