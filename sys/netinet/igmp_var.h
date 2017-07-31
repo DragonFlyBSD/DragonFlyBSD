@@ -101,7 +101,6 @@ void	igmp_init (void);
 int	igmp_input (struct mbuf **, int *, int);
 void	igmp_joingroup (struct in_multi *);
 void	igmp_leavegroup (struct in_multi *);
-void	igmp_fasttimo (void);
 void	igmp_slowtimo (void);
 
 SYSCTL_DECL(_net_inet_igmp);
