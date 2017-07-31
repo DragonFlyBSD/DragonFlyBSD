@@ -85,6 +85,8 @@
 #include <net/route.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
+#include <net/netisr2.h>
+#include <net/netmsg2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_var.h>
@@ -138,6 +140,8 @@
 #define in6p_ip6_nxt	inp_ipv6.ip6_nxt
 #endif
 
+#define ICMP6_FASTTIMO	(hz / 5)
+
 /*
  * ppratecheck() is available, so define it here.
  */
@@ -172,15 +176,28 @@ static int ni6_store_addrs (struct icmp6_nodeinfo *, struct icmp6_nodeinfo *,
 				struct ifnet *, int);
 static int icmp6_notify_error (struct mbuf *, int, int, int);
 
+static void			icmp6_fasttimo(void *);
+static void			icmp6_fasttimo_dispatch(netmsg_t);
+
 #ifdef COMPAT_RFC1885
 static struct route_in6 icmp6_reflect_rt;
 #endif
 
+static struct callout		icmp6_fasttimo_ch;
+static struct netmsg_base	icmp6_fasttimo_nmsg;
 
 void
 icmp6_init(void)
 {
+
 	mld6_init();
+
+	callout_init_mp(&icmp6_fasttimo_ch);
+	netmsg_init(&icmp6_fasttimo_nmsg, NULL, &netisr_adone_rport,
+	    MSGF_PRIORITY, icmp6_fasttimo_dispatch);
+
+	callout_reset_bycpu(&icmp6_fasttimo_ch, ICMP6_FASTTIMO,
+	    icmp6_fasttimo, NULL, 0);
 }
 
 static void
@@ -2119,11 +2136,33 @@ bad:
 	return;
 }
 
-void
-icmp6_fasttimo(void)
+static void
+icmp6_fasttimo_dispatch(netmsg_t nmsg)
 {
 
+	ASSERT_NETISR_NCPUS(curthread, 0);
+
+	/* Reply ASAP. */
+	crit_enter();
+	netisr_replymsg(&nmsg->base, 0);
+	crit_exit();
+
 	mld6_fasttimeo();
+
+	callout_reset(&icmp6_fasttimo_ch, ICMP6_FASTTIMO, icmp6_fasttimo, NULL);
+}
+
+static void
+icmp6_fasttimo(void *dummy __unused)
+{
+	struct netmsg_base *nmsg = &icmp6_fasttimo_nmsg;
+
+	KKASSERT(mycpuid == 0);
+
+	crit_enter();
+	if (nmsg->lmsg.ms_flags & MSGF_DONE)
+		netisr_sendmsg_oncpu(nmsg);
+	crit_exit();
 }
 
 static const char *

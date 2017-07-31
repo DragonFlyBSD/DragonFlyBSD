@@ -225,7 +225,7 @@ struct protosw inet6sw[] = {
 
 	.pr_ctlport = cpu0_ctlport,
 	.pr_init = icmp6_init,
-	.pr_fasttimo = icmp6_fasttimo,
+	.pr_fasttimo = NULL,
 	.pr_slowtimo = NULL,
 	.pr_drain = NULL,
 
