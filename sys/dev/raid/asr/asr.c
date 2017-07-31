@@ -2393,8 +2393,9 @@ asr_attach(device_t dev)
 	 */
 	LIST_INIT(&(sc->ha_ccb));
 	/* Link us into the HA list */
-	for (ha = &Asr_softc_list; *ha; ha = &((*ha)->ha_next));
-		*(ha) = sc;
+	for (ha = &Asr_softc_list; *ha; ha = &((*ha)->ha_next))
+		;
+	*(ha) = sc;
 
 	/*
 	 *	This is the real McCoy!
