@@ -103,7 +103,6 @@ struct protosw inetsw[] = {
 	.pr_ctlport = NULL,
 
 	.pr_init = ip_init,
-	.pr_fasttimo = NULL,
 	.pr_slowtimo = ip_slowtimo,
 	.pr_drain = ip_drain,
 	.pr_usrreqs = &nousrreqs
@@ -141,7 +140,6 @@ struct protosw inetsw[] = {
 
 	.pr_ctlport = tcp_ctlport,
 	.pr_init = tcp_init,
-	.pr_fasttimo = NULL,
 	.pr_slowtimo = NULL,
 	.pr_drain = tcp_drain,
 	.pr_usrreqs = &tcp_usrreqs
@@ -185,7 +183,6 @@ struct protosw inetsw[] = {
 	.pr_ctloutput = rip_ctloutput,
 
 	.pr_init = igmp_init,
-	.pr_fasttimo = NULL,
 	.pr_slowtimo = igmp_slowtimo,
 	.pr_drain = NULL,
 	.pr_usrreqs = &rip_usrreqs

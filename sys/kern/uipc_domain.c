@@ -60,12 +60,10 @@
 static void domaininit (void *);
 SYSINIT(domain, SI_SUB_PROTO_DOMAIN, SI_ORDER_FIRST, domaininit, NULL);
 
-static void	pffasttimo (void *);
 static void	pfslowtimo (void *);
 
 struct domainlist domains;
 
-static struct callout pffasttimo_ch;
 static struct callout pfslowtimo_ch;
 
 /*
@@ -153,9 +151,7 @@ domaininit(void *dummy)
 	if (max_linkhdr < 20)		/* XXX */
 		max_linkhdr = 20;
 
-	callout_init_mp(&pffasttimo_ch);
 	callout_init_mp(&pfslowtimo_ch);
-	callout_reset(&pffasttimo_ch, 1, pffasttimo, NULL);
 	callout_reset(&pfslowtimo_ch, 1, pfslowtimo, NULL);
 }
 
@@ -262,18 +258,4 @@ pfslowtimo(void *arg)
 				(*pr->pr_slowtimo)();
 	}
 	callout_reset(&pfslowtimo_ch, hz / 2, pfslowtimo, NULL);
-}
-
-static void
-pffasttimo(void *arg)
-{
-	struct domain *dp;
-	struct protosw *pr;
-
-	SLIST_FOREACH(dp, &domains, dom_next) {
-		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
-			if (pr->pr_fasttimo)
-				(*pr->pr_fasttimo)();
-	}
-	callout_reset(&pffasttimo_ch, hz / 5, pffasttimo, NULL);
 }
