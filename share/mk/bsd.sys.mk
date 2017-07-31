@@ -62,7 +62,7 @@ CWARNFLAGS	+=	-Wno-unused-but-set-variable
 .  if ${WARNS} == 3 && ${CCVER:Mgcc*}
 CWARNFLAGS	+=	-Wno-unused-but-set-parameter
 .  endif
-.  if ${WARNS} == 3 && (${CCVER:Mgcc49} || ${CCVER:Mgcc5*})
+.  if ${WARNS} == 3 && (${CCVER:Mgcc49} || ${CCVER:Mgcc[5-]*})
 CWARNFLAGS	+=	-Wno-unused-value
 .  endif
 .  if ${WARNS} >= 2 && ${CCVER:Mgcc4[789]}
