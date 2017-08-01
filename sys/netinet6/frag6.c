@@ -72,6 +72,7 @@ static void frag6_remque (struct ip6q *);
 static void frag6_freef (struct ip6q *);
 static void frag6_slowtimo_dispatch (netmsg_t);
 static void frag6_slowtimo (void *);
+static void frag6_drain_dispatch (netmsg_t);
 
 /* XXX we eventually need splreass6, or some real semaphore */
 int frag6_doing_reass;
@@ -84,6 +85,7 @@ MALLOC_DEFINE(M_FTABLE, "fragment", "fragment reassembly header");
 
 static struct callout		frag6_slowtimo_ch;
 static struct netmsg_base	frag6_slowtimo_nmsg;
+static struct netmsg_base	frag6_drain_nmsg;
 
 /*
  * Initialise reassembly queue and fragment identifier.
@@ -103,6 +105,9 @@ frag6_init(void)
 	microtime(&tv);
 	ip6_id = krandom() ^ tv.tv_usec;
 	ip6q.ip6q_next = ip6q.ip6q_prev = &ip6q;
+
+	netmsg_init(&frag6_drain_nmsg, NULL, &netisr_adone_rport,
+	    MSGF_PRIORITY, frag6_drain_dispatch);
 
 	callout_init_mp(&frag6_slowtimo_ch);
 	netmsg_init(&frag6_slowtimo_nmsg, NULL, &netisr_adone_rport,
@@ -680,9 +685,12 @@ frag6_slowtimo(void *dummy __unused)
 /*
  * Drain off all datagram fragments.
  */
-void
-frag6_drain(void)
+static void
+frag6_drain_oncpu(void)
 {
+
+	ASSERT_NETISR_NCPUS(curthread, 0);
+
 	if (frag6_doing_reass)
 		return;
 	while (ip6q.ip6q_next != &ip6q) {
@@ -690,4 +698,43 @@ frag6_drain(void)
 		/* XXX in6_ifstat_inc(ifp, ifs6_reass_fail) */
 		frag6_freef(ip6q.ip6q_next);
 	}
+}
+
+static void
+frag6_drain_dispatch(netmsg_t nmsg)
+{
+
+	ASSERT_NETISR_NCPUS(curthread, 0);
+
+	crit_enter();
+	netisr_replymsg(&nmsg->base, 0);
+	crit_exit();
+
+	frag6_drain_oncpu();
+}
+
+static void
+frag6_drain_ipi(void *dummy __unused)
+{
+	struct netmsg_base *nmsg = &frag6_drain_nmsg;
+
+	KKASSERT(mycpuid == 0);
+
+	crit_enter();
+	if (nmsg->lmsg.ms_flags & MSGF_DONE)
+		netisr_sendmsg_oncpu(nmsg);
+	crit_exit();
+}
+
+void
+frag6_drain(void)
+{
+
+	if (IS_NETISR(curthread, 0)) {
+		frag6_drain_oncpu();
+		return;
+	}
+
+	/* Target cpu0. */
+	lwkt_send_ipiq_bycpu(0, frag6_drain_ipi, NULL);
 }
