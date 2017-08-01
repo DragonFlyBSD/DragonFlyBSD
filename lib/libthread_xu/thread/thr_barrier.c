@@ -57,7 +57,7 @@ _pthread_barrier_init(pthread_barrier_t *barrier,
 {
 	pthread_barrier_t bar;
 
-	if (barrier == NULL || count == 0)
+	if (barrier == NULL || count == 0 || count > INT_MAX)
 		return (EINVAL);
 
 	bar = malloc(sizeof(struct pthread_barrier));
