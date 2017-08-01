@@ -72,6 +72,7 @@
 #include <netinet/igmp_var.h>
 
 #define IGMP_FASTTIMO		(hz / 5)
+#define IGMP_SLOWTIMO		(hz / 2)
 
 static MALLOC_DEFINE(M_IGMP, "igmp", "igmp state");
 
@@ -90,12 +91,13 @@ static struct mbuf *router_alert;
 static struct router_info *Head;
 
 static void igmp_sendpkt (struct in_multi *, int, unsigned long);
-static void igmp_slowtimo_dispatch(netmsg_t);
 static void igmp_fasttimo_dispatch(netmsg_t);
 static void igmp_fasttimo(void *);
+static void igmp_slowtimo_dispatch(netmsg_t);
+static void igmp_slowtimo(void *);
 
 static struct netmsg_base igmp_slowtimo_netmsg;
-
+static struct callout igmp_slowtimo_ch;
 static struct netmsg_base igmp_fasttimo_netmsg;
 static struct callout igmp_fasttimo_ch;
 
@@ -126,12 +128,16 @@ igmp_init(void)
 
 	Head = NULL;
 
+	callout_init_mp(&igmp_slowtimo_ch);
 	netmsg_init(&igmp_slowtimo_netmsg, NULL, &netisr_adone_rport,
 	    MSGF_PRIORITY, igmp_slowtimo_dispatch);
 
 	callout_init_mp(&igmp_fasttimo_ch);
 	netmsg_init(&igmp_fasttimo_netmsg, NULL, &netisr_adone_rport,
 	    MSGF_PRIORITY, igmp_fasttimo_dispatch);
+
+	callout_reset_bycpu(&igmp_slowtimo_ch, IGMP_SLOWTIMO,
+	    igmp_slowtimo, NULL, 0);
 	callout_reset_bycpu(&igmp_fasttimo_ch, IGMP_FASTTIMO,
 	    igmp_fasttimo, NULL, 0);
 }
@@ -442,20 +448,16 @@ done:
 }
 
 static void
-igmp_slowtimo_ipi(void *arg __unused)
+igmp_slowtimo(void *dummy __unused)
 {
-	struct lwkt_msg *msg = &igmp_slowtimo_netmsg.lmsg;
+	struct netmsg_base *msg = &igmp_slowtimo_netmsg;
+
+	KKASSERT(mycpuid == 0);
 
 	crit_enter();
-	if (msg->ms_flags & MSGF_DONE)
-		lwkt_sendmsg_oncpu(netisr_cpuport(0), msg);
+	if (msg->lmsg.ms_flags & MSGF_DONE)
+		netisr_sendmsg_oncpu(msg);
 	crit_exit();
-}
-
-void
-igmp_slowtimo(void)
-{
-	lwkt_send_ipiq_bycpu(0, igmp_slowtimo_ipi, NULL);
 }
 
 static void
@@ -463,8 +465,10 @@ igmp_slowtimo_dispatch(netmsg_t nmsg)
 {
 	struct router_info *rti = Head;
 
+	ASSERT_NETISR_NCPUS(curthread, 0);
+
 	crit_enter();
-	lwkt_replymsg(&nmsg->lmsg, 0);	/* reply ASAP */
+	netisr_replymsg(&nmsg->base, 0);	/* reply ASAP */
 	crit_exit();
 
 #ifdef IGMP_DEBUG
@@ -482,6 +486,7 @@ igmp_slowtimo_dispatch(netmsg_t nmsg)
 #ifdef IGMP_DEBUG	
 	kprintf("[igmp.c,_slowtimo] -- > exiting \n");
 #endif
+	callout_reset(&igmp_slowtimo_ch, IGMP_SLOWTIMO, igmp_slowtimo, NULL);
 }
 
 static struct route igmprt;
