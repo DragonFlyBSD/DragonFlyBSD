@@ -158,7 +158,7 @@ struct protosw inet6sw[] = {
 	.pr_flags = 0,
 
 	.pr_init = ip6_init,
-	.pr_slowtimo = frag6_slowtimo,
+	.pr_slowtimo = NULL,
 	.pr_drain = frag6_drain,
 	.pr_usrreqs = &nousrreqs
     },

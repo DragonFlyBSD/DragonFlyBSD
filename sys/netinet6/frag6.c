@@ -45,6 +45,8 @@
 
 #include <net/if.h>
 #include <net/route.h>
+#include <net/netisr2.h>
+#include <net/netmsg2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_var.h>
@@ -53,6 +55,8 @@
 #include <netinet/icmp6.h>
 
 #include <net/net_osdep.h>
+
+#define FRAG6_SLOWTIMO		(hz / 2)
 
 /*
  * Define it to get a correct behavior on per-interface statistics.
@@ -66,6 +70,8 @@ static void frag6_deq (struct ip6asfrag *);
 static void frag6_insque (struct ip6q *, struct ip6q *);
 static void frag6_remque (struct ip6q *);
 static void frag6_freef (struct ip6q *);
+static void frag6_slowtimo_dispatch (netmsg_t);
+static void frag6_slowtimo (void *);
 
 /* XXX we eventually need splreass6, or some real semaphore */
 int frag6_doing_reass;
@@ -75,6 +81,9 @@ struct	ip6q ip6q;	/* ip6 reassemble queue */
 
 /* FreeBSD tweak */
 MALLOC_DEFINE(M_FTABLE, "fragment", "fragment reassembly header");
+
+static struct callout		frag6_slowtimo_ch;
+static struct netmsg_base	frag6_slowtimo_nmsg;
 
 /*
  * Initialise reassembly queue and fragment identifier.
@@ -94,6 +103,13 @@ frag6_init(void)
 	microtime(&tv);
 	ip6_id = krandom() ^ tv.tv_usec;
 	ip6q.ip6q_next = ip6q.ip6q_prev = &ip6q;
+
+	callout_init_mp(&frag6_slowtimo_ch);
+	netmsg_init(&frag6_slowtimo_nmsg, NULL, &netisr_adone_rport,
+	    MSGF_PRIORITY, frag6_slowtimo_dispatch);
+
+	callout_reset_bycpu(&frag6_slowtimo_ch, FRAG6_SLOWTIMO,
+	    frag6_slowtimo, NULL, 0);
 }
 
 /*
@@ -593,12 +609,18 @@ frag6_remque(struct ip6q *p6)
  * if a timer expires on a reassembly
  * queue, discard it.
  */
-void
-frag6_slowtimo(void)
+static void
+frag6_slowtimo_dispatch(netmsg_t nmsg)
 {
 	struct ip6q *q6;
 
+	ASSERT_NETISR_NCPUS(curthread, 0);
+
+	/* Reply ASAP. */
 	crit_enter();
+	netisr_replymsg(&nmsg->base, 0);
+	crit_exit();
+
 	frag6_doing_reass = 1;
 	q6 = ip6q.ip6q_next;
 	if (q6)
@@ -639,7 +661,19 @@ frag6_slowtimo(void)
 		ipsrcchk_rt.ro_rt = NULL;
 	}
 #endif
+	callout_reset(&frag6_slowtimo_ch, FRAG6_SLOWTIMO, frag6_slowtimo, NULL);
+}
 
+static void
+frag6_slowtimo(void *dummy __unused)
+{
+	struct netmsg_base *nmsg = &frag6_slowtimo_nmsg;
+
+	KKASSERT(mycpuid == 0);
+
+	crit_enter();
+	if (nmsg->lmsg.ms_flags & MSGF_DONE)
+		netisr_sendmsg_oncpu(nmsg);
 	crit_exit();
 }
 
