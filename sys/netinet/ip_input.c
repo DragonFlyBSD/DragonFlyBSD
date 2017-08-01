@@ -259,8 +259,8 @@ SYSCTL_PROC(_net_inet_ip, IPCTL_STATS, stats, (CTLTYPE_OPAQUE | CTLFLAG_RW),
 TAILQ_HEAD(ipqhead, ipq);
 struct ipfrag_queue {
 	int			nipq;
-	int			timeo_inprog;
 	struct netmsg_base	timeo_netmsg;
+	struct callout		timeo_ch;
 	struct netmsg_base	drain_netmsg;
 	struct ipqhead		ipq[IPREASS_NHASH];
 } __cachealign;
@@ -312,6 +312,8 @@ struct ip_srcrt_opt {
 #define IPFRAG_MPIPE_MAX	4096
 #define MAXIPFRAG_MIN		((IPFRAG_MPIPE_MAX * 2) / 256)
 
+#define IPFRAG_TIMEO		(hz / 2)
+
 static MALLOC_DEFINE(M_IPQ, "ipq", "IP Fragment Management");
 static struct malloc_pipe ipq_mpipe;
 
@@ -322,6 +324,7 @@ static void		ip_freef(struct ipfrag_queue *, struct ipqhead *,
 static void		ip_input_handler(netmsg_t);
 
 static void		ipfrag_timeo_dispatch(netmsg_t);
+static void		ipfrag_timeo(void *);
 static void		ipfrag_drain_dispatch(netmsg_t);
 
 /*
@@ -331,6 +334,7 @@ static void		ipfrag_drain_dispatch(netmsg_t);
 void
 ip_init(void)
 {
+	struct ipfrag_queue *fragq;
 	struct protosw *pr;
 	int cpu, i;
 
@@ -386,21 +390,25 @@ ip_init(void)
 		/*
 		 * Initialize per-cpu ip fragments queues
 		 */
-		for (i = 0; i < IPREASS_NHASH; i++) {
-			struct ipfrag_queue *fragq = &ipfrag_queue_pcpu[cpu];
-
+		fragq = &ipfrag_queue_pcpu[cpu];
+		for (i = 0; i < IPREASS_NHASH; i++)
 			TAILQ_INIT(&fragq->ipq[i]);
-			netmsg_init(&fragq->timeo_netmsg, NULL,
-			    &netisr_adone_rport, MSGF_PRIORITY,
-			    ipfrag_timeo_dispatch);
-			netmsg_init(&fragq->drain_netmsg, NULL,
-			    &netisr_adone_rport, MSGF_PRIORITY,
-			    ipfrag_drain_dispatch);
-		}
+
+		callout_init_mp(&fragq->timeo_ch);
+		netmsg_init(&fragq->timeo_netmsg, NULL, &netisr_adone_rport,
+		    MSGF_PRIORITY, ipfrag_timeo_dispatch);
+		netmsg_init(&fragq->drain_netmsg, NULL, &netisr_adone_rport,
+		    MSGF_PRIORITY, ipfrag_drain_dispatch);
 	}
 
 	netisr_register(NETISR_IP, ip_input_handler, ip_hashfn);
 	netisr_register_hashcheck(NETISR_IP, ip_hashcheck);
+
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		fragq = &ipfrag_queue_pcpu[cpu];
+		callout_reset_bycpu(&fragq->timeo_ch, IPFRAG_TIMEO,
+		    ipfrag_timeo, NULL, cpu);
+	}
 }
 
 /* Do transport protocol processing. */
@@ -1356,8 +1364,11 @@ ipfrag_timeo_dispatch(netmsg_t nmsg)
 	int i;
 
 	crit_enter();
-	lwkt_replymsg(&nmsg->lmsg, 0);  /* reply ASAP */
+	netisr_replymsg(&nmsg->base, 0);  /* reply ASAP */
 	crit_exit();
+
+	if (fragq->nipq == 0)
+		goto done;
 
 	for (i = 0; i < IPREASS_NHASH; i++) {
 		head = &fragq->ipq[i];
@@ -1383,47 +1394,19 @@ ipfrag_timeo_dispatch(netmsg_t nmsg)
 			}
 		}
 	}
+done:
+	callout_reset(&fragq->timeo_ch, IPFRAG_TIMEO, ipfrag_timeo, NULL);
 }
 
 static void
-ipfrag_timeo_ipi(void *arg __unused)
+ipfrag_timeo(void *dummy __unused)
 {
-	int cpu = mycpuid;
-	struct lwkt_msg *msg = &ipfrag_queue_pcpu[cpu].timeo_netmsg.lmsg;
+	struct netmsg_base *msg = &ipfrag_queue_pcpu[mycpuid].timeo_netmsg;
 
-	ipfrag_queue_pcpu[cpu].timeo_inprog = 0;
 	crit_enter();
-	if (msg->ms_flags & MSGF_DONE)
-		lwkt_sendmsg_oncpu(netisr_cpuport(cpu), msg);
+	if (msg->lmsg.ms_flags & MSGF_DONE)
+		netisr_sendmsg_oncpu(msg);
 	crit_exit();
-}
-
-static void
-ipfrag_slowtimo(void)
-{
-	cpumask_t mask;
-	int i;
-
-	CPUMASK_ASSZERO(mask);
-	for (i = 0; i < ncpus; ++i) {
-		if (ipfrag_queue_pcpu[i].nipq &&
-		    ipfrag_queue_pcpu[i].timeo_inprog == 0) {
-			ipfrag_queue_pcpu[i].timeo_inprog = 1;
-			CPUMASK_ORBIT(mask, i);
-		}
-	}
-	CPUMASK_ANDMASK(mask, smp_active_mask);
-	if (CPUMASK_TESTNZERO(mask))
-		lwkt_send_ipiq_mask(mask, ipfrag_timeo_ipi, NULL);
-}
-
-/*
- * IP timer processing
- */
-void
-ip_slowtimo(void)
-{
-	ipfrag_slowtimo();
 }
 
 /*

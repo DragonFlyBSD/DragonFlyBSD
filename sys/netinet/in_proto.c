@@ -103,7 +103,7 @@ struct protosw inetsw[] = {
 	.pr_ctlport = NULL,
 
 	.pr_init = ip_init,
-	.pr_slowtimo = ip_slowtimo,
+	.pr_slowtimo = NULL,
 	.pr_drain = ip_drain,
 	.pr_usrreqs = &nousrreqs
     },

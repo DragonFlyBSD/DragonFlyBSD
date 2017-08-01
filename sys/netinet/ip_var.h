@@ -206,7 +206,6 @@ struct in_ifaddr *
 	 ip_rtaddr(struct in_addr, struct route *);
 void	 ip_savecontrol(struct inpcb *, struct mbuf **, struct ip *,
 		struct mbuf *);
-void	 ip_slowtimo(void);
 struct mbuf *
 	 ip_srcroute(struct mbuf *);
 void	 ip_stripoptions(struct mbuf *);
