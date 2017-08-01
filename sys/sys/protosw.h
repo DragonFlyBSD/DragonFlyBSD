@@ -62,9 +62,8 @@ typedef union netmsg *netmsg_t;
  * which is used for protocol-protocol and system-protocol communication.
  *
  * A protocol is called through the pr_init entry before any other.
- * Thereafter it is called every 500ms through the pr_slowtimo for timer
- * based actions.  The system will call the pr_drain entry if it is low on
- * space and this should throw away any non-critical data.
+ * The system will call the pr_drain entry if it is low on space and this
+ * should throw away any non-critical data.
  *
  * Protocols pass data between themselves as chains of mbufs using
  * the pr_input and pr_output hooks.  Pr_input passes data up (towards
@@ -112,7 +111,6 @@ struct protosw {
 	 * Utility hooks, not called with any particular context.
 	 */
 	void	(*pr_init) (void);	/* initialization hook */
-	void	(*pr_slowtimo) (void);	/* slow timeout (500ms) */
 	void	(*pr_drain) (void);	/* flush any excess space possible */
 
 	struct	pr_usrreqs *pr_usrreqs;	/* messaged requests to proto thread */

@@ -77,7 +77,6 @@ struct protosw btsw[] = {
 		.pr_ctloutput = hci_ctloutput,
 		.pr_ctlport = NULL,
 		.pr_init = 0,
-		.pr_slowtimo = 0,
 		.pr_drain = 0,
 		.pr_usrreqs = &hci_usrreqs
 	},
@@ -92,7 +91,6 @@ struct protosw btsw[] = {
 		.pr_ctloutput = sco_ctloutput,
 		.pr_ctlport = NULL,
 		.pr_init = 0,
-		.pr_slowtimo = 0,
 		.pr_drain = 0,
 		.pr_usrreqs = &sco_usrreqs
 
@@ -108,7 +106,6 @@ struct protosw btsw[] = {
 		.pr_ctloutput = l2cap_ctloutput,
 		.pr_ctlport = NULL,
 		.pr_init = 0,
-		.pr_slowtimo = 0,
 		.pr_drain = 0,
 		.pr_usrreqs = &l2cap_usrreqs
 	},
@@ -123,7 +120,6 @@ struct protosw btsw[] = {
 		.pr_ctloutput = rfcomm_ctloutput,
 		.pr_ctlport = NULL,
 		.pr_init = 0,
-		.pr_slowtimo = 0,
 		.pr_drain = 0,
 		.pr_usrreqs = &rfcomm_usrreqs
 	},

@@ -158,7 +158,6 @@ struct protosw inet6sw[] = {
 	.pr_flags = 0,
 
 	.pr_init = ip6_init,
-	.pr_slowtimo = NULL,
 	.pr_drain = frag6_drain,
 	.pr_usrreqs = &nousrreqs
     },
@@ -192,7 +191,6 @@ struct protosw inet6sw[] = {
 #ifndef INET
 	/* don't call initialization and timeout routines twice */
 	.pr_init = tcp_init,
-	.pr_slowtimo = NULL,
 #endif
 	.pr_drain = tcp_drain,
 	.pr_usrreqs = &tcp6_usrreqs
@@ -224,7 +222,6 @@ struct protosw inet6sw[] = {
 
 	.pr_ctlport = cpu0_ctlport,
 	.pr_init = icmp6_init,
-	.pr_slowtimo = NULL,
 	.pr_drain = NULL,
 
 	.pr_usrreqs = &rip6_usrreqs

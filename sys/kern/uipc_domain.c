@@ -60,11 +60,7 @@
 static void domaininit (void *);
 SYSINIT(domain, SI_SUB_PROTO_DOMAIN, SI_ORDER_FIRST, domaininit, NULL);
 
-static void	pfslowtimo (void *);
-
 struct domainlist domains;
-
-static struct callout pfslowtimo_ch;
 
 /*
  * Add a new protocol domain to the list of supported domains
@@ -150,9 +146,6 @@ domaininit(void *dummy)
 {
 	if (max_linkhdr < 20)		/* XXX */
 		max_linkhdr = 20;
-
-	callout_init_mp(&pfslowtimo_ch);
-	callout_reset(&pfslowtimo_ch, 1, pfslowtimo, NULL);
 }
 
 
@@ -244,18 +237,4 @@ kpfctlinput2(int cmd, struct sockaddr *sa, void *ctlparam)
 		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
 			so_pr_ctlinput(pr, cmd, sa, ctlparam);
 	}
-}
-
-static void
-pfslowtimo(void *arg)
-{
-	struct domain *dp;
-	struct protosw *pr;
-
-	SLIST_FOREACH(dp, &domains, dom_next) {
-		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
-			if (pr->pr_slowtimo)
-				(*pr->pr_slowtimo)();
-	}
-	callout_reset(&pfslowtimo_ch, hz / 2, pfslowtimo, NULL);
 }
