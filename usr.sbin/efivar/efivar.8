@@ -29,7 +29,7 @@
 .Os
 .Sh NAME
 .Nm efivar
-.Nd UEFI environemnt variable interaction
+.Nd UEFI environment variable interaction
 .Sh SYNOPSIS
 .Nm
 .Op Fl abdDHlLNpRtw
@@ -57,7 +57,7 @@ This program manages
 .Pq UEFI
 environment variables.
 UEFI variables have three part: A namespace, a name and a value.
-The namespace is a GUID that's self assigned by the group defining the
+The namespace is a GUID that is self assigned by the group defining the
 variables.
 The name is a Unicode name for the variable.
 The value is binary data.
@@ -69,7 +69,7 @@ The following options are available:
 Specify the name of the variable to operate on.
 The
 .Ar name
-argument is the GUID of variable, followed by a dash, followed by the
+argument is the GUID of the variable, followed by a dash, followed by the
 UEFI variable name.
 The GUID may be in numeric format, or may be one of the well known
 symbolic name (see
@@ -85,12 +85,12 @@ This flag implies
 unless the
 .Fl -append
 flag is given.
-This is not well understood and currently unimplemented.
+This behavior is not well understood and currently unimplemented.
 .It Fl a Fl -append
 Append the specified value to the UEFI variable rather than replacing
 it.
 .It Fl t Ar attr Fl -attributes Ar attr
-Specify, in user hostile hexidecimal, the attributes for this
+Specify, in hexadecimal, the attributes for this
 variable.
 See section 7.2 (GetVariable subsection, Related Definitions) of the
 UEFI Specification for hex values to use.
