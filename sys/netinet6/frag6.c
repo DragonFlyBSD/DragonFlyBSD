@@ -86,6 +86,7 @@ MALLOC_DEFINE(M_FTABLE, "fragment", "fragment reassembly header");
 static struct callout		frag6_slowtimo_ch;
 static struct netmsg_base	frag6_slowtimo_nmsg;
 static struct netmsg_base	frag6_drain_nmsg;
+static volatile int		frag6_draining;
 
 /*
  * Initialise reassembly queue and fragment identifier.
@@ -711,6 +712,7 @@ frag6_drain_dispatch(netmsg_t nmsg)
 	crit_exit();
 
 	frag6_drain_oncpu();
+	frag6_draining = 0;
 }
 
 static void
@@ -734,6 +736,12 @@ frag6_drain(void)
 		frag6_drain_oncpu();
 		return;
 	}
+
+	if (!frag6_nfrags || frag6_draining) {
+		/* No fragments or is draining; done. */
+		return;
+	}
+	frag6_draining = 1;
 
 	/* Target cpu0. */
 	lwkt_send_ipiq_bycpu(0, frag6_drain_ipi, NULL);
