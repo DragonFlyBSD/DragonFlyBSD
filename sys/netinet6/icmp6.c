@@ -140,7 +140,7 @@
 #define in6p_ip6_nxt	inp_ipv6.ip6_nxt
 #endif
 
-#define ICMP6_FASTTIMO	(hz / 5)
+#define ICMP6_FASTTIMO	(hz / PR_FASTHZ)
 
 /*
  * ppratecheck() is available, so define it here.

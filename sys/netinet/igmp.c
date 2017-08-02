@@ -71,8 +71,8 @@
 #include <netinet/igmp.h>
 #include <netinet/igmp_var.h>
 
-#define IGMP_FASTTIMO		(hz / 5)
-#define IGMP_SLOWTIMO		(hz / 2)
+#define IGMP_FASTTIMO		(hz / PR_FASTHZ)
+#define IGMP_SLOWTIMO		(hz / PR_SLOWHZ)
 
 static MALLOC_DEFINE(M_IGMP, "igmp", "igmp state");
 

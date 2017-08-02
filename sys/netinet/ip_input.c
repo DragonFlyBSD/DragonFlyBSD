@@ -312,7 +312,7 @@ struct ip_srcrt_opt {
 #define IPFRAG_MPIPE_MAX	4096
 #define MAXIPFRAG_MIN		((IPFRAG_MPIPE_MAX * 2) / 256)
 
-#define IPFRAG_TIMEO		(hz / 2)
+#define IPFRAG_TIMEO		(hz / PR_SLOWHZ)
 
 static MALLOC_DEFINE(M_IPQ, "ipq", "IP Fragment Management");
 static struct malloc_pipe ipq_mpipe;

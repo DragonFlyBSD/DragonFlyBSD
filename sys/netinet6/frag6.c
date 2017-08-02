@@ -56,7 +56,7 @@
 
 #include <net/net_osdep.h>
 
-#define FRAG6_SLOWTIMO		(hz / 2)
+#define FRAG6_SLOWTIMO		(hz / PR_SLOWHZ)
 
 /*
  * Define it to get a correct behavior on per-interface statistics.
