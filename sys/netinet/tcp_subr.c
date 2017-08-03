@@ -157,8 +157,14 @@ KTR_INFO(KTR_TCP, tcp, delayed, 2, "tcp execute delayed ops", 0);
 #define TCP_IW_MAXSEGS_DFLT	4
 #define TCP_IW_CAPSEGS_DFLT	4
 
+struct tcp_reass_pcpu {
+	int			draining;
+	struct netmsg_base	drain_nmsg;
+} __cachealign;
+
 struct inpcbinfo tcbinfo[MAXCPU];
 struct tcpcbackq tcpcbackq[MAXCPU];
+struct tcp_reass_pcpu tcp_reassq[MAXCPU];
 
 int tcp_mssdflt = TCP_MSS;
 SYSCTL_INT(_net_inet_tcp, TCPCTL_MSSDFLT, mssdflt, CTLFLAG_RW,
@@ -297,7 +303,6 @@ static void tcp_notify (struct inpcb *, int);
 struct tcp_stats tcpstats_percpu[MAXCPU] __cachealign;
 struct tcp_state_count tcpstate_count[MAXCPU] __cachealign;
 
-static struct netmsg_base tcp_drain_netmsg[MAXCPU];
 static void	tcp_drain_dispatch(netmsg_t nmsg);
 
 static int
@@ -434,8 +439,8 @@ tcp_init(void)
 	 * Initialize netmsgs for TCP drain
 	 */
 	for (cpu = 0; cpu < netisr_ncpus; ++cpu) {
-		netmsg_init(&tcp_drain_netmsg[cpu], NULL, &netisr_adone_rport,
-		    MSGF_PRIORITY, tcp_drain_dispatch);
+		netmsg_init(&tcp_reassq[cpu].drain_nmsg, NULL,
+		    &netisr_adone_rport, MSGF_PRIORITY, tcp_drain_dispatch);
 	}
 
 	syncache_init();
@@ -1083,7 +1088,11 @@ no_valid_rt:
 	return (NULL);
 }
 
-static __inline void
+/*
+ * Walk the tcpbs, if existing, and flush the reassembly queue,
+ * if there is one...
+ */
+static void
 tcp_drain_oncpu(struct inpcbinfo *pcbinfo)
 {
 	struct inpcbhead *head = &pcbinfo->pcblisthead;
@@ -1094,7 +1103,7 @@ tcp_drain_oncpu(struct inpcbinfo *pcbinfo)
 	 * we block during the inpcb list iteration, i.e.
 	 * we don't need to use inpcb marker here.
 	 */
-	ASSERT_IN_NETISR(pcbinfo->cpu);
+	ASSERT_NETISR_NCPUS(curthread, pcbinfo->cpu);
 
 	LIST_FOREACH(inpb, head, inp_list) {
 		struct tcpcb *tcpb;
@@ -1126,13 +1135,14 @@ tcp_drain_dispatch(netmsg_t nmsg)
 	crit_exit();
 
 	tcp_drain_oncpu(&tcbinfo[mycpuid]);
+	tcp_reassq[mycpuid].draining = 0;
 }
 
 static void
 tcp_drain_ipi(void *arg __unused)
 {
 	int cpu = mycpuid;
-	struct lwkt_msg *msg = &tcp_drain_netmsg[cpu].lmsg;
+	struct lwkt_msg *msg = &tcp_reassq[cpu].drain_nmsg.lmsg;
 
 	crit_enter();
 	if (msg->ms_flags & MSGF_DONE)
@@ -1144,23 +1154,40 @@ void
 tcp_drain(void)
 {
 	cpumask_t mask;
+	int cpu;
 
 	if (!do_tcpdrain)
 		return;
 
-	/*
-	 * Walk the tcpbs, if existing, and flush the reassembly queue,
-	 * if there is one...
-	 * XXX: The "Net/3" implementation doesn't imply that the TCP
-	 *	reassembly queue should be flushed, but in a situation
-	 *	where we're really low on mbufs, this is potentially
-	 *	useful.
-	 * YYY: We may consider run tcp_drain_oncpu directly here,
-	 *      however, that will require M_WAITOK memory allocation
-	 *      for the inpcb marker.
-	 */
+	if (tcp_reass_qsize == 0)
+		return;
+
 	CPUMASK_ASSBMASK(mask, netisr_ncpus);
 	CPUMASK_ANDMASK(mask, smp_active_mask);
+
+	cpu = mycpuid;
+	if (cpu < netisr_ncpus && IS_NETISR(curthread, cpu)) {
+		tcp_drain_oncpu(&tcbinfo[mycpuid]);
+		CPUMASK_NANDBIT(mask, cpu);
+	}
+
+	if (tcp_reass_qsize < netisr_ncpus) {
+		/* Does not worth the trouble. */
+		return;
+	}
+
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu) {
+		if (!CPUMASK_TESTBIT(mask, cpu))
+			continue;
+
+		if (tcp_reassq[cpu].draining) {
+			/* Draining; skip this cpu. */
+			CPUMASK_NANDBIT(mask, cpu);
+			continue;
+		}
+		tcp_reassq[cpu].draining = 1;
+	}
+
 	if (CPUMASK_TESTNZERO(mask))
 		lwkt_send_ipiq_mask(mask, tcp_drain_ipi, NULL);
 }
