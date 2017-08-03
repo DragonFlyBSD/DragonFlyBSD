@@ -208,7 +208,7 @@ SYSCTL_INT(_net_inet_ip, OID_AUTO, porthash_trycount, CTLFLAG_RW,
 void
 in_pcbinfo_init(struct inpcbinfo *pcbinfo, int cpu, boolean_t shared)
 {
-	KASSERT(cpu >= 0 && cpu < ncpus, ("invalid cpu%d", cpu));
+	KASSERT(cpu >= 0 && cpu < netisr_ncpus, ("invalid cpu%d", cpu));
 	pcbinfo->cpu = cpu;
 
 	LIST_INIT(&pcbinfo->pcblisthead);
@@ -2219,7 +2219,7 @@ in_pcblist_range(SYSCTL_HANDLER_ARGS)
 	int cpu, origcpu;
 	int error, n;
 
-	KASSERT(pcbinfo_arrlen <= ncpus && pcbinfo_arrlen >= 1,
+	KASSERT(pcbinfo_arrlen <= netisr_ncpus && pcbinfo_arrlen >= 1,
 	    ("invalid pcbinfo count %d", pcbinfo_arrlen));
 
 	/*
@@ -2368,12 +2368,13 @@ in_pcbglobalinit(void)
 {
 	int cpu;
 
-	in_pcbmarkers = kmalloc(ncpus * sizeof(struct inpcb), M_PCB,
+	in_pcbmarkers = kmalloc(netisr_ncpus * sizeof(struct inpcb), M_PCB,
 	    M_WAITOK | M_ZERO);
-	in_pcbcontainer_markers = kmalloc(ncpus * sizeof(struct inpcontainer),
-	    M_PCB, M_WAITOK | M_ZERO);
+	in_pcbcontainer_markers =
+	    kmalloc(netisr_ncpus * sizeof(struct inpcontainer), M_PCB,
+	    M_WAITOK | M_ZERO);
 
-	for (cpu = 0; cpu < ncpus; ++cpu) {
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu) {
 		struct inpcontainer *ic = &in_pcbcontainer_markers[cpu];
 		struct inpcb *marker = &in_pcbmarkers[cpu];
 
@@ -2385,7 +2386,8 @@ in_pcbglobalinit(void)
 struct inpcb *
 in_pcbmarker(int cpuid)
 {
-	KASSERT(cpuid >= 0 && cpuid < ncpus, ("invalid cpuid %d", cpuid));
+	KASSERT(cpuid >= 0 && cpuid < netisr_ncpus,
+	    ("invalid cpuid %d", cpuid));
 	KASSERT(curthread->td_type == TD_TYPE_NETISR, ("not in netisr"));
 
 	return &in_pcbmarkers[cpuid];
@@ -2394,7 +2396,8 @@ in_pcbmarker(int cpuid)
 struct inpcontainer *
 in_pcbcontainer_marker(int cpuid)
 {
-	KASSERT(cpuid >= 0 && cpuid < ncpus, ("invalid cpuid %d", cpuid));
+	KASSERT(cpuid >= 0 && cpuid < netisr_ncpus,
+	    ("invalid cpuid %d", cpuid));
 	KASSERT(curthread->td_type == TD_TYPE_NETISR, ("not in netisr"));
 
 	return &in_pcbcontainer_markers[cpuid];
