@@ -70,16 +70,20 @@
 
 #define RTPRF_EXPIRING	RTF_PROTO3	/* set on routes we manage */
 
-struct in_rtqtimo_ctx {
+struct in_rtq_pcpu {
+	struct radix_node_head	*rnh;
+
 	struct callout		timo_ch;
 	struct netmsg_base	timo_nmsg;
-	struct radix_node_head	*timo_rnh;
+
+	time_t			lastdrain;
+	int			draining;
+	struct netmsg_base	drain_nmsg;
 } __cachealign;
 
 static void	in_rtqtimo(void *);
 
-static struct in_rtqtimo_ctx in_rtqtimo_context[MAXCPU];
-static struct netmsg_base in_rtqdrain_netmsg[MAXCPU];
+static struct in_rtq_pcpu in_rtq_pcpu[MAXCPU];
 
 /*
  * Do what we need to do when inserting a route.
@@ -320,8 +324,8 @@ in_rtqtimo_dispatch(netmsg_t nmsg)
 	struct rtqk_arg arg;
 	struct timeval atv;
 	static time_t last_adjusted_timeout = 0;
-	struct in_rtqtimo_ctx *ctx = &in_rtqtimo_context[mycpuid];
-	struct radix_node_head *rnh = ctx->timo_rnh;
+	struct in_rtq_pcpu *pcpu = &in_rtq_pcpu[mycpuid];
+	struct radix_node_head *rnh = pcpu->rnh;
 
 	/* Reply ASAP */
 	crit_enter();
@@ -370,14 +374,14 @@ in_rtqtimo_dispatch(netmsg_t nmsg)
 		atv.tv_sec = rtq_timeout;
 		arg.nextstop = time_uptime + atv.tv_sec;
 	}
-	callout_reset(&ctx->timo_ch, tvtohz_high(&atv), in_rtqtimo, NULL);
+	callout_reset(&pcpu->timo_ch, tvtohz_high(&atv), in_rtqtimo, NULL);
 }
 
 static void
 in_rtqtimo(void *arg __unused)
 {
 	int cpuid = mycpuid;
-	struct lwkt_msg *lmsg = &in_rtqtimo_context[cpuid].timo_nmsg.lmsg;
+	struct lwkt_msg *lmsg = &in_rtq_pcpu[cpuid].timo_nmsg.lmsg;
 
 	crit_enter();
 	if (lmsg->ms_flags & MSGF_DONE)
@@ -386,15 +390,10 @@ in_rtqtimo(void *arg __unused)
 }
 
 static void
-in_rtqdrain_dispatch(netmsg_t nmsg)
+in_rtqdrain_oncpu(struct in_rtq_pcpu *pcpu)
 {
 	struct radix_node_head *rnh = rt_tables[mycpuid][AF_INET];
 	struct rtqk_arg arg;
-
-	/* Reply ASAP */
-	crit_enter();
-	lwkt_replymsg(&nmsg->lmsg, 0);
-	crit_exit();
 
 	arg.found = arg.killed = 0;
 	arg.rnh = rnh;
@@ -402,13 +401,29 @@ in_rtqdrain_dispatch(netmsg_t nmsg)
 	arg.draining = 1;
 	arg.updating = 0;
 	rnh->rnh_walktree(rnh, in_rtqkill, &arg);
+
+	pcpu->lastdrain = time_uptime;
+}
+
+static void
+in_rtqdrain_dispatch(netmsg_t nmsg)
+{
+	struct in_rtq_pcpu *pcpu = &in_rtq_pcpu[mycpuid];
+
+	/* Reply ASAP */
+	crit_enter();
+	lwkt_replymsg(&nmsg->lmsg, 0);
+	crit_exit();
+
+	in_rtqdrain_oncpu(pcpu);
+	pcpu->draining = 0;
 }
 
 static void
 in_rtqdrain_ipi(void *arg __unused)
 {
 	int cpu = mycpuid;
-	struct lwkt_msg *msg = &in_rtqdrain_netmsg[cpu].lmsg;
+	struct lwkt_msg *msg = &in_rtq_pcpu[cpu].drain_nmsg.lmsg;
 
 	crit_enter();
 	if (msg->ms_flags & MSGF_DONE)
@@ -420,9 +435,30 @@ void
 in_rtqdrain(void)
 {
 	cpumask_t mask;
+	int cpu;
 
 	CPUMASK_ASSBMASK(mask, ncpus);
 	CPUMASK_ANDMASK(mask, smp_active_mask);
+
+	if (IS_NETISR(curthread, mycpuid)) {
+		in_rtqdrain_oncpu(&in_rtq_pcpu[mycpuid]);
+		CPUMASK_NANDBIT(mask, mycpuid);
+	}
+
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		struct in_rtq_pcpu *pcpu = &in_rtq_pcpu[cpu];
+
+		if (!CPUMASK_TESTBIT(mask, cpu))
+			continue;
+
+		if (pcpu->draining || pcpu->lastdrain == time_uptime) {
+			/* Just drained or is draining; skip this cpu. */
+			CPUMASK_NANDBIT(mask, cpu);
+			continue;
+		}
+		pcpu->draining = 1;
+	}
+
 	if (CPUMASK_TESTNZERO(mask))
 		lwkt_send_ipiq_mask(mask, in_rtqdrain_ipi, NULL);
 }
@@ -434,7 +470,7 @@ int
 in_inithead(void **head, int off)
 {
 	struct radix_node_head *rnh;
-	struct in_rtqtimo_ctx *ctx;
+	struct in_rtq_pcpu *pcpu;
 	int cpuid = mycpuid;
 
 	KKASSERT(head == (void **)&rt_tables[cpuid][AF_INET]);
@@ -447,13 +483,13 @@ in_inithead(void **head, int off)
 	rnh->rnh_matchaddr = in_matchroute;
 	rnh->rnh_close = in_closeroute;
 
-	ctx = &in_rtqtimo_context[cpuid];
-	ctx->timo_rnh = rnh;
-	callout_init_mp(&ctx->timo_ch);
-	netmsg_init(&ctx->timo_nmsg, NULL, &netisr_adone_rport, MSGF_PRIORITY,
+	pcpu = &in_rtq_pcpu[cpuid];
+	pcpu->rnh = rnh;
+	callout_init_mp(&pcpu->timo_ch);
+	netmsg_init(&pcpu->timo_nmsg, NULL, &netisr_adone_rport, MSGF_PRIORITY,
 	    in_rtqtimo_dispatch);
-	netmsg_init(&in_rtqdrain_netmsg[cpuid], NULL, &netisr_adone_rport,
-	    MSGF_PRIORITY, in_rtqdrain_dispatch);
+	netmsg_init(&pcpu->drain_nmsg, NULL, &netisr_adone_rport, MSGF_PRIORITY,
+	    in_rtqdrain_dispatch);
 
 	in_rtqtimo(NULL);	/* kick off timeout first time */
 	return 1;
