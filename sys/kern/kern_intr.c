@@ -172,7 +172,7 @@ SYSCTL_PROC(_kern, OID_AUTO, emergency_intr_freq, CTLTYPE_INT | CTLFLAG_RW,
 static int
 sysctl_emergency_enable(SYSCTL_HANDLER_ARGS)
 {
-	int error, enabled, cpuid, freq;
+	int error, enabled, cpuid, freq, origcpu;
 
 	enabled = emergency_intr_enable;
 	error = sysctl_handle_int(oidp, &enabled, 0, req);
@@ -184,15 +184,19 @@ sysctl_emergency_enable(SYSCTL_HANDLER_ARGS)
 	else
 		freq = 1;
 
-	for (cpuid = 0; cpuid < ncpus; ++cpuid)
+	origcpu = mycpuid;
+	for (cpuid = 0; cpuid < ncpus; ++cpuid) {
+		lwkt_migratecpu(cpuid);
 		systimer_adjust_periodic(&emergency_intr_timer[cpuid], freq);
+	}
+	lwkt_migratecpu(origcpu);
 	return 0;
 }
 
 static int
 sysctl_emergency_freq(SYSCTL_HANDLER_ARGS)
 {
-        int error, phz, cpuid, freq;
+        int error, phz, cpuid, freq, origcpu;
 
         phz = emergency_intr_freq;
         error = sysctl_handle_int(oidp, &phz, 0, req);
@@ -209,8 +213,12 @@ sysctl_emergency_freq(SYSCTL_HANDLER_ARGS)
 	else
 		freq = 1;
 
-	for (cpuid = 0; cpuid < ncpus; ++cpuid)
+	origcpu = mycpuid;
+	for (cpuid = 0; cpuid < ncpus; ++cpuid) {
+		lwkt_migratecpu(cpuid);
 		systimer_adjust_periodic(&emergency_intr_timer[cpuid], freq);
+	}
+	lwkt_migratecpu(origcpu);
         return 0;
 }
 

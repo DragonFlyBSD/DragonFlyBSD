@@ -1884,7 +1884,7 @@ dummynet_clock(systimer_t info __unused, int in_ipi __unused,
 static int
 sysctl_dn_hz(SYSCTL_HANDLER_ARGS)
 {
-    int error, val;
+    int error, val, origcpu;
 
     val = dn_hz;
     error = sysctl_handle_int(oidp, &val, 0, req);
@@ -1895,10 +1895,15 @@ sysctl_dn_hz(SYSCTL_HANDLER_ARGS)
     else if (val > DN_CALLOUT_FREQ_MAX)
 	val = DN_CALLOUT_FREQ_MAX;
 
+    origcpu = mycpuid;
+    lwkt_migratecpu(ip_dn_cpu);
+
     crit_enter();
     dn_hz = val;
     systimer_adjust_periodic(&dn_clock, val);
     crit_exit();
+
+    lwkt_migratecpu(origcpu);
 
     return 0;
 }
