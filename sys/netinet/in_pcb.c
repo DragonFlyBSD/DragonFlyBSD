@@ -1232,7 +1232,7 @@ in_pcbnotifyall(struct inpcbinfo *pcbinfo, struct in_addr faddr, int err,
 
 	KASSERT(&curthread->td_msgport == netisr_cpuport(pcbinfo->cpu),
 	    ("not in the correct netisr"));
-	marker = &in_pcbmarkers[mycpuid];
+	marker = in_pcbmarker();
 
 	/*
 	 * NOTE:
@@ -1292,7 +1292,7 @@ in_pcbpurgeif0(struct inpcbinfo *pcbinfo, struct ifnet *ifp)
 	 * even if the token was released due to the blocking multicast
 	 * address deletion.
 	 */
-	marker = &in_pcbmarkers[mycpuid];
+	marker = in_pcbmarker();
 
 	GET_PCBINFO_TOKEN(pcbinfo);
 
@@ -2384,23 +2384,19 @@ in_pcbglobalinit(void)
 }
 
 struct inpcb *
-in_pcbmarker(int cpuid)
+in_pcbmarker(void)
 {
-	KASSERT(cpuid >= 0 && cpuid < netisr_ncpus,
-	    ("invalid cpuid %d", cpuid));
-	KASSERT(curthread->td_type == TD_TYPE_NETISR, ("not in netisr"));
 
-	return &in_pcbmarkers[cpuid];
+	ASSERT_NETISR_NCPUS(curthread, mycpuid);
+	return &in_pcbmarkers[mycpuid];
 }
 
 struct inpcontainer *
-in_pcbcontainer_marker(int cpuid)
+in_pcbcontainer_marker(void)
 {
-	KASSERT(cpuid >= 0 && cpuid < netisr_ncpus,
-	    ("invalid cpuid %d", cpuid));
-	KASSERT(curthread->td_type == TD_TYPE_NETISR, ("not in netisr"));
 
-	return &in_pcbcontainer_markers[cpuid];
+	ASSERT_NETISR_NCPUS(curthread, mycpuid);
+	return &in_pcbcontainer_markers[mycpuid];
 }
 
 void

@@ -548,9 +548,9 @@ int	in_pcblist_range(SYSCTL_HANDLER_ARGS);
 int	in_pcblist_ncpus(SYSCTL_HANDLER_ARGS);
 
 struct inpcb *
-	in_pcbmarker(int cpuid);
+	in_pcbmarker(void);
 struct inpcontainer *
-	in_pcbcontainer_marker(int cpuid);
+	in_pcbcontainer_marker(void);
 
 #endif /* _KERNEL */
 

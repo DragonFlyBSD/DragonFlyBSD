@@ -571,7 +571,7 @@ in6_pcbnotify(struct inpcbinfo *pcbinfo, struct sockaddr *dst, in_port_t fport,
 	if (cmd != PRC_MSGSIZE)
 		arg = inet6ctlerrmap[cmd];
 
-	marker = in_pcbmarker(mycpuid);
+	marker = in_pcbmarker();
 
 	GET_PCBINFO_TOKEN(pcbinfo);
 
@@ -732,7 +732,7 @@ in6_pcbpurgeif0(struct inpcbinfo *pcbinfo, struct ifnet *ifp)
 	 * even if the token was released due to the blocking multicast
 	 * address deletion.
 	 */
-	marker = in_pcbmarker(mycpuid);
+	marker = in_pcbmarker();
 
 	GET_PCBINFO_TOKEN(pcbinfo);
 

@@ -231,7 +231,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 		 */
 		last = NULL;
 
-		marker = in_pcbmarker(mycpuid);
+		marker = in_pcbmarker();
 
 		GET_PCBINFO_TOKEN(pcbinfo);
 

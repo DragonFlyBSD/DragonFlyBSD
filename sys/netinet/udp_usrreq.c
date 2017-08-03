@@ -552,7 +552,7 @@ udp_input(struct mbuf **mp, int *offp, int proto)
 		ichead = &pcbinfo->wildcardhashbase[
 		    INP_PCBWILDCARDHASH(uh->uh_dport,
 		    pcbinfo->wildcardhashmask)];
-		ic_marker = in_pcbcontainer_marker(mycpuid);
+		ic_marker = in_pcbcontainer_marker();
 
 		GET_PCBINFO_TOKEN(pcbinfo);
 		LIST_INSERT_HEAD(ichead, ic_marker, ic_list);
