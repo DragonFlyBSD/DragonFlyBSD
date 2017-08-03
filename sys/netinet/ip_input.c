@@ -1414,9 +1414,8 @@ ipfrag_timeo(void *dummy __unused)
  * Drain off all datagram fragments.
  */
 static void
-ipfrag_drain_oncpu(void)
+ipfrag_drain_oncpu(struct ipfrag_queue *fragq)
 {
-	struct ipfrag_queue *fragq = &ipfrag_queue_pcpu[mycpuid];
 	struct ipqhead *head;
 	int i;
 
@@ -1427,18 +1426,19 @@ ipfrag_drain_oncpu(void)
 			ip_freef(fragq, head, TAILQ_FIRST(head));
 		}
 	}
-	fragq->draining = 0;
 }
 
 static void
 ipfrag_drain_dispatch(netmsg_t nmsg)
 {
+	struct ipfrag_queue *fragq = &ipfrag_queue_pcpu[mycpuid];
 
 	crit_enter();
 	lwkt_replymsg(&nmsg->lmsg, 0);  /* reply ASAP */
 	crit_exit();
 
-	ipfrag_drain_oncpu();
+	ipfrag_drain_oncpu(fragq);
+	fragq->draining = 0;
 }
 
 static void
@@ -1463,12 +1463,15 @@ ipfrag_drain(void)
 	CPUMASK_ANDMASK(mask, smp_active_mask);
 
 	if (IS_NETISR(curthread, mycpuid)) {
-		ipfrag_drain_oncpu();
+		ipfrag_drain_oncpu(&ipfrag_queue_pcpu[mycpuid]);
 		CPUMASK_NANDBIT(mask, mycpuid);
 	}
 
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		struct ipfrag_queue *fragq = &ipfrag_queue_pcpu[cpu];
+
+		if (!CPUMASK_TESTBIT(mask, cpu))
+			continue;
 
 		if (fragq->nipq == 0 || fragq->draining) {
 			/* No fragments or is draining; skip this cpu. */
