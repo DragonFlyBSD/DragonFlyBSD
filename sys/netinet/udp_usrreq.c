@@ -235,7 +235,7 @@ udp_init(void)
 	/*
 	 * Initialize UDP statistics counters for each CPU.
 	 */
-	for (cpu = 0; cpu < ncpus; ++cpu)
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu)
 		bzero(&udpstat_percpu[cpu], sizeof(struct udpstat));
 }
 
@@ -244,7 +244,7 @@ sysctl_udpstat(SYSCTL_HANDLER_ARGS)
 {
 	int cpu, error = 0;
 
-	for (cpu = 0; cpu < ncpus; ++cpu) {
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu) {
 		if ((error = SYSCTL_OUT(req, &udpstat_percpu[cpu],
 					sizeof(struct udpstat))))
 			break;
