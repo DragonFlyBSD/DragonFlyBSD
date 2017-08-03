@@ -235,7 +235,7 @@ sysctl_ipstats(SYSCTL_HANDLER_ARGS)
 {
 	int cpu, error = 0;
 
-	for (cpu = 0; cpu < ncpus; ++cpu) {
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu) {
 		if ((error = SYSCTL_OUT(req, &ipstats_percpu[cpu],
 					sizeof(struct ip_stats))))
 			break;
@@ -345,11 +345,17 @@ ip_init(void)
 	 */
 	mpipe_init(&ipq_mpipe, M_IPQ, sizeof(struct ipq),
 	    IFQ_MAXLEN, IPFRAG_MPIPE_MAX, 0, NULL, NULL, NULL);
+
+	/*
+	 * Addresses could be accessed from any CPUs in non-netisr threads,
+	 * so populate all CPUs.
+	 */
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		TAILQ_INIT(&in_ifaddrheads[cpu]);
 		in_ifaddrhashtbls[cpu] =
 		    hashinit(INADDR_NHASH, M_IFADDR, &in_ifaddrhmask);
 	}
+
 	pr = pffindproto(PF_INET, IPPROTO_RAW, SOCK_RAW);
 	if (pr == NULL)
 		panic("ip_init");
@@ -370,14 +376,14 @@ ip_init(void)
 			"error %d\n", __func__, i);
 	}
 
-	maxnipq = (nmbclusters / 32) / ncpus;
+	maxnipq = (nmbclusters / 32) / netisr_ncpus;
 	if (maxnipq < MAXIPFRAG_MIN)
 		maxnipq = MAXIPFRAG_MIN;
 	maxfragsperpacket = 16;
 
 	ip_id = time_second & 0xffff;	/* time_second survives reboots */
 
-	for (cpu = 0; cpu < ncpus; ++cpu) {
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu) {
 		/*
 		 * Initialize IP statistics counters for each CPU.
 		 */
@@ -405,7 +411,7 @@ ip_init(void)
 	netisr_register(NETISR_IP, ip_input_handler, ip_hashfn);
 	netisr_register_hashcheck(NETISR_IP, ip_hashcheck);
 
-	for (cpu = 0; cpu < ncpus; ++cpu) {
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu) {
 		fragq = &ipfrag_queue_pcpu[cpu];
 		callout_reset_bycpu(&fragq->timeo_ch, IPFRAG_TIMEO,
 		    ipfrag_timeo, NULL, cpu);
@@ -471,6 +477,7 @@ ip_input(struct mbuf *m)
 	int error;
 #endif
 
+	ASSERT_NETISR_NCPUS(curthread, mycpuid);
 	M_ASSERTPKTHDR(m);
 
 	/*
@@ -1459,15 +1466,15 @@ ipfrag_drain(void)
 	cpumask_t mask;
 	int cpu;
 
-	CPUMASK_ASSBMASK(mask, ncpus);
+	CPUMASK_ASSBMASK(mask, netisr_ncpus);
 	CPUMASK_ANDMASK(mask, smp_active_mask);
 
-	if (IS_NETISR(curthread, mycpuid)) {
+	if (mycpuid < netisr_ncpus && IS_NETISR(curthread, mycpuid)) {
 		ipfrag_drain_oncpu(&ipfrag_queue_pcpu[mycpuid]);
 		CPUMASK_NANDBIT(mask, mycpuid);
 	}
 
-	for (cpu = 0; cpu < ncpus; ++cpu) {
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu) {
 		struct ipfrag_queue *fragq = &ipfrag_queue_pcpu[cpu];
 
 		if (!CPUMASK_TESTBIT(mask, cpu))

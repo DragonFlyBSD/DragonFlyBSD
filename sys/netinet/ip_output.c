@@ -213,6 +213,8 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	struct sockaddr_in *next_hop = NULL;
 	int src_was_INADDR_ANY = 0;	/* as the name says... */
 
+	ASSERT_NETISR_NCPUS(curthread, mycpuid);
+
 	m = m0;
 	M_ASSERTPKTHDR(m);
 
