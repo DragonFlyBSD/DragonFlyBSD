@@ -441,6 +441,7 @@ rtmask_purelookup(struct sockaddr *_mask)
 }
 
 void	rtfree_oncpu(struct rtentry *);
+void	rtfree_async(struct rtentry *);
 void	rtfree_remote(struct rtentry *);
 void	rt_print(struct rt_addrinfo *, struct rtentry *);
 void	rt_addrinfo_print(int cmd, struct rt_addrinfo *);

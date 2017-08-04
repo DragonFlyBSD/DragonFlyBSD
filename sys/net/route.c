@@ -326,20 +326,37 @@ rtfree_oncpu(struct rtentry *rt)
 }
 
 static void
-rtfree_remote_dispatch(netmsg_t msg)
+rtfree_async_dispatch(netmsg_t msg)
 {
-	struct lwkt_msg *lmsg = &msg->lmsg;
-	struct rtentry *rt = lmsg->u.ms_resultp;
+	struct rtentry *rt = msg->lmsg.u.ms_resultp;
 
 	rtfree_oncpu(rt);
-	lwkt_replymsg(lmsg, 0);
+	netisr_replymsg(&msg->base, 0);
+}
+
+void
+rtfree_async(struct rtentry *rt)
+{
+	struct netmsg_base *msg;
+
+	if (IS_NETISR(curthread, rt->rt_cpuid)) {
+		rtfree_oncpu(rt);
+		return;
+	}
+
+	KASSERT(rt->rt_refcnt > 0,
+	    ("rtfree_async: rt_refcnt %ld", rt->rt_refcnt));
+
+	msg = kmalloc(sizeof(*msg), M_LWKTMSG, M_INTWAIT);
+	netmsg_init(msg, NULL, &netisr_afree_rport, 0, rtfree_async_dispatch);
+	msg->lmsg.u.ms_resultp = rt;
+
+	netisr_sendmsg(msg, rt->rt_cpuid);
 }
 
 void
 rtfree_remote(struct rtentry *rt)
 {
-	struct netmsg_base *msg;
-	struct lwkt_msg *lmsg;
 
 	KKASSERT(rt->rt_cpuid != mycpuid);
 
@@ -351,13 +368,7 @@ rtfree_remote(struct rtentry *rt)
 			rt->rt_cpuid, mycpuid);
 		print_backtrace(-1);
 	}
-
-	msg = kmalloc(sizeof(*msg), M_LWKTMSG, M_INTWAIT);
-	netmsg_init(msg, NULL, &netisr_afree_rport, 0, rtfree_remote_dispatch);
-	lmsg = &msg->lmsg;
-	lmsg->u.ms_resultp = rt;
-
-	lwkt_sendmsg(netisr_cpuport(rt->rt_cpuid), lmsg);
+	rtfree_async(rt);
 }
 
 int
