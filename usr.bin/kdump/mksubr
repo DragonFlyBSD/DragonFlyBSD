@@ -72,10 +72,11 @@ _EOF_
 # maps to a single, specific #definition
 #
 auto_switch_type () {
-	local name grep file
+	local name grep file noinvdef
 	name=$1
 	grep=$2
 	file=$3
+	noinvdef=$4
 
 	cat <<_EOF_
 /* AUTO */
@@ -91,6 +92,7 @@ _EOF_
 			break; \
 		++i; \
 		printf "\tcase %s:\n\t\tprintf(\"%s\");\n\t\tbreak;\n", $i, $i }'
+	if [ -z "$noinvdef" ]; then
 cat <<_EOF_
 	default: /* Should not reach */
 		printf("<invalid=%ld>", (long)arg);
@@ -98,6 +100,15 @@ cat <<_EOF_
 }
 
 _EOF_
+	else
+cat <<_EOF_
+	default:
+		printf("%ld", (long)arg);
+	}
+}
+
+_EOF_
+	fi
 }
 
 #
