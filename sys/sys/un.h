@@ -33,9 +33,7 @@
 #ifndef _SYS_UN_H_
 #define	_SYS_UN_H_
 
-#ifndef _SYS_TYPES_H_
-#include <sys/types.h>
-#endif
+#include <machine/stdint.h>
 
 #ifndef _SA_FAMILY_T_DECLARED
 typedef	__uint8_t	sa_family_t;
@@ -46,13 +44,15 @@ typedef	__uint8_t	sa_family_t;
  * Definitions for UNIX IPC domain.
  */
 struct sockaddr_un {
-	uint8_t		sun_len;	/* sockaddr len including null */
+	__uint8_t	sun_len;	/* sockaddr len including null */
 	sa_family_t	sun_family;	/* AF_UNIX */
 	char		sun_path[104];	/* path name (gag) */
 };
 
+#if __BSD_VISIBLE
 /* Socket options. */
 #define	LOCAL_PEERCRED		0x001		/* retrieve peer credentails */
+#endif
 
 #ifdef _KERNEL
 struct mbuf;
@@ -69,9 +69,11 @@ void	unp_init(void);
 extern	struct pr_usrreqs uipc_usrreqs;
 #else /* !_KERNEL */
 
+#if __BSD_VISIBLE
 /* actual length of an initialized sockaddr_un */
 #define	SUN_LEN(su) \
 	(sizeof(*(su)) - sizeof((su)->sun_path) + strlen((su)->sun_path))
+#endif
 
 #endif /* _KERNEL */
 
