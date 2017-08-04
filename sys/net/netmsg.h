@@ -72,6 +72,7 @@ typedef struct netmsg_base *netmsg_base_t;
  * - netmsg_pru_send is embedded in mbufs.
  * - netmsg_inarp is embedded in mbufs.
  * - netmsg_ctlinput is embedded in mbufs.
+ * - netmsg_genpkt is embedded in mbufs.
  */
 TAILQ_HEAD(notifymsglist, netmsg_so_notify);
 
@@ -95,6 +96,13 @@ struct netmsg_ctlinput {
 	int			cmd;
 	int			hlen;
 	int			proto;
+};
+
+struct netmsg_genpkt {
+	struct netmsg_base	base;
+	struct mbuf		*m;
+	void			*arg1;
+	u_long			arg2;
 };
 
 struct netmsg_pr_timeout {

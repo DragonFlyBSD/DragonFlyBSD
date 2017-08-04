@@ -97,12 +97,14 @@ struct m_hdr {
 		struct netmsg_pru_send mhm_snd;	/* usrspace->proto stack msg */
 		struct netmsg_inarp mhm_arp;	/* proto stack arpinput msg */
 		struct netmsg_ctlinput mhm_ctl;	/* proto stack ctlinput msg */
+		struct netmsg_genpkt mhm_gen;	/* generic pkt send/recv msg */
 	} mh_msgu;
 };
 #define mh_netmsg	mh_msgu.mhm_pkt
 #define mh_sndmsg	mh_msgu.mhm_snd
 #define mh_arpmsg	mh_msgu.mhm_arp
 #define mh_ctlmsg	mh_msgu.mhm_ctl
+#define mh_genmsg	mh_msgu.mhm_gen
 
 /* pf stuff */
 struct pkthdr_pf {
