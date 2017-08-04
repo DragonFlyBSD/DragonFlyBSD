@@ -189,6 +189,8 @@ pfsync_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 static int
 pfsync_clone_destroy(struct ifnet *ifp)
 {
+	struct netmsg_base msg;
+
 	lwkt_gettoken(&pf_token);
 	lwkt_reltoken(&pf_token);
 
@@ -201,6 +203,11 @@ pfsync_clone_destroy(struct ifnet *ifp)
 	if (!pfsync_sync_ok)
 		carp_group_demote_adj(&sc->sc_if, -1);
 #endif
+
+	/* Unpend async sendouts. */
+	netmsg_init(&msg, NULL, &curthread->td_msgport, 0, netmsg_sync_handler);
+	netisr_domsg(&msg, 0);
+
 #if NBPFILTER > 0
 	bpfdetach(ifp);
 #endif
@@ -1666,7 +1673,14 @@ pfsync_bulkfail(void *v)
 	}
 }
 
-/* This must be called in splnet() */
+static void
+pfsync_sendout_handler(netmsg_t nmsg)
+{
+	struct netmsg_genpkt *msg = (struct netmsg_genpkt *)nmsg;
+
+	pfsync_sendout_mbuf(msg->arg1, msg->m);
+}
+
 int
 pfsync_sendout(struct pfsync_softc *sc)
 {
@@ -1674,6 +1688,7 @@ pfsync_sendout(struct pfsync_softc *sc)
 	struct ifnet *ifp = &sc->sc_if;
 #endif
 	struct mbuf *m;
+	struct netmsg_genpkt *msg;
 
 	ASSERT_LWKT_TOKEN_HELD(&pf_token);
 
@@ -1703,7 +1718,14 @@ pfsync_sendout(struct pfsync_softc *sc)
 		sc->sc_statep_net.s = NULL;
 	}
 
-	return pfsync_sendout_mbuf(sc, m);
+	msg = &m->m_hdr.mh_genmsg;
+	netmsg_init(&msg->base, NULL, &netisr_apanic_rport, 0,
+	    pfsync_sendout_handler);
+	msg->m = m;
+	msg->arg1 = sc;
+	netisr_sendmsg(&msg->base, 0);
+
+	return (0);
 }
 
 int
