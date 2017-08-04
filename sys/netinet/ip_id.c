@@ -44,11 +44,12 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/random.h>
-#include <sys/spinlock.h>
 #include <sys/globaldata.h>
-#include <netinet/ip_var.h>
 
-#include <sys/spinlock2.h>
+#include <net/netmsg2.h>
+#include <net/netisr2.h>
+
+#include <netinet/ip_var.h>
 
 #define IPRANDCOUNT	32
 
@@ -56,11 +57,23 @@ typedef struct iprandinfo {
 	short	randdata[IPRANDCOUNT];
 	int	randidx;
 	int	isidx;
-} *iprandinfo_t;
+} *iprandinfo_t __cachealign;
 
 struct iprandinfo iprandcpu[MAXCPU];
 
 static u_int16_t ip_shuffle[65536];
+
+static void
+ip_idinit_handler(netmsg_t msg)
+{
+	int i;
+
+	for (i = 0; i < 65536; ++i)
+		ip_randomid();
+
+	/* Done! */
+	netisr_replymsg(&msg->base, 0);
+}
 
 /*
  * Initialize the shuffle.  We assume that the system PRNG won't be all that
@@ -68,28 +81,28 @@ static u_int16_t ip_shuffle[65536];
  * reshuffled as they are popped and the PRNG should be better then.
  */
 static void
-ip_initshuffle(void *dummy __unused)
+ip_idinit_shuffle(void *dummy __unused)
 {
+	struct netmsg_base msg;
 	int i;
 
 	for (i = 0; i < 65536; ++i)
 		ip_shuffle[i] = i;
-	for (i = 0; i < 65536; ++i)
-		ip_randomid();
 	for (i = 0; i < ncpus; ++i) {
+		netmsg_init(&msg, NULL, &curthread->td_msgport, 0,
+		    ip_idinit_handler);
+		netisr_domsg(&msg, i);
 		iprandcpu[i].isidx = i * (65536 / ncpus_fit);
 	}
 }
 
-SYSINIT(ipshuffle, SI_SUB_PSEUDO, SI_ORDER_ANY, ip_initshuffle, NULL);
+SYSINIT(ipshuffle, SI_SUB_PSEUDO, SI_ORDER_ANY, ip_idinit_shuffle, NULL);
 
 /*
  * Return a random IP id.  Use a forward shuffle over half the index
  * space to avoid duplicates occuring too quickly.  Since the initial
  * shuffle may not have had a good random basis we returned the element
  * at the shuffle target instead of the current element.
- *
- * XXX make per-cpu so the spinlock can be removed?
  */
 u_int16_t
 ip_randomid(void)
@@ -100,7 +113,6 @@ ip_randomid(void)
 	int i1, i2;
 
 	info = &iprandcpu[gd->gd_cpuid];
-	crit_enter();
 
 	/*
 	 * Reload random array efficiently
@@ -128,7 +140,5 @@ ip_randomid(void)
 	ip_shuffle[i1] = r;
 	info->isidx += ncpus_fit;
 
-	crit_exit();
-	return(r);
+	return (r);
 }
-
