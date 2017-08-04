@@ -3218,6 +3218,9 @@ TO_REMOVE+=/usr/share/man/man8/kernbb.8.gz
 TO_REMOVE+=/usr/include/stab.h
 TO_REMOVE+=/usr/share/man/man5/stab.5.gz
 TO_REMOVE+=/usr/include/struct.h
+TO_REMOVE+=/usr/include/sys/device_port.h
+TO_REMOVE+=/usr/include/sys/ieee754.h
+TO_REMOVE+=/usr/include/sys/nlist_aout.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
