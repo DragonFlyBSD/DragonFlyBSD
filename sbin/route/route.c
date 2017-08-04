@@ -80,7 +80,7 @@ typedef union sockunion *sup;
 int	nflag, wflag;
 int	cpuflag = -1;
 
-static struct ortentry route;
+static struct sockaddr_in so_gate_tried;
 static struct rt_metrics rt_metrics;
 static int	pid, rtm_addrs;
 static int	s;
@@ -807,6 +807,7 @@ newroute(int argc, char **argv)
 			break;
 		if (af == AF_INET && *gateway != '\0' &&
 		    hp != NULL && hp->h_addr_list[1] != NULL) {
+			so_gate_tried = so_gate.sin;
 			hp->h_addr_list++;
 			memmove(&so_gate.sin.sin_addr,
 				hp->h_addr_list[0],
@@ -822,9 +823,10 @@ newroute(int argc, char **argv)
 		printf("%s %s %s", cmd, ishost? "host" : "net", dest);
 		if (*gateway != '\0') {
 			printf(": gateway %s", gateway);
-			if (attempts > 1 && ret == 0 && af == AF_INET)
-			    printf(" (%s)",
-				inet_ntoa(((struct sockaddr_in *)&route.rt_gateway)->sin_addr));
+			if (attempts > 1 && ret == 0 && af == AF_INET) {
+				printf(" (%s)",
+				    inet_ntoa(so_gate_tried.sin_addr));
+			}
 		}
 		if (ret == 0) {
 			printf("\n");
@@ -1359,8 +1361,8 @@ const char *msgtypes[] = {
 	"RTM_REDIRECT: Told to use different route",
 	"RTM_MISS: Lookup failed on this address",
 	"RTM_LOCK: fix specified metrics",
-	"RTM_OLDADD: caused by SIOCADDRT",
-	"RTM_OLDDEL: caused by SIOCDELRT",
+	"0x9: unused",
+	"0xa: unused",
 	"RTM_RESOLVE: Route created by cloning",
 	"RTM_NEWADDR: address being added to iface",
 	"RTM_DELADDR: address being removed from iface",

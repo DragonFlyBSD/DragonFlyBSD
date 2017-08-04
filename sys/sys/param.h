@@ -158,9 +158,10 @@
  * 400906 - lwpid_t >=1, instead of >=0
  * 400907 - pthread_getthreadid_np()
  * 400908 - {clock,pthread}_getcpuclockid()
+ * 400909 - deleted ortentry, SIOC{ADD,DEL}RT, RTM_OLD{ADD,DEL}
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400908	/* propagated to newvers */
+#define __DragonFly_version 400909	/* propagated to newvers */
 
 #include <sys/_null.h>
 
