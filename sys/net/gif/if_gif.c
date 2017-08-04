@@ -55,7 +55,7 @@
 #include <net/if.h>
 #include <net/if_types.h>
 #include <net/ifq_var.h>
-#include <net/netisr.h>
+#include <net/netisr2.h>
 #include <net/route.h>
 #include <net/bpf.h>
 #include <net/if_clone.h>
@@ -201,33 +201,27 @@ static void
 gif_clear_cache(struct gif_softc *sc)
 {
 	struct rtentry *rt;
-	int origcpu;
 	int n;
 
-	for (n = 0; n < ncpus; ++n) {
+	for (n = 0; n < netisr_ncpus; ++n) {
 		rt = sc->gif_ro[n].ro_rt;
-		/*
-		 * Routes need to be cleaned up in their CPU so migrate
-		 * to it and return to the original CPU after completion.
-		 */
-		origcpu = mycpuid;
-		if (rt && rt->rt_cpuid != mycpuid)
-			lwkt_migratecpu(rt->rt_cpuid);
-		else
-			origcpu = -1;
-
-		if (sc->gif_ro[n].ro_rt) {
-			RTFREE(sc->gif_ro[n].ro_rt);
+		if (rt != NULL) {
+			KASSERT(rt->rt_cpuid == n,
+			    ("inet rt for cpu%d installed on cpu%d slot",
+			     rt->rt_cpuid, n));
+			rtfree_async(rt);
 			sc->gif_ro[n].ro_rt = NULL;
 		}
 #ifdef INET6
-		if (sc->gif_ro6[n].ro_rt) {
-			RTFREE(sc->gif_ro6[n].ro_rt);
+		rt = sc->gif_ro6[n].ro_rt;
+		if (rt != NULL) {
+			KASSERT(rt->rt_cpuid == n,
+			    ("inet6 rt for cpu%d installed on cpu%d slot",
+			     rt->rt_cpuid, n));
+			rtfree_async(rt);
 			sc->gif_ro6[n].ro_rt = NULL;
 		}
 #endif
-		if (origcpu >= 0)
-			lwkt_migratecpu(origcpu);
 	}
 }
 
@@ -412,6 +406,8 @@ gif_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 {
 	struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
 	int error;
+
+	ASSERT_NETISR_NCPUS(curthread, mycpuid);
 
 	ifsq_serialize_hw(ifsq);
 	error = gif_output_serialized(ifp, m, dst, rt);
