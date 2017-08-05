@@ -1,5 +1,4 @@
 /* $FreeBSD: src/usr.bin/kdump/kdump_subr.h,v 1.3 2007/04/09 22:04:27 emaste Exp $ */
-/* $DragonFly: src/usr.bin/kdump/kdump_subr.h,v 1.1 2008/01/01 14:09:02 matthias Exp $ */
 
 void signame (int);
 void semctlname (int);
@@ -47,3 +46,4 @@ void lio_listioname (int);
 void minheritname (int);
 void quotactlname (int);
 void ptraceopname (int);
+void clockidname (int);

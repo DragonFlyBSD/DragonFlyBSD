@@ -147,6 +147,7 @@ cat <<_EOF_
 #define _KERNEL_STRUCTURES
 
 #include <stdio.h>
+#include <time.h>
 #include <sys/fcntl.h>
 #include <sys/stat.h>
 #include <sys/unistd.h>
@@ -347,6 +348,7 @@ auto_if_type "sockipprotoname" "IPPROTO_[[:alnum:]]+[[:space:]]+" "netinet/in.h"
 auto_switch_type "sockoptname" "SO_[A-Z]+[[:space:]]+0x[0-9]+" "sys/socket.h"
 auto_switch_type "socktypename" "SOCK_[A-Z]+[[:space:]]+[1-9]+[0-9]*" "sys/socket.h"
 auto_switch_type "ptraceopname" "PT_[[:alnum:]]+[[:space:]]+[0-9]+" "sys/ptrace.h"
+auto_switch_type "clockidname" "CLOCK_[[:alnum:]]+" "time.h" "noinvdef"
 
 cat <<_EOF_
 /*

@@ -674,6 +674,14 @@ ktrsyscall(struct ktr_syscall *ktr)
 				c = ',';
 				ip++;
 				narg--;
+			} else if (ktr->ktr_code == SYS_clock_getres ||
+				   ktr->ktr_code == SYS_clock_gettime ||
+				   ktr->ktr_code == SYS_clock_settime) {
+				putchar('(');
+				clockidname((int)*ip);
+				ip++;
+				narg--;
+				c = ',';
 			}
 		}
 		while (narg > 0) {
