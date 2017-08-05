@@ -45,6 +45,5 @@ void sigprocmaskhowname (int);
 void lio_listioname (int);
 void minheritname (int);
 void quotactlname (int);
-void ptraceopname (int);
 void clockidname (int);
 void pathconfname (int);
