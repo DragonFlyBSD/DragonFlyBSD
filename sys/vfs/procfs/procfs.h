@@ -70,7 +70,7 @@ struct pfsnode {
 	u_short		pfs_mode;	/* mode bits for stat() */
 	u_long		pfs_flags;	/* open flags */
 	u_long		pfs_fileno;	/* unique file id */
-	pid_t		pfs_lockowner;	/* pfs lock owner */
+	struct lock	pfs_lock;	/* pfs locked */
 };
 
 #define PROCFS_NOTELEN	64	/* max length of a note (/proc/$pid/note) */
@@ -152,9 +152,6 @@ int procfs_validtype (struct lwp *);
 struct proc *pfs_pfind(pid_t);
 struct proc *pfs_zpfind(pid_t);
 void pfs_pdone(struct proc *);
-
-#define PROCFS_LOCKED	0x01
-#define PROCFS_WANT	0x02
 
 #define PFS_DEAD        0x80000000	/* or'd with pid */
 
