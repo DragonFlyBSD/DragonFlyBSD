@@ -50,7 +50,7 @@
 #define PFS_HMASK	(PFS_HSIZE - 1)
 
 static struct pfsnode *pfshead[PFS_HSIZE];
-static int pfsvplock;
+static struct lock	procfslk = LOCK_INITIALIZER("pvplk", 0, 0);
 
 #define PFSHASH(pid)	&pfshead[(pid) & PFS_HMASK]
 
@@ -124,12 +124,8 @@ loop:
 	 * otherwise lock the vp list while we call getnewvnode
 	 * since that can block.
 	 */
-	if (pfsvplock & PROCFS_LOCKED) {
-		pfsvplock |= PROCFS_WANT;
-		(void) tsleep((caddr_t) &pfsvplock, 0, "pfsavp", 0);
+	if (lockmgr(&procfslk, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		goto loop;
-	}
-	pfsvplock |= PROCFS_LOCKED;
 
 	/*
 	 * Do the MALLOC before the getnewvnode since doing so afterward
@@ -155,8 +151,8 @@ loop:
 	pfs->pfs_type = pfs_type;
 	pfs->pfs_vnode = vp;
 	pfs->pfs_flags = 0;
-	pfs->pfs_lockowner = 0;
 	pfs->pfs_fileno = PROCFS_FILENO(pid, pfs_type);
+	lockinit(&pfs->pfs_lock, "pfslk", 0, 0);
 
 	switch (pfs_type) {
 	case Proot:	/* /proc = dr-xr-xr-x */
@@ -227,12 +223,7 @@ loop:
 	*pp = pfs;
 
 out:
-	pfsvplock &= ~PROCFS_LOCKED;
-
-	if (pfsvplock & PROCFS_WANT) {
-		pfsvplock &= ~PROCFS_WANT;
-		wakeup((caddr_t) &pfsvplock);
-	}
+	lockmgr(&procfslk, LK_RELEASE);
 
 	return (error);
 }
@@ -357,10 +348,7 @@ procfs_rw(struct vop_read_args *ap)
 	lp = FIRST_LWP_IN_PROC(p);
 	LWPHOLD(lp);
 
-	while (pfs->pfs_lockowner) {
-		tsleep(&pfs->pfs_lockowner, 0, "pfslck", 0);
-	}
-	pfs->pfs_lockowner = curproc->p_pid;
+	lockmgr(&pfs->pfs_lock, LK_EXCLUSIVE);
 
 	switch (pfs->pfs_type) {
 	case Pnote:
@@ -414,9 +402,7 @@ procfs_rw(struct vop_read_args *ap)
 	}
 	LWPRELE(lp);
 
-	pfs->pfs_lockowner = 0;
-	wakeup(&pfs->pfs_lockowner);
-
+	lockmgr(&pfs->pfs_lock, LK_RELEASE);
 out:
 	pfs_pdone(p);
 
