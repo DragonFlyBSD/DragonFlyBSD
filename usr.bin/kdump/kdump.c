@@ -309,12 +309,22 @@ ktrsyscall(struct ktr_syscall *ktr)
 				c = ',';
 				ip++;
 				narg--;
-			} else if (ktr->ktr_code == SYS_access) {
+			} else if (ktr->ktr_code == SYS_access ||
+				   ktr->ktr_code == SYS_eaccess ||
+				   ktr->ktr_code == SYS_faccessat) {
+				if (ktr->ktr_code == SYS_faccessat)
+					print_number(ip,narg,c);
 				print_number(ip,narg,c);
 				putchar(',');
 				accessmodename ((int)*ip);
 				ip++;
 				narg--;
+				if (ktr->ktr_code == SYS_faccessat) {
+					putchar(',');
+					atflagsname((int)*ip);
+					ip++;
+					narg--;
+				}
 			} else if (ktr->ktr_code == SYS_open ||
 				   ktr->ktr_code == SYS_mq_open) {
 				int	flags;
@@ -335,10 +345,35 @@ ktrsyscall(struct ktr_syscall *ktr)
 				narg--;
 			} else if (ktr->ktr_code == SYS_chmod ||
 				   ktr->ktr_code == SYS_fchmod ||
+				   ktr->ktr_code == SYS_fchmodat ||
 				   ktr->ktr_code == SYS_lchmod) {
+				if (ktr->ktr_code == SYS_fchmodat)
+					print_number(ip,narg,c);
 				print_number(ip,narg,c);
 				putchar(',');
 				modename ((int)*ip);
+				ip++;
+				narg--;
+				if (ktr->ktr_code == SYS_fchmodat) {
+					putchar(',');
+					atflagsname((int)*ip);
+					ip++;
+					narg--;
+				}
+			} else if (ktr->ktr_code == SYS_fchownat ||
+				   ktr->ktr_code == SYS_fstatat ||
+				   ktr->ktr_code == SYS_linkat ||
+				   ktr->ktr_code == SYS_unlinkat ||
+				   ktr->ktr_code == SYS_utimensat) {
+				print_number(ip,narg,c);
+				print_number(ip,narg,c);
+				if (ktr->ktr_code != SYS_unlinkat)
+					print_number(ip,narg,c);
+				if (ktr->ktr_code == SYS_fchownat ||
+				    ktr->ktr_code == SYS_linkat)
+					print_number(ip,narg,c);
+				putchar(',');
+				atflagsname((int)*ip);
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_mknod) {
@@ -347,8 +382,11 @@ ktrsyscall(struct ktr_syscall *ktr)
 				modename ((int)*ip);
 				ip++;
 				narg--;
-			} else if (ktr->ktr_code == SYS_getfsstat) {
+			} else if (ktr->ktr_code == SYS_getfsstat ||
+				   ktr->ktr_code == SYS_getvfsstat) {
 				print_number(ip,narg,c);
+				if (ktr->ktr_code == SYS_getvfsstat)
+					print_number(ip,narg,c);
 				print_number(ip,narg,c);
 				putchar(',');
 				getfsstatflagsname ((int)*ip);
@@ -385,12 +423,22 @@ ktrsyscall(struct ktr_syscall *ktr)
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_chflags ||
-				   ktr->ktr_code == SYS_fchflags) {
+				   ktr->ktr_code == SYS_chflagsat ||
+				   ktr->ktr_code == SYS_fchflags ||
+				   ktr->ktr_code == SYS_lchflags) {
+				if (ktr->ktr_code == SYS_chflagsat)
+					print_number(ip,narg,c);
 				print_number(ip,narg,c);
 				putchar(',');
-				modename((int)*ip);
+				chflagsname((int)*ip);
 				ip++;
 				narg--;
+				if (ktr->ktr_code == SYS_chflagsat) {
+					putchar(',');
+					atflagsname((int)*ip);
+					ip++;
+					narg--;
+				}
 			} else if (ktr->ktr_code == SYS_kill) {
 				print_number(ip,narg,c);
 				putchar(',');
@@ -690,6 +738,46 @@ ktrsyscall(struct ktr_syscall *ktr)
 				pathconfname((int)*ip);
 				ip++;
 				narg--;
+			} else if (ktr->ktr_code == SYS_kenv) {
+				putchar('(');
+				kenvactname((int)*ip);
+				ip++;
+				narg--;
+				c = ',';
+			} else if (ktr->ktr_code == SYS_usched_set) {
+				print_number(ip,narg,c);
+				putchar(',');
+				uschedcmdname((int)*ip);
+				ip++;
+				narg--;
+			} else if (ktr->ktr_code == SYS_sys_checkpoint) {
+				putchar('(');
+				ckpttypename((int)*ip);
+				ip++;
+				narg--;
+				c = ',';
+			} else if (ktr->ktr_code == SYS_procctl) {
+				print_number(ip,narg,c);
+				print_number(ip,narg,c);
+				putchar(',');
+				procctlcmdname((int)*ip);
+				ip++;
+				narg--;
+				c = ',';
+			} else if (ktr->ktr_code == SYS_mountctl) {
+				print_number(ip,narg,c);
+				putchar(',');
+				mountctlopname((int)*ip);
+				ip++;
+				narg--;
+				c = ',';
+			} else if (ktr->ktr_code == SYS_varsym_list ||
+				   ktr->ktr_code == SYS_varsym_set) {
+				putchar('(');
+				varsymlvlname((int)*ip);
+				ip++;
+				narg--;
+				c = ',';
 			}
 		}
 		while (narg > 0) {
