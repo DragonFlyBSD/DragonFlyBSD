@@ -682,6 +682,14 @@ ktrsyscall(struct ktr_syscall *ktr)
 				ip++;
 				narg--;
 				c = ',';
+			} else if (ktr->ktr_code == SYS_fpathconf ||
+				   ktr->ktr_code == SYS_lpathconf ||
+				   ktr->ktr_code == SYS_pathconf) {
+				print_number(ip,narg,c);
+				putchar(',');
+				pathconfname((int)*ip);
+				ip++;
+				narg--;
 			}
 		}
 		while (narg > 0) {

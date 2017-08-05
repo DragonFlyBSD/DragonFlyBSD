@@ -47,3 +47,4 @@ void minheritname (int);
 void quotactlname (int);
 void ptraceopname (int);
 void clockidname (int);
+void pathconfname (int);

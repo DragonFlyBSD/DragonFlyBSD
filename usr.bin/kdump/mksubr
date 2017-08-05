@@ -349,6 +349,7 @@ auto_switch_type "sockoptname" "SO_[A-Z]+[[:space:]]+0x[0-9]+" "sys/socket.h"
 auto_switch_type "socktypename" "SOCK_[A-Z]+[[:space:]]+[1-9]+[0-9]*" "sys/socket.h"
 auto_switch_type "ptraceopname" "PT_[[:alnum:]]+[[:space:]]+[0-9]+" "sys/ptrace.h"
 auto_switch_type "clockidname" "CLOCK_[[:alnum:]]+" "time.h" "noinvdef"
+auto_switch_type "pathconfname" "_PC_[[:alnum:]]+" "sys/unistd.h"
 
 cat <<_EOF_
 /*
