@@ -473,6 +473,7 @@ nlookup(struct nlookupdata *nd)
     struct vnode *hvp;		/* hold to prevent recyclement */
     int wasdotordotdot;
     char *ptr;
+    char *nptr;
     int error;
     int len;
     int dflags;
@@ -553,21 +554,37 @@ nlookup_start:
 	}
 
 	/*
-	 * Check directory search permissions (nd->nl_nch is locked & refd)
+	 * Pre-calculate next path component so we can check whether the
+	 * current component directory is the last directory in the path
+	 * or not.
+	 */
+	for (nptr = ptr; *nptr && *nptr != '/'; ++nptr)
+		;
+
+	/*
+	 * Check directory search permissions (nd->nl_nch is locked & refd).
+	 * This will load dflags to obtain directory-special permissions to
+	 * be checked along with the last component.
+	 *
+	 * We only need to pass-in &dflags for the second-to-last component.
+	 * Optimize by passing-in NULL for any prior components, which may
+	 * allow the code to bypass the naccess() call.
 	 */
 	dflags = 0;
-	error = naccess(&nd->nl_nch, NLC_EXEC, nd->nl_cred, &dflags);
+	if (*nptr == '/')
+	    error = naccess(&nd->nl_nch, NLC_EXEC, nd->nl_cred, NULL);
+	else
+	    error = naccess(&nd->nl_nch, NLC_EXEC, nd->nl_cred, &dflags);
 	if (error)
 	    break;
 
 	/*
-	 * Extract the path component.  Path components are limited to
-	 * 255 characters.
+	 * Extract the next (or last) path component.  Path components are
+	 * limited to 255 characters.
 	 */
 	nlc.nlc_nameptr = ptr;
-	while (*ptr && *ptr != '/')
-	    ++ptr;
-	nlc.nlc_namelen = ptr - nlc.nlc_nameptr;
+	nlc.nlc_namelen = nptr - ptr;
+	ptr = nptr;
 	if (nlc.nlc_namelen >= 256) {
 	    error = ENAMETOOLONG;
 	    break;
@@ -1182,8 +1199,11 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
      * components.  This is a major SMP win because it avoids having
      * to execute a lot of code for intermediate directory components,
      * including shared refs and locks on intermediate directory vnodes.
+     *
+     * We can only do this if the caller does not need nflagsp.
      */
-    if (error == 0 && nflags == NLC_EXEC && (ncp->nc_flag & NCF_WXOK)) {
+    if (error == 0 && nflagsp == NULL &&
+	nflags == NLC_EXEC && (ncp->nc_flag & NCF_WXOK)) {
 	return 0;
     }
 
