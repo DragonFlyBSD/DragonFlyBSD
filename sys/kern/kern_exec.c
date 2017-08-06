@@ -1032,8 +1032,9 @@ exec_copyout_strings(struct image_params *imgp)
 	/*
 	 * Calculate destp, which points to [args & env] and above.
 	 */
-	szsigbase = (char *)(intptr_t)trunc_page64(
-					(intptr_t)arginfo - szsigcode);
+	szsigbase = (char *)(intptr_t)
+		    trunc_page64((intptr_t)arginfo - szsigcode);
+	szsigbase -= SZSIGCODE_EXTRA_BYTES;
 	destp = szsigbase -
 		roundup(execpath_len, sizeof(char *)) -
 		SPARE_USRSPACE -

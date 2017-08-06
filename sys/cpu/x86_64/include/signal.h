@@ -97,4 +97,8 @@ struct	sigcontext {
 
 #endif /* __BSD_VISIBLE */
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#define SZSIGCODE_EXTRA_BYTES	(1*PAGE_SIZE)
+#endif
+
 #endif /* !_CPU_SIGNAL_H_ */

@@ -1866,6 +1866,7 @@ sysctl_kern_proc_sigtramp(SYSCTL_HANDLER_ARGS)
 
 		sigbase = trunc_page64((intptr_t)PS_STRINGS -
 				       *sv->sv_szsigcode);
+		sigbase -= SZSIGCODE_EXTRA_BYTES;
 
                 kst.ksigtramp_start = (void *)sigbase;
                 kst.ksigtramp_end = (void *)(sigbase + *sv->sv_szsigcode);
