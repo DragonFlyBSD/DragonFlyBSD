@@ -94,6 +94,7 @@
 #include <net/netisr.h>
 #include <net/if_types.h>
 #include <net/ifq_var.h>
+#include <net/netisr2.h>
 #include "if_stf.h"
 
 #include <netinet/in.h>
@@ -120,11 +121,7 @@
 
 struct stf_softc {
 	struct ifnet	sc_if;	   /* common area */
-	union {
-		struct route  __sc_ro4;
-		struct route_in6 __sc_ro6; /* just for safety */
-	} __sc_ro46;
-#define sc_ro	__sc_ro46.__sc_ro4
+	struct route	*route_pcpu;
 	const struct encaptab *encap_cookie;
 };
 
@@ -165,7 +162,7 @@ static int
 stfmodevent(module_t mod, int type, void *data)
 {
 	struct stf_softc *sc;
-	int err;
+	int err, cpu;
 	const struct encaptab *p;
 
 	switch (type) {
@@ -184,6 +181,8 @@ stfmodevent(module_t mod, int type, void *data)
 			return (ENOMEM);
 		}
 		sc->encap_cookie = p;
+		sc->route_pcpu = kmalloc(netisr_ncpus * sizeof(struct route),
+		    M_STF, M_WAITOK | M_ZERO);
 
 		sc->sc_if.if_mtu    = IPV6_MMTU;
 		sc->sc_if.if_flags  = 0;
@@ -204,6 +203,13 @@ stfmodevent(module_t mod, int type, void *data)
 		if_detach(&sc->sc_if);
 		err = encap_detach(sc->encap_cookie);
 		KASSERT(err == 0, ("Unexpected error detaching encap_cookie"));
+		for (cpu = 0; cpu < netisr_ncpus; ++cpu) {
+			if (sc->route_pcpu[cpu].ro_rt != NULL) {
+				rtfree_async(sc->route_pcpu[cpu].ro_rt);
+				sc->route_pcpu[cpu].ro_rt = NULL;
+			}
+		}
+		kfree(sc->route_pcpu, M_STF);
 		kfree(sc, M_STF);
 		break;
 	}
@@ -322,7 +328,10 @@ stf_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	struct ip *ip;
 	struct ip6_hdr *ip6;
 	struct in6_ifaddr *ia6;
+	struct route *ro;
 	static const uint32_t af = AF_INET6;
+
+	ASSERT_NETISR_NCPUS(curthread, mycpuid);
 
 	sc = (struct stf_softc*)ifp;
 	dst6 = (struct sockaddr_in6 *)dst;
@@ -392,28 +401,33 @@ stf_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	else
 		ip_ecn_ingress(ECN_NOCARE, &ip->ip_tos, &tos);
 
-	dst4 = (struct sockaddr_in *)&sc->sc_ro.ro_dst;
+	ro = &sc->route_pcpu[mycpuid];
+	dst4 = (struct sockaddr_in *)&ro->ro_dst;
 	if (dst4->sin_family != AF_INET ||
 	    bcmp(&dst4->sin_addr, &ip->ip_dst, sizeof(ip->ip_dst)) != 0) {
 		/* cache route doesn't match */
 		dst4->sin_family = AF_INET;
 		dst4->sin_len = sizeof(struct sockaddr_in);
 		bcopy(&ip->ip_dst, &dst4->sin_addr, sizeof(dst4->sin_addr));
-		if (sc->sc_ro.ro_rt) {
-			RTFREE(sc->sc_ro.ro_rt);
-			sc->sc_ro.ro_rt = NULL;
+		if (ro->ro_rt) {
+			RTFREE(ro->ro_rt);
+			ro->ro_rt = NULL;
 		}
 	}
+	if (ro->ro_rt != NULL && (ro->ro_rt->rt_flags & RTF_UP) == 0) {
+		RTFREE(ro->ro_rt);
+		ro->ro_rt = NULL;
+	}
 
-	if (sc->sc_ro.ro_rt == NULL) {
-		rtalloc(&sc->sc_ro);
-		if (sc->sc_ro.ro_rt == NULL) {
+	if (ro->ro_rt == NULL) {
+		rtalloc(ro);
+		if (ro->ro_rt == NULL) {
 			m_freem(m);
 			return ENETUNREACH;
 		}
 	}
 
-	return ip_output(m, NULL, &sc->sc_ro, 0, NULL, NULL);
+	return ip_output(m, NULL, ro, IP_DEBUGROUTE, NULL, NULL);
 }
 
 static int
