@@ -52,7 +52,7 @@ struct gre_softc {
 	int gre_flags;
 	struct in_addr g_src;	/* source address of gre packets */
 	struct in_addr g_dst;	/* destination address of gre packets */
-	struct route route;	/* routing entry that determines, where a
+	struct route *route_pcpu;/* routing entry that determines, where a
 				   encapsulated packet should go */
 	u_char g_proto;		/* protocol of encapsulator */
 
