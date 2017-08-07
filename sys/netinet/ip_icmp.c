@@ -349,7 +349,7 @@ icmp_mtudisc_start(struct mbuf *m, int hlen, int proto)
 {
 	struct netmsg_ctlinput *msg;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	icmp_mtudisc(m, hlen);
 
@@ -438,7 +438,7 @@ icmp_ctlinput_global_start(struct mbuf *m, int cmd, int hlen, int proto)
 {
 	struct netmsg_ctlinput *msg;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 	KASSERT(ncpus > 1, ("there is only 1 cpu"));
 
 	icmp_ctlinput(m, cmd, hlen);
@@ -565,7 +565,7 @@ icmp_redirect_start(struct mbuf *m, int hlen, int proto)
 {
 	struct netmsg_ctlinput *msg;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	icmp_redirect(m, hlen, TRUE);
 
@@ -603,7 +603,7 @@ icmp_input(struct mbuf **mp, int *offp, int proto)
 	int i, hlen;
 	int code;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	*mp = NULL;
 	hlen = *offp;

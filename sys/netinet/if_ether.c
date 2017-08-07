@@ -1039,7 +1039,7 @@ match:
 	 *
 	 * However, we only need to generate rtmsg on CPU0.
 	 */
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 	changed = arp_update_oncpu(m, isaddr.s_addr,
 				   itaddr.s_addr == myaddr.s_addr,
 				   RTL_REPORTMSG, TRUE);

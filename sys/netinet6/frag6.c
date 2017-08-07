@@ -620,7 +620,7 @@ frag6_slowtimo_dispatch(netmsg_t nmsg)
 {
 	struct ip6q *q6;
 
-	ASSERT_NETISR_NCPUS(curthread, 0);
+	ASSERT_NETISR0;
 
 	/* Reply ASAP. */
 	crit_enter();
@@ -690,7 +690,7 @@ static void
 frag6_drain_oncpu(void)
 {
 
-	ASSERT_NETISR_NCPUS(curthread, 0);
+	ASSERT_NETISR0;
 
 	if (frag6_doing_reass)
 		return;
@@ -705,7 +705,7 @@ static void
 frag6_drain_dispatch(netmsg_t nmsg)
 {
 
-	ASSERT_NETISR_NCPUS(curthread, 0);
+	ASSERT_NETISR0;
 
 	crit_enter();
 	netisr_replymsg(&nmsg->base, 0);
@@ -732,7 +732,7 @@ void
 frag6_drain(void)
 {
 
-	if (IS_NETISR(curthread, 0)) {
+	if (IN_NETISR(0)) {
 		frag6_drain_oncpu();
 		return;
 	}

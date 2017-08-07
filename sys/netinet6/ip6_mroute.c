@@ -409,7 +409,7 @@ ip6_mrouter_init(struct socket *so, struct mbuf *m, int cmd)
 {
 	int *v;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 #ifdef MRT6DEBUG
 	if (mrt6debug)
@@ -469,7 +469,7 @@ ip6_mrouter_done(void)
 	struct rtdetq *rte;
 	struct lwkt_msg *lmsg = &expire_upcalls_nmsg.lmsg;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	if (ip6_mrouter == NULL)
 		return EINVAL;
@@ -1208,7 +1208,7 @@ expire_upcalls_dispatch(netmsg_t nmsg)
 	struct mf6c *mfc, **nptr;
 	int i;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	/* Reply ASAP */
 	crit_enter();

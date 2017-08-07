@@ -526,7 +526,7 @@ stpoll_handler(netmsg_t msg)
 	struct thread *td = curthread;
 	int i;
 
-	ASSERT_IS_NETISR(td, 0);
+	ASSERT_NETISR0;
 
 	crit_enter_quick(td);
 
@@ -575,7 +575,7 @@ stpoll_register(struct ifnet *ifp, const struct ifpoll_status *st_rec)
 	struct stpoll_ctx *st_ctx = &stpoll_context;
 	int error;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	if (st_rec->status_func == NULL)
 		return 0;
@@ -618,7 +618,7 @@ stpoll_deregister(struct ifnet *ifp)
 	struct stpoll_ctx *st_ctx = &stpoll_context;
 	int i, error;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	for (i = 0; i < st_ctx->poll_handlers; ++i) {
 		if (st_ctx->pr[i].ifp == ifp) /* Found it */

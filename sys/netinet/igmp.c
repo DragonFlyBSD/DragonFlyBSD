@@ -416,7 +416,7 @@ igmp_fasttimo_dispatch(netmsg_t nmsg)
 	struct in_multi *inm;
 	struct in_multistep step;
 
-	ASSERT_NETISR_NCPUS(curthread, 0);
+	ASSERT_NETISR0;
 
 	crit_enter();
 	netisr_replymsg(&nmsg->base, 0);	/* reply ASAP */
@@ -465,7 +465,7 @@ igmp_slowtimo_dispatch(netmsg_t nmsg)
 {
 	struct router_info *rti = Head;
 
-	ASSERT_NETISR_NCPUS(curthread, 0);
+	ASSERT_NETISR0;
 
 	crit_enter();
 	netisr_replymsg(&nmsg->base, 0);	/* reply ASAP */

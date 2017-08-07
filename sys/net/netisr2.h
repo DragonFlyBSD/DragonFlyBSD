@@ -127,25 +127,29 @@ netisr_hashport(uint16_t hash)
 	return netisr_cpuport(netisr_hashcpu(hash));
 }
 
-#define IS_NETISR(td, n)	(&(td)->td_msgport == netisr_cpuport((n)))
-#define ASSERT_IS_NETISR(td, n)	\
-	KASSERT(IS_NETISR((td), (n)), ("thread %p is not netisr%d", (td), (n)))
-#define ASSERT_IN_NETISR(n)	ASSERT_IS_NETISR(curthread, (n))
-#define ASSERT_CANDOMSG_NETISR0(td) \
-	KASSERT((td)->td_type != TD_TYPE_NETISR || IS_NETISR((td), 0), \
-	    ("can't domsg to netisr0 from thread %p", (td)))
-#define ASSERT_NETISR_NCPUS(td, n) \
-	KASSERT((n) < netisr_ncpus && IS_NETISR((td), (n)), \
+#define IN_NETISR(n)			\
+	(&curthread->td_msgport == netisr_cpuport((n)))
+#define IN_NETISR_NCPUS(n)		\
+	((n) < netisr_ncpus && IN_NETISR((n)))
+#define ASSERT_NETISR0			\
+	KASSERT(IN_NETISR(0), ("thread %p is not netisr0", curthread))
+#define ASSERT_NETISR_NCPUS(n)		\
+	KASSERT(IN_NETISR_NCPUS(n),	\
 	    ("thread %p cpu%d is not within netisr_ncpus %d", \
-	     (td), (n), netisr_ncpus))
+	     curthread, (n), netisr_ncpus))
 
 static __inline int
 netisr_domsg_port(struct netmsg_base *nm, lwkt_port_t port)
 {
 
 #ifdef INVARIANTS
-	if (port == netisr_cpuport(0))
-		ASSERT_CANDOMSG_NETISR0(curthread);
+	/*
+	 * Only netisr0, netisrN itself, or non-netisr threads
+	 * can perform synchronous message sending to netisrN.
+	 */
+	KASSERT(curthread->td_type != TD_TYPE_NETISR ||
+	    IN_NETISR(0) || port == &curthread->td_msgport,
+	    ("can't domsg to netisr port %p from thread %p", port, curthread));
 #endif
 	return (lwkt_domsg(port, &nm->lmsg, 0));
 }

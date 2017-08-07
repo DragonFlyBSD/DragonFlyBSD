@@ -331,7 +331,7 @@ stf_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	struct route *ro;
 	static const uint32_t af = AF_INET6;
 
-	ASSERT_NETISR_NCPUS(curthread, mycpuid);
+	ASSERT_NETISR_NCPUS(mycpuid);
 
 	sc = (struct stf_softc*)ifp;
 	dst6 = (struct sockaddr_in6 *)dst;

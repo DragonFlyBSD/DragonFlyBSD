@@ -2140,7 +2140,7 @@ static void
 icmp6_fasttimo_dispatch(netmsg_t nmsg)
 {
 
-	ASSERT_NETISR_NCPUS(curthread, 0);
+	ASSERT_NETISR0;
 
 	/* Reply ASAP. */
 	crit_enter();

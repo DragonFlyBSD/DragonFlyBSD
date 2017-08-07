@@ -1276,7 +1276,7 @@ in_pcbpurgeif0(struct inpcbinfo *pcbinfo, struct ifnet *ifp)
 	 * In this case, the pcbinfo must be able to be shared, i.e.
 	 * pcbinfo->infotoken is not NULL.
 	 */
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 	KASSERT(pcbinfo->cpu == 0 || pcbinfo->infotoken != NULL,
 	    ("pcbinfo could not be shared"));
 
@@ -2387,7 +2387,7 @@ struct inpcb *
 in_pcbmarker(void)
 {
 
-	ASSERT_NETISR_NCPUS(curthread, mycpuid);
+	ASSERT_NETISR_NCPUS(mycpuid);
 	return &in_pcbmarkers[mycpuid];
 }
 
@@ -2395,7 +2395,7 @@ struct inpcontainer *
 in_pcbcontainer_marker(void)
 {
 
-	ASSERT_NETISR_NCPUS(curthread, mycpuid);
+	ASSERT_NETISR_NCPUS(mycpuid);
 	return &in_pcbcontainer_markers[mycpuid];
 }
 

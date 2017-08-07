@@ -440,7 +440,7 @@ in_rtqdrain(void)
 	CPUMASK_ASSBMASK(mask, ncpus);
 	CPUMASK_ANDMASK(mask, smp_active_mask);
 
-	if (IS_NETISR(curthread, mycpuid)) {
+	if (IN_NETISR(mycpuid)) {
 		in_rtqdrain_oncpu(&in_rtq_pcpu[mycpuid]);
 		CPUMASK_NANDBIT(mask, mycpuid);
 	}

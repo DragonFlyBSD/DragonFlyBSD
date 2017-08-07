@@ -1307,7 +1307,7 @@ in_addmulti(struct in_addr *ap, struct ifnet *ifp)
 	struct sockaddr_in sin;
 	struct ifmultiaddr *ifma;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	/*
 	 * Call generic routine to add membership or increment
@@ -1352,7 +1352,7 @@ in_delmulti(struct in_multi *inm)
 	struct ifmultiaddr *ifma;
 	struct in_multi my_inm;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	ifma = inm->inm_ifma;
 	my_inm.inm_ifp = NULL ; /* don't send the leave msg */

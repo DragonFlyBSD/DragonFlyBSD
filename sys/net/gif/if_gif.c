@@ -407,7 +407,7 @@ gif_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
 	int error;
 
-	ASSERT_NETISR_NCPUS(curthread, mycpuid);
+	ASSERT_NETISR_NCPUS(mycpuid);
 
 	ifsq_serialize_hw(ifsq);
 	error = gif_output_serialized(ifp, m, dst, rt);

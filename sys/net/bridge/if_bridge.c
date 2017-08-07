@@ -2103,7 +2103,7 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 	int alt_priority;
 
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
-	ASSERT_NETISR_NCPUS(curthread, mycpuid);
+	ASSERT_NETISR_NCPUS(mycpuid);
 	mbuftrackid(m, 65);
 
 	/*
@@ -2301,7 +2301,7 @@ bridge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_ALTQ_SQ_SERIALIZED_HW(ifsq);
-	ASSERT_NETISR_NCPUS(curthread, mycpuid);
+	ASSERT_NETISR_NCPUS(mycpuid);
 
 	ifsq_set_oactive(ifsq);
 	for (;;) {
@@ -2530,7 +2530,7 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	struct mbuf *mc, *mc2;
 
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
-	ASSERT_NETISR_NCPUS(curthread, mycpuid);
+	ASSERT_NETISR_NCPUS(mycpuid);
 	mbuftrackid(m, 67);
 
 	/*

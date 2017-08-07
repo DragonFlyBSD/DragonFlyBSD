@@ -2388,13 +2388,12 @@ in6_ifawithifp(struct ifnet *ifp, struct in6_addr *dst)
 static void
 in6_if_up_dispatch(netmsg_t nmsg)
 {
-	struct lwkt_msg *lmsg = &nmsg->lmsg;
-	struct ifnet *ifp = lmsg->u.ms_resultp;
+	struct ifnet *ifp = nmsg->lmsg.u.ms_resultp;
 	struct ifaddr_container *ifac;
 	struct in6_ifaddr *ia;
 	int dad_delay;		/* delay ticks before DAD output */
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	/*
 	 * special cases, like 6to4, are handled in in6_ifattach
@@ -2412,20 +2411,17 @@ in6_if_up_dispatch(netmsg_t nmsg)
 			nd6_dad_start(ifa, &dad_delay);
 	}
 
-	lwkt_replymsg(lmsg, 0);
+	netisr_replymsg(&nmsg->base, 0);
 }
 
 void
 in6_if_up(struct ifnet *ifp)
 {
 	struct netmsg_base nmsg;
-	struct lwkt_msg *lmsg = &nmsg.lmsg;
-
-	ASSERT_CANDOMSG_NETISR0(curthread);
 
 	netmsg_init(&nmsg, NULL, &curthread->td_msgport, 0, in6_if_up_dispatch);
-	lmsg->u.ms_resultp = ifp;
-	lwkt_domsg(netisr_cpuport(0), lmsg, 0);
+	nmsg.lmsg.u.ms_resultp = ifp;
+	netisr_domsg(&nmsg, 0);
 }
 
 int
@@ -2475,7 +2471,7 @@ in6_setmaxmtu(void)
 	const struct ifnet_array *arr;
 	int i;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	arr = ifnet_array_get();
 	for (i = 0; i < arr->ifnet_count; ++i) {

@@ -629,7 +629,7 @@ pfi_instance_add_dispatch(netmsg_t nmsg)
 			pfi_address_add(ia->ifa_addr, af, net2);
 	}
 done:
-	lwkt_replymsg(&nmsg->lmsg, 0);
+	netisr_replymsg(&nmsg->base, 0);
 }
 
 void
@@ -637,14 +637,12 @@ pfi_instance_add(struct ifnet *ifp, int net, int flags)
 {
 	struct netmsg_pfiadd msg;
 
-	ASSERT_CANDOMSG_NETISR0(curthread);
-
 	netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
 	    pfi_instance_add_dispatch);
 	msg.ifp = ifp;
 	msg.net = net;
 	msg.flags = flags;
-	lwkt_domsg(netisr_cpuport(0), &msg.base.lmsg, 0);
+	netisr_domsg(&msg.base, 0);
 }
 
 void

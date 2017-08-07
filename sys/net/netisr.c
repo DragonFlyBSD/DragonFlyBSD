@@ -667,7 +667,7 @@ netisr_barrier_set(struct netisr_barrier *br)
 	volatile cpumask_t other_cpumask;
 	int i, cur_cpuid;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 	KKASSERT(!br->br_isset);
 
 	other_cpumask = mycpu->gd_other_cpus;
@@ -716,7 +716,7 @@ netisr_barrier_rem(struct netisr_barrier *br)
 {
 	int i, cur_cpuid;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 	KKASSERT(br->br_isset);
 
 	cur_cpuid = mycpuid;

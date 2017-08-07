@@ -877,7 +877,7 @@ tcp_close(struct tcpcb *tp)
 		 * Currently the inheritance could only happen on the
 		 * listen(2) sockets w/ SO_REUSEPORT set.
 		 */
-		ASSERT_IN_NETISR(0);
+		ASSERT_NETISR0;
 		inp_inh = in_pcblocalgroup_last(&tcbinfo[0], inp);
 		if (inp_inh != NULL)
 			tp_inh = intotcpcb(inp_inh);
@@ -905,7 +905,7 @@ tcp_close(struct tcpcb *tp)
 		struct netmsg_listen_detach nmsg;
 
 		KKASSERT(so->so_port == netisr_cpuport(0));
-		ASSERT_IN_NETISR(0);
+		ASSERT_NETISR0;
 		KKASSERT(inp->inp_pcbinfo == &tcbinfo[0]);
 
 		netmsg_init(&nmsg.base, NULL, &curthread->td_msgport,
@@ -1103,7 +1103,7 @@ tcp_drain_oncpu(struct inpcbinfo *pcbinfo)
 	 * we block during the inpcb list iteration, i.e.
 	 * we don't need to use inpcb marker here.
 	 */
-	ASSERT_NETISR_NCPUS(curthread, pcbinfo->cpu);
+	ASSERT_NETISR_NCPUS(pcbinfo->cpu);
 
 	LIST_FOREACH(inpb, head, inp_list) {
 		struct tcpcb *tcpb;
@@ -1166,7 +1166,7 @@ tcp_drain(void)
 	CPUMASK_ANDMASK(mask, smp_active_mask);
 
 	cpu = mycpuid;
-	if (cpu < netisr_ncpus && IS_NETISR(curthread, cpu)) {
+	if (IN_NETISR_NCPUS(cpu)) {
 		tcp_drain_oncpu(&tcbinfo[mycpuid]);
 		CPUMASK_NANDBIT(mask, cpu);
 	}
@@ -1533,7 +1533,7 @@ tcp_ctlinput(netmsg_t msg)
 	} else {
 		struct netmsg_tcp_notify *nm;
 
-		ASSERT_IN_NETISR(0);
+		ASSERT_NETISR0;
 		nm = kmalloc(sizeof(*nm), M_LWKTMSG, M_INTWAIT);
 		netmsg_init(&nm->base, NULL, &netisr_afree_rport,
 			    0, tcp_notifyall_oncpu);

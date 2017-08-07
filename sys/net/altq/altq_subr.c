@@ -351,7 +351,7 @@ tbr_timeout_dispatch(netmsg_t nmsg)
 	const struct ifnet_array *arr;
 	int active, i;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	crit_enter();
 	lwkt_replymsg(&nmsg->lmsg, 0);	/* reply ASAP */

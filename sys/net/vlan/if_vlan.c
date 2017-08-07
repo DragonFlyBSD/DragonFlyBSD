@@ -582,7 +582,7 @@ vlan_input(struct mbuf *m)
 	struct vlan_entry *entry;
 	int cpuid = mycpuid;
 
-	ASSERT_NETISR_NCPUS(curthread, cpuid);
+	ASSERT_NETISR_NCPUS(cpuid);
 
 	rcvif = m->m_pkthdr.rcvif;
 	KKASSERT(m->m_flags & M_VLANTAG);

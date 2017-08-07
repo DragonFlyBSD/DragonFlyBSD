@@ -170,7 +170,7 @@ div_packet(struct mbuf *m, int incoming, int port)
 	struct divert_info *divinfo;
 	u_int16_t nport;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	/* Locate the divert info */
 	mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
@@ -324,7 +324,7 @@ div_output(struct socket *so, struct mbuf *m,
 	struct m_tag *mtag;
 	struct divert_info *divinfo;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	if (control)
 		m_freem(control);		/* XXX */
@@ -387,7 +387,7 @@ div_attach(netmsg_t msg)
 	struct inpcb *inp;
 	int error;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	inp  = so->so_pcb;
 	if (inp)
@@ -421,7 +421,7 @@ div_detach(netmsg_t msg)
 	struct socket *so = msg->detach.base.nm_so;
 	struct inpcb *inp;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	inp = so->so_pcb;
 	if (inp == NULL)
@@ -446,7 +446,7 @@ div_disconnect(netmsg_t msg)
 	struct socket *so = msg->disconnect.base.nm_so;
 	int error;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	if (so->so_state & SS_ISCONNECTED) {
 		soisdisconnected(so);
@@ -464,7 +464,7 @@ div_bind(netmsg_t msg)
 	struct sockaddr *nam = msg->bind.nm_nam;
 	int error;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	/*
 	 * in_pcbbind assumes that nam is a sockaddr_in
@@ -488,7 +488,7 @@ div_shutdown(netmsg_t msg)
 {
 	struct socket *so = msg->shutdown.base.nm_so;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	socantsendmore(so);
 

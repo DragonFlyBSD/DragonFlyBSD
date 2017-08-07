@@ -1061,7 +1061,7 @@ nd6_dad_find(struct ifaddr *ifa)
 {
 	struct dadq *dp;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	TAILQ_FOREACH(dp, &dadq, dad_list) {
 		if (dp->dad_ifa == ifa)
@@ -1073,14 +1073,14 @@ nd6_dad_find(struct ifaddr *ifa)
 static void
 nd6_dad_starttimer(struct dadq *dp, int ticks)
 {
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 	callout_reset(&dp->dad_timer_ch, ticks, nd6_dad_timer, dp);
 }
 
 static void
 nd6_dad_stoptimer(struct dadq *dp)
 {
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 	callout_stop(&dp->dad_timer_ch);
 }
 
@@ -1094,7 +1094,7 @@ nd6_dad_start(struct ifaddr *ifa,
 	struct in6_ifaddr *ia = (struct in6_ifaddr *)ifa;
 	struct dadq *dp;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	/*
 	 * If we don't need DAD, don't do it.
@@ -1161,7 +1161,7 @@ nd6_dad_stop(struct ifaddr *ifa)
 {
 	struct dadq *dp;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	dp = nd6_dad_find(ifa);
 	if (!dp) {
@@ -1177,7 +1177,7 @@ nd6_dad_create(struct ifaddr *ifa)
 	struct netmsg_dad *dm;
 	struct dadq *dp;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	dp = kmalloc(sizeof(*dp), M_IP6NDP, M_INTWAIT | M_ZERO);
 	callout_init_mp(&dp->dad_timer_ch);
@@ -1203,7 +1203,7 @@ nd6_dad_destroy(struct dadq *dp)
 {
 	struct lwkt_msg *lmsg = &dp->dad_nmsg.base.lmsg;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	TAILQ_REMOVE(&dadq, dp, dad_list);
 
@@ -1240,7 +1240,7 @@ nd6_dad_timer_handler(netmsg_t msg)
 	struct ifaddr *ifa = dp->dad_ifa;
 	struct in6_ifaddr *ia = (struct in6_ifaddr *)ifa;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	/* Reply ASAP */
 	crit_enter();
@@ -1352,7 +1352,7 @@ nd6_dad_duplicated(struct ifaddr *ifa)
 	struct in6_ifaddr *ia = (struct in6_ifaddr *)ifa;
 	struct dadq *dp;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	dp = nd6_dad_find(ifa);
 	if (dp == NULL) {
@@ -1385,7 +1385,7 @@ nd6_dad_ns_output(struct dadq *dp)
 	struct in6_ifaddr *ia = (struct in6_ifaddr *)dp->dad_ifa;
 	struct ifnet *ifp = dp->dad_ifa->ifa_ifp;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	dp->dad_ns_tcount++;
 	if (!(ifp->if_flags & IFF_UP)) {
@@ -1413,7 +1413,7 @@ nd6_dad_ns_input(struct ifaddr *ifa)
 	struct dadq *dp;
 	int duplicate;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	if (!ifa)
 		panic("ifa == NULL in nd6_dad_ns_input");
@@ -1459,7 +1459,7 @@ nd6_dad_na_input(struct ifaddr *ifa)
 {
 	struct dadq *dp;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	if (!ifa)
 		panic("ifa == NULL in nd6_dad_na_input");

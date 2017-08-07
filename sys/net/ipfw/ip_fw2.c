@@ -1663,7 +1663,7 @@ ipfw_chk(struct ip_fw_args *args)
 	int cpuid = mycpuid;
 	struct ipfw_context *ctx;
 
-	ASSERT_NETISR_NCPUS(curthread, cpuid);
+	ASSERT_NETISR_NCPUS(cpuid);
 	ctx = ipfw_ctx[cpuid];
 
 	if (m->m_pkthdr.fw_flags & IPFW_MBUF_GENERATED)

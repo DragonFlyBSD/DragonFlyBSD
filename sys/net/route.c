@@ -339,7 +339,7 @@ rtfree_async(struct rtentry *rt)
 {
 	struct netmsg_base *msg;
 
-	if (IS_NETISR(curthread, rt->rt_cpuid)) {
+	if (IN_NETISR(rt->rt_cpuid)) {
 		rtfree_oncpu(rt);
 		return;
 	}
@@ -1908,6 +1908,6 @@ rtchange(struct ifaddr *old_ifa, struct ifaddr *new_ifa)
 int
 rt_domsg_global(struct netmsg_base *nmsg)
 {
-	ASSERT_CANDOMSG_NETISR0(curthread);
-	return lwkt_domsg(netisr_cpuport(0), &nmsg->lmsg, 0);
+
+	return (netisr_domsg(nmsg, 0));
 }

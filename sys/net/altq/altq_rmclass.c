@@ -1561,7 +1561,7 @@ rmc_restart_dispatch(netmsg_t nmsg)
 	struct ifaltq_subque *ifsq =
 	    &ifd->ifq_->altq_subq[ALTQ_SUBQ_INDEX_DEFAULT];
 
-	ASSERT_NETISR_NCPUS(curthread, 0);
+	ASSERT_NETISR0;
 
 	crit_enter();
 	lwkt_replymsg(&nmsg->lmsg, 0);	/* reply ASAP */

@@ -157,7 +157,7 @@ rip_input(struct mbuf **mp, int *offp, int proto)
 	struct inpcb *last = NULL;
 	struct mbuf *opts = NULL;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	*mp = NULL;
 
@@ -272,7 +272,7 @@ rip_output(struct mbuf *m, struct socket *so, ...)
 	int flags = (so->so_options & SO_DONTROUTE) | IP_ALLOWBROADCAST;
 	u_long dst;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	__va_start(ap, so);
 	dst = __va_arg(ap, u_long);
@@ -351,7 +351,7 @@ rip_ctloutput(netmsg_t msg)
 	struct	inpcb *inp = so->so_pcb;
 	int	error, optval;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	error = 0;
 
@@ -511,7 +511,7 @@ rip_ctlinput(netmsg_t msg)
 	int err;
 	int flags;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	switch (cmd) {
 	case PRC_IFDOWN:
@@ -589,7 +589,7 @@ rip_attach(netmsg_t msg)
 	struct inpcb *inp;
 	int error;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	inp = so->so_pcb;
 	if (inp)
@@ -618,7 +618,7 @@ rip_detach(netmsg_t msg)
 	struct socket *so = msg->base.nm_so;
 	struct inpcb *inp;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	inp = so->so_pcb;
 	if (inp == NULL)
@@ -649,7 +649,7 @@ rip_disconnect(netmsg_t msg)
 	struct socket *so = msg->base.nm_so;
 	int error;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	if (so->so_state & SS_ISCONNECTED) {
 		soisdisconnected(so);
@@ -669,7 +669,7 @@ rip_bind(netmsg_t msg)
 	struct sockaddr_in *addr = (struct sockaddr_in *)nam;
 	int error;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	if (nam->sa_len == sizeof(*addr)) {
 		if (ifnet_array_isempty() ||
@@ -697,7 +697,7 @@ rip_connect(netmsg_t msg)
 	struct sockaddr_in *addr = (struct sockaddr_in *)nam;
 	int error;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	if (nam->sa_len != sizeof(*addr)) {
 		error = EINVAL;
@@ -719,7 +719,7 @@ rip_connect(netmsg_t msg)
 static void
 rip_shutdown(netmsg_t msg)
 {
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	socantsendmore(msg->base.nm_so);
 	lwkt_replymsg(&msg->lmsg, 0);
@@ -737,7 +737,7 @@ rip_send(netmsg_t msg)
 	u_long dst;
 	int error;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	if (so->so_state & SS_ISCONNECTED) {
 		if (nam) {

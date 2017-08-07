@@ -1605,7 +1605,7 @@ carp_iamatch(const struct in_ifaddr *ia)
 {
 	const struct carp_softc *sc = ia->ia_ifp->if_softc;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 #ifdef notyet
 	if (carp_opts[CARPCTL_ARPBALANCE])
@@ -3081,7 +3081,7 @@ carp_ifaddr(void *arg __unused, struct ifnet *ifp,
 	if (ifa->ifa_addr->sa_family != AF_INET)
 		return;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	if (ifp->if_type == IFT_CARP) {
 		/*

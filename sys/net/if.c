@@ -745,11 +745,10 @@ if_attachdomain1(struct ifnet *ifp)
 static void
 if_purgeaddrs_nolink_dispatch(netmsg_t nmsg)
 {
-	struct lwkt_msg *lmsg = &nmsg->lmsg;
-	struct ifnet *ifp = lmsg->u.ms_resultp;
+	struct ifnet *ifp = nmsg->lmsg.u.ms_resultp;
 	struct ifaddr_container *ifac, *next;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	/*
 	 * The ifaddr processing in the following loop will block,
@@ -831,21 +830,18 @@ if_purgeaddrs_nolink_dispatch(netmsg_t nmsg)
 		ifa_destroy(ifa);
 	}
 
-	lwkt_replymsg(lmsg, 0);
+	netisr_replymsg(&nmsg->base, 0);
 }
 
 void
 if_purgeaddrs_nolink(struct ifnet *ifp)
 {
 	struct netmsg_base nmsg;
-	struct lwkt_msg *lmsg = &nmsg.lmsg;
-
-	ASSERT_CANDOMSG_NETISR0(curthread);
 
 	netmsg_init(&nmsg, NULL, &curthread->td_msgport, 0,
 	    if_purgeaddrs_nolink_dispatch);
-	lmsg->u.ms_resultp = ifp;
-	lwkt_domsg(netisr_cpuport(0), lmsg, 0);
+	nmsg.lmsg.u.ms_resultp = ifp;
+	netisr_domsg(&nmsg, 0);
 }
 
 static void
@@ -1578,7 +1574,7 @@ if_unroute_dispatch(netmsg_t nmsg)
 	ifq_purge_all(&ifp->if_snd);
 	rt_ifmsg(ifp);
 
-	lwkt_replymsg(&nmsg->lmsg, 0);
+	netisr_replymsg(&nmsg->base, 0);
 }
 
 void
@@ -1586,14 +1582,12 @@ if_unroute(struct ifnet *ifp, int flag, int fam)
 {
 	struct netmsg_ifroute msg;
 
-	ASSERT_CANDOMSG_NETISR0(curthread);
-
 	netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
 	    if_unroute_dispatch);
 	msg.ifp = ifp;
 	msg.flag = flag;
 	msg.fam = fam;
-	lwkt_domsg(netisr_cpuport(0), &msg.base.lmsg, 0);
+	netisr_domsg(&msg.base, 0);
 }
 
 /*
@@ -1631,7 +1625,7 @@ if_route_dispatch(netmsg_t nmsg)
 	in6_if_up(ifp);
 #endif
 
-	lwkt_replymsg(&nmsg->lmsg, 0);
+	netisr_replymsg(&nmsg->base, 0);
 }
 
 void
@@ -1639,14 +1633,12 @@ if_route(struct ifnet *ifp, int flag, int fam)
 {
 	struct netmsg_ifroute msg;
 
-	ASSERT_CANDOMSG_NETISR0(curthread);
-
 	netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
 	    if_route_dispatch);
 	msg.ifp = ifp;
 	msg.flag = flag;
 	msg.fam = fam;
-	lwkt_domsg(netisr_cpuport(0), &msg.base.lmsg, 0);
+	netisr_domsg(&msg.base, 0);
 }
 
 /*
@@ -1702,7 +1694,7 @@ if_slowtimo_dispatch(netmsg_t nmsg)
 	const struct ifnet_array *arr;
 	int i;
 
-	ASSERT_IN_NETISR(0);
+	ASSERT_NETISR0;
 
 	crit_enter_gd(gd);
 	lwkt_replymsg(&nmsg->lmsg, 0);  /* reply ASAP */

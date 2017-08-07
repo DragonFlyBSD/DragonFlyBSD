@@ -200,7 +200,7 @@ ipflow_fastforward(struct mbuf *m)
 	struct ifnet *ifp;
 	int error, iplen;
 
-	ASSERT_NETISR_NCPUS(curthread, mycpuid);
+	ASSERT_NETISR_NCPUS(mycpuid);
 
 	/*
 	 * Are we forwarding packets?
@@ -412,7 +412,7 @@ ipflow_timeo_dispatch(netmsg_t nmsg)
 	struct ipflow_pcpu *pcpu;
 	int cpuid = mycpuid;
 
-	ASSERT_NETISR_NCPUS(curthread, cpuid);
+	ASSERT_NETISR_NCPUS(cpuid);
 
 	crit_enter();
 	lwkt_replymsg(&nmsg->lmsg, 0);	/* reply ASAP */
@@ -455,7 +455,7 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 	struct ipflow *ipf;
 	unsigned hash;
 
-	ASSERT_NETISR_NCPUS(curthread, mycpuid);
+	ASSERT_NETISR_NCPUS(mycpuid);
 
 	/*
 	 * Don't create cache entries for ICMP messages.

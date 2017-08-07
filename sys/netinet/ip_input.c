@@ -477,7 +477,7 @@ ip_input(struct mbuf *m)
 	int error;
 #endif
 
-	ASSERT_NETISR_NCPUS(curthread, mycpuid);
+	ASSERT_NETISR_NCPUS(mycpuid);
 	M_ASSERTPKTHDR(m);
 
 	/*
@@ -1469,7 +1469,7 @@ ipfrag_drain(void)
 	CPUMASK_ASSBMASK(mask, netisr_ncpus);
 	CPUMASK_ANDMASK(mask, smp_active_mask);
 
-	if (mycpuid < netisr_ncpus && IS_NETISR(curthread, mycpuid)) {
+	if (IN_NETISR_NCPUS(mycpuid)) {
 		ipfrag_drain_oncpu(&ipfrag_queue_pcpu[mycpuid]);
 		CPUMASK_NANDBIT(mask, mycpuid);
 	}

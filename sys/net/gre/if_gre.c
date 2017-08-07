@@ -254,7 +254,7 @@ gre_output_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	struct route *ro;
 	struct sockaddr_in *ro_dst;
 
-	ASSERT_NETISR_NCPUS(curthread, mycpuid);
+	ASSERT_NETISR_NCPUS(mycpuid);
 
 	/*
 	 * gre may cause infinite recursion calls when misconfigured.
@@ -691,7 +691,7 @@ gre_compute_route(struct gre_softc *sc, struct route *ro)
 #endif
 	u_int32_t a, b, c;
 
-	ASSERT_NETISR_NCPUS(curthread, mycpuid);
+	ASSERT_NETISR_NCPUS(mycpuid);
 	KASSERT(ro == &sc->route_pcpu[mycpuid], ("route mismatch"));
 	KASSERT(ro->ro_rt == NULL, ("rtentry not freed"));
 
@@ -761,7 +761,7 @@ gre_check_route_handler(netmsg_t msg)
 	struct route *ro;
 	int error;
 
-	ASSERT_NETISR_NCPUS(curthread, 0);
+	ASSERT_NETISR0;
 
 	ro = &sc->route_pcpu[mycpuid];
 	if (ro->ro_rt != NULL) {
