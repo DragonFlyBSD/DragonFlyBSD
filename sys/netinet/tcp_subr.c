@@ -1167,7 +1167,7 @@ tcp_drain(void)
 
 	cpu = mycpuid;
 	if (IN_NETISR_NCPUS(cpu)) {
-		tcp_drain_oncpu(&tcbinfo[mycpuid]);
+		tcp_drain_oncpu(&tcbinfo[cpu]);
 		CPUMASK_NANDBIT(mask, cpu);
 	}
 
@@ -1414,6 +1414,8 @@ tcp_notifyall_oncpu(netmsg_t msg)
 	struct netmsg_tcp_notify *nm = (struct netmsg_tcp_notify *)msg;
 	int nextcpu;
 
+	ASSERT_NETISR_NCPUS(mycpuid);
+
 	in_pcbnotifyall(&tcbinfo[mycpuid], nm->nm_faddr,
 			nm->nm_arg, nm->nm_notify);
 
@@ -1462,8 +1464,8 @@ tcp_get_inpnotify(int cmd, const struct sockaddr *sa,
 
 	if (cpuid != NULL) {
 		if (ip == NULL) {
-			/* Go through all CPUs */
-			*cpuid = ncpus;
+			/* Go through all effective netisr CPUs. */
+			*cpuid = netisr_ncpus;
 		} else {
 			const struct tcphdr *th;
 
@@ -1487,6 +1489,8 @@ tcp_ctlinput(netmsg_t msg)
 	struct in_addr faddr;
 	inp_notify_t notify;
 	int arg, cpuid;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
 
 	notify = tcp_get_inpnotify(cmd, sa, &arg, &ip, &cpuid);
 	if (notify == NULL)
@@ -1524,9 +1528,7 @@ tcp_ctlinput(netmsg_t msg)
 			syncache_unreach(&inc, th);
 		}
 	} else if (msg->ctlinput.nm_direct) {
-		if (cpuid != ncpus && cpuid != mycpuid)
-			goto done;
-		if (mycpuid >= netisr_ncpus)
+		if (cpuid != netisr_ncpus && cpuid != mycpuid)
 			goto done;
 
 		in_pcbnotifyall(&tcbinfo[mycpuid], faddr, arg, notify);

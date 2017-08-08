@@ -1633,7 +1633,7 @@ sysctl_rtsock(SYSCTL_HANDLER_ARGS)
 	 * debugging the route table.
 	 */
 	if (namelen == 4) {
-		if (name[3] < 0 || name[3] >= ncpus)
+		if (name[3] < 0 || name[3] >= netisr_ncpus)
 			return (EINVAL);
 		cpu = name[3];
 	} else {

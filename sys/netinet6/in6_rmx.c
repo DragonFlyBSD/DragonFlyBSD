@@ -365,6 +365,8 @@ in6_rtqtimo_dispatch(netmsg_t nmsg)
 	struct timeval atv;
 	static time_t last_adjusted_timeout = 0;
 
+	ASSERT_NETISR_NCPUS(mycpuid);
+
 	/* Reply ASAP */
 	crit_enter();
 	lwkt_replymsg(&nmsg->lmsg, 0);
@@ -466,6 +468,8 @@ in6_mtutimo_dispatch(netmsg_t nmsg)
 	struct radix_node_head *rnh = ctx->timo_rnh;
 	struct mtuex_arg arg;
 	struct timeval atv;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
 
 	/* Reply ASAP */
 	crit_enter();

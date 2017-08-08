@@ -327,6 +327,8 @@ in_rtqtimo_dispatch(netmsg_t nmsg)
 	struct in_rtq_pcpu *pcpu = &in_rtq_pcpu[mycpuid];
 	struct radix_node_head *rnh = pcpu->rnh;
 
+	ASSERT_NETISR_NCPUS(mycpuid);
+
 	/* Reply ASAP */
 	crit_enter();
 	lwkt_replymsg(&nmsg->lmsg, 0);
@@ -395,6 +397,8 @@ in_rtqdrain_oncpu(struct in_rtq_pcpu *pcpu)
 	struct radix_node_head *rnh = rt_tables[mycpuid][AF_INET];
 	struct rtqk_arg arg;
 
+	ASSERT_NETISR_NCPUS(mycpuid);
+
 	arg.found = arg.killed = 0;
 	arg.rnh = rnh;
 	arg.nextstop = 0;
@@ -437,15 +441,16 @@ in_rtqdrain(void)
 	cpumask_t mask;
 	int cpu;
 
-	CPUMASK_ASSBMASK(mask, ncpus);
+	CPUMASK_ASSBMASK(mask, netisr_ncpus);
 	CPUMASK_ANDMASK(mask, smp_active_mask);
 
-	if (IN_NETISR(mycpuid)) {
-		in_rtqdrain_oncpu(&in_rtq_pcpu[mycpuid]);
-		CPUMASK_NANDBIT(mask, mycpuid);
+	cpu = mycpuid;
+	if (IN_NETISR_NCPUS(cpu)) {
+		in_rtqdrain_oncpu(&in_rtq_pcpu[cpu]);
+		CPUMASK_NANDBIT(mask, cpu);
 	}
 
-	for (cpu = 0; cpu < ncpus; ++cpu) {
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu) {
 		struct in_rtq_pcpu *pcpu = &in_rtq_pcpu[cpu];
 
 		if (!CPUMASK_TESTBIT(mask, cpu))
@@ -553,9 +558,10 @@ in_ifadown_dispatch(netmsg_t msg)
 	struct radix_node_head *rnh;
 	struct ifaddr *ifa = rmsg->ifa;
 	struct in_ifadown_arg arg;
-	int nextcpu, cpu;
+	int cpu;
 
 	cpu = mycpuid;
+	ASSERT_NETISR_NCPUS(cpu);
 
 	arg.rnh = rnh = rt_tables[cpu][AF_INET];
 	arg.ifa = ifa;
@@ -563,11 +569,7 @@ in_ifadown_dispatch(netmsg_t msg)
 	rnh->rnh_walktree(rnh, in_ifadownkill, &arg);
 	ifa->ifa_flags &= ~IFA_ROUTE;
 
-	nextcpu = cpu + 1;
-	if (nextcpu < ncpus)
-		lwkt_forwardmsg(netisr_cpuport(nextcpu), &rmsg->base.lmsg);
-	else
-		lwkt_replymsg(&rmsg->base.lmsg, 0);
+	netisr_forwardmsg(&msg->base, cpu + 1);
 }
 
 int
@@ -589,7 +591,7 @@ in_ifadown_force(struct ifaddr *ifa, int delete)
 	    in_ifadown_dispatch);
 	msg.ifa = ifa;
 	msg.del = delete;
-	rt_domsg_global(&msg.base);
+	netisr_domsg_global(&msg.base);
 
 	return 0;
 }

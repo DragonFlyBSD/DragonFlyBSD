@@ -185,6 +185,8 @@ arptimer_dispatch(netmsg_t nmsg)
 	struct llinfo_arp *la, *nla;
 	struct arp_pcpu_data *ad = &arp_data[mycpuid];
 
+	ASSERT_NETISR_NCPUS(mycpuid);
+
 	/* Reply ASAP */
 	crit_enter();
 	lwkt_replymsg(&nmsg->lmsg, 0);
@@ -254,7 +256,7 @@ arp_rtrequest(int req, struct rtentry *rt)
 		 * once on cpu0.
 		 */
 		if ((rt->rt_flags & RTF_ANNOUNCE) && mycpuid == 0) {
-			arprequest_async(rt->rt_ifp,
+			arprequest(rt->rt_ifp,
 			    &SIN(rt_key(rt))->sin_addr,
 			    &SIN(rt_key(rt))->sin_addr,
 			    LLADDR(SDL(gate)));
@@ -392,6 +394,8 @@ arpreq_send(struct ifnet *ifp, struct mbuf *m)
 	struct sockaddr sa;
 	struct ether_header *eh;
 
+	ASSERT_NETISR_NCPUS(mycpuid);
+
 	switch (ifp->if_type) {
 	case IFT_ETHER:
 		/*
@@ -435,6 +439,8 @@ arprequest(struct ifnet *ifp, const struct in_addr *sip,
 {
 	struct mbuf *m;
 
+	ASSERT_NETISR_NCPUS(mycpuid);
+
 	if (enaddr == NULL) {
 		if (ifp->if_bridge) {
 			enaddr = IF_LLADDR(ether_bridge_interface(ifp));
@@ -460,6 +466,7 @@ arprequest_async(struct ifnet *ifp, const struct in_addr *sip,
 {
 	struct mbuf *m;
 	struct netmsg_packet *pmsg;
+	int cpu;
 
 	if (enaddr == NULL) {
 		if (ifp->if_bridge) {
@@ -478,7 +485,11 @@ arprequest_async(struct ifnet *ifp, const struct in_addr *sip,
 	pmsg->nm_packet = m;
 	pmsg->base.lmsg.u.ms_resultp = ifp;
 
-	lwkt_sendmsg_oncpu(netisr_cpuport(mycpuid), &pmsg->base.lmsg);
+	if (mycpuid < netisr_ncpus)
+		cpu = mycpuid;
+	else
+		cpu = 0;
+	lwkt_sendmsg(netisr_cpuport(cpu), &pmsg->base.lmsg);
 }
 
 /*
@@ -1044,7 +1055,7 @@ match:
 				   itaddr.s_addr == myaddr.s_addr,
 				   RTL_REPORTMSG, TRUE);
 
-	if (ncpus > 1 && changed) {
+	if (netisr_ncpus > 1 && changed) {
 		struct netmsg_inarp *msg = &m->m_hdr.mh_arpmsg;
 
 		netmsg_init(&msg->base, NULL, &netisr_apanic_rport,
@@ -1083,6 +1094,8 @@ arp_update_msghandler(netmsg_t msg)
 	struct netmsg_inarp *rmsg = (struct netmsg_inarp *)msg;
 	int nextcpu;
 
+	ASSERT_NETISR_NCPUS(mycpuid);
+
 	/*
 	 * This message handler will be called on all of the APs;
 	 * no need to generate rtmsg on them.
@@ -1093,7 +1106,7 @@ arp_update_msghandler(netmsg_t msg)
 			 RTL_DONTREPORT, FALSE);
 
 	nextcpu = mycpuid + 1;
-	if (nextcpu < ncpus) {
+	if (nextcpu < netisr_ncpus) {
 		lwkt_forwardmsg(netisr_cpuport(nextcpu), &rmsg->base.lmsg);
 	} else {
 		struct mbuf *m = rmsg->m;
@@ -1124,6 +1137,8 @@ in_arpreply(struct mbuf *m, in_addr_t taddr, in_addr_t myaddr)
 	struct arphdr *ah;
 	struct sockaddr sa;
 	struct ether_header *eh;
+
+	ASSERT_NETISR0;
 
 	ah = mtod(m, struct arphdr *);
 	if (ntohs(ah->ar_op) != ARPOP_REQUEST) {
@@ -1301,8 +1316,13 @@ void
 arp_gratuitous(struct ifnet *ifp, struct ifaddr *ifa)
 {
 	if (IA_SIN(ifa)->sin_addr.s_addr != INADDR_ANY) {
-		arprequest_async(ifp, &IA_SIN(ifa)->sin_addr,
-				 &IA_SIN(ifa)->sin_addr, NULL);
+		if (IN_NETISR_NCPUS(mycpuid)) {
+			arprequest(ifp, &IA_SIN(ifa)->sin_addr,
+			    &IA_SIN(ifa)->sin_addr, NULL);
+		} else {
+			arprequest_async(ifp, &IA_SIN(ifa)->sin_addr,
+			    &IA_SIN(ifa)->sin_addr, NULL);
+		}
 	}
 }
 
@@ -1335,7 +1355,7 @@ arp_init(void)
 {
 	int cpu;
 
-	for (cpu = 0; cpu < ncpus; cpu++) {
+	for (cpu = 0; cpu < netisr_ncpus; cpu++) {
 		struct arp_pcpu_data *ad = &arp_data[cpu];
 
 		LIST_INIT(&ad->llinfo_list);

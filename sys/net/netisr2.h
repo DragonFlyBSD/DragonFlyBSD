@@ -161,6 +161,14 @@ netisr_domsg(struct netmsg_base *nm, int cpu)
 	return (netisr_domsg_port(nm, netisr_cpuport(cpu)));
 }
 
+static __inline int
+netisr_domsg_global(struct netmsg_base *nm)
+{
+
+	/* Start from netisr0. */
+	return (netisr_domsg(nm, 0));
+}
+
 static __inline void
 netisr_sendmsg(struct netmsg_base *nm, int cpu)
 {
@@ -200,14 +208,25 @@ netisr_forwardmsg_all(struct netmsg_base *nm, int next_cpu)
  * To netisr_ncpus.
  */
 static __inline void
-netisr_forwardmsg(struct netmsg_base *nm, int next_cpu)
+netisr_forwardmsg_error(struct netmsg_base *nm, int next_cpu,
+    int error)
 {
 
 	KKASSERT(next_cpu > mycpuid && next_cpu <= netisr_ncpus);
 	if (next_cpu < netisr_ncpus)
 		lwkt_forwardmsg(netisr_cpuport(next_cpu), &nm->lmsg);
 	else
-		netisr_replymsg(nm, 0);
+		netisr_replymsg(nm, error);
+}
+
+/*
+ * To netisr_ncpus.
+ */
+static __inline void
+netisr_forwardmsg(struct netmsg_base *nm, int next_cpu)
+{
+
+	netisr_forwardmsg_error(nm, next_cpu, 0);
 }
 
 #endif	/* _NET_NETISR2_H_ */

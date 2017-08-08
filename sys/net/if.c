@@ -526,11 +526,8 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	}
 
 	/*
-	 * XXX -
-	 * The old code would work if the interface passed a pre-existing
-	 * chain of ifaddrs to this code.  We don't trust our callers to
-	 * properly initialize the tailq, however, so we no longer allow
-	 * this unlikely case.
+	 * Make if_addrhead available on all CPUs, since they
+	 * could be accessed by any threads.
 	 */
 	ifp->if_addrheads = kmalloc(ncpus * sizeof(struct ifaddrhead),
 				    M_IFADDR, M_WAITOK | M_ZERO);
@@ -568,6 +565,11 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 		sdl->sdl_data[--namelen] = 0xff;
 	ifa_iflink(ifa, ifp, 0 /* Insert head */);
 
+	/*
+	 * Make if_data available on all CPUs, since they could
+	 * be updated by hardware interrupt routing, which could
+	 * be bound to any CPU.
+	 */
 	ifp->if_data_pcpu = kmalloc_cachealign(
 	    ncpus * sizeof(struct ifdata_pcpu), M_DEVBUF, M_WAITOK | M_ZERO);
 
@@ -610,12 +612,22 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 		if (ifp->if_serializer != NULL)
 			ifsq_set_hw_serialize(ifsq, ifp->if_serializer);
 
+		/* XXX: netisr_ncpus */
 		ifsq->ifsq_stage =
 		    kmalloc_cachealign(ncpus * sizeof(struct ifsubq_stage),
 		    M_DEVBUF, M_WAITOK | M_ZERO);
 		for (i = 0; i < ncpus; ++i)
 			ifsq->ifsq_stage[i].stg_subq = ifsq;
 
+		/*
+		 * Allocate one if_start message for each CPU, since
+		 * the hardware TX ring could be assigned to any CPU.
+		 *
+		 * NOTE:
+		 * If the hardware TX ring polling CPU and the hardware
+		 * TX ring interrupt CPU are same, one if_start message
+		 * should be enough.
+		 */
 		ifsq->ifsq_ifstart_nmsg =
 		    kmalloc(ncpus * sizeof(struct netmsg_base),
 		    M_LWKTMSG, M_WAITOK);
@@ -870,6 +882,7 @@ ifq_stage_detach(struct ifaltq *ifq)
 	    ifq_stage_detach_handler);
 	base.lmsg.u.ms_resultp = ifq;
 
+	/* XXX netisr_ncpus */
 	for (cpu = 0; cpu < ncpus; ++cpu)
 		lwkt_domsg(netisr_cpuport(cpu), &base.lmsg, 0);
 }
@@ -883,9 +896,11 @@ static void
 if_rtdel_dispatch(netmsg_t msg)
 {
 	struct netmsg_if_rtdel *rmsg = (void *)msg;
-	int i, nextcpu, cpu;
+	int i, cpu;
 
 	cpu = mycpuid;
+	ASSERT_NETISR_NCPUS(cpu);
+
 	for (i = 1; i <= AF_MAX; i++) {
 		struct radix_node_head	*rnh;
 
@@ -893,12 +908,7 @@ if_rtdel_dispatch(netmsg_t msg)
 			continue;
 		rnh->rnh_walktree(rnh, if_rtdel, rmsg->ifp);
 	}
-
-	nextcpu = cpu + 1;
-	if (nextcpu < ncpus)
-		lwkt_forwardmsg(netisr_cpuport(nextcpu), &rmsg->base.lmsg);
-	else
-		lwkt_replymsg(&rmsg->base.lmsg, 0);
+	netisr_forwardmsg(&msg->base, cpu + 1);
 }
 
 /*
@@ -1021,7 +1031,7 @@ if_detach(struct ifnet *ifp)
 	netmsg_init(&msg.base, NULL, &curthread->td_msgport, MSGF_PRIORITY,
 	    if_rtdel_dispatch);
 	msg.ifp = ifp;
-	rt_domsg_global(&msg.base);
+	netisr_domsg_global(&msg.base);
 
 	SLIST_FOREACH(dp, &domains, dom_next)
 		if (dp->dom_ifdetach && ifp->if_afdata[dp->dom_family])
@@ -1553,6 +1563,8 @@ if_unroute_dispatch(netmsg_t nmsg)
 	int flag = msg->flag, fam = msg->fam;
 	struct ifaddr_container *ifac;
 
+	ASSERT_NETISR0;
+
 	ifp->if_flags &= ~flag;
 	getmicrotime(&ifp->if_lastchange);
 	/*
@@ -1600,6 +1612,8 @@ if_route_dispatch(netmsg_t nmsg)
 	struct ifnet *ifp = msg->ifp;
 	int flag = msg->flag, fam = msg->fam;
 	struct ifaddr_container *ifac;
+
+	ASSERT_NETISR0;
 
 	ifq_purge_all(&ifp->if_snd);
 	ifp->if_flags |= flag;
@@ -3105,6 +3119,11 @@ ifa_create(int size)
 	KASSERT(size >= sizeof(*ifa), ("ifaddr size too small"));
 
 	ifa = kmalloc(size, M_IFADDR, M_INTWAIT | M_ZERO);
+
+	/*
+	 * Make ifa_container availabel on all CPUs, since they
+	 * could be accessed by any threads.
+	 */
 	ifa->ifa_containers =
 	    kmalloc_cachealign(ncpus * sizeof(struct ifaddr_container),
 	        M_IFADDR, M_INTWAIT | M_ZERO);
@@ -3296,6 +3315,7 @@ ifnetinit(void *dummy __unused)
 {
 	int i;
 
+	/* XXX netisr_ncpus */
 	for (i = 0; i < ncpus; ++i)
 		TAILQ_INIT(&ifsubq_stage_heads[i].stg_head);
 	netisr_register_rollup(if_start_rollup, NETISR_ROLLUP_PRIO_IFSTART);

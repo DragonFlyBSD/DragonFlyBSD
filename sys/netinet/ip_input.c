@@ -347,8 +347,8 @@ ip_init(void)
 	    IFQ_MAXLEN, IPFRAG_MPIPE_MAX, 0, NULL, NULL, NULL);
 
 	/*
-	 * Addresses could be accessed from any CPUs in non-netisr threads,
-	 * so populate all CPUs.
+	 * Make in_ifaddrhead and in_ifaddrhashtbl available on all CPUs,
+	 * since they could be accessed by any threads.
 	 */
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		TAILQ_INIT(&in_ifaddrheads[cpu]);

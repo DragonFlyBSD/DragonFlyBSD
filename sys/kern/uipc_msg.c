@@ -603,7 +603,7 @@ so_pr_ctlinput_direct(struct protosw *pr, int cmd, struct sockaddr *arg,
 	port = so_pr_ctlport(pr, cmd, arg, extra, &cpuid);
 	if (port == NULL)
 		return;
-	if (cpuid != ncpus && cpuid != mycpuid)
+	if (cpuid != netisr_ncpus && cpuid != mycpuid)
 		return;
 
 	func = pr->pr_ctlinput;

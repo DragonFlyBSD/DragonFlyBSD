@@ -387,6 +387,7 @@ typedef int (*rtsearch_callback_func_t)(int, struct rt_addrinfo *,
 					struct rtentry *, void *, int);
 
 void	 rtfree (struct rtentry *);
+void	 rtfree_async (struct rtentry *);
 int	 rtinit (struct ifaddr *, int, int);
 int	 rtchange (struct ifaddr *, struct ifaddr *);
 int	 rtioctl (u_long, caddr_t, struct ucred *);
@@ -427,31 +428,26 @@ rtmask_purelookup(struct sockaddr *_mask)
 	return _rtmask_lookup(_mask, TRUE);
 }
 
-void	rtfree_oncpu(struct rtentry *);
-void	rtfree_async(struct rtentry *);
-void	rtfree_remote(struct rtentry *);
 void	rt_print(struct rt_addrinfo *, struct rtentry *);
 void	rt_addrinfo_print(int cmd, struct rt_addrinfo *);
 void	sockaddr_print(struct sockaddr *);
 
-struct netmsg_base;
-int	rt_domsg_global(struct netmsg_base *);
-
 #ifndef _SYS_GLOBALDATA_H_
 #include <sys/globaldata.h>
+#endif
+#ifndef _NET_NETISR2_H_
+#include <net/netisr2.h>
 #endif
 
 static __inline void
 RTFREE(struct rtentry *rt)
 {
-	if (rt->rt_cpuid == mycpuid) {
-		if (rt->rt_refcnt <= 1)
-			rtfree_oncpu(rt);
-		else
-			--rt->rt_refcnt;
-	} else {
-		rtfree_remote(rt);
-	}
+
+	ASSERT_NETISR_NCPUS(rt->rt_cpuid);
+	if (rt->rt_refcnt <= 1)
+		rtfree(rt);
+	else
+		--rt->rt_refcnt;
 }
 
 int	in_inithead(void **, int);

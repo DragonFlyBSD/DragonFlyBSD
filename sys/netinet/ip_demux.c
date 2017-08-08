@@ -379,9 +379,9 @@ tcp_ctlport(int cmd, struct sockaddr *sa, void *vip, int *cpuid)
 	if (notify == NULL)
 		return NULL;
 
-	if (*cpuid == ncpus) {
+	if (*cpuid == netisr_ncpus) {
 		/*
-		 * Go through all CPUs.
+		 * Go through all effective netisr CPUs.
 		 *
 		 * A new message will be allocated later to save necessary
 		 * information and will be forwarded to all network protocol
@@ -441,9 +441,9 @@ udp_ctlport(int cmd, struct sockaddr *sa, void *vip, int *cpuid)
 	if (notify == NULL)
 		return NULL;
 
-	if (*cpuid == ncpus) {
+	if (*cpuid == netisr_ncpus) {
 		/*
-		 * Go through all CPUs.
+		 * Go through all effective netisr CPUs.
 		 *
 		 * See the comment in tcp_ctlport.
 		 */

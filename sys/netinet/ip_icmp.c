@@ -335,10 +335,12 @@ icmp_mtudisc_handler(netmsg_t nmsg)
 	struct netmsg_ctlinput *msg = (struct netmsg_ctlinput *)nmsg;
 	int nextcpu;
 
+	ASSERT_NETISR_NCPUS(mycpuid);
+
 	icmp_mtudisc(msg->m, msg->hlen);
 
 	nextcpu = mycpuid + 1;
-	if (nextcpu < ncpus)
+	if (nextcpu < netisr_ncpus)
 		lwkt_forwardmsg(netisr_cpuport(nextcpu), &msg->base.lmsg);
 	else
 		icmp_ctlinput_done(msg->m);
@@ -353,7 +355,7 @@ icmp_mtudisc_start(struct mbuf *m, int hlen, int proto)
 
 	icmp_mtudisc(m, hlen);
 
-	if (ncpus == 1) {
+	if (netisr_ncpus == 1) {
 		/* There is only one netisr; done */
 		return FALSE;
 	}
@@ -394,6 +396,8 @@ icmp_ctlinput_handler(netmsg_t nmsg)
 {
 	struct netmsg_ctlinput *msg = (struct netmsg_ctlinput *)nmsg;
 
+	ASSERT_NETISR_NCPUS(mycpuid);
+
 	icmp_ctlinput(msg->m, msg->cmd, msg->hlen);
 	icmp_ctlinput_done(msg->m);
 }
@@ -424,10 +428,12 @@ icmp_ctlinput_global_handler(netmsg_t nmsg)
 	struct netmsg_ctlinput *msg = (struct netmsg_ctlinput *)nmsg;
 	int nextcpu;
 
+	ASSERT_NETISR_NCPUS(mycpuid);
+
 	icmp_ctlinput(msg->m, msg->cmd, msg->hlen);
 
 	nextcpu = mycpuid + 1;
-	if (nextcpu < ncpus)
+	if (nextcpu < netisr_ncpus)
 		lwkt_forwardmsg(netisr_cpuport(nextcpu), &msg->base.lmsg);
 	else
 		icmp_ctlinput_done(msg->m);
@@ -439,7 +445,7 @@ icmp_ctlinput_global_start(struct mbuf *m, int cmd, int hlen, int proto)
 	struct netmsg_ctlinput *msg;
 
 	ASSERT_NETISR0;
-	KASSERT(ncpus > 1, ("there is only 1 cpu"));
+	KASSERT(netisr_ncpus > 1, ("there is only 1 netisr cpu"));
 
 	icmp_ctlinput(m, cmd, hlen);
 
@@ -551,10 +557,12 @@ icmp_redirect_handler(netmsg_t nmsg)
 	struct netmsg_ctlinput *msg = (struct netmsg_ctlinput *)nmsg;
 	int nextcpu;
 
+	ASSERT_NETISR_NCPUS(mycpuid);
+
 	icmp_redirect(msg->m, msg->hlen, FALSE);
 
 	nextcpu = mycpuid + 1;
-	if (nextcpu < ncpus)
+	if (nextcpu < netisr_ncpus)
 		lwkt_forwardmsg(netisr_cpuport(nextcpu), &msg->base.lmsg);
 	else
 		icmp_redirect_done(msg->m, msg->hlen, TRUE);
@@ -569,7 +577,7 @@ icmp_redirect_start(struct mbuf *m, int hlen, int proto)
 
 	icmp_redirect(m, hlen, TRUE);
 
-	if (ncpus == 1) {
+	if (netisr_ncpus == 1) {
 		/* There is only one netisr; done */
 		icmp_redirect_done(m, hlen, FALSE);
 		return FALSE;
@@ -761,8 +769,8 @@ deliver:
 			port = so_pr_ctlport(pr, code,
 			    (struct sockaddr *)&icmpsrc, &icp->icmp_ip, &cpu);
 			if (port != NULL) {
-				if (cpu == ncpus) {
-					if (ncpus > 1) {
+				if (cpu == netisr_ncpus) {
+					if (netisr_ncpus > 1) {
 						/*
 						 * Run pr_ctlinput in all
 						 * netisrs

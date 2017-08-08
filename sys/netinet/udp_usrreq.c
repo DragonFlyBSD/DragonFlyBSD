@@ -747,6 +747,8 @@ udp_notifyall_oncpu(netmsg_t msg)
 	struct netmsg_udp_notify *nm = (struct netmsg_udp_notify *)msg;
 	int nextcpu, cpu = mycpuid;
 
+	ASSERT_NETISR_NCPUS(cpu);
+
 	in_pcbnotifyall(&udbinfo[cpu], nm->nm_faddr, nm->nm_arg, nm->nm_notify);
 
 	nextcpu = cpu + 1;
@@ -779,8 +781,8 @@ udp_get_inpnotify(int cmd, const struct sockaddr *sa,
 
 	if (cpuid != NULL) {
 		if (ip == NULL) {
-			/* Go through all CPUs */
-			*cpuid = ncpus;
+			/* Go through all effective netisr CPUs. */
+			*cpuid = netisr_ncpus;
 		} else {
 			const struct udphdr *uh;
 
@@ -804,6 +806,8 @@ udp_ctlinput(netmsg_t msg)
 	inp_notify_t notify;
 	struct in_addr faddr;
 
+	ASSERT_NETISR_NCPUS(mycpuid);
+
 	notify = udp_get_inpnotify(cmd, sa, &ip, &cpuid);
 	if (notify == NULL)
 		goto done;
@@ -822,9 +826,7 @@ udp_ctlinput(netmsg_t msg)
 		if (inp != NULL && inp->inp_socket != NULL)
 			notify(inp, inetctlerrmap[cmd]);
 	} else if (msg->ctlinput.nm_direct) {
-		if (cpuid != ncpus && cpuid != mycpuid)
-			goto done;
-		if (mycpuid >= netisr_ncpus)
+		if (cpuid != netisr_ncpus && cpuid != mycpuid)
 			goto done;
 
 		in_pcbnotifyall(&udbinfo[mycpuid], faddr, inetctlerrmap[cmd],

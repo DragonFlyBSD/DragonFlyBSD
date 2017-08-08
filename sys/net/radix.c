@@ -44,7 +44,10 @@
 #include <stdlib.h>
 #endif
 #include <sys/syslog.h>
+
 #include <net/radix.h>
+#include <net/netmsg2.h>
+#include <net/netisr2.h>
 
 /*
  * The arguments to the radix functions are really counted byte arrays with
@@ -1074,10 +1077,22 @@ rn_inithead(void **head, struct radix_node_head *maskhead, int off)
 	return (1);
 }
 
+static void
+rn_init_handler(netmsg_t msg)
+{
+	int cpu = mycpuid;
+
+	ASSERT_NETISR_NCPUS(cpu);
+	if (rn_inithead((void **)&mask_rnheads[cpu], NULL, 0) == 0)
+		panic("rn_init 2");
+
+	netisr_forwardmsg(&msg->base, cpu + 1);
+}
+
 void
 rn_init(void)
 {
-	int cpu;
+	struct netmsg_base msg;
 #ifdef _KERNEL
 	struct domain *dom;
 
@@ -1088,15 +1103,15 @@ rn_init(void)
 		}
 	}
 #endif
-	for (cpu = 0; cpu < ncpus; ++cpu) {
-		if (rn_inithead((void **)&mask_rnheads[cpu], NULL, 0) == 0)
-			panic("rn_init 2");
-	}
+	netmsg_init(&msg, NULL, &curthread->td_msgport, 0, rn_init_handler);
+	netisr_domsg_global(&msg);
 }
 
 struct radix_node_head *
 rn_cpumaskhead(int cpu)
 {
+
+	ASSERT_NETISR_NCPUS(cpu);
 	KKASSERT(mask_rnheads[cpu] != NULL);
 	return mask_rnheads[cpu];
 }

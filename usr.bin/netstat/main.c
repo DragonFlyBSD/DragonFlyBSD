@@ -35,6 +35,7 @@
 #include <sys/file.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
+#include <sys/sysctl.h>
 
 #include <netinet/in.h>
 
@@ -271,6 +272,7 @@ main(int argc, char **argv)
 	struct protox *tp = NULL;  /* for printing cblocks & stats */
 	int ch;
 	int n;
+	size_t nsz;
 
 	af = AF_UNSPEC;
 
@@ -286,11 +288,13 @@ main(int argc, char **argv)
 			bflag = 1;
 			break;
 		case 'c':
-			kread(0, 0, 0);
-			kread(nl[N_NCPUS].n_value, (char *)&n, sizeof(n));
+			nsz = sizeof(n);
+			sysctlbyname("net.netisr.ncpus", &n, &nsz, NULL, 0);
 			cpuflag = strtol(optarg, NULL, 0);
-			if (cpuflag < 0 || cpuflag >= n)
-			    errx(1, "cpu %d does not exist", cpuflag);
+			if (cpuflag < 0 || cpuflag >= n) {
+				errx(1, "cpu%d does not have network data",
+				    cpuflag);
+			}
 			break;
 		case 'd':
 			dflag = 1;
