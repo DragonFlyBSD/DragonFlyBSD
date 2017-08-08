@@ -297,8 +297,7 @@ do_mbstat(SYSCTL_HANDLER_ARGS)
 	bzero(&mbstat_total, sizeof(mbstat_total));
 	mbstat_totalp = &mbstat_total;
 
-	for (i = 0; i < ncpus; i++)
-	{
+	for (i = 0; i < ncpus; i++) {
 		mbstat_total.m_mbufs += mbstat[i].m_mbufs;	
 		mbstat_total.m_clusters += mbstat[i].m_clusters;	
 		mbstat_total.m_jclusters += mbstat[i].m_jclusters;	
@@ -332,8 +331,7 @@ do_mbtypes(SYSCTL_HANDLER_ARGS)
 	for (i = 0; i < MT_NTYPES; i++)
 		totals[i] = 0;
 
-	for (i = 0; i < ncpus; i++)
-	{
+	for (i = 0; i < ncpus; i++) {
 		for (j = 0; j < MT_NTYPES; j++)
 			totals[j] += mbtypes[i].stats[j];
 	}
