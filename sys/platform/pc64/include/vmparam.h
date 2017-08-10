@@ -123,8 +123,16 @@
 #define UPT_MAX_ADDRESS		KVADDR(PML4PML4I, PML4PML4I, PML4PML4I, PML4PML4I)
 #define UPT_MIN_ADDRESS		KVADDR(PML4PML4I, 0, 0, 0)
 
+/*
+ * Do not allow the top 2MB of the user stack to be mapped to work around
+ * an AMD bug wherein the cpu can lockup or destabilize if the instruction
+ * prefetcher crosses over into non-canonical address space.  Only the top
+ * 4KB needs to be disallowed, but taking out the whole 2MB allows potential
+ * 2MB PTE optimizations to be retained.
+ */
 #define VM_MIN_USER_ADDRESS	((vm_offset_t)0)
-#define VM_MAX_USER_ADDRESS	UVADDR(NUPDP_USER, 0, 0, 0)
+#define VM_MAX_USER_ADDRESS	UVADDR(NUPDP_USER - 1, NPDPEPG - 1, \
+					NPDEPG - 1, 0)
 
 #define USRSTACK		VM_MAX_USER_ADDRESS
 

@@ -97,6 +97,11 @@ struct	sigcontext {
 
 #endif /* __BSD_VISIBLE */
 
+/*
+ * Tells the kernel how many pages to drop the signal trampoline down
+ * when mapping it.  Must be at least 1 page because kern_exec mprotects
+ * it to R+X (making it unwritable).
+ */
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define SZSIGCODE_EXTRA_BYTES	(1*PAGE_SIZE)
 #endif

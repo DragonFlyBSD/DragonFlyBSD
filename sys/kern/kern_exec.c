@@ -1109,18 +1109,12 @@ exec_copyout_strings(struct image_params *imgp)
 	suword64((void *)vectp, 0);
 
 	/*
-	 * Make the signal trampoline executable.  This also makes ps_strings
-	 * executable but generally speaking there should be no direct access
-	 * to ps_strings after the program has gotten to _main().
-	 *
-	 * At the moment the space is writable because ps_strings needs to be
-	 * writable.  XXX future give sigtramp its own page (maybe put it in
-	 * the kpmap).
+	 * Make the signal trampoline executable and read-only.
 	 */
 	vm_map_protect(&imgp->proc->p_vmspace->vm_map,
 		       (vm_offset_t)szsigbase,
 		       (vm_offset_t)szsigbase + PAGE_SIZE,
-		       VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE, FALSE);
+		       VM_PROT_READ|VM_PROT_EXECUTE, FALSE);
 
 	return (stack_base);
 }
