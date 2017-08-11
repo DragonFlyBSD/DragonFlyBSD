@@ -226,6 +226,7 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	struct arpcom *ac = IFP2AC(ifp);
 	int error;
 
+	ASSERT_NETISR_NCPUS(mycpuid);
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
 
 	if (ifp->if_flags & IFF_MONITOR)
