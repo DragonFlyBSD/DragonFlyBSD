@@ -307,7 +307,7 @@ updatepcpu(struct lwp *lp, int cpticks, int ttlticks)
  * unnecessary IPIs.  However, larger sizes also have diminishing returns
  * and eat memory.
  */
-#define TABLESIZE	4001		/* 4001, 8191, or 16369 */
+#define TABLESIZE	8191		/* 4001, 8191, or 16369 */
 #define LOOKUP(x)	(((u_int)(uintptr_t)(x)) % TABLESIZE)
 
 static cpumask_t slpque_cpumasks[TABLESIZE];
