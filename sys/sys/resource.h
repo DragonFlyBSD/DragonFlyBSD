@@ -137,7 +137,7 @@ struct orlimit {
 };
 
 struct loadavg {
-	fixpt_t	ldavg[3];
+	uint64_t ldavg[3];		/* 64-bits to avoid overflow */
 	long	fscale;
 };
 

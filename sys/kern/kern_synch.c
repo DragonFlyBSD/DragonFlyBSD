@@ -1235,7 +1235,7 @@ loadav(void *arg)
 	avg = &averunnable;
 	for (i = 0; i < 3; i++) {
 		avg->ldavg[i] = (cexp[i] * avg->ldavg[i] +
-		    nrun * FSCALE * (FSCALE - cexp[i])) >> FSHIFT;
+		    (long)nrun * FSCALE * (FSCALE - cexp[i])) >> FSHIFT;
 	}
 
 	/*
