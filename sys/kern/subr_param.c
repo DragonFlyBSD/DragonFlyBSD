@@ -257,14 +257,15 @@ init_param2(int physpages)
 	 * unless overriden, these macros are ultimately based on maxusers.
 	 *
 	 * Limit maxproc so that kmap entries cannot be exhausted by
-	 * processes.
+	 * processes.  This limitation can be a bit problematic because
+	 * processes can have a wide range of complexity.
 	 */
 	maxproc = NPROC;
 	TUNABLE_INT_FETCH("kern.maxproc", &maxproc);
 	if (maxproc < 32)
 		maxproc = 32;
-	if (maxproc > limsize * 21)
-		maxproc = limsize * 21;
+	if (maxproc > limsize * 40)
+		maxproc = limsize * 40;
 
 	/*
 	 * Maximum number of open files
