@@ -514,7 +514,7 @@ checkdirs(struct nchandle *old_nch, struct nchandle *new_nch)
 	info.old_nch = *old_nch;
 	info.new_nch = *new_nch;
 	info.new_vp = newdp;
-	allproc_scan(checkdirs_callback, &info);
+	allproc_scan(checkdirs_callback, &info, 0);
 	vput(newdp);
 }
 
@@ -745,7 +745,7 @@ dounmount(struct mount *mp, int flags)
 		cache_clearmntcache();
 		if ((ncp = mp->mnt_ncmountpt.ncp) != NULL &&
 		    (ncp->nc_refs != 1 || TAILQ_FIRST(&ncp->nc_list))) {
-			allproc_scan(&unmount_allproc_cb, mp);
+			allproc_scan(&unmount_allproc_cb, mp, 0);
 		}
 
 		cache_clearmntcache();

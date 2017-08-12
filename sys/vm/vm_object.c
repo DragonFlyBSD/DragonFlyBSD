@@ -3026,7 +3026,7 @@ vm_object_in_map(vm_object_t object)
 	info.rv = 0;
 	info.object = object;
 
-	allproc_scan(vm_object_in_map_callback, &info);
+	allproc_scan(vm_object_in_map_callback, &info, 0);
 	if (info.rv)
 		return 1;
 	if( _vm_object_in_map(&kernel_map, object, 0))

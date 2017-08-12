@@ -77,8 +77,6 @@ int	safepri;
 int	tsleep_now_works;
 int	tsleep_crypto_dump = 0;
 
-static struct callout loadav_callout;
-static struct callout schedcpu_callout;
 MALLOC_DEFINE(M_TSLEEP, "tslpque", "tsleep queues");
 
 #define __DEALL(ident)	__DEQUALIFY(void *, ident)
@@ -164,11 +162,13 @@ static int schedcpu_resource(struct proc *p, void *data __unused);
 static void
 schedcpu(void *arg)
 {
-	allproc_scan(schedcpu_stats, NULL);
-	allproc_scan(schedcpu_resource, NULL);
-	wakeup((caddr_t)&lbolt);
-	wakeup(lbolt_syncer);
-	callout_reset(&schedcpu_callout, hz, schedcpu, NULL);
+	allproc_scan(schedcpu_stats, NULL, 1);
+	allproc_scan(schedcpu_resource, NULL, 1);
+	if (mycpu->gd_cpuid == 0) {
+		wakeup((caddr_t)&lbolt);
+		wakeup(lbolt_syncer);
+	}
+	callout_reset(&mycpu->gd_schedcpu_callout, hz, schedcpu, NULL);
 }
 
 /*
@@ -279,6 +279,27 @@ schedcpu_resource(struct proc *p, void *data __unused)
 	lwkt_yield();
 	PRELE(p);
 	return(0);
+}
+
+/*
+ *
+ */
+static void
+schedcpu_setup(void *arg)
+{
+	globaldata_t save_gd = mycpu;
+	globaldata_t gd;
+	int n;
+
+	for (n = 0; n < ncpus; ++n) {
+		gd = globaldata_find(n);
+		lwkt_setcpu_self(gd);
+		callout_init_mp(&gd->gd_loadav_callout);
+		callout_init_mp(&gd->gd_schedcpu_callout);
+		schedcpu(NULL);
+		loadav(NULL);
+	}
+	lwkt_setcpu_self(save_gd);
 }
 
 /*
@@ -1220,22 +1241,36 @@ tstop(void)
 
 /*
  * Compute a tenex style load average of a quantity on
- * 1, 5 and 15 minute intervals.
+ * 1, 5 and 15 minute intervals.  This is a pcpu callout.
+ *
+ * We segment the lwp scan on a pcpu basis.  This does NOT
+ * mean the associated lwps are on this cpu, it is done
+ * just to break the work up.
+ *
+ * The callout on cpu0 rolls up the stats from the other
+ * cpus.
  */
 static int loadav_count_runnable(struct lwp *p, void *data);
 
 static void
 loadav(void *arg)
 {
+	globaldata_t gd = mycpu;
 	struct loadavg *avg;
 	int i, nrun;
 
 	nrun = 0;
-	alllwp_scan(loadav_count_runnable, &nrun);
-	avg = &averunnable;
-	for (i = 0; i < 3; i++) {
-		avg->ldavg[i] = (cexp[i] * avg->ldavg[i] +
-		    (long)nrun * FSCALE * (FSCALE - cexp[i])) >> FSHIFT;
+	alllwp_scan(loadav_count_runnable, &nrun, 1);
+	gd->gd_loadav_nrunnable = nrun;
+	if (gd->gd_cpuid == 0) {
+		avg = &averunnable;
+		nrun = 0;
+		for (i = 0; i < ncpus; ++i)
+			nrun += globaldata_find(i)->gd_loadav_nrunnable;
+		for (i = 0; i < 3; i++) {
+			avg->ldavg[i] = (cexp[i] * avg->ldavg[i] +
+			    (long)nrun * FSCALE * (FSCALE - cexp[i])) >> FSHIFT;
+		}
 	}
 
 	/*
@@ -1243,7 +1278,8 @@ loadav(void *arg)
 	 * random variation to avoid synchronisation with processes that
 	 * run at regular intervals.
 	 */
-	callout_reset(&loadav_callout, hz * 4 + (int)(krandom() % (hz * 2 + 1)),
+	callout_reset(&gd->gd_loadav_callout,
+		      hz * 4 + (int)(krandom() % (hz * 2 + 1)),
 		      loadav, NULL);
 }
 
@@ -1283,12 +1319,8 @@ collect_load_callback(int n)
 static void
 sched_setup(void *dummy)
 {
-	callout_init_mp(&loadav_callout);
-	callout_init_mp(&schedcpu_callout);
 	kcollect_register(KCOLLECT_LOAD, "load", collect_load_callback,
 			  KCOLLECT_SCALE(KCOLLECT_LOAD_FORMAT, 0));
 	/* Kick off timeout driven events by calling first time. */
-	schedcpu(NULL);
-	loadav(NULL);
+	schedcpu_setup(NULL);
 }
-

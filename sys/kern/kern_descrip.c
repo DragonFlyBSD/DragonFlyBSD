@@ -1408,7 +1408,7 @@ fdrevoke(void *f_data, short f_type, struct ucred *cred)
 	 * the FREVOKED already set in the fp and do the right thing.
 	 */
 	if (info.found)
-		allproc_scan(fdrevoke_proc_callback, &info);
+		allproc_scan(fdrevoke_proc_callback, &info, 0);
 	fdrop(info.nfp);
 	return(0);
 }
@@ -2782,7 +2782,7 @@ sysctl_kern_file(SYSCTL_HANDLER_ARGS)
 	info.count = 0;
 	info.error = 0;
 	info.req = req;
-	allproc_scan(sysctl_kern_file_callback, &info);
+	allproc_scan(sysctl_kern_file_callback, &info, 0);
 
 	/*
 	 * When just calculating the size, overestimate a bit to try to

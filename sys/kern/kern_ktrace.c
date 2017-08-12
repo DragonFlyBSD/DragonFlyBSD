@@ -302,7 +302,7 @@ sys_ktrace(struct ktrace_args *uap)
 		info.tracenode = tracenode;
 		info.error = 0;
 		info.rootclear = 0;
-		allproc_scan(ktrace_clear_callback, &info);
+		allproc_scan(ktrace_clear_callback, &info, 0);
 		error = info.error;
 		goto done;
 	}
@@ -616,7 +616,7 @@ ktrwrite(struct lwp *lp, struct ktr_header *kth, struct uio *uio)
 		info.tracenode = tracenode;
 		info.error = 0;
 		info.rootclear = 1;
-		allproc_scan(ktrace_clear_callback, &info);
+		allproc_scan(ktrace_clear_callback, &info, 0);
 	}
 	ktrdestroy(&tracenode);
 }

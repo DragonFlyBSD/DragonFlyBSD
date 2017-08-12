@@ -129,7 +129,7 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 	/*
 	 * Calculate process statistics.
 	 */
-	allproc_scan(do_vmtotal_callback, &total);
+	allproc_scan(do_vmtotal_callback, &total, 0);
 
 	/*
 	 * Adjust for sysctl return.  Add real memory into virtual memory.

@@ -467,7 +467,7 @@ proc0_post(void *dummy __unused)
 	 * Now we can look at the time, having had a chance to verify the
 	 * time from the file system.  Pretend that proc0 started now.
 	 */
-	allproc_scan(proc0_post_callback, NULL);
+	allproc_scan(proc0_post_callback, NULL, 0);
 
 	/*
 	 * Give the ``random'' number generator a thump.

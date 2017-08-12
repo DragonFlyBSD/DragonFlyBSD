@@ -540,8 +540,10 @@ int	enterpgrp (struct proc *p, pid_t pgid, int mksess);
 void	proc_add_allproc(struct proc *p);
 void	proc_move_allproc_zombie(struct proc *);
 void	proc_remove_zombie(struct proc *);
-void	allproc_scan(int (*callback)(struct proc *, void *), void *data);
-void	alllwp_scan(int (*callback)(struct lwp *, void *), void *data);
+void	allproc_scan(int (*callback)(struct proc *, void *), void *data,
+			int segmented);
+void	alllwp_scan(int (*callback)(struct lwp *, void *), void *data,
+			int segmented);
 void	zombproc_scan(int (*callback)(struct proc *, void *), void *data);
 void	fixjobc (struct proc *p, struct pgrp *pgrp, int entering);
 void	updatepcpu(struct lwp *, int, int);

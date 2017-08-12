@@ -1543,7 +1543,7 @@ vm_pageout_scan_cache(int avail_shortage, int pass,
 		lastkillticks = ticks;
 		info.bigproc = NULL;
 		info.bigsize = 0;
-		allproc_scan(vm_pageout_scan_callback, &info);
+		allproc_scan(vm_pageout_scan_callback, &info, 0);
 		if (info.bigproc != NULL) {
 			kprintf("Try to kill process %d %s\n",
 				info.bigproc->p_pid, info.bigproc->p_comm);
@@ -2192,7 +2192,7 @@ vm_daemon(void)
 		 * scan the processes for exceeding their rlimits or if
 		 * process is swapped out -- deactivate pages
 		 */
-		allproc_scan(vm_daemon_callback, NULL);
+		allproc_scan(vm_daemon_callback, NULL, 0);
 	}
 }
 

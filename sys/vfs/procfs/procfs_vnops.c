@@ -1000,7 +1000,7 @@ procfs_readdir_root(struct vop_readdir_args *ap)
 			break;
 	}
 	if (res >= 0)
-		allproc_scan(procfs_readdir_root_callback, &info);
+		allproc_scan(procfs_readdir_root_callback, &info, 0);
 	uio->uio_offset = (off_t)info.i;
 
 	return (info.error);

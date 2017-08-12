@@ -348,10 +348,13 @@ loop:
 
 	/*
 	 * Look for a good candidate to wake up
+	 *
+	 * XXX we should make the schedule thread pcpu and then use a
+	 * segmented allproc scan.
 	 */
 	info.pp = NULL;
 	info.ppri = INT_MIN;
-	allproc_scan(scheduler_callback, &info);
+	allproc_scan(scheduler_callback, &info, 0);
 
 	/*
 	 * Nothing to do, back to sleep for at least 1/10 of a second.  If
@@ -505,7 +508,7 @@ static int swapout_procs_callback(struct proc *p, void *data);
 void
 swapout_procs(int action)
 {
-	allproc_scan(swapout_procs_callback, &action);
+	allproc_scan(swapout_procs_callback, &action, 0);
 }
 
 static int

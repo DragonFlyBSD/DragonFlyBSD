@@ -1254,19 +1254,30 @@ proc_userunmap(struct proc *p)
  * No requirements.
  */
 void
-allproc_scan(int (*callback)(struct proc *, void *), void *data)
+allproc_scan(int (*callback)(struct proc *, void *), void *data, int segmented)
 {
 	int limit = nprocs + ncpus;
 	struct proc *p;
+	int ns;
+	int ne;
 	int r;
 	int n;
+
+	if (segmented) {
+		int id = mycpu->gd_cpuid;
+		ns = id * ALLPROC_HSIZE / ncpus;
+		ne = (id + 1) * ALLPROC_HSIZE / ncpus;
+	} else {
+		ns = 0;
+		ne = ALLPROC_HSIZE;
+	}
 
 	/*
 	 * prg->proc_token protects the allproc list and PHOLD() prevents the
 	 * process from being removed from the allproc list or the zombproc
 	 * list.
 	 */
-	for (n = 0; n < ALLPROC_HSIZE; ++n) {
+	for (n = ns; n < ne; ++n) {
 		procglob_t *prg = &procglob[n];
 		if (LIST_FIRST(&prg->allproc) == NULL)
 			continue;
@@ -1301,14 +1312,25 @@ allproc_scan(int (*callback)(struct proc *, void *), void *data)
  * No requirements.
  */
 void
-alllwp_scan(int (*callback)(struct lwp *, void *), void *data)
+alllwp_scan(int (*callback)(struct lwp *, void *), void *data, int segmented)
 {
 	struct proc *p;
 	struct lwp *lp;
+	int ns;
+	int ne;
 	int r = 0;
 	int n;
 
-	for (n = 0; n < ALLPROC_HSIZE; ++n) {
+	if (segmented) {
+		int id = mycpu->gd_cpuid;
+		ns = id * ALLPROC_HSIZE / ncpus;
+		ne = (id + 1) * ALLPROC_HSIZE / ncpus;
+	} else {
+		ns = 0;
+		ne = ALLPROC_HSIZE;
+	}
+
+	for (n = ns; n < ne; ++n) {
 		procglob_t *prg = &procglob[n];
 
 		if (LIST_FIRST(&prg->allproc) == NULL)

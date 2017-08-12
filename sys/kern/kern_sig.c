@@ -672,7 +672,7 @@ dokillpg(int sig, int pgid, int all)
 		/*
 		 * broadcast
 		 */
-		allproc_scan(killpg_all_callback, &info);
+		allproc_scan(killpg_all_callback, &info, 0);
 	} else {
 		if (pgid == 0) {
 			/*

@@ -134,7 +134,7 @@ sys_getpriority(struct getpriority_args *uap)
 			uap->who = curtd->td_ucred->cr_uid;
 		info.low = low;
 		info.who = uap->who;
-		allproc_scan(getpriority_callback, &info);
+		allproc_scan(getpriority_callback, &info, 0);
 		low = info.low;
 		break;
 
@@ -251,7 +251,7 @@ restart:
 		info.who = uap->who;
 		info.error = 0;
 		info.found = 0;
-		allproc_scan(setpriority_callback, &info);
+		allproc_scan(setpriority_callback, &info, 0);
 		error = info.error;
 		found = info.found;
 		break;
@@ -374,7 +374,7 @@ sys_ioprio_get(struct ioprio_get_args *uap)
 			uap->who = curtd->td_ucred->cr_uid;
 		info.high = high;
 		info.who = uap->who;
-		allproc_scan(ioprio_get_callback, &info);
+		allproc_scan(ioprio_get_callback, &info, 0);
 		high = info.high;
 		break;
 	default:
@@ -491,7 +491,7 @@ restart:
 		info.who = uap->who;
 		info.error = 0;
 		info.found = 0;
-		allproc_scan(ioprio_set_callback, &info);
+		allproc_scan(ioprio_set_callback, &info, 0);
 		error = info.error;
 		found = info.found;
 		break;

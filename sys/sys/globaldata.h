@@ -84,6 +84,9 @@
 #ifndef _SYS_SYSID_H_
 #include <sys/sysid.h>		/* sysid_t */
 #endif
+#ifndef _SYS_CALLOUT_H_
+#include <sys/callout.h>
+#endif
 
 /*
  * This structure maps out the global data that needs to be kept on a
@@ -182,7 +185,10 @@ struct globaldata {
 	uint64_t	gd_cpumask_offset;
 	struct vmstats	gd_vmstats;		/* pcpu local copy of vmstats */
 	struct vmstats	gd_vmstats_adj;		/* pcpu adj for vmstats */
-	uint64_t	gd_reserved64[1];
+	struct callout	gd_loadav_callout;	/* loadavg calc */
+	struct callout	gd_schedcpu_callout;	/* scheduler/stats */
+	uint32_t	gd_loadav_nrunnable;	/* pcpu lwps nrunnable */
+	uint32_t	gd_reserved32[1];
 	void		*gd_preserved[4];	/* future fields */
 	/* extended by <machine/globaldata.h> */
 };
