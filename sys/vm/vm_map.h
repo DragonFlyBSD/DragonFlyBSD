@@ -257,6 +257,28 @@ struct vm_map_ilock {
 #define ILOCK_WAITING	0x00000001
 
 /*
+ * Hinting mechanism used by vm_map_findspace() to figure out where to start
+ * an iteration looking for a hole big enough for the requested allocation.
+ * This can be important in situations where large amounts of kernel memory
+ * are being managed.  For example, if the system is managing tens of
+ * thousands of processes or threads.
+ *
+ * If a hint is present it guarantees that no compatible hole exists prior
+ * to the (start) address.  The (start) address itself is not necessarily
+ * a hole.
+ */
+#define VM_MAP_FFCOUNT	4
+#define VM_MAP_FFMASK	(VM_MAP_FFCOUNT - 1)
+
+struct vm_map_freehint {
+	vm_offset_t	start;
+	vm_offset_t	length;
+	vm_offset_t	align;
+	int		unused01;
+};
+typedef struct vm_map_freehint vm_map_freehint_t;
+
+/*
  * Maps are doubly-linked lists of map entries, kept sorted by address.
  * A single hint is provided to start searches again from the last
  * successful search, insertion, or removal.
@@ -276,12 +298,14 @@ struct vm_map {
 	RB_HEAD(vm_map_rb_tree, vm_map_entry) rb_root;
 	struct lock lock;		/* Lock for map data */
 	int nentries;			/* Number of entries */
+	unsigned int timestamp;		/* Version number */
 	vm_size_t size;			/* virtual size */
 	u_char system_map;		/* Am I a system map? */
-	vm_map_entry_t hint;		/* hint for quick lookups */
-	unsigned int timestamp;		/* Version number */
-	vm_map_entry_t first_free;	/* First free space hint */
+	u_char freehint_newindex;
+	u_char unused02;
+	u_char unused03;
 	vm_flags_t flags;		/* flags for this vm_map */
+	vm_map_freehint_t freehint[VM_MAP_FFCOUNT];
 	struct pmap *pmap;		/* Physical map */
 	u_int president_cache;		/* Remember president count */
 	u_int president_ticks;		/* Save ticks for cache */

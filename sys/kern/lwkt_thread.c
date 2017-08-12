@@ -172,6 +172,9 @@ _lwkt_dequeue(thread_t td)
  * be many user processes in kernel mode exiting from a tsleep() which
  * become runnable.
  *
+ * We scan the queue in both directions to help deal with degenerate
+ * situations when hundreds or thousands (or more) threads are runnable.
+ *
  * NOTE: lwkt_schedulerclock() will force a round-robin based on td_pri and
  *	 will ignore user priority.  This is to ensure that user threads in
  *	 kernel mode get cpu at some point regardless of what the user
@@ -181,7 +184,8 @@ static __inline
 void
 _lwkt_enqueue(thread_t td)
 {
-    thread_t xtd;
+    thread_t xtd;	/* forward scan */
+    thread_t rtd;	/* reverse scan */
 
     if ((td->td_flags & (TDF_RUNQ|TDF_MIGRATING|TDF_BLOCKQ)) == 0) {
 	struct globaldata *gd = td->td_gd;
@@ -205,17 +209,34 @@ _lwkt_enqueue(thread_t td)
 	     *
 	     *	     If upri matches exactly place at end/round-robin.
 	     */
+	    rtd = TAILQ_LAST(&gd->gd_tdrunq, lwkt_queue);
+
 	    while (xtd &&
-		   (xtd->td_pri >= td->td_pri ||
+		   (xtd->td_pri > td->td_pri ||
 		    (xtd->td_pri == td->td_pri &&
 		     xtd->td_upri >= td->td_upri))) {
 		xtd = TAILQ_NEXT(xtd, td_threadq);
+
+		/*
+		 * Doing a reverse scan at the same time is an optimization
+		 * for the insert-closer-to-tail case that avoids having to
+		 * scan the entire list.  This situation can occur when
+		 * thousands of threads are woken up at the same time.
+		 */
+		if (rtd->td_pri > td->td_pri ||
+		    (rtd->td_pri == td->td_pri &&
+		    rtd->td_upri >= td->td_upri)) {
+			TAILQ_INSERT_AFTER(&gd->gd_tdrunq, rtd, td, td_threadq);
+			goto skip;
+		}
+		rtd = TAILQ_PREV(rtd, lwkt_queue, td_threadq);
 	    }
 	    if (xtd)
 		TAILQ_INSERT_BEFORE(xtd, td, td_threadq);
 	    else
 		TAILQ_INSERT_TAIL(&gd->gd_tdrunq, td, td_threadq);
 	}
+skip:
 	++gd->gd_tdrunqcount;
 
 	/*

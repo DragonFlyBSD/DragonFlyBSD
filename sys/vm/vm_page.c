@@ -96,12 +96,6 @@
 #include <sys/spinlock2.h>
 
 /*
- * Action hash for user umtx support.
- */
-#define VMACTION_HSIZE		256
-#define VMACTION_HMASK		(VMACTION_HSIZE - 1)
-
-/*
  * SET - Minimum required set associative size, must be a power of 2.  We
  *	 want this to match or exceed the set-associativeness of the cpu.
  *
@@ -121,6 +115,8 @@ static vm_page_t vm_page_select_cache(u_short pg_color);
 static vm_page_t _vm_page_list_find2(int basequeue, int index);
 static void _vm_page_deactivate_locked(vm_page_t m, int athead);
 
+MALLOC_DEFINE(M_ACTIONHASH, "acthash", "vmpage action hash");
+
 /*
  * Array of tailq lists
  */
@@ -128,14 +124,27 @@ __cachealign struct vpgqueues vm_page_queues[PQ_COUNT];
 
 LIST_HEAD(vm_page_action_list, vm_page_action);
 
+/*
+ * Action hash for user umtx support.  Contention is governed by both
+ * tsleep/wakeup handling (kern/kern_synch.c) and action_hash[] below.
+ * Because action_hash[] represents active table locks, a modest fixed
+ * value well in excess of MAXCPU works here.
+ *
+ * There is also scan overhead depending on the number of threads in
+ * umtx*() calls, so we also size the hash table based on maxproc.
+ */
 struct vm_page_action_hash {
 	struct vm_page_action_list list;
 	struct lock	lk;
 } __cachealign;
 
-struct vm_page_action_hash	action_hash[VMACTION_HSIZE];
-static volatile int vm_pages_waiting;
+#define VMACTION_MINHSIZE	256
 
+struct vm_page_action_hash	*action_hash;
+static int vmaction_hsize;
+static int vmaction_hmask;
+
+static volatile int vm_pages_waiting;
 static struct alist vm_contig_alist;
 static struct almeta vm_contig_ameta[ALIST_RECORDS_65536];
 static struct spinlock vm_contig_spin = SPINLOCK_INITIALIZER(&vm_contig_spin, "vm_contig_spin");
@@ -178,15 +187,6 @@ vm_page_queue_init(void)
 	for (i = 0; i < PQ_COUNT; i++) {
 		TAILQ_INIT(&vm_page_queues[i].pl);
 		spin_init(&vm_page_queues[i].spin, "vm_page_queue_init");
-	}
-
-	/*
-	 * NOTE: Action lock might recurse due to callback, so allow
-	 *	 recursion.
-	 */
-	for (i = 0; i < VMACTION_HSIZE; i++) {
-		LIST_INIT(&action_hash[i].list);
-		lockinit(&action_hash[i].lk, "actlk", 0, LK_CANRECURSE);
 	}
 }
 
@@ -562,6 +562,8 @@ vm_numa_organize(vm_paddr_t ran_beg, vm_paddr_t bytes, int physid)
  * allocations.
  *
  * We leave vm_dma_reserved bytes worth of free pages in the reserve pool.
+ *
+ * Also setup the action_hash[] table here (which is only used by userland)
  */
 static void
 vm_page_startup_finish(void *dummy __unused)
@@ -572,6 +574,7 @@ vm_page_startup_finish(void *dummy __unused)
 	alist_blk_t xcount;
 	alist_blk_t bfree;
 	vm_page_t m;
+	int i;
 
 	spin_lock(&vm_contig_spin);
 	for (;;) {
@@ -640,6 +643,33 @@ vm_page_startup_finish(void *dummy __unused)
 		(intmax_t)(vmstats.v_dma_pages - vm_contig_alist.bl_free) *
 		(PAGE_SIZE / 1024),
 		(intmax_t)vm_contig_alist.bl_free * (PAGE_SIZE / 1024));
+
+	/*
+	 * Scale the action_hash[] array.  Primary contention occurs due
+	 * to cpu locks, scaled to ncpus, and scan overhead may be incurred
+	 * depending on the number of threads, which we scale to maxproc.
+	 *
+	 * NOTE: Action lock might recurse due to callback, so allow
+	 *	 recursion.
+	 */
+	vmaction_hsize = VMACTION_MINHSIZE;
+	if (vmaction_hsize < ncpus * 2)
+		vmaction_hsize = ncpus * 2;
+	if (vmaction_hsize < maxproc / 16)
+		vmaction_hsize = maxproc / 16;
+	vmaction_hmask = 1;
+	while (vmaction_hmask < vmaction_hsize)
+		vmaction_hmask = (vmaction_hmask << 1) | 1;
+	vmaction_hsize = vmaction_hmask + 1;
+
+	action_hash = kmalloc(sizeof(action_hash[0]) * vmaction_hsize,
+			      M_ACTIONHASH,
+			      M_WAITOK | M_ZERO);
+
+	for (i = 0; i < vmaction_hsize; i++) {
+		LIST_INIT(&action_hash[i].list);
+		lockinit(&action_hash[i].lk, "actlk", 0, LK_CANRECURSE);
+	}
 }
 SYSINIT(vm_pgend, SI_SUB_PROC0_POST, SI_ORDER_ANY,
 	vm_page_startup_finish, NULL);
@@ -3252,7 +3282,7 @@ vm_page_register_action(vm_page_action_t action, vm_page_event_t event)
 	struct vm_page_action_hash *hash;
 	int hv;
 
-	hv = (int)((intptr_t)action->m >> 8) & VMACTION_HMASK;
+	hv = (int)((intptr_t)action->m >> 8) & vmaction_hmask;
 	hash = &action_hash[hv];
 
 	lockmgr(&hash->lk, LK_EXCLUSIVE);
@@ -3271,7 +3301,7 @@ vm_page_unregister_action(vm_page_action_t action)
 	struct vm_page_action_hash *hash;
 	int hv;
 
-	hv = (int)((intptr_t)action->m >> 8) & VMACTION_HMASK;
+	hv = (int)((intptr_t)action->m >> 8) & vmaction_hmask;
 	hash = &action_hash[hv];
 	lockmgr(&hash->lk, LK_EXCLUSIVE);
 	if (action->event != VMEVENT_NONE) {
@@ -3300,7 +3330,7 @@ vm_page_event_internal(vm_page_t m, vm_page_event_t event)
 	int hv;
 	int all;
 
-	hv = (int)((intptr_t)m >> 8) & VMACTION_HMASK;
+	hv = (int)((intptr_t)m >> 8) & vmaction_hmask;
 	hash = &action_hash[hv];
 	all = 1;
 

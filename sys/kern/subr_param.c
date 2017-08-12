@@ -310,7 +310,14 @@ init_param2(int physpages)
 	nbuf = NBUF;
 	TUNABLE_LONG_FETCH("kern.nbuf", &nbuf);
 
+	/*
+	 * Calculate the size of the callout wheel.  Limit to approximately
+	 * 5 minutes worth of table (maxproc would have to be pretty huge),
+	 * as more is not likely to gain us anything.
+	 */
 	ncallout = 16 + maxproc + maxfiles;
+	if (ncallout > 5*60*hz)
+		ncallout = 5*60*hz;
 	TUNABLE_INT_FETCH("kern.ncallout", &ncallout);
 }
 

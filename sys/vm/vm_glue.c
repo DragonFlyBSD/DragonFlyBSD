@@ -1,6 +1,4 @@
 /*
- * (MPSAFE)
- *
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -156,7 +154,6 @@ useracc(c_caddr_t addr, int len, int rw)
 	boolean_t rv;
 	vm_prot_t prot;
 	vm_map_t map;
-	vm_map_entry_t save_hint;
 	vm_offset_t wrap;
 	vm_offset_t gpa;
 
@@ -180,14 +177,9 @@ useracc(c_caddr_t addr, int len, int rw)
 	}
 	map = &curproc->p_vmspace->vm_map;
 	vm_map_lock_read(map);
-	/*
-	 * We save the map hint, and restore it.  Useracc appears to distort
-	 * the map hint unnecessarily.
-	 */
-	save_hint = map->hint;
+
 	rv = vm_map_check_protection(map, trunc_page((vm_offset_t)addr),
 				     round_page(wrap), prot, TRUE);
-	map->hint = save_hint;
 	vm_map_unlock_read(map);
 	
 	return (rv == TRUE);

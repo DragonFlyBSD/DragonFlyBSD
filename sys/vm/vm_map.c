@@ -598,12 +598,75 @@ vm_map_init(struct vm_map *map, vm_offset_t min, vm_offset_t max, pmap_t pmap)
 	map->min_offset = min;
 	map->max_offset = max;
 	map->pmap = pmap;
-	map->first_free = &map->header;
-	map->hint = &map->header;
 	map->timestamp = 0;
 	map->flags = 0;
+	bzero(&map->freehint, sizeof(map->freehint));
 	lwkt_token_init(&map->token, "vm_map");
 	lockinit(&map->lock, "vm_maplk", (hz + 9) / 10, 0);
+}
+
+/*
+ * Find the first possible free address for the specified request length.
+ * Returns 0 if we don't have one cached.
+ */
+static
+vm_offset_t
+vm_map_freehint_find(vm_map_t map, vm_size_t length, vm_size_t align)
+{
+	vm_map_freehint_t *scan;
+
+	scan = &map->freehint[0];
+	while (scan < &map->freehint[VM_MAP_FFCOUNT]) {
+		if (scan->length == length && scan->align == align)
+			return(scan->start);
+		++scan;
+	}
+	return 0;
+}
+
+/*
+ * Unconditionally set the freehint.  Called by vm_map_findspace() after
+ * it finds an address.  This will help us iterate optimally on the next
+ * similar findspace.
+ */
+static
+void
+vm_map_freehint_update(vm_map_t map, vm_offset_t start,
+		       vm_size_t length, vm_size_t align)
+{
+	vm_map_freehint_t *scan;
+
+	scan = &map->freehint[0];
+	while (scan < &map->freehint[VM_MAP_FFCOUNT]) {
+		if (scan->length == length && scan->align == align) {
+			scan->start = start;
+			return;
+		}
+		++scan;
+	}
+	scan = &map->freehint[map->freehint_newindex & VM_MAP_FFMASK];
+	scan->start = start;
+	scan->align = align;
+	scan->length = length;
+	++map->freehint_newindex;
+}
+
+/*
+ * Update any existing freehints (for any alignment), for the hole we just
+ * added.
+ */
+static
+void
+vm_map_freehint_hole(vm_map_t map, vm_offset_t start, vm_size_t length)
+{
+	vm_map_freehint_t *scan;
+
+	scan = &map->freehint[0];
+	while (scan < &map->freehint[VM_MAP_FFCOUNT]) {
+		if (scan->length <= length && scan->start > start)
+			scan->start = start;
+		++scan;
+	}
 }
 
 /*
@@ -849,9 +912,6 @@ vm_map_entry_dispose(vm_map_t map, vm_map_entry_t entry, int *countp)
 {
 	struct globaldata *gd = mycpu;
 
-	KKASSERT(map->hint != entry);
-	KKASSERT(map->first_free != entry);
-
 	++*countp;
 	crit_enter();
 	entry->next = gd->gd_vme_base;
@@ -921,32 +981,6 @@ vm_map_lookup_entry(vm_map_t map, vm_offset_t address, vm_map_entry_t *entry)
 	vm_map_entry_t last;
 
 	ASSERT_VM_MAP_LOCKED(map);
-#if 0
-	/*
-	 * XXX TEMPORARILY DISABLED.  For some reason our attempt to revive
-	 * the hint code with the red-black lookup meets with system crashes
-	 * and lockups.  We do not yet know why.
-	 *
-	 * It is possible that the problem is related to the setting
-	 * of the hint during map_entry deletion, in the code specified
-	 * at the GGG comment later on in this file.
-	 *
-	 * YYY More likely it's because this function can be called with
-	 * a shared lock on the map, resulting in map->hint updates possibly
-	 * racing.  Fixed now but untested.
-	 */
-	/*
-	 * Quickly check the cached hint, there's a good chance of a match.
-	 */
-	tmp = map->hint;
-	cpu_ccfence();
-	if (tmp != &map->header) {
-		if (address >= tmp->start && address < tmp->end) {
-			*entry = tmp;
-			return(TRUE);
-		}
-	}
-#endif
 
 	/*
 	 * Locate the record from the top of the tree.  'last' tracks the
@@ -961,7 +995,6 @@ vm_map_lookup_entry(vm_map_t map, vm_offset_t address, vm_map_entry_t *entry)
 		if (address >= tmp->start) {
 			if (address < tmp->end) {
 				*entry = tmp;
-				map->hint = tmp;
 				return(TRUE);
 			}
 			last = tmp;
@@ -1150,15 +1183,9 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 	map->size += new_entry->end - new_entry->start;
 
 	/*
-	 * Update the free space hint.  Entries cannot overlap.
-	 * An exact comparison is needed to avoid matching
-	 * against the map->header.
+	 * Don't worry about updating freehint[] when inserting, allow
+	 * addresses to be lower than the actual first free spot.
 	 */
-	if ((map->first_free == prev_entry) &&
-	    (prev_entry->end == new_entry->start)) {
-		map->first_free = new_entry;
-	}
-
 #if 0
 	/*
 	 * Temporarily removed to avoid MAP_STACK panic, due to
@@ -1220,6 +1247,8 @@ vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
 		 vm_size_t align, int flags, vm_offset_t *addr)
 {
 	vm_map_entry_t entry, next;
+	vm_map_entry_t tmp;
+	vm_offset_t hole_start;
 	vm_offset_t end;
 	vm_offset_t align_mask;
 
@@ -1238,19 +1267,15 @@ vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
 		align_mask = align - 1;
 
 	/*
-	 * Look for the first possible address; if there's already something
-	 * at this address, we have to start after it.
+	 * Use freehint to adjust the start point, hopefully reducing
+	 * the iteration to O(1).
 	 */
-	if (start == map->min_offset) {
-		if ((entry = map->first_free) != &map->header)
-			start = entry->end;
-	} else {
-		vm_map_entry_t tmp;
-
-		if (vm_map_lookup_entry(map, start, &tmp))
-			start = tmp->end;
-		entry = tmp;
-	}
+	hole_start = vm_map_freehint_find(map, length, align);
+	if (start < hole_start)
+		start = hole_start;
+	if (vm_map_lookup_entry(map, start, &tmp))
+		start = tmp->end;
+	entry = tmp;
 
 	/*
 	 * Look through the rest of the map, trying to fit a new region in the
@@ -1268,6 +1293,7 @@ vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
 		if (end < start)
 			return (1);
 		start = end;
+
 		/*
 		 * Find the end of the proposed new region.  Be sure we didn't
 		 * go beyond the end of the map, or wrap around the address.
@@ -1304,7 +1330,11 @@ vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
 				break;
 		}
 	}
-	map->hint = entry;
+
+	/*
+	 * Update the freehint
+	 */
+	vm_map_freehint_update(map, start, length, align);
 
 	/*
 	 * Grow the kernel_map if necessary.  pmap_growkernel() will panic
@@ -1423,10 +1453,6 @@ vm_map_simplify_entry(vm_map_t map, vm_map_entry_t entry, int *countp)
 		     (prev->inheritance == entry->inheritance) &&
 		     (prev->id == entry->id) &&
 		     (prev->wired_count == entry->wired_count)) {
-			if (map->first_free == prev)
-				map->first_free = entry;
-			if (map->hint == prev)
-				map->hint = entry;
 			vm_map_entry_unlink(map, prev);
 			entry->start = prev->start;
 			entry->offset = prev->offset;
@@ -1450,10 +1476,6 @@ vm_map_simplify_entry(vm_map_t map, vm_map_entry_t entry, int *countp)
 		    (next->inheritance == entry->inheritance) &&
 		    (next->id == entry->id) &&
 		    (next->wired_count == entry->wired_count)) {
-			if (map->first_free == next)
-				map->first_free = entry;
-			if (map->hint == next)
-				map->hint = entry;
 			vm_map_entry_unlink(map, next);
 			entry->end = next->end;
 			if (next->object.vm_object)
@@ -2868,6 +2890,7 @@ vm_map_delete(vm_map_t map, vm_offset_t start, vm_offset_t end, int *countp)
 	vm_object_t object;
 	vm_map_entry_t entry;
 	vm_map_entry_t first_entry;
+	vm_offset_t hole_start;
 
 	ASSERT_VM_MAP_LOCKED(map);
 	lwkt_gettoken(&map->token);
@@ -2879,29 +2902,20 @@ again:
 	 * loop will run from this point until a record beyond the termination
 	 * address is encountered.
 	 *
-	 * map->hint must be adjusted to not point to anything we delete,
-	 * so set it to the entry prior to the one being deleted.
+	 * Adjust freehint[] for either the clip case or the extension case.
 	 *
 	 * GGG see other GGG comment.
 	 */
 	if (vm_map_lookup_entry(map, start, &first_entry)) {
 		entry = first_entry;
 		vm_map_clip_start(map, entry, start, countp);
-		map->hint = entry->prev;	/* possible problem XXX */
+		hole_start = start;
 	} else {
-		map->hint = first_entry;	/* possible problem XXX */
 		entry = first_entry->next;
-	}
-
-	/*
-	 * If a hole opens up prior to the current first_free then
-	 * adjust first_free.  As with map->hint, map->first_free
-	 * cannot be left set to anything we might delete.
-	 */
-	if (entry == &map->header) {
-		map->first_free = &map->header;
-	} else if (map->first_free->start >= start) {
-		map->first_free = entry->prev;
+		if (entry == &map->header)
+			hole_start = first_entry->start;
+		else
+			hole_start = first_entry->end;
 	}
 
 	/*
@@ -3011,7 +3025,14 @@ again:
 		vm_map_entry_delete(map, entry, countp);
 		entry = next;
 	}
+	if (entry == &map->header)
+		vm_map_freehint_hole(map, hole_start, entry->end - hole_start);
+	else
+		vm_map_freehint_hole(map, hole_start,
+				     entry->start - hole_start);
+
 	lwkt_reltoken(&map->token);
+
 	return (KERN_SUCCESS);
 }
 
@@ -4056,27 +4077,20 @@ RetryLookup:
 		vm_map_lock(map);
 
 	/*
-	 * If the map has an interesting hint, try it before calling full
-	 * blown lookup routine.
+	 * Always do a full lookup.  The hint doesn't get us much anymore
+	 * now that the map is RB'd.
 	 */
-	entry = map->hint;
 	cpu_ccfence();
-	*out_entry = entry;
+	*out_entry = &map->header;
 	*object = NULL;
 
-	if ((entry == &map->header) ||
-	    (vaddr < entry->start) || (vaddr >= entry->end)) {
+	{
 		vm_map_entry_t tmp_entry;
 
-		/*
-		 * Entry was either not a valid hint, or the vaddr was not
-		 * contained in the entry, so do a full lookup.
-		 */
 		if (!vm_map_lookup_entry(map, vaddr, &tmp_entry)) {
 			rv = KERN_INVALID_ADDRESS;
 			goto done;
 		}
-
 		entry = tmp_entry;
 		*out_entry = entry;
 	}

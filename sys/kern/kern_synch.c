@@ -303,9 +303,11 @@ updatepcpu(struct lwp *lp, int cpticks, int ttlticks)
 
 /*
  * tsleep/wakeup hash table parameters.  Try to find the sweet spot for
- * like addresses being slept on.
+ * like addresses being slept on.  The larger the table, the fewer
+ * unnecessary IPIs.  However, larger sizes also have diminishing returns
+ * and eat memory.
  */
-#define TABLESIZE	4001
+#define TABLESIZE	4001		/* 4001, 8191, or 16369 */
 #define LOOKUP(x)	(((u_int)(uintptr_t)(x)) % TABLESIZE)
 
 static cpumask_t slpque_cpumasks[TABLESIZE];
