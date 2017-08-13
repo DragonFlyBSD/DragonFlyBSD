@@ -16,7 +16,7 @@ syscalls.master:	${.CURDIR}/../../sys/kern/syscalls.master
 
 syscalls.h:	syscalls.master
 	/bin/sh ${.CURDIR}/../../sys/kern/makesyscalls.sh syscalls.master \
-		${.CURDIR}/i386.conf
+		${.CURDIR}/${MACHINE_ARCH}.conf
 
 ioctl.c!
 	sh ${.CURDIR}/../kdump/mkioctls ${DESTDIR}/usr/include ${.CURDIR} > ${.TARGET}
