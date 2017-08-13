@@ -3221,6 +3221,7 @@ TO_REMOVE+=/usr/include/struct.h
 TO_REMOVE+=/usr/include/sys/device_port.h
 TO_REMOVE+=/usr/include/sys/ieee754.h
 TO_REMOVE+=/usr/include/sys/nlist_aout.h
+TO_REMOVE+=/usr/include/sys/sysvipc.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
