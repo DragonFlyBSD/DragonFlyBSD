@@ -233,13 +233,13 @@ create_subpartitions(struct i_fn_args *a)
 			    "%s%s -d /tmp/t1 luksOpen /dev/%s %s",
 			    a->os_root, cmd_name(a, "CRYPTSETUP"),
 			    subpartition_get_device_name(sp),
-			    fn_mapper_name(subpartition_get_device_name(sp), -1));
+			    fn_mapper_name(subpartition_get_mountpoint(sp), -1));
 			command_add(cmds, "%s%s%s -b %ld -f %ld /dev/mapper/%s",
 			    a->os_root, cmd_name(a, "NEWFS"),
 			    subpartition_is_softupdated(sp) ? " -U" : "",
 			    subpartition_get_bsize(sp),
 			    subpartition_get_fsize(sp),
-			    fn_mapper_name(subpartition_get_device_name(sp), -1));
+			    fn_mapper_name(subpartition_get_mountpoint(sp), -1));
 		} else {
 			command_add(cmds, "%s%s%s -b %ld -f %ld /dev/%s",
 			    a->os_root, cmd_name(a, "NEWFS"),

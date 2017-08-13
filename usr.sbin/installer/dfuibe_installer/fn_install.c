@@ -240,14 +240,14 @@ fn_install_os(struct i_fn_args *a)
 				command_add(cmds, "%s%s /dev/%s %smnt%s",
 				    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
 				    (subpartition_is_encrypted(sp) ?
-				     fn_mapper_name(subpartition_get_device_name(sp), 0) : subpartition_get_device_name(sp)),
+				     fn_mapper_name(subpartition_get_mountpoint(sp), 0) : subpartition_get_device_name(sp)),
 				    a->os_root,
 				    subpartition_get_mountpoint(sp));
 			} else {
 				command_add(cmds, "%s%s /dev/%s %smnt%s",
 				    a->os_root, cmd_name(a, "MOUNT"),
 				    subpartition_is_encrypted(sp) ?
-				     fn_mapper_name(subpartition_get_device_name(sp), 0) : subpartition_get_device_name(sp),
+				     fn_mapper_name(subpartition_get_mountpoint(sp), 0) : subpartition_get_device_name(sp),
 				    a->os_root,
 				    subpartition_get_mountpoint(sp));
 			}
@@ -293,7 +293,7 @@ fn_install_os(struct i_fn_args *a)
 			if (subpartition_is_encrypted(sp)) {
 				command_add(cmds, "%s%s /dev/%s %smnt%s",
 				    a->os_root, cmd_name(a, "MOUNT"),
-				    fn_mapper_name(subpartition_get_device_name(sp), 0),
+				    fn_mapper_name(subpartition_get_mountpoint(sp), 0),
 				    a->os_root,
 				    subpartition_get_mountpoint(sp));
 			} else {
@@ -613,7 +613,7 @@ fn_install_os(struct i_fn_args *a)
 					    a->os_root, cmd_name(a, "ECHO"),
 					    fsname,
 					    subpartition_get_device_name(sp),
-					    fn_mapper_name(subpartition_get_device_name(sp), -1),
+					    fn_mapper_name(subpartition_get_mountpoint(sp), -1),
 					    a->os_root);
 				} else {
 					command_add(cmds,
@@ -633,12 +633,12 @@ fn_install_os(struct i_fn_args *a)
 			} else if (subpartition_is_encrypted(sp)) {
 				command_add(cmds, "%s%s '%s\t/dev/%s\tnone\tnone' >>%smnt/etc/crypttab",
 				    a->os_root, cmd_name(a, "ECHO"),
-				    fn_mapper_name(subpartition_get_device_name(sp), -1),
+				    fn_mapper_name(subpartition_get_mountpoint(sp), -1),
 				    subpartition_get_device_name(sp),
 				    a->os_root);
 				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\t%s\trw\t\t2\t2' >>%smnt/etc/fstab",
 				    a->os_root, cmd_name(a, "ECHO"),
-				    fn_mapper_name(subpartition_get_device_name(sp), 0),
+				    fn_mapper_name(subpartition_get_mountpoint(sp), 0),
 				    subpartition_get_mountpoint(sp),
 				    fsname,
 				    a->os_root);

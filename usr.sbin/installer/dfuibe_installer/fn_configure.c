@@ -1403,14 +1403,14 @@ mount_target_system(struct i_fn_args *a)
 			    a->os_root, cmd_name(a, "AWK"),
 			    fsname,
 			    a->os_root, cmd_name(a, "AWK"),
-			    fn_mapper_name(subpartition_get_device_name(d_subpart), -1)
+			    fn_mapper_name(subpartition_get_mountpoint(d_subpart), -1)
 			    );
 			command_add(cmds,
 			    "%s%s %s %s%s",
 			    a->os_root,
 			     (use_hammer ? cmd_name(a, "MOUNT_HAMMER") :
 					   cmd_name(a, "MOUNT")),
-			    fn_mapper_name(subpartition_get_device_name(d_subpart), 1),
+			    fn_mapper_name(subpartition_get_mountpoint(d_subpart), 1),
 			    a->os_root, a->cfg_root);
 		} else {
 			command_add(cmds,
@@ -1469,7 +1469,7 @@ mount_target_system(struct i_fn_args *a)
 			if (strcmp(name, "swap") == 0)
 				continue;
 			/* encrypted root already mounted */
-			if (strcmp(name, fn_mapper_name(subpartition_get_device_name(d_subpart), -1)) == 0)
+			if (strcmp(name, fn_mapper_name(subpartition_get_mountpoint(d_subpart), -1)) == 0)
 				continue;
 
 			if ((word = strtok(NULL, " \t")) == NULL)
