@@ -610,6 +610,34 @@ zget(vm_zone_t z)
 	spin_lock(&z->zspin);
 	z->ztotal += nitems;
 
+	/*
+	 * The zone code may need to allocate kernel memory, which can
+	 * recurse zget() infinitely if we do not handle it properly.
+	 * We deal with this by directly repopulating the pcpu vm_map_entry
+	 * cache.
+	 */
+	if (nitems > 1 && (z->zflags & ZONE_SPECIAL)) {
+		struct globaldata *gd = mycpu;
+		vm_map_entry_t entry;
+
+		/*
+		 * Make sure we have enough structures in gd_vme_base to handle
+		 * the reservation request.
+		 *
+		 * The critical section protects access to the per-cpu gd.
+		 */
+		crit_enter();
+		while (gd->gd_vme_avail < 2 && nitems > 1) {
+			entry = item;
+			entry->next = gd->gd_vme_base;
+			gd->gd_vme_base = entry;
+			++gd->gd_vme_avail;
+			item = (uint8_t *)item + z->zsize;
+			--nitems;
+		}
+		crit_exit();
+	}
+
 	if (nitems != 0) {
 		/*
 		 * Enter pages into the pool saving one for immediate
@@ -646,14 +674,6 @@ zget(vm_zone_t z)
 		item = NULL;
 	}
 	spin_unlock(&z->zspin);
-
-	/*
-	 * A special zone may have used a kernel-reserved vm_map_entry.  If
-	 * so we have to be sure to recover our reserve so we don't run out.
-	 * We will panic if we run out.
-	 */
-	if (z->zflags & ZONE_SPECIAL)
-		vm_map_entry_reserve(0);
 
 	return item;
 }

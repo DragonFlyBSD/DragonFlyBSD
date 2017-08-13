@@ -510,7 +510,6 @@ extern struct lwp lwp0;			/* LWP slot for swapper. */
 extern struct thread thread0;		/* Thread slot for swapper. */
 extern int nprocs, maxproc;		/* Current and max number of procs. */
 extern int maxprocperuid;		/* Max procs per uid. */
-extern int sched_quantum;		/* Scheduling quantum in ticks */
 
 extern struct proc *initproc;		/* Process slot for init */
 extern struct thread *pagethread, *updatethread;
@@ -560,6 +559,7 @@ int	p_trespass (struct ucred *cr1, struct ucred *cr2);
 void	setrunnable (struct lwp *);
 void	proc_stop (struct proc *, int);
 void	proc_unstop (struct proc *, int);
+void	sleep_early_gdinit (struct globaldata *);
 void	sleep_gdinit (struct globaldata *);
 thread_t cpu_heavy_switch (struct thread *);
 thread_t cpu_lwkt_switch (struct thread *);

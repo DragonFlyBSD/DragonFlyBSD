@@ -756,7 +756,10 @@ mi_gdinit(struct globaldata *gd, int cpuid)
 	gd->gd_cpumask_offset = (uintptr_t)CPUMASK_ADDR(*(cpumask_t *)0, cpuid);
 	lwkt_gdinit(gd);
 	vm_map_entry_reserve_cpu_init(gd);
-	sleep_gdinit(gd);
+	if (gd->gd_cpuid == 0)
+		sleep_early_gdinit(gd);
+	else
+		sleep_gdinit(gd);
 	slab_gdinit(gd);
 	ATOMIC_CPUMASK_ORBIT(usched_global_cpumask, cpuid);
 	gd->gd_vmstats = vmstats;

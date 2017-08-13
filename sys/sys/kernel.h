@@ -135,6 +135,7 @@ enum sysinit_sub_id {
 	SI_BOOT1_VM		= 0x1000000,	/* virtual memory system init*/
 	SI_BOOT1_ALLOCATOR	= 0x1400000,	/* slab allocator */
 	SI_BOOT1_KMALLOC	= 0x1600000,	/* kmalloc inits */
+	SI_BOOT1_DYNALLOC	= 0x1700000,	/* permanent kernel allocs */
 	SI_BOOT1_POST		= 0x1800000,	/* post boot1 inits */
 
 	/*

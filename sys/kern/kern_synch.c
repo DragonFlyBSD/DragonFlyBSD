@@ -66,10 +66,11 @@ TAILQ_HEAD(tslpque, thread);
 
 static void sched_setup (void *dummy);
 SYSINIT(sched_setup, SI_SUB_KICK_SCHEDULER, SI_ORDER_FIRST, sched_setup, NULL);
+static void sched_dyninit (void *dummy);
+SYSINIT(sched_dyninit, SI_BOOT1_DYNALLOC, SI_ORDER_FIRST, sched_dyninit, NULL);
 
 int	lbolt;
 void	*lbolt_syncer;
-int	sched_quantum;		/* Roundrobin scheduling quantum in ticks. */
 int	ncpus;
 int	ncpus2, ncpus2_shift, ncpus2_mask;	/* note: mask not cpumask_t */
 int	ncpus_fit, ncpus_fit_mask;		/* note: mask not cpumask_t */
@@ -109,28 +110,6 @@ static fixpt_t cexp[3] = {
 static void	endtsleep (void *);
 static void	loadav (void *arg);
 static void	schedcpu (void *arg);
-
-/*
- * Adjust the scheduler quantum.  The quantum is specified in microseconds.
- * Note that 'tick' is in microseconds per tick.
- */
-static int
-sysctl_kern_quantum(SYSCTL_HANDLER_ARGS)
-{
-	int error, new_val;
-
-	new_val = sched_quantum * ustick;
-	error = sysctl_handle_int(oidp, &new_val, 0, req);
-        if (error != 0 || req->newptr == NULL)
-		return (error);
-	if (new_val < ustick)
-		return (EINVAL);
-	sched_quantum = new_val / ustick;
-	return (0);
-}
-
-SYSCTL_PROC(_kern, OID_AUTO, quantum, CTLTYPE_INT|CTLFLAG_RW,
-	0, sizeof sched_quantum, sysctl_kern_quantum, "I", "");
 
 static int pctcpu_decay = 10;
 SYSCTL_INT(_kern, OID_AUTO, pctcpu_decay, CTLFLAG_RW, &pctcpu_decay, 0, "");
@@ -282,27 +261,6 @@ schedcpu_resource(struct proc *p, void *data __unused)
 }
 
 /*
- *
- */
-static void
-schedcpu_setup(void *arg)
-{
-	globaldata_t save_gd = mycpu;
-	globaldata_t gd;
-	int n;
-
-	for (n = 0; n < ncpus; ++n) {
-		gd = globaldata_find(n);
-		lwkt_setcpu_self(gd);
-		callout_init_mp(&gd->gd_loadav_callout);
-		callout_init_mp(&gd->gd_schedcpu_callout);
-		schedcpu(NULL);
-		loadav(NULL);
-	}
-	lwkt_setcpu_self(save_gd);
-}
-
-/*
  * This is only used by ps.  Generate a cpu percentage use over
  * a period of one second.
  */
@@ -323,39 +281,19 @@ updatepcpu(struct lwp *lp, int cpticks, int ttlticks)
 }
 
 /*
- * tsleep/wakeup hash table parameters.  Try to find the sweet spot for
- * like addresses being slept on.  The larger the table, the fewer
- * unnecessary IPIs.  However, larger sizes also have diminishing returns
- * and eat memory.
- */
-#define TABLESIZE	8191		/* 4001, 8191, or 16369 */
-#define LOOKUP(x)	(((u_int)(uintptr_t)(x)) % TABLESIZE)
-
-static cpumask_t slpque_cpumasks[TABLESIZE];
-
-/*
- * General scheduler initialization.  We force a reschedule 25 times
- * a second by default.  Note that cpu0 is initialized in early boot and
- * cannot make any high level calls.
+ * Handy macros to calculate hash indices.  LOOKUP() calculates the
+ * global cpumask hash index, TCHASHSHIFT() converts that into the
+ * pcpu hash index.
  *
- * Each cpu has its own sleep queue.
+ * By making the pcpu hash arrays smaller we save a significant amount
+ * of memory at very low cost.  The real cost is in IPIs, which are handled
+ * by the much larger global cpumask hash table.
  */
-void
-sleep_gdinit(globaldata_t gd)
-{
-	static struct tslpque slpque_cpu0[TABLESIZE];
-	int i;
+#define LOOKUP(x)	(((u_int)(uintptr_t)(x)) % slpque_tablesize)
+#define TCHASHSHIFT(x)	((x) >> 4)
 
-	if (gd->gd_cpuid == 0) {
-		sched_quantum = (hz + 24) / 25;
-		gd->gd_tsleep_hash = slpque_cpu0;
-	} else {
-		gd->gd_tsleep_hash = kmalloc(sizeof(slpque_cpu0), 
-					    M_TSLEEP, M_WAITOK | M_ZERO);
-	}
-	for (i = 0; i < TABLESIZE; ++i)
-		TAILQ_INIT(&gd->gd_tsleep_hash[i]);
-}
+static uint32_t	slpque_tablesize;
+static cpumask_t *slpque_cpumasks;
 
 /*
  * This is a dandy function that allows us to interlock tsleep/wakeup
@@ -378,22 +316,25 @@ static __inline void
 _tsleep_interlock(globaldata_t gd, const volatile void *ident, int flags)
 {
 	thread_t td = gd->gd_curthread;
-	int id;
+	uint32_t cid;
+	uint32_t gid;
 
 	crit_enter_quick(td);
 	if (td->td_flags & TDF_TSLEEPQ) {
-		id = LOOKUP(td->td_wchan);
-		TAILQ_REMOVE(&gd->gd_tsleep_hash[id], td, td_sleepq);
-		if (TAILQ_FIRST(&gd->gd_tsleep_hash[id]) == NULL) {
-			ATOMIC_CPUMASK_NANDBIT(slpque_cpumasks[id],
+		cid = LOOKUP(td->td_wchan);
+		gid = TCHASHSHIFT(cid);
+		TAILQ_REMOVE(&gd->gd_tsleep_hash[gid], td, td_sleepq);
+		if (TAILQ_FIRST(&gd->gd_tsleep_hash[gid]) == NULL) {
+			ATOMIC_CPUMASK_NANDBIT(slpque_cpumasks[cid],
 					       gd->gd_cpuid);
 		}
 	} else {
 		td->td_flags |= TDF_TSLEEPQ;
 	}
-	id = LOOKUP(ident);
-	TAILQ_INSERT_TAIL(&gd->gd_tsleep_hash[id], td, td_sleepq);
-	ATOMIC_CPUMASK_ORBIT(slpque_cpumasks[id], gd->gd_cpuid);
+	cid = LOOKUP(ident);
+	gid = TCHASHSHIFT(cid);
+	TAILQ_INSERT_TAIL(&gd->gd_tsleep_hash[gid], td, td_sleepq);
+	ATOMIC_CPUMASK_ORBIT(slpque_cpumasks[cid], gd->gd_cpuid);
 	td->td_wchan = ident;
 	td->td_wdomain = flags & PDOMAIN_MASK;
 	crit_exit_quick(td);
@@ -413,16 +354,18 @@ static __inline void
 _tsleep_remove(thread_t td)
 {
 	globaldata_t gd = mycpu;
-	int id;
+	uint32_t cid;
+	uint32_t gid;
 
 	KKASSERT(td->td_gd == gd && IN_CRITICAL_SECT(td));
 	KKASSERT((td->td_flags & TDF_MIGRATING) == 0);
 	if (td->td_flags & TDF_TSLEEPQ) {
 		td->td_flags &= ~TDF_TSLEEPQ;
-		id = LOOKUP(td->td_wchan);
-		TAILQ_REMOVE(&gd->gd_tsleep_hash[id], td, td_sleepq);
-		if (TAILQ_FIRST(&gd->gd_tsleep_hash[id]) == NULL) {
-			ATOMIC_CPUMASK_NANDBIT(slpque_cpumasks[id],
+		cid = LOOKUP(td->td_wchan);
+		gid = TCHASHSHIFT(cid);
+		TAILQ_REMOVE(&gd->gd_tsleep_hash[gid], td, td_sleepq);
+		if (TAILQ_FIRST(&gd->gd_tsleep_hash[gid]) == NULL) {
+			ATOMIC_CPUMASK_NANDBIT(slpque_cpumasks[cid],
 					       gd->gd_cpuid);
 		}
 		td->td_wchan = NULL;
@@ -937,13 +880,15 @@ _wakeup(void *ident, int domain)
 	struct thread *ntd;
 	globaldata_t gd;
 	cpumask_t mask;
-	int id;
+	uint32_t cid;
+	uint32_t gid;
 
 	crit_enter();
 	logtsleep2(wakeup_beg, ident);
 	gd = mycpu;
-	id = LOOKUP(ident);
-	qp = &gd->gd_tsleep_hash[id];
+	cid = LOOKUP(ident);
+	gid = TCHASHSHIFT(cid);
+	qp = &gd->gd_tsleep_hash[gid];
 restart:
 	for (td = TAILQ_FIRST(qp); td != NULL; td = ntd) {
 		ntd = TAILQ_NEXT(td, td_sleepq);
@@ -980,7 +925,7 @@ restart:
 	 * thread pointers.
 	 */
 	if ((domain & PWAKEUP_MYCPU) == 0) {
-		mask = slpque_cpumasks[id];
+		mask = slpque_cpumasks[cid];
 		CPUMASK_ANDMASK(mask, gd->gd_other_cpus);
 		if (CPUMASK_TESTNZERO(mask)) {
 			lwkt_send_ipiq2_mask(mask, _wakeup, ident,
@@ -1315,12 +1260,134 @@ collect_load_callback(int n)
 	return ((averunnable.ldavg[0] * 100 + (fscale >> 1)) / fscale);
 }
 
-/* ARGSUSED */
 static void
-sched_setup(void *dummy)
+sched_setup(void *dummy __unused)
 {
+	globaldata_t save_gd = mycpu;
+	globaldata_t gd;
+	int n;
+
 	kcollect_register(KCOLLECT_LOAD, "load", collect_load_callback,
 			  KCOLLECT_SCALE(KCOLLECT_LOAD_FORMAT, 0));
-	/* Kick off timeout driven events by calling first time. */
-	schedcpu_setup(NULL);
+
+	/*
+	 * Kick off timeout driven events by calling first time.  We
+	 * split the work across available cpus to help scale it,
+	 * it can eat a lot of cpu when there are a lot of processes
+	 * on the system.
+	 */
+	for (n = 0; n < ncpus; ++n) {
+		gd = globaldata_find(n);
+		lwkt_setcpu_self(gd);
+		callout_init_mp(&gd->gd_loadav_callout);
+		callout_init_mp(&gd->gd_schedcpu_callout);
+		schedcpu(NULL);
+		loadav(NULL);
+	}
+	lwkt_setcpu_self(save_gd);
+}
+
+/*
+ * Extremely early initialization, dummy-up the tables so we don't have
+ * to conditionalize for NULL in _wakeup() and tsleep_interlock().  Even
+ * though the system isn't blocking this early, these functions still
+ * try to access the hash table.
+ *
+ * This setup will be overridden once sched_dyninit() -> sleep_gdinit()
+ * is called.
+ */
+void
+sleep_early_gdinit(globaldata_t gd)
+{
+	static struct tslpque	dummy_slpque;
+	static cpumask_t dummy_cpumasks;
+
+	slpque_tablesize = 1;
+	gd->gd_tsleep_hash = &dummy_slpque;
+	slpque_cpumasks = &dummy_cpumasks;
+	TAILQ_INIT(&dummy_slpque);
+}
+
+/*
+ * PCPU initialization.  Called after KMALLOC is operational, by
+ * sched_dyninit() for cpu 0, and by mi_gdinit() for other cpus later.
+ *
+ * WARNING! The pcpu hash table is smaller than the global cpumask
+ *	    hash table, which can save us a lot of memory when maxproc
+ *	    is set high.
+ */
+void
+sleep_gdinit(globaldata_t gd)
+{
+	struct thread *td;
+	uint32_t n;
+	uint32_t i;
+
+	/*
+	 * This shouldn't happen, that is there shouldn't be any threads
+	 * waiting on the dummy tsleep queue this early in the boot.
+	 */
+	if (gd->gd_cpuid == 0) {
+		TAILQ_FOREACH(td, &gd->gd_tsleep_hash[0], td_sleepq) {
+			kprintf("SLEEP_GDINIT SWITCH %s\n", td->td_comm);
+		}
+	}
+
+	/*
+	 * Note that we have to allocate one extra slot because we are
+	 * shifting a modulo value.  TCHASHSHIFT(slpque_tablesize - 1) can
+	 * return the same value as TCHASHSHIFT(slpque_tablesize).
+	 */
+	n = TCHASHSHIFT(slpque_tablesize) + 1;
+
+	gd->gd_tsleep_hash = kmalloc(sizeof(struct tslpque) * n,
+				     M_TSLEEP, M_WAITOK | M_ZERO);
+	for (i = 0; i < n; ++i)
+		TAILQ_INIT(&gd->gd_tsleep_hash[i]);
+}
+
+/*
+ * Dynamic initialization after the memory system is operational.
+ */
+static void
+sched_dyninit(void *dummy __unused)
+{
+	int tblsize;
+	int tblsize2;
+	int n;
+
+	/*
+	 * Calculate table size for slpque hash.  We want a prime number
+	 * large enough to avoid overloading slpque_cpumasks when the
+	 * system has a large number of sleeping processes, which will
+	 * spam IPIs on wakeup().
+	 *
+	 * While it is true this is really a per-lwp factor, generally
+	 * speaking the maxproc limit is a good metric to go by.
+	 */
+	for (tblsize = maxproc | 1; ; tblsize += 2) {
+		if (tblsize % 3 == 0)
+			continue;
+		if (tblsize % 5 == 0)
+			continue;
+		tblsize2 = (tblsize / 2) | 1;
+		for (n = 7; n < tblsize2; n += 2) {
+			if (tblsize % n == 0)
+				break;
+		}
+		if (n == tblsize2)
+			break;
+	}
+
+	/*
+	 * PIDs are currently limited to 6 digits.  Cap the table size
+	 * at double this.
+	 */
+	if (tblsize > 2000003)
+		tblsize = 2000003;
+
+	slpque_tablesize = tblsize;
+	slpque_cpumasks = kmalloc(sizeof(*slpque_cpumasks) * slpque_tablesize,
+				  M_TSLEEP, M_WAITOK | M_ZERO);
+	sleep_gdinit(mycpu);
 }
