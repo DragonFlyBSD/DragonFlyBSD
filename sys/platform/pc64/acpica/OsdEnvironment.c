@@ -39,10 +39,10 @@
 
 #include "acpi.h"
 
-static u_long i386_acpi_root;
+static u_long acpi_root_phys;
 
-SYSCTL_ULONG(_machdep, OID_AUTO, acpi_root, CTLFLAG_RD, &i386_acpi_root, 0,
-	     "The physical address of the RSDP");
+SYSCTL_ULONG(_machdep, OID_AUTO, acpi_root, CTLFLAG_RD, &acpi_root_phys, 0,
+    "The physical address of the RSDP");
 
 ACPI_STATUS
 AcpiOsInitialize(void)
@@ -63,20 +63,20 @@ AcpiOsGetRootPointer(void)
 	ACPI_STATUS status;
 	u_long acpi_root;
 
-	if (i386_acpi_root == 0) {
+	if (acpi_root_phys == 0) {
 		/*
 		 * The loader passes the physical address at which it found the
 		 * RSDP in a hint.  We try to recover this before searching
 		 * manually here.
 		 */
 		if (kgetenv_ulong("hint.acpi.0.rsdp", &acpi_root) == 1) {
-			i386_acpi_root = acpi_root;
+			acpi_root_phys = acpi_root;
 		} else {
 			status = AcpiFindRootPointer(&ptr);
 			if (ACPI_SUCCESS(status))
-				i386_acpi_root = ptr;
+				acpi_root_phys = ptr;
 		}
 	}
 
-	return (i386_acpi_root);
+	return (acpi_root_phys);
 }
