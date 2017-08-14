@@ -66,6 +66,7 @@
 #include <netinet/ip_var.h>
 #include <netinet/ip_icmp.h>
 #include <netinet/tcp.h>
+#include <netinet/tcp_seq.h>
 #include <netinet/tcp_timer.h>
 #include <netinet/tcp_var.h>
 #include <netinet/tcpip.h>
@@ -1050,22 +1051,19 @@ next:
  			if (tcp) {
 				uint32_t ack = ntohl(tcp->th_ack);
 
-#define _SEQ_GE(a, b)	((int)(a) - (int)(b) >= 0)
-
 				if (dir == MATCH_FORWARD) {
 					if (q->ack_fwd == 0 ||
-					    _SEQ_GE(ack, q->ack_fwd))
+					    SEQ_GEQ(ack, q->ack_fwd))
 						q->ack_fwd = ack;
 					else /* ignore out-of-sequence */
 						break;
 				} else {
 					if (q->ack_rev == 0 ||
-					    _SEQ_GE(ack, q->ack_rev))
+					    SEQ_GEQ(ack, q->ack_rev))
 						q->ack_rev = ack;
 					else /* ignore out-of-sequence */
 						break;
 				}
-#undef _SEQ_GE
 			}
 			q->expire = time_second + dyn_ack_lifetime;
 			break;
