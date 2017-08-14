@@ -332,9 +332,9 @@ zinitna(vm_zone_t z, char *name, size_t size, long nentries, uint32_t flags)
 	z->zpagecount = 0;
 
 	/*
-	 * Reduce kernel_map spam by allocating in chunks of 4 pages.
+	 * Reduce kernel_map spam by allocating in chunks.
 	 */
-	z->zalloc = 4;
+	z->zalloc = ZONE_MAXPGLOAD;
 
 	/*
 	 * Populate the interrrupt zone at creation time rather than
@@ -498,12 +498,21 @@ zget(vm_zone_t z)
 		 * simply populate an existing mapping.
 		 *
 		 * First allocate as many pages as we can, stopping at
-		 * our limit or if the page allocation fails.
+		 * our limit or if the page allocation fails.  Try to
+		 * avoid exhausting the interrupt free minimum by backing
+		 * off to normal page allocations after a certain point.
 		 */
 		for (i = 0; i < ZONE_MAXPGLOAD && i < z->zalloc; ++i) {
-			m = vm_page_alloc(NULL,
-					  mycpu->gd_rand_incr++,
-					  z->zallocflag);
+			if (i < 4) {
+				m = vm_page_alloc(NULL,
+						  mycpu->gd_rand_incr++,
+						  z->zallocflag);
+			} else {
+				m = vm_page_alloc(NULL,
+						  mycpu->gd_rand_incr++,
+						  VM_ALLOC_NORMAL |
+						  VM_ALLOC_SYSTEM);
+			}
 			if (m == NULL)
 				break;
 			pgs[i] = m;

@@ -2965,6 +2965,12 @@ again:
 		/*
 		 * Unwire before removing addresses from the pmap; otherwise,
 		 * unwiring will put the entries back in the pmap.
+		 *
+		 * Generally speaking, doing a bulk pmap_remove() before
+		 * removing the pages from the VM object is better at
+		 * reducing unnecessary IPIs.  The pmap code is now optimized
+		 * to not blindly iterate the range when pt and pd pages
+		 * are missing.
 		 */
 		if (entry->wired_count != 0)
 			vm_map_entry_unwire(map, entry);
@@ -2972,6 +2978,7 @@ again:
 		offidxend = offidxstart + count;
 
 		if (object == &kernel_object) {
+			pmap_remove(map->pmap, s, e);
 			vm_object_hold(object);
 			vm_object_page_remove(object, offidxstart,
 					      offidxend, FALSE);

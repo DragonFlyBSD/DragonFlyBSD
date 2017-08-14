@@ -47,10 +47,11 @@
 #include <sys/sysctl.h>
 #include <sys/socket.h>
 #include <sys/kern_syscall.h>
+#include <sys/lock.h>
+#include <sys/mutex.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
-#include <sys/lock.h>
 #include <vm/vm_object.h>
 #include <vm/vm_kern.h>
 #include <vm/vm_extern.h>
@@ -61,6 +62,7 @@
 
 #include <sys/file2.h>
 #include <sys/signal2.h>
+#include <sys/mutex2.h>
 
 #include <machine/cpufunc.h>
 
@@ -122,6 +124,7 @@ static int pipe_bcache_alloc;
 static int pipe_bkmem_alloc;
 static int pipe_rblocked_count;
 static int pipe_wblocked_count;
+static struct mtx *pipe_gdlocks;
 
 SYSCTL_NODE(_kern, OID_AUTO, pipe, CTLFLAG_RW, 0, "Pipe operation");
 SYSCTL_INT(_kern_pipe, OID_AUTO, nbig,
@@ -154,6 +157,7 @@ void
 pipeinit(void *dummy)
 {
 	size_t mbytes = kmem_lim_size();
+	int n;
 
 	if (pipe_maxbig == LIMITBIGPIPES) {
 		if (mbytes >= 7 * 1024)
@@ -167,6 +171,10 @@ pipeinit(void *dummy)
 		if (mbytes >= 15 * 1024)
 			pipe_maxcache *= 2;
 	}
+	pipe_gdlocks = kmalloc(sizeof(*pipe_gdlocks) * ncpus,
+			     M_PIPE, M_WAITOK | M_ZERO);
+	for (n = 0; n < ncpus; ++n)
+		mtx_init(&pipe_gdlocks[n], "pipekm");
 }
 SYSINIT(kmem, SI_BOOT2_MACHDEP, SI_ORDER_ANY, pipeinit, NULL);
 
@@ -1130,6 +1138,9 @@ pipe_shutdown(struct file *fp, int how)
 	return (error);
 }
 
+/*
+ * Destroy the pipe buffer.
+ */
 static void
 pipe_free_kmem(struct pipe *cpipe)
 {
@@ -1216,7 +1227,22 @@ pipeclose(struct pipe *cpipe)
 		lockmgr(cpipe->pipe_slock, LK_RELEASE);
 
 	/*
-	 * If we disassociated from our peer we can free resources
+	 * If we disassociated from our peer we can free resources.  We
+	 * maintain a pcpu cache to improve performance, so the actual
+	 * tear-down case is limited to bulk situations.
+	 *
+	 * However, the bulk tear-down case can cause intense contention
+	 * on the kernel_map when, e.g. hundreds to hundreds of thousands
+	 * of processes are killed at the same time.  To deal with this we
+	 * use a pcpu mutex to maintain concurrency but also limit the
+	 * number of threads banging on the map and pmap.
+	 *
+	 * We use the mtx mechanism instead of the lockmgr mechanism because
+	 * the mtx mechanism utilizes a queued design which will not break
+	 * down in the face of thousands to hundreds of thousands of
+	 * processes trying to free pipes simultaneously.  The lockmgr
+	 * mechanism will wind up waking them all up each time a lock
+	 * cycles.
 	 */
 	if (ppipe == NULL) {
 		gd = mycpu;
@@ -1227,7 +1253,9 @@ pipeclose(struct pipe *cpipe)
 		if (gd->gd_pipeqcount >= pipe_maxcache ||
 		    cpipe->pipe_buffer.size != PIPE_SIZE
 		) {
+			mtx_lock(&pipe_gdlocks[gd->gd_cpuid]);
 			pipe_free_kmem(cpipe);
+			mtx_unlock(&pipe_gdlocks[gd->gd_cpuid]);
 			kfree(cpipe, M_PIPE);
 		} else {
 			cpipe->pipe_state = 0;

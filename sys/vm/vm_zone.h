@@ -25,7 +25,7 @@
 #define ZONE_USE_RESERVE 0x0020	/* use reserve memory if necessary */
 #define ZONE_DESTROYABLE 0x0040 /* can be zdestroy()'ed */
 
-#define ZONE_MAXPGLOAD	8	/* max VM pages burst in zget() */
+#define ZONE_MAXPGLOAD	32	/* max VM pages burst in zget() */
 
 #include <sys/spinlock.h>
 #include <sys/thread.h>
