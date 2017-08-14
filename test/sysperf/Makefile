@@ -10,7 +10,8 @@ TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 /tmp/sc5 /tmp/sc6 /tmp/sc7 \
 	/tmp/exec1 /tmp/exec2 \
 	/tmp/mem1 /tmp/mem2 \
 	/tmp/cld1 \
-	/tmp/rr1
+	/tmp/rr1 \
+	/tmp/loop900k /tmp/pipe900k /tmp/sleep900k
 
 .if defined(NO_OPTIMIZE)
 COPTFLAGS= -O
@@ -128,6 +129,15 @@ all:	$(TARGETS)
 
 /tmp/rr1: randread.c blib.c
 	$(CC) $(CFLAGS) randread.c blib.c -o /tmp/rr1
+
+/tmp/loop900k: loop900k.c
+	$(CC) $(CFLAGS) loop900k.c -o /tmp/loop900k -static
+
+/tmp/pipe900k: pipe900k.c
+	$(CC) $(CFLAGS) pipe900k.c -o /tmp/pipe900k -static
+
+/tmp/sleep900k: sleep900k.c
+	$(CC) $(CFLAGS) sleep900k.c -o /tmp/sleep900k -static
 
 clean:
 	rm -f $(TARGETS)
