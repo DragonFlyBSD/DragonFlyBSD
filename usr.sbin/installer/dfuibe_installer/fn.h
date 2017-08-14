@@ -99,7 +99,6 @@ int		 format_slice(struct i_fn_args *);
 void		 fn_create_subpartitions_ufs(struct i_fn_args *);
 void		 fn_create_subpartitions_hammer(struct i_fn_args *);
 void		 fn_install_os(struct i_fn_args *);
-const char	 *fn_mapper_name(const char *mountpt, int withdev);
 
 /* Global variables */
 

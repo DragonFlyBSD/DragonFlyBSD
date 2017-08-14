@@ -173,6 +173,7 @@ struct subpartition	*subpartition_next(const struct subpartition *);
 int 			 subpartition_get_pfs(const struct subpartition *);
 const char		*subpartition_get_mountpoint(const struct subpartition *);
 const char		*subpartition_get_device_name(const struct subpartition *);
+const char		*subpartition_get_mapper_name(const struct subpartition *, int);
 char			 subpartition_get_letter(const struct subpartition *);
 unsigned long		 subpartition_get_fsize(const struct subpartition *);
 unsigned long		 subpartition_get_bsize(const struct subpartition *);

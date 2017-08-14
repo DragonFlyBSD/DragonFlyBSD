@@ -771,6 +771,40 @@ subpartition_get_device_name(const struct subpartition *sp)
 	return(tmp_dev_name);
 }
 
+/*
+ * /dev/mapper/
+ *
+ * (result is persistant until next call)
+ */
+const char *
+subpartition_get_mapper_name(const struct subpartition *sp, int withdev)
+{
+	const char *src;
+	static char *save;
+
+	src = strrchr(sp->mountpoint, '/');
+	if (src == NULL || src[1] == 0)
+		src = "root";
+	else
+		++src;
+
+	if (save)
+		free(save);
+	switch(withdev) {
+	case -1:
+		asprintf(&save, "%s", src);
+		break;
+	case 0:
+		asprintf(&save, "mapper/%s", src);
+		break;
+	case 1:
+	default:
+		asprintf(&save, "/dev/mapper/%s", src);
+		break;
+	}
+	return save;
+}
+
 const char *
 subpartition_get_mountpoint(const struct subpartition *sp)
 {

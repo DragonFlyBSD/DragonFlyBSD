@@ -255,14 +255,15 @@ create_subpartitions(struct i_fn_args *a)
 				    "%s%s -d /tmp/t1 luksOpen /dev/%s %s",
 				    a->os_root, cmd_name(a, "CRYPTSETUP"),
 				    subpartition_get_device_name(sp),
-				    fn_mapper_name(subpartition_get_mountpoint(sp), -1));
+				    subpartition_get_mapper_name(sp, -1));
 			}
 			ham_name = construct_lname(subpartition_get_mountpoint(sp));
 			command_add(cmds, "%s%s -f -L %s /dev/%s",
 			    a->os_root, cmd_name(a, "NEWFS_HAMMER"),
 			    ham_name,
-			    subpartition_is_encrypted(sp) ?
-			    fn_mapper_name(subpartition_get_mountpoint(sp), 0) : subpartition_get_device_name(sp));
+			    (subpartition_is_encrypted(sp) ?
+				subpartition_get_mapper_name(sp, 0) :
+				subpartition_get_device_name(sp)));
 			free(ham_name);
 		}
 	}
