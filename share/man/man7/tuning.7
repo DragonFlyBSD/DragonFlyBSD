@@ -2,7 +2,7 @@
 .\" the BSD Copyright as specified in the file "/usr/src/COPYRIGHT" in
 .\" the source tree.
 .\"
-.Dd April 27, 2017
+.Dd August 13, 2017
 .Dt TUNING 7
 .Os
 .Sh NAME
@@ -409,7 +409,14 @@ available physical memory.
 You generally do not want to mess with this parameter as it directly
 effects how well the kernel can cache not only file structures but also
 the underlying file data.
-But you can lower it if kernel memory use is higher than you would like.
+.Pp
+However, situations may crop up where caching too many vnodes can wind
+up eating too much kernel memory due to filesystem resources that are
+also associated with the vnodes.
+You can lower this value if kernel memory use is higher than you would like.
+It is, in fact, possible for the system to have more files open than the
+value of this tunable, but as files are closed the system will try to
+reduce the actual number of cached vnodes to match this value.
 .Pp
 The
 .Va kern.maxfiles
@@ -452,37 +459,65 @@ To change loader tunables, you must set their values in
 and reboot the system.
 .Pp
 .Va kern.maxusers
-controls the scaling of a number of static system tables, including defaults
-for the maximum number of open files, sizing of network memory resources, etc.
-On
-.Dx ,
-.Va kern.maxusers
 is automatically sized at boot based on the amount of memory available in
-the system, and may be determined at run-time by inspecting the value of the
-read-only
-.Va kern.maxusers
-sysctl.
-Some sites will require larger or smaller values of
-.Va kern.maxusers
-and may set it as a loader tunable; values of 64, 128, and 256 are not
-uncommon.
-We do not recommend going above 256 unless you need a huge number
-of file descriptors; many of the tunable values set to their defaults by
-.Va kern.maxusers
-may be individually overridden at boot-time or run-time as described
-elsewhere in this document.
+the system.  The value can be read (but not written) via sysctl.
+.Pp
+You can change this value as a loader tunable if the default resource
+limits are not sufficient.
+This tunable works primarily by adjusting
+.Va kern.maxproc ,
+so you can opt to override that instead.
+It is generally easier formulate an adjustment to
+.Va kern.maxproc
+instead of
+.Va kern.maxusers .
+.Pp
+.Va kern.maxproc
+controls most kernel auto-scaling components.  If kernel resource limits
+are not scaled high enough, setting this tunables to a higher value is
+usually sufficient.
+Generally speaking you will want to set this tunable to the upper limit
+for the number of process threads you want the kernel to be able to handle.
+The kernel may still decide to cap maxproc at a lower value if there is
+insufficient ram to scale resources as desired.
+.Pp
+Only set this tunable if the defaults are not sufficient.
+Do not use this tunable to try to trim kernel resource limits, you will
+not actually save much memory by doing so and you will leave the system
+more vulnerable to DOS attacks and runaway processes.
+.Pp
+Setting this tunable will scale the maximum number processes, pipes and
+sockets, total open files the system can support, and increase mbuf
+and mbuf-cluster limits.  These other elements can also be separately
+overridden to fine-tune the setup.  We rcommend setting this tunable
+first to create a baseline.
+.Pp
+Setting a high value presumes that you have enough physical memory to
+support the resource utilization.  For example, your system would need
+approximately 128GB of ram to reasonably support a maxproc value of
+4 million (4000000).  The default maxproc given that much ram will
+typically be in the 250000 range.
+.Pp
+Note that the PID is currently limited to 6 digits, so a system cannot
+have more than a million processes operating anyway (though the aggregate
+number of threads can be far greater).
+And yes, there is in fact no reason why a very well-endowed system
+couldn't have that many processes.
 .Pp
 .Va kern.nbuf
 sets how many filesystem buffers the kernel should cache.
-Filesystem buffers can be up to 128KB each.  UFS typically uses an 8KB
-blocksize while HAMMER typically uses 64KB.
+Filesystem buffers can be up to 128KB each.
+UFS typically uses an 8KB blocksize while HAMMER typically uses 64KB.
 The defaults usually suffice.
 The cached buffers represent wired physical memory so specifying a value
 that is too large can result in excessive kernel memory use, and is also
 not entirely necessary since the pages backing the buffers are also
 cached by the VM page cache (which does not use wired memory).
 The buffer cache significantly improves the hot path for cached file
-accesses.
+accesses and dirty data.
+.Pp
+The kernel reserves (128KB * nbuf) bytes of KVM.  The actual physical
+memory use depends on the filesystem buffer size.
 .Pp
 The
 .Va kern.dfldsiz
@@ -542,15 +577,13 @@ The
 .Xr config 8
 manual page and the handbook are good starting points for learning how to
 do this.
-Generally the first thing you do when creating your own custom
-kernel is to strip out all the drivers and services you do not use.
-Removing things like
-.Dv INET6
-and drivers you do not have will reduce the size of your kernel, sometimes
-by a megabyte or more, leaving more memory available for applications.
+Generally speaking, removing options to trim the size of the kernel
+is not going to save very much memory on a modern system.
+In the grand scheme of things, saving a megabyte or two is in the noise
+on a system that likely has multiple gigabytes of memory.
 .Pp
 If your motherboard is AHCI-capable then we strongly recommend turning
-on AHCI mode in the BIOS if it is not the default.
+on AHCI mode in the BIOS if it is not already the default.
 .Sh CPU, MEMORY, DISK, NETWORK
 The type of tuning you do depends heavily on where your system begins to
 bottleneck as load increases.

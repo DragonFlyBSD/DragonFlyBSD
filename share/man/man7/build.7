@@ -261,6 +261,50 @@ But use
 to specify any optimization overrides, as some modules may have to override
 it to enforce a lower optimization level.
 .El
+.Sh OTHER
+There are two other mechanisms that users should be aware of.  First,
+when you issue a
+.Cm installkernel
+.Dx
+will make a backup of the current kernel in
+.Pa /boot/kernel.old .
+Because people often do multiple installkernel operations, this backup
+kernel can also get lost in the noise.
+It is usually prudent to make a backup of the old kernel manually
+every once in a while when you know that it is a good kernel.  you can
+do this after issuing the
+.Cm installkernel
+by running the command:
+.Bd -literal -offset indent
+cpdup /boot/kernel.old /boot/kernel.bak
+.Ed
+.Pp
+The advantage of this is that no installation mechanism will overwrite
+your
+.Pa /boot/kernel.bak ,
+and in addition to that the loader's boot menu will check for its
+existance and present a menu option 'b' to allow you to boot from it.
+.Pp
+The second mechanism is related to the two-stage root mount.
+When using an encrypted root, the system will actually boot from a
+small UFS image stored as
+.Pa /boot/kernel/initrd.img.gz .
+This image will handle the encrypted configuration, mount, and chroot
+to the real root.
+This image is also used as the rescue ramdisk boot menu option.
+This image is NOT updated automatically by
+.Cm installworld
+or
+.Cm installkernel .
+Instead, updating this image has to be done by running the manual command:
+.Bd -literal -offset indent
+mkinitrd
+.Ed
+.Pp
+It is usually a good idea to run this command after rebooting into a new
+world that you installed (so you know the world you installed is good).
+This command will update the rescue ramdisk image in
+.Pa /boot/kernel .
 .Sh FILES
 .Bl -tag -width ".Pa /usr/src/Makefile_upgrade.inc" -compact
 .It Pa /etc/make.conf
