@@ -61,7 +61,7 @@
 #define	MAXFILES	(maxproc * 16)
 #endif
 #ifndef MAXPOSIXLOCKSPERUID
-#define MAXPOSIXLOCKSPERUID (maxusers * 64) /* Should be a safe value */
+#define MAXPOSIXLOCKSPERUID (maxproc * 4)
 #endif
 
 static int sysctl_kern_vmm_guest(SYSCTL_HANDLER_ARGS);
