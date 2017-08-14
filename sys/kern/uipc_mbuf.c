@@ -80,6 +80,7 @@
 #include <sys/protosw.h>
 #include <sys/uio.h>
 #include <sys/thread.h>
+#include <sys/proc.h>
 #include <sys/globaldata.h>
 
 #include <sys/thread2.h>
@@ -395,34 +396,39 @@ static void m_mjclfree(void *arg);
 static void mbupdatelimits(void);
 
 /*
+ * Generally scale default mbufs to maxproc.
+ *
  * NOTE: Default NMBUFS must take into account a possible DOS attack
  *	 using fd passing on unix domain sockets.
  */
 #ifndef NMBCLUSTERS
-#define NMBCLUSTERS	(512 + maxusers * 16)
+#define NMBCLUSTERS	(512 + maxproc * 4)
+#endif
+#ifndef BASE_CACHEFRAC
+#define BASE_CACHEFRAC	16
 #endif
 #ifndef MJCLPH_CACHEFRAC
-#define MJCLPH_CACHEFRAC 16
+#define MJCLPH_CACHEFRAC (BASE_CACHEFRAC * 2)
 #endif
 #ifndef MJCL_CACHEFRAC
-#define MJCL_CACHEFRAC	4
+#define MJCL_CACHEFRAC	(BASE_CACHEFRAC * 2)
 #endif
 #ifndef MCLPH_CACHEFRAC
-#define MCLPH_CACHEFRAC	16
+#define MCLPH_CACHEFRAC	(BASE_CACHEFRAC * 2)
 #endif
 #ifndef MCL_CACHEFRAC
-#define MCL_CACHEFRAC	4
+#define MCL_CACHEFRAC	(BASE_CACHEFRAC * 2)
 #endif
 #ifndef NMBJCLUSTERS
-#define NMBJCLUSTERS	(NMBCLUSTERS / 2)
+#define NMBJCLUSTERS	(NMBCLUSTERS / 4)
 #endif
 #ifndef NMBUFS
-#define NMBUFS		(nmbclusters * 2 + maxfiles)
+#define NMBUFS		(nmbclusters / 2 + maxfiles)
 #endif
 
 #define NMBCLUSTERS_MIN	(NMBCLUSTERS / 2)
 #define NMBJCLUSTERS_MIN (NMBJCLUSTERS / 2)
-#define NMBUFS_MIN	((NMBCLUSTERS * 2 + maxfiles) / 2)
+#define NMBUFS_MIN	(NMBUFS / 2)
 
 /*
  * Perform sanity checks of tunables declared above.
@@ -798,28 +804,28 @@ mbinit(void *dummy)
 
 	limit = nmbufs;
 	mbuf_cache = objcache_create("mbuf",
-	    limit, nmbufs / 4,
+	    limit, nmbufs / BASE_CACHEFRAC,
 	    mbuf_ctor, NULL, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
 
 	limit = nmbufs;
 	mbufphdr_cache = objcache_create("mbuf pkt hdr",
-	    limit, nmbufs / 4,
+	    limit, nmbufs / BASE_CACHEFRAC,
 	    mbufphdr_ctor, NULL, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
 
 	ncl_limit = nmbclusters;
 	mclmeta_cache = objcache_create("cluster mbuf",
-	    ncl_limit, nmbclusters / 4,
+	    ncl_limit, nmbclusters / BASE_CACHEFRAC,
 	    mclmeta_ctor, mclmeta_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mclmeta_malloc_args);
 	cl_limit += ncl_limit;
 
 	jcl_limit = nmbjclusters;
 	mjclmeta_cache = objcache_create("jcluster mbuf",
-	    jcl_limit, nmbjclusters / 4,
+	    jcl_limit, nmbjclusters / BASE_CACHEFRAC,
 	    mjclmeta_ctor, mclmeta_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mclmeta_malloc_args);
 	cl_limit += jcl_limit;
