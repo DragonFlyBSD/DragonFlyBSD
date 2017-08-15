@@ -38,6 +38,7 @@
  */
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 
 #ifdef ENABLE_NLS
@@ -260,7 +261,6 @@ fn_format_disk_mbr(struct i_fn_args *a)
 			a->result = 0;
 			return;
 		}
-
 		inform(a->c, _("The disk\n\n%s\n\nwas formatted."),
 		    disk_get_desc(storage_get_selected_disk(a->s)));
 		a->result = 1;

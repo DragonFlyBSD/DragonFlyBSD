@@ -130,6 +130,7 @@ struct disk		*disk_new(struct storage *, const char *);
 struct disk		*disk_find(const struct storage *, const char *);
 struct disk		*disk_next(const struct disk *);
 void			 disks_free(struct storage *);
+unsigned long		 disk_get_capacity(const struct disk *);
 void			 disk_set_number(struct disk *, const int);
 void			 disk_set_desc(struct disk *, const char *);
 void			 disk_set_serno(struct disk *, const char *);

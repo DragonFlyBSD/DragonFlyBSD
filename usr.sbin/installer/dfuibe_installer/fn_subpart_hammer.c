@@ -814,10 +814,12 @@ fn_create_subpartitions_hammer(struct i_fn_args *a)
 	int done = 0;
 
 	a->result = 0;
-	capacity = slice_get_capacity(storage_get_selected_slice(a->s));
+	capacity = disk_get_capacity(storage_get_selected_disk(a->s));
 	if (capacity < HAMMER_MIN) {
-		inform(a->c, _("The selected disk is smaller than the "
-		    "required %dM for the HAMMER filesystem."), HAMMER_MIN);
+		inform(a->c, _("The selected %dM disk is smaller than the "
+		    "required %dM for the HAMMER filesystem."),
+		    (int)capacity,
+		    (int)HAMMER_MIN);
 		return;
 	}
 	while (!done) {

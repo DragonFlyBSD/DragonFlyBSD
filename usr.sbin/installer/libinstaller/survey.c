@@ -163,6 +163,7 @@ survey_storage(struct i_fn_args *a)
 	struct partinfo diskpart;
 	char diskpath[PATH_MAX];
 
+	sleep(1);		/* give devfs time to probe */
 	disks_free(a->s);
 
 	len = sizeof(mem);

@@ -194,6 +194,13 @@ disk_get_desc(const struct disk *d)
 	return(d->desc);
 }
 
+unsigned long
+disk_get_capacity(const struct disk *d)
+{
+	return(d->capacity);
+}
+
+
 void
 disk_set_desc(struct disk *d, const char *desc)
 {
@@ -215,7 +222,7 @@ disk_set_desc(struct disk *d, const char *desc)
 	if (*c == '\0')
 		d->capacity = 0;
 	else
-		d->capacity = atoi(c + 1);
+		d->capacity = strtoul(c + 1, NULL, 0);
 }
 
 /*

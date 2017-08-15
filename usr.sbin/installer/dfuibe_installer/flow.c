@@ -40,6 +40,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 
 #ifdef ENABLE_NLS
@@ -1208,6 +1209,9 @@ state_create_subpartitions(struct i_fn_args *a)
 	commands_execute(a, cmds);
 	commands_free(cmds);
 
+	/*
+	 * Create subpartitions and filesystems
+	 */
 	if (use_hammer)
 		fn_create_subpartitions_hammer(a);
 	else
