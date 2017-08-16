@@ -45,7 +45,7 @@
  * reinitialize the pools with a hash of the previous chunk
  * of entropy.
  */
-#define MIN_POOL_SIZE	64 + SHA256_DIGEST_LENGTH
+#define MIN_POOL_SIZE	(64 + SHA256_DIGEST_LENGTH)
 
 /* Minimum reseed interval */
 #define MIN_RESEED_INTERVAL	hz/10
@@ -132,7 +132,7 @@ csprng_init_reseed(struct csprng_state *state)
 
 	callout_init_mp(&state->reseed_callout);
 	callout_reset(&state->reseed_callout, MIN_RESEED_INTERVAL,
-	    csprng_reseed_callout, state);
+		      csprng_reseed_callout, state);
 
 	return 0;
 }
@@ -146,12 +146,14 @@ csprng_init_reseed(struct csprng_state *state)
 
 static
 int
-encrypt_bytes(struct csprng_state *state, uint8_t *out, uint8_t *in, size_t bytes)
+encrypt_bytes(struct csprng_state *state, uint8_t *out, uint8_t *in,
+	      size_t bytes)
 {
 	/* Update nonce whenever the counter is about to overflow */
 	if (chacha_check_counter(&state->cipher_ctx)) {
 		++state->nonce;
-		chacha_ivsetup(&state->cipher_ctx, (const uint8_t *)&state->nonce);
+		chacha_ivsetup(&state->cipher_ctx,
+			       (const uint8_t *)&state->nonce);
 	}
 
 	chacha_encrypt_bytes(&state->cipher_ctx, in, out, (uint32_t)bytes);
@@ -166,7 +168,7 @@ encrypt_bytes(struct csprng_state *state, uint8_t *out, uint8_t *in, size_t byte
  */
 int
 csprng_get_random(struct csprng_state *state, uint8_t *out, int bytes,
-    int flags __unused)
+		  int flags __unused)
 {
 	int cnt;
 	int total_bytes = 0;
@@ -205,7 +207,8 @@ again:
 		encrypt_bytes(state, out, out, cnt);
 
 		/* Update key and rekey cipher */
-		encrypt_bytes(state, state->key, state->key, sizeof(state->key));
+		encrypt_bytes(state, state->key, state->key,
+			      sizeof(state->key));
 		chacha_keysetup(&state->cipher_ctx, state->key,
 		    8*sizeof(state->key));
 
@@ -284,7 +287,8 @@ csprng_reseed(struct csprng_state *state)
 	/* Increment the nonce if the counter overflows */
 	if (chacha_incr_counter(&state->cipher_ctx)) {
 		++state->nonce;
-		chacha_ivsetup(&state->cipher_ctx, (const uint8_t *)&state->nonce);
+		chacha_ivsetup(&state->cipher_ctx,
+			       (const uint8_t *)&state->nonce);
 	}
 
 	return 0;
@@ -310,7 +314,7 @@ csprng_reseed_callout(void *arg)
 
 int
 csprng_add_entropy(struct csprng_state *state, int src_id,
-    const uint8_t *entropy, size_t bytes, int flags)
+		   const uint8_t *entropy, size_t bytes, int flags)
 {
 	struct csprng_pool *pool;
 	int pool_id;
@@ -335,8 +339,10 @@ csprng_add_entropy(struct csprng_state *state, int src_id,
 		POOL_LOCK(pool);
 	}
 
-	SHA256_Update(&pool->hash_ctx, (const uint8_t *)&src_id, sizeof(src_id));
-	SHA256_Update(&pool->hash_ctx, (const uint8_t *)&bytes, sizeof(bytes));
+	SHA256_Update(&pool->hash_ctx, (const uint8_t *)&src_id,
+		      sizeof(src_id));
+	SHA256_Update(&pool->hash_ctx, (const uint8_t *)&bytes,
+		      sizeof(bytes));
 	SHA256_Update(&pool->hash_ctx, entropy, bytes);
 
 	pool->bytes += bytes;
@@ -344,8 +350,8 @@ csprng_add_entropy(struct csprng_state *state, int src_id,
 	POOL_UNLOCK(pool);
 
 	/*
-	 * If a wakeup is missed, it doesn't matter too much - it'll get woken
-	 * up by the next add_entropy() call.
+	 * If a wakeup is missed, it doesn't matter too much - it'll get
+	 * woken up by the next add_entropy() call.
 	 */
 	STATE_WAKEUP(state);
 

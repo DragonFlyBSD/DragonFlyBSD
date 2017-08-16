@@ -908,6 +908,16 @@ restart:
 	}
 
 	/*
+	 * Because a bunch of cpumask array entries cover the same queue, it
+	 * is possible for our bit to remain set in some of them and cause
+	 * spurious wakeup IPIs later on.  Make sure that the bit is cleared
+	 * when a spurious IPI occurs to prevent further spurious IPIs.
+	 */
+	if (TAILQ_FIRST(qp) == NULL) {
+		ATOMIC_CPUMASK_NANDBIT(slpque_cpumasks[cid], gd->gd_cpuid);
+	}
+
+	/*
 	 * We finished checking the current cpu but there still may be
 	 * more work to do.  Either wakeup_one was requested and no matching
 	 * thread was found, or a normal wakeup was requested and we have

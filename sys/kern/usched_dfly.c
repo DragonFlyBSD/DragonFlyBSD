@@ -1234,12 +1234,8 @@ dfly_resetpriority(struct lwp *lp)
 	delta_uload -= delta_uload * lp->lwp_proc->p_nice / (PRIO_MAX + 1);
 	delta_uload -= lp->lwp_uload;
 	if (lp->lwp_uload + delta_uload < -32767) {
-		kprintf("delta_uload overflow-: %d\n",
-			lp->lwp_uload + delta_uload);
 		delta_uload = -32768 - lp->lwp_uload;
 	} else if (lp->lwp_uload + delta_uload > 32767) {
-		kprintf("delta_uload overflow+: %d\n",
-			lp->lwp_uload + delta_uload);
 		delta_uload = 32767 - lp->lwp_uload;
 	}
 	lp->lwp_uload += delta_uload;
