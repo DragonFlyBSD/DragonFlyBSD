@@ -102,13 +102,20 @@ TAILQ_HEAD(rq, lwp);
 #define lwp_qcpu	lwp_usdata.dfly.qcpu
 #define lwp_rrcount	lwp_usdata.dfly.rrcount
 
+/*
+ * DFly scheduler pcpu structure.  Note that the pcpu uload field must
+ * be 64-bits to avoid overflowing in the situation where more than 32768
+ * processes are on a single cpu's queue.  Since high-end systems can
+ * easily run 900,000+ processes, we have to deal with it.
+ */
 struct usched_dfly_pcpu {
 	struct spinlock spin;
 	struct thread	*helper_thread;
 	u_short		scancpu;
 	short		upri;
-	int		uload;
+	long		uload;		/* 64-bits to avoid overflow (1) */
 	int		ucount;
+	int		unused01;
 	struct lwp	*uschedcp;
 	struct rq	queues[NQS];
 	struct rq	rtqueues[NQS];
@@ -706,7 +713,7 @@ dfly_changeqcpu_locked(struct lwp *lp, dfly_pcpu_t dd, dfly_pcpu_t rdd)
 	if (lp->lwp_qcpu != rdd->cpuid) {
 		if (lp->lwp_mpflags & LWP_MP_ULOAD) {
 			atomic_clear_int(&lp->lwp_mpflags, LWP_MP_ULOAD);
-			atomic_add_int(&dd->uload, -lp->lwp_uload);
+			atomic_add_long(&dd->uload, -lp->lwp_uload);
 			atomic_add_int(&dd->ucount, -1);
 		}
 		lp->lwp_qcpu = rdd->cpuid;
@@ -1226,9 +1233,18 @@ dfly_resetpriority(struct lwp *lp)
 	delta_uload = lp->lwp_estcpu / NQS;
 	delta_uload -= delta_uload * lp->lwp_proc->p_nice / (PRIO_MAX + 1);
 	delta_uload -= lp->lwp_uload;
+	if (lp->lwp_uload + delta_uload < -32767) {
+		kprintf("delta_uload overflow-: %d\n",
+			lp->lwp_uload + delta_uload);
+		delta_uload = -32768 - lp->lwp_uload;
+	} else if (lp->lwp_uload + delta_uload > 32767) {
+		kprintf("delta_uload overflow+: %d\n",
+			lp->lwp_uload + delta_uload);
+		delta_uload = 32767 - lp->lwp_uload;
+	}
 	lp->lwp_uload += delta_uload;
 	if (lp->lwp_mpflags & LWP_MP_ULOAD)
-		atomic_add_int(&dfly_pcpu[lp->lwp_qcpu].uload, delta_uload);
+		atomic_add_long(&dfly_pcpu[lp->lwp_qcpu].uload, delta_uload);
 
 	/*
 	 * Determine if we need to reschedule the target cpu.  This only
@@ -1374,7 +1390,7 @@ dfly_exiting(struct lwp *lp, struct proc *child_proc)
 
 	if (lp->lwp_mpflags & LWP_MP_ULOAD) {
 		atomic_clear_int(&lp->lwp_mpflags, LWP_MP_ULOAD);
-		atomic_add_int(&dd->uload, -lp->lwp_uload);
+		atomic_add_long(&dd->uload, -lp->lwp_uload);
 		atomic_add_int(&dd->ucount, -1);
 	}
 }
@@ -1397,7 +1413,7 @@ dfly_uload_update(struct lwp *lp)
 			if ((lp->lwp_mpflags & LWP_MP_ULOAD) == 0) {
 				atomic_set_int(&lp->lwp_mpflags,
 					       LWP_MP_ULOAD);
-				atomic_add_int(&dd->uload, lp->lwp_uload);
+				atomic_add_long(&dd->uload, lp->lwp_uload);
 				atomic_add_int(&dd->ucount, 1);
 			}
 			spin_unlock(&dd->spin);
@@ -1408,7 +1424,7 @@ dfly_uload_update(struct lwp *lp)
 			if (lp->lwp_mpflags & LWP_MP_ULOAD) {
 				atomic_clear_int(&lp->lwp_mpflags,
 						 LWP_MP_ULOAD);
-				atomic_add_int(&dd->uload, -lp->lwp_uload);
+				atomic_add_long(&dd->uload, -lp->lwp_uload);
 				atomic_add_int(&dd->ucount, -1);
 			}
 			spin_unlock(&dd->spin);
@@ -1517,11 +1533,11 @@ dfly_chooseproc_locked(dfly_pcpu_t rdd, dfly_pcpu_t dd,
 	 */
 	if (rdd != dd) {
 		if (lp->lwp_mpflags & LWP_MP_ULOAD) {
-			atomic_add_int(&rdd->uload, -lp->lwp_uload);
+			atomic_add_long(&rdd->uload, -lp->lwp_uload);
 			atomic_add_int(&rdd->ucount, -1);
 		}
 		lp->lwp_qcpu = dd->cpuid;
-		atomic_add_int(&dd->uload, lp->lwp_uload);
+		atomic_add_long(&dd->uload, lp->lwp_uload);
 		atomic_add_int(&dd->ucount, 1);
 		atomic_set_int(&lp->lwp_mpflags, LWP_MP_ULOAD);
 	}
@@ -1567,8 +1583,8 @@ dfly_choose_best_queue(struct lwp *lp)
 	int cpuid;
 	int n;
 	int count;
-	int load;
-	int lowest_load;
+	long load;
+	long lowest_load;
 
 	/*
 	 * When the topology is unknown choose a random cpu that is hopefully
@@ -1610,7 +1626,7 @@ dfly_choose_best_queue(struct lwp *lp)
 		}
 
 		cpub = NULL;
-		lowest_load = 0x7FFFFFFF;
+		lowest_load = 0x7FFFFFFFFFFFFFFFLLU;
 
 		for (n = 0; n < cpup->child_no; ++n) {
 			/*
@@ -1745,12 +1761,12 @@ dfly_choose_worst_queue(dfly_pcpu_t dd)
 	int cpuid;
 	int n;
 	int count;
-	int load;
+	long load;
+	long highest_load;
 #if 0
 	int pri;
 	int hpri;
 #endif
-	int highest_load;
 
 	/*
 	 * When the topology is unknown choose a random cpu that is hopefully
@@ -1805,7 +1821,7 @@ dfly_choose_worst_queue(dfly_pcpu_t dd)
 				cpuid = BSFCPUMASK(mask);
 				rdd = &dfly_pcpu[cpuid];
 				load += rdd->uload;
-				load += rdd->ucount * usched_dfly_weight3;
+				load += (long)rdd->ucount * usched_dfly_weight3;
 
 				if (rdd->uschedcp == NULL &&
 				    rdd->runqcount == 0 &&
@@ -2080,7 +2096,7 @@ dfly_setrunqueue_locked(dfly_pcpu_t rdd, struct lwp *lp)
 
 	if ((lp->lwp_mpflags & LWP_MP_ULOAD) == 0) {
 		atomic_set_int(&lp->lwp_mpflags, LWP_MP_ULOAD);
-		atomic_add_int(&dfly_pcpu[lp->lwp_qcpu].uload, lp->lwp_uload);
+		atomic_add_long(&dfly_pcpu[lp->lwp_qcpu].uload, lp->lwp_uload);
 		atomic_add_int(&dfly_pcpu[lp->lwp_qcpu].ucount, 1);
 	}
 
