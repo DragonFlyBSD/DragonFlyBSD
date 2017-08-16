@@ -68,8 +68,8 @@ ip_fw_sockopt(struct sockopt *sopt)
 			return EPERM;
 	}
 
-	netmsg_init(&smsg, NULL, &curthread->td_msgport,
-		    0, ip_fw_sockopt_dispatch);
+	netmsg_init(&smsg, NULL, &curthread->td_msgport, MSGF_PRIORITY,
+	    ip_fw_sockopt_dispatch);
 	smsg.lmsg.u.ms_resultp = sopt;
 	return lwkt_domsg(IPFW_CFGPORT, &smsg.lmsg, 0);
 }

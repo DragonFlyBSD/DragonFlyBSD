@@ -254,11 +254,6 @@ typedef struct  _ipfw_insn_log {
 
 #ifdef _KERNEL
 
-struct ip_fw;
-struct ip_fw_stub {
-	struct ip_fw	*rule[1];
-};
-
 /*
  * Here we have the structure representing an ipfw rule.
  *
@@ -298,18 +293,20 @@ struct ip_fw {
 	uint64_t	bcnt;		/* Byte counter			*/
 	uint32_t	timestamp;	/* tv_sec of last match		*/
 
-	struct ip_fw_stub *stub;	/* back pointers to clones	*/
 	struct ip_fw	*sibling;	/* clone on next cpu		*/
 	int		cpuid;		/* owner cpu			*/
 
 	uint32_t	refcnt;		/* Ref count for transit pkts	*/
 	uint32_t	rule_flags;	/* IPFW_RULE_F_			*/
+	uintptr_t	track_ruleid;	/* ruleid for src/dst tracks	*/
 
 	ipfw_insn	cmd[1];		/* storage for commands		*/
 };
 
 #define IPFW_RULE_F_INVALID	0x1
-#define IPFW_RULE_F_STATE	0x2
+/* unused			0x2 */
+#define IPFW_RULE_F_GENSTATE	0x4
+#define IPFW_RULE_F_GENTRACK	0x8
 
 #define RULESIZE(rule)	(sizeof(struct ip_fw) + (rule)->cmd_len * 4 - 4)
 
@@ -324,35 +321,6 @@ struct ipfw_flow_id {
 	uint16_t	src_port;
 	uint8_t		proto;
 	uint8_t		flags;	/* protocol-specific flags */
-};
-
-/*
- * dynamic ipfw rule
- */
-typedef struct _ipfw_dyn_rule ipfw_dyn_rule;
-
-struct _ipfw_dyn_rule {
-	ipfw_dyn_rule	*next;		/* linked list of rules.	*/
-	struct ipfw_flow_id id;		/* (masked) flow id		*/
-#ifdef notyet
-	struct ip_fw *rule;		/* pointer to rule		*/
-#else
-	const struct ip_fw_stub *stub;	/* pointer to rule's stub	*/
-#endif
-	ipfw_dyn_rule *parent;		/* pointer to parent rule	*/
-	uint32_t	expire;		/* expire time			*/
-	uint64_t	pcnt;		/* packet match counter		*/
-	uint64_t	bcnt;		/* byte match counter		*/
-	uint32_t	bucket;		/* which bucket in hash table	*/
-	uint32_t	state;		/* state of this rule (typically a
-					 * combination of TCP flags)
-					 */
-	uint32_t	ack_fwd;	/* most recent ACKs in forward	*/
-	uint32_t	ack_rev;	/* and reverse directions (used	*/
-					/* to generate keepalives)	*/
-	uint16_t	dyn_type;	/* rule type			*/
-	uint16_t	count;		/* refcount			*/
-	time_t		keep_alive;	/* last keep-alive sending time */
 };
 
 /*
