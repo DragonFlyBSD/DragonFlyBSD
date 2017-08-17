@@ -33,18 +33,21 @@
 #ifndef _SYS_UIO_H_
 #define	_SYS_UIO_H_
 
+#include <sys/cdefs.h>
 #include <sys/_iovec.h>
-
-#ifndef _SYS_TYPES_H_
-#include <sys/types.h>
-#endif
-#ifndef _SYS_PARAM_H_
+#if __BSD_VISIBLE
 #include <sys/param.h>
 #endif
-#ifndef _SYS_MALLOC_H_
+#if defined(_KERNEL)
 #include <sys/malloc.h>		/* Needed to inline iovec_free(). */
 #endif
 
+#ifndef _SSIZE_T_DECLARED
+typedef	__ssize_t	ssize_t;
+#define	_SSIZE_T_DECLARED
+#endif
+
+#if __BSD_VISIBLE
 enum	uio_rw { UIO_READ, UIO_WRITE };
 
 /* Segment flag values. */
@@ -53,6 +56,7 @@ enum uio_seg {
 	UIO_SYSSPACE,		/* from system space */
 	UIO_NOCOPY		/* don't copy, already in object */
 };
+#endif
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
@@ -115,13 +119,13 @@ iovec_free(struct iovec **kiov, struct iovec *siov)
 
 #else /* !_KERNEL */
 
-#include <sys/cdefs.h>
-
 __BEGIN_DECLS
 ssize_t	readv(int, const struct iovec *, int);
 ssize_t	writev(int, const struct iovec *, int);
+#if __BSD_VISIBLE
 ssize_t	preadv(int, const struct iovec *, int, off_t);
 ssize_t	pwritev(int, const struct iovec *, int, off_t);
+#endif
 __END_DECLS
 
 #endif /* _KERNEL */
