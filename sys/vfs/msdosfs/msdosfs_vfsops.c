@@ -380,6 +380,10 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	 */
 	SecPerClust = b50->bpbSecPerClust;
 	pmp->pm_BytesPerSec = getushort(b50->bpbBytesPerSec);
+	if (pmp->pm_BytesPerSec < DEV_BSIZE) {
+		error = EINVAL;
+		goto error_exit;
+	}
 	pmp->pm_ResSectors = getushort(b50->bpbResSectors);
 	pmp->pm_FATs = b50->bpbFATs;
 	pmp->pm_RootDirEnts = getushort(b50->bpbRootDirEnts);
@@ -435,12 +439,15 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	 * - logical sector size: power of 2, >= block size
 	 * - sectors per cluster: power of 2, >= 1
 	 * - number of sectors:   >= 1, <= size of partition
+	 * - number of FAT sectors: >= 1
 	 */
 	if ( (SecPerClust == 0)
 	  || (SecPerClust & (SecPerClust - 1))
 	  || (pmp->pm_BytesPerSec < DEV_BSIZE)
 	  || (pmp->pm_BytesPerSec & (pmp->pm_BytesPerSec - 1))
 	  || (pmp->pm_HugeSectors == 0)
+	  || (pmp->pm_FATsecs == 0)
+	  || (SecPerClust * pmp->pm_BlkPerSec > MAXBSIZE / DEV_BSIZE)
 	) {
 		error = EINVAL;
 		goto error_exit;
