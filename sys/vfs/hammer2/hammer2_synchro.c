@@ -125,11 +125,11 @@ hammer2_primary_sync_thread(void *arg)
 		 */
 		if (flags & HAMMER2_THREAD_FREEZE) {
 			nflags = (flags & ~(HAMMER2_THREAD_FREEZE |
-					    HAMMER2_THREAD_CLIENTWAIT)) |
+					    HAMMER2_THREAD_WAITING)) |
 				 HAMMER2_THREAD_FROZEN;
 			if (!atomic_cmpset_int(&thr->flags, flags, nflags))
 				continue;
-			if (flags & HAMMER2_THREAD_CLIENTWAIT)
+			if (flags & HAMMER2_THREAD_WAITING)
 				wakeup(&thr->flags);
 			flags = nflags;
 			/* fall through */
@@ -138,10 +138,10 @@ hammer2_primary_sync_thread(void *arg)
 		if (flags & HAMMER2_THREAD_UNFREEZE) {
 			nflags = flags & ~(HAMMER2_THREAD_UNFREEZE |
 					   HAMMER2_THREAD_FROZEN |
-					   HAMMER2_THREAD_CLIENTWAIT);
+					   HAMMER2_THREAD_WAITING);
 			if (!atomic_cmpset_int(&thr->flags, flags, nflags))
 				continue;
-			if (flags & HAMMER2_THREAD_CLIENTWAIT)
+			if (flags & HAMMER2_THREAD_WAITING)
 				wakeup(&thr->flags);
 			flags = nflags;
 			/* fall through */
@@ -255,7 +255,7 @@ hammer2_primary_sync_thread(void *arg)
 		}
 	}
 	thr->td = NULL;
-	hammer2_thr_return(thr, HAMMER2_THREAD_STOPPED);
+	hammer2_thr_signal(thr, HAMMER2_THREAD_STOPPED);
 	/* thr structure can go invalid after this point */
 }
 

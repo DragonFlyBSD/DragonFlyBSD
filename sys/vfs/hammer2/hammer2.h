@@ -794,6 +794,7 @@ typedef struct hammer2_trans hammer2_trans_t;
  */
 struct hammer2_thread {
 	struct hammer2_pfs *pmp;
+	struct hammer2_dev *hmp;
 	hammer2_xop_list_t xopq;
 	thread_t	td;
 	uint32_t	flags;
@@ -815,7 +816,6 @@ typedef struct hammer2_thread hammer2_thread_t;
 #define HAMMER2_THREAD_XOPQ		0x0080	/* work pending */
 #define HAMMER2_THREAD_STOPPED		0x0100	/* thread has stopped */
 #define HAMMER2_THREAD_UNFREEZE		0x0200
-#define HAMMER2_THREAD_CLIENTWAIT	0x0400
 
 #define HAMMER2_THREAD_WAKEUP_MASK	(HAMMER2_THREAD_UNMOUNTING |	\
 					 HAMMER2_THREAD_REMASTER |	\
@@ -1070,15 +1070,18 @@ struct hammer2_dev {
 	hammer2_chain_t vchain;		/* anchor chain (topology) */
 	hammer2_chain_t fchain;		/* anchor chain (freemap) */
 	struct spinlock	list_spin;
-	struct h2_flush_list	flushq;	/* flush seeds */
+	struct h2_flush_list flushq;	/* flush seeds */
 	struct hammer2_pfs *spmp;	/* super-root pmp for transactions */
-	struct lock	bulklk;		/* bulkfree lock */
 	struct lock	vollk;		/* lockmgr lock */
+	struct lock	bulklk;		/* bulkfree operation lock */
+	struct lock	bflock;		/* bulk-free manual function lock */
 	hammer2_off_t	heur_freemap[HAMMER2_FREEMAP_HEUR_SIZE];
 	hammer2_dedup_t heur_dedup[HAMMER2_DEDUP_HEUR_SIZE];
 	int		volhdrno;	/* last volhdrno written */
-	int		hflags;		/* HMNT2 flags applicable to device */
+	uint32_t	hflags;		/* HMNT2 flags applicable to device */
+	hammer2_thread_t bfthr;		/* bulk-free thread */
 	char		devrepname[64];	/* for kprintf */
+	hammer2_ioc_bulkfree_t bflast;	/* stats for last bulkfree run */
 	hammer2_volume_data_t voldata;
 	hammer2_volume_data_t volsync;	/* synchronized voldata */
 };
@@ -1529,10 +1532,13 @@ void hammer2_io_crc_clrmask(hammer2_io_t *dio, uint64_t mask);
  * hammer2_thread.c
  */
 void hammer2_thr_signal(hammer2_thread_t *thr, uint32_t flags);
-void hammer2_thr_return(hammer2_thread_t *thr, uint32_t flags);
+void hammer2_thr_signal2(hammer2_thread_t *thr,
+			uint32_t pflags, uint32_t nflags);
 void hammer2_thr_wait(hammer2_thread_t *thr, uint32_t flags);
 void hammer2_thr_wait_neg(hammer2_thread_t *thr, uint32_t flags);
-void hammer2_thr_create(hammer2_thread_t *thr, hammer2_pfs_t *pmp,
+int hammer2_thr_wait_any(hammer2_thread_t *thr, uint32_t flags, int timo);
+void hammer2_thr_create(hammer2_thread_t *thr,
+			hammer2_pfs_t *pmp, hammer2_dev_t *hmp,
 			const char *id, int clindex, int repidx,
 			void (*func)(void *arg));
 void hammer2_thr_delete(hammer2_thread_t *thr);
@@ -1642,8 +1648,9 @@ void hammer2_cluster_resolve(hammer2_cluster_t *cluster);
 void hammer2_cluster_forcegood(hammer2_cluster_t *cluster);
 void hammer2_cluster_unlock(hammer2_cluster_t *cluster);
 
-int hammer2_bulkfree_pass(hammer2_dev_t *hmp,
-			struct hammer2_ioc_bulkfree *bfi);
+void hammer2_bulkfree_init(hammer2_dev_t *hmp);
+void hammer2_bulkfree_uninit(hammer2_dev_t *hmp);
+int hammer2_bulkfree_pass(hammer2_dev_t *hmp, struct hammer2_ioc_bulkfree *bfi);
 
 /*
  * hammer2_iocom.c

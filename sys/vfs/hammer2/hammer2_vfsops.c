@@ -518,7 +518,7 @@ hammer2_pfsalloc(hammer2_chain_t *chain,
 		 * Sync support thread
 		 */
 		if (pmp->sync_thrs[i].td == NULL) {
-			hammer2_thr_create(&pmp->sync_thrs[i], pmp,
+			hammer2_thr_create(&pmp->sync_thrs[i], pmp, NULL,
 					   "h2nod", i, -1,
 					   hammer2_primary_sync_thread);
 		}
@@ -1068,6 +1068,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 
 		lockinit(&hmp->vollk, "h2vol", 0, 0);
 		lockinit(&hmp->bulklk, "h2bulk", 0, 0);
+		lockinit(&hmp->bflock, "h2bflk", 0, 0);
 
 		/*
 		 * vchain setup. vchain.data is embedded.
@@ -1215,6 +1216,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		}
 		hammer2_update_pmps(hmp);
 		hammer2_iocom_init(hmp);
+		hammer2_bulkfree_init(hmp);
 
 		/*
 		 * Ref the cluster management messaging descriptor.  The mount
@@ -1600,6 +1602,7 @@ again:
 	if (hmp->mount_count)
 		return;
 
+	hammer2_bulkfree_uninit(hmp);
 	hammer2_pfsfree_scan(hmp);
 	hammer2_dev_exlock(hmp);	/* XXX order */
 

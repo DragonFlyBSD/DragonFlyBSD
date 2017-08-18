@@ -166,5 +166,6 @@ typedef struct hammer2_ioc_bulkfree hammer2_ioc_bulkfree_t;
 #define HAMMER2IOC_INODE_COMP_REC_SET2	_IOWR('h', 90, struct hammer2_ioc_inode)*/
 #define HAMMER2IOC_DEBUG_DUMP	_IOWR('h', 91, int)
 #define HAMMER2IOC_BULKFREE_SCAN _IOWR('h', 92, struct hammer2_ioc_bulkfree)
+#define HAMMER2IOC_BULKFREE_ASYNC _IOWR('h', 93, struct hammer2_ioc_bulkfree)
 
 #endif /* !_VFS_HAMMER2_IOCTL_H_ */

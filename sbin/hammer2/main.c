@@ -422,6 +422,14 @@ main(int ac, char **av)
 		} else {
 			ecode = cmd_bulkfree(av[1]);
 		}
+	} else if (strcmp(av[0], "bulkfree-async") == 0) {
+		if (ac != 2) {
+			fprintf(stderr,
+				"bulkfree-async: requires path to mount\n");
+			usage(1);
+		} else {
+			ecode = cmd_bulkfree_async(av[1]);
+		}
 	} else {
 		fprintf(stderr, "Unrecognized command: %s\n", av[0]);
 		usage(1);
@@ -504,6 +512,8 @@ usage(int code)
 			"Set check algo to sha192\n"
 		"    bulkfree path...             "
 			"Run bulkfree pass\n"
+		"    bulkfree-async path...             "
+			"Run bulkfree pass asynchronously\n"
 	);
 	exit(code);
 }

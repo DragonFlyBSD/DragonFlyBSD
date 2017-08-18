@@ -38,39 +38,13 @@
 #include "hammer2.h"
 
 /*
- * Signal that the thread has work.
- */
-void
-hammer2_thr_signal(hammer2_thread_t *thr, uint32_t flags)
-{
-	uint32_t oflags;
-
-	for (;;) {
-		oflags = thr->flags;
-		cpu_ccfence();
-		if (oflags & HAMMER2_THREAD_WAITING) {
-			if (atomic_cmpset_int(&thr->flags, oflags,
-				  (oflags | flags) & ~HAMMER2_THREAD_WAITING)) {
-				wakeup(&thr->flags);
-				break;
-			}
-		} else {
-			if (atomic_cmpset_int(&thr->flags, oflags,
-					      oflags | flags)) {
-				break;
-			}
-		}
-	}
-}
-
-/*
- * Return status to waiting client(s)
+ * Set flags and wakeup any waiters.
  *
  * WARNING! During teardown (thr) can disappear the instant our cmpset
  *	    succeeds.
  */
 void
-hammer2_thr_return(hammer2_thread_t *thr, uint32_t flags)
+hammer2_thr_signal(hammer2_thread_t *thr, uint32_t flags)
 {
 	uint32_t oflags;
 	uint32_t nflags;
@@ -78,9 +52,9 @@ hammer2_thr_return(hammer2_thread_t *thr, uint32_t flags)
 	for (;;) {
 		oflags = thr->flags;
 		cpu_ccfence();
-		nflags = (oflags | flags) & ~HAMMER2_THREAD_CLIENTWAIT;
+		nflags = (oflags | flags) & ~HAMMER2_THREAD_WAITING;
 
-		if (oflags & HAMMER2_THREAD_CLIENTWAIT) {
+		if (oflags & HAMMER2_THREAD_WAITING) {
 			if (atomic_cmpset_int(&thr->flags, oflags, nflags)) {
 				wakeup(&thr->flags);
 				break;
@@ -93,7 +67,36 @@ hammer2_thr_return(hammer2_thread_t *thr, uint32_t flags)
 }
 
 /*
- * Wait until the bits in flags are set.
+ * Set and clear flags and wakeup any waiters.
+ *
+ * WARNING! During teardown (thr) can disappear the instant our cmpset
+ *	    succeeds.
+ */
+void
+hammer2_thr_signal2(hammer2_thread_t *thr, uint32_t posflags, uint32_t negflags)
+{
+	uint32_t oflags;
+	uint32_t nflags;
+
+	for (;;) {
+		oflags = thr->flags;
+		cpu_ccfence();
+		nflags = (oflags | posflags) &
+			~(negflags | HAMMER2_THREAD_WAITING);
+		if (oflags & HAMMER2_THREAD_WAITING) {
+			if (atomic_cmpset_int(&thr->flags, oflags, nflags)) {
+				wakeup(&thr->flags);
+				break;
+			}
+		} else {
+			if (atomic_cmpset_int(&thr->flags, oflags, nflags))
+				break;
+		}
+	}
+}
+
+/*
+ * Wait until all the bits in flags are set.
  *
  * WARNING! During teardown (thr) can disappear the instant our cmpset
  *	    succeeds.
@@ -109,12 +112,43 @@ hammer2_thr_wait(hammer2_thread_t *thr, uint32_t flags)
 		cpu_ccfence();
 		if ((oflags & flags) == flags)
 			break;
-		nflags = oflags | HAMMER2_THREAD_CLIENTWAIT;
+		nflags = oflags | HAMMER2_THREAD_WAITING;
 		tsleep_interlock(&thr->flags, 0);
 		if (atomic_cmpset_int(&thr->flags, oflags, nflags)) {
 			tsleep(&thr->flags, PINTERLOCKED, "h2twait", hz*60);
 		}
 	}
+}
+
+/*
+ * Wait until any of the bits in flags are set, with timeout.
+ *
+ * WARNING! During teardown (thr) can disappear the instant our cmpset
+ *	    succeeds.
+ */
+int
+hammer2_thr_wait_any(hammer2_thread_t *thr, uint32_t flags, int timo)
+{
+	uint32_t oflags;
+	uint32_t nflags;
+	int error;
+
+	error = 0;
+	for (;;) {
+		oflags = thr->flags;
+		cpu_ccfence();
+		if (oflags & flags)
+			break;
+		nflags = oflags | HAMMER2_THREAD_WAITING;
+		tsleep_interlock(&thr->flags, 0);
+		if (atomic_cmpset_int(&thr->flags, oflags, nflags)) {
+			error = tsleep(&thr->flags, PINTERLOCKED,
+				       "h2twait", timo);
+		}
+		if (error == ETIMEDOUT)
+			break;
+	}
+	return error;
 }
 
 /*
@@ -134,7 +168,7 @@ hammer2_thr_wait_neg(hammer2_thread_t *thr, uint32_t flags)
 		cpu_ccfence();
 		if ((oflags & flags) == 0)
 			break;
-		nflags = oflags | HAMMER2_THREAD_CLIENTWAIT;
+		nflags = oflags | HAMMER2_THREAD_WAITING;
 		tsleep_interlock(&thr->flags, 0);
 		if (atomic_cmpset_int(&thr->flags, oflags, nflags)) {
 			tsleep(&thr->flags, PINTERLOCKED, "h2twait", hz*60);
@@ -151,10 +185,12 @@ hammer2_thr_wait_neg(hammer2_thread_t *thr, uint32_t flags)
  */
 void
 hammer2_thr_create(hammer2_thread_t *thr, hammer2_pfs_t *pmp,
+		   hammer2_dev_t *hmp,
 		   const char *id, int clindex, int repidx,
 		   void (*func)(void *arg))
 {
-	thr->pmp = pmp;
+	thr->pmp = pmp;		/* xop helpers */
+	thr->hmp = hmp;		/* bulkfree */
 	thr->clindex = clindex;
 	thr->repidx = repidx;
 	TAILQ_INIT(&thr->xopq);
@@ -167,9 +203,11 @@ hammer2_thr_create(hammer2_thread_t *thr, hammer2_pfs_t *pmp,
 	if (repidx >= 0) {
 		lwkt_create(func, thr, &thr->td, NULL, 0, repidx % ncpus,
 			    "%s-%s.%02d", id, pmp->pfs_names[clindex], repidx);
-	} else {
+	} else if (pmp) {
 		lwkt_create(func, thr, &thr->td, NULL, 0, -1,
 			    "%s-%s", id, pmp->pfs_names[clindex]);
+	} else {
+		lwkt_create(func, thr, &thr->td, NULL, 0, -1, "%s", id);
 	}
 }
 
@@ -363,7 +401,8 @@ hammer2_xop_helper_create(hammer2_pfs_t *pmp)
 		for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
 			if (pmp->xop_groups[j].thrs[i].td)
 				continue;
-			hammer2_thr_create(&pmp->xop_groups[j].thrs[i], pmp,
+			hammer2_thr_create(&pmp->xop_groups[j].thrs[i],
+					   pmp, NULL,
 					   "h2xop", i, j,
 					   hammer2_primary_xops_thread);
 		}
@@ -977,40 +1016,26 @@ hammer2_primary_xops_thread(void *arg)
 		 * Handle freeze request
 		 */
 		if (flags & HAMMER2_THREAD_FREEZE) {
-			nflags = (flags & ~(HAMMER2_THREAD_FREEZE |
-					    HAMMER2_THREAD_CLIENTWAIT)) |
-				 HAMMER2_THREAD_FROZEN;
-			if (!atomic_cmpset_int(&thr->flags, flags, nflags))
-				continue;
-			if (flags & HAMMER2_THREAD_CLIENTWAIT)
-				wakeup(&thr->flags);
-			flags = nflags;
-			/* fall through */
+			hammer2_thr_signal2(thr, HAMMER2_THREAD_FROZEN,
+						 HAMMER2_THREAD_FREEZE);
+			continue;
 		}
 
 		if (flags & HAMMER2_THREAD_UNFREEZE) {
-			nflags = flags & ~(HAMMER2_THREAD_UNFREEZE |
-					   HAMMER2_THREAD_FROZEN |
-					   HAMMER2_THREAD_CLIENTWAIT);
-			if (!atomic_cmpset_int(&thr->flags, flags, nflags))
-				continue;
-			if (flags & HAMMER2_THREAD_CLIENTWAIT)
-				wakeup(&thr->flags);
-			flags = nflags;
-			/* fall through */
+			hammer2_thr_signal2(thr, 0,
+						 HAMMER2_THREAD_FROZEN |
+						 HAMMER2_THREAD_UNFREEZE);
+			continue;
 		}
 
 		/*
 		 * Force idle if frozen until unfrozen or stopped.
 		 */
 		if (flags & HAMMER2_THREAD_FROZEN) {
-			nflags = flags | HAMMER2_THREAD_WAITING;
-			tsleep_interlock(&thr->flags, 0);
-			if (atomic_cmpset_int(&thr->flags, flags, nflags)) {
-				tsleep(&thr->flags, PINTERLOCKED, "frozen", 0);
-				atomic_clear_int(&thr->flags,
-						 HAMMER2_THREAD_WAITING);
-			}
+			hammer2_thr_wait_any(thr,
+					     HAMMER2_THREAD_UNFREEZE |
+					     HAMMER2_THREAD_STOP,
+					     0);
 			continue;
 		}
 
@@ -1018,10 +1043,8 @@ hammer2_primary_xops_thread(void *arg)
 		 * Reset state on REMASTER request
 		 */
 		if (flags & HAMMER2_THREAD_REMASTER) {
-			nflags = flags & ~HAMMER2_THREAD_REMASTER;
-			if (atomic_cmpset_int(&thr->flags, flags, nflags)) {
-				/* reset state here */
-			}
+			hammer2_thr_signal2(thr, 0, HAMMER2_THREAD_REMASTER);
+			/* reset state here */
 			continue;
 		}
 
@@ -1067,7 +1090,6 @@ hammer2_primary_xops_thread(void *arg)
 		tsleep_interlock(&thr->flags, 0);
 		if (atomic_cmpset_int(&thr->flags, flags, nflags)) {
 			tsleep(&thr->flags, PINTERLOCKED, "h2idle", hz*30);
-			atomic_clear_int(&thr->flags, HAMMER2_THREAD_WAITING);
 		}
 	}
 
@@ -1083,6 +1105,6 @@ hammer2_primary_xops_thread(void *arg)
 	}
 #endif
 	thr->td = NULL;
-	hammer2_thr_return(thr, HAMMER2_THREAD_STOPPED);
+	hammer2_thr_signal(thr, HAMMER2_THREAD_STOPPED);
 	/* thr structure can go invalid after this point */
 }

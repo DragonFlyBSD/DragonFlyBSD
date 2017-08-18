@@ -244,6 +244,7 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 /*
  * Bulkfree callback info
  */
+static void hammer2_bulkfree_thread(void *arg __unused);
 static void cbinfo_bmap_init(hammer2_bulkfree_info_t *cbinfo, size_t size);
 static int h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo,
 			hammer2_blockref_t *bref);
@@ -251,6 +252,64 @@ static void h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo);
 static void h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 			hammer2_off_t data_off, hammer2_bmap_data_t *live,
 			hammer2_bmap_data_t *bmap, int nofree);
+
+void
+hammer2_bulkfree_init(hammer2_dev_t *hmp)
+{
+	hammer2_thr_create(&hmp->bfthr, NULL, hmp,
+			   hmp->devrepname, -1, -1,
+			   hammer2_bulkfree_thread);
+}
+
+void
+hammer2_bulkfree_uninit(hammer2_dev_t *hmp)
+{
+	hammer2_thr_delete(&hmp->bfthr);
+}
+
+static void
+hammer2_bulkfree_thread(void *arg)
+{
+	hammer2_thread_t *thr = arg;
+	hammer2_ioc_bulkfree_t bfi;
+	uint32_t flags;
+
+	for (;;) {
+		hammer2_thr_wait_any(thr,
+				     HAMMER2_THREAD_STOP |
+				     HAMMER2_THREAD_FREEZE |
+				     HAMMER2_THREAD_UNFREEZE |
+				     HAMMER2_THREAD_REMASTER,
+				     hz * 60);
+
+		flags = thr->flags;
+		cpu_ccfence();
+		if (flags & HAMMER2_THREAD_STOP)
+			break;
+		if (flags & HAMMER2_THREAD_FREEZE) {
+			hammer2_thr_signal2(thr, HAMMER2_THREAD_FROZEN,
+						 HAMMER2_THREAD_FREEZE);
+			continue;
+		}
+		if (flags & HAMMER2_THREAD_UNFREEZE) {
+			hammer2_thr_signal2(thr, 0,
+						 HAMMER2_THREAD_FROZEN |
+						 HAMMER2_THREAD_UNFREEZE);
+			continue;
+		}
+		if (flags & HAMMER2_THREAD_FROZEN)
+			continue;
+		if (flags & HAMMER2_THREAD_REMASTER) {
+			hammer2_thr_signal2(thr, 0, HAMMER2_THREAD_REMASTER);
+			bzero(&bfi, sizeof(bfi));
+			bfi.size = 8192 * 1024;
+			hammer2_bulkfree_pass(thr->hmp, &bfi);
+		}
+	}
+	thr->td = NULL;
+	hammer2_thr_signal(thr, HAMMER2_THREAD_STOPPED);
+	/* structure can go invalid at this point */
+}
 
 int
 hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)

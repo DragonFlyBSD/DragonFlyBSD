@@ -137,6 +137,9 @@ hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
 	case HAMMER2IOC_BULKFREE_SCAN:
 		error = hammer2_ioctl_bulkfree_scan(ip, data);
 		break;
+	case HAMMER2IOC_BULKFREE_ASYNC:
+		error = hammer2_ioctl_bulkfree_scan(ip, NULL);
+		break;
 	/*case HAMMER2IOC_INODE_COMP_SET:
 		error = hammer2_ioctl_inode_comp_set(ip, data);
 		break;
@@ -928,7 +931,22 @@ hammer2_ioctl_bulkfree_scan(hammer2_inode_t *ip, void *data)
 	if (hmp == NULL)
 		return (EINVAL);
 
-	error = hammer2_bulkfree_pass(hmp, bfi);
+	/*
+	 * Negotiate for manual access.  The hammer2_bulkfree_pass() itself
+	 * also has its own lock and will deal with a manual override when
+	 * an automatic bulkfree is already running.
+	 */
+	error = lockmgr(&hmp->bflock, LK_EXCLUSIVE | LK_PCATCH);
+	if (error)
+		return error;
+	if (bfi) {
+		hammer2_thr_freeze(&hmp->bfthr);
+		error = hammer2_bulkfree_pass(hmp, bfi);
+		hammer2_thr_unfreeze(&hmp->bfthr);
+	} else {
+		hammer2_thr_remaster(&hmp->bfthr);
+	}
+	lockmgr(&hmp->bflock, LK_RELEASE);
 
 	return error;
 }

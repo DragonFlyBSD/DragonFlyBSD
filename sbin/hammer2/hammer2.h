@@ -150,6 +150,7 @@ int cmd_rsadec(const char **keys, int nkeys);
 int cmd_setcomp(const char *comp_str, char **paths);
 int cmd_setcheck(const char *comp_str, char **paths);
 int cmd_bulkfree(const char *dir_path);
+int cmd_bulkfree_async(const char *dir_path);
 
 /*
  * Misc functions

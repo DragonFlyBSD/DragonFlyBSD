@@ -398,16 +398,24 @@ hammer2_adjreadcounter(hammer2_blockref_t *bref, size_t bytes)
 	*counterp += bytes;
 }
 
+/*
+ * Check for pending signal to allow interruption.  This function will
+ * return immediately if the calling thread is a kernel thread and not
+ * a user thread.
+ */
 int
 hammer2_signal_check(time_t *timep)
 {
+	thread_t td = curthread;
 	int error = 0;
 
-	lwkt_user_yield();
-	if (*timep != time_second) {
-		*timep = time_second;
-		if (CURSIG_NOBLOCK(curthread->td_lwp) != 0)
-			error = EINTR;
+	if (td->td_lwp) {
+		lwkt_user_yield();
+		if (*timep != time_second) {
+			*timep = time_second;
+			if (CURSIG_NOBLOCK(curthread->td_lwp) != 0)
+				error = EINTR;
+		}
 	}
 	return error;
 }
