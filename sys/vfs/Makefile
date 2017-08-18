@@ -5,9 +5,9 @@ SUBDIR=fifofs msdosfs nfs procfs puffs \
 	hpfs ntfs smbfs isofs mfs udf \
 	nullfs hammer tmpfs autofs
 
-.if defined(WANT_HAMMER2)
+#.if defined(WANT_HAMMER2)
 SUBDIR+= hammer2
-.endif
+#.endif
 
 # empty to allow concurrent building
 #

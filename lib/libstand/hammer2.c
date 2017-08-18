@@ -284,14 +284,14 @@ h2lookup(struct hammer2_fs *hfs, hammer2_blockref_t *base,
 	int dev_boff;
 	int dev_bsize;
 
-	bref_ret->type = 0;
-
 	if (base == NULL) {
 		saved_base.data_off = (hammer2_off_t)-1;
 		return(0);
 	}
-	if (base->data_off == (hammer2_off_t)-1)
+	if (base->data_off == (hammer2_off_t)-1) {
+		bref_ret->type = 0;
 		return(-1);
+	}
 
 	/*
 	 * Calculate the number of blockrefs to scan
@@ -329,6 +329,7 @@ again:
 			if (blocksize(base) && h2read(hfs, &media,
 						      blocksize(base),
 						      blockoff(base))) {
+				bref_ret->type = 0;
 				return(-1);
 			}
 			saved_base = *base;
@@ -380,6 +381,7 @@ again:
 		/*
 		 * Return 0
 		 */
+		bref_ret->type = 0;
 		rc = 0;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
@@ -495,6 +497,8 @@ h2resolve(struct hammer2_fs *hfs, const char *path,
 						 bres.embed.dirent.inum,
 						 bres.embed.dirent.inum,
 						 &bres, (void **)&ino);
+				if (inop)
+					*inop = ino;
 				goto found;
 				break;	/* NOT REACHED */
 			case HAMMER2_BREF_TYPE_INODE:

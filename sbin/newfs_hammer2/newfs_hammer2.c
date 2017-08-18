@@ -149,8 +149,8 @@ main(int ac, char **av)
 			}
 			Label[NLabels++] = optarg;
 			if (strlen(Label[NLabels-1]) > HAMMER2_INODE_MAXNAME) {
-				errx(1, "Root directory label too long "
-					"(64 chars max)\n");
+				errx(1, "Volume label '%s' is too long "
+					"(64 chars max)\n", optarg);
 			}
 			break;
 		case 'b':
@@ -216,9 +216,7 @@ main(int ac, char **av)
 	/*
 	 * Adjust Label[] and NLabels.
 	 */
-	if (defaultlabels == 0) {
-		NLabels = 1;
-	} else {
+	if (defaultlabels) {
 		char c = av[0][strlen(av[0]) - 1];
 		if (c == 'a')
 			Label[NLabels++] = "BOOT";

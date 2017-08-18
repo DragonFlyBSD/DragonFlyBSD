@@ -891,15 +891,35 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	}
 
 	/*
-	 * Extract device and label, automatically mount @LOCAL if no
-	 * label specified.
+	 * Extract device and label, automatically mount @BOOT, @ROOT, or @DATA
+	 * if no label specified, based on the partition id.  Error out if no
+	 * partition id.  This is strictly a convenience to match the
+	 * default label created by newfs_hammer2, our preference is
+	 * that a label always be specified.
 	 */
 	dev = devstr;
 	label = strchr(devstr, '@');
 	if (label && ((label + 1) - dev) > done)
 		return (EINVAL);
+	if (label && label == devstr)
+		return (EINVAL);
 	if (label == NULL || label[1] == 0) {
-		label = "LOCAL";	/* not modified after this point */
+		char slice;
+
+		if (label == NULL)
+			label = devstr + strlen(devstr);
+		slice = label[-1];
+		switch(slice) {
+		case 'a':
+			label = "BOOT";
+			break;
+		case 'd':
+			label = "ROOT";
+			break;
+		default:
+			label = "DATA";
+			break;
+		}
 	} else {
 		*label = '\0';
 		label++;

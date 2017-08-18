@@ -124,11 +124,31 @@ main(int ac, char *av[])
 	devpath = strdup(av[0]);
 	mountpt = av[1];
 
+	if (devpath[0] == 0) {
+		fprintf(stderr, "mount_hammer2: empty device path\n");
+		exit(1);
+	}
+
 	/*
-	 * Automatically add @LOCAL if no label specified.
+	 * Automatically add @BOOT, @ROOT, or @DATA if no label specified,
+	 * based on the slice.
 	 */
 	if (strchr(devpath, '@') == NULL) {
-		asprintf(&devpath, "%s@LOCAL", devpath);
+		char slice;
+
+		slice = devpath[strlen(devpath)-1];
+
+		switch(slice) {
+		case 'a':
+			asprintf(&devpath, "%s@BOOT", devpath);
+			break;
+		case 'd':
+			asprintf(&devpath, "%s@ROOT", devpath);
+			break;
+		default:
+			asprintf(&devpath, "%s@DATA", devpath);
+			break;
+		}
 	}
 
 	/*
@@ -142,7 +162,7 @@ main(int ac, char *av[])
 	info.cluster_fd = cluster_connect(devpath);
 	if (info.cluster_fd < 0) {
 		fprintf(stderr,
-			"hammer2_mount: cluster_connect(%s) failed\n",
+			"mount_hammer2: cluster_connect(%s) failed\n",
 			devpath);
 		exit(1);
 	}
@@ -228,12 +248,12 @@ usage(const char *ctl, ...)
 	va_list va;
 
 	va_start(va, ctl);
-	fprintf(stderr, "hammer2_mount: ");
+	fprintf(stderr, "mount_hammer2: ");
 	vfprintf(stderr, ctl, va);
 	va_end(va);
 	fprintf(stderr, "\n");
-	fprintf(stderr, " hammer2_mount -u [-o opts] mountpt\n");
-	fprintf(stderr, " hammer2_mount [-o opts] dev@LABEL mountpt\n");
+	fprintf(stderr, " mount_hammer2 -u [-o opts] mountpt\n");
+	fprintf(stderr, " mount_hammer2 [-o opts] dev@LABEL mountpt\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "options:\n"
 			" <standard_mount_opts>\n"
