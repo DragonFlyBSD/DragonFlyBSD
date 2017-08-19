@@ -58,23 +58,15 @@ cmd_pfs_snapshot(const char *sel_path, const char *path, const char *label)
 	int ecode = 0;
 	int fd;
 	char filename[HAMMER2_INODE_MAXNAME];
-	char *xname;
 	time_t t;
 	struct tm *tp;
 
 	if (path == NULL) {
 		fd = hammer2_ioctl_handle(sel_path);
-		xname = strdup("");
 	} else {
 		fd = open(path, O_RDONLY);
 		if (fd < 0)
 			fprintf(stderr, "Unable to open %s\n", path);
-		if (strrchr(path, '/'))
-			asprintf(&xname, ".%s", strrchr(path, '/') + 1);
-		else if (*path)
-			asprintf(&xname, ".%s", path);
-		else
-			xname = strdup("");
 	}
 	if (fd < 0)
 		return 1;
@@ -88,9 +80,8 @@ cmd_pfs_snapshot(const char *sel_path, const char *path, const char *label)
 			perror("ioctl");
 		}
 		snprintf(filename, sizeof(filename),
-			 "%s%s.%04d%02d%02d.%02d%02d%02d",
+			 "%s.%04d%02d%02d.%02d%02d%02d",
 			 pfs.name,
-			 xname,
 			 tp->tm_year + 1900,
 			 tp->tm_mon + 1,
 			 tp->tm_mday,
