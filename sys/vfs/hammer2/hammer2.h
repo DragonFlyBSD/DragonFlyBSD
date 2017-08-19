@@ -62,11 +62,17 @@
 #ifndef _VFS_HAMMER2_HAMMER2_H_
 #define _VFS_HAMMER2_HAMMER2_H_
 
+#ifdef _KERNEL
 #include <sys/param.h>
+#endif
 #include <sys/types.h>
+#ifdef _KERNEL
 #include <sys/kernel.h>
+#endif
 #include <sys/conf.h>
+#ifdef _KERNEL
 #include <sys/systm.h>
+#endif
 #include <sys/tree.h>
 #include <sys/malloc.h>
 #include <sys/mount.h>
@@ -83,12 +89,16 @@
 #include <sys/limits.h>
 #include <sys/dmsg.h>
 #include <sys/mutex.h>
+#ifdef _KERNEL
 #include <sys/kern_syscall.h>
+#endif
 
+#ifdef _KERNEL
 #include <sys/signal2.h>
 #include <sys/buf2.h>
 #include <sys/mutex2.h>
 #include <sys/thread2.h>
+#endif
 
 #include "hammer2_xxhash.h"
 #include "hammer2_disk.h"
@@ -141,7 +151,7 @@ TAILQ_HEAD(hammer2_chain_list, hammer2_chain);
 
 typedef struct hammer2_xop_list	hammer2_xop_list_t;
 
-
+#ifdef _KERNEL
 /*
  * General lock support
  */
@@ -151,6 +161,8 @@ hammer2_mtx_upgrade_try(hammer2_mtx_t *mtx)
 {
 	return mtx_upgrade_try(mtx);
 }
+
+#endif
 
 /*
  * The xid tracks internal transactional updates.
@@ -1476,8 +1488,8 @@ void hammer2_base_insert(hammer2_chain_t *chain,
 /*
  * hammer2_flush.c
  */
+hammer2_chain_t *hammer2_flush_quick(hammer2_dev_t *hmp);
 void hammer2_flush(hammer2_chain_t *chain, int istop);
-void hammer2_flush_quick(hammer2_dev_t *hmp);
 void hammer2_delayed_flush(hammer2_chain_t *chain);
 
 /*

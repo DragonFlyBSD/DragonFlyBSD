@@ -337,27 +337,21 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	 */
 	hammer2_dedup_clear(hmp);
 
-#if 1
 	/*
-	 * XXX This has been put back in.  The below check is currently
-	 * disabled because it creates quite a bit of confusion, so we're
-	 * going to try to fix this in a different way.
+	 * Create a stable snapshot of the block tree which we can run
+	 * the bulkfree pass on.  This allows the bulkfree pass to run
+	 * concurrent with all other operations (except another bulkfree)
 	 *
-	 * XXX This has been removed.  Instead of trying to flush, which
-	 * appears to have a ton of races against life chains even with
-	 * the two-stage scan, we simply refuse to free any blocks
-	 * related to freemap chains modified after the last filesystem
-	 * sync.
-	 *
-	 * Do a quick flush so we can snapshot vchain for any blocks that
-	 * have been allocated prior to this point.  We don't need to
-	 * flush vnodes, logical buffers, or dirty inodes that have not
-	 * allocated blocks yet.  We do not want to flush the device buffers
-	 * nor do we want to flush the actual volume root to disk here,
-	 * that is not needed to perform the snapshot.
+	 * This must flush all dirty chain data, but does not have to
+	 * flush dirty buffer cache buffers which have not yet been
+	 * realized and does not have to flush any newly realized dirty
+	 * chains while the bulkfree pass is running, as long as said
+	 * newly dirtied chains get flushed the next time, before the
+	 * next bulkfree pass.
 	 */
-	hammer2_flush_quick(hmp);
-#endif
+	vchain = hammer2_flush_quick(hmp);
+	hammer2_chain_bulkdrop(vchain);
+	vchain = hammer2_flush_quick(hmp);
 
 	/*
 	 * Setup for free pass
@@ -380,16 +374,6 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	if (cbinfo.sbase > hmp->voldata.volu_size)
 		cbinfo.sbase = hmp->voldata.volu_size;
 	cbinfo.sbase &= ~HAMMER2_FREEMAP_LEVEL1_MASK;
-
-	/*
-	 * The primary storage scan must use a snapshot of the volume
-	 * root to avoid racing renames and other frontend work.
-	 *
-	 * Note that snapshots only snap synchronized storage, so
-	 * we have to flush between each pass or we risk freeing
-	 * storage allocated by the frontend.
-	 */
-	vchain = hammer2_chain_bulksnap(&hmp->vchain);
 	TAILQ_INIT(&cbinfo.list);
 
 	/*
@@ -905,8 +889,6 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 					++cbinfo->count_10_00;
 					break;
 				case 3:	/* 11 -> 10 */
-					if (nofree)
-						break;
 					live->bitmapq[bindex] &=
 					    ~((hammer2_bitmap_t)1 << scount);
 					++cbinfo->count_11_10;

@@ -427,8 +427,11 @@ hammer2_flush(hammer2_chain_t *chain, int flags)
 /*
  * This is the core of the chain flushing code.  The chain is locked by the
  * caller and must also have an extra ref on it by the caller, and remains
- * locked and will have an extra ref on return.  Upon return, the caller can
- * test the UPDATE bit on the child to determine if the parent needs updating.
+ * locked and will have an extra ref on return.  info.parent is referenced
+ * but not locked.
+ *
+ * Upon return, the caller can test the UPDATE bit on the chain to determine
+ * if the parent needs updating.
  *
  * (1) Determine if this node is a candidate for the flush, return if it is
  *     not.  fchain and vchain are always candidates for the flush.
@@ -486,6 +489,7 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 	hmp = chain->hmp;
 	diddeferral = info->diddeferral;
 	parent = info->parent;		/* can be NULL */
+	KKASSERT(chain->parent == parent);
 
 	/*
 	 * Downward search recursion
@@ -499,19 +503,28 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		   (flags & HAMMER2_FLUSH_ALL) == 0 &&
 		   (flags & HAMMER2_FLUSH_TOP) == 0) {
 		/*
-		 * We do not recurse through PFSROOTs.  PFSROOT flushes are
-		 * handled by the related pmp's (whether mounted or not,
-		 * including during recovery).
+		 * If FLUSH_ALL is not specified the caller does not want
+		 * to recurse through PFS roots.  The typical sequence is
+		 * to flush dirty PFS's starting at their root downward,
+		 * then flush the device root (vchain).  It is this second
+		 * flush that typically leaves out the ALL flag.
 		 *
-		 * But we must still process the PFSROOT chains for block
+		 * However we must still process the PFSROOT chains for block
 		 * table updates in their parent (which IS part of our flush).
 		 *
-		 * Note that the volume root, vchain, does not set this flag.
-		 * Note the logic here requires that this test be done before
-		 * the depth-limit test, else it might become the top on a
-		 * flushq iteration.
+		 * NOTE: The volume root, vchain, does not set PFSBOUNDARY.
+		 *
+		 * NOTE: This test must be done before the depth-limit test,
+		 *	 else it might become the top on a flushq iteration.
+		 *
+		 * NOTE: We must re-set ONFLUSH in the parent to retain if
+		 *	 this chain (that we are skipping) requires work.
 		 */
-		;
+		if (chain->flags & (HAMMER2_CHAIN_ONFLUSH |
+				    HAMMER2_CHAIN_DESTROY |
+				    HAMMER2_CHAIN_MODIFIED)) {
+			hammer2_chain_setflush(parent);
+		}
 	} else if (info->depth == HAMMER2_FLUSH_DEPTH_LIMIT) {
 		/*
 		 * Recursion depth reached.
@@ -531,6 +544,10 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		 * We must also recurse if DESTROY is set so we can finally
 		 * get rid of the related children, otherwise the node will
 		 * just get re-flushed on lastdrop.
+		 *
+		 * WARNING!  The recursion will unlock/relock info->parent
+		 *	     (which is 'chain'), potentially allowing it
+		 *	     to be ripped up.
 		 */
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ONFLUSH);
 		info->parent = chain;
@@ -541,6 +558,18 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		info->parent = parent;
 		if (info->diddeferral)
 			hammer2_chain_setflush(chain);
+
+		/*
+		 * If we lost the parent->chain association we have to
+		 * stop processing this chain because it is no longer
+		 * in this recursion.  If it moved, it will be handled
+		 * by the ONFLUSH flag elsewhere.
+		 */
+		if (chain->parent != parent) {
+			kprintf("LOST CHILD2 %p->%p (actual parent %p)\n",
+				parent, chain, chain->parent);
+			goto done;
+		}
 	}
 
 	/*
@@ -550,6 +579,32 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 	 */
 	if (info->diddeferral)
 		goto done;
+
+	/*
+	 * Both parent and chain must be locked in order to flush chain,
+	 * in order to properly update the parent under certain conditions.
+	 *
+	 * In addition, we can't safely unlock/relock the chain once we
+	 * start flushing the chain itself, which we would have to do later
+	 * on in order to lock the parent if we didn't do that now.
+	 */
+	hammer2_chain_unlock(chain);
+	if (parent)
+		hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_chain_lock(chain, HAMMER2_RESOLVE_MAYBE);
+	if (chain->parent != parent) {
+		kprintf("LOST CHILD3 %p->%p (actual parent %p)\n",
+			parent, chain, chain->parent);
+		KKASSERT(parent != NULL);
+		hammer2_chain_unlock(parent);
+		if ((chain->flags & HAMMER2_CHAIN_DELAYED) == 0) {
+			hammer2_chain_ref(chain);
+			TAILQ_INSERT_TAIL(&info->flushq, chain, flush_node);
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_DEFERRED);
+			++info->diddeferral;
+		}
+		goto done;
+	}
 
 	/*
 	 * Propagate the DESTROY flag downwards.  This dummies up the flush
@@ -562,7 +617,6 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 	/*
 	 * Chain was already modified or has become modified, flush it out.
 	 */
-again:
 	if ((hammer2_debug & 0x200) &&
 	    info->debug &&
 	    (chain->flags & (HAMMER2_CHAIN_MODIFIED | HAMMER2_CHAIN_UPDATE))) {
@@ -853,39 +907,11 @@ again:
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
 
 	/*
-	 * The chain may need its blockrefs updated in the parent.  This
-	 * requires some fancy footwork.
+	 * The chain may need its blockrefs updated in the parent.
 	 */
 	if (chain->flags & HAMMER2_CHAIN_UPDATE) {
 		hammer2_blockref_t *base;
 		int count;
-
-		/*
-		 * Both parent and chain must be locked.  This requires
-		 * temporarily unlocking the chain.  We have to deal with
-		 * the case where the chain might be reparented or modified
-		 * while it was unlocked.
-		 */
-		hammer2_chain_unlock(chain);
-		hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
-		hammer2_chain_lock(chain, HAMMER2_RESOLVE_MAYBE);
-		if (chain->parent != parent) {
-			kprintf("PARENT MISMATCH ch=%p p=%p/%p\n",
-				chain, chain->parent, parent);
-			hammer2_chain_unlock(parent);
-			goto done;
-		}
-
-		/*
-		 * Check race condition.  If someone got in and modified
-		 * it again while it was unlocked, we have to loop up.
-		 */
-		if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
-			hammer2_chain_unlock(parent);
-			kprintf("hammer2_flush: chain %p flush-mod race\n",
-				chain);
-			goto again;
-		}
 
 		/*
 		 * Clear UPDATE flag, mark parent modified, update its
@@ -910,7 +936,6 @@ again:
 			}
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_BMAPPED |
 							HAMMER2_CHAIN_BMAPUPD);
-			hammer2_chain_unlock(parent);
 			goto skipupdate;
 		}
 
@@ -941,7 +966,6 @@ again:
 			hammer2_chain_delete(parent, chain,
 					     chain->bref.modify_tid,
 					     HAMMER2_DELETE_PERMANENT);
-			hammer2_chain_unlock(parent);
 			goto skipupdate;
 		}
 
@@ -1022,10 +1046,10 @@ again:
 			hammer2_spin_unex(&parent->core.spin);
 			/* base_insert sets BMAPPED */
 		}
-		hammer2_chain_unlock(parent);
 	}
 skipupdate:
-	;
+	if (parent)
+		hammer2_chain_unlock(parent);
 
 	/*
 	 * Final cleanup after flush
@@ -1068,13 +1092,19 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 	 * We must ref the child before unlocking the spinlock.
 	 *
 	 * The caller has added a ref to the parent so we can temporarily
-	 * unlock it in order to lock the child.
+	 * unlock it in order to lock the child.  However, if it no longer
+	 * winds up being the child of the parent we must skip this child.
 	 */
 	hammer2_chain_ref(child);
 	hammer2_spin_unex(&parent->core.spin);
 
 	hammer2_chain_unlock(parent);
 	hammer2_chain_lock(child, HAMMER2_RESOLVE_MAYBE);
+	if (child->parent != parent) {
+		kprintf("LOST CHILD1 %p->%p (actual parent %p)\n",
+			parent, child, child->parent);
+		goto done;
+	}
 
 	/*
 	 * Must propagate the DESTROY flag downwards, otherwise the
@@ -1103,6 +1133,7 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 			info->debug = NULL;
 	}
 
+done:
 	/*
 	 * Relock to continue the loop
 	 */
@@ -1116,21 +1147,22 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 }
 
 /*
- * flush helper (direct)
+ * Flush helper (direct)
  *
- * Quickly flushes any dirty chains for a device.  This will update our
- * concept of the volume root but does NOT flush the actual volume root
- * and does not flush dirty device buffers.
+ * Quickly flushes any dirty chains for a device and returns a temporary
+ * out-of-band copy of hmp->vchain that the caller can use as a stable
+ * reference.
  *
- * This function is primarily used by the bulkfree code to allow it to
- * create a snapshot for the pass.  It doesn't care about any pending
- * work (dirty vnodes, dirty inodes, dirty logical buffers) for which blocks
- * have not yet been allocated.
+ * This function does not flush the actual volume root and does not flush dirty
+ * device buffers.  We don't care about pending work, per-say.  This function
+ * is primarily used by the bulkfree code to create a stable snapshot of
+ * the block tree.
  */
-void
+hammer2_chain_t *
 hammer2_flush_quick(hammer2_dev_t *hmp)
 {
 	hammer2_chain_t *chain;
+	hammer2_chain_t *copy;
 
 	hammer2_trans_init(hmp->spmp, HAMMER2_TRANS_ISFLUSH);
 
@@ -1142,10 +1174,13 @@ hammer2_flush_quick(hammer2_dev_t *hmp)
 				     HAMMER2_FLUSH_ALL);
 		KKASSERT(chain == &hmp->vchain);
 	}
+	copy = hammer2_chain_bulksnap(&hmp->vchain);
 	hammer2_chain_unlock(&hmp->vchain);
 	hammer2_chain_drop(&hmp->vchain);
 
 	hammer2_trans_done(hmp->spmp);  /* spmp trans */
+
+	return copy;
 }
 
 /*
