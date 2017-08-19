@@ -322,9 +322,10 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	int doabort = 0;
 
 	/*
-	 * A bulkfree operations lock is required for the duration.  We
+	 * A bulk operations lock is required for the duration.  We
 	 * must hold it across our flushes to guarantee that we never run
 	 * two bulkfree passes in a row without a flush in the middle.
+	 * The 2-stage bulkfree requires this flush to work properly.
 	 */
 	lockmgr(&hmp->bulklk, LK_EXCLUSIVE);
 

@@ -324,8 +324,7 @@ hammer2_delayed_flush(hammer2_chain_t *chain)
  *
  * chain is locked on call and will remain locked on return.  The chain's
  * UPDATE flag indicates that its parent's block table (which is not yet
- * part of the flush) should be updated.  The chain may be replaced by
- * the call if it was modified.
+ * part of the flush) should be updated.
  */
 void
 hammer2_flush(hammer2_chain_t *chain, int flags)
