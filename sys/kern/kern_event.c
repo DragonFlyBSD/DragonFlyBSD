@@ -522,7 +522,7 @@ static int
 filt_userattach(struct knote *kn)
 {
 	kn->kn_hook = NULL;
-	if (kn->kn_fflags & NOTE_TRIGGER)
+	if (kn->kn_sfflags & NOTE_TRIGGER)
 		kn->kn_ptr.hookid = 1;
 	else
 		kn->kn_ptr.hookid = 0;
