@@ -521,11 +521,39 @@ filt_timer(struct knote *kn, long hint)
 static int
 filt_userattach(struct knote *kn)
 {
+	u_int ffctrl;
+
 	kn->kn_hook = NULL;
 	if (kn->kn_sfflags & NOTE_TRIGGER)
 		kn->kn_ptr.hookid = 1;
 	else
 		kn->kn_ptr.hookid = 0;
+
+	ffctrl = kn->kn_sfflags & NOTE_FFCTRLMASK;
+	kn->kn_sfflags &= NOTE_FFLAGSMASK;
+	switch (ffctrl) {
+	case NOTE_FFNOP:
+		break;
+
+	case NOTE_FFAND:
+		kn->kn_fflags &= kn->kn_sfflags;
+		break;
+
+	case NOTE_FFOR:
+		kn->kn_fflags |= kn->kn_sfflags;
+		break;
+
+	case NOTE_FFCOPY:
+		kn->kn_fflags = kn->kn_sfflags;
+		break;
+
+	default:
+		/* XXX Return error? */
+		break;
+	}
+	/* We just happen to copy this value as well. Undocumented. */
+	kn->kn_data = kn->kn_sdata;
+
 	return 0;
 }
 
@@ -558,22 +586,23 @@ filt_usertouch(struct knote *kn, struct kevent *kev, u_long type)
 			break;
 
 		case NOTE_FFAND:
-			kn->kn_sfflags &= kev->fflags;
+			kn->kn_fflags &= kev->fflags;
 			break;
 
 		case NOTE_FFOR:
-			kn->kn_sfflags |= kev->fflags;
+			kn->kn_fflags |= kev->fflags;
 			break;
 
 		case NOTE_FFCOPY:
-			kn->kn_sfflags = kev->fflags;
+			kn->kn_fflags = kev->fflags;
 			break;
 
 		default:
 			/* XXX Return error? */
 			break;
 		}
-		kn->kn_sdata = kev->data;
+		/* We just happen to copy this value as well. Undocumented. */
+		kn->kn_data = kev->data;
 
 		/*
 		 * This is not the correct use of EV_CLEAR in an event
@@ -586,15 +615,22 @@ filt_usertouch(struct knote *kn, struct kevent *kev, u_long type)
 		 */
 		if (kev->flags & EV_CLEAR) {
 			kn->kn_ptr.hookid = 0;
+			/*
+			 * Clearing kn->kn_data is fine, since it gets set
+			 * every time anyway. We just shouldn't clear
+			 * kn->kn_fflags here, since that would limit the
+			 * possible uses of this API. NOTE_FFAND or
+			 * NOTE_FFCOPY should be used for explicitly clearing
+			 * kn->kn_fflags.
+			 */
 			kn->kn_data = 0;
-			kn->kn_fflags = 0;
 		}
 		break;
 
         case EVENT_PROCESS:
 		*kev = kn->kn_kevent;
-		kev->fflags = kn->kn_sfflags;
-		kev->data = kn->kn_sdata;
+		kev->fflags = kn->kn_fflags;
+		kev->data = kn->kn_data;
 		if (kn->kn_flags & EV_CLEAR) {
 			kn->kn_ptr.hookid = 0;
 			/* kn_data, kn_fflags handled by parent */
