@@ -258,19 +258,23 @@ hammer2_autodmsg(kdmsg_msg_t *msg)
 			break;
 		}
 		DMSG_TERMINATE_STRING(msg->any.lnk_span.peer_label);
-		kprintf("H2 +RXSPAN cmd=%08x (%-20s) cl=",
-			msg->any.head.cmd, msg->any.lnk_span.peer_label);
-		printf_uuid(&msg->any.lnk_span.peer_id);
-		kprintf(" fs=");
-		printf_uuid(&msg->any.lnk_span.pfs_id);
-		kprintf(" type=%d\n", msg->any.lnk_span.pfs_type);
+		if (hammer2_debug & 0x0100) {
+			kprintf("H2 +RXSPAN cmd=%08x (%-20s) cl=",
+				msg->any.head.cmd,
+				msg->any.lnk_span.peer_label);
+			printf_uuid(&msg->any.lnk_span.peer_id);
+			kprintf(" fs=");
+			printf_uuid(&msg->any.lnk_span.pfs_id);
+			kprintf(" type=%d\n", msg->any.lnk_span.pfs_type);
+		}
 		kdmsg_msg_result(msg, 0);
 		break;
 	case DMSG_LNK_SPAN | DMSGF_DELETE:
 		/*
 		 * NOTE: kern_dmsg will automatically reply to DELETEs.
 		 */
-		kprintf("H2 -RXSPAN\n");
+		if (hammer2_debug & 0x0100)
+			kprintf("H2 -RXSPAN\n");
 		break;
 	default:
 		break;
