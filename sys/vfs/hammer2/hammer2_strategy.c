@@ -1174,6 +1174,7 @@ hammer2_zero_check_and_write(char *data, hammer2_inode_t *ip,
 	int check_algo)
 {
 	hammer2_chain_t *chain;
+	char *bdata;
 
 	if (check_algo != HAMMER2_CHECK_NONE &&
 	    test_block_zeros(data, pblksize)) {
@@ -1190,12 +1191,19 @@ hammer2_zero_check_and_write(char *data, hammer2_inode_t *ip,
 		/*
 		 * Normal write
 		 */
+		bdata = data;
 		chain = hammer2_assign_physical(ip, parentp, lbase, pblksize,
-						mtid, &data, errorp);
-		if (data) {
+						mtid, &bdata, errorp);
+		if (bdata) {
 			hammer2_write_bp(chain, data, ioflag, pblksize,
 					 mtid, errorp, check_algo);
-		} /* else dedup occurred */
+		} else {
+			/* dedup occurred */
+			chain->bref.methods =
+				HAMMER2_ENC_COMP(HAMMER2_COMP_NONE) +
+				HAMMER2_ENC_CHECK(check_algo);
+			hammer2_chain_setcheck(chain, data);
+		}
 		if (chain) {
 			hammer2_chain_unlock(chain);
 			hammer2_chain_drop(chain);
