@@ -206,6 +206,10 @@ instead of the current state.
 Note that some filters may automatically set this flag internally.
 .It Dv EV_EOF
 Filters may set this flag to indicate filter-specific EOF condition.
+.It Dv EV_NODATA
+Filters may set this flag in addition to
+.Dv EV_EOF
+to indicate that there is no more data pending in the buffer.
 .It Dv EV_ERROR
 See
 .Sx RETURN VALUES
