@@ -925,8 +925,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		label++;
 	}
 
-	kprintf("hammer2_mount: dev=\"%s\" label=\"%s\"\n",
-		dev, label);
+	kprintf("hammer2_mount: dev=\"%s\" label=\"%s\" rdonly=%d\n",
+		dev, label, (mp->mnt_flag & MNT_RDONLY));
 
 	if (mp->mnt_flag & MNT_UPDATE) {
 		/*
@@ -1041,8 +1041,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			error = vinvalbuf(devvp, V_SAVE, 0, 0);
 			if (error == 0) {
 				error = VOP_OPEN(devvp,
-						 ronly ? FREAD : FREAD | FWRITE,
-						 FSCRED, NULL);
+					     (ronly ? FREAD : FREAD | FWRITE),
+					     FSCRED, NULL);
 			}
 			vn_unlock(devvp);
 		}
@@ -1320,7 +1320,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	}
 
 	pmp->hflags = info.hflags;
-        mp->mnt_flag = MNT_LOCAL;
+        mp->mnt_flag |= MNT_LOCAL;
         mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;   /* all entry pts are SMP */
         mp->mnt_kern_flag |= MNTK_THR_SYNC;     /* new vsyncscan semantics */
  
@@ -1440,7 +1440,18 @@ hammer2_remount(hammer2_dev_t *hmp, struct mount *mp, char *path __unused,
 	int error;
 
 	if (hmp->ronly && (mp->mnt_kern_flag & MNTK_WANTRDWR)) {
+		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
+		VOP_OPEN(devvp, FREAD | FWRITE, FSCRED, NULL);
+		vn_unlock(devvp);
 		error = hammer2_recovery(hmp);
+		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
+		if (error == 0) {
+			VOP_CLOSE(devvp, FREAD, NULL);
+			hmp->ronly = 0;
+		} else {
+			VOP_CLOSE(devvp, FREAD | FWRITE, NULL);
+		}
+		vn_unlock(devvp);
 	} else {
 		error = 0;
 	}
@@ -1555,7 +1566,7 @@ hammer2_unmount_helper(struct mount *mp, hammer2_pfs_t *pmp, hammer2_dev_t *hmp)
 	hammer2_chain_t *rchain;
 	struct vnode *devvp;
 	int dumpcnt;
-	int ronly = 0;
+	int ronly;
 	int i;
 
 	/*
@@ -1639,6 +1650,7 @@ again:
 	 * Finish up with the device vnode
 	 */
 	if ((devvp = hmp->devvp) != NULL) {
+		ronly = hmp->ronly;
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 		vinvalbuf(devvp, (ronly ? 0 : V_SAVE), 0, 0);
 		hmp->devvp = NULL;
