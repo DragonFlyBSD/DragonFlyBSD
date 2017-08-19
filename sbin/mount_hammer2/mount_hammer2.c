@@ -158,13 +158,15 @@ main(int ac, char *av[])
 	 * When doing remote mounts that are allowed to run in the background
 	 * the mount program will fork, detach, print a message, and exit(0)
 	 * the originator while retrying in the background.
+	 *
+	 * Don't exit on failure, this isn't likely going to work for
+	 * the root [re]mount in early boot.
 	 */
 	info.cluster_fd = cluster_connect(devpath);
 	if (info.cluster_fd < 0) {
 		fprintf(stderr,
 			"mount_hammer2: cluster_connect(%s) failed\n",
 			devpath);
-		exit(1);
 	}
 
 	/*
