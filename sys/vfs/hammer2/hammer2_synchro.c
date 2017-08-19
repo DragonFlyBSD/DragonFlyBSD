@@ -131,8 +131,7 @@ hammer2_primary_sync_thread(void *arg)
 				continue;
 			if (flags & HAMMER2_THREAD_WAITING)
 				wakeup(&thr->flags);
-			flags = nflags;
-			/* fall through */
+			continue;
 		}
 
 		if (flags & HAMMER2_THREAD_UNFREEZE) {
@@ -143,8 +142,7 @@ hammer2_primary_sync_thread(void *arg)
 				continue;
 			if (flags & HAMMER2_THREAD_WAITING)
 				wakeup(&thr->flags);
-			flags = nflags;
-			/* fall through */
+			continue;
 		}
 
 		/*
@@ -152,12 +150,10 @@ hammer2_primary_sync_thread(void *arg)
 		 */
 		if (flags & HAMMER2_THREAD_FROZEN) {
 			nflags = flags | HAMMER2_THREAD_WAITING;
+
 			tsleep_interlock(&thr->flags, 0);
-			if (atomic_cmpset_int(&thr->flags, flags, nflags)) {
+			if (atomic_cmpset_int(&thr->flags, flags, nflags))
 				tsleep(&thr->flags, PINTERLOCKED, "frozen", 0);
-				atomic_clear_int(&thr->flags,
-						 HAMMER2_THREAD_WAITING);
-			}
 			continue;
 		}
 
@@ -251,7 +247,6 @@ hammer2_primary_sync_thread(void *arg)
 		tsleep_interlock(&thr->flags, 0);
 		if (atomic_cmpset_int(&thr->flags, flags, nflags)) {
 			tsleep(&thr->flags, 0, "h2idle", hz * 5);
-			atomic_clear_int(&thr->flags, HAMMER2_THREAD_WAITING);
 		}
 	}
 	thr->td = NULL;

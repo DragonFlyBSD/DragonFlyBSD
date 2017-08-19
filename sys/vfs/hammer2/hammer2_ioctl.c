@@ -180,21 +180,28 @@ static int
 hammer2_ioctl_recluster(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_recluster_t *recl = data;
+	struct vnode *vproot;
 	struct file *fp;
 	hammer2_cluster_t *cluster;
 	int error;
 
 	fp = holdfp(curproc->p_fd, recl->fd, -1);
 	if (fp) {
-		kprintf("reconnect to cluster: XXX ");
-		cluster = &ip->pmp->iroot->cluster;
-		if (cluster->nchains != 1 || cluster->focus == NULL) {
-			kprintf("not a local device mount\n");
-			error = EINVAL;
-		} else {
-			hammer2_cluster_reconnect(cluster->focus->hmp, fp);
-			kprintf("ok\n");
-			error = 0;
+		error = VFS_ROOT(ip->pmp->mp, &vproot);
+		if (error == 0) {
+			cluster = &ip->pmp->iroot->cluster;
+			kprintf("reconnect to cluster: nc=%d focus=%p\n",
+				cluster->nchains, cluster->focus);
+			if (cluster->nchains != 1 || cluster->focus == NULL) {
+				kprintf("not a local device mount\n");
+				error = EINVAL;
+			} else {
+				hammer2_cluster_reconnect(cluster->focus->hmp,
+							  fp);
+				kprintf("ok\n");
+				error = 0;
+			}
+			vput(vproot);
 		}
 	} else {
 		error = EINVAL;
@@ -414,7 +421,7 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 	if (save_key == (hammer2_key_t)-1) {
 		hammer2_inode_lock(ip->pmp->iroot, 0);
 		parent = NULL;
-		chain = hammer2_inode_chain(hmp->spmp->iroot, 0,
+		chain = hammer2_inode_chain(ip->pmp->iroot, 0,
 					    HAMMER2_RESOLVE_ALWAYS |
 					    HAMMER2_RESOLVE_SHARED);
 	} else {
@@ -789,6 +796,8 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 	if (hmp == NULL)
 		return (EINVAL);
 
+	lockmgr(&hmp->bulklk, LK_EXCLUSIVE);
+
 	hammer2_vfs_sync(pmp->mp, MNT_WAIT);
 
 	hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH);
@@ -805,6 +814,8 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 
 	hammer2_inode_unlock(ip);
 	hammer2_trans_done(pmp);
+
+	lockmgr(&hmp->bulklk, LK_RELEASE);
 
 	return (error);
 }

@@ -983,9 +983,12 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		error = 0;
 	}
 
+	/*
+	 * Make sure its a block device.  Do not check to see if it is
+	 * already mounted until we determine that its a fresh H2 device.
+	 */
 	if (error == 0 && devvp) {
-		if (vn_isdisk(devvp, &error))
-			error = vfs_mountedon(devvp);
+		vn_isdisk(devvp, &error);
 	}
 
 	/*
@@ -996,12 +999,25 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	lockmgr(&hammer2_mntlk, LK_EXCLUSIVE);
 	if (devvp) {
 		/*
-		 * Match the device
+		 * Match the device.  Due to the way devfs works,
+		 * we may not be able to directly match the vnode pointer,
+		 * so also check to see if the underlying device matches.
 		 */
 		TAILQ_FOREACH(hmp, &hammer2_mntlist, mntentry) {
 			if (hmp->devvp == devvp)
 				break;
+			if (devvp->v_rdev &&
+			    hmp->devvp->v_rdev == devvp->v_rdev) {
+				break;
+			}
 		}
+
+		/*
+		 * If no match this may be a fresh H2 mount, make sure
+		 * the device is not mounted on anything else.
+		 */
+		if (hmp == NULL)
+			error = vfs_mountedon(devvp);
 	} else if (error == 0) {
 		/*
 		 * Match the label to a pmp already probed.
@@ -1029,8 +1045,10 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hammer2_chain_t *schain;
 		hammer2_xid_t xid;
 
-		if (error == 0 && vcount(devvp) > 0)
+		if (error == 0 && vcount(devvp) > 0) {
+			kprintf("Primary device already has references\n");
 			error = EBUSY;
+		}
 
 		/*
 		 * Now open the device

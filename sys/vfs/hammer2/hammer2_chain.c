@@ -5175,11 +5175,11 @@ hammer2_chain_bulkdrop(hammer2_chain_t *copy)
 }
 
 /*
- * Create a snapshot of the specified {parent, ochain} with the specified
- * label.  The originating hammer2_inode must be exclusively locked for
- * safety.
- *
- * The ioctl code has already synced the filesystem.
+ * Create a snapshot of the specified (chain) with the specified label.
+ * The originating hammer2_inode must be exclusively locked for
+ * safety.  The device's bulklk should be held by the caller.  The caller
+ * is responsible for synchronizing the filesystem to storage before
+ * taking the snapshot.
  */
 int
 hammer2_chain_snapshot(hammer2_chain_t *chain, hammer2_ioc_pfs_t *pmp,
@@ -5227,11 +5227,13 @@ hammer2_chain_snapshot(hammer2_chain_t *chain, hammer2_ioc_pfs_t *pmp,
 	VATTR_NULL(&vat);
 	vat.va_type = VDIR;
 	vat.va_mode = 0755;
+	hammer2_chain_unlock(chain);
 	nip = hammer2_inode_create(hmp->spmp->iroot, hmp->spmp->iroot,
 				   &vat, proc0.p_ucred,
 				   pmp->name, name_len, 0,
 				   1, 0, 0,
 				   HAMMER2_INSERT_PFSROOT, &error);
+	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
 
 	if (nip) {
 		hammer2_inode_modify(nip);
@@ -5262,10 +5264,16 @@ hammer2_chain_snapshot(hammer2_chain_t *chain, hammer2_ioc_pfs_t *pmp,
 		/* XXX doesn't work with real cluster */
 		wipdata->meta = nip->meta;
 		wipdata->u.blockset = ripdata->u.blockset;
+
 		hammer2_flush(nchain, 1);
+		KKASSERT(wipdata == &nchain->data->ipdata);
+		hammer2_pfsalloc(nchain, wipdata, nchain->bref.modify_tid, 0);
+
 		hammer2_chain_unlock(nchain);
 		hammer2_chain_drop(nchain);
+		hammer2_inode_chain_sync(nip);
 		hammer2_inode_unlock(nip);
+		hammer2_inode_run_sideq(hmp->spmp);
 	}
 	return (error);
 }
