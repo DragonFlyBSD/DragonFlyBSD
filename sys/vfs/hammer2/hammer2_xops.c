@@ -602,6 +602,10 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		}
 		if (chain->bref.type == HAMMER2_BREF_TYPE_DIRENT) {
 			if (xop->head.name2_len <= sizeof(chain->bref.check.buf)) {
+				/*
+				 * Remove any related data buffer, we can
+				 * embed the filename in the bref itself.
+				 */
 				hammer2_chain_resize(chain, xop->head.mtid, 0,
 						     0, 0);
 				hammer2_chain_modify(chain, xop->head.mtid,
@@ -611,13 +615,19 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 				bcopy(xop->head.name2, chain->bref.check.buf,
 				      xop->head.name2_len);
 			} else {
+				/*
+				 * Associate a data buffer with the bref.
+				 * Zero it for consistency.  Note that the
+				 * data buffer is not 64KB so use chain->bytes
+				 * instead of sizeof().
+				 */
 				hammer2_chain_resize(chain, xop->head.mtid, 0,
 				     hammer2_getradix(HAMMER2_ALLOC_MIN), 0);
 				hammer2_chain_modify(chain, xop->head.mtid,
 						     0, 0);
-				bzero(chain->data->buf,
-				      sizeof(chain->data->buf));
-				bcopy(xop->head.name2, chain->data->buf,
+				bzero(chain->data->buf, chain->bytes);
+				bcopy(xop->head.name2,
+				      chain->data->buf,
 				      xop->head.name2_len);
 			}
 			chain->bref.embed.dirent.namlen = xop->head.name2_len;

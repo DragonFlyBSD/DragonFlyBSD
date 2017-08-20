@@ -1344,6 +1344,11 @@ hammer2_inode_xop_mkdirent(hammer2_thread_t *thr, hammer2_xop_t *arg)
 				     data_len,
 				     xop->head.mtid, 0, 0);
 	if (error == 0) {
+		/*
+		 * WARNING: chain->data->buf is sized to chain->bytes,
+		 *	    do not use sizeof(chain->data->buf), which
+		 *	    will be much larger.
+		 */
 		hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
 
 		chain->bref.embed.dirent = xop->dirent;
