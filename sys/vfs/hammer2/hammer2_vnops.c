@@ -431,8 +431,10 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 				hammer2_mtx_ex(&ip->truncate_lock);
 				hammer2_truncate_file(ip, vap->va_size);
 				hammer2_mtx_unlock(&ip->truncate_lock);
+				kflags |= NOTE_WRITE;
 			} else {
 				hammer2_extend_file(ip, vap->va_size);
+				kflags |= NOTE_WRITE | NOTE_EXTEND;
 			}
 			hammer2_inode_modify(ip);
 			ip->meta.mtime = ctime;
@@ -1358,6 +1360,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, *ap->a_vpp);
+		hammer2_knote(ap->a_dvp, NOTE_WRITE | NOTE_LINK);
 	}
 	LOCKSTOP;
 	return error;
@@ -1478,6 +1481,8 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	hammer2_inode_unlock(tdip);
 
 	hammer2_trans_done(ip->pmp);
+	hammer2_knote(ap->a_vp, NOTE_LINK);
+	hammer2_knote(ap->a_dvp, NOTE_WRITE);
 
 	LOCKSTOP;
 	return error;
@@ -1556,6 +1561,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, *ap->a_vpp);
+		hammer2_knote(ap->a_dvp, NOTE_WRITE);
 	}
 	LOCKSTOP;
 	return error;
@@ -1629,6 +1635,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, *ap->a_vpp);
+		hammer2_knote(ap->a_dvp, NOTE_WRITE);
 	}
 	LOCKSTOP;
 	return error;
@@ -1734,7 +1741,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, *ap->a_vpp);
-		/* hammer2_knote(ap->a_dvp, NOTE_WRITE); */
+		hammer2_knote(ap->a_dvp, NOTE_WRITE);
 	}
 	return error;
 }
@@ -1773,6 +1780,15 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	 */
 	xop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
 	hammer2_xop_setname(&xop->head, ncp->nc_name, ncp->nc_nlen);
+
+	/*
+	 * The namecache entry is locked so nobody can use this namespace.
+	 * Calculate isopen to determine if this namespace has an open vp
+	 * associated with it and resolve the vp only if it does.
+	 *
+	 * We try to avoid resolving the vnode if nobody has it open, but
+	 * note that the test is via this namespace only.
+	 */
 	isopen = cache_isopen(ap->a_nch);
 	xop->isdir = 0;
 	xop->dopermanent = 0;
@@ -1812,8 +1828,10 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 
 	hammer2_inode_run_sideq(dip->pmp);
 	hammer2_trans_done(dip->pmp);
-	if (error == 0)
+	if (error == 0) {
 		cache_unlink(ap->a_nch);
+		hammer2_knote(ap->a_dvp, NOTE_WRITE);
+	}
 	LOCKSTOP;
 	return (error);
 }
@@ -1886,8 +1904,10 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 
 	hammer2_inode_run_sideq(dip->pmp);
 	hammer2_trans_done(dip->pmp);
-	if (error == 0)
+	if (error == 0) {
 		cache_unlink(ap->a_nch);
+		hammer2_knote(ap->a_dvp, NOTE_WRITE | NOTE_LINK);
+	}
 	LOCKSTOP;
 	return (error);
 }
@@ -2160,8 +2180,12 @@ done2:
 		cache_unlink(ap->a_tnch);
 		cache_setunresolved(ap->a_tnch);
 	}
-	if (error == 0)
+	if (error == 0) {
 		cache_rename(ap->a_fnch, ap->a_tnch);
+		hammer2_knote(ap->a_fdvp, NOTE_WRITE);
+		hammer2_knote(ap->a_tdvp, NOTE_WRITE);
+		hammer2_knote(fncp->nc_vp, NOTE_RENAME);
+	}
 
 	LOCKSTOP;
 	return (error);

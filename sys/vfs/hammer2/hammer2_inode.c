@@ -56,6 +56,14 @@ hammer2_inode_cmp(hammer2_inode_t *ip1, hammer2_inode_t *ip2)
 	return(0);
 }
 
+static __inline
+void
+hammer2_knote(struct vnode *vp, int flags)
+{
+	if (flags)
+		KNOTE(&vp->v_pollinfo.vpi_kqinfo.ki_note, flags);
+}
+
 static
 void
 hammer2_inode_delayed_sideq(hammer2_inode_t *ip)
@@ -1134,6 +1142,9 @@ hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen)
 			(intmax_t)ip->meta.nlinks);
 		return 0;
 	}
+
+	if (ip->vp)
+		hammer2_knote(ip->vp, NOTE_DELETE);
 
 	/*
 	 * nlinks is now zero, delete the inode if not open.
