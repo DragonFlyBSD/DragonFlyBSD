@@ -1258,7 +1258,6 @@ hammer2_inode_run_sideq(hammer2_pfs_t *pmp)
 	if (TAILQ_EMPTY(&pmp->sideq))
 		return;
 
-	LOCKSTART;
 	hammer2_spin_ex(&pmp->list_spin);
 	while ((ipul = TAILQ_FIRST(&pmp->sideq)) != NULL) {
 		TAILQ_REMOVE(&pmp->sideq, ipul, entry);
@@ -1294,7 +1293,6 @@ hammer2_inode_run_sideq(hammer2_pfs_t *pmp)
 		hammer2_spin_ex(&pmp->list_spin);
 	}
 	hammer2_spin_unex(&pmp->list_spin);
-	LOCKSTOP;
 }
 
 /*

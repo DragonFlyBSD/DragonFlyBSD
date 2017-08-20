@@ -86,7 +86,6 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 	hammer2_inode_t *ip;
 	struct vnode *vp;
 
-	LOCKSTART;
 	vp = ap->a_vp;
 	ip = VTOI(vp);
 
@@ -95,7 +94,6 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 	 */
 	if (ip == NULL) {
 		vrecycle(vp);
-		LOCKSTOP;
 		return (0);
 	}
 
@@ -123,7 +121,6 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 		nvtruncbuf(vp, 0, nblksize, 0, 0);
 		vrecycle(vp);
 	}
-	LOCKSTOP;
 	return (0);
 }
 
@@ -139,11 +136,9 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	hammer2_pfs_t *pmp;
 	struct vnode *vp;
 
-	LOCKSTART;
 	vp = ap->a_vp;
 	ip = VTOI(vp);
 	if (ip == NULL) {
-		LOCKSTOP;
 		return(0);
 	}
 	pmp = ip->pmp;
@@ -212,7 +207,6 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	 * vnode attached to it.
 	 */
 
-	LOCKSTOP;
 	return (0);
 }
 
@@ -223,7 +217,6 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	hammer2_inode_t *ip;
 	struct vnode *vp;
 
-	LOCKSTART;
 	vp = ap->a_vp;
 	ip = VTOI(vp);
 
@@ -249,7 +242,6 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	hammer2_inode_unlock(ip);
 	hammer2_trans_done(ip->pmp);
 
-	LOCKSTOP;
 	return (0);
 }
 
@@ -262,14 +254,12 @@ hammer2_vop_access(struct vop_access_args *ap)
 	gid_t gid;
 	int error;
 
-	LOCKSTART;
 	hammer2_inode_lock(ip, HAMMER2_RESOLVE_SHARED);
 	uid = hammer2_to_unix_xid(&ip->meta.uid);
 	gid = hammer2_to_unix_xid(&ip->meta.gid);
 	error = vop_helper_access(ap, uid, gid, ip->meta.mode, ip->meta.uflags);
 	hammer2_inode_unlock(ip);
 
-	LOCKSTOP;
 	return (error);
 }
 
@@ -284,7 +274,6 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 	hammer2_chain_t *chain;
 	int i;
 
-	LOCKSTART;
 	vp = ap->a_vp;
 	vap = ap->a_vap;
 
@@ -335,7 +324,6 @@ hammer2_vop_getattr(struct vop_getattr_args *ap)
 
 	hammer2_inode_unlock(ip);
 
-	LOCKSTOP;
 	return (0);
 }
 
@@ -350,17 +338,14 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 	int kflags = 0;
 	uint64_t ctime;
 
-	LOCKSTART;
 	vp = ap->a_vp;
 	vap = ap->a_vap;
 	hammer2_update_time(&ctime);
 
 	ip = VTOI(vp);
 
-	if (ip->pmp->ronly) {
-		LOCKSTOP;
+	if (ip->pmp->ronly)
 		return(EROFS);
-	}
 
 	hammer2_pfs_memory_wait(ip->pmp);
 	hammer2_trans_init(ip->pmp, 0);
@@ -493,7 +478,6 @@ done:
 	hammer2_trans_done(ip->pmp);
 	hammer2_knote(ip->vp, kflags);
 
-	LOCKSTOP;
 	return (error);
 }
 
@@ -515,7 +499,6 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	int eofflag;
 	int r;
 
-	LOCKSTART;
 	ip = VTOI(ap->a_vp);
 	uio = ap->a_uio;
 	saveoff = uio->uio_offset;
@@ -681,7 +664,6 @@ done:
 			*ap->a_cookies = cookies;
 		}
 	}
-	LOCKSTOP;
 	return (error);
 }
 
@@ -1123,7 +1105,6 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	hammer2_key_t lbase;
 	int nblksize;
 
-	LOCKSTART;
 	hammer2_mtx_unlock(&ip->lock);
 	if (ip->vp) {
 		nblksize = hammer2_calc_logical(ip, nsize, &lbase, NULL);
@@ -1137,7 +1118,6 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	ip->meta.size = nsize;
 	atomic_set_int(&ip->flags, HAMMER2_INODE_RESIZED);
 	hammer2_inode_modify(ip);
-	LOCKSTOP;
 }
 
 /*
@@ -1164,8 +1144,6 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	int oblksize;
 	int nblksize;
 
-	LOCKSTART;
-
 	KKASSERT((ip->flags & HAMMER2_INODE_RESIZED) == 0);
 	hammer2_inode_modify(ip);
 	osize = ip->meta.size;
@@ -1187,8 +1165,6 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 			    -1, -1, 0);
 	}
 	hammer2_mtx_ex(&ip->lock);
-
-	LOCKSTOP;
 }
 
 static
@@ -1202,7 +1178,6 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	struct vnode *vp;
 	int error;
 
-	LOCKSTART;
 	dip = VTOI(ap->a_dvp);
 	xop = hammer2_xop_alloc(dip, 0);
 
@@ -1264,7 +1239,6 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	KASSERT(error || ap->a_nch->ncp->nc_vp != NULL,
 		("resolve error %d/%p ap %p\n",
 		 error, ap->a_nch->ncp->nc_vp, ap));
-	LOCKSTOP;
 
 	return error;
 }
@@ -1277,7 +1251,6 @@ hammer2_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 	hammer2_tid_t inum;
 	int error;
 
-	LOCKSTART;
 	dip = VTOI(ap->a_dvp);
 	inum = dip->meta.iparent;
 	*ap->a_vpp = NULL;
@@ -1288,7 +1261,6 @@ hammer2_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 	} else {
 		error = ENOENT;
 	}
-	LOCKSTOP;
 	return error;
 }
 
@@ -1304,12 +1276,9 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	hammer2_tid_t inum;
 	int error;
 
-	LOCKSTART;
 	dip = VTOI(ap->a_dvp);
-	if (dip->pmp->ronly) {
-		LOCKSTOP;
+	if (dip->pmp->ronly)
 		return (EROFS);
-	}
 
 	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
@@ -1362,7 +1331,6 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 		cache_setvp(ap->a_nch, *ap->a_vpp);
 		hammer2_knote(ap->a_dvp, NOTE_WRITE | NOTE_LINK);
 	}
-	LOCKSTOP;
 	return error;
 }
 
@@ -1413,12 +1381,9 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	if (ap->a_dvp->v_mount != ap->a_vp->v_mount)
 		return(EXDEV);
 
-	LOCKSTART;
 	tdip = VTOI(ap->a_dvp);
-	if (tdip->pmp->ronly) {
-		LOCKSTOP;
+	if (tdip->pmp->ronly)
 		return (EROFS);
-	}
 
 	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
@@ -1484,7 +1449,6 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	hammer2_knote(ap->a_vp, NOTE_LINK);
 	hammer2_knote(ap->a_dvp, NOTE_WRITE);
 
-	LOCKSTOP;
 	return error;
 }
 
@@ -1506,12 +1470,9 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	hammer2_tid_t inum;
 	int error;
 
-	LOCKSTART;
 	dip = VTOI(ap->a_dvp);
-	if (dip->pmp->ronly) {
-		LOCKSTOP;
+	if (dip->pmp->ronly)
 		return (EROFS);
-	}
 
 	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
@@ -1563,7 +1524,6 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 		cache_setvp(ap->a_nch, *ap->a_vpp);
 		hammer2_knote(ap->a_dvp, NOTE_WRITE);
 	}
-	LOCKSTOP;
 	return error;
 }
 
@@ -1582,12 +1542,9 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	hammer2_tid_t inum;
 	int error;
 
-	LOCKSTART;
 	dip = VTOI(ap->a_dvp);
-	if (dip->pmp->ronly) {
-		LOCKSTOP;
+	if (dip->pmp->ronly)
 		return (EROFS);
-	}
 
 	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
@@ -1637,7 +1594,6 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 		cache_setvp(ap->a_nch, *ap->a_vpp);
 		hammer2_knote(ap->a_dvp, NOTE_WRITE);
 	}
-	LOCKSTOP;
 	return error;
 }
 
@@ -1760,12 +1716,9 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	int error;
 	int isopen;
 
-	LOCKSTART;
 	dip = VTOI(ap->a_dvp);
-	if (dip->pmp->ronly) {
-		LOCKSTOP;
+	if (dip->pmp->ronly)
 		return(EROFS);
-	}
 
 	ncp = ap->a_nch->ncp;
 
@@ -1832,7 +1785,6 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 		cache_unlink(ap->a_nch);
 		hammer2_knote(ap->a_dvp, NOTE_WRITE);
 	}
-	LOCKSTOP;
 	return (error);
 }
 
@@ -1850,12 +1802,9 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	int isopen;
 	int error;
 
-	LOCKSTART;
 	dip = VTOI(ap->a_dvp);
-	if (dip->pmp->ronly) {
-		LOCKSTOP;
+	if (dip->pmp->ronly)
 		return(EROFS);
-	}
 
 	hammer2_pfs_memory_wait(dip->pmp);
 	hammer2_trans_init(dip->pmp, 0);
@@ -1908,7 +1857,6 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 		cache_unlink(ap->a_nch);
 		hammer2_knote(ap->a_dvp, NOTE_WRITE | NOTE_LINK);
 	}
-	LOCKSTOP;
 	return (error);
 }
 
@@ -1945,7 +1893,6 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	if (fdip->pmp->ronly)
 		return(EROFS);
 
-	LOCKSTART;
 	fncp = ap->a_fnch->ncp;		/* entry name in source */
 	fname = fncp->nc_name;
 	fname_len = fncp->nc_nlen;
@@ -2187,7 +2134,6 @@ done2:
 		hammer2_knote(fncp->nc_vp, NOTE_RENAME);
 	}
 
-	LOCKSTOP;
 	return (error);
 }
 
@@ -2201,12 +2147,10 @@ hammer2_vop_ioctl(struct vop_ioctl_args *ap)
 	hammer2_inode_t *ip;
 	int error;
 
-	LOCKSTART;
 	ip = VTOI(ap->a_vp);
 
 	error = hammer2_ioctl(ip, ap->a_command, (void *)ap->a_data,
 			      ap->a_fflag, ap->a_cred);
-	LOCKSTOP;
 	return (error);
 }
 
@@ -2218,7 +2162,6 @@ hammer2_vop_mountctl(struct vop_mountctl_args *ap)
 	hammer2_pfs_t *pmp;
 	int rc;
 
-	LOCKSTART;
 	switch (ap->a_op) {
 	case (MOUNTCTL_SET_EXPORT):
 		mp = ap->a_head.a_ops->head.vv_mount;
@@ -2234,7 +2177,6 @@ hammer2_vop_mountctl(struct vop_mountctl_args *ap)
 		rc = vop_stdmountctl(ap);
 		break;
 	}
-	LOCKSTOP;
 	return (rc);
 }
 

@@ -1276,11 +1276,6 @@ MPTOPMP(struct mount *mp)
 	return ((hammer2_pfs_t *)mp->mnt_data);
 }
 
-#define LOCKSTART	int __nlocks = curthread->td_locks
-#define LOCKENTER	(++curthread->td_locks)
-#define LOCKEXIT	(--curthread->td_locks)
-#define LOCKSTOP	KKASSERT(curthread->td_locks == __nlocks)
-
 extern struct vop_ops hammer2_vnode_vops;
 extern struct vop_ops hammer2_spec_vops;
 extern struct vop_ops hammer2_fifo_vops;
