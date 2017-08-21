@@ -504,6 +504,7 @@ filt_timerdetach(struct knote *kn)
 
 	calloutp = (struct callout *)kn->kn_hook;
 	callout_terminate(calloutp);
+	kn->kn_hook = NULL;
 	kfree(calloutp, M_KQUEUE);
 	atomic_subtract_int(&kq_ncallouts, 1);
 }
@@ -511,7 +512,6 @@ filt_timerdetach(struct knote *kn)
 static int
 filt_timer(struct knote *kn, long hint)
 {
-
 	return (kn->kn_data != 0);
 }
 

@@ -165,11 +165,36 @@ SYSINIT(softclock_setup, SI_BOOT2_SOFTCLOCK, SI_ORDER_SECOND,
 	swi_softclock_setup, NULL);
 
 /*
- * Clear PENDING and, if possible, also clear ARMED and WAITING.  Returns
- * the flags prior to the clear, atomically (used to check for WAITING).
+ * Clear PENDING and WAITING.  Returns the flags prior to the clear,
+ * atomically (used to check for WAITING)
  *
- * Clearing the cpu association (ARMED) can significantly improve the
- * performance of the next callout_reset*() call.
+ * This function is used to clear PENDING after removal of the callout
+ * from the queue, but (usually) prior to the callback being issued.
+ * We cannot safely clear ARMED due to the callback still needing to
+ * be issued.
+ */
+static __inline
+int
+callout_unpend(struct callout *c)
+{
+	int flags;
+	int nflags;
+
+	for (;;) {
+		flags = c->c_flags;
+		cpu_ccfence();
+		nflags = flags & ~(CALLOUT_PENDING | CALLOUT_WAITING);
+		if (atomic_cmpset_int(&c->c_flags, flags, nflags))
+			break;
+		cpu_pause();
+		/* retry */
+	}
+	return flags;
+}
+
+/*
+ * Clear PENDING and and if possible clear ARMED and WAITING.  Returns
+ * the flags prior to the clear.
  */
 static __inline
 int
@@ -181,36 +206,9 @@ callout_unpend_disarm(struct callout *c)
 	for (;;) {
 		flags = c->c_flags;
 		cpu_ccfence();
-		nflags = flags & ~(CALLOUT_PENDING | CALLOUT_WAITING);
+		nflags = flags & ~CALLOUT_PENDING;
 		if ((flags & CALLOUT_IPI_MASK) == 0)
-			nflags &= ~CALLOUT_ARMED;
-		if (atomic_cmpset_int(&c->c_flags, flags, nflags)) {
-			break;
-		}
-		cpu_pause();
-		/* retry */
-	}
-	return flags;
-}
-
-/*
- * Clear ARMED after finishing adjustments to the callout, potentially
- * allowing other cpus to take over.  We can only do this if the IPI mask
- * is 0.
- */
-static __inline
-int
-callout_maybe_clear_armed(struct callout *c)
-{
-	int flags;
-	int nflags;
-
-	for (;;) {
-		flags = c->c_flags;
-		cpu_ccfence();
-		if (flags & (CALLOUT_PENDING | CALLOUT_IPI_MASK))
-			break;
-		nflags = flags & ~CALLOUT_ARMED;
+			nflags &= ~(CALLOUT_ARMED | CALLOUT_WAITING);
 		if (atomic_cmpset_int(&c->c_flags, flags, nflags))
 			break;
 		cpu_pause();
@@ -379,7 +377,7 @@ loop:
 				c_lk = c->c_lk;
 				c->c_func = NULL;
 				KKASSERT(c->c_flags & CALLOUT_DID_INIT);
-				flags = callout_unpend_disarm(c);
+				flags = callout_unpend(c);
 				error = lockmgr(c_lk, LK_EXCLUSIVE |
 						      LK_CANCELABLE);
 				if (error == 0) {
@@ -399,7 +397,7 @@ loop:
 				c_arg = c->c_arg;
 				c->c_func = NULL;
 				KKASSERT(c->c_flags & CALLOUT_DID_INIT);
-				flags = callout_unpend_disarm(c);
+				flags = callout_unpend(c);
 				atomic_set_int(&c->c_flags, CALLOUT_EXECUTED);
 				crit_exit();
 				c_func(c_arg);
@@ -779,6 +777,7 @@ _callout_stop(struct callout *c, int issync)
 		/* NOTE: IPI_MASK already tested */
 		if ((flags & CALLOUT_PENDING) == 0)
 			nflags &= ~CALLOUT_ARMED;
+
 		if (atomic_cmpset_int(&c->c_flags, flags, nflags)) {
 			/*
 			 * Can only remove from callwheel if currently
@@ -799,12 +798,13 @@ _callout_stop(struct callout *c, int issync)
 				 *	 physically removed (c) from the
 				 *	 callwheel.
 				 *
-				 * NOTE: WAITING bit race exists when doing
-				 *	 unconditional bit clears.
+				 * NOTE: This function also clears WAITING
+				 *	 and returns oflags so we can test
+				 *	 the bit.  However, we may have
+				 *	 already cleared WAITING above, so
+				 *	 we have to OR the flags.
 				 */
-				callout_maybe_clear_armed(c);
-				if (c->c_flags & CALLOUT_WAITING)
-					flags |= CALLOUT_WAITING;
+				flags |= callout_unpend_disarm(c);
 			}
 
 			/*
@@ -835,8 +835,16 @@ _callout_stop(struct callout *c, int issync)
 
 		flags = c->c_flags;
 		cpu_ccfence();
-		if ((flags & CALLOUT_IPI_MASK) == 0)	/* fast path */
+
+		/*
+		 * Fast path check
+		 */
+		if ((flags & (CALLOUT_IPI_MASK | CALLOUT_ARMED)) == 0)
 			break;
+
+		/*
+		 * Slow path
+		 */
 		nflags = flags | CALLOUT_WAITING;
 		tsleep_interlock(c, 0);
 		if (atomic_cmpset_int(&c->c_flags, flags, nflags)) {
@@ -935,9 +943,9 @@ callout_stop_ipi(void *arg, int issync, struct intrframe *frame)
 		nflags = flags & ~(CALLOUT_ACTIVE | CALLOUT_PENDING);
 		nflags = nflags - 1;			/* dec ipi count */
 		if ((flags & (CALLOUT_IPI_MASK | CALLOUT_PENDING)) == 1)
-			nflags &= ~CALLOUT_ARMED;
+			nflags &= ~(CALLOUT_ARMED | CALLOUT_WAITING);
 		if ((flags & CALLOUT_IPI_MASK) == 1)
-			nflags &= ~(CALLOUT_WAITING | CALLOUT_EXECUTED);
+			nflags &= ~(CALLOUT_EXECUTED | CALLOUT_WAITING);
 
 		if (atomic_cmpset_int(&c->c_flags, flags, nflags)) {
 			/*
@@ -959,12 +967,14 @@ callout_stop_ipi(void *arg, int issync, struct intrframe *frame)
 				 *	 physically removed (c) from the
 				 *	 callwheel.
 				 *
-				 * NOTE: WAITING bit race exists when doing
-				 *	 unconditional bit clears.
+				 * NOTE: This function also clears WAITING
+				 *	 and returns oflags so we can test
+				 *	 the bit.  However, we may have
+				 *	 already cleared WAITING above, so
+				 *	 we have to OR the flags.
 				 */
-				callout_maybe_clear_armed(c);
-				if (c->c_flags & CALLOUT_WAITING)
-					flags |= CALLOUT_WAITING;
+				flags |= callout_unpend_disarm(c);
+				/* (c) CAN BE DESTROYED AT ANY TIME NOW */
 			}
 
 			/*
