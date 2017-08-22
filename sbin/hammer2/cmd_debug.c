@@ -373,7 +373,7 @@ cmd_debugspan(const char *hostname)
  ************************************************************************/
 
 static void show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref,
-			int dofreemap);
+			int dofreemap, int norecurse);
 static void tabprintf(int tab, const char *ctl, ...);
 
 int
@@ -412,11 +412,11 @@ cmd_show(const char *devpath, int dofreemap)
 				best = broot;
 			}
 			if (VerboseOpt >= 3)
-				show_bref(fd, 0, i, &broot, dofreemap);
+				show_bref(fd, 0, i, &broot, dofreemap, 0);
 		}
 	}
 	if (VerboseOpt < 3)
-		show_bref(fd, 0, best_i, &best, dofreemap);
+		show_bref(fd, 0, best_i, &best, dofreemap, 0);
 	close(fd);
 
 	return 0;
@@ -424,7 +424,8 @@ cmd_show(const char *devpath, int dofreemap)
 
 extern uint32_t iscsi_crc32(const void *buf, size_t size);
 static void
-show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
+show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap,
+	  int norecurse)
 {
 	hammer2_media_data_t media;
 	hammer2_blockref_t *bscan;
@@ -433,6 +434,7 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 	int didnl;
 	int namelen;
 	int obrace = 1;
+	int failed;
 	size_t bytes;
 	const char *type_str;
 	char *str = NULL;
@@ -517,6 +519,7 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 	bcount = 0;
 	didnl = 1;
 	namelen = 0;
+	failed = 0;
 
 	/*
 	 * Check data integrity in verbose mode, otherwise we are just doing
@@ -543,6 +546,7 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 				       bref->methods,
 				       bref->check.iscsi32.value,
 				       cv);
+				failed = 1;
 			} else {
 				printf("(meth %02x, iscsi32=%08x) ",
 				       bref->methods, cv);
@@ -555,6 +559,7 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 				       bref->methods,
 				       bref->check.xxhash64.value,
 				       cv64);
+				failed = 1;
 			} else {
 				printf("(meth %02x, xxh=%016jx) ",
 				       bref->methods, cv64);
@@ -570,6 +575,7 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 					bref->methods,
 					bref->check.freemap.icrc32,
 					cv);
+				failed = 1;
 			} else {
 				printf("(meth %02x, fcrc=%08x) ",
 					bref->methods, cv);
@@ -758,13 +764,20 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 	}
 	if (str)
 		free(str);
-	for (i = 0; i < bcount; ++i) {
+
+	/*
+	 * Recurse if norecurse == 0.  If the CRC failed, pass norecurse = 1.
+	 * That is, if an indirect or inode fails we still try to list its
+	 * direct children to help with debugging, but go no further than
+	 * that because they are probably garbage.
+	 */
+	for (i = 0; norecurse == 0 && i < bcount; ++i) {
 		if (bscan[i].type != HAMMER2_BREF_TYPE_EMPTY) {
 			if (didnl == 0) {
 				printf("\n");
 				didnl = 1;
 			}
-			show_bref(fd, tab, i, &bscan[i], dofreemap);
+			show_bref(fd, tab, i, &bscan[i], dofreemap, failed);
 		}
 	}
 	tab -= SHOW_TAB;
