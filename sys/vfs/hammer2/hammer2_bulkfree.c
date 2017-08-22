@@ -552,14 +552,14 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
 	bmap = cbinfo->bmap + (data_off >> HAMMER2_FREEMAP_LEVEL0_RADIX);
 
 	/*
-	 * Convert data_off to a bmap-relative value (~2MB storage range).
+	 * Convert data_off to a bmap-relative value (~4MB storage range).
 	 * Adjust linear, class, and avail.
 	 *
-	 * Hammer2 does not allow allocations to cross the L0 (2MB) boundary,
+	 * Hammer2 does not allow allocations to cross the L0 (4MB) boundary,
 	 */
 	data_off &= HAMMER2_FREEMAP_LEVEL0_MASK;
 	if (data_off + bytes > HAMMER2_FREEMAP_LEVEL0_SIZE) {
-		kprintf("hammer2_bulkfree_scan: illegal 2MB boundary "
+		kprintf("hammer2_bulkfree_scan: illegal 4MB boundary "
 			"%016jx %016jx/%d\n",
 			(intmax_t)bref->data_off,
 			(intmax_t)bref->key,
@@ -586,11 +586,15 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
 	 * Adjust the hammer2_bitmap_t bitmap[HAMMER2_BMAP_ELEMENTS].
 	 * 64-bit entries, 2 bits per entry, to code 11.
 	 *
+	 * NOTE: data_off mask to 524288, shift right by 14 (radix for 16384),
+	 *	 and multiply shift amount by 2 for sets of 2 bits.
+	 *
 	 * NOTE: The allocation can be smaller than HAMMER2_FREEMAP_BLOCK_SIZE.
+	 *	 also, data_off may not be FREEMAP_BLOCK_SIZE aligned.
 	 */
 	while (bytes > 0) {
-		int bindex;
 		hammer2_bitmap_t bmask;
+		int bindex;
 
 		bindex = (int)data_off >> (HAMMER2_FREEMAP_BLOCK_RADIX +
 					   HAMMER2_BMAP_INDEX_RADIX);
@@ -860,6 +864,8 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 					cbinfo->adj_free +=
 						HAMMER2_FREEMAP_BLOCK_SIZE;
 					++cbinfo->count_10_00;
+					fixup_dio(cbinfo->hmp, data_off,
+						  bindex, scount);
 					break;
 				case 3:	/* 11 -> 10 */
 					live->bitmapq[bindex] &=
@@ -899,6 +905,8 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 				}
 				live->bitmapq[bindex] |=
 					((hammer2_bitmap_t)3 << scount);
+				fixup_dio(cbinfo->hmp, data_off,
+					  bindex, scount);
 			}
 			mmask >>= 2;
 			lmask >>= 2;

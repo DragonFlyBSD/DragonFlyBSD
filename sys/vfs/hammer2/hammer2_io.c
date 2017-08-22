@@ -349,8 +349,11 @@ hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize)
 }
 
 /*
- * Make sure that INVALOK is cleared on the dio associated with the specified
- * data offset.  Called from bulkfree when a block becomes reusable.
+ * Make sure that all invalidation flags are cleared on the dio associated
+ * with the specified data offset, if the dio exists.
+ *
+ * Called from bulkfree when a block becomes reusable to ensure that new
+ * allocations do not accidently discard the buffer later on.
  */
 void
 hammer2_io_resetinval(hammer2_dev_t *hmp, off_t data_off)
@@ -361,7 +364,7 @@ hammer2_io_resetinval(hammer2_dev_t *hmp, off_t data_off)
 	hammer2_spin_sh(&hmp->io_spin);
 	dio = RB_LOOKUP(hammer2_io_tree, &hmp->iotree, data_off);
 	if (dio)
-		atomic_clear_64(&dio->refs, HAMMER2_DIO_INVALOK);
+		atomic_clear_64(&dio->refs, HAMMER2_DIO_INVALBITS);
 	hammer2_spin_unsh(&hmp->io_spin);
 }
 
