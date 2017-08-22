@@ -56,6 +56,7 @@ cmd_bulkfree(const char *sel_path)
 	return ecode;
 }
 
+#if 0
 int
 cmd_bulkfree_async(const char *sel_path)
 {
@@ -77,3 +78,4 @@ cmd_bulkfree_async(const char *sel_path)
 	ecode = 0;
 	return ecode;
 }
+#endif

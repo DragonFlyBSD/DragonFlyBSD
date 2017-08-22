@@ -402,8 +402,8 @@ main(int ac, char **av)
 		ecode = cmd_setcheck("none", &av[1]);
 	} else if (strcmp(av[0], "setcrc32") == 0) {
 		ecode = cmd_setcheck("crc32", &av[1]);
-	} else if (strcmp(av[0], "setcrc64") == 0) {
-		ecode = cmd_setcheck("crc64", &av[1]);
+	} else if (strcmp(av[0], "setxxhash64") == 0) {
+		ecode = cmd_setcheck("xxhash64", &av[1]);
 	} else if (strcmp(av[0], "setsha192") == 0) {
 		ecode = cmd_setcheck("sha192", &av[1]);
 	} else if (strcmp(av[0], "printinode") == 0) {
@@ -422,6 +422,7 @@ main(int ac, char **av)
 		} else {
 			ecode = cmd_bulkfree(av[1]);
 		}
+#if 0
 	} else if (strcmp(av[0], "bulkfree-async") == 0) {
 		if (ac != 2) {
 			fprintf(stderr,
@@ -430,6 +431,7 @@ main(int ac, char **av)
 		} else {
 			ecode = cmd_bulkfree_async(av[1]);
 		}
+#endif
 	} else {
 		fprintf(stderr, "Unrecognized command: %s\n", av[0]);
 		usage(1);
@@ -505,19 +507,21 @@ usage(int code)
 		"    setcomp comp[:level] path... "
 			"Set comp algo {none, autozero, lz4, zlib} & level\n"
 		"    setcheck check path...       "
-			"Set check algo {none, crc32, crc64, sha192}\n"
+			"Set check algo {none, crc32, xxhash64, sha192}\n"
 		"    clrcheck path...             "
 			"Clear check code override\n"
 		"    setcrc32 path...             "
 			"Set check algo to crc32\n"
-		"    setcrc64 path...             "
-			"Set check algo to crc64\n"
+		"    setxxhash64 path...          "
+			"Set check algo to xxhash64\n"
 		"    setsha192 path...            "
 			"Set check algo to sha192\n"
 		"    bulkfree path...             "
 			"Run bulkfree pass\n"
+#if 0
 		"    bulkfree-async path...             "
 			"Run bulkfree pass asynchronously\n"
+#endif
 	);
 	exit(code);
 }

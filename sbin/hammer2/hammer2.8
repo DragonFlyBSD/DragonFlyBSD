@@ -290,7 +290,7 @@ only compresses to 40K will not yield any storage improvement.
 .It Cm setcheck Ar check Op path...
 Set the check code as specified for any newly created elements at or under
 the path if not overridden by deeper elements.
-Available codes are default, disabled, crc32, crc64, or sha192.
+Available codes are default, disabled, crc32, xxhash64, or sha192.
 .\" ==== clrcheck ====
 .It Cm clrcheck Op path...
 Clear the check code override for the specified paths.
@@ -299,9 +299,9 @@ Overrides may still be present in deeper elements.
 .It Cm setcrc32 Op path...
 Set the check code to the ISCSI 32-bit CRC for any newly created elements
 at or under the path if not overridden by deeper elements.
-.\" ==== setcrc64 ====
-.It Cm setcrc64 Op path...
-Set the check code to CRC64 (not yet specified).
+.\" ==== setxxhash64 ====
+.It Cm setxxhash64 Op path...
+Set the check code to XXHASH64, a fast 64-bit hash
 .\" ==== setsha192 ====
 .It Cm setsha192 Op path...
 Set the check code to SHA192 for any newly created elements at or under
@@ -311,6 +311,7 @@ the path if not overridden by deeper elements.
 Run a bulkfree pass on a HAMMER2 mount.
 You can specify any PFS for the mount, the bulkfree pass is run on the
 entire partition.
+Note that it takes two passes to actually free space.
 .El
 .Sh SETTING UP /etc/hammer2
 The 'rsainit' directive will create the
