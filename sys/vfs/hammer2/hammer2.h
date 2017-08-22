@@ -1461,7 +1461,7 @@ void hammer2_chain_delete(hammer2_chain_t *parent, hammer2_chain_t *chain,
 void hammer2_chain_setflush(hammer2_chain_t *chain);
 void hammer2_chain_countbrefs(hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count);
-hammer2_chain_t *hammer2_chain_bulksnap(hammer2_chain_t *chain);
+hammer2_chain_t *hammer2_chain_bulksnap(hammer2_dev_t *hmp);
 void hammer2_chain_bulkdrop(hammer2_chain_t *copy);
 
 void hammer2_chain_setcheck(hammer2_chain_t *chain, void *bdata);
@@ -1483,7 +1483,6 @@ void hammer2_base_insert(hammer2_chain_t *chain,
 /*
  * hammer2_flush.c
  */
-hammer2_chain_t *hammer2_flush_quick(hammer2_dev_t *hmp);
 void hammer2_flush(hammer2_chain_t *chain, int istop);
 void hammer2_delayed_flush(hammer2_chain_t *chain);
 
@@ -1657,7 +1656,8 @@ void hammer2_cluster_unlock(hammer2_cluster_t *cluster);
 
 void hammer2_bulkfree_init(hammer2_dev_t *hmp);
 void hammer2_bulkfree_uninit(hammer2_dev_t *hmp);
-int hammer2_bulkfree_pass(hammer2_dev_t *hmp, struct hammer2_ioc_bulkfree *bfi);
+int hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
+			struct hammer2_ioc_bulkfree *bfi);
 
 /*
  * hammer2_iocom.c

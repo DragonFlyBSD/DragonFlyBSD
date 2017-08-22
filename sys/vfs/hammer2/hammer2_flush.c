@@ -1145,6 +1145,7 @@ done:
 	return (0);
 }
 
+#if 0
 /*
  * Flush helper (direct)
  *
@@ -1181,6 +1182,7 @@ hammer2_flush_quick(hammer2_dev_t *hmp)
 
 	return copy;
 }
+#endif
 
 /*
  * flush helper (backend threaded)

@@ -5129,48 +5129,29 @@ hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,
  * operation.
  */
 hammer2_chain_t *
-hammer2_chain_bulksnap(hammer2_chain_t *chain)
+hammer2_chain_bulksnap(hammer2_dev_t *hmp)
 {
 	hammer2_chain_t *copy;
 
-	copy = hammer2_chain_alloc(chain->hmp, chain->pmp, &chain->bref);
-	switch(chain->bref.type) {
-	case HAMMER2_BREF_TYPE_VOLUME:
-		copy->data = kmalloc(sizeof(copy->data->voldata),
-				     chain->hmp->mchain,
-				     M_WAITOK | M_ZERO);
-		hammer2_spin_ex(&chain->core.spin);
-		copy->data->voldata = chain->data->voldata;
-		hammer2_spin_unex(&chain->core.spin);
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP:
-		copy->data = kmalloc(sizeof(hammer2_blockset_t),
-				     chain->hmp->mchain,
-				     M_WAITOK | M_ZERO);
-		hammer2_spin_ex(&chain->core.spin);
-		copy->data->blkset = chain->data->blkset;
-		hammer2_spin_unex(&chain->core.spin);
-		break;
-	default:
-		break;
-	}
+	copy = hammer2_chain_alloc(hmp, hmp->spmp, &hmp->vchain.bref);
+	copy->data = kmalloc(sizeof(copy->data->voldata),
+			     hmp->mchain,
+			     M_WAITOK | M_ZERO);
+	hammer2_voldata_lock(hmp);
+	copy->data->voldata = hmp->volsync;
+	hammer2_voldata_unlock(hmp);
+
 	return copy;
 }
 
 void
 hammer2_chain_bulkdrop(hammer2_chain_t *copy)
 {
-	switch(copy->bref.type) {
-	case HAMMER2_BREF_TYPE_VOLUME:
-	case HAMMER2_BREF_TYPE_FREEMAP:
-		KKASSERT(copy->data);
-		kfree(copy->data, copy->hmp->mchain);
-		copy->data = NULL;
-		atomic_add_long(&hammer2_chain_allocs, -1);
-		break;
-	default:
-		break;
-	}
+	KKASSERT(copy->bref.type == HAMMER2_BREF_TYPE_VOLUME);
+	KKASSERT(copy->data);
+	kfree(copy->data, copy->hmp->mchain);
+	copy->data = NULL;
+	atomic_add_long(&hammer2_chain_allocs, -1);
 	hammer2_chain_drop(copy);
 }
 

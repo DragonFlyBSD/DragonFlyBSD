@@ -935,29 +935,51 @@ int
 hammer2_ioctl_bulkfree_scan(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_bulkfree_t *bfi = data;
-	hammer2_dev_t *hmp;
+	hammer2_dev_t	*hmp;
+	hammer2_pfs_t	*pmp;
+	hammer2_chain_t *vchain;
 	int error;
 
-	hmp = ip->pmp->pfs_hmps[0];
+	pmp = ip->pmp;
+	ip = pmp->iroot;
+
+	hmp = pmp->pfs_hmps[0];
 	if (hmp == NULL)
+		return (EINVAL);
+	if (bfi == NULL)
 		return (EINVAL);
 
 	/*
-	 * Negotiate for manual access.  The hammer2_bulkfree_pass() itself
-	 * also has its own lock and will deal with a manual override when
-	 * an automatic bulkfree is already running.
+	 * Bulkfree has to be serialized to guarantee at least one sync
+	 * inbetween bulkfrees.
 	 */
 	error = lockmgr(&hmp->bflock, LK_EXCLUSIVE | LK_PCATCH);
 	if (error)
 		return error;
+
+	/*
+	 * sync the filesystem and obtain a snapshot of the synchronized
+	 * hmp volume header.  We treat the snapshot as an independent
+	 * entity.
+	 */
+	hammer2_vfs_sync(pmp->mp, MNT_WAIT);
+	vchain = hammer2_chain_bulksnap(hmp);
+
+	/*
+	 * Normal filesystem operations will not interfere with the
+	 * synchronized block hierarchy and can run concurrent with the
+	 * bulkfree pass.
+	 */
+	hammer2_trans_init(pmp, 0);
 	if (bfi) {
 		hammer2_thr_freeze(&hmp->bfthr);
-		error = hammer2_bulkfree_pass(hmp, bfi);
+		error = hammer2_bulkfree_pass(hmp, vchain, bfi);
 		hammer2_thr_unfreeze(&hmp->bfthr);
-	} else {
-		hammer2_thr_remaster(&hmp->bfthr);
 	}
+	hammer2_chain_bulkdrop(vchain);
+	hammer2_trans_done(pmp);
+
 	lockmgr(&hmp->bflock, LK_RELEASE);
 
-	return error;
+	return (error);
 }

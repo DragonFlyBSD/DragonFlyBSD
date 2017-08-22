@@ -303,7 +303,7 @@ hammer2_bulkfree_thread(void *arg)
 			hammer2_thr_signal2(thr, 0, HAMMER2_THREAD_REMASTER);
 			bzero(&bfi, sizeof(bfi));
 			bfi.size = 8192 * 1024;
-			hammer2_bulkfree_pass(thr->hmp, &bfi);
+			/* hammer2_bulkfree_pass(thr->hmp, &bfi); */
 		}
 	}
 	thr->td = NULL;
@@ -312,22 +312,14 @@ hammer2_bulkfree_thread(void *arg)
 }
 
 int
-hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
+hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
+		      hammer2_ioc_bulkfree_t *bfi)
 {
 	hammer2_bulkfree_info_t cbinfo;
-	hammer2_chain_t *vchain;
 	hammer2_chain_save_t *save;
 	hammer2_off_t incr;
 	size_t size;
 	int doabort = 0;
-
-	/*
-	 * A bulk operations lock is required for the duration.  We
-	 * must hold it across our flushes to guarantee that we never run
-	 * two bulkfree passes in a row without a flush in the middle.
-	 * The 2-stage bulkfree requires this flush to work properly.
-	 */
-	lockmgr(&hmp->bulklk, LK_EXCLUSIVE);
 
 	/*
 	 * We have to clear the live dedup cache as it might have entries
@@ -337,22 +329,6 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	 * 2-stage bulkfree.
 	 */
 	hammer2_dedup_clear(hmp);
-
-	/*
-	 * Create a stable snapshot of the block tree which we can run
-	 * the bulkfree pass on.  This allows the bulkfree pass to run
-	 * concurrent with all other operations (except another bulkfree)
-	 *
-	 * This must flush all dirty chain data, but does not have to
-	 * flush dirty buffer cache buffers which have not yet been
-	 * realized and does not have to flush any newly realized dirty
-	 * chains while the bulkfree pass is running, as long as said
-	 * newly dirtied chains get flushed the next time, before the
-	 * next bulkfree pass.
-	 */
-	vchain = hammer2_flush_quick(hmp);
-	hammer2_chain_bulkdrop(vchain);
-	vchain = hammer2_flush_quick(hmp);
 
 	/*
 	 * Setup for free pass
@@ -452,7 +428,6 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 		cbinfo.sbase = cbinfo.sstop;
 		cbinfo.adj_free = 0;
 	}
-	hammer2_chain_bulkdrop(vchain);
 	kmem_free_swapbacked(&cbinfo.kp);
 	kfree(cbinfo.dedup, M_HAMMER2);
 	cbinfo.dedup = NULL;
@@ -475,9 +450,6 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_ioc_bulkfree_t *bfi)
 	kprintf("    ~2MB segs cleaned  %ld\n", cbinfo.count_l0cleans);
 	kprintf("    linear adjusts     %ld\n", cbinfo.count_linadjusts);
 	kprintf("    dedup factor       %ld\n", cbinfo.count_dedup_factor);
-
-	lockmgr(&hmp->bulklk, LK_RELEASE);
-	/* hammer2_vfs_sync(mp, MNT_WAIT); sync needed */
 
 	return doabort;
 }
