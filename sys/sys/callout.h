@@ -83,10 +83,13 @@ SLIST_HEAD(callout_list, callout);
 TAILQ_HEAD(callout_tailq, callout);
 
 /*
- * Callwheel linkages are only adjusted on the target cpu.  All other
- * actions are handled with atomic ops on any cpu.  callout_reset() and
- * callout_stop() are always synchronous and will interlock against a
- * running callout.  The caller might block, and a deadlock is possible
+ * Callwheel linkages are only adjusted on the target cpu.  The target
+ * cpu can only be [re]assigned when the IPI_MASK and PENDING bits are
+ * clear.
+ *
+ * callout_reset() and callout_stop() are always synchronous and will
+ * interlock against a running callout as well as reassign the callout
+ * to the current cpu.  The caller might block, and a deadlock is possible
  * if the caller does not use callout_init_lk() or is not careful with
  * locks acquired in the callout function.
  *
@@ -95,7 +98,8 @@ TAILQ_HEAD(callout_tailq, callout);
  * feature.
  *
  * callout_deactivate() is asynchronous and will not interlock against
- * callout which is already running.
+ * anything.  Deactivation does not dequeue a callout, it simply prevents
+ * its function from being executed.
  */
 struct callout {
 	union {
@@ -111,6 +115,30 @@ struct callout {
 	struct lock *c_lk;		/* auto-lock */
 };
 
+/*
+ * ACTIVE	- If cleared this the callout is prevented from issuing its
+ *		  callback.  The callout remains on its timer queue.
+ *
+ * PENDING	- Indicates the callout is on a particular cpu's timer queue.
+ *		  Also locks the cpu owning the callout.
+ *
+ * MPSAFE	- Indicates the callout does not need the MP lock (most
+ *		  callouts are flagged this way).
+ *
+ * DID_INIT	- Safety
+ *
+ * EXECUTED	- Set prior to function dispatch, cleared by callout_reset(),
+ *		  cleared and (prior value) returned by callout_stop_sync().
+ *
+ * WAITING	- Used for tsleep/wakeup blocking, primarily for
+ *		  callout_stop().
+ *
+ * IPI_MASK	- Counts pending IPIs.  Also locks the cpu owning the callout.
+ *
+ * CPU_MASK	- Currently assigned cpu.  Only valid when at least one bit
+ *		  in ARMED_MASK is set.
+ *
+ */
 #define CALLOUT_ACTIVE		0x80000000 /* quick [de]activation flag */
 #define CALLOUT_PENDING		0x40000000 /* callout is on callwheel */
 #define CALLOUT_MPSAFE		0x20000000 /* callout does not need the BGL */
@@ -118,9 +146,11 @@ struct callout {
 #define CALLOUT_AUTOLOCK	0x08000000 /* auto locking / cancel feature */
 #define CALLOUT_WAITING		0x04000000 /* interlocked waiter */
 #define CALLOUT_EXECUTED	0x02000000 /* (generates stop status) */
-#define CALLOUT_ARMED		0x01000000 /* callout is assigned to cpu */
-#define CALLOUT_IPI_MASK	0x00000FFF /* ipi in-flight count mask */
-#define CALLOUT_CPU_MASK	0x00FFF000 /* ipi in-flight count mask */
+#define CALLOUT_UNUSED01	0x01000000
+#define CALLOUT_IPI_MASK	0x00000FFF /* count operations in prog */
+#define CALLOUT_CPU_MASK	0x00FFF000 /* cpu assignment */
+
+#define CALLOUT_ARMED_MASK	(CALLOUT_PENDING | CALLOUT_IPI_MASK)
 
 #define CALLOUT_FLAGS_TO_CPU(flags)	(((flags) & CALLOUT_CPU_MASK) >> 12)
 #define CALLOUT_CPU_TO_FLAGS(cpuid)	((cpuid) << 12)
@@ -133,12 +163,11 @@ struct callout {
  *	    by the callout wheel for any call-back and the callout wheel
  *	    will handle any callout_stop() deadlocks properly.
  *
- * active  -	Indicates that the callout is armed.  The callout can be in
- *		any state other than a stopped state.  That is, the callout
- *		reset could still be inflight to the target cpu and not yet
- *		pending on the target cpu's callwheel, could be pending on
- *		the callwheel, may have already executed (but not have been
- *		stopped), or might be executing concurrently.
+ * active  -	Returns activation status.  This bit is set by callout_reset*()
+ *		and will only be cleared by an explicit callout_deactivate()
+ *		or callout_stop().  A function dispatch does not clear this
+ *		bit.  In addition, a callout_reset() to another cpu is
+ *		asynchronous and may not immediately re-set this bit.
  *
  * deactivate -	Disarm the callout, preventing it from being executed if it
  *		is queued or the queueing operation is in-flight.  Has no
@@ -150,16 +179,18 @@ struct callout {
  *		callout_reset() that might be issued by the callback, which
  *		will re-arm the callout.
  *
+ *		callout_reset() must be called to reactivate the callout.
+ *
  * pending -	Only useful for same-cpu callouts, indicates that the callout
  *		is pending on the callwheel or that a callout_reset() ipi
- *		is in-flight.
+ *		is (probably) in-flight.  Can also false-positive on
+ *		callout_stop() IPIs.
  */
 #define	callout_active(c)	((c)->c_flags & CALLOUT_ACTIVE)
 
 #define	callout_deactivate(c)	atomic_clear_int(&(c)->c_flags, CALLOUT_ACTIVE)
 
-#define	callout_pending(c)	((c)->c_flags & (CALLOUT_PENDING |	\
-						 CALLOUT_IPI_MASK))
+#define	callout_pending(c)	((c)->c_flags & CALLOUT_ARMED_MASK)
 
 #ifdef _KERNEL
 extern int	ncallout;

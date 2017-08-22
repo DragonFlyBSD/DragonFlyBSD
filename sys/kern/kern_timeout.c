@@ -75,7 +75,8 @@
  * the 11th ACM Annual Symposium on Operating Systems Principles,
  * Austin, Texas Nov 1987.
  *
- * The per-cpu augmentation was done by Matthew Dillon.
+ * The per-cpu augmentation was done by Matthew Dillon.  This file has
+ * essentially been rewritten pretty much from scratch by Matt.
  */
 
 #include <sys/param.h>
@@ -110,6 +111,22 @@ static void slotimer_callback(void *arg);
 static void callout_reset_ipi(void *arg);
 static void callout_stop_ipi(void *arg, int issync, struct intrframe *frame);
 
+static __inline
+int
+callout_setclear(struct callout *c, int sflags, int cflags)
+{
+	int flags;
+	int nflags;
+
+	for (;;) {
+		flags = c->c_flags;
+		cpu_ccfence();
+		nflags = (flags | sflags) & ~cflags;
+		if (atomic_cmpset_int(&c->c_flags, flags, nflags))
+			break;
+	}
+	return flags;
+}
 
 static void
 swi_softclock_setup(void *arg)
@@ -163,59 +180,6 @@ swi_softclock_setup(void *arg)
  */
 SYSINIT(softclock_setup, SI_BOOT2_SOFTCLOCK, SI_ORDER_SECOND,
 	swi_softclock_setup, NULL);
-
-/*
- * Clear PENDING and WAITING.  Returns the flags prior to the clear,
- * atomically (used to check for WAITING)
- *
- * This function is used to clear PENDING after removal of the callout
- * from the queue, but (usually) prior to the callback being issued.
- * We cannot safely clear ARMED due to the callback still needing to
- * be issued.
- */
-static __inline
-int
-callout_unpend(struct callout *c)
-{
-	int flags;
-	int nflags;
-
-	for (;;) {
-		flags = c->c_flags;
-		cpu_ccfence();
-		nflags = flags & ~(CALLOUT_PENDING | CALLOUT_WAITING);
-		if (atomic_cmpset_int(&c->c_flags, flags, nflags))
-			break;
-		cpu_pause();
-		/* retry */
-	}
-	return flags;
-}
-
-/*
- * Clear PENDING and and if possible clear ARMED and WAITING.  Returns
- * the flags prior to the clear.
- */
-static __inline
-int
-callout_unpend_disarm(struct callout *c)
-{
-	int flags;
-	int nflags;
-
-	for (;;) {
-		flags = c->c_flags;
-		cpu_ccfence();
-		nflags = flags & ~CALLOUT_PENDING;
-		if ((flags & CALLOUT_IPI_MASK) == 0)
-			nflags &= ~(CALLOUT_ARMED | CALLOUT_WAITING);
-		if (atomic_cmpset_int(&c->c_flags, flags, nflags))
-			break;
-		cpu_pause();
-		/* retry */
-	}
-	return flags;
-}
 
 /*
  * This routine is called from the hardclock() (basically a FASTint/IPI) on
@@ -302,11 +266,19 @@ loop:
 		bucket = &sc->callwheel[sc->softticks & cwheelmask];
 
 		for (c = TAILQ_FIRST(bucket); c; c = sc->next) {
+			void (*c_func)(void *);
+			void *c_arg;
+			struct lock *c_lk;
+			int error;
+
 			if (c->c_time != sc->softticks) {
 				sc->next = TAILQ_NEXT(c, c_links.tqe);
 				continue;
 			}
 
+			/*
+			 * Synchronize with mpsafe requirements
+			 */
 			flags = c->c_flags;
 			if (flags & CALLOUT_MPSAFE) {
 				if (mpsafe == 0) {
@@ -340,70 +312,57 @@ loop:
 			sc->next = TAILQ_NEXT(c, c_links.tqe);
 			TAILQ_REMOVE(bucket, c, c_links.tqe);
 
-			KASSERT((c->c_flags & CALLOUT_ARMED) &&
+			KASSERT((c->c_flags & CALLOUT_DID_INIT) &&
 				(c->c_flags & CALLOUT_PENDING) &&
 				CALLOUT_FLAGS_TO_CPU(c->c_flags) ==
 				mycpu->gd_cpuid,
 				("callout %p: bad flags %08x", c, c->c_flags));
 
 			/*
-			 * Once CALLOUT_PENDING is cleared, sc->running
-			 * protects the callout structure's existance but
-			 * only until we call c_func().  A callout_stop()
-			 * or callout_reset() issued from within c_func()
-			 * will not block.  The callout can also be kfree()d
-			 * by c_func().
-			 *
-			 * We set EXECUTED before calling c_func() so a
-			 * callout_stop() issued from within c_func() returns
-			 * the correct status.
+			 * Once CALLOUT_PENDING is cleared only the IPI_MASK
+			 * prevents the callout from being moved to another
+			 * cpu.  However, callout_stop() will also check
+			 * sc->running on the assigned cpu if CALLOUT_EXECUTED
+			 * is set.  CALLOUT_EXECUTE implies a callback
+			 * interlock is needed when cross-cpu.
 			 */
+			sc->running = (intptr_t)c;
+			c_func = c->c_func;
+			c_arg = c->c_arg;
+			c_lk = c->c_lk;
+			c->c_func = NULL;
+
 			if ((flags & (CALLOUT_AUTOLOCK | CALLOUT_ACTIVE)) ==
 			    (CALLOUT_AUTOLOCK | CALLOUT_ACTIVE)) {
-				void (*c_func)(void *);
-				void *c_arg;
-				struct lock *c_lk;
-				int error;
-
-				/*
-				 * NOTE: sc->running must be set prior to
-				 *	 CALLOUT_PENDING being cleared to
-				 *	 avoid missed CANCELs and *_stop()
-				 *	 races.
-				 */
-				sc->running = (intptr_t)c;
-				c_func = c->c_func;
-				c_arg = c->c_arg;
-				c_lk = c->c_lk;
-				c->c_func = NULL;
-				KKASSERT(c->c_flags & CALLOUT_DID_INIT);
-				flags = callout_unpend(c);
 				error = lockmgr(c_lk, LK_EXCLUSIVE |
 						      LK_CANCELABLE);
 				if (error == 0) {
-					atomic_set_int(&c->c_flags,
-						       CALLOUT_EXECUTED);
+					flags = callout_setclear(c,
+							CALLOUT_EXECUTED,
+							CALLOUT_PENDING |
+							CALLOUT_WAITING);
 					crit_exit();
 					c_func(c_arg);
 					crit_enter();
 					lockmgr(c_lk, LK_RELEASE);
+				} else {
+					flags = callout_setclear(c,
+							0,
+							CALLOUT_PENDING);
 				}
 			} else if (flags & CALLOUT_ACTIVE) {
-				void (*c_func)(void *);
-				void *c_arg;
-
-				sc->running = (intptr_t)c;
-				c_func = c->c_func;
-				c_arg = c->c_arg;
-				c->c_func = NULL;
-				KKASSERT(c->c_flags & CALLOUT_DID_INIT);
-				flags = callout_unpend(c);
-				atomic_set_int(&c->c_flags, CALLOUT_EXECUTED);
+				flags = callout_setclear(c,
+						CALLOUT_EXECUTED,
+						CALLOUT_PENDING |
+						CALLOUT_WAITING);
 				crit_exit();
 				c_func(c_arg);
 				crit_enter();
 			} else {
-				flags = callout_unpend_disarm(c);
+				flags = callout_setclear(c,
+						0,
+						CALLOUT_PENDING |
+						CALLOUT_WAITING);
 			}
 
 			/*
@@ -458,9 +417,9 @@ slotimer_callback(void *arg)
 
 /*
  * Start or restart a timeout.  Installs the callout structure on the
- * callwheel.  Callers may legally pass any value, even if 0 or negative,
- * but since the sc->curticks index may have already been processed a
- * minimum timeout of 1 tick will be enforced.
+ * callwheel of the current cpu.  Callers may legally pass any value, even
+ * if 0 or negative, but since the sc->curticks index may have already
+ * been processed a minimum timeout of 1 tick will be enforced.
  *
  * This function will block if the callout is currently queued to a different
  * cpu or the callback is currently running in another thread.
@@ -487,31 +446,32 @@ callout_reset(struct callout *c, int to_ticks, void (*ftn)(void *), void *arg)
 	/*
 	 * Our cpu must gain ownership of the callout and cancel anything
 	 * still running, which is complex.  The easiest way to do it is to
-	 * issue a callout_stop().
+	 * issue a callout_stop_sync().  callout_stop_sync() will also
+	 * handle CALLOUT_EXECUTED (dispatch waiting), and clear it.
 	 *
-	 * Clearing bits on flags is a way to guarantee they are not set,
-	 * as the cmpset atomic op will fail otherwise.  PENDING and ARMED
-	 * must not be set, if we find them set we loop up and call
-	 * stop_sync() again.
-	 *
+	 * WARNING: callout_stop_sync()'s return state can race other
+	 *	    callout_*() calls due to blocking, so we must re-check.
 	 */
 	for (;;) {
 		int flags;
 		int nflags;
 
-		callout_stop_sync(c);
-		flags = c->c_flags & ~(CALLOUT_PENDING | CALLOUT_ARMED);
-		nflags = (flags & ~(CALLOUT_CPU_MASK |
-				    CALLOUT_EXECUTED)) |
+		if (c->c_flags & (CALLOUT_ARMED_MASK | CALLOUT_EXECUTED))
+			callout_stop_sync(c);
+		flags = c->c_flags & ~(CALLOUT_ARMED_MASK | CALLOUT_EXECUTED);
+		nflags = (flags & ~CALLOUT_CPU_MASK) |
 			 CALLOUT_CPU_TO_FLAGS(gd->gd_cpuid) |
-			 CALLOUT_ARMED |
 			 CALLOUT_PENDING |
 			 CALLOUT_ACTIVE;
 		if (atomic_cmpset_int(&c->c_flags, flags, nflags))
 			break;
+		cpu_pause();
 	}
 
-
+	/*
+	 * With the critical section held and PENDING set we now 'own' the
+	 * callout.
+	 */
 	if (to_ticks <= 0)
 		to_ticks = 1;
 
@@ -526,7 +486,8 @@ callout_reset(struct callout *c, int to_ticks, void (*ftn)(void *), void *arg)
 
 /*
  * Setup a callout to run on the specified cpu.  Should generally be used
- * to run a callout on a specific cpu which does not nominally change.
+ * to run a callout on a specific cpu which does not nominally change.  This
+ * callout_reset() will be issued asynchronously via an IPI.
  */
 void
 callout_reset_bycpu(struct callout *c, int to_ticks, void (*ftn)(void *),
@@ -550,25 +511,25 @@ callout_reset_bycpu(struct callout *c, int to_ticks, void (*ftn)(void *),
 	tgd = globaldata_find(cpuid);
 
 	/*
-	 * Our cpu must temporarily gain ownership of the callout and cancel
-	 * anything still running, which is complex.  The easiest way to do
-	 * it is to issue a callout_stop().
+	 * This code is similar to the code in callout_reset() but we assign
+	 * the callout to the target cpu.  We cannot set PENDING here since
+	 * we cannot atomically add the callout to the target cpu's queue.
+	 * However, incrementing the IPI count has the effect of locking
+	 * the cpu assignment.
 	 *
-	 * Clearing bits on flags (vs nflags) is a way to guarantee they were
-	 * not previously set, by forcing the atomic op to fail.  The callout
-	 * must not be pending or armed after the stop_sync, if it is we have
-	 * to loop up and stop_sync() again.
+	 * WARNING: callout_stop_sync()'s return state can race other
+	 *	    callout_*() calls due to blocking, so we must re-check.
 	 */
 	for (;;) {
 		int flags;
 		int nflags;
 
-		callout_stop_sync(c);
-		flags = c->c_flags & ~(CALLOUT_PENDING | CALLOUT_ARMED);
+		if (c->c_flags & (CALLOUT_ARMED_MASK | CALLOUT_EXECUTED))
+			callout_stop_sync(c);
+		flags = c->c_flags & ~(CALLOUT_ARMED_MASK | CALLOUT_EXECUTED);
 		nflags = (flags & ~(CALLOUT_CPU_MASK |
 				    CALLOUT_EXECUTED)) |
 			 CALLOUT_CPU_TO_FLAGS(tgd->gd_cpuid) |
-			 CALLOUT_ARMED |
 			 CALLOUT_ACTIVE;
 		nflags = nflags + 1;		/* bump IPI count */
 		if (atomic_cmpset_int(&c->c_flags, flags, nflags))
@@ -577,10 +538,8 @@ callout_reset_bycpu(struct callout *c, int to_ticks, void (*ftn)(void *),
 	}
 
 	/*
-	 * Even though we are not the cpu that now owns the callout, our
-	 * bumping of the IPI count (and in a situation where the callout is
-	 * not queued to the callwheel) will prevent anyone else from
-	 * depending on or acting on the contents of the callout structure.
+	 * Since we control our +1 in the IPI count, the target cpu cannot
+	 * now change until our IPI is processed.
 	 */
 	if (to_ticks <= 0)
 		to_ticks = 1;
@@ -594,79 +553,47 @@ callout_reset_bycpu(struct callout *c, int to_ticks, void (*ftn)(void *),
 }
 
 /*
- * Remote IPI for callout_reset_bycpu().  The operation is performed only
- * on the 1->0 transition of the counter, otherwise there are callout_stop()s
- * pending after us.
- *
- * The IPI counter and PENDING flags must be set atomically with the
- * 1->0 transition.  The ACTIVE flag was set prior to the ipi being
- * sent and we do not want to race a caller on the original cpu trying
- * to deactivate() the flag concurrent with our installation of the
- * callout.
+ * Remote IPI for callout_reset_bycpu().  The cpu assignment cannot be
+ * ripped out from under us due to the count in IPI_MASK, but it is possible
+ * that other IPIs executed so we must deal with other flags that might
+ * have been set or cleared.
  */
 static void
 callout_reset_ipi(void *arg)
 {
 	struct callout *c = arg;
 	globaldata_t gd = mycpu;
-	globaldata_t tgd;
+	softclock_pcpu_t sc;
 	int flags;
 	int nflags;
+
+	sc = &softclock_pcpu_ary[gd->gd_cpuid];
 
 	for (;;) {
 		flags = c->c_flags;
 		cpu_ccfence();
-		KKASSERT((flags & CALLOUT_IPI_MASK) > 0);
+		KKASSERT((flags & CALLOUT_IPI_MASK) > 0 &&
+			 CALLOUT_FLAGS_TO_CPU(flags) == gd->gd_cpuid);
+
+		nflags = (flags - 1) & ~(CALLOUT_EXECUTED | CALLOUT_WAITING);
+		nflags |= CALLOUT_PENDING;
 
 		/*
-		 * We should already be armed for our cpu, if armed to another
-		 * cpu, chain the IPI.  If for some reason we are not armed,
-		 * we can arm ourselves.
+		 * Put us on the queue
 		 */
-		if (flags & CALLOUT_ARMED) {
-			if (CALLOUT_FLAGS_TO_CPU(flags) != gd->gd_cpuid) {
-				tgd = globaldata_find(
-						CALLOUT_FLAGS_TO_CPU(flags));
-				lwkt_send_ipiq(tgd, callout_reset_ipi, c);
-				return;
-			}
-			nflags = (flags & ~CALLOUT_EXECUTED);
-		} else {
-			nflags = (flags & ~(CALLOUT_CPU_MASK |
-					    CALLOUT_EXECUTED)) |
-				 CALLOUT_ARMED |
-				 CALLOUT_CPU_TO_FLAGS(gd->gd_cpuid);
-		}
-
-		/*
-		 * Decrement the IPI count, retain and clear the WAITING
-		 * status, clear EXECUTED.
-		 *
-		 * NOTE: It is possible for the callout to already have been
-		 *	 marked pending due to SMP races.
-		 */
-		nflags = nflags - 1;
-		if ((flags & CALLOUT_IPI_MASK) == 1) {
-			nflags &= ~(CALLOUT_WAITING | CALLOUT_EXECUTED);
-			nflags |= CALLOUT_PENDING;
-		}
-
 		if (atomic_cmpset_int(&c->c_flags, flags, nflags)) {
-			/*
-			 * Only install the callout on the 1->0 transition
-			 * of the IPI count, and only if PENDING was not
-			 * already set.  The latter situation should never
-			 * occur but we check anyway.
-			 */
-			if ((flags & (CALLOUT_PENDING|CALLOUT_IPI_MASK)) == 1) {
-				softclock_pcpu_t sc;
-
-				sc = &softclock_pcpu_ary[gd->gd_cpuid];
-				c->c_time = sc->curticks + c->c_load;
-				TAILQ_INSERT_TAIL(
+			if (flags & CALLOUT_PENDING) {
+				if (sc->next == c)
+					sc->next = TAILQ_NEXT(c, c_links.tqe);
+				TAILQ_REMOVE(
 					&sc->callwheel[c->c_time & cwheelmask],
-					c, c_links.tqe);
+					c,
+					c_links.tqe);
 			}
+			c->c_time = sc->curticks + c->c_load;
+			TAILQ_INSERT_TAIL(
+				&sc->callwheel[c->c_time & cwheelmask],
+				c, c_links.tqe);
 			break;
 		}
 		/* retry */
@@ -718,11 +645,10 @@ _callout_stop(struct callout *c, int issync)
 	crit_enter_gd(gd);
 
 	/*
-	 * Fast path operations:
-	 *
-	 * If ARMED and owned by our cpu, or not ARMED, and other simple
-	 * conditions are met, we can just clear ACTIVE and EXECUTED
-	 * and we are done.
+	 * Adjust flags for the required operation.  If the callout is
+	 * armed on another cpu we break out into the remote-cpu code which
+	 * will issue an IPI.  If it is not armed we are trivially done,
+	 * but may still need to test EXECUTED.
 	 */
 	for (;;) {
 		flags = c->c_flags;
@@ -731,120 +657,88 @@ _callout_stop(struct callout *c, int issync)
 		cpuid = CALLOUT_FLAGS_TO_CPU(flags);
 
 		/*
-		 * Can't handle an armed callout in the fast path if it is
-		 * not on the current cpu.  We must atomically increment the
-		 * IPI count for the IPI we intend to send and break out of
-		 * the fast path to enter the slow path.
+		 * Armed on remote cpu (break to remote-cpu code)
 		 */
-		if (flags & CALLOUT_ARMED) {
-			if (gd->gd_cpuid != cpuid) {
-				nflags = flags + 1;
-				if (atomic_cmpset_int(&c->c_flags,
-						      flags, nflags)) {
-					/* break to slow path */
-					break;
-				}
-				continue;	/* retry */
-			}
-		} else {
-			cpuid = gd->gd_cpuid;
-			KKASSERT((flags & CALLOUT_IPI_MASK) == 0);
-			KKASSERT((flags & CALLOUT_PENDING) == 0);
+		if ((flags & CALLOUT_ARMED_MASK) && gd->gd_cpuid != cpuid) {
+			nflags = flags + 1;
+			if (atomic_cmpset_int(&c->c_flags, flags, nflags))
+				break;
+			cpu_pause();
+			continue;
 		}
 
 		/*
-		 * Process pending IPIs and retry (only if not called from
-		 * an IPI).
+		 * Armed or armable on current cpu
 		 */
 		if (flags & CALLOUT_IPI_MASK) {
 			lwkt_process_ipiq();
+			cpu_pause();
 			continue;	/* retry */
 		}
 
 		/*
-		 * Transition to the stopped state, recover the EXECUTED
-		 * status.  If pending we cannot clear ARMED until after
-		 * we have removed (c) from the callwheel.
-		 *
-		 * NOTE: The callout might already not be armed but in this
-		 *	 case it should also not be pending.
+		 * If PENDING is set we can remove the callout from our
+		 * queue and also use the side effect that the bit causes
+		 * the callout to be locked to our cpu.
+		 */
+		if (flags & CALLOUT_PENDING) {
+			sc = &softclock_pcpu_ary[gd->gd_cpuid];
+			if (sc->next == c)
+				sc->next = TAILQ_NEXT(c, c_links.tqe);
+			TAILQ_REMOVE(
+				&sc->callwheel[c->c_time & cwheelmask],
+				c,
+				c_links.tqe);
+			c->c_func = NULL;
+
+			for (;;) {
+				flags = c->c_flags;
+				cpu_ccfence();
+				nflags = flags & ~(CALLOUT_ACTIVE |
+						   CALLOUT_EXECUTED |
+						   CALLOUT_WAITING |
+						   CALLOUT_PENDING);
+				if (atomic_cmpset_int(&c->c_flags,
+						      flags, nflags)) {
+					goto skip_slow;
+				}
+				cpu_pause();
+			}
+			/* NOT REACHED */
+		}
+
+		/*
+		 * If PENDING was not set the callout might not be locked
+		 * to this cpu.
 		 */
 		nflags = flags & ~(CALLOUT_ACTIVE |
 				   CALLOUT_EXECUTED |
 				   CALLOUT_WAITING |
 				   CALLOUT_PENDING);
-
-		/* NOTE: IPI_MASK already tested */
-		if ((flags & CALLOUT_PENDING) == 0)
-			nflags &= ~CALLOUT_ARMED;
-
 		if (atomic_cmpset_int(&c->c_flags, flags, nflags)) {
-			/*
-			 * Can only remove from callwheel if currently
-			 * pending.
-			 */
-			if (flags & CALLOUT_PENDING) {
-				sc = &softclock_pcpu_ary[gd->gd_cpuid];
-				if (sc->next == c)
-					sc->next = TAILQ_NEXT(c, c_links.tqe);
-				TAILQ_REMOVE(
-					&sc->callwheel[c->c_time & cwheelmask],
-					c,
-					c_links.tqe);
-				c->c_func = NULL;
-
-				/*
-				 * NOTE: Can't clear ARMED until we have
-				 *	 physically removed (c) from the
-				 *	 callwheel.
-				 *
-				 * NOTE: This function also clears WAITING
-				 *	 and returns oflags so we can test
-				 *	 the bit.  However, we may have
-				 *	 already cleared WAITING above, so
-				 *	 we have to OR the flags.
-				 */
-				flags |= callout_unpend_disarm(c);
-			}
-
-			/*
-			 * ARMED has been cleared at this point and (c)
-			 * might now be stale.  Only good for wakeup()s.
-			 */
-			if (flags & CALLOUT_WAITING)
-				wakeup(c);
-
 			goto skip_slow;
 		}
+		cpu_pause();
 		/* retry */
 	}
 
 	/*
-	 * Slow path (and not called via an IPI).
+	 * Remote cpu path.  We incremented the IPI_MASK count so the callout
+	 * is now locked to the remote cpu and we can safely send an IPI
+	 * to it.
 	 *
-	 * When ARMED to a different cpu the stop must be processed on that
-	 * cpu.  Issue the IPI and wait for completion.  We have already
-	 * incremented the IPI count.
+	 * Once sent, wait for all IPIs to be processed.
 	 */
 	tgd = globaldata_find(cpuid);
 	lwkt_send_ipiq3(tgd, callout_stop_ipi, c, issync);
 
 	for (;;) {
-		int flags;
-		int nflags;
-
 		flags = c->c_flags;
 		cpu_ccfence();
 
-		/*
-		 * Fast path check
-		 */
-		if ((flags & (CALLOUT_IPI_MASK | CALLOUT_ARMED)) == 0)
+		if ((flags & CALLOUT_ARMED_MASK) == 0)
 			break;
 
-		/*
-		 * Slow path
-		 */
 		nflags = flags | CALLOUT_WAITING;
 		tsleep_interlock(c, 0);
 		if (atomic_cmpset_int(&c->c_flags, flags, nflags)) {
@@ -852,7 +746,15 @@ _callout_stop(struct callout *c, int issync)
 		}
 	}
 
+	/*
+	 * Caller expects callout_stop_sync() to clear EXECUTED and return
+	 * its previous status.
+	 */
+	atomic_clear_int(&c->c_flags, CALLOUT_EXECUTED);
+
 skip_slow:
+	if (flags & CALLOUT_WAITING)
+		wakeup(c);
 
 	/*
 	 * If (issync) we must also wait for any in-progress callbacks to
@@ -891,6 +793,10 @@ skip_slow:
 	return rc;
 }
 
+/*
+ * IPI for stop function.  The callout is locked to the receiving cpu
+ * by the IPI_MASK count.
+ */
 static
 void
 callout_stop_ipi(void *arg, int issync, struct intrframe *frame)
@@ -898,95 +804,46 @@ callout_stop_ipi(void *arg, int issync, struct intrframe *frame)
 	globaldata_t gd = mycpu;
 	struct callout *c = arg;
 	softclock_pcpu_t sc;
+	int flags;
+	int nflags;
+
+	flags = c->c_flags;
+	cpu_ccfence();
+
+	KKASSERT(CALLOUT_FLAGS_TO_CPU(flags) == gd->gd_cpuid);
 
 	/*
-	 * Only the fast path can run in an IPI.  Chain the stop request
-	 * if we are racing cpu changes.
+	 * We can handle the PENDING flag immediately.
+	 */
+	if (flags & CALLOUT_PENDING) {
+		sc = &softclock_pcpu_ary[gd->gd_cpuid];
+		if (sc->next == c)
+			sc->next = TAILQ_NEXT(c, c_links.tqe);
+		TAILQ_REMOVE(
+			&sc->callwheel[c->c_time & cwheelmask],
+			c,
+			c_links.tqe);
+		c->c_func = NULL;
+	}
+
+	/*
+	 * Transition to the stopped state and decrement the IPI count.
+	 * Leave the EXECUTED bit alone (the next callout_reset() will
+	 * have to deal with it).
 	 */
 	for (;;) {
-		globaldata_t tgd;
-		int flags;
-		int nflags;
-		int cpuid;
-
 		flags = c->c_flags;
 		cpu_ccfence();
+		nflags = (flags - 1) & ~(CALLOUT_ACTIVE |
+					 CALLOUT_PENDING |
+					 CALLOUT_WAITING);
 
-		/*
-		 * Can't handle an armed callout in the fast path if it is
-		 * not on the current cpu.  We must atomically increment the
-		 * IPI count and break out of the fast path.
-		 *
-		 * If called from an IPI we chain the IPI instead.
-		 */
-		if (flags & CALLOUT_ARMED) {
-			cpuid = CALLOUT_FLAGS_TO_CPU(flags);
-			if (gd->gd_cpuid != cpuid) {
-				tgd = globaldata_find(cpuid);
-				lwkt_send_ipiq3(tgd, callout_stop_ipi,
-						c, issync);
-				break;
-			}
-		}
-
-		/*
-		 * NOTE: As an IPI ourselves we cannot wait for other IPIs
-		 *	 to complete, and we are being executed in-order.
-		 */
-
-		/*
-		 * Transition to the stopped state, recover the EXECUTED
-		 * status, decrement the IPI count.  If pending we cannot
-		 * clear ARMED until after we have removed (c) from the
-		 * callwheel, and only if there are no more IPIs pending.
-		 */
-		nflags = flags & ~(CALLOUT_ACTIVE | CALLOUT_PENDING);
-		nflags = nflags - 1;			/* dec ipi count */
-		if ((flags & (CALLOUT_IPI_MASK | CALLOUT_PENDING)) == 1)
-			nflags &= ~(CALLOUT_ARMED | CALLOUT_WAITING);
-		if ((flags & CALLOUT_IPI_MASK) == 1)
-			nflags &= ~(CALLOUT_EXECUTED | CALLOUT_WAITING);
-
-		if (atomic_cmpset_int(&c->c_flags, flags, nflags)) {
-			/*
-			 * Can only remove from callwheel if currently
-			 * pending.
-			 */
-			if (flags & CALLOUT_PENDING) {
-				sc = &softclock_pcpu_ary[gd->gd_cpuid];
-				if (sc->next == c)
-					sc->next = TAILQ_NEXT(c, c_links.tqe);
-				TAILQ_REMOVE(
-					&sc->callwheel[c->c_time & cwheelmask],
-					c,
-					c_links.tqe);
-				c->c_func = NULL;
-
-				/*
-				 * NOTE: Can't clear ARMED until we have
-				 *	 physically removed (c) from the
-				 *	 callwheel.
-				 *
-				 * NOTE: This function also clears WAITING
-				 *	 and returns oflags so we can test
-				 *	 the bit.  However, we may have
-				 *	 already cleared WAITING above, so
-				 *	 we have to OR the flags.
-				 */
-				flags |= callout_unpend_disarm(c);
-				/* (c) CAN BE DESTROYED AT ANY TIME NOW */
-			}
-
-			/*
-			 * ARMED has been cleared at this point and (c)
-			 * might now be stale.  Only good for wakeup()s.
-			 */
-			if (flags & CALLOUT_WAITING)
-				wakeup(c);
+		if (atomic_cmpset_int(&c->c_flags, flags, nflags))
 			break;
-		}
-		/* retry */
+		cpu_pause();
 	}
+	if (flags & CALLOUT_WAITING)
+		wakeup(c);
 }
 
 int
