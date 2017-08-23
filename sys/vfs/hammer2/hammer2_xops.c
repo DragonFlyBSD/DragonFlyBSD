@@ -98,8 +98,6 @@ checkdirempty(hammer2_chain_t *oparent, hammer2_chain_t *ochain, int clindex)
 					hammer2_chain_unlock(chain);
 					hammer2_chain_drop(chain);
 				}
-				kprintf("H2EAGAIN\n");
-
 				return EAGAIN;
 			}
 		}

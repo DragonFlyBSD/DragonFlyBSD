@@ -1474,10 +1474,13 @@ again:
 		error = EIO;
 		goto done;
 	}
+
+	/*
+	 * The inode chain is unlocked so the parent can change inbetween
+	 * the two calls.  Detect the situation and retry.  This case can
+	 * occur quite often under heavy lods.
+	 */
 	if (chain->parent != parent) {
-		kprintf("hammer2_inode_xop_destroy: "
-			"parent changed %p->(%p,%p)\n",
-			chain, parent, chain->parent);
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
 		hammer2_chain_unlock(chain);
@@ -1485,6 +1488,9 @@ again:
 		goto again;
 	}
 
+	/*
+	 * We have the correct parent, we can issue the deletion.
+	 */
 	hammer2_chain_delete(parent, chain, xop->head.mtid, 0);
 	error = 0;
 done:
