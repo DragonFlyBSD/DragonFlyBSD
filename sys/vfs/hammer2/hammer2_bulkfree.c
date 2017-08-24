@@ -854,7 +854,7 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 					cbinfo->adj_free +=
 						HAMMER2_FREEMAP_BLOCK_SIZE;
 					++cbinfo->count_10_00;
-					hammer2_dedup_assert(
+					hammer2_io_dedup_assert(
 						cbinfo->hmp,
 						tmp_off |
 						HAMMER2_FREEMAP_BLOCK_RADIX,
@@ -864,8 +864,9 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 					live->bitmapq[bindex] &=
 					    ~((hammer2_bitmap_t)1 << scount);
 					++cbinfo->count_11_10;
-					hammer2_dedup_delete(
+					hammer2_io_dedup_delete(
 						cbinfo->hmp,
+						HAMMER2_BREF_TYPE_DATA,
 						tmp_off |
 						HAMMER2_FREEMAP_BLOCK_RADIX,
 						HAMMER2_FREEMAP_BLOCK_SIZE);
@@ -925,7 +926,7 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 		live->linear = 0;
 		++cbinfo->count_l0cleans;
 #if 0
-		hammer2_dedup_assert(cbinfo->hmp,
+		hammer2_io_dedup_assert(cbinfo->hmp,
 				     data_off |
 				     HAMMER2_FREEMAP_LEVEL0_RADIX,
 				     HAMMER2_FREEMAP_LEVEL0_SIZE);
@@ -938,7 +939,7 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 		if (live->linear > bindex * HAMMER2_FREEMAP_BLOCK_SIZE) {
 			nlinear = bindex * HAMMER2_FREEMAP_BLOCK_SIZE;
 #if 0
-			hammer2_dedup_assert(cbinfo->hmp,
+			hammer2_io_dedup_assert(cbinfo->hmp,
 					     data_off + nlinear,
 					     live->linear - nlinear);
 #endif

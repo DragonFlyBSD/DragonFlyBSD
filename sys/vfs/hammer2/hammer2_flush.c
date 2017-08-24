@@ -874,9 +874,10 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		 * potentially dirty portion of the I/O buffer.
 		 */
 		if (chain->flags & HAMMER2_CHAIN_DESTROY) {
-			hammer2_dedup_delete(hmp,
-					     chain->bref.data_off,
-					     chain->bytes);
+			hammer2_io_dedup_delete(hmp,
+						chain->bref.type,
+						chain->bref.data_off,
+						chain->bytes);
 #if 0
 			hammer2_io_t *dio;
 			if (chain->dio) {

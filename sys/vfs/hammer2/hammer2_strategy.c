@@ -1371,38 +1371,12 @@ hammer2_write_bp(hammer2_chain_t *chain, char *data, int ioflag,
 	*errorp = error;
 }
 
-#define HAMMER2_DEDUP_FRAG	(HAMMER2_PBUFSIZE / 64)
-#define HAMMER2_DEDUP_FRAGRADIX	(HAMMER2_PBUFRADIX - 6)
-
-static __inline
-uint64_t
-hammer2_dedup_mask(hammer2_io_t *dio, hammer2_off_t data_off, u_int bytes)
-{
-	int bbeg;
-	int bits;
-	uint64_t mask;
-
-	bbeg = (int)((data_off & ~HAMMER2_OFF_MASK_RADIX) - dio->pbase) >>
-	       HAMMER2_DEDUP_FRAGRADIX;
-	bits = (int)((bytes + (HAMMER2_DEDUP_FRAG - 1)) >>
-	       HAMMER2_DEDUP_FRAGRADIX);
-	mask = ((uint64_t)1 << bbeg) - 1;
-	if (bbeg + bits == 64)
-		mask = (uint64_t)-1;
-	else
-		mask = ((uint64_t)1 << (bbeg + bits)) - 1;
-
-	mask &= ~(((uint64_t)1 << bbeg) - 1);
-
-	return mask;
-}
-
 /*
  * LIVE DEDUP HEURISTICS
  *
- * Record that the media data area is available for dedup operation.  This
- * will set the appropriate dedup bits in the DIO.  These bits will be cleared
- * if the dedup area becomes unavailable.
+ * Record media and crc information for possible dedup operation.  Note
+ * that the dedup mask bits must also be set in the related DIO for a dedup
+ * to be fully validated (which is handled in the freemap allocation code).
  *
  * WARNING! This code is SMP safe but the heuristic allows SMP collisions.
  *	    All fields must be loaded into locals and validated.
@@ -1511,9 +1485,15 @@ hammer2_dedup_record(hammer2_chain_t *chain, hammer2_io_t *dio, char *data)
 	dedup->data_off = chain->bref.data_off;
 	dedup->data_crc = crc;
 
+#if 0
+	/*
+	 * This is set by the allocator atomically with the freemap.
+	 * Doing it here is too late.
+	 */
 	atomic_set_64(&dio->dedup_ok_mask,
 		      hammer2_dedup_mask(dio, chain->bref.data_off,
 					 chain->bytes));
+#endif
 
 	/*
 	 * Once we record the dedup the chain must be marked clean to
@@ -1527,47 +1507,6 @@ hammer2_dedup_record(hammer2_chain_t *chain, hammer2_io_t *dio, char *data)
 		atomic_add_long(&hammer2_count_modified_chains, -1);
 		if (chain->pmp)
 			hammer2_pfs_memory_wakeup(chain->pmp);
-	}
-}
-
-/*
- * Remove the data range from dedup consideration.  This has no effect on
- * any dedups which have already occurred.  We do not need a valid buffer
- * for this operation and must clean out dedup_ok_mask even if the dio is
- * cached without any buffer available.
- */
-void
-hammer2_dedup_delete(hammer2_dev_t *hmp, hammer2_off_t data_off, u_int bytes)
-{
-	hammer2_io_t *dio;
-
-	dio = hammer2_io_getquick(hmp, data_off, bytes, 1);
-	if (dio) {
-		if (data_off < dio->pbase ||
-		    (data_off & ~HAMMER2_OFF_MASK_RADIX) + bytes >
-		    dio->pbase + dio->psize) {
-			panic("DATAOFF BAD %016jx/%d %016jx\n",
-				data_off, bytes, dio->pbase);
-		}
-		atomic_clear_64(&dio->dedup_ok_mask,
-			        hammer2_dedup_mask(dio, data_off, bytes));
-		hammer2_io_putblk(&dio);
-	}
-}
-
-/*
- * Assert that the data range is not considered for dedup operation.
- */
-void
-hammer2_dedup_assert(hammer2_dev_t *hmp, hammer2_off_t data_off, u_int bytes)
-{
-	hammer2_io_t *dio;
-
-	dio = hammer2_io_getquick(hmp, data_off, bytes, 1);
-	if (dio) {
-		KKASSERT((dio->dedup_ok_mask &
-			  hammer2_dedup_mask(dio, data_off, bytes)) == 0);
-		hammer2_io_putblk(&dio);
 	}
 }
 

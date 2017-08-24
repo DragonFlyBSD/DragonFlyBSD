@@ -93,32 +93,30 @@ hammer2_io_mask(hammer2_io_t *dio, hammer2_off_t off, u_int bytes)
 #define HAMMER2_GETBLK_OWNED	2
 
 /*
- * Allocate/Locate the requested dio, reference it, issue or queue iocb.
+ * Returns the DIO corresponding to the data|radix, creating it if necessary.
+ *
+ * If createit is 0, NULL can be returned indicating that the DIO does not
+ * exist.  (btype) is ignored when createit is 0.
  */
-void
-hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
-		  hammer2_iocb_t *iocb)
+static __inline
+hammer2_io_t *
+hammer2_io_alloc(hammer2_dev_t *hmp, hammer2_key_t data_off, uint8_t btype,
+		 int createit)
 {
 	hammer2_io_t *dio;
 	hammer2_io_t *xio;
-	off_t pbase;
-	off_t pmask;
+	hammer2_key_t lbase;
+	hammer2_key_t pbase;
+	hammer2_key_t pmask;
+	int lsize;
+	int psize;
 
-	/*
-	 * XXX after free, buffer reuse case w/ different size can clash
-	 * with dio cache.  Lets avoid it for now.  Ultimate we need to
-	 * invalidate the dio cache when freeing blocks to allow a mix
-	 * of 16KB and 64KB block sizes).
-	 */
-	/*int psize = hammer2_devblksize(lsize);*/
-	int psize = HAMMER2_PBUFSIZE;
-	uint64_t refs;
-
+	psize = HAMMER2_PBUFSIZE;
 	pmask = ~(hammer2_off_t)(psize - 1);
-
-	KKASSERT((1 << (int)(lbase & HAMMER2_OFF_MASK_RADIX)) == lsize);
-	lbase &= ~HAMMER2_OFF_MASK_RADIX;
+	lsize = 1 << (int)(data_off & HAMMER2_OFF_MASK_RADIX);
+	lbase = data_off & ~HAMMER2_OFF_MASK_RADIX;
 	pbase = lbase & pmask;
+
 	if (pbase == 0 || ((lbase + lsize - 1) & pmask) != pbase) {
 		kprintf("Illegal: %016jx %016jx+%08x / %016jx\n",
 			pbase, lbase, lsize, pmask);
@@ -136,13 +134,13 @@ hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 			atomic_add_int(&dio->hmp->iofree_count, -1);
 		}
 		hammer2_spin_unsh(&hmp->io_spin);
-	} else {
+	} else if (createit) {
 		hammer2_spin_unsh(&hmp->io_spin);
 		dio = kmalloc(sizeof(*dio), M_HAMMER2, M_INTWAIT | M_ZERO);
 		dio->hmp = hmp;
 		dio->pbase = pbase;
 		dio->psize = psize;
-		dio->btype = iocb->btype;
+		dio->btype = btype;
 		dio->refs = 1;
 		dio->act = 5;
 		hammer2_spin_init(&dio->spin, "h2dio");
@@ -161,16 +159,31 @@ hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 			kfree(dio, M_HAMMER2);
 			dio = xio;
 		}
+	} else {
+		hammer2_spin_unsh(&hmp->io_spin);
+		return NULL;
 	}
-
-	/*
-	 * Obtain/Validate the buffer.
-	 */
-	iocb->dio = dio;
-
 	dio->ticks = ticks;
 	if (dio->act < 10)
-		++dio->act;		/* SMP race ok */
+		++dio->act;
+
+	return dio;
+}
+
+/*
+ * Allocate/Locate the requested dio, reference it, issue or queue iocb.
+ */
+void
+hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
+		  hammer2_iocb_t *iocb)
+{
+	hammer2_io_t *dio;
+	uint64_t refs;
+
+	KKASSERT((1 << (int)(lbase & HAMMER2_OFF_MASK_RADIX)) == lsize);
+	dio = hammer2_io_alloc(hmp, lbase, iocb->btype, 1);
+
+	iocb->dio = dio;
 
 	for (;;) {
 		refs = dio->refs;
@@ -665,7 +678,6 @@ hammer2_io_putblk(hammer2_io_t **diop)
 	if (hmp->iofree_count > limit_dio) {
 		struct hammer2_cleanupcb_info info;
 
-		kprintf("x");
 		RB_INIT(&info.tmptree);
 		hammer2_spin_ex(&hmp->io_spin);
 		if (hmp->iofree_count > limit_dio) {
@@ -1091,6 +1103,7 @@ hammer2_io_setdirty(hammer2_io_t *dio)
 void
 hammer2_io_inval(hammer2_io_t *dio, hammer2_off_t data_off, u_int bytes)
 {
+	/* NOP */
 }
 
 void
@@ -1109,6 +1122,77 @@ int
 hammer2_io_isdirty(hammer2_io_t *dio)
 {
 	return((dio->refs & HAMMER2_DIO_DIRTY) != 0);
+}
+
+/*
+ * Set dedup validation bits in a DIO.  We do not need the buffer cache
+ * buffer for this.  This must be done concurrent with setting bits in
+ * the freemap so as to interlock with bulkfree's clearing of those bits.
+ */
+void
+hammer2_io_dedup_set(hammer2_dev_t *hmp, hammer2_blockref_t *bref)
+{
+	hammer2_io_t *dio;
+	int lsize;
+
+	dio = hammer2_io_alloc(hmp, bref->data_off, bref->type, 1);
+	lsize = 1 << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
+	atomic_set_64(&dio->dedup_ok_mask,
+		      hammer2_dedup_mask(dio, bref->data_off, lsize));
+	hammer2_io_putblk(&dio);
+}
+
+/*
+ * Clear dedup validation bits in a DIO.  This is typically done when
+ * a modified chain is destroyed or by the bulkfree code.  No buffer
+ * is needed for this operation.  If the DIO no longer exists it is
+ * equivalent to the bits not being set.
+ */
+void
+hammer2_io_dedup_delete(hammer2_dev_t *hmp, uint8_t btype,
+			hammer2_off_t data_off, u_int bytes)
+{
+	hammer2_io_t *dio;
+
+	if ((data_off & ~HAMMER2_OFF_MASK_RADIX) == 0)
+		return;
+	if (btype != HAMMER2_BREF_TYPE_DATA)
+		return;
+	dio = hammer2_io_alloc(hmp, data_off, btype, 0);
+	if (dio) {
+		if (data_off < dio->pbase ||
+		    (data_off & ~HAMMER2_OFF_MASK_RADIX) + bytes >
+		    dio->pbase + dio->psize) {
+			panic("hammer2_dedup_delete: DATAOFF BAD "
+			      "%016jx/%d %016jx\n",
+			      data_off, bytes, dio->pbase);
+		}
+		atomic_clear_64(&dio->dedup_ok_mask,
+				hammer2_dedup_mask(dio, data_off, bytes));
+		hammer2_io_putblk(&dio);
+	}
+}
+
+/*
+ * Assert that dedup validation bits in a DIO are not set.  This operation
+ * does not require a buffer.  The DIO does not need to exist.
+ */
+void
+hammer2_io_dedup_assert(hammer2_dev_t *hmp, hammer2_off_t data_off, u_int bytes)
+{
+	hammer2_io_t *dio;
+
+	dio = hammer2_io_alloc(hmp, data_off, HAMMER2_BREF_TYPE_DATA, 0);
+	if (dio) {
+		KASSERT((dio->dedup_ok_mask &
+			  hammer2_dedup_mask(dio, data_off, bytes)) == 0,
+			("hammer2_dedup_assert: %016jx/%d %016jx/%016jx",
+			data_off,
+			bytes,
+			hammer2_dedup_mask(dio, data_off, bytes),
+			dio->dedup_ok_mask));
+		hammer2_io_putblk(&dio);
+	}
 }
 
 static

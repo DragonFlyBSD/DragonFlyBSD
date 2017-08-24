@@ -465,6 +465,20 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	hammer2_io_t *dio;
 
 	/*
+	 * On last drop if there is no parent and data_off is good (at
+	 * least does not represent the volume root), the modified chain
+	 * is probably going to be destroyed.  We have to make sure that
+	 * the data area is not registered for dedup.
+	 */
+	if (chain->parent == NULL &&
+	    (chain->flags & HAMMER2_CHAIN_MODIFIED) &&
+	    (chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX)) {
+		hmp = chain->hmp;
+		hammer2_io_dedup_delete(hmp, chain->bref.type,
+					chain->bref.data_off, chain->bytes);
+	}
+
+	/*
 	 * Critical field access.
 	 */
 	hammer2_spin_ex(&chain->core.spin);
@@ -528,6 +542,10 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		/*
 		 * Otherwise we can scrap the MODIFIED bit if it is set,
 		 * and continue along the freeing path.
+		 *
+		 * Be sure to clean-out any dedup bits.  Without a parent
+		 * this chain will no longer be visible to the flush code.
+		 * Easy check data_off to avoid the volume root.
 		 */
 		if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
@@ -1630,6 +1648,10 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 		if ((chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX) == 0 ||
 		     newmod
 		) {
+			hammer2_io_dedup_delete(chain->hmp,
+						chain->bref.type,
+						chain->bref.data_off,
+						chain->bytes);
 			if (dedup_off) {
 				chain->bref.data_off = dedup_off;
 				chain->bytes = 1 << (dedup_off &

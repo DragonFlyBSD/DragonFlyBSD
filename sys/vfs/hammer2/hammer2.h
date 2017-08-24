@@ -1275,6 +1275,32 @@ MPTOPMP(struct mount *mp)
 	return ((hammer2_pfs_t *)mp->mnt_data);
 }
 
+#define HAMMER2_DEDUP_FRAG      (HAMMER2_PBUFSIZE / 64)
+#define HAMMER2_DEDUP_FRAGRADIX (HAMMER2_PBUFRADIX - 6)
+
+static __inline
+uint64_t
+hammer2_dedup_mask(hammer2_io_t *dio, hammer2_off_t data_off, u_int bytes)
+{
+	int bbeg;
+	int bits;
+	uint64_t mask;
+
+	bbeg = (int)((data_off & ~HAMMER2_OFF_MASK_RADIX) - dio->pbase) >>
+	       HAMMER2_DEDUP_FRAGRADIX;
+	bits = (int)((bytes + (HAMMER2_DEDUP_FRAG - 1)) >>
+	       HAMMER2_DEDUP_FRAGRADIX);
+	mask = ((uint64_t)1 << bbeg) - 1;
+	if (bbeg + bits == 64)
+		mask = (uint64_t)-1;
+	else
+		mask = ((uint64_t)1 << (bbeg + bits)) - 1;
+
+	mask &= ~(((uint64_t)1 << bbeg) - 1);
+
+	return mask;
+}
+
 extern struct vop_ops hammer2_vnode_vops;
 extern struct vop_ops hammer2_spec_vops;
 extern struct vop_ops hammer2_fifo_vops;
@@ -1497,10 +1523,6 @@ hammer2_tid_t hammer2_trans_newinum(hammer2_pfs_t *pmp);
 void hammer2_trans_assert_strategy(hammer2_pfs_t *pmp);
 void hammer2_dedup_record(hammer2_chain_t *chain, hammer2_io_t *dio,
 				char *data);
-void hammer2_dedup_delete(hammer2_dev_t *hmp, hammer2_off_t data_off,
-				u_int bytes);
-void hammer2_dedup_assert(hammer2_dev_t *hmp, hammer2_off_t data_off,
-				u_int bytes);
 
 /*
  * hammer2_ioctl.c
@@ -1519,6 +1541,11 @@ hammer2_io_t *hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize,
 				int notgood);
 void hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 				hammer2_iocb_t *iocb);
+void hammer2_io_dedup_set(hammer2_dev_t *hmp, hammer2_blockref_t *bref);
+void hammer2_io_dedup_delete(hammer2_dev_t *hmp, uint8_t btype,
+				hammer2_off_t data_off, u_int bytes);
+void hammer2_io_dedup_assert(hammer2_dev_t *hmp, hammer2_off_t data_off,
+				u_int bytes);
 void hammer2_io_complete(hammer2_iocb_t *iocb);
 void hammer2_io_callback(struct bio *bio);
 void hammer2_iocb_wait(hammer2_iocb_t *iocb);

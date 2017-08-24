@@ -245,7 +245,20 @@ hammer2_vfs_init(struct vfsconf *conf)
 
 	error = 0;
 
+	/*
+	 * A large DIO cache is needed to retain dedup enablement masks.
+	 * The bulkfree code clears related masks as part of the disk block
+	 * recycling algorithm, preventing it from being used for a later
+	 * dedup.
+	 *
+	 * NOTE: A large buffer cache can actually interfere with dedup
+	 *	 operation because we dedup based on media physical buffers
+	 *	 and not logical buffers.  Try to make the DIO chace large
+	 *	 enough to avoid this problem, but also cap it.
+	 */
 	hammer2_limit_dio = nbuf * 2;
+	if (hammer2_limit_dio > 100000)
+		hammer2_limit_dio = 100000;
 
 	if (HAMMER2_BLOCKREF_BYTES != sizeof(struct hammer2_blockref))
 		error = EINVAL;

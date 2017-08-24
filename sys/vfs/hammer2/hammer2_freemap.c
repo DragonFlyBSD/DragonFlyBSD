@@ -505,6 +505,18 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 			 key + bytes <= hmp->voldata.volu_size);
 		KKASSERT((key & HAMMER2_ZONE_MASK64) >= HAMMER2_ZONE_SEG);
 		bref->data_off = key | radix;
+
+		/*
+		 * Record dedupability.  The dedup bits are cleared
+		 * when bulkfree transitions the freemap from 11->10,
+		 * and asserted to be clear on the 10->00 transition.
+		 *
+		 * We must record the bitmask with the chain locked
+		 * at the time we set the allocation bits to avoid
+		 * racing a bulkfree.
+		 */
+		if (bref->type == HAMMER2_BREF_TYPE_DATA)
+			hammer2_io_dedup_set(hmp, bref);
 #if 0
 		kprintf("alloc cp=%p %016jx %016jx using %016jx\n",
 			chain,
