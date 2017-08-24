@@ -291,14 +291,14 @@ hammer2_chain_ref(hammer2_chain_t *chain)
 /*
  * Ref a locked chain and force the data to be held across an unlock.
  * Chain must be currently locked.  The user of the chain who desires
- * to release the hold must call hammer2_chain_lock_unhold() to lock
+ * to release the hold must call hammer2_chain_lock_unhold() to relock
  * and unhold the chain, then unlock normally, or may simply call
  * hammer2_chain_drop_unhold() (which is safer against deadlocks).
  */
 void
 hammer2_chain_ref_hold(hammer2_chain_t *chain)
 {
-	atomic_add_int(&chain->persist_refs, 1);
+	atomic_add_int(&chain->lockcnt, 1);
 	hammer2_chain_ref(chain);
 }
 
@@ -395,27 +395,45 @@ hammer2_chain_drop(hammer2_chain_t *chain)
 }
 
 /*
- * Unhold a held and probably not-locked chain.  To ensure that the data
- * is properly dropped we check lockcnt.  If lockcnt is 0 we unconditionally
- * interlock the chain to release its data.  We must obtain the lock
- * unconditionally becuase it is possible for the chain to still be
- * temporarily locked by a hammer2_chain_unlock() call in a race.
+ * Unhold a held and probably not-locked chain, ensure that the data is
+ * dropped on the 1->0 transition of lockcnt by obtaing an exclusive
+ * lock and then simply unlocking the chain.
  */
 void
 hammer2_chain_drop_unhold(hammer2_chain_t *chain)
 {
-	hammer2_io_t *dio;
+	u_int lockcnt;
+	int iter = 0;
 
-	atomic_add_int(&chain->persist_refs, -1);
-	cpu_lfence();
-	if (chain->lockcnt == 0) {
-		hammer2_mtx_ex(&chain->lock);
-		if (chain->lockcnt == 0 && chain->persist_refs == 0) {
-                        dio = hammer2_chain_drop_data(chain, 0);
-                        if (dio)
-                                hammer2_io_bqrelse(&dio);
-                }
-		hammer2_mtx_unlock(&chain->lock);
+	for (;;) {
+		lockcnt = chain->lockcnt;
+		cpu_ccfence();
+		if (lockcnt > 1) {
+			if (atomic_cmpset_int(&chain->lockcnt,
+					      lockcnt, lockcnt - 1)) {
+				break;
+			}
+		} else if (mtx_lock_ex_try(&chain->lock) == 0) {
+			hammer2_chain_unlock(chain);
+			break;
+		} else {
+			/*
+			 * This situation can easily occur on SMP due to
+			 * the gap inbetween the 1->0 transition and the
+			 * final unlock.  We cannot safely block on the
+			 * mutex because lockcnt might go above 1.
+			 *
+			 * XXX Sleep for one tick if it takes too long.
+			 */
+			if (++iter > 1000) {
+				if (iter > 1000 + hz) {
+					kprintf("hammer2: h2race1 %p\n", chain);
+					iter = 1000;
+				}
+				tsleep(&iter, 0, "h2race1", 1);
+			}
+			cpu_pause();
+		}
 	}
 	hammer2_chain_drop(chain);
 }
@@ -878,16 +896,15 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 }
 
 /*
- * Lock the chain and remove the data hold (matches against
- * hammer2_chain_unlock_hold()).  The data remains valid because
- * the chain is now locked, but will be dropped as per-normal when
- * the caller does a normal unlock.
+ * Lock the chain, retain the hold, and drop the data persistence count.
+ * The data should remain valid because we never transitioned lockcnt
+ * through 0.
  */
 void
 hammer2_chain_lock_unhold(hammer2_chain_t *chain, int how)
 {
-	atomic_add_int(&chain->persist_refs, -1);
 	hammer2_chain_lock(chain, how);
+	atomic_add_int(&chain->lockcnt, -1);
 }
 
 #if 0
@@ -1157,9 +1174,12 @@ done:
 void
 hammer2_chain_unlock(hammer2_chain_t *chain)
 {
+	hammer2_io_t *dio;
 	u_int lockcnt;
+	int iter = 0;
 
 	--curthread->td_tracker;
+
 	/*
 	 * If multiple locks are present (or being attempted) on this
 	 * particular chain we can just unlock, drop refs, and return.
@@ -1176,35 +1196,38 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 				hammer2_mtx_unlock(&chain->lock);
 				return;
 			}
-		} else {
+		} else if (hammer2_mtx_upgrade_try(&chain->lock) == 0) {
+			/* while holding the mutex exclusively */
 			if (atomic_cmpset_int(&chain->lockcnt, 1, 0))
 				break;
+		} else {
+			/*
+			 * This situation can easily occur on SMP due to
+			 * the gap inbetween the 1->0 transition and the
+			 * final unlock.  We cannot safely block on the
+			 * mutex because lockcnt might go above 1.
+			 *
+			 * XXX Sleep for one tick if it takes too long.
+			 */
+			if (++iter > 1000) {
+				if (iter > 1000 + hz) {
+					kprintf("hammer2: h2race2 %p\n", chain);
+					iter = 1000;
+				}
+				tsleep(&iter, 0, "h2race2", 1);
+			}
+			cpu_pause();
 		}
 		/* retry */
 	}
 
 	/*
-	 * Normally we want to disassociate the data on the last unlock,
-	 * but leave it intact if persist_refs is non-zero.  The persist-data
-	 * user modifies persist_refs only while holding the chain locked
-	 * so there should be no race on the last unlock here.
-	 *
-	 * NOTE: If this was a shared lock we have to temporarily upgrade it
-	 *	 to prevent data load races.  We can only do this non-blocking,
-	 *	 and unlock/relock-excl can deadlock.  If the try fails it
-	 *	 means someone else got a shared or exclusive lock while we
-	 *	 we bandying about.
+	 * Disassociate the data on the last unlock.  Requires that we hold
+	 * the mutex exclusively.
 	 */
-	if (chain->persist_refs == 0) {
-		hammer2_io_t *dio;
-
-		if (hammer2_mtx_upgrade_try(&chain->lock) == 0 &&
-		    chain->lockcnt == 0 && chain->persist_refs == 0) {
-			dio = hammer2_chain_drop_data(chain, 0);
-			if (dio)
-				hammer2_io_bqrelse(&dio);
-		}
-	}
+	dio = hammer2_chain_drop_data(chain, 0);
+	if (dio)
+		hammer2_io_bqrelse(&dio);
 	hammer2_mtx_unlock(&chain->lock);
 }
 
@@ -1214,7 +1237,7 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 void
 hammer2_chain_unlock_hold(hammer2_chain_t *chain)
 {
-	atomic_add_int(&chain->persist_refs, 1);
+	atomic_add_int(&chain->lockcnt, 1);
 	hammer2_chain_unlock(chain);
 }
 
