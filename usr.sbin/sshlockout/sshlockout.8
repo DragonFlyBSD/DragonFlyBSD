@@ -37,18 +37,21 @@
 .Nm sshlockout
 .Nd utility to block port 22 on preauth failures
 .Sh SYNOPSIS
-.Pp
-(/etc/pf.conf)
+.Cd # in /etc/pf.conf
+.Cd #
 .Cd table <lockout> persist { }
 .Pp
-(and later in /etc/pf.conf - see below)
+.Cd # and later in /etc/pf.conf - see below
+.Cd #
 .Cd block in quick on $ext_if proto tcp from <lockout> to any port 22
 .Cd block in quick on $ext_if proto tcp from <lockout> to any port 22
 .Pp
-(/etc/syslog.conf)
+.Cd # in /etc/syslog.conf
+.Cd #
 .Cd auth.info;authpriv.info		|exec /usr/sbin/sshlockout -pf "lockout"
 .Pp
-(root crontab)
+.Cd # in root's crontab
+.Cd #
 .Cd 3 3 * * *       pfctl -tlockout -T expire 86400
 .Sh DESCRIPTION
 This program is generally installed in
