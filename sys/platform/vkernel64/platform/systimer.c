@@ -195,6 +195,25 @@ vktimer_sigint(int signo)
 	/* do nothing, just interrupt */
 }
 
+static sysclock_t
+vktimer_gettick_us(void)
+{
+	struct clockinfo info;
+	int mib[] = { CTL_KERN, KERN_CLOCKRATE };
+	size_t len = sizeof(info);
+
+	if (sysctl(mib, NELEM(mib), &info, &len, NULL, 0) != 0 ||
+	    len != sizeof(info)) {
+		/* Assume 10 milliseconds (== 100hz) */
+		return 1000000 / 100;
+	} else if (info.tick < 999999) {
+		return info.tick;
+	} else {
+		/* Assume 10 milliseconds (== 100hz) */
+		return 1000000 / 100;
+	}
+}
+
 static void
 vktimer_thread(cothread_t cotd)
 {
@@ -237,7 +256,6 @@ rescan:
 			if (delta > 0 && reload > delta)
 				reload = delta;
 		}
-		vktimer_ts.tv_nsec = reload * 1000;
 		reload += curtime;
 		vktimer_target = reload;
 
@@ -251,6 +269,14 @@ rescan:
 			if (delta > 0 && reload > delta)
 				goto rescan;
 		}
+		if (!use_precise_timer && reload < ticklength_us / 10) {
+			/*
+			 * Avoid pointless short sleeps, when we only measure
+			 * the current time at tick precision.
+			 */
+			reload = ticklength_us / 10;
+		}
+		vktimer_ts.tv_nsec = reload * 1000;
 	}
 }
 
