@@ -451,8 +451,11 @@ hammer2_strategy_read_completion(hammer2_chain_t *chain, char *data,
 		 * block device behind us.  This leaves more room in the
 		 * LRU chain cache for meta-data chains which we really
 		 * want to retain.
+		 *
+		 * NOTE: Deduplication cannot be safely recorded for
+		 *	 records without a check code.
 		 */
-		hammer2_dedup_record(chain, data);
+		hammer2_dedup_record(chain, NULL, data);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_RELEASE);
 
 		/*
@@ -919,13 +922,19 @@ hammer2_compress_and_write(char *data, hammer2_inode_t *ip,
 	/*
 	 * Compression requested.  Try to compress the block.  We store
 	 * the data normally if we cannot sufficiently compress it.
+	 *
+	 * We have a heuristic to detect files which are mostly
+	 * uncompressable and avoid the compression attempt in that
+	 * case.  If the compression heuristic is turned off, we always
+	 * try to compress.
 	 */
 	comp_size = 0;
 	comp_buffer = NULL;
 
 	KKASSERT(pblksize / 2 <= 32768);
 		
-	if (ip->comp_heuristic < 8 || (ip->comp_heuristic & 7) == 0) {
+	if (ip->comp_heuristic < 8 || (ip->comp_heuristic & 7) == 0 ||
+	    hammer2_always_compress) {
 		z_stream strm_compress;
 		int comp_level;
 		int ret;
@@ -1116,7 +1125,6 @@ hammer2_compress_and_write(char *data, hammer2_inode_t *ip,
 			 * so we do it here.
 			 */
 			hammer2_chain_setcheck(chain, bdata);
-			hammer2_dedup_record(chain, bdata);
 
 			/*
 			 * Device buffer is now valid, chain is no longer in
@@ -1125,6 +1133,7 @@ hammer2_compress_and_write(char *data, hammer2_inode_t *ip,
 			 * (No blockref table worries with file data)
 			 */
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
+			hammer2_dedup_record(chain, dio, bdata);
 
 			/* Now write the related bdp. */
 			if (ioflag & IO_SYNC) {
@@ -1325,7 +1334,6 @@ hammer2_write_bp(hammer2_chain_t *chain, char *data, int ioflag,
 		 * so we do it here.
 		 */
 		hammer2_chain_setcheck(chain, bdata);
-		hammer2_dedup_record(chain, bdata);
 
 		/*
 		 * Device buffer is now valid, chain is no longer in
@@ -1334,6 +1342,7 @@ hammer2_write_bp(hammer2_chain_t *chain, char *data, int ioflag,
 		 * (No blockref table worries with file data)
 		 */
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
+		hammer2_dedup_record(chain, dio, bdata);
 
 		if (ioflag & IO_SYNC) {
 			/*
@@ -1362,19 +1371,50 @@ hammer2_write_bp(hammer2_chain_t *chain, char *data, int ioflag,
 	*errorp = error;
 }
 
+#define HAMMER2_DEDUP_FRAG	(HAMMER2_PBUFSIZE / 64)
+#define HAMMER2_DEDUP_FRAGRADIX	(HAMMER2_PBUFRADIX - 6)
+
+static __inline
+uint64_t
+hammer2_dedup_mask(hammer2_io_t *dio, hammer2_off_t data_off, u_int bytes)
+{
+	int bbeg;
+	int bits;
+	uint64_t mask;
+
+	bbeg = (int)((data_off & ~HAMMER2_OFF_MASK_RADIX) - dio->pbase) >>
+	       HAMMER2_DEDUP_FRAGRADIX;
+	bits = (int)((bytes + (HAMMER2_DEDUP_FRAG - 1)) >>
+	       HAMMER2_DEDUP_FRAGRADIX);
+	mask = ((uint64_t)1 << bbeg) - 1;
+	if (bbeg + bits == 64)
+		mask = (uint64_t)-1;
+	else
+		mask = ((uint64_t)1 << (bbeg + bits)) - 1;
+
+	mask &= ~(((uint64_t)1 << bbeg) - 1);
+
+	return mask;
+}
+
 /*
- * LIVE DEDUP HEURISTIC
+ * LIVE DEDUP HEURISTICS
+ *
+ * Record that the media data area is available for dedup operation.  This
+ * will set the appropriate dedup bits in the DIO.  These bits will be cleared
+ * if the dedup area becomes unavailable.
  *
  * WARNING! This code is SMP safe but the heuristic allows SMP collisions.
  *	    All fields must be loaded into locals and validated.
  *
- * WARNING! Should only be used for file data, hammer2_chain_modify() only
- *	    checks for the dedup case on data chains.  Also, dedup data can
- *	    only be recorded for committed chains (so NOT strategy writes
- *	    which can undergo further modification after the fact!).
+ * WARNING! Should only be used for file data and directory entries,
+ *	    hammer2_chain_modify() only checks for the dedup case on data
+ *	    chains.  Also, dedup data can only be recorded for committed
+ *	    chains (so NOT strategy writes which can undergo further
+ *	    modification after the fact!).
  */
 void
-hammer2_dedup_record(hammer2_chain_t *chain, char *data)
+hammer2_dedup_record(hammer2_chain_t *chain, hammer2_io_t *dio, char *data)
 {
 	hammer2_dev_t *hmp;
 	hammer2_dedup_t *dedup;
@@ -1383,9 +1423,21 @@ hammer2_dedup_record(hammer2_chain_t *chain, char *data)
 	int i;
 	int dticks;
 
+	/*
+	 * We can only record a dedup if we have media data to test against.
+	 * If dedup is not enabled, return early, which allows a chain to
+	 * remain marked MODIFIED (which might have benefits in special
+	 * situations, though typically it does not).
+	 */
 	if (hammer2_dedup_enable == 0)
 		return;
+	if (dio == NULL) {
+		dio = chain->dio;
+		if (dio == NULL)
+			return;
+	}
 
+#if 0
 	/*
 	 * Only committed data can be recorded for de-duplication, otherwise
 	 * the contents may change out from under us.  So, on read if the
@@ -1395,7 +1447,7 @@ hammer2_dedup_record(hammer2_chain_t *chain, char *data)
 	    (HAMMER2_CHAIN_MODIFIED | HAMMER2_CHAIN_INITIAL)) == 0) {
 		return;
 	}
-
+#endif
 
 	hmp = chain->hmp;
 
@@ -1458,7 +1510,65 @@ hammer2_dedup_record(hammer2_chain_t *chain, char *data)
 	dedup->ticks = ticks;
 	dedup->data_off = chain->bref.data_off;
 	dedup->data_crc = crc;
-	atomic_set_int(&chain->flags, HAMMER2_CHAIN_DEDUP);
+
+	atomic_set_64(&dio->dedup_ok_mask,
+		      hammer2_dedup_mask(dio, chain->bref.data_off,
+					 chain->bytes));
+
+	/*
+	 * Once we record the dedup the chain must be marked clean to
+	 * prevent reuse of the underlying block.   Remember that this
+	 * write occurs when the buffer cache is flushed (i.e. on sync(),
+	 * fsync(), filesystem periodic sync, or when the kernel needs to
+	 * flush a buffer), and not whenever the user write()s.
+	 */
+	if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
+		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
+		atomic_add_long(&hammer2_count_modified_chains, -1);
+		if (chain->pmp)
+			hammer2_pfs_memory_wakeup(chain->pmp);
+	}
+}
+
+/*
+ * Remove the data range from dedup consideration.  This has no effect on
+ * any dedups which have already occurred.  We do not need a valid buffer
+ * for this operation and must clean out dedup_ok_mask even if the dio is
+ * cached without any buffer available.
+ */
+void
+hammer2_dedup_delete(hammer2_dev_t *hmp, hammer2_off_t data_off, u_int bytes)
+{
+	hammer2_io_t *dio;
+
+	dio = hammer2_io_getquick(hmp, data_off, bytes, 1);
+	if (dio) {
+		if (data_off < dio->pbase ||
+		    (data_off & ~HAMMER2_OFF_MASK_RADIX) + bytes >
+		    dio->pbase + dio->psize) {
+			panic("DATAOFF BAD %016jx/%d %016jx\n",
+				data_off, bytes, dio->pbase);
+		}
+		atomic_clear_64(&dio->dedup_ok_mask,
+			        hammer2_dedup_mask(dio, data_off, bytes));
+		hammer2_io_putblk(&dio);
+	}
+}
+
+/*
+ * Assert that the data range is not considered for dedup operation.
+ */
+void
+hammer2_dedup_assert(hammer2_dev_t *hmp, hammer2_off_t data_off, u_int bytes)
+{
+	hammer2_io_t *dio;
+
+	dio = hammer2_io_getquick(hmp, data_off, bytes, 1);
+	if (dio) {
+		KKASSERT((dio->dedup_ok_mask &
+			  hammer2_dedup_mask(dio, data_off, bytes)) == 0);
+		hammer2_io_putblk(&dio);
+	}
 }
 
 static
@@ -1469,7 +1579,9 @@ hammer2_dedup_lookup(hammer2_dev_t *hmp, char **datap, int pblksize)
 	hammer2_io_t *dio;
 	hammer2_off_t off;
 	uint64_t crc;
+	uint64_t mask;
 	char *data;
+	char *dtmp;
 	int i;
 
 	if (hammer2_dedup_enable == 0)
@@ -1499,28 +1611,26 @@ hammer2_dedup_lookup(hammer2_dev_t *hmp, char **datap, int pblksize)
 			continue;
 		if ((1 << (int)(off & HAMMER2_OFF_MASK_RADIX)) != pblksize)
 			continue;
-		dio = hammer2_io_getquick(hmp, off, pblksize);
-		if (dio &&
-		    bcmp(data, hammer2_io_data(dio, off), pblksize) == 0) {
-			/*
-			 * Make sure the INVALOK flag is cleared to prevent
-			 * the possibly-dirty bp from being invalidated now
-			 * that we are using it as part of a de-dup operation.
-			 */
-			if (hammer2_debug & 0x40000) {
-				kprintf("DEDUP SUCCESS %016jx\n",
-					(intmax_t)off);
-			}
-			atomic_clear_64(&dio->refs, HAMMER2_DIO_INVALOK);
-			hammer2_io_putblk(&dio);
-			*datap = NULL;
-			dedup[i].ticks = ticks;	/* update use */
-			++hammer2_iod_file_wdedup;
+		dio = hammer2_io_getquick(hmp, off, pblksize, 0);
+		if (dio) {
+			dtmp = hammer2_io_data(dio, off),
+			mask = hammer2_dedup_mask(dio, off, pblksize);
+			if ((dio->dedup_ok_mask & mask) == mask &&
+			    bcmp(data, dtmp, pblksize) == 0) {
+				if (hammer2_debug & 0x40000) {
+					kprintf("DEDUP SUCCESS %016jx\n",
+						(intmax_t)off);
+				}
+				hammer2_io_putblk(&dio);
+				*datap = NULL;
+				dedup[i].ticks = ticks;   /* update use */
+				atomic_add_long(&hammer2_iod_file_wdedup,
+						pblksize);
 
-			return off;		/* RETURN */
-		}
-		if (dio)
+				return off;		/* RETURN */
+			}
 			hammer2_io_putblk(&dio);
+		}
 	}
 	return 0;
 }

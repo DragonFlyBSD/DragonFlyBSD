@@ -488,18 +488,16 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
 
 		/*
-		 * If the chain has children or if it has been MODIFIED and
-		 * also recorded for DEDUP, we must still flush the chain.
+		 * If the chain has children we must still flush the chain.
+		 * Any dedup is already handled by the underlying DIO, so
+		 * we do not have to specifically flush it here.
 		 *
 		 * In the case where it has children, the DESTROY flag test
 		 * in the flush code will prevent unnecessary flushes of
 		 * MODIFIED chains that are not flagged DEDUP so don't worry
 		 * about that here.
 		 */
-		if (chain->core.chain_count ||
-		    (chain->flags & (HAMMER2_CHAIN_MODIFIED |
-				     HAMMER2_CHAIN_DEDUP)) ==
-		    (HAMMER2_CHAIN_MODIFIED | HAMMER2_CHAIN_DEDUP)) {
+		if (chain->core.chain_count) {
 			/*
 			 * Put on flushq (should ensure refs > 1), retry
 			 * the drop.
@@ -1425,8 +1423,6 @@ static __inline
 int
 modified_needs_new_allocation(hammer2_chain_t *chain)
 {
-	hammer2_io_t *dio;
-
 	/*
 	 * We only live-dedup data, we do not live-dedup meta-data.
 	 */
@@ -1441,6 +1437,10 @@ modified_needs_new_allocation(hammer2_chain_t *chain)
 	if (chain->bytes == 0)
 		return 0;
 
+	return 0;
+
+#if 0
+	hammer2_io_t *dio;
 	/*
 	 * If this flag is not set the current modification has not been
 	 * recorded for dedup so a new allocation is not needed.  The
@@ -1474,6 +1474,7 @@ modified_needs_new_allocation(hammer2_chain_t *chain)
 		}
 	}
 	return 1;
+#endif
 }
 
 /*
@@ -1592,7 +1593,9 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 	 * containing the caller's desired data.  The dedup offset is
 	 * allowed to be in a partially free state and we must be sure
 	 * to reset it to a fully allocated state to force two bulkfree
-	 * passes to free it again.
+	 * passes to free it again.  The chain will not be marked MODIFIED
+	 * in the dedup case, as the dedup data cannot be changed without
+	 * a new allocation.
 	 *
 	 * NOTE: Only applicable when chain->bytes != 0.
 	 *
@@ -1608,14 +1611,16 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 				chain->bref.data_off = dedup_off;
 				chain->bytes = 1 << (dedup_off &
 						     HAMMER2_OFF_MASK_RADIX);
-				atomic_set_int(&chain->flags,
-					       HAMMER2_CHAIN_DEDUP);
+				atomic_clear_int(&chain->flags,
+						 HAMMER2_CHAIN_MODIFIED);
+				atomic_add_long(&hammer2_count_modified_chains,
+						-1);
+				if (chain->pmp)
+					hammer2_pfs_memory_wakeup(chain->pmp);
 				hammer2_freemap_adjust(hmp, &chain->bref,
 						HAMMER2_FREEMAP_DORECOVER);
 			} else {
 				hammer2_freemap_alloc(chain, chain->bytes);
-				atomic_clear_int(&chain->flags,
-						 HAMMER2_CHAIN_DEDUP);
 			}
 			/* XXX failed allocation */
 		}
@@ -3440,7 +3445,7 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 
 	/*
 	 * How big should our new indirect block be?  It has to be at least
-	 * as large as its parent.
+	 * as large as its parent for splits to work properly.
 	 *
 	 * The freemap uses a specific indirect block size.  The number of
 	 * levels are built dynamically and ultimately depend on the size
@@ -3449,16 +3454,22 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 	 * much to save disk space.
 	 *
 	 * The first indirect block level for a directory usually uses
-	 * HAMMER2_IND_BYTES_MIN (4KB = 32 directory entries).
-	 * (the 4 entries built-into the inode can handle 4 directory
-	 *  entries)
+	 * HAMMER2_IND_BYTES_MIN (4KB = 32 directory entries).  Due to
+	 * the hash mechanism, this typically gives us a nominal
+	 * 32 * 4 entries with one level of indirection.
 	 *
-	 * The first indirect block level for a file usually uses
-	 * HAMMER2_IND_BYTES_NOM (16KB = 128 blockrefs = ~8MB file).
-	 * (the 4 entries built-into the inode can handle a 256KB file).
+	 * We use HAMMER2_IND_BYTES_NOM (16KB = 128 blockrefs) for FILE
+	 * indirect blocks.  The initial 4 entries in the inode gives us
+	 * 256KB.  Up to 4 indirect blocks gives us 32MB.  Three levels
+	 * of indirection gives us 137GB, and so forth.  H2 can support
+	 * huge file sizes but they are not typical, so we try to stick
+	 * with compactness and do not use a larger indirect block size.
 	 *
-	 * The first indirect block level down from an inode typically
-	 * uses LBUFSIZE (16384), else it uses PBUFSIZE (65536).
+	 * We could use 64KB (PBUFSIZE), giving us 512 blockrefs, but
+	 * due to the way indirect blocks are created this usually winds
+	 * up being extremely inefficient for small files.  Even though
+	 * 16KB requires more levels of indirection for very large files,
+	 * the 16KB records can be ganged together into 64KB DIOs.
 	 */
 	if (for_type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
 	    for_type == HAMMER2_BREF_TYPE_FREEMAP_LEAF) {
@@ -3471,7 +3482,7 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 			nbytes = HAMMER2_IND_BYTES_NOM;	/* 16KB = ~8MB file */
 
 	} else {
-		nbytes = HAMMER2_IND_BYTES_MAX;
+		nbytes = HAMMER2_IND_BYTES_NOM;
 	}
 	if (nbytes < count * sizeof(hammer2_blockref_t)) {
 		KKASSERT(for_type != HAMMER2_BREF_TYPE_FREEMAP_NODE &&

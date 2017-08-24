@@ -292,8 +292,9 @@ typedef struct hammer2_iocb hammer2_iocb_t;
 /*
  * DIO - Management structure wrapping system buffer cache.
  *
- *	 Used for multiple purposes including concurrent management
- *	 if small requests by chains into larger DIOs.
+ * HAMMER2 uses an I/O abstraction that allows it to cache and manipulate
+ * fixed-sized filesystem buffers frontend by variable-sized hammer2_chain
+ * structures.
  */
 struct hammer2_io {
 	RB_ENTRY(hammer2_io) rbnode;	/* indexed by device offset */
@@ -306,7 +307,9 @@ struct hammer2_io {
 	int		psize;
 	int		act;		/* activity */
 	int		btype;		/* approximate BREF_TYPE_* */
-	int		unused01;
+	int		ticks;
+	uint64_t	invalid_mask;	/* area that is invalid on-disk */
+	uint64_t	dedup_ok_mask;	/* ok to dedup */
 };
 
 typedef struct hammer2_io hammer2_io_t;
@@ -315,12 +318,8 @@ typedef struct hammer2_io hammer2_io_t;
 #define HAMMER2_DIO_GOOD	0x4000000000000000LLU	/* dio->bp is stable */
 #define HAMMER2_DIO_WAITING	0x2000000000000000LLU	/* wait on INPROG */
 #define HAMMER2_DIO_DIRTY	0x1000000000000000LLU	/* flush last drop */
-#define HAMMER2_DIO_INVALOK	0x0800000000000000LLU	/* ok to inval */
-#define HAMMER2_DIO_INVAL	0x0400000000000000LLU	/* inval request */
 
 #define HAMMER2_DIO_MASK	0x00FFFFFFFFFFFFFFLLU
-
-#define HAMMER2_DIO_INVALBITS	(HAMMER2_DIO_INVAL | HAMMER2_DIO_INVALOK)
 
 /*
  * Primary chain structure keeps track of the topology in-memory.
@@ -379,7 +378,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_MODIFIED		0x00000001	/* dirty chain data */
 #define HAMMER2_CHAIN_ALLOCATED		0x00000002	/* kmalloc'd chain */
 #define HAMMER2_CHAIN_DESTROY		0x00000004
-#define HAMMER2_CHAIN_DEDUP		0x00000008	/* recorded for dedup */
+#define HAMMER2_CHAIN_UNUSED0008	0x00000008
 #define HAMMER2_CHAIN_DELETED		0x00000010	/* deleted chain */
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial create */
 #define HAMMER2_CHAIN_UPDATE		0x00000040	/* need parent update */
@@ -783,7 +782,7 @@ typedef struct hammer2_trans hammer2_trans_t;
 #define HAMMER2_FREEMAP_HEUR_SIZE	(HAMMER2_FREEMAP_HEUR_NRADIX * \
 					 HAMMER2_FREEMAP_HEUR_TYPES)
 
-#define HAMMER2_DEDUP_HEUR_SIZE		65536
+#define HAMMER2_DEDUP_HEUR_SIZE		(65536 * 4)
 #define HAMMER2_DEDUP_HEUR_MASK		(HAMMER2_DEDUP_HEUR_SIZE - 1)
 
 #define HAMMER2_FLUSH_TOP		0x0001
@@ -1076,7 +1075,7 @@ struct hammer2_dev {
 	int		nipstacks;
 	int		maxipstacks;
 	kdmsg_iocom_t	iocom;		/* volume-level dmsg interface */
-	struct spinlock	io_spin;	/* iotree access */
+	struct spinlock	io_spin;	/* iotree, iolruq access */
 	struct hammer2_io_tree iotree;
 	int		iofree_count;
 	hammer2_chain_t vchain;		/* anchor chain (topology) */
@@ -1287,10 +1286,12 @@ extern int hammer2_debug;
 extern int hammer2_cluster_read;
 extern int hammer2_cluster_write;
 extern int hammer2_dedup_enable;
+extern int hammer2_always_compress;
 extern int hammer2_inval_enable;
 extern int hammer2_flush_pipe;
 extern int hammer2_synchronous_flush;
 extern int hammer2_dio_count;
+extern int hammer2_limit_dio;
 extern long hammer2_chain_allocs;
 extern long hammer2_chain_frees;
 extern long hammer2_limit_dirty_chains;
@@ -1494,7 +1495,12 @@ hammer2_tid_t hammer2_trans_sub(hammer2_pfs_t *pmp);
 void hammer2_trans_done(hammer2_pfs_t *pmp);
 hammer2_tid_t hammer2_trans_newinum(hammer2_pfs_t *pmp);
 void hammer2_trans_assert_strategy(hammer2_pfs_t *pmp);
-void hammer2_dedup_record(hammer2_chain_t *chain, char *data);
+void hammer2_dedup_record(hammer2_chain_t *chain, hammer2_io_t *dio,
+				char *data);
+void hammer2_dedup_delete(hammer2_dev_t *hmp, hammer2_off_t data_off,
+				u_int bytes);
+void hammer2_dedup_assert(hammer2_dev_t *hmp, hammer2_off_t data_off,
+				u_int bytes);
 
 /*
  * hammer2_ioctl.c
@@ -1506,10 +1512,11 @@ int hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data,
  * hammer2_io.c
  */
 void hammer2_io_putblk(hammer2_io_t **diop);
+void hammer2_io_inval(hammer2_io_t *dio, hammer2_off_t data_off, u_int bytes);
 void hammer2_io_cleanup(hammer2_dev_t *hmp, struct hammer2_io_tree *tree);
 char *hammer2_io_data(hammer2_io_t *dio, off_t lbase);
-hammer2_io_t *hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize);
-void hammer2_io_resetinval(hammer2_dev_t *hmp, off_t lbase);
+hammer2_io_t *hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize,
+				int notgood);
 void hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 				hammer2_iocb_t *iocb);
 void hammer2_io_complete(hammer2_iocb_t *iocb);
@@ -1527,7 +1534,6 @@ void hammer2_io_bdwrite(hammer2_io_t **diop);
 int hammer2_io_bwrite(hammer2_io_t **diop);
 int hammer2_io_isdirty(hammer2_io_t *dio);
 void hammer2_io_setdirty(hammer2_io_t *dio);
-void hammer2_io_setinval(hammer2_io_t *dio, hammer2_off_t off, u_int bytes);
 void hammer2_io_brelse(hammer2_io_t **diop);
 void hammer2_io_bqrelse(hammer2_io_t **diop);
 int hammer2_io_crc_good(hammer2_chain_t *chain, uint64_t *maskp);

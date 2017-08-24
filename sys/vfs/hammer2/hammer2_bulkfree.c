@@ -793,21 +793,6 @@ next:
 }
 
 /*
- * When bulkfree is finally able to free a block it must make sure that
- * the INVALOK bit in any cached DIO is cleared prior to the block being
- * reused.
- */
-static
-void
-fixup_dio(hammer2_dev_t *hmp, hammer2_off_t data_off, int bindex, int scount)
-{
-	data_off += (scount >> 1) * HAMMER2_FREEMAP_BLOCK_SIZE;
-	data_off += bindex *
-		(HAMMER2_FREEMAP_BLOCK_SIZE * HAMMER2_BMAP_BLOCKS_PER_ELEMENT);
-	hammer2_io_resetinval(hmp, data_off);
-}
-
-/*
  * Merge the bulkfree bitmap against the existing bitmap.
  *
  * If nofree is non-zero the merge will only mark free blocks as allocated
@@ -821,14 +806,19 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 {
 	int bindex;
 	int scount;
+	hammer2_off_t tmp_off;
 	hammer2_bitmap_t lmask;
 	hammer2_bitmap_t mmask;
+
+	tmp_off = data_off;
 
 	for (bindex = 0; bindex < HAMMER2_BMAP_ELEMENTS; ++bindex) {
 		lmask = live->bitmapq[bindex];	/* live */
 		mmask = bmap->bitmapq[bindex];	/* snapshotted bulkfree */
-		if (lmask == mmask)
+		if (lmask == mmask) {
+			tmp_off += HAMMER2_BMAP_INDEX_SIZE;
 			continue;
+		}
 
 		for (scount = 0;
 		     scount < HAMMER2_BMAP_BITS_PER_ELEMENT;
@@ -864,15 +854,21 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 					cbinfo->adj_free +=
 						HAMMER2_FREEMAP_BLOCK_SIZE;
 					++cbinfo->count_10_00;
-					fixup_dio(cbinfo->hmp, data_off,
-						  bindex, scount);
+					hammer2_dedup_assert(
+						cbinfo->hmp,
+						tmp_off |
+						HAMMER2_FREEMAP_BLOCK_RADIX,
+						HAMMER2_FREEMAP_BLOCK_SIZE);
 					break;
 				case 3:	/* 11 -> 10 */
 					live->bitmapq[bindex] &=
 					    ~((hammer2_bitmap_t)1 << scount);
 					++cbinfo->count_11_10;
-					fixup_dio(cbinfo->hmp, data_off,
-						  bindex, scount);
+					hammer2_dedup_delete(
+						cbinfo->hmp,
+						tmp_off |
+						HAMMER2_FREEMAP_BLOCK_RADIX,
+						HAMMER2_FREEMAP_BLOCK_SIZE);
 					break;
 				}
 			} else if ((mmask & 3) == 3) {
@@ -905,11 +901,10 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 				}
 				live->bitmapq[bindex] |=
 					((hammer2_bitmap_t)3 << scount);
-				fixup_dio(cbinfo->hmp, data_off,
-					  bindex, scount);
 			}
 			mmask >>= 2;
 			lmask >>= 2;
+			tmp_off += HAMMER2_FREEMAP_BLOCK_SIZE;
 		}
 	}
 
@@ -929,10 +924,25 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 		live->class = 0;
 		live->linear = 0;
 		++cbinfo->count_l0cleans;
+#if 0
+		hammer2_dedup_assert(cbinfo->hmp,
+				     data_off |
+				     HAMMER2_FREEMAP_LEVEL0_RADIX,
+				     HAMMER2_FREEMAP_LEVEL0_SIZE);
+#endif
 	} else if (bindex < 7) {
+		int32_t nlinear;
+
 		++bindex;
+
 		if (live->linear > bindex * HAMMER2_FREEMAP_BLOCK_SIZE) {
-			live->linear = bindex * HAMMER2_FREEMAP_BLOCK_SIZE;
+			nlinear = bindex * HAMMER2_FREEMAP_BLOCK_SIZE;
+#if 0
+			hammer2_dedup_assert(cbinfo->hmp,
+					     data_off + nlinear,
+					     live->linear - nlinear);
+#endif
+			live->linear = nlinear;
 			++cbinfo->count_linadjusts;
 		}
 

@@ -868,25 +868,31 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		}
 
 		/*
-		 * If the chain was destroyed try to avoid unnecessary I/O.
-		 * The DIO system buffer may silently disallow the
-		 * invalidation.
+		 * If the chain was destroyed try to avoid unnecessary I/O
+		 * that might not have yet occurred.  Remove the data range
+		 * from dedup candidacy and attempt to invalidation that
+		 * potentially dirty portion of the I/O buffer.
 		 */
 		if (chain->flags & HAMMER2_CHAIN_DESTROY) {
+			hammer2_dedup_delete(hmp,
+					     chain->bref.data_off,
+					     chain->bytes);
+#if 0
 			hammer2_io_t *dio;
-
 			if (chain->dio) {
-				hammer2_io_setinval(chain->dio,
-						    chain->bref.data_off,
-						    chain->bytes);
+				hammer2_io_inval(chain->dio,
+						 chain->bref.data_off,
+						 chain->bytes);
 			} else if ((dio = hammer2_io_getquick(hmp,
 						  chain->bref.data_off,
-						  chain->bytes)) != NULL) {
-				hammer2_io_setinval(dio,
-						    chain->bref.data_off,
-						    chain->bytes);
+						  chain->bytes,
+						  1)) != NULL) {
+				hammer2_io_inval(dio,
+						 chain->bref.data_off,
+						 chain->bytes);
 				hammer2_io_putblk(&dio);
 			}
+#endif
 		}
 	}
 

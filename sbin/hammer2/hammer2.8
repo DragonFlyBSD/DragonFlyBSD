@@ -286,6 +286,14 @@ data.
 Hammer2 compression is only effective when it can reduce the size of dataset
 (typically a 64KB block) by one or more powers of 2.  A 64K block which
 only compresses to 40K will not yield any storage improvement.
+.Pp
+Generally speaking you do not want to set the compression mode to 'none',
+as this will cause blocks of all-zeros to be written as all-zero blocks,
+instead of holes.  The 'autozero' compression mode detects blocks of all-zeros
+and writes them as holes.  However, HAMMER2 will rewrite data in-place if
+the compression mode is set to 'none' and the check code is set to
+'disabled'.  Formal snapshots will still snapshot such files.  However,
+de-duplication will no longer function on the data blocks.
 .\" ==== setcheck ====
 .It Cm setcheck Ar check Op path...
 Set the check code as specified for any newly created elements at or under
@@ -312,6 +320,26 @@ Run a bulkfree pass on a HAMMER2 mount.
 You can specify any PFS for the mount, the bulkfree pass is run on the
 entire partition.
 Note that it takes two passes to actually free space.
+.El
+.Sh SYSCTLS
+.Bl -tag -width indent
+.It Va vfs.hammer2.dedup_enable (default on)
+Enables live de-duplication.  Any recently read data that is on-media
+(already synchronized to media) is tested against pending writes for
+compatibility.  If a match is found, the write will reference the
+existing on-media data instead of writing new data.
+.It Va vfs.hammer2.always_compress (default off)
+This disables the H2 compression heuristic and forces H2 to always
+try to compress data blocks, even if they look uncompressable.
+Enabling this option reduces performance but has higher de-duplication
+repeatability.
+.It Va vfs.hammer2.cluster_read (default 4)
+Set the amount of read-ahead clustering to perform.
+.It Va vfs.hammer2.cluster_write (default 0)
+Set the amount of write-behind clustering to perform.  This is disabled by
+default in order to give temporary files a chance to be deleted before
+media writes are committed.  Enabling this reduces buffer cache stress
+but causes file writes to flush to media more quickly.
 .El
 .Sh SETTING UP /etc/hammer2
 The 'rsainit' directive will create the

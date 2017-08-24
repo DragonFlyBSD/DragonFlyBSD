@@ -36,13 +36,15 @@
 
 /*
  * Implements an abstraction layer for synchronous and asynchronous
- * buffered device I/O.  Can be used for OS-abstraction but the main
+ * buffered device I/O.  Can be used as an OS-abstraction but the main
  * purpose is to allow larger buffers to be used against hammer2_chain's
  * using smaller allocations, without causing deadlocks.
  *
+ * The DIOs also record temporary state with limited persistence.  This
+ * feature is used to keep track of dedupable blocks.
  */
 static int hammer2_io_cleanup_callback(hammer2_io_t *dio, void *arg);
-static void dio_write_stats_update(hammer2_io_t *dio);
+static void dio_write_stats_update(hammer2_io_t *dio, struct buf *bp);
 
 static int
 hammer2_io_cmp(hammer2_io_t *io1, hammer2_io_t *io2)
@@ -101,6 +103,7 @@ hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 	hammer2_io_t *xio;
 	off_t pbase;
 	off_t pmask;
+
 	/*
 	 * XXX after free, buffer reuse case w/ different size can clash
 	 * with dio cache.  Lets avoid it for now.  Ultimate we need to
@@ -141,6 +144,7 @@ hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 		dio->psize = psize;
 		dio->btype = iocb->btype;
 		dio->refs = 1;
+		dio->act = 5;
 		hammer2_spin_init(&dio->spin, "h2dio");
 		TAILQ_INIT(&dio->iocbq);
 		hammer2_spin_ex(&hmp->io_spin);
@@ -164,8 +168,9 @@ hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
 	 */
 	iocb->dio = dio;
 
-	if (dio->act < 5)	/* SMP race ok */
-		++dio->act;
+	dio->ticks = ticks;
+	if (dio->act < 10)
+		++dio->act;		/* SMP race ok */
 
 	for (;;) {
 		refs = dio->refs;
@@ -226,7 +231,7 @@ hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
  * caches the data.
  */
 hammer2_io_t *
-hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize)
+hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize, int notgood)
 {
 	hammer2_iocb_t iocb;
 	hammer2_io_t *dio;
@@ -262,8 +267,9 @@ hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize)
 		atomic_add_int(&dio->hmp->iofree_count, -1);
 	hammer2_spin_unsh(&hmp->io_spin);
 
-	if (dio->act < 5)	/* SMP race ok */
-		++dio->act;
+	dio->ticks = ticks;
+	if (dio->act < 10)
+		++dio->act;		/* SMP race ok */
 
 	/*
 	 * Obtain/validate the buffer.  Do NOT issue I/O.  Discard if
@@ -300,15 +306,23 @@ hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize)
 		/*
 		 * We own DIO_INPROG, try to set DIO_GOOD.
 		 *
-		 * For now do not use GETBLK_NOWAIT because 
+		 * If (notgood) specified caller just wants the dio and doesn't
+		 * care about the buffer a whole lot.  However, if the buffer
+		 * is good (or dirty), we still want to return it.
+		 *
+		 * Otherwise we are trying to resolve a dedup and bread()
+		 * is expected to always be better than building a new buffer
+		 * that will be written.  Use bread() for better determinism
+		 * than getblk().
 		 */
 		bp = dio->bp;
 		dio->bp = NULL;
 		if (bp == NULL) {
-#if 0
-			bp = getblk(hmp->devvp, dio->pbase, dio->psize, 0, 0);
-#endif
-			bread(hmp->devvp, dio->pbase, dio->psize, &bp);
+			if (notgood)
+				bp = getblk(hmp->devvp, dio->pbase,
+					    dio->psize, 0, 0);
+			else
+				bread(hmp->devvp, dio->pbase, dio->psize, &bp);
 		}
 
 		/*
@@ -338,38 +352,21 @@ hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize)
 	}
 
 	/*
-	 * Only return the dio if its buffer is good.  If the buffer is not
-	 * good be sure to clear INVALOK, meaning that invalidation is no
-	 * longer acceptable
+	 * Only return the dio if its buffer is good.  If notgood != 0,
+	 * we return the buffer regardless (so ephermal dedup bits can be
+	 * cleared).
 	 */
-	if ((dio->refs & HAMMER2_DIO_GOOD) == 0) {
+	if (notgood == 0 && (dio->refs & HAMMER2_DIO_GOOD) == 0) {
 		hammer2_io_putblk(&dio);
 	}
 	return dio;
 }
 
 /*
- * Make sure that all invalidation flags are cleared on the dio associated
- * with the specified data offset, if the dio exists.
- *
- * Called from bulkfree when a block becomes reusable to ensure that new
- * allocations do not accidently discard the buffer later on.
- */
-void
-hammer2_io_resetinval(hammer2_dev_t *hmp, off_t data_off)
-{
-	hammer2_io_t *dio;
-
-	data_off &= ~HAMMER2_PBUFMASK64;
-	hammer2_spin_sh(&hmp->io_spin);
-	dio = RB_LOOKUP(hammer2_io_tree, &hmp->iotree, data_off);
-	if (dio)
-		atomic_clear_64(&dio->refs, HAMMER2_DIO_INVALBITS);
-	hammer2_spin_unsh(&hmp->io_spin);
-}
-
-/*
  * The originator of the iocb is finished with it.
+ *
+ * WARNING: iocb may be partially initialized with only iocb->dio and
+ *	    iocb->flags.
  */
 void
 hammer2_io_complete(hammer2_iocb_t *iocb)
@@ -518,6 +515,7 @@ hammer2_io_putblk(hammer2_io_t **diop)
 	off_t peof;
 	off_t pbase;
 	int psize;
+	int limit_dio;
 	uint64_t orefs;
 	uint64_t nrefs;
 
@@ -525,9 +523,7 @@ hammer2_io_putblk(hammer2_io_t **diop)
 	*diop = NULL;
 	hmp = dio->hmp;
 
-	while (dio->unused01) {
-		tsleep(&dio->unused01, 0, "h2DEBUG", hz);
-	}
+	KKASSERT((dio->refs & HAMMER2_DIO_MASK) != 0);
 
 	/*
 	 * Drop refs.
@@ -550,7 +546,6 @@ hammer2_io_putblk(hammer2_io_t **diop)
 			 * Lastdrop case, INPROG can be set.
 			 */
 			nrefs &= ~(HAMMER2_DIO_GOOD | HAMMER2_DIO_DIRTY);
-			nrefs &= ~(HAMMER2_DIO_INVAL);
 			nrefs |= HAMMER2_DIO_INPROG;
 			if (atomic_cmpset_64(&dio->refs, orefs, nrefs))
 				break;
@@ -575,7 +570,9 @@ hammer2_io_putblk(hammer2_io_t **diop)
 
 	/*
 	 * Lastdrop (1->0 transition).  INPROG has been set, GOOD and DIRTY
-	 * have been cleared.
+	 * have been cleared.  iofree_count has not yet been incremented,
+	 * note that another accessor race will decrement iofree_count so
+	 * we have to increment it regardless.
 	 *
 	 * We can now dispose of the buffer, and should do it before calling
 	 * io_complete() in case there's a race against a new reference
@@ -588,7 +585,7 @@ hammer2_io_putblk(hammer2_io_t **diop)
 
 	if (orefs & HAMMER2_DIO_GOOD) {
 		KKASSERT(bp != NULL);
-#if 1
+#if 0
 		if (hammer2_inval_enable &&
 		    (orefs & HAMMER2_DIO_INVALBITS) == HAMMER2_DIO_INVALBITS) {
 			++hammer2_iod_invals;
@@ -599,7 +596,7 @@ hammer2_io_putblk(hammer2_io_t **diop)
 		if (orefs & HAMMER2_DIO_DIRTY) {
 			int hce;
 
-			dio_write_stats_update(dio);
+			dio_write_stats_update(dio, bp);
 			if ((hce = hammer2_cluster_write) > 0) {
 				/*
 				 * Allows write-behind to keep the buffer
@@ -624,7 +621,7 @@ hammer2_io_putblk(hammer2_io_t **diop)
 			bqrelse(bp);
 		}
 	} else if (bp) {
-#if 1
+#if 0
 		if (hammer2_inval_enable &&
 		    (orefs & HAMMER2_DIO_INVALBITS) == HAMMER2_DIO_INVALBITS) {
 			++hammer2_iod_invals;
@@ -633,10 +630,10 @@ hammer2_io_putblk(hammer2_io_t **diop)
 		} else
 #endif
 		if (orefs & HAMMER2_DIO_DIRTY) {
-			dio_write_stats_update(dio);
+			dio_write_stats_update(dio, bp);
 			bdwrite(bp);
 		} else {
-			brelse(bp);
+			bqrelse(bp);
 		}
 	}
 
@@ -660,13 +657,19 @@ hammer2_io_putblk(hammer2_io_t **diop)
 	 * We cache free buffers so re-use cases can use a shared lock, but
 	 * if too many build up we have to clean them out.
 	 */
-	if (hmp->iofree_count > 65536) {
+	limit_dio = hammer2_limit_dio;
+	if (limit_dio < 256)
+		limit_dio = 256;
+	if (limit_dio > 1024*1024)
+		limit_dio = 1024*1024;
+	if (hmp->iofree_count > limit_dio) {
 		struct hammer2_cleanupcb_info info;
 
+		kprintf("x");
 		RB_INIT(&info.tmptree);
 		hammer2_spin_ex(&hmp->io_spin);
-		if (hmp->iofree_count > 65536) {
-			info.count = hmp->iofree_count / 4;
+		if (hmp->iofree_count > limit_dio) {
+			info.count = hmp->iofree_count / 5;
 			RB_SCAN(hammer2_io_tree, &hmp->iotree, NULL,
 				hammer2_io_cleanup_callback, &info);
 		}
@@ -690,15 +693,22 @@ hammer2_io_cleanup_callback(hammer2_io_t *dio, void *arg)
 
 	if ((dio->refs & (HAMMER2_DIO_MASK | HAMMER2_DIO_INPROG)) == 0) {
 		if (dio->act > 0) {
-			--dio->act;
-			return 0;
+			int act;
+
+			act = dio->act - (ticks - dio->ticks) / hz - 1;
+			if (act > 0) {
+				dio->act = act;
+				return 0;
+			}
+			dio->act = 0;
 		}
 		KKASSERT(dio->bp == NULL);
-		RB_REMOVE(hammer2_io_tree, &dio->hmp->iotree, dio);
-		xio = RB_INSERT(hammer2_io_tree, &info->tmptree, dio);
-		KKASSERT(xio == NULL);
-		if (--info->count <= 0)	/* limit scan */
-			return(-1);
+		if (info->count > 0) {
+			RB_REMOVE(hammer2_io_tree, &dio->hmp->iotree, dio);
+			xio = RB_INSERT(hammer2_io_tree, &info->tmptree, dio);
+			KKASSERT(xio == NULL);
+			--info->count;
+		}
 	}
 	return 0;
 }
@@ -837,25 +847,6 @@ hammer2_iocb_new_callback(hammer2_iocb_t *iocb)
 					vfs_bio_clrbuf(dio->bp);
 					dio->bp->b_flags |= B_CACHE;
 				}
-
-				/*
-				 * Invalidation is ok on newly allocated
-				 * buffers which cover the entire buffer.
-				 * Flag will be cleared on use by the de-dup
-				 * code.
-				 *
-				 * hammer2_chain_modify() also checks this flag.
-				 *
-				 * QUICK mode is used by the freemap code to
-				 * pre-validate a junk buffer to prevent an
-				 * unnecessary read I/O.  We do NOT want
-				 * to set INVALOK in that situation as the
-				 * underlying allocations may be smaller.
-				 */
-				if ((iocb->flags & HAMMER2_IOCB_QUICK) == 0) {
-					atomic_set_64(&dio->refs,
-						      HAMMER2_DIO_INVALOK);
-				}
 			} else if (iocb->flags & HAMMER2_IOCB_QUICK) {
 				/*
 				 * Partial buffer, quick mode.  Do nothing.
@@ -879,7 +870,8 @@ hammer2_iocb_new_callback(hammer2_iocb_t *iocb)
 				 */
 				if (dio->bp) {
 					if (dio->refs & HAMMER2_DIO_DIRTY) {
-						dio_write_stats_update(dio);
+						dio_write_stats_update(dio,
+								       dio->bp);
 						bdwrite(dio->bp);
 					} else {
 						bqrelse(dio->bp);
@@ -1081,15 +1073,24 @@ hammer2_io_setdirty(hammer2_io_t *dio)
 }
 
 /*
- * Request an invalidation.  The hammer2_io code will oblige only if
- * DIO_INVALOK is also set.  INVALOK is cleared if the dio is used
- * in a dedup lookup and prevents invalidation of the dirty buffer.
+ * This routine is called when a MODIFIED chain is being DESTROYED,
+ * in an attempt to allow the related buffer cache buffer to be
+ * invalidated and discarded instead of flushing it to disk.
+ *
+ * At the moment this case is only really useful for file meta-data.
+ * File data is already handled via the logical buffer cache associated
+ * with the vnode, and will be discarded if it was never flushed to disk.
+ * File meta-data may include inodes, directory entries, and indirect blocks.
+ *
+ * XXX
+ * However, our DIO buffers are PBUFSIZE'd (64KB), and the area being
+ * invalidated might be smaller.  Most of the meta-data structures above
+ * are in the 'smaller' category.  For now, don't try to invalidate the
+ * data areas.
  */
 void
-hammer2_io_setinval(hammer2_io_t *dio, hammer2_off_t off, u_int bytes)
+hammer2_io_inval(hammer2_io_t *dio, hammer2_off_t data_off, u_int bytes)
 {
-	if ((u_int)dio->psize == bytes)
-		atomic_set_64(&dio->refs, HAMMER2_DIO_INVAL);
 }
 
 void
@@ -1112,9 +1113,12 @@ hammer2_io_isdirty(hammer2_io_t *dio)
 
 static
 void
-dio_write_stats_update(hammer2_io_t *dio)
+dio_write_stats_update(hammer2_io_t *dio, struct buf *bp)
 {
 	long *counterp;
+
+	if (bp->b_flags & B_DELWRI)
+		return;
 
 	switch(dio->btype) {
 	case 0:

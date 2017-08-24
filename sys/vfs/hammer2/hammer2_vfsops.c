@@ -81,10 +81,12 @@ int hammer2_debug;
 int hammer2_cluster_read = 4;		/* physical read-ahead */
 int hammer2_cluster_write = 0;		/* bdwrite() so later inval works */
 int hammer2_dedup_enable = 1;
+int hammer2_always_compress = 0;	/* always try to compress */
 int hammer2_inval_enable = 0;
 int hammer2_flush_pipe = 100;
 int hammer2_synchronous_flush = 1;
 int hammer2_dio_count;
+int hammer2_limit_dio = 256;
 long hammer2_chain_allocs;
 long hammer2_chain_frees;
 long hammer2_limit_dirty_chains;
@@ -122,6 +124,8 @@ SYSCTL_INT(_vfs_hammer2, OID_AUTO, cluster_write, CTLFLAG_RW,
 	   &hammer2_cluster_write, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, dedup_enable, CTLFLAG_RW,
 	   &hammer2_dedup_enable, 0, "");
+SYSCTL_INT(_vfs_hammer2, OID_AUTO, always_compress, CTLFLAG_RW,
+	   &hammer2_always_compress, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, inval_enable, CTLFLAG_RW,
 	   &hammer2_inval_enable, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, flush_pipe, CTLFLAG_RW,
@@ -138,6 +142,8 @@ SYSCTL_LONG(_vfs_hammer2, OID_AUTO, count_modified_chains, CTLFLAG_RW,
 	   &hammer2_count_modified_chains, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, dio_count, CTLFLAG_RD,
 	   &hammer2_dio_count, 0, "");
+SYSCTL_INT(_vfs_hammer2, OID_AUTO, limit_dio, CTLFLAG_RW,
+	   &hammer2_limit_dio, 0, "");
 
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_invals, CTLFLAG_RW,
 	   &hammer2_iod_invals, 0, "");
@@ -238,6 +244,8 @@ hammer2_vfs_init(struct vfsconf *conf)
 	int error;
 
 	error = 0;
+
+	hammer2_limit_dio = nbuf * 2;
 
 	if (HAMMER2_BLOCKREF_BYTES != sizeof(struct hammer2_blockref))
 		error = EINVAL;
