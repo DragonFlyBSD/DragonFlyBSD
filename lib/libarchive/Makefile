@@ -397,7 +397,8 @@ MLINKS=	archive_entry.3 archive_entry_clear.3 \
 	archive_write_set_options.3 archive_write_set_filter_option.3 \
 	archive_write_set_options.3 archive_write_set_format_option.3 \
 	archive_write_set_options.3 archive_write_set_option.3 \
-	archive_write_set_passphrase.3 archive_write_set_passphrase_callback.3
+	archive_write_set_passphrase.3 archive_write_set_passphrase_callback.3 \
+	libarchive.3 archive.3
 
 VERSION_DEF=	${.CURDIR}/Versions.def
 SYMBOL_MAPS=	${.CURDIR}/Symbol.map
