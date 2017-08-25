@@ -1573,7 +1573,7 @@ static
 void
 usage_help(_Bool help)
 {
-	fprintf(stderr, "Usage: %s [-hsUvd] [-c file] [-e name=value:name=value:...]\n"
+	fprintf(stderr, "Usage: %s [-hsUvdt] [-c file] [-e name=value:name=value:...]\n"
 	    "\t[-i file] [-I interface[:address1[:address2][/netmask]]] [-l cpulock]\n"
 	    "\t[-m size] [-n numcpus[:lbits[:cbits]]]\n"
 	    "\t[-p file] [-r file]\n", save_av[0]);
@@ -1601,6 +1601,7 @@ usage_help(_Bool help)
 		    "\t-r\tSpecify a R/W disk image file, iterates vkd0..n\n"
 		    "\t-R\tSpecify a COW disk image file, iterates vkd0..n\n"
 		    "\t-s\tBoot into single-user mode.\n"
+		    "\t-t\tUse a precise host timer when calculating clock values.\n"
 		    "\t-U\tEnable writing to kernel memory and module loading.\n"
 		    "\t-v\tTurn on verbose booting.\n");
 
