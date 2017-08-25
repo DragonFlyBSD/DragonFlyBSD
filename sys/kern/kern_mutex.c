@@ -64,17 +64,6 @@
 #include <sys/thread2.h>
 #include <sys/mutex2.h>
 
-static int64_t mtx_contention_count;
-static int64_t mtx_collision_count;
-static int64_t mtx_wakeup_count;
-
-SYSCTL_QUAD(_kern, OID_AUTO, mtx_contention_count, CTLFLAG_RW,
-	    &mtx_contention_count, 0, "");
-SYSCTL_QUAD(_kern, OID_AUTO, mtx_collision_count, CTLFLAG_RW,
-	    &mtx_collision_count, 0, "");
-SYSCTL_QUAD(_kern, OID_AUTO, mtx_wakeup_count, CTLFLAG_RW,
-	    &mtx_wakeup_count, 0, "");
-
 static int mtx_chain_link_ex(mtx_t *mtx, u_int olock);
 static int mtx_chain_link_sh(mtx_t *mtx, u_int olock, int addcount);
 static void mtx_delete_link(mtx_t *mtx, mtx_link_t *link);
@@ -141,7 +130,6 @@ __mtx_lock_ex(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 		 */
 		if (lock & MTX_LINKSPIN) {
 			cpu_pause();
-			++mtx_collision_count;
 			continue;
 		}
 		td = curthread;
@@ -290,7 +278,6 @@ __mtx_lock_sh(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 		 */
 		if (lock & MTX_LINKSPIN) {
 			cpu_pause();
-			++mtx_collision_count;
 			continue;
 		}
 		td = curthread;
@@ -412,10 +399,8 @@ _mtx_spinlock(mtx_t *mtx)
 			cpu_pause();
 			for (bo = 0; bo < bb; ++bo)
 				;
-			++mtx_contention_count;
 		}
 		cpu_pause();
-		++mtx_collision_count;
 	}
 }
 
@@ -455,7 +440,6 @@ _mtx_spinlock_try(mtx_t *mtx)
 			break;
 		}
 		cpu_pause();
-		++mtx_collision_count;
 	}
 	return res;
 }
@@ -484,10 +468,8 @@ _mtx_spinlock_sh(mtx_t *mtx)
 			cpu_pause();
 			for (bo = 0; bo < bb; ++bo)
 				;
-			++mtx_contention_count;
 		}
 		cpu_pause();
-		++mtx_collision_count;
 	}
 }
 
@@ -522,7 +504,6 @@ _mtx_lock_ex_try(mtx_t *mtx)
 			break;
 		}
 		cpu_pause();
-		++mtx_collision_count;
 	}
 	return (error);
 }
@@ -546,7 +527,6 @@ _mtx_lock_sh_try(mtx_t *mtx)
 			break;
 		}
 		cpu_pause();
-		++mtx_collision_count;
 	}
 	return (error);
 }
@@ -591,7 +571,6 @@ _mtx_downgrade(mtx_t *mtx)
 			/* retry */
 		}
 		cpu_pause();
-		++mtx_collision_count;
 	}
 }
 
@@ -630,7 +609,6 @@ _mtx_upgrade_try(mtx_t *mtx)
 			break;
 		}
 		cpu_pause();
-		++mtx_collision_count;
 	}
 	return (error);
 }
@@ -732,7 +710,6 @@ _mtx_unlock(mtx_t *mtx)
 		}
 		/* loop try again */
 		cpu_pause();
-		++mtx_collision_count;
 	}
 done:
 	;
@@ -794,7 +771,6 @@ mtx_chain_link_ex(mtx_t *mtx, u_int olock)
 		}
 		atomic_clear_int(&mtx->mtx_lock, nlock);
 		--td->td_critcount;
-		++mtx_wakeup_count;
 		return 1;
 	}
 	/* retry */
@@ -849,7 +825,6 @@ mtx_chain_link_sh(mtx_t *mtx, u_int olock, int addcount)
 					link->state = MTX_LINK_ACQUIRED;
 					wakeup(link);
 				}
-				++mtx_wakeup_count;
 				break;
 			}
 			mtx->mtx_shlink = link->next;
@@ -859,7 +834,6 @@ mtx_chain_link_sh(mtx_t *mtx, u_int olock, int addcount)
 			link->state = MTX_LINK_ACQUIRED;
 			/* link can go away */
 			wakeup(link);
-			++mtx_wakeup_count;
 			addcount = 1;
 		}
 		atomic_clear_int(&mtx->mtx_lock, MTX_LINKSPIN |
@@ -895,14 +869,12 @@ mtx_delete_link(mtx_t *mtx, mtx_link_t *link)
 		lock = mtx->mtx_lock;
 		if (lock & MTX_LINKSPIN) {
 			cpu_pause();
-			++mtx_collision_count;
 			continue;
 		}
 		nlock = lock | MTX_LINKSPIN;
 		if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock))
 			break;
 		cpu_pause();
-		++mtx_collision_count;
 	}
 
 	/*
@@ -957,7 +929,6 @@ mtx_wait_link(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 		tsleep_interlock(link, 0);
 		cpu_lfence();
 		if (link->state & MTX_LINK_LINKED) {
-			++mtx_contention_count;
 			if (link->state & MTX_LINK_LINKED_SH)
 				mycpu->gd_cnt.v_lock_name[0] = 'S';
 			else
@@ -1042,14 +1013,12 @@ mtx_abort_link(mtx_t *mtx, mtx_link_t *link)
 		lock = mtx->mtx_lock;
 		if (lock & MTX_LINKSPIN) {
 			cpu_pause();
-			++mtx_collision_count;
 			continue;
 		}
 		nlock = lock | MTX_LINKSPIN;
 		if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock))
 			break;
 		cpu_pause();
-		++mtx_collision_count;
 	}
 
 	/*
@@ -1096,7 +1065,6 @@ mtx_abort_link(mtx_t *mtx, mtx_link_t *link)
 			link->state = MTX_LINK_ABORTED;
 			wakeup(link);
 		}
-		++mtx_wakeup_count;
 		break;
 	case MTX_LINK_LINKED_SH:
 		/*
@@ -1128,7 +1096,6 @@ mtx_abort_link(mtx_t *mtx, mtx_link_t *link)
 			link->state = MTX_LINK_ABORTED;
 			wakeup(link);
 		}
-		++mtx_wakeup_count;
 		break;
 	case MTX_LINK_ACQUIRED:
 	case MTX_LINK_CALLEDBACK:
