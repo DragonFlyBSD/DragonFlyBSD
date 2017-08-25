@@ -106,7 +106,9 @@ static int vm_pageout_page(vm_page_t m, int *max_launderp,
 static int vm_pageout_clean_helper (vm_page_t, int);
 static int vm_pageout_free_page_calc (vm_size_t count);
 static void vm_pageout_page_free(vm_page_t m) ;
+static struct thread *emergpager;
 struct thread *pagethread;
+static int sequence_emerg_pager;
 
 #if !defined(NO_SWAPPING)
 /* the kernel process "vm_daemon"*/
@@ -125,6 +127,7 @@ int vm_pages_needed = 0;	/* Event on which pageout daemon sleeps */
 int vm_pageout_deficit = 0;	/* Estimated number of pages deficit */
 int vm_pageout_pages_needed = 0;/* pageout daemon needs pages */
 int vm_page_free_hysteresis = 16;
+static int vm_pagedaemon_time;
 
 #if !defined(NO_SWAPPING)
 static int vm_pageout_req_swapout;
@@ -724,6 +727,11 @@ struct vm_pageout_scan_info {
 
 static int vm_pageout_scan_callback(struct proc *p, void *data);
 
+/*
+ * Scan inactive queue
+ *
+ * WARNING! Can be called from two pagedaemon threads simultaneously.
+ */
 static int
 vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
 			 int *vnodes_skipped)
@@ -734,6 +742,9 @@ vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
 	int maxscan;
 	int delta = 0;
 	int max_launder;
+	int isep;
+
+	isep = (curthread == emergpager);
 
 	/*
 	 * Start scanning the inactive queue for pages we can move to the
@@ -750,6 +761,9 @@ vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
 	 * used) will die horribly with limited laundering.  If the pageout
 	 * daemon cannot clean enough pages in the first pass, we let it go
 	 * all out in succeeding passes.
+	 *
+	 * NOTE!  THE EMERGENCY PAGER (isep) DOES NOT LAUNDER VNODE-BACKED
+	 *	  PAGES.
 	 */
 	if ((max_launder = vm_max_launder) <= 1)
 		max_launder = 1;
@@ -814,6 +828,24 @@ vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
 		vm_page_queues_spin_unlock(PQ_INACTIVE + q);
 		KKASSERT(m->queue == PQ_INACTIVE + q);
 
+		/*
+		 * The emergency pager runs when the primary pager gets
+		 * stuck, which typically means the primary pager deadlocked
+		 * on a vnode-backed page.  Therefore, the emergency pager
+		 * must skip vnode-backed pages.
+		 */
+		if (isep) {
+			if (m->object && m->object->type == OBJT_VNODE) {
+				vm_page_wakeup(m);
+				vm_page_queues_spin_lock(PQ_INACTIVE + q);
+				lwkt_yield();
+				continue;
+			}
+		}
+
+		/*
+		 * Try to pageout the page and perhaps other nearby pages.
+		 */
 		count = vm_pageout_page(m, &max_launder, vnodes_skipped,
 					&vpfailed, pass, 0);
 		delta += count;
@@ -1022,9 +1054,11 @@ vm_pageout_page(vm_page_t m, int *max_launderp, int *vnodes_skippedp,
 		    (object->type != OBJT_DEFAULT)) {
 			swap_pageouts_ok = 1;
 		} else {
-			swap_pageouts_ok = !(defer_swap_pageouts || disable_swap_pageouts);
-			swap_pageouts_ok |= (!disable_swap_pageouts && defer_swap_pageouts &&
-			vm_page_count_min(0));
+			swap_pageouts_ok = !(defer_swap_pageouts ||
+					     disable_swap_pageouts);
+			swap_pageouts_ok |= (!disable_swap_pageouts &&
+					     defer_swap_pageouts &&
+					     vm_page_count_min(0));
 		}
 
 		/*
@@ -1187,6 +1221,11 @@ vm_pageout_page(vm_page_t m, int *max_launderp, int *vnodes_skippedp,
 	return count;
 }
 
+/*
+ * Scan active queue
+ *
+ * WARNING! Can be called from two pagedaemon threads simultaneously.
+ */
 static int
 vm_pageout_scan_active(int pass, int q,
 		       int avail_shortage, int inactive_shortage,
@@ -1197,6 +1236,9 @@ vm_pageout_scan_active(int pass, int q,
 	int actcount;
 	int delta = 0;
 	int maxscan;
+	int isep;
+
+	isep = (curthread == emergpager);
 
 	/*
 	 * We want to move pages from the active queue to the inactive
@@ -1217,6 +1259,9 @@ vm_pageout_scan_active(int pass, int q,
 	 *
 	 * NOTE: Both variables can end up negative.
 	 * NOTE: We are still in a critical section.
+	 *
+	 * NOTE!  THE EMERGENCY PAGER (isep) DOES NOT LAUNDER VNODE-BACKED
+	 *	  PAGES.
 	 */
 
 	bzero(&marker, sizeof(marker));
@@ -1268,6 +1313,25 @@ vm_pageout_scan_active(int pass, int q,
 		 * busy them.  (XXX why not?)
 		 */
 		if (m->hold_count != 0) {
+			vm_page_and_queue_spin_lock(m);
+			if (m->queue - m->pc == PQ_ACTIVE) {
+				TAILQ_REMOVE(
+					&vm_page_queues[PQ_ACTIVE + q].pl,
+					m, pageq);
+				TAILQ_INSERT_TAIL(
+					&vm_page_queues[PQ_ACTIVE + q].pl,
+					m, pageq);
+			}
+			vm_page_and_queue_spin_unlock(m);
+			vm_page_wakeup(m);
+			goto next;
+		}
+
+		/*
+		 * The emergency pager ignores vnode-backed pages as these
+		 * are the pages that probably bricked the main pager.
+		 */
+		if (isep && m->object && m->object->type == OBJT_VNODE) {
 			vm_page_and_queue_spin_lock(m);
 			if (m->queue - m->pc == PQ_ACTIVE) {
 				TAILQ_REMOVE(
@@ -1427,6 +1491,8 @@ next:
  *
  * Pages moved from PQ_CACHE to totally free are not counted in the
  * pages_freed counter.
+ *
+ * WARNING! Can be called from two pagedaemon threads simultaneously.
  */
 static void
 vm_pageout_scan_cache(int avail_shortage, int pass,
@@ -1435,6 +1501,9 @@ vm_pageout_scan_cache(int avail_shortage, int pass,
 	static int lastkillticks;
 	struct vm_pageout_scan_info info;
 	vm_page_t m;
+	int isep;
+
+	isep = (curthread == emergpager);
 
 	while (vmstats.v_free_count <
 	       (vmstats.v_free_min + vmstats.v_free_target) / 2) {
@@ -1515,9 +1584,13 @@ vm_pageout_scan_cache(int avail_shortage, int pass,
 	 * ensures that we do not kill processes if the instantanious
 	 * availability is good, even if the pageout demon pass says it
 	 * couldn't get to the target.
+	 *
+	 * NOTE!  THE EMERGENCY PAGER (isep) DOES NOT HANDLE SWAP FULL
+	 *	  SITUATIONS.
 	 */
 	if (swap_pager_almost_full &&
 	    pass > 0 &&
+	    isep == 0 &&
 	    (vm_page_count_min(recycle_count) || avail_shortage > 0)) {
 		kprintf("Warning: system low on memory+swap "
 			"shortage %d for %d ticks!\n",
@@ -1533,6 +1606,7 @@ vm_pageout_scan_cache(int avail_shortage, int pass,
 	}
 	if (swap_pager_full &&
 	    pass > 1 &&
+	    isep == 0 &&
 	    avail_shortage > 0 &&
 	    vm_paging_target() > 0 &&
 	    (unsigned int)(ticks - lastkillticks) >= hz) {
@@ -1813,9 +1887,13 @@ vm_pageout_free_page_calc(vm_size_t count)
 
 
 /*
- * vm_pageout is the high level pageout daemon.
+ * vm_pageout is the high level pageout daemon.  TWO kernel threads run
+ * this daemon, the primary pageout daemon and the emergency pageout daemon.
  *
- * No requirements.
+ * The emergency pageout daemon takes over when the primary pageout daemon
+ * deadlocks.  The emergency pageout daemon ONLY pages out to swap, thus
+ * avoiding the many low-memory deadlocks which can occur when paging out
+ * to VFS's.
  */
 static void
 vm_pageout_thread(void)
@@ -1824,12 +1902,24 @@ vm_pageout_thread(void)
 	int q;
 	int q1iterator = 0;
 	int q2iterator = 0;
+	int isep;
+	int emrunning;
+
+	curthread->td_flags |= TDF_SYSTHREAD;
+
+	/*
+	 * We only need to setup once.
+	 */
+	isep = 0;
+	emrunning = 0;
+	if (curthread == emergpager) {
+		isep = 1;
+		goto skip_setup;
+	}
 
 	/*
 	 * Initialize some paging parameters.
 	 */
-	curthread->td_flags |= TDF_SYSTHREAD;
-
 	vm_pageout_free_page_calc(vmstats.v_page_count);
 
 	/*
@@ -1911,8 +2001,23 @@ vm_pageout_thread(void)
 	swap_pager_swap_init();
 	pass = 0;
 
+	atomic_swap_int(&sequence_emerg_pager, 1);
+	wakeup(&sequence_emerg_pager);
+
+skip_setup:
+	/*
+	 * Sequence emergency pager startup
+	 */
+	if (isep) {
+		while (sequence_emerg_pager == 0)
+			tsleep(&sequence_emerg_pager, 0, "pstartup", hz);
+	}
+
 	/*
 	 * The pageout daemon is never done, so loop forever.
+	 *
+	 * WARNING!  This code is being executed by two kernel threads
+	 *	     potentially simultaneously.
 	 */
 	while (TRUE) {
 		int error;
@@ -1927,18 +2032,61 @@ vm_pageout_thread(void)
 		 * see if paging is needed (in case the normal wakeup
 		 * code raced us).
 		 */
-		if (vm_pages_needed == 0) {
-			error = tsleep(&vm_pages_needed,
-				       0, "psleep",
-				       vm_pageout_stats_interval * hz);
-			if (error &&
-			    vm_paging_needed() == 0 &&
-			    vm_pages_needed == 0) {
-				for (q = 0; q < PQ_L2_SIZE; ++q)
-					vm_pageout_page_stats(q);
+		if (isep) {
+			/*
+			 * Emergency pagedaemon monitors the primary
+			 * pagedaemon while vm_pages_needed != 0.
+			 *
+			 * The emergency pagedaemon only runs if VM paging
+			 * is needed and the primary pagedaemon has not
+			 * updated vm_pagedaemon_time for more than 2 seconds.
+			 */
+			if (vm_pages_needed)
+				tsleep(&vm_pagedaemon_time, 0, "psleep", hz);
+			else
+				tsleep(&vm_pagedaemon_time, 0, "psleep", hz*10);
+			if (vm_pages_needed == 0) {
+				pass = 0;
 				continue;
 			}
-			vm_pages_needed = 1;
+			if ((int)(ticks - vm_pagedaemon_time) < hz * 2) {
+				if (emrunning) {
+					emrunning = 0;
+					kprintf("Emergency pager finished\n");
+				}
+				pass = 0;
+				continue;
+			}
+			if (emrunning == 0) {
+				emrunning = 1;
+				kprintf("Emergency pager running\n");
+			}
+		} else {
+			/*
+			 * Primary pagedaemon
+			 */
+			if (vm_pages_needed == 0) {
+				error = tsleep(&vm_pages_needed,
+					       0, "psleep",
+					       vm_pageout_stats_interval * hz);
+				if (error &&
+				    vm_paging_needed() == 0 &&
+				    vm_pages_needed == 0) {
+					for (q = 0; q < PQ_L2_SIZE; ++q)
+						vm_pageout_page_stats(q);
+					continue;
+				}
+				vm_pagedaemon_time = ticks;
+				vm_pages_needed = 1;
+
+				/*
+				 * Wake the emergency pagedaemon up so it
+				 * can monitor us.  It will automatically
+				 * go back into a long sleep when
+				 * vm_pages_needed returns to 0.
+				 */
+				wakeup(&vm_pagedaemon_time);
+			}
 		}
 
 		mycpu->gd_cnt.v_pdwakeups++;
@@ -1967,6 +2115,8 @@ vm_pageout_thread(void)
 		 *	 processes block due to low memory.
 		 */
 		vmstats_rollup();
+		if (isep == 0)
+			vm_pagedaemon_time = ticks;
 		avail_shortage = vm_paging_target() + vm_pageout_deficit;
 		vm_pageout_deficit = 0;
 
@@ -1993,6 +2143,8 @@ vm_pageout_thread(void)
 		 * deactivate to reduce unnecessary work.
 		 */
 		vmstats_rollup();
+		if (isep == 0)
+			vm_pagedaemon_time = ticks;
 		inactive_shortage = vmstats.v_inactive_target -
 				    vmstats.v_inactive_count;
 
@@ -2017,7 +2169,7 @@ vm_pageout_thread(void)
 		/*
 		 * Only trigger a pmap cleanup on inactive shortage.
 		 */
-		if (inactive_shortage > 0) {
+		if (isep == 0 && inactive_shortage > 0) {
 			pmap_collect();
 		}
 
@@ -2057,6 +2209,8 @@ vm_pageout_thread(void)
 		 * still in trouble.
 		 */
 		vmstats_rollup();
+		if (isep == 0)
+			vm_pagedaemon_time = ticks;
 		vm_pageout_scan_cache(avail_shortage, pass,
 				      vnodes_skipped, recycle_count);
 
@@ -2115,12 +2269,19 @@ vm_pageout_thread(void)
 	}
 }
 
-static struct kproc_desc page_kp = {
+static struct kproc_desc pg1_kp = {
 	"pagedaemon",
 	vm_pageout_thread,
 	&pagethread
 };
-SYSINIT(pagedaemon, SI_SUB_KTHREAD_PAGE, SI_ORDER_FIRST, kproc_start, &page_kp);
+SYSINIT(pagedaemon, SI_SUB_KTHREAD_PAGE, SI_ORDER_FIRST, kproc_start, &pg1_kp);
+
+static struct kproc_desc pg2_kp = {
+	"emergpager",
+	vm_pageout_thread,
+	&emergpager
+};
+SYSINIT(emergpager, SI_SUB_KTHREAD_PAGE, SI_ORDER_ANY, kproc_start, &pg2_kp);
 
 
 /*
