@@ -934,14 +934,17 @@ restart:
 	 *	 should be ok since we are passing idents in the IPI rather
 	 *	 then thread pointers.
 	 *
-	 * NOTE: We MUST lfence (or use an atomic op) prior to reading
+	 * NOTE: We MUST mfence (or use an atomic op) prior to reading
 	 *	 the cpumask, as another cpu may have written to it in
 	 *	 a fashion interlocked with whatever the caller did before
 	 *	 calling wakeup().  Otherwise we might miss the interaction
 	 *	 (kern_mutex.c can cause this problem).
+	 *
+	 *	 lfence is insufficient as it may allow a written state to
+	 *	 reorder around the cpumask load.
 	 */
 	if ((domain & PWAKEUP_MYCPU) == 0) {
-		cpu_lfence();
+		cpu_mfence();
 		mask = slpque_cpumasks[cid];
 		CPUMASK_ANDMASK(mask, gd->gd_other_cpus);
 		if (CPUMASK_TESTNZERO(mask)) {
