@@ -126,6 +126,7 @@ typedef unsigned long	__clock_t;
 typedef unsigned long	__clockid_t;
 typedef __uint32_t	__socklen_t;
 typedef volatile int	__atomic_intr_t;
+typedef __int64_t	__rlim_t;
 
 /*
  * Its convenient to put these here rather then create another header file.

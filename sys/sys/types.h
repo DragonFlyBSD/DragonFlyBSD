@@ -105,7 +105,7 @@ typedef	__off_t		off_t;		/* file offset */
 typedef	__pid_t		pid_t;		/* process id */
 #define	_PID_T_DECLARED
 #endif
-typedef	quad_t		rlim_t;		/* resource limit */
+typedef	__rlim_t	rlim_t;		/* resource limit */
 typedef	__segsz_t	segsz_t;	/* segment size */
 #ifndef _SUSECONDS_T_DECLARED
 typedef	long		suseconds_t;	/* microseconds (signed) */
