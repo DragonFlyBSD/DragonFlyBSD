@@ -308,8 +308,8 @@ struct hammer2_io {
 	int		act;		/* activity */
 	int		btype;		/* approximate BREF_TYPE_* */
 	int		ticks;
-	uint64_t	invalid_mask;	/* area that is invalid on-disk */
-	uint64_t	dedup_ok_mask;	/* ok to dedup */
+	uint64_t	dedup_valid;	/* valid for dedup operation */
+	uint64_t	dedup_alloc;	/* allocated / de-dupable */
 };
 
 typedef struct hammer2_io hammer2_io_t;

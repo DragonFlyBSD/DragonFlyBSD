@@ -1133,12 +1133,14 @@ void
 hammer2_io_dedup_set(hammer2_dev_t *hmp, hammer2_blockref_t *bref)
 {
 	hammer2_io_t *dio;
+	uint64_t mask;
 	int lsize;
 
 	dio = hammer2_io_alloc(hmp, bref->data_off, bref->type, 1);
 	lsize = 1 << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
-	atomic_set_64(&dio->dedup_ok_mask,
-		      hammer2_dedup_mask(dio, bref->data_off, lsize));
+	mask = hammer2_dedup_mask(dio, bref->data_off, lsize);
+	atomic_clear_64(&dio->dedup_valid, mask);
+	atomic_set_64(&dio->dedup_alloc, mask);
 	hammer2_io_putblk(&dio);
 }
 
@@ -1153,6 +1155,7 @@ hammer2_io_dedup_delete(hammer2_dev_t *hmp, uint8_t btype,
 			hammer2_off_t data_off, u_int bytes)
 {
 	hammer2_io_t *dio;
+	uint64_t mask;
 
 	if ((data_off & ~HAMMER2_OFF_MASK_RADIX) == 0)
 		return;
@@ -1167,14 +1170,15 @@ hammer2_io_dedup_delete(hammer2_dev_t *hmp, uint8_t btype,
 			      "%016jx/%d %016jx\n",
 			      data_off, bytes, dio->pbase);
 		}
-		atomic_clear_64(&dio->dedup_ok_mask,
-				hammer2_dedup_mask(dio, data_off, bytes));
+		mask = hammer2_dedup_mask(dio, data_off, bytes);
+		atomic_clear_64(&dio->dedup_alloc, mask);
+		atomic_clear_64(&dio->dedup_valid, mask);
 		hammer2_io_putblk(&dio);
 	}
 }
 
 /*
- * Assert that dedup validation bits in a DIO are not set.  This operation
+ * Assert that dedup allocation bits in a DIO are not set.  This operation
  * does not require a buffer.  The DIO does not need to exist.
  */
 void
@@ -1184,13 +1188,13 @@ hammer2_io_dedup_assert(hammer2_dev_t *hmp, hammer2_off_t data_off, u_int bytes)
 
 	dio = hammer2_io_alloc(hmp, data_off, HAMMER2_BREF_TYPE_DATA, 0);
 	if (dio) {
-		KASSERT((dio->dedup_ok_mask &
+		KASSERT((dio->dedup_alloc &
 			  hammer2_dedup_mask(dio, data_off, bytes)) == 0,
 			("hammer2_dedup_assert: %016jx/%d %016jx/%016jx",
 			data_off,
 			bytes,
 			hammer2_dedup_mask(dio, data_off, bytes),
-			dio->dedup_ok_mask));
+			dio->dedup_alloc));
 		hammer2_io_putblk(&dio);
 	}
 }

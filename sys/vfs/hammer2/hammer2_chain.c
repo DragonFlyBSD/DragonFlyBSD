@@ -68,8 +68,7 @@ static hammer2_chain_t *hammer2_chain_create_indirect(
 		hammer2_chain_t *parent,
 		hammer2_key_t key, int keybits,
 		hammer2_tid_t mtid, int for_type, int *errorp);
-static hammer2_io_t *hammer2_chain_drop_data(hammer2_chain_t *chain,
-		int lastdrop);
+static hammer2_io_t *hammer2_chain_drop_data(hammer2_chain_t *chain);
 static hammer2_chain_t *hammer2_combined_find(
 		hammer2_chain_t *parent,
 		hammer2_blockref_t *base, int count,
@@ -120,6 +119,20 @@ hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2)
 	if (c1_beg > c2_end)	/* fully to the right */
 		return(1);
 	return(0);		/* overlap (must not cross edge boundary) */
+}
+
+/*
+ * Assert that a chain has no media data associated with it.
+ */
+static __inline void
+hammer2_chain_assert_no_data(hammer2_chain_t *chain)
+{
+	KKASSERT(chain->dio == NULL);
+	if (chain->bref.type != HAMMER2_BREF_TYPE_VOLUME &&
+	    chain->bref.type != HAMMER2_BREF_TYPE_FREEMAP &&
+	    chain->data) {
+		panic("hammer2_assert_no_data: chain %p still has data", chain);
+	}
 }
 
 /*
@@ -362,6 +375,11 @@ failed:
  * zero this function will try to disassociate the chain from its parent and
  * deallocate it, then recursely drop the parent using the implied ref
  * from the chain's chain->parent.
+ *
+ * Nobody should own chain's mutex on the 1->0 transition, unless this drop
+ * races an acquisition by another cpu.  Therefore we can loop if we are
+ * unable to acquire the mutex, and refs is unlikely to be 1 unless we again
+ * race against another drop.
  */
 static hammer2_chain_t *hammer2_chain_lastdrop(hammer2_chain_t *chain);
 
@@ -385,18 +403,21 @@ hammer2_chain_drop(hammer2_chain_t *chain)
 		KKASSERT(refs > 0);
 
 		if (refs == 1) {
-			chain = hammer2_chain_lastdrop(chain);
+			if (mtx_lock_ex_try(&chain->lock) == 0)
+				chain = hammer2_chain_lastdrop(chain);
+			/* retry the same chain */
 		} else {
 			if (atomic_cmpset_int(&chain->refs, refs, refs - 1))
 				break;
 			/* retry the same chain */
 		}
+		cpu_pause();
 	}
 }
 
 /*
  * Unhold a held and probably not-locked chain, ensure that the data is
- * dropped on the 1->0 transition of lockcnt by obtaing an exclusive
+ * dropped on the 1->0 transition of lockcnt by obtaining an exclusive
  * lock and then simply unlocking the chain.
  */
 void
@@ -439,9 +460,14 @@ hammer2_chain_drop_unhold(hammer2_chain_t *chain)
 }
 
 /*
- * Safe handling of the 1->0 transition on chain.  Returns a chain for
- * recursive drop or NULL, possibly returning the same chain if the atomic
- * op fails.
+ * Handles the (potential) last drop of chain->refs from 1->0.  Called with
+ * the mutex exclusively locked, refs == 1, and lockcnt 0.  SMP races are
+ * possible against refs and lockcnt.  We must dispose of the mutex on chain.
+ *
+ * This function returns an unlocked chain for recursive drop or NULL.  It
+ * can return the same chain if it determines it has raced another ref.
+ *
+ * --
  *
  * When two chains need to be recursively dropped we use the chain we
  * would otherwise free to placehold the additional chain.  It's a bit
@@ -449,10 +475,11 @@ hammer2_chain_drop_unhold(hammer2_chain_t *chain)
  * the kernel stack.
  *
  * The chain cannot be freed if it has any children.
- * The chain cannot be freed if flagged MODIFIED unless we can dispose of that.
- * The chain cannot be freed if flagged UPDATE unless we can dispose of that.
+ * The chain cannot be freed if flagged MODIFIED unless we can dispose of it.
+ * The chain cannot be freed if flagged UPDATE unless we can dispose of it.
+ * Any dedup registration can remain intact.
  *
- * The core spinlock is allowed nest child-to-parent (not parent-to-child).
+ * The core spinlock is allowed to nest child-to-parent (not parent-to-child).
  */
 static
 hammer2_chain_t *
@@ -462,13 +489,22 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	hammer2_dev_t *hmp;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *rdrop;
+#if 0
 	hammer2_io_t *dio;
+#endif
 
+#if 0
 	/*
 	 * On last drop if there is no parent and data_off is good (at
 	 * least does not represent the volume root), the modified chain
 	 * is probably going to be destroyed.  We have to make sure that
 	 * the data area is not registered for dedup.
+	 *
+	 * XXX removed. In fact, we do not have to make sure that the
+	 *     data area is not registered for dedup.  The data area
+	 *     can, in fact, still be used for dedup because it is
+	 *     still allocated in the freemap and the underlying I/O
+	 *     will still be flushed.
 	 */
 	if (chain->parent == NULL &&
 	    (chain->flags & HAMMER2_CHAIN_MODIFIED) &&
@@ -477,9 +513,12 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		hammer2_io_dedup_delete(hmp, chain->bref.type,
 					chain->bref.data_off, chain->bytes);
 	}
-
+#endif
 	/*
-	 * Critical field access.
+	 * We need chain's spinlock to interlock the sub-tree test.
+	 * We already have chain's mutex, protecting chain->parent.
+	 *
+	 * Remember that chain->refs can be in flux.
 	 */
 	hammer2_spin_ex(&chain->core.spin);
 
@@ -499,13 +538,18 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		if (chain->flags & (HAMMER2_CHAIN_UPDATE |
 				    HAMMER2_CHAIN_MODIFIED)) {
 			if (atomic_cmpset_int(&chain->refs, 1, 0)) {
-				dio = hammer2_chain_drop_data(chain, 0);
 				hammer2_spin_unex(&chain->core.spin);
+#if 0
+				dio = hammer2_chain_drop_data(chain, 0);
 				if (dio)
 					hammer2_io_bqrelse(&dio);
+#endif
+				hammer2_chain_assert_no_data(chain);
+				hammer2_mtx_unlock(&chain->lock);
 				chain = NULL;
 			} else {
 				hammer2_spin_unex(&chain->core.spin);
+				hammer2_mtx_unlock(&chain->lock);
 			}
 			return (chain);
 		}
@@ -536,6 +580,8 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 			 */
 			hammer2_spin_unex(&chain->core.spin);
 			hammer2_delayed_flush(chain);
+			hammer2_mtx_unlock(&chain->lock);
+
 			return(chain);	/* retry drop */
 		}
 
@@ -557,12 +603,14 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	}
 
 	/* spinlock still held */
+#if 0
 	dio = NULL;
+#endif
 
 	/*
 	 * If any children exist we must leave the chain intact with refs == 0.
 	 * They exist because chains are retained below us which have refs or
-	 * may require flushing.  This case can occur when parent != NULL.
+	 * may require flushing.
 	 *
 	 * Retry (return chain) if we fail to transition the refs to 0, else
 	 * return NULL indication nothing more to do.
@@ -570,20 +618,14 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	 * Chains with children are NOT put on the LRU list.
 	 */
 	if (chain->core.chain_count) {
-		if (parent)
-			hammer2_spin_ex(&parent->core.spin);
 		if (atomic_cmpset_int(&chain->refs, 1, 0)) {
-			dio = hammer2_chain_drop_data(chain, 1);
 			hammer2_spin_unex(&chain->core.spin);
-			if (parent)
-				hammer2_spin_unex(&parent->core.spin);
+			hammer2_chain_assert_no_data(chain);
+			hammer2_mtx_unlock(&chain->lock);
 			chain = NULL;
-			if (dio)
-				hammer2_io_bqrelse(&dio);
 		} else {
 			hammer2_spin_unex(&chain->core.spin);
-			if (parent)
-				hammer2_spin_unex(&parent->core.spin);
+			hammer2_mtx_unlock(&chain->lock);
 		}
 		return (chain);
 	}
@@ -632,16 +674,18 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 			if (parent)
 				hammer2_spin_unex(&parent->core.spin);
 			hammer2_spin_unex(&chain->core.spin);
+			hammer2_mtx_unlock(&chain->lock);
 
 			return(chain);
 		}
 
 		/*
-		 * Success, be sure to clean out the chain's data
-		 * before putting it on a queue that it might be
-		 * reused from.
+		 * Success
 		 */
+#if 0
 		dio = hammer2_chain_drop_data(chain, 1);
+#endif
+		hammer2_chain_assert_no_data(chain);
 
 		KKASSERT((chain->flags & HAMMER2_CHAIN_ONLRU) == 0);
 		hammer2_spin_ex(&pmp->lru_spin);
@@ -666,8 +710,11 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 			parent = NULL;	/* safety */
 		}
 		hammer2_spin_unex(&chain->core.spin);
+		hammer2_mtx_unlock(&chain->lock);
+#if 0
 		if (dio)
 			hammer2_io_bqrelse(&dio);
+#endif
 
 		return rdrop;
 		/* NOT REACHED */
@@ -697,13 +744,14 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 			 */
 			hammer2_spin_unex(&parent->core.spin);
 			hammer2_spin_unex(&chain->core.spin);
+			hammer2_mtx_unlock(&chain->lock);
 
 			return(chain);
 		}
 
 		/*
-		 * 1->0 transition successful, remove chain from the
-		 * parent.
+		 * 1->0 transition successful, parent spin held to prevent
+		 * new lookups.  remove chain from the parent.
 		 */
 		if (chain->flags & HAMMER2_CHAIN_ONRBTREE) {
 			RB_REMOVE(hammer2_chain_tree,
@@ -729,27 +777,46 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		hammer2_spin_unex(&parent->core.spin);
 		parent = NULL;	/* safety */
 		/* FALL THROUGH */
+	} else {
+		/*
+		 * No-parent case.
+		 */
+		if (atomic_cmpset_int(&chain->refs, 1, 0) == 0) {
+			/*
+			 * 1->0 transition failed, retry.
+			 */
+			hammer2_spin_unex(&parent->core.spin);
+			hammer2_spin_unex(&chain->core.spin);
+			hammer2_mtx_unlock(&chain->lock);
+
+			return(chain);
+		}
 	}
 
 	/*
-	 * Successful 1->0 transition and the chain can be destroyed now.
+	 * Successful 1->0 transition, no parent, no children... no way for
+	 * anyone to ref this chain any more.  We can clean-up and free it.
 	 *
 	 * We still have the core spinlock, and core's chain_count is 0.
 	 * Any parent spinlock is gone.
 	 */
 	hammer2_spin_unex(&chain->core.spin);
+	hammer2_chain_assert_no_data(chain);
+	hammer2_mtx_unlock(&chain->lock);
 	KKASSERT(RB_EMPTY(&chain->core.rbtree) &&
 		 chain->core.chain_count == 0);
 
 	/*
-	 * All spin locks are gone, no pointers remain to the chain, finish
+	 * All locks are gone, no pointers remain to the chain, finish
 	 * freeing it.
 	 */
 	KKASSERT((chain->flags & (HAMMER2_CHAIN_UPDATE |
 				  HAMMER2_CHAIN_MODIFIED)) == 0);
+#if 0
 	dio = hammer2_chain_drop_data(chain, 1);
 	if (dio)
 		hammer2_io_bqrelse(&dio);
+#endif
 
 	/*
 	 * Once chain resources are gone we can use the now dead chain
@@ -770,10 +837,10 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 }
 
 /*
- * On either last lock release or last drop
+ * On last lock release.
  */
 static hammer2_io_t *
-hammer2_chain_drop_data(hammer2_chain_t *chain, int lastdrop)
+hammer2_chain_drop_data(hammer2_chain_t *chain)
 {
 	hammer2_io_t *dio;
 
@@ -784,13 +851,17 @@ hammer2_chain_drop_data(hammer2_chain_t *chain, int lastdrop)
 		switch(chain->bref.type) {
 		case HAMMER2_BREF_TYPE_VOLUME:
 		case HAMMER2_BREF_TYPE_FREEMAP:
-			if (lastdrop)
-				chain->data = NULL;
 			break;
 		default:
 			if (chain->data != NULL) {
 				hammer2_spin_unex(&chain->core.spin);
-				panic("chain data not null");
+				panic("chain data not null: "
+				      "chain %p bref %016jx.%02x "
+				      "refs %d parent %p dio %p data %p",
+				      chain, chain->bref.data_off,
+				      chain->bref.type, chain->refs,
+				      chain->parent,
+				      chain->dio, chain->data);
 			}
 			KKASSERT(chain->data == NULL);
 			break;
@@ -1240,10 +1311,10 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	}
 
 	/*
-	 * Disassociate the data on the last unlock.  Requires that we hold
-	 * the mutex exclusively.
+	 * Last unlock / mutex upgraded to exclusive.  Drop the data
+	 * reference.
 	 */
-	dio = hammer2_chain_drop_data(chain, 0);
+	dio = hammer2_chain_drop_data(chain);
 	if (dio)
 		hammer2_io_bqrelse(&dio);
 	hammer2_mtx_unlock(&chain->lock);
@@ -1648,10 +1719,19 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 		if ((chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX) == 0 ||
 		     newmod
 		) {
+			/*
+			 * NOTE: We do not have to remove the dedup
+			 *	 registration because the area is still
+			 *	 allocated and the underlying DIO will
+			 *	 still be flushed.
+			 */
+#if 0
+			/* removed */
 			hammer2_io_dedup_delete(chain->hmp,
 						chain->bref.type,
 						chain->bref.data_off,
 						chain->bytes);
+#endif
 			if (dedup_off) {
 				chain->bref.data_off = dedup_off;
 				chain->bytes = 1 << (dedup_off &
@@ -2118,6 +2198,8 @@ hammer2_chain_getparent(hammer2_chain_t **parentp, int how)
 	/*
 	 * Be careful of order, oparent must be unlocked before nparent
 	 * is locked below to avoid a deadlock.
+	 *
+	 * Safe access to fu->parent requires fu's core spinlock.
 	 */
 	oparent = *parentp;
 	hammer2_spin_ex(&oparent->core.spin);

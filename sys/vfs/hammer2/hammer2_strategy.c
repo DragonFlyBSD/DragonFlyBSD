@@ -1393,6 +1393,7 @@ hammer2_dedup_record(hammer2_chain_t *chain, hammer2_io_t *dio, char *data)
 	hammer2_dev_t *hmp;
 	hammer2_dedup_t *dedup;
 	uint64_t crc;
+	uint64_t mask;
 	int best = 0;
 	int i;
 	int dticks;
@@ -1485,15 +1486,17 @@ hammer2_dedup_record(hammer2_chain_t *chain, hammer2_io_t *dio, char *data)
 	dedup->data_off = chain->bref.data_off;
 	dedup->data_crc = crc;
 
-#if 0
 	/*
-	 * This is set by the allocator atomically with the freemap.
-	 * Doing it here is too late.
+	 * Set the valid bits for the dedup only after we know the data
+	 * buffer has been updated.  The alloc bits were set (and the valid
+	 * bits cleared) when the media was allocated.
+	 *
+	 * This is done in two stages becuase the bulkfree code can race
+	 * the gap between allocation and data population.  Both masks must
+	 * be set before a bcmp/dedup operation is able to use the block.
 	 */
-	atomic_set_64(&dio->dedup_ok_mask,
-		      hammer2_dedup_mask(dio, chain->bref.data_off,
-					 chain->bytes));
-#endif
+	mask = hammer2_dedup_mask(dio, chain->bref.data_off, chain->bytes);
+	atomic_set_64(&dio->dedup_valid, mask);
 
 	/*
 	 * Once we record the dedup the chain must be marked clean to
@@ -1554,7 +1557,8 @@ hammer2_dedup_lookup(hammer2_dev_t *hmp, char **datap, int pblksize)
 		if (dio) {
 			dtmp = hammer2_io_data(dio, off),
 			mask = hammer2_dedup_mask(dio, off, pblksize);
-			if ((dio->dedup_ok_mask & mask) == mask &&
+			if ((dio->dedup_alloc & mask) == mask &&
+			    (dio->dedup_valid & mask) == mask &&
 			    bcmp(data, dtmp, pblksize) == 0) {
 				if (hammer2_debug & 0x40000) {
 					kprintf("DEDUP SUCCESS %016jx\n",
