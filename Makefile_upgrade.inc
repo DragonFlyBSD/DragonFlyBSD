@@ -1132,7 +1132,6 @@ TO_REMOVE+=/usr/include/netproto/atalk
 TO_REMOVE+=/usr/share/man/man9/MALLOC.9.gz
 TO_REMOVE+=/usr/share/man/man9/FREE.9.gz
 TO_REMOVE+=/usr/share/man/man3/expmlf.3.gz
-TO_REMOVE+=/usr/share/man/man3/archive.3.gz
 TO_REMOVE+=/usr/share/man/man3/archive_write_disk_close.3.gz
 TO_REMOVE+=/usr/share/man/man3/archive_write_disk_data.3.gz
 TO_REMOVE+=/usr/share/man/man3/archive_write_disk_finish.3.gz
