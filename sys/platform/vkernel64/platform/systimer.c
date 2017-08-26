@@ -217,15 +217,17 @@ vktimer_gettick_us(void)
 static void
 vktimer_thread(cothread_t cotd)
 {
-        struct sigaction sa;
+	struct sigaction sa;
 	globaldata_t gscan;
+	sysclock_t ticklength_us;
 
-        bzero(&sa, sizeof(sa));
-        sa.sa_handler = vktimer_sigint;
-        sa.sa_flags |= SA_NODEFER;
-        sigemptyset(&sa.sa_mask);
-        sigaction(SIGINT, &sa, NULL);
+	bzero(&sa, sizeof(sa));
+	sa.sa_handler = vktimer_sigint;
+	sa.sa_flags |= SA_NODEFER;
+	sigemptyset(&sa.sa_mask);
+	sigaction(SIGINT, &sa, NULL);
 
+	ticklength_us = vktimer_gettick_us();
 	vktimer_running = 1;
 	while (vktimer_cotd == NULL)
 		usleep(1000000 / 10);
