@@ -698,18 +698,23 @@ set_apic_timer(int us)
 
 
 /*
- * Read remaining time in timer.
+ * Read remaining time in timer, in microseconds (rounded up).
  */
 int
 read_apic_timer(void)
 {
-#if 0
-	/** XXX FIXME: we need to return the actual remaining time,
-         *         for now we just return the remaining count.
-         */
-#else
-	return lapic->ccr_timer;
-#endif
+	uint64_t val;
+
+	val = lapic->ccr_timer;
+	if (val == 0)
+		return 0;
+	KKASSERT(lapic_cputimer_intr.freq > 0);
+	val *= 1000000;
+	val += (lapic_cputimer_intr.freq - 1);
+	val /= lapic_cputimer_intr.freq;
+	if (val > 0x7fffffff)
+		val = 0x7fffffff;
+	return val;
 }
 
 

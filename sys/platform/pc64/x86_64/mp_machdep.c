@@ -436,10 +436,6 @@ start_all_aps(u_int boot_addr)
 		}
 		if (smibest > 250000)
 			smibest = 0;
-		if (smibest) {
-			smibest = smibest * (int64_t)1000000 /
-				  get_apic_timer_frequency();
-		}
 	}
 	if (smibest)
 		kprintf("SMI Frequency (worst case): %d Hz (%d us)\n",
