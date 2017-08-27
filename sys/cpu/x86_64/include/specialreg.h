@@ -134,6 +134,7 @@
 #define	CPUID2_SSE42	0x00100000
 #define	CPUID2_X2APIC	0x00200000
 #define	CPUID2_POPCNT	0x00800000
+#define	CPUID2_TSCDLT	0x01000000	/* LAPIC TSC-Deadline Mode support */
 #define	CPUID2_AESNI	0x02000000	/* AES Instruction Set */
 #define	CPUID2_XSAVE    0x04000000	/* XSave supported by CPU */
 #define	CPUID2_OSXSAVE  0x08000000      /* XSave and AVX supported by OS */
@@ -622,5 +623,8 @@
 #define MSR_HWP_INTERRUPT	0x00000773
 #define MSR_HWP_REQUEST		0x00000774
 #define MSR_HWP_STATUS		0x00000777
+
+/* Local APIC TSC Deadline Mode Target count */
+#define MSR_TSC_DEADLINE	0x000006e0
 
 #endif /* !_CPU_SPECIALREG_H_ */

@@ -32,6 +32,7 @@
 #include <sys/machintr.h>
 #include <machine/globaldata.h>
 #include <machine/clock.h>
+#include <machine/limits.h>
 #include <machine/smp.h>
 #include <machine/md_var.h>
 #include <machine/pmap.h>
@@ -61,6 +62,10 @@ static void	lapic_timer_restart_handler(void *);
 static int	lapic_timer_enable = 1;
 TUNABLE_INT("hw.lapic_timer_enable", &lapic_timer_enable);
 
+static int	lapic_timer_tscdeadline = 1;
+TUNABLE_INT("hw.lapic_timer_tscdeadline", &lapic_timer_tscdeadline);
+
+static void	lapic_timer_tscdlt_reload(struct cputimer_intr *, sysclock_t);
 static void	lapic_timer_intr_reload(struct cputimer_intr *, sysclock_t);
 static void	lapic_timer_intr_enable(struct cputimer_intr *);
 static void	lapic_timer_intr_restart(struct cputimer_intr *);
@@ -90,12 +95,24 @@ static const uint32_t	lapic_timer_divisors[] = {
 };
 #define APIC_TIMER_NDIVISORS (int)(NELEM(lapic_timer_divisors))
 
+static int	lapic_use_tscdeadline = 0;
+/* The raw TSC frequency might not fit into a sysclock_t value. */
+static int	lapic_timer_tscfreq_shift;
+
 /*
  * APIC ID <-> CPU ID mapping structures.
  */
 int	cpu_id_to_apic_id[NAPICID];
 int	apic_id_to_cpu_id[NAPICID];
 int	lapic_enable = 1;
+
+/* Separate cachelines for each cpu's info. */
+struct deadlines {
+	uint64_t timestamp;
+	uint64_t downcount_time;
+	uint64_t padding[6];
+};
+struct deadlines *tsc_deadlines = NULL;
 
 /*
  * Enable LAPIC, configure interrupts.
@@ -105,6 +122,18 @@ lapic_init(boolean_t bsp)
 {
 	uint32_t timer;
 	u_int   temp;
+
+	if (bsp) {
+		/* Decide whether we want to use TSC Deadline mode. */
+		if (lapic_timer_tscdeadline != 0 &&
+		    (cpu_feature2 & CPUID2_TSCDLT) &&
+		    tsc_invariant && tsc_frequency != 0) {
+			lapic_use_tscdeadline = 1;
+			tsc_deadlines = kmalloc_cachealign(
+			    sizeof(struct deadlines) * (naps + 1),
+			    M_DEVBUF, M_WAITOK | M_ZERO);
+		}
+	}
 
 	/*
 	 * Install vectors
@@ -331,10 +360,14 @@ lapic_init(boolean_t bsp)
 				lapic_cputimer_intr.caps |=
 				    CPUTIMER_INTR_CAP_PS;
 			}
+			if (lapic_use_tscdeadline) {
+				lapic_cputimer_intr.reload =
+				    lapic_timer_tscdlt_reload;
+			}
 			cputimer_intr_register(&lapic_cputimer_intr);
 			cputimer_intr_select(&lapic_cputimer_intr, 0);
 		}
-	} else {
+	} else if (!lapic_use_tscdeadline) {
 		lapic_timer_set_divisor(lapic_timer_divisor_idx);
 	}
 
@@ -355,7 +388,7 @@ lapic_timer_oneshot(u_int count)
 	uint32_t value;
 
 	value = lapic->lvt_timer;
-	value &= ~APIC_LVTT_PERIODIC;
+	value &= ~(APIC_LVTT_PERIODIC | APIC_LVTT_TSCDLT);
 	lapic->lvt_timer = value;
 	lapic->icr_timer = count;
 }
@@ -367,9 +400,58 @@ lapic_timer_oneshot_quick(u_int count)
 }
 
 static void
+lapic_timer_tscdeadline_quick(uint64_t diff)
+{
+	uint64_t val = rdtsc() + diff;
+
+	wrmsr(MSR_TSC_DEADLINE, val);
+	tsc_deadlines[mycpuid].timestamp = val;
+}
+
+static uint64_t
+lapic_scale_to_tsc(unsigned value, unsigned scale)
+{
+	uint64_t val;
+
+	val = value;
+	val *= tsc_frequency;
+	val += (scale - 1);
+	val /= scale;
+	return val;
+}
+
+/*
+ * This serialization is only needed in the MMIO using xAPIC codepath.
+ * In upcoming x2APIC support this function should be skipped, since
+ * the serialization will happen implicitly with the x2APIC.
+ */
+static void
+lapic_tscdeadline_serialize(void)
+{
+	/* Serialize writes in xAPIC mode */
+	do {
+		/* Writing a "value much larger than current time-stamp" */
+		lapic_timer_tscdeadline_quick(10000 * tsc_frequency);
+	} while (rdmsr(MSR_TSC_DEADLINE) == 0);
+}
+
+static void
 lapic_timer_calibrate(void)
 {
 	sysclock_t value;
+
+	/* No need to calibrate lapic_timer, if we will use TSC Deadline mode */
+	if (lapic_use_tscdeadline) {
+		lapic_timer_tscfreq_shift = 0;
+		while ((tsc_frequency >> lapic_timer_tscfreq_shift) > INT_MAX)
+			lapic_timer_tscfreq_shift++;
+		lapic_cputimer_intr.freq =
+		    tsc_frequency >> lapic_timer_tscfreq_shift;
+		kprintf(
+		    "lapic: TSC Deadline Mode: shift %d, frequency %u Hz\n",
+		    lapic_timer_tscfreq_shift, lapic_cputimer_intr.freq);
+		return;
+	}
 
 	/* Try to calibrate the local APIC timer. */
 	for (lapic_timer_divisor_idx = 0;
@@ -388,6 +470,36 @@ lapic_timer_calibrate(void)
 
 	kprintf("lapic: divisor index %d, frequency %u Hz\n",
 		lapic_timer_divisor_idx, lapic_cputimer_intr.freq);
+}
+
+static void
+lapic_timer_tscdlt_reload(struct cputimer_intr *cti, sysclock_t reload)
+{
+	struct globaldata *gd = mycpu;
+	uint64_t diff, now, val;
+
+	if (reload > 1000*1000*1000)
+		reload = 1000*1000*1000;
+	diff = (uint64_t)reload * tsc_frequency / sys_cputimer->freq;
+	if (diff < 4)
+		diff = 4;
+	if (cpu_vendor_id == CPU_VENDOR_INTEL)
+		cpu_lfence();
+	else
+		cpu_mfence();
+	now = rdtsc();
+	val = now + diff;
+	if (gd->gd_timer_running) {
+		uint64_t deadline = tsc_deadlines[mycpuid].timestamp;
+		if (deadline == 0 || now > deadline || val < deadline) {
+			wrmsr(MSR_TSC_DEADLINE, val);
+			tsc_deadlines[mycpuid].timestamp = val;
+		}
+	} else {
+		gd->gd_timer_running = 1;
+		wrmsr(MSR_TSC_DEADLINE, val);
+		tsc_deadlines[mycpuid].timestamp = val;
+	}
 }
 
 static void
@@ -414,8 +526,12 @@ lapic_timer_intr_enable(struct cputimer_intr *cti __unused)
 	uint32_t timer;
 
 	timer = lapic->lvt_timer;
-	timer &= ~(APIC_LVTT_MASKED | APIC_LVTT_PERIODIC);
+	timer &= ~(APIC_LVTT_MASKED | APIC_LVTT_PERIODIC | APIC_LVTT_TSCDLT);
+	if (lapic_use_tscdeadline)
+		timer |= APIC_LVTT_TSCDLT;
 	lapic->lvt_timer = timer;
+	if (lapic_use_tscdeadline)
+		lapic_tscdeadline_serialize();
 
 	lapic_timer_fixup_handler(NULL);
 }
@@ -458,7 +574,12 @@ lapic_timer_fixup_handler(void *arg)
 				 * kick start again.
 				 */
 				gd->gd_timer_running = 1;
-				lapic_timer_oneshot_quick(2);
+				if (lapic_use_tscdeadline) {
+					/* Maybe reached in Virtual Machines? */
+					lapic_timer_tscdeadline_quick(5000);
+				} else {
+					lapic_timer_oneshot_quick(2);
+				}
 
 				if (started != NULL)
 					*started = 1;
@@ -477,7 +598,12 @@ lapic_timer_restart_handler(void *dummy __unused)
 		struct globaldata *gd = mycpu;
 
 		gd->gd_timer_running = 1;
-		lapic_timer_oneshot_quick(2);
+		if (lapic_use_tscdeadline) {
+			/* Maybe reached in Virtual Machines? */
+			lapic_timer_tscdeadline_quick(5000);
+		} else {
+			lapic_timer_oneshot_quick(2);
+		}
 	}
 }
 
@@ -666,22 +792,22 @@ selected_apic_ipi(cpumask_t target, int vector, int delivery_mode)
 }
 
 /*
- * Timer code, in development...
- *  - suggested by rgrimes@gndrsh.aac.dev.com
- */
-int
-get_apic_timer_frequency(void)
-{
-	return(lapic_cputimer_intr.freq);
-}
-
-/*
  * Load a 'downcount time' in uSeconds.
  */
 void
 set_apic_timer(int us)
 {
 	u_int count;
+
+	if (lapic_use_tscdeadline) {
+		uint64_t val;
+
+		val = lapic_scale_to_tsc(us, 1000000);
+		val += rdtsc();
+		/* No need to arm the lapic here, just track the timeout. */
+		tsc_deadlines[mycpuid].downcount_time = val;
+		return;
+	}
 
 	/*
 	 * When we reach here, lapic timer's frequency
@@ -705,15 +831,34 @@ read_apic_timer(void)
 {
 	uint64_t val;
 
+	if (lapic_use_tscdeadline) {
+		uint64_t now;
+
+		val = tsc_deadlines[mycpuid].downcount_time;
+		now = rdtsc();
+		if (val == 0 || now > val) {
+			return 0;
+		} else {
+			val -= now;
+			val *= 1000000;
+			val += (tsc_frequency - 1);
+			val /= tsc_frequency;
+			if (val > INT_MAX)
+				val = INT_MAX;
+			return val;
+		}
+	}
+
 	val = lapic->ccr_timer;
 	if (val == 0)
 		return 0;
+
 	KKASSERT(lapic_cputimer_intr.freq > 0);
 	val *= 1000000;
 	val += (lapic_cputimer_intr.freq - 1);
 	val /= lapic_cputimer_intr.freq;
-	if (val > 0x7fffffff)
-		val = 0x7fffffff;
+	if (val > INT_MAX)
+		val = INT_MAX;
 	return val;
 }
 

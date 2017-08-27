@@ -727,6 +727,7 @@ typedef struct IOAPIC ioapic_t;
 #define APIC_LVTT_DS		APIC_LVT_DS
 #define APIC_LVTT_MASKED	APIC_LVT_MASKED
 #define APIC_LVTT_PERIODIC	0x00020000
+#define APIC_LVTT_TSCDLT	0x00040000
 
 #define APIC_TIMER_MAX_COUNT    0xffffffff
 

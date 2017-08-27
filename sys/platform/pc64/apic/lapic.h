@@ -62,7 +62,6 @@ void	lapic_set_cpuid(int, int);
 int	lapic_config(void);
 void	lapic_enumerator_register(struct lapic_enumerator *);
 void	set_apic_timer(int);
-int	get_apic_timer_frequency(void);
 int	read_apic_timer(void);
 void	u_sleep(int);
 
