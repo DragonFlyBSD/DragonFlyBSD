@@ -86,6 +86,9 @@ static hammer2_chain_t *hammer2_combined_find(
  */
 RB_GENERATE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 
+#if 1
+#define TIMER(which)
+#else
 extern int h2timer[32];
 extern int h2last;
 extern int h2lid;
@@ -96,6 +99,7 @@ extern int h2lid;
         h2last = ticks;                                 \
 	h2lid = which;					\
 } while(0)
+#endif
 
 int
 hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2)
@@ -751,7 +755,8 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 
 		/*
 		 * 1->0 transition successful, parent spin held to prevent
-		 * new lookups.  remove chain from the parent.
+		 * new lookups, chain spinlock held to protect parent field.
+		 * Remove chain from the parent.
 		 */
 		if (chain->flags & HAMMER2_CHAIN_ONRBTREE) {
 			RB_REMOVE(hammer2_chain_tree,
@@ -1528,77 +1533,25 @@ hammer2_chain_resize(hammer2_chain_t *chain,
 }
 
 /*
- * Helper for chains already flagged as MODIFIED.  A new allocation may
- * still be required if the existing one has already been used in a de-dup.
- */
-static __inline
-int
-modified_needs_new_allocation(hammer2_chain_t *chain)
-{
-	/*
-	 * We only live-dedup data, we do not live-dedup meta-data.
-	 */
-	if (chain->bref.type != HAMMER2_BREF_TYPE_DATA &&
-	    chain->bref.type != HAMMER2_BREF_TYPE_DIRENT) {
-		return 0;
-	}
-
-	/*
-	 * If chain has no data, then there is nothing to live-dedup.
-	 */
-	if (chain->bytes == 0)
-		return 0;
-
-	return 0;
-
-#if 0
-	hammer2_io_t *dio;
-	/*
-	 * If this flag is not set the current modification has not been
-	 * recorded for dedup so a new allocation is not needed.  The
-	 * recording occurs when dirty file data is flushed from the frontend
-	 * to the backend.
-	 */
-	if (chain->flags & HAMMER2_CHAIN_DEDUP)
-		return 1;
-
-	/*
-	 * If the DEDUP flag is set we have one final line of defense to
-	 * allow re-use of a modified buffer, and that is if the DIO_INVALOK
-	 * flag is still set on the underlying DIO.  This flag is only set
-	 * for hammer2_io_new() buffers which cover the whole buffer (64KB),
-	 * and is cleared when a dedup operation actually decides to use
-	 * the buffer.
-	 */
-
-	if ((dio = chain->dio) != NULL) {
-		if (dio->refs & HAMMER2_DIO_INVALOK)
-			return 0;
-	} else {
-		dio = hammer2_io_getquick(chain->hmp, chain->bref.data_off,
-					  chain->bytes);
-		if (dio) {
-			if (dio->refs & HAMMER2_DIO_INVALOK) {
-				hammer2_io_putblk(&dio);
-				return 0;
-			}
-			hammer2_io_putblk(&dio);
-		}
-	}
-	return 1;
-#endif
-}
-
-/*
- * Set the chain modified so its data can be changed by the caller.
+ * Set the chain modified so its data can be changed by the caller, or
+ * install deduplicated data.  The caller must call this routine for each
+ * set of modifications it makes, even if the chain is already flagged
+ * MODIFIED.
  *
  * Sets bref.modify_tid to mtid only if mtid != 0.  Note that bref.modify_tid
  * is a CLC (cluster level change) field and is not updated by parent
  * propagation during a flush.
  *
- * If the caller passes a non-zero dedup_off we assign data_off to that
- * instead of allocating a ne block.  Caller must not modify the data already
- * present at the target offset.
+ *				 Dedup Handling
+ *
+ * If the DEDUPABLE flag is set in the chain the storage must be reallocated
+ * even if the chain is still flagged MODIFIED.  In this case the chain's
+ * DEDUPABLE flag will be cleared once the new storage has been assigned.
+ *
+ * If the caller passes a non-zero dedup_off we will use it to assign the
+ * new storage.  The MODIFIED flag will be *CLEARED* in this case, and
+ * DEDUPABLE will be set (NOTE: the UPDATE flag is always set).  The caller
+ * must not modify the data content upon return.
  */
 void
 hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
@@ -1637,17 +1590,16 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 	}
 
 	/*
-	 * Set MODIFIED to indicate that the chain has been modified.
+	 * Set MODIFIED to indicate that the chain has been modified.  A new
+	 * allocation is required when modifying a chain.
+	 *
 	 * Set UPDATE to ensure that the blockref is updated in the parent.
 	 *
+	 *
 	 * If MODIFIED is already set determine if we can reuse the assigned
-	 * data block or if we need a new data block.  The assigned data block
-	 * can be reused if HAMMER2_DIO_INVALOK is set on the dio.
+	 * data block or if we need a new data block.
 	 */
-	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) &&
-	    modified_needs_new_allocation(chain)) {
-		newmod = 1;
-	} else if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
+	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
 		/*
 		 * Must set modified bit.
 		 */
@@ -1668,12 +1620,12 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 		if ((chain->bref.type == HAMMER2_BREF_TYPE_DATA ||
 		     chain->bref.type == HAMMER2_BREF_TYPE_DIRENT) &&
 		    (chain->flags & HAMMER2_CHAIN_INITIAL) == 0 &&
+		    (chain->flags & HAMMER2_CHAIN_DEDUPABLE) == 0 &&
 		    HAMMER2_DEC_CHECK(chain->bref.methods) ==
 		     HAMMER2_CHECK_NONE &&
 		    chain->pmp &&
 		    chain->bref.modify_tid >
-		     chain->pmp->iroot->meta.pfs_lsnap_tid &&
-		    modified_needs_new_allocation(chain) == 0) {
+		     chain->pmp->iroot->meta.pfs_lsnap_tid) {
 			/*
 			 * Sector overwrite allowed.
 			 */
@@ -1684,6 +1636,14 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 			 */
 			newmod = 1;
 		}
+	} else if (chain->flags & HAMMER2_CHAIN_DEDUPABLE) {
+		/*
+		 * If the modified chain was registered for dedup we need
+		 * a new allocation.  This only happens for delayed-flush
+		 * chains (i.e. which run through the front-end buffer
+		 * cache).
+		 */
+		newmod = 1;
 	} else {
 		/*
 		 * Already flagged modified, no new allocation is needed.
@@ -1725,13 +1685,6 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 			 *	 allocated and the underlying DIO will
 			 *	 still be flushed.
 			 */
-#if 0
-			/* removed */
-			hammer2_io_dedup_delete(chain->hmp,
-						chain->bref.type,
-						chain->bref.data_off,
-						chain->bytes);
-#endif
 			if (dedup_off) {
 				chain->bref.data_off = dedup_off;
 				chain->bytes = 1 << (dedup_off &
@@ -1744,8 +1697,12 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 					hammer2_pfs_memory_wakeup(chain->pmp);
 				hammer2_freemap_adjust(hmp, &chain->bref,
 						HAMMER2_FREEMAP_DORECOVER);
+				atomic_set_int(&chain->flags,
+						HAMMER2_CHAIN_DEDUPABLE);
 			} else {
 				hammer2_freemap_alloc(chain, chain->bytes);
+				atomic_clear_int(&chain->flags,
+						HAMMER2_CHAIN_DEDUPABLE);
 			}
 			/* XXX failed allocation */
 		}
@@ -2189,37 +2146,95 @@ hammer2_chain_lookup_done(hammer2_chain_t *parent)
 	}
 }
 
+/*
+ * Take the locked chain and return a locked parent.  The chain remains
+ * locked on return.
+ *
+ * This function handles the lock order reversal.
+ */
 hammer2_chain_t *
-hammer2_chain_getparent(hammer2_chain_t **parentp, int how)
+hammer2_chain_getparent(hammer2_chain_t *chain, int how)
 {
-	hammer2_chain_t *oparent;
-	hammer2_chain_t *nparent;
+	hammer2_chain_t *parent;
 
 	/*
-	 * Be careful of order, oparent must be unlocked before nparent
+	 * Be careful of order, chain must be unlocked before parent
 	 * is locked below to avoid a deadlock.
 	 *
 	 * Safe access to fu->parent requires fu's core spinlock.
 	 */
-	oparent = *parentp;
-	hammer2_spin_ex(&oparent->core.spin);
-	nparent = oparent->parent;
-	if (nparent == NULL) {
-		hammer2_spin_unex(&oparent->core.spin);
+again:
+	hammer2_spin_ex(&chain->core.spin);
+	parent = chain->parent;
+	if (parent == NULL) {
+		hammer2_spin_unex(&chain->core.spin);
 		panic("hammer2_chain_getparent: no parent");
 	}
-	hammer2_chain_ref(nparent);
-	hammer2_spin_unex(&oparent->core.spin);
-	if (oparent) {
-		hammer2_chain_unlock(oparent);
-		hammer2_chain_drop(oparent);
-		oparent = NULL;
+	hammer2_chain_ref(parent);
+	hammer2_spin_unex(&chain->core.spin);
+
+	hammer2_chain_unlock(chain);
+	hammer2_chain_lock(parent, how);
+	hammer2_chain_lock(chain, how);
+
+	/*
+	 * Parent relinking races are quite common.  We have to get it right
+	 * or we will blow up the block table.
+	 */
+	if (chain->parent != parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+		goto again;
 	}
+	return parent;
+}
 
-	hammer2_chain_lock(nparent, how);
-	*parentp = nparent;
+/*
+ * Take the locked chain and return a locked parent.  The chain is unlocked
+ * and dropped.  *chainp is set to the returned parent as a convenience.
+ *
+ * This function handles the lock order reversal.
+ */
+hammer2_chain_t *
+hammer2_chain_repparent(hammer2_chain_t **chainp, int how)
+{
+	hammer2_chain_t *chain;
+	hammer2_chain_t *parent;
 
-	return (nparent);
+	/*
+	 * Be careful of order, chain must be unlocked before parent
+	 * is locked below to avoid a deadlock.
+	 *
+	 * Safe access to fu->parent requires fu's core spinlock.
+	 */
+	chain = *chainp;
+again:
+	hammer2_spin_ex(&chain->core.spin);
+	parent = chain->parent;
+	if (parent == NULL) {
+		hammer2_spin_unex(&chain->core.spin);
+		panic("hammer2_chain_getparent: no parent");
+	}
+	hammer2_chain_ref(parent);
+	hammer2_spin_unex(&chain->core.spin);
+
+	hammer2_chain_unlock(chain);
+	hammer2_chain_lock(parent, how);
+
+	/*
+	 * Parent relinking races are quite common.  We have to get it right
+	 * or we will blow up the block table.
+	 */
+	if (chain->parent != parent) {
+		hammer2_chain_lock(chain, how);
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+		goto again;
+	}
+	hammer2_chain_drop(chain);
+	*chainp = parent;
+
+	return parent;
 }
 
 /*
@@ -2325,7 +2340,7 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 			if (key_beg >= scan_beg && key_end <= scan_end)
 				break;
 		}
-		parent = hammer2_chain_getparent(parentp, how_maybe);
+		parent = hammer2_chain_repparent(parentp, how_maybe);
 	}
 again:
 
@@ -2475,7 +2490,7 @@ again:
 			  ((hammer2_key_t)1 << parent->bref.keybits);
 		if (key_beg == 0 || key_beg > key_end)
 			return (NULL);
-		parent = hammer2_chain_getparent(parentp, how_maybe);
+		parent = hammer2_chain_repparent(parentp, how_maybe);
 		goto again;
 	}
 
@@ -2663,7 +2678,7 @@ hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 			  ((hammer2_key_t)1 << parent->bref.keybits);
 		if (key_beg == 0 || key_beg > key_end)
 			return (NULL);
-		parent = hammer2_chain_getparent(parentp, how_maybe);
+		parent = hammer2_chain_repparent(parentp, how_maybe);
 	}
 
 	/*
@@ -3370,12 +3385,13 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 		KKASSERT(parent != NULL);
 		KKASSERT(parent->error == 0);
 		KKASSERT((parent->flags & HAMMER2_CHAIN_INITIAL) == 0);
-		hammer2_chain_modify(parent, mtid, 0, HAMMER2_MODIFY_OPTDATA);
+		hammer2_chain_modify(parent, mtid, 0, 0);
 
 		/*
 		 * Calculate blockmap pointer
 		 */
 		KKASSERT(chain->flags & HAMMER2_CHAIN_ONRBTREE);
+		hammer2_spin_ex(&chain->core.spin);
 		hammer2_spin_ex(&parent->core.spin);
 
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DELETED);
@@ -3446,6 +3462,7 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 					    &cache_index, chain);
 		}
 		hammer2_spin_unex(&parent->core.spin);
+		hammer2_spin_unex(&chain->core.spin);
 	} else if (chain->flags & HAMMER2_CHAIN_ONRBTREE) {
 		/*
 		 * Chain is not blockmapped but a parent is present.
@@ -3456,6 +3473,7 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 		 * synchronized, the chain's *_count_up fields contain
 		 * inode adjustment statistics which must be undone.
 		 */
+		hammer2_spin_ex(&chain->core.spin);
 		hammer2_spin_ex(&parent->core.spin);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DELETED);
 		atomic_add_int(&parent->core.live_count, -1);
@@ -3465,6 +3483,7 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 		--parent->core.chain_count;
 		chain->parent = NULL;
 		hammer2_spin_unex(&parent->core.spin);
+		hammer2_spin_unex(&chain->core.spin);
 	} else {
 		/*
 		 * Chain is not blockmapped and has no parent.  This
@@ -4503,12 +4522,9 @@ hammer2_chain_delete(hammer2_chain_t *parent, hammer2_chain_t *chain,
 	/*
 	 * Permanent deletions mark the chain as destroyed.
 	 */
-	if (flags & HAMMER2_DELETE_PERMANENT) {
+	if (flags & HAMMER2_DELETE_PERMANENT)
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DESTROY);
-	} else {
-		/* XXX might not be needed */
-		hammer2_chain_setflush(chain);
-	}
+	hammer2_chain_setflush(chain);
 }
 
 /*

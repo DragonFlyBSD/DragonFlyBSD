@@ -251,7 +251,7 @@ static int h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo,
 static void h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo);
 static void h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 			hammer2_off_t data_off, hammer2_bmap_data_t *live,
-			hammer2_bmap_data_t *bmap, int nofree);
+			hammer2_bmap_data_t *bmap);
 
 void
 hammer2_bulkfree_init(hammer2_dev_t *hmp)
@@ -579,8 +579,21 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
 			bref->keybits,
 			class, bmap->class);
 	}
-	if (bmap->linear < (int32_t)data_off + (int32_t)bytes)
+
+	/*
+	 * Just record the highest byte-granular offset for now.  Do not
+	 * match against allocations which are in multiples of whole blocks.
+	 *
+	 * Make sure that any in-block linear offset at least covers the
+	 * data range.  This can cause bmap->linear to become block-aligned.
+	 */
+	if (bytes & HAMMER2_FREEMAP_BLOCK_MASK) {
+		if (bmap->linear < (int32_t)data_off + (int32_t)bytes)
+			bmap->linear = (int32_t)data_off + (int32_t)bytes;
+	} else if (bmap->linear >= (int32_t)data_off &&
+		   bmap->linear < (int32_t)data_off + (int32_t)bytes) {
 		bmap->linear = (int32_t)data_off + (int32_t)bytes;
+	}
 
 	/*
 	 * Adjust the hammer2_bitmap_t bitmap[HAMMER2_BMAP_ELEMENTS].
@@ -681,7 +694,6 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 		 * The freemap is not used below allocator_beg or beyond
 		 * volu_size.
 		 */
-		int nofree;
 
 		if (data_off < cbinfo->hmp->voldata.allocator_beg)
 			goto next;
@@ -692,7 +704,6 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 		 * Locate the freemap leaf on the live filesystem
 		 */
 		key = (data_off & ~HAMMER2_FREEMAP_LEVEL1_MASK);
-		nofree = 0;
 
 		if (live_chain == NULL || live_chain->bref.key != key) {
 			if (live_chain) {
@@ -761,12 +772,21 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 		live = &live_chain->data->bmdata[bmapindex];
 
 		/*
+		 * Shortcut if the bitmaps match and the live linear
+		 * indicator is sane.  We can't do a perfect check of
+		 * live->linear because the only real requirement is that
+		 * if it is not block-aligned, that it not cover the space
+		 * within its current block which overlaps one of the data
+		 * ranges we scan.  We don't retain enough fine-grained
+		 * data in our scan to be able to set it exactly.
+		 *
 		 * TODO - we could shortcut this by testing that both
 		 * live->class and bmap->class are 0, and both avails are
 		 * set to HAMMER2_FREEMAP_LEVEL0_SIZE (4MB).
 		 */
 		if (bcmp(live->bitmapq, bmap->bitmapq,
-			 sizeof(bmap->bitmapq)) == 0) {
+			 sizeof(bmap->bitmapq)) == 0 &&
+		    live->linear >= bmap->linear) {
 			goto next;
 		}
 		if (hammer2_debug & 1) {
@@ -777,7 +797,7 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 		hammer2_chain_modify(live_chain, cbinfo->mtid, 0, 0);
 		live = &live_chain->data->bmdata[bmapindex];
 
-		h2_bulkfree_sync_adjust(cbinfo, data_off, live, bmap, nofree);
+		h2_bulkfree_sync_adjust(cbinfo, data_off, live, bmap);
 next:
 		data_off += HAMMER2_FREEMAP_LEVEL0_SIZE;
 		++bmap;
@@ -794,15 +814,12 @@ next:
 
 /*
  * Merge the bulkfree bitmap against the existing bitmap.
- *
- * If nofree is non-zero the merge will only mark free blocks as allocated
- * and will refuse to free any blocks.
  */
 static
 void
 h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 			hammer2_off_t data_off, hammer2_bmap_data_t *live,
-			hammer2_bmap_data_t *bmap, int nofree)
+			hammer2_bmap_data_t *bmap)
 {
 	int bindex;
 	int scount;
@@ -840,8 +857,6 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 						"transition m=00/l=01\n");
 					break;
 				case 2:	/* 10 -> 00 */
-					if (nofree)
-						break;
 					live->bitmapq[bindex] &=
 					    ~((hammer2_bitmap_t)2 << scount);
 					live->avail +=
@@ -918,43 +933,49 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 		if (live->bitmapq[bindex] != 0)
 			break;
 	}
-	if (nofree) {
-		/* do nothing */
-	} else if (bindex < 0) {
+	if (bindex < 0) {
+		/*
+		 * Completely empty, reset entire segment
+		 */
 		live->avail = HAMMER2_FREEMAP_LEVEL0_SIZE;
 		live->class = 0;
 		live->linear = 0;
 		++cbinfo->count_l0cleans;
-#if 0
-		hammer2_io_dedup_assert(cbinfo->hmp,
-				     data_off |
-				     HAMMER2_FREEMAP_LEVEL0_RADIX,
-				     HAMMER2_FREEMAP_LEVEL0_SIZE);
-#endif
 	} else if (bindex < 7) {
-		int32_t nlinear;
-
-		++bindex;
-
-		if (live->linear > bindex * HAMMER2_FREEMAP_BLOCK_SIZE) {
-			nlinear = bindex * HAMMER2_FREEMAP_BLOCK_SIZE;
-#if 0
-			hammer2_io_dedup_assert(cbinfo->hmp,
-					     data_off + nlinear,
-					     live->linear - nlinear);
-#endif
-			live->linear = nlinear;
-			++cbinfo->count_linadjusts;
-		}
-
 		/*
-		 * XXX this fine-grained measure still has some issues.
+		 * Partially full, bitmapq[bindex] != 0.  The live->linear
+		 * offset can legitimately be just about anything, but
+		 * our bulkfree pass doesn't record enough information to
+		 * set it exactly.  Just make sure that it is set to a
+		 * safe value that also works in our match code above (the
+		 * bcmp and linear test).
+		 *
+		 * We cannot safely leave live->linear at a sub-block offset
+		 * unless it is already in the same block as bmap->linear.
+		 *
+		 * If it is not in the same block, we cannot assume that
+		 * we can set it to bmap->linear on a sub-block boundary,
+		 * because the live system could have bounced it around.
+		 * In that situation we satisfy our bcmp/skip requirement
+		 * above by setting it to the nearest higher block boundary.
+		 * This alignment effectively kills any partial allocation it
+		 * might have been tracking before.
 		 */
-		if (live->linear < bindex * HAMMER2_FREEMAP_BLOCK_SIZE) {
-			live->linear = bindex * HAMMER2_FREEMAP_BLOCK_SIZE;
+		if (live->linear < bmap->linear &&
+		    ((live->linear ^ bmap->linear) &
+		     ~HAMMER2_FREEMAP_BLOCK_MASK) == 0) {
+			live->linear = bmap->linear;
+			++cbinfo->count_linadjusts;
+		} else {
+			live->linear =
+				(bmap->linear + HAMMER2_FREEMAP_BLOCK_MASK) &
+				~HAMMER2_FREEMAP_BLOCK_MASK;
 			++cbinfo->count_linadjusts;
 		}
 	} else {
+		/*
+		 * Completely full, effectively disable the linear iterator
+		 */
 		live->linear = HAMMER2_SEGSIZE;
 	}
 

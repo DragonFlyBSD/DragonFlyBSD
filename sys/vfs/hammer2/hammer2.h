@@ -378,7 +378,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_MODIFIED		0x00000001	/* dirty chain data */
 #define HAMMER2_CHAIN_ALLOCATED		0x00000002	/* kmalloc'd chain */
 #define HAMMER2_CHAIN_DESTROY		0x00000004
-#define HAMMER2_CHAIN_UNUSED0008	0x00000008
+#define HAMMER2_CHAIN_DEDUPABLE		0x00000008	/* registered w/dedup */
 #define HAMMER2_CHAIN_DELETED		0x00000010	/* deleted chain */
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial create */
 #define HAMMER2_CHAIN_UPDATE		0x00000040	/* need parent update */
@@ -1459,7 +1459,8 @@ hammer2_chain_t *hammer2_chain_get(hammer2_chain_t *parent, int generation,
 				hammer2_blockref_t *bref);
 hammer2_chain_t *hammer2_chain_lookup_init(hammer2_chain_t *parent, int flags);
 void hammer2_chain_lookup_done(hammer2_chain_t *parent);
-hammer2_chain_t *hammer2_chain_getparent(hammer2_chain_t **parentp, int how);
+hammer2_chain_t *hammer2_chain_getparent(hammer2_chain_t *chain, int how);
+hammer2_chain_t *hammer2_chain_repparent(hammer2_chain_t **chainp, int how);
 hammer2_chain_t *hammer2_chain_lookup(hammer2_chain_t **parentp,
 				hammer2_key_t *key_nextp,
 				hammer2_key_t key_beg, hammer2_key_t key_end,

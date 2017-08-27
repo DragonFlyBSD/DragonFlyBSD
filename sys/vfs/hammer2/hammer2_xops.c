@@ -505,18 +505,15 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		/*
 		 * Find ip's direct parent chain.
 		 */
-		parent = hammer2_inode_chain(ip, thr->clindex,
-					     HAMMER2_RESOLVE_ALWAYS);
-		if (parent)
-			hammer2_chain_getparent(&parent,
-						HAMMER2_RESOLVE_ALWAYS);
-		if (parent == NULL) {
-			error = EIO;
-			goto done;
-		}
 		chain = hammer2_inode_chain(ip, thr->clindex,
 					    HAMMER2_RESOLVE_ALWAYS);
 		if (chain == NULL) {
+			error = EIO;
+			parent = NULL;
+			goto done;
+		}
+		parent = hammer2_chain_getparent(chain, HAMMER2_RESOLVE_ALWAYS);
+		if (parent == NULL) {
 			error = EIO;
 			goto done;
 		}

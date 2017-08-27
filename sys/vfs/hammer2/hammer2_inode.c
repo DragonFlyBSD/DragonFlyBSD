@@ -1459,34 +1459,19 @@ hammer2_inode_xop_destroy(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	 */
 	ip = xop->head.ip1;
 	pmp = ip->pmp;
-	chain = NULL;
 
-again:
-	parent = hammer2_inode_chain(ip, thr->clindex, HAMMER2_RESOLVE_ALWAYS);
-	if (parent)
-		hammer2_chain_getparent(&parent, HAMMER2_RESOLVE_ALWAYS);
+	chain = hammer2_inode_chain(ip, thr->clindex, HAMMER2_RESOLVE_ALWAYS);
+	if (chain == NULL) {
+		parent = NULL;
+		error = EIO;
+		goto done;
+	}
+	parent = hammer2_chain_getparent(chain, HAMMER2_RESOLVE_ALWAYS);
 	if (parent == NULL) {
 		error = EIO;
 		goto done;
 	}
-	chain = hammer2_inode_chain(ip, thr->clindex, HAMMER2_RESOLVE_ALWAYS);
-	if (chain == NULL) {
-		error = EIO;
-		goto done;
-	}
-
-	/*
-	 * The inode chain is unlocked so the parent can change inbetween
-	 * the two calls.  Detect the situation and retry.  This case can
-	 * occur quite often under heavy lods.
-	 */
-	if (chain->parent != parent) {
-		hammer2_chain_unlock(parent);
-		hammer2_chain_drop(parent);
-		hammer2_chain_unlock(chain);
-		hammer2_chain_drop(chain);
-		goto again;
-	}
+	KKASSERT(chain->parent == parent);
 
 	/*
 	 * We have the correct parent, we can issue the deletion.

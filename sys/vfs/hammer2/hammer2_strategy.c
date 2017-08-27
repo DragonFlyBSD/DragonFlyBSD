@@ -95,6 +95,9 @@ static void hammer2_strategy_read_completion(hammer2_chain_t *chain,
 static hammer2_off_t hammer2_dedup_lookup(hammer2_dev_t *hmp,
 			char **datap, int pblksize);
 
+#if 1
+#define TIMER(which)
+#else
 int h2timer[32];
 int h2last;
 int h2lid;
@@ -105,6 +108,7 @@ int h2lid;
 	h2last = ticks;					\
 	h2lid = which;					\
 } while(0)
+#endif
 
 int
 hammer2_vop_strategy(struct vop_strategy_args *ap)
@@ -1412,18 +1416,6 @@ hammer2_dedup_record(hammer2_chain_t *chain, hammer2_io_t *dio, char *data)
 			return;
 	}
 
-#if 0
-	/*
-	 * Only committed data can be recorded for de-duplication, otherwise
-	 * the contents may change out from under us.  So, on read if the
-	 * chain is not modified, and on flush when the chain is committed.
-	 */
-	if ((chain->flags &
-	    (HAMMER2_CHAIN_MODIFIED | HAMMER2_CHAIN_INITIAL)) == 0) {
-		return;
-	}
-#endif
-
 	hmp = chain->hmp;
 
 	switch(HAMMER2_DEC_CHECK(chain->bref.methods)) {
@@ -1465,6 +1457,9 @@ hammer2_dedup_record(hammer2_chain_t *chain, hammer2_io_t *dio, char *data)
 		 */
 		return;
 	}
+
+	atomic_set_int(&chain->flags, HAMMER2_CHAIN_DEDUPABLE);
+
 	dedup = &hmp->heur_dedup[crc & (HAMMER2_DEDUP_HEUR_MASK & ~3)];
 	for (i = 0; i < 4; ++i) {
 		if (dedup[i].data_crc == crc) {
@@ -1498,6 +1493,11 @@ hammer2_dedup_record(hammer2_chain_t *chain, hammer2_io_t *dio, char *data)
 	mask = hammer2_dedup_mask(dio, chain->bref.data_off, chain->bytes);
 	atomic_set_64(&dio->dedup_valid, mask);
 
+#if 0
+	/*
+	 * XXX removed. MODIFIED is an integral part of the flush code,
+	 * lets not just clear it
+	 */
 	/*
 	 * Once we record the dedup the chain must be marked clean to
 	 * prevent reuse of the underlying block.   Remember that this
@@ -1511,6 +1511,7 @@ hammer2_dedup_record(hammer2_chain_t *chain, hammer2_io_t *dio, char *data)
 		if (chain->pmp)
 			hammer2_pfs_memory_wakeup(chain->pmp);
 	}
+#endif
 }
 
 static

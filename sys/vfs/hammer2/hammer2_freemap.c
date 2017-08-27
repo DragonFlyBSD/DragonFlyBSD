@@ -586,11 +586,11 @@ hammer2_bmap_alloc(hammer2_dev_t *hmp, hammer2_bmap_data_t *bmap,
 	 * once we pack to the boundary.  We adjust it after a bitmap
 	 * allocation only for sub-16KB allocations (so the perfectly good
 	 * previous value can still be used for fragments when 16KB+
-	 * allocations are made).
+	 * allocations are made inbetween fragmentary allocations).
 	 *
 	 * Beware of hardware artifacts when bmradix == 64 (intermediate
 	 * result can wind up being '1' instead of '0' if hardware masks
-	 * bit-count & 31).
+	 * bit-count & 63).
 	 *
 	 * NOTE: j needs to be even in the j= calculation.  As an artifact
 	 *	 of the /2 division, our bitmask has to clear bit 0.
