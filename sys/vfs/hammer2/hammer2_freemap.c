@@ -400,7 +400,7 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 	}
 
 	/*
-	 * Scan 2MB entries.
+	 * Scan 4MB entries.
 	 */
 	if (error == 0) {
 		hammer2_bmap_data_t *bmap;
@@ -988,7 +988,7 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref,
 
 	/*
 	 * [re]load the bmap and bitmap pointers.  Each bmap entry covers
-	 * a 2MB swath.  The bmap itself (LEVEL1) covers 2GB.
+	 * a 4MB swath.  The bmap itself (LEVEL1) covers 2GB.
 	 *
 	 * Be sure to reset the linear iterator to ensure that the adjustment
 	 * is not ignored.

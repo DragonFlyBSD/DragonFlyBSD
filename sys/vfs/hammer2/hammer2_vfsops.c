@@ -2329,7 +2329,10 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 		if (ip->flags & (HAMMER2_INODE_RESIZED |
 				 HAMMER2_INODE_MODIFIED)) {
 			hammer2_inode_lock(ip, 0);
-			hammer2_inode_chain_sync(ip);
+			if (ip->flags & (HAMMER2_INODE_RESIZED |
+					 HAMMER2_INODE_MODIFIED)) {
+				hammer2_inode_chain_sync(ip);
+			}
 			hammer2_inode_unlock(ip);
 		}
 	}

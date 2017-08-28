@@ -952,6 +952,8 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		 * blocks at this point.  If we don't do this, no major harm
 		 * will be done but the empty indirect blocks will stay in
 		 * the topology and make it a bit messy.
+		 *
+		 * Do not delete internal freemap nodes.
 		 */
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT &&
 		    chain->core.live_count == 0 &&
@@ -962,7 +964,8 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 			hammer2_chain_countbrefs(chain, base, count);
 		}
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT &&
-		    chain->core.live_count == 0) {
+		    chain->core.live_count == 0 &&
+		    RB_EMPTY(&chain->core.rbtree)) {
 #if 0
 			kprintf("DELETE CHAIN %016jx.%02x %016jx/%d refs=%d\n",
 				chain->bref.data_off, chain->bref.type,

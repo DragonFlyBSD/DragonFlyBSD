@@ -2335,8 +2335,7 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 		scan_beg = parent->bref.key;
 		scan_end = scan_beg +
 			   ((hammer2_key_t)1 << parent->bref.keybits) - 1;
-		if (parent->bref.type != HAMMER2_BREF_TYPE_INDIRECT ||
-		    (parent->flags & HAMMER2_CHAIN_DELETED) == 0) {
+		if ((parent->flags & HAMMER2_CHAIN_DELETED) == 0) {
 			if (key_beg >= scan_beg && key_end <= scan_end)
 				break;
 		}
@@ -3800,10 +3799,15 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 		 *
 		 *	 (note reversed logic for this one)
 		 */
-		if (chain->flags & HAMMER2_CHAIN_DELETED) {
+		if (chain->parent != parent ||
+		    (chain->flags & HAMMER2_CHAIN_DELETED)) {
 			hammer2_chain_unlock(chain);
 			hammer2_chain_drop(chain);
-			goto next_key;
+			kprintf("hammer2_chain_create_indirect "
+				"RETRY (%p,%p)->%p %08x\n",
+				parent, chain->parent, chain, chain->flags);
+			hammer2_spin_ex(&parent->core.spin);
+			continue;
 		}
 
 		/*
@@ -3824,7 +3828,6 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 		KKASSERT(parent->refs > 0);
 		chain = NULL;
 		base = NULL;	/* safety */
-next_key:
 		hammer2_spin_ex(&parent->core.spin);
 next_key_spinlocked:
 		if (--maxloops == 0)
