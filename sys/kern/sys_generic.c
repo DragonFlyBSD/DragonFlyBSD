@@ -1436,7 +1436,7 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 					    kevp[i].filter != EVFILT_WRITE &&
 					    kevp[i].data != EOPNOTSUPP &&
 					    kevp[i].data != ENODEV) {
-						if (count_res == 0)
+						if (count_res)
 							++*res;
 						pfd->revents |= POLLERR;
 					}
