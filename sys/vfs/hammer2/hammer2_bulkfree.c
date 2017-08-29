@@ -371,7 +371,8 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 		 * the dedup heuristic too.
 		 */
 		cbinfo_bmap_init(&cbinfo, size);
-		bzero(cbinfo.dedup, sizeof(*cbinfo.dedup));
+		bzero(cbinfo.dedup, sizeof(*cbinfo.dedup) *
+				    HAMMER2_DEDUP_HEUR_SIZE);
 		incr = size / HAMMER2_FREEMAP_LEVELN_PSIZE *
 		       HAMMER2_FREEMAP_LEVEL1_SIZE;
 		if (hmp->voldata.volu_size - cbinfo.sbase < incr)
