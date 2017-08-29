@@ -965,9 +965,12 @@ select_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 				FD_CLR(fd, fdp);
 				++*events;
 
-				if (nseldebug)
-					kprintf("select fd %d filter %d serial %d\n",
-						fd, filter, skap->lwp->lwp_kqueue_serial);
+				if (nseldebug) {
+					kprintf("select fd %d filter %d "
+					    "serial %ju\n", fd, filter,
+					    (uintmax_t)
+					    skap->lwp->lwp_kqueue_serial);
+				}
 			}
 			++skap->proc_fds;
 			if (*events == maxevents)
@@ -993,15 +996,16 @@ select_copyout(void *arg, struct kevent *kevp, int count, int *res)
 		/*
 		 * Filter out and delete spurious events
 		 */
-		if ((u_int)(uintptr_t)kevp[i].udata !=
+		if ((uint64_t)(uintptr_t)kevp[i].udata !=
 		    skap->lwp->lwp_kqueue_serial) {
 			kev = kevp[i];
 			kev.flags = EV_DISABLE|EV_DELETE;
 			kqueue_register(&skap->lwp->lwp_kqueue, &kev);
-			if (nseldebug)
-				kprintf("select fd %ju mismatched serial %d\n",
-					(uintmax_t)kevp[i].ident,
-					skap->lwp->lwp_kqueue_serial);
+			if (nseldebug) {
+				kprintf("select fd %ju mismatched serial %ju\n",
+				    (uintmax_t)kevp[i].ident,
+				    (uintmax_t)skap->lwp->lwp_kqueue_serial);
+			}
 			continue;
 		}
 
@@ -1355,9 +1359,10 @@ poll_copyin(void *arg, struct kevent *kevp, int maxevents, int *events)
 		}
 
 		if (nseldebug) {
-			kprintf("poll index %d/%d fd %d events %08x serial %d\n",
-				pkap->pfds, pkap->nfds-1, pfd->fd, pfd->events,
-				pkap->lwp->lwp_kqueue_serial);
+			kprintf("poll index %d/%d fd %d events %08x "
+			    "serial %ju\n", pkap->pfds, pkap->nfds-1,
+			    pfd->fd, pfd->events,
+			    (uintmax_t)pkap->lwp->lwp_kqueue_serial);
 		}
 
 		++pkap->pfds;
@@ -1375,7 +1380,7 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 	struct kevent kev;
 	int count_res;
 	int i;
-	u_int pi;
+	uint64_t pi;
 
 	pkap = (struct poll_kevent_copyin_args *)arg;
 
@@ -1385,16 +1390,18 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 		 * We can easily tell if the serial number is incorrect
 		 * by checking whether the extracted index is out of range.
 		 */
-		pi = (u_int)(uintptr_t)kevp[i].udata -
-		     (u_int)pkap->lwp->lwp_kqueue_serial;
+		pi = (uint64_t)(uintptr_t)kevp[i].udata -
+		    pkap->lwp->lwp_kqueue_serial;
 
 		if (pi >= pkap->nfds) {
 			kev = kevp[i];
 			kev.flags = EV_DISABLE|EV_DELETE;
 			kqueue_register(&pkap->lwp->lwp_kqueue, &kev);
-			if (nseldebug)
-				kprintf("poll index %d out of range against serial %d\n",
-					pi, pkap->lwp->lwp_kqueue_serial);
+			if (nseldebug) {
+				kprintf("poll index %ju out of range against "
+				    "serial %ju\n", (uintmax_t)pi,
+				    (uintmax_t)pkap->lwp->lwp_kqueue_serial);
+			}
 			continue;
 		}
 		pfd = &pkap->fds[pi];
@@ -1443,9 +1450,9 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 					break;
 				}
 				if (nseldebug) {
-					kprintf("poll index %d fd %d "
+					kprintf("poll index %ju fd %d "
 						"filter %d error %jd\n",
-						pi, pfd->fd,
+						(uintmax_t)pi, pfd->fd,
 						kevp[i].filter,
 						(intmax_t)kevp[i].data);
 				}
@@ -1505,16 +1512,18 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 			}
 
 			if (nseldebug) {
-				kprintf("poll index %d/%d fd %d revents %08x\n",
-					pi, pkap->nfds, pfd->fd, pfd->revents);
+				kprintf("poll index %ju/%d fd %d "
+				    "revents %08x\n", (uintmax_t)pi, pkap->nfds,
+				    pfd->fd, pfd->revents);
 			}
 
 			if (count_res && pfd->revents)
 				++*res;
 		} else {
 			if (nseldebug) {
-				kprintf("poll index %d mismatch %ju/%d\n",
-					pi, (uintmax_t)kevp[i].ident, pfd->fd);
+				kprintf("poll index %ju mismatch %ju/%d\n",
+				    (uintmax_t)pi, (uintmax_t)kevp[i].ident,
+				    pfd->fd);
 			}
 		}
 	}

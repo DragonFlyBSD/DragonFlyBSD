@@ -225,7 +225,7 @@ struct lwp {
 	struct thread	*lwp_thread;	/* backpointer to proc's thread */
 	void		*lwp_unused01;	/* for future fields */
 	struct kqueue	lwp_kqueue;	/* for select/poll */
-	u_int		lwp_kqueue_serial;
+	uint64_t	lwp_kqueue_serial; /* for select/poll */
 	struct lwkt_token lwp_token;	/* per-lwp token for signal/state */
 	struct spinlock lwp_spin;	/* spinlock for signal handling */
 	void		*lwp_reserveds1; /* reserved for lwp_saveusp */
