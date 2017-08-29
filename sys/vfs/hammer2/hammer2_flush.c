@@ -1303,6 +1303,8 @@ hammer2_inode_xop_flush(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	vn_lock(hmp->devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_FSYNC(hmp->devvp, MNT_WAIT, 0);
 	vn_unlock(hmp->devvp);
+	if (error)
+		kprintf("error %d cannot sync %s\n", error, hmp->devrepname);
 
 	/*
 	 * The flush code sets CHAIN_VOLUMESYNC to indicate that the

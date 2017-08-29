@@ -1554,7 +1554,7 @@ hammer2_dedup_lookup(hammer2_dev_t *hmp, char **datap, int pblksize)
 			continue;
 		if ((1 << (int)(off & HAMMER2_OFF_MASK_RADIX)) != pblksize)
 			continue;
-		dio = hammer2_io_getquick(hmp, off, pblksize, 0);
+		dio = hammer2_io_getquick(hmp, off, pblksize);
 		if (dio) {
 			dtmp = hammer2_io_data(dio, off),
 			mask = hammer2_dedup_mask(dio, off, pblksize);

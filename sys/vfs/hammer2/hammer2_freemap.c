@@ -670,9 +670,12 @@ success:
 #endif
 
 		if ((bmap->bitmapq[i] & pbmmask) == 0) {
-			hammer2_io_newq(hmp, HAMMER2_BREF_TYPE_FREEMAP_LEAF,
+			hammer2_io_t *dio;
+
+			hammer2_io_newnz(hmp, class >> 8,
 					(*basep + (offset & ~pmask)) |
-					pradix, psize);
+					pradix, psize, &dio);
+			hammer2_io_putblk(&dio);
 		}
 	}
 

@@ -122,17 +122,18 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 	 * imploding.
 	 */
 	while ((doabort & HAMMER2_BULK_ABORT) == 0 &&
-	       hammer2_chain_scan(parent, &chain, &bref, &first,
-				  &cache_index,
-				  HAMMER2_LOOKUP_NODATA |
-				  HAMMER2_LOOKUP_SHARED) != NULL) {
+		hammer2_chain_scan(parent, &chain, &bref, &first,
+				   &cache_index,
+				   HAMMER2_LOOKUP_NODATA |
+				   HAMMER2_LOOKUP_SHARED) != NULL) {
 		/*
 		 * Process bref, chain is only non-NULL if the bref
 		 * might be recursable (its possible that we sometimes get
 		 * a non-NULL chain where the bref cannot be recursed).
 		 */
 #if 0
-		kprintf("SCAN %016jx\n", bref.data_off);
+		kprintf("SCAN %p/%p %016jx.%02x\n",
+			parent, chain, bref.data_off, bref.type);
 		int xerr = tsleep(&info->pri, PCATCH, "slp", hz / 10);
 		if (xerr == EINTR || xerr == ERESTART) {
 			doabort |= HAMMER2_BULK_ABORT;
@@ -251,7 +252,7 @@ static int h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo,
 static void h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo);
 static void h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 			hammer2_off_t data_off, hammer2_bmap_data_t *live,
-			hammer2_bmap_data_t *bmap);
+			hammer2_bmap_data_t *bmap, hammer2_key_t alloc_base);
 
 void
 hammer2_bulkfree_init(hammer2_dev_t *hmp)
@@ -361,8 +362,16 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 		/*
 		 * We have enough ram to represent (incr) bytes of storage.
 		 * Each 64KB of ram represents 2GB of storage.
+		 *
+		 * We must also clean out our de-duplication heuristic for
+		 * each (incr) bytes of storage, otherwise we wind up not
+		 * scanning meta-data for later areas of storage because
+		 * they had already been scanned in earlier areas of storage.
+		 * Since the ranging is different, we have to restart
+		 * the dedup heuristic too.
 		 */
 		cbinfo_bmap_init(&cbinfo, size);
+		bzero(cbinfo.dedup, sizeof(*cbinfo.dedup));
 		incr = size / HAMMER2_FREEMAP_LEVELN_PSIZE *
 		       HAMMER2_FREEMAP_LEVEL1_SIZE;
 		if (hmp->voldata.volu_size - cbinfo.sbase < incr)
@@ -797,7 +806,10 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 		hammer2_chain_modify(live_chain, cbinfo->mtid, 0, 0);
 		live = &live_chain->data->bmdata[bmapindex];
 
-		h2_bulkfree_sync_adjust(cbinfo, data_off, live, bmap);
+		h2_bulkfree_sync_adjust(cbinfo, data_off, live, bmap,
+					live_chain->bref.key +
+					bmapindex *
+					HAMMER2_FREEMAP_LEVEL0_SIZE);
 next:
 		data_off += HAMMER2_FREEMAP_LEVEL0_SIZE;
 		++bmap;
@@ -819,7 +831,7 @@ static
 void
 h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 			hammer2_off_t data_off, hammer2_bmap_data_t *live,
-			hammer2_bmap_data_t *bmap)
+			hammer2_bmap_data_t *bmap, hammer2_key_t alloc_base)
 {
 	int bindex;
 	int scount;
@@ -937,6 +949,10 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 		/*
 		 * Completely empty, reset entire segment
 		 */
+#if 0
+		kprintf("hammer2: cleanseg %016jx.%04x (%d)\n",
+			alloc_base, live->class, live->avail);
+#endif
 		live->avail = HAMMER2_FREEMAP_LEVEL0_SIZE;
 		live->class = 0;
 		live->linear = 0;

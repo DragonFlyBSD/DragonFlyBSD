@@ -106,7 +106,6 @@
 #include "hammer2_ioctl.h"
 
 struct hammer2_io;
-struct hammer2_iocb;
 struct hammer2_chain;
 struct hammer2_cluster;
 struct hammer2_inode;
@@ -240,7 +239,6 @@ typedef uint32_t hammer2_xid_t;
 RB_HEAD(hammer2_chain_tree, hammer2_chain);
 TAILQ_HEAD(h2_flush_list, hammer2_chain);
 TAILQ_HEAD(h2_core_list, hammer2_chain);
-TAILQ_HEAD(h2_iocb_list, hammer2_iocb);
 
 #define CHAIN_CORE_DELETE_BMAP_ENTRIES	\
 	(HAMMER2_PBUFSIZE / sizeof(hammer2_blockref_t) / sizeof(uint32_t))
@@ -262,34 +260,6 @@ typedef struct hammer2_chain_core hammer2_chain_core_t;
 RB_HEAD(hammer2_io_tree, hammer2_io);
 
 /*
- * IOCB - IO callback (into chain, cluster, or manual request)
- */
-struct hammer2_iocb {
-	TAILQ_ENTRY(hammer2_iocb) entry;
-	void (*callback)(struct hammer2_iocb *iocb);
-	struct hammer2_io	*dio;
-	struct hammer2_chain	*chain;
-	void			*ptr;
-	off_t			lbase;
-	int			lsize;
-	uint32_t		flags;
-	int			error;
-	int			btype;
-};
-
-typedef struct hammer2_iocb hammer2_iocb_t;
-
-#define HAMMER2_IOCB_INTERLOCK	0x00000001
-#define HAMMER2_IOCB_ONQ	0x00000002
-#define HAMMER2_IOCB_DONE	0x00000004
-#define HAMMER2_IOCB_INPROG	0x00000008
-#define HAMMER2_IOCB_UNUSED10	0x00000010
-#define HAMMER2_IOCB_QUICK	0x00010000
-#define HAMMER2_IOCB_ZERO	0x00020000
-#define HAMMER2_IOCB_READ	0x00040000
-#define HAMMER2_IOCB_WAKEUP	0x00080000
-
-/*
  * DIO - Management structure wrapping system buffer cache.
  *
  * HAMMER2 uses an I/O abstraction that allows it to cache and manipulate
@@ -298,8 +268,6 @@ typedef struct hammer2_iocb hammer2_iocb_t;
  */
 struct hammer2_io {
 	RB_ENTRY(hammer2_io) rbnode;	/* indexed by device offset */
-	struct h2_iocb_list iocbq;
-	struct spinlock spin;
 	struct hammer2_dev *hmp;
 	struct buf	*bp;
 	off_t		pbase;
@@ -308,6 +276,8 @@ struct hammer2_io {
 	int		act;		/* activity */
 	int		btype;		/* approximate BREF_TYPE_* */
 	int		ticks;
+	int		error;
+	int		unused01;
 	uint64_t	dedup_valid;	/* valid for dedup operation */
 	uint64_t	dedup_alloc;	/* allocated / de-dupable */
 };
@@ -613,7 +583,6 @@ struct hammer2_cluster {
 	int			nchains;
 	int			error;		/* error code valid on lock */
 	int			focus_index;
-	hammer2_iocb_t		iocb;
 	hammer2_chain_t		*focus;		/* current focus (or mod) */
 	hammer2_cluster_item_t	array[HAMMER2_MAXCLUSTER];
 };
@@ -1538,35 +1507,27 @@ void hammer2_io_putblk(hammer2_io_t **diop);
 void hammer2_io_inval(hammer2_io_t *dio, hammer2_off_t data_off, u_int bytes);
 void hammer2_io_cleanup(hammer2_dev_t *hmp, struct hammer2_io_tree *tree);
 char *hammer2_io_data(hammer2_io_t *dio, off_t lbase);
-hammer2_io_t *hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize,
-				int notgood);
-void hammer2_io_getblk(hammer2_dev_t *hmp, off_t lbase, int lsize,
-				hammer2_iocb_t *iocb);
+hammer2_io_t *hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase,
+				int lsize, int op);
 void hammer2_io_dedup_set(hammer2_dev_t *hmp, hammer2_blockref_t *bref);
 void hammer2_io_dedup_delete(hammer2_dev_t *hmp, uint8_t btype,
 				hammer2_off_t data_off, u_int bytes);
 void hammer2_io_dedup_assert(hammer2_dev_t *hmp, hammer2_off_t data_off,
 				u_int bytes);
-void hammer2_io_complete(hammer2_iocb_t *iocb);
 void hammer2_io_callback(struct bio *bio);
-void hammer2_iocb_wait(hammer2_iocb_t *iocb);
 int hammer2_io_new(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 				hammer2_io_t **diop);
 int hammer2_io_newnz(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 				hammer2_io_t **diop);
-void hammer2_io_newq(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize);
 int hammer2_io_bread(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 				hammer2_io_t **diop);
+hammer2_io_t *hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize);
 void hammer2_io_bawrite(hammer2_io_t **diop);
 void hammer2_io_bdwrite(hammer2_io_t **diop);
 int hammer2_io_bwrite(hammer2_io_t **diop);
-int hammer2_io_isdirty(hammer2_io_t *dio);
 void hammer2_io_setdirty(hammer2_io_t *dio);
 void hammer2_io_brelse(hammer2_io_t **diop);
 void hammer2_io_bqrelse(hammer2_io_t **diop);
-int hammer2_io_crc_good(hammer2_chain_t *chain, uint64_t *maskp);
-void hammer2_io_crc_setmask(hammer2_io_t *dio, uint64_t mask);
-void hammer2_io_crc_clrmask(hammer2_io_t *dio, uint64_t mask);
 
 /*
  * hammer2_thread.c

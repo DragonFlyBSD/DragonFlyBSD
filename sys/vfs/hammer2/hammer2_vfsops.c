@@ -1691,7 +1691,12 @@ again:
 	if ((devvp = hmp->devvp) != NULL) {
 		ronly = hmp->ronly;
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
+		kprintf("hammer2_unmount(A): devvp %s rbdirty %p ronly=%d\n",
+			hmp->devrepname, RB_ROOT(&devvp->v_rbdirty_tree),
+			ronly);
 		vinvalbuf(devvp, (ronly ? 0 : V_SAVE), 0, 0);
+		kprintf("hammer2_unmount(B): devvp %s rbdirty %p\n",
+			hmp->devrepname, RB_ROOT(&devvp->v_rbdirty_tree));
 		hmp->devvp = NULL;
 		VOP_CLOSE(devvp, (ronly ? FREAD : FREAD|FWRITE), NULL);
 		vn_unlock(devvp);
