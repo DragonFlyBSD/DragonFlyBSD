@@ -62,7 +62,7 @@ static void hammer2_freemap_init(hammer2_dev_t *hmp,
 			hammer2_key_t key, hammer2_chain_t *chain);
 static int hammer2_bmap_alloc(hammer2_dev_t *hmp,
 			hammer2_bmap_data_t *bmap, uint16_t class,
-			int n, int radix, hammer2_key_t *basep);
+			int n, int sub_key, int radix, hammer2_key_t *basep);
 static int hammer2_freemap_iterate(hammer2_chain_t **parentp,
 			hammer2_chain_t **chainp,
 			hammer2_fiterate_t *iter);
@@ -447,7 +447,9 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 			    (bmap->class == 0 || bmap->class == class)) {
 				base_key = key + n * l0size;
 				error = hammer2_bmap_alloc(hmp, bmap,
-							   class, n, radix,
+							   class, n,
+							   (int)bref->key,
+							   radix,
 							   &base_key);
 				if (error != ENOSPC) {
 					key = base_key;
@@ -479,7 +481,9 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 			    (bmap->class == 0 || bmap->class == class)) {
 				base_key = key + n * l0size;
 				error = hammer2_bmap_alloc(hmp, bmap,
-							   class, n, radix,
+							   class, n,
+							   (int)bref->key,
+							   radix,
 							   &base_key);
 				if (error != ENOSPC) {
 					key = base_key;
@@ -544,17 +548,23 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
  * Allocate (1<<radix) bytes from the bmap whos base data offset is (*basep).
  *
  * If the linear iterator is mid-block we use it directly (the bitmap should
- * already be marked allocated), otherwise we search for a block in the bitmap
- * that fits the allocation request.
+ * already be marked allocated), otherwise we search for a block in the
+ * bitmap that fits the allocation request.
  *
  * A partial bitmap allocation sets the minimum bitmap granularity (16KB)
  * to fully allocated and adjusts the linear allocator to allow the
  * remaining space to be allocated.
+ *
+ * sub_key is the lower 32 bits of the chain->bref.key for the chain whos
+ * bref is being allocated.  If the radix represents an allocation >= 16KB
+ * (aka HAMMER2_FREEMAP_BLOCK_RADIX) we try to use this key to select the
+ * blocks directly out of the bmap.
  */
 static
 int
 hammer2_bmap_alloc(hammer2_dev_t *hmp, hammer2_bmap_data_t *bmap,
-		   uint16_t class, int n, int radix, hammer2_key_t *basep)
+		   uint16_t class, int n, int sub_key,
+		   int radix, hammer2_key_t *basep)
 {
 	size_t size;
 	size_t bgsize;
@@ -602,6 +612,10 @@ hammer2_bmap_alloc(hammer2_dev_t *hmp, hammer2_bmap_data_t *bmap,
 	    HAMMER2_FREEMAP_BLOCK_SIZE &&
 	    (bmap->linear & HAMMER2_FREEMAP_BLOCK_MASK) &&
 	    bmap->linear < HAMMER2_SEGSIZE) {
+		/*
+		 * Use linear iterator if it is not block-aligned to avoid
+		 * wasting space.
+		 */
 		KKASSERT(bmap->linear >= 0 &&
 			 bmap->linear + size <= HAMMER2_SEGSIZE &&
 			 (bmap->linear & (HAMMER2_ALLOC_MIN - 1)) == 0);
@@ -614,6 +628,57 @@ hammer2_bmap_alloc(hammer2_dev_t *hmp, hammer2_bmap_data_t *bmap,
 		bmmask <<= j;
 		bmap->linear = offset + size;
 	} else {
+		/*
+		 * Try to index a starting point based on sub_key.  This
+		 * attempts to restore sequential block ordering on-disk
+		 * whenever possible, even if data is committed out of
+		 * order.
+		 *
+		 * i - Index bitmapq[], full data range represented is
+		 *     HAMMER2_BMAP_SIZE.
+		 *
+		 * j - Index within bitmapq[i], full data range represented is
+		 *     HAMMER2_BMAP_INDEX_SIZE.
+		 *
+		 * WARNING!
+		 */
+		i = -1;
+		j = -1;
+
+		switch(class >> 8) {
+		case HAMMER2_BREF_TYPE_DATA:
+			if (radix >= HAMMER2_FREEMAP_BLOCK_RADIX) {
+				i = (sub_key & HAMMER2_BMAP_MASK) /
+				    (HAMMER2_BMAP_SIZE / HAMMER2_BMAP_ELEMENTS);
+				j = (sub_key & HAMMER2_BMAP_INDEX_MASK) /
+				    (HAMMER2_BMAP_INDEX_SIZE /
+				     HAMMER2_BMAP_BLOCKS_PER_ELEMENT);
+				j = j * 2;
+			}
+			break;
+		case HAMMER2_BREF_TYPE_INODE:
+			break;
+		default:
+			break;
+		}
+		if (i >= 0) {
+			KKASSERT(i < HAMMER2_BMAP_ELEMENTS &&
+				 j < 2 * HAMMER2_BMAP_BLOCKS_PER_ELEMENT);
+			KKASSERT(j + bmradix <= HAMMER2_BMAP_BITS_PER_ELEMENT);
+			bmmask = (bmradix == HAMMER2_BMAP_BITS_PER_ELEMENT) ?
+				 HAMMER2_BMAP_ALLONES :
+				 ((hammer2_bitmap_t)1 << bmradix) - 1;
+			bmmask <<= j;
+
+			if ((bmap->bitmapq[i] & bmmask) == 0)
+				goto success;
+		}
+
+		/*
+		 * General element scan.
+		 *
+		 * WARNING: (j) is iterating a bit index (by 2's)
+		 */
 		for (i = 0; i < HAMMER2_BMAP_ELEMENTS; ++i) {
 			bmmask = (bmradix == HAMMER2_BMAP_BITS_PER_ELEMENT) ?
 				 HAMMER2_BMAP_ALLONES :

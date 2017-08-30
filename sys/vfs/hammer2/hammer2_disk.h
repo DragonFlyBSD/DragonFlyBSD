@@ -388,6 +388,10 @@ typedef uint64_t			hammer2_bitmap_t;
 					 HAMMER2_BMAP_BLOCKS_PER_ELEMENT)
 #define HAMMER2_BMAP_INDEX_MASK		(HAMMER2_BMAP_INDEX_SIZE - 1)
 
+#define HAMMER2_BMAP_SIZE		(HAMMER2_BMAP_INDEX_SIZE * \
+					 HAMMER2_BMAP_ELEMENTS)
+#define HAMMER2_BMAP_MASK		(HAMMER2_BMAP_SIZE - 1)
+
 /*
  * Two linear areas can be reserved after the initial 2MB segment in the base
  * zone (the one starting at offset 0).  These areas are NOT managed by the
