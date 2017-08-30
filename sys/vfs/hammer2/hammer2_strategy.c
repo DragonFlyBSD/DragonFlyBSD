@@ -95,21 +95,6 @@ static void hammer2_strategy_read_completion(hammer2_chain_t *chain,
 static hammer2_off_t hammer2_dedup_lookup(hammer2_dev_t *hmp,
 			char **datap, int pblksize);
 
-#if 1
-#define TIMER(which)
-#else
-int h2timer[32];
-int h2last;
-int h2lid;
-
-#define TIMER(which)	do {				\
-	if (h2last) 					\
-		h2timer[h2lid] += (int)(ticks - h2last);\
-	h2last = ticks;					\
-	h2lid = which;					\
-} while(0)
-#endif
-
 int
 hammer2_vop_strategy(struct vop_strategy_args *ap)
 {
@@ -315,7 +300,6 @@ hammer2_strategy_xop_read(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	 * the front-end so we cannot access it until we determine
 	 * that we are the ones finishing it up.
 	 */
-	TIMER(0);
 	lbase = xop->lbase;
 
 	/*
@@ -333,7 +317,6 @@ hammer2_strategy_xop_read(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
 				     HAMMER2_RESOLVE_ALWAYS |
 				     HAMMER2_RESOLVE_SHARED);
-	TIMER(1);
 	if (parent) {
 		chain = hammer2_chain_lookup(&parent, &key_dummy,
 					     lbase, lbase,
@@ -345,9 +328,7 @@ hammer2_strategy_xop_read(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		error = EIO;
 		chain = NULL;
 	}
-	TIMER(2);
 	error = hammer2_xop_feed(&xop->head, chain, thr->clindex, error);
-	TIMER(3);
 	if (chain) {
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
@@ -358,7 +339,6 @@ hammer2_strategy_xop_read(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	}
 	chain = NULL;	/* safety */
 	parent = NULL;	/* safety */
-	TIMER(4);
 
 	/*
 	 * Race to finish the frontend.  First-to-complete.  bio is only
@@ -390,7 +370,6 @@ hammer2_strategy_xop_read(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	 * the amount of end-user data that can be cached.
 	 */
 	error = hammer2_xop_collect(&xop->head, HAMMER2_XOP_COLLECT_NOWAIT);
-	TIMER(5);
 
 	switch(error) {
 	case 0:
@@ -427,7 +406,6 @@ hammer2_strategy_xop_read(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		break;
 	}
-	TIMER(6);
 }
 
 static
@@ -725,7 +703,6 @@ hammer2_assign_physical(hammer2_inode_t *ip, hammer2_chain_t **parentp,
 	*errorp = 0;
 	KKASSERT(pblksize >= HAMMER2_ALLOC_MIN);
 retry:
-	TIMER(30);
 	chain = hammer2_chain_lookup(parentp, &key_dummy,
 				     lbase, lbase,
 				     &cache_index,
@@ -803,7 +780,6 @@ retry:
 			break;
 		}
 	}
-	TIMER(31);
 	return (chain);
 }
 

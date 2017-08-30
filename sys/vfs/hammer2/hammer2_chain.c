@@ -86,21 +86,6 @@ static hammer2_chain_t *hammer2_combined_find(
  */
 RB_GENERATE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 
-#if 1
-#define TIMER(which)
-#else
-extern int h2timer[32];
-extern int h2last;
-extern int h2lid;
-
-#define TIMER(which)    do {                            \
-        if (h2last)                                     \
-                h2timer[h2lid] += (int)(ticks - h2last);\
-        h2last = ticks;                                 \
-	h2lid = which;					\
-} while(0)
-#endif
-
 int
 hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2)
 {
@@ -930,8 +915,6 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	KKASSERT(chain->refs > 0);
 	atomic_add_int(&chain->lockcnt, 1);
 
-	TIMER(20);
-
 	/*
 	 * Get the appropriate lock.  If LOCKAGAIN is flagged with SHARED
 	 * the caller expects a shared lock to already be present and we
@@ -948,7 +931,6 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 		hammer2_mtx_ex(&chain->lock);
 	}
 	++curthread->td_tracker;
-	TIMER(21);
 
 	/*
 	 * If we already have a valid data pointer no further action is
@@ -956,7 +938,6 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	 */
 	if (chain->data)
 		return;
-	TIMER(22);
 
 	/*
 	 * Do we have to resolve the data?  This is generally only
@@ -1068,7 +1049,6 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 		return;
 	if ((chain->bref.data_off & HAMMER2_OFF_MASK_RADIX) == 0)
 		return;
-	TIMER(23);
 
 	hmp = chain->hmp;
 	KKASSERT(hmp != NULL);
@@ -1098,7 +1078,6 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 			/* retry */
 		}
 	}
-	TIMER(24);
 
 	/*
 	 * We own CHAIN_IOINPROG
@@ -1137,7 +1116,6 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 					 &chain->dio);
 		hammer2_adjreadcounter(&chain->bref, chain->bytes);
 	}
-	TIMER(25);
 	if (error) {
 		chain->error = HAMMER2_ERROR_IO;
 		kprintf("hammer2_chain_lock: I/O error %016jx: %d\n",
@@ -1152,7 +1130,12 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 	 * an indication as to whether a buffer is coming from cache or
 	 * if I/O was actually issued for the read.  TESTEDGOOD will work
 	 * pretty well without the B_IOISSUED logic because chains are
-	 * cached.
+	 * cached, but in that situation (without B_IOISSUED) it will not
+	 * detect whether a re-read via I/O is corrupted verses the original
+	 * read.
+	 *
+	 * We can't re-run the CRC on every fresh lock.  That would be
+	 * insanely expensive.
 	 *
 	 * If the underlying kernel buffer covers the entire chain we can
 	 * use the B_IOISSUED indication to determine if we have to re-run
@@ -1192,14 +1175,12 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 		 * to calculate crc?  or simple crc?).
 		 */
 	} else if ((chain->flags & HAMMER2_CHAIN_TESTEDGOOD) == 0) {
-	TIMER(26);
 		if (hammer2_chain_testcheck(chain, bdata) == 0) {
 			chain->error = HAMMER2_ERROR_CHECK;
 		} else {
 			atomic_set_int(&chain->flags, HAMMER2_CHAIN_TESTEDGOOD);
 		}
 	}
-	TIMER(27);
 
 	/*
 	 * Setup the data pointer, either pointing it to an embedded data
@@ -1255,7 +1236,6 @@ done:
 			break;
 		}
 	}
-	TIMER(28);
 }
 
 /*
@@ -2304,8 +2284,6 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 	int generation;
 	int maxloops = 300000;
 
-	TIMER(8);
-
 	if (flags & HAMMER2_LOOKUP_ALWAYS) {
 		how_maybe = how_always;
 		how = HAMMER2_RESOLVE_ALWAYS;
@@ -2343,7 +2321,6 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 	}
 again:
 
-	TIMER(9);
 	if (--maxloops == 0)
 		panic("hammer2_chain_lookup: maxloops");
 	/*
@@ -2436,7 +2413,6 @@ again:
 		base = NULL;	/* safety */
 		count = 0;	/* safety */
 	}
-	TIMER(10);
 
 	/*
 	 * Merged scan to find next candidate.
@@ -2450,8 +2426,6 @@ again:
 	if ((parent->flags & HAMMER2_CHAIN_COUNTEDBREFS) == 0)
 		hammer2_chain_countbrefs(parent, base, count);
 
-	TIMER(11);
-
 	/*
 	 * Combined search
 	 */
@@ -2462,13 +2436,10 @@ again:
 				      &bref);
 	generation = parent->core.generation;
 
-	TIMER(12);
-
 	/*
 	 * Exhausted parent chain, iterate.
 	 */
 	if (bref == NULL) {
-		TIMER(13);
 		hammer2_spin_unex(&parent->core.spin);
 		if (key_beg == key_end)	/* short cut single-key case */
 			return (NULL);
@@ -2497,7 +2468,6 @@ again:
 	 * Selected from blockref or in-memory chain.
 	 */
 	if (chain == NULL) {
-		TIMER(14);
 		bcopy = *bref;
 		hammer2_spin_unex(&parent->core.spin);
 		chain = hammer2_chain_get(parent, generation,
@@ -2514,12 +2484,10 @@ again:
 			goto again;
 		}
 	} else {
-		TIMER(15);
 		hammer2_chain_ref(chain);
 		hammer2_spin_unex(&parent->core.spin);
 	}
 
-	TIMER(16);
 	/*
 	 * chain is referenced but not locked.  We must lock the chain
 	 * to obtain definitive state.
@@ -2531,7 +2499,6 @@ again:
 		hammer2_chain_lock(chain, how);
 	}
 	KKASSERT(chain->parent == parent);
-	TIMER(17);
 
 	/*
 	 * Skip deleted chains (XXX cache 'i' end-of-block-array? XXX)
@@ -2554,7 +2521,6 @@ again:
 			return(NULL);
 		goto again;
 	}
-	TIMER(18);
 
 	/*
 	 * If the chain element is an indirect block it becomes the new
@@ -2579,7 +2545,6 @@ again:
 		*parentp = parent = chain;
 		goto again;
 	}
-	TIMER(19);
 done:
 	/*
 	 * All done, return the chain.
@@ -2593,8 +2558,6 @@ done:
 		if (flags & HAMMER2_LOOKUP_NOLOCK)
 			hammer2_chain_unlock(chain);
 	}
-	TIMER(20);
-
 	return (chain);
 }
 
