@@ -50,7 +50,6 @@
  *
  * @(#)gethostnamadr.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/net/map_v4v6.c,v 1.10 2007/01/09 00:28:02 imp Exp $
- * $DragonFly: src/lib/libc/net/map_v4v6.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -66,6 +65,7 @@
 #include <resolv.h>
 #include <ctype.h>
 #include <syslog.h>
+#include "netdb_private.h"
 
 typedef union {
 	int32_t al;
