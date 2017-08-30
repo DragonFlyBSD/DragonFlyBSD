@@ -318,6 +318,8 @@ labelkre(void)
 	mvprintw(MEMROW + 2, MEMCOLA, "Free   ");
 	mvprintw(MEMROW + 3, MEMCOLA, "Total  ");
 
+	mvprintw(MEMROW + 2, MEMCOLA + 14, "i+c+f");
+
 	mvprintw(MEMROW + 0, MEMCOLB, "VM-rss");
 	mvprintw(MEMROW + 1, MEMCOLB, "VM-swp");
 	mvprintw(MEMROW + 1, MEMCOLB + 15, "/");
