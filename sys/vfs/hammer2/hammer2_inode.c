@@ -1306,7 +1306,6 @@ hammer2_inode_xop_mkdirent(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	hammer2_chain_t *chain;
 	hammer2_key_t key_next;
 	size_t data_len;
-	int cache_index = -1;
 	int error;
 
 	if (hammer2_debug & 0x0001)
@@ -1322,7 +1321,7 @@ hammer2_inode_xop_mkdirent(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	}
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     xop->lhc, xop->lhc,
-				     &cache_index, 0);
+				     0);
 	if (chain) {
 		error = EEXIST;
 		goto fail;
@@ -1388,7 +1387,6 @@ hammer2_inode_xop_create(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	hammer2_key_t key_next;
-	int cache_index = -1;
 	int error;
 
 	if (hammer2_debug & 0x0001)
@@ -1404,7 +1402,7 @@ hammer2_inode_xop_create(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	}
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     xop->lhc, xop->lhc,
-				     &cache_index, 0);
+				     0);
 	if (chain) {
 		error = EEXIST;
 		goto fail;
@@ -1497,7 +1495,6 @@ hammer2_inode_xop_unlinkall(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	hammer2_key_t key_next;
-	int cache_index = -1;
 
 	/*
 	 * We need the precise parent chain to issue the deletion.
@@ -1511,7 +1508,6 @@ hammer2_inode_xop_unlinkall(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	}
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     xop->key_beg, xop->key_end,
-				     &cache_index,
 				     HAMMER2_LOOKUP_ALWAYS);
 	while (chain) {
 		hammer2_chain_delete(parent, chain,
@@ -1520,7 +1516,6 @@ hammer2_inode_xop_unlinkall(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		/* depend on function to unlock the shared lock */
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next, xop->key_end,
-					   &cache_index,
 					   HAMMER2_LOOKUP_ALWAYS);
 	}
 done:
@@ -1544,7 +1539,6 @@ hammer2_inode_xop_connect(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	hammer2_chain_t *chain;
 	hammer2_pfs_t *pmp;
 	hammer2_key_t key_dummy;
-	int cache_index = -1;
 	int error;
 
 	/*
@@ -1561,7 +1555,7 @@ hammer2_inode_xop_connect(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	}
 	chain = hammer2_chain_lookup(&parent, &key_dummy,
 				     xop->lhc, xop->lhc,
-				     &cache_index, 0);
+				     0);
 	if (chain) {
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
@@ -1648,13 +1642,11 @@ hammer2_inode_xop_chain_sync(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		 */
 		hammer2_key_t lbase;
 		hammer2_key_t key_next;
-		int cache_index = -1;
 
 		lbase = (xop->meta.size + HAMMER2_PBUFMASK64) &
 			~HAMMER2_PBUFMASK64;
 		chain = hammer2_chain_lookup(&parent, &key_next,
 					     lbase, HAMMER2_KEY_MAX,
-					     &cache_index,
 					     HAMMER2_LOOKUP_NODATA |
 					     HAMMER2_LOOKUP_NODIRECT);
 		while (chain) {
@@ -1674,7 +1666,6 @@ hammer2_inode_xop_chain_sync(hammer2_thread_t *thr, hammer2_xop_t *arg)
 			}
 			chain = hammer2_chain_next(&parent, chain, &key_next,
 						   key_next, HAMMER2_KEY_MAX,
-						   &cache_index,
 						   HAMMER2_LOOKUP_NODATA |
 						   HAMMER2_LOOKUP_NODIRECT);
 		}

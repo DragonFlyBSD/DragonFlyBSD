@@ -292,7 +292,6 @@ hammer2_strategy_xop_read(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	hammer2_key_t lbase;
 	struct bio *bio;
 	struct buf *bp;
-	int cache_index = -1;
 	int error;
 
 	/*
@@ -320,7 +319,6 @@ hammer2_strategy_xop_read(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	if (parent) {
 		chain = hammer2_chain_lookup(&parent, &key_dummy,
 					     lbase, lbase,
-					     &cache_index,
 					     HAMMER2_LOOKUP_ALWAYS |
 					     HAMMER2_LOOKUP_SHARED);
 		error = chain ? chain->error : 0;
@@ -692,7 +690,6 @@ hammer2_assign_physical(hammer2_inode_t *ip, hammer2_chain_t **parentp,
 	hammer2_key_t key_dummy;
 	hammer2_off_t dedup_off;
 	int pradix = hammer2_getradix(pblksize);
-	int cache_index = -1;
 
 	/*
 	 * Locate the chain associated with lbase, return a locked chain.
@@ -705,7 +702,6 @@ hammer2_assign_physical(hammer2_inode_t *ip, hammer2_chain_t **parentp,
 retry:
 	chain = hammer2_chain_lookup(parentp, &key_dummy,
 				     lbase, lbase,
-				     &cache_index,
 				     HAMMER2_LOOKUP_NODATA);
 
 	/*
@@ -1232,12 +1228,10 @@ zero_write(char *data, hammer2_inode_t *ip,
 {
 	hammer2_chain_t *chain;
 	hammer2_key_t key_dummy;
-	int cache_index = -1;
 
 	*errorp = 0;
 	chain = hammer2_chain_lookup(parentp, &key_dummy,
 				     lbase, lbase,
-				     &cache_index,
 				     HAMMER2_LOOKUP_NODATA);
 	if (chain) {
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {

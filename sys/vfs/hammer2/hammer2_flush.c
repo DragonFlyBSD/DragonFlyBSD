@@ -68,7 +68,7 @@ struct hammer2_flush_info {
 	hammer2_chain_t *parent;
 	int		depth;
 	int		diddeferral;
-	int		cache_index;
+	int		unused01;
 	int		flags;
 	struct h2_flush_list flushq;
 	hammer2_chain_t	*debug;
@@ -344,7 +344,6 @@ hammer2_flush(hammer2_chain_t *chain, int flags)
 	 */
 	bzero(&info, sizeof(info));
 	TAILQ_INIT(&info.flushq);
-	info.cache_index = -1;
 	info.flags = flags & ~HAMMER2_FLUSH_TOP;
 
 	/*
@@ -1039,8 +1038,7 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		if (base && (chain->flags & HAMMER2_CHAIN_BMAPUPD)) {
 			if (chain->flags & HAMMER2_CHAIN_BMAPPED) {
 				hammer2_spin_ex(&parent->core.spin);
-				hammer2_base_delete(parent, base, count,
-						    &info->cache_index, chain);
+				hammer2_base_delete(parent, base, count, chain);
 				hammer2_spin_unex(&parent->core.spin);
 				/* base_delete clears both bits */
 			} else {
@@ -1050,8 +1048,7 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		}
 		if (base && (chain->flags & HAMMER2_CHAIN_BMAPPED) == 0) {
 			hammer2_spin_ex(&parent->core.spin);
-			hammer2_base_insert(parent, base, count,
-					    &info->cache_index, chain);
+			hammer2_base_insert(parent, base, count, chain);
 			hammer2_spin_unex(&parent->core.spin);
 			/* base_insert sets BMAPPED */
 		}

@@ -73,7 +73,6 @@ checkdirempty(hammer2_chain_t *oparent, hammer2_chain_t *ochain, int clindex)
 	hammer2_chain_t *chain;
 	hammer2_key_t key_next;
 	hammer2_key_t inum;
-	int cache_index = -1;
 	int error;
 
 	error = 0;
@@ -113,7 +112,7 @@ checkdirempty(hammer2_chain_t *oparent, hammer2_chain_t *ochain, int clindex)
 		chain = hammer2_chain_lookup(&parent, &key_next,
 					     HAMMER2_DIRHASH_VISIBLE,
 					     HAMMER2_KEY_MAX,
-					     &cache_index, 0);
+					     0);
 	}
 	if (chain) {
 		error = ENOTEMPTY;
@@ -166,7 +165,6 @@ hammer2_xop_readdir(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	hammer2_chain_t *chain;
 	hammer2_key_t key_next;
 	hammer2_key_t lkey;
-	int cache_index = -1;
 	int error = 0;
 
 	lkey = xop->lkey;
@@ -190,11 +188,10 @@ hammer2_xop_readdir(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	 * lock so do not unlock it on the iteration.
 	 */
 	chain = hammer2_chain_lookup(&parent, &key_next, lkey, lkey,
-				     &cache_index, HAMMER2_LOOKUP_SHARED);
+				     HAMMER2_LOOKUP_SHARED);
 	if (chain == NULL) {
 		chain = hammer2_chain_lookup(&parent, &key_next,
 					     lkey, HAMMER2_KEY_MAX,
-					     &cache_index,
 					     HAMMER2_LOOKUP_SHARED);
 	}
 	while (chain) {
@@ -203,7 +200,6 @@ hammer2_xop_readdir(hammer2_thread_t *thr, hammer2_xop_t *arg)
 			break;
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next, HAMMER2_KEY_MAX,
-					   &cache_index,
 					   HAMMER2_LOOKUP_SHARED);
 	}
 	if (chain) {
@@ -229,7 +225,6 @@ hammer2_xop_nresolve(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	size_t name_len;
 	hammer2_key_t key_next;
 	hammer2_key_t lhc;
-	int cache_index = -1;	/* XXX */
 	int error;
 
 	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
@@ -250,7 +245,6 @@ hammer2_xop_nresolve(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	lhc = hammer2_dirhash(name, name_len);
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
-				     &cache_index,
 				     HAMMER2_LOOKUP_ALWAYS |
 				     HAMMER2_LOOKUP_SHARED);
 	while (chain) {
@@ -259,7 +253,6 @@ hammer2_xop_nresolve(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next,
 					   lhc + HAMMER2_DIRHASH_LOMASK,
-					   &cache_index,
 					   HAMMER2_LOOKUP_ALWAYS |
 					   HAMMER2_LOOKUP_SHARED);
 	}
@@ -314,7 +307,6 @@ hammer2_xop_unlink(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	size_t name_len;
 	hammer2_key_t key_next;
 	hammer2_key_t lhc;
-	int cache_index = -1;	/* XXX */
 	int error;
 
 again:
@@ -338,7 +330,6 @@ again:
 	lhc = hammer2_dirhash(name, name_len);
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
-				     &cache_index,
 				     HAMMER2_LOOKUP_ALWAYS);
 	while (chain) {
 		if (hammer2_chain_dirent_test(chain, name, name_len))
@@ -346,7 +337,6 @@ again:
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next,
 					   lhc + HAMMER2_DIRHASH_LOMASK,
-					   &cache_index,
 					   HAMMER2_LOOKUP_ALWAYS);
 	}
 
@@ -488,7 +478,6 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	hammer2_chain_t *tmp;
 	hammer2_inode_t *ip;
 	hammer2_key_t key_next;
-	int cache_index = -1;
 	int error;
 
 	/*
@@ -542,7 +531,6 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		lhc = hammer2_dirhash(name, name_len);
 		chain = hammer2_chain_lookup(&parent, &key_next,
 					     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
-					     &cache_index,
 					     HAMMER2_LOOKUP_ALWAYS);
 		while (chain) {
 			if (hammer2_chain_dirent_test(chain, name, name_len))
@@ -550,7 +538,6 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 			chain = hammer2_chain_next(&parent, chain, &key_next,
 						   key_next,
 						   lhc + HAMMER2_DIRHASH_LOMASK,
-						   &cache_index,
 						   HAMMER2_LOOKUP_ALWAYS);
 		}
 	}
@@ -659,7 +646,6 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	tmp = hammer2_chain_lookup(&parent, &key_next,
 				   xop->lhc & ~HAMMER2_DIRHASH_LOMASK,
 				   xop->lhc | HAMMER2_DIRHASH_LOMASK,
-				   &cache_index,
 				   HAMMER2_LOOKUP_ALWAYS);
 	while (tmp) {
 		if (hammer2_chain_dirent_test(tmp, xop->head.name2,
@@ -669,7 +655,6 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		tmp = hammer2_chain_next(&parent, tmp, &key_next,
 					 key_next,
 					 xop->lhc | HAMMER2_DIRHASH_LOMASK,
-					 &cache_index,
 					 HAMMER2_LOOKUP_ALWAYS);
 	}
 
@@ -679,7 +664,7 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	 */
 	tmp = hammer2_chain_lookup(&parent, &key_next,
 				   xop->lhc, xop->lhc,
-				   &cache_index, 0);
+				   0);
 	KKASSERT(tmp == NULL);
 	error = hammer2_chain_create(&parent, &chain,
 				     pmp, HAMMER2_METH_DEFAULT,
@@ -711,7 +696,6 @@ hammer2_xop_scanlhc(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	hammer2_key_t key_next;
-	int cache_index = -1;	/* XXX */
 	int error = 0;
 
 	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
@@ -731,7 +715,6 @@ hammer2_xop_scanlhc(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     xop->lhc,
 				     xop->lhc + HAMMER2_DIRHASH_LOMASK,
-				     &cache_index,
 				     HAMMER2_LOOKUP_ALWAYS |
 				     HAMMER2_LOOKUP_SHARED);
 	while (chain) {
@@ -746,7 +729,6 @@ hammer2_xop_scanlhc(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next,
 					   xop->lhc + HAMMER2_DIRHASH_LOMASK,
-					   &cache_index,
 					   HAMMER2_LOOKUP_ALWAYS |
 					   HAMMER2_LOOKUP_SHARED);
 	}
@@ -770,7 +752,6 @@ hammer2_xop_lookup(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	hammer2_key_t key_next;
-	int cache_index = -1;	/* XXX */
 	int error = 0;
 
 	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
@@ -788,7 +769,6 @@ hammer2_xop_lookup(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	 */
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     xop->lhc, xop->lhc,
-				     &cache_index,
 				     HAMMER2_LOOKUP_ALWAYS |
 				     HAMMER2_LOOKUP_SHARED);
 	if (chain)
@@ -822,7 +802,6 @@ hammer2_xop_scanall(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	hammer2_key_t key_next;
-	int cache_index = -1;
 	int error = 0;
 
 	/*
@@ -848,14 +827,14 @@ hammer2_xop_scanall(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	 */
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     xop->key_beg, xop->key_end,
-				     &cache_index, xop->lookup_flags);
+				     xop->lookup_flags);
 	while (chain) {
 		error = hammer2_xop_feed(&xop->head, chain, thr->clindex, 0);
 		if (error)
 			break;
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next, xop->key_end,
-					   &cache_index, xop->lookup_flags);
+					   xop->lookup_flags);
 	}
 	if (chain) {
 		hammer2_chain_unlock(chain);

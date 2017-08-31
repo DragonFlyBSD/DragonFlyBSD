@@ -72,7 +72,7 @@ static hammer2_io_t *hammer2_chain_drop_data(hammer2_chain_t *chain);
 static hammer2_chain_t *hammer2_combined_find(
 		hammer2_chain_t *parent,
 		hammer2_blockref_t *base, int count,
-		int *cache_indexp, hammer2_key_t *key_nextp,
+		hammer2_key_t *key_nextp,
 		hammer2_key_t key_beg, hammer2_key_t key_end,
 		hammer2_blockref_t **bresp);
 
@@ -2034,7 +2034,10 @@ hammer2_chain_find_callback(hammer2_chain_t *child, void *data)
 
 /*
  * Retrieve the specified chain from a media blockref, creating the
- * in-memory chain structure which reflects it.
+ * in-memory chain structure which reflects it.  The returned chain is
+ * held but not locked.  The caller must lock it to crc-check and
+ * dereference its data, and should check chain->error after locking
+ * before assuming that the data is good.
  *
  * To handle insertion races pass the INSERT_RACE flag along with the
  * generation number of the core.  NULL will be returned if the generation
@@ -2130,6 +2133,9 @@ hammer2_chain_lookup_done(hammer2_chain_t *parent)
  * Take the locked chain and return a locked parent.  The chain remains
  * locked on return.
  *
+ * This will work even if the chain is errored, and the caller can check
+ * parent->error on return if desired since the parent will be locked.
+ *
  * This function handles the lock order reversal.
  */
 hammer2_chain_t *
@@ -2172,6 +2178,9 @@ again:
 /*
  * Take the locked chain and return a locked parent.  The chain is unlocked
  * and dropped.  *chainp is set to the returned parent as a convenience.
+ *
+ * This will work even if the chain is errored, and the caller can check
+ * parent->error on return if desired since the parent will be locked.
  *
  * This function handles the lock order reversal.
  */
@@ -2223,13 +2232,21 @@ again:
  * indirect block and this function will recurse upwards and find the inode
  * again.
  *
+ * This function unconditionally sets *errorp, replacing any previous value.
+ *
  * (*parentp) must be exclusively locked and referenced and can be an inode
- * or an existing indirect block within the inode.
+ * or an existing indirect block within the inode.  If (*parent) is errored
+ * out, this function will not attempt to recurse the radix tree and
+ * will return NULL along with an appropriate *errorp.  If NULL is returned
+ * and *errorp is 0, the requested lookup could not be located.
  *
  * On return (*parentp) will be modified to point at the deepest parent chain
  * element encountered during the search, as a helper for an insertion or
  * deletion.   The new (*parentp) will be locked and referenced and the old
  * will be unlocked and dereferenced (no change if they are both the same).
+ * This is particularly important if the caller wishes to insert a new chain,
+ * (*parentp) will be set properly even if NULL is returned, as long as no
+ * error occurred.
  *
  * The matching chain will be returned exclusively locked.  If NOLOCK is
  * requested the chain will be returned only referenced.  Note that the
@@ -2243,12 +2260,6 @@ again:
  *
  * NULL is returned if no match was found, but (*parentp) will still
  * potentially be adjusted.
- *
- * If a fatal error occurs (typically an I/O error), a dummy chain is
- * returned with chain->error and error-identifying information set.  This
- * chain will assert if you try to do anything fancy with it.
- *
- * XXX Depending on where the error occurs we should allow continued iteration.
  *
  * On return (*key_nextp) will point to an iterative value for key_beg.
  * (If NULL is returned (*key_nextp) is set to (key_end + 1)).
@@ -2267,7 +2278,7 @@ again:
 hammer2_chain_t *
 hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 		     hammer2_key_t key_beg, hammer2_key_t key_end,
-		     int *cache_indexp, int flags)
+		     int flags)
 {
 	hammer2_dev_t *hmp;
 	hammer2_chain_t *parent;
@@ -2431,7 +2442,7 @@ again:
 	 */
 	hammer2_spin_ex(&parent->core.spin);
 	chain = hammer2_combined_find(parent, base, count,
-				      cache_indexp, key_nextp,
+				      key_nextp,
 				      key_beg, key_end,
 				      &bref);
 	generation = parent->core.generation;
@@ -2584,7 +2595,7 @@ hammer2_chain_t *
 hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 		   hammer2_key_t *key_nextp,
 		   hammer2_key_t key_beg, hammer2_key_t key_end,
-		   int *cache_indexp, int flags)
+		   int flags)
 {
 	hammer2_chain_t *parent;
 	int how_maybe;
@@ -2648,7 +2659,7 @@ hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 	 */
 	return (hammer2_chain_lookup(parentp, key_nextp,
 				     key_beg, key_end,
-				     cache_indexp, flags));
+				     flags));
 }
 
 /*
@@ -2680,7 +2691,7 @@ hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 int
 hammer2_chain_scan(hammer2_chain_t *parent, hammer2_chain_t **chainp,
 		   hammer2_blockref_t *bref, int *firstp,
-		   int *cache_indexp, int flags)
+		   int flags)
 {
 	hammer2_dev_t *hmp;
 	hammer2_blockref_t *base;
@@ -2814,7 +2825,7 @@ again:
 	bref_ptr = NULL;
 	hammer2_spin_ex(&parent->core.spin);
 	chain = hammer2_combined_find(parent, base, count,
-				      cache_indexp, &next_key,
+				      &next_key,
 				      key, HAMMER2_KEY_MAX,
 				      &bref_ptr);
 	generation = parent->core.generation;
@@ -3434,9 +3445,7 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 		 * undone.  XXX split update possible w/delete in middle?
 		 */
 		if (base) {
-			int cache_index = -1;
-			hammer2_base_delete(parent, base, count,
-					    &cache_index, chain);
+			hammer2_base_delete(parent, base, count, chain);
 		}
 		hammer2_spin_unex(&parent->core.spin);
 		hammer2_spin_unex(&chain->core.spin);
@@ -3543,7 +3552,6 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 	int count;
 	int ncount;
 	int nbytes;
-	int cache_index;
 	int loops;
 	int reason;
 	int generation;
@@ -3687,7 +3695,6 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 	key_beg = 0;
 	key_end = HAMMER2_KEY_MAX;
 	key_next = 0;	/* avoid gcc warnings */
-	cache_index = 0;
 	hammer2_spin_ex(&parent->core.spin);
 	loops = 0;
 	reason = 0;
@@ -3712,7 +3719,7 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 		 *	 until we lock it.
 		 */
 		chain = hammer2_combined_find(parent, base, count,
-					      &cache_index, &key_next,
+					      &key_next,
 					      key_beg, key_end,
 					      &bref);
 		generation = parent->core.generation;
@@ -3889,7 +3896,6 @@ hammer2_chain_indkey_freemap(hammer2_chain_t *parent, hammer2_key_t *keyp,
 	hammer2_key_t key_beg;
 	hammer2_key_t key_end;
 	hammer2_key_t key_next;
-	int cache_index;
 	int locount;
 	int hicount;
 	int maxloops = 300000;
@@ -3905,7 +3911,6 @@ hammer2_chain_indkey_freemap(hammer2_chain_t *parent, hammer2_key_t *keyp,
 	 */
 	key_beg = 0;
 	key_end = HAMMER2_KEY_MAX;
-	cache_index = 0;
 	hammer2_spin_ex(&parent->core.spin);
 
 	for (;;) {
@@ -3914,7 +3919,7 @@ hammer2_chain_indkey_freemap(hammer2_chain_t *parent, hammer2_key_t *keyp,
 			      parent, base, count);
 		}
 		chain = hammer2_combined_find(parent, base, count,
-					      &cache_index, &key_next,
+					      &key_next,
 					      key_beg, key_end,
 					      &bref);
 
@@ -4010,7 +4015,6 @@ hammer2_chain_indkey_file(hammer2_chain_t *parent, hammer2_key_t *keyp,
 	hammer2_key_t key_end;
 	hammer2_key_t key_next;
 	int nradix;
-	int cache_index;
 	int locount;
 	int hicount;
 	int maxloops = 300000;
@@ -4028,7 +4032,6 @@ hammer2_chain_indkey_file(hammer2_chain_t *parent, hammer2_key_t *keyp,
 	 */
 	key_beg = 0;
 	key_end = HAMMER2_KEY_MAX;
-	cache_index = 0;
 	hammer2_spin_ex(&parent->core.spin);
 
 	for (;;) {
@@ -4037,7 +4040,7 @@ hammer2_chain_indkey_file(hammer2_chain_t *parent, hammer2_key_t *keyp,
 			      parent, base, count);
 		}
 		chain = hammer2_combined_find(parent, base, count,
-					      &cache_index, &key_next,
+					      &key_next,
 					      key_beg, key_end,
 					      &bref);
 
@@ -4138,7 +4141,6 @@ hammer2_chain_indkey_dir(hammer2_chain_t *parent, hammer2_key_t *keyp,
 	int nkeybits;
 	int locount;
 	int hicount;
-	int cache_index;
 	int maxloops = 300000;
 
 	/*
@@ -4160,7 +4162,6 @@ hammer2_chain_indkey_dir(hammer2_chain_t *parent, hammer2_key_t *keyp,
 	 */
 	key_beg = 0;
 	key_end = HAMMER2_KEY_MAX;
-	cache_index = 0;
 	hammer2_spin_ex(&parent->core.spin);
 
 	for (;;) {
@@ -4169,7 +4170,7 @@ hammer2_chain_indkey_dir(hammer2_chain_t *parent, hammer2_key_t *keyp,
 			      parent, base, count);
 		}
 		chain = hammer2_combined_find(parent, base, count,
-					      &cache_index, &key_next,
+					      &key_next,
 					      key_beg, key_end,
 					      &bref);
 
@@ -4314,7 +4315,6 @@ hammer2_chain_indkey_dir(hammer2_chain_t *parent, hammer2_key_t *keyp,
 	int nkeybits;
 	int locount;
 	int hicount;
-	int cache_index;
 	int maxloops = 300000;
 
 	/*
@@ -4336,7 +4336,6 @@ hammer2_chain_indkey_dir(hammer2_chain_t *parent, hammer2_key_t *keyp,
 	 */
 	key_beg = 0;
 	key_end = HAMMER2_KEY_MAX;
-	cache_index = 0;
 	hammer2_spin_ex(&parent->core.spin);
 
 	for (;;) {
@@ -4345,7 +4344,7 @@ hammer2_chain_indkey_dir(hammer2_chain_t *parent, hammer2_key_t *keyp,
 			      parent, base, count);
 		}
 		chain = hammer2_combined_find(parent, base, count,
-					      &cache_index, &key_next,
+					      &key_next,
 					      key_beg, key_end,
 					      &bref);
 
@@ -4517,16 +4516,13 @@ hammer2_chain_delete(hammer2_chain_t *parent, hammer2_chain_t *chain,
  * Note that *key_nexp can overflow to 0, which should be tested by the
  * caller.
  *
- * (*cache_indexp) is a heuristic and can be any value without effecting
- * the result.
- *
  * WARNING!  Must be called with parent's spinlock held.  Spinlock remains
  *	     held through the operation.
  */
 static int
 hammer2_base_find(hammer2_chain_t *parent,
 		  hammer2_blockref_t *base, int count,
-		  int *cache_indexp, hammer2_key_t *key_nextp,
+		  hammer2_key_t *key_nextp,
 		  hammer2_key_t key_beg, hammer2_key_t key_end)
 {
 	hammer2_blockref_t *scan;
@@ -4547,13 +4543,13 @@ hammer2_base_find(hammer2_chain_t *parent,
 		return(count);
 
 	/*
-	 * Sequential optimization using *cache_indexp.  This is the most
-	 * likely scenario.
+	 * Sequential optimization using parent->cache_index.  This is
+	 * the most likely scenario.
 	 *
 	 * We can avoid trailing empty entries on live chains, otherwise
 	 * we might have to check the whole block array.
 	 */
-	i = *cache_indexp;
+	i = parent->cache_index;	/* SMP RACE OK */
 	cpu_ccfence();
 	limit = parent->core.live_zero;
 	if (i >= limit)
@@ -4570,7 +4566,7 @@ hammer2_base_find(hammer2_chain_t *parent,
 		--scan;
 		--i;
 	}
-	*cache_indexp = i;
+	parent->cache_index = i;
 
 	/*
 	 * Search forwards, stop when we find a scan element which
@@ -4590,7 +4586,7 @@ hammer2_base_find(hammer2_chain_t *parent,
 		++i;
 	}
 	if (i != count) {
-		*cache_indexp = i;
+		parent->cache_index = i;
 		if (i >= limit) {
 			i = count;
 		} else {
@@ -4625,7 +4621,7 @@ hammer2_base_find(hammer2_chain_t *parent,
 static hammer2_chain_t *
 hammer2_combined_find(hammer2_chain_t *parent,
 		      hammer2_blockref_t *base, int count,
-		      int *cache_indexp, hammer2_key_t *key_nextp,
+		      hammer2_key_t *key_nextp,
 		      hammer2_key_t key_beg, hammer2_key_t key_end,
 		      hammer2_blockref_t **bresp)
 {
@@ -4637,8 +4633,8 @@ hammer2_combined_find(hammer2_chain_t *parent,
 	 * Lookup in block array and in rbtree.
 	 */
 	*key_nextp = key_end + 1;
-	i = hammer2_base_find(parent, base, count, cache_indexp,
-			      key_nextp, key_beg, key_end);
+	i = hammer2_base_find(parent, base, count, key_nextp,
+			      key_beg, key_end);
 	chain = hammer2_chain_find(parent, key_nextp, key_beg, key_end);
 
 	/*
@@ -4714,7 +4710,7 @@ found:
 void
 hammer2_base_delete(hammer2_chain_t *parent,
 		    hammer2_blockref_t *base, int count,
-		    int *cache_indexp, hammer2_chain_t *chain)
+		    hammer2_chain_t *chain)
 {
 	hammer2_blockref_t *elm = &chain->bref;
 	hammer2_blockref_t *scan;
@@ -4728,8 +4724,8 @@ hammer2_base_delete(hammer2_chain_t *parent,
 	 *     re-flushed in some cases.
 	 */
 	key_next = 0; /* max range */
-	i = hammer2_base_find(parent, base, count, cache_indexp,
-			      &key_next, elm->key, elm->key);
+	i = hammer2_base_find(parent, base, count, &key_next,
+			      elm->key, elm->key);
 	scan = &base[i];
 	if (i == count || scan->type == 0 ||
 	    scan->key != elm->key ||
@@ -4795,7 +4791,7 @@ hammer2_base_delete(hammer2_chain_t *parent,
 void
 hammer2_base_insert(hammer2_chain_t *parent,
 		    hammer2_blockref_t *base, int count,
-		    int *cache_indexp, hammer2_chain_t *chain)
+		    hammer2_chain_t *chain)
 {
 	hammer2_blockref_t *elm = &chain->bref;
 	hammer2_key_t key_next;
@@ -4814,8 +4810,8 @@ hammer2_base_insert(hammer2_chain_t *parent,
 	 *     re-flushed in some cases.
 	 */
 	key_next = 0; /* max range */
-	i = hammer2_base_find(parent, base, count, cache_indexp,
-			      &key_next, elm->key, elm->key);
+	i = hammer2_base_find(parent, base, count, &key_next,
+			      elm->key, elm->key);
 
 	/*
 	 * Shortcut fill optimization, typical ordered insertion(s) may not
@@ -5221,7 +5217,6 @@ hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,
 	hammer2_chain_t *parent;
 	hammer2_chain_t *rchain;
 	hammer2_key_t key_dummy;
-	int cache_index = -1;
 	int resolve_flags;
 
 	resolve_flags = (flags & HAMMER2_LOOKUP_SHARED) ?
@@ -5250,7 +5245,7 @@ hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,
 	if (parent) {
 		rchain = hammer2_chain_lookup(&parent, &key_dummy,
 					      inum, inum,
-					      &cache_index, flags);
+					      flags);
 	}
 	*parentp = parent;
 	*chainp = rchain;

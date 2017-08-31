@@ -323,7 +323,6 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 	size_t bytes;
 	uint16_t class;
 	int error = 0;
-	int cache_index = -1;
 
 	/*
 	 * Calculate the number of bytes being allocated, the number
@@ -347,7 +346,6 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 	l1mask = l1size - 1;
 
 	chain = hammer2_chain_lookup(parentp, &key_dummy, key, key + l1mask,
-				     &cache_index,
 				     HAMMER2_LOOKUP_ALWAYS |
 				     HAMMER2_LOOKUP_MATCHIND);
 
@@ -933,7 +931,6 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref,
 	int start;
 	int count;
 	int modified = 0;
-	int cache_index = -1;
 	int error;
 	size_t bgsize = 0;
 
@@ -974,7 +971,6 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref,
 	hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
 
 	chain = hammer2_chain_lookup(&parent, &key_dummy, key, key + l1mask,
-				     &cache_index,
 				     HAMMER2_LOOKUP_ALWAYS |
 				     HAMMER2_LOOKUP_MATCHIND);
 

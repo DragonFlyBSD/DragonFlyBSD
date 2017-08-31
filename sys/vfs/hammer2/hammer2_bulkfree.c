@@ -103,7 +103,6 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 {
 	hammer2_blockref_t bref;
 	hammer2_chain_t *chain;
-	int cache_index = -1;
 	int first = 1;
 	int rup_error;
 	int error;
@@ -126,7 +125,6 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 	 */
 	for (;;) {
 		error |= hammer2_chain_scan(parent, &chain, &bref, &first,
-					    &cache_index,
 					    HAMMER2_LOOKUP_NODATA |
 					    HAMMER2_LOOKUP_SHARED);
 
@@ -679,7 +677,6 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 	hammer2_bmap_data_t *live;
 	hammer2_chain_t *live_parent;
 	hammer2_chain_t *live_chain;
-	int cache_index = -1;
 	int bmapindex;
 
 	kprintf("hammer2_bulkfree - range ");
@@ -736,7 +733,6 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 					    &key_dummy,
 					    key,
 					    key + HAMMER2_FREEMAP_LEVEL1_MASK,
-					    &cache_index,
 					    HAMMER2_LOOKUP_ALWAYS);
 
 #if 0

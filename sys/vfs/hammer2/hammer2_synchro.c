@@ -358,7 +358,6 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 	hammer2_pfs_t *pmp;
 	hammer2_key_t key_next;
 	hammer2_tid_t sync_tid;
-	int cache_index = -1;
 	int needrescan;
 	int want_update;
 	int error;
@@ -452,7 +451,6 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     HAMMER2_KEY_MIN, HAMMER2_KEY_MAX,
-				     &cache_index,
 				     HAMMER2_LOOKUP_SHARED |
 				     HAMMER2_LOOKUP_NODIRECT |
 				     HAMMER2_LOOKUP_NODATA);
@@ -625,7 +623,6 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 		if (advance_local) {
 			chain = hammer2_chain_next(&parent, chain, &key_next,
 						   key_next, HAMMER2_KEY_MAX,
-						   &cache_index,
 						   HAMMER2_LOOKUP_SHARED |
 						   HAMMER2_LOOKUP_NODIRECT |
 						   HAMMER2_LOOKUP_NODATA);
@@ -712,7 +709,6 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 {
 	hammer2_chain_t *chain;
 	hammer2_key_t dummy;
-	int cache_index = -1;
 
 #if HAMMER2_SYNCHRO_DEBUG
 	if (hammer2_debug & 1)
@@ -743,7 +739,6 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 	 */
 	chain = hammer2_chain_lookup(parentp, &dummy,
 				     focus->bref.key, focus->bref.key,
-				     &cache_index,
 				     HAMMER2_LOOKUP_NODIRECT |
 				     HAMMER2_LOOKUP_ALWAYS);
 	KKASSERT(chain == NULL);
@@ -836,7 +831,6 @@ hammer2_sync_destroy(hammer2_thread_t *thr,
 	hammer2_chain_t *chain;
 	hammer2_key_t key_next;
 	hammer2_key_t save_key;
-	int cache_index = -1;
 
 	chain = *chainp;
 
@@ -872,7 +866,6 @@ hammer2_sync_destroy(hammer2_thread_t *thr,
 				     HAMMER2_RESOLVE_ALWAYS);
 	*chainp = hammer2_chain_lookup(parentp, &key_next,
 				     save_key, HAMMER2_KEY_MAX,
-				     &cache_index,
 				     HAMMER2_LOOKUP_SHARED |
 				     HAMMER2_LOOKUP_NODIRECT |
 				     HAMMER2_LOOKUP_NODATA);

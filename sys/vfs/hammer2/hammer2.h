@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2016 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2017 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -310,7 +310,7 @@ struct hammer2_chain {
 	u_int		refs;
 	u_int		lockcnt;
 	int		error;			/* on-lock data error state */
-	int		unused01;		/* (aka ip->cluster) */
+	int		cache_index;		/* heur speeds up lookup */
 
 	hammer2_media_data_t *data;		/* data pointer shortcut */
 	TAILQ_ENTRY(hammer2_chain) flush_node;	/* flush list */
@@ -563,7 +563,6 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 
 struct hammer2_cluster_item {
 	hammer2_chain_t		*chain;
-	int			cache_index;
 	int			error;
 	uint32_t		flags;
 };
@@ -1452,16 +1451,16 @@ hammer2_chain_t *hammer2_chain_repparent(hammer2_chain_t **chainp, int how);
 hammer2_chain_t *hammer2_chain_lookup(hammer2_chain_t **parentp,
 				hammer2_key_t *key_nextp,
 				hammer2_key_t key_beg, hammer2_key_t key_end,
-				int *cache_indexp, int flags);
+				int flags);
 hammer2_chain_t *hammer2_chain_next(hammer2_chain_t **parentp,
 				hammer2_chain_t *chain,
 				hammer2_key_t *key_nextp,
 				hammer2_key_t key_beg, hammer2_key_t key_end,
-				int *cache_indexp, int flags);
+				int flags);
 int hammer2_chain_scan(hammer2_chain_t *parent,
 				hammer2_chain_t **chainp,
 				hammer2_blockref_t *bref,
-				int *firstp, int *cache_indexp, int flags);
+				int *firstp, int flags);
 
 int hammer2_chain_create(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
 				hammer2_pfs_t *pmp, int methods,
@@ -1491,10 +1490,10 @@ void hammer2_pfs_memory_wakeup(hammer2_pfs_t *pmp);
 
 void hammer2_base_delete(hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count,
-				int *cache_indexp, hammer2_chain_t *child);
+				hammer2_chain_t *child);
 void hammer2_base_insert(hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count,
-				int *cache_indexp, hammer2_chain_t *child);
+				hammer2_chain_t *child);
 
 /*
  * hammer2_flush.c
