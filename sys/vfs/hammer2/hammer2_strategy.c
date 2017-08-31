@@ -319,9 +319,12 @@ hammer2_strategy_xop_read(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	if (parent) {
 		chain = hammer2_chain_lookup(&parent, &key_dummy,
 					     lbase, lbase,
+					     &error,
 					     HAMMER2_LOOKUP_ALWAYS |
 					     HAMMER2_LOOKUP_SHARED);
-		error = chain ? chain->error : 0;
+		if (chain)
+			error = chain->error;
+		error = hammer2_error_to_errno(error);
 	} else {
 		error = EIO;
 		chain = NULL;
@@ -597,6 +600,7 @@ hammer2_strategy_xop_write(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	hammer2_write_file_core(bio_data, ip, &parent,
 				lbase, IO_ASYNC, pblksize,
 				xop->head.mtid, &error);
+	error = hammer2_error_to_errno(error);
 	if (parent) {
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
@@ -670,7 +674,8 @@ hammer2_bioq_sync(hammer2_pfs_t *pmp)
 /* 
  * Create a new cluster at (cparent, lbase) and assign physical storage,
  * returning a cluster suitable for I/O.  The cluster will be in a modified
- * state.
+ * state.  Any chain->error will be rolled up into *errorp, but still
+ * returned.  Caller must check *errorp.  Caller need not check chain->error.
  *
  * cparent can wind up being anything.
  *
@@ -697,11 +702,11 @@ hammer2_assign_physical(hammer2_inode_t *ip, hammer2_chain_t **parentp,
 	 * device buffer) because we will be using direct IO via the
 	 * logical buffer cache buffer.
 	 */
-	*errorp = 0;
 	KKASSERT(pblksize >= HAMMER2_ALLOC_MIN);
 retry:
 	chain = hammer2_chain_lookup(parentp, &key_dummy,
 				     lbase, lbase,
+				     errorp,
 				     HAMMER2_LOOKUP_NODATA);
 
 	/*
@@ -741,7 +746,7 @@ retry:
 			goto retry;
 		}
 		/*ip->delta_dcount += pblksize;*/
-	} else {
+	} else if (chain->error == 0) {
 		switch (chain->bref.type) {
 		case HAMMER2_BREF_TYPE_INODE:
 			/*
@@ -775,6 +780,8 @@ retry:
 			/* NOT REACHED */
 			break;
 		}
+	} else {
+		*errorp = chain->error;
 	}
 	return (chain);
 }
@@ -812,7 +819,9 @@ hammer2_write_file_core(char *data, hammer2_inode_t *ip,
 		bdata = data;
 		chain = hammer2_assign_physical(ip, parentp, lbase, pblksize,
 						mtid, &bdata, errorp);
-		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
+		if (*errorp) {
+			/* skip modifications */
+		} else if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 			hammer2_inode_data_t *wipdata;
 
 			wipdata = &chain->data->ipdata;
@@ -1179,7 +1188,9 @@ hammer2_zero_check_and_write(char *data, hammer2_inode_t *ip,
 		bdata = data;
 		chain = hammer2_assign_physical(ip, parentp, lbase, pblksize,
 						mtid, &bdata, errorp);
-		if (bdata) {
+		if (*errorp) {
+			/* do nothing */
+		} else if (bdata) {
 			hammer2_write_bp(chain, data, ioflag, pblksize,
 					 mtid, errorp, check_algo);
 		} else {
@@ -1229,9 +1240,9 @@ zero_write(char *data, hammer2_inode_t *ip,
 	hammer2_chain_t *chain;
 	hammer2_key_t key_dummy;
 
-	*errorp = 0;
 	chain = hammer2_chain_lookup(parentp, &key_dummy,
 				     lbase, lbase,
+				     errorp,
 				     HAMMER2_LOOKUP_NODATA);
 	if (chain) {
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {

@@ -322,7 +322,7 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 	hammer2_off_t key;
 	size_t bytes;
 	uint16_t class;
-	int error = 0;
+	int error;
 
 	/*
 	 * Calculate the number of bytes being allocated, the number
@@ -346,8 +346,10 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 	l1mask = l1size - 1;
 
 	chain = hammer2_chain_lookup(parentp, &key_dummy, key, key + l1mask,
+				     &error,
 				     HAMMER2_LOOKUP_ALWAYS |
 				     HAMMER2_LOOKUP_MATCHIND);
+	error = hammer2_error_to_errno(error);
 
 	if (chain == NULL) {
 		/*
@@ -971,8 +973,10 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref,
 	hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
 
 	chain = hammer2_chain_lookup(&parent, &key_dummy, key, key + l1mask,
+				     &error,
 				     HAMMER2_LOOKUP_ALWAYS |
 				     HAMMER2_LOOKUP_MATCHIND);
+	error = hammer2_error_to_errno(error);
 
 	/*
 	 * Stop early if we are trying to free something but no leaf exists.

@@ -1189,7 +1189,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		parent = hammer2_chain_lookup_init(&hmp->vchain, 0);
 		schain = hammer2_chain_lookup(&parent, &key_dummy,
 				      HAMMER2_SROOT_KEY, HAMMER2_SROOT_KEY,
-				      0);
+				      &error, 0);
 		hammer2_chain_lookup_done(parent);
 		if (schain == NULL) {
 			kprintf("hammer2_mount: invalid super-root\n");
@@ -1298,7 +1298,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	lhc = hammer2_dirhash(label, strlen(label));
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
-				     0);
+				     &error, 0);
 	while (chain) {
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
 		    strcmp(label, chain->data->ipdata.filename) == 0) {
@@ -1307,7 +1307,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					    key_next,
 					    lhc + HAMMER2_DIRHASH_LOMASK,
-					    0);
+					    &error, 0);
 	}
 	if (parent) {
 		hammer2_chain_unlock(parent);
@@ -1319,7 +1319,10 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 * PFS could not be found?
 	 */
 	if (chain == NULL) {
-		kprintf("hammer2_mount: PFS label not found\n");
+		if (error)
+			kprintf("hammer2_mount: PFS label I/O error\n");
+		else
+			kprintf("hammer2_mount: PFS label not found\n");
 		hammer2_unmount_helper(mp, NULL, hmp);
 		lockmgr(&hammer2_mntlk, LK_RELEASE);
 		hammer2_vfs_unmount(mp, MNT_FORCE);
@@ -1335,10 +1338,14 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 * Check if the cluster has already been mounted.  A cluster can
 	 * only be mounted once, use null mounts to mount additional copies.
 	 */
-	ripdata = &chain->data->ipdata;
-	bref = chain->bref;
-	pmp = hammer2_pfsalloc(NULL, ripdata,
-			       bref.modify_tid, force_local);
+	if (chain->error) {
+		kprintf("hammer2_mount: PFS label I/O error\n");
+	} else {
+		ripdata = &chain->data->ipdata;
+		bref = chain->bref;
+		pmp = hammer2_pfsalloc(NULL, ripdata,
+				       bref.modify_tid, force_local);
+	}
 	hammer2_chain_unlock(chain);
 	hammer2_chain_drop(chain);
 
@@ -1429,6 +1436,7 @@ hammer2_update_pmps(hammer2_dev_t *hmp)
 	hammer2_pfs_t *spmp;
 	hammer2_pfs_t *pmp;
 	hammer2_key_t key_next;
+	int error;
 
 	/*
 	 * Force local mount (disassociate all PFSs from their clusters).
@@ -1447,19 +1455,23 @@ hammer2_update_pmps(hammer2_dev_t *hmp)
 	parent = hammer2_inode_chain(spmp->iroot, 0, HAMMER2_RESOLVE_ALWAYS);
 	chain = hammer2_chain_lookup(&parent, &key_next,
 					 HAMMER2_KEY_MIN, HAMMER2_KEY_MAX,
-					 0);
+					 &error, 0);
 	while (chain) {
 		if (chain->bref.type != HAMMER2_BREF_TYPE_INODE)
 			continue;
-		ripdata = &chain->data->ipdata;
-		bref = chain->bref;
-		kprintf("ADD LOCAL PFS: %s\n", ripdata->filename);
+		if (chain->error) {
+			kprintf("I/O error scanning PFS labels\n");
+		} else {
+			ripdata = &chain->data->ipdata;
+			bref = chain->bref;
+			kprintf("ADD LOCAL PFS: %s\n", ripdata->filename);
 
-		pmp = hammer2_pfsalloc(chain, ripdata,
-				       bref.modify_tid, force_local);
+			pmp = hammer2_pfsalloc(chain, ripdata,
+					       bref.modify_tid, force_local);
+		}
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next, HAMMER2_KEY_MAX,
-					   0);
+					   &error, 0);
 	}
 	if (parent) {
 		hammer2_chain_unlock(parent);

@@ -2278,7 +2278,7 @@ again:
 hammer2_chain_t *
 hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 		     hammer2_key_t key_beg, hammer2_key_t key_end,
-		     int flags)
+		     int *errorp, int flags)
 {
 	hammer2_dev_t *hmp;
 	hammer2_chain_t *parent;
@@ -2318,6 +2318,7 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 	 */
 	parent = *parentp;
 	hmp = parent->hmp;
+	*errorp = 0;
 
 	while (parent->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
 	       parent->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE) {
@@ -2423,6 +2424,16 @@ again:
 		      parent->bref.type);
 		base = NULL;	/* safety */
 		count = 0;	/* safety */
+	}
+
+	/*
+	 * No lookup is possible if the parent is errored.  We delayed
+	 * this check as long as we could to ensure that the parent backup,
+	 * embedded data, and MATCHIND code could still execute.
+	 */
+	if (parent->error) {
+		*errorp = parent->error;
+		return NULL;
 	}
 
 	/*
@@ -2564,6 +2575,10 @@ done:
 	 * a ref.  Perhaps this can eventually be optimized to not obtain the
 	 * lock in the first place for situations where the data does not
 	 * need to be resolved.
+	 *
+	 * NOTE! A chain->error must be tested by the caller upon return.
+	 *	 *errorp is only set based on issues which occur while
+	 *	 trying to reach the chain.
 	 */
 	if (chain) {
 		if (flags & HAMMER2_LOOKUP_NOLOCK)
@@ -2595,7 +2610,7 @@ hammer2_chain_t *
 hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 		   hammer2_key_t *key_nextp,
 		   hammer2_key_t key_beg, hammer2_key_t key_end,
-		   int flags)
+		   int *errorp, int flags)
 {
 	hammer2_chain_t *parent;
 	int how_maybe;
@@ -2608,6 +2623,7 @@ hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 		how_maybe |= HAMMER2_RESOLVE_SHARED;
 
 	parent = *parentp;
+	*errorp = 0;
 
 	/*
 	 * Calculate the next index and recalculate the parent if necessary.
@@ -2659,7 +2675,7 @@ hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 	 */
 	return (hammer2_chain_lookup(parentp, key_nextp,
 				     key_beg, key_end,
-				     flags));
+				     errorp, flags));
 }
 
 /*
@@ -2961,6 +2977,8 @@ done:
  *
  * When creating a PFSROOT inode under the super-root, pmp is typically NULL
  * and will be reassigned.
+ *
+ * NOTE: returns HAMMER_ERROR_* flags
  */
 int
 hammer2_chain_create(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
@@ -3519,6 +3537,8 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
  * can be inserted.
  *
  * Must be called with an exclusively locked parent.
+ *
+ * NOTE: *errorp set to HAMMER_ERROR_* flags
  */
 static int hammer2_chain_indkey_freemap(hammer2_chain_t *parent,
 				hammer2_key_t *keyp, int keybits,
@@ -5218,6 +5238,7 @@ hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,
 	hammer2_chain_t *rchain;
 	hammer2_key_t key_dummy;
 	int resolve_flags;
+	int error;
 
 	resolve_flags = (flags & HAMMER2_LOOKUP_SHARED) ?
 			HAMMER2_RESOLVE_SHARED : 0;
@@ -5245,12 +5266,14 @@ hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,
 	if (parent) {
 		rchain = hammer2_chain_lookup(&parent, &key_dummy,
 					      inum, inum,
-					      flags);
+					      &error, flags);
+	} else {
+		error = HAMMER2_ERROR_IO;
 	}
 	*parentp = parent;
 	*chainp = rchain;
 
-	return (rchain ? 0 : EINVAL);
+	return error;
 }
 
 /*

@@ -252,7 +252,7 @@ static void hammer2_bulkfree_thread(void *arg __unused);
 static void cbinfo_bmap_init(hammer2_bulkfree_info_t *cbinfo, size_t size);
 static int h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo,
 			hammer2_blockref_t *bref);
-static void h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo);
+static int h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo);
 static void h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 			hammer2_off_t data_off, hammer2_bmap_data_t *live,
 			hammer2_bmap_data_t *bmap, hammer2_key_t alloc_base);
@@ -425,7 +425,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 		 * filled-out in-memory freemap.
 		 */
 		if (error == 0) {
-			h2_bulkfree_sync(&cbinfo);
+			error = h2_bulkfree_sync(&cbinfo);
 
 			hammer2_voldata_lock(hmp);
 			hammer2_voldata_modify(hmp);
@@ -667,7 +667,7 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
  *			  ** -> 11	nominally warn of corruption
  * 
  */
-static void
+static int
 h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 {
 	hammer2_off_t data_off;
@@ -678,6 +678,7 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 	hammer2_chain_t *live_parent;
 	hammer2_chain_t *live_chain;
 	int bmapindex;
+	int error;
 
 	kprintf("hammer2_bulkfree - range ");
 
@@ -702,6 +703,7 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 	hammer2_chain_ref(live_parent);
 	hammer2_chain_lock(live_parent, HAMMER2_RESOLVE_ALWAYS);
 	live_chain = NULL;
+	error = 0;
 
 	/*
 	 * Iterate each hammer2_bmap_data_t line (128 bytes) managing
@@ -733,30 +735,15 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 					    &key_dummy,
 					    key,
 					    key + HAMMER2_FREEMAP_LEVEL1_MASK,
+					    &error,
 					    HAMMER2_LOOKUP_ALWAYS);
-
-#if 0
-			/*
-			 * If recent allocations were made we avoid races by
-			 * not staging or freeing any blocks.  We can still
-			 * remark blocks as fully allocated.
-			 */
-			if (live_chain) {
-				if (hammer2_debug & 1) {
-					kprintf("live_chain %016jx\n",
-						(intmax_t)key);
-				}
-				if (live_chain->bref.mirror_tid >
-				    cbinfo->saved_mirror_tid) {
-					kprintf("hammer2_bulkfree: "
-						"avoid %016jx\n",
-						data_off);
-					nofree = 1;
-				} else {
-					nofree = 0;
-				}
+			if (error) {
+				kprintf("hammer2_bulkfree: freemap lookup "
+					"error near %016jx, error %s\n",
+					(intmax_t)data_off,
+					hammer2_error_str(live_chain->error));
+				break;
 			}
-#endif
 		}
 		if (live_chain == NULL) {
 			/*
@@ -774,10 +761,10 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 			goto next;
 		}
 		if (live_chain->error) {
-			kprintf("hammer2_bulkfree: error %s looking up "
-				"live leaf for allocated data near %016jx\n",
-				hammer2_error_str(live_chain->error),
-				(intmax_t)data_off);
+			kprintf("hammer2_bulkfree: unable to access freemap "
+				"near %016jx, error %s\n",
+				(intmax_t)data_off,
+				hammer2_error_str(live_chain->error));
 			hammer2_chain_unlock(live_chain);
 			hammer2_chain_drop(live_chain);
 			live_chain = NULL;
@@ -830,6 +817,7 @@ next:
 		hammer2_chain_unlock(live_parent);
 		hammer2_chain_drop(live_parent);
 	}
+	return error;
 }
 
 /*

@@ -1451,12 +1451,12 @@ hammer2_chain_t *hammer2_chain_repparent(hammer2_chain_t **chainp, int how);
 hammer2_chain_t *hammer2_chain_lookup(hammer2_chain_t **parentp,
 				hammer2_key_t *key_nextp,
 				hammer2_key_t key_beg, hammer2_key_t key_end,
-				int flags);
+				int *errorp, int flags);
 hammer2_chain_t *hammer2_chain_next(hammer2_chain_t **parentp,
 				hammer2_chain_t *chain,
 				hammer2_key_t *key_nextp,
 				hammer2_key_t key_beg, hammer2_key_t key_end,
-				int flags);
+				int *errorp, int flags);
 int hammer2_chain_scan(hammer2_chain_t *parent,
 				hammer2_chain_t **chainp,
 				hammer2_blockref_t *bref,

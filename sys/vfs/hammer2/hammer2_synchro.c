@@ -346,6 +346,8 @@ dumpcluster(const char *label,
  * issues to all nodes.  However, this is the only way we can safely
  * synchronize nodes which might have disparate I/O bandwidths and the only
  * way we can safely deal with stalled nodes.
+ *
+ * XXX serror / merror rollup and handling.
  */
 static
 int
@@ -360,8 +362,9 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 	hammer2_tid_t sync_tid;
 	int needrescan;
 	int want_update;
-	int error;
-	int nerror;
+	int serror;		/* slave error */
+	int merror;		/* master error (from xop_collect) */
+	int nerror;		/* temporary error */
 	int idx;
 	int n;
 
@@ -384,7 +387,7 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 		return(HAMMER2_ERROR_INCOMPLETE);
 #endif
 
-	error = 0;
+	merror = 0;
 
 	/*
 	 * Resolve the root inode of the PFS and determine if synchronization
@@ -403,8 +406,8 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 		hammer2_xop_start_except(&xop2->head, hammer2_xop_ipcluster,
 					 idx);
 		hammer2_inode_unlock(ip);
-		error = hammer2_xop_collect(&xop2->head, 0);
-		if (error == 0 && (focus = xop2->head.cluster.focus) != NULL) {
+		merror = hammer2_xop_collect(&xop2->head, 0);
+		if (merror == 0 && (focus = xop2->head.cluster.focus) != NULL) {
 			sync_tid = focus->bref.modify_tid;
 			chain = hammer2_inode_chain_and_parent(ip, idx,
 						    &parent,
@@ -451,10 +454,12 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     HAMMER2_KEY_MIN, HAMMER2_KEY_MAX,
+				     &serror,
 				     HAMMER2_LOOKUP_SHARED |
 				     HAMMER2_LOOKUP_NODIRECT |
 				     HAMMER2_LOOKUP_NODATA);
-	error = hammer2_xop_collect(&xop->head, 0);
+	serror = hammer2_error_to_errno(serror);
+	merror = hammer2_xop_collect(&xop->head, 0);
 	if (hammer2_debug & 0x8000) {
 		kprintf("START_SCAN IP=%016jx chain=%p (%016jx)\n",
 			ip->meta.name_key, chain,
@@ -472,15 +477,15 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 		int dodefer = 0;
 		hammer2_chain_t *focus;
 
-		if (chain == NULL && error == ENOENT)
+		if (chain == NULL && merror == ENOENT)
 			break;
-		if (error && error != ENOENT)
+		if (merror && merror != ENOENT)
 			break;
 
 		/*
 		 * Compare
 		 */
-		if (chain && error == ENOENT) {
+		if (chain && merror == ENOENT) {
 			/*
 			 * If we have local chains but the XOP scan is done,
 			 * the chains need to be deleted.
@@ -580,7 +585,7 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 		 * The deferral is pushed onto a LIFO list for bottom-up
 		 * synchronization.
 		 */
-		if (error == 0 && dodefer) {
+		if (merror == 0 && dodefer) {
 			hammer2_inode_t *nip;
 			hammer2_deferred_ip_t *defer;
 
@@ -618,14 +623,16 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 		 * Advancements for iteration.
 		 */
 		if (advance_xop) {
-			error = hammer2_xop_collect(&xop->head, 0);
+			merror = hammer2_xop_collect(&xop->head, 0);
 		}
 		if (advance_local) {
 			chain = hammer2_chain_next(&parent, chain, &key_next,
 						   key_next, HAMMER2_KEY_MAX,
+						   &serror,
 						   HAMMER2_LOOKUP_SHARED |
 						   HAMMER2_LOOKUP_NODIRECT |
 						   HAMMER2_LOOKUP_NODATA);
+			serror = hammer2_error_to_errno(serror);
 		}
 	}
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
@@ -645,8 +652,8 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 	 * NOTE: In this situation we do not yet want to synchronize our
 	 *	 inode, setting the error code also has that effect.
 	 */
-	if ((error == 0 || error == ENOENT) && needrescan)
-		error = EAGAIN;
+	if ((merror == 0 || merror == ENOENT) && needrescan)
+		merror = EAGAIN;
 
 	/*
 	 * If no error occurred we can synchronize the inode meta-data
@@ -654,7 +661,7 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 	 *
 	 * XXX inode lock was lost
 	 */
-	if (error == 0 || error == ENOENT) {
+	if (merror == 0 || merror == ENOENT) {
 		hammer2_xop_ipcluster_t *xop2;
 		hammer2_chain_t *focus;
 
@@ -663,8 +670,8 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 		hammer2_xop_start_except(&xop2->head, hammer2_xop_ipcluster,
 					 idx);
 		hammer2_inode_unlock(ip);
-		error = hammer2_xop_collect(&xop2->head, 0);
-		if (error == 0) {
+		merror = hammer2_xop_collect(&xop2->head, 0);
+		if (merror == 0) {
 			focus = xop2->head.cluster.focus;
 			if (hammer2_debug & 0x8000) {
 				kprintf("syncthr: update inode %p (%s)\n",
@@ -692,7 +699,7 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 		hammer2_xop_retire(&xop2->head, HAMMER2_XOPMASK_VOP);
 	}
 
-	return error;
+	return merror;
 }
 
 /*
@@ -709,6 +716,7 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 {
 	hammer2_chain_t *chain;
 	hammer2_key_t dummy;
+	int error;
 
 #if HAMMER2_SYNCHRO_DEBUG
 	if (hammer2_debug & 1)
@@ -739,67 +747,71 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 	 */
 	chain = hammer2_chain_lookup(parentp, &dummy,
 				     focus->bref.key, focus->bref.key,
+				     &error,
 				     HAMMER2_LOOKUP_NODIRECT |
 				     HAMMER2_LOOKUP_ALWAYS);
 	KKASSERT(chain == NULL);
 
 	chain = NULL;
-	hammer2_chain_create(parentp, &chain,
-			     thr->pmp, focus->bref.methods,
-			     focus->bref.key, focus->bref.keybits,
-			     focus->bref.type, focus->bytes,
-			     mtid, 0, 0);
-	hammer2_chain_modify(chain, mtid, 0, 0);
+	error = hammer2_chain_create(parentp, &chain,
+				     thr->pmp, focus->bref.methods,
+				     focus->bref.key, focus->bref.keybits,
+				     focus->bref.type, focus->bytes,
+				     mtid, 0, 0);
+	if (error == 0) {
+		hammer2_chain_modify(chain, mtid, 0, 0);
 
-	/*
-	 * Copy focus to new chain
-	 */
-
-	/* type already set */
-	chain->bref.methods = focus->bref.methods;
-	/* keybits already set */
-	chain->bref.vradix = focus->bref.vradix;
-	/* mirror_tid set by flush */
-	KKASSERT(chain->bref.modify_tid == mtid);
-	chain->bref.flags = focus->bref.flags;
-	/* key already present */
-	/* check code will be recalculated */
-
-	/*
-	 * Copy data body.
-	 */
-	switch(chain->bref.type) {
-	case HAMMER2_BREF_TYPE_INODE:
-		if ((focus->data->ipdata.meta.op_flags &
-		     HAMMER2_OPFLAG_DIRECTDATA) == 0) {
-			/* do not copy block table */
-			bcopy(focus->data, chain->data,
-			      offsetof(hammer2_inode_data_t, u));
-			break;
-		}
-		/* fall through copy whole thing */
-	case HAMMER2_BREF_TYPE_DATA:
-		bcopy(focus->data, chain->data, chain->bytes);
-		hammer2_chain_setcheck(chain, chain->data);
-		break;
-	case HAMMER2_BREF_TYPE_DIRENT:
 		/*
-		 * Directory entries embed data in the blockref.
+		 * Copy focus to new chain
 		 */
-		if (chain->bytes) {
+
+		/* type already set */
+		chain->bref.methods = focus->bref.methods;
+		/* keybits already set */
+		chain->bref.vradix = focus->bref.vradix;
+		/* mirror_tid set by flush */
+		KKASSERT(chain->bref.modify_tid == mtid);
+		chain->bref.flags = focus->bref.flags;
+		/* key already present */
+		/* check code will be recalculated */
+
+		/*
+		 * Copy data body.
+		 */
+		switch(chain->bref.type) {
+		case HAMMER2_BREF_TYPE_INODE:
+			if ((focus->data->ipdata.meta.op_flags &
+			     HAMMER2_OPFLAG_DIRECTDATA) == 0) {
+				/* do not copy block table */
+				bcopy(focus->data, chain->data,
+				      offsetof(hammer2_inode_data_t, u));
+				break;
+			}
+			/* fall through copy whole thing */
+		case HAMMER2_BREF_TYPE_DATA:
 			bcopy(focus->data, chain->data, chain->bytes);
 			hammer2_chain_setcheck(chain, chain->data);
-		} else {
-			chain->bref.check = focus->bref.check;
+			break;
+		case HAMMER2_BREF_TYPE_DIRENT:
+			/*
+			 * Directory entries embed data in the blockref.
+			 */
+			if (chain->bytes) {
+				bcopy(focus->data, chain->data, chain->bytes);
+				hammer2_chain_setcheck(chain, chain->data);
+			} else {
+				chain->bref.check = focus->bref.check;
+			}
+			chain->bref.embed = focus->bref.embed;
+			break;
+		default:
+			KKASSERT(0);
+			break;
 		}
-		chain->bref.embed = focus->bref.embed;
-		break;
-	default:
-		KKASSERT(0);
-		break;
 	}
 
-	hammer2_chain_unlock(chain);		/* unlock, leave ref */
+	if (chain)
+		hammer2_chain_unlock(chain);	/* unlock, leave ref */
 	*chainp = chain;			/* will be returned locked */
 
 	/*
@@ -808,10 +820,13 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 	hammer2_chain_unlock(*parentp);
 	hammer2_chain_lock(*parentp, HAMMER2_RESOLVE_SHARED |
 				     HAMMER2_RESOLVE_ALWAYS);
-	hammer2_chain_lock(chain, HAMMER2_RESOLVE_SHARED |
-				  HAMMER2_RESOLVE_ALWAYS);
+	if (chain) {
+		hammer2_chain_lock(chain, HAMMER2_RESOLVE_SHARED |
+					  HAMMER2_RESOLVE_ALWAYS);
+		error = chain->error;
+	}
 
-	return 0;
+	return error;
 }
 
 /*
@@ -831,6 +846,7 @@ hammer2_sync_destroy(hammer2_thread_t *thr,
 	hammer2_chain_t *chain;
 	hammer2_key_t key_next;
 	hammer2_key_t save_key;
+	int error;
 
 	chain = *chainp;
 
@@ -866,10 +882,11 @@ hammer2_sync_destroy(hammer2_thread_t *thr,
 				     HAMMER2_RESOLVE_ALWAYS);
 	*chainp = hammer2_chain_lookup(parentp, &key_next,
 				     save_key, HAMMER2_KEY_MAX,
+				     &error,
 				     HAMMER2_LOOKUP_SHARED |
 				     HAMMER2_LOOKUP_NODIRECT |
 				     HAMMER2_LOOKUP_NODATA);
-	return 0;
+	return error;
 }
 
 /*
@@ -883,8 +900,8 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 		     hammer2_tid_t mtid, int idx,
 		     hammer2_chain_t *focus, int isroot)
 {
-	int nradix;
 	uint8_t otype;
+	int nradix;
 
 #if HAMMER2_SYNCHRO_DEBUG
 	if (hammer2_debug & 1)
@@ -895,121 +912,123 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 #endif
 	hammer2_chain_unlock(chain);
 	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
-	if (chain->bytes != focus->bytes) {
-		/* XXX what if compressed? */
-		nradix = hammer2_getradix(chain->bytes);
-		hammer2_chain_resize(chain, mtid, 0, nradix, 0);
-	}
-	hammer2_chain_modify(chain, mtid, 0, 0);
-	otype = chain->bref.type;
-	chain->bref.type = focus->bref.type;
-	chain->bref.methods = focus->bref.methods;
-	chain->bref.keybits = focus->bref.keybits;
-	chain->bref.vradix = focus->bref.vradix;
-	/* mirror_tid updated by flush */
-	KKASSERT(mtid == 0 || chain->bref.modify_tid == mtid);
-	chain->bref.flags = focus->bref.flags;
-	/* key already present */
-	/* check code will be recalculated */
-	chain->error = 0;
+	if (chain->error == 0) {
+		if (chain->bytes != focus->bytes) {
+			/* XXX what if compressed? */
+			nradix = hammer2_getradix(chain->bytes);
+			hammer2_chain_resize(chain, mtid, 0, nradix, 0);
+		}
+		hammer2_chain_modify(chain, mtid, 0, 0);
+		otype = chain->bref.type;
+		chain->bref.type = focus->bref.type;
+		chain->bref.methods = focus->bref.methods;
+		chain->bref.keybits = focus->bref.keybits;
+		chain->bref.vradix = focus->bref.vradix;
+		/* mirror_tid updated by flush */
+		KKASSERT(mtid == 0 || chain->bref.modify_tid == mtid);
+		chain->bref.flags = focus->bref.flags;
+		/* key already present */
+		/* check code will be recalculated */
 
-	/*
-	 * Copy data body.
-	 */
-	switch(chain->bref.type) {
-	case HAMMER2_BREF_TYPE_INODE:
 		/*
-		 * Special case PFSROOTs, only limited changes can be made
-		 * since the meta-data contains miscellanious distinguishing
-		 * fields.
+		 * Copy data body.
 		 */
-		if (isroot) {
-			chain->data->ipdata.meta.uflags =
-				focus->data->ipdata.meta.uflags;
-			chain->data->ipdata.meta.rmajor =
-				focus->data->ipdata.meta.rmajor;
-			chain->data->ipdata.meta.rminor =
-				focus->data->ipdata.meta.rminor;
-			chain->data->ipdata.meta.ctime =
-				focus->data->ipdata.meta.ctime;
-			chain->data->ipdata.meta.mtime =
-				focus->data->ipdata.meta.mtime;
-			chain->data->ipdata.meta.atime =
-				focus->data->ipdata.meta.atime;
-			/* not btime */
-			chain->data->ipdata.meta.uid =
-				focus->data->ipdata.meta.uid;
-			chain->data->ipdata.meta.gid =
-				focus->data->ipdata.meta.gid;
-			chain->data->ipdata.meta.mode =
-				focus->data->ipdata.meta.mode;
-			chain->data->ipdata.meta.ncopies =
-				focus->data->ipdata.meta.ncopies;
-			chain->data->ipdata.meta.comp_algo =
-				focus->data->ipdata.meta.comp_algo;
-			chain->data->ipdata.meta.check_algo =
-				focus->data->ipdata.meta.check_algo;
-			chain->data->ipdata.meta.data_quota =
-				focus->data->ipdata.meta.data_quota;
-			chain->data->ipdata.meta.inode_quota =
-				focus->data->ipdata.meta.inode_quota;
-
+		switch(chain->bref.type) {
+		case HAMMER2_BREF_TYPE_INODE:
 			/*
-			 * last snapshot tid controls overwrite
+			 * Special case PFSROOTs, only limited changes can
+			 * be made since the meta-data contains miscellanious
+			 * distinguishing fields.
 			 */
-			if (chain->data->ipdata.meta.pfs_lsnap_tid <
-			    focus->data->ipdata.meta.pfs_lsnap_tid) {
-				chain->data->ipdata.meta.pfs_lsnap_tid =
+			if (isroot) {
+				chain->data->ipdata.meta.uflags =
+					focus->data->ipdata.meta.uflags;
+				chain->data->ipdata.meta.rmajor =
+					focus->data->ipdata.meta.rmajor;
+				chain->data->ipdata.meta.rminor =
+					focus->data->ipdata.meta.rminor;
+				chain->data->ipdata.meta.ctime =
+					focus->data->ipdata.meta.ctime;
+				chain->data->ipdata.meta.mtime =
+					focus->data->ipdata.meta.mtime;
+				chain->data->ipdata.meta.atime =
+					focus->data->ipdata.meta.atime;
+				/* not btime */
+				chain->data->ipdata.meta.uid =
+					focus->data->ipdata.meta.uid;
+				chain->data->ipdata.meta.gid =
+					focus->data->ipdata.meta.gid;
+				chain->data->ipdata.meta.mode =
+					focus->data->ipdata.meta.mode;
+				chain->data->ipdata.meta.ncopies =
+					focus->data->ipdata.meta.ncopies;
+				chain->data->ipdata.meta.comp_algo =
+					focus->data->ipdata.meta.comp_algo;
+				chain->data->ipdata.meta.check_algo =
+					focus->data->ipdata.meta.check_algo;
+				chain->data->ipdata.meta.data_quota =
+					focus->data->ipdata.meta.data_quota;
+				chain->data->ipdata.meta.inode_quota =
+					focus->data->ipdata.meta.inode_quota;
+
+				/*
+				 * last snapshot tid controls overwrite
+				 */
+				if (chain->data->ipdata.meta.pfs_lsnap_tid <
+				    focus->data->ipdata.meta.pfs_lsnap_tid) {
+					chain->data->ipdata.meta.pfs_lsnap_tid =
 					focus->data->ipdata.meta.pfs_lsnap_tid;
+				}
+
+				hammer2_chain_setcheck(chain, chain->data);
+				break;
 			}
 
-			hammer2_chain_setcheck(chain, chain->data);
-			break;
-		}
-
-		/*
-		 * Normal replacement.
-		 */
-		if ((focus->data->ipdata.meta.op_flags &
-		     HAMMER2_OPFLAG_DIRECTDATA) == 0) {
 			/*
-			 * If DIRECTDATA is transitioning to 0 or the old
-			 * chain is not an inode we have to initialize
-			 * the block table.
+			 * Normal replacement.
 			 */
-			if (otype != HAMMER2_BREF_TYPE_INODE ||
-			    (chain->data->ipdata.meta.op_flags &
-			     HAMMER2_OPFLAG_DIRECTDATA)) {
-				kprintf("chain inode trans away from dd\n");
-				bzero(&chain->data->ipdata.u,
-				      sizeof(chain->data->ipdata.u));
+			if ((focus->data->ipdata.meta.op_flags &
+			     HAMMER2_OPFLAG_DIRECTDATA) == 0) {
+				/*
+				 * If DIRECTDATA is transitioning to 0 or the
+				 * old chain is not an inode we have to
+				 * initialize the block table.
+				 */
+				if (otype != HAMMER2_BREF_TYPE_INODE ||
+				    (chain->data->ipdata.meta.op_flags &
+				     HAMMER2_OPFLAG_DIRECTDATA)) {
+					kprintf("chain inode trans "
+						"away from dd\n");
+					bzero(&chain->data->ipdata.u,
+					      sizeof(chain->data->ipdata.u));
+				}
+				bcopy(focus->data, chain->data,
+				      offsetof(hammer2_inode_data_t, u));
+				/* XXX setcheck on inode should not be needed */
+				hammer2_chain_setcheck(chain, chain->data);
+				break;
 			}
-			bcopy(focus->data, chain->data,
-			      offsetof(hammer2_inode_data_t, u));
-			/* XXX setcheck on inode should not be needed */
-			hammer2_chain_setcheck(chain, chain->data);
-			break;
-		}
-		/* fall through */
-	case HAMMER2_BREF_TYPE_DATA:
-		bcopy(focus->data, chain->data, chain->bytes);
-		hammer2_chain_setcheck(chain, chain->data);
-		break;
-	case HAMMER2_BREF_TYPE_DIRENT:
-		/*
-		 * Directory entries embed data in the blockref.
-		 */
-		if (chain->bytes) {
+			/* fall through */
+		case HAMMER2_BREF_TYPE_DATA:
 			bcopy(focus->data, chain->data, chain->bytes);
 			hammer2_chain_setcheck(chain, chain->data);
-		} else {
-			chain->bref.check = focus->bref.check;
+			break;
+		case HAMMER2_BREF_TYPE_DIRENT:
+			/*
+			 * Directory entries embed data in the blockref.
+			 */
+			if (chain->bytes) {
+				bcopy(focus->data, chain->data, chain->bytes);
+				hammer2_chain_setcheck(chain, chain->data);
+			} else {
+				chain->bref.check = focus->bref.check;
+			}
+			chain->bref.embed = focus->bref.embed;
+			break;
+		default:
+			KKASSERT(0);
+			break;
 		}
-		chain->bref.embed = focus->bref.embed;
-		break;
-	default:
-		KKASSERT(0);
-		break;
 	}
 
 	hammer2_chain_unlock(chain);

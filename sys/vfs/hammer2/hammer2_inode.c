@@ -1321,7 +1321,8 @@ hammer2_inode_xop_mkdirent(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	}
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     xop->lhc, xop->lhc,
-				     0);
+				     &error, 0);
+	error = hammer2_error_to_errno(error);
 	if (chain) {
 		error = EEXIST;
 		goto fail;
@@ -1402,7 +1403,8 @@ hammer2_inode_xop_create(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	}
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     xop->lhc, xop->lhc,
-				     0);
+				     &error, 0);
+	error = hammer2_error_to_errno(error);
 	if (chain) {
 		error = EEXIST;
 		goto fail;
@@ -1495,6 +1497,7 @@ hammer2_inode_xop_unlinkall(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	hammer2_key_t key_next;
+	int error;
 
 	/*
 	 * We need the precise parent chain to issue the deletion.
@@ -1503,12 +1506,13 @@ hammer2_inode_xop_unlinkall(hammer2_thread_t *thr, hammer2_xop_t *arg)
 				     HAMMER2_RESOLVE_ALWAYS);
 	chain = NULL;
 	if (parent == NULL) {
-		/* XXX error */
+		error = 0;
 		goto done;
 	}
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     xop->key_beg, xop->key_end,
-				     HAMMER2_LOOKUP_ALWAYS);
+				     &error, HAMMER2_LOOKUP_ALWAYS);
+	error = hammer2_error_to_errno(error);
 	while (chain) {
 		hammer2_chain_delete(parent, chain,
 				     xop->head.mtid, HAMMER2_DELETE_PERMANENT);
@@ -1516,10 +1520,14 @@ hammer2_inode_xop_unlinkall(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		/* depend on function to unlock the shared lock */
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next, xop->key_end,
+					   &error,
 					   HAMMER2_LOOKUP_ALWAYS);
 	}
+	error = hammer2_error_to_errno(error);
 done:
-	hammer2_xop_feed(&xop->head, NULL, thr->clindex, ENOENT);
+	if (error == 0)
+		error = ENOENT;
+	hammer2_xop_feed(&xop->head, NULL, thr->clindex, error);
 	if (parent) {
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
@@ -1555,7 +1563,8 @@ hammer2_inode_xop_connect(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	}
 	chain = hammer2_chain_lookup(&parent, &key_dummy,
 				     xop->lhc, xop->lhc,
-				     0);
+				     &error, 0);
+	error = hammer2_error_to_errno(error);
 	if (chain) {
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
@@ -1563,6 +1572,8 @@ hammer2_inode_xop_connect(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		error = EEXIST;
 		goto fail;
 	}
+	if (error)
+		goto fail;
 
 	/*
 	 * Adjust the filename in the inode, set the name key.
@@ -1647,6 +1658,7 @@ hammer2_inode_xop_chain_sync(hammer2_thread_t *thr, hammer2_xop_t *arg)
 			~HAMMER2_PBUFMASK64;
 		chain = hammer2_chain_lookup(&parent, &key_next,
 					     lbase, HAMMER2_KEY_MAX,
+					     &error,
 					     HAMMER2_LOOKUP_NODATA |
 					     HAMMER2_LOOKUP_NODIRECT);
 		while (chain) {
@@ -1666,9 +1678,11 @@ hammer2_inode_xop_chain_sync(hammer2_thread_t *thr, hammer2_xop_t *arg)
 			}
 			chain = hammer2_chain_next(&parent, chain, &key_next,
 						   key_next, HAMMER2_KEY_MAX,
+						   &error,
 						   HAMMER2_LOOKUP_NODATA |
 						   HAMMER2_LOOKUP_NODIRECT);
 		}
+		error = hammer2_error_to_errno(error);
 
 		/*
 		 * Reset to point at inode for following code, if necessary.

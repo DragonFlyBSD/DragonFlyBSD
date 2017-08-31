@@ -294,6 +294,7 @@ hammer2_update_spans(hammer2_dev_t *hmp, kdmsg_state_t *state)
 	hammer2_key_t key_next;
 	kdmsg_msg_t *rmsg;
 	size_t name_len;
+	int error;
 
 	/*
 	 * Lookup mount point under the media-localized super-root.
@@ -303,6 +304,7 @@ hammer2_update_spans(hammer2_dev_t *hmp, kdmsg_state_t *state)
 	 */
 	spmp = hmp->spmp;
 	hammer2_inode_lock(spmp->iroot, 0);
+	error = 0;
 
 	parent = hammer2_inode_chain(spmp->iroot, 0, HAMMER2_RESOLVE_ALWAYS);
 	chain = NULL;
@@ -310,7 +312,7 @@ hammer2_update_spans(hammer2_dev_t *hmp, kdmsg_state_t *state)
 		goto done;
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     HAMMER2_KEY_MIN, HAMMER2_KEY_MAX,
-				     0);
+				     &error, 0);
 	while (chain) {
 		if (chain->bref.type != HAMMER2_BREF_TYPE_INODE)
 			continue;
@@ -336,9 +338,11 @@ hammer2_update_spans(hammer2_dev_t *hmp, kdmsg_state_t *state)
 
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					       key_next, HAMMER2_KEY_MAX,
-					       0);
+					       &error, 0);
 	}
 	hammer2_inode_unlock(spmp->iroot);
+	error = hammer2_error_to_errno(error);
+	/* XXX do something with error */
 done:
 	if (chain) {
 		hammer2_chain_unlock(chain);

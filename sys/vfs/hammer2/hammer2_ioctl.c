@@ -430,6 +430,7 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 					    HAMMER2_RESOLVE_SHARED);
 		chain = hammer2_chain_lookup(&parent, &key_next,
 					    pfs->name_key, HAMMER2_KEY_MAX,
+					    &error,
 					    HAMMER2_LOOKUP_SHARED);
 	}
 
@@ -447,13 +448,15 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 		}
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					    key_next, HAMMER2_KEY_MAX,
+					    &error,
 					    HAMMER2_LOOKUP_SHARED);
 	}
+	error = hammer2_error_to_errno(error);
 
 	/*
 	 * Load the data being returned by the ioctl.
 	 */
-	if (chain) {
+	if (chain && chain->error == 0) {
 		ripdata = &chain->data->ipdata;
 		pfs->name_key = ripdata->meta.name_key;
 		pfs->pfs_type = ripdata->meta.pfs_type;
@@ -466,13 +469,16 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 		ripdata = NULL;	/* safety */
 
 		/*
-		 * Calculate name_next, if any.
+		 * Calculate name_next, if any.  We are only accessing
+		 * chain->bref so we can ignore chain->error (if the key
+		 * is used later it will error then).
 		 */
 		if (parent == NULL) {
 			pfs->name_next = (hammer2_key_t)-1;
 		} else {
 			chain = hammer2_chain_next(&parent, chain, &key_next,
 						    key_next, HAMMER2_KEY_MAX,
+						    &error,
 						    HAMMER2_LOOKUP_SHARED);
 			if (chain)
 				pfs->name_next = chain->bref.key;
@@ -538,20 +544,21 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 
 	chain = hammer2_chain_lookup(&parent, &key_next,
 					 lhc, lhc + HAMMER2_DIRHASH_LOMASK,
-					 HAMMER2_LOOKUP_SHARED);
+					 &error, HAMMER2_LOOKUP_SHARED);
 	while (chain) {
 		if (hammer2_chain_dirent_test(chain, pfs->name, len))
 			break;
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next,
 					   lhc + HAMMER2_DIRHASH_LOMASK,
-					   HAMMER2_LOOKUP_SHARED);
+					   &error, HAMMER2_LOOKUP_SHARED);
 	}
+	error = hammer2_error_to_errno(error);
 
 	/*
 	 * Load the data being returned by the ioctl.
 	 */
-	if (chain) {
+	if (chain && chain->error == 0) {
 		KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_INODE);
 		ripdata = &chain->data->ipdata;
 		pfs->name_key = ripdata->meta.name_key;
@@ -563,7 +570,7 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
-	} else {
+	} else if (error == 0) {
 		error = ENOENT;
 	}
 	if (parent) {
