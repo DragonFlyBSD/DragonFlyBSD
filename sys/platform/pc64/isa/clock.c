@@ -127,6 +127,9 @@ static int i8254_nointr;
 static int i8254_intr_disable = 1;
 TUNABLE_INT("hw.i8254.intr_disable", &i8254_intr_disable);
 
+static int calibrate_timers_with_rtc = 0;
+TUNABLE_INT("hw.calibrate_timers_with_rtc", &calibrate_timers_with_rtc);
+
 static struct callout sysbeepstop_ch;
 
 static sysclock_t i8254_cputimer_count(void);
@@ -800,6 +803,16 @@ startrtclock(void)
 	 * for our counting.
 	 */
 	i8254_restore();
+
+	/*
+	 * When booting without verbose messages, it's pointless to run the
+	 * calibrate_clocks() calibration code, when we don't use the
+	 * results in any way. With bootverbose, we are at least printing
+	 *  this information to the kernel log.
+	 */
+	if (calibrate_timers_with_rtc == 0 && !bootverbose)
+		goto skip_rtc_based;
+
 	freq = calibrate_clocks();
 #ifdef CLK_CALIBRATION_LOOP
 	if (bootverbose) {
@@ -822,12 +835,11 @@ startrtclock(void)
 	delta = freq > i8254_cputimer.freq ? 
 			freq - i8254_cputimer.freq : i8254_cputimer.freq - freq;
 	if (delta < i8254_cputimer.freq / 100) {
-#ifndef CLK_USE_I8254_CALIBRATION
-		if (bootverbose)
+		if (calibrate_timers_with_rtc == 0) {
 			kprintf(
-"CLK_USE_I8254_CALIBRATION not specified - using default frequency\n");
-		freq = i8254_cputimer.freq;
-#endif
+"hw.calibrate_timers_with_rtc not set - using default i8254 frequency\n");
+			freq = i8254_cputimer.freq;
+		}
 		/*
 		 * NOTE:
 		 * Interrupt timer's freq must be adjusted
@@ -843,14 +855,13 @@ startrtclock(void)
 		tsc_frequency = 0;
 	}
 
-#ifndef CLK_USE_TSC_CALIBRATION
-	if (tsc_frequency != 0) {
-		if (bootverbose)
-			kprintf(
-"CLK_USE_TSC_CALIBRATION not specified - using old calibration method\n");
+	if (tsc_frequency != 0 && calibrate_timers_with_rtc == 0) {
+		kprintf(
+"hw.calibrate_timers_with_rtc not set - using old calibration method\n");
 		tsc_frequency = 0;
 	}
-#endif
+
+skip_rtc_based:
 	if (tsc_present && tsc_frequency == 0) {
 		/*
 		 * Calibration of the i586 clock relative to the mc146818A
@@ -861,12 +872,10 @@ startrtclock(void)
 
 		DELAY(1000000);
 		tsc_frequency = rdtsc() - old_tsc;
-#ifdef CLK_USE_TSC_CALIBRATION
-		if (bootverbose) {
+		if (bootverbose && calibrate_timers_with_rtc) {
 			kprintf("TSC clock: %jd Hz (Method B)\n",
 			    (intmax_t)tsc_frequency);
 		}
-#endif
 	}
 
 	if (tsc_present) {
