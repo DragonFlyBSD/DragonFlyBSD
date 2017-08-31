@@ -9,6 +9,9 @@ SRCS+=	amd64_tramp.S \
 SRCS+=	nullconsole.c \
 	comconsole.c
 
+# Disable stack protector
+CFLAGS+=	-fno-stack-protector
+
 CFLAGS+=	-fPIC
 CFLAGS+=	-I${.CURDIR}/../../../contrib/edk2/Include
 LDFLAGS+=	-Wl,-znocombreloc

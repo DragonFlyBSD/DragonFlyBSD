@@ -23,6 +23,9 @@ LIBC_SRC=	${LIBSTAND_SRC}/../libc
 # Mostly OK, some of the libc imports are a bit noisy
 CFLAGS+=	-ffreestanding
 
+# Disable stack protector
+CFLAGS+=	-fno-stack-protector
+
 .if (${CFLAGS:M-flto} && ${CCVER:Mgcc*})
 CFLAGS+=	-fno-builtin	# LTO exposes too much stuff
 .endif
