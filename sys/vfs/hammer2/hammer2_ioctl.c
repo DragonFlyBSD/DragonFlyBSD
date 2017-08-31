@@ -981,5 +981,5 @@ hammer2_ioctl_bulkfree_scan(hammer2_inode_t *ip, void *data)
 
 	lockmgr(&hmp->bflock, LK_RELEASE);
 
-	return (error);
+	return (hammer2_error_to_errno(error));
 }

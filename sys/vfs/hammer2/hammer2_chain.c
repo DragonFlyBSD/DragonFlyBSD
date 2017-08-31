@@ -2652,6 +2652,22 @@ hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 }
 
 /*
+ * Caller wishes to iterate chains under parent, loading new chains into
+ * chainp.  Caller must initialize *chainp to NULL and *firstp to 1, and
+ * then call hammer2_chain_scan() repeatedly until a non-zero return.
+ * During the scan, *firstp will be set to 0 and (*chainp) will be replaced
+ * with the returned chain for the scan.  The returned *chainp will be
+ * locked and referenced.  Any prior contents will be unlocked and dropped.
+ *
+ * Caller should check the return value.  A normal scan EOF will return
+ * exactly HAMMER2_ERRORF_EOF.  Any other non-zero value indicates an
+ * error trying to access parent data.  Any error in the returned chain
+ * must be tested separately by the caller.
+ *
+ * (*chainp) is dropped on each scan, but will only be set if the returned
+ * element itself can recurse.  Leaf elements are NOT resolved, loaded, or
+ * returned via *chainp.  The caller will get their bref only.
+ *
  * The raw scan function is similar to lookup/next but does not seek to a key.
  * Blockrefs are iterated via first_bref = (parent, NULL) and
  * next_chain = (parent, bref).
@@ -2660,15 +2676,8 @@ hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
  * nominally returns a locked and referenced *chainp != NULL for chains
  * the caller might need to recurse on (and will dipose of any *chainp passed
  * in).  The caller must check the chain->bref.type either way.
- *
- * *chainp is not set for leaf elements.
- *
- * This function takes a pointer to a stack-based bref structure whos
- * contents is updated for each iteration.  The same pointer is returned,
- * or NULL when the iteration is complete.  *firstp must be set to 1 for
- * the first ieration.  This function will set it to 0.
  */
-hammer2_blockref_t *
+int
 hammer2_chain_scan(hammer2_chain_t *parent, hammer2_chain_t **chainp,
 		   hammer2_blockref_t *bref, int *firstp,
 		   int *cache_indexp, int flags)
@@ -2685,8 +2694,10 @@ hammer2_chain_scan(hammer2_chain_t *parent, hammer2_chain_t **chainp,
 	int how;
 	int generation;
 	int maxloops = 300000;
+	int error;
 
 	hmp = parent->hmp;
+	error = 0;
 
 	/*
 	 * Scan flags borrowed from lookup.
@@ -2723,15 +2734,19 @@ hammer2_chain_scan(hammer2_chain_t *parent, hammer2_chain_t **chainp,
 			chain = NULL;
 		}
 		if (key == 0) {
-			bref = NULL;
+			error |= HAMMER2_ERROR_EOF;
 			goto done;
 		}
 	}
 
 again:
-	KKASSERT(parent->error == 0);	/* XXX case not handled yet */
+	if (parent->error) {
+		error = parent->error;
+		goto done;
+	}
 	if (--maxloops == 0)
 		panic("hammer2_chain_scan: maxloops");
+
 	/*
 	 * Locate the blockref array.  Currently we do a fully associative
 	 * search through the array.
@@ -2747,7 +2762,7 @@ again:
 		 */
 		if (parent->data->ipdata.meta.op_flags &
 		    HAMMER2_OPFLAG_DIRECTDATA) {
-			bref = NULL;
+			error |= HAMMER2_ERROR_EOF;
 			goto done;
 		}
 		base = &parent->data->ipdata.u.blockset.blockref[0];
@@ -2810,7 +2825,7 @@ again:
 	if (bref_ptr == NULL) {
 		hammer2_spin_unex(&parent->core.spin);
 		KKASSERT(chain == NULL);
-		bref = NULL;
+		error |= HAMMER2_ERROR_EOF;
 		goto done;
 	}
 
@@ -2889,7 +2904,7 @@ again:
 
 		key = next_key;
 		if (key == 0) {
-			bref = NULL;
+			error |= HAMMER2_ERROR_EOF;
 			goto done;
 		}
 		goto again;
@@ -2901,7 +2916,7 @@ done:
 	 */
 	if (chain)
 		*chainp = chain;
-	return (bref);
+	return (error);
 }
 
 /*

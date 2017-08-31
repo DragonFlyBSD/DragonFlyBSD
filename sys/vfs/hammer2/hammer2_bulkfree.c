@@ -104,14 +104,17 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 	hammer2_blockref_t bref;
 	hammer2_chain_t *chain;
 	int cache_index = -1;
-	int doabort = 0;
 	int first = 1;
+	int rup_error;
+	int error;
 
 	++info->pri;
 
 	hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS |
 				   HAMMER2_RESOLVE_SHARED);
 	chain = NULL;
+	rup_error = 0;
+	error = 0;
 
 	/*
 	 * Generally loop on the contents if we have not been flagged
@@ -121,31 +124,30 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 	 * the frontend, so we can release locks temporarily without
 	 * imploding.
 	 */
-	while ((doabort & HAMMER2_BULK_ABORT) == 0 &&
-		hammer2_chain_scan(parent, &chain, &bref, &first,
-				   &cache_index,
-				   HAMMER2_LOOKUP_NODATA |
-				   HAMMER2_LOOKUP_SHARED) != NULL) {
+	for (;;) {
+		error |= hammer2_chain_scan(parent, &chain, &bref, &first,
+					    &cache_index,
+					    HAMMER2_LOOKUP_NODATA |
+					    HAMMER2_LOOKUP_SHARED);
+
+		/*
+		 * Handle EOF or other error at current level.  This stops
+		 * the bulkfree scan.
+		 */
+		if (error)
+			break;
+
 		/*
 		 * Process bref, chain is only non-NULL if the bref
 		 * might be recursable (its possible that we sometimes get
 		 * a non-NULL chain where the bref cannot be recursed).
 		 */
-#if 0
-		kprintf("SCAN %p/%p %016jx.%02x\n",
-			parent, chain, bref.data_off, bref.type);
-		int xerr = tsleep(&info->pri, PCATCH, "slp", hz / 10);
-		if (xerr == EINTR || xerr == ERESTART) {
-			doabort |= HAMMER2_BULK_ABORT;
-		}
-#endif
 		++info->pri;
 		if (h2_bulkfree_test(info, &bref, 1))
 			continue;
 
-		doabort |= func(info, &bref);
-
-		if (doabort & HAMMER2_BULK_ABORT)
+		error |= func(info, &bref);
+		if (error)
 			break;
 
 		/*
@@ -185,7 +187,8 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 
 				hammer2_chain_unlock(chain);
 				info->pri = 0;
-				doabort |= hammer2_bulk_scan(chain, func, info);
+				rup_error |=
+					hammer2_bulk_scan(chain, func, info);
 				info->pri += savepri;
 				hammer2_chain_lock(chain,
 						   HAMMER2_RESOLVE_ALWAYS |
@@ -197,6 +200,8 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 			/* does not recurse */
 			break;
 		}
+		if (rup_error & HAMMER2_ERROR_ABORTED)
+			break;
 	}
 	if (chain) {
 		hammer2_chain_unlock(chain);
@@ -210,7 +215,7 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 
 	hammer2_chain_unlock(parent);
 
-	return doabort;
+	return ((error | rup_error) & ~HAMMER2_ERROR_EOF);
 }
 
 /*
@@ -320,7 +325,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 	hammer2_chain_save_t *save;
 	hammer2_off_t incr;
 	size_t size;
-	int doabort = 0;
+	int error;
 
 	/*
 	 * We have to clear the live dedup cache as it might have entries
@@ -358,6 +363,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 	 * Loop on a full meta-data scan as many times as required to
 	 * get through all available storage.
 	 */
+	error = 0;
 	while (cbinfo.sbase < hmp->voldata.volu_size) {
 		/*
 		 * We have enough ram to represent (incr) bytes of storage.
@@ -391,14 +397,14 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 		hammer2_trans_init(hmp->spmp, 0);
 		cbinfo.mtid = hammer2_trans_sub(hmp->spmp);
 		cbinfo.pri = 0;
-		doabort |= hammer2_bulk_scan(vchain, h2_bulkfree_callback,
-					     &cbinfo);
+		error |= hammer2_bulk_scan(vchain, h2_bulkfree_callback,
+					   &cbinfo);
 
 		while ((save = TAILQ_FIRST(&cbinfo.list)) != NULL &&
-		       doabort == 0) {
+		       error == 0) {
 			TAILQ_REMOVE(&cbinfo.list, save, entry);
 			cbinfo.pri = 0;
-			doabort |= hammer2_bulk_scan(save->chain,
+			error |= hammer2_bulk_scan(save->chain,
 						     h2_bulkfree_callback,
 						     &cbinfo);
 			hammer2_chain_drop(save->chain);
@@ -411,8 +417,8 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 			save = TAILQ_FIRST(&cbinfo.list);
 		}
 
-		kprintf("bulkfree lastdrop %d %d doabort=%d\n",
-			vchain->refs, vchain->core.chain_count, doabort);
+		kprintf("bulkfree lastdrop %d %d error=0x%04x\n",
+			vchain->refs, vchain->core.chain_count, error);
 
 		/*
 		 * If complete scan succeeded we can synchronize our
@@ -420,7 +426,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 		 * did occur we cannot safely synchronize our partially
 		 * filled-out in-memory freemap.
 		 */
-		if (doabort == 0) {
+		if (error == 0) {
 			h2_bulkfree_sync(&cbinfo);
 
 			hammer2_voldata_lock(hmp);
@@ -433,7 +439,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 		 * Cleanup for next loop.
 		 */
 		hammer2_trans_done(hmp->spmp);
-		if (doabort)
+		if (error)
 			break;
 		cbinfo.sbase = cbinfo.sstop;
 		cbinfo.adj_free = 0;
@@ -452,16 +458,22 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 		(int)incr / 100,
 		(int)incr % 100);
 
-	kprintf("    transition->free   %ld\n", cbinfo.count_10_00);
-	kprintf("    transition->staged %ld\n", cbinfo.count_11_10);
-	kprintf("    ERR(00)->allocated %ld\n", cbinfo.count_00_11);
-	kprintf("    ERR(01)->allocated %ld\n", cbinfo.count_01_11);
-	kprintf("    staged->allocated  %ld\n", cbinfo.count_10_11);
-	kprintf("    ~2MB segs cleaned  %ld\n", cbinfo.count_l0cleans);
-	kprintf("    linear adjusts     %ld\n", cbinfo.count_linadjusts);
-	kprintf("    dedup factor       %ld\n", cbinfo.count_dedup_factor);
+	if (error) {
+		kprintf("    bulkfree was aborted\n");
+	} else {
+		kprintf("    transition->free   %ld\n", cbinfo.count_10_00);
+		kprintf("    transition->staged %ld\n", cbinfo.count_11_10);
+		kprintf("    ERR(00)->allocated %ld\n", cbinfo.count_00_11);
+		kprintf("    ERR(01)->allocated %ld\n", cbinfo.count_01_11);
+		kprintf("    staged->allocated  %ld\n", cbinfo.count_10_11);
+		kprintf("    ~2MB segs cleaned  %ld\n", cbinfo.count_l0cleans);
+		kprintf("    linear adjusts     %ld\n",
+			cbinfo.count_linadjusts);
+		kprintf("    dedup factor       %ld\n",
+			cbinfo.count_dedup_factor);
+	}
 
-	return doabort;
+	return error;
 }
 
 static void
@@ -505,13 +517,13 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
 	uint16_t class;
 	size_t bytes;
 	int radix;
-	int error;
 
 	/*
 	 * Check for signal and allow yield to userland during scan
 	 */
 	if (hammer2_signal_check(&cbinfo->save_time))
-		return HAMMER2_BULK_ABORT;
+		return HAMMER2_ERROR_ABORTED;
+
 	if (bref->type == HAMMER2_BREF_TYPE_INODE) {
 		++cbinfo->count_inodes_scanned;
 		if ((cbinfo->count_inodes_scanned & 65535) == 0)
@@ -524,7 +536,6 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
 	 * Calculate the data offset and determine if it is within
 	 * the current freemap range being gathered.
 	 */
-	error = 0;
 	data_off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX;
 	if (data_off < cbinfo->sbase || data_off >= cbinfo->sstop)
 		return 0;
@@ -644,7 +655,7 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
 		else
 			bytes -= HAMMER2_FREEMAP_BLOCK_SIZE;
 	}
-	return error;
+	return 0;
 }
 
 /*

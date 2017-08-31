@@ -380,6 +380,9 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  * I/O otherwise.  If set for a cluster it generally means that the cluster
  * code could not find a valid copy to present.
  *
+ * All H2 error codes are flags and can be accumulated by ORing them
+ * together.
+ *
  * IO		- An I/O error occurred
  * CHECK	- I/O succeeded but did not match the check code
  * INCOMPLETE	- A cluster is not complete enough to use, or
@@ -391,11 +394,15 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  * NOTE: Chain's data field is usually NULL on an IO error but not necessarily
  *	 NULL on other errors.  Check chain->error, not chain->data.
  */
-#define HAMMER2_ERROR_NONE		0
-#define HAMMER2_ERROR_IO		1	/* device I/O error */
-#define HAMMER2_ERROR_CHECK		2	/* check code mismatch */
-#define HAMMER2_ERROR_INCOMPLETE	3	/* incomplete cluster */
-#define HAMMER2_ERROR_DEPTH		4	/* temporary depth limit */
+#define HAMMER2_ERROR_NONE		0	/* no error (must be 0) */
+#define HAMMER2_ERROR_IO		0x0001	/* device I/O error */
+#define HAMMER2_ERROR_CHECK		0x0002	/* check code mismatch */
+#define HAMMER2_ERROR_INCOMPLETE	0x0004	/* incomplete cluster */
+#define HAMMER2_ERROR_DEPTH		0x0008	/* temporary depth limit */
+#define HAMMER2_ERROR_BADBREF		0x0010	/* temporary depth limit */
+
+#define HAMMER2_ERROR_ABORTED		0x1000	/* aborted operation */
+#define HAMMER2_ERROR_EOF		0x2000	/* non-error end of scan */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
@@ -1182,11 +1189,6 @@ TAILQ_HEAD(hammer2_pfslist, hammer2_pfs);
 #define HAMMER2_CHECK_NULL	0x00000001
 
 /*
- * Bulkscan
- */
-#define HAMMER2_BULK_ABORT	0x00000001
-
-/*
  * Misc
  */
 #if defined(_KERNEL)
@@ -1268,6 +1270,23 @@ hammer2_dedup_mask(hammer2_io_t *dio, hammer2_off_t data_off, u_int bytes)
 	mask &= ~(((uint64_t)1 << bbeg) - 1);
 
 	return mask;
+}
+
+static __inline
+int
+hammer2_error_to_errno(int error)
+{
+	if (error) {
+		if (error & HAMMER2_ERROR_IO)
+			error = EIO;
+		else if (error & HAMMER2_ERROR_CHECK)
+			error = EDOM;
+		else if (error & HAMMER2_ERROR_ABORTED)
+			error = EINTR;
+		else
+			error = EDOM;
+	}
+	return error;
 }
 
 extern struct vop_ops hammer2_vnode_vops;
@@ -1439,7 +1458,7 @@ hammer2_chain_t *hammer2_chain_next(hammer2_chain_t **parentp,
 				hammer2_key_t *key_nextp,
 				hammer2_key_t key_beg, hammer2_key_t key_end,
 				int *cache_indexp, int flags);
-hammer2_blockref_t *hammer2_chain_scan(hammer2_chain_t *parent,
+int hammer2_chain_scan(hammer2_chain_t *parent,
 				hammer2_chain_t **chainp,
 				hammer2_blockref_t *bref,
 				int *firstp, int *cache_indexp, int flags);

@@ -414,7 +414,7 @@ hammer2_signal_check(time_t *timep)
 		if (*timep != time_second) {
 			*timep = time_second;
 			if (CURSIG_NOBLOCK(curthread->td_lwp) != 0)
-				error = EINTR;
+				error = HAMMER2_ERROR_ABORTED;
 		}
 	}
 	return error;
