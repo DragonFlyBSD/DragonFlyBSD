@@ -33,11 +33,22 @@
 #ifndef _SYS_MMAN_H_
 #define	_SYS_MMAN_H_
 
-#ifndef _SYS_TYPES_H_
-#include <sys/types.h>
-#endif
-#ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
+#include <sys/stdint.h>
+
+#ifndef _MODE_T_DECLARED
+#define	_MODE_T_DECLARED
+typedef	__uint16_t	mode_t;		/* permissions */
+#endif
+
+#ifndef _OFF_T_DECLARED
+#define	_OFF_T_DECLARED
+typedef	__off_t		off_t;
+#endif
+
+#ifndef _SIZE_T_DECLARED
+#define	_SIZE_T_DECLARED
+typedef	__size_t	size_t;
 #endif
 
 #if __BSD_VISIBLE

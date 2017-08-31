@@ -34,10 +34,19 @@
 #define	_SYS_RESOURCE_H_
 
 #include <sys/cdefs.h>
-#ifndef _SYS_TYPES_H_
-#include <sys/types.h>
-#endif
+#include <machine/stdint.h>
 #include <sys/_timeval.h>
+
+/* XXX not used by our {get,set}priority(), defined here for XSI conformance */
+#ifndef _ID_T_DECLARED
+#define	_ID_T_DECLARED
+typedef	__int64_t	id_t;	/* general id, can hold gid/pid/uid_t */
+#endif
+
+#ifndef _RLIM_T_DECLARED
+#define	_RLIM_T_DECLARED
+typedef	__rlim_t	rlim_t;	/* resource limit */
+#endif
 
 /*
  * Process priority specifications to get/setpriority.
@@ -57,7 +66,6 @@
 /*
  * Resource utilization information.
  */
-
 #define	RUSAGE_SELF	0
 #define	RUSAGE_CHILDREN	-1
 
@@ -101,7 +109,7 @@ struct	rusage {
 
 #define	RLIM_NLIMITS	12		/* number of resource limits */
 
-#define	RLIM_INFINITY	((rlim_t)(((u_quad_t)1 << 63) - 1))	/* no limit */
+#define	RLIM_INFINITY	((rlim_t)(((__uint64_t)1 << 63) - 1))	/* no limit */
 #define	RLIM_SAVED_MAX	RLIM_INFINITY	/* unrepresentable hard limit */
 #define	RLIM_SAVED_CUR	RLIM_INFINITY	/* unrepresentable soft limit */
 
@@ -132,12 +140,12 @@ struct rlimit {
 
 #if __BSD_VISIBLE
 struct orlimit {
-	int32_t	rlim_cur;		/* current (soft) limit */
-	int32_t	rlim_max;		/* maximum value for rlim_cur */
+	__int32_t rlim_cur;		/* current (soft) limit */
+	__int32_t rlim_max;		/* maximum value for rlim_cur */
 };
 
 struct loadavg {
-	uint64_t ldavg[3];		/* 64-bits to avoid overflow */
+	__uint64_t ldavg[3];		/* 64-bits to avoid overflow */
 	long	fscale;
 };
 
@@ -155,13 +163,13 @@ struct loadavg {
 #ifdef _KERNEL
 extern struct loadavg averunnable;
 
-int	dosetrlimit(u_int which, struct rlimit *limp);
+int	dosetrlimit(unsigned int which, struct rlimit *limp);
 #else
 __BEGIN_DECLS
-int	getpriority(int, int);
+int	getpriority(int, int); /* XXX should take id_t as second arg */
 int	getrlimit(int, struct rlimit *);
 int	getrusage(int, struct rusage *);
-int	setpriority(int, int, int);
+int	setpriority(int, int, int); /* XXX should take id_t as second arg */
 int	setrlimit(int, const struct rlimit *);
 #if __BSD_VISIBLE
 int	ioprio_get(int, int);

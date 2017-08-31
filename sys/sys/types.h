@@ -90,12 +90,18 @@ typedef	__uint64_t	fsfilcnt_t;	/* filesystem file count */
 typedef	__uint32_t	gid_t;		/* group id */
 #define	_GID_T_DECLARED
 #endif
+#ifndef _ID_T_DECLARED
 typedef	__int64_t	id_t;		/* general id, can hold gid/pid/uid_t */
+#define	_ID_T_DECLARED
+#endif
 typedef	__uint32_t	in_addr_t;	/* base type for internet address */
 typedef	__uint16_t	in_port_t;
 typedef	__uint64_t	ino_t;		/* inode number */
 typedef	long		key_t;		/* IPC key (for Sys V IPC) */
+#ifndef _MODE_T_DECLARED
 typedef	__uint16_t	mode_t;		/* permissions */
+#define	_MODE_T_DECLARED
+#endif
 typedef	__uint32_t	nlink_t;	/* link count */
 #ifndef _OFF_T_DECLARED
 typedef	__off_t		off_t;		/* file offset */
@@ -105,7 +111,10 @@ typedef	__off_t		off_t;		/* file offset */
 typedef	__pid_t		pid_t;		/* process id */
 #define	_PID_T_DECLARED
 #endif
+#ifndef _RLIM_T_DECLARED
 typedef	__rlim_t	rlim_t;		/* resource limit */
+#define	_RLIM_T_DECLARED
+#endif
 typedef	__segsz_t	segsz_t;	/* segment size */
 #ifndef _SUSECONDS_T_DECLARED
 typedef	long		suseconds_t;	/* microseconds (signed) */

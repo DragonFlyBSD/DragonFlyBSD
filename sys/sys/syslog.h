@@ -28,7 +28,6 @@
  *
  *	@(#)syslog.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/syslog.h,v 1.27 2009/03/14 19:07:25 das Exp $
- * $DragonFly: src/sys/sys/syslog.h,v 1.5 2006/12/23 00:27:03 swildner Exp $
  */
 
 #ifndef _SYS_SYSLOG_H_
@@ -175,10 +174,11 @@ CODE facilitynames[] = {
 #define	LOG_NOWAIT	0x10	/* don't wait for console forks: DEPRECATED */
 #define	LOG_PERROR	0x20	/* log to stderr as well */
 
-#ifdef _KERNEL
+#ifndef _KERNEL
 
-#else /* not _KERNEL */
+#include <sys/cdefs.h>
 
+#if __BSD_VISIBLE
 /*
  * Don't use va_list in the vsyslog() prototype.   Va_list is typedef'd in two
  * places (<machine/varargs.h> and <machine/stdarg.h>), so if we include one
@@ -186,8 +186,8 @@ CODE facilitynames[] = {
  * for utilities to have to include one of them to include syslog.h, so we get
  * __va_list from <sys/types.h> and use it.
  */
-#include <sys/cdefs.h>
 #include <sys/types.h>
+#endif
 
 __BEGIN_DECLS
 void	closelog(void);
