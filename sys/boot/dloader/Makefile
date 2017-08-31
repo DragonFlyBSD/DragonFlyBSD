@@ -6,6 +6,9 @@ SRCS=	subs.c cmds.c
 
 WORLD_CCOPTLEVEL=	1	# Force -O1, -O2 implodes
 
+# Disable stack protector
+CFLAGS+=	-fno-stack-protector
+
 # For i386, dloader32/Makefile takes care of the extra CFLAGS
 .if ${MACHINE_ARCH} != "i386"
 CFLAGS+=	-fPIC -mno-red-zone

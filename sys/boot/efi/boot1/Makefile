@@ -15,6 +15,10 @@ CFLAGS+=	-I${.CURDIR}/../include/${MACHINE}
 CFLAGS+=	-I${.CURDIR}/../../../contrib/dev/acpica/source/include
 CFLAGS+=	-I${.CURDIR}/../../..
 CFLAGS+=	-DEFI_UFS_BOOT
+
+# Disable stack protector
+CFLAGS+=	-fno-stack-protector
+
 .ifdef(EFI_DEBUG)
 CFLAGS+=	-DEFI_DEBUG
 .endif
