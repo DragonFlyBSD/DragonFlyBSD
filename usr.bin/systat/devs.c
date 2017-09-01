@@ -67,6 +67,7 @@
 #include <string.h>
 #include <devstat.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <ctype.h>
 #include <err.h>
 #include "systat.h"
@@ -90,6 +91,7 @@ int num_matches = 0;
 char **specified_devices;
 int num_devices_specified = 0;
 
+static void dsinit_ignores(int maxshowdevs, struct statinfo *s1);
 static int dsmatchselect(char *args, devstat_select_mode select_mode,
 			 int maxshowdevs, struct statinfo *s1);
 static int dsselect(char *args, devstat_select_mode select_mode,
@@ -131,10 +133,30 @@ dsinit(int maxshowdevs, struct statinfo *s1, struct statinfo *s2 __unused,
 	if (selectdevs(&dev_select, &num_selected, &num_selections,
 		       &select_generation, generation, s1->dinfo->devices,
 		       num_devices, NULL, 0, NULL, 0, DS_SELECT_ADD,
-		       maxshowdevs, 0) == -1)
+		       maxshowdevs, 0) == -1) {
 		errx(1, "%s", devstat_errbuf);
+	}
+	dsinit_ignores(maxshowdevs, s1);
 
 	return(1);
+}
+
+/*
+ * Clean up the device list a bit by removing devices people usually
+ * aren't interested in.
+ */
+static
+void
+dsinit_ignores(int maxshowdevs, struct statinfo *s1)
+{
+	char tmp[64];
+
+	snprintf(tmp, sizeof(tmp), "md*");
+	dscmd("ignore", tmp, maxshowdevs, s1);
+	snprintf(tmp, sizeof(tmp), "pass*");
+	dscmd("ignore", tmp, maxshowdevs, s1);
+	snprintf(tmp, sizeof(tmp), "sg*");
+	dscmd("ignore", tmp, maxshowdevs, s1);
 }
 
 int
@@ -165,11 +187,18 @@ dscmd(const char *cmd, char *args, int maxshowdevs, struct statinfo *s1)
 				    (last_type == DS_MATCHTYPE_NONE) ?
 					DS_SELECT_ADD : DS_SELECT_ADDONLY,
 				    maxshowdevs, 0);
+
+		/*
+		 * refresh resets the list, ignore some non-useful devices
+		 */
+		dsinit_ignores(maxshowdevs, s1);
+
 		if (retval == -1) {
 			warnx("%s", devstat_errbuf);
 			return(0);
-		} else if (retval == 1)
+		} else if (retval == 1) {
 			return(2);
+		}
 	}
 	if (prefix(cmd, "drives")) {
 		int i;
@@ -250,6 +279,7 @@ dsselect(char *args, devstat_select_mode select_mode, int maxshowdevs,
 	char *cp;
 	int i;
 	int retval = 0;
+	int iswild;
 
 	/*
 	 * If we've gone through this code before, free previously
@@ -279,27 +309,36 @@ dsselect(char *args, devstat_select_mode select_mode, int maxshowdevs,
 			*cp++ = '\0';
 		if (cp - args == 0)
 			break;
+		if (cp[-1] == '*') {
+			cp[-1] = 0;
+			iswild = 1;
+		} else {
+			iswild = 0;
+		}
+
 		for (i = 0; i < num_devices; i++) {
 			char tmpstr[80];
 
 			sprintf(tmpstr, "%s%d", dev_select[i].device_name,
 				dev_select[i].unit_number);
-			if (strcmp(args, tmpstr) == 0) {
-				
+			if (strcmp(args, tmpstr) == 0 ||
+			    (iswild &&
+			     strcmp(args, dev_select[i].device_name) == 0)) {
 				num_devices_specified++;
 
 				specified_devices =(char **)realloc(
 						specified_devices,
 						sizeof(char *) *
 						num_devices_specified);
-				specified_devices[num_devices_specified -1]=
-					strdup(args);
-
-				break;
+				specified_devices[num_devices_specified - 1] =
+					strdup(tmpstr);
 			}
 		}
+#if 0
+		/* don't complain if device not known */
 		if (i >= num_devices)
 			error("%s: unknown drive", args);
+#endif
 		args = cp;
 	}
 

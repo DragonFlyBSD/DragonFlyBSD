@@ -374,7 +374,6 @@ histogram(long double val, int colwidth, double scale)
 int
 cmdiostat(const char *cmd, char *args)
 {
-
 	if (prefix(cmd, "kbpt"))
 		kbpt = !kbpt;
 	else if (prefix(cmd, "numbers"))
