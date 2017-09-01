@@ -208,6 +208,7 @@ SRCS=	\
 	utresrc.c \
 	utstate.c \
 	utstring.c \
+	utstrsuppt.c \
 	utstrtoul64.c \
 	utuuid.c \
 	utxface.c \

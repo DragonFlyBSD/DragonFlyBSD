@@ -2717,6 +2717,7 @@ ${ACPICA_COMP_DIR}/utilities/utresrc.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utresdecode.c	optional acpi
 ${ACPICA_COMP_DIR}/utilities/utstate.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utstring.c		optional acpi
+${ACPICA_COMP_DIR}/utilities/utstrsuppt.c	optional acpi
 ${ACPICA_COMP_DIR}/utilities/utstrtoul64.c	optional acpi
 ${ACPICA_COMP_DIR}/utilities/utuuid.c		optional acpi acpi_debug
 ${ACPICA_COMP_DIR}/utilities/utxface.c		optional acpi

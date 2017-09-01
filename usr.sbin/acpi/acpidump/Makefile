@@ -31,6 +31,7 @@ SRCS+=	\
 	utmath.c \
 	utnonansi.c \
 	utstring.c \
+	utstrsuppt.c \
 	utstrtoul64.c \
 	utxferror.c
 

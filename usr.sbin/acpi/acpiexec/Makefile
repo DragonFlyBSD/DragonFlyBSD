@@ -204,6 +204,7 @@ SRCS+=	\
 	utresrc.c \
 	utstate.c \
 	utstring.c \
+	utstrsuppt.c \
 	utstrtoul64.c \
 	uttrack.c \
 	utuuid.c \
