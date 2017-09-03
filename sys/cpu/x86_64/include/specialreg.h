@@ -246,6 +246,7 @@
 /*
  * Structured Extended Features
  */
+/* EBX */
 #define	CPUID_STDEXT_FSGSBASE	0x00000001
 #define	CPUID_STDEXT_TSC_ADJUST	0x00000002
 #define	CPUID_STDEXT_BMI1	0x00000008
@@ -259,6 +260,9 @@
 #define	CPUID_STDEXT_RDSEED	0x00040000
 #define	CPUID_STDEXT_ADX	0x00080000
 #define	CPUID_STDEXT_SMAP	0x00100000
+
+/* ECX */
+#define	CPUID_STDEXT2_RDPID	0x00400000
 
 /*
  * Thermal and PM Features
@@ -564,6 +568,7 @@
 #define	MSR_FSBASE	0xc0000100	/* base address of the %fs "segment" */
 #define	MSR_GSBASE	0xc0000101	/* base address of the %gs "segment" */
 #define	MSR_KGSBASE	0xc0000102	/* base address of the kernel %gs */
+#define	MSR_TSCAUX	0xc0000103	/* TSC_AUX register (for rdtscp) */
 #define	MSR_PERFEVSEL0	0xc0010000
 #define	MSR_PERFEVSEL1	0xc0010001
 #define	MSR_PERFEVSEL2	0xc0010002

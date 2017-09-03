@@ -321,4 +321,8 @@ initializecpu(int cpu)
 		    ((hw_clflush_enable == -1) && vmm_guest))
 			cpu_feature &= ~CPUID_CLFSH;
 	}
+
+	/* Set TSC_AUX register to the cpuid, for using rdtscp in userland. */
+	if ((amd_feature & AMDID_RDTSCP) != 0)
+		wrmsr(MSR_TSCAUX, cpu);
 }
