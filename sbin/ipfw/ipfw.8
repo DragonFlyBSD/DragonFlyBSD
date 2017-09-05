@@ -2,7 +2,7 @@
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
 .\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.20 2008/11/23 21:55:52 swildner Exp $
 .\"
-.Dd October 3, 2008
+.Dd September 5, 2017
 .Dt IPFW 8
 .Os
 .Sh NAME
@@ -1554,49 +1554,44 @@ for the RED algorithm.
 .It Em net.inet.ip.fw.autoinc_step : No 100
 Delta between rule numbers when auto-generating them.
 The value must be in the range 1..1000.
-.It Em net.inet.ip.fw.curr_dyn_buckets : Em net.inet.ip.fw.dyn_buckets
-The current number of buckets in the hash table for dynamic rules
-(readonly).
 .It Em net.inet.ip.fw.debug : No 1
 Controls debugging messages produced by
 .Nm .
-.It Em net.inet.ip.fw.dyn_buckets : No 256
-The number of buckets in the hash table for dynamic rules.
-Must be a power of 2, up to 65536.
-It only takes effect when all dynamic rules have expired, so you
-are advised to use a
-.Cm flush
-command to make sure that the hash table is resized.
-.It Em net.inet.ip.fw.dyn_count : No 3
-Current number of dynamic rules
+.It Em net.inet.ip.fw.state_cnt : No 3
+Current number of states
 (read-only).
+.It Em net.inet.ip.fw.state_max : No 4096
+Maximum number of states.
+When you hit this limit,
+no more states can be installed until old ones expire.
+.It Em net.inet.ip.fw.track_cnt : No 3
+Current number of tracks
+(read-only),
+which is created by
+.Cm limit
+option.
+.It Em net.inet.ip.fw.track_max : No 4096
+Maximum number of tracks.
+When you hit this limit,
+no more tracks can be installed until old ones expire.
 .It Em net.inet.ip.fw.dyn_keepalive : No 1
 Enables generation of keepalive packets for
 .Cm keep-state
 rules on TCP sessions. A keepalive is generated to both
 sides of the connection every 5 seconds for the last 20
 seconds of the lifetime of the rule.
-.It Em net.inet.ip.fw.dyn_max : No 8192
-Maximum number of dynamic rules.
-When you hit this limit, no more dynamic rules can be
-installed until old ones expire.
 .It Em net.inet.ip.fw.dyn_ack_lifetime : No 300
 .It Em net.inet.ip.fw.dyn_syn_lifetime : No 20
-.It Em net.inet.ip.fw.dyn_fin_lifetime : No 1
-.It Em net.inet.ip.fw.dyn_rst_lifetime : No 1
-.It Em net.inet.ip.fw.dyn_udp_lifetime : No 5
-.It Em net.inet.ip.fw.dyn_short_lifetime : No 30
+.It Em net.inet.ip.fw.dyn_finwait_lifetime : No 20
+.It Em net.inet.ip.fw.dyn_fin_lifetime : No 2
+.It Em net.inet.ip.fw.dyn_rst_lifetime : No 2
+.It Em net.inet.ip.fw.dyn_udp_lifetime : No 10
+.It Em net.inet.ip.fw.dyn_short_lifetime : No 5
 These variables control the lifetime, in seconds, of dynamic
 rules.
 Upon the initial SYN exchange the lifetime is kept short,
 then increased after both SYN have been seen, then decreased
 again during the final FIN exchange or when a RST is received.
-Both
-.Em dyn_fin_lifetime
-and
-.Em dyn_rst_lifetime
-must be strictly lower than 5 seconds, the period of
-repetition of keepalives. The firewall enforces that.
 .It Em net.inet.ip.fw.enable : No 1
 Enables the firewall.
 Setting this variable to 0 lets you run your machine without
@@ -1969,7 +1964,9 @@ utility first appeared in
 was introduced in
 .Fx 2.2.8 .
 Stateful extensions were introduced in
-.Fx 4.0 .
+.Fx 4.0 ,
+and were rewritten in
+.Dx 4.9 .
 .Nm ipfw2
 was introduced in Summer 2002.
 .Sh AUTHORS
