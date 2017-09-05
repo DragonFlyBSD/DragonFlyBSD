@@ -44,12 +44,12 @@
 
 #include <net/ipfw/ip_fw2.h>
 
-ip_fw_chk_t *ip_fw_chk_ptr;
-ip_fw_dn_io_t *ip_fw_dn_io_ptr;
-ip_fw_ctl_t *ip_fw_ctl_ptr;
-int ip_fw_loaded;
-int fw_enable = 1;
-int fw_one_pass = 1;
+ip_fw_chk_t	*ip_fw_chk_ptr;
+ip_fw_dn_io_t	*ip_fw_dn_io_ptr;
+ip_fw_ctl_t	*ip_fw_ctl_ptr;
+int		ip_fw_loaded;
+int		fw_enable = 1;
+int		fw_one_pass = 1;
 
 int
 ip_fw_sockopt(struct sockopt *sopt)
