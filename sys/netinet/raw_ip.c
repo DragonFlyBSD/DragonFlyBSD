@@ -86,8 +86,6 @@ struct	inpcbportinfo ripcbportinfo;
 
 /* control hooks for ipfw and dummynet */
 ip_fw_ctl_t *ip_fw_ctl_x_ptr;
-ip_dn_ctl_t *ip_dn_ctl_ptr;
-
 
 /*
  * hooks for multicast routing. They all default to NULL,

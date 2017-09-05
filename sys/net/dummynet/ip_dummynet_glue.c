@@ -69,6 +69,7 @@ static int	ip_dn_sockopt_get(struct sockopt *);
 static int	ip_dn_sockopt_config(struct sockopt *);
 
 ip_dn_io_t	*ip_dn_io_ptr;
+ip_dn_ctl_t	*ip_dn_ctl_ptr;
 int		ip_dn_cpu = 0;
 
 TUNABLE_INT("net.inet.ip.dummynet.cpu", &ip_dn_cpu);
