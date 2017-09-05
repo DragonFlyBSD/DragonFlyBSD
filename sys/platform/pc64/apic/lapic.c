@@ -420,21 +420,6 @@ lapic_scale_to_tsc(unsigned value, unsigned scale)
 	return val;
 }
 
-/*
- * This serialization is only needed in the MMIO using xAPIC codepath.
- * In upcoming x2APIC support this function should be skipped, since
- * the serialization will happen implicitly with the x2APIC.
- */
-static void
-lapic_tscdeadline_serialize(void)
-{
-	/* Serialize writes in xAPIC mode */
-	do {
-		/* Writing a "value much larger than current time-stamp" */
-		lapic_timer_tscdeadline_quick(10000 * tsc_frequency);
-	} while (rdmsr(MSR_TSC_DEADLINE) == 0);
-}
-
 static void
 lapic_timer_calibrate(void)
 {
@@ -531,7 +516,7 @@ lapic_timer_intr_enable(struct cputimer_intr *cti __unused)
 		timer |= APIC_LVTT_TSCDLT;
 	lapic->lvt_timer = timer;
 	if (lapic_use_tscdeadline)
-		lapic_tscdeadline_serialize();
+		cpu_mfence();
 
 	lapic_timer_fixup_handler(NULL);
 }
