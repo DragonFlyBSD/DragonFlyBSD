@@ -38,40 +38,27 @@
 
 #include <net/if.h>
 #include <net/netisr.h>
-#include <net/netmsg2.h>
 
 #include <netinet/in.h>
 
 #include <net/ipfw3/ip_fw.h>
 
+ip_fw_ctl_t *ip_fw_ctl_x_ptr;
+
 int ip_fw3_loaded;
 int fw3_enable = 1;
 int fw3_one_pass = 1;
 
-static void	ip_fw3_sockopt_dispatch(netmsg_t msg);
-
 int
 ip_fw3_sockopt(struct sockopt *sopt)
 {
-	struct netmsg_base smsg;
-
-	netmsg_init(&smsg, NULL, &curthread->td_msgport,
-		    0, ip_fw3_sockopt_dispatch);
-	smsg.lmsg.u.ms_resultp = sopt;
-	return lwkt_domsg(IPFW_CFGPORT, &smsg.lmsg, 0);
-}
-
-static void
-ip_fw3_sockopt_dispatch(netmsg_t msg)
-{
-	struct sockopt *sopt = msg->lmsg.u.ms_resultp;
 	int error;
 
-	KKASSERT(mycpuid == 0);
+	ASSERT_NETISR0;
 
 	if (IPFW3_LOADED)
 		error = ip_fw_ctl_x_ptr(sopt);
 	else
 		error = ENOPROTOOPT;
-	lwkt_replymsg(&msg->lmsg, error);
+	return (error);
 }

@@ -84,9 +84,6 @@
 struct	inpcbinfo ripcbinfo;
 struct	inpcbportinfo ripcbportinfo;
 
-/* control hooks for ipfw and dummynet */
-ip_fw_ctl_t *ip_fw_ctl_x_ptr;
-
 /*
  * hooks for multicast routing. They all default to NULL,
  * so leave them not initialized and rely on BSS being set to 0.
@@ -375,10 +372,7 @@ rip_ctloutput(netmsg_t msg)
 			break;
 
 		case IP_FW_X:
-			if (IPFW3_LOADED)
-				error = ip_fw3_sockopt(sopt);
-			else
-				error = ENOPROTOOPT;
+			error = ip_fw3_sockopt(sopt);
 			break;
 
 		case IP_FW_ADD: /* ADD actually returns the body... */
@@ -427,10 +421,7 @@ rip_ctloutput(netmsg_t msg)
 			break;
 
 		case IP_FW_X:
-			if (IPFW3_LOADED)
-				error = ip_fw_ctl_x_ptr(sopt);
-			else
-				 error = ENOPROTOOPT;
+			error = ip_fw3_sockopt(sopt);
 			break;
 
 		case IP_FW_ADD:
@@ -445,7 +436,7 @@ rip_ctloutput(netmsg_t msg)
 		case IP_DUMMYNET_DEL:
 		case IP_DUMMYNET_FLUSH:
 			error = ip_dn_sockopt(sopt);
-			break ;
+			break;
 
 		case IP_RSVP_ON:
 			error = ip_rsvp_init(so);
