@@ -85,7 +85,6 @@ struct	inpcbinfo ripcbinfo;
 struct	inpcbportinfo ripcbportinfo;
 
 /* control hooks for ipfw and dummynet */
-ip_fw_ctl_t *ip_fw_ctl_ptr;
 ip_fw_ctl_t *ip_fw_ctl_x_ptr;
 ip_dn_ctl_t *ip_dn_ctl_ptr;
 
@@ -376,18 +375,17 @@ rip_ctloutput(netmsg_t msg)
 			optval = inp->inp_flags & INP_HDRINCL;
 			soopt_from_kbuf(sopt, &optval, sizeof optval);
 			break;
+
 		case IP_FW_X:
 			if (IPFW3_LOADED)
 				error = ip_fw3_sockopt(sopt);
 			else
 				error = ENOPROTOOPT;
 			break;
+
 		case IP_FW_ADD: /* ADD actually returns the body... */
 		case IP_FW_GET:
-			if (IPFW_LOADED)
-				error = ip_fw_sockopt(sopt);
-			else
-				error = ENOPROTOOPT;
+			error = ip_fw_sockopt(sopt);
 			break;
 
 		case IP_DUMMYNET_GET:
@@ -429,21 +427,20 @@ rip_ctloutput(netmsg_t msg)
 			else
 				inp->inp_flags &= ~INP_HDRINCL;
 			break;
+
 		case IP_FW_X:
 			if (IPFW3_LOADED)
 				error = ip_fw_ctl_x_ptr(sopt);
 			else
 				 error = ENOPROTOOPT;
 			break;
+
 		case IP_FW_ADD:
 		case IP_FW_DEL:
 		case IP_FW_FLUSH:
 		case IP_FW_ZERO:
 		case IP_FW_RESETLOG:
-			if (IPFW_LOADED)
-				error = ip_fw_ctl_ptr(sopt);
-			else
-				error = ENOPROTOOPT;
+			error = ip_fw_sockopt(sopt);
 			break;
 
 		case IP_DUMMYNET_CONFIGURE:

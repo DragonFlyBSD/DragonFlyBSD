@@ -38,8 +38,7 @@
 #include <sys/socketvar.h>
 
 #include <net/if.h>
-#include <net/netisr.h>
-#include <net/netmsg2.h>
+#include <net/netisr2.h>
 
 #include <netinet/in.h>
 
@@ -47,16 +46,17 @@
 
 ip_fw_chk_t *ip_fw_chk_ptr;
 ip_fw_dn_io_t *ip_fw_dn_io_ptr;
+ip_fw_ctl_t *ip_fw_ctl_ptr;
 int ip_fw_loaded;
 int fw_enable = 1;
 int fw_one_pass = 1;
 
-static void	ip_fw_sockopt_dispatch(netmsg_t msg);
-
 int
 ip_fw_sockopt(struct sockopt *sopt)
 {
-	struct netmsg_base smsg;
+	int error;
+
+	ASSERT_NETISR0;
 
 	/*
 	 * Disallow modifications in really-really secure mode, but still allow
@@ -67,24 +67,9 @@ ip_fw_sockopt(struct sockopt *sopt)
 		if (securelevel >= 3)
 			return EPERM;
 	}
-
-	netmsg_init(&smsg, NULL, &curthread->td_msgport, MSGF_PRIORITY,
-	    ip_fw_sockopt_dispatch);
-	smsg.lmsg.u.ms_resultp = sopt;
-	return lwkt_domsg(IPFW_CFGPORT, &smsg.lmsg, 0);
-}
-
-static void
-ip_fw_sockopt_dispatch(netmsg_t msg)
-{
-	struct sockopt *sopt = msg->lmsg.u.ms_resultp;
-	int error;
-
-	KKASSERT(mycpuid == 0);
-
 	if (IPFW_LOADED)
 		error = ip_fw_ctl_ptr(sopt);
 	else
 		error = ENOPROTOOPT;
-	lwkt_replymsg(&msg->lmsg, error);
+	return (error);
 }
