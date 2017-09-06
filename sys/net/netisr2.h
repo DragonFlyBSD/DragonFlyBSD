@@ -190,6 +190,13 @@ netisr_replymsg(struct netmsg_base *nm, int error)
 	lwkt_replymsg(&nm->lmsg, error);
 }
 
+static __inline void
+netisr_dropmsg(struct netmsg_base *nm)
+{
+
+	lwkt_dropmsg(&nm->lmsg);
+}
+
 /*
  * To all netisrs, instead of netisr_ncpus.
  */
