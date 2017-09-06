@@ -3857,6 +3857,8 @@ ipfw_alt_delete_rule(uint16_t rulenum)
 	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
 	struct netmsg_del dmsg;
 
+	ASSERT_NETISR0;
+
 	/*
 	 * Locate first rule to delete
 	 */
@@ -3930,6 +3932,8 @@ ipfw_alt_delete_ruleset(uint8_t set)
 	struct ip_fw *rule;
 	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
 
+	ASSERT_NETISR0;
+
 	/*
 	 * Check whether the 'set' exists.  If it exists,
 	 * then check whether any rules within the set will
@@ -3988,6 +3992,8 @@ ipfw_alt_move_rule(uint16_t rulenum, uint8_t set)
 	struct ip_fw *rule;
 	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
 
+	ASSERT_NETISR0;
+
 	/*
 	 * Locate first rule to move
 	 */
@@ -4034,6 +4040,8 @@ ipfw_alt_move_ruleset(uint8_t from_set, uint8_t to_set)
 	struct netmsg_del dmsg;
 	struct netmsg_base *nmsg;
 
+	ASSERT_NETISR0;
+
 	bzero(&dmsg, sizeof(dmsg));
 	nmsg = &dmsg.base;
 	netmsg_init(nmsg, NULL, &curthread->td_msgport, MSGF_PRIORITY,
@@ -4069,6 +4077,8 @@ ipfw_alt_swap_ruleset(uint8_t set1, uint8_t set2)
 	struct netmsg_del dmsg;
 	struct netmsg_base *nmsg;
 
+	ASSERT_NETISR0;
+
 	bzero(&dmsg, sizeof(dmsg));
 	nmsg = &dmsg.base;
 	netmsg_init(nmsg, NULL, &curthread->td_msgport, MSGF_PRIORITY,
@@ -4098,6 +4108,8 @@ ipfw_ctl_alter(uint32_t arg)
 	uint16_t rulenum;
 	uint8_t cmd, new_set;
 	int error = 0;
+
+	ASSERT_NETISR0;
 
 	rulenum = arg & 0xffff;
 	cmd = (arg >> 24) & 0xff;
@@ -4206,6 +4218,8 @@ ipfw_ctl_zero_entry(int rulenum, int log_only)
 	struct netmsg_base *nmsg;
 	const char *msg;
 	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+
+	ASSERT_NETISR0;
 
 	bzero(&zmsg, sizeof(zmsg));
 	nmsg = &zmsg.base;
@@ -4460,6 +4474,8 @@ ipfw_ctl_add_rule(struct sockopt *sopt)
 	size_t size;
 	uint32_t rule_flags;
 	int error;
+
+	ASSERT_NETISR0;
 	
 	size = sopt->sopt_valsize;
 	if (size > (sizeof(uint32_t) * IPFW_RULE_SIZE_MAX) ||
@@ -4492,6 +4508,7 @@ ipfw_copy_rule(const struct ipfw_context *ctx, const struct ip_fw *rule,
 	int i;
 #endif
 
+	ASSERT_NETISR0;
 	KASSERT(rule->cpuid == 0, ("rule does not belong to cpu0"));
 
 	ioc_rule->act_ofs = rule->act_ofs;
@@ -4675,6 +4692,8 @@ ipfw_ctl_get_rules(struct sockopt *sopt)
 	size_t size;
 	int state_cnt;
 
+	ASSERT_NETISR0;
+
 	/*
 	 * pass up a copy of the current rules. Static rules
 	 * come first (the last of which has number IPFW_DEFAULT_RULE),
@@ -4747,6 +4766,8 @@ ipfw_ctl_set_disable(uint32_t disable, uint32_t enable)
 	struct netmsg_base nmsg;
 	uint32_t set_disable;
 
+	ASSERT_NETISR0;
+
 	/* IPFW_DEFAULT_SET is always enabled */
 	enable |= (1 << IPFW_DEFAULT_SET);
 	set_disable = (ipfw_ctx[mycpuid]->ipfw_set_disable | disable) & ~enable;
@@ -4768,6 +4789,8 @@ ipfw_ctl(struct sockopt *sopt)
 	int error, rulenum;
 	uint32_t *masks;
 	size_t size;
+
+	ASSERT_NETISR0;
 
 	error = 0;
 
@@ -5225,6 +5248,8 @@ ipfw_sysctl_enable_dispatch(netmsg_t nmsg)
 {
 	int enable = nmsg->lmsg.u.ms_result;
 
+	ASSERT_NETISR0;
+
 	if (fw_enable == enable)
 		goto reply;
 
@@ -5367,6 +5392,8 @@ ipfw_init_dispatch(netmsg_t nmsg)
 	struct netmsg_ipfw fwmsg;
 	int error = 0, cpu;
 
+	ASSERT_NETISR0;
+
 	if (IPFW_LOADED) {
 		kprintf("IP firewall already loaded\n");
 		error = EEXIST;
@@ -5464,6 +5491,8 @@ ipfw_fini_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_base nm;
 	int error = 0, cpu;
+
+	ASSERT_NETISR0;
 
 	if (ipfw_gd.ipfw_refcnt != 0) {
 		error = EBUSY;
