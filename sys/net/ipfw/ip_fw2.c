@@ -4716,11 +4716,9 @@ ipfw_ctl_get_rules(struct sockopt *sopt)
 static void
 ipfw_set_disable_dispatch(netmsg_t nmsg)
 {
-	struct lwkt_msg *lmsg = &nmsg->lmsg;
 	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
 
-	ctx->ipfw_set_disable = lmsg->u.ms_result32;
-
+	ctx->ipfw_set_disable = nmsg->lmsg.u.ms_result32;
 	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }
 
@@ -4728,7 +4726,6 @@ static void
 ipfw_ctl_set_disable(uint32_t disable, uint32_t enable)
 {
 	struct netmsg_base nmsg;
-	struct lwkt_msg *lmsg;
 	uint32_t set_disable;
 
 	/* IPFW_DEFAULT_SET is always enabled */
@@ -4738,8 +4735,7 @@ ipfw_ctl_set_disable(uint32_t disable, uint32_t enable)
 	bzero(&nmsg, sizeof(nmsg));
 	netmsg_init(&nmsg, NULL, &curthread->td_msgport, MSGF_PRIORITY,
 	    ipfw_set_disable_dispatch);
-	lmsg = &nmsg.lmsg;
-	lmsg->u.ms_result32 = set_disable;
+	nmsg.lmsg.u.ms_result32 = set_disable;
 
 	netisr_domsg(&nmsg, 0);
 }
@@ -5208,8 +5204,7 @@ ipfw_sysctl_dynmax(SYSCTL_HANDLER_ARGS)
 static void
 ipfw_sysctl_enable_dispatch(netmsg_t nmsg)
 {
-	struct lwkt_msg *lmsg = &nmsg->lmsg;
-	int enable = lmsg->u.ms_result;
+	int enable = nmsg->lmsg.u.ms_result;
 
 	if (fw_enable == enable)
 		goto reply;
@@ -5220,7 +5215,7 @@ ipfw_sysctl_enable_dispatch(netmsg_t nmsg)
 	else
 		ipfw_dehook();
 reply:
-	lwkt_replymsg(lmsg, 0);
+	netisr_replymsg(&nmsg->base, 0);
 }
 
 static int
@@ -5405,7 +5400,7 @@ ipfw_init_dispatch(netmsg_t nmsg)
 	if (fw_enable)
 		ipfw_hook();
 reply:
-	lwkt_replymsg(&nmsg->lmsg, error);
+	netisr_replymsg(&nmsg->base, error);
 }
 
 static int
@@ -5430,12 +5425,12 @@ ipfw_ctx_fini_dispatch(netmsg_t nmsg)
 	callout_stop_sync(&ctx->ipfw_keepalive_ch);
 
 	crit_enter();
-	lwkt_dropmsg(&ctx->ipfw_stateexp_more.lmsg);
-	lwkt_dropmsg(&ctx->ipfw_stateexp_nm.lmsg);
-	lwkt_dropmsg(&ctx->ipfw_trackexp_more.lmsg);
-	lwkt_dropmsg(&ctx->ipfw_trackexp_nm.lmsg);
-	lwkt_dropmsg(&ctx->ipfw_keepalive_more.lmsg);
-	lwkt_dropmsg(&ctx->ipfw_keepalive_nm.lmsg);
+	netisr_dropmsg(&ctx->ipfw_stateexp_more);
+	netisr_dropmsg(&ctx->ipfw_stateexp_nm);
+	netisr_dropmsg(&ctx->ipfw_trackexp_more);
+	netisr_dropmsg(&ctx->ipfw_trackexp_nm);
+	netisr_dropmsg(&ctx->ipfw_keepalive_more);
+	netisr_dropmsg(&ctx->ipfw_keepalive_nm);
 	crit_exit();
 
 	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
@@ -5473,7 +5468,7 @@ ipfw_fini_dispatch(netmsg_t nmsg)
 
 	kprintf("IP firewall unloaded\n");
 reply:
-	lwkt_replymsg(&nmsg->lmsg, error);
+	netisr_replymsg(&nmsg->base, error);
 }
 
 static int
