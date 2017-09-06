@@ -28,10 +28,6 @@
 #ifndef _IPFW2_H
 #define _IPFW2_H
 
-#ifdef _KERNEL
-#include <net/netisr2.h>
-#endif
-
 /*
  * The kernel representation of ipfw rules is made of a list of
  * 'instructions' (for all practical purposes equivalent to BPF
@@ -382,11 +378,6 @@ extern int fw_enable;
 
 extern int ip_fw_loaded;
 #define	IPFW_LOADED	(ip_fw_loaded)
-
-#define IPFW_CFGCPUID	0
-#define IPFW_CFGPORT	netisr_cpuport(IPFW_CFGCPUID)
-#define IPFW_ASSERT_CFGPORT(msgport)	\
-	KASSERT((msgport) == IPFW_CFGPORT, ("not IPFW CFGPORT"))
 
 #endif /* _KERNEL */
 

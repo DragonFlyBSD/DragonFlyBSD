@@ -3597,7 +3597,7 @@ ipfw_add_rule(struct ipfw_ioc_rule *ioc_rule, uint32_t rule_flags)
 	struct netmsg_base *nmsg;
 	struct ip_fw *f, *prev, *rule;
 
-	IPFW_ASSERT_CFGPORT(&curthread->td_msgport);
+	ASSERT_NETISR0;
 
 	/*
 	 * If rulenum is 0, find highest numbered rule before the
@@ -3747,7 +3747,7 @@ ipfw_flush(int kill_default)
 	int state_cnt;
 #endif
 
-	IPFW_ASSERT_CFGPORT(&curthread->td_msgport);
+	ASSERT_NETISR0;
 
 	/*
 	 * If 'kill_default' then caller has done the necessary
@@ -4476,7 +4476,7 @@ ipfw_copy_rule(const struct ipfw_context *ctx, const struct ip_fw *rule,
 	int i;
 #endif
 
-	KKASSERT(rule->cpuid == IPFW_CFGCPUID);
+	KASSERT(rule->cpuid == 0, ("rule does not belong to cpu0"));
 
 	ioc_rule->act_ofs = rule->act_ofs;
 	ioc_rule->cmd_len = rule->cmd_len;
@@ -5124,7 +5124,7 @@ ipfw_hook(void)
 {
 	struct pfil_head *pfh;
 
-	IPFW_ASSERT_CFGPORT(&curthread->td_msgport);
+	ASSERT_NETISR0;
 
 	pfh = pfil_head_get(PFIL_TYPE_AF, AF_INET);
 	if (pfh == NULL)
@@ -5139,7 +5139,7 @@ ipfw_dehook(void)
 {
 	struct pfil_head *pfh;
 
-	IPFW_ASSERT_CFGPORT(&curthread->td_msgport);
+	ASSERT_NETISR0;
 
 	pfh = pfil_head_get(PFIL_TYPE_AF, AF_INET);
 	if (pfh == NULL)
@@ -5227,7 +5227,6 @@ static int
 ipfw_sysctl_enable(SYSCTL_HANDLER_ARGS)
 {
 	struct netmsg_base nmsg;
-	struct lwkt_msg *lmsg;
 	int enable, error;
 
 	enable = fw_enable;
@@ -5237,10 +5236,9 @@ ipfw_sysctl_enable(SYSCTL_HANDLER_ARGS)
 
 	netmsg_init(&nmsg, NULL, &curthread->td_msgport, MSGF_PRIORITY,
 	    ipfw_sysctl_enable_dispatch);
-	lmsg = &nmsg.lmsg;
-	lmsg->u.ms_result = enable;
+	nmsg.lmsg.u.ms_result = enable;
 
-	return lwkt_domsg(IPFW_CFGPORT, lmsg, 0);
+	return netisr_domsg(&nmsg, 0);
 }
 
 static int
@@ -5417,7 +5415,7 @@ ipfw_init(void)
 
 	netmsg_init(&smsg, NULL, &curthread->td_msgport, MSGF_PRIORITY,
 	    ipfw_init_dispatch);
-	return lwkt_domsg(IPFW_CFGPORT, &smsg.lmsg, 0);
+	return netisr_domsg(&smsg, 0);
 }
 
 #ifdef KLD_MODULE
@@ -5485,7 +5483,7 @@ ipfw_fini(void)
 
 	netmsg_init(&smsg, NULL, &curthread->td_msgport, MSGF_PRIORITY,
 	    ipfw_fini_dispatch);
-	return lwkt_domsg(IPFW_CFGPORT, &smsg.lmsg, 0);
+	return netisr_domsg(&smsg, 0);
 }
 
 #endif	/* KLD_MODULE */
