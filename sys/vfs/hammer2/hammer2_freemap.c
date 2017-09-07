@@ -51,6 +51,7 @@ struct hammer2_fiterate {
 	hammer2_off_t	bpref;
 	hammer2_off_t	bnext;
 	int		loops;
+	int		relaxed;
 };
 
 typedef struct hammer2_fiterate hammer2_fiterate_t;
@@ -80,10 +81,18 @@ hammer2_freemapradix(int radix)
  * chains use fixed storage offsets in the 4MB reserved area at the
  * beginning of each 2GB zone
  *
+ * XXX I made a mistake and made the reserved area begin at each LEVEL1 zone,
+ *     which is on a 1GB demark.  This will eat a little more space but for
+ *     now we retain compatibility and make FMZONEBASE every 1GB
+ *
+ *     (see same thing in hammer2_bulkfree.c near the top, as well as in
+ *     newfs_hammer2).
+ *
  * Rotate between four possibilities.  Theoretically this means we have three
  * good freemaps in case of a crash which we can use as a base for the fixup
  * scan at mount-time.
  */
+#define H2FMZONEBASE(key)	((key) & ~HAMMER2_FREEMAP_LEVEL1_MASK)
 #define H2FMBASE(key, radix)	((key) & ~(((hammer2_off_t)1 << (radix)) - 1))
 #define H2FMSHIFT(radix)	((hammer2_off_t)1 << (radix))
 
@@ -234,7 +243,6 @@ hammer2_freemap_alloc(hammer2_chain_t *chain, size_t bytes)
 		 * area, not allocated from the freemap.
 		 */
 		error = hammer2_freemap_reserve(chain, radix);
-		KKASSERT(error == 0);
 
 		return error;
 	}
@@ -277,6 +285,7 @@ hammer2_freemap_alloc(hammer2_chain_t *chain, size_t bytes)
 	KKASSERT(hindex < HAMMER2_FREEMAP_HEUR_SIZE);
 
 	iter.bpref = hmp->heur_freemap[hindex];
+	iter.relaxed = hmp->freemap_relaxed;
 
 	/*
 	 * Make sure bpref is in-bounds.  It's ok if bpref covers a zone's
@@ -291,19 +300,18 @@ hammer2_freemap_alloc(hammer2_chain_t *chain, size_t bytes)
 	parent = &hmp->fchain;
 	hammer2_chain_ref(parent);
 	hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
-	error = EAGAIN;
+	error = HAMMER2_ERROR_EAGAIN;
 	iter.bnext = iter.bpref;
 	iter.loops = 0;
 
-	while (error == EAGAIN) {
+	while (error == HAMMER2_ERROR_EAGAIN) {
 		error = hammer2_freemap_try_alloc(&parent, bref, radix,
 						  &iter, mtid);
 	}
+	hmp->freemap_relaxed |= iter.relaxed;	/* heuristical, SMP race ok */
 	hmp->heur_freemap[hindex] = iter.bnext;
 	hammer2_chain_unlock(parent);
 	hammer2_chain_drop(parent);
-
-	KKASSERT(error == 0);
 
 	return (error);
 }
@@ -349,7 +357,6 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 				     &error,
 				     HAMMER2_LOOKUP_ALWAYS |
 				     HAMMER2_LOOKUP_MATCHIND);
-	error = hammer2_error_to_errno(error);
 
 	if (chain == NULL) {
 		/*
@@ -385,13 +392,13 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 		kprintf("hammer2_freemap_try_alloc: %016jx: error %s\n",
 			(intmax_t)bref->data_off,
 			hammer2_error_str(chain->error));
-		error = EIO;
+		error = HAMMER2_ERROR_EIO;
 	} else if ((chain->bref.check.freemap.bigmask &
 		   ((size_t)1 << radix)) == 0) {
 		/*
 		 * Already flagged as not having enough space
 		 */
-		error = ENOSPC;
+		error = HAMMER2_ERROR_ENOSPC;
 	} else {
 		/*
 		 * Modify existing chain to setup for adjustment.
@@ -415,7 +422,7 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 		KKASSERT(start >= 0 && start < HAMMER2_FREEMAP_COUNT);
 		hammer2_chain_modify(chain, mtid, 0, 0);
 
-		error = ENOSPC;
+		error = HAMMER2_ERROR_ENOSPC;
 		for (count = 0; count < HAMMER2_FREEMAP_COUNT; ++count) {
 			int availchk;
 
@@ -425,7 +432,8 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 			}
 
 			/*
-			 * Calculate bmap pointer
+			 * Calculate bmap pointer from thart starting index
+			 * forwards.
 			 *
 			 * NOTE: bmap pointer is invalid if n >= FREEMAP_COUNT.
 			 */
@@ -443,21 +451,30 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 				availchk = 0;
 			}
 
+			/*
+			 * Try to allocate from a matching freemap class
+			 * superblock.  If we are in relaxed mode we allocate
+			 * from any freemap class superblock.
+			 */
 			if (availchk &&
-			    (bmap->class == 0 || bmap->class == class)) {
+			    (bmap->class == 0 || bmap->class == class ||
+			     iter->relaxed)) {
 				base_key = key + n * l0size;
 				error = hammer2_bmap_alloc(hmp, bmap,
 							   class, n,
 							   (int)bref->key,
 							   radix,
 							   &base_key);
-				if (error != ENOSPC) {
+				if (error != HAMMER2_ERROR_ENOSPC) {
 					key = base_key;
 					break;
 				}
 			}
 
 			/*
+			 * Calculate bmap pointer from thart starting index
+			 * backwards (locality).
+			 *
 			 * Must recalculate after potentially having called
 			 * hammer2_bmap_alloc() above in case chain was
 			 * reallocated.
@@ -477,21 +494,32 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 				availchk = 0;
 			}
 
+			/*
+			 * Try to allocate from a matching freemap class
+			 * superblock.  If we are in relaxed mode we allocate
+			 * from any freemap class superblock.
+			 */
 			if (availchk &&
-			    (bmap->class == 0 || bmap->class == class)) {
+			    (bmap->class == 0 || bmap->class == class ||
+			    iter->relaxed)) {
 				base_key = key + n * l0size;
 				error = hammer2_bmap_alloc(hmp, bmap,
 							   class, n,
 							   (int)bref->key,
 							   radix,
 							   &base_key);
-				if (error != ENOSPC) {
+				if (error != HAMMER2_ERROR_ENOSPC) {
 					key = base_key;
 					break;
 				}
 			}
 		}
-		if (error == ENOSPC) {
+
+		/*
+		 * We only know for sure that we can clear the bitmap bit
+		 * if we scanned the entire array (start == 0).
+		 */
+		if (error == HAMMER2_ERROR_ENOSPC && start == 0) {
 			chain->bref.check.freemap.bigmask &=
 				(uint32_t)~((size_t)1 << radix);
 		}
@@ -526,7 +554,7 @@ hammer2_freemap_try_alloc(hammer2_chain_t **parentp,
 			chain,
 			bref->key, bref->data_off, chain->bref.data_off);
 #endif
-	} else if (error == ENOSPC) {
+	} else if (error == HAMMER2_ERROR_ENOSPC) {
 		/*
 		 * Return EAGAIN with next iteration in iter->bnext, or
 		 * return ENOSPC if the allocation map has been exhausted.
@@ -693,7 +721,7 @@ hammer2_bmap_alloc(hammer2_dev_t *hmp, hammer2_bmap_data_t *bmap,
 		}
 		/*fragments might remain*/
 		/*KKASSERT(bmap->avail == 0);*/
-		return (ENOSPC);
+		return (HAMMER2_ERROR_ENOSPC);
 success:
 		offset = i * (HAMMER2_SEGSIZE / HAMMER2_BMAP_ELEMENTS) +
 			 (j * (HAMMER2_FREEMAP_BLOCK_SIZE / 2));
@@ -783,11 +811,14 @@ success:
 	 * and available bytes, update the allocation offset (*basep)
 	 * from the L0 base to the actual offset.
 	 *
+	 * Do not override the class if doing a relaxed class allocation.
+	 *
 	 * avail must reflect the bitmap-granular availability.  The allocator
 	 * tests will also check the linear iterator.
 	 */
 	bmap->bitmapq[i] |= bmmask;
-	bmap->class = class;
+	if (bmap->class == 0)
+		bmap->class = class;
 	bmap->avail -= bgsize;
 	*basep += offset;
 
@@ -807,6 +838,9 @@ success:
 	return(0);
 }
 
+/*
+ * Initialize a freemap for the storage area (in bytes) that begins at (key).
+ */
 static
 void
 hammer2_freemap_init(hammer2_dev_t *hmp, hammer2_key_t key,
@@ -818,44 +852,58 @@ hammer2_freemap_init(hammer2_dev_t *hmp, hammer2_key_t key,
 	hammer2_bmap_data_t *bmap;
 	int count;
 
+	/*
+	 * LEVEL1 is 1GB, there are two level1 1GB freemaps per 2GB zone.
+	 */
 	l1size = H2FMSHIFT(HAMMER2_FREEMAP_LEVEL1_RADIX);
 
 	/*
-	 * Calculate the portion of the 2GB map that should be initialized
+	 * Calculate the portion of the 1GB map that should be initialized
 	 * as free.  Portions below or after will be initialized as allocated.
 	 * SEGMASK-align the areas so we don't have to worry about sub-scans
 	 * or endianess when using memset.
 	 *
-	 * (1) Ensure that all statically allocated space from newfs_hammer2
-	 *     is marked allocated.
-	 *
-	 * (2) Ensure that the reserved area is marked allocated (typically
-	 *     the first 4MB of the 2GB area being represented).
-	 *
-	 * (3) Ensure that any trailing space at the end-of-volume is marked
-	 *     allocated.
-	 *
 	 * WARNING! It is possible for lokey to be larger than hikey if the
 	 *	    entire 2GB segment is within the static allocation.
 	 */
+	/*
+	 * (1) Ensure that all statically allocated space from newfs_hammer2
+	 *     is marked allocated, and take it up to the level1 base for
+	 *     this key.
+	 */
 	lokey = (hmp->voldata.allocator_beg + HAMMER2_SEGMASK64) &
 		~HAMMER2_SEGMASK64;
+	if (lokey < H2FMBASE(key, HAMMER2_FREEMAP_LEVEL1_RADIX))
+		lokey = H2FMBASE(key, HAMMER2_FREEMAP_LEVEL1_RADIX);
 
-	if (lokey < H2FMBASE(key, HAMMER2_FREEMAP_LEVEL1_RADIX) +
-		  HAMMER2_ZONE_SEG64) {
-		lokey = H2FMBASE(key, HAMMER2_FREEMAP_LEVEL1_RADIX) +
-			HAMMER2_ZONE_SEG64;
-	}
+	/*
+	 * (2) Ensure that the reserved area is marked allocated (typically
+	 *     the first 4MB of each 2GB area being represented).  Since
+	 *     each LEAF represents 1GB of storage and the zone is 2GB, we
+	 *     have to adjust lowkey upward every other LEAF sequentially.
+	 */
+	if (lokey < H2FMZONEBASE(key) + HAMMER2_ZONE_SEG64)
+		lokey = H2FMZONEBASE(key) + HAMMER2_ZONE_SEG64;
 
+	/*
+	 * (3) Ensure that any trailing space at the end-of-volume is marked
+	 *     allocated.
+	 */
 	hikey = key + H2FMSHIFT(HAMMER2_FREEMAP_LEVEL1_RADIX);
 	if (hikey > hmp->voldata.volu_size) {
 		hikey = hmp->voldata.volu_size & ~HAMMER2_SEGMASK64;
 	}
 
+	/*
+	 * Heuristic highest possible value
+	 */
 	chain->bref.check.freemap.avail =
 		H2FMSHIFT(HAMMER2_FREEMAP_LEVEL1_RADIX);
 	bmap = &chain->data->bmdata[0];
 
+	/*
+	 * Initialize bitmap (bzero'd by caller)
+	 */
 	for (count = 0; count < HAMMER2_FREEMAP_COUNT; ++count) {
 		if (key < lokey || key >= hikey) {
 			memset(bmap->bitmapq, -1,
@@ -876,6 +924,11 @@ hammer2_freemap_init(hammer2_dev_t *hmp, hammer2_key_t key,
  * The current Level 1 freemap has been exhausted, iterate to the next
  * one, return ENOSPC if no freemaps remain.
  *
+ * At least two loops are required.  If we are not in relaxed mode and
+ * we run out of storage we enter relaxed mode and do a third loop.
+ * The relaxed mode is recorded back in the hmp so once we enter the mode
+ * we remain relaxed until stuff begins to get freed and only do 2 loops.
+ *
  * XXX this should rotate back to the beginning to handle freed-up space
  * XXX or use intermediate entries to locate free space. TODO
  */
@@ -889,10 +942,14 @@ hammer2_freemap_iterate(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
 	iter->bnext += H2FMSHIFT(HAMMER2_FREEMAP_LEVEL1_RADIX);
 	if (iter->bnext >= hmp->voldata.volu_size) {
 		iter->bnext = 0;
-		if (++iter->loops == 2)
-			return (ENOSPC);
+		if (++iter->loops >= 2) {
+			if (iter->relaxed == 0)
+				iter->relaxed = 1;
+			else
+				return (HAMMER2_ERROR_ENOSPC);
+		}
 	}
-	return(EAGAIN);
+	return(HAMMER2_ERROR_EAGAIN);
 }
 
 /*
@@ -976,7 +1033,6 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref,
 				     &error,
 				     HAMMER2_LOOKUP_ALWAYS |
 				     HAMMER2_LOOKUP_MATCHIND);
-	error = hammer2_error_to_errno(error);
 
 	/*
 	 * Stop early if we are trying to free something but no leaf exists.
@@ -1016,7 +1072,8 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref,
 		}
 
 		if (error == 0) {
-			hammer2_chain_modify(chain, mtid, 0, 0);
+			error = hammer2_chain_modify(chain, mtid, 0, 0);
+			KKASSERT(error == 0);
 			bzero(&chain->data->bmdata[0],
 			      HAMMER2_FREEMAP_LEVELN_PSIZE);
 			chain->bref.check.freemap.bigmask = (uint32_t)-1;
@@ -1178,9 +1235,14 @@ again:
 	 * be something allocatable.  We also set this in recovery... it
 	 * doesn't hurt and we might want to use the hint for other validation
 	 * operations later on.
+	 *
+	 * We could calculate the largest possible allocation and set the
+	 * radii that could fit, but its easier just to set bigmask to -1.
 	 */
-	if (modified)
-		chain->bref.check.freemap.bigmask |= 1 << radix;
+	if (modified) {
+		chain->bref.check.freemap.bigmask = -1;
+		hmp->freemap_relaxed = 0;	/* reset heuristic */
+	}
 
 	hammer2_chain_unlock(chain);
 	hammer2_chain_drop(chain);

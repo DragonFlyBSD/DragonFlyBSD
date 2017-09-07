@@ -395,14 +395,25 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  *	 NULL on other errors.  Check chain->error, not chain->data.
  */
 #define HAMMER2_ERROR_NONE		0	/* no error (must be 0) */
-#define HAMMER2_ERROR_IO		0x0001	/* device I/O error */
-#define HAMMER2_ERROR_CHECK		0x0002	/* check code mismatch */
-#define HAMMER2_ERROR_INCOMPLETE	0x0004	/* incomplete cluster */
-#define HAMMER2_ERROR_DEPTH		0x0008	/* temporary depth limit */
-#define HAMMER2_ERROR_BADBREF		0x0010	/* temporary depth limit */
-
-#define HAMMER2_ERROR_ABORTED		0x1000	/* aborted operation */
-#define HAMMER2_ERROR_EOF		0x2000	/* non-error end of scan */
+#define HAMMER2_ERROR_EIO		0x00000001	/* device I/O error */
+#define HAMMER2_ERROR_CHECK		0x00000002	/* check code error */
+#define HAMMER2_ERROR_INCOMPLETE	0x00000004	/* incomplete cluster */
+#define HAMMER2_ERROR_DEPTH		0x00000008	/* tmp depth limit */
+#define HAMMER2_ERROR_BADBREF		0x00000010	/* illegal bref */
+#define HAMMER2_ERROR_ENOSPC		0x00000020	/* allocation failure */
+#define HAMMER2_ERROR_ENOENT		0x00000040	/* entry not found */
+#define HAMMER2_ERROR_ENOTEMPTY		0x00000080	/* dir not empty */
+#define HAMMER2_ERROR_EAGAIN		0x00000100	/* retry */
+#define HAMMER2_ERROR_ENOTDIR		0x00000200	/* not directory */
+#define HAMMER2_ERROR_EISDIR		0x00000400	/* is directory */
+#define HAMMER2_ERROR_EINPROGRESS	0x00000800	/* already running */
+#define HAMMER2_ERROR_ABORTED		0x00001000	/* aborted operation */
+#define HAMMER2_ERROR_EOF		0x00002000	/* end of scan */
+#define HAMMER2_ERROR_EINVAL		0x00004000	/* catch-all */
+#define HAMMER2_ERROR_EEXIST		0x00008000	/* entry exists */
+#define HAMMER2_ERROR_EDEADLK		0x00010000
+#define HAMMER2_ERROR_ESRCH		0x00020000
+#define HAMMER2_ERROR_ETIMEDOUT		0x00040000
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
@@ -1053,6 +1064,7 @@ struct hammer2_dev {
 	struct spinlock	io_spin;	/* iotree, iolruq access */
 	struct hammer2_io_tree iotree;
 	int		iofree_count;
+	int		freemap_relaxed;
 	hammer2_chain_t vchain;		/* anchor chain (topology) */
 	hammer2_chain_t fchain;		/* anchor chain (freemap) */
 	struct spinlock	list_spin;
@@ -1065,6 +1077,7 @@ struct hammer2_dev {
 	hammer2_dedup_t heur_dedup[HAMMER2_DEDUP_HEUR_SIZE];
 	int		volhdrno;	/* last volhdrno written */
 	uint32_t	hflags;		/* HMNT2 flags applicable to device */
+	hammer2_off_t	free_reserved;	/* nominal free reserved */
 	hammer2_thread_t bfthr;		/* bulk-free thread */
 	char		devrepname[64];	/* for kprintf */
 	hammer2_ioc_bulkfree_t bflast;	/* stats for last bulkfree run */
@@ -1156,8 +1169,10 @@ struct hammer2_pfs {
 	uint8_t			pfs_mode;	/* operating mode PFSMODE */
 	uint8_t			unused01;
 	uint8_t			unused02;
-	int			unused03;
+	int			free_ticks;	/* free_* calculations */
 	long			inmem_inodes;
+	hammer2_off_t		free_reserved;
+	hammer2_off_t		free_nominal;
 	uint32_t		inmem_dirty_chains;
 	int			count_lwinprog;	/* logical write in prog */
 	struct spinlock		list_spin;
@@ -1276,16 +1291,47 @@ int
 hammer2_error_to_errno(int error)
 {
 	if (error) {
-		if (error & HAMMER2_ERROR_IO)
+		if (error & HAMMER2_ERROR_EIO)
 			error = EIO;
 		else if (error & HAMMER2_ERROR_CHECK)
 			error = EDOM;
 		else if (error & HAMMER2_ERROR_ABORTED)
 			error = EINTR;
+		else if (error & HAMMER2_ERROR_BADBREF)
+			error = EIO;
+		else if (error & HAMMER2_ERROR_ENOSPC)
+			error = ENOSPC;
+		else if (error & HAMMER2_ERROR_ENOENT)
+			error = ENOENT;
+		else if (error & HAMMER2_ERROR_ENOTEMPTY)
+			error = ENOTEMPTY;
+		else if (error & HAMMER2_ERROR_EAGAIN)
+			error = EAGAIN;
+		else if (error & HAMMER2_ERROR_ENOTDIR)
+			error = ENOTDIR;
+		else if (error & HAMMER2_ERROR_EISDIR)
+			error = EISDIR;
+		else if (error & HAMMER2_ERROR_EINPROGRESS)
+			error = EINPROGRESS;
 		else
 			error = EDOM;
 	}
 	return error;
+}
+
+static __inline
+int
+hammer2_errno_to_error(int error)
+{
+	switch(error) {
+	case 0:
+		return 0;
+	case EIO:
+		return HAMMER2_ERROR_EIO;
+	case EINVAL:
+	default:
+		return HAMMER2_ERROR_EINVAL;
+	}
 }
 
 extern struct vop_ops hammer2_vnode_vops;
@@ -1432,11 +1478,11 @@ int hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,
 				int clindex, int flags,
 				hammer2_chain_t **parentp,
 				hammer2_chain_t **chainp);
-void hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
+int hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 				hammer2_off_t dedup_off, int flags);
-void hammer2_chain_modify_ip(hammer2_inode_t *ip, hammer2_chain_t *chain,
+int hammer2_chain_modify_ip(hammer2_inode_t *ip, hammer2_chain_t *chain,
 				hammer2_tid_t mtid, int flags);
-void hammer2_chain_resize(hammer2_chain_t *chain,
+int hammer2_chain_resize(hammer2_chain_t *chain,
 				hammer2_tid_t mtid, hammer2_off_t dedup_off,
 				int nradix, int flags);
 void hammer2_chain_unlock(hammer2_chain_t *chain);
@@ -1471,7 +1517,7 @@ void hammer2_chain_rename(hammer2_blockref_t *bref,
 				hammer2_chain_t **parentp,
 				hammer2_chain_t *chain,
 				hammer2_tid_t mtid, int flags);
-void hammer2_chain_delete(hammer2_chain_t *parent, hammer2_chain_t *chain,
+int hammer2_chain_delete(hammer2_chain_t *parent, hammer2_chain_t *chain,
 				hammer2_tid_t mtid, int flags);
 void hammer2_chain_setflush(hammer2_chain_t *chain);
 void hammer2_chain_countbrefs(hammer2_chain_t *chain,
@@ -1498,7 +1544,7 @@ void hammer2_base_insert(hammer2_chain_t *chain,
 /*
  * hammer2_flush.c
  */
-void hammer2_flush(hammer2_chain_t *chain, int istop);
+int hammer2_flush(hammer2_chain_t *chain, int istop);
 void hammer2_delayed_flush(hammer2_chain_t *chain);
 
 /*
@@ -1629,6 +1675,8 @@ int hammer2_msg_adhoc_input(kdmsg_msg_t *msg);
 void hammer2_volconf_update(hammer2_dev_t *hmp, int index);
 void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp, char pfx);
 int hammer2_vfs_sync(struct mount *mp, int waitflags);
+int hammer2_vfs_enospace(hammer2_inode_t *ip, off_t bytes, struct ucred *cred);
+
 hammer2_pfs_t *hammer2_pfsalloc(hammer2_chain_t *chain,
 				const hammer2_inode_data_t *ripdata,
 				hammer2_tid_t modify_tid,

@@ -186,7 +186,7 @@ hammer2_primary_sync_thread(void *arg)
 				kprintf("sync_slaves error %d defer %p\n",
 					error, list.base);
 			}
-			if (error != EAGAIN)
+			if (error != HAMMER2_ERROR_EAGAIN)
 				break;
 			while ((defer = list.base) != NULL) {
 				hammer2_inode_t *nip;
@@ -194,8 +194,11 @@ hammer2_primary_sync_thread(void *arg)
 				nip = defer->ip;
 				error = hammer2_sync_slaves(thr, nip, &list,
 							(nip == pmp->iroot));
-				if (error && error != EAGAIN && error != ENOENT)
+				if (error &&
+				    error != HAMMER2_ERROR_EAGAIN &&
+				    error != HAMMER2_ERROR_ENOENT) {
 					break;
+				}
 				if (hammer2_thr_break(thr)) {
 					didbreak = 1;
 					break;
@@ -220,7 +223,8 @@ hammer2_primary_sync_thread(void *arg)
 			 * If the thread is being remastered, frozen, or
 			 * stopped, clean up any left-over deferals.
 			 */
-			if (didbreak || (error && error != EAGAIN)) {
+			if (didbreak ||
+			    (error && error != HAMMER2_ERROR_EAGAIN)) {
 				kprintf("didbreak\n");
 				while ((defer = list.base) != NULL) {
 					--list.count;
@@ -228,8 +232,8 @@ hammer2_primary_sync_thread(void *arg)
 					list.base = defer->next;
 					kfree(defer, M_HAMMER2);
 				}
-				if (error == 0 || error == EAGAIN)
-					error = EINPROGRESS;
+				if (error == 0 || error == HAMMER2_ERROR_EAGAIN)
+					error = HAMMER2_ERROR_EINPROGRESS;
 				break;
 			}
 		}
@@ -237,7 +241,7 @@ hammer2_primary_sync_thread(void *arg)
 		hammer2_inode_drop(pmp->iroot);
 		hammer2_trans_done(pmp);
 
-		if (error && error != EINPROGRESS)
+		if (error && error != HAMMER2_ERROR_EINPROGRESS)
 			kprintf("hammer2_sync_slaves: error %d\n", error);
 
 		/*
@@ -458,7 +462,6 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 				     HAMMER2_LOOKUP_SHARED |
 				     HAMMER2_LOOKUP_NODIRECT |
 				     HAMMER2_LOOKUP_NODATA);
-	serror = hammer2_error_to_errno(serror);
 	merror = hammer2_xop_collect(&xop->head, 0);
 	if (hammer2_debug & 0x8000) {
 		kprintf("START_SCAN IP=%016jx chain=%p (%016jx)\n",
@@ -477,15 +480,15 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 		int dodefer = 0;
 		hammer2_chain_t *focus;
 
-		if (chain == NULL && merror == ENOENT)
+		if (chain == NULL && merror == HAMMER2_ERROR_ENOENT)
 			break;
-		if (merror && merror != ENOENT)
+		if (merror && merror != HAMMER2_ERROR_ENOENT)
 			break;
 
 		/*
 		 * Compare
 		 */
-		if (chain && merror == ENOENT) {
+		if (chain && merror == HAMMER2_ERROR_ENOENT) {
 			/*
 			 * If we have local chains but the XOP scan is done,
 			 * the chains need to be deleted.
@@ -614,7 +617,7 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 		/*
 		 * If at least one deferral was added and the deferral
 		 * list has grown too large, stop adding more.  This
-		 * will trigger an EAGAIN return.
+		 * will trigger an HAMMER2_ERROR_EAGAIN return.
 		 */
 		if (needrescan && list->count > 1000)
 			break;
@@ -632,7 +635,6 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 						   HAMMER2_LOOKUP_SHARED |
 						   HAMMER2_LOOKUP_NODIRECT |
 						   HAMMER2_LOOKUP_NODATA);
-			serror = hammer2_error_to_errno(serror);
 		}
 	}
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
@@ -652,8 +654,8 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 	 * NOTE: In this situation we do not yet want to synchronize our
 	 *	 inode, setting the error code also has that effect.
 	 */
-	if ((merror == 0 || merror == ENOENT) && needrescan)
-		merror = EAGAIN;
+	if ((merror == 0 || merror == HAMMER2_ERROR_ENOENT) && needrescan)
+		merror = HAMMER2_ERROR_EAGAIN;
 
 	/*
 	 * If no error occurred we can synchronize the inode meta-data
@@ -661,7 +663,7 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 	 *
 	 * XXX inode lock was lost
 	 */
-	if (merror == 0 || merror == ENOENT) {
+	if (merror == 0 || merror == HAMMER2_ERROR_ENOENT) {
 		hammer2_xop_ipcluster_t *xop2;
 		hammer2_chain_t *focus;
 
@@ -759,7 +761,9 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 				     focus->bref.type, focus->bytes,
 				     mtid, 0, 0);
 	if (error == 0) {
-		hammer2_chain_modify(chain, mtid, 0, 0);
+		error = hammer2_chain_modify(chain, mtid, 0, 0);
+		if (error)
+			goto failed;
 
 		/*
 		 * Copy focus to new chain
@@ -810,6 +814,7 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 		}
 	}
 
+failed:
 	if (chain)
 		hammer2_chain_unlock(chain);	/* unlock, leave ref */
 	*chainp = chain;			/* will be returned locked */
@@ -902,6 +907,7 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 {
 	uint8_t otype;
 	int nradix;
+	int error;
 
 #if HAMMER2_SYNCHRO_DEBUG
 	if (hammer2_debug & 1)
@@ -912,13 +918,18 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 #endif
 	hammer2_chain_unlock(chain);
 	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
-	if (chain->error == 0) {
+	error = chain->error;
+	if (error == 0) {
 		if (chain->bytes != focus->bytes) {
 			/* XXX what if compressed? */
 			nradix = hammer2_getradix(chain->bytes);
-			hammer2_chain_resize(chain, mtid, 0, nradix, 0);
+			error = hammer2_chain_resize(chain, mtid, 0, nradix, 0);
+			if (error)
+				goto failed;
 		}
-		hammer2_chain_modify(chain, mtid, 0, 0);
+		error = hammer2_chain_modify(chain, mtid, 0, 0);
+		if (error)
+			goto failed;
 		otype = chain->bref.type;
 		chain->bref.type = focus->bref.type;
 		chain->bref.methods = focus->bref.methods;
@@ -1031,9 +1042,10 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 		}
 	}
 
+failed:
 	hammer2_chain_unlock(chain);
 	hammer2_chain_lock(chain, HAMMER2_RESOLVE_SHARED |
 				  HAMMER2_RESOLVE_MAYBE);
 
-	return 0;
+	return error;
 }

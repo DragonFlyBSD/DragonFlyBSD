@@ -290,9 +290,14 @@ main(int ac, char **av)
 	 * We also include the boot and redo areas in the reserve.  The
 	 * reserve is used to help 'df' calculate the amount of available
 	 * space.
+	 *
+	 * XXX I kinda screwed up and made the reserved area on the LEVEL1
+	 *     boundary rather than the ZONE boundary.  LEVEL1 is on 1GB
+	 *     boundaries rather than 2GB boundaries.  Stick with the LEVEL1
+	 *     boundary.
 	 */
-	reserved_space = ((total_space + HAMMER2_ZONE_MASK64) /
-			  HAMMER2_ZONE_BYTES64) * HAMMER2_ZONE_SEG64;
+	reserved_space = ((total_space + HAMMER2_FREEMAP_LEVEL1_MASK) /
+			  HAMMER2_FREEMAP_LEVEL1_SIZE) * HAMMER2_ZONE_SEG64;
 
 	free_space = total_space - reserved_space -
 		     BootAreaSize - AuxAreaSize;

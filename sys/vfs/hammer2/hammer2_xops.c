@@ -62,8 +62,6 @@
 
 /*
  * Determine if the specified directory is empty.  Returns 0 on success.
- *
- * May return 0, ENOTDIR, or EAGAIN.
  */
 static
 int
@@ -86,7 +84,6 @@ checkdirempty(hammer2_chain_t *oparent, hammer2_chain_t *ochain, int clindex)
 		error = hammer2_chain_inode_find(chain->pmp, inum,
 						 clindex, 0,
 						 &parent, &chain);
-		error = hammer2_error_to_errno(error);
 		if (parent) {
 			hammer2_chain_unlock(parent);
 			hammer2_chain_drop(parent);
@@ -98,7 +95,7 @@ checkdirempty(hammer2_chain_t *oparent, hammer2_chain_t *ochain, int clindex)
 					hammer2_chain_unlock(chain);
 					hammer2_chain_drop(chain);
 				}
-				return EAGAIN;
+				return HAMMER2_ERROR_EAGAIN;
 			}
 		}
 	}
@@ -116,11 +113,9 @@ checkdirempty(hammer2_chain_t *oparent, hammer2_chain_t *ochain, int clindex)
 					     &error, 0);
 	}
 	if (chain) {
-		error = ENOTEMPTY;
+		error = HAMMER2_ERROR_ENOTEMPTY;
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
-	} else {
-		error = hammer2_error_to_errno(error); /* may be 0 */
 	}
 	hammer2_chain_lookup_done(parent);
 
@@ -146,7 +141,7 @@ hammer2_xop_ipcluster(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	if (chain)
 		error = chain->error;
 	else
-		error = EIO;
+		error = HAMMER2_ERROR_EIO;
 		
 	hammer2_xop_feed(&xop->head, chain, thr->clindex, error);
 	if (chain) {
@@ -203,7 +198,6 @@ hammer2_xop_readdir(hammer2_thread_t *thr, hammer2_xop_t *arg)
 					   key_next, HAMMER2_KEY_MAX,
 					   &error, HAMMER2_LOOKUP_SHARED);
 	}
-	error = hammer2_error_to_errno(error);
 break2:
 	if (chain) {
 		hammer2_chain_unlock(chain);
@@ -236,7 +230,7 @@ hammer2_xop_nresolve(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	if (parent == NULL) {
 		kprintf("xop_nresolve: NULL parent\n");
 		chain = NULL;
-		error = EIO;
+		error = HAMMER2_ERROR_EIO;
 		goto done;
 	}
 	name = xop->head.name1;
@@ -261,7 +255,6 @@ hammer2_xop_nresolve(hammer2_thread_t *thr, hammer2_xop_t *arg)
 					   HAMMER2_LOOKUP_ALWAYS |
 					   HAMMER2_LOOKUP_SHARED);
 	}
-	error = hammer2_error_to_errno(error);
 
 	/*
 	 * If the entry is a hardlink pointer, resolve it.
@@ -279,7 +272,6 @@ hammer2_xop_nresolve(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	} else if (chain && error == 0) {
 		error = chain->error;
 	}
-	error = hammer2_error_to_errno(error);
 done:
 	error = hammer2_xop_feed(&xop->head, chain, thr->clindex, error);
 	if (chain) {
@@ -326,7 +318,7 @@ again:
 	chain = NULL;
 	if (parent == NULL) {
 		kprintf("xop_nresolve: NULL parent\n");
-		error = EIO;
+		error = HAMMER2_ERROR_EIO;
 		goto done;
 	}
 	name = xop->head.name1;
@@ -390,17 +382,17 @@ again:
 		if (type == HAMMER2_OBJTYPE_DIRECTORY && doforce) {
 			/*
 			 * If doforce then execute the operation even if
-			 * the directory is not empty.
+			 * the directory is not empty or errored.
 			 */
-			error = hammer2_error_to_errno(chain->error);
-			hammer2_chain_delete(parent, chain,
+			/* ignore chain->error */
+			error = hammer2_chain_delete(parent, chain,
 					     xop->head.mtid, dopermanent);
 		} else if (type == HAMMER2_OBJTYPE_DIRECTORY &&
 			   (error = checkdirempty(parent, chain, thr->clindex)) != 0) {
 			/*
 			 * error may be EAGAIN or ENOTEMPTY
 			 */
-			if (error == EAGAIN) {
+			if (error == HAMMER2_ERROR_EAGAIN) {
 				hammer2_chain_unlock(chain);
 				hammer2_chain_drop(chain);
 				hammer2_chain_unlock(parent);
@@ -409,23 +401,22 @@ again:
 			}
 		} else if (type == HAMMER2_OBJTYPE_DIRECTORY &&
 		    xop->isdir == 0) {
-			error = ENOTDIR;
+			error = HAMMER2_ERROR_ENOTDIR;
 		} else if (type != HAMMER2_OBJTYPE_DIRECTORY &&
 			   xop->isdir >= 1) {
-			error = EISDIR;
+			error = HAMMER2_ERROR_EISDIR;
 		} else {
 			/*
 			 * Delete the directory entry.  chain might also
 			 * be a directly-embedded inode.
 			 */
-			error = hammer2_error_to_errno(chain->error);
+			error = chain->error;
 			hammer2_chain_delete(parent, chain,
 					     xop->head.mtid, dopermanent);
 		}
 	} else {
 		if (chain && error == 0)
 			error = chain->error;
-		error = hammer2_error_to_errno(error);
 	}
 
 	/*
@@ -442,7 +433,6 @@ again:
 		error2 = hammer2_chain_inode_find(chain->pmp, lhc,
 						  thr->clindex, 0,
 						  &parent, &chain);
-		error2 = hammer2_error_to_errno(error2);
 		if (error2) {
 			kprintf("inode_find: %016jx %p failed\n",
 				lhc, chain);
@@ -510,13 +500,13 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		chain = hammer2_inode_chain(ip, thr->clindex,
 					    HAMMER2_RESOLVE_ALWAYS);
 		if (chain == NULL) {
-			error = EIO;
+			error = HAMMER2_ERROR_EIO;
 			parent = NULL;
 			goto done;
 		}
 		parent = hammer2_chain_getparent(chain, HAMMER2_RESOLVE_ALWAYS);
 		if (parent == NULL) {
-			error = EIO;
+			error = HAMMER2_ERROR_EIO;
 			goto done;
 		}
 	} else {
@@ -532,7 +522,7 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 					     HAMMER2_RESOLVE_ALWAYS);
 		if (parent == NULL) {
 			kprintf("xop_nrename: NULL parent\n");
-			error = EIO;
+			error = HAMMER2_ERROR_EIO;
 			goto done;
 		}
 		name = xop->head.name1;
@@ -555,7 +545,6 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 						   HAMMER2_LOOKUP_ALWAYS);
 		}
 	}
-	error = hammer2_error_to_errno(error);
 
 	if (chain == NULL) {
 		/* XXX shouldn't happen, but does under fsstress */
@@ -563,12 +552,12 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 			xop->head.name1,
 			xop->head.name2);
 		if (error == 0)
-			error = ENOENT;
+			error = HAMMER2_ERROR_ENOENT;
 		goto done;
 	}
 
 	if (chain->error) {
-		error = hammer2_error_to_errno(chain->error);
+		error = chain->error;
 		goto done;
 	}
 
@@ -594,29 +583,41 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 			hammer2_inode_data_t *wipdata;
 
-			hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
-			wipdata = &chain->data->ipdata;
+			error = hammer2_chain_modify(chain, xop->head.mtid,
+						     0, 0);
+			if (error == 0) {
+				wipdata = &chain->data->ipdata;
 
-			bzero(wipdata->filename, sizeof(wipdata->filename));
-			bcopy(xop->head.name2, wipdata->filename,
-			      xop->head.name2_len);
-			wipdata->meta.name_key = xop->lhc;
-			wipdata->meta.name_len = xop->head.name2_len;
+				bzero(wipdata->filename,
+				      sizeof(wipdata->filename));
+				bcopy(xop->head.name2,
+				      wipdata->filename,
+				      xop->head.name2_len);
+				wipdata->meta.name_key = xop->lhc;
+				wipdata->meta.name_len = xop->head.name2_len;
+			}
 		}
 		if (chain->bref.type == HAMMER2_BREF_TYPE_DIRENT) {
-			if (xop->head.name2_len <= sizeof(chain->bref.check.buf)) {
+			if (xop->head.name2_len <=
+			    sizeof(chain->bref.check.buf)) {
 				/*
 				 * Remove any related data buffer, we can
 				 * embed the filename in the bref itself.
 				 */
-				hammer2_chain_resize(chain, xop->head.mtid, 0,
-						     0, 0);
-				hammer2_chain_modify(chain, xop->head.mtid,
-						     0, 0);
-				bzero(chain->bref.check.buf,
-				      sizeof(chain->bref.check.buf));
-				bcopy(xop->head.name2, chain->bref.check.buf,
-				      xop->head.name2_len);
+				error = hammer2_chain_resize(
+						chain, xop->head.mtid, 0, 0, 0);
+				if (error == 0) {
+					error = hammer2_chain_modify(
+							chain, xop->head.mtid,
+							0, 0);
+				}
+				if (error == 0) {
+					bzero(chain->bref.check.buf,
+					      sizeof(chain->bref.check.buf));
+					bcopy(xop->head.name2,
+					      chain->bref.check.buf,
+					      xop->head.name2_len);
+				}
 			} else {
 				/*
 				 * Associate a data buffer with the bref.
@@ -624,16 +625,25 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 				 * data buffer is not 64KB so use chain->bytes
 				 * instead of sizeof().
 				 */
-				hammer2_chain_resize(chain, xop->head.mtid, 0,
-				     hammer2_getradix(HAMMER2_ALLOC_MIN), 0);
-				hammer2_chain_modify(chain, xop->head.mtid,
-						     0, 0);
-				bzero(chain->data->buf, chain->bytes);
-				bcopy(xop->head.name2,
-				      chain->data->buf,
-				      xop->head.name2_len);
+				error = hammer2_chain_resize(
+					chain, xop->head.mtid, 0,
+					hammer2_getradix(HAMMER2_ALLOC_MIN), 0);
+				if (error == 0) {
+					error = hammer2_chain_modify(
+						    chain, xop->head.mtid,
+						    0, 0);
+				}
+				if (error == 0) {
+					bzero(chain->data->buf, chain->bytes);
+					bcopy(xop->head.name2,
+					      chain->data->buf,
+					      xop->head.name2_len);
+				}
 			}
-			chain->bref.embed.dirent.namlen = xop->head.name2_len;
+			if (error == 0) {
+				chain->bref.embed.dirent.namlen =
+					xop->head.name2_len;
+			}
 		}
 	}
 
@@ -646,10 +656,11 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	    chain->data->ipdata.meta.iparent != xop->head.ip3->meta.inum) {
 		hammer2_inode_data_t *wipdata;
 
-		hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
-		wipdata = &chain->data->ipdata;
-
-		wipdata->meta.iparent = xop->head.ip3->meta.inum;
+		error = hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
+		if (error == 0) {
+			wipdata = &chain->data->ipdata;
+			wipdata->meta.iparent = xop->head.ip3->meta.inum;
+		}
 	}
 
 	/*
@@ -660,28 +671,30 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	parent = hammer2_inode_chain(xop->head.ip3, thr->clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	if (parent == NULL) {
-		error = EIO;
+		error = HAMMER2_ERROR_EIO;
 		goto done;
 	}
 
-	tmp = hammer2_chain_lookup(&parent, &key_next,
-				   xop->lhc & ~HAMMER2_DIRHASH_LOMASK,
-				   xop->lhc | HAMMER2_DIRHASH_LOMASK,
-				   &error,
-				   HAMMER2_LOOKUP_ALWAYS);
-	while (tmp) {
-		if (hammer2_chain_dirent_test(tmp, xop->head.name2,
-					      xop->head.name2_len)) {
-			hammer2_chain_delete(parent, tmp, xop->head.mtid, 0);
+	if (error == 0) {
+		tmp = hammer2_chain_lookup(&parent, &key_next,
+					   xop->lhc & ~HAMMER2_DIRHASH_LOMASK,
+					   xop->lhc | HAMMER2_DIRHASH_LOMASK,
+					   &error,
+					   HAMMER2_LOOKUP_ALWAYS);
+		while (tmp) {
+			if (hammer2_chain_dirent_test(tmp, xop->head.name2,
+						      xop->head.name2_len)) {
+				hammer2_chain_delete(parent, tmp,
+						     xop->head.mtid, 0);
+			}
+			tmp = hammer2_chain_next(&parent, tmp, &key_next,
+						 key_next,
+						 xop->lhc |
+						  HAMMER2_DIRHASH_LOMASK,
+						 &error,
+						 HAMMER2_LOOKUP_ALWAYS);
 		}
-		tmp = hammer2_chain_next(&parent, tmp, &key_next,
-					 key_next,
-					 xop->lhc | HAMMER2_DIRHASH_LOMASK,
-					 &error,
-					 HAMMER2_LOOKUP_ALWAYS);
 	}
-	error = hammer2_error_to_errno(error);
-
 	if (error == 0) {
 		/*
 		 * A relookup is required before the create to properly
@@ -730,7 +743,7 @@ hammer2_xop_scanlhc(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	if (parent == NULL) {
 		kprintf("xop_nresolve: NULL parent\n");
 		chain = NULL;
-		error = EIO;
+		error = HAMMER2_ERROR_EIO;
 		goto done;
 	}
 
@@ -759,7 +772,6 @@ hammer2_xop_scanlhc(hammer2_thread_t *thr, hammer2_xop_t *arg)
 					   HAMMER2_LOOKUP_ALWAYS |
 					   HAMMER2_LOOKUP_SHARED);
 	}
-	error = hammer2_error_to_errno(error);
 done:
 	hammer2_xop_feed(&xop->head, NULL, thr->clindex, error);
 	if (parent) {
@@ -787,7 +799,7 @@ hammer2_xop_lookup(hammer2_thread_t *thr, hammer2_xop_t *arg)
 				     HAMMER2_RESOLVE_SHARED);
 	chain = NULL;
 	if (parent == NULL) {
-		error = EIO;
+		error = HAMMER2_ERROR_EIO;
 		goto done;
 	}
 
@@ -800,12 +812,11 @@ hammer2_xop_lookup(hammer2_thread_t *thr, hammer2_xop_t *arg)
 				     &error,
 				     HAMMER2_LOOKUP_ALWAYS |
 				     HAMMER2_LOOKUP_SHARED);
-	error = hammer2_error_to_errno(error);
 	if (error == 0) {
 		if (chain)
-			error = hammer2_error_to_errno(chain->error);
+			error = chain->error;
 		else
-			error = ENOENT;
+			error = HAMMER2_ERROR_ENOENT;
 	}
 	hammer2_xop_feed(&xop->head, chain, thr->clindex, error);
 
@@ -869,7 +880,6 @@ hammer2_xop_scanall(hammer2_thread_t *thr, hammer2_xop_t *arg)
 					   key_next, xop->key_end,
 					   &error, xop->lookup_flags);
 	}
-	error = hammer2_error_to_errno(error);
 break2:
 	if (chain) {
 		hammer2_chain_unlock(chain);

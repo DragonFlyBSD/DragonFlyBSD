@@ -145,8 +145,10 @@ hammer2_thr_wait_any(hammer2_thread_t *thr, uint32_t flags, int timo)
 			error = tsleep(&thr->flags, PINTERLOCKED,
 				       "h2twait", timo);
 		}
-		if (error == ETIMEDOUT)
+		if (error == ETIMEDOUT) {
+			error = HAMMER2_ERROR_ETIMEDOUT;
 			break;
+		}
 	}
 	return error;
 }
@@ -653,7 +655,7 @@ hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 	 * Early termination (typicaly of xop_readir)
 	 */
 	if (hammer2_xop_active(xop) == 0) {
-		error = EINTR;
+		error = HAMMER2_ERROR_ABORTED;
 		goto done;
 	}
 
@@ -669,7 +671,7 @@ hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 		atomic_set_int(&fifo->flags, HAMMER2_XOP_FIFO_STALL);
 		mask = xop->run_mask;
 		if ((mask & HAMMER2_XOPMASK_VOP) == 0) {
-			error = EINTR;
+			error = HAMMER2_ERROR_ABORTED;
 			goto done;
 		}
 		tsleep_interlock(xop, 0);
@@ -829,11 +831,11 @@ loop:
 	 */
 	if ((flags & HAMMER2_XOP_COLLECT_WAITALL) &&
 	    xop->run_mask != HAMMER2_XOPMASK_VOP) {
-		error = EINPROGRESS;
+		error = HAMMER2_ERROR_EINPROGRESS;
 	} else {
 		error = hammer2_cluster_check(&xop->cluster, lokey, keynull);
 	}
-	if (error == EINPROGRESS) {
+	if (error == HAMMER2_ERROR_EINPROGRESS) {
 		if ((flags & HAMMER2_XOP_COLLECT_NOWAIT) == 0)
 			tsleep_interlock(&xop->check_counter, 0);
 		if (atomic_cmpset_int(&xop->check_counter,
@@ -845,21 +847,21 @@ loop:
 		}
 		goto loop;
 	}
-	if (error == ESRCH) {
+	if (error == HAMMER2_ERROR_ESRCH) {
 		if (lokey != HAMMER2_KEY_MAX) {
 			xop->collect_key = lokey + 1;
 			goto loop;
 		}
-		error = ENOENT;
+		error = HAMMER2_ERROR_ENOENT;
 	}
-	if (error == EDEADLK) {
+	if (error == HAMMER2_ERROR_EDEADLK) {
 		kprintf("hammer2: no quorum possible lokey %016jx\n",
 			lokey);
 		if (lokey != HAMMER2_KEY_MAX) {
 			xop->collect_key = lokey + 1;
 			goto loop;
 		}
-		error = ENOENT;
+		error = HAMMER2_ERROR_ENOENT;
 	}
 	if (lokey == HAMMER2_KEY_MAX)
 		xop->collect_key = lokey;

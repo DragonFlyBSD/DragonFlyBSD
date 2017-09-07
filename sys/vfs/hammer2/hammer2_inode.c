@@ -386,6 +386,8 @@ hammer2_inode_drop(hammer2_inode_t *ip)
  * Get the vnode associated with the given inode, allocating the vnode if
  * necessary.  The vnode will be returned exclusively locked.
  *
+ * *errorp is set to a UNIX error, not a HAMMER2 error.
+ *
  * The caller must lock the inode (shared or exclusive).
  *
  * Great care must be taken to avoid deadlocks and vnode acquisition/reclaim
@@ -661,7 +663,9 @@ again:
  * entries), but note that this really only applies OBJTYPE_DIRECTORY as
  * non-directory inodes can be hardlinked.
  *
- * If no error occurs the new inode with its cluster locked is returned.
+ * If no error occurs the new inode is returned, otherwise NULL is returned.
+ * It is possible for an error to create a junk inode and then fail later.
+ * It will attempt to delete the junk inode and return NULL in this situation.
  *
  * If vap and/or cred are NULL the related fields are not set and the
  * inode type defaults to a directory.  This is used when creating PFSs
@@ -740,13 +744,13 @@ hammer2_inode_create(hammer2_inode_t *dip, hammer2_inode_t *pip,
 		hammer2_xop_retire(&sxop->head, HAMMER2_XOPMASK_VOP);
 
 		if (error) {
-			if (error != ENOENT)
+			if (error != HAMMER2_ERROR_ENOENT)
 				goto done2;
 			++lhc;
 			error = 0;
 		}
 		if ((lhcbase ^ lhc) & ~HAMMER2_DIRHASH_LOMASK) {
-			error = ENOSPC;
+			error = HAMMER2_ERROR_ENOSPC;
 			goto done2;
 		}
 	}
@@ -871,6 +875,8 @@ done2:
 /*
  * Create a directory entry under dip with the specified name, inode number,
  * and OBJTYPE (type).
+ *
+ * This returns a UNIX errno code, not a HAMMER2_ERROR_* code.
  */
 int
 hammer2_dirent_create(hammer2_inode_t *dip, const char *name, size_t name_len,
@@ -918,13 +924,13 @@ hammer2_dirent_create(hammer2_inode_t *dip, const char *name, size_t name_len,
 		hammer2_xop_retire(&sxop->head, HAMMER2_XOPMASK_VOP);
 
 		if (error) {
-			if (error != ENOENT)
+			if (error != HAMMER2_ERROR_ENOENT)
 				goto done2;
 			++lhc;
 			error = 0;
 		}
 		if ((lhcbase ^ lhc) & ~HAMMER2_DIRHASH_LOMASK) {
-			error = ENOSPC;
+			error = HAMMER2_ERROR_ENOSPC;
 			goto done2;
 		}
 	}
@@ -948,6 +954,7 @@ hammer2_dirent_create(hammer2_inode_t *dip, const char *name, size_t name_len,
 
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 done2:
+	error = hammer2_error_to_errno(error);
 	hammer2_inode_unlock(dip);
 
 	return error;
@@ -1159,7 +1166,8 @@ killit:
 		error = hammer2_xop_collect(&xop->head, 0);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 	}
-	error = 0;
+	error = 0;	/* XXX */
+
 	return error;
 }
 
@@ -1221,7 +1229,7 @@ hammer2_inode_chain_sync(hammer2_inode_t *ip)
 		hammer2_xop_start(&xop->head, hammer2_inode_xop_chain_sync);
 		error = hammer2_xop_collect(&xop->head, 0);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
-		if (error == ENOENT)
+		if (error == HAMMER2_ERROR_ENOENT)
 			error = 0;
 		if (error) {
 			kprintf("hammer2: unable to fsync inode %p\n", ip);
@@ -1277,6 +1285,7 @@ hammer2_inode_run_sideq(hammer2_pfs_t *pmp)
 			hammer2_xop_start(&xop->head,
 					  hammer2_inode_xop_destroy);
 			error = hammer2_xop_collect(&xop->head, 0);
+			/* XXX error handling */
 			hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		} else {
 			/*
@@ -1315,16 +1324,15 @@ hammer2_inode_xop_mkdirent(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	if (parent == NULL) {
-		error = EIO;
+		error = HAMMER2_ERROR_EIO;
 		chain = NULL;
 		goto fail;
 	}
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     xop->lhc, xop->lhc,
 				     &error, 0);
-	error = hammer2_error_to_errno(error);
 	if (chain) {
-		error = EEXIST;
+		error = HAMMER2_ERROR_EEXIST;
 		goto fail;
 	}
 
@@ -1349,15 +1357,16 @@ hammer2_inode_xop_mkdirent(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		 *	    do not use sizeof(chain->data->buf), which
 		 *	    will be much larger.
 		 */
-		hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
-
-		chain->bref.embed.dirent = xop->dirent;
-		if (xop->dirent.namlen <= sizeof(chain->bref.check.buf))
-			bcopy(xop->head.name1, chain->bref.check.buf,
-			      xop->dirent.namlen);
-		else
-			bcopy(xop->head.name1, chain->data->buf,
-			      xop->dirent.namlen);
+		error = hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
+		if (error == 0) {
+			chain->bref.embed.dirent = xop->dirent;
+			if (xop->dirent.namlen <= sizeof(chain->bref.check.buf))
+				bcopy(xop->head.name1, chain->bref.check.buf,
+				      xop->dirent.namlen);
+			else
+				bcopy(xop->head.name1, chain->data->buf,
+				      xop->dirent.namlen);
+		}
 	}
 fail:
 	if (parent) {
@@ -1397,16 +1406,15 @@ hammer2_inode_xop_create(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	if (parent == NULL) {
-		error = EIO;
+		error = HAMMER2_ERROR_EIO;
 		chain = NULL;
 		goto fail;
 	}
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     xop->lhc, xop->lhc,
 				     &error, 0);
-	error = hammer2_error_to_errno(error);
 	if (chain) {
-		error = EEXIST;
+		error = HAMMER2_ERROR_EEXIST;
 		goto fail;
 	}
 
@@ -1417,15 +1425,18 @@ hammer2_inode_xop_create(hammer2_thread_t *thr, hammer2_xop_t *arg)
 				     HAMMER2_INODE_BYTES,
 				     xop->head.mtid, 0, xop->flags);
 	if (error == 0) {
-		hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
-		chain->data->ipdata.meta = xop->meta;
-		if (xop->head.name1) {
-			bcopy(xop->head.name1,
-			      chain->data->ipdata.filename,
-			      xop->head.name1_len);
-			chain->data->ipdata.meta.name_len = xop->head.name1_len;
+		error = hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
+		if (error == 0) {
+			chain->data->ipdata.meta = xop->meta;
+			if (xop->head.name1) {
+				bcopy(xop->head.name1,
+				      chain->data->ipdata.filename,
+				      xop->head.name1_len);
+				chain->data->ipdata.meta.name_len =
+					xop->head.name1_len;
+			}
+			chain->data->ipdata.meta.name_key = xop->lhc;
 		}
-		chain->data->ipdata.meta.name_key = xop->lhc;
 	}
 fail:
 	if (parent) {
@@ -1463,12 +1474,12 @@ hammer2_inode_xop_destroy(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	chain = hammer2_inode_chain(ip, thr->clindex, HAMMER2_RESOLVE_ALWAYS);
 	if (chain == NULL) {
 		parent = NULL;
-		error = EIO;
+		error = HAMMER2_ERROR_EIO;
 		goto done;
 	}
 	parent = hammer2_chain_getparent(chain, HAMMER2_RESOLVE_ALWAYS);
 	if (parent == NULL) {
-		error = EIO;
+		error = HAMMER2_ERROR_EIO;
 		goto done;
 	}
 	KKASSERT(chain->parent == parent);
@@ -1512,7 +1523,6 @@ hammer2_inode_xop_unlinkall(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	chain = hammer2_chain_lookup(&parent, &key_next,
 				     xop->key_beg, xop->key_end,
 				     &error, HAMMER2_LOOKUP_ALWAYS);
-	error = hammer2_error_to_errno(error);
 	while (chain) {
 		hammer2_chain_delete(parent, chain,
 				     xop->head.mtid, HAMMER2_DELETE_PERMANENT);
@@ -1523,10 +1533,9 @@ hammer2_inode_xop_unlinkall(hammer2_thread_t *thr, hammer2_xop_t *arg)
 					   &error,
 					   HAMMER2_LOOKUP_ALWAYS);
 	}
-	error = hammer2_error_to_errno(error);
 done:
 	if (error == 0)
-		error = ENOENT;
+		error = HAMMER2_ERROR_ENOENT;
 	hammer2_xop_feed(&xop->head, NULL, thr->clindex, error);
 	if (parent) {
 		hammer2_chain_unlock(parent);
@@ -1558,18 +1567,17 @@ hammer2_inode_xop_connect(hammer2_thread_t *thr, hammer2_xop_t *arg)
 				     HAMMER2_RESOLVE_ALWAYS);
 	if (parent == NULL) {
 		chain = NULL;
-		error = EIO;
+		error = HAMMER2_ERROR_EIO;
 		goto fail;
 	}
 	chain = hammer2_chain_lookup(&parent, &key_dummy,
 				     xop->lhc, xop->lhc,
 				     &error, 0);
-	error = hammer2_error_to_errno(error);
 	if (chain) {
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
 		chain = NULL;
-		error = EEXIST;
+		error = HAMMER2_ERROR_EEXIST;
 		goto fail;
 	}
 	if (error)
@@ -1583,7 +1591,10 @@ hammer2_inode_xop_connect(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	 */
 	chain = hammer2_inode_chain(xop->head.ip2, thr->clindex,
 				    HAMMER2_RESOLVE_ALWAYS);
-	hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
+	error = hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
+	if (error)
+		goto fail;
+
 	wipdata = &chain->data->ipdata;
 
 	hammer2_inode_modify(xop->head.ip2);
@@ -1634,7 +1645,7 @@ hammer2_inode_xop_chain_sync(hammer2_thread_t *thr, hammer2_xop_t *arg)
 				     HAMMER2_RESOLVE_ALWAYS);
 	chain = NULL;
 	if (parent == NULL) {
-		error = EIO;
+		error = HAMMER2_ERROR_EIO;
 		goto done;
 	}
 	if (parent->error) {
@@ -1682,7 +1693,6 @@ hammer2_inode_xop_chain_sync(hammer2_thread_t *thr, hammer2_xop_t *arg)
 						   HAMMER2_LOOKUP_NODATA |
 						   HAMMER2_LOOKUP_NODIRECT);
 		}
-		error = hammer2_error_to_errno(error);
 
 		/*
 		 * Reset to point at inode for following code, if necessary.
@@ -1702,11 +1712,15 @@ hammer2_inode_xop_chain_sync(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	 * Sync the inode meta-data, potentially clear the blockset area
 	 * of direct data so it can be used for blockrefs.
 	 */
-	hammer2_chain_modify(parent, xop->head.mtid, 0, 0);
-	parent->data->ipdata.meta = xop->meta;
-	if (xop->clear_directdata) {
-		bzero(&parent->data->ipdata.u.blockset,
-		      sizeof(parent->data->ipdata.u.blockset));
+	if (error == 0) {
+		error = hammer2_chain_modify(parent, xop->head.mtid, 0, 0);
+		if (error == 0) {
+			parent->data->ipdata.meta = xop->meta;
+			if (xop->clear_directdata) {
+				bzero(&parent->data->ipdata.u.blockset,
+				      sizeof(parent->data->ipdata.u.blockset));
+			}
+		}
 	}
 done:
 	if (chain) {

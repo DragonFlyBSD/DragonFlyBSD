@@ -341,7 +341,6 @@ hammer2_update_spans(hammer2_dev_t *hmp, kdmsg_state_t *state)
 					       &error, 0);
 	}
 	hammer2_inode_unlock(spmp->iroot);
-	error = hammer2_error_to_errno(error);
 	/* XXX do something with error */
 done:
 	if (chain) {

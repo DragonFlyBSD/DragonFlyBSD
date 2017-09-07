@@ -481,6 +481,11 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap,
 	tab += SHOW_TAB;
 	if (bref->flags)
 		printf("flags=%02x ", bref->flags);
+	if (bref->type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
+	    bref->type == HAMMER2_BREF_TYPE_FREEMAP_LEAF) {
+		printf("bigmask=%08x avail=%ld ",
+			bref->check.freemap.bigmask, bref->check.freemap.avail);
+	}
 
 	bytes = (bref->data_off & HAMMER2_OFF_MASK_RADIX);
 	if (bytes)

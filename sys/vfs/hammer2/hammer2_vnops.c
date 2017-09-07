@@ -345,7 +345,9 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 	ip = VTOI(vp);
 
 	if (ip->pmp->ronly)
-		return(EROFS);
+		return (EROFS);
+	if (hammer2_vfs_enospace(ip, 0, ap->a_cred) > 1)
+		return (ENOSPC);
 
 	hammer2_pfs_memory_wait(ip->pmp);
 	hammer2_trans_init(ip->pmp, 0);
@@ -585,8 +587,10 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 		int dtype;
 
 		error = hammer2_xop_collect(&xop->head, 0);
-		if (error)
+		error = hammer2_error_to_errno(error);
+		if (error) {
 			break;
+		}
 		if (cookie_index == ncookies)
 			break;
 		if (hammer2_debug & 0x0020)
@@ -729,6 +733,7 @@ hammer2_vop_write(struct vop_write_args *ap)
 	struct uio *uio;
 	int error;
 	int seqcount;
+	int ioflag;
 
 	/*
 	 * Read operations supported on this vnode?
@@ -741,13 +746,22 @@ hammer2_vop_write(struct vop_write_args *ap)
 	 * Misc
 	 */
 	ip = VTOI(vp);
+	ioflag = ap->a_ioflag;
 	uio = ap->a_uio;
 	error = 0;
-	if (ip->pmp->ronly) {
+	if (ip->pmp->ronly)
 		return (EROFS);
+	switch (hammer2_vfs_enospace(ip, uio->uio_resid, ap->a_cred)) {
+	case 2:
+		return (ENOSPC);
+	case 1:
+		ioflag |= IO_DIRECT;	/* semi-synchronous */
+		/* fall through */
+	default:
+		break;
 	}
 
-	seqcount = ap->a_ioflag >> 16;
+	seqcount = ioflag >> 16;
 
 	/*
 	 * Check resource limit
@@ -771,7 +785,7 @@ hammer2_vop_write(struct vop_write_args *ap)
 		hammer2_trans_init(ip->pmp, HAMMER2_TRANS_BUFCACHE);
 	else
 		hammer2_trans_init(ip->pmp, 0);
-	error = hammer2_write_file(ip, uio, ap->a_ioflag, seqcount);
+	error = hammer2_write_file(ip, uio, ioflag, seqcount);
 	hammer2_trans_done(ip->pmp);
 
 	return (error);
@@ -1191,6 +1205,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	hammer2_xop_start(&xop->head, hammer2_xop_nresolve);
 
 	error = hammer2_xop_collect(&xop->head, 0);
+	error = hammer2_error_to_errno(error);
 	if (error) {
 		ip = NULL;
 	} else {
@@ -1215,7 +1230,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	 *	    will handle it properly.
 	 */
 	if (ip) {
-		vp = hammer2_igetv(ip, &error);
+		vp = hammer2_igetv(ip, &error);	/* error set to UNIX error */
 		if (error == 0) {
 			vn_unlock(vp);
 			cache_setvp(ap->a_nch, vp);
@@ -1279,6 +1294,8 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	dip = VTOI(ap->a_dvp);
 	if (dip->pmp->ronly)
 		return (EROFS);
+	if (hammer2_vfs_enospace(dip, 0, ap->a_cred) > 1)
+		return (ENOSPC);
 
 	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
@@ -1298,13 +1315,19 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 				   NULL, 0, inum,
 				   inum, 0, 0,
 				   0, &error);
-	if (error == 0) {
+	if (error) {
+		error = hammer2_error_to_errno(error);
+	} else {
 		error = hammer2_dirent_create(dip, name, name_len,
 					      nip->meta.inum, nip->meta.type);
+		/* returns UNIX error code */
 	}
-
 	if (error) {
-		KKASSERT(nip == NULL);
+		if (nip) {
+			hammer2_inode_unlink_finisher(nip, 0);
+			hammer2_inode_unlock(nip);
+			nip = NULL;
+		}
 		*ap->a_vpp = NULL;
 	} else {
 		*ap->a_vpp = hammer2_igetv(nip, &error);
@@ -1384,6 +1407,8 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	tdip = VTOI(ap->a_dvp);
 	if (tdip->pmp->ronly)
 		return (EROFS);
+	if (hammer2_vfs_enospace(tdip, 0, ap->a_cred) > 1)
+		return (ENOSPC);
 
 	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
@@ -1473,6 +1498,8 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	dip = VTOI(ap->a_dvp);
 	if (dip->pmp->ronly)
 		return (EROFS);
+	if (hammer2_vfs_enospace(dip, 0, ap->a_cred) > 1)
+		return (ENOSPC);
 
 	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
@@ -1497,7 +1524,11 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 					      nip->meta.inum, nip->meta.type);
 	}
 	if (error) {
-		KKASSERT(nip == NULL);
+		if (nip) {
+			hammer2_inode_unlink_finisher(nip, 0);
+			hammer2_inode_unlock(nip);
+			nip = NULL;
+		}
 		*ap->a_vpp = NULL;
 	} else {
 		*ap->a_vpp = hammer2_igetv(nip, &error);
@@ -1545,6 +1576,8 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	dip = VTOI(ap->a_dvp);
 	if (dip->pmp->ronly)
 		return (EROFS);
+	if (hammer2_vfs_enospace(dip, 0, ap->a_cred) > 1)
+		return (ENOSPC);
 
 	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
@@ -1564,10 +1597,12 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 		error = hammer2_dirent_create(dip, name, name_len,
 					      nip->meta.inum, nip->meta.type);
 	}
-
-
 	if (error) {
-		KKASSERT(nip == NULL);
+		if (nip) {
+			hammer2_inode_unlink_finisher(nip, 0);
+			hammer2_inode_unlock(nip);
+			nip = NULL;
+		}
 		*ap->a_vpp = NULL;
 	} else {
 		*ap->a_vpp = hammer2_igetv(nip, &error);
@@ -1615,6 +1650,8 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	dip = VTOI(ap->a_dvp);
 	if (dip->pmp->ronly)
 		return (EROFS);
+	if (hammer2_vfs_enospace(dip, 0, ap->a_cred) > 1)
+		return (ENOSPC);
 
 	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
@@ -1638,10 +1675,12 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 		error = hammer2_dirent_create(dip, name, name_len,
 					      nip->meta.inum, nip->meta.type);
 	}
-
-
 	if (error) {
-		KKASSERT(nip == NULL);
+		if (nip) {
+			hammer2_inode_unlink_finisher(nip, 0);
+			hammer2_inode_unlock(nip);
+			nip = NULL;
+		}
 		*ap->a_vpp = NULL;
 		hammer2_trans_done(dip->pmp);
 		return error;
@@ -1718,7 +1757,9 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 
 	dip = VTOI(ap->a_dvp);
 	if (dip->pmp->ronly)
-		return(EROFS);
+		return (EROFS);
+	if (hammer2_vfs_enospace(dip, 0, ap->a_cred) > 1)
+		return (ENOSPC);
 
 	ncp = ap->a_nch->ncp;
 
@@ -1753,6 +1794,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	 * (else it has already been removed).
 	 */
 	error = hammer2_xop_collect(&xop->head, 0);
+	error = hammer2_error_to_errno(error);
 	hammer2_inode_unlock(dip);
 
 	if (error == 0) {
@@ -1804,7 +1846,9 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 
 	dip = VTOI(ap->a_dvp);
 	if (dip->pmp->ronly)
-		return(EROFS);
+		return (EROFS);
+	if (hammer2_vfs_enospace(dip, 0, ap->a_cred) > 1)
+		return (ENOSPC);
 
 	hammer2_pfs_memory_wait(dip->pmp);
 	hammer2_trans_init(dip->pmp, 0);
@@ -1825,6 +1869,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	 * (else it has already been removed).
 	 */
 	error = hammer2_xop_collect(&xop->head, 0);
+	error = hammer2_error_to_errno(error);
 	hammer2_inode_unlock(dip);
 
 	if (error == 0) {
@@ -1891,7 +1936,9 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	tdip = VTOI(ap->a_tdvp);	/* target directory */
 
 	if (fdip->pmp->ronly)
-		return(EROFS);
+		return (EROFS);
+	if (hammer2_vfs_enospace(fdip, 0, ap->a_cred) > 1)
+		return (ENOSPC);
 
 	fncp = ap->a_fnch->ncp;		/* entry name in source */
 	fname = fncp->nc_name;
@@ -1976,6 +2023,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 		 * (else it has already been removed).
 		 */
 		tnch_error = hammer2_xop_collect(&xop2->head, 0);
+		tnch_error = hammer2_error_to_errno(tnch_error);
 		/* hammer2_inode_unlock(tdip); */
 
 		if (tnch_error == 0) {
@@ -2019,6 +2067,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 				break;
 			++tlhc;
 		}
+		error = hammer2_error_to_errno(error);
 		hammer2_xop_retire(&sxop->head, HAMMER2_XOPMASK_VOP);
 
 		if (error) {
@@ -2054,6 +2103,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 		hammer2_xop_start(&xop4->head, hammer2_xop_nrename);
 
 		error = hammer2_xop_collect(&xop4->head, 0);
+		error = hammer2_error_to_errno(error);
 		hammer2_xop_retire(&xop4->head, HAMMER2_XOPMASK_VOP);
 
 		if (error == ENOENT)
@@ -2288,7 +2338,7 @@ hammer2_vop_markatime(struct vop_markatime_args *ap)
 	ip = VTOI(vp);
 
 	if (ip->pmp->ronly)
-		return(EROFS);
+		return (EROFS);
 	return(0);
 }
 

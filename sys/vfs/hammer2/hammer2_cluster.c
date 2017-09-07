@@ -908,10 +908,10 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 	 */
 	if (nmasters < nquorum) {
 		if (nmasters + umasters >= nquorum)
-			return EINPROGRESS;
+			return HAMMER2_ERROR_EINPROGRESS;
 		if (nmasters_keymatch < nquorum) 
-			return ESRCH;
-		return EDEADLK;
+			return HAMMER2_ERROR_ESRCH;
+		return HAMMER2_ERROR_EDEADLK;
 	}
 
 	/*
@@ -919,7 +919,7 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 	 */
 	if (flags & HAMMER2_CHECK_NULL) {
 		if (cluster->error == 0)
-			cluster->error = ENOENT;
+			cluster->error = HAMMER2_ERROR_ENOENT;
 		return cluster->error;
 	}
 
@@ -928,7 +928,7 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 	 * had chain errors.
 	 */
 	if (cluster->focus == NULL)
-		return EIO;
+		return HAMMER2_ERROR_EIO;
 
 	/*
 	 * Pass 3

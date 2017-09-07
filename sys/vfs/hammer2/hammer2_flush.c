@@ -68,7 +68,7 @@ struct hammer2_flush_info {
 	hammer2_chain_t *parent;
 	int		depth;
 	int		diddeferral;
-	int		unused01;
+	int		error;			/* cumulative error */
 	int		flags;
 	struct h2_flush_list flushq;
 	hammer2_chain_t	*debug;
@@ -314,6 +314,9 @@ hammer2_delayed_flush(hammer2_chain_t *chain)
  * part of this propagation, mirror_tid and inode/data usage statistics
  * propagates back upward.
  *
+ * Returns a HAMMER2 error code, 0 if no error.  Note that I/O errors from
+ * buffers dirtied during the flush operation can occur later.
+ *
  * modify_tid (clc - cluster level change) is not propagated.
  *
  * update_tid (clc) is used for validation and is not propagated by this
@@ -326,7 +329,7 @@ hammer2_delayed_flush(hammer2_chain_t *chain)
  * UPDATE flag indicates that its parent's block table (which is not yet
  * part of the flush) should be updated.
  */
-void
+int
 hammer2_flush(hammer2_chain_t *chain, int flags)
 {
 	hammer2_chain_t *scan;
@@ -393,9 +396,13 @@ hammer2_flush(hammer2_chain_t *chain, int flags)
 			if (hammer2_debug & 0x0040)
 				kprintf("deferred flush %p\n", scan);
 			hammer2_chain_lock(scan, HAMMER2_RESOLVE_MAYBE);
-			hammer2_flush(scan, flags & ~HAMMER2_FLUSH_TOP);
-			hammer2_chain_unlock(scan);
-			hammer2_chain_drop(scan);	/* ref from deferral */
+			if (scan->error == 0) {
+				hammer2_flush(scan, flags & ~HAMMER2_FLUSH_TOP);
+				hammer2_chain_unlock(scan);
+				hammer2_chain_drop(scan);/* ref from defer */
+			} else {
+				info.error |= scan->error;
+			}
 		}
 
 		/*
@@ -420,6 +427,7 @@ hammer2_flush(hammer2_chain_t *chain, int flags)
 	hammer2_chain_drop(chain);
 	if (info.parent)
 		hammer2_chain_drop(info.parent);
+	return (info.error);
 }
 
 /*
@@ -470,6 +478,7 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 	hammer2_chain_t *parent;
 	hammer2_dev_t *hmp;
 	int diddeferral;
+	int save_error;
 
 	/*
 	 * (1) Optimize downward recursion to locate nodes needing action.
@@ -536,8 +545,9 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 				   HAMMER2_CHAIN_DESTROY)) {
 		/*
 		 * Downward recursion search (actual flush occurs bottom-up).
-		 * pre-clear ONFLUSH.  It can get set again due to races,
-		 * which we want so the scan finds us again in the next flush.
+		 * pre-clear ONFLUSH.  It can get set again due to races or
+		 * flush errors, which we want so the scan finds us again in
+		 * the next flush.
 		 *
 		 * We must also recurse if DESTROY is set so we can finally
 		 * get rid of the related children, otherwise the node will
@@ -548,12 +558,23 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		 *	     to be ripped up.
 		 */
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ONFLUSH);
+		save_error = info->error;
+		info->error = 0;
 		info->parent = chain;
 		hammer2_spin_ex(&chain->core.spin);
 		RB_SCAN(hammer2_chain_tree, &chain->core.rbtree,
 			NULL, hammer2_flush_recurse, info);
 		hammer2_spin_unex(&chain->core.spin);
 		info->parent = parent;
+
+		/*
+		 * Re-set the flush bits if the flush was incomplete or
+		 * an error occurred.  If an error occurs it is typically
+		 * an allocation error.  Errors do not cause deferrals.
+		 */
+		if (info->error)
+			hammer2_chain_setflush(chain);
+		info->error |= save_error;
 		if (info->diddeferral)
 			hammer2_chain_setflush(chain);
 
@@ -573,7 +594,12 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 	/*
 	 * Now we are in the bottom-up part of the recursion.
 	 *
-	 * Do not update chain if lower layers were deferred.
+	 * Do not update chain if lower layers were deferred.  We continue
+	 * to try to update the chain on lower-level errors, but the flush
+	 * code may decide not to flush the volume root.
+	 *
+	 * XXX should we continue to try to update the chain if an error
+	 *     occurred?
 	 */
 	if (info->diddeferral)
 		goto done;
@@ -590,6 +616,20 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 	if (parent)
 		hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
 	hammer2_chain_lock(chain, HAMMER2_RESOLVE_MAYBE);
+
+	/*
+	 * Can't process if we can't access their content.
+	 */
+	if ((parent && parent->error) || chain->error) {
+		kprintf("hammer2: chain error during flush\n");
+		info->error |= chain->error;
+		if (parent) {
+			info->error |= parent->error;
+			hammer2_chain_unlock(parent);
+		}
+		goto done;
+	}
+
 	if (chain->parent != parent) {
 		kprintf("LOST CHILD3 %p->%p (actual parent %p)\n",
 			parent, chain, chain->parent);
@@ -631,14 +671,14 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		}
 	}
 
+	/*
+	 * Dispose of the modified bit.
+	 *
+	 * If parent is present, the UPDATE bit should already be set.
+	 * UPDATE should already be set.
+	 * bref.mirror_tid should already be set.
+	 */
 	if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
-		/*
-		 * Dispose of the modified bit.
-		 *
-		 * If parent is present, the UPDATE bit should already be set.
-		 * UPDATE should already be set.
-		 * bref.mirror_tid should already be set.
-		 */
 		KKASSERT((chain->flags & HAMMER2_CHAIN_UPDATE) ||
 			 chain->parent == NULL);
 		if (hammer2_debug & 0x800000) {
@@ -741,6 +781,9 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 			 * hammer2_vfs_sync() before it flushes vchain.
 			 * We must still hold fchain locked while copying
 			 * voldata to volsync, however.
+			 *
+			 * These do not error per-say since their data does
+			 * not need to be re-read from media on lock.
 			 *
 			 * (note: embedded data, do not call setdirty)
 			 */
@@ -898,6 +941,7 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 
 	/*
 	 * If UPDATE is set the parent block table may need to be updated.
+	 * This can fail if the hammer2_chain_modify() fails.
 	 *
 	 * NOTE: UPDATE may be set on vchain or fchain in which case
 	 *	 parent could be NULL.  It's easiest to allow the case
@@ -922,8 +966,7 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		 * Clear UPDATE flag, mark parent modified, update its
 		 * modify_tid if necessary, and adjust the parent blockmap.
 		 */
-		if (chain->flags & HAMMER2_CHAIN_UPDATE)
-			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
+		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
 
 		/*
 		 * (optional code)
@@ -979,9 +1022,26 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 
 		/*
 		 * We are updating the parent's blockmap, the parent must
-		 * be set modified.
+		 * be set modified.  If this fails we re-set the UPDATE flag
+		 * in the child.
+		 *
+		 * NOTE! A modification error can be ENOSPC.  We still want
+		 *	 to flush modified chains recursively, not break out,
+		 *	 so we just skip the update in this situation and
+		 *	 continue.  That is, we still need to try to clean
+		 *	 out dirty chains and buffers.
+		 *
+		 *	 This may not help bulkfree though. XXX
 		 */
-		hammer2_chain_modify(parent, 0, 0, 0);
+		save_error = hammer2_chain_modify(parent, 0, 0, 0);
+		if (save_error) {
+			info->error |= save_error;
+			kprintf("hammer2_flush: %016jx.%02x error=%08x\n",
+				parent->bref.data_off, parent->bref.type,
+				save_error);
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
+			goto skipupdate;
+		}
 		if (parent->bref.modify_tid < chain->bref.modify_tid)
 			parent->bref.modify_tid = chain->bref.modify_tid;
 
@@ -1075,6 +1135,8 @@ done:
  * by sync_tid.  Set info->domodify if the child's blockref must propagate
  * back up to the parent.
  *
+ * This function may set info->error as a side effect.
+ *
  * Ripouts can move child from rbtree to dbtree or dbq but the caller's
  * flush scan order prevents any chains from being lost.  A child can be
  * executes more than once.
@@ -1100,6 +1162,9 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 	 * The caller has added a ref to the parent so we can temporarily
 	 * unlock it in order to lock the child.  However, if it no longer
 	 * winds up being the child of the parent we must skip this child.
+	 *
+	 * NOTE! chain locking errors are fatal.  They are never out-of-space
+	 *	 errors.
 	 */
 	hammer2_chain_ref(child);
 	hammer2_spin_unex(&parent->core.spin);
@@ -1109,6 +1174,12 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 	if (child->parent != parent) {
 		kprintf("LOST CHILD1 %p->%p (actual parent %p)\n",
 			parent, child, child->parent);
+		goto done;
+	}
+	if (child->error) {
+		kprintf("CHILD ERROR DURING FLUSH LOCK %p->%p\n",
+			parent, child);
+		info->error |= child->error;
 		goto done;
 	}
 
@@ -1141,55 +1212,21 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 
 done:
 	/*
-	 * Relock to continue the loop
+	 * Relock to continue the loop.
 	 */
 	hammer2_chain_unlock(child);
 	hammer2_chain_lock(parent, HAMMER2_RESOLVE_MAYBE);
+	if (parent->error) {
+		kprintf("PARENT ERROR DURING FLUSH LOCK %p->%p\n",
+			parent, child);
+		info->error |= parent->error;
+	}
 	hammer2_chain_drop(child);
 	KKASSERT(info->parent == parent);
 	hammer2_spin_ex(&parent->core.spin);
 
 	return (0);
 }
-
-#if 0
-/*
- * Flush helper (direct)
- *
- * Quickly flushes any dirty chains for a device and returns a temporary
- * out-of-band copy of hmp->vchain that the caller can use as a stable
- * reference.
- *
- * This function does not flush the actual volume root and does not flush dirty
- * device buffers.  We don't care about pending work, per-say.  This function
- * is primarily used by the bulkfree code to create a stable snapshot of
- * the block tree.
- */
-hammer2_chain_t *
-hammer2_flush_quick(hammer2_dev_t *hmp)
-{
-	hammer2_chain_t *chain;
-	hammer2_chain_t *copy;
-
-	hammer2_trans_init(hmp->spmp, HAMMER2_TRANS_ISFLUSH);
-
-	hammer2_chain_ref(&hmp->vchain);
-	hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
-	if (hmp->vchain.flags & HAMMER2_CHAIN_FLUSH_MASK) {
-		chain = &hmp->vchain;
-		hammer2_flush(chain, HAMMER2_FLUSH_TOP |
-				     HAMMER2_FLUSH_ALL);
-		KKASSERT(chain == &hmp->vchain);
-	}
-	copy = hammer2_chain_bulksnap(&hmp->vchain);
-	hammer2_chain_unlock(&hmp->vchain);
-	hammer2_chain_drop(&hmp->vchain);
-
-	hammer2_trans_done(hmp->spmp);  /* spmp trans */
-
-	return copy;
-}
-#endif
 
 /*
  * flush helper (backend threaded)
@@ -1205,7 +1242,8 @@ hammer2_inode_xop_flush(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	hammer2_chain_t *chain;
 	hammer2_chain_t *parent;
 	hammer2_dev_t *hmp;
-	int error = 0;
+	int flush_error = 0;
+	int fsync_error = 0;
 	int total_error = 0;
 	int j;
 
@@ -1260,6 +1298,9 @@ hammer2_inode_xop_flush(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	 * independently, so the free block table can wind up being
 	 * ahead of the topology.  We depend on the bulk free scan
 	 * code to deal with any loose ends.
+	 *
+	 * vchain and fchain do not error on-lock since their data does
+	 * not have to be re-read from media.
 	 */
 	hammer2_chain_ref(&hmp->vchain);
 	hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
@@ -1272,7 +1313,7 @@ hammer2_inode_xop_flush(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		 */
 		hammer2_voldata_modify(hmp);
 		chain = &hmp->fchain;
-		hammer2_flush(chain, HAMMER2_FLUSH_TOP);
+		flush_error |= hammer2_flush(chain, HAMMER2_FLUSH_TOP);
 		KKASSERT(chain == &hmp->fchain);
 	}
 	hammer2_chain_unlock(&hmp->fchain);
@@ -1283,13 +1324,11 @@ hammer2_inode_xop_flush(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
 	if (hmp->vchain.flags & HAMMER2_CHAIN_FLUSH_MASK) {
 		chain = &hmp->vchain;
-		hammer2_flush(chain, HAMMER2_FLUSH_TOP);
+		flush_error |= hammer2_flush(chain, HAMMER2_FLUSH_TOP);
 		KKASSERT(chain == &hmp->vchain);
 	}
 	hammer2_chain_unlock(&hmp->vchain);
 	hammer2_chain_drop(&hmp->vchain);
-
-	error = 0;
 
 	/*
 	 * We can't safely flush the volume header until we have
@@ -1298,10 +1337,12 @@ hammer2_inode_xop_flush(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	 * XXX this isn't being incremental
 	 */
 	vn_lock(hmp->devvp, LK_EXCLUSIVE | LK_RETRY);
-	error = VOP_FSYNC(hmp->devvp, MNT_WAIT, 0);
+	fsync_error = VOP_FSYNC(hmp->devvp, MNT_WAIT, 0);
 	vn_unlock(hmp->devvp);
-	if (error)
-		kprintf("error %d cannot sync %s\n", error, hmp->devrepname);
+	if (fsync_error || flush_error) {
+		kprintf("hammer2: sync error fsync=%d h2flush=0x%04x dev=%s\n",
+			fsync_error, flush_error, hmp->devrepname);
+	}
 
 	/*
 	 * The flush code sets CHAIN_VOLUMESYNC to indicate that the
@@ -1309,9 +1350,10 @@ hammer2_inode_xop_flush(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	 *
 	 * XXX synchronize the flag & data with only this flush XXX
 	 */
-	if (error == 0 &&
+	if (fsync_error == 0 && flush_error == 0 &&
 	    (hmp->vchain.flags & HAMMER2_CHAIN_VOLUMESYNC)) {
 		struct buf *bp;
+		int vol_error = 0;
 
 		/*
 		 * Synchronize the disk before flushing the volume
@@ -1325,7 +1367,7 @@ hammer2_inode_xop_flush(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		bp->b_bio1.bio_done = biodone_sync;
 		bp->b_bio1.bio_flags |= BIO_SYNC;
 		vn_strategy(hmp->devvp, &bp->b_bio1);
-		biowait(&bp->b_bio1, "h2vol");
+		fsync_error = biowait(&bp->b_bio1, "h2vol");
 		relpbuf(bp, NULL);
 
 		/*
@@ -1349,13 +1391,17 @@ hammer2_inode_xop_flush(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		atomic_clear_int(&hmp->vchain.flags,
 				 HAMMER2_CHAIN_VOLUMESYNC);
 		bcopy(&hmp->volsync, bp->b_data, HAMMER2_PBUFSIZE);
-		bawrite(bp);
+		vol_error = bwrite(bp);
 		hmp->volhdrno = j;
+		if (vol_error)
+			fsync_error = vol_error;
 	}
-	if (error)
-		total_error = error;
+	if (flush_error)
+		total_error = flush_error;
+	if (fsync_error)
+		total_error = hammer2_errno_to_error(fsync_error);
 
 	hammer2_trans_done(hmp->spmp);  /* spmp trans */
 skip:
-	error = hammer2_xop_feed(&xop->head, NULL, thr->clindex, total_error);
+	hammer2_xop_feed(&xop->head, NULL, thr->clindex, total_error);
 }

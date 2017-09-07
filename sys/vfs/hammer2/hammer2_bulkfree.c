@@ -46,6 +46,12 @@
 
 #include "hammer2.h"
 
+/*
+ * XXX I made a mistake and made the reserved area begin at each LEVEL1 zone,
+ *     which is on a 1GB demark.  This will eat a little more space but for
+ *     now we retain compatibility and make FMZONEBASE every 1GB
+ */
+#define H2FMZONEBASE(key)         ((key) & ~HAMMER2_FREEMAP_LEVEL1_MASK)
 #define H2FMBASE(key, radix)    ((key) & ~(((hammer2_off_t)1 << (radix)) - 1))
 #define H2FMSHIFT(radix)        ((hammer2_off_t)1 << (radix))
 
@@ -184,10 +190,14 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 				int savepri = info->pri;
 
 				hammer2_chain_unlock(chain);
+				hammer2_chain_unlock(parent);
 				info->pri = 0;
 				rup_error |=
 					hammer2_bulk_scan(chain, func, info);
 				info->pri += savepri;
+				hammer2_chain_lock(parent,
+						   HAMMER2_RESOLVE_ALWAYS |
+						   HAMMER2_RESOLVE_SHARED);
 				hammer2_chain_lock(chain,
 						   HAMMER2_RESOLVE_ALWAYS |
 						   HAMMER2_RESOLVE_SHARED);
@@ -488,11 +498,11 @@ cbinfo_bmap_init(hammer2_bulkfree_info_t *cbinfo, size_t size)
 
 	bzero(bmap, size);
 	while (size) {
-		if (lokey < H2FMBASE(key, HAMMER2_FREEMAP_LEVEL1_RADIX) +
-			    HAMMER2_ZONE_SEG64) {
-			lokey = H2FMBASE(key, HAMMER2_FREEMAP_LEVEL1_RADIX) +
-				HAMMER2_ZONE_SEG64;
-		}
+		bzero(bmap, sizeof(*bmap));
+		if (lokey < H2FMBASE(key, HAMMER2_FREEMAP_LEVEL1_RADIX))
+			lokey = H2FMBASE(key, HAMMER2_FREEMAP_LEVEL1_RADIX);
+		if (lokey < H2FMZONEBASE(key) + HAMMER2_ZONE_SEG64)
+			lokey = H2FMZONEBASE(key) + HAMMER2_ZONE_SEG64;
 		if (key < lokey || key >= hikey) {
                         memset(bmap->bitmapq, -1,
                                sizeof(bmap->bitmapq));
@@ -554,7 +564,7 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
 	bytes = (size_t)1 << radix;
 	class = (bref->type << 8) | hammer2_devblkradix(radix);
 
-	if (data_off + bytes >= cbinfo->sstop) {
+	if (data_off + bytes > cbinfo->sstop) {
 		kprintf("hammer2_bulkfree_scan: illegal 2GB boundary "
 			"%016jx %016jx/%d\n",
 			(intmax_t)bref->data_off,
@@ -590,6 +600,15 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
 		bmap->class = class;
 		bmap->avail = HAMMER2_FREEMAP_LEVEL0_SIZE;
 	}
+
+	/*
+	 * NOTE: bmap->class does not have to match class.  Classification
+	 *	 is relaxed when free space is low, so some mixing can occur.
+	 */
+#if 0
+	/*
+	 * XXX removed
+	 */
 	if (bmap->class != class) {
 		kprintf("hammer2_bulkfree_scan: illegal mixed class "
 			"%016jx %016jx/%d (%04x vs %04x)\n",
@@ -598,6 +617,7 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
 			bref->keybits,
 			class, bmap->class);
 	}
+#endif
 
 	/*
 	 * Just record the highest byte-granular offset for now.  Do not
@@ -666,6 +686,7 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
  *	   11		  10 -> 11	handles race against live
  *			  ** -> 11	nominally warn of corruption
  * 
+ * We must also fixup the hints in HAMMER2_BREF_TYPE_FREEMAP_LEAF.
  */
 static int
 h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
@@ -799,6 +820,8 @@ h2_bulkfree_sync(hammer2_bulkfree_info_t *cbinfo)
 		}
 
 		hammer2_chain_modify(live_chain, cbinfo->mtid, 0, 0);
+		live_chain->bref.check.freemap.bigmask = -1;
+		cbinfo->hmp->freemap_relaxed = 0;	/* reset heuristic */
 		live = &live_chain->data->bmdata[bmapindex];
 
 		h2_bulkfree_sync_adjust(cbinfo, data_off, live, bmap,

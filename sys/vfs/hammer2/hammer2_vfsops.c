@@ -1940,6 +1940,16 @@ hammer2_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 					mp->mnt_vstat.f_bsize;
 		mp->mnt_stat.f_bavail = mp->mnt_stat.f_bfree;
 
+		if (cred && cred->cr_uid != 0) {
+			uint64_t adj;
+
+			/* 5% */
+			adj = hmp->free_reserved / mp->mnt_vstat.f_bsize;
+			mp->mnt_stat.f_blocks -= adj;
+			mp->mnt_stat.f_bfree -= adj;
+			mp->mnt_stat.f_bavail -= adj;
+		}
+
 		*sbp = mp->mnt_stat;
 	}
 	return (0);
@@ -1983,6 +1993,16 @@ hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 		mp->mnt_vstat.f_bfree = hmp->voldata.allocator_free /
 					mp->mnt_vstat.f_bsize;
 		mp->mnt_vstat.f_bavail = mp->mnt_vstat.f_bfree;
+
+		if (cred && cred->cr_uid != 0) {
+			uint64_t adj;
+
+			/* 5% */
+			adj = hmp->free_reserved / mp->mnt_vstat.f_bsize;
+			mp->mnt_vstat.f_blocks -= adj;
+			mp->mnt_vstat.f_bfree -= adj;
+			mp->mnt_vstat.f_bavail -= adj;
+		}
 
 		*sbp = mp->mnt_vstat;
 	}
@@ -2299,8 +2319,10 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		error = hammer2_xop_collect(&xop->head,
 					    HAMMER2_XOP_COLLECT_WAITALL);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
-		if (error == ENOENT)
+		if (error == HAMMER2_ERROR_ENOENT)
 			error = 0;
+		else
+			error = hammer2_error_to_errno(error);
 	} else {
 		error = 0;
 	}
@@ -2524,6 +2546,7 @@ hammer2_install_volume_header(hammer2_dev_t *hmp)
 	}
 	if (valid) {
 		hmp->volsync = hmp->voldata;
+		hmp->free_reserved = hmp->voldata.allocator_size / 20;
 		error = 0;
 		if (error_reported || bootverbose || 1) { /* 1/DEBUG */
 			kprintf("hammer2: using volume header #%d\n",
@@ -2682,6 +2705,65 @@ hammer2_pfs_memory_wakeup(hammer2_pfs_t *pmp)
 
 	if (waiting & HAMMER2_DIRTYCHAIN_WAITING)
 		wakeup(&pmp->inmem_dirty_chains);
+}
+
+/*
+ * Returns 0 if the filesystem has tons of free space
+ * Returns 1 if the filesystem has less than 10% remaining
+ * Returns 2 if the filesystem has less than 2%/5% (user/root) remaining.
+ */
+int
+hammer2_vfs_enospace(hammer2_inode_t *ip, off_t bytes, struct ucred *cred)
+{
+	hammer2_pfs_t *pmp;
+	hammer2_dev_t *hmp;
+	hammer2_off_t free_reserved;
+	hammer2_off_t free_nominal;
+	int i;
+
+	pmp = ip->pmp;
+
+	if (pmp->free_ticks == 0 || pmp->free_ticks != ticks) {
+		free_reserved = HAMMER2_SEGSIZE;
+		free_nominal = 0x7FFFFFFFFFFFFFFFLLU;
+		for (i = 0; i < pmp->iroot->cluster.nchains; ++i) {
+			hmp = pmp->pfs_hmps[i];
+			if (hmp == NULL)
+				continue;
+			if (pmp->pfs_types[i] != HAMMER2_PFSTYPE_MASTER &&
+			    pmp->pfs_types[i] != HAMMER2_PFSTYPE_SOFT_MASTER)
+				continue;
+
+			if (free_nominal > hmp->voldata.allocator_free)
+				free_nominal = hmp->voldata.allocator_free;
+			if (free_reserved < hmp->free_reserved)
+				free_reserved = hmp->free_reserved;
+		}
+
+		/*
+		 * SMP races ok
+		 */
+		pmp->free_reserved = free_reserved;
+		pmp->free_nominal = free_nominal;
+		pmp->free_ticks = ticks;
+	} else {
+		free_reserved = pmp->free_reserved;
+		free_nominal = pmp->free_nominal;
+	}
+	if (cred && cred->cr_uid != 0) {
+		if ((int64_t)(free_nominal - bytes) <
+		    (int64_t)free_reserved) {
+			return 2;
+		}
+	} else {
+		if ((int64_t)(free_nominal - bytes) <
+		    (int64_t)free_reserved / 2) {
+			return 2;
+		}
+	}
+	if ((int64_t)(free_nominal - bytes) < (int64_t)free_reserved * 2)
+		return 1;
+	return 0;
 }
 
 /*
