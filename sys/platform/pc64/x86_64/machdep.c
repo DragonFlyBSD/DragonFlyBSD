@@ -606,7 +606,7 @@ cpu_mwait_attach(void)
 	for (i = CPU_MWAIT_C1; i < CPU_MWAIT_C3; ++i)
 		cpu_mwait_hints_cnt += cpu_mwait_cx_info[i].subcnt;
 	cpu_mwait_hints = kmalloc(sizeof(int) * cpu_mwait_hints_cnt,
-	    M_DEVBUF, M_WAITOK);
+				  M_DEVBUF, M_WAITOK);
 
 	hint_idx = 0;
 	for (i = CPU_MWAIT_C1; i < CPU_MWAIT_C3; ++i) {
@@ -1270,8 +1270,14 @@ cpu_smp_stopped(void)
 	ovalue = *ptr;
 	if ((ovalue & CPUMASK_SIMPLE(gd->gd_cpuid & 63)) == 0) {
 		if (cpu_mi_feature & CPU_MI_MONITOR) {
-			cpu_mmw_pause_long(__DEVOLATILE(void *, ptr), ovalue,
+			if (cpu_mwait_hints) {
+				cpu_mmw_pause_long(__DEVOLATILE(void *, ptr),
+					   ovalue,
 					   cpu_mwait_hints[CPU_MWAIT_C1], 0);
+			} else {
+				cpu_mmw_pause_long(__DEVOLATILE(void *, ptr),
+					   ovalue, 0, 0);
+			}
 		} else {
 			cpu_halt();	/* depend on lapic timer */
 		}
