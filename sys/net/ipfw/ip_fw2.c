@@ -245,6 +245,8 @@ do { \
 #define IPFW_AUTOINC_STEP_MAX	1000
 #define IPFW_AUTOINC_STEP_DEF	100
 
+#define IPFW_TABLE_MAX_DEF	64
+
 #define	IPFW_DEFAULT_RULE	65535	/* rulenum for the default rule */
 #define IPFW_DEFAULT_SET	31	/* set number for the default rule */
 
@@ -299,6 +301,35 @@ struct netmsg_cpstate {
 	struct ipfw_ioc_state	*ioc_state;
 	int			state_cntmax;
 	int			state_cnt;
+};
+
+struct netmsg_tblent {
+	struct netmsg_base	base;
+	struct sockaddr		*key;
+	struct sockaddr		*netmask;
+	struct ipfw_tblent	*sibling;
+	int			tableid;
+};
+
+struct netmsg_tblflush {
+	struct netmsg_base	base;
+	int			tableid;
+	int			destroy;
+};
+
+struct netmsg_tblexp {
+	struct netmsg_base	base;
+	time_t			expire;
+	int			tableid;
+	int			cnt;
+	int			expcnt;
+	struct radix_node_head	*rnh;
+};
+
+struct ipfw_table_cp {
+	struct ipfw_ioc_tblent	*te;
+	int			te_idx;
+	int			te_cnt;
 };
 
 struct ipfw_addrs {
@@ -419,6 +450,15 @@ struct ipfw_state {
 TAILQ_HEAD(ipfw_state_list, ipfw_state);
 RB_HEAD(ipfw_state_tree, ipfw_state);
 
+struct ipfw_tblent {
+	struct radix_node	te_nodes[2];
+	struct sockaddr_in	te_key;
+	u_long			te_use;
+	time_t			te_lastuse;
+	struct ipfw_tblent	*te_sibling;
+	volatile int		te_expired;
+};
+
 struct ipfw_context {
 	struct ip_fw		*ipfw_layer3_chain;	/* rules for layer3 */
 	struct ip_fw		*ipfw_default_rule;	/* default rule */
@@ -480,6 +520,9 @@ struct ipfw_context {
 	u_long			ipfw_tks_reapfailed;
 	u_long			ipfw_tks_overflow;
 	u_long			ipfw_tks_cntnomem;
+
+	/* Last field */
+	struct radix_node_head	*ipfw_tables[];
 };
 
 #define IPFW_FLAG_KEEPALIVE	0x01
@@ -533,8 +576,12 @@ static int verbose_limit;
 static int fw_debug;
 static int autoinc_step = IPFW_AUTOINC_STEP_DEF;
 
+static int	ipfw_table_max = IPFW_TABLE_MAX_DEF;
+
 static int	ipfw_sysctl_enable(SYSCTL_HANDLER_ARGS);
 static int	ipfw_sysctl_autoinc_step(SYSCTL_HANDLER_ARGS);
+
+TUNABLE_INT("net.inet.ip.fw.table_max", &ipfw_table_max);
 
 SYSCTL_NODE(_net_inet_ip, OID_AUTO, fw, CTLFLAG_RW, 0, "Firewall");
 SYSCTL_NODE(_net_inet_ip_fw, OID_AUTO, stats, CTLFLAG_RW, 0,
@@ -554,6 +601,8 @@ SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, verbose, CTLFLAG_RW,
     &fw_verbose, 0, "Log matches to ipfw rules");
 SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, verbose_limit, CTLFLAG_RW,
     &verbose_limit, 0, "Set upper limit of matches of ipfw rules logged");
+SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, table_max, CTLFLAG_RD,
+    &ipfw_table_max, 0, "Max # of tables");
 
 static int	ipfw_sysctl_dyncnt(SYSCTL_HANDLER_ARGS);
 static int	ipfw_sysctl_dynmax(SYSCTL_HANDLER_ARGS);
@@ -732,6 +781,26 @@ static int		ipfw_state_expire_start(struct ipfw_context *,
 #define IPFW_TRKCNT_TOKREL	lwkt_reltoken(&ipfw_gd.ipfw_trkcnt_token)
 #define IPFW_TRKCNT_TOKINIT	\
 	lwkt_token_init(&ipfw_gd.ipfw_trkcnt_token, "ipfw_trkcnt");
+
+static void
+sa_maskedcopy(const struct sockaddr *src, struct sockaddr *dst,
+    const struct sockaddr *netmask)
+{
+	const u_char *cp1 = (const u_char *)src;
+	u_char *cp2 = (u_char *)dst;
+	const u_char *cp3 = (const u_char *)netmask;
+	u_char *cplim = cp2 + *cp3;
+	u_char *cplim2 = cp2 + *cp1;
+
+	*cp2++ = *cp1++; *cp2++ = *cp1++; /* copies sa_len & sa_family */
+	cp3 += 2;
+	if (cplim > cplim2)
+		cplim = cplim2;
+	while (cp2 < cplim)
+		*cp2++ = *cp1++ & *cp3++;
+	if (cp2 < cplim2)
+		bzero(cp2, cplim2 - cp2);
+}
 
 static __inline void
 ipfw_key_build(struct ipfw_key *key, in_addr_t saddr, uint16_t sport,
@@ -2391,6 +2460,33 @@ ipfw_state_install(struct ipfw_context *ctx, struct ip_fw *rule,
 	return (0);
 }
 
+static int
+ipfw_table_lookup(struct ipfw_context *ctx, uint16_t tableid,
+    const struct in_addr *in)
+{
+	struct radix_node_head *rnh;
+	struct sockaddr_in sin;
+	struct ipfw_tblent *te;
+
+	KASSERT(tableid < ipfw_table_max, ("invalid tableid %u", tableid));
+	rnh = ctx->ipfw_tables[tableid];
+	if (rnh == NULL)
+		return (0); /* no match */
+
+	memset(&sin, 0, sizeof(sin));
+	sin.sin_family = AF_INET;
+	sin.sin_len = sizeof(sin);
+	sin.sin_addr = *in;
+
+	te = (struct ipfw_tblent *)rnh->rnh_matchaddr((char *)&sin, rnh);
+	if (te == NULL)
+		return (0); /* no match */
+
+	te->te_use++;
+	te->te_lastuse = time_second;
+	return (1); /* match */
+}
+
 /*
  * Transmit a TCP packet, containing either a RST or a keepalive.
  * When flags & TH_RST, we are sending a RST packet, because of a
@@ -3014,6 +3110,11 @@ check_body:
 				}
 				break;
 
+			case O_IP_SRC_TABLE:
+				match = ipfw_table_lookup(ctx, cmd->arg1,
+				    &src_ip);
+				break;
+
 			case O_IP_DST_SET:
 			case O_IP_SRC_SET:
 				if (hlen > 0) {
@@ -3053,6 +3154,11 @@ check_body:
 					tif = INADDR_TO_IFP(&dst_ip);
 					match = (tif != NULL);
 				}
+				break;
+
+			case O_IP_DST_TABLE:
+				match = ipfw_table_lookup(ctx, cmd->arg1,
+				    &dst_ip);
 				break;
 
 			case O_IP_SRCPORT:
@@ -4333,6 +4439,17 @@ ipfw_check_ioc_rule(struct ipfw_ioc_rule *rule, int size, uint32_t *rule_flags)
 				goto bad_size;
 			break;
 
+		case O_IP_SRC_TABLE:
+		case O_IP_DST_TABLE:
+			if (cmdlen != F_INSN_SIZE(ipfw_insn))
+				goto bad_size;
+			if (cmd->arg1 >= ipfw_table_max) {
+				kprintf("ipfw: invalid table id %u, max %d\n",
+				    cmd->arg1, ipfw_table_max);
+				return EINVAL;
+			}
+			break;
+
 		case O_UID:
 		case O_GID:
 		case O_IP_SRC:
@@ -4780,6 +4897,620 @@ ipfw_ctl_set_disable(uint32_t disable, uint32_t enable)
 	netisr_domsg_global(&nmsg);
 }
 
+static void
+ipfw_table_create_dispatch(netmsg_t nm)
+{
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	int tblid = nm->lmsg.u.ms_result;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
+
+	if (!rn_inithead((void **)&ctx->ipfw_tables[tblid],
+	    rn_cpumaskhead(mycpuid), 32))
+		panic("ipfw: create table%d failed", tblid);
+
+	netisr_forwardmsg(&nm->base, mycpuid + 1);
+}
+
+static int
+ipfw_table_create(struct sockopt *sopt)
+{
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct ipfw_ioc_table *tbl;
+	struct netmsg_base nm;
+
+	ASSERT_NETISR0;
+
+	if (sopt->sopt_valsize != sizeof(*tbl))
+		return (EINVAL);
+
+	tbl = sopt->sopt_val;
+	if (tbl->tableid < 0 || tbl->tableid >= ipfw_table_max)
+		return (EINVAL);
+
+	if (ctx->ipfw_tables[tbl->tableid] != NULL)
+		return (EEXIST);
+
+	netmsg_init(&nm, NULL, &curthread->td_msgport, MSGF_PRIORITY,
+	    ipfw_table_create_dispatch);
+	nm.lmsg.u.ms_result = tbl->tableid;
+	netisr_domsg_global(&nm);
+
+	return (0);
+}
+
+static void
+ipfw_table_killrn(struct radix_node_head *rnh, struct radix_node *rn)
+{
+	struct radix_node *ret;
+
+	ret = rnh->rnh_deladdr(rn->rn_key, rn->rn_mask, rnh);
+	if (ret != rn)
+		panic("deleted other table entry");
+	kfree(ret, M_IPFW);
+}
+
+static int
+ipfw_table_killent(struct radix_node *rn, void *xrnh)
+{
+
+	ipfw_table_killrn(xrnh, rn);
+	return (0);
+}
+
+static void
+ipfw_table_flush_oncpu(struct ipfw_context *ctx, int tableid,
+    int destroy)
+{
+	struct radix_node_head *rnh;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
+
+	rnh = ctx->ipfw_tables[tableid];
+	rnh->rnh_walktree(rnh, ipfw_table_killent, rnh);
+	if (destroy) {
+		Free(rnh);
+		ctx->ipfw_tables[tableid] = NULL;
+	}
+}
+
+static void
+ipfw_table_flush_dispatch(netmsg_t nmsg)
+{
+	struct netmsg_tblflush *nm = (struct netmsg_tblflush *)nmsg;
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+
+	ASSERT_NETISR_NCPUS(mycpuid);
+
+	ipfw_table_flush_oncpu(ctx, nm->tableid, nm->destroy);
+	netisr_forwardmsg(&nm->base, mycpuid + 1);
+}
+
+static void
+ipfw_table_flushall_oncpu(struct ipfw_context *ctx, int destroy)
+{
+	int i;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
+
+	for (i = 0; i < ipfw_table_max; ++i) {
+		if (ctx->ipfw_tables[i] != NULL)
+			ipfw_table_flush_oncpu(ctx, i, destroy);
+	}
+}
+
+static void
+ipfw_table_flushall_dispatch(netmsg_t nmsg)
+{
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+
+	ASSERT_NETISR_NCPUS(mycpuid);
+
+	ipfw_table_flushall_oncpu(ctx, 0);
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
+}
+
+static int
+ipfw_table_flush(struct sockopt *sopt)
+{
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct ipfw_ioc_table *tbl;
+	struct netmsg_tblflush nm;
+
+	ASSERT_NETISR0;
+
+	if (sopt->sopt_valsize != sizeof(*tbl))
+		return (EINVAL);
+
+	tbl = sopt->sopt_val;
+	if (sopt->sopt_name == IP_FW_TBL_FLUSH && tbl->tableid < 0) {
+		netmsg_init(&nm.base, NULL, &curthread->td_msgport,
+		    MSGF_PRIORITY, ipfw_table_flushall_dispatch);
+		netisr_domsg_global(&nm.base);
+		return (0);
+	}
+
+	if (tbl->tableid < 0 || tbl->tableid >= ipfw_table_max)
+		return (EINVAL);
+
+	if (ctx->ipfw_tables[tbl->tableid] == NULL)
+		return (ENOENT);
+
+	netmsg_init(&nm.base, NULL, &curthread->td_msgport, MSGF_PRIORITY,
+	    ipfw_table_flush_dispatch);
+	nm.tableid = tbl->tableid;
+	nm.destroy = 0;
+	if (sopt->sopt_name == IP_FW_TBL_DESTROY)
+		nm.destroy = 1;
+	netisr_domsg_global(&nm.base);
+
+	return (0);
+}
+
+static int
+ipfw_table_cntent(struct radix_node *rn __unused, void *xcnt)
+{
+	int *cnt = xcnt;
+
+	(*cnt)++;
+	return (0);
+}
+
+static int
+ipfw_table_cpent(struct radix_node *rn, void *xcp)
+{
+	struct ipfw_table_cp *cp = xcp;
+	struct ipfw_tblent *te = (struct ipfw_tblent *)rn;
+	struct ipfw_ioc_tblent *ioc_te;
+#ifdef INVARIANTS
+	int cnt;
+#endif
+
+	KASSERT(cp->te_idx < cp->te_cnt, ("invalid table cp idx %d, cnt %d",
+	    cp->te_idx, cp->te_cnt));
+	ioc_te = &cp->te[cp->te_idx];
+
+	if (te->te_nodes->rn_mask != NULL) {
+		memcpy(&ioc_te->netmask, te->te_nodes->rn_mask,
+		    *te->te_nodes->rn_mask);
+	} else {
+		ioc_te->netmask.sin_len = 0;
+	}
+	memcpy(&ioc_te->key, &te->te_key, sizeof(ioc_te->key));
+
+	ioc_te->use = te->te_use;
+	ioc_te->last_used = te->te_lastuse;
+#ifdef INVARIANTS
+	cnt = 1;
+#endif
+
+	while ((te = te->te_sibling) != NULL) {
+#ifdef INVARIANTS
+		++cnt;
+#endif
+		ioc_te->use += te->te_use;
+		if (te->te_lastuse > ioc_te->last_used)
+			ioc_te->last_used = te->te_lastuse;
+	}
+	KASSERT(cnt == netisr_ncpus,
+	    ("invalid # of tblent %d, should be %d", cnt, netisr_ncpus));
+
+	cp->te_idx++;
+
+	return (0);
+}
+
+static int
+ipfw_table_get(struct sockopt *sopt)
+{
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct radix_node_head *rnh;
+	struct ipfw_ioc_table *tbl;
+	struct ipfw_ioc_tblcont *cont;
+	struct ipfw_table_cp cp;
+	int cnt = 0, sz;
+
+	ASSERT_NETISR0;
+
+	if (sopt->sopt_valsize < sizeof(*tbl))
+		return (EINVAL);
+
+	tbl = sopt->sopt_val;
+	if (tbl->tableid < 0) {
+		struct ipfw_ioc_tbllist *list;
+		int i;
+
+		/*
+		 * List available table ids.
+		 */
+		for (i = 0; i < ipfw_table_max; ++i) {
+			if (ctx->ipfw_tables[i] != NULL)
+				++cnt;
+		}
+
+		sz = __offsetof(struct ipfw_ioc_tbllist, tables[cnt]);
+		if (sopt->sopt_valsize < sz) {
+			bzero(sopt->sopt_val, sopt->sopt_valsize);
+			return (E2BIG);
+		}
+		list = sopt->sopt_val;
+		list->tablecnt = cnt;
+
+		cnt = 0;
+		for (i = 0; i < ipfw_table_max; ++i) {
+			if (ctx->ipfw_tables[i] != NULL) {
+				KASSERT(cnt < list->tablecnt,
+				    ("invalid idx %d, cnt %d",
+				     cnt, list->tablecnt));
+				list->tables[cnt++] = i;
+			}
+		}
+		sopt->sopt_valsize = sz;
+		return (0);
+	} else if (tbl->tableid >= ipfw_table_max) {
+		return (EINVAL);
+	}
+
+	rnh = ctx->ipfw_tables[tbl->tableid];
+	if (rnh == NULL)
+		return (ENOENT);
+	rnh->rnh_walktree(rnh, ipfw_table_cntent, &cnt);
+
+	sz = __offsetof(struct ipfw_ioc_tblcont, ent[cnt]);
+	if (sopt->sopt_valsize < sz) {
+		bzero(sopt->sopt_val, sopt->sopt_valsize);
+		return (E2BIG);
+	}
+	cont = sopt->sopt_val;
+	cont->entcnt = cnt;
+
+	cp.te = cont->ent;
+	cp.te_idx = 0;
+	cp.te_cnt = cnt;
+	rnh->rnh_walktree(rnh, ipfw_table_cpent, &cp);
+
+	sopt->sopt_valsize = sz;
+	return (0);
+}
+
+static void
+ipfw_table_add_dispatch(netmsg_t nmsg)
+{
+	struct netmsg_tblent *nm = (struct netmsg_tblent *)nmsg;
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct radix_node_head *rnh;
+	struct ipfw_tblent *te;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
+
+	rnh = ctx->ipfw_tables[nm->tableid];
+
+	te = kmalloc(sizeof(*te), M_IPFW, M_WAITOK | M_ZERO);
+	te->te_nodes->rn_key = (char *)&te->te_key;
+	memcpy(&te->te_key, nm->key, sizeof(te->te_key));
+
+	if (rnh->rnh_addaddr((char *)&te->te_key, (char *)nm->netmask, rnh,
+	    te->te_nodes) == NULL) {
+		if (mycpuid == 0) {
+			kfree(te, M_IPFW);
+			netisr_replymsg(&nm->base, EEXIST);
+			return;
+		}
+		panic("rnh_addaddr failed");
+	}
+
+	/* Link siblings. */
+	if (nm->sibling != NULL)
+		nm->sibling->te_sibling = te;
+	nm->sibling = te;
+
+	netisr_forwardmsg(&nm->base, mycpuid + 1);
+}
+
+static void
+ipfw_table_del_dispatch(netmsg_t nmsg)
+{
+	struct netmsg_tblent *nm = (struct netmsg_tblent *)nmsg;
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct radix_node_head *rnh;
+	struct radix_node *rn;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
+
+	rnh = ctx->ipfw_tables[nm->tableid];
+	rn = rnh->rnh_deladdr((char *)nm->key, (char *)nm->netmask, rnh);
+	if (rn == NULL) {
+		if (mycpuid == 0) {
+			netisr_replymsg(&nm->base, ESRCH);
+			return;
+		}
+		panic("rnh_deladdr failed");
+	}
+	kfree(rn, M_IPFW);
+
+	netisr_forwardmsg(&nm->base, mycpuid + 1);
+}
+
+static int
+ipfw_table_alt(struct sockopt *sopt)
+{
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct ipfw_ioc_tblcont *tbl;
+	struct ipfw_ioc_tblent *te;
+	struct sockaddr_in key0;
+	struct sockaddr *netmask = NULL, *key;
+	struct netmsg_tblent nm;
+
+	ASSERT_NETISR0;
+
+	if (sopt->sopt_valsize != sizeof(*tbl))
+		return (EINVAL);
+	tbl = sopt->sopt_val;
+
+	if (tbl->tableid < 0  || tbl->tableid >= ipfw_table_max)
+		return (EINVAL);
+	if (tbl->entcnt != 1)
+		return (EINVAL);
+
+	if (ctx->ipfw_tables[tbl->tableid] == NULL)
+		return (ENOENT);
+	te = &tbl->ent[0];
+
+	if (te->key.sin_family != AF_INET ||
+	    te->key.sin_port != 0 ||
+	    te->key.sin_len != sizeof(struct sockaddr_in))
+		return (EINVAL);
+	key = (struct sockaddr *)&te->key;
+
+	if (te->netmask.sin_len != 0) {
+		if (te->netmask.sin_port != 0 ||
+		    te->netmask.sin_len > sizeof(struct sockaddr_in))
+			return (EINVAL);
+		netmask = (struct sockaddr *)&te->netmask;
+		sa_maskedcopy(key, (struct sockaddr *)&key0, netmask);
+		key = (struct sockaddr *)&key0;
+	}
+
+	if (sopt->sopt_name == IP_FW_TBL_ADD) {
+		netmsg_init(&nm.base, NULL, &curthread->td_msgport,
+		    MSGF_PRIORITY, ipfw_table_add_dispatch);
+	} else {
+		netmsg_init(&nm.base, NULL, &curthread->td_msgport,
+		    MSGF_PRIORITY, ipfw_table_del_dispatch);
+	}
+	nm.key = key;
+	nm.netmask = netmask;
+	nm.tableid = tbl->tableid;
+	nm.sibling = NULL;
+	return (netisr_domsg_global(&nm.base));
+}
+
+static int
+ipfw_table_zeroent(struct radix_node *rn, void *arg __unused)
+{
+	struct ipfw_tblent *te = (struct ipfw_tblent *)rn;
+
+	te->te_use = 0;
+	te->te_lastuse = 0;
+	return (0);
+}
+
+static void
+ipfw_table_zero_dispatch(netmsg_t nmsg)
+{
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct radix_node_head *rnh;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
+
+	rnh = ctx->ipfw_tables[nmsg->lmsg.u.ms_result];
+	rnh->rnh_walktree(rnh, ipfw_table_zeroent, NULL);
+
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
+}
+
+static void
+ipfw_table_zeroall_dispatch(netmsg_t nmsg)
+{
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	int i;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
+
+	for (i = 0; i < ipfw_table_max; ++i) {
+		struct radix_node_head *rnh = ctx->ipfw_tables[i];
+
+		if (rnh != NULL)
+			rnh->rnh_walktree(rnh, ipfw_table_zeroent, NULL);
+	}
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
+}
+
+static int
+ipfw_table_zero(struct sockopt *sopt)
+{
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct netmsg_base nm;
+	struct ipfw_ioc_table *tbl;
+
+	ASSERT_NETISR0;
+
+	if (sopt->sopt_valsize != sizeof(*tbl))
+		return (EINVAL);
+	tbl = sopt->sopt_val;
+
+	if (tbl->tableid < 0) {
+		netmsg_init(&nm, NULL, &curthread->td_msgport, MSGF_PRIORITY,
+		    ipfw_table_zeroall_dispatch);
+		netisr_domsg_global(&nm);
+		return (0);
+	} else if (tbl->tableid >= ipfw_table_max) {
+		return (EINVAL);
+	} else if (ctx->ipfw_tables[tbl->tableid] == NULL) {
+		return (ENOENT);
+	}
+
+	netmsg_init(&nm, NULL, &curthread->td_msgport, MSGF_PRIORITY,
+	    ipfw_table_zero_dispatch);
+	nm.lmsg.u.ms_result = tbl->tableid;
+	netisr_domsg_global(&nm);
+
+	return (0);
+}
+
+static int
+ipfw_table_killexp(struct radix_node *rn, void *xnm)
+{
+	struct netmsg_tblexp *nm = xnm;
+	struct ipfw_tblent *te = (struct ipfw_tblent *)rn;
+
+	if (te->te_expired) {
+		ipfw_table_killrn(nm->rnh, rn);
+		nm->expcnt++;
+	}
+	return (0);
+}
+
+static void
+ipfw_table_expire_dispatch(netmsg_t nmsg)
+{
+	struct netmsg_tblexp *nm = (struct netmsg_tblexp *)nmsg;
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct radix_node_head *rnh;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
+
+	rnh = ctx->ipfw_tables[nm->tableid];
+	nm->rnh = rnh;
+	rnh->rnh_walktree(rnh, ipfw_table_killexp, nm);
+
+	KASSERT(nm->expcnt == nm->cnt * (mycpuid + 1),
+	    ("not all expired addresses (%d) were deleted (%d)",
+	     nm->cnt * (mycpuid + 1), nm->expcnt));
+
+	netisr_forwardmsg(&nm->base, mycpuid + 1);
+}
+
+static void
+ipfw_table_expireall_dispatch(netmsg_t nmsg)
+{
+	struct netmsg_tblexp *nm = (struct netmsg_tblexp *)nmsg;
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	int i;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
+
+	for (i = 0; i < ipfw_table_max; ++i) {
+		struct radix_node_head *rnh = ctx->ipfw_tables[i];
+
+		if (rnh == NULL)
+			continue;
+		nm->rnh = rnh;
+		rnh->rnh_walktree(rnh, ipfw_table_killexp, nm);
+	}
+
+	KASSERT(nm->expcnt == nm->cnt * (mycpuid + 1),
+	    ("not all expired addresses (%d) were deleted (%d)",
+	     nm->cnt * (mycpuid + 1), nm->expcnt));
+
+	netisr_forwardmsg(&nm->base, mycpuid + 1);
+}
+
+static int
+ipfw_table_markexp(struct radix_node *rn, void *xnm)
+{
+	struct netmsg_tblexp *nm = xnm;
+	struct ipfw_tblent *te;
+	time_t lastuse;
+
+	te = (struct ipfw_tblent *)rn;
+	lastuse = te->te_lastuse;
+
+	while ((te = te->te_sibling) != NULL) {
+		if (te->te_lastuse > lastuse)
+			lastuse = te->te_lastuse;
+	}
+	if (!TIME_LEQ(lastuse + nm->expire, time_second)) {
+		/* Not expired */
+		return (0);
+	}
+
+	te = (struct ipfw_tblent *)rn;
+	te->te_expired = 1;
+	while ((te = te->te_sibling) != NULL)
+		te->te_expired = 1;
+	nm->cnt++;
+
+	return (0);
+}
+
+static int
+ipfw_table_expire(struct sockopt *sopt)
+{
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct netmsg_tblexp nm;
+	struct ipfw_ioc_tblexp *tbl;
+	struct radix_node_head *rnh;
+
+	ASSERT_NETISR0;
+
+	if (sopt->sopt_valsize != sizeof(*tbl))
+		return (EINVAL);
+	tbl = sopt->sopt_val;
+	tbl->expcnt = 0;
+
+	nm.expcnt = 0;
+	nm.cnt = 0;
+	nm.expire = tbl->expire;
+
+	if (tbl->tableid < 0) {
+		int i;
+
+		for (i = 0; i < ipfw_table_max; ++i) {
+			rnh = ctx->ipfw_tables[i];
+			if (rnh == NULL)
+				continue;
+			rnh->rnh_walktree(rnh, ipfw_table_markexp, &nm);
+		}
+		if (nm.cnt == 0) {
+			/* No addresses can be expired. */
+			return (0);
+		}
+		tbl->expcnt = nm.cnt;
+
+		netmsg_init(&nm.base, NULL, &curthread->td_msgport,
+		    MSGF_PRIORITY, ipfw_table_expireall_dispatch);
+		nm.tableid = -1;
+		netisr_domsg_global(&nm.base);
+		KASSERT(nm.expcnt == nm.cnt * netisr_ncpus,
+		    ("not all expired addresses (%d) were deleted (%d)",
+		     nm.cnt * netisr_ncpus, nm.expcnt));
+
+		return (0);
+	} else if (tbl->tableid >= ipfw_table_max) {
+		return (EINVAL);
+	}
+
+	rnh = ctx->ipfw_tables[tbl->tableid];
+	if (rnh == NULL)
+		return (ENOENT);
+	rnh->rnh_walktree(rnh, ipfw_table_markexp, &nm);
+	if (nm.cnt == 0) {
+		/* No addresses can be expired. */
+		return (0);
+	}
+	tbl->expcnt = nm.cnt;
+
+	netmsg_init(&nm.base, NULL, &curthread->td_msgport, MSGF_PRIORITY,
+	    ipfw_table_expire_dispatch);
+	nm.tableid = tbl->tableid;
+	netisr_domsg_global(&nm.base);
+	KASSERT(nm.expcnt == nm.cnt * netisr_ncpus,
+	    ("not all expired addresses (%d) were deleted (%d)",
+	     nm.cnt * netisr_ncpus, nm.expcnt));
+	return (0);
+}
+
 /*
  * {set|get}sockopt parser.
  */
@@ -4849,6 +5580,32 @@ ipfw_ctl(struct sockopt *sopt)
 		}
 		error = ipfw_ctl_zero_entry(rulenum,
 			sopt->sopt_name == IP_FW_RESETLOG);
+		break;
+
+	case IP_FW_TBL_CREATE:
+		error = ipfw_table_create(sopt);
+		break;
+
+	case IP_FW_TBL_ADD:
+	case IP_FW_TBL_DEL:
+		error = ipfw_table_alt(sopt);
+		break;
+
+	case IP_FW_TBL_FLUSH:
+	case IP_FW_TBL_DESTROY:
+		error = ipfw_table_flush(sopt);
+		break;
+
+	case IP_FW_TBL_GET:
+		error = ipfw_table_get(sopt);
+		break;
+
+	case IP_FW_TBL_ZERO:
+		error = ipfw_table_zero(sopt);
+		break;
+
+	case IP_FW_TBL_EXPIRE:
+		error = ipfw_table_expire(sopt);
 		break;
 
 	default:
@@ -5322,7 +6079,8 @@ ipfw_ctx_init_dispatch(netmsg_t nmsg)
 
 	ASSERT_NETISR_NCPUS(mycpuid);
 
-	ctx = kmalloc(sizeof(*ctx), M_IPFW, M_WAITOK | M_ZERO);
+	ctx = kmalloc(__offsetof(struct ipfw_context,
+	    ipfw_tables[ipfw_table_max]), M_IPFW, M_WAITOK | M_ZERO);
 
 	RB_INIT(&ctx->ipfw_state_tree);
 	TAILQ_INIT(&ctx->ipfw_state_list);
@@ -5399,6 +6157,9 @@ ipfw_init_dispatch(netmsg_t nmsg)
 		error = EEXIST;
 		goto reply;
 	}
+
+	if (ipfw_table_max > UINT16_MAX || ipfw_table_max <= 0)
+		ipfw_table_max = UINT16_MAX;
 
 	/* Initialize global track tree. */
 	RB_INIT(&ipfw_gd.ipfw_trkcnt_tree);
@@ -5482,6 +6243,8 @@ ipfw_ctx_fini_dispatch(netmsg_t nmsg)
 	netisr_dropmsg(&ctx->ipfw_keepalive_more);
 	netisr_dropmsg(&ctx->ipfw_keepalive_nm);
 	crit_exit();
+
+	ipfw_table_flushall_oncpu(ctx, 1);
 
 	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
 }

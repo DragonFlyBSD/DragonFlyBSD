@@ -112,6 +112,8 @@ enum ipfw_opcodes {		/* arguments (4 byte each)	*/
 	O_TEE,			/* arg1=port number		*/
 	O_FORWARD_IP,		/* fwd sockaddr			*/
 	O_FORWARD_MAC,		/* fwd mac			*/
+	O_IP_SRC_TABLE,		/* arg1 = tableid		*/
+	O_IP_DST_TABLE,		/* arg1 = tableid		*/
 	O_LAST_OPCODE		/* not an opcode!		*/
 };
 
@@ -463,5 +465,56 @@ struct ipfw_ioc_state {
 #define	IP_FW_TCPOPT_CC		0x10
 
 #define	ICMP_REJECT_RST		0x100	/* fake ICMP code (send a TCP RST) */
+
+/*
+ * IP_FW_TBL_CREATE, tableid >= 0.
+ * IP_FW_TBL_FLUSH, tableid >= 0.
+ * IP_FW_TBL_FLUSH, tableid < 0, flush all tables.
+ * IP_FW_TBL_DESTROY, tableid >= 0.
+ * IP_FW_TBL_ZERO, tableid >= 0.
+ * IP_FW_TBL_ZERO, tableid < 0, zero all tables' counters.
+ */
+struct ipfw_ioc_table {
+	int		tableid;
+};
+
+struct ipfw_ioc_tblent {
+	struct sockaddr_in key;
+	struct sockaddr_in netmask;
+	u_long		use;
+	time_t		last_used;
+	long		unused[2];
+};
+
+/*
+ * IP_FW_TBL_GET, tableid < 0, list of all tables.
+ */
+struct ipfw_ioc_tbllist {
+	int		tableid;	/* MUST be the first field */
+	int		tablecnt;
+	uint16_t	tables[];
+};
+
+/*
+ * IP_FW_TBL_GET, tableid >= 0, entries in the table.
+ * IP_FW_TBL_ADD, tableid >= 0, entcnt == 1.
+ * IP_FW_TBL_DEL, tableid >= 0, entcnt == 1.
+ */
+struct ipfw_ioc_tblcont {
+	int		tableid;	/* MUST be the first field */
+	int		entcnt;
+	struct ipfw_ioc_tblent ent[1];
+};
+
+/*
+ * IP_FW_TBL_EXPIRE, tableid < 0, expire all tables.
+ * IP_FW_TBL_EXPIRE, tableid >= 0.
+ */
+struct ipfw_ioc_tblexp {
+	int		tableid;
+	int		expcnt;
+	time_t		expire;
+	u_long		unused1[2];
+};
 
 #endif /* _IPFW2_H */

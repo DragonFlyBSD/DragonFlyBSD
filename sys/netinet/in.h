@@ -350,6 +350,15 @@ struct sockaddr_in {
 #define	IP_IPSEC_POLICY		21   /* int; set/get security policy */
 #define	IP_FAITH		22   /* bool; accept FAITH'ed connections */
 
+#define	IP_FW_TBL_CREATE	40   /* create ipfw table */
+#define	IP_FW_TBL_DESTROY	41   /* destroy ipfw table */
+#define	IP_FW_TBL_ADD		42   /* add network/host to ipfw table */
+#define	IP_FW_TBL_DEL		43   /* delete network/host from ipfw table */
+#define	IP_FW_TBL_FLUSH		44   /* flush ipfw table */
+#define	IP_FW_TBL_GET		45   /* list/show ipfw table */
+#define	IP_FW_TBL_ZERO		46   /* clear ipfw table counters */
+#define	IP_FW_TBL_EXPIRE	47   /* expire addresses in ipfw table */
+
 #define	IP_FW_X			49   /* ipfw2 firewall */
 #define	IP_FW_ADD		50   /* add a firewall rule to chain */
 #define	IP_FW_DEL		51   /* delete a firewall rule from chain */

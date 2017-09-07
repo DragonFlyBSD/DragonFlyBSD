@@ -377,6 +377,8 @@ rip_ctloutput(netmsg_t msg)
 
 		case IP_FW_ADD: /* ADD actually returns the body... */
 		case IP_FW_GET:
+		case IP_FW_TBL_GET:
+		case IP_FW_TBL_EXPIRE: /* returns # of expired addresses */
 			error = ip_fw_sockopt(sopt);
 			break;
 
@@ -429,6 +431,13 @@ rip_ctloutput(netmsg_t msg)
 		case IP_FW_FLUSH:
 		case IP_FW_ZERO:
 		case IP_FW_RESETLOG:
+		case IP_FW_TBL_CREATE:
+		case IP_FW_TBL_DESTROY:
+		case IP_FW_TBL_ADD:
+		case IP_FW_TBL_DEL:
+		case IP_FW_TBL_FLUSH:
+		case IP_FW_TBL_ZERO:
+		case IP_FW_TBL_EXPIRE:
 			error = ip_fw_sockopt(sopt);
 			break;
 

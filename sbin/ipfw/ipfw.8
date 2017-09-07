@@ -2,7 +2,7 @@
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
 .\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.20 2008/11/23 21:55:52 swildner Exp $
 .\"
-.Dd September 5, 2017
+.Dd September 10, 2017
 .Dt IPFW 8
 .Os
 .Sh NAME
@@ -18,7 +18,7 @@
 .Brq Cm list | show
 .Op Ar number ...
 .Nm
-.Op Fl f | q
+.Op Fl fq
 .Cm flush
 .Nm
 .Op Fl q
@@ -53,6 +53,41 @@
 .Brq Cm pipe | queue
 .Brq Cm delete | list | show
 .Op Ar number ...
+.Pp
+.Nm
+.Op Fl q
+.Cm table Ar number Cm create
+.Nm
+.Op Fl fq
+.Cm table Ar number
+.Cm destroy
+.Nm
+.Op Fl fq
+.Cm table
+.Op Ar number
+.Cm flush
+.Nm
+.Cm table list
+.Nm
+.Op Fl at
+.Cm table Ar number
+.Brq Cm show | print
+.Nm
+.Op Fl q
+.Cm table Ar number
+.Brq Cm add | delete
+.Ar address
+.Op Ar address ...
+.Nm
+.Op Fl q
+.Cm table
+.Op Ar number
+.Cm zero
+.Nm
+.Op Fl fq
+.Cm table
+.Op Ar number
+.Cm expire Ar seconds
 .Pp
 .Nm
 .Op Fl q
@@ -136,10 +171,10 @@ option, then
 .Nm
 assumes a
 .Em stateful
-behaviour, i.e. upon a match it will create dynamic rules matching
+behaviour, i.e. upon a match it will create states matching
 the exact parameters (addresses and ports) of the matching packet.
 .Pp
-These dynamic rules, which have a limited lifetime, are checked
+These states, which have a limited lifetime, are checked
 at the first occurrence of a
 .Cm check-state ,
 .Cm keep-state
@@ -154,7 +189,7 @@ and
 Sections below for more information on the stateful behaviour of
 .Nm .
 .Pp
-All rules (including dynamic ones) have a few associated counters:
+All rules (including states) have a few associated counters:
 a packet count, a byte count, a log count and a timestamp
 indicating the time of the last match.
 Counters can be displayed or reset with
@@ -204,11 +239,11 @@ When entering or showing rules, print them in compact form,
 i.e. without the optional "ip from any to any" string
 when this does not carry any additional information.
 .It Fl d
-While listing, show dynamic rules in addition to static ones.
+While listing, show states and tracks in addition to static ones.
 .It Fl e
 While listing, if the
 .Fl d
-option was specified, also show expired dynamic rules.
+option was specified, also show expired states and tracks.
 .It Fl f
 Don't ask for confirmation for commands that can cause problems
 if misused,
@@ -504,16 +539,16 @@ will be executed when the packet matches the body of the rule.
 Allow packets that match rule.
 The search terminates.
 .It Cm check-state
-Checks the packet against the dynamic ruleset.
+Checks the packet against the state table.
 If a match is found, execute the action associated with
-the rule which generated this dynamic rule, otherwise
+the rule which generated this state, otherwise
 move to the next rule.
 .br
 .Cm Check-state
 rules do not have a body.
 If no
 .Cm check-state
-rule is found, the dynamic ruleset is checked at the first
+rule is found, the state table is checked at the first
 .Cm keep-state
 or
 .Cm limit
@@ -716,6 +751,11 @@ matches any IP address.
 matches any IP address configured on an interface in the system.
 The address list is evaluated at the time the packet is
 analysed.
+.It Cm < Ns Ar number Ns Cm >
+Matches any network or host addresses in the
+.Cm table
+specified by the
+.Ar number .
 .It Ar numeric-ip | hostname
 Matches a single IPv4 address, specified as dotted-quad or a hostname.
 Hostnames are resolved at the time the rule is added to the firewall list.
@@ -813,10 +853,10 @@ operand, and possibly grouped into
 .Pp
 The following match patterns can be used (listed in alphabetical order):
 .Bl -tag -width indent
-.It Cm dst-ip Ar ip address
+.It Cm dst-ip Ar ip-address
 Matches IP packets whose destination IP is one of the address(es)
 specified as argument.
-.It Cm dst-port Ar source ports
+.It Cm dst-port Ar ports
 Matches IP packets whose destination port is one of the port(s)
 specified as argument.
 .It Cm established
@@ -935,7 +975,7 @@ Matches IP packets whose time to live is
 Matches IP packets whose IP version field is
 .Ar ver .
 .It Cm keep-state
-Upon a match, the firewall will create a dynamic rule, whose
+Upon a match, the firewall will create a state, whose
 default behaviour is to match bidirectional traffic between
 source and destination IP/port using the same protocol.
 The rule has a limited lifetime (controlled by a set of
@@ -1134,9 +1174,9 @@ By default, all sets are enabled.
 When you disable a set, its rules behave as if they do not exist
 in the firewall configuration, with only one exception:
 .Bd -ragged -offset indent
-dynamic rules created from a rule before it had been disabled
+states and tracks created from a rule before it had been disabled
 will still be active until they expire. In order to delete
-dynamic rules you have to explicitly delete the parent rule
+states and tracks you have to explicitly delete the parent rule
 which generated them.
 .Ed
 .Pp
@@ -1159,7 +1199,7 @@ See the
 Section on some possible uses of sets of rules.
 .Sh STATEFUL FIREWALL
 Stateful operation is a way for the firewall to dynamically
-create rules for specific flows when packets that
+create states and tracks for specific flows when packets that
 match a given pattern are detected. Support for stateful
 operation comes through the
 .Cm check-state , keep-state
@@ -1169,13 +1209,13 @@ options of
 .Nm
 rules.
 .Pp
-Dynamic rules are created when a packet matches a
+States are created when a packet matches a
 .Cm keep-state
 or
 .Cm limit
 rule, causing the creation of a
-.Em dynamic
-rule which will match all and only packets with
+.Em state
+which will match all and only packets with
 a given
 .Em protocol
 between a
@@ -1186,7 +1226,11 @@ and
 .Em dst
 are used here only to denote the initial match addresses, but they
 are completely equivalent afterwards).
-Dynamic rules will be checked at the first
+Additionally,
+tracks are created when a packet matches a
+.Cm limit
+rule.
+States will be checked at the first
 .Cm check-state, keep-state
 or
 .Cm limit
@@ -1194,11 +1238,11 @@ occurrence, and the action performed upon a match will be the same
 as in the parent rule.
 .Pp
 Note that no additional attributes other than protocol and IP addresses
-and ports are checked on dynamic rules.
+and ports are checked on states.
 .Pp
-The typical use of dynamic rules is to keep a closed firewall configuration,
+The typical use of states is to keep a closed firewall configuration,
 but let the first TCP SYN packet from the inside network install a
-dynamic rule for the flow so that packets belonging to that session
+state for the flow so that packets belonging to that session
 will be allowed through the firewall:
 .Pp
 .Dl "ipfw add check-state"
@@ -1206,27 +1250,27 @@ will be allowed through the firewall:
 .Dl "ipfw add deny tcp from any to any"
 .Pp
 A similar approach can be used for UDP, where an UDP packet coming
-from the inside will install a dynamic rule to let the response through
+from the inside will install a state to let the response through
 the firewall:
 .Pp
 .Dl "ipfw add check-state"
 .Dl "ipfw add allow udp from my-subnet to any keep-state"
 .Dl "ipfw add deny udp from any to any"
 .Pp
-Dynamic rules expire after some time, which depends on the status
+States and tracks expire after some time, which depends on the status
 of the flow and the setting of some
 .Cm sysctl
 variables.
 See Section
 .Sx SYSCTL VARIABLES
 for more details.
-For TCP sessions, dynamic rules can be instructed to periodically
+For TCP sessions, states can be instructed to periodically
 send keepalive packets to refresh the state of the rule when it is
 about to expire.
 .Pp
 See Section
 .Sx EXAMPLES
-for more examples on how to use dynamic rules.
+for more examples on how to use states.
 .Sh TRAFFIC SHAPER (DUMMYNET) CONFIGURATION
 .Nm
 is also the user interface for the
@@ -1439,6 +1483,104 @@ specifies the expected maximum packet size, only used when queue
 thresholds are in bytes (defaults to 1500, must be greater than zero).
 .El
 .El
+.Sh TABLE
+Table provides a convenient way to support a large amount of
+discrete host or network addresses for the
+.Cm from ,
+.Cm to ,
+.Cm src-ip ,
+and
+.Cm dst-ip .
+Non-existing tables never match.
+For network addresses,
+only CIDR form is supported.
+.Pp
+Tables are identified by
+.Ar number ,
+which ranges from 0 to
+.Cm net.inet.ip.fw.table_max
+- 1.
+Default number of available tables is 64,
+i.e. valid table ids are from 0 to 63.
+Number of available tables can be changed by setting tunable
+.Cm net.inet.ip.fw.table_max .
+Max configurable number of available tables is 65535.
+.Pp
+Tables must be created explicitly
+before host or network addresses could be added to them:
+.Bd -ragged -offset indent
+.Cm table Ar number Cm create
+.Ed
+.Pp
+Host or network addresses can be added to an existing
+table by using:
+.Bd -ragged -offset indent
+.Cm table Ar number Cm add Ar address
+.Op Ar address ...
+.Ed
+.Pp
+Host or network addresses can be removed from an existing
+table by using:
+.Bd -ragged -offset indent
+.Cm table Ar number Cm delete Ar address
+.Op Ar address ...
+.Ed
+.Pp
+Addresses in a table can be flushed by:
+.Bd -ragged -offset indent
+.Cm table Ar number Cm flush
+.Ed
+.Pp
+Or you can optionally flush all existing tables:
+.Bd -ragged -offset indent
+.Cm table flush
+.Ed
+.Pp
+Each address in a table has two counters.
+One records the number of usage,
+the other saves the time of the last match.
+These counters can be resetted for a specific table:
+.Bd -ragged -offset indent
+.Cm table Ar number Cm zero
+.Ed
+.Pp
+Or you can reset counters of addresses in all existing tables by:
+.Bd -ragged -offset indent
+.Cm table zero
+.Ed
+.Pp
+Host and network addresses in the tables are not expired by the
+.Nm ,
+manual intervention is required to expire addresses unused in a table
+within the last
+.Ar seconds :
+.Bd -ragged -offset indent
+.Cm table Ar number Cm expire Ar seconds
+.Ed
+.Pp
+Optionally,
+you can expire all addresses that were unused within the last
+.Ar seconds
+by:
+.Bd -ragged -offset indent
+.Cm table expire Ar seconds
+.Ed
+.Pp
+An existing table can be destroyed by:
+.Bd -ragged -offset indent
+.Cm table Ar number Cm destroy
+.Ed
+.Pp
+All existing tables can be listed by:
+.Bd -ragged -offset indent
+.Cm table list
+.Ed
+.Pp
+All addresses in an existing table can be dumped by:
+.Bd -ragged -offset indent
+.Cm table Ar number
+.Brq Cm print | show
+.Ed
 .Sh CHECKLIST
 Here are some important points to consider when designing your
 rules:
@@ -1557,6 +1699,10 @@ The value must be in the range 1..1000.
 .It Em net.inet.ip.fw.debug : No 1
 Controls debugging messages produced by
 .Nm .
+.It Em net.inet.ip.fw.table_max : No 64
+Number of available tables.
+This value can only be changed by setting tunable
+.Cm net.inet.ip.fw.table_max .
 .It Em net.inet.ip.fw.state_cnt : No 3
 Current number of states
 (read-only).
@@ -1587,8 +1733,7 @@ seconds of the lifetime of the rule.
 .It Em net.inet.ip.fw.dyn_rst_lifetime : No 2
 .It Em net.inet.ip.fw.dyn_udp_lifetime : No 10
 .It Em net.inet.ip.fw.dyn_short_lifetime : No 5
-These variables control the lifetime, in seconds, of dynamic
-rules.
+These variables control the lifetime, in seconds, of states and tracks.
 Upon the initial SYN exchange the lifetime is kept short,
 then increased after both SYN have been seen, then decreased
 again during the final FIN exchange or when a RST is received.
@@ -1647,8 +1792,12 @@ pattern will always fail on them, and the
 operator will make this rule into a pass-all.
 .It Address sets
 .Nm ipfw1
-does not supports address sets (those in the form
+does not support address sets (those in the form
 .Ar addr/masklen{num,num,...} ) .
+.It Table
+.Nm ipfw1
+does not support
+.Cm table .
 .It Port specifications
 .Nm ipfw1
 only allows one port range when specifying TCP and UDP ports, and
@@ -1683,7 +1832,7 @@ does not support Or-blocks.
 .Nm ipfw1
 does not generate keepalives for stateful sessions.
 As a consequence, it might cause idle sessions to drop because
-the lifetime of the dynamic rules expires.
+the lifetime of the states expires.
 .It Sets of rules
 .Nm ipfw1
 does not implement sets of rules.
@@ -1734,7 +1883,7 @@ network to my host:
 .Pp
 .Dl "ipfw add deny ip from 123.45.67.0/24 to my.host.org"
 .Pp
-A first and efficient way to limit access (not using dynamic rules)
+A first and efficient way to limit access (not using states)
 is the use of the following rules:
 .Pp
 .Dl "ipfw add allow tcp from any to any established"
@@ -1769,18 +1918,33 @@ The
 .Nm ipfw1
 syntax would require a separate rule for each IP in the above
 example.
-.Ss DYNAMIC RULES
+.Pp
+If you have large number of discrete addresses to block,
+and the number of addresses to block keep increasing,
+.Cm table
+can be used as below:
+.Pp
+.Dl "... Initialize the blocked address list using table 0 ..."
+.Dl "ipfw table 0 create"
+.Dl "ipfw table 0 add 10.0.0.1 10.1.0.1 172.0.0.1"
+.Dl "... Block the addresses in table 0 ..."
+.Dl "ipfw add deny ip from <0> to any"
+.Dl "... Add more addresses to table 0 any time later..."
+.Dl "ipfw table 0 add 172.1.0.1"
+.Dl "... Expire the addresses unused within the last 24 hours ..."
+.Dl "ipfw table 0 expire 86400"
+.Ss STATES
 In order to protect a site from flood attacks involving fake
-TCP packets, it is safer to use dynamic rules:
+TCP packets, it is safer to use states:
 .Pp
 .Dl "ipfw add check-state"
 .Dl "ipfw add deny tcp from any to any established"
 .Dl "ipfw add allow tcp from my-net to any setup keep-state"
 .Pp
-This will let the firewall install dynamic rules only for
+This will let the firewall install states only for
 those connection which start with a regular SYN packet coming
 from the inside of our network.
-Dynamic rules are checked when encountering the first
+States are checked when encountering the first
 .Cm check-state
 or
 .Cm keep-state
@@ -1804,7 +1968,7 @@ client does not use more than 4 simultaneous connections.
 .Pp
 .Em BEWARE :
 stateful rules can be subject to denial-of-service attacks
-by a SYN-flood which opens a huge number of dynamic rules.
+by a SYN-flood which opens a huge number of states.
 The effects of such attacks can be partially limited by
 acting on a set of
 .Xr sysctl 8
@@ -1966,6 +2130,8 @@ was introduced in
 Stateful extensions were introduced in
 .Fx 4.0 ,
 and were rewritten in
+.Dx 4.9 .
+Table was introduced in
 .Dx 4.9 .
 .Nm ipfw2
 was introduced in Summer 2002.

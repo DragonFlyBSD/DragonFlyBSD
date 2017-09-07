@@ -63,6 +63,7 @@ int		s,			/* main RAW socket */
 		do_quiet,		/* Be quiet in add and flush */
 		do_force,		/* Don't ask for confirmation */
 		do_pipe,		/* this cmd refers to a pipe */
+		do_table,		/* this cmd referes to a table */
 		do_sort,		/* field to sort results (0 = no) */
 		do_dynamic,		/* display dynamic rules */
 		do_expired,		/* display expired dynamic rules */
@@ -648,6 +649,11 @@ print_ip(ipfw_insn_ip *cmd, char *s)
 		printf("me");
 		return;
 	}
+	if (cmd->o.opcode == O_IP_SRC_TABLE ||
+	    cmd->o.opcode == O_IP_DST_TABLE) {
+		printf("<%u>", cmd->o.arg1);
+		return;
+	}
 	if (cmd->o.opcode == O_IP_SRC_SET || cmd->o.opcode == O_IP_DST_SET) {
 		u_int32_t x, *d;
 		int i;
@@ -827,7 +833,9 @@ show_ipfw(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 		char timestr[30];
 
 		if (twidth == 0) {
-			strcpy(timestr, ctime((time_t *)&twidth));
+			time_t t0 = 0;
+
+			strcpy(timestr, ctime((time_t *)&t0));
 			*strchr(timestr, '\n') = '\0';
 			twidth = strlen(timestr);
 		}
@@ -987,6 +995,7 @@ show_ipfw(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 		case O_IP_SRC_MASK:
 		case O_IP_SRC_ME:
 		case O_IP_SRC_SET:
+		case O_IP_SRC_TABLE:
 			show_prerequisites(&flags, HAVE_PROTO, 0);
 			if (!(flags & HAVE_SRCIP))
 				printf(" from");
@@ -1001,6 +1010,7 @@ show_ipfw(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 		case O_IP_DST_MASK:
 		case O_IP_DST_ME:
 		case O_IP_DST_SET:
+		case O_IP_DST_TABLE:
 			show_prerequisites(&flags, HAVE_PROTO|HAVE_SRCIP, 0);
 			if (!(flags & HAVE_DSTIP))
 				printf(" to");
@@ -1777,6 +1787,27 @@ fill_ip(ipfw_insn_ip *cmd, char *av)
 		return;
 	}
 
+	if (strlen(av) >= 3 && av[0] == '<' && av[strlen(av) - 1] == '>') {
+		int pos = strlen(av) - 1;
+		uint16_t tableid;
+		char *eptr;
+
+		/*
+		 * Table: "<tableid>"
+		 */
+		av[pos] = '\0';
+		tableid = strtoul(&av[1], &eptr, 0);
+		if (*eptr != '\0') {
+			av[pos] = '>';
+			errx(EX_DATAERR, "invalid tableid ``%s''", av);
+		}
+		av[pos] = '>';
+		cmd->o.len |= F_INSN_SIZE(ipfw_insn);
+		cmd->o.opcode = O_IP_DST_TABLE;
+		cmd->o.arg1 = tableid;
+		return;
+	}
+
 	p = strchr(av, '/');
 	if (!p)
 		p = strchr(av, ':');
@@ -2450,6 +2481,8 @@ add_srcip(ipfw_insn *cmd, char *av)
 	fill_ip((ipfw_insn_ip *)cmd, av);
 	if (cmd->opcode == O_IP_DST_SET)			/* set */
 		cmd->opcode = O_IP_SRC_SET;
+	else if (cmd->opcode == O_IP_DST_TABLE)			/* table */
+		cmd->opcode = O_IP_SRC_TABLE;
 	else if (F_LEN(cmd) == F_INSN_SIZE(ipfw_insn))		/* me */
 		cmd->opcode = O_IP_SRC_ME;
 	else if (F_LEN(cmd) == F_INSN_SIZE(ipfw_insn_u32))	/* one IP */
@@ -2464,6 +2497,8 @@ add_dstip(ipfw_insn *cmd, char *av)
 {
 	fill_ip((ipfw_insn_ip *)cmd, av);
 	if (cmd->opcode == O_IP_DST_SET)			/* set */
+		;
+	else if (cmd->opcode == O_IP_DST_TABLE)			/* table */
 		;
 	else if (F_LEN(cmd) == F_INSN_SIZE(ipfw_insn))		/* me */
 		cmd->opcode = O_IP_DST_ME;
@@ -3368,6 +3403,410 @@ flush(void)
 		printf("Flushed all %s.\n", do_pipe ? "pipes" : "rules");
 }
 
+static void
+table_create(int ac, char **av)
+{
+	struct ipfw_ioc_table tbl;
+	char *eptr;
+
+	ac--;
+	av++;
+
+	if (ac == 0)
+		errx(EX_DATAERR, "missing table id");
+
+	memset(&tbl, 0, sizeof(tbl));
+	tbl.tableid = strtoul(*av, &eptr, 0);
+	if (*eptr != '\0')
+		errx(EX_DATAERR, "invalid table id %s", *av);
+	if (setsockopt(s, IPPROTO_IP, IP_FW_TBL_CREATE, &tbl, sizeof(tbl)) < 0)
+		err(EX_UNAVAILABLE, "setsockopt(IP_FW_TBL_CREATE)");
+	if (!do_quiet)
+		printf("Created table %d\n", tbl.tableid);
+}
+
+static void
+table_flush(int ac, char **av, int opt)
+{
+	struct ipfw_ioc_table tbl;
+	char *eptr;
+
+	ac--;
+	av++;
+
+	memset(&tbl, 0, sizeof(tbl));
+
+	if (ac == 0) {
+		if (opt == IP_FW_TBL_FLUSH) {
+			/* Flush all tables */
+			tbl.tableid = -1;
+			goto flush;
+		}
+		errx(EX_DATAERR, "missing table id");
+	}
+
+	tbl.tableid = strtoul(*av, &eptr, 0);
+	if (*eptr != '\0')
+		errx(EX_DATAERR, "invalid table id %s", *av);
+
+flush:
+	if (!do_force && !do_quiet) { /* need to ask user */
+		int c;
+
+		printf("Are you sure? [yn] ");
+		fflush(stdout);
+		do {
+			c = toupper(getc(stdin));
+			while (c != '\n' && getc(stdin) != '\n')
+				if (feof(stdin))
+					return; /* and do not flush */
+		} while (c != 'Y' && c != 'N');
+		printf("\n");
+		if (c == 'N')	/* user said no */
+			return;
+	}
+
+	if (setsockopt(s, IPPROTO_IP, opt, &tbl, sizeof(tbl)) < 0) {
+		err(EX_UNAVAILABLE, "setsockopt(IP_FW_TBL_%s)",
+		    opt == IP_FW_TBL_FLUSH ? "FLUSH" : "DESTROY");
+	}
+	if (!do_quiet) {
+		if (tbl.tableid >= 0) {
+			printf("%sed table %d\n",
+			    opt == IP_FW_TBL_FLUSH ? "Flush" : "Destroy",
+			    tbl.tableid);
+		} else {
+			printf("Flushed all tables\n");
+		}
+	}
+}
+
+static void
+table_list(void)
+{
+	struct ipfw_ioc_tbllist *list;
+	int table_max, i;
+	size_t len;
+	socklen_t len1;
+
+	len = sizeof(table_max);
+	if (sysctlbyname("net.inet.ip.fw.table_max", &table_max, &len,
+	    NULL, 0) < 0)
+		err(EX_UNAVAILABLE, "sysctl net.inet.ip.fw.table_max failed");
+
+	len1 = __offsetof(struct ipfw_ioc_tbllist, tables[table_max]);
+	list = malloc(len1);
+	list->tableid = -1;
+
+	if (getsockopt(s, IPPROTO_IP, IP_FW_TBL_GET, list, &len1) < 0)
+		err(EX_UNAVAILABLE, "getsockopt(IP_FW_TBL_GET)");
+
+	for (i = 0; i < list->tablecnt; ++i)
+		printf("%u\n", list->tables[i]);
+}
+
+/* XXX copied from route(8) */
+static void
+inet_makenetandmask(in_addr_t net, struct sockaddr_in *in,
+    struct sockaddr_in *in_mask, int bits)
+{
+	in_addr_t addr, mask = 0;
+	char *cp;
+
+	/*
+	 * XXX: This approach unable to handle 0.0.0.1/32 correctly
+	 * as inet_network() converts 0.0.0.1 and 1 equally.
+	 */
+	if (net <= 0xff)
+		addr = net << IN_CLASSA_NSHIFT;
+	else if (net <= 0xffff)
+		addr = net << IN_CLASSB_NSHIFT;
+	else if (net <= 0xffffff)
+		addr = net << IN_CLASSC_NSHIFT;
+	else
+		addr = net;
+
+	if (bits != 0)
+		mask = 0xffffffff << (32 - bits);
+	else if (net == 0)
+		mask = 0;
+	else if (IN_CLASSA(addr))
+		mask = IN_CLASSA_NET;
+	else if (IN_CLASSB(addr))
+		mask = IN_CLASSB_NET;
+	else if (IN_CLASSC(addr))
+		mask = IN_CLASSC_NET;
+	else if (IN_MULTICAST(addr))
+		mask = IN_CLASSD_NET;
+	else
+		mask = 0xffffffff;
+
+	in->sin_family = AF_INET;
+	in->sin_len = sizeof(struct sockaddr_in);
+	in->sin_addr.s_addr = htonl(addr);
+
+	if (mask != 0xffffffff) {
+		in_mask->sin_addr.s_addr = htonl(mask);
+		cp = (char *)(&in_mask->sin_addr + 1);
+		while (*--cp == 0 && cp > (char *)in_mask)
+			;
+		in_mask->sin_len = 1 + cp - (char *)in_mask;
+	}
+}
+
+static void
+table_alt(int ac, char **av, int opt)
+{
+	struct ipfw_ioc_tblcont ent;
+	struct ipfw_ioc_tblent *te;
+	char *eptr;
+
+	--ac;
+	++av;
+	if (ac == 0)
+		errx(EX_DATAERR, "missing table id");
+
+	memset(&ent, 0, sizeof(ent));
+	ent.tableid = strtoul(*av, &eptr, 0);
+	ent.entcnt = 1;
+	te = &ent.ent[0];
+	if (*eptr != '\0')
+		errx(EX_DATAERR, "invalid table id %s", *av);
+
+	--ac;
+	++av;
+	if (ac == 0)
+		errx(EX_DATAERR, "missing addresses");
+
+	while (ac > 0) {
+		char *q;
+
+		q = strchr(*av, '/');
+		if (q != NULL) {
+			in_addr_t val;
+			int bits;
+
+			*q = '\0';
+			val = inet_network(*av);
+			*q = '/';
+			if (val == INADDR_NONE) {
+				fflush(stdout);
+				errx(EX_DATAERR, "invalid address %s", *av);
+			}
+
+			bits = strtoul(q + 1, &eptr, 0);
+			if (*eptr != '\0') {
+				fflush(stdout);
+				errx(EX_DATAERR, "invalid address %s", *av);
+			}
+			inet_makenetandmask(val, &te->key, &te->netmask, bits);
+		} else {
+			int n;
+
+			n = inet_pton(AF_INET, *av, &te->key.sin_addr);
+			if (n == 0) {
+				fflush(stdout);
+				errx(EX_DATAERR, "invalid address %s", *av);
+			} else if (n < 0) {
+				fflush(stdout);
+				err(EX_UNAVAILABLE, "inet_pton failed");
+			}
+			te->key.sin_family = AF_INET;
+			te->key.sin_len = sizeof(struct sockaddr_in);
+		}
+
+		if (setsockopt(s, IPPROTO_IP, opt, &ent, sizeof(ent)) < 0) {
+			if (opt == IP_FW_TBL_ADD && errno == EEXIST) {
+				printf("Failed to add %s to table %d\n",
+				     *av, ent.tableid);
+			} else if (opt == IP_FW_TBL_DEL && errno == ESRCH) {
+				printf("Failed to delete %s from table %d\n",
+				     *av, ent.tableid);
+			} else {
+				fflush(stdout);
+				err(EX_UNAVAILABLE, "setsockopt(IP_FW_TBL_%s)",
+				    opt == IP_FW_TBL_ADD ? "ADD" : "DEL");
+			}
+		} else if (!do_quiet) {
+			printf("%sed %s %s table %d\n",
+			    opt == IP_FW_TBL_ADD ? "Add" : "Delet", *av,
+			    opt == IP_FW_TBL_ADD ? "to" : "from", ent.tableid);
+		}
+
+		--ac;
+		++av;
+	}
+}
+
+static void
+table_show(int ac, char **av)
+{
+	struct ipfw_ioc_tblcont *cont = NULL;
+	int tableid, count = 128, i, uwidth = 0, lwidth = 0;
+	char *eptr;
+
+	--ac;
+	++av;
+	if (ac == 0)
+		errx(EX_DATAERR, "missing table id");
+
+	tableid = strtoul(*av, &eptr, 0);
+	if (*eptr != '\0')
+		errx(EX_DATAERR, "invalid table id %s", *av);
+
+	for (;;) {
+		socklen_t len;
+
+		len = __offsetof(struct ipfw_ioc_tblcont, ent[count]);
+		cont = reallocf(cont, len);
+		cont->tableid = tableid;
+
+		if (getsockopt(s, IPPROTO_IP, IP_FW_TBL_GET, cont, &len) < 0) {
+			if (errno == E2BIG) {
+				count *= 2;
+				continue;
+			}
+			err(EX_UNAVAILABLE, "getsockopt(IP_FW_TBL_GET)");
+		}
+		break;
+	}
+	if (cont->entcnt == 0)
+		return;
+
+	if (do_acct) {
+		for (i = 0; i < cont->entcnt; ++i) {
+			int width;
+
+			width = snprintf(NULL, 0, "%ju",
+			    (uintmax_t)cont->ent[i].use);
+			if (width > uwidth)
+				uwidth = width;
+		}
+	}
+
+	for (i = 0; i < cont->entcnt; ++i) {
+		const struct ipfw_ioc_tblent *te = &cont->ent[i];
+		char addr[INET_ADDRSTRLEN];
+
+		if (do_acct)
+			printf("%*ju ", uwidth, (uintmax_t)te->use);
+		if (do_time) {
+			char timestr[30];
+
+			if (lwidth == 0) {
+				time_t t0 = 0;
+
+				strcpy(timestr, ctime(&t0));
+				*strchr(timestr, '\n') = '\0';
+				lwidth = strlen(timestr);
+			}
+			if (te->last_used) {
+				time_t t = _long_to_time(te->last_used);
+
+				strcpy(timestr, ctime(&t));
+				*strchr(timestr, '\n') = '\0';
+				printf("%s ", timestr);
+			} else {
+				printf("%*s ", lwidth, " ");
+			}
+		}
+
+		if (te->netmask.sin_len == 0) {
+			printf("%s\n", inet_ntop(AF_INET,
+			    &te->key.sin_addr, addr, sizeof(addr)));
+		} else {
+			struct sockaddr_in mask;
+			int b;
+
+			memset(&mask, 0, sizeof(mask));
+			memcpy(&mask, &te->netmask,
+			    te->netmask.sin_len);
+			b = ffs(ntohl(te->netmask.sin_addr.s_addr));
+			b = 32 - (b - 1);
+
+			printf("%s/%d\n", inet_ntop(AF_INET,
+			    &te->key.sin_addr, addr, sizeof(addr)), b);
+		}
+	}
+}
+
+static void
+table_zero(int ac, char **av)
+{
+	struct ipfw_ioc_table tbl;
+
+	--ac;
+	++av;
+
+	memset(&tbl, 0, sizeof(tbl));
+	if (ac == 0) {
+		tbl.tableid = -1;
+	} else {
+		char *eptr;
+
+		tbl.tableid = strtoul(*av, &eptr, 0);
+		if (*eptr != '\0')
+			errx(EX_DATAERR, "invalid table id %s", *av);
+	}
+
+	if (setsockopt(s, IPPROTO_IP, IP_FW_TBL_ZERO, &tbl, sizeof(tbl)) < 0)
+		err(EX_UNAVAILABLE, "setsockopt(IP_FW_TBL_ZERO)");
+	if (!do_quiet)
+		printf("Accounting cleared\n");
+}
+
+static void
+table_expire(int ac, char **av)
+{
+	struct ipfw_ioc_tblexp tbl;
+	char *eptr;
+	socklen_t len;
+
+	--ac;
+	++av;
+
+	memset(&tbl, 0, sizeof(tbl));
+	if (ac == 0) {
+		errx(EX_DATAERR, "missing expire time");
+	} else if (ac == 1) {
+		tbl.tableid = -1;
+	} else {
+		tbl.tableid = strtoul(*av, &eptr, 0);
+		if (*eptr != '\0')
+			errx(EX_DATAERR, "invalid table id %s", *av);
+		--ac;
+		++av;
+	}
+
+	tbl.expire = strtoul(*av, &eptr, 0);
+	if (*eptr != '\0')
+		errx(EX_DATAERR, "invalid expire timeout %s", *av);
+
+	if (!do_force && !do_quiet) { /* need to ask user */
+		int c;
+
+		printf("Are you sure? [yn] ");
+		fflush(stdout);
+		do {
+			c = toupper(getc(stdin));
+			while (c != '\n' && getc(stdin) != '\n')
+				if (feof(stdin))
+					return; /* and do not flush */
+		} while (c != 'Y' && c != 'N');
+		printf("\n");
+		if (c == 'N')	/* user said no */
+			return;
+	}
+
+	len = sizeof(tbl);
+	if (getsockopt(s, IPPROTO_IP, IP_FW_TBL_EXPIRE, &tbl, &len) < 0)
+		err(EX_UNAVAILABLE, "getsockopt(IP_FW_TBL_EXPIRE)");
+	if (!do_quiet) {
+		printf("Expired %d address%s\n", tbl.expcnt,
+		    (tbl.expcnt == 0 || tbl.expcnt > 1) ? "es" : "");
+	}
+}
+
 static int
 ipfw_main(int ac, char **av)
 {
@@ -3428,7 +3867,7 @@ ipfw_main(int ac, char **av)
 	NEED1("bad arguments, for usage summary ``ipfw''");
 
 	/*
-	 * optional: pipe or queue
+	 * optional: pipe, queue or table
 	 */
 	if (!strncmp(*av, "pipe", strlen(*av))) {
 		do_pipe = 1;
@@ -3438,18 +3877,49 @@ ipfw_main(int ac, char **av)
 		do_pipe = 2;
 		ac--;
 		av++;
+	} else if (!strncmp(*av, "table", strlen(*av))) {
+		do_table = 1;
+		ac--;
+		av++;
 	}
 	NEED1("missing command");
 
 	/*
-	 * for pipes and queues we normally say 'pipe NN config'
-	 * but the code is easier to parse as 'pipe config NN'
-	 * so we swap the two arguments.
+	 * for pipes, queues and table we normally say 'pipe NN config'
+	 * but the code is easier to parse as 'pipe config NN' so we
+	 * swap the two arguments.
 	 */
-	if (do_pipe > 0 && ac > 1 && *av[0] >= '0' && *av[0] <= '9') {
+	if ((do_pipe > 0 || do_table > 0) && ac > 1 &&
+	    *av[0] >= '0' && *av[0] <= '9') {
 		char *p = av[0];
 		av[0] = av[1];
 		av[1] = p;
+	}
+	if (do_table) {
+		if (!strncmp(*av, "create", strlen(*av)))
+			table_create(ac, av);
+		else if (!strncmp(*av, "destroy", strlen(*av)))
+			table_flush(ac, av, IP_FW_TBL_DESTROY);
+		else if (!strncmp(*av, "list", strlen(*av)))
+			table_list();
+		else if (!strncmp(*av, "add", strlen(*av)))
+			table_alt(ac, av, IP_FW_TBL_ADD);
+		else if (!strncmp(*av, "delete", strlen(*av)))
+			table_alt(ac, av, IP_FW_TBL_DEL);
+		else if (!strncmp(*av, "flush", strlen(*av)))
+			table_flush(ac, av, IP_FW_TBL_FLUSH);
+		else if (!strncmp(*av, "print", strlen(*av)))
+			table_show(ac, av);
+		else if (!strncmp(*av, "show", strlen(*av))) {
+			do_acct++;
+			table_show(ac, av);
+		} else if (!strncmp(*av, "zero", strlen(*av)))
+			table_zero(ac, av);
+		else if (!strncmp(*av, "expire", strlen(*av)))
+			table_expire(ac, av);
+		else
+			errx(EX_USAGE, "bad command `%s'", *av);
+		return 0;
 	}
 	if (!strncmp(*av, "add", strlen(*av)))
 		add(ac, av);
