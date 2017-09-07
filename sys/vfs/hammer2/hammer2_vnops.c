@@ -1758,8 +1758,11 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	dip = VTOI(ap->a_dvp);
 	if (dip->pmp->ronly)
 		return (EROFS);
+#if 0
+	/* allow removals, except user to also bulkfree */
 	if (hammer2_vfs_enospace(dip, 0, ap->a_cred) > 1)
 		return (ENOSPC);
+#endif
 
 	ncp = ap->a_nch->ncp;
 
@@ -1847,8 +1850,11 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	dip = VTOI(ap->a_dvp);
 	if (dip->pmp->ronly)
 		return (EROFS);
+#if 0
+	/* allow removals, except user to also bulkfree */
 	if (hammer2_vfs_enospace(dip, 0, ap->a_cred) > 1)
 		return (ENOSPC);
+#endif
 
 	hammer2_pfs_memory_wait(dip->pmp);
 	hammer2_trans_init(dip->pmp, 0);
