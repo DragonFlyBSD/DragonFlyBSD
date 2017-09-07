@@ -71,6 +71,10 @@ struct vtnet_softc {
 	struct virtqueue	*vtnet_tx_vq;
 	struct virtqueue	*vtnet_ctrl_vq;
 
+	/* controlq, rx, tx and config_change */
+	int			vtnet_cpus[4];
+	int			vtnet_nintr;
+
 	int			vtnet_txhdrcount;
 	struct vtnet_tx_header	*vtnet_txhdrarea;
 	SLIST_HEAD(, vtnet_tx_header)

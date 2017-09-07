@@ -198,9 +198,46 @@ virtio_alloc_virtqueues(device_t dev, int flags, int nvqs,
 }
 
 int
-virtio_setup_intr(device_t dev, lwkt_serialize_t slz)
+virtio_setup_intr(device_t dev, uint irq, lwkt_serialize_t slz)
 {
-	return (VIRTIO_BUS_SETUP_INTR(device_get_parent(dev), slz));
+	return (VIRTIO_BUS_SETUP_INTR(device_get_parent(dev), irq, slz));
+}
+
+int
+virtio_teardown_intr(device_t dev, uint irq)
+{
+	return (VIRTIO_BUS_TEARDOWN_INTR(device_get_parent(dev), irq));
+}
+
+int
+virtio_intr_count(device_t dev)
+{
+	return (VIRTIO_BUS_INTR_COUNT(device_get_parent(dev)));
+}
+
+int
+virtio_intr_alloc(device_t dev, int *cnt, int use_config, int *cpus)
+{
+	return (VIRTIO_BUS_INTR_ALLOC(device_get_parent(dev), cnt, use_config,
+				      cpus));
+}
+
+int
+virtio_intr_release(device_t dev)
+{
+	return (VIRTIO_BUS_INTR_RELEASE(device_get_parent(dev)));
+}
+
+int
+virtio_bind_intr(device_t dev, uint irq, int what)
+{
+	return (VIRTIO_BUS_BIND_INTR(device_get_parent(dev), irq, what));
+}
+
+int
+virtio_unbind_intr(device_t dev, int what)
+{
+	return (VIRTIO_BUS_UNBIND_INTR(device_get_parent(dev), what));
 }
 
 int

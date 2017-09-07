@@ -83,6 +83,7 @@ static int	vtnet_shutdown(device_t);
 static int	vtnet_config_change(device_t);
 
 static void	vtnet_negotiate_features(struct vtnet_softc *);
+static int	vtnet_alloc_intrs(struct vtnet_softc *);
 static int	vtnet_alloc_virtqueues(struct vtnet_softc *);
 static void	vtnet_get_hwaddr(struct vtnet_softc *);
 static void	vtnet_set_hwaddr(struct vtnet_softc *);
@@ -248,7 +249,7 @@ static int
 vtnet_attach(device_t dev)
 {
 	struct vtnet_softc *sc;
-	int error;
+	int i, error;
 
 	sc = device_get_softc(dev);
 	sc->vtnet_dev = dev;
@@ -301,10 +302,55 @@ vtnet_attach(device_t dev)
 	/* Read (or generate) the MAC address for the adapter. */
 	vtnet_get_hwaddr(sc);
 
+	error = vtnet_alloc_intrs(sc);
+	if (error) {
+		device_printf(dev, "cannot allocate interrupts\n");
+		goto fail;
+	}
+
 	error = vtnet_alloc_virtqueues(sc);
 	if (error) {
 		device_printf(dev, "cannot allocate virtqueues\n");
 		goto fail;
+	}
+
+	if (sc->vtnet_nintr == 1) {
+		for (i = 0; i < 2; i++) {
+			/* Everything is on IRQ vector 0. */
+			error = virtio_bind_intr(dev, 0, i);
+			if (error) {
+				device_printf(dev,
+				    "cannot bind virtqueue IRQs\n");
+				goto fail;
+			}
+		}
+	} else if (sc->vtnet_nintr == 2) {
+		for (i = 0; i < 2; i++) {
+			/* All virtqueues use the second IRQ vector. */
+			error = virtio_bind_intr(dev, 1, i);
+			if (error) {
+				device_printf(dev,
+				    "cannot bind virtqueue IRQs\n");
+				goto fail;
+			}
+		}
+	} else {
+		for (i = 0; i < 2; i++) {
+			/* Use IRQ vectors 1 and 2 for the virtqueues. */
+			error = virtio_bind_intr(dev, i + 1, i);
+			if (error) {
+				device_printf(dev,
+				    "cannot bind virtqueue IRQs\n");
+				goto fail;
+			}
+		}
+	}
+	if (virtio_with_feature(dev, VIRTIO_NET_F_STATUS)) {
+		error = virtio_bind_intr(dev, 0, -1);
+		if (error) {
+			device_printf(dev, "cannot bind config_change IRQ\n");
+			goto fail;
+		}
 	}
 
 	error = vtnet_setup_interface(sc);
@@ -315,11 +361,14 @@ vtnet_attach(device_t dev)
 
 	TASK_INIT(&sc->vtnet_cfgchg_task, 0, vtnet_config_change_task, sc);
 
-	error = virtio_setup_intr(dev, &sc->vtnet_slz);
-	if (error) {
-		device_printf(dev, "cannot setup virtqueue interrupts\n");
-		ether_ifdetach(sc->vtnet_ifp);
-		goto fail;
+	for (i = 0; i < sc->vtnet_nintr; i++) {
+		error = virtio_setup_intr(dev, i, &sc->vtnet_slz);
+		if (error) {
+			device_printf(dev, "cannot setup virtqueue "
+			    "interrupts\n");
+			ether_ifdetach(sc->vtnet_ifp);
+			goto fail;
+		}
 	}
 
 	if ((sc->vtnet_flags & VTNET_FLAG_MAC) == 0) {
@@ -526,6 +575,45 @@ vtnet_negotiate_features(struct vtnet_softc *sc)
 }
 
 static int
+vtnet_alloc_intrs(struct vtnet_softc *sc)
+{
+        int cnt, error;
+	int intrcount = virtio_intr_count(sc->vtnet_dev);
+	int i;
+	int use_config;
+
+	if (virtio_with_feature(sc->vtnet_dev, VIRTIO_NET_F_STATUS)) {
+		use_config = 1;
+		/* We can use a maximum of 3 interrupt vectors. */
+		intrcount = imin(intrcount, 3);
+	} else {
+		/* We can use a maximum of 2 interrupt vectors. */
+		intrcount = imin(intrcount, 2);
+	}
+
+	if (intrcount < 1)
+		return (ENXIO);
+
+	/*
+	 * XXX We should explicitly set the cpus for the rx/tx threads, to
+	 *     only use cpus, where the network stack is running.
+	 */
+	for (i = 0; i < intrcount; i++)
+		sc->vtnet_cpus[i] = -1;
+
+	cnt = intrcount;
+        error = virtio_intr_alloc(sc->vtnet_dev, &cnt, use_config,
+	    sc->vtnet_cpus);
+        if (error != 0) {
+		virtio_intr_release(sc->vtnet_dev);
+                return (error);
+	}
+	sc->vtnet_nintr = cnt;
+
+        return (0);
+}
+
+static int
 vtnet_alloc_virtqueues(struct vtnet_softc *sc)
 {
 	device_t dev;
@@ -622,6 +710,9 @@ vtnet_setup_interface(struct vtnet_softc *sc)
 	ifq_set_ready(&ifp->if_snd);
 
 	ether_ifattach(ifp, sc->vtnet_hwaddr, NULL);
+
+	/* The Tx IRQ is currently always the last allocated interrupt. */
+	ifq_set_cpuid(&ifp->if_snd, sc->vtnet_cpus[sc->vtnet_nintr - 1]);
 
 	/* Tell the upper layer(s) we support long frames. */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);

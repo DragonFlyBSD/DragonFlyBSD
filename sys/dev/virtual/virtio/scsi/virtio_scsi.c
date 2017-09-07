@@ -75,6 +75,7 @@ static void	vtscsi_negotiate_features(struct vtscsi_softc *);
 static void	vtscsi_read_config(struct vtscsi_softc *,
 		    struct virtio_scsi_config *);
 static int	vtscsi_maximum_segments(struct vtscsi_softc *, int);
+static int	vtscsi_alloc_intrs(struct vtscsi_softc *);
 static int	vtscsi_alloc_virtqueues(struct vtscsi_softc *);
 static void	vtscsi_write_device_config(struct vtscsi_softc *);
 static int	vtscsi_reinit(struct vtscsi_softc *);
@@ -266,7 +267,7 @@ vtscsi_attach(device_t dev)
 {
 	struct vtscsi_softc *sc;
 	struct virtio_scsi_config scsicfg;
-	int error;
+	int i, error;
 
 	sc = device_get_softc(dev);
 	sc->vtscsi_dev = dev;
@@ -306,9 +307,58 @@ vtscsi_attach(device_t dev)
 		goto fail;
 	}
 
+	error = vtscsi_alloc_intrs(sc);
+	if (error) {
+		device_printf(dev, "cannot allocate interrupts\n");
+		goto fail;
+	}
+
 	error = vtscsi_alloc_virtqueues(sc);
 	if (error) {
 		device_printf(dev, "cannot allocate virtqueues\n");
+		goto fail;
+	}
+
+	switch (sc->vtscsi_nintr) {
+	case 1:
+		for (i = 0; i < 3; i++) {
+			error = virtio_bind_intr(sc->vtscsi_dev, 0, i);
+			if (error) {
+				device_printf(dev,
+				    "cannot bind virtqueue IRQs\n");
+				goto fail;
+			}
+		}
+		break;
+	case 2:
+		for (i = 0; i < 2; i++) {
+			error = virtio_bind_intr(sc->vtscsi_dev, 0, i);
+			if (error) {
+				device_printf(dev,
+				    "cannot bind virtqueue IRQs\n");
+				goto fail;
+			}
+		}
+		/* Give the requestq its own interrupt vector. */
+		error = virtio_bind_intr(sc->vtscsi_dev, 1, 2);
+		if (error) {
+			device_printf(dev, "cannot bind virtqueue IRQs\n");
+			goto fail;
+		}
+		break;
+	case 3:
+		for (i = 0; i < 3; i++) {
+			error = virtio_bind_intr(sc->vtscsi_dev, i, i);
+			if (error) {
+				device_printf(dev,
+				    "cannot bind virtqueue IRQs\n");
+				goto fail;
+			}
+		}
+		break;
+	default:
+		device_printf(dev, "Invalid interrupt vector count: %d\n",
+		    sc->vtscsi_nintr);
 		goto fail;
 	}
 
@@ -330,10 +380,13 @@ vtscsi_attach(device_t dev)
 		goto fail;
 	}
 
-	error = virtio_setup_intr(dev, NULL);
-	if (error) {
-		device_printf(dev, "cannot setup virtqueue interrupts\n");
-		goto fail;
+	for (i = 0; i < sc->vtscsi_nintr; i++) {
+		error = virtio_setup_intr(dev, i, NULL);
+		if (error) {
+			device_printf(dev, "cannot setup virtqueue "
+			    "interrupts\n");
+			goto fail;
+		}
 	}
 
 	vtscsi_enable_vqs_intr(sc);
@@ -453,6 +506,30 @@ vtscsi_maximum_segments(struct vtscsi_softc *sc, int seg_max)
 		nsegs += 1;
 
 	return (nsegs);
+}
+
+
+static int
+vtscsi_alloc_intrs(struct vtscsi_softc *sc)
+{
+	int intrcount = virtio_intr_count(sc->vtscsi_dev);
+	int cnt, i, error;
+
+	for (i = 0; i < NELEM(sc->vtscsi_cpus); i++)
+		sc->vtscsi_cpus[i] = -1;
+
+	intrcount = imin(intrcount, 3);
+	if (intrcount < 1)
+		return (ENXIO);
+
+	cnt = intrcount;
+	error = virtio_intr_alloc(sc->vtscsi_dev, &cnt, 0, sc->vtscsi_cpus);
+	if (error != 0) {
+		virtio_intr_release(sc->vtscsi_dev);
+		return (error);
+	}
+	sc->vtscsi_nintr = cnt;
+	return (0);
 }
 
 static int

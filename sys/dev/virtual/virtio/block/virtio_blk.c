@@ -115,11 +115,12 @@ static int	vtblk_resume(device_t);
 static int	vtblk_shutdown(device_t);
 
 static void	vtblk_negotiate_features(struct vtblk_softc *);
+static int	vtblk_alloc_intr(struct vtblk_softc *);
 static int	vtblk_maximum_segments(struct vtblk_softc *,
 		    struct virtio_blk_config *);
 static int	vtblk_alloc_virtqueue(struct vtblk_softc *);
 static void	vtblk_set_write_cache(struct vtblk_softc *, int);
-static int	vtblk_write_cache_enabled(struct vtblk_softc *sc,
+static int	vtblk_write_cache_enabled(struct vtblk_softc *,
 		    struct virtio_blk_config *);
 static int	vtblk_write_cache_sysctl(SYSCTL_HANDLER_ARGS);
 static void	vtblk_alloc_disk(struct vtblk_softc *,
@@ -292,9 +293,21 @@ vtblk_attach(device_t dev)
 		goto fail;
 	}
 
+	error = vtblk_alloc_intr(sc);
+	if (error) {
+		device_printf(dev, "cannot allocate interrupt\n");
+		goto fail;
+	}
+
 	error = vtblk_alloc_virtqueue(sc);
 	if (error) {
 		device_printf(dev, "cannot allocate virtqueue\n");
+		goto fail;
+	}
+
+	error = virtio_bind_intr(sc->vtblk_dev, 0, 0);
+	if (error) {
+		device_printf(dev, "cannot assign virtqueue to interrupt\n");
 		goto fail;
 	}
 
@@ -304,7 +317,7 @@ vtblk_attach(device_t dev)
 		goto fail;
 	}
 
-	error = virtio_setup_intr(dev, &sc->vtblk_slz);
+	error = virtio_setup_intr(dev, 0, &sc->vtblk_slz);
 	if (error) {
 		device_printf(dev, "cannot setup virtqueue interrupt\n");
 		goto fail;
@@ -519,6 +532,21 @@ vtblk_maximum_segments(struct vtblk_softc *sc,
 		nsegs = MIN(nsegs, VIRTIO_MAX_INDIRECT);
 
 	return (nsegs);
+}
+
+static int
+vtblk_alloc_intr(struct vtblk_softc *sc)
+{
+	int cnt = 1;
+	int error;
+
+	error = virtio_intr_alloc(sc->vtblk_dev, &cnt, 0, NULL);
+	if (error != 0)
+		return (error);
+	else if (cnt != 1)
+		return (ENXIO);
+
+	return (0);
 }
 
 static int

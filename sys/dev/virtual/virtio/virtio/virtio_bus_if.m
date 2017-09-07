@@ -38,9 +38,35 @@ METHOD uint64_t negotiate_features {
 	uint64_t	child_features;
 };
 
+METHOD int bind_intr {
+	device_t	dev;
+	uint		irq;
+	int		what;
+};
+
+METHOD int unbind_intr {
+	device_t	dev;
+	int		what;
+};
+
 METHOD int with_feature {
 	device_t	dev;
 	uint64_t	feature;
+};
+
+METHOD int intr_count {
+	device_t	dev;
+};
+
+METHOD int intr_alloc {
+	device_t	dev;
+	int		*cnt;
+	int		use_config;
+	int		*cpus;
+};
+
+METHOD int intr_release {
+	device_t	dev;
 };
 
 METHOD int alloc_virtqueues {
@@ -55,7 +81,13 @@ HEADER {
 
 METHOD int setup_intr {
 	device_t		dev;
+	uint			irq;
 	lwkt_serialize_t	slz;
+};
+
+METHOD int teardown_intr {
+	device_t		dev;
+	uint			irq;
 };
 
 METHOD void stop {

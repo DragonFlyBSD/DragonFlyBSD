@@ -82,6 +82,9 @@ struct vtscsi_softc {
 				 vtscsi_event_bufs[VTSCSI_NUM_EVENT_BUFS];
 
 	struct vtscsi_statistics vtscsi_stats;
+
+	int			 vtscsi_cpus[4];
+	int			 vtscsi_nintr;
 };
 
 enum vtscsi_request_state {
