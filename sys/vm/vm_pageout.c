@@ -134,6 +134,7 @@ static int vm_pageout_req_swapout;
 static int vm_daemon_needed;
 #endif
 static int vm_max_launder = 4096;
+static int vm_emerg_launder = 100;
 static int vm_pageout_stats_max=0, vm_pageout_stats_interval = 0;
 static int vm_pageout_full_stats_interval = 0;
 static int vm_pageout_stats_free_max=0, vm_pageout_algorithm=0;
@@ -163,6 +164,8 @@ SYSCTL_INT(_vm, OID_AUTO, page_free_hysteresis,
 
 SYSCTL_INT(_vm, OID_AUTO, max_launder,
 	CTLFLAG_RW, &vm_max_launder, 0, "Limit dirty flushes in pageout");
+SYSCTL_INT(_vm, OID_AUTO, emerg_launder,
+	CTLFLAG_RW, &vm_emerg_launder, 0, "Emergency pager minimum");
 
 SYSCTL_INT(_vm, OID_AUTO, pageout_stats_max,
 	CTLFLAG_RW, &vm_pageout_stats_max, 0, "Max pageout stats scan length");
@@ -2180,7 +2183,15 @@ skip_setup:
 		 * avail_shortage can starve the active queue with
 		 * unnecessary active->inactive transitions and destroy
 		 * performance.
+		 *
+		 * If this is the emergency pager, always try to move
+		 * a few pages from active to inactive because the inactive
+		 * queue might have enough pages, but not enough anonymous
+		 * pages.
 		 */
+		if (isep && inactive_shortage < vm_emerg_launder)
+			inactive_shortage = vm_emerg_launder;
+
 		if (/*avail_shortage > 0 ||*/ inactive_shortage > 0) {
 			int delta = 0;
 
@@ -2233,11 +2244,15 @@ skip_setup:
 			} else if (pass < 10) {
 				/*
 				 * Normal operation, fewer processes.  Delay
-				 * a bit but allow wakeups.
+				 * a bit but allow wakeups.  vm_pages_needed
+				 * is only adjusted against the primary
+				 * pagedaemon here.
 				 */
-				vm_pages_needed = 0;
+				if (isep == 0)
+					vm_pages_needed = 0;
 				tsleep(&vm_pages_needed, 0, "pdelay", hz / 10);
-				vm_pages_needed = 1;
+				if (isep == 0)
+					vm_pages_needed = 1;
 			} else if (swap_pager_full == 0) {
 				/*
 				 * We've taken too many passes, forced delay.
