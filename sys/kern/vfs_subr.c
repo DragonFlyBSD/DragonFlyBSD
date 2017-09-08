@@ -83,6 +83,7 @@
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
 #include <sys/mplock2.h>
+#include <vm/vm_page2.h>
 
 #include <netinet/in.h>
 
@@ -869,21 +870,32 @@ vfsync_bp(struct buf *bp, void *data)
 
 	if (info->synchronous) {
 		/*
-		 * Synchronous flushing.  An error may be returned.
+		 * Synchronous flush.  An error may be returned and will
+		 * stop the scan.
 		 */
 		bremfree(bp);
 		error = bwrite(bp);
-	} else { 
+	} else {
 		/*
-		 * Asynchronous flushing.  A negative return value simply
-		 * stops the scan and is not considered an error.  We use
-		 * this to support limited MNT_LAZY flushes.
+		 * Asynchronous flush.  We use the error return to support
+		 * MNT_LAZY flushes.
+		 *
+		 * In low-memory situations we revert to synchronous
+		 * operation.  This should theoretically prevent the I/O
+		 * path from exhausting memory in a non-recoverable way.
 		 */
 		vp->v_lazyw = bp->b_loffset;
 		bremfree(bp);
-		info->lazycount += cluster_awrite(bp);
-		waitrunningbufspace();
-		vm_wait_nominal();
+		if (vm_page_count_min(0)) {
+			/* low memory */
+			info->lazycount += bp->b_bufsize;
+			bwrite(bp);
+		} else {
+			/* normal */
+			info->lazycount += cluster_awrite(bp);
+			waitrunningbufspace();
+			/*vm_wait_nominal();*/
+		}
 		if (info->lazylimit && info->lazycount >= info->lazylimit)
 			error = 1;
 		else
