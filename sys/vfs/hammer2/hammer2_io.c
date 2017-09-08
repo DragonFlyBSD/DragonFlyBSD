@@ -303,6 +303,9 @@ hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize, int op)
 				      dio->psize, &dio->bp);
 		}
 		if (dio->bp) {
+			/*
+			 * Handle NEW flags
+			 */
 			switch(op) {
 			case HAMMER2_DOP_NEW:
 				bzero(hammer2_io_data(dio, lbase), lsize);
@@ -311,6 +314,20 @@ hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize, int op)
 				atomic_set_long(&dio->refs, HAMMER2_DIO_DIRTY);
 				break;
 			case HAMMER2_DOP_READ:
+			default:
+				break;
+			}
+
+			/*
+			 * Tell the kernel that the buffer cache is not
+			 * meta-data based on the btype.  This allows
+			 * swapcache to distinguish between data and
+			 * meta-data.
+			 */
+			switch(btype) {
+			case HAMMER2_BREF_TYPE_DATA:
+				dio->bp->b_flags |= B_NOTMETA;
+				break;
 			default:
 				break;
 			}
