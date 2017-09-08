@@ -401,9 +401,23 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 
 		/*
 		 * Scan topology for stuff inside this range.
+		 *
+		 * NOTE - By not using a transaction the operation can
+		 *	  run concurrent with the frontend as well as
+		 *	  with flushes.
+		 *
+		 *	  We cannot safely set a mtid without a transaction,
+		 *	  and in fact we don't want to set one anyway.  We
+		 *	  want the bulkfree to be passive and no interfere
+		 *	  with crash recovery.
 		 */
+#undef HAMMER2_BULKFREE_TRANS	/* undef - don't use transaction */
+#ifdef HAMMER2_BULKFREE_TRANS
 		hammer2_trans_init(hmp->spmp, 0);
 		cbinfo.mtid = hammer2_trans_sub(hmp->spmp);
+#else
+		cbinfo.mtid = 0;
+#endif
 		cbinfo.pri = 0;
 		error |= hammer2_bulk_scan(vchain, h2_bulkfree_callback,
 					   &cbinfo);
@@ -446,7 +460,9 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 		/*
 		 * Cleanup for next loop.
 		 */
+#ifdef HAMMER2_BULKFREE_TRANS
 		hammer2_trans_done(hmp->spmp);
+#endif
 		if (error)
 			break;
 		cbinfo.sbase = cbinfo.sstop;
