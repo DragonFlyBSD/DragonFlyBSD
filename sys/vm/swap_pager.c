@@ -1559,8 +1559,11 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 	 * pageout daemon to prevent any single user process limited
 	 * via RLIMIT_RSS from hogging swap write bandwidth.
 	 */
-	if (curthread != pagethread && swap_user_async == 0)
+	if (curthread != pagethread &&
+	    curthread != emergpager &&
+	    swap_user_async == 0) {
 		flags |= VM_PAGER_PUT_SYNC;
+	}
 
 	/*
 	 * Step 2

@@ -265,13 +265,16 @@ struct dev_ops {
 
 /*
  * Flags for d_flags.
+ *
+ * D_NOEMERGPGR		Indicates complex layering, the emergency pager
+ *			should skip buffers related to such devices.
  */
 #define D_MEMDISK	0x00010000	/* memory type disk */
 #define D_NAGGED	0x00020000	/* nagged about missing make_dev() */
 #define D_CANFREE	0x00040000	/* can free blocks */
 #define D_TRACKCLOSE	0x00080000	/* track all closes */
 #define D_MASTER	0x00100000	/* used by pty/tty code */
-#define D_UNUSED200000	0x00200000
+#define D_NOEMERGPGR	0x00200000	/* too complex for emergency pager */
 #define D_MPSAFE	0x00400000	/* all dev_d*() calls are MPSAFE */
 
 /*

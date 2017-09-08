@@ -78,6 +78,7 @@
 #include <sys/signalvar.h>
 #include <sys/vnode.h>
 #include <sys/vmmeter.h>
+#include <sys/conf.h>
 #include <sys/sysctl.h>
 
 #include <vm/vm.h>
@@ -106,7 +107,7 @@ static int vm_pageout_page(vm_page_t m, int *max_launderp,
 static int vm_pageout_clean_helper (vm_page_t, int);
 static int vm_pageout_free_page_calc (vm_size_t count);
 static void vm_pageout_page_free(vm_page_t m) ;
-static struct thread *emergpager;
+struct thread *emergpager;
 struct thread *pagethread;
 static int sequence_emerg_pager;
 
@@ -835,10 +836,42 @@ vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
 		 * The emergency pager runs when the primary pager gets
 		 * stuck, which typically means the primary pager deadlocked
 		 * on a vnode-backed page.  Therefore, the emergency pager
-		 * must skip vnode-backed pages.
+		 * must skip any complex objects.
+		 *
+		 * We disallow VNODEs unless they are VCHR whos device ops
+		 * does not flag D_NOEMERGPGR.
 		 */
-		if (isep) {
-			if (m->object && m->object->type == OBJT_VNODE) {
+		if (isep && m->object) {
+			struct vnode *vp;
+
+			switch(m->object->type) {
+			case OBJT_DEFAULT:
+			case OBJT_SWAP:
+				/*
+				 * Allow anonymous memory and assume that
+				 * swap devices are not complex, since its
+				 * kinda worthless if we can't swap out dirty
+				 * anonymous pages.
+				 */
+				break;
+			case OBJT_VNODE:
+				/*
+				 * Allow VCHR device if the D_NOEMERGPGR
+				 * flag is not set, deny other vnode types
+				 * as being too complex.
+				 */
+				vp = m->object->handle;
+				if (vp && vp->v_type == VCHR &&
+				    vp->v_rdev && vp->v_rdev->si_ops &&
+				    (vp->v_rdev->si_ops->head.flags &
+				     D_NOEMERGPGR) == 0) {
+					break;
+				}
+				/* Deny - fall through */
+			default:
+				/*
+				 * Deny
+				 */
 				vm_page_wakeup(m);
 				vm_page_queues_spin_lock(PQ_INACTIVE + q);
 				lwkt_yield();

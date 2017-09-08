@@ -512,7 +512,9 @@ extern int nprocs, maxproc;		/* Current and max number of procs. */
 extern int maxprocperuid;		/* Max procs per uid. */
 
 extern struct proc *initproc;		/* Process slot for init */
-extern struct thread *pagethread, *updatethread;
+extern struct thread *pagethread;
+extern struct thread *emergpager;
+extern struct thread *updatethread;
 
 /*
  * Scheduler independant variables.  The primary scheduler polling frequency,

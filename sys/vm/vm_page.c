@@ -2171,7 +2171,8 @@ vm_wait(int timo)
 		timo = hz;
 	lwkt_gettoken(&vm_token);
 
-	if (curthread == pagethread) {
+	if (curthread == pagethread ||
+	    curthread == emergpager) {
 		/*
 		 * The pageout daemon itself needs pages, this is bad.
 		 */

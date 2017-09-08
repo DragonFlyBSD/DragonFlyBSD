@@ -101,12 +101,13 @@ DEVFS_DEFINE_CLONE_BITMAP(vn);
 
 /*
  * dev_ops
- *	D_DISK		we want to look like a disk
+ *	D_DISK		We want to look like a disk
  *	D_CANFREE	We support BUF_CMD_FREEBLKS
+ *	D_NOEMERGPGR	Too complex for emergency pager
  */
 
 static struct dev_ops vn_ops = {
-	{ "vn", 0, D_DISK | D_CANFREE },
+	{ "vn", 0, D_DISK | D_CANFREE | D_NOEMERGPGR },
 	.d_open =	vnopen,
 	.d_close =	vnclose,
 	.d_read =	physread,

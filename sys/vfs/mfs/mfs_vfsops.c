@@ -85,7 +85,7 @@ d_close_t	mfsclose;
 d_strategy_t	mfsstrategy;
 
 static struct dev_ops mfs_ops = {
-	{ "MFS", -1, D_DISK },
+	{ "MFS", -1, D_DISK | D_NOEMERGPGR },
 	.d_open =	mfsopen,
 	.d_close =	mfsclose,
 	.d_read =	physread,

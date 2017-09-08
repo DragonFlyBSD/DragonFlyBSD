@@ -133,8 +133,20 @@ static LIST_HEAD(, disk) disklist = LIST_HEAD_INITIALIZER(&disklist);
 static struct lwkt_token disklist_token;
 static struct lwkt_token ds_token;
 
-static struct dev_ops disk_ops = {
+static struct dev_ops disk1_ops = {
 	{ "disk", 0, D_DISK | D_MPSAFE | D_TRACKCLOSE },
+	.d_open = diskopen,
+	.d_close = diskclose,
+	.d_read = physread,
+	.d_write = physwrite,
+	.d_ioctl = diskioctl,
+	.d_strategy = diskstrategy,
+	.d_dump = diskdump,
+	.d_psize = diskpsize,
+};
+
+static struct dev_ops disk2_ops = {
+	{ "disk", 0, D_DISK | D_MPSAFE | D_TRACKCLOSE | D_NOEMERGPGR },
 	.d_open = diskopen,
 	.d_close = diskclose,
 	.d_read = physread,
@@ -172,6 +184,7 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 	struct disk_info *info = &dp->d_info;
 	struct diskslice *sp = &dp->d_slice->dss_slices[slice];
 	disklabel_ops_t ops;
+	struct dev_ops *dops;
 	struct partinfo part;
 	const char *msg;
 	char uuid_buf[128];
@@ -183,6 +196,8 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 		   dev->si_name, dp->d_cdev->si_name);
 
 	sno = slice ? slice - 1 : 0;
+	dops = (dp->d_rawdev->si_ops->head.flags & D_NOEMERGPGR) ?
+		&disk2_ops : &disk1_ops;
 
 	ops = &disklabel32_ops;
 	msg = ops->op_readdisklabel(dev, sp, &sp->ds_label, info);
@@ -227,7 +242,8 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 						udev_dict_set_cstr(ndev, "uuid", uuid_buf);
 					}
 				} else {
-					ndev = make_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
+					ndev = make_dev_covering(dops,
+						dp->d_rawdev->si_ops,
 						dkmakeminor(dkunit(dp->d_cdev),
 							    slice, i),
 						UID_ROOT, GID_OPERATOR, 0640,
@@ -311,6 +327,7 @@ disk_probe(struct disk *dp, int reprobe)
 	int error, i, sno;
 	struct diskslices *osp;
 	struct diskslice *sp;
+	struct dev_ops *dops;
 	char uuid_buf[128];
 
 	KKASSERT (info->d_media_blksize != 0);
@@ -324,6 +341,9 @@ disk_probe(struct disk *dp, int reprobe)
 		dsgone(&osp);
 		return;
 	}
+
+	dops = (dp->d_rawdev->si_ops->head.flags & D_NOEMERGPGR) ?
+		&disk2_ops : &disk1_ops;
 
 	for (i = 0; i < dp->d_slice->dss_nslices; i++) {
 		/*
@@ -391,7 +411,7 @@ disk_probe(struct disk *dp, int reprobe)
 			/*
 			 * Else create new device
 			 */
-			ndev = make_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
+			ndev = make_dev_covering(dops, dp->d_rawdev->si_ops,
 					dkmakewholeslice(dkunit(dev), i),
 					UID_ROOT, GID_OPERATOR, 0640,
 					(info->d_dsflags & DSO_DEVICEMAPPER)?
@@ -641,6 +661,7 @@ _disk_create_named(const char *name, int unit, struct disk *dp,
 		   struct dev_ops *raw_ops, int clone)
 {
 	cdev_t rawdev;
+	struct dev_ops *dops;
 
 	disk_debug(1, "disk_create (begin): %s%d\n", name, unit);
 
@@ -655,20 +676,22 @@ _disk_create_named(const char *name, int unit, struct disk *dp,
 
 	bzero(dp, sizeof(*dp));
 
+	dops = (raw_ops->head.flags & D_NOEMERGPGR) ? &disk2_ops : &disk1_ops;
+
 	dp->d_rawdev = rawdev;
 	dp->d_raw_ops = raw_ops;
-	dp->d_dev_ops = &disk_ops;
+	dp->d_dev_ops = dops;
 
 	if (name) {
 		if (clone) {
 			dp->d_cdev = make_only_dev_covering(
-					&disk_ops, dp->d_rawdev->si_ops,
+					dops, dp->d_rawdev->si_ops,
 					dkmakewholedisk(unit),
 					UID_ROOT, GID_OPERATOR, 0640,
 					"%s", name);
 		} else {
 			dp->d_cdev = make_dev_covering(
-					&disk_ops, dp->d_rawdev->si_ops,
+					dops, dp->d_rawdev->si_ops,
 					dkmakewholedisk(unit),
 					UID_ROOT, GID_OPERATOR, 0640,
 					"%s", name);
@@ -676,13 +699,13 @@ _disk_create_named(const char *name, int unit, struct disk *dp,
 	} else {
 		if (clone) {
 			dp->d_cdev = make_only_dev_covering(
-					&disk_ops, dp->d_rawdev->si_ops,
+					dops, dp->d_rawdev->si_ops,
 					dkmakewholedisk(unit),
 					UID_ROOT, GID_OPERATOR, 0640,
 					"%s%d", raw_ops->head.name, unit);
 		} else {
 			dp->d_cdev = make_dev_covering(
-					&disk_ops, dp->d_rawdev->si_ops,
+					dops, dp->d_rawdev->si_ops,
 					dkmakewholedisk(unit),
 					UID_ROOT, GID_OPERATOR, 0640,
 					"%s%d", raw_ops->head.name, unit);
