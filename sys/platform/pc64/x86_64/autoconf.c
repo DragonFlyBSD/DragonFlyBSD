@@ -85,10 +85,6 @@ static void	configure_first (void *);
 static void	configure (void *);
 static void	configure_final (void *);
 
-#if defined(FFS) && defined(FFS_ROOT)
-static void	setroot (void);
-#endif
-
 #if defined(NFS) && defined(NFS_ROOT)
 #if !defined(BOOTP_NFSROOT)
 static void	pxe_setup_nfsdiskless(void);
@@ -216,104 +212,8 @@ cpu_rootconf(void)
 #endif
 		rootdevnames[0] = "nfs:";
 #endif
-#if defined(FFS) && defined(FFS_ROOT)
-        if (!rootdevnames[0])
-                setroot();
-#endif
 }
 SYSINIT(cpu_rootconf, SI_SUB_ROOT_CONF, SI_ORDER_FIRST, cpu_rootconf, NULL);
-
-u_long	bootdev = 0;		/* not a cdev_t - encoding is different */
-
-#if defined(FFS) && defined(FFS_ROOT)
-#define FDMAJOR 	2
-#define FDUNITSHIFT     6
-
-/*
- * The boot code uses old block device major numbers to pass bootdev to
- * us.  We have to translate these to character device majors because
- * we don't have block devices any more.
- */
-static int
-boot_translate_majdev(int bmajor)
-{
-	static int conv[] = { BOOTMAJOR_CONVARY };
-
-	if (bmajor >= 0 && bmajor < NELEM(conv))
-		return(conv[bmajor]);
-	return(-1);
-}
-
-/*
- * Attempt to find the device from which we were booted.
- * If we can do so, and not instructed not to do so,
- * set rootdevs[] and rootdevnames[] to correspond to the
- * boot device(s).
- *
- * This code survives in order to allow the system to be 
- * booted from legacy environments that do not correctly
- * populate the kernel environment. There are significant
- * restrictions on the bootability of the system in this
- * situation; it can only be mounting root from a 'da'
- * 'wd' or 'fd' device, and the root filesystem must be ufs.
- */
-static void
-setroot(void)
-{
-	int majdev, mindev, unit, slice, part;
-	cdev_t newrootdev, dev;
-	char partname[2];
-	char *sname;
-
-	if ((bootdev & B_MAGICMASK) != B_DEVMAGIC) {
-		kprintf("no B_DEVMAGIC (bootdev=%#lx)\n", bootdev);
-		return;
-	}
-	majdev = boot_translate_majdev(B_TYPE(bootdev));
-	if (bootverbose) {
-		kprintf("bootdev: %08lx type=%ld unit=%ld "
-			"slice=%ld part=%ld major=%d\n",
-			bootdev, B_TYPE(bootdev), B_UNIT(bootdev),
-			B_SLICE(bootdev), B_PARTITION(bootdev), majdev);
-	}
-	dev = udev2dev(makeudev(majdev, 0), 0);
-	if (!dev_is_good(dev))
-		return;
-	unit = B_UNIT(bootdev);
-	slice = B_SLICE(bootdev);
-	if (slice == WHOLE_DISK_SLICE)
-		slice = COMPATIBILITY_SLICE;
-	if (slice < 0 || slice >= MAX_SLICES) {
-		kprintf("bad slice\n");
-		return;
-	}
-
-	part = B_PARTITION(bootdev);
-	mindev = dkmakeminor(unit, slice, part);
-	newrootdev = udev2dev(makeudev(majdev, mindev), 0);
-	if (!dev_is_good(newrootdev))
-		return;
-	sname = dsname(newrootdev, unit, slice, part, partname);
-	rootdevnames[0] = kmalloc(strlen(sname) + 6, M_DEVBUF, M_WAITOK);
-	ksprintf(rootdevnames[0], "ufs:%s%s", sname, partname);
-
-	/*
-	 * For properly dangerously dedicated disks (ones with a historical
-	 * bogus partition table), the boot blocks will give slice = 4, but
-	 * the kernel will only provide the compatibility slice since it
-	 * knows that slice 4 is not a real slice.  Arrange to try mounting
-	 * the compatibility slice as root if mounting the slice passed by
-	 * the boot blocks fails.  This handles the dangerously dedicated
-	 * case and perhaps others.
-	 */
-	if (slice == COMPATIBILITY_SLICE)
-		return;
-	slice = COMPATIBILITY_SLICE;
-	sname = dsname(newrootdev, unit, slice, part, partname);
-	rootdevnames[1] = kmalloc(strlen(sname) + 6, M_DEVBUF, M_WAITOK);
-	ksprintf(rootdevnames[1], "ufs:%s%s", sname, partname);
-}
-#endif
 
 #if defined(NFS) && defined(NFS_ROOT)
 #if !defined(BOOTP_NFSROOT)

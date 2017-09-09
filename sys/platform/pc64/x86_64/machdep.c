@@ -1418,10 +1418,6 @@ SYSCTL_STRUCT(_machdep, CPU_BOOTINFO, bootinfo,
 SYSCTL_INT(_machdep, CPU_WALLCLOCK, wall_cmos_clock,
 	CTLFLAG_RW, &wall_cmos_clock, 0, "");
 
-extern u_long bootdev;		/* not a cdev_t - encoding is different */
-SYSCTL_ULONG(_machdep, OID_AUTO, guessed_bootdev,
-	CTLFLAG_RD, &bootdev, 0, "Boot device (not in cdev_t format)");
-
 static int
 efi_map_sysctl_handler(SYSCTL_HANDLER_ARGS)
 {

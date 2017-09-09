@@ -235,7 +235,6 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 			--info->depth;
 			break;
 		case HAMMER2_BREF_TYPE_DATA:
-			kprintf("X");
 			break;
 		default:
 			/* does not recurse */
