@@ -222,8 +222,9 @@ cluster_putcache(cluster_cache_t *cc)
  * bpp		- return buffer (*bpp) for (loffset,blksize)
  */
 int
-cluster_readx(struct vnode *vp, off_t filesize, off_t loffset,
-	     int blksize, size_t minreq, size_t maxreq, struct buf **bpp)
+cluster_readx(struct vnode *vp, off_t filesize, off_t loffset, int blksize,
+	      int bflags, size_t minreq, size_t maxreq,
+	      struct buf **bpp)
 {
 	struct buf *bp, *rbp, *reqbp;
 	off_t origoffset;
@@ -448,7 +449,8 @@ single_block_read:
 #endif
 		if ((bp->b_flags & B_CLUSTER) == 0)
 			vfs_busy_pages(vp, bp);
-		bp->b_flags &= ~(B_ERROR|B_INVAL);
+		bp->b_flags &= ~(B_ERROR | B_INVAL | B_NOTMETA);
+		bp->b_flags |= bflags;
 		vn_strategy(vp, &bp->b_bio1);
 		/* bp invalid now */
 		bp = NULL;
@@ -518,7 +520,8 @@ single_block_read:
 				cluster_setram(rbp);
 		}
 
-		rbp->b_flags &= ~(B_ERROR|B_INVAL);
+		rbp->b_flags &= ~(B_ERROR | B_INVAL | B_NOTMETA);
+		rbp->b_flags |= bflags;
 
 		if ((rbp->b_flags & B_CLUSTER) == 0)
 			vfs_busy_pages(vp, rbp);
@@ -562,9 +565,9 @@ no_read_ahead:
  * bpp		- return buffer (*bpp) for (loffset,blksize)
  */
 void
-cluster_readcb(struct vnode *vp, off_t filesize, off_t loffset,
-	     int blksize, size_t minreq, size_t maxreq,
-	     void (*func)(struct bio *), void *arg)
+cluster_readcb(struct vnode *vp, off_t filesize, off_t loffset, int blksize,
+	       int bflags, size_t minreq, size_t maxreq,
+	       void (*func)(struct bio *), void *arg)
 {
 	struct buf *bp, *rbp, *reqbp;
 	off_t origoffset;
@@ -716,7 +719,8 @@ cluster_readcb(struct vnode *vp, off_t filesize, off_t loffset,
 		/*
 		 * Set-up synchronous read for bp.
 		 */
-		bp->b_flags &= ~(B_ERROR | B_EINTR | B_INVAL);
+		bp->b_flags &= ~(B_ERROR | B_EINTR | B_INVAL | B_NOTMETA);
+		bp->b_flags |= bflags;
 		bp->b_cmd = BUF_CMD_READ;
 		bp->b_bio1.bio_done = func;
 		bp->b_bio1.bio_caller_info1.ptr = arg;
@@ -781,7 +785,8 @@ single_block_read:
 #endif
 		if ((bp->b_flags & B_CLUSTER) == 0)
 			vfs_busy_pages(vp, bp);
-		bp->b_flags &= ~(B_ERROR|B_INVAL);
+		bp->b_flags &= ~(B_ERROR | B_INVAL | B_NOTMETA);
+		bp->b_flags |= bflags;
 		vn_strategy(vp, &bp->b_bio1);
 		/* bp invalid now */
 		bp = NULL;
@@ -842,7 +847,8 @@ single_block_read:
 				cluster_setram(rbp);
 		}
 
-		rbp->b_flags &= ~(B_ERROR|B_INVAL);
+		rbp->b_flags &= ~(B_ERROR | B_INVAL | B_NOTMETA);
+		rbp->b_flags |= bflags;
 
 		if ((rbp->b_flags & B_CLUSTER) == 0)
 			vfs_busy_pages(vp, rbp);
@@ -1130,7 +1136,11 @@ cluster_callback(struct bio *bio)
 			tbp->b_error = error;
 		} else {
 			tbp->b_dirtyoff = tbp->b_dirtyend = 0;
-			tbp->b_flags &= ~(B_ERROR|B_INVAL);
+			tbp->b_flags &= ~(B_ERROR | B_INVAL);
+			if (tbp->b_cmd == BUF_CMD_READ) {
+				tbp->b_flags = (tbp->b_flags & ~B_NOTMETA) |
+					       (bp->b_flags & B_NOTMETA);
+			}
 			tbp->b_flags |= B_IOISSUED;
 			/*
 			 * XXX the bdwrite()/bqrelse() issued during
@@ -1512,9 +1522,10 @@ cluster_wbuild(struct vnode *vp, struct buf **bpp,
 		 */
 		bp->b_data = (char *)((vm_offset_t)bp->b_data |
 		    ((vm_offset_t)tbp->b_data & PAGE_MASK));
-		bp->b_flags &= ~B_ERROR;
+		bp->b_flags &= ~(B_ERROR | B_NOTMETA);
 		bp->b_flags |= B_CLUSTER | B_BNOCLIP |
-			(tbp->b_flags & (B_VMIO | B_NEEDCOMMIT));
+			       (tbp->b_flags & (B_VMIO | B_NEEDCOMMIT |
+						B_NOTMETA));
 		bp->b_bio1.bio_caller_info1.cluster_head = NULL;
 		bp->b_bio1.bio_caller_info2.cluster_tail = NULL;
 

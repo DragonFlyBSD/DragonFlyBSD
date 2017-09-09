@@ -885,7 +885,7 @@ bremfree_locked(struct buf *bp)
  * BIO_DONE and disposing of the I/O (bqrelse()ing it).
  */
 void
-breadcb(struct vnode *vp, off_t loffset, int size,
+breadcb(struct vnode *vp, off_t loffset, int size, int bflags,
 	void (*func)(struct bio *), void *arg)
 {
 	struct buf *bp;
@@ -894,7 +894,8 @@ breadcb(struct vnode *vp, off_t loffset, int size,
 
 	/* if not found in cache, do some I/O */
 	if ((bp->b_flags & B_CACHE) == 0) {
-		bp->b_flags &= ~(B_ERROR | B_EINTR | B_INVAL);
+		bp->b_flags &= ~(B_ERROR | B_EINTR | B_INVAL | B_NOTMETA);
+		bp->b_flags |= bflags;
 		bp->b_cmd = BUF_CMD_READ;
 		bp->b_bio1.bio_done = func;
 		bp->b_bio1.bio_caller_info1.ptr = arg;
@@ -925,8 +926,9 @@ breadcb(struct vnode *vp, off_t loffset, int size,
  * set, the buffer is valid and we do not have to do anything.
  */
 int
-breadnx(struct vnode *vp, off_t loffset, int size, off_t *raoffset,
-	int *rabsize, int cnt, struct buf **bpp)
+breadnx(struct vnode *vp, off_t loffset, int size, int bflags,
+	off_t *raoffset, int *rabsize,
+	int cnt, struct buf **bpp)
 {
 	struct buf *bp, *rabp;
 	int i;
@@ -939,7 +941,8 @@ breadnx(struct vnode *vp, off_t loffset, int size, off_t *raoffset,
 
 	/* if not found in cache, do some I/O */
 	if ((bp->b_flags & B_CACHE) == 0) {
-		bp->b_flags &= ~(B_ERROR | B_EINTR | B_INVAL);
+		bp->b_flags &= ~(B_ERROR | B_EINTR | B_INVAL | B_NOTMETA);
+		bp->b_flags |= bflags;
 		bp->b_cmd = BUF_CMD_READ;
 		bp->b_bio1.bio_done = biodone_sync;
 		bp->b_bio1.bio_flags |= BIO_SYNC;
@@ -954,7 +957,9 @@ breadnx(struct vnode *vp, off_t loffset, int size, off_t *raoffset,
 		rabp = getblk(vp, *raoffset, *rabsize, 0, 0);
 
 		if ((rabp->b_flags & B_CACHE) == 0) {
-			rabp->b_flags &= ~(B_ERROR | B_EINTR | B_INVAL);
+			rabp->b_flags &= ~(B_ERROR | B_EINTR |
+					   B_INVAL | B_NOTMETA);
+			rabp->b_flags |= bflags;
 			rabp->b_cmd = BUF_CMD_READ;
 			vfs_busy_pages(vp, rabp);
 			BUF_KERNPROC(rabp);

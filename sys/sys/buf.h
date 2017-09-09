@@ -413,10 +413,10 @@ void	uninitbufbio(struct buf *);
 void	reinitbufbio(struct buf *);
 void	clearbiocache(struct bio *);
 void	bremfree (struct buf *);
-int	breadx (struct vnode *, off_t, int, struct buf **);
-int	breadnx (struct vnode *, off_t, int, off_t *, int *, int,
+int	breadx (struct vnode *, off_t, int, int, struct buf **);
+int	breadnx (struct vnode *, off_t, int, int, off_t *, int *, int,
 		struct buf **);
-void	breadcb(struct vnode *, off_t, int,
+void	breadcb(struct vnode *, off_t, int, int,
 		void (*)(struct bio *), void *);
 int	bwrite (struct buf *);
 void	bdwrite (struct buf *);
@@ -450,9 +450,9 @@ void	biodone_sync (struct bio *);
 void	pbuf_adjcount(int *pfreecnt, int n);
 
 void	cluster_append(struct bio *, struct buf *);
-int	cluster_readx (struct vnode *, off_t, off_t, int,
+int	cluster_readx (struct vnode *, off_t, off_t, int, int,
 	    size_t, size_t, struct buf **);
-void	cluster_readcb (struct vnode *, off_t, off_t, int,
+void	cluster_readcb (struct vnode *, off_t, off_t, int, int,
 	    size_t, size_t, void (*func)(struct bio *), void *arg);
 void	cluster_write (struct buf *, off_t, int, int);
 int	physread (struct dev_read_args *);
