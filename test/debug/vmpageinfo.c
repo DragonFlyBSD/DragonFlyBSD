@@ -235,8 +235,6 @@ main(int ac, char **av)
 		printf(" MAPPED");
 	    if (m.flags & PG_NEED_COMMIT)
 		printf(" NEED_COMMIT");
-	    if (m.flags & PG_ZERO)
-		printf(" ZERO");
 	    if (m.flags & PG_REFERENCED)
 		printf(" REFERENCED");
 	    if (m.flags & PG_CLEANCHK)
