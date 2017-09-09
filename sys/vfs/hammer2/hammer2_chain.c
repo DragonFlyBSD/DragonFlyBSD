@@ -4867,15 +4867,41 @@ hammer2_base_delete(hammer2_chain_t *parent,
 	}
 	switch(scan->type) {
 	case HAMMER2_BREF_TYPE_INODE:
-		parent->bref.embed.stats.inode_count -= 1;
-		/* fall through */
 	case HAMMER2_BREF_TYPE_DATA:
+		--parent->bref.embed.stats.inode_count;
+		if (parent->bref.leaf_count == HAMMER2_BLOCKREF_LEAF_MAX) {
+			atomic_set_int(&chain->flags,
+				       HAMMER2_CHAIN_HINT_LEAF_COUNT);
+		} else {
+			if (parent->bref.leaf_count)
+				--parent->bref.leaf_count;
+		}
+		/* fall through */
 	case HAMMER2_BREF_TYPE_INDIRECT:
 		parent->bref.embed.stats.data_count -=
 			scan->embed.stats.data_count;
 		parent->bref.embed.stats.inode_count -=
 			scan->embed.stats.inode_count;
+		if (scan->type == HAMMER2_BREF_TYPE_INODE)
+			break;
+		if (parent->bref.leaf_count == HAMMER2_BLOCKREF_LEAF_MAX) {
+			atomic_set_int(&chain->flags,
+				       HAMMER2_CHAIN_HINT_LEAF_COUNT);
+		} else {
+			if (parent->bref.leaf_count <= scan->leaf_count)
+				parent->bref.leaf_count = 0;
+			else
+				parent->bref.leaf_count -= scan->leaf_count;
+		}
 		break;
+	case HAMMER2_BREF_TYPE_DIRENT:
+		if (parent->bref.leaf_count == HAMMER2_BLOCKREF_LEAF_MAX) {
+			atomic_set_int(&chain->flags,
+				       HAMMER2_CHAIN_HINT_LEAF_COUNT);
+		} else {
+			if (parent->bref.leaf_count)
+				--parent->bref.leaf_count;
+		}
 	default:
 		break;
 	}
@@ -4952,14 +4978,28 @@ hammer2_base_insert(hammer2_chain_t *parent,
 	}
 	switch(elm->type) {
 	case HAMMER2_BREF_TYPE_INODE:
-		parent->bref.embed.stats.inode_count += 1;
-		/* fall through */
+		++parent->bref.embed.stats.inode_count;
 	case HAMMER2_BREF_TYPE_DATA:
+		if (parent->bref.leaf_count != HAMMER2_BLOCKREF_LEAF_MAX)
+			++parent->bref.leaf_count;
+		/* fall through */
 	case HAMMER2_BREF_TYPE_INDIRECT:
 		parent->bref.embed.stats.data_count +=
 			elm->embed.stats.data_count;
 		parent->bref.embed.stats.inode_count +=
 			elm->embed.stats.inode_count;
+		if (elm->type == HAMMER2_BREF_TYPE_INODE)
+			break;
+		if (parent->bref.leaf_count + elm->leaf_count <
+		    HAMMER2_BLOCKREF_LEAF_MAX) {
+			parent->bref.leaf_count += elm->leaf_count;
+		} else {
+			parent->bref.leaf_count = HAMMER2_BLOCKREF_LEAF_MAX;
+		}
+		break;
+	case HAMMER2_BREF_TYPE_DIRENT:
+		if (parent->bref.leaf_count != HAMMER2_BLOCKREF_LEAF_MAX)
+			++parent->bref.leaf_count;
 		break;
 	default:
 		break;

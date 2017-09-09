@@ -588,6 +588,15 @@ typedef struct hammer2_dirent_head hammer2_dirent_head_t;
  *	 blocks bottom-up, inserting a new root when radix expansion
  *	 is required.
  *
+ * leaf_count  - Helps manage leaf collapse calculations when indirect
+ *		 blocks become mostly empty.  This value caps out at
+ *		 HAMMER2_BLOCKREF_LEAF_MAX (65535).
+ *
+ *		 Used by the chain code to determine when to pull leafs up
+ *		 from nearly empty indirect blocks.  For the purposes of this
+ *		 calculation, BREF_TYPE_INODE is considered a leaf, along
+ *		 with DIRENT and DATA.
+ *
  *				    RESERVED FIELDS
  *
  * A number of blockref fields are reserved and should generally be set to
@@ -604,8 +613,7 @@ struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 	uint8_t		keybits;	/* #of keybits masked off 0=leaf */
 	uint8_t		vradix;		/* virtual data/meta-data size */
 	uint8_t		flags;		/* blockref flags */
-	uint8_t		reserved06;
-	uint8_t		reserved07;
+	uint16_t	leaf_count;	/* leaf aggregation count */
 	hammer2_key_t	key;		/* key specification */
 	hammer2_tid_t	mirror_tid;	/* media flush topology & freemap */
 	hammer2_tid_t	modify_tid;	/* clc modify (not propagated) */
@@ -682,6 +690,8 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 
 #define HAMMER2_BLOCKREF_BYTES		128	/* blockref struct in bytes */
 #define HAMMER2_BLOCKREF_RADIX		7
+
+#define HAMMER2_BLOCKREF_LEAF_MAX	65535
 
 /*
  * On-media and off-media blockref types.

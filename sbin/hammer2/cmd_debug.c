@@ -474,10 +474,13 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap,
 		break;
 	}
 
-	tabprintf(tab, "%s.%-3d %016jx %016jx/%-2d mir=%016jx mod=%016jx ",
+	tabprintf(tab,
+		  "%s.%-3d %016jx %016jx/%-2d "
+		  "mir=%016jx mod=%016jx leafcnt=%d ",
 	       type_str, bi, (intmax_t)bref->data_off,
 	       (intmax_t)bref->key, (intmax_t)bref->keybits,
-	       (intmax_t)bref->mirror_tid, (intmax_t)bref->modify_tid);
+	       (intmax_t)bref->mirror_tid, (intmax_t)bref->modify_tid,
+	       bref->leaf_count);
 	tab += SHOW_TAB;
 	if (bref->flags)
 		printf("flags=%02x ", bref->flags);
