@@ -412,10 +412,13 @@ hammer_vop_read(struct vop_read_args *ap)
 			}
 			error = cluster_readx(ap->a_vp,
 					     file_limit, base_offset,
-					     blksize, uio->uio_resid,
-					     seqcount * MAXBSIZE, &bp);
+					     blksize, B_NOTMETA,
+					     uio->uio_resid,
+					     seqcount * MAXBSIZE,
+					     &bp);
 		} else {
-			error = breadnx(ap->a_vp, base_offset, blksize,
+			error = breadnx(ap->a_vp, base_offset,
+					blksize, B_NOTMETA,
 					NULL, NULL, 0, &bp);
 		}
 		if (error) {

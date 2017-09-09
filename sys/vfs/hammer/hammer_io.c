@@ -1586,12 +1586,14 @@ hammer_io_indirect_read(hammer_mount_t hmp, struct bio *bio,
 			limit -= zone2_offset;
 			cluster_readcb(volume->devvp, limit, buf_offset,
 				       bp->b_bufsize,
+				       B_NOTMETA,
 				       HAMMER_CLUSTER_SIZE,
 				       HAMMER_CLUSTER_SIZE * hce,
 				       hammer_indirect_callback,
 				       bio);
 		} else {
 			breadcb(volume->devvp, buf_offset, bp->b_bufsize,
+				B_NOTMETA,
 				hammer_indirect_callback, bio);
 		}
 	}
