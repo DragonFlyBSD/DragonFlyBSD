@@ -82,8 +82,11 @@ typedef struct hammer2_bulkfree_info {
 	long			count_l0cleans;
 	long			count_linadjusts;
 	long			count_inodes_scanned;
+	long			count_dirents_scanned;
 	long			count_dedup_factor;
-	long			bytes_scanned;
+	long			count_bytes_scanned;
+	long			count_chains_scanned;
+	long			count_chains_reported;
 	hammer2_off_t		adj_free;
 	hammer2_tid_t		mtid;
 	hammer2_tid_t		saved_mirror_tid;
@@ -141,6 +144,15 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 		if (error)
 			break;
 
+		if (bref.type == HAMMER2_BREF_TYPE_DIRENT)
+			++info->count_dirents_scanned;
+
+		/*
+		 * Ignore brefs without data (typically dirents)
+		 */
+		if ((bref.data_off & ~HAMMER2_OFF_MASK_RADIX) == 0)
+			continue;
+
 		/*
 		 * Process bref, chain is only non-NULL if the bref
 		 * might be recursable (its possible that we sometimes get
@@ -149,6 +161,9 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 		++info->pri;
 		if (h2_bulkfree_test(info, &bref, 1))
 			continue;
+
+		if (bref.type == HAMMER2_BREF_TYPE_INODE)
+			++info->count_inodes_scanned;
 
 		error |= func(info, &bref);
 		if (error)
@@ -162,13 +177,28 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 		if (chain == NULL)
 			continue;
 
+		if (chain) {
+			info->count_bytes_scanned += chain->bytes;
+			++info->count_chains_scanned;
+
+			if (info->count_chains_scanned >=
+			    info->count_chains_reported + 50000) {
+				kprintf(" chains %-7ld inodes %-7ld "
+					"dirents %-7ld bytes %5ldMB\n",
+					info->count_chains_scanned,
+					info->count_inodes_scanned,
+					info->count_dirents_scanned,
+					info->count_bytes_scanned / 1000000);
+				info->count_chains_reported += 50000;
+			}
+		}
+
+
 		/*
 		 * Else check type and setup depth-first scan.
 		 *
 		 * Account for bytes actually read.
 		 */
-		info->bytes_scanned += chain->bytes;
-
 		switch(chain->bref.type) {
 		case HAMMER2_BREF_TYPE_INODE:
 		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
@@ -203,6 +233,9 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 						   HAMMER2_RESOLVE_SHARED);
 			}
 			--info->depth;
+			break;
+		case HAMMER2_BREF_TYPE_DATA:
+			kprintf("X");
 			break;
 		default:
 			/* does not recurse */
@@ -350,6 +383,11 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 	bzero(&cbinfo, sizeof(cbinfo));
 	size = (bfi->size + HAMMER2_FREEMAP_LEVELN_PSIZE - 1) &
 	       ~(size_t)(HAMMER2_FREEMAP_LEVELN_PSIZE - 1);
+	if (size < 1024 * 1024)
+		size = 1024 * 1024;
+	if (size > 64 * 1024 * 1024)
+		size = 64 * 1024 * 1024;
+
 	cbinfo.hmp = hmp;
 	cbinfo.bmap = kmem_alloc_swapbacked(&cbinfo.kp, size, VM_SUBSYS_HAMMER);
 	cbinfo.saved_mirror_tid = hmp->voldata.mirror_tid;
@@ -387,6 +425,12 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 		cbinfo_bmap_init(&cbinfo, size);
 		bzero(cbinfo.dedup, sizeof(*cbinfo.dedup) *
 				    HAMMER2_DEDUP_HEUR_SIZE);
+		cbinfo.count_inodes_scanned = 0;
+		cbinfo.count_dirents_scanned = 0;
+		cbinfo.count_bytes_scanned = 0;
+		cbinfo.count_chains_scanned = 0;
+		cbinfo.count_chains_reported = 0;
+
 		incr = size / HAMMER2_FREEMAP_LEVELN_PSIZE *
 		       HAMMER2_FREEMAP_LEVEL1_SIZE;
 		if (hmp->voldata.volu_size - cbinfo.sbase < incr)
@@ -547,14 +591,6 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
 	 */
 	if (hammer2_signal_check(&cbinfo->save_time))
 		return HAMMER2_ERROR_ABORTED;
-
-	if (bref->type == HAMMER2_BREF_TYPE_INODE) {
-		++cbinfo->count_inodes_scanned;
-		if ((cbinfo->count_inodes_scanned & 65535) == 0)
-			kprintf(" inodes %6ld bytes %9ld\n",
-				cbinfo->count_inodes_scanned,
-				cbinfo->bytes_scanned);
-	}
 
 	/*
 	 * Calculate the data offset and determine if it is within

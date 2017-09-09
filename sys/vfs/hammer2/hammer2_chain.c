@@ -2751,7 +2751,7 @@ hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
  * locked and referenced.  Any prior contents will be unlocked and dropped.
  *
  * Caller should check the return value.  A normal scan EOF will return
- * exactly HAMMER2_ERRORF_EOF.  Any other non-zero value indicates an
+ * exactly HAMMER2_ERROR_EOF.  Any other non-zero value indicates an
  * error trying to access parent data.  Any error in the returned chain
  * must be tested separately by the caller.
  *

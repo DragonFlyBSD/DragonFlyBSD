@@ -191,6 +191,7 @@ hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize, int op)
 	int isgood;
 	int error;
 	int hce;
+	int notmetaflag = ((btype == HAMMER2_BREF_TYPE_DATA) ? B_NOTMETA : 0);
 
 	KKASSERT((1 << (int)(lbase & HAMMER2_OFF_MASK_RADIX)) == lsize);
 
@@ -252,6 +253,10 @@ hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize, int op)
 	 * the I/O.
 	 */
 	KKASSERT(dio->bp == NULL);
+	if (btype == HAMMER2_BREF_TYPE_DATA)
+		hce = hammer2_cluster_data_read;
+	else
+		hce = hammer2_cluster_meta_read;
 
 	error = 0;
 	if (dio->pbase == (lbase & ~HAMMER2_OFF_MASK_RADIX) &&
@@ -268,39 +273,42 @@ hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize, int op)
 			break;
 		case HAMMER2_DOP_READ:
 		default:
-			if ((hce = hammer2_cluster_read) > 0) {
+			if (hce > 0) {
 				/*
 				 * Synchronous cluster I/O for now.
 				 */
 				peof = (dio->pbase + HAMMER2_SEGMASK64) &
 				       ~HAMMER2_SEGMASK64;
-				error = cluster_read(dio->hmp->devvp,
+				dio->bp = NULL;
+				error = cluster_readx(dio->hmp->devvp,
 						     peof, dio->pbase,
-						     dio->psize,
+						     dio->psize, notmetaflag,
 						     dio->psize,
 						     HAMMER2_PBUFSIZE*hce,
 						     &dio->bp);
 			} else {
-				error = bread(dio->hmp->devvp, dio->pbase,
-					      dio->psize, &dio->bp);
+				dio->bp = NULL;
+				error = breadnx(dio->hmp->devvp, dio->pbase,
+						dio->psize, notmetaflag,
+					        NULL, NULL, 0, &dio->bp);
 			}
 		}
 	} else {
-		if ((hce = hammer2_cluster_read) > 0) {
+		if (hce > 0) {
 			/*
 			 * Synchronous cluster I/O for now.
 			 */
 			peof = (dio->pbase + HAMMER2_SEGMASK64) &
 			       ~HAMMER2_SEGMASK64;
-			error = cluster_read(dio->hmp->devvp,
-					     peof, dio->pbase,
-					     dio->psize,
-					     dio->psize,
-					     HAMMER2_PBUFSIZE*hce,
-					     &dio->bp);
+			error = cluster_readx(dio->hmp->devvp,
+					      peof, dio->pbase, dio->psize,
+					      notmetaflag,
+					      dio->psize, HAMMER2_PBUFSIZE*hce,
+					      &dio->bp);
 		} else {
-			error = bread(dio->hmp->devvp, dio->pbase,
-				      dio->psize, &dio->bp);
+			error = breadnx(dio->hmp->devvp, dio->pbase,
+				        dio->psize, notmetaflag,
+					NULL, NULL, 0, &dio->bp);
 		}
 		if (dio->bp) {
 			/*
@@ -334,8 +342,10 @@ hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize, int op)
 		}
 	}
 
-	if (dio->bp)
+	if (dio->bp) {
 		BUF_KERNPROC(dio->bp);
+		dio->bp->b_flags &= ~B_AGE;
+	}
 	dio->error = error;
 
 	/*
