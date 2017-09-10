@@ -322,6 +322,12 @@ vtnet_attach(device_t dev)
 		goto fail;
 	}
 
+	if ((sc->vtnet_flags & VTNET_FLAG_MAC) == 0) {
+		lwkt_serialize_enter(&sc->vtnet_slz);
+		vtnet_set_hwaddr(sc);
+		lwkt_serialize_exit(&sc->vtnet_slz);
+	}
+
 	/*
 	 * Device defaults to promiscuous mode for backwards
 	 * compatibility. Turn it off if possible.
@@ -700,7 +706,6 @@ vtnet_get_hwaddr(struct vtnet_softc *sc)
 		 */
 		sc->vtnet_hwaddr[0] = 0xB2;
 		karc4rand(&sc->vtnet_hwaddr[1], ETHER_ADDR_LEN - 1);
-		vtnet_set_hwaddr(sc);
 		return;
 	}
 
