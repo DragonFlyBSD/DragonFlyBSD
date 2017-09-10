@@ -3246,6 +3246,8 @@ again:
 	if (parent->core.live_count == count) {
 		hammer2_chain_t *nparent;
 
+		KKASSERT((flags & HAMMER2_INSERT_SAMEPARENT) == 0);
+
 		nparent = hammer2_chain_create_indirect(parent, key, keybits,
 							mtid, type, &error);
 		if (nparent == NULL) {
@@ -3872,13 +3874,14 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 				hammer2_spin_ex(&parent->core.spin);
 				continue;
 			}
+			hammer2_chain_lock(chain, HAMMER2_RESOLVE_NEVER);
 			if (bcmp(&bcopy, bref, sizeof(bcopy))) {
 				reason = 2;
+				hammer2_chain_unlock(chain);
 				hammer2_chain_drop(chain);
 				hammer2_spin_ex(&parent->core.spin);
 				continue;
 			}
-			hammer2_chain_lock(chain, HAMMER2_RESOLVE_NEVER);
 		}
 
 		/*
@@ -3982,6 +3985,150 @@ next_key_spinlocked:
 	}
 
 	return(parent);
+}
+
+/*
+ * Do maintenance on an indirect chain.  Both parent and chain are locked.
+ *
+ * Returns non-zero if (chain) is deleted, either due to being empty or
+ * because its children were safely moved into the parent.
+ */
+int
+hammer2_chain_indirect_maintenance(hammer2_chain_t *parent,
+				   hammer2_chain_t *chain)
+{
+	hammer2_blockref_t *chain_base;
+	hammer2_blockref_t *base;
+	hammer2_blockref_t *bref;
+	hammer2_blockref_t bcopy;
+	hammer2_key_t key_next;
+	hammer2_key_t key_beg;
+	hammer2_key_t key_end;
+	hammer2_chain_t *sub;
+	int chain_count;
+	int count;
+	int generation;
+
+	/*
+	 * Make sure we have an accurate live_count
+	 */
+	if ((chain->flags & (HAMMER2_CHAIN_INITIAL |
+			     HAMMER2_CHAIN_COUNTEDBREFS)) == 0) {
+		base = &chain->data->npdata[0];
+		count = chain->bytes / sizeof(hammer2_blockref_t);
+		hammer2_chain_countbrefs(chain, base, count);
+	}
+
+	/*
+	 * If the indirect block is empty we can delete it.
+	 */
+	if (chain->core.live_count == 0 && RB_EMPTY(&chain->core.rbtree)) {
+		hammer2_chain_delete(parent, chain,
+				     chain->bref.modify_tid,
+				     HAMMER2_DELETE_PERMANENT);
+		return 1;
+	}
+
+	base = hammer2_chain_base_and_count(parent, &count);
+
+	if ((parent->flags & (HAMMER2_CHAIN_INITIAL |
+			     HAMMER2_CHAIN_COUNTEDBREFS)) == 0) {
+		hammer2_chain_countbrefs(parent, base, count);
+	}
+
+	/*
+	 * Determine if we can collapse chain into parent, calculate
+	 * hysteresis for chain emptiness.
+	 */
+	if (parent->core.live_count + chain->core.live_count - 1 > count)
+		return 0;
+	chain_count = chain->bytes / sizeof(hammer2_blockref_t);
+	if (chain->core.live_count > chain_count * 3 / 4)
+		return 0;
+
+	/*
+	 * Ok, theoretically we can collapse chain's contents into
+	 * parent.  chain is locked, but any in-memory children of chain
+	 * are not.  For this to work, we must be able to dispose of any
+	 * in-memory children of chain.
+	 *
+	 * For now require that there are no in-memory children of chain.
+	 *
+	 * WARNING! Both chain and parent must remain locked across this
+	 *	    entire operation.
+	 */
+
+	/*
+	 * Parent must be marked modified.  Don't try to collapse if we
+	 * can't mark it modified.
+	 */
+	if (hammer2_chain_modify(parent, 0, 0, 0)) {
+		return 0;
+	}
+
+	hammer2_chain_delete(parent, chain,
+			     chain->bref.modify_tid,
+			     HAMMER2_DELETE_PERMANENT);
+	hammer2_spin_ex(&chain->core.spin);
+
+	key_next = 0;
+	key_beg = 0;
+	key_end = HAMMER2_KEY_MAX;
+	for (;;) {
+		chain_base = &chain->data->npdata[0];
+		chain_count = chain->bytes / sizeof(hammer2_blockref_t);
+		sub = hammer2_combined_find(chain, chain_base, chain_count,
+					    &key_next,
+					    key_beg, key_end,
+					    &bref);
+		generation = chain->core.generation;
+		if (bref == NULL)
+			break;
+		key_next = bref->key + ((hammer2_key_t)1 << bref->keybits);
+
+		if (sub) {
+			hammer2_chain_ref(sub);
+			hammer2_spin_unex(&chain->core.spin);
+			hammer2_chain_lock(sub, HAMMER2_RESOLVE_NEVER);
+			if (sub->parent != chain ||
+			    (sub->flags & HAMMER2_CHAIN_DELETED)) {
+				hammer2_chain_unlock(sub);
+				hammer2_chain_drop(sub);
+				hammer2_spin_ex(&chain->core.spin);
+				continue;
+			}
+		} else {
+			bcopy = *bref;
+			hammer2_spin_unex(&chain->core.spin);
+			sub = hammer2_chain_get(chain, generation, &bcopy);
+			if (sub == NULL) {
+				hammer2_spin_ex(&chain->core.spin);
+				continue;
+			}
+			hammer2_chain_lock(sub, HAMMER2_RESOLVE_NEVER);
+			if (bcmp(&bcopy, bref, sizeof(bcopy)) != 0) {
+				hammer2_chain_unlock(sub);
+				hammer2_chain_drop(sub);
+				hammer2_spin_ex(&chain->core.spin);
+				continue;
+			}
+		}
+		hammer2_chain_delete(chain, sub,
+				     sub->bref.modify_tid, 0);
+		hammer2_chain_rename(NULL, &parent, sub,
+				     sub->bref.modify_tid,
+				     HAMMER2_INSERT_SAMEPARENT);
+		hammer2_chain_unlock(sub);
+		hammer2_chain_drop(sub);
+		hammer2_spin_ex(&chain->core.spin);
+
+		if (key_next == 0)
+			break;
+		key_beg = key_next;
+	}
+	hammer2_spin_unex(&chain->core.spin);
+
+	return 1;
 }
 
 /*
@@ -4737,7 +4884,7 @@ hammer2_base_find(hammer2_chain_t *parent,
  * WARNING!  Must be called with parent's spinlock held.  Spinlock remains
  *	     held through the operation.
  */
-static hammer2_chain_t *
+hammer2_chain_t *
 hammer2_combined_find(hammer2_chain_t *parent,
 		      hammer2_blockref_t *base, int count,
 		      hammer2_key_t *key_nextp,
@@ -4936,9 +5083,8 @@ hammer2_base_delete(hammer2_chain_t *parent,
 void
 hammer2_base_insert(hammer2_chain_t *parent,
 		    hammer2_blockref_t *base, int count,
-		    hammer2_chain_t *chain)
+		    hammer2_chain_t *chain, hammer2_blockref_t *elm)
 {
-	hammer2_blockref_t *elm = &chain->bref;
 	hammer2_key_t key_next;
 	hammer2_key_t xkey;
 	int i;
@@ -4965,9 +5111,10 @@ hammer2_base_insert(hammer2_chain_t *parent,
 	KKASSERT(i >= 0 && i <= count);
 
 	/*
-	 * Set appropriate blockmap flags in chain.
+	 * Set appropriate blockmap flags in chain (if not NULL)
 	 */
-	atomic_set_int(&chain->flags, HAMMER2_CHAIN_BMAPPED);
+	if (chain)
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_BMAPPED);
 
 	/*
 	 * Update stats and zero the entry

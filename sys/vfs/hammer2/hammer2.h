@@ -497,8 +497,10 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 
 /*
  * Flags passed to hammer2_chain_insert() or hammer2_chain_rename()
+ * or hammer2_chain_create().
  */
 #define HAMMER2_INSERT_PFSROOT		0x0004
+#define HAMMER2_INSERT_SAMEPARENT	0x0008
 
 /*
  * Flags passed to hammer2_chain_delete_duplicate()
@@ -1521,6 +1523,8 @@ void hammer2_chain_rename(hammer2_blockref_t *bref,
 				hammer2_tid_t mtid, int flags);
 int hammer2_chain_delete(hammer2_chain_t *parent, hammer2_chain_t *chain,
 				hammer2_tid_t mtid, int flags);
+int hammer2_chain_indirect_maintenance(hammer2_chain_t *parent,
+				hammer2_chain_t *chain);
 void hammer2_chain_setflush(hammer2_chain_t *chain);
 void hammer2_chain_countbrefs(hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count);
@@ -1541,7 +1545,8 @@ void hammer2_base_delete(hammer2_chain_t *chain,
 				hammer2_chain_t *child);
 void hammer2_base_insert(hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count,
-				hammer2_chain_t *child);
+				hammer2_chain_t *child,
+				hammer2_blockref_t *elm);
 
 /*
  * hammer2_flush.c

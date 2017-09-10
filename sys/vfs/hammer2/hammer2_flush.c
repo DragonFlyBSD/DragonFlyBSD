@@ -653,25 +653,6 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DESTROY);
 
 	/*
-	 * Chain was already modified or has become modified, flush it out.
-	 */
-	if ((hammer2_debug & 0x200) &&
-	    info->debug &&
-	    (chain->flags & (HAMMER2_CHAIN_MODIFIED | HAMMER2_CHAIN_UPDATE))) {
-		hammer2_chain_t *scan = chain;
-
-		kprintf("DISCONNECTED FLUSH %p->%p\n", info->debug, chain);
-		while (scan) {
-			kprintf("    chain %p [%08x] bref=%016jx:%02x\n",
-				scan, scan->flags,
-				scan->bref.key, scan->bref.type);
-			if (scan == info->debug)
-				break;
-			scan = scan->parent;
-		}
-	}
-
-	/*
 	 * Dispose of the modified bit.
 	 *
 	 * If parent is present, the UPDATE bit should already be set.
@@ -681,19 +662,6 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 	if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
 		KKASSERT((chain->flags & HAMMER2_CHAIN_UPDATE) ||
 			 chain->parent == NULL);
-		if (hammer2_debug & 0x800000) {
-			hammer2_chain_t *pp;
-
-			for (pp = chain; pp->parent; pp = pp->parent)
-				;
-			kprintf("FLUSH CHAIN %p (p=%p pp=%p/%d) TYPE %d FLAGS %08x (%s)\n",
-				chain, chain->parent, pp, pp->bref.type,
-				chain->bref.type, chain->flags,
-				(chain->bref.type == 1 ? (const char *)chain->data->ipdata.filename : "?")
-
-				);
-			print_backtrace(10);
-		}
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 		atomic_add_long(&hammer2_count_modified_chains, -1);
 
@@ -988,36 +956,20 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		}
 
 		/*
-		 * (semi-optional code)
-		 *
 		 * The flusher is responsible for deleting empty indirect
 		 * blocks at this point.  If we don't do this, no major harm
 		 * will be done but the empty indirect blocks will stay in
-		 * the topology and make it a bit messy.
+		 * the topology and make it a messy and inefficient.
 		 *
-		 * Do not delete internal freemap nodes.
+		 * The flusher is also responsible for collapsing the
+		 * content of an indirect block into its parent whenever
+		 * possible (with some hysteresis).  Not doing this will also
+		 * not harm the topology, but would make it messy and
+		 * inefficient.
 		 */
-		if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT &&
-		    chain->core.live_count == 0 &&
-		    (chain->flags & (HAMMER2_CHAIN_INITIAL |
-				     HAMMER2_CHAIN_COUNTEDBREFS)) == 0) {
-			base = &chain->data->npdata[0];
-			count = chain->bytes / sizeof(hammer2_blockref_t);
-			hammer2_chain_countbrefs(chain, base, count);
-		}
-		if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT &&
-		    chain->core.live_count == 0 &&
-		    RB_EMPTY(&chain->core.rbtree)) {
-#if 0
-			kprintf("DELETE CHAIN %016jx.%02x %016jx/%d refs=%d\n",
-				chain->bref.data_off, chain->bref.type,
-				chain->bref.key, chain->bref.keybits,
-				chain->refs);
-#endif
-			hammer2_chain_delete(parent, chain,
-					     chain->bref.modify_tid,
-					     HAMMER2_DELETE_PERMANENT);
-			goto skipupdate;
+		if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT) {
+			if (hammer2_chain_indirect_maintenance(parent, chain))
+				goto skipupdate;
 		}
 
 		/*
@@ -1108,7 +1060,8 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		}
 		if (base && (chain->flags & HAMMER2_CHAIN_BMAPPED) == 0) {
 			hammer2_spin_ex(&parent->core.spin);
-			hammer2_base_insert(parent, base, count, chain);
+			hammer2_base_insert(parent, base, count,
+					    chain, &chain->bref);
 			hammer2_spin_unex(&parent->core.spin);
 			/* base_insert sets BMAPPED */
 		}
