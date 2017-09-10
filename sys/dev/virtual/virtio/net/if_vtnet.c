@@ -80,6 +80,13 @@ static int	vtnet_resume(device_t);
 static int	vtnet_shutdown(device_t);
 
 static void	vtnet_negotiate_features(struct vtnet_softc *);
+static void	vtnet_serialize(struct ifnet *, enum ifnet_serialize);
+static void	vtnet_deserialize(struct ifnet *, enum ifnet_serialize);
+static int	vtnet_tryserialize(struct ifnet *, enum ifnet_serialize);
+#ifdef INVARIANTS
+static void	vtnet_serialize_assert(struct ifnet *, enum ifnet_serialize,
+		    boolean_t);
+#endif  /* INVARIANTS */
 static int	vtnet_alloc_intrs(struct vtnet_softc *);
 static int	vtnet_alloc_virtqueues(struct vtnet_softc *);
 static void	vtnet_get_hwaddr(struct vtnet_softc *);
@@ -109,6 +116,7 @@ static int	vtnet_rx_csum(struct vtnet_softc *, struct mbuf *,
 		    struct virtio_net_hdr *);
 static int	vtnet_rxeof_merged(struct vtnet_softc *, struct mbuf *, int);
 static int	vtnet_rxeof(struct vtnet_softc *, int, int *);
+static void	vtnet_rx_msix_intr(void *);
 static void	vtnet_rx_vq_intr(void *);
 
 static void	vtnet_enqueue_txhdr(struct vtnet_softc *,
@@ -120,9 +128,10 @@ static int	vtnet_enqueue_txbuf(struct vtnet_softc *, struct mbuf **,
 		    struct vtnet_tx_header *);
 static int	vtnet_encap(struct vtnet_softc *, struct mbuf **);
 static void	vtnet_start(struct ifnet *, struct ifaltq_subque *);
-static void	vtnet_tx_vq_intr(void *);
 
 static void	vtnet_config_intr(void *);
+static void	vtnet_tx_msix_intr(void *);
+static void	vtnet_tx_vq_intr(void *);
 
 static void	vtnet_stop(struct vtnet_softc *);
 static int	vtnet_virtio_reinit(struct vtnet_softc *);
@@ -247,6 +256,11 @@ vtnet_attach(device_t dev)
 	sc->vtnet_dev = dev;
 
 	lwkt_serialize_init(&sc->vtnet_slz);
+	lwkt_serialize_init(&sc->vtnet_rx_slz);
+	lwkt_serialize_init(&sc->vtnet_tx_slz);
+	sc->serializes[0] = &sc->vtnet_slz;
+	sc->serializes[1] = &sc->vtnet_rx_slz;
+	sc->serializes[2] = &sc->vtnet_tx_slz;
 
 	ifmedia_init(&sc->vtnet_media, IFM_IMASK, vtnet_ifmedia_upd,
 		     vtnet_ifmedia_sts);
@@ -304,6 +318,9 @@ vtnet_attach(device_t dev)
 
 	/* XXX Separate function */
 	struct irqmap info[2];
+	lwkt_serialize_t intr_slz[3] = {
+		&sc->vtnet_slz, &sc->vtnet_slz, &sc->vtnet_slz
+	};
 
 	/* Possible "Virtqueue <-> IRQ" configurations */
 	switch (sc->vtnet_nintr) {
@@ -314,14 +331,19 @@ vtnet_attach(device_t dev)
 	case 2:
 		if (virtio_with_feature(dev, VIRTIO_NET_F_STATUS)) {
 			info[0] = (struct irqmap){1, vtnet_rx_vq_intr};
+			info[1] = (struct irqmap){1, vtnet_tx_vq_intr};
 		} else {
-			info[0] = (struct irqmap){0, vtnet_rx_vq_intr};
+			info[0] = (struct irqmap){0, vtnet_rx_msix_intr};
+			info[1] = (struct irqmap){1, vtnet_tx_msix_intr};
+			intr_slz[0] = &sc->vtnet_rx_slz;
+			intr_slz[1] = &sc->vtnet_tx_slz;
 		}
-		info[1] = (struct irqmap){1, vtnet_tx_vq_intr};
 		break;
 	case 3:
-		info[0] = (struct irqmap){1, vtnet_rx_vq_intr};
-		info[1] = (struct irqmap){2, vtnet_tx_vq_intr};
+		info[0] = (struct irqmap){1, vtnet_rx_msix_intr};
+		info[1] = (struct irqmap){2, vtnet_tx_msix_intr};
+		intr_slz[1] = &sc->vtnet_rx_slz;
+		intr_slz[2] = &sc->vtnet_tx_slz;
 		break;
 	default:
 		device_printf(dev, "Invalid interrupt vector count: %d\n",
@@ -354,7 +376,7 @@ vtnet_attach(device_t dev)
 	}
 
 	for (i = 0; i < sc->vtnet_nintr; i++) {
-		error = virtio_setup_intr(dev, i, &sc->vtnet_slz);
+		error = virtio_setup_intr(dev, i, intr_slz[i]);
 		if (error) {
 			device_printf(dev, "cannot setup virtqueue "
 			    "interrupts\n");
@@ -364,9 +386,9 @@ vtnet_attach(device_t dev)
 	}
 
 	if ((sc->vtnet_flags & VTNET_FLAG_MAC) == 0) {
-		lwkt_serialize_enter(&sc->vtnet_slz);
+		ifnet_serialize_all(sc->vtnet_ifp);
 		vtnet_set_hwaddr(sc);
-		lwkt_serialize_exit(&sc->vtnet_slz);
+		ifnet_deserialize_all(sc->vtnet_ifp);
 	}
 
 	/*
@@ -374,13 +396,13 @@ vtnet_attach(device_t dev)
 	 * compatibility. Turn it off if possible.
 	 */
 	if (sc->vtnet_flags & VTNET_FLAG_CTRL_RX) {
-		lwkt_serialize_enter(&sc->vtnet_slz);
+		ifnet_serialize_all(sc->vtnet_ifp);
 		if (vtnet_set_promisc(sc, 0) != 0) {
 			sc->vtnet_ifp->if_flags |= IFF_PROMISC;
 			device_printf(dev,
 			    "cannot disable promiscuous mode\n");
 		}
-		lwkt_serialize_exit(&sc->vtnet_slz);
+		ifnet_deserialize_all(sc->vtnet_ifp);
 	} else
 		sc->vtnet_ifp->if_flags |= IFF_PROMISC;
 
@@ -405,10 +427,12 @@ vtnet_detach(device_t dev)
 		virtio_teardown_intr(dev, i);
 
 	if (device_is_attached(dev)) {
-		lwkt_serialize_enter(&sc->vtnet_slz);
+		ifnet_serialize_all(ifp);
 		vtnet_stop(sc);
 		lwkt_serialize_handler_disable(&sc->vtnet_slz);
-		lwkt_serialize_exit(&sc->vtnet_slz);
+		lwkt_serialize_handler_disable(&sc->vtnet_rx_slz);
+		lwkt_serialize_handler_disable(&sc->vtnet_tx_slz);
+		ifnet_deserialize_all(ifp);
 
 		ether_ifdetach(ifp);
 	}
@@ -459,10 +483,10 @@ vtnet_suspend(device_t dev)
 
 	sc = device_get_softc(dev);
 
-	lwkt_serialize_enter(&sc->vtnet_slz);
+	ifnet_serialize_all(sc->vtnet_ifp);
 	vtnet_stop(sc);
 	sc->vtnet_flags |= VTNET_FLAG_SUSPENDED;
-	lwkt_serialize_exit(&sc->vtnet_slz);
+	ifnet_deserialize_all(sc->vtnet_ifp);
 
 	return (0);
 }
@@ -476,11 +500,11 @@ vtnet_resume(device_t dev)
 	sc = device_get_softc(dev);
 	ifp = sc->vtnet_ifp;
 
-	lwkt_serialize_enter(&sc->vtnet_slz);
+	ifnet_serialize_all(ifp);
 	if (ifp->if_flags & IFF_UP)
 		vtnet_init(sc);
 	sc->vtnet_flags &= ~VTNET_FLAG_SUSPENDED;
-	lwkt_serialize_exit(&sc->vtnet_slz);
+	ifnet_deserialize_all(ifp);
 
 	return (0);
 }
@@ -555,6 +579,43 @@ vtnet_negotiate_features(struct vtnet_softc *sc)
 			sc->vtnet_flags |= VTNET_FLAG_LRO_NOMRG;
 	}
 }
+
+static void
+vtnet_serialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct vtnet_softc *sc = ifp->if_softc;
+
+	ifnet_serialize_array_enter(sc->serializes, 3, slz);
+}
+
+static void
+vtnet_deserialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct vtnet_softc *sc = ifp->if_softc;
+
+	ifnet_serialize_array_exit(sc->serializes, 3, slz);
+}
+
+static int
+vtnet_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct vtnet_softc *sc = ifp->if_softc;
+
+	return ifnet_serialize_array_try(sc->serializes, 3, slz);
+}
+
+#ifdef INVARIANTS
+
+static void
+vtnet_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
+    boolean_t serialized)
+{
+	struct vtnet_softc *sc = ifp->if_softc;
+
+	ifnet_serialize_array_assert(sc->serializes, 3, slz, serialized);
+}
+
+#endif  /* INVARIANTS */
 
 static int
 vtnet_alloc_intrs(struct vtnet_softc *sc)
@@ -660,6 +721,12 @@ vtnet_setup_interface(struct vtnet_softc *sc)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_init = vtnet_init;
 	ifp->if_start = vtnet_start;
+	ifp->if_serialize = vtnet_serialize;
+	ifp->if_deserialize = vtnet_deserialize;
+	ifp->if_tryserialize = vtnet_tryserialize;
+#ifdef INVARIANTS
+	ifp->if_serialize_assert = vtnet_serialize_assert;
+#endif
 	ifp->if_ioctl = vtnet_ioctl;
 
 	sc->vtnet_rx_process_limit = virtqueue_size(sc->vtnet_rx_vq);
@@ -688,12 +755,13 @@ vtnet_setup_interface(struct vtnet_softc *sc)
 	ifq_set_maxlen(&ifp->if_snd, sc->vtnet_tx_size - 1);
 	ifq_set_ready(&ifp->if_snd);
 
-	ether_ifattach(ifp, sc->vtnet_hwaddr, &sc->vtnet_slz);
+	ether_ifattach(ifp, sc->vtnet_hwaddr, NULL);
 
 	/* The Tx IRQ is currently always the last allocated interrupt. */
 	ifq_set_cpuid(&ifp->if_snd, sc->vtnet_cpus[sc->vtnet_nintr - 1]);
 	ifsq_watchdog_init(&sc->vtnet_tx_watchdog,
 	    ifq_get_subq_default(&ifp->if_snd), vtnet_watchdog);
+	ifq_set_hw_serialize(&ifp->if_snd, &sc->vtnet_tx_slz);
 
 	/* Tell the upper layer(s) we support long frames. */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
@@ -804,7 +872,7 @@ vtnet_is_link_up(struct vtnet_softc *sc)
 	dev = sc->vtnet_dev;
 	ifp = sc->vtnet_ifp;
 
-	ASSERT_SERIALIZED(&sc->vtnet_slz);
+	ASSERT_IFNET_SERIALIZED_ALL(sc->vtnet_ifp);
 
 	if (virtio_with_feature(dev, VIRTIO_NET_F_STATUS)) {
 		status = virtio_read_dev_config_2(dev,
@@ -1298,7 +1366,7 @@ vtnet_enqueue_rxbuf(struct vtnet_softc *sc, struct mbuf *m)
 	uint8_t *mdata;
 	int offset, error;
 
-	ASSERT_SERIALIZED(&sc->vtnet_slz);
+	ASSERT_SERIALIZED(&sc->vtnet_rx_slz);
 	if ((sc->vtnet_flags & VTNET_FLAG_LRO_NOMRG) == 0)
 		KASSERT(m->m_next == NULL, ("chained Rx mbuf"));
 
@@ -1472,7 +1540,7 @@ vtnet_rxeof(struct vtnet_softc *sc, int count, int *rx_npktsp)
 	deq = 0;
 	rx_npkts = 0;
 
-	ASSERT_SERIALIZED(&sc->vtnet_slz);
+	ASSERT_SERIALIZED(&sc->vtnet_rx_slz);
 
 	while (--count >= 0) {
 		m = virtqueue_dequeue(vq, &len);
@@ -1549,10 +1617,8 @@ vtnet_rxeof(struct vtnet_softc *sc, int count, int *rx_npktsp)
 				sc->vtnet_stats.rx_csum_failed++;
 		}
 
-		lwkt_serialize_exit(&sc->vtnet_slz);
 		rx_npkts++;
-		ifp->if_input(ifp, m, NULL, -1);
-		lwkt_serialize_enter(&sc->vtnet_slz);
+		ifp->if_input(ifp, m, NULL, mycpuid);
 
 		/*
 		 * The interface may have been stopped while we were
@@ -1562,8 +1628,8 @@ vtnet_rxeof(struct vtnet_softc *sc, int count, int *rx_npktsp)
 			break;
 	}
 
-	/* XXX Don't drop the serializer, when we use MULTI SERIALIZERS MODE. */
-	virtqueue_notify(vq, &sc->vtnet_slz);
+	if (deq > 0)
+		virtqueue_notify(vq, NULL);
 
 	if (rx_npktsp != NULL)
 		*rx_npktsp = rx_npkts;
@@ -1572,7 +1638,7 @@ vtnet_rxeof(struct vtnet_softc *sc, int count, int *rx_npktsp)
 }
 
 static void
-vtnet_rx_vq_intr(void *xsc)
+vtnet_rx_msix_intr(void *xsc)
 {
 	struct vtnet_softc *sc;
 	struct ifnet *ifp;
@@ -1604,6 +1670,16 @@ next:
 }
 
 static void
+vtnet_rx_vq_intr(void *xsc)
+{
+	struct vtnet_softc *sc = xsc;
+
+	lwkt_serialize_enter(&sc->vtnet_rx_slz);
+	vtnet_rx_msix_intr(xsc);
+	lwkt_serialize_exit(&sc->vtnet_rx_slz);
+}
+
+static void
 vtnet_enqueue_txhdr(struct vtnet_softc *sc, struct vtnet_tx_header *txhdr)
 {
 	bzero(txhdr, sizeof(*txhdr));
@@ -1622,7 +1698,7 @@ vtnet_txeof(struct vtnet_softc *sc)
 	ifp = sc->vtnet_ifp;
 	deq = 0;
 
-	ASSERT_SERIALIZED(&sc->vtnet_slz);
+	ASSERT_SERIALIZED(&sc->vtnet_tx_slz);
 
 	while ((txhdr = virtqueue_dequeue(vq, NULL)) != NULL) {
 		deq++;
@@ -1892,7 +1968,7 @@ vtnet_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	enq = 0;
 
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
-	ASSERT_SERIALIZED(&sc->vtnet_slz);
+	ASSERT_SERIALIZED(&sc->vtnet_tx_slz);
 
 	if ((ifp->if_flags & (IFF_RUNNING)) !=
 	    IFF_RUNNING || ((sc->vtnet_flags & VTNET_FLAG_LINK) == 0))
@@ -1926,17 +2002,13 @@ vtnet_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	}
 
 	if (enq > 0) {
-		/*
-		 * XXX Don't drop the serializer, when we use
-		 *     MULTI SERIALIZERS MODE.
-		 */
-		virtqueue_notify(vq, &sc->vtnet_slz);
+		virtqueue_notify(vq, NULL);
 		sc->vtnet_tx_watchdog.wd_timer = VTNET_WATCHDOG_TIMEOUT;
 	}
 }
 
 static void
-vtnet_tx_vq_intr(void *xsc)
+vtnet_tx_msix_intr(void *xsc)
 {
 	struct vtnet_softc *sc;
 	struct ifnet *ifp;
@@ -1969,6 +2041,16 @@ next:
 }
 
 static void
+vtnet_tx_vq_intr(void *xsc)
+{
+	struct vtnet_softc *sc = xsc;
+
+	lwkt_serialize_enter(&sc->vtnet_tx_slz);
+	vtnet_tx_msix_intr(xsc);
+	lwkt_serialize_exit(&sc->vtnet_tx_slz);
+}
+
+static void
 vtnet_config_intr(void *arg)
 {
 	struct vtnet_softc *sc;
@@ -1987,7 +2069,7 @@ vtnet_stop(struct vtnet_softc *sc)
 	dev = sc->vtnet_dev;
 	ifp = sc->vtnet_ifp;
 
-	ASSERT_SERIALIZED(&sc->vtnet_slz);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	ifq_clr_oactive(&ifp->if_snd);
 	ifsq_watchdog_stop(&sc->vtnet_tx_watchdog);
@@ -2064,7 +2146,7 @@ vtnet_init(void *xsc)
 	dev = sc->vtnet_dev;
 	ifp = sc->vtnet_ifp;
 
-	ASSERT_SERIALIZED(&sc->vtnet_slz);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	if (ifp->if_flags & IFF_RUNNING)
 		return;
@@ -2136,7 +2218,7 @@ vtnet_exec_ctrl_cmd(struct vtnet_softc *sc, void *cookie,
 
 	vq = sc->vtnet_ctrl_vq;
 
-	ASSERT_SERIALIZED(&sc->vtnet_slz);
+	ASSERT_IFNET_SERIALIZED_ALL(sc->vtnet_ifp);
 	KASSERT(sc->vtnet_flags & VTNET_FLAG_CTRL_VQ,
 	    ("no control virtqueue"));
 	KASSERT(virtqueue_empty(vq),
@@ -2211,7 +2293,7 @@ vtnet_rx_filter(struct vtnet_softc *sc)
 	dev = sc->vtnet_dev;
 	ifp = sc->vtnet_ifp;
 
-	ASSERT_SERIALIZED(&sc->vtnet_slz);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 	KASSERT(sc->vtnet_flags & VTNET_FLAG_CTRL_RX,
 	    ("CTRL_RX feature not negotiated"));
 
@@ -2293,7 +2375,7 @@ vtnet_rx_filter_mac(struct vtnet_softc *sc)
 	promisc = 0;
 	allmulti = 0;
 
-	ASSERT_SERIALIZED(&sc->vtnet_slz);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 	KASSERT(sc->vtnet_flags & VTNET_FLAG_CTRL_RX,
 	    ("%s: CTRL_RX feature not negotiated", __func__));
 
@@ -2422,7 +2504,7 @@ vtnet_rx_filter_vlan(struct vtnet_softc *sc)
 	uint16_t tag;
 	int i, bit, nvlans;
 
-	ASSERT_SERIALIZED(&sc->vtnet_slz);
+	ASSERT_IFNET_SERIALIZED_ALL(sc->vtnet_ifp);
 	KASSERT(sc->vtnet_flags & VTNET_FLAG_VLAN_FILTER,
 	    ("%s: VLAN_FILTER feature not negotiated", __func__));
 
@@ -2459,7 +2541,7 @@ vtnet_update_vlan_filter(struct vtnet_softc *sc, int add, uint16_t tag)
 	if (tag == 0 || tag > 4095)
 		return;
 
-	lwkt_serialize_enter(&sc->vtnet_slz);
+	ifnet_serialize_all(ifp);
 
 	/* Update shadow VLAN table. */
 	if (add) {
@@ -2477,7 +2559,7 @@ vtnet_update_vlan_filter(struct vtnet_softc *sc, int add, uint16_t tag)
 		    add ? "add" : "remove", tag, add ? "to" : "from");
 	}
 
-	lwkt_serialize_exit(&sc->vtnet_slz);
+	ifnet_deserialize_all(ifp);
 }
 
 static void

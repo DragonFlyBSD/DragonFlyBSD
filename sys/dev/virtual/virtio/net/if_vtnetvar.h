@@ -53,6 +53,9 @@ struct vtnet_softc {
 	device_t		vtnet_dev;
 	struct ifnet		*vtnet_ifp;
 	struct lwkt_serialize	vtnet_slz;
+	struct lwkt_serialize	vtnet_rx_slz;
+	struct lwkt_serialize	vtnet_tx_slz;
+	struct lwkt_serialize	*serializes[3];
 
 	uint32_t		vtnet_flags;
 #define VTNET_FLAG_LINK		0x0001
