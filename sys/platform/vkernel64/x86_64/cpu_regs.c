@@ -652,10 +652,6 @@ sysctl_machdep_adjkerntz(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_machdep, CPU_ADJKERNTZ, adjkerntz, CTLTYPE_INT|CTLFLAG_RW,
 	&adjkerntz, 0, sysctl_machdep_adjkerntz, "I", "");
 
-extern u_long bootdev;		/* not a cdev_t - encoding is different */
-SYSCTL_ULONG(_machdep, OID_AUTO, guessed_bootdev,
-	CTLFLAG_RD, &bootdev, 0, "Boot device (not in cdev_t format)");
-
 /*
  * Initialize 386 and configure to run kernel
  */
