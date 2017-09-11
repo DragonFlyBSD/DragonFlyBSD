@@ -4059,16 +4059,34 @@ hammer2_chain_indirect_maintenance(hammer2_chain_t *parent,
 	 */
 
 	/*
-	 * Parent must be marked modified.  Don't try to collapse if we
-	 * can't mark it modified.
+	 * Parent must be marked modified.  Don't try to collapse it if we
+	 * can't mark it modified.  Once modified, destroy chain to make room
+	 * and to get rid of what will be a conflicting key (this is included
+	 * in the calculation above).  Finally, move the children of chain
+	 * into chain's parent.
+	 *
+	 * This order creates an accounting problem for bref.embed.stats
+	 * because we destroy chain before we remove its children.  Any
+	 * elements whos blockref is already synchronized will be counted
+	 * twice.  To deal with the problem we clean out chain's stats prior
+	 * to deleting it.
 	 */
 	if (hammer2_chain_modify(parent, 0, 0, 0)) {
 		return 0;
 	}
 
+	chain->bref.embed.stats.inode_count = 0;
+	chain->bref.embed.stats.data_count = 0;
 	hammer2_chain_delete(parent, chain,
 			     chain->bref.modify_tid,
 			     HAMMER2_DELETE_PERMANENT);
+
+	/*
+	 * The combined_find call requires core.spin to be held.  One would
+	 * think there wouldn't be any conflicts since we hold chain
+	 * exclusively locked, but the caching mechanism for 0-ref children
+	 * does not require a chain lock.
+	 */
 	hammer2_spin_ex(&chain->core.spin);
 
 	key_next = 0;
@@ -5014,8 +5032,9 @@ hammer2_base_delete(hammer2_chain_t *parent,
 	}
 	switch(scan->type) {
 	case HAMMER2_BREF_TYPE_INODE:
-	case HAMMER2_BREF_TYPE_DATA:
 		--parent->bref.embed.stats.inode_count;
+		/* fall through */
+	case HAMMER2_BREF_TYPE_DATA:
 		if (parent->bref.leaf_count == HAMMER2_BLOCKREF_LEAF_MAX) {
 			atomic_set_int(&chain->flags,
 				       HAMMER2_CHAIN_HINT_LEAF_COUNT);
@@ -5025,10 +5044,12 @@ hammer2_base_delete(hammer2_chain_t *parent,
 		}
 		/* fall through */
 	case HAMMER2_BREF_TYPE_INDIRECT:
-		parent->bref.embed.stats.data_count -=
-			scan->embed.stats.data_count;
-		parent->bref.embed.stats.inode_count -=
-			scan->embed.stats.inode_count;
+		if (scan->type != HAMMER2_BREF_TYPE_DATA) {
+			parent->bref.embed.stats.data_count -=
+				scan->embed.stats.data_count;
+			parent->bref.embed.stats.inode_count -=
+				scan->embed.stats.inode_count;
+		}
 		if (scan->type == HAMMER2_BREF_TYPE_INODE)
 			break;
 		if (parent->bref.leaf_count == HAMMER2_BLOCKREF_LEAF_MAX) {
@@ -5126,15 +5147,18 @@ hammer2_base_insert(hammer2_chain_t *parent,
 	switch(elm->type) {
 	case HAMMER2_BREF_TYPE_INODE:
 		++parent->bref.embed.stats.inode_count;
+		/* fall through */
 	case HAMMER2_BREF_TYPE_DATA:
 		if (parent->bref.leaf_count != HAMMER2_BLOCKREF_LEAF_MAX)
 			++parent->bref.leaf_count;
 		/* fall through */
 	case HAMMER2_BREF_TYPE_INDIRECT:
-		parent->bref.embed.stats.data_count +=
-			elm->embed.stats.data_count;
-		parent->bref.embed.stats.inode_count +=
-			elm->embed.stats.inode_count;
+		if (elm->type != HAMMER2_BREF_TYPE_DATA) {
+			parent->bref.embed.stats.data_count +=
+				elm->embed.stats.data_count;
+			parent->bref.embed.stats.inode_count +=
+				elm->embed.stats.inode_count;
+		}
 		if (elm->type == HAMMER2_BREF_TYPE_INODE)
 			break;
 		if (parent->bref.leaf_count + elm->leaf_count <
