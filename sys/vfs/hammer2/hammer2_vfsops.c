@@ -88,6 +88,7 @@ int hammer2_flush_pipe = 100;
 int hammer2_synchronous_flush = 1;
 int hammer2_dio_count;
 int hammer2_limit_dio = 256;
+int hammer2_bulkfree_tps = 5000;
 long hammer2_chain_allocs;
 long hammer2_chain_frees;
 long hammer2_limit_dirty_chains;
@@ -135,6 +136,8 @@ SYSCTL_INT(_vfs_hammer2, OID_AUTO, flush_pipe, CTLFLAG_RW,
 	   &hammer2_flush_pipe, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, synchronous_flush, CTLFLAG_RW,
 	   &hammer2_synchronous_flush, 0, "");
+SYSCTL_INT(_vfs_hammer2, OID_AUTO, bulkfree_tps, CTLFLAG_RW,
+	   &hammer2_bulkfree_tps, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, chain_allocs, CTLFLAG_RW,
 	   &hammer2_chain_allocs, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, chain_frees, CTLFLAG_RW,

@@ -87,6 +87,8 @@ typedef struct hammer2_bulkfree_info {
 	long			count_bytes_scanned;
 	long			count_chains_scanned;
 	long			count_chains_reported;
+	long			bulkfree_calls;
+	int			bulkfree_ticks;
 	hammer2_off_t		adj_free;
 	hammer2_tid_t		mtid;
 	hammer2_tid_t		saved_mirror_tid;
@@ -144,6 +146,10 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 		if (error)
 			break;
 
+		/*
+		 * Account for dirents before thre data_off test, since most
+		 * dirents do not need a data reference.
+		 */
 		if (bref.type == HAMMER2_BREF_TYPE_DIRENT)
 			++info->count_dirents_scanned;
 
@@ -404,6 +410,8 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 	cbinfo.sbase &= ~HAMMER2_FREEMAP_LEVEL1_MASK;
 	TAILQ_INIT(&cbinfo.list);
 
+	cbinfo.bulkfree_ticks = ticks;
+
 	/*
 	 * Loop on a full meta-data scan as many times as required to
 	 * get through all available storage.
@@ -586,10 +594,32 @@ h2_bulkfree_callback(hammer2_bulkfree_info_t *cbinfo, hammer2_blockref_t *bref)
 	int radix;
 
 	/*
-	 * Check for signal and allow yield to userland during scan
+	 * Check for signal and allow yield to userland during scan.
 	 */
 	if (hammer2_signal_check(&cbinfo->save_time))
 		return HAMMER2_ERROR_ABORTED;
+
+	/*
+	 * Deal with kernel thread cpu or I/O hogging by limiting the
+	 * number of chains scanned per second to hammer2_bulkfree_tps.
+	 * Ignore leaf records (DIRENT and DATA), no per-record I/O is
+	 * involved for those since we don't load their data.
+	 */
+	if (bref->type != HAMMER2_BREF_TYPE_DATA &&
+	    bref->type != HAMMER2_BREF_TYPE_DIRENT) {
+		++cbinfo->bulkfree_calls;
+		if (cbinfo->bulkfree_calls > hammer2_bulkfree_tps) {
+			int dticks = ticks - cbinfo->bulkfree_ticks;
+			if (dticks < 0)
+				dticks = 0;
+			if (dticks < hz) {
+				tsleep(&cbinfo->bulkfree_ticks, 0,
+				       "h2bw", hz - dticks);
+			}
+			cbinfo->bulkfree_calls = 0;
+			cbinfo->bulkfree_ticks = ticks;
+		}
+	}
 
 	/*
 	 * Calculate the data offset and determine if it is within

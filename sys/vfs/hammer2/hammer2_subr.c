@@ -416,6 +416,8 @@ hammer2_signal_check(time_t *timep)
 			if (CURSIG_NOBLOCK(curthread->td_lwp) != 0)
 				error = HAMMER2_ERROR_ABORTED;
 		}
+	} else {
+		lwkt_yield();
 	}
 	return error;
 }
