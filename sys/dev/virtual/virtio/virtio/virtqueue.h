@@ -45,26 +45,19 @@ struct sglist;
  */
 #define VIRTIO_RING_F_EVENT_IDX		(1 << 29)
 
-/* Device callback for a virtqueue interrupt. */
-typedef int virtqueue_intr_t(void *);
-
 #define VIRTQUEUE_MAX_NAME_SZ	32
 
 /* One for each virtqueue the device wishes to allocate. */
 struct vq_alloc_info {
 	char		   vqai_name[VIRTQUEUE_MAX_NAME_SZ];
 	int		   vqai_maxindirsz;
-	virtqueue_intr_t  *vqai_intr;
-	void		  *vqai_intr_arg;
 	struct virtqueue **vqai_vq;
 };
 
-#define VQ_ALLOC_INFO_INIT(_i,_nsegs,_intr,_arg,_vqp,_str,...) do {	\
+#define VQ_ALLOC_INFO_INIT(_i,_nsegs,_vqp,_str,...) do {	\
 	ksnprintf((_i)->vqai_name, VIRTQUEUE_MAX_NAME_SZ, _str,		\
 	    ##__VA_ARGS__);						\
 	(_i)->vqai_maxindirsz = (_nsegs);				\
-	(_i)->vqai_intr = (_intr);					\
-	(_i)->vqai_intr_arg = (_arg);					\
 	(_i)->vqai_vq = (_vqp);						\
 } while (0)
 
@@ -77,7 +70,7 @@ void	*virtqueue_drain(struct virtqueue *vq, int *last);
 void	 virtqueue_free(struct virtqueue *vq);
 int	 virtqueue_reinit(struct virtqueue *vq, uint16_t size);
 
-int	 virtqueue_intr(struct virtqueue *vq);
+int	 virtqueue_pending(struct virtqueue *vq);
 int	 virtqueue_enable_intr(struct virtqueue *vq);
 int	 virtqueue_postpone_intr(struct virtqueue *vq);
 void	 virtqueue_disable_intr(struct virtqueue *vq);

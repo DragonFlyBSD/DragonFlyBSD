@@ -151,7 +151,8 @@ int	 virtio_teardown_intr(device_t dev, uint irq);
  * legacy IRQ, the virtio device can check the ISR to determine if the
  * configuration was updated.
  */
-int	 virtio_bind_intr(device_t dev, uint irq, int what);
+int	 virtio_bind_intr(device_t dev, uint irq, int what,
+	     driver_intr_t handler, void *arg);
 /* Similarly, -1 is the notification IRQ, >= 0 are the virtqueues. */
 int	 virtio_unbind_intr(device_t dev, int what);
 int	 virtio_with_feature(device_t dev, uint64_t feature);

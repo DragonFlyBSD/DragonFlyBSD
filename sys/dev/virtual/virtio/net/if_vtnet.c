@@ -116,7 +116,7 @@ static int	vtnet_rx_csum(struct vtnet_softc *, struct mbuf *,
 static int	vtnet_rxeof_merged(struct vtnet_softc *, struct mbuf *, int);
 static int	vtnet_rxeof(struct vtnet_softc *, int, int *);
 static void	vtnet_rx_intr_task(void *);
-static int	vtnet_rx_vq_intr(void *);
+static void	vtnet_rx_vq_intr(void *);
 
 static void	vtnet_enqueue_txhdr(struct vtnet_softc *,
 		    struct vtnet_tx_header *);
@@ -130,7 +130,7 @@ static void	vtnet_start_locked(struct ifnet *, struct ifaltq_subque *);
 static void	vtnet_start(struct ifnet *, struct ifaltq_subque *);
 static void	vtnet_tick(void *);
 static void	vtnet_tx_intr_task(void *);
-static int	vtnet_tx_vq_intr(void *);
+static void	vtnet_tx_vq_intr(void *);
 
 static void	vtnet_stop(struct vtnet_softc *);
 static int	vtnet_virtio_reinit(struct vtnet_softc *);
@@ -245,6 +245,11 @@ vtnet_probe(device_t dev)
 	return (BUS_PROBE_DEFAULT);
 }
 
+struct irqmap {
+	int irq;
+	driver_intr_t *handler;
+};
+
 static int
 vtnet_attach(device_t dev)
 {
@@ -299,9 +304,6 @@ vtnet_attach(device_t dev)
 			sc->vtnet_flags |= VTNET_FLAG_CTRL_MAC;
 	}
 
-	/* Read (or generate) the MAC address for the adapter. */
-	vtnet_get_hwaddr(sc);
-
 	error = vtnet_alloc_intrs(sc);
 	if (error) {
 		device_printf(dev, "cannot allocate interrupts\n");
@@ -314,44 +316,50 @@ vtnet_attach(device_t dev)
 		goto fail;
 	}
 
-	if (sc->vtnet_nintr == 1) {
-		for (i = 0; i < 2; i++) {
-			/* Everything is on IRQ vector 0. */
-			error = virtio_bind_intr(dev, 0, i);
-			if (error) {
-				device_printf(dev,
-				    "cannot bind virtqueue IRQs\n");
-				goto fail;
-			}
+	/* XXX Separate function */
+	struct irqmap info[2];
+
+	/* Possible "Virtqueue <-> IRQ" configurations */
+	switch (sc->vtnet_nintr) {
+	case 1:
+		info[0] = (struct irqmap){0, vtnet_rx_vq_intr};
+		info[1] = (struct irqmap){0, vtnet_tx_vq_intr};
+		break;
+	case 2:
+		if (virtio_with_feature(dev, VIRTIO_NET_F_STATUS)) {
+			info[0] = (struct irqmap){1, vtnet_rx_vq_intr};
+		} else {
+			info[0] = (struct irqmap){0, vtnet_rx_vq_intr};
 		}
-	} else if (sc->vtnet_nintr == 2) {
-		for (i = 0; i < 2; i++) {
-			/* All virtqueues use the second IRQ vector. */
-			error = virtio_bind_intr(dev, 1, i);
-			if (error) {
-				device_printf(dev,
-				    "cannot bind virtqueue IRQs\n");
-				goto fail;
-			}
-		}
-	} else {
-		for (i = 0; i < 2; i++) {
-			/* Use IRQ vectors 1 and 2 for the virtqueues. */
-			error = virtio_bind_intr(dev, i + 1, i);
-			if (error) {
-				device_printf(dev,
-				    "cannot bind virtqueue IRQs\n");
-				goto fail;
-			}
+		info[1] = (struct irqmap){1, vtnet_tx_vq_intr};
+		break;
+	case 3:
+		info[0] = (struct irqmap){1, vtnet_rx_vq_intr};
+		info[1] = (struct irqmap){2, vtnet_tx_vq_intr};
+		break;
+	default:
+		device_printf(dev, "Invalid interrupt vector count: %d\n",
+		    sc->vtnet_nintr);
+		goto fail;
+	}
+	for (i = 0; i < 2; i++) {
+		error = virtio_bind_intr(dev, info[i].irq, i,
+		    info[i].handler, sc);
+		if (error) {
+			device_printf(dev, "cannot bind virtqueue IRQs\n");
+			goto fail;
 		}
 	}
 	if (virtio_with_feature(dev, VIRTIO_NET_F_STATUS)) {
-		error = virtio_bind_intr(dev, 0, -1);
+		error = virtio_bind_intr(dev, 0, -1, NULL, NULL);
 		if (error) {
 			device_printf(dev, "cannot bind config_change IRQ\n");
 			goto fail;
 		}
 	}
+
+	/* Read (or generate) the MAC address for the adapter. */
+	vtnet_get_hwaddr(sc);
 
 	error = vtnet_setup_interface(sc);
 	if (error) {
@@ -577,7 +585,7 @@ vtnet_negotiate_features(struct vtnet_softc *sc)
 static int
 vtnet_alloc_intrs(struct vtnet_softc *sc)
 {
-        int cnt, error;
+	int cnt, error;
 	int intrcount = virtio_intr_count(sc->vtnet_dev);
 	int i;
 	int use_config;
@@ -642,20 +650,17 @@ vtnet_alloc_virtqueues(struct vtnet_softc *sc)
 	else
 		sc->vtnet_tx_nsegs = VTNET_MIN_TX_SEGS;
 
-	VQ_ALLOC_INFO_INIT(&vq_info[0], sc->vtnet_rx_nsegs,
-	    vtnet_rx_vq_intr, sc, &sc->vtnet_rx_vq,
+	VQ_ALLOC_INFO_INIT(&vq_info[0], sc->vtnet_rx_nsegs, &sc->vtnet_rx_vq,
 	    "%s receive", device_get_nameunit(dev));
 
-	VQ_ALLOC_INFO_INIT(&vq_info[1], sc->vtnet_tx_nsegs,
-	    vtnet_tx_vq_intr, sc, &sc->vtnet_tx_vq,
+	VQ_ALLOC_INFO_INIT(&vq_info[1], sc->vtnet_tx_nsegs, &sc->vtnet_tx_vq,
 	    "%s transmit", device_get_nameunit(dev));
 
 	if (sc->vtnet_flags & VTNET_FLAG_CTRL_VQ) {
 		nvqs++;
 
-		VQ_ALLOC_INFO_INIT(&vq_info[2], 0, NULL, NULL,
-		    &sc->vtnet_ctrl_vq, "%s control",
-		    device_get_nameunit(dev));
+		VQ_ALLOC_INFO_INIT(&vq_info[2], 0, &sc->vtnet_ctrl_vq,
+		    "%s control", device_get_nameunit(dev));
 	}
 
 	return (virtio_alloc_virtqueues(dev, 0, nvqs, vq_info));
@@ -1641,7 +1646,7 @@ next:
 	}
 }
 
-static int
+static void
 vtnet_rx_vq_intr(void *xsc)
 {
 	struct vtnet_softc *sc;
@@ -1650,8 +1655,6 @@ vtnet_rx_vq_intr(void *xsc)
 
 	vtnet_disable_rx_intr(sc);
 	vtnet_rx_intr_task(sc);
-
-	return (1);
 }
 
 static void
@@ -2046,7 +2049,7 @@ next:
 //	lwkt_serialize_exit(&sc->vtnet_slz);
 }
 
-static int
+static void
 vtnet_tx_vq_intr(void *xsc)
 {
 	struct vtnet_softc *sc;
@@ -2055,8 +2058,6 @@ vtnet_tx_vq_intr(void *xsc)
 
 	vtnet_disable_tx_intr(sc);
 	vtnet_tx_intr_task(sc);
-
-	return (1);
 }
 
 static void

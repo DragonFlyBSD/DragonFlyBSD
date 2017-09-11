@@ -146,8 +146,7 @@ static void	vtblk_startio(struct vtblk_softc *);
 static struct vtblk_request * vtblk_bio_request(struct vtblk_softc *);
 static int	vtblk_execute_request(struct vtblk_softc *,
 		    struct vtblk_request *);
-
-static int	vtblk_vq_intr(void *);
+static void	vtblk_vq_intr(void *);
 
 static void	vtblk_stop(struct vtblk_softc *);
 
@@ -305,7 +304,7 @@ vtblk_attach(device_t dev)
 		goto fail;
 	}
 
-	error = virtio_bind_intr(sc->vtblk_dev, 0, 0);
+	error = virtio_bind_intr(sc->vtblk_dev, 0, 0, vtblk_vq_intr, sc);
 	if (error) {
 		device_printf(dev, "cannot assign virtqueue to interrupt\n");
 		goto fail;
@@ -558,8 +557,7 @@ vtblk_alloc_virtqueue(struct vtblk_softc *sc)
 	dev = sc->vtblk_dev;
 
 	VQ_ALLOC_INFO_INIT(&vq_info, sc->vtblk_max_nsegs,
-	    vtblk_vq_intr, sc, &sc->vtblk_vq,
-	    "%s request", device_get_nameunit(dev));
+	    &sc->vtblk_vq, "%s request", device_get_nameunit(dev));
 
 	return (virtio_alloc_virtqueues(dev, 0, 1, &vq_info));
 }
@@ -800,7 +798,7 @@ vtblk_execute_request(struct vtblk_softc *sc, struct vtblk_request *req)
 	return (error);
 }
 
-static int
+static void
 vtblk_vq_intr(void *arg)
 {
 	struct vtblk_softc *sc = arg;
@@ -815,7 +813,7 @@ vtblk_vq_intr(void *arg)
 
 retry:
 	if (sc->vtblk_flags & VTBLK_FLAG_DETACH)
-		return (1);
+		return;
 
 	while ((req = virtqueue_dequeue(vq, NULL)) != NULL) {
 		bio = req->vbr_bio;
@@ -860,8 +858,6 @@ retry:
 		goto retry;
 	}
 	lwkt_serialize_handler_enable(&sc->vtblk_slz);
-
-	return (1);
 }
 
 static void

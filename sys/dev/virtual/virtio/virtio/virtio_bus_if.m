@@ -42,6 +42,8 @@ METHOD int bind_intr {
 	device_t	dev;
 	uint		irq;
 	int		what;
+	driver_intr_t	handler;
+	void		*arg;
 };
 
 METHOD int unbind_intr {

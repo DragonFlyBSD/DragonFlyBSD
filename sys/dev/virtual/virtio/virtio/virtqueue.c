@@ -67,9 +67,6 @@ struct virtqueue {
 	int			 vq_max_indirect_size;
 	int			 vq_indirect_mem_size;
 
-	virtqueue_intr_t	*vq_intrhand;
-	void			*vq_intrhand_arg;
-
 	struct vring		 vq_ring;
 	uint16_t		 vq_free_cnt;
 	uint16_t		 vq_queued_cnt;
@@ -184,8 +181,6 @@ virtqueue_alloc(device_t dev, uint16_t queue, uint16_t size, int align,
 	vq->vq_alignment = align;
 	vq->vq_nentries = size;
 	vq->vq_free_cnt = size;
-	vq->vq_intrhand = info->vqai_intr;
-	vq->vq_intrhand_arg = info->vqai_intr_arg;
 
 	if (VIRTIO_BUS_WITH_FEATURE(dev, VIRTIO_RING_F_EVENT_IDX) != 0)
 		vq->vq_flags |= VIRTQUEUE_FLAG_EVENT_IDX;
@@ -415,16 +410,9 @@ virtqueue_nused(struct virtqueue *vq)
 }
 
 int
-virtqueue_intr(struct virtqueue *vq)
+virtqueue_pending(struct virtqueue *vq)
 {
-
-	if (vq->vq_intrhand == NULL ||
-	    vq->vq_used_cons_idx == vq->vq_ring.used->idx)
-		return (0);
-
-	vq->vq_intrhand(vq->vq_intrhand_arg);
-
-	return (1);
+	return (vq->vq_used_cons_idx != vq->vq_ring.used->idx);
 }
 
 /*

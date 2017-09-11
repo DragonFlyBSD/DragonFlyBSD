@@ -229,9 +229,11 @@ virtio_intr_release(device_t dev)
 }
 
 int
-virtio_bind_intr(device_t dev, uint irq, int what)
+virtio_bind_intr(device_t dev, uint irq, int what,
+    driver_intr_t handler, void *arg)
 {
-	return (VIRTIO_BUS_BIND_INTR(device_get_parent(dev), irq, what));
+	return (VIRTIO_BUS_BIND_INTR(device_get_parent(dev), irq, what,
+				     handler, arg));
 }
 
 int

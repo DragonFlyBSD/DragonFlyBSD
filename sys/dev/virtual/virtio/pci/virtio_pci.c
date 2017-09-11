@@ -49,6 +49,9 @@
 
 struct vqentry {
 	int what;
+	struct virtqueue *vq;
+	driver_intr_t *handler;
+	void *arg;
 	TAILQ_ENTRY(vqentry) entries;
 };
 
@@ -127,7 +130,7 @@ static int	vtpci_alloc_virtqueues(device_t, int, int,
 		    struct vq_alloc_info *);
 static int	vtpci_setup_intr(device_t, uint irq, lwkt_serialize_t);
 static int	vtpci_teardown_intr(device_t, uint irq);
-static int	vtpci_bind_intr(device_t, uint, int);
+static int	vtpci_bind_intr(device_t, uint, int, driver_intr_t, void *);
 static int	vtpci_unbind_intr(device_t, int);
 static void	vtpci_stop(device_t);
 static int	vtpci_reinit(device_t, uint64_t);
@@ -684,7 +687,8 @@ vtpci_teardown_intr(device_t dev, uint irq)
 }
 
 static void
-vtpci_add_irqentry(struct vtpci_intr_resource *intr_res, int what)
+vtpci_add_irqentry(struct vtpci_intr_resource *intr_res, int what,
+    driver_intr_t handler, void *arg)
 {
 	struct vqentry *e;
 
@@ -692,8 +696,15 @@ vtpci_add_irqentry(struct vtpci_intr_resource *intr_res, int what)
 		if (e->what == what)
 			return;
 	}
-	e = kmalloc(sizeof(*e), M_DEVBUF, M_WAITOK);
+	e = kmalloc(sizeof(*e), M_DEVBUF, M_WAITOK | M_ZERO);
 	e->what = what;
+	if (e->what == -1) {
+		e->vq = NULL;
+	} else {
+		e->vq = intr_res->ires_sc->vtpci_vqx[e->what].vq;
+	}
+	e->handler = handler;
+	e->arg = arg;
 	TAILQ_INSERT_TAIL(&intr_res->ls, e, entries);
 }
 
@@ -717,7 +728,8 @@ vtpci_del_irqentry(struct vtpci_intr_resource *intr_res, int what)
  * after intr_alloc and alloc_virtqueues.
  */
 static int
-vtpci_bind_intr(device_t dev, uint irq, int what)
+vtpci_bind_intr(device_t dev, uint irq, int what,
+    driver_intr_t handler, void *arg)
 {
 	struct vtpci_softc *sc = device_get_softc(dev);
 	struct vtpci_virtqueue *vqx;
@@ -756,7 +768,7 @@ vtpci_bind_intr(device_t dev, uint irq, int what)
 			return (error);
 	}
 done:
-	vtpci_add_irqentry(&sc->vtpci_intr_res[irq], what);
+	vtpci_add_irqentry(&sc->vtpci_intr_res[irq], what, handler, arg);
 	return (0);
 }
 
@@ -1132,12 +1144,13 @@ vtpci_legacy_intr(void *arg)
 	isr = vtpci_read_config_1(sc, VIRTIO_PCI_ISR);
 
 	TAILQ_FOREACH(e, &ires->ls, entries) {
+		/* XXX Allow for masking individual virtqueue handlers. */
 		if (e->what == -1) {
 			if (isr & VIRTIO_PCI_ISR_CONFIG)
 				vtpci_config_intr(sc);
-		} else if (e->what >= 0 && e->what < sc->vtpci_nvqs) {
-			if (isr & VIRTIO_PCI_ISR_INTR)
-				virtqueue_intr(sc->vtpci_vqx[e->what].vq);
+		} else if ((isr & VIRTIO_PCI_ISR_INTR) &&
+		    virtqueue_pending(e->vq)) {
+			e->handler(e->arg);
 		}
 	}
 }
@@ -1152,10 +1165,11 @@ vtpci_msix_intr(void *arg)
 	ires = arg;
 	sc = ires->ires_sc;
 	TAILQ_FOREACH(e, &ires->ls, entries) {
+		/* XXX Allow for masking individual virtqueue handlers. */
 		if (e->what == -1) {
 			vtpci_config_intr(sc);
-		} else if (e->what >= 0 && e->what < sc->vtpci_nvqs) {
-			virtqueue_intr(sc->vtpci_vqx[e->what].vq);
+		} else if (virtqueue_pending(e->vq)) {
+			e->handler(e->arg);
 		}
 	}
 }

@@ -174,9 +174,9 @@ static struct vtscsi_request * vtscsi_dequeue_request(struct vtscsi_softc *);
 static void	vtscsi_complete_request(struct vtscsi_request *);
 static void	vtscsi_complete_vq(struct vtscsi_softc *, struct virtqueue *);
 
-static int	vtscsi_control_vq_intr(void *);
-static int	vtscsi_event_vq_intr(void *);
-static int	vtscsi_request_vq_intr(void *);
+static void	vtscsi_control_vq_intr(void *);
+static void	vtscsi_event_vq_intr(void *);
+static void	vtscsi_request_vq_intr(void *);
 static void	vtscsi_disable_vqs_intr(struct vtscsi_softc *);
 static void	vtscsi_enable_vqs_intr(struct vtscsi_softc *);
 
@@ -262,6 +262,11 @@ vtscsi_probe(device_t dev)
 	return (BUS_PROBE_DEFAULT);
 }
 
+struct irqmap {
+	int irq;
+	driver_intr_t *handler;
+};
+
 static int
 vtscsi_attach(device_t dev)
 {
@@ -319,47 +324,39 @@ vtscsi_attach(device_t dev)
 		goto fail;
 	}
 
+	/* XXX Separate function */
+	struct irqmap info[3];
+
+	/* Possible "Virtqueue <-> IRQ" configurations */
 	switch (sc->vtscsi_nintr) {
 	case 1:
-		for (i = 0; i < 3; i++) {
-			error = virtio_bind_intr(sc->vtscsi_dev, 0, i);
-			if (error) {
-				device_printf(dev,
-				    "cannot bind virtqueue IRQs\n");
-				goto fail;
-			}
-		}
+		info[0] = (struct irqmap){0, vtscsi_control_vq_intr};
+		info[1] = (struct irqmap){0, vtscsi_event_vq_intr};
+		info[2] = (struct irqmap){0, vtscsi_request_vq_intr};
 		break;
 	case 2:
-		for (i = 0; i < 2; i++) {
-			error = virtio_bind_intr(sc->vtscsi_dev, 0, i);
-			if (error) {
-				device_printf(dev,
-				    "cannot bind virtqueue IRQs\n");
-				goto fail;
-			}
-		}
-		/* Give the requestq its own interrupt vector. */
-		error = virtio_bind_intr(sc->vtscsi_dev, 1, 2);
-		if (error) {
-			device_printf(dev, "cannot bind virtqueue IRQs\n");
-			goto fail;
-		}
+		info[0] = (struct irqmap){0, vtscsi_control_vq_intr};
+		info[1] = (struct irqmap){0, vtscsi_event_vq_intr};
+		info[2] = (struct irqmap){1, vtscsi_request_vq_intr};
 		break;
 	case 3:
-		for (i = 0; i < 3; i++) {
-			error = virtio_bind_intr(sc->vtscsi_dev, i, i);
-			if (error) {
-				device_printf(dev,
-				    "cannot bind virtqueue IRQs\n");
-				goto fail;
-			}
-		}
+		info[0] = (struct irqmap){0, vtscsi_control_vq_intr};
+		info[1] = (struct irqmap){1, vtscsi_event_vq_intr};
+		info[2] = (struct irqmap){2, vtscsi_request_vq_intr};
 		break;
 	default:
 		device_printf(dev, "Invalid interrupt vector count: %d\n",
 		    sc->vtscsi_nintr);
 		goto fail;
+	}
+	for (i = 0; i < 3; i++) {
+		error = virtio_bind_intr(sc->vtscsi_dev, info[i].irq, i,
+		    info[i].handler, sc);
+		if (error) {
+			device_printf(dev,
+			    "cannot bind virtqueue IRQs\n");
+			goto fail;
+		}
 	}
 
 	error = vtscsi_init_event_vq(sc);
@@ -535,22 +532,18 @@ vtscsi_alloc_intrs(struct vtscsi_softc *sc)
 static int
 vtscsi_alloc_virtqueues(struct vtscsi_softc *sc)
 {
-	device_t dev;
+	device_t dev = sc->vtscsi_dev;
 	struct vq_alloc_info vq_info[3];
-	int nvqs;
+	int nvqs = 3;
 
-	dev = sc->vtscsi_dev;
-	nvqs = 3;
+	VQ_ALLOC_INFO_INIT(&vq_info[0], 0, &sc->vtscsi_control_vq,
+	    "%s control", device_get_nameunit(dev));
 
-	VQ_ALLOC_INFO_INIT(&vq_info[0], 0, vtscsi_control_vq_intr, sc,
-	    &sc->vtscsi_control_vq, "%s control", device_get_nameunit(dev));
-
-	VQ_ALLOC_INFO_INIT(&vq_info[1], 0, vtscsi_event_vq_intr, sc,
-	    &sc->vtscsi_event_vq, "%s event", device_get_nameunit(dev));
+	VQ_ALLOC_INFO_INIT(&vq_info[1], 0, &sc->vtscsi_event_vq,
+	    "%s event", device_get_nameunit(dev));
 
 	VQ_ALLOC_INFO_INIT(&vq_info[2], sc->vtscsi_max_nsegs,
-	    vtscsi_request_vq_intr, sc, &sc->vtscsi_request_vq,
-	    "%s request", device_get_nameunit(dev));
+	    &sc->vtscsi_request_vq, "%s request", device_get_nameunit(dev));
 
 	return (virtio_alloc_virtqueues(dev, 0, nvqs, vq_info));
 }
@@ -2253,7 +2246,7 @@ vtscsi_complete_vq(struct vtscsi_softc *sc, struct virtqueue *vq)
 		vtscsi_complete_request(req);
 }
 
-static int
+static void
 vtscsi_control_vq_intr(void *xsc)
 {
 	struct vtscsi_softc *sc;
@@ -2274,11 +2267,9 @@ again:
 	}
 
 	VTSCSI_UNLOCK(sc);
-
-	return (1);
 }
 
-static int
+static void
 vtscsi_event_vq_intr(void *xsc)
 {
 	struct vtscsi_softc *sc;
@@ -2301,11 +2292,9 @@ again:
 	}
 
 	VTSCSI_UNLOCK(sc);
-
-	return (1);
 }
 
-static int
+static void
 vtscsi_request_vq_intr(void *xsc)
 {
 	struct vtscsi_softc *sc;
@@ -2326,8 +2315,6 @@ again:
 	}
 
 	VTSCSI_UNLOCK(sc);
-
-	return (1);
 }
 
 static void
