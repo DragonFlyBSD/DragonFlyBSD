@@ -644,6 +644,7 @@ _callout_stop(struct callout *c, int issync)
 #endif
 	crit_enter_gd(gd);
 
+retry:
 	/*
 	 * Adjust flags for the required operation.  If the callout is
 	 * armed on another cpu we break out into the remote-cpu code which
@@ -661,8 +662,12 @@ _callout_stop(struct callout *c, int issync)
 		 */
 		if ((flags & CALLOUT_ARMED_MASK) && gd->gd_cpuid != cpuid) {
 			nflags = flags + 1;
-			if (atomic_cmpset_int(&c->c_flags, flags, nflags))
+			if (atomic_cmpset_int(&c->c_flags, flags, nflags)) {
+				/*
+				 * BREAK TO REMOTE-CPU CODE HERE
+				 */
 				break;
+			}
 			cpu_pause();
 			continue;
 		}
@@ -727,7 +732,10 @@ _callout_stop(struct callout *c, int issync)
 	 * is now locked to the remote cpu and we can safely send an IPI
 	 * to it.
 	 *
-	 * Once sent, wait for all IPIs to be processed.
+	 * Once sent, wait for all IPIs to be processed.  If PENDING remains
+	 * set after all IPIs have processed we raced a callout or
+	 * callout_reset and must retry.  Callers expect the callout to
+	 * be completely stopped upon return, so make sure it is.
 	 */
 	tgd = globaldata_find(cpuid);
 	lwkt_send_ipiq3(tgd, callout_stop_ipi, c, issync);
@@ -736,7 +744,7 @@ _callout_stop(struct callout *c, int issync)
 		flags = c->c_flags;
 		cpu_ccfence();
 
-		if ((flags & CALLOUT_ARMED_MASK) == 0)
+		if ((flags & CALLOUT_IPI_MASK) == 0)
 			break;
 
 		nflags = flags | CALLOUT_WAITING;
@@ -745,6 +753,8 @@ _callout_stop(struct callout *c, int issync)
 			tsleep(c, PINTERLOCKED, "cstp1", 0);
 		}
 	}
+	if (flags & CALLOUT_PENDING)
+		goto retry;
 
 	/*
 	 * Caller expects callout_stop_sync() to clear EXECUTED and return
