@@ -94,28 +94,27 @@ static void checkline(char *buf);
 static int insert_iph(const char *ips, time_t t);
 static void delete_iph(iphist_t *ip);
 
-static
-void
-block_ip(const char *ips) {
+static void
+block_ip(const char *ips)
+{
 	char buf[128];
 	int r = 0;
 
 	switch (args.fw_type) {
-		case FW_IS_PF:
-			r = snprintf(buf, sizeof(buf),
-				"pfctl -t%s -Tadd %s", args.arg1, ips);
-			break;
-		case FW_IS_IPFW:
-			r = snprintf(buf, sizeof(buf),
-				"ipfw add %s deny tcp from %s to me 22",
-				args.arg1, ips);
-			break;
+	case FW_IS_PF:
+		r = snprintf(buf, sizeof(buf),
+			"pfctl -t%s -Tadd %s", args.arg1, ips);
+		break;
+	case FW_IS_IPFW:
+		r = snprintf(buf, sizeof(buf),
+			"ipfw add %s deny tcp from %s to me 22",
+			args.arg1, ips);
+		break;
 	}
 
 	if (r > 0 && (int)strlen(buf) == r) {
 		system(buf);
-	}
-	else {
+	} else {
 		syslog(LOG_ERR, "sshlockout: invalid command");
 	}
 }
@@ -123,11 +122,11 @@ block_ip(const char *ips) {
 /*
  * Stupid simple string hash
  */
-static __inline
-int
+static __inline int
 iphash(const char *str)
 {
 	int hv = 0xA1B3569D;
+
 	while (*str) {
 		hv = (hv << 5) ^ *str ^ (hv >> 23);
 		++str;
@@ -208,9 +207,9 @@ main(int ac, char **av)
 	return(0);
 }
 
-static
-void
-checkip(const char *str, const char *reason1, const char *reason2) {
+static void
+checkip(const char *str, const char *reason1, const char *reason2)
+{
 	char ips[128];
 	int n1;
 	int n2;
@@ -222,8 +221,7 @@ checkip(const char *str, const char *reason1, const char *reason2) {
 
 	if (sscanf(str, "%d.%d.%d.%d", &n1, &n2, &n3, &n4) == 4) {
 		snprintf(ips, sizeof(ips), "%d.%d.%d.%d", n1, n2, n3, n4);
-	}
-	else {
+	} else {
 		/*
 		 * Check for IPv6 address (primitive way)
 		 */
@@ -279,8 +277,7 @@ checkip(const char *str, const char *reason1, const char *reason2) {
 	}
 }
 
-static
-void
+static void
 checkline(char *buf)
 {
 	char *str;
@@ -359,8 +356,7 @@ checkline(char *buf)
 /*
  * Insert IP record
  */
-static
-int
+static int
 insert_iph(const char *ips, time_t t)
 {
 	iphist_t *ip = malloc(sizeof(*ip));
@@ -407,8 +403,7 @@ insert_iph(const char *ips, time_t t)
  * Delete an ip record.  Note that we always delete from the head of the
  * list, but we will still wind up scanning hash chains.
  */
-static
-void
+static void
 delete_iph(iphist_t *ip)
 {
 	iphist_t **scanp;
@@ -432,9 +427,9 @@ delete_iph(iphist_t *ip)
 	free(ip);
 }
 
-static
-void
-init_iphist(void) {
+static void
+init_iphist(void)
+{
 	hist_base = NULL;
 	hist_tail = &hist_base;
 	for (int i = 0; i < HSIZE; i++) {
