@@ -32,6 +32,9 @@
    - xxHash source repository : https://github.com/Cyan4973/xxHash
 */
 
+/* DRAGONFLY ADDITION - allows inclusion in conf/files */
+#define XXH_NAMESPACE h2_
+
 /* Notice extracted from xxHash homepage :
 
 xxHash is an extremely fast Hash algorithm, running at RAM speed limits.

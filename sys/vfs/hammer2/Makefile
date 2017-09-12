@@ -1,10 +1,18 @@
 # Makefile for hammer2 vfs
 #
 #
+# NOTE! hammer2 is intended to be as self-contained and self-compatible as
+#	possible in terms of core compression support, so we prefix that
+#	code to avoid conflicts with the kernel proper.
+#
 .PATH: ${.CURDIR} ${.CURDIR}/zlib ${.CURDIR}/xxhash
 
+# NOTE: We have to define Z_PREFIX and XXH_NAMESPACE in xxhash.h and
+#	hammer2_zlib_zconf.h directly in order to allow hammer2 to be
+#	specified in conf/files.
+#
 KCFLAGS+= -DINVARIANTS -DSMP
-KCFLAGS+= -DXXH_NAMESPACE=h2_
+#KCFLAGS+= -DZ_PREFIX -DXXH_NAMESPACE=h2_
 KMOD=	hammer2
 SRCS=	hammer2_vfsops.c hammer2_vnops.c hammer2_xops.c hammer2_inode.c
 SRCS+=	hammer2_strategy.c

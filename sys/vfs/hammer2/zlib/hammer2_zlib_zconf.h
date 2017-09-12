@@ -8,6 +8,9 @@
 #ifndef ZCONF_H
 #define ZCONF_H
 
+/* DRAGONFLY ADDITION - Allows inclusion in conf/files */
+#define Z_PREFIX
+
 /*
  * If you *really* need a unique prefix for all types and library functions,
  * compile with -DZ_PREFIX. The "standard" zlib should be compiled without it.

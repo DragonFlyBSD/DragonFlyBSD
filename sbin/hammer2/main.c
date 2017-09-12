@@ -432,6 +432,8 @@ main(int ac, char **av)
 			ecode = cmd_bulkfree_async(av[1]);
 		}
 #endif
+	} else if (strcmp(av[0], "cleanup") == 0) {
+		ecode = cmd_cleanup(av[1]);	/* can be NULL */
 	} else {
 		fprintf(stderr, "Unrecognized command: %s\n", av[0]);
 		usage(1);
