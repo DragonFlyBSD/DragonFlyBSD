@@ -277,8 +277,9 @@ bd_print(int verbose)
 		dptr = &od->od_slicetab[0];
 
 		/* Check for a "dedicated" disk */
-		if (((dptr[3].dp_typ == DOSPTYP_386BSD) ||
-			(dptr[3].dp_typ == DOSPTYP_NETBSD)) &&
+		if ((dptr[3].dp_typ == DOSPTYP_386BSD ||
+		     dptr[3].dp_typ == DOSPTYP_NETBSD ||
+		     dptr[3].dp_typ == DOSPTYP_DFLYBSD) &&
 		    (dptr[3].dp_start == 0) &&
 		    (dptr[3].dp_size == 50000)) {
 		    sprintf(line, "      disk%d", i);
@@ -306,6 +307,7 @@ bd_printslice(struct open_disk *od, struct dos_partition *dp, char *prefix,
 	char line[80];
 
 	switch (dp->dp_typ) {
+	case DOSPTYP_DFLYBSD:
 	case DOSPTYP_386BSD:
 	case DOSPTYP_NETBSD:
 	/* XXX: possibly add types 0 and 1, as in subr_disk, for gpt magic */
@@ -637,7 +639,8 @@ bd_opendisk(struct open_disk **odp, struct i386_devdesc *dev)
     /*
      * Check for the historically bogus MBR found on true dedicated disks
      */
-    if ((dptr[3].dp_typ == DOSPTYP_386BSD) &&
+    if ((dptr[3].dp_typ == DOSPTYP_386BSD ||
+	 dptr[3].dp_typ == DOSPTYP_DFLYBSD) &&
       (dptr[3].dp_start == 0) &&
       (dptr[3].dp_size == 50000)) {
         sector = 0;
@@ -664,10 +667,14 @@ bd_opendisk(struct open_disk **odp, struct i386_devdesc *dev)
     DEBUG("slice entry %d at %d, %d sectors", dev->d_kind.biosdisk.slice - 1, sector, dptr->dp_size);
 
     /*
-     * If we are looking at a BSD slice, and the partition is < 0, assume the 'a' partition
+     * If we are looking at a BSD slice, and the partition is < 0,
+     * assume the 'a' partition
      */
-    if ((dptr->dp_typ == DOSPTYP_386BSD) && (dev->d_kind.biosdisk.partition < 0))
+    if ((dptr->dp_typ == DOSPTYP_386BSD ||
+	 dptr->dp_typ == DOSPTYP_DFLYBSD) &&
+        dev->d_kind.biosdisk.partition < 0) {
 	dev->d_kind.biosdisk.partition = 0;
+    }
 
 unsliced:
     /* 
@@ -878,7 +885,8 @@ bd_bestslice(struct open_disk *od)
 	dp = &od->od_slicetab[0];
 	for (i = 0; i < od->od_nslices; i++, dp++) {
 		switch (dp->dp_typ) {
-		case DOSPTYP_386BSD:		/* FreeBSD */
+		case DOSPTYP_DFLYBSD:		/* DragonFlyBSD */
+		case DOSPTYP_386BSD:		/* FreeBSD and old DFlyBSD */
 			pref = dp->dp_flag & 0x80 ? PREF_FBSD_ACT : PREF_FBSD;
 			break;
 

@@ -174,6 +174,7 @@ struct part_type
 	,{0x63, "ISC UNIX, other System V/386, GNU HURD or Mach"}
 	,{0x64, "Novell Netware 2.xx"}
 	,{0x65, "Novell Netware 3.xx"}
+	,{0x6C, "DragonFlyBSD"}
 	,{0x70, "DiskSecure Multi-Boot"}
 	,{0x75, "PCIX"}
 	,{0x77, "QNX4.x"}
@@ -363,7 +364,7 @@ main(int argc, char *argv[])
 		read_s0();
 		reset_boot();
 		partp = (struct dos_partition *) (&mboot.parts[0]);
-		partp->dp_typ = DOSPTYP_386BSD;
+		partp->dp_typ = DOSPTYP_DFLYBSD;
 		partp->dp_flag = ACTIVE;
 		partp->dp_start = dos_sectors;
 		if (disksecs - dos_sectors > 0xFFFFFFFFU) {
@@ -559,7 +560,7 @@ struct dos_partition *partp = (struct dos_partition *) (&mboot.parts[3]);
 
 	init_boot();
 
-	partp->dp_typ = DOSPTYP_386BSD;
+	partp->dp_typ = DOSPTYP_DFLYBSD;
 	partp->dp_flag = ACTIVE;
 	start = roundup(start, dos_sectors);
 	if (start == 0)

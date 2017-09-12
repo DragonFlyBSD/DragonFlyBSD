@@ -778,9 +778,11 @@ dsreadandsetlabel(cdev_t dev, u_int flags,
 		lp = ops->op_clone_label(info, sp);
 	}
 	if (msg != NULL) {
-		if (sp->ds_type == DOSPTYP_386BSD /* XXX */)
+		if (sp->ds_type == DOSPTYP_386BSD ||
+		    sp->ds_type == DOSPTYP_DFLYBSD) {
 			log(LOG_WARNING, "%s: cannot find label (%s)\n",
 			    sname, msg);
+		}
 		if (lp.opaque)
 			kfree(lp.opaque, M_DEVBUF);
 	} else {

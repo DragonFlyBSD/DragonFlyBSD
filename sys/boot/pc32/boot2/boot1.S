@@ -54,6 +54,7 @@
 		.set PRT_OFF,0x1be		// Partition offset
 		.set PRT_NUM,0x4		// Partitions
 		.set PRT_BSD,0xa5		// Partition type
+		.set PRT_DFLY,0x6c		// Partition type
 
 // Flag Bits
 		.set FL_PACKET,0x80		// Packet mode
@@ -178,9 +179,11 @@ main:		cld				// String ops inc
 		mov $0x1,%cx	 		// Two passes
 main.1: 	mov $BOOT2_LOAD_BUF+PRT_OFF,%si	// Partition table
 		movb $0x1,%dh			// Partition
-main.2: 	cmpb $PRT_BSD,0x4(%si)		// Our partition type?
+main.2: 	cmpb $PRT_BSD,0x4(%si)		// FreeBSD / old DFly
+		je main.2a
+		cmpb $PRT_DFLY,0x4(%si)		// New DFly
 		jne main.3			// No
-		jcxz main.5			// If second pass
+main.2a:	jcxz main.5			// If second pass
 		testb $0x80,(%si)		// Active?
 		jnz main.5			// Yes
 main.3: 	add $0x10,%si	 		// Next entry
@@ -193,7 +196,6 @@ main.3: 	add $0x10,%si	 		// Next entry
 // If we get here, we didn't find any FreeBSD slices at all, so print an
 // error message and die.
 // 
-		mov $msg_part,%si		// Message
 		jmp error			// Error
 //
 // Floppies use partition 0 of drive 0.
@@ -299,14 +301,12 @@ nread_alt:
 		push %cs			// Read from
 		callw xread.1	 		//  disk
 		jnc return			// If success, return
-		mov $msg_read,%si		// Otherwise, set the error
-						//  message and fall through to
-						//  the error routine
+
+// Print that an error occured (no room to determine which error
+// occured) and the prompt.  Then wait for a keypress, then reboot the
+// machine.
 // 
-// Print out the error message pointed to by %ds:(%si) followed
-// by a prompt, wait for a keypress, and then reboot the machine.
-// 
-error:		callw putstr			// Display message
+error:
 		mov $prompt,%si			// Display
 		callw putstr			//  prompt
 		xorb %ah,%ah			// BIOS: Get
@@ -439,9 +439,6 @@ read.5: 	shlb %bl			//  buffer
 read.6: 	retw				// To caller
 
 // Messages
-
-msg_read:	.asciz "Read"
-msg_part:	.asciz "Boot"
 
 prompt: 	.asciz " error\r\n"
 

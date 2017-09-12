@@ -516,8 +516,8 @@ tables:
 		/*
 		 * These values indicate bootable types we know the names of.
 		 */
-		.byte 0x1, 0x6, 0x7, 0xb, 0xc, 0xe, 0x83
-		.byte 0x9f, 0xa5, 0xa6, 0xa9
+		.byte 0x1, 0x6, 0x7, 0xc, 0xe, 0x6c, 0x83, 0x9f
+		.byte 0xa5, 0xa6, 0xa9
 
 		/*
 		 * These are offsets that match the known names above and
@@ -529,10 +529,10 @@ tables:
 		.byte os_dos-.			# Windows
 		.byte os_dos-.			# Windows
 		.byte os_dos-.			# Windows
-		.byte os_dos-.			# Windows
+		.byte os_dfbsd-.		# DragonFly (new)
 		.byte os_linux-.		# Linux
 		.byte os_bsd-.			# BSD/OS
-		.byte os_dfbsd-.		# DragonFly/FreeBSD
+		.byte os_dfbsd-.		# DragonFly (old) / FreeBSD
 		.byte os_bsd-.			# OpenBSD
 		.byte os_bsd-.			# NetBSD
 

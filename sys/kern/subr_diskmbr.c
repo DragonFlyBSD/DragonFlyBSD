@@ -67,13 +67,13 @@ static struct dos_partition historical_bogus_partition_table[NDOSPART] = {
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-	{ 0x80, 0, 1, 0, DOSPTYP_386BSD, 255, 255, 255, 0, 50000, },
+	{ 0x80, 0, 1, 0, DOSPTYP_DFLYBSD, 255, 255, 255, 0, 50000, },
 };
 static struct dos_partition historical_bogus_partition_table_fixed[NDOSPART] = {
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-	{ 0x80, 0, 1, 0, DOSPTYP_386BSD, 254, 255, 255, 0, 50000, },
+	{ 0x80, 0, 1, 0, DOSPTYP_DFLYBSD, 254, 255, 255, 0, 50000, },
 };
 
 static int check_part (char *sname, struct dos_partition *dp,
@@ -205,7 +205,8 @@ reread_mbr:
 	/*
 	 * TODO:
 	 * Perhaps skip entries with 0 size.
-	 * Perhaps only look at entries of type DOSPTYP_386BSD.
+	 * Perhaps only look at entries of type DOSPTYP_386BSD or
+	 * DOSPTYP_DFLYBSD
 	 */
 	max_ncyls = 0;
 	max_nsectors = 0;

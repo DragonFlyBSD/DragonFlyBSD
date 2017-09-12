@@ -290,7 +290,8 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 	} else {
 		if (sp->ds_type == DOSPTYP_386BSD || /* XXX */
 		    sp->ds_type == DOSPTYP_NETBSD ||
-		    sp->ds_type == DOSPTYP_OPENBSD) {
+		    sp->ds_type == DOSPTYP_OPENBSD ||
+		    sp->ds_type == DOSPTYP_DFLYBSD) {
 			log(LOG_WARNING, "%s: cannot find label (%s)\n",
 			    dev->si_name, msg);
 		}
@@ -453,6 +454,7 @@ disk_probe(struct disk *dp, int reprobe)
 		if (sp->ds_type == DOSPTYP_386BSD ||
 		    sp->ds_type == DOSPTYP_NETBSD ||
 		    sp->ds_type == DOSPTYP_OPENBSD ||
+		    sp->ds_type == DOSPTYP_DFLYBSD ||
 		    sp->ds_type == 0 ||
 		    sp->ds_type == 1) {
 			if (dp->d_slice->dss_first_bsd_slice == 0)

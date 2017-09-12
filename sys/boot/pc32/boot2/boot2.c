@@ -539,7 +539,8 @@ dskprobe(void)
     sl = dsk.slice;
     if (sl < BASE_SLICE) {
 	for (i = 0; i < NDOSPART; i++)
-	    if (dp[i].dp_typ == DOSPTYP_386BSD &&
+	    if ((dp[i].dp_typ == DOSPTYP_386BSD ||
+		 dp[i].dp_typ == DOSPTYP_DFLYBSD) &&
 		(dp[i].dp_flag & 0x80 || sl < BASE_SLICE)) {
 		sl = BASE_SLICE + i;
 		if (dp[i].dp_flag & 0x80 ||
@@ -552,7 +553,7 @@ dskprobe(void)
     if (sl != WHOLE_DISK_SLICE) {
 	if (sl != COMPATIBILITY_SLICE)
 	    dp += sl - BASE_SLICE;
-	if (dp->dp_typ != DOSPTYP_386BSD) {
+	if (dp->dp_typ != DOSPTYP_386BSD && dp->dp_typ != DOSPTYP_DFLYBSD) {
 	    printf(INVALID_S, "slice");
 	    return -1;
 	}
