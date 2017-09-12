@@ -2953,7 +2953,6 @@ dev/virtual/virtio/net/if_vtnet.c	optional vtnet virtio
 dev/virtual/virtio/pci/virtio_pci.c	optional virtio pci
 dev/virtual/virtio/virtio/virtio.c	optional virtio
 dev/virtual/virtio/virtio/virtio_bus_if.m optional virtio
-dev/virtual/virtio/virtio/virtio_if.m	optional virtio
 dev/virtual/virtio/virtio/virtqueue.c	optional virtio
 
 #

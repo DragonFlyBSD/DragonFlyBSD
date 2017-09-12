@@ -70,8 +70,6 @@
 #include <dev/virtual/virtio/net/virtio_net.h>
 #include <dev/virtual/virtio/net/if_vtnetvar.h>
 
-#include "virtio_if.h"
-
 MALLOC_DEFINE(M_VTNET, "VTNET_TX", "Outgoing VTNET TX frame header");
 
 static int	vtnet_probe(device_t);
@@ -80,7 +78,6 @@ static int	vtnet_detach(device_t);
 static int	vtnet_suspend(device_t);
 static int	vtnet_resume(device_t);
 static int	vtnet_shutdown(device_t);
-static int	vtnet_config_change(device_t);
 
 static void	vtnet_negotiate_features(struct vtnet_softc *);
 static int	vtnet_alloc_intrs(struct vtnet_softc *);
@@ -131,6 +128,8 @@ static void	vtnet_start(struct ifnet *, struct ifaltq_subque *);
 static void	vtnet_tick(void *);
 static void	vtnet_tx_intr_task(void *);
 static void	vtnet_tx_vq_intr(void *);
+
+static void	vtnet_config_intr(void *);
 
 static void	vtnet_stop(struct vtnet_softc *);
 static int	vtnet_virtio_reinit(struct vtnet_softc *);
@@ -215,9 +214,6 @@ static device_method_t vtnet_methods[] = {
 	DEVMETHOD(device_suspend,	vtnet_suspend),
 	DEVMETHOD(device_resume,	vtnet_resume),
 	DEVMETHOD(device_shutdown,	vtnet_shutdown),
-
-	/* VirtIO methods. */
-	DEVMETHOD(virtio_config_change, vtnet_config_change),
 
 	DEVMETHOD_END
 };
@@ -351,7 +347,7 @@ vtnet_attach(device_t dev)
 		}
 	}
 	if (virtio_with_feature(dev, VIRTIO_NET_F_STATUS)) {
-		error = virtio_bind_intr(dev, 0, -1, NULL, NULL);
+		error = virtio_bind_intr(dev, 0, -1, vtnet_config_intr, sc);
 		if (error) {
 			device_printf(dev, "cannot bind config_change IRQ\n");
 			goto fail;
@@ -508,18 +504,6 @@ vtnet_shutdown(device_t dev)
 	 * do here; we just never expect to be resumed.
 	 */
 	return (vtnet_suspend(dev));
-}
-
-static int
-vtnet_config_change(device_t dev)
-{
-	struct vtnet_softc *sc;
-
-	sc = device_get_softc(dev);
-
-	taskqueue_enqueue(taskqueue_thread[mycpuid], &sc->vtnet_cfgchg_task);
-
-	return (1);
 }
 
 static void
@@ -2058,6 +2042,16 @@ vtnet_tx_vq_intr(void *xsc)
 
 	vtnet_disable_tx_intr(sc);
 	vtnet_tx_intr_task(sc);
+}
+
+static void
+vtnet_config_intr(void *arg)
+{
+	struct vtnet_softc *sc;
+
+	sc = arg;
+
+	taskqueue_enqueue(taskqueue_thread[mycpuid], &sc->vtnet_cfgchg_task);
 }
 
 static void

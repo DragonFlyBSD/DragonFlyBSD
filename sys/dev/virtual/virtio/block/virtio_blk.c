@@ -46,7 +46,6 @@
 #include <dev/virtual/virtio/virtio/virtio.h>
 #include <dev/virtual/virtio/virtio/virtqueue.h>
 #include "virtio_blk.h"
-#include "virtio_if.h"
 
 struct vtblk_request {
 	struct virtio_blk_outhdr	 vbr_hdr __aligned(16);

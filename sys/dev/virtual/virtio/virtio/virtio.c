@@ -41,7 +41,6 @@
 #include "virtio.h"
 #include "virtqueue.h"
 
-#include "virtio_if.h"
 #include "virtio_bus_if.h"
 
 static int virtio_modevent(module_t, int, void *);

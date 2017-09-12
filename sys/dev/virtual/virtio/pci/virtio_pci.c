@@ -44,7 +44,6 @@
 #include <dev/virtual/virtio/virtio/virtio.h>
 #include <dev/virtual/virtio/virtio/virtqueue.h>
 #include "virtio_pci.h"
-#include "virtio_if.h"
 #include "virtio_bus_if.h"
 
 struct vqentry {
@@ -154,7 +153,6 @@ static void	vtpci_reset(struct vtpci_softc *);
 
 static void	vtpci_legacy_intr(void *);
 static void	vtpci_msix_intr(void *);
-static void	vtpci_config_intr(void *);
 
 /*
  * I/O port read/write wrappers.
@@ -1147,7 +1145,7 @@ vtpci_legacy_intr(void *arg)
 		/* XXX Allow for masking individual virtqueue handlers. */
 		if (e->what == -1) {
 			if (isr & VIRTIO_PCI_ISR_CONFIG)
-				vtpci_config_intr(sc);
+				e->handler(e->arg);
 		} else if ((isr & VIRTIO_PCI_ISR_INTR) &&
 		    virtqueue_pending(e->vq)) {
 			e->handler(e->arg);
@@ -1167,22 +1165,9 @@ vtpci_msix_intr(void *arg)
 	TAILQ_FOREACH(e, &ires->ls, entries) {
 		/* XXX Allow for masking individual virtqueue handlers. */
 		if (e->what == -1) {
-			vtpci_config_intr(sc);
+			e->handler(e->arg);
 		} else if (virtqueue_pending(e->vq)) {
 			e->handler(e->arg);
 		}
 	}
-}
-
-static void
-vtpci_config_intr(void *xsc)
-{
-	struct vtpci_softc *sc;
-	device_t child;
-
-	sc = xsc;
-	child = sc->vtpci_child_dev;
-
-	if (child != NULL)
-		VIRTIO_CONFIG_CHANGE(child);
 }

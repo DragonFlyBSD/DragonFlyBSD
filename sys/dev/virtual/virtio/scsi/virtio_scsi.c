@@ -61,8 +61,6 @@
 #include <dev/virtual/virtio/scsi/virtio_scsi.h>
 #include <dev/virtual/virtio/scsi/virtio_scsivar.h>
 
-#include "virtio_if.h"
-
 static int	vtscsi_modevent(module_t, int, void *);
 
 static int	vtscsi_probe(device_t);
