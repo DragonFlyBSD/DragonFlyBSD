@@ -91,6 +91,7 @@ INCLUDE_CONFIG_FILE	opt_config.h
 # options in a never-included header.
 EXT2FS		opt_dontuse.h
 HAMMER		opt_dontuse.h
+HAMMER2		opt_dontuse.h
 HPFS		opt_dontuse.h
 MFS		opt_dontuse.h
 MSDOSFS		opt_dontuse.h
