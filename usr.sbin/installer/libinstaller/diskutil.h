@@ -50,8 +50,9 @@ struct disk;
 struct slice;
 struct subpartition;
 
-#define FS_HAMMER	0
-#define FS_UFS		1
+#define FS_UFS		0
+#define FS_HAMMER	1
+#define FS_HAMMER2	2
 
 #ifdef NEEDS_DISKUTIL_STRUCTURE_DEFINITIONS
 
@@ -160,6 +161,8 @@ void			 slices_free(struct slice *);
 struct subpartition	*slice_subpartition_first(const struct slice *);
 
 struct subpartition	*subpartition_new_hammer(struct slice *, const char *,
+						 long, int);
+struct subpartition	*subpartition_new_hammer2(struct slice *, const char *,
 						 long, int);
 struct subpartition	*subpartition_new_ufs(struct slice *, const char *,
 					      long, int, int, long, long, int);

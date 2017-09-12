@@ -4,7 +4,8 @@
 PROG=	dfuibe_installer
 NOMAN=
 SRCS=	flow.c fn_diagnostic.c fn_install.c fn_zonetab.c \
-	fn_configure.c fn_disk.c fn_subpart_hammer.c fn_subpart_ufs.c main.c
+	fn_configure.c fn_disk.c main.c \
+	fn_subpart_hammer.c fn_subpart_ufs.c
 
 CFLAGS+=-I${.CURDIR}/..
 

@@ -236,7 +236,8 @@ fn_install_os(struct i_fn_args *a)
 				    a->os_root, cmd_name(a, "MKDIR"),
 				    a->os_root,
 				    subpartition_get_mountpoint(sp));
-			if (use_hammer == 1) {
+			switch(use_hammer) {
+			case 1:
 				command_add(cmds, "%s%s /dev/%s %smnt%s",
 				    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
 				    (subpartition_is_encrypted(sp) ?
@@ -244,7 +245,18 @@ fn_install_os(struct i_fn_args *a)
 					subpartition_get_device_name(sp)),
 				    a->os_root,
 				    subpartition_get_mountpoint(sp));
-			} else {
+				break;
+			case 2:
+				command_add(cmds, "%s%s /dev/%s %smnt%s",
+				    a->os_root, cmd_name(a, "MOUNT_HAMMER2"),
+				    (subpartition_is_encrypted(sp) ?
+					subpartition_get_mapper_name(sp, 0) :
+					subpartition_get_device_name(sp)),
+				    a->os_root,
+				    subpartition_get_mountpoint(sp));
+				break;
+			case 0:
+			default:
 				command_add(cmds, "%s%s /dev/%s %smnt%s",
 				    a->os_root, cmd_name(a, "MOUNT"),
 				    (subpartition_is_encrypted(sp) ?
@@ -252,6 +264,7 @@ fn_install_os(struct i_fn_args *a)
 					subpartition_get_device_name(sp)),
 				    a->os_root,
 				    subpartition_get_mountpoint(sp));
+				break;
 			}
 		}
 	}
@@ -265,6 +278,8 @@ fn_install_os(struct i_fn_args *a)
 			/*
 			 * Set this subpartition as the dump device.
 			 */
+			command_add(cmds, "%s%s off",
+			    a->os_root, cmd_name(a, "DUMPON"));
 			command_add(cmds, "%s%s -v /dev/%s",
 			    a->os_root, cmd_name(a, "DUMPON"),
 			    subpartition_is_encrypted(sp) ?
@@ -585,6 +600,8 @@ fn_install_os(struct i_fn_args *a)
 			 */
 			if (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0)
 				fsname = "ufs";
+			else if (use_hammer == 2)
+				fsname = "hammer2";
 			else if (use_hammer)
 				fsname = "hammer";
 			else

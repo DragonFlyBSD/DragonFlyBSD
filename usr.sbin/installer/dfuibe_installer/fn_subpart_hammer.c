@@ -33,13 +33,14 @@
 
 /*
  * fn_subpart_hammer.c
- * Installer Function : Create HAMMER Subpartitions.
+ * Installer Function : Create HAMMER or HAMMER2 Subpartitions.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
@@ -66,7 +67,7 @@
 #include "flow.h"
 #include "pathnames.h"
 
-static int	create_subpartitions(struct i_fn_args *);
+static int	create_subpartitions(int which, struct i_fn_args *);
 static long	default_capacity(struct storage *, const char *);
 static int	check_capacity(struct i_fn_args *);
 static int	check_subpartition_selections(struct dfui_response *,
@@ -78,7 +79,7 @@ static void	populate_create_subpartitions_form(struct dfui_form *,
 static int	warn_subpartition_selections(struct i_fn_args *);
 static int	warn_encrypted_boot(struct i_fn_args *);
 static struct dfui_form *make_create_subpartitions_form(struct i_fn_args *);
-static int	show_create_subpartitions_form(struct dfui_form *,
+static int	show_create_subpartitions_form(int which, struct dfui_form *,
 			struct i_fn_args *);
 static char	*construct_lname(const char *mtpt);
 
@@ -91,12 +92,25 @@ static int expert = 0;
  * create them.
  */
 static int
-create_subpartitions(struct i_fn_args *a)
+create_subpartitions(int which, struct i_fn_args *a)
 {
 	struct subpartition *sp;
 	struct commands *cmds;
 	int result = 0;
 	int num_partitions;
+	const char *whichfs;
+
+	switch(which) {
+	case FS_HAMMER:
+		whichfs = "HAMMER";
+		break;
+	case FS_HAMMER2:
+		whichfs = "HAMMER2";
+		break;
+	default:
+		whichfs = NULL;
+		assert(0);
+	}
 
 	cmds = commands_new();
 	if (!is_file("%sinstall.disklabel.%s",
@@ -182,12 +196,12 @@ create_subpartitions(struct i_fn_args *a)
 			    a->tmp);
 		} else {
 			command_add(cmds,
-			    "%s%s '  %c:\t%s\t*\tHAMMER' "
+			    "%s%s '  %c:\t%s\t*\t%s' "
 			    ">>%sinstall.disklabel",
 			    a->os_root, cmd_name(a, "ECHO"),
 			    subpartition_get_letter(sp),
 			    capacity_to_string(subpartition_get_capacity(sp)),
-			    a->tmp);
+			    whichfs, a->tmp);
 		}
 	}
 	temp_file_add(a, "install.disklabel");
@@ -257,14 +271,24 @@ create_subpartitions(struct i_fn_args *a)
 				    subpartition_get_device_name(sp),
 				    subpartition_get_mapper_name(sp, -1));
 			}
-			ham_name = construct_lname(subpartition_get_mountpoint(sp));
-			command_add(cmds, "%s%s -f -L %s /dev/%s",
-			    a->os_root, cmd_name(a, "NEWFS_HAMMER"),
-			    ham_name,
-			    (subpartition_is_encrypted(sp) ?
-				subpartition_get_mapper_name(sp, 0) :
-				subpartition_get_device_name(sp)));
-			free(ham_name);
+
+			if (which == FS_HAMMER) {
+				ham_name = construct_lname(
+					      subpartition_get_mountpoint(sp));
+				command_add(cmds, "%s%s -f -L %s /dev/%s",
+				    a->os_root, cmd_name(a, "NEWFS_HAMMER"),
+				    ham_name,
+				    (subpartition_is_encrypted(sp) ?
+					subpartition_get_mapper_name(sp, 0) :
+					subpartition_get_device_name(sp)));
+				free(ham_name);
+			} else {
+				command_add(cmds, "%s%s -f /dev/%s",
+				    a->os_root, cmd_name(a, "NEWFS_HAMMER2"),
+				    (subpartition_is_encrypted(sp) ?
+					subpartition_get_mapper_name(sp, 0) :
+					subpartition_get_device_name(sp)));
+			}
 		}
 	}
 
@@ -424,7 +448,9 @@ check_capacity(struct i_fn_args *a)
 			  "You may have to run 'hammer prune-everything' and "
 			  "'hammer reblock'\n"
 			  "manually or often via a cron job, even if using a "
-			  "nohistory mount."));
+			  "nohistory mount.\n"
+			  "For HAMMER2 you may have to run 'hammer2 bulkfree' "
+			  "manually or often via a cron job.\n"));
 	} else {
 		good = 1;
 	}
@@ -749,7 +775,8 @@ make_create_subpartitions_form(struct i_fn_args *a)
  *	 1 = success, function is over
  */
 static int
-show_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
+show_create_subpartitions_form(int which, struct dfui_form *f,
+			       struct i_fn_args *a)
 {
 	struct dfui_dataset *ds;
 	struct dfui_response *r;
@@ -776,7 +803,7 @@ show_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
 				save_subpartition_selections(r, a);
 				if (!warn_subpartition_selections(a) &&
 				    !warn_encrypted_boot(a)) {
-					if (!create_subpartitions(a)) {
+					if (!create_subpartitions(which, a)) {
 						inform(a->c, _("The subpartitions you chose were "
 							"not correctly created, and the "
 							"primary partition may "
@@ -807,7 +834,7 @@ show_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
  * want on the disk, how large each should be, and where it should be mounted.
  */
 void
-fn_create_subpartitions_hammer(struct i_fn_args *a)
+fn_create_subpartitions_hammer(int which, struct i_fn_args *a)
 {
 	struct dfui_form *f;
 	unsigned long capacity;
@@ -815,7 +842,7 @@ fn_create_subpartitions_hammer(struct i_fn_args *a)
 
 	a->result = 0;
 	capacity = disk_get_capacity(storage_get_selected_disk(a->s));
-	if (capacity < HAMMER_MIN) {
+	if (which == FS_HAMMER && capacity < HAMMER_MIN) {
 		inform(a->c, _("The selected %dM disk is smaller than the "
 		    "required %dM for the HAMMER filesystem."),
 		    (int)capacity,
@@ -824,7 +851,7 @@ fn_create_subpartitions_hammer(struct i_fn_args *a)
 	}
 	while (!done) {
 		f = make_create_subpartitions_form(a);
-		switch (show_create_subpartitions_form(f, a)) {
+		switch (show_create_subpartitions_form(which, f, a)) {
 		case -1:
 			done = 0;
 			break;

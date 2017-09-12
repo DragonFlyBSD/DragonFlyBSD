@@ -508,8 +508,8 @@ slices_free(struct slice *head)
 }
 
 struct subpartition *
-subpartition_new_hammer(struct slice *s, const char *mountpoint, long capacity,
-    int encrypted)
+subpartition_new_hammer(struct slice *s, const char *mountpoint,
+			long capacity, int encrypted)
 {
 	struct subpartition *sp;
 	struct subpartition *last = s->subpartition_tail;
@@ -532,6 +532,69 @@ subpartition_new_hammer(struct slice *s, const char *mountpoint, long capacity,
 	sp->capacity = capacity;
 	sp->encrypted = encrypted;
 	sp->type = FS_HAMMER;
+
+	/*
+	 * We need this here, because a UFS /boot needs valid values
+	 */
+	if (sp->capacity < 1024)
+		sp->fsize = 1024;
+	else
+		sp->fsize = 2048;
+
+	if (sp->capacity < 1024)
+		sp->bsize = 8192;
+	else
+		sp->bsize = 16384;
+
+	sp->is_swap = 0;
+#if 0
+	sp->pfs = 0;
+#endif
+	if (strcasecmp(mountpoint, "swap") == 0)
+		sp->is_swap = 1;
+#if 0
+	if (strcmp(mountpoint, "/") != 0 && strcmp(mountpoint, "/boot") != 0 &&
+	    strcmp(mountpoint, "swap") != 0)
+		sp->pfs = 1;
+#endif
+
+	sp->next = NULL;
+	if (s->subpartition_head == NULL)
+		s->subpartition_head = sp;
+	else
+		s->subpartition_tail->next = sp;
+
+	sp->prev = s->subpartition_tail;
+	s->subpartition_tail = sp;
+
+	return(sp);
+}
+
+struct subpartition *
+subpartition_new_hammer2(struct slice *s, const char *mountpoint,
+			 long capacity, int encrypted)
+{
+	struct subpartition *sp;
+	struct subpartition *last = s->subpartition_tail;
+
+	AURA_MALLOC(sp, subpartition);
+
+	sp->parent = s;
+
+	if (last == NULL) {
+		sp->letter = 'a';
+	} else if (last->letter == 'b') {
+		sp->letter = 'd';
+	} else {
+		sp->letter = (char)(last->letter + 1);
+	}
+	if (sp->letter == 'b' && strcmp(mountpoint, "swap") != 0)
+		sp->letter = 'd';
+
+	sp->mountpoint = aura_strdup(mountpoint);
+	sp->capacity = capacity;
+	sp->encrypted = encrypted;
+	sp->type = FS_HAMMER2;
 
 	/*
 	 * We need this here, because a UFS /boot needs valid values

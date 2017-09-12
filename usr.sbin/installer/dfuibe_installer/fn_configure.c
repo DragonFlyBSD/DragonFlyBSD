@@ -1345,21 +1345,6 @@ mount_target_system(struct i_fn_args *a)
 	 *
 	 * XXX NEEDS TO BE REWRITTEN XXX
 	 */
-#if 0
-	if (use_hammer == 0) {
-		command_add(cmds, "%s%s /dev/%s %s%s",
-		    a->os_root, cmd_name(a, "MOUNT"),
-		    subpartition_get_device_name(d_subpart),
-		    a->os_root, a->cfg_root);
-		cmd = command_add(cmds,
-		    "%s%s -f %st2;"
-		    "%s%s \"^[^#]\" %s%s/etc/crypttab >%st2",
-		    a->os_root, cmd_name(a, "RM"), a->tmp,
-		    a->os_root, cmd_name(a, "GREP"),
-		    a->os_root, a->cfg_root, a->tmp);
-		command_set_failure_mode(cmd, COMMAND_FAILURE_IGNORE);
-	} else
-#endif
 	{
 		command_add(cmds, "%s%s /dev/%s %sboot",
 		    a->os_root, cmd_name(a, "MOUNT"),
@@ -1385,7 +1370,24 @@ mount_target_system(struct i_fn_args *a)
 	 */
 	{
 		struct stat sb = { .st_size = 0 };
-		const char *fsname = use_hammer ? "hammer" : "ufs";
+		const char *fsname;
+		const char *mountid;
+
+		switch (use_hammer) {
+		case 1:
+			fsname = "hammer";
+			mountid = "MOUNT_HAMMER";
+			break;
+		case 2:
+			fsname = "hammer2";
+			mountid = "MOUNT_HAMMER2";
+			break;
+		case 0:
+		default:
+			fsname = "ufs";
+			mountid = "MOUNT";
+			break;
+		}
 
 		stat("/tmp/t2", &sb);
 		if (sb.st_size > 0) {
@@ -1407,8 +1409,7 @@ mount_target_system(struct i_fn_args *a)
 			command_add(cmds,
 			    "%s%s %s %s%s",
 			    a->os_root,
-			     (use_hammer ? cmd_name(a, "MOUNT_HAMMER") :
-					   cmd_name(a, "MOUNT")),
+			    cmd_name(a, mountid),
 			    subpartition_get_mapper_name(d_subpart, 1),
 			    a->os_root, a->cfg_root);
 		} else {
@@ -1417,8 +1418,7 @@ mount_target_system(struct i_fn_args *a)
 			    "%s%s -F%s: '{print $2;}' |"
 			    "%s%s 's/\"//'` %s%s",
 			    a->os_root,
-			     (use_hammer ? cmd_name(a, "MOUNT_HAMMER") :
-					   cmd_name(a, "MOUNT")),
+			    cmd_name(a, mountid),
 			    a->os_root, cmd_name(a, "GREP"),
 			    a->os_root,
 			    a->os_root, cmd_name(a, "AWK"),

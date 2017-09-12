@@ -393,7 +393,7 @@ state_configure_menu(struct i_fn_args *a)
 
 	if (during_install == 0) {
 		switch (dfui_be_present_dialog(a->c, _("Select file system"),
-		    _("HAMMER|UFS|Return to Welcome Menu"),
+		    _("HAMMER|HAMMER2|UFS|Return to Welcome Menu"),
 		    _("Please select the file system installed on the disk.\n\n")))
 		{
 		case 1:
@@ -401,10 +401,14 @@ state_configure_menu(struct i_fn_args *a)
 			use_hammer = 1;
 			break;
 		case 2:
+			/* HAMMER2 */
+			use_hammer = 2;
+			break;
+		case 3:
 			/* UFS */
 			use_hammer = 0;
 			break;
-		case 3:
+		case 4:
 			state = state_welcome;
 			return;
 			/* NOTREACHED */
@@ -1021,9 +1025,12 @@ state_ask_fs(struct i_fn_args *a)
 	use_hammer = 0;
 
 	switch (dfui_be_present_dialog(a->c, _("Select file system"),
-	    _("Use HAMMER|Use UFS|Return to Select Disk"),
+	    _("Use HAMMER|Use HAMMER2|Use UFS|Return to Select Disk"),
 	    _("Please select the file system you want to use with %s.\n\n"
-	      "HAMMER is the new %s file system.  UFS is the traditional BSD file system."),
+	      "HAMMER is the primary %s file system.  "
+	      "HAMMER2 is the bleeding edge %s file system.  "
+	      "UFS is the traditional BSD file system."),
+	    OPERATING_SYSTEM_NAME,
 	    OPERATING_SYSTEM_NAME,
 	    OPERATING_SYSTEM_NAME))
 	{
@@ -1032,9 +1039,13 @@ state_ask_fs(struct i_fn_args *a)
 		use_hammer = 1;
 		break;
 	case 2:
-		/* UFS */
+		/* HAMMER2 */
+		use_hammer = 2;
 		break;
 	case 3:
+		/* UFS */
+		break;
+	case 4:
 		state = state_select_disk;
 		return;
 		/* NOTREACHED */
@@ -1212,10 +1223,17 @@ state_create_subpartitions(struct i_fn_args *a)
 	/*
 	 * Create subpartitions and filesystems
 	 */
-	if (use_hammer)
-		fn_create_subpartitions_hammer(a);
-	else
+	switch(use_hammer) {
+	case 1:
+		fn_create_subpartitions_hammer(FS_HAMMER, a);
+		break;
+	case 2:
+		fn_create_subpartitions_hammer(FS_HAMMER2, a);
+		break;
+	default:
 		fn_create_subpartitions_ufs(a);
+		break;
+	}
 
 	if (a->result) {
 		state = state_install_os;
