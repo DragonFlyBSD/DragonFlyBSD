@@ -82,7 +82,7 @@ int		s,			/* main RAW socket */
  */
 struct _s_x {
 	char *s;
-	int x;
+	uint32_t x;
 };
 
 static struct _s_x f_tcpflags[] = {
@@ -355,7 +355,7 @@ match_token(struct _s_x *table, char *string)
 	int i = strlen(string);
 
 	for (pt = table ; i && pt->s != NULL ; pt++)
-		if (strlen(pt->s) == i && !bcmp(string, pt->s, i))
+		if ((int)strlen(pt->s) == i && !bcmp(string, pt->s, i))
 			return pt->x;
 	return -1;
 };
@@ -1245,7 +1245,7 @@ show_dyn_ipfw(struct ipfw_ioc_state *d, int pcwidth, int bcwidth)
 	printf("\n");
 }
 
-int
+static int
 sort_q(const void *pa, const void *pb)
 {
 	int rev = (do_sort < 0);
@@ -1367,7 +1367,7 @@ list_pipes(void *data, int nbytes, int ac, char *av[])
 		rulenum = strtoul(*av++, NULL, 10);
 	else
 		rulenum = 0;
-	for (; nbytes >= sizeof(*p); p = (struct dn_ioc_pipe *)next) {
+	for (; nbytes >= (int)sizeof(*p); p = (struct dn_ioc_pipe *)next) {
 		double b = p->bandwidth;
 		char buf[30];
 		char prefix[80];
@@ -1379,10 +1379,10 @@ list_pipes(void *data, int nbytes, int ac, char *av[])
 		 * compute length, as pipe have variable size
 		 */
 		l = sizeof(*p) + p->fs.rq_elements * sizeof(*q);
-		next = (void *)p + l;
+		next = (uint8_t *)p + l;
 		nbytes -= l;
 
-		if (rulenum != 0 && rulenum != p->pipe_nr)
+		if (rulenum != 0 && rulenum != (u_long)p->pipe_nr)
 			continue;
 
 		/*
@@ -1406,13 +1406,13 @@ list_pipes(void *data, int nbytes, int ac, char *av[])
 		q = (struct dn_ioc_flowqueue *)(p+1);
 		list_queues(&p->fs, q);
 	}
-	for (fs = next; nbytes >= sizeof(*fs); fs = next) {
+	for (fs = next; nbytes >= (int)sizeof(*fs); fs = next) {
 		char prefix[80];
 
 		if (fs->fs_type != DN_IS_QUEUE)
 			break;
 		l = sizeof(*fs) + fs->rq_elements * sizeof(*q);
-		next = (void *)fs + l;
+		next = (uint8_t *)fs + l;
 		nbytes -= l;
 		q = (struct dn_ioc_flowqueue *)(fs+1);
 		sprintf(prefix, "q%05d: weight %d pipe %d ",
@@ -1608,14 +1608,14 @@ list(int ac, char *av[])
 	 * Count dynamic rules. This is easier as they have
 	 * fixed size.
 	 */
-	dynrules = (struct ipfw_ioc_state *)((void *)r + r->static_len);
+	dynrules = (struct ipfw_ioc_state *)((uint8_t *)r + r->static_len);
 	ndyn = (nbytes - r->static_len) / sizeof(*dynrules);
 
 	/* if showing stats, figure out column widths ahead of time */
 	bcwidth = pcwidth = 0;
 	if (do_acct) {
-		for (n = 0, r = data; n < nstat;
-		    n++, r = (void *)r + IOC_RULESIZE(r)) {
+		for (n = 0, r = data; n < nstat; n++,
+		r = (struct ipfw_ioc_rule *)((uint8_t *)r + IOC_RULESIZE(r))) {
 			/* packet counter */
 			width = snprintf(NULL, 0, "%ju", (uintmax_t)r->pcnt);
 			if (width > pcwidth)
@@ -1640,8 +1640,8 @@ list(int ac, char *av[])
 	}
 	/* if no rule numbers were specified, list all rules */
 	if (ac == 0) {
-		for (n = 0, r = data; n < nstat;
-		    n++, r = (void *)r + IOC_RULESIZE(r) )
+		for (n = 0, r = data; n < nstat; n++,
+		r = (struct ipfw_ioc_rule *)((uint8_t *)r + IOC_RULESIZE(r)))
 			show_ipfw(r, pcwidth, bcwidth);
 
 		if (do_dynamic && ndyn) {
@@ -1662,8 +1662,8 @@ list(int ac, char *av[])
 			warnx("invalid rule number: %s", *(lav - 1));
 			continue;
 		}
-		for (n = seen = 0, r = data; n < nstat;
-		    n++, r = (void *)r + IOC_RULESIZE(r) ) {
+		for (n = seen = 0, r = data; n < nstat; n++,
+		r = (struct ipfw_ioc_rule *)((uint8_t *)r + IOC_RULESIZE(r))) {
 			if (r->rulenum > rnum)
 				break;
 			if (r->rulenum == rnum) {
@@ -2726,8 +2726,6 @@ add(int ac, char *av[])
 			ac--; av++;
 			NEED1("logamount requires argument");
 			c->max_log = atoi(*av);
-			if (c->max_log < 0)
-				errx(EX_DATAERR, "logamount must be positive");
 			ac--; av++;
 		}
 		cmd = next_cmd(cmd);
@@ -3290,7 +3288,7 @@ done:
 	}
 
 	rule->cmd_len = (u_int32_t *)dst - (u_int32_t *)(rule->cmd);
-	i = (void *)dst - (void *)rule;
+	i = (uint8_t *)dst - (uint8_t *)rule;
 	if (getsockopt(s, IPPROTO_IP, IP_FW_ADD, rule, &i) == -1)
 		err(EX_UNAVAILABLE, "getsockopt(%s)", "IP_FW_ADD");
 	if (!do_quiet)
