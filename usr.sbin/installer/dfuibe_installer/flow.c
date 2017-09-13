@@ -1070,7 +1070,7 @@ state_format_disk(struct i_fn_args *a)
 		if (a->result)
 			state = state_ask_fs;
 		else
-			state = state_format_disk;
+			state = state_select_disk;
 		return;
 	}
 
