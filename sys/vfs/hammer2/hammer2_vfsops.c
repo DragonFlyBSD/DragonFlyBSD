@@ -918,15 +918,18 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	/*
 	 * Extract device and label, automatically mount @BOOT, @ROOT, or @DATA
 	 * if no label specified, based on the partition id.  Error out if no
-	 * partition id.  This is strictly a convenience to match the
-	 * default label created by newfs_hammer2, our preference is
-	 * that a label always be specified.
+	 * label or device (with partition id) is specified.  This is strictly
+	 * a convenience to match the default label created by newfs_hammer2,
+	 * our preference is that a label always be specified.
+	 *
+	 * NOTE: We allow 'mount @LABEL <blah>'... that is, a mount command
+	 *	 that does not specify a device, as long as some H2 label
+	 *	 has already been mounted from that device.  This makes
+	 *	 mounting snapshots a lot easier.
 	 */
 	dev = devstr;
 	label = strchr(devstr, '@');
 	if (label && ((label + 1) - dev) > done)
-		return (EINVAL);
-	if (label && label == devstr)
 		return (EINVAL);
 	if (label == NULL || label[1] == 0) {
 		char slice;
