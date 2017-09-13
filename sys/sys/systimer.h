@@ -77,6 +77,9 @@ typedef struct systimer {
 #define SYSTF_ONQUEUE		0x0001
 #define SYSTF_IPIRUNNING	0x0002
 #define SYSTF_NONQUEUED		0x0004
+#define SYSTF_MSSYNC		0x0008		/* 1Khz coincident sync */
+#define SYSTF_100KHZSYNC	0x0010		/* 100Khz coincident sync */
+#define SYSTF_FIRST		0x0020		/* order first if coincident */
 
 void systimer_intr_enable(void);
 void systimer_intr(sysclock_t *, int, struct intrframe *);
@@ -84,6 +87,10 @@ void systimer_add(systimer_t);
 void systimer_del(systimer_t);
 void systimer_init_periodic(systimer_t, systimer_func_t, void *, int);
 void systimer_init_periodic_nq(systimer_t, systimer_func_t, void *, int);
+void systimer_init_periodic_nq1khz(systimer_t, systimer_func_t, void *, int);
+void systimer_init_periodic_nq100khz(systimer_t, systimer_func_t, void *, int);
+void systimer_init_periodic_flags(systimer_t, systimer_func_t, void *,
+			int, int);
 void systimer_adjust_periodic(systimer_t, int);
 void systimer_init_oneshot(systimer_t, systimer_func_t, void *, int);
 
@@ -124,6 +131,7 @@ struct cputimer {
     sysclock_t	(*fromus)(int us);
     void	(*construct)(struct cputimer *, sysclock_t);
     void	(*destruct)(struct cputimer *);
+    sysclock_t	sync_base;	/* periodic synchronization base */
     sysclock_t	base;		/* (implementation dependant) */
     sysclock_t	freq;		/* in Hz */
     int64_t	freq64_usec;	/* in (1e6 << 32) / freq */

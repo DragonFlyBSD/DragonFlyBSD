@@ -423,13 +423,14 @@ initclocks_other(void *dummy)
 		 * from misinterpreting gd_flags for tick assignment when
 		 * they overlap.
 		 */
-		systimer_init_periodic_nq(&gd->gd_statclock, statclock,
-					  NULL, stathz);
-		systimer_init_periodic_nq(&gd->gd_hardclock, hardclock,
-					  NULL, hz);
+		systimer_init_periodic_flags(&gd->gd_statclock, statclock,
+					  NULL, stathz,
+					  SYSTF_MSSYNC | SYSTF_FIRST);
+		systimer_init_periodic_flags(&gd->gd_hardclock, hardclock,
+					  NULL, hz, SYSTF_MSSYNC);
 		/* XXX correct the frequency for scheduler / estcpu tests */
-		systimer_init_periodic_nq(&gd->gd_schedclock, schedclock,
-					  NULL, ESTCPUFREQ);
+		systimer_init_periodic_flags(&gd->gd_schedclock, schedclock,
+					  NULL, ESTCPUFREQ, SYSTF_MSSYNC);
 	}
 	lwkt_setcpu_self(ogd);
 
@@ -899,7 +900,8 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 		 * XXX assume system if frame is NULL.  A NULL frame 
 		 * can occur if ipi processing is done from a crit_exit().
 		 */
-		if (IS_INTR_RUNNING) {
+		if (IS_INTR_RUNNING ||
+		    (gd->gd_reqflags & RQF_INTPEND)) {
 			/*
 			 * If we interrupted an interrupt thread, well,
 			 * count it as interrupt time.
@@ -932,19 +934,17 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 			td->td_sticks += bump;
 			if (td == &gd->gd_idlethread) {
 				/*
-				 * Token contention can cause us to mis-count
-				 * a contended as idle, but it doesn't work
-				 * properly for VKERNELs so just test on a
-				 * real kernel.
+				 * We want to count token contention as
+				 * system time.  When token contention occurs
+				 * the cpu may only be outside its critical
+				 * section while switching through the idle
+				 * thread.  In this situation, various flags
+				 * will be set in gd_reqflags.
 				 */
-#ifdef _KERNEL_VIRTUAL
-				cpu_time.cp_idle += bump;
-#else
-				if (mycpu->gd_reqflags & RQF_IDLECHECK_WK_MASK)
+				if (gd->gd_reqflags & RQF_IDLECHECK_WK_MASK)
 					cpu_time.cp_sys += bump;
 				else
 					cpu_time.cp_idle += bump;
-#endif
 			} else {
 				/*
 				 * System thread was running.

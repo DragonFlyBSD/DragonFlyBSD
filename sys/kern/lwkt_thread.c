@@ -560,6 +560,7 @@ lwkt_switch(void)
     globaldata_t gd = mycpu;
     thread_t td = gd->gd_curthread;
     thread_t ntd;
+    thread_t xtd;
     int upri;
 #ifdef LOOPMASK
     uint64_t tsc_base = rdtsc();
@@ -671,9 +672,13 @@ lwkt_switch(void)
 	 * set the reschedule flag if the originally interrupted thread is
 	 * at a lower priority.
 	 *
-	 * The interrupt may not have descheduled.
+	 * NOTE: The interrupt may not have descheduled ntd.
+	 *
+	 * NOTE: We do not reschedule if there are no threads on the runq.
+	 *	 (ntd could be the idlethread).
 	 */
-	if (TAILQ_FIRST(&gd->gd_tdrunq) != ntd)
+	xtd = TAILQ_FIRST(&gd->gd_tdrunq);
+	if (xtd && xtd != ntd)
 	    need_lwkt_resched();
 	goto havethread_preempted;
     }
@@ -1453,7 +1458,8 @@ lwkt_schedulerclock(thread_t td)
     globaldata_t gd = td->td_gd;
     thread_t xtd;
 
-    if (TAILQ_FIRST(&gd->gd_tdrunq) == td) {
+    xtd = TAILQ_FIRST(&gd->gd_tdrunq);
+    if (xtd == td) {
 	/*
 	 * If the current thread is at the head of the runq shift it to the
 	 * end of any equal-priority threads and request a LWKT reschedule
@@ -1474,13 +1480,14 @@ lwkt_schedulerclock(thread_t td)
 		TAILQ_INSERT_TAIL(&gd->gd_tdrunq, td, td_threadq);
 	    need_lwkt_resched();
 	}
-    } else {
+    } else if (xtd) {
 	/*
 	 * If we scheduled a thread other than the one at the head of the
 	 * queue always request a reschedule every tick.
 	 */
 	need_lwkt_resched();
     }
+    /* else curthread probably the idle thread, no need to reschedule */
 }
 
 /*
