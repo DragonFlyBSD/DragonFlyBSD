@@ -30,20 +30,23 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd January 1, 2015
+.Dd September 13, 2017
 .Dt SSHLOCKOUT 8
 .Os
 .Sh NAME
 .Nm sshlockout
 .Nd utility to block port 22 on preauth failures
 .Sh SYNOPSIS
+.Cd #
+.Cd # pf(4) configuration.
+.Cd #
+.Pp
 .Cd # in /etc/pf.conf
 .Cd #
 .Cd table <lockout> persist { }
 .Pp
 .Cd # and later in /etc/pf.conf - see below
 .Cd #
-.Cd block in quick on $ext_if proto tcp from <lockout> to any port 22
 .Cd block in quick on $ext_if proto tcp from <lockout> to any port 22
 .Pp
 .Cd # in /etc/syslog.conf
@@ -53,6 +56,21 @@
 .Cd # in root's crontab
 .Cd #
 .Cd 3 3 * * *       pfctl -tlockout -T expire 86400
+.Pp
+.Pp
+.Cd #
+.Cd # ipfw(8) configuration.
+.Cd #
+.Cd ipfw table 0 create
+.Cd ipfw add deny ip from '<0>' to any
+.Pp
+.Cd # in /etc/syslog.conf
+.Cd #
+.Cd auth.info;authpriv.info		|exec /usr/sbin/sshlockout -ipfwtbl 0
+.Pp
+.Cd # in root's crontab
+.Cd #
+.Cd 3 3 * * *       ipfw -fq table 0 expire 86400
 .Sh DESCRIPTION
 This program is generally installed in
 .Pa /etc/syslog.conf
@@ -62,12 +80,16 @@ demons error log in realtime.
 In addition, a root crontab entry should generally be created to clean
 out stale entries in the
 .Xr pf 4
+or
+.Xr ipfw 8
 .Ar table
 at least once a day.
 Using expire instead of flush will maintain a rolling window of locked out
 IPs.
 The
 .Xr pf 4
+or
+.Xr ipfw 8
 module must be loaded and running with the table and rules properly
 configured.
 .Pp
@@ -75,27 +97,41 @@ This program will monitor the ssh syslog output and keep track of attempts
 to login to unknown users as well as preauth failures.
 If 5 attempts fail in any one hour period, a permanent entry is added to the
 .Xr pf 4
+or
+.Xr ipfw 8
 .Ar table
 for the associated IP address.
 You still have to add a rule to
 .Xr pf.conf 5
+or use
+.Xr ipfw 8
 to block IP addresses listed in this table.
 The cron entry you create cleans the block list out typically once a day.
 .Pp
 This program generally limits brute-force attempts to break into a machine
 via ssh.
 .Pp
-When setting up the PF rules, note that the table will be filled based on
-failed ssh connections destined to that particular machine.  If the machine
-is acting as a router you can decide whether you want the PF rule to lockout
-that suspect IP to just the machine, or to everything it routes to.  We
-usually recommend an unconditional blocking rule.
+When setting up the
+.Xr pf 4
+or
+.Xr ipfw 8
+rules,
+note that the table will be filled based on failed ssh connections destined
+to that particular machine.
+If the machine is acting as a router you can decide whether you want the
+.Xr pf 4
+or
+.Xr ipfw 8
+rule to lockout that suspect IP to just the machine,
+or to everything it routes to.
+We usually recommend an unconditional blocking rule.
 .Sh NOTICE
 This program is still a work in progress.
 .Sh SEE ALSO
 .Xr ssh 1 ,
 .Xr pf 4 ,
 .Xr syslog.conf 5 ,
+.Xr ipfw 8 ,
 .Xr sshd 8
 .Sh HISTORY
 The

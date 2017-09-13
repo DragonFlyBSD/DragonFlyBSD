@@ -49,7 +49,15 @@
  */
 
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/sysctl.h>
 #include <sys/time.h>
+
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <net/if.h>
+#include <net/ipfw/ip_fw.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -70,11 +78,12 @@ typedef struct iphist {
 struct args {
 	int   fw_type;
 	char *arg1;
-	char *arg2;
+	int   arg2;
 };
 
 #define FW_IS_PF	1
 #define FW_IS_IPFW	2
+#define FW_IS_IPFWTBL	3
 
 #define HSIZE		1024
 #define HMASK		(HSIZE - 1)
@@ -87,6 +96,8 @@ static iphist_t **hist_tail = &hist_base;
 static iphist_t *hist_hash[HSIZE];
 static int hist_count = 0;
 
+static int ipfw_sock = -1;
+
 static struct args args;
 
 static void init_iphist(void);
@@ -97,6 +108,8 @@ static void delete_iph(iphist_t *ip);
 static void
 block_ip(const char *ips)
 {
+	struct ipfw_ioc_tblcont ent;
+	struct ipfw_ioc_tblent *te;
 	char buf[128];
 	int r = 0;
 
@@ -105,11 +118,32 @@ block_ip(const char *ips)
 		r = snprintf(buf, sizeof(buf),
 			"pfctl -t%s -Tadd %s", args.arg1, ips);
 		break;
+
 	case FW_IS_IPFW:
 		r = snprintf(buf, sizeof(buf),
 			"ipfw add %s deny tcp from %s to me 22",
 			args.arg1, ips);
 		break;
+
+	case FW_IS_IPFWTBL:
+		memset(&ent, 0, sizeof(ent));
+		ent.tableid = args.arg2;
+		ent.entcnt = 1;
+		te = &ent.ent[0];
+
+		r = inet_pton(AF_INET, ips, &te->key.sin_addr);
+		if (r <= 0)
+			break;
+		te->key.sin_family = AF_INET;
+		te->key.sin_len = sizeof(struct sockaddr_in);
+
+		if (setsockopt(ipfw_sock, IPPROTO_IP, IP_FW_TBL_ADD,
+		    &ent, sizeof(ent)) < 0) {
+			r = -1;
+			break;
+		}
+		/* Done */
+		return;
 	}
 
 	if (r > 0 && (int)strlen(buf) == r) {
@@ -139,38 +173,52 @@ static bool
 parse_args(int ac, char **av)
 {
 	if (ac >= 2) {
-		if (strcmp(av[1], "-pf") == 0) {
-			// -pf <tablename>
+		if (strcmp(av[1], "-pf") == 0 && ac == 3) {
+			/* -pf <tablename> */
 			char *tablename = av[2];
-			if (ac == 3 && tablename != NULL) {
-				if (strlen(tablename) > 0 &&
-				    strlen(tablename) < MAX_TABLE_NAME) {
-					args.fw_type = FW_IS_PF;
-					args.arg1 = tablename;
-					args.arg2 = NULL;
-					return true;
-				}
+
+			if (strlen(tablename) > 0 &&
+			    strlen(tablename) < MAX_TABLE_NAME) {
+				args.fw_type = FW_IS_PF;
+				args.arg1 = tablename;
+				return true;
 			}
 		}
-		if (strcmp(av[1], "-ipfw") == 0) {
-			// -ipfw <rule>
+		if (strcmp(av[1], "-ipfw") == 0 && ac == 3) {
+			/* -ipfw <rule> */
 			char *rule = av[2];
-			if (ac == 3 && rule != NULL) {
-				if (strlen(rule) > 0 && strlen(rule) <= 5) {
-					for (char *s = rule; *s; ++s) {
-						if (!isdigit(*s))
-							return false;
-					}
-					if (atoi(rule) < 1)
+
+			if (strlen(rule) > 0 && strlen(rule) <= 5) {
+				for (char *s = rule; *s; ++s) {
+					if (!isdigit(*s))
 						return false;
-					if (atoi(rule) > 65535)
-						return false;
-					args.fw_type = FW_IS_IPFW;
-					args.arg1 = rule;
-					args.arg2 = NULL;
-					return true;
 				}
+				if (atoi(rule) < 1)
+					return false;
+				if (atoi(rule) > 65535)
+					return false;
+				args.fw_type = FW_IS_IPFW;
+				args.arg1 = rule;
+				return true;
 			}
+		}
+
+		if (strcmp(av[1], "-ipfwtbl") == 0 && ac == 3) {
+			/* -ipfwtbl <tableid> */
+			int tableid;
+			char *eptr;
+
+			tableid = strtoul(av[2], &eptr, 0);
+			if (*eptr != '\0')
+				return false;
+
+			ipfw_sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+			if (ipfw_sock < 0)
+				return false;
+
+			args.fw_type = FW_IS_IPFWTBL;
+			args.arg2 = tableid;
+			return true;
 		}
 	}
 
@@ -184,7 +232,7 @@ main(int ac, char **av)
 
 	args.fw_type = 0;
 	args.arg1 = NULL;
-	args.arg2 = NULL;
+	args.arg2 = 0;
 
 	if (!parse_args(ac, av)) {
 		syslog(LOG_ERR, "sshlockout: invalid argument");
