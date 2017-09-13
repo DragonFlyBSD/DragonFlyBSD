@@ -806,9 +806,13 @@ vtblk_vq_intr(void *arg)
 	struct bio *bio;
 	struct buf *bp;
 
+	ASSERT_SERIALIZED(&sc->vtblk_slz);
+
+	if (!virtqueue_pending(vq))
+		return;
+
 	lwkt_serialize_handler_disable(&sc->vtblk_slz);
 	virtqueue_disable_intr(sc->vtblk_vq);
-	ASSERT_SERIALIZED(&sc->vtblk_slz);
 
 retry:
 	if (sc->vtblk_flags & VTBLK_FLAG_DETACH)

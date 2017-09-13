@@ -1142,12 +1142,16 @@ vtpci_legacy_intr(void *arg)
 	isr = vtpci_read_config_1(sc, VIRTIO_PCI_ISR);
 
 	TAILQ_FOREACH(e, &ires->ls, entries) {
-		/* XXX Allow for masking individual virtqueue handlers. */
+		/*
+		 * The lwkt_serialize_handler_call API doesn't seem to fit
+		 * properly here. Instead move the virtqueue pending check
+		 * into the driver, who can then properly implement masking
+		 * of the handler itself.
+		 */
 		if (e->what == -1) {
 			if (isr & VIRTIO_PCI_ISR_CONFIG)
 				e->handler(e->arg);
-		} else if ((isr & VIRTIO_PCI_ISR_INTR) &&
-		    virtqueue_pending(e->vq)) {
+		} else if (isr & VIRTIO_PCI_ISR_INTR) {
 			e->handler(e->arg);
 		}
 	}
@@ -1163,11 +1167,12 @@ vtpci_msix_intr(void *arg)
 	ires = arg;
 	sc = ires->ires_sc;
 	TAILQ_FOREACH(e, &ires->ls, entries) {
-		/* XXX Allow for masking individual virtqueue handlers. */
-		if (e->what == -1) {
-			e->handler(e->arg);
-		} else if (virtqueue_pending(e->vq)) {
-			e->handler(e->arg);
-		}
+		/*
+		 * The lwkt_serialize_handler_call API doesn't seem to fit
+		 * properly here. Instead move the virtqueue pending check
+		 * into the driver, who can then properly implement masking
+		 * of the handler itself.
+		 */
+		e->handler(e->arg);
 	}
 }

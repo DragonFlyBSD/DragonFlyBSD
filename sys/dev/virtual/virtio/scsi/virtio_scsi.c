@@ -2255,6 +2255,8 @@ vtscsi_control_vq_intr(void *xsc)
 
 again:
 	VTSCSI_LOCK(sc);
+	if (!virtqueue_pending(vq))
+		goto done;
 
 	vtscsi_complete_vq(sc, sc->vtscsi_control_vq);
 
@@ -2264,6 +2266,7 @@ again:
 		goto again;
 	}
 
+done:
 	VTSCSI_UNLOCK(sc);
 }
 
@@ -2279,6 +2282,8 @@ vtscsi_event_vq_intr(void *xsc)
 
 again:
 	VTSCSI_LOCK(sc);
+	if (!virtqueue_pending(vq))
+		goto done;
 
 	while ((event = virtqueue_dequeue(vq, NULL)) != NULL)
 		vtscsi_handle_event(sc, event);
@@ -2289,6 +2294,7 @@ again:
 		goto again;
 	}
 
+done:
 	VTSCSI_UNLOCK(sc);
 }
 
@@ -2303,6 +2309,8 @@ vtscsi_request_vq_intr(void *xsc)
 
 again:
 	VTSCSI_LOCK(sc);
+	if (!virtqueue_pending(vq))
+		goto done;
 
 	vtscsi_complete_vq(sc, sc->vtscsi_request_vq);
 
@@ -2312,6 +2320,7 @@ again:
 		goto again;
 	}
 
+done:
 	VTSCSI_UNLOCK(sc);
 }
 

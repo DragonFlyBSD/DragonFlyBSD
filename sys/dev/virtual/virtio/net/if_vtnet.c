@@ -1637,6 +1637,9 @@ vtnet_rx_vq_intr(void *xsc)
 
 	sc = xsc;
 
+	if (!virtqueue_pending(sc->vtnet_rx_vq))
+		return;
+
 	vtnet_disable_rx_intr(sc);
 	vtnet_rx_intr_task(sc);
 }
@@ -2039,6 +2042,9 @@ vtnet_tx_vq_intr(void *xsc)
 	struct vtnet_softc *sc;
 
 	sc = xsc;
+
+	if (!virtqueue_pending(sc->vtnet_tx_vq))
+		return;
 
 	vtnet_disable_tx_intr(sc);
 	vtnet_tx_intr_task(sc);
