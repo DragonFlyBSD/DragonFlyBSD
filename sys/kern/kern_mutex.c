@@ -65,7 +65,7 @@
 #include <sys/mutex2.h>
 
 static int mtx_chain_link_ex(mtx_t *mtx, u_int olock);
-static int mtx_chain_link_sh(mtx_t *mtx, u_int olock, int addcount);
+static int mtx_chain_link_sh(mtx_t *mtx, u_int olock);
 static void mtx_delete_link(mtx_t *mtx, mtx_link_t *link);
 
 /*
@@ -118,7 +118,7 @@ __mtx_lock_ex(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 		 * shlink.
 		 *
 		 * We must set MTX_EXWANTED with MTX_LINKSPIN to indicate
-		 * pending shared requests.  It cannot be set as a separate
+		 * pending exclusive requests.  It cannot be set as a separate
 		 * operation prior to acquiring MTX_LINKSPIN.
 		 *
 		 * To avoid unnecessary cpu cache traffic we poll
@@ -289,16 +289,18 @@ __mtx_lock_sh(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 		}
 
 		/*
-		 * Check for early abort.
+		 * Check for early abort.  Other shared lock requestors
+		 * could have sneaked in before we set LINKSPIN so make
+		 * sure we undo the state properly.
 		 */
 		if (link->state == MTX_LINK_ABORTED) {
-			if (mtx->mtx_exlink == NULL) {
+			if (mtx->mtx_shlink) {
+				atomic_clear_int(&mtx->mtx_lock,
+						 MTX_LINKSPIN);
+			} else {
 				atomic_clear_int(&mtx->mtx_lock,
 						 MTX_LINKSPIN |
 						 MTX_SHWANTED);
-			} else {
-				atomic_clear_int(&mtx->mtx_lock,
-						 MTX_LINKSPIN);
 			}
 			--td->td_critcount;
 			link->state = MTX_LINK_IDLE;
@@ -307,7 +309,7 @@ __mtx_lock_sh(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 		}
 
 		/*
-		 * Add our link to the exlink list and release LINKSPIN.
+		 * Add our link to the shlink list and release LINKSPIN.
 		 */
 		link->owner = td;
 		link->state = MTX_LINK_LINKED_SH;
@@ -561,7 +563,7 @@ _mtx_downgrade(mtx_t *mtx)
 		 * waiters must be woken up.
 		 */
 		if (lock & MTX_SHWANTED) {
-			if (mtx_chain_link_sh(mtx, lock, 1))
+			if (mtx_chain_link_sh(mtx, lock))
 				break;
 			/* retry */
 		} else {
@@ -656,7 +658,7 @@ _mtx_unlock(mtx_t *mtx)
 			 * Shared requests are pending.  Transfer our count (1)
 			 * to the first shared request, wakeup all shared reqs.
 			 */
-			if (mtx_chain_link_sh(mtx, lock, 0))
+			if (mtx_chain_link_sh(mtx, lock))
 				goto done;
 			break;
 		case 1:
@@ -686,7 +688,7 @@ _mtx_unlock(mtx_t *mtx)
 			 * Last release, shared lock.
 			 * Shared requests pending.
 			 */
-			if (mtx_chain_link_sh(mtx, lock, 0))
+			if (mtx_chain_link_sh(mtx, lock))
 				goto done;
 			break;
 		default:
@@ -780,19 +782,18 @@ mtx_chain_link_ex(mtx_t *mtx, u_int olock)
 
 /*
  * Flush waiting shared locks.  The lock's prior state is passed in and must
- * be adjusted atomically only if it matches.
+ * be adjusted atomically only if it matches and LINKSPIN is not set.
  *
- * If addcount is 0, the count for the first shared lock in the chain is
- * assumed to have already been accounted for.
- *
- * If addcount is 1, the count for the first shared lock in the chain has
- * not yet been accounted for.
+ * IMPORTANT! The caller has left one active count on the lock for us to
+ *	      consume.  We will apply this to the first link, but must add
+ *	      additional counts for any other links.
  */
 static int
-mtx_chain_link_sh(mtx_t *mtx, u_int olock, int addcount)
+mtx_chain_link_sh(mtx_t *mtx, u_int olock)
 {
 	thread_t td = curthread;
 	mtx_link_t *link;
+	u_int	addcount;
 	u_int	nlock;
 
 	olock &= ~MTX_LINKSPIN;
@@ -800,41 +801,49 @@ mtx_chain_link_sh(mtx_t *mtx, u_int olock, int addcount)
 	nlock &= ~MTX_EXCLUSIVE;
 	++td->td_critcount;
 	if (atomic_cmpset_int(&mtx->mtx_lock, olock, nlock)) {
+		/*
+		 * It should not be possible for SHWANTED to be set without
+		 * any links pending.
+		 */
 		KKASSERT(mtx->mtx_shlink != NULL);
-		for (;;) {
-			link = mtx->mtx_shlink;
+
+		/*
+		 * We have to process the count for all shared locks before
+		 * we process any of the links.  Count the additional shared
+		 * locks beyond the first link (which is already accounted
+		 * for) and associate the full count with the lock
+		 * immediately.
+		 */
+		addcount = 0;
+		for (link = mtx->mtx_shlink->next; link != mtx->mtx_shlink;
+		     link = link->next) {
+			++addcount;
+		}
+		if (addcount > 0)
 			atomic_add_int(&mtx->mtx_lock, addcount);
+
+		/*
+		 * We can wakeup all waiting shared locks.
+		 */
+		while ((link = mtx->mtx_shlink) != NULL) {
 			KKASSERT(link->state == MTX_LINK_LINKED_SH);
 			if (link->next == link) {
 				mtx->mtx_shlink = NULL;
-				cpu_sfence();
-
-				/*
-				 * WARNING! The callback can only be safely
-				 *	    made with LINKSPIN still held
-				 *	    and in a critical section.
-				 *
-				 * WARNING! The link can go away after the
-				 *	    state is set, or after the
-				 *	    callback.
-				 */
-				if (link->callback) {
-					link->state = MTX_LINK_CALLEDBACK;
-					link->callback(link, link->arg, 0);
-				} else {
-					link->state = MTX_LINK_ACQUIRED;
-					wakeup(link);
-				}
-				break;
+			} else {
+				mtx->mtx_shlink = link->next;
+				link->next->prev = link->prev;
+				link->prev->next = link->next;
 			}
-			mtx->mtx_shlink = link->next;
-			link->next->prev = link->prev;
-			link->prev->next = link->next;
+			link->next = NULL;
+			link->prev = NULL;
 			cpu_sfence();
-			link->state = MTX_LINK_ACQUIRED;
-			/* link can go away */
-			wakeup(link);
-			addcount = 1;
+			if (link->callback) {
+				link->state = MTX_LINK_CALLEDBACK;
+				link->callback(link, link->arg, 0);
+			} else {
+				link->state = MTX_LINK_ACQUIRED;
+				wakeup(link);
+			}
 		}
 		atomic_clear_int(&mtx->mtx_lock, MTX_LINKSPIN |
 						 MTX_SHWANTED);
