@@ -3,6 +3,6 @@
 PROG=	ipfw
 MAN=	ipfw.8
 SRCS=	ipfw2.c
-WARNS?=	3
+WARNS?=	6
 
 .include <bsd.prog.mk>

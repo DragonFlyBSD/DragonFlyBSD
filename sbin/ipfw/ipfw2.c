@@ -81,7 +81,7 @@ int		s,			/* main RAW socket */
  *
  */
 struct _s_x {
-	char *s;
+	const char *s;
 	uint32_t x;
 };
 
@@ -360,7 +360,7 @@ match_token(struct _s_x *table, char *string)
 	return -1;
 };
 
-static char *
+static const char *
 match_value(struct _s_x *p, u_int32_t value)
 {
 	for (; p->s != NULL; p++)
@@ -377,10 +377,10 @@ print_port(int proto, u_int16_t port)
 {
 
 	if (proto == IPPROTO_ETHERTYPE) {
-		char *s;
+		const char *str;
 
-		if (do_resolv && (s = match_value(ether_types, port)) )
-			printf("%s", s);
+		if (do_resolv && (str = match_value(ether_types, port)) )
+			printf("%s", str);
 		else
 			printf("0x%04x", port);
 	} else {
@@ -406,7 +406,7 @@ print_newports(ipfw_insn_u16 *cmd, int proto, int opcode)
 {
 	u_int16_t *p = cmd->ports;
 	int i;
-	char *sep= " ";
+	const char *sep= " ";
 
 	if (cmd->o.len & F_NOT)
 		printf(" not");
@@ -434,34 +434,34 @@ print_newports(ipfw_insn_u16 *cmd, int proto, int opcode)
  * Returns *end == s in case the parameter is not found.
  */
 static int
-strtoport(char *s, char **end, int base, int proto)
+strtoport(char *str, char **end, int base, int proto)
 {
 	char *p, *buf;
 	char *s1;
 	int i;
 
-	*end = s;		/* default - not found */
-	if ( *s == '\0')
+	*end = str;		/* default - not found */
+	if (*str == '\0')
 		return 0;	/* not found */
 
-	if (isdigit(*s))
-		return strtol(s, end, base);
+	if (isdigit(*str))
+		return strtol(str, end, base);
 
 	/*
 	 * find separator. '\\' escapes the next char.
 	 */
-	for (s1 = s; *s1 && (isalnum(*s1) || *s1 == '\\') ; s1++)
+	for (s1 = str; *s1 && (isalnum(*s1) || *s1 == '\\') ; s1++)
 		if (*s1 == '\\' && s1[1] != '\0')
 			s1++;
 
-	buf = malloc(s1 - s + 1);
+	buf = malloc(s1 - str + 1);
 	if (buf == NULL)
 		return 0;
 
 	/*
 	 * copy into a buffer skipping backslashes
 	 */
-	for (p = s, i = 0; p != s1 ; p++)
+	for (p = str, i = 0; p != s1 ; p++)
 		if ( *p != '\\')
 			buf[i++] = *p;
 	buf[i++] = '\0';
@@ -499,30 +499,30 @@ fill_newports(ipfw_insn_u16 *cmd, char *av, int proto)
 {
 	u_int16_t *p = cmd->ports;
 	int i = 0;
-	char *s = av;
+	char *str = av;
 
-	while (*s) {
+	while (*str) {
 		u_int16_t a, b;
 
-		a = strtoport(av, &s, 0, proto);
-		if (s == av) /* no parameter */
+		a = strtoport(av, &str, 0, proto);
+		if (str == av) /* no parameter */
 			break;
-		if (*s == '-') { /* a range */
-			av = s+1;
-			b = strtoport(av, &s, 0, proto);
-			if (s == av) /* no parameter */
+		if (*str == '-') { /* a range */
+			av = str+1;
+			b = strtoport(av, &str, 0, proto);
+			if (str == av) /* no parameter */
 				break;
 			p[0] = a;
 			p[1] = b;
-		} else if (*s == ',' || *s == '\0' ) {
+		} else if (*str == ',' || *str == '\0' ) {
 			p[0] = p[1] = a;
 		} else {	/* invalid separator */
 			errx(EX_DATAERR, "invalid separator <%c> in <%s>\n",
-				*s, av);
+				*str, av);
 		}
 		i++;
 		p += 2;
-		av = s+1;
+		av = str+1;
 	}
 	if (i > 0) {
 		if (i+1 > F_LEN_MASK)
@@ -556,10 +556,10 @@ static void
 fill_reject_code(u_short *codep, char *str)
 {
 	int val;
-	char *s;
+	char *s1;
 
-	val = strtoul(str, &s, 0);
-	if (s == str || *s != '\0' || val >= 0x100)
+	val = strtoul(str, &s1, 0);
+	if (s1 == str || *s1 != '\0' || val >= 0x100)
 		val = match_token(icmpcodes, str);
 	if (val < 0)
 		errx(EX_DATAERR, "unknown ICMP unreachable code ``%s''", str);
@@ -570,10 +570,10 @@ fill_reject_code(u_short *codep, char *str)
 static void
 print_reject_code(u_int16_t code)
 {
-	char *s = match_value(icmpcodes, code);
+	const char *str = match_value(icmpcodes, code);
 
-	if (s != NULL)
-		printf("unreach %s", s);
+	if (str != NULL)
+		printf("unreach %s", str);
 	else
 		printf("unreach %u", code);
 }
@@ -607,9 +607,9 @@ contigmask(u_char *p, int len)
  * There is a specialized check for f_tcpflags.
  */
 static void
-print_flags(char *name, ipfw_insn *cmd, struct _s_x *list)
+print_flags(const char *name, ipfw_insn *cmd, struct _s_x *list)
 {
-	char *comma="";
+	const char *comma="";
 	int i;
 	u_char set = cmd->arg1 & 0xff;
 	u_char clear = (cmd->arg1 >> 8) & 0xff;
@@ -638,12 +638,12 @@ print_flags(char *name, ipfw_insn *cmd, struct _s_x *list)
  * Print the ip address contained in a command.
  */
 static void
-print_ip(ipfw_insn_ip *cmd, char *s)
+print_ip(ipfw_insn_ip *cmd, const char *str)
 {
 	struct hostent *he = NULL;
 	int mb;
 
-	printf("%s%s ", cmd->o.len & F_NOT ? " not": "", s);
+	printf("%s%s ", cmd->o.len & F_NOT ? " not": "", str);
 
 	if (cmd->o.opcode == O_IP_SRC_ME || cmd->o.opcode == O_IP_DST_ME) {
 		printf("me");
@@ -921,11 +921,11 @@ show_ipfw(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 
 		case O_FORWARD_IP:
 		    {
-			ipfw_insn_sa *s = (ipfw_insn_sa *)cmd;
+			ipfw_insn_sa *sa = (ipfw_insn_sa *)cmd;
 
-			printf("fwd %s", inet_ntoa(s->sa.sin_addr));
-			if (s->sa.sin_port)
-				printf(",%d", s->sa.sin_port);
+			printf("fwd %s", inet_ntoa(sa->sa.sin_addr));
+			if (sa->sa.sin_port)
+				printf(",%d", sa->sa.sin_port);
 		    }
 			break;
 
@@ -1071,21 +1071,21 @@ show_ipfw(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 			case O_XMIT:
 			case O_RECV:
 			case O_VIA: {
-				char *s;
+				const char *dir;
 				ipfw_insn_if *cmdif = (ipfw_insn_if *)cmd;
 
 				if (cmd->opcode == O_XMIT)
-					s = "xmit";
+					dir = "xmit";
 				else if (cmd->opcode == O_RECV)
-					s = "recv";
+					dir = "recv";
 				else if (cmd->opcode == O_VIA)
-					s = "via";
+					dir = "via";
 				else
-					s = "?huh?";
+					dir = "?huh?";
 				if (cmdif->name[0] == '\0')
-					printf(" %s %s", s,
+					printf(" %s %s", dir,
 					    inet_ntoa(cmdif->p.ip));
-				printf(" %s %s", s, cmdif->name);
+				printf(" %s %s", dir, cmdif->name);
 				}
 				break;
 
@@ -1176,7 +1176,7 @@ show_ipfw(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 				struct _s_x *p = limit_masks;
 				ipfw_insn_limit *c = (ipfw_insn_limit *)cmd;
 				u_int8_t x = c->limit_mask;
-				char *comma = " ";
+				const char *comma = " ";
 
 				printf(" limit");
 				for ( ; p->x != 0 ; p++)
@@ -1444,7 +1444,7 @@ sets_handler(int ac, char *av[])
 		errx(EX_USAGE, "set needs command");
 	if (!strncmp(*av, "show", strlen(*av)) ) {
 		void *data;
-		char *msg;
+		const char *msg;
 
 		nbytes = sizeof(struct ipfw_ioc_rule);
 		if ((data = malloc(nbytes)) == NULL)
@@ -1848,29 +1848,29 @@ fill_ip(ipfw_insn_ip *cmd, char *av)
 	if (p) {	/* fetch addresses */
 		u_int32_t *d;
 		int low, high;
-		int i = contigmask((u_char *)&(cmd->mask), 32);
+		int ii = contigmask((u_char *)&(cmd->mask), 32);
 
-		if (i < 24 || i > 31) {
+		if (ii < 24 || ii > 31) {
 			fprintf(stderr, "invalid set with mask %d\n",
-				i);
+				ii);
 			exit(0);
 		}
-		cmd->o.arg1 = 1<<(32-i);
+		cmd->o.arg1 = 1<<(32-ii);
 		cmd->addr.s_addr = ntohl(cmd->addr.s_addr);
 		d = (u_int32_t *)&cmd->mask;
 		cmd->o.opcode = O_IP_DST_SET;	/* default */
 		cmd->o.len |= F_INSN_SIZE(ipfw_insn_u32) + (cmd->o.arg1+31)/32;
-		for (i = 0; i < (cmd->o.arg1+31)/32 ; i++)
-			d[i] = 0;	/* clear masks */
+		for (ii = 0; ii < (cmd->o.arg1+31)/32 ; ii++)
+			d[ii] = 0;	/* clear masks */
 
 		av = p+1;
 		low = cmd->addr.s_addr & 0xff;
 		high = low + cmd->o.arg1 - 1;
 		while (isdigit(*av)) {
-			char *s;
-			u_int16_t a = strtol(av, &s, 0);
+			char *str;
+			u_int16_t a = strtol(av, &str, 0);
 
-			if (s == av) /* no parameter */
+			if (str == av) /* no parameter */
 				break;
 			if (a < low || a > high) {
 			    fprintf(stderr, "addr %d out of range [%d-%d]\n",
@@ -1879,9 +1879,9 @@ fill_ip(ipfw_insn_ip *cmd, char *av)
 			}
 			a -= low;
 			d[ a/32] |= 1<<(a & 31);
-			if (*s != ',')
+			if (*str != ',')
 				break;
-			av = s+1;
+			av = str+1;
 		}
 		return;
 	}
@@ -2059,7 +2059,6 @@ config_pipe(int ac, char **av)
 	int i;
 	char *end;
 	u_int32_t a;
-	void *par = NULL;
 
 	memset(&pipe, 0, sizeof pipe);
 
@@ -2112,7 +2111,6 @@ config_pipe(int ac, char **av)
 			 * per-flow queue, mask is dst_ip, dst_port,
 			 * src_ip, src_port, proto measured in bits
 			 */
-			par = NULL;
 
 			pipe.fs.flow_mask.type = ETHERTYPE_IP;
 			pipe.fs.flow_mask.u.ip.dst_ip = 0;
@@ -2291,7 +2289,7 @@ end_mask:
 	if (pipe.fs.flags_fs & DN_IS_RED) {
 		size_t len;
 		int lookup_depth, avg_pkt_size;
-		double s, idle, weight, w_q;
+		double step, idle, weight, w_q;
 		int clock_hz;
 		int t;
 
@@ -2334,14 +2332,14 @@ end_mask:
 		 * Unfortunately, when we are configuring a WF2Q+ queue, we
 		 * do not have bandwidth information, because that is stored
 		 * in the parent pipe, and also we have multiple queues
-		 * competing for it. So we set s=0, which is not very
+		 * competing for it. So we set step=0, which is not very
 		 * correct. But on the other hand, why do we want RED with
 		 * WF2Q+ ?
 		 */
 		if (pipe.bandwidth==0) /* this is a WF2Q+ queue */
-			s = 0;
+			step = 0;
 		else
-			s = clock_hz * avg_pkt_size * 8 / pipe.bandwidth;
+			step = clock_hz * avg_pkt_size * 8 / pipe.bandwidth;
 
 		/*
 		 * max idle time (in ticks) before avg queue size becomes 0.
@@ -2349,7 +2347,7 @@ end_mask:
 		 * (1-w_q)^x < 10^-3.
 		 */
 		w_q = ((double)pipe.fs.w_q) / (1 << SCALE_RED);
-		idle = s * 3. / w_q;
+		idle = step * 3. / w_q;
 		pipe.fs.lookup_step = (int)idle / lookup_depth;
 		if (!pipe.fs.lookup_step)
 			pipe.fs.lookup_step = 1;
@@ -2663,11 +2661,11 @@ add(int ac, char *av[])
 		NEED1("missing divert/tee port");
 		action->arg1 = strtoul(*av, NULL, 0);
 		if (action->arg1 == 0) {
-			struct servent *s;
+			struct servent *serv;
 			setservent(1);
-			s = getservbyname(av[0], "divert");
-			if (s != NULL)
-				action->arg1 = ntohs(s->s_port);
+			serv = getservbyname(av[0], "divert");
+			if (serv != NULL)
+				action->arg1 = ntohs(serv->s_port);
 			else
 				errx(EX_DATAERR, "illegal divert/tee port");
 		}
@@ -2676,7 +2674,7 @@ add(int ac, char *av[])
 
 	case TOK_FORWARD: {
 		ipfw_insn_sa *p = (ipfw_insn_sa *)action;
-		char *s, *end;
+		char *st, *end;
 
 		NEED1("missing forward address[:port]");
 
@@ -2689,15 +2687,15 @@ add(int ac, char *av[])
 		/*
 		 * locate the address-port separator (':' or ',')
 		 */
-		s = strchr(*av, ':');
-		if (s == NULL)
-			s = strchr(*av, ',');
-		if (s != NULL) {
-			*(s++) = '\0';
-			i = strtoport(s, &end, 0 /* base */, 0 /* proto */);
-			if (s == end)
+		st = strchr(*av, ':');
+		if (st == NULL)
+			st = strchr(*av, ',');
+		if (st != NULL) {
+			*(st++) = '\0';
+			i = strtoport(st, &end, 0 /* base */, 0 /* proto */);
+			if (st == end)
 				errx(EX_DATAERR,
-				    "illegal forwarding port ``%s''", s);
+				    "illegal forwarding port ``%s''", st);
 			p->sa.sin_port = (u_short)i;
 		}
 		lookup_host(*av, &(p->sa.sin_addr));
@@ -2904,19 +2902,19 @@ read_options:
 	}
 	prev = NULL;
 	while (ac) {
-		char *s;
+		char *s1;
 		ipfw_insn_u32 *cmd32;	/* alias for cmd */
 
-		s = *av;
+		s1 = *av;
 		cmd32 = (ipfw_insn_u32 *)cmd;
 
-		if (*s == '!') {	/* alternate syntax for NOT */
+		if (*s1 == '!') {	/* alternate syntax for NOT */
 			if (cmd->len & F_NOT)
 				errx(EX_USAGE, "double \"not\" not allowed\n");
 			cmd->len = F_NOT;
-			s++;
+			s1++;
 		}
-		i = match_token(rule_options, s);
+		i = match_token(rule_options, s1);
 		ac--; av++;
 		switch(i) {
 		case TOK_NOT:
@@ -3204,7 +3202,7 @@ read_options:
 			break;
 
 		default:
-			errx(EX_USAGE, "unrecognised option [%d] %s\n", i, s);
+			errx(EX_USAGE, "unrecognised option [%d] %s\n", i, s1);
 		}
 		if (F_LEN(cmd) > 0) {	/* prepare to advance */
 			prev = cmd;
@@ -3970,7 +3968,7 @@ ipfw_readfile(int ac, char *av[])
 			if (i > MAX_ARGS - 2)
 				errx(EX_USAGE,
 				     "too many -D or -U options");
-			args[i++] = "-D";
+			args[i++] = __DECONST(char *, "-D");
 			args[i++] = optarg;
 			break;
 
@@ -3980,7 +3978,7 @@ ipfw_readfile(int ac, char *av[])
 			if (i > MAX_ARGS - 2)
 				errx(EX_USAGE,
 				     "too many -D or -U options");
-			args[i++] = "-U";
+			args[i++] = __DECONST(char *, "-U");
 			args[i++] = optarg;
 			break;
 
@@ -4057,7 +4055,7 @@ ipfw_readfile(int ac, char *av[])
 			*p = '\0';
 		i = 1;
 		if (qflag)
-			args[i++] = "-q";
+			args[i++] = __DECONST(char *, "-q");
 		for (a = strtok(buf, WHITESP);
 		    a && i < MAX_ARGS; a = strtok(NULL, WHITESP), i++)
 			args[i] = a;
