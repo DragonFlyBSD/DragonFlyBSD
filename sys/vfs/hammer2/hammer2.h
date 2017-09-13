@@ -1469,10 +1469,6 @@ void hammer2_chain_drop(hammer2_chain_t *chain);
 void hammer2_chain_drop_unhold(hammer2_chain_t *chain);
 void hammer2_chain_lock(hammer2_chain_t *chain, int how);
 void hammer2_chain_lock_unhold(hammer2_chain_t *chain, int how);
-#if 0
-void hammer2_chain_push_shared_lock(hammer2_chain_t *chain);
-void hammer2_chain_pull_shared_lock(hammer2_chain_t *chain);
-#endif
 void hammer2_chain_load_data(hammer2_chain_t *chain);
 const hammer2_media_data_t *hammer2_chain_rdata(hammer2_chain_t *chain);
 hammer2_media_data_t *hammer2_chain_wdata(hammer2_chain_t *chain);
@@ -1497,8 +1493,8 @@ hammer2_chain_t *hammer2_chain_get(hammer2_chain_t *parent, int generation,
 				hammer2_blockref_t *bref);
 hammer2_chain_t *hammer2_chain_lookup_init(hammer2_chain_t *parent, int flags);
 void hammer2_chain_lookup_done(hammer2_chain_t *parent);
-hammer2_chain_t *hammer2_chain_getparent(hammer2_chain_t *chain, int how);
-hammer2_chain_t *hammer2_chain_repparent(hammer2_chain_t **chainp, int how);
+hammer2_chain_t *hammer2_chain_getparent(hammer2_chain_t *chain, int flags);
+hammer2_chain_t *hammer2_chain_repparent(hammer2_chain_t **chainp, int flags);
 hammer2_chain_t *hammer2_chain_lookup(hammer2_chain_t **parentp,
 				hammer2_key_t *key_nextp,
 				hammer2_key_t key_beg, hammer2_key_t key_end,

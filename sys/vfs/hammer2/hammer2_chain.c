@@ -1007,35 +1007,6 @@ hammer2_chain_lock_downgrade(hammer2_chain_t *chain)
 }
 #endif
 
-#if 0
-/*
- * Obtains a second shared lock on the chain, does not account the second
- * shared lock as being owned by the current thread.
- *
- * Caller must already own a shared lock on this chain.
- *
- * The lock function is required to obtain the second shared lock without
- * blocking on pending exclusive requests.
- */
-void
-hammer2_chain_push_shared_lock(hammer2_chain_t *chain)
-{
-	hammer2_mtx_sh_again(&chain->lock);
-	atomic_add_int(&chain->lockcnt, 1);
-	/* do not count in td_tracker for this thread */
-}
-
-/*
- * Accounts for a shared lock that was pushed to us as being owned by our
- * thread.
- */
-void
-hammer2_chain_pull_shared_lock(hammer2_chain_t *chain)
-{
-	++curthread->td_tracker;
-}
-#endif
-
 /*
  * Issue I/O and install chain->data.  Caller must hold a chain lock, lock
  * may be of any type.
@@ -2195,7 +2166,7 @@ hammer2_chain_lookup_done(hammer2_chain_t *parent)
 
 /*
  * Take the locked chain and return a locked parent.  The chain remains
- * locked on return.
+ * locked on return.  Pass HAMMER2_RESOLVE_* flags in flags.
  *
  * This will work even if the chain is errored, and the caller can check
  * parent->error on return if desired since the parent will be locked.
@@ -2203,7 +2174,7 @@ hammer2_chain_lookup_done(hammer2_chain_t *parent)
  * This function handles the lock order reversal.
  */
 hammer2_chain_t *
-hammer2_chain_getparent(hammer2_chain_t *chain, int how)
+hammer2_chain_getparent(hammer2_chain_t *chain, int flags)
 {
 	hammer2_chain_t *parent;
 
@@ -2224,8 +2195,8 @@ again:
 	hammer2_spin_unex(&chain->core.spin);
 
 	hammer2_chain_unlock(chain);
-	hammer2_chain_lock(parent, how);
-	hammer2_chain_lock(chain, how);
+	hammer2_chain_lock(parent, flags);
+	hammer2_chain_lock(chain, flags);
 
 	/*
 	 * Parent relinking races are quite common.  We have to get it right
@@ -2242,6 +2213,7 @@ again:
 /*
  * Take the locked chain and return a locked parent.  The chain is unlocked
  * and dropped.  *chainp is set to the returned parent as a convenience.
+ * Pass HAMMER2_RESOLVE_* flags in flags.
  *
  * This will work even if the chain is errored, and the caller can check
  * parent->error on return if desired since the parent will be locked.
@@ -2249,7 +2221,7 @@ again:
  * This function handles the lock order reversal.
  */
 hammer2_chain_t *
-hammer2_chain_repparent(hammer2_chain_t **chainp, int how)
+hammer2_chain_repparent(hammer2_chain_t **chainp, int flags)
 {
 	hammer2_chain_t *chain;
 	hammer2_chain_t *parent;
@@ -2272,14 +2244,14 @@ again:
 	hammer2_spin_unex(&chain->core.spin);
 
 	hammer2_chain_unlock(chain);
-	hammer2_chain_lock(parent, how);
+	hammer2_chain_lock(parent, flags);
 
 	/*
 	 * Parent relinking races are quite common.  We have to get it right
 	 * or we will blow up the block table.
 	 */
 	if (chain->parent != parent) {
-		hammer2_chain_lock(chain, how);
+		hammer2_chain_lock(chain, flags);
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
 		goto again;
