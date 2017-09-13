@@ -240,7 +240,7 @@ typedef struct internal_state {
     uInt matches;       /* number of string matches in current block */
     uInt insert;        /* bytes at end of window left to insert */
 
-#ifdef DEBUG
+#ifdef H2_ZLIB_DEBUG
     ulg compressed_len; /* total bit length of compressed file mod 2^32 */
     ulg bits_sent;      /* bit length of compressed data sent mod 2^32 */
 #endif
@@ -300,7 +300,7 @@ void ZLIB_INTERNAL _tr_stored_block(deflate_state *s, charf *buf,
  * used.
  */
 
-#ifndef DEBUG
+#ifndef H2_ZLIB_DEBUG
 /* Inline versions of _tr_tally for speed: */
 
 #if defined(GEN_TREES_H) || !defined(STDC)

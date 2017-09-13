@@ -96,7 +96,7 @@ local int read_buf(z_streamp strm, Bytef *buf, unsigned size);
 local uInt longest_match(deflate_state *s, IPos cur_match);
 #endif
 
-#ifdef DEBUG
+#ifdef H2_ZLIB_DEBUG
 local  void check_match(deflate_state *s, IPos start, IPos match,
                             int length);
 #endif
@@ -761,7 +761,7 @@ longest_match(deflate_state *s, IPos cur_match) /* cur_match = current match */
 
 #endif /* FASTEST */
 
-#ifdef DEBUG
+#ifdef H2_ZLIB_DEBUG
 /* ===========================================================================
  * Check that the match at match_start is indeed a match.
  */
@@ -786,7 +786,7 @@ check_match(deflate_state *s, IPos start, IPos match, int length)
 }
 #else
 #  define check_match(s, start, match, length)
-#endif /* DEBUG */
+#endif /* H2_ZLIB_DEBUG */
 
 /* ===========================================================================
  * Fill the window when the lookahead becomes insufficient.

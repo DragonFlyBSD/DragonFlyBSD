@@ -64,7 +64,7 @@ zlibCompileFlags(void)
     case 8:     flags += 2 << 6;        break;
     default:    flags += 3 << 6;
     }
-#ifdef DEBUG
+#ifdef H2_ZLIB_DEBUG
     flags += 1 << 8;
 #endif
 #if defined(ASMV) || defined(ASMINF)
@@ -118,7 +118,7 @@ zlibCompileFlags(void)
     return flags;
 }
 
-#ifdef DEBUG
+#ifdef H2_ZLIB_DEBUG
 
 #  ifndef verbose
 #    define verbose 0
