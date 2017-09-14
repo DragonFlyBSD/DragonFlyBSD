@@ -76,6 +76,8 @@ static hammer2_chain_t *hammer2_combined_find(
 		hammer2_key_t key_beg, hammer2_key_t key_end,
 		hammer2_blockref_t **bresp);
 
+static struct krate krate_h2me = { .freq = 1 };
+
 /*
  * Basic RBTree for chains (core->rbtree and core->dbtree).  Chains cannot
  * overlap in the RB trees.  Deleted chains are moved from rbtree to either
@@ -2266,26 +2268,31 @@ again:
  * Locate the first chain whos key range overlaps (key_beg, key_end) inclusive.
  * (*parentp) typically points to an inode but can also point to a related
  * indirect block and this function will recurse upwards and find the inode
- * again.
+ * or the nearest undeleted indirect block covering the key range.
  *
  * This function unconditionally sets *errorp, replacing any previous value.
  *
- * (*parentp) must be exclusively locked and referenced and can be an inode
- * or an existing indirect block within the inode.  If (*parent) is errored
- * out, this function will not attempt to recurse the radix tree and
- * will return NULL along with an appropriate *errorp.  If NULL is returned
- * and *errorp is 0, the requested lookup could not be located.
+ * (*parentp) must be exclusive or shared locked (depending on flags) and
+ * referenced and can be an inode or an existing indirect block within the
+ * inode.
+ *
+ * If (*parent) is errored out, this function will not attempt to recurse
+ * the radix tree and will return NULL along with an appropriate *errorp.
+ * If NULL is returned and *errorp is 0, the requested lookup could not be
+ * located.
  *
  * On return (*parentp) will be modified to point at the deepest parent chain
  * element encountered during the search, as a helper for an insertion or
- * deletion.   The new (*parentp) will be locked and referenced and the old
- * will be unlocked and dereferenced (no change if they are both the same).
- * This is particularly important if the caller wishes to insert a new chain,
- * (*parentp) will be set properly even if NULL is returned, as long as no
- * error occurred.
+ * deletion.
  *
- * The matching chain will be returned exclusively locked.  If NOLOCK is
- * requested the chain will be returned only referenced.  Note that the
+ * The new (*parentp) will be locked shared or exclusive (depending on flags),
+ * and referenced, and the old will be unlocked and dereferenced (no change
+ * if they are both the same).  This is particularly important if the caller
+ * wishes to insert a new chain, (*parentp) will be set properly even if NULL
+ * is returned, as long as no error occurred.
+ *
+ * The matching chain will be returned locked according to flags.  If NOLOCK
+ * is requested the chain will be returned only referenced.  Note that the
  * parent chain must always be locked shared or exclusive, matching the
  * HAMMER2_LOOKUP_SHARED flag.  We can conceivably lock it SHARED temporarily
  * when NOLOCK is specified but that complicates matters if *parentp must
@@ -2330,6 +2337,7 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 	int how;
 	int generation;
 	int maxloops = 300000;
+	volatile hammer2_mtx_t save_mtx;
 
 	if (flags & HAMMER2_LOOKUP_ALWAYS) {
 		how_maybe = how_always;
@@ -2498,6 +2506,7 @@ again:
 	 * Exhausted parent chain, iterate.
 	 */
 	if (bref == NULL) {
+		KKASSERT(chain == NULL);
 		hammer2_spin_unex(&parent->core.spin);
 		if (key_beg == key_end)	/* short cut single-key case */
 			return (NULL);
@@ -2539,6 +2548,7 @@ again:
 		}
 		if (bcmp(&bcopy, bref, sizeof(bcopy))) {
 			hammer2_chain_drop(chain);
+			chain = NULL;	/* SAFETY */
 			goto again;
 		}
 	} else {
@@ -2574,6 +2584,7 @@ again:
 			chain->bref.key);
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
+		chain = NULL;	/* SAFETY */
 		key_beg = *key_nextp;
 		if (key_beg == 0 || key_beg > key_end)
 			return(NULL);
@@ -2598,9 +2609,11 @@ again:
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
 	    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE) {
+		save_mtx = parent->lock;
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
 		*parentp = parent = chain;
+		chain = NULL;	/* SAFETY */
 		goto again;
 	}
 done:
@@ -3979,6 +3992,7 @@ hammer2_chain_indirect_maintenance(hammer2_chain_t *parent,
 	hammer2_chain_t *sub;
 	int chain_count;
 	int count;
+	int error;
 	int generation;
 
 	/*
@@ -3993,6 +4007,7 @@ hammer2_chain_indirect_maintenance(hammer2_chain_t *parent,
 
 	/*
 	 * If the indirect block is empty we can delete it.
+	 * (ignore deletion error)
 	 */
 	if (chain->core.live_count == 0 && RB_EMPTY(&chain->core.rbtree)) {
 		hammer2_chain_delete(parent, chain,
@@ -4043,15 +4058,25 @@ hammer2_chain_indirect_maintenance(hammer2_chain_t *parent,
 	 * twice.  To deal with the problem we clean out chain's stats prior
 	 * to deleting it.
 	 */
-	if (hammer2_chain_modify(parent, 0, 0, 0)) {
+	error = hammer2_chain_modify(parent, 0, 0, 0);
+	if (error) {
+		krateprintf(&krate_h2me, "hammer2: indirect_maint: %s\n",
+			    hammer2_error_str(error));
+		return 0;
+	}
+	error = hammer2_chain_modify(chain, chain->bref.modify_tid, 0, 0);
+	if (error) {
+		krateprintf(&krate_h2me, "hammer2: indirect_maint: %s\n",
+			    hammer2_error_str(error));
 		return 0;
 	}
 
 	chain->bref.embed.stats.inode_count = 0;
 	chain->bref.embed.stats.data_count = 0;
-	hammer2_chain_delete(parent, chain,
-			     chain->bref.modify_tid,
-			     HAMMER2_DELETE_PERMANENT);
+	error = hammer2_chain_delete(parent, chain,
+				     chain->bref.modify_tid,
+				     HAMMER2_DELETE_PERMANENT);
+	KKASSERT(error == 0);
 
 	/*
 	 * The combined_find call requires core.spin to be held.  One would
@@ -4103,8 +4128,9 @@ hammer2_chain_indirect_maintenance(hammer2_chain_t *parent,
 				continue;
 			}
 		}
-		hammer2_chain_delete(chain, sub,
-				     sub->bref.modify_tid, 0);
+		error = hammer2_chain_delete(chain, sub,
+					     sub->bref.modify_tid, 0);
+		KKASSERT(error == 0);
 		hammer2_chain_rename(NULL, &parent, sub,
 				     sub->bref.modify_tid,
 				     HAMMER2_INSERT_SAMEPARENT);
