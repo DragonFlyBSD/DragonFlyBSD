@@ -96,6 +96,7 @@ __mtx_lock_ex(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 			nlock = MTX_EXCLUSIVE | 1;
 			if (atomic_cmpset_int(&mtx->mtx_lock, 0, nlock)) {
 				mtx->mtx_owner = curthread;
+				cpu_sfence();
 				link->state = MTX_LINK_ACQUIRED;
 				error = 0;
 				break;
@@ -106,6 +107,7 @@ __mtx_lock_ex(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 			KKASSERT((lock & MTX_MASK) != MTX_MASK);
 			nlock = lock + 1;
 			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock)) {
+				cpu_sfence();
 				link->state = MTX_LINK_ACQUIRED;
 				error = 0;
 				break;
@@ -245,6 +247,7 @@ __mtx_lock_sh(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 			nlock = 1;
 			if (atomic_cmpset_int(&mtx->mtx_lock, 0, nlock)) {
 				error = 0;
+				cpu_sfence();
 				link->state = MTX_LINK_ACQUIRED;
 				break;
 			}
@@ -255,6 +258,7 @@ __mtx_lock_sh(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 			nlock = lock + 1;
 			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock)) {
 				error = 0;
+				cpu_sfence();
 				link->state = MTX_LINK_ACQUIRED;
 				break;
 			}
@@ -596,6 +600,7 @@ _mtx_upgrade_try(mtx_t *mtx)
 
 	for (;;) {
 		lock = mtx->mtx_lock;
+		cpu_ccfence();
 
 		if ((lock & ~MTX_EXWANTED) == 1) {
 			nlock = lock | MTX_EXCLUSIVE;
@@ -675,7 +680,8 @@ _mtx_unlock(mtx_t *mtx)
 			/*
 			 * Last release, shared lock.
 			 *
-			 * Exclusive requests are pending.  Transfer our
+			 * Exclusive requests are pending.  Upgrade this
+			 * final shared lock to exclusive and transfer our
 			 * count (1) to the next exclusive request.
 			 *
 			 * Exclusive requests have priority over shared reqs.
@@ -737,7 +743,7 @@ mtx_chain_link_ex(mtx_t *mtx, u_int olock)
 	u_int	nlock;
 
 	olock &= ~MTX_LINKSPIN;
-	nlock = olock | MTX_LINKSPIN | MTX_EXCLUSIVE;
+	nlock = olock | MTX_LINKSPIN | MTX_EXCLUSIVE;	/* upgrade if necc */
 	++td->td_critcount;
 	if (atomic_cmpset_int(&mtx->mtx_lock, olock, nlock)) {
 		link = mtx->mtx_exlink;
@@ -841,6 +847,7 @@ mtx_chain_link_sh(mtx_t *mtx, u_int olock)
 				link->state = MTX_LINK_CALLEDBACK;
 				link->callback(link, link->arg, 0);
 			} else {
+				cpu_sfence();
 				link->state = MTX_LINK_ACQUIRED;
 				wakeup(link);
 			}
@@ -931,7 +938,9 @@ mtx_wait_link(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 
 	/*
 	 * Sleep.  Handle false wakeups, interruptions, etc.
-	 * The link may also have been aborted.
+	 * The link may also have been aborted.  The LINKED
+	 * bit was set by this cpu so we can test it without
+	 * fences.
 	 */
 	error = 0;
 	while (link->state & MTX_LINK_LINKED) {
@@ -953,6 +962,19 @@ mtx_wait_link(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 				break;
 		}
 	}
+
+	/*
+	 * We need at least a lfence (load fence) to ensure our cpu does not
+	 * reorder loads (of data outside the lock structure) prior to the
+	 * remote cpu's release, since the above test may have run without
+	 * any atomic interactions.
+	 *
+	 * If we do not do this then state updated by the other cpu before
+	 * releasing its lock may not be read cleanly by our cpu when this
+	 * function returns.  Even though the other cpu ordered its stores,
+	 * our loads can still be out of order.
+	 */
+	cpu_mfence();
 
 	/*
 	 * We are done, make sure the link structure is unlinked.
