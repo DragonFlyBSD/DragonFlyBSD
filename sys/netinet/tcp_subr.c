@@ -370,7 +370,7 @@ tcp_init(void)
 {
 	struct inpcbportinfo *portinfo;
 	struct inpcbinfo *ticb;
-	int hashsize = TCBHASHSIZE;
+	int hashsize = TCBHASHSIZE, portinfo_hsize;
 	int cpu;
 
 	/*
@@ -394,9 +394,13 @@ tcp_init(void)
 	TUNABLE_INT_FETCH("net.inet.tcp.tcbhashsize", &hashsize);
 	if (!powerof2(hashsize)) {
 		kprintf("WARNING: TCB hash size not a power of 2\n");
-		hashsize = 512; /* safe default */
+		hashsize = TCBHASHSIZE; /* safe default */
 	}
 	tcp_tcbhashsize = hashsize;
+
+	portinfo_hsize = 65536 / netisr_ncpus;
+	if (portinfo_hsize > hashsize)
+		portinfo_hsize = hashsize;
 
 	portinfo = kmalloc_cachealign(sizeof(*portinfo) * netisr_ncpus, M_PCB,
 	    M_WAITOK);
@@ -406,7 +410,7 @@ tcp_init(void)
 		in_pcbinfo_init(ticb, cpu, FALSE);
 		ticb->hashbase = hashinit(hashsize, M_PCB,
 					  &ticb->hashmask);
-		in_pcbportinfo_init(&portinfo[cpu], hashsize, cpu);
+		in_pcbportinfo_init(&portinfo[cpu], portinfo_hsize, cpu);
 		in_pcbportinfo_set(ticb, portinfo, netisr_ncpus);
 		ticb->wildcardhashbase = hashinit(hashsize, M_PCB,
 						  &ticb->wildcardhashmask);

@@ -2334,8 +2334,8 @@ in_pcbportinfo_init(struct inpcbportinfo *portinfo, int hashsize,
 	portinfo->lastlow = offset;
 	portinfo->lasthi = offset;
 
-	portinfo->porthashbase = hashinit(hashsize, M_PCB,
-	    &portinfo->porthashmask);
+	portinfo->porthashbase = phashinit(hashsize, M_PCB,
+	    &portinfo->porthashcnt);
 }
 
 void

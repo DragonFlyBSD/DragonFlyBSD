@@ -291,7 +291,7 @@ struct lwkt_token;
 
 struct inpcbportinfo {
 	struct	inpcbporthead *porthashbase;
-	u_long	porthashmask;
+	u_long	porthashcnt;
 	u_short	offset;
 	u_short	lastport;
 	u_short	lastlow;
@@ -320,7 +320,7 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 #define	INP_PCBCONNHASH(faddr, fport, laddr, lport, mask)		\
     (((faddr) ^ ((faddr) >> 16) ^ (laddr) ^ ntohs((lport) ^ (fport))) & (mask))
 
-#define	INP_PCBPORTHASH(lport, mask)		(ntohs(lport) & (mask))
+#define	INP_PCBPORTHASH(lport, cnt)		(ntohs(lport) % (cnt))
 
 #define	INP_PCBWILDCARDHASH(lport, mask)	(ntohs(lport) & (mask))
 
@@ -421,7 +421,7 @@ static __inline struct inpcbporthead *
 in_pcbporthash_head(struct inpcbportinfo *portinfo, u_short lport)
 {
 	return &portinfo->porthashbase[
-	    INP_PCBPORTHASH(lport, portinfo->porthashmask)];
+	    INP_PCBPORTHASH(lport, portinfo->porthashcnt)];
 }
 
 #define GET_PORTHASH_TOKEN(porthashhead) \
