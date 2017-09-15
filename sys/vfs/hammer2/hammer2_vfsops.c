@@ -2298,18 +2298,27 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 * new transactions from running concurrently, except for the
 	 * buffer cache transactions.
 	 *
-	 * NOTE!  It is still possible for the paging code to push pages
-	 *	  out via a UIO_NOCOPY hammer2_vop_write() during the main
-	 *	  flush.
+	 * (1) vfsync() all dirty vnodes via vfsyncscan().
+	 *
+	 * (2) Flush any remaining dirty inodes (the sideq), including any
+	 *     which may have been created during or raced against the
+	 *     vfsync().  To catch all cases this must be done after the
+	 *     vfsync().
+	 *
+	 * (3) Wait for any pending BIO I/O to complete (hammer2_bioq_sync()).
+	 *
+	 * NOTE! It is still possible for the paging code to push pages
+	 *	 out via a UIO_NOCOPY hammer2_vop_write() during the main
+	 *	 flush.
 	 */
 	hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH);
-	hammer2_inode_run_sideq(pmp);
 
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
 	vsyncscan(mp, flags | VMSC_NOWAIT, hammer2_sync_scan2, &info);
 	info.waitfor = MNT_WAIT;
 	vsyncscan(mp, flags, hammer2_sync_scan2, &info);
+	hammer2_inode_run_sideq(pmp);
 	hammer2_bioq_sync(pmp);
 
 	/*

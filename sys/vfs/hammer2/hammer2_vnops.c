@@ -162,20 +162,16 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	vclrisdirty(vp);
 
 	/*
-	 * This occurs if the inode was unlinked while open.  Reclamation of
-	 * these inodes requires processing we cannot safely do here so add
-	 * the inode to the sideq in that situation.
+	 * A modified inode may require chain synchronization.  This
+	 * synchronization is usually handled by VOP_SNYC / VOP_FSYNC
+	 * when vfsync() is called.  However, that requires a vnode.
 	 *
-	 * A modified inode may require chain synchronization which will no
-	 * longer be driven by a sync or fsync without the vnode, also use
-	 * the sideq for that.
-	 *
-	 * A reclaim can occur at any time so we cannot safely start a
-	 * transaction to handle reclamation of unlinked files.  Instead,
-	 * the ip is left with a reference and placed on a linked list and
-	 * handled later on.
+	 * When the vnode is disassociated we must keep track of any modified
+	 * inode via the sideq so that it is properly flushed.  We cannot
+	 * safely synchronize the inode from inside the reclaim due to
+	 * potentially deep locks held as-of when the reclaim occurs.
+	 * Interactions and potential deadlocks abound.
 	 */
-
 	if ((ip->flags & (HAMMER2_INODE_ISUNLINKED |
 			  HAMMER2_INODE_MODIFIED |
 			  HAMMER2_INODE_RESIZED)) &&
