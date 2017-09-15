@@ -333,6 +333,7 @@ SYSCTL_PROC(_net_inet_tcp, TCPCTL_STATS, stats, (CTLTYPE_OPAQUE | CTLFLAG_RW),
 #ifndef TCBHASHSIZE
 #define	TCBHASHSIZE	512
 #endif
+CTASSERT((TCBHASHSIZE & (TCBHASHSIZE - 1)) == 0);
 
 /*
  * This is the actual shape of what we allocate using the zone
