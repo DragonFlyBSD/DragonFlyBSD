@@ -69,10 +69,18 @@ struct netmsg_port_registration {
 	lwkt_port_t	npr_port;
 };
 
-struct netmsg_rollup {
-	TAILQ_ENTRY(netmsg_rollup) ru_entry;
+struct netisr_rollup {
+	TAILQ_ENTRY(netisr_rollup) ru_entry;
 	netisr_ru_t	ru_func;
 	int		ru_prio;
+	void		*ru_key;
+};
+
+struct netmsg_rollup {
+	struct netmsg_base	base;
+	netisr_ru_t		func;
+	int			prio;
+	void			*key;
 };
 
 struct netmsg_barrier {
@@ -94,13 +102,13 @@ struct netisr_data {
 #ifdef INVARIANTS
 	void			*netlastfunc;
 #endif
+	TAILQ_HEAD(, netisr_rollup) netrulist;
 };
 
 static struct netisr_data	*netisr_data[MAXCPU];
 
 static struct netisr netisrs[NETISR_MAX];
 static TAILQ_HEAD(,netmsg_port_registration) netreglist;
-static TAILQ_HEAD(,netmsg_rollup) netrulist;
 
 /* Per-CPU thread to handle any protocol.  */
 struct thread *netisr_threads[MAXCPU];
@@ -205,7 +213,6 @@ netisr_init(void)
 		netisr_ncpus = NETISR_CPUMAX;
 
 	TAILQ_INIT(&netreglist);
-	TAILQ_INIT(&netrulist);
 
 	/*
 	 * Create default per-cpu threads for generic protocol handling.
@@ -216,6 +223,7 @@ netisr_init(void)
 		nd = (void *)kmem_alloc3(&kernel_map, sizeof(*nd),
 		    VM_SUBSYS_GD, KM_CPU(i));
 		memset(nd, 0, sizeof(*nd));
+		TAILQ_INIT(&nd->netrulist);
 		netisr_data[i] = nd;
 
 		lwkt_create(netmsg_service_loop, NULL, &netisr_threads[i],
@@ -313,17 +321,16 @@ netmsg_sync_handler(netmsg_t msg)
 static void
 netmsg_service_loop(void *arg)
 {
-	struct netmsg_rollup *ru;
 	netmsg_base_t msg;
 	thread_t td = curthread;
 	int limit;
-#ifdef INVARIANTS
 	struct netisr_data *nd = netisr_data[mycpuid];
-#endif
 
 	td->td_type = TD_TYPE_NETISR;
 
 	while ((msg = lwkt_waitport(&td->td_msgport, 0))) {
+		struct netisr_rollup *ru;
+
 		/*
 		 * Run up to 512 pending netmsgs.
 		 */
@@ -373,7 +380,7 @@ netmsg_service_loop(void *arg)
 		 * Run all registered rollup functions for this cpu
 		 * (e.g. tcp_willblock()).
 		 */
-		TAILQ_FOREACH(ru, &netrulist, ru_entry)
+		TAILQ_FOREACH(ru, &nd->netrulist, ru_entry)
 			ru->ru_func();
 	}
 }
@@ -559,25 +566,83 @@ netisr_register_hashcheck(int num, netisr_hashck_t hashck)
 	ni->ni_hashck = hashck;
 }
 
-void
-netisr_register_rollup(netisr_ru_t ru_func, int prio)
+static void
+netisr_register_rollup_dispatch(netmsg_t nmsg)
 {
-	struct netmsg_rollup *new_ru, *ru;
+	struct netmsg_rollup *nm = (struct netmsg_rollup *)nmsg;
+	int cpuid = mycpuid;
+	struct netisr_data *nd = netisr_data[cpuid];
+	struct netisr_rollup *new_ru, *ru;
 
 	new_ru = kmalloc(sizeof(*new_ru), M_TEMP, M_WAITOK|M_ZERO);
-	new_ru->ru_func = ru_func;
-	new_ru->ru_prio = prio;
+	new_ru->ru_func = nm->func;
+	new_ru->ru_prio = nm->prio;
 
 	/*
 	 * Higher priority "rollup" appears first
 	 */
-	TAILQ_FOREACH(ru, &netrulist, ru_entry) {
+	TAILQ_FOREACH(ru, &nd->netrulist, ru_entry) {
 		if (ru->ru_prio < new_ru->ru_prio) {
 			TAILQ_INSERT_BEFORE(ru, new_ru, ru_entry);
-			return;
+			goto done;
 		}
 	}
-	TAILQ_INSERT_TAIL(&netrulist, new_ru, ru_entry);
+	TAILQ_INSERT_TAIL(&nd->netrulist, new_ru, ru_entry);
+done:
+	if (cpuid == 0)
+		nm->key = new_ru;
+	KKASSERT(nm->key != NULL);
+	new_ru->ru_key = nm->key;
+
+	netisr_forwardmsg_all(&nm->base, cpuid + 1);
+}
+
+struct netisr_rollup *
+netisr_register_rollup(netisr_ru_t func, int prio)
+{
+	struct netmsg_rollup nm;
+
+	netmsg_init(&nm.base, NULL, &curthread->td_msgport, MSGF_PRIORITY,
+	    netisr_register_rollup_dispatch);
+	nm.func = func;
+	nm.prio = prio;
+	nm.key = NULL;
+	netisr_domsg_global(&nm.base);
+
+	KKASSERT(nm.key != NULL);
+	return (nm.key);
+}
+
+static void
+netisr_unregister_rollup_dispatch(netmsg_t nmsg)
+{
+	struct netmsg_rollup *nm = (struct netmsg_rollup *)nmsg;
+	int cpuid = mycpuid;
+	struct netisr_data *nd = netisr_data[cpuid];
+	struct netisr_rollup *ru;
+
+	TAILQ_FOREACH(ru, &nd->netrulist, ru_entry) {
+		if (ru->ru_key == nm->key)
+			break;
+	}
+	if (ru == NULL)
+		panic("netisr: no rullup for %p", nm->key);
+
+	TAILQ_REMOVE(&nd->netrulist, ru, ru_entry);
+	kfree(ru, M_TEMP);
+
+	netisr_forwardmsg_all(&nm->base, cpuid + 1);
+}
+
+void
+netisr_unregister_rollup(struct netisr_rollup *key)
+{
+	struct netmsg_rollup nm;
+
+	netmsg_init(&nm.base, NULL, &curthread->td_msgport, MSGF_PRIORITY,
+	    netisr_unregister_rollup_dispatch);
+	nm.key = key;
+	netisr_domsg_global(&nm.base);
 }
 
 /*

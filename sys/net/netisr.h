@@ -163,9 +163,13 @@ extern lwkt_port netisr_afree_free_so_rport;
 extern lwkt_port netisr_apanic_rport;
 extern lwkt_port netisr_sync_port;
 
+struct netisr_rollup;
+
 void		netisr_register(int, netisr_fn_t, netisr_hashfn_t);
 void		netisr_register_hashcheck(int, netisr_hashck_t);
-void		netisr_register_rollup(netisr_ru_t ru_func, int ru_prio);
+struct netisr_rollup
+		*netisr_register_rollup(netisr_ru_t ru_func, int ru_prio);
+void		netisr_unregister_rollup(struct netisr_rollup *key);
 
 void		netisr_characterize(int num, struct mbuf **mp, int hoff);
 void		netisr_hashcheck(int num, struct mbuf *m,
