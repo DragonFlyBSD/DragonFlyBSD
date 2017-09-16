@@ -57,6 +57,8 @@
 #include <net/netmsg2.h>
 #include <sys/mplock2.h>
 
+#include <vm/vm_extern.h>
+
 static void netmsg_service_port_init(lwkt_port_t);
 static void netmsg_service_loop(void *arg);
 static void netisr_hashfn0(struct mbuf **mp, int hoff);
@@ -87,7 +89,15 @@ struct netisr_barrier {
 	int			br_isset;
 };
 
-void *netlastfunc[MAXCPU];
+struct netisr_data {
+	struct thread		thread;
+#ifdef INVARIANTS
+	void			*netlastfunc;
+#endif
+};
+
+static struct netisr_data	*netisr_data[MAXCPU];
+
 static struct netisr netisrs[NETISR_MAX];
 static TAILQ_HEAD(,netmsg_port_registration) netreglist;
 static TAILQ_HEAD(,netmsg_rollup) netrulist;
@@ -201,9 +211,16 @@ netisr_init(void)
 	 * Create default per-cpu threads for generic protocol handling.
 	 */
 	for (i = 0; i < ncpus; ++i) {
-		lwkt_create(netmsg_service_loop, NULL, &netisr_threads[i], NULL,
-			    TDF_NOSTART|TDF_FORCE_SPINPORT|TDF_FIXEDCPU,
-			    i, "netisr %d", i);
+		struct netisr_data *nd;
+
+		nd = (void *)kmem_alloc3(&kernel_map, sizeof(*nd),
+		    VM_SUBSYS_GD, KM_CPU(i));
+		memset(nd, 0, sizeof(*nd));
+		netisr_data[i] = nd;
+
+		lwkt_create(netmsg_service_loop, NULL, &netisr_threads[i],
+		    &nd->thread, TDF_NOSTART|TDF_FORCE_SPINPORT|TDF_FIXEDCPU,
+		    i, "netisr %d", i);
 		netmsg_service_port_init(&netisr_threads[i]->td_msgport);
 		lwkt_schedule(netisr_threads[i]);
 	}
@@ -300,6 +317,9 @@ netmsg_service_loop(void *arg)
 	netmsg_base_t msg;
 	thread_t td = curthread;
 	int limit;
+#ifdef INVARIANTS
+	struct netisr_data *nd = netisr_data[mycpuid];
+#endif
 
 	td->td_type = TD_TYPE_NETISR;
 
@@ -340,7 +360,9 @@ netmsg_service_loop(void *arg)
 				/*
 				 * We are on the correct port, dispatch it.
 				 */
-				netlastfunc[mycpuid] = msg->nm_dispatch;
+#ifdef INVARIANTS
+				nd->netlastfunc = msg->nm_dispatch;
+#endif
 				msg->nm_dispatch((netmsg_t)msg);
 			}
 			if (--limit == 0)
