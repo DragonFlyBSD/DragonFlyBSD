@@ -211,7 +211,8 @@ do_cleanup(const char *path)
 	 * mounts might alias the same PFS.
 	 */
 	for (didpfs = FirstPFS; didpfs; didpfs = didpfs->next) {
-		if (bcmp(&didpfs->uuid, &mrec_tmp.pfs.pfsd.unique_uuid, sizeof(uuid_t)) == 0) {
+		if (uuid_compare(&didpfs->uuid, &mrec_tmp.pfs.pfsd.unique_uuid,
+			NULL) == 0) {
 			printf(" PFS#%d already handled\n", pfs.pfs_id);
 			close(fd);
 			return;
