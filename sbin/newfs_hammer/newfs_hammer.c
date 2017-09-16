@@ -154,7 +154,7 @@ main(int ac, char **av)
 				HammerVersion);
 		} else if (HammerVersion >= HAMMER_VOL_VERSION_WIP) {
 			HammerVersion = HAMMER_VOL_VERSION_WIP - 1;
-			hwarn("HAMMER VFS supports higher version than "
+			hwarnx("HAMMER VFS supports higher version than "
 				"I understand, using version %d",
 				HammerVersion);
 		}
