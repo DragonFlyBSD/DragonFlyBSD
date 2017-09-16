@@ -524,8 +524,14 @@ ip_input(struct mbuf *m)
 		next_hop = m_tag_data(mtag);
 	}
 
-	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
-		/* dummynet already filtered us */
+	if (m->m_pkthdr.fw_flags &
+	    (DUMMYNET_MBUF_TAGGED | IPFW_MBUF_CONTINUE)) {
+		/*
+		 * - Dummynet already filtered this packet.
+		 * - This packet was processed by ipfw on another
+		 *   cpu, and the rest of the ipfw processing should
+		 *   be carried out on this cpu.
+		 */
 		ip = mtod(m, struct ip *);
 		ip->ip_len = ntohs(ip->ip_len);
 		ip->ip_off = ntohs(ip->ip_off);
@@ -660,8 +666,11 @@ iphack:
 		ip_dn_queue(m);
 		return;
 	}
-	if (m->m_pkthdr.fw_flags & FW_MBUF_REDISPATCH) {
+	if (m->m_pkthdr.fw_flags & FW_MBUF_REDISPATCH)
 		m->m_pkthdr.fw_flags &= ~FW_MBUF_REDISPATCH;
+	if (m->m_pkthdr.fw_flags & IPFW_MBUF_CONTINUE) {
+		/* ipfw was disabled/unloaded. */
+		goto bad;
 	}
 pass:
 	/*

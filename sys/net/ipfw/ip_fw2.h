@@ -93,13 +93,10 @@ enum ipfw_opcodes {		/* arguments (4 byte each)	*/
 	O_KEEP_STATE,		/* none				*/
 	O_LIMIT,		/* ipfw_insn_limit		*/
 	O_LIMIT_PARENT,		/* dyn_type, not an opcode.	*/
-	/*
-	 * these are really 'actions', and must be last in the list.
-	 */
 
+	/* Actions. */
 	O_LOG,			/* ipfw_insn_log		*/
 	O_PROB,			/* u32 = match probability	*/
-
 	O_CHECK_STATE,		/* none				*/
 	O_ACCEPT,		/* none				*/
 	O_DENY,			/* none 			*/
@@ -112,8 +109,14 @@ enum ipfw_opcodes {		/* arguments (4 byte each)	*/
 	O_TEE,			/* arg1=port number		*/
 	O_FORWARD_IP,		/* fwd sockaddr			*/
 	O_FORWARD_MAC,		/* fwd mac			*/
+
+	/* Table based filters. */
 	O_IP_SRC_TABLE,		/* arg1 = tableid		*/
 	O_IP_DST_TABLE,		/* arg1 = tableid		*/
+
+	/* Action. */
+	O_DEFRAG,		/* none				*/
+
 	O_LAST_OPCODE		/* not an opcode!		*/
 };
 
@@ -291,8 +294,11 @@ struct ip_fw {
 	uint64_t	bcnt;		/* Byte counter			*/
 	uint32_t	timestamp;	/* tv_sec of last match		*/
 
-	struct ip_fw	*sibling;	/* clone on next cpu		*/
 	int		cpuid;		/* owner cpu			*/
+	struct ip_fw	*sibling;	/* clone on next cpu		*/
+
+	struct ip_fw	**cross_rules;	/* cross referenced rules	*/
+	uint64_t	cross_refs;	/* cross references		*/
 
 	uint32_t	refcnt;		/* Ref count for transit pkts	*/
 	uint32_t	rule_flags;	/* IPFW_RULE_F_			*/
@@ -305,6 +311,7 @@ struct ip_fw {
 /* unused			0x2 */
 #define IPFW_RULE_F_GENSTATE	0x4
 #define IPFW_RULE_F_GENTRACK	0x8
+#define IPFW_RULE_F_CROSSREF	0x10
 
 #define RULESIZE(rule)	(sizeof(struct ip_fw) + (rule)->cmd_len * 4 - 4)
 
@@ -331,6 +338,7 @@ struct ipfw_flow_id {
 #define IP_FW_DIVERT	2
 #define IP_FW_TEE	3
 #define IP_FW_DUMMYNET	4
+#define IP_FW_CONTINUE	5
 
 /*
  * arguments for calling ipfw_chk() and dummynet_io(). We put them
@@ -344,6 +352,7 @@ struct ip_fw_args {
 	struct ether_header *eh;	/* for bridged packets		*/
 
 	struct ipfw_flow_id f_id;	/* grabbed from IP header	*/
+	uint8_t		cont;
 
 	/*
 	 * Depend on the return value of ipfw_chk/ip_fw_chk_ptr

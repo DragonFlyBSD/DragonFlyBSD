@@ -6496,6 +6496,11 @@ pf_test(int dir, struct ifnet *ifp, struct mbuf **m0,
 	int			 pqid = 0;
 #endif
 
+	if (m->m_pkthdr.fw_flags & IPFW_MBUF_CONTINUE) {
+		/* Skip us; continue in ipfw. */
+		return (PF_PASS);
+	}
+
 	if (!pf_status.running)
 		return (PF_PASS);
 

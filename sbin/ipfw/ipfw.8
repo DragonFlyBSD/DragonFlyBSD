@@ -556,6 +556,27 @@ rule.
 .It Cm count
 Update counters for all packets that match rule.
 The search continues with the next rule.
+.It Cm defrag
+Reassemble IP fragments.
+If an IP packet was reassembled,
+the reassembled IP packet would be passed to the next rule for further
+evaluation.
+This action only applies to IP fragments received by
+.Fn ip_input .
+The most common way to use this action is like this:
+.Pp
+.Dl "ipfw add defrag ip from any to any"
+.Pp
+It is recommended to reassemble IP fragments before
+.Cm check-state ,
+.Cm keep-state ,
+.Cm limit
+or any layer 4 protocols filtering,
+e.g.,
+.Cm tcp ,
+.Cm udp ,
+and
+.Cm icmp .
 .It Cm deny | drop
 Discard packets that match this rule.
 The search terminates.

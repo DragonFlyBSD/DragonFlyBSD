@@ -183,6 +183,7 @@ enum tokens {
 
 	TOK_ACCEPT,
 	TOK_COUNT,
+	TOK_DEFRAG,
 	TOK_PIPE,
 	TOK_QUEUE,
 	TOK_DIVERT,
@@ -285,6 +286,7 @@ struct _s_x rule_actions[] = {
 	{ "reset",		TOK_RESET },
 	{ "unreach",		TOK_UNREACH },
 	{ "check-state",	TOK_CHECKSTATE },
+	{ "defrag",		TOK_DEFRAG },
 	{ NULL,			TOK_NULL },
 	{ NULL, 0 }
 };
@@ -884,6 +886,10 @@ show_ipfw(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 
 		case O_COUNT:
 			printf("count");
+			break;
+
+		case O_DEFRAG:
+			printf("defrag");
 			break;
 
 		case O_DENY:
@@ -2612,6 +2618,11 @@ add(int ac, char *av[])
 
 	case TOK_ACCEPT:
 		action->opcode = O_ACCEPT;
+		break;
+
+	case TOK_DEFRAG:
+		action->opcode = O_DEFRAG;
+		action->arg1 = 0;
 		break;
 
 	case TOK_DENY:

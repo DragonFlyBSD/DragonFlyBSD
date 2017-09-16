@@ -278,6 +278,7 @@ struct netmsg_ipfw {
 	struct ip_fw		*prev_rule;
 	struct ip_fw		*sibling;
 	uint32_t		rule_flags;
+	struct ip_fw		**cross_rules;
 };
 
 struct netmsg_del {
@@ -474,6 +475,8 @@ struct ipfw_context {
 
 	uint8_t			ipfw_flags;	/* IPFW_FLAG_ */
 
+	struct ip_fw		*ipfw_cont_rule;
+
 	struct ipfw_state_tree	ipfw_state_tree;
 	struct ipfw_state_list	ipfw_state_list;
 	int			ipfw_state_loosecnt;
@@ -521,6 +524,10 @@ struct ipfw_context {
 	u_long			ipfw_tks_overflow;
 	u_long			ipfw_tks_cntnomem;
 
+	u_long			ipfw_frags;
+	u_long			ipfw_defraged;
+	u_long			ipfw_defrag_remote;
+
 	/* Last field */
 	struct radix_node_head	*ipfw_tables[];
 };
@@ -543,6 +550,11 @@ struct ipfw_global {
 	struct ipfw_trkcnt_tree	ipfw_trkcnt_tree;
 	int			ipfw_trkcnt_cnt;
 	time_t			ipfw_track_globexp;
+
+	/* Accessed in netisr0. */
+	struct ip_fw		*ipfw_crossref_free __cachealign;
+	struct callout		ipfw_crossref_ch;
+	struct netmsg_base	ipfw_crossref_nm;
 
 #ifdef KLD_MODULE
 	/*
@@ -753,6 +765,18 @@ SYSCTL_PROC(_net_inet_ip_fw_stats, OID_AUTO, track_cntnomem,
     CTLTYPE_ULONG | CTLFLAG_RW, NULL,
     __offsetof(struct ipfw_context, ipfw_tks_cntnomem), ipfw_sysctl_stat,
     "LU", "# of track counter allocation failure");
+SYSCTL_PROC(_net_inet_ip_fw_stats, OID_AUTO, frags,
+    CTLTYPE_ULONG | CTLFLAG_RW, NULL,
+    __offsetof(struct ipfw_context, ipfw_frags), ipfw_sysctl_stat,
+    "LU", "# of IP fragements defraged");
+SYSCTL_PROC(_net_inet_ip_fw_stats, OID_AUTO, defraged,
+    CTLTYPE_ULONG | CTLFLAG_RW, NULL,
+    __offsetof(struct ipfw_context, ipfw_defraged), ipfw_sysctl_stat,
+    "LU", "# of IP packets after defrag");
+SYSCTL_PROC(_net_inet_ip_fw_stats, OID_AUTO, defrag_remote,
+    CTLTYPE_ULONG | CTLFLAG_RW, NULL,
+    __offsetof(struct ipfw_context, ipfw_defrag_remote), ipfw_sysctl_stat,
+    "LU", "# of IP packets after defrag dispatched to remote cpus");
 
 static int		ipfw_state_cmp(struct ipfw_state *,
 			    struct ipfw_state *);
@@ -776,6 +800,7 @@ static void		ipfw_state_expire_ipifunc(void *);
 static void		ipfw_keepalive(void *);
 static int		ipfw_state_expire_start(struct ipfw_context *,
 			    int, int);
+static void		ipfw_crossref_timeo(void *);
 
 #define IPFW_TRKCNT_TOKGET	lwkt_gettoken(&ipfw_gd.ipfw_trkcnt_token)
 #define IPFW_TRKCNT_TOKREL	lwkt_reltoken(&ipfw_gd.ipfw_trkcnt_token)
@@ -975,6 +1000,8 @@ ipfw_free_rule(struct ip_fw *rule)
 	KASSERT(rule->refcnt > 0, ("invalid refcnt %u", rule->refcnt));
 	rule->refcnt--;
 	if (rule->refcnt == 0) {
+		if (rule->cross_rules != NULL)
+			kfree(rule->cross_rules, M_IPFW);
 		kfree(rule, M_IPFW);
 		return 1;
 	}
@@ -986,6 +1013,8 @@ ipfw_unref_rule(void *priv)
 {
 	ipfw_free_rule(priv);
 #ifdef KLD_MODULE
+	KASSERT(ipfw_gd.ipfw_refcnt > 0,
+	    ("invalid ipfw_refcnt %d", ipfw_gd.ipfw_refcnt));
 	atomic_subtract_int(&ipfw_gd.ipfw_refcnt, 1);
 #endif
 }
@@ -2719,6 +2748,7 @@ ipfw_match_uid(const struct ipfw_flow_id *fid, struct ifnet *oif,
  *	IP_FW_DIVERT	Divert the packet to port (args->cookie)
  *	IP_FW_TEE	Tee the packet to port (args->cookie)
  *	IP_FW_DUMMYNET	Send the packet to pipe/queue (args->cookie)
+ *	IP_FW_CONTINUE	Continue processing on another cpu.
  */
 static int
 ipfw_chk(struct ip_fw_args *args)
@@ -2878,8 +2908,6 @@ do {						\
 		}
 	}
 
-#undef PULLUP_TO
-
 	args->f_id.src_ip = ntohl(src_ip.s_addr);
 	args->f_id.dst_ip = ntohl(dst_ip.s_addr);
 	args->f_id.src_port = src_port = ntohs(src_port);
@@ -2895,8 +2923,9 @@ after_ip_checks:
 		 * XXX should not happen here, but optimized out in
 		 * the caller.
 		 */
-		if (fw_one_pass)
+		if (fw_one_pass && !args->cont)
 			return IP_FW_PASS;
+		args->cont = 0;
 
 		/* This rule is being/has been flushed */
 		if (ipfw_flushing)
@@ -2918,6 +2947,8 @@ after_ip_checks:
 		 * one, or the one after divert_rule if asked so.
 		 */
 		int skipto;
+
+		KKASSERT(!args->cont);
 
 		mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
 		if (mtag != NULL) {
@@ -3370,6 +3401,118 @@ check_body:
 				retval = IP_FW_PASS;	/* accept */
 				goto done;
 
+			case O_DEFRAG:
+				if (f->cross_rules == NULL) {
+					/*
+					 * This rule was not completely setup;
+					 * move on to the next rule.
+					 */
+					goto next_rule;
+				}
+
+				/*
+				 * Don't defrag for l2 packets, output packets
+				 * or non-fragments.
+				 */
+				if (oif != NULL || args->eh != NULL ||
+				    (ip->ip_off & (IP_MF | IP_OFFMASK)) == 0)
+					goto next_rule;
+
+				ctx->ipfw_frags++;
+				m = ip_reass(m);
+				args->m = m;
+				if (m == NULL) {
+					retval = IP_FW_PASS;
+					goto done;
+				}
+				ctx->ipfw_defraged++;
+				KASSERT((m->m_flags & M_HASH) == 0,
+				    ("hash not cleared"));
+
+				/* Update statistics */
+				f->pcnt++;
+				f->bcnt += ip_len;
+				f->timestamp = time_second;
+
+				ip = mtod(m, struct ip *);
+				hlen = ip->ip_hl << 2;
+				ip->ip_len += hlen;
+
+				ip->ip_len = htons(ip->ip_len);
+				ip->ip_off = htons(ip->ip_off);
+
+				ip_hashfn(&m, 0);
+				args->m = m;
+				if (m == NULL)
+					goto pullup_failed;
+
+				KASSERT(m->m_flags & M_HASH, ("no hash"));
+				cpuid = netisr_hashcpu(m->m_pkthdr.hash);
+				if (cpuid != mycpuid) {
+					/*
+					 * NOTE:
+					 * ip_len/ip_off are in network byte
+					 * order.
+					 */
+					ctx->ipfw_defrag_remote++;
+					args->rule = f;
+					return (IP_FW_CONTINUE);
+				}
+
+				/* 'm' might be changed by ip_hashfn(). */
+				ip = mtod(m, struct ip *);
+				ip->ip_len = ntohs(ip->ip_len);
+				ip->ip_off = ntohs(ip->ip_off);
+
+				ip_len = ip->ip_len;
+				offset = 0;
+				proto = args->f_id.proto = ip->ip_p;
+
+				switch (proto) {
+				case IPPROTO_TCP:
+					{
+						struct tcphdr *tcp;
+
+						PULLUP_TO(hlen +
+						    sizeof(struct tcphdr));
+						tcp = L3HDR(struct tcphdr, ip);
+						dst_port = tcp->th_dport;
+						src_port = tcp->th_sport;
+						args->f_id.flags =
+						    tcp->th_flags;
+					}
+					break;
+
+				case IPPROTO_UDP:
+					{
+						struct udphdr *udp;
+
+						PULLUP_TO(hlen +
+						    sizeof(struct udphdr));
+						udp = L3HDR(struct udphdr, ip);
+						dst_port = udp->uh_dport;
+						src_port = udp->uh_sport;
+					}
+					break;
+
+				case IPPROTO_ICMP:
+					/* type, code and checksum. */
+					PULLUP_TO(hlen + 4);
+					args->f_id.flags =
+					    L3HDR(struct icmp, ip)->icmp_type;
+					break;
+
+				default:
+					break;
+				}
+				args->f_id.src_port = src_port =
+				    ntohs(src_port);
+				args->f_id.dst_port = dst_port =
+				    ntohs(dst_port);
+
+				/* Move on. */
+				goto next_rule;
+
 			case O_PIPE:
 			case O_QUEUE:
 				args->rule = f; /* report matching rule */
@@ -3507,6 +3650,8 @@ pullup_failed:
 	if (fw_verbose)
 		kprintf("pullup failed\n");
 	return IP_FW_DENY;
+
+#undef PULLUP_TO
 }
 
 static struct mbuf *
@@ -3690,7 +3835,30 @@ ipfw_add_rule_dispatch(netmsg_t nmsg)
 	if (rule->rule_flags & IPFW_RULE_F_GENTRACK)
 		rule->track_ruleid = (uintptr_t)nmsg->lmsg.u.ms_resultp;
 
+	if (fwmsg->cross_rules != NULL) {
+		/* Save rules for later use. */
+		fwmsg->cross_rules[mycpuid] = rule;
+	}
+
 	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
+}
+
+static void
+ipfw_crossref_rule_dispatch(netmsg_t nmsg)
+{
+	struct netmsg_ipfw *fwmsg = (struct netmsg_ipfw *)nmsg;
+	struct ip_fw *rule = fwmsg->sibling;
+	int sz = sizeof(struct ip_fw *) * netisr_ncpus;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
+	KASSERT(rule->rule_flags & IPFW_RULE_F_CROSSREF,
+	    ("not crossref rule"));
+
+	rule->cross_rules = kmalloc(sz, M_IPFW, M_WAITOK);
+	memcpy(rule->cross_rules, fwmsg->cross_rules, sz);
+
+	fwmsg->sibling = rule->sibling;
+	netisr_forwardmsg(&fwmsg->base, mycpuid + 1);
 }
 
 /*
@@ -3704,7 +3872,6 @@ ipfw_add_rule(struct ipfw_ioc_rule *ioc_rule, uint32_t rule_flags)
 {
 	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
 	struct netmsg_ipfw fwmsg;
-	struct netmsg_base *nmsg;
 	struct ip_fw *f, *prev, *rule;
 
 	ASSERT_NETISR0;
@@ -3751,19 +3918,37 @@ ipfw_add_rule(struct ipfw_ioc_rule *ioc_rule, uint32_t rule_flags)
 	 * The rule duplicated on CPU0 will be returned.
 	 */
 	bzero(&fwmsg, sizeof(fwmsg));
-	nmsg = &fwmsg.base;
-	netmsg_init(nmsg, NULL, &curthread->td_msgport, MSGF_PRIORITY,
+	netmsg_init(&fwmsg.base, NULL, &curthread->td_msgport, MSGF_PRIORITY,
 	    ipfw_add_rule_dispatch);
 	fwmsg.ioc_rule = ioc_rule;
 	fwmsg.prev_rule = prev;
 	fwmsg.next_rule = prev == NULL ? NULL : f;
 	fwmsg.rule_flags = rule_flags;
+	if (rule_flags & IPFW_RULE_F_CROSSREF) {
+		fwmsg.cross_rules = kmalloc(
+		    sizeof(struct ip_fw *) * netisr_ncpus, M_TEMP,
+		    M_WAITOK | M_ZERO);
+	}
 
-	netisr_domsg_global(nmsg);
+	netisr_domsg_global(&fwmsg.base);
 	KKASSERT(fwmsg.prev_rule == NULL && fwmsg.next_rule == NULL);
 
-	rule = nmsg->lmsg.u.ms_resultp;
+	rule = fwmsg.base.lmsg.u.ms_resultp;
 	KKASSERT(rule != NULL && rule->cpuid == mycpuid);
+
+	if (fwmsg.cross_rules != NULL) {
+		netmsg_init(&fwmsg.base, NULL, &curthread->td_msgport,
+		    MSGF_PRIORITY, ipfw_crossref_rule_dispatch);
+		fwmsg.sibling = rule;
+		netisr_domsg_global(&fwmsg.base);
+		KKASSERT(fwmsg.sibling == NULL);
+
+		kfree(fwmsg.cross_rules, M_TEMP);
+
+#ifdef KLD_MODULE
+		atomic_add_int(&ipfw_gd.ipfw_refcnt, 1);
+#endif
+	}
 
 	DPRINTF("++ installed rule %d, static count now %d\n",
 		rule->rulenum, static_count);
@@ -3802,8 +3987,16 @@ ipfw_delete_rule(struct ipfw_context *ctx,
 	if (mycpuid == 0)
 		ipfw_dec_static_count(rule);
 
-	/* Try to free this rule */
-	ipfw_free_rule(rule);
+	if ((rule->rule_flags & IPFW_RULE_F_CROSSREF) == 0) {
+		/* Try to free this rule */
+		ipfw_free_rule(rule);
+	} else {
+		/* TODO: check staging area. */
+		if (mycpuid == 0) {
+			rule->next = ipfw_gd.ipfw_crossref_free;
+			ipfw_gd.ipfw_crossref_free = rule;
+		}
+	}
 
 	/* Return the next rule */
 	return n;
@@ -4415,6 +4608,8 @@ ipfw_check_ioc_rule(struct ipfw_ioc_rule *rule, int size, uint32_t *rule_flags)
 			if (cmd->opcode == O_LIMIT)
 				*rule_flags |= IPFW_RULE_F_GENTRACK;
 		}
+		if (cmd->opcode == O_DEFRAG)
+			*rule_flags |= IPFW_RULE_F_CROSSREF;
 
 		switch (cmd->opcode) {
 		case O_NOP:
@@ -4551,6 +4746,7 @@ ipfw_check_ioc_rule(struct ipfw_ioc_rule *rule, int size, uint32_t *rule_flags)
 		case O_SKIPTO:
 		case O_DIVERT:
 		case O_TEE:
+		case O_DEFRAG:
 			if (cmdlen != F_INSN_SIZE(ipfw_insn))
 				goto bad_size;
 check_action:
@@ -5513,6 +5709,72 @@ ipfw_table_expire(struct sockopt *sopt)
 	return (0);
 }
 
+static void
+ipfw_crossref_free_dispatch(netmsg_t nmsg)
+{
+	struct ip_fw *rule = nmsg->lmsg.u.ms_resultp;
+
+	KKASSERT((rule->rule_flags &
+	    (IPFW_RULE_F_CROSSREF | IPFW_RULE_F_INVALID)) ==
+	    (IPFW_RULE_F_CROSSREF | IPFW_RULE_F_INVALID));
+	ipfw_free_rule(rule);
+
+	netisr_replymsg(&nmsg->base, 0);
+}
+
+static void
+ipfw_crossref_reap(void)
+{
+	struct ip_fw *rule, *prev = NULL;
+
+	ASSERT_NETISR0;
+
+	rule = ipfw_gd.ipfw_crossref_free;
+	while (rule != NULL) {
+		uint64_t inflight = 0;
+		int i;
+
+		for (i = 0; i < netisr_ncpus; ++i)
+			inflight += rule->cross_rules[i]->cross_refs;
+		if (inflight == 0) {
+			struct ip_fw *f = rule;
+
+			/*
+			 * Unlink.
+			 */
+			rule = rule->next;
+			if (prev != NULL)
+				prev->next = rule;
+			else
+				ipfw_gd.ipfw_crossref_free = rule;
+
+			/*
+			 * Free.
+			 */
+			for (i = 1; i < netisr_ncpus; ++i) {
+				struct netmsg_base nm;
+
+				netmsg_init(&nm, NULL, &curthread->td_msgport,
+				    MSGF_PRIORITY, ipfw_crossref_free_dispatch);
+				nm.lmsg.u.ms_resultp = f->cross_rules[i];
+				netisr_domsg(&nm, i);
+			}
+			KKASSERT((f->rule_flags &
+			    (IPFW_RULE_F_CROSSREF | IPFW_RULE_F_INVALID)) ==
+			    (IPFW_RULE_F_CROSSREF | IPFW_RULE_F_INVALID));
+			ipfw_unref_rule(f);
+		} else {
+			prev = rule;
+			rule = rule->next;
+		}
+	}
+
+	if (ipfw_gd.ipfw_crossref_free != NULL) {
+		callout_reset(&ipfw_gd.ipfw_crossref_ch, hz,
+		    ipfw_crossref_timeo, NULL);
+	}
+}
+
 /*
  * {set|get}sockopt parser.
  */
@@ -5614,6 +5876,8 @@ ipfw_ctl(struct sockopt *sopt)
 		kprintf("ipfw_ctl invalid option %d\n", sopt->sopt_name);
 		error = EINVAL;
 	}
+
+	ipfw_crossref_reap();
 	return error;
 }
 
@@ -5773,14 +6037,45 @@ ipfw_keepalive(void *dummy __unused)
 	crit_exit();
 }
 
+static void
+ipfw_ip_input_dispatch(netmsg_t nmsg)
+{
+	struct netmsg_genpkt *nm = (struct netmsg_genpkt *)nmsg;
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct mbuf *m = nm->m;
+	struct ip_fw *rule = nm->arg1;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
+	KASSERT(rule->cpuid == mycpuid,
+	    ("rule does not belong to cpu%d", mycpuid));
+	KASSERT(m->m_pkthdr.fw_flags & IPFW_MBUF_CONTINUE,
+	    ("mbuf does not have ipfw continue rule"));
+
+	KASSERT(ctx->ipfw_cont_rule == NULL,
+	    ("pending ipfw continue rule"));
+	ctx->ipfw_cont_rule = rule;
+	ip_input(m);
+
+	/*
+	 * This rule is no longer used; decrement its cross_refs,
+	 * so this rule can be deleted.
+	 */
+	rule->cross_refs--;
+
+	/* May not be cleared, if ipfw was unload/disabled. */
+	ctx->ipfw_cont_rule = NULL;
+}
+
 static int
 ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 {
 	struct ip_fw_args args;
 	struct mbuf *m = *m0;
 	struct m_tag *mtag;
-	int tee = 0, error = 0, ret;
+	int tee = 0, error = 0, ret, cpuid;
+	struct netmsg_genpkt *nm;
 
+	args.cont = 0;
 	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
 		/* Extract info from dummynet tag */
 		mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
@@ -5790,6 +6085,15 @@ ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 
 		m_tag_delete(m, mtag);
 		m->m_pkthdr.fw_flags &= ~DUMMYNET_MBUF_TAGGED;
+	} else if (m->m_pkthdr.fw_flags & IPFW_MBUF_CONTINUE) {
+		struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+
+		KKASSERT(ctx->ipfw_cont_rule != NULL);
+		args.rule = ctx->ipfw_cont_rule;
+		ctx->ipfw_cont_rule = NULL;
+
+		args.cont = 1;
+		m->m_pkthdr.fw_flags &= ~IPFW_MBUF_CONTINUE;
 	} else {
 		args.rule = NULL;
 	}
@@ -5839,6 +6143,34 @@ ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 		}
 		break;
 
+	case IP_FW_CONTINUE:
+		KASSERT(m->m_flags & M_HASH, ("no hash"));
+		cpuid = netisr_hashcpu(m->m_pkthdr.hash);
+		KASSERT(cpuid != mycpuid,
+		    ("continue on the same cpu%d", cpuid));
+
+		/*
+		 * NOTE:
+		 * Bump cross_refs to prevent this rule and its siblings
+		 * from being deleted, while this mbuf is inflight.  The
+		 * cross_refs of the sibling rule on the target cpu will
+		 * be decremented, once this mbuf is going to be filtered
+		 * on the target cpu.
+		 */
+		args.rule->cross_refs++;
+		m->m_pkthdr.fw_flags |= IPFW_MBUF_CONTINUE;
+
+		nm = &m->m_hdr.mh_genmsg;
+		netmsg_init(&nm->base, NULL, &netisr_apanic_rport, 0,
+		    ipfw_ip_input_dispatch);
+		nm->m = m;
+		nm->arg1 = args.rule->cross_rules[cpuid];
+		netisr_sendmsg(&nm->base, cpuid);
+
+		/* This mbuf is dispatched; no longer valid. */
+		m = NULL;
+		break;
+
 	default:
 		panic("unknown ipfw return value: %d", ret);
 	}
@@ -5855,6 +6187,7 @@ ipfw_check_out(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 	struct m_tag *mtag;
 	int tee = 0, error = 0, ret;
 
+	args.cont = 0;
 	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
 		/* Extract info from dummynet tag */
 		mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
@@ -6147,6 +6480,30 @@ ipfw_ctx_init_dispatch(netmsg_t nmsg)
 }
 
 static void
+ipfw_crossref_reap_dispatch(netmsg_t nmsg)
+{
+
+	crit_enter();
+	/* Reply ASAP */
+	netisr_replymsg(&nmsg->base, 0);
+	crit_exit();
+	ipfw_crossref_reap();
+}
+
+static void
+ipfw_crossref_timeo(void *dummy __unused)
+{
+	struct netmsg_base *msg = &ipfw_gd.ipfw_crossref_nm;
+
+	KKASSERT(mycpuid == 0);
+
+	crit_enter();
+	if (msg->lmsg.ms_flags & MSGF_DONE)
+		netisr_sendmsg_oncpu(msg);
+	crit_exit();
+}
+
+static void
 ipfw_init_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_ipfw fwmsg;
@@ -6166,6 +6523,11 @@ ipfw_init_dispatch(netmsg_t nmsg)
 	/* Initialize global track tree. */
 	RB_INIT(&ipfw_gd.ipfw_trkcnt_tree);
 	IPFW_TRKCNT_TOKINIT;
+
+	/* GC for freed crossref rules. */
+	callout_init_mp(&ipfw_gd.ipfw_crossref_ch);
+	netmsg_init(&ipfw_gd.ipfw_crossref_nm, NULL, &netisr_adone_rport,
+	    MSGF_PRIORITY | MSGF_DROPABLE, ipfw_crossref_reap_dispatch);
 
 	ipfw_state_max_set(ipfw_state_max);
 	ipfw_state_headroom = 8 * netisr_ncpus;
@@ -6259,6 +6621,8 @@ ipfw_fini_dispatch(netmsg_t nmsg)
 
 	ASSERT_NETISR0;
 
+	ipfw_crossref_reap();
+
 	if (ipfw_gd.ipfw_refcnt != 0) {
 		error = EBUSY;
 		goto reply;
@@ -6273,6 +6637,11 @@ ipfw_fini_dispatch(netmsg_t nmsg)
 	netmsg_init(&nm, NULL, &curthread->td_msgport, MSGF_PRIORITY,
 	    ipfw_ctx_fini_dispatch);
 	netisr_domsg_global(&nm);
+
+	callout_stop_sync(&ipfw_gd.ipfw_crossref_ch);
+	crit_enter();
+	netisr_dropmsg(&ipfw_gd.ipfw_crossref_nm);
+	crit_exit();
 
 	ip_fw_chk_ptr = NULL;
 	ip_fw_ctl_ptr = NULL;
