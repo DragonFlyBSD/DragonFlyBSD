@@ -536,9 +536,10 @@ ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst, struct ip_fw **rule,
 		if (m == NULL)
 			return FALSE;
 
-		ip_fw_dn_io_ptr(m, args.cookie,
-				dst ? DN_TO_ETH_OUT: DN_TO_ETH_DEMUX, &args);
-		ip_dn_queue(m);
+		m = ip_fw_dn_io_ptr(m, args.cookie,
+		    dst ? DN_TO_ETH_OUT: DN_TO_ETH_DEMUX, &args);
+		if (m != NULL)
+			ip_dn_queue(m);
 		return FALSE;
 
 	default:

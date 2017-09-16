@@ -3509,7 +3509,7 @@ pullup_failed:
 	return IP_FW_DENY;
 }
 
-static void
+static struct mbuf *
 ipfw_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 {
 	struct m_tag *mtag;
@@ -3523,7 +3523,7 @@ ipfw_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 	mtag = m_tag_get(PACKET_TAG_DUMMYNET, sizeof(*pkt), M_NOWAIT);
 	if (mtag == NULL) {
 		m_freem(m);
-		return;
+		return (NULL);
 	}
 	m_tag_prepend(m, mtag);
 
@@ -3561,6 +3561,7 @@ ipfw_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 		pkt->dn_flags |= DN_FLAGS_IS_PIPE;
 
 	m->m_pkthdr.fw_flags |= DUMMYNET_MBUF_TAGGED;
+	return (m);
 }
 
 /*
@@ -5815,7 +5816,7 @@ ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 
 	case IP_FW_DUMMYNET:
 		/* Send packet to the appropriate pipe */
-		ipfw_dummynet_io(m, args.cookie, DN_TO_IP_IN, &args);
+		m = ipfw_dummynet_io(m, args.cookie, DN_TO_IP_IN, &args);
 		break;
 
 	case IP_FW_TEE:
@@ -5888,7 +5889,7 @@ ipfw_check_out(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 		break;
 
 	case IP_FW_DUMMYNET:
-		ipfw_dummynet_io(m, args.cookie, DN_TO_IP_OUT, &args);
+		m = ipfw_dummynet_io(m, args.cookie, DN_TO_IP_OUT, &args);
 		break;
 
 	case IP_FW_TEE:
