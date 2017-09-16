@@ -721,9 +721,9 @@ m_tag_data(struct m_tag *tag)
 }
 
 static __inline struct m_tag *
-m_tag_get(int type, int length, int wait)
+m_tag_get(int type, int length, int mflags)
 {
-	return m_tag_alloc(MTAG_ABI_COMPAT, type, length, wait);
+	return m_tag_alloc(MTAG_ABI_COMPAT, type, length, mflags);
 }
 
 static __inline struct m_tag *

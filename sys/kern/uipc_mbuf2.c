@@ -253,13 +253,13 @@ m_dup1(struct mbuf *m, int off, int len, int wait)
 
 /* Get a packet tag structure along with specified data following. */
 struct m_tag *
-m_tag_alloc(uint32_t cookie, int type, int len, int wait)
+m_tag_alloc(uint32_t cookie, int type, int len, int mflags)
 {
 	struct m_tag *t;
 
 	if (len < 0)
 		return NULL;
-	t = kmalloc(len + sizeof(struct m_tag), M_PACKET_TAGS, MB_OCFLAG(wait));
+	t = kmalloc(len + sizeof(struct m_tag), M_PACKET_TAGS, mflags);
 	if (t == NULL)
 		return NULL;
 	t->m_tag_id = type;
