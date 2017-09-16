@@ -3383,7 +3383,7 @@ check_body:
 					break;
 
 				mtag = m_tag_get(PACKET_TAG_IPFW_DIVERT,
-						 sizeof(*divinfo), M_NOWAIT);
+				    sizeof(*divinfo), M_INTWAIT | M_NULLOK);
 				if (mtag == NULL) {
 					retval = IP_FW_DENY;
 					goto done;
@@ -3454,7 +3454,7 @@ check_body:
 					struct sockaddr_in *sin;
 
 					mtag = m_tag_get(PACKET_TAG_IPFORWARD,
-					       sizeof(*sin), M_NOWAIT);
+					    sizeof(*sin), M_INTWAIT | M_NULLOK);
 					if (mtag == NULL) {
 						retval = IP_FW_DENY;
 						goto done;
@@ -3520,7 +3520,8 @@ ipfw_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 
 	M_ASSERTPKTHDR(m);
 
-	mtag = m_tag_get(PACKET_TAG_DUMMYNET, sizeof(*pkt), M_NOWAIT);
+	mtag = m_tag_get(PACKET_TAG_DUMMYNET, sizeof(*pkt),
+	    M_INTWAIT | M_NULLOK);
 	if (mtag == NULL) {
 		m_freem(m);
 		return (NULL);

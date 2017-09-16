@@ -514,7 +514,7 @@ check_forward(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		lookup_next_rule(*f);
 
 	mtag = m_tag_get(PACKET_TAG_IPFORWARD,
-			sizeof(*sin), M_NOWAIT);
+			sizeof(*sin), M_INTWAIT | M_NULLOK);
 	if (mtag == NULL) {
 		*cmd_val = IP_FW_DENY;
 		*cmd_ctl = IP_FW_CTL_DONE;

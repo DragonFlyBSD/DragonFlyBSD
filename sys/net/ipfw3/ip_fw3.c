@@ -622,7 +622,8 @@ ipfw_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 
 	M_ASSERTPKTHDR(m);
 
-	mtag = m_tag_get(PACKET_TAG_DUMMYNET, sizeof(*pkt), M_NOWAIT);
+	mtag = m_tag_get(PACKET_TAG_DUMMYNET, sizeof(*pkt),
+	    M_INTWAIT | M_NULLOK);
 	if (mtag == NULL) {
 		m_freem(m);
 		return (NULL);
