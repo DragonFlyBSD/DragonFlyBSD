@@ -480,6 +480,9 @@ ip_input(struct mbuf *m)
 	ASSERT_NETISR_NCPUS(mycpuid);
 	M_ASSERTPKTHDR(m);
 
+	/* length checks already done in ip_hashfn() */
+	KASSERT(m->m_len >= sizeof(struct ip), ("IP header not in one mbuf"));
+
 	/*
 	 * This routine is called from numerous places which may not have
 	 * characterized the packet.
@@ -529,9 +532,6 @@ ip_input(struct mbuf *m)
 	}
 
 	ipstat.ips_total++;
-
-	/* length checks already done in ip_hashfn() */
-	KASSERT(m->m_len >= sizeof(struct ip), ("IP header not in one mbuf"));
 
 	if (IP_VHL_V(ip->ip_vhl) != IPVERSION) {
 		ipstat.ips_badvers++;
