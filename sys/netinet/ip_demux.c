@@ -292,8 +292,10 @@ ip_hashfn(struct mbuf **mptr, int hoff)
 	struct mbuf *m;
 	int hash;
 
-	if (!ip_lengthcheck(mptr, hoff))
-		return;
+	if (((*mptr)->m_flags & M_LENCHECKED) == 0) {
+		if (!ip_lengthcheck(mptr, hoff))
+			return;
+	}
 
 	m = *mptr;
 	ip = mtodoff(m, struct ip *, hoff);
