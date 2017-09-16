@@ -527,6 +527,8 @@ ip_input(struct mbuf *m)
 	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
 		/* dummynet already filtered us */
 		ip = mtod(m, struct ip *);
+		ip->ip_len = ntohs(ip->ip_len);
+		ip->ip_off = ntohs(ip->ip_off);
 		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 		goto iphack;
 	}

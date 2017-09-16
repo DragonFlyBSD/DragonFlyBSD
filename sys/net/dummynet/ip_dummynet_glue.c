@@ -323,6 +323,7 @@ ip_dn_ip_input(netmsg_t nmsg)
 	struct dn_pkt *pkt;
 	ip_dn_unref_priv_t unref_priv;
 	void *priv;
+	struct ip *ip;
 
 	nmp = &nmsg->packet;
 	m = nmp->nm_packet;
@@ -346,6 +347,12 @@ ip_dn_ip_input(netmsg_t nmsg)
 
 	priv = pkt->dn_priv;
 	unref_priv = pkt->dn_unref_priv;
+
+	/* ip_input() expects ip_off/ip_len in network byte order. */
+	KKASSERT(m->m_len >= sizeof(*ip));
+	ip = mtod(m, struct ip *);
+	ip->ip_len = htons(ip->ip_len);
+	ip->ip_off = htons(ip->ip_off);
 
 	ip_input(m);
 
