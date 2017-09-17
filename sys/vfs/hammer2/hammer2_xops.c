@@ -351,8 +351,8 @@ again:
 	 * synchronization.
 	 */
 	if (chain && chain->error == 0) {
-		int dopermanent = xop->dopermanent & 1;
-		int doforce = xop->dopermanent & 2;
+		int dopermanent = xop->dopermanent & H2DOPERM_PERMANENT;
+		int doforce = xop->dopermanent & H2DOPERM_FORCE;
 		uint8_t type;
 
 		/*
@@ -425,7 +425,8 @@ again:
 	 * the frontend hammer2_inode_t, nor do we try to lookup the
 	 * frontend hammer2_inode_t here (we are the backend!).
 	 */
-	if (chain && chain->bref.type == HAMMER2_BREF_TYPE_DIRENT) {
+	if (chain && chain->bref.type == HAMMER2_BREF_TYPE_DIRENT &&
+	    (xop->dopermanent & H2DOPERM_IGNINO) == 0) {
 		int error2;
 
 		lhc = chain->bref.embed.dirent.inum;

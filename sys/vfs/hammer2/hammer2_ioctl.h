@@ -138,6 +138,19 @@ struct hammer2_ioc_bulkfree {
 typedef struct hammer2_ioc_bulkfree hammer2_ioc_bulkfree_t;
 
 /*
+ * Unconditionally delete a hammer2 directory entry or inode number
+ */
+struct hammer2_ioc_destroy {
+	enum { HAMMER2_DELETE_NOP,
+	       HAMMER2_DELETE_FILE,
+	       HAMMER2_DELETE_INUM } cmd;
+	char			path[HAMMER2_INODE_MAXNAME];
+	hammer2_key_t		inum;
+};
+
+typedef struct hammer2_ioc_destroy hammer2_ioc_destroy_t;
+
+/*
  * Ioctl list
  */
 
@@ -167,5 +180,10 @@ typedef struct hammer2_ioc_bulkfree hammer2_ioc_bulkfree_t;
 #define HAMMER2IOC_DEBUG_DUMP	_IOWR('h', 91, int)
 #define HAMMER2IOC_BULKFREE_SCAN _IOWR('h', 92, struct hammer2_ioc_bulkfree)
 #define HAMMER2IOC_BULKFREE_ASYNC _IOWR('h', 93, struct hammer2_ioc_bulkfree)
+
+/*
+ * Delete a directory entry or inode number unconditionally.
+ */
+#define HAMMER2IOC_DESTROY	_IOWR('h', 94, struct hammer2_ioc_destroy)
 
 #endif /* !_VFS_HAMMER2_IOCTL_H_ */

@@ -62,6 +62,7 @@ static int hammer2_ioctl_debug_dump(hammer2_inode_t *ip);
 //static int hammer2_ioctl_inode_comp_rec_set(hammer2_inode_t *ip, void *data);
 //static int hammer2_ioctl_inode_comp_rec_set2(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_bulkfree_scan(hammer2_inode_t *ip, void *data);
+static int hammer2_ioctl_destroy(hammer2_inode_t *ip, void *data);
 
 int
 hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
@@ -149,6 +150,10 @@ hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
 	case HAMMER2IOC_INODE_COMP_REC_SET2:
 		error = hammer2_ioctl_inode_comp_rec_set2(ip, data);
 		break;*/
+	case HAMMER2IOC_DESTROY:
+		if (error == 0)
+			error = hammer2_ioctl_destroy(ip, data);
+		break;
 	case HAMMER2IOC_DEBUG_DUMP:
 		error = hammer2_ioctl_debug_dump(ip);
 		break;
@@ -748,7 +753,7 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 	xop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
 	hammer2_xop_setname(&xop->head, pfs->name, strlen(pfs->name));
 	xop->isdir = 2;
-	xop->dopermanent = 2 | 1;	/* FORCE | PERMANENT */
+	xop->dopermanent = H2DOPERM_PERMANENT | H2DOPERM_FORCE;
 	hammer2_xop_start(&xop->head, hammer2_xop_unlink);
 
 	error = hammer2_xop_collect(&xop->head, 0);
@@ -1012,5 +1017,96 @@ hammer2_ioctl_bulkfree_scan(hammer2_inode_t *ip, void *data)
 
 failed:
 	lockmgr(&hmp->bflock, LK_RELEASE);
+	return error;
+}
+
+/*
+ * Unconditionally delete meta-data in a hammer2 filesystem
+ */
+static
+int
+hammer2_ioctl_destroy(hammer2_inode_t *ip, void *data)
+{
+	hammer2_ioc_destroy_t *iocd = data;
+	hammer2_pfs_t *pmp = ip->pmp;
+	int error;
+
+	if (pmp->ronly) {
+		error = EROFS;
+		return error;
+	}
+
+	switch(iocd->cmd) {
+	case HAMMER2_DELETE_FILE:
+		/*
+		 * Destroy a bad directory entry by name.  Caller must
+		 * pass the directory as fd.
+		 */
+		{
+		hammer2_xop_unlink_t *xop;
+
+		if (iocd->path[sizeof(iocd->path)-1]) {
+			error = EINVAL;
+			break;
+		}
+		if (ip->meta.type != HAMMER2_OBJTYPE_DIRECTORY) {
+			error = EINVAL;
+			break;
+		}
+		hammer2_pfs_memory_wait(pmp);
+		hammer2_trans_init(pmp, 0);
+		hammer2_inode_lock(ip, 0);
+
+		xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
+		hammer2_xop_setname(&xop->head, iocd->path, strlen(iocd->path));
+		xop->isdir = -1;
+		xop->dopermanent = H2DOPERM_PERMANENT |
+				   H2DOPERM_FORCE |
+				   H2DOPERM_IGNINO;
+		hammer2_xop_start(&xop->head, hammer2_xop_unlink);
+
+		error = hammer2_xop_collect(&xop->head, 0);
+		error = hammer2_error_to_errno(error);
+		hammer2_inode_unlock(ip);
+		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+		hammer2_trans_done(pmp);
+		}
+		break;
+	case HAMMER2_DELETE_INUM:
+		/*
+		 * Destroy a bad inode by inode number.
+		 */
+		{
+		hammer2_xop_lookup_t *xop;
+
+		if (iocd->inum < 1) {
+			error = EINVAL;
+			break;
+		}
+		hammer2_pfs_memory_wait(pmp);
+		hammer2_trans_init(pmp, 0);
+
+		xop = hammer2_xop_alloc(pmp->iroot, 0);
+		xop->lhc = iocd->inum;
+		hammer2_xop_start(&xop->head, hammer2_xop_lookup);
+		error = hammer2_xop_collect(&xop->head, 0);
+		if (error == 0) {
+			ip = hammer2_inode_get(pmp, NULL,
+					       &xop->head.cluster, -1);
+			hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+			if (ip) {
+				ip->meta.nlinks = 1;
+				hammer2_inode_unlink_finisher(ip, 0);
+				hammer2_inode_unlock(ip);
+			}
+		} else {
+			hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+		}
+		}
+		break;
+	default:
+		error = EINVAL;
+		break;
+	}
 	return error;
 }

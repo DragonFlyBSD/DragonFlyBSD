@@ -80,7 +80,7 @@ struct lock hammer2_mntlk;
 int hammer2_debug;
 int hammer2_cluster_meta_read = 1;	/* physical read-ahead */
 int hammer2_cluster_data_read = 4;	/* physical read-ahead */
-int hammer2_cluster_write = 0;		/* bdwrite() so later inval works */
+int hammer2_cluster_write = 4;		/* physical clustering (not file vp) */
 int hammer2_dedup_enable = 1;
 int hammer2_always_compress = 0;	/* always try to compress */
 int hammer2_inval_enable = 0;

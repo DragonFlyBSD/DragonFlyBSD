@@ -917,6 +917,10 @@ struct hammer2_xop_unlink {
 	int			dopermanent;
 };
 
+#define H2DOPERM_PERMANENT	0x01
+#define H2DOPERM_FORCE		0x02
+#define H2DOPERM_IGNINO		0x04
+
 struct hammer2_xop_nrename {
 	hammer2_xop_head_t	head;
 	hammer2_tid_t		lhc;

@@ -173,6 +173,12 @@ main(int ac, char **av)
 			usage(1);
 		}
 		ecode = cmd_remote_disconnect(sel_path, av[1]);
+	} else if (strcmp(av[0], "destroy") == 0) {
+		if (ac < 2) {
+			fprintf(stderr,
+				"Specify one or more paths to destroy\n");
+		}
+		ecode = cmd_destroy_path(ac - 1, (const char **)(void *)&av[1]);
 	} else if (strcmp(av[0], "hash") == 0) {
 		ecode = cmd_hash(ac - 1, (const char **)(void *)&av[1]);
 	} else if (strcmp(av[0], "info") == 0) {
@@ -468,6 +474,8 @@ usage(int code)
 			"Debug spanning tree\n"
 		"    chaindump <path>             "
 			"Dump in-memory chain topo at\n"
+		"    destroy <path>*		 "
+			"Destroy a directory entry (only use if inode bad)\n"
 		"    disconnect <target>          "
 			"Del cluster link\n"
 		"    hash filename*               "
