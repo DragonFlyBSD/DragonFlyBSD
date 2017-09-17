@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/posixshm.c,v 1.2.2.1 2000/08/22 01:48:12 jhb Exp $
- * $DragonFly: src/lib/libc/gen/posixshm.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
  */
 
 #include "namespace.h"
@@ -59,7 +58,8 @@ shm_open(const char *path, int flags, mode_t mode)
 			return (-1);
 		}
 
-		if (_fcntl(fd, F_SETFL, (int)FPOSIXSHM) != 0) {
+		if (_fcntl(fd, F_SETFD, FD_CLOEXEC) != 0 ||
+		    _fcntl(fd, F_SETFL, (int)FPOSIXSHM) != 0) {
 			_close(fd);
 			return (-1);
 		}
