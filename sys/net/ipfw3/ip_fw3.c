@@ -2125,5 +2125,6 @@ static moduledata_t ipfw3mod = {
 	ipfw3_modevent,
 	0
 };
-DECLARE_MODULE(ipfw3, ipfw3mod, SI_SUB_PROTO_END, SI_ORDER_ANY);
+/* ipfw3 must init before ipfw3_basic */
+DECLARE_MODULE(ipfw3, ipfw3mod, SI_SUB_PROTO_END, SI_ORDER_FIRST);
 MODULE_VERSION(ipfw3, 1);
