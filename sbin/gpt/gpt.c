@@ -284,6 +284,16 @@ parse_uuid(const char *s, uuid_t *uuid)
 		}
 		break;
 	case 'h':
+		if (strcmp(s, "hammer2") == 0) {
+			uuid_t hammer2 = GPT_ENT_TYPE_DRAGONFLY_HAMMER2;
+			*uuid = hammer2;
+			return (0);
+		}
+		if (strcmp(s, "hammer") == 0) {
+			uuid_t hammer = GPT_ENT_TYPE_DRAGONFLY_HAMMER;
+			*uuid = hammer;
+			return (0);
+		}
 		if (strcmp(s, "hfs") == 0) {
 			uuid_t hfs = GPT_ENT_TYPE_APPLE_HFS;
 			*uuid = hfs;
