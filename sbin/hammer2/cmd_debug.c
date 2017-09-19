@@ -39,6 +39,8 @@
 
 static void shell_msghandler(dmsg_msg_t *msg, int unmanaged);
 static void shell_ttymsg(dmsg_iocom_t *iocom);
+static void CountFreeBlocks(hammer2_bmap_data_t *bmap,
+		hammer2_off_t *accum16, hammer2_off_t *accum64);
 
 /************************************************************************
  *				    SHELL				*
@@ -372,9 +374,13 @@ cmd_debugspan(const char *hostname)
  *				    SHOW				*
  ************************************************************************/
 
-static void show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref,
+static void show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
+			int bi, hammer2_blockref_t *bref,
 			int dofreemap, int norecurse);
 static void tabprintf(int tab, const char *ctl, ...);
+
+int64_t TotalFreeAccum16;
+int64_t TotalFreeAccum64;
 
 int
 cmd_show(const char *devpath, int dofreemap)
@@ -386,6 +392,8 @@ cmd_show(const char *devpath, int dofreemap)
 	int i;
 	int best_i;
 
+	TotalFreeAccum16 = 0;	/* includes TotalFreeAccum64 */
+	TotalFreeAccum64 = 0;
 	fd = open(devpath, O_RDONLY);
 	if (fd < 0) {
 		perror("open");
@@ -412,20 +420,26 @@ cmd_show(const char *devpath, int dofreemap)
 				best = broot;
 			}
 			if (VerboseOpt >= 3)
-				show_bref(fd, 0, i, &broot, dofreemap, 0);
+				show_bref(&media.voldata, fd, 0, i, &broot, dofreemap, 0);
 		}
 	}
 	if (VerboseOpt < 3)
-		show_bref(fd, 0, best_i, &best, dofreemap, 0);
+		show_bref(&media.voldata, fd, 0, best_i, &best, dofreemap, 0);
 	close(fd);
+
+	if (dofreemap && VerboseOpt < 3) {
+		printf("Total free storage: %6.3fGB (%6.3GB in 64KB chunks)\n",
+		       (double)TotalFreeAccum16 / (1024.0 * 1024.0 * 1024.0),
+		       (double)TotalFreeAccum64 / (1024.0 * 1024.0 * 1024.0));
+	}
 
 	return 0;
 }
 
 extern uint32_t iscsi_crc32(const void *buf, size_t size);
 static void
-show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap,
-	  int norecurse)
+show_bref(hammer2_volume_data_t *voldata, int fd, int tab,
+	  int bi, hammer2_blockref_t *bref, int dofreemap, int norecurse)
 {
 	hammer2_media_data_t media;
 	hammer2_blockref_t *bscan;
@@ -732,6 +746,10 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap,
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		printf("{\n");
 		for (i = 0; i < HAMMER2_FREEMAP_COUNT; ++i) {
+			hammer2_off_t data_off;
+
+			data_off = bref->key +
+				   i * 256 * HAMMER2_FREEMAP_BLOCK_SIZE;
 			/*
 			if (media.bmdata[i].class == 0 &&
 			    media.bmdata[i].avail == 0) {
@@ -745,8 +763,7 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap,
 			tabprintf(tab + 4, "%016jx %04d.%04x (avail=%7d) "
 				  "%016jx %016jx %016jx %016jx "
 				  "%016jx %016jx %016jx %016jx\n",
-				  bref->key +
-				   i * 256 * HAMMER2_FREEMAP_BLOCK_SIZE,
+				  data_off,
 				  i, media.bmdata[i].class,
 				  media.bmdata[i].avail,
 				  media.bmdata[i].bitmapq[0],
@@ -757,6 +774,12 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap,
 				  media.bmdata[i].bitmapq[5],
 				  media.bmdata[i].bitmapq[6],
 				  media.bmdata[i].bitmapq[7]);
+			if (data_off >= voldata->aux_end &&
+			    data_off < voldata->volu_size) {
+				CountFreeBlocks(&media.bmdata[i],
+						&TotalFreeAccum16,
+						&TotalFreeAccum64);
+			}
 		}
 		tabprintf(tab, "}\n");
 		break;
@@ -785,7 +808,8 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap,
 				printf("\n");
 				didnl = 1;
 			}
-			show_bref(fd, tab, i, &bscan[i], dofreemap, failed);
+			show_bref(voldata, fd, tab,
+				  i, &bscan[i], dofreemap, failed);
 		}
 	}
 	tab -= SHOW_TAB;
@@ -796,6 +820,31 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap,
 				  namelen, namelen, media.ipdata.filename);
 		else
 			tabprintf(tab, "} (%s.%d)\n", type_str,bi);
+	}
+}
+
+static
+void
+CountFreeBlocks(hammer2_bmap_data_t *bmap,
+		hammer2_off_t *accum16, hammer2_off_t *accum64)
+{
+	int i;
+	int j;
+
+	for (i = 0; i < 8; ++i) {
+		uint64_t bm = bmap->bitmapq[i];
+		uint64_t mask;
+
+		mask = 0x03;
+		for (j = 0; j < 64; j += 2) {
+			if ((bm & mask) == 0)
+				*accum16 += 16384;
+		}
+		mask = 0xFF;
+		for (j = 0; j < 64; j += 8) {
+			if ((bm & mask) == 0)
+				*accum64 += 65536;
+		}
 	}
 }
 
