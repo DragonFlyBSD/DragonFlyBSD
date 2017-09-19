@@ -393,7 +393,9 @@ kdmsg_iocom_thread_rd(void *arg)
 		msg = NULL;
 	}
 
+#if 0
 	kdio_printf(iocom, 1, "read thread terminating error=%d\n", error);
+#endif
 
 	lockmgr(&iocom->msglk, LK_EXCLUSIVE);
 	if (msg)
@@ -503,7 +505,9 @@ kdmsg_iocom_thread_wr(void *arg)
 		}
 	}
 
+#if 0
 	kdio_printf(iocom, 1, "write thread terminating error=%d\n", error);
+#endif
 
 	/*
 	 * Shutdown the socket and set KILLTX for consistency in case the
