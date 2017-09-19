@@ -557,17 +557,26 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		 *	     (which is 'chain'), potentially allowing it
 		 *	     to be ripped up.
 		 */
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONFLUSH);
+		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ONFLUSH);
 		save_error = info->error;
 		info->error = 0;
 		info->parent = chain;
-		while (chain->flags & HAMMER2_CHAIN_ONFLUSH) {
+
+		/*
+		 * We may have to do this twice to catch any indirect
+		 * block maintenance that occurs.  Other conditions which
+		 * can keep setting ONFLUSH (such as deferrals) ought to
+		 * be handled by the flushq code.  XXX needs more help
+		 */
+		hammer2_spin_ex(&chain->core.spin);
+		RB_SCAN(hammer2_chain_tree, &chain->core.rbtree,
+			NULL, hammer2_flush_recurse, info);
+		if (chain->flags & HAMMER2_CHAIN_ONFLUSH) {
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ONFLUSH);
-			hammer2_spin_ex(&chain->core.spin);
 			RB_SCAN(hammer2_chain_tree, &chain->core.rbtree,
 				NULL, hammer2_flush_recurse, info);
-			hammer2_spin_unex(&chain->core.spin);
 		}
+		hammer2_spin_unex(&chain->core.spin);
 		info->parent = parent;
 
 		/*
