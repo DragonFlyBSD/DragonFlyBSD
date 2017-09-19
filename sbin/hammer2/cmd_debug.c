@@ -428,7 +428,7 @@ cmd_show(const char *devpath, int dofreemap)
 	close(fd);
 
 	if (dofreemap && VerboseOpt < 3) {
-		printf("Total free storage: %6.3fGB (%6.3GB in 64KB chunks)\n",
+		printf("Total free storage: %6.3fGB (%6.3fGB in 64KB chunks)\n",
 		       (double)TotalFreeAccum16 / (1024.0 * 1024.0 * 1024.0),
 		       (double)TotalFreeAccum64 / (1024.0 * 1024.0 * 1024.0));
 	}
