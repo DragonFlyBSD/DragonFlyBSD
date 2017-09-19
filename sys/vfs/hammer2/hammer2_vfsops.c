@@ -2318,7 +2318,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	vsyncscan(mp, flags | VMSC_NOWAIT, hammer2_sync_scan2, &info);
 	info.waitfor = MNT_WAIT;
 	vsyncscan(mp, flags, hammer2_sync_scan2, &info);
-	hammer2_inode_run_sideq(pmp);
+	hammer2_inode_run_sideq(pmp, 1);
 	hammer2_bioq_sync(pmp);
 
 	/*

@@ -315,7 +315,6 @@ hammer2_xop_alloc(hammer2_inode_t *ip, int flags)
 	xop->head.state = 0;
 	xop->head.error = 0;
 	xop->head.collect_key = 0;
-	xop->head.check_counter = 0;
 	if (flags & HAMMER2_XOP_MODIFYING)
 		xop->head.mtid = hammer2_trans_sub(ip->pmp);
 	else
@@ -495,8 +494,8 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 		 */
 		if (i != notidx && ip1->cluster.array[i].chain) {
 			thr = &pmp->xop_groups[ng].thrs[i];
-			atomic_set_int(&xop->run_mask, 1U << i);
-			atomic_set_int(&xop->chk_mask, 1U << i);
+			atomic_set_64(&xop->run_mask, 1LLU << i);
+			atomic_set_64(&xop->chk_mask, 1LLU << i);
 			xop->collect[i].thr = thr;
 			TAILQ_INSERT_TAIL(&thr->xopq, xop, collect[i].entry);
 		}
@@ -525,26 +524,52 @@ hammer2_xop_start(hammer2_xop_head_t *xop, hammer2_xop_func_t func)
  * Retire a XOP.  Used by both the VOP frontend and by the XOP backend.
  */
 void
-hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
+hammer2_xop_retire(hammer2_xop_head_t *xop, uint64_t mask)
 {
 	hammer2_chain_t *chain;
-	uint32_t nmask;
+	uint64_t nmask;
 	int i;
 
 	/*
 	 * Remove the frontend collector or remove a backend feeder.
+	 *
 	 * When removing the frontend we must wakeup any backend feeders
 	 * who are waiting for FIFO space.
 	 *
-	 * XXX optimize wakeup.
+	 * When removing the last backend feeder we must wakeup any waiting
+	 * frontend.
 	 */
 	KKASSERT(xop->run_mask & mask);
-	nmask = atomic_fetchadd_int(&xop->run_mask, -mask);
-	if ((nmask & ~HAMMER2_XOPMASK_FIFOW) != mask) {
+	nmask = atomic_fetchadd_64(&xop->run_mask,
+				   -mask + HAMMER2_XOPMASK_FEED);
+
+	/*
+	 * More than one entity left
+	 */
+	if ((nmask & HAMMER2_XOPMASK_ALLDONE) != mask) {
+		/*
+		 * Frontend terminating, wakeup any backends waiting on
+		 * fifo full.
+		 *
+		 * NOTE!!! The xop can get ripped out from under us at
+		 *	   this point, so do not reference it again.
+		 *	   The wakeup(xop) doesn't touch the xop and
+		 *	   is ok.
+		 */
 		if (mask == HAMMER2_XOPMASK_VOP) {
 			if (nmask & HAMMER2_XOPMASK_FIFOW)
 				wakeup(xop);
 		}
+
+		/*
+		 * Wakeup frontend if the last backend is terminating.
+		 */
+		nmask -= mask;
+		if ((nmask & HAMMER2_XOPMASK_ALLDONE) == HAMMER2_XOPMASK_VOP) {
+			if (nmask & HAMMER2_XOPMASK_WAIT)
+				wakeup(xop);
+		}
+
 		return;
 	}
 	/* else nobody else left, we can ignore FIFOW */
@@ -566,10 +591,9 @@ hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask)
 	}
 
 	/*
-	 * Cleanup the fifos, use check_counter to optimize the loop.
-	 * Since we are the only entity left on this xop we don't have
-	 * to worry about fifo flow control, and one lfence() will do the
-	 * job.
+	 * Cleanup the fifos.  Since we are the only entity left on this
+	 * xop we don't have to worry about fifo flow control, and one
+	 * lfence() will do the job.
 	 */
 	cpu_lfence();
 	mask = xop->chk_mask;
@@ -649,7 +673,7 @@ hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 		 int clindex, int error)
 {
 	hammer2_xop_fifo_t *fifo;
-	uint32_t mask;
+	uint64_t mask;
 
 	/*
 	 * Early termination (typicaly of xop_readir)
@@ -675,8 +699,8 @@ hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 			goto done;
 		}
 		tsleep_interlock(xop, 0);
-		if (atomic_cmpset_int(&xop->run_mask, mask,
-				      mask | HAMMER2_XOPMASK_FIFOW)) {
+		if (atomic_cmpset_64(&xop->run_mask, mask,
+				     mask | HAMMER2_XOPMASK_FIFOW)) {
 			if (fifo->ri == fifo->wi - HAMMER2_XOPFIFO) {
 				tsleep(xop, PINTERLOCKED, "h2feed", hz*60);
 			}
@@ -692,10 +716,11 @@ hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 	fifo->array[fifo->wi & HAMMER2_XOPFIFO_MASK] = chain;
 	cpu_sfence();
 	++fifo->wi;
-	if (atomic_fetchadd_int(&xop->check_counter, HAMMER2_XOP_CHKINC) &
-	    HAMMER2_XOP_CHKWAIT) {
-		atomic_clear_int(&xop->check_counter, HAMMER2_XOP_CHKWAIT);
-		wakeup(&xop->check_counter);
+
+	mask = atomic_fetchadd_64(&xop->run_mask, HAMMER2_XOPMASK_FEED);
+	if (mask & HAMMER2_XOPMASK_WAIT) {
+		atomic_clear_64(&xop->run_mask, HAMMER2_XOPMASK_WAIT);
+		wakeup(xop);
 	}
 	error = 0;
 
@@ -740,11 +765,11 @@ hammer2_xop_collect(hammer2_xop_head_t *xop, int flags)
 	hammer2_xop_fifo_t *fifo;
 	hammer2_chain_t *chain;
 	hammer2_key_t lokey;
+	uint64_t mask;
 	int error;
 	int keynull;
 	int adv;		/* advance the element */
 	int i;
-	uint32_t check_counter;
 
 loop:
 	/*
@@ -753,7 +778,7 @@ loop:
 	 */
 	lokey = HAMMER2_KEY_MAX;
 	keynull = HAMMER2_CHECK_NULL;
-	check_counter = xop->check_counter;
+	mask = xop->run_mask;
 	cpu_lfence();
 
 	for (i = 0; i < xop->cluster.nchains; ++i) {
@@ -830,20 +855,18 @@ loop:
 	 *		   for event and loop.
 	 */
 	if ((flags & HAMMER2_XOP_COLLECT_WAITALL) &&
-	    xop->run_mask != HAMMER2_XOPMASK_VOP) {
+	    (mask & HAMMER2_XOPMASK_ALLDONE) != HAMMER2_XOPMASK_VOP) {
 		error = HAMMER2_ERROR_EINPROGRESS;
 	} else {
 		error = hammer2_cluster_check(&xop->cluster, lokey, keynull);
 	}
 	if (error == HAMMER2_ERROR_EINPROGRESS) {
-		if ((flags & HAMMER2_XOP_COLLECT_NOWAIT) == 0)
-			tsleep_interlock(&xop->check_counter, 0);
-		if (atomic_cmpset_int(&xop->check_counter,
-				      check_counter,
-				      check_counter | HAMMER2_XOP_CHKWAIT)) {
-			if (flags & HAMMER2_XOP_COLLECT_NOWAIT)
-				goto done;
-			tsleep(&xop->check_counter, PINTERLOCKED, "h2coll", hz*60);
+		if (flags & HAMMER2_XOP_COLLECT_NOWAIT)
+			goto done;
+		tsleep_interlock(xop, 0);
+		if (atomic_cmpset_64(&xop->run_mask,
+				     mask, mask | HAMMER2_XOPMASK_WAIT)) {
+			tsleep(xop, PINTERLOCKED, "h2coll", hz*60);
 		}
 		goto loop;
 	}
@@ -996,14 +1019,14 @@ hammer2_primary_xops_thread(void *arg)
 	hammer2_thread_t *thr = arg;
 	hammer2_pfs_t *pmp;
 	hammer2_xop_head_t *xop;
-	uint32_t mask;
+	uint64_t mask;
 	uint32_t flags;
 	uint32_t nflags;
 	hammer2_xop_func_t last_func = NULL;
 
 	pmp = thr->pmp;
 	/*xgrp = &pmp->xop_groups[thr->repidx]; not needed */
-	mask = 1U << thr->clindex;
+	mask = 1LLU << thr->clindex;
 
 	for (;;) {
 		flags = thr->flags;

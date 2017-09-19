@@ -562,14 +562,17 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  * A cluster's focus is set when it is locked.  The focus can only be set
  * to a chain still part of the synchronized set.
  */
-#define HAMMER2_MAXCLUSTER	8
-#define HAMMER2_XOPMASK_CLUSTER	((1U << HAMMER2_MAXCLUSTER) - 1)
 #define HAMMER2_XOPFIFO		16
 #define HAMMER2_XOPFIFO_MASK	(HAMMER2_XOPFIFO - 1)
 #define HAMMER2_XOPGROUPS	32
 #define HAMMER2_XOPGROUPS_MASK	(HAMMER2_XOPGROUPS - 1)
-#define HAMMER2_XOPMASK_VOP	0x80000000U
-#define HAMMER2_XOPMASK_FIFOW	0x40000000U
+
+#define HAMMER2_MAXCLUSTER	8
+#define HAMMER2_XOPMASK_CLUSTER	(uint64_t)((1LLU << HAMMER2_MAXCLUSTER) - 1)
+#define HAMMER2_XOPMASK_VOP	(uint64_t)0x0000000080000000LLU
+#define HAMMER2_XOPMASK_FIFOW	(uint64_t)0x0000000040000000LLU
+#define HAMMER2_XOPMASK_WAIT	(uint64_t)0x0000000020000000LLU
+#define HAMMER2_XOPMASK_FEED	(uint64_t)0x0000000100000000LLU
 
 #define HAMMER2_XOPMASK_ALLDONE	(HAMMER2_XOPMASK_VOP | HAMMER2_XOPMASK_CLUSTER)
 
@@ -869,9 +872,8 @@ struct hammer2_xop_head {
 	struct hammer2_inode	*ip1;
 	struct hammer2_inode	*ip2;
 	struct hammer2_inode	*ip3;
-	uint32_t		check_counter;
-	uint32_t		run_mask;
-	uint32_t		chk_mask;
+	uint64_t		run_mask;
+	uint64_t		chk_mask;
 	int			flags;
 	int			state;
 	int			error;
@@ -885,9 +887,6 @@ struct hammer2_xop_head {
 };
 
 typedef struct hammer2_xop_head hammer2_xop_head_t;
-
-#define HAMMER2_XOP_CHKWAIT	0x00000001U
-#define HAMMER2_XOP_CHKINC	0x00000002U
 
 struct hammer2_xop_ipcluster {
 	hammer2_xop_head_t	head;
@@ -1167,6 +1166,7 @@ struct hammer2_pfs {
 	struct malloc_type	*mmsg;
 	struct spinlock		inum_spin;	/* inumber lookup */
 	struct hammer2_inode_tree inum_tree;	/* (not applicable to spmp) */
+	long			inum_count;	/* #of inodes in inum_tree */
 	struct spinlock		lru_spin;	/* inumber lookup */
 	struct hammer2_chain_list lru_list;	/* chains on LRU */
 	int			lru_count;	/* #of chains on LRU */
@@ -1184,6 +1184,7 @@ struct hammer2_pfs {
 	int			count_lwinprog;	/* logical write in prog */
 	struct spinlock		list_spin;
 	struct h2_sideq_list	sideq;		/* last-close dirty/unlink */
+	long			sideq_count;
 	hammer2_thread_t	sync_thrs[HAMMER2_MAXCLUSTER];
 	uint32_t		cluster_flags;	/* cached cluster flags */
 	int			has_xop_threads;
@@ -1444,7 +1445,7 @@ void hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 void hammer2_inode_repoint_one(hammer2_inode_t *ip, hammer2_cluster_t *cluster,
 			int idx);
 void hammer2_inode_modify(hammer2_inode_t *ip);
-void hammer2_inode_run_sideq(hammer2_pfs_t *pmp);
+void hammer2_inode_run_sideq(hammer2_pfs_t *pmp, int doall);
 
 hammer2_inode_t *hammer2_inode_create(hammer2_inode_t *dip,
 			hammer2_inode_t *pip,
@@ -1641,7 +1642,7 @@ void hammer2_xop_start(hammer2_xop_head_t *xop, hammer2_xop_func_t func);
 void hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 				int notidx);
 int hammer2_xop_collect(hammer2_xop_head_t *xop, int flags);
-void hammer2_xop_retire(hammer2_xop_head_t *xop, uint32_t mask);
+void hammer2_xop_retire(hammer2_xop_head_t *xop, uint64_t mask);
 int hammer2_xop_active(hammer2_xop_head_t *xop);
 int hammer2_xop_feed(hammer2_xop_head_t *xop, hammer2_chain_t *chain,
 				int clindex, int error);

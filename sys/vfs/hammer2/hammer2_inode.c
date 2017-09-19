@@ -81,6 +81,7 @@ hammer2_inode_delayed_sideq(hammer2_inode_t *ip)
 			atomic_set_int(&ip->flags,
 				       HAMMER2_INODE_ONSIDEQ);
 			TAILQ_INSERT_TAIL(&pmp->sideq, ipul, entry);
+			++pmp->sideq_count;
 			hammer2_spin_unex(&pmp->list_spin);
 		} else {
 			hammer2_spin_unex(&pmp->list_spin);
@@ -355,6 +356,7 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 						     HAMMER2_INODE_ONRBTREE);
 					RB_REMOVE(hammer2_inode_tree,
 						  &pmp->inum_tree, ip);
+					--pmp->inum_count;
 				}
 				hammer2_spin_unex(&pmp->inum_spin);
 
@@ -648,6 +650,7 @@ again:
 			goto again;
 		}
 		atomic_set_int(&nip->flags, HAMMER2_INODE_ONRBTREE);
+		++pmp->inum_count;
 		hammer2_spin_unex(&pmp->inum_spin);
 	}
 
@@ -1256,19 +1259,33 @@ hammer2_inode_chain_sync(hammer2_inode_t *ip)
  * Caller must be in a transaction.
  */
 void
-hammer2_inode_run_sideq(hammer2_pfs_t *pmp)
+hammer2_inode_run_sideq(hammer2_pfs_t *pmp, int doall)
 {
 	hammer2_xop_destroy_t *xop;
 	hammer2_inode_sideq_t *ipul;
 	hammer2_inode_t *ip;
 	int error;
 
+	/*
+	 * Nothing to do if sideq is empty or (if doall == 0) there just
+	 * aren't very many sideq entries.
+	 */
 	if (TAILQ_EMPTY(&pmp->sideq))
+		return;
+	if (doall == 0) {
+		if (pmp->sideq_count > (pmp->inum_count >> 3)) {
+			kprintf("hammer2: flush sideq %ld/%ld\n",
+				pmp->sideq_count, pmp->inum_count);
+		}
+	}
+
+	if (doall == 0 && pmp->sideq_count <= (pmp->inum_count >> 3))
 		return;
 
 	hammer2_spin_ex(&pmp->list_spin);
 	while ((ipul = TAILQ_FIRST(&pmp->sideq)) != NULL) {
 		TAILQ_REMOVE(&pmp->sideq, ipul, entry);
+		--pmp->sideq_count;
 		ip = ipul->ip;
 		KKASSERT(ip->flags & HAMMER2_INODE_ONSIDEQ);
 		atomic_clear_int(&ip->flags, HAMMER2_INODE_ONSIDEQ);
@@ -1300,6 +1317,17 @@ hammer2_inode_run_sideq(hammer2_pfs_t *pmp)
 		hammer2_inode_drop(ip);			/* ipul ref */
 
 		hammer2_spin_ex(&pmp->list_spin);
+
+		/*
+		 * If doall is 0 the original sideq_count was greater than
+		 * 1/8 the inode count.  Add some hysteresis in the loop,
+		 * don't stop flushing until sideq_count drops below 1/16.
+		 */
+		if (doall == 0 && pmp->sideq_count <= (pmp->inum_count >> 4)) {
+			kprintf("hammer2: flush sideq %ld/%ld (end)\n",
+				pmp->sideq_count, pmp->inum_count);
+			break;
+		}
 	}
 	hammer2_spin_unex(&pmp->list_spin);
 }

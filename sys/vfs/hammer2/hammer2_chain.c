@@ -5716,7 +5716,7 @@ hammer2_chain_snapshot(hammer2_chain_t *chain, hammer2_ioc_pfs_t *pmp,
 		hammer2_chain_drop(nchain);
 		hammer2_inode_chain_sync(nip);
 		hammer2_inode_unlock(nip);
-		hammer2_inode_run_sideq(hmp->spmp);
+		hammer2_inode_run_sideq(hmp->spmp, 1);
 	}
 	return (error);
 }

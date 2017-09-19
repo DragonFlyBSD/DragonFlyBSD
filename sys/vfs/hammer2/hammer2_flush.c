@@ -557,14 +557,17 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		 *	     (which is 'chain'), potentially allowing it
 		 *	     to be ripped up.
 		 */
-		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ONFLUSH);
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONFLUSH);
 		save_error = info->error;
 		info->error = 0;
 		info->parent = chain;
-		hammer2_spin_ex(&chain->core.spin);
-		RB_SCAN(hammer2_chain_tree, &chain->core.rbtree,
-			NULL, hammer2_flush_recurse, info);
-		hammer2_spin_unex(&chain->core.spin);
+		while (chain->flags & HAMMER2_CHAIN_ONFLUSH) {
+			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ONFLUSH);
+			hammer2_spin_ex(&chain->core.spin);
+			RB_SCAN(hammer2_chain_tree, &chain->core.rbtree,
+				NULL, hammer2_flush_recurse, info);
+			hammer2_spin_unex(&chain->core.spin);
+		}
 		info->parent = parent;
 
 		/*
@@ -868,6 +871,9 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 
 			KKASSERT((chain->flags & HAMMER2_CHAIN_EMBEDDED) == 0);
 			hammer2_chain_setcheck(chain, chain->data);
+
+				hammer2_inode_data_t *ipdata;
+			ipdata = &chain->data->ipdata;
 			break;
 		default:
 			KKASSERT(chain->flags & HAMMER2_CHAIN_EMBEDDED);
@@ -1328,6 +1334,8 @@ hammer2_inode_xop_flush(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		 * volume header synchronized by the flush code.
 		 */
 		j = hmp->volhdrno + 1;
+		if (j < 0)
+			j = 0;
 		if (j >= HAMMER2_NUM_VOLHDRS)
 			j = 0;
 		if (j * HAMMER2_ZONE_BYTES64 + HAMMER2_SEGSIZE >

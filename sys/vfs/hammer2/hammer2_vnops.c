@@ -186,6 +186,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 			/* ref -> sideq */
 			atomic_set_int(&ip->flags, HAMMER2_INODE_ONSIDEQ);
 			TAILQ_INSERT_TAIL(&pmp->sideq, ipul, entry);
+			++pmp->sideq_count;
 			hammer2_spin_unex(&pmp->list_spin);
 		} else {
 			hammer2_spin_unex(&pmp->list_spin);
@@ -1820,7 +1821,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 		hammer2_inode_unlock(dip);
 	}
 
-	hammer2_inode_run_sideq(dip->pmp);
+	hammer2_inode_run_sideq(dip->pmp, 0);
 	hammer2_trans_done(dip->pmp);
 	if (error == 0) {
 		cache_unlink(ap->a_nch);
@@ -1898,7 +1899,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 		hammer2_inode_unlock(dip);
 	}
 
-	hammer2_inode_run_sideq(dip->pmp);
+	hammer2_inode_run_sideq(dip->pmp, 0);
 	hammer2_trans_done(dip->pmp);
 	if (error == 0) {
 		cache_unlink(ap->a_nch);
@@ -2167,7 +2168,7 @@ done2:
 	hammer2_inode_unlock(tdip);
 	hammer2_inode_unlock(fdip);
 	hammer2_inode_drop(ip);
-	hammer2_inode_run_sideq(fdip->pmp);
+	hammer2_inode_run_sideq(fdip->pmp, 0);
 
 	hammer2_trans_done(tdip->pmp);
 
