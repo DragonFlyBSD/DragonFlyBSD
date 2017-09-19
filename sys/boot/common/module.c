@@ -251,7 +251,7 @@ command_crc(int argc, char *argv[])
 				name, strerror(errno));
 			break;
 		}
-		if (got == 0)
+		if (crc == 0)
 			crc = iscsi_crc32(buf, got);
 		else
 			crc = iscsi_crc32_ext(buf, got, crc);
