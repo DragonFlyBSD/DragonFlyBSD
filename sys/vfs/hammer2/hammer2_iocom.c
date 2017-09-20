@@ -317,7 +317,9 @@ hammer2_update_spans(hammer2_dev_t *hmp, kdmsg_state_t *state)
 		if (chain->bref.type != HAMMER2_BREF_TYPE_INODE)
 			continue;
 		ripdata = &chain->data->ipdata;
+#if 0
 		kprintf("UPDATE SPANS: %s\n", ripdata->filename);
+#endif
 
 		rmsg = kdmsg_msg_alloc(&hmp->iocom.state0,
 				       DMSG_LNK_SPAN | DMSGF_CREATE,

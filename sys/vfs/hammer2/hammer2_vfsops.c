@@ -454,8 +454,6 @@ hammer2_pfsalloc(hammer2_chain_t *chain,
 	hammer2_mtx_ex(&iroot->lock);
 	j = iroot->cluster.nchains;
 
-	kprintf("add PFS to pmp %p[%d]\n", pmp, j);
-
 	if (j == HAMMER2_MAXCLUSTER) {
 		kprintf("hammer2_mount: cluster full!\n");
 		/* XXX fatal error? */
@@ -672,7 +670,6 @@ hammer2_pfsfree(hammer2_pfs_t *pmp)
 	/*
 	 * Cleanup chains remaining on LRU list.
 	 */
-	kprintf("pfsfree: %p lrucount=%d\n", pmp, pmp->lru_count);
 	while ((chain = TAILQ_FIRST(&pmp->lru_list)) != NULL) {
 		hammer2_chain_ref(chain);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_RELEASE);
@@ -708,11 +705,8 @@ again:
 	TAILQ_FOREACH(pmp, &hammer2_pfslist, mntentry) {
 		if ((iroot = pmp->iroot) == NULL)
 			continue;
-		if (hmp->spmp == pmp) {
-			kprintf("unmount hmp %p remove spmp %p\n",
-				hmp, pmp);
+		if (hmp->spmp == pmp)
 			hmp->spmp = NULL;
-		}
 
 		/*
 		 * Determine if this PFS is affected.  If it is we must
@@ -808,8 +802,6 @@ again:
 		 * (this will transition management threads from frozen->exit).
 		 */
 		if (iroot->cluster.nchains == 0) {
-			kprintf("unmount hmp %p last ref to PMP=%p\n",
-				hmp, pmp);
 			hammer2_pfsfree(pmp);
 			goto again;
 		}
@@ -1473,7 +1465,6 @@ hammer2_update_pmps(hammer2_dev_t *hmp)
 		} else {
 			ripdata = &chain->data->ipdata;
 			bref = chain->bref;
-			kprintf("ADD LOCAL PFS: %s\n", ripdata->filename);
 
 			pmp = hammer2_pfsalloc(chain, ripdata,
 					       bref.modify_tid, force_local);
@@ -1647,8 +1638,6 @@ hammer2_unmount_helper(struct mount *mp, hammer2_pfs_t *pmp, hammer2_dev_t *hmp)
 			if (rchain == NULL)
 				continue;
 			--rchain->hmp->mount_count;
-			kprintf("hammer2_unmount hmp=%p --mount_count=%d\n",
-				rchain->hmp, rchain->hmp->mount_count);
 			/* scrapping hmp now may invalidate the pmp */
 		}
 again:
@@ -1665,10 +1654,14 @@ again:
 	 * Try to terminate the block device.  We can't terminate it if
 	 * there are still PFSs referencing it.
 	 */
-	kprintf("hammer2_unmount hmp=%p mount_count=%d\n",
-		hmp, hmp->mount_count);
 	if (hmp->mount_count)
 		return;
+
+	/*
+	 * Decomission the network before we start messing with the
+	 * device and PFS.
+	 */
+	hammer2_iocom_uninit(hmp);
 
 	hammer2_bulkfree_uninit(hmp);
 	hammer2_pfsfree_scan(hmp);
@@ -1688,7 +1681,6 @@ again:
 	hammer2_voldata_lock(hmp);
 	hammer2_voldata_unlock(hmp);
 #endif
-	hammer2_iocom_uninit(hmp);
 
 	if ((hmp->vchain.flags | hmp->fchain.flags) &
 	    HAMMER2_CHAIN_FLUSH_MASK) {
