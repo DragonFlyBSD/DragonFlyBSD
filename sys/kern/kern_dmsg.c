@@ -80,6 +80,7 @@ static void kdmsg_simulate_failure(kdmsg_state_t *state, int meto, int error);
 static void kdmsg_state_abort(kdmsg_state_t *state);
 static void kdmsg_state_dying(kdmsg_state_t *state);
 static void kdmsg_state_free(kdmsg_state_t *state);
+static void kdmsg_drain_msg(kdmsg_msg_t *msg);
 
 #ifdef KDMSG_DEBUG
 #define KDMSG_DEBUG_ARGS	, const char *file, int line
@@ -541,16 +542,16 @@ kdmsg_iocom_thread_wr(void *arg)
 	 */
 	save_ticks = ticks;
 	didwarn = 0;
+	iocom->flags |= KDMSG_IOCOMF_EXITNOACC;
 
 	while (TAILQ_FIRST(&iocom->msgq) ||
 	       RB_ROOT(&iocom->staterd_tree) ||
-	       RB_ROOT(&iocom->statewr_tree)) {
+	       RB_ROOT(&iocom->statewr_tree) ||
+	       iocom->conn_state) {
 		/*
 		 * Simulate failure for all sub-states of state0.
 		 */
 		kdmsg_drain_msgq(iocom);
-		kdio_printf(iocom, 2, "%s\n",
-			    "simulate failure for all substates of state0");
 		kdmsg_simulate_failure(&iocom->state0, 0, DMSG_ERR_LOSTLINK);
 
 		lksleep(iocom, &iocom->msglk, 0, "clstrtk", hz / 2);
@@ -583,7 +584,6 @@ kdmsg_iocom_thread_wr(void *arg)
 	/*
 	 * Exit handling is done by the write thread.
 	 */
-	iocom->flags |= KDMSG_IOCOMF_EXITNOACC;
 	lockmgr(&iocom->msglk, LK_RELEASE);
 
 	/*
@@ -623,16 +623,30 @@ kdmsg_drain_msgq(kdmsg_iocom_t *iocom)
 
 	/*
 	 * Clean out our pending transmit queue, executing the
-	 * appropriate state adjustments.  If this tries to open
-	 * any new outgoing transactions we have to loop up and
-	 * clean them out.
+	 * appropriate state adjustments as if the messages were
+	 * sent.
 	 */
 	while ((msg = TAILQ_FIRST(&iocom->msgq)) != NULL) {
 		TAILQ_REMOVE(&iocom->msgq, msg, qentry);
-		if (kdmsg_state_msgtx(msg))
-			kdmsg_msg_free(msg);
-		else
-			kdmsg_state_cleanuptx(msg);
+		kdmsg_drain_msg(msg);
+	}
+}
+
+/*
+ * Drain one message by simulating transmission and also simulating a
+ * receive failure.
+ */
+static void
+kdmsg_drain_msg(kdmsg_msg_t *msg)
+{
+	if (kdmsg_state_msgtx(msg)) {
+		kdmsg_msg_free(msg);
+	} else {
+		if (msg->state) {
+			kdmsg_simulate_failure(msg->state,
+					       0, DMSG_ERR_LOSTLINK);
+		}
+		kdmsg_state_cleanuptx(msg);
 	}
 }
 
@@ -1832,6 +1846,7 @@ kdmsg_msg_free(kdmsg_msg_t *msg)
 	if ((msg->flags & KDMSG_FLAG_AUXALLOC) &&
 	    msg->aux_data && msg->aux_size) {
 		kfree(msg->aux_data, iocom->mmsg);
+		msg->aux_data = NULL;
 		msg->flags &= ~KDMSG_FLAG_AUXALLOC;
 	}
 	if ((state = msg->state) != NULL) {
@@ -1862,8 +1877,10 @@ kdmsg_detach_aux_data(kdmsg_msg_t *msg, kdmsg_data_t *data)
 void
 kdmsg_free_aux_data(kdmsg_data_t *data)
 {
-	if (data->aux_data)
+	if (data->aux_data) {
 		kfree(data->aux_data, data->iocom->mmsg);
+		data->aux_data = NULL;
+	}
 }
 
 /*
@@ -1935,26 +1952,6 @@ kdmsg_msg_write_locked(kdmsg_iocom_t *iocom, kdmsg_msg_t *msg)
 		msg->any.head.msgid = 0;
 	}
 
-#if 0
-	/*
-	 * XXX removed - don't make this a panic, allow the state checks
-	 *     below to catch the situation.
-	 *
-	 * This flag is not set until after the tx thread has drained
-	 * the tx msgq and simulated responses.  After that point the
-	 * txthread is dead and can no longer simulate responses.
-	 *
-	 * Device drivers should never try to send a message once this
-	 * flag is set.  They should have detected (through the state
-	 * closures) that the link is in trouble.
-	 */
-	if (iocom->flags & KDMSG_IOCOMF_EXITNOACC) {
-		lockmgr(&iocom->msglk, LK_RELEASE);
-		panic("kdmsg_msg_write: Attempt to write message to "
-		      "terminated iocom\n");
-	}
-#endif
-
 	/*
 	 * For stateful messages, if the circuit is dead or dying we have
 	 * to abort the potentially newly-created state and discard the
@@ -2014,7 +2011,14 @@ kdmsg_msg_write_locked(kdmsg_iocom_t *iocom, kdmsg_msg_t *msg)
 	msg->any.head.hdr_crc = 0;
 	msg->any.head.hdr_crc = iscsi_crc32(msg->any.buf, msg->hdr_size);
 
-	TAILQ_INSERT_TAIL(&iocom->msgq, msg, qentry);
+	/*
+	 * If termination races new message senders we must drain the
+	 * message immediately instead of queue it.
+	 */
+	if (iocom->flags & KDMSG_IOCOMF_EXITNOACC)
+		kdmsg_drain_msg(msg);
+	else
+		TAILQ_INSERT_TAIL(&iocom->msgq, msg, qentry);
 
 	if (iocom->msg_ctl & KDMSG_CLUSTERCTL_SLEEPING) {
 		atomic_clear_int(&iocom->msg_ctl,
