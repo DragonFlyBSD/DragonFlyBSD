@@ -3567,23 +3567,10 @@ check_body:
 				     is_icmp_query(ip)) &&
 				    !(m->m_flags & (M_BCAST|M_MCAST)) &&
 				    !IN_MULTICAST(ntohl(dst_ip.s_addr))) {
-					/*
-					 * Update statistics before the possible
-					 * blocking 'send_reject'
-					 */
-					f->pcnt++;
-					f->bcnt += ip_len;
-					f->timestamp = time_second;
-
 					send_reject(args, cmd->arg1,
-					    offset,ip_len);
-					m = args->m;
-
-					/*
-					 * Return directly here, rule stats
-					 * have been updated above.
-					 */
-					return IP_FW_DENY;
+					    offset, ip_len);
+					retval = IP_FW_DENY;
+					goto done;
 				}
 				/* FALLTHROUGH */
 			case O_DENY:
