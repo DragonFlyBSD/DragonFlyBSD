@@ -2,7 +2,7 @@
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
 .\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.20 2008/11/23 21:55:52 swildner Exp $
 .\"
-.Dd September 10, 2017
+.Dd September 20, 2017
 .Dt IPFW 8
 .Os
 .Sh NAME
@@ -442,7 +442,7 @@ See Section
 By name or address
 .It Misc. IP header fields
 Version, type of service, datagram length, identification,
-fragment flag (non-zero IP offset),
+fragment flag,
 Time To Live
 .It IP options
 .It Misc. TCP header fields
@@ -861,7 +861,12 @@ fragment) will never match a rule which has one or more port
 specifications.
 See the
 .Cm frag
-option for details on matching fragmented packets.
+and
+.Cm ipfrag
+options for details on matching fragmented packets.
+Ane see the
+.Cm defrag
+action for reassembling IP fragments.
 .El
 .Ss RULE OPTIONS (MATCH PATTERNS)
 Additional match patterns can be used within
@@ -884,9 +889,14 @@ specified as argument.
 Matches TCP packets that have the RST or ACK bits set.
 .It Cm frag
 Matches packets that are fragments and not the first
-fragment of an IP datagram. Note that these packets will not have
-the next protocol header (e.g. TCP, UDP) so options that look into
-these headers cannot match.
+fragment of an IP datagram.
+Note that these packets will not have the next protocol header
+(e.g. TCP, UDP) so options that look into these headers cannot match.
+See also
+.Cm ipfrag
+option and
+.Cm defrag
+action.
 .It Cm gid Ar group
 Matches all TCP or UDP packets sent by or received for a
 .Ar group .
@@ -939,6 +949,14 @@ are mutually exclusive (in fact,
 .Cm out
 is implemented as
 .Cm not in Ns No ).
+.It Cm ipfrag
+Matches IP fragment,
+even if it's the first fragment.
+See also
+.Cm frag
+option and
+.Cm defrag
+action.
 .It Cm ipid Ar id
 Matches IP packets whose
 .Cm ip_id
@@ -1130,7 +1148,12 @@ specification can never match a fragmented packet which has
 a non-zero offset.
 See the
 .Cm frag
-option for details on matching fragmented packets.
+and
+.Cm ipfrag
+options for details on matching fragmented packets.
+And see the
+.Cm defrag
+action for reassembling IP fragments.
 .It Cm tcpseq Ar seq
 TCP packets only.
 Match if the TCP header sequence number field is set to

@@ -3103,6 +3103,19 @@ check_body:
 				match = (hlen > 0 && offset != 0);
 				break;
 
+			case O_IPFRAG:
+				if (hlen > 0) {
+					uint16_t off;
+
+					if (args->eh != NULL)
+						off = ntohs(ip->ip_off);
+					else
+						off = ip->ip_off;
+					if (off & (IP_MF | IP_OFFMASK))
+						match = 1;
+				}
+				break;
+
 			case O_IN:	/* "out" is "not in" */
 				match = (oif == NULL);
 				break;
@@ -4608,6 +4621,7 @@ ipfw_check_ioc_rule(struct ipfw_ioc_rule *rule, int size, uint32_t *rule_flags)
 		case O_LAYER2:
 		case O_IN:
 		case O_FRAG:
+		case O_IPFRAG:
 		case O_IPOPT:
 		case O_IPLEN:
 		case O_IPID:

@@ -117,6 +117,9 @@ enum ipfw_opcodes {		/* arguments (4 byte each)	*/
 	/* Action. */
 	O_DEFRAG,		/* none				*/
 
+	/* Filter. */
+	O_IPFRAG,		/* none				*/
+
 	O_LAST_OPCODE		/* not an opcode!		*/
 };
 

@@ -207,6 +207,7 @@ enum tokens {
 	TOK_RECV,
 	TOK_VIA,
 	TOK_FRAG,
+	TOK_IPFRAG,
 	TOK_IPOPTS,
 	TOK_IPLEN,
 	TOK_IPID,
@@ -304,6 +305,7 @@ struct _s_x rule_options[] = {
 	{ "via",		TOK_VIA },
 	{ "fragment",		TOK_FRAG },
 	{ "frag",		TOK_FRAG },
+	{ "ipfrag",		TOK_IPFRAG },
 	{ "ipoptions",		TOK_IPOPTS },
 	{ "ipopts",		TOK_IPOPTS },
 	{ "iplen",		TOK_IPLEN },
@@ -1065,6 +1067,10 @@ show_ipfw(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 			switch(cmd->opcode) {
 			case O_FRAG:
 				printf(" frag");
+				break;
+
+			case O_IPFRAG:
+				printf(" ipfrag");
 				break;
 
 			case O_IN:
@@ -2964,6 +2970,10 @@ read_options:
 
 		case TOK_FRAG:
 			fill_cmd(cmd, O_FRAG, 0, 0);
+			break;
+
+		case TOK_IPFRAG:
+			fill_cmd(cmd, O_IPFRAG, 0, 0);
 			break;
 
 		case TOK_LAYER2:
