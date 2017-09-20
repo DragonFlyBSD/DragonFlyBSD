@@ -333,6 +333,37 @@ struct ipfw_table_cp {
 	int			te_cnt;
 };
 
+struct ip_fw_local {
+	/*
+	 * offset	The offset of a fragment. offset != 0 means that
+	 *	we have a fragment at this offset of an IPv4 packet.
+	 *	offset == 0 means that (if this is an IPv4 packet)
+	 *	this is the first or only fragment.
+	 */
+	u_short			offset;
+
+	/*
+	 * Local copies of addresses. They are only valid if we have
+	 * an IP packet.
+	 *
+	 * proto	The protocol. Set to 0 for non-ip packets,
+	 *	or to the protocol read from the packet otherwise.
+	 *	proto != 0 means that we have an IPv4 packet.
+	 *
+	 * src_port, dst_port	port numbers, in HOST format. Only
+	 *	valid for TCP and UDP packets.
+	 *
+	 * src_ip, dst_ip	ip addresses, in NETWORK format.
+	 *	Only valid for IPv4 packets.
+	 */
+	uint8_t			proto;
+	uint16_t		src_port;	/* NOTE: host format	*/
+	uint16_t		dst_port;	/* NOTE: host format	*/
+	struct in_addr		src_ip;		/* NOTE: network format	*/
+	struct in_addr		dst_ip;		/* NOTE: network format	*/
+	uint16_t		ip_len;
+};
+
 struct ipfw_addrs {
 	uint32_t		addr1;
 	uint32_t		addr2;
@@ -2721,6 +2752,83 @@ ipfw_match_uid(const struct ipfw_flow_id *fid, struct ifnet *oif,
 	}
 }
 
+static __inline struct mbuf *
+ipfw_setup_local(struct mbuf *m, const int hlen, struct ip_fw_args *args,
+    struct ip_fw_local *local, struct ip **ip0)
+{
+	struct ip *ip = mtod(m, struct ip *);
+	struct tcphdr *tcp;
+	struct udphdr *udp;
+
+	/*
+	 * Collect parameters into local variables for faster matching.
+	 */
+	if (hlen == 0) {	/* do not grab addresses for non-ip pkts */
+		local->proto = args->f_id.proto = 0;	/* mark f_id invalid */
+		goto done;
+	}
+
+	local->proto = args->f_id.proto = ip->ip_p;
+	local->src_ip = ip->ip_src;
+	local->dst_ip = ip->ip_dst;
+	if (args->eh != NULL) { /* layer 2 packets are as on the wire */
+		local->offset = ntohs(ip->ip_off) & IP_OFFMASK;
+		local->ip_len = ntohs(ip->ip_len);
+	} else {
+		local->offset = ip->ip_off & IP_OFFMASK;
+		local->ip_len = ip->ip_len;
+	}
+
+#define PULLUP_TO(len)					\
+do {							\
+	if (m->m_len < (len)) {				\
+		args->m = m = m_pullup(m, (len));	\
+		if (m == NULL) {			\
+			ip = NULL;			\
+			goto done;			\
+		}					\
+		ip = mtod(m, struct ip *);		\
+	}						\
+} while (0)
+
+	if (local->offset == 0) {
+		switch (local->proto) {
+		case IPPROTO_TCP:
+			PULLUP_TO(hlen + sizeof(struct tcphdr));
+			tcp = L3HDR(struct tcphdr, ip);
+			local->dst_port = tcp->th_dport;
+			local->src_port = tcp->th_sport;
+			args->f_id.flags = tcp->th_flags;
+			break;
+
+		case IPPROTO_UDP:
+			PULLUP_TO(hlen + sizeof(struct udphdr));
+			udp = L3HDR(struct udphdr, ip);
+			local->dst_port = udp->uh_dport;
+			local->src_port = udp->uh_sport;
+			break;
+
+		case IPPROTO_ICMP:
+			PULLUP_TO(hlen + 4);	/* type, code and checksum. */
+			args->f_id.flags = L3HDR(struct icmp, ip)->icmp_type;
+			break;
+
+		default:
+			break;
+		}
+	}
+
+#undef PULLUP_TO
+
+	args->f_id.src_ip = ntohl(local->src_ip.s_addr);
+	args->f_id.dst_ip = ntohl(local->dst_ip.s_addr);
+	args->f_id.src_port = local->src_port = ntohs(local->src_port);
+	args->f_id.dst_port = local->dst_port = ntohs(local->dst_port);
+done:
+	*ip0 = ip;
+	return (m);
+}
+
 /*
  * The main check routine for the firewall.
  *
@@ -2796,32 +2904,7 @@ ipfw_chk(struct ip_fw_args *args)
 	 */
 	u_int hlen = 0;		/* hlen >0 means we have an IP pkt */
 
-	/*
-	 * offset	The offset of a fragment. offset != 0 means that
-	 *	we have a fragment at this offset of an IPv4 packet.
-	 *	offset == 0 means that (if this is an IPv4 packet)
-	 *	this is the first or only fragment.
-	 */
-	u_short offset = 0;
-
-	/*
-	 * Local copies of addresses. They are only valid if we have
-	 * an IP packet.
-	 *
-	 * proto	The protocol. Set to 0 for non-ip packets,
-	 *	or to the protocol read from the packet otherwise.
-	 *	proto != 0 means that we have an IPv4 packet.
-	 *
-	 * src_port, dst_port	port numbers, in HOST format. Only
-	 *	valid for TCP and UDP packets.
-	 *
-	 * src_ip, dst_ip	ip addresses, in NETWORK format.
-	 *	Only valid for IPv4 packets.
-	 */
-	uint8_t proto;
-	uint16_t src_port = 0, dst_port = 0;	/* NOTE: host format	*/
-	struct in_addr src_ip, dst_ip;		/* NOTE: network format	*/
-	uint16_t ip_len = 0;
+	struct ip_fw_local lc;
 
 	/*
 	 * dyn_dir = MATCH_UNKNOWN when rules unchecked,
@@ -2844,76 +2927,12 @@ ipfw_chk(struct ip_fw_args *args)
 	     ntohs(args->eh->ether_type) == ETHERTYPE_IP))
 		hlen = ip->ip_hl << 2;
 
-	/*
-	 * Collect parameters into local variables for faster matching.
-	 */
-	if (hlen == 0) {	/* do not grab addresses for non-ip pkts */
-		proto = args->f_id.proto = 0;	/* mark f_id invalid */
-		goto after_ip_checks;
-	}
+	memset(&lc, 0, sizeof(lc));
 
-	proto = args->f_id.proto = ip->ip_p;
-	src_ip = ip->ip_src;
-	dst_ip = ip->ip_dst;
-	if (args->eh != NULL) { /* layer 2 packets are as on the wire */
-		offset = ntohs(ip->ip_off) & IP_OFFMASK;
-		ip_len = ntohs(ip->ip_len);
-	} else {
-		offset = ip->ip_off & IP_OFFMASK;
-		ip_len = ip->ip_len;
-	}
+	m = ipfw_setup_local(m, hlen, args, &lc, &ip);
+	if (m == NULL)
+		goto pullup_failed;
 
-#define PULLUP_TO(len)				\
-do {						\
-	if (m->m_len < (len)) {			\
-		args->m = m = m_pullup(m, (len));\
-		if (m == NULL)			\
-			goto pullup_failed;	\
-		ip = mtod(m, struct ip *);	\
-	}					\
-} while (0)
-
-	if (offset == 0) {
-		switch (proto) {
-		case IPPROTO_TCP:
-			{
-				struct tcphdr *tcp;
-
-				PULLUP_TO(hlen + sizeof(struct tcphdr));
-				tcp = L3HDR(struct tcphdr, ip);
-				dst_port = tcp->th_dport;
-				src_port = tcp->th_sport;
-				args->f_id.flags = tcp->th_flags;
-			}
-			break;
-
-		case IPPROTO_UDP:
-			{
-				struct udphdr *udp;
-
-				PULLUP_TO(hlen + sizeof(struct udphdr));
-				udp = L3HDR(struct udphdr, ip);
-				dst_port = udp->uh_dport;
-				src_port = udp->uh_sport;
-			}
-			break;
-
-		case IPPROTO_ICMP:
-			PULLUP_TO(hlen + 4);	/* type, code and checksum. */
-			args->f_id.flags = L3HDR(struct icmp, ip)->icmp_type;
-			break;
-
-		default:
-			break;
-		}
-	}
-
-	args->f_id.src_ip = ntohl(src_ip.s_addr);
-	args->f_id.dst_ip = ntohl(dst_ip.s_addr);
-	args->f_id.src_port = src_port = ntohs(src_port);
-	args->f_id.dst_port = dst_port = ntohs(dst_port);
-
-after_ip_checks:
 	if (args->rule) {
 		/*
 		 * Packet has already been tagged. Look for the next rule
@@ -3042,7 +3061,7 @@ check_body:
 				 * as this ensures that we have an IPv4
 				 * packet with the ports info.
 				 */
-				if (offset!=0)
+				if (lc.offset!=0)
 					break;
 
 				match = ipfw_match_uid(&args->f_id, oif,
@@ -3100,7 +3119,7 @@ check_body:
 				break;
 
 			case O_FRAG:
-				match = (hlen > 0 && offset != 0);
+				match = (hlen > 0 && lc.offset != 0);
 				break;
 
 			case O_IPFRAG:
@@ -3129,19 +3148,19 @@ check_body:
 				 * We do not allow an arg of 0 so the
 				 * check of "proto" only suffices.
 				 */
-				match = (proto == cmd->arg1);
+				match = (lc.proto == cmd->arg1);
 				break;
 
 			case O_IP_SRC:
 				match = (hlen > 0 &&
 				    ((ipfw_insn_ip *)cmd)->addr.s_addr ==
-				    src_ip.s_addr);
+				    lc.src_ip.s_addr);
 				break;
 
 			case O_IP_SRC_MASK:
 				match = (hlen > 0 &&
 				    ((ipfw_insn_ip *)cmd)->addr.s_addr ==
-				     (src_ip.s_addr &
+				     (lc.src_ip.s_addr &
 				     ((ipfw_insn_ip *)cmd)->mask.s_addr));
 				break;
 
@@ -3149,14 +3168,14 @@ check_body:
 				if (hlen > 0) {
 					struct ifnet *tif;
 
-					tif = INADDR_TO_IFP(&src_ip);
+					tif = INADDR_TO_IFP(&lc.src_ip);
 					match = (tif != NULL);
 				}
 				break;
 
 			case O_IP_SRC_TABLE:
 				match = ipfw_table_lookup(ctx, cmd->arg1,
-				    &src_ip);
+				    &lc.src_ip);
 				break;
 
 			case O_IP_DST_SET:
@@ -3181,13 +3200,13 @@ check_body:
 			case O_IP_DST:
 				match = (hlen > 0 &&
 				    ((ipfw_insn_ip *)cmd)->addr.s_addr ==
-				    dst_ip.s_addr);
+				    lc.dst_ip.s_addr);
 				break;
 
 			case O_IP_DST_MASK:
 				match = (hlen > 0) &&
 				    (((ipfw_insn_ip *)cmd)->addr.s_addr ==
-				     (dst_ip.s_addr &
+				     (lc.dst_ip.s_addr &
 				     ((ipfw_insn_ip *)cmd)->mask.s_addr));
 				break;
 
@@ -3195,14 +3214,14 @@ check_body:
 				if (hlen > 0) {
 					struct ifnet *tif;
 
-					tif = INADDR_TO_IFP(&dst_ip);
+					tif = INADDR_TO_IFP(&lc.dst_ip);
 					match = (tif != NULL);
 				}
 				break;
 
 			case O_IP_DST_TABLE:
 				match = ipfw_table_lookup(ctx, cmd->arg1,
-				    &dst_ip);
+				    &lc.dst_ip);
 				break;
 
 			case O_IP_SRCPORT:
@@ -3212,11 +3231,12 @@ check_body:
 				 * to guarantee that we have an IPv4
 				 * packet with port info.
 				 */
-				if ((proto==IPPROTO_UDP || proto==IPPROTO_TCP)
-				    && offset == 0) {
+				if ((lc.proto==IPPROTO_UDP ||
+				     lc.proto==IPPROTO_TCP)
+				    && lc.offset == 0) {
 					uint16_t x =
 					    (cmd->opcode == O_IP_SRCPORT) ?
-						src_port : dst_port ;
+						lc.src_port : lc.dst_port;
 					uint16_t *p =
 					    ((ipfw_insn_u16 *)cmd)->ports;
 					int i;
@@ -3230,7 +3250,8 @@ check_body:
 				break;
 
 			case O_ICMPTYPE:
-				match = (offset == 0 && proto==IPPROTO_ICMP &&
+				match = (lc.offset == 0 &&
+				    lc.proto==IPPROTO_ICMP &&
 				    icmptype_match(ip, (ipfw_insn_u32 *)cmd));
 				break;
 
@@ -3252,7 +3273,7 @@ check_body:
 				break;
 
 			case O_IPLEN:
-				match = (hlen > 0 && cmd->arg1 == ip_len);
+				match = (hlen > 0 && cmd->arg1 == lc.ip_len);
 				break;
 
 			case O_IPPRECEDENCE:
@@ -3266,30 +3287,34 @@ check_body:
 				break;
 
 			case O_TCPFLAGS:
-				match = (proto == IPPROTO_TCP && offset == 0 &&
+				match = (lc.proto == IPPROTO_TCP &&
+				    lc.offset == 0 &&
 				    flags_match(cmd,
 					L3HDR(struct tcphdr,ip)->th_flags));
 				break;
 
 			case O_TCPOPTS:
-				match = (proto == IPPROTO_TCP && offset == 0 &&
-				    tcpopts_match(ip, cmd));
+				match = (lc.proto == IPPROTO_TCP &&
+				    lc.offset == 0 && tcpopts_match(ip, cmd));
 				break;
 
 			case O_TCPSEQ:
-				match = (proto == IPPROTO_TCP && offset == 0 &&
+				match = (lc.proto == IPPROTO_TCP &&
+				    lc.offset == 0 &&
 				    ((ipfw_insn_u32 *)cmd)->d[0] ==
 					L3HDR(struct tcphdr,ip)->th_seq);
 				break;
 
 			case O_TCPACK:
-				match = (proto == IPPROTO_TCP && offset == 0 &&
+				match = (lc.proto == IPPROTO_TCP &&
+				    lc.offset == 0 &&
 				    ((ipfw_insn_u32 *)cmd)->d[0] ==
 					L3HDR(struct tcphdr,ip)->th_ack);
 				break;
 
 			case O_TCPWIN:
-				match = (proto == IPPROTO_TCP && offset == 0 &&
+				match = (lc.proto == IPPROTO_TCP &&
+				    lc.offset == 0 &&
 				    cmd->arg1 ==
 					L3HDR(struct tcphdr,ip)->th_win);
 				break;
@@ -3297,7 +3322,8 @@ check_body:
 			case O_ESTAB:
 				/* reject packets which have SYN only */
 				/* XXX should i also check for TH_ACK ? */
-				match = (proto == IPPROTO_TCP && offset == 0 &&
+				match = (lc.proto == IPPROTO_TCP &&
+				    lc.offset == 0 &&
 				    (L3HDR(struct tcphdr,ip)->th_flags &
 				     (TH_RST | TH_ACK | TH_SYN)) != TH_SYN);
 				break;
@@ -3363,7 +3389,8 @@ check_body:
 			case O_KEEP_STATE:
 				if (ipfw_state_install(ctx, f,
 				    (ipfw_insn_limit *)cmd, args,
-				    (offset == 0 && proto == IPPROTO_TCP) ?
+				    (lc.offset == 0 &&
+				     lc.proto == IPPROTO_TCP) ?
 				    L3HDR(struct tcphdr, ip) : NULL)) {
 					retval = IP_FW_DENY;
 					goto done; /* error/limit violation */
@@ -3384,10 +3411,10 @@ check_body:
 				if (dyn_dir == MATCH_UNKNOWN) {
 					dyn_f = ipfw_state_lookup_rule(ctx,
 					    &args->f_id, &dyn_dir,
-					    (offset == 0 &&
-					     proto == IPPROTO_TCP) ?
+					    (lc.offset == 0 &&
+					     lc.proto == IPPROTO_TCP) ?
 					    L3HDR(struct tcphdr, ip) : NULL,
-					    ip_len);
+					    lc.ip_len);
 					if (dyn_f != NULL) {
 						/*
 						 * Found a rule from a state;
@@ -3444,7 +3471,7 @@ check_body:
 
 				/* Update statistics */
 				f->pcnt++;
-				f->bcnt += ip_len;
+				f->bcnt += lc.ip_len;
 				f->timestamp = time_second;
 
 				ip = mtod(m, struct ip *);
@@ -3477,51 +3504,9 @@ check_body:
 				ip->ip_len = ntohs(ip->ip_len);
 				ip->ip_off = ntohs(ip->ip_off);
 
-				ip_len = ip->ip_len;
-				offset = 0;
-				proto = args->f_id.proto = ip->ip_p;
-
-				switch (proto) {
-				case IPPROTO_TCP:
-					{
-						struct tcphdr *tcp;
-
-						PULLUP_TO(hlen +
-						    sizeof(struct tcphdr));
-						tcp = L3HDR(struct tcphdr, ip);
-						dst_port = tcp->th_dport;
-						src_port = tcp->th_sport;
-						args->f_id.flags =
-						    tcp->th_flags;
-					}
-					break;
-
-				case IPPROTO_UDP:
-					{
-						struct udphdr *udp;
-
-						PULLUP_TO(hlen +
-						    sizeof(struct udphdr));
-						udp = L3HDR(struct udphdr, ip);
-						dst_port = udp->uh_dport;
-						src_port = udp->uh_sport;
-					}
-					break;
-
-				case IPPROTO_ICMP:
-					/* type, code and checksum. */
-					PULLUP_TO(hlen + 4);
-					args->f_id.flags =
-					    L3HDR(struct icmp, ip)->icmp_type;
-					break;
-
-				default:
-					break;
-				}
-				args->f_id.src_port = src_port =
-				    ntohs(src_port);
-				args->f_id.dst_port = dst_port =
-				    ntohs(dst_port);
+				m = ipfw_setup_local(m, hlen, args, &lc, &ip);
+				if (m == NULL)
+					goto pullup_failed;
 
 				/* Move on. */
 				goto next_rule;
@@ -3559,7 +3544,7 @@ check_body:
 			case O_COUNT:
 			case O_SKIPTO:
 				f->pcnt++;	/* update stats */
-				f->bcnt += ip_len;
+				f->bcnt += lc.ip_len;
 				f->timestamp = time_second;
 				if (cmd->opcode == O_COUNT)
 					goto next_rule;
@@ -3576,12 +3561,12 @@ check_body:
 				 * query), and it is not multicast/broadcast.
 				 */
 				if (hlen > 0 &&
-				    (proto != IPPROTO_ICMP ||
+				    (lc.proto != IPPROTO_ICMP ||
 				     is_icmp_query(ip)) &&
 				    !(m->m_flags & (M_BCAST|M_MCAST)) &&
-				    !IN_MULTICAST(ntohl(dst_ip.s_addr))) {
+				    !IN_MULTICAST(ntohl(lc.dst_ip.s_addr))) {
 					send_reject(args, cmd->arg1,
-					    offset, ip_len);
+					    lc.offset, lc.ip_len);
 					retval = IP_FW_DENY;
 					goto done;
 				}
@@ -3642,7 +3627,7 @@ next_rule:;		/* try next rule		*/
 done:
 	/* Update statistics */
 	f->pcnt++;
-	f->bcnt += ip_len;
+	f->bcnt += lc.ip_len;
 	f->timestamp = time_second;
 	return retval;
 
@@ -3650,8 +3635,6 @@ pullup_failed:
 	if (fw_verbose)
 		kprintf("pullup failed\n");
 	return IP_FW_DENY;
-
-#undef PULLUP_TO
 }
 
 static struct mbuf *
