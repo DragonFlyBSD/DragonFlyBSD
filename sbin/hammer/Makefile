@@ -1,5 +1,5 @@
 PROG=	hammer
-SRCS=	hammer.c ondisk.c blockmap.c cache.c misc.c cycle.c \
+SRCS=	hammer.c ondisk.c blockmap.c cache.c misc.c cycle.c uuid.c \
 	cmd_show.c cmd_softprune.c cmd_history.c \
 	cmd_blockmap.c cmd_reblock.c cmd_rebalance.c \
 	cmd_synctid.c cmd_stats.c cmd_remote.c \

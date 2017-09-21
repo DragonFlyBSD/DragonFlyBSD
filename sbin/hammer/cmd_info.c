@@ -138,7 +138,7 @@ show_info(char *path)
 	}
 
 	/* Find out the UUID strings */
-	uuid_to_string(&fip->vol_fsid, &fsid, NULL);
+	hammer_uuid_to_string(&fip->vol_fsid, &fsid);
 
 	/* Get the volume paths */
 	if (hammer_fs_to_vol(path, &ioc) == -1) {

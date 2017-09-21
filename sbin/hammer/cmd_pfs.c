@@ -521,15 +521,13 @@ static
 void
 init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave)
 {
-	uint32_t status;
-
 	bzero(pfsd, sizeof(*pfsd));
 	pfsd->sync_beg_tid = 1;
 	pfsd->sync_end_tid = 1;
 	pfsd->sync_beg_ts = 0;
 	pfsd->sync_end_ts = 0;
-	uuid_create(&pfsd->shared_uuid, &status);
-	uuid_create(&pfsd->unique_uuid, &status);
+	hammer_uuid_create(&pfsd->shared_uuid);
+	hammer_uuid_create(&pfsd->unique_uuid);
 	if (is_slave)
 		pfsd->mirror_flags |= HAMMER_PFSD_SLAVE;
 }
@@ -538,15 +536,14 @@ void
 dump_pfsd(hammer_pseudofs_data_t pfsd, int fd)
 {
 	struct hammer_ioc_version	version;
-	uint32_t status;
 	char *str = NULL;
 
 	printf("    sync-beg-tid=0x%016jx\n", (uintmax_t)pfsd->sync_beg_tid);
 	printf("    sync-end-tid=0x%016jx\n", (uintmax_t)pfsd->sync_end_tid);
-	uuid_to_string(&pfsd->shared_uuid, &str, &status);
+	hammer_uuid_to_string(&pfsd->shared_uuid, &str);
 	printf("    shared-uuid=%s\n", str);
 	free(str);
-	uuid_to_string(&pfsd->unique_uuid, &str, &status);
+	hammer_uuid_to_string(&pfsd->unique_uuid, &str);
 	printf("    unique-uuid=%s\n", str);
 	free(str);
 	printf("    label=\"%s\"\n", pfsd->label);
@@ -605,7 +602,6 @@ parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd)
 	char *cmd;
 	char *ptr;
 	int len;
-	uint32_t status;
 
 	while (ac) {
 		cmd = *av;
@@ -620,15 +616,22 @@ parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd)
 			/* not reached */
 		}
 
-		status = uuid_s_ok;
 		if (strcmp(cmd, "sync-beg-tid") == 0) {
 			pfsd->sync_beg_tid = strtoull(ptr, NULL, 16);
 		} else if (strcmp(cmd, "sync-end-tid") == 0) {
 			pfsd->sync_end_tid = strtoull(ptr, NULL, 16);
 		} else if (strcmp(cmd, "shared-uuid") == 0) {
-			uuid_from_string(ptr, &pfsd->shared_uuid, &status);
+			if (hammer_uuid_from_string(ptr, &pfsd->shared_uuid)) {
+				errx(1, "option %s: error parsing uuid %s",
+					cmd, ptr);
+				/* not reached */
+			}
 		} else if (strcmp(cmd, "unique-uuid") == 0) {
-			uuid_from_string(ptr, &pfsd->unique_uuid, &status);
+			if (hammer_uuid_from_string(ptr, &pfsd->unique_uuid)) {
+				errx(1, "option %s: error parsing uuid %s",
+					cmd, ptr);
+				/* not reached */
+			}
 		} else if (strcmp(cmd, "label") == 0) {
 			len = strlen(ptr);
 			if (ptr[0] == '"' && ptr[len-1] == '"') {
@@ -670,10 +673,6 @@ parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd)
 			}
 		} else {
 			errx(1, "invalid option: %s", cmd);
-			/* not reached */
-		}
-		if (status != uuid_s_ok) {
-			errx(1, "option %s: error parsing uuid %s", cmd, ptr);
 			/* not reached */
 		}
 		--ac;

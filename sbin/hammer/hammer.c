@@ -68,7 +68,6 @@ main(int ac, char **av)
 	char *blkdevs = NULL;
 	char *ptr;
 	char *restrictcmd = NULL;
-	uint32_t status;
 	int ch;
 
 	while ((ch = getopt(ac, av,
@@ -257,8 +256,7 @@ main(int ac, char **av)
 	/*
 	 * Lookup the filesystem type
 	 */
-	uuid_name_lookup(&Hammer_FSType, HAMMER_FSTYPE_STRING, &status);
-	if (status != uuid_s_ok) {
+	if (hammer_uuid_name_lookup(&Hammer_FSType, HAMMER_FSTYPE_STRING)) {
 		errx(1, "uuids file does not have the DragonFly "
 			"HAMMER filesystem type");
 		/* not reached */

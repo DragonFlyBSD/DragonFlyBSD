@@ -760,7 +760,6 @@ print_record(hammer_btree_elm_t elm)
 	hammer_off_t data_offset;
 	int32_t data_len;
 	hammer_data_ondisk_t data;
-	uint32_t status;
 	char *str1 = NULL;
 	char *str2 = NULL;
 
@@ -826,8 +825,8 @@ print_record(hammer_btree_elm_t elm)
 		printf("pfs sync_beg_tid=%016jx sync_end_tid=%016jx\n",
 			(intmax_t)data->pfsd.sync_beg_tid,
 			(intmax_t)data->pfsd.sync_end_tid);
-		uuid_to_string(&data->pfsd.shared_uuid, &str1, &status);
-		uuid_to_string(&data->pfsd.unique_uuid, &str2, &status);
+		hammer_uuid_to_string(&data->pfsd.shared_uuid, &str1);
+		hammer_uuid_to_string(&data->pfsd.unique_uuid, &str2);
 		printf("%17s", "");
 		printf("    shared_uuid=%s\n", str1);
 		printf("%17s", "");

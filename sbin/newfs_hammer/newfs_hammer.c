@@ -60,7 +60,6 @@ static int64_t UndoBufferSize;
 int
 main(int ac, char **av)
 {
-	uint32_t status;
 	off_t total;
 	off_t avg_vol_size;
 	int ch;
@@ -179,9 +178,8 @@ main(int ac, char **av)
 	/*
 	 * Generate a filesystem id and lookup the filesystem type
 	 */
-	uuid_create(&Hammer_FSId, NULL);
-	uuid_name_lookup(&Hammer_FSType, HAMMER_FSTYPE_STRING, &status);
-	if (status != uuid_s_ok) {
+	hammer_uuid_create(&Hammer_FSId);
+	if (hammer_uuid_name_lookup(&Hammer_FSType, HAMMER_FSTYPE_STRING)) {
 		errx(1, "uuids file does not have the DragonFly "
 			"HAMMER filesystem type");
 		/* not reached */
@@ -248,7 +246,6 @@ print_volume(const volume_info_t volume)
 	hammer_blockmap_t blockmap;
 	hammer_off_t total = 0;
 	int i, nvols;
-	uint32_t status;
 	const char *name = NULL;
 	char *fsidstr;
 
@@ -265,7 +262,7 @@ print_volume(const volume_info_t volume)
 		}
 	}
 
-	uuid_to_string(&Hammer_FSId, &fsidstr, &status);
+	hammer_uuid_to_string(&Hammer_FSId, &fsidstr);
 
 	printf("---------------------------------------------\n");
 	printf("HAMMER version %d\n", HammerVersion);

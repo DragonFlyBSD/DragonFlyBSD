@@ -716,9 +716,8 @@ create_pfs(const char *filesystem, uuid_t *s_uuid)
 		}
 	}
 
-	uint32_t status;
 	char *shared_uuid = NULL;
-	uuid_to_string(s_uuid, &shared_uuid, &status);
+	hammer_uuid_to_string(s_uuid, &shared_uuid);
 
 	char *cmd = NULL;
 	asprintf(&cmd, "/sbin/hammer pfs-slave '%s' shared-uuid=%s 1>&2",

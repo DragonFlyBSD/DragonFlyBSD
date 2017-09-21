@@ -174,6 +174,12 @@ void hammer_add_zone_stat_layer2(zone_stat_t stats,
 			hammer_blockmap_layer2_t layer2);
 void hammer_print_zone_stat(const zone_stat_t stats);
 
+void hammer_uuid_create(uuid_t *uuid);
+int hammer_uuid_from_string(const char *str, uuid_t *uuid);
+int hammer_uuid_to_string(const uuid_t *uuid, char **str);
+int hammer_uuid_name_lookup(uuid_t *u, const char *str);
+int hammer_uuid_compare(const uuid_t *uuid1, const uuid_t *uuid2);
+
 #define hwarn(format, args...)	warn("WARNING: "format,## args)
 #define hwarnx(format, args...)	warnx("WARNING: "format,## args)
 
