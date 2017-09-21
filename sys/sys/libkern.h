@@ -90,7 +90,7 @@ static __inline long labs(long a) { return (a < 0 ? -a : a); }
 static __inline quad_t qabs(quad_t a) { return (a < 0 ? -a : a); }
 
 /* Prototypes for non-quad routines. */
-u_int32_t karc4random(void);
+uint32_t karc4random(void);
 void	 karc4rand(void *, size_t);
 int	 bcmp(const void *, const void *, size_t);
 void	*kbsearch(const void *, const void *, size_t,

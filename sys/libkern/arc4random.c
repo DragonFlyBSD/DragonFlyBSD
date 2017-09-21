@@ -16,22 +16,22 @@
 #include <sys/libkern.h>
 #include <sys/time.h>
 
-#define	ARC4_MAXRUNS 16384
-#define	ARC4_RESEED_SECONDS 300
-#define	ARC4_KEYBYTES 32 /* 256 bit key */
+#define	ARC4_MAXRUNS		16384
+#define	ARC4_RESEED_SECONDS	300
+#define	ARC4_KEYBYTES		32	/* 256 bit key */
 
-static u_int8_t arc4_i, arc4_j;
+static uint8_t arc4_i, arc4_j;
 static int arc4_initialized = 0;
 static int arc4_numruns = 0;
-static u_int8_t arc4_sbox[256];
+static uint8_t arc4_sbox[256];
 static struct timeval arc4_tv_nextreseed;
 
-static u_int8_t arc4_randbyte(void);
+static uint8_t arc4_randbyte(void);
 
 static __inline void
-arc4_swap(u_int8_t *a, u_int8_t *b)
+arc4_swap(uint8_t *a, uint8_t *b)
 {
-	u_int8_t c;
+	uint8_t c;
 
 	c = *a;
 	*a = *b;
@@ -44,7 +44,7 @@ arc4_swap(u_int8_t *a, u_int8_t *b)
 static void
 arc4_randomstir (void)
 {
-	u_int8_t key[256];
+	uint8_t key[256];
 	int r, n;
 
 	/*
@@ -87,7 +87,7 @@ arc4_init(void)
 
 	arc4_i = arc4_j = 0;
 	for (n = 0; n < 256; n++)
-		arc4_sbox[n] = (u_int8_t) n;
+		arc4_sbox[n] = (uint8_t)n;
 
 	arc4_randomstir();
 	arc4_initialized = 1;
@@ -96,17 +96,17 @@ arc4_init(void)
 	 * Discard early keystream, as per recommendations in:
 	 * "(Not So) Random Shuffles of RC4" by Ilya Mironov.
 	 */
-	for (n = 0; n < 768*4; n++)
+	for (n = 0; n < 768 * 4; n++)
 		arc4_randbyte();
 }
 
 /*
  * Generate a random byte.
  */
-static u_int8_t
+static uint8_t
 arc4_randbyte(void)
 {
-	u_int8_t arc4_t;
+	uint8_t arc4_t;
 
 	arc4_i = (arc4_i + 1) % 256;
 	arc4_j = (arc4_j + arc4_sbox[arc4_i]) % 256;
@@ -117,10 +117,10 @@ arc4_randbyte(void)
 	return arc4_sbox[arc4_t];
 }
 
-u_int32_t
+uint32_t
 karc4random(void)
 {
-	u_int32_t ret;
+	uint32_t ret;
 	struct timeval tv_now;
 
 	/* Initialize array if needed. */
