@@ -382,7 +382,6 @@ hammer2_io_putblk(hammer2_io_t **diop)
 	hammer2_dev_t *hmp;
 	hammer2_io_t *dio;
 	struct buf *bp;
-	off_t peof;
 	off_t pbase;
 	int psize;
 	int limit_dio;
@@ -459,9 +458,26 @@ hammer2_io_putblk(hammer2_io_t **diop)
 		 * Non-errored disposal of bp
 		 */
 		if (orefs & HAMMER2_DIO_DIRTY) {
+			dio_write_stats_update(dio, bp);
+
+			/*
+			 * Allows dirty buffers to accumulate and
+			 * possibly be canceled (e.g. by a 'rm'),
+			 * will burst-write later.  Allow the kernel
+			 * to cluster the dirty buffers.
+			 *
+			 * NOTE: Do not use cluster_write() here.  The
+			 *	 problem is that due to the way chains
+			 *	 are locked, buffers are cycled in and out
+			 *	 quite often so the disposal here is not
+			 *	 necessarily the final disposal.  Avoid
+			 *	 excessive rewriting of the same blocks
+			 *	 by using bdwrite().
+			 */
+#if 0
+			off_t peof;
 			int hce;
 
-			dio_write_stats_update(dio, bp);
 			if ((hce = hammer2_cluster_write) > 0) {
 				/*
 				 * Allows write-behind to keep the buffer
@@ -471,12 +487,9 @@ hammer2_io_putblk(hammer2_io_t **diop)
 				       ~HAMMER2_SEGMASK64;
 				bp->b_flags |= B_CLUSTEROK;
 				cluster_write(bp, peof, psize, hce);
-			} else {
-				/*
-				 * Allows dirty buffers to accumulate and
-				 * possibly be canceled (e.g. by a 'rm'),
-				 * will burst-write later.
-				 */
+			} else
+#endif
+			{
 				bp->b_flags |= B_CLUSTEROK;
 				bdwrite(bp);
 			}

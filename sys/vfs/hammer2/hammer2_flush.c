@@ -54,7 +54,7 @@
 
 #define FLUSH_DEBUG 0
 
-#define HAMMER2_FLUSH_DEPTH_LIMIT       10      /* stack recursion limit */
+#define HAMMER2_FLUSH_DEPTH_LIMIT	60      /* stack recursion limit */
 
 
 /*
@@ -67,9 +67,18 @@
 struct hammer2_flush_info {
 	hammer2_chain_t *parent;
 	int		depth;
-	int		diddeferral;
+	long		diddeferral;
 	int		error;			/* cumulative error */
 	int		flags;
+#ifdef HAMMER2_SCAN_DEBUG
+	long		scan_count;
+	long		scan_mod_count;
+	long		scan_upd_count;
+	long		scan_onf_count;
+	long		scan_del_count;
+	long		scan_btype[7];
+	long		flushq_count;
+#endif
 	struct h2_flush_list flushq;
 	hammer2_chain_t	*debug;
 };
@@ -384,6 +393,9 @@ hammer2_flush(hammer2_chain_t *chain, int flags)
 		while ((scan = TAILQ_FIRST(&info.flushq)) != NULL) {
 			KKASSERT(scan->flags & HAMMER2_CHAIN_DEFERRED);
 			TAILQ_REMOVE(&info.flushq, scan, flush_node);
+#ifdef HAMMER2_SCAN_DEBUG
+			++info.flushq_count;
+#endif
 			atomic_clear_int(&scan->flags, HAMMER2_CHAIN_DEFERRED |
 						       HAMMER2_CHAIN_DELAYED);
 
@@ -424,6 +436,23 @@ hammer2_flush(hammer2_chain_t *chain, int flags)
 				Debugger("hell4");
 		}
 	}
+#ifdef HAMMER2_SCAN_DEBUG
+	if (info.scan_count >= 10)
+	kprintf("hammer2_flush: scan_count %ld (%ld,%ld,%ld,%ld) "
+		"bt(%ld,%ld,%ld,%ld,%ld,%ld) flushq %ld\n",
+		info.scan_count,
+		info.scan_mod_count,
+		info.scan_upd_count,
+		info.scan_onf_count,
+		info.scan_del_count,
+		info.scan_btype[1],
+		info.scan_btype[2],
+		info.scan_btype[3],
+		info.scan_btype[4],
+		info.scan_btype[5],
+		info.scan_btype[6],
+		info.flushq_count);
+#endif
 	hammer2_chain_drop(chain);
 	if (info.parent)
 		hammer2_chain_drop(info.parent);
@@ -477,7 +506,6 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 {
 	hammer2_chain_t *parent;
 	hammer2_dev_t *hmp;
-	int diddeferral;
 	int save_error;
 
 	/*
@@ -494,7 +522,6 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 	}
 
 	hmp = chain->hmp;
-	diddeferral = info->diddeferral;
 	parent = info->parent;		/* can be NULL */
 	KKASSERT(chain->parent == parent);
 
@@ -624,10 +651,12 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 	 * start flushing the chain itself, which we would have to do later
 	 * on in order to lock the parent if we didn't do that now.
 	 */
+	hammer2_chain_ref_hold(chain);
 	hammer2_chain_unlock(chain);
 	if (parent)
 		hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
 	hammer2_chain_lock(chain, HAMMER2_RESOLVE_MAYBE);
+	hammer2_chain_drop_unhold(chain);
 
 	/*
 	 * Can't process if we can't access their content.
@@ -1121,6 +1150,16 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 	hammer2_flush_info_t *info = data;
 	hammer2_chain_t *parent = info->parent;
 
+#ifdef HAMMER2_SCAN_DEBUG
+	++info->scan_count;
+	if (child->flags & HAMMER2_CHAIN_MODIFIED)
+		++info->scan_mod_count;
+	if (child->flags & HAMMER2_CHAIN_UPDATE)
+		++info->scan_upd_count;
+	if (child->flags & HAMMER2_CHAIN_ONFLUSH)
+		++info->scan_onf_count;
+#endif
+
 	/*
 	 * (child can never be fchain or vchain so a special check isn't
 	 *  needed).
@@ -1137,6 +1176,7 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 	hammer2_chain_ref(child);
 	hammer2_spin_unex(&parent->core.spin);
 
+	hammer2_chain_ref_hold(parent);
 	hammer2_chain_unlock(parent);
 	hammer2_chain_lock(child, HAMMER2_RESOLVE_MAYBE);
 	if (child->parent != parent) {
@@ -1159,12 +1199,20 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 	 */
 	if (parent && (parent->flags & HAMMER2_CHAIN_DESTROY))
 		atomic_set_int(&child->flags, HAMMER2_CHAIN_DESTROY);
+#ifdef HAMMER2_SCAN_DEBUG
+	if (child->flags & HAMMER2_CHAIN_DESTROY)
+		++info->scan_del_count;
+#endif
 
 	/*
 	 * Recurse and collect deferral data.  We're in the media flush,
 	 * this can cross PFS boundaries.
 	 */
 	if (child->flags & HAMMER2_CHAIN_FLUSH_MASK) {
+#ifdef HAMMER2_SCAN_DEBUG
+		if (child->bref.type < 7)
+			++info->scan_btype[child->bref.type];
+#endif
 		++info->depth;
 		hammer2_flush_core(info, child, info->flags);
 		--info->depth;
@@ -1184,6 +1232,7 @@ done:
 	 */
 	hammer2_chain_unlock(child);
 	hammer2_chain_lock(parent, HAMMER2_RESOLVE_MAYBE);
+	hammer2_chain_drop_unhold(parent);
 	if (parent->error) {
 		kprintf("PARENT ERROR DURING FLUSH LOCK %p->%p\n",
 			parent, child);
