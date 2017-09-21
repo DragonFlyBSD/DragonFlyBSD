@@ -699,7 +699,7 @@ generate_histogram(int fd, const char *filesystem,
 
 static
 void
-create_pfs(const char *filesystem, uuid_t *s_uuid)
+create_pfs(const char *filesystem, hammer_uuid_t *s_uuid)
 {
 	if (ForceYesOpt == 1) {
 		fprintf(stderr, "PFS slave %s does not exist. "

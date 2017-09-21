@@ -52,7 +52,7 @@ static int
 __test_ondisk(const hammer_volume_ondisk_t ondisk)
 {
 	static int count = 0;
-	static uuid_t fsid, fstype;
+	static hammer_uuid_t fsid, fstype;
 	static char label[64];
 
 	if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME &&

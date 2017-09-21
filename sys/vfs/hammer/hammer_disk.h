@@ -119,6 +119,7 @@
 typedef uint64_t hammer_tid_t;
 typedef uint64_t hammer_off_t;
 typedef uint32_t hammer_crc_t;
+typedef uuid_t hammer_uuid_t;
 
 #define HAMMER_MIN_TID		0ULL			/* unsigned */
 #define HAMMER_MAX_TID		0xFFFFFFFFFFFFFFFFULL	/* unsigned */
@@ -747,8 +748,8 @@ typedef struct hammer_volume_ondisk {
 	int64_t vol_buf_end;	/* offset of volume EOF (on buffer boundary) */
 	int64_t vol_reserved01;
 
-	uuid_t    vol_fsid;	/* identify filesystem */
-	uuid_t    vol_fstype;	/* identify filesystem type */
+	hammer_uuid_t vol_fsid;	/* identify filesystem */
+	hammer_uuid_t vol_fstype; /* identify filesystem type */
 	char vol_label[64];	/* filesystem label */
 
 	int32_t vol_no;		/* volume number within filesystem */
@@ -891,8 +892,8 @@ typedef struct hammer_inode_data {
 	uint32_t rminor;	/* used by device nodes */
 	uint64_t ctime;
 	int64_t parent_obj_id;	/* parent directory obj_id */
-	uuid_t	  uid;
-	uuid_t	  gid;
+	hammer_uuid_t uid;
+	hammer_uuid_t gid;
 
 	uint8_t obj_type;
 	uint8_t cap_flags;	/* capability support flags (extension) */
@@ -1002,8 +1003,8 @@ struct hammer_pseudofs_data {
 	hammer_tid_t	sync_end_tid;	/* current synchronizatoin point */
 	uint64_t	sync_beg_ts;	/* real-time of last completed sync */
 	uint64_t	sync_end_ts;	/* initiation of current sync cycle */
-	uuid_t		shared_uuid;	/* shared uuid (match required) */
-	uuid_t		unique_uuid;	/* unique uuid of this master/slave */
+	hammer_uuid_t	shared_uuid;	/* shared uuid (match required) */
+	hammer_uuid_t	unique_uuid;	/* unique uuid of this master/slave */
 	int32_t		reserved01;	/* reserved for future master_id */
 	int32_t		mirror_flags;	/* misc flags */
 	char		label[64];	/* filesystem space label */

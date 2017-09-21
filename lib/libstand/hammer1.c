@@ -326,7 +326,7 @@ hammer_directory_namekey(const void *name __unused, int len __unused)
  * Misc
  */
 static u_int32_t
-hammer_to_unix_xid(uuid_t *uuid)
+hammer_to_unix_xid(hammer_uuid_t *uuid)
 {
 	return(*(u_int32_t *)&uuid->node[2]);
 }

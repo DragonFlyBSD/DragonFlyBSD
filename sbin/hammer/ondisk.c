@@ -44,8 +44,8 @@ static __inline int readhammerbuf(buffer_info_t buffer);
 static __inline int writehammervol(volume_info_t volume);
 static __inline int writehammerbuf(buffer_info_t buffer);
 
-uuid_t Hammer_FSType;
-uuid_t Hammer_FSId;
+hammer_uuid_t Hammer_FSType;
+hammer_uuid_t Hammer_FSId;
 int UseReadBehind = -4;
 int UseReadAhead = 4;
 int DebugOpt;

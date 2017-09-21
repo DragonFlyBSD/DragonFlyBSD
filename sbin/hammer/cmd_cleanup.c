@@ -64,7 +64,7 @@
 
 struct didpfs {
 	struct didpfs *next;
-	uuid_t		uuid;
+	hammer_uuid_t uuid;
 };
 
 static void do_cleanup(const char *path);

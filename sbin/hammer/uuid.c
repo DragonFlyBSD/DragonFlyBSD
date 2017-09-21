@@ -37,12 +37,12 @@
 
 #include "hammer_util.h"
 
-void hammer_uuid_create(uuid_t *uuid)
+void hammer_uuid_create(hammer_uuid_t *uuid)
 {
 	uuid_create(uuid, NULL);
 }
 
-int hammer_uuid_from_string(const char *str, uuid_t *uuid)
+int hammer_uuid_from_string(const char *str, hammer_uuid_t *uuid)
 {
 	uint32_t status = uuid_s_ok;
 
@@ -53,7 +53,7 @@ int hammer_uuid_from_string(const char *str, uuid_t *uuid)
 	return(0);
 }
 
-int hammer_uuid_to_string(const uuid_t *uuid, char **str)
+int hammer_uuid_to_string(const hammer_uuid_t *uuid, char **str)
 {
 	uint32_t status = uuid_s_ok;
 
@@ -64,7 +64,7 @@ int hammer_uuid_to_string(const uuid_t *uuid, char **str)
 	return(0);
 }
 
-int hammer_uuid_name_lookup(uuid_t *u, const char *str)
+int hammer_uuid_name_lookup(hammer_uuid_t *u, const char *str)
 {
 	uint32_t status = uuid_s_ok;
 
@@ -75,7 +75,7 @@ int hammer_uuid_name_lookup(uuid_t *u, const char *str)
 	return(0);
 }
 
-int hammer_uuid_compare(const uuid_t *uuid1, const uuid_t *uuid2)
+int hammer_uuid_compare(const hammer_uuid_t *uuid1, const hammer_uuid_t *uuid2)
 {
 	return(uuid_compare(uuid1, uuid2, NULL));
 }

@@ -857,7 +857,7 @@ typedef struct hammer_mount {
 
 	u_int	check_interrupt;
 	u_int	check_yield;
-	uuid_t	fsid;
+	hammer_uuid_t fsid;
 	struct hammer_mod_rb_tree volu_root;	/* dirty undo buffers */
 	struct hammer_mod_rb_tree undo_root;	/* dirty undo buffers */
 	struct hammer_mod_rb_tree data_root;	/* dirty data buffers */
@@ -1096,8 +1096,8 @@ void	hammer_sync_lock_sh(hammer_transaction_t trans);
 int	hammer_sync_lock_sh_try(hammer_transaction_t trans);
 void	hammer_sync_unlock(hammer_transaction_t trans);
 
-uint32_t hammer_to_unix_xid(uuid_t *uuid);
-void hammer_guid_to_uuid(uuid_t *uuid, uint32_t guid);
+uint32_t hammer_to_unix_xid(hammer_uuid_t *uuid);
+void hammer_guid_to_uuid(hammer_uuid_t *uuid, uint32_t guid);
 void	hammer_time_to_timespec(uint64_t xtime, struct timespec *ts);
 uint64_t hammer_timespec_to_time(struct timespec *ts);
 int	hammer_str_to_tid(const char *str, int *ispfsp,
@@ -1446,7 +1446,7 @@ int hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t rootvol);
 void hammer_recover_flush_buffers(hammer_mount_t hmp,
 			hammer_volume_t root_volume, int final);
 
-udev_t hammer_fsid_to_udev(uuid_t *uuid);
+udev_t hammer_fsid_to_udev(hammer_uuid_t *uuid);
 
 
 int hammer_blocksize(int64_t file_offset);

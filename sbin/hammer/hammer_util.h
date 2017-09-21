@@ -111,8 +111,8 @@ typedef struct zone_stat {
 	int64_t			used;		/* bytes used */
 } *zone_stat_t;
 
-extern uuid_t Hammer_FSType;
-extern uuid_t Hammer_FSId;
+extern hammer_uuid_t Hammer_FSType;
+extern hammer_uuid_t Hammer_FSId;
 extern int UseReadBehind;
 extern int UseReadAhead;
 extern int DebugOpt;
@@ -174,11 +174,11 @@ void hammer_add_zone_stat_layer2(zone_stat_t stats,
 			hammer_blockmap_layer2_t layer2);
 void hammer_print_zone_stat(const zone_stat_t stats);
 
-void hammer_uuid_create(uuid_t *uuid);
-int hammer_uuid_from_string(const char *str, uuid_t *uuid);
-int hammer_uuid_to_string(const uuid_t *uuid, char **str);
-int hammer_uuid_name_lookup(uuid_t *u, const char *str);
-int hammer_uuid_compare(const uuid_t *uuid1, const uuid_t *uuid2);
+void hammer_uuid_create(hammer_uuid_t *uuid);
+int hammer_uuid_from_string(const char *str, hammer_uuid_t *uuid);
+int hammer_uuid_to_string(const hammer_uuid_t *uuid, char **str);
+int hammer_uuid_name_lookup(hammer_uuid_t *u, const char *str);
+int hammer_uuid_compare(const hammer_uuid_t *uuid1, const hammer_uuid_t *uuid2);
 
 #define hwarn(format, args...)	warn("WARNING: "format,## args)
 #define hwarnx(format, args...)	warnx("WARNING: "format,## args)

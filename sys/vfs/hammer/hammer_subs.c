@@ -779,13 +779,13 @@ hammer_sync_unlock(hammer_transaction_t trans)
  * Misc
  */
 uint32_t
-hammer_to_unix_xid(uuid_t *uuid)
+hammer_to_unix_xid(hammer_uuid_t *uuid)
 {
 	return(*(uint32_t *)&uuid->node[2]);
 }
 
 void
-hammer_guid_to_uuid(uuid_t *uuid, uint32_t guid)
+hammer_guid_to_uuid(hammer_uuid_t *uuid, uint32_t guid)
 {
 	bzero(uuid, sizeof(*uuid));
 	*(uint32_t *)&uuid->node[2] = guid;
@@ -1129,7 +1129,7 @@ hammer_blockdemarc(int64_t file_offset1, int64_t file_offset2)
 }
 
 udev_t
-hammer_fsid_to_udev(uuid_t *uuid)
+hammer_fsid_to_udev(hammer_uuid_t *uuid)
 {
 	uint32_t crc;
 

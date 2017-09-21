@@ -228,8 +228,8 @@ struct hammer_ioc_info {
 	struct hammer_ioc_head		head;
 
 	char		vol_label[64];
-	uuid_t		vol_fsid;
-	uuid_t		vol_fstype;
+	hammer_uuid_t	vol_fsid;
+	hammer_uuid_t	vol_fstype;
 
 	int		version;
 	int		nvolumes;
@@ -275,7 +275,7 @@ struct hammer_ioc_mirror_rw {
 	int			size;		/* max size */
 	int			pfs_id;		/* PFS id being read/written */
 	int			reserved01;
-	uuid_t			shared_uuid;	/* validator for safety */
+	hammer_uuid_t		shared_uuid;	/* validator for safety */
 };
 
 #define HAMMER_IOC_MIRROR_NODATA	0x0001	/* do not include bulk data */

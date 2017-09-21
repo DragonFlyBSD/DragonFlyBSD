@@ -2195,8 +2195,8 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 		mode_t cur_mode = ip->ino_data.mode;
 		uid_t cur_uid = hammer_to_unix_xid(&ip->ino_data.uid);
 		gid_t cur_gid = hammer_to_unix_xid(&ip->ino_data.gid);
-		uuid_t uuid_uid;
-		uuid_t uuid_gid;
+		hammer_uuid_t uuid_uid;
+		hammer_uuid_t uuid_gid;
 
 		error = vop_helper_chown(ap->a_vp, vap->va_uid, vap->va_gid,
 					 ap->a_cred,
