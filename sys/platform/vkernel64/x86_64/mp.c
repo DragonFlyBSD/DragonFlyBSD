@@ -177,6 +177,9 @@ mp_start(void)
 					    VM_SUBSYS_IPIQ);
 	bzero(mycpu->gd_ipiq, ipiq_size);
 
+	/* initialize arc4random. */
+	arc4_init_pcpu(0);
+
 	/*
 	 * cpu 1-(n-1)
 	 */
@@ -442,6 +445,9 @@ start_all_aps(u_int boot_addr)
                 gd->mi.gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size,
 						    VM_SUBSYS_IPIQ);
                 bzero(gd->mi.gd_ipiq, ipiq_size);
+
+		/* initialize arc4random. */
+		arc4_init_pcpu(x);
 
                 /*
                  * Setup the AP boot stack

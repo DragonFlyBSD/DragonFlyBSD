@@ -466,6 +466,9 @@ start_all_aps(u_int boot_addr)
 
 		gd->gd_acpi_id = CPUID_TO_ACPIID(gd->mi.gd_cpuid);
 
+		/* initialize arc4random. */
+		arc4_init_pcpu(x);
+
 		/* setup a vector to our boot code */
 		*((volatile u_short *) WARMBOOT_OFF) = WARMBOOT_TARGET;
 		*((volatile u_short *) WARMBOOT_SEG) = (boot_addr >> 4);
@@ -522,6 +525,9 @@ start_all_aps(u_int boot_addr)
 	mycpu->gd_ipiq = (void *)kmem_alloc3(&kernel_map, ipiq_size,
 					     VM_SUBSYS_IPIQ, KM_CPU(0));
 	bzero(mycpu->gd_ipiq, ipiq_size);
+
+	/* initialize arc4random. */
+	arc4_init_pcpu(0);
 
 	/* restore the warmstart vector */
 	*(u_long *) WARMBOOT_OFF = mpbioswarmvec;
@@ -1614,6 +1620,9 @@ mp_bsp_simple_setup(void)
 	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size,
 					    VM_SUBSYS_IPIQ);
 	bzero(mycpu->gd_ipiq, ipiq_size);
+
+	/* initialize arc4random. */
+	arc4_init_pcpu(0);
 
 	pmap_set_opt();
 
