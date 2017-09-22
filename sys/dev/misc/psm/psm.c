@@ -561,7 +561,6 @@ static int	set_mouse_scaling(KBDC, int);
 static int	set_mouse_resolution(KBDC, int);
 static int	set_mouse_mode(KBDC);
 static int	get_mouse_buttons(KBDC);
-static int	is_a_mouse(int);
 static void	recover_from_error(KBDC);
 static int	restore_controller(KBDC, int);
 static int	doinitialize(struct psm_softc *, mousemode_t *);
@@ -862,32 +861,6 @@ get_mouse_buttons(KBDC kbdc)
 }
 
 /* misc subroutines */
-/*
- * Someday, I will get the complete list of valid pointing devices and
- * their IDs... XXX
- */
-static int
-is_a_mouse(int id)
-{
-#if 0
-	static int valid_ids[] = {
-		PSM_MOUSE_ID,		/* mouse */
-		PSM_BALLPOINT_ID,	/* ballpoint device */
-		PSM_INTELLI_ID,		/* Intellimouse */
-		PSM_EXPLORER_ID,	/* Intellimouse Explorer */
-		-1			/* end of table */
-	};
-	int i;
-
-	for (i = 0; valid_ids[i] >= 0; ++i)
-	if (valid_ids[i] == id)
-		return (TRUE);
-	return (FALSE);
-#else
-	return (TRUE);
-#endif
-}
-
 static char *
 model_name(int model)
 {
@@ -1519,14 +1492,12 @@ psmprobe(device_t dev)
 	/* hardware information */
 	sc->hw.iftype = MOUSE_IF_PS2;
 
+#if 0
 	/* verify the device is a mouse */
 	sc->hw.hwid = get_aux_id(sc->kbdc);
-	if (!is_a_mouse(sc->hw.hwid)) {
-		if (verbose)
-			kprintf("psm%d: unknown device type (%d).\n", unit,
-			    sc->hw.hwid);
-		endprobe(ENXIO);
-	}
+	/* XXX Check against a list of PS2 device types. */
+#endif
+
 	switch (sc->hw.hwid) {
 	case PSM_BALLPOINT_ID:
 		sc->hw.type = MOUSE_TRACKBALL;
@@ -4556,26 +4527,6 @@ psmfilter(struct knote *kn, long hint)
 }
 
 
-#if 0
-static int
-psmpoll(struct dev_open_args *ap)
-{
-	cdev_t dev = ap->a_head.a_dev;
-	struct psm_softc *sc = dev->si_drv1;
-	int revents = 0;
-
-	/* Return true if a mouse event available */
-	crit_enter();
-	if (events & (POLLIN | POLLRDNORM)) {
-		if (sc->queue.count > 0)
-			revents |= events & (POLLIN | POLLRDNORM);
-	}
-	crit_exit();
-
-	return (revents);
-}
-#endif
-
 /* vendor/model specific routines */
 
 static int mouse_id_proc1(KBDC kbdc, int res, int scale, int *status)
@@ -4611,31 +4562,6 @@ mouse_ext_command(KBDC kbdc, int command)
 		return (FALSE);
 	return (TRUE);
 }
-
-#ifdef notyet
-/* Logitech MouseMan Cordless II */
-static int
-enable_lcordless(struct psm_softc *sc, enum probearg arg)
-{
-	KBDC kbdc = sc->kbdc;
-	int status[3];
-	int ch;
-
-	if (!mouse_id_proc1(kbdc, PSMD_RES_HIGH, 2, status))
-		return (FALSE);
-	if (status[1] == PSMD_RES_HIGH)
-		return (FALSE);
-	ch = (status[0] & 0x07) - 1;    /* channel # */
-	if ((ch <= 0) || (ch > 4))
-		return (FALSE);
-	/*
-	 * status[1]: always one?
-	 * status[2]: battery status? (0-100)
-	 */
-	return (TRUE);
-}
-#endif /* notyet */
-
 
 /* Genius NetScroll Mouse, MouseSystems SmartScroll Mouse */
 static int
