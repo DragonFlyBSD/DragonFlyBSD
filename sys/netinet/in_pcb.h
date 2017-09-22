@@ -293,9 +293,6 @@ struct inpcbportinfo {
 	struct	inpcbporthead *porthashbase;
 	u_long	porthashcnt;
 	u_short	offset;
-	u_short	lastport;
-	u_short	lastlow;
-	u_short	lasthi;
 } __cachealign;
 
 struct inpcbinfo {		/* XXX documentation, prefixes */
@@ -487,8 +484,6 @@ struct xinpcb;
 
 typedef	void	(*inp_notify_t)(struct inpcb *, int);
 
-u_short	in_pcblastport_down(volatile u_short *, u_short, u_short, u_short);
-u_short	in_pcblastport_up(volatile u_short *, u_short, u_short, u_short);
 void	in_pcbportrange(u_short *, u_short *, u_short, u_short);
 void	in_pcbpurgeif0 (struct inpcbinfo *, struct ifnet *);
 void	in_losing (struct inpcb *);

@@ -403,23 +403,20 @@ in_pcbsetlport(struct inpcb *inp, int wild, struct ucred *cred)
 {
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 	struct inpcbportinfo *portinfo;
-	u_short first, last, lport, step;
-	u_short *lastport;
+	u_short first, last, lport, step, first0, last0;
 	int count, error;
 	int portinfo_first, portinfo_idx;
+	uint32_t cut;
 
 	inp->inp_flags |= INP_ANONPORT;
 
 	step = pcbinfo->portinfo_cnt;
 	portinfo_first = mycpuid % pcbinfo->portinfo_cnt;
 	portinfo_idx = portinfo_first;
-loop:
-	portinfo = &pcbinfo->portinfo[portinfo_idx];
 
 	if (inp->inp_flags & INP_HIGHPORT) {
-		first = ipport_hifirstauto;	/* sysctl */
-		last  = ipport_hilastauto;
-		lastport = &portinfo->lasthi;
+		first0 = ipport_hifirstauto;	/* sysctl */
+		last0  = ipport_hilastauto;
 	} else if (inp->inp_flags & INP_LOWPORT) {
 		if (cred &&
 		    (error =
@@ -427,69 +424,55 @@ loop:
 			inp->inp_laddr.s_addr = INADDR_ANY;
 			return error;
 		}
-		first = ipport_lowfirstauto;	/* 1023 */
-		last  = ipport_lowlastauto;	/* 600 */
-		lastport = &portinfo->lastlow;
+		first0 = ipport_lowfirstauto;	/* 1023 */
+		last0  = ipport_lowlastauto;	/* 600 */
 	} else {
-		first = ipport_firstauto;	/* sysctl */
-		last  = ipport_lastauto;
-		lastport = &portinfo->lastport;
+		first0 = ipport_firstauto;	/* sysctl */
+		last0  = ipport_lastauto;
 	}
+	if (first0 > last0) {
+		lport = last0;
+		last0 = first0;
+		first0 = lport;
+	}
+	KKASSERT(last0 >= first0);
+
+	cut = karc4random();
+loop:
+	portinfo = &pcbinfo->portinfo[portinfo_idx];
+	first = first0;
+	last = last0;
 
 	/*
 	 * Simple check to ensure all ports are not used up causing
 	 * a deadlock here.
-	 *
-	 * We split the two cases (up and down) so that the direction
-	 * is not being tested on each round of the loop.
 	 */
-	if (first > last) {
-		/*
-		 * counting down
-		 */
-		in_pcbportrange(&first, &last, portinfo->offset, step);
-		count = (first - last) / step;
+	in_pcbportrange(&last, &first, portinfo->offset, step);
+	lport = last - first;
+	count = lport / step;
 
-		for (;;) {
-			if (count-- < 0) {	/* completely used? */
-				error = EADDRNOTAVAIL;
-				break;
-			}
-			lport = in_pcblastport_down(lastport,
-			    first, last, step);
-			KKASSERT((lport % pcbinfo->portinfo_cnt) ==
-			    portinfo->offset);
-			lport = htons(lport);
+	lport = rounddown(cut % lport, step) + first;
+	KKASSERT(lport % step == portinfo->offset);
 
-			if (in_pcbporthash_update(portinfo, inp, lport,
-			    cred, wild)) {
-				error = 0;
-				break;
-			}
+	for (;;) {
+		if (count-- < 0) {	/* completely used? */
+			error = EADDRNOTAVAIL;
+			break;
 		}
-	} else {
-		/*
-		 * counting up
-		 */
-		in_pcbportrange(&last, &first, portinfo->offset, step);
-		count = (last - first) / step;
 
-		for (;;) {
-			if (count-- < 0) {	/* completely used? */
-				error = EADDRNOTAVAIL;
-				break;
-			}
-			lport = in_pcblastport_up(lastport, first, last, step);
-			KKASSERT((lport % pcbinfo->portinfo_cnt) ==
-			    portinfo->offset);
-			lport = htons(lport);
-
-			if (in_pcbporthash_update(portinfo, inp, lport,
-			    cred, wild)) {
-				error = 0;
-				break;
-			}
+		if (__predict_false(lport < first || lport > last)) {
+			lport = first;
+			KKASSERT(lport % step == portinfo->offset);
 		}
+
+		if (in_pcbporthash_update(portinfo, inp, htons(lport),
+		    cred, wild)) {
+			error = 0;
+			break;
+		}
+
+		lport += step;
+		KKASSERT(lport % step == portinfo->offset);
 	}
 
 	if (error) {
@@ -729,17 +712,16 @@ in_pcbbind_remote(struct inpcb *inp, const struct sockaddr *remote,
     struct thread *td)
 {
 	struct proc *p = td->td_proc;
-	u_short *lastport;
 	const struct sockaddr_in *sin = (const struct sockaddr_in *)remote;
 	struct sockaddr_in jsin;
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 	struct inpcbportinfo *portinfo;
 	struct ucred *cred = NULL;
-	u_short first, last, lport, step;
+	u_short first, last, lport, step, first0, last0;
 	int count, error, selfconn;
 	int portinfo_first, portinfo_idx;
 	int hash_cpu, hash_count, hash_count0;
-	uint32_t hash_base = 0, hash;
+	uint32_t hash_base = 0, hash, cut;
 
 	if (TAILQ_EMPTY(&in_ifaddrheads[mycpuid])) /* XXX broken! */
 		return (EADDRNOTAVAIL);
@@ -773,15 +755,10 @@ in_pcbbind_remote(struct inpcb *inp, const struct sockaddr *remote,
 	step = pcbinfo->portinfo_cnt;
 	portinfo_first = mycpuid % pcbinfo->portinfo_cnt;
 	portinfo_idx = portinfo_first;
-loop:
-	hash_cpu = portinfo_idx % netisr_ncpus;
-	portinfo = &pcbinfo->portinfo[portinfo_idx];
-	selfconn = 0;
 
 	if (inp->inp_flags & INP_HIGHPORT) {
-		first = ipport_hifirstauto;	/* sysctl */
-		last  = ipport_hilastauto;
-		lastport = &portinfo->lasthi;
+		first0 = ipport_hifirstauto;	/* sysctl */
+		last0  = ipport_hilastauto;
 	} else if (inp->inp_flags & INP_LOWPORT) {
 		if (cred &&
 		    (error =
@@ -789,14 +766,26 @@ loop:
 			inp->inp_laddr.s_addr = INADDR_ANY;
 			return (error);
 		}
-		first = ipport_lowfirstauto;	/* 1023 */
-		last  = ipport_lowlastauto;	/* 600 */
-		lastport = &portinfo->lastlow;
+		first0 = ipport_lowfirstauto;	/* 1023 */
+		last0  = ipport_lowlastauto;	/* 600 */
 	} else {
-		first = ipport_firstauto;	/* sysctl */
-		last  = ipport_lastauto;
-		lastport = &portinfo->lastport;
+		first0 = ipport_firstauto;	/* sysctl */
+		last0  = ipport_lastauto;
 	}
+	if (first0 > last0) {
+		lport = last0;
+		last0 = first0;
+		first0 = lport;
+	}
+	KKASSERT(last0 >= first0);
+
+	cut = karc4random();
+loop:
+	hash_cpu = portinfo_idx % netisr_ncpus;
+	portinfo = &pcbinfo->portinfo[portinfo_idx];
+	selfconn = 0;
+	first = first0;
+	last = last0;
 
 	/* This could happen on loopback interface */
 #define IS_SELFCONNECT(inp, lport, sin)			\
@@ -806,92 +795,55 @@ loop:
 	/*
 	 * Simple check to ensure all ports are not used up causing
 	 * a deadlock here.
-	 *
-	 * We split the two cases (up and down) so that the direction
-	 * is not being tested on each round of the loop.
 	 */
 	hash_count = hash_count0;
-	if (first > last) {
-		/*
-		 * counting down
-		 */
-		in_pcbportrange(&first, &last, portinfo->offset, step);
-		count = ((first - last) / step) + hash_count;
 
-		for (;;) {
-			if (count-- < 0) {	/* completely used? */
-				error = EADDRNOTAVAIL;
-				break;
-			}
+	in_pcbportrange(&last, &first, portinfo->offset, step);
+	lport = last - first;
+	count = (lport / step) + hash_count;
 
-			lport = in_pcblastport_down(lastport, first, last,
-			    step);
-			KKASSERT((lport % pcbinfo->portinfo_cnt) ==
-			    portinfo->offset);
-			lport = htons(lport);
-			if (IS_SELFCONNECT(inp, lport, sin)) {
-				if (!selfconn) {
-					++count; /* don't count this try */
-					selfconn = 1;
-				}
-				continue;
-			}
+	lport = rounddown(cut % lport, step) + first;
+	KKASSERT(lport % step == portinfo->offset);
 
-			if (hash_count) {
-				--hash_count;
-				hash = hash_base ^
-				    toeplitz_piecemeal_port(lport);
-				if (netisr_hashcpu(hash) != hash_cpu &&
-				    hash_count)
-					continue;
-			}
+	for (;;) {
+		u_short lport_no;
 
-			if (in_pcbporthash_update4(portinfo,
-			    inp, lport, sin, cred)) {
-				error = 0;
-				break;
-			}
+		if (count-- < 0) {	/* completely used? */
+			error = EADDRNOTAVAIL;
+			break;
 		}
-	} else {
-		/*
-		 * counting up
-		 */
-		in_pcbportrange(&last, &first, portinfo->offset, step);
-		count = ((last - first) / step) + hash_count;
 
-		for (;;) {
-			if (count-- < 0) {	/* completely used? */
-				error = EADDRNOTAVAIL;
-				break;
-			}
-
-			lport = in_pcblastport_up(lastport, first, last, step);
-			KKASSERT((lport % pcbinfo->portinfo_cnt) ==
-			    portinfo->offset);
-			lport = htons(lport);
-			if (IS_SELFCONNECT(inp, lport, sin)) {
-				if (!selfconn) {
-					++count; /* don't count this try */
-					selfconn = 1;
-				}
-				continue;
-			}
-
-			if (hash_count) {
-				--hash_count;
-				hash = hash_base ^
-				    toeplitz_piecemeal_port(lport);
-				if (netisr_hashcpu(hash) != hash_cpu &&
-				    hash_count)
-					continue;
-			}
-
-			if (in_pcbporthash_update4(portinfo,
-			    inp, lport, sin, cred)) {
-				error = 0;
-				break;
-			}
+		if (__predict_false(lport < first || lport > last)) {
+			lport = first;
+			KKASSERT(lport % step == portinfo->offset);
 		}
+
+		lport_no = htons(lport);
+		if (IS_SELFCONNECT(inp, lport_no, sin)) {
+			if (!selfconn) {
+				++count; /* don't count this try */
+				selfconn = 1;
+			}
+			goto next;
+		}
+
+		if (hash_count) {
+			--hash_count;
+			hash = hash_base ^
+			    toeplitz_piecemeal_port(lport_no);
+			if (netisr_hashcpu(hash) != hash_cpu &&
+			    hash_count)
+				goto next;
+		}
+
+		if (in_pcbporthash_update4(portinfo,
+		    inp, lport_no, sin, cred)) {
+			error = 0;
+			break;
+		}
+next:
+		lport += step;
+		KKASSERT(lport % step == portinfo->offset);
 	}
 
 #undef IS_SELFCONNECT
@@ -2330,10 +2282,6 @@ in_pcbportinfo_init(struct inpcbportinfo *portinfo, int hashsize,
 	memset(portinfo, 0, sizeof(*portinfo));
 
 	portinfo->offset = offset;
-	portinfo->lastport = offset;
-	portinfo->lastlow = offset;
-	portinfo->lasthi = offset;
-
 	portinfo->porthashbase = phashinit(hashsize, M_PCB,
 	    &portinfo->porthashcnt);
 }
@@ -2407,42 +2355,4 @@ in_pcbresetroute(struct inpcb *inp)
 	if (ro->ro_rt != NULL)
 		RTFREE(ro->ro_rt);
 	bzero(ro, sizeof(*ro));
-}
-
-u_short
-in_pcblastport_down(volatile u_short *lastport, u_short first, u_short last,
-    u_short step)
-{
-	u_short lport;
-
-	for (;;) {
-		u_short olport;
-
-		olport = *lastport;
-		lport = olport - step;
-		if (__predict_false(lport > first || lport < last))
-			lport = first;
-		if (atomic_cmpset_short(lastport, olport, lport))
-			break;
-	}
-	return lport;
-}
-
-u_short
-in_pcblastport_up(volatile u_short *lastport, u_short first, u_short last,
-    u_short step)
-{
-	u_short lport;
-
-	for (;;) {
-		u_short olport;
-
-		olport = *lastport;
-		lport = olport + step;
-		if (__predict_false(lport < first || lport > last))
-			lport = first;
-		if (atomic_cmpset_short(lastport, olport, lport))
-			break;
-	}
-	return lport;
 }

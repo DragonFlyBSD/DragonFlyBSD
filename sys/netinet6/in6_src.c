@@ -409,12 +409,13 @@ int
 in6_pcbsetlport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 {
 	struct socket *so = inp->inp_socket;
-	u_int16_t lport = 0, first, last, *lastport, step;
+	uint16_t lport, first, last, step, first0, last0;
 	int count, error = 0, wild = 0;
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 	struct inpcbportinfo *portinfo;
 	struct ucred *cred = NULL;
 	int portinfo_first, portinfo_idx;
+	uint32_t cut;
 
 	/* XXX: this is redundant when called from in6_pcbbind */
 	if ((so->so_options & (SO_REUSEADDR|SO_REUSEPORT)) == 0)
@@ -427,79 +428,62 @@ in6_pcbsetlport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 	step = pcbinfo->portinfo_cnt;
 	portinfo_first = mycpuid % pcbinfo->portinfo_cnt;
 	portinfo_idx = portinfo_first;
-loop:
-	portinfo = &pcbinfo->portinfo[portinfo_idx];
 
 	if (inp->inp_flags & INP_HIGHPORT) {
-		first = ipport_hifirstauto;	/* sysctl */
-		last  = ipport_hilastauto;
-		lastport = &portinfo->lasthi;
+		first0 = ipport_hifirstauto;	/* sysctl */
+		last0  = ipport_hilastauto;
 	} else if (inp->inp_flags & INP_LOWPORT) {
 		if ((error = priv_check(td, PRIV_ROOT)) != 0)
 			return error;
-		first = ipport_lowfirstauto;	/* 1023 */
-		last  = ipport_lowlastauto;	/* 600 */
-		lastport = &portinfo->lastlow;
+		first0 = ipport_lowfirstauto;	/* 1023 */
+		last0  = ipport_lowlastauto;	/* 600 */
 	} else {
-		first = ipport_firstauto;	/* sysctl */
-		last  = ipport_lastauto;
-		lastport = &portinfo->lastport;
+		first0 = ipport_firstauto;	/* sysctl */
+		last0  = ipport_lastauto;
 	}
+	if (first0 > last0) {
+		lport = last0;
+		last0 = first0;
+		first0 = lport;
+	}
+	KKASSERT(last0 >= first0);
+
+	cut = karc4random();
+loop:
+	portinfo = &pcbinfo->portinfo[portinfo_idx];
+	first = first0;
+	last = last0;
 
 	/*
 	 * Simple check to ensure all ports are not used up causing
 	 * a deadlock here.
-	 *
-	 * We split the two cases (up and down) so that the direction
-	 * is not being tested on each round of the loop.
 	 */
-	if (first > last) {
-		/*
-		 * counting down
-		 */
-		in_pcbportrange(&first, &last, portinfo->offset, step);
-		count = (first - last) / step;
+	in_pcbportrange(&last, &first, portinfo->offset, step);
+	lport = last - first;
+	count = lport / step;
 
-		for (;;) {
-			if (count-- < 0) {	/* completely used? */
-				error = EAGAIN;
-				break;
-			}
-			lport = in_pcblastport_down(lastport, first, last,
-			    step);
-			KKASSERT((lport % pcbinfo->portinfo_cnt) ==
-			    portinfo->offset);
-			lport = htons(lport);
+	lport = rounddown(cut % lport, step) + first;
+	KKASSERT(lport % step == portinfo->offset);
 
-			if (in6_pcbporthash_update(portinfo, inp, lport,
-			    cred, wild)) {
-				error = 0;
-				break;
-			}
+	for (;;) {
+		if (count-- < 0) {	/* completely used? */
+			error = EAGAIN;
+			break;
 		}
-	} else {
-		/*
-		 * counting up
-		 */
-		in_pcbportrange(&last, &first, portinfo->offset, step);
-		count = (last - first) / step;
 
-		for (;;) {
-			if (count-- < 0) {	/* completely used? */
-				error = EAGAIN;
-				break;
-			}
-			lport = in_pcblastport_up(lastport, first, last, step);
-			KKASSERT((lport % pcbinfo->portinfo_cnt) ==
-			    portinfo->offset);
-			lport = htons(lport);
-
-			if (in6_pcbporthash_update(portinfo, inp, lport,
-			    cred, wild)) {
-				error = 0;
-				break;
-			}
+		if (__predict_false(lport < first || lport > last)) {
+			lport = first;
+			KKASSERT(lport % step == portinfo->offset);
 		}
+
+		if (in6_pcbporthash_update(portinfo, inp, htons(lport),
+		    cred, wild)) {
+			error = 0;
+			break;
+		}
+
+		lport += step;
+		KKASSERT(lport % step == portinfo->offset);
 	}
 
 	if (error) {
