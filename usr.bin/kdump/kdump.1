@@ -27,9 +27,8 @@
 .\"
 .\"	@(#)kdump.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/kdump/kdump.1,v 1.5.2.2 2001/08/16 13:16:51 ru Exp $
-.\" $DragonFly: src/usr.bin/kdump/kdump.1,v 1.5 2007/05/07 15:43:31 dillon Exp $
 .\"
-.Dd June 6, 1993
+.Dd October 5, 2017
 .Dt KDUMP 1
 .Os
 .Sh NAME
@@ -50,7 +49,9 @@ command displays the kernel trace files produced with
 in human readable format.
 By default, the file
 .Pa ktrace.out
-in the current directory is displayed.
+in the current directory is displayed, which may be overridden by the
+.Fl f
+option.
 .Pp
 The options are as follows:
 .Bl -tag -width Fl
@@ -75,9 +76,7 @@ more data.
 .It Fl m Ar maxdata
 Display at most
 .Ar maxdata
-bytes when decoding
-.Tn I/O ;
-set to
+bytes when decoding I/O; set to
 .Cm 0
 to disable the size limit.
 .It Fl p Ar pid
@@ -106,6 +105,11 @@ See the
 .Fl t
 option of
 .Xr ktrace 1 .
+.El
+.Sh FILES
+.Bl -tag -width ktrace.out -compact
+.It Pa ktrace.out
+default ktrace dump file
 .El
 .Sh SEE ALSO
 .Xr ktrace 1
