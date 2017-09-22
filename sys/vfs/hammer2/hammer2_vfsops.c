@@ -702,8 +702,15 @@ again:
 	TAILQ_FOREACH(pmp, &hammer2_pfslist, mntentry) {
 		if ((iroot = pmp->iroot) == NULL)
 			continue;
-		if (hmp->spmp == pmp)
+		hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH);
+		hammer2_inode_run_sideq(pmp, 1);
+		hammer2_bioq_sync(pmp);
+		hammer2_trans_done(pmp);
+		if (hmp->spmp == pmp) {
 			hmp->spmp = NULL;
+			hmp->vchain.pmp = NULL;
+			hmp->fchain.pmp = NULL;
+		}
 
 		/*
 		 * Determine if this PFS is affected.  If it is we must
@@ -1678,6 +1685,17 @@ again:
 	hammer2_voldata_lock(hmp);
 	hammer2_voldata_unlock(hmp);
 #endif
+
+	/*
+	 * Flush whatever is left.  Unmounted but modified PFS's might still
+	 * have some dirty chains on them.
+	 */
+	hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_chain_lock(&hmp->fchain, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_flush(&hmp->fchain, HAMMER2_FLUSH_TOP | HAMMER2_FLUSH_ALL);
+	hammer2_chain_unlock(&hmp->fchain);
+	hammer2_flush(&hmp->vchain, HAMMER2_FLUSH_TOP | HAMMER2_FLUSH_ALL);
+	hammer2_chain_unlock(&hmp->vchain);
 
 	if ((hmp->vchain.flags | hmp->fchain.flags) &
 	    HAMMER2_CHAIN_FLUSH_MASK) {
