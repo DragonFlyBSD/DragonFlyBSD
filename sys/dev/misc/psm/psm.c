@@ -133,9 +133,8 @@
 /* operation levels */
 #define	PSM_LEVEL_BASE		0
 #define	PSM_LEVEL_STANDARD	1
-#define	PSM_LEVEL_NATIVE	2
 #define	PSM_LEVEL_MIN		PSM_LEVEL_BASE
-#define	PSM_LEVEL_MAX		PSM_LEVEL_NATIVE
+#define	PSM_LEVEL_MAX		PSM_LEVEL_STANDARD
 
 /* Logitech PS2++ protocol */
 #define	MOUSE_PS2PLUS_CHECKBITS(b)	\
@@ -548,7 +547,6 @@ static int	psmresume(device_t);
 static d_open_t		psmopen;
 static d_close_t	psmclose;
 static d_read_t		psmread;
-static d_write_t	psmwrite;
 static d_ioctl_t	psmioctl;
 static d_kqfilter_t 	psmkqfilter;
 
@@ -686,7 +684,6 @@ static struct dev_ops psm_ops = {
 	.d_open =   psmopen,
 	.d_close =  psmclose,
 	.d_read =   psmread,
-	.d_write =  psmwrite,
 	.d_ioctl =  psmioctl,
 	.d_kqfilter =	 psmkqfilter
 };
@@ -2089,43 +2086,6 @@ unblock_mouse_data(struct psm_softc *sc, int c)
 	return (error);
 }
 
-static int
-psmwrite(struct dev_write_args *ap)
-{
-
-	cdev_t dev = ap->a_head.a_dev;
-	struct uio *uio = ap->a_uio;
-	struct psm_softc *sc = dev->si_drv1;
-	u_char buf[PSM_SMALLBUFSIZE];
-	int error = 0;
-	int i, l;
-
-	if ((sc->state & PSM_VALID) == 0)
-		return (EIO);
-
-	if (sc->mode.level < PSM_LEVEL_NATIVE)
-		return (ENODEV);
-
-	/* copy data from the user land */
-	while (uio->uio_resid > 0) {
-		l = imin(PSM_SMALLBUFSIZE, uio->uio_resid);
-		error = uiomove(buf, l, uio);
-		if (error)
-			break;
-		for (i = 0; i < l; i++) {
-			VLOG(4, (LOG_DEBUG, "psm: cmd 0x%x\n", buf[i]));
-			if (!write_aux_command(sc->kbdc, buf[i])) {
-				VLOG(2, (LOG_DEBUG,
-				    "psm: cmd 0x%x failed.\n", buf[i]));
-				return (reinitialize(sc, FALSE));
-			}
-		}
-	}
-
-	return (error);
-}
-
-
 
 static int
 psmioctl(struct dev_ioctl_args *ap)
@@ -2183,9 +2143,6 @@ psmioctl(struct dev_ioctl_args *ap)
 			((old_mousemode_t *)addr)->protocol =
 			    MOUSE_PROTO_SYSMOUSE;
 			break;
-		case PSM_LEVEL_NATIVE:
-			((old_mousemode_t *)addr)->protocol = MOUSE_PROTO_PS2;
-			break;
 		}
 		((old_mousemode_t *)addr)->rate = sc->mode.rate;
 		((old_mousemode_t *)addr)->resolution = sc->mode.resolution;
@@ -2214,10 +2171,6 @@ psmioctl(struct dev_ioctl_args *ap)
 			    MOUSE_SYS_PACKETSIZE;
 			((mousemode_t *)addr)->syncmask[0] = MOUSE_SYS_SYNCMASK;
 			((mousemode_t *)addr)->syncmask[1] = MOUSE_SYS_SYNC;
-			break;
-		case PSM_LEVEL_NATIVE:
-			/* FIXME: this isn't quite correct... XXX */
-			((mousemode_t *)addr)->protocol = MOUSE_PROTO_PS2;
 			break;
 		}
 		crit_exit();
@@ -2550,20 +2503,13 @@ psmintr(void *arg)
 
 		pb->ipacket[pb->inputbytes++] = c;
 
-		if (sc->mode.level == PSM_LEVEL_NATIVE) {
-			VLOG(4, (LOG_DEBUG, "psmintr: %02x\n", pb->ipacket[0]));
-			sc->syncerrors = 0;
-			sc->pkterrors = 0;
-			goto next;
-		} else {
-			if (pb->inputbytes < sc->mode.packetsize)
-				continue;
+		if (pb->inputbytes < sc->mode.packetsize)
+			continue;
 
-			VLOG(4, (LOG_DEBUG,
-			    "psmintr: %02x %02x %02x %02x %02x %02x\n",
-			    pb->ipacket[0], pb->ipacket[1], pb->ipacket[2],
-			    pb->ipacket[3], pb->ipacket[4], pb->ipacket[5]));
-		}
+		VLOG(4, (LOG_DEBUG,
+		    "psmintr: %02x %02x %02x %02x %02x %02x\n",
+		    pb->ipacket[0], pb->ipacket[1], pb->ipacket[2],
+		    pb->ipacket[3], pb->ipacket[4], pb->ipacket[5]));
 
 		c = pb->ipacket[0];
 
@@ -2651,7 +2597,6 @@ psmintr(void *arg)
 		sc->pkterrors = 0;
 
 		sc->cmdcount++;
-next:
 		if (++sc->pqueue_end >= PSM_PACKETQUEUE)
 			sc->pqueue_end = 0;
 		/*
@@ -4220,9 +4165,6 @@ psmsoftintr(void *arg)
 	do {
 		pb = &sc->pqueue[sc->pqueue_start];
 
-		if (sc->mode.level == PSM_LEVEL_NATIVE)
-			goto next_native;
-
 		c = pb->ipacket[0];
 		/*
 		 * A kludge for Kensington device!
@@ -4431,7 +4373,6 @@ psmsoftintr(void *arg)
 	sc->status.button = ms.button;
 	sc->button = ms.button;
 
-next_native:
 	sc->watchdog = FALSE;
 
 	/* queue data */
