@@ -27,9 +27,8 @@
 .\"
 .\"	@(#)ktrace.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/ktrace/ktrace.1,v 1.8.2.8 2002/06/21 15:27:30 charnier Exp $
-.\" $DragonFly: src/usr.bin/ktrace/ktrace.1,v 1.5 2008/10/16 08:15:18 swildner Exp $
 .\"
-.Dd June 6, 1993
+.Dd October 5, 2017
 .Dt KTRACE 1
 .Os
 .Sh NAME
@@ -50,11 +49,13 @@
 The
 .Nm
 utility enables kernel trace logging for the specified processes.
-Kernel trace data is logged to the file
-.Pa ktrace.out .
+By default, kernel trace data is logged to the file
+.Pa ktrace.out ,
+this may be overridden by the
+.Fl f
+option.
 The kernel operations that are traced include system calls, namei
-translations, signal processing, and
-.Tn I/O .
+translations, signal processing, and I/O.
 .Pp
 Once tracing is enabled on a process, trace data will be logged until
 either the process exits or the trace point is cleared.
@@ -108,8 +109,7 @@ trace system calls
 .It Cm n
 trace namei translations
 .It Cm i
-trace
-.Tn I/O
+trace I/O
 .It Cm s
 trace signal processing
 .It Cm u
@@ -132,6 +132,11 @@ The
 and
 .Ar command
 options are mutually exclusive.
+.Sh FILES
+.Bl -tag -width ktrace.out -compact
+.It Pa ktrace.out
+default ktrace dump file
+.El
 .Sh EXAMPLES
 # trace all kernel operations of process id 34
 .Dl $ ktrace -p 34
@@ -146,8 +151,7 @@ options are mutually exclusive.
 # disable tracing signals on process 70 and all current children
 .Dl $ ktrace -t s -cdp 70
 .Pp
-# enable tracing of
-.Tn I/O
+# enable tracing of I/O
 on process 67
 .Dl $ ktrace -ti -p 67
 .Pp
@@ -160,7 +164,9 @@ on process 67
 # disable tracing of all processes owned by the user
 .Dl $ ktrace -C
 .Sh SEE ALSO
-.Xr kdump 1
+.Xr kdump 1 ,
+.Xr ktrace 2 ,
+.Xr utrace 2
 .Sh HISTORY
 The
 .Nm
