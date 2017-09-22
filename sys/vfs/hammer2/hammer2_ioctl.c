@@ -624,6 +624,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 				   1, HAMMER2_OBJTYPE_DIRECTORY, 0,
 				   HAMMER2_INSERT_PFSROOT, &error);
 	if (error == 0) {
+		nip->flags |= HAMMER2_INODE_NOSIDEQ;
 		hammer2_inode_modify(nip);
 		nchain = hammer2_inode_chain(nip, 0, HAMMER2_RESOLVE_ALWAYS);
 		hammer2_chain_modify(nchain, mtid, 0, 0);
@@ -659,6 +660,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		hammer2_inode_ref(nip);
 		hammer2_inode_unlock(nip);
 		hammer2_inode_chain_sync(nip);
+		KKASSERT(nip->refs == 1);
 		hammer2_inode_drop(nip);
 
 		/* 

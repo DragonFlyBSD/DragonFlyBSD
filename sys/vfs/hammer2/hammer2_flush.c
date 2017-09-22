@@ -535,13 +535,20 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		++info->diddeferral;
 	} else if ((chain->flags & HAMMER2_CHAIN_PFSBOUNDARY) &&
 		   (flags & HAMMER2_FLUSH_ALL) == 0 &&
-		   (flags & HAMMER2_FLUSH_TOP) == 0) {
+		   (flags & HAMMER2_FLUSH_TOP) == 0 &&
+		   chain->pmp && chain->pmp->mp) {
 		/*
 		 * If FLUSH_ALL is not specified the caller does not want
-		 * to recurse through PFS roots.  The typical sequence is
-		 * to flush dirty PFS's starting at their root downward,
-		 * then flush the device root (vchain).  It is this second
-		 * flush that typically leaves out the ALL flag.
+		 * to recurse through PFS roots that have been mounted.
+		 *
+		 * (If the PFS has not been mounted there may not be
+		 *  anything monitoring its chains and its up to us
+		 *  to flush it).
+		 *
+		 * The typical sequence is to flush dirty PFS's starting at
+		 * their root downward, then flush the device root (vchain).
+		 * It is this second flush that typically leaves out the
+		 * ALL flag.
 		 *
 		 * However we must still process the PFSROOT chains for block
 		 * table updates in their parent (which IS part of our flush).

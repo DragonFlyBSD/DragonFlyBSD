@@ -1194,7 +1194,8 @@ hammer2_inode_modify(hammer2_inode_t *ip)
 	atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
 	if (ip->vp) {
 		vsetisdirty(ip->vp);
-	} else if ((pmp = ip->pmp) != NULL) {
+	} else if ((pmp = ip->pmp) != NULL &&
+		   (ip->flags & HAMMER2_INODE_NOSIDEQ) == 0) {
 		hammer2_inode_delayed_sideq(ip);
 	}
 }
