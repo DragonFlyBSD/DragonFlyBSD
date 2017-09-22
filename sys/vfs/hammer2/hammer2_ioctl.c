@@ -627,7 +627,8 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		nip->flags |= HAMMER2_INODE_NOSIDEQ;
 		hammer2_inode_modify(nip);
 		nchain = hammer2_inode_chain(nip, 0, HAMMER2_RESOLVE_ALWAYS);
-		hammer2_chain_modify(nchain, mtid, 0, 0);
+		error = hammer2_chain_modify(nchain, mtid, 0, 0);
+		KKASSERT(error == 0);
 		nipdata = &nchain->data->ipdata;
 
 		nip->meta.pfs_type = pfs->pfs_type;
@@ -784,12 +785,20 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 static int
 hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 {
+	const hammer2_inode_data_t *ripdata;
 	hammer2_ioc_pfs_t *pfs = data;
 	hammer2_dev_t	*hmp;
 	hammer2_pfs_t	*pmp;
 	hammer2_chain_t	*chain;
+	hammer2_inode_t *nip;
 	hammer2_tid_t	mtid;
+	size_t name_len;
+	hammer2_key_t lhc;
+	struct vattr vat;
 	int error;
+#if 0
+	uuid_t opfs_clid;
+#endif
 
 	if (pfs->name[0] == 0)
 		return(EINVAL);
@@ -815,7 +824,104 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 
 	/* XXX cluster it! */
 	chain = hammer2_inode_chain(ip, 0, HAMMER2_RESOLVE_ALWAYS);
-	error = hammer2_chain_snapshot(chain, pfs, mtid);
+
+	name_len = strlen(pfs->name);
+	lhc = hammer2_dirhash(pfs->name, name_len);
+
+	/*
+	 * Get the clid
+	 */
+	ripdata = &chain->data->ipdata;
+#if 0
+	opfs_clid = ripdata->meta.pfs_clid;
+#endif
+	hmp = chain->hmp;
+
+	/*
+	 * Create the snapshot directory under the super-root
+	 *
+	 * Set PFS type, generate a unique filesystem id, and generate
+	 * a cluster id.  Use the same clid when snapshotting a PFS root,
+	 * which theoretically allows the snapshot to be used as part of
+	 * the same cluster (perhaps as a cache).
+	 *
+	 * Copy the (flushed) blockref array.  Theoretically we could use
+	 * chain_duplicate() but it becomes difficult to disentangle
+	 * the shared core so for now just brute-force it.
+	 */
+	VATTR_NULL(&vat);
+	vat.va_type = VDIR;
+	vat.va_mode = 0755;
+	hammer2_chain_unlock(chain);
+	nip = hammer2_inode_create(hmp->spmp->iroot, hmp->spmp->iroot,
+				   &vat, proc0.p_ucred,
+				   pfs->name, name_len, 0,
+				   1, 0, 0,
+				   HAMMER2_INSERT_PFSROOT, &error);
+	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
+	ripdata = &chain->data->ipdata;
+
+	if (nip) {
+		hammer2_dev_t *force_local;
+		hammer2_chain_t *nchain;
+		hammer2_inode_data_t *wipdata;
+		hammer2_key_t	starting_inum;
+
+		nip->flags |= HAMMER2_INODE_NOSIDEQ;
+		hammer2_inode_modify(nip);
+		nchain = hammer2_inode_chain(nip, 0, HAMMER2_RESOLVE_ALWAYS);
+		error = hammer2_chain_modify(nchain, mtid, 0, 0);
+		KKASSERT(error == 0);
+		wipdata = &nchain->data->ipdata;
+
+		starting_inum = ip->pmp->inode_tid + 1;
+		nip->meta.pfs_inum = starting_inum;
+		nip->meta.pfs_type = HAMMER2_PFSTYPE_MASTER;
+		nip->meta.pfs_subtype = HAMMER2_PFSSUBTYPE_SNAPSHOT;
+		nip->meta.op_flags |= HAMMER2_OPFLAG_PFSROOT;
+		kern_uuidgen(&nip->meta.pfs_fsid, 1);
+
+#if 0
+		/*
+		 * Give the snapshot its own private cluster id.  As a
+		 * snapshot no further synchronization with the original
+		 * cluster will be done.
+		 */
+		if (chain->flags & HAMMER2_CHAIN_PFSBOUNDARY)
+			nip->meta.pfs_clid = opfs_clid;
+		else
+			kern_uuidgen(&nip->meta.pfs_clid, 1);
+#endif
+		kern_uuidgen(&nip->meta.pfs_clid, 1);
+		nchain->bref.flags |= HAMMER2_BREF_FLAG_PFSROOT;
+
+		/* XXX hack blockset copy */
+		/* XXX doesn't work with real cluster */
+		wipdata->meta = nip->meta;
+		wipdata->u.blockset = ripdata->u.blockset;
+
+		KKASSERT(wipdata == &nchain->data->ipdata);
+
+		hammer2_chain_unlock(nchain);
+		hammer2_inode_ref(nip);
+		hammer2_inode_unlock(nip);
+		hammer2_inode_chain_sync(nip);
+		KKASSERT(nip->refs == 1);
+		hammer2_inode_drop(nip);
+
+		force_local = (hmp->hflags & HMNT2_LOCAL) ? hmp : NULL;
+
+		hammer2_chain_lock(nchain, HAMMER2_RESOLVE_ALWAYS);
+		wipdata = &nchain->data->ipdata;
+		kprintf("SNAPSHOT LOCAL PFS (IOCTL): %s\n", wipdata->filename);
+		hammer2_pfsalloc(nchain, wipdata, nchain->bref.modify_tid,
+				 force_local);
+		nchain->pmp->inode_tid = starting_inum;
+
+		hammer2_chain_unlock(nchain);
+		hammer2_chain_drop(nchain);
+	}
+
 	hammer2_chain_unlock(chain);
 	hammer2_chain_drop(chain);
 

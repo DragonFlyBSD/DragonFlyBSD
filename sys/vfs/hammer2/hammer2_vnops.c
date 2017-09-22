@@ -1516,7 +1516,9 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 				   inum, 0, 0,
 				   0, &error);
 
-	if (error == 0) {
+	if (error) {
+		error = hammer2_error_to_errno(error);
+	} else {
 		error = hammer2_dirent_create(dip, name, name_len,
 					      nip->meta.inum, nip->meta.type);
 	}

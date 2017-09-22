@@ -1322,6 +1322,8 @@ hammer2_error_to_errno(int error)
 			error = EISDIR;
 		else if (error & HAMMER2_ERROR_EINPROGRESS)
 			error = EINPROGRESS;
+		else if (error & HAMMER2_ERROR_EEXIST)
+			error = EEXIST;
 		else
 			error = EDOM;
 	}
@@ -1477,8 +1479,6 @@ void hammer2_chain_lock_unhold(hammer2_chain_t *chain, int how);
 void hammer2_chain_load_data(hammer2_chain_t *chain);
 const hammer2_media_data_t *hammer2_chain_rdata(hammer2_chain_t *chain);
 hammer2_media_data_t *hammer2_chain_wdata(hammer2_chain_t *chain);
-int hammer2_chain_snapshot(hammer2_chain_t *chain, hammer2_ioc_pfs_t *pmp,
-				hammer2_tid_t mtid);
 
 int hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,
 				int clindex, int flags,
