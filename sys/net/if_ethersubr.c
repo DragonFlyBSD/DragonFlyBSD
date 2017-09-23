@@ -104,7 +104,7 @@ static int ether_output(struct ifnet *, struct mbuf *, struct sockaddr *,
 static void ether_restore_header(struct mbuf **, const struct ether_header *,
 				 const struct ether_header *);
 static int ether_characterize(struct mbuf **);
-static void ether_dispatch(int, struct mbuf *, int);
+static void ether_dispatch(struct ifnet *, int, struct mbuf *, int);
 
 /*
  * if_bridge support
@@ -1349,6 +1349,8 @@ ether_input_handler(netmsg_t nmsg)
 			return;
 		}
 	}
+
+	ifp = m->m_pkthdr.rcvif;
 	if ((m->m_flags & (M_HASH | M_CKHASH)) == (M_HASH | M_CKHASH) ||
 	    __predict_false(ether_input_ckhash)) {
 		int isr;
@@ -1367,13 +1369,12 @@ ether_input_handler(netmsg_t nmsg)
 			/*
 			 * Wrong hardware supplied hash; redispatch
 			 */
-			ether_dispatch(isr, m, -1);
+			ether_dispatch(ifp, isr, m, -1);
 			if (__predict_false(ether_input_ckhash))
 				atomic_add_long(&ether_input_wronghwhash, 1);
 			return;
 		}
 	}
-	ifp = m->m_pkthdr.rcvif;
 
 	eh = mtod(m, struct ether_header *);
 	if (ETHER_IS_MULTICAST(eh->ether_dhost)) {
@@ -1395,7 +1396,7 @@ ether_input_handler(netmsg_t nmsg)
  * so we know which netisr to send it to.
  */
 static void
-ether_dispatch(int isr, struct mbuf *m, int cpuid)
+ether_dispatch(struct ifnet *ifp, int isr, struct mbuf *m, int cpuid)
 {
 	struct netmsg_packet *pmsg;
 	int target_cpuid;
@@ -1411,8 +1412,12 @@ ether_dispatch(int isr, struct mbuf *m, int cpuid)
 
 	logether(disp_beg, NULL);
 	if (target_cpuid == cpuid) {
-		lwkt_sendmsg_oncpu(netisr_cpuport(target_cpuid),
-		    &pmsg->base.lmsg);
+		if ((ifp->if_flags & IFF_IDIRECT) && IN_NETISR_NCPUS(cpuid)) {
+			ether_input_handler((netmsg_t)pmsg);
+		} else {
+			lwkt_sendmsg_oncpu(netisr_cpuport(target_cpuid),
+			    &pmsg->base.lmsg);
+		}
 	} else {
 		lwkt_sendmsg(netisr_cpuport(target_cpuid),
 		    &pmsg->base.lmsg);
@@ -1486,7 +1491,7 @@ ether_input(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 #endif
 		netisr_hashcheck(pi->pi_netisr, m, pi);
 		if (m->m_flags & M_HASH) {
-			ether_dispatch(pi->pi_netisr, m, cpuid);
+			ether_dispatch(ifp, pi->pi_netisr, m, cpuid);
 #ifdef RSS_DEBUG
 			atomic_add_long(&ether_pktinfo_hit, 1);
 #endif
@@ -1526,7 +1531,7 @@ ether_input(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 	/*
 	 * Finally dispatch it
 	 */
-	ether_dispatch(isr, m, cpuid);
+	ether_dispatch(ifp, isr, m, cpuid);
 
 	logether(pkt_end, ifp);
 }

@@ -47,6 +47,7 @@
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
 #include <sys/systm.h>
+#include <sys/taskqueue.h>
 
 #include <net/bpf.h>
 #include <net/ethernet.h>
@@ -152,6 +153,7 @@ static void	ix_timer(void *);
 #ifdef IFPOLL_ENABLE
 static void	ix_npoll(struct ifnet *, struct ifpoll_info *);
 static void	ix_npoll_rx(struct ifnet *, void *, int);
+static void	ix_npoll_rx_direct(struct ifnet *, void *, int);
 static void	ix_npoll_tx(struct ifnet *, void *, int);
 static void	ix_npoll_status(struct ifnet *);
 #endif
@@ -173,6 +175,9 @@ static int	ix_sysctl_sts_intr_rate(SYSCTL_HANDLER_ARGS);
 static void     ix_add_hw_stats(struct ix_softc *);
 #endif
 
+static void	ix_watchdog_reset(struct ix_softc *);
+static void	ix_watchdog_task(void *, int);
+static void	ix_sync_netisr(struct ix_softc *, int);
 static void	ix_slot_info(struct ix_softc *);
 static int	ix_alloc_rings(struct ix_softc *);
 static void	ix_free_rings(struct ix_softc *);
@@ -283,6 +288,7 @@ static int	ix_txr = 0;
 static int	ix_txd = IX_PERF_TXD;
 static int	ix_rxd = IX_PERF_RXD;
 static int	ix_unsupported_sfp = 0;
+static int	ix_direct_input = 1;
 
 static char	ix_flowctrl[IFM_ETH_FC_STRLEN] = IFM_ETH_FC_NONE;
 
@@ -294,6 +300,7 @@ TUNABLE_INT("hw.ix.txd", &ix_txd);
 TUNABLE_INT("hw.ix.rxd", &ix_rxd);
 TUNABLE_INT("hw.ix.unsupported_sfp", &ix_unsupported_sfp);
 TUNABLE_STR("hw.ix.flow_ctrl", ix_flowctrl, sizeof(ix_flowctrl));
+TUNABLE_INT("hw.ix.direct_input", &ix_direct_input);
 
 /*
  * Smart speed setting, default to on.  This only works
@@ -389,6 +396,9 @@ ix_attach(device_t dev)
 
 	/* Save frame size */
 	sc->max_frame_size = ETHERMTU + ETHER_HDR_LEN + ETHER_CRC_LEN;
+
+	sc->direct_input = ix_direct_input;
+	TASK_INIT(&sc->wdog_task, 0, ix_watchdog_task, sc);
 
 	callout_init_mp(&sc->timer);
 	lwkt_serialize_init(&sc->main_serialize);
@@ -546,6 +556,9 @@ ix_detach(device_t dev)
 		struct ifnet *ifp = &sc->arpcom.ac_if;
 		uint32_t ctrl_ext;
 
+		ix_sync_netisr(sc, IFF_UP);
+		taskqueue_drain(taskqueue_thread[0], &sc->wdog_task);
+
 		ifnet_serialize_all(ifp);
 
 		ix_powerdown(sc);
@@ -600,6 +613,9 @@ ix_shutdown(device_t dev)
 {
 	struct ix_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+
+	ix_sync_netisr(sc, IFF_UP);
+	taskqueue_drain(taskqueue_thread[0], &sc->wdog_task);
 
 	ifnet_serialize_all(ifp);
 	ix_powerdown(sc);
@@ -3919,12 +3935,54 @@ ix_free_rings(struct ix_softc *sc)
 }
 
 static void
+ix_watchdog_reset(struct ix_softc *sc)
+{
+	int i;
+
+	ASSERT_IFNET_SERIALIZED_ALL(&sc->arpcom.ac_if);
+	ix_init(sc);
+	for (i = 0; i < sc->tx_ring_inuse; ++i)
+		ifsq_devstart_sched(sc->tx_rings[i].tx_ifsq);
+}
+
+static void
+ix_sync_netisr(struct ix_softc *sc, int flags)
+{
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+
+	ifnet_serialize_all(ifp);
+	if (ifp->if_flags & IFF_RUNNING) {
+		ifp->if_flags &= ~(IFF_RUNNING | flags);
+	} else {
+		ifnet_deserialize_all(ifp);
+		return;
+	}
+	ifnet_deserialize_all(ifp);
+
+	/* Make sure that polling stopped. */
+	netmsg_service_sync();
+}
+
+static void
+ix_watchdog_task(void *xsc, int pending __unused)
+{
+	struct ix_softc *sc = xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+
+	ix_sync_netisr(sc, 0);
+
+	ifnet_serialize_all(ifp);
+	if ((ifp->if_flags & (IFF_UP | IFF_RUNNING)) == IFF_UP)
+		ix_watchdog_reset(sc);
+	ifnet_deserialize_all(ifp);
+}
+
+static void
 ix_watchdog(struct ifaltq_subque *ifsq)
 {
 	struct ix_tx_ring *txr = ifsq_get_priv(ifsq);
 	struct ifnet *ifp = ifsq_get_ifp(ifsq);
 	struct ix_softc *sc = ifp->if_softc;
-	int i;
 
 	KKASSERT(txr->tx_ifsq == ifsq);
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
@@ -3944,9 +4002,11 @@ ix_watchdog(struct ifaltq_subque *ifsq)
 	if_printf(ifp, "TX(%d) desc avail = %d, next TX to Clean = %d\n",
 	    txr->tx_idx, txr->tx_avail, txr->tx_next_clean);
 
-	ix_init(sc);
-	for (i = 0; i < sc->tx_ring_inuse; ++i)
-		ifsq_devstart_sched(sc->tx_rings[i].tx_ifsq);
+	if ((ifp->if_flags & (IFF_IDIRECT | IFF_NPOLLING | IFF_RUNNING)) ==
+	    (IFF_IDIRECT | IFF_NPOLLING | IFF_RUNNING))
+		taskqueue_enqueue(taskqueue_thread[0], &sc->wdog_task);
+	else
+		ix_watchdog_reset(sc);
 }
 
 static void
@@ -4077,6 +4137,9 @@ ix_add_sysctl(struct ix_softc *sc)
 	    OID_AUTO, "tx_intr_nsegs", CTLTYPE_INT | CTLFLAG_RW,
 	    sc, 0, ix_sysctl_tx_intr_nsegs, "I",
 	    "# of segments per TX interrupt");
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
+	    OID_AUTO, "direct_input", CTLFLAG_RW, &sc->direct_input, 0,
+	    "Enable direct input");
 	if (sc->intr_type == PCI_INTR_TYPE_MSIX) {
 		SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree),
 		    OID_AUTO, "tx_msix_cpumap", CTLTYPE_OPAQUE | CTLFLAG_RD,
@@ -4776,7 +4839,15 @@ ix_npoll_rx(struct ifnet *ifp __unused, void *arg, int cycle)
 	struct ix_rx_ring *rxr = arg;
 
 	ASSERT_SERIALIZED(&rxr->rx_serialize);
+	ix_rxeof(rxr, cycle);
+}
 
+static void
+ix_npoll_rx_direct(struct ifnet *ifp __unused, void *arg, int cycle)
+{
+	struct ix_rx_ring *rxr = arg;
+
+	ASSERT_NOT_SERIALIZED(&rxr->rx_serialize);
 	ix_rxeof(rxr, cycle);
 }
 
@@ -4784,9 +4855,12 @@ static void
 ix_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 {
 	struct ix_softc *sc = ifp->if_softc;
-	int i, txr_cnt, rxr_cnt;
+	int i, txr_cnt, rxr_cnt, idirect;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+
+	idirect = sc->direct_input;
+	cpu_ccfence();
 
 	if (info) {
 		int cpu;
@@ -4812,11 +4886,21 @@ ix_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 
 			cpu = if_ringmap_cpumap(sc->rx_rmap, i);
 			KKASSERT(cpu < netisr_ncpus);
-			info->ifpi_rx[cpu].poll_func = ix_npoll_rx;
 			info->ifpi_rx[cpu].arg = rxr;
-			info->ifpi_rx[cpu].serializer = &rxr->rx_serialize;
+			if (idirect) {
+				info->ifpi_rx[cpu].poll_func =
+				    ix_npoll_rx_direct;
+				info->ifpi_rx[cpu].serializer = NULL;
+			} else {
+				info->ifpi_rx[cpu].poll_func = ix_npoll_rx;
+				info->ifpi_rx[cpu].serializer =
+				    &rxr->rx_serialize;
+			}
 		}
+		if (idirect)
+			ifp->if_flags |= IFF_IDIRECT;
 	} else {
+		ifp->if_flags &= ~IFF_IDIRECT;
 		for (i = 0; i < sc->tx_ring_cnt; ++i) {
 			struct ix_tx_ring *txr = &sc->tx_rings[i];
 

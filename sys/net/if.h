@@ -120,12 +120,13 @@ struct if_data {
 #define	IFF_MONITOR	0x40000		/* user-requested monitor mode */
 #define	IFF_STATICARP	0x80000		/* static ARP */
 #define	IFF_NPOLLING	0x100000	/* interface is in polling mode */
+#define	IFF_IDIRECT	0x200000	/* direct input */
 
 /* flags set internally only: */
 #define	IFF_CANTCHANGE \
 	(IFF_BROADCAST|IFF_POINTOPOINT|IFF_RUNNING|IFF_OACTIVE_COMPAT|\
 	 IFF_SIMPLEX|IFF_MULTICAST|IFF_ALLMULTI|IFF_SMART|IFF_POLLING_COMPAT|\
-	 IFF_NPOLLING)
+	 IFF_NPOLLING|IFF_IDIRECT)
 
 #ifndef _KERNEL
 /*

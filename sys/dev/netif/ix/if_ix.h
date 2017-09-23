@@ -358,6 +358,8 @@ struct ix_softc {
 
 	int			rdr_table[IX_RDRTABLE_SIZE];
 
+	struct task		wdog_task;
+	int			direct_input;
 #ifdef IX_RSS_DEBUG
 	int			rss_debug;
 #endif

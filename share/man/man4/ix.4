@@ -31,7 +31,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ixgbe.4,v 1.2 2008/06/17 21:14:02 brueffer Exp $
 .\"
-.Dd May 8, 2017
+.Dd September 24, 2017
 .Dt IX 4
 .Os
 .Sh NAME
@@ -260,6 +260,15 @@ force-txpause (force PAUSE transmission),
 force-full (forcefully enable PAUSE reception and transmission),
 force-none (forcefully disable flow control PAUSE operation).
 Default is none.
+.It Va hw.ix.direct_input
+By default,
+if the
+.Xr polling 4
+is enabled,
+the driver will handle input packets directly,
+instead of queuing input packets for further processing.
+The direct input packets handling improves performance and
+stablize latency.
 .El
 .Sh MIB Variables
 A number of per-interface variables are implemented in the
@@ -347,6 +356,11 @@ Setting this value too high will make device drop incoming packets.
 Setting this value too low will hurt overall reception performance
 due to the frequent hardware register writing.
 The default value is 32.
+.It Va direct_input
+See
+.Va hw.ix.direct_input .
+.Xr polling 4
+needs to be turned off and turned on again to make this variable take effect.
 .El
 .Sh SEE ALSO
 .Xr altq 4 ,

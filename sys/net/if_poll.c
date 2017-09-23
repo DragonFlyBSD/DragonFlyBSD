@@ -316,9 +316,19 @@ sched_iopoll(struct iopoll_ctx *io_ctx)
 }
 
 static __inline void
-sched_iopollmore(struct iopoll_ctx *io_ctx)
+sched_iopollmore(struct iopoll_ctx *io_ctx, boolean_t direct)
 {
-	ifpoll_sendmsg_oncpu((netmsg_t)&io_ctx->poll_more_netmsg);
+
+	if (!direct) {
+		ifpoll_sendmsg_oncpu((netmsg_t)&io_ctx->poll_more_netmsg);
+	} else {
+		struct netmsg_base *nmsg = &io_ctx->poll_more_netmsg;
+
+		nmsg->lmsg.ms_flags &= ~(MSGF_REPLY | MSGF_DONE);
+		nmsg->lmsg.ms_flags |= MSGF_SYNC;
+		nmsg->nm_dispatch((netmsg_t)nmsg);
+		KKASSERT(nmsg->lmsg.ms_flags & MSGF_DONE);
+	}
 }
 
 /*
@@ -804,6 +814,7 @@ rxpoll_handler(netmsg_t msg)
 {
 	struct iopoll_ctx *io_ctx;
 	struct thread *td = curthread;
+	boolean_t direct = TRUE;
 	int i, cycles;
 
 	logpoll(rx_start);
@@ -836,14 +847,26 @@ rxpoll_handler(netmsg_t msg)
 		const struct iopoll_rec *rec = &io_ctx->pr[i];
 		struct ifnet *ifp = rec->ifp;
 
-		if (!lwkt_serialize_try(rec->serializer))
+		if (rec->serializer != NULL &&
+		    !lwkt_serialize_try(rec->serializer))
 			continue;
 
-		if ((ifp->if_flags & (IFF_RUNNING | IFF_NPOLLING)) ==
-		    (IFF_RUNNING | IFF_NPOLLING))
+		if ((ifp->if_flags & IFF_IDIRECT) == 0) {
+			direct = FALSE;
+		}
+#ifdef INVARIANTS
+		else {
+			KASSERT(rec->serializer == NULL,
+			    ("serialized direct input"));
+		}
+#endif
+
+		if ((ifp->if_flags & (IFF_UP | IFF_RUNNING | IFF_NPOLLING)) ==
+		    (IFF_UP | IFF_RUNNING | IFF_NPOLLING))
 			rec->poll_func(ifp, rec->arg, cycles);
 
-		lwkt_serialize_exit(rec->serializer);
+		if (rec->serializer != NULL)
+			lwkt_serialize_exit(rec->serializer);
 	}
 
 	/*
@@ -853,8 +876,8 @@ rxpoll_handler(netmsg_t msg)
 	crit_exit_quick(td);
 	crit_enter_quick(td);
 
-	sched_iopollmore(io_ctx);
 	io_ctx->phase = 4;
+	sched_iopollmore(io_ctx, direct);
 
 	crit_exit_quick(td);
 
@@ -893,8 +916,8 @@ txpoll_handler(netmsg_t msg)
 		if (!lwkt_serialize_try(rec->serializer))
 			continue;
 
-		if ((ifp->if_flags & (IFF_RUNNING | IFF_NPOLLING)) ==
-		    (IFF_RUNNING | IFF_NPOLLING))
+		if ((ifp->if_flags & (IFF_UP | IFF_RUNNING | IFF_NPOLLING)) ==
+		    (IFF_UP | IFF_RUNNING | IFF_NPOLLING))
 			rec->poll_func(ifp, rec->arg, -1);
 
 		lwkt_serialize_exit(rec->serializer);
@@ -907,8 +930,8 @@ txpoll_handler(netmsg_t msg)
 	crit_exit_quick(td);
 	crit_enter_quick(td);
 
-	sched_iopollmore(io_ctx);
 	io_ctx->phase = 4;
+	sched_iopollmore(io_ctx, TRUE);
 
 	crit_exit_quick(td);
 
