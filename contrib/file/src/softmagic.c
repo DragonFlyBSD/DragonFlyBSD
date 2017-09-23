@@ -1300,7 +1300,7 @@ mcopy(struct magic_set *ms, union VALUETYPE *p, int type, int indir,
 private uint32_t
 do_ops(struct magic *m, intmax_t lhs, intmax_t off)
 {
-	intmax_t offset;
+	intmax_t offset = 0;
 	if (off) {
 		switch (m->in_op & FILE_OPS_MASK) {
 		case FILE_OPAND:
