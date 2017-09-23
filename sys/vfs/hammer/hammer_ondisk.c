@@ -214,7 +214,7 @@ hammer_install_volume(hammer_mount_t hmp, const char *volname,
 
 	if (RB_EMPTY(&hmp->rb_vols_root)) {
 		hmp->fsid = ondisk->vol_fsid;
-	} else if (bcmp(&hmp->fsid, &ondisk->vol_fsid, sizeof(hammer_uuid_t))) {
+	} else if (kuuid_compare(&hmp->fsid, &ondisk->vol_fsid)) {
 		hkprintf("volume %s's fsid does not match other volumes\n",
 			volume->vol_name);
 		error = EFTYPE;

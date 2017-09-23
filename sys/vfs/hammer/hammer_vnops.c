@@ -2204,10 +2204,8 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 		if (error == 0) {
 			hammer_guid_to_uuid(&uuid_uid, cur_uid);
 			hammer_guid_to_uuid(&uuid_gid, cur_gid);
-			if (bcmp(&uuid_uid, &ip->ino_data.uid,
-				 sizeof(uuid_uid)) ||
-			    bcmp(&uuid_gid, &ip->ino_data.gid,
-				 sizeof(uuid_gid)) ||
+			if (kuuid_compare(&uuid_uid, &ip->ino_data.uid) ||
+			    kuuid_compare(&uuid_gid, &ip->ino_data.gid) ||
 			    ip->ino_data.mode != cur_mode) {
 				ip->ino_data.uid = uuid_uid;
 				ip->ino_data.gid = uuid_gid;
