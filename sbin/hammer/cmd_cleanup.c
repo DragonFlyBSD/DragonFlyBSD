@@ -58,9 +58,9 @@
  * (/var/hammer/root for root mount).
  */
 
-#include <libutil.h>
-
 #include "hammer.h"
+
+#include <libutil.h>
 
 struct didpfs {
 	struct didpfs *next;

@@ -37,6 +37,8 @@
 
 #include "hammer_util.h"
 
+#include <uuid.h>
+
 void hammer_uuid_create(hammer_uuid_t *uuid)
 {
 	uuid_create(uuid, NULL);

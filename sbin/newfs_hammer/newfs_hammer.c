@@ -32,10 +32,10 @@
  * SUCH DAMAGE.
  */
 
+#include "hammer_util.h"
+
 #include <sys/sysctl.h>
 #include <sys/ioctl_compat.h>
-
-#include "hammer_util.h"
 
 static int64_t getsize(const char *str, int pw);
 static int trim_volume(volume_info_t volume);

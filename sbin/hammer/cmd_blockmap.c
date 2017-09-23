@@ -36,6 +36,8 @@
 
 #include "hammer.h"
 
+#include <sys/tree.h>
+
 /*
  * Each collect covers 1<<(19+23) bytes address space of layer 1.
  * (plus a copy of 1<<23 bytes that holds layer2 entries in layer 1).

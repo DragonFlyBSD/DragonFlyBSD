@@ -38,25 +38,30 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-#include <sys/tree.h>
 #include <sys/queue.h>
 #include <sys/mount.h>
+#include <sys/wait.h>
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <string.h>
-#include <unistd.h>
 #include <stddef.h>
-#include <err.h>
+#include <string.h>
+#include <ctype.h>
+#include <dirent.h>
 #include <errno.h>
+#include <err.h>
 #include <fcntl.h>
+#include <libgen.h>
+#include <limits.h>
+#include <signal.h>
+#include <time.h>
+#include <unistd.h>
+#include <assert.h>
 
 #include <vfs/hammer/hammer_disk.h>
 #include <vfs/hammer/hammer_ioctl.h>
 #include <vfs/hammer/hammer_crc.h>
-#include <uuid.h>
 
 #define HAMMER_BUFLISTS		64
 #define HAMMER_BUFLISTMASK	(HAMMER_BUFLISTS - 1)

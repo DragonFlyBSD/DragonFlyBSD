@@ -34,6 +34,8 @@
 
 #include "hammer.h"
 
+#include <sys/tree.h>
+
 struct recover_dict {
 	struct recover_dict *next;
 	struct recover_dict *parent;

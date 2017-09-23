@@ -32,10 +32,10 @@
  * SUCH DAMAGE.
  */
 
+#include "hammer_util.h"
+
 #include <sys/diskslice.h>
 #include <sys/diskmbr.h>
-
-#include "hammer_util.h"
 
 static void check_volume(volume_info_t volume);
 static void get_buffer_readahead(buffer_info_t base);

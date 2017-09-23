@@ -33,10 +33,10 @@
  *
  */
 
+#include "hammer.h"
+
 #include <libutil.h>
 #include <libhammer.h>
-
-#include "hammer.h"
 
 void show_info(char *path);
 static double percent(int64_t value, int64_t total);
