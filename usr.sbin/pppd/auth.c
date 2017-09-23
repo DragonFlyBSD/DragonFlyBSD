@@ -624,6 +624,7 @@ check_passwd(int unit, char *auser, int userlen, char *apasswd, int passwdlen,
     char secret[MAXWORDLEN];
     static int attempts = 0;
     int len;
+    char *cryptpw;
 
     /*
      * Make copies of apasswd and auser, then null-terminate them.
@@ -657,8 +658,10 @@ check_passwd(int unit, char *auser, int userlen, char *apasswd, int passwdlen,
 	} else {
 	    if (secret[0] != 0) {
 		/* password given in pap-secrets - must match */
+		cryptpw = crypt(passwd, secret);
+
 		if ((cryptpap || strcmp(passwd, secret) != 0)
-		    && strcmp(crypt(passwd, secret), secret) != 0) {
+		    && (cryptpw == NULL || strcmp(cryptpw, secret) != 0)) {
 			ret = UPAP_AUTHNAK;
 			warn("PAP authentication failure for %s", user);
 		}

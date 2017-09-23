@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.yppasswdd/yppasswdd_server.c,v 1.29 2003/06/15 21:24:45 mbr Exp $
- * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_server.c,v 1.7 2005/11/25 00:32:49 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -451,6 +450,7 @@ yppasswdproc_update_1_svc(yppasswd *argp, struct svc_req *rqstp)
 	char passfile_buf[MAXPATHLEN + 2];
 	char passfile_hold_buf[MAXPATHLEN + 2];
 	char *domain = yppasswd_domain;
+	char *cryptpw;
 	static struct sockaddr_in clntaddr;
 	static struct timeval t_saved, t_test;
 
@@ -522,8 +522,9 @@ yppasswdproc_update_1_svc(yppasswd *argp, struct svc_req *rqstp)
 
 	/* Step 2: check that the supplied oldpass is valid. */
 
-	if (strcmp(crypt(argp->oldpass, yp_password.pw_passwd),
-					yp_password.pw_passwd)) {
+	cryptpw = crypt(argp->oldpass, yp_password.pw_passwd);
+
+	if (cryptpw == NULL || strcmp(cryptpw, yp_password.pw_passwd) != 0) {
 		yp_error("rejected change attempt -- bad password");
 		yp_error("client address: %s username: %s",
 			  inet_ntoa(rqhost->sin_addr),
