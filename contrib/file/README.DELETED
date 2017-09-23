@@ -27,10 +27,12 @@ src/Makefile.in
 src/asctime_r.c
 src/asprintf.c
 src/ctime_r.c
+src/dprintf.c
 src/fmtcheck.c
 src/getline.c
 src/getopt_long.c
-src/magic.h.in
+src/gmtime_r.c
+src/localtime_r.c
 src/pread.c
 src/strcasestr.c
 src/strlcat.c
