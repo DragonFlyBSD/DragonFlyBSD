@@ -24,7 +24,7 @@
 .\"
 .\"    $FreeBSD: src/share/man/man9/microuptime.9,v 1.2.2.2 2001/12/17 11:30:18 ru Exp $
 .\"
-.Dd January 3, 2000
+.Dd September 23, 2017
 .Dt MICROUPTIME 9
 .Os
 .Sh NAME
@@ -69,19 +69,13 @@ Whereas
 .Fn getmicrouptime
 and
 .Fn getnanouptime
-functions are abstractions which can alternately return a less precise, but
+functions are abstractions which return a less precise, but
 faster to obtain, time.
-This behaviour can be toggled via the
-kern.timecounter.method sysctl variable:
-.Bl -tag -width ABC
-.It Dv 0
-sacrifice precision in favor of faster code execution
-.It Dv 1
-return the more precise time (the same as calling
-.Fn microuptime
-or
-.Fn nanouptime ) .
-.El
+The
+.Fn getmicrouptime
+and
+.Fn getnanouptime
+functions will return a time which is up to 1/HZ previous to the call.
 .Pp
 The intent of the
 .Fn getmicrouptime
@@ -89,9 +83,6 @@ and
 .Fn getnanouptime
 functions is to enforce the user's preference for timer accuracy versus
 execution time.
-.Sh DIAGNOSTICS
-Buggy hardware can cause "calcru negative..." when kern.timecounter.method
-is set to 0.
 .Sh SEE ALSO
 .Xr getmicrotime 9 ,
 .Xr getnanotime 9 ,
