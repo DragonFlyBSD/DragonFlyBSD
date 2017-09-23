@@ -27,7 +27,7 @@
 #include "file.h"
 
 #ifndef	lint
-FILE_RCSID("@(#)$File: funcs.c,v 1.79 2014/12/16 20:52:49 christos Exp $")
+FILE_RCSID("@(#)$File: funcs.c,v 1.70 2014/03/14 19:02:37 christos Exp $")
 #endif	/* lint */
 
 #include "magic.h"
@@ -44,6 +44,9 @@ FILE_RCSID("@(#)$File: funcs.c,v 1.79 2014/12/16 20:52:49 christos Exp $")
 #endif
 #if defined(HAVE_LIMITS_H)
 #include <limits.h>
+#endif
+#if defined(HAVE_LOCALE_H)
+#include <locale.h>
 #endif
 
 #ifndef SIZE_MAX
@@ -227,7 +230,7 @@ file_buffer(struct magic_set *ms, int fd, const char *inname __attribute__ ((unu
 
 	/* try soft magic tests */
 	if ((ms->flags & MAGIC_NO_CHECK_SOFT) == 0)
-		if ((m = file_softmagic(ms, ubuf, nb, 0, NULL, BINTEST,
+		if ((m = file_softmagic(ms, ubuf, nb, 0, BINTEST,
 		    looks_text)) != 0) {
 			if ((ms->flags & MAGIC_DEBUG) != 0)
 				(void)fprintf(stderr, "softmagic %d\n", m);
@@ -277,9 +280,7 @@ simple:
 		if (file_printf(ms, "%s", code_mime) == -1)
 			rv = -1;
 	}
-#if HAVE_FORK
  done_encoding:
-#endif
 	free(u8buf);
 	if (rv)
 		return rv;
@@ -426,133 +427,35 @@ file_printedlen(const struct magic_set *ms)
 protected int
 file_replace(struct magic_set *ms, const char *pat, const char *rep)
 {
-	file_regex_t rx;
+	regex_t rx;
 	int rc, rv = -1;
+	char *old_lc_ctype;
 
-	rc = file_regcomp(&rx, pat, REG_EXTENDED);
+	old_lc_ctype = setlocale(LC_CTYPE, NULL);
+	assert(old_lc_ctype != NULL);
+	old_lc_ctype = strdup(old_lc_ctype);
+	assert(old_lc_ctype != NULL);
+	(void)setlocale(LC_CTYPE, "C");
+	rc = regcomp(&rx, pat, REG_EXTENDED);
 	if (rc) {
-		file_regerror(&rx, rc, ms);
+		char errmsg[512];
+		(void)regerror(rc, &rx, errmsg, sizeof(errmsg));
+		file_magerror(ms, "regex error %d, (%s)", rc, errmsg);
 	} else {
 		regmatch_t rm;
 		int nm = 0;
-		while (file_regexec(&rx, ms->o.buf, 1, &rm, 0) == 0) {
+		while (regexec(&rx, ms->o.buf, 1, &rm, 0) == 0) {
 			ms->o.buf[rm.rm_so] = '\0';
 			if (file_printf(ms, "%s%s", rep,
 			    rm.rm_eo != 0 ? ms->o.buf + rm.rm_eo : "") == -1)
 				goto out;
 			nm++;
 		}
+		regfree(&rx);
 		rv = nm;
 	}
 out:
-	file_regfree(&rx);
+	(void)setlocale(LC_CTYPE, old_lc_ctype);
+	free(old_lc_ctype);
 	return rv;
-}
-
-protected int
-file_regcomp(file_regex_t *rx, const char *pat, int flags)
-{
-#ifdef USE_C_LOCALE
-	rx->c_lc_ctype = newlocale(LC_CTYPE_MASK, "C", 0);
-	assert(rx->c_lc_ctype != NULL);
-	rx->old_lc_ctype = uselocale(rx->c_lc_ctype);
-	assert(rx->old_lc_ctype != NULL);
-#endif
-	rx->pat = pat;
-
-	return rx->rc = regcomp(&rx->rx, pat, flags);
-}
-
-protected int
-file_regexec(file_regex_t *rx, const char *str, size_t nmatch,
-    regmatch_t* pmatch, int eflags)
-{
-	assert(rx->rc == 0);
-	return regexec(&rx->rx, str, nmatch, pmatch, eflags);
-}
-
-protected void
-file_regfree(file_regex_t *rx)
-{
-	if (rx->rc == 0)
-		regfree(&rx->rx);
-#ifdef USE_C_LOCALE
-	(void)uselocale(rx->old_lc_ctype);
-	freelocale(rx->c_lc_ctype);
-#endif
-}
-
-protected void
-file_regerror(file_regex_t *rx, int rc, struct magic_set *ms)
-{
-	char errmsg[512];
-
-	(void)regerror(rc, &rx->rx, errmsg, sizeof(errmsg));
-	file_magerror(ms, "regex error %d for `%s', (%s)", rc, rx->pat,
-	    errmsg);
-}
-
-protected file_pushbuf_t *
-file_push_buffer(struct magic_set *ms)
-{
-	file_pushbuf_t *pb;
-
-	if (ms->event_flags & EVENT_HAD_ERR)
-		return NULL;
-
-	if ((pb = (CAST(file_pushbuf_t *, malloc(sizeof(*pb))))) == NULL)
-		return NULL;
-
-	pb->buf = ms->o.buf;
-	pb->offset = ms->offset;
-
-	ms->o.buf = NULL;
-	ms->offset = 0;
-
-	return pb;
-}
-
-protected char *
-file_pop_buffer(struct magic_set *ms, file_pushbuf_t *pb)
-{
-	char *rbuf;
-
-	if (ms->event_flags & EVENT_HAD_ERR) {
-		free(pb->buf);
-		free(pb);
-		return NULL;
-	}
-
-	rbuf = ms->o.buf;
-
-	ms->o.buf = pb->buf;
-	ms->offset = pb->offset;
-
-	free(pb);
-	return rbuf;
-}
-
-/*
- * convert string to ascii printable format.
- */
-protected char *
-file_printable(char *buf, size_t bufsiz, const char *str)
-{
-	char *ptr, *eptr;
-	const unsigned char *s = (const unsigned char *)str;
-
-	for (ptr = buf, eptr = ptr + bufsiz - 1; ptr < eptr && *s; s++) {
-		if (isprint(*s)) {
-			*ptr++ = *s;
-			continue;
-		}
-		if (ptr >= eptr - 3)
-			break;
-		*ptr++ = '\\';
-		*ptr++ = ((*s >> 6) & 7) + '0';
-		*ptr++ = ((*s >> 3) & 7) + '0';
-		*ptr++ = ((*s >> 0) & 7) + '0';
-	}
-	*ptr = '\0';
-	return buf;
 }
