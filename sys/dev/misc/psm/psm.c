@@ -79,6 +79,7 @@
 #include <sys/time.h>
 #include <sys/uio.h>
 #include <sys/machintr.h>
+#include <sys/vnode.h>
 
 #include <machine/clock.h>
 #include <machine/limits.h>
@@ -87,7 +88,6 @@
 #include <bus/isa/isavar.h>
 #include <dev/misc/kbd/atkbdcreg.h>
 
-#include <sys/poll.h>
 #include <sys/signalvar.h>
 #include <sys/filio.h>
 
@@ -141,11 +141,6 @@
     ((((b[2] & 0x03) << 2) | 0x02) == (b[1] & 0x0f))
 #define	MOUSE_PS2PLUS_PACKET_TYPE(b)	\
     (((b[0] & 0x30) >> 2) | ((b[1] & 0x30) >> 4))
-
-/* some macros */
-#define PSM_UNIT(dev)	      (minor(dev) >> 1)
-#define PSM_NBLOCKIO(dev)     (minor(dev) & 1)
-#define PSM_MKMINOR(unit,block)	   ((((unit) & 0xff) << 1) | ((block) ? 0:1))
 
 /* ring buffer */
 typedef struct ringbuf {
@@ -417,7 +412,6 @@ struct psm_softc {		/* Driver status information */
 	struct callout	 callout;	/* watchdog timer call out */
 	struct callout	 softcallout; /* buffer timer call out */
 	struct cdev	*dev;
-	struct cdev	*bdev;
 	int		lasterr;
 	int		cmdcount;
 	int             extended_buttons;
@@ -461,8 +455,6 @@ enum {
 	SYNAPTICS_SYSCTL_SOFTBUTTON2_X =        SYN_OFFSET(softbutton2_x),
 	SYNAPTICS_SYSCTL_SOFTBUTTON3_X =        SYN_OFFSET(softbutton3_x),
 };
-
-#define PSM_SOFTC(unit)  ((struct psm_softc*)devclass_get_softc(psm_devclass, unit))
 
 /* driver state flags (state) */
 #define	PSM_VALID		0x80
@@ -1634,10 +1626,8 @@ psmattach(device_t dev)
 	}
 
 	/* Done */
-	sc->dev = make_dev(&psm_ops, PSM_MKMINOR(unit, FALSE), 0, 0, 0666, "psm%d", unit);
+	sc->dev = make_dev(&psm_ops, unit, 0, 0, 0666, "psm%d", unit);
 	sc->dev->si_drv1 = sc;
-	sc->bdev = make_dev(&psm_ops, PSM_MKMINOR(unit, FALSE), 0, 0, 0666, "bpsm%d", unit);
-	sc->bdev->si_drv1 = sc;
 
 	/* Some touchpad devices need full reinitialization after suspend. */
 	switch (sc->hw.model) {
@@ -1694,7 +1684,6 @@ psmdetach(device_t dev)
 	bus_release_resource(dev, SYS_RES_IRQ, rid, sc->intr);
 
 	destroy_dev(sc->dev);
-	destroy_dev(sc->bdev);
 
 	/* XXX: callout_drain in original freebsd11 code */
 	callout_stop_sync(&sc->callout);
@@ -1955,7 +1944,7 @@ psmread(struct dev_read_args *ap)
 	/* block until mouse activity occurred */
 	crit_enter();
 	while (sc->queue.count <= 0) {
-		if (dev != sc->bdev) {
+		if (ap->a_ioflag & IO_NDELAY) {
 			crit_exit();
 			return (EWOULDBLOCK);
 		}
@@ -4421,7 +4410,7 @@ static int
 psmkqfilter(struct dev_kqfilter_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	struct psm_softc *sc = PSM_SOFTC(PSM_UNIT(dev));
+	struct psm_softc *sc = dev->si_drv1;
 	struct knote *kn = ap->a_kn;
 	struct klist *klist;
 

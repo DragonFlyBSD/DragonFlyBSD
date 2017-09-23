@@ -172,22 +172,6 @@ The driver has an internal variable which governs the effect of
 the acceleration.
 Its value can be modified via the driver flag
 or via an ioctl call.
-.Ss Device Number
-The minor device number of the
-.Nm
-is made up of:
-.Bd -literal -offset indent
-minor = (`unit' << 1) | `non-blocking'
-.Ed
-.Pp
-where `unit' is the device number (usually 0) and the `non-blocking' bit
-is set to indicate ``don't block waiting for mouse input,
-return immediately''.
-The `non-blocking' bit should be set for \fIXFree86\fP,
-therefore the minor device number usually used for \fIXFree86\fP is 1.
-See
-.Sx FILES
-for device node names.
 .Sh DRIVER CONFIGURATION
 .Ss Kernel Configuration Options
 There are following kernel configuration options to control the
@@ -671,9 +655,7 @@ movement counts as described in
 .Sh FILES
 .Bl -tag -width /dev/npsm0 -compact
 .It Pa /dev/psm0
-`non-blocking' device node
-.It Pa /dev/bpsm0
-`blocking' device node
+device node
 .El
 .Sh EXAMPLES
 .Dl "device psm0 at atkbdc? irq 12 flags 0x2000"
