@@ -119,6 +119,7 @@ typedef __int32_t	__ssize_t;
 typedef __int32_t	__register_t;
 typedef __uint32_t	__u_register_t;
 #endif
+typedef long		__suseconds_t;
 typedef long		__time_t;
 typedef int		__timer_t;
 typedef __int32_t	__sig_atomic_t;	/* XXX */

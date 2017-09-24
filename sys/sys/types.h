@@ -117,7 +117,7 @@ typedef	__rlim_t	rlim_t;		/* resource limit */
 #endif
 typedef	__segsz_t	segsz_t;	/* segment size */
 #ifndef _SUSECONDS_T_DECLARED
-typedef	long		suseconds_t;	/* microseconds (signed) */
+typedef	__suseconds_t	suseconds_t;	/* microseconds (signed) */
 #define	_SUSECONDS_T_DECLARED
 #endif
 #ifndef _UID_T_DECLARED

@@ -35,7 +35,7 @@
 #include <machine/stdint.h>
 
 #ifndef _SUSECONDS_T_DECLARED
-typedef	long		suseconds_t;
+typedef	__suseconds_t	suseconds_t;
 #define	_SUSECONDS_T_DECLARED
 #endif
 
