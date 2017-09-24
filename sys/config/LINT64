@@ -501,7 +501,6 @@ options 	TMPFS			#Temporary filesystem
 options		UDF			#UDF filesystem
 
 # The xFS_ROOT options REQUIRE the associated ``options xFS''
-options 	FFS_ROOT		#FFS usable as root device
 options 	NFS_ROOT		#NFS usable as root device
 
 # Soft updates is technique for improving UFS filesystem speed and

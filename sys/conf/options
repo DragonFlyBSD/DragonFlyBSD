@@ -134,7 +134,6 @@ UFS_DIRHASH	opt_ufs.h
 # <filesystem>_ROOT option to control if it usable as root.  This list
 # allows these options to be present in config files already (though
 # they won't make any difference yet).
-FFS_ROOT	opt_ffs.h
 NFS_ROOT	opt_nfsroot.h
 
 # Options used only in subr_param.c.
@@ -667,3 +666,4 @@ SYSVSHM			opt_dontuse.h
 P1003_1B		opt_dontuse.h
 _KPOSIX_VERSION		opt_dontuse.h
 DSCHED_FQ		opt_dontuse.h
+FFS_ROOT		opt_dontuse.h

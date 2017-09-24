@@ -43,7 +43,6 @@
  * and the drivers are initialized.
  */
 #include "opt_bootp.h"
-#include "opt_ffs.h"
 #include "opt_cd9660.h"
 #include "opt_nfs.h"
 #include "opt_nfsroot.h"

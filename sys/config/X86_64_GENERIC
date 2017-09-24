@@ -20,7 +20,6 @@ options 	HAMMER			#Hammer Filesystem
 options		HAMMER2			#HAMMER2 filesystem
 options		NULLFS			#NULL filesystem
 options 	FFS			#Berkeley Fast Filesystem
-options 	FFS_ROOT		#FFS usable as root device [keep this!]
 options 	SOFTUPDATES		#Enable FFS soft updates support
 options 	UFS_DIRHASH		#Improve performance on big directories
 options 	MFS			#Memory Filesystem
