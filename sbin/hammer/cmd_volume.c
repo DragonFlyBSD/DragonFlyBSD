@@ -85,7 +85,7 @@ hammer_cmd_volume_add(char **av, int ac)
 	 * volume-add ioctl
 	 */
 	bzero(&ioc, sizeof(ioc));
-	strncpy(ioc.device_name, device, MAXPATHLEN);
+	strncpy(ioc.device_name, device, sizeof(ioc.device_name) - 1);
 	ioc.vol_size = volume->size;
 	ioc.boot_area_size = init_boot_area_size(0, ioc.vol_size);
 	ioc.memory_log_size = init_memory_log_size(0, ioc.vol_size);
@@ -127,7 +127,7 @@ hammer_cmd_volume_del(char **av, int ac)
 	 * volume-del ioctl
 	 */
 	bzero(&ioc, sizeof(ioc));
-	strncpy(ioc.device_name, device, MAXPATHLEN);
+	strncpy(ioc.device_name, device, sizeof(ioc.device_name) - 1);
 	if (ForceOpt)
 		ioc.flag |= HAMMER_IOC_VOLUME_REBLOCK;
 retry:

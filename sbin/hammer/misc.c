@@ -150,7 +150,8 @@ hammer_fs_to_rootvol(const char *fs, char *buf, int len)
 
 	for (i = 0; i < ioc.nvols; i++) {
 		if (ioc.vols[i].vol_no == HAMMER_ROOT_VOLNO) {
-			strlcpy(buf, ioc.vols[i].device_name, len);
+			buf[len - 1] = '\0';
+			strncpy(buf, ioc.vols[i].device_name, len - 1);
 			break;
 		}
 	}
