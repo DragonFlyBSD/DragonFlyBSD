@@ -1185,6 +1185,9 @@ killit:
  * NOTE: No mtid (modify_tid) is passed into this routine.  The caller is
  *	 only modifying the in-memory inode.  A modify_tid is synchronized
  *	 later when the inode gets flushed.
+ *
+ * NOTE: As an exception to the general rule, the inode MAY be locked
+ *	 shared for this particular call.
  */
 void
 hammer2_inode_modify(hammer2_inode_t *ip)

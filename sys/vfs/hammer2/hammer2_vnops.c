@@ -1333,6 +1333,9 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 
 	/*
 	 * Update dip's mtime
+	 *
+	 * We can use a shared inode lock and allow the meta.mtime update
+	 * SMP race.  hammer2_inode_modify() is MPSAFE w/a shared lock.
 	 */
 	if (error == 0) {
 		uint64_t mtime;

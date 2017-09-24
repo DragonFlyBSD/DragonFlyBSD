@@ -2168,7 +2168,10 @@ hammer2_chain_lookup_done(hammer2_chain_t *parent)
 
 /*
  * Take the locked chain and return a locked parent.  The chain remains
- * locked on return.  Pass HAMMER2_RESOLVE_* flags in flags.
+ * locked on return, but may have to be temporarily unlocked to acquire
+ * the parent.  Can return NULL.
+ *
+ * Pass HAMMER2_RESOLVE_* flags in flags.
  *
  * This will work even if the chain is errored, and the caller can check
  * parent->error on return if desired since the parent will be locked.
@@ -4419,14 +4422,11 @@ hammer2_chain_indkey_dir(hammer2_chain_t *parent, hammer2_key_t *keyp,
 	int maxloops = 300000;
 
 	/*
-	 * Shortcut if the parent is the inode.  In this situation the
-	 * parent has 4+1 directory entries and we are creating an indirect
-	 * block capable of holding many more.
+	 * NOTE: We can't take a shortcut here anymore for inodes because
+	 *	 the root directory can contain a mix of inodes and directory
+	 *	 entries (we used to just return 63 if parent->bref.type was
+	 *	 HAMMER2_BREF_TYPE_INODE.
 	 */
-	if (parent->bref.type == HAMMER2_BREF_TYPE_INODE) {
-		return 63;
-	}
-
 	key = *keyp;
 	locount = 0;
 	hicount = 0;
