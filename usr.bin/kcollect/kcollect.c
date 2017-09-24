@@ -31,10 +31,23 @@
 
 #include "kcollect.h"
 
+#include <ndbm.h>
+#include <fcntl.h>
+#include <errno.h>
+
 #define SLEEP_INTERVAL	60	/* minimum is KCOLLECT_INTERVAL */
 
-static void dump_text(kcollect_t *ary, size_t count, size_t total_count);
+#define DISPLAY_TIME_ONLY "%H:%M:%S"
+#define DISPLAY_FULL_DATE "%F %H:%M:%S"
+
+static void format_output(uintmax_t value,char fmt,uintmax_t scale, char* ret);
+static void dump_text(kcollect_t *ary, size_t count,
+			size_t total_count, const char* display_fmt);
 static void dump_dbm(kcollect_t *ary, size_t count, const char *datafile);
+static int str2unix(const char* str, const char* fmt);
+static int rec_comparator(const void *c1, const void *c2);
+static void load_dbm(const char *datafile, kcollect_t *ary,
+			kcollect_t **ret_ary, size_t *counter);
 static void dump_fields(kcollect_t *ary);
 static void adjust_fields(kcollect_t *ent, const char *fields);
 
@@ -60,6 +73,10 @@ main(int ac, char **av)
 	int loops = 0;
 	int maxtime = 0;
 
+	kcollect_t *dbmAry = NULL;
+	const char *dbmFile = NULL;
+	int fromFile = 0;
+
 	OutFP = stdout;
 
 	sysctlbyname("kern.collect_data", NULL, &bytes, NULL, 0);
@@ -68,7 +85,7 @@ main(int ac, char **av)
 		exit(1);
 	}
 
-	while ((ch = getopt(ac, av, "o:b:flsgt:xw:GW:H:")) != -1) {
+	while ((ch = getopt(ac, av, "o:b:d:flsgt:xw:GW:H:")) != -1) {
 		char *suffix;
 
 		switch(ch) {
@@ -78,6 +95,10 @@ main(int ac, char **av)
 		case 'b':
 			datafile = optarg;
 			cmd = 'b';
+			break;
+		case 'd':
+			dbmFile = optarg;
+			fromFile = 1;
 			break;
 		case 'f':
 			keepalive = 1;
@@ -166,11 +187,21 @@ main(int ac, char **av)
 
 		ary = malloc(bytes);
 		sysctlbyname("kern.collect_data", ary, &bytes, NULL, 0);
+		count = bytes / sizeof(kcollect_t);
 
+		/*
+		 * If we got specified a file to load from: replace the data
+		 * array and counter
+		 */
+		if (fromFile) {
+			load_dbm(dbmFile, ary, &dbmAry, &count);
+			free(ary);
+			ary = dbmAry;
+
+		}
 		if (fields)
 			adjust_fields(&ary[1], fields);
 
-		count = bytes / sizeof(kcollect_t);
 
 		/*
 		 * Delete duplicate entries when looping
@@ -199,8 +230,11 @@ main(int ac, char **av)
 
 		switch(cmd) {
 		case 't':
-			if (count > 2)
-				dump_text(ary, count, total_count);
+			if (count > 2) {
+				dump_text(ary, count, total_count,
+					  (fromFile ? DISPLAY_FULL_DATE :
+						      DISPLAY_TIME_ONLY));
+			}
 			break;
 		case 'b':
 			if (count > 2)
@@ -223,7 +257,7 @@ main(int ac, char **av)
 				dump_gnuplot(ary, count);
 			break;
 		}
-		if (keepalive) {
+		if (keepalive && !fromFile) {
 			fflush(OutFP);
 			fflush(stdout);
 			switch(cmd) {
@@ -261,20 +295,94 @@ main(int ac, char **av)
 
 static
 void
-dump_text(kcollect_t *ary, size_t count, size_t total_count)
+format_output(uintmax_t value,char fmt,uintmax_t scale, char* ret)
+{
+	char buf[9];
+
+	switch(fmt) {
+	case '2':
+		/*
+		 * fractional x100
+		 */
+		sprintf(ret, "%5ju.%02ju",
+			value / 100, value % 100);
+		break;
+	case 'p':
+		/*
+		 * Percentage fractional x100 (100% = 10000)
+		 */
+		sprintf(ret,"%4ju.%02ju%%",
+			value / 100, value % 100);
+		break;
+	case 'm':
+		/*
+		 * Megabytes
+		 */
+		humanize_number(buf, sizeof(buf), value, "",
+				2,
+				HN_FRACTIONAL |
+				HN_NOSPACE);
+		sprintf(ret,"%8.8s", buf);
+		break;
+	case 'c':
+		/*
+		 * Raw count over period (this is not total)
+		 */
+		humanize_number(buf, sizeof(buf), value, "",
+				HN_AUTOSCALE,
+				HN_FRACTIONAL |
+				HN_NOSPACE |
+				HN_DIVISOR_1000);
+		sprintf(ret,"%8.8s", buf);
+		break;
+	case 'b':
+		/*
+		 * Total bytes (this is a total), output
+		 * in megabytes.
+		 */
+		if (scale > 100000000) {
+			humanize_number(buf, sizeof(buf),
+					value, "",
+					3,
+					HN_FRACTIONAL |
+					HN_NOSPACE);
+		} else {
+			humanize_number(buf, sizeof(buf),
+					value, "",
+					2,
+					HN_FRACTIONAL |
+					HN_NOSPACE);
+		}
+		sprintf(ret,"%8.8s", buf);
+		break;
+	default:
+		sprintf(ret,"%s","        ");
+		break;
+	}
+}
+
+static
+void
+dump_text(kcollect_t *ary, size_t count, size_t total_count,
+	  const char* display_fmt)
 {
 	int j;
 	int i;
 	uintmax_t scale;
 	uintmax_t value;
 	char fmt;
-	char buf[9];
+	char sbuf[20];
 	struct tm *tmv;
 	time_t t;
 
 	for (i = count - 1; i >= 2; --i) {
 		if ((total_count & 15) == 0) {
-			printf("%8.8s", "time");
+			if(!strcmp(display_fmt,DISPLAY_FULL_DATE)) {
+				printf("%20s", "timestamp ");
+			}
+			else {
+				printf("%8.8s", "time");
+			}
 			for (j = 0; j < KCOLLECT_ENTRIES; ++j) {
 				if (ary[1].data[j]) {
 					printf(" %8.8s",
@@ -292,8 +400,8 @@ dump_text(kcollect_t *ary, size_t count, size_t total_count)
 			tmv = gmtime(&t);
 		else
 			tmv = localtime(&t);
-		strftime(buf, sizeof(buf), "%H:%M:%S", tmv);
-		printf("%8.8s", buf);
+		strftime(sbuf, sizeof(sbuf), display_fmt, tmv);
+		printf("%8s", sbuf);
 
 		for (j = 0; j < KCOLLECT_ENTRIES; ++j) {
 			if (ary[1].data[j] == 0)
@@ -314,74 +422,187 @@ dump_text(kcollect_t *ary, size_t count, size_t total_count)
 
 			printf(" ");
 
-			switch(fmt) {
-			case '2':
-				/*
-				 * fractional x100
-				 */
-				printf("%5ju.%02ju", value / 100, value % 100);
-				break;
-			case 'p':
-				/*
-				 * Percentage fractional x100 (100% = 10000)
-				 */
-				printf("%4ju.%02ju%%",
-					value / 100, value % 100);
-				break;
-			case 'm':
-				/*
-				 * Megabytes
-				 */
-				humanize_number(buf, sizeof(buf), value, "",
-						2,
-						HN_FRACTIONAL |
-						HN_NOSPACE);
-				printf("%8.8s", buf);
-				break;
-			case 'c':
-				/*
-				 * Raw count over period (this is not total)
-				 */
-				humanize_number(buf, sizeof(buf), value, "",
-						HN_AUTOSCALE,
-						HN_FRACTIONAL |
-						HN_NOSPACE |
-						HN_DIVISOR_1000);
-				printf("%8.8s", buf);
-				break;
-			case 'b':
-				/*
-				 * Total bytes (this is a total), output
-				 * in megabytes.
-				 */
-				if (scale > 100000000) {
-					humanize_number(buf, sizeof(buf),
-							value, "",
-							3,
-							HN_FRACTIONAL |
-							HN_NOSPACE);
-				} else {
-					humanize_number(buf, sizeof(buf),
-							value, "",
-							2,
-							HN_FRACTIONAL |
-							HN_NOSPACE);
-				}
-				printf("%8.8s", buf);
-				break;
-			default:
-				printf("        ");
-				break;
-			}
+			format_output(value, fmt, scale, sbuf);
+			printf("%s",sbuf);
 		}
 		printf("\n");
 		++total_count;
 	}
 }
 
-static void
-dump_dbm(kcollect_t *ary __unused, size_t count __unused, const char *datafile __unused)
+/*
+ * Store the array of kcollect_t records in a dbm db database,
+ * path passed in datafile
+ */
+static
+void
+dump_dbm(kcollect_t *ary, size_t count, const char *datafile)
 {
+	DBM * db;
+
+	db = dbm_open(datafile, (O_RDWR | O_CREAT),
+		      (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP));
+	if (db == NULL) {
+		switch (errno) {
+		case EACCES:
+			fprintf(stderr,
+				"[ERR] database file \"%s\" is read-only, "
+				"check permissions. (%i)\n",
+				datafile, errno);
+			break;
+		default:
+			fprintf(stderr,
+				"[ERR] opening our database file \"%s\" "
+				"produced an error. (%i)\n",
+				datafile, errno);
+		}
+		exit(EXIT_FAILURE);
+	} else {
+		struct tm *tmv;
+		char buf[20];
+		datum key;
+		datum value;
+		time_t t;
+		uint i;
+
+		for (i = 2; i < (count - 1); ++i) {
+			t = ary[i].realtime.tv_sec;
+			tmv = gmtime(&t);
+			strftime(buf, sizeof(buf), DISPLAY_FULL_DATE, tmv);
+			key.dptr = buf;
+			key.dsize = sizeof(buf);
+			value.dptr = ary[i].data;
+			value.dsize = sizeof(ary[i].data);
+			if (dbm_store(db,key,value,DBM_INSERT) == -1) {
+				fprintf(stderr,
+					"[ERR] error storing the value in "
+					"the database file \"%s\" (%i)\n",
+					datafile, errno);
+				dbm_close(db);
+				exit(EXIT_FAILURE);
+			}
+
+		}
+		dbm_close(db);
+	}
+}
+
+/*
+ * Transform a string (str) matching a format string (fmt) into a unix
+ * timestamp and return it used by load_dbm()
+ */
+static
+int
+str2unix(const char* str, const char* fmt){
+	struct tm tm;
+	time_t ts;
+
+	/*
+	 * Reset all the fields because strptime only sets what it
+	 * finds, which may lead to undefined members
+	 */
+	memset(&tm, 0, sizeof(struct tm));
+	strptime(str, fmt, &tm);
+	ts = mktime(&tm);
+
+	return (int)ts;
+}
+
+/*
+ * Sorts the ckollect_t records by time, to put youngest first,
+ * so desc by timestamp used by load_dbm()
+ */
+static
+int
+rec_comparator(const void *c1, const void *c2)
+{
+	const kcollect_t *k1 = (const kcollect_t*)c1;
+	const kcollect_t *k2 = (const kcollect_t*)c2;
+
+	if(k1->realtime.tv_sec < k2->realtime.tv_sec)
+		return -1;
+	if(k1->realtime.tv_sec > k2->realtime.tv_sec)
+		return 1;
+	else
+		return 0;
+}
+
+/*
+ * Loads the ckollect records from a dbm DB database specified in datafile.
+ * returns the resulting array in ret_ary and the array counter in counter
+ */
+static
+void
+load_dbm(const char* datafile, kcollect_t *ary, kcollect_t **ret_ary,
+	 size_t *counter)
+{
+	DBM * db = dbm_open(datafile,(O_RDONLY),(S_IRUSR|S_IRGRP));
+	datum key;
+	datum value;
+	size_t recCounter = 0;
+
+
+	if (db == NULL) {
+		fprintf(stderr,
+			"[ERR] opening our database \"%s\" produced "
+			"an error! (%i)\n",
+			datafile, errno);
+		exit(EXIT_FAILURE);
+	} else {
+		/* counting loop */
+		for (key = dbm_firstkey(db); key.dptr; key = dbm_nextkey(db)) {
+			value = dbm_fetch(db, key);
+			if (value.dptr != NULL)
+				recCounter++;
+		}
+
+		/* with the count allocate enough memory */
+		if (*ret_ary)
+			free(*ret_ary);
+		*ret_ary = malloc(sizeof(kcollect_t) * (recCounter + 2));
+		if (*ret_ary == NULL) {
+			fprintf(stderr,
+				"[ERR] failed to allocate enough memory to "
+				"hold the database! Aborting.\n");
+			dbm_close(db);
+			exit(EXIT_FAILURE);
+		} else {
+			/* initialize the first 2 ary records */
+			uint c;
+			memcpy((*ret_ary)[0].data, ary[0].data,
+			       sizeof(uint64_t) * KCOLLECT_ENTRIES);
+			memcpy((*ret_ary)[1].data, ary[1].data,
+			       sizeof(uint64_t) * KCOLLECT_ENTRIES);
+			/*
+			 * Actual data retrieval  but only of recCounter
+			 * records
+			 */
+			c = 0;
+			key = dbm_firstkey(db);
+			while (key.dptr && c < recCounter) {
+				value = dbm_fetch(db, key);
+				if (value.dptr != NULL) {
+					memcpy((*ret_ary)[2 + c].data,
+					       value.dptr,
+					   sizeof(uint64_t) * KCOLLECT_ENTRIES);
+					(*ret_ary)[2 + c].realtime.tv_sec =
+					    str2unix(key.dptr,
+						     DISPLAY_FULL_DATE);
+				}
+				key = dbm_nextkey(db);
+				++c;
+			}
+		}
+	}
+
+	/*
+	 * Set the counter to returned records + first 2 header records,
+	 * and sort the non-header records.
+	 */
+	*counter = 2 + recCounter;
+        qsort(&(*ret_ary)[2], recCounter, sizeof(kcollect_t), rec_comparator);
+
+	dbm_close(db);
 }
 
 static void

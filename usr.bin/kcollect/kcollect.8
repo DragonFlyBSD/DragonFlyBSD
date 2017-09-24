@@ -37,6 +37,7 @@
 .Nm
 .Op Fl o Ar fields
 .Op Fl b Ar file
+.Op Fl d Ar file
 .Op Fl f
 .Op Fl l
 .Op Fl g
@@ -72,6 +73,9 @@ Dump the data to a dbm database, creating the database if necessary.
 Data is indexed by gmt time, which will be calculated from the ticks.
 Duplicate tuples are ignored.  The database will retain data from prior
 runs.
+.It Fl b Ar file
+Load the data from a dbm database instead of loading the active data
+from the current machine.
 .Pp
 THIS IS A TODO OPTION, NOT YET IMPLEMENTED.
 .Nm
