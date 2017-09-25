@@ -109,19 +109,14 @@ struct ipflow_pcpu {
 };
 
 static struct ipflow_pcpu	*ipflow_pcpu_data[MAXCPU];
-
-#define ipflow_inuse		ipflow_pcpu_data[mycpuid]->ipf_inuse
-#define ipflowtable		ipflow_pcpu_data[mycpuid]->ipf_table
-#define ipflowlist		ipflow_pcpu_data[mycpuid]->ipf_list
-
 static int			ipflow_active = 0;
 
-#define IPFLOW_INSERT(bucket, ipf) \
+#define IPFLOW_INSERT(pcpu, bucket, ipf) \
 do { \
 	KKASSERT(((ipf)->ipf_flags & IPFLOW_FLAG_ONLIST) == 0); \
 	(ipf)->ipf_flags |= IPFLOW_FLAG_ONLIST; \
 	LIST_INSERT_HEAD((bucket), (ipf), ipf_hash); \
-	LIST_INSERT_HEAD(&ipflowlist, (ipf), ipf_list); \
+	LIST_INSERT_HEAD(&(pcpu)->ipf_list, (ipf), ipf_list); \
 } while (0)
 
 #define IPFLOW_REMOVE(ipf) \
@@ -138,7 +133,7 @@ SYSCTL_INT(_net_inet_ip, IPCTL_FASTFORWARDING, fastforwarding, CTLFLAG_RW,
 
 static MALLOC_DEFINE(M_IPFLOW, "ip_flow", "IP flow");
 
-static void	ipflow_free(struct ipflow *);
+static void	ipflow_free(struct ipflow_pcpu *, struct ipflow *);
 static void	ipflow_timeo(void *);
 
 static unsigned
@@ -153,13 +148,13 @@ ipflow_hash(struct in_addr dst, struct in_addr src, unsigned tos)
 }
 
 static struct ipflow *
-ipflow_lookup(const struct ip *ip)
+ipflow_lookup(struct ipflow_pcpu *pcpu, const struct ip *ip)
 {
 	unsigned hash;
 	struct ipflow *ipf;
 
 	hash = ipflow_hash(ip->ip_dst, ip->ip_src, ip->ip_tos);
-	LIST_FOREACH(ipf, &ipflowtable[hash], ipf_hash) {
+	LIST_FOREACH(ipf, &pcpu->ipf_table[hash], ipf_hash) {
 		if (ip->ip_dst.s_addr == ipf->ipf_dst.s_addr &&
 		    ip->ip_src.s_addr == ipf->ipf_src.s_addr &&
 		    ip->ip_tos == ipf->ipf_tos)
@@ -212,7 +207,7 @@ ipflow_fastforward(struct mbuf *m)
 	/*
 	 * Find a flow.
 	 */
-	ipf = ipflow_lookup(ip);
+	ipf = ipflow_lookup(ipflow_pcpu_data[mycpuid], ip);
 	if (ipf == NULL)
 		return 0;
 
@@ -308,12 +303,12 @@ ipflow_addstats(struct ipflow *ipf)
 }
 
 static void
-ipflow_free(struct ipflow *ipf)
+ipflow_free(struct ipflow_pcpu *pcpu, struct ipflow *ipf)
 {
 	KKASSERT((ipf->ipf_flags & IPFLOW_FLAG_ONLIST) == 0);
 
-	KKASSERT(ipflow_inuse > 0);
-	ipflow_inuse--;
+	KKASSERT(pcpu->ipf_inuse > 0);
+	pcpu->ipf_inuse--;
 
 	ipflow_addstats(ipf);
 	RTFREE(ipf->ipf_ro.ro_rt);
@@ -330,11 +325,11 @@ ipflow_reset(struct ipflow *ipf)
 }
 
 static struct ipflow *
-ipflow_reap(void)
+ipflow_reap(struct ipflow_pcpu *pcpu)
 {
 	struct ipflow *ipf, *maybe_ipf = NULL;
 
-	LIST_FOREACH(ipf, &ipflowlist, ipf_list) {
+	LIST_FOREACH(ipf, &pcpu->ipf_list, ipf_list) {
 		/*
 		 * If this no longer points to a valid route
 		 * reclaim it.
@@ -371,19 +366,18 @@ static void
 ipflow_timeo_dispatch(netmsg_t nmsg)
 {
 	struct ipflow *ipf, *next_ipf;
-	struct ipflow_pcpu *pcpu;
-	int cpuid = mycpuid;
+	struct ipflow_pcpu *pcpu = ipflow_pcpu_data[mycpuid];
 
-	ASSERT_NETISR_NCPUS(cpuid);
+	ASSERT_NETISR_NCPUS(mycpuid);
 
 	crit_enter();
 	lwkt_replymsg(&nmsg->lmsg, 0);	/* reply ASAP */
 	crit_exit();
 
-	LIST_FOREACH_MUTABLE(ipf, &ipflowlist, ipf_list, next_ipf) {
+	LIST_FOREACH_MUTABLE(ipf, &pcpu->ipf_list, ipf_list, next_ipf) {
 		if (--ipf->ipf_timer == 0) {
 			IPFLOW_REMOVE(ipf);
-			ipflow_free(ipf);
+			ipflow_free(pcpu, ipf);
 		} else {
 			ipf->ipf_last_uses = ipf->ipf_uses;
 			ipf->ipf_ro.ro_rt->rt_use += ipf->ipf_uses;
@@ -393,8 +387,6 @@ ipflow_timeo_dispatch(netmsg_t nmsg)
 			ipf->ipf_uses = 0;
 		}
 	}
-
-	pcpu = ipflow_pcpu_data[cpuid];
 	callout_reset(&pcpu->ipf_timeo, IPFLOW_TIMEOUT, ipflow_timeo, pcpu);
 }
 
@@ -413,6 +405,7 @@ ipflow_timeo(void *xpcpu)
 void
 ipflow_create(const struct route *ro, struct mbuf *m)
 {
+	struct ipflow_pcpu *pcpu = ipflow_pcpu_data[mycpuid];
 	const struct ip *const ip = mtod(m, struct ip *);
 	struct ipflow *ipf;
 	unsigned hash;
@@ -430,10 +423,10 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 	 * list and free the old route.  If not, try to malloc a new one
 	 * (if we aren't at our limit).
 	 */
-	ipf = ipflow_lookup(ip);
+	ipf = ipflow_lookup(pcpu, ip);
 	if (ipf == NULL) {
-		if (ipflow_inuse == IPFLOW_MAX) {
-			ipf = ipflow_reap();
+		if (pcpu->ipf_inuse == IPFLOW_MAX) {
+			ipf = ipflow_reap(pcpu);
 			if (ipf == NULL)
 				return;
 		} else {
@@ -441,7 +434,7 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 			    M_INTWAIT | M_NULLOK | M_ZERO);
 			if (ipf == NULL)
 				return;
-			ipflow_inuse++;
+			pcpu->ipf_inuse++;
 		}
 	} else {
 		IPFLOW_REMOVE(ipf);
@@ -462,19 +455,20 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 	 * Insert into the approriate bucket of the flow table.
 	 */
 	hash = ipflow_hash(ip->ip_dst, ip->ip_src, ip->ip_tos);
-	IPFLOW_INSERT(&ipflowtable[hash], ipf);
+	IPFLOW_INSERT(pcpu, &pcpu->ipf_table[hash], ipf);
 }
 
 void
 ipflow_flush_oncpu(void)
 {
+	struct ipflow_pcpu *pcpu = ipflow_pcpu_data[mycpuid];
 	struct ipflow *ipf;
 
 	ASSERT_NETISR_NCPUS(mycpuid);
 
-	while ((ipf = LIST_FIRST(&ipflowlist)) != NULL) {
+	while ((ipf = LIST_FIRST(&pcpu->ipf_list)) != NULL) {
 		IPFLOW_REMOVE(ipf);
-		ipflow_free(ipf);
+		ipflow_free(pcpu, ipf);
 	}
 }
 
@@ -482,13 +476,14 @@ static void
 ipflow_ifaddr_handler(netmsg_t nmsg)
 {
 	struct netmsg_ipfaddr *amsg = (struct netmsg_ipfaddr *)nmsg;
+	struct ipflow_pcpu *pcpu = ipflow_pcpu_data[mycpuid];
 	struct ipflow *ipf, *next_ipf;
 
-	LIST_FOREACH_MUTABLE(ipf, &ipflowlist, ipf_list, next_ipf) {
+	LIST_FOREACH_MUTABLE(ipf, &pcpu->ipf_list, ipf_list, next_ipf) {
 		if (ipf->ipf_dst.s_addr == amsg->ipf_addr.s_addr ||
 		    ipf->ipf_src.s_addr == amsg->ipf_addr.s_addr) {
 			IPFLOW_REMOVE(ipf);
-			ipflow_free(ipf);
+			ipflow_free(pcpu, ipf);
 		}
 	}
 	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
