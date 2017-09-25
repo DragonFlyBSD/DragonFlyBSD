@@ -62,6 +62,13 @@
  *   ifpoll_info.ifpi_tx[n].poll_func == NULL
  *     No TX polling handler will be installed on CPU(n)
  *
+ * Serializer field of ifpoll_info.ifpi_status and ifpoll_info.ifpi_tx[n]
+ * must _not_ be NULL.  The serializer will be held before the status_func
+ * and poll_func being called.  Serializer field of ifpoll_info.ifpi_rx[n]
+ * can be NULL, but the interface's if_flags must have IFF_IDIRECT set,
+ * which indicates that the network processing of the input packets is
+ * running directly instead of being redispatched.
+ *
  * RX is polled at the specified polling frequency (net.ifpoll.X.pollhz).
  * TX and status polling could be done at lower frequency than RX frequency
  * (net.ifpoll.0.status_frac and net.ifpoll.X.tx_frac).  To avoid systimer
@@ -69,9 +76,9 @@
  * piggyback (XXX).
  *
  * All of the registered polling handlers are called only if the interface
- * is marked as 'IFF_RUNNING and IFF_NPOLLING'.  However, the interface's
- * register and deregister function (ifnet.if_npoll) will be called even
- * if interface is not marked with 'IFF_RUNNING'.
+ * is marked as IFF_UP, IFF_RUNNING and IFF_NPOLLING.  However, the
+ * interface's register and deregister function (ifnet.if_npoll) will be
+ * called even if interface is not marked with IFF_RUNNING or IFF_UP.
  *
  * If registration is successful, the driver must disable interrupts,
  * and further I/O is performed through the TX/RX polling handler, which
