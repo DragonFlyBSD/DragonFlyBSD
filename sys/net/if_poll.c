@@ -369,7 +369,7 @@ ifpoll_sysinit(void *dummy __unused)
 	struct netmsg_base msg;
 
 	netmsg_init(&msg, NULL, &curthread->td_msgport, 0, ifpoll_init_handler);
-	netisr_domsg(&msg, 0);
+	netisr_domsg_global(&msg);
 }
 SYSINIT(ifpoll, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, ifpoll_sysinit, NULL);
 
@@ -411,7 +411,7 @@ ifpoll_register(struct ifnet *ifp)
 		    0, ifpoll_register_handler);
 	nmsg.lmsg.u.ms_resultp = info;
 
-	error = netisr_domsg(&nmsg, 0);
+	error = netisr_domsg_global(&nmsg);
 	if (error) {
 		if (!ifpoll_deregister(ifp)) {
 			if_printf(ifp, "ifpoll_register: "
@@ -446,7 +446,7 @@ ifpoll_deregister(struct ifnet *ifp)
 		    0, ifpoll_deregister_handler);
 	nmsg.lmsg.u.ms_resultp = ifp;
 
-	error = netisr_domsg(&nmsg, 0);
+	error = netisr_domsg_global(&nmsg);
 	if (!error) {
 		ifnet_serialize_all(ifp);
 		ifp->if_npoll(ifp, NULL);
