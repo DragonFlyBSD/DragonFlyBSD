@@ -160,7 +160,7 @@ struct iopoll_ctx {
 
 	struct sysctl_ctx_list	poll_sysctl_ctx;
 	struct sysctl_oid	*poll_sysctl_tree;
-} __cachealign;
+};
 
 struct poll_comm {
 	struct systimer		pollclock;
@@ -176,7 +176,7 @@ struct poll_comm {
 
 	struct sysctl_ctx_list	sysctl_ctx;
 	struct sysctl_oid	*sysctl_tree;
-} __cachealign;
+};
 
 struct stpoll_rec {
 	struct lwkt_serialize	*serializer;
@@ -703,8 +703,7 @@ iopoll_ctx_create(int cpuid, int poll_type)
 	/*
 	 * Create the per-cpu polling context
 	 */
-	io_ctx = kmalloc_cachealign(sizeof(*io_ctx), M_DEVBUF,
-	    M_WAITOK | M_ZERO);
+	io_ctx = kmalloc(sizeof(*io_ctx), M_DEVBUF, M_WAITOK | M_ZERO);
 
 	io_ctx->poll_each_burst = iopoll_each_burst;
 	io_ctx->poll_burst_max = iopoll_burst_max;
@@ -1310,7 +1309,7 @@ poll_comm_init(int cpuid)
 	struct poll_comm *comm;
 	char cpuid_str[16];
 
-	comm = kmalloc_cachealign(sizeof(*comm), M_DEVBUF, M_WAITOK | M_ZERO);
+	comm = kmalloc(sizeof(*comm), M_DEVBUF, M_WAITOK | M_ZERO);
 
 	if (ifpoll_stfrac < 1)
 		ifpoll_stfrac = IFPOLL_STFRAC_DEFAULT;
