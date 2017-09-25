@@ -517,7 +517,7 @@ ipflow_ifaddr(void *arg __unused, struct ifnet *ifp __unused,
 		    MSGF_PRIORITY, ipflow_ifaddr_handler);
 	amsg.ipf_addr = ifatoia(ifa)->ia_addr.sin_addr;
 
-	netisr_domsg(&amsg.base, 0);
+	netisr_domsg_global(&amsg.base);
 }
 
 static void
