@@ -371,7 +371,7 @@ ipflow_timeo_dispatch(netmsg_t nmsg)
 	ASSERT_NETISR_NCPUS(mycpuid);
 
 	crit_enter();
-	lwkt_replymsg(&nmsg->lmsg, 0);	/* reply ASAP */
+	netisr_replymsg(&nmsg->base, 0);	/* reply ASAP */
 	crit_exit();
 
 	LIST_FOREACH_MUTABLE(ipf, &pcpu->ipf_list, ipf_list, next_ipf) {
@@ -394,11 +394,11 @@ static void
 ipflow_timeo(void *xpcpu)
 {
 	struct ipflow_pcpu *pcpu = xpcpu;
-	struct lwkt_msg *msg = &pcpu->ipf_timeo_netmsg.lmsg;
+	struct netmsg_base *nm = &pcpu->ipf_timeo_netmsg;
 
 	crit_enter();
-	if (msg->ms_flags & MSGF_DONE)
-		lwkt_sendmsg_oncpu(netisr_cpuport(mycpuid), msg);
+	if (nm->lmsg.ms_flags & MSGF_DONE)
+		netisr_sendmsg_oncpu(nm);
 	crit_exit();
 }
 
