@@ -438,7 +438,7 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 				return;
 		} else {
 			ipf = kmalloc(sizeof(*ipf), M_IPFLOW,
-				      M_NOWAIT | M_ZERO);
+			    M_INTWAIT | M_NULLOK | M_ZERO);
 			if (ipf == NULL)
 				return;
 			ipflow_inuse++;
