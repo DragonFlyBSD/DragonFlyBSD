@@ -1294,33 +1294,39 @@ static __inline boolean_t
 ether_vlancheck(struct mbuf **m0)
 {
 	struct mbuf *m = *m0;
-	struct ether_header *eh;
-	uint16_t ether_type;
+	struct ether_header *eh = mtod(m, struct ether_header *);
+	uint16_t ether_type = ntohs(eh->ether_type);
 
-	eh = mtod(m, struct ether_header *);
-	ether_type = ntohs(eh->ether_type);
+	if (ether_type == ETHERTYPE_VLAN) {
+		if ((m->m_flags & M_VLANTAG) == 0) {
+			/*
+			 * Extract vlan tag if hardware does not do
+			 * it for us.
+			 */
+			vlan_ether_decap(&m);
+			if (m == NULL)
+				goto failed;
 
-	if (ether_type == ETHERTYPE_VLAN && (m->m_flags & M_VLANTAG) == 0) {
-		/*
-		 * Extract vlan tag if hardware does not do it for us
-		 */
-		vlan_ether_decap(&m);
-		if (m == NULL)
+			eh = mtod(m, struct ether_header *);
+			ether_type = ntohs(eh->ether_type);
+			if (ether_type == ETHERTYPE_VLAN) {
+				/*
+				 * To prevent possible dangerous recursion,
+				 * we don't do vlan-in-vlan.
+				 */
+				IFNET_STAT_INC(m->m_pkthdr.rcvif, noproto, 1);
+				goto failed;
+			}
+		} else {
+			/*
+			 * To prevent possible dangerous recursion,
+			 * we don't do vlan-in-vlan.
+			 */
+			IFNET_STAT_INC(m->m_pkthdr.rcvif, noproto, 1);
 			goto failed;
-
-		eh = mtod(m, struct ether_header *);
-		ether_type = ntohs(eh->ether_type);
+		}
+		KKASSERT(ether_type != ETHERTYPE_VLAN);
 	}
-
-	if (ether_type == ETHERTYPE_VLAN && (m->m_flags & M_VLANTAG)) {
-		/*
-		 * To prevent possible dangerous recursion,
-		 * we don't do vlan-in-vlan
-		 */
-		IFNET_STAT_INC(m->m_pkthdr.rcvif, noproto, 1);
-		goto failed;
-	}
-	KKASSERT(ether_type != ETHERTYPE_VLAN);
 
 	m->m_flags |= M_ETHER_VLANCHECKED;
 	*m0 = m;
