@@ -87,12 +87,11 @@ struct ipflow {
 
 	uint8_t ipf_flags;		/* see IPFLOW_FLAG_ */
 	uint8_t ipf_pad[2];		/* explicit pad */
-	int ipf_refcnt;			/* reference count */
+	int ipf_timer;			/* remaining lifetime of this entry */
 
 	struct route ipf_ro;		/* associated route entry */
 	u_long ipf_uses;		/* number of uses in this period */
 
-	int ipf_timer;			/* remaining lifetime of this entry */
 	u_long ipf_dropped;		/* ENOBUFS returned by if_output */
 	u_long ipf_errors;		/* other errors returned by if_output */
 	u_long ipf_last_uses;		/* number of uses in last period */
@@ -116,27 +115,6 @@ static struct ipflow_pcpu	*ipflow_pcpu_data;
 #define ipflowlist		ipflow_pcpu_data[mycpuid].ipf_list
 
 static int			ipflow_active = 0;
-
-#define IPFLOW_REFCNT_INIT	1
-
-/* ipflow is alive and active */
-#define IPFLOW_IS_ACTIVE(ipf)	((ipf)->ipf_refcnt > IPFLOW_REFCNT_INIT)
-/* ipflow is alive but not active */
-#define IPFLOW_NOT_ACTIVE(ipf)	((ipf)->ipf_refcnt == IPFLOW_REFCNT_INIT)
-
-#define IPFLOW_REF(ipf) \
-do { \
-	KKASSERT((ipf)->ipf_refcnt > 0); \
-	(ipf)->ipf_refcnt++; \
-} while (0)
-
-#define IPFLOW_FREE(ipf) \
-do { \
-	KKASSERT((ipf)->ipf_refcnt > 0); \
-	(ipf)->ipf_refcnt--; \
-	if ((ipf)->ipf_refcnt == 0) \
-		ipflow_free((ipf)); \
-} while (0)
 
 #define IPFLOW_INSERT(bucket, ipf) \
 do { \
@@ -309,13 +287,6 @@ ipflow_fastforward(struct mbuf *m)
 	else
 		dst = &ipf->ipf_ro.ro_dst;
 
-	/*
-	 * Reference count this ipflow, before the possible blocking
-	 * ifnet.if_output(), so this ipflow will not be changed or
-	 * reaped behind our back.
-	 */
-	IPFLOW_REF(ipf);
-
 	error = ifp->if_output(ifp, m, dst, rt);
 	if (error) {
 		if (error == ENOBUFS)
@@ -323,8 +294,6 @@ ipflow_fastforward(struct mbuf *m)
 		else
 			ipf->ipf_errors++;
 	}
-
-	IPFLOW_FREE(ipf);
 	return 1;
 }
 
@@ -341,7 +310,6 @@ ipflow_addstats(struct ipflow *ipf)
 static void
 ipflow_free(struct ipflow *ipf)
 {
-	KKASSERT(ipf->ipf_refcnt == 0);
 	KKASSERT((ipf->ipf_flags & IPFLOW_FLAG_ONLIST) == 0);
 
 	KKASSERT(ipflow_inuse > 0);
@@ -367,12 +335,6 @@ ipflow_reap(void)
 	struct ipflow *ipf, *maybe_ipf = NULL;
 
 	LIST_FOREACH(ipf, &ipflowlist, ipf_list) {
-		/*
-		 * Skip actively used ipflow
-		 */
-		if (IPFLOW_IS_ACTIVE(ipf))
-			continue;
-
 		/*
 		 * If this no longer points to a valid route
 		 * reclaim it.
@@ -421,7 +383,7 @@ ipflow_timeo_dispatch(netmsg_t nmsg)
 	LIST_FOREACH_MUTABLE(ipf, &ipflowlist, ipf_list, next_ipf) {
 		if (--ipf->ipf_timer == 0) {
 			IPFLOW_REMOVE(ipf);
-			IPFLOW_FREE(ipf);
+			ipflow_free(ipf);
 		} else {
 			ipf->ipf_last_uses = ipf->ipf_uses;
 			ipf->ipf_ro.ro_rt->rt_use += ipf->ipf_uses;
@@ -479,22 +441,12 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 				      M_NOWAIT | M_ZERO);
 			if (ipf == NULL)
 				return;
-			ipf->ipf_refcnt = IPFLOW_REFCNT_INIT;
-
 			ipflow_inuse++;
 		}
 	} else {
-		if (IPFLOW_NOT_ACTIVE(ipf)) {
-			IPFLOW_REMOVE(ipf);
-			ipflow_reset(ipf);
-		} else {
-			/* This ipflow is being used; don't change it */
-			KKASSERT(IPFLOW_IS_ACTIVE(ipf));
-			return;
-		}
+		IPFLOW_REMOVE(ipf);
+		ipflow_reset(ipf);
 	}
-	/* This ipflow should not be actively used */
-	KKASSERT(IPFLOW_NOT_ACTIVE(ipf));
 
 	/*
 	 * Fill in the updated information.
@@ -522,7 +474,7 @@ ipflow_flush_oncpu(void)
 
 	while ((ipf = LIST_FIRST(&ipflowlist)) != NULL) {
 		IPFLOW_REMOVE(ipf);
-		IPFLOW_FREE(ipf);
+		ipflow_free(ipf);
 	}
 }
 
@@ -536,7 +488,7 @@ ipflow_ifaddr_handler(netmsg_t nmsg)
 		if (ipf->ipf_dst.s_addr == amsg->ipf_addr.s_addr ||
 		    ipf->ipf_src.s_addr == amsg->ipf_addr.s_addr) {
 			IPFLOW_REMOVE(ipf);
-			IPFLOW_FREE(ipf);
+			ipflow_free(ipf);
 		}
 	}
 	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
