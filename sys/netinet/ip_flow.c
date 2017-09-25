@@ -95,7 +95,7 @@ struct ipflow {
 	u_long ipf_dropped;		/* ENOBUFS returned by if_output */
 	u_long ipf_errors;		/* other errors returned by if_output */
 	u_long ipf_last_uses;		/* number of uses in last period */
-} __cachealign;
+};
 LIST_HEAD(ipflowhead, ipflow);
 
 #define IPFLOW_FLAG_ONLIST	0x1
