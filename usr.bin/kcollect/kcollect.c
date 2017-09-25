@@ -39,6 +39,8 @@
 
 #define DISPLAY_TIME_ONLY "%H:%M:%S"
 #define DISPLAY_FULL_DATE "%F %H:%M:%S"
+#define HDR_FMT "HEADER0"
+#define HDR_TITLE "HEADER1"
 
 static void format_output(uintmax_t value,char fmt,uintmax_t scale, char* ret);
 static void dump_text(kcollect_t *ary, size_t count,
@@ -46,16 +48,18 @@ static void dump_text(kcollect_t *ary, size_t count,
 static void dump_dbm(kcollect_t *ary, size_t count, const char *datafile);
 static int str2unix(const char* str, const char* fmt);
 static int rec_comparator(const void *c1, const void *c2);
-static void load_dbm(const char *datafile, kcollect_t *ary,
+static void load_dbm(const char *datafile,
 			kcollect_t **ret_ary, size_t *counter);
 static void dump_fields(kcollect_t *ary);
 static void adjust_fields(kcollect_t *ent, const char *fields);
+static void restore_headers(kcollect_t *ary, const char *datafile);
 
 FILE *OutFP;
 int UseGMT;
 int OutputWidth = 1024;
 int OutputHeight = 1024;
 int SmoothOpt;
+int LoadedFromDB = 0;
 
 int
 main(int ac, char **av)
@@ -85,7 +89,7 @@ main(int ac, char **av)
 		exit(1);
 	}
 
-	while ((ch = getopt(ac, av, "o:b:d:flsgt:xw:GW:H:")) != -1) {
+	while ((ch = getopt(ac, av, "o:b:d:r:flsgt:xw:GW:H:")) != -1) {
 		char *suffix;
 
 		switch(ch) {
@@ -99,6 +103,10 @@ main(int ac, char **av)
 		case 'd':
 			dbmFile = optarg;
 			fromFile = 1;
+			break;
+		case 'r':
+			datafile = optarg;
+			cmd = 'r';
 			break;
 		case 'f':
 			keepalive = 1;
@@ -194,7 +202,7 @@ main(int ac, char **av)
 		 * array and counter
 		 */
 		if (fromFile) {
-			load_dbm(dbmFile, ary, &dbmAry, &count);
+			load_dbm(dbmFile, &dbmAry, &count);
 			free(ary);
 			ary = dbmAry;
 
@@ -239,6 +247,10 @@ main(int ac, char **av)
 		case 'b':
 			if (count > 2)
 				dump_dbm(ary, count, datafile);
+			break;
+		case 'r':
+			if (count >= 2)
+				restore_headers(ary, datafile);
 			break;
 		case 'l':
 			dump_fields(ary);
@@ -377,10 +389,9 @@ dump_text(kcollect_t *ary, size_t count, size_t total_count,
 
 	for (i = count - 1; i >= 2; --i) {
 		if ((total_count & 15) == 0) {
-			if(!strcmp(display_fmt,DISPLAY_FULL_DATE)) {
+			if (!strcmp(display_fmt, DISPLAY_FULL_DATE)) {
 				printf("%20s", "timestamp ");
-			}
-			else {
+			} else {
 				printf("%8.8s", "time");
 			}
 			for (j = 0; j < KCOLLECT_ENTRIES; ++j) {
@@ -425,10 +436,70 @@ dump_text(kcollect_t *ary, size_t count, size_t total_count,
 			format_output(value, fmt, scale, sbuf);
 			printf("%s",sbuf);
 		}
+
 		printf("\n");
 		++total_count;
 	}
 }
+
+/* restores the DBM database header records to current machine */
+static
+void
+restore_headers(kcollect_t *ary, const char *datafile)
+{
+	DBM *db;
+	char hdr_fmt[] = HDR_FMT;
+        char hdr_title[] = HDR_TITLE;
+	datum key, value;
+
+	db = dbm_open(datafile, (O_RDWR),
+		      (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP));
+
+	if (db == NULL) {
+		switch (errno) {
+		case EACCES:
+			fprintf(stderr,
+				"[ERR] database file \"%s\" is read-only, "
+				"check permissions. (%i)\n",
+				datafile, errno);
+			break;
+		default:
+			fprintf(stderr,
+				"[ERR] opening our database file \"%s\" "
+				"produced an error. (%i)\n",
+				datafile, errno);
+		}
+		exit(EXIT_FAILURE);
+	} else {
+		key.dptr = hdr_fmt;
+		key.dsize = sizeof(HDR_FMT);
+		value.dptr = &ary[0].data;
+		value.dsize = sizeof(uint64_t) * KCOLLECT_ENTRIES;
+		if (dbm_store(db,key,value,DBM_REPLACE) == -1) {
+			fprintf(stderr,
+				"[ERR] error storing the value in "
+				"the database file \"%s\" (%i)\n",
+				datafile, errno);
+			dbm_close(db);
+			exit(EXIT_FAILURE);
+		}
+
+		key.dptr = hdr_title;
+		key.dsize = sizeof(HDR_FMT);
+		value.dptr = &ary[1].data;
+		value.dsize = sizeof(uint64_t) * KCOLLECT_ENTRIES;
+		if (dbm_store(db,key,value,DBM_REPLACE) == -1) {
+			fprintf(stderr,
+				"[ERR] error storing the value in "
+				"the database file \"%s\" (%i)\n",
+				datafile, errno);
+			dbm_close(db);
+			exit(EXIT_FAILURE);
+		}
+	}
+	dbm_close(db);
+}
+
 
 /*
  * Store the array of kcollect_t records in a dbm db database,
@@ -464,16 +535,32 @@ dump_dbm(kcollect_t *ary, size_t count, const char *datafile)
 		datum value;
 		time_t t;
 		uint i;
+	        char hdr_fmt[] = HDR_FMT;
+	        char hdr_title[] = HDR_TITLE;
 
-		for (i = 2; i < (count - 1); ++i) {
-			t = ary[i].realtime.tv_sec;
-			tmv = gmtime(&t);
-			strftime(buf, sizeof(buf), DISPLAY_FULL_DATE, tmv);
-			key.dptr = buf;
-			key.dsize = sizeof(buf);
+		for (i = 0; i < (count); ++i) {
+			/* first 2 INFO records are special and get 0|1 */
+
+			if (i < 2) {
+				if (i == 0)
+					key.dptr = hdr_fmt;
+				else
+					key.dptr = hdr_title;
+				key.dsize = sizeof(HDR_FMT);
+			} else {
+				t = ary[i].realtime.tv_sec;
+				if (LoadedFromDB)
+					tmv = localtime(&t);
+				else
+					tmv = gmtime(&t);
+				strftime(buf, sizeof(buf),
+					 DISPLAY_FULL_DATE, tmv);
+				key.dptr = buf;
+				key.dsize = sizeof(buf);
+			}
 			value.dptr = ary[i].data;
-			value.dsize = sizeof(ary[i].data);
-			if (dbm_store(db,key,value,DBM_INSERT) == -1) {
+			value.dsize = sizeof(uint64_t) * KCOLLECT_ENTRIES;
+			if (dbm_store(db, key, value, DBM_INSERT) == -1) {
 				fprintf(stderr,
 					"[ERR] error storing the value in "
 					"the database file \"%s\" (%i)\n",
@@ -503,7 +590,7 @@ str2unix(const char* str, const char* fmt){
 	 */
 	memset(&tm, 0, sizeof(struct tm));
 	strptime(str, fmt, &tm);
-	ts = mktime(&tm);
+	ts = timegm(&tm);
 
 	return (int)ts;
 }
@@ -519,12 +606,11 @@ rec_comparator(const void *c1, const void *c2)
 	const kcollect_t *k1 = (const kcollect_t*)c1;
 	const kcollect_t *k2 = (const kcollect_t*)c2;
 
-	if(k1->realtime.tv_sec < k2->realtime.tv_sec)
+	if (k1->realtime.tv_sec < k2->realtime.tv_sec)
 		return -1;
-	if(k1->realtime.tv_sec > k2->realtime.tv_sec)
+	if (k1->realtime.tv_sec > k2->realtime.tv_sec)
 		return 1;
-	else
-		return 0;
+	return 0;
 }
 
 /*
@@ -533,14 +619,14 @@ rec_comparator(const void *c1, const void *c2)
  */
 static
 void
-load_dbm(const char* datafile, kcollect_t *ary, kcollect_t **ret_ary,
+load_dbm(const char* datafile, kcollect_t **ret_ary,
 	 size_t *counter)
 {
 	DBM * db = dbm_open(datafile,(O_RDONLY),(S_IRUSR|S_IRGRP));
 	datum key;
 	datum value;
 	size_t recCounter = 0;
-
+	int headersFound = 0;
 
 	if (db == NULL) {
 		fprintf(stderr,
@@ -559,7 +645,8 @@ load_dbm(const char* datafile, kcollect_t *ary, kcollect_t **ret_ary,
 		/* with the count allocate enough memory */
 		if (*ret_ary)
 			free(*ret_ary);
-		*ret_ary = malloc(sizeof(kcollect_t) * (recCounter + 2));
+		*ret_ary = malloc(sizeof(kcollect_t) * recCounter);
+		bzero(*ret_ary, sizeof(kcollect_t) * recCounter);
 		if (*ret_ary == NULL) {
 			fprintf(stderr,
 				"[ERR] failed to allocate enough memory to "
@@ -567,42 +654,55 @@ load_dbm(const char* datafile, kcollect_t *ary, kcollect_t **ret_ary,
 			dbm_close(db);
 			exit(EXIT_FAILURE);
 		} else {
-			/* initialize the first 2 ary records */
 			uint c;
-			memcpy((*ret_ary)[0].data, ary[0].data,
-			       sizeof(uint64_t) * KCOLLECT_ENTRIES);
-			memcpy((*ret_ary)[1].data, ary[1].data,
-			       sizeof(uint64_t) * KCOLLECT_ENTRIES);
+			uint sc;
 			/*
 			 * Actual data retrieval  but only of recCounter
 			 * records
 			 */
-			c = 0;
+			c = 2;
 			key = dbm_firstkey(db);
 			while (key.dptr && c < recCounter) {
 				value = dbm_fetch(db, key);
 				if (value.dptr != NULL) {
-					memcpy((*ret_ary)[2 + c].data,
+					if (!strcmp(key.dptr, HDR_FMT)) {
+						sc = 0;
+						headersFound |= 1;
+					}
+					else if (!strcmp(key.dptr, HDR_TITLE)) {
+						sc = 1;
+						headersFound |= 2;
+					}
+					else {
+						sc = c;
+						c++;
+					}
+
+					memcpy((*ret_ary)[sc].data,
 					       value.dptr,
 					   sizeof(uint64_t) * KCOLLECT_ENTRIES);
-					(*ret_ary)[2 + c].realtime.tv_sec =
+					(*ret_ary)[sc].realtime.tv_sec =
 					    str2unix(key.dptr,
 						     DISPLAY_FULL_DATE);
 				}
 				key = dbm_nextkey(db);
-				++c;
 			}
 		}
 	}
 
 	/*
-	 * Set the counter to returned records + first 2 header records,
+	 * Set the counter,
 	 * and sort the non-header records.
 	 */
-	*counter = 2 + recCounter;
-        qsort(&(*ret_ary)[2], recCounter, sizeof(kcollect_t), rec_comparator);
-
+	*counter = recCounter;
+        qsort(&(*ret_ary)[2], recCounter - 2, sizeof(kcollect_t), rec_comparator);
 	dbm_close(db);
+
+	if (headersFound != 3) {
+		fprintf(stderr, "We could not retrieve all necessary headers, might be the database file is corrupted? (%i)\n", headersFound);
+		exit(EXIT_FAILURE);
+	}
+	LoadedFromDB = 1;
 }
 
 static void
