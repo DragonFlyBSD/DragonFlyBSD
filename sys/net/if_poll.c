@@ -814,7 +814,7 @@ rxpoll_handler(netmsg_t msg)
 {
 	struct iopoll_ctx *io_ctx;
 	struct thread *td = curthread;
-	boolean_t direct = TRUE;
+	boolean_t direct = TRUE, crit;
 	int i, cycles;
 
 	logpoll(rx_start);
@@ -822,6 +822,7 @@ rxpoll_handler(netmsg_t msg)
 	io_ctx = msg->lmsg.u.ms_resultp;
 	KKASSERT(&td->td_msgport == netisr_cpuport(io_ctx->poll_cpuid));
 
+	crit = TRUE;
 	crit_enter_quick(td);
 
 	/* Reply ASAP */
@@ -847,12 +848,30 @@ rxpoll_handler(netmsg_t msg)
 		const struct iopoll_rec *rec = &io_ctx->pr[i];
 		struct ifnet *ifp = rec->ifp;
 
-		if (rec->serializer != NULL &&
-		    !lwkt_serialize_try(rec->serializer))
-			continue;
+		if (rec->serializer != NULL) {
+			if (!crit) {
+				crit = TRUE;
+				crit_enter_quick(td);
+			}
+			if (__predict_false(
+			    !lwkt_serialize_try(rec->serializer))) {
+				/* RX serializer generally will not fail. */
+				continue;
+			}
+		} else if (crit) {
+			/*
+			 * Exit critical section, if the RX polling
+			 * handler does not require serialization,
+			 * i.e. RX polling is doing direct input.
+			 */
+			crit_exit_quick(td);
+			crit = FALSE;
+		}
 
 		if ((ifp->if_flags & IFF_IDIRECT) == 0) {
 			direct = FALSE;
+			KASSERT(rec->serializer != NULL,
+			    ("rx polling handler is not serialized"));
 		}
 #ifdef INVARIANTS
 		else {
@@ -869,11 +888,13 @@ rxpoll_handler(netmsg_t msg)
 			lwkt_serialize_exit(rec->serializer);
 	}
 
-	/*
-	 * Do a quick exit/enter to catch any higher-priority
-	 * interrupt sources.
-	 */
-	crit_exit_quick(td);
+	if (crit) {
+		/*
+		 * Do a quick exit/enter to catch any higher-priority
+		 * interrupt sources.
+		 */
+		crit_exit_quick(td);
+	}
 	crit_enter_quick(td);
 
 	io_ctx->phase = 4;
