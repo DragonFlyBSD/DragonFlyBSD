@@ -184,9 +184,8 @@ in_addroute(char *key, char *mask, struct radix_node_head *head,
 	 */
 	if (ret != NULL &&
 	    (rt->rt_flags &
-	     (RTF_MULTICAST | RTF_BROADCAST | RTF_WASCLONED)) == 0) {
+	     (RTF_MULTICAST | RTF_BROADCAST | RTF_WASCLONED)) == 0)
 		ipflow_flush_oncpu();
-	}
 	return ret;
 }
 
