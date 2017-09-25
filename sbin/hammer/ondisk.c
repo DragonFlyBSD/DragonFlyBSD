@@ -160,12 +160,12 @@ __verify_volume(const volume_info_t volume)
 			ondisk->vol_rootvol);
 		/* not reached */
 	}
-	if (bcmp(&Hammer_FSType, &ondisk->vol_fstype, sizeof(Hammer_FSType))) {
+	if (hammer_uuid_compare(&Hammer_FSType, &ondisk->vol_fstype)) {
 		errx(1, "verify_volume: %s: Header does not indicate "
 			"that this is a HAMMER volume", volume->name);
 		/* not reached */
 	}
-	if (bcmp(&Hammer_FSId, &ondisk->vol_fsid, sizeof(Hammer_FSId))) {
+	if (hammer_uuid_compare(&Hammer_FSId, &ondisk->vol_fsid)) {
 		errx(1, "verify_volume: %s: FSId does not match other volumes!",
 			volume->name);
 		/* not reached */

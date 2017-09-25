@@ -1581,8 +1581,7 @@ validate_mrec_header(int fd, int fdin, int is_target, int pfs_id,
 	/*
 	 * Whew.  Ok, is the read PFS info compatible with the target?
 	 */
-	if (bcmp(&mrec->pfs.pfsd.shared_uuid, &pfsd.shared_uuid,
-		sizeof(pfsd.shared_uuid)) != 0) {
+	if (hammer_uuid_compare(&mrec->pfs.pfsd.shared_uuid, &pfsd.shared_uuid)) {
 		errx(1, "mirror-write: source and target have "
 			"different shared-uuid's!");
 		/* not reached */
