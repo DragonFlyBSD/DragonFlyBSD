@@ -518,13 +518,7 @@ ipflow_flush_oncpu(void)
 {
 	struct ipflow *ipf;
 
-	/*
-	 * FIXME: netisr_ncpus
-	 * Change this into assert, after routes are duplicated
-	 * to only netisr_ncpus.
-	 */
-	if (mycpuid >= netisr_ncpus)
-		return;
+	ASSERT_NETISR_NCPUS(mycpuid);
 
 	while ((ipf = LIST_FIRST(&ipflowlist)) != NULL) {
 		IPFLOW_REMOVE(ipf);
