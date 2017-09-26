@@ -111,8 +111,7 @@ static void slotimer_callback(void *arg);
 static void callout_reset_ipi(void *arg);
 static void callout_stop_ipi(void *arg, int issync, struct intrframe *frame);
 
-static __inline
-int
+static __inline int
 callout_setclear(struct callout *c, int sflags, int cflags)
 {
 	int flags;
@@ -807,8 +806,7 @@ skip_slow:
  * IPI for stop function.  The callout is locked to the receiving cpu
  * by the IPI_MASK count.
  */
-static
-void
+static void
 callout_stop_ipi(void *arg, int issync, struct intrframe *frame)
 {
 	globaldata_t gd = mycpu;
@@ -899,8 +897,7 @@ callout_terminate(struct callout *c)
  * The init functions can be called from any cpu and do not have to be
  * called from the cpu that the timer will eventually run on.
  */
-static __inline
-void
+static __inline void
 _callout_init(struct callout *c, int flags)
 {
 	bzero(c, sizeof *c);
