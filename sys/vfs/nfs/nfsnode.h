@@ -151,7 +151,7 @@ struct nfsnode {
 #define	NFLUSHINPROG	0x0002	/* Avoid multiple calls to vinvalbuf() */
 #define	NLMODIFIED	0x0004	/* Client has pending modifications */
 #define	NWRITEERR	0x0008	/* Flag write errors so close will know */
-#define	NUNUSED020	0x0020
+#define	NREMOVED	0x0020	/* Flag possible removal of file */
 #define	NUNUSED040	0x0040
 #define	NQNFSEVICTED	0x0080	/* Has been evicted */
 #define	NACC		0x0100	/* Special file accessed */

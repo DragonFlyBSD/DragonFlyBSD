@@ -342,13 +342,22 @@ nfs_access(struct vop_access_args *ap)
 	 * we need to check access against real ids if AT_EACCESS not set.
 	 * Handle this case by cloning the credentials and setting the
 	 * effective ids to the real ones.
+	 *
+	 * The crdup() here can cause a lot of ucred structures to build-up
+	 * (up to maxvnodes), so do our best to avoid it.
 	 */
 	if (ap->a_flags & AT_EACCESS) {
 		cred = crhold(ap->a_cred);
 	} else {
-		cred = crdup(ap->a_cred);
-		cred->cr_uid = cred->cr_ruid;
-		cred->cr_gid = cred->cr_rgid;
+		cred = ap->a_cred;
+		if (cred->cr_uid == cred->cr_ruid &&
+		    cred->cr_gid == cred->cr_rgid) {
+			cred = crhold(ap->a_cred);
+		} else {
+			cred = crdup(ap->a_cred);
+			cred->cr_uid = cred->cr_ruid;
+			cred->cr_gid = cred->cr_rgid;
+		}
 	}
 
 	/*
@@ -473,6 +482,7 @@ nfs_access(struct vop_access_args *ap)
 	}
 	lwkt_reltoken(&nmp->nm_token);
 	crfree(cred);
+
 	return(error);
 }
 
@@ -1831,14 +1841,25 @@ nfs_remove(struct vop_old_remove_args *ap)
 	} else if (VREFCNT(vp) == 1 || (np->n_sillyrename &&
 		   VOP_GETATTR(vp, &vattr) == 0 && vattr.va_nlink > 1)) {
 		/*
-		 * throw away biocache buffers, mainly to avoid
+		 * Force finalization so the VOP_INACTIVE() call is not delayed.
+		 * This prevents cred structures from building up in nfsnodes
+		 * for deleted files.
+		 */
+		atomic_set_int(&vp->v_refcnt, VREF_FINALIZE);
+		np->n_flag |= NREMOVED;
+
+		/*
+		 * Throw away biocache buffers, mainly to avoid
 		 * unnecessary delayed writes later.
 		 */
 		error = nfs_vinvalbuf(vp, 0, 1);
 		/* Do the rpc */
-		if (error != EINTR)
+		if (error != EINTR) {
 			error = nfs_removerpc(dvp, cnp->cn_nameptr,
-				cnp->cn_namelen, cnp->cn_cred, cnp->cn_td);
+					      cnp->cn_namelen,
+					      cnp->cn_cred, cnp->cn_td);
+		}
+
 		/*
 		 * Kludge City: If the first reply to the remove rpc is lost..
 		 *   the reply to the retransmitted request will be ENOENT
@@ -1925,6 +1946,17 @@ nfs_rename(struct vop_old_rename_args *ap)
 	int error;
 
 	lwkt_gettoken(&nmp->nm_token);
+
+	/*
+	 * Force finalization so the VOP_INACTIVE() call is not delayed.
+	 * This prevents cred structures from building up in nfsnodes
+	 * for deleted files.
+	 */
+	if (tvp) {
+		atomic_set_int(&tvp->v_refcnt, VREF_FINALIZE);
+		if (VTONFS(tvp))
+			VTONFS(tvp)->n_flag |= NREMOVED;
+	}
 
 	/* Check for cross-device rename */
 	if ((fvp->v_mount != tdvp->v_mount) ||
@@ -2940,8 +2972,12 @@ nfs_sillyrename(struct vnode *dvp, struct vnode *vp, struct componentname *cnp)
 
 	/*
 	 * Force finalization so the VOP_INACTIVE() call is not delayed.
+	 * This prevents cred structures from building up in nfsnodes
+	 * for deleted files.
 	 */
 	atomic_set_int(&vp->v_refcnt, VREF_FINALIZE);
+	np = VTONFS(vp);
+	np->n_flag |= NREMOVED;
 
 	/*
 	 * We previously purged dvp instead of vp.  I don't know why, it
@@ -2949,7 +2985,6 @@ nfs_sillyrename(struct vnode *dvp, struct vnode *vp, struct componentname *cnp)
 	 * new VFS API since we would be breaking the namecache topology.
 	 */
 	cache_purge(vp);	/* XXX */
-	np = VTONFS(vp);
 #ifndef DIAGNOSTIC
 	if (vp->v_type == VDIR)
 		panic("nfs: sillyrename dir");
@@ -2983,6 +3018,7 @@ bad:
 	vrele(sp->s_dvp);
 	crfree(sp->s_cred);
 	kfree((caddr_t)sp, M_NFSREQ);
+
 	return (error);
 }
 

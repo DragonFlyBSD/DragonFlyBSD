@@ -409,6 +409,8 @@ nfs_inactive(struct vop_inactive_args *ap)
 	}
 
 	np->n_flag &= ~(NWRITEERR | NACC | NUPD | NCHG | NLOCKED | NWANTED);
+	if (np->n_flag & NREMOVED)
+		vrecycle(ap->a_vp);
 	lwkt_reltoken(&nmp->nm_token);
 
 	return (0);
