@@ -1778,6 +1778,7 @@ lookup_host (char *host, struct in_addr *ipaddr)
  * The following formats are allowed:
  *	any	matches any IP. Actually returns an empty instruction.
  *	me	returns O_IP_*_ME
+ *	<table_id>	O_IP_*_TABLE
  *	1.2.3.4		single IP address
  *	1.2.3.4:5.6.7.8	address:mask
  *	1.2.3.4/24	address/mask
