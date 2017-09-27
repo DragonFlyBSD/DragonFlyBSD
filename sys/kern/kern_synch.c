@@ -295,6 +295,9 @@ updatepcpu(struct lwp *lp, int cpticks, int ttlticks)
 static uint32_t	slpque_tablesize;
 static cpumask_t *slpque_cpumasks;
 
+SYSCTL_UINT(_kern, OID_AUTO, slpque_tablesize, CTLFLAG_RD, &slpque_tablesize,
+    0, "");
+
 /*
  * This is a dandy function that allows us to interlock tsleep/wakeup
  * operations with unspecified upper level locks, such as lockmgr locks,
