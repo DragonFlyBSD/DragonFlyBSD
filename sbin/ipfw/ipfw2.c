@@ -658,6 +658,11 @@ print_ip(ipfw_insn_ip *cmd, const char *str)
 		printf("<%u>", cmd->o.arg1);
 		return;
 	}
+	if (cmd->o.opcode == O_IP_SRC_IFIP ||
+	    cmd->o.opcode == O_IP_DST_IFIP) {
+		printf("[%s]", ((ipfw_insn_ifip *)cmd)->ifname);
+		return;
+	}
 	if (cmd->o.opcode == O_IP_SRC_SET || cmd->o.opcode == O_IP_DST_SET) {
 		u_int32_t x, *d;
 		int i;
@@ -1004,6 +1009,7 @@ show_ipfw(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 		case O_IP_SRC_ME:
 		case O_IP_SRC_SET:
 		case O_IP_SRC_TABLE:
+		case O_IP_SRC_IFIP:
 			show_prerequisites(&flags, HAVE_PROTO, 0);
 			if (!(flags & HAVE_SRCIP))
 				printf(" from");
@@ -1019,6 +1025,7 @@ show_ipfw(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 		case O_IP_DST_ME:
 		case O_IP_DST_SET:
 		case O_IP_DST_TABLE:
+		case O_IP_DST_IFIP:
 			show_prerequisites(&flags, HAVE_PROTO|HAVE_SRCIP, 0);
 			if (!(flags & HAVE_DSTIP))
 				printf(" to");
@@ -1779,6 +1786,7 @@ lookup_host (char *host, struct in_addr *ipaddr)
  *	any	matches any IP. Actually returns an empty instruction.
  *	me	returns O_IP_*_ME
  *	<table_id>	O_IP_*_TABLE
+ *	[iface]		O_IP_*_IFIP
  *	1.2.3.4		single IP address
  *	1.2.3.4:5.6.7.8	address:mask
  *	1.2.3.4/24	address/mask
@@ -1818,6 +1826,25 @@ fill_ip(ipfw_insn_ip *cmd, char *av)
 		cmd->o.len |= F_INSN_SIZE(ipfw_insn);
 		cmd->o.opcode = O_IP_DST_TABLE;
 		cmd->o.arg1 = tableid;
+		return;
+	}
+
+	if (strlen(av) >= 3 && av[0] == '[' && av[strlen(av) - 1] == ']') {
+		int pos = strlen(av) - 1;
+		ipfw_insn_ifip *cmd1 = (ipfw_insn_ifip *)cmd;
+
+		/*
+		 * Interface IP: "[ifname]"
+		 */
+		cmd1->o.len = F_INSN_SIZE(ipfw_insn_ifip);
+		cmd1->o.opcode = O_IP_DST_IFIP;
+		cmd1->o.arg1 = 0;
+		cmd1->addr.s_addr = 0;
+		cmd1->mask.s_addr = 0;
+
+		av[pos] = '\0';
+		strlcpy(cmd1->ifname, &av[1], sizeof(cmd1->ifname));
+		av[pos] = ']';
 		return;
 	}
 
@@ -2494,6 +2521,8 @@ add_srcip(ipfw_insn *cmd, char *av)
 		cmd->opcode = O_IP_SRC_SET;
 	else if (cmd->opcode == O_IP_DST_TABLE)			/* table */
 		cmd->opcode = O_IP_SRC_TABLE;
+	else if (cmd->opcode == O_IP_DST_IFIP)			/* iface's IP */
+		cmd->opcode = O_IP_SRC_IFIP;
 	else if (F_LEN(cmd) == F_INSN_SIZE(ipfw_insn))		/* me */
 		cmd->opcode = O_IP_SRC_ME;
 	else if (F_LEN(cmd) == F_INSN_SIZE(ipfw_insn_u32))	/* one IP */
@@ -2510,6 +2539,8 @@ add_dstip(ipfw_insn *cmd, char *av)
 	if (cmd->opcode == O_IP_DST_SET)			/* set */
 		;
 	else if (cmd->opcode == O_IP_DST_TABLE)			/* table */
+		;
+	else if (cmd->opcode == O_IP_DST_IFIP)			/* iface's IP */
 		;
 	else if (F_LEN(cmd) == F_INSN_SIZE(ipfw_insn))		/* me */
 		cmd->opcode = O_IP_DST_ME;

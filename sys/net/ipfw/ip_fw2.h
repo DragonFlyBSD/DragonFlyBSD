@@ -119,6 +119,8 @@ enum ipfw_opcodes {		/* arguments (4 byte each)	*/
 
 	/* Filter. */
 	O_IPFRAG,		/* none				*/
+	O_IP_SRC_IFIP,		/* ipfw_insn_ifip		*/
+	O_IP_DST_IFIP,		/* ipfw_insn_ifip		*/
 
 	O_LAST_OPCODE		/* not an opcode!		*/
 };
@@ -256,6 +258,16 @@ typedef struct  _ipfw_insn_log {
 	uint32_t log_left;	/* how many left to log 	*/
 } ipfw_insn_log;
 
+/*
+ * This is used by O_IP_{SRC,DST}_IFIP.
+ */
+typedef struct _ipfw_insn_ifip {
+	ipfw_insn o;		/* arg1 == 1, addr is valid */
+	char ifname[IFNAMSIZ];
+	struct in_addr addr;
+	struct in_addr mask;	/* reserved */
+} ipfw_insn_ifip;
+
 #ifdef _KERNEL
 
 /*
@@ -315,6 +327,7 @@ struct ip_fw {
 #define IPFW_RULE_F_GENSTATE	0x4
 #define IPFW_RULE_F_GENTRACK	0x8
 #define IPFW_RULE_F_CROSSREF	0x10
+#define IPFW_RULE_F_DYNIFADDR	0x20
 
 #define RULESIZE(rule)	(sizeof(struct ip_fw) + (rule)->cmd_len * 4 - 4)
 

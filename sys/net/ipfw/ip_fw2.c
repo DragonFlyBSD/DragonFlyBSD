@@ -695,6 +695,8 @@ static int	ipfw_track_reap_max = 4;
 static int	ipfw_track_expire_max = 16;
 static int	ipfw_track_scan_max = 128;
 
+static eventhandler_tag ipfw_ifaddr_event;
+
 /* Compat */
 SYSCTL_PROC(_net_inet_ip_fw, OID_AUTO, dyn_count,
     CTLTYPE_INT | CTLFLAG_RD, NULL, 0, ipfw_sysctl_dyncnt, "I",
@@ -2752,6 +2754,36 @@ ipfw_match_uid(const struct ipfw_flow_id *fid, struct ifnet *oif,
 	}
 }
 
+static __inline int
+ipfw_match_ifip(ipfw_insn_ifip *cmd, const struct in_addr *ip)
+{
+
+	if (__predict_false(!cmd->o.arg1)) {
+		struct ifaddr_container *ifac;
+		struct ifnet *ifp;
+
+		ifp = ifunit_netisr(cmd->ifname);
+		if (ifp == NULL)
+			return (0);
+
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ia = ifac->ifa;
+
+			if (ia->ifa_addr == NULL)
+				continue;
+			if (ia->ifa_addr->sa_family != AF_INET)
+				continue;
+			cmd->addr =
+			    ((struct sockaddr_in *)ia->ifa_addr)->sin_addr;
+			cmd->o.arg1 = 1;
+			break;
+		}
+		if (!cmd->o.arg1)
+			return (0);
+	}
+	return (ip->s_addr == cmd->addr.s_addr);
+}
+
 static __inline struct mbuf *
 ipfw_setup_local(struct mbuf *m, const int hlen, struct ip_fw_args *args,
     struct ip_fw_local *local, struct ip **ip0)
@@ -3178,6 +3210,11 @@ check_body:
 				    &lc.src_ip);
 				break;
 
+			case O_IP_SRC_IFIP:
+				match = ipfw_match_ifip((ipfw_insn_ifip *)cmd,
+				    &lc.src_ip);
+				break;
+
 			case O_IP_DST_SET:
 			case O_IP_SRC_SET:
 				if (hlen > 0) {
@@ -3221,6 +3258,11 @@ check_body:
 
 			case O_IP_DST_TABLE:
 				match = ipfw_table_lookup(ctx, cmd->arg1,
+				    &lc.dst_ip);
+				break;
+
+			case O_IP_DST_IFIP:
+				match = ipfw_match_ifip((ipfw_insn_ifip *)cmd,
 				    &lc.dst_ip);
 				break;
 
@@ -4593,6 +4635,9 @@ ipfw_check_ioc_rule(struct ipfw_ioc_rule *rule, int size, uint32_t *rule_flags)
 		}
 		if (cmd->opcode == O_DEFRAG)
 			*rule_flags |= IPFW_RULE_F_CROSSREF;
+		if (cmd->opcode == O_IP_SRC_IFIP ||
+		    cmd->opcode == O_IP_DST_IFIP)
+			*rule_flags |= IPFW_RULE_F_DYNIFADDR;
 
 		switch (cmd->opcode) {
 		case O_NOP:
@@ -4629,6 +4674,12 @@ ipfw_check_ioc_rule(struct ipfw_ioc_rule *rule, int size, uint32_t *rule_flags)
 				    cmd->arg1, ipfw_table_max);
 				return EINVAL;
 			}
+			break;
+
+		case O_IP_SRC_IFIP:
+		case O_IP_DST_IFIP:
+			if (cmdlen != F_INSN_SIZE(ipfw_insn_ifip))
+				goto bad_size;
 			break;
 
 		case O_UID:
@@ -6488,6 +6539,49 @@ ipfw_crossref_timeo(void *dummy __unused)
 }
 
 static void
+ipfw_ifaddr_dispatch(netmsg_t nmsg)
+{
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct ifnet *ifp = nmsg->lmsg.u.ms_resultp;
+	struct ip_fw *f;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
+
+	for (f = ctx->ipfw_layer3_chain; f != NULL; f = f->next) {
+		int l, cmdlen;
+		ipfw_insn *cmd;
+
+		if ((f->rule_flags & IPFW_RULE_F_DYNIFADDR) == 0)
+			continue;
+
+		for (l = f->cmd_len, cmd = f->cmd; l > 0;
+		     l -= cmdlen, cmd += cmdlen) {
+			cmdlen = F_LEN(cmd);
+			if (cmd->opcode == O_IP_SRC_IFIP ||
+			    cmd->opcode == O_IP_DST_IFIP) {
+				if (strncmp(ifp->if_xname,
+				    ((ipfw_insn_ifip *)cmd)->ifname,
+				    IFNAMSIZ) == 0)
+					cmd->arg1 = 0;
+			}
+		}
+	}
+	netisr_forwardmsg(&nmsg->base, mycpuid + 1);
+}
+
+static void
+ipfw_ifaddr(void *arg __unused, struct ifnet *ifp,
+    enum ifaddr_event event __unused, struct ifaddr *ifa __unused)
+{
+	struct netmsg_base nm;
+
+	netmsg_init(&nm, NULL, &curthread->td_msgport, MSGF_PRIORITY,
+	    ipfw_ifaddr_dispatch);
+	nm.lmsg.u.ms_resultp = ifp;
+	netisr_domsg_global(&nm);
+}
+
+static void
 ipfw_init_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_ipfw fwmsg;
@@ -6556,6 +6650,12 @@ ipfw_init_dispatch(netmsg_t nmsg)
 
 	if (fw_enable)
 		ipfw_hook();
+
+	ipfw_ifaddr_event = EVENTHANDLER_REGISTER(ifaddr_event, ipfw_ifaddr,
+	    NULL, EVENTHANDLER_PRI_ANY);
+	if (ipfw_ifaddr_event == NULL)
+		kprintf("ipfw: ifaddr_event register failed\n");
+
 reply:
 	netisr_replymsg(&nmsg->base, error);
 }
@@ -6626,6 +6726,9 @@ ipfw_fini_dispatch(netmsg_t nmsg)
 	crit_enter();
 	netisr_dropmsg(&ipfw_gd.ipfw_crossref_nm);
 	crit_exit();
+
+	if (ipfw_ifaddr_event != NULL)
+		EVENTHANDLER_DEREGISTER(ifaddr_event, ipfw_ifaddr_event);
 
 	ip_fw_chk_ptr = NULL;
 	ip_fw_ctl_ptr = NULL;
