@@ -97,14 +97,22 @@ Auth2Nam(u_short auth, u_char type)
 static int
 auth_CheckPasswd(const char *name, const char *data, const char *key)
 {
+  struct passwd *pw;
+  int result = 0;
+  char *cryptpw;
+
   if (!strcmp(data, "*")) {
     /* Then look up the real password database */
-    struct passwd *pw;
-    int result;
+    pw = getpwnam(name);
 
-    result = (pw = getpwnam(name)) &&
-             !strcmp(crypt(key, pw->pw_passwd), pw->pw_passwd);
+    if (pw) {
+      cryptpw = crypt(key, pw->pw_passwd);
+
+      result = (cryptpw != NULL) && !strcmp(cryptpw, pw->pw_passwd);
+    }
+
     endpwent();
+
     return result;
   }
 
