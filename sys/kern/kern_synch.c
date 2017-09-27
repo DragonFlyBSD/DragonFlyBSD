@@ -289,7 +289,9 @@ updatepcpu(struct lwp *lp, int cpticks, int ttlticks)
  * of memory at very low cost.  The real cost is in IPIs, which are handled
  * by the much larger global cpumask hash table.
  */
-#define LOOKUP(x)	(((u_int)(uintptr_t)(x)) % slpque_tablesize)
+#define LOOKUP_PRIME	66555444443333333ULL
+#define LOOKUP(x)	((((uintptr_t)(x) + ((uintptr_t)(x) >> 18)) ^	\
+			  LOOKUP_PRIME) % slpque_tablesize)
 #define TCHASHSHIFT(x)	((x) >> 4)
 
 static uint32_t	slpque_tablesize;
