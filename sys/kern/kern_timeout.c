@@ -105,7 +105,7 @@ typedef struct softclock_pcpu *softclock_pcpu_t;
 
 static int cwheelsize;
 static int cwheelmask;
-static struct softclock_pcpu softclock_pcpu_ary[MAXCPU];
+static softclock_pcpu_t softclock_pcpu_ary[MAXCPU];
 
 static void softclock_handler(void *arg);
 static void slotimer_callback(void *arg);
@@ -155,7 +155,10 @@ swi_softclock_setup(void *arg)
 		softclock_pcpu_t sc;
 		int wheel_sz;
 
-		sc = &softclock_pcpu_ary[cpu];
+		sc = (void *)kmem_alloc3(&kernel_map, sizeof(*sc),
+					 VM_SUBSYS_GD, KM_CPU(cpu));
+		memset(sc, 0, sizeof(*sc));
+		softclock_pcpu_ary[cpu] = sc;
 
 		wheel_sz = sizeof(*sc->callwheel) * cwheelsize;
 		sc->callwheel = (void *)kmem_alloc3(&kernel_map, wheel_sz,
@@ -201,7 +204,7 @@ hardclock_softtick(globaldata_t gd)
 {
 	softclock_pcpu_t sc;
 
-	sc = &softclock_pcpu_ary[gd->gd_cpuid];
+	sc = softclock_pcpu_ary[gd->gd_cpuid];
 	++sc->curticks;
 	if (sc->isrunning)
 		return;
@@ -443,7 +446,7 @@ callout_reset(struct callout *c, int to_ticks, void (*ftn)(void *), void *arg)
 	}
 #endif
 	gd = mycpu;
-	sc = &softclock_pcpu_ary[gd->gd_cpuid];
+	sc = softclock_pcpu_ary[gd->gd_cpuid];
 	crit_enter_gd(gd);
 
 	/*
@@ -570,7 +573,7 @@ callout_reset_ipi(void *arg)
 	int flags;
 	int nflags;
 
-	sc = &softclock_pcpu_ary[gd->gd_cpuid];
+	sc = softclock_pcpu_ary[gd->gd_cpuid];
 
 	for (;;) {
 		flags = c->c_flags;
@@ -690,7 +693,7 @@ retry:
 		 * the callout to be locked to our cpu.
 		 */
 		if (flags & CALLOUT_PENDING) {
-			sc = &softclock_pcpu_ary[gd->gd_cpuid];
+			sc = softclock_pcpu_ary[gd->gd_cpuid];
 			if (sc->next == c)
 				sc->next = TAILQ_NEXT(c, c_links.tqe);
 			TAILQ_REMOVE(
@@ -783,7 +786,7 @@ skip_slow:
 		intptr_t *runp;
 		intptr_t runco;
 
-		sc = &softclock_pcpu_ary[cpuid];
+		sc = softclock_pcpu_ary[cpuid];
 		if (gd->gd_curthread == sc->thread)	/* stop from cb */
 			break;
 		runp = &sc->running;
@@ -828,7 +831,7 @@ callout_stop_ipi(void *arg, int issync, struct intrframe *frame)
 	 * We can handle the PENDING flag immediately.
 	 */
 	if (flags & CALLOUT_PENDING) {
-		sc = &softclock_pcpu_ary[gd->gd_cpuid];
+		sc = softclock_pcpu_ary[gd->gd_cpuid];
 		if (sc->next == c)
 			sc->next = TAILQ_NEXT(c, c_links.tqe);
 		TAILQ_REMOVE(
