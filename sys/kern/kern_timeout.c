@@ -89,8 +89,6 @@
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
 
-#include <vm/vm_extern.h>
-
 struct softclock_pcpu {
 	struct callout_tailq *callwheel;
 	struct callout * volatile next;
@@ -98,7 +96,7 @@ struct softclock_pcpu {
 	int softticks;		/* softticks index */
 	int curticks;		/* per-cpu ticks counter */
 	int isrunning;
-	struct thread thread;
+	struct thread *thread;
 };
 
 typedef struct softclock_pcpu *softclock_pcpu_t;
@@ -106,7 +104,7 @@ typedef struct softclock_pcpu *softclock_pcpu_t;
 static MALLOC_DEFINE(M_CALLOUT, "callout", "callout structures");
 static int cwheelsize;
 static int cwheelmask;
-static softclock_pcpu_t softclock_pcpu_ary[MAXCPU];
+static struct softclock_pcpu softclock_pcpu_ary[MAXCPU];
 
 static void softclock_handler(void *arg);
 static void slotimer_callback(void *arg);
@@ -154,17 +152,11 @@ swi_softclock_setup(void *arg)
 	 */
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		softclock_pcpu_t sc;
-		int wheel_sz;
 
-		sc = (void *)kmem_alloc3(&kernel_map, sizeof(*sc),
-					 VM_SUBSYS_GD, KM_CPU(cpu));
-		memset(sc, 0, sizeof(*sc));
-		softclock_pcpu_ary[cpu] = sc;
+		sc = &softclock_pcpu_ary[cpu];
 
-		wheel_sz = sizeof(*sc->callwheel) * cwheelsize;
-		sc->callwheel = (void *)kmem_alloc3(&kernel_map, wheel_sz,
-						    VM_SUBSYS_GD, KM_CPU(cpu));
-		memset(sc->callwheel, 0, wheel_sz);
+		sc->callwheel = kmalloc(sizeof(*sc->callwheel) * cwheelsize,
+					M_CALLOUT, M_WAITOK|M_ZERO);
 		for (i = 0; i < cwheelsize; ++i)
 			TAILQ_INIT(&sc->callwheel[i]);
 
@@ -176,7 +168,7 @@ swi_softclock_setup(void *arg)
 		 * Kernel code now assumes that callouts do not preempt
 		 * the cpu they were scheduled on.
 		 */
-		lwkt_create(softclock_handler, sc, NULL, &sc->thread,
+		lwkt_create(softclock_handler, sc, &sc->thread, NULL,
 			    TDF_NOSTART | TDF_INTTHREAD,
 			    cpu, "softclock %d", cpu);
 	}
@@ -205,7 +197,7 @@ hardclock_softtick(globaldata_t gd)
 {
 	softclock_pcpu_t sc;
 
-	sc = softclock_pcpu_ary[gd->gd_cpuid];
+	sc = &softclock_pcpu_ary[gd->gd_cpuid];
 	++sc->curticks;
 	if (sc->isrunning)
 		return;
@@ -216,7 +208,7 @@ hardclock_softtick(globaldata_t gd)
 		 */
 		if (TAILQ_FIRST(&sc->callwheel[sc->softticks & cwheelmask])) {
 			sc->isrunning = 1;
-			lwkt_schedule(&sc->thread);
+			lwkt_schedule(sc->thread);
 		} else {
 			++sc->softticks;
 		}
@@ -226,7 +218,7 @@ hardclock_softtick(globaldata_t gd)
 		 * catch up.
 		 */
 		sc->isrunning = 1;
-		lwkt_schedule(&sc->thread);
+		lwkt_schedule(sc->thread);
 	}
 }
 
@@ -403,7 +395,7 @@ loop:
 		rel_mplock();
 	}
 	sc->isrunning = 0;
-	lwkt_deschedule_self(&sc->thread);	/* == curthread */
+	lwkt_deschedule_self(sc->thread);	/* == curthread */
 	lwkt_switch();
 	goto loop;
 	/* NOT REACHED */
@@ -447,7 +439,7 @@ callout_reset(struct callout *c, int to_ticks, void (*ftn)(void *), void *arg)
 	}
 #endif
 	gd = mycpu;
-	sc = softclock_pcpu_ary[gd->gd_cpuid];
+	sc = &softclock_pcpu_ary[gd->gd_cpuid];
 	crit_enter_gd(gd);
 
 	/*
@@ -574,7 +566,7 @@ callout_reset_ipi(void *arg)
 	int flags;
 	int nflags;
 
-	sc = softclock_pcpu_ary[gd->gd_cpuid];
+	sc = &softclock_pcpu_ary[gd->gd_cpuid];
 
 	for (;;) {
 		flags = c->c_flags;
@@ -694,7 +686,7 @@ retry:
 		 * the callout to be locked to our cpu.
 		 */
 		if (flags & CALLOUT_PENDING) {
-			sc = softclock_pcpu_ary[gd->gd_cpuid];
+			sc = &softclock_pcpu_ary[gd->gd_cpuid];
 			if (sc->next == c)
 				sc->next = TAILQ_NEXT(c, c_links.tqe);
 			TAILQ_REMOVE(
@@ -787,8 +779,8 @@ skip_slow:
 		intptr_t *runp;
 		intptr_t runco;
 
-		sc = softclock_pcpu_ary[cpuid];
-		if (gd->gd_curthread == &sc->thread)	/* stop from cb */
+		sc = &softclock_pcpu_ary[cpuid];
+		if (gd->gd_curthread == sc->thread)	/* stop from cb */
 			break;
 		runp = &sc->running;
 		runco = *runp;
@@ -832,7 +824,7 @@ callout_stop_ipi(void *arg, int issync, struct intrframe *frame)
 	 * We can handle the PENDING flag immediately.
 	 */
 	if (flags & CALLOUT_PENDING) {
-		sc = softclock_pcpu_ary[gd->gd_cpuid];
+		sc = &softclock_pcpu_ary[gd->gd_cpuid];
 		if (sc->next == c)
 			sc->next = TAILQ_NEXT(c, c_links.tqe);
 		TAILQ_REMOVE(
