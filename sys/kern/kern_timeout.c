@@ -89,6 +89,8 @@
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
 
+#include <vm/vm_extern.h>
+
 struct softclock_pcpu {
 	struct callout_tailq *callwheel;
 	struct callout * volatile next;
@@ -101,7 +103,6 @@ struct softclock_pcpu {
 
 typedef struct softclock_pcpu *softclock_pcpu_t;
 
-static MALLOC_DEFINE(M_CALLOUT, "callout", "callout structures");
 static int cwheelsize;
 static int cwheelmask;
 static struct softclock_pcpu softclock_pcpu_ary[MAXCPU];
@@ -152,11 +153,14 @@ swi_softclock_setup(void *arg)
 	 */
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		softclock_pcpu_t sc;
+		int wheel_sz;
 
 		sc = &softclock_pcpu_ary[cpu];
 
-		sc->callwheel = kmalloc(sizeof(*sc->callwheel) * cwheelsize,
-					M_CALLOUT, M_WAITOK|M_ZERO);
+		wheel_sz = sizeof(*sc->callwheel) * cwheelsize;
+		sc->callwheel = (void *)kmem_alloc3(&kernel_map, wheel_sz,
+						    VM_SUBSYS_GD, KM_CPU(cpu));
+		memset(sc->callwheel, 0, wheel_sz);
 		for (i = 0; i < cwheelsize; ++i)
 			TAILQ_INIT(&sc->callwheel[i]);
 
