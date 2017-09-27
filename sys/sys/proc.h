@@ -464,8 +464,11 @@ MALLOC_DECLARE(M_PARGS);
 /* for priv_check_cred() */
 #define	NULL_CRED_OKAY	0x2
 
-/* Handy macro to determine if p1 can mangle p2 */
-
+/*
+ * Handy macro to determine if p1 can mangle p2.
+ *
+ * Must be spin-safe.
+ */
 #define PRISON_CHECK(cr1, cr2) \
 	((!(cr1)->cr_prison) || (cr1)->cr_prison == (cr2)->cr_prison)
 

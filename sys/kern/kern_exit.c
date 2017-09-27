@@ -73,6 +73,7 @@
 #include <sys/refcount.h>
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
+#include <sys/spinlock2.h>
 #include <sys/mplock2.h>
 
 #include <machine/vmm.h>
@@ -892,6 +893,7 @@ kern_wait(pid_t pid, int *status, int options, struct rusage *rusage, int *res)
 	struct lwp *lp;
 	struct proc *q = td->td_proc;
 	struct proc *p, *t;
+	struct ucred *cr;
 	struct pargs *pa;
 	struct sigacts *ps;
 	int nfound, error;
@@ -1066,10 +1068,14 @@ loop:
 			chgproccnt(p->p_ucred->cr_ruidinfo, -1, 0);
 
 			/*
-			 * Free up credentials.
+			 * Free up credentials.  p_spin is required to
+			 * avoid races against allproc scans.
 			 */
-			crfree(p->p_ucred);
+			spin_lock(&p->p_spin);
+			cr = p->p_ucred;
 			p->p_ucred = NULL;
+			spin_unlock(&p->p_spin);
+			crfree(cr);
 
 			/*
 			 * Remove unused arguments

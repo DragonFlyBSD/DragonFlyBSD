@@ -141,6 +141,21 @@ static uint8_t *pid_doms;
  */
 static int randompid = 0;
 
+static __inline
+struct ucred *
+pcredcache(struct ucred *cr, struct proc *p)
+{
+	if (cr != p->p_ucred) {
+		if (cr)
+			crfree(cr);
+		spin_lock(&p->p_spin);
+		if ((cr = p->p_ucred) != NULL)
+			crhold(cr);
+		spin_unlock(&p->p_spin);
+	}
+	return cr;
+}
+
 /*
  * No requirements.
  */
@@ -1511,6 +1526,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 	int n;
 	int origcpu;
 	struct ucred *cr1 = curproc->p_ucred;
+	struct ucred *crcache = NULL;
 
 	flags = oid & KERN_PROC_FLAGMASK;
 	oid &= ~KERN_PROC_FLAGMASK;
@@ -1528,7 +1544,8 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 	if (oid == KERN_PROC_PID) {
 		p = pfind((pid_t)name[0]);
 		if (p) {
-			if (PRISON_CHECK(cr1, p->p_ucred))
+			crcache = pcredcache(crcache, p);
+			if (PRISON_CHECK(cr1, crcache))
 				error = sysctl_out_proc(p, req, flags);
 			PRELE(p);
 		}
@@ -1553,10 +1570,14 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 			/*
 			 * Show a user only their processes.
 			 */
-			if ((!ps_showallprocs) &&
-				(p->p_ucred == NULL || p_trespass(cr1, p->p_ucred))) {
-				continue;
+			if (ps_showallprocs == 0) {
+				crcache = pcredcache(crcache, p);
+				if (crcache == NULL ||
+				    p_trespass(cr1, crcache)) {
+					continue;
+				}
 			}
+
 			/*
 			 * Skip embryonic processes.
 			 */
@@ -1584,19 +1605,24 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 				break;
 
 			case KERN_PROC_UID:
-				if (p->p_ucred == NULL || 
-				    p->p_ucred->cr_uid != (uid_t)name[0])
+				crcache = pcredcache(crcache, p);
+				if (crcache == NULL ||
+				    crcache->cr_uid != (uid_t)name[0]) {
 					continue;
+				}
 				break;
 
 			case KERN_PROC_RUID:
-				if (p->p_ucred == NULL || 
-				    p->p_ucred->cr_ruid != (uid_t)name[0])
+				crcache = pcredcache(crcache, p);
+				if (crcache == NULL ||
+				    crcache->cr_ruid != (uid_t)name[0]) {
 					continue;
+				}
 				break;
 			}
 
-			if (!PRISON_CHECK(cr1, p->p_ucred))
+			crcache = pcredcache(crcache, p);
+			if (!PRISON_CHECK(cr1, crcache))
 				continue;
 			PHOLD(p);
 			error = sysctl_out_proc(p, req, flags);
@@ -1680,6 +1706,8 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 	kfree(marker, M_TEMP);
 
 post_threads:
+	if (crcache)
+		crfree(crcache);
 	return (error);
 }
 
