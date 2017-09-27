@@ -26,10 +26,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)nologin.8	8.1 (Berkeley) 6/19/93
-.\" $FreeBSD: src/usr.sbin/nologin/nologin.5,v 1.15 2007/05/10 11:22:24 yar Exp $
-.\" $DragonFly: src/sbin/nologin/nologin.5,v 1.4 2008/01/04 18:17:49 swildner Exp $
+.\" $FreeBSD: head/usr.sbin/nologin/nologin.5 314436 2017-02-28 23:42:47Z imp $
 .\"
-.Dd May 10, 2007
+.Dd October 5, 2017
 .Dt NOLOGIN 5
 .Os
 .Sh NAME
@@ -68,6 +67,19 @@ using the
 .Xr pam_nologin 8
 module via
 .Xr pam.conf 5 .
+.Pp
+The
+.Nm
+file will be removed at system boot if it resides in
+.Pa /var/run
+and
+.Va cleanvar_enable
+is set to
+.Dq Li YES
+in
+.Xr rc.conf 5 ,
+which is default.
+Therefore system reboot can effectively re-enable logins.
 .Sh FILES
 .Bl -tag -width ".Pa /var/run/nologin" -compact
 .It Pa /var/run/nologin
