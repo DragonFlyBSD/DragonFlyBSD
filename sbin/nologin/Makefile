@@ -1,9 +1,16 @@
 #	@(#)Makefile	8.2 (Berkeley) 4/22/94
-# $FreeBSD: src/sbin/nologin/Makefile,v 1.6.6.2 2001/04/25 14:04:15 ru Exp $
-# $DragonFly: src/sbin/nologin/Makefile,v 1.3 2008/02/05 10:58:04 matthias Exp $
+# $FreeBSD: head/usr.sbin/nologin/Makefile 314833 2017-03-07 05:10:38Z rgrimes $
 
 PROG=	nologin
-SRCS=	nologin.c
 MAN=	nologin.5 nologin.8
+
+SYMLINKS=	../..${BINDIR}/nologin /usr/sbin/nologin
+
+# It is important that nologin be statically linked for security
+# reasons.  A dynamic non-setuid binary can be linked against a trojan
+# libc by setting LD_LIBRARY_PATH appropriately.  Both sshd(8) and
+# login(1) make it possible to log in with an unsanitized environment,
+# rendering a dynamic nologin binary virtually useless.
+NO_SHARED=	YES
 
 .include <bsd.prog.mk>
