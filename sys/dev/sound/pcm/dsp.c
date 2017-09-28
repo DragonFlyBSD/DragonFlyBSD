@@ -2175,9 +2175,11 @@ dsp_ioctl(struct dev_ioctl_args *ap)
 }
 
 static struct filterops dsp_read_filtops =
-	{ FILTEROP_ISFD, NULL, dsp_filter_detach, dsp_filter_read };
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE, NULL, dsp_filter_detach,
+	  dsp_filter_read };
 static struct filterops dsp_write_filtops =
-	{ FILTEROP_ISFD, NULL, dsp_filter_detach, dsp_filter_write };
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE, NULL, dsp_filter_detach,
+	  dsp_filter_write };
 
 static int
 /*dsp_poll(struct cdev *i_dev, int events, struct thread *td)*/

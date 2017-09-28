@@ -332,20 +332,7 @@ chn_wakeup(struct pcm_channel *c)
 	if (CHN_EMPTY(c, children.busy)) {
 		/*if (SEL_WAITING(sndbuf_getsel(bs)) && chn_polltrigger(c))*/
 		if (SLIST_FIRST(&sndbuf_getkq(bs)->ki_note) && chn_polltrigger(c)) {
-			/*
-			 * XXX
-			 *
-			 * We would call KNOTE() here, but as we
-			 * are in interrupt context, we'd have to
-			 * acquire the MP lock before.
-			 * Instead, we'll queue a task in a software
-			 * interrupt, which will run with the MP lock
-			 * held.
-			 *
-			 * buffer.c:sndbuf_kqtask will then call
-			 * KNOTE() from safer context.
-			 */
-			taskqueue_enqueue(taskqueue_swi, &bs->kqtask);
+			KNOTE(&sndbuf_getkq(bs)->ki_note, 0);
 		}
 		if (c->flags & CHN_F_SLEEPING) {
 			/*
