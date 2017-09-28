@@ -170,7 +170,6 @@ struct netmsg_sc_timer {
 
 struct msgrec {
 	struct netmsg_sc_timer msg;
-	lwkt_port_t port;		/* constant after init */
 	int slot;			/* constant after init */
 };
 
@@ -353,7 +352,6 @@ syncache_init(void)
 			callout_init_mp(&syncache_percpu->tt_timerq[i]);
 
 			syncache_percpu->mrec[i].slot = i;
-			syncache_percpu->mrec[i].port = netisr_cpuport(cpu);
 			syncache_percpu->mrec[i].msg.nm_mrec =
 				    &syncache_percpu->mrec[i];
 			netmsg_init(&syncache_percpu->mrec[i].msg.base,
@@ -493,7 +491,12 @@ syncache_timer(void *p)
 {
 	struct netmsg_sc_timer *msg = p;
 
-	lwkt_sendmsg_oncpu(msg->nm_mrec->port, &msg->base.lmsg);
+	KKASSERT(mycpuid < netisr_ncpus);
+
+	crit_enter();
+	if (msg->base.lmsg.ms_flags & MSGF_DONE)
+		netisr_sendmsg_oncpu(&msg->base);
+	crit_exit();
 }
 
 /*
@@ -518,6 +521,11 @@ syncache_timer_handler(netmsg_t msg)
 	int slot;
 
 	ASSERT_NETISR_NCPUS(mycpuid);
+
+	/* Reply ASAP. */
+	crit_enter();
+	netisr_replymsg(&msg->base, 0);
+	crit_exit();
 
 	slot = ((struct netmsg_sc_timer *)msg)->nm_mrec->slot;
 	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
@@ -576,7 +584,6 @@ syncache_timer_handler(netmsg_t msg)
 	} else {
 		callout_deactivate(&syncache_percpu->tt_timerq[slot]);
 	}
-	lwkt_replymsg(&msg->base.lmsg, 0);
 }
 
 /*
