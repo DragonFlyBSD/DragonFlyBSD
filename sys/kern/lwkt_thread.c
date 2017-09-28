@@ -400,7 +400,7 @@ lwkt_alloc_thread(struct thread *td, int stksize, int cpu, int flags)
     if (cpu < 0) {
 	cpu = ++cpu_rotator;
 	cpu_ccfence();
-	cpu %= ncpus;
+	cpu = (uint32_t)cpu % (uint32_t)ncpus;
     }
     lwkt_init_thread(td, stack, stksize, flags, globaldata_find(cpu));
     return(td);
