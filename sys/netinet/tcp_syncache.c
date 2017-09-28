@@ -422,6 +422,8 @@ syncache_destroy(struct tcpcb *tp, struct tcpcb *tp_inh)
 	struct syncache *sc;
 	int i;
 
+	ASSERT_NETISR_NCPUS(mycpuid);
+
 	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
 	sc = NULL;
 
@@ -513,6 +515,8 @@ syncache_timer_handler(netmsg_t msg)
 	struct syncache_list *list;
 	struct inpcb *inp;
 	int slot;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
 
 	slot = ((struct netmsg_sc_timer *)msg)->nm_mrec->slot;
 	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
@@ -622,6 +626,8 @@ syncache_chkrst(struct in_conninfo *inc, struct tcphdr *th)
 	struct syncache *sc;
 	struct syncache_head *sch;
 
+	ASSERT_NETISR_NCPUS(mycpuid);
+
 	sc = syncache_lookup(inc, &sch);
 	if (sc == NULL) {
 		return;
@@ -652,6 +658,8 @@ syncache_badack(struct in_conninfo *inc)
 	struct syncache *sc;
 	struct syncache_head *sch;
 
+	ASSERT_NETISR_NCPUS(mycpuid);
+
 	sc = syncache_lookup(inc, &sch);
 	if (sc != NULL) {
 		syncache_drop(sc, sch);
@@ -664,6 +672,8 @@ syncache_unreach(struct in_conninfo *inc, const struct tcphdr *th)
 {
 	struct syncache *sc;
 	struct syncache_head *sch;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
 
 	/* we are called at splnet() here */
 	sc = syncache_lookup(inc, &sch);
@@ -906,6 +916,8 @@ syncache_expand(struct in_conninfo *inc, struct tcphdr *th, struct socket **sop,
 	struct syncache_head *sch;
 	struct socket *so;
 
+	ASSERT_NETISR_NCPUS(mycpuid);
+
 	sc = syncache_lookup(inc, &sch);
 	if (sc == NULL) {
 		/*
@@ -977,6 +989,7 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 	struct mbuf *ipopts = NULL;
 	int win;
 
+	ASSERT_NETISR_NCPUS(mycpuid);
 	KASSERT(m->m_flags & M_HASH, ("mbuf has no hash"));
 
 	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
