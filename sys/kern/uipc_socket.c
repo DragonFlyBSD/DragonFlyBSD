@@ -622,7 +622,10 @@ soclose_fast(struct socket *so)
 
 	netmsg_init(base, so, &netisr_apanic_rport, 0,
 	    soclose_fast_handler);
-	lwkt_sendmsg(so->so_port, &base->lmsg);
+	if (so->so_port == netisr_curport())
+		lwkt_sendmsg_oncpu(so->so_port, &base->lmsg);
+	else
+		lwkt_sendmsg(so->so_port, &base->lmsg);
 }
 
 /*

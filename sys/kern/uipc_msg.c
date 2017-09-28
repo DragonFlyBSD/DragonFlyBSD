@@ -48,6 +48,7 @@
 #include <vm/pmap.h>
 
 #include <net/netmsg2.h>
+#include <net/netisr2.h>
 #include <sys/socketvar2.h>
 
 #include <net/netisr.h>
@@ -157,7 +158,10 @@ so_pru_attach_fast(struct socket *so, int proto, struct pru_attach_info *ai)
 	    so->so_proto->pr_usrreqs->pru_attach);
 	msg->nm_proto = proto;
 	msg->nm_ai = NULL; /* postattach */
-	lwkt_sendmsg(so->so_port, &msg->base.lmsg);
+	if (so->so_port == netisr_curport())
+		lwkt_sendmsg_oncpu(so->so_port, &msg->base.lmsg);
+	else
+		lwkt_sendmsg(so->so_port, &msg->base.lmsg);
 
 	return 0;
 }
@@ -237,7 +241,10 @@ so_pru_connect_async(struct socket *so, struct sockaddr *nam, struct thread *td)
 	msg->nm_m = NULL;
 	msg->nm_sndflags = 0;
 	msg->nm_flags = flags;
-	lwkt_sendmsg(so->so_port, &msg->base.lmsg);
+	if (so->so_port == netisr_curport())
+		lwkt_sendmsg_oncpu(so->so_port, &msg->base.lmsg);
+	else
+		lwkt_sendmsg(so->so_port, &msg->base.lmsg);
 	return 0;
 }
 
@@ -387,7 +394,10 @@ so_pru_rcvd_async(struct socket *so)
 		if (lmsg->ms_flags & MSGF_DONE) {
 			lwkt_sendmsg_prepare(so->so_port, lmsg);
 			spin_unlock(&so->so_rcvd_spin);
-			lwkt_sendmsg_start(so->so_port, lmsg);
+			if (so->so_port == netisr_curport())
+				lwkt_sendmsg_start_oncpu(so->so_port, lmsg);
+			else
+				lwkt_sendmsg_start(so->so_port, lmsg);
 		} else {
 			spin_unlock(&so->so_rcvd_spin);
 		}
@@ -479,7 +489,10 @@ so_pru_send_async(struct socket *so, int flags, struct mbuf *m,
 	msg->nm_addr = addr;
 	msg->nm_control = control;
 	msg->nm_td = td;
-	lwkt_sendmsg(so->so_port, &msg->base.lmsg);
+	if (so->so_port == netisr_curport())
+		lwkt_sendmsg_oncpu(so->so_port, &msg->base.lmsg);
+	else
+		lwkt_sendmsg(so->so_port, &msg->base.lmsg);
 }
 
 int
@@ -537,7 +550,12 @@ so_pr_ctloutput(struct socket *so, struct sockopt *sopt)
 			netmsg_init(&amsg->base, so, &netisr_afree_rport, 0,
 			    so->so_proto->pr_ctloutput);
 			/* nm_flags and nm_sopt are setup by pr_ctloutmsg */
-			lwkt_sendmsg(so->so_port, &amsg->base.lmsg);
+			if (so->so_port == netisr_curport()) {
+				lwkt_sendmsg_oncpu(so->so_port,
+				    &amsg->base.lmsg);
+			} else {
+				lwkt_sendmsg(so->so_port, &amsg->base.lmsg);
+			}
 			return 0;
 		}
 		/* FALLTHROUGH */

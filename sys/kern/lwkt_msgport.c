@@ -163,6 +163,12 @@ lwkt_sendmsg_start(lwkt_port_t port, lwkt_msg_t msg)
     _lwkt_sendmsg_start(port, msg);
 }
 
+void
+lwkt_sendmsg_start_oncpu(lwkt_port_t port, lwkt_msg_t msg)
+{
+    _lwkt_sendmsg_start_oncpu(port, msg);
+}
+
 /*
  * lwkt_domsg()
  *
