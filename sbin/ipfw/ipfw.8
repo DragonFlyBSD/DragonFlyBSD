@@ -2,7 +2,7 @@
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
 .\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.20 2008/11/23 21:55:52 swildner Exp $
 .\"
-.Dd September 27, 2017
+.Dd September 28, 2017
 .Dt IPFW 8
 .Os
 .Sh NAME
@@ -781,6 +781,14 @@ specified by the
 Matches the first IPv4 address assigned to the
 .Ar ifX .
 It is intended to help matching the IPv4 address assigned to the
+.Ar ifX
+dynamically,
+e.g. by DHCP.
+.It Cm [ Ns Ar ifX Ns Cm :net]
+Matches the IPv4 network of the first IPv4 address assigned to the
+.Ar ifX .
+It is intended to help matching the IPv4 network of the IPv4 address
+assigned to the
 .Ar ifX
 dynamically,
 e.g. by DHCP.

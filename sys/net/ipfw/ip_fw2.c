@@ -2758,7 +2758,7 @@ static __inline int
 ipfw_match_ifip(ipfw_insn_ifip *cmd, const struct in_addr *ip)
 {
 
-	if (__predict_false(!cmd->o.arg1)) {
+	if (__predict_false((cmd->o.arg1 & IPFW_IFIP_VALID) == 0)) {
 		struct ifaddr_container *ifac;
 		struct ifnet *ifp;
 
@@ -2773,15 +2773,26 @@ ipfw_match_ifip(ipfw_insn_ifip *cmd, const struct in_addr *ip)
 				continue;
 			if (ia->ifa_addr->sa_family != AF_INET)
 				continue;
+
+			cmd->mask.s_addr = INADDR_ANY;
+			if (cmd->o.arg1 & IPFW_IFIP_NET) {
+				cmd->mask = ((struct sockaddr_in *)
+				    ia->ifa_netmask)->sin_addr;
+			}
+			if (cmd->mask.s_addr == INADDR_ANY)
+				cmd->mask.s_addr = INADDR_BROADCAST;
+
 			cmd->addr =
 			    ((struct sockaddr_in *)ia->ifa_addr)->sin_addr;
-			cmd->o.arg1 = 1;
+			cmd->addr.s_addr &= cmd->mask.s_addr;
+
+			cmd->o.arg1 |= IPFW_IFIP_VALID;
 			break;
 		}
-		if (!cmd->o.arg1)
+		if ((cmd->o.arg1 & IPFW_IFIP_VALID) == 0)
 			return (0);
 	}
-	return (ip->s_addr == cmd->addr.s_addr);
+	return ((ip->s_addr & cmd->mask.s_addr) == cmd->addr.s_addr);
 }
 
 static __inline struct mbuf *
@@ -4636,8 +4647,10 @@ ipfw_check_ioc_rule(struct ipfw_ioc_rule *rule, int size, uint32_t *rule_flags)
 		if (cmd->opcode == O_DEFRAG)
 			*rule_flags |= IPFW_RULE_F_CROSSREF;
 		if (cmd->opcode == O_IP_SRC_IFIP ||
-		    cmd->opcode == O_IP_DST_IFIP)
+		    cmd->opcode == O_IP_DST_IFIP) {
 			*rule_flags |= IPFW_RULE_F_DYNIFADDR;
+			cmd->arg1 &= IPFW_IFIP_SETTINGS;
+		}
 
 		switch (cmd->opcode) {
 		case O_NOP:
@@ -6562,7 +6575,7 @@ ipfw_ifaddr_dispatch(netmsg_t nmsg)
 				if (strncmp(ifp->if_xname,
 				    ((ipfw_insn_ifip *)cmd)->ifname,
 				    IFNAMSIZ) == 0)
-					cmd->arg1 = 0;
+					cmd->arg1 &= ~IPFW_IFIP_VALID;
 			}
 		}
 	}

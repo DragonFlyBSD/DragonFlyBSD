@@ -262,10 +262,13 @@ typedef struct  _ipfw_insn_log {
  * This is used by O_IP_{SRC,DST}_IFIP.
  */
 typedef struct _ipfw_insn_ifip {
-	ipfw_insn o;		/* arg1 == 1, addr is valid */
+	ipfw_insn o;		/* arg1 & 0x1, addr is valid */
+#define IPFW_IFIP_VALID		0x0001
+#define IPFW_IFIP_NET		0x0002
+#define IPFW_IFIP_SETTINGS	IPFW_IFIP_NET
 	char ifname[IFNAMSIZ];
 	struct in_addr addr;
-	struct in_addr mask;	/* reserved */
+	struct in_addr mask;
 } ipfw_insn_ifip;
 
 #ifdef _KERNEL

@@ -660,7 +660,8 @@ print_ip(ipfw_insn_ip *cmd, const char *str)
 	}
 	if (cmd->o.opcode == O_IP_SRC_IFIP ||
 	    cmd->o.opcode == O_IP_DST_IFIP) {
-		printf("[%s]", ((ipfw_insn_ifip *)cmd)->ifname);
+		printf("[%s%s]", ((ipfw_insn_ifip *)cmd)->ifname,
+		    (cmd->o.arg1 & IPFW_IFIP_NET) ? ":net" : "");
 		return;
 	}
 	if (cmd->o.opcode == O_IP_SRC_SET || cmd->o.opcode == O_IP_DST_SET) {
@@ -1786,7 +1787,7 @@ lookup_host (char *host, struct in_addr *ipaddr)
  *	any	matches any IP. Actually returns an empty instruction.
  *	me	returns O_IP_*_ME
  *	<table_id>	O_IP_*_TABLE
- *	[iface]		O_IP_*_IFIP
+ *	[iface[:net]]	O_IP_*_IFIP
  *	1.2.3.4		single IP address
  *	1.2.3.4:5.6.7.8	address:mask
  *	1.2.3.4/24	address/mask
@@ -1832,9 +1833,10 @@ fill_ip(ipfw_insn_ip *cmd, char *av)
 	if (strlen(av) >= 3 && av[0] == '[' && av[strlen(av) - 1] == ']') {
 		int pos = strlen(av) - 1;
 		ipfw_insn_ifip *cmd1 = (ipfw_insn_ifip *)cmd;
+		char *c;
 
 		/*
-		 * Interface IP: "[ifname]"
+		 * Interface IP: "[ifname[:net]]"
 		 */
 		cmd1->o.len = F_INSN_SIZE(ipfw_insn_ifip);
 		cmd1->o.opcode = O_IP_DST_IFIP;
@@ -1843,7 +1845,20 @@ fill_ip(ipfw_insn_ip *cmd, char *av)
 		cmd1->mask.s_addr = 0;
 
 		av[pos] = '\0';
+		c = strchr(av, ':');
+		if (c != NULL) {
+			if (strcmp(c + 1, "net") == 0) {
+				cmd1->o.arg1 |= IPFW_IFIP_NET;
+			} else {
+				errx(EX_DATAERR, "invalid ifname modifier: %s",
+				    c + 1);
+			}
+			*c = '\0';
+		}
+
 		strlcpy(cmd1->ifname, &av[1], sizeof(cmd1->ifname));
+		if (c != NULL)
+			*c = ':';
 		av[pos] = ']';
 		return;
 	}
