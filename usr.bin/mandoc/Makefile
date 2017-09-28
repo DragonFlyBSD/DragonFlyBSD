@@ -5,7 +5,7 @@ MAN=	mandoc.1 mandoc_char.7
 #MAN+=	eqn.7 man.7 mdoc.7 roff.7 tbl.7
 WARNS?=	3
 
-CFLAGS+=-DHAVE_CONFIG_H
+CFLAGS+=-DHAVE_CONFIG_H -I${.CURDIR}
 
 # libmandoc
 SRCS=	man.c man_hash.c man_macro.c man_validate.c
