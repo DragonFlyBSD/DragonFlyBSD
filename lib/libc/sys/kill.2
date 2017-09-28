@@ -96,6 +96,10 @@ with the same uid as the user excluding the process sending the signal.
 No error is returned if any process could be signaled.
 .El
 .Pp
+NOTE! If the sending process is restricted by a reaper, the signal is
+further restricted to processes only within or under that reaper.
+The reaper itself can only be signalled directly.
+.Pp
 For compatibility with System V,
 if the process number is negative but not -1,
 the signal is sent to all processes whose process group ID

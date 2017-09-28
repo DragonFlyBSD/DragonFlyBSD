@@ -597,6 +597,7 @@ void	proc_usermap(struct proc *p, int invfork);
 void	proc_userunmap(struct proc *p);
 void	reaper_hold(struct sysreaper *reap);
 void	reaper_drop(struct sysreaper *reap);
+int	reaper_sigtest(struct proc *sender, struct proc *target, int reaper_ok);
 struct sysreaper *reaper_exit(struct proc *p);
 void	reaper_init(struct proc *p, struct sysreaper *reap);
 struct proc *reaper_get(struct sysreaper *reap);

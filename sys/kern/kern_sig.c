@@ -94,10 +94,13 @@ SYSCTL_INT(_kern, KERN_LOGSIGEXIT, logsigexit, CTLFLAG_RW,
     "Log processes quitting on abnormal signals to syslog(3)");
 
 /*
- * Can process p, with pcred pc, send the signal sig to process q?
+ * Can process p send the signal sig to process q?  Only processes within
+ * the current reaper or children of the current reaper can be signaled.
+ * Normally the reaper itself cannot be signalled, unless initok is set.
  */
-#define CANSIGNAL(q, sig) \
-	(!p_trespass(curproc->p_ucred, (q)->p_ucred) || \
+#define CANSIGNAL(q, sig, initok)				\
+	((!p_trespass(curproc->p_ucred, (q)->p_ucred) &&	\
+	reaper_sigtest(curproc, p, initok)) ||			\
 	((sig) == SIGCONT && (q)->p_session == curproc->p_session))
 
 /*
@@ -694,7 +697,7 @@ dokillpg(int sig, int pgid, int all)
 			if (p->p_pid <= 1 || 
 			    p->p_stat == SZOMB ||
 			    (p->p_flags & P_SYSTEM) ||
-			    !CANSIGNAL(p, sig)) {
+			    !CANSIGNAL(p, sig, 0)) {
 				continue;
 			}
 			++info.nfound;
@@ -713,7 +716,7 @@ killpg_all_callback(struct proc *p, void *data)
 	struct killpg_info *info = data;
 
 	if (p->p_pid <= 1 || (p->p_flags & P_SYSTEM) ||
-	    p == curproc || !CANSIGNAL(p, info->sig)) {
+	    p == curproc || !CANSIGNAL(p, info->sig, 0)) {
 		return (0);
 	}
 	++info->nfound;
@@ -757,7 +760,7 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 		}
 		if (p != curproc) {
 			lwkt_gettoken_shared(&p->p_token);
-			if (!CANSIGNAL(p, sig)) {
+			if (!CANSIGNAL(p, sig, 1)) {
 				lwkt_reltoken(&p->p_token);
 				PRELE(p);
 				return (EPERM);

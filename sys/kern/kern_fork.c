@@ -86,6 +86,7 @@ static struct lwp	*lwp_fork(struct lwp *, struct proc *, int flags,
 			    const cpumask_t *mask);
 static int		lwp_create1(struct lwp_params *params,
 			    const cpumask_t *mask);
+static struct lock reaper_lock = LOCK_INITIALIZER("reapgl", 0, 0);
 
 int forksleep; /* Place for fork1() to sleep on. */
 
@@ -1004,8 +1005,10 @@ reaper_drop(struct sysreaper *next)
 		if (refcount_release(&reap->refs)) {
 			next = reap->parent;
 			KKASSERT(reap->p == NULL);
+			lockmgr(&reaper_lock, LK_EXCLUSIVE);
 			reap->parent = NULL;
 			kfree(reap, M_REAPER);
+			lockmgr(&reaper_lock, LK_RELEASE);
 		} else {
 			next = NULL;
 		}
@@ -1146,4 +1149,42 @@ reaper_get(struct sysreaper *reap)
 		reap = next;
 	}
 	return NULL;
+}
+
+/*
+ * Test that the sender is allowed to send a signal to the target.
+ * The sender process is assumed to have a stable reaper.  The
+ * target can be e.g. from a scan callback.
+ *
+ * Target cannot be the reaper process itself unless reaper_ok is specified,
+ * or sender == target.
+ */
+int
+reaper_sigtest(struct proc *sender, struct proc *target, int reaper_ok)
+{
+	struct sysreaper *sreap;
+	struct sysreaper *reap;
+	int r;
+
+	sreap = sender->p_reaper;
+	if (sreap == NULL)
+		return 1;
+
+	if (sreap == target->p_reaper) {
+		if (sreap->p == target && sreap->p != sender && reaper_ok == 0)
+			return 0;
+		return 1;
+	}
+	lockmgr(&reaper_lock, LK_SHARED);
+	r = 0;
+	for (reap = target->p_reaper; reap; reap = reap->parent) {
+		if (sreap == reap) {
+			if (sreap->p != target || reaper_ok)
+				r = 1;
+			break;
+		}
+	}
+	lockmgr(&reaper_lock, LK_RELEASE);
+
+	return r;
 }
