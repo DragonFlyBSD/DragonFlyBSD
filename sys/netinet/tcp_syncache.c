@@ -163,16 +163,6 @@ static struct syncache *syncookie_lookup(struct in_conninfo *,
 #define TCP_SYNCACHE_HASHSIZE		512
 #define TCP_SYNCACHE_BUCKETLIMIT	30
 
-struct netmsg_sc_timer {
-	struct netmsg_base base;
-	struct msgrec *nm_mrec;		/* back pointer to containing msgrec */
-};
-
-struct msgrec {
-	struct netmsg_sc_timer msg;
-	int slot;			/* constant after init */
-};
-
 static void syncache_timer_handler(netmsg_t);
 
 struct tcp_syncache {
@@ -192,7 +182,7 @@ struct tcp_syncache_percpu {
 	u_int			cache_count;
 	struct syncache_list	timerq[SYNCACHE_MAXREXMTS + 1];
 	struct callout		tt_timerq[SYNCACHE_MAXREXMTS + 1];
-	struct msgrec		mrec[SYNCACHE_MAXREXMTS + 1];
+	struct netmsg_base	nm_timerq[SYNCACHE_MAXREXMTS + 1];
 } __cachealign;
 static struct tcp_syncache_percpu tcp_syncache_percpu[MAXCPU];
 
@@ -254,6 +244,9 @@ syncache_timeout(struct tcp_syncache_percpu *syncache_percpu,
 {
 	int rto;
 
+	KASSERT(slot <= SYNCACHE_MAXREXMTS,
+	    ("syncache: invalid slot %d", slot));
+
 	if (slot > 0) {
 		/*
 		 * Record the time that we spent in SYN|ACK
@@ -271,7 +264,7 @@ syncache_timeout(struct tcp_syncache_percpu *syncache_percpu,
 	TAILQ_INSERT_TAIL(&syncache_percpu->timerq[slot], sc, sc_timerq);
 	if (!callout_active(&syncache_percpu->tt_timerq[slot])) {
 		callout_reset(&syncache_percpu->tt_timerq[slot], rto,
-		    syncache_timer, &syncache_percpu->mrec[slot]);
+		    syncache_timer, &syncache_percpu->nm_timerq[slot]);
 	}
 }
 
@@ -347,16 +340,16 @@ syncache_init(void)
 		}
 
 		for (i = 0; i <= SYNCACHE_MAXREXMTS; i++) {
+			struct netmsg_base *nm;
+
 			/* Initialize the timer queues. */
 			TAILQ_INIT(&syncache_percpu->timerq[i]);
 			callout_init_mp(&syncache_percpu->tt_timerq[i]);
 
-			syncache_percpu->mrec[i].slot = i;
-			syncache_percpu->mrec[i].msg.nm_mrec =
-				    &syncache_percpu->mrec[i];
-			netmsg_init(&syncache_percpu->mrec[i].msg.base,
-				    NULL, &netisr_adone_rport,
+			nm = &syncache_percpu->nm_timerq[i];
+			netmsg_init(nm, NULL, &netisr_adone_rport,
 				    MSGF_PRIORITY, syncache_timer_handler);
+			nm->lmsg.u.ms_result = i;
 		}
 	}
 }
@@ -489,13 +482,13 @@ syncache_drop(struct syncache *sc, struct syncache_head *sch)
 static void
 syncache_timer(void *p)
 {
-	struct netmsg_sc_timer *msg = p;
+	struct netmsg_base *msg = p;
 
 	KKASSERT(mycpuid < netisr_ncpus);
 
 	crit_enter();
-	if (msg->base.lmsg.ms_flags & MSGF_DONE)
-		netisr_sendmsg_oncpu(&msg->base);
+	if (msg->lmsg.ms_flags & MSGF_DONE)
+		netisr_sendmsg_oncpu(msg);
 	crit_exit();
 }
 
@@ -527,9 +520,11 @@ syncache_timer_handler(netmsg_t msg)
 	netisr_replymsg(&msg->base, 0);
 	crit_exit();
 
-	slot = ((struct netmsg_sc_timer *)msg)->nm_mrec->slot;
 	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
 
+	slot = msg->lmsg.u.ms_result;
+	KASSERT(slot <= SYNCACHE_MAXREXMTS,
+	    ("syncache: invalid slot %d", slot));
 	list = &syncache_percpu->timerq[slot];
 
 	/*
@@ -580,7 +575,7 @@ syncache_timer_handler(netmsg_t msg)
 	if (sc != NULL) {
 		callout_reset(&syncache_percpu->tt_timerq[slot],
 			      sc->sc_rxttime - ticks, syncache_timer,
-			      &syncache_percpu->mrec[slot]);
+			      &syncache_percpu->nm_timerq[slot]);
 	} else {
 		callout_deactivate(&syncache_percpu->tt_timerq[slot]);
 	}
