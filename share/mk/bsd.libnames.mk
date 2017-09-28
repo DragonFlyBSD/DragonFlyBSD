@@ -51,7 +51,6 @@ LIBLVM?=	${DESTDIR}${LIBDIR}/liblvm.a
 LIBLZMA?=	${DESTDIR}${LIBDIR}/liblzma.a
 LIBM?=		${DESTDIR}${LIBDIR}/libm.a
 LIBMAGIC?=	${DESTDIR}${LIBDIR}/libmagic.a
-LIBMANDOC?=	${DESTDIR}${LIBDIR}/libmandoc.a
 LIBMD?=		${DESTDIR}${LIBDIR}/libmd.a
 LIBMYTINFO?=	"don't use LIBMYTINFO, use LIBNCURSES"
 LIBNCURSES?=	${DESTDIR}${LIBDIR}/priv/libprivate_ncurses.a

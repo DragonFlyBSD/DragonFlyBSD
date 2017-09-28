@@ -81,7 +81,6 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libkvm \
 	libm \
 	libmagic \
-	libmandoc \
 	${_libnetgraph} \
 	libopie \
 	libpam \
