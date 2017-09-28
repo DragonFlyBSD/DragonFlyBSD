@@ -141,7 +141,8 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, syncookies, CTLFLAG_RW,
 static void	 syncache_drop(struct syncache *, struct syncache_head *);
 static void	 syncache_free(struct syncache *);
 static void	 syncache_insert(struct syncache *, struct syncache_head *);
-struct syncache *syncache_lookup(struct in_conninfo *, struct syncache_head **);
+static struct syncache *syncache_lookup(struct in_conninfo *,
+		    struct syncache_head **);
 static int	 syncache_respond(struct syncache *, struct mbuf *);
 static struct	 socket *syncache_socket(struct syncache *, struct socket *,
 		    struct mbuf *);
@@ -581,7 +582,7 @@ syncache_timer_handler(netmsg_t msg)
 /*
  * Find an entry in the syncache.
  */
-struct syncache *
+static struct syncache *
 syncache_lookup(struct in_conninfo *inc, struct syncache_head **schp)
 {
 	struct tcp_syncache_percpu *syncache_percpu;
