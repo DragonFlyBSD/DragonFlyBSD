@@ -62,6 +62,8 @@
 #include <machine/cpu.h>
 #include <machine/smp.h>
 
+#include <vm/vm_extern.h>
+
 struct tslpque {
 	TAILQ_HEAD(, thread)	queue;
 	const volatile void	*ident0;
@@ -1418,6 +1420,7 @@ void
 sleep_gdinit(globaldata_t gd)
 {
 	struct thread *td;
+	size_t hash_size;
 	uint32_t n;
 	uint32_t i;
 
@@ -1439,8 +1442,11 @@ sleep_gdinit(globaldata_t gd)
 	 */
 	n = TCHASHSHIFT(slpque_tablesize) + 1;
 
-	gd->gd_tsleep_hash = kmalloc(sizeof(struct tslpque) * n,
-				     M_TSLEEP, M_WAITOK | M_ZERO);
+	hash_size = sizeof(struct tslpque) * n;
+	gd->gd_tsleep_hash = (void *)kmem_alloc3(&kernel_map, hash_size,
+						 VM_SUBSYS_GD,
+						 KM_CPU(gd->gd_cpuid));
+	memset(gd->gd_tsleep_hash, 0, hash_size);
 	for (i = 0; i < n; ++i)
 		TAILQ_INIT(&gd->gd_tsleep_hash[i].queue);
 }
