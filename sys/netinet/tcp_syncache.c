@@ -187,8 +187,9 @@ struct tcp_syncache_percpu {
 	struct syncache_head	*hashbase;
 	u_int			cache_count;
 	struct syncache_timerq	timerq[SYNCACHE_MAXREXMTS + 1];
-} __cachealign;
-static struct tcp_syncache_percpu tcp_syncache_percpu[MAXCPU];
+};
+
+static struct tcp_syncache_percpu *tcp_syncache_percpu[MAXCPU];
 
 SYSCTL_NODE(_net_inet_tcp, OID_AUTO, syncache, CTLFLAG_RW, 0, "TCP SYN cache");
 
@@ -301,10 +302,53 @@ syncache_free(struct syncache *sc)
 	kfree(sc, M_SYNCACHE);
 }
 
+static void
+syncache_init_dispatch(netmsg_t nm)
+{
+	struct tcp_syncache_percpu *syncache_percpu;
+	int i;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
+
+	syncache_percpu = kmalloc(sizeof(*syncache_percpu), M_SYNCACHE,
+	    M_WAITOK);
+
+	/* Allocate the hash table. */
+	syncache_percpu->hashbase = kmalloc(
+	    tcp_syncache.hashsize * sizeof(struct syncache_head),
+	    M_SYNCACHE, M_WAITOK);
+
+	/* Initialize the hash buckets. */
+	for (i = 0; i < tcp_syncache.hashsize; i++) {
+		struct syncache_head *bucket;
+
+		bucket = &syncache_percpu->hashbase[i];
+		TAILQ_INIT(&bucket->sch_bucket);
+		bucket->sch_length = 0;
+	}
+
+	for (i = 0; i <= SYNCACHE_MAXREXMTS; i++) {
+		struct syncache_timerq *tq =
+		    &syncache_percpu->timerq[i];
+
+		/* Initialize the timer queues. */
+		TAILQ_INIT(&tq->list);
+		callout_init_mp(&tq->timeo);
+
+		netmsg_init(&tq->nm, NULL, &netisr_adone_rport,
+			    MSGF_PRIORITY, syncache_timer_handler);
+		tq->nm.lmsg.u.ms_result = i;
+	}
+
+	tcp_syncache_percpu[mycpuid] = syncache_percpu;
+
+	netisr_forwardmsg(&nm->base, mycpuid + 1);
+}
+
 void
 syncache_init(void)
 {
-	int i, cpu;
+	struct netmsg_base nm;
 
 	tcp_syncache.hashsize = TCP_SYNCACHE_HASHSIZE;
 	tcp_syncache.bucket_limit = TCP_SYNCACHE_BUCKETLIMIT;
@@ -325,37 +369,9 @@ syncache_init(void)
 	}
 	tcp_syncache.hashmask = tcp_syncache.hashsize - 1;
 
-	for (cpu = 0; cpu < netisr_ncpus; cpu++) {
-		struct tcp_syncache_percpu *syncache_percpu;
-
-		syncache_percpu = &tcp_syncache_percpu[cpu];
-		/* Allocate the hash table. */
-		syncache_percpu->hashbase = kmalloc_cachealign(
-		    tcp_syncache.hashsize * sizeof(struct syncache_head),
-		    M_SYNCACHE, M_WAITOK);
-
-		/* Initialize the hash buckets. */
-		for (i = 0; i < tcp_syncache.hashsize; i++) {
-			struct syncache_head *bucket;
-
-			bucket = &syncache_percpu->hashbase[i];
-			TAILQ_INIT(&bucket->sch_bucket);
-			bucket->sch_length = 0;
-		}
-
-		for (i = 0; i <= SYNCACHE_MAXREXMTS; i++) {
-			struct syncache_timerq *tq =
-			    &syncache_percpu->timerq[i];
-
-			/* Initialize the timer queues. */
-			TAILQ_INIT(&tq->list);
-			callout_init_mp(&tq->timeo);
-
-			netmsg_init(&tq->nm, NULL, &netisr_adone_rport,
-				    MSGF_PRIORITY, syncache_timer_handler);
-			tq->nm.lmsg.u.ms_result = i;
-		}
-	}
+	netmsg_init(&nm, NULL, &curthread->td_msgport, 0,
+	    syncache_init_dispatch);
+	netisr_domsg_global(&nm);
 }
 
 static void
@@ -365,7 +381,7 @@ syncache_insert(struct syncache *sc, struct syncache_head *sch)
 	struct syncache *sc2;
 	int i;
 
-	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
+	syncache_percpu = tcp_syncache_percpu[mycpu->gd_cpuid];
 
 	/*
 	 * Make sure that we don't overflow the per-bucket
@@ -420,7 +436,7 @@ syncache_destroy(struct tcpcb *tp, struct tcpcb *tp_inh)
 
 	ASSERT_NETISR_NCPUS(mycpuid);
 
-	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
+	syncache_percpu = tcp_syncache_percpu[mycpu->gd_cpuid];
 	sc = NULL;
 
 	for (i = 0; i < tcp_syncache.hashsize; i++) {
@@ -442,7 +458,7 @@ syncache_drop(struct syncache *sc, struct syncache_head *sch)
 	const boolean_t isipv6 = FALSE;
 #endif
 
-	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
+	syncache_percpu = tcp_syncache_percpu[mycpu->gd_cpuid];
 
 	if (sch == NULL) {
 		if (isipv6) {
@@ -526,7 +542,7 @@ syncache_timer_handler(netmsg_t msg)
 	netisr_replymsg(&msg->base, 0);
 	crit_exit();
 
-	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
+	syncache_percpu = tcp_syncache_percpu[mycpu->gd_cpuid];
 
 	slot = msg->lmsg.u.ms_result;
 	KASSERT(slot <= SYNCACHE_MAXREXMTS,
@@ -597,7 +613,7 @@ syncache_lookup(struct in_conninfo *inc, struct syncache_head **schp)
 	struct syncache *sc;
 	struct syncache_head *sch;
 
-	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
+	syncache_percpu = tcp_syncache_percpu[mycpu->gd_cpuid];
 #ifdef INET6
 	if (inc->inc_isipv6) {
 		sch = &syncache_percpu->hashbase[
@@ -1001,7 +1017,7 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 	ASSERT_NETISR_NCPUS(mycpuid);
 	KASSERT(m->m_flags & M_HASH, ("mbuf has no hash"));
 
-	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
+	syncache_percpu = tcp_syncache_percpu[mycpu->gd_cpuid];
 	tp = sototcpcb(so);
 
 	/*
