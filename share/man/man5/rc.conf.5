@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd March 1, 2017
+.Dd September 29, 2017
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -1815,27 +1815,26 @@ daemon is started for doing cut/paste selection on the console.
 .It Va moused_type
 .Pq Vt str
 This is the protocol type of the mouse connected to this host.
-This variable must be set if
-.Va moused_enable
-is set to
-.Dq Li YES .
+The default type is
+.Dq Li auto .
 The
 .Xr moused 8
 daemon
 is able to detect the appropriate mouse type automatically in many cases.
-Set this variable to
+Leave this variable at the default
 .Dq Li auto
 to let the daemon detect it, or
 select one from the following list if the automatic detection fails.
 .Pp
-If the mouse is attached to the PS/2 mouse port, choose
+If the mouse is attached to the PS/2 mouse port, leave the variable at the
+default
 .Dq Li auto
-or
+or set it to
 .Dq Li ps/2 ,
 regardless of the brand and model of the mouse.
-Likewise, if the mouse is attached to the bus mouse port, choose
+Likewise, if the mouse is attached to the bus mouse port, leave it at
 .Dq Li auto
-or
+or set it to
 .Dq Li busmouse .
 All other protocols are for serial mice and will not work with
 the PS/2 and bus mice.
