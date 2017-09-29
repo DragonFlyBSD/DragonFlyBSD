@@ -1727,6 +1727,32 @@ detect_amd_topology(int count_htt_cores)
 			core_bits = shift;
 		}
 
+		if (amd_feature2 & AMDID2_TOPOEXT) {
+			u_int p[4];
+			int i;
+			int type;
+			int level;
+			int share_count;
+			for (i = 0; i < 256; ++i)  {
+				cpuid_count(0x8000001d, i, p);
+				type = p[0] & 0x1f;
+				level = (p[0] >> 5) & 0x7;
+				share_count = 1 + ((p[0] >> 14) & 0xfff);
+
+				if (type == 0)
+					break;
+				if (bootverbose)
+					kprintf("Topology probe i=%2d type=%d level=%d share_count=%d\n",
+						i, type, level, share_count);
+				if (type == 1 && share_count) {	/* CPUID_TYPE_SMT */
+					for (shift = 0; (1 << shift) < count_htt_cores / share_count; ++shift)
+						;
+					core_bits = shift;
+					break;
+				}
+			}
+		}
+
 		logical_CPU_bits = count_htt_cores >> core_bits;
 		for (shift = 0; (1 << shift) < logical_CPU_bits; ++shift)
 			;
