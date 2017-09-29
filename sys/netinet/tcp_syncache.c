@@ -428,16 +428,15 @@ void
 syncache_destroy(struct tcpcb *tp, struct tcpcb *tp_inh)
 {
 	struct tcp_syncache_percpu *syncache_percpu;
-	struct syncache_head *bucket;
-	struct syncache *sc;
 	int i;
 
 	ASSERT_NETISR_NCPUS(mycpuid);
 
 	syncache_percpu = tcp_syncache_percpu[mycpu->gd_cpuid];
-	sc = NULL;
-
 	for (i = 0; i < tcp_syncache.hashsize; i++) {
+		struct syncache_head *bucket;
+		struct syncache *sc;
+
 		bucket = &syncache_percpu->hashbase[i];
 		TAILQ_FOREACH(sc, &bucket->sch_bucket, sc_hash) {
 			if (sc->sc_tp == tp)
