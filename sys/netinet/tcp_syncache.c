@@ -164,6 +164,7 @@ static struct syncache *syncookie_lookup(struct in_conninfo *,
 #define TCP_SYNCACHE_BUCKETLIMIT	30
 
 static void syncache_timer_handler(netmsg_t);
+static int syncache_sysctl_count(SYSCTL_HANDLER_ARGS);
 
 struct tcp_syncache {
 	u_int	hashsize;
@@ -199,11 +200,8 @@ SYSCTL_INT(_net_inet_tcp_syncache, OID_AUTO, bucketlimit, CTLFLAG_RD,
 SYSCTL_INT(_net_inet_tcp_syncache, OID_AUTO, cachelimit, CTLFLAG_RD,
      &tcp_syncache.cache_limit, 0, "Overall entry limit for syncache");
 
-/* XXX JH */
-#if 0
-SYSCTL_INT(_net_inet_tcp_syncache, OID_AUTO, count, CTLFLAG_RD,
-     &tcp_syncache.cache_count, 0, "Current number of entries in syncache");
-#endif
+SYSCTL_PROC(_net_inet_tcp_syncache, OID_AUTO, count, (CTLTYPE_INT | CTLFLAG_RD),
+    0, 0, syncache_sysctl_count, "I", "Current number of entries in syncache");
 
 SYSCTL_INT(_net_inet_tcp_syncache, OID_AUTO, hashsize, CTLFLAG_RD,
      &tcp_syncache.hashsize, 0, "Size of TCP syncache hashtable");
@@ -1540,4 +1538,15 @@ syncookie_lookup(struct in_conninfo *inc, struct tcphdr *th, struct socket *so)
 	sc->sc_rxtslot = 0;
 	sc->sc_peer_mss = tcp_msstab[data];
 	return (sc);
+}
+
+static int
+syncache_sysctl_count(SYSCTL_HANDLER_ARGS)
+{
+	u_int count = 0;
+	int cpu;
+
+	for (cpu = 0; cpu < netisr_ncpus; ++cpu)
+		count += tcp_syncache_percpu[cpu]->cache_count;
+	return sysctl_handle_int(oidp, &count, 0, req);
 }
