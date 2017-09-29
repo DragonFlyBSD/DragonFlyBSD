@@ -102,7 +102,7 @@ struct vmmeter {
 	u_int v_ppwakeups;	/* wakeups on processes stalled on VM */
 	u_int v_lock_colls;	/* # of token, lock, or spin collisions */
 	char  v_lock_name[16];	/* last-colliding token, lock, or spin name */
-	u_int v_reserved6;
+	u_int v_wakeup_colls;	/* possible spurious wakeup IPIs */
 	u_int v_reserved7;
 #define vmmeter_uint_end	v_reserved7
 };

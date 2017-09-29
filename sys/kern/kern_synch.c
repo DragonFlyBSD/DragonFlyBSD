@@ -62,7 +62,13 @@
 #include <machine/cpu.h>
 #include <machine/smp.h>
 
-TAILQ_HEAD(tslpque, thread);
+struct tslpque {
+	TAILQ_HEAD(, thread)	queue;
+	const volatile void	*ident0;
+	const volatile void	*ident1;
+	const volatile void	*ident2;
+	const volatile void	*ident3;
+};
 
 static void sched_setup (void *dummy);
 SYSINIT(sched_setup, SI_SUB_KICK_SCHEDULER, SI_ORDER_FIRST, sched_setup, NULL);
@@ -321,6 +327,7 @@ static __inline void
 _tsleep_interlock(globaldata_t gd, const volatile void *ident, int flags)
 {
 	thread_t td = gd->gd_curthread;
+	struct tslpque *qp;
 	uint32_t cid;
 	uint32_t gid;
 
@@ -328,17 +335,36 @@ _tsleep_interlock(globaldata_t gd, const volatile void *ident, int flags)
 	if (td->td_flags & TDF_TSLEEPQ) {
 		cid = LOOKUP(td->td_wchan);
 		gid = TCHASHSHIFT(cid);
-		TAILQ_REMOVE(&gd->gd_tsleep_hash[gid], td, td_sleepq);
-		if (TAILQ_FIRST(&gd->gd_tsleep_hash[gid]) == NULL) {
+		qp = &gd->gd_tsleep_hash[gid];
+		TAILQ_REMOVE(&qp->queue, td, td_sleepq);
+		if (TAILQ_FIRST(&qp->queue) == NULL) {
 			ATOMIC_CPUMASK_NANDBIT(slpque_cpumasks[cid],
 					       gd->gd_cpuid);
+			qp->ident0 = NULL;
+			qp->ident1 = NULL;
+			qp->ident2 = NULL;
+			qp->ident3 = NULL;
 		}
 	} else {
 		td->td_flags |= TDF_TSLEEPQ;
 	}
 	cid = LOOKUP(ident);
 	gid = TCHASHSHIFT(cid);
-	TAILQ_INSERT_TAIL(&gd->gd_tsleep_hash[gid], td, td_sleepq);
+	qp = &gd->gd_tsleep_hash[gid];
+	TAILQ_INSERT_TAIL(&qp->queue, td, td_sleepq);
+	if (qp->ident0 != ident && qp->ident1 != ident &&
+	    qp->ident2 != ident && qp->ident3 != ident) {
+		if (qp->ident0 == NULL)
+			qp->ident0 = ident;
+		else if (qp->ident1 == NULL)
+			qp->ident1 = ident;
+		else if (qp->ident2 == NULL)
+			qp->ident2 = ident;
+		else if (qp->ident3 == NULL)
+			qp->ident3 = ident;
+		else
+			qp->ident0 = (void *)(intptr_t)-1;
+	}
 	ATOMIC_CPUMASK_ORBIT(slpque_cpumasks[cid], gd->gd_cpuid);
 	td->td_wchan = ident;
 	td->td_wdomain = flags & PDOMAIN_MASK;
@@ -359,6 +385,7 @@ static __inline void
 _tsleep_remove(thread_t td)
 {
 	globaldata_t gd = mycpu;
+	struct tslpque *qp;
 	uint32_t cid;
 	uint32_t gid;
 
@@ -368,8 +395,9 @@ _tsleep_remove(thread_t td)
 		td->td_flags &= ~TDF_TSLEEPQ;
 		cid = LOOKUP(td->td_wchan);
 		gid = TCHASHSHIFT(cid);
-		TAILQ_REMOVE(&gd->gd_tsleep_hash[gid], td, td_sleepq);
-		if (TAILQ_FIRST(&gd->gd_tsleep_hash[gid]) == NULL) {
+		qp = &gd->gd_tsleep_hash[gid];
+		TAILQ_REMOVE(&qp->queue, td, td_sleepq);
+		if (TAILQ_FIRST(&qp->queue) == NULL) {
 			ATOMIC_CPUMASK_NANDBIT(slpque_cpumasks[cid],
 					       gd->gd_cpuid);
 		}
@@ -887,6 +915,7 @@ _wakeup(void *ident, int domain)
 	cpumask_t mask;
 	uint32_t cid;
 	uint32_t gid;
+	int wids = 0;
 
 	crit_enter();
 	logtsleep2(wakeup_beg, ident);
@@ -895,7 +924,7 @@ _wakeup(void *ident, int domain)
 	gid = TCHASHSHIFT(cid);
 	qp = &gd->gd_tsleep_hash[gid];
 restart:
-	for (td = TAILQ_FIRST(qp); td != NULL; td = ntd) {
+	for (td = TAILQ_FIRST(&qp->queue); td != NULL; td = ntd) {
 		ntd = TAILQ_NEXT(td, td_sleepq);
 		if (td->td_wchan == ident && 
 		    td->td_wdomain == (domain & PDOMAIN_MASK)
@@ -910,6 +939,16 @@ restart:
 			}
 			goto restart;
 		}
+		if (td->td_wchan == qp->ident0)
+			wids |= 1;
+		else if (td->td_wchan == qp->ident1)
+			wids |= 2;
+		else if (td->td_wchan == qp->ident2)
+			wids |= 4;
+		else if (td->td_wchan == qp->ident3)
+			wids |= 8;
+		else
+			wids |= 16;	/* force ident0 to be retained (-1) */
 	}
 
 	/*
@@ -918,8 +957,23 @@ restart:
 	 * spurious wakeup IPIs later on.  Make sure that the bit is cleared
 	 * when a spurious IPI occurs to prevent further spurious IPIs.
 	 */
-	if (TAILQ_FIRST(qp) == NULL) {
+	if (TAILQ_FIRST(&qp->queue) == NULL) {
 		ATOMIC_CPUMASK_NANDBIT(slpque_cpumasks[cid], gd->gd_cpuid);
+		qp->ident0 = NULL;
+		qp->ident1 = NULL;
+		qp->ident2 = NULL;
+		qp->ident3 = NULL;
+	} else {
+		if ((wids & 1) == 0) {
+			if ((wids & 16) == 0)
+				qp->ident0 = NULL;
+		}
+		if ((wids & 2) == 0)
+			qp->ident1 = NULL;
+		if ((wids & 4) == 0)
+			qp->ident2 = NULL;
+		if ((wids & 8) == 0)
+			qp->ident3 = NULL;
 	}
 
 	/*
@@ -949,12 +1003,31 @@ restart:
 	 *	 reorder around the cpumask load.
 	 */
 	if ((domain & PWAKEUP_MYCPU) == 0) {
+		globaldata_t tgd;
+		int n;
+
 		cpu_mfence();
 		mask = slpque_cpumasks[cid];
 		CPUMASK_ANDMASK(mask, gd->gd_other_cpus);
-		if (CPUMASK_TESTNZERO(mask)) {
+		while (CPUMASK_TESTNZERO(mask)) {
+			n = BSRCPUMASK(mask);
+			CPUMASK_NANDBIT(mask, n);
+			tgd = globaldata_find(n);
+			qp = &tgd->gd_tsleep_hash[gid];
+			if (qp->ident0 == (void *)(intptr_t)-1)
+				++tgd->gd_cnt.v_wakeup_colls;
+			if (qp->ident0 == (void *)(intptr_t)-1 ||
+			    qp->ident0 == ident ||
+			    qp->ident1 == ident ||
+			    qp->ident2 == ident ||
+			    qp->ident3 == ident) {
+				lwkt_send_ipiq2(tgd, _wakeup, ident,
+						domain | PWAKEUP_MYCPU);
+			}
+#if 0
 			lwkt_send_ipiq2_mask(mask, _wakeup, ident,
 					     domain | PWAKEUP_MYCPU);
+#endif
 		}
 	}
 done:
@@ -1330,7 +1403,7 @@ sleep_early_gdinit(globaldata_t gd)
 	slpque_tablesize = 1;
 	gd->gd_tsleep_hash = &dummy_slpque;
 	slpque_cpumasks = &dummy_cpumasks;
-	TAILQ_INIT(&dummy_slpque);
+	TAILQ_INIT(&dummy_slpque.queue);
 }
 
 /*
@@ -1353,7 +1426,8 @@ sleep_gdinit(globaldata_t gd)
 	 * waiting on the dummy tsleep queue this early in the boot.
 	 */
 	if (gd->gd_cpuid == 0) {
-		TAILQ_FOREACH(td, &gd->gd_tsleep_hash[0], td_sleepq) {
+		struct tslpque *qp = &gd->gd_tsleep_hash[0];
+		TAILQ_FOREACH(td, &qp->queue, td_sleepq) {
 			kprintf("SLEEP_GDINIT SWITCH %s\n", td->td_comm);
 		}
 	}
@@ -1368,7 +1442,7 @@ sleep_gdinit(globaldata_t gd)
 	gd->gd_tsleep_hash = kmalloc(sizeof(struct tslpque) * n,
 				     M_TSLEEP, M_WAITOK | M_ZERO);
 	for (i = 0; i < n; ++i)
-		TAILQ_INIT(&gd->gd_tsleep_hash[i]);
+		TAILQ_INIT(&gd->gd_tsleep_hash[i].queue);
 }
 
 /*

@@ -116,7 +116,7 @@
  */
 
 struct sysmsg;
-struct tslpentry;
+struct tslpque;
 struct privatespace;
 struct vm_map_entry;
 struct spinlock;
