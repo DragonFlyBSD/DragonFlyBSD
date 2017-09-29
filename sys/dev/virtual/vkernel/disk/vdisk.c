@@ -136,8 +136,8 @@ vkdinit(void *dummy __unused)
 					   MAP_PRIVATE,
 					   sc->fd, 0);
 			if ((void *)sc->map_buf == MAP_FAILED) {
-				panic("vkd: cannot mmap %jd bytes\n",
-				      (intmax_t)sc->size);
+				panic("vkd: cannot mmap %jd MBytes\n",
+				      (intmax_t)sc->size / (1024 * 1024));
 			}
 			kprintf("vkd%d: COW disk\n", sc->unit);
 		}
