@@ -526,7 +526,6 @@ struct syncache {
 #define SCF_UNREACH		0x10		/* icmp unreachable received */
 #define	SCF_SACK_PERMITTED	0x20		/* saw SACK permitted option */
 #define SCF_SIGNATURE		0x40		/* send MD5 digests */
-#define SCF_MARKER		0x80		/* not a real entry */
 	int		sc_rxtused;		/* time spent in SYN|ACK rxt */
 	u_long		sc_sndwnd;		/* send window */
 	TAILQ_ENTRY(syncache) sc_hash;

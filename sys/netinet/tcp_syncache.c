@@ -176,10 +176,8 @@ struct tcp_syncache {
 };
 static struct tcp_syncache tcp_syncache;
 
-TAILQ_HEAD(syncache_list, syncache);
-
 struct syncache_timerq {
-	struct syncache_list	list;
+	TAILQ_HEAD(, syncache)	list;
 	struct callout		timeo;
 	struct netmsg_base	nm;
 };
@@ -403,8 +401,6 @@ syncache_insert(struct syncache *sc, struct syncache_head *sch)
 		 */
 		for (i = SYNCACHE_MAXREXMTS; i >= 0; i--) {
 			sc2 = TAILQ_FIRST(&syncache_percpu->timerq[i].list);
-			while (sc2 && (sc2->sc_flags & SCF_MARKER))
-				sc2 = TAILQ_NEXT(sc2, sc_timerq);
 			if (sc2 != NULL)
 				break;
 		}
@@ -525,10 +521,8 @@ static void
 syncache_timer_handler(netmsg_t msg)
 {
 	struct tcp_syncache_percpu *syncache_percpu;
-	struct syncache *sc;
-	struct syncache marker;
+	struct syncache *nsc;
 	struct syncache_timerq *tq;
-	struct syncache_list *list;
 	int slot;
 
 	ASSERT_NETISR_NCPUS(mycpuid);
@@ -544,28 +538,17 @@ syncache_timer_handler(netmsg_t msg)
 	KASSERT(slot <= SYNCACHE_MAXREXMTS,
 	    ("syncache: invalid slot %d", slot));
 	tq = &syncache_percpu->timerq[slot];
-	list = &tq->list;
 
-	/*
-	 * Use a marker to keep our place in the scan.  syncache_drop()
-	 * can block and cause any next pointer we cache to become stale.
-	 */
-	marker.sc_flags = SCF_MARKER;
-	TAILQ_INSERT_HEAD(list, &marker, sc_timerq);
+	nsc = TAILQ_FIRST(&tq->list);
+	while (nsc != NULL) {
+		struct syncache *sc;
 
-	while ((sc = TAILQ_NEXT(&marker, sc_timerq)) != NULL) {
-		/*
-		 * Move the marker.
-		 */
-		TAILQ_REMOVE(list, &marker, sc_timerq);
-		TAILQ_INSERT_AFTER(list, sc, &marker, sc_timerq);
-
-		if (sc->sc_flags & SCF_MARKER)
-			continue;
-
-		if (ticks < sc->sc_rxttime)
+		if (ticks < nsc->sc_rxttime)
 			break;	/* finished because timerq sorted by time */
+
+		sc = nsc;
 		if (sc->sc_tp == NULL) {
+			nsc = TAILQ_NEXT(sc, sc_timerq);
 			syncache_drop(sc, NULL);
 			tcpstat.tcps_sc_stale++;
 			continue;
@@ -573,6 +556,7 @@ syncache_timer_handler(netmsg_t msg)
 		if (slot == SYNCACHE_MAXREXMTS ||
 		    slot >= tcp_syncache.rexmt_limit ||
 		    sc->sc_tp->t_inpcb->inp_gencnt != sc->sc_inp_gencnt) {
+			nsc = TAILQ_NEXT(sc, sc_timerq);
 			syncache_drop(sc, NULL);
 			tcpstat.tcps_sc_stale++;
 			continue;
@@ -584,13 +568,13 @@ syncache_timer_handler(netmsg_t msg)
 		 */
 		syncache_respond(sc, NULL);
 		tcpstat.tcps_sc_retransmitted++;
-		TAILQ_REMOVE(list, sc, sc_timerq);
+		nsc = TAILQ_NEXT(sc, sc_timerq);
+		TAILQ_REMOVE(&tq->list, sc, sc_timerq);
 		syncache_timeout(syncache_percpu, sc, slot + 1);
 	}
-	TAILQ_REMOVE(list, &marker, sc_timerq);
 
-	if (sc != NULL) {
-		callout_reset(&tq->timeo, sc->sc_rxttime - ticks,
+	if (nsc != NULL) {
+		callout_reset(&tq->timeo, nsc->sc_rxttime - ticks,
 		    syncache_timer, &tq->nm);
 	} else {
 		callout_deactivate(&tq->timeo);
