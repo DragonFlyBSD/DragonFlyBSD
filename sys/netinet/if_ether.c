@@ -106,6 +106,8 @@
 #define SIN(s) ((struct sockaddr_in *)s)
 #define SDL(s) ((struct sockaddr_dl *)s)
 
+MALLOC_DEFINE(M_ARP, "arp", "ARP");
+
 SYSCTL_DECL(_net_link_ether);
 SYSCTL_NODE(_net_link_ether, PF_INET, inet, CTLFLAG_RW, 0, "");
 
@@ -169,12 +171,12 @@ static void	arp_reply_msghandler(netmsg_t);
 #endif
 
 struct arp_pcpu_data {
+	LIST_HEAD(, llinfo_arp) llinfo_list;
 	struct callout		timer_ch;
 	struct netmsg_base	timer_nmsg;
-	LIST_HEAD(, llinfo_arp) llinfo_list;
-} __cachealign;
+};
 
-static struct arp_pcpu_data	arp_data[MAXCPU];
+static struct arp_pcpu_data	*arp_data[MAXCPU];
 
 /*
  * Timeout routine.  Age arp_tab entries periodically.
@@ -182,32 +184,33 @@ static struct arp_pcpu_data	arp_data[MAXCPU];
 static void
 arptimer_dispatch(netmsg_t nmsg)
 {
+	struct arp_pcpu_data *ad = nmsg->lmsg.u.ms_resultp;
 	struct llinfo_arp *la, *nla;
-	struct arp_pcpu_data *ad = &arp_data[mycpuid];
 
 	ASSERT_NETISR_NCPUS(mycpuid);
 
 	/* Reply ASAP */
 	crit_enter();
-	lwkt_replymsg(&nmsg->lmsg, 0);
+	netisr_replymsg(&nmsg->base, 0);
 	crit_exit();
 
 	LIST_FOREACH_MUTABLE(la, &ad->llinfo_list, la_le, nla) {
 		if (la->la_rt->rt_expire && la->la_rt->rt_expire <= time_uptime)
 			arptfree(la);
 	}
-	callout_reset(&ad->timer_ch, arpt_prune * hz, arptimer, NULL);
+	callout_reset(&ad->timer_ch, arpt_prune * hz, arptimer, &ad->timer_nmsg);
 }
 
 static void
-arptimer(void *arg __unused)
+arptimer(void *xnm)
 {
-	int cpuid = mycpuid;
-	struct lwkt_msg *lmsg = &arp_data[cpuid].timer_nmsg.lmsg;
+	struct netmsg_base *nm = xnm;
+
+	KKASSERT(mycpuid < netisr_ncpus);
 
 	crit_enter();
-	if (lmsg->ms_flags & MSGF_DONE)
-		lwkt_sendmsg_oncpu(netisr_cpuport(cpuid), lmsg);
+	if (nm->lmsg.ms_flags & MSGF_DONE)
+		netisr_sendmsg_oncpu(nm);
 	crit_exit();
 }
 
@@ -285,7 +288,7 @@ arp_rtrequest(int req, struct rtentry *rt)
 		bzero(la, sizeof *la);
 		la->la_rt = rt;
 		rt->rt_flags |= RTF_LLINFO;
-		LIST_INSERT_HEAD(&arp_data[mycpuid].llinfo_list, la, la_le);
+		LIST_INSERT_HEAD(&arp_data[mycpuid]->llinfo_list, la, la_le);
 
 #ifdef INET
 		/*
@@ -1351,25 +1354,38 @@ arp_ifaddr(void *arg __unused, struct ifnet *ifp,
 }
 
 static void
+arp_init_dispatch(netmsg_t nm)
+{
+	struct arp_pcpu_data *ad;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
+
+	ad = kmalloc(sizeof(*ad), M_ARP, M_WAITOK | M_ZERO);
+
+	LIST_INIT(&ad->llinfo_list);
+	callout_init_mp(&ad->timer_ch);
+	netmsg_init(&ad->timer_nmsg, NULL, &netisr_adone_rport,
+	    MSGF_PRIORITY, arptimer_dispatch);
+	ad->timer_nmsg.lmsg.u.ms_resultp = ad;
+
+	arp_data[mycpuid] = ad;
+
+	callout_reset(&ad->timer_ch, hz, arptimer, &ad->timer_nmsg);
+
+	netisr_forwardmsg(&nm->base, mycpuid + 1);
+}
+
+static void
 arp_init(void)
 {
-	int cpu;
+	struct netmsg_base nm;
 
-	for (cpu = 0; cpu < netisr_ncpus; cpu++) {
-		struct arp_pcpu_data *ad = &arp_data[cpu];
-
-		LIST_INIT(&ad->llinfo_list);
-		netmsg_init(&ad->timer_nmsg, NULL, &netisr_adone_rport,
-		    MSGF_PRIORITY, arptimer_dispatch);
-		callout_init_mp(&ad->timer_ch);
-
-		callout_reset_bycpu(&ad->timer_ch, hz, arptimer, NULL, cpu);
-	}
+	netmsg_init(&nm, NULL, &curthread->td_msgport, 0, arp_init_dispatch);
+	netisr_domsg_global(&nm);
 
 	netisr_register(NETISR_ARP, arpintr, NULL);
 
 	EVENTHANDLER_REGISTER(ifaddr_event, arp_ifaddr, NULL,
 	    EVENTHANDLER_PRI_LAST);
 }
-
 SYSINIT(arp, SI_SUB_PROTO_DOMAIN, SI_ORDER_ANY, arp_init, 0);
