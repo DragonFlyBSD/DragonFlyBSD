@@ -530,7 +530,6 @@ syncache_timer_handler(netmsg_t msg)
 	struct syncache marker;
 	struct syncache_timerq *tq;
 	struct syncache_list *list;
-	struct inpcb *inp;
 	int slot;
 
 	ASSERT_NETISR_NCPUS(mycpuid);
@@ -572,11 +571,9 @@ syncache_timer_handler(netmsg_t msg)
 			tcpstat.tcps_sc_stale++;
 			continue;
 		}
-		inp = sc->sc_tp->t_inpcb;
 		if (slot == SYNCACHE_MAXREXMTS ||
 		    slot >= tcp_syncache.rexmt_limit ||
-		    inp == NULL ||
-		    inp->inp_gencnt != sc->sc_inp_gencnt) {
+		    sc->sc_tp->t_inpcb->inp_gencnt != sc->sc_inp_gencnt) {
 			syncache_drop(sc, NULL);
 			tcpstat.tcps_sc_stale++;
 			continue;
