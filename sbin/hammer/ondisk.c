@@ -149,6 +149,7 @@ void
 __verify_volume(const volume_info_t volume)
 {
 	hammer_volume_ondisk_t ondisk = volume->ondisk;
+	char *fstype;
 
 	if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME) {
 		errx(1, "verify_volume: Invalid volume signature %016jx",
@@ -160,13 +161,15 @@ __verify_volume(const volume_info_t volume)
 			ondisk->vol_rootvol);
 		/* not reached */
 	}
+	hammer_uuid_to_string(&ondisk->vol_fstype, &fstype);
 	if (hammer_uuid_compare(&Hammer_FSType, &ondisk->vol_fstype)) {
-		errx(1, "verify_volume: %s: Header does not indicate "
-			"that this is a HAMMER volume", volume->name);
+		errx(1, "verify_volume: %s: fstype %s does not indicate "
+			"this is a HAMMER volume", volume->name, fstype);
 		/* not reached */
 	}
+	free(fstype);
 	if (hammer_uuid_compare(&Hammer_FSId, &ondisk->vol_fsid)) {
-		errx(1, "verify_volume: %s: FSId does not match other volumes!",
+		errx(1, "verify_volume: %s: fsid does not match other volumes!",
 			volume->name);
 		/* not reached */
 	}
@@ -854,14 +857,26 @@ void
 print_blockmap(const volume_info_t volume)
 {
 	hammer_blockmap_t blockmap;
-	hammer_volume_ondisk_t ondisk;
+	hammer_volume_ondisk_t ondisk = volume->ondisk;
 	int64_t size, used;
 	int i;
+	char *fstype, *fsid;
 #define INDENT ""
 
-	ondisk = volume->ondisk;
 	printf(INDENT"vol_label\t%s\n", ondisk->vol_label);
 	printf(INDENT"vol_count\t%d\n", ondisk->vol_count);
+
+	hammer_uuid_to_string(&ondisk->vol_fstype, &fstype);
+	hammer_uuid_to_string(&ondisk->vol_fsid, &fsid);
+	printf(INDENT"vol_fstype\t%s", fstype);
+	if (strcmp(fstype, "61dc63ac-6e38-11dc-8513-01301bb8a9f5") == 0)
+		printf(" \"%s\"\n", HAMMER_FSTYPE_STRING);
+	else
+		printf("\n"); /* invalid UUID */
+	printf(INDENT"vol_fsid\t%s\n", fsid);
+	free(fstype);
+	free(fsid);
+
 	printf(INDENT"vol_bot_beg\t%s\n", sizetostr(ondisk->vol_bot_beg));
 	printf(INDENT"vol_mem_beg\t%s\n", sizetostr(ondisk->vol_mem_beg));
 	printf(INDENT"vol_buf_beg\t%s\n", sizetostr(ondisk->vol_buf_beg));
