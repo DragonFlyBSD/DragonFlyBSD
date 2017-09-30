@@ -1814,7 +1814,11 @@ the
 daemon is started for doing cut/paste selection on the console.
 .It Va moused_type
 .Pq Vt str
-This is the protocol type of the mouse connected to this host.
+If
+.Va moused_enable
+is set to
+.Dq Li YES ,
+this is the protocol type of the mouse connected to this host.
 The default type is
 .Dq Li auto .
 The
