@@ -9,6 +9,17 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 4.8 TO LATER VERSIONS                +
++-----------------------------------------------------------------------+
+
+FFS_ROOT OPTION DISABLED
+------------------------
+
+The FFS_ROOT option has been made a no-op and will be completely removed
+at some point in the future. Users with a custom kernel configuration
+can remove this option from it now.
+
++-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 4.6 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
