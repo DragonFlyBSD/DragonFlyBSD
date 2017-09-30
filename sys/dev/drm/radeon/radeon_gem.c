@@ -149,8 +149,7 @@ int radeon_gem_object_open(struct drm_gem_object *obj, struct drm_file *file_pri
 	struct radeon_bo_va *bo_va;
 	int r;
 
-	if ((rdev->family < CHIP_CAYMAN) ||
-	    (!rdev->accel_working)) {
+	if (rdev->family < CHIP_CAYMAN) {
 		return 0;
 	}
 
@@ -180,8 +179,7 @@ void radeon_gem_object_close(struct drm_gem_object *obj,
 	struct radeon_bo_va *bo_va;
 	int r;
 
-	if ((rdev->family < CHIP_CAYMAN) ||
-	    (!rdev->accel_working)) {
+	if (rdev->family < CHIP_CAYMAN) {
 		return;
 	}
 
@@ -503,7 +501,6 @@ int radeon_gem_va_ioctl(struct drm_device *dev, void *data,
 	bo_va = radeon_vm_bo_find(&fpriv->vm, rbo);
 	if (!bo_va) {
 		args->operation = RADEON_VA_RESULT_ERROR;
-		radeon_bo_unreserve(rbo);
 		drm_gem_object_unreference_unlocked(gobj);
 		return -ENOENT;
 	}
@@ -513,7 +510,6 @@ int radeon_gem_va_ioctl(struct drm_device *dev, void *data,
 		if (bo_va->soffset) {
 			args->operation = RADEON_VA_RESULT_VA_EXIST;
 			args->offset = bo_va->soffset;
-			radeon_bo_unreserve(rbo);
 			goto out;
 		}
 		r = radeon_vm_bo_set_addr(rdev, bo_va, args->offset, args->flags);
@@ -529,6 +525,7 @@ int radeon_gem_va_ioctl(struct drm_device *dev, void *data,
 		args->operation = RADEON_VA_RESULT_ERROR;
 	}
 out:
+	radeon_bo_unreserve(rbo);
 	drm_gem_object_unreference_unlocked(gobj);
 	return r;
 }

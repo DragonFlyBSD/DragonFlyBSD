@@ -143,10 +143,10 @@ int radeon_ring_lock(struct radeon_device *rdev, struct radeon_ring *ring, unsig
 {
 	int r;
 
-	mutex_lock(&rdev->ring_lock);
+	lockmgr(&rdev->ring_lock, LK_EXCLUSIVE);
 	r = radeon_ring_alloc(rdev, ring, ndw);
 	if (r) {
-		mutex_unlock(&rdev->ring_lock);
+		lockmgr(&rdev->ring_lock, LK_RELEASE);
 		return r;
 	}
 	return 0;
@@ -198,7 +198,7 @@ void radeon_ring_unlock_commit(struct radeon_device *rdev, struct radeon_ring *r
 			       bool hdp_flush)
 {
 	radeon_ring_commit(rdev, ring, hdp_flush);
-	mutex_unlock(&rdev->ring_lock);
+	lockmgr(&rdev->ring_lock, LK_RELEASE);
 }
 
 /**
@@ -223,7 +223,7 @@ void radeon_ring_undo(struct radeon_ring *ring)
 void radeon_ring_unlock_undo(struct radeon_device *rdev, struct radeon_ring *ring)
 {
 	radeon_ring_undo(ring);
-	mutex_unlock(&rdev->ring_lock);
+	lockmgr(&rdev->ring_lock, LK_RELEASE);
 }
 
 /**
@@ -282,17 +282,17 @@ unsigned radeon_ring_backup(struct radeon_device *rdev, struct radeon_ring *ring
 	unsigned size, ptr, i;
 
 	/* just in case lock the ring */
-	mutex_lock(&rdev->ring_lock);
+	lockmgr(&rdev->ring_lock, LK_EXCLUSIVE);
 	*data = NULL;
 
 	if (ring->ring_obj == NULL) {
-		mutex_unlock(&rdev->ring_lock);
+		lockmgr(&rdev->ring_lock, LK_RELEASE);
 		return 0;
 	}
 
 	/* it doesn't make sense to save anything if all fences are signaled */
 	if (!radeon_fence_count_emitted(rdev, ring->idx)) {
-		mutex_unlock(&rdev->ring_lock);
+		lockmgr(&rdev->ring_lock, LK_RELEASE);
 		return 0;
 	}
 
@@ -303,7 +303,7 @@ unsigned radeon_ring_backup(struct radeon_device *rdev, struct radeon_ring *ring
 		ptr = le32_to_cpu(*ring->next_rptr_cpu_addr);
 	else {
 		/* no way to read back the next rptr */
-		mutex_unlock(&rdev->ring_lock);
+		lockmgr(&rdev->ring_lock, LK_RELEASE);
 		return 0;
 	}
 
@@ -311,14 +311,14 @@ unsigned radeon_ring_backup(struct radeon_device *rdev, struct radeon_ring *ring
 	size -= ptr;
 	size &= ring->ptr_mask;
 	if (size == 0) {
-		mutex_unlock(&rdev->ring_lock);
+		lockmgr(&rdev->ring_lock, LK_RELEASE);
 		return 0;
 	}
 
 	/* and then save the content of the ring */
 	*data = drm_malloc_ab(size, sizeof(uint32_t));
 	if (!*data) {
-		mutex_unlock(&rdev->ring_lock);
+		lockmgr(&rdev->ring_lock, LK_RELEASE);
 		return 0;
 	}
 	for (i = 0; i < size; ++i) {
@@ -326,7 +326,7 @@ unsigned radeon_ring_backup(struct radeon_device *rdev, struct radeon_ring *ring
 		ptr &= ring->ptr_mask;
 	}
 
-	mutex_unlock(&rdev->ring_lock);
+	lockmgr(&rdev->ring_lock, LK_RELEASE);
 	return size;
 }
 
@@ -393,12 +393,15 @@ int radeon_ring_init(struct radeon_device *rdev, struct radeon_ring *ring, unsig
 			return r;
 		}
 		r = radeon_bo_reserve(ring->ring_obj, false);
-		if (unlikely(r != 0))
- 			return r;
+		if (unlikely(r != 0)) {
+			radeon_bo_unref(&ring->ring_obj);
+			return r;
+		}
 		r = radeon_bo_pin(ring->ring_obj, RADEON_GEM_DOMAIN_GTT,
 					(u64 *)&ring->gpu_addr);
 		if (r) {
 			radeon_bo_unreserve(ring->ring_obj);
+			radeon_bo_unref(&ring->ring_obj);
 			dev_err(rdev->dev, "(%d) ring pin failed\n", r);
 			return r;
 		}
@@ -408,6 +411,7 @@ int radeon_ring_init(struct radeon_device *rdev, struct radeon_ring *ring, unsig
 		radeon_bo_unreserve(ring->ring_obj);
 		if (r) {
 			dev_err(rdev->dev, "(%d) ring map failed\n", r);
+			radeon_bo_unref(&ring->ring_obj);
 			return r;
 		}
 	}
@@ -440,12 +444,12 @@ void radeon_ring_fini(struct radeon_device *rdev, struct radeon_ring *ring)
 	int r;
 	struct radeon_bo *ring_obj;
 
-	mutex_lock(&rdev->ring_lock);
+	lockmgr(&rdev->ring_lock, LK_EXCLUSIVE);
 	ring_obj = ring->ring_obj;
 	ring->ready = false;
 	ring->ring = NULL;
 	ring->ring_obj = NULL;
-	mutex_unlock(&rdev->ring_lock);
+	lockmgr(&rdev->ring_lock, LK_RELEASE);
 
 	if (ring_obj) {
 		r = radeon_bo_reserve(ring_obj, false);
@@ -501,7 +505,7 @@ static int radeon_debugfs_ring_info(struct seq_file *m, void *data)
 	seq_printf(m, "%u free dwords in ring\n", ring->ring_free_dw);
 	seq_printf(m, "%u dwords in ring\n", count);
 
-	if (!ring->ring)
+	if (!ring->ready)
 		return 0;
 
 	/* print 8 dw before current rptr as often it's the last executed

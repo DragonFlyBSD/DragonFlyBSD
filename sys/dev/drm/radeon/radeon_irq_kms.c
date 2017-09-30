@@ -85,34 +85,12 @@ static void radeon_hotplug_work_func(void *arg, int pending)
 	struct drm_mode_config *mode_config = &dev->mode_config;
 	struct drm_connector *connector;
 
-	/* we can race here at startup, some boards seem to trigger
-	 * hotplug irqs when they shouldn't. */
-	if (!rdev->mode_info.mode_config_initialized)
-		return;
-
-	mutex_lock(&mode_config->mutex);
 	if (mode_config->num_connector) {
 		list_for_each_entry(connector, &mode_config->connector_list, head)
 			radeon_connector_hotplug(connector);
 	}
-	mutex_unlock(&mode_config->mutex);
 	/* Just fire off a uevent and let userspace tell us what to do */
 	drm_helper_hpd_irq_event(dev);
-}
-
-static void radeon_dp_work_func(struct work_struct *work)
-{
-	struct radeon_device *rdev = container_of(work, struct radeon_device,
-						  dp_work);
-	struct drm_device *dev = rdev->ddev;
-	struct drm_mode_config *mode_config = &dev->mode_config;
-	struct drm_connector *connector;
-
-	/* this should take a mutex */
-	if (mode_config->num_connector) {
-		list_for_each_entry(connector, &mode_config->connector_list, head)
-			radeon_connector_hotplug(connector);
-	}
 }
 
 /**
@@ -126,10 +104,9 @@ static void radeon_dp_work_func(struct work_struct *work)
 void radeon_driver_irq_preinstall_kms(struct drm_device *dev)
 {
 	struct radeon_device *rdev = dev->dev_private;
-	unsigned long irqflags;
 	unsigned i;
 
-	spin_lock_irqsave(&rdev->irq.lock, irqflags);
+	lockmgr(&rdev->irq.lock, LK_EXCLUSIVE);
 	/* Disable *all* interrupts */
 	for (i = 0; i < RADEON_NUM_RINGS; i++)
 		atomic_set(&rdev->irq.ring_int[i], 0);
@@ -142,7 +119,7 @@ void radeon_driver_irq_preinstall_kms(struct drm_device *dev)
 		rdev->irq.afmt[i] = false;
 	}
 	radeon_irq_set(rdev);
-	spin_unlock_irqrestore(&rdev->irq.lock, irqflags);
+	lockmgr(&rdev->irq.lock, LK_RELEASE);
 	/* Clear bits */
 	radeon_irq_process(rdev);
 }
@@ -157,13 +134,7 @@ void radeon_driver_irq_preinstall_kms(struct drm_device *dev)
  */
 int radeon_driver_irq_postinstall_kms(struct drm_device *dev)
 {
-	struct radeon_device *rdev = dev->dev_private;
-
-	if (ASIC_IS_AVIVO(rdev))
-		dev->max_vblank_count = 0x00ffffff;
-	else
-		dev->max_vblank_count = 0x001fffff;
-
+	dev->max_vblank_count = 0x001fffff;
 	return 0;
 }
 
@@ -177,13 +148,12 @@ int radeon_driver_irq_postinstall_kms(struct drm_device *dev)
 void radeon_driver_irq_uninstall_kms(struct drm_device *dev)
 {
 	struct radeon_device *rdev = dev->dev_private;
-	unsigned long irqflags;
 	unsigned i;
 
 	if (rdev == NULL) {
 		return;
 	}
-	spin_lock_irqsave(&rdev->irq.lock, irqflags);
+	lockmgr(&rdev->irq.lock, LK_EXCLUSIVE);
 	/* Disable *all* interrupts */
 	for (i = 0; i < RADEON_NUM_RINGS; i++)
 		atomic_set(&rdev->irq.ring_int[i], 0);
@@ -196,7 +166,7 @@ void radeon_driver_irq_uninstall_kms(struct drm_device *dev)
 		rdev->irq.afmt[i] = false;
 	}
 	radeon_irq_set(rdev);
-	spin_unlock_irqrestore(&rdev->irq.lock, irqflags);
+	lockmgr(&rdev->irq.lock, LK_RELEASE);
 }
 
 /**
@@ -295,18 +265,14 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 	/* enable msi */
 	rdev->msi_enabled = (rdev->ddev->irq_type == PCI_INTR_TYPE_MSI);
 
-	DRM_INFO("radeon_irq_kms_init: msi_enabled? (%d)\n", rdev->msi_enabled);
-
 	TASK_INIT(&rdev->hotplug_work, 0, radeon_hotplug_work_func, rdev);
-	INIT_WORK(&rdev->dp_work, radeon_dp_work_func);
 	TASK_INIT(&rdev->audio_work, 0, r600_audio_update_hdmi, rdev);
 
 	rdev->irq.installed = true;
-//	DRM_UNLOCK(rdev->ddev);
+	DRM_UNLOCK(rdev->ddev);
 	r = drm_irq_install(rdev->ddev, rdev->ddev->irq);
-//	DRM_LOCK(rdev->ddev);
+	DRM_LOCK(rdev->ddev);
 	if (r) {
-		DRM_ERROR("radeon_irq_kms_init: drm_irq_install FAILED (%d)\n", r);
 		rdev->irq.installed = false;
 		taskqueue_drain(rdev->tq, &rdev->hotplug_work);
 		return r;
@@ -345,15 +311,13 @@ void radeon_irq_kms_fini(struct radeon_device *rdev)
  */
 void radeon_irq_kms_sw_irq_get(struct radeon_device *rdev, int ring)
 {
-	unsigned long irqflags;
-
 	if (!rdev->ddev->irq_enabled)
 		return;
 
 	if (atomic_inc_return(&rdev->irq.ring_int[ring]) == 1) {
-		spin_lock_irqsave(&rdev->irq.lock, irqflags);
+		lockmgr(&rdev->irq.lock, LK_EXCLUSIVE);
 		radeon_irq_set(rdev);
-		spin_unlock_irqrestore(&rdev->irq.lock, irqflags);
+		lockmgr(&rdev->irq.lock, LK_RELEASE);
 	}
 }
 
@@ -386,15 +350,13 @@ bool radeon_irq_kms_sw_irq_get_delayed(struct radeon_device *rdev, int ring)
  */
 void radeon_irq_kms_sw_irq_put(struct radeon_device *rdev, int ring)
 {
-	unsigned long irqflags;
-
 	if (!rdev->ddev->irq_enabled)
 		return;
 
 	if (atomic_dec_and_test(&rdev->irq.ring_int[ring])) {
-		spin_lock_irqsave(&rdev->irq.lock, irqflags);
+		lockmgr(&rdev->irq.lock, LK_EXCLUSIVE);
 		radeon_irq_set(rdev);
-		spin_unlock_irqrestore(&rdev->irq.lock, irqflags);
+		lockmgr(&rdev->irq.lock, LK_RELEASE);
 	}
 }
 
@@ -409,8 +371,6 @@ void radeon_irq_kms_sw_irq_put(struct radeon_device *rdev, int ring)
  */
 void radeon_irq_kms_pflip_irq_get(struct radeon_device *rdev, int crtc)
 {
-	unsigned long irqflags;
-
 	if (crtc < 0 || crtc >= rdev->num_crtc)
 		return;
 
@@ -418,9 +378,9 @@ void radeon_irq_kms_pflip_irq_get(struct radeon_device *rdev, int crtc)
 		return;
 
 	if (atomic_inc_return(&rdev->irq.pflip[crtc]) == 1) {
-		spin_lock_irqsave(&rdev->irq.lock, irqflags);
+		lockmgr(&rdev->irq.lock, LK_EXCLUSIVE);
 		radeon_irq_set(rdev);
-		spin_unlock_irqrestore(&rdev->irq.lock, irqflags);
+		lockmgr(&rdev->irq.lock, LK_RELEASE);
 	}
 }
 
@@ -435,8 +395,6 @@ void radeon_irq_kms_pflip_irq_get(struct radeon_device *rdev, int crtc)
  */
 void radeon_irq_kms_pflip_irq_put(struct radeon_device *rdev, int crtc)
 {
-	unsigned long irqflags;
-
 	if (crtc < 0 || crtc >= rdev->num_crtc)
 		return;
 
@@ -444,9 +402,9 @@ void radeon_irq_kms_pflip_irq_put(struct radeon_device *rdev, int crtc)
 		return;
 
 	if (atomic_dec_and_test(&rdev->irq.pflip[crtc])) {
-		spin_lock_irqsave(&rdev->irq.lock, irqflags);
+		lockmgr(&rdev->irq.lock, LK_EXCLUSIVE);
 		radeon_irq_set(rdev);
-		spin_unlock_irqrestore(&rdev->irq.lock, irqflags);
+		lockmgr(&rdev->irq.lock, LK_RELEASE);
 	}
 }
 
@@ -460,16 +418,13 @@ void radeon_irq_kms_pflip_irq_put(struct radeon_device *rdev, int crtc)
  */
 void radeon_irq_kms_enable_afmt(struct radeon_device *rdev, int block)
 {
-	unsigned long irqflags;
-
 	if (!rdev->ddev->irq_enabled)
 		return;
 
-	spin_lock_irqsave(&rdev->irq.lock, irqflags);
+	lockmgr(&rdev->irq.lock, LK_EXCLUSIVE);
 	rdev->irq.afmt[block] = true;
 	radeon_irq_set(rdev);
-	spin_unlock_irqrestore(&rdev->irq.lock, irqflags);
-
+	lockmgr(&rdev->irq.lock, LK_RELEASE);
 }
 
 /**
@@ -482,15 +437,13 @@ void radeon_irq_kms_enable_afmt(struct radeon_device *rdev, int block)
  */
 void radeon_irq_kms_disable_afmt(struct radeon_device *rdev, int block)
 {
-	unsigned long irqflags;
-
 	if (!rdev->ddev->irq_enabled)
 		return;
 
-	spin_lock_irqsave(&rdev->irq.lock, irqflags);
+	lockmgr(&rdev->irq.lock, LK_EXCLUSIVE);
 	rdev->irq.afmt[block] = false;
 	radeon_irq_set(rdev);
-	spin_unlock_irqrestore(&rdev->irq.lock, irqflags);
+	lockmgr(&rdev->irq.lock, LK_RELEASE);
 }
 
 /**
@@ -503,17 +456,16 @@ void radeon_irq_kms_disable_afmt(struct radeon_device *rdev, int block)
  */
 void radeon_irq_kms_enable_hpd(struct radeon_device *rdev, unsigned hpd_mask)
 {
-	unsigned long irqflags;
 	int i;
 
 	if (!rdev->ddev->irq_enabled)
 		return;
 
-	spin_lock_irqsave(&rdev->irq.lock, irqflags);
+	lockmgr(&rdev->irq.lock, LK_EXCLUSIVE);
 	for (i = 0; i < RADEON_MAX_HPD_PINS; ++i)
 		rdev->irq.hpd[i] |= !!(hpd_mask & (1 << i));
 	radeon_irq_set(rdev);
-	spin_unlock_irqrestore(&rdev->irq.lock, irqflags);
+	lockmgr(&rdev->irq.lock, LK_RELEASE);
 }
 
 /**
@@ -526,16 +478,15 @@ void radeon_irq_kms_enable_hpd(struct radeon_device *rdev, unsigned hpd_mask)
  */
 void radeon_irq_kms_disable_hpd(struct radeon_device *rdev, unsigned hpd_mask)
 {
-	unsigned long irqflags;
 	int i;
 
 	if (!rdev->ddev->irq_enabled)
 		return;
 
-	spin_lock_irqsave(&rdev->irq.lock, irqflags);
+	lockmgr(&rdev->irq.lock, LK_EXCLUSIVE);
 	for (i = 0; i < RADEON_MAX_HPD_PINS; ++i)
 		rdev->irq.hpd[i] &= !(hpd_mask & (1 << i));
 	radeon_irq_set(rdev);
-	spin_unlock_irqrestore(&rdev->irq.lock, irqflags);
+	lockmgr(&rdev->irq.lock, LK_RELEASE);
 }
 
