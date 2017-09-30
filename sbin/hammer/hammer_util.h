@@ -182,7 +182,7 @@ void hammer_print_zone_stat(const zone_stat_t stats);
 void hammer_uuid_create(hammer_uuid_t *uuid);
 int hammer_uuid_from_string(const char *str, hammer_uuid_t *uuid);
 int hammer_uuid_to_string(const hammer_uuid_t *uuid, char **str);
-int hammer_uuid_name_lookup(hammer_uuid_t *u, const char *str);
+int hammer_uuid_name_lookup(hammer_uuid_t *uuid, const char *str);
 int hammer_uuid_compare(const hammer_uuid_t *uuid1, const hammer_uuid_t *uuid2);
 
 #define hwarn(format, args...)	warn("WARNING: "format,## args)

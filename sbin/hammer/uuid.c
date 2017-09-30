@@ -66,11 +66,11 @@ int hammer_uuid_to_string(const hammer_uuid_t *uuid, char **str)
 	return(0);
 }
 
-int hammer_uuid_name_lookup(hammer_uuid_t *u, const char *str)
+int hammer_uuid_name_lookup(hammer_uuid_t *uuid, const char *str)
 {
 	uint32_t status = uuid_s_ok;
 
-	uuid_name_lookup(u, str, &status);
+	uuid_name_lookup(uuid, str, &status);
 
 	if (status != uuid_s_ok)
 		return(-1);
