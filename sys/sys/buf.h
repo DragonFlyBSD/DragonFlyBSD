@@ -234,9 +234,6 @@ struct buf {
  *			The 'entire buffer' is defined to be the range from
  *			0 through b_bcount.
  *
- *	B_MALLOC	Request that the buffer be allocated from the malloc
- *			pool, DEV_BSIZE aligned instead of PAGE_SIZE aligned.
- *
  *	B_CLUSTEROK	This flag is typically set for B_DELWRI buffers
  *			by filesystems that allow clustering when the buffer
  *			is fully dirty and indicates that it may be clustered
@@ -303,7 +300,7 @@ struct buf {
 #define	B_INVAL		0x00002000	/* Does not contain valid info. */
 #define	B_LOCKED	0x00004000	/* Locked in core (not reusable). */
 #define	B_NOCACHE	0x00008000	/* Destroy buffer AND backing store */
-#define	B_MALLOC	0x00010000	/* malloced b_data */
+#define	B_UNUSED10000	0x00010000
 #define	B_CLUSTEROK	0x00020000	/* Pagein op, so swap() can count it. */
 #define	B_MARKER	0x00040000	/* Special marker buf in queue */
 #define	B_RAW		0x00080000	/* Set by physio for raw transfers. */
@@ -470,8 +467,6 @@ void	reassignbuf (struct buf *);
 struct	buf *trypbuf (int *);
 struct	buf *trypbuf_kva (int *);
 void	bio_ops_sync(struct mount *mp);
-void	vm_hold_free_pages(struct buf *bp, vm_offset_t from, vm_offset_t to);
-void	vm_hold_load_pages(struct buf *bp, vm_offset_t from, vm_offset_t to);
 void	nestiobuf_done(struct bio *mbio, int donebytes, int error, struct devstat *stats);
 void	nestiobuf_init(struct bio *mbio);
 void	nestiobuf_add(struct bio *mbio, struct buf *bp, int off, size_t size, struct devstat *stats);

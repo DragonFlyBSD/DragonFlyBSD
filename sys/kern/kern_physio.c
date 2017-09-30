@@ -97,19 +97,11 @@ physio(cdev_t dev, struct uio *uio, int ioflag)
 			 * copying.
 			 */
 			if (uio->uio_segflg == UIO_USERSPACE) {
-				/* bp->b_data = bp->b_kvabase; */
 				bp->b_bcount = bcount;
-				/*
-				vm_hold_load_pages(bp, (vm_offset_t)bp->b_data, (vm_offset_t)bp->b_data + bcount);
-				*/
 				if (uio->uio_rw == UIO_WRITE) {
 					error = copyin(ubase, bp->b_data, bcount);
-					if (error) {
-						/*
-						vm_hold_free_pages(bp, (vm_offset_t)bp->b_data, (vm_offset_t)bp->b_data + bcount);
-						*/
+					if (error)
 						goto doerror;
-					}
 				}
 			} else {
 				bp->b_data = uio->uio_iov[i].iov_base;

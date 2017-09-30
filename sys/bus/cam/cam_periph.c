@@ -700,7 +700,7 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 		/*
 		 * Get the buffer.
 		 */
-		bp = getpbuf_kva(NULL);
+		bp = getpbuf_mem(NULL);
 
 		/* save the original user pointer */
 		mapinfo->saved_ptrs[i] = *data_ptrs[i];
@@ -711,18 +711,9 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 		/*
 		 * Always bounce the I/O through kernel memory.
 		 */
-		bp->b_data = bp->b_kvabase;
 		bp->b_bcount = lengths[i];
-		vm_hold_load_pages(bp, (vm_offset_t)bp->b_data,
-				   (vm_offset_t)bp->b_data + bp->b_bcount);
 		if (mapinfo->dirs[i] & CAM_DIR_OUT) {
 			error = copyin(*data_ptrs[i], bp->b_data, bp->b_bcount);
-			if (error) {
-				vm_hold_free_pages(bp,
-						   (vm_offset_t)bp->b_data,
-						   (vm_offset_t)bp->b_data +
-						    bp->b_bcount);
-			}
 		} else {
 			error = 0;
 		}
@@ -799,8 +790,6 @@ cam_periph_unmapbufs(struct cam_periph_map_info *mapinfo,
 			/* XXX return error */
 			copyout(bp->b_data, *data_ptrs[i], bp->b_bcount);
 		}
-		vm_hold_free_pages(bp, (vm_offset_t)bp->b_data,
-				   (vm_offset_t)bp->b_data + bp->b_bcount);
 		relpbuf(bp, NULL);
 		mapinfo->bp[i] = NULL;
 	}

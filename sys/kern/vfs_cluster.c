@@ -904,8 +904,7 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset, off_t doffset,
 
 	tbp = fbp;
 	tbp->b_bio2.bio_offset = doffset;
-	if((tbp->b_flags & B_MALLOC) ||
-	    ((tbp->b_flags & B_VMIO) == 0) || (run <= 1)) {
+	if (((tbp->b_flags & B_VMIO) == 0) || (run <= 1)) {
 		if (--*srp == 0)
 			cluster_setram(tbp);
 		else
@@ -1476,10 +1475,10 @@ cluster_wbuild(struct vnode *vp, struct buf **bpp,
 		 * up if the cluster was terminated prematurely--too much
 		 * hassle.
 		 */
-		if (((tbp->b_flags & (B_CLUSTEROK|B_MALLOC)) != B_CLUSTEROK) ||
-		    (tbp->b_bcount != tbp->b_bufsize) ||
-		    (tbp->b_bcount != blksize) ||
-		    (bytes == blksize)) {
+		if ((tbp->b_flags & B_CLUSTEROK) == 0 ||
+		    tbp->b_bcount != tbp->b_bufsize ||
+		    tbp->b_bcount != blksize ||
+		    bytes == blksize) {
 			totalwritten += tbp->b_bufsize;
 			bawrite(tbp);
 			start_loffset += blksize;
