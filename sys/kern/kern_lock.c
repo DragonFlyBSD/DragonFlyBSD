@@ -178,7 +178,7 @@ again:
 
 		/*
 		 * Block while the lock is held exclusively or, conditionally,
-		 * if other threads are tring to obtain an exclusive lock or
+		 * if other threads are trying to obtain an exclusive lock or
 		 * upgrade to one.
 		 */
 		if (count & wflags) {
@@ -377,6 +377,12 @@ again:
 		}
 
 		/*
+		 * We own a lock coming into this, so there cannot be an
+		 * UPGRANT already flagged.
+		 */
+		KKASSERT((count & LKC_UPGRANT) == 0);
+
+		/*
 		 * If we already hold the lock exclusively this operation
 		 * succeeds and is a NOP.
 		 */
@@ -413,8 +419,14 @@ again:
 
 		/*
 		 * If someone else owns UPREQ and this transition would
-		 * allow it to be granted, we have to grant it.  Otherwise
-		 * we release the shared lock.
+		 * allow it to be granted, we have to grant it.  Our
+		 * lock count is transfered (we effectively release).
+		 * We will then request a normal exclusive lock.
+		 *
+		 * Otherwise we release the shared lock and either do
+		 * an UPREQ or an EXREQ.  The count is always > 1 in
+		 * this case since we handle all other count == 1
+		 * situations here and above.
 		 */
 		if ((count & (LKC_UPREQ|LKC_MASK)) == (LKC_UPREQ | 1)) {
 			wflags |= LKC_EXCL | LKC_UPGRANT;
@@ -524,6 +536,9 @@ again:
 		 *	    shared requests to race the next exclusive
 		 *	    request.
 		 *
+		 * WAERNING! lksleep() assumes that LK_RELEASE does not
+		 *	    block.
+		 *
 		 * Always succeeds.
 		 */
 		if ((count & LKC_MASK) == 0)
@@ -567,6 +582,7 @@ again:
 						(count & ~LKC_UPREQ) |
 						LKC_UPGRANT)) {
 					lkp->lk_lockholder = otd;
+					goto again;
 				}
 				wakeup(lkp);
 				/* success */
@@ -584,7 +600,8 @@ again:
 		} else {
 			if ((count & (LKC_UPREQ|LKC_MASK)) == 1) {
 				/*
-				 * Last shared count is being released.
+				 * Last shared count is being released,
+				 * no upgrade request present.
 				 */
 				if (!atomic_cmpset_int(&lkp->lk_count, count,
 					      (count - 1) &
@@ -612,6 +629,10 @@ again:
 				}
 				wakeup(lkp);
 			} else {
+				/*
+				 * Shared count is greater than 1, just
+				 * decrement it by one.
+				 */
 				if (!atomic_cmpset_int(&lkp->lk_count, count,
 						       count - 1)) {
 					goto again;
