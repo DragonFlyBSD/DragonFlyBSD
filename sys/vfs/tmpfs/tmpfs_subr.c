@@ -277,7 +277,8 @@ tmpfs_free_node(struct tmpfs_mount *tmp, struct tmpfs_node *node)
 	objcache_put(tmp->tm_node_pool, node);
 	/* node is now invalid */
 
-	atomic_add_long(&tmp->tm_pages_used, -(long)pages);
+	if (pages)
+		atomic_add_long(&tmp->tm_pages_used, -(long)pages);
 }
 
 /* --------------------------------------------------------------------- */
@@ -952,7 +953,8 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 	node->tn_reg.tn_aobj_pages = newpages;
 	node->tn_size = newsize;
 
-	atomic_add_long(&tmp->tm_pages_used, (newpages - oldpages));
+	if (newpages != oldpages)
+		atomic_add_long(&tmp->tm_pages_used, (newpages - oldpages));
 
 	/*
 	 * When adjusting the vnode filesize and its VM object we must
