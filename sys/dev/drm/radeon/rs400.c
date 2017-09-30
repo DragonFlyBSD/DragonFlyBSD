@@ -210,9 +210,11 @@ void rs400_gart_fini(struct radeon_device *rdev)
 #define RS400_PTE_WRITEABLE (1 << 2)
 #define RS400_PTE_READABLE  (1 << 3)
 
-uint64_t rs400_gart_get_page_entry(uint64_t addr, uint32_t flags)
+void rs400_gart_set_page(struct radeon_device *rdev, unsigned i,
+			 uint64_t addr, uint32_t flags)
 {
 	uint32_t entry;
+	u32 *gtt = rdev->gart.ptr;
 
 	entry = (lower_32_bits(addr) & 0xfffff000) |
 		((upper_32_bits(addr) & 0xff) << 4);
@@ -222,14 +224,8 @@ uint64_t rs400_gart_get_page_entry(uint64_t addr, uint32_t flags)
 		entry |= RS400_PTE_WRITEABLE;
 	if (!(flags & RADEON_GART_PAGE_SNOOP))
 		entry |= RS400_PTE_UNSNOOPED;
-	return entry;
-}
-
-void rs400_gart_set_page(struct radeon_device *rdev, unsigned i,
-			 uint64_t entry)
-{
-	u32 *gtt = rdev->gart.ptr;
-	gtt[i] = cpu_to_le32(lower_32_bits(entry));
+	entry = cpu_to_le32(entry);
+	gtt[i] = entry;
 }
 
 int rs400_mc_wait_for_idle(struct radeon_device *rdev)
@@ -277,26 +273,23 @@ static void rs400_mc_init(struct radeon_device *rdev)
 
 uint32_t rs400_mc_rreg(struct radeon_device *rdev, uint32_t reg)
 {
-	unsigned long flags;
 	uint32_t r;
 
-	spin_lock_irqsave(&rdev->mc_idx_lock, flags);
+	spin_lock(&rdev->mc_idx_lock);
 	WREG32(RS480_NB_MC_INDEX, reg & 0xff);
 	r = RREG32(RS480_NB_MC_DATA);
 	WREG32(RS480_NB_MC_INDEX, 0xff);
-	spin_unlock_irqrestore(&rdev->mc_idx_lock, flags);
+	spin_unlock(&rdev->mc_idx_lock);
 	return r;
 }
 
 void rs400_mc_wreg(struct radeon_device *rdev, uint32_t reg, uint32_t v)
 {
-	unsigned long flags;
-
-	spin_lock_irqsave(&rdev->mc_idx_lock, flags);
+	spin_lock(&rdev->mc_idx_lock);
 	WREG32(RS480_NB_MC_INDEX, ((reg) & 0xff) | RS480_NB_MC_IND_WR_EN);
 	WREG32(RS480_NB_MC_DATA, (v));
 	WREG32(RS480_NB_MC_INDEX, 0xff);
-	spin_unlock_irqrestore(&rdev->mc_idx_lock, flags);
+	spin_unlock(&rdev->mc_idx_lock);
 }
 
 #if defined(CONFIG_DEBUG_FS)

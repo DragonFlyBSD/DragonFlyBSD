@@ -431,31 +431,6 @@ struct SMU7_Discrete_MCRegisters
 
 typedef struct SMU7_Discrete_MCRegisters SMU7_Discrete_MCRegisters;
 
-struct SMU7_Discrete_FanTable
-{
-	uint16_t FdoMode;
-	int16_t  TempMin;
-	int16_t  TempMed;
-	int16_t  TempMax;
-	int16_t  Slope1;
-	int16_t  Slope2;
-	int16_t  FdoMin;
-	int16_t  HystUp;
-	int16_t  HystDown;
-	int16_t  HystSlope;
-	int16_t  TempRespLim;
-	int16_t  TempCurr;
-	int16_t  SlopeCurr;
-	int16_t  PwmCurr;
-	uint32_t RefreshPeriod;
-	int16_t  FdoMax;
-	uint8_t  TempSrc;
-	int8_t   Padding;
-};
-
-typedef struct SMU7_Discrete_FanTable SMU7_Discrete_FanTable;
-
-
 struct SMU7_Discrete_PmFuses {
   // dw0-dw1
   uint8_t BapmVddCVidHiSidd[8];
@@ -487,10 +462,7 @@ struct SMU7_Discrete_PmFuses {
   uint8_t BapmVddCVidHiSidd2[8];
 
   // dw11-dw12
-  int16_t FuzzyFan_ErrorSetDelta;
-  int16_t FuzzyFan_ErrorRateSetDelta;
-  int16_t FuzzyFan_PwmSetDelta;
-  uint16_t CalcMeasPowerBlend;
+  uint32_t Reserved6[2];
 
   // dw13-dw16
   uint8_t GnbLPML[16];
