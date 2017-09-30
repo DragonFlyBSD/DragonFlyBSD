@@ -239,6 +239,12 @@ hammer_install_volume(hammer_mount_t hmp, const char *volname,
 	 * from being flushed.
 	 */
 	if (error == 0 && ondisk->vol_rootvol == ondisk->vol_no) {
+		if (ondisk->vol_rootvol != HAMMER_ROOT_VOLNO) {
+			hkprintf("volume %s has invalid root vol_no %d\n",
+				volume->vol_name, ondisk->vol_rootvol);
+			error = EINVAL;
+			goto late_failure;
+		}
 		hmp->rootvol = volume;
 		hmp->nvolumes = ondisk->vol_count;
 		if (bp) {
