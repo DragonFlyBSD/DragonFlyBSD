@@ -161,10 +161,9 @@
  * 400909 - deleted ortentry, SIOC{ADD,DEL}RT, RTM_OLD{ADD,DEL}
  * 400910 - routing table is only available on netisr_ncpus
  * 500000 - 5.0 release
- * 500100 - 5.1 development
  */
 #undef __DragonFly_version
-#define __DragonFly_version 400910	/* propagated to newvers */
+#define __DragonFly_version 500000	/* propagated to newvers */
 
 #include <sys/_null.h>
 
