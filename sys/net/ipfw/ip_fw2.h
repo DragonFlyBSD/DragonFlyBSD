@@ -89,6 +89,7 @@ enum ipfw_opcodes {		/* arguments (4 byte each)	*/
 	O_ICMPTYPE,		/* u32 = icmp bitmap		*/
 	O_TCPOPTS,		/* arg1 = 2*u8 bitmap		*/
 
+	/* States. */
 	O_PROBE_STATE,		/* none				*/
 	O_KEEP_STATE,		/* none				*/
 	O_LIMIT,		/* ipfw_insn_limit		*/
@@ -117,13 +118,19 @@ enum ipfw_opcodes {		/* arguments (4 byte each)	*/
 	/* Action. */
 	O_DEFRAG,		/* none				*/
 
-	/* Filter. */
+	/* Filters. */
 	O_IPFRAG,		/* none				*/
 	O_IP_SRC_IFIP,		/* ipfw_insn_ifip		*/
 	O_IP_DST_IFIP,		/* ipfw_insn_ifip		*/
 
+	/* Translates. */
+	O_REDIRECT,		/* ipfw_insn_rdr		*/
+
 	O_LAST_OPCODE		/* not an opcode!		*/
 };
+#ifdef _KERNEL
+CTASSERT(O_LAST_OPCODE <= 256);
+#endif
 
 /*
  * Template for instructions.
@@ -271,6 +278,16 @@ typedef struct _ipfw_insn_ifip {
 	struct in_addr mask;
 } ipfw_insn_ifip;
 
+/*
+ * This is used by O_REDIRECT.
+ */
+typedef struct _ipfw_insn_rdr {
+	ipfw_insn o;
+	struct in_addr addr;
+	uint16_t port;		/* network byte order, 0 = same port */
+	uint16_t set;		/* reserved for set, 0xffff */
+} ipfw_insn_rdr;
+
 #ifdef _KERNEL
 
 /*
@@ -316,7 +333,7 @@ struct ip_fw {
 	struct ip_fw	*sibling;	/* clone on next cpu		*/
 
 	struct ip_fw	**cross_rules;	/* cross referenced rules	*/
-	uint64_t	cross_refs;	/* cross references		*/
+	volatile uint64_t cross_refs;	/* cross references		*/
 
 	uint32_t	refcnt;		/* Ref count for transit pkts	*/
 	uint32_t	rule_flags;	/* IPFW_RULE_F_			*/
@@ -339,12 +356,12 @@ struct ip_fw {
  * parts of the code.
  */
 struct ipfw_flow_id {
-	uint32_t	dst_ip;
-	uint32_t	src_ip;
-	uint16_t	dst_port;
-	uint16_t	src_port;
+	uint32_t	dst_ip;		/* host byte order */
+	uint32_t	src_ip;		/* host byte order */
+	uint16_t	dst_port;	/* host byte order */
+	uint16_t	src_port;	/* host byte order */
 	uint8_t		proto;
-	uint8_t		flags;	/* protocol-specific flags */
+	uint8_t		flags;		/* protocol-specific flags */
 };
 
 /*
@@ -352,12 +369,13 @@ struct ipfw_flow_id {
  */
 
 /* ipfw_chk/ip_fw_chk_ptr return values */
-#define IP_FW_PASS	0
-#define IP_FW_DENY	1
-#define IP_FW_DIVERT	2
-#define IP_FW_TEE	3
-#define IP_FW_DUMMYNET	4
-#define IP_FW_CONTINUE	5
+#define IP_FW_PASS		0
+#define IP_FW_DENY		1
+#define IP_FW_DIVERT		2
+#define IP_FW_TEE		3
+#define IP_FW_DUMMYNET		4
+#define IP_FW_CONTINUE		5
+#define IP_FW_REDISPATCH	6
 
 /*
  * arguments for calling ipfw_chk() and dummynet_io(). We put them
@@ -368,10 +386,14 @@ struct ip_fw_args {
 	struct mbuf	*m;		/* the mbuf chain		*/
 	struct ifnet	*oif;		/* output interface		*/
 	struct ip_fw	*rule;		/* matching rule		*/
+	struct ipfw_xlat *xlat;		/* matching xlate		*/
 	struct ether_header *eh;	/* for bridged packets		*/
 
 	struct ipfw_flow_id f_id;	/* grabbed from IP header	*/
-	uint8_t		cont;
+	uint8_t		flags;
+#define IP_FWARG_F_CONT		0x01
+#define IP_FWARG_F_XLATINS	0x02
+#define IP_FWARG_F_XLATFWD	0x04
 
 	/*
 	 * Depend on the return value of ipfw_chk/ip_fw_chk_ptr
@@ -449,10 +471,10 @@ struct ipfw_ioc_flowid {
 	uint16_t	pad;
 	union {
 		struct {
-			uint32_t dst_ip;
-			uint32_t src_ip;
-			uint16_t dst_port;
-			uint16_t src_port;
+			uint32_t dst_ip;	/* host byte order */
+			uint32_t src_ip;	/* host byte order */
+			uint16_t dst_port;	/* host byte order */
+			uint16_t src_port;	/* host byte order */
 			uint8_t proto;
 		} ip;
 		uint8_t pad[64];
@@ -467,10 +489,10 @@ struct ipfw_ioc_state {
 	uint16_t	dyn_type;	/* rule type			*/
 	uint16_t	count;		/* refcount			*/
 
-	uint16_t	rulenum;
-	uint16_t	pad;
+	uint16_t	rulenum;	/* rule number			*/
 
-	int		cpu;		/* reserved			*/
+	uint16_t	xlat_port;	/* xlate port, host byte order	*/
+	uint32_t	xlat_addr;	/* xlate addr, host byte order	*/
 
 	struct ipfw_ioc_flowid id;	/* (masked) flow id		*/
 	uint8_t		reserved[16];

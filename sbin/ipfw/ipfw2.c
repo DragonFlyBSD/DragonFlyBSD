@@ -201,6 +201,7 @@ enum tokens {
 	TOK_IN,
 	TOK_LIMIT,
 	TOK_KEEPSTATE,
+	TOK_REDIRECT,
 	TOK_LAYER2,
 	TOK_OUT,
 	TOK_XMIT,
@@ -298,6 +299,8 @@ struct _s_x rule_options[] = {
 	{ "in",			TOK_IN },
 	{ "limit",		TOK_LIMIT },
 	{ "keep-state",		TOK_KEEPSTATE },
+	{ "redirect",		TOK_REDIRECT },
+	{ "rdr",		TOK_REDIRECT },
 	{ "layer2",		TOK_LAYER2 },
 	{ "out",		TOK_OUT },
 	{ "xmit",		TOK_XMIT },
@@ -1191,6 +1194,16 @@ show_ipfw(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 				printf(" keep-state");
 				break;
 
+			case O_REDIRECT:
+			    {
+				ipfw_insn_rdr *c = (ipfw_insn_rdr *)cmd;
+
+				printf(" rdr %s", inet_ntoa(c->addr));
+				if (c->port != 0)
+					printf(",%u", ntohs(c->port));
+				break;
+			    }
+
 			case O_LIMIT:
 			    {
 				struct _s_x *p = limit_masks;
@@ -1250,6 +1263,9 @@ show_dyn_ipfw(struct ipfw_ioc_state *d, int pcwidth, int bcwidth)
 	case O_KEEP_STATE: /* bidir, no mask */
 		printf(" STATE");
 		break;
+	case O_REDIRECT:
+		printf(" REDIRECT");
+		break;
 	}
 
 	if ((pe = getprotobynumber(d->id.u.ip.proto)) != NULL)
@@ -1262,6 +1278,13 @@ show_dyn_ipfw(struct ipfw_ioc_state *d, int pcwidth, int bcwidth)
 
 	a.s_addr = htonl(d->id.u.ip.dst_ip);
 	printf(" <-> %s %d", inet_ntoa(a), d->id.u.ip.dst_port);
+
+	if (d->dyn_type == O_REDIRECT) {
+		struct in_addr xlat_addr;
+
+		xlat_addr.s_addr = htonl(d->xlat_addr);
+		printf(" => %s %d", inet_ntoa(xlat_addr), d->xlat_port);
+	}
 	printf("\n");
 }
 
@@ -2579,6 +2602,36 @@ add_ports(ipfw_insn *cmd, char *av, u_char proto, int opcode)
 	return NULL;
 }
 
+static void
+fill_rdr(ipfw_insn *cmd, char *av)
+{
+	ipfw_insn_rdr *c = (ipfw_insn_rdr *)cmd;
+	char *p;
+
+	cmd->opcode = O_REDIRECT;
+	cmd->len = F_INSN_SIZE(ipfw_insn_rdr);
+	cmd->arg1 = 0;
+	c->addr.s_addr = INADDR_ANY;
+	c->port = 0;
+	c->set = UINT16_MAX;
+
+	p = strchr(av, ',');
+	if (p == NULL)
+		p = strchr(av, ':');
+	if (p != NULL)
+		*p = '\0';
+	lookup_host(av, &c->addr);
+
+	if (p != NULL && *(p + 1) != '\0') {
+		char *ep;
+
+		c->port = strtoul(p + 1, &ep, 0);
+		if (*ep != '\0')
+			errx(EX_DATAERR, "illegal port %s", p + 1);
+		c->port = htons(c->port);
+	}
+}
+
 /*
  * Parse arguments and assemble the microinstructions which make up a rule.
  * Rules are added into the 'rulebuf' and then copied in the correct order
@@ -2617,6 +2670,9 @@ add(int ac, char *av[])
 	int i;
 
 	int open_par = 0;	/* open parenthesis ( */
+
+	int has_dstport = 0;
+	int has_recv = 0;
 
 	/* proto is here because it is used to fetch ports */
 	u_char proto = IPPROTO_IP;	/* default protocol */
@@ -2951,8 +3007,10 @@ add(int ac, char *av[])
 		if (!strncmp(*av, "any", strlen(*av)) ||
 		    add_ports(cmd, *av, proto, O_IP_DSTPORT)) {
 			ac--; av++;
-			if (F_LEN(cmd) != 0)
+			if (F_LEN(cmd) != 0) {
+				has_dstport = 1;
 				cmd = next_cmd(cmd);
+			}
 		}
 	}
 
@@ -3038,9 +3096,10 @@ read_options:
 				break;
 			if (i == TOK_XMIT)
 				cmd->opcode = O_XMIT;
-			else if (i == TOK_RECV)
+			else if (i == TOK_RECV) {
 				cmd->opcode = O_RECV;
-			else if (i == TOK_VIA)
+				has_recv = 1;
+			} else if (i == TOK_VIA)
 				cmd->opcode = O_VIA;
 			break;
 
@@ -3167,13 +3226,28 @@ read_options:
 			ac--; av++;
 			break;
 
+		case TOK_REDIRECT:
+			if (open_par)
+				errx(EX_USAGE, "rdr cannot be part "
+				    "of an or block");
+			if (have_state) {
+				errx(EX_USAGE, "only one of rdr, keep-state "
+				    "and limit is allowed");
+			}
+			have_state = cmd;
+			NEED1("rdr needs address and port");
+			fill_rdr(cmd, *av);
+			ac--; av++;
+			break;
+
 		case TOK_KEEPSTATE:
 			if (open_par)
 				errx(EX_USAGE, "keep-state cannot be part "
 				    "of an or block");
-			if (have_state)
-				errx(EX_USAGE, "only one of keep-state "
-					"and limit is allowed");
+			if (have_state) {
+				errx(EX_USAGE, "only one of rdr, keep-state "
+				    "and limit is allowed");
+			}
 			have_state = cmd;
 			fill_cmd(cmd, O_KEEP_STATE, 0, 0);
 			break;
@@ -3182,9 +3256,10 @@ read_options:
 			if (open_par)
 				errx(EX_USAGE, "limit cannot be part "
 				    "of an or block");
-			if (have_state)
-				errx(EX_USAGE, "only one of keep-state "
-					"and limit is allowed");
+			if (have_state) {
+				errx(EX_USAGE, "only one of rdr, keep-state "
+				    "and limit is allowed");
+			}
 			NEED1("limit needs mask and # of connections");
 			have_state = cmd;
 		    {
@@ -3248,6 +3323,8 @@ read_options:
 			NEED1("missing destination port");
 			if (!strncmp(*av, "any", strlen(*av)) ||
 			    add_ports(cmd, *av, proto, O_IP_DSTPORT)) {
+				if (F_LEN(cmd) != 0)
+					has_dstport =1;
 				ac--; av++;
 			} else
 				errx(EX_DATAERR, "invalid destination port %s",
@@ -3306,7 +3383,7 @@ done:
 		dst = next_cmd(dst);
 	}
 	/*
-	 * copy all commands but O_LOG, O_KEEP_STATE, O_LIMIT
+	 * copy all commands but O_LOG, O_KEEP_STATE, O_LIMIT, O_REDIRECT
 	 */
 	for (src = (ipfw_insn *)cmdbuf; src != cmd; src += i) {
 		i = F_LEN(src);
@@ -3315,6 +3392,7 @@ done:
 		case O_LOG:
 		case O_KEEP_STATE:
 		case O_LIMIT:
+		case O_REDIRECT:
 			break;
 		default:
 			bcopy(src, dst, i * sizeof(u_int32_t));
@@ -3329,6 +3407,10 @@ done:
 		i = F_LEN(have_state);
 		bcopy(have_state, dst, i * sizeof(u_int32_t));
 		dst += i;
+
+		if (have_state->opcode == O_REDIRECT &&
+		    (!has_dstport || !has_recv))
+			errx(EX_USAGE, "missing \'dst-port\' or \'recv\'");
 	}
 	/*
 	 * start action section

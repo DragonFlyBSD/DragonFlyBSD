@@ -2,7 +2,7 @@
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
 .\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.20 2008/11/23 21:55:52 swildner Exp $
 .\"
-.Dd September 28, 2017
+.Dd October 15, 2017
 .Dt IPFW 8
 .Os
 .Sh NAME
@@ -164,7 +164,8 @@ or
 depending on how the kernel is configured.
 .Pp
 If the ruleset includes one or more rules with the
-.Cm keep-state
+.Cm keep-state ,
+.Cm redirect
 or
 .Cm limit
 option, then
@@ -177,7 +178,8 @@ the exact parameters (addresses and ports) of the matching packet.
 These states, which have a limited lifetime, are checked
 at the first occurrence of a
 .Cm check-state ,
-.Cm keep-state
+.Cm keep-state ,
+.Cm redirect
 or
 .Cm limit
 rule, and are typically used to open the firewall on-demand to
@@ -549,7 +551,8 @@ rules do not have a body.
 If no
 .Cm check-state
 rule is found, the state table is checked at the first
-.Cm keep-state
+.Cm keep-state ,
+.Cm redirect
 or
 .Cm limit
 rule.
@@ -570,6 +573,7 @@ The most common way to use this action is like this:
 It is recommended to reassemble IP fragments before
 .Cm check-state ,
 .Cm keep-state ,
+.Cm redirect ,
 .Cm limit
 or any layer 4 protocols filtering,
 e.g.,
@@ -777,14 +781,14 @@ Matches any network or host addresses in the
 .Cm table
 specified by the
 .Ar number .
-.It Cm [ Ns Ar ifX Ns Cm ]
+.It Cm Op Ar ifX
 Matches the first IPv4 address assigned to the
 .Ar ifX .
 It is intended to help matching the IPv4 address assigned to the
 .Ar ifX
 dynamically,
 e.g. by DHCP.
-.It Cm [ Ns Ar ifX Ns Cm :net]
+.It Cm Op ifX Ns Cm :net
 Matches the IPv4 network of the first IPv4 address assigned to the
 .Ar ifX .
 It is intended to help matching the IPv4 network of the IPv4 address
@@ -1084,6 +1088,35 @@ and they are always printed as hexadecimal (unless the
 option is used, in which case symbolic resolution will be attempted).
 .It Cm proto Ar protocol
 Matches packets with the corresponding IPv4 protocol.
+.It Cm rdr | redirect Ar ipaddr Ns Op , Ns Ar port
+Upon a match,
+the TCP or UDP packet will be redirected to
+.Ar port
+on
+.Ar ipaddr ,
+after changing the packet's destination IP address to
+.Ar ipaddr ,
+and destination port to
+.Ar port .
+If
+.Ar port
+is omitted,
+packet's destination port will not be changed.
+This rule only applies to
+.Cm in
+TCP or UDP packets.
+This rule requires
+.Cm recv
+and
+.Cm dst-port ,
+or
+.Ar ports
+specified after
+.Ar dst
+in rule body.
+This rule will create a state.
+See
+.Cm keep-state .
 .It Cm recv | xmit | via Brq Ar ifX | Ar if Ns Cm * | Ar ipno | Ar any
 Matches packets received, transmitted or going through,
 respectively, the interface specified by exact name
@@ -1261,7 +1294,9 @@ Stateful operation is a way for the firewall to dynamically
 create states and tracks for specific flows when packets that
 match a given pattern are detected. Support for stateful
 operation comes through the
-.Cm check-state , keep-state
+.Cm check-state ,
+.Cm keep-state ,
+.Cm redirect
 and
 .Cm limit
 options of
@@ -1269,7 +1304,8 @@ options of
 rules.
 .Pp
 States are created when a packet matches a
-.Cm keep-state
+.Cm keep-state ,
+.Cm redirect
 or
 .Cm limit
 rule, causing the creation of a
@@ -1290,7 +1326,9 @@ tracks are created when a packet matches a
 .Cm limit
 rule.
 States will be checked at the first
-.Cm check-state, keep-state
+.Cm check-state ,
+.Cm keep-state ,
+.Cm redirect ,
 or
 .Cm limit
 occurrence, and the action performed upon a match will be the same
@@ -1781,7 +1819,10 @@ When you hit this limit,
 no more tracks can be installed until old ones expire.
 .It Em net.inet.ip.fw.dyn_keepalive : No 1
 Enables generation of keepalive packets for
-.Cm keep-state
+.Cm keep-state ,
+.Cm redirect ,
+or
+.Cm limit
 rules on TCP sessions. A keepalive is generated to both
 sides of the connection every 5 seconds for the last 20
 seconds of the lifetime of the rule.

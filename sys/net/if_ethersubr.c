@@ -501,7 +501,8 @@ ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst, struct ip_fw **rule,
 		(*m0)->m_pkthdr.fw_flags &= ~IPFORWARD_MBUF_TAGGED;
 	}
 
-	args.cont = 0;
+	args.flags = 0;
+	args.xlat = NULL;
 	args.m = *m0;		/* the packet we are looking at		*/
 	args.oif = dst;		/* destination, if any			*/
 	args.rule = *rule;	/* matching rule to restart		*/

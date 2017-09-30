@@ -891,6 +891,12 @@ spd_done:
 		ip_dn_queue(m);
 		goto done;
 	}
+
+	if (m->m_pkthdr.fw_flags & IPFW_MBUF_CONTINUE) {
+		/* ipfw was disabled/unloaded. */
+		m_freem(m);
+		goto done;
+	}
 pass:
 	/* 127/8 must not appear on wire - RFC1122. */
 	if ((ntohl(ip->ip_dst.s_addr) >> IN_CLASSA_NSHIFT) == IN_LOOPBACKNET ||

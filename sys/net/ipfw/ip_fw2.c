@@ -255,6 +255,8 @@ do { \
 #define MATCH_NONE		2
 #define MATCH_UNKNOWN		3
 
+#define TIME_LEQ(a, b)		((a) - (b) <= 0)
+
 #define IPFW_STATE_TCPFLAGS	(TH_SYN | TH_FIN | TH_RST)
 #define IPFW_STATE_TCPSTATES	(IPFW_STATE_TCPFLAGS |	\
 				 (IPFW_STATE_TCPFLAGS << 8))
@@ -270,6 +272,17 @@ do { \
 				  ((s)->st_state & BOTH_FINACK) == BOTH_FINACK))
 
 #define O_ANCHOR		O_NOP
+
+#define IPFW_ISXLAT(type)	((type) == O_REDIRECT)
+#define IPFW_XLAT_INVALID(s)	(IPFW_ISXLAT((s)->st_type) &&	\
+				 ((struct ipfw_xlat *)(s))->xlat_invalid)
+
+#define IPFW_MBUF_XLATINS	FW_MBUF_PRIVATE1
+#define IPFW_MBUF_XLATFWD	FW_MBUF_PRIVATE2
+
+#define IPFW_XLATE_INSERT	0x0001
+#define IPFW_XLATE_FORWARD	0x0002
+#define IPFW_XLATE_OUTPUT	0x0004
 
 struct netmsg_ipfw {
 	struct netmsg_base	base;
@@ -362,16 +375,17 @@ struct ip_fw_local {
 	struct in_addr		src_ip;		/* NOTE: network format	*/
 	struct in_addr		dst_ip;		/* NOTE: network format	*/
 	uint16_t		ip_len;
+	struct tcphdr		*tcp;
 };
 
 struct ipfw_addrs {
-	uint32_t		addr1;
-	uint32_t		addr2;
+	uint32_t		addr1;	/* host byte order */
+	uint32_t		addr2;	/* host byte order */
 };
 
 struct ipfw_ports {
-	uint16_t		port1;
-	uint16_t		port2;
+	uint16_t		port1;	/* host byte order */
+	uint16_t		port2;	/* host byte order */
 };
 
 struct ipfw_key {
@@ -456,13 +470,13 @@ struct ipfw_state {
 	 * are used to generate keepalives.
 	 */
 	uint32_t		st_state;
-	uint32_t		st_ack_fwd;
-	uint32_t		st_seq_fwd;
-	uint32_t		st_ack_rev;
-	uint32_t		st_seq_rev;
+	uint32_t		st_ack_fwd;	/* host byte order */
+	uint32_t		st_seq_fwd;	/* host byte order */
+	uint32_t		st_ack_rev;	/* host byte order */
+	uint32_t		st_seq_rev;	/* host byte order */
 
 	uint16_t		st_flags;	/* IPFW_STATE_F_ */
-	uint16_t		st_type;	/* O_KEEP_STATE/O_LIMIT */
+	uint16_t		st_type;	/* KEEP_STATE/LIMIT/RDR */
 	struct ipfw_track	*st_track;
 
 	LIST_ENTRY(ipfw_state)	st_trklink;
@@ -478,9 +492,38 @@ struct ipfw_state {
 #define IPFW_STATE_F_SEQFWD	0x0002
 #define IPFW_STATE_F_ACKREV	0x0004
 #define IPFW_STATE_F_SEQREV	0x0008
+#define IPFW_STATE_F_XLATSRC	0x0010
+#define IPFW_STATE_F_XLATSLAVE	0x0020
+#define IPFW_STATE_F_LINKED	0x0040
+
+#define IPFW_STATE_SCANSKIP(s)	((s)->st_type == O_ANCHOR ||	\
+				 ((s)->st_flags & IPFW_STATE_F_XLATSLAVE))
+
+/* Expired or being deleted. */
+#define IPFW_STATE_ISDEAD(s)	(TIME_LEQ((s)->st_expire, time_uptime) || \
+				 IPFW_XLAT_INVALID((s)))
 
 TAILQ_HEAD(ipfw_state_list, ipfw_state);
 RB_HEAD(ipfw_state_tree, ipfw_state);
+
+struct ipfw_xlat {
+	struct ipfw_state	xlat_st;	/* MUST be the first field */
+	uint32_t		xlat_addr;	/* network byte order */
+	uint16_t		xlat_port;	/* network byte order */
+	uint16_t		xlat_dir;	/* MATCH_ */
+	struct ifnet		*xlat_ifp;	/* matching ifnet */
+	struct ipfw_xlat	*xlat_pair;	/* paired state */
+	int			xlat_pcpu;	/* paired cpu */
+	volatile int		xlat_invalid;	/* invalid, but not dtor yet */
+	volatile uint64_t	xlat_crefs;	/* cross references */
+	struct netmsg_base	xlat_freenm;	/* for remote free */
+};
+
+#define xlat_type		xlat_st.st_type
+#define xlat_flags		xlat_st.st_flags
+#define xlat_rule		xlat_st.st_rule
+#define xlat_bcnt		xlat_st.st_bcnt
+#define xlat_pcnt		xlat_st.st_pcnt
 
 struct ipfw_tblent {
 	struct radix_node	te_nodes[2];
@@ -507,6 +550,7 @@ struct ipfw_context {
 	uint8_t			ipfw_flags;	/* IPFW_FLAG_ */
 
 	struct ip_fw		*ipfw_cont_rule;
+	struct ipfw_xlat	*ipfw_cont_xlat;
 
 	struct ipfw_state_tree	ipfw_state_tree;
 	struct ipfw_state_list	ipfw_state_list;
@@ -540,6 +584,10 @@ struct ipfw_context {
 	struct netmsg_base	ipfw_keepalive_more;
 	struct ipfw_state	ipfw_keepalive_anch;
 
+	struct callout		ipfw_xlatreap_ch;
+	struct netmsg_base	ipfw_xlatreap_nm;
+	struct ipfw_state_list	ipfw_xlatreap;
+
 	/*
 	 * Statistics
 	 */
@@ -558,6 +606,11 @@ struct ipfw_context {
 	u_long			ipfw_frags;
 	u_long			ipfw_defraged;
 	u_long			ipfw_defrag_remote;
+
+	u_long			ipfw_xlated;
+	u_long			ipfw_xlate_split;
+	u_long			ipfw_xlate_conflicts;
+	u_long			ipfw_xlate_cresolved;
 
 	/* Last field */
 	struct radix_node_head	*ipfw_tables[];
@@ -810,6 +863,22 @@ SYSCTL_PROC(_net_inet_ip_fw_stats, OID_AUTO, defrag_remote,
     CTLTYPE_ULONG | CTLFLAG_RW, NULL,
     __offsetof(struct ipfw_context, ipfw_defrag_remote), ipfw_sysctl_stat,
     "LU", "# of IP packets after defrag dispatched to remote cpus");
+SYSCTL_PROC(_net_inet_ip_fw_stats, OID_AUTO, xlated,
+    CTLTYPE_ULONG | CTLFLAG_RW, NULL,
+    __offsetof(struct ipfw_context, ipfw_xlated), ipfw_sysctl_stat,
+    "LU", "# address/port translations");
+SYSCTL_PROC(_net_inet_ip_fw_stats, OID_AUTO, xlate_split,
+    CTLTYPE_ULONG | CTLFLAG_RW, NULL,
+    __offsetof(struct ipfw_context, ipfw_xlate_split), ipfw_sysctl_stat,
+    "LU", "# address/port translations split between different cpus");
+SYSCTL_PROC(_net_inet_ip_fw_stats, OID_AUTO, xlate_conflicts,
+    CTLTYPE_ULONG | CTLFLAG_RW, NULL,
+    __offsetof(struct ipfw_context, ipfw_xlate_conflicts), ipfw_sysctl_stat,
+    "LU", "# address/port translations conflicts on remote cpu");
+SYSCTL_PROC(_net_inet_ip_fw_stats, OID_AUTO, xlate_cresolved,
+    CTLTYPE_ULONG | CTLFLAG_RW, NULL,
+    __offsetof(struct ipfw_context, ipfw_xlate_cresolved), ipfw_sysctl_stat,
+    "LU", "# address/port translations conflicts resolved on remote cpu");
 
 static int		ipfw_state_cmp(struct ipfw_state *,
 			    struct ipfw_state *);
@@ -827,13 +896,16 @@ RB_GENERATE(ipfw_trkcnt_tree, ipfw_trkcnt, tc_rblink, ipfw_trkcnt_cmp);
 RB_PROTOTYPE(ipfw_track_tree, ipfw_track, t_rblink, ipfw_track_cmp);
 RB_GENERATE(ipfw_track_tree, ipfw_track, t_rblink, ipfw_track_cmp);
 
-static ip_fw_chk_t	ipfw_chk;
+static int		ipfw_chk(struct ip_fw_args *);
 static void		ipfw_track_expire_ipifunc(void *);
 static void		ipfw_state_expire_ipifunc(void *);
 static void		ipfw_keepalive(void *);
 static int		ipfw_state_expire_start(struct ipfw_context *,
 			    int, int);
 static void		ipfw_crossref_timeo(void *);
+static void		ipfw_state_remove(struct ipfw_context *,
+			    struct ipfw_state *);
+static void		ipfw_xlat_reap_timeo(void *);
 
 #define IPFW_TRKCNT_TOKGET	lwkt_gettoken(&ipfw_gd.ipfw_trkcnt_token)
 #define IPFW_TRKCNT_TOKREL	lwkt_reltoken(&ipfw_gd.ipfw_trkcnt_token)
@@ -858,6 +930,21 @@ sa_maskedcopy(const struct sockaddr *src, struct sockaddr *dst,
 		*cp2++ = *cp1++ & *cp3++;
 	if (cp2 < cplim2)
 		bzero(cp2, cplim2 - cp2);
+}
+
+static __inline uint16_t
+pfil_cksum_fixup(uint16_t cksum, uint16_t old, uint16_t new, uint8_t udp)
+{
+	uint32_t l;
+
+	if (udp && !cksum)
+		return (0x0000);
+	l = cksum + old - new;
+	l = (l >> 16) + (l & 65535);
+	l = l & 65535;
+	if (udp && !l)
+		return (0xFFFF);
+	return (l);
 }
 
 static __inline void
@@ -995,6 +1082,32 @@ ipfw_track_cmp(struct ipfw_track *t1, struct ipfw_track *t2)
 		return (-1);
 
 	return (0);
+}
+
+static __inline struct ipfw_state *
+ipfw_state_link(struct ipfw_context *ctx, struct ipfw_state *s)
+{
+	struct ipfw_state *dup;
+
+	KASSERT((s->st_flags & IPFW_STATE_F_LINKED) == 0,
+	    ("state %p was linked", s));
+	dup = RB_INSERT(ipfw_state_tree, &ctx->ipfw_state_tree, s);
+	if (dup == NULL) {
+		TAILQ_INSERT_TAIL(&ctx->ipfw_state_list, s, st_link);
+		s->st_flags |= IPFW_STATE_F_LINKED;
+	}
+	return (dup);
+}
+
+static __inline void
+ipfw_state_unlink(struct ipfw_context *ctx, struct ipfw_state *s)
+{
+
+	KASSERT(s->st_flags & IPFW_STATE_F_LINKED,
+	    ("state %p was not linked", s));
+	RB_REMOVE(ipfw_state_tree, &ctx->ipfw_state_tree, s);
+	TAILQ_REMOVE(&ctx->ipfw_state_list, s, st_link);
+	s->st_flags &= ~IPFW_STATE_F_LINKED;
 }
 
 static void
@@ -1455,17 +1568,132 @@ ipfw_log(struct ipfw_context *ctx, struct ip_fw *f, u_int hlen,
 
 #undef SNPARGS
 
-#define TIME_LEQ(a, b)	((a) - (b) <= 0)
+static void
+ipfw_xlat_reap(struct ipfw_xlat *x, struct ipfw_xlat *slave_x)
+{
+	struct ip_fw *rule = slave_x->xlat_rule;
+
+	KKASSERT(rule->cpuid == mycpuid);
+
+	/* No more cross references; free this pair now. */
+	kfree(x, M_IPFW);
+	kfree(slave_x, M_IPFW);
+
+	/* See the comment in ipfw_ip_xlate_dispatch(). */
+	rule->cross_refs--;
+}
+
+static void
+ipfw_xlat_reap_dispatch(netmsg_t nm)
+{
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct ipfw_state *s, *ns;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
+
+	crit_enter();
+	/* Reply ASAP. */
+	netisr_replymsg(&ctx->ipfw_xlatreap_nm, 0);
+	crit_exit();
+
+	/* TODO: limit scanning depth */
+	TAILQ_FOREACH_MUTABLE(s, &ctx->ipfw_xlatreap, st_link, ns) {
+		struct ipfw_xlat *x = (struct ipfw_xlat *)s;
+		struct ipfw_xlat *slave_x = x->xlat_pair;
+		uint64_t crefs;
+
+		crefs = slave_x->xlat_crefs + x->xlat_crefs;
+		if (crefs == 0) {
+			TAILQ_REMOVE(&ctx->ipfw_xlatreap, &x->xlat_st, st_link);
+			ipfw_xlat_reap(x, slave_x);
+		}
+	}
+	if (!TAILQ_EMPTY(&ctx->ipfw_xlatreap)) {
+		callout_reset(&ctx->ipfw_xlatreap_ch, 2, ipfw_xlat_reap_timeo,
+		    &ctx->ipfw_xlatreap_nm);
+	}
+}
+
+static void
+ipfw_xlat_reap_timeo(void *xnm)
+{
+	struct netmsg_base *nm = xnm;
+
+	KKASSERT(mycpuid < netisr_ncpus);
+
+	crit_enter();
+	if (nm->lmsg.ms_flags & MSGF_DONE)
+		netisr_sendmsg_oncpu(nm);
+	crit_exit();
+}
+
+static void
+ipfw_xlat_free_dispatch(netmsg_t nmsg)
+{
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct ipfw_xlat *x = nmsg->lmsg.u.ms_resultp;
+	struct ipfw_xlat *slave_x = x->xlat_pair;
+	uint64_t crefs;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
+
+	KKASSERT(slave_x != NULL);
+	KKASSERT(slave_x->xlat_invalid && x->xlat_invalid);
+
+	KASSERT((x->xlat_flags & IPFW_STATE_F_LINKED) == 0,
+	    ("master xlat is still linked"));
+	if (slave_x->xlat_flags & IPFW_STATE_F_LINKED)
+		ipfw_state_unlink(ctx, &slave_x->xlat_st);
+
+	/* See the comment in ipfw_ip_xlate_dispatch(). */
+	slave_x->xlat_crefs--;
+
+	crefs = slave_x->xlat_crefs + x->xlat_crefs;
+	if (crefs == 0) {
+		ipfw_xlat_reap(x, slave_x);
+		return;
+	}
+
+	if (TAILQ_EMPTY(&ctx->ipfw_xlatreap)) {
+		callout_reset(&ctx->ipfw_xlatreap_ch, 2, ipfw_xlat_reap_timeo,
+		    &ctx->ipfw_xlatreap_nm);
+	}
+
+	/*
+	 * This pair is still referenced; defer its destruction.
+	 * YYY reuse st_link.
+	 */
+	TAILQ_INSERT_TAIL(&ctx->ipfw_xlatreap, &x->xlat_st, st_link);
+}
+
+static __inline void
+ipfw_xlat_invalidate(struct ipfw_xlat *x)
+{
+
+	x->xlat_invalid = 1;
+	x->xlat_pair->xlat_invalid = 1;
+}
 
 static void
 ipfw_state_del(struct ipfw_context *ctx, struct ipfw_state *s)
 {
+	struct ipfw_xlat *x, *slave_x;
+	struct netmsg_base *nm;
 
-	KASSERT(s->st_type == O_KEEP_STATE || s->st_type == O_LIMIT,
-	    ("invalid state type %u", s->st_type));
+	KASSERT(s->st_type == O_KEEP_STATE || s->st_type == O_LIMIT ||
+	    IPFW_ISXLAT(s->st_type), ("invalid state type %u", s->st_type));
+	KASSERT((s->st_flags & IPFW_STATE_F_XLATSLAVE) == 0,
+	    ("delete slave xlat"));
+
 	KASSERT(ctx->ipfw_state_cnt > 0,
 	    ("invalid state count %d", ctx->ipfw_state_cnt));
+	ctx->ipfw_state_cnt--;
+	if (ctx->ipfw_state_loosecnt > 0)
+		ctx->ipfw_state_loosecnt--;
 
+	/*
+	 * Unhook this state.
+	 */
 	if (s->st_track != NULL) {
 		struct ipfw_track *t = s->st_track;
 
@@ -1477,14 +1705,78 @@ ipfw_state_del(struct ipfw_context *ctx, struct ipfw_state *s)
 		    ("invalid track count %d", *t->t_count));
 		atomic_subtract_int(t->t_count, 1);
 	}
+	ipfw_state_unlink(ctx, s);
 
-	TAILQ_REMOVE(&ctx->ipfw_state_list, s, st_link);
-	RB_REMOVE(ipfw_state_tree, &ctx->ipfw_state_tree, s);
-	kfree(s, M_IPFW);
+	/*
+	 * Free this state.  Xlat requires special processing,
+	 * since xlat are paired state and they could be on
+	 * different cpus.
+	 */
 
-	ctx->ipfw_state_cnt--;
-	if (ctx->ipfw_state_loosecnt > 0)
-		ctx->ipfw_state_loosecnt--;
+	if (!IPFW_ISXLAT(s->st_type)) {
+		/* Not xlat; free now. */
+		kfree(s, M_IPFW);
+		/* Done! */
+		return;
+	}
+	x = (struct ipfw_xlat *)s;
+
+	if (x->xlat_pair == NULL) {
+		/* Not setup yet; free now. */
+		kfree(x, M_IPFW);
+		/* Done! */
+		return;
+	}
+	slave_x = x->xlat_pair;
+	KKASSERT(slave_x->xlat_flags & IPFW_STATE_F_XLATSLAVE);
+
+	if (x->xlat_pcpu == mycpuid) {
+		/*
+		 * Paired states are on the same cpu; delete this
+		 * pair now.
+		 */
+		KKASSERT(x->xlat_crefs == 0);
+		KKASSERT(slave_x->xlat_crefs == 0);
+		if (slave_x->xlat_flags & IPFW_STATE_F_LINKED)
+			ipfw_state_unlink(ctx, &slave_x->xlat_st);
+		kfree(x, M_IPFW);
+		kfree(slave_x, M_IPFW);
+		return;
+	}
+
+	/*
+	 * Free the paired states on the cpu owning the slave xlat.
+	 */
+
+	/* 
+	 * Mark the state pair invalid; completely deleting them
+	 * may take some time.
+	 */
+	ipfw_xlat_invalidate(x);
+
+	nm = &x->xlat_freenm;
+	netmsg_init(nm, NULL, &netisr_apanic_rport, MSGF_PRIORITY,
+	    ipfw_xlat_free_dispatch);
+	nm->lmsg.u.ms_resultp = x;
+
+	/* See the comment in ipfw_xlate_redispatch(). */
+	x->xlat_rule->cross_refs++;
+	x->xlat_crefs++;
+
+	netisr_sendmsg(nm, x->xlat_pcpu);
+}
+
+static void
+ipfw_state_remove(struct ipfw_context *ctx, struct ipfw_state *s)
+{
+
+	if (s->st_flags & IPFW_STATE_F_XLATSLAVE) {
+		KKASSERT(IPFW_ISXLAT(s->st_type));
+		ipfw_xlat_invalidate((struct ipfw_xlat *)s);
+		ipfw_state_unlink(ctx, s);
+		return;
+	}
+	ipfw_state_del(ctx, s);
 }
 
 static int
@@ -1524,11 +1816,10 @@ ipfw_state_reap(struct ipfw_context *ctx, int reap_max)
 		TAILQ_REMOVE(&ctx->ipfw_state_list, anchor, st_link);
 		TAILQ_INSERT_AFTER(&ctx->ipfw_state_list, s, anchor, st_link);
 
-		if (s->st_type == O_ANCHOR)
+		if (IPFW_STATE_SCANSKIP(s))
 			continue;
 
-		if (IPFW_STATE_TCPCLOSED(s) ||
-		    TIME_LEQ(s->st_expire, time_uptime)) {
+		if (IPFW_STATE_ISDEAD(s) || IPFW_STATE_TCPCLOSED(s)) {
 			ipfw_state_del(ctx, s);
 			if (++expired >= reap_max)
 				break;
@@ -1553,7 +1844,7 @@ ipfw_state_flush(struct ipfw_context *ctx, const struct ip_fw *rule)
 	struct ipfw_state *s, *sn;
 
 	TAILQ_FOREACH_MUTABLE(s, &ctx->ipfw_state_list, st_link, sn) {
-		if (s->st_type == O_ANCHOR)
+		if (IPFW_STATE_SCANSKIP(s))
 			continue;
 		if (rule != NULL && s->st_rule != rule)
 			continue;
@@ -1603,10 +1894,10 @@ ipfw_state_expire_loop(struct ipfw_context *ctx, struct ipfw_state *anchor,
 		TAILQ_REMOVE(&ctx->ipfw_state_list, anchor, st_link);
 		TAILQ_INSERT_AFTER(&ctx->ipfw_state_list, s, anchor, st_link);
 
-		if (s->st_type == O_ANCHOR)
+		if (IPFW_STATE_SCANSKIP(s))
 			continue;
 
-		if (TIME_LEQ(s->st_expire, time_uptime) ||
+		if (IPFW_STATE_ISDEAD(s) ||
 		    ((ctx->ipfw_flags & IPFW_FLAG_STATEREAP) &&
 		     IPFW_STATE_TCPCLOSED(s))) {
 			ipfw_state_del(ctx, s);
@@ -1846,16 +2137,15 @@ ipfw_state_lookup(struct ipfw_context *ctx, const struct ipfw_flow_id *pkt,
 	s = RB_FIND(ipfw_state_tree, &ctx->ipfw_state_tree, key);
 	if (s == NULL)
 		goto done; /* not found. */
-	if (TIME_LEQ(s->st_expire, time_uptime)) {
-		/* Expired. */
-		ipfw_state_del(ctx, s);
+	if (IPFW_STATE_ISDEAD(s)) {
+		ipfw_state_remove(ctx, s);
 		s = NULL;
 		goto done;
 	}
 	if ((pkt->flags & TH_SYN) && IPFW_STATE_TCPCLOSED(s)) {
 		/* TCP ports recycling is too fast. */
 		ctx->ipfw_sts_tcprecycled++;
-		ipfw_state_del(ctx, s);
+		ipfw_state_remove(ctx, s);
 		s = NULL;
 		goto done;
 	}
@@ -1881,37 +2171,21 @@ done:
 	return (s);
 }
 
-static __inline struct ip_fw *
-ipfw_state_lookup_rule(struct ipfw_context *ctx, const struct ipfw_flow_id *pkt,
-    int *match_direction, const struct tcphdr *tcp, uint16_t len)
+static struct ipfw_state *
+ipfw_state_alloc(struct ipfw_context *ctx, const struct ipfw_flow_id *id,
+    uint16_t type, struct ip_fw *rule, const struct tcphdr *tcp)
 {
 	struct ipfw_state *s;
+	size_t sz;
 
-	s = ipfw_state_lookup(ctx, pkt, match_direction, tcp);
-	if (s == NULL)
-		return (NULL);
-
-	KASSERT(s->st_rule->cpuid == mycpuid,
-	    ("rule %p (cpu%d) does not belong to the current cpu%d",
-	     s->st_rule, s->st_rule->cpuid, mycpuid));
-
-	s->st_pcnt++;
-	s->st_bcnt += len;
-
-	return (s->st_rule);
-}
-
-static struct ipfw_state *
-ipfw_state_add(struct ipfw_context *ctx, const struct ipfw_flow_id *id,
-    uint16_t type, struct ip_fw *rule, struct ipfw_track *t,
-    const struct tcphdr *tcp)
-{
-	struct ipfw_state *s, *dup;
-
-	KASSERT(type == O_KEEP_STATE || type == O_LIMIT,
+	KASSERT(type == O_KEEP_STATE || type == O_LIMIT || IPFW_ISXLAT(type),
 	    ("invalid state type %u", type));
 
-	s = kmalloc(sizeof(*s), M_IPFW, M_INTWAIT | M_NULLOK | M_ZERO);
+	sz = sizeof(struct ipfw_state);
+	if (IPFW_ISXLAT(type))
+		sz = sizeof(struct ipfw_xlat);
+
+	s = kmalloc(sz, M_IPFW, M_INTWAIT | M_NULLOK | M_ZERO);
 	if (s == NULL) {
 		ctx->ipfw_sts_nomem++;
 		return (NULL);
@@ -1922,6 +2196,32 @@ ipfw_state_add(struct ipfw_context *ctx, const struct ipfw_flow_id *id,
 
 	s->st_rule = rule;
 	s->st_type = type;
+	if (IPFW_ISXLAT(type)) {
+		struct ipfw_xlat *x = (struct ipfw_xlat *)s;
+
+		x->xlat_dir = MATCH_NONE;
+		x->xlat_pcpu = -1;
+	}
+
+	/*
+	 * Update this state:
+	 * Set st_expire and st_state.
+	 */
+	ipfw_state_update(id, MATCH_FORWARD, tcp, s);
+
+	return (s);
+}
+
+static struct ipfw_state *
+ipfw_state_add(struct ipfw_context *ctx, const struct ipfw_flow_id *id,
+    uint16_t type, struct ip_fw *rule, struct ipfw_track *t,
+    const struct tcphdr *tcp)
+{
+	struct ipfw_state *s, *dup;
+
+	s = ipfw_state_alloc(ctx, id, type, rule, tcp);
+	if (s == NULL)
+		return (NULL);
 
 	ctx->ipfw_state_cnt++;
 	ctx->ipfw_state_loosecnt++;
@@ -1930,16 +2230,9 @@ ipfw_state_add(struct ipfw_context *ctx, const struct ipfw_flow_id *id,
 		ctx->ipfw_state_loosecnt = 0;
 	}
 
-	dup = RB_INSERT(ipfw_state_tree, &ctx->ipfw_state_tree, s);
+	dup = ipfw_state_link(ctx, s);
 	if (dup != NULL)
-		panic("ipfw: state exists");
-	TAILQ_INSERT_TAIL(&ctx->ipfw_state_list, s, st_link);
-
-	/*
-	 * Update this state:
-	 * Set st_expire and st_state.
-	 */
-	ipfw_state_update(id, MATCH_FORWARD, tcp, s);
+		panic("ipfw: %u state exists %p", type, dup);
 
 	if (t != NULL) {
 		/* Keep the track referenced. */
@@ -2041,8 +2334,7 @@ ipfw_track_state_expire(struct ipfw_context *ctx, struct ipfw_track *t,
 	t->t_lastexp = time_uptime;
 
 	LIST_FOREACH_MUTABLE(s, &t->t_state_list, st_trklink, sn) {
-		if (TIME_LEQ(s->st_expire, time_uptime) ||
-		    (reap && IPFW_STATE_TCPCLOSED(s))) {
+		if (IPFW_STATE_ISDEAD(s) || (reap && IPFW_STATE_TCPCLOSED(s))) {
 			KASSERT(s->st_track == t,
 			    ("state track %p does not match %p",
 			     s->st_track, t));
@@ -2433,10 +2725,10 @@ done:
 /*
  * Install state for rule type cmd->o.opcode
  *
- * Returns 1 (failure) if state is not installed because of errors or because
+ * Returns NULL if state is not installed because of errors or because
  * states limitations are enforced.
  */
-static int
+static struct ipfw_state *
 ipfw_state_install(struct ipfw_context *ctx, struct ip_fw *rule,
     ipfw_insn_limit *cmd, struct ip_fw_args *args, const struct tcphdr *tcp)
 {
@@ -2468,7 +2760,7 @@ ipfw_state_install(struct ipfw_context *ctx, struct ip_fw *rule,
 			    !atomic_cmpset_long(&ipfw_gd.ipfw_state_globexp,
 			    globexp, uptime)) {
 				ctx->ipfw_sts_overflow++;
-				return (1);
+				return (NULL);
 			}
 
 			/* Expire states on other CPUs. */
@@ -2479,31 +2771,32 @@ ipfw_state_install(struct ipfw_context *ctx, struct ip_fw *rule,
 				    ipfw_state_expire_ipifunc, NULL);
 			}
 			ctx->ipfw_sts_overflow++;
-			return (1);
+			return (NULL);
 		}
 	}
 
 	switch (cmd->o.opcode) {
 	case O_KEEP_STATE: /* bidir rule */
-		s = ipfw_state_add(ctx, &args->f_id, O_KEEP_STATE, rule, NULL,
+	case O_REDIRECT:
+		s = ipfw_state_add(ctx, &args->f_id, cmd->o.opcode, rule, NULL,
 		    tcp);
 		if (s == NULL)
-			return (1);
+			return (NULL);
 		break;
 
 	case O_LIMIT: /* limit number of sessions */
 		t = ipfw_track_alloc(ctx, &args->f_id, cmd->limit_mask, rule);
 		if (t == NULL)
-			return (1);
+			return (NULL);
 
 		if (*t->t_count >= cmd->conn_limit) {
 			if (!ipfw_track_state_expire(ctx, t, TRUE))
-				return (1);
+				return (NULL);
 		}
 		for (;;) {
 			count = *t->t_count;
 			if (count >= cmd->conn_limit)
-				return (1);
+				return (NULL);
 			if (atomic_cmpset_int(t->t_count, count, count + 1))
 				break;
 		}
@@ -2512,14 +2805,25 @@ ipfw_state_install(struct ipfw_context *ctx, struct ip_fw *rule,
 		if (s == NULL) {
 			/* Undo damage. */
 			atomic_subtract_int(t->t_count, 1);
-			return (1);
+			return (NULL);
 		}
 		break;
 
 	default:
 		panic("unknown state type %u\n", cmd->o.opcode);
 	}
-	return (0);
+
+	if (s->st_type == O_REDIRECT) {
+		struct ipfw_xlat *x = (struct ipfw_xlat *)s;
+		ipfw_insn_rdr *r = (ipfw_insn_rdr *)cmd;
+
+		x->xlat_addr = r->addr.s_addr;
+		x->xlat_port = r->port;
+		x->xlat_ifp = args->m->m_pkthdr.rcvif;
+		x->xlat_dir = MATCH_FORWARD;
+		KKASSERT(x->xlat_ifp != NULL);
+	}
+	return (s);
 }
 
 static int
@@ -2754,7 +3058,7 @@ ipfw_match_uid(const struct ipfw_flow_id *fid, struct ifnet *oif,
 	}
 }
 
-static __inline int
+static int
 ipfw_match_ifip(ipfw_insn_ifip *cmd, const struct in_addr *ip)
 {
 
@@ -2795,7 +3099,192 @@ ipfw_match_ifip(ipfw_insn_ifip *cmd, const struct in_addr *ip)
 	return ((ip->s_addr & cmd->mask.s_addr) == cmd->addr.s_addr);
 }
 
-static __inline struct mbuf *
+static void
+ipfw_xlate(const struct ipfw_xlat *x, struct mbuf *m,
+    struct in_addr *old_addr, uint16_t *old_port)
+{
+	struct ip *ip = mtod(m, struct ip *);
+	struct in_addr *addr;
+	uint16_t *port, *csum, dlen = 0;
+	uint8_t udp = 0;
+	boolean_t pseudo = FALSE;
+
+	if (x->xlat_flags & IPFW_STATE_F_XLATSRC) {
+		addr = &ip->ip_src;
+		switch (ip->ip_p) {
+		case IPPROTO_TCP:
+			port = &L3HDR(struct tcphdr, ip)->th_sport;
+			csum = &L3HDR(struct tcphdr, ip)->th_sum;
+			break;
+		case IPPROTO_UDP:
+			port = &L3HDR(struct udphdr, ip)->uh_sport;
+			csum = &L3HDR(struct udphdr, ip)->uh_sum;
+			udp = 1;
+			break;
+		default:
+			panic("ipfw: unsupported src xlate proto %u", ip->ip_p);
+		}
+	} else {
+		addr = &ip->ip_dst;
+		switch (ip->ip_p) {
+		case IPPROTO_TCP:
+			port = &L3HDR(struct tcphdr, ip)->th_dport;
+			csum = &L3HDR(struct tcphdr, ip)->th_sum;
+			break;
+		case IPPROTO_UDP:
+			port = &L3HDR(struct udphdr, ip)->uh_dport;
+			csum = &L3HDR(struct udphdr, ip)->uh_sum;
+			udp = 1;
+			break;
+		default:
+			panic("ipfw: unsupported dst xlate proto %u", ip->ip_p);
+		}
+	}
+	if (old_addr != NULL)
+		*old_addr = *addr;
+	if (old_port != NULL) {
+		if (x->xlat_port != 0)
+			*old_port = *port;
+		else
+			*old_port = 0;
+	}
+
+	if (m->m_pkthdr.csum_flags & (CSUM_UDP | CSUM_TCP | CSUM_TSO)) {
+		if ((m->m_pkthdr.csum_flags & CSUM_TSO) == 0)
+			dlen = ip->ip_len - (ip->ip_hl << 2);
+		pseudo = TRUE;
+	}
+
+	if (!pseudo) {
+		const uint16_t *oaddr, *naddr;
+
+		oaddr = (const uint16_t *)&addr->s_addr;
+		naddr = (const uint16_t *)&x->xlat_addr;
+
+		ip->ip_sum = pfil_cksum_fixup(pfil_cksum_fixup(ip->ip_sum,
+		    oaddr[0], naddr[0], 0), oaddr[1], naddr[1], 0);
+		*csum = pfil_cksum_fixup(pfil_cksum_fixup(*csum,
+		    oaddr[0], naddr[0], udp), oaddr[1], naddr[1], udp);
+	}
+	addr->s_addr = x->xlat_addr;
+
+	if (x->xlat_port != 0) {
+		if (!pseudo) {
+			*csum = pfil_cksum_fixup(*csum, *port, x->xlat_port,
+			    udp);
+		}
+		*port = x->xlat_port;
+	}
+
+	if (pseudo) {
+		*csum = in_pseudo(ip->ip_src.s_addr, ip->ip_dst.s_addr,
+		    htons(dlen + ip->ip_p));
+	}
+}
+
+static void
+ipfw_ip_xlate_dispatch(netmsg_t nmsg)
+{
+	struct netmsg_genpkt *nm = (struct netmsg_genpkt *)nmsg;
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct mbuf *m = nm->m;
+	struct ipfw_xlat *x = nm->arg1;
+	struct ip_fw *rule = x->xlat_rule;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
+	KASSERT(rule->cpuid == mycpuid,
+	    ("rule does not belong to cpu%d", mycpuid));
+	KASSERT(m->m_pkthdr.fw_flags & IPFW_MBUF_CONTINUE,
+	    ("mbuf does not have ipfw continue rule"));
+
+	KASSERT(ctx->ipfw_cont_rule == NULL,
+	    ("pending ipfw continue rule"));
+	KASSERT(ctx->ipfw_cont_xlat == NULL,
+	    ("pending ipfw continue xlat"));
+	ctx->ipfw_cont_rule = rule;
+	ctx->ipfw_cont_xlat = x;
+
+	if (nm->arg2 == 0)
+		ip_input(m);
+	else
+		ip_output(m, NULL, NULL, IP_FORWARDING, NULL, NULL);
+
+	/* May not be cleared, if ipfw was unload/disabled. */
+	ctx->ipfw_cont_rule = NULL;
+	ctx->ipfw_cont_xlat = NULL;
+
+	/*
+	 * This state is no longer used; decrement its xlat_crefs,
+	 * so this state can be deleted.
+	 */
+	x->xlat_crefs--;
+	/*
+	 * This rule is no longer used; decrement its cross_refs,
+	 * so this rule can be deleted.
+	 *
+	 * NOTE:
+	 * Decrement cross_refs in the last step of this function,
+	 * so that the module could be unloaded safely.
+	 */
+	rule->cross_refs--;
+}
+
+static void
+ipfw_xlate_redispatch(struct mbuf *m, int cpuid, struct ipfw_xlat *x,
+    uint32_t flags)
+{
+	struct netmsg_genpkt *nm;
+
+	KASSERT(x->xlat_pcpu == cpuid, ("xlat paired cpu%d, target cpu%d",
+	    x->xlat_pcpu, cpuid));
+
+	/*
+	 * Bump cross_refs to prevent this rule and its siblings
+	 * from being deleted, while this mbuf is inflight.  The
+	 * cross_refs of the sibling rule on the target cpu will
+	 * be decremented, once this mbuf is going to be filtered
+	 * on the target cpu.
+	 */
+	x->xlat_rule->cross_refs++;
+	/*
+	 * Bump xlat_crefs to prevent this state and its paired
+	 * state from being deleted, while this mbuf is inflight.
+	 * The xlat_crefs of the paired state on the target cpu
+	 * will be decremented, once this mbuf is going to be
+	 * filtered on the target cpu.
+	 */
+	x->xlat_crefs++;
+
+	m->m_pkthdr.fw_flags |= IPFW_MBUF_CONTINUE;
+	if (flags & IPFW_XLATE_INSERT)
+		m->m_pkthdr.fw_flags |= IPFW_MBUF_XLATINS;
+	if (flags & IPFW_XLATE_FORWARD)
+		m->m_pkthdr.fw_flags |= IPFW_MBUF_XLATFWD;
+
+	if ((flags & IPFW_XLATE_OUTPUT) == 0) {
+		struct ip *ip = mtod(m, struct ip *);
+
+		/*
+		 * NOTE:
+		 * ip_input() expects ip_len/ip_off are in network
+		 * byte order.
+		 */
+		ip->ip_len = htons(ip->ip_len);
+		ip->ip_off = htons(ip->ip_off);
+	}
+
+	nm = &m->m_hdr.mh_genmsg;
+	netmsg_init(&nm->base, NULL, &netisr_apanic_rport, 0,
+	    ipfw_ip_xlate_dispatch);
+	nm->m = m;
+	nm->arg1 = x->xlat_pair;
+	nm->arg2 = 0;
+	if (flags & IPFW_XLATE_OUTPUT)
+		nm->arg2 = 1;
+	netisr_sendmsg(&nm->base, cpuid);
+}
+
+static struct mbuf *
 ipfw_setup_local(struct mbuf *m, const int hlen, struct ip_fw_args *args,
     struct ip_fw_local *local, struct ip **ip0)
 {
@@ -2838,7 +3327,7 @@ do {							\
 		switch (local->proto) {
 		case IPPROTO_TCP:
 			PULLUP_TO(hlen + sizeof(struct tcphdr));
-			tcp = L3HDR(struct tcphdr, ip);
+			local->tcp = tcp = L3HDR(struct tcphdr, ip);
 			local->dst_port = tcp->th_dport;
 			local->src_port = tcp->th_sport;
 			args->f_id.flags = tcp->th_flags;
@@ -2870,6 +3359,32 @@ do {							\
 done:
 	*ip0 = ip;
 	return (m);
+}
+
+static struct mbuf *
+ipfw_rehashm(struct mbuf *m, const int hlen, struct ip_fw_args *args,
+    struct ip_fw_local *local, struct ip **ip0)
+{
+	struct ip *ip = mtod(m, struct ip *);
+
+	ip->ip_len = htons(ip->ip_len);
+	ip->ip_off = htons(ip->ip_off);
+
+	m->m_flags &= ~M_HASH;
+	ip_hashfn(&m, 0);
+	args->m = m;
+	if (m == NULL) {
+		*ip0 = NULL;
+		return (NULL);
+	}
+	KASSERT(m->m_flags & M_HASH, ("no hash"));
+
+	/* 'm' might be changed by ip_hashfn(). */
+	ip = mtod(m, struct ip *);
+	ip->ip_len = ntohs(ip->ip_len);
+	ip->ip_off = ntohs(ip->ip_off);
+
+	return (ipfw_setup_local(m, hlen, args, local, ip0));
 }
 
 /*
@@ -2940,6 +3455,7 @@ ipfw_chk(struct ip_fw_args *args)
 	int retval = IP_FW_PASS;
 	struct m_tag *mtag;
 	struct divert_info *divinfo;
+	struct ipfw_state *s;
 
 	/*
 	 * hlen	The length of the IPv4 header.
@@ -2985,9 +3501,9 @@ ipfw_chk(struct ip_fw_args *args)
 		 * XXX should not happen here, but optimized out in
 		 * the caller.
 		 */
-		if (fw_one_pass && !args->cont)
+		if (fw_one_pass && (args->flags & IP_FWARG_F_CONT) == 0)
 			return IP_FW_PASS;
-		args->cont = 0;
+		args->flags &= ~IP_FWARG_F_CONT;
 
 		/* This rule is being/has been flushed */
 		if (ipfw_flushing)
@@ -3000,9 +3516,54 @@ ipfw_chk(struct ip_fw_args *args)
 		if (args->rule->rule_flags & IPFW_RULE_F_INVALID)
 			return IP_FW_DENY;
 
-		f = args->rule->next_rule;
-		if (f == NULL)
-			f = lookup_next_rule(args->rule);
+		if (args->xlat != NULL) {
+			struct ipfw_xlat *x = args->xlat;
+
+			/* This xlat is being deleted. */
+			if (x->xlat_invalid)
+				return IP_FW_DENY;
+
+			f = args->rule;
+
+			dyn_f = f;
+			dyn_dir = (args->flags & IP_FWARG_F_XLATFWD) ?
+			    MATCH_FORWARD : MATCH_REVERSE;
+
+			if (args->flags & IP_FWARG_F_XLATINS) {
+				KASSERT(x->xlat_flags & IPFW_STATE_F_XLATSLAVE,
+				    ("not slave %u state", x->xlat_type));
+				s = ipfw_state_link(ctx, &x->xlat_st);
+				if (s != NULL) {
+					ctx->ipfw_xlate_conflicts++;
+					if (IPFW_STATE_ISDEAD(s)) {
+						ipfw_state_remove(ctx, s);
+						s = ipfw_state_link(ctx,
+						    &x->xlat_st);
+					}
+					if (s != NULL) {
+						if (bootverbose) {
+							kprintf("ipfw: "
+							"slave %u state "
+							"conflicts %u state\n",
+							x->xlat_type,
+							s->st_type);
+						}
+						ipfw_xlat_invalidate(x);
+						return IP_FW_DENY;
+					}
+					ctx->ipfw_xlate_cresolved++;
+				}
+			} else {
+				ipfw_state_update(&args->f_id, dyn_dir,
+				    lc.tcp, &x->xlat_st);
+			}
+		} else {
+			/* TODO: setup dyn_f, dyn_dir */
+
+			f = args->rule->next_rule;
+			if (f == NULL)
+				f = lookup_next_rule(args->rule);
+		}
 	} else {
 		/*
 		 * Find the starting rule. It can be either the first
@@ -3010,7 +3571,9 @@ ipfw_chk(struct ip_fw_args *args)
 		 */
 		int skipto;
 
-		KKASSERT(!args->cont);
+		KKASSERT((args->flags &
+		    (IP_FWARG_F_XLATINS | IP_FWARG_F_CONT)) == 0);
+		KKASSERT(args->xlat == NULL);
 
 		mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
 		if (mtag != NULL) {
@@ -3050,12 +3613,22 @@ ipfw_chk(struct ip_fw_args *args)
 		int skip_or; /* skip rest of OR block */
 
 again:
-		if (ctx->ipfw_set_disable & (1 << f->set))
+		if (ctx->ipfw_set_disable & (1 << f->set)) {
+			args->xlat = NULL;
 			continue;
+		}
+
+		if (args->xlat != NULL) {
+			args->xlat = NULL;
+			l = f->cmd_len - f->act_ofs;
+			cmd = ACTION_PTR(f);
+		} else {
+			l = f->cmd_len;
+			cmd = f->cmd;
+		}
 
 		skip_or = 0;
-		for (l = f->cmd_len, cmd = f->cmd; l > 0;
-		     l -= cmdlen, cmd += cmdlen) {
+		for (; l > 0; l -= cmdlen, cmd += cmdlen) {
 			int match;
 
 			/*
@@ -3063,7 +3636,6 @@ again:
 			 * CHECK_STATE, and need to jump to the body of
 			 * the target rule.
 			 */
-
 check_body:
 			cmdlen = F_LEN(cmd);
 			/*
@@ -3413,8 +3985,8 @@ check_body:
 			 *   or to the SKIPTO target ('goto again' after
 			 *   having set f, cmd and l), respectively.
 			 *
-			 * O_LIMIT and O_KEEP_STATE: these opcodes are
-			 *   not real 'actions', and are stored right
+			 * O_LIMIT and O_KEEP_STATE, O_REDIRECT: these opcodes
+			 *   are not real 'actions', and are stored right
 			 *   before the 'action' part of the rule.
 			 *   These opcodes try to install an entry in the
 			 *   state tables; if successful, we continue with
@@ -3438,15 +4010,114 @@ check_body:
 			 *   be dropped and rule's stats will not be updated
 			 *   ('return IP_FW_DENY').
 			 */
+			case O_REDIRECT:
+				if (f->cross_rules == NULL) {
+					/*
+					 * This rule was not completely setup;
+					 * move on to the next rule.
+					 */
+					goto next_rule;
+				}
+				/*
+				 * Apply redirect only on input path and
+				 * only to non-fragment TCP segments or
+				 * UDP datagrams.
+				 *
+				 * Does _not_ work with layer2 filtering.
+				 */
+				if (oif != NULL || args->eh != NULL ||
+				    (ip->ip_off & (IP_MF | IP_OFFMASK)) ||
+				    (lc.proto != IPPROTO_TCP &&
+				     lc.proto != IPPROTO_UDP))
+					break;
+				/* FALL THROUGH */
 			case O_LIMIT:
 			case O_KEEP_STATE:
-				if (ipfw_state_install(ctx, f,
-				    (ipfw_insn_limit *)cmd, args,
-				    (lc.offset == 0 &&
-				     lc.proto == IPPROTO_TCP) ?
-				    L3HDR(struct tcphdr, ip) : NULL)) {
+				if (hlen == 0)
+					break;
+				s = ipfw_state_install(ctx, f,
+				    (ipfw_insn_limit *)cmd, args, lc.tcp);
+				if (s == NULL) {
 					retval = IP_FW_DENY;
 					goto done; /* error/limit violation */
+				}
+				s->st_pcnt++;
+				s->st_bcnt += lc.ip_len;
+
+				if (s->st_type == O_REDIRECT) {
+					struct in_addr oaddr;
+					uint16_t oport;
+					struct ipfw_xlat *slave_x, *x;
+					struct ipfw_state *dup;
+
+					x = (struct ipfw_xlat *)s;
+					ipfw_xlate(x, m, &oaddr, &oport);
+					m = ipfw_rehashm(m, hlen, args, &lc,
+					    &ip);
+					if (m == NULL) {
+						ipfw_state_del(ctx, s);
+						goto pullup_failed;
+					}
+
+					cpuid = netisr_hashcpu(
+					    m->m_pkthdr.hash);
+
+					slave_x = (struct ipfw_xlat *)
+					    ipfw_state_alloc(ctx, &args->f_id,
+					    O_REDIRECT, f->cross_rules[cpuid],
+					    lc.tcp);
+					if (slave_x == NULL) {
+						ipfw_state_del(ctx, s);
+						retval = IP_FW_DENY;
+						goto done;
+					}
+					slave_x->xlat_addr = oaddr.s_addr;
+					slave_x->xlat_port = oport;
+					slave_x->xlat_dir = MATCH_REVERSE;
+					slave_x->xlat_flags |=
+					    IPFW_STATE_F_XLATSRC |
+					    IPFW_STATE_F_XLATSLAVE;
+
+					slave_x->xlat_pair = x;
+					slave_x->xlat_pcpu = mycpuid;
+					x->xlat_pair = slave_x;
+					x->xlat_pcpu = cpuid;
+
+					ctx->ipfw_xlated++;
+					if (cpuid != mycpuid) {
+						ctx->ipfw_xlate_split++;
+						ipfw_xlate_redispatch(
+						    m, cpuid, x,
+						    IPFW_XLATE_INSERT |
+						    IPFW_XLATE_FORWARD);
+						args->m = NULL;
+						return (IP_FW_REDISPATCH);
+					}
+
+					dup = ipfw_state_link(ctx,
+					    &slave_x->xlat_st);
+					if (dup != NULL) {
+						ctx->ipfw_xlate_conflicts++;
+						if (IPFW_STATE_ISDEAD(dup)) {
+							ipfw_state_remove(ctx,
+							    dup);
+							dup = ipfw_state_link(
+							ctx, &slave_x->xlat_st);
+						}
+						if (dup != NULL) {
+							if (bootverbose) {
+							    kprintf("ipfw: "
+							    "slave %u state "
+							    "conflicts "
+							    "%u state\n",
+							    x->xlat_type,
+							    s->st_type);
+							}
+							ipfw_state_del(ctx, s);
+							return (IP_FW_DENY);
+						}
+						ctx->ipfw_xlate_cresolved++;
+					}
 				}
 				match = 1;
 				break;
@@ -3458,37 +4129,97 @@ check_body:
 				 * check-state occurrence, with the result
 				 * being stored in dyn_dir.  The compiler
 				 * introduces a PROBE_STATE instruction for
-				 * us when we have a KEEP_STATE/LIMIT (because
-				 * PROBE_STATE needs to be run first).
+				 * us when we have a KEEP_STATE/LIMIT/RDR
+				 * (because PROBE_STATE needs to be run first).
 				 */
+				s = NULL;
 				if (dyn_dir == MATCH_UNKNOWN) {
-					dyn_f = ipfw_state_lookup_rule(ctx,
-					    &args->f_id, &dyn_dir,
-					    (lc.offset == 0 &&
-					     lc.proto == IPPROTO_TCP) ?
-					    L3HDR(struct tcphdr, ip) : NULL,
-					    lc.ip_len);
-					if (dyn_f != NULL) {
-						/*
-						 * Found a rule from a state;
-						 * jump to the 'action' part
-						 * of the rule.
-						 */
-						f = dyn_f;
-						cmd = ACTION_PTR(f);
-						l = f->cmd_len - f->act_ofs;
-						goto check_body;
-					}
+					s = ipfw_state_lookup(ctx,
+					    &args->f_id, &dyn_dir, lc.tcp);
 				}
+				if (s == NULL ||
+				    (s->st_type == O_REDIRECT &&
+				     (args->eh != NULL ||
+				      (ip->ip_off & (IP_MF | IP_OFFMASK)) ||
+				      (lc.proto != IPPROTO_TCP &&
+				       lc.proto != IPPROTO_UDP)))) {
+					/*
+					 * State not found. If CHECK_STATE,
+					 * skip to next rule, if PROBE_STATE
+					 * just ignore and continue with next
+					 * opcode.
+					 */
+					if (cmd->opcode == O_CHECK_STATE)
+						goto next_rule;
+					match = 1;
+					break;
+				}
+
+				s->st_pcnt++;
+				s->st_bcnt += lc.ip_len;
+
+				if (s->st_type == O_REDIRECT) {
+					struct ipfw_xlat *x =
+					    (struct ipfw_xlat *)s;
+
+					if (oif != NULL &&
+					    x->xlat_ifp == NULL) {
+						KASSERT(x->xlat_flags &
+						    IPFW_STATE_F_XLATSLAVE,
+						    ("master rdr state "
+						     "missing ifp"));
+						x->xlat_ifp = oif;
+					} else if (
+					    (oif != NULL && x->xlat_ifp!=oif) ||
+					    (oif == NULL &&
+					     x->xlat_ifp!=m->m_pkthdr.rcvif)) {
+						retval = IP_FW_DENY;
+						goto done;
+					}
+					if (x->xlat_dir != dyn_dir)
+						goto skip_xlate;
+
+					ipfw_xlate(x, m, NULL, NULL);
+					m = ipfw_rehashm(m, hlen, args, &lc,
+					    &ip);
+					if (m == NULL)
+						goto pullup_failed;
+
+					cpuid = netisr_hashcpu(
+					    m->m_pkthdr.hash);
+					if (cpuid != mycpuid) {
+						uint32_t xlate = 0;
+
+						if (oif != NULL) {
+							xlate |=
+							    IPFW_XLATE_OUTPUT;
+						}
+						if (dyn_dir == MATCH_FORWARD) {
+							xlate |=
+							    IPFW_XLATE_FORWARD;
+						}
+						ipfw_xlate_redispatch(m, cpuid,
+						    x, xlate);
+						args->m = NULL;
+						return (IP_FW_REDISPATCH);
+					}
+
+					KKASSERT(x->xlat_pcpu == mycpuid);
+					ipfw_state_update(&args->f_id, dyn_dir,
+					    lc.tcp, &x->xlat_pair->xlat_st);
+				}
+skip_xlate:
 				/*
-				 * State not found. If CHECK_STATE, skip to
-				 * next rule, if PROBE_STATE just ignore and
-				 * continue with next opcode.
+				 * Found a rule from a state; jump to the
+				 * 'action' part of the rule.
 				 */
-				if (cmd->opcode == O_CHECK_STATE)
-					goto next_rule;
-				match = 1;
-				break;
+				f = s->st_rule;
+				KKASSERT(f->cpuid == mycpuid);
+
+				cmd = ACTION_PTR(f);
+				l = f->cmd_len - f->act_ofs;
+				dyn_f = f;
+				goto check_body;
 
 			case O_ACCEPT:
 				retval = IP_FW_PASS;	/* accept */
@@ -3759,7 +4490,7 @@ ipfw_flush_rule_ptrs(struct ipfw_context *ctx)
 		rule->next_rule = NULL;
 }
 
-static __inline void
+static void
 ipfw_inc_static_count(struct ip_fw *rule)
 {
 	/* Static rule's counts are updated only on CPU0 */
@@ -3769,7 +4500,7 @@ ipfw_inc_static_count(struct ip_fw *rule)
 	static_ioc_len += IOC_RULESIZE(rule);
 }
 
-static __inline void
+static void
 ipfw_dec_static_count(struct ip_fw *rule)
 {
 	int l = IOC_RULESIZE(rule);
@@ -4638,13 +5369,14 @@ ipfw_check_ioc_rule(struct ipfw_ioc_rule *rule, int size, uint32_t *rule_flags)
 
 		DPRINTF("ipfw: opcode %d\n", cmd->opcode);
 
-		if (cmd->opcode == O_KEEP_STATE || cmd->opcode == O_LIMIT) {
+		if (cmd->opcode == O_KEEP_STATE || cmd->opcode == O_LIMIT ||
+		    IPFW_ISXLAT(cmd->opcode)) {
 			/* This rule will generate states. */
 			*rule_flags |= IPFW_RULE_F_GENSTATE;
 			if (cmd->opcode == O_LIMIT)
 				*rule_flags |= IPFW_RULE_F_GENTRACK;
 		}
-		if (cmd->opcode == O_DEFRAG)
+		if (cmd->opcode == O_DEFRAG || IPFW_ISXLAT(cmd->opcode))
 			*rule_flags |= IPFW_RULE_F_CROSSREF;
 		if (cmd->opcode == O_IP_SRC_IFIP ||
 		    cmd->opcode == O_IP_DST_IFIP) {
@@ -4709,6 +5441,10 @@ ipfw_check_ioc_rule(struct ipfw_ioc_rule *rule, int size, uint32_t *rule_flags)
 
 		case O_LIMIT:
 			if (cmdlen != F_INSN_SIZE(ipfw_insn_limit))
+				goto bad_size;
+			break;
+		case O_REDIRECT:
+			if (cmdlen != F_INSN_SIZE(ipfw_insn_rdr))
 				goto bad_size;
 			break;
 
@@ -4947,7 +5683,7 @@ ipfw_state_copy(const struct ipfw_state *s, struct ipfw_ioc_state *ioc_state)
 {
 	struct ipfw_ioc_flowid *ioc_id;
 
-	if (s->st_type == O_ANCHOR)
+	if (IPFW_STATE_SCANSKIP(s))
 		return (FALSE);
 
 	ioc_state->expire = TIME_LEQ(s->st_expire, time_uptime) ?
@@ -4966,6 +5702,19 @@ ipfw_state_copy(const struct ipfw_state *s, struct ipfw_ioc_state *ioc_state)
 	ipfw_key_4tuple(&s->st_key,
 	    &ioc_id->u.ip.src_ip, &ioc_id->u.ip.src_port,
 	    &ioc_id->u.ip.dst_ip, &ioc_id->u.ip.dst_port);
+
+	if (IPFW_ISXLAT(s->st_type)) {
+		const struct ipfw_xlat *x = (const struct ipfw_xlat *)s;
+
+		if (x->xlat_port == 0)
+			ioc_state->xlat_port = ioc_id->u.ip.dst_port;
+		else
+			ioc_state->xlat_port = ntohs(x->xlat_port);
+		ioc_state->xlat_addr = ntohl(x->xlat_addr);
+
+		ioc_state->pcnt += x->xlat_pair->xlat_pcnt;
+		ioc_state->bcnt += x->xlat_pair->xlat_bcnt;
+	}
 
 	return (TRUE);
 }
@@ -5964,6 +6713,7 @@ ipfw_keepalive_loop(struct ipfw_context *ctx, struct ipfw_state *anchor)
 	while ((s = TAILQ_NEXT(anchor, st_link)) != NULL) {
 		uint32_t ack_rev, ack_fwd;
 		struct ipfw_flow_id id;
+		uint8_t send_dir;
 
 		if (scanned++ >= ipfw_state_scan_max) {
 			ipfw_keepalive_more(ctx);
@@ -5973,12 +6723,16 @@ ipfw_keepalive_loop(struct ipfw_context *ctx, struct ipfw_state *anchor)
 		TAILQ_REMOVE(&ctx->ipfw_state_list, anchor, st_link);
 		TAILQ_INSERT_AFTER(&ctx->ipfw_state_list, s, anchor, st_link);
 
+		/*
+		 * NOTE:
+		 * Don't use IPFW_STATE_SCANSKIP; need to perform keepalive
+		 * on slave xlat.
+		 */
 		if (s->st_type == O_ANCHOR)
 			continue;
 
-		if (TIME_LEQ(s->st_expire, time_uptime)) {
-			/* State expired. */
-			ipfw_state_del(ctx, s);
+		if (IPFW_STATE_ISDEAD(s)) {
+			ipfw_state_remove(ctx, s);
 			if (++expired >= ipfw_state_expire_max) {
 				ipfw_keepalive_more(ctx);
 				return;
@@ -6003,8 +6757,27 @@ ipfw_keepalive_loop(struct ipfw_context *ctx, struct ipfw_state *anchor)
 		ack_rev = s->st_ack_rev;
 		ack_fwd = s->st_ack_fwd;
 
-		send_pkt(&id, ack_rev - 1, ack_fwd, TH_SYN);
-		send_pkt(&id, ack_fwd - 1, ack_rev, 0);
+#define SEND_FWD	0x1
+#define SEND_REV	0x2
+
+		if (IPFW_ISXLAT(s->st_type)) {
+			const struct ipfw_xlat *x = (const struct ipfw_xlat *)s;
+
+			if (x->xlat_dir == MATCH_FORWARD)
+				send_dir = SEND_FWD;
+			else
+				send_dir = SEND_REV;
+		} else {
+			send_dir = SEND_FWD | SEND_REV;
+		}
+
+		if (send_dir & SEND_REV)
+			send_pkt(&id, ack_rev - 1, ack_fwd, TH_SYN);
+		if (send_dir & SEND_FWD)
+			send_pkt(&id, ack_fwd - 1, ack_rev, 0);
+
+#undef SEND_FWD
+#undef SEND_REV
 
 		if (++kept >= ipfw_keepalive_max) {
 			ipfw_keepalive_more(ctx);
@@ -6104,14 +6877,14 @@ ipfw_ip_input_dispatch(netmsg_t nmsg)
 	ctx->ipfw_cont_rule = rule;
 	ip_input(m);
 
+	/* May not be cleared, if ipfw was unload/disabled. */
+	ctx->ipfw_cont_rule = NULL;
+
 	/*
 	 * This rule is no longer used; decrement its cross_refs,
 	 * so this rule can be deleted.
 	 */
 	rule->cross_refs--;
-
-	/* May not be cleared, if ipfw was unload/disabled. */
-	ctx->ipfw_cont_rule = NULL;
 }
 
 static int
@@ -6123,7 +6896,10 @@ ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 	int tee = 0, error = 0, ret, cpuid;
 	struct netmsg_genpkt *nm;
 
-	args.cont = 0;
+	args.flags = 0;
+	args.rule = NULL;
+	args.xlat = NULL;
+
 	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
 		/* Extract info from dummynet tag */
 		mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
@@ -6140,10 +6916,23 @@ ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 		args.rule = ctx->ipfw_cont_rule;
 		ctx->ipfw_cont_rule = NULL;
 
-		args.cont = 1;
+		if (ctx->ipfw_cont_xlat != NULL) {
+			args.xlat = ctx->ipfw_cont_xlat;
+			ctx->ipfw_cont_xlat = NULL;
+			if (m->m_pkthdr.fw_flags & IPFW_MBUF_XLATINS) {
+				args.flags |= IP_FWARG_F_XLATINS;
+				m->m_pkthdr.fw_flags &= ~IPFW_MBUF_XLATINS;
+			}
+			if (m->m_pkthdr.fw_flags & IPFW_MBUF_XLATFWD) {
+				args.flags |= IP_FWARG_F_XLATFWD;
+				m->m_pkthdr.fw_flags &= ~IPFW_MBUF_XLATFWD;
+			}
+		}
+		KKASSERT((m->m_pkthdr.fw_flags &
+		    (IPFW_MBUF_XLATINS | IPFW_MBUF_XLATFWD)) == 0);
+
+		args.flags |= IP_FWARG_F_CONT;
 		m->m_pkthdr.fw_flags &= ~IPFW_MBUF_CONTINUE;
-	} else {
-		args.rule = NULL;
 	}
 
 	args.eh = NULL;
@@ -6153,7 +6942,8 @@ ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 	m = args.m;
 
 	if (m == NULL) {
-		error = EACCES;
+		if (ret != IP_FW_REDISPATCH)
+			error = EACCES;
 		goto back;
 	}
 
@@ -6235,7 +7025,10 @@ ipfw_check_out(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 	struct m_tag *mtag;
 	int tee = 0, error = 0, ret;
 
-	args.cont = 0;
+	args.flags = 0;
+	args.rule = NULL;
+	args.xlat = NULL;
+
 	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
 		/* Extract info from dummynet tag */
 		mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
@@ -6245,8 +7038,30 @@ ipfw_check_out(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 
 		m_tag_delete(m, mtag);
 		m->m_pkthdr.fw_flags &= ~DUMMYNET_MBUF_TAGGED;
-	} else {
-		args.rule = NULL;
+	} else if (m->m_pkthdr.fw_flags & IPFW_MBUF_CONTINUE) {
+		struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+
+		KKASSERT(ctx->ipfw_cont_rule != NULL);
+		args.rule = ctx->ipfw_cont_rule;
+		ctx->ipfw_cont_rule = NULL;
+
+		if (ctx->ipfw_cont_xlat != NULL) {
+			args.xlat = ctx->ipfw_cont_xlat;
+			ctx->ipfw_cont_xlat = NULL;
+			if (m->m_pkthdr.fw_flags & IPFW_MBUF_XLATINS) {
+				args.flags |= IP_FWARG_F_XLATINS;
+				m->m_pkthdr.fw_flags &= ~IPFW_MBUF_XLATINS;
+			}
+			if (m->m_pkthdr.fw_flags & IPFW_MBUF_XLATFWD) {
+				args.flags |= IP_FWARG_F_XLATFWD;
+				m->m_pkthdr.fw_flags &= ~IPFW_MBUF_XLATFWD;
+			}
+		}
+		KKASSERT((m->m_pkthdr.fw_flags &
+		    (IPFW_MBUF_XLATINS | IPFW_MBUF_XLATFWD)) == 0);
+
+		args.flags |= IP_FWARG_F_CONT;
+		m->m_pkthdr.fw_flags &= ~IPFW_MBUF_CONTINUE;
 	}
 
 	args.eh = NULL;
@@ -6256,7 +7071,8 @@ ipfw_check_out(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 	m = args.m;
 
 	if (m == NULL) {
-		error = EACCES;
+		if (ret != IP_FW_REDISPATCH)
+			error = EACCES;
 		goto back;
 	}
 
@@ -6491,6 +7307,11 @@ ipfw_ctx_init_dispatch(netmsg_t nmsg)
 	netmsg_init(&ctx->ipfw_keepalive_more, NULL, &netisr_adone_rport,
 	    MSGF_DROPABLE, ipfw_keepalive_more_dispatch);
 
+	callout_init_mp(&ctx->ipfw_xlatreap_ch);
+	netmsg_init(&ctx->ipfw_xlatreap_nm, NULL, &netisr_adone_rport,
+	    MSGF_DROPABLE | MSGF_PRIORITY, ipfw_xlat_reap_dispatch);
+	TAILQ_INIT(&ctx->ipfw_xlatreap);
+
 	ipfw_ctx[mycpuid] = ctx;
 
 	def_rule = kmalloc(sizeof(*def_rule), M_IPFW, M_WAITOK | M_ZERO);
@@ -6695,6 +7516,7 @@ ipfw_ctx_fini_dispatch(netmsg_t nmsg)
 	callout_stop_sync(&ctx->ipfw_stateto_ch);
 	callout_stop_sync(&ctx->ipfw_trackto_ch);
 	callout_stop_sync(&ctx->ipfw_keepalive_ch);
+	callout_stop_sync(&ctx->ipfw_xlatreap_ch);
 
 	crit_enter();
 	netisr_dropmsg(&ctx->ipfw_stateexp_more);
@@ -6703,6 +7525,7 @@ ipfw_ctx_fini_dispatch(netmsg_t nmsg)
 	netisr_dropmsg(&ctx->ipfw_trackexp_nm);
 	netisr_dropmsg(&ctx->ipfw_keepalive_more);
 	netisr_dropmsg(&ctx->ipfw_keepalive_nm);
+	netisr_dropmsg(&ctx->ipfw_xlatreap_nm);
 	crit_exit();
 
 	ipfw_table_flushall_oncpu(ctx, 1);
