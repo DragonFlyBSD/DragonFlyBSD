@@ -18,7 +18,7 @@
 #define HAVE_STRPTIME
 #define HAVE_STRSEP
 
-#define OSNAME "DragonFly 4.9"
+#define OSNAME "DragonFly 5.0"
 
 #if !defined(__BEGIN_DECLS)
 #  ifdef __cplusplus
