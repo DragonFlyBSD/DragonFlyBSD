@@ -1654,8 +1654,8 @@ pmap_invalidate_range(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
  *
  * The page *must* be wired.
  */
-void
-pmap_qenter(vm_offset_t beg_va, vm_page_t *m, int count)
+static __inline void
+_pmap_qenter(vm_offset_t beg_va, vm_page_t *m, int count, int doinval)
 {
 	vm_offset_t end_va;
 	vm_offset_t va;
@@ -1675,7 +1675,20 @@ pmap_qenter(vm_offset_t beg_va, vm_page_t *m, int count)
 		atomic_swap_long(ptep, pte);
 		m++;
 	}
-	pmap_invalidate_range(&kernel_pmap, beg_va, end_va);
+	if (doinval)
+		pmap_invalidate_range(&kernel_pmap, beg_va, end_va);
+}
+
+void
+pmap_qenter(vm_offset_t beg_va, vm_page_t *m, int count)
+{
+	_pmap_qenter(beg_va, m, count, 1);
+}
+
+void
+pmap_qenter_noinval(vm_offset_t beg_va, vm_page_t *m, int count)
+{
+	_pmap_qenter(beg_va, m, count, 0);
 }
 
 /*

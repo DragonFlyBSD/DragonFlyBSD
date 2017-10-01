@@ -945,8 +945,8 @@ pmap_map(vm_offset_t *virtp, vm_paddr_t start, vm_paddr_t end, int prot)
 /*
  * Map a set of unmanaged VM pages into KVM.
  */
-void
-pmap_qenter(vm_offset_t beg_va, vm_page_t *m, int count)
+static __inline void
+_pmap_qenter(vm_offset_t beg_va, vm_page_t *m, int count, int doinval)
 {
 	vm_offset_t end_va;
 	vm_offset_t va;
@@ -962,8 +962,21 @@ pmap_qenter(vm_offset_t beg_va, vm_page_t *m, int count)
 				       VPTE_RW | VPTE_V | VPTE_U);
 		++m;
 	}
-	pmap_invalidate_range(&kernel_pmap, beg_va, end_va);
+	if (doinval)
+		pmap_invalidate_range(&kernel_pmap, beg_va, end_va);
 	/* pmap_inval_pte(pte, &kernel_pmap, va); */
+}
+
+void
+pmap_qenter(vm_offset_t beg_va, vm_page_t *m, int count)
+{
+	_pmap_qenter(beg_va, m, count, 1);
+}
+
+void
+pmap_qenter_noinval(vm_offset_t beg_va, vm_page_t *m, int count)
+{
+	_pmap_qenter(beg_va, m, count, 0);
 }
 
 /*
