@@ -340,12 +340,12 @@ _tsleep_interlock(globaldata_t gd, const volatile void *ident, int flags)
 		qp = &gd->gd_tsleep_hash[gid];
 		TAILQ_REMOVE(&qp->queue, td, td_sleepq);
 		if (TAILQ_FIRST(&qp->queue) == NULL) {
-			ATOMIC_CPUMASK_NANDBIT(slpque_cpumasks[cid],
-					       gd->gd_cpuid);
 			qp->ident0 = NULL;
 			qp->ident1 = NULL;
 			qp->ident2 = NULL;
 			qp->ident3 = NULL;
+			ATOMIC_CPUMASK_NANDBIT(slpque_cpumasks[cid],
+					       gd->gd_cpuid);
 		}
 	} else {
 		td->td_flags |= TDF_TSLEEPQ;
@@ -1006,6 +1006,7 @@ restart:
 	 */
 	if ((domain & PWAKEUP_MYCPU) == 0) {
 		globaldata_t tgd;
+		void *id0;
 		int n;
 
 		cpu_mfence();
@@ -1016,13 +1017,22 @@ restart:
 			CPUMASK_NANDBIT(mask, n);
 			tgd = globaldata_find(n);
 			qp = &tgd->gd_tsleep_hash[gid];
-			if (qp->ident0 == (void *)(intptr_t)-1)
+
+			/*
+			 * Both ident0 compares must from a single load
+			 * to avoid ident0 update races crossing the two
+			 * compares.
+			 */
+			id0 = qp->ident0;
+			cpu_ccfence();
+			if (id0 == (void *)(intptr_t)-1) {
+				lwkt_send_ipiq2(tgd, _wakeup, ident,
+						domain | PWAKEUP_MYCPU);
 				++tgd->gd_cnt.v_wakeup_colls;
-			if (qp->ident0 == (void *)(intptr_t)-1 ||
-			    qp->ident0 == ident ||
-			    qp->ident1 == ident ||
-			    qp->ident2 == ident ||
-			    qp->ident3 == ident) {
+			} else if (id0 == ident ||
+				   qp->ident1 == ident ||
+				   qp->ident2 == ident ||
+				   qp->ident3 == ident) {
 				lwkt_send_ipiq2(tgd, _wakeup, ident,
 						domain | PWAKEUP_MYCPU);
 			}
