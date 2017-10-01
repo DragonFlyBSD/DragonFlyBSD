@@ -362,7 +362,8 @@ disk_blk_read(struct disk *dp, kdmsg_msg_t *msg)
 			msg->state->any.any = iost;
 		}
 		reterr = 0;
-		bp = geteblk(msg->any.blk_read.bytes);
+		bp = getpbuf_mem(NULL);
+		KKASSERT(msg->any.blk_read.bytes <= bp->b_bufsize);
 		bio = &bp->b_bio1;
 		bp->b_cmd = BUF_CMD_READ;
 		bp->b_bcount = msg->any.blk_read.bytes;
@@ -428,7 +429,8 @@ disk_blk_write(struct disk *dp, kdmsg_msg_t *msg)
 		if (msg->aux_size >= msg->any.blk_write.bytes)
 			bp = getpbuf(NULL);
 		else
-			bp = geteblk(msg->any.blk_write.bytes);
+			bp = getpbuf_mem(NULL);
+		KKASSERT(msg->any.blk_write.bytes <= bp->b_bufsize);
 		bio = &bp->b_bio1;
 		bp->b_cmd = BUF_CMD_WRITE;
 		bp->b_bcount = msg->any.blk_write.bytes;
@@ -659,9 +661,9 @@ diskiodone(struct bio *bio)
 	/* kdmsg_state_drop(state); */
 	kdmsg_msg_write(rmsg);
 	if (bp->b_flags & B_PAGING) {
-		relpbuf(bio->bio_buf, NULL);
+		relpbuf(bp, NULL);
 	} else {
 		bp->b_flags |= B_INVAL | B_AGE;
-		brelse(bp);
+		relpbuf(bp, NULL);
 	}
 }

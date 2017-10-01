@@ -2988,28 +2988,6 @@ regetblk(struct buf *bp)
 }
 
 /*
- * geteblk:
- *
- *	Get an empty, disassociated buffer of given size.  The buffer is
- *	initially set to B_INVAL.
- *
- *	critical section protection is not required for the allocbuf()
- *	call because races are impossible here.
- */
-struct buf *
-geteblk(int size)
-{
-	struct buf *bp;
-
-	while ((bp = getnewbuf(0, 0, size, MAXBSIZE)) == NULL)
-		;
-	allocbuf(bp, size);
-	bp->b_flags |= B_INVAL;	/* b_dep cleared by getnewbuf() */
-
-	return (bp);
-}
-
-/*
  * allocbuf:
  *
  *	This code constitutes the buffer memory from either anonymous system

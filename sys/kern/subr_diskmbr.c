@@ -125,7 +125,8 @@ reread_mbr:
 	 * Read master boot record.
 	 */
 	wdev = dev;
-	bp = geteblk((int)info->d_media_blksize);
+	bp = getpbuf_mem(NULL);
+	KKASSERT((int)info->d_media_blksize <= bp->b_bufsize);
 	bp->b_bio1.bio_offset = (off_t)mbr_offset * info->d_media_blksize;
 	bp->b_bio1.bio_done = biodone_sync;
 	bp->b_bio1.bio_flags |= BIO_SYNC;
@@ -317,7 +318,7 @@ reread_mbr:
 
 done:
 	bp->b_flags |= B_INVAL | B_AGE;
-	brelse(bp);
+	relpbuf(bp, NULL);
 	if (error == EINVAL)
 		error = 0;
 	return (error);
@@ -433,7 +434,8 @@ mbr_extended(cdev_t dev, struct disk_info *info, struct diskslices *ssp,
 	}
 
 	/* Read extended boot record. */
-	bp = geteblk((int)info->d_media_blksize);
+	bp = getpbuf_mem(NULL);
+	KKASSERT((int)info->d_media_blksize <= bp->b_bufsize);
 	bp->b_bio1.bio_offset = (off_t)ext_offset * info->d_media_blksize;
 	bp->b_bio1.bio_done = biodone_sync;
 	bp->b_bio1.bio_flags |= BIO_SYNC;
@@ -512,7 +514,7 @@ mbr_extended(cdev_t dev, struct disk_info *info, struct diskslices *ssp,
 
 done:
 	bp->b_flags |= B_INVAL | B_AGE;
-	brelse(bp);
+	relpbuf(bp, NULL);
 }
 
 static int

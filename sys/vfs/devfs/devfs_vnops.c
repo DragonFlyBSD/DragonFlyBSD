@@ -1891,7 +1891,7 @@ devfs_spec_freeblks(struct vop_freeblks_args *ap)
 	KKASSERT(ap->a_vp->v_rdev != NULL);
 	if ((ap->a_vp->v_rdev->si_flags & SI_CANFREE) == 0)
 		return (0);
-	bp = geteblk(ap->a_length);
+	bp = getpbuf(NULL);
 	bp->b_cmd = BUF_CMD_FREEBLKS;
 	bp->b_bio1.bio_flags |= BIO_SYNC;
 	bp->b_bio1.bio_offset = ap->a_offset;
@@ -1899,7 +1899,7 @@ devfs_spec_freeblks(struct vop_freeblks_args *ap)
 	bp->b_bcount = ap->a_length;
 	dev_dstrategy(ap->a_vp->v_rdev, &bp->b_bio1);
 	biowait(&bp->b_bio1, "TRIM");
-	brelse(bp);
+	relpbuf(bp, NULL);
 
 	return (0);
 }

@@ -279,7 +279,8 @@ driveio(struct drive *drive, char *buf, size_t length, off_t offset, buf_cmd_t c
     while (length) {					    /* divide into small enough blocks */
 	int len = umin(length, MAXBSIZE);		    /* maximum block device transfer is MAXBSIZE */
 
-	bp = geteblk(len);				    /* get a buffer header */
+	bp = getpbuf_kva(NULL);				    /* get a buffer header */
+	KKASSERT(len <= bp->b_bufsize);
 	bp->b_cmd = cmd;
 	bp->b_bio1.bio_offset = offset;			    /* disk offset */
 	bp->b_bio1.bio_done = biodone_sync;
@@ -292,7 +293,7 @@ driveio(struct drive *drive, char *buf, size_t length, off_t offset, buf_cmd_t c
 	bp->b_data = saveaddr;
 	bp->b_flags |= B_INVAL | B_AGE;
 	bp->b_flags &= ~B_ERROR;
-	brelse(bp);
+	relpbuf(bp, NULL);
 	if (error)
 	    break;
 	length -= len;					    /* update pointers */

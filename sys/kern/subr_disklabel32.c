@@ -177,7 +177,8 @@ l32_readdisklabel(cdev_t dev, struct diskslice *sp, disklabel_t *lpp,
 	const char *msg = NULL;
 	int secsize = info->d_media_blksize;
 
-	bp = geteblk(secsize);
+	bp = getpbuf_mem(NULL);
+	KKASSERT(secsize <= bp->b_bufsize);
 	bp->b_bio1.bio_offset = (off_t)LABELSECTOR32 * secsize;
 	bp->b_bio1.bio_done = biodone_sync;
 	bp->b_bio1.bio_flags |= BIO_SYNC;
@@ -215,7 +216,8 @@ l32_readdisklabel(cdev_t dev, struct diskslice *sp, disklabel_t *lpp,
 		}
 	}
 	bp->b_flags |= B_INVAL | B_AGE;
-	brelse(bp);
+	relpbuf(bp, NULL);
+
 	return (msg);
 }
 
@@ -308,7 +310,8 @@ l32_writedisklabel(cdev_t dev, struct diskslices *ssp, struct diskslice *sp,
 	if (lp->d_partitions[RAW_PART].p_offset != 0)
 		return (EXDEV);			/* not quite right */
 
-	bp = geteblk((int)lp->d_secsize);
+	bp = getpbuf_mem(NULL);
+	KKASSERT((int)lp->d_secsize <= bp->b_bufsize);
 	bp->b_bio1.bio_offset = (off_t)LABELSECTOR32 * lp->d_secsize;
 	bp->b_bio1.bio_done = biodone_sync;
 	bp->b_bio1.bio_flags |= BIO_SYNC;
@@ -366,7 +369,8 @@ done:
 	error = biowait(&bp->b_bio1, "labwr");
 #endif
 	bp->b_flags |= B_INVAL | B_AGE;
-	brelse(bp);
+	relpbuf(bp, NULL);
+
 	return (error);
 }
 

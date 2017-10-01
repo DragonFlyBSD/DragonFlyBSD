@@ -84,7 +84,8 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	 */
 	wdev = dev;
 	dname = dev_dname(wdev);
-	bp1 = geteblk((int)info->d_media_blksize);
+	bp1 = getpbuf_mem(NULL);
+	KKASSERT(info->d_media_blksize <= bp1->b_bufsize);
 	bp1->b_bio1.bio_offset = info->d_media_blksize;
 	bp1->b_bio1.bio_done = biodone_sync;
 	bp1->b_bio1.bio_flags |= BIO_SYNC;
@@ -138,7 +139,8 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	/*
 	 * XXX subject to device dma size limitations
 	 */
-	bp2 = geteblk((int)(table_blocks * info->d_media_blksize));
+	bp2 = getpbuf_mem(NULL);
+	KKASSERT((int)(table_blocks * info->d_media_blksize) <= bp2->b_bufsize);
 	bp2->b_bio1.bio_offset = (off_t)table_lba * info->d_media_blksize;
 	bp2->b_bio1.bio_done = biodone_sync;
 	bp2->b_bio1.bio_flags |= BIO_SYNC;
@@ -214,11 +216,11 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 done:
 	if (bp1) {
 		bp1->b_flags |= B_INVAL | B_AGE;
-		brelse(bp1);
+		relpbuf(bp1, NULL);
 	}
 	if (bp2) {
 		bp2->b_flags |= B_INVAL | B_AGE;
-		brelse(bp2);
+		relpbuf(bp2, NULL);
 	}
 	if (error == EINVAL)
 		error = 0;
