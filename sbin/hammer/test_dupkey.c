@@ -51,6 +51,8 @@ main(int ac, char **av)
 		++count;
 	}
 	printf(" '%s'\n", name);
+
+	return(0);
 }
 
 static
