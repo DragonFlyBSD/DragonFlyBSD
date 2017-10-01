@@ -1006,7 +1006,7 @@ restart:
 	 */
 	if ((domain & PWAKEUP_MYCPU) == 0) {
 		globaldata_t tgd;
-		void *id0;
+		const volatile void *id0;
 		int n;
 
 		cpu_mfence();
