@@ -138,14 +138,24 @@ Upgrade a shared lock to an exclusive lock.
 Fails with
 .Er EBUSY
 if there is someone ahead of you in line waiting for an upgrade.
-If this call fails, the shared lock is lost.
-Attempts to upgrade an exclusive lock will cause a
-.Xr panic 9 .
+If this call fails for any reason, the shared lock is lost.
+Attempts to upgrade an exclusive lock not already
+owned by the caller will cause a
+.Xr panic 9 ,
+but otherwise will always succeed.
+NOTE! When this operation succeeds, it guarantees that no other
+exclusive lock was able to acquire the lock ahead of you, but
+as indicated above, if it fails your current shared lock is lost.
 .It Dv LK_UPGRADE
 Upgrade a shared lock to an exclusive lock.
-If this call fails, the shared lock is lost.
-Attempts to upgrade an exclusive lock will cause a
-.Xr panic 9 .
+If this call fails for any reason, the shared lock is lost.
+Attempts to upgrade an exclusive lock not already
+owned by the caller will cause a
+.Xr panic 9 ,
+but otherwise will always succeed.
+WARNING!  This operation can block with the current lock temporarily
+released, and other exclusive or shared lock holders can inject before
+the lock is acquired on your behalf.
 .It Dv LK_RELEASE
 Release the lock.
 Releasing a lock that is not held can cause a
