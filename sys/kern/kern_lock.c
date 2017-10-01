@@ -431,7 +431,7 @@ again:
 		if ((count & (LKC_UPREQ|LKC_MASK)) == (LKC_UPREQ | 1)) {
 			wflags |= LKC_EXCL | LKC_UPGRANT;
 			wflags |= count;
-			wflags &= ~LKC_UPREQ;
+			wflags &= ~LKC_UPREQ;	/* was set from count */
 		} else {
 			wflags |= (count - 1);
 		}
@@ -453,9 +453,14 @@ again:
 
 			error = tsleep(lkp, pflags | PINTERLOCKED,
 				       lkp->lk_wmesg, timo);
-			if (error)
+			if (error) {
+				if ((count & LKC_UPREQ) == 0)
+					undo_upreq(lkp);
 				break;
+			}
 			if (extflags & LK_SLEEPFAIL) {
+				if ((count & LKC_UPREQ) == 0)
+					undo_upreq(lkp);
 				error = ENOLCK;
 				break;
 			}
@@ -497,8 +502,7 @@ again:
 			pflags = (extflags & LK_PCATCH) ? PCATCH : 0;
 			timo = (extflags & LK_TIMELOCK) ? lkp->lk_timo : 0;
 			tsleep_interlock(lkp, pflags);
-			if (atomic_cmpset_int(&lkp->lk_count, count, count)) {
-
+			if (atomic_fetchadd_int(&lkp->lk_count, 0) == count) {
 				mycpu->gd_cnt.v_lock_name[0] = 'U';
 				strncpy(mycpu->gd_cnt.v_lock_name + 1,
 					lkp->lk_wmesg,
@@ -692,6 +696,7 @@ undo_upreq(struct lock *lkp)
 			 */
 			if (atomic_cmpset_int(&lkp->lk_count, count,
 					      count & ~LKC_UPGRANT)) {
+				lkp->lk_lockholder = curthread;
 				lockmgr(lkp, LK_RELEASE);
 				break;
 			}
