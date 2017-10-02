@@ -44,7 +44,7 @@ static d_strategy_t nvme_strategy;
 static d_dump_t nvme_dump;
 
 static struct dev_ops nvme_ops = {
-	{ "nvme", 0, D_DISK | D_MPSAFE | D_CANFREE | D_TRACKCLOSE},
+	{ "nvme", 0, D_DISK | D_MPSAFE | D_CANFREE | D_TRACKCLOSE | D_KVABIO },
 	.d_open =       nvme_open,
 	.d_close =      nvme_close,
 	.d_read =       physread,
@@ -211,6 +211,9 @@ next:
 
 /*
  * Returns non-zero if no requests are available.
+ *
+ * WARNING! We are using the KVABIO API and must not access memory
+ *	    through bp->b_data without first calling bkvasync(bp).
  */
 static int
 nvme_strategy_core(nvme_softns_t *nsc, struct bio *bio, int delay)

@@ -946,6 +946,9 @@ swap_pager_unswapped(vm_page_t m)
  * sequencing when we run multiple ops in parallel to satisfy a request.
  * But this is swap, so we let it all hang out.
  *
+ * NOTE: This function supports the KVABIO API wherein bp->b_data might
+ *	 not be synchronized to the current cpu.
+ *
  * No requirements.
  */
 void
@@ -992,6 +995,10 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 
 	start = (vm_pindex_t)(bio->bio_offset >> PAGE_SHIFT);
 	count = howmany(bp->b_bcount, PAGE_SIZE);
+
+	/*
+	 * WARNING!  Do not dereference *data without issuing a bkvasync()
+	 */
 	data = bp->b_data;
 
 	/*
@@ -1089,6 +1096,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 			/*
 			 * We can only get here if we are reading.
 			 */
+			bkvasync(bp);
 			bzero(data, PAGE_SIZE);
 			bp->b_resid -= PAGE_SIZE;
 		} else {
@@ -1096,6 +1104,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 				/* XXX chain count > 4, wait to <= 4 */
 
 				bufx = getpbuf(NULL);
+				bufx->b_flags |= B_KVABIO;
 				biox = &bufx->b_bio1;
 				cluster_append(nbio, bufx);
 				bufx->b_cmd = bp->b_cmd;
@@ -1387,17 +1396,20 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	}
 
 	/*
-	 * map our page(s) into kva for input
+	 * Map our page(s) into kva for input
+	 *
+	 * Use the KVABIO API to avoid synchronizing the pmap.
 	 */
 	bp = getpbuf_kva(&nsw_rcount);
 	bio = &bp->b_bio1;
 	kva = (vm_offset_t) bp->b_kvabase;
 	bcopy(marray, bp->b_xio.xio_pages, i * sizeof(vm_page_t));
-	pmap_qenter(kva, bp->b_xio.xio_pages, i);
+	pmap_qenter_noinval(kva, bp->b_xio.xio_pages, i);
 
 	bp->b_data = (caddr_t)kva;
 	bp->b_bcount = PAGE_SIZE * i;
 	bp->b_xio.xio_npages = i;
+	bp->b_flags |= B_KVABIO;
 	bio->bio_done = swp_pager_async_iodone;
 	bio->bio_offset = (off_t)blk << PAGE_SHIFT;
 	bio->bio_caller_info1.index = SWBIO_READ;
@@ -1658,6 +1670,8 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 		/*
 		 * All I/O parameters have been satisfied, build the I/O
 		 * request and assign the swap space.
+		 *
+		 * Use the KVABIO API to avoid synchronizing the pmap.
 		 */
 		if ((flags & VM_PAGER_PUT_SYNC))
 			bp = getpbuf_kva(&nsw_wcount_sync);
@@ -1667,8 +1681,9 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 
 		lwkt_reltoken(&vm_token);
 
-		pmap_qenter((vm_offset_t)bp->b_data, &m[i], n);
+		pmap_qenter_noinval((vm_offset_t)bp->b_data, &m[i], n);
 
+		bp->b_flags |= B_KVABIO;
 		bp->b_bcount = PAGE_SIZE * n;
 		bio->bio_offset = (off_t)blk << PAGE_SHIFT;
 
@@ -1693,40 +1708,6 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 		bp->b_dirtyend = bp->b_bcount;	/* req'd for NFS */
 		bp->b_cmd = BUF_CMD_WRITE;
 		bio->bio_caller_info1.index = SWBIO_WRITE;
-
-#if 0
-		/* PMAP TESTING CODE (useful, keep it in but #if 0'd) */
-		bio->bio_crc = iscsi_crc32(bp->b_data, bp->b_bcount);
-		{
-		    uint32_t crc = 0;
-		    for (j = 0; j < n; ++j) {
-			    vm_page_t mm = bp->b_xio.xio_pages[j];
-			    char *p = (char *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(mm));
-			    crc = iscsi_crc32_ext(p, PAGE_SIZE, crc);
-		    }
-		    if (bio->bio_crc != crc) {
-			    kprintf("PREWRITE MISMATCH-A "
-				    "bdata=%08x dmap=%08x bdata=%08x (%d)\n",
-				    bio->bio_crc,
-				    crc,
-				    iscsi_crc32(bp->b_data, bp->b_bcount),
-				    bp->b_bcount);
-#ifdef _KERNEL_VIRTUAL
-			    madvise(bp->b_data, bp->b_bcount, MADV_INVAL);
-#endif
-			    crc = 0;
-			    for (j = 0; j < n; ++j) {
-				    vm_page_t mm = bp->b_xio.xio_pages[j];
-				    char *p = (char *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(mm));
-				    crc = iscsi_crc32_ext(p, PAGE_SIZE, crc);
-			    }
-			    kprintf("PREWRITE MISMATCH-B "
-				    "bdata=%08x dmap=%08x\n",
-				    iscsi_crc32(bp->b_data, bp->b_bcount),
-				    crc);
-		    }
-		}
-#endif
 
 		/*
 		 * asynchronous

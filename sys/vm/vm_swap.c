@@ -85,6 +85,9 @@ struct vnode *swapdev_vp;
  * vn_strategy() for swapdev_vp.  Perform swap strategy interleave device
  * selection.
  *
+ * This function supports the KVABIO API.  If the underlying vnode/device
+ * does not, it will make appropriate adjustments.
+ *
  * No requirements.
  */
 static int
@@ -148,6 +151,7 @@ swapdev_strategy(struct vop_strategy_args *ap)
 	 * device's DMA limits.
 	 */
 	vn_strategy(sp->sw_vp, nbio);
+
 	return 0;
 }
 
@@ -260,12 +264,17 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 	lwkt_gettoken(&vm_token);	/* needed for vm_swap_size and blist */
 	mtx_lock(&swap_mtx);
 
+	/*
+	 * Setup swapdev_vp.  We support the KVABIO API for this vnode's
+	 * strategy function.
+	 */
 	if (!swapdev_vp) {
 		error = getspecialvnode(VT_NON, NULL, &swapdev_vnode_vops_p,
 				    &swapdev_vp, 0, 0);
 		if (error)
 			panic("Cannot get vnode for swapdev");
 		swapdev_vp->v_type = VNON;	/* Untyped */
+		vsetflags(swapdev_vp, VKVABIO);
 		vx_unlock(swapdev_vp);
 	}
 

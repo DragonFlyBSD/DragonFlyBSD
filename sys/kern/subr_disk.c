@@ -134,7 +134,7 @@ static struct lwkt_token disklist_token;
 static struct lwkt_token ds_token;
 
 static struct dev_ops disk1_ops = {
-	{ "disk", 0, D_DISK | D_MPSAFE | D_TRACKCLOSE },
+	{ "disk", 0, D_DISK | D_MPSAFE | D_TRACKCLOSE | D_KVABIO },
 	.d_open = diskopen,
 	.d_close = diskclose,
 	.d_read = physread,
@@ -146,7 +146,8 @@ static struct dev_ops disk1_ops = {
 };
 
 static struct dev_ops disk2_ops = {
-	{ "disk", 0, D_DISK | D_MPSAFE | D_TRACKCLOSE | D_NOEMERGPGR },
+	{ "disk", 0, D_DISK | D_MPSAFE | D_TRACKCLOSE | D_KVABIO |
+		     D_NOEMERGPGR },
 	.d_open = diskopen,
 	.d_close = diskclose,
 	.d_read = physread,
@@ -1177,6 +1178,9 @@ diskioctl(struct dev_ioctl_args *ap)
 
 /*
  * Execute strategy routine
+ *
+ * WARNING! We are using the KVABIO API and must not access memory
+ *         through bp->b_data without first calling bkvasync(bp).
  */
 static
 int
