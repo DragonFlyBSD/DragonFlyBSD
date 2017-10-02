@@ -484,9 +484,10 @@ tmpfs_read(struct vop_read_args *ap)
 		 */
 		offset = (size_t)uio->uio_offset & TMPFS_BLKMASK64;
 		base_offset = (off_t)uio->uio_offset - offset;
-		bp = getcacheblk(vp, base_offset, TMPFS_BLKSIZE, 0);
+		bp = getcacheblk(vp, base_offset, TMPFS_BLKSIZE, GETBLK_KVABIO);
 		if (bp == NULL) {
-			error = bread(vp, base_offset, TMPFS_BLKSIZE, &bp);
+			error = bread_kvabio(vp, base_offset,
+					     TMPFS_BLKSIZE, &bp);
 			if (error) {
 				brelse(bp);
 				kprintf("tmpfs_read bread error %d\n", error);
@@ -633,7 +634,7 @@ tmpfs_write(struct vop_write_args *ap)
 		 *
 		 * So just use bread() to do the right thing.
 		 */
-		error = bread(vp, base_offset, TMPFS_BLKSIZE, &bp);
+		error = bread_kvabio(vp, base_offset, TMPFS_BLKSIZE, &bp);
 		error = uiomovebp(bp, (char *)bp->b_data + offset, len, uio);
 		if (error) {
 			kprintf("tmpfs_write uiomove error %d\n", error);
@@ -774,6 +775,10 @@ tmpfs_advlock(struct vop_advlock_args *ap)
  * forces the system to attempt to pageout pages.  It can also be called
  * by [n]vtruncbuf() when a truncation cuts a page in half.  Normal write
  * operations
+ *
+ * We set VKVABIO for VREG files so bp->b_data may not be synchronized to
+ * our cpu.  swap_pager_strategy() is all we really use, and it directly
+ * supports this.
  */
 static int
 tmpfs_strategy(struct vop_strategy_args *ap)

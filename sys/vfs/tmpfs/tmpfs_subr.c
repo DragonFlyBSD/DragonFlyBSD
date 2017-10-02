@@ -441,6 +441,11 @@ loop:
 	case VSOCK:
 		break;
 	case VREG:
+		/*
+		 * VMIO is mandatory.  Tmpfs also supports KVABIO
+		 * for its tmpfs_strategy().
+		 */
+		vsetflags(vp, VKVABIO);
 		vinitvmio(vp, node->tn_size, TMPFS_BLKSIZE, -1);
 		break;
 	case VLNK:
