@@ -234,6 +234,7 @@ cluster_readx(struct vnode *vp, off_t filesize, off_t loffset, int blksize,
 	int maxra;
 	int maxrbuild;
 	int sr;
+	int blkflags = (bflags & B_KVABIO) ? GETBLK_KVABIO : 0;
 
 	sr = 0;
 
@@ -281,7 +282,7 @@ cluster_readx(struct vnode *vp, off_t filesize, off_t loffset, int blksize,
 	if (*bpp)
 		reqbp = bp = *bpp;
 	else
-		*bpp = reqbp = bp = getblk(vp, loffset, blksize, 0, 0);
+		*bpp = reqbp = bp = getblk(vp, loffset, blksize, blkflags, 0);
 	origoffset = loffset;
 
 	/*
@@ -480,7 +481,8 @@ single_block_read:
 		int nblks;
 
 		rbp = getblk(vp, loffset, blksize,
-			     GETBLK_SZMATCH|GETBLK_NOWAIT, 0);
+			     GETBLK_SZMATCH | GETBLK_NOWAIT | GETBLK_KVABIO,
+			     0);
 #if defined(CLUSTERDEBUG)
 		if (rcluster) {
 			kprintf("read-ahead %016jx rbp=%p ",
@@ -576,6 +578,7 @@ cluster_readcb(struct vnode *vp, off_t filesize, off_t loffset, int blksize,
 	int maxra;
 	int maxrbuild;
 	int sr;
+	int blkflags = (bflags & B_KVABIO) ? GETBLK_KVABIO : 0;
 
 	sr = 0;
 
@@ -620,7 +623,7 @@ cluster_readcb(struct vnode *vp, off_t filesize, off_t loffset, int blksize,
 	/*
 	 * Get the requested block.
 	 */
-	reqbp = bp = getblk(vp, loffset, blksize, 0, 0);
+	reqbp = bp = getblk(vp, loffset, blksize, blkflags, 0);
 	origoffset = loffset;
 
 	/*
@@ -813,7 +816,8 @@ single_block_read:
 		int nblks;
 
 		rbp = getblk(vp, loffset, blksize,
-			     GETBLK_SZMATCH|GETBLK_NOWAIT, 0);
+			     GETBLK_SZMATCH | GETBLK_NOWAIT | GETBLK_KVABIO,
+			     0);
 		if (rbp == NULL)
 			goto no_read_ahead;
 		if ((rbp->b_flags & B_CACHE)) {
@@ -933,8 +937,8 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset, off_t doffset,
 	 */
 	bp->b_vp = vp;
 	bp->b_data = (char *)((vm_offset_t)bp->b_data |
-	    ((vm_offset_t)tbp->b_data & PAGE_MASK));
-	bp->b_flags |= B_CLUSTER | B_VMIO;
+			      ((vm_offset_t)tbp->b_data & PAGE_MASK));
+	bp->b_flags |= B_CLUSTER | B_VMIO | B_KVABIO;
 	bp->b_cmd = BUF_CMD_READ;
 	bp->b_bio1.bio_done = cluster_callback;		/* default to async */
 	bp->b_bio1.bio_caller_info1.cluster_head = NULL;
@@ -961,7 +965,10 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset, off_t doffset,
 			 * be made again after we officially get the buffer.
 			 */
 			tbp = getblk(vp, loffset + i * blksize, blksize,
-				     GETBLK_SZMATCH|GETBLK_NOWAIT, 0);
+				     GETBLK_SZMATCH |
+				     GETBLK_NOWAIT |
+				     GETBLK_KVABIO,
+				     0);
 			if (tbp == NULL)
 				break;
 			for (j = 0; j < tbp->b_xio.xio_npages; j++) {
@@ -1089,8 +1096,9 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset, off_t doffset,
 		panic("cluster_rbuild: b_bufsize(%d) > b_kvasize(%d)",
 		    bp->b_bufsize, bp->b_kvasize);
 	}
-	pmap_qenter(trunc_page((vm_offset_t) bp->b_data),
-		(vm_page_t *)bp->b_xio.xio_pages, bp->b_xio.xio_npages);
+	pmap_qenter_noinval(trunc_page((vm_offset_t)bp->b_data),
+			    (vm_page_t *)bp->b_xio.xio_pages,
+			    bp->b_xio.xio_npages);
 	BUF_KERNPROC(bp);
 	return (bp);
 }
@@ -1121,8 +1129,8 @@ cluster_callback(struct bio *bio)
 		panic("cluster_callback: unexpected EOF on cluster %p!", bio);
 	}
 
-	pmap_qremove(trunc_page((vm_offset_t) bp->b_data),
-		     bp->b_xio.xio_npages);
+	pmap_qremove_noinval(trunc_page((vm_offset_t) bp->b_data),
+			     bp->b_xio.xio_npages);
 	/*
 	 * Move memory from the large cluster buffer into the component
 	 * buffers and mark IO as done on these.  Since the memory map
@@ -1452,7 +1460,8 @@ cluster_wbuild(struct vnode *vp, struct buf **bpp,
 			*bpp = NULL;
 			bpp = NULL;
 		} else {
-			tbp = findblk(vp, start_loffset, FINDBLK_NBLOCK);
+			tbp = findblk(vp, start_loffset, FINDBLK_NBLOCK |
+							 FINDBLK_KVABIO);
 			if (tbp == NULL ||
 			    (tbp->b_flags & (B_LOCKED | B_INVAL | B_DELWRI)) !=
 			     B_DELWRI ||
@@ -1520,9 +1529,9 @@ cluster_wbuild(struct vnode *vp, struct buf **bpp,
 		 * from the original buffer.
 		 */
 		bp->b_data = (char *)((vm_offset_t)bp->b_data |
-		    ((vm_offset_t)tbp->b_data & PAGE_MASK));
+				      ((vm_offset_t)tbp->b_data & PAGE_MASK));
 		bp->b_flags &= ~(B_ERROR | B_NOTMETA);
-		bp->b_flags |= B_CLUSTER | B_BNOCLIP |
+		bp->b_flags |= B_CLUSTER | B_BNOCLIP | B_KVABIO |
 			       (tbp->b_flags & (B_VMIO | B_NEEDCOMMIT |
 						B_NOTMETA));
 		bp->b_bio1.bio_caller_info1.cluster_head = NULL;
@@ -1545,7 +1554,7 @@ cluster_wbuild(struct vnode *vp, struct buf **bpp,
 				 */
 				must_initiate = 0;
 				tbp = findblk(vp, start_loffset,
-					      FINDBLK_NBLOCK);
+					      FINDBLK_NBLOCK | FINDBLK_KVABIO);
 				/*
 				 * Buffer not found or could not be locked
 				 * non-blocking.
@@ -1661,9 +1670,9 @@ cluster_wbuild(struct vnode *vp, struct buf **bpp,
 				buf_start(tbp);
 		}
 	finishcluster:
-		pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
-			    (vm_page_t *)bp->b_xio.xio_pages,
-			    bp->b_xio.xio_npages);
+		pmap_qenter_noinval(trunc_page((vm_offset_t)bp->b_data),
+				    (vm_page_t *)bp->b_xio.xio_pages,
+				    bp->b_xio.xio_npages);
 		if (bp->b_bufsize > bp->b_kvasize) {
 			panic("cluster_wbuild: b_bufsize(%d) "
 			      "> b_kvasize(%d)\n",

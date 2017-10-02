@@ -161,6 +161,7 @@ struct buf {
 	unsigned int b_qcpu;		/* buffer queue cpu */
 	unsigned char b_act_count;	/* similar to vm_page act_count */
 	unsigned char b_swindex;
+	cpumask_t b_cpumask;		/* KVABIO API */
 	struct lock b_lock;		/* Buffer lock */
 	buf_cmd_t b_cmd;		/* I/O command */
 	int	b_bufsize;		/* Allocated buffer size. */
@@ -208,10 +209,12 @@ struct buf {
 #define GETBLK_BHEAVY	0x0002	/* heavy weight buffer */
 #define GETBLK_SZMATCH	0x0004	/* pre-existing buffer must match */
 #define GETBLK_NOWAIT	0x0008	/* non-blocking */
+#define GETBLK_KVABIO	0x0010	/* request a B_KVABIO buffer */
 
-#define FINDBLK_TEST	0x0010	/* test only, do not lock */
-#define FINDBLK_NBLOCK	0x0020	/* use non-blocking lock, can return NULL */
-#define FINDBLK_REF	0x0040	/* ref the buf to prevent reuse */
+#define FINDBLK_TEST	0x0020	/* test only, do not lock */
+#define FINDBLK_NBLOCK	0x0040	/* use non-blocking lock, can return NULL */
+#define FINDBLK_REF	0x0080	/* ref the buf to prevent reuse */
+#define FINDBLK_KVABIO	0x0100	/* (if locking only) request B_KVABIO buffer */
 
 /*
  * These flags are kept in b_flags.
@@ -282,6 +285,12 @@ struct buf {
  *			swapcache to not try to cache them.
  *
  *	B_MARKER	Special marker buf, always skip.
+ *
+ *	B_KVABIO	Owner of buffer (but not necessarily the underlying
+ *			vnode or device) supports the KVABIO API.  The owner
+ *			of the buffer will only operate on the buffer's
+ *			b_data via the API.  Locked buffers only.  This
+ *			flag is cleared on brelse/bqrelse
  */
 
 #define	B_AGE		0x00000001	/* Reuse more quickly */
@@ -300,7 +309,7 @@ struct buf {
 #define	B_INVAL		0x00002000	/* Does not contain valid info. */
 #define	B_LOCKED	0x00004000	/* Locked in core (not reusable). */
 #define	B_NOCACHE	0x00008000	/* Destroy buffer AND backing store */
-#define	B_UNUSED10000	0x00010000
+#define	B_KVABIO	0x00010000	/* Lockholder uses the KVABIO API */
 #define	B_CLUSTEROK	0x00020000	/* Pagein op, so swap() can count it. */
 #define	B_MARKER	0x00040000	/* Special marker buf in queue */
 #define	B_RAW		0x00080000	/* Set by physio for raw transfers. */
@@ -354,10 +363,11 @@ struct cluster_save {
 /*
  * Zero out the buffer's data area.
  */
-#define	clrbuf(bp) {							\
+#define	clrbuf(bp) do {							\
+	bkvasync((bp));							\
 	bzero((bp)->b_data, (u_int)(bp)->b_bcount);			\
 	(bp)->b_resid = 0;						\
-}
+} while(0)
 
 /*
  * Flags to low-level bitmap allocation routines (balloc).
@@ -425,9 +435,15 @@ void	bundirty (struct buf *);
 void	brelse (struct buf *);
 void	bqrelse (struct buf *);
 int	cluster_awrite (struct buf *);
+
+void	bkvareset(struct buf *bp);
+void	bkvasync(struct buf *bp);
+void	bkvasync_all(struct buf *bp);
+
 struct buf *getpbuf (int *);
 struct buf *getpbuf_mem (int *);
 struct buf *getpbuf_kva (int *);
+
 int	inmem (struct vnode *, off_t);
 struct buf *findblk (struct vnode *, off_t, int);
 struct buf *getblk (struct vnode *, off_t, int, int, int);

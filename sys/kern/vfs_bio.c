@@ -924,11 +924,12 @@ breadnx(struct vnode *vp, off_t loffset, int size, int bflags,
 	struct buf *bp, *rabp;
 	int i;
 	int rv = 0, readwait = 0;
+	int blkflags = (bflags & B_KVABIO) ? GETBLK_KVABIO : 0;
 
 	if (*bpp)
 		bp = *bpp;
 	else
-		*bpp = bp = getblk(vp, loffset, size, 0, 0);
+		*bpp = bp = getblk(vp, loffset, size, blkflags, 0);
 
 	/* if not found in cache, do some I/O */
 	if ((bp->b_flags & B_CACHE) == 0) {
@@ -945,12 +946,12 @@ breadnx(struct vnode *vp, off_t loffset, int size, int bflags,
 	for (i = 0; i < cnt; i++, raoffset++, rabsize++) {
 		if (inmem(vp, *raoffset))
 			continue;
-		rabp = getblk(vp, *raoffset, *rabsize, 0, 0);
+		rabp = getblk(vp, *raoffset, *rabsize, GETBLK_KVABIO, 0);
 
 		if ((rabp->b_flags & B_CACHE) == 0) {
 			rabp->b_flags &= ~(B_ERROR | B_EINTR |
 					   B_INVAL | B_NOTMETA);
-			rabp->b_flags |= bflags;
+			rabp->b_flags |= (bflags & ~B_KVABIO);
 			rabp->b_cmd = BUF_CMD_READ;
 			vfs_busy_pages(vp, rabp);
 			BUF_KERNPROC(rabp);
@@ -1456,10 +1457,15 @@ brelse(struct buf *bp)
 				}
 				vm_object_drop(obj);
 
-				if ((bp->b_flags & B_HASBOGUS) || (bp->b_flags & B_INVAL) == 0) {
-					pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
-						bp->b_xio.xio_pages, bp->b_xio.xio_npages);
+				if ((bp->b_flags & B_HASBOGUS) ||
+				    (bp->b_flags & B_INVAL) == 0) {
+					pmap_qenter_noinval(
+					    trunc_page((vm_offset_t)bp->b_data),
+					    bp->b_xio.xio_pages,
+					    bp->b_xio.xio_npages);
 					bp->b_flags &= ~B_HASBOGUS;
+					bp->b_flags |= B_KVABIO;
+					bkvareset(bp);
 				}
 				m = bp->b_xio.xio_pages[i];
 			}
@@ -2566,6 +2572,9 @@ inmem(struct vnode *vp, off_t loffset)
  *			  disassociation (B_INVAL).  Used to avoid deadlocks
  *			  against random (vp,loffset)s due to reassignment.
  *
+ *	FINDBLK_KVABIO	- Only applicable when returning a locked buffer.
+ *			  Indicates that the caller supports B_KVABIO.
+ *
  *	(0)		- Lock the buffer blocking.
  */
 struct buf *
@@ -2611,9 +2620,16 @@ findblk(struct vnode *vp, off_t loffset, int flags)
 		/*
 		 * Revalidate the locked buf before allowing it to be
 		 * returned.
+		 *
+		 * B_KVABIO is only set/cleared when locking.
 		 */
-		if (bp->b_vp == vp && bp->b_loffset == loffset)
+		if (bp->b_vp == vp && bp->b_loffset == loffset) {
+			if (flags & FINDBLK_KVABIO)
+				bp->b_flags |= B_KVABIO;
+			else
+				bp->b_flags &= ~B_KVABIO;
 			break;
+		}
 		atomic_subtract_int(&bp->b_refs, 1);
 		BUF_UNLOCK(bp);
 	}
@@ -2649,7 +2665,12 @@ struct buf *
 getcacheblk(struct vnode *vp, off_t loffset, int blksize, int blkflags)
 {
 	struct buf *bp;
-	int fndflags = (blkflags & GETBLK_NOWAIT) ? FINDBLK_NBLOCK : 0;
+	int fndflags = 0;
+
+	if (blkflags & GETBLK_NOWAIT)
+		fndflags |= FINDBLK_NBLOCK;
+	if (blkflags & GETBLK_KVABIO)
+		fndflags |= FINDBLK_KVABIO;
 
 	if (blksize) {
 		bp = getblk(vp, loffset, blksize, blkflags, 0);
@@ -2740,6 +2761,10 @@ getblk(struct vnode *vp, off_t loffset, int size, int blkflags, int slptimeo)
 	if (vp->v_object == NULL)
 		panic("getblk: vnode %p has no object!", vp);
 
+	/*
+	 * NOTE: findblk does not try to resolve KVABIO in REF-only mode.
+	 *	 we still have to handle that ourselves.
+	 */
 loop:
 	if ((bp = findblk(vp, loffset, FINDBLK_REF | FINDBLK_TEST)) != NULL) {
 		/*
@@ -2801,16 +2826,21 @@ loop:
 
 		/*
 		 * All vnode-based buffers must be backed by a VM object.
+		 *
+		 * Set B_KVABIO for any incidental work, we will fix it
+		 * up later.
 		 */
 		KKASSERT(bp->b_flags & B_VMIO);
 		KKASSERT(bp->b_cmd == BUF_CMD_DONE);
 		bp->b_flags &= ~B_AGE;
+		bp->b_flags |= B_KVABIO;
 
 		/*
 		 * Make sure that B_INVAL buffers do not have a cached
 		 * block number translation.
 		 */
-		if ((bp->b_flags & B_INVAL) && (bp->b_bio2.bio_offset != NOOFFSET)) {
+		if ((bp->b_flags & B_INVAL) &&
+		    (bp->b_bio2.bio_offset != NOOFFSET)) {
 			kprintf("Warning invalid buffer %p (vp %p loffset %lld)"
 				" did not have cleared bio_offset cache\n",
 				bp, vp, (long long)loffset);
@@ -2820,6 +2850,8 @@ loop:
 		/*
 		 * The buffer is locked.  B_CACHE is cleared if the buffer is 
 		 * invalid.
+		 *
+		 * After the bremfree(), disposals must use b[q]relse().
 		 */
 		if (bp->b_flags & B_INVAL)
 			bp->b_flags &= ~B_CACHE;
@@ -2889,7 +2921,6 @@ loop:
 		 * so the below call doesn't set B_CACHE, but that gets real
 		 * confusing.  This is much easier.
 		 */
-
 		if ((bp->b_flags & (B_CACHE|B_DELWRI)) == B_DELWRI) {
 			kprintf("getblk: Warning, bp %p loff=%jx DELWRI set "
 				"and CACHE clear, b_flags %08x\n",
@@ -2959,12 +2990,22 @@ loop:
 
 		/*
 		 * All vnode-based buffers must be backed by a VM object.
+		 *
+		 * Set B_KVABIO for incidental work
 		 */
 		KKASSERT(vp->v_object != NULL);
-		bp->b_flags |= B_VMIO;
+		bp->b_flags |= B_VMIO | B_KVABIO;
 		KKASSERT(bp->b_cmd == BUF_CMD_DONE);
 
 		allocbuf(bp, size);
+	}
+
+	/*
+	 * Do the nasty smp broadcast (if the buffer needs it) when KVABIO
+	 * is not supported.
+	 */
+	if (bp && (blkflags & GETBLK_KVABIO) == 0) {
+		bkvasync_all(bp);
 	}
 	return (bp);
 }
@@ -3056,11 +3097,12 @@ allocbuf(struct buf *bp, int size)
 				vm_page_unwire(m, 0);
 				vm_page_wakeup(m);
 			}
-			pmap_qremove((vm_offset_t)
+			pmap_qremove_noinval((vm_offset_t)
 				      trunc_page((vm_offset_t)bp->b_data) +
 				      (desiredpages << PAGE_SHIFT),
 				     (bp->b_xio.xio_npages - desiredpages));
 			bp->b_xio.xio_npages = desiredpages;
+			bkvareset(bp);
 		}
 	} else if (size > bp->b_bcount) {
 		/*
@@ -3177,12 +3219,12 @@ allocbuf(struct buf *bp, int size)
 		 * bp->b_data is relative to bp->b_loffset, but
 		 * bp->b_loffset may be offset into the first page.
 		 */
-		bp->b_data = (caddr_t)
-				trunc_page((vm_offset_t)bp->b_data);
-		pmap_qenter((vm_offset_t)bp->b_data,
+		bp->b_data = (caddr_t)trunc_page((vm_offset_t)bp->b_data);
+		pmap_qenter_noinval((vm_offset_t)bp->b_data,
 			    bp->b_xio.xio_pages, bp->b_xio.xio_npages);
 		bp->b_data = (caddr_t)((vm_offset_t)bp->b_data |
-		    (vm_offset_t)(bp->b_loffset & PAGE_MASK));
+				      (vm_offset_t)(bp->b_loffset & PAGE_MASK));
+		bkvareset(bp);
 	}
 	atomic_add_long(&bufspace, newbsize - bp->b_bufsize);
 
@@ -3329,10 +3371,20 @@ vn_strategy(struct vnode *vp, struct bio *bio)
 	bp->b_flags |= B_IOISSUED;
 
 	/*
-	 * Handle the swap cache intercept.
+	 * Handle the swapcache intercept.
+	 *
+	 * NOTE: The swapcache itself always supports KVABIO and will
+	 *	 do the right thing if its underlying devices do not.
 	 */
 	if (vn_cache_strategy(vp, bio))
 		return;
+
+	/*
+	 * If the vnode does not support KVABIO and the buffer is using
+	 * KVABIO, we must synchronize b_data to all cpus before dispatching.
+	 */
+	if ((vp->v_flag & VKVABIO) == 0 && (bp->b_flags & B_KVABIO))
+		bkvasync_all(bp);
 
 	/*
 	 * Otherwise do the operation through the filesystem
@@ -3348,6 +3400,12 @@ vn_strategy(struct vnode *vp, struct bio *bio)
         vop_strategy(*vp->v_ops, vp, bio);
 }
 
+/*
+ * vn_cache_strategy()
+ *
+ * NOTE: This function supports the KVABIO API wherein b_data might not
+ *	 be synchronized to the current cpu.
+ */
 static void vn_cache_strategy_callback(struct bio *bio);
 
 int
@@ -3643,9 +3701,11 @@ bpdone(struct buf *bp, int elseit)
 			iosize -= resid;
 		}
 		if (bp->b_flags & B_HASBOGUS) {
-			pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
-				    bp->b_xio.xio_pages, bp->b_xio.xio_npages);
+			pmap_qenter_noinval(trunc_page((vm_offset_t)bp->b_data),
+					    bp->b_xio.xio_pages,
+					    bp->b_xio.xio_npages);
 			bp->b_flags &= ~B_HASBOGUS;
+			bkvareset(bp);
 		}
 		vm_object_drop(obj);
 	}
@@ -3781,9 +3841,11 @@ vfs_unbusy_pages(struct buf *bp)
 			vm_object_pip_wakeup(obj);
 		}
 		if (bp->b_flags & B_HASBOGUS) {
-			pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
-				    bp->b_xio.xio_pages, bp->b_xio.xio_npages);
+			pmap_qenter_noinval(trunc_page((vm_offset_t)bp->b_data),
+					    bp->b_xio.xio_pages,
+					    bp->b_xio.xio_npages);
 			bp->b_flags &= ~B_HASBOGUS;
+			bkvareset(bp);
 		}
 		vm_object_drop(obj);
 	}
@@ -3936,8 +3998,10 @@ retry:
 			vm_page_wakeup(m);
 		}
 		if (bogus) {
-			pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
-				bp->b_xio.xio_pages, bp->b_xio.xio_npages);
+			pmap_qenter_noinval(trunc_page((vm_offset_t)bp->b_data),
+					    bp->b_xio.xio_pages,
+					    bp->b_xio.xio_npages);
+			bkvareset(bp);
 		}
 	}
 
@@ -4139,7 +4203,6 @@ vfs_dirty_one_page(struct buf *bp, int pageno, vm_page_t m)
  *	Note that while we only theoretically need to clear through b_bcount,
  *	we go ahead and clear through b_bufsize.
  */
-
 void
 vfs_bio_clrbuf(struct buf *bp)
 {
@@ -4148,6 +4211,8 @@ vfs_bio_clrbuf(struct buf *bp)
 	KKASSERT(bp->b_flags & B_VMIO);
 
 	bp->b_flags &= ~(B_INVAL | B_EINTR | B_ERROR);
+	bkvasync(bp);
+
 	if ((bp->b_xio.xio_npages == 1) && (bp->b_bufsize < PAGE_SIZE) &&
 	    (bp->b_loffset & PAGE_MASK) == 0) {
 		mask = (1 << (bp->b_bufsize / DEV_BSIZE)) - 1;
@@ -4273,6 +4338,69 @@ bio_page_alloc(struct buf *bp, vm_object_t obj, vm_pindex_t pg, int deficit)
 	else
 		vm_wait(hz / 2 + 1);
 	return (NULL);
+}
+
+/*
+ * The buffer's mapping has changed.  Adjust the buffer's memory
+ * synchronization.  The caller is the exclusive holder of the buffer
+ * and has set or cleared B_KVABIO according to preference.
+ *
+ * WARNING! If the caller is using B_KVABIO mode, this function will
+ *	    not map the data to the current cpu.  The caller must also
+ *	    call bkvasync(bp).
+ */
+void
+bkvareset(struct buf *bp)
+{
+	if (bp->b_flags & B_KVABIO) {
+		CPUMASK_ASSZERO(bp->b_cpumask);
+	} else {
+		CPUMASK_ORMASK(bp->b_cpumask, smp_active_mask);
+		smp_invltlb();
+		cpu_invltlb();
+	}
+}
+
+/*
+ * The buffer will be used by the caller on the caller's cpu, synchronize
+ * its data to the current cpu.
+ *
+ * If B_KVABIO is not set, the buffer is already fully synchronized.
+ */
+void
+bkvasync(struct buf *bp)
+{
+	int cpuid = mycpu->gd_cpuid;
+	char *bdata;
+
+	if ((bp->b_flags & B_KVABIO) &&
+	    CPUMASK_TESTBIT(bp->b_cpumask, cpuid) == 0) {
+		bdata = bp->b_data;
+		while (bdata < bp->b_data + bp->b_bufsize) {
+			cpu_invlpg(bdata);
+			bdata += PAGE_SIZE -
+				 ((intptr_t)bdata & PAGE_MASK);
+		}
+		ATOMIC_CPUMASK_ORBIT(bp->b_cpumask, cpuid);
+	}
+}
+
+/*
+ * The buffer will be used by a subsystem that does not understand
+ * the KVABIO API.  Make sure its data is synchronized to all cpus.
+ *
+ * If B_KVABIO is not set, the buffer is already fully synchronized.
+ */
+void
+bkvasync_all(struct buf *bp)
+{
+	if ((bp->b_flags & B_KVABIO) &&
+	    CPUMASK_CMPMASKNEQ(bp->b_cpumask, smp_active_mask)) {
+		smp_invltlb();
+		cpu_invltlb();
+		ATOMIC_CPUMASK_ORMASK(bp->b_cpumask, smp_active_mask);
+	    bp->b_flags &= ~B_KVABIO;
+	}
 }
 
 /*

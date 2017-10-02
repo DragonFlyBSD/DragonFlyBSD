@@ -254,7 +254,6 @@ vm_pager_bufferinit(void *dummy __unused)
 	 * copyin/copyout because no SMP page invalidation or other pmap
 	 * operations are needed.
 	 */
-#if 1
 	bp = swbuf_mem;
 	for (i = 0; i < nswbuf_mem; ++i, ++bp) {
 		vm_page_t m;
@@ -264,6 +263,7 @@ vm_pager_bufferinit(void *dummy __unused)
 		bp->b_kvabase = (caddr_t)((intptr_t)i * MAXPHYS) + swapbkva_mem;
 		bp->b_kvasize = MAXPHYS;
 		bp->b_swindex = i & BSWHMASK;
+		bp->b_cpumask = smp_active_mask;
 		BUF_LOCKINIT(bp);
 		buf_dep_init(bp);
 		TAILQ_INSERT_HEAD(&bswlist_mem[i & BSWHMASK], bp, b_freelist);
@@ -289,7 +289,6 @@ vm_pager_bufferinit(void *dummy __unused)
 		vm_object_drop(&kernel_object);
 		bp->b_xio.xio_npages = j;
 	}
-#endif
 
 	/*
 	 * Buffers with pre-assigned KVA bases.  The KVA has no memory pages
@@ -654,6 +653,7 @@ relpbuf(struct buf *bp, int *pfreecnt)
 			wakeup(&pbuf_mem_count);
 	} else if (bp >= swbuf_kva && bp < &swbuf_kva[nswbuf_kva]) {
 		KKASSERT(bp->b_kvabase);
+		CPUMASK_ASSZERO(bp->b_cpumask);
 		spin_lock(&bswspin_kva[iter]);
 		TAILQ_INSERT_HEAD(&bswlist_kva[iter], bp, b_freelist);
 		if (atomic_fetchadd_int(&pbuf_kva_count, 1) == nswbuf_kva / 4)
@@ -668,6 +668,7 @@ relpbuf(struct buf *bp, int *pfreecnt)
 	} else {
 		KKASSERT(bp->b_kvabase == NULL);
 		KKASSERT(bp >= swbuf_raw && bp < &swbuf_raw[nswbuf_raw]);
+		CPUMASK_ASSZERO(bp->b_cpumask);
 		spin_lock(&bswspin_raw[iter]);
 		TAILQ_INSERT_HEAD(&bswlist_raw[iter], bp, b_freelist);
 		if (atomic_fetchadd_int(&pbuf_raw_count, 1) == nswbuf_raw / 4)

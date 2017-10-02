@@ -353,7 +353,16 @@ static __inline int
 bread(struct vnode *vp, off_t loffset, int size, struct buf **bpp)
 {
 	*bpp = NULL;
-	return(breadnx(vp, loffset, size, B_NOTMETA, NULL, NULL, 0, bpp));
+	return(breadnx(vp, loffset, size, B_NOTMETA,
+		       NULL, NULL, 0, bpp));
+}
+
+static __inline int
+bread_kvabio(struct vnode *vp, off_t loffset, int size, struct buf **bpp)
+{
+	*bpp = NULL;
+	return(breadnx(vp, loffset, size, B_NOTMETA | B_KVABIO,
+		       NULL, NULL, 0, bpp));
 }
 
 static __inline int

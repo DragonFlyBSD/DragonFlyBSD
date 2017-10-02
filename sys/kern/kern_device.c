@@ -120,6 +120,13 @@ dev_needmplock(cdev_t dev)
 {
     return((dev->si_ops->head.flags & D_MPSAFE) == 0);
 }
+
+static __inline
+int
+dev_nokvabio(cdev_t dev)
+{
+    return((dev->si_ops->head.flags & D_KVABIO) == 0);
+}
     
 /************************************************************************
  *			GENERAL DEVICE API FUNCTIONS			*
@@ -128,7 +135,8 @@ dev_needmplock(cdev_t dev)
  * The MPSAFEness of these depends on dev->si_ops->head.flags
  */
 int
-dev_dopen(cdev_t dev, int oflags, int devtype, struct ucred *cred, struct file *fp)
+dev_dopen(cdev_t dev, int oflags, int devtype, struct ucred *cred,
+	  struct file *fp)
 {
 	struct dev_open_args ap;
 	int needmplock = dev_needmplock(dev);
@@ -338,21 +346,29 @@ dev_dstrategy(cdev_t dev, struct bio *bio)
 {
 	struct dev_strategy_args ap;
 	struct bio_track *track;
+	struct buf *bp = bio->bio_buf;
 	int needmplock = dev_needmplock(dev);
+
+	/*
+	 * If the device doe snot support KVABIO and the buffer is using
+	 * KVABIO, we must synchronize b_data to all cpus before dispatching.
+	 */
+	if (dev_nokvabio(dev) && (bp->b_flags & B_KVABIO))
+		bkvasync_all(bp);
 
 	ap.a_head.a_desc = &dev_strategy_desc;
 	ap.a_head.a_dev = dev;
 	ap.a_bio = bio;
 
 	KKASSERT(bio->bio_track == NULL);
-	KKASSERT(bio->bio_buf->b_cmd != BUF_CMD_DONE);
-	if (bio->bio_buf->b_cmd == BUF_CMD_READ)
-	    track = &dev->si_track_read;
+	KKASSERT(bp->b_cmd != BUF_CMD_DONE);
+	if (bp->b_cmd == BUF_CMD_READ)
+		track = &dev->si_track_read;
 	else
-	    track = &dev->si_track_write;
+		track = &dev->si_track_write;
 	bio_track_ref(track);
 	bio->bio_track = track;
-	dsched_buf_enter(bio->bio_buf);	/* might stack */
+	dsched_buf_enter(bp);	/* might stack */
 
 	KKASSERT((bio->bio_flags & BIO_DONE) == 0);
 	if (needmplock)
@@ -366,7 +382,15 @@ void
 dev_dstrategy_chain(cdev_t dev, struct bio *bio)
 {
 	struct dev_strategy_args ap;
+	struct buf *bp = bio->bio_buf;
 	int needmplock = dev_needmplock(dev);
+
+	/*
+	 * If the device doe snot support KVABIO and the buffer is using
+	 * KVABIO, we must synchronize b_data to all cpus before dispatching.
+	 */
+	if (dev_nokvabio(dev) && (bp->b_flags & B_KVABIO))
+		bkvasync_all(bp);
 
 	ap.a_head.a_desc = &dev_strategy_desc;
 	ap.a_head.a_dev = dev;
@@ -387,7 +411,7 @@ dev_dstrategy_chain(cdev_t dev, struct bio *bio)
  */
 int
 dev_ddump(cdev_t dev, void *virtual, vm_offset_t physical, off_t offset,
-    size_t length)
+	  size_t length)
 {
 	struct dev_dump_args ap;
 	int needmplock = dev_needmplock(dev);

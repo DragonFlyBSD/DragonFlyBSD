@@ -210,7 +210,7 @@ struct vnode {
 #define	VISTTY		0x00000008	/* vnode represents a tty */
 #define VCTTYISOPEN	0x00000010	/* controlling terminal tty is open */
 #define VCKPT		0x00000020	/* checkpoint-restored vnode */
-/* open for business	0x00000040 */
+#define VKVABIO		0x00000040	/* strategy func support KVABIO API */
 #define VMAYHAVELOCKS	0x00000080	/* maybe posix or flock locks on vp */
 #define VPFSROOT	0x00000100	/* may be a pseudo filesystem root */
 /* open for business    0x00000200 */

@@ -276,6 +276,7 @@ struct dev_ops {
 #define D_MASTER	0x00100000	/* used by pty/tty code */
 #define D_NOEMERGPGR	0x00200000	/* too complex for emergency pager */
 #define D_MPSAFE	0x00400000	/* all dev_d*() calls are MPSAFE */
+#define D_KVABIO	0x00800000	/* device support KVABIO API */
 
 /*
  * A union of all possible argument structures.
