@@ -524,10 +524,17 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
 }
 
 /*
- * Called from IPI interrupt (like a fast interrupt), which has placed
- * us in a critical section.  The MP lock may or may not be held.
- * May also be called from doreti or splz, or be reentrantly called
- * indirectly through the ip_info[].func we run.
+ * Called from IPI interrupt (like a fast interrupt), and numerous
+ * other locations, and might also be called recursively.  Caller must
+ * hold a critical section across this call.
+ *
+ * When called from doreti, splz, or an IPI interrupt, npoll is cleared
+ * by the caller using an atomic xchgl, thus synchronizing the incoming
+ * ipimask against npoll.  A new IPI will be received if new traffic
+ * occurs verses the windex we read.
+ *
+ * However, ipimask might not be synchronized when called from other
+ * locations.  Our processing will be more heuristic.
  *
  * There are two versions, one where no interrupt frame is available (when
  * called from the send code and from splz, and one where an interrupt
@@ -560,6 +567,11 @@ again:
 		ip += gd->gd_cpuid;
 		while (lwkt_process_ipiq_core(sgd, ip, NULL, 0))
 		    ;
+		/*
+		 * Can't NAND before-hand as it will prevent recursive
+		 * processing.  Sender will adjust windex before adjusting
+		 * ipimask.
+		 */
 		ATOMIC_CPUMASK_NANDBIT(gd->gd_ipimask, n);
 		if (ip->ip_rindex != ip->ip_windex)
 			ATOMIC_CPUMASK_ORBIT(gd->gd_ipimask, n);
@@ -607,6 +619,11 @@ again:
 		ip += gd->gd_cpuid;
 		while (lwkt_process_ipiq_core(sgd, ip, frame, 0))
 		    ;
+		/*
+		 * Can't NAND before-hand as it will prevent recursive
+		 * processing.  Sender will adjust windex before adjusting
+		 * ipimask.
+		 */
 		ATOMIC_CPUMASK_NANDBIT(gd->gd_ipimask, n);
 		if (ip->ip_rindex != ip->ip_windex)
 			ATOMIC_CPUMASK_ORBIT(gd->gd_ipimask, n);
@@ -704,7 +721,7 @@ lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip,
      *
      * Obtain the current write index, which is modified by a remote cpu.
      * Issue a load fence to prevent speculative reads of e.g. data written
-     * by the other cpu prior to it updating the index.
+     * by the other cpu prior to them updating the windex.
      */
     KKASSERT(curthread->td_critcount);
     wi = ip->ip_windex;
@@ -720,24 +737,24 @@ lwkt_process_ipiq_core(globaldata_t sgd, lwkt_ipiq_t ip,
      *	     may make, it is possible for both rindex and windex to advance and
      *	     thus for rindex to advance passed our cached windex.
      *
-     * NOTE: A load fence is required to prevent speculative loads prior
-     *	     to the loading of ip_rindex.  Even though stores might be
-     *	     ordered, loads are probably not.  A memory fence is required
-     *	     to prevent reordering of the loads after the ip_rindex update.
+     *	     We must process only through our cached (wi) to ensure that
+     *	     speculative reads of ip_info[] content do not occur without
+     *	     a memory barrier.
      *
      * NOTE: Single pass only.  Returns non-zero if the queue is not empty
      *	     on return.
+     *
+     * NOTE: Our 'wi' guarantees that memory loads will not be out of order.
+     *	     Do NOT reload wi with windex in the below loop unless you also
+     *	     issue another lfence after reloading it.
      */
     while (wi - (ri = ip->ip_rindex) > limit) {
 	ri &= MAXCPUFIFO_MASK;
-	cpu_lfence();
 	copy_func = ip->ip_info[ri].func;
 	copy_arg1 = ip->ip_info[ri].arg1;
 	copy_arg2 = ip->ip_info[ri].arg2;
-	cpu_mfence();
+	cpu_ccfence();
 	++ip->ip_rindex;
-	KKASSERT((ip->ip_rindex & MAXCPUFIFO_MASK) ==
-		 ((ri + 1) & MAXCPUFIFO_MASK));
 	logipiq(receive, copy_func, copy_arg1, copy_arg2, sgd, mycpu);
 #ifdef INVARIANTS
 	if (ipiq_debug && (ip->ip_rindex & 0xFFFFFF) == 0) {
