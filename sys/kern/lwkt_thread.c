@@ -1727,6 +1727,7 @@ crit_panic(void)
     int lcrit = td->td_critcount;
 
     td->td_critcount = 0;
+    cpu_ccfence();
     panic("td_critcount is/would-go negative! %p %d", td, lcrit);
     /* NOT REACHED */
 }

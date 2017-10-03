@@ -31,6 +31,26 @@
 #include <machine/cpumask.h>
 
 /*
+ * Don't let GCC reorder critical section count adjustments, because it
+ * will BLOW US UP if it does.
+ */
+static __inline void
+crit_enter_raw(thread_t td)
+{
+	cpu_ccfence();
+	++td->td_critcount;
+	cpu_ccfence();
+}
+
+static __inline void
+crit_exit_raw(thread_t td)
+{
+	cpu_ccfence();
+	--td->td_critcount;
+	cpu_ccfence();
+}
+
+/*
  * Is a token held either by the specified thread or held shared?
  *
  * We can't inexpensively validate the thread for a shared token
@@ -161,9 +181,8 @@ _debug_crit_exit(thread_t td, const char *id)
 static __inline void
 _crit_enter_quick(thread_t td __DEBUG_CRIT_ADD_ARG__)
 {
-    ++td->td_critcount;
+    crit_enter_raw(td);
     __DEBUG_CRIT_ENTER(td);
-    cpu_ccfence();
 }
 
 static __inline void
@@ -177,6 +196,7 @@ _crit_enter_hard(globaldata_t gd __DEBUG_CRIT_ADD_ARG__)
 {
     _crit_enter_quick(gd->gd_curthread __DEBUG_CRIT_PASS_ARG__);
     ++gd->gd_intr_nesting_level;
+    cpu_ccfence();
 }
 
 
@@ -196,12 +216,11 @@ static __inline void
 _crit_exit_noyield(thread_t td __DEBUG_CRIT_ADD_ARG__)
 {
     __DEBUG_CRIT_EXIT(td);
-    --td->td_critcount;
+    crit_exit_raw(td);
 #ifdef INVARIANTS
     if (__predict_false(td->td_critcount < 0))
 	crit_panic();
 #endif
-    cpu_ccfence();	/* prevent compiler reordering */
 }
 
 static __inline void
@@ -221,6 +240,7 @@ _crit_exit(globaldata_t gd __DEBUG_CRIT_ADD_ARG__)
 static __inline void
 _crit_exit_hard(globaldata_t gd __DEBUG_CRIT_ADD_ARG__)
 {
+    cpu_ccfence();
     --gd->gd_intr_nesting_level;
     _crit_exit_quick(gd->gd_curthread __DEBUG_CRIT_PASS_ARG__);
 }

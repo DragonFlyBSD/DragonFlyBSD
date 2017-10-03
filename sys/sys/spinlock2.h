@@ -71,9 +71,9 @@ spin_trylock(struct spinlock *spin)
 {
 	globaldata_t gd = mycpu;
 
-	++gd->gd_curthread->td_critcount;
-	cpu_ccfence();
+	crit_enter_raw(gd->gd_curthread);
 	++gd->gd_spinlocks;
+	cpu_ccfence();
 	if (atomic_cmpset_int(&spin->counta, 0, 1) == 0)
 		return (spin_trylock_contested(spin));
 #ifdef DEBUG_LOCKS
@@ -110,9 +110,9 @@ _spin_lock_quick(globaldata_t gd, struct spinlock *spin, const char *ident)
 {
 	int count;
 
-	++gd->gd_curthread->td_critcount;
-	cpu_ccfence();
+	crit_enter_raw(gd->gd_curthread);
 	++gd->gd_spinlocks;
+	cpu_ccfence();
 
 	count = atomic_fetchadd_int(&spin->counta, 1);
 	if (__predict_false(count != 0)) {
@@ -171,9 +171,9 @@ spin_unlock_quick(globaldata_t gd, struct spinlock *spin)
 #ifdef DEBUG_LOCKS
 	KKASSERT(gd->gd_spinlocks > 0);
 #endif
-	--gd->gd_spinlocks;
 	cpu_ccfence();
-	--gd->gd_curthread->td_critcount;
+	--gd->gd_spinlocks;
+	crit_exit_raw(gd->gd_curthread);
 }
 
 static __inline void
@@ -198,9 +198,9 @@ _spin_lock_shared_quick(globaldata_t gd, struct spinlock *spin,
 {
 	int counta;
 
-	++gd->gd_curthread->td_critcount;
-	cpu_ccfence();
+	crit_enter_raw(gd->gd_curthread);
 	++gd->gd_spinlocks;
+	cpu_ccfence();
 
 	counta = atomic_fetchadd_int(&spin->counta, 1);
 	if (__predict_false((counta & SPINLOCK_SHARED) == 0)) {
@@ -258,9 +258,9 @@ spin_unlock_shared_quick(globaldata_t gd, struct spinlock *spin)
 #ifdef DEBUG_LOCKS
 	KKASSERT(gd->gd_spinlocks > 0);
 #endif
-	--gd->gd_spinlocks;
 	cpu_ccfence();
-	--gd->gd_curthread->td_critcount;
+	--gd->gd_spinlocks;
+	crit_exit_raw(gd->gd_curthread);
 }
 
 static __inline void

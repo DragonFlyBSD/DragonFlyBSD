@@ -210,9 +210,9 @@ mtx_spinlock(mtx_t *mtx)
 	/*
 	 * Predispose a hard critical section
 	 */
-	++gd->gd_curthread->td_critcount;
-	cpu_ccfence();
+	crit_enter_raw(gd->gd_curthread);
 	++gd->gd_spinlocks;
+	cpu_ccfence();
 
 	/*
 	 * If we cannot get it trivially get it the hard way.
@@ -234,9 +234,9 @@ mtx_spinlock_try(mtx_t *mtx)
 	/*
 	 * Predispose a hard critical section
 	 */
-	++gd->gd_curthread->td_critcount;
-	cpu_ccfence();
+	crit_enter_raw(gd->gd_curthread);
 	++gd->gd_spinlocks;
+	cpu_ccfence();
 
 	/*
 	 * If we cannot get it trivially call _mtx_spinlock_try().  This
@@ -371,9 +371,9 @@ mtx_spinunlock(mtx_t *mtx)
 
 	mtx_unlock(mtx);
 
-	--gd->gd_spinlocks;
 	cpu_ccfence();
-	--gd->gd_curthread->td_critcount;
+	--gd->gd_spinlocks;
+	crit_exit_raw(gd->gd_curthread);
 }
 
 /*

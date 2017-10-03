@@ -177,8 +177,10 @@ signalintr(int intr)
 		umtx_wakeup(&gd->mi.gd_reqflags, 0);
 	} else {
 		++td->td_nest_count;
+		cpu_ccfence();
 		atomic_clear_int(&gd->gd_fpending, 1 << intr);
 		sched_ithd_hard_virtual(intr);
+		cpu_ccfence();
 		--td->td_nest_count;
 	}
 }
