@@ -130,7 +130,8 @@ spin_trylock_contested(struct spinlock *spin)
 		return TRUE;
 	/*atomic_add_int(&spin->counta, -1);*/
 	--gd->gd_spinlocks;
-	--gd->gd_curthread->td_critcount;
+	crit_exit_raw(gd->gd_curthread);
+
 	return (FALSE);
 }
 

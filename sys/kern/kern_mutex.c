@@ -136,9 +136,9 @@ __mtx_lock_ex(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 		}
 		td = curthread;
 		nlock = lock | MTX_EXWANTED | MTX_LINKSPIN;
-		++td->td_critcount;
+		crit_enter_raw(td);
 		if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock) == 0) {
-			--td->td_critcount;
+			crit_exit_raw(td);
 			continue;
 		}
 
@@ -154,7 +154,7 @@ __mtx_lock_ex(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 				atomic_clear_int(&mtx->mtx_lock,
 						 MTX_LINKSPIN);
 			}
-			--td->td_critcount;
+			crit_exit_raw(td);
 			link->state = MTX_LINK_IDLE;
 			error = ENOLCK;
 			break;
@@ -177,7 +177,7 @@ __mtx_lock_ex(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 		}
 		isasync = (link->callback != NULL);
 		atomic_clear_int(&mtx->mtx_lock, MTX_LINKSPIN);
-		--td->td_critcount;
+		crit_exit_raw(td);
 
 		/* 
 		 * If asynchronous lock request return without
@@ -286,9 +286,9 @@ __mtx_lock_sh(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 		}
 		td = curthread;
 		nlock = lock | MTX_SHWANTED | MTX_LINKSPIN;
-		++td->td_critcount;
+		crit_enter_raw(td);
 		if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock) == 0) {
-			--td->td_critcount;
+			crit_exit_raw(td);
 			continue;
 		}
 
@@ -306,7 +306,7 @@ __mtx_lock_sh(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 						 MTX_LINKSPIN |
 						 MTX_SHWANTED);
 			}
-			--td->td_critcount;
+			crit_exit_raw(td);
 			link->state = MTX_LINK_IDLE;
 			error = ENOLCK;
 			break;
@@ -329,7 +329,7 @@ __mtx_lock_sh(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 		}
 		isasync = (link->callback != NULL);
 		atomic_clear_int(&mtx->mtx_lock, MTX_LINKSPIN);
-		--td->td_critcount;
+		crit_exit_raw(td);
 
 		/* 
 		 * If asynchronous lock request return without
@@ -441,7 +441,7 @@ _mtx_spinlock_try(mtx_t *mtx)
 		} else {
 			--gd->gd_spinlocks;
 			cpu_ccfence();
-			--gd->gd_curthread->td_critcount;
+			crit_exit_raw(gd->gd_curthread);
 			res = EAGAIN;
 			break;
 		}
@@ -744,7 +744,7 @@ mtx_chain_link_ex(mtx_t *mtx, u_int olock)
 
 	olock &= ~MTX_LINKSPIN;
 	nlock = olock | MTX_LINKSPIN | MTX_EXCLUSIVE;	/* upgrade if necc */
-	++td->td_critcount;
+	crit_enter_raw(td);
 	if (atomic_cmpset_int(&mtx->mtx_lock, olock, nlock)) {
 		link = mtx->mtx_exlink;
 		KKASSERT(link != NULL);
@@ -778,11 +778,12 @@ mtx_chain_link_ex(mtx_t *mtx, u_int olock)
 			wakeup(link);
 		}
 		atomic_clear_int(&mtx->mtx_lock, nlock);
-		--td->td_critcount;
+		crit_exit_raw(td);
 		return 1;
 	}
 	/* retry */
-	--td->td_critcount;
+	crit_exit_raw(td);
+
 	return 0;
 }
 
@@ -805,7 +806,7 @@ mtx_chain_link_sh(mtx_t *mtx, u_int olock)
 	olock &= ~MTX_LINKSPIN;
 	nlock = olock | MTX_LINKSPIN;
 	nlock &= ~MTX_EXCLUSIVE;
-	++td->td_critcount;
+	crit_enter_raw(td);
 	if (atomic_cmpset_int(&mtx->mtx_lock, olock, nlock)) {
 		/*
 		 * It should not be possible for SHWANTED to be set without
@@ -854,11 +855,12 @@ mtx_chain_link_sh(mtx_t *mtx, u_int olock)
 		}
 		atomic_clear_int(&mtx->mtx_lock, MTX_LINKSPIN |
 						 MTX_SHWANTED);
-		--td->td_critcount;
+		crit_exit_raw(td);
 		return 1;
 	}
 	/* retry */
-	--td->td_critcount;
+	crit_exit_raw(td);
+
 	return 0;
 }
 
@@ -880,7 +882,7 @@ mtx_delete_link(mtx_t *mtx, mtx_link_t *link)
 	 * Do not use cmpxchg to wait for LINKSPIN to clear as this might
 	 * result in too much cpu cache traffic.
 	 */
-	++td->td_critcount;
+	crit_enter_raw(td);
 	for (;;) {
 		lock = mtx->mtx_lock;
 		if (lock & MTX_LINKSPIN) {
@@ -924,7 +926,7 @@ mtx_delete_link(mtx_t *mtx, mtx_link_t *link)
 		break;
 	}
 	atomic_clear_int(&mtx->mtx_lock, nlock);
-	--td->td_critcount;
+	crit_exit_raw(td);
 }
 
 /*
@@ -1039,7 +1041,7 @@ mtx_abort_link(mtx_t *mtx, mtx_link_t *link)
 	/*
 	 * Acquire MTX_LINKSPIN
 	 */
-	++td->td_critcount;
+	crit_enter_raw(td);
 	for (;;) {
 		lock = mtx->mtx_lock;
 		if (lock & MTX_LINKSPIN) {
@@ -1141,5 +1143,5 @@ mtx_abort_link(mtx_t *mtx, mtx_link_t *link)
 		break;
 	}
 	atomic_clear_int(&mtx->mtx_lock, nlock);
-	--td->td_critcount;
+	crit_exit_raw(td);
 }
