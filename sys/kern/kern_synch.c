@@ -45,6 +45,7 @@
 #include <sys/resourcevar.h>
 #include <sys/vmmeter.h>
 #include <sys/sysctl.h>
+#include <sys/priv.h>
 #include <sys/lock.h>
 #include <sys/uio.h>
 #include <sys/kcollect.h>
@@ -119,13 +120,41 @@ static void	loadav (void *arg);
 static void	schedcpu (void *arg);
 
 static int pctcpu_decay = 10;
-SYSCTL_INT(_kern, OID_AUTO, pctcpu_decay, CTLFLAG_RW, &pctcpu_decay, 0, "");
+SYSCTL_INT(_kern, OID_AUTO, pctcpu_decay, CTLFLAG_RW,
+	   &pctcpu_decay, 0, "");
 
 /*
  * kernel uses `FSCALE', userland (SHOULD) use kern.fscale 
  */
 int     fscale __unused = FSCALE;	/* exported to systat */
 SYSCTL_INT(_kern, OID_AUTO, fscale, CTLFLAG_RD, 0, FSCALE, "");
+
+/*
+ * Issue a wakeup() from userland (debugging)
+ */
+static int
+sysctl_wakeup(SYSCTL_HANDLER_ARGS)
+{
+	uint64_t ident = 1;
+	int error = 0;
+
+	if (req->newptr != NULL) {
+		if (priv_check(curthread, PRIV_ROOT))
+			return (EPERM);
+		error = SYSCTL_IN(req, &ident, sizeof(ident));
+		if (error)
+			return error;
+		kprintf("issue wakeup %016jx\n", ident);
+		wakeup((void *)(intptr_t)ident);
+	}
+	if (req->oldptr != NULL) {
+		error = SYSCTL_OUT(req, &ident, sizeof(ident));
+	}
+	return error;
+}
+
+SYSCTL_PROC(_debug, OID_AUTO, wakeup, CTLTYPE_UQUAD|CTLFLAG_RW, 0, 0,
+	    sysctl_wakeup, "Q", "issue wakeup(addr)");
 
 /*
  * Recompute process priorities, once a second.
@@ -331,6 +360,11 @@ _tsleep_interlock(globaldata_t gd, const volatile void *ident, int flags)
 	struct tslpque *qp;
 	uint32_t cid;
 	uint32_t gid;
+
+	if (ident == NULL) {
+		kprintf("tsleep_interlock: NULL ident %s\n", td->td_comm);
+		print_backtrace(5);
+	}
 
 	crit_enter_quick(td);
 	if (td->td_flags & TDF_TSLEEPQ) {
@@ -733,6 +767,7 @@ ssleep(const volatile void *ident, struct spinlock *spin, int flags,
 	_tsleep_interlock(gd, ident, flags);
 	spin_unlock_quick(gd, spin);
 	error = tsleep(ident, flags | PINTERLOCKED, wmesg, timo);
+	KKASSERT(gd == mycpu);
 	_spin_lock_quick(gd, spin, wmesg);
 
 	return (error);
@@ -966,8 +1001,11 @@ restart:
 		qp->ident3 = NULL;
 	} else {
 		if ((wids & 1) == 0) {
-			if ((wids & 16) == 0)
+			if ((wids & 16) == 0) {
 				qp->ident0 = NULL;
+			} else {
+				KKASSERT(qp->ident0 == (void *)(intptr_t)-1);
+			}
 		}
 		if ((wids & 2) == 0)
 			qp->ident1 = NULL;
@@ -1009,19 +1047,20 @@ restart:
 		int n;
 
 		cpu_mfence();
+		/* cpu_lfence(); */
 		mask = slpque_cpumasks[cid];
 		CPUMASK_ANDMASK(mask, gd->gd_other_cpus);
 		while (CPUMASK_TESTNZERO(mask)) {
 			n = BSRCPUMASK(mask);
 			CPUMASK_NANDBIT(mask, n);
 			tgd = globaldata_find(n);
-			qp = &tgd->gd_tsleep_hash[gid];
 
 			/*
 			 * Both ident0 compares must from a single load
 			 * to avoid ident0 update races crossing the two
 			 * compares.
 			 */
+			qp = &tgd->gd_tsleep_hash[gid];
 			id0 = qp->ident0;
 			cpu_ccfence();
 			if (id0 == (void *)(intptr_t)-1) {
@@ -1035,11 +1074,13 @@ restart:
 				lwkt_send_ipiq2(tgd, _wakeup, ident,
 						domain | PWAKEUP_MYCPU);
 			}
+		}
 #if 0
+		if (CPUMASK_TESTNZERO(mask)) {
 			lwkt_send_ipiq2_mask(mask, _wakeup, ident,
 					     domain | PWAKEUP_MYCPU);
-#endif
 		}
+#endif
 	}
 done:
 	logtsleep1(wakeup_end);
