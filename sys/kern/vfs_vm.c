@@ -180,8 +180,9 @@ nvtruncbuf(struct vnode *vp, off_t length, int blksize, int boff, int trivial)
 	 */
 	if (boff && trivial == 0) {
 		truncboffset = length - boff;
-		error = bread(vp, truncboffset, blksize, &bp);
+		error = bread_kvabio(vp, truncboffset, blksize, &bp);
 		if (error == 0) {
+			bkvasync(bp);
 			bzero(bp->b_data + boff, blksize - boff);
 			if (bp->b_flags & B_DELWRI) {
 				if (bp->b_dirtyoff > boff)
@@ -382,8 +383,9 @@ nvextendbuf(struct vnode *vp, off_t olength, off_t nlength,
 		truncboffset = olength - oboff;
 
 		if (oboff) {
-			error = bread(vp, truncboffset, oblksize, &bp);
+			error = bread_kvabio(vp, truncboffset, oblksize, &bp);
 			if (error == 0) {
+				bkvasync(bp);
 				bzero(bp->b_data + oboff, oblksize - oboff);
 				bp->b_bio2.bio_offset = NOOFFSET;
 				bdwrite(bp);

@@ -507,6 +507,7 @@ tmpfs_read(struct vop_read_args *ap)
 				vm_wait_nominal();
 		}
 		bp->b_flags |= B_CLUSTEROK;
+		bkvasync(bp);
 
 		/*
 		 * Figure out how many bytes we can actually copy this loop.
@@ -635,6 +636,7 @@ tmpfs_write(struct vop_write_args *ap)
 		 * So just use bread() to do the right thing.
 		 */
 		error = bread_kvabio(vp, base_offset, TMPFS_BLKSIZE, &bp);
+		bkvasync(bp);
 		error = uiomovebp(bp, (char *)bp->b_data + offset, len, uio);
 		if (error) {
 			kprintf("tmpfs_write uiomove error %d\n", error);

@@ -5024,8 +5024,13 @@ getdirtybuf(struct buf **bpp, int waitfor)
 
 		/*
 		 * Finish nominal buffer locking sequence return success.
+		 *
+		 * Since we are not using a normal getblk(), and UFS
+		 * isn't KVABIO aware, we must make sure that the bp
+		 * is synchronized before returning it.
 		 */
 		bremfree(bp);
+		bkvasync_all(bp);
 		return (1);
 	}
 

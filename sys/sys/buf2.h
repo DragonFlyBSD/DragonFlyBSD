@@ -240,7 +240,9 @@ buf_deallocate(struct buf *bp)
 }
 
 /*
- * MPSAFE
+ * This callback is made from flushbufqueues() which uses BUF_LOCK().
+ * Since it isn't going through a normal buffer aquisition mechanic
+ * and calling the filesystem back enforce the vnode's KVABIO support.
  */
 static __inline int
 buf_countdeps(struct buf *bp, int n)
@@ -248,10 +250,13 @@ buf_countdeps(struct buf *bp, int n)
 	struct bio_ops *ops = bp->b_ops;
 	int r;
 
-	if (ops)
+	if (ops) {
+		if (bp->b_vp == NULL || (bp->b_vp->v_flag & VKVABIO) == 0)
+			bkvasync_all(bp);
 		r = ops->io_countdeps(bp, n);
-	else
+	} else {
 		r = 0;
+	}
 	return(r);
 }
 
@@ -321,15 +326,20 @@ buf_checkread(struct buf *bp)
 }
 
 /*
- * MPSAFE
+ * This callback is made from flushbufqueues() which uses BUF_LOCK().
+ * Since it isn't going through a normal buffer aquisition mechanic
+ * and calling the filesystem back enforce the vnode's KVABIO support.
  */
 static __inline int
 buf_checkwrite(struct buf *bp)
 {
 	struct bio_ops *ops = bp->b_ops;
 
-	if (ops)
+	if (ops) {
+		if (bp->b_vp == NULL || (bp->b_vp->v_flag & VKVABIO) == 0)
+			bkvasync_all(bp);
 		return(ops->io_checkwrite(bp));
+	}
 	return(0);
 }
 

@@ -1879,6 +1879,7 @@ vfs_vmio_release(struct buf *bp)
 	 */
 	pmap_qremove_noinval(trunc_page((vm_offset_t) bp->b_data),
 			     bp->b_xio.xio_npages);
+	CPUMASK_ASSZERO(bp->b_cpumask);
 	if (bp->b_bufsize) {
 		atomic_add_long(&bufspace, -bp->b_bufsize);
 		bp->b_bufsize = 0;
@@ -2470,7 +2471,7 @@ again:
 			bp->b_flags &= ~B_AGE;
 			cluster_awrite(bp);
 		} else {
-			bp->b_flags |= B_AGE;
+			bp->b_flags |= B_AGE | B_KVABIO;
 			cluster_awrite(bp);
 		}
 		/* bp invalid but needs to be NULL-tested if we break out */
@@ -2621,13 +2622,15 @@ findblk(struct vnode *vp, off_t loffset, int flags)
 		 * Revalidate the locked buf before allowing it to be
 		 * returned.
 		 *
-		 * B_KVABIO is only set/cleared when locking.
+		 * B_KVABIO is only set/cleared when locking.  When
+		 * clearing B_KVABIO, we must ensure that the buffer
+		 * is synchronized to all cpus.
 		 */
 		if (bp->b_vp == vp && bp->b_loffset == loffset) {
 			if (flags & FINDBLK_KVABIO)
 				bp->b_flags |= B_KVABIO;
 			else
-				bp->b_flags &= ~B_KVABIO;
+				bkvasync_all(bp);
 			break;
 		}
 		atomic_subtract_int(&bp->b_refs, 1);
@@ -4390,6 +4393,8 @@ bkvasync(struct buf *bp)
  * the KVABIO API.  Make sure its data is synchronized to all cpus.
  *
  * If B_KVABIO is not set, the buffer is already fully synchronized.
+ *
+ * NOTE! This is the only safe way to clear B_KVABIO on a buffer.
  */
 void
 bkvasync_all(struct buf *bp)
@@ -4399,8 +4404,8 @@ bkvasync_all(struct buf *bp)
 		smp_invltlb();
 		cpu_invltlb();
 		ATOMIC_CPUMASK_ORMASK(bp->b_cpumask, smp_active_mask);
-	    bp->b_flags &= ~B_KVABIO;
 	}
+	bp->b_flags &= ~B_KVABIO;
 }
 
 /*

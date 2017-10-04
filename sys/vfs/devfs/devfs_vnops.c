@@ -1738,7 +1738,8 @@ devfs_spec_strategy(struct vop_strategy_args *ap)
 	BUF_LOCK(nbp, LK_EXCLUSIVE);
 	BUF_KERNPROC(nbp);
 	nbp->b_vp = vp;
-	nbp->b_flags = B_PAGING | (bp->b_flags & B_BNOCLIP);
+	nbp->b_flags = B_PAGING | B_KVABIO | (bp->b_flags & B_BNOCLIP);
+	nbp->b_cpumask = bp->b_cpumask;
 	nbp->b_data = bp->b_data;
 	nbp->b_bio1.bio_done = devfs_spec_strategy_done;
 	nbp->b_bio1.bio_offset = bio->bio_offset;
@@ -2002,10 +2003,11 @@ devfs_spec_getpages(struct vop_getpages_args *ap)
 	/*
 	 * Map the pages to be read into the kva.
 	 */
-	pmap_qenter(kva, ap->a_m, pcount);
+	pmap_qenter_noinval(kva, ap->a_m, pcount);
 
 	/* Build a minimal buffer header. */
 	bp->b_cmd = BUF_CMD_READ;
+	bp->b_flags |= B_KVABIO;
 	bp->b_bcount = size;
 	bp->b_resid = 0;
 	bsetrunningbufspace(bp, size);
@@ -2042,9 +2044,11 @@ devfs_spec_getpages(struct vop_getpages_args *ap)
 	 * might indicate an EOF with b_resid instead of truncating b_bcount.
 	 */
 	nread = bp->b_bcount - bp->b_resid;
-	if (nread < ap->a_count)
+	if (nread < ap->a_count) {
+		bkvasync(bp);
 		bzero((caddr_t)kva + nread, ap->a_count - nread);
-	pmap_qremove(kva, pcount);
+	}
+	pmap_qremove_noinval(kva, pcount);
 
 	gotreqpage = 0;
 	for (i = 0, toff = 0; i < pcount; i++, toff = nextoff) {
