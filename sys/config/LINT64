@@ -1075,6 +1075,7 @@ device		puc
 #
 # lnc: Lance/PCnet cards (Isolan, Novell NE2100, NE32-VL, AMD Am7990 & Am79C960)
 # sbsh: Granch SBNI16 SHDSL modem PCI adapters
+# vmx: VMware VMXNET3 Ethernet (BSD open source)
 # wi: Lucent WaveLAN/IEEE 802.11 PCMCIA adapters. Note: this supports both
 #     the PCMCIA and ISA cards: the ISA card is really a PCMCIA to ISA
 #     bridge with a PCMCIA adapter plugged into it.
@@ -1133,6 +1134,7 @@ device		xe		# Xircom PCMCIA
 device		ral		# Ralink Technology 802.11 wireless NIC
 device		wpi
 options		WPI_DEBUG	# turn on debugging output
+device		vmx		# VMware VMXNET3 Ethernet
 
 # IEEE 802.11 adapter firmware modules
 

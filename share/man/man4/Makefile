@@ -387,6 +387,7 @@ MAN=	aac.4 \
 	virtio_scsi.4 \
 	vlan.4 \
 	vmbus.4 \
+	vmx.4 \
 	vn.4 \
 	vpo.4 \
 	vr.4 \
@@ -551,6 +552,7 @@ MLINKS+=urtwn.4 if_urtwn.4
 MLINKS+=vga_switcheroo.4 apple_gmux.4
 MLINKS+=vge.4 if_vge.4
 MLINKS+=vlan.4 if_vlan.4
+MLINKS+=vmx.4 if_vmx.4
 MLINKS+=vpo.4 imm.4
 MLINKS+=vr.4 if_vr.4
 MLINKS+=vtnet.4 if_vtnet.4

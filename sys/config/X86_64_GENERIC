@@ -141,6 +141,9 @@ device		virtio_scsi	# VirtIO SCSI driver
 device		vtnet		# VirtIO network driver
 device		virtio_pci	# VirtIO transport over PCI bus
 
+# VMware support
+device		vmx		# VMware VMXNET3 Ethernet
+
 # atkbdc0 controls both the keyboard and the PS/2 mouse
 device		atkbdc0	at isa? port IO_KBD
 device		atkbd0	at atkbdc? irq 1
