@@ -510,8 +510,8 @@ nvme_admin_state_identify_ns(nvme_softc_t *sc)
 	nvme_request_t *req;
 	nvme_ident_ns_list_t *rp;
 	int status;
-	uint32_t i;
-	uint32_t j;
+	int i;
+	int j;
 
 	if (bootverbose) {
 		if (sc->idctlr.admin_cap & NVME_ADMIN_NSMANAGE)
@@ -563,8 +563,9 @@ nvme_admin_state_identify_ns(nvme_softc_t *sc)
 	} else {
 		/*
 		 * Namespace management not supported, assume nsids 1..N.
+		 * (note: (i) limited to 1024).
 		 */
-		for (i = 1; i <= sc->idctlr.ns_count && i <= 1024; ++i)
+		for (i = 1; i <= (int)sc->idctlr.ns_count && i <= 1024; ++i)
 			rp->nsids[i-1] = i;
 	}
 
