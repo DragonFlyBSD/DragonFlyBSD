@@ -3105,7 +3105,19 @@ allocbuf(struct buf *bp, int size)
 				      (desiredpages << PAGE_SHIFT),
 				     (bp->b_xio.xio_npages - desiredpages));
 			bp->b_xio.xio_npages = desiredpages;
-			bkvareset(bp);
+
+			/*
+			 * Don't bother invalidating the pmap changes
+			 * (which wastes global SMP invalidation IPIs)
+			 * when setting the size to 0.  This case occurs
+			 * when called via getnewbuf() during buffer
+			 * recyclement.
+			 */
+			if (desiredpages == 0) {
+				CPUMASK_ASSZERO(bp->b_cpumask);
+			} else {
+				bkvareset(bp);
+			}
 		}
 	} else if (size > bp->b_bcount) {
 		/*
