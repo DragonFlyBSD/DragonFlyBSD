@@ -132,40 +132,23 @@ spin_trylock_contested(struct spinlock *spin)
  * function with spin->counta already incremented, passing (spin->counta - 1)
  * to the function (the result of the inline's fetchadd).
  *
- * atomic_swap_int() is the absolute fastest spinlock instruction, at
- * least on multi-socket systems.  All instructions seem to be about
- * the same on single-socket multi-core systems.  However, atomic_swap_int()
- * does not result in an even distribution of successful acquisitions.
+ * Note that we implement both exclusive and shared spinlocks, so we cannot
+ * use atomic_swap_int().  Instead, we try to use atomic_fetchadd_int()
+ * to put most of the burden on the cpu.  Atomic_cmpset_int() (cmpxchg)
+ * can cause a lot of unnecessary looping in situations where it is just
+ * trying to increment the count.
  *
- * UNFORTUNATELY we cannot really use atomic_swap_int() when also implementing
- * shared spin locks, so as we do a better job removing contention we've
- * moved to atomic_cmpset_int() to be able handle multiple states.
+ * Similarly, we leave the SHARED flag intact and incur slightly more
+ * overhead when switching from shared to exclusive.  This allows us to
+ * use atomic_fetchadd_int() for both spinlock types in the critical
+ * path.
  *
- * Another problem we have is that (at least on the 48-core opteron we test
- * with) having all 48 cores contesting the same spin lock reduces
- * performance to around 600,000 ops/sec, verses millions when fewer cores
- * are going after the same lock.
- *
- * Backoff algorithms can create even worse starvation problems, and don't
- * really improve performance when a lot of cores are contending.
- *
- * Our solution is to allow the data cache to lazy-update by reading it
- * non-atomically and only attempting to acquire the lock if the lazy read
- * looks good.  This effectively limits cache bus bandwidth.  A cpu_pause()
- * (for intel/amd anyhow) is not strictly needed as cache bus resource use
- * is governed by the lazy update.
- *
- * WARNING!!!!  Performance matters here, by a huge margin.
- *
- *	48-core test with pre-read / -j 48 no-modules kernel compile
- *	with fanned-out inactive and active queues came in at 55 seconds.
- *
- *	48-core test with pre-read / -j 48 no-modules kernel compile
- *	came in at 75 seconds.  Without pre-read it came in at 170 seconds.
- *
- *	4-core test with pre-read / -j 48 no-modules kernel compile
- *	came in at 83 seconds.  Without pre-read it came in at 83 seconds
- *	as well (no difference).
+ * Backoff algorithms can create even worse starvation problems, particularly
+ * on multi-socket cpus, and don't really improve performance when a lot
+ * of cores are contending.  However, if we are contested on an exclusive
+ * lock due to a large number of shared locks being present, we throw in
+ * extra cpu_pause()'s to account for the necessary time it will take other
+ * cores to contend among themselves and release their shared locks.
  */
 void
 _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
@@ -228,6 +211,24 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 				      (ovalue - SPINLOCK_EXCLWAIT) | 1)) {
 			break;
 		}
+
+		/*
+		 * Throw in extra cpu_pause()'s when we are waiting on
+		 * multiple other shared lock holders to release (the
+		 * indefinite_check() also throws one in).
+		 *
+		 * We know these are shared lock holders when the count
+		 * is larger than 1, because an exclusive lock holder can
+		 * only have one count.  Do this optimization only when
+		 * the number of shared lock holders is 3 or greater.
+		 */
+		ovalue &= SPINLOCK_EXCLWAIT - 1;
+		while (ovalue > 2) {
+			cpu_pause();
+			cpu_pause();
+			--ovalue;
+		}
+
 		if (indefinite_check(&td->td_indefinite))
 			break;
 	}
