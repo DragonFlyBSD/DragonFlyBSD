@@ -50,18 +50,21 @@
 static __inline void
 indefinite_init(indefinite_info_t *info, const char *ident, int now, char type)
 {
-	if (tsc_frequency) {
-		info->base = rdtsc();
-		info->ident = ident;
-		info->secs = 0;
-		info->count = 0;
-		info->type = type;
+	info->ident = ident;
+	info->secs = 0;
+	info->count = 0;
 
-		if (now) {
-			mycpu->gd_cnt.v_lock_name[0] = info->type;
-			strncpy(mycpu->gd_cnt.v_lock_name + 1, info->ident,
-				sizeof(mycpu->gd_cnt.v_lock_name) - 2);
-		}
+	if (tsc_frequency) {
+		info->type = type;
+		info->base = rdtsc();
+	} else {
+		info->type = 0;
+		info->base = 0;
+	}
+	if (now && info->ident) {
+		mycpu->gd_cnt.v_lock_name[0] = info->type;
+		strncpy(mycpu->gd_cnt.v_lock_name + 1, info->ident,
+			sizeof(mycpu->gd_cnt.v_lock_name) - 2);
 	}
 }
 
@@ -90,7 +93,7 @@ indefinite_check(indefinite_info_t *info)
 	 * Ignore minor one-second interval error accumulation in
 	 * favor of ensuring that info->base is fully synchronized.
 	 */
-	if (info->secs == 0 && delta > tsc_oneus_approx) {
+	if (info->secs == 0 && delta > tsc_oneus_approx && info->ident) {
 		mycpu->gd_cnt.v_lock_name[0] = info->type;
 		strncpy(mycpu->gd_cnt.v_lock_name + 1, info->ident,
 			sizeof(mycpu->gd_cnt.v_lock_name) - 2);
@@ -162,8 +165,6 @@ indefinite_done(indefinite_info_t *info)
 	if (info->type) {
 		delta = rdtsc() - info->base;
 		delta = delta * 1000000U / tsc_frequency;
-		if (lock_test_mode && delta > 1000)
-			kprintf("TEST %s (%lu)\n", info->ident, delta);
 		mycpu->gd_cnt.v_lock_colls += delta;
 		info->type = 0;
 	}

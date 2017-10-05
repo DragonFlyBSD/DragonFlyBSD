@@ -79,39 +79,19 @@ SYSCTL_INT(_debug, OID_AUTO, lock_test_mode, CTLFLAG_RW,
 #define COUNT(td, x)
 #endif
 
+static int lockmgr_waitupgrade(struct lock *lkp, u_int flags);
+
 /*
- * Set, change, or release a lock.
+ * Helper, assert basic conditions
  */
-int
-#ifndef	DEBUG_LOCKS
-lockmgr(struct lock *lkp, u_int flags)
-#else
-debuglockmgr(struct lock *lkp, u_int flags,
-	     const char *name, const char *file, int line)
-#endif
+static __inline void
+_lockmgr_assert(struct lock *lkp, u_int flags)
 {
-	thread_t td;
-	thread_t otd;
-	int error;
-	int extflags;
-	int count;
-	int pflags;
-	int wflags;
-	int timo;
-	int info_init;
-#ifdef DEBUG_LOCKS
-	int i;
-#endif
-
-	error = 0;
-	info_init = 0;
-
 	if (mycpu->gd_intr_nesting_level &&
 	    (flags & LK_NOWAIT) == 0 &&
 	    (flags & LK_TYPE_MASK) != LK_RELEASE &&
 	    panic_cpu_gd != mycpu
 	) {
-
 #ifndef DEBUG_LOCKS
 		panic("lockmgr %s from %p: called from interrupt, ipi, "
 		      "or hard code section",
@@ -129,18 +109,33 @@ debuglockmgr(struct lock *lkp, u_int flags,
 		      lkp->lk_wmesg, file, line, mycpu->gd_spinlocks);
 	}
 #endif
+}
 
+/*
+ * Acquire a shared lock
+ */
+int
+lockmgr_shared(struct lock *lkp, u_int flags)
+{
+	uint32_t extflags;
+	thread_t td;
+	int count;
+	int error;
+	int pflags;
+	int wflags;
+	int timo;
+
+	_lockmgr_assert(lkp, flags);
 	extflags = (flags | lkp->lk_flags) & LK_EXTFLG_MASK;
 	td = curthread;
+	error = 0;
 
-again:
-	count = lkp->lk_count;
-	cpu_ccfence();
+	for (;;) {
+		count = lkp->lk_count;
+		cpu_ccfence();
 
-	switch (flags & LK_TYPE_MASK) {
-	case LK_SHARED:
 		/*
-		 * Shared lock critical path case
+		 * Normal case
 		 */
 		if ((count & (LKC_EXREQ|LKC_UPREQ|LKC_EXCL)) == 0) {
 			if (atomic_cmpset_int(&lkp->lk_count,
@@ -148,7 +143,7 @@ again:
 				COUNT(td, 1);
 				break;
 			}
-			goto again;
+			continue;
 		}
 
 		/*
@@ -199,19 +194,22 @@ again:
 				error = EBUSY;
 				break;
 			}
+
+			if ((extflags & LK_NOCOLLSTATS) == 0) {
+				indefinite_info_t info;
+
+				flags |= LK_NOCOLLSTATS;
+				indefinite_init(&info, lkp->lk_wmesg, 1, 'l');
+				error = lockmgr_shared(lkp, flags);
+				indefinite_done(&info);
+				break;
+			}
+
 			tsleep_interlock(lkp, pflags);
 			if (!atomic_cmpset_int(&lkp->lk_count, count,
 					      count | LKC_SHREQ)) {
-				goto again;
+				continue;
 			}
-
-			if (info_init == 0 &&
-			    (lkp->lk_flags & LK_NOCOLLSTATS) == 0) {
-				indefinite_init(&td->td_indefinite,
-						lkp->lk_wmesg, 1, 'l');
-				info_init = 1;
-			}
-
 			error = tsleep(lkp, pflags | PINTERLOCKED,
 				       lkp->lk_wmesg, timo);
 			if (error)
@@ -220,7 +218,7 @@ again:
 				error = ENOLCK;
 				break;
 			}
-			goto again;
+			continue;
 		}
 
 		/*
@@ -230,9 +228,34 @@ again:
 			COUNT(td, 1);
 			break;
 		}
-		goto again;
+		/* retry */
+	}
+	return error;
+}
 
-	case LK_EXCLUSIVE:
+/*
+ * Acquire an exclusive lock
+ */
+int
+lockmgr_exclusive(struct lock *lkp, u_int flags)
+{
+	uint32_t extflags;
+	thread_t td;
+	int count;
+	int error;
+	int pflags;
+	int timo;
+
+	_lockmgr_assert(lkp, flags);
+	extflags = (flags | lkp->lk_flags) & LK_EXTFLG_MASK;
+	td = curthread;
+
+	error = 0;
+
+	for (;;) {
+		count = lkp->lk_count;
+		cpu_ccfence();
+
 		/*
 		 * Exclusive lock critical path.
 		 */
@@ -243,7 +266,7 @@ again:
 				COUNT(td, 1);
 				break;
 			}
-			goto again;
+			continue;
 		}
 
 		/*
@@ -277,6 +300,16 @@ again:
 			}
 		}
 
+		if ((extflags & LK_NOCOLLSTATS) == 0) {
+			indefinite_info_t info;
+
+			flags |= LK_NOCOLLSTATS;
+			indefinite_init(&info, lkp->lk_wmesg, 1, 'L');
+			error = lockmgr_exclusive(lkp, flags);
+			indefinite_done(&info);
+			break;
+		}
+
 		/*
 		 * Wait until we can obtain the exclusive lock.  EXREQ is
 		 * automatically cleared when all current holders release
@@ -289,14 +322,7 @@ again:
 		tsleep_interlock(lkp, pflags);
 		if (!atomic_cmpset_int(&lkp->lk_count, count,
 				       count | LKC_EXREQ)) {
-			goto again;
-		}
-
-		if (info_init == 0 &&
-		    (lkp->lk_flags & LK_NOCOLLSTATS) == 0) {
-			indefinite_init(&td->td_indefinite, lkp->lk_wmesg,
-					1, 'L');
-			info_init = 1;
+			continue;
 		}
 
 		error = tsleep(lkp, pflags | PINTERLOCKED,
@@ -307,10 +333,29 @@ again:
 			error = ENOLCK;
 			break;
 		}
-		indefinite_check(&td->td_indefinite);
-		goto again;
+		/* retry */
+	}
+	return error;
+}
 
-	case LK_DOWNGRADE:
+/*
+ * Downgrade an exclusive lock to shared
+ */
+int
+lockmgr_downgrade(struct lock *lkp, u_int flags)
+{
+	uint32_t extflags;
+	thread_t otd;
+	thread_t td;
+	int count;
+
+	extflags = (flags | lkp->lk_flags) & LK_EXTFLG_MASK;
+	td = curthread;
+
+	for (;;) {
+		count = lkp->lk_count;
+		cpu_ccfence();
+
 		/*
 		 * Downgrade an exclusive lock into a shared lock.  All
 		 * counts on a recursive exclusive lock become shared.
@@ -322,16 +367,6 @@ again:
 			panic("lockmgr: not holding exclusive lock");
 		}
 
-#ifdef DEBUG_LOCKS
-		for (i = 0; i < LOCKMGR_DEBUG_ARRAY_SIZE; i++) {
-			if (td->td_lockmgr_stack[i] == lkp &&
-			    td->td_lockmgr_stack_id[i] > 0
-			) {
-				td->td_lockmgr_stack_id[i]--;
-				break;
-			}
-		}
-#endif
 		/*
 		 * NOTE! Must NULL-out lockholder before releasing LKC_EXCL.
 		 */
@@ -344,9 +379,36 @@ again:
 			break;
 		}
 		lkp->lk_lockholder = otd;
-		goto again;
+		/* retry */
+	}
+	return 0;
+}
 
-	case LK_EXCLUPGRADE:
+/*
+ * Upgrade a shared lock to exclusive.  If LK_EXCLUPGRADE then guarantee
+ * that no other exclusive requester can get in front of us and fail
+ * immediately if another upgrade is pending.
+ */
+int
+lockmgr_upgrade(struct lock *lkp, u_int flags)
+{
+	uint32_t extflags;
+	thread_t td;
+	int count;
+	int error;
+	int pflags;
+	int wflags;
+	int timo;
+
+	_lockmgr_assert(lkp, flags);
+	extflags = (flags | lkp->lk_flags) & LK_EXTFLG_MASK;
+	td = curthread;
+	error = 0;
+
+	for (;;) {
+		count = lkp->lk_count;
+		cpu_ccfence();
+
 		/*
 		 * Upgrade from a single shared lock to an exclusive lock.
 		 *
@@ -355,14 +417,15 @@ again:
 		 * exclusive access.  The shared lock is released on
 		 * failure.
 		 */
-		if (count & LKC_UPREQ) {
-			flags = LK_RELEASE;
-			error = EBUSY;
-			goto again;
+		if ((flags & LK_TYPE_MASK) == LK_EXCLUPGRADE) {
+			if (count & LKC_UPREQ) {
+				lockmgr_release(lkp, LK_RELEASE);
+				error = EBUSY;
+				break;
+			}
 		}
 		/* fall through into normal upgrade */
 
-	case LK_UPGRADE:
 		/*
 		 * Upgrade a shared lock to an exclusive one.  This can cause
 		 * the lock to be temporarily released and stolen by other
@@ -383,7 +446,7 @@ again:
 				lkp->lk_lockholder = td;
 				break;
 			}
-			goto again;
+			continue;
 		}
 
 		/*
@@ -408,15 +471,25 @@ again:
 		 * We cannot upgrade without blocking at this point.
 		 */
 		if (extflags & LK_NOWAIT) {
-			flags = LK_RELEASE;
+			lockmgr_release(lkp, LK_RELEASE);
 			error = EBUSY;
-			goto again;
+			break;
 		}
 		if (extflags & LK_CANCELABLE) {
 			if (count & LKC_CANCEL) {
 				error = ENOLCK;
 				break;
 			}
+		}
+
+		if ((extflags & LK_NOCOLLSTATS) == 0) {
+			indefinite_info_t info;
+
+			flags |= LK_NOCOLLSTATS;
+			indefinite_init(&info, lkp->lk_wmesg, 1, 'U');
+			error = lockmgr_upgrade(lkp, flags);
+			indefinite_done(&info);
+			break;
 		}
 
 		/*
@@ -444,13 +517,6 @@ again:
 			wflags &= ~LKC_UPREQ;	/* was set from count */
 		} else {
 			wflags |= (count - 1);
-		}
-
-		if (info_init == 0 &&
-		    (lkp->lk_flags & LK_NOCOLLSTATS) == 0) {
-			indefinite_init(&td->td_indefinite, lkp->lk_wmesg,
-					1, 'U');
-			info_init = 1;
 		}
 
 		if (atomic_cmpset_int(&lkp->lk_count, count, wflags)) {
@@ -482,14 +548,37 @@ again:
 			 * LKC_UPREQ bit.
 			 */
 			if (count & LKC_UPREQ)
-				flags = LK_EXCLUSIVE;	/* someone else */
+				error = lockmgr_exclusive(lkp, flags);
 			else
-				flags = LK_WAITUPGRADE;	/* we own the bit */
+				error = lockmgr_waitupgrade(lkp, flags);
+			break;
 		}
-		indefinite_check(&td->td_indefinite);
-		goto again;
+		/* retry */
+	}
+	return error;
+}
 
-	case LK_WAITUPGRADE:
+/*
+ * (internal helper)
+ */
+static int
+lockmgr_waitupgrade(struct lock *lkp, u_int flags)
+{
+	uint32_t extflags;
+	thread_t td;
+	int count;
+	int error;
+	int pflags;
+	int timo;
+
+	extflags = (flags | lkp->lk_flags) & LK_EXTFLG_MASK;
+	td = curthread;
+	error = 0;
+
+	for (;;) {
+		count = lkp->lk_count;
+		cpu_ccfence();
+
 		/*
 		 * We own the LKC_UPREQ bit, wait until we are granted the
 		 * exclusive lock (LKC_UPGRANT is set).
@@ -529,10 +618,29 @@ again:
 			}
 			/* retry */
 		}
-		indefinite_check(&td->td_indefinite);
-		goto again;
+		/* retry */
+	}
+	return error;
+}
 
-	case LK_RELEASE:
+/*
+ * Release a held lock
+ */
+int
+lockmgr_release(struct lock *lkp, u_int flags)
+{
+	uint32_t extflags;
+	thread_t otd;
+	thread_t td;
+	int count;
+
+	extflags = (flags | lkp->lk_flags) & LK_EXTFLG_MASK;
+	td = curthread;
+
+	for (;;) {
+		count = lkp->lk_count;
+		cpu_ccfence();
+
 		/*
 		 * Release the currently held lock.  If releasing the current
 		 * lock as part of an error return, error will ALREADY be
@@ -574,7 +682,7 @@ again:
 					   ~(LKC_EXCL | LKC_EXREQ |
 					     LKC_SHREQ| LKC_CANCEL))) {
 					lkp->lk_lockholder = otd;
-					goto again;
+					continue;
 				}
 				if (count & (LKC_EXREQ|LKC_SHREQ))
 					wakeup(lkp);
@@ -593,7 +701,7 @@ again:
 						(count & ~LKC_UPREQ) |
 						LKC_UPGRANT)) {
 					lkp->lk_lockholder = otd;
-					goto again;
+					continue;
 				}
 				wakeup(lkp);
 				/* success */
@@ -601,7 +709,7 @@ again:
 				otd = lkp->lk_lockholder;
 				if (!atomic_cmpset_int(&lkp->lk_count, count,
 						       count - 1)) {
-					goto again;
+					continue;
 				}
 				/* success */
 			}
@@ -618,7 +726,7 @@ again:
 					      (count - 1) &
 					       ~(LKC_EXREQ | LKC_SHREQ |
 						 LKC_CANCEL))) {
-					goto again;
+					continue;
 				}
 				if (count & (LKC_EXREQ|LKC_SHREQ))
 					wakeup(lkp);
@@ -636,7 +744,7 @@ again:
 					      (count & ~(LKC_UPREQ |
 							 LKC_CANCEL)) |
 					      LKC_EXCL | LKC_UPGRANT)) {
-					goto again;
+					continue;
 				}
 				wakeup(lkp);
 			} else {
@@ -646,45 +754,59 @@ again:
 				 */
 				if (!atomic_cmpset_int(&lkp->lk_count, count,
 						       count - 1)) {
-					goto again;
+					continue;
 				}
 			}
 			/* success */
 			COUNT(td, -1);
 		}
 		break;
+	}
+	return 0;
+}
 
-	case LK_CANCEL_BEG:
-		/*
-		 * Start canceling blocked requestors or later requestors.
-		 * requestors must use CANCELABLE.  Don't waste time issuing
-		 * a wakeup if nobody is pending.
-		 */
+/*
+ * Start canceling blocked requesters or later requestors.
+ * Only blocked requesters using CANCELABLE can be canceled.
+ *
+ * This is intended to then allow other requesters (usually the
+ * caller) to obtain a non-cancelable lock.
+ *
+ * Don't waste time issuing a wakeup if nobody is pending.
+ */
+int
+lockmgr_cancel_beg(struct lock *lkp, u_int flags)
+{
+	int count;
+
+	for (;;) {
+		count = lkp->lk_count;
+		cpu_ccfence();
+
 		KKASSERT((count & LKC_CANCEL) == 0);	/* disallowed case */
 		KKASSERT((count & LKC_MASK) != 0);	/* issue w/lock held */
 		if (!atomic_cmpset_int(&lkp->lk_count,
 				       count, count | LKC_CANCEL)) {
-			goto again;
+			continue;
 		}
 		if (count & (LKC_EXREQ|LKC_SHREQ|LKC_UPREQ)) {
 			wakeup(lkp);
 		}
 		break;
-
-	case LK_CANCEL_END:
-		atomic_clear_int(&lkp->lk_count, LKC_CANCEL);
-		break;
-
-	default:
-		panic("lockmgr: unknown locktype request %d",
-		    flags & LK_TYPE_MASK);
-		/* NOTREACHED */
 	}
+	return 0;
+}
 
-	if (info_init)
-		indefinite_done(&td->td_indefinite);
+/*
+ * End our cancel request (typically after we have acquired
+ * the lock ourselves).
+ */
+int
+lockmgr_cancel_end(struct lock *lkp, u_int flags)
+{
+	atomic_clear_int(&lkp->lk_count, LKC_CANCEL);
 
-	return (error);
+	return 0;
 }
 
 /*
@@ -699,6 +821,7 @@ undo_upreq(struct lock *lkp)
 	for (;;) {
 		count = lkp->lk_count;
 		cpu_ccfence();
+
 		if (count & LKC_UPGRANT) {
 			/*
 			 * UPREQ was shifted to UPGRANT.  We own UPGRANT now,

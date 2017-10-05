@@ -938,13 +938,11 @@ mtx_delete_link(mtx_t *mtx, mtx_link_t *link)
 int
 mtx_wait_link(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 {
-	thread_t td = curthread;
+	indefinite_info_t info;
 	int error;
 
-	if ((mtx->mtx_flags & MTXF_NOCOLLSTATS) == 0) {
-		indefinite_init(&td->td_indefinite, mtx->mtx_ident, 1,
+	indefinite_init(&info, mtx->mtx_ident, 1,
 			((link->state & MTX_LINK_LINKED_SH) ? 'm' : 'M'));
-	}
 
 	/*
 	 * Sleep.  Handle false wakeups, interruptions, etc.
@@ -963,7 +961,7 @@ mtx_wait_link(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 				break;
 		}
 		if ((mtx->mtx_flags & MTXF_NOCOLLSTATS) == 0)
-			indefinite_check(&td->td_indefinite);
+			indefinite_check(&info);
 	}
 
 	/*
@@ -1016,7 +1014,7 @@ mtx_wait_link(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 	link->state = MTX_LINK_IDLE;
 
 	if ((mtx->mtx_flags & MTXF_NOCOLLSTATS) == 0)
-		indefinite_done(&td->td_indefinite);
+		indefinite_done(&info);
 
 	return error;
 }

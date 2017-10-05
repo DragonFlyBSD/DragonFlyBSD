@@ -87,6 +87,9 @@
 #ifndef _SYS_CALLOUT_H_
 #include <sys/callout.h>
 #endif
+#ifndef _SYS_INDEFINITE_H_
+#include <sys/indefinite.h>
+#endif
 
 /*
  * This structure maps out the global data that needs to be kept on a
@@ -187,6 +190,7 @@ struct globaldata {
 	struct vmstats	gd_vmstats_adj;		/* pcpu adj for vmstats */
 	struct callout	gd_loadav_callout;	/* loadavg calc */
 	struct callout	gd_schedcpu_callout;	/* scheduler/stats */
+	indefinite_info_t gd_indefinite;	/* scheduler cpu-bound */
 	uint32_t	gd_loadav_nrunnable;	/* pcpu lwps nrunnable */
 	uint32_t	gd_reserved32[1];
 	void		*gd_preserved[4];	/* future fields */

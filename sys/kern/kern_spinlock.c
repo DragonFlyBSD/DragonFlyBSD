@@ -153,7 +153,7 @@ spin_trylock_contested(struct spinlock *spin)
 void
 _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 {
-	thread_t td = curthread;
+	indefinite_info_t info;
 
 	/*
 	 * WARNING! Caller has already incremented the lock.  We must
@@ -168,7 +168,7 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 		if (atomic_cmpset_int(&spin->counta, SPINLOCK_SHARED | 1, 1))
 			return;
 	}
-	indefinite_init(&td->td_indefinite, ident, 0, 'S');
+	indefinite_init(&info, ident, 0, 'S');
 
 	/*
 	 * Transfer our exclusive request to the high bits and clear the
@@ -229,10 +229,10 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 			--ovalue;
 		}
 
-		if (indefinite_check(&td->td_indefinite))
+		if (indefinite_check(&info))
 			break;
 	}
-	indefinite_done(&td->td_indefinite);
+	indefinite_done(&info);
 }
 
 /*
@@ -245,9 +245,9 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 void
 _spin_lock_shared_contested(struct spinlock *spin, const char *ident)
 {
-	thread_t td = curthread;
+	indefinite_info_t info;
 
-	indefinite_init(&td->td_indefinite, ident, 0, 's');
+	indefinite_init(&info, ident, 0, 's');
 
 	/*
 	 * Undo the inline's increment.
@@ -290,10 +290,10 @@ _spin_lock_shared_contested(struct spinlock *spin, const char *ident)
 					      ovalue + 1))
 				break;
 		}
-		if (indefinite_check(&td->td_indefinite))
+		if (indefinite_check(&info))
 			break;
 	}
-	indefinite_done(&td->td_indefinite);
+	indefinite_done(&info);
 }
 
 /*

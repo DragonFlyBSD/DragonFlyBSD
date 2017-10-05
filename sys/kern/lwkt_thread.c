@@ -704,6 +704,8 @@ lwkt_switch(void)
 		goto havethread;
 	    }
 	    ++ntd->td_contended;	/* overflow ok */
+	    if (gd->gd_indefinite.type == 0)
+		indefinite_init(&gd->gd_indefinite, NULL, 0, 't');
 #ifdef LOOPMASK
 	    if (tsc_frequency && rdtsc() - tsc_base > tsc_frequency) {
 		    kprintf("lwkt_switch: excessive contended %d "
@@ -769,8 +771,8 @@ havethread:
     /*
      * If we were busy waiting record final disposition
      */
-    if (ntd->td_indefinite.type)
-	    indefinite_done(&ntd->td_indefinite);
+    if (gd->gd_indefinite.type)
+	    indefinite_done(&gd->gd_indefinite);
 
 havethread_preempted:
     /*

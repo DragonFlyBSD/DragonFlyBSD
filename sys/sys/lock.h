@@ -63,11 +63,6 @@ struct lock {
 	int	lk_timo;		/* maximum sleep time (for tsleep) */
 	const char *lk_wmesg;		/* resource sleeping (for tsleep) */
 	struct thread *lk_lockholder;	/* thread of excl lock holder */
-#ifdef	DEBUG_LOCKS
-	const char *lk_filename;
-	const char *lk_lockername;
-	int     lk_lineno;
-#endif
 };
 
 /*
@@ -229,18 +224,13 @@ void	lockinit (struct lock *, const char *wmesg, int timo, int flags);
 void	lockreinit (struct lock *, const char *wmesg, int timo, int flags);
 void	lockuninit(struct lock *);
 void	lock_sysinit(struct lock_args *);
-#ifdef DEBUG_LOCKS
-int	debuglockmgr (struct lock *, u_int flags,
-			const char *,
-			const char *,
-			int);
-#define lockmgr(lockp, flags) \
-	debuglockmgr((lockp), (flags), "lockmgr", __FILE__, __LINE__)
-#else
-int	lockmgr (struct lock *, u_int flags);
-#endif
-void	lockmgr_setexclusive_interlocked(struct lock *);
-void	lockmgr_clrexclusive_interlocked(struct lock *);
+int	lockmgr_shared (struct lock *, u_int flags);
+int	lockmgr_exclusive (struct lock *, u_int flags);
+int	lockmgr_downgrade (struct lock *, u_int flags);
+int	lockmgr_upgrade (struct lock *, u_int flags);
+int	lockmgr_release (struct lock *, u_int flags);
+int	lockmgr_cancel_beg (struct lock *, u_int flags);
+int	lockmgr_cancel_end (struct lock *, u_int flags);
 void	lockmgr_kernproc (struct lock *);
 void	lockmgr_printinfo (struct lock *);
 int	lockstatus (struct lock *, struct thread *);
@@ -255,9 +245,40 @@ int	lockcountnb (struct lock *);
 		(flags)							\
 	};								\
 	SYSINIT(name##_lock_sysinit, SI_SUB_DRIVERS, SI_ORDER_MIDDLE,	\
-	    lock_sysinit, &name##_args);					\
-	SYSUNINIT(name##_lock_sysuninit, SI_SUB_DRIVERS, SI_ORDER_MIDDLE,	\
+	    lock_sysinit, &name##_args);				\
+	SYSUNINIT(name##_lock_sysuninit, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, \
 	    lockuninit, (lock))
+
+/*
+ * Most lockmgr() calls pass a constant flags parameter which
+ * we can optimize-out with an inline.
+ */
+static __inline
+int
+lockmgr(struct lock *lkp, u_int flags)
+{
+	switch(flags & LK_TYPE_MASK) {
+	case LK_SHARED:
+		return lockmgr_shared(lkp, flags);
+	case LK_EXCLUSIVE:
+		return lockmgr_exclusive(lkp, flags);
+	case LK_DOWNGRADE:
+		return lockmgr_downgrade(lkp, flags);
+	case LK_EXCLUPGRADE:
+	case LK_UPGRADE:
+		return lockmgr_upgrade(lkp, flags);
+	case LK_RELEASE:
+		return lockmgr_release(lkp, flags);
+	case LK_CANCEL_BEG:
+		return lockmgr_cancel_beg(lkp, flags);
+	case LK_CANCEL_END:
+		return lockmgr_cancel_end(lkp, flags);
+	default:
+		panic("lockmgr: unknown locktype request %d",
+		      flags & LK_TYPE_MASK);
+		return EINVAL;	/* NOT REACHED */
+	}
+}
 
 #endif /* _KERNEL */
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
