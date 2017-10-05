@@ -53,6 +53,18 @@ static __inline void
 mtx_init(mtx_t *mtx, const char *ident)
 {
 	mtx->mtx_lock = 0;
+	mtx->mtx_flags = 0;
+	mtx->mtx_owner = NULL;
+	mtx->mtx_exlink = NULL;
+	mtx->mtx_shlink = NULL;
+	mtx->mtx_ident = ident;
+}
+
+static __inline void
+mtx_init_flags(mtx_t *mtx, const char *ident, uint32_t flags)
+{
+	mtx->mtx_lock = 0;
+	mtx->mtx_flags = flags;
 	mtx->mtx_owner = NULL;
 	mtx->mtx_exlink = NULL;
 	mtx->mtx_shlink = NULL;

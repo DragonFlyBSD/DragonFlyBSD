@@ -894,7 +894,7 @@ smp_invltlb(void)
 	cpumask_t mask;
 	unsigned long rflags;
 #ifdef LOOPRECOVER
-	uint64_t tsc_base = rdtsc();
+	tsc_uclock_t tsc_base = rdtsc();
 	int repeats = 0;
 #endif
 
@@ -1115,7 +1115,7 @@ smp_inval_intr(void)
 	struct mdglobaldata *md = mdcpu;
 	cpumask_t cpumask;
 #ifdef LOOPRECOVER
-	uint64_t tsc_base = rdtsc();
+	tsc_uclock_t tsc_base = rdtsc();
 #endif
 
 #if 0

@@ -65,17 +65,20 @@ typedef struct mtx_link	mtx_link_t;
 
 struct mtx {
 	volatile u_int	mtx_lock;
-	int		mtx_reserved01;	/* future use & struct alignmnent */
+	uint32_t	mtx_flags;
 	struct thread	*mtx_owner;
 	mtx_link_t	*mtx_exlink;
 	mtx_link_t	*mtx_shlink;
 	const char	*mtx_ident;
 } __cachealign;
 
+#define MTXF_NOCOLLSTATS	0x00000001	/* v_lock_coll not applicable */
+
 typedef struct mtx	mtx_t;
 typedef u_int		mtx_state_t;
 
-#define MTX_INITIALIZER(ident)	{ .mtx_lock = 0, .mtx_owner = NULL, \
+#define MTX_INITIALIZER(ident)	{ .mtx_lock = 0, .mtx_flags = 0,	\
+				  .mtx_owner = NULL,			\
 			  	  .mtx_exlink = NULL, .mtx_shlink = NULL, \
 				  .mtx_ident = ident }
 

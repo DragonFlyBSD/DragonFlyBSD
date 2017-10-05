@@ -57,12 +57,14 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
+#include <sys/indefinite.h>
 #include <sys/thread.h>
 
 #include <machine/cpufunc.h>
 
 #include <sys/thread2.h>
 #include <sys/mutex2.h>
+#include <sys/indefinite2.h>
 
 static int mtx_chain_link_ex(mtx_t *mtx, u_int olock);
 static int mtx_chain_link_sh(mtx_t *mtx, u_int olock);
@@ -936,7 +938,13 @@ mtx_delete_link(mtx_t *mtx, mtx_link_t *link)
 int
 mtx_wait_link(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 {
+	thread_t td = curthread;
 	int error;
+
+	if ((mtx->mtx_flags & MTXF_NOCOLLSTATS) == 0) {
+		indefinite_init(&td->td_indefinite, mtx->mtx_ident, 1,
+			((link->state & MTX_LINK_LINKED_SH) ? 'm' : 'M'));
+	}
 
 	/*
 	 * Sleep.  Handle false wakeups, interruptions, etc.
@@ -949,20 +957,13 @@ mtx_wait_link(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 		tsleep_interlock(link, 0);
 		cpu_lfence();
 		if (link->state & MTX_LINK_LINKED) {
-			if (link->state & MTX_LINK_LINKED_SH)
-				mycpu->gd_cnt.v_lock_name[0] = 'S';
-			else
-				mycpu->gd_cnt.v_lock_name[0] = 'X';
-			strncpy(mycpu->gd_cnt.v_lock_name + 1,
-				mtx->mtx_ident,
-				sizeof(mycpu->gd_cnt.v_lock_name) - 2);
-			++mycpu->gd_cnt.v_lock_colls;
-
 			error = tsleep(link, flags | PINTERLOCKED,
 				       mtx->mtx_ident, to);
 			if (error)
 				break;
 		}
+		if ((mtx->mtx_flags & MTXF_NOCOLLSTATS) == 0)
+			indefinite_check(&td->td_indefinite);
 	}
 
 	/*
@@ -1013,6 +1014,9 @@ mtx_wait_link(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 	 * Clear state on status returned.
 	 */
 	link->state = MTX_LINK_IDLE;
+
+	if ((mtx->mtx_flags & MTXF_NOCOLLSTATS) == 0)
+		indefinite_done(&td->td_indefinite);
 
 	return error;
 }

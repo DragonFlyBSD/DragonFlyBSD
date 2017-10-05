@@ -665,7 +665,8 @@ apic_ipi(int dest_type, int vector, int delivery_mode)
 		tsc = rdtsc();
 		while ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
 			cpu_pause();
-			if ((int64_t)(rdtsc() - (tsc + tsc_frequency)) > 0) {
+			if ((tsc_sclock_t)(rdtsc() -
+					   (tsc + tsc_frequency)) > 0) {
 				kprintf("apic_ipi stall cpu %d (sing)\n",
 					mycpuid);
 				tsc = rdtsc();
@@ -698,7 +699,8 @@ single_apic_ipi(int cpu, int vector, int delivery_mode)
 		tsc = rdtsc();
 		while ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
 			cpu_pause();
-			if ((int64_t)(rdtsc() - (tsc + tsc_frequency)) > 0) {
+			if ((tsc_sclock_t)(rdtsc() -
+					   (tsc + tsc_frequency)) > 0) {
 				kprintf("single_apic_ipi stall cpu %d (sing)\n",
 					mycpuid);
 				tsc = rdtsc();

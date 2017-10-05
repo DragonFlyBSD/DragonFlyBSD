@@ -1,8 +1,8 @@
 /*
- * Copyright (c) 2014 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2017 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Sepherosa Ziehau <sepherosa@gmail.com>
+ * by Matthew Dillon <dillon@backplane.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,50 +31,26 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#ifndef _SYS_MICROTIME_PCPU_H_
-#define _SYS_MICROTIME_PCPU_H_
-
-#ifndef _SYS_PARAM_H_
-#include <sys/param.h>
-#endif
-
-#ifndef _SYS_TIME_H_
-#include <sys/time.h>
-#endif
-
-#include <machine/clock.h>
-#include <machine/cpufunc.h>
+#ifndef _SYS_INDEFINITE_H_
+#define _SYS_INDEFINITE_H_
 
 /*
- * This 'time' only guarantees monotonicly increment on the same CPU
+ * Indefinite info collection and handling code for contention loops
  */
+#ifndef _MACHINE_CLOCK_H_
+#include <machine/clock.h>
+#endif
 
-union microtime_pcpu {
-	struct timeval	tv;
-	uint64_t	tsc;
+extern int lock_test_mode;
+
+struct indefinite_info {
+	tsc_uclock_t	base;
+	const char	*ident;
+	int		secs;
+	int		count;
+	char		type;
 };
 
-static __inline void
-microtime_pcpu_get(union microtime_pcpu *t)
-{
-	if (tsc_invariant)
-		t->tsc = rdtsc();
-	else
-		microuptime(&t->tv);
-}
+typedef struct indefinite_info	indefinite_info_t;
 
-static __inline int
-microtime_pcpu_diff(const union microtime_pcpu *s,
-		    const union microtime_pcpu *e)
-{
-	if (tsc_invariant) {
-		return (((e->tsc - s->tsc) * 1000000) /
-			(tsc_sclock_t)tsc_frequency);
-	} else {
-		return ((e->tv.tv_usec - s->tv.tv_usec) +
-			(e->tv.tv_sec - s->tv.tv_sec) * 1000000);
-	}
-}
-
-#endif	/* !_SYS_MICROTIME_PCPU_H_ */
+#endif

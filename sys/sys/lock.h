@@ -163,10 +163,11 @@ struct lock {
  * The first three flags may be set in lock_init to set their mode permanently,
  * or passed in as arguments to the lock manager.
  */
-#define LK_EXTFLG_MASK	0x07000070	/* mask of external flags */
+#define LK_EXTFLG_MASK	0x070000F0	/* mask of external flags */
 #define LK_NOWAIT	0x00000010	/* do not sleep to await lock */
 #define LK_SLEEPFAIL	0x00000020	/* sleep, then return failure */
 #define LK_CANRECURSE	0x00000040	/* allow recursive exclusive lock */
+#define LK_NOCOLLSTATS	0x00000080	/* v_lock_coll not applicable */
 #define	LK_CANCELABLE	0x01000000	/* blocked caller can be canceled */
 #define LK_TIMELOCK	0x02000000
 #define LK_PCATCH	0x04000000	/* timelocked with signal catching */

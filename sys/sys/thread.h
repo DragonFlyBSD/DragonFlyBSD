@@ -35,6 +35,9 @@
 #ifndef _SYS_IOSCHED_H_
 #include <sys/iosched.h>
 #endif
+#ifndef _SYS_INDEFINITE_H_
+#include <sys/indefinite.h>
+#endif
 #include <machine/thread.h>
 
 struct globaldata;
@@ -272,6 +275,7 @@ struct thread {
     int		td_in_crit_report;	
 #endif
     struct md_thread td_mach;
+    indefinite_info_t	td_indefinite;
 #ifdef DEBUG_LOCKS
 #define SPINLOCK_DEBUG_ARRAY_SIZE	32
    int 	td_spinlock_stack_id[SPINLOCK_DEBUG_ARRAY_SIZE];

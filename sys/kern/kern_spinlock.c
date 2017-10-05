@@ -62,6 +62,7 @@
 #include <machine/cpufunc.h>
 #include <machine/specialreg.h>
 #include <machine/clock.h>
+#include <sys/indefinite2.h>
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
 #include <sys/ktr.h>
@@ -71,12 +72,6 @@
 #endif
 
 struct spinlock pmap_spin = SPINLOCK_INITIALIZER(pmap_spin, "pmap_spin");
-
-struct indefinite_info {
-	sysclock_t	base;
-	int		secs;
-	const char	*ident;
-};
 
 /*
  * Kernal Trace
@@ -108,9 +103,6 @@ SYSCTL_LONG(_debug, OID_AUTO, spinlocks_add_latency, CTLFLAG_RW,
     "Add spinlock latency");
 
 #endif
-
-static int spin_indefinite_check(struct spinlock *spin,
-				  struct indefinite_info *info);
 
 /*
  * We contested due to another exclusive lock holder.  We lose.
@@ -178,8 +170,7 @@ spin_trylock_contested(struct spinlock *spin)
 void
 _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 {
-	struct indefinite_info info = { 0, 0, ident };
-	int i;
+	thread_t td = curthread;
 
 	/*
 	 * WARNING! Caller has already incremented the lock.  We must
@@ -194,6 +185,7 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 		if (atomic_cmpset_int(&spin->counta, SPINLOCK_SHARED | 1, 1))
 			return;
 	}
+	indefinite_init(&td->td_indefinite, ident, 0, 'S');
 
 	/*
 	 * Transfer our exclusive request to the high bits and clear the
@@ -211,16 +203,9 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 	if (value & SPINLOCK_SHARED)
 		atomic_clear_int(&spin->counta, SPINLOCK_SHARED);
 
-#ifdef DEBUG_LOCKS_LATENCY
-	long j;
-	for (j = spinlocks_add_latency; j > 0; --j)
-		cpu_ccfence();
-#endif
 	/*
 	 * Spin until we can acquire a low-count of 1.
 	 */
-	i = 0;
-	/*logspin(beg, spin, 'w');*/
 	for (;;) {
 		/*
 		 * If the low bits are zero, try to acquire the exclusive lock
@@ -243,20 +228,10 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 				      (ovalue - SPINLOCK_EXCLWAIT) | 1)) {
 			break;
 		}
-		if ((++i & 0x7F) == 0x7F) {
-			mycpu->gd_cnt.v_lock_name[0] = 'X';
-			strncpy(mycpu->gd_cnt.v_lock_name + 1,
-				ident,
-				sizeof(mycpu->gd_cnt.v_lock_name) - 2);
-			++mycpu->gd_cnt.v_lock_colls;
-			if (spin_indefinite_check(spin, &info))
-				break;
-		}
-#ifdef _KERNEL_VIRTUAL
-		pthread_yield();
-#endif
+		if (indefinite_check(&td->td_indefinite))
+			break;
 	}
-	/*logspin(end, spin, 'w');*/
+	indefinite_done(&td->td_indefinite);
 }
 
 /*
@@ -269,8 +244,9 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 void
 _spin_lock_shared_contested(struct spinlock *spin, const char *ident)
 {
-	struct indefinite_info info = { 0, 0, ident };
-	int i;
+	thread_t td = curthread;
+
+	indefinite_init(&td->td_indefinite, ident, 0, 's');
 
 	/*
 	 * Undo the inline's increment.
@@ -283,8 +259,6 @@ _spin_lock_shared_contested(struct spinlock *spin, const char *ident)
 		cpu_ccfence();
 #endif
 
-	/*logspin(beg, spin, 'w');*/
-	i = 0;
 	for (;;) {
 		/*
 		 * Loop until we can acquire the shared spinlock.  Note that
@@ -315,56 +289,10 @@ _spin_lock_shared_contested(struct spinlock *spin, const char *ident)
 					      ovalue + 1))
 				break;
 		}
-		if ((++i & 0x7F) == 0x7F) {
-			mycpu->gd_cnt.v_lock_name[0] = 'S';
-			strncpy(mycpu->gd_cnt.v_lock_name + 1,
-				ident,
-				sizeof(mycpu->gd_cnt.v_lock_name) - 2);
-			++mycpu->gd_cnt.v_lock_colls;
-			if (spin_indefinite_check(spin, &info))
-				break;
-		}
-#ifdef _KERNEL_VIRTUAL
-		pthread_yield();
-#endif
+		if (indefinite_check(&td->td_indefinite))
+			break;
 	}
-	/*logspin(end, spin, 'w');*/
-}
-
-static
-int
-spin_indefinite_check(struct spinlock *spin, struct indefinite_info *info)
-{
-	sysclock_t count;
-
-	cpu_spinlock_contested();
-
-	count = sys_cputimer->count();
-	if (info->secs == 0) {
-		info->base = count;
-		++info->secs;
-	} else if (count - info->base > sys_cputimer->freq) {
-		kprintf("spin_lock: %s(%p), indefinite wait (%d secs)!\n",
-			info->ident, spin, info->secs);
-		info->base = count;
-		++info->secs;
-		if (panicstr)
-			return (TRUE);
-#if defined(INVARIANTS)
-		if (spin_lock_test_mode) {
-			print_backtrace(-1);
-			return (TRUE);
-		}
-#endif
-#if defined(INVARIANTS)
-		if (info->secs == 11)
-			print_backtrace(-1);
-#endif
-		if (info->secs == 60)
-			panic("spin_lock: %s(%p), indefinite wait!",
-			      info->ident, spin);
-	}
-	return (FALSE);
+	indefinite_done(&td->td_indefinite);
 }
 
 /*

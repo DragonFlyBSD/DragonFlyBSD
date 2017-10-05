@@ -1223,7 +1223,7 @@ syscall2(struct trapframe *frame)
 	 *	 is responsible for getting the MP lock.
 	 */
 #ifdef SYSCALL_DEBUG
-	uint64_t tscval = rdtsc();
+	tsc_uclock_t tscval = rdtsc();
 #endif
 	error = (*callp->sy_call)(&args);
 #ifdef SYSCALL_DEBUG

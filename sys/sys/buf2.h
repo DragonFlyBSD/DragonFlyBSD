@@ -67,7 +67,7 @@
  * Initialize a lock.
  */
 #define BUF_LOCKINIT(bp) \
-	lockinit(&(bp)->b_lock, buf_wmesg, 0, 0)
+	lockinit(&(bp)->b_lock, buf_wmesg, 0, LK_NOCOLLSTATS)
 
 /*
  *

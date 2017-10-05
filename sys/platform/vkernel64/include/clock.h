@@ -15,6 +15,9 @@
 #include <sys/types.h>
 #endif
 
+typedef uint64_t tsc_uclock_t;
+typedef int64_t tsc_sclock_t;
+
 /*
  * i386 to clock driver interface.
  * XXX large parts of the driver and its interface are misplaced.
@@ -26,9 +29,10 @@ extern int	timer0_max_count;
 extern int	tsc_present;
 extern int	tsc_invariant;
 extern int	tsc_mpsync;
-extern int64_t	tsc_frequency;
 extern int	tsc_is_broken;
 extern int	wall_cmos_clock;
+extern tsc_uclock_t tsc_frequency;
+extern tsc_uclock_t tsc_oneus_approx;	/* do not use for fine calc, min 1 */
 
 /*
  * Driver to clock driver interface.

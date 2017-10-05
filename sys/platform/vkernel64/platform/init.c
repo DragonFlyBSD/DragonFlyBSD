@@ -115,7 +115,6 @@ u_int cpu_feature;	/* XXX */
 int tsc_present;
 int tsc_invariant;
 int tsc_mpsync;
-int64_t tsc_frequency;
 int optcpus;		/* number of cpus - see mp_start() */
 int cpu_bits;
 int lwp_cpu_lock;	/* if/how to lock virtual CPUs to real CPUs */
@@ -126,6 +125,9 @@ int vkernel_B_arg;	/* no of core bits - only SMP */
 int vmm_enabled;	/* VMM HW assisted enable */
 int use_precise_timer = 0;	/* use a precise timer (more expensive) */
 struct privatespace *CPU_prvspace;
+
+tsc_uclock_t tsc_frequency;
+tsc_uclock_t tsc_oneus_approx;
 
 extern uint64_t KPML4phys;	/* phys addr of kernel level 4 */
 
@@ -481,6 +483,7 @@ main(int ac, char **av)
 	sysctlbyname("hw.tsc_frequency", &tsc_frequency, &vsize, NULL, 0);
 	if (tsc_present)
 		cpu_feature |= CPUID_TSC;
+	tsc_oneus_approx = ((tsc_frequency|1) + 999999) / 1000000;
 
 	/*
 	 * Check SSE

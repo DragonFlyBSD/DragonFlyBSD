@@ -35,6 +35,7 @@
 
 #ifdef _KERNEL
 #include <sys/types.h>
+#include <machine/clock.h>
 #else
 #include <machine/stdint.h>
 #endif
@@ -221,10 +222,11 @@ int	tvtohz_high(struct timeval *);
 int	tvtohz_low(struct timeval *);
 int	tstohz_high(struct timespec *);
 int	tstohz_low(struct timespec *);
-int64_t	tsc_get_target(int ns);
 int	tsc_test_target(int64_t target);
 void	tsc_delay(int ns);
 int	nanosleep1(struct timespec *rqt, struct timespec *rmt);
+
+tsc_uclock_t tsc_get_target(int ns);
 
 #else /* !_KERNEL */
 

@@ -42,6 +42,7 @@
 
 #include <sys/cdefs.h>
 #include <sys/thread.h>
+#include <machine/clock.h>
 #include <machine/psl.h>
 #include <machine/smp.h>
 
@@ -549,20 +550,20 @@ rdpmc(u_int pmc)
 
 #define _RDTSC_SUPPORTED_
 
-static __inline u_int64_t
+static __inline tsc_uclock_t
 rdtsc(void)
 {
 	u_int32_t low, high;
 
 	__asm __volatile("rdtsc" : "=a" (low), "=d" (high));
-	return (low | ((u_int64_t)high << 32));
+	return (low | ((tsc_uclock_t)high << 32));
 }
 
 #ifdef _KERNEL
 #include <machine/cputypes.h>
 #include <machine/md_var.h>
 
-static __inline u_int64_t
+static __inline tsc_uclock_t
 rdtsc_ordered(void)
 {
 	if (cpu_vendor_id == CPU_VENDOR_INTEL)
@@ -953,7 +954,7 @@ u_short	rfs(void);
 u_short	rgs(void);
 u_int64_t rdmsr(u_int msr);
 u_int64_t rdpmc(u_int pmc);
-u_int64_t rdtsc(void);
+tsc_uclock_t rdtsc(void);
 u_int	read_rflags(void);
 void	wbinvd(void);
 void	write_rflags(u_int rf);

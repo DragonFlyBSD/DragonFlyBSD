@@ -316,7 +316,7 @@ initclocks(void *dummy)
 	initclocks_pcpu();
 	clocks_running = 1;
 	if (kpmap) {
-	    kpmap->tsc_freq = (uint64_t)tsc_frequency;
+	    kpmap->tsc_freq = tsc_frequency;
 	    kpmap->tick_freq = hz;
 	}
 }
@@ -1672,7 +1672,7 @@ pps_event(struct pps_state *pps, sysclock_t count, int event)
  *
  * Returns -1 if the TSC is not supported.
  */
-int64_t
+tsc_uclock_t
 tsc_get_target(int ns)
 {
 #if defined(_RDTSC_SUPPORTED_)

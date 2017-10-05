@@ -106,10 +106,12 @@ int	disable_rtc_set;	/* disable resettodr() if != 0 */
 int	tsc_present;
 int	tsc_invariant;
 int	tsc_mpsync;
-int64_t	tsc_frequency;
 int	tsc_is_broken;
 int	wall_cmos_clock;	/* wall CMOS clock assumed if != 0 */
 int	timer0_running;
+tsc_uclock_t tsc_frequency;
+tsc_uclock_t tsc_oneus_approx;	/* always at least 1, approx only */
+
 enum tstate { RELEASED, ACQUIRED };
 enum tstate timer0_state;
 enum tstate timer1_state;
@@ -557,7 +559,7 @@ readrtc(int port)
 static u_int
 calibrate_clocks(void)
 {
-	u_int64_t old_tsc;
+	tsc_uclock_t old_tsc;
 	u_int tot_count;
 	sysclock_t count, prev_count;
 	int sec, start_sec, timeout;
@@ -633,6 +635,7 @@ calibrate_clocks(void)
 			    (intmax_t)tsc_frequency);
 		}
 	}
+	tsc_oneus_approx = ((tsc_frequency|1) + 999999) / 1000000;
 
 	kprintf("i8254 clock: %u Hz\n", tot_count);
 	return (tot_count);
@@ -849,15 +852,15 @@ startrtclock(void)
 		cputimer_set_frequency(&i8254_cputimer, freq);
 	} else {
 		if (bootverbose)
-			kprintf(
-		    "%d Hz differs from default of %d Hz by more than 1%%\n",
-			       freq, i8254_cputimer.freq);
+			kprintf("%d Hz differs from default of %d Hz "
+				"by more than 1%%\n",
+			        freq, i8254_cputimer.freq);
 		tsc_frequency = 0;
 	}
 
 	if (tsc_frequency != 0 && calibrate_timers_with_rtc == 0) {
-		kprintf(
-"hw.calibrate_timers_with_rtc not set - using old calibration method\n");
+		kprintf("hw.calibrate_timers_with_rtc not "
+			"set - using old calibration method\n");
 		tsc_frequency = 0;
 	}
 
@@ -883,8 +886,10 @@ skip_rtc_based:
 		    tsc_invariant ? " invariant" : "",
 		    (intmax_t)tsc_frequency);
 	}
+	tsc_oneus_approx = ((tsc_frequency|1) + 999999) / 1000000;
 
-	EVENTHANDLER_REGISTER(shutdown_post_sync, resettodr_on_shutdown, NULL, SHUTDOWN_PRI_LAST);
+	EVENTHANDLER_REGISTER(shutdown_post_sync, resettodr_on_shutdown,
+			      NULL, SHUTDOWN_PRI_LAST);
 }
 
 /*
@@ -1247,7 +1252,7 @@ static void
 tsc_mpsync_test_loop(struct tsc_mpsync_arg *arg)
 {
 	struct globaldata *gd = mycpu;
-	uint64_t test_end, test_begin;
+	tsc_uclock_t test_end, test_begin;
 	u_int i;
 
 	if (bootverbose) {

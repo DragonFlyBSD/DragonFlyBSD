@@ -93,7 +93,7 @@ struct pmap_inval_info {
 #ifdef LOOPRECOVER
 	cpumask_t	sigmask;
 	int		failed;
-	int64_t		tsc_target;
+	tsc_uclock_t	tsc_target;
 #endif
 } __cachealign;
 
@@ -163,10 +163,10 @@ __inline
 int
 loopwdog(struct pmap_inval_info *info)
 {
-	int64_t tsc;
+	tsc_uclock_t tsc;
 
 	tsc = rdtsc();
-	if (info->tsc_target - tsc < 0 && tsc_frequency) {
+	if ((tsc_sclock_t)(info->tsc_target - tsc) < 0 && tsc_frequency) {
 		info->tsc_target = tsc + (tsc_frequency * LOOPRECOVER_TIMEOUT2);
 		return 1;
 	}

@@ -867,7 +867,7 @@ init_machclk(void)
 	 */
 #ifdef _RDTSC_SUPPORTED_
 	if (tsc_present)
-		machclk_freq = (uint64_t)tsc_frequency;
+		machclk_freq = tsc_frequency;
 #endif
 
 	/*

@@ -46,6 +46,7 @@
 #include <sys/spinlock.h>
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
+#include <sys/indefinite2.h>
 
 static void undo_upreq(struct lock *lkp);
 
@@ -62,6 +63,10 @@ SYSCTL_PROC(_kern, OID_AUTO, cancel_test, CTLTYPE_INT|CTLFLAG_RW, 0, 0,
 	    sysctl_cancel_test, "I", "test cancelable locks");
 
 #endif
+
+int lock_test_mode;
+SYSCTL_INT(_debug, OID_AUTO, lock_test_mode, CTLFLAG_RW,
+	   &lock_test_mode, 0, "");
 
 /*
  * Locking primitives implementation.
@@ -93,11 +98,13 @@ debuglockmgr(struct lock *lkp, u_int flags,
 	int pflags;
 	int wflags;
 	int timo;
+	int info_init;
 #ifdef DEBUG_LOCKS
 	int i;
 #endif
 
 	error = 0;
+	info_init = 0;
 
 	if (mycpu->gd_intr_nesting_level &&
 	    (flags & LK_NOWAIT) == 0 &&
@@ -198,11 +205,12 @@ again:
 				goto again;
 			}
 
-			mycpu->gd_cnt.v_lock_name[0] = 'S';
-			strncpy(mycpu->gd_cnt.v_lock_name + 1,
-				lkp->lk_wmesg,
-				sizeof(mycpu->gd_cnt.v_lock_name) - 2);
-			++mycpu->gd_cnt.v_lock_colls;
+			if (info_init == 0 &&
+			    (lkp->lk_flags & LK_NOCOLLSTATS) == 0) {
+				indefinite_init(&td->td_indefinite,
+						lkp->lk_wmesg, 1, 'l');
+				info_init = 1;
+			}
 
 			error = tsleep(lkp, pflags | PINTERLOCKED,
 				       lkp->lk_wmesg, timo);
@@ -284,11 +292,12 @@ again:
 			goto again;
 		}
 
-		mycpu->gd_cnt.v_lock_name[0] = 'X';
-		strncpy(mycpu->gd_cnt.v_lock_name + 1,
-			lkp->lk_wmesg,
-			sizeof(mycpu->gd_cnt.v_lock_name) - 2);
-		++mycpu->gd_cnt.v_lock_colls;
+		if (info_init == 0 &&
+		    (lkp->lk_flags & LK_NOCOLLSTATS) == 0) {
+			indefinite_init(&td->td_indefinite, lkp->lk_wmesg,
+					1, 'L');
+			info_init = 1;
+		}
 
 		error = tsleep(lkp, pflags | PINTERLOCKED,
 			       lkp->lk_wmesg, timo);
@@ -298,6 +307,7 @@ again:
 			error = ENOLCK;
 			break;
 		}
+		indefinite_check(&td->td_indefinite);
 		goto again;
 
 	case LK_DOWNGRADE:
@@ -436,6 +446,13 @@ again:
 			wflags |= (count - 1);
 		}
 
+		if (info_init == 0 &&
+		    (lkp->lk_flags & LK_NOCOLLSTATS) == 0) {
+			indefinite_init(&td->td_indefinite, lkp->lk_wmesg,
+					1, 'U');
+			info_init = 1;
+		}
+
 		if (atomic_cmpset_int(&lkp->lk_count, count, wflags)) {
 			COUNT(td, -1);
 
@@ -444,12 +461,6 @@ again:
 			 */
 			if ((count & (LKC_UPREQ|LKC_MASK)) == (LKC_UPREQ | 1))
 				wakeup(lkp);
-
-			mycpu->gd_cnt.v_lock_name[0] = 'U';
-			strncpy(mycpu->gd_cnt.v_lock_name + 1,
-				lkp->lk_wmesg,
-				sizeof(mycpu->gd_cnt.v_lock_name) - 2);
-			++mycpu->gd_cnt.v_lock_colls;
 
 			error = tsleep(lkp, pflags | PINTERLOCKED,
 				       lkp->lk_wmesg, timo);
@@ -475,6 +486,7 @@ again:
 			else
 				flags = LK_WAITUPGRADE;	/* we own the bit */
 		}
+		indefinite_check(&td->td_indefinite);
 		goto again;
 
 	case LK_WAITUPGRADE:
@@ -503,12 +515,6 @@ again:
 			timo = (extflags & LK_TIMELOCK) ? lkp->lk_timo : 0;
 			tsleep_interlock(lkp, pflags);
 			if (atomic_fetchadd_int(&lkp->lk_count, 0) == count) {
-				mycpu->gd_cnt.v_lock_name[0] = 'U';
-				strncpy(mycpu->gd_cnt.v_lock_name + 1,
-					lkp->lk_wmesg,
-					sizeof(mycpu->gd_cnt.v_lock_name) - 2);
-				++mycpu->gd_cnt.v_lock_colls;
-
 				error = tsleep(lkp, pflags | PINTERLOCKED,
 					       lkp->lk_wmesg, timo);
 				if (error) {
@@ -523,6 +529,7 @@ again:
 			}
 			/* retry */
 		}
+		indefinite_check(&td->td_indefinite);
 		goto again;
 
 	case LK_RELEASE:
@@ -673,6 +680,10 @@ again:
 		    flags & LK_TYPE_MASK);
 		/* NOTREACHED */
 	}
+
+	if (info_init)
+		indefinite_done(&td->td_indefinite);
+
 	return (error);
 }
 
@@ -903,12 +914,9 @@ sysctl_cancel_lock(SYSCTL_HANDLER_ARGS)
 	if (req->newptr) {
 		SYSCTL_XUNLOCK();
 		lockmgr(&cancel_lk, LK_EXCLUSIVE);
-		kprintf("x");
 		error = tsleep(&error, PCATCH, "canmas", hz * 5);
 		lockmgr(&cancel_lk, LK_CANCEL_BEG);
-		kprintf("y");
 		error = tsleep(&error, PCATCH, "canmas", hz * 5);
-		kprintf("z");
 		lockmgr(&cancel_lk, LK_RELEASE);
 		SYSCTL_XLOCK();
 		SYSCTL_OUT(req, &error, sizeof(error));

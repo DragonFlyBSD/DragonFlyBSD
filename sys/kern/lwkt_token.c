@@ -57,10 +57,12 @@
 #include <machine/cpu.h>
 #include <sys/lock.h>
 #include <sys/spinlock.h>
+#include <sys/indefinite.h>
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
 #include <sys/mplock2.h>
+#include <sys/indefinite2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -480,10 +482,13 @@ lwkt_getalltokens(thread_t td, int spinning)
 			 */
 			KASSERT(tok->t_desc,
 				("token %p is not initialized", tok));
-			strncpy(td->td_gd->gd_cnt.v_lock_name,
-				tok->t_desc,
-				sizeof(td->td_gd->gd_cnt.v_lock_name) - 1);
 
+			if (td->td_indefinite.type == 0) {
+				indefinite_init(&td->td_indefinite,
+						tok->t_desc, 1, 't');
+			} else {
+				indefinite_check(&td->td_indefinite);
+			}
 			if (lwkt_sched_debug > 0) {
 				--lwkt_sched_debug;
 				kprintf("toka %p %s %s\n",
@@ -592,6 +597,12 @@ _lwkt_getalltokens_sorted(thread_t td)
 			 * Otherwise we failed to acquire all the tokens.
 			 * Release whatever we did get.
 			 */
+			if (td->td_indefinite.type == 0) {
+				indefinite_init(&td->td_indefinite,
+						tok->t_desc, 1, 't');
+			} else {
+				indefinite_check(&td->td_indefinite);
+			}
 			if (lwkt_sched_debug > 0) {
 				--lwkt_sched_debug;
 				kprintf("tokb %p %s %s\n",

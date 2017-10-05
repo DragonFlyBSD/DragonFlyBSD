@@ -52,9 +52,11 @@
 #include <sys/lock.h>
 #include <sys/spinlock.h>
 #include <sys/ktr.h>
+#include <sys/indefinite.h>
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
+#include <sys/indefinite2.h>
 
 #include <sys/dsched.h>
 
@@ -701,7 +703,6 @@ lwkt_switch(void)
 	    {
 		goto havethread;
 	    }
-	    ++gd->gd_cnt.v_lock_colls;
 	    ++ntd->td_contended;	/* overflow ok */
 #ifdef LOOPMASK
 	    if (tsc_frequency && rdtsc() - tsc_base > tsc_frequency) {
@@ -735,7 +736,6 @@ lwkt_switch(void)
 		    goto havethread;
 	    }
 	    ++ntd->td_contended;	/* overflow ok */
-	    ++gd->gd_cnt.v_lock_colls;
 	}
 
 	/*
@@ -765,6 +765,12 @@ havethread:
     ntd->td_contended = 0;	/* reset once scheduled */
     ++gd->gd_cnt.v_swtch;
     gd->gd_idle_repeat = 0;
+
+    /*
+     * If we were busy waiting record final disposition
+     */
+    if (ntd->td_indefinite.type)
+	    indefinite_done(&ntd->td_indefinite);
 
 havethread_preempted:
     /*

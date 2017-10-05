@@ -1031,8 +1031,8 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	} else {
 		nmp = objcache_get(nfsmount_objcache, M_WAITOK);
 		bzero((caddr_t)nmp, sizeof (struct nfsmount));
-		mtx_init(&nmp->nm_rxlock, "nfsrx");
-		mtx_init(&nmp->nm_txlock, "nfstx");
+		mtx_init_flags(&nmp->nm_rxlock, "nfsrx", MTXF_NOCOLLSTATS);
+		mtx_init_flags(&nmp->nm_txlock, "nfstx", MTXF_NOCOLLSTATS);
 		TAILQ_INIT(&nmp->nm_uidlruhead);
 		TAILQ_INIT(&nmp->nm_bioq);
 		TAILQ_INIT(&nmp->nm_reqq);
