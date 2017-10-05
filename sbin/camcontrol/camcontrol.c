@@ -689,7 +689,7 @@ scsidoinquiry(struct cam_device *device, int argc, char **argv,
 		return(error);
 
 	if (arglist & CAM_ARG_GET_SERIAL)
-		scsiserial(device, retry_count, timeout);
+		error = scsiserial(device, retry_count, timeout);
 
 	if (error != 0)
 		return(error);
