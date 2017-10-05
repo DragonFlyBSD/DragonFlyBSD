@@ -152,6 +152,10 @@ static int use_socreate_fast = 1;
 SYSCTL_INT(_kern_ipc, OID_AUTO, socreate_fast, CTLFLAG_RW,
     &use_socreate_fast, 0, "Fast socket creation");
 
+static int soavailconn = 32;
+SYSCTL_INT(_kern_ipc, OID_AUTO, soavailconn, CTLFLAG_RW,
+    &soavailconn, 0, "Maximum available socket connection queue size");
+
 /*
  * Socket operation routines.
  * These routines are called by the routines in
@@ -2615,7 +2619,11 @@ static int
 filt_solisten(struct knote *kn, long hint __unused)
 {
 	struct socket *so = (struct socket *)kn->kn_fp->f_data;
+	int qlen = so->so_qlen;
 
-	kn->kn_data = so->so_qlen;
-	return (! TAILQ_EMPTY(&so->so_comp));
+	if (soavailconn > 0 && qlen > soavailconn)
+		qlen = soavailconn;
+	kn->kn_data = qlen;
+
+	return (!TAILQ_EMPTY(&so->so_comp));
 }
