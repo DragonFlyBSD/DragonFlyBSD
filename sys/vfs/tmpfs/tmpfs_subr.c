@@ -440,7 +440,7 @@ loop:
 	case VSOCK:
 		break;
 	case VREG:
-		vinitvmio(vp, node->tn_size, TMPFS_BLKMASK, -1);
+		vinitvmio(vp, node->tn_size, TMPFS_BLKSIZE, -1);
 		break;
 	case VLNK:
 		break;
