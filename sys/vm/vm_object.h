@@ -202,17 +202,22 @@ struct vm_object {
 /*
  * Flags
  *
- * NOTE: OBJ_ONEMAPPING only applies to DEFAULT and SWAP objects.  It
- *	 may be gratuitously re-cleared in other cases but will already be
- *	 clear in those cases.  It might not be set on other object types
- *	 (particularly OBJT_VNODE).
+ * OBJ_ONEMAPPING - Only applies to DEFAULT and SWAP objects.  It may be
+ *		    gratuitously re-cleared in other cases but will already
+ *		    be clear in those cases.  It might not be set on other
+ *		    object types (particularly OBJT_VNODE).
+ *
+ * OBJ_NOPAGEIN   - vn and tmpfs set this flag, indicating to swapoff
+ *		    that the objects aren't intended to have any vm_page's,
+ *		    only swap blocks.  vn and tmpfs don't know how to deal
+ *		    with any actual pages.
  */
 #define OBJ_UNUSED0001	0x0001		/* backing_object/shadow changing */
 #define OBJ_ONSHADOW	0x0002		/* backing_object on shadow list */
 #define OBJ_ACTIVE	0x0004		/* active objects */
 #define OBJ_DEAD	0x0008		/* dead objects (during rundown) */
 #define	OBJ_NOSPLIT	0x0010		/* dont split this object */
-#define OBJ_UNUSED0040	0x0040
+#define OBJ_NOPAGEIN	0x0040		/* special OBJT_SWAP */
 #define	OBJ_WRITEABLE	0x0080		/* object has been made writable */
 #define OBJ_MIGHTBEDIRTY 0x0100		/* object might be dirty */
 #define OBJ_CLEANING	0x0200

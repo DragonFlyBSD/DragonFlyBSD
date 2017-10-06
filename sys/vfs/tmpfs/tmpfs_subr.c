@@ -163,6 +163,7 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 		    swap_pager_alloc(NULL, 0, VM_PROT_DEFAULT, 0);
 		nnode->tn_reg.tn_aobj_pages = 0;
 		nnode->tn_size = 0;
+		vm_object_set_flag(nnode->tn_reg.tn_aobj, OBJ_NOPAGEIN);
 		break;
 
 	default:
