@@ -635,6 +635,7 @@ vniocattach_swap(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 	vn->sc_object = swap_pager_alloc(NULL,
 					 vn->sc_secsize * (off_t)vio->vn_size,
 					 VM_PROT_DEFAULT, 0);
+	vm_object_set_flag(vn->sc_object, OBJ_NOPAGEIN);
 	IFOPT(vn, VN_RESERVE) {
 		if (swap_pager_reserve(vn->sc_object, 0, vn->sc_size) < 0) {
 			vm_pager_deallocate(vn->sc_object);

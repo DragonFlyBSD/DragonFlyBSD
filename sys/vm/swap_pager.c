@@ -2154,6 +2154,17 @@ swap_pager_swapoff(int devidx)
 				vm_object_drop(object);
 				goto skip;
 			}
+
+			/*
+			 * Object is special in that we can't just pagein
+			 * into vm_page's in it (tmpfs, vn).
+			 */
+			if ((object->flags & OBJ_NOPAGEIN) &&
+			    RB_ROOT(&object->swblock_root)) {
+				vm_object_drop(object);
+				goto skip;
+			}
+
 			info.object = object;
 			info.shared = 0;
 			info.devidx = devidx;
