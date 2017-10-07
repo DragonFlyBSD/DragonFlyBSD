@@ -710,6 +710,10 @@ For
 file systems, use type
 .Cm HAMMER .
 For
+.Xr hammer2 8
+file systems, use type
+.Cm HAMMER2 .
+For
 .Xr ccd 4
 partitions, use type
 .Cm ccd .
@@ -899,9 +903,10 @@ display block size: 1024	# for partition display only
   e:      2048M          *    4.2BSD
   f:         4G          *    4.2BSD
   g:         4G          *    4.2BSD
-  h:          *          *    HAMMER
-  i:         5g          *       ccd
-  j:      5120m          *     vinum
+  h:        50G          *    HAMMER
+  i:          *          *    HAMMER2
+  j:         5g          *       ccd
+  k:      5120m          *     vinum
 .Ed
 .Sh DIAGNOSTICS
 The kernel device drivers will not allow the size of a disk partition
@@ -927,6 +932,7 @@ partition.
 .Xr disklabel32 8 ,
 .Xr fdisk 8 ,
 .Xr gpt 8 ,
+.Xr hammer2 8 ,
 .Xr newfs 8 ,
 .Xr newfs_hammer 8 ,
 .Xr vinum 8
