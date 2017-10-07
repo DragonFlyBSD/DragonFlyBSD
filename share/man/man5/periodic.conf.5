@@ -267,6 +267,32 @@ If this variable is left blank, the default
 .Xr hammer 8
 .Ic cleanup
 actions occur.
+.It Va daily_clean_hammer2_enable
+.Pq Vt bool
+Set to
+.Dq YES
+if you want
+to run
+.Xr hammer2 8
+.Cm cleanup .
+This will e.g.\&
+.Ic bulkfree
+.Xr hammer2 8
+file systems.
+.It Va daily_clean_hammer2_verbose
+.Pq Vt bool
+Set to
+.Dq YES
+if you wish more verbose output.
+.It Va daily_clean_hammer2_pfslist
+.Pq Vt str
+Set to a list of
+.Xr hammer2 8
+filesystems and pseudo-filesystems to clean.
+If this variable is left blank, the default
+.Xr hammer2 8
+.Ic cleanup
+actions occur.
 .It Va daily_backup_passwd_enable
 .Pq Vt bool
 Set to
@@ -740,10 +766,13 @@ is shared or distributed.
 .Xr netstat 1 ,
 .Xr nice 1 ,
 .Xr rdist 1 ,
+.Xr HAMMER 5 ,
 .Xr rc.conf 5 ,
 .Xr ac 8 ,
 .Xr chkgrp 8 ,
 .Xr dump 8 ,
+.Xr hammer 8 ,
+.Xr hammer2 8 ,
 .Xr mfs 8 ,
 .Xr newsyslog 8 ,
 .Xr periodic 8 ,
