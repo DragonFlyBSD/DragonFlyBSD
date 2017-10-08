@@ -168,7 +168,9 @@ If you mount a SOFT_SLAVE or a SOFT_MASTER then soft quorum semantics are
 employed... the soft slave or soft master's current state will always be used
 and the quorum protocol will not be used.  The soft PFS will still be
 synchronized to masters in the background when available.
-Also, you can use 'mount -o local' to mount ONLY a local HAMMER2 PFS and
+Also, you can use
+.Sq mount -o local
+to mount ONLY a local HAMMER2 PFS and
 not run any network or quorum protocols for the mount.
 All such mounts except for a SOFT_MASTER mount will be read-only.
 Other than that, you will be mounting the whole cluster when you mount any
@@ -299,12 +301,18 @@ Hammer2 compression is only effective when it can reduce the size of dataset
 (typically a 64KB block) by one or more powers of 2.  A 64K block which
 only compresses to 40K will not yield any storage improvement.
 .Pp
-Generally speaking you do not want to set the compression mode to 'none',
+Generally speaking you do not want to set the compression mode to
+.Sq none ,
 as this will cause blocks of all-zeros to be written as all-zero blocks,
-instead of holes.  The 'autozero' compression mode detects blocks of all-zeros
+instead of holes.  The
+.Sq autozero
+compression mode detects blocks of all-zeros
 and writes them as holes.  However, HAMMER2 will rewrite data in-place if
-the compression mode is set to 'none' and the check code is set to
-'disabled'.  Formal snapshots will still snapshot such files.  However,
+the compression mode is set to
+.Sq none
+and the check code is set to
+.Sq  disabled .
+Formal snapshots will still snapshot such files.  However,
 de-duplication will no longer function on the data blocks.
 .\" ==== setcheck ====
 .It Cm setcheck Ar check Op path...
@@ -363,7 +371,9 @@ I/O utilization on SSDs and cpu utilization when the meta-data is mostly
 cached in memory.
 .El
 .Sh SETTING UP /etc/hammer2
-The 'rsainit' directive will create the
+The
+.Sq rsainit
+directive will create the
 .Pa /etc/hammer2
 directory with appropriate permissions and also generate a public key
 pair in this directory for the machine.  These files will be
@@ -421,21 +431,26 @@ The originater must issue a BUF_CMD_FLUSH.
 .Sh ADDING A NEW MASTER TO A CLUSTER
 When you
 .Xr newfs_hammer2 8
-a HAMMER2 filesystem or use the 'pfs-create' directive on one already mounted
+a HAMMER2 filesystem or use the
+.Sq pfs-create
+directive on one already mounted
 to create a new PFS, with no special options, you wind up with a PFS
 typed as a MASTER and a unique cluster uuid, but because there is only one
 PFS for that cluster (for each PFS you create via pfs-create), it will
 act just like a normal filesystem would act and does not require any special
 protocols to operate.
 .Pp
-If you use the 'pfs-create' directive along with the
+If you use the
+.Sq pfs-create
+directive along with the
 .Fl u
 option to specify a cluster uuid that already exists in the cluster,
 you are adding a PFS to an existing cluster and this can trigger a whole
 series of events in the background.
 When you specify the
 .Fl u
-option in a 'pfs-create',
+option in a
+.Sq pfs-create ,
 .Nm
 will by default create a SLAVE PFS.
 In fact, this is what must be created first even if you want to add a new
