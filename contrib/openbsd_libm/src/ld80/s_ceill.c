@@ -66,7 +66,7 @@ ceill(long double x)
 		    if(jj0==31) i0+=1;
 		    else {
 			j = i1 + (1<<(63-jj0));
-			if(j<i1) i0+=1;	/* got a carry */
+			if(j<(u_int32_t)i1) i0+=1;	/* got a carry */
 			i1 = j;
 		    }
 		}
