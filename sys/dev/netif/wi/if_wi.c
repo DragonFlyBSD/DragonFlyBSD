@@ -1087,7 +1087,7 @@ wi_raw_xmit(struct ieee80211_node *ni, struct mbuf *m0,
 	if (params && (params->ibp_flags & IEEE80211_BPF_NOACK))
 		frmhdr.wi_tx_ctl |= htole16(WI_TXCNTL_ALTRTRY);
 	if ((wh->i_fc[1] & IEEE80211_FC1_PROTECTED) &&
-	    (!params || (params && (params->ibp_flags & IEEE80211_BPF_CRYPTO)))) {
+	    (!params || (params->ibp_flags & IEEE80211_BPF_CRYPTO))) {
 		k = ieee80211_crypto_encap(ni, m0);
 		if (k == NULL) {
 			rc = ENOMEM;
