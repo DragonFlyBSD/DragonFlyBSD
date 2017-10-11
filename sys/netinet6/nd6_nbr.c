@@ -287,9 +287,7 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 			rtifp = rtifp->if_bridge;
 
 		if (rt != NULL &&
-		    (cmpifp != rtifp ||
-		     (cmpifp == rtifp && (m->m_flags & M_MCAST) == 0))
-		) {
+		    (cmpifp != rtifp || (m->m_flags & M_MCAST) == 0)) {
 			ifa = (struct ifaddr *)in6ifa_ifpforlinklocal(cmpifp,
 				IN6_IFF_NOTREADY|IN6_IFF_ANYCAST);
 			nd6log((LOG_INFO,
@@ -784,7 +782,7 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 			}
 			goto freeit;
 		} else if (is_override				   /* (2a) */
-			|| (!is_override && (lladdr && !llchange)) /* (2b) */
+			|| (lladdr && !llchange)                   /* (2b) */
 			|| !lladdr) {				   /* (2c) */
 			/*
 			 * Update link-local address, if any.

@@ -126,8 +126,8 @@ sensor_attach(struct ksensordev *sensdev, struct ksensor *sens)
 	} else {
 		for (v = SLIST_FIRST(sh);
 		    (nv = SLIST_NEXT(v, list)) != NULL; v = nv)
-			if (v->type == sens->type && (v->type != nv->type || 
-			    (v->type == nv->type && nv->numt - v->numt > 1)))
+			if (v->type == sens->type &&
+			    (v->type != nv->type || nv->numt - v->numt > 1))
 				break;
 		/* sensors of the same type go after each other */
 		if (v->type == sens->type)

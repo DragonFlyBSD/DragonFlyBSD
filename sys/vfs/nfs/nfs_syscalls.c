@@ -1130,8 +1130,7 @@ nfs_getnickauth(struct nfsmount *nmp, struct ucred *cred, char **auth_str,
 	verfp = (u_int32_t *)verf_str;
 	*verfp++ = txdr_unsigned(RPCAKN_NICKNAME);
 	if (time_second != nuidp->nu_timestamp.tv_sec ||
-	    (time_second == nuidp->nu_timestamp.tv_sec &&
-	     time_second > nuidp->nu_timestamp.tv_usec))	/* XXX */
+	    time_second > nuidp->nu_timestamp.tv_usec)		/* XXX */
 		getmicrotime(&nuidp->nu_timestamp);
 	else
 		nuidp->nu_timestamp.tv_usec++;

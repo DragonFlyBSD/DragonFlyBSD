@@ -668,8 +668,8 @@ static u_int8_t mr_spanset_get_phy_params(struct mrsas_softc *sc, u_int32_t ld, 
                *pDevHandle = MR_PdDevHandleGet(pd, map);          
        else {
                *pDevHandle = MR_PD_INVALID;
-               if ((raid->level >= 5) && ((!do_invader) || (do_invader &&
-                  raid->regTypeReqOnRead != REGION_TYPE_UNUSED)))
+               if ((raid->level >= 5) &&
+		   (!do_invader || raid->regTypeReqOnRead != REGION_TYPE_UNUSED))
                   pRAID_Context->regLockFlags = REGION_TYPE_EXCLUSIVE; 
                else if (raid->level == 1) {
                	  pd = MR_ArPdGet(arRef, physArm + 1, map); 
@@ -1390,8 +1390,8 @@ u_int8_t MR_GetPhyParams(struct mrsas_softc *sc, u_int32_t ld,
         *pDevHandle = MR_PdDevHandleGet(pd, map);  // Get dev handle from Pd.
     else {
         *pDevHandle = MR_PD_INVALID; // set dev handle as invalid.
-        if ((raid->level >= 5) && ((!do_invader) || (do_invader &&
-             raid->regTypeReqOnRead != REGION_TYPE_UNUSED)))
+        if ((raid->level >= 5) &&
+	    (!do_invader || raid->regTypeReqOnRead != REGION_TYPE_UNUSED))
              pRAID_Context->regLockFlags = REGION_TYPE_EXCLUSIVE;
         else if (raid->level == 1) {
             pd = MR_ArPdGet(arRef, physArm + 1, map); // Get Alternate Pd.
@@ -1423,7 +1423,7 @@ u_int32_t MR_GetSpanBlock(u_int32_t ld, u_int64_t row, u_int64_t *span_blk,
     MR_QUAD_ELEMENT *quad;
     MR_LD_RAID *raid = MR_LdRaidGet(ld, map);
     u_int32_t span, j;
-    u_int64_t blk, debugBlk;
+    u_int64_t blk;
 
     for (span=0; span < raid->spanDepth; span++, pSpanBlock++) {
         for (j=0; j < pSpanBlock->block_span_info.noElements; j++) {
@@ -1436,7 +1436,6 @@ u_int32_t MR_GetSpanBlock(u_int32_t ld, u_int64_t row, u_int64_t *span_blk,
                     (mega_mod64(row-quad->logStart, quad->diff)) == 0) {
                 if (span_blk != NULL) {
                     blk =  mega_div64_32((row-quad->logStart), quad->diff);
-                    debugBlk = blk;
                     blk = (blk + quad->offsetInSpan) << raid->stripeShift;
                     *span_blk = blk;
                 }
