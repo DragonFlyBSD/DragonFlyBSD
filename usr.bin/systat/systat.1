@@ -28,7 +28,7 @@
 .\"	@(#)systat.1	8.2 (Berkeley) 12/30/93
 .\" $FreeBSD: src/usr.bin/systat/systat.1,v 1.23.2.9 2002/12/29 16:35:40 schweikh Exp $
 .\"
-.Dd May 24, 2015
+.Dd October 12, 2017
 .Dt SYSTAT 1
 .Os
 .Sh NAME
@@ -48,7 +48,11 @@ using the curses screen display library,
 While
 .Nm
 is running the screen is usually divided into two windows (an exception
-is the vmstat and pvmmeter displays which uses the entire screen).
+is the
+.Ic vmstat
+and
+.Ic pvmmeter
+displays which uses the entire screen).
 The upper window depicts the current system load average.
 The information displayed in the lower window may vary, depending on
 user commands.
@@ -84,7 +88,7 @@ The
 flag expects
 .Ar display
 to be one of:
-.Ic altq ,
+.Ic altqs ,
 .Ic icmp ,
 .Ic icmp6 ,
 .Ic ifstat ,
@@ -92,8 +96,8 @@ to be one of:
 .Ic ip ,
 .Ic ip6 ,
 .Ic mbufs ,
-.Ic netstat ,
 .Ic netbw ,
+.Ic netstat ,
 .Ic pftop ,
 .Ic pigs ,
 .Ic pvmmeter ,
@@ -103,13 +107,14 @@ to be one of:
 or
 .Ic vmstat .
 These displays can also be requested interactively (without the
-.Dq Fl )
+.Sq Fl )
 and are described in
 full detail below.
 .It Ar refresh-interval
 The
-.Ar refresh-value
+.Ar refresh-interval
 specifies the screen refresh time interval in seconds.
+Default is 5 seconds.
 .El
 .Pp
 Certain characters cause immediate action by
@@ -313,7 +318,7 @@ Show information about swap space usage on all the
 swap areas compiled into the kernel.
 The first column is the device name of the partition.
 The next column is the total space available in the partition.
-The ``Used'' column indicates the total blocks used so far;
+The `Used' column indicates the total blocks used so far;
 the graph shows the percentage of space in use on each partition.
 If there are more than one swap partition in use,
 a total line is also shown.
@@ -333,19 +338,21 @@ of users logged in and the load average over the last one, five,
 and fifteen minute intervals.
 .Pp
 Below this line are statistics on memory utilization.
-The first row (`Act') reports memory usage only among active processes,
+The first row (`Active') reports memory usage in bytes
+only among active processes,
 that is processes that have run in the previous twenty seconds.
-The second row (`All') reports on memory usage of all processes.
-Two groups of columns are shown, `REAL' and `VIRTUAL'.
-The first column (`Tot') reports on the number of
-physical pages claimed by processes.
-The second column (`Share') reports the number of
-physical pages that are devoted to read only text pages.
-The third and fourth columns report the same two figures for
-virtual pages, that is the number of pages that would be
-needed if all processes had all of their pages.
-Finally the last column (`Free') shows the number of
-physical pages on the free list.
+The second row (`Kernel') reports memory usage in bytes by the kernel.
+The third row (`Free .. i+c+f') shows freeable memory in bytes,
+which is inactive + cache + free.
+I.e.\& Free i+c+f includes inactive pages, which aren't quite free,
+but they will be made free given enough memory pressure.
+Finally the last row (`Total') shows total system memory in bytes.
+The second column reports on memory usage of all processes.
+The first row (`VM-rss') shows bytes for total RSS.
+This is basically how many pages the system is mapping to user processes.
+Due to sharing this can be a large value.
+The second row (`VM-swp') reports on swap, first swap used in bytes,
+then, after `/', total swap in bytes.
 .Pp
 Below the memory display is a list of the
 average number of processes (over the last refresh interval)
@@ -363,12 +370,15 @@ system (`='), interrupt (`+'), user (`>'), nice (`-'), and idle time (` ').
 .Pp
 Below the
 .Tn CPU
-usage display are statistics on name translations.
+usage display are statistics on name translations and execs.
 It lists the number of path names translated
 in the previous interval (`Path-lookups'),
 the number and percentage of the path lookups that were
-handled by the name translation cache, and
-the average number of path components in path lookups (`Components').
+handled by the name translation cache,
+the average number of path components in path lookups (`Components') and,
+the number of execs
+.Xr ( execve 2 )
+per second (`Execs').
 .Pp
 At the bottom left is the disk usage display.
 It reports the number of
@@ -383,6 +393,9 @@ The system keeps statistics on most every storage device.
 In general, up to seven devices are displayed.
 The devices displayed by default are the
 first devices in the kernel's device list.
+Some devices are not shown by default, see
+.Ic ignore
+command below.
 See
 .Xr devstat 3
 and
@@ -391,34 +404,36 @@ for details on the devstat system.
 .Pp
 If at most 4 disk devices are shown,
 extended virtual memory statistics are shown right to disk usage:
-pages zero filled on demand (`zfod'),
+pages non-optimized zero filled on demand (`nzfod'),
 pages optimized zero filled on demand (`ozfod'),
 slow (i.e.\& non-optimized) zero fills percentage (`%sloz'),
 total pages freed (`tfree').
 .Pp
 Under the date in the upper right hand quadrant are statistics
 on paging and swapping activity.
-The first two columns (`VN PAGER') report the average number of pages
+The first two columns (`VN PAGER') report the average number of bytes
 brought in and out per second over the last refresh interval
 due to page faults and the paging daemon.
-The third and fourth columns (`SWAP PAGER') report the average number of pages
+The third and fourth columns (`SWAP PAGER') report the average number of bytes
 brought in and out per second over the last refresh interval
 due to swap requests initiated by the scheduler.
-The first row (`count') of the display shows the average
+The first row (`bytes') of the display shows the average
+number of bytes transferred per second over the last refresh interval;
+the second row (`count') of the display shows the average
 number of disk transfers per second over the last refresh interval;
-the second row (`pages') of the display shows the average
-number of pages transferred per second over the last refresh interval.
+this usually matches number of pages transferred
+per second over the last refresh interval.
 .Pp
 Below the paging statistics is a column of lines regarding the virtual
 memory system which list the average number of
-pages zero filled on demand (`zfod')
+bytes in pages zero filled on demand (`zfod')
 (shown with extended virtual memory statistics if screen space permits),
-pages copied on write (`cow'),
-pages wired down (`wire'),
-active pages (`act'),
-inactive pages (`inact'),
-pages on the buffer cache queue (`cache'),
-number of free pages (`free'),
+bytes in pages copied on write (`cow'),
+bytes in pages wired down (`wire'),
+bytes in active pages (`act'),
+bytes in inactive pages (`inact'),
+bytes in pages on the buffer cache queue (`cache'),
+bytes in free pages (`free'),
 pages freed by the page daemon (`daefr'),
 pages freed by exiting processes (`prcfr'),
 pages reactivated from the free list (`react'),
@@ -429,13 +444,12 @@ intransit blocking page faults (`intrn')
 per second over the refresh interval.
 .Pp
 At the bottom of this column are lines showing the
-amount of memory, in kilobytes, used for the buffer cache (`buf'),
-the number of dirty buffers in the buffer cache (`dirtybuf'),
-desired maximum size of vnode cache (`maxvnodes')
-(mostly unused, except to size the name cache),
-number of vnodes actually allocated (`numvnodes'),
+amount of memory, in bytes, used for the buffer cache (`buf'),
+number of dirty buffers in the buffer cache (`dirtybuf'),
+number of active vnodes (`activ-vp'),
+number of cached vnodes (`cachd-vp'),
 and
-number of allocated vnodes that are free (`freevnodes').
+number of inactive vnodes (`inact-vp').
 .Pp
 Running down the right hand side of the display is a breakdown
 of the interrupts being handled by the system (`Interrupts').
@@ -455,22 +469,28 @@ Display cumulative statistics since the system was booted.
 Display statistics as a running total from the point this command is given.
 .It Ic time
 Display statistics averaged over the refresh interval (the default).
-.It Ic want_fd
-Toggle the display of fd devices in the disk usage display.
 .It Ic zero
 Reset running statistics to zero.
 .El
 .It Ic pvmmeter
-Display per
+Display total and per
 .Tn CPU
 statistics, including
 .Tn LAPIC
 timer interrupts (`timer'),
 .Tn IPIs
 (Inter-Processor Interrupts) (`ipi'),
-external interrupts (i.e.\& not timer or ipi) (`extint'), and
+external interrupts (i.e.\& not timer or ipi) (`extint'),
 .Tn CPU
-time breakdown (`user%', `nice%', `sys%', `intr%', and `idle%').
+time breakdown (`user%', `sys%', `intr%', and `idle%'),
+.Tn SMP
+collisions (`smpcol'), and name of last colliding item (`label').
+Item can be
+.Xr token 9 ,
+.Xr lockmgr 9 ,
+.Xr mutex 9 ,
+or
+.Xr spinlock 9 .
 .It Ic netstat
 Display, in the lower window, network connections.
 By default, network servers awaiting requests are not displayed.
@@ -514,7 +534,7 @@ As for
 .Ic ignore ,
 .Ar items
 may be names or numbers.
-.It Ic show Op Cm ports | hosts
+.It Ic show Op Cm ports | protos | hosts
 Show, on the command line, the currently selected protocols, hosts, and ports.
 Hosts and ports which are being ignored are prefixed with a `!'.
 If
@@ -529,27 +549,38 @@ Reset the port, host, and protocol matching mechanisms to the default
 (any protocol, port, or host).
 .El
 .It Ic netbw
-Display aggregate and per-connection tcp receive and transmit rates.
-Only active tcp connections originated or terminated by the host
+Display aggregate and per-connection TCP receive and transmit rates.
+Only active TCP connections originated or terminated by the host
 are shown.
 .It Ic pftop
-Display packet filter (pf) state information for states which are
-actively passing data.  This requires pf to be active to be meaningful
+Display packet filter
+.Pq Xr pf 4
+state information for states which are
+actively passing data.
+This requires
+.Xr pf 4
+to be active to be meaningful
 but is capable of displaying connection state for all packet traffic
 passing through the machine, even for connections that do not originate
 or terminate on the machine.
 .Pp
-You need a wide ~100 column window to display pftop reasonably well.
+You need a wide ~100 column window to display
+.Ic pftop
+reasonably well.
 IPV6 addresses are truncated (just the first two and last two words
-are displayed) for brevity.  Generally speaking 'rcv' is data received
-by the first IP and 'snd' is data sent to the second IP.  'ttl' is
-the sum total data sent plus received tracked by the state.
+are displayed) for brevity.
+Generally speaking `rcv' is data received
+by the first IP address and `snd' is data sent to the second IP address.
+`ttl' is
+the total sum of data sent plus received tracked by the state.
 .Pp
 The display is sorted by average rx+tx bandwidth calculated on a 1/8 decay
-curve to prevent fields from jumping around too much.  Units for all rows
+curve to prevent fields from jumping around too much.
+Units for all rows
 are selected based on the largest bandwidth measurement for uniformity.
 Note that two states will be present for any connection operating over NAT.
-.It Ic altq
+Needs root priviledge.
+.It Ic altqs
 Display packet filter altq statistics.
 The ALTQ operates in conjunction with the packet filter (pf) on the
 interface's transmit path.
@@ -560,8 +591,9 @@ INTERFACE-by-ALTQLABEL matrix.
 To save space drops
 and queue length are combined in the third section.
 If packet drops are present, drops
-will be displayed, otherwise the packet queue length with a 'Q' suffix
-will be displayed.
+will be displayed, otherwise the packet queue length with a
+.Ql Q
+suffix will be displayed.
 .El
 .Pp
 Commands to switch between displays may be abbreviated to the
@@ -584,6 +616,15 @@ more drives configured than can normally be displayed on the screen.
 .It Ic ignore Op Ar drives
 Do not display information about the drives indicated.
 Multiple drives may be specified, separated by spaces.
+.Pp
+By default
+.Xr md 4 ,
+.Xr pass 4 ,
+and
+.Xr sg 4
+devices are
+.Ic ignore Ns d .
+This is to save space for other devices which are usually more interesting.
 .It Ic display Op Ar drives
 Display information about the drives indicated.
 Multiple drives may be specified, separated by spaces.
@@ -625,30 +666,37 @@ and all passthrough devices that provide access to
 drives.
 .El
 .Sh FILES
-.Bl -tag -width /etc/networks -compact
-.It Pa /boot/kernel
-For the namelist.
+.Bl -tag -width ".Pa /boot/kernel/kernel" -compact
+.It Pa /boot/kernel/kernel
+For the namelist
 .It Pa /dev/kmem
-For information in main memory.
+For information in main memory
 .It Pa /etc/hosts
-For host names.
+For host names
 .It Pa /etc/networks
-For network names.
+For network names
 .It Pa /etc/services
-For port names.
+For port names
 .El
 .Sh SEE ALSO
 .Xr netstat 1 ,
+.Xr devstat 3 ,
 .Xr kvm 3 ,
 .Xr icmp 4 ,
 .Xr icmp6 4 ,
 .Xr ip 4 ,
 .Xr ip6 4 ,
+.Xr pf 4 ,
 .Xr tcp 4 ,
 .Xr udp 4 ,
 .Xr iostat 8 ,
 .Xr sysctl 8 ,
-.Xr vmstat 8
+.Xr vmstat 8 ,
+.Xr devstat 9 ,
+.Xr lockmgr 9 ,
+.Xr mutex 9 ,
+.Xr spinlock 9 ,
+.Xr token 9
 .Sh HISTORY
 The
 .Nm
