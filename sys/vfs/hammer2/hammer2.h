@@ -1542,12 +1542,12 @@ void hammer2_pfs_memory_wait(hammer2_pfs_t *pmp);
 void hammer2_pfs_memory_inc(hammer2_pfs_t *pmp);
 void hammer2_pfs_memory_wakeup(hammer2_pfs_t *pmp);
 
-void hammer2_base_delete(hammer2_chain_t *chain,
+void hammer2_base_delete(hammer2_chain_t *parent,
 				hammer2_blockref_t *base, int count,
-				hammer2_chain_t *child);
-void hammer2_base_insert(hammer2_chain_t *chain,
+				hammer2_chain_t *chain);
+void hammer2_base_insert(hammer2_chain_t *parent,
 				hammer2_blockref_t *base, int count,
-				hammer2_chain_t *child,
+				hammer2_chain_t *chain,
 				hammer2_blockref_t *elm);
 
 /*
