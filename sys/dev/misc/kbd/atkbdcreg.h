@@ -291,7 +291,7 @@ int test_kbd_port(KBDC kbdc);
 int test_aux_port(KBDC kbdc);
 
 int get_controller_command_byte(KBDC kbdc);
-int set_controller_command_byte(KBDC kbdc, int command, int flag);
+int set_controller_command_byte(KBDC kbdc, int mask, int command);
 
 #endif /* _KERNEL */
 
