@@ -137,8 +137,9 @@ cam_status cam_periph_alloc(periph_ctor_t *periph_ctor,
 			    periph_oninv_t *periph_oninvalidate,
 			    periph_dtor_t *periph_dtor,
 			    periph_start_t *periph_start,
-			    char *name, cam_periph_type type, struct cam_path *,
-			    ac_callback_t *, ac_code, void *arg);
+			    char *name, cam_periph_type type,
+			    struct cam_path *path, ac_callback_t *ac_callback,
+			    ac_code code, void *arg);
 struct cam_periph *cam_periph_find(struct cam_path *path, char *name);
 cam_status	cam_periph_acquire(struct cam_periph *periph);
 void		cam_periph_release(struct cam_periph *periph);
