@@ -459,6 +459,8 @@ check_volume(const char *path, int *fdp)
 		 */
 		if (fstat(*fdp, &st) < 0)
 			err(1, "Unable to stat %s", path);
+		if (!S_ISREG(st.st_mode))
+			errx(1, "Unsupported file type for %s", path);
 		size = st.st_size;
 	} else {
 		/*
