@@ -18,7 +18,7 @@
 .\"
 .\" $FreeBSD: src/lib/libc/net/getnameinfo.3,v 1.25 2007/02/28 21:28:33 bms Exp $
 .\"
-.Dd February 28, 2007
+.Dd October 12, 2017
 .Dt GETNAMEINFO 3
 .Os
 .Sh NAME
@@ -105,7 +105,7 @@ The
 argument is formed by
 .Tn OR Ns 'ing
 the following values:
-.Bl -tag -width ".Dv NI_NUMERICHOST"
+.Bl -tag -width ".Dv NI_NUMERICSCOPE"
 .It Dv NI_NOFQDN
 A fully qualified domain name is not required for local hosts.
 The local part of the fully qualified domain name is returned instead.
@@ -121,6 +121,9 @@ If the host name is not found and the flag is not set, the
 address is returned in numeric form.
 .It Dv NI_NUMERICSERV
 The service name is returned as a digit string representing the port number.
+.It Dv NI_NUMERICSCOPE
+For IPv6 addresses, scope identifier is returned as a digit string instead
+of its name.
 .It Dv NI_DGRAM
 Specifies that the service being looked up is a datagram
 service, and causes
