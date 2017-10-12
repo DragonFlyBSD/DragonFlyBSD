@@ -327,6 +327,12 @@ main(int ac, char **av)
 	}
 	printf("\n");
 
+	free(vol_fsid);
+	free(sup_clid_name);
+	free(sup_fsid_name);
+	free(pfs_clid_name);
+	free(pfs_fsid_name);
+
 	return(0);
 }
 
