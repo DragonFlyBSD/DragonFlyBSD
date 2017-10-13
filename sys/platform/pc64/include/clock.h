@@ -10,11 +10,12 @@
 #ifndef _MACHINE_CLOCK_H_
 #define	_MACHINE_CLOCK_H_
 
-#ifdef _KERNEL
-
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+
+#ifdef _KERNEL
+
 #ifndef _SYS_SYSTIMER_H_
 #include <sys/systimer.h>
 #endif
@@ -25,8 +26,12 @@ typedef struct TOTALDELAY {
 	sysclock_t	last_clock;
 } TOTALDELAY;
 
+#endif
+
 typedef uint64_t tsc_uclock_t;
 typedef int64_t	tsc_sclock_t;
+
+#ifdef _KERNEL
 
 /*
  * i386 to clock driver interface.
