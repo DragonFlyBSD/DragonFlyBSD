@@ -873,7 +873,7 @@ plogin(char *user, char *passwd, char **msg, int *msglen)
     struct passwd *pw;
     struct utmp utmp;
     struct timeval tp;
-    char *tty;
+    char *tty, *cryptpw;
 
 #ifdef HAS_SHADOW
     struct spwd *spwd;
@@ -924,8 +924,10 @@ plogin(char *user, char *passwd, char **msg, int *msglen)
     /*
      * If no passwd, don't let them login.
      */
-    if (pw->pw_passwd == NULL || *pw->pw_passwd == '\0'
-	|| strcmp(crypt(passwd, pw->pw_passwd), pw->pw_passwd) != 0)
+    if (pw->pw_passwd == NULL || *pw->pw_passwd == '\0' || passwd == NULL)
+	return (UPAP_AUTHNAK);
+    cryptpw = crypt(passwd, pw->pw_passwd);
+    if (cryptpw == NULL || strcmp(cryptpw, pw->pw_passwd) != 0)
 	return (UPAP_AUTHNAK);
 
     if (pw->pw_expire) {
