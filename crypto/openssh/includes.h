@@ -93,6 +93,9 @@
 #ifdef HAVE_SYS_SYSMACROS_H
 # include <sys/sysmacros.h> /* For MIN, MAX, etc */
 #endif
+#ifdef HAVE_SYS_TIME_H
+# include <sys/time.h> /* for timespeccmp if present */
+#endif
 #ifdef HAVE_SYS_MMAN_H
 #include <sys/mman.h> /* for MAP_ANONYMOUS */
 #endif
@@ -108,7 +111,6 @@
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h> /* For typedefs */
-#include <netinet/ip.h>
 #ifdef HAVE_RPC_TYPES_H
 # include <rpc/types.h> /* For INADDR_LOOPBACK */
 #endif

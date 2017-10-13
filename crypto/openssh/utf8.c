@@ -1,4 +1,4 @@
-/* $OpenBSD: utf8.c,v 1.3 2016/05/30 12:57:21 schwarze Exp $ */
+/* $OpenBSD: utf8.c,v 1.7 2017/05/31 09:15:42 deraadt Exp $ */
 /*
  * Copyright (c) 2016 Ingo Schwarze <schwarze@openbsd.org>
  *
@@ -27,6 +27,7 @@
 # include <langinfo.h>
 #endif
 #include <limits.h>
+#include <locale.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,7 +60,9 @@ dangerous_locale(void) {
 	char	*loc;
 
 	loc = nl_langinfo(CODESET);
-	return strcmp(loc, "US-ASCII") && strcmp(loc, "UTF-8");
+	return strcmp(loc, "US-ASCII") != 0 && strcmp(loc, "UTF-8") != 0 &&
+	    strcmp(loc, "ANSI_X3.4-1968") != 0 && strcmp(loc, "646") != 0 &&
+	    strcmp(loc, "") != 0;
 }
 
 static int
@@ -73,7 +76,7 @@ grow_dst(char **dst, size_t *sz, size_t maxsz, char **dp, size_t need)
 	tsz = *sz + 128;
 	if (tsz > maxsz)
 		tsz = maxsz;
-	if ((tp = realloc(*dst, tsz)) == NULL)
+	if ((tp = recallocarray(*dst, *sz, tsz, 1)) == NULL)
 		return -1;
 	*dp = tp + (*dp - *dst);
 	*dst = tp;
@@ -115,6 +118,7 @@ vasnmprintf(char **str, size_t maxsz, int *wp, const char *fmt, va_list ap)
 	sz = strlen(src) + 1;
 	if ((dst = malloc(sz)) == NULL) {
 		free(src);
+		ret = -1;
 		goto fail;
 	}
 
@@ -287,4 +291,45 @@ mprintf(const char *fmt, ...)
 	ret = vfmprintf(stdout, fmt, ap);
 	va_end(ap);
 	return ret;
+}
+
+/*
+ * Set up libc for multibyte output in the user's chosen locale.
+ *
+ * XXX: we are known to have problems with Turkish (i/I confusion) so we
+ *      deliberately fall back to the C locale for now. Longer term we should
+ *      always prefer to select C.[encoding] if possible, but there's no
+ *      standardisation in locales between systems, so we'll need to survey
+ *      what's out there first.
+ */
+void
+msetlocale(void)
+{
+	const char *vars[] = { "LC_ALL", "LC_CTYPE", "LANG", NULL };
+	char *cp;
+	int i;
+
+	/*
+	 * We can't yet cope with dotless/dotted I in Turkish locales,
+	 * so fall back to the C locale for these.
+	 */
+	for (i = 0; vars[i] != NULL; i++) {
+		if ((cp = getenv(vars[i])) == NULL)
+			continue;
+		if (strncasecmp(cp, "TR", 2) != 0)
+			break;
+		/*
+		 * If we're in a UTF-8 locale then prefer to use
+		 * the C.UTF-8 locale (or equivalent) if it exists.
+		 */
+		if ((strcasestr(cp, "UTF-8") != NULL ||
+		    strcasestr(cp, "UTF8") != NULL) &&
+		    (setlocale(LC_CTYPE, "C.UTF-8") != NULL ||
+		    setlocale(LC_CTYPE, "POSIX.UTF-8") != NULL))
+			return;
+		setlocale(LC_CTYPE, "C");
+		return;
+	}
+	/* We can handle this locale */
+	setlocale(LC_CTYPE, "");
 }

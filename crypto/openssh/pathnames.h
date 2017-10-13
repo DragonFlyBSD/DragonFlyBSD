@@ -1,4 +1,4 @@
-/* $OpenBSD: pathnames.h,v 1.25 2016/03/31 05:24:06 dtucker Exp $ */
+/* $OpenBSD: pathnames.h,v 1.27 2017/05/05 10:42:49 naddy Exp $ */
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
@@ -36,7 +36,6 @@
  */
 #define _PATH_SERVER_CONFIG_FILE	SSHDIR "/sshd_config"
 #define _PATH_HOST_CONFIG_FILE		SSHDIR "/ssh_config"
-#define _PATH_HOST_KEY_FILE		SSHDIR "/ssh_host_key"
 #define _PATH_HOST_DSA_KEY_FILE		SSHDIR "/ssh_host_dsa_key"
 #define _PATH_HOST_ECDSA_KEY_FILE	SSHDIR "/ssh_host_ecdsa_key"
 #define _PATH_HOST_ED25519_KEY_FILE	SSHDIR "/ssh_host_ed25519_key"
@@ -72,7 +71,6 @@
  * Name of the default file containing client-side authentication key. This
  * file should only be readable by the user him/herself.
  */
-#define _PATH_SSH_CLIENT_IDENTITY	_PATH_SSH_USER_DIR "/identity"
 #define _PATH_SSH_CLIENT_ID_DSA		_PATH_SSH_USER_DIR "/id_dsa"
 #define _PATH_SSH_CLIENT_ID_ECDSA	_PATH_SSH_USER_DIR "/id_ecdsa"
 #define _PATH_SSH_CLIENT_ID_RSA		_PATH_SSH_USER_DIR "/id_rsa"
@@ -119,7 +117,7 @@
  * Default location of askpass
  */
 #ifndef _PATH_SSH_ASKPASS_DEFAULT
-#define _PATH_SSH_ASKPASS_DEFAULT	"/usr/local/bin/ssh-askpass"
+#define _PATH_SSH_ASKPASS_DEFAULT	"/usr/X11R6/bin/ssh-askpass"
 #endif
 
 /* Location of ssh-keysign for hostbased authentication */
@@ -165,15 +163,6 @@
 #ifndef _PATH_LS
 #define _PATH_LS			"ls"
 #endif
-
-/* path to login program */
-#ifndef LOGIN_PROGRAM
-# ifdef LOGIN_PROGRAM_FALLBACK
-#  define LOGIN_PROGRAM         LOGIN_PROGRAM_FALLBACK
-# else
-#  define LOGIN_PROGRAM         "/usr/bin/login"
-# endif
-#endif /* LOGIN_PROGRAM */
 
 /* Askpass program define */
 #ifndef ASKPASS_PROGRAM

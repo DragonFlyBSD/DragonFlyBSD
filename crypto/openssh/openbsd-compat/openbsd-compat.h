@@ -1,5 +1,3 @@
-/* $Id: openbsd-compat.h,v 1.62 2014/09/30 23:43:08 djm Exp $ */
-
 /*
  * Copyright (c) 1999-2003 Damien Miller.  All rights reserved.
  * Copyright (c) 2003 Ben Lindstrom. All rights reserved.
@@ -62,12 +60,20 @@ int bindresvport_sa(int sd, struct sockaddr *sa);
 void closefrom(int);
 #endif
 
+#ifndef HAVE_GETPAGESIZE
+int getpagesize(void);
+#endif
+
 #ifndef HAVE_GETCWD
 char *getcwd(char *pt, size_t size);
-#endif 
+#endif
 
 #ifndef HAVE_REALLOCARRAY
 void *reallocarray(void *, size_t, size_t);
+#endif
+
+#ifndef HAVE_RECALLOCARRAY
+void *recallocarray(void *, size_t, size_t, size_t);
 #endif
 
 #if !defined(HAVE_REALPATH) || defined(BROKEN_REALPATH)
@@ -87,14 +93,16 @@ int rresvport_af(int *alport, sa_family_t af);
 #endif
 
 #ifndef HAVE_STRLCPY
-/* #include <sys/types.h> XXX Still needed? */
 size_t strlcpy(char *dst, const char *src, size_t siz);
 #endif
 
 #ifndef HAVE_STRLCAT
-/* #include <sys/types.h> XXX Still needed? */
 size_t strlcat(char *dst, const char *src, size_t siz);
-#endif 
+#endif
+
+#ifndef HAVE_STRCASESTR
+char *strcasestr(const char *, const char *);
+#endif
 
 #ifndef HAVE_SETENV
 int setenv(register const char *name, register const char *value, int rewrite);
@@ -113,11 +121,11 @@ char *strptime(const char *buf, const char *fmt, struct tm *tm);
 int mkstemps(char *path, int slen);
 int mkstemp(char *path);
 char *mkdtemp(char *path);
-#endif 
+#endif
 
 #ifndef HAVE_DAEMON
 int daemon(int nochdir, int noclose);
-#endif 
+#endif
 
 #ifndef HAVE_DIRNAME
 char *dirname(const char *path);
@@ -142,7 +150,7 @@ const char *inet_ntop(int af, const void *src, char *dst, socklen_t size);
 
 #ifndef HAVE_INET_ATON
 int inet_aton(const char *cp, struct in_addr *addr);
-#endif 
+#endif
 
 #ifndef HAVE_STRSEP
 char *strsep(char **stringp, const char *delim);
@@ -154,7 +162,6 @@ void compat_init_setproctitle(int argc, char *argv[]);
 #endif
 
 #ifndef HAVE_GETGROUPLIST
-/* #include <grp.h> XXXX Still needed ? */
 int getgrouplist(const char *, gid_t, gid_t *, int *);
 #endif
 
@@ -199,18 +206,16 @@ u_int32_t arc4random_uniform(u_int32_t);
 
 #ifndef HAVE_ASPRINTF
 int asprintf(char **, const char *, ...);
-#endif 
+#endif
 
 #ifndef HAVE_OPENPTY
 # include <sys/ioctl.h>	/* for struct winsize */
 int openpty(int *, int *, char *, struct termios *, struct winsize *);
 #endif /* HAVE_OPENPTY */
 
-/* #include <sys/types.h> XXX needed? For size_t */
-
 #ifndef HAVE_SNPRINTF
 int snprintf(char *, size_t, SNPRINTF_CONST char *, ...);
-#endif 
+#endif
 
 #ifndef HAVE_STRTOLL
 long long strtoll(const char *, char **, int);
@@ -299,7 +304,10 @@ int	bcrypt_pbkdf(const char *, size_t, const u_int8_t *, size_t,
 void explicit_bzero(void *p, size_t n);
 #endif
 
-void *xmmap(size_t size);
+#ifndef HAVE_FREEZERO
+void freezero(void *, size_t);
+#endif
+
 char *xcrypt(const char *password, const char *salt);
 char *shadow_pw(struct passwd *pw);
 

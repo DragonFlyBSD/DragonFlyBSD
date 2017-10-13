@@ -70,8 +70,8 @@ int setlogin(const char *name)
 #endif /* !HAVE_SETLOGIN */
 
 #ifndef HAVE_INNETGR
-int innetgr(const char *netgroup, const char *host, 
-            const char *user, const char *domain)
+int innetgr(const char *netgroup, const char *host,
+	    const char *user, const char *domain)
 {
 	return (0);
 }
@@ -96,11 +96,21 @@ const char *strerror(int e)
 {
 	extern int sys_nerr;
 	extern char *sys_errlist[];
-	
+
 	if ((e >= 0) && (e < sys_nerr))
 		return (sys_errlist[e]);
 
 	return ("unlisted error");
+}
+#endif
+
+#if !defined(HAVE_STRSIGNAL)
+char *strsignal(int sig)
+{
+	static char buf[16];
+
+	(void)snprintf(buf, sizeof(buf), "%d", sig);
+	return buf;
 }
 #endif
 
@@ -111,10 +121,10 @@ int utimes(char *filename, struct timeval *tvp)
 
 	ub.actime = tvp[0].tv_sec;
 	ub.modtime = tvp[1].tv_sec;
-	
+
 	return (utime(filename, &ub));
 }
-#endif 
+#endif
 
 #ifndef HAVE_TRUNCATE
 int truncate(const char *path, off_t length)
@@ -149,9 +159,9 @@ int nanosleep(const struct timespec *req, struct timespec *rem)
 		saverrno = errno;
 		(void) gettimeofday (&tstop, NULL);
 		errno = saverrno;
-		tremain.tv_sec = time2wait.tv_sec - 
+		tremain.tv_sec = time2wait.tv_sec -
 			(tstop.tv_sec - tstart.tv_sec);
-		tremain.tv_usec = time2wait.tv_usec - 
+		tremain.tv_usec = time2wait.tv_usec -
 			(tstop.tv_usec - tstart.tv_usec);
 		tremain.tv_sec += tremain.tv_usec / 1000000L;
 		tremain.tv_usec %= 1000000L;
@@ -299,5 +309,13 @@ mbtowc(wchar_t *pwc, const char *s, size_t n)
 	if (pwc != NULL)
 		*pwc = *s;
 	return 1;
+}
+#endif
+
+#ifndef HAVE_LLABS
+long long
+llabs(long long j)
+{
+	return (j < 0 ? -j : j);
 }
 #endif
