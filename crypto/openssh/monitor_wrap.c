@@ -1,4 +1,4 @@
-/* $OpenBSD: monitor_wrap.c,v 1.88 2016/03/07 19:02:43 djm Exp $ */
+/* $OpenBSD: monitor_wrap.c,v 1.94 2017/10/02 19:33:20 djm Exp $ */
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
  * Copyright 2002 Markus Friedl <markus@openbsd.org>
@@ -85,7 +85,6 @@
 #include "ssherr.h"
 
 /* Imports */
-extern int compat20;
 extern z_stream incoming_stream;
 extern z_stream outgoing_stream;
 extern struct monitor *pmonitor;
@@ -217,7 +216,7 @@ mm_choose_dh(int min, int nbits, int max)
 #endif
 
 int
-mm_key_sign(Key *key, u_char **sigp, u_int *lenp,
+mm_key_sign(struct sshkey *key, u_char **sigp, u_int *lenp,
     const u_char *data, u_int datalen, const char *hostkey_alg)
 {
 	struct kex *kex = *pmonitor->m_pkex;
@@ -243,6 +242,7 @@ mm_key_sign(Key *key, u_char **sigp, u_int *lenp,
 struct passwd *
 mm_getpwnamallow(const char *username)
 {
+	struct ssh *ssh = active_state;		/* XXX */
 	Buffer m;
 	struct passwd *pw;
 	u_int len, i;
@@ -290,12 +290,20 @@ out:
 		for (i = 0; i < newopts->nx; i++) \
 			newopts->x[i] = buffer_get_string(&m, NULL); \
 	} while (0)
+#define M_CP_STRARRAYOPT_ALLOC(x, nx) do { \
+		newopts->x = newopts->nx == 0 ? \
+		    NULL : xcalloc(newopts->nx, sizeof(*newopts->x)); \
+		M_CP_STRARRAYOPT(x, nx); \
+	} while (0)
 	/* See comment in servconf.h */
 	COPY_MATCH_STRING_OPTS();
 #undef M_CP_STROPT
 #undef M_CP_STRARRAYOPT
+#undef M_CP_STRARRAYOPT_ALLOC
 
 	copy_set_server_options(&options, newopts, 1);
+	log_change_level(options.log_level);
+	process_permitopen(ssh, &options);
 	free(newopts);
 
 	buffer_free(&m);
@@ -375,7 +383,8 @@ mm_auth_password(Authctxt *authctxt, char *password)
 }
 
 int
-mm_user_key_allowed(struct passwd *pw, Key *key, int pubkey_auth_attempt)
+mm_user_key_allowed(struct passwd *pw, struct sshkey *key,
+    int pubkey_auth_attempt)
 {
 	return (mm_key_allowed(MM_USERKEY, NULL, NULL, key,
 	    pubkey_auth_attempt));
@@ -383,26 +392,14 @@ mm_user_key_allowed(struct passwd *pw, Key *key, int pubkey_auth_attempt)
 
 int
 mm_hostbased_key_allowed(struct passwd *pw, const char *user, const char *host,
-    Key *key)
+    struct sshkey *key)
 {
 	return (mm_key_allowed(MM_HOSTKEY, user, host, key, 0));
 }
 
 int
-mm_auth_rhosts_rsa_key_allowed(struct passwd *pw, const char *user,
-    const char *host, Key *key)
-{
-	int ret;
-
-	key->type = KEY_RSA; /* XXX hack for key_to_blob */
-	ret = mm_key_allowed(MM_RSAHOSTKEY, user, host, key, 0);
-	key->type = KEY_RSA1;
-	return (ret);
-}
-
-int
 mm_key_allowed(enum mm_keytype type, const char *user, const char *host,
-    Key *key, int pubkey_auth_attempt)
+    struct sshkey *key, int pubkey_auth_attempt)
 {
 	Buffer m;
 	u_char *blob;
@@ -447,12 +444,13 @@ mm_key_allowed(enum mm_keytype type, const char *user, const char *host,
  */
 
 int
-mm_key_verify(Key *key, u_char *sig, u_int siglen, u_char *data, u_int datalen)
+mm_sshkey_verify(const struct sshkey *key, const u_char *sig, size_t siglen,
+    const u_char *data, size_t datalen, u_int compat)
 {
 	Buffer m;
 	u_char *blob;
 	u_int len;
-	int verified = 0;
+	u_int encoded_ret = 0;
 
 	debug3("%s entering", __func__);
 
@@ -471,11 +469,13 @@ mm_key_verify(Key *key, u_char *sig, u_int siglen, u_char *data, u_int datalen)
 	debug3("%s: waiting for MONITOR_ANS_KEYVERIFY", __func__);
 	mm_request_receive_expect(pmonitor->m_recvfd, MONITOR_ANS_KEYVERIFY, &m);
 
-	verified = buffer_get_int(&m);
+	encoded_ret = buffer_get_int(&m);
 
 	buffer_free(&m);
 
-	return (verified);
+	if (encoded_ret != 0)
+		return SSH_ERR_SIGNATURE_INVALID;
+	return 0;
 }
 
 void
@@ -710,28 +710,6 @@ mm_terminate(void)
 	buffer_free(&m);
 }
 
-#ifdef WITH_SSH1
-int
-mm_ssh1_session_key(BIGNUM *num)
-{
-	int rsafail;
-	Buffer m;
-
-	buffer_init(&m);
-	buffer_put_bignum2(&m, num);
-	mm_request_send(pmonitor->m_recvfd, MONITOR_REQ_SESSKEY, &m);
-
-	mm_request_receive_expect(pmonitor->m_recvfd, MONITOR_ANS_SESSKEY, &m);
-
-	rsafail = buffer_get_int(&m);
-	buffer_get_bignum2(&m, num);
-
-	buffer_free(&m);
-
-	return (rsafail);
-}
-#endif
-
 static void
 mm_chall_setup(char **name, char **infotxt, u_int *numprompts,
     char ***prompts, u_int **echo_on)
@@ -861,120 +839,6 @@ mm_skey_respond(void *ctx, u_int numresponses, char **responses)
 	return ((authok == 0) ? -1 : 0);
 }
 #endif /* SKEY */
-
-void
-mm_ssh1_session_id(u_char session_id[16])
-{
-	Buffer m;
-	int i;
-
-	debug3("%s entering", __func__);
-
-	buffer_init(&m);
-	for (i = 0; i < 16; i++)
-		buffer_put_char(&m, session_id[i]);
-
-	mm_request_send(pmonitor->m_recvfd, MONITOR_REQ_SESSID, &m);
-	buffer_free(&m);
-}
-
-#ifdef WITH_SSH1
-int
-mm_auth_rsa_key_allowed(struct passwd *pw, BIGNUM *client_n, Key **rkey)
-{
-	Buffer m;
-	Key *key;
-	u_char *blob;
-	u_int blen;
-	int allowed = 0, have_forced = 0;
-
-	debug3("%s entering", __func__);
-
-	buffer_init(&m);
-	buffer_put_bignum2(&m, client_n);
-
-	mm_request_send(pmonitor->m_recvfd, MONITOR_REQ_RSAKEYALLOWED, &m);
-	mm_request_receive_expect(pmonitor->m_recvfd, MONITOR_ANS_RSAKEYALLOWED, &m);
-
-	allowed = buffer_get_int(&m);
-
-	/* fake forced command */
-	auth_clear_options();
-	have_forced = buffer_get_int(&m);
-	forced_command = have_forced ? xstrdup("true") : NULL;
-
-	if (allowed && rkey != NULL) {
-		blob = buffer_get_string(&m, &blen);
-		if ((key = key_from_blob(blob, blen)) == NULL)
-			fatal("%s: key_from_blob failed", __func__);
-		*rkey = key;
-		free(blob);
-	}
-	buffer_free(&m);
-
-	return (allowed);
-}
-
-BIGNUM *
-mm_auth_rsa_generate_challenge(Key *key)
-{
-	Buffer m;
-	BIGNUM *challenge;
-	u_char *blob;
-	u_int blen;
-
-	debug3("%s entering", __func__);
-
-	if ((challenge = BN_new()) == NULL)
-		fatal("%s: BN_new failed", __func__);
-
-	key->type = KEY_RSA;    /* XXX cheat for key_to_blob */
-	if (key_to_blob(key, &blob, &blen) == 0)
-		fatal("%s: key_to_blob failed", __func__);
-	key->type = KEY_RSA1;
-
-	buffer_init(&m);
-	buffer_put_string(&m, blob, blen);
-	free(blob);
-
-	mm_request_send(pmonitor->m_recvfd, MONITOR_REQ_RSACHALLENGE, &m);
-	mm_request_receive_expect(pmonitor->m_recvfd, MONITOR_ANS_RSACHALLENGE, &m);
-
-	buffer_get_bignum2(&m, challenge);
-	buffer_free(&m);
-
-	return (challenge);
-}
-
-int
-mm_auth_rsa_verify_response(Key *key, BIGNUM *p, u_char response[16])
-{
-	Buffer m;
-	u_char *blob;
-	u_int blen;
-	int success = 0;
-
-	debug3("%s entering", __func__);
-
-	key->type = KEY_RSA;    /* XXX cheat for key_to_blob */
-	if (key_to_blob(key, &blob, &blen) == 0)
-		fatal("%s: key_to_blob failed", __func__);
-	key->type = KEY_RSA1;
-
-	buffer_init(&m);
-	buffer_put_string(&m, blob, blen);
-	buffer_put_string(&m, response, 16);
-	free(blob);
-
-	mm_request_send(pmonitor->m_recvfd, MONITOR_REQ_RSARESPONSE, &m);
-	mm_request_receive_expect(pmonitor->m_recvfd, MONITOR_ANS_RSARESPONSE, &m);
-
-	success = buffer_get_int(&m);
-	buffer_free(&m);
-
-	return (success);
-}
-#endif
 
 #ifdef SSH_AUDIT_EVENTS
 void

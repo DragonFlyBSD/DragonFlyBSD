@@ -1,4 +1,4 @@
-/* $OpenBSD: kexgexs.c,v 1.29 2016/06/08 02:13:01 dtucker Exp $ */
+/* $OpenBSD: kexgexs.c,v 1.31 2017/05/30 14:23:52 markus Exp $ */
 /*
  * Copyright (c) 2000 Niels Provos.  All rights reserved.
  * Copyright (c) 2001 Markus Friedl.  All rights reserved.
@@ -28,7 +28,6 @@
 
 #ifdef WITH_OPENSSL
 
-#include <sys/param.h>	/* MIN MAX */
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -53,9 +52,10 @@
 #include "dispatch.h"
 #include "ssherr.h"
 #include "sshbuf.h"
+#include "misc.h"
 
-static int input_kex_dh_gex_request(int, u_int32_t, void *);
-static int input_kex_dh_gex_init(int, u_int32_t, void *);
+static int input_kex_dh_gex_request(int, u_int32_t, struct ssh *);
+static int input_kex_dh_gex_init(int, u_int32_t, struct ssh *);
 
 int
 kexgex_server(struct ssh *ssh)
@@ -67,9 +67,8 @@ kexgex_server(struct ssh *ssh)
 }
 
 static int
-input_kex_dh_gex_request(int type, u_int32_t seq, void *ctxt)
+input_kex_dh_gex_request(int type, u_int32_t seq, struct ssh *ssh)
 {
-	struct ssh *ssh = ctxt;
 	struct kex *kex = ssh->kex;
 	int r;
 	u_int min = 0, max = 0, nbits = 0;
@@ -83,10 +82,10 @@ input_kex_dh_gex_request(int type, u_int32_t seq, void *ctxt)
 	kex->nbits = nbits;
 	kex->min = min;
 	kex->max = max;
-	min = MAX(DH_GRP_MIN, min);
-	max = MIN(DH_GRP_MAX, max);
-	nbits = MAX(DH_GRP_MIN, nbits);
-	nbits = MIN(DH_GRP_MAX, nbits);
+	min = MAXIMUM(DH_GRP_MIN, min);
+	max = MINIMUM(DH_GRP_MAX, max);
+	nbits = MAXIMUM(DH_GRP_MIN, nbits);
+	nbits = MINIMUM(DH_GRP_MAX, nbits);
 
 	if (kex->max < kex->min || kex->nbits < kex->min ||
 	    kex->max < kex->nbits || kex->max < DH_GRP_MIN) {
@@ -120,9 +119,8 @@ input_kex_dh_gex_request(int type, u_int32_t seq, void *ctxt)
 }
 
 static int
-input_kex_dh_gex_init(int type, u_int32_t seq, void *ctxt)
+input_kex_dh_gex_init(int type, u_int32_t seq, struct ssh *ssh)
 {
-	struct ssh *ssh = ctxt;
 	struct kex *kex = ssh->kex;
 	BIGNUM *shared_secret = NULL, *dh_client_pub = NULL;
 	struct sshkey *server_host_public, *server_host_private;

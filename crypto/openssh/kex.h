@@ -1,4 +1,4 @@
-/* $OpenBSD: kex.h,v 1.78 2016/05/02 10:26:04 djm Exp $ */
+/* $OpenBSD: kex.h,v 1.83 2017/05/30 14:23:52 markus Exp $ */
 
 /*
  * Copyright (c) 2000, 2001 Markus Friedl.  All rights reserved.
@@ -50,17 +50,18 @@
 
 #define KEX_COOKIE_LEN	16
 
-#define	KEX_DH1			"diffie-hellman-group1-sha1"
-#define	KEX_DH14_SHA1		"diffie-hellman-group14-sha1"
-#define	KEX_DH14_SHA256		"diffie-hellman-group14-sha256"
-#define	KEX_DH16_SHA512		"diffie-hellman-group16-sha512"
-#define	KEX_DH18_SHA512		"diffie-hellman-group18-sha512"
-#define	KEX_DHGEX_SHA1		"diffie-hellman-group-exchange-sha1"
-#define	KEX_DHGEX_SHA256	"diffie-hellman-group-exchange-sha256"
-#define	KEX_ECDH_SHA2_NISTP256	"ecdh-sha2-nistp256"
-#define	KEX_ECDH_SHA2_NISTP384	"ecdh-sha2-nistp384"
-#define	KEX_ECDH_SHA2_NISTP521	"ecdh-sha2-nistp521"
-#define	KEX_CURVE25519_SHA256	"curve25519-sha256@libssh.org"
+#define	KEX_DH1				"diffie-hellman-group1-sha1"
+#define	KEX_DH14_SHA1			"diffie-hellman-group14-sha1"
+#define	KEX_DH14_SHA256			"diffie-hellman-group14-sha256"
+#define	KEX_DH16_SHA512			"diffie-hellman-group16-sha512"
+#define	KEX_DH18_SHA512			"diffie-hellman-group18-sha512"
+#define	KEX_DHGEX_SHA1			"diffie-hellman-group-exchange-sha1"
+#define	KEX_DHGEX_SHA256		"diffie-hellman-group-exchange-sha256"
+#define	KEX_ECDH_SHA2_NISTP256		"ecdh-sha2-nistp256"
+#define	KEX_ECDH_SHA2_NISTP384		"ecdh-sha2-nistp384"
+#define	KEX_ECDH_SHA2_NISTP521		"ecdh-sha2-nistp521"
+#define	KEX_CURVE25519_SHA256		"curve25519-sha256"
+#define	KEX_CURVE25519_SHA256_OLD	"curve25519-sha256@libssh.org"
 
 #define COMP_NONE	0
 #define COMP_ZLIB	1
@@ -180,8 +181,8 @@ int	 kex_prop2buf(struct sshbuf *, char *proposal[PROPOSAL_MAX]);
 void	 kex_prop_free(char **);
 
 int	 kex_send_kexinit(struct ssh *);
-int	 kex_input_kexinit(int, u_int32_t, void *);
-int	 kex_input_ext_info(int, u_int32_t, void *);
+int	 kex_input_kexinit(int, u_int32_t, struct ssh *);
+int	 kex_input_ext_info(int, u_int32_t, struct ssh *);
 int	 kex_derive_keys(struct ssh *, u_char *, u_int, const struct sshbuf *);
 int	 kex_derive_keys_bn(struct ssh *, u_char *, u_int, const BIGNUM *);
 int	 kex_send_newkeys(struct ssh *);
@@ -223,9 +224,6 @@ int	kexc25519_shared_key(const u_char key[CURVE25519_SIZE],
     const u_char pub[CURVE25519_SIZE], struct sshbuf *out)
 	__attribute__((__bounded__(__minbytes__, 1, CURVE25519_SIZE)))
 	__attribute__((__bounded__(__minbytes__, 2, CURVE25519_SIZE)));
-
-int
-derive_ssh1_session_id(BIGNUM *, BIGNUM *, u_int8_t[8], u_int8_t[16]);
 
 #if defined(DEBUG_KEX) || defined(DEBUG_KEXDH) || defined(DEBUG_KEXECDH)
 void	dump_digest(char *, u_char *, int);

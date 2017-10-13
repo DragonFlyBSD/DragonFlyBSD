@@ -25,9 +25,6 @@
 #ifndef _DEFINES_H
 #define _DEFINES_H
 
-/* $Id: defines.h,v 1.183 2014/09/02 19:33:26 djm Exp $ */
-
-
 /* Constants */
 
 #if defined(HAVE_DECL_SHUT_RD) && HAVE_DECL_SHUT_RD == 0
@@ -331,6 +328,28 @@ typedef unsigned int size_t;
 #define SIZE_MAX SIZE_T_MAX
 #endif
 
+#ifndef INT32_MAX
+# if (SIZEOF_INT == 4)
+#  define INT32_MAX INT_MAX
+# elif (SIZEOF_LONG == 4)
+#  define INT32_MAX LONG_MAX
+# else
+#  error "need INT32_MAX"
+# endif
+#endif
+
+#ifndef INT64_MAX
+# if (SIZEOF_INT == 8)
+#  define INT64_MAX INT_MAX
+# elif (SIZEOF_LONG == 8)
+#  define INT64_MAX LONG_MAX
+# elif (SIZEOF_LONG_LONG_INT == 8)
+#  define INT64_MAX LLONG_MAX
+# else
+#  error "need INT64_MAX"
+# endif
+#endif
+
 #ifndef HAVE_SSIZE_T
 typedef int ssize_t;
 # define HAVE_SSIZE_T
@@ -498,6 +517,13 @@ struct winsize {
 	(tv)->tv_sec = (ts)->tv_sec;					\
 	(tv)->tv_usec = (ts)->tv_nsec / 1000;				\
 }
+#endif
+
+#ifndef timespeccmp
+#define timespeccmp(tsp, usp, cmp)					\
+	(((tsp)->tv_sec == (usp)->tv_sec) ?				\
+	    ((tsp)->tv_nsec cmp (usp)->tv_nsec) :			\
+	    ((tsp)->tv_sec cmp (usp)->tv_sec))
 #endif
 
 #ifndef __P
@@ -834,6 +860,13 @@ struct winsize {
 #ifndef SSH_IOBUFSZ
 # define SSH_IOBUFSZ 8192
 #endif
+
+/*
+ * We want functions in openbsd-compat, if enabled, to override system ones.
+ * We no-op out the weak symbol definition rather than remove it to reduce
+ * future sync problems.
+ */
+#define DEF_WEAK(x)
 
 /*
  * Platforms that have arc4random_uniform() and not arc4random_stir()

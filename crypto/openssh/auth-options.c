@@ -1,4 +1,4 @@
-/* $OpenBSD: auth-options.c,v 1.71 2016/03/07 19:02:43 djm Exp $ */
+/* $OpenBSD: auth-options.c,v 1.74 2017/09/12 06:32:07 djm Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -61,9 +61,13 @@ char *authorized_principals = NULL;
 
 extern ServerOptions options;
 
+/* XXX refactor to be stateless */
+
 void
 auth_clear_options(void)
 {
+	struct ssh *ssh = active_state;		/* XXX */
+
 	no_agent_forwarding_flag = 0;
 	no_port_forwarding_flag = 0;
 	no_pty_flag = 0;
@@ -81,7 +85,7 @@ auth_clear_options(void)
 	free(authorized_principals);
 	authorized_principals = NULL;
 	forced_tun_device = -1;
-	channel_clear_permitted_opens();
+	channel_clear_permitted_opens(ssh);
 }
 
 /*
@@ -117,9 +121,11 @@ match_flag(const char *opt, int allow_negate, char **optsp, const char *msg)
 /*
  * return 1 if access is granted, 0 if not.
  * side effect: sets key option flags
+ * XXX remove side effects; fill structure instead.
  */
 int
-auth_parse_options(struct passwd *pw, char *opts, char *file, u_long linenum)
+auth_parse_options(struct passwd *pw, char *opts, const char *file,
+    u_long linenum)
 {
 	struct ssh *ssh = active_state;		/* XXX */
 	const char *cp;
@@ -379,7 +385,7 @@ auth_parse_options(struct passwd *pw, char *opts, char *file, u_long linenum)
 				goto bad_option;
 			}
 			if ((options.allow_tcp_forwarding & FORWARD_LOCAL) != 0)
-				channel_add_permitted_opens(host, port);
+				channel_add_permitted_opens(ssh, host, port);
 			free(patterns);
 			goto next_option;
 		}
@@ -601,7 +607,7 @@ parse_option_list(struct sshbuf *oblob, struct passwd *pw,
  * options so this must be called after auth_parse_options().
  */
 int
-auth_cert_options(struct sshkey *k, struct passwd *pw)
+auth_cert_options(struct sshkey *k, struct passwd *pw, const char **reason)
 {
 	int cert_no_port_forwarding_flag = 1;
 	int cert_no_agent_forwarding_flag = 1;
@@ -610,6 +616,8 @@ auth_cert_options(struct sshkey *k, struct passwd *pw)
 	int cert_no_user_rc = 1;
 	char *cert_forced_command = NULL;
 	int cert_source_address_done = 0;
+
+	*reason = "invalid certificate options";
 
 	/* Separate options and extensions for v01 certs */
 	if (parse_option_list(k->cert->critical, pw,
@@ -632,11 +640,24 @@ auth_cert_options(struct sshkey *k, struct passwd *pw)
 	no_x11_forwarding_flag |= cert_no_x11_forwarding_flag;
 	no_pty_flag |= cert_no_pty_flag;
 	no_user_rc |= cert_no_user_rc;
-	/* CA-specified forced command supersedes key option */
-	if (cert_forced_command != NULL) {
-		free(forced_command);
+	/*
+	 * Only permit both CA and key option forced-command if they match.
+	 * Otherwise refuse the certificate.
+	 */
+	if (cert_forced_command != NULL && forced_command != NULL) {
+		if (strcmp(forced_command, cert_forced_command) == 0) {
+			free(forced_command);
+			forced_command = cert_forced_command;
+		} else {
+			*reason = "certificate and key options forced command "
+			    "do not match";
+			free(cert_forced_command);
+			return -1;
+		}
+	} else if (cert_forced_command != NULL)
 		forced_command = cert_forced_command;
-	}
+	/* success */
+	*reason = NULL;
 	return 0;
 }
 
