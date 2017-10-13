@@ -7,7 +7,7 @@ MLINKS=	ssh.1 slogin.1
 WARNS?=	2
 
 SRCS=	ssh.c readconf.c clientloop.c sshtty.c \
-	sshconnect.c sshconnect1.c sshconnect2.c mux.c
+	sshconnect.c sshconnect2.c mux.c
 SRCS+=	fmt_scaled.c
 
 .include "../../Makefile.ssh.common"
