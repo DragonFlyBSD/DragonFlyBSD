@@ -309,6 +309,7 @@ again:
   struct passwd *pwd;
   char *p = getlogin();
   char buf[32];
+  char *cryptpw;
 
   if ((pwd = getpwuid(getuid())) == NULL) {
     syslog(LOG_CRIT, "'%s' failed for unknown uid %d on %s", argvbuf, getuid(), ttyname(2));
@@ -425,7 +426,8 @@ userok:
 
   if (console) {
     /* Try regular password check, if allowed */
-    if (!strcmp(crypt(pbuf, thisuser.pw_passwd), thisuser.pw_passwd))
+    cryptpw = crypt(pbuf, thisuser.pw_passwd);
+    if (cryptpw != NULL && !strcmp(cryptpw, thisuser.pw_passwd))
       goto ok;
   } else {
     int i = opiegetsequence(&opie);

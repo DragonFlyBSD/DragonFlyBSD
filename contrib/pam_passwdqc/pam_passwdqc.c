@@ -217,6 +217,7 @@ static int check_max(params_t *params, pam_handle_t *pamh, const char *newpass)
 
 static int check_pass(struct passwd *pw, const char *pass)
 {
+	char *cryptpw;
 #ifdef HAVE_SHADOW
 	struct spwd *spw;
 	const char *hash;
@@ -236,13 +237,13 @@ static int check_pass(struct passwd *pw, const char *pass)
 #else
 		hash = crypt(pass, spw->sp_pwdp);
 #endif
-		retval = strcmp(hash, spw->sp_pwdp) ? -1 : 0;
+		retval = (hash == NULL || strcmp(hash, spw->sp_pwdp)) ? -1 : 0;
 		memset(spw->sp_pwdp, 0, strlen(spw->sp_pwdp));
 		return retval;
 	}
 #endif
-
-	return strcmp(crypt(pass, pw->pw_passwd), pw->pw_passwd) ? -1 : 0;
+	cryptpw = crypt(pass, pw->pw_passwd);
+	return (cryptpw == NULL || strcmp(cryptpw, pw->pw_passwd)) ? -1 : 0;
 }
 
 static int am_root(pam_handle_t *pamh)

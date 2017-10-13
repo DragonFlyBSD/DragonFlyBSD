@@ -524,6 +524,7 @@ static VOIDRET end_login FUNCTION_NOARGS
 VOIDRET pass FUNCTION((passwd), char *passwd)
 {
   int legit = askpasswd + 1, i;
+  char *cryptpw;
 
   if (logged_in || askpasswd == 0) {
     reply(503, "Login with USER first.");
@@ -535,8 +536,10 @@ VOIDRET pass FUNCTION((passwd), char *passwd)
   if (!guest) { /* "ftp" is only account allowed no password */
 #endif	/* DOANONYMOUS */
     i = opieverify(&opiestate, passwd);
-    if (legit && i && pwok) 
-      i = strcmp(crypt(passwd, pw->pw_passwd), pw->pw_passwd);
+    if (legit && i && pwok) {
+      cryptpw = crypt(passwd, pw->pw_passwd);
+      i = (cryptpw == NULL || strcmp(cryptpw, pw->pw_passwd) != 0);
+    }
     if (!legit || i) {
       reply(530, "Login incorrect.");
       pw = NULL;

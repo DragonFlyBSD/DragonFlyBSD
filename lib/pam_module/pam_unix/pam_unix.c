@@ -91,6 +91,7 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags __unused,
 	struct passwd *pwd;
 	int retval;
 	const char *pass, *user, *realpw, *prompt;
+	char *cryptpw;
 
 	if (openpam_get_option(pamh, PAM_OPT_AUTH_AS_SELF)) {
 		pwd = getpwnam(getlogin());
@@ -124,7 +125,8 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags __unused,
 	if (retval != PAM_SUCCESS)
 		return (retval);
 	PAM_LOG("Got password");
-	if (strcmp(crypt(pass, realpw), realpw) == 0)
+	cryptpw = crypt(pass, realpw);
+	if (cryptpw != NULL && strcmp(cryptpw, realpw) == 0)
 		return (PAM_SUCCESS);
 
 	PAM_VERBOSE_ERROR("UNIX authentication refused");
@@ -343,7 +345,7 @@ pam_sm_chauthtok(pam_handle_t *pamh, int flags,
 		if (old_pass[0] == '\0' &&
 		    !openpam_get_option(pamh, PAM_OPT_NULLOK))
 			return (PAM_PERM_DENIED);
-		if (strcmp(encrypted, pwd->pw_passwd) != 0)
+		if (encrypted == NULL || strcmp(encrypted, pwd->pw_passwd) != 0)
 			return (PAM_PERM_DENIED);
 	}
 	else if (flags & PAM_UPDATE_AUTHTOK) {
