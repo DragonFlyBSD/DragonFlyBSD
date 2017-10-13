@@ -984,9 +984,8 @@ getasciilabel(FILE *f, struct disklabel64 *lp)
 		if (streq(cp, "display block size")) {
 			v = strtoul(tp, NULL, 0);
 			if (v <= 0 || (v & DEV_BMASK) != 0 || v > 1024*1024) {
-				fprintf(stderr,
-				    "line %d: %s: bad alignment\n",
-				    lineno, tp);
+				fprintf(stderr, "line %d: %s: bad %s\n",
+				    lineno, tp, cp);
 				errors++;
 			} else {
 				blksize = v;
