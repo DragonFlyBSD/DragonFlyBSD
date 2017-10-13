@@ -586,6 +586,7 @@ ffs_reload_scan2(struct mount *mp, struct vnode *vp, void *data)
 int
 ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 {
+	struct mount *mptmp;
 	struct ufsmount *ump;
 	struct buf *bp;
 	struct fs *fs;
@@ -718,9 +719,12 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 	mp->mnt_data = (qaddr_t)ump;
 	mp->mnt_stat.f_fsid.val[0] = fs->fs_id[0];
 	mp->mnt_stat.f_fsid.val[1] = fs->fs_id[1];
-	if (fs->fs_id[0] == 0 || fs->fs_id[1] == 0 || 
-	    vfs_getvfs(&mp->mnt_stat.f_fsid)) 
+	if (fs->fs_id[0] == 0 || fs->fs_id[1] == 0) {
 		vfs_getnewfsid(mp);
+	} else if ((mptmp = vfs_getvfs(&mp->mnt_stat.f_fsid)) != NULL) {
+		vfs_getnewfsid(mp);
+		mount_drop(mptmp);
+	}
 	mp->mnt_maxsymlinklen = fs->fs_maxsymlinklen;
 	mp->mnt_flag |= MNT_LOCAL;
 	ump->um_mountp = mp;

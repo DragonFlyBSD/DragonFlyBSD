@@ -174,6 +174,9 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	/*
 	 * Try to create a unique but non-random fsid for the nullfs to
 	 * allow it to be exported via NFS.
+	 *
+	 * NOTE: This has some cpu overhead when the same filesystem
+	 *	 is null-mounted many times (e.g. as used by synth).
 	 */
 	bzero(&fh, sizeof(fh));
 	fh.fh_fsid = rootvp->v_mount->mnt_stat.f_fsid;

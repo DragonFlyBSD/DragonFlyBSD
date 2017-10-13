@@ -374,16 +374,20 @@ mount_drop(struct mount *mp)
 
 /*
  * Lookup a mount point by filesystem identifier.
+ *
+ * If not NULL, the returned mp is held and the caller is expected to drop
+ * it via mount_drop().
  */
 struct mount *
 vfs_getvfs(fsid_t *fsid)
 {
 	struct mount *mp;
 
-	lwkt_gettoken(&mountlist_token);
+	lwkt_gettoken_shared(&mountlist_token);
 	TAILQ_FOREACH(mp, &mountlist, mnt_list) {
 		if (mp->mnt_stat.f_fsid.val[0] == fsid->val[0] &&
 		    mp->mnt_stat.f_fsid.val[1] == fsid->val[1]) {
+			mount_hold(mp);
 			break;
 		}
 	}
@@ -407,6 +411,7 @@ void
 vfs_getnewfsid(struct mount *mp)
 {
 	static u_int16_t mntid_base;
+	struct mount *mptmp;
 	fsid_t tfsid;
 	int mtype;
 
@@ -418,8 +423,10 @@ vfs_getnewfsid(struct mount *mp)
 		tfsid.val[0] = makeudev(255,
 		    mtype | ((mntid_base & 0xFF00) << 8) | (mntid_base & 0xFF));
 		mntid_base++;
-		if (vfs_getvfs(&tfsid) == NULL)
+		mptmp = vfs_getvfs(&tfsid);
+		if (mptmp == NULL)
 			break;
+		mount_drop(mptmp);
 	}
 	mp->mnt_stat.f_fsid.val[0] = tfsid.val[0];
 	mp->mnt_stat.f_fsid.val[1] = tfsid.val[1];
@@ -433,16 +440,23 @@ vfs_getnewfsid(struct mount *mp)
 int
 vfs_setfsid(struct mount *mp, fsid_t *template)
 {
+	struct mount *mptmp;
 	int didmunge = 0;
 
 	bzero(&mp->mnt_stat.f_fsid, sizeof(mp->mnt_stat.f_fsid));
+
+	lwkt_gettoken(&mntid_token);
 	for (;;) {
-		if (vfs_getvfs(template) == NULL)
+		mptmp = vfs_getvfs(template);
+		if (mptmp == NULL)
 			break;
+		mount_drop(mptmp);
 		didmunge = 1;
 		++template->val[1];
 	}
 	mp->mnt_stat.f_fsid = *template;
+	lwkt_reltoken(&mntid_token);
+
 	return(didmunge);
 }
 
@@ -535,9 +549,9 @@ mountlist_insert(struct mount *mp, int how)
 {
 	lwkt_gettoken(&mountlist_token);
 	if (how == MNTINS_FIRST)
-	    TAILQ_INSERT_HEAD(&mountlist, mp, mnt_list);
+		TAILQ_INSERT_HEAD(&mountlist, mp, mnt_list);
 	else
-	    TAILQ_INSERT_TAIL(&mountlist, mp, mnt_list);
+		TAILQ_INSERT_TAIL(&mountlist, mp, mnt_list);
 	lwkt_reltoken(&mountlist_token);
 }
 
@@ -547,6 +561,8 @@ mountlist_insert(struct mount *mp, int how)
  * Execute the specified interlock function with the mountlist token
  * held.  The function will be called in a serialized fashion verses
  * other functions called through this mechanism.
+ *
+ * The function is expected to be very short-lived.
  */
 int
 mountlist_interlock(int (*callback)(struct mount *), struct mount *mp)
@@ -592,7 +608,8 @@ mountlist_remove(struct mount *mp)
 			if (msi->msi_how & MNTSCAN_FORWARD)
 				msi->msi_node = TAILQ_NEXT(mp, mnt_list);
 			else
-				msi->msi_node = TAILQ_PREV(mp, mntlist, mnt_list);
+				msi->msi_node = TAILQ_PREV(mp, mntlist,
+							   mnt_list);
 		}
 	}
 	TAILQ_REMOVE(&mountlist, mp, mnt_list);
@@ -615,7 +632,7 @@ mountlist_exists(struct mount *mp)
 	int node_exists = 0;
 	struct mount* lmp;
 
-	lwkt_gettoken(&mountlist_token);
+	lwkt_gettoken_shared(&mountlist_token);
 	TAILQ_FOREACH(lmp, &mountlist, mnt_list) {
 		if (lmp == mp) {
 			node_exists = 1;
@@ -623,16 +640,20 @@ mountlist_exists(struct mount *mp)
 		}
 	}
 	lwkt_reltoken(&mountlist_token);
+
 	return(node_exists);
 }
 
 /*
- * mountlist_scan (MP SAFE)
+ * mountlist_scan
  *
- * Safely scan the mount points on the mount list.  Unless otherwise 
- * specified each mount point will be busied prior to the callback and
- * unbusied afterwords.  The callback may safely remove any mount point
- * without interfering with the scan.  If the current callback
+ * Safely scan the mount points on the mount list.  Each mountpoint
+ * is held across the callback.  The callback is responsible for
+ * acquiring any further tokens or locks.
+ *
+ * Unless otherwise specified each mount point will be busied prior to the
+ * callback and unbusied afterwords.  The callback may safely remove any
+ * mount point without interfering with the scan.  If the current callback
  * mount is removed the scanner will not attempt to unbusy it.
  *
  * If a mount node cannot be busied it is silently skipped.
@@ -645,10 +666,7 @@ mountlist_exists(struct mount *mp)
  * MNTSCAN_NOBUSY	- the scanner will make the callback without busying
  *			  the mount node.
  *
- * NOTE: mount_hold()/mount_drop() sequence primarily helps us avoid
- *	 confusion for the unbusy check, particularly if a kfree/kmalloc
- *	 occurs quickly (lots of processes mounting and unmounting at the
- *	 same time).
+ * NOTE: mountlist_token is not held across the callback.
  */
 int
 mountlist_scan(int (*callback)(struct mount *, void *), void *data, int how)
@@ -659,21 +677,26 @@ mountlist_scan(int (*callback)(struct mount *, void *), void *data, int how)
 	int res;
 
 	lwkt_gettoken(&mountlist_token);
-
 	info.msi_how = how;
 	info.msi_node = NULL;	/* paranoia */
 	TAILQ_INSERT_TAIL(&mountscan_list, &info, msi_entry);
+	lwkt_reltoken(&mountlist_token);
 
 	res = 0;
+	lwkt_gettoken_shared(&mountlist_token);
 
 	if (how & MNTSCAN_FORWARD) {
 		info.msi_node = TAILQ_FIRST(&mountlist);
 		while ((mp = info.msi_node) != NULL) {
 			mount_hold(mp);
 			if (how & MNTSCAN_NOBUSY) {
+				lwkt_reltoken(&mountlist_token);
 				count = callback(mp, data);
+				lwkt_gettoken_shared(&mountlist_token);
 			} else if (vfs_busy(mp, LK_NOWAIT) == 0) {
+				lwkt_reltoken(&mountlist_token);
 				count = callback(mp, data);
+				lwkt_gettoken_shared(&mountlist_token);
 				if (mp == info.msi_node)
 					vfs_unbusy(mp);
 			} else {
@@ -691,9 +714,13 @@ mountlist_scan(int (*callback)(struct mount *, void *), void *data, int how)
 		while ((mp = info.msi_node) != NULL) {
 			mount_hold(mp);
 			if (how & MNTSCAN_NOBUSY) {
+				lwkt_reltoken(&mountlist_token);
 				count = callback(mp, data);
+				lwkt_gettoken_shared(&mountlist_token);
 			} else if (vfs_busy(mp, LK_NOWAIT) == 0) {
+				lwkt_reltoken(&mountlist_token);
 				count = callback(mp, data);
+				lwkt_gettoken_shared(&mountlist_token);
 				if (mp == info.msi_node)
 					vfs_unbusy(mp);
 			} else {
@@ -704,11 +731,16 @@ mountlist_scan(int (*callback)(struct mount *, void *), void *data, int how)
 				break;
 			res += count;
 			if (mp == info.msi_node)
-				info.msi_node = TAILQ_PREV(mp, mntlist, mnt_list);
+				info.msi_node = TAILQ_PREV(mp, mntlist,
+							   mnt_list);
 		}
 	}
+	lwkt_reltoken(&mountlist_token);
+
+	lwkt_gettoken(&mountlist_token);
 	TAILQ_REMOVE(&mountscan_list, &info, msi_entry);
 	lwkt_reltoken(&mountlist_token);
+
 	return(res);
 }
 
@@ -1129,12 +1161,13 @@ mount_get_by_nc(struct namecache *ncp)
 {
 	struct mount *mp = NULL;
 
-	lwkt_gettoken(&mountlist_token);
+	lwkt_gettoken_shared(&mountlist_token);
 	TAILQ_FOREACH(mp, &mountlist, mnt_list) {
 		if (ncp == mp->mnt_ncmountpt.ncp)
 			break;
 	}
 	lwkt_reltoken(&mountlist_token);
+
 	return (mp);
 }
 

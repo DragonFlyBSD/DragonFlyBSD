@@ -1614,7 +1614,8 @@ cache_clrmountpt_callback(struct mount *mp, void *data)
 }
 
 /*
- *
+ * Clear NCF_ISMOUNTPT on nch->ncp if it is no longer associated
+ * with a mount point.
  */
 void
 cache_clrmountpt(struct nchandle *nch)
@@ -3421,7 +3422,7 @@ skip:
 	info.nch_mount = nch->mount;
 	info.nch_ncp = nch->ncp;
 	mountlist_scan(cache_findmount_callback, &info,
-			       MNTSCAN_FORWARD|MNTSCAN_NOBUSY);
+		       MNTSCAN_FORWARD|MNTSCAN_NOBUSY);
 
 	/*
 	 * Cache the result.

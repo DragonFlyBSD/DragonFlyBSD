@@ -1606,7 +1606,7 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct vnode *dirp;
 	struct vnode *dvp;
 	struct vnode *vp;
-	struct mount *mp;
+	struct mount *mp = NULL;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
 	u_quad_t tempsize;
@@ -1872,6 +1872,8 @@ nfsmout:
 	}
 	if (vp)
 		vput(vp);
+	if (mp)
+		mount_drop(mp);
 	return (error);
 }
 

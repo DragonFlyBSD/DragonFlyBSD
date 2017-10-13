@@ -996,11 +996,15 @@ sync_callback(struct mount *mp, void *data __unused)
 	int asyncflag;
 
 	if ((mp->mnt_flag & MNT_RDONLY) == 0) {
+		lwkt_gettoken(&mp->mnt_token);
 		asyncflag = mp->mnt_flag & MNT_ASYNC;
 		mp->mnt_flag &= ~MNT_ASYNC;
+		lwkt_reltoken(&mp->mnt_token);
 		vfs_msync(mp, MNT_NOWAIT);
 		VFS_SYNC(mp, MNT_NOWAIT);
+		lwkt_gettoken(&mp->mnt_token);
 		mp->mnt_flag |= asyncflag;
+		lwkt_reltoken(&mp->mnt_token);
 	}
 	return(0);
 }
@@ -4563,7 +4567,7 @@ sys_fhopen(struct fhopen_args *uap)
 	mp = vfs_getvfs(&fhp.fh_fsid);
 	if (mp == NULL) {
 		error = ESTALE;
-		goto  done;
+		goto done2;
 	}
 	/* now give me my vnode, it gets returned to me locked */
 	error = VFS_FHTOVP(mp, NULL, &fhp.fh_fid, &vp);
@@ -4644,7 +4648,9 @@ sys_fhopen(struct fhopen_args *uap)
 	 * Assert that all regular files must be created with a VM object.
 	 */
 	if (vp->v_type == VREG && vp->v_object == NULL) {
-		kprintf("fhopen: regular file did not have VM object: %p\n", vp);
+		kprintf("fhopen: regular file did not "
+			"have VM object: %p\n",
+			vp);
 		goto bad_drop;
 	}
 
@@ -4664,7 +4670,8 @@ sys_fhopen(struct fhopen_args *uap)
 		else
 			type = F_WAIT;
 		vn_unlock(vp);
-		if ((error = VOP_ADVLOCK(vp, (caddr_t)fp, F_SETLK, &lf, type)) != 0) {
+		if ((error = VOP_ADVLOCK(vp, (caddr_t)fp, F_SETLK,
+					 &lf, type)) != 0) {
 			/*
 			 * release our private reference.
 			 */
@@ -4687,6 +4694,8 @@ sys_fhopen(struct fhopen_args *uap)
 	fsetfd(fdp, fp, indx);
 	fdrop(fp);
 	uap->sysmsg_result = indx;
+	mount_drop(mp);
+
 	return (error);
 
 bad_drop:
@@ -4695,6 +4704,8 @@ bad_drop:
 bad:
 	vput(vp);
 done:
+	mount_drop(mp);
+done2:
 	return (error);
 }
 
@@ -4732,6 +4743,9 @@ sys_fhstat(struct fhstat_args *uap)
 	}
 	if (error == 0)
 		error = copyout(&sb, uap->sb, sizeof(sb));
+	if (mp)
+		mount_drop(mp);
+
 	return (error);
 }
 
@@ -4792,6 +4806,9 @@ sys_fhstatfs(struct fhstatfs_args *uap)
 	}
 	error = copyout(sp, uap->buf, sizeof(*sp));
 done:
+	if (mp)
+		mount_drop(mp);
+
 	return (error);
 }
 
@@ -4842,6 +4859,8 @@ sys_fhstatvfs(struct fhstatvfs_args *uap)
 		sp->f_flag |= ST_NOSUID;
 	error = copyout(sp, uap->buf, sizeof(*sp));
 done:
+	if (mp)
+		mount_drop(mp);
 	return (error);
 }
 

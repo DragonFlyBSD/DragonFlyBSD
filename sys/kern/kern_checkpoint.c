@@ -495,14 +495,13 @@ ckpt_fhtovp(fhandle_t *fh, struct vnode **vpp)
 		return ESTALE;
 	}
 	error = VFS_FHTOVP(mp, NULL, &fh->fh_fid, vpp);
+	mount_drop(mp);
 	if (error) {
 		PRINTF(("failed with: %d\n", error));
 		TRACE_ERR;
-	        TRACE_EXIT;
-		return error;
 	}
 	TRACE_EXIT;
-	return 0;
+	return error;
 }
 
 static int

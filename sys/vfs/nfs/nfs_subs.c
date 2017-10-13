@@ -1220,9 +1220,12 @@ nfsrv_fhtovp(fhandle_t *fhp, int lockflag,
 	if (mp == NULL)
 		return (ESTALE);
 	error = VFS_CHECKEXP(mp, nam, &exflags, &credanon);
-	if (error)
+	if (error) {
+		mount_drop(mp);
 		return (error); 
+	}
 	error = VFS_FHTOVP(mp, NULL, &fhp->fh_fid, vpp);
+	mount_drop(mp);
 	if (error)
 		return (ESTALE);
 #ifdef MNT_EXNORESPORT
