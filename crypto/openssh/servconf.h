@@ -1,4 +1,4 @@
-/* $OpenBSD: servconf.h,v 1.120 2015/07/10 06:21:53 markus Exp $ */
+/* $OpenBSD: servconf.h,v 1.126 2017/10/02 19:33:20 djm Exp $ */
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
@@ -48,11 +48,18 @@
 #define FORWARD_LOCAL		(1<<1)
 #define FORWARD_ALLOW		(FORWARD_REMOTE|FORWARD_LOCAL)
 
+/* PermitOpen */
+#define PERMITOPEN_ANY		0
+#define PERMITOPEN_NONE		-2
+
 #define DEFAULT_AUTH_FAIL_MAX	6	/* Default for MaxAuthTries */
 #define DEFAULT_SESSIONS_MAX	10	/* Default for MaxSessions */
 
 /* Magic name for internal sftp-server */
 #define INTERNAL_SFTP_NAME	"internal-sftp"
+
+struct ssh;
+struct fwd_perm_list;
 
 typedef struct {
 	u_int	num_ports;
@@ -69,10 +76,8 @@ typedef struct {
 	int     num_host_cert_files;     /* Number of files for host certs. */
 	char   *host_key_agent;		 /* ssh-agent socket for host keys. */
 	char   *pid_file;	/* Where to put our pid */
-	int     server_key_bits;/* Size of the server key. */
 	int     login_grace_time;	/* Disconnect if no auth in this time
 					 * (sec). */
-	int     key_regeneration_time;	/* Server key lifetime (seconds). */
 	int     permit_root_login;	/* PERMIT_*, see above */
 	int     ignore_rhosts;	/* Ignore .rhosts and .shosts. */
 	int     ignore_user_known_hosts;	/* Ignore ~/.ssh/known_hosts
@@ -93,17 +98,13 @@ typedef struct {
 	char   *ciphers;	/* Supported SSH2 ciphers. */
 	char   *macs;		/* Supported SSH2 macs. */
 	char   *kex_algorithms;	/* SSH2 kex methods in order of preference. */
-	int	protocol;	/* Supported protocol versions. */
 	struct ForwardOptions fwd_opts;	/* forwarding options */
 	SyslogFacility log_facility;	/* Facility for system logging. */
 	LogLevel log_level;	/* Level for system logging. */
-	int     rhosts_rsa_authentication;	/* If true, permit rhosts RSA
-						 * authentication. */
 	int     hostbased_authentication;	/* If true, permit ssh2 hostbased auth */
 	int     hostbased_uses_name_from_packet_only; /* experimental */
 	char   *hostbased_key_types;	/* Key types allowed for hostbased */
 	char   *hostkeyalgorithms;	/* SSH2 server key types */
-	int     rsa_authentication;	/* If true, permit RSA authentication. */
 	int     pubkey_authentication;	/* If true, permit ssh2 pubkey authentication. */
 	char   *pubkey_key_types;	/* Key types allowed for public key */
 	int     kerberos_authentication;	/* If true, permit Kerberos
@@ -127,11 +128,11 @@ typedef struct {
 	int     permit_empty_passwd;	/* If false, do not permit empty
 					 * passwords. */
 	int     permit_user_env;	/* If true, read ~/.ssh/environment */
-	int     use_login;	/* If true, login(1) is used */
 	int     compression;	/* If true, compression is allowed */
 	int	allow_tcp_forwarding; /* One of FORWARD_* */
 	int	allow_streamlocal_forwarding; /* One of FORWARD_* */
 	int	allow_agent_forwarding;
+	int	disable_forwarding;
 	u_int num_allow_users;
 	char   *allow_users[MAX_ALLOW_USERS];
 	u_int num_deny_users;
@@ -175,7 +176,8 @@ typedef struct {
 
 	int	permit_tun;
 
-	int	num_permitted_opens;
+	char   **permitted_opens;
+	u_int   num_permitted_opens; /* May also be one of PERMITOPEN_* */
 
 	char   *chroot_directory;
 	char   *revoked_keys_file;
@@ -195,6 +197,7 @@ typedef struct {
 	char   *auth_methods[MAX_AUTH_METHODS];
 
 	int	fingerprint_hash;
+	int	expose_userauth_info;
 }       ServerOptions;
 
 /* Information about the incoming connection as used by Match */
@@ -234,6 +237,7 @@ struct connection_info {
 		M_CP_STRARRAYOPT(deny_groups, num_deny_groups); \
 		M_CP_STRARRAYOPT(accept_env, num_accept_env); \
 		M_CP_STRARRAYOPT(auth_methods, num_auth_methods); \
+		M_CP_STRARRAYOPT_ALLOC(permitted_opens, num_permitted_opens); \
 	} while (0)
 
 struct connection_info *get_connection_info(int, int);
@@ -241,6 +245,7 @@ void	 initialize_server_options(ServerOptions *);
 void	 fill_default_server_options(ServerOptions *);
 int	 process_server_config_line(ServerOptions *, char *, const char *, int,
 	     int *, struct connection_info *);
+void	 process_permitopen(struct ssh *ssh, ServerOptions *options);
 void	 load_server_config(const char *, Buffer *);
 void	 parse_server_config(ServerOptions *, const char *, Buffer *,
 	     struct connection_info *);

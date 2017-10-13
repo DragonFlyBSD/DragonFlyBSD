@@ -1,4 +1,4 @@
-/* $OpenBSD: misc.h,v 1.57 2016/07/15 00:24:30 djm Exp $ */
+/* $OpenBSD: misc.h,v 1.63 2017/08/18 05:48:04 djm Exp $ */
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
@@ -15,6 +15,9 @@
 #ifndef _MISC_H
 #define _MISC_H
 
+#include <sys/time.h>
+#include <sys/types.h>
+
 /* Data structure for representing a forwarding request. */
 struct Forward {
 	char	 *listen_host;		/* Host (address) to listen on. */
@@ -28,6 +31,8 @@ struct Forward {
 };
 
 int forward_equals(const struct Forward *, const struct Forward *);
+int bind_permitted(int, uid_t);
+int daemonized(void);
 
 /* Common server and client forwarding options. */
 struct ForwardOptions {
@@ -128,6 +133,25 @@ int parse_ipqos(const char *);
 const char *iptos2str(int);
 void mktemp_proto(char *, size_t);
 
+void	 child_set_env(char ***envp, u_int *envsizep, const char *name,
+	     const char *value);
+
+int	 argv_split(const char *, int *, char ***);
+char	*argv_assemble(int, char **argv);
+int	 exited_cleanly(pid_t, const char *, const char *, int);
+
+#define SSH_SUBPROCESS_STDOUT_DISCARD	(1)	/* Discard stdout */
+#define SSH_SUBPROCESS_STDOUT_CAPTURE	(1<<1)	/* Redirect stdout */
+#define SSH_SUBPROCESS_STDERR_DISCARD	(1<<2)	/* Discard stderr */
+pid_t	 subprocess(const char *, struct passwd *,
+    const char *, int, char **, FILE **, u_int flags);
+
+struct stat;
+int	 safe_path(const char *, struct stat *, const char *, uid_t,
+	     char *, size_t);
+int	 safe_path_fd(int, const char *, struct passwd *,
+	     char *err, size_t errlen);
+
 /* readpass.c */
 
 #define RP_ECHO			0x0001
@@ -138,5 +162,9 @@ void mktemp_proto(char *, size_t);
 char	*read_passphrase(const char *, int);
 int	 ask_permission(const char *, ...) __attribute__((format(printf, 1, 2)));
 int	 read_keyfile_line(FILE *, const char *, char *, size_t, u_long *);
+
+#define MINIMUM(a, b)	(((a) < (b)) ? (a) : (b))
+#define MAXIMUM(a, b)	(((a) > (b)) ? (a) : (b))
+#define ROUNDUP(x, y)   ((((x)+((y)-1))/(y))*(y))
 
 #endif /* _MISC_H */

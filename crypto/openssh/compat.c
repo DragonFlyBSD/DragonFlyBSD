@@ -1,4 +1,4 @@
-/* $OpenBSD: compat.c,v 1.99 2016/05/24 02:31:57 dtucker Exp $ */
+/* $OpenBSD: compat.c,v 1.104 2017/07/25 09:22:25 dtucker Exp $ */
 /*
  * Copyright (c) 1999, 2000, 2001, 2002 Markus Friedl.  All rights reserved.
  *
@@ -37,25 +37,10 @@
 #include "compat.h"
 #include "log.h"
 #include "match.h"
+#include "kex.h"
 
-int compat13 = 0;
-int compat20 = 0;
 int datafellows = 0;
 
-void
-enable_compat20(void)
-{
-	if (compat20)
-		return;
-	debug("Enabling compatibility mode for protocol 2.0");
-	compat20 = 1;
-}
-void
-enable_compat13(void)
-{
-	debug("Enabling compatibility mode for protocol 1.3");
-	compat13 = 1;
-}
 /* datafellows bug compatibility */
 u_int
 compat_datafellows(const char *version)
@@ -192,9 +177,12 @@ compat_datafellows(const char *version)
 		  "TTSSH/2.72*",	SSH_BUG_HOSTKEYS },
 		{ "WinSCP_release_4*,"
 		  "WinSCP_release_5.0*,"
-		  "WinSCP_release_5.1*,"
-		  "WinSCP_release_5.5*,"
-		  "WinSCP_release_5.6*,"
+		  "WinSCP_release_5.1,"
+		  "WinSCP_release_5.1.*,"
+		  "WinSCP_release_5.5,"
+		  "WinSCP_release_5.5.*,"
+		  "WinSCP_release_5.6,"
+		  "WinSCP_release_5.6.*,"
 		  "WinSCP_release_5.7,"
 		  "WinSCP_release_5.7.1,"
 		  "WinSCP_release_5.7.2,"
@@ -231,13 +219,6 @@ proto_spec(const char *spec)
 		return ret;
 	for ((p = strsep(&q, SEP)); p && *p != '\0'; (p = strsep(&q, SEP))) {
 		switch (atoi(p)) {
-		case 1:
-#ifdef WITH_SSH1
-			if (ret == SSH_PROTO_UNKNOWN)
-				ret |= SSH_PROTO_1_PREFERRED;
-			ret |= SSH_PROTO_1;
-#endif
-			break;
 		case 2:
 			ret |= SSH_PROTO_2;
 			break;
@@ -250,42 +231,14 @@ proto_spec(const char *spec)
 	return ret;
 }
 
-/*
- * Filters a proposal string, excluding any algorithm matching the 'filter'
- * pattern list.
- */
-static char *
-filter_proposal(char *proposal, const char *filter)
-{
-	Buffer b;
-	char *orig_prop, *fix_prop;
-	char *cp, *tmp;
-
-	buffer_init(&b);
-	tmp = orig_prop = xstrdup(proposal);
-	while ((cp = strsep(&tmp, ",")) != NULL) {
-		if (match_pattern_list(cp, filter, 0) != 1) {
-			if (buffer_len(&b) > 0)
-				buffer_append(&b, ",", 1);
-			buffer_append(&b, cp, strlen(cp));
-		} else
-			debug2("Compat: skipping algorithm \"%s\"", cp);
-	}
-	buffer_append(&b, "\0", 1);
-	fix_prop = xstrdup((char *)buffer_ptr(&b));
-	buffer_free(&b);
-	free(orig_prop);
-
-	return fix_prop;
-}
-
 char *
 compat_cipher_proposal(char *cipher_prop)
 {
 	if (!(datafellows & SSH_BUG_BIGENDIANAES))
 		return cipher_prop;
 	debug2("%s: original cipher proposal: %s", __func__, cipher_prop);
-	cipher_prop = filter_proposal(cipher_prop, "aes*");
+	if ((cipher_prop = match_filter_list(cipher_prop, "aes*")) == NULL)
+		fatal("match_filter_list failed");
 	debug2("%s: compat cipher proposal: %s", __func__, cipher_prop);
 	if (*cipher_prop == '\0')
 		fatal("No supported ciphers found");
@@ -298,7 +251,8 @@ compat_pkalg_proposal(char *pkalg_prop)
 	if (!(datafellows & SSH_BUG_RSASIGMD5))
 		return pkalg_prop;
 	debug2("%s: original public key proposal: %s", __func__, pkalg_prop);
-	pkalg_prop = filter_proposal(pkalg_prop, "ssh-rsa");
+	if ((pkalg_prop = match_filter_list(pkalg_prop, "ssh-rsa")) == NULL)
+		fatal("match_filter_list failed");
 	debug2("%s: compat public key proposal: %s", __func__, pkalg_prop);
 	if (*pkalg_prop == '\0')
 		fatal("No supported PK algorithms found");
@@ -312,10 +266,14 @@ compat_kex_proposal(char *p)
 		return p;
 	debug2("%s: original KEX proposal: %s", __func__, p);
 	if ((datafellows & SSH_BUG_CURVE25519PAD) != 0)
-		p = filter_proposal(p, "curve25519-sha256@libssh.org");
+		if ((p = match_filter_list(p,
+		    "curve25519-sha256@libssh.org")) == NULL)
+			fatal("match_filter_list failed");
 	if ((datafellows & SSH_OLD_DHGEX) != 0) {
-		p = filter_proposal(p, "diffie-hellman-group-exchange-sha256");
-		p = filter_proposal(p, "diffie-hellman-group-exchange-sha1");
+		if ((p = match_filter_list(p,
+		    "diffie-hellman-group-exchange-sha256,"
+		    "diffie-hellman-group-exchange-sha1")) == NULL)
+			fatal("match_filter_list failed");
 	}
 	debug2("%s: compat KEX proposal: %s", __func__, p);
 	if (*p == '\0')

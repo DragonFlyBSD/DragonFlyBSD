@@ -1,4 +1,4 @@
-/* $OpenBSD: sftp.c,v 1.175 2016/07/22 03:47:36 djm Exp $ */
+/* $OpenBSD: sftp.c,v 1.180 2017/06/10 06:33:34 djm Exp $ */
 /*
  * Copyright (c) 2001-2004 Damien Miller <djm@openbsd.org>
  *
@@ -17,7 +17,6 @@
 
 #include "includes.h"
 
-#include <sys/param.h>	/* MIN MAX */
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #ifdef HAVE_SYS_STAT_H
@@ -107,6 +106,7 @@ volatile sig_atomic_t interrupted = 0;
 
 /* I wish qsort() took a separate ctx for the comparison function...*/
 int sort_flag;
+glob_t *sort_glob;
 
 /* Context used for commandline completion */
 struct complete_ctx {
@@ -229,6 +229,18 @@ killchild(int signo)
 	}
 
 	_exit(1);
+}
+
+/* ARGSUSED */
+static void
+suspchild(int signo)
+{
+	if (sshpid > 1) {
+		kill(sshpid, signo);
+		while (waitpid(sshpid, NULL, WUNTRACED) == -1 && errno == EINTR)
+			continue;
+	}
+	kill(getpid(), SIGSTOP);
 }
 
 /* ARGSUSED */
@@ -802,7 +814,7 @@ do_ls_dir(struct sftp_conn *conn, const char *path,
 		/* Count entries for sort and find longest filename */
 		for (n = 0; d[n] != NULL; n++) {
 			if (d[n]->filename[0] != '.' || (lflag & LS_SHOW_ALL))
-				m = MAX(m, strlen(d[n]->filename));
+				m = MAXIMUM(m, strlen(d[n]->filename));
 		}
 
 		/* Add any subpath that also needs to be counted */
@@ -814,9 +826,9 @@ do_ls_dir(struct sftp_conn *conn, const char *path,
 			width = ws.ws_col;
 
 		columns = width / (m + 2);
-		columns = MAX(columns, 1);
+		columns = MAXIMUM(columns, 1);
 		colspace = width / columns;
-		colspace = MIN(colspace, width);
+		colspace = MINIMUM(colspace, width);
 	}
 
 	if (lflag & SORT_FLAGS) {
@@ -868,6 +880,34 @@ do_ls_dir(struct sftp_conn *conn, const char *path,
 	return (0);
 }
 
+static int
+sglob_comp(const void *aa, const void *bb)
+{
+	u_int a = *(const u_int *)aa;
+	u_int b = *(const u_int *)bb;
+	const char *ap = sort_glob->gl_pathv[a];
+	const char *bp = sort_glob->gl_pathv[b];
+	const struct stat *as = sort_glob->gl_statv[a];
+	const struct stat *bs = sort_glob->gl_statv[b];
+	int rmul = sort_flag & LS_REVERSE_SORT ? -1 : 1;
+
+#define NCMP(a,b) (a == b ? 0 : (a < b ? 1 : -1))
+	if (sort_flag & LS_NAME_SORT)
+		return (rmul * strcmp(ap, bp));
+	else if (sort_flag & LS_TIME_SORT) {
+#if defined(HAVE_STRUCT_STAT_ST_MTIM)
+		return (rmul * timespeccmp(&as->st_mtim, &bs->st_mtim, <));
+#elif defined(HAVE_STRUCT_STAT_ST_MTIME)
+		return (rmul * NCMP(as->st_mtime, bs->st_mtime));
+#else
+	return rmul * 1;
+#endif
+	} else if (sort_flag & LS_SIZE_SORT)
+		return (rmul * NCMP(as->st_size, bs->st_size));
+
+	fatal("Unknown ls sort type");
+}
+
 /* sftp ls.1 replacement which handles path globs */
 static int
 do_globbed_ls(struct sftp_conn *conn, const char *path,
@@ -877,7 +917,8 @@ do_globbed_ls(struct sftp_conn *conn, const char *path,
 	glob_t g;
 	int err, r;
 	struct winsize ws;
-	u_int i, c = 1, colspace = 0, columns = 1, m = 0, width = 80;
+	u_int i, j, nentries, *indices = NULL, c = 1;
+	u_int colspace = 0, columns = 1, m = 0, width = 80;
 
 	memset(&g, 0, sizeof(g));
 
@@ -915,14 +956,33 @@ do_globbed_ls(struct sftp_conn *conn, const char *path,
 	if (!(lflag & LS_SHORT_VIEW)) {
 		/* Count entries for sort and find longest filename */
 		for (i = 0; g.gl_pathv[i]; i++)
-			m = MAX(m, strlen(g.gl_pathv[i]));
+			m = MAXIMUM(m, strlen(g.gl_pathv[i]));
 
 		columns = width / (m + 2);
-		columns = MAX(columns, 1);
+		columns = MAXIMUM(columns, 1);
 		colspace = width / columns;
 	}
 
-	for (i = 0; g.gl_pathv[i] && !interrupted; i++) {
+	/*
+	 * Sorting: rather than mess with the contents of glob_t, prepare
+	 * an array of indices into it and sort that. For the usual
+	 * unsorted case, the indices are just the identity 1=1, 2=2, etc.
+	 */
+	for (nentries = 0; g.gl_pathv[nentries] != NULL; nentries++)
+		;	/* count entries */
+	indices = calloc(nentries, sizeof(*indices));
+	for (i = 0; i < nentries; i++)
+		indices[i] = i;
+
+	if (lflag & SORT_FLAGS) {
+		sort_glob = &g;
+		sort_flag = lflag & (SORT_FLAGS|LS_REVERSE_SORT);
+		qsort(indices, nentries, sizeof(*indices), sglob_comp);
+		sort_glob = NULL;
+	}
+
+	for (j = 0; j < nentries && !interrupted; j++) {
+		i = indices[j];
 		fname = path_strip(g.gl_pathv[i], strip_path);
 		if (lflag & LS_LONG_VIEW) {
 			if (g.gl_statv[i] == NULL) {
@@ -950,6 +1010,7 @@ do_globbed_ls(struct sftp_conn *conn, const char *path,
  out:
 	if (g.gl_pathc)
 		globfree(&g);
+	free(indices);
 
 	return 0;
 }
@@ -958,23 +1019,34 @@ static int
 do_df(struct sftp_conn *conn, const char *path, int hflag, int iflag)
 {
 	struct sftp_statvfs st;
-	char s_used[FMT_SCALED_STRSIZE];
-	char s_avail[FMT_SCALED_STRSIZE];
-	char s_root[FMT_SCALED_STRSIZE];
-	char s_total[FMT_SCALED_STRSIZE];
-	unsigned long long ffree;
+	char s_used[FMT_SCALED_STRSIZE], s_avail[FMT_SCALED_STRSIZE];
+	char s_root[FMT_SCALED_STRSIZE], s_total[FMT_SCALED_STRSIZE];
+	char s_icapacity[16], s_dcapacity[16];
 
 	if (do_statvfs(conn, path, &st, 1) == -1)
 		return -1;
+	if (st.f_files == 0)
+		strlcpy(s_icapacity, "ERR", sizeof(s_icapacity));
+	else {
+		snprintf(s_icapacity, sizeof(s_icapacity), "%3llu%%",
+		    (unsigned long long)(100 * (st.f_files - st.f_ffree) /
+		    st.f_files));
+	}
+	if (st.f_blocks == 0)
+		strlcpy(s_dcapacity, "ERR", sizeof(s_dcapacity));
+	else {
+		snprintf(s_dcapacity, sizeof(s_dcapacity), "%3llu%%",
+		    (unsigned long long)(100 * (st.f_blocks - st.f_bfree) /
+		    st.f_blocks));
+	}
 	if (iflag) {
-		ffree = st.f_files ? (100 * (st.f_files - st.f_ffree) / st.f_files) : 0;
 		printf("     Inodes        Used       Avail      "
 		    "(root)    %%Capacity\n");
-		printf("%11llu %11llu %11llu %11llu         %3llu%%\n",
+		printf("%11llu %11llu %11llu %11llu         %s\n",
 		    (unsigned long long)st.f_files,
 		    (unsigned long long)(st.f_files - st.f_ffree),
 		    (unsigned long long)st.f_favail,
-		    (unsigned long long)st.f_ffree, ffree);
+		    (unsigned long long)st.f_ffree, s_icapacity);
 	} else if (hflag) {
 		strlcpy(s_used, "error", sizeof(s_used));
 		strlcpy(s_avail, "error", sizeof(s_avail));
@@ -985,21 +1057,18 @@ do_df(struct sftp_conn *conn, const char *path, int hflag, int iflag)
 		fmt_scaled(st.f_bfree * st.f_frsize, s_root);
 		fmt_scaled(st.f_blocks * st.f_frsize, s_total);
 		printf("    Size     Used    Avail   (root)    %%Capacity\n");
-		printf("%7sB %7sB %7sB %7sB         %3llu%%\n",
-		    s_total, s_used, s_avail, s_root,
-		    (unsigned long long)(100 * (st.f_blocks - st.f_bfree) /
-		    st.f_blocks));
+		printf("%7sB %7sB %7sB %7sB         %s\n",
+		    s_total, s_used, s_avail, s_root, s_dcapacity);
 	} else {
 		printf("        Size         Used        Avail       "
 		    "(root)    %%Capacity\n");
-		printf("%12llu %12llu %12llu %12llu         %3llu%%\n",
+		printf("%12llu %12llu %12llu %12llu         %s\n",
 		    (unsigned long long)(st.f_frsize * st.f_blocks / 1024),
 		    (unsigned long long)(st.f_frsize *
 		    (st.f_blocks - st.f_bfree) / 1024),
 		    (unsigned long long)(st.f_frsize * st.f_bavail / 1024),
 		    (unsigned long long)(st.f_frsize * st.f_bfree / 1024),
-		    (unsigned long long)(100 * (st.f_blocks - st.f_bfree) /
-		    st.f_blocks));
+		    s_dcapacity);
 	}
 	return 0;
 }
@@ -1669,16 +1738,16 @@ complete_display(char **list, u_int len)
 
 	/* Count entries for sort and find longest */
 	for (y = 0; list[y]; y++)
-		m = MAX(m, strlen(list[y]));
+		m = MAXIMUM(m, strlen(list[y]));
 
 	if (ioctl(fileno(stdin), TIOCGWINSZ, &ws) != -1)
 		width = ws.ws_col;
 
 	m = m > len ? m - len : 0;
 	columns = width / (m + 2);
-	columns = MAX(columns, 1);
+	columns = MAXIMUM(columns, 1);
 	colspace = width / columns;
-	colspace = MIN(colspace, width);
+	colspace = MINIMUM(colspace, width);
 
 	printf("\n");
 	m = 1;
@@ -2214,6 +2283,9 @@ connect_to_server(char *path, char **args, int *in, int *out)
 	signal(SIGTERM, killchild);
 	signal(SIGINT, killchild);
 	signal(SIGHUP, killchild);
+	signal(SIGTSTP, suspchild);
+	signal(SIGTTIN, suspchild);
+	signal(SIGTTOU, suspchild);
 	close(c_in);
 	close(c_out);
 }
@@ -2224,7 +2296,7 @@ usage(void)
 	extern char *__progname;
 
 	fprintf(stderr,
-	    "usage: %s [-1246aCfpqrv] [-B buffer_size] [-b batchfile] [-c cipher]\n"
+	    "usage: %s [-46aCfpqrv] [-B buffer_size] [-b batchfile] [-c cipher]\n"
 	    "          [-D sftp_server_path] [-F ssh_config] "
 	    "[-i identity_file] [-l limit]\n"
 	    "          [-o ssh_option] [-P port] [-R num_requests] "
@@ -2258,7 +2330,7 @@ main(int argc, char **argv)
 	ssh_malloc_init();	/* must be called before any mallocs */
 	/* Ensure that fds 0, 1 and 2 are open or directed to /dev/null */
 	sanitise_stdfd();
-	setlocale(LC_CTYPE, "");
+	msetlocale();
 
 	__progname = ssh_get_progname(argv[0]);
 	memset(&args, '\0', sizeof(args));
