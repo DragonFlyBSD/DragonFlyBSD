@@ -93,8 +93,8 @@
  * Negative entries may exist and correspond to resolved namecache
  * structures where nc_vp is NULL.  In a negative entry, NCF_WHITEOUT
  * will be set if the entry corresponds to a whited-out directory entry
- * (verses simply not finding the entry at all).   ncneglist is locked
- * with a global spinlock (ncspin).
+ * (verses simply not finding the entry at all).   ncneg.list is locked
+ * with a global spinlock (ncneg.spin).
  *
  * MPSAFE RULES:
  *
@@ -144,9 +144,13 @@ struct ncmount_cache {
 	int isneg;		/* if != 0 mp is originator and not target */
 };
 
+struct ncneg_cache {
+	struct spinlock		spin;
+	struct namecache_list	list;
+} __cachealign;
+
 static struct nchash_head	*nchashtbl;
-static struct namecache_list	ncneglist;
-static struct spinlock		ncspin;
+static struct ncneg_cache	ncneg;
 static struct ncmount_cache	ncmount_cache[NCMOUNT_NUMCACHE];
 
 /*
@@ -203,15 +207,6 @@ SYSCTL_INT(_debug, OID_AUTO, ncsize, CTLFLAG_RD, 0, sizeof(struct namecache),
 static int	ncmount_cache_enable = 1;
 SYSCTL_INT(_debug, OID_AUTO, ncmount_cache_enable, CTLFLAG_RW,
 	   &ncmount_cache_enable, 0, "mount point cache");
-static long	ncmount_cache_hit;
-SYSCTL_LONG(_debug, OID_AUTO, ncmount_cache_hit, CTLFLAG_RW,
-	    &ncmount_cache_hit, 0, "mpcache hits");
-static long	ncmount_cache_miss;
-SYSCTL_LONG(_debug, OID_AUTO, ncmount_cache_miss, CTLFLAG_RW,
-	    &ncmount_cache_miss, 0, "mpcache misses");
-static long	ncmount_cache_overwrite;
-SYSCTL_LONG(_debug, OID_AUTO, ncmount_cache_overwrite, CTLFLAG_RW,
-	    &ncmount_cache_overwrite, 0, "mpcache entry overwrites");
 
 static __inline void _cache_drop(struct namecache *ncp);
 static int cache_resolve_mp(struct mount *mp);
@@ -1460,10 +1455,10 @@ _cache_setvp(struct mount *mp, struct namecache *ncp, struct vnode *vp)
 		 * other remote FSs.
 		 */
 		ncp->nc_vp = NULL;
-		spin_lock(&ncspin);
-		TAILQ_INSERT_TAIL(&ncneglist, ncp, nc_vnode);
+		spin_lock(&ncneg.spin);
+		TAILQ_INSERT_TAIL(&ncneg.list, ncp, nc_vnode);
 		++numneg;
-		spin_unlock(&ncspin);
+		spin_unlock(&ncneg.spin);
 		ncp->nc_error = ENOENT;
 		if (mp)
 			VFS_NCPGEN_SET(mp, ncp);
@@ -1535,10 +1530,10 @@ _cache_setunresolved(struct namecache *ncp)
 			if (ncp->nc_lockstatus & ~(NC_EXLOCK_REQ|NC_SHLOCK_REQ))
 				vdrop(vp);
 		} else {
-			spin_lock(&ncspin);
-			TAILQ_REMOVE(&ncneglist, ncp, nc_vnode);
+			spin_lock(&ncneg.spin);
+			TAILQ_REMOVE(&ncneg.list, ncp, nc_vnode);
 			--numneg;
-			spin_unlock(&ncspin);
+			spin_unlock(&ncneg.spin);
 		}
 		ncp->nc_flag &= ~(NCF_WHITEOUT|NCF_ISDIR|NCF_ISSYMLINK);
 	}
@@ -2664,7 +2659,7 @@ done:
 
 /*
  * Zap a namecache entry.  The ncp is unconditionally set to an unresolved
- * state, which disassociates it from its vnode or ncneglist.
+ * state, which disassociates it from its vnode or ncneg.list.
  *
  * Then, if there are no additional references to the ncp and no children,
  * the ncp is removed from the topology and destroyed.
@@ -3403,7 +3398,6 @@ cache_findmount(struct nchandle *nch)
 				 */
 				_cache_mntref(mp);
 				spin_unlock_shared(&ncc->spin);
-				++ncmount_cache_hit;
 				return(mp);
 			}
 			/* else cache miss */
@@ -3414,7 +3408,6 @@ cache_findmount(struct nchandle *nch)
 			 * Cache hit (negative)
 			 */
 			spin_unlock_shared(&ncc->spin);
-			++ncmount_cache_hit;
 			return(NULL);
 		}
 		spin_unlock_shared(&ncc->spin);
@@ -3454,7 +3447,6 @@ skip:
 			ncc->mp = nch->mount;
 			ncc->isneg = 1;
 			spin_unlock(&ncc->spin);
-			++ncmount_cache_overwrite;
 		} else if ((info.result->mnt_kern_flag & MNTK_UNMOUNT) == 0) {
 			if (ncc->isneg == 0 && ncc->mp)
 				_cache_mntrel(ncc->mp);
@@ -3463,11 +3455,9 @@ skip:
 			ncc->mp = info.result;
 			ncc->isneg = 0;
 			spin_unlock(&ncc->spin);
-			++ncmount_cache_overwrite;
 		} else {
 			spin_unlock(&ncc->spin);
 		}
-		++ncmount_cache_miss;
 	}
 	return(info.result);
 }
@@ -3770,20 +3760,20 @@ _cache_cleanneg(int count)
 	 * entries.
 	 */
 	while (count) {
-		spin_lock(&ncspin);
-		ncp = TAILQ_FIRST(&ncneglist);
+		spin_lock(&ncneg.spin);
+		ncp = TAILQ_FIRST(&ncneg.list);
 		if (ncp == NULL) {
-			spin_unlock(&ncspin);
+			spin_unlock(&ncneg.spin);
 			break;
 		}
-		TAILQ_REMOVE(&ncneglist, ncp, nc_vnode);
-		TAILQ_INSERT_TAIL(&ncneglist, ncp, nc_vnode);
+		TAILQ_REMOVE(&ncneg.list, ncp, nc_vnode);
+		TAILQ_INSERT_TAIL(&ncneg.list, ncp, nc_vnode);
 		_cache_hold(ncp);
-		spin_unlock(&ncspin);
+		spin_unlock(&ncneg.spin);
 
 		/*
 		 * This can race, so we must re-check that the ncp
-		 * is on the ncneglist after successfully locking it.
+		 * is on the ncneg.list after successfully locking it.
 		 */
 		if (_cache_lock_special(ncp) == 0) {
 			if (ncp->nc_vp == NULL &&
@@ -3910,8 +3900,8 @@ nchinit(void)
 	/*
 	 * Create a generous namecache hash table
 	 */
-	TAILQ_INIT(&ncneglist);
-	spin_init(&ncspin, "nchinit");
+	TAILQ_INIT(&ncneg.list);
+	spin_init(&ncneg.spin, "nchinit");
 	nchashtbl = hashinit_ext(vfs_inodehashsize(),
 				 sizeof(struct nchash_head),
 				 M_VFSCACHE, &nchash);
