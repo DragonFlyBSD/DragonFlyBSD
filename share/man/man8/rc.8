@@ -31,7 +31,7 @@
 .\"     @(#)rc.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/share/man/man8/rc.8,v 1.22 2002/12/12 17:25:58 ru Exp $
 .\"
-.Dd June 20, 2015
+.Dd October 14, 2017
 .Dt RC 8
 .Os
 .Sh NAME
@@ -220,7 +220,7 @@ have a
 .Pa .sh
 suffix.
 Extreme care must be taken in using this, as the startup sequence will
-terminate if the script does.
+terminate if the script terminates.
 .It Pa bar
 Scripts that are sourced in a subshell.
 These can stop the boot if necessary with the following shell
