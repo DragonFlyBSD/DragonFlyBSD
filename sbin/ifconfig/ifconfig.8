@@ -28,7 +28,7 @@
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
 .\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.124 2006/10/10 09:44:08 ru Exp $
 .\"
-.Dd November 12, 2012
+.Dd October 14, 2017
 .Dt IFCONFIG 8
 .Os
 .Sh NAME
@@ -1300,6 +1300,10 @@ for examining parameters when WME mode is disabled.
 See the description of the
 .Cm wme
 directive for information on the various parameters.
+.It Cm lscan
+A variant of
+.Cm scan
+(see below) that displays long SSIDs.
 .It Cm maxretry Ar count
 Set the maximum number of tries to use in sending unicast frames.
 The default setting is 6 but drivers may override this with a value

@@ -3147,7 +3147,7 @@ printmimo(const struct ieee80211_mimo_info *mi)
 }
 
 static void
-list_scan(int s)
+list_scan(int s, int long_ssids)
 {
 	uint8_t buf[24*1024];
 	char ssid[IEEE80211_NWID_LEN+1];
@@ -3161,7 +3161,7 @@ list_scan(int s)
 
 	getchaninfo(s);
 
-	ssidmax = verbose ? IEEE80211_NWID_LEN - 1 : 14;
+	ssidmax = (verbose || long_ssids) ? IEEE80211_NWID_LEN - 1 : 14;
 	printf("%-*.*s  %-17.17s  %4s %4s  %-7s  %3s %4s\n"
 		, ssidmax, ssidmax, "SSID/MESH ID"
 		, "BSSID"
@@ -3253,7 +3253,7 @@ static
 DECL_CMD_FUNC(set80211scan, val, d)
 {
 	scan_and_wait(s);
-	list_scan(s);
+	list_scan(s, 0);
 }
 
 static enum ieee80211_opmode get80211opmode(int s);
@@ -3996,7 +3996,9 @@ DECL_CMD_FUNC(set80211list, arg, d)
 	if (iseq(arg, "sta"))
 		list_stations(s);
 	else if (iseq(arg, "scan") || iseq(arg, "ap"))
-		list_scan(s);
+		list_scan(s, 0);
+	else if (iseq(arg, "lscan"))
+		list_scan(s, 1);
 	else if (iseq(arg, "chan") || iseq(arg, "freq"))
 		list_channels(s, 1);
 	else if (iseq(arg, "active"))
