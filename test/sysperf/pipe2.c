@@ -1,9 +1,6 @@
 /*
  * pipe2.c
- *
- * $DragonFly: src/test/sysperf/pipe2.c,v 1.5 2004/04/29 16:05:21 dillon Exp $
  */
-
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/resource.h>
@@ -49,7 +46,8 @@ main(int ac, char **av)
     if (ac >= 4)
 	msg = av[3];
 
-    buf = mmap(NULL, bytes * 2 + PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANON, -1, 0);
+    buf = mmap(NULL, bytes * 2 + PAGE_SIZE,
+	       PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANON, -1, 0);
     if (buf == MAP_FAILED) {
 	perror("mmap/buffer");
 	exit(1);
