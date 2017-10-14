@@ -928,18 +928,23 @@ hammer2_compress_and_write(char *data, hammer2_inode_t *ip,
 
 		switch(HAMMER2_DEC_ALGO(comp_algo)) {
 		case HAMMER2_COMP_LZ4:
+			/*
+			 * We need to prefix with the size, LZ4
+			 * doesn't do it for us.  Add the related
+			 * overhead.
+			 *
+			 * NOTE: The LZ4 code seems to assume at least an
+			 *	 8-byte buffer size granularity and may
+			 *	 overrun the buffer if given a 4-byte
+			 *	 granularity.
+			 */
 			comp_buffer = objcache_get(cache_buffer_write,
 						   M_INTWAIT);
 			comp_size = LZ4_compress_limitedOutput(
 					data,
 					&comp_buffer[sizeof(int)],
 					pblksize,
-					pblksize / 2 - sizeof(int));
-			/*
-			 * We need to prefix with the size, LZ4
-			 * doesn't do it for us.  Add the related
-			 * overhead.
-			 */
+					pblksize / 2 - sizeof(int64_t));
 			*(int *)comp_buffer = comp_size;
 			if (comp_size)
 				comp_size += sizeof(int);
