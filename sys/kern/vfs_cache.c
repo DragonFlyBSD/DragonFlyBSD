@@ -121,7 +121,7 @@
 #define NCHHASH(hash)		(&nchashtbl[(hash) & nchash])
 #define MINNEG			1024
 #define MINPOS			1024
-#define NCMOUNT_NUMCACHE	1009	/* prime number */
+#define NCMOUNT_NUMCACHE	16301	/* prime number */
 
 MALLOC_DEFINE(M_VFSCACHE, "vfscache", "VFS name cache entries");
 
@@ -142,7 +142,7 @@ struct ncmount_cache {
 	struct namecache *ncp;
 	struct mount *mp;
 	int isneg;		/* if != 0 mp is originator and not target */
-};
+} __cachealign;
 
 struct ncneg_cache {
 	struct spinlock		spin;
@@ -3342,15 +3342,20 @@ struct findmount_info {
 	struct namecache *nch_ncp;
 };
 
+#define MNTCACHE_PRIME	66555444443333333ULL
+
 static
 struct ncmount_cache *
 ncmount_cache_lookup(struct mount *mp, struct namecache *ncp)
 {
-	int hash;
+	uintptr_t hash;
 
-	hash = ((int)(intptr_t)mp / sizeof(*mp)) ^
-	       ((int)(intptr_t)ncp / sizeof(*ncp));
-	hash = (hash & 0x7FFFFFFF) % NCMOUNT_NUMCACHE;
+	hash = (uintptr_t)mp + ((uintptr_t)mp >> 18);
+	hash %= MNTCACHE_PRIME;
+	hash ^= (uintptr_t)ncp + ((uintptr_t)ncp >> 18);
+	hash %= MNTCACHE_PRIME;
+	hash = hash % NCMOUNT_NUMCACHE;
+
 	return (&ncmount_cache[hash]);
 }
 
