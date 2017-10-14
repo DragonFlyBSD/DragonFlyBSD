@@ -382,9 +382,10 @@ again:
 		if (type == HAMMER2_OBJTYPE_DIRECTORY && doforce) {
 			/*
 			 * If doforce then execute the operation even if
-			 * the directory is not empty or errored.
+			 * the directory is not empty or errored.  We
+			 * ignore chain->error here, allowing an errored
+			 * chain (aka directory entry) to still be deleted.
 			 */
-			/* ignore chain->error */
 			error = hammer2_chain_delete(parent, chain,
 					     xop->head.mtid, dopermanent);
 		} else if (type == HAMMER2_OBJTYPE_DIRECTORY &&
@@ -409,10 +410,16 @@ again:
 			/*
 			 * Delete the directory entry.  chain might also
 			 * be a directly-embedded inode.
+			 *
+			 * Allow the deletion to proceed even if the chain
+			 * is errored.  Give priority to error-on-delete over
+			 * chain->error.
 			 */
-			error = chain->error;
-			hammer2_chain_delete(parent, chain,
-					     xop->head.mtid, dopermanent);
+			error = hammer2_chain_delete(parent, chain,
+						     xop->head.mtid,
+						     dopermanent);
+			if (error == 0)
+				error = chain->error;
 		}
 	} else {
 		if (chain && error == 0)
@@ -564,11 +571,16 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 
 	/*
 	 * Delete it, then create it in the new namespace.
+	 *
+	 * An error can occur if the chain being deleted requires
+	 * modification and the media is full.
 	 */
-	hammer2_chain_delete(parent, chain, xop->head.mtid, 0);
+	error = hammer2_chain_delete(parent, chain, xop->head.mtid, 0);
 	hammer2_chain_unlock(parent);
 	hammer2_chain_drop(parent);
 	parent = NULL;		/* safety */
+	if (error)
+		goto done;
 
 	/*
 	 * Adjust fields in the deleted chain appropriate for the rename
@@ -676,6 +688,10 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		goto done;
 	}
 
+	/*
+	 * Delete all matching directory entries.  That is, get rid of
+	 * multiple duplicates if present, as a self-healing mechanism.
+	 */
 	if (error == 0) {
 		tmp = hammer2_chain_lookup(&parent, &key_next,
 					   xop->lhc & ~HAMMER2_DIRHASH_LOMASK,
@@ -683,10 +699,13 @@ hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *arg)
 					   &error,
 					   HAMMER2_LOOKUP_ALWAYS);
 		while (tmp) {
+			int e2;
 			if (hammer2_chain_dirent_test(tmp, xop->head.name2,
 						      xop->head.name2_len)) {
-				hammer2_chain_delete(parent, tmp,
-						     xop->head.mtid, 0);
+				e2 = hammer2_chain_delete(parent, tmp,
+							  xop->head.mtid, 0);
+				if (error == 0 && e2)
+					error = e2;
 			}
 			tmp = hammer2_chain_next(&parent, tmp, &key_next,
 						 key_next,
