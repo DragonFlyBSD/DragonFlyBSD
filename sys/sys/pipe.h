@@ -1,6 +1,10 @@
 /*
  * Copyright (c) 1996 John S. Dyson
  * All rights reserved.
+ * Copyright (c) 2003-2017 The DragonFly Project.  All rights reserved.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -17,9 +21,6 @@
  *    is allowed if this notation is included.
  * 5. Modifications may be freely made to this file if the above conditions
  *    are met.
- *
- * $FreeBSD: src/sys/sys/pipe.h,v 1.16 1999/12/29 04:24:45 peter Exp $
- * $DragonFly: src/sys/sys/pipe.h,v 1.10 2006/06/10 20:00:17 dillon Exp $
  */
 
 #ifndef _SYS_PIPE_H_
@@ -47,38 +48,33 @@
 #endif
 
 /*
- * Pipe buffer size, keep moderate in value, pipes take kva space.
- * Must be a multiple of PAGE_SIZE.
- */
-#ifndef PIPE_SIZE
-#define PIPE_SIZE	16384
-#endif
-
-#ifndef BIG_PIPE_SIZE
-#define BIG_PIPE_SIZE	(64*1024)
-#endif
-
-#if PIPE_SIZE < PAGE_SIZE
-#error "PIPE_SIZE is too small for this architecture"
-#endif
-
-/*
  * Pipe buffer information.
- * Separate in, out, cnt are used to simplify calculations.
- * Buffered write is active when the buffer.cnt field is set.
  */
 struct pipebuf {
-	u_int	rindex;		/* FIFO read index */
-	u_int	dummy1[3];	/* cache-align */
-	u_int	windex;		/* FIFO write index */
-	u_int	dummy2[3];	/* cache-align */
-	u_int	size;		/* size of buffer */
-	caddr_t	buffer;		/* kva of buffer */
-	struct  vm_object *object;	/* VM object containing buffer */
-};
+	struct {
+		struct lwkt_token rlock;
+		size_t		rindex;	/* current read index (FIFO)	*/
+		int32_t		rip;	/* blocking read requested (FIFO) */
+		int32_t		unu01;	/* blocking read requested (FIFO) */
+		struct timespec	atime;	/* time of last access */
+	} __cachealign;
+	struct {
+		struct lwkt_token wlock;
+		size_t		windex;	/* current write index (FIFO)	*/
+		int32_t		wip;
+		int32_t		unu02;
+		struct timespec	mtime;	/* time of last modify */
+	} __cachealign;
+	size_t		size;		/* size of buffer */
+	caddr_t		buffer;		/* kva of buffer */
+	struct vm_object *object;	/* VM object containing buffer */
+	struct kqinfo	kq;		/* for compat with select/poll/kq */
+	struct sigio	*sigio;		/* information for async I/O */
+	uint32_t	state;		/* pipe status info */
+} __cachealign;
 
 /*
- * Bits in pipe_state.
+ * Bits in pipebuf.state.
  */
 #define PIPE_ASYNC	0x0004	/* Async? I/O */
 #define PIPE_WANTR	0x0008	/* Reader wants some characters */
@@ -88,25 +84,16 @@ struct pipebuf {
 #define PIPE_CLOSED	0x1000	/* Pipe has been closed */
 
 /*
- * Per-pipe data structure.
- * Two of these are linked together to produce bi-directional pipes.
+ * The pipe() data structure encompasses two pipes.  Bit 0 in fp->f_data
+ * denotes which.
  */
 struct pipe {
-	struct	pipebuf pipe_buffer;	/* data storage */
-	struct	kqinfo pipe_kq;		/* for compat with select/poll/kq */
-	struct	timespec pipe_atime;	/* time of last access */
-	struct	timespec pipe_mtime;	/* time of last modify */
-	struct	timespec pipe_ctime;	/* time of status change */
-	struct	sigio *pipe_sigio;	/* information for async I/O */
-	struct	pipe *pipe_peer;	/* link with other direction */
-	u_int	pipe_state;		/* pipe status info */
-	int	pipe_rip;		/* read uio in-progress */
-	int	pipe_wip;		/* write uio in-progress */
-	u_int	pipe_wantwcnt;		/* for resize */
-	struct  lwkt_token pipe_rlock;	/* rindex locked */
-	struct  lwkt_token pipe_wlock;	/* windex locked */
-	struct  lock *pipe_slock;	/* state locked (shared w/peer) */
-};
+	struct pipebuf	bufferA;	/* data storage */
+	struct pipebuf	bufferB;	/* data storage */
+	struct timespec	ctime;		/* time of status change */
+	struct pipe	*next;
+	uint32_t	open_count;
+} __cachealign;
 
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */
 #endif /* !_SYS_PIPE_H_ */
