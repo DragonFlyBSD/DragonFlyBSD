@@ -130,6 +130,7 @@ static int YesNo(const char *path);
 static int xrename(const char *src, const char *dst, u_long flags);
 static int xlink(const char *src, const char *dst, u_long flags);
 static int xremove(struct HostConf *host, const char *path);
+static int xrmdir(struct HostConf *host, const char *path);
 static int DoCopy(copy_info_t info, struct stat *stat1, int depth);
 static int ScanDir(List *list, struct HostConf *host, const char *path,
 	int64_t *CountReadBytes, int n);
@@ -500,11 +501,20 @@ OwnerMatch(struct stat *st1, struct stat *st2)
 static int
 FlagsMatch(struct stat *st1, struct stat *st2)
 {
-    if (DstRootPrivs)
-	return (st1->st_flags == st2->st_flags);
-    else
-	/* Only consider the user-settable flags. */
-	return (((st1->st_flags ^ st2->st_flags) & UF_SETTABLE) == 0);
+/*
+ * Ignore UF_ARCHIVE.  It gets set automatically by the filesystem, for
+ * filesystems that support it.  If the destination filesystem supports it, but
+ * it's cleared on the source file, then multiple invocations of cpdup would
+ * all try to copy the file because the flags wouldn't match.
+ *
+ * When unpriveleged, ignore flags we can't set
+ */
+    u_long ignored = DstRootPrivs ? 0 : SF_SETTABLE;
+
+#ifdef UF_ARCHIVE
+    ignored |= UF_ARCHIVE;
+#endif
+    return (((st1->st_flags ^ st2->st_flags) & ~ignored) == 0);
 }
 #endif
 
@@ -1483,7 +1493,7 @@ RemoveRecur(const char *dpath, dev_t devNo, struct stat *dstat)
 		}
 		if (AskConfirmation && NoRemoveOpt == 0) {
 		    if (YesNo(dpath)) {
-			if (hc_rmdir(&DstHost, dpath) < 0) {
+			if (xrmdir(&DstHost, dpath) < 0) {
 			    logerr("%-32s rmdir failed: %s\n",
 				dpath, strerror(errno)
 			    );
@@ -1494,7 +1504,7 @@ RemoveRecur(const char *dpath, dev_t devNo, struct stat *dstat)
 		    if (NoRemoveOpt) {
 			if (VerboseOpt)
 			    logstd("%-32s not-removed\n", dpath);
-		    } else if (hc_rmdir(&DstHost, dpath) == 0) {
+		    } else if (xrmdir(&DstHost, dpath) == 0) {
 			if (VerboseOpt)
 			    logstd("%-32s rmdir-ok\n", dpath);
 			CountRemovedItems++;
@@ -1708,3 +1718,17 @@ xremove(struct HostConf *host, const char *path)
     return(res);
 }
 
+static int
+xrmdir(struct HostConf *host, const char *path)
+{
+    int res;
+
+    res = hc_rmdir(host, path);
+#ifdef _ST_FLAGS_PRESENT_
+    if (res == -EPERM) {
+	hc_chflags(host, path, 0);
+	res = hc_rmdir(host, path);
+    }
+#endif
+    return(res);
+}
