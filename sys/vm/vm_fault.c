@@ -322,8 +322,9 @@ RetryFault:
 	/*
 	 * Find the vm_map_entry representing the backing store and resolve
 	 * the top level object and page index.  This may have the side
-	 * effect of executing a copy-on-write on the map entry and/or
-	 * creating a shadow object, but will not COW any actual VM pages.
+	 * effect of executing a copy-on-write on the map entry,
+	 * creating a shadow object, or splitting an anonymous entry for
+	 * performance, but will not COW any actual VM pages.
 	 *
 	 * On success fs.map is left read-locked and various other fields 
 	 * are initialized but not otherwise referenced or locked.
@@ -774,11 +775,15 @@ vm_fault_page(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type,
 	 *
 	 * This works great for normal programs but will always return
 	 * NULL for host lookups of vkernel maps in VMM mode.
+	 *
+	 * NOTE: pmap_fault_page_quick() might not busy the page.  If
+	 *	 VM_PROT_WRITE or VM_PROT_OVERRIDE_WRITE is set in
+	 *	 fault_type and pmap_fault_page_quick() returns non-NULL,
+	 *	 it will safely dirty the returned vm_page_t for us.  We
+	 *	 cannot safely dirty it here (it might not be busy).
 	 */
 	fs.m = pmap_fault_page_quick(map->pmap, vaddr, fault_type, busyp);
 	if (fs.m) {
-		if (fault_type & (VM_PROT_WRITE|VM_PROT_OVERRIDE_WRITE))
-			vm_page_dirty(fs.m);
 		*errorp = 0;
 		return(fs.m);
 	}
@@ -2075,7 +2080,6 @@ readrest:
 				KKASSERT(fs->first_shared == 0);
 				vm_page_copy(fs->m, fs->first_m);
 				vm_page_protect(fs->m, VM_PROT_NONE);
-				vm_page_event(fs->m, VMEVENT_COW);
 			}
 
 			/*
@@ -2415,7 +2419,6 @@ vm_fault_copy_entry(vm_map_t dst_map, vm_map_t src_map,
 			panic("vm_fault_copy_wired: page missing");
 
 		vm_page_copy(src_m, dst_m);
-		vm_page_event(src_m, VMEVENT_COW);
 
 		/*
 		 * Enter it in the pmap...

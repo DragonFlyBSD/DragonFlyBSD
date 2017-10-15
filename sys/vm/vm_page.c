@@ -115,34 +115,10 @@ static vm_page_t vm_page_select_cache(u_short pg_color);
 static vm_page_t _vm_page_list_find2(int basequeue, int index);
 static void _vm_page_deactivate_locked(vm_page_t m, int athead);
 
-MALLOC_DEFINE(M_ACTIONHASH, "acthash", "vmpage action hash");
-
 /*
  * Array of tailq lists
  */
 __cachealign struct vpgqueues vm_page_queues[PQ_COUNT];
-
-LIST_HEAD(vm_page_action_list, vm_page_action);
-
-/*
- * Action hash for user umtx support.  Contention is governed by both
- * tsleep/wakeup handling (kern/kern_synch.c) and action_hash[] below.
- * Because action_hash[] represents active table locks, a modest fixed
- * value well in excess of MAXCPU works here.
- *
- * There is also scan overhead depending on the number of threads in
- * umtx*() calls, so we also size the hash table based on maxproc.
- */
-struct vm_page_action_hash {
-	struct vm_page_action_list list;
-	struct lock	lk;
-} __cachealign;
-
-#define VMACTION_MINHSIZE	256
-
-struct vm_page_action_hash	*action_hash;
-static int vmaction_hsize;
-static int vmaction_hmask;
 
 static volatile int vm_pages_waiting;
 static struct alist vm_contig_alist;
@@ -562,8 +538,6 @@ vm_numa_organize(vm_paddr_t ran_beg, vm_paddr_t bytes, int physid)
  * allocations.
  *
  * We leave vm_dma_reserved bytes worth of free pages in the reserve pool.
- *
- * Also setup the action_hash[] table here (which is only used by userland)
  */
 static void
 vm_page_startup_finish(void *dummy __unused)
@@ -574,7 +548,6 @@ vm_page_startup_finish(void *dummy __unused)
 	alist_blk_t xcount;
 	alist_blk_t bfree;
 	vm_page_t m;
-	int i;
 
 	spin_lock(&vm_contig_spin);
 	for (;;) {
@@ -643,33 +616,6 @@ vm_page_startup_finish(void *dummy __unused)
 		(intmax_t)(vmstats.v_dma_pages - vm_contig_alist.bl_free) *
 		(PAGE_SIZE / 1024),
 		(intmax_t)vm_contig_alist.bl_free * (PAGE_SIZE / 1024));
-
-	/*
-	 * Scale the action_hash[] array.  Primary contention occurs due
-	 * to cpu locks, scaled to ncpus, and scan overhead may be incurred
-	 * depending on the number of threads, which we scale to maxproc.
-	 *
-	 * NOTE: Action lock might recurse due to callback, so allow
-	 *	 recursion.
-	 */
-	vmaction_hsize = VMACTION_MINHSIZE;
-	if (vmaction_hsize < ncpus * 2)
-		vmaction_hsize = ncpus * 2;
-	if (vmaction_hsize < maxproc / 16)
-		vmaction_hsize = maxproc / 16;
-	vmaction_hmask = 1;
-	while (vmaction_hmask < vmaction_hsize)
-		vmaction_hmask = (vmaction_hmask << 1) | 1;
-	vmaction_hsize = vmaction_hmask + 1;
-
-	action_hash = kmalloc(sizeof(action_hash[0]) * vmaction_hsize,
-			      M_ACTIONHASH,
-			      M_WAITOK | M_ZERO);
-
-	for (i = 0; i < vmaction_hsize; i++) {
-		LIST_INIT(&action_hash[i].list);
-		lockinit(&action_hash[i].lk, "actlk", 0, LK_CANRECURSE);
-	}
 }
 SYSINIT(vm_pgend, SI_SUB_PROC0_POST, SI_ORDER_ANY,
 	vm_page_startup_finish, NULL);
@@ -3272,85 +3218,6 @@ vm_page_test_dirty(vm_page_t m)
 	if ((m->dirty != VM_PAGE_BITS_ALL) && pmap_is_modified(m)) {
 		vm_page_dirty(m);
 	}
-}
-
-/*
- * Register an action, associating it with its vm_page
- */
-void
-vm_page_register_action(vm_page_action_t action, vm_page_event_t event)
-{
-	struct vm_page_action_hash *hash;
-	int hv;
-
-	hv = (int)((intptr_t)action->m >> 8) & vmaction_hmask;
-	hash = &action_hash[hv];
-
-	lockmgr(&hash->lk, LK_EXCLUSIVE);
-	vm_page_flag_set(action->m, PG_ACTIONLIST);
-	action->event = event;
-	LIST_INSERT_HEAD(&hash->list, action, entry);
-	lockmgr(&hash->lk, LK_RELEASE);
-}
-
-/*
- * Unregister an action, disassociating it from its related vm_page
- */
-void
-vm_page_unregister_action(vm_page_action_t action)
-{
-	struct vm_page_action_hash *hash;
-	int hv;
-
-	hv = (int)((intptr_t)action->m >> 8) & vmaction_hmask;
-	hash = &action_hash[hv];
-	lockmgr(&hash->lk, LK_EXCLUSIVE);
-	if (action->event != VMEVENT_NONE) {
-		action->event = VMEVENT_NONE;
-		LIST_REMOVE(action, entry);
-
-		if (LIST_EMPTY(&hash->list))
-			vm_page_flag_clear(action->m, PG_ACTIONLIST);
-	}
-	lockmgr(&hash->lk, LK_RELEASE);
-}
-
-/*
- * Issue an event on a VM page.  Corresponding action structures are
- * removed from the page's list and called.
- *
- * If the vm_page has no more pending action events we clear its
- * PG_ACTIONLIST flag.
- */
-void
-vm_page_event_internal(vm_page_t m, vm_page_event_t event)
-{
-	struct vm_page_action_hash *hash;
-	struct vm_page_action *scan;
-	struct vm_page_action *next;
-	int hv;
-	int all;
-
-	hv = (int)((intptr_t)m >> 8) & vmaction_hmask;
-	hash = &action_hash[hv];
-	all = 1;
-
-	lockmgr(&hash->lk, LK_EXCLUSIVE);
-	LIST_FOREACH_MUTABLE(scan, &hash->list, entry, next) {
-		if (scan->m == m) {
-			if (scan->event == event) {
-				scan->event = VMEVENT_NONE;
-				LIST_REMOVE(scan, entry);
-				scan->func(m, scan);
-				/* XXX */
-			} else {
-				all = 0;
-			}
-		}
-	}
-	if (all)
-		vm_page_flag_clear(m, PG_ACTIONLIST);
-	lockmgr(&hash->lk, LK_RELEASE);
 }
 
 #include "opt_ddb.h"

@@ -99,19 +99,6 @@
 
 #endif
 
-typedef enum vm_page_event { VMEVENT_NONE, VMEVENT_COW } vm_page_event_t;
-
-struct vm_page_action {
-	LIST_ENTRY(vm_page_action) entry;
-	struct vm_page		*m;
-	vm_page_event_t		event;
-	void			(*func)(struct vm_page *,
-					struct vm_page_action *);
-	void			*data;
-};
-
-typedef struct vm_page_action *vm_page_action_t;
-
 /*
  *	Management of resident (logical) pages.
  *
@@ -301,12 +288,11 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
 #define PG_RAM		0x00002000	/* read ahead mark */
 #define PG_SWAPPED	0x00004000	/* backed by swap */
 #define PG_NOTMETA	0x00008000	/* do not back with swap */
-#define PG_ACTIONLIST	0x00010000	/* lookaside action list present */
+#define PG_UNUSED10000	0x00010000
 #define PG_SBUSY	0x00020000	/* soft-busy also set */
 #define PG_NEED_COMMIT	0x00040000	/* clean page requires commit */
 
-#define PG_KEEP_NEWPAGE_MASK	(PG_BUSY | PG_SBUSY |		\
-				 PG_WANTED | PG_ACTIONLIST)
+#define PG_KEEP_NEWPAGE_MASK	(PG_BUSY | PG_SBUSY | PG_WANTED)
 
 
 /*
@@ -451,10 +437,7 @@ void vm_page_zero_invalid(vm_page_t m, boolean_t setvalid);
 void vm_page_free_toq(vm_page_t m);
 void vm_page_free_contig(vm_page_t m, unsigned long size);
 vm_page_t vm_page_free_fromq_fast(void);
-void vm_page_event_internal(vm_page_t, vm_page_event_t);
 void vm_page_dirty(vm_page_t m);
-void vm_page_register_action(vm_page_action_t action, vm_page_event_t event);
-void vm_page_unregister_action(vm_page_action_t action);
 void vm_page_sleep_busy(vm_page_t m, int also_m_busy, const char *msg);
 void VM_PAGE_DEBUG_EXT(vm_page_busy_wait)(vm_page_t m,
 			int also_m_busy, const char *wmsg VM_PAGE_DEBUG_ARGS);

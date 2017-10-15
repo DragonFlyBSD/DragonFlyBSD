@@ -107,6 +107,26 @@ rb_lwp_compare(struct lwp *lp1, struct lwp *lp2)
 RB_GENERATE2(lwp_rb_tree, lwp, u.lwp_rbnode, rb_lwp_compare, lwpid_t, lwp_tid);
 
 /*
+ * When forking, memory underpinning umtx-supported mutexes may be set
+ * COW causing the physical address to change.  We must wakeup any threads
+ * blocked on the physical address to allow them to re-resolve their VM.
+ */
+static void
+wake_umtx_threads(struct proc *p1)
+{
+	struct lwp *lp;
+	struct thread *td;
+
+	RB_FOREACH(lp, lwp_rb_tree, &p1->p_lwp_tree) {
+		td = lp->lwp_thread;
+		if (td && (td->td_flags & TDF_TSLEEPQ) &&
+		    (td->td_wdomain & PDOMAIN_MASK) == PDOMAIN_UMTX) {
+			wakeup_domain(td->td_wchan, PDOMAIN_UMTX);
+		}
+	}
+}
+
+/*
  * fork() system call
  */
 int
@@ -312,6 +332,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 		}
 
 		vm_fork(p1, 0, flags);
+		wake_umtx_threads(p1);
 
 		/*
 		 * Close all file descriptors.
@@ -634,6 +655,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	PHOLD(p1);
 
 	vm_fork(p1, p2, flags);
+	wake_umtx_threads(p1);
 
 	/*
 	 * Create the first lwp associated with the new proc.
