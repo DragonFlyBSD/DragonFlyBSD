@@ -271,8 +271,7 @@ RB_PROTOTYPE2(pv_entry_rb_tree, pv_entry, pv_entry,
 #define PROTECTION_CODES_SIZE	8
 #define PAT_INDEX_SIZE  	8
 
-#define PM_PLACEMARKS		16		/* 4 per level x 4 levels */
-#define PM_PLACEMARKS_SHIFT	4		/* 1 << 4 == 16 */
+#define PM_PLACEMARKS		64		/* 16 @ 4 zones */
 #define PM_NOPLACEMARK		((vm_pindex_t)-1)
 #define PM_PLACEMARK_WAKEUP	((vm_pindex_t)0x8000000000000000LLU)
 
