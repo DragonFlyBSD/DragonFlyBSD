@@ -447,7 +447,8 @@ atomic_intr_cond_exit(__atomic_intr_t *p, void (*func)(void *), void *arg)
 #if defined(KLD_MODULE)
 
 extern int atomic_cmpxchg_int(volatile u_int *_dst, u_int _old, u_int _new);
-extern int atomic_cmpxchg_long_test(volatile u_long *_dst, u_long _old, u_long _new);
+extern int atomic_cmpxchg_long_test(volatile u_long *_dst,
+			u_long _old, u_long _new);
 extern int atomic_cmpset_short(volatile u_short *_dst,
 			u_short _old, u_short _new);
 extern int atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new);
@@ -460,6 +461,14 @@ extern int atomic_cmpset_long_xacquire(volatile u_long *_dst,
 			u_long _exp, u_long _src);
 extern int atomic_cmpset_long_xrelease(volatile u_long *_dst,
 			u_long _exp, u_long _src);
+
+extern int atomic_fcmpset_short(volatile u_short *_dst,
+			u_short *_old, u_short _new);
+extern int atomic_fcmpset_int(volatile u_int *_dst,
+			u_int *_old, u_int _new);
+extern int atomic_fcmpset_long(volatile u_long *_dst,
+			u_long *_exp, u_long _src);
+
 extern u_int atomic_fetchadd_int(volatile u_int *_p, u_int _v);
 extern u_int atomic_fetchadd_int_xacquire(volatile u_int *_p, u_int _v);
 extern u_int atomic_fetchadd_int_xrelease(volatile u_int *_p, u_int _v);
@@ -508,6 +517,19 @@ atomic_cmpset_short(volatile u_short *_dst, u_short _old, u_short _new)
 }
 
 static __inline int
+atomic_fcmpset_short(volatile u_short *_dst, u_short *_old, u_short _new)
+{
+	u_short res = *_old;
+
+	__asm __volatile(MPLOCKED "cmpxchgw %2,%0; " \
+			 : "+m" (*_dst),		/* 0 */
+			   "+a" (*_old)			/* 1 */
+			 : "r" (_new)			/* 2 */
+			 : "memory", "cc");
+	return (res == *_old);
+}
+
+static __inline int
 atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new)
 {
 	u_int res = _old;
@@ -517,6 +539,19 @@ atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new)
 			 : "r" (_new), "m" (*_dst) \
 			 : "memory");
 	return (res == _old);
+}
+
+static __inline int
+atomic_fcmpset_int(volatile u_int *_dst, u_int *_old, u_int _new)
+{
+	u_int res = *_old;
+
+	__asm __volatile(MPLOCKED "cmpxchgl %2,%0; " \
+			 : "+m" (*_dst),		/* 0 */
+			   "+a" (*_old)			/* 1 */
+			 : "r" (_new)			/* 2 */
+			 : "memory", "cc");
+	return (res == *_old);
 }
 
 static __inline int
@@ -553,6 +588,19 @@ atomic_cmpset_long(volatile u_long *_dst, u_long _old, u_long _new)
 			 : "r" (_new), "m" (*_dst) \
 			 : "memory");
 	return (res == _old);
+}
+
+static __inline int
+atomic_fcmpset_long(volatile u_long *_dst, u_long *_old, u_long _new)
+{
+	u_long res = *_old;
+
+	__asm __volatile(MPLOCKED "cmpxchgq %2,%0; " \
+			 : "+m" (*_dst),		/* 0 */
+			   "+a" (*_old)			/* 1 */
+			 : "r" (_new)			/* 2 */
+			 : "memory", "cc");
+	return (res == *_old);
 }
 
 static __inline int
@@ -855,6 +903,7 @@ ATOMIC_STORE_LOAD(long, "cmpxchgq %0,%1",  "xchgq %1,%0");
 #define	atomic_load_acq_32	atomic_load_acq_int
 #define	atomic_store_rel_32	atomic_store_rel_int
 #define	atomic_cmpset_32	atomic_cmpset_int
+#define	atomic_fcmpset_32	atomic_fcmpset_int
 #define	atomic_cmpset_acq_32	atomic_cmpset_acq_int
 #define	atomic_cmpset_rel_32	atomic_cmpset_rel_int
 #define	atomic_readandclear_32	atomic_readandclear_int
@@ -866,6 +915,7 @@ ATOMIC_STORE_LOAD(long, "cmpxchgq %0,%1",  "xchgq %1,%0");
 #define	atomic_swap_64		atomic_swap_long
 #define	atomic_fetchadd_64	atomic_fetchadd_long
 #define atomic_cmpset_64	atomic_cmpset_long
+#define atomic_fcmpset_64	atomic_fcmpset_long
 #define atomic_set_64		atomic_set_long
 #define atomic_clear_64		atomic_clear_long
 
@@ -900,6 +950,9 @@ ATOMIC_STORE_LOAD(long, "cmpxchgq %0,%1",  "xchgq %1,%0");
 	atomic_store_rel_long((volatile u_long *)(p), (v))
 #define atomic_cmpset_ptr(dst, old, new) 				\
 	atomic_cmpset_long((volatile u_long *)(dst), (u_long)(old),	\
+				(u_long)(new))
+#define atomic_fcmpset_ptr(dst, old, new) 				\
+	atomic_fcmpset_long((volatile u_long *)(dst), (u_long *)(old),	\
 				(u_long)(new))
 #define atomic_cmpset_acq_ptr(dst, old, new)				\
 	atomic_cmpset_acq_long((volatile u_long *)(dst), (u_long)(old), \
