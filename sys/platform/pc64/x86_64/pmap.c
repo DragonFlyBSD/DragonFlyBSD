@@ -598,15 +598,19 @@ pmap_pt(pmap_t pmap, vm_offset_t va)
 	pdp_entry_t *pd;
 	pv_entry_t pv;
 	vm_pindex_t pd_pindex;
+	vm_paddr_t phys;
 
 	if (pmap->pm_flags & PMAP_FLAG_SIMPLE) {
 		pd_pindex = pmap_pd_pindex(va);
-		spin_lock(&pmap->pm_spin);
+		spin_lock_shared(&pmap->pm_spin);
 		pv = pv_entry_rb_tree_RB_LOOKUP(&pmap->pm_pvroot, pd_pindex);
-		spin_unlock(&pmap->pm_spin);
-		if (pv == NULL || pv->pv_m == NULL)
+		if (pv == NULL || pv->pv_m == NULL) {
+			spin_unlock_shared(&pmap->pm_spin);
 			return NULL;
-		return (pmap_pd_to_pt(VM_PAGE_TO_PHYS(pv->pv_m), va));
+		}
+		phys = VM_PAGE_TO_PHYS(pv->pv_m);
+		spin_unlock_shared(&pmap->pm_spin);
+		return (pmap_pd_to_pt(phys, va));
 	} else {
 		pd = pmap_pd(pmap, va);
 		if (pd == NULL || (*pd & pmap->pmap_bits[PG_V_IDX]) == 0)
@@ -1314,7 +1318,19 @@ pmap_extract_done(void *handle)
  * fall-through to the real fault code.  Does not work with HVM page
  * tables.
  *
- * The returned page, if not NULL, is held (and not busied).
+ * if busyp is NULL the returned page, if not NULL, is held (and not busied).
+ *
+ * If busyp is not NULL and this function sets *busyp non-zero, the returned
+ * page is busied (and not held).
+ *
+ * If busyp is not NULL and this function sets *busyp to zero, the returned
+ * page is held (and not busied).
+ *
+ * If VM_PROT_WRITE or VM_PROT_OVERRIDE_WRITE is set in prot, and the pte
+ * is already writable, the returned page will be dirtied.  If the pte
+ * is not already writable NULL is returned.  In otherwords, if either
+ * bit is set and a vm_page_t is returned, any COW will already have happened
+ * and that page can be written by the caller.
  *
  * WARNING! THE RETURNED PAGE IS ONLY HELD AND NOT SUITABLE FOR READING
  *	    OR WRITING AS-IS.
@@ -1334,7 +1350,7 @@ pmap_fault_page_quick(pmap_t pmap, vm_offset_t va, vm_prot_t prot, int *busyp)
 
 		req = pmap->pmap_bits[PG_V_IDX] |
 		      pmap->pmap_bits[PG_U_IDX];
-		if (prot & VM_PROT_WRITE)
+		if (prot & (VM_PROT_WRITE | VM_PROT_OVERRIDE_WRITE))
 			req |= pmap->pmap_bits[PG_RW_IDX];
 
 		pt_pv = pv_get(pmap, pmap_pt_pindex(va), NULL);
@@ -1348,7 +1364,7 @@ pmap_fault_page_quick(pmap_t pmap, vm_offset_t va, vm_prot_t prot, int *busyp)
 		pte_pv = pv_get_try(pmap, pmap_pte_pindex(va), NULL, &error);
 		if (pte_pv && error == 0) {
 			m = pte_pv->pv_m;
-			if (prot & VM_PROT_WRITE) {
+			if (prot & (VM_PROT_WRITE | VM_PROT_OVERRIDE_WRITE)) {
 				/* interlocked by presence of pv_entry */
 				vm_page_dirty(m);
 			}
@@ -3270,9 +3286,10 @@ static
 pv_entry_t
 _pv_alloc(pmap_t pmap, vm_pindex_t pindex, int *isnew PMAP_DEBUG_DECL)
 {
+	struct mdglobaldata *md = mdcpu;
 	pv_entry_t pv;
 	pv_entry_t pnew;
-	struct mdglobaldata *md = mdcpu;
+	int pmap_excl = 0;
 
 	pnew = NULL;
 	if (md->gd_newpv) {
@@ -3288,7 +3305,7 @@ _pv_alloc(pmap_t pmap, vm_pindex_t pindex, int *isnew PMAP_DEBUG_DECL)
 	if (pnew == NULL)
 		pnew = zalloc(pvzone);
 
-	spin_lock(&pmap->pm_spin);
+	spin_lock_shared(&pmap->pm_spin);
 	for (;;) {
 		/*
 		 * Shortcut cache
@@ -3303,6 +3320,18 @@ _pv_alloc(pmap_t pmap, vm_pindex_t pindex, int *isnew PMAP_DEBUG_DECL)
 		}
 		if (pv == NULL) {
 			vm_pindex_t *pmark;
+
+			/*
+			 * Requires exclusive pmap spinlock
+			 */
+			if (pmap_excl == 0) {
+				pmap_excl = 1;
+				if (!spin_lock_upgrade_try(&pmap->pm_spin)) {
+					spin_unlock_shared(&pmap->pm_spin);
+					spin_lock(&pmap->pm_spin);
+					continue;
+				}
+			}
 
 			/*
 			 * We need to block if someone is holding our
@@ -3355,7 +3384,10 @@ _pv_alloc(pmap_t pmap, vm_pindex_t pindex, int *isnew PMAP_DEBUG_DECL)
 		 * we can get the lock, otherwise block and retry.
 		 */
 		if (__predict_true(_pv_hold_try(pv PMAP_DEBUG_COPY))) {
-			spin_unlock(&pmap->pm_spin);
+			if (pmap_excl)
+				spin_unlock(&pmap->pm_spin);
+			else
+				spin_unlock_shared(&pmap->pm_spin);
 #if 0
 			pnew = atomic_swap_ptr((void *)&md->gd_newpv, pnew);
 			if (pnew)
@@ -3373,10 +3405,17 @@ _pv_alloc(pmap_t pmap, vm_pindex_t pindex, int *isnew PMAP_DEBUG_DECL)
 			*isnew = 0;
 			return(pv);
 		}
-		spin_unlock(&pmap->pm_spin);
-		_pv_lock(pv PMAP_DEBUG_COPY);
-		pv_put(pv);
-		spin_lock(&pmap->pm_spin);
+		if (pmap_excl) {
+			spin_unlock(&pmap->pm_spin);
+			_pv_lock(pv PMAP_DEBUG_COPY);
+			pv_put(pv);
+			spin_lock(&pmap->pm_spin);
+		} else {
+			spin_unlock_shared(&pmap->pm_spin);
+			_pv_lock(pv PMAP_DEBUG_COPY);
+			pv_put(pv);
+			spin_lock_shared(&pmap->pm_spin);
+		}
 	}
 	/* NOT REACHED */
 }
@@ -3389,8 +3428,9 @@ pv_entry_t
 _pv_get(pmap_t pmap, vm_pindex_t pindex, vm_pindex_t **pmarkp PMAP_DEBUG_DECL)
 {
 	pv_entry_t pv;
+	int pmap_excl = 0;
 
-	spin_lock(&pmap->pm_spin);
+	spin_lock_shared(&pmap->pm_spin);
 	for (;;) {
 		/*
 		 * Shortcut cache
@@ -3416,6 +3456,18 @@ _pv_get(pmap_t pmap, vm_pindex_t pindex, vm_pindex_t **pmarkp PMAP_DEBUG_DECL)
 			 * to see if the placemarker matches pindex.
 			 */
 			vm_pindex_t *pmark;
+
+			/*
+			 * Requires exclusive pmap spinlock
+			 */
+			if (pmap_excl == 0) {
+				pmap_excl = 1;
+				if (!spin_lock_upgrade_try(&pmap->pm_spin)) {
+					spin_unlock_shared(&pmap->pm_spin);
+					spin_lock(&pmap->pm_spin);
+					continue;
+				}
+			}
 
 			pmark = pmap_placemarker_hash(pmap, pindex);
 
@@ -3444,15 +3496,25 @@ _pv_get(pmap_t pmap, vm_pindex_t pindex, vm_pindex_t **pmarkp PMAP_DEBUG_DECL)
 		}
 		if (_pv_hold_try(pv PMAP_DEBUG_COPY)) {
 			pv_cache(pv, pindex);
-			spin_unlock(&pmap->pm_spin);
+			if (pmap_excl)
+				spin_unlock(&pmap->pm_spin);
+			else
+				spin_unlock_shared(&pmap->pm_spin);
 			KKASSERT(pv->pv_pmap == pmap &&
 				 pv->pv_pindex == pindex);
 			return(pv);
 		}
-		spin_unlock(&pmap->pm_spin);
-		_pv_lock(pv PMAP_DEBUG_COPY);
-		pv_put(pv);
-		spin_lock(&pmap->pm_spin);
+		if (pmap_excl) {
+			spin_unlock(&pmap->pm_spin);
+			_pv_lock(pv PMAP_DEBUG_COPY);
+			pv_put(pv);
+			spin_lock(&pmap->pm_spin);
+		} else {
+			spin_unlock_shared(&pmap->pm_spin);
+			_pv_lock(pv PMAP_DEBUG_COPY);
+			pv_put(pv);
+			spin_lock_shared(&pmap->pm_spin);
+		}
 	}
 }
 

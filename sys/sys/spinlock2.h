@@ -275,6 +275,19 @@ spin_unlock_shared(struct spinlock *spin)
 	spin_unlock_shared_quick(mycpu, spin);
 }
 
+/*
+ * Attempt to upgrade a shared spinlock to exclusive.  Return non-zero
+ * on success, 0 on failure.
+ */
+static __inline int
+spin_lock_upgrade_try(struct spinlock *spin)
+{
+	if (atomic_cmpset_int(&spin->counta, SPINLOCK_SHARED|1, 1))
+		return 1;
+	else
+		return 0;
+}
+
 static __inline void
 spin_init(struct spinlock *spin, const char *descr __unused)
 {
