@@ -762,9 +762,6 @@ done:
 	return (error);
 }
 
-/*
- * MPSAFE
- */
 int
 sys_setrlimit(struct __setrlimit_args *uap)
 {
@@ -780,9 +777,6 @@ sys_setrlimit(struct __setrlimit_args *uap)
 	return (error);
 }
 
-/*
- * MPSAFE
- */
 int
 sys_getrlimit(struct __getrlimit_args *uap)
 {
@@ -925,8 +919,6 @@ uihashinit(void)
 
 /*
  * NOTE: Must be called with uihash_lock held
- *
- * MPSAFE
  */
 static struct uidinfo *
 uilookup(uid_t uid)
@@ -945,8 +937,6 @@ uilookup(uid_t uid)
 /*
  * Helper function to creat ea uid that could not be found.
  * This function will properly deal with races.
- *
- * MPSAFE
  */
 static struct uidinfo *
 uicreate(uid_t uid)
@@ -988,106 +978,92 @@ uicreate(uid_t uid)
 }
 
 /*
- *
- *
- * MPSAFE
+ * Find the uidinfo for a uid, creating one if necessary
  */
 struct uidinfo *
 uifind(uid_t uid)
 {
-	struct	uidinfo *uip;
+	struct uidinfo *uip;
 
-	spin_lock(&uihash_lock);
+	spin_lock_shared(&uihash_lock);
 	uip = uilookup(uid);
 	if (uip == NULL) {
-		spin_unlock(&uihash_lock);
+		spin_unlock_shared(&uihash_lock);
 		uip = uicreate(uid);
 	} else {
 		uihold(uip);
-		spin_unlock(&uihash_lock);
+		spin_unlock_shared(&uihash_lock);
 	}
 	return (uip);
 }
 
 /*
- * Helper funtion to remove a uidinfo whos reference count is
- * transitioning from 1->0.  The reference count is 1 on call.
- *
- * Zero is returned on success, otherwise non-zero and the
- * uiphas not been removed.
- *
- * MPSAFE
+ * Helper funtion to remove a uidinfo whos reference count may
+ * have transitioned to 0.  The reference count is likely 0
+ * on-call.
  */
-static __inline int
-uifree(struct uidinfo *uip)
+static __inline void
+uifree(uid_t uid)
 {
+	struct uidinfo *uip;
+
 	/*
 	 * If we are still the only holder after acquiring the uihash_lock
 	 * we can safely unlink the uip and destroy it.  Otherwise we lost
 	 * a race and must fail.
 	 */
 	spin_lock(&uihash_lock);
-	if (uip->ui_ref != 1) {
+	uip = uilookup(uid);
+	if (uip && uip->ui_ref == 0) {
+		LIST_REMOVE(uip, ui_hash);
 		spin_unlock(&uihash_lock);
-		return(-1);
-	}
-	LIST_REMOVE(uip, ui_hash);
-	spin_unlock(&uihash_lock);
 
-	/*
-	 * The uip is now orphaned and we can destroy it at our
-	 * leisure.
-	 */
-	if (uip->ui_sbsize != 0)
-		kprintf("freeing uidinfo: uid = %d, sbsize = %jd\n",
-		    uip->ui_uid, (intmax_t)uip->ui_sbsize);
-	if (uip->ui_proccnt != 0)
-		kprintf("freeing uidinfo: uid = %d, proccnt = %ld\n",
-		    uip->ui_uid, uip->ui_proccnt);
-	
-	varsymset_clean(&uip->ui_varsymset);
-	lockuninit(&uip->ui_varsymset.vx_lock);
-	spin_uninit(&uip->ui_lock);
-	kfree(uip, M_UIDINFO);
-	return(0);
+		/*
+		 * The uip is now orphaned and we can destroy it at our
+		 * leisure.
+		 */
+		if (uip->ui_sbsize != 0)
+			kprintf("freeing uidinfo: uid = %d, sbsize = %jd\n",
+			    uip->ui_uid, (intmax_t)uip->ui_sbsize);
+		if (uip->ui_proccnt != 0)
+			kprintf("freeing uidinfo: uid = %d, proccnt = %ld\n",
+			    uip->ui_uid, uip->ui_proccnt);
+
+		varsymset_clean(&uip->ui_varsymset);
+		lockuninit(&uip->ui_varsymset.vx_lock);
+		spin_uninit(&uip->ui_lock);
+		kfree(uip, M_UIDINFO);
+	} else {
+		spin_unlock(&uihash_lock);
+	}
 }
 
 /*
- * MPSAFE
+ * Bump the ref count
  */
 void
 uihold(struct uidinfo *uip)
 {
-	atomic_add_int(&uip->ui_ref, 1);
 	KKASSERT(uip->ui_ref >= 0);
+	atomic_add_int(&uip->ui_ref, 1);
 }
 
 /*
- * NOTE: It is important for us to not drop the ref count to 0
- *	 because this can cause a 2->0/2->0 race with another
- *	 concurrent dropper.  Losing the race in that situation
- *	 can cause uip to become stale for one of the other
- *	 threads.
+ * Drop the ref count.  The last-drop code still needs to remove the
+ * uidinfo from the hash table which it does by re-looking-it-up.
  *
- * MPSAFE
+ * NOTE: The uip can be ripped out from under us after the fetchadd.
  */
 void
 uidrop(struct uidinfo *uip)
 {
-	int ref;
+	uid_t uid;
 
 	KKASSERT(uip->ui_ref > 0);
-
-	for (;;) {
-		ref = uip->ui_ref;
-		cpu_ccfence();
-		if (ref == 1) {
-			if (uifree(uip) == 0)
-				break;
-		} else if (atomic_cmpset_int(&uip->ui_ref, ref, ref - 1)) {
-			break;
-		}
-		/* else retry */
+	uid = uip->ui_uid;
+	cpu_ccfence();
+	if (atomic_fetchadd_int(&uip->ui_ref, -1) == 1) {
+		uifree(uid);
 	}
 }
 
@@ -1100,23 +1076,27 @@ uireplace(struct uidinfo **puip, struct uidinfo *nuip)
 
 /*
  * Change the count associated with number of processes
- * a given user is using.  When 'max' is 0, don't enforce a limit
+ * a given user is using.
+ *
+ * NOTE: When 'max' is 0, don't enforce a limit.
+ *
+ * NOTE: Due to concurrency, the count can sometimes exceed the max
+ *	 by a small amount.
  */
 int
 chgproccnt(struct uidinfo *uip, int diff, int max)
 {
 	int ret;
-	spin_lock(&uip->ui_lock);
+
 	/* don't allow them to exceed max, but allow subtraction */
 	if (diff > 0 && uip->ui_proccnt + diff > max && max != 0) {
 		ret = 0;
 	} else {
-		uip->ui_proccnt += diff;
+		atomic_add_long(&uip->ui_proccnt, diff);
 		if (uip->ui_proccnt < 0)
 			kprintf("negative proccnt for uid = %d\n", uip->ui_uid);
 		ret = 1;
 	}
-	spin_unlock(&uip->ui_lock);
 	return ret;
 }
 
@@ -1128,17 +1108,10 @@ chgsbsize(struct uidinfo *uip, u_long *hiwat, u_long to, rlim_t max)
 {
 	rlim_t new;
 
-#ifdef __x86_64__
 	rlim_t sbsize;
 
 	sbsize = atomic_fetchadd_long(&uip->ui_sbsize, to - *hiwat);
 	new = sbsize + to - *hiwat;
-#else
-	spin_lock(&uip->ui_lock);
-	new = uip->ui_sbsize + to - *hiwat;
-	uip->ui_sbsize = new;
-	spin_unlock(&uip->ui_lock);
-#endif
 	KKASSERT(new >= 0);
 
 	/*
