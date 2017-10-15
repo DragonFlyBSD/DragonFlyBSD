@@ -1134,7 +1134,6 @@ device		xe		# Xircom PCMCIA
 device		ral		# Ralink Technology 802.11 wireless NIC
 device		wpi
 options		WPI_DEBUG	# turn on debugging output
-device		vmx		# VMware VMXNET3 Ethernet
 
 # IEEE 802.11 adapter firmware modules
 
@@ -2142,6 +2141,10 @@ device		virtio_blk
 device		virtio_scsi
 device		vtnet
 device		virtio_pci
+
+# VMware support
+#
+device		vmx		# VMware VMXNET3 Ethernet
 
 #
 # Gpio support for ACPI based SoC platforms
