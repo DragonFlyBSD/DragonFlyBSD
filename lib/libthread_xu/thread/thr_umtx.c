@@ -73,7 +73,7 @@ __thr_umtx_unlock(volatile umtx_t *mtx)
 		if (atomic_cmpset_acq_int(mtx, v, v-1)) {
 			if (v != 1) {
 				*mtx = 0;
-				_umtx_wakeup_err(mtx, 0);
+				_umtx_wakeup_err(mtx, 1);
 			}
 			break;
 		}
@@ -193,7 +193,7 @@ _thr_umtx_wait(volatile umtx_t *mtx, int exp, const struct timespec *timeout,
 }
 
 void
-_thr_umtx_wake(volatile umtx_t *mtx, int count __unused)
+_thr_umtx_wake(volatile umtx_t *mtx, int count)
 {
-	_umtx_wakeup_err(mtx, 0);
+	_umtx_wakeup_err(mtx, count);
 }
