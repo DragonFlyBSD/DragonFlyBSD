@@ -640,7 +640,7 @@ zget(vm_zone_t z)
 			entry = item;
 			entry->next = gd->gd_vme_base;
 			gd->gd_vme_base = entry;
-			++gd->gd_vme_avail;
+			atomic_add_int(&gd->gd_vme_avail, 1);
 			item = (uint8_t *)item + z->zsize;
 			--nitems;
 		}

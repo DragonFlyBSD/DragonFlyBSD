@@ -131,6 +131,12 @@ static struct objcache *vmspace_cache;
 #define MAPENTRYBSP_CACHE	(MAXCPU+1)
 #define MAPENTRYAP_CACHE	8
 
+#define MAP_ENTRY_PARTITION_SIZE	((vm_offset_t)(16 * 1024 * 1024))
+#define MAP_ENTRY_PARTITION_MASK	(MAP_ENTRY_PARTITION_SIZE - 1)
+
+#define VM_MAP_ENTRY_WITHIN_PARTITION(entry)	\
+	((((entry)->start ^ (entry)->end) & ~MAP_ENTRY_PARTITION_MASK) == 0)
+
 static struct vm_zone mapentzone_store;
 static vm_zone_t mapentzone;
 
@@ -155,7 +161,10 @@ static void vm_map_entry_delete (vm_map_t, vm_map_entry_t, int *);
 static void vm_map_entry_unwire (vm_map_t, vm_map_entry_t);
 static void vm_map_copy_entry (vm_map_t, vm_map_t, vm_map_entry_t,
 		vm_map_entry_t);
-static void vm_map_unclip_range (vm_map_t map, vm_map_entry_t start_entry, vm_offset_t start, vm_offset_t end, int *count, int flags);
+static void vm_map_unclip_range (vm_map_t map, vm_map_entry_t start_entry,
+		vm_offset_t start, vm_offset_t end, int *countp, int flags);
+static void vm_map_entry_partition(vm_map_t map, vm_map_entry_t entry,
+		vm_offset_t vaddr, int *countp);
 
 /*
  * Initialize the vm_map module.  Must be called before any other vm_map
@@ -757,7 +766,7 @@ vm_map_entry_reserve_cpu_init(globaldata_t gd)
 	int count;
 	int i;
 
-	gd->gd_vme_avail -= MAP_RESERVE_COUNT * 2;
+	atomic_add_int(&gd->gd_vme_avail, -MAP_RESERVE_COUNT * 2);
 	if (gd->gd_cpuid == 0) {
 		entry = &cpu_map_entry_init_bsp[0];
 		count = MAPENTRYBSP_CACHE;
@@ -772,11 +781,16 @@ vm_map_entry_reserve_cpu_init(globaldata_t gd)
 }
 
 /*
- * Reserves vm_map_entry structures so code later on can manipulate
+ * Reserves vm_map_entry structures so code later-on can manipulate
  * map_entry structures within a locked map without blocking trying
  * to allocate a new vm_map_entry.
  *
  * No requirements.
+ *
+ * WARNING!  We must not decrement gd_vme_avail until after we have
+ *	     ensured that sufficient entries exist, otherwise we can
+ *	     get into an endless call recursion in the zalloc code
+ *	     itself.
  */
 int
 vm_map_entry_reserve(int count)
@@ -788,17 +802,20 @@ vm_map_entry_reserve(int count)
 	 * Make sure we have enough structures in gd_vme_base to handle
 	 * the reservation request.
 	 *
-	 * The critical section protects access to the per-cpu gd.
+	 * Use a critical section to protect against VM faults.  It might
+	 * not be needed, but we have to be careful here.
 	 */
-	crit_enter();
-	while (gd->gd_vme_avail < count) {
-		entry = zalloc(mapentzone);
-		entry->next = gd->gd_vme_base;
-		gd->gd_vme_base = entry;
-		++gd->gd_vme_avail;
+	if (gd->gd_vme_avail < count) {
+		crit_enter();
+		while (gd->gd_vme_avail < count) {
+			entry = zalloc(mapentzone);
+			entry->next = gd->gd_vme_base;
+			gd->gd_vme_base = entry;
+			atomic_add_int(&gd->gd_vme_avail, 1);
+		}
+		crit_exit();
 	}
-	gd->gd_vme_avail -= count;
-	crit_exit();
+	atomic_add_int(&gd->gd_vme_avail, -count);
 
 	return(count);
 }
@@ -815,19 +832,26 @@ vm_map_entry_release(int count)
 {
 	struct globaldata *gd = mycpu;
 	vm_map_entry_t entry;
+	vm_map_entry_t efree;
 
-	crit_enter();
-	gd->gd_vme_avail += count;
-	while (gd->gd_vme_avail > MAP_RESERVE_SLOP) {
-		entry = gd->gd_vme_base;
-		KKASSERT(entry != NULL);
-		gd->gd_vme_base = entry->next;
-		--gd->gd_vme_avail;
-		crit_exit();
-		zfree(mapentzone, entry);
+	count = atomic_fetchadd_int(&gd->gd_vme_avail, count) + count;
+	if (gd->gd_vme_avail > MAP_RESERVE_SLOP) {
+		efree = NULL;
 		crit_enter();
+		while (gd->gd_vme_avail > MAP_RESERVE_HYST) {
+			entry = gd->gd_vme_base;
+			KKASSERT(entry != NULL);
+			gd->gd_vme_base = entry->next;
+			atomic_add_int(&gd->gd_vme_avail, -1);
+			entry->next = efree;
+			efree = entry;
+		}
+		crit_exit();
+		while ((entry = efree) != NULL) {
+			efree = efree->next;
+			zfree(mapentzone, entry);
+		}
 	}
-	crit_exit();
 }
 
 /*
@@ -851,9 +875,7 @@ vm_map_entry_kreserve(int count)
 {
 	struct globaldata *gd = mycpu;
 
-	crit_enter();
-	gd->gd_vme_avail -= count;
-	crit_exit();
+	atomic_add_int(&gd->gd_vme_avail, -count);
 	KASSERT(gd->gd_vme_base != NULL,
 		("no reserved entries left, gd_vme_avail = %d",
 		gd->gd_vme_avail));
@@ -872,9 +894,7 @@ vm_map_entry_krelease(int count)
 {
 	struct globaldata *gd = mycpu;
 
-	crit_enter();
-	gd->gd_vme_avail += count;
-	crit_exit();
+	atomic_add_int(&gd->gd_vme_avail, count);
 }
 
 /*
@@ -1521,7 +1541,8 @@ _vm_map_clip_start(vm_map_t map, vm_map_entry_t entry, vm_offset_t start,
 	 * map.  This is a bit of a hack, but is also about the best place to
 	 * put this improvement.
 	 */
-	if (entry->object.vm_object == NULL && !map->system_map) {
+	if (entry->object.vm_object == NULL && !map->system_map &&
+	    VM_MAP_ENTRY_WITHIN_PARTITION(entry)) {
 		vm_map_entry_allocate_object(entry);
 	}
 
@@ -1580,14 +1601,14 @@ _vm_map_clip_end(vm_map_t map, vm_map_entry_t entry, vm_offset_t end,
 	 * put this improvement.
 	 */
 
-	if (entry->object.vm_object == NULL && !map->system_map) {
+	if (entry->object.vm_object == NULL && !map->system_map &&
+	    VM_MAP_ENTRY_WITHIN_PARTITION(entry)) {
 		vm_map_entry_allocate_object(entry);
 	}
 
 	/*
 	 * Create a new entry and insert it AFTER the specified entry
 	 */
-
 	new_entry = vm_map_entry_create(map, countp);
 	*new_entry = *entry;
 
@@ -4076,7 +4097,11 @@ vm_map_lookup(vm_map_t *var_map,		/* IN/OUT */
 	vm_prot_t fault_type = fault_typea;
 	int use_read_lock = 1;
 	int rv = KERN_SUCCESS;
+	int count;
 
+	count = 0;
+	if (vaddr < VM_MAX_USER_ADDRESS)
+		count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 RetryLookup:
 	if (use_read_lock)
 		vm_map_lock_read(map);
@@ -4204,7 +4229,6 @@ RetryLookup:
 			 * -- one just moved from the map to the new
 			 * object.
 			 */
-
 			if (use_read_lock && vm_map_lock_upgrade(map)) {
 				/* lost lock */
 				use_read_lock = 0;
@@ -4218,13 +4242,13 @@ RetryLookup:
 			 * We're attempting to read a copy-on-write page --
 			 * don't allow writes.
 			 */
-
 			prot &= ~VM_PROT_WRITE;
 		}
 	}
 
 	/*
-	 * Create an object if necessary.
+	 * Create an object if necessary.  This code also handles
+	 * partitioning large entries to improve vm_fault performance.
 	 */
 	if (entry->object.vm_object == NULL && !map->system_map) {
 		if (use_read_lock && vm_map_lock_upgrade(map))  {
@@ -4233,6 +4257,24 @@ RetryLookup:
 			goto RetryLookup;
 		}
 		use_read_lock = 0;
+
+		/*
+		 * Partition large entries, giving each its own VM object,
+		 * to improve concurrent fault performance.  This is only
+		 * applicable to userspace.
+		 */
+		if (vaddr < VM_MAX_USER_ADDRESS &&
+		    entry->maptype == VM_MAPTYPE_NORMAL &&
+		    ((entry->start ^ entry->end) & ~MAP_ENTRY_PARTITION_MASK)) {
+			if (entry->eflags & MAP_ENTRY_IN_TRANSITION) {
+				entry->eflags |= MAP_ENTRY_NEEDS_WAKEUP;
+				++mycpu->gd_cnt.v_intrans_coll;
+				++mycpu->gd_cnt.v_intrans_wait;
+				vm_map_transition_wait(map);
+				goto RetryLookup;
+			}
+			vm_map_entry_partition(map, entry, vaddr, &count);
+		}
 		vm_map_entry_allocate_object(entry);
 	}
 
@@ -4260,6 +4302,9 @@ done:
 	} else {
 		vm_map_unlock(map);
 	}
+	if (vaddr < VM_MAX_USER_ADDRESS)
+		vm_map_entry_release(count);
+
 	return (rv);
 }
 
@@ -4278,6 +4323,16 @@ vm_map_lookup_done(vm_map_t map, vm_map_entry_t entry, int count)
 	vm_map_unlock_read(map);
 	if (count)
 		vm_map_entry_release(count);
+}
+
+static void
+vm_map_entry_partition(vm_map_t map, vm_map_entry_t entry,
+		       vm_offset_t vaddr, int *countp)
+{
+	vaddr &= ~MAP_ENTRY_PARTITION_MASK;
+	vm_map_clip_start(map, entry, vaddr, countp);
+	vaddr += MAP_ENTRY_PARTITION_SIZE;
+	vm_map_clip_end(map, entry, vaddr, countp);
 }
 
 /*

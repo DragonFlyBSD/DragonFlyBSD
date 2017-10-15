@@ -229,7 +229,8 @@ struct vm_map_entry {
  * single-insertion operations, including any necessary clipping.
  */
 #define MAP_RESERVE_COUNT	4
-#define MAP_RESERVE_SLOP	32
+#define MAP_RESERVE_SLOP	64
+#define MAP_RESERVE_HYST	(MAP_RESERVE_SLOP - MAP_RESERVE_SLOP / 8)
 
 static __inline u_char   
 vm_map_entry_behavior(struct vm_map_entry *entry)
