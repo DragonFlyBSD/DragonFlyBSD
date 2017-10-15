@@ -129,17 +129,17 @@ lockmgr_shared(struct lock *lkp, u_int flags)
 	extflags = (flags | lkp->lk_flags) & LK_EXTFLG_MASK;
 	td = curthread;
 	error = 0;
+	count = lkp->lk_count;
 
 	for (;;) {
-		count = lkp->lk_count;
 		cpu_ccfence();
 
 		/*
 		 * Normal case
 		 */
 		if ((count & (LKC_EXREQ|LKC_UPREQ|LKC_EXCL)) == 0) {
-			if (atomic_cmpset_int(&lkp->lk_count,
-					      count, count + 1)) {
+			if (atomic_fcmpset_int(&lkp->lk_count,
+					       &count, count + 1)) {
 				COUNT(td, 1);
 				break;
 			}
@@ -206,8 +206,8 @@ lockmgr_shared(struct lock *lkp, u_int flags)
 			}
 
 			tsleep_interlock(lkp, pflags);
-			if (!atomic_cmpset_int(&lkp->lk_count, count,
-					      count | LKC_SHREQ)) {
+			if (!atomic_fcmpset_int(&lkp->lk_count, &count,
+					        count | LKC_SHREQ)) {
 				continue;
 			}
 			error = tsleep(lkp, pflags | PINTERLOCKED,
@@ -224,7 +224,7 @@ lockmgr_shared(struct lock *lkp, u_int flags)
 		/*
 		 * Otherwise we can bump the count
 		 */
-		if (atomic_cmpset_int(&lkp->lk_count, count, count + 1)) {
+		if (atomic_fcmpset_int(&lkp->lk_count, &count, count + 1)) {
 			COUNT(td, 1);
 			break;
 		}
@@ -251,17 +251,17 @@ lockmgr_exclusive(struct lock *lkp, u_int flags)
 	td = curthread;
 
 	error = 0;
+	count = lkp->lk_count;
 
 	for (;;) {
-		count = lkp->lk_count;
 		cpu_ccfence();
 
 		/*
 		 * Exclusive lock critical path.
 		 */
 		if (count == 0) {
-			if (atomic_cmpset_int(&lkp->lk_count, count,
-					      LKC_EXCL | (count + 1))) {
+			if (atomic_fcmpset_int(&lkp->lk_count, &count,
+					       LKC_EXCL | (count + 1))) {
 				lkp->lk_lockholder = td;
 				COUNT(td, 1);
 				break;
@@ -320,8 +320,8 @@ lockmgr_exclusive(struct lock *lkp, u_int flags)
 		timo = (extflags & LK_TIMELOCK) ? lkp->lk_timo : 0;
 
 		tsleep_interlock(lkp, pflags);
-		if (!atomic_cmpset_int(&lkp->lk_count, count,
-				       count | LKC_EXREQ)) {
+		if (!atomic_fcmpset_int(&lkp->lk_count, &count,
+					count | LKC_EXREQ)) {
 			continue;
 		}
 
@@ -351,9 +351,9 @@ lockmgr_downgrade(struct lock *lkp, u_int flags)
 
 	extflags = (flags | lkp->lk_flags) & LK_EXTFLG_MASK;
 	td = curthread;
+	count = lkp->lk_count;
 
 	for (;;) {
-		count = lkp->lk_count;
 		cpu_ccfence();
 
 		/*
@@ -372,8 +372,8 @@ lockmgr_downgrade(struct lock *lkp, u_int flags)
 		 */
 		otd = lkp->lk_lockholder;
 		lkp->lk_lockholder = NULL;
-		if (atomic_cmpset_int(&lkp->lk_count, count,
-				      count & ~(LKC_EXCL|LKC_SHREQ))) {
+		if (atomic_fcmpset_int(&lkp->lk_count, &count,
+				       count & ~(LKC_EXCL|LKC_SHREQ))) {
 			if (count & LKC_SHREQ)
 				wakeup(lkp);
 			break;
@@ -404,9 +404,9 @@ lockmgr_upgrade(struct lock *lkp, u_int flags)
 	extflags = (flags | lkp->lk_flags) & LK_EXTFLG_MASK;
 	td = curthread;
 	error = 0;
+	count = lkp->lk_count;
 
 	for (;;) {
-		count = lkp->lk_count;
 		cpu_ccfence();
 
 		/*
@@ -441,8 +441,8 @@ lockmgr_upgrade(struct lock *lkp, u_int flags)
 		 * Start with the critical path.
 		 */
 		if ((count & (LKC_UPREQ|LKC_EXCL|LKC_MASK)) == 1) {
-			if (atomic_cmpset_int(&lkp->lk_count, count,
-					      count | LKC_EXCL)) {
+			if (atomic_fcmpset_int(&lkp->lk_count, &count,
+					       count | LKC_EXCL)) {
 				lkp->lk_lockholder = td;
 				break;
 			}
@@ -519,7 +519,7 @@ lockmgr_upgrade(struct lock *lkp, u_int flags)
 			wflags |= (count - 1);
 		}
 
-		if (atomic_cmpset_int(&lkp->lk_count, count, wflags)) {
+		if (atomic_fcmpset_int(&lkp->lk_count, &count, wflags)) {
 			COUNT(td, -1);
 
 			/*
@@ -574,9 +574,9 @@ lockmgr_waitupgrade(struct lock *lkp, u_int flags)
 	extflags = (flags | lkp->lk_flags) & LK_EXTFLG_MASK;
 	td = curthread;
 	error = 0;
+	count = lkp->lk_count;
 
 	for (;;) {
-		count = lkp->lk_count;
 		cpu_ccfence();
 
 		/*
@@ -588,8 +588,8 @@ lockmgr_waitupgrade(struct lock *lkp, u_int flags)
 		 * that might have been granted via a race.
 		 */
 		if (count & LKC_UPGRANT) {
-			if (atomic_cmpset_int(&lkp->lk_count, count,
-					      count & ~LKC_UPGRANT)) {
+			if (atomic_fcmpset_int(&lkp->lk_count, &count,
+					       count & ~LKC_UPGRANT)) {
 				lkp->lk_lockholder = td;
 				KKASSERT(count & LKC_EXCL);
 				break;
@@ -603,7 +603,7 @@ lockmgr_waitupgrade(struct lock *lkp, u_int flags)
 			pflags = (extflags & LK_PCATCH) ? PCATCH : 0;
 			timo = (extflags & LK_TIMELOCK) ? lkp->lk_timo : 0;
 			tsleep_interlock(lkp, pflags);
-			if (atomic_fetchadd_int(&lkp->lk_count, 0) == count) {
+			if (atomic_fcmpset_int(&lkp->lk_count, &count, count)) {
 				error = tsleep(lkp, pflags | PINTERLOCKED,
 					       lkp->lk_wmesg, timo);
 				if (error) {
@@ -636,9 +636,9 @@ lockmgr_release(struct lock *lkp, u_int flags)
 
 	extflags = (flags | lkp->lk_flags) & LK_EXTFLG_MASK;
 	td = curthread;
+	count = lkp->lk_count;
 
 	for (;;) {
-		count = lkp->lk_count;
 		cpu_ccfence();
 
 		/*
@@ -677,7 +677,8 @@ lockmgr_release(struct lock *lkp, u_int flags)
 				 */
 				otd = lkp->lk_lockholder;
 				lkp->lk_lockholder = NULL;
-				if (!atomic_cmpset_int(&lkp->lk_count, count,
+				if (!atomic_fcmpset_int(&lkp->lk_count,
+							&count,
 					      (count - 1) &
 					   ~(LKC_EXCL | LKC_EXREQ |
 					     LKC_SHREQ| LKC_CANCEL))) {
@@ -697,7 +698,8 @@ lockmgr_release(struct lock *lkp, u_int flags)
 				 */
 				otd = lkp->lk_lockholder;
 				lkp->lk_lockholder = NULL;
-				if (!atomic_cmpset_int(&lkp->lk_count, count,
+				if (!atomic_fcmpset_int(&lkp->lk_count,
+							&count,
 						(count & ~LKC_UPREQ) |
 						LKC_UPGRANT)) {
 					lkp->lk_lockholder = otd;
@@ -707,8 +709,9 @@ lockmgr_release(struct lock *lkp, u_int flags)
 				/* success */
 			} else {
 				otd = lkp->lk_lockholder;
-				if (!atomic_cmpset_int(&lkp->lk_count, count,
-						       count - 1)) {
+				if (!atomic_fcmpset_int(&lkp->lk_count,
+							&count,
+							count - 1)) {
 					continue;
 				}
 				/* success */
@@ -722,7 +725,8 @@ lockmgr_release(struct lock *lkp, u_int flags)
 				 * Last shared count is being released,
 				 * no upgrade request present.
 				 */
-				if (!atomic_cmpset_int(&lkp->lk_count, count,
+				if (!atomic_fcmpset_int(&lkp->lk_count,
+							&count,
 					      (count - 1) &
 					       ~(LKC_EXREQ | LKC_SHREQ |
 						 LKC_CANCEL))) {
@@ -740,7 +744,8 @@ lockmgr_release(struct lock *lkp, u_int flags)
 				 * the upgrade request.  Masked count
 				 * remains 1.
 				 */
-				if (!atomic_cmpset_int(&lkp->lk_count, count,
+				if (!atomic_fcmpset_int(&lkp->lk_count,
+							&count,
 					      (count & ~(LKC_UPREQ |
 							 LKC_CANCEL)) |
 					      LKC_EXCL | LKC_UPGRANT)) {
@@ -752,8 +757,9 @@ lockmgr_release(struct lock *lkp, u_int flags)
 				 * Shared count is greater than 1, just
 				 * decrement it by one.
 				 */
-				if (!atomic_cmpset_int(&lkp->lk_count, count,
-						       count - 1)) {
+				if (!atomic_fcmpset_int(&lkp->lk_count,
+							&count,
+							count - 1)) {
 					continue;
 				}
 			}
@@ -779,14 +785,14 @@ lockmgr_cancel_beg(struct lock *lkp, u_int flags)
 {
 	int count;
 
+	count = lkp->lk_count;
 	for (;;) {
-		count = lkp->lk_count;
 		cpu_ccfence();
 
 		KKASSERT((count & LKC_CANCEL) == 0);	/* disallowed case */
 		KKASSERT((count & LKC_MASK) != 0);	/* issue w/lock held */
-		if (!atomic_cmpset_int(&lkp->lk_count,
-				       count, count | LKC_CANCEL)) {
+		if (!atomic_fcmpset_int(&lkp->lk_count,
+				        &count, count | LKC_CANCEL)) {
 			continue;
 		}
 		if (count & (LKC_EXREQ|LKC_SHREQ|LKC_UPREQ)) {
@@ -818,8 +824,8 @@ undo_upreq(struct lock *lkp)
 {
 	int count;
 
+	count = lkp->lk_count;
 	for (;;) {
-		count = lkp->lk_count;
 		cpu_ccfence();
 
 		if (count & LKC_UPGRANT) {
@@ -828,8 +834,8 @@ undo_upreq(struct lock *lkp)
 			 * another thread might own UPREQ.  Clear UPGRANT
 			 * and release the granted lock.
 			 */
-			if (atomic_cmpset_int(&lkp->lk_count, count,
-					      count & ~LKC_UPGRANT)) {
+			if (atomic_fcmpset_int(&lkp->lk_count, &count,
+					       count & ~LKC_UPGRANT)) {
 				lkp->lk_lockholder = curthread;
 				lockmgr(lkp, LK_RELEASE);
 				break;
@@ -842,8 +848,8 @@ undo_upreq(struct lock *lkp)
 			 */
 			KKASSERT(count & LKC_UPREQ);
 			KKASSERT((count & LKC_MASK) > 0);
-			if (atomic_cmpset_int(&lkp->lk_count, count,
-					      count & ~LKC_UPREQ)) {
+			if (atomic_fcmpset_int(&lkp->lk_count, &count,
+					       count & ~LKC_UPREQ)) {
 				wakeup(lkp);
 				break;
 			}
@@ -855,8 +861,8 @@ undo_upreq(struct lock *lkp)
 			 */
 			KKASSERT(count & LKC_UPREQ);
 			KKASSERT((count & LKC_MASK) > 0);
-			if (atomic_cmpset_int(&lkp->lk_count, count,
-					      count & ~LKC_UPREQ)) {
+			if (atomic_fcmpset_int(&lkp->lk_count, &count,
+					       count & ~LKC_UPREQ)) {
 				break;
 			}
 		} else {
@@ -866,9 +872,9 @@ undo_upreq(struct lock *lkp)
 			 */
 			KKASSERT(count & LKC_UPREQ);
 			KKASSERT((count & LKC_MASK) > 0);
-			if (atomic_cmpset_int(&lkp->lk_count, count,
-					      count &
-					      ~(LKC_UPREQ | LKC_SHREQ))) {
+			if (atomic_fcmpset_int(&lkp->lk_count, &count,
+					       count &
+					       ~(LKC_UPREQ | LKC_SHREQ))) {
 				if (count & LKC_SHREQ)
 					wakeup(lkp);
 				break;

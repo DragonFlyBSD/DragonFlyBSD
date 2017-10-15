@@ -258,8 +258,9 @@ _lwkt_trytokref(lwkt_tokref_t ref, thread_t td, long mode)
 		/*
 		 * Attempt to get an exclusive token
 		 */
+		count = tok->t_count;
+
 		for (;;) {
-			count = tok->t_count;
 			oref = tok->t_ref;	/* can be NULL */
 			cpu_ccfence();
 			if ((count & ~TOK_EXCLREQ) == 0) {
@@ -268,9 +269,9 @@ _lwkt_trytokref(lwkt_tokref_t ref, thread_t td, long mode)
 				 * We must clear TOK_EXCLREQ on successful
 				 * acquisition.
 				 */
-				if (atomic_cmpset_long(&tok->t_count, count,
-						       (count & ~TOK_EXCLREQ) |
-						       TOK_EXCLUSIVE)) {
+				if (atomic_fcmpset_long(&tok->t_count, &count,
+						        (count & ~TOK_EXCLREQ) |
+						        TOK_EXCLUSIVE)) {
 					KKASSERT(tok->t_ref == NULL);
 					tok->t_ref = ref;
 					return TRUE;
@@ -326,8 +327,9 @@ _lwkt_trytokref(lwkt_tokref_t ref, thread_t td, long mode)
 		 * for shared tokens simply means the caller intends to
 		 * block.  We never actually set the bit in tok->t_count.
 		 */
+		count = tok->t_count;
+
 		for (;;) {
-			count = tok->t_count;
 			oref = tok->t_ref;	/* can be NULL */
 			cpu_ccfence();
 			if ((count & (TOK_EXCLUSIVE/*|TOK_EXCLREQ*/)) == 0) {
@@ -337,7 +339,9 @@ _lwkt_trytokref(lwkt_tokref_t ref, thread_t td, long mode)
 				if ((atomic_fetchadd_long(&tok->t_count, TOK_INCR) & TOK_EXCLUSIVE) == 0) {
 					return TRUE;
 				}
-				atomic_fetchadd_long(&tok->t_count, -TOK_INCR);
+				count = atomic_fetchadd_long(&tok->t_count,
+							     -TOK_INCR);
+				count -= TOK_INCR;
 				/* retry */
 			} else if ((count & TOK_EXCLUSIVE) &&
 				   oref >= &td->td_toks_base &&
@@ -401,8 +405,9 @@ _lwkt_reltokref(lwkt_tokref_t ref, thread_t td)
 	long count;
 
 	tok = ref->tr_tok;
+	count = tok->t_count;
+
 	for (;;) {
-		count = tok->t_count;
 		cpu_ccfence();
 		if (tok->t_ref == ref) {
 			/*
@@ -413,8 +418,8 @@ _lwkt_reltokref(lwkt_tokref_t ref, thread_t td)
 			 */
 			KKASSERT(count & TOK_EXCLUSIVE);
 			tok->t_ref = NULL;
-			if (atomic_cmpset_long(&tok->t_count, count,
-					       count & ~TOK_EXCLUSIVE)) {
+			if (atomic_fcmpset_long(&tok->t_count, &count,
+					        count & ~TOK_EXCLUSIVE)) {
 				return;
 			}
 			tok->t_ref = ref;
@@ -424,8 +429,8 @@ _lwkt_reltokref(lwkt_tokref_t ref, thread_t td)
 			 * We are a shared holder
 			 */
 			KKASSERT(count & TOK_COUNTMASK);
-			if (atomic_cmpset_long(&tok->t_count, count,
-					       count - TOK_INCR)) {
+			if (atomic_fcmpset_long(&tok->t_count, &count,
+						count - TOK_INCR)) {
 				return;
 			}
 			/* retry */
