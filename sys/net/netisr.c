@@ -203,10 +203,8 @@ netisr_init(void)
 {
 	int i;
 
-	if (netisr_ncpus <= 0) {
+	if (netisr_ncpus <= 0 || netisr_ncpus > ncpus) {
 		/* Default. */
-		netisr_ncpus = ncpus2;
-	} else if (netisr_ncpus > ncpus) {
 		netisr_ncpus = ncpus;
 	}
 	if (netisr_ncpus > NETISR_CPUMAX)

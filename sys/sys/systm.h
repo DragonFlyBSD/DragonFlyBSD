@@ -83,9 +83,6 @@ extern int bootverbose;		/* nonzero to print verbose messages */
 extern int maxusers;		/* system tune hint */
 
 extern int ncpus;		/* total number of cpus (real, hyper, virtual)*/
-extern int ncpus2;		/* ncpus rounded down to power of 2 */
-extern int ncpus2_shift;	/* log base 2 of ncpus2 */
-extern int ncpus2_mask;		/* ncpus2 - 1 */
 extern int ncpus_fit;		/* round up to a power of 2 */
 extern int ncpus_fit_mask;	/* ncpus_fit - 1 */
 extern int clocks_running;	/* timing/timeout subsystem is operational */

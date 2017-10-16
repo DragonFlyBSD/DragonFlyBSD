@@ -931,9 +931,8 @@ init_vkernel(void)
 	gd->mi.gd_curthread = &thread0;
 	thread0.td_gd = &gd->mi;
 	ncpus = 1;
-	ncpus2 = 1;	/* rounded down power of 2 */
 	ncpus_fit = 1;	/* rounded up power of 2 */
-	/* ncpus2_mask and ncpus_fit_mask are 0 */
+	/* ncpus_fit_mask are 0 */
 	init_param1();
 	gd->mi.gd_prvspace = &CPU_prvspace[0];
 	mi_gdinit(&gd->mi, 0);

@@ -2290,11 +2290,9 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	MachIntrABI = MachIntrABI_ICU;
 
 	/*
-	 * start with one cpu.  Note: with one cpu, ncpus2_shift, ncpus2_mask,
-	 * and ncpus_fit_mask remain 0.
+	 * start with one cpu.  Note: with one cpu, ncpus_fit_mask remain 0.
 	 */
 	ncpus = 1;
-	ncpus2 = 1;
 	ncpus_fit = 1;
 	/* Init basic tunables, hz etc */
 	init_param1();

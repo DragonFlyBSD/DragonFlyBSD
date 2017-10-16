@@ -80,7 +80,6 @@ SYSINIT(sched_dyninit, SI_BOOT1_DYNALLOC, SI_ORDER_FIRST, sched_dyninit, NULL);
 int	lbolt;
 void	*lbolt_syncer;
 int	ncpus;
-int	ncpus2, ncpus2_shift, ncpus2_mask;	/* note: mask not cpumask_t */
 int	ncpus_fit, ncpus_fit_mask;		/* note: mask not cpumask_t */
 int	safepri;
 int	tsleep_now_works;

@@ -500,13 +500,9 @@ start_all_aps(u_int boot_addr)
 	/* set ncpus to 1 + highest logical cpu.  Not all may have come up */
 	ncpus = x;
 
-	/* ncpus2 -- ncpus rounded down to the nearest power of 2 */
 	for (shift = 0; (1 << shift) <= ncpus; ++shift)
 		;
 	--shift;
-	ncpus2_shift = shift;
-	ncpus2 = 1 << shift;
-	ncpus2_mask = ncpus2 - 1;
 
 	/* ncpus_fit -- ncpus rounded up to the nearest power of 2 */
 	if ((1 << shift) < ncpus)
