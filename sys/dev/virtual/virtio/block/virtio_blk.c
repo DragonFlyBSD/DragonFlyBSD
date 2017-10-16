@@ -593,7 +593,6 @@ vtblk_write_cache_sysctl(SYSCTL_HANDLER_ARGS)
 static void
 vtblk_alloc_disk(struct vtblk_softc *sc, struct virtio_blk_config *blkcfg)
 {
-
 	struct disk_info info;
 
 	/* construct the disk_info */
@@ -602,16 +601,25 @@ vtblk_alloc_disk(struct vtblk_softc *sc, struct virtio_blk_config *blkcfg)
 	if (virtio_with_feature(sc->vtblk_dev, VIRTIO_BLK_F_BLK_SIZE))
 		sc->vtblk_sector_size = blkcfg->blk_size;
 	else
-		sc->vtblk_sector_size = DEV_BSIZE;
+		sc->vtblk_sector_size = 512;
 
-	info.d_media_blksize = sc->vtblk_sector_size;
+	/* blkcfg->capacity is always expressed in 512 byte sectors. */
+	info.d_media_blksize = 512;
 	info.d_media_blocks = blkcfg->capacity;
 
-	info.d_ncylinders = blkcfg->geometry.cylinders;
-	info.d_nheads = blkcfg->geometry.heads;
-	info.d_secpertrack = blkcfg->geometry.sectors;
-
-	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
+	if (virtio_with_feature(sc->vtblk_dev, VIRTIO_BLK_F_GEOMETRY)) {
+		info.d_ncylinders = blkcfg->geometry.cylinders;
+		info.d_nheads = blkcfg->geometry.heads;
+		info.d_secpertrack = blkcfg->geometry.sectors;
+		info.d_secpercyl = info.d_secpertrack * info.d_nheads;
+	} else {
+		/* Fabricate a geometry */
+		info.d_secpertrack = 1024;
+		info.d_nheads = 1;
+		info.d_secpercyl = info.d_secpertrack * info.d_nheads;
+		info.d_ncylinders =
+		    (u_int)(info.d_media_blocks / info.d_secpercyl);
+	}
 
 	if (vtblk_write_cache_enabled(sc, blkcfg) != 0)
 		sc->vtblk_write_cache = VTBLK_CACHE_WRITEBACK;
@@ -630,6 +638,15 @@ vtblk_alloc_disk(struct vtblk_softc *sc, struct virtio_blk_config *blkcfg)
 	sc->cdev->si_drv1 = sc;
 	sc->cdev->si_iosize_max = MAXPHYS;
 	disk_setdiskinfo(&sc->vtblk_disk, &info);
+	if (virtio_with_feature(sc->vtblk_dev, VIRTIO_BLK_F_BLK_SIZE)) {
+		device_printf(sc->vtblk_dev, "Block size: %u\n",
+		    sc->vtblk_sector_size);
+	}
+	device_printf(sc->vtblk_dev,
+	    "%juMB (%ju 512 byte sectors: %dH %dS/T %dC)\n",
+	    ((uintmax_t)blkcfg->capacity * 512) / (1024*1024),
+	    (uintmax_t)blkcfg->capacity, blkcfg->geometry.heads,
+	    blkcfg->geometry.sectors, blkcfg->geometry.cylinders);
 }
 
 static void
