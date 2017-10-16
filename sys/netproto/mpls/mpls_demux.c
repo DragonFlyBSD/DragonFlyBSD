@@ -31,12 +31,10 @@
  * $DragonFly: src/sys/netproto/mpls/mpls_demux.c,v 1.2 2008/08/05 15:11:32 nant Exp $
  */
 
+#include <sys/param.h>
 #include <sys/mbuf.h>
-#include <sys/systm.h>		/* ncpus2_mask */
-#include <sys/types.h>
 
 #include <net/netisr.h>
-
 #include <netinet/in_var.h>
 
 #include <netproto/mpls/mpls.h>
@@ -46,12 +44,12 @@ static __inline int
 MPLSP_MPORT_HASH(mpls_label_t label, u_short if_index)
 {
 	/* Use low order byte (demux up to 256 cpus) */
-	KASSERT(ncpus2 < 256, ("need different hash function"));  /* XXX */
+	KASSERT(netisr_ncpus <= 256, ("need different hash function"));  /* XXX */
 #if BYTE_ORDER == LITTLE_ENDIAN
 	label &= 0x00ff0000;
 	label = label >> 16;
 #endif
-        return ((label ^ if_index) & ncpus2_mask);
+        return ((label ^ if_index) % netisr_ncpus);
 }
 
 static void
@@ -98,4 +96,3 @@ mpls_hashfn(struct mbuf **mp, int hoff)
 	ifp = m->m_pkthdr.rcvif;
 	m_sethash(m, MPLSP_MPORT_HASH(label, ifp->if_index));
 }
-
