@@ -1,7 +1,6 @@
 /*
- * (MPSAFE)
- *
- * Copyright (c) 2003,2004,2010 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003,2004,2010,2017 The DragonFly Project.
+ * All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com> and David Xu <davidxu@freebsd.org>
@@ -42,6 +41,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/cdefs.h>
 #include <sys/kernel.h>
 #include <sys/sysproto.h>
 #include <sys/sysunion.h>
@@ -69,13 +69,17 @@
 #include <machine/vmm.h>
 
 /*
- * Improve umtx performance by polling for 4uS before going to sleep.
+ * Improve umtx performance by polling for 4000nS before going to sleep.
  * This can avoid many IPIs in typical pthreads mutex situations.
  */
 #ifdef _RDTSC_SUPPORTED_
-static int umtx_delay = 4000;
-SYSCTL_INT(_kern, OID_AUTO, umtx_delay, CTLFLAG_RW, &umtx_delay, 0, "");
+static int umtx_delay = 4000;		/* nS */
+SYSCTL_INT(_kern, OID_AUTO, umtx_delay, CTLFLAG_RW,
+	   &umtx_delay, 0, "");
 #endif
+static int umtx_timeout_max = 2000000;	/* microseconds */
+SYSCTL_INT(_kern, OID_AUTO, umtx_timeout_max, CTLFLAG_RW,
+	   &umtx_timeout_max, 0, "");
 
 /*
  * If the contents of the userland-supplied pointer matches the specified
@@ -95,69 +99,49 @@ SYSCTL_INT(_kern, OID_AUTO, umtx_delay, CTLFLAG_RW, &umtx_delay, 0, "");
  * safely race against changes in *ptr as long as we are properly interlocked
  * against the umtx_wakeup() call.
  *
- * The VM page associated with the mutex is held in an attempt to keep
- * the mutex's physical address consistent, allowing umtx_sleep() and
- * umtx_wakeup() to use the physical address as their rendezvous.  BUT
- * situations can arise where the physical address may change, particularly
- * if a threaded program fork()'s and the mutex's memory becomes
- * copy-on-write.  We register an event on the VM page to catch COWs.
+ * For performance reasons, we do not try to track the underlying page for
+ * mapping changes.  Instead, the timeout is capped at kern.umtx_timeout_max
+ * (default 1 second) and the caller is expected to retry.  The kernel
+ * will wake all umtx_sleep()s if the process fork()s, but not if it vfork()s.
+ * Other mapping changes must be caught by the timeout.
  *
  * umtx_sleep { const int *ptr, int value, int timeout }
  */
 int
 sys_umtx_sleep(struct umtx_sleep_args *uap)
 {
-    struct lwbuf lwb_cache;
-    struct lwbuf *lwb;
-    vm_page_t m;
     void *waddr;
+    void *uptr;
     int offset;
     int timeout;
     int error;
+    int value;
 
     if (uap->timeout < 0)
 	return (EINVAL);
 
     if (curthread->td_vmm) {
 	register_t gpa;
-	vmm_vm_get_gpa(curproc, &gpa, (register_t) uap->ptr);
+	vmm_vm_get_gpa(curproc, &gpa, (register_t)uap->ptr);
 	uap->ptr = (const int *)gpa;
     }
 
-    if ((vm_offset_t)uap->ptr & (sizeof(int) - 1))
-	return (EFAULT);
+    uptr = __DEQUALIFY(void *, uap->ptr);
+    if ((vm_offset_t)uptr & (sizeof(int) - 1))
+	return EFAULT;
+
+    offset = (vm_offset_t)uptr & PAGE_MASK;
 
     /*
-     * When faulting in the page, force any COW pages to be resolved.
-     * Otherwise the physical page we sleep on my not match the page
-     * being woken up.
-     *
-     * The returned page is held, and this hold count prevents it from
-     * being paged out.  This is important since we are sleeping on what
-     * is essentially a physical address (which avoids all sorts of
-     * collision-space issues).
-     *
-     * WARNING! We can only use vm_fault_page*() for reading data.  We
-     *		cannot use it for writing data because there is no pmap
-     *	        interlock to protect against flushes/pageouts.
-     *
-     *		(XXX with recent code work, this may no longer be an issue)
-     *
-     * WARNING! If the user program replaces the mapping of the underlying
-     *		uap->ptr, the physical address may change and the umtx code
-     *		will not be able to match wakeups with tsleeps.
+     * Initial quick check.  If -1 is returned distinguish between
+     * EBUSY and EINVAL.
      */
-    m = vm_fault_page_quick((vm_offset_t)uap->ptr,
-			    VM_PROT_READ | VM_PROT_WRITE, &error, NULL);
-    if (m == NULL) {
-	error = EFAULT;
-	goto done;
-    }
-    lwb = lwbuf_alloc(m, &lwb_cache);
-    offset = (vm_offset_t)uap->ptr & PAGE_MASK;
+    value = fuword32(uptr);
+    if (value == -1 && uservtophys((intptr_t)uap->ptr) == (vm_paddr_t)-1)
+	return EINVAL;
 
     error = EBUSY;
-    if (*(int *)(lwbuf_kva(lwb) + offset) == uap->value) {
+    if (value == uap->value) {
 #ifdef _RDTSC_SUPPORTED_
 	/*
 	 * Poll a little while before sleeping, most mutexes are
@@ -170,7 +154,7 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
 		tsc_target = tsc_get_target(umtx_delay);
 		while (tsc_test_target(tsc_target) == 0) {
 			cpu_lfence();
-			if (*(int *)(lwbuf_kva(lwb) + offset) != uap->value) {
+			if (fuword32(uptr) != uap->value) {
 				good = 1;
 				break;
 			}
@@ -178,24 +162,30 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
 		}
 		if (good) {
 			error = EBUSY;
-			goto skip;
+			goto done;
 		}
 	}
 #endif
 	/*
 	 * Calculate the timeout.  This will be acccurate to within ~2 ticks.
+	 * uap->timeout is in microseconds.
 	 */
-	if ((timeout = uap->timeout) != 0) {
-	    timeout = (timeout / 1000000) * hz +
-		      ((timeout % 1000000) * hz + 999999) / 1000000;
-	}
+	timeout = umtx_timeout_max;
+	if (uap->timeout && uap->timeout < timeout)
+		timeout = uap->timeout;
+	timeout = (timeout / 1000000) * hz +
+		  ((timeout % 1000000) * hz + 999999) / 1000000;
 
 	/*
 	 * Calculate the physical address of the mutex.  This gives us
 	 * good distribution between unrelated processes using the
 	 * feature.
 	 */
-	waddr = (void *)((intptr_t)VM_PAGE_TO_PHYS(m) + offset);
+	waddr = (void *)uservtophys((intptr_t)uap->ptr);
+	if (waddr == (void *)(intptr_t)-1) {
+	    error = EINVAL;
+	    goto done;
+	}
 
 	/*
 	 * Wake us up if the memory location COWs while we are sleeping.
@@ -215,11 +205,10 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
 	 */
 	tsleep_interlock(waddr, PCATCH | PDOMAIN_UMTX);
 	cpu_lfence();
-	if (*(int *)(lwbuf_kva(lwb) + offset) == uap->value) {
+	if (fuword32(uptr) == uap->value) {
 		error = tsleep(waddr, PCATCH | PINTERLOCKED | PDOMAIN_UMTX,
 			       "umtxsl", timeout);
 	} else {
-		tsleep_remove(curthread);
 		error = EBUSY;
 	}
 	crit_exit();
@@ -229,9 +218,6 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
     } else {
 	error = EBUSY;
     }
-skip:
-    lwbuf_free(lwb);
-    vm_page_unhold(m);
 done:
     return(error);
 }
@@ -241,21 +227,17 @@ done:
  *
  * Wakeup the specified number of processes held in umtx_sleep() on the
  * specified user address.  A count of 0 wakes up all waiting processes.
- *
- * XXX assumes that the physical address space does not exceed the virtual
- * address space.
  */
 int
 sys_umtx_wakeup(struct umtx_wakeup_args *uap)
 {
-    vm_page_t m;
     int offset;
     int error;
     void *waddr;
 
     if (curthread->td_vmm) {
 	register_t gpa;
-	vmm_vm_get_gpa(curproc, &gpa, (register_t) uap->ptr);
+	vmm_vm_get_gpa(curproc, &gpa, (register_t)uap->ptr);
 	uap->ptr = (const int *)gpa;
     }
 
@@ -266,28 +248,20 @@ sys_umtx_wakeup(struct umtx_wakeup_args *uap)
      */
     cpu_mfence();
     if ((vm_offset_t)uap->ptr & (sizeof(int) - 1))
-	return (EFAULT);
-    m = vm_fault_page_quick((vm_offset_t)uap->ptr,
-			    VM_PROT_READ | VM_PROT_WRITE, &error, NULL);
-    if (m == NULL) {
-	error = EFAULT;
-	goto done;
-    }
-    offset = (vm_offset_t)uap->ptr & PAGE_MASK;
-    waddr = (void *)((intptr_t)VM_PAGE_TO_PHYS(m) + offset);
+	return EFAULT;
 
-#if 1
+    offset = (vm_offset_t)uap->ptr & PAGE_MASK;
+    waddr = (void *)uservtophys((intptr_t)uap->ptr);
+    if (waddr == (void *)(intptr_t)-1)
+	return EINVAL;
+
     if (uap->count == 1) {
 	wakeup_domain_one(waddr, PDOMAIN_UMTX);
     } else {
 	/* XXX wakes them all up for now */
 	wakeup_domain(waddr, PDOMAIN_UMTX);
     }
-#else
-    wakeup_domain(waddr, PDOMAIN_UMTX);
-#endif
-    vm_page_unhold(m);
     error = 0;
-done:
+
     return(error);
 }

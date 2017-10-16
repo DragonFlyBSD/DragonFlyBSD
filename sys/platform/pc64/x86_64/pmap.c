@@ -701,6 +701,29 @@ vtopte(vm_offset_t va)
 	return (PTmap + ((va >> PAGE_SHIFT) & mask));
 }
 
+/*
+ * Returns the physical address translation from va for a user address.
+ * (vm_paddr_t)-1 is returned on failure.
+ */
+vm_paddr_t
+uservtophys(vm_offset_t va)
+{
+	uint64_t mask = ((1ul << (NPTEPGSHIFT + NPDEPGSHIFT +
+				  NPDPEPGSHIFT + NPML4EPGSHIFT)) - 1);
+	vm_paddr_t pa;
+	pt_entry_t pte;
+	pmap_t pmap;
+
+	pmap = vmspace_pmap(mycpu->gd_curthread->td_lwp->lwp_vmspace);
+	pa = (vm_paddr_t)-1;
+	if (va < VM_MAX_USER_ADDRESS) {
+		pte = kreadmem64(PTmap + ((va >> PAGE_SHIFT) & mask));
+		if (pte & pmap->pmap_bits[PG_V_IDX])
+			pa = (pte & PG_FRAME) | (va & PAGE_MASK);
+	}
+	return pa;
+}
+
 static uint64_t
 allocpages(vm_paddr_t *firstaddr, long n)
 {

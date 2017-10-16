@@ -203,6 +203,30 @@ END(fillw)
  */
 
 /*
+ * uint64_t:%rax kreadmem64(addr:%rdi)
+ *
+ * Read kernel or user memory with fault protection.
+ */
+ENTRY(kreadmem64)
+	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
+	movq	$kreadmem64fault,PCB_ONFAULT(%rcx)
+	movq	%rsp,PCB_ONFAULT_SP(%rcx)
+
+	movq	(%rdi),%rax
+	movq	$0,PCB_ONFAULT(%rcx)
+	ret
+
+kreadmem64fault:
+	movq	PCPU(curthread),%rcx
+	xorl	%eax,%eax
+	movq	TD_PCB(%rcx),%rcx
+	movq	%rax,PCB_ONFAULT(%rcx)
+	decq	%rax
+	ret
+END(kreadmem64)
+
+/*
  * std_copyout(from_kernel, to_user, len)  - MP SAFE
  *         %rdi,        %rsi,    %rdx
  */

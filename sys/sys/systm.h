@@ -249,6 +249,8 @@ void	bzeront(volatile void *buf, size_t len) __nonnull(1);
 void	*memcpy(void *to, const void *from, size_t len)
 	    __nonnull(1) __nonnull(2);
 
+long	kreadmem64(const void *addr);
+
 int	copystr (const void *kfaddr, void *kdaddr, size_t len,
 		size_t *lencopied) __nonnull(1) __nonnull(2);
 int	copyinstr (const void *udaddr, void *kaddr, size_t len,

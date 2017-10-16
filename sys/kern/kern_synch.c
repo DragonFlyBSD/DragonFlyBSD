@@ -368,6 +368,18 @@ _tsleep_interlock(globaldata_t gd, const volatile void *ident, int flags)
 
 	crit_enter_quick(td);
 	if (td->td_flags & TDF_TSLEEPQ) {
+		/*
+		 * Shortcut if unchanged
+		 */
+		if (td->td_wchan == ident &&
+		    td->td_wdomain == (flags & PDOMAIN_MASK)) {
+			crit_exit_quick(td);
+			return;
+		}
+
+		/*
+		 * Remove current sleepq
+		 */
 		cid = LOOKUP(td->td_wchan);
 		gid = TCHASHSHIFT(cid);
 		qp = &gd->gd_tsleep_hash[gid];
@@ -607,16 +619,22 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 	}
 
 	/*
-	 * If the interlocked flag is set but our cpu bit in the slpqueue
-	 * is no longer set, then a wakeup was processed inbetween the
-	 * tsleep_interlock() (ours or the callers), and here.  This can
-	 * occur under numerous circumstances including when we release the
-	 * current process.
+	 * For PINTERLOCKED operation, TDF_TSLEEPQ might not be set if
+	 * a wakeup() was processed before the thread could go to sleep.
+	 *
+	 * If TDF_TSLEEPQ is set, make sure the ident matches the recorded
+	 * ident.  If it does not then the thread slept inbetween the
+	 * caller's initial tsleep_interlock() call and the caller's tsleep()
+	 * call.
 	 *
 	 * Extreme loads can cause the sending of an IPI (e.g. wakeup()'s)
 	 * to process incoming IPIs, thus draining incoming wakeups.
 	 */
 	if ((td->td_flags & TDF_TSLEEPQ) == 0) {
+		logtsleep2(ilockfail, ident);
+		goto resume;
+	} else if (td->td_wchan != ident ||
+		   td->td_wdomain != (flags & PDOMAIN_MASK)) {
 		logtsleep2(ilockfail, ident);
 		goto resume;
 	}
@@ -745,6 +763,7 @@ resume:
 	}
 	logtsleep1(tsleep_end);
 	crit_exit_quick(td);
+
 	return (error);
 }
 
