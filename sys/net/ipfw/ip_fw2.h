@@ -374,7 +374,6 @@ struct ipfw_flow_id {
 #define IP_FW_DIVERT		2
 #define IP_FW_TEE		3
 #define IP_FW_DUMMYNET		4
-#define IP_FW_CONTINUE		5
 #define IP_FW_REDISPATCH	6
 
 /*

@@ -906,6 +906,8 @@ static void		ipfw_crossref_timeo(void *);
 static void		ipfw_state_remove(struct ipfw_context *,
 			    struct ipfw_state *);
 static void		ipfw_xlat_reap_timeo(void *);
+static void		ipfw_defrag_redispatch(struct mbuf *, int,
+			    struct ip_fw *);
 
 #define IPFW_TRKCNT_TOKGET	lwkt_gettoken(&ipfw_gd.ipfw_trkcnt_token)
 #define IPFW_TRKCNT_TOKREL	lwkt_reltoken(&ipfw_gd.ipfw_trkcnt_token)
@@ -4279,8 +4281,9 @@ skip_xlate:
 					 * order.
 					 */
 					ctx->ipfw_defrag_remote++;
-					args->rule = f;
-					return (IP_FW_CONTINUE);
+					ipfw_defrag_redispatch(m, cpuid, f);
+					args->m = NULL;
+					return (IP_FW_REDISPATCH);
 				}
 
 				/* 'm' might be changed by ip_hashfn(). */
@@ -6887,14 +6890,39 @@ ipfw_ip_input_dispatch(netmsg_t nmsg)
 	rule->cross_refs--;
 }
 
+static void
+ipfw_defrag_redispatch(struct mbuf *m, int cpuid, struct ip_fw *rule)
+{
+	struct netmsg_genpkt *nm;
+
+	KASSERT(cpuid != mycpuid, ("continue on the same cpu%d", cpuid));
+
+	/*
+	 * NOTE:
+	 * Bump cross_refs to prevent this rule and its siblings
+	 * from being deleted, while this mbuf is inflight.  The
+	 * cross_refs of the sibling rule on the target cpu will
+	 * be decremented, once this mbuf is going to be filtered
+	 * on the target cpu.
+	 */
+	rule->cross_refs++;
+	m->m_pkthdr.fw_flags |= IPFW_MBUF_CONTINUE;
+
+	nm = &m->m_hdr.mh_genmsg;
+	netmsg_init(&nm->base, NULL, &netisr_apanic_rport, 0,
+	    ipfw_ip_input_dispatch);
+	nm->m = m;
+	nm->arg1 = rule->cross_rules[cpuid];
+	netisr_sendmsg(&nm->base, cpuid);
+}
+
 static int
 ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 {
 	struct ip_fw_args args;
 	struct mbuf *m = *m0;
 	struct m_tag *mtag;
-	int tee = 0, error = 0, ret, cpuid;
-	struct netmsg_genpkt *nm;
+	int tee = 0, error = 0, ret;
 
 	args.flags = 0;
 	args.rule = NULL;
@@ -6979,34 +7007,6 @@ ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 			/* not sure this is the right error msg */
 			error = EACCES;
 		}
-		break;
-
-	case IP_FW_CONTINUE:
-		KASSERT(m->m_flags & M_HASH, ("no hash"));
-		cpuid = netisr_hashcpu(m->m_pkthdr.hash);
-		KASSERT(cpuid != mycpuid,
-		    ("continue on the same cpu%d", cpuid));
-
-		/*
-		 * NOTE:
-		 * Bump cross_refs to prevent this rule and its siblings
-		 * from being deleted, while this mbuf is inflight.  The
-		 * cross_refs of the sibling rule on the target cpu will
-		 * be decremented, once this mbuf is going to be filtered
-		 * on the target cpu.
-		 */
-		args.rule->cross_refs++;
-		m->m_pkthdr.fw_flags |= IPFW_MBUF_CONTINUE;
-
-		nm = &m->m_hdr.mh_genmsg;
-		netmsg_init(&nm->base, NULL, &netisr_apanic_rport, 0,
-		    ipfw_ip_input_dispatch);
-		nm->m = m;
-		nm->arg1 = args.rule->cross_rules[cpuid];
-		netisr_sendmsg(&nm->base, cpuid);
-
-		/* This mbuf is dispatched; no longer valid. */
-		m = NULL;
 		break;
 
 	default:
