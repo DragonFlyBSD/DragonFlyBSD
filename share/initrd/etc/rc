@@ -9,6 +9,8 @@ export HOME=/root
 /sbin/mount_tmpfs tmpfs /var
 mkdir /var/tmp
 mkdir /var/run
+mkdir /var/db
+mkdir /var/empty
 # / is mounted ro by default
 /sbin/mount_ufs -w /dev/md0s0 /
 
