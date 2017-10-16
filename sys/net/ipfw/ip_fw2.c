@@ -6916,24 +6916,22 @@ ipfw_defrag_redispatch(struct mbuf *m, int cpuid, struct ip_fw *rule)
 	netisr_sendmsg(&nm->base, cpuid);
 }
 
-static int
-ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
+static void
+ipfw_init_args(struct ip_fw_args *args, struct mbuf *m, struct ifnet *oif)
 {
-	struct ip_fw_args args;
-	struct mbuf *m = *m0;
-	struct m_tag *mtag;
-	int tee = 0, error = 0, ret;
 
-	args.flags = 0;
-	args.rule = NULL;
-	args.xlat = NULL;
+	args->flags = 0;
+	args->rule = NULL;
+	args->xlat = NULL;
 
 	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
+		struct m_tag *mtag;
+
 		/* Extract info from dummynet tag */
 		mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
 		KKASSERT(mtag != NULL);
-		args.rule = ((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
-		KKASSERT(args.rule != NULL);
+		args->rule = ((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
+		KKASSERT(args->rule != NULL);
 
 		m_tag_delete(m, mtag);
 		m->m_pkthdr.fw_flags &= ~DUMMYNET_MBUF_TAGGED;
@@ -6941,34 +6939,44 @@ ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 		struct ipfw_context *ctx = ipfw_ctx[mycpuid];
 
 		KKASSERT(ctx->ipfw_cont_rule != NULL);
-		args.rule = ctx->ipfw_cont_rule;
+		args->rule = ctx->ipfw_cont_rule;
 		ctx->ipfw_cont_rule = NULL;
 
 		if (ctx->ipfw_cont_xlat != NULL) {
-			args.xlat = ctx->ipfw_cont_xlat;
+			args->xlat = ctx->ipfw_cont_xlat;
 			ctx->ipfw_cont_xlat = NULL;
 			if (m->m_pkthdr.fw_flags & IPFW_MBUF_XLATINS) {
-				args.flags |= IP_FWARG_F_XLATINS;
+				args->flags |= IP_FWARG_F_XLATINS;
 				m->m_pkthdr.fw_flags &= ~IPFW_MBUF_XLATINS;
 			}
 			if (m->m_pkthdr.fw_flags & IPFW_MBUF_XLATFWD) {
-				args.flags |= IP_FWARG_F_XLATFWD;
+				args->flags |= IP_FWARG_F_XLATFWD;
 				m->m_pkthdr.fw_flags &= ~IPFW_MBUF_XLATFWD;
 			}
 		}
 		KKASSERT((m->m_pkthdr.fw_flags &
 		    (IPFW_MBUF_XLATINS | IPFW_MBUF_XLATFWD)) == 0);
 
-		args.flags |= IP_FWARG_F_CONT;
+		args->flags |= IP_FWARG_F_CONT;
 		m->m_pkthdr.fw_flags &= ~IPFW_MBUF_CONTINUE;
 	}
 
-	args.eh = NULL;
-	args.oif = NULL;
-	args.m = m;
+	args->eh = NULL;
+	args->oif = oif;
+	args->m = m;
+}
+
+static int
+ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
+{
+	struct ip_fw_args args;
+	struct mbuf *m = *m0;
+	int tee = 0, error = 0, ret;
+
+	ipfw_init_args(&args, m, NULL);
+
 	ret = ipfw_chk(&args);
 	m = args.m;
-
 	if (m == NULL) {
 		if (ret != IP_FW_REDISPATCH)
 			error = EACCES;
@@ -7022,54 +7030,12 @@ ipfw_check_out(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 {
 	struct ip_fw_args args;
 	struct mbuf *m = *m0;
-	struct m_tag *mtag;
 	int tee = 0, error = 0, ret;
 
-	args.flags = 0;
-	args.rule = NULL;
-	args.xlat = NULL;
+	ipfw_init_args(&args, m, ifp);
 
-	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
-		/* Extract info from dummynet tag */
-		mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
-		KKASSERT(mtag != NULL);
-		args.rule = ((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
-		KKASSERT(args.rule != NULL);
-
-		m_tag_delete(m, mtag);
-		m->m_pkthdr.fw_flags &= ~DUMMYNET_MBUF_TAGGED;
-	} else if (m->m_pkthdr.fw_flags & IPFW_MBUF_CONTINUE) {
-		struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-
-		KKASSERT(ctx->ipfw_cont_rule != NULL);
-		args.rule = ctx->ipfw_cont_rule;
-		ctx->ipfw_cont_rule = NULL;
-
-		if (ctx->ipfw_cont_xlat != NULL) {
-			args.xlat = ctx->ipfw_cont_xlat;
-			ctx->ipfw_cont_xlat = NULL;
-			if (m->m_pkthdr.fw_flags & IPFW_MBUF_XLATINS) {
-				args.flags |= IP_FWARG_F_XLATINS;
-				m->m_pkthdr.fw_flags &= ~IPFW_MBUF_XLATINS;
-			}
-			if (m->m_pkthdr.fw_flags & IPFW_MBUF_XLATFWD) {
-				args.flags |= IP_FWARG_F_XLATFWD;
-				m->m_pkthdr.fw_flags &= ~IPFW_MBUF_XLATFWD;
-			}
-		}
-		KKASSERT((m->m_pkthdr.fw_flags &
-		    (IPFW_MBUF_XLATINS | IPFW_MBUF_XLATFWD)) == 0);
-
-		args.flags |= IP_FWARG_F_CONT;
-		m->m_pkthdr.fw_flags &= ~IPFW_MBUF_CONTINUE;
-	}
-
-	args.eh = NULL;
-	args.m = m;
-	args.oif = ifp;
 	ret = ipfw_chk(&args);
 	m = args.m;
-
 	if (m == NULL) {
 		if (ret != IP_FW_REDISPATCH)
 			error = EACCES;
