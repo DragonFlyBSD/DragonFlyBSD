@@ -7580,10 +7580,31 @@ reply:
 	netisr_replymsg(&nmsg->base, error);
 }
 
+static void
+ipfw_fflush_dispatch(netmsg_t nmsg)
+{
+
+	ipfw_flush(0 /* keep default rule */);
+	ipfw_crossref_reap();
+	netisr_replymsg(&nmsg->base, 0);
+}
+
 static int
 ipfw_fini(void)
 {
 	struct netmsg_base smsg;
+	int i = 0;
+
+	for (;;) {
+		netmsg_init(&smsg, NULL, &curthread->td_msgport, MSGF_PRIORITY,
+		    ipfw_fflush_dispatch);
+		netisr_domsg(&smsg, 0);
+
+		if (ipfw_gd.ipfw_refcnt == 0)
+			break;
+		kprintf("ipfw: flush pending %d\n", ++i);
+		tsleep(&smsg, 0, "ipfwff", (3 * hz) / 2);
+	}
 
 	netmsg_init(&smsg, NULL, &curthread->td_msgport, MSGF_PRIORITY,
 	    ipfw_fini_dispatch);
