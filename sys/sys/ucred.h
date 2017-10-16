@@ -51,9 +51,17 @@ struct prison;
  *
  * Please do not inspect cr_uid directly to determine superuserness.
  * Only the priv(9) functions should be used for this.
+ *
+ * NOTE: Creds are accessed a lot, and cr_ref is also adjusted a lot.
+ *	 This can ping-pong fields in its cache line that are otherwise
+ *	 read-only.  To solve this problem we note that even in really
+ *	 busy systems, ucred isn't replicated a whole lot.  So put
+ *	 the blasted cr_ref in its own cache line.
  */
 struct ucred {
-	int	cr_ref;			/* reference count */
+	struct {
+		long	cr_ref;		/* reference count */
+	} __cachealign;
 	uid_t	cr_uid;			/* effective user id */
 	short	cr_ngroups;		/* number of groups */
 	gid_t	cr_groups[NGROUPS];	/* groups */
@@ -64,7 +72,8 @@ struct ucred {
 	uid_t   cr_svuid;		/* Saved effective user id. */
 	gid_t   cr_rgid;		/* Real group id. */
 	gid_t   cr_svgid;		/* Saved effective group id. */
-};
+} __cachealign;
+
 #define cr_gid cr_groups[0]
 #define NOCRED ((struct ucred *)0)	/* no credential available */
 #define FSCRED ((struct ucred *)-1)	/* filesystem credential */

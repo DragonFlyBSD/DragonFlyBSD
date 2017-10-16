@@ -1011,7 +1011,7 @@ struct ucred *
 crhold(struct ucred *cr)
 {
 	if (cr != NOCRED && cr != FSCRED)
-		atomic_add_int(&cr->cr_ref, 1);
+		atomic_add_long(&cr->cr_ref, 1);
 	return(cr);
 }
 
@@ -1028,7 +1028,7 @@ crfree(struct ucred *cr)
 {
 	if (cr->cr_ref <= 0)
 		panic("Freeing already free credential! %p", cr);
-	if (atomic_fetchadd_int(&cr->cr_ref, -1) == 1) {
+	if (atomic_fetchadd_long(&cr->cr_ref, -1) == 1) {
 		/*
 		 * Some callers of crget(), such as nfs_statfs(),
 		 * allocate a temporary credential, but don't

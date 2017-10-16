@@ -623,7 +623,13 @@ exit1(int rv)
 	 *
 	 * Other substructures are freed from wait().
 	 */
-	plimit_free(p);
+	if (p->p_limit) {
+		struct plimit *rlimit;
+
+		rlimit = p->p_limit;
+		p->p_limit = NULL;
+		plimit_free(rlimit);
+	}
 
 	/*
 	 * Finally, call machine-dependent code to release as many of the
