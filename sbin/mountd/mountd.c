@@ -202,12 +202,7 @@ struct grouplist *grphead;
 char *exnames_default[2] = { _PATH_EXPORTS, NULL };
 char **exnames;
 char **hosts = NULL;
-struct ucred def_anon = {
-	1,
-	(uid_t) -2,
-	1,
-	{ (gid_t) -2 }
-};
+struct ucred def_anon;
 int force_v2 = 0;
 int resvport_only = 1;
 int nhosts = 0;
@@ -259,6 +254,11 @@ main(int argc, char **argv)
 	in_port_t svcport;
 	int c, k, s;
 	int maxrec = RPC_MAXDATASIZE;
+
+	def_anon.cr_ref = 1;
+	def_anon.cr_uid = (uid_t)-2;
+	def_anon.cr_ngroups = 1;
+	def_anon.cr_groups[0] = (gid_t)-2;
 
 	/* Check that another mountd isn't already running. */
 	pfh = pidfile_open(_PATH_MOUNTDPID, 0600, &otherpid);

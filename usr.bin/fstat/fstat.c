@@ -545,14 +545,18 @@ vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag, off_t off)
 		return;
 	}
 	if (nflg)
-		(void)printf(" %3u,%-9u   ", major(fst.fsid), minor(fst.fsid));
+		printf(" %3u,%-9u   ",
+		       major(fst.fsid), minor(fst.fsid));
 	else
-		(void)printf(" %-*s", wflg_mnt, getmnton(vn.v_mount, &vn.v_namecache, ncr));
+		printf(" %-*s",
+		       wflg_mnt, getmnton(vn.v_mount, &vn.v_namecache, ncr));
 	if (nflg)
-		(void)sprintf(mode, "%o", fst.mode);
+		sprintf(mode, "%o", fst.mode);
 	else
 		strmode(fst.mode, mode);
-	(void)printf(" %*ld %10s", ino_width, fst.fileid, mode);
+
+	printf(" %*ld %10s", ino_width, fst.fileid, mode);
+
 	switch (vn.v_type) {
 	case VBLK:
 	case VCHR:
@@ -742,9 +746,25 @@ static void
 pipetrans(struct pipe *pi, int i, int flag)
 {
 	struct pipe pip;
+	struct pipebuf *b1;
+	struct pipebuf *b2;
 	char rw[3];
+	char side1;
+	char side2;
 
 	PREFIX(i);
+	if ((intptr_t)pi & 1) {
+		side1 = 'B';
+		side2 = 'A';
+		b1 = &pip.bufferB;
+		b2 = &pip.bufferA;
+	} else {
+		side1 = 'A';
+		side2 = 'B';
+		b1 = &pip.bufferA;
+		b2 = &pip.bufferB;
+	}
+	pi = (void *)((intptr_t)pi & ~(intptr_t)1);
 
 	/* fill in socket */
 	if (!kread(pi, &pip, sizeof(struct pipe))) {
@@ -752,8 +772,10 @@ pipetrans(struct pipe *pi, int i, int flag)
 		goto bad;
 	}
 
-	printf("* pipe %8lx <-> %8lx", (u_long)pi, (u_long)pip.pipe_peer);
-	printf(" %6d", (int)(pip.pipe_buffer.windex - pip.pipe_buffer.rindex));
+	printf("* pipe %8lx (%c<->%c)", (u_long)pi, side1, side2);
+	printf(" ravail %-zd wavail %-zd",
+	       b1->windex - b1->rindex,
+	       b2->windex - b2->rindex);
 	rw[0] = '\0';
 	if (flag & FREAD)
 		strcat(rw, "r");
