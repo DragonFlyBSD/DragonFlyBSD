@@ -17,7 +17,7 @@ FILES=	DAEMON LOGIN NETWORKING SERVERS \
 	mountd moused mroute6d mrouted msgs \
 	named netif netoptions newsyslog \
 	network_ipv6 nfsclient nfsd nfsserver nisdomain nscd nsswitch \
-	dntpd othermta pf pflog powerd ppp ppp-user pppoed pwcheck \
+	dntpd othermta pf pflog powerd ppp pppoed pwcheck \
 	quota random rarpd rcconf resident rndcontrol root route6d routed \
 	routing rpcbind rtadvd rtsold rwho sysdb savecore sdpd securelevel \
 	sendmail sensorsd serial sppp sshd statd swap1 syscons sysctl syslogd sysvipcd \

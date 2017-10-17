@@ -9,6 +9,18 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 5.0 TO LATER VERSIONS                +
++-----------------------------------------------------------------------+
+
+IF_PPP AND PPPD REMOVED
+-----------------------
+
+It has been replaced by "user ppp", i.e. ppp(8) and tun(4). It had
+already been removed from our default kernel configuration before 5.0,
+so only people with custom configurations based on earlier X86_64_GENERIC
+will have to remove it manually.
+
++-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 4.8 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 

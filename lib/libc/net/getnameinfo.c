@@ -401,7 +401,7 @@ getnameinfo_link(const struct sockaddr *sa, socklen_t salen __unused,
 	 * IFT_FAITH	(net/faith/if_faith.c)
 	 * IFT_GIF	(net/gif/if_gif.c)
 	 * IFT_LOOP	(net/if_loop.c, net/disc/if_disc.c)
-	 * IFT_PPP	(net/ppp/if_ppp.c, net/sppp/if_spppsubr.c)
+	 * IFT_PPP	(net/sppp/if_spppsubr.c)
 	 * IFT_SLIP	(net/sl/if_sl.c)
 	 * IFT_STF	(net/stf/if_stf.c)
 	 * IFT_L2VLAN	(net/vlan/if_vlan.c)

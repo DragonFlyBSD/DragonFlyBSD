@@ -1,7 +1,7 @@
 .\" -*- nroff -*-
 .\" manual page [] for chat 1.8
 .\" $FreeBSD: src/usr.bin/chat/chat.8,v 1.15.2.3 2003/02/24 22:37:41 trhodes Exp $
-.Dd September 27, 1996
+.Dd October 17, 2017
 .Dt CHAT 8
 .Os
 .Sh NAME
@@ -19,12 +19,6 @@
 The
 .Nm
 program defines a conversational exchange between the computer and the modem.
-Its primary purpose is to establish the
-connection between the Point-to-Point Protocol Daemon
-.Xr ( pppd 8 )
-and the remote's
-.Xr pppd 8
-process.
 .Sh OPTIONS
 The following options are provided:
 .Bl -tag -width ".Fl U Ar phone_number" -offset indent
@@ -90,9 +84,10 @@ The
 .Nm
 program will then log all text received from the
 modem and the output strings sent to the modem to the stderr device.
-This
-device is usually the local console at the station running the chat or
-pppd program.
+This device is usually the local console at the station running the chat or
+the
+.Xr ppp 8
+program.
 .It Fl s
 Use stderr.
 All log messages from
@@ -287,12 +282,6 @@ The
 .Dq SAY
 directive allows the script to send strings to the user
 at the terminal via standard error.
-If
-.Nm
-is being run by
-pppd, and pppd is running as a daemon (detached from its controlling
-terminal), standard error will normally be redirected to the file
-.Pa /etc/ppp/connect-errors .
 .Pp
 .Dq SAY
 strings must be enclosed in single or double quotes.

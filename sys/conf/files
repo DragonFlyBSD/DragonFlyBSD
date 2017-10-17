@@ -1520,7 +1520,6 @@ net/bpf.c			standard
 net/bpf_filter.c		optional bpf
 net/bridge/if_bridge.c		optional bridge
 net/bridge/bridgestp.c		optional bridge
-net/bsd_comp.c			optional ppp_bsdcomp
 net/if.c			standard
 net/if_clone.c			standard
 net/if_poll.c			optional ifpoll_enable
@@ -1542,15 +1541,11 @@ net/pf/pf_norm.c		optional pf
 net/pf/pf_ruleset.c		optional pf
 net/pf/pf_table.c		optional pf
 net/pf/pf_osfp.c		optional pf
-net/ppp_layer/slcompress.c	optional ppp
 net/ppp_layer/slcompress.c	optional sl
 net/ppp_layer/slcompress.c	optional sppp
-net/ppp_layer/ppp_deflate.c	optional ppp_deflate
-net/ppp_layer/ppp_tty.c		optional ppp
 net/if_loop.c		optional loop
 net/if_media.c		standard
 net/if_mib.c		standard
-net/ppp/if_ppp.c		optional ppp
 net/sl/if_sl.c		optional sl
 net/sppp/if_spppsubr.c	optional sppp
 net/stf/if_stf.c		optional stf
@@ -1565,7 +1560,6 @@ net/raw_cb.c		standard
 net/raw_usrreq.c	standard
 net/route.c		standard
 net/rtsock.c		standard
-net/zlib.c		optional ppp_deflate
 net/zlib.c		optional ipsec
 netbt/bt_input.c	optional bluetooth
 netbt/bt_proto.c	optional bluetooth

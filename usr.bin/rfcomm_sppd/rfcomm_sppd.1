@@ -52,7 +52,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd April 10, 2007
+.Dd October 17, 2017
 .Dt RFCOMM_SPPD 1
 .Os
 .Sh NAME
@@ -183,23 +183,11 @@ can be used to communicate with the remote serial port on the
 server, e.g. with the use of
 .Pp
 .Dl cu -l /dev/ttyp1
-.Pp
-In order to use
-.Nm
-to automatically create a secured link for
-.Xr pppd 8 ,
-use
-.Dl pty Qo rfcomm_sppd -a 00:01:02:03:04:05 -s DUN -m secure Qc
-.Pp
-in your
-.Xr pppd 8
-configuration file.
 .Sh SEE ALSO
 .Xr bluetooth 3 ,
 .Xr bluetooth 4 ,
 .Xr pty 4 ,
 .Xr btconfig 8 ,
-.Xr pppd 8 ,
 .Xr sdpd 8
 .Sh HISTORY
 The

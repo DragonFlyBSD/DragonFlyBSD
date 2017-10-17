@@ -2,11 +2,10 @@
 #
 # $NetBSD: rpcbind,v 1.6 2002/01/31 01:26:06 lukem Exp $
 # $FreeBSD: src/etc/rc.d/rpcbind,v 1.6 2002/09/06 16:18:05 gordon Exp $
-# $DragonFly: src/etc/rc.d/rpcbind,v 1.4 2008/02/17 19:51:53 swildner Exp $
 #
 
 # PROVIDE: rpcbind
-# REQUIRE: NETWORKING syslogd named ppp
+# REQUIRE: NETWORKING syslogd named
 
 . /etc/rc.subr
 

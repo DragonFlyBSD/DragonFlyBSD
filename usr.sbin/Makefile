@@ -77,7 +77,6 @@ SUBDIR= 802_11 \
 	pflogd \
 	powerd \
 	pppctl \
-	pppstats \
 	prefix \
 	procctl \
 	pstat \
@@ -146,7 +145,6 @@ SUBDIR= 802_11 \
 # Uses lib[re]ssl but can build without it
 #
 SUBDIR+=ppp \
-	pppd \
 	tcpdump
 
 # from old secure/

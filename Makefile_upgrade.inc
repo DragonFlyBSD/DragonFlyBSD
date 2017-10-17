@@ -3250,6 +3250,17 @@ TO_REMOVE+=/usr/share/man/man3/mparse_reset.3.gz
 TO_REMOVE+=/usr/share/man/man3/mparse_result.3.gz
 TO_REMOVE+=/usr/share/man/man3/mparse_strerror.3.gz
 TO_REMOVE+=/usr/share/man/man3/mparse_strlevel.3.gz
+TO_REMOVE+=/boot/kernel/if_ppp.ko
+TO_REMOVE+=/etc/rc.d/ppp-user
+TO_REMOVE+=/usr/include/net/ppp
+TO_REMOVE+=/usr/include/ppp_layer/ppp_comp.h
+TO_REMOVE+=/usr/sbin/pppd
+TO_REMOVE+=/usr/sbin/pppstats
+TO_REMOVE+=/usr/share/examples/pppd
+TO_REMOVE+=/usr/share/man/man4/if_ppp.4.gz
+TO_REMOVE+=/usr/share/man/man4/ppp.4.gz
+TO_REMOVE+=/usr/share/man/man8/pppd.8.gz
+TO_REMOVE+=/usr/share/man/man8/pppstats.8.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

@@ -245,7 +245,6 @@ MAN=	aac.4 \
 	ppbus.4 \
 	ppc.4 \
 	ppi.4 \
-	ppp.4 \
 	psm.4 \
 	pt.4 \
 	pty.4 \
@@ -490,7 +489,6 @@ MLINKS+=oce.4 if_oce.4
 MLINKS+=pccbb.4 cbb.4
 MLINKS+=pcm.4 sound.4
 MLINKS+=pcn.4 if_pcn.4
-MLINKS+=ppp.4 if_ppp.4
 MLINKS+=radeonkms.4 radeon.4 \
 	radeonkms.4 radeondrm.4
 MLINKS+=ral.4 if_ral.4

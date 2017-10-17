@@ -162,9 +162,10 @@
  * 400910 - routing table is only available on netisr_ncpus
  * 500000 - 5.0 release
  * 500100 - 5.1 development
+ * 500101 - kernel ppp removal
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500100	/* propagated to newvers */
+#define __DragonFly_version 500101	/* propagated to newvers */
 
 #include <sys/_null.h>
 

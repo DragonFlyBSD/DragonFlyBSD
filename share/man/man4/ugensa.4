@@ -14,7 +14,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd February 21, 2008
+.Dd October 17, 2017
 .Dt UGENSA 4
 .Os
 .Sh NAME
@@ -58,9 +58,7 @@ Communication devices supported by the
 .Nm
 driver typically have more than one virtual serial port, but only one of
 them (usually the first one) can be used with
-.Xr ppp 8
-or
-.Xr pppd 8 .
+.Xr ppp 8 .
 At least one of additional ports can usually be used for device/network
 monitoring and other communication tasks (like SMS for example).
 Protocols and methods used to access these features are out of scope of this
@@ -127,8 +125,7 @@ list is certainly incomplete.
 .Xr tty 4 ,
 .Xr ucom 4 ,
 .Xr usb 4 ,
-.Xr ppp 8 ,
-.Xr pppd 8
+.Xr ppp 8
 .Sh HISTORY
 The
 .Nm

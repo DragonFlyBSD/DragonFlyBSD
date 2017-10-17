@@ -250,9 +250,6 @@ IPV6FIREWALL_DEFAULT_TO_ACCEPT	opt_ip6fw.h
 IPSTEALTH
 LIBMCHAIN
 MPLS			opt_mpls.h
-PPP_BSDCOMP		opt_ppp.h
-PPP_DEFLATE		opt_ppp.h
-PPP_FILTER		opt_ppp.h
 TCPDEBUG
 TCP_SIGNATURE		opt_inet.h
 TCP_DROP_SYNFIN		opt_tcp_input.h

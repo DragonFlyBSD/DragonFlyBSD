@@ -27,7 +27,7 @@ changecom(,)dnl
 .\"
 .\" $FreeBSD: src/usr.sbin/ppp/ppp.8.m4,v 1.301.2.1 2002/09/01 02:12:31 brian Exp $
 .\"
-.Dd June 20, 2015
+.Dd October 17, 2017
 .Dt PPP 8
 .Os
 .Sh NAME
@@ -43,16 +43,8 @@ changecom(,)dnl
 .Sh DESCRIPTION
 This is a user process
 .Em PPP
-software package.
-Normally,
-.Em PPP
-is implemented as a part of the kernel (e.g., as managed by
-.Xr pppd 8 )
-and it's thus somewhat hard to debug and/or modify its behaviour.
-However, in this implementation
-.Em PPP
-is done as a user process with the help of the
-tunnel device driver (tun).
+software package with the help of the tunnel device driver
+.Xr ( tun 4 ).
 .Pp
 The
 .Fl nat
@@ -2661,7 +2653,7 @@ program.
 Note: There is a problem negotiating
 .Ar deflate
 capabilities with
-.Xr pppd 8
+.Nm pppd
 - a
 .Em PPP
 implementation available under many operating systems.
@@ -2694,7 +2686,7 @@ Default: Disabled and Denied.
 This is a variance of the
 .Ar deflate
 option, allowing negotiation with the
-.Xr pppd 8
+.Nm pppd
 program.
 Refer to the
 .Ar deflate
@@ -2829,7 +2821,7 @@ acts as the authenticatee with both protocols
 the protocols are used alternately in response to challenges.
 .Pp
 Note: If only LANMan is enabled,
-.Xr pppd 8
+.Nm pppd
 (version 2.3.5) misbehaves when acting as authenticatee.
 It provides both
 the NT and the LANMan answers, but also suggests that only the NT answer
@@ -5839,7 +5831,6 @@ ifdef({LOCALRAD},{},{.Xr libradius 3 ,
 .Xr named 8 ,
 .Xr ping 8 ,
 .Xr pppctl 8 ,
-.Xr pppd 8 ,
 .Xr pppoe 8 ,
 .Xr route 8 ,
 .Xr sshd 8 ,

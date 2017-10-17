@@ -64,7 +64,7 @@ LSUBDIRS= \
 	dev/video/bktr dev/video/meteor \
 	gnu/vfs/ext2fs \
 	libprop \
-	net/bridge net/tap net/tun net/ppp net/ppp_layer net/sl \
+	net/bridge net/tap net/tun net/ppp_layer net/sl \
 	net/pf net/altq \
 	net/vlan net/ipfw net/ip6fw net/dummynet net/sppp net/ip_mroute \
 	net/lagg \
