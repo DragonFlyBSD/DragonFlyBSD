@@ -497,6 +497,14 @@ vtnet_negotiate_features(struct vtnet_softc *sc)
 		mask |= VIRTIO_NET_F_CSUM | VIRTIO_NET_F_GUEST_CSUM;
 
 	/*
+	 * XXX DragonFly doesn't support receive checksum offload for ipv6 yet,
+	 *     hence always disable the virtio feature for now.
+	 * XXX We need to support the DynOffload feature, in order to
+	 *     dynamically enable/disable this feature.
+	 */
+	mask |= VIRTIO_NET_F_GUEST_CSUM;
+
+        /*
 	 * TSO and LRO are only available when their corresponding checksum
 	 * offload feature is also negotiated.
 	 */
