@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man4/vtnet.4 255112 2013-09-01 04:33:47Z bryanv $
 .\"
-.Dd April 21, 2014
+.Dd October 17, 2017
 .Dt VTNET 4
 .Os
 .Sh NAME
@@ -79,7 +79,7 @@ The default value is 1.
 .It Va hw.vtnet.lro_disable
 .\".It Va hw.vtnet. Ns Ar X Ns Va .lro_disable
 This tunable disables LRO.
-The default value is 1.
+The default value is 0.
 .\".It Va hw.vtnet.mq_disable
 .\".It Va hw.vtnet. Ns Ar X Ns Va .mq_disable
 .\"This tunable disables multiqueue.
@@ -114,3 +114,8 @@ The
 .Nm
 driver only supports LRO when the hypervisor advertises the
 mergeable buffer feature.
+The receive checksum offload feature of the
+.Nm
+driver is masked for now, because of missing support for receive checksum
+offload in IPv6 packet handling in
+.Dx .
