@@ -2086,17 +2086,13 @@ skip_setup:
 				continue;
 			}
 			if ((int)(ticks - vm_pagedaemon_time) < hz * 2) {
-				if (emrunning) {
+				if (emrunning)
 					emrunning = 0;
-					kprintf("Emergency pager finished\n");
-				}
 				pass = 0;
 				continue;
 			}
-			if (emrunning == 0) {
+			if (emrunning == 0)
 				emrunning = 1;
-				kprintf("Emergency pager running\n");
-			}
 		} else {
 			/*
 			 * Primary pagedaemon
