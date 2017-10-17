@@ -60,8 +60,6 @@
 #include <vm/vm_kern.h>
 #include <vm/vm_extern.h>
 
-#include <sys/sysref2.h>
-
 static int exec_res_id = 0;
 
 static TAILQ_HEAD(,vmresident) exec_res_list;

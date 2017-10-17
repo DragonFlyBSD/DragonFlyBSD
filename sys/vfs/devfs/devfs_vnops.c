@@ -66,7 +66,6 @@
 #include <machine/limits.h>
 
 #include <sys/buf2.h>
-#include <sys/sysref2.h>
 #include <vm/vm_page2.h>
 
 #ifndef SPEC_CHAIN_DEBUG

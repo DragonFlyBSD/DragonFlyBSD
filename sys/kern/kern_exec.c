@@ -70,6 +70,7 @@
 #include <sys/user.h>
 #include <sys/reg.h>
 
+#include <sys/objcache.h>
 #include <sys/refcount.h>
 #include <sys/thread2.h>
 #include <vm/vm_page2.h>

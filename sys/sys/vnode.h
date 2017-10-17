@@ -71,9 +71,6 @@
 #ifndef _SYS_SYSLINK_RPC_H_
 #include <sys/syslink_rpc.h>
 #endif
-#ifndef _SYS_SYSREF_H_
-#include <sys/sysref.h>
-#endif
 #ifndef _MACHINE_LOCK_H_
 #include <machine/lock.h>
 #endif

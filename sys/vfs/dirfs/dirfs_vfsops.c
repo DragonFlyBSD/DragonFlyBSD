@@ -45,7 +45,6 @@
 #include <sys/sysctl.h>
 #include <sys/queue.h>
 #include <sys/spinlock2.h>
-#include <sys/sysref2.h>
 #include <sys/ktr.h>
 
 #include <string.h>

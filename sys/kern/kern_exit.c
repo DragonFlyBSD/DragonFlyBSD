@@ -72,7 +72,6 @@
 
 #include <sys/refcount.h>
 #include <sys/thread2.h>
-#include <sys/sysref2.h>
 #include <sys/spinlock2.h>
 #include <sys/mplock2.h>
 

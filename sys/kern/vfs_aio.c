@@ -49,7 +49,6 @@
 
 #include <sys/file2.h>
 #include <sys/buf2.h>
-#include <sys/sysref2.h>
 #include <sys/thread2.h>
 
 #include <machine/limits.h>

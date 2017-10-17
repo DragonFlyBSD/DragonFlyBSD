@@ -51,8 +51,6 @@
 #include <sys/globaldata.h>
 #ifdef _KERNEL
 #include <sys/systm.h>
-#include <sys/sysref.h>
-#include <sys/sysref2.h>
 #else
 #include <string.h>
 

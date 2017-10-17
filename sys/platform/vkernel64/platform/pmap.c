@@ -74,7 +74,6 @@
 
 #include <sys/user.h>
 #include <sys/thread2.h>
-#include <sys/sysref2.h>
 #include <sys/spinlock2.h>
 #include <vm/vm_page2.h>
 

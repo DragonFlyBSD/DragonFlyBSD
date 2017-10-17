@@ -81,7 +81,6 @@
 #include <sys/dirent.h>
 #include <ddb/ddb.h>
 
-#include <sys/sysref2.h>
 #include <sys/spinlock2.h>
 
 #define MAX_RECURSION_DEPTH	64

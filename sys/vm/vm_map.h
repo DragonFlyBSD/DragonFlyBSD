@@ -78,9 +78,6 @@
 #ifndef _SYS_TREE_H_
 #include <sys/tree.h>
 #endif
-#ifndef _SYS_SYSREF_H_
-#include <sys/sysref.h>
-#endif
 #ifndef _SYS_LOCK_H_
 #include <sys/lock.h>
 #endif

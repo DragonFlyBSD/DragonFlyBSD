@@ -84,7 +84,6 @@
 
 #include <sys/buf2.h>
 #include <sys/thread2.h>
-#include <sys/sysref2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>

@@ -53,8 +53,6 @@
 #include <machine/vmparam.h>
 #include <machine/vmm.h>
 
-#include <sys/sysref2.h>
-
 static struct vmspace_entry *vkernel_find_vmspace(struct vkernel_proc *vkp,
 						  void *id, int havetoken);
 static int vmspace_entry_delete(struct vmspace_entry *ve,

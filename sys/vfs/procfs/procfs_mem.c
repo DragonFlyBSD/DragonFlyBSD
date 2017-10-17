@@ -34,7 +34,6 @@
  *	@(#)procfs_mem.c	8.5 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_mem.c,v 1.46.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.16 2007/04/29 18:25:40 dillon Exp $
  */
 
 /*
@@ -63,7 +62,6 @@
 #include <machine/vmm.h>
 
 #include <sys/thread2.h>
-#include <sys/sysref2.h>
 
 static int	procfs_rwmem (struct proc *curp,
 				  struct proc *p, struct uio *uio);
