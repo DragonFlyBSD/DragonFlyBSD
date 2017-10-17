@@ -207,9 +207,22 @@ struct vtnet_mac_filter {
 #define VTNET_MIN_TX_SEGS	4
 #define VTNET_MAX_TX_SEGS	64
 
+#if 0	/* Copied from FreeBSD's net/if.h at some time, but not usable. */
 #define IFCAP_LRO               0x00400 /* can do Large Receive Offload */
 #define IFCAP_VLAN_HWFILTER     0x10000 /* interface hw can filter vlan tag */
 #define IFCAP_VLAN_HWTSO        0x40000 /* can do IFCAP_TSO on VLANs */
+#endif
+
+/*
+ * This allows lots of code to at least build, even if it's never executed
+ * at the moment.
+ */
+#ifndef IFCAP_VLAN_HWFILTER
+#define IFCAP_VLAN_HWFILTER	0
+#endif
+#ifndef IFCAP_VLAN_HWTSO
+#define IFCAP_VLAN_HWTSO	0
+#endif
 
 /*
  * Assert we can receive and transmit the maximum with regular

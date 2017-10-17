@@ -485,16 +485,15 @@ vtnet_negotiate_features(struct vtnet_softc *sc)
 	 */
 	mask |= VIRTIO_NET_F_GUEST_CSUM;
 
-        /*
-	 * TSO and LRO are only available when their corresponding checksum
-	 * offload feature is also negotiated.
+	/*
+	 * TSO is only available when the tx checksum offload feature is also
+	 * negotiated.
 	 */
-
 	if (vtnet_csum_disable || vtnet_tso_disable)
 		mask |= VIRTIO_NET_F_HOST_TSO4 | VIRTIO_NET_F_HOST_TSO6 |
 		    VIRTIO_NET_F_HOST_ECN;
 
-	if (vtnet_csum_disable || vtnet_lro_disable)
+	if (vtnet_lro_disable)
 		mask |= VTNET_LRO_FEATURES;
 
 	features = VTNET_FEATURES & ~mask;
@@ -642,15 +641,16 @@ vtnet_setup_interface(struct vtnet_softc *sc)
 			sc->vtnet_flags |= VTNET_FLAG_TSO_ECN;
 	}
 
-	if (virtio_with_feature(dev, VIRTIO_NET_F_GUEST_CSUM)) {
+	if (virtio_with_feature(dev, VIRTIO_NET_F_GUEST_CSUM))
 		ifp->if_capabilities |= IFCAP_RXCSUM;
 
-		if (virtio_with_feature(dev, VIRTIO_NET_F_GUEST_TSO4) ||
-		    virtio_with_feature(dev, VIRTIO_NET_F_GUEST_TSO6))
-			ifp->if_capabilities |= IFCAP_LRO;
-	}
+#if 0	/* IFCAP_LRO doesn't exist in DragonFly. */
+	if (virtio_with_feature(dev, VIRTIO_NET_F_GUEST_TSO4) ||
+	    virtio_with_feature(dev, VIRTIO_NET_F_GUEST_TSO6))
+		ifp->if_capabilities |= IFCAP_LRO;
+#endif
 
-	if (ifp->if_capabilities & IFCAP_HWCSUM) {
+	if ((ifp->if_capabilities & IFCAP_HWCSUM) == IFCAP_HWCSUM) {
 		/*
 		 * VirtIO does not support VLAN tagging, but we can fake
 		 * it by inserting and removing the 802.1Q header during
@@ -897,10 +897,12 @@ vtnet_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data,struct ucred *cr)
 			reinit = 1;
 		}
 
+#if 0	/* IFCAP_LRO doesn't exist in DragonFly. */
 		if (mask & IFCAP_LRO) {
 			ifp->if_capenable ^= IFCAP_LRO;
 			reinit = 1;
 		}
+#endif
 
 		if (mask & IFCAP_VLAN_HWFILTER) {
 			ifp->if_capenable ^= IFCAP_VLAN_HWFILTER;
@@ -2022,10 +2024,12 @@ vtnet_virtio_reinit(struct vtnet_softc *sc)
 			features &= ~VIRTIO_NET_F_GUEST_CSUM;
 	}
 
+#if 0	/* IFCAP_LRO doesn't exist in DragonFly. */
 	if (ifp->if_capabilities & IFCAP_LRO) {
 		if ((ifp->if_capenable & IFCAP_LRO) == 0)
 			features &= ~VTNET_LRO_FEATURES;
 	}
+#endif
 
 	if (ifp->if_capabilities & IFCAP_VLAN_HWFILTER) {
 		if ((ifp->if_capenable & IFCAP_VLAN_HWFILTER) == 0)
