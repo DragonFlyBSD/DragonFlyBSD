@@ -35,6 +35,7 @@ CRUNCH_PROGS_sbin=	\
 	mount		\
 	mount_cd9660	\
 	mount_hammer	\
+	mount_hammer2	\
 	mount_msdos	\
 	mount_nfs	\
 	mount_ntfs	\
@@ -44,6 +45,7 @@ CRUNCH_PROGS_sbin=	\
 	natacontrol	\
 	newfs		\
 	newfs_hammer	\
+	newfs_hammer2	\
 	newfs_msdos	\
 	rconfig		\
 	reboot		\
