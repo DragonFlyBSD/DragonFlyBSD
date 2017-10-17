@@ -43,6 +43,9 @@
 #ifndef _SYS_GLOBALDATA_H_
 #include <sys/glolbaldata.h>
 #endif
+#ifdef _KERNEL_VIRTUAL
+#include <pthread.h>
+#endif
 
 /*
  * Initialize the indefinite state (only if the TSC is supported)
