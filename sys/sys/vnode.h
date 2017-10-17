@@ -189,10 +189,6 @@ struct vnode {
 	} v_pollinfo;
 	struct vmresident *v_resident;		/* optional vmresident */
 	struct mount *v_pfsmp;			/* real mp for pfs/nullfs mt */
-#ifdef	DEBUG_LOCKS
-	const char *filename;			/* Source file doing locking */
-	int line;				/* Line number doing locking */
-#endif
 };
 #define	v_socket	v_un.vu_socket
 #define v_umajor	v_un.vu_cdev.vu_umajor
@@ -477,12 +473,6 @@ int	vn_islocked_unlock (struct vnode *vp);
 void	vn_islocked_relock (struct vnode *vp, int vpls);
 int	vn_lock (struct vnode *vp, int flags);
 void	vn_unlock (struct vnode *vp);
-
-#ifdef	DEBUG_LOCKS
-int	debug_vn_lock (struct vnode *vp, int flags,
-		const char *filename, int line);
-#define vn_lock(vp,flags)	debug_vn_lock(vp, flags, __FILE__, __LINE__)
-#endif
 
 /*#define DEBUG_VN_UNLOCK*/
 #ifdef DEBUG_VN_UNLOCK

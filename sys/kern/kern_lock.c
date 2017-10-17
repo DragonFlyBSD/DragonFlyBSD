@@ -92,23 +92,10 @@ _lockmgr_assert(struct lock *lkp, u_int flags)
 	    (flags & LK_TYPE_MASK) != LK_RELEASE &&
 	    panic_cpu_gd != mycpu
 	) {
-#ifndef DEBUG_LOCKS
 		panic("lockmgr %s from %p: called from interrupt, ipi, "
 		      "or hard code section",
 		      lkp->lk_wmesg, ((int **)&lkp)[-1]);
-#else
-		panic("lockmgr %s from %s:%d: called from interrupt, ipi, "
-		      "or hard code section",
-		      lkp->lk_wmesg, file, line);
-#endif
 	}
-
-#ifdef DEBUG_LOCKS
-	if (mycpu->gd_spinlocks && ((flags & LK_NOWAIT) == 0)) {
-		panic("lockmgr %s from %s:%d: called with %d spinlocks held",
-		      lkp->lk_wmesg, file, line, mycpu->gd_spinlocks);
-	}
-#endif
 }
 
 /*

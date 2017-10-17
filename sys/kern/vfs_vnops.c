@@ -983,23 +983,12 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred,
  * regardless of whether you pass in LK_FAILRECLAIM
  */
 int
-#ifndef	DEBUG_LOCKS
 vn_lock(struct vnode *vp, int flags)
-#else
-debug_vn_lock(struct vnode *vp, int flags, const char *filename, int line)
-#endif
 {
 	int error;
 	
 	do {
-#ifdef	DEBUG_LOCKS
-		vp->filename = filename;
-		vp->line = line;
-		error = debuglockmgr(&vp->v_lock, flags,
-				     "vn_lock", filename, line);
-#else
 		error = lockmgr(&vp->v_lock, flags);
-#endif
 		if (error == 0)
 			break;
 	} while (flags & LK_RETRY);
