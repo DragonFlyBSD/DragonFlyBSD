@@ -1633,34 +1633,33 @@ pf_print_host(struct pf_addr *addr, u_int16_t p, sa_family_t af)
 #ifdef INET6
 	case AF_INET6: {
 		u_int16_t b;
-		u_int8_t i, curstart = 255, curend = 0,
-		    maxstart = 0, maxend = 0;
+		u_int8_t i, curstart, curend, maxstart, maxend;
+		curstart = curend = maxstart = maxend = 255;
 		for (i = 0; i < 8; i++) {
 			if (!addr->addr16[i]) {
 				if (curstart == 255)
 					curstart = i;
-				else
-					curend = i;
+				curend = i;
 			} else {
-				if (curstart) {
-					if ((curend - curstart) >
-					    (maxend - maxstart)) {
-						maxstart = curstart;
-						maxend = curend;
-						curstart = 255;
-					}
+				if ((curend - curstart) >
+				    (maxend - maxstart)) {
+					maxstart = curstart;
+					maxend = curend;
 				}
+				curstart = curend = 255;
 			}
+		}
+		if ((curend - curstart) >
+		    (maxend - maxstart)) {
+			maxstart = curstart;
+			maxend = curend;
 		}
 		for (i = 0; i < 8; i++) {
 			if (i >= maxstart && i <= maxend) {
-				if (maxend != 7) {
-					if (i == maxstart)
-						kprintf(":");
-				} else {
-					if (i == maxend)
-						kprintf(":");
-				}
+				if (i == 0)
+					kprintf(":");
+				if (i == maxend)
+					kprintf(":");
 			} else {
 				b = ntohs(addr->addr16[i]);
 				kprintf("%x", b);
