@@ -1939,7 +1939,6 @@ vm_pageout_thread(void)
 	int q1iterator = 0;
 	int q2iterator = 0;
 	int isep;
-	int emrunning;
 
 	curthread->td_flags |= TDF_SYSTHREAD;
 
@@ -1947,7 +1946,6 @@ vm_pageout_thread(void)
 	 * We only need to setup once.
 	 */
 	isep = 0;
-	emrunning = 0;
 	if (curthread == emergpager) {
 		isep = 1;
 		goto skip_setup;
@@ -2086,13 +2084,9 @@ skip_setup:
 				continue;
 			}
 			if ((int)(ticks - vm_pagedaemon_time) < hz * 2) {
-				if (emrunning)
-					emrunning = 0;
 				pass = 0;
 				continue;
 			}
-			if (emrunning == 0)
-				emrunning = 1;
 		} else {
 			/*
 			 * Primary pagedaemon
