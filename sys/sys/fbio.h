@@ -82,7 +82,9 @@
 #define	FBTYPE_VGA		24
 #define	FBTYPE_TGA		26
 
-#define	FBTYPE_LASTPLUSONE	27	/* max number of fbs (change as add) */
+#define	FBTYPE_DUMBFB		27
+
+#define	FBTYPE_LASTPLUSONE	28	/* max number of fbs (change as add) */
 
 /*
  * Frame buffer descriptor as returned by FBIOGTYPE.

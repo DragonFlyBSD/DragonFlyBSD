@@ -4025,8 +4025,20 @@ scmmap(struct dev_mmap_args *ap)
         lwkt_reltoken(&tty_token);
 	return EINVAL;
     }
-    ap->a_result = (*vidsw[scp->sc->adapter]->mmap)(scp->sc->adp, ap->a_offset,
-						    ap->a_nprot);
+    if (scp->sc->fbi != NULL) {
+	size_t sz =
+	    roundup(scp->sc->fbi->height * scp->sc->fbi->stride, PAGE_SIZE);
+	if (ap->a_offset > sz - PAGE_SIZE) {
+	    lwkt_reltoken(&tty_token);
+	    return EINVAL;
+	} else {
+	    ap->a_result = atop(scp->sc->fbi->paddr + ap->a_offset);
+	}
+    } else {
+	ap->a_result = (*vidsw[scp->sc->adapter]->mmap)(scp->sc->adp,
+							ap->a_offset,
+							ap->a_nprot);
+    }
     lwkt_reltoken(&tty_token);
     return(0);
 }

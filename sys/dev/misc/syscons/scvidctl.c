@@ -580,7 +580,12 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	    return ENODEV;	/* XXX */
 	}
 	if (scp->sc->fbi != NULL) {
-	    ret = ENODEV;
+	    if (cmd == FBIO_GETLINEWIDTH) {
+		*(u_int *)data = scp->sc->fbi->stride;
+		ret = 0;
+	    } else {
+		ret = ENODEV;
+	    }
 	} else {
 	    ret = fb_ioctl(adp, cmd, data);
 	}
@@ -605,7 +610,18 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	    return ENODEV;	/* XXX */
 	}
 	if (scp->sc->fbi != NULL) {
-	    ret = ENODEV;
+	    if (cmd == FBIOGTYPE) {
+		((struct fbtype *)data)->fb_type = FBTYPE_DUMBFB;
+		((struct fbtype *)data)->fb_height = scp->sc->fbi->height;
+		((struct fbtype *)data)->fb_width = scp->sc->fbi->width;
+		((struct fbtype *)data)->fb_depth = scp->sc->fbi->depth;
+		((struct fbtype *)data)->fb_cmsize = 0;
+		((struct fbtype *)data)->fb_size =
+		    scp->sc->fbi->height * scp->sc->fbi->stride;
+		ret = 0;
+	    } else {
+		ret = ENODEV;
+	    }
 	} else {
 	    ret = fb_ioctl(adp, cmd, data);
 	}
