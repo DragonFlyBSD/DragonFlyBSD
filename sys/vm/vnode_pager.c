@@ -417,7 +417,9 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 void
 vnode_pager_freepage(vm_page_t m)
 {
-	if (m->busy || m->wire_count || (m->flags & PG_NEED_COMMIT)) {
+	if ((m->busy_count & PBUSY_MASK) ||
+	    m->wire_count ||
+	    (m->flags & PG_NEED_COMMIT)) {
 		vm_page_activate(m);
 		vm_page_wakeup(m);
 	} else {

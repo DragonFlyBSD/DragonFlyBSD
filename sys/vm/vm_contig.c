@@ -151,7 +151,8 @@ vm_contig_pg_clean(int queue, int count)
 	 * Setup a local marker
 	 */
 	bzero(&marker, sizeof(marker));
-	marker.flags = PG_BUSY | PG_FICTITIOUS | PG_MARKER;
+	marker.flags = PG_FICTITIOUS | PG_MARKER;
+	marker.busy_count = PBUSY_LOCKED;
 	marker.queue = queue;
 	marker.wire_count = 1;
 
@@ -293,9 +294,10 @@ again:
 			    (phys >= low) && (phys < high) &&
 			    ((phys & (alignment - 1)) == 0) &&
 			    (((phys ^ (phys + size - 1)) & ~(boundary - 1)) == 0) &&
-			    m->busy == 0 && m->wire_count == 0 &&
-			    m->hold_count == 0 &&
-			    (m->flags & (PG_BUSY | PG_NEED_COMMIT)) == 0)
+			    m->wire_count == 0 && m->hold_count == 0 &&
+			    (m->busy_count &
+			     (PBUSY_LOCKED | PBUSY_MASK)) == 0 &&
+			    (m->flags & PG_NEED_COMMIT) == 0)
 			{
 				break;
 			}
@@ -359,9 +361,10 @@ again:
 			if ((VM_PAGE_TO_PHYS(&m[0]) !=
 			    (VM_PAGE_TO_PHYS(&m[-1]) + PAGE_SIZE)) ||
 			    ((pqtype != PQ_FREE) && (pqtype != PQ_CACHE)) ||
-			    m->busy || m->wire_count ||
+			    m->wire_count ||
 			    m->hold_count ||
-			    (m->flags & (PG_BUSY | PG_NEED_COMMIT)))
+			    (m->busy_count & (PBUSY_LOCKED | PBUSY_MASK)) ||
+			    (m->flags & PG_NEED_COMMIT))
 			{
 				start++;
 				goto again;
@@ -409,11 +412,11 @@ again:
 			KASSERT(m->dirty == 0,
 				("vm_contig_pg_alloc: page %p was dirty", m));
 			KKASSERT(m->wire_count == 0);
-			KKASSERT(m->busy == 0);
+			KKASSERT((m->busy_count & PBUSY_MASK) == 0);
 
 			/*
-			 * Clear all flags except PG_[S]BUSY and PG_WANTED,
-			 * then unbusy the now allocated page.
+			 * Clear all flags.  Then unbusy the now allocated
+			 * page.
 			 */
 			vm_page_flag_clear(m, ~PG_KEEP_NEWPAGE_MASK);
 			vm_page_wire(m);

@@ -1267,7 +1267,7 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	int j;
 	int raonly;
 	int error;
-	u_int32_t flags;
+	u_int32_t busy_count;
 	vm_page_t marray[XIO_INTERNAL_PAGES];
 
 	mreq = *mpp;
@@ -1424,8 +1424,10 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	else
 		bio->bio_driver_info = (void *)(intptr_t)0;
 
-	for (j = 0; j < i; ++j)
-		vm_page_flag_set(bp->b_xio.xio_pages[j], PG_SWAPINPROG);
+	for (j = 0; j < i; ++j) {
+		atomic_set_int(&bp->b_xio.xio_pages[j]->busy_count,
+			       PBUSY_SWAPINPROG);
+	}
 
 	mycpu->gd_cnt.v_swapin++;
 	mycpu->gd_cnt.v_swappgsin += bp->b_xio.xio_npages;
@@ -1450,7 +1452,7 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	vn_strategy(swapdev_vp, bio);
 
 	/*
-	 * Wait for the page we want to complete.  PG_SWAPINPROG is always
+	 * Wait for the page we want to complete.  PBUSY_SWAPINPROG is always
 	 * cleared on completion.  If an I/O error occurs, SWAPBLK_NONE
 	 * is set in the meta-data.
 	 *
@@ -1466,15 +1468,17 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	 * Read-ahead includes originally requested page case.
 	 */
 	for (;;) {
-		flags = mreq->flags;
+		busy_count = mreq->busy_count;
 		cpu_ccfence();
-		if ((flags & PG_SWAPINPROG) == 0)
+		if ((busy_count & PBUSY_SWAPINPROG) == 0)
 			break;
 		tsleep_interlock(mreq, 0);
-		if (!atomic_cmpset_int(&mreq->flags, flags,
-				       flags | PG_WANTED | PG_REFERENCED)) {
+		if (!atomic_cmpset_int(&mreq->busy_count, busy_count,
+				       busy_count |
+				        PBUSY_SWAPINPROG | PBUSY_WANTED)) {
 			continue;
 		}
+		atomic_set_int(&mreq->flags, PG_REFERENCED);
 		mycpu->gd_cnt.v_intrans++;
 		if (tsleep(mreq, PINTERLOCKED, "swread", hz*20)) {
 			kprintf(
@@ -1488,7 +1492,7 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	}
 
 	/*
-	 * Disallow speculative reads prior to the PG_SWAPINPROG test.
+	 * Disallow speculative reads prior to the SWAPINPROG test.
 	 */
 	cpu_lfence();
 
@@ -1696,7 +1700,7 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 				vm_page_dirty(mreq);
 			rtvals[i+j] = VM_PAGER_OK;
 
-			vm_page_flag_set(mreq, PG_SWAPINPROG);
+			atomic_set_int(&mreq->busy_count, PBUSY_SWAPINPROG);
 			bp->b_xio.xio_pages[j] = mreq;
 		}
 		bp->b_xio.xio_npages = n;
@@ -1782,8 +1786,8 @@ swap_pager_newswap(void)
  *	Completion routine for asynchronous reads and writes from/to swap.
  *	Also called manually by synchronous code to finish up a bp.
  *
- *	For READ operations, the pages are PG_BUSY'd.  For WRITE operations, 
- *	the pages are vm_page_t->busy'd.  For READ operations, we PG_BUSY 
+ *	For READ operations, the pages are BUSY'd.  For WRITE operations,
+ *	the pages are vm_page_t->busy'd.  For READ operations, we BUSY
  *	unbusy all pages except the 'main' request page.  For WRITE 
  *	operations, we vm_page_t->busy'd unbusy all pages ( we can do this 
  *	because we marked them all VM_PAGER_PEND on return from putpages ).
@@ -1873,7 +1877,7 @@ swp_pager_async_iodone(struct bio *bio)
 				 * not match anything ).
 				 *
 				 * We have to wake specifically requested pages
-				 * up too because we cleared PG_SWAPINPROG and
+				 * up too because we cleared SWAPINPROG and
 				 * someone may be waiting for that.
 				 *
 				 * NOTE: For reads, m->dirty will probably
@@ -1887,14 +1891,15 @@ swp_pager_async_iodone(struct bio *bio)
 				 *	 object->memq from an interrupt.
 				 *	 Deactivate the page instead.
 				 *
-				 * WARNING! The instant PG_SWAPINPROG is
+				 * WARNING! The instant SWAPINPROG is
 				 *	    cleared another cpu may start
 				 *	    using the mreq page (it will
 				 *	    check m->valid immediately).
 				 */
 
 				m->valid = 0;
-				vm_page_flag_clear(m, PG_SWAPINPROG);
+				atomic_clear_int(&m->busy_count,
+						 PBUSY_SWAPINPROG);
 
 				/*
 				 * bio_driver_info holds the requested page
@@ -1936,7 +1941,8 @@ swp_pager_async_iodone(struct bio *bio)
 					vm_page_activate(m);
 				}
 				vm_page_io_finish(m);
-				vm_page_flag_clear(m, PG_SWAPINPROG);
+				atomic_clear_int(&m->busy_count,
+						 PBUSY_SWAPINPROG);
 				vm_page_wakeup(m);
 			}
 		} else if (bio->bio_caller_info1.index & SWBIO_READ) {
@@ -1964,7 +1970,7 @@ swp_pager_async_iodone(struct bio *bio)
 			 *	 map non-kernel pmaps and currently asserts
 			 *	 the case.
 			 *
-			 * WARNING! The instant PG_SWAPINPROG is
+			 * WARNING! The instant SWAPINPROG is
 			 *	    cleared another cpu may start
 			 *	    using the mreq page (it will
 			 *	    check m->valid immediately).
@@ -1973,11 +1979,11 @@ swp_pager_async_iodone(struct bio *bio)
 			m->valid = VM_PAGE_BITS_ALL;
 			vm_page_undirty(m);
 			vm_page_flag_set(m, PG_SWAPPED);
-			vm_page_flag_clear(m, PG_SWAPINPROG);
+			atomic_clear_int(&m->busy_count, PBUSY_SWAPINPROG);
 
 			/*
 			 * We have to wake specifically requested pages
-			 * up too because we cleared PG_SWAPINPROG and
+			 * up too because we cleared SWAPINPROG and
 			 * could be waiting for it in getpages.  However,
 			 * be sure to not unbusy getpages specifically
 			 * requested page - getpages expects it to be 
@@ -2015,7 +2021,7 @@ swp_pager_async_iodone(struct bio *bio)
 			if (m->object->type == OBJT_SWAP)
 				vm_page_undirty(m);
 			vm_page_flag_set(m, PG_SWAPPED);
-			vm_page_flag_clear(m, PG_SWAPINPROG);
+			atomic_clear_int(&m->busy_count, PBUSY_SWAPINPROG);
 			if (vm_page_count_severe())
 				vm_page_deactivate(m);
 			vm_page_io_finish(m);

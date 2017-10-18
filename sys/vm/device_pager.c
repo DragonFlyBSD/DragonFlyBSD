@@ -281,13 +281,13 @@ dev_pager_getfake(vm_paddr_t paddr, int pat_mode)
 
 	pmap_page_init(m);
 
-	m->flags = PG_BUSY | PG_FICTITIOUS;
+	m->flags = PG_FICTITIOUS;
 	m->valid = VM_PAGE_BITS_ALL;
 	m->dirty = 0;
-	m->busy = 0;
 	m->queue = PQ_NONE;
 	m->object = NULL;
 
+	m->busy_count = PBUSY_LOCKED;
 	m->wire_count = 1;
 	m->hold_count = 0;
 	m->phys_addr = paddr;

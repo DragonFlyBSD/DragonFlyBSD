@@ -778,7 +778,8 @@ vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
 	 * Initialize our marker
 	 */
 	bzero(&marker, sizeof(marker));
-	marker.flags = PG_BUSY | PG_FICTITIOUS | PG_MARKER;
+	marker.flags = PG_FICTITIOUS | PG_MARKER;
+	marker.busy_count = PBUSY_LOCKED;
 	marker.queue = PQ_INACTIVE + q;
 	marker.pc = q;
 	marker.wire_count = 1;
@@ -1301,7 +1302,8 @@ vm_pageout_scan_active(int pass, int q,
 	 */
 
 	bzero(&marker, sizeof(marker));
-	marker.flags = PG_BUSY | PG_FICTITIOUS | PG_MARKER;
+	marker.flags = PG_FICTITIOUS | PG_MARKER;
+	marker.busy_count = PBUSY_LOCKED;
 	marker.queue = PQ_ACTIVE + q;
 	marker.pc = q;
 	marker.wire_count = 1;
@@ -1755,7 +1757,8 @@ vm_pageout_page_stats(int q)
 	}
 
 	bzero(&marker, sizeof(marker));
-	marker.flags = PG_BUSY | PG_FICTITIOUS | PG_MARKER;
+	marker.flags = PG_FICTITIOUS | PG_MARKER;
+	marker.busy_count = PBUSY_LOCKED;
 	marker.queue = PQ_ACTIVE + q;
 	marker.pc = q;
 	marker.wire_count = 1;

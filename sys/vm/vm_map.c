@@ -3374,7 +3374,7 @@ vm_map_split(vm_map_entry_t entry)
 	for (idx = 0; idx < size; idx++) {
 		m = vm_page_lookup(nobject, idx);
 		if (m) {
-			KKASSERT(m->flags & PG_BUSY);
+			KKASSERT(m->busy_count & PBUSY_LOCKED);
 			vm_page_wakeup(m);
 		}
 	}

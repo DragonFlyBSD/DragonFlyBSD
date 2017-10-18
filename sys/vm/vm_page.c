@@ -859,9 +859,11 @@ _vm_page_add_queue_spinlocked(vm_page_t m, u_short queue, int athead)
 }
 
 /*
- * Wait until page is no longer PG_BUSY or (if also_m_busy is TRUE)
- * m->busy is zero.  Returns TRUE if it had to sleep, FALSE if we
- * did not.  Only one sleep call will be made before returning.
+ * Wait until page is no longer BUSY.  If also_m_busy is TRUE we wait
+ * until the page is no longer BUSY or SBUSY (busy_count field is 0).
+ *
+ * Returns TRUE if it had to sleep, FALSE if we did not.  Only one sleep
+ * call will be made before returning.
  *
  * This function does NOT busy the page and on return the page is not
  * guaranteed to be available.
@@ -869,19 +871,20 @@ _vm_page_add_queue_spinlocked(vm_page_t m, u_short queue, int athead)
 void
 vm_page_sleep_busy(vm_page_t m, int also_m_busy, const char *msg)
 {
-	u_int32_t flags;
+	u_int32_t busy_count;
 
 	for (;;) {
-		flags = m->flags;
+		busy_count = m->busy_count;
 		cpu_ccfence();
 
-		if ((flags & PG_BUSY) == 0 &&
-		    (also_m_busy == 0 || (flags & PG_SBUSY) == 0)) {
+		if ((busy_count & PBUSY_LOCKED) == 0 &&
+		    (also_m_busy == 0 || (busy_count & PBUSY_MASK) == 0)) {
 			break;
 		}
 		tsleep_interlock(m, 0);
-		if (atomic_cmpset_int(&m->flags, flags,
-				      flags | PG_WANTED | PG_REFERENCED)) {
+		if (atomic_cmpset_int(&m->busy_count, busy_count,
+				      busy_count | PBUSY_WANTED)) {
+			atomic_set_int(&m->flags, PG_REFERENCED);
 			tsleep(m, PINTERLOCKED, msg, 0);
 			break;
 		}
@@ -953,34 +956,36 @@ vm_get_pg_color(int cpuid, vm_object_t object, vm_pindex_t pindex)
 }
 
 /*
- * Wait until PG_BUSY can be set, then set it.  If also_m_busy is TRUE we
- * also wait for m->busy to become 0 before setting PG_BUSY.
+ * Wait until BUSY can be set, then set it.  If also_m_busy is TRUE we
+ * also wait for m->busy_count to become 0 before setting PBUSY_LOCKED.
  */
 void
 VM_PAGE_DEBUG_EXT(vm_page_busy_wait)(vm_page_t m,
 				     int also_m_busy, const char *msg
 				     VM_PAGE_DEBUG_ARGS)
 {
-	u_int32_t flags;
+	u_int32_t busy_count;
 
 	for (;;) {
-		flags = m->flags;
+		busy_count = m->busy_count;
 		cpu_ccfence();
-		if (flags & PG_BUSY) {
+		if (busy_count & PBUSY_LOCKED) {
 			tsleep_interlock(m, 0);
-			if (atomic_cmpset_int(&m->flags, flags,
-					  flags | PG_WANTED | PG_REFERENCED)) {
+			if (atomic_cmpset_int(&m->busy_count, busy_count,
+					  busy_count | PBUSY_WANTED)) {
+				atomic_set_int(&m->flags, PG_REFERENCED);
 				tsleep(m, PINTERLOCKED, msg, 0);
 			}
-		} else if (also_m_busy && (flags & PG_SBUSY)) {
+		} else if (also_m_busy && busy_count) {
 			tsleep_interlock(m, 0);
-			if (atomic_cmpset_int(&m->flags, flags,
-					  flags | PG_WANTED | PG_REFERENCED)) {
+			if (atomic_cmpset_int(&m->busy_count, busy_count,
+					  busy_count | PBUSY_WANTED)) {
+				atomic_set_int(&m->flags, PG_REFERENCED);
 				tsleep(m, PINTERLOCKED, msg, 0);
 			}
 		} else {
-			if (atomic_cmpset_int(&m->flags, flags,
-					      flags | PG_BUSY)) {
+			if (atomic_cmpset_int(&m->busy_count, busy_count,
+					      busy_count | PBUSY_LOCKED)) {
 #ifdef VM_PAGE_DEBUG
 				m->busy_func = func;
 				m->busy_line = lineno;
@@ -992,8 +997,8 @@ VM_PAGE_DEBUG_EXT(vm_page_busy_wait)(vm_page_t m,
 }
 
 /*
- * Attempt to set PG_BUSY.  If also_m_busy is TRUE we only succeed if m->busy
- * is also 0.
+ * Attempt to set BUSY.  If also_m_busy is TRUE we only succeed if
+ * m->busy_count is also 0.
  *
  * Returns non-zero on failure.
  */
@@ -1001,16 +1006,17 @@ int
 VM_PAGE_DEBUG_EXT(vm_page_busy_try)(vm_page_t m, int also_m_busy
 				    VM_PAGE_DEBUG_ARGS)
 {
-	u_int32_t flags;
+	u_int32_t busy_count;
 
 	for (;;) {
-		flags = m->flags;
+		busy_count = m->busy_count;
 		cpu_ccfence();
-		if (flags & PG_BUSY)
+		if (busy_count & PBUSY_LOCKED)
 			return TRUE;
-		if (also_m_busy && (flags & PG_SBUSY))
+		if (also_m_busy && (busy_count & PBUSY_MASK) != 0)
 			return TRUE;
-		if (atomic_cmpset_int(&m->flags, flags, flags | PG_BUSY)) {
+		if (atomic_cmpset_int(&m->busy_count, busy_count,
+				      busy_count | PBUSY_LOCKED)) {
 #ifdef VM_PAGE_DEBUG
 				m->busy_func = func;
 				m->busy_line = lineno;
@@ -1021,7 +1027,7 @@ VM_PAGE_DEBUG_EXT(vm_page_busy_try)(vm_page_t m, int also_m_busy
 }
 
 /*
- * Clear the PG_BUSY flag and return non-zero to indicate to the caller
+ * Clear the BUSY flag and return non-zero to indicate to the caller
  * that a wakeup() should be performed.
  *
  * The vm_page must be spinlocked and will remain spinlocked on return.
@@ -1033,28 +1039,30 @@ static __inline
 int
 _vm_page_wakeup(vm_page_t m)
 {
-	u_int32_t flags;
+	u_int32_t busy_count;
 
 	for (;;) {
-		flags = m->flags;
+		busy_count = m->busy_count;
 		cpu_ccfence();
-		if (atomic_cmpset_int(&m->flags, flags,
-				      flags & ~(PG_BUSY | PG_WANTED))) {
+		if (atomic_cmpset_int(&m->busy_count, busy_count,
+				      busy_count &
+				      ~(PBUSY_LOCKED | PBUSY_WANTED))) {
 			break;
 		}
 	}
-	return(flags & PG_WANTED);
+	return((int)(busy_count & PBUSY_WANTED));
 }
 
 /*
- * Clear the PG_BUSY flag and wakeup anyone waiting for the page.  This
+ * Clear the BUSY flag and wakeup anyone waiting for the page.  This
  * is typically the last call you make on a page before moving onto
  * other things.
  */
 void
 vm_page_wakeup(vm_page_t m)
 {
-        KASSERT(m->flags & PG_BUSY, ("vm_page_wakeup: page not busy!!!"));
+        KASSERT(m->busy_count & PBUSY_LOCKED,
+		("vm_page_wakeup: page not busy!!!"));
 	vm_page_spin_lock(m);
 	if (_vm_page_wakeup(m)) {
 		vm_page_spin_unlock(m);
@@ -1138,7 +1146,8 @@ vm_page_initfake(vm_page_t m, vm_paddr_t paddr, vm_memattr_t memattr)
 	m->queue = PQ_NONE;
 	/* Fictitious pages don't use "segind". */
 	/* Fictitious pages don't use "order" or "pool". */
-	m->flags = PG_FICTITIOUS | PG_UNMANAGED | PG_BUSY;
+	m->flags = PG_FICTITIOUS | PG_UNMANAGED;
+	m->busy_count = PBUSY_LOCKED;
 	m->wire_count = 1;
 	spin_init(&m->spin, "fake_page");
 	pmap_page_init(m);
@@ -1225,7 +1234,7 @@ vm_page_remove(vm_page_t m)
 		return;
 	}
 
-	if ((m->flags & PG_BUSY) == 0)
+	if ((m->busy_count & PBUSY_LOCKED) == 0)
 		panic("vm_page_remove: page not busy");
 
 	object = m->object;
@@ -1274,33 +1283,35 @@ VM_PAGE_DEBUG_EXT(vm_page_lookup_busy_wait)(struct vm_object *object,
 					    int also_m_busy, const char *msg
 					    VM_PAGE_DEBUG_ARGS)
 {
-	u_int32_t flags;
+	u_int32_t busy_count;
 	vm_page_t m;
 
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
 	m = vm_page_rb_tree_RB_LOOKUP(&object->rb_memq, pindex);
 	while (m) {
 		KKASSERT(m->object == object && m->pindex == pindex);
-		flags = m->flags;
+		busy_count = m->busy_count;
 		cpu_ccfence();
-		if (flags & PG_BUSY) {
+		if (busy_count & PBUSY_LOCKED) {
 			tsleep_interlock(m, 0);
-			if (atomic_cmpset_int(&m->flags, flags,
-					  flags | PG_WANTED | PG_REFERENCED)) {
+			if (atomic_cmpset_int(&m->busy_count, busy_count,
+					  busy_count | PBUSY_WANTED)) {
+				atomic_set_int(&m->flags, PG_REFERENCED);
 				tsleep(m, PINTERLOCKED, msg, 0);
 				m = vm_page_rb_tree_RB_LOOKUP(&object->rb_memq,
 							      pindex);
 			}
-		} else if (also_m_busy && (flags & PG_SBUSY)) {
+		} else if (also_m_busy && busy_count) {
 			tsleep_interlock(m, 0);
-			if (atomic_cmpset_int(&m->flags, flags,
-					  flags | PG_WANTED | PG_REFERENCED)) {
+			if (atomic_cmpset_int(&m->busy_count, busy_count,
+					  busy_count | PBUSY_WANTED)) {
+				atomic_set_int(&m->flags, PG_REFERENCED);
 				tsleep(m, PINTERLOCKED, msg, 0);
 				m = vm_page_rb_tree_RB_LOOKUP(&object->rb_memq,
 							      pindex);
 			}
-		} else if (atomic_cmpset_int(&m->flags, flags,
-					     flags | PG_BUSY)) {
+		} else if (atomic_cmpset_int(&m->busy_count, busy_count,
+					     busy_count | PBUSY_LOCKED)) {
 #ifdef VM_PAGE_DEBUG
 			m->busy_func = func;
 			m->busy_line = lineno;
@@ -1327,7 +1338,7 @@ VM_PAGE_DEBUG_EXT(vm_page_lookup_busy_try)(struct vm_object *object,
 					   int also_m_busy, int *errorp
 					   VM_PAGE_DEBUG_ARGS)
 {
-	u_int32_t flags;
+	u_int32_t busy_count;
 	vm_page_t m;
 
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
@@ -1335,22 +1346,50 @@ VM_PAGE_DEBUG_EXT(vm_page_lookup_busy_try)(struct vm_object *object,
 	*errorp = FALSE;
 	while (m) {
 		KKASSERT(m->object == object && m->pindex == pindex);
-		flags = m->flags;
+		busy_count = m->busy_count;
 		cpu_ccfence();
-		if (flags & PG_BUSY) {
+		if (busy_count & PBUSY_LOCKED) {
 			*errorp = TRUE;
 			break;
 		}
-		if (also_m_busy && (flags & PG_SBUSY)) {
+		if (also_m_busy && busy_count) {
 			*errorp = TRUE;
 			break;
 		}
-		if (atomic_cmpset_int(&m->flags, flags, flags | PG_BUSY)) {
+		if (atomic_cmpset_int(&m->busy_count, busy_count,
+				      busy_count | PBUSY_LOCKED)) {
 #ifdef VM_PAGE_DEBUG
 			m->busy_func = func;
 			m->busy_line = lineno;
 #endif
 			break;
+		}
+	}
+	return m;
+}
+
+/*
+ * Returns a page that is only soft-busied for use by the caller in
+ * a read-only fashion.  Returns NULL if the page could not be found,
+ * the soft busy could not be obtained, or the page data is invalid.
+ */
+vm_page_t
+vm_page_lookup_sbusy_try(struct vm_object *object, vm_pindex_t pindex)
+{
+	vm_page_t m;
+
+	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
+	m = vm_page_rb_tree_RB_LOOKUP(&object->rb_memq, pindex);
+	if (m) {
+		if (m->valid != VM_PAGE_BITS_ALL ||
+		    (m->flags & PG_FICTITIOUS)) {
+			m = NULL;
+		} else if (vm_page_sbusy_try(m)) {
+			m = NULL;
+		} else if (m->valid != VM_PAGE_BITS_ALL ||
+			   (m->flags & PG_FICTITIOUS)) {
+			vm_page_sbusy_drop(m);
+			m = NULL;
 		}
 	}
 	return m;
@@ -1395,7 +1434,7 @@ vm_page_next(vm_page_t m)
 void
 vm_page_rename(vm_page_t m, vm_object_t new_object, vm_pindex_t new_pindex)
 {
-	KKASSERT(m->flags & PG_BUSY);
+	KKASSERT(m->busy_count & PBUSY_LOCKED);
 	ASSERT_LWKT_TOKEN_HELD_EXCL(vm_object_token(new_object));
 	if (m->object) {
 		ASSERT_LWKT_TOKEN_HELD_EXCL(vm_object_token(m->object));
@@ -1463,7 +1502,7 @@ vm_page_unqueue(vm_page_t m)
  * This is done by 'twisting' the colors.
  *
  * The page is returned spinlocked and removed from its queue (it will
- * be on PQ_NONE), or NULL. The page is not PG_BUSY'd.  The caller
+ * be on PQ_NONE), or NULL. The page is not BUSY'd.  The caller
  * is responsible for dealing with the busy-page case (usually by
  * deactivating the page and looping).
  *
@@ -1857,7 +1896,7 @@ done:
 	vm_page_flag_clear(m, ~PG_KEEP_NEWPAGE_MASK);
 
 	KKASSERT(m->wire_count == 0);
-	KKASSERT(m->busy == 0);
+	KKASSERT((m->busy_count & PBUSY_MASK) == 0);
 	m->act_count = 0;
 	m->valid = 0;
 
@@ -1890,7 +1929,7 @@ done:
 	pagedaemon_wakeup();
 
 	/*
-	 * A PG_BUSY page is returned.
+	 * A BUSY page is returned.
 	 */
 	return (m);
 }
@@ -2221,7 +2260,7 @@ vm_page_free_wakeup(void)
  * Returns the given page to the PQ_FREE or PQ_HOLD list and disassociates
  * it from its VM object.
  *
- * The vm_page must be PG_BUSY on entry.  PG_BUSY will be released on
+ * The vm_page must be BUSY on entry.  BUSY will be released on
  * return (the page will have been freed).
  */
 void
@@ -2229,13 +2268,12 @@ vm_page_free_toq(vm_page_t m)
 {
 	mycpu->gd_cnt.v_tfree++;
 	KKASSERT((m->flags & PG_MAPPED) == 0);
-	KKASSERT(m->flags & PG_BUSY);
+	KKASSERT(m->busy_count & PBUSY_LOCKED);
 
-	if (m->busy || ((m->queue - m->pc) == PQ_FREE)) {
-		kprintf("vm_page_free: pindex(%lu), busy(%d), "
-			"PG_BUSY(%d), hold(%d)\n",
-			(u_long)m->pindex, m->busy,
-			((m->flags & PG_BUSY) ? 1 : 0), m->hold_count);
+	if ((m->busy_count & PBUSY_MASK) || ((m->queue - m->pc) == PQ_FREE)) {
+		kprintf("vm_page_free: pindex(%lu), busy %08x, "
+			"hold(%d)\n",
+			(u_long)m->pindex, m->busy_count, m->hold_count);
 		if ((m->queue - m->pc) == PQ_FREE)
 			panic("vm_page_free: freeing free page");
 		else
@@ -2290,7 +2328,7 @@ vm_page_free_toq(vm_page_t m)
 	}
 
 	/*
-	 * This sequence allows us to clear PG_BUSY while still holding
+	 * This sequence allows us to clear BUSY while still holding
 	 * its spin lock, which reduces contention vs allocators.  We
 	 * must not leave the queue locked or _vm_page_wakeup() may
 	 * deadlock.
@@ -2328,7 +2366,7 @@ vm_page_free_toq(vm_page_t m)
 void
 vm_page_unmanage(vm_page_t m)
 {
-	KKASSERT(m->flags & PG_BUSY);
+	KKASSERT(m->busy_count & PBUSY_LOCKED);
 	if ((m->flags & PG_UNMANAGED) == 0) {
 		if (m->wire_count == 0)
 			vm_page_unqueue(m);
@@ -2351,7 +2389,7 @@ vm_page_wire(vm_page_t m)
 	 * it is already off the queues).  Don't do anything with fictitious
 	 * pages because they are always wired.
 	 */
-	KKASSERT(m->flags & PG_BUSY);
+	KKASSERT(m->busy_count & PBUSY_LOCKED);
 	if ((m->flags & PG_FICTITIOUS) == 0) {
 		if (atomic_fetchadd_int(&m->wire_count, 1) == 0) {
 			if ((m->flags & PG_UNMANAGED) == 0)
@@ -2394,7 +2432,7 @@ vm_page_wire(vm_page_t m)
 void
 vm_page_unwire(vm_page_t m, int activate)
 {
-	KKASSERT(m->flags & PG_BUSY);
+	KKASSERT(m->busy_count & PBUSY_LOCKED);
 	if (m->flags & PG_FICTITIOUS) {
 		/* do nothing */
 	} else if (m->wire_count <= 0) {
@@ -2586,7 +2624,8 @@ vm_page_cache(vm_page_t m)
 	 * Not suitable for the cache
 	 */
 	if ((m->flags & (PG_UNMANAGED | PG_NEED_COMMIT)) ||
-	    m->busy || m->wire_count || m->hold_count) {
+	    (m->busy_count & PBUSY_MASK) ||
+	    m->wire_count || m->hold_count) {
 		vm_page_wakeup(m);
 		return;
 	}
@@ -2618,7 +2657,8 @@ vm_page_cache(vm_page_t m)
 	 */
 	vm_page_protect(m, VM_PROT_NONE);
 	if ((m->flags & (PG_UNMANAGED | PG_MAPPED)) ||
-	    m->busy || m->wire_count || m->hold_count) {
+	    (m->busy_count & PBUSY_MASK) ||
+	    m->wire_count || m->hold_count) {
 		vm_page_wakeup(m);
 	} else if (m->dirty || (m->flags & PG_NEED_COMMIT)) {
 		vm_page_deactivate(m);
@@ -2714,31 +2754,59 @@ vm_page_dontneed(vm_page_t m)
 
 /*
  * These routines manipulate the 'soft busy' count for a page.  A soft busy
- * is almost like PG_BUSY except that it allows certain compatible operations
- * to occur on the page while it is busy.  For example, a page undergoing a
- * write can still be mapped read-only.
+ * is almost like a hard BUSY except that it allows certain compatible
+ * operations to occur on the page while it is busy.  For example, a page
+ * undergoing a write can still be mapped read-only.
  *
- * Because vm_pages can overlap buffers m->busy can be > 1.  m->busy is only
- * adjusted while the vm_page is PG_BUSY so the flash will occur when the
- * busy bit is cleared.
+ * We also use soft-busy to quickly pmap_enter shared read-only pages
+ * without having to hold the page locked.
+ *
+ * The soft-busy count can be > 1 in situations where multiple threads
+ * are pmap_enter()ing the same page simultaneously, or when two buffer
+ * cache buffers overlap the same page.
  *
  * The caller must hold the page BUSY when making these two calls.
  */
 void
 vm_page_io_start(vm_page_t m)
 {
-        KASSERT(m->flags & PG_BUSY, ("vm_page_io_start: page not busy!!!"));
-        atomic_add_char(&m->busy, 1);
-	vm_page_flag_set(m, PG_SBUSY);
+	uint32_t ocount;
+
+	ocount = atomic_fetchadd_int(&m->busy_count, 1);
+	KKASSERT(ocount & PBUSY_LOCKED);
 }
 
 void
 vm_page_io_finish(vm_page_t m)
 {
-        KASSERT(m->flags & PG_BUSY, ("vm_page_io_finish: page not busy!!!"));
-        atomic_subtract_char(&m->busy, 1);
-	if (m->busy == 0)
-		vm_page_flag_clear(m, PG_SBUSY);
+	uint32_t ocount;
+
+	ocount = atomic_fetchadd_int(&m->busy_count, -1);
+	KKASSERT(ocount & PBUSY_MASK);
+#if 0
+	if (((ocount - 1) & (PBUSY_LOCKED | PBUSY_MASK)) == 0)
+		wakeup(m);
+#endif
+}
+
+/*
+ * Attempt to soft-busy a page.  The page must not be PBUSY_LOCKED.
+ *
+ * Returns 0 on success, non-zero on failure.
+ */
+int
+vm_page_sbusy_try(vm_page_t m)
+{
+	uint32_t ocount;
+
+	if (m->busy_count & PBUSY_LOCKED)
+		return 1;
+	ocount = atomic_fetchadd_int(&m->busy_count, 1);
+	if (ocount & PBUSY_LOCKED) {
+		vm_page_sbusy_drop(m);
+		return 1;
+	}
+	return 0;
 }
 
 /*

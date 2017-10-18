@@ -1629,7 +1629,8 @@ cluster_wbuild(struct vnode *vp, struct buf **bpp,
 					     j < tbp->b_xio.xio_npages;
 					     ++j) {
 						m = tbp->b_xio.xio_pages[j];
-						if (m->flags & PG_BUSY) {
+						if (m->busy_count &
+						    PBUSY_LOCKED) {
 							bqrelse(tbp);
 							goto finishcluster;
 						}

@@ -438,7 +438,8 @@ RetryFault:
 
 		bzero(&fakem, sizeof(fakem));
 		fakem.pindex = first_pindex;
-		fakem.flags = PG_BUSY | PG_FICTITIOUS | PG_UNMANAGED;
+		fakem.flags = PG_FICTITIOUS | PG_UNMANAGED;
+		fakem.busy_count = PBUSY_LOCKED;
 		fakem.valid = VM_PAGE_BITS_ALL;
 		fakem.pat_mode = VM_MEMATTR_DEFAULT;
 		if (fs.entry->object.uksmap(fs.entry->aux.dev, &fakem)) {
@@ -613,7 +614,7 @@ RetryFault:
 		vm_map_deinterlock(fs.map, &ilock);
 
 	/*KKASSERT(fs.m->queue == PQ_NONE); page-in op may deactivate page */
-	KKASSERT(fs.m->flags & PG_BUSY);
+	KKASSERT(fs.m->busy_count & PBUSY_LOCKED);
 
 	/*
 	 * If the page is not wired down, then put it where the pageout daemon
@@ -910,7 +911,8 @@ RetryFault:
 
 		bzero(&fakem, sizeof(fakem));
 		fakem.pindex = first_pindex;
-		fakem.flags = PG_BUSY | PG_FICTITIOUS | PG_UNMANAGED;
+		fakem.flags = PG_FICTITIOUS | PG_UNMANAGED;
+		fakem.busy_count = PBUSY_LOCKED;
 		fakem.valid = VM_PAGE_BITS_ALL;
 		fakem.pat_mode = VM_MEMATTR_DEFAULT;
 		if (fs.entry->object.uksmap(fs.entry->aux.dev, &fakem)) {
@@ -1753,7 +1755,7 @@ readrest:
 
 			/*
 			 * Avoid deadlocking against the map when doing I/O.
-			 * fs.object and the page is PG_BUSY'd.
+			 * fs.object and the page is BUSY'd.
 			 *
 			 * NOTE: Once unlocked, fs->entry can become stale
 			 *	 so this will NULL it out.
@@ -1766,13 +1768,13 @@ readrest:
 
 			/*
 			 * Acquire the page data.  We still hold a ref on
-			 * fs.object and the page has been PG_BUSY's.
+			 * fs.object and the page has been BUSY's.
 			 *
 			 * The pager may replace the page (for example, in
 			 * order to enter a fictitious page into the
 			 * object).  If it does so it is responsible for
 			 * cleaning up the passed page and properly setting
-			 * the new page PG_BUSY.
+			 * the new page BUSY.
 			 *
 			 * If we got here through a PG_RAM read-ahead
 			 * mark the page may be partially dirty and thus
@@ -1980,7 +1982,7 @@ readrest:
 	 * top-level object, we have to copy it into a new page owned by the
 	 * top-level object.
 	 */
-	KASSERT((fs->m->flags & PG_BUSY) != 0,
+	KASSERT((fs->m->busy_count & PBUSY_LOCKED) != 0,
 		("vm_fault: not busy after main loop"));
 
 	if (fs->object != fs->first_object) {
@@ -2075,11 +2077,20 @@ readrest:
 				 *
 				 * So we have to remove the page from at
 				 * least the current pmap if it is in it.
-				 * Just remove it from all pmaps.
+				 *
+				 * We used to just remove it from all pmaps
+				 * but that creates inefficiencies on SMP,
+				 * particularly for COW program & library
+				 * mappings that are concurrently exec'd.
+				 * Only remove the page from the current
+				 * pmap.
 				 */
 				KKASSERT(fs->first_shared == 0);
 				vm_page_copy(fs->m, fs->first_m);
-				vm_page_protect(fs->m, VM_PROT_NONE);
+				/*vm_page_protect(fs->m, VM_PROT_NONE);*/
+				pmap_remove_specific(
+				    &curthread->td_lwp->lwp_vmspace->vm_pmap,
+				    fs->m);
 			}
 
 			/*
@@ -2213,7 +2224,7 @@ readrest:
 	 * fs->object will have another PIP reference if it is not equal
 	 * to fs->first_object.
 	 */
-	KASSERT(fs->m->flags & PG_BUSY,
+	KASSERT(fs->m->busy_count & PBUSY_LOCKED,
 		("vm_fault: page %p not busy!", fs->m));
 
 	/*
@@ -3026,17 +3037,12 @@ vm_prefault_quick(pmap_t pmap, vm_offset_t addra,
 		 */
 		pindex = ((addr - entry->start) + entry->offset) >> PAGE_SHIFT;
 
-		m = vm_page_lookup_busy_try(object, pindex, TRUE, &error);
-		if (m == NULL || error)
-			break;
-
 		/*
 		 * Skip pages already mapped, and stop scanning in that
 		 * direction.  When the scan terminates in both directions
 		 * we are done.
 		 */
 		if (pmap_prefault_ok(pmap, addr) == 0) {
-			vm_page_wakeup(m);
 			if (i & 1)
 				noneg = 1;
 			else
@@ -3045,6 +3051,38 @@ vm_prefault_quick(pmap_t pmap, vm_offset_t addra,
 				break;
 			continue;
 		}
+
+		/*
+		 * Shortcut the read-only mapping case using the far more
+		 * efficient vm_page_lookup_sbusy_try() function.  This
+		 * allows us to acquire the page soft-busied only which
+		 * is especially nice for concurrent execs of the same
+		 * program.
+		 *
+		 * The lookup function also validates page suitability
+		 * (all valid bits set, and not fictitious).
+		 */
+		if ((prot & (VM_PROT_WRITE|VM_PROT_OVERRIDE_WRITE)) == 0) {
+			m = vm_page_lookup_sbusy_try(object, pindex);
+			if (m == NULL)
+				break;
+			pmap_enter(pmap, addr, m, prot, 0, entry);
+			mycpu->gd_cnt.v_vm_faults++;
+			if (curthread->td_lwp)
+				++curthread->td_lwp->lwp_ru.ru_minflt;
+			vm_page_sbusy_drop(m);
+			continue;
+		}
+
+		/*
+		 * Fallback to normal vm_page lookup code.  This code
+		 * hard-busies the page.  Not only that, but the page
+		 * can remain in that state for a significant period
+		 * time due to pmap_enter()'s overhead.
+		 */
+		m = vm_page_lookup_busy_try(object, pindex, TRUE, &error);
+		if (m == NULL || error)
+			break;
 
 		/*
 		 * Stop if the page cannot be trivially entered into the

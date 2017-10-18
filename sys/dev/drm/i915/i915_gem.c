@@ -1814,7 +1814,7 @@ int i915_gem_fault(vm_object_t vm_obj, vm_ooffset_t offset, int prot, vm_page_t 
 	if (*mres != NULL) {
 		m = *mres;
 		*mres = NULL;
-		if ((m->flags & PG_BUSY) == 0)
+		if ((m->busy_count & PBUSY_LOCKED) == 0)
 			kprintf("i915_gem_fault: Page was not busy\n");
 		else
 			vm_page_remove(m);
@@ -1897,7 +1897,7 @@ retry:
 		 * Try to busy the page, retry on failure (non-zero ret).
 		 */
 		if (vm_page_busy_try(m, false)) {
-			kprintf("i915_gem_fault: PG_BUSY\n");
+			kprintf("i915_gem_fault: BUSY\n");
 			ret = -EINTR;
 			goto unlock;
 		}
@@ -1923,7 +1923,7 @@ retry:
 	 * Try to busy the page.  Fails on non-zero return.
 	 */
 	if (vm_page_busy_try(m, false)) {
-		kprintf("i915_gem_fault: PG_BUSY(2)\n");
+		kprintf("i915_gem_fault: BUSY(2)\n");
 		ret = -EINTR;
 		goto unpin;
 	}

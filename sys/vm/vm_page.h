@@ -1,9 +1,13 @@
 /*
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 2003-2017 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
  * The Mach Operating System project at Carnegie-Mellon University.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -56,12 +60,10 @@
  *
  * any improvements or extensions that they make and grant Carnegie the
  * rights to redistribute these changes.
- *
- * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
  */
 
 /*
- *	Resident memory system definitions.
+ * Resident memory system definitions.
  */
 
 #ifndef	_VM_VM_PAGE_H_
@@ -100,34 +102,8 @@
 #endif
 
 /*
- *	Management of resident (logical) pages.
- *
- *	A small structure is kept for each resident
- *	page, indexed by page number.  Each structure
- *	is an element of several lists:
- *
- *		A hash table bucket used to quickly
- *		perform object/offset lookups
- *
- *		A list of all pages for a given object,
- *		so they can be quickly deactivated at
- *		time of deallocation.
- *
- *		An ordered list of pages due for pageout.
- *
- *	In addition, the structure contains the object
- *	and offset to which this page belongs (for pageout),
- *	and sundry status bits.
- *
- *	Fields in this structure are locked either by the lock on the
- *	object that the page belongs to (O) or by the lock on the page
- *	queues (P).
- *
- *	The 'valid' and 'dirty' fields are distinct.  A page may have dirty
- *	bits set without having associated valid bits set.  This is used by
- *	NFS to implement piecemeal writes.
+ * vm_page structure
  */
-
 TAILQ_HEAD(pglist, vm_page);
 
 struct vm_object;
@@ -135,34 +111,27 @@ struct vm_object;
 int rb_vm_page_compare(struct vm_page *, struct vm_page *);
 
 struct vm_page_rb_tree;
-RB_PROTOTYPE2(vm_page_rb_tree, vm_page, rb_entry, rb_vm_page_compare, vm_pindex_t);
+RB_PROTOTYPE2(vm_page_rb_tree, vm_page, rb_entry,
+	      rb_vm_page_compare, vm_pindex_t);
 
 struct vm_page {
 	TAILQ_ENTRY(vm_page) pageq;	/* vm_page_queues[] list (P)	*/
 	RB_ENTRY(vm_page) rb_entry;	/* Red-Black tree based at object */
 	struct spinlock	spin;
-
 	struct vm_object *object;	/* which object am I in (O,P)*/
 	vm_pindex_t pindex;		/* offset into object (O,P) */
 	vm_paddr_t phys_addr;		/* physical address of page */
 	struct md_page md;		/* machine dependant stuff */
-	u_short	queue;			/* page queue index */
-	u_short	pc;			/* page color */
-	u_char	act_count;		/* page usage count */
-	u_char	busy;			/* page busy count */
-	u_char	pat_mode;		/* hardware page attribute */
-	u_char	unused02;
-	u_int32_t flags;		/* see below */
-	u_int	wire_count;		/* wired down maps refs (P) */
+	uint16_t queue;			/* page queue index */
+	uint16_t pc;			/* page color */
+	uint8_t	act_count;		/* page usage count */
+	uint8_t	pat_mode;		/* hardware page attribute */
+	uint8_t	valid;			/* map of valid DEV_BSIZE chunks */
+	uint8_t	dirty;			/* map of dirty DEV_BSIZE chunks */
+	uint32_t flags;			/* see below */
+	uint32_t wire_count;		/* wired down maps refs (P) */
+	uint32_t busy_count;		/* soft-busy and hard-busy */
 	int 	hold_count;		/* page hold count */
-
-	/*
-	 * NOTE that these must support one bit per DEV_BSIZE in a page!!!
-	 * so, on normal X86 kernels, they must be at least 8 bits wide.
-	 */
-	u_char	valid;			/* map of valid DEV_BSIZE chunks */
-	u_char	dirty;			/* map of dirty DEV_BSIZE chunks */
-
 	int	ku_pagecnt;		/* kmalloc helper */
 #ifdef VM_PAGE_DEBUG
 	const char *busy_func;
@@ -170,13 +139,10 @@ struct vm_page {
 #endif
 };
 
-#ifdef VM_PAGE_DEBUG
-#define VM_PAGE_DEBUG_EXT(name)	name ## _debug
-#define VM_PAGE_DEBUG_ARGS	, const char *func, int lineno
-#else
-#define VM_PAGE_DEBUG_EXT(name)	name
-#define VM_PAGE_DEBUG_ARGS
-#endif
+#define PBUSY_LOCKED		0x80000000U
+#define PBUSY_WANTED		0x40000000U
+#define PBUSY_SWAPINPROG	0x20000000U
+#define PBUSY_MASK		0x1FFFFFFFU
 
 #ifndef __VM_PAGE_T_DEFINED__
 #define __VM_PAGE_T_DEFINED__
@@ -192,7 +158,6 @@ typedef struct vm_page *vm_page_t;
  *
  * Page coloring cannot be disabled.
  */
-
 #define PQ_PRIME1 31	/* Prime number somewhat less than PQ_HASH_SIZE */
 #define PQ_PRIME2 23	/* Prime number somewhat less than PQ_HASH_SIZE */
 #define PQ_L2_SIZE 512	/* A number of colors opt for 1M cache */
@@ -268,12 +233,9 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
  *
  *  PG_SWAPPED indicates that the page is backed by a swap block.  Any
  *  VM object type other than OBJT_DEFAULT can have swap-backed pages now.
- *
- *  PG_SBUSY is set when m->busy != 0.  PG_SBUSY and m->busy are only modified
- *  when the page is PG_BUSY.
  */
-#define	PG_BUSY		0x00000001	/* page is in transit (O) */
-#define	PG_WANTED	0x00000002	/* someone is waiting for page (O) */
+#define	PG_UNUSED0001	0x00000001
+#define	PG_UNUSED0002	0x00000002
 #define PG_WINATCFLS	0x00000004	/* flush dirty page on inactive q */
 #define	PG_FICTITIOUS	0x00000008	/* physical page doesn't exist (O) */
 #define	PG_WRITEABLE	0x00000010	/* page is writeable */
@@ -281,7 +243,7 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
 #define	PG_UNUSED0040	0x00000040
 #define PG_REFERENCED	0x00000080	/* page has been referenced */
 #define PG_CLEANCHK	0x00000100	/* page will be checked for cleaning */
-#define PG_SWAPINPROG	0x00000200	/* swap I/O in progress on page	     */
+#define PG_UNUSED0200	0x00000200
 #define PG_NOSYNC	0x00000400	/* do not collect for syncer */
 #define PG_UNMANAGED	0x00000800	/* No PV management for page */
 #define PG_MARKER	0x00001000	/* special queue marker page */
@@ -289,11 +251,10 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
 #define PG_SWAPPED	0x00004000	/* backed by swap */
 #define PG_NOTMETA	0x00008000	/* do not back with swap */
 #define PG_UNUSED10000	0x00010000
-#define PG_SBUSY	0x00020000	/* soft-busy also set */
+#define PG_UNUSED20000	0x00020000
 #define PG_NEED_COMMIT	0x00040000	/* clean page requires commit */
 
-#define PG_KEEP_NEWPAGE_MASK	(PG_BUSY | PG_SBUSY | PG_WANTED)
-
+#define PG_KEEP_NEWPAGE_MASK	(0)
 
 /*
  * Misc constants.
@@ -303,6 +264,14 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
 #define ACT_ADVANCE		3
 #define ACT_INIT		5
 #define ACT_MAX			64
+
+#ifdef VM_PAGE_DEBUG
+#define VM_PAGE_DEBUG_EXT(name)	name ## _debug
+#define VM_PAGE_DEBUG_ARGS	, const char *func, int lineno
+#else
+#define VM_PAGE_DEBUG_EXT(name)	name
+#define VM_PAGE_DEBUG_ARGS
+#endif
 
 #ifdef _KERNEL
 /*
@@ -405,6 +374,8 @@ void vm_page_deactivate_locked (vm_page_t);
 void vm_page_initfake(vm_page_t m, vm_paddr_t paddr, vm_memattr_t memattr);
 int vm_page_insert (vm_page_t, struct vm_object *, vm_pindex_t);
 vm_page_t vm_page_lookup (struct vm_object *, vm_pindex_t);
+vm_page_t vm_page_lookup_sbusy_try(struct vm_object *object,
+		vm_pindex_t pindex);
 vm_page_t VM_PAGE_DEBUG_EXT(vm_page_lookup_busy_wait)(
 		struct vm_object *, vm_pindex_t, int, const char *
 		VM_PAGE_DEBUG_ARGS);
@@ -437,6 +408,7 @@ void vm_page_free_contig(vm_page_t m, unsigned long size);
 vm_page_t vm_page_free_fromq_fast(void);
 void vm_page_dirty(vm_page_t m);
 void vm_page_sleep_busy(vm_page_t m, int also_m_busy, const char *msg);
+int vm_page_sbusy_try(vm_page_t m);
 void VM_PAGE_DEBUG_EXT(vm_page_busy_wait)(vm_page_t m,
 			int also_m_busy, const char *wmsg VM_PAGE_DEBUG_ARGS);
 int VM_PAGE_DEBUG_EXT(vm_page_busy_try)(vm_page_t m,

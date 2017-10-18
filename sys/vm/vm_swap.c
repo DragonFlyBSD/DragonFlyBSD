@@ -463,7 +463,8 @@ swapoff_one(int index)
 	 */
 	for (q = 0; q < PQ_L2_SIZE; ++q) {
 		bzero(&marker, sizeof(marker));
-		marker.flags = PG_BUSY | PG_FICTITIOUS | PG_MARKER;
+		marker.flags = PG_FICTITIOUS | PG_MARKER;
+		marker.busy_count = PBUSY_LOCKED;
 		marker.queue = PQ_ACTIVE + q;
 		marker.pc = q;
 		marker.wire_count = 1;

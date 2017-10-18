@@ -875,8 +875,7 @@ RestartScan:
 						    pindex);
 				if (m && m->valid) {
 					mincoreinfo = MINCORE_INCORE;
-					if (m->dirty ||
-						pmap_is_modified(m))
+					if (m->dirty || pmap_is_modified(m))
 						mincoreinfo |= MINCORE_MODIFIED_OTHER;
 					if ((m->flags & PG_REFERENCED) ||
 						pmap_ts_referenced(m)) {

@@ -273,16 +273,38 @@ vm_page_flag_clear(vm_page_t m, unsigned int bits)
 /*
  * Wakeup anyone waiting for the page after potentially unbusying
  * (hard or soft) or doing other work on a page that might make a
- * waiter ready.  The setting of PG_WANTED is integrated into the
+ * waiter ready.  The setting of PBUSY_WANTED is integrated into the
  * related flags and it can't be set once the flags are already
  * clear, so there should be no races here.
  */
-
 static __inline void
 vm_page_flash(vm_page_t m)
 {
-	if (m->flags & PG_WANTED) {
-		vm_page_flag_clear(m, PG_WANTED);
+	if (m->busy_count & PBUSY_WANTED) {
+		atomic_clear_int(&m->busy_count, PBUSY_WANTED);
+		wakeup(m);
+	}
+}
+
+/*
+ * Adjust the soft-busy count on a page.  The drop code will issue an
+ * integrated wakeup if busy_count becomes 0.
+ */
+static __inline void
+vm_page_sbusy_hold(vm_page_t m)
+{
+	atomic_add_int(&m->busy_count, 1);
+}
+
+static __inline void
+vm_page_sbusy_drop(vm_page_t m)
+{
+	uint32_t ocount;
+
+	ocount = atomic_fetchadd_int(&m->busy_count, -1);
+	if (ocount - 1 == PBUSY_WANTED) {
+		/* WANTED and no longer BUSY or SBUSY */
+		atomic_clear_int(&m->busy_count, PBUSY_WANTED);
 		wakeup(m);
 	}
 }
@@ -308,7 +330,7 @@ vm_page_flash(vm_page_t m)
 static __inline void
 vm_page_protect(vm_page_t m, int prot)
 {
-	KKASSERT(m->flags & PG_BUSY);
+	KKASSERT(m->busy_count & PBUSY_LOCKED);
 	if (prot == VM_PROT_NONE) {
 		if (m->flags & (PG_WRITEABLE|PG_MAPPED)) {
 			pmap_page_protect(m, VM_PROT_NONE);

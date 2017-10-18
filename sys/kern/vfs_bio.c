@@ -3148,7 +3148,7 @@ allocbuf(struct buf *bp, int size)
 			     bp->b_xio.xio_npages;
 
 			/*
-			 * Blocking on m->busy might lead to a
+			 * Blocking on m->busy_count might lead to a
 			 * deadlock:
 			 *
 			 *  vm_fault->getpages->cluster_read->allocbuf
@@ -3687,7 +3687,7 @@ bpdone(struct buf *bp, int elseit)
 			 * up.  if you see this, you have not set the page
 			 * busy flag correctly!!!
 			 */
-			if (m->busy == 0) {
+			if ((m->busy_count & PBUSY_MASK) == 0) {
 				kprintf("bpdone: page busy < 0, "
 				    "pindex: %d, foff: 0x(%x,%x), "
 				    "resid: %d, index: %d\n",
@@ -3872,7 +3872,7 @@ vfs_unbusy_pages(struct buf *bp)
  *	This routine is called before a device strategy routine.
  *	It is used to tell the VM system that paging I/O is in
  *	progress, and treat the pages associated with the buffer
- *	almost as being PG_BUSY.  Also the object 'paging_in_progress'
+ *	almost as being PBUSY_LOCKED.  Also the object 'paging_in_progress'
  *	flag is handled to make sure that the object doesn't become
  *	inconsistant.
  *

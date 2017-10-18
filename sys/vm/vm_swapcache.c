@@ -191,7 +191,8 @@ vm_swapcached_thread(void)
 	 */
 	bzero(&page_marker, sizeof(page_marker));
 	for (q = 0; q < PQ_L2_SIZE; ++q) {
-		page_marker[q].flags = PG_BUSY | PG_FICTITIOUS | PG_MARKER;
+		page_marker[q].flags = PG_FICTITIOUS | PG_MARKER;
+		page_marker[q].busy_count = PBUSY_LOCKED;
 		page_marker[q].queue = PQ_INACTIVE + q;
 		page_marker[q].pc = q;
 		page_marker[q].wire_count = 1;

@@ -230,7 +230,7 @@ reserve:
 	}
 
 	VM_OBJECT_LOCK(vm_obj);
-	if ((m->flags & PG_BUSY) != 0) {
+	if ((m->busy_count & PBUSY_LOCKED) != 0) {
 #if 0
 		vm_page_sleep(m, "ttmpbs");
 #endif
