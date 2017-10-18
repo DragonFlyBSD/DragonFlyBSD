@@ -245,13 +245,13 @@ name##_SPLAY(struct name *head, struct type *elm)			\
 /* Splay with either the minimum or the maximum element			\
  * Used to find minimum or maximum element in tree.			\
  */									\
-void name##_SPLAY_MINMAX(struct name *head, int __comp) \
+void name##_SPLAY_MINMAX(struct name *head, int __comp) 		\
 {									\
 	struct type __node, *__left, *__right, *__tmp;			\
-\
+									\
 	SPLAY_LEFT(&__node, field) = SPLAY_RIGHT(&__node, field) = NULL;\
 	__left = __right = &__node;					\
-\
+									\
 	while (1) {							\
 		if (__comp < 0) {					\
 			__tmp = SPLAY_LEFT((head)->sph_root, field);	\
@@ -415,6 +415,8 @@ STORQUAL struct type *name##_RB_INSERT(struct name *, struct type *);	\
 STORQUAL struct type *name##_RB_FIND(struct name *, struct type *);	\
 STORQUAL int name##_RB_SCAN(struct name *, int (*)(struct type *, void *),\
 			int (*)(struct type *, void *), void *);	\
+STORQUAL int name##_RB_SCAN_NOLK(struct name *, int (*)(struct type *, void *),\
+			int (*)(struct type *, void *), void *);	\
 STORQUAL struct type *name##_RB_NEXT(struct type *);			\
 STORQUAL struct type *name##_RB_PREV(struct type *);			\
 STORQUAL struct type *name##_RB_MINMAX(struct name *, int);		\
@@ -426,7 +428,8 @@ RB_SCAN_INFO(name, type)						\
  */
 #define RB_PROTOTYPE2(name, type, field, cmp, datatype)			\
 RB_PROTOTYPE(name, type, field, cmp);					\
-struct type *name##_RB_LOOKUP(struct name *, datatype)			\
+struct type *name##_RB_LOOKUP(struct name *, datatype);			\
+struct type *name##_RB_LOOKUP_REL(struct name *, datatype, struct type *) \
 
 /*
  * A version which supplies a fast lookup routine for a numeric
@@ -736,11 +739,11 @@ name##_scan_info_done(struct name##_scan_info *scan, struct name *head)	\
 	RB_SCAN_UNLOCK(&head->rbh_spin);				\
 }									\
 									\
-STORQUAL int								\
-name##_RB_SCAN(struct name *head,					\
+static __inline int							\
+_##name##_RB_SCAN(struct name *head,					\
 		int (*scancmp)(struct type *, void *),			\
 		int (*callback)(struct type *, void *),			\
-		void *data)						\
+		void *data, int uselock)				\
 {									\
 	struct name##_scan_info info;					\
 	struct type *best;						\
@@ -772,7 +775,8 @@ name##_RB_SCAN(struct name *head,					\
 	count = 0;							\
 	if (best) {							\
 		info.node = RB_NEXT(name, head, best);			\
-		name##_scan_info_link(&info, head);			\
+		if (uselock)						\
+			name##_scan_info_link(&info, head);		\
 		while ((comp = callback(best, data)) >= 0) {		\
 			count += comp;					\
 			best = info.node;				\
@@ -780,11 +784,30 @@ name##_RB_SCAN(struct name *head,					\
 				break;					\
 			info.node = RB_NEXT(name, head, best);		\
 		}							\
-		name##_scan_info_done(&info, head);			\
+		if (uselock)						\
+			name##_scan_info_done(&info, head);		\
 		if (comp < 0)	/* error or termination */		\
 			count = comp;					\
 	}								\
 	return(count);							\
+}									\
+									\
+STORQUAL int								\
+name##_RB_SCAN(struct name *head,					\
+		int (*scancmp)(struct type *, void *),			\
+		int (*callback)(struct type *, void *),			\
+		void *data)						\
+{									\
+	return _##name##_RB_SCAN(head, scancmp, callback, data, 1);	\
+}									\
+									\
+STORQUAL int								\
+name##_RB_SCAN_NOLK(struct name *head,					\
+		int (*scancmp)(struct type *, void *),			\
+		int (*callback)(struct type *, void *),			\
+		void *data)						\
+{									\
+	return _##name##_RB_SCAN(head, scancmp, callback, data, 0);	\
 }									\
 									\
 /* ARGSUSED */								\
@@ -860,6 +883,36 @@ struct type *								\
 name##_RB_LOOKUP(struct name *head, datatype value)			\
 {									\
 	struct type *tmp;						\
+									\
+	tmp = RB_ROOT(head);						\
+	while (tmp) {							\
+		if (value > tmp->indexfield) 				\
+			tmp = RB_RIGHT(tmp, field);			\
+		else if (value < tmp->indexfield) 			\
+			tmp = RB_LEFT(tmp, field);			\
+		else 							\
+			return(tmp);					\
+	}								\
+	return(NULL);							\
+}									\
+									\
+struct type *								\
+name##_RB_LOOKUP_REL(struct name *head, datatype value, struct type *rel)\
+{									\
+	struct type *tmp;						\
+									\
+	if (value == rel->indexfield - 1) {				\
+		tmp = name##_RB_PREV(rel);				\
+		if (tmp && value != tmp->indexfield)			\
+			tmp = NULL;					\
+		return tmp;						\
+	}								\
+	if (value == rel->indexfield + 1) {				\
+		tmp = name##_RB_NEXT(rel);				\
+		if (tmp && value != tmp->indexfield)			\
+			tmp = NULL;					\
+		return tmp;						\
+	}								\
 									\
 	tmp = RB_ROOT(head);						\
 	while (tmp) {							\
@@ -973,6 +1026,8 @@ name##_RB_LOOKUP_##ext (struct name *head, datatype value)		\
 #define RB_RLOOKUP(name, root, value)	name##_RB_RLOOKUP(root, value)
 #define RB_SCAN(name, root, cmp, callback, data) 			\
 				name##_RB_SCAN(root, cmp, callback, data)
+#define RB_SCAN_NOLK(name, root, cmp, callback, data) 			\
+				name##_RB_SCAN_NOLK(root, cmp, callback, data)
 #define RB_FIRST(name, root)		name##_RB_MINMAX(root, RB_NEGINF)
 #define RB_NEXT(name, root, elm)	name##_RB_NEXT(elm)
 #define RB_PREV(name, root, elm)	name##_RB_PREV(elm)
