@@ -2211,6 +2211,8 @@ devfs_propagate_dev(cdev_t dev, int attach)
  * returning the length of the name without trailing digits, or,
  * if clone != 0, calls the device's clone handler to get a new
  * device, which in turn is returned in devp.
+ *
+ * Caller must hold a shared devfs_lock
  */
 cdev_t
 devfs_clone(cdev_t dev, const char *name, size_t len, int mode,
@@ -2240,7 +2242,7 @@ devfs_clone(cdev_t dev, const char *name, size_t len, int mode,
 			ap.a_mode = mode;
 			ap.a_cred = cred;
 			error = (chandler->nhandler)(&ap);
-			lockmgr(&devfs_lock, LK_EXCLUSIVE);
+			lockmgr(&devfs_lock, LK_SHARED);
 			if (error)
 				continue;
 

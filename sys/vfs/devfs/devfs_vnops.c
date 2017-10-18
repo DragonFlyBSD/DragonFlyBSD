@@ -531,6 +531,9 @@ devfs_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 }
 
 
+/*
+ * getattr() - Does not need a lock since the vp is refd
+ */
 static int
 devfs_vop_getattr(struct vop_getattr_args *ap)
 {
@@ -544,8 +547,6 @@ devfs_vop_getattr(struct vop_getattr_args *ap)
 		return ENOENT;
 #endif
 	node_sync_dev_get(node);
-
-	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 
 	/* start by zeroing out the attributes */
 	VATTR_NULL(vap);
@@ -599,11 +600,8 @@ devfs_vop_getattr(struct vop_getattr_args *ap)
 		}
 	}
 
-	lockmgr(&devfs_lock, LK_RELEASE);
-
 	return (error);
 }
-
 
 static int
 devfs_vop_setattr(struct vop_setattr_args *ap)
@@ -666,7 +664,7 @@ devfs_vop_readlink(struct vop_readlink_args *ap)
 	if (!devfs_node_is_accessible(node))
 		return ENOENT;
 
-	lockmgr(&devfs_lock, LK_EXCLUSIVE);
+	lockmgr(&devfs_lock, LK_SHARED);
 	ret = uiomove(node->symlink_name, node->symlink_namelen, ap->a_uio);
 	lockmgr(&devfs_lock, LK_RELEASE);
 
@@ -862,8 +860,22 @@ devfs_spec_open(struct vop_open_args *ap)
 	if ((dev = vp->v_rdev) == NULL)
 		return ENXIO;
 
-	vn_lock(vp, LK_UPGRADE | LK_RETRY);
+	/*
+	 * Simple devices that don't care.  Retain the shared lock.
+	 */
+	if (dev_dflags(dev) & D_QUICK) {
+		vn_unlock(vp);
+		error = dev_dopen(dev, ap->a_mode, S_IFCHR,
+				  ap->a_cred, ap->a_fp);
+		vn_lock(vp, LK_SHARED | LK_RETRY);
+		vop_stdopen(ap);
+		goto skip;
+	}
 
+	/*
+	 * Slow code
+	 */
+	vn_lock(vp, LK_UPGRADE | LK_RETRY);
 	if (node && ap->a_fp) {
 		int exists;
 
@@ -904,6 +916,7 @@ devfs_spec_open(struct vop_open_args *ap)
 			}
 		}
 		lockmgr(&devfs_lock, LK_RELEASE);
+
 		/*
 		 * Synchronize devfs here to make sure that, if the cloned
 		 * device creates other device nodes in addition to the
@@ -920,6 +933,9 @@ devfs_spec_open(struct vop_open_args *ap)
 
 	/*
 	 * Make this field valid before any I/O in ->d_open
+	 *
+	 * NOTE: Shared vnode lock probably held, but its ok as long
+	 *	 as assignments are consistent.
 	 */
 	if (!dev->si_iosize_max)
 		/* XXX: old DFLTPHYS == 64KB dependency */
@@ -929,7 +945,7 @@ devfs_spec_open(struct vop_open_args *ap)
 		vsetflags(vp, VISTTY);
 
 	/*
-	 * Open underlying device
+	 * Open the underlying device
 	 */
 	vn_unlock(vp);
 	error = dev_dopen(dev, ap->a_mode, S_IFCHR, ap->a_cred, ap->a_fp);
@@ -972,6 +988,10 @@ devfs_spec_open(struct vop_open_args *ap)
 		}
 	}
 
+	/*
+	 * NOTE: vnode is still locked shared.  t_stop assignment should
+	 *	 remain consistent so we should be ok.
+	 */
 	if (dev_dflags(dev) & D_TTY) {
 		if (dev->si_tty) {
 			struct tty *tp;
@@ -984,7 +1004,11 @@ devfs_spec_open(struct vop_open_args *ap)
 		}
 	}
 
-
+	/*
+	 * NOTE: vnode is still locked shared.  assignments should
+	 *	 remain consistent so we should be ok.  However,
+	 *	 upgrade to exclusive if we need a VM object.
+	 */
 	if (vn_isdisk(vp, NULL)) {
 		if (!dev->si_bsize_phys)
 			dev->si_bsize_phys = DEV_BSIZE;
@@ -996,7 +1020,6 @@ devfs_spec_open(struct vop_open_args *ap)
 	if (node)
 		nanotime(&node->atime);
 #endif
-
 	/*
 	 * If we replaced the vp the vop_stdopen() call will have loaded
 	 * it into fp->f_data and vref()d the vp, giving us two refs.  So
@@ -1006,9 +1029,12 @@ devfs_spec_open(struct vop_open_args *ap)
 		vput(vp);
 
 	/* Ugly pty magic, to make pty devices appear once they are opened */
-	if (node && (node->flags & DEVFS_PTY) == DEVFS_PTY)
-		node->flags &= ~DEVFS_INVISIBLE;
+	if (node && (node->flags & DEVFS_PTY) == DEVFS_PTY) {
+		if (node->flags & DEVFS_INVISIBLE)
+			node->flags &= ~DEVFS_INVISIBLE;
+	}
 
+skip:
 	if (ap->a_fp) {
 		KKASSERT(ap->a_fp->f_type == DTYPE_VNODE);
 		KKASSERT((ap->a_fp->f_flag & FMASK) == (ap->a_mode & FMASK));
@@ -1029,6 +1055,23 @@ devfs_spec_close(struct vop_close_args *ap)
 	int error = 0;
 	int needrelock;
 	int opencount;
+
+	/*
+	 * Devices flagged D_QUICK require no special handling.
+	 */
+	if (dev && dev_dflags(dev) & D_QUICK) {
+		opencount = vp->v_opencount;
+		if (opencount <= 1)
+			opencount = count_dev(dev);   /* XXX NOT SMP SAFE */
+		if (((vp->v_flag & VRECLAIMED) ||
+		    (dev_dflags(dev) & D_TRACKCLOSE) ||
+		    (opencount == 1))) {
+			vn_unlock(vp);
+			error = dev_dclose(dev, ap->a_fflag, S_IFCHR, ap->a_fp);
+			vn_lock(vp, LK_SHARED | LK_RETRY);
+		}
+		goto skip;
+	}
 
 	/*
 	 * We do special tests on the opencount so unfortunately we need
@@ -1087,8 +1130,8 @@ devfs_spec_close(struct vop_close_args *ap)
 	 */
 	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_close() -1- \n");
 	if (dev && ((vp->v_flag & VRECLAIMED) ||
-	    (dev_dflags(dev) & D_TRACKCLOSE) ||
-	    (opencount == 1))) {
+		    (dev_dflags(dev) & D_TRACKCLOSE) ||
+		    (opencount == 1))) {
 		/*
 		 * Ugly pty magic, to make pty devices disappear again once
 		 * they are closed.
@@ -1139,6 +1182,7 @@ devfs_spec_close(struct vop_close_args *ap)
 	 */
 	if (dev)
 		release_dev(dev);
+skip:
 	if (vp->v_opencount > 0)
 		vop_stdclose(ap);
 	return(error);
@@ -1568,7 +1612,7 @@ devfs_spec_read(struct vop_read_args *ap)
 
 	vn_unlock(vp);
 	error = dev_dread(dev, uio, ap->a_ioflag, NULL);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
+	vn_lock(vp, LK_SHARED | LK_RETRY);
 
 	if (node)
 		nanotime(&node->atime);
