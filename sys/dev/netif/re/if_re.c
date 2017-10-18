@@ -871,6 +871,7 @@ re_detach(device_t dev)
 		bus_release_resource(dev, sc->re_res_type, sc->re_res_rid,
 		    sc->re_res);
 	}
+	rtl_cmac_unmap(sc);
 
 	/* Free DMA stuffs */
 	re_freemem(dev);

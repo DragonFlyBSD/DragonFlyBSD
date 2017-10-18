@@ -39,6 +39,20 @@
 	((RE_INTRS & ~(RE_ISR_TX_OK | RE_ISR_RX_OK | RE_ISR_RX_OVERRUN |\
 	  RE_ISR_PKT_UNDERRUN | RE_ISR_TDU)) | RE_ISR_PCS_TIMEOUT)
 
+/* cmac write/read MMIO register */
+#define RE_CMAC_WRITE_1(sc, reg, val)	\
+	bus_space_write_1(sc->re_cmac_tag, sc->re_cmac_handle, reg, val)
+#define RE_CMAC_WRITE_2(sc, reg, val)	\
+	bus_space_write_2(sc->re_cmac_tag, sc->re_cmac_handle, reg, val)
+#define RE_CMAC_WRITE_4(sc, reg, val)	\
+	bus_space_write_4(sc->re_cmac_tag, sc->re_cmac_handle, reg, val)
+#define RE_CMAC_READ_1(sc, reg)		\
+	bus_space_read_1(sc->re_cmac_tag, sc->re_cmac_handle, reg)
+#define RE_CMAC_READ_2(sc, reg)		\
+	bus_space_read_2(sc->re_cmac_tag, sc->re_cmac_handle, reg)
+#define RE_CMAC_READ_4(sc, reg)		\
+	bus_space_read_4(sc->re_cmac_tag, sc->re_cmac_handle, reg)
+
 int		rtl_check_mac_version(struct re_softc *);
 void		rtl_init_software_variable(struct re_softc *);
 void		rtl_exit_oob(struct re_softc *);
@@ -58,5 +72,6 @@ void		rtl_hw_start(struct re_softc *);
 void		rtl_set_rx_packet_filter(struct re_softc *);
 void		rtl_hw_d3_para(struct re_softc *);
 void		rtl_phy_power_down(struct re_softc *);
+void		rtl_cmac_unmap(struct re_softc *);
 
 #endif	/* !_RE_DRAGONFLY_H_ */

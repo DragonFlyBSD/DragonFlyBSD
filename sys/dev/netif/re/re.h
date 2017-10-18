@@ -117,6 +117,7 @@
 #define RE_CFG4		0x0055		/* config register #4 */
 #define RE_CFG5		0x0056		/* config register #5 */
 /* 0053-0057 reserved */
+#define RE_TDFNR	0x0057		/* Tx descriptor fetch number */
 #define RE_MEDIASTAT	0x0058		/* media status register (8139) */
 /* 0059-005A reserved */
 #define RE_MII		0x005A		/* 8129 chip only */
@@ -144,12 +145,13 @@
 #define RE_TwiCmdReg	0x00D2
 #define RE_MCU_CMD	0x00D3
 #define RE_RxMaxSize	0x00DA
+#define RE_EFUSEAR	0x00DC
 #define RE_CPlusCmd	0x00E0
 #define	RE_MTPS		0x00EC
-#define	RE_IBCR0     	0x00F8
-#define	RE_IBCR2     	0x00F9
-#define	RE_IBIMR0    	0x00FA
-#define	RE_IBISR0   	0x00FB
+#define	RE_CMAC_IBCR0     	0x00F8
+#define	RE_CMAC_IBCR2     	0x00F9
+#define	RE_CMAC_IBIMR0    	0x00FA
+#define	RE_CMAC_IBISR0   	0x00FB
 
 /* ERI access */
 #define	ERIAR_Flag   0x80000000
@@ -781,6 +783,13 @@ struct re_mii_frame {
 
 #define RL_RxChkSum (1<<5)
 
+enum  {
+        EFUSE_NOT_SUPPORT = 0,
+        EFUSE_SUPPORT_V1,
+        EFUSE_SUPPORT_V2,
+        EFUSE_SUPPORT_V3,
+};
+
 enum {
         MACFG_3 = 3,
         MACFG_4,
@@ -839,6 +848,8 @@ enum {
         MACFG_67,
         MACFG_68,
         MACFG_69,
+        MACFG_70,
+        MACFG_71,
 
         MACFG_FF = 0xFF
 };
@@ -902,6 +913,13 @@ struct re_softc {
 
         u_int8_t RequireAdjustUpsTxLinkPulseTiming;
         u_int16_t SwrCnt1msIni;
+
+        u_int8_t RequiredSecLanDonglePatch;
+
+        u_int8_t  re_efuse_ver;
+
+        u_int16_t re_sw_ram_code_ver;
+        u_int16_t re_hw_ram_code_ver;
 #if OS_VER>=VERSION(7,0)
         struct task		re_inttask;
 #endif
@@ -916,6 +934,14 @@ struct re_softc {
         u_int8_t	prohibit_access_reg;
 
         u_int8_t	re_hw_supp_now_is_oob_ver;
+
+        u_int8_t HwSuppDashVer;
+        u_int8_t	re_dash;
+        bus_space_handle_t	re_mapped_cmac_handle;			/* bus space tag */
+        bus_space_tag_t		re_mapped_cmac_tag;			/* bus space tag */
+        bus_space_handle_t	re_cmac_handle;		/* bus space handle */
+        bus_space_tag_t		re_cmac_tag;			/* bus space tag */
+        u_int8_t HwPkgDet;
 };
 #endif	/* !__DragonFly__ */
 
@@ -975,6 +1001,14 @@ enum bits {
 #define CSR_READ_4(sc, reg)	((sc->prohibit_access_reg)?0xFFFFFFFF:bus_space_read_4(sc->re_btag, sc->re_bhandle, reg))
 #define CSR_READ_2(sc, reg)	((sc->prohibit_access_reg)?0xFFFF:bus_space_read_2(sc->re_btag, sc->re_bhandle, reg))
 #define CSR_READ_1(sc, reg)	((sc->prohibit_access_reg)?0xFF:bus_space_read_1(sc->re_btag, sc->re_bhandle, reg))
+
+/* cmac write/read MMIO register */
+#define RE_CMAC_WRITE_1(sc, reg, val) ((sc->prohibit_access_reg)?:bus_space_write_1(sc->re_cmac_tag, sc->re_cmac_handle, reg, val))
+#define RE_CMAC_WRITE_2(sc, reg, val) ((sc->prohibit_access_reg)?:bus_space_write_2(sc->re_cmac_tag, sc->re_cmac_handle, reg, val))
+#define RE_CMAC_WRITE_4(sc, reg, val) ((sc->prohibit_access_reg)?:bus_space_write_4(sc->re_cmac_tag, sc->re_cmac_handle, reg, val))
+#define RE_CMAC_READ_1(sc, reg) ((sc->prohibit_access_reg)?0xFF:bus_space_read_1(sc->re_cmac_tag, sc->re_cmac_handle, reg))
+#define RE_CMAC_READ_2(sc, reg) ((sc->prohibit_access_reg)?0xFFFF:bus_space_read_2(sc->re_cmac_tag, sc->re_cmac_handle, reg))
+#define RE_CMAC_READ_4(sc, reg) (sc->prohibit_access_reg)?0xFFFFFFFF:bus_space_read_4(sc->re_cmac_tag, sc->re_cmac_handle, reg))
 #endif	/* !__DragonFly__ */
 
 #define RE_TIMEOUT		1000
@@ -1074,6 +1108,18 @@ enum bits {
 #define RE_WOL_LINK_SPEED_10M_FIRST ( 0 )
 #define RE_WOL_LINK_SPEED_100M_FIRST ( 1 )
 
+//Ram Code Version
+#define NIC_RAMCODE_VERSION_8168E (0x0057)
+#define NIC_RAMCODE_VERSION_8168EVL (0x0055)
+#define NIC_RAMCODE_VERSION_8168F (0x0044)
+#define NIC_RAMCODE_VERSION_8411 (0x0044)
+#define NIC_RAMCODE_VERSION_8168G (0x0042)
+#define NIC_RAMCODE_VERSION_8168GU (0x0001)
+#define NIC_RAMCODE_VERSION_8168EP (0x0015)
+#define NIC_RAMCODE_VERSION_8411B (0x0012)
+#define NIC_RAMCODE_VERSION_8168H (0x0018)
+#define NIC_RAMCODE_VERSION_8168FP (0x0003)
+
 #ifdef __alpha__
 #undef vtophys
 #define vtophys(va)     alpha_XXX_dmamap((vm_offset_t)va)
@@ -1092,6 +1138,14 @@ enum bits {
 /* interrupt service routine loop time*/
 /* the minimum value is 1 */
 #define	INTR_MAX_LOOP	1
+
+#define RE_REGS_SIZE     (256)
+
+#define RTL8168FP_OOBMAC_BASE 0xBAF70000
+#define HW_DASH_SUPPORT_DASH(_M)        ((_M)->HwSuppDashVer > 0 )
+#define HW_DASH_SUPPORT_TYPE_1(_M)        ((_M)->HwSuppDashVer == 1 )
+#define HW_DASH_SUPPORT_TYPE_2(_M)        ((_M)->HwSuppDashVer == 2 )
+#define HW_DASH_SUPPORT_TYPE_3(_M)        ((_M)->HwSuppDashVer == 3 )
 
 /*#define RE_DBG*/
 

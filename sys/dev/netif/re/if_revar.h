@@ -180,6 +180,17 @@ struct re_softc {
 	struct ifmedia		media;
 	u_int16_t		cur_page;
 	u_int8_t		re_unit;
+	u_int8_t		re_efuse_ver;
+	u_int16_t		re_sw_ram_code_ver;
+	u_int16_t		re_hw_ram_code_ver;
+	u_int8_t		RequiredSecLanDonglePatch;
+	u_int8_t		HwSuppDashVer;
+	u_int8_t		re_dash;
+	bus_space_handle_t	re_mapped_cmac_handle;	/* bus space tag */
+	bus_space_tag_t		re_mapped_cmac_tag;	/* bus space tag */
+	bus_space_handle_t	re_cmac_handle;		/* bus space handle */
+	bus_space_tag_t		re_cmac_tag;		/* bus space tag */
+	u_int8_t		HwPkgDet;
 };
 
 #define RE_C_HWIM		0x4	/* hardware interrupt moderation */
