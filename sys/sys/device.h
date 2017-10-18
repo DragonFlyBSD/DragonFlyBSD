@@ -277,6 +277,7 @@ struct dev_ops {
 #define D_NOEMERGPGR	0x00200000	/* too complex for emergency pager */
 #define D_MPSAFE	0x00400000	/* all dev_d*() calls are MPSAFE */
 #define D_KVABIO	0x00800000	/* device support KVABIO API */
+#define D_QUICK		0x01000000	/* no fancy open/close support needed*/
 
 /*
  * A union of all possible argument structures.

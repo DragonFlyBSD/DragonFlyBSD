@@ -78,6 +78,20 @@ static int memuksmap(cdev_t dev, vm_page_t fake);
 
 #define CDEV_MAJOR 2
 static struct dev_ops mem_ops = {
+	{ "mem", 0, D_MPSAFE | D_QUICK },
+	.d_open =	mmopen,
+	.d_close =	mmclose,
+	.d_read =	mmread,
+	.d_write =	mmwrite,
+	.d_ioctl =	mmioctl,
+	.d_kqfilter =	mmkqfilter,
+#if 0
+	.d_mmap =	memmmap,
+#endif
+	.d_uksmap =	memuksmap
+};
+
+static struct dev_ops mem_ops_noq = {
 	{ "mem", 0, D_MPSAFE },
 	.d_open =	mmopen,
 	.d_close =	mmclose,
@@ -756,7 +770,7 @@ mem_drvinit(void *unused)
 	make_dev(&mem_ops, 5, UID_ROOT, GID_WHEEL, 0666, "upmap");
 	make_dev(&mem_ops, 6, UID_ROOT, GID_WHEEL, 0444, "kpmap");
 	zerodev = make_dev(&mem_ops, 12, UID_ROOT, GID_WHEEL, 0666, "zero");
-	make_dev(&mem_ops, 14, UID_ROOT, GID_WHEEL, 0600, "io");
+	make_dev(&mem_ops_noq, 14, UID_ROOT, GID_WHEEL, 0600, "io");
 }
 
 SYSINIT(memdev, SI_SUB_DRIVERS, SI_ORDER_MIDDLE + CDEV_MAJOR, mem_drvinit,
