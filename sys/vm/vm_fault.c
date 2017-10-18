@@ -3061,17 +3061,23 @@ vm_prefault_quick(pmap_t pmap, vm_offset_t addra,
 		 *
 		 * The lookup function also validates page suitability
 		 * (all valid bits set, and not fictitious).
+		 *
+		 * If the page is in PQ_CACHE we have to fall-through
+		 * and hard-busy it so we can move it out of PQ_CACHE.
 		 */
 		if ((prot & (VM_PROT_WRITE|VM_PROT_OVERRIDE_WRITE)) == 0) {
 			m = vm_page_lookup_sbusy_try(object, pindex);
 			if (m == NULL)
 				break;
-			pmap_enter(pmap, addr, m, prot, 0, entry);
-			mycpu->gd_cnt.v_vm_faults++;
-			if (curthread->td_lwp)
-				++curthread->td_lwp->lwp_ru.ru_minflt;
+			if ((m->queue - m->pc) != PQ_CACHE) {
+				pmap_enter(pmap, addr, m, prot, 0, entry);
+				mycpu->gd_cnt.v_vm_faults++;
+				if (curthread->td_lwp)
+					++curthread->td_lwp->lwp_ru.ru_minflt;
+				vm_page_sbusy_drop(m);
+				continue;
+			}
 			vm_page_sbusy_drop(m);
-			continue;
 		}
 
 		/*

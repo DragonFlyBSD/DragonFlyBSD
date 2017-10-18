@@ -286,7 +286,8 @@ struct pmap {
 	int			pm_flags;
 	struct pmap_statistics	pm_stats;	/* pmap statistics */
 	struct spinlock		pm_spin;
-	struct pv_entry		*pm_pvhint;	/* pv_entry lookup hint */
+	struct pv_entry		*pm_pvhint_pt;	/* pv_entry lookup hint */
+	struct pv_entry		*pm_pvhint_pte;	/* pv_entry lookup hint */
 	vm_pindex_t		pm_placemarks[PM_PLACEMARKS];
 	long			pm_invgen;
 	uint64_t		pmap_bits[PG_BITS_SIZE];

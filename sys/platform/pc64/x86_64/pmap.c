@@ -251,6 +251,9 @@ SYSCTL_INT(_machdep, OID_AUTO, pmap_fast_kernel_cpusync, CTLFLAG_RW,
 int pmap_dynamic_delete = 0;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_dynamic_delete, CTLFLAG_RW,
     &pmap_dynamic_delete, 0, "Dynamically delete PT/PD/PDPs");
+int pmap_lock_delay = 100;
+SYSCTL_INT(_machdep, OID_AUTO, pmap_lock_delay, CTLFLAG_RW,
+    &pmap_lock_delay, 0, "Spin loops");
 
 static int pmap_nx_enable = 0;
 /* needs manual TUNABLE in early probe, see below */
@@ -385,23 +388,6 @@ pmap_kmem_choose(vm_offset_t addr)
 }
 
 /*
- * pmap_pte_quick:
- *
- *	Super fast pmap_pte routine best used when scanning the pv lists.
- *	This eliminates many course-grained invltlb calls.  Note that many of
- *	the pv list scans are across different pmaps and it is very wasteful
- *	to do an entire invltlb when checking a single mapping.
- */
-static __inline pt_entry_t *pmap_pte(pmap_t pmap, vm_offset_t va);
-
-static
-pt_entry_t *
-pmap_pte_quick(pmap_t pmap, vm_offset_t va)
-{
-	return pmap_pte(pmap, va);
-}
-
-/*
  * Returns the pindex of a page table entry (representing a terminal page).
  * There are NUPTE_TOTAL page table entries possible (a huge number)
  *
@@ -484,6 +470,49 @@ vm_pindex_t
 pmap_pdp_index(vm_offset_t va)
 {
 	return ((va >> PML4SHIFT) & ((1ul << NPML4EPGSHIFT) - 1));
+}
+
+/*
+ * Locate the requested pt_entry
+ */
+static __inline
+pv_entry_t
+pv_entry_lookup(pmap_t pmap, vm_pindex_t pindex)
+{
+	pv_entry_t pv;
+
+	if (pindex < pmap_pt_pindex(0))
+		pv = pmap->pm_pvhint_pte;
+	else if (pindex < pmap_pd_pindex(0))
+		pv = pmap->pm_pvhint_pt;
+	else
+		pv = NULL;
+	cpu_ccfence();
+	if (pv == NULL || pv->pv_pmap != pmap) {
+		pv = pv_entry_rb_tree_RB_LOOKUP(&pmap->pm_pvroot,
+						pindex);
+	} else if (pv->pv_pindex != pindex) {
+		pv = pv_entry_rb_tree_RB_LOOKUP_REL(&pmap->pm_pvroot,
+						    pindex, pv);
+	}
+	return pv;
+}
+
+/*
+ * pmap_pte_quick:
+ *
+ *	Super fast pmap_pte routine best used when scanning the pv lists.
+ *	This eliminates many course-grained invltlb calls.  Note that many of
+ *	the pv list scans are across different pmaps and it is very wasteful
+ *	to do an entire invltlb when checking a single mapping.
+ */
+static __inline pt_entry_t *pmap_pte(pmap_t pmap, vm_offset_t va);
+
+static
+pt_entry_t *
+pmap_pte_quick(pmap_t pmap, vm_offset_t va)
+{
+	return pmap_pte(pmap, va);
 }
 
 /*
@@ -656,7 +685,7 @@ pmap_pte(pmap_t pmap, vm_offset_t va)
  *	 must be in a known associated state (typically by being locked when
  *	 the pmap spinlock isn't held).  We allow the race for that case.
  *
- * NOTE: pm_pvhint is only accessed (read) with the spin-lock held, using
+ * NOTE: pm_pvhint* is only accessed (read) with the spin-lock held, using
  *	 cpu_ccfence() to prevent compiler optimizations from reloading the
  *	 field.
  */
@@ -664,9 +693,12 @@ static __inline
 void
 pv_cache(pv_entry_t pv, vm_pindex_t pindex)
 {
-	if (pindex >= pmap_pt_pindex(0) && pindex < pmap_pd_pindex(0)) {
+	if (pindex < pmap_pt_pindex(0)) {
 		if (pv->pv_pmap)
-			pv->pv_pmap->pm_pvhint = pv;
+			pv->pv_pmap->pm_pvhint_pte = pv;
+	} else if (pindex < pmap_pd_pindex(0)) {
+		if (pv->pv_pmap)
+			pv->pv_pmap->pm_pvhint_pt = pv;
 	}
 }
 
@@ -1859,7 +1891,8 @@ pmap_pinit0(struct pmap *pmap)
 	pmap->pm_pml4 = (pml4_entry_t *)(PTOV_OFFSET + KPML4phys);
 	pmap->pm_count = 1;
 	CPUMASK_ASSZERO(pmap->pm_active);
-	pmap->pm_pvhint = NULL;
+	pmap->pm_pvhint_pt = NULL;
+	pmap->pm_pvhint_pte = NULL;
 	RB_INIT(&pmap->pm_pvroot);
 	spin_init(&pmap->pm_spin, "pmapinit0");
 	for (i = 0; i < PM_PLACEMARKS; ++i)
@@ -1882,7 +1915,8 @@ pmap_pinit_simple(struct pmap *pmap)
 	 */
 	pmap->pm_count = 1;
 	CPUMASK_ASSZERO(pmap->pm_active);
-	pmap->pm_pvhint = NULL;
+	pmap->pm_pvhint_pt = NULL;
+	pmap->pm_pvhint_pte = NULL;
 	pmap->pm_flags = PMAP_FLAG_SIMPLE;
 
 	pmap_pinit_defaults(pmap);
@@ -3315,7 +3349,7 @@ _pv_alloc(pmap_t pmap, vm_pindex_t pindex, int *isnew PMAP_DEBUG_DECL)
 
 	pnew = NULL;
 	if (md->gd_newpv) {
-#if 0
+#if 1
 		pnew = atomic_swap_ptr((void *)&md->gd_newpv, NULL);
 #else
 		crit_enter();
@@ -3332,14 +3366,7 @@ _pv_alloc(pmap_t pmap, vm_pindex_t pindex, int *isnew PMAP_DEBUG_DECL)
 		/*
 		 * Shortcut cache
 		 */
-		pv = pmap->pm_pvhint;
-		cpu_ccfence();
-		if (pv == NULL ||
-		    pv->pv_pmap != pmap ||
-		    pv->pv_pindex != pindex) {
-			pv = pv_entry_rb_tree_RB_LOOKUP(&pmap->pm_pvroot,
-							pindex);
-		}
+		pv = pv_entry_lookup(pmap, pindex);
 		if (pv == NULL) {
 			vm_pindex_t *pmark;
 
@@ -3410,7 +3437,7 @@ _pv_alloc(pmap_t pmap, vm_pindex_t pindex, int *isnew PMAP_DEBUG_DECL)
 				spin_unlock(&pmap->pm_spin);
 			else
 				spin_unlock_shared(&pmap->pm_spin);
-#if 0
+#if 1
 			pnew = atomic_swap_ptr((void *)&md->gd_newpv, pnew);
 			if (pnew)
 				zfree(pvzone, pnew);
@@ -3457,14 +3484,7 @@ _pv_get(pmap_t pmap, vm_pindex_t pindex, vm_pindex_t **pmarkp PMAP_DEBUG_DECL)
 		/*
 		 * Shortcut cache
 		 */
-		pv = pmap->pm_pvhint;
-		cpu_ccfence();
-		if (pv == NULL ||
-		    pv->pv_pmap != pmap ||
-		    pv->pv_pindex != pindex) {
-			pv = pv_entry_rb_tree_RB_LOOKUP(&pmap->pm_pvroot,
-							pindex);
-		}
+		pv = pv_entry_lookup(pmap, pindex);
 		if (pv == NULL) {
 			/*
 			 * Block if there is ANY placemarker.  If we are to
@@ -3562,14 +3582,7 @@ pv_get_try(pmap_t pmap, vm_pindex_t pindex, vm_pindex_t **pmarkp, int *errorp)
 
 	spin_lock_shared(&pmap->pm_spin);
 
-	pv = pmap->pm_pvhint;
-	cpu_ccfence();
-	if (pv == NULL ||
-	    pv->pv_pmap != pmap ||
-	    pv->pv_pindex != pindex) {
-		pv = pv_entry_rb_tree_RB_LOOKUP(&pmap->pm_pvroot, pindex);
-	}
-
+	pv = pv_entry_lookup(pmap, pindex);
 	if (pv == NULL) {
 		vm_pindex_t *pmark;
 
@@ -3739,8 +3752,10 @@ _pv_free(pv_entry_t pv, pv_entry_t pvp PMAP_DEBUG_DECL)
 	if ((pmap = pv->pv_pmap) != NULL) {
 		spin_lock(&pmap->pm_spin);
 		KKASSERT(pv->pv_pmap == pmap);
-		if (pmap->pm_pvhint == pv)
-			pmap->pm_pvhint = NULL;
+		if (pmap->pm_pvhint_pt == pv)
+			pmap->pm_pvhint_pt = NULL;
+		if (pmap->pm_pvhint_pte == pv)
+			pmap->pm_pvhint_pte = NULL;
 		pv_entry_rb_tree_RB_REMOVE(&pmap->pm_pvroot, pv);
 		atomic_add_long(&pmap->pm_stats.resident_count, -1);
 		pv->pv_pmap = NULL;
@@ -5205,10 +5220,15 @@ pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
 	info.mpte = NULL;
 	info.addr = addr;
 	info.pmap = pmap;
+	info.object = object;
 
+	/*
+	 * By using the NOLK scan, the callback function must be sure
+	 * to return -1 if the VM page falls out of the object.
+	 */
 	vm_object_hold_shared(object);
-	vm_page_rb_tree_RB_SCAN(&object->rb_memq, rb_vm_page_scancmp,
-				pmap_object_init_pt_callback, &info);
+	vm_page_rb_tree_RB_SCAN_NOLK(&object->rb_memq, rb_vm_page_scancmp,
+				     pmap_object_init_pt_callback, &info);
 	vm_object_drop(object);
 }
 
@@ -5218,6 +5238,7 @@ pmap_object_init_pt_callback(vm_page_t p, void *data)
 {
 	struct rb_vm_page_scan_info *info = data;
 	vm_pindex_t rel_index;
+	int hard_busy;
 
 	/*
 	 * don't allow an madvise to blow away our really
@@ -5234,17 +5255,41 @@ pmap_object_init_pt_callback(vm_page_t p, void *data)
 	 */
 	if (p->flags & PG_MARKER)
 		return 0;
-	if (vm_page_busy_try(p, TRUE))
-		return 0;
+	hard_busy = 0;
+again:
+	if (hard_busy) {
+		if (vm_page_busy_try(p, TRUE))
+			return 0;
+	} else {
+		if (vm_page_sbusy_try(p))
+			return 0;
+	}
 	if (((p->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) &&
 	    (p->flags & PG_FICTITIOUS) == 0) {
-		if ((p->queue - p->pc) == PQ_CACHE)
+		if ((p->queue - p->pc) == PQ_CACHE) {
+			if (hard_busy == 0) {
+				vm_page_sbusy_drop(p);
+				hard_busy = 1;
+				goto again;
+			}
 			vm_page_deactivate(p);
+		}
 		rel_index = p->pindex - info->start_pindex;
 		pmap_enter_quick(info->pmap,
 				 info->addr + x86_64_ptob(rel_index), p);
 	}
-	vm_page_wakeup(p);
+	if (hard_busy)
+		vm_page_wakeup(p);
+	else
+		vm_page_sbusy_drop(p);
+
+	/*
+	 * We are using an unlocked scan (that is, the scan expects its
+	 * current element to remain in the tree on return).  So we have
+	 * to check here and abort the scan if it isn't.
+	 */
+	if (p->object != info->object)
+		return -1;
 	lwkt_yield();
 	return(0);
 }
@@ -5468,6 +5513,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
  * pmap_testbit tests bits in pte's note that the testbit/clearbit
  * routines are inline, and a lot of things compile-time evaluate.
  */
+
 static
 boolean_t
 pmap_testbit(vm_page_t m, int bit)
@@ -5488,7 +5534,6 @@ pmap_testbit(vm_page_t m, int bit)
 	}
 
 	TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
-
 #if defined(PMAP_DIAGNOSTIC)
 		if (pv->pv_pmap == NULL) {
 			kprintf("Null pmap (tb) at pindex: %"PRIu64"\n",
