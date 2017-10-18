@@ -314,6 +314,12 @@ lockmgr_exclusive(struct lock *lkp, u_int flags)
 
 		error = tsleep(lkp, pflags | PINTERLOCKED,
 			       lkp->lk_wmesg, timo);
+#ifdef INVARIANTS
+		if (lock_test_mode > 0) {
+			--lock_test_mode;
+			print_backtrace(8);
+		}
+#endif
 		if (error)
 			break;
 		if (extflags & LK_SLEEPFAIL) {

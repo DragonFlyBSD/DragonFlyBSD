@@ -59,7 +59,7 @@ indefinite_init(indefinite_info_t *info, const char *ident, int now, char type)
 
 	if (tsc_frequency) {
 		info->type = type;
-		info->base = rdtsc();
+		/* info->base = rdtsc(); (see indefinite_check()) */
 	} else {
 		info->type = 0;
 		info->base = 0;
@@ -87,10 +87,19 @@ indefinite_check(indefinite_info_t *info)
 #endif
 	if (info->type == 0)
 		return FALSE;
-	if (++info->count != 128)
+	if (info->count == INDEF_INFO_START)	/* start recording time */
+		info->base = rdtsc();
+	if ((++info->count & 127) != 127)
 		return FALSE;
-	info->count = 0;
+	info->count = 128;
 	delta = rdtsc() - info->base;
+
+#if defined(INVARIANTS)
+	if (lock_test_mode > 0) {
+		--lock_test_mode;
+		print_backtrace(8);
+	}
+#endif
 
 	/*
 	 * Ignore minor one-second interval error accumulation in
@@ -158,19 +167,20 @@ indefinite_check(indefinite_info_t *info)
 }
 
 /*
- * Finalize the state, record collision time in microseconds.
+ * Finalize the state, record collision time in microseconds if
+ * we got past the initial load.
  */
 static __inline void
 indefinite_done(indefinite_info_t *info)
 {
 	tsc_uclock_t delta;
 
-	if (info->type) {
+	if (info->type && info->count > INDEF_INFO_START) {
 		delta = rdtsc() - info->base;
 		delta = delta * 1000000U / tsc_frequency;
 		mycpu->gd_cnt.v_lock_colls += delta;
-		info->type = 0;
 	}
+	info->type = 0;
 }
 
 #endif

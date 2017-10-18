@@ -53,4 +53,9 @@ struct indefinite_info {
 
 typedef struct indefinite_info	indefinite_info_t;
 
+/*
+ * Loops before we start recording the TSC (valid range is 1-127)
+ */
+#define INDEF_INFO_START	15
+
 #endif
