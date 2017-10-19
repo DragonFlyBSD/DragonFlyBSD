@@ -593,8 +593,8 @@ sysctl_sysctl_debug(SYSCTL_HANDLER_ARGS)
 	return (ENOENT);
 }
 
-SYSCTL_PROC(_sysctl, 0, debug, CTLTYPE_STRING|CTLFLAG_RD,
-	0, 0, sysctl_sysctl_debug, "-", "");
+SYSCTL_PROC(_sysctl, 0, debug, CTLTYPE_STRING | CTLFLAG_RD,
+	    0, 0, sysctl_sysctl_debug, "-", "");
 
 static int
 sysctl_sysctl_name(SYSCTL_HANDLER_ARGS)
@@ -651,7 +651,8 @@ sysctl_sysctl_name(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
-SYSCTL_NODE(_sysctl, 1, name, CTLFLAG_RD, sysctl_sysctl_name, "");
+SYSCTL_NODE(_sysctl, 1, name, CTLFLAG_RD | CTLFLAG_NOLOCK,
+	    sysctl_sysctl_name, "");
 
 static int
 sysctl_sysctl_next_ls(struct sysctl_oid_list *lsp, int *name, u_int namelen, 
@@ -730,7 +731,8 @@ sysctl_sysctl_next(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
-SYSCTL_NODE(_sysctl, 2, next, CTLFLAG_RD, sysctl_sysctl_next, "");
+SYSCTL_NODE(_sysctl, 2, next, CTLFLAG_RD | CTLFLAG_NOLOCK,
+	    sysctl_sysctl_next, "");
 
 static int
 name2oid(char *name, int *oid, int *len, struct sysctl_oid **oidpp)
@@ -804,7 +806,7 @@ sysctl_sysctl_name2oid(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
-SYSCTL_PROC(_sysctl, 3, name2oid, CTLFLAG_RW|CTLFLAG_ANYBODY|CTLFLAG_SHLOCK,
+SYSCTL_PROC(_sysctl, 3, name2oid, CTLFLAG_RW | CTLFLAG_ANYBODY | CTLFLAG_NOLOCK,
 	    0, 0, sysctl_sysctl_name2oid, "I", "");
 
 static int
@@ -827,7 +829,8 @@ sysctl_sysctl_oidfmt(SYSCTL_HANDLER_ARGS)
 }
 
 
-SYSCTL_NODE(_sysctl, 4, oidfmt, CTLFLAG_RD, sysctl_sysctl_oidfmt, "");
+SYSCTL_NODE(_sysctl, 4, oidfmt, CTLFLAG_RD | CTLFLAG_NOLOCK,
+	    sysctl_sysctl_oidfmt, "");
 
 static int
 sysctl_sysctl_oiddescr(SYSCTL_HANDLER_ARGS)
@@ -845,7 +848,8 @@ sysctl_sysctl_oiddescr(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
-SYSCTL_NODE(_sysctl, 5, oiddescr, CTLFLAG_RD, sysctl_sysctl_oiddescr, "");
+SYSCTL_NODE(_sysctl, 5, oiddescr, CTLFLAG_RD | CTLFLAG_NOLOCK,
+	    sysctl_sysctl_oiddescr, "");
 
 /*
  * Default "handler" functions.
