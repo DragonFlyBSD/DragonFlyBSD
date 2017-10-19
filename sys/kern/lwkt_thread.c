@@ -341,6 +341,7 @@ lwkt_gdinit(struct globaldata *gd)
 {
     TAILQ_INIT(&gd->gd_tdrunq);
     TAILQ_INIT(&gd->gd_tdallq);
+    lockinit(&gd->gd_sysctllock, "sysctl", 0, LK_CANRECURSE);
 }
 
 /*

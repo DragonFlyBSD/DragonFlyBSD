@@ -62,18 +62,7 @@ static MALLOC_DEFINE(M_SYSCTLOID, "sysctloid", "sysctl dynamic oids");
  * provided for the few places in the kernel which need to use that
  * API rather than using the dynamic API.  Use of the dynamic API is
  * strongly encouraged for most code.
- *
- * The sysctlmemlock is used to limit the amount of user memory wired for
- * sysctl requests.  This is implemented by serializing any userland
- * sysctl requests larger than a single page via an exclusive lock.
  */
-struct lock sysctllock;
-static struct lock sysctlmemlock;
-
-#define	SYSCTL_INIT()		lockinit(&sysctllock,			\
-				    "sysctl lock", 0, LK_CANRECURSE)
-#define	SYSCTL_SLEEP(ch, wmesg, timo)					\
-				lksleep(ch, &sysctllock, 0, wmesg, timo)
 
 static int	sysctl_root(SYSCTL_HANDLER_ARGS);
 static void	sysctl_register_oid_int(struct sysctl_oid *oipd);
@@ -366,7 +355,7 @@ sysctl_remove_oid_locked(struct sysctl_oid *oidp, int del, int recurse)
 					return (ENOTEMPTY);
 				}
 				error = sysctl_remove_oid_locked(p, del,
-				    recurse);
+								 recurse);
 				if (error)
 					return (error);
 			}
@@ -392,7 +381,11 @@ sysctl_remove_oid_locked(struct sysctl_oid *oidp, int del, int recurse)
 			 */
 			while (oidp->oid_running > 0) {
 				oidp->oid_kind |= CTLFLAG_DYING;
-				SYSCTL_SLEEP(&oidp->oid_running, "oidrm", 0);
+				tsleep_interlock(&oidp->oid_running, 0);
+				SYSCTL_XUNLOCK();
+				tsleep(&oidp->oid_running, PINTERLOCKED,
+				       "oidrm", 0);
+				SYSCTL_XLOCK();
 			}
 			if (oidp->oid_descr)
 				kfree(__DECONST(char *, oidp->oid_descr),
@@ -524,8 +517,6 @@ sysctl_register_all(void *arg)
 {
 	struct sysctl_oid **oidp;
 
-	lockinit(&sysctlmemlock, "sysctl mem", 0, LK_CANRECURSE);
-	SYSCTL_INIT();
 	SYSCTL_XLOCK();
 	SET_FOREACH(oidp, sysctl_set)
 		sysctl_register_oid(*oidp);
@@ -1219,12 +1210,14 @@ sysctl_root(SYSCTL_HANDLER_ARGS)
 	 * Default oid locking is exclusive when modifying (newptr),
 	 * shared otherwise, unless overridden with a control flag.
 	 */
-	lktype = (req->newptr != NULL) ? LK_EXCLUSIVE : LK_SHARED;
-	if (oid->oid_kind & CTLFLAG_SHLOCK)
-		lktype = LK_SHARED;
-	if (oid->oid_kind & CTLFLAG_EXLOCK)
-		lktype = LK_EXCLUSIVE;
-	lockmgr(&oid->oid_lock, lktype);
+	if ((oid->oid_kind & CTLFLAG_NOLOCK) == 0) {
+		lktype = (req->newptr != NULL) ? LK_EXCLUSIVE : LK_SHARED;
+		if (oid->oid_kind & CTLFLAG_SHLOCK)
+			lktype = LK_SHARED;
+		if (oid->oid_kind & CTLFLAG_EXLOCK)
+			lktype = LK_EXCLUSIVE;
+		lockmgr(&oid->oid_lock, lktype);
+	}
 
 	if ((oid->oid_kind & CTLTYPE) == CTLTYPE_NODE)
 		error = oid->oid_handler(oid, (int *)arg1 + indx, arg2 - indx,
@@ -1232,8 +1225,9 @@ sysctl_root(SYSCTL_HANDLER_ARGS)
 	else
 		error = oid->oid_handler(oid, oid->oid_arg1, oid->oid_arg2,
 					 req);
-	lockmgr(&oid->oid_lock, LK_RELEASE);
 
+	if ((oid->oid_kind & CTLFLAG_NOLOCK) == 0)
+		lockmgr(&oid->oid_lock, LK_RELEASE);
 	return (error);
 }
 
@@ -1272,7 +1266,7 @@ userland_sysctl(int *name, u_int namelen,
 		void *old, size_t *oldlenp, int inkernel,
 		void *new, size_t newlen, size_t *retval)
 {
-	int error = 0, memlocked;
+	int error = 0;
 	struct sysctl_req req;
 
 	bzero(&req, sizeof req);
@@ -1291,15 +1285,14 @@ userland_sysctl(int *name, u_int namelen,
 	}
 	req.validlen = req.oldlen;
 
-	if (old) {
-		if (!useracc(old, req.oldlen, VM_PROT_WRITE))
-			return (EFAULT);
+	/*
+	 * NOTE: User supplied buffers are not guaranteed to be good,
+	 *	 the sysctl copyins and copyouts can fail.
+	 */
+	if (old)
 		req.oldptr= old;
-	}
 
 	if (new != NULL) {
-		if (!useracc(new, newlen, VM_PROT_READ))
-			return (EFAULT);
 		req.newlen = newlen;
 		req.newptr = new;
 	}
@@ -1314,12 +1307,6 @@ userland_sysctl(int *name, u_int namelen,
 	if (KTRPOINT(curthread, KTR_SYSCTL))
 		ktrsysctl(name, namelen);
 #endif
-
-	if (req.oldlen > PAGE_SIZE) {
-		memlocked = 1;
-		lockmgr(&sysctlmemlock, LK_EXCLUSIVE);
-	} else
-		memlocked = 0;
 
 	for (;;) {
 		req.oldidx = 0;
@@ -1336,9 +1323,6 @@ userland_sysctl(int *name, u_int namelen,
 	if (req.lock == REQ_WIRED && req.validlen > 0)
 		vsunlock(req.oldptr, req.validlen);
 #endif
-	if (memlocked)
-		lockmgr(&sysctlmemlock, LK_RELEASE);
-
 	if (error && error != ENOMEM)
 		return (error);
 
@@ -1389,4 +1373,33 @@ sbuf_new_for_sysctl(struct sbuf *s, char *buf, int length,
 	s = sbuf_new(s, buf, length, SBUF_FIXEDLEN);
 	sbuf_set_drain(s, sbuf_sysctl_drain, req);
 	return (s);
+}
+
+/*
+ * The exclusive sysctl lock only protects its topology, and is
+ * very expensive, but allows us to use a pcpu shared lock for
+ * critical path accesses.
+ */
+void
+_sysctl_xlock(void)
+{
+	globaldata_t gd;
+	int i;
+
+	for (i = 0; i < ncpus; ++i) {
+		gd = globaldata_find(i);
+		lockmgr(&gd->gd_sysctllock, LK_EXCLUSIVE);
+	}
+}
+
+void
+_sysctl_xunlock(void)
+{
+	globaldata_t gd;
+	int i;
+
+	for (i = 0; i < ncpus; ++i) {
+		gd = globaldata_find(i);
+		lockmgr(&gd->gd_sysctllock, LK_RELEASE);
+	}
 }

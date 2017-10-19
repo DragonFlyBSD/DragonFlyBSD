@@ -90,6 +90,9 @@
 #ifndef _SYS_INDEFINITE_H_
 #include <sys/indefinite.h>
 #endif
+#ifndef _SYS_LOCK_H_
+#include <sys/lock.h>
+#endif
 
 /*
  * This structure maps out the global data that needs to be kept on a
@@ -193,6 +196,7 @@ struct globaldata {
 	indefinite_info_t gd_indefinite;	/* scheduler cpu-bound */
 	uint32_t	gd_loadav_nrunnable;	/* pcpu lwps nrunnable */
 	uint32_t	gd_reserved32[1];
+	struct lock	gd_sysctllock;		/* sysctl topology lock */
 	void		*gd_preserved[4];	/* future fields */
 	/* extended by <machine/globaldata.h> */
 };

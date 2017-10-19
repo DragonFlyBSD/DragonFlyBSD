@@ -90,6 +90,7 @@ struct ctlname {
 #define	CTLFLAG_DYING	0x00010000	/* Oid is being removed */
 #define CTLFLAG_SHLOCK	0x00008000	/* shlock on write (def is exlock) */
 #define CTLFLAG_EXLOCK	0x00004000	/* exlock on read (def is shlock) */
+#define CTLFLAG_NOLOCK	0x00002000	/* no lock required */
 #define CTLMASK_TYPE	0x0000000F	/* type field */
 
 /*
@@ -165,12 +166,12 @@ int sysctl_handle_opaque(SYSCTL_HANDLER_ARGS);
 
 extern struct lock sysctllock;
 
-#define	SYSCTL_XLOCK()		lockmgr(&sysctllock, LK_EXCLUSIVE)
-#define	SYSCTL_XUNLOCK()	lockmgr(&sysctllock, LK_RELEASE)
-#define	SYSCTL_SLOCK()		lockmgr(&sysctllock, LK_SHARED)
-#define	SYSCTL_SUNLOCK()	lockmgr(&sysctllock, LK_RELEASE)
+#define	SYSCTL_XLOCK()		_sysctl_xlock()
+#define	SYSCTL_XUNLOCK()	_sysctl_xunlock()
+#define	SYSCTL_SLOCK()		lockmgr(&mycpu->gd_sysctllock, LK_SHARED)
+#define	SYSCTL_SUNLOCK()	lockmgr(&mycpu->gd_sysctllock, LK_RELEASE)
 #define	SYSCTL_ASSERT_LOCKED() \
-	KKASSERT(lockstatus(&sysctllock, curthread) != 0)
+	KKASSERT(lockstatus(&mycpu->gd_sysctllock, curthread) != 0)
 
 /*
  * These functions are used to add/remove an oid from the mib.
@@ -688,6 +689,8 @@ int	sysctl_find_oid(int *name, u_int namelen, struct sysctl_oid **noid,
 			int *nindx, struct sysctl_req *req);
 
 int	sysctl_int_range(SYSCTL_HANDLER_ARGS, int low, int high);
+void	_sysctl_xlock(void);
+void	_sysctl_xunlock(void);
 
 struct sbuf;
 struct sbuf *sbuf_new_for_sysctl(struct sbuf *, char *, int,
