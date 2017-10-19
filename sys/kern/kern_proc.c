@@ -1164,6 +1164,7 @@ proc_remove_zombie(struct proc *p)
 	LIST_REMOVE(p, p_list);		/* from remove master list */
 	LIST_REMOVE(p, p_sibling);	/* and from sibling list */
 	p->p_pptr = NULL;
+	p->p_ppid = 0;
 	if (pid_doms[p->p_pid % PIDSEL_DOMAINS] != (uint8_t)time_second)
 		pid_doms[p->p_pid % PIDSEL_DOMAINS] = (uint8_t)time_second;
 	lwkt_reltoken(&prg->proc_token);

@@ -253,6 +253,7 @@ struct	proc {
 	char		p_pad1[3];
 
 	pid_t		p_pid;		/* Process identifier. */
+	pid_t		p_ppid;		/* Current parent pid */
 	LIST_ENTRY(proc) p_pglist;	/* List of processes in pgrp. */
 	struct proc	*p_pptr;	/* Pointer to parent process. */
 	LIST_ENTRY(proc) p_sibling;	/* List of sibling processes. */

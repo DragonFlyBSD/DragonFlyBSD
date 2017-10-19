@@ -551,6 +551,7 @@ exit1(int rv)
 			LIST_REMOVE(q, p_sibling);
 			LIST_INSERT_HEAD(&reproc->p_children, q, p_sibling);
 			q->p_pptr = reproc;
+			q->p_ppid = reproc->p_pid;
 			q->p_sigparent = SIGCHLD;
 
 			/*
@@ -1253,6 +1254,7 @@ proc_reparent(struct proc *child, struct proc *parent)
 		LIST_REMOVE(child, p_sibling);
 		LIST_INSERT_HEAD(&parent->p_children, child, p_sibling);
 		child->p_pptr = parent;
+		child->p_ppid = parent->p_pid;
 		lwkt_reltoken(&parent->p_token);
 		lwkt_reltoken(&child->p_token);
 		lwkt_reltoken(&opp->p_token);

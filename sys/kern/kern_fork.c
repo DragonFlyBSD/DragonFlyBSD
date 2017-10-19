@@ -625,6 +625,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 		pptr = p1;
 	}
 	p2->p_pptr = pptr;
+	p2->p_ppid = pptr->p_pid;
 	LIST_INIT(&p2->p_children);
 
 	lwkt_gettoken(&pptr->p_token);

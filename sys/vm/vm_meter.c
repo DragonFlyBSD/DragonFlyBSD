@@ -154,7 +154,7 @@ do_vmtotal_callback(struct proc *p, void *data)
 	if (p->p_flags & P_SYSTEM)
 		return(0);
 
-	lwkt_gettoken(&p->p_token);
+	lwkt_gettoken_shared(&p->p_token);
 
 	FOREACH_LWP_IN_PROC(lp, p) {
 		switch (lp->lwp_stat) {

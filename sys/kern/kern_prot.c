@@ -73,9 +73,7 @@ sys_getppid(struct getppid_args *uap)
 {
 	struct proc *p = curproc;
 
-	lwkt_gettoken_shared(&p->p_token);
-	uap->sysmsg_result = p->p_pptr->p_pid;
-	lwkt_reltoken(&p->p_token);
+	uap->sysmsg_result = p->p_ppid;
 
 	return (0);
 }
