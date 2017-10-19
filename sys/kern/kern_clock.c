@@ -1717,6 +1717,11 @@ tsc_delay(int ns)
 
 	clk = tsc_get_target(ns);
 	cpu_pause();
-	while (tsc_test_target(clk) == 0)
+	cpu_pause();
+	while (tsc_test_target(clk) == 0) {
 		cpu_pause();
+		cpu_pause();
+		cpu_pause();
+		cpu_pause();
+	}
 }
