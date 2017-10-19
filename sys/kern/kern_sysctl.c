@@ -1216,7 +1216,15 @@ sysctl_root(SYSCTL_HANDLER_ARGS)
 			lktype = LK_SHARED;
 		if (oid->oid_kind & CTLFLAG_EXLOCK)
 			lktype = LK_EXCLUSIVE;
+#if 1
 		lockmgr(&oid->oid_lock, lktype);
+#else
+		/* DEBUGGING */
+		if (lockmgr(&oid->oid_lock, lktype | LK_SLEEPFAIL)) {
+			kprintf("%s\n", oid->oid_name);
+			lockmgr(&oid->oid_lock, lktype);
+		}
+#endif
 	}
 
 	if ((oid->oid_kind & CTLTYPE) == CTLTYPE_NODE)

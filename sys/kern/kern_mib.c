@@ -76,22 +76,22 @@ SYSCTL_NODE(, OID_AUTO,  compat, CTLFLAG_RW, 0,
 SYSCTL_NODE(, OID_AUTO,  security,   CTLFLAG_RW, 0,
 	"Security");
 
-SYSCTL_STRING(_kern, OID_AUTO, ident, CTLFLAG_RD,
+SYSCTL_STRING(_kern, OID_AUTO, ident, CTLFLAG_RD | CTLFLAG_NOLOCK,
     kern_ident, 0, "Kernel identifier");
 
-SYSCTL_STRING(_kern, KERN_OSRELEASE, osrelease, CTLFLAG_RD, 
+SYSCTL_STRING(_kern, KERN_OSRELEASE, osrelease, CTLFLAG_RD | CTLFLAG_NOLOCK,
     osrelease, 0, "Operating system type");
 
 SYSCTL_INT(_kern, KERN_OSREV, osrevision, CTLFLAG_RD, 
     0, BSD, "Operating system revision");
 
-SYSCTL_STRING(_kern, KERN_VERSION, version, CTLFLAG_RD, 
+SYSCTL_STRING(_kern, KERN_VERSION, version, CTLFLAG_RD | CTLFLAG_NOLOCK,
     version, 0, "Kernel version");
 
-SYSCTL_STRING(_kern, KERN_OSTYPE, ostype, CTLFLAG_RD, 
+SYSCTL_STRING(_kern, KERN_OSTYPE, ostype, CTLFLAG_RD | CTLFLAG_NOLOCK,
     ostype, 0, "Operating system type");
 
-SYSCTL_INT(_kern, KERN_OSRELDATE, osreldate, CTLFLAG_RD, 
+SYSCTL_INT(_kern, KERN_OSRELDATE, osreldate, CTLFLAG_RD,
     &osreldate, 0, "Operating system release date");
 
 SYSCTL_INT(_kern, KERN_MAXPROC, maxproc, CTLFLAG_RD, 
@@ -141,15 +141,22 @@ SYSCTL_INT(_hw, HW_PAGESIZE, pagesize, CTLFLAG_RD,
     0, PAGE_SIZE, "System memory page size");
 
 static char	platform[] = MACHINE_PLATFORM;
-SYSCTL_STRING(_hw, HW_MACHINE_PLATFORM, platform, CTLFLAG_RD,
+SYSCTL_STRING(_hw, HW_MACHINE_PLATFORM, platform, CTLFLAG_RD | CTLFLAG_NOLOCK,
     platform, 0, "Platform architecture");
 
 static char	machine_arch[] = MACHINE_ARCH;
-SYSCTL_STRING(_hw, HW_MACHINE_ARCH, machine_arch, CTLFLAG_RD,
+SYSCTL_STRING(_hw, HW_MACHINE_ARCH, machine_arch, CTLFLAG_RD | CTLFLAG_NOLOCK,
     machine_arch, 0, "Cpu architecture");
 
 char hostname[MAXHOSTNAMELEN];
 
+/*
+ * Hostname sysctl handler.  We use CTLFLAG_NOLOCK to avoid acquiring
+ * the per-oid lock.  The per-cpu SLOCK is still acquired, so to interlock
+ * against setting the hostname we relock with XLOCK.  The result is
+ * that the critical path (just reading the hostname) gets one less lock
+ * and will have improved performance.
+ */
 static int
 sysctl_hostname(SYSCTL_HANDLER_ARGS)
 {
@@ -157,6 +164,10 @@ sysctl_hostname(SYSCTL_HANDLER_ARGS)
 	struct proc *p = td ? td->td_proc : NULL;
 	int error;
 
+	if (req->newptr) {
+		SYSCTL_SUNLOCK();
+		SYSCTL_XLOCK();
+	}
 	if (p && p->p_ucred->cr_prison) {
 		if (!jail_set_hostname_allowed && req->newptr)
 			return(EPERM);
@@ -167,11 +178,15 @@ sysctl_hostname(SYSCTL_HANDLER_ARGS)
 		error = sysctl_handle_string(oidp, 
 		    hostname, sizeof hostname, req);
 	}
+	if (req->newptr) {
+		SYSCTL_XUNLOCK();
+		SYSCTL_SLOCK();
+	}
 	return (error);
 }
 
 SYSCTL_PROC(_kern, KERN_HOSTNAME, hostname, 
-       CTLTYPE_STRING|CTLFLAG_RW|CTLFLAG_PRISON,
+       CTLTYPE_STRING | CTLFLAG_RW | CTLFLAG_PRISON | CTLFLAG_NOLOCK,
        0, 0, sysctl_hostname, "A", "Hostname");
 
 int securelevel = -1;

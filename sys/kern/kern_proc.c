@@ -1928,51 +1928,67 @@ sysctl_kern_proc_sigtramp(SYSCTL_HANDLER_ARGS)
 
 SYSCTL_NODE(_kern, KERN_PROC, proc, CTLFLAG_RD,  0, "Process table");
 
-SYSCTL_PROC(_kern_proc, KERN_PROC_ALL, all, CTLFLAG_RD|CTLTYPE_STRUCT,
+SYSCTL_PROC(_kern_proc, KERN_PROC_ALL, all,
+	CTLFLAG_RD | CTLTYPE_STRUCT | CTLFLAG_NOLOCK,
 	0, 0, sysctl_kern_proc, "S,proc", "Return entire process table");
 
-SYSCTL_NODE(_kern_proc, KERN_PROC_PGRP, pgrp, CTLFLAG_RD, 
+SYSCTL_NODE(_kern_proc, KERN_PROC_PGRP, pgrp,
+	CTLFLAG_RD | CTLFLAG_NOLOCK,
 	sysctl_kern_proc, "Process table");
 
-SYSCTL_NODE(_kern_proc, KERN_PROC_TTY, tty, CTLFLAG_RD, 
+SYSCTL_NODE(_kern_proc, KERN_PROC_TTY, tty,
+	CTLFLAG_RD | CTLFLAG_NOLOCK,
 	sysctl_kern_proc, "Process table");
 
-SYSCTL_NODE(_kern_proc, KERN_PROC_UID, uid, CTLFLAG_RD, 
+SYSCTL_NODE(_kern_proc, KERN_PROC_UID, uid,
+	CTLFLAG_RD | CTLFLAG_NOLOCK,
 	sysctl_kern_proc, "Process table");
 
-SYSCTL_NODE(_kern_proc, KERN_PROC_RUID, ruid, CTLFLAG_RD, 
+SYSCTL_NODE(_kern_proc, KERN_PROC_RUID, ruid,
+	CTLFLAG_RD | CTLFLAG_NOLOCK,
 	sysctl_kern_proc, "Process table");
 
-SYSCTL_NODE(_kern_proc, KERN_PROC_PID, pid, CTLFLAG_RD, 
+SYSCTL_NODE(_kern_proc, KERN_PROC_PID, pid,
+	CTLFLAG_RD | CTLFLAG_NOLOCK,
 	sysctl_kern_proc, "Process table");
 
-SYSCTL_NODE(_kern_proc, (KERN_PROC_ALL | KERN_PROC_FLAG_LWP), all_lwp, CTLFLAG_RD,
+SYSCTL_NODE(_kern_proc, (KERN_PROC_ALL | KERN_PROC_FLAG_LWP), all_lwp,
+	CTLFLAG_RD | CTLFLAG_NOLOCK,
 	sysctl_kern_proc, "Process table");
 
-SYSCTL_NODE(_kern_proc, (KERN_PROC_PGRP | KERN_PROC_FLAG_LWP), pgrp_lwp, CTLFLAG_RD, 
+SYSCTL_NODE(_kern_proc, (KERN_PROC_PGRP | KERN_PROC_FLAG_LWP), pgrp_lwp,
+	CTLFLAG_RD | CTLFLAG_NOLOCK,
 	sysctl_kern_proc, "Process table");
 
-SYSCTL_NODE(_kern_proc, (KERN_PROC_TTY | KERN_PROC_FLAG_LWP), tty_lwp, CTLFLAG_RD, 
+SYSCTL_NODE(_kern_proc, (KERN_PROC_TTY | KERN_PROC_FLAG_LWP), tty_lwp,
+	CTLFLAG_RD | CTLFLAG_NOLOCK,
 	sysctl_kern_proc, "Process table");
 
-SYSCTL_NODE(_kern_proc, (KERN_PROC_UID | KERN_PROC_FLAG_LWP), uid_lwp, CTLFLAG_RD, 
+SYSCTL_NODE(_kern_proc, (KERN_PROC_UID | KERN_PROC_FLAG_LWP), uid_lwp,
+	CTLFLAG_RD | CTLFLAG_NOLOCK,
 	sysctl_kern_proc, "Process table");
 
-SYSCTL_NODE(_kern_proc, (KERN_PROC_RUID | KERN_PROC_FLAG_LWP), ruid_lwp, CTLFLAG_RD, 
+SYSCTL_NODE(_kern_proc, (KERN_PROC_RUID | KERN_PROC_FLAG_LWP), ruid_lwp,
+	CTLFLAG_RD | CTLFLAG_NOLOCK,
 	sysctl_kern_proc, "Process table");
 
-SYSCTL_NODE(_kern_proc, (KERN_PROC_PID | KERN_PROC_FLAG_LWP), pid_lwp, CTLFLAG_RD, 
+SYSCTL_NODE(_kern_proc, (KERN_PROC_PID | KERN_PROC_FLAG_LWP), pid_lwp,
+	CTLFLAG_RD | CTLFLAG_NOLOCK,
 	sysctl_kern_proc, "Process table");
 
-SYSCTL_NODE(_kern_proc, KERN_PROC_ARGS, args, CTLFLAG_RW | CTLFLAG_ANYBODY,
+SYSCTL_NODE(_kern_proc, KERN_PROC_ARGS, args,
+	CTLFLAG_RW | CTLFLAG_ANYBODY | CTLFLAG_NOLOCK,
 	sysctl_kern_proc_args, "Process argument list");
 
-SYSCTL_NODE(_kern_proc, KERN_PROC_CWD, cwd, CTLFLAG_RD | CTLFLAG_ANYBODY,
+SYSCTL_NODE(_kern_proc, KERN_PROC_CWD, cwd,
+	CTLFLAG_RD | CTLFLAG_ANYBODY | CTLFLAG_NOLOCK,
 	sysctl_kern_proc_cwd, "Process argument list");
 
-static SYSCTL_NODE(_kern_proc, KERN_PROC_PATHNAME, pathname, CTLFLAG_RD,
+static SYSCTL_NODE(_kern_proc, KERN_PROC_PATHNAME, pathname,
+	CTLFLAG_RD | CTLFLAG_NOLOCK,
 	sysctl_kern_proc_pathname, "Process executable path");
 
-SYSCTL_PROC(_kern_proc, KERN_PROC_SIGTRAMP, sigtramp, CTLFLAG_RD|CTLTYPE_STRUCT,
+SYSCTL_PROC(_kern_proc, KERN_PROC_SIGTRAMP, sigtramp,
+	CTLFLAG_RD | CTLTYPE_STRUCT | CTLFLAG_NOLOCK,
         0, 0, sysctl_kern_proc_sigtramp, "S,sigtramp",
         "Return sigtramp address range");

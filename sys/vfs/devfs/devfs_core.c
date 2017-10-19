@@ -2669,11 +2669,11 @@ devfs_sysctl_devname_helper(SYSCTL_HANDLER_ARGS)
 	cdev_t	found;
 	int		error;
 
-
 	if ((error = SYSCTL_IN(req, &udev, sizeof(udev_t))))
 		return (error);
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs sysctl, received udev: %d\n", udev);
+	devfs_debug(DEVFS_DEBUG_DEBUG,
+		    "devfs sysctl, received udev: %d\n", udev);
 
 	if (udev == NOUDEV)
 		return(EINVAL);
@@ -2685,8 +2685,10 @@ devfs_sysctl_devname_helper(SYSCTL_HANDLER_ARGS)
 }
 
 
-SYSCTL_PROC(_kern, OID_AUTO, devname, CTLTYPE_OPAQUE|CTLFLAG_RW|CTLFLAG_ANYBODY,
-			NULL, 0, devfs_sysctl_devname_helper, "", "helper for devname(3)");
+SYSCTL_PROC(_kern, OID_AUTO, devname,
+	    CTLTYPE_OPAQUE | CTLFLAG_RW | CTLFLAG_ANYBODY | CTLFLAG_NOLOCK,
+	    NULL, 0, devfs_sysctl_devname_helper, "",
+	    "helper for devname(3)");
 
 SYSCTL_NODE(_vfs, OID_AUTO, devfs, CTLFLAG_RW, 0, "devfs");
 TUNABLE_INT("vfs.devfs.debug", &devfs_debug_enable);

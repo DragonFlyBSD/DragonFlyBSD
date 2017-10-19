@@ -448,7 +448,7 @@ SYSCTL_PROC(_kern, OID_AUTO, rand_mode, CTLTYPE_STRING | CTLFLAG_RW, NULL, 0,
 
 
 /*
- * Called from early boot
+ * Called from early boot (pre-SMP)
  */
 void
 rand_initialize(void)

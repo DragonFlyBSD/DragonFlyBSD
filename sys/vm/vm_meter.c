@@ -91,8 +91,9 @@ SYSCTL_UINT(_vm, VM_V_PAGEOUT_FREE_MIN, v_pageout_free_min,
 SYSCTL_UINT(_vm, OID_AUTO, v_free_severe,
 	CTLFLAG_RW, &vmstats.v_free_severe, 0, "");
 
-SYSCTL_STRUCT(_vm, VM_LOADAVG, loadavg, CTLFLAG_RD, 
-    &averunnable, loadavg, "Machine loadaverage history");
+SYSCTL_STRUCT(_vm, VM_LOADAVG, loadavg,
+	CTLFLAG_RD | CTLFLAG_NOLOCK,
+	&averunnable, loadavg, "Machine loadaverage history");
 
 static int do_vmtotal_callback(struct proc *p, void *data);
 
