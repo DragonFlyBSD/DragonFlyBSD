@@ -71,7 +71,7 @@ struct acpi_semaphore {
 
 #ifndef ACPI_NO_SEMAPHORES
 #ifndef ACPI_SEMAPHORES_MAX_PENDING
-#define ACPI_SEMAPHORES_MAX_PENDING	4
+#define ACPI_SEMAPHORES_MAX_PENDING	0x1FFFFFFF
 #endif
 static int	acpi_semaphore_debug = 0;
 TUNABLE_INT("debug.acpi_semaphore_debug", &acpi_semaphore_debug);
