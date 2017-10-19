@@ -1274,7 +1274,7 @@ acpi_eval_osc(device_t dev, ACPI_HANDLE handle, const char *uuidstr,
     arglist.Pointer = arg;
     arglist.Count = 4;
     arg[0].Type = ACPI_TYPE_BUFFER;
-    arg[0].Buffer.Length = ACPI_UUID_LENGTH
+    arg[0].Buffer.Length = ACPI_UUID_LENGTH;
     arg[0].Buffer.Pointer = oscuuid;		/* UUID */
     arg[1].Type = ACPI_TYPE_INTEGER;
     arg[1].Integer.Value = revision;		/* revision */
