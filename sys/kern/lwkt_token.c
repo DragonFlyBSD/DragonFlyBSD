@@ -144,9 +144,6 @@ struct lwkt_token vnode_token = LWKT_TOKEN_INITIALIZER(vnode_token);
 static int lwkt_token_spin = 5;
 SYSCTL_INT(_lwkt, OID_AUTO, token_spin, CTLFLAG_RW,
     &lwkt_token_spin, 0, "Decontention spin loops");
-static int lwkt_token_delay = 0;
-SYSCTL_INT(_lwkt, OID_AUTO, token_delay, CTLFLAG_RW,
-    &lwkt_token_delay, 0, "Decontention spin delay in ns");
 
 /*
  * The collision count is bumped every time the LWKT scheduler fails
@@ -175,17 +172,6 @@ SYSCTL_LONG(_lwkt, OID_AUTO, vnode_collisions, CTLFLAG_RW,
 int tokens_debug_output;
 SYSCTL_INT(_lwkt, OID_AUTO, tokens_debug_output, CTLFLAG_RW,
     &tokens_debug_output, 0, "Generate stack trace N times");
-
-
-#ifdef DEBUG_LOCKS_LATENCY
-
-static long tokens_add_latency;
-SYSCTL_LONG(_debug, OID_AUTO, tokens_add_latency, CTLFLAG_RW,
-	    &tokens_add_latency, 0,
-	    "Add spinlock latency");
-
-#endif
-
 
 static int _lwkt_getalltokens_sorted(thread_t td);
 
@@ -284,7 +270,9 @@ _lwkt_trytokref(lwkt_tokref_t ref, thread_t td, long mode)
 				 * Our thread already holds the exclusive
 				 * bit, we treat this tokref as a shared
 				 * token (sorta) to make the token release
-				 * code easier.
+				 * code easier.  Treating this as a shared
+				 * token allows us to simply increment the
+				 * count field.
 				 *
 				 * NOTE: oref cannot race above if it
 				 *	 happens to be ours, so we're good.
@@ -326,13 +314,21 @@ _lwkt_trytokref(lwkt_tokref_t ref, thread_t td, long mode)
 		 * Attempt to get a shared token.  Note that TOK_EXCLREQ
 		 * for shared tokens simply means the caller intends to
 		 * block.  We never actually set the bit in tok->t_count.
+		 *
+		 * Due to the token's no-deadlock guarantee, and complications
+		 * created by the sorted reacquisition code, we can only
+		 * give exclusive requests priority over shared requests
+		 * in situations where the thread holds only one token.
 		 */
 		count = tok->t_count;
 
 		for (;;) {
 			oref = tok->t_ref;	/* can be NULL */
 			cpu_ccfence();
-			if ((count & (TOK_EXCLUSIVE/*|TOK_EXCLREQ*/)) == 0) {
+			if ((count & (TOK_EXCLUSIVE|TOK_EXCLREQ)) == 0 ||
+			    ((count & TOK_EXCLUSIVE) == 0 &&
+			    td->td_toks_stop != &td->td_toks_base + 1)
+			) {
 				/*
 				 * It may be possible to get the token shared.
 				 */
@@ -369,27 +365,13 @@ _lwkt_trytokref_spin(lwkt_tokref_t ref, thread_t td, long mode)
 {
 	int spin;
 
-	if (_lwkt_trytokref(ref, td, mode)) {
-#ifdef DEBUG_LOCKS_LATENCY
-		long j;
-		for (j = tokens_add_latency; j > 0; --j)
-			cpu_ccfence();
-#endif
+	if (_lwkt_trytokref(ref, td, mode))
 		return TRUE;
-	}
 	for (spin = lwkt_token_spin; spin > 0; --spin) {
-		if (lwkt_token_delay)
-			tsc_delay(lwkt_token_delay);
-		else
-			cpu_pause();
-		if (_lwkt_trytokref(ref, td, mode)) {
-#ifdef DEBUG_LOCKS_LATENCY
-			long j;
-			for (j = tokens_add_latency; j > 0; --j)
-				cpu_ccfence();
-#endif
+		cpu_pause();
+		cpu_pause();
+		if (_lwkt_trytokref(ref, td, mode))
 			return TRUE;
-		}
 	}
 	return FALSE;
 }
@@ -557,6 +539,9 @@ _lwkt_getalltokens_sorted(thread_t td)
 	 *
 	 * NOTE: Recursively acquired tokens are ordered the same as in the
 	 *	 td_toks_array so we can always get the earliest one first.
+	 *	 This is particularly important when a token is acquired
+	 *	 exclusively multiple times, as only the first acquisition
+	 *	 is treated as an exclusive token.
 	 */
 	i = 0;
 	scan = &td->td_toks_base;

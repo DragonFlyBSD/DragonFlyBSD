@@ -82,6 +82,10 @@ struct intrframe;
  * running.  If the thread blocks, other threads can run holding the same
  * token(s).  The tokens are reacquired when the original thread resumes.
  *
+ * Tokens guarantee that no deadlock can happen regardless of type or
+ * ordering.  However, obtaining the same token first shared, then
+ * stacking exclusive, is not allowed and will panic.
+ *
  * A thread can depend on its serialization remaining intact through a
  * preemption.  An interrupt which attempts to use the same token as the
  * thread being preempted will reschedule itself for non-preemptive
@@ -93,13 +97,23 @@ struct intrframe;
  * thread has a stack of tokref's to keep track of acquired tokens.  Multiple
  * tokref's may reference the same token.
  *
- * Tokens can be held shared or exclusive.   An exclusive holder is able
- * to set the TOK_EXCLUSIVE bit in t_count as long as no bit in the count
- * mask is set.  If unable to accomplish this TOK_EXCLREQ can be set instead
- * which prevents any new shared acquisitions while the exclusive requestor
- * spins in the scheduler.  A shared holder can bump t_count by the increment
- * value as long as neither TOK_EXCLUSIVE or TOK_EXCLREQ is set, else spin
- * in the scheduler.
+ * EXCLUSIVE TOKENS
+ *	Acquiring an exclusive token requires acquiring the EXCLUSIVE bit
+ *	with count == 0.  If the exclusive bit cannot be acquired, EXCLREQ
+ *	is set.  Once acquired, EXCLREQ is cleared (but could get set by
+ *	another thread also trying for an exclusive lock at any time).
+ *
+ * SHARED TOKENS
+ *	Acquiring a shared token requires waiting for the EXCLUSIVE bit
+ *	to be cleared and then acquiring a count.  A shared lock request
+ *	can temporarily acquire a count and then back it out if it is
+ *	unable to obtain the EXCLUSIVE bit, allowing fetchadd to be used.
+ *
+ *	A thread attempting to get a single shared token will defer to
+ *	pending exclusive requesters.  However, a thread already holding
+ *	one or more tokens and trying to get an additional shared token
+ *	cannot defer to exclusive requesters because doing so can lead
+ *	to a deadlock.
  *
  * Multiple exclusive tokens are handled by treating the additional tokens
  * as a special case of the shared token, incrementing the count value.  This
