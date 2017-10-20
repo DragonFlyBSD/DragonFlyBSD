@@ -173,7 +173,7 @@ cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
         /* Copy the LDT, if necessary. */
         if (pcb2->pcb_ldt != NULL) {
 		if (flags & RFMEM) {
-			pcb2->pcb_ldt->ldt_refcnt++;
+			atomic_add_int(&pcb2->pcb_ldt->ldt_refcnt, 1);
 		} else {
 			pcb2->pcb_ldt = user_ldt_alloc(pcb2,
 				pcb2->pcb_ldt->ldt_len);

@@ -258,7 +258,6 @@ extern struct user_segment_descriptor gdt[];
 extern struct soft_segment_descriptor gdt_segs[];
 extern struct gate_descriptor idt_arr[MAXCPU][NIDT];
 extern struct region_descriptor r_idt_arr[];
-extern struct mtx dt_lock;
 
 void	lgdt(struct region_descriptor *rdp);
 void	sdtossd(struct user_segment_descriptor *sdp,

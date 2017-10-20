@@ -91,9 +91,15 @@ cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
 
 	if ((flags & RFPROC) == 0) {
 		if ((flags & RFMEM) == 0) {
-			/* unshare user LDT */
+			/*
+			 * Unshare user LDT.  > 1 test is MPSAFE.  While
+			 * it can potentially race a 2->1 transition, the
+			 * worst that happens is that we do an unnecessary
+			 * ldt replacement.
+			 */
 			struct pcb *pcb1 = lp1->lwp_thread->td_pcb;
 			struct pcb_ldt *pcb_ldt = pcb1->pcb_ldt;
+
 			if (pcb_ldt && pcb_ldt->ldt_refcnt > 1) {
 				pcb_ldt = user_ldt_alloc(pcb1,pcb_ldt->ldt_len);
 				user_ldt_free(pcb1);
@@ -171,10 +177,10 @@ cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
         /* Copy the LDT, if necessary. */
         if (pcb2->pcb_ldt != NULL) {
 		if (flags & RFMEM) {
-			pcb2->pcb_ldt->ldt_refcnt++;
+			atomic_add_int(&pcb2->pcb_ldt->ldt_refcnt, 1);
 		} else {
 			pcb2->pcb_ldt = user_ldt_alloc(pcb2,
-				pcb2->pcb_ldt->ldt_len);
+						       pcb2->pcb_ldt->ldt_len);
 		}
         }
 	bcopy(&lp1->lwp_thread->td_tls, &lp2->lwp_thread->td_tls,
