@@ -54,14 +54,14 @@ CRUNCH_ALIAS_rm= unlink
 
 
 CRUNCH_SRCDIRS+= usr.bin
-CRUNCH_PROGS_usr.bin= du less undo ssh
+CRUNCH_PROGS_usr.bin= du less undo ssh fetch
 CRUNCH_ALIAS_less= more
 CRUNCH_ALIAS_ssh= scp
 
 CRUNCH_KEEP_ssh= roaming_write roaming_read add_recv_bytes
 
 CRUNCH_LIBS+=	${PRIVATELIB_LDFLAGS}
-CRUNCH_LIBS+=	-lprivate_ssh -lprivate_crypto -lz -lpthread
+CRUNCH_LIBS+=	-lfetch -lprivate_ssh -lprivate_ssl -lprivate_crypto -lz -lpthread
 
 .include <bsd.crunchgen.mk>
 .include <bsd.prog.mk>
