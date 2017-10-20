@@ -1492,11 +1492,7 @@ sf_buf_mfree(void *arg)
 	m = sf_buf_page(sf);
 	if (sf_buf_free(sf)) {
 		/* sf invalid now */
-		/*
-		vm_page_busy_wait(m, FALSE, "sockpgf");
-		vm_page_wakeup(m);
-		*/
-		vm_page_unhold(m);
+		vm_page_sbusy_drop(m);
 #if 0
 		if (m->object == NULL &&
 		    m->wire_count == 0 &&
@@ -1662,15 +1658,15 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 	so = (struct socket *)fp->f_data;
 	if (so->so_type != SOCK_STREAM) {
 		error = EINVAL;
-		goto done;
+		goto done1;
 	}
 	if ((so->so_state & SS_ISCONNECTED) == 0) {
 		error = ENOTCONN;
-		goto done;
+		goto done1;
 	}
 	if (offset < 0) {
 		error = EINVAL;
-		goto done;
+		goto done1;
 	}
 
 	/*
@@ -1680,15 +1676,18 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 	 */
 	if ((so->so_snd.ssb_flags & (SSB_PREALLOC | SSB_STOPSUPP)) == 0) {
 		error = EINVAL;
-		goto done;
+		goto done1;
 	}
 
 	*sbytes = 0;
 	xbytes = 0;
+
 	/*
 	 * Protect against multiple writers to the socket.
+	 * We need at least a shared lock on the VM object
 	 */
 	ssb_lock(&so->so_snd, M_WAITOK);
+	vm_object_hold_shared(obj);
 
 	/*
 	 * Loop through the pages in the file, starting with the requested
@@ -1696,12 +1695,16 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 	 * into an sf_buf, attach an mbuf header to the sf_buf, and queue
 	 * it on the socket.
 	 */
-	for (off = offset; ; off += xfsize, *sbytes += xfsize + hbytes, xbytes += xfsize) {
+	for (off = offset; ;
+	     off += xfsize, *sbytes += xfsize + hbytes, xbytes += xfsize) {
 		vm_pindex_t pindex;
 		vm_offset_t pgoff;
 		long space;
+		int loops;
 
 		pindex = OFF_TO_IDX(off);
+		loops = 0;
+
 retry_lookup:
 		/*
 		 * Calculate the amount to transfer. Not to exceed a page,
@@ -1731,77 +1734,38 @@ retry_lookup:
 				error = EPIPE;
 			else
 				error = EAGAIN;
-			ssb_unlock(&so->so_snd);
 			goto done;
 		}
+
 		/*
 		 * Attempt to look up the page.  
 		 *
-		 * Allocate if not found, wait and loop if busy, then hold the page.
-		 * We hold rather than wire the page because we do not want to prevent
-		 * filesystem truncation operations from occuring on the file.  This
-		 * can happen even under normal operation if the file being sent is
-		 * remove()d after the sendfile() call completes, because the socket buffer
-		 * may still be draining.  tmpfs will crash if we try to use wire.
+		 * Try to find the data using a shared vm_object token and
+		 * vm_page_lookup_sbusy_try() first.
+		 *
+		 * If data is missing, use a UIO_NOCOPY VOP_READ to load
+		 * the missing data and loop back up.  We avoid all sorts
+		 * of problems by not trying to hold onto the page during
+		 * the I/O.
+		 *
+		 * NOTE: The soft-busy will temporary block filesystem
+		 *	 truncation operations when a file is removed
+		 *	 while the sendfile is running.
 		 */
-		vm_object_hold(obj);
-		pg = vm_page_lookup_busy_try(obj, pindex, TRUE, &error);
-		if (error) {
-			vm_page_sleep_busy(pg, TRUE, "sfpbsy");
-			vm_object_drop(obj);
-			goto retry_lookup;
-		}
+		pg = vm_page_lookup_sbusy_try(obj, pindex, pgoff, xfsize);
 		if (pg == NULL) {
-			pg = vm_page_alloc(obj, pindex, VM_ALLOC_NORMAL |
-							VM_ALLOC_NULL_OK);
-			if (pg == NULL) {
-				vm_wait(0);
-				vm_object_drop(obj);
-				goto retry_lookup;
-			}
-		}
-		vm_page_hold(pg);
-		vm_object_drop(obj);
-
-		/*
-		 * If page is not valid for what we need, initiate I/O
-		 */
-
-		if (!pg->valid || !vm_page_is_valid(pg, pgoff, xfsize)) {
 			struct uio auio;
 			struct iovec aiov;
 			int bsize;
 
-			/*
-			 * Ensure that our page is still around when the I/O 
-			 * completes.
-			 *
-			 * Ensure that our page is not modified while part of
-			 * a mbuf as this could mess up tcp checksums, DMA,
-			 * etc (XXX NEEDS WORK).  The softbusy is supposed to
-			 * help here but it actually doesn't.
-			 *
-			 * XXX THIS HAS MULTIPLE PROBLEMS.  The underlying
-			 *     VM pages are not protected by the soft-busy
-			 *     unless we vm_page_protect... READ them, and
-			 *     they STILL aren't protected against
-			 *     modification via the buffer cache (VOP_WRITE).
-			 *
-			 *     Fixing the second issue is particularly
-			 *     difficult.
-			 *
-			 * XXX We also can't soft-busy anyway because it can
-			 *     deadlock against the syncer doing a vfs_msync(),
-			 *     vfs_msync->vmntvnodesca->vfs_msync_scan2->
-			 *     vm_object_page_clean->(scan)-> ... page
-			 *     busy-wait.
-			 */
-			/*vm_page_io_start(pg);*/
-			vm_page_wakeup(pg);
+			if (++loops > 100000) {
+				kprintf("sendfile: VOP operation failed "
+					"to retain page\n");
+				error = EIO;
+				goto done;
+			}
 
-			/*
-			 * Get the page from backing store.
-			 */
+			vm_object_drop(obj);
 			bsize = vp->v_mount->mnt_stat.f_iosize;
 			auio.uio_iov = &aiov;
 			auio.uio_iovcnt = 1;
@@ -1812,32 +1776,26 @@ retry_lookup:
 			auio.uio_segflg = UIO_NOCOPY;
 			auio.uio_rw = UIO_READ;
 			auio.uio_td = td;
+
 			vn_lock(vp, LK_SHARED | LK_RETRY);
 			error = VOP_READ(vp, &auio, 
-				    IO_VMIO | ((MAXBSIZE / bsize) << 16),
-				    td->td_ucred);
+					 IO_VMIO | ((MAXBSIZE / bsize) << 16),
+					 td->td_ucred);
 			vn_unlock(vp);
-			vm_page_busy_wait(pg, FALSE, "sockpg");
-			/*vm_page_io_finish(pg);*/
-			if (error) {
-				vm_page_wakeup(pg);
-				vm_page_unhold(pg);
-				/* vm_page_try_to_free(pg); */
-				ssb_unlock(&so->so_snd);
-				goto done;
-			}
-		}
+			vm_object_hold_shared(obj);
 
+			if (error)
+				goto done;
+			goto retry_lookup;
+		}
 
 		/*
 		 * Get a sendfile buf. We usually wait as long as necessary,
 		 * but this wait can be interrupted.
 		 */
 		if ((sf = sf_buf_alloc(pg)) == NULL) {
-			vm_page_wakeup(pg);
-			vm_page_unhold(pg);
+			vm_page_sbusy_drop(pg);
 			/* vm_page_try_to_free(pg); */
-			ssb_unlock(&so->so_snd);
 			error = EINTR;
 			goto done;
 		}
@@ -1848,15 +1806,11 @@ retry_lookup:
 		MGETHDR(m, M_WAITOK, MT_DATA);
 		if (m == NULL) {
 			error = ENOBUFS;
-			vm_page_wakeup(pg);
-			vm_page_unhold(pg);
+			vm_page_sbusy_drop(pg);
 			/* vm_page_try_to_free(pg); */
 			sf_buf_free(sf);
-			ssb_unlock(&so->so_snd);
 			goto done;
 		}
-
-		vm_page_wakeup(pg);
 
 		m->m_ext.ext_free = sf_buf_mfree;
 		m->m_ext.ext_ref = sf_buf_ref;
@@ -1874,8 +1828,9 @@ retry_lookup:
 			m_cat(mheader, m);
 			m = mheader;
 			mheader = NULL;
-		} else
+		} else {
 			hbytes = 0;
+		}
 
 		/*
 		 * Add the buffer to the socket buffer chain.
@@ -1901,7 +1856,6 @@ retry_space:
 				so->so_error = 0;
 			}
 			m_freem(m);
-			ssb_unlock(&so->so_snd);
 			crit_exit();
 			goto done;
 		}
@@ -1918,7 +1872,6 @@ retry_space:
 		if (space < m->m_pkthdr.len && space < so->so_snd.ssb_lowat) {
 			if (fp->f_flag & FNONBLOCK) {
 				m_freem(m);
-				ssb_unlock(&so->so_snd);
 				crit_exit();
 				error = EAGAIN;
 				goto done;
@@ -1931,7 +1884,6 @@ retry_space:
 			 */
 			if (error) {
 				m_freem(m);
-				ssb_unlock(&so->so_snd);
 				crit_exit();
 				goto done;
 			}
@@ -1948,10 +1900,8 @@ retry_space:
 			error = so_pru_send(so, 0, m, NULL, NULL, td);
 
 		crit_exit();
-		if (error) {
-			ssb_unlock(&so->so_snd);
+		if (error)
 			goto done;
-		}
 	}
 	if (mheader != NULL) {
 		*sbytes += mheader->m_pkthdr.len;
@@ -1967,9 +1917,10 @@ retry_space:
 
 		mheader = NULL;
 	}
-	ssb_unlock(&so->so_snd);
-
 done:
+	vm_object_drop(obj);
+	ssb_unlock(&so->so_snd);
+done1:
 	fdrop(fp);
 done0:
 	if (mheader != NULL)
