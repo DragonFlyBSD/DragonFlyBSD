@@ -58,7 +58,7 @@ struct magazine {
 SLIST_HEAD(magazinelist, magazine);
 
 #define MAGAZINE_HDRSIZE	__offsetof(struct magazine, objects[0])
-#define MAGAZINE_CAPACITY_MAX	128
+#define MAGAZINE_CAPACITY_MAX	4096
 #define MAGAZINE_CAPACITY_MIN	4
 
 /*
