@@ -348,7 +348,8 @@ vop_helper_read_shortcut(struct vop_read_args *ap)
 		if (n == 0)
 			break;	/* hit EOF */
 
-		m = vm_page_lookup_sbusy_try(obj, OFF_TO_IDX(uio->uio_offset));
+		m = vm_page_lookup_sbusy_try(obj, OFF_TO_IDX(uio->uio_offset),
+					     0, PAGE_SIZE);
 		if (error || m == NULL) {
 			error = 0;
 			break;

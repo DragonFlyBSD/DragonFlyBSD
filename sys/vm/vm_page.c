@@ -1374,19 +1374,22 @@ VM_PAGE_DEBUG_EXT(vm_page_lookup_busy_try)(struct vm_object *object,
  * the soft busy could not be obtained, or the page data is invalid.
  */
 vm_page_t
-vm_page_lookup_sbusy_try(struct vm_object *object, vm_pindex_t pindex)
+vm_page_lookup_sbusy_try(struct vm_object *object, vm_pindex_t pindex,
+			 int pgoff, int pgbytes)
 {
 	vm_page_t m;
 
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
 	m = vm_page_rb_tree_RB_LOOKUP(&object->rb_memq, pindex);
 	if (m) {
-		if (m->valid != VM_PAGE_BITS_ALL ||
+		if ((m->valid != VM_PAGE_BITS_ALL &&
+		     !vm_page_is_valid(m, pgoff, pgbytes)) ||
 		    (m->flags & PG_FICTITIOUS)) {
 			m = NULL;
 		} else if (vm_page_sbusy_try(m)) {
 			m = NULL;
-		} else if (m->valid != VM_PAGE_BITS_ALL ||
+		} else if ((m->valid != VM_PAGE_BITS_ALL &&
+			    !vm_page_is_valid(m, pgoff, pgbytes)) ||
 			   (m->flags & PG_FICTITIOUS)) {
 			vm_page_sbusy_drop(m);
 			m = NULL;

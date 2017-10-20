@@ -3066,7 +3066,8 @@ vm_prefault_quick(pmap_t pmap, vm_offset_t addra,
 		 * and hard-busy it so we can move it out of PQ_CACHE.
 		 */
 		if ((prot & (VM_PROT_WRITE|VM_PROT_OVERRIDE_WRITE)) == 0) {
-			m = vm_page_lookup_sbusy_try(object, pindex);
+			m = vm_page_lookup_sbusy_try(object, pindex,
+						     0, PAGE_SIZE);
 			if (m == NULL)
 				break;
 			if ((m->queue - m->pc) != PQ_CACHE) {

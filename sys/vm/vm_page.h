@@ -375,7 +375,7 @@ void vm_page_initfake(vm_page_t m, vm_paddr_t paddr, vm_memattr_t memattr);
 int vm_page_insert (vm_page_t, struct vm_object *, vm_pindex_t);
 vm_page_t vm_page_lookup (struct vm_object *, vm_pindex_t);
 vm_page_t vm_page_lookup_sbusy_try(struct vm_object *object,
-		vm_pindex_t pindex);
+		vm_pindex_t pindex, int pgoff, int pgbytes);
 vm_page_t VM_PAGE_DEBUG_EXT(vm_page_lookup_busy_wait)(
 		struct vm_object *, vm_pindex_t, int, const char *
 		VM_PAGE_DEBUG_ARGS);
