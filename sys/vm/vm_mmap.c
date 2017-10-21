@@ -79,29 +79,10 @@
 #include <sys/thread2.h>
 #include <vm/vm_page2.h>
 
-static int max_proc_mmap;
+static int max_proc_mmap = 1000000;
 SYSCTL_INT(_vm, OID_AUTO, max_proc_mmap, CTLFLAG_RW, &max_proc_mmap, 0, "");
 int vkernel_enable;
 SYSCTL_INT(_vm, OID_AUTO, vkernel_enable, CTLFLAG_RW, &vkernel_enable, 0, "");
-
-/*
- * Set the maximum number of vm_map_entry structures per process.  Roughly
- * speaking vm_map_entry structures are tiny, so allowing them to eat 1/100
- * of our KVM malloc space still results in generous limits.  We want a 
- * default that is good enough to prevent the kernel running out of resources
- * if attacked from compromised user account but generous enough such that
- * multi-threaded processes are not unduly inconvenienced.
- */
-
-static void vmmapentry_rsrc_init (void *);
-SYSINIT(vmmersrc, SI_BOOT1_POST, SI_ORDER_ANY, vmmapentry_rsrc_init, NULL);
-
-static void
-vmmapentry_rsrc_init(void *dummy)
-{
-    max_proc_mmap = KvaSize / sizeof(struct vm_map_entry);
-    max_proc_mmap /= 100;
-}
 
 /*
  * MPSAFE
@@ -387,11 +368,9 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 
 	/*
 	 * Do not allow more then a certain number of vm_map_entry structures
-	 * per process.  Scale with the number of rforks sharing the map
-	 * to make the limit reasonable for threads.
+	 * per process.  0 to disable.
 	 */
-	if (max_proc_mmap && 
-	    vms->vm_map.nentries >= max_proc_mmap * vmspace_getrefs(vms)) {
+	if (max_proc_mmap && vms->vm_map.nentries >= max_proc_mmap) {
 		error = ENOMEM;
 		lwkt_reltoken(&vms->vm_map.token);
 		goto done;
