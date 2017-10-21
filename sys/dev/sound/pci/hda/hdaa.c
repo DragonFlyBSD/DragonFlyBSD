@@ -3078,11 +3078,6 @@ hdaa_audio_ctl_parse(struct hdaa_devinfo *devinfo)
 
 	cnt = 0;
 	for (i = devinfo->startnode; cnt < max && i < devinfo->endnode; i++) {
-		if (cnt >= max) {
-			device_printf(devinfo->dev, "%s: Ctl overflow!\n",
-			    __func__);
-			break;
-		}
 		w = hdaa_widget_get(devinfo, i);
 		if (w == NULL || w->enable == 0)
 			continue;
