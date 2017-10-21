@@ -31,7 +31,7 @@ settty(struct termios *t)
 {
 	int ret;
 
-	while ((ret = tcsetattr(0, TCSADRAIN,  t) == -1) && errno == EINTR)
+	while ((ret = tcsetattr(0, TCSADRAIN,  t)) == -1 && errno == EINTR)
 		continue;
 	return ret;
 }
