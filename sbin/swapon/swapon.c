@@ -238,6 +238,7 @@ docrypt(char *fs_spec, int pass)
 			break;
 		asprintf(&buf, "/sbin/cryptsetup remove %s", id);
 		system(buf);
+		free(buf);
 		free(id);
 		break;
 	case SWAPON:
