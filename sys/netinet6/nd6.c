@@ -1109,7 +1109,10 @@ nd6_rtrequest(int req, struct rtentry *rt)
 
 	if (req == RTM_RESOLVE &&
 	    (nd6_need_cache(ifp) == 0 || /* stf case */
-	     !nd6_is_addr_neighbor((struct sockaddr_in6 *)rt_key(rt), ifp))) {
+	     ((!nd6_onlink_ns_rfc4861 || rt->rt_parent == NULL ||
+	       (rt->rt_parent->rt_flags & (RTF_PRCLONING | RTF_LLINFO)) !=
+	       (RTF_PRCLONING | RTF_LLINFO)) &&
+	      !nd6_is_addr_neighbor((struct sockaddr_in6 *)rt_key(rt), ifp)))) {
 		/*
 		 * FreeBSD and BSD/OS often make a cloned host route based
 		 * on a less-specific route (e.g. the default route).
