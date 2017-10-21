@@ -219,9 +219,12 @@ struct ix_tx_ring {
 	union ixgbe_adv_tx_desc	*tx_base;
 	struct ix_tx_buf	*tx_buf;
 	bus_dma_tag_t		tx_tag;
-	uint16_t		tx_flags;
+	int8_t			tx_running;
+#define IX_TX_RUNNING		100
+#define IX_TX_RUNNING_DEC	25
+	uint8_t			tx_flags;
 #define IX_TXFLAG_ENABLED	0x1
-	uint16_t		tx_pad;
+	uint16_t		tx_nmbuf;
 	uint32_t		tx_idx;
 	uint16_t		tx_avail;
 	uint16_t		tx_next_avail;
@@ -235,6 +238,9 @@ struct ix_tx_ring {
 	uint32_t		tx_eims;
 	uint32_t		tx_eims_val;
 	struct ifsubq_watchdog	tx_watchdog;
+	struct callout		tx_gc_timer;
+
+	u_long			tx_gc;
 
 	bus_dma_tag_t		tx_base_dtag;
 	bus_dmamap_t		tx_base_map;

@@ -162,6 +162,7 @@ static void	ix_add_sysctl(struct ix_softc *);
 static void	ix_add_intr_rate_sysctl(struct ix_softc *, int,
 		    const char *, int (*)(SYSCTL_HANDLER_ARGS), const char *);
 static int	ix_sysctl_tx_wreg_nsegs(SYSCTL_HANDLER_ARGS);
+static int	ix_sysctl_tx_nmbuf(SYSCTL_HANDLER_ARGS);
 static int	ix_sysctl_rx_wreg_nsegs(SYSCTL_HANDLER_ARGS);
 static int	ix_sysctl_txd(SYSCTL_HANDLER_ARGS);
 static int	ix_sysctl_rxd(SYSCTL_HANDLER_ARGS);
@@ -209,6 +210,8 @@ static int	ix_tx_ctx_setup(struct ix_tx_ring *,
 static int	ix_tso_ctx_setup(struct ix_tx_ring *,
 		    const struct mbuf *, uint32_t *, uint32_t *);
 static void	ix_txeof(struct ix_tx_ring *, int);
+static void	ix_txgc(struct ix_tx_ring *);
+static void	ix_txgc_timer(void *);
 
 static void	ix_get_rxring_cnt(const struct ix_softc *, int *, int *);
 static int	ix_get_rxring_inuse(const struct ix_softc *, boolean_t);
@@ -309,6 +312,66 @@ TUNABLE_INT("hw.ix.direct_input", &ix_direct_input);
  */
 static const enum ixgbe_smart_speed ix_smart_speed =
     ixgbe_smart_speed_on;
+
+static __inline void
+ix_try_txgc(struct ix_tx_ring *txr, int8_t dec)
+{
+
+	if (txr->tx_running > 0) {
+		txr->tx_running -= dec;
+		if (txr->tx_running <= 0 && txr->tx_nmbuf &&
+		    txr->tx_avail < txr->tx_ndesc &&
+		    txr->tx_avail + txr->tx_intr_nsegs > txr->tx_ndesc)
+			ix_txgc(txr);
+	}
+}
+
+static void
+ix_txgc_timer(void *xtxr)
+{
+	struct ix_tx_ring *txr = xtxr;
+	struct ifnet *ifp = &txr->tx_sc->arpcom.ac_if;
+
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_UP | IFF_NPOLLING)) !=
+	    (IFF_RUNNING | IFF_UP))
+		return;
+
+	if (!lwkt_serialize_try(&txr->tx_serialize))
+		goto done;
+
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_UP | IFF_NPOLLING)) !=
+	    (IFF_RUNNING | IFF_UP)) {
+		lwkt_serialize_exit(&txr->tx_serialize);
+		return;
+	}
+	ix_try_txgc(txr, IX_TX_RUNNING_DEC);
+
+	lwkt_serialize_exit(&txr->tx_serialize);
+done:
+	callout_reset(&txr->tx_gc_timer, 1, ix_txgc_timer, txr);
+}
+
+static __inline void
+ix_tx_intr(struct ix_tx_ring *txr, int hdr)
+{
+
+	ix_txeof(txr, hdr);
+	if (!ifsq_is_empty(txr->tx_ifsq))
+		ifsq_devstart(txr->tx_ifsq);
+}
+
+static __inline void
+ix_free_txbuf(struct ix_tx_ring *txr, struct ix_tx_buf *txbuf)
+{
+
+	KKASSERT(txbuf->m_head != NULL);
+	KKASSERT(txr->tx_nmbuf > 0);
+	txr->tx_nmbuf--;
+
+	bus_dmamap_unload(txr->tx_tag, txbuf->map);
+	m_freem(txbuf->m_head);
+	txbuf->m_head = NULL;
+}
 
 static int
 ix_probe(device_t dev)
@@ -679,6 +742,7 @@ ix_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	}
 	if (idx >= 0)
 		IXGBE_WRITE_REG(&sc->hw, IXGBE_TDT(txr->tx_idx), idx);
+	txr->tx_running = IX_TX_RUNNING;
 }
 
 static int
@@ -1038,8 +1102,15 @@ ix_init(void *xsc)
 
 	ifp->if_flags |= IFF_RUNNING;
 	for (i = 0; i < sc->tx_ring_inuse; ++i) {
-		ifsq_clr_oactive(sc->tx_rings[i].tx_ifsq);
-		ifsq_watchdog_start(&sc->tx_rings[i].tx_watchdog);
+		struct ix_tx_ring *txr = &sc->tx_rings[i];
+
+		ifsq_clr_oactive(txr->tx_ifsq);
+		ifsq_watchdog_start(&txr->tx_watchdog);
+
+		if (!polling) {
+			callout_reset_bycpu(&txr->tx_gc_timer, 1,
+			    ix_txgc_timer, txr, txr->tx_intr_cpuid);
+		}
 	}
 
 	ix_set_timer_cpuid(sc, polling);
@@ -1083,9 +1154,7 @@ ix_intr(void *xsc)
 		struct ix_tx_ring *txr = &sc->tx_rings[0];
 
 		lwkt_serialize_enter(&txr->tx_serialize);
-		ix_txeof(txr, *(txr->tx_hdr));
-		if (!ifsq_is_empty(txr->tx_ifsq))
-			ifsq_devstart(txr->tx_ifsq);
+		ix_tx_intr(txr, *(txr->tx_hdr));
 		lwkt_serialize_exit(&txr->tx_serialize);
 	}
 
@@ -1417,6 +1486,7 @@ ix_encap(struct ix_tx_ring *txr, struct mbuf **m_headp,
 
 	txr->tx_avail -= nsegs;
 	txr->tx_next_avail = i;
+	txr->tx_nmbuf++;
 
 	txbuf->m_head = m_head;
 	txr->tx_buf[first].map = txbuf->map;
@@ -1624,6 +1694,9 @@ ix_stop(struct ix_softc *sc)
 		ifsq_clr_oactive(txr->tx_ifsq);
 		ifsq_watchdog_stop(&txr->tx_watchdog);
 		txr->tx_flags &= ~IX_TXFLAG_ENABLED;
+
+		txr->tx_running = 0;
+		callout_stop(&txr->tx_gc_timer);
 	}
 
 	ixgbe_reset_hw(hw);
@@ -1814,6 +1887,7 @@ ix_alloc_rings(struct ix_softc *sc)
 		txr->tx_intr_vec = -1;
 		txr->tx_intr_cpuid = -1;
 		lwkt_serialize_init(&txr->tx_serialize);
+		callout_init_mp(&txr->tx_gc_timer);
 
 		error = ix_create_tx_ring(txr);
 		if (error)
@@ -1987,6 +2061,8 @@ ix_init_tx_ring(struct ix_tx_ring *txr)
 	txr->tx_next_avail = 0;
 	txr->tx_next_clean = 0;
 	txr->tx_nsegs = 0;
+	txr->tx_nmbuf = 0;
+	txr->tx_running = 0;
 
 	/* Set number of descriptors available */
 	txr->tx_avail = txr->tx_ndesc;
@@ -2222,12 +2298,11 @@ ix_txeof(struct ix_tx_ring *txr, int hdr)
 	while (first != hdr) {
 		struct ix_tx_buf *txbuf = &txr->tx_buf[first];
 
+		KKASSERT(avail < txr->tx_ndesc);
 		++avail;
-		if (txbuf->m_head) {
-			bus_dmamap_unload(txr->tx_tag, txbuf->map);
-			m_freem(txbuf->m_head);
-			txbuf->m_head = NULL;
-		}
+
+		if (txbuf->m_head != NULL)
+			ix_free_txbuf(txr, txbuf);
 		if (++first == txr->tx_ndesc)
 			first = 0;
 	}
@@ -2238,6 +2313,43 @@ ix_txeof(struct ix_tx_ring *txr, int hdr)
 		ifsq_clr_oactive(txr->tx_ifsq);
 		txr->tx_watchdog.wd_timer = 0;
 	}
+	txr->tx_running = IX_TX_RUNNING;
+}
+
+static void
+ix_txgc(struct ix_tx_ring *txr)
+{
+	int first, hdr;
+#ifdef INVARIANTS
+	int avail;
+#endif
+
+	if (txr->tx_avail == txr->tx_ndesc)
+		return;
+
+	hdr = IXGBE_READ_REG(&txr->tx_sc->hw, IXGBE_TDH(txr->tx_idx));
+	first = txr->tx_next_clean;
+	if (first == hdr)
+		return;
+	txr->tx_gc++;
+
+#ifdef INVARIANTS
+	avail = txr->tx_avail;
+#endif
+	while (first != hdr) {
+		struct ix_tx_buf *txbuf = &txr->tx_buf[first];
+
+#ifdef INVARIANTS
+		KKASSERT(avail < txr->tx_ndesc);
+		++avail;
+#endif
+		if (txbuf->m_head != NULL)
+			ix_free_txbuf(txr, txbuf);
+		if (++first == txr->tx_ndesc)
+			first = 0;
+	}
+	if (txr->tx_nmbuf)
+		txr->tx_running = IX_TX_RUNNING;
 }
 
 static int
@@ -4017,11 +4129,8 @@ ix_free_tx_ring(struct ix_tx_ring *txr)
 	for (i = 0; i < txr->tx_ndesc; ++i) {
 		struct ix_tx_buf *txbuf = &txr->tx_buf[i];
 
-		if (txbuf->m_head != NULL) {
-			bus_dmamap_unload(txr->tx_tag, txbuf->map);
-			m_freem(txbuf->m_head);
-			txbuf->m_head = NULL;
-		}
+		if (txbuf->m_head != NULL)
+			ix_free_txbuf(txr, txbuf);
 	}
 }
 
@@ -4102,10 +4211,8 @@ ix_add_sysctl(struct ix_softc *sc)
 {
 	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->dev);
 	struct sysctl_oid *tree = device_get_sysctl_tree(sc->dev);
-#ifdef IX_RSS_DEBUG
 	char node[32];
 	int i;
-#endif
 
 	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree),
 	    OID_AUTO, "rxr", CTLFLAG_RD, &sc->rx_ring_cnt, 0, "# of RX rings");
@@ -4185,11 +4292,33 @@ do { \
 		    CTLFLAG_RW, &sc->rx_rings[i].rx_pkts, "RXed packets");
 	}
 #endif
+	for (i = 0; i < sc->tx_ring_cnt; ++i) {
+		struct ix_tx_ring *txr = &sc->tx_rings[i];
+
+		ksnprintf(node, sizeof(node), "tx%d_nmbuf", i);
+		SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO, node,
+		    CTLTYPE_INT | CTLFLAG_RD, txr, 0, ix_sysctl_tx_nmbuf, "I",
+		    "# of pending TX mbufs");
+
+		ksnprintf(node, sizeof(node), "tx%d_gc", i);
+		SYSCTL_ADD_ULONG(ctx, SYSCTL_CHILDREN(tree), OID_AUTO, node,
+		    CTLFLAG_RW, &txr->tx_gc, "# of TX desc GC");
+	}
 
 #if 0
 	ix_add_hw_stats(sc);
 #endif
 
+}
+
+static int
+ix_sysctl_tx_nmbuf(SYSCTL_HANDLER_ARGS)
+{
+	struct ix_tx_ring *txr = (void *)arg1;
+	int nmbuf;
+
+	nmbuf = txr->tx_nmbuf;
+	return (sysctl_handle_int(oidp, &nmbuf, 0, req));
 }
 
 static int
@@ -4687,9 +4816,7 @@ ix_msix_tx(void *xtxr)
 
 	ASSERT_SERIALIZED(&txr->tx_serialize);
 
-	ix_txeof(txr, *(txr->tx_hdr));
-	if (!ifsq_is_empty(txr->tx_ifsq))
-		ifsq_devstart(txr->tx_ifsq);
+	ix_tx_intr(txr, *(txr->tx_hdr));
 	IXGBE_WRITE_REG(&txr->tx_sc->hw, txr->tx_eims, txr->tx_eims_val);
 }
 
@@ -4714,9 +4841,7 @@ ix_msix_rxtx(void *xrxr)
 	hdr = *(txr->tx_hdr);
 	if (hdr != txr->tx_next_clean) {
 		lwkt_serialize_enter(&txr->tx_serialize);
-		ix_txeof(txr, hdr);
-		if (!ifsq_is_empty(txr->tx_ifsq))
-			ifsq_devstart(txr->tx_ifsq);
+		ix_tx_intr(txr, hdr);
 		lwkt_serialize_exit(&txr->tx_serialize);
 	}
 
@@ -4828,9 +4953,8 @@ ix_npoll_tx(struct ifnet *ifp, void *arg, int cycle __unused)
 
 	ASSERT_SERIALIZED(&txr->tx_serialize);
 
-	ix_txeof(txr, *(txr->tx_hdr));
-	if (!ifsq_is_empty(txr->tx_ifsq))
-		ifsq_devstart(txr->tx_ifsq);
+	ix_tx_intr(txr, *(txr->tx_hdr));
+	ix_try_txgc(txr, 1);
 }
 
 static void
