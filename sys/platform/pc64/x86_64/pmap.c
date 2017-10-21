@@ -372,6 +372,41 @@ pmap_page_stats_deleting(vm_page_t m)
 }
 
 /*
+ * This is an ineligent crowbar to prevent heavily threaded programs
+ * from creating long live-locks in the pmap code when pmap_mmu_optimize
+ * is enabled.  Without it a pmap-local page table page can wind up being
+ * constantly created and destroyed (without injury, but also without
+ * progress) as the optimization tries to switch to the object's shared page
+ * table page.
+ */
+static __inline void
+pmap_softwait(pmap_t pmap)
+{
+	while (pmap->pm_softhold) {
+		tsleep_interlock(&pmap->pm_softhold, 0);
+		if (pmap->pm_softhold)
+			tsleep(&pmap->pm_softhold, PINTERLOCKED, "mmopt", 0);
+	}
+}
+
+static __inline void
+pmap_softhold(pmap_t pmap)
+{
+	while (atomic_swap_int(&pmap->pm_softhold, 1) == 1) {
+		tsleep_interlock(&pmap->pm_softhold, 0);
+		if (atomic_swap_int(&pmap->pm_softhold, 1) == 1)
+			tsleep(&pmap->pm_softhold, PINTERLOCKED, "mmopt", 0);
+	}
+}
+
+static __inline void
+pmap_softdone(pmap_t pmap)
+{
+	atomic_swap_int(&pmap->pm_softhold, 0);
+	wakeup(&pmap->pm_softhold);
+}
+
+/*
  * Move the kernel virtual free pointer to the next
  * 2MB.  This is used to help improve performance
  * by using a large (2MB) page for much of the kernel
@@ -2313,6 +2348,7 @@ pmap_allocpte_seg(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp,
 	vm_object_t object;
 	pmap_t obpmap;
 	pmap_t *obpmapp;
+	vm_pindex_t *pt_placemark;
 	vm_offset_t b;
 	pv_entry_t pte_pv;	/* in original or shared pmap */
 	pv_entry_t pt_pv;	/* in original or shared pmap */
@@ -2323,6 +2359,7 @@ pmap_allocpte_seg(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp,
 	pd_entry_t opte;	/* contents of *pt */
 	pd_entry_t npte;	/* contents of *pt */
 	vm_page_t m;
+	int softhold;
 
 	/*
 	 * Basic tests, require a non-NULL vm_map_entry, require proper
@@ -2425,6 +2462,7 @@ pmap_allocpte_seg(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp,
 	 */
 	pt_pv = NULL;
 	pte_pv = pmap_allocpte(obpmap, ptepindex, &pt_pv);
+	softhold = 0;
 retry:
 	if (ptepindex >= pmap_pt_pindex(0))
 		xpv = pte_pv;
@@ -2437,7 +2475,7 @@ retry:
 	 *
 	 * NOTE: proc_pt_pv can be NULL.
 	 */
-	proc_pt_pv = pv_get(pmap, pmap_pt_pindex(b), NULL);
+	proc_pt_pv = pv_get(pmap, pmap_pt_pindex(b), &pt_placemark);
 	proc_pd_pv = pmap_allocpte(pmap, pmap_pd_pindex(b), NULL);
 #ifdef PMAP_DEBUG2
 	if (pmap_enter_debug > 0) {
@@ -2479,27 +2517,38 @@ retry:
 		pmap_inval_bulk_t bulk;
 
 		if (proc_pt_pv->pv_m->wire_count != 1) {
+			/*
+			 * The page table has a bunch of stuff in it
+			 * which we have to scrap.
+			 */
+			if (softhold == 0) {
+				softhold = 1;
+				pmap_softhold(pmap);
+			}
 			pv_put(proc_pd_pv);
 			pv_put(proc_pt_pv);
 			pmap_remove(pmap,
 				    va & ~(vm_offset_t)SEG_MASK,
 				    (va + SEG_SIZE) & ~(vm_offset_t)SEG_MASK);
-			goto retry;
+		} else {
+			/*
+			 * The page table is empty and can be destroyed.
+			 * However, doing so leaves the pt slot unlocked,
+			 * so we have to loop-up to handle any races until
+			 * we get a NULL proc_pt_pv and a proper pt_placemark.
+			 */
+			pmap_inval_bulk_init(&bulk, proc_pt_pv->pv_pmap);
+			pmap_release_pv(proc_pt_pv, proc_pd_pv, &bulk);
+			pmap_inval_bulk_flush(&bulk);
+			pv_put(proc_pd_pv);
 		}
-
-		/*
-		 * The release call will indirectly clean out *pt
-		 */
-		pmap_inval_bulk_init(&bulk, proc_pt_pv->pv_pmap);
-		pmap_release_pv(proc_pt_pv, proc_pd_pv, &bulk);
-		pmap_inval_bulk_flush(&bulk);
-		proc_pt_pv = NULL;
-		/* relookup */
-		pt = pv_pte_lookup(proc_pd_pv, pmap_pt_index(b));
+		goto retry;
 	}
 
 	/*
-	 * Handle remaining cases.
+	 * Handle remaining cases.  We are holding pt_placemark to lock
+	 * the page table page in the primary pmap while we manipulate
+	 * it.
 	 */
 	if (*pt == 0) {
 		atomic_swap_long(pt, npte);
@@ -2539,6 +2588,14 @@ retry:
 		}
 	}
 
+	if (softhold)
+		pmap_softdone(pmap);
+
+	/*
+	 * Remove our earmark on the page table page.
+	 */
+	pv_placemarker_wakeup(pmap, pt_placemark);
+
 	/*
 	 * The existing process page table was replaced and must be destroyed
 	 * here.
@@ -2549,7 +2606,6 @@ retry:
 		*pvpp = pt_pv;
 	else
 		pv_put(pt_pv);
-
 	return (pte_pv);
 }
 
@@ -4854,6 +4910,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		ptep = vtopte(va);
 		origpte = *ptep;
 	} else if (m->flags & (/*PG_FICTITIOUS |*/ PG_UNMANAGED)) { /* XXX */
+		pmap_softwait(pmap);
 		pte_pv = pv_get(pmap, pmap_pte_pindex(va), &pte_placemark);
 		KKASSERT(pte_pv == NULL);
 		if (va >= VM_MAX_USER_ADDRESS) {
@@ -4870,6 +4927,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 			 (origpte & pmap->pmap_bits[PG_MANAGED_IDX]) == 0,
 			 ("Invalid PTE 0x%016jx @ 0x%016jx\n", origpte, va));
 	} else {
+		pmap_softwait(pmap);
 		if (va >= VM_MAX_USER_ADDRESS) {
 			/*
 			 * Kernel map, pv_entry-tracked.

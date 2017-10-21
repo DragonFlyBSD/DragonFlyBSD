@@ -284,6 +284,7 @@ struct pmap {
 	cpulock_t		pm_active_lock; /* interlock */
 	cpumask_t		pm_active;	/* active on cpus */
 	int			pm_flags;
+	uint32_t		pm_softhold;
 	struct pmap_statistics	pm_stats;	/* pmap statistics */
 	struct spinlock		pm_spin;
 	struct pv_entry		*pm_pvhint_pt;	/* pv_entry lookup hint */
