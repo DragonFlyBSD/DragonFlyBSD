@@ -722,14 +722,22 @@ lwkt_switch(void)
 	 * See if we can switch to another thread.
 	 *
 	 * We generally don't want to do this because it represents a
-	 * priority inversion.  Do not allow the case if the thread
-	 * is returning to userland (not a kernel thread) AND the thread
-	 * has a lower upri.
+	 * priority inversion, but contending tokens on the same cpu can
+	 * cause real problems if we don't now that we have an exclusive
+	 * priority mechanism over shared for tokens.
+	 *
+	 * The solution is to allow threads with pending tokens to compete
+	 * for them (a lower priority thread will get less cpu once it
+	 * returns from the kernel anyway).  If a thread does not have
+	 * any contending tokens, we go by td_pri and upri.
 	 */
 	while ((ntd = TAILQ_NEXT(ntd, td_threadq)) != NULL) {
-	    if (ntd->td_pri < TDPRI_KERN_LPSCHED && upri > ntd->td_upri)
-		break;
-	    upri = ntd->td_upri;
+	    if (TD_TOKS_NOT_HELD(ntd) &&
+		ntd->td_pri < TDPRI_KERN_LPSCHED && upri > ntd->td_upri) {
+		    continue;
+	    }
+	    if (upri < ntd->td_upri)
+		upri = ntd->td_upri;
 
 	    /*
 	     * Try this one.
