@@ -1547,10 +1547,17 @@ vm_pageout_scan_cache(int avail_shortage, int pass,
 	       (vmstats.v_free_min + vmstats.v_free_target) / 2) {
 		/*
 		 * This steals some code from vm/vm_page.c
+		 *
+		 * Create two rovers and adjust the code to reduce
+		 * chances of them winding up at the same index (which
+		 * can cause a lot of contention).
 		 */
-		static int cache_rover = 0;
+		static int cache_rover[2] = { 0, PQ_L2_MASK / 2 };
 
-		m = vm_page_list_find(PQ_CACHE, cache_rover & PQ_L2_MASK);
+		if (((cache_rover[0] ^ cache_rover[1]) & PQ_L2_MASK) == 0)
+			goto next_rover;
+
+		m = vm_page_list_find(PQ_CACHE, cache_rover[isep] & PQ_L2_MASK);
 		if (m == NULL)
 			break;
 		/* page is returned removed from its queue and spinlocked */
@@ -1576,9 +1583,13 @@ vm_pageout_scan_cache(int avail_shortage, int pass,
 		}
 		KKASSERT((m->flags & PG_MAPPED) == 0);
 		KKASSERT(m->dirty == 0);
-		cache_rover += PQ_PRIME2;
 		vm_pageout_page_free(m);
 		mycpu->gd_cnt.v_dfree++;
+next_rover:
+		if (isep)
+			cache_rover[1] -= PQ_PRIME2;
+		else
+			cache_rover[0] += PQ_PRIME2;
 	}
 
 #if !defined(NO_SWAPPING)
