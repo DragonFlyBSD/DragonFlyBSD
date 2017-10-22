@@ -2162,18 +2162,24 @@ skip_setup:
 
 		if (avail_shortage > 0) {
 			int delta = 0;
+			int qq;
 
+			qq = q1iterator;
 			for (q = 0; q < PQ_L2_SIZE; ++q) {
 				delta += vm_pageout_scan_inactive(
 					    pass,
-					    (q + q1iterator) & PQ_L2_MASK,
+					    qq & PQ_L2_MASK,
 					    PQAVERAGE(avail_shortage),
 					    &vnodes_skipped);
+				if (isep)
+					--qq;
+				else
+					++qq;
 				if (avail_shortage - delta <= 0)
 					break;
 			}
 			avail_shortage -= delta;
-			q1iterator = q + 1;
+			q1iterator = qq;
 		}
 
 		/*
@@ -2231,14 +2237,20 @@ skip_setup:
 
 		if (/*avail_shortage > 0 ||*/ inactive_shortage > 0) {
 			int delta = 0;
+			int qq;
 
+			qq = q2iterator;
 			for (q = 0; q < PQ_L2_SIZE; ++q) {
 				delta += vm_pageout_scan_active(
 						pass,
-						(q + q2iterator) & PQ_L2_MASK,
+						qq & PQ_L2_MASK,
 						PQAVERAGE(avail_shortage),
 						PQAVERAGE(inactive_shortage),
 						&recycle_count);
+				if (isep)
+					--qq;
+				else
+					++qq;
 				if (inactive_shortage - delta <= 0 &&
 				    avail_shortage - delta <= 0) {
 					break;
@@ -2246,7 +2258,7 @@ skip_setup:
 			}
 			inactive_shortage -= delta;
 			avail_shortage -= delta;
-			q2iterator = q + 1;
+			q2iterator = qq;
 		}
 
 		/*
