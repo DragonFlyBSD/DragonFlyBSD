@@ -307,12 +307,12 @@ syncache_init_dispatch(netmsg_t nm)
 	ASSERT_NETISR_NCPUS(mycpuid);
 
 	syncache_percpu = kmalloc(sizeof(*syncache_percpu), M_SYNCACHE,
-	    M_WAITOK);
+				  M_WAITOK | M_ZERO);
 
 	/* Allocate the hash table. */
-	syncache_percpu->hashbase = kmalloc(
-	    tcp_syncache.hashsize * sizeof(struct syncache_head),
-	    M_SYNCACHE, M_WAITOK);
+	syncache_percpu->hashbase = kmalloc(tcp_syncache.hashsize *
+					    sizeof(struct syncache_head),
+					    M_SYNCACHE, M_WAITOK | M_ZERO);
 
 	/* Initialize the hash buckets. */
 	for (i = 0; i < tcp_syncache.hashsize; i++) {
