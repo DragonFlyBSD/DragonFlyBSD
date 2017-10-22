@@ -132,10 +132,10 @@ kms_nop(scr_stat *scp, ...)
 #define BLIT_SET	0
 #define BLIT_MASK	1
 
-static void
-blit_blk(scr_stat *scp, u_char *char_data, int sw, int sh,
-	 vm_offset_t draw_pos, int pixel_size, int dw, int dh,
-	 int line_width, uint32_t fg, uint32_t bg, int how)
+static inline void
+blit_blk32(scr_stat *scp, u_char *char_data, int sw, int sh,
+	   vm_offset_t draw_pos, int dw, int dh,
+	   int line_width, uint32_t fg, uint32_t bg, int how)
 {
 	vm_offset_t p;
 	int pos;
@@ -178,8 +178,7 @@ blit_blk(scr_stat *scp, u_char *char_data, int sw, int sh,
 				if ((sx & 0x00070000) == 0)
 					c = char_data[sx >> 19];
 				pos = ~(sx >> 16) & 7;
-				writel(p, (c & (1 << pos) ? fg : bg));
-				p += pixel_size;
+				writel(p + x * 4, (c & (1 << pos) ? fg : bg));
 				sx += sx_inc;
 			}
 			break;
@@ -189,8 +188,85 @@ blit_blk(scr_stat *scp, u_char *char_data, int sw, int sh,
 					c = char_data[sx >> 19];
 				pos = ~(sx >> 16) & 7;
 				if (c & (1 << pos))
-					writel(p, fg);
-				p += pixel_size;
+					writel(p + x * 4, fg);
+				sx += sx_inc;
+			}
+			break;
+		}
+		draw_pos += line_width;
+		sy += sy_inc;
+		if (sy >= 0x10000) {
+			char_data += (sy >> 16) * (sw >> 3);
+			sy &= 0x0FFFF;
+		}
+	}
+}
+
+static inline void
+blit_blk24(scr_stat *scp, u_char *char_data, int sw, int sh,
+	   vm_offset_t draw_pos, int dw, int dh,
+	   int line_width, uint32_t fg, uint32_t bg, int how)
+{
+	vm_offset_t p;
+	int pos;
+	int x;		/* destination iterator (whole pixels) */
+	int y;
+	int sx, sx_inc;	/* source iterator (fractional) */
+	int sy, sy_inc;
+	uint8_t c;
+
+	/*
+	 * Calculate fractional iterator for source
+	 */
+	if (dw)
+		sx_inc = (sw << 16) / dw;
+	else
+		sx_inc = 0;
+
+	if (dh)
+		sy_inc = (sh << 16) / dh;
+	else
+		sy_inc = 0;
+
+	sy = 0;
+	c = 0;
+
+	/*
+	 * For each pixel row in the target
+	 */
+	for (y = 0; y < dh; ++y) {
+		sx = 0;
+		p = draw_pos;
+
+		/*
+		 * Render all pixel columns in the target by calculating
+		 * which bit in the source is applicable.
+		 */
+		switch(how) {
+		case BLIT_SET:
+			for (x = 0; x < dw; ++x) {
+				if ((sx & 0x00070000) == 0)
+					c = char_data[sx >> 19];
+				pos = ~(sx >> 16) & 7;
+				uint32_t col = c & (1 << pos) ? fg : bg;
+				writeb(p, col >> 16);
+				writeb(p + 1, col >> 8);
+				writeb(p + 2, col >> 0);
+				p += 3;
+				sx += sx_inc;
+			}
+			break;
+		case BLIT_MASK:
+			for (x = 0; x < dw; ++x) {
+				if ((sx & 0x00070000) == 0)
+					c = char_data[sx >> 19];
+				pos = ~(sx >> 16) & 7;
+				if (c & (1 << pos)) {
+					writeb(p, fg >> 16);
+					writeb(p + 1, fg >> 8);
+					writeb(p + 2, fg >> 0);
+				}
+				p += 3;
 				sx += sx_inc;
 			}
 			break;
@@ -205,15 +281,51 @@ blit_blk(scr_stat *scp, u_char *char_data, int sw, int sh,
 }
 
 static void
-fill_rect(scr_stat *scp, vm_offset_t draw_pos, int pixel_size,
-	  int width, int height, int line_width, uint32_t fg)
+fill_rect32(scr_stat *scp, vm_offset_t draw_pos, int width, int height,
+	    int line_width, uint32_t fg)
 {
 	int i, j;
 
 	for (i = 0; i < height; i++) {
 		for (j = 0; j < width; j++)
-			writel(draw_pos + j * pixel_size, fg);
+			writel(draw_pos + j * 4, fg);
 		draw_pos += line_width;
+	}
+}
+
+static void
+fill_rect24(scr_stat *scp, vm_offset_t draw_pos, int width, int height,
+	    int line_width, uint32_t fg)
+{
+	int i, j, d;
+
+	d = line_width - width * 3;
+	KKASSERT(d >= 0);
+
+	if ((draw_pos & 0x3) == 0 && (line_width & 0x3) == 0 &&
+	    (width & 0x3) == 0) {
+		uint32_t fga = fg | (fg << 24);
+		uint32_t fgb = (fg << 16) | ((fg >> 8) & 0xffff);
+		uint32_t fgc = (fg << 8) | ((fg >> 16) & 0xff);
+		for (i = 0; i < height; i++) {
+			for (j = 0; j < width; j += 4) {
+				writel(draw_pos, fga);
+				writel(draw_pos + 4, fgb);
+				writel(draw_pos + 8, fgc);
+				draw_pos += 12;
+			}
+			draw_pos += d;
+		}
+	} else {
+		for (i = 0; i < height; i++) {
+			for (j = 0; j < width; j++) {
+				writeb(draw_pos, fg >> 16);
+				writeb(draw_pos + 1, fg >> 8);
+				writeb(draw_pos + 2, fg >> 0);
+				draw_pos += 3;
+			}
+			draw_pos += line_width;
+		}
 	}
 }
 
@@ -228,22 +340,35 @@ kms_draw_border(scr_stat *scp, int color)
 	uint32_t fg;
 	vm_offset_t draw_pos;
 
-	fg = colormap[color];
-	line_width = sc->fbi->stride;
-	pixel_size = 4;
-	rightpixel = sc->fbi->width - scp->xsize * scp->blk_width;
-	bottompixel = sc->fbi->height - scp->ysize * scp->blk_height;
-
 	if (sc->fbi->vaddr == 0)
 		return;
 
+	fg = colormap[color];
+	line_width = sc->fbi->stride;
+	/* sc->fbi->depth may only be 24 or 32 */
+	pixel_size = sc->fbi->depth == 24 ? 3 : 4;
+	rightpixel = sc->fbi->width - scp->xsize * scp->blk_width;
+	bottompixel = sc->fbi->height - scp->ysize * scp->blk_height;
+
 	draw_pos = sc->fbi->vaddr + scp->blk_width * pixel_size * scp->xsize;
-	fill_rect(scp, draw_pos, pixel_size, rightpixel,
-	    scp->blk_height * scp->ysize, line_width, fg);
+	if (pixel_size == 3) {
+		fill_rect24(scp, draw_pos, rightpixel,
+		    scp->blk_height * scp->ysize, line_width, fg);
+	} else {
+		fill_rect32(scp, draw_pos, rightpixel,
+		    scp->blk_height * scp->ysize, line_width, fg);
+	}
 
 	draw_pos = sc->fbi->vaddr + scp->blk_height * scp->ysize * line_width;
-	fill_rect(scp, draw_pos, pixel_size, sc->fbi->width,
-	    sc->fbi->height - scp->blk_height * scp->ysize, line_width, fg);
+	if (pixel_size == 3) {
+		fill_rect24(scp, draw_pos, sc->fbi->width,
+		    sc->fbi->height - scp->blk_height * scp->ysize, line_width,
+		    fg);
+	} else {
+		fill_rect32(scp, draw_pos, sc->fbi->width,
+		    sc->fbi->height - scp->blk_height * scp->ysize, line_width,
+		    fg);
+	}
 }
 
 static void
@@ -256,11 +381,12 @@ kms_draw(scr_stat *scp, int from, int count, int flip)
 	vm_offset_t draw_pos, p;
 	int line_width, pixel_size;
 
-	line_width = sc->fbi->stride;
-	pixel_size = 4;
-
 	if (sc->fbi->vaddr == 0)
 		return;
+
+	line_width = sc->fbi->stride;
+	/* sc->fbi->depth may only be 24 or 32 */
+	pixel_size = sc->fbi->depth == 24 ? 3 : 4;
 
 	draw_pos = sc->fbi->vaddr +
 	    scp->blk_height * line_width * (from / scp->xsize);
@@ -281,9 +407,17 @@ kms_draw(scr_stat *scp, int from, int count, int flip)
 			fg = colormap[(a & 0x0f00) >> 8];
 			bg = colormap[((a & 0xf000) >> 4) >> 8];
 		}
-		blit_blk(scp, char_data, scp->font_width, scp->font_height,
-			 p, pixel_size, scp->blk_width, scp->blk_height,
-			 line_width, fg, bg, BLIT_SET);
+		if (pixel_size == 3) {
+			blit_blk24(scp, char_data, scp->font_width,
+				   scp->font_height, p, scp->blk_width,
+				   scp->blk_height, line_width, fg, bg,
+				   BLIT_SET);
+		} else {
+			blit_blk32(scp, char_data, scp->font_width,
+				   scp->font_height, p, scp->blk_width,
+				   scp->blk_height, line_width, fg, bg,
+				   BLIT_SET);
+		}
 		p += scp->blk_width * pixel_size;
 		if ((i % scp->xsize) == scp->xsize - 1) {
 			draw_pos += scp->blk_height * line_width;
@@ -304,13 +438,14 @@ draw_kmscursor(scr_stat *scp, int at, int on, int flip)
 	unsigned char *char_data;
 	vm_offset_t draw_pos;
 
-	line_width = sc->fbi->stride;
-	pixel_size = 4;
-	cursor_base = /* scp->font_height - */ scp->cursor_base;
-	blk_base = scp->blk_height * cursor_base / scp->font_height;
-
 	if (sc->fbi->vaddr == 0)
 		return;
+
+	line_width = sc->fbi->stride;
+	/* sc->fbi->depth may only be 24 or 32 */
+	pixel_size = sc->fbi->depth == 24 ? 3 : 4;
+	cursor_base = /* scp->font_height - */ scp->cursor_base;
+	blk_base = scp->blk_height * cursor_base / scp->font_height;
 
 	draw_pos = sc->fbi->vaddr +
 	    scp->blk_width * pixel_size * (at % scp->xsize) +
@@ -333,11 +468,17 @@ draw_kmscursor(scr_stat *scp, int at, int on, int flip)
 	char_data = &scp->font[sc_vtb_getc(&scp->vtb, at) * scp->font_height];
 	char_data += cursor_base;
 
-	blit_blk(scp, char_data,
-		 scp->font_width, scp->font_height - cursor_base,
-		 draw_pos, pixel_size,
-		 scp->blk_width, scp->blk_height - blk_base,
-		 line_width, fg, bg, BLIT_SET);
+	if (pixel_size == 3) {
+		blit_blk24(scp, char_data,
+			   scp->font_width, scp->font_height - cursor_base,
+			   draw_pos, scp->blk_width, scp->blk_height - blk_base,
+			   line_width, fg, bg, BLIT_SET);
+	} else {
+		blit_blk32(scp, char_data,
+			   scp->font_width, scp->font_height - cursor_base,
+			   draw_pos, scp->blk_width, scp->blk_height - blk_base,
+			   line_width, fg, bg, BLIT_SET);
+	}
 }
 
 static int pxlblinkrate = 0;
@@ -391,11 +532,12 @@ draw_kmsmouse(scr_stat *scp, int x, int y)
 	int blk_width, blk_height;
 	vm_offset_t draw_pos;
 
-	line_width = sc->fbi->stride;
-	pixel_size = 4;
-
 	if (sc->fbi->vaddr == 0)
 		return;
+
+	line_width = sc->fbi->stride;
+	/* sc->fbi->depth may only be 24 or 32 */
+	pixel_size = sc->fbi->depth == 24 ? 3 : 4;
 
 	if (x + scp->font_width < scp->font_width * scp->xsize)
 		blk_width = scp->blk_width;
@@ -410,12 +552,21 @@ draw_kmsmouse(scr_stat *scp, int x, int y)
 	draw_pos = sc->fbi->vaddr + y * scp->blk_height / scp->font_height *
 		   line_width +
 		   x * scp->blk_width / scp->font_width * pixel_size;
-	blit_blk(scp, (unsigned char *)mouse_and_mask, 16, 16,
-		 draw_pos, pixel_size, blk_width, blk_height,
-		 line_width, colormap[0], 0, BLIT_MASK);
-	blit_blk(scp, (unsigned char *)mouse_or_mask, 16, 16,
-		 draw_pos, pixel_size, blk_width, blk_height,
-		 line_width, colormap[15], 0, BLIT_MASK);
+	if (pixel_size == 3) {
+		blit_blk24(scp, (unsigned char *)mouse_and_mask, 16, 16,
+			   draw_pos, blk_width, blk_height, line_width,
+			   colormap[0], 0, BLIT_MASK);
+		blit_blk24(scp, (unsigned char *)mouse_or_mask, 16, 16,
+			   draw_pos, blk_width, blk_height, line_width,
+			   colormap[15], 0, BLIT_MASK);
+	} else {
+		blit_blk32(scp, (unsigned char *)mouse_and_mask, 16, 16,
+			   draw_pos, blk_width, blk_height, line_width,
+			   colormap[0], 0, BLIT_MASK);
+		blit_blk32(scp, (unsigned char *)mouse_or_mask, 16, 16,
+			   draw_pos, blk_width, blk_height, line_width,
+			   colormap[15], 0, BLIT_MASK);
+	}
 }
 
 static void

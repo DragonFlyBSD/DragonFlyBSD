@@ -1843,11 +1843,27 @@ efi_fb_init_vaddr(int direct_map)
 	}
 }
 
+static u_int
+efifb_color_depth(struct efi_fb *efifb)
+{
+	uint32_t mask;
+	u_int depth;
+
+	mask = efifb->fb_mask_red | efifb->fb_mask_green |
+	    efifb->fb_mask_blue | efifb->fb_mask_reserved;
+	if (mask == 0)
+		return (0);
+	for (depth = 1; mask != 1; depth++)
+		mask >>= 1;
+	return (depth);
+}
+
 int
 probe_efi_fb(int early)
 {
 	struct efi_fb	*efifb;
 	caddr_t		kmdp;
+	u_int		depth;
 
 	if (have_efi_framebuffer) {
 		if (!early &&
@@ -1865,13 +1881,21 @@ probe_efi_fb(int early)
 	if (efifb == NULL)
 		return 1;
 
+	depth = efifb_color_depth(efifb);
+	/*
+	 * Our bootloader should already notice, when we won't be able to
+	 * use the UEFI framebuffer.
+	 */
+	if (depth != 24 && depth != 32)
+		return 1;
+
 	have_efi_framebuffer = 1;
 
 	efi_fb_info.is_vga_boot_display = 1;
 	efi_fb_info.width = efifb->fb_width;
 	efi_fb_info.height = efifb->fb_height;
-	efi_fb_info.stride = efifb->fb_stride * 4;
-	efi_fb_info.depth = 32;
+	efi_fb_info.depth = depth;
+	efi_fb_info.stride = efifb->fb_stride * (depth / 8);
 	efi_fb_info.paddr = efifb->fb_addr;
 	if (early) {
 		efi_fb_info.vaddr = 0;
