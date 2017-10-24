@@ -113,6 +113,8 @@ struct	vmstats vms, ovms;
 int	winlines = 20;
 int	nflag = 0;
 int	verbose = 0;
+int	unformatted_opt = 0;
+int	brief_opt = 0;
 
 kvm_t *kd;
 
@@ -144,7 +146,7 @@ static void dotimes(void); /* Not implemented */
 static void doforkst(void);
 #endif
 static void printhdr(void);
-static const char *formatnum(intmax_t value, int width);
+static const char *formatnum(intmax_t value, int width, int do10s);
 static void devstats(int dooutput);
 
 int
@@ -159,8 +161,11 @@ main(int argc, char **argv)
 	memf = nlistf = NULL;
 	interval = reps = todo = 0;
 	maxshowdevs = 2;
-	while ((c = getopt(argc, argv, "c:fiM:mN:n:p:stvw:z")) != -1) {
+	while ((c = getopt(argc, argv, "bc:fiM:mN:n:p:stuvw:z")) != -1) {
 		switch (c) {
+		case 'b':
+			brief_opt = 1;
+			break;
 		case 'c':
 			reps = atoi(optarg);
 			break;
@@ -203,6 +208,9 @@ main(int argc, char **argv)
 #else
 			errx(EX_USAGE, "sorry, -t is not (re)implemented yet");
 #endif
+			break;
+		case 'u':
+			unformatted_opt = 1;
 			break;
 		case 'v':
 			++verbose;
@@ -477,34 +485,43 @@ dovmstat(u_int interval, int reps)
 		if (dooutput) {
 			printf(" %s ",
 			       formatnum((int64_t)total.t_free *
-					 vms.v_page_size, 4));
+					 vms.v_page_size,
+					 5, 1));
 			printf("%s ",
 			       formatnum(rate(vmm.v_vm_faults -
-					      ovmm.v_vm_faults), 5));
+					      ovmm.v_vm_faults),
+					 5, 1));
 			printf("%s ",
 			       formatnum(rate(vmm.v_reactivated -
-					      ovmm.v_reactivated), 4));
+					      ovmm.v_reactivated),
+					 4, 0));
 			printf("%s ",
 			       formatnum(rate(vmm.v_swapin + vmm.v_vnodein -
-				      (ovmm.v_swapin + ovmm.v_vnodein)), 4));
+					      (ovmm.v_swapin +
+					       ovmm.v_vnodein)),
+					 4, 0));
 			printf("%s ",
 			       formatnum(rate(vmm.v_swapout + vmm.v_vnodeout -
-				    (ovmm.v_swapout + ovmm.v_vnodeout)), 4));
+					      (ovmm.v_swapout +
+					       ovmm.v_vnodeout)),
+					 4, 0));
 			printf("%s ",
-			       formatnum(rate(vmm.v_tfree -
-					      ovmm.v_tfree), 4));
+			       formatnum(rate(vmm.v_tfree - ovmm.v_tfree),
+					 4, 0));
 		}
 		devstats(dooutput);
 		if (dooutput) {
 			printf("%s ",
-			       formatnum(rate(vmm.v_intr -
-					      ovmm.v_intr), 5));
+			       formatnum(rate(vmm.v_intr - ovmm.v_intr),
+					 5, 1));
 			printf("%s ",
 			       formatnum(rate(vmm.v_syscall -
-					      ovmm.v_syscall), 5));
+					      ovmm.v_syscall),
+					 5, 1));
 			printf("%s ",
 			       formatnum(rate(vmm.v_swtch -
-					      ovmm.v_swtch), 5));
+					      ovmm.v_swtch),
+					 5, 1));
 			cpustats();
 			printf("\n");
 			fflush(stdout);
@@ -519,15 +536,34 @@ dovmstat(u_int interval, int reps)
 }
 
 static const char *
-formatnum(intmax_t value, int width)
+formatnum(intmax_t value, int width, int do10s)
 {
 	static char buf[16][64];
 	static int bi;
 	const char *fmt;
 	double d;
 
-	d = (double)value;
+	if (brief_opt)
+		do10s = 0;
+
 	bi = (bi + 1) % 16;
+
+	if (unformatted_opt) {
+		switch(width) {
+		case 4:
+			snprintf(buf[bi], sizeof(buf[bi]), "%4jd", value);
+			break;
+		case 5:
+			snprintf(buf[bi], sizeof(buf[bi]), "%5jd", value);
+			break;
+		default:
+			snprintf(buf[bi], sizeof(buf[bi]), "%jd", value);
+			break;
+		}
+		return buf[bi];
+	}
+
+	d = (double)value;
 	fmt = "n/a";
 
 	switch(width) {
@@ -557,17 +593,26 @@ formatnum(intmax_t value, int width)
 		} else if (value < 10*1024) {
 			fmt = "%4.2fK";
 			d = d / 1024;
+		} else if (value < 100*1024 && do10s) {
+			fmt = "%4.1fK";
+			d = d / 1024;
 		} else if (value < 1000*1024) {
 			fmt = "%4.0fK";
 			d = d / 1024;
 		} else if (value < 10*1024*1024) {
 			fmt = "%4.2fM";
 			d = d / (1024 * 1024);
+		} else if (value < 100*1024*1024 && do10s) {
+			fmt = "%4.1fM";
+			d = d / (1024 * 1024);
 		} else if (value < 1000*1024*1024) {
 			fmt = "%4.0fM";
 			d = d / (1024 * 1024);
 		} else if (value < 10LL*1024*1024*1024) {
 			fmt = "%4.2fG";
+			d = d / (1024.0 * 1024.0 * 1024.0);
+		} else if (value < 100LL*1024*1024*1024 && do10s) {
+			fmt = "%4.1fG";
 			d = d / (1024.0 * 1024.0 * 1024.0);
 		} else if (value < 1000LL*1024*1024*1024) {
 			fmt = "%4.0fG";
@@ -777,7 +822,7 @@ devstats(int dooutput)
 			errx(1, "%s", devstat_errbuf);
 
 		if (dooutput)
-			printf("%s ", formatnum(transfers_per_second, 4));
+			printf("%s ", formatnum(transfers_per_second, 4, 0));
 	}
 }
 
@@ -950,18 +995,18 @@ domem(void)
 
 		printf("%19s   %s   %s   %s    %s\n",
 			ks->ks_shortdesc,
-			formatnum(ks_inuse, 5),
-			formatnum(ks_memuse, 5),
-			formatnum(ks->ks_limit, 5),
-			formatnum(ks_calls, 5));
+			formatnum(ks_inuse, 5, 1),
+			formatnum(ks_memuse, 5, 1),
+			formatnum(ks->ks_limit, 5, 1),
+			formatnum(ks_calls, 5, 1));
 
 		totuse += ks_memuse;
 		totreq += ks_calls;
 	}
 	printf("\nMemory Totals:  In Use  Requests\n");
 	printf("                 %s  %s\n",
-		formatnum(totuse, 5),
-		formatnum(totreq, 5));
+		formatnum(totuse, 5, 1),
+		formatnum(totreq, 5, 1));
 }
 
 #define MAXSAVE	16
@@ -1061,7 +1106,8 @@ static void
 usage(void)
 {
 	fprintf(stderr, "%s%s",
-		"usage: vmstat [-imsvz] [-c count] [-M core] [-N system] [-w wait]\n",
+		"usage: vmstat [-imsuvz] [-c count] [-M core] "
+		"[-N system] [-w wait]\n",
 		"              [-n devs] [disks]\n");
 	exit(1);
 }

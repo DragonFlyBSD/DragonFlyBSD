@@ -37,8 +37,8 @@
 .Nd report virtual memory statistics
 .Sh SYNOPSIS
 .Nm
-.\" .Op Fl fimst
-.Op Fl imsvz
+.\" .Op Fl bfimst
+.Op Fl imsuvz
 .Op Fl c Ar count
 .Op Fl M Ar core
 .Op Fl N Ar system
@@ -58,6 +58,9 @@ disk, trap and cpu activity.
 .Pp
 The options are as follows:
 .Bl -tag -width indent
+.It Fl b
+Formatted numbers use a brief format which some may find
+more readable with looped output.
 .It Fl c
 Repeat the display
 .Ar count
@@ -170,6 +173,10 @@ events which have occurred since system startup.
 .\" .It Fl t
 .\" Report on the number of page in and page reclaims since system startup,
 .\" and the amount of time required by each.
+.It Fl u
+Output unformatted numeric values, suitable for field extraction and
+numeric sorting.
+Columnar output will not be nicely aligned.
 .It Fl v
 If specified together with
 .Fl i ,
