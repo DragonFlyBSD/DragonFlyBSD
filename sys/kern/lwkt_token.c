@@ -378,6 +378,9 @@ _lwkt_trytokref_spin(lwkt_tokref_t ref, thread_t td, long mode)
 
 /*
  * Release a token that we hold.
+ *
+ * Since tokens are polled, we don't have to deal with wakeups and releasing
+ * is really easy.
  */
 static __inline
 void
@@ -387,37 +390,24 @@ _lwkt_reltokref(lwkt_tokref_t ref, thread_t td)
 	long count;
 
 	tok = ref->tr_tok;
-	count = tok->t_count;
-
-	for (;;) {
-		cpu_ccfence();
-		if (tok->t_ref == ref) {
-			/*
-			 * We are an exclusive holder.  We must clear tr_ref
-			 * before we clear the TOK_EXCLUSIVE bit.  If we are
-			 * unable to clear the bit we must restore
-			 * tok->t_ref.
-			 */
-			KKASSERT(count & TOK_EXCLUSIVE);
-			tok->t_ref = NULL;
-			if (atomic_fcmpset_long(&tok->t_count, &count,
-					        count & ~TOK_EXCLUSIVE)) {
-				return;
-			}
-			tok->t_ref = ref;
-			/* retry */
-		} else {
-			/*
-			 * We are a shared holder
-			 */
-			KKASSERT(count & TOK_COUNTMASK);
-			if (atomic_fcmpset_long(&tok->t_count, &count,
-						count - TOK_INCR)) {
-				return;
-			}
-			/* retry */
-		}
-		/* retry */
+	if (tok->t_ref == ref) {
+		/*
+		 * We are an exclusive holder.  We must clear tr_ref
+		 * before we clear the TOK_EXCLUSIVE bit.  If we are
+		 * unable to clear the bit we must restore
+		 * tok->t_ref.
+		 */
+#if 0
+		KKASSERT(count & TOK_EXCLUSIVE);
+#endif
+		tok->t_ref = NULL;
+		atomic_clear_long(&tok->t_count, TOK_EXCLUSIVE);
+	} else {
+		/*
+		 * We are a shared holder
+		 */
+		count = atomic_fetchadd_long(&tok->t_count, -TOK_INCR);
+		KKASSERT(count & TOK_COUNTMASK);	/* count prior */
 	}
 }
 
