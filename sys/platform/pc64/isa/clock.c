@@ -1346,12 +1346,13 @@ tsc_mpsync_test(void)
 	TUNABLE_INT_FETCH("hw.tsc_cputimer_force", &tsc_mpsync);
 
 	if (tsc_mpsync == 0) {
-		switch(cpu_vendor_id) {
+		switch (cpu_vendor_id) {
 		case CPU_VENDOR_INTEL:
 			/*
 			 * Intel probably works
 			 */
 			break;
+
 		case CPU_VENDOR_AMD:
 			/*
 			 * AMD < Ryzen probably doesn't work
@@ -1359,10 +1360,15 @@ tsc_mpsync_test(void)
 			if (CPUID_TO_FAMILY(cpu_id) < 0x17)
 				return;
 			break;
+
 		default:
 			/* probably won't work */
 			return;
 		}
+	} else if (tsc_mpsync < 0) {
+		kprintf("TSC MP synchronization test is disabled\n");
+		tsc_mpsync = 0;
+		return;
 	}
 
 	/*
