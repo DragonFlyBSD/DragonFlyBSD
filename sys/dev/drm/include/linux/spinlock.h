@@ -35,7 +35,7 @@
 
 #define spin_is_locked(x)	spin_held(x)
 
-#define assert_spin_locked(x)	KKASSERT(lockcountnb(x))
+#define assert_spin_locked(x)	KKASSERT(lockinuse(x))
 
 /*
  * The spin_lock_irq() family of functions stop hardware interrupts

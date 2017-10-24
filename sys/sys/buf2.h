@@ -125,22 +125,16 @@ BUF_KERNPROC(struct buf *bp)
  * where the buffer is expected to be owned or otherwise data stable.
  */
 static __inline int
-BUF_REFCNT(struct buf *bp)
+BUF_LOCKINUSE(struct buf *bp)
 {
-	return (lockcount(&(bp)->b_lock));
-}
-
-static __inline int
-BUF_REFCNTNB(struct buf *bp)
-{
-	return (lockcountnb(&(bp)->b_lock));
+	return (lockinuse(&(bp)->b_lock));
 }
 
 /*
  * Free a buffer lock.
  */
 #define BUF_LOCKFREE(bp) 			\
-	if (BUF_REFCNTNB(bp) > 0)		\
+	if (BUF_LOCKINUSE(bp))			\
 		panic("free locked buf")
 
 static __inline void

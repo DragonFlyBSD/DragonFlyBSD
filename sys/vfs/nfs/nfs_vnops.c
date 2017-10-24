@@ -3190,7 +3190,7 @@ nfs_strategy(struct vop_strategy_args *ap)
 
 	KASSERT(bp->b_cmd != BUF_CMD_DONE,
 		("nfs_strategy: buffer %p unexpectedly marked done", bp));
-	KASSERT(BUF_REFCNT(bp) > 0,
+	KASSERT(BUF_LOCKINUSE(bp),
 		("nfs_strategy: buffer %p not locked", bp));
 
 	if (bio->bio_flags & BIO_SYNC)

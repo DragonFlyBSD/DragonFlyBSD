@@ -835,12 +835,11 @@ _bremfree(struct buf *bp)
 	struct bufpcpu *pcpu = &bufpcpu[bp->b_qcpu];
 
 	if (bp->b_qindex != BQUEUE_NONE) {
-		KASSERT(BUF_REFCNTNB(bp) == 1, 
-			("bremfree: bp %p not locked",bp));
+		KASSERT(BUF_LOCKINUSE(bp), ("bremfree: bp %p not locked", bp));
 		TAILQ_REMOVE(&pcpu->bufqueues[bp->b_qindex], bp, b_freelist);
 		bp->b_qindex = BQUEUE_NONE;
 	} else {
-		if (BUF_REFCNTNB(bp) <= 1)
+		if (!BUF_LOCKINUSE(bp))
 			panic("bremfree: removing a buffer not on a queue");
 	}
 }
@@ -989,7 +988,7 @@ bwrite(struct buf *bp)
 		brelse(bp);
 		return (0);
 	}
-	if (BUF_REFCNTNB(bp) == 0)
+	if (BUF_LOCKINUSE(bp) == 0)
 		panic("bwrite: buffer is not busy???");
 
 	/*
@@ -1037,7 +1036,7 @@ bawrite(struct buf *bp)
 		brelse(bp);
 		return;
 	}
-	if (BUF_REFCNTNB(bp) == 0)
+	if (BUF_LOCKINUSE(bp) == 0)
 		panic("bawrite: buffer is not busy???");
 
 	/*
@@ -1078,7 +1077,7 @@ bawrite(struct buf *bp)
 void
 bdwrite(struct buf *bp)
 {
-	if (BUF_REFCNTNB(bp) == 0)
+	if (BUF_LOCKINUSE(bp) == 0)
 		panic("bdwrite: buffer is not busy");
 
 	if (bp->b_flags & B_INVAL) {
@@ -1538,13 +1537,6 @@ brelse(struct buf *bp)
 			
 	if (bp->b_qindex != BQUEUE_NONE)
 		panic("brelse: free buffer onto another queue???");
-	if (BUF_REFCNTNB(bp) > 1) {
-		/* Temporary panic to verify exclusive locking */
-		/* This panic goes away when we allow shared refs */
-		panic("brelse: multiple refs");
-		/* NOT REACHED */
-		return;
-	}
 
 	/*
 	 * Figure out the correct queue to place the cleaned up buffer on.
@@ -1676,11 +1668,6 @@ bqrelse(struct buf *bp)
 
 	if (bp->b_qindex != BQUEUE_NONE)
 		panic("bqrelse: free buffer onto another queue???");
-	if (BUF_REFCNTNB(bp) > 1) {
-		/* do not release to free list */
-		panic("bqrelse: multiple refs");
-		return;
-	}
 
 	buf_act_advance(bp);
 
@@ -3059,7 +3046,7 @@ allocbuf(struct buf *bp, int size)
 	int desiredpages;
 	int i;
 
-	if (BUF_REFCNT(bp) == 0)
+	if (BUF_LOCKINUSE(bp) == 0)
 		panic("allocbuf: buffer not busy");
 
 	if (bp->b_kvasize < size)
@@ -3540,8 +3527,7 @@ bpdone(struct buf *bp, int elseit)
 {
 	buf_cmd_t cmd;
 
-	KASSERT(BUF_REFCNTNB(bp) > 0, 
-		("bpdone: bp %p not busy %d", bp, BUF_REFCNTNB(bp)));
+	KASSERT(BUF_LOCKINUSE(bp), ("bpdone: bp %p not busy", bp));
 	KASSERT(bp->b_cmd != BUF_CMD_DONE, 
 		("bpdone: bp %p already done!", bp));
 

@@ -624,7 +624,7 @@ vx_get_nonblock(struct vnode *vp)
 {
 	int error;
 
-	if (lockcountnb(&vp->v_lock))
+	if (lockinuse(&vp->v_lock))
 		return(EBUSY);
 	error = lockmgr(&vp->v_lock, LK_EXCLUSIVE | LK_NOWAIT);
 	if (error == 0) {

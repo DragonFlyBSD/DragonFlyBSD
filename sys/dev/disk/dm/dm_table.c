@@ -252,7 +252,7 @@ dm_table_head_init(dm_table_head_t *head)
 void
 dm_table_head_destroy(dm_table_head_t *head)
 {
-	KKASSERT(lockcount(&head->table_mtx) == 0);
+	KKASSERT(!lockinuse(&head->table_mtx));
 
 	/* tables don't exist when I call this routine, therefore it
 	 * doesn't make sense to have io_cnt != 0 */

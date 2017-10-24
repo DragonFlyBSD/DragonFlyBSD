@@ -248,7 +248,7 @@ free_lock(struct lock *lkp)
 static int
 lock_held(struct lock *lkp) 
 {
-	return lockcountnb(lkp);
+	return lockinuse(lkp);
 }
 #endif
 
@@ -360,7 +360,7 @@ static	void workitem_free(struct worklist *, int);
 static void
 worklist_insert(struct workhead *head, struct worklist *item)
 {
-	KKASSERT(lock_held(&lk) > 0);
+	KKASSERT(lock_held(&lk));
 
 	if (item->wk_state & ONWORKLIST) {
 		panic("worklist_insert: already on list");
@@ -602,7 +602,7 @@ process_worklist_item(struct mount *matchmnt, int flags)
 	struct vnode *vp;
 	int matchcnt = 0;
 
-	KKASSERT(lock_held(&lk) > 0);
+	KKASSERT(lock_held(&lk));
 
 	matchfs = NULL;
 	if (matchmnt != NULL)
@@ -839,7 +839,7 @@ pagedep_lookup(struct inode *ip, ufs_lbn_t lbn, int flags,
 	struct mount *mp;
 	int i;
 
-	KKASSERT(lock_held(&lk) > 0);
+	KKASSERT(lock_held(&lk));
 	
 	mp = ITOV(ip)->v_mount;
 	pagedephd = PAGEDEP_HASH(mp, ip->i_number, lbn);
@@ -916,7 +916,7 @@ inodedep_lookup(struct fs *fs, ino_t inum, int flags,
 	struct inodedep *inodedep;
 	struct inodedep_hashhead *inodedephd;
 
-	KKASSERT(lock_held(&lk) > 0);
+	KKASSERT(lock_held(&lk));
 
 	inodedephd = INODEDEP_HASH(fs, inum);
 top:
@@ -1208,7 +1208,7 @@ bmsafemap_lookup(struct buf *bp)
 	struct bmsafemap *bmsafemap;
 	struct worklist *wk;
 
-	KKASSERT(lock_held(&lk) > 0);
+	KKASSERT(lock_held(&lk));
 
 	LIST_FOREACH(wk, &bp->b_dep, wk_list) {
 		if (wk->wk_type == D_BMSAFEMAP)
@@ -1383,7 +1383,7 @@ allocdirect_merge(struct allocdirectlst *adphead,
 {
 	struct freefrag *freefrag;
 
-	KKASSERT(lock_held(&lk) > 0);
+	KKASSERT(lock_held(&lk));
 
 	if (newadp->ad_oldblkno != oldadp->ad_newblkno ||
 	    newadp->ad_oldsize != oldadp->ad_newsize ||
@@ -1990,7 +1990,7 @@ static void
 free_allocdirect(struct allocdirectlst *adphead,
 		 struct allocdirect *adp, int delay)
 {
-	KKASSERT(lock_held(&lk) > 0);
+	KKASSERT(lock_held(&lk));
 
 	if ((adp->ad_state & DEPCOMPLETE) == 0)
 		LIST_REMOVE(adp, ad_deps);
@@ -2274,7 +2274,7 @@ free_allocindir(struct allocindir *aip, struct inodedep *inodedep)
 {
 	struct freefrag *freefrag;
 
-	KKASSERT(lock_held(&lk) > 0);
+	KKASSERT(lock_held(&lk));
 
 	if ((aip->ai_state & DEPCOMPLETE) == 0)
 		LIST_REMOVE(aip, ai_deps);
@@ -2478,7 +2478,7 @@ free_diradd(struct diradd *dap)
 	struct inodedep *inodedep;
 	struct mkdir *mkdir, *nextmd;
 
-	KKASSERT(lock_held(&lk) > 0);
+	KKASSERT(lock_held(&lk));
 
 	WORKLIST_REMOVE(&dap->da_list);
 	LIST_REMOVE(dap, da_pdlist);
@@ -4708,7 +4708,7 @@ request_cleanup(int resource)
 {
 	struct thread *td = curthread;		/* XXX */
 
-	KKASSERT(lock_held(&lk) > 0);
+	KKASSERT(lock_held(&lk));
 
 	/*
 	 * We never hold up the filesystem syncer process.
@@ -5010,7 +5010,7 @@ getdirtybuf(struct buf **bpp, int waitfor)
 	/*
 	 * Try to obtain the buffer lock without deadlocking on &lk.
 	 */
-	KKASSERT(lock_held(&lk) > 0);
+	KKASSERT(lock_held(&lk));
 	error = BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT);
 	if (error == 0) {
 		/*

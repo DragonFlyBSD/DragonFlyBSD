@@ -1254,7 +1254,6 @@ vclean_vxlocked(struct vnode *vp, int flags)
 	 * object, if it has one. 
 	 */
 	vinvalbuf(vp, V_SAVE, 0, 0);
-	KKASSERT(lockcountnb(&vp->v_lock) == 1);
 
 	/*
 	 * If purging an active vnode (typically during a forced unmount
@@ -1294,7 +1293,6 @@ vclean_vxlocked(struct vnode *vp, int flags)
 			VOP_INACTIVE(vp);
 		vinvalbuf(vp, V_SAVE, 0, 0);
 	}
-	KKASSERT(lockcountnb(&vp->v_lock) == 1);
 
 	/*
 	 * If the vnode has an object, destroy it.
@@ -1479,7 +1477,7 @@ vgone_vxlocked(struct vnode *vp)
 	 * assert that the VX lock is held.  This is an absolute requirement
 	 * now for vgone_vxlocked() to be called.
 	 */
-	KKASSERT(lockcountnb(&vp->v_lock) == 1);
+	KKASSERT(lockinuse(&vp->v_lock));
 
 	/*
 	 * Clean out the filesystem specific data and set the VRECLAIMED

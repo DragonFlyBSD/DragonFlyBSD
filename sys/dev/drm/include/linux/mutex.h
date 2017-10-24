@@ -30,7 +30,7 @@
 #include <sys/lock.h>
 #include <linux/lockdep.h>
 
-#define mutex_is_locked(lock)	(lockcount(lock) != 0)
+#define mutex_is_locked(lock)	(lockinuse(lock))
 
 #define mutex_lock(lock)	lockmgr(lock, LK_EXCLUSIVE)
 #define mutex_unlock(lock)	lockmgr(lock, LK_RELEASE)

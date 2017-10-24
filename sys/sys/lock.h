@@ -1,12 +1,15 @@
 /* 
  * Copyright (c) 1995
  *	The Regents of the University of California.  All rights reserved.
- * Copyright (c) 2013
+ * Copyright (c) 2013-2017
  *	The DragonFly Project.  All rights reserved.
  *
  * This code contains ideas from software contributed to Berkeley by
  * Avadis Tevanian, Jr., Michael Wayne Young, and the Mach Operating
  * System project at Carnegie-Mellon University.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -54,13 +57,17 @@
  * The general lock structure.  Provides for multiple shared locks,
  * upgrading from shared to exclusive, and sleeping until the lock
  * can be gained.
+ *
+ * NOTE: We don't __cachealign struct lock, its too much bloat.  Users
+ *	 of struct lock may be able to arrange it within greater structures
+ *	 in more SMP-friendly ways.
  */
 struct thread;
 
 struct lock {
 	u_int	lk_flags;		/* see below */
-	int	lk_count;		/* -shared, +exclusive */
 	int	lk_timo;		/* maximum sleep time (for tsleep) */
+	uint64_t lk_count;		/* see LKC_* bits */
 	const char *lk_wmesg;		/* resource sleeping (for tsleep) */
 	struct thread *lk_lockholder;	/* thread of excl lock holder */
 };
@@ -144,13 +151,16 @@ struct lock {
  * Positive count is exclusive, negative count is shared.  The count field
  * must be large enough to accomodate all possible threads.
  */
-#define LKC_EXREQ	0x80000000	/* waiting for exclusive lock */
-#define LKC_SHREQ	0x40000000	/* waiting for shared lock */
-#define LKC_UPREQ	0x20000000	/* waiting for upgrade */
-#define LKC_EXCL	0x10000000	/* exclusive (else shr or unlocked) */
-#define LKC_UPGRANT	0x08000000	/* upgrade granted */
-#define LKC_CANCEL	0x04000000	/* cancel in effect */
-#define LKC_MASK	0x03FFFFFF
+#define LKC_RESERVED8	0x0000000080000000LU	/* (DNU, insn optimization) */
+#define LKC_EXREQ	0x0000000040000000LU	/* waiting for excl lock */
+#define LKC_SHARED	0x0000000020000000LU	/* shared lock(s) granted */
+#define LKC_UPREQ	0x0000000010000000LU	/* waiting for upgrade */
+#define LKC_EXREQ2	0x0000000008000000LU	/* multi-wait for EXREQ */
+#define LKC_CANCEL	0x0000000004000000LU	/* cancel in effect */
+#define LKC_XMASK	0x0000000003FFFFFFLU
+#define LKC_SMASK	0xFFFFFFFF00000000LU
+#define LKC_SCOUNT	0x0000000100000000LU
+#define LKC_SSHIFT	32
 
 /*
  * External lock flags.
@@ -198,7 +208,6 @@ struct lock {
  * Indicator that no process holds exclusive lock
  */
 #define LK_KERNTHREAD ((struct thread *)-2)
-#define LK_NOTHREAD ((struct thread *)-1)
 
 #ifdef _KERNEL
 
@@ -214,10 +223,10 @@ struct lock_args {
 #define LOCK_INITIALIZER(wmesg, timo, flags)	\
 {						\
 	.lk_flags = ((flags) & LK_EXTFLG_MASK),	\
+	.lk_timo = (timo),			\
 	.lk_count = 0,				\
 	.lk_wmesg = wmesg,			\
-	.lk_timo = (timo),			\
-	.lk_lockholder = LK_NOTHREAD		\
+	.lk_lockholder = NULL			\
 }
 
 void	lockinit (struct lock *, const char *wmesg, int timo, int flags);
@@ -235,8 +244,6 @@ void	lockmgr_kernproc (struct lock *);
 void	lockmgr_printinfo (struct lock *);
 int	lockstatus (struct lock *, struct thread *);
 int	lockowned (struct lock *);
-int	lockcount (struct lock *);
-int	lockcountnb (struct lock *);
 
 #define	LOCK_SYSINIT(name, lock, desc, flags)				\
 	static struct lock_args name##_args = {				\
@@ -278,6 +285,18 @@ lockmgr(struct lock *lkp, u_int flags)
 		      flags & LK_TYPE_MASK);
 		return EINVAL;	/* NOT REACHED */
 	}
+}
+
+/*
+ * Returns non-zero if the lock is in-use.  Cannot be used to count
+ * refs on a lock (refs cannot be safely counted due to the use of
+ * atomic_fetchadd_int() for shared locks.
+ */
+static __inline
+int
+lockinuse(struct lock *lkp)
+{
+	return ((lkp->lk_count & (LKC_SMASK | LKC_XMASK)) != 0);
 }
 
 #endif /* _KERNEL */

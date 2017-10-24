@@ -1448,7 +1448,7 @@ nfs_clearcommit_callback(struct mount *mp, struct vnode *vp,
 static int
 nfs_clearcommit_bp(struct buf *bp, void *data __unused)
 {
-	if (BUF_REFCNT(bp) == 0 &&
+	if (BUF_LOCKINUSE(bp) == 0 &&
 	    (bp->b_flags & (B_DELWRI | B_NEEDCOMMIT))
 	     == (B_DELWRI | B_NEEDCOMMIT)) {
 		bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);

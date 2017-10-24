@@ -397,7 +397,7 @@ shutdown_busycount1(struct buf *bp, void *info)
 
 	if ((vp = bp->b_vp) != NULL && vp->v_tag == VT_TMPFS)
 		return (0);
-	if ((bp->b_flags & B_INVAL) == 0 && BUF_REFCNT(bp) > 0)
+	if ((bp->b_flags & B_INVAL) == 0 && BUF_LOCKINUSE(bp))
 		return(1);
 	if ((bp->b_flags & (B_DELWRI | B_INVAL)) == B_DELWRI)
 		return (1);
@@ -431,7 +431,7 @@ shutdown_busycount2(struct buf *bp, void *info)
 	/*
 	 * Only count buffers stuck on I/O, ignore everything else
 	 */
-	if (((bp->b_flags & B_INVAL) == 0 && BUF_REFCNT(bp)) ||
+	if (((bp->b_flags & B_INVAL) == 0 && BUF_LOCKINUSE(bp)) ||
 	    ((bp->b_flags & (B_DELWRI|B_INVAL)) == B_DELWRI)) {
 		/*
 		 * Only count buffers undergoing write I/O
