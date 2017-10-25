@@ -33,4 +33,7 @@
 
 int	efi_find_framebuffer(struct efi_fb *efifb);
 
+/* Guess bits-per-pixel from the color masks. */
+u_int	efi_framebuffer_bpp(struct efi_fb *efifb);
+
 #endif /* _EFIFB_H_ */

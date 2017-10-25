@@ -43,8 +43,8 @@ static EFI_GUID gop_guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
 static EFI_GUID pciio_guid = EFI_PCI_IO_PROTOCOL_GUID;
 static EFI_GUID uga_guid = EFI_UGA_DRAW_PROTOCOL_GUID;
 
-static u_int
-efifb_color_depth(struct efi_fb *efifb)
+u_int
+efi_framebuffer_bpp(struct efi_fb *efifb)
 {
 	uint32_t mask;
 	u_int depth;
@@ -448,7 +448,7 @@ print_efifb(int mode, struct efi_fb *efifb, int verbose)
 
 	if (mode >= 0)
 		printf("mode %d: ", mode);
-	depth = efifb_color_depth(efifb);
+	depth = efi_framebuffer_bpp(efifb);
 	printf("%ux%ux%u, stride=%u", efifb->fb_width, efifb->fb_height,
 	    depth, efifb->fb_stride);
 	if (verbose) {

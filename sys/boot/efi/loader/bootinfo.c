@@ -244,6 +244,7 @@ bi_load_efi_data(struct preloaded_file *kfp)
 
 #if defined(__x86_64__)
 	struct efi_fb efifb;
+	int colordepth;
 
 	if (efi_find_framebuffer(&efifb) == 0) {
 		printf("EFI framebuffer information:\n");
@@ -256,7 +257,15 @@ bi_load_efi_data(struct preloaded_file *kfp)
 		    efifb.fb_mask_red, efifb.fb_mask_green, efifb.fb_mask_blue,
 		    efifb.fb_mask_reserved);
 
-		file_addmetadata(kfp, MODINFOMD_EFI_FB, sizeof(efifb), &efifb);
+		colordepth = efi_framebuffer_bpp(&efifb);
+		if (colordepth != 24 && colordepth != 32) {
+			printf("Unsupported framebuffer format: depth=%d\n",
+			    colordepth);
+			return (EINVAL);
+		} else {
+			file_addmetadata(kfp, MODINFOMD_EFI_FB, sizeof(efifb),
+			    &efifb);
+		}
 	}
 #endif
 
