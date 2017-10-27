@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/sbin/kldload/kldload.8,v 1.7.2.10 2002/12/07 08:44:02 jmallett Exp $
 .\"
-.Dd December 12, 2014
+.Dd October 27, 2017
 .Dt KLDLOAD 8
 .Os
 .Sh NAME
@@ -43,6 +43,9 @@ utility loads
 into the kernel using the kernel linker.
 Note that if multiple modules are specified then an attempt will
 be made to load them all, even if some fail.
+List of search directories is provided by
+.Va kern.module_path
+variable.
 .Pp
 The following options are available:
 .Bl -tag -width indent
@@ -52,11 +55,15 @@ Do not try to load module if already loaded.
 Be more verbose.
 .El
 .Sh FILES
-.Bl -tag -width /boot/kernel -compact
+.Bl -tag -width /boot/modules.local -compact
 .It Pa /boot/kernel
 directory containing loadable modules.
 Modules must have an extension of
 .Pa .ko .
+.It Pa /boot/modules.local
+directory for local loadable kernel modules
+and wrapped external firmware images; see
+.Xr firmware 9
 .El
 .Sh EXIT STATUS
 .Ex -std
