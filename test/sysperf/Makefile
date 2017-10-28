@@ -11,6 +11,7 @@ TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 /tmp/sc5 /tmp/sc6 /tmp/sc7 \
 	/tmp/mem1 /tmp/mem2 \
 	/tmp/cld1 \
 	/tmp/rr1 \
+	/tmp/lockmgr1 /tmp/lockmgr2 /tmp/lockmgr3 \
 	/tmp/loop900k /tmp/pipe900k /tmp/sleep900k
 
 .if defined(NO_OPTIMIZE)
@@ -129,6 +130,15 @@ all:	$(TARGETS)
 
 /tmp/rr1: randread.c blib.c
 	$(CC) $(CFLAGS) randread.c blib.c -o /tmp/rr1
+
+/tmp/lockmgr1: lockmgr1.c blib.c
+	$(CC) lockmgr1.c blib.c -o /tmp/lockmgr1
+
+/tmp/lockmgr2: lockmgr2.c blib.c
+	$(CC) lockmgr2.c blib.c -o /tmp/lockmgr2
+
+/tmp/lockmgr3: lockmgr3.c blib.c
+	$(CC) lockmgr3.c blib.c -o /tmp/lockmgr3
 
 /tmp/loop900k: loop900k.c
 	$(CC) $(CFLAGS) loop900k.c -o /tmp/loop900k -static
