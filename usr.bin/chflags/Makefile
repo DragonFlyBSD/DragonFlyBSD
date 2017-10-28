@@ -5,11 +5,4 @@ NOSHARED?=yes
 
 PROG=	chflags
 
-.if defined(BOOTSTRAPPING)
-# Keep version check up to date.
-. if ${WORLD_VERSION} <= 400103
-CFLAGS+=	-I${.CURDIR} -include chflags-compat.h
-. endif
-.endif
-
 .include <bsd.prog.mk>

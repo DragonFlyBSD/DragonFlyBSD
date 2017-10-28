@@ -28,11 +28,6 @@ SRCS=		charset.c \
 		symtab.c \
 		traditional.c
 
-# Helper for bootstrapping over iconv() removal of 'const' (c++ issue)
-.if ${WORLD_VERSION} <= 400301
-CFLAGS+=	-fpermissive
-.endif
-
 localedir.h:
 	touch $@
 

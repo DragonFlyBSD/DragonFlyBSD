@@ -12,6 +12,13 @@
 +         UPGRADING DRAGONFLY FROM 5.0 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+BOOTSTRAPPING LIMITED FROM PRE 4.4
+----------------------------------
+
+Upgrading to 5.1 and later versions now require at least 4.4 in
+preparations for upcoming base compilers updates.
+
+
 IF_PPP AND PPPD REMOVED
 -----------------------
 

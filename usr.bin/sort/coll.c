@@ -1074,11 +1074,7 @@ huge_plus(double d, int err1)
 static bool
 is_nan(double d)
 {
-#ifdef BOOTSTRAPPING
-	return (d == NAN);
-#else
 	return ((d == NAN) || (isnan(d)));
-#endif
 }
 
 /*
