@@ -42,9 +42,7 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
-#ifndef BOOTSTRAPPING
 #include <langinfo.h>
-#endif
 #include <locale.h>
 #include <paths.h>
 #include <regex.h>
@@ -580,11 +578,7 @@ prompt(void)
 	(void)fflush(stderr);
 	if ((response = fgetln(ttyfp, &rsize)) == NULL ||
 	    regcomp(&cre,
-#ifdef BOOTSTRAPPING
-		"^[yY]",
-#else
 		nl_langinfo(YESEXPR),
-#endif
 		REG_BASIC) != 0) {
 		(void)fclose(ttyfp);
 		return (0);

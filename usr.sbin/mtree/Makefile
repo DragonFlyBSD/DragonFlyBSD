@@ -8,10 +8,7 @@ PROG=	mtree
 MAN=	mtree.8
 SRCS=	compare.c crc.c create.c excludes.c misc.c mtree.c spec.c verify.c
 
-.if defined(BOOTSTRAPPING)
-.PATH: ${.CURDIR}/../../lib/libc/gen
-SRCS+=	strtofflags.c
-.else
+.if !defined(BOOTSTRAPPING)
 SRCS+=	sha1hl.c
 CFLAGS+= -DUSE_MD5 -DUSE_SHA1 -DUSE_RMD160
 DPADD=  ${LIBMD} ${LIBRECRYPTO}

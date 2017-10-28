@@ -54,10 +54,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifdef BOOTSTRAPPING
-#define	getline	get_line /* help bootstrap previous stdio.h */
-#endif
-
 static const char *infile, *outfile;
 static FILE *infp, *outfp;
 static int base64, cflag, iflag, oflag, pflag, rflag, sflag;

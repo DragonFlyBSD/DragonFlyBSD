@@ -6,9 +6,4 @@ PROGNAME=	install
 SRCS=		xinstall.c
 MAN=		install.1
 
-.if defined(BOOTSTRAPPING)
-.PATH: ${.CURDIR}/../../lib/libc/gen
-SRCS+=		strtofflags.c
-.endif
-
 .include <bsd.prog.mk>

@@ -5,8 +5,4 @@ PROG=	uudecode
 LINKS=	${BINDIR}/uudecode ${BINDIR}/b64decode
 NOMAN=	noman
 
-.if defined(BOOTSTRAPPING)
-CFLAGS+=	-DBOOTSTRAPPING	# s/getline/get_line/g
-.endif
-
 .include <bsd.prog.mk>
