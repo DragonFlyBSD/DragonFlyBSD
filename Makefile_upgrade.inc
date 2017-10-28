@@ -3261,6 +3261,10 @@ TO_REMOVE+=/usr/share/man/man4/if_ppp.4.gz
 TO_REMOVE+=/usr/share/man/man4/ppp.4.gz
 TO_REMOVE+=/usr/share/man/man8/pppd.8.gz
 TO_REMOVE+=/usr/share/man/man8/pppstats.8.gz
+TO_REMOVE+=/etc/periodic/daily/220.backup-distfile
+TO_REMOVE+=/etc/periodic/daily/320.rdist
+TO_REMOVE+=/usr/bin/rdist
+TO_REMOVE+=/usr/share/man/man1/rdist.1.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

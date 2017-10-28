@@ -153,7 +153,6 @@ SUBDIR=	alias \
 	printf \
 	pwait \
 	quota \
-	rdist \
 	relpath \
 	renice \
 	rev \
