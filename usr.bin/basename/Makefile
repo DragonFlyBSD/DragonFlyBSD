@@ -4,8 +4,4 @@
 PROG=	basename
 MLINKS=	basename.1 dirname.1
 
-.if defined(BOOTSTRAPPING)
-CFLAGS+= -DNO_WCHAR
-.endif
-
 .include <bsd.prog.mk>

@@ -103,15 +103,12 @@ void
 stripsuffix(char *p, const char *suffix, size_t suffixlen)
 {
 	char *q;
-#ifndef NO_WCHAR
 	char *r;
 	mbstate_t mbs;
 	size_t n;
-#endif
 
 	if (suffixlen && (q = strchr(p, '\0') - suffixlen) > p &&
 	    strcmp(suffix, q) == 0) {
-#ifndef NO_WCHAR
 		/* Ensure that the match occurred on a character boundary. */
 		memset(&mbs, 0, sizeof(mbs));
 		for (r = p; r < q; r += n) {
@@ -123,7 +120,6 @@ stripsuffix(char *p, const char *suffix, size_t suffixlen)
 		}
 		/* Chop off the suffix. */
 		if (q == r)
-#endif
 			*q = '\0';
 	}
 }

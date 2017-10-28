@@ -94,9 +94,5 @@ queryuser(char *argv[])
 		(void)fprintf(stderr, "\n");
 		(void)fflush(stderr);
 	}
-#ifdef BOOTSTRAPPING
-	return (resp[0] == 'y');
-#else
         return (rpmatch(resp) == 1);
-#endif
 }
