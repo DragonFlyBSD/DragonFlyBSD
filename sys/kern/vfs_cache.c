@@ -92,8 +92,8 @@
  * Negative entries may exist and correspond to resolved namecache
  * structures where nc_vp is NULL.  In a negative entry, NCF_WHITEOUT
  * will be set if the entry corresponds to a whited-out directory entry
- * (verses simply not finding the entry at all).   ncneg.list is locked
- * with a global spinlock (ncneg.spin).
+ * (verses simply not finding the entry at all).   pcpu_ncache[n].neg_list
+ * is locked via pcpu_ncache[n].neg_spin;
  *
  * MPSAFE RULES:
  *
@@ -143,13 +143,17 @@ struct ncmount_cache {
 	int isneg;		/* if != 0 mp is originator and not target */
 } __cachealign;
 
-struct ncneg_cache {
-	struct spinlock		spin;
-	struct namecache_list	list;
+struct pcpu_ncache {
+	struct spinlock		neg_spin;	/* for neg_list and neg_count */
+	struct namecache_list	neg_list;
+	long			neg_count;
+	long			vfscache_negs;
+	long			vfscache_count;
+	long			vfscache_leafs;
 } __cachealign;
 
 static struct nchash_head	*nchashtbl;
-static struct ncneg_cache	ncneg;
+static struct pcpu_ncache	*pcpu_ncache;
 static struct ncmount_cache	ncmount_cache[NCMOUNT_NUMCACHE];
 
 /*
@@ -212,20 +216,26 @@ static int cache_resolve_mp(struct mount *mp);
 static struct vnode *cache_dvpref(struct namecache *ncp);
 static void _cache_lock(struct namecache *ncp);
 static void _cache_setunresolved(struct namecache *ncp);
-static void _cache_cleanneg(int count);
-static void _cache_cleanpos(int count);
+static void _cache_cleanneg(long count);
+static void _cache_cleanpos(long count);
 static void _cache_cleandefered(void);
 static void _cache_unlink(struct namecache *ncp);
+#if 0
+static void vfscache_rollup_all(void);
+#endif
 
 /*
  * The new name cache statistics
  */
 SYSCTL_NODE(_vfs, OID_AUTO, cache, CTLFLAG_RW, 0, "Name cache statistics");
-static int numneg;
-SYSCTL_INT(_vfs_cache, OID_AUTO, numneg, CTLFLAG_RD, &numneg, 0,
+static long vfscache_negs;
+SYSCTL_LONG(_vfs_cache, OID_AUTO, numneg, CTLFLAG_RD, &vfscache_negs, 0,
     "Number of negative namecache entries");
-static int numcache;
-SYSCTL_INT(_vfs_cache, OID_AUTO, numcache, CTLFLAG_RD, &numcache, 0,
+static long vfscache_count;
+SYSCTL_LONG(_vfs_cache, OID_AUTO, numcache, CTLFLAG_RD, &vfscache_count, 0,
+    "Number of namecaches entries");
+static long vfscache_leafs;
+SYSCTL_LONG(_vfs_cache, OID_AUTO, numleafs, CTLFLAG_RD, &vfscache_leafs, 0,
     "Number of namecaches entries");
 
 struct nchstats nchstats[SMP_MAXCPU];
@@ -879,6 +889,8 @@ static void
 _cache_link_parent(struct namecache *ncp, struct namecache *par,
 		   struct nchash_head *nchpp)
 {
+	struct pcpu_ncache *pn = &pcpu_ncache[mycpu->gd_cpuid];
+
 	KKASSERT(ncp->nc_parent == NULL);
 	ncp->nc_parent = par;
 	ncp->nc_head = nchpp;
@@ -894,10 +906,17 @@ _cache_link_parent(struct namecache *ncp, struct namecache *par,
 	if (par->nc_flag & (NCF_UF_CACHE | NCF_UF_PCACHE))
 		ncp->nc_flag |= NCF_UF_PCACHE;
 
+	/*
+	 * Add to hash table and parent, adjust accounting
+	 */
 	LIST_INSERT_HEAD(&nchpp->list, ncp, nc_hash);
+	atomic_add_long(&pn->vfscache_count, 1);
+	if (TAILQ_EMPTY(&ncp->nc_list))
+		atomic_add_long(&pn->vfscache_leafs, 1);
 
 	if (TAILQ_EMPTY(&par->nc_list)) {
 		TAILQ_INSERT_HEAD(&par->nc_list, ncp, nc_entry);
+		atomic_add_long(&pn->vfscache_leafs, -1);
 		/*
 		 * Any vp associated with an ncp which has children must
 		 * be held to prevent it from being recycled.
@@ -920,6 +939,7 @@ _cache_link_parent(struct namecache *ncp, struct namecache *par,
 static void
 _cache_unlink_parent(struct namecache *ncp)
 {
+	struct pcpu_ncache *pn = &pcpu_ncache[mycpu->gd_cpuid];
 	struct namecache *par;
 	struct vnode *dropvp;
 
@@ -928,11 +948,22 @@ _cache_unlink_parent(struct namecache *ncp)
 		_cache_hold(par);
 		_cache_lock(par);
 		spin_lock(&ncp->nc_head->spin);
+
+		/*
+		 * Remove from hash table and parent, adjust accounting
+		 */
 		LIST_REMOVE(ncp, nc_hash);
 		TAILQ_REMOVE(&par->nc_list, ncp, nc_entry);
+		atomic_add_long(&pn->vfscache_count, -1);
+		if (TAILQ_EMPTY(&ncp->nc_list))
+			atomic_add_long(&pn->vfscache_leafs, -1);
+
 		dropvp = NULL;
-		if (par->nc_vp && TAILQ_EMPTY(&par->nc_list))
-			dropvp = par->nc_vp;
+		if (TAILQ_EMPTY(&par->nc_list)) {
+			atomic_add_long(&pn->vfscache_leafs, 1);
+			if (par->nc_vp)
+				dropvp = par->nc_vp;
+		}
 		spin_unlock(&ncp->nc_head->spin);
 		ncp->nc_parent = NULL;
 		ncp->nc_head = NULL;
@@ -1438,7 +1469,6 @@ _cache_setvp(struct mount *mp, struct namecache *ncp, struct vnode *vp)
 		default:
 			break;
 		}
-		atomic_add_int(&numcache, 1);
 		ncp->nc_error = 0;
 		/* XXX: this is a hack to work-around the lack of a real pfs vfs
 		 * implementation*/
@@ -1453,11 +1483,16 @@ _cache_setvp(struct mount *mp, struct namecache *ncp, struct vnode *vp)
 		 * has changed.  Used by devfs, could also be used by
 		 * other remote FSs.
 		 */
+		struct pcpu_ncache *pn = &pcpu_ncache[mycpu->gd_cpuid];
+
 		ncp->nc_vp = NULL;
-		spin_lock(&ncneg.spin);
-		TAILQ_INSERT_TAIL(&ncneg.list, ncp, nc_vnode);
-		++numneg;
-		spin_unlock(&ncneg.spin);
+		ncp->nc_negcpu = mycpu->gd_cpuid;
+		spin_lock(&pn->neg_spin);
+		TAILQ_INSERT_TAIL(&pn->neg_list, ncp, nc_vnode);
+		++pn->neg_count;
+		spin_unlock(&pn->neg_spin);
+		atomic_add_long(&pn->vfscache_negs, 1);
+
 		ncp->nc_error = ENOENT;
 		if (mp)
 			VFS_NCPGEN_SET(mp, ncp);
@@ -1512,7 +1547,6 @@ _cache_setunresolved(struct namecache *ncp)
 		ncp->nc_timeout = 0;
 		ncp->nc_error = ENOTCONN;
 		if ((vp = ncp->nc_vp) != NULL) {
-			atomic_add_int(&numcache, -1);
 			spin_lock(&vp->v_spin);
 			ncp->nc_vp = NULL;
 			TAILQ_REMOVE(&vp->v_namecache, ncp, nc_vnode);
@@ -1529,10 +1563,15 @@ _cache_setunresolved(struct namecache *ncp)
 			if (ncp->nc_lockstatus & ~(NC_EXLOCK_REQ|NC_SHLOCK_REQ))
 				vdrop(vp);
 		} else {
-			spin_lock(&ncneg.spin);
-			TAILQ_REMOVE(&ncneg.list, ncp, nc_vnode);
-			--numneg;
-			spin_unlock(&ncneg.spin);
+			struct pcpu_ncache *pn;
+
+			pn = &pcpu_ncache[ncp->nc_negcpu];
+
+			atomic_add_long(&pn->vfscache_negs, -1);
+			spin_lock(&pn->neg_spin);
+			TAILQ_REMOVE(&pn->neg_list, ncp, nc_vnode);
+			--pn->neg_count;
+			spin_unlock(&pn->neg_spin);
 		}
 		ncp->nc_flag &= ~(NCF_WHITEOUT|NCF_ISDIR|NCF_ISSYMLINK);
 	}
@@ -2659,7 +2698,7 @@ done:
 
 /*
  * Zap a namecache entry.  The ncp is unconditionally set to an unresolved
- * state, which disassociates it from its vnode or ncneg.list.
+ * state, which disassociates it from its vnode or pcpu_ncache[n].neg_list.
  *
  * Then, if there are no additional references to the ncp and no children,
  * the ncp is removed from the topology and destroyed.
@@ -2775,11 +2814,20 @@ cache_zap(struct namecache *ncp, int nonblock)
 	 */
 	dropvp = NULL;
 	if (par) {
+		struct pcpu_ncache *pn = &pcpu_ncache[mycpu->gd_cpuid];
+
 		KKASSERT(nchpp == ncp->nc_head);
 		LIST_REMOVE(ncp, nc_hash);
 		TAILQ_REMOVE(&par->nc_list, ncp, nc_entry);
-		if (par->nc_vp && TAILQ_EMPTY(&par->nc_list))
-			dropvp = par->nc_vp;
+		atomic_add_long(&pn->vfscache_count, -1);
+		if (TAILQ_EMPTY(&ncp->nc_list))
+			atomic_add_long(&pn->vfscache_leafs, -1);
+
+		if (TAILQ_EMPTY(&par->nc_list)) {
+			atomic_add_long(&pn->vfscache_leafs, 1);
+			if (par->nc_vp)
+				dropvp = par->nc_vp;
+		}
 		ncp->nc_head = NULL;
 		ncp->nc_parent = NULL;
 		spin_unlock(&nchpp->spin);
@@ -2833,9 +2881,9 @@ static cache_hs_t pos_cache_hysteresis_state[2] = { CHI_LOW, CHI_LOW };
 void
 cache_hysteresis(int critpath)
 {
-	int poslimit;
-	int neglimit = maxvnodes / ncnegfactor;
-	int xnumcache = numcache;
+	long poslimit;
+	long neglimit = maxvnodes / ncnegfactor;
+	long xnumcache = vfscache_leafs;
 
 	if (critpath == 0)
 		neglimit = neglimit * 8 / 10;
@@ -2846,24 +2894,25 @@ cache_hysteresis(int critpath)
 	 */
 	switch(neg_cache_hysteresis_state[critpath]) {
 	case CHI_LOW:
-		if (numneg > MINNEG && numneg > neglimit) {
+		if (vfscache_negs > MINNEG && vfscache_negs > neglimit) {
 			if (critpath)
 				_cache_cleanneg(ncnegflush);
 			else
 				_cache_cleanneg(ncnegflush +
-						numneg - neglimit);
+						vfscache_negs - neglimit);
 			neg_cache_hysteresis_state[critpath] = CHI_HIGH;
 		}
 		break;
 	case CHI_HIGH:
-		if (numneg > MINNEG * 9 / 10 && 
-		    numneg * 9 / 10 > neglimit
+		if (vfscache_negs > MINNEG * 9 / 10 &&
+		    vfscache_negs * 9 / 10 > neglimit
 		) {
 			if (critpath)
 				_cache_cleanneg(ncnegflush);
 			else
 				_cache_cleanneg(ncnegflush +
-						numneg * 9 / 10 - neglimit);
+						vfscache_negs * 9 / 10 -
+						neglimit);
 		} else {
 			neg_cache_hysteresis_state[critpath] = CHI_LOW;
 		}
@@ -3756,25 +3805,37 @@ cache_resolve_mp(struct mount *mp)
  * Clean out negative cache entries when too many have accumulated.
  */
 static void
-_cache_cleanneg(int count)
+_cache_cleanneg(long count)
 {
+	struct pcpu_ncache *pn;
 	struct namecache *ncp;
+	static uint32_t neg_rover;
+	uint32_t n;
+
+	n = neg_rover++;	/* SMP heuristical, race ok */
+	cpu_ccfence();
+	n = n % (uint32_t)ncpus;
+
+	pn = &pcpu_ncache[n];
+	spin_lock(&pn->neg_spin);
+	count = pn->neg_count * count / vfscache_negs + 1;
+	spin_unlock(&pn->neg_spin);
 
 	/*
 	 * Attempt to clean out the specified number of negative cache
 	 * entries.
 	 */
-	while (count) {
-		spin_lock(&ncneg.spin);
-		ncp = TAILQ_FIRST(&ncneg.list);
+	while (count > 0) {
+		spin_lock(&pn->neg_spin);
+		ncp = TAILQ_FIRST(&pn->neg_list);
 		if (ncp == NULL) {
-			spin_unlock(&ncneg.spin);
+			spin_unlock(&pn->neg_spin);
 			break;
 		}
-		TAILQ_REMOVE(&ncneg.list, ncp, nc_vnode);
-		TAILQ_INSERT_TAIL(&ncneg.list, ncp, nc_vnode);
+		TAILQ_REMOVE(&pn->neg_list, ncp, nc_vnode);
+		TAILQ_INSERT_TAIL(&pn->neg_list, ncp, nc_vnode);
 		_cache_hold(ncp);
-		spin_unlock(&ncneg.spin);
+		spin_unlock(&pn->neg_spin);
 
 		/*
 		 * This can race, so we must re-check that the ncp
@@ -3801,7 +3862,7 @@ _cache_cleanneg(int count)
  * Clean out positive cache entries when too many have accumulated.
  */
 static void
-_cache_cleanpos(int count)
+_cache_cleanpos(long count)
 {
 	static volatile int rover;
 	struct nchash_head *nchpp;
@@ -3812,7 +3873,7 @@ _cache_cleanpos(int count)
 	 * Attempt to clean out the specified number of negative cache
 	 * entries.
 	 */
-	while (count) {
+	while (count > 0) {
 		rover_copy = ++rover;	/* MPSAFEENOUGH */
 		cpu_ccfence();
 		nchpp = NCHHASH(rover_copy);
@@ -3891,8 +3952,20 @@ _cache_cleandefered(void)
 void
 nchinit(void)
 {
-	int i;
+	struct pcpu_ncache *pn;
 	globaldata_t gd;
+	int i;
+
+	/*
+	 * Per-cpu accounting and negative hit list
+	 */
+	pcpu_ncache = kmalloc(sizeof(*pcpu_ncache) * ncpus,
+			      M_VFSCACHE, M_WAITOK|M_ZERO);
+	for (i = 0; i < ncpus; ++i) {
+		pn = &pcpu_ncache[i];
+		TAILQ_INIT(&pn->neg_list);
+		spin_init(&pn->neg_spin, "ncneg");
+	}
 
 	/*
 	 * Initialise per-cpu namecache effectiveness statistics.
@@ -3905,8 +3978,6 @@ nchinit(void)
 	/*
 	 * Create a generous namecache hash table
 	 */
-	TAILQ_INIT(&ncneg.list);
-	spin_init(&ncneg.spin, "nchinit");
 	nchashtbl = hashinit_ext(vfs_inodehashsize(),
 				 sizeof(struct nchash_head),
 				 M_VFSCACHE, &nchash);
@@ -4329,3 +4400,38 @@ vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf,
 	_cache_drop(ncp);
 	return (error);
 }
+
+void
+vfscache_rollup_cpu(struct globaldata *gd)
+{
+	struct pcpu_ncache *pn;
+	long count;
+
+	if (pcpu_ncache == NULL)
+		return;
+	pn = &pcpu_ncache[gd->gd_cpuid];
+
+	if (pn->vfscache_count) {
+		count = atomic_swap_long(&pn->vfscache_count, 0);
+		atomic_add_long(&vfscache_count, count);
+	}
+	if (pn->vfscache_leafs) {
+		count = atomic_swap_long(&pn->vfscache_leafs, 0);
+		atomic_add_long(&vfscache_leafs, count);
+	}
+	if (pn->vfscache_negs) {
+		count = atomic_swap_long(&pn->vfscache_negs, 0);
+		atomic_add_long(&vfscache_negs, count);
+	}
+}
+
+#if 0
+static void
+vfscache_rollup_all(void)
+{
+	int n;
+
+	for (n = 0; n < ncpus; ++n)
+		vfscache_rollup_cpu(globaldata_find(n));
+}
+#endif

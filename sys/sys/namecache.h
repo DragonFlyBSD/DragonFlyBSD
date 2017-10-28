@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003,2004-2017 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -128,6 +128,7 @@ struct namecache {
     int			nc_error;
     int			nc_timeout;	/* compared against ticks, or 0 */
     u_int		nc_lockstatus;	/* namespace locking */
+    int			nc_negcpu;	/* which ncneg list are we on? */
     struct thread	*nc_locktd;	/* namespace locking */
     u_int		nc_namecache_gen; /* mount generation (autoclear) */
     u_int		nc_generation;	/* rename/unlink generation */
@@ -231,6 +232,7 @@ int	cache_vref(struct nchandle *, struct ucred *, struct vnode **);
 int	cache_fromdvp(struct vnode *, struct ucred *, int, struct nchandle *);
 int	cache_fullpath(struct proc *, struct nchandle *, struct nchandle *,
 			char **, char **, int);
+void	vfscache_rollup_cpu(struct globaldata *gd);
 
 #endif
 

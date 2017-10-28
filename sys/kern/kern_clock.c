@@ -737,6 +737,7 @@ hardclock(systimer_t info, int in_ipi, struct intrframe *frame)
 	 * Rollup accumulated vmstats, copy-back for critical path checks.
 	 */
 	vmstats_rollup_cpu(gd);
+	vfscache_rollup_cpu(gd);
 	mycpu->gd_vmstats = vmstats;
 
 	/*
