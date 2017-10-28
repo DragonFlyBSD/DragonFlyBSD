@@ -1109,8 +1109,10 @@ cluster_callback(struct bio *bio)
 {
 	struct buf *bp = bio->bio_buf;
 	struct buf *tbp;
+	struct buf *next;
 	struct vnode *vp;
 	int error = 0;
+	int bpflags;
 
 	/*
 	 * Must propogate errors to all the components.  A short read (EOF)
@@ -1124,13 +1126,33 @@ cluster_callback(struct bio *bio)
 
 	pmap_qremove(trunc_page((vm_offset_t) bp->b_data),
 		     bp->b_xio.xio_npages);
+
+	/*
+	 * Retrieve the cluster head and dispose of the cluster buffer.
+	 * the vp is only valid while we hold one or more cluster elements,
+	 * so we have to do this before disposing of them.
+	 */
+	tbp = bio->bio_caller_info1.cluster_head;
+	bio->bio_caller_info1.cluster_head = NULL;
+	bpflags = bp->b_flags;
+	vp = bp->b_vp;
+	bp->b_vp = NULL;
+
+	if (vp->v_type == VCHR || vp->v_type == VBLK)
+		relpbuf(bp, &vp->v_pbuf_count);
+	else
+		relpbuf(bp, &vp->v_mount->mnt_pbuf_count);
+	bp = NULL;	/* SAFETY */
+
 	/*
 	 * Move memory from the large cluster buffer into the component
 	 * buffers and mark IO as done on these.  Since the memory map
 	 * is the same, no actual copying is required.
+	 *
+	 * (And we already disposed of the larger cluster buffer)
 	 */
-	while ((tbp = bio->bio_caller_info1.cluster_head) != NULL) {
-		bio->bio_caller_info1.cluster_head = tbp->b_cluster_next;
+	while (tbp) {
+		next = tbp->b_cluster_next;
 		if (error) {
 			tbp->b_flags |= B_ERROR | B_IOISSUED;
 			tbp->b_error = error;
@@ -1139,9 +1161,10 @@ cluster_callback(struct bio *bio)
 			tbp->b_flags &= ~(B_ERROR | B_INVAL);
 			if (tbp->b_cmd == BUF_CMD_READ) {
 				tbp->b_flags = (tbp->b_flags & ~B_NOTMETA) |
-					       (bp->b_flags & B_NOTMETA);
+					       (bpflags & B_NOTMETA);
 			}
 			tbp->b_flags |= B_IOISSUED;
+
 			/*
 			 * XXX the bdwrite()/bqrelse() issued during
 			 * cluster building clears B_RELBUF (see bqrelse()
@@ -1160,13 +1183,8 @@ cluster_callback(struct bio *bio)
 				bundirty(tbp);
 		}
 		biodone(&tbp->b_bio1);
+		tbp = next;
 	}
-	vp = bp->b_vp;
-	bp->b_vp = NULL;
-	if (vp->v_type == VCHR || vp->v_type == VBLK)
-		relpbuf(bp, &vp->v_pbuf_count);
-	else
-		relpbuf(bp, &vp->v_mount->mnt_pbuf_count);
 }
 
 /*
