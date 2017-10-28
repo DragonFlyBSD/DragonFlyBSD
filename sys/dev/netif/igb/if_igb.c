@@ -220,6 +220,8 @@ static void	igb_intr(void *);
 static void	igb_intr_shared(void *);
 static void	igb_rxeof(struct igb_rx_ring *, int);
 static void	igb_txeof(struct igb_tx_ring *, int);
+static void	igb_txgc(struct igb_tx_ring *);
+static void	igb_txgc_timer(void *);
 static void	igb_set_eitr(struct igb_softc *, int, int);
 static void	igb_enable_intr(struct igb_softc *);
 static void	igb_disable_intr(struct igb_softc *);
@@ -296,6 +298,66 @@ TUNABLE_STR("hw.igb.flow_ctrl", igb_flowctrl, sizeof(igb_flowctrl));
 /* i350 specific */
 TUNABLE_INT("hw.igb.eee_disabled", &igb_eee_disabled);
 TUNABLE_INT("hw.igb.dma_coalesce", &igb_dma_coalesce);
+
+static __inline void
+igb_tx_intr(struct igb_tx_ring *txr, int hdr)
+{
+
+	igb_txeof(txr, hdr);
+	if (!ifsq_is_empty(txr->ifsq))
+		ifsq_devstart(txr->ifsq);
+}
+
+static __inline void
+igb_try_txgc(struct igb_tx_ring *txr, int16_t dec)
+{
+
+	if (txr->tx_running > 0) {
+		txr->tx_running -= dec;
+		if (txr->tx_running <= 0 && txr->tx_nmbuf &&
+		    txr->tx_avail < txr->num_tx_desc &&
+		    txr->tx_avail + txr->intr_nsegs > txr->num_tx_desc)
+			igb_txgc(txr);
+	}
+}
+
+static void
+igb_txgc_timer(void *xtxr)
+{
+	struct igb_tx_ring *txr = xtxr;
+	struct ifnet *ifp = &txr->sc->arpcom.ac_if;
+
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_UP | IFF_NPOLLING)) !=
+	    (IFF_RUNNING | IFF_UP))
+		return;
+
+	if (!lwkt_serialize_try(&txr->tx_serialize))
+		goto done;
+
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_UP | IFF_NPOLLING)) !=
+	    (IFF_RUNNING | IFF_UP)) {
+		lwkt_serialize_exit(&txr->tx_serialize);
+		return;
+	}
+	igb_try_txgc(txr, IGB_TX_RUNNING_DEC);
+
+	lwkt_serialize_exit(&txr->tx_serialize);
+done:
+	callout_reset(&txr->tx_gc_timer, 1, igb_txgc_timer, txr);
+}
+
+static __inline void
+igb_free_txbuf(struct igb_tx_ring *txr, struct igb_tx_buf *txbuf)
+{
+
+	KKASSERT(txbuf->m_head != NULL);
+	KKASSERT(txr->tx_nmbuf > 0);
+	txr->tx_nmbuf--;
+
+	bus_dmamap_unload(txr->tx_tag, txbuf->map);
+	m_freem(txbuf->m_head);
+	txbuf->m_head = NULL;
+}
 
 static __inline void
 igb_rxcsum(uint32_t staterr, struct mbuf *mp)
@@ -977,14 +1039,7 @@ igb_init(void *xsc)
 	/* Don't lose promiscuous settings */
 	igb_set_promisc(sc);
 
-	ifp->if_flags |= IFF_RUNNING;
-	for (i = 0; i < sc->tx_ring_inuse; ++i) {
-		ifsq_clr_oactive(sc->tx_rings[i].ifsq);
-		ifsq_watchdog_start(&sc->tx_rings[i].tx_watchdog);
-	}
-
-	igb_set_timer_cpuid(sc, polling);
-	callout_reset_bycpu(&sc->timer, hz, igb_timer, sc, sc->timer_cpuid);
+	/* Clear counters */
 	e1000_clear_hw_cntrs_base_generic(&sc->hw);
 
 	/* This clears any pending interrupts */
@@ -1008,6 +1063,22 @@ igb_init(void *xsc)
 		else
 			e1000_set_eee_i350(&sc->hw, TRUE, TRUE);
 	}
+
+	ifp->if_flags |= IFF_RUNNING;
+	for (i = 0; i < sc->tx_ring_inuse; ++i) {
+		struct igb_tx_ring *txr = &sc->tx_rings[i];
+
+		ifsq_clr_oactive(txr->ifsq);
+		ifsq_watchdog_start(&txr->tx_watchdog);
+
+		if (!polling) {
+			callout_reset_bycpu(&txr->tx_gc_timer, 1,
+			    igb_txgc_timer, txr, txr->tx_intr_cpuid);
+                }
+	}
+
+	igb_set_timer_cpuid(sc, polling);
+	callout_reset_bycpu(&sc->timer, hz, igb_timer, sc, sc->timer_cpuid);
 }
 
 static void
@@ -1369,9 +1440,14 @@ igb_stop(struct igb_softc *sc)
 
 	ifp->if_flags &= ~IFF_RUNNING;
 	for (i = 0; i < sc->tx_ring_cnt; ++i) {
-		ifsq_clr_oactive(sc->tx_rings[i].ifsq);
-		ifsq_watchdog_stop(&sc->tx_rings[i].tx_watchdog);
-		sc->tx_rings[i].tx_flags &= ~IGB_TXFLAG_ENABLED;
+		struct igb_tx_ring *txr = &sc->tx_rings[i];
+
+		ifsq_clr_oactive(txr->ifsq);
+		ifsq_watchdog_stop(&txr->tx_watchdog);
+		txr->tx_flags &= ~IGB_TXFLAG_ENABLED;
+
+		txr->tx_running = 0;
+		callout_stop(&txr->tx_gc_timer);
 	}
 
 	e1000_reset_hw(&sc->hw);
@@ -1588,10 +1664,8 @@ igb_add_sysctl(struct igb_softc *sc)
 {
 	struct sysctl_ctx_list *ctx;
 	struct sysctl_oid *tree;
-#if defined(IGB_RSS_DEBUG) || defined(IGB_TSS_DEBUG)
 	char node[32];
 	int i;
-#endif
 
 	ctx = device_get_sysctl_ctx(sc->dev);
 	tree = device_get_sysctl_tree(sc->dev);
@@ -1672,14 +1746,22 @@ do { \
 		    CTLFLAG_RW, &sc->rx_rings[i].rx_packets, "RXed packets");
 	}
 #endif
-#ifdef IGB_TSS_DEBUG
 	for  (i = 0; i < sc->tx_ring_cnt; ++i) {
+		struct igb_tx_ring *txr = &sc->tx_rings[i];
+
+#ifdef IGB_TSS_DEBUG
 		ksnprintf(node, sizeof(node), "tx%d_pkt", i);
-		SYSCTL_ADD_ULONG(ctx,
-		    SYSCTL_CHILDREN(tree), OID_AUTO, node,
-		    CTLFLAG_RW, &sc->tx_rings[i].tx_packets, "TXed packets");
-	}
+		SYSCTL_ADD_ULONG(ctx, SYSCTL_CHILDREN(tree), OID_AUTO, node,
+		    CTLFLAG_RW, &txr->tx_packets, "TXed packets");
 #endif
+		ksnprintf(node, sizeof(node), "tx%d_nmbuf", i);
+		SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO, node,
+		    CTLFLAG_RD, &txr->tx_nmbuf, 0, "# of pending TX mbufs");
+
+		ksnprintf(node, sizeof(node), "tx%d_gc", i);
+		SYSCTL_ADD_ULONG(ctx, SYSCTL_CHILDREN(tree), OID_AUTO, node,
+		    CTLFLAG_RW, &txr->tx_gc, "# of TX desc GC");
+	}
 }
 
 static int
@@ -1713,6 +1795,7 @@ igb_alloc_rings(struct igb_softc *sc)
 		txr->me = i;
 		txr->tx_intr_cpuid = -1;
 		lwkt_serialize_init(&txr->tx_serialize);
+		callout_init_mp(&txr->tx_gc_timer);
 
 		error = igb_create_tx_ring(txr);
 		if (error)
@@ -1860,7 +1943,16 @@ igb_create_tx_ring(struct igb_tx_ring *txr)
 	/*
 	 * Initialize various watermark
 	 */
-	txr->intr_nsegs = txr->num_tx_desc / 16;
+	if (txr->sc->hw.mac.type == e1000_82575) {
+		/*
+		 * There no ways to GC pending TX mbufs in 'header
+		 * write back' mode with reduced # of RS TX descs,
+		 * since TDH does _not_ move for 82575.
+		 */
+		txr->intr_nsegs = 1;
+	} else {
+		txr->intr_nsegs = txr->num_tx_desc / 16;
+	}
 	txr->wreg_nsegs = IGB_DEF_TXWREG_NSEGS;
 
 	return 0;
@@ -1874,11 +1966,8 @@ igb_free_tx_ring(struct igb_tx_ring *txr)
 	for (i = 0; i < txr->num_tx_desc; ++i) {
 		struct igb_tx_buf *txbuf = &txr->tx_buf[i];
 
-		if (txbuf->m_head != NULL) {
-			bus_dmamap_unload(txr->tx_tag, txbuf->map);
-			m_freem(txbuf->m_head);
-			txbuf->m_head = NULL;
-		}
+		if (txbuf->m_head != NULL)
+			igb_free_txbuf(txr, txbuf);
 	}
 }
 
@@ -1932,6 +2021,8 @@ igb_init_tx_ring(struct igb_tx_ring *txr)
 	txr->next_avail_desc = 0;
 	txr->next_to_clean = 0;
 	txr->tx_nsegs = 0;
+	txr->tx_running = 0;
+	txr->tx_nmbuf = 0;
 
 	/* Set number of descriptors available */
 	txr->tx_avail = txr->num_tx_desc;
@@ -2094,12 +2185,12 @@ igb_txeof(struct igb_tx_ring *txr, int hdr)
 	while (first != hdr) {
 		struct igb_tx_buf *txbuf = &txr->tx_buf[first];
 
+		KKASSERT(avail < txr->num_tx_desc);
 		++avail;
-		if (txbuf->m_head) {
-			bus_dmamap_unload(txr->tx_tag, txbuf->map);
-			m_freem(txbuf->m_head);
-			txbuf->m_head = NULL;
-		}
+
+		if (txbuf->m_head)
+			igb_free_txbuf(txr, txbuf);
+
 		if (++first == txr->num_tx_desc)
 			first = 0;
 	}
@@ -2121,6 +2212,45 @@ igb_txeof(struct igb_tx_ring *txr, int hdr)
 		 */
 		txr->tx_watchdog.wd_timer = 0;
 	}
+	txr->tx_running = IGB_TX_RUNNING;
+}
+
+static void
+igb_txgc(struct igb_tx_ring *txr)
+{
+	int first, hdr;
+#ifdef INVARIANTS
+	int avail;
+#endif
+
+	if (txr->tx_avail == txr->num_tx_desc)
+		return;
+
+	hdr = E1000_READ_REG(&txr->sc->hw, E1000_TDH(txr->me)),
+	first = txr->next_to_clean;
+	if (first == hdr)
+		goto done;
+	txr->tx_gc++;
+
+#ifdef INVARIANTS
+	avail = txr->tx_avail;
+#endif
+	while (first != hdr) {
+		struct igb_tx_buf *txbuf = &txr->tx_buf[first];
+
+#ifdef INVARIANTS
+		KKASSERT(avail < txr->num_tx_desc);
+		++avail;
+#endif
+		if (txbuf->m_head)
+			igb_free_txbuf(txr, txbuf);
+
+		if (++first == txr->num_tx_desc)
+			first = 0;
+	}
+done:
+	if (txr->tx_nmbuf)
+		txr->tx_running = IGB_TX_RUNNING;
 }
 
 static int
@@ -3100,10 +3230,8 @@ igb_npoll_tx(struct ifnet *ifp, void *arg, int cycle __unused)
 	struct igb_tx_ring *txr = arg;
 
 	ASSERT_SERIALIZED(&txr->tx_serialize);
-
-	igb_txeof(txr, *(txr->tx_hdr));
-	if (!ifsq_is_empty(txr->ifsq))
-		ifsq_devstart(txr->ifsq);
+	igb_tx_intr(txr, *(txr->tx_hdr));
+	igb_try_txgc(txr, 1);
 }
 
 static void
@@ -3195,9 +3323,7 @@ igb_intr(void *xsc)
 
 		if (eicr & txr->tx_intr_mask) {
 			lwkt_serialize_enter(&txr->tx_serialize);
-			igb_txeof(txr, *(txr->tx_hdr));
-			if (!ifsq_is_empty(txr->ifsq))
-				ifsq_devstart(txr->ifsq);
+			igb_tx_intr(txr, *(txr->tx_hdr));
 			lwkt_serialize_exit(&txr->tx_serialize);
 		}
 	}
@@ -3259,9 +3385,7 @@ igb_intr_shared(void *xsc)
 			struct igb_tx_ring *txr = &sc->tx_rings[0];
 
 			lwkt_serialize_enter(&txr->tx_serialize);
-			igb_txeof(txr, *(txr->tx_hdr));
-			if (!ifsq_is_empty(txr->ifsq))
-				ifsq_devstart(txr->ifsq);
+			igb_tx_intr(txr, *(txr->tx_hdr));
 			lwkt_serialize_exit(&txr->tx_serialize);
 		}
 	}
@@ -3397,6 +3521,7 @@ igb_encap(struct igb_tx_ring *txr, struct mbuf **m_headp,
 	KASSERT(txr->tx_avail > nsegs, ("invalid avail TX desc\n"));
 	txr->next_avail_desc = i;
 	txr->tx_avail -= nsegs;
+	txr->tx_nmbuf++;
 
 	tx_buf->m_head = m_head;
 	tx_buf_mapped->map = tx_buf->map;
@@ -3473,6 +3598,7 @@ igb_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	}
 	if (idx >= 0)
 		E1000_WRITE_REG(&txr->sc->hw, E1000_TDT(txr->me), idx);
+	txr->tx_running = IGB_TX_RUNNING;
 }
 
 static void
@@ -4480,10 +4606,7 @@ igb_msix_tx(void *arg)
 
 	ASSERT_SERIALIZED(&txr->tx_serialize);
 
-	igb_txeof(txr, *(txr->tx_hdr));
-	if (!ifsq_is_empty(txr->ifsq))
-		ifsq_devstart(txr->ifsq);
-
+	igb_tx_intr(txr, *(txr->tx_hdr));
 	E1000_WRITE_REG(&txr->sc->hw, E1000_EIMS, txr->tx_intr_mask);
 }
 
@@ -4687,9 +4810,7 @@ igb_msix_rxtx(void *arg)
 	hdr = *(txr->tx_hdr);
 	if (hdr != txr->next_to_clean) {
 		lwkt_serialize_enter(&txr->tx_serialize);
-		igb_txeof(txr, hdr);
-		if (!ifsq_is_empty(txr->ifsq))
-			ifsq_devstart(txr->ifsq);
+		igb_tx_intr(txr, hdr);
 		lwkt_serialize_exit(&txr->tx_serialize);
 	}
 

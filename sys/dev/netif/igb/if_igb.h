@@ -235,15 +235,19 @@ struct igb_tx_ring {
 	struct igb_softc	*sc;
 	struct ifaltq_subque	*ifsq;
 	uint32_t		me;
-	uint32_t		tx_flags;
+	int16_t			tx_running;
+#define IGB_TX_RUNNING		100
+#define IGB_TX_RUNNING_DEC	25
+	uint16_t		tx_flags;
 #define IGB_TXFLAG_TSO_IPLEN0	0x1
 #define IGB_TXFLAG_ENABLED	0x2
 	struct e1000_tx_desc	*tx_base;
 	int			num_tx_desc;
 	uint32_t		next_avail_desc;
 	uint32_t		next_to_clean;
-	uint32_t		*tx_hdr;
 	int			tx_avail;
+	int			tx_nmbuf;
+	uint32_t		*tx_hdr;
 	struct igb_tx_buf	*tx_buf;
 	bus_dma_tag_t		tx_tag;
 	int			tx_nsegs;
@@ -252,9 +256,11 @@ struct igb_tx_ring {
 	int			tx_intr_vec;
 	uint32_t		tx_intr_mask;
 	struct ifsubq_watchdog	tx_watchdog;
+	struct callout		tx_gc_timer;
 
 	/* Soft stats */
 	u_long			tx_packets;
+	u_long			tx_gc;
 
 	struct igb_dma		txdma;
 	bus_dma_tag_t		tx_hdr_dtag;
