@@ -2330,7 +2330,7 @@ ix_txgc(struct ix_tx_ring *txr)
 	hdr = IXGBE_READ_REG(&txr->tx_sc->hw, IXGBE_TDH(txr->tx_idx));
 	first = txr->tx_next_clean;
 	if (first == hdr)
-		return;
+		goto done;
 	txr->tx_gc++;
 
 #ifdef INVARIANTS
@@ -2348,6 +2348,7 @@ ix_txgc(struct ix_tx_ring *txr)
 		if (++first == txr->tx_ndesc)
 			first = 0;
 	}
+done:
 	if (txr->tx_nmbuf)
 		txr->tx_running = IX_TX_RUNNING;
 }
