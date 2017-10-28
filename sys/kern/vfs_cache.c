@@ -4214,23 +4214,6 @@ SYSCTL_INT(_debug, OID_AUTO, disablefullpath, CTLFLAG_RW,
     &disablefullpath, 0,
     "Disable fullpath lookups");
 
-static u_int numfullpathcalls;
-SYSCTL_UINT(_vfs_cache, OID_AUTO, numfullpathcalls, CTLFLAG_RD,
-    &numfullpathcalls, 0,
-    "Number of full path resolutions in progress");
-static u_int numfullpathfailnf;
-SYSCTL_UINT(_vfs_cache, OID_AUTO, numfullpathfailnf, CTLFLAG_RD,
-    &numfullpathfailnf, 0,
-    "Number of full path resolution failures due to lack of file");
-static u_int numfullpathfailsz;
-SYSCTL_UINT(_vfs_cache, OID_AUTO, numfullpathfailsz, CTLFLAG_RD,
-    &numfullpathfailsz, 0,
-    "Number of full path resolution failures due to insufficient memory");
-static u_int numfullpathfound;
-SYSCTL_UINT(_vfs_cache, OID_AUTO, numfullpathfound, CTLFLAG_RD,
-    &numfullpathfound, 0,
-    "Number of full path resolution successes");
-
 int
 cache_fullpath(struct proc *p, struct nchandle *nchp, struct nchandle *nchbase,
 	       char **retbuf, char **freebuf, int guess)
@@ -4243,8 +4226,6 @@ cache_fullpath(struct proc *p, struct nchandle *nchp, struct nchandle *nchbase,
 	int slash_prefixed;
 	int error = 0;
 	int i;
-
-	atomic_add_int(&numfullpathcalls, -1);
 
 	*retbuf = NULL; 
 	*freebuf = NULL;
@@ -4299,7 +4280,6 @@ cache_fullpath(struct proc *p, struct nchandle *nchp, struct nchandle *nchbase,
 		 */
 		for (i = ncp->nc_nlen - 1; i >= 0; i--) {
 			if (bp == buf) {
-				numfullpathfailsz++;
 				kfree(buf, M_TEMP);
 				error = ENOMEM;
 				goto done;
@@ -4307,7 +4287,6 @@ cache_fullpath(struct proc *p, struct nchandle *nchp, struct nchandle *nchbase,
 			*--bp = ncp->nc_name[i];
 		}
 		if (bp == buf) {
-			numfullpathfailsz++;
 			kfree(buf, M_TEMP);
 			error = ENOMEM;
 			goto done;
@@ -4335,7 +4314,6 @@ cache_fullpath(struct proc *p, struct nchandle *nchp, struct nchandle *nchbase,
 		ncp = nch.ncp;
 	}
 	if (ncp == NULL) {
-		numfullpathfailnf++;
 		kfree(buf, M_TEMP);
 		error = ENOENT;
 		goto done;
@@ -4343,14 +4321,12 @@ cache_fullpath(struct proc *p, struct nchandle *nchp, struct nchandle *nchbase,
 
 	if (!slash_prefixed) {
 		if (bp == buf) {
-			numfullpathfailsz++;
 			kfree(buf, M_TEMP);
 			error = ENOMEM;
 			goto done;
 		}
 		*--bp = '/';
 	}
-	numfullpathfound++;
 	*retbuf = bp; 
 	*freebuf = buf;
 	error = 0;
@@ -4369,7 +4345,6 @@ vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf,
 	int error;
 
 	*freebuf = NULL;
-	atomic_add_int(&numfullpathcalls, 1);
 	if (disablefullpath)
 		return (ENODEV);
 
@@ -4393,7 +4368,6 @@ vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf,
 	_cache_hold(ncp);
 	spin_unlock_shared(&vn->v_spin);
 
-	atomic_add_int(&numfullpathcalls, -1);
 	nch.ncp = ncp;
 	nch.mount = vn->v_mount;
 	error = cache_fullpath(p, &nch, NULL, retbuf, freebuf, guess);
