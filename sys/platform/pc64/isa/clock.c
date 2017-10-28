@@ -1272,10 +1272,12 @@ tsc_mpsync_test_loop(struct tsc_mpsync_arg *arg)
 		lwkt_cpusync_init(&cs, gd->gd_other_cpus,
 		    tsc_mpsync_test_remote, arg);
 		lwkt_cpusync_interlock(&cs);
+		cpu_pause();
 		arg->tsc_target = rdtsc_ordered();
 		cpu_mfence();
 		lwkt_cpusync_deinterlock(&cs);
 		crit_exit();
+		cpu_pause();
 
 		if (!arg->tsc_mpsync) {
 			kprintf("cpu%d: TSC is not MP synchronized @%u\n",
