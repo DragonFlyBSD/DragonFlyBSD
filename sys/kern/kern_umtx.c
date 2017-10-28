@@ -49,6 +49,8 @@
 #include <sys/syscall.h>
 #include <sys/sysctl.h>
 #include <sys/module.h>
+#include <sys/thread.h>
+#include <sys/proc.h>
 
 #include <cpu/lwbuf.h>
 
@@ -116,6 +118,7 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
     int timeout;
     int error;
     int value;
+    int fail_counter;
 
     if (uap->timeout < 0)
 	return (EINVAL);
@@ -133,12 +136,30 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
     offset = (vm_offset_t)uptr & PAGE_MASK;
 
     /*
-     * Initial quick check.  If -1 is returned distinguish between
-     * EBUSY and EINVAL.
+     * Resolve the physical address.  We allow the case where there are
+     * sometimes discontinuities (causing a 2 second retry timeout).
      */
-    value = fuword32(uptr);
-    if (value == -1 && uservtophys((intptr_t)uap->ptr) == (vm_paddr_t)-1)
+retry_on_discontinuity:
+    fail_counter = 10000;
+    do {
+	if (--fail_counter == 0) {
+		kprintf("umtx_sleep() (X): ERROR Discontinuity %p (%s %d/%d)\n",
+			uptr, curthread->td_comm,
+			(int)curthread->td_proc->p_pid,
+			(int)curthread->td_lwp->lwp_tid);
+		return EINVAL;
+	}
+	value = fuword32(uptr);
+	waddr = (void *)(intptr_t)uservtophys((intptr_t)uptr);
+    } while (waddr == (void *)(intptr_t)-1 && value != -1);
+
+    if (value == -1 && waddr == (void *)(intptr_t)-1) {
+	kprintf("umtx_sleep() (A): WARNING can't translate %p (%s %d/%d)\n",
+		uptr, curthread->td_comm,
+		(int)curthread->td_proc->p_pid,
+		(int)curthread->td_lwp->lwp_tid);
 	return EINVAL;
+    }
 
     error = EBUSY;
     if (value == uap->value) {
@@ -177,17 +198,6 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
 		  ((timeout % 1000000) * hz + 999999) / 1000000;
 
 	/*
-	 * Calculate the physical address of the mutex.  This gives us
-	 * good distribution between unrelated processes using the
-	 * feature.
-	 */
-	waddr = (void *)uservtophys((intptr_t)uap->ptr);
-	if (waddr == (void *)(intptr_t)-1) {
-	    error = EINVAL;
-	    goto done;
-	}
-
-	/*
 	 * Wake us up if the memory location COWs while we are sleeping.
 	 * Use a critical section to tighten up the interlock.  Also,
 	 * tsleep_remove() requires the caller be in a critical section.
@@ -205,7 +215,12 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
 	 */
 	tsleep_interlock(waddr, PCATCH | PDOMAIN_UMTX);
 	cpu_lfence();
-	if (fuword32(uptr) == uap->value) {
+	if ((void *)(intptr_t)uservtophys((intptr_t)uptr) != waddr) {
+		crit_exit();
+		goto retry_on_discontinuity;
+	}
+	value = fuword32(uptr);
+	if (value == uap->value) {
 		error = tsleep(waddr, PCATCH | PINTERLOCKED | PDOMAIN_UMTX,
 			       "umtxsl", timeout);
 	} else {
@@ -233,7 +248,10 @@ sys_umtx_wakeup(struct umtx_wakeup_args *uap)
 {
     int offset;
     int error;
+    int fail_counter;
+    int32_t value;
     void *waddr;
+    void *uptr;
 
     if (curthread->td_vmm) {
 	register_t gpa;
@@ -251,9 +269,29 @@ sys_umtx_wakeup(struct umtx_wakeup_args *uap)
 	return EFAULT;
 
     offset = (vm_offset_t)uap->ptr & PAGE_MASK;
-    waddr = (void *)uservtophys((intptr_t)uap->ptr);
-    if (waddr == (void *)(intptr_t)-1)
+    uptr = __DEQUALIFY(void *, uap->ptr);
+
+    fail_counter = 10000;
+    do {
+	if (--fail_counter == 0) {
+		kprintf("umtx_wakeup() (X): ERROR Discontinuity "
+			"%p (%s %d/%d)\n",
+			uptr, curthread->td_comm,
+			(int)curthread->td_proc->p_pid,
+			(int)curthread->td_lwp->lwp_tid);
+		return EINVAL;
+	}
+	value = fuword32(uptr);
+	waddr = (void *)(intptr_t)uservtophys((intptr_t)uptr);
+    } while (waddr == (void *)(intptr_t)-1 && value != -1);
+
+    if (value == -1 && waddr == (void *)(intptr_t)-1) {
+	kprintf("umtx_wakeup() (A): WARNING can't translate %p (%s %d/%d)\n",
+		uptr, curthread->td_comm,
+		(int)curthread->td_proc->p_pid,
+		(int)curthread->td_lwp->lwp_tid);
 	return EINVAL;
+    }
 
     if (uap->count == 1) {
 	wakeup_domain_one(waddr, PDOMAIN_UMTX);
