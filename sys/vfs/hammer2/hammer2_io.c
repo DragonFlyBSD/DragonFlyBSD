@@ -191,7 +191,10 @@ hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize, int op)
 	int isgood;
 	int error;
 	int hce;
-	int notmetaflag = ((btype == HAMMER2_BREF_TYPE_DATA) ? B_NOTMETA : 0);
+	int bflags;
+
+	bflags = ((btype == HAMMER2_BREF_TYPE_DATA) ? B_NOTMETA : 0);
+	bflags |= B_KVABIO;
 
 	KKASSERT((1 << (int)(lbase & HAMMER2_OFF_MASK_RADIX)) == lsize);
 
@@ -214,6 +217,7 @@ hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize, int op)
 		if (orefs & HAMMER2_DIO_GOOD) {
 			if (isgood == 0)
 				cpu_mfence();
+			bkvasync(dio->bp);
 
 			switch(op) {
 			case HAMMER2_DOP_NEW:
@@ -266,9 +270,11 @@ hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize, int op)
 		case HAMMER2_DOP_NEWNZ:
 			dio->bp = getblk(dio->hmp->devvp,
 					 dio->pbase, dio->psize,
-					 0, 0);
-			if (op == HAMMER2_DOP_NEW)
+					 GETBLK_KVABIO, 0);
+			if (op == HAMMER2_DOP_NEW) {
+				bkvasync(dio->bp);
 				bzero(dio->bp->b_data, dio->psize);
+			}
 			atomic_set_long(&dio->refs, HAMMER2_DIO_DIRTY);
 			break;
 		case HAMMER2_DOP_READ:
@@ -282,14 +288,14 @@ hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize, int op)
 				dio->bp = NULL;
 				error = cluster_readx(dio->hmp->devvp,
 						     peof, dio->pbase,
-						     dio->psize, notmetaflag,
+						     dio->psize, bflags,
 						     dio->psize,
 						     HAMMER2_PBUFSIZE*hce,
 						     &dio->bp);
 			} else {
 				dio->bp = NULL;
 				error = breadnx(dio->hmp->devvp, dio->pbase,
-						dio->psize, notmetaflag,
+						dio->psize, bflags,
 					        NULL, NULL, 0, &dio->bp);
 			}
 		}
@@ -302,12 +308,12 @@ hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize, int op)
 			       ~HAMMER2_SEGMASK64;
 			error = cluster_readx(dio->hmp->devvp,
 					      peof, dio->pbase, dio->psize,
-					      notmetaflag,
+					      bflags,
 					      dio->psize, HAMMER2_PBUFSIZE*hce,
 					      &dio->bp);
 		} else {
 			error = breadnx(dio->hmp->devvp, dio->pbase,
-				        dio->psize, notmetaflag,
+				        dio->psize, bflags,
 					NULL, NULL, 0, &dio->bp);
 		}
 		if (dio->bp) {
@@ -316,6 +322,7 @@ hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize, int op)
 			 */
 			switch(op) {
 			case HAMMER2_DOP_NEW:
+				bkvasync(dio->bp);
 				bzero(hammer2_io_data(dio, lbase), lsize);
 				/* fall through */
 			case HAMMER2_DOP_NEWNZ:
@@ -343,6 +350,7 @@ hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize, int op)
 	}
 
 	if (dio->bp) {
+		bkvasync(dio->bp);
 		BUF_KERNPROC(dio->bp);
 		dio->bp->b_flags &= ~B_AGE;
 	}
@@ -617,6 +625,7 @@ hammer2_io_data(hammer2_io_t *dio, off_t lbase)
 
 	bp = dio->bp;
 	KKASSERT(bp != NULL);
+	bkvasync(bp);
 	off = (lbase & ~HAMMER2_OFF_MASK_RADIX) - bp->b_loffset;
 	KKASSERT(off >= 0 && off < bp->b_bufsize);
 	return(bp->b_data + off);
@@ -827,4 +836,11 @@ dio_write_stats_update(hammer2_io_t *dio, struct buf *bp)
 		break;
 	}
 	*counterp += dio->psize;
+}
+
+void
+hammer2_io_bkvasync(hammer2_io_t *dio)
+{
+	KKASSERT(dio->bp != NULL);
+	bkvasync(dio->bp);
 }

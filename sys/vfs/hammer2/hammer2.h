@@ -1580,6 +1580,7 @@ void hammer2_io_putblk(hammer2_io_t **diop);
 void hammer2_io_inval(hammer2_io_t *dio, hammer2_off_t data_off, u_int bytes);
 void hammer2_io_cleanup(hammer2_dev_t *hmp, struct hammer2_io_tree *tree);
 char *hammer2_io_data(hammer2_io_t *dio, off_t lbase);
+void hammer2_io_bkvasync(hammer2_io_t *dio);
 hammer2_io_t *hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase,
 				int lsize, int op);
 void hammer2_io_dedup_set(hammer2_dev_t *hmp, hammer2_blockref_t *bref);

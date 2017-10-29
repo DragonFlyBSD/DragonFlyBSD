@@ -1150,14 +1150,24 @@ hammer2_cluster_unlock(hammer2_cluster_t *cluster)
 const hammer2_media_data_t *
 hammer2_cluster_rdata(hammer2_cluster_t *cluster)
 {
-	KKASSERT(cluster->focus != NULL);
-	return(cluster->focus->data);
+	hammer2_chain_t *chain;
+
+	chain = cluster->focus;
+	KKASSERT(chain != NULL && chain->lockcnt);
+	if (chain->dio)
+		hammer2_io_bkvasync(chain->dio);
+	return (chain->data);
 }
 
 hammer2_media_data_t *
 hammer2_cluster_wdata(hammer2_cluster_t *cluster)
 {
-	KKASSERT(cluster->focus != NULL);
-	KKASSERT(hammer2_cluster_modified(cluster));
-	return(cluster->focus->data);
+	hammer2_chain_t *chain;
+
+	chain = cluster->focus;
+	KKASSERT(chain != NULL && chain->lockcnt &&
+		 hammer2_cluster_modified(cluster));
+	if (chain->dio)
+		hammer2_io_bkvasync(chain->dio);
+	return(chain->data);
 }

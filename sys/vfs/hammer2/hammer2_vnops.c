@@ -826,12 +826,16 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
 						&lbase, &leof);
 
 #if 1
-		error = cluster_read(ip->vp, leof, lbase, lblksize,
-				     uio->uio_resid, seqcount * MAXBSIZE,
-				     &bp);
+		bp = NULL;
+		error = cluster_readx(ip->vp, leof, lbase, lblksize,
+				      B_NOTMETA | B_KVABIO,
+				      uio->uio_resid,
+				      seqcount * MAXBSIZE,
+				      &bp);
 #else
 		if (uio->uio_segflg == UIO_NOCOPY) {
-			bp = getblk(ip->vp, lbase, lblksize, GETBLK_BHEAVY, 0);
+			bp = getblk(ip->vp, lbase, lblksize,
+				    GETBLK_BHEAVY | GETBLK_KVABIO, 0);
 			if (bp->b_flags & B_CACHE) {
 				int i;
 				int j = 0;
@@ -854,12 +858,13 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
 			}
 			bqrelse(bp);
 		}
-		error = bread(ip->vp, lbase, lblksize, &bp);
+		error = bread_kvabio(ip->vp, lbase, lblksize, &bp);
 #endif
 		if (error) {
 			brelse(bp);
 			break;
 		}
+		bkvasync(bp);
 		loff = (int)(uio->uio_offset - lbase);
 		n = lblksize - loff;
 		if (n > uio->uio_resid)
@@ -987,10 +992,12 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 			 *
 			 * This case is used by vop_stdputpages().
 			 */
-			bp = getblk(ip->vp, lbase, lblksize, GETBLK_BHEAVY, 0);
+			bp = getblk(ip->vp, lbase, lblksize,
+				    GETBLK_BHEAVY | GETBLK_KVABIO, 0);
 			if ((bp->b_flags & B_CACHE) == 0) {
 				bqrelse(bp);
-				error = bread(ip->vp, lbase, lblksize, &bp);
+				error = bread_kvabio(ip->vp, lbase,
+						     lblksize, &bp);
 			}
 		} else if (trivial) {
 			/*
@@ -998,7 +1005,8 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 			 * we may still have to zero it out to avoid a
 			 * mmap/write visibility issue.
 			 */
-			bp = getblk(ip->vp, lbase, lblksize, GETBLK_BHEAVY, 0);
+			bp = getblk(ip->vp, lbase, lblksize,
+				    GETBLK_BHEAVY | GETBLK_KVABIO, 0);
 			if ((bp->b_flags & B_CACHE) == 0)
 				vfs_bio_clrbuf(bp);
 		} else {
@@ -1009,7 +1017,7 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 			 * (The strategy code will detect zero-fill physical
 			 * blocks for this case).
 			 */
-			error = bread(ip->vp, lbase, lblksize, &bp);
+			error = bread_kvabio(ip->vp, lbase, lblksize, &bp);
 			if (error == 0)
 				bheavy(bp);
 		}
@@ -1022,6 +1030,7 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 		/*
 		 * Ok, copy the data in
 		 */
+		bkvasync(bp);
 		error = uiomovebp(bp, bp->b_data + loff, n, uio);
 		kflags |= NOTE_WRITE;
 		modified = 1;

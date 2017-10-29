@@ -74,6 +74,9 @@ struct objcache *cache_buffer_write;
  * Except for the transaction init (which should normally not block),
  * we essentially run the strategy operation asynchronously via a XOP.
  *
+ * WARNING! The XOP deals with buffer synchronization.  It is not synchronized
+ *	    to the current cpu.
+ *
  * XXX This isn't supposed to be able to deadlock against vfs_sync vfsync()
  *     calls but it has in the past when multiple flushes are queued.
  *
@@ -354,6 +357,7 @@ hammer2_strategy_xop_read(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	}
 	bio = xop->bio;
 	bp = bio->bio_buf;
+	bkvasync(bp);
 
 	/*
 	 * Async operation has not completed and we now own the lock.
@@ -586,6 +590,7 @@ hammer2_strategy_xop_write(hammer2_thread_t *thr, hammer2_xop_t *arg)
 
 	lblksize = hammer2_calc_logical(ip, bio->bio_offset, &lbase, NULL);
 	pblksize = hammer2_calc_physical(ip, lbase);
+	bkvasync(bp);
 	bcopy(bp->b_data, bio_data, lblksize);
 
 	hammer2_mtx_unlock(&xop->lock);

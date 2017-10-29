@@ -946,11 +946,15 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	++curthread->td_tracker;
 
 	/*
-	 * If we already have a valid data pointer no further action is
+	 * If we already have a valid data pointer make sure the data is
+	 * synchronized to the current cpu, and then no further action is
 	 * necessary.
 	 */
-	if (chain->data)
+	if (chain->data) {
+		if (chain->dio)
+			hammer2_io_bkvasync(chain->dio);
 		return;
+	}
 
 	/*
 	 * Do we have to resolve the data?  This is generally only
@@ -1015,6 +1019,8 @@ hammer2_chain_lock_downgrade(hammer2_chain_t *chain)
  *
  * Once chain->data is set it cannot be disposed of until all locks are
  * released.
+ *
+ * Make sure the data is synchronized to the current cpu.
  */
 void
 hammer2_chain_load_data(hammer2_chain_t *chain)
@@ -1029,8 +1035,11 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 	 * Degenerate case, data already present, or chain has no media
 	 * reference to load.
 	 */
-	if (chain->data)
+	if (chain->data) {
+		if (chain->dio)
+			hammer2_io_bkvasync(chain->dio);
 		return;
+	}
 	if ((chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX) == 0)
 		return;
 
@@ -1145,6 +1154,8 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 	/*
 	 * Clear INITIAL.  In this case we used io_new() and the buffer has
 	 * been zero'd and marked dirty.
+	 *
+	 * NOTE: hammer2_io_data() call issues bkvasync()
 	 */
 	bdata = hammer2_io_data(chain->dio, chain->bref.data_off);
 
@@ -1826,6 +1837,8 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 		/*
 		 * If an I/O error occurs make sure callers cannot accidently
 		 * modify the old buffer's contents and corrupt the filesystem.
+		 *
+		 * NOTE: hammer2_io_data() call issues bkvasync()
 		 */
 		if (error) {
 			kprintf("hammer2_chain_modify: hmp=%p I/O error\n",

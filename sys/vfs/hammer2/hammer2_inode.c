@@ -475,7 +475,12 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 			vp->v_type = VDIR;
 			break;
 		case HAMMER2_OBJTYPE_REGFILE:
+			/*
+			 * Regular file must use buffer cache I/O
+			 * (VKVABIO cpu sync semantics supported)
+			 */
 			vp->v_type = VREG;
+			vsetflags(vp, VKVABIO);
 			vinitvmio(vp, ip->meta.size,
 				  HAMMER2_LBUFSIZE,
 				  (int)ip->meta.size & HAMMER2_LBUFMASK);
@@ -485,8 +490,11 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 			 * XXX for now we are using the generic file_read
 			 * and file_write code so we need a buffer cache
 			 * association.
+			 *
+			 * (VKVABIO cpu sync semantics supported)
 			 */
 			vp->v_type = VLNK;
+			vsetflags(vp, VKVABIO);
 			vinitvmio(vp, ip->meta.size,
 				  HAMMER2_LBUFSIZE,
 				  (int)ip->meta.size & HAMMER2_LBUFMASK);
