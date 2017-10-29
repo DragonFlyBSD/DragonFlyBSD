@@ -39,7 +39,7 @@
  * and kernel space.
  */
 #define TMPFS_ARGS_VERSION	2
-struct tmpfs_args {
+struct tmpfs_mount_info {
 	int			ta_version;
 
 	/* Size counters. */

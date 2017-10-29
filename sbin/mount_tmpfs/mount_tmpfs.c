@@ -84,7 +84,7 @@ static void	usage(void) __dead2;
 
 void
 mount_tmpfs_parseargs(int argc, char *argv[],
-	struct tmpfs_args *args, int *mntflags,
+	struct tmpfs_mount_info *args, int *mntflags,
 	char *canon_dev, char *canon_dir)
 {
 	int gidset, modeset, uidset; /* Ought to be 'bool'. */
@@ -328,7 +328,7 @@ usage(void)
 int
 mount_tmpfs(int argc, char *argv[])
 {
-	struct tmpfs_args args;
+	struct tmpfs_mount_info args;
 	char canon_dev[MAXPATHLEN], canon_dir[MAXPATHLEN];
 	int mntflags;
 	struct vfsconf vfc;
