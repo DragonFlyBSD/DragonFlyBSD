@@ -1252,9 +1252,9 @@ hammer2_inode_chain_sync(hammer2_inode_t *ip)
 
 /*
  * The normal filesystem sync no longer has visibility to an inode structure
- * after its vnode has been reclaimed.  In this situation an unlinked-but-open
- * inode or a dirty inode may require additional processing to synchronize
- * ip->meta to its underlying cluster nodes.
+ * after its vnode has been reclaimed.  In this situation a dirty inode may
+ * require additional processing to synchronize ip->meta to its underlying
+ * cluster nodes.
  *
  * In particular, reclaims can occur in almost any state (for example, when
  * doing operations on unrelated vnodes) and flushing the reclaimed inode
@@ -1297,7 +1297,14 @@ hammer2_inode_run_sideq(hammer2_pfs_t *pmp, int doall)
 		kfree(ipul, pmp->minode);
 
 		hammer2_inode_lock(ip, 0);
-		if (ip->flags & HAMMER2_INODE_ISUNLINKED) {
+		if (ip->flags & HAMMER2_INODE_ISDELETED) {
+			/*
+			 * The inode has already been deleted.  This is a
+			 * fairly rare circumstance.  For now we don't rock
+			 * the boat and synchronize it normally.
+			 */
+			hammer2_inode_chain_sync(ip);
+		} else if (ip->flags & HAMMER2_INODE_ISUNLINKED) {
 			/*
 			 * The inode was unlinked while open.  The inode must
 			 * be deleted and destroyed.
