@@ -3265,6 +3265,8 @@ TO_REMOVE+=/etc/periodic/daily/220.backup-distfile
 TO_REMOVE+=/etc/periodic/daily/320.rdist
 TO_REMOVE+=/usr/bin/rdist
 TO_REMOVE+=/usr/share/man/man1/rdist.1.gz
+TO_REMOVE+=/usr/libexec/sm.bin
+TO_REMOVE+=/usr/lib/aout
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

@@ -66,8 +66,6 @@
         ..
         thread
         ..
-        aout
-        ..
     ..
     libdata
         clang
@@ -119,8 +117,6 @@
         lpr
             ru
             ..
-        ..
-        sm.bin
         ..
     ..
     local
