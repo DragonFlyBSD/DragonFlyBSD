@@ -1,4 +1,5 @@
 /*	$NetBSD: tmpfs_args.h,v 1.3 2008/07/29 09:10:09 pooka Exp $	*/
+/*	$DragonFly: tmpfs_mount.h,v 1.3 2017/10/29 09:10:09 markuspf Exp $	*/
 
 /*
  * Copyright (c) 2005, 2006, 2007 The NetBSD Foundation, Inc.
@@ -30,8 +31,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _VFS_TMPFS_TMPFS_ARGS_H_
-#define _VFS_TMPFS_TMPFS_ARGS_H_
+#ifndef VFS_TMPFS_TMPFS_MOUNT_H_
+#define VFS_TMPFS_TMPFS_MOUNT_H_
 
 /*
  * This structure is used to communicate mount parameters between userland
@@ -59,4 +60,4 @@ struct tmpfs_args {
 #define MNT_SIZE	0x00000010
 #define MNT_MAXFSIZE	0x00000020
 
-#endif /* _VFS_TMPFS_TMPFS_ARGS_H_ */
+#endif /* VFS_TMPFS_TMPFS_MOUNT_H_ */

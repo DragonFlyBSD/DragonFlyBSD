@@ -34,7 +34,7 @@
 #include <sys/mount.h>
 #include <sys/stat.h>
 
-#include <vfs/tmpfs/tmpfs_args.h>
+#include <vfs/tmpfs/tmpfs_mount.h>
 
 #include <ctype.h>
 #include <err.h>
