@@ -963,7 +963,8 @@ trap_fatal(struct trapframe *frame, vm_offset_t eva)
 	    ISPL(frame->tf_cs) == SEL_UPL ? "user" : "kernel");
 	/* three separate prints in case of a trap on an unmapped page */
 	kprintf("cpuid = %d; ", mycpu->gd_cpuid);
-	kprintf("lapic->id = %08x\n", lapic->id);
+	if (lapic)
+		kprintf("lapic->id = %08x\n", lapic->id);
 	if (type == T_PAGEFLT) {
 		kprintf("fault virtual address	= 0x%lx\n", eva);
 		kprintf("fault code		= %s %s %s, %s\n",
