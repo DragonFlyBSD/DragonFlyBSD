@@ -364,6 +364,8 @@ try_again:
 
 		v_associate_rdev(vp, node->d_dev);
 		vp->v_ops = &node->mp->mnt_vn_spec_ops;
+		if (node->d_dev->si_ops->head.flags & D_KVABIO)
+			vsetflags(vp, VKVABIO);
 		break;
 
 	default:
