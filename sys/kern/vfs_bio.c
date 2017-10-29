@@ -152,6 +152,7 @@ static u_int bd_wake_index;
 static u_int vm_cycle_point = 40; /* 23-36 will migrate more act->inact */
 static int debug_commit;
 static int debug_bufbio;
+static int debug_kvabio;
 static long bufcache_bw = 200 * 1024 * 1024;
 
 static struct thread *bufdaemon_td;
@@ -218,6 +219,7 @@ SYSCTL_INT(_vfs, OID_AUTO, recoverbufcalls, CTLFLAG_RD, &recoverbufcalls, 0,
 	"Recover VM space in an emergency");
 SYSCTL_INT(_vfs, OID_AUTO, debug_commit, CTLFLAG_RW, &debug_commit, 0, "");
 SYSCTL_INT(_vfs, OID_AUTO, debug_bufbio, CTLFLAG_RW, &debug_bufbio, 0, "");
+SYSCTL_INT(_vfs, OID_AUTO, debug_kvabio, CTLFLAG_RW, &debug_kvabio, 0, "");
 SYSCTL_INT(_debug_sizeof, OID_AUTO, buf, CTLFLAG_RD, 0, sizeof(struct buf),
 	"sizeof(struct buf)");
 
@@ -4397,6 +4399,11 @@ bkvasync(struct buf *bp)
 void
 bkvasync_all(struct buf *bp)
 {
+	if (debug_kvabio > 0) {
+		--debug_kvabio;
+		print_backtrace(10);
+	}
+
 	if ((bp->b_flags & B_KVABIO) &&
 	    CPUMASK_CMPMASKNEQ(bp->b_cpumask, smp_active_mask)) {
 		smp_invltlb();

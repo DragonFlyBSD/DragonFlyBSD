@@ -387,6 +387,16 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 			     minreq, maxreq, bpp));
 }
 
+static __inline int
+cluster_read_kvabio(struct vnode *vp, off_t filesize, off_t loffset,
+             int blksize, size_t minreq, size_t maxreq, struct buf **bpp)
+{
+	*bpp = NULL;
+	return(cluster_readx(vp, filesize, loffset, blksize,
+			     B_NOTMETA | B_KVABIO,
+			     minreq, maxreq, bpp));
+}
+
 #endif /* _KERNEL */
 
 #endif /* !_SYS_BUF2_H_ */
