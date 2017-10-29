@@ -31,7 +31,7 @@
 #include <vfs/tmpfs/tmpfs_mount.h>
 
 int	mount_tmpfs(int, char **);
-void	mount_tmpfs_parseargs(int, char **, struct tmpfs_args *, int *,
+void	mount_tmpfs_parseargs(int, char **, struct tmpfs_mount_info *, int *,
 			      char *, char *);
 
 #endif /* _SBIN_MOUNT_TMPFS_MOUNT_TMPFS_H_ */

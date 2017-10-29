@@ -130,7 +130,7 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *root;
-	struct tmpfs_args args;
+	struct tmpfs_mount_info args;
 	vm_pindex_t pages;
 	vm_pindex_t pages_limit;
 	ino_t nodes;
