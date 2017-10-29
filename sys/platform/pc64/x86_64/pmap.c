@@ -944,7 +944,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 	 */
 	for (j = 0; j < NDMPML4E; ++j) {
 		((pdp_entry_t *)KPML4phys)[DMPML4I + j] =
-		    (DMPDPphys + ((vm_paddr_t)j << PML4SHIFT)) |
+		    (DMPDPphys + ((vm_paddr_t)j << PAGE_SHIFT)) |
 		    pmap_bits_default[PG_RW_IDX] |
 		    pmap_bits_default[PG_V_IDX] |
 		    pmap_bits_default[PG_U_IDX];
@@ -1978,7 +1978,7 @@ pmap_pinit(struct pmap *pmap)
 		 */
 		for (j = 0; j < NDMPML4E; ++j) {
 			pmap->pm_pml4[DMPML4I + j] =
-			    (DMPDPphys + ((vm_paddr_t)j << PML4SHIFT)) |
+			    (DMPDPphys + ((vm_paddr_t)j << PAGE_SHIFT)) |
 			    pmap->pmap_bits[PG_RW_IDX] |
 			    pmap->pmap_bits[PG_V_IDX] |
 			    pmap->pmap_bits[PG_U_IDX];
