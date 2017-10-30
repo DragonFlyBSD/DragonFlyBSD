@@ -219,7 +219,8 @@ static void	emx_intr_mask(void *);
 static void	emx_intr_body(struct emx_softc *, boolean_t);
 static void	emx_rxeof(struct emx_rxdata *, int);
 static void	emx_txeof(struct emx_txdata *);
-static void	emx_tx_collect(struct emx_txdata *);
+static void	emx_tx_collect(struct emx_txdata *, boolean_t);
+static void	emx_txgc_timer(void *);
 static void	emx_tx_purge(struct emx_softc *);
 static void	emx_enable_intr(struct emx_softc *);
 static void	emx_disable_intr(struct emx_softc *);
@@ -356,6 +357,67 @@ emx_setup_rxdesc(emx_rxdesc_t *rxd, const struct emx_rxbuf *rxbuf)
 }
 
 static __inline void
+emx_free_txbuf(struct emx_txdata *tdata, struct emx_txbuf *tx_buffer)
+{
+
+	KKASSERT(tx_buffer->m_head != NULL);
+	KKASSERT(tdata->tx_nmbuf > 0);
+	tdata->tx_nmbuf--;
+
+	bus_dmamap_unload(tdata->txtag, tx_buffer->map);
+	m_freem(tx_buffer->m_head);
+	tx_buffer->m_head = NULL;
+}
+
+static __inline void
+emx_tx_intr(struct emx_txdata *tdata)
+{
+
+	emx_txeof(tdata);
+	if (!ifsq_is_empty(tdata->ifsq))
+		ifsq_devstart(tdata->ifsq);
+}
+
+static __inline void
+emx_try_txgc(struct emx_txdata *tdata, int16_t dec)
+{
+
+	if (tdata->tx_running > 0) {
+		tdata->tx_running -= dec;
+		if (tdata->tx_running <= 0 && tdata->tx_nmbuf &&
+		    tdata->num_tx_desc_avail < tdata->num_tx_desc &&
+		    tdata->num_tx_desc_avail + tdata->tx_intr_nsegs >
+		    tdata->num_tx_desc)
+			emx_tx_collect(tdata, TRUE);
+	}
+}
+
+static void
+emx_txgc_timer(void *xtdata)
+{
+	struct emx_txdata *tdata = xtdata;
+	struct ifnet *ifp = &tdata->sc->arpcom.ac_if;
+
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_UP | IFF_NPOLLING)) !=
+	    (IFF_RUNNING | IFF_UP))
+		return;
+
+	if (!lwkt_serialize_try(&tdata->tx_serialize))
+		goto done;
+
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_UP | IFF_NPOLLING)) !=
+	    (IFF_RUNNING | IFF_UP)) {
+		lwkt_serialize_exit(&tdata->tx_serialize);
+		return;
+	}
+	emx_try_txgc(tdata, EMX_TX_RUNNING_DEC);
+
+	lwkt_serialize_exit(&tdata->tx_serialize);
+done:
+	callout_reset(&tdata->tx_gc_timer, 1, emx_txgc_timer, tdata);
+}
+
+static __inline void
 emx_rxcsum(uint32_t staterr, struct mbuf *mp)
 {
 	/* Ignore Checksum bit is set */
@@ -457,6 +519,7 @@ emx_attach(device_t dev)
 	for (i = 0; i < EMX_NTX_RING; ++i) {
 		sc->tx_data[i].sc = sc;
 		sc->tx_data[i].idx = i;
+		callout_init_mp(&sc->tx_data[i].tx_gc_timer);
 	}
 
 	/*
@@ -1000,7 +1063,7 @@ emx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	while (!ifsq_is_empty(ifsq)) {
 		/* Now do we at least have a minimal? */
 		if (EMX_IS_OACTIVE(tdata)) {
-			emx_tx_collect(tdata);
+			emx_tx_collect(tdata, FALSE);
 			if (EMX_IS_OACTIVE(tdata)) {
 				ifsq_set_oactive(ifsq);
 				break;
@@ -1014,7 +1077,7 @@ emx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 		if (emx_encap(tdata, &m_head, &nsegs, &idx)) {
 			IFNET_STAT_INC(ifp, oerrors, 1);
-			emx_tx_collect(tdata);
+			emx_tx_collect(tdata, FALSE);
 			continue;
 		}
 
@@ -1040,6 +1103,7 @@ emx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	}
 	if (idx >= 0)
 		E1000_WRITE_REG(&sc->hw, E1000_TDT(tdata->idx), idx);
+	tdata->tx_running = EMX_TX_RUNNING;
 }
 
 static int
@@ -1308,13 +1372,7 @@ emx_init(void *xsc)
 	/* Don't lose promiscuous settings */
 	emx_set_promisc(sc);
 
-	ifp->if_flags |= IFF_RUNNING;
-	for (i = 0; i < sc->tx_ring_inuse; ++i) {
-		ifsq_clr_oactive(sc->tx_data[i].ifsq);
-		ifsq_watchdog_start(&sc->tx_data[i].tx_watchdog);
-	}
-
-	callout_reset(&sc->timer, hz, emx_timer, sc);
+	/* Reset hardware counters */
 	e1000_clear_hw_cntrs_base_generic(&sc->hw);
 
 	/* MSI/X configuration for 82574 */
@@ -1348,6 +1406,19 @@ emx_init(void *xsc)
 	if ((sc->flags & (EMX_FLAG_HAS_MGMT | EMX_FLAG_HAS_AMT)) ==
 	    (EMX_FLAG_HAS_MGMT | EMX_FLAG_HAS_AMT))
 		emx_get_hw_control(sc);
+
+	ifp->if_flags |= IFF_RUNNING;
+	for (i = 0; i < sc->tx_ring_inuse; ++i) {
+		struct emx_txdata *tdata = &sc->tx_data[i];
+
+		ifsq_clr_oactive(tdata->ifsq);
+		ifsq_watchdog_start(&tdata->tx_watchdog);
+		if (!polling) {
+			callout_reset_bycpu(&tdata->tx_gc_timer, 1,
+			    emx_txgc_timer, tdata, ifsq_get_cpuid(tdata->ifsq));
+		}
+	}
+	callout_reset(&sc->timer, hz, emx_timer, sc);
 }
 
 static void
@@ -1400,9 +1471,7 @@ emx_intr_body(struct emx_softc *sc, boolean_t chk_asserted)
 			struct emx_txdata *tdata = &sc->tx_data[0];
 
 			lwkt_serialize_enter(&tdata->tx_serialize);
-			emx_txeof(tdata);
-			if (!ifsq_is_empty(tdata->ifsq))
-				ifsq_devstart(tdata->ifsq);
+			emx_tx_intr(tdata);
 			lwkt_serialize_exit(&tdata->tx_serialize);
 		}
 	}
@@ -1657,6 +1726,7 @@ emx_encap(struct emx_txdata *tdata, struct mbuf **m_headp,
 
 	KKASSERT(tdata->num_tx_desc_avail > nsegs);
 	tdata->num_tx_desc_avail -= nsegs;
+	tdata->tx_nmbuf++;
 
 	tx_buffer->m_head = m_head;
 	tx_buffer_mapped->map = tx_buffer->map;
@@ -1896,6 +1966,9 @@ emx_stop(struct emx_softc *sc)
 		ifsq_clr_oactive(tdata->ifsq);
 		ifsq_watchdog_stop(&tdata->tx_watchdog);
 		tdata->tx_flags &= ~EMX_TXFLAG_ENABLED;
+
+		tdata->tx_running = 0;
+		callout_stop(&tdata->tx_gc_timer);
 	}
 
 	/*
@@ -2303,6 +2376,8 @@ emx_init_tx_ring(struct emx_txdata *tdata)
 	tdata->next_avail_tx_desc = 0;
 	tdata->next_tx_to_clean = 0;
 	tdata->num_tx_desc_avail = tdata->num_tx_desc;
+	tdata->tx_nmbuf = 0;
+	tdata->tx_running = 0;
 
 	tdata->tx_flags |= EMX_TXFLAG_ENABLED;
 	if (tdata->sc->tx_ring_inuse > 1) {
@@ -2588,15 +2663,12 @@ emx_txeof(struct emx_txdata *tdata)
 			while (first != dd_idx) {
 				logif(pkt_txclean);
 
+				KKASSERT(num_avail < tdata->num_tx_desc);
 				num_avail++;
 
 				tx_buffer = &tdata->tx_buf[first];
-				if (tx_buffer->m_head) {
-					bus_dmamap_unload(tdata->txtag,
-							  tx_buffer->map);
-					m_freem(tx_buffer->m_head);
-					tx_buffer->m_head = NULL;
-				}
+				if (tx_buffer->m_head)
+					emx_free_txbuf(tdata, tx_buffer);
 
 				if (++first == tdata->num_tx_desc)
 					first = 0;
@@ -2620,10 +2692,11 @@ emx_txeof(struct emx_txdata *tdata)
 		if (tdata->num_tx_desc_avail == tdata->num_tx_desc)
 			tdata->tx_watchdog.wd_timer = 0;
 	}
+	tdata->tx_running = EMX_TX_RUNNING;
 }
 
 static void
-emx_tx_collect(struct emx_txdata *tdata)
+emx_tx_collect(struct emx_txdata *tdata, boolean_t gc)
 {
 	struct emx_txbuf *tx_buffer;
 	int tdh, first, num_avail, dd_idx = -1;
@@ -2632,8 +2705,13 @@ emx_tx_collect(struct emx_txdata *tdata)
 		return;
 
 	tdh = E1000_READ_REG(&tdata->sc->hw, E1000_TDH(tdata->idx));
-	if (tdh == tdata->next_tx_to_clean)
+	if (tdh == tdata->next_tx_to_clean) {
+		if (gc && tdata->tx_nmbuf > 0)
+			tdata->tx_running = EMX_TX_RUNNING;
 		return;
+	}
+	if (gc)
+		tdata->tx_gc++;
 
 	if (tdata->tx_dd_head != tdata->tx_dd_tail)
 		dd_idx = tdata->tx_dd[tdata->tx_dd_head];
@@ -2644,15 +2722,12 @@ emx_tx_collect(struct emx_txdata *tdata)
 	while (first != tdh) {
 		logif(pkt_txclean);
 
+		KKASSERT(num_avail < tdata->num_tx_desc);
 		num_avail++;
 
 		tx_buffer = &tdata->tx_buf[first];
-		if (tx_buffer->m_head) {
-			bus_dmamap_unload(tdata->txtag,
-					  tx_buffer->map);
-			m_freem(tx_buffer->m_head);
-			tx_buffer->m_head = NULL;
-		}
+		if (tx_buffer->m_head)
+			emx_free_txbuf(tdata, tx_buffer);
 
 		if (first == dd_idx) {
 			EMX_INC_TXDD_IDX(tdata->tx_dd_head);
@@ -2678,6 +2753,8 @@ emx_tx_collect(struct emx_txdata *tdata)
 		if (tdata->num_tx_desc_avail == tdata->num_tx_desc)
 			tdata->tx_watchdog.wd_timer = 0;
 	}
+	if (!gc || tdata->tx_nmbuf > 0)
+		tdata->tx_running = EMX_TX_RUNNING;
 }
 
 /*
@@ -2698,7 +2775,7 @@ emx_tx_purge(struct emx_softc *sc)
 		struct emx_txdata *tdata = &sc->tx_data[i];
 
 		if (tdata->tx_watchdog.wd_timer) {
-			emx_tx_collect(tdata);
+			emx_tx_collect(tdata, FALSE);
 			if (tdata->tx_watchdog.wd_timer) {
 				if_printf(&sc->arpcom.ac_if,
 				    "Link lost, TX pending, reinit\n");
@@ -2876,11 +2953,8 @@ emx_free_tx_ring(struct emx_txdata *tdata)
 	for (i = 0; i < tdata->num_tx_desc; i++) {
 		struct emx_txbuf *tx_buffer = &tdata->tx_buf[i];
 
-		if (tx_buffer->m_head != NULL) {
-			bus_dmamap_unload(tdata->txtag, tx_buffer->map);
-			m_freem(tx_buffer->m_head);
-			tx_buffer->m_head = NULL;
-		}
+		if (tx_buffer->m_head != NULL)
+			emx_free_txbuf(tdata, tx_buffer);
 	}
 
 	tdata->tx_flags &= ~EMX_TXFLAG_FORCECTX;
@@ -3681,10 +3755,8 @@ emx_add_sysctl(struct emx_softc *sc)
 {
 	struct sysctl_ctx_list *ctx;
 	struct sysctl_oid *tree;
-#if defined(EMX_RSS_DEBUG) || defined(EMX_TSS_DEBUG)
 	char pkt_desc[32];
 	int i;
-#endif
 
 	ctx = device_get_sysctl_ctx(sc->dev);
 	tree = device_get_sysctl_tree(sc->dev);
@@ -3746,14 +3818,23 @@ emx_add_sysctl(struct emx_softc *sc)
 		    "RXed packets");
 	}
 #endif
-#ifdef EMX_TSS_DEBUG
 	for (i = 0; i < sc->tx_ring_cnt; ++i) {
+#ifdef EMX_TSS_DEBUG
 		ksnprintf(pkt_desc, sizeof(pkt_desc), "tx%d_pkt", i);
 		SYSCTL_ADD_ULONG(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		    pkt_desc, CTLFLAG_RW, &sc->tx_data[i].tx_pkts,
 		    "TXed packets");
-	}
 #endif
+
+		ksnprintf(pkt_desc, sizeof(pkt_desc), "tx%d_nmbuf", i);
+		SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
+		    pkt_desc, CTLFLAG_RD, &sc->tx_data[i].tx_nmbuf, 0,
+		    "# of pending TX mbufs");
+		ksnprintf(pkt_desc, sizeof(pkt_desc), "tx%d_gc", i);
+		SYSCTL_ADD_ULONG(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
+		    pkt_desc, CTLFLAG_RW, &sc->tx_data[i].tx_gc,
+		    "# of TX desc GC");
+	}
 }
 
 static int
@@ -4002,9 +4083,8 @@ emx_npoll_tx(struct ifnet *ifp, void *arg, int cycle __unused)
 
 	ASSERT_SERIALIZED(&tdata->tx_serialize);
 
-	emx_txeof(tdata);
-	if (!ifsq_is_empty(tdata->ifsq))
-		ifsq_devstart(tdata->ifsq);
+	emx_tx_intr(tdata);
+	emx_try_txgc(tdata, 1);
 }
 
 static void

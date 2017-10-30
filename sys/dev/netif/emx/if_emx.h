@@ -249,7 +249,10 @@ struct emx_txdata {
 	struct emx_softc	*sc;
 	struct ifaltq_subque	*ifsq;
 	int			idx;
-	uint32_t		tx_flags;
+	int16_t			tx_running;
+#define EMX_TX_RUNNING		100
+#define EMX_TX_RUNNING_DEC	25
+	uint16_t		tx_flags;
 #define EMX_TXFLAG_TSO_PULLEX	0x1
 #define EMX_TXFLAG_ENABLED	0x2
 #define EMX_TXFLAG_FORCECTX	0x4
@@ -272,6 +275,7 @@ struct emx_txdata {
 	bus_dma_tag_t		txtag;		/* dma tag for tx */
 	int			spare_tx_desc;
 	int			oact_tx_desc;
+	int			tx_nmbuf;
 
 	/* Saved csum offloading context information */
 	int			csum_flags;
@@ -326,11 +330,13 @@ struct emx_txdata {
 	int			tx_dd[EMX_TXDD_MAX];
 
 	struct ifsubq_watchdog	tx_watchdog;
+	struct callout		tx_gc_timer;
 
 	/* TX statistics */
 	unsigned long		tx_pkts;
 	unsigned long		tso_segments;
 	unsigned long		tso_ctx_reused;
+	unsigned long		tx_gc;
 
 	bus_dma_tag_t		tx_desc_dtag;
 	bus_dmamap_t		tx_desc_dmap;
