@@ -281,8 +281,9 @@ static void	em_intr_mask(void *);
 static void	em_intr_body(struct adapter *, boolean_t);
 static void	em_rxeof(struct adapter *, int);
 static void	em_txeof(struct adapter *);
-static void	em_tx_collect(struct adapter *);
+static void	em_tx_collect(struct adapter *, boolean_t);
 static void	em_tx_purge(struct adapter *);
+static void	em_txgc_timer(void *);
 static void	em_enable_intr(struct adapter *);
 static void	em_disable_intr(struct adapter *);
 
@@ -412,6 +413,68 @@ KTR_INFO(KTR_IF_EM, if_em, pkt_txqueue, 5, "tx packet");
 KTR_INFO(KTR_IF_EM, if_em, pkt_txclean, 6, "tx clean");
 #define logif(name)	KTR_LOG(if_em_ ## name)
 
+static __inline void
+em_tx_intr(struct adapter *adapter)
+{
+	struct ifnet *ifp = &adapter->arpcom.ac_if;
+
+	em_txeof(adapter);
+	if (!ifq_is_empty(&ifp->if_snd))
+		if_devstart(ifp);
+}
+
+static __inline void
+em_free_txbuffer(struct adapter *adapter, struct em_buffer *tx_buffer)
+{
+
+	KKASSERT(tx_buffer->m_head != NULL);
+	KKASSERT(adapter->tx_nmbuf > 0);
+	adapter->tx_nmbuf--;
+
+	bus_dmamap_unload(adapter->txtag, tx_buffer->map);
+	m_freem(tx_buffer->m_head);
+	tx_buffer->m_head = NULL;
+}
+
+static __inline void
+em_try_txgc(struct adapter *adapter, int dec)
+{
+
+	if (adapter->tx_running > 0) {
+		adapter->tx_running -= dec;
+		if (adapter->tx_running <= 0 && adapter->tx_nmbuf &&
+		    adapter->num_tx_desc_avail < adapter->num_tx_desc &&
+		    adapter->num_tx_desc_avail + adapter->tx_int_nsegs >
+		    adapter->num_tx_desc)
+			em_tx_collect(adapter, TRUE);
+	}
+}
+
+static void
+em_txgc_timer(void *xadapter)
+{
+	struct adapter *adapter = xadapter;
+	struct ifnet *ifp = &adapter->arpcom.ac_if;
+
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_UP | IFF_NPOLLING)) !=
+	    (IFF_RUNNING | IFF_UP))
+		return;
+
+	if (!lwkt_serialize_try(ifp->if_serializer))
+		goto done;
+
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_UP | IFF_NPOLLING)) !=
+	    (IFF_RUNNING | IFF_UP)) {
+		lwkt_serialize_exit(ifp->if_serializer);
+		return;
+	}
+	em_try_txgc(adapter, EM_TX_RUNNING_DEC);
+
+	lwkt_serialize_exit(ifp->if_serializer);
+done:
+	callout_reset(&adapter->tx_gc_timer, 1, em_txgc_timer, adapter);
+}
+
 static int
 em_probe(device_t dev)
 {
@@ -446,6 +509,7 @@ em_attach(device_t dev)
 
 	callout_init_mp(&adapter->timer);
 	callout_init_mp(&adapter->tx_fifo_timer);
+	callout_init_mp(&adapter->tx_gc_timer);
 
 	ifmedia_init(&adapter->media, IFM_IMASK | IFM_ETH_FCMASK,
 	    em_media_change, em_media_status);
@@ -1050,7 +1114,7 @@ em_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	while (!ifq_is_empty(&ifp->if_snd)) {
 		/* Now do we at least have a minimal? */
 		if (EM_IS_OACTIVE(adapter)) {
-			em_tx_collect(adapter);
+			em_tx_collect(adapter, FALSE);
 			if (EM_IS_OACTIVE(adapter)) {
 				ifq_set_oactive(&ifp->if_snd);
 				adapter->no_tx_desc_avail1++;
@@ -1065,7 +1129,7 @@ em_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 		if (em_encap(adapter, &m_head, &nsegs, &idx)) {
 			IFNET_STAT_INC(ifp, oerrors, 1);
-			em_tx_collect(adapter);
+			em_tx_collect(adapter, FALSE);
 			continue;
 		}
 
@@ -1091,6 +1155,7 @@ em_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	}
 	if (idx >= 0)
 		E1000_WRITE_REG(&adapter->hw, E1000_TDT(0), idx);
+	adapter->tx_running = EM_TX_RUNNING;
 }
 
 static int
@@ -1361,10 +1426,7 @@ em_init(void *xsc)
 	/* Don't lose promiscuous settings */
 	em_set_promisc(adapter);
 
-	ifp->if_flags |= IFF_RUNNING;
-	ifq_clr_oactive(&ifp->if_snd);
-
-	callout_reset(&adapter->timer, hz, em_timer, adapter);
+	/* Reset hardware counters */
 	e1000_clear_hw_cntrs_base_generic(&adapter->hw);
 
 	/* MSI/X configuration for 82574 */
@@ -1401,6 +1463,19 @@ em_init(void *xsc)
 	    (EM_FLAG_HAS_MGMT | EM_FLAG_HAS_AMT) &&
 	    adapter->hw.mac.type >= e1000_82571)
 		em_get_hw_control(adapter);
+
+	ifp->if_flags |= IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
+
+#ifdef IFPOLL_ENABLE
+	if ((ifp->if_flags & IFF_NPOLLING) == 0)
+#endif
+	{
+		callout_reset_bycpu(&adapter->tx_gc_timer, 1,
+		    em_txgc_timer, adapter,
+		    rman_get_cpuid(adapter->intr_res));
+	}
+	callout_reset(&adapter->timer, hz, em_timer, adapter);
 }
 
 #ifdef IFPOLL_ENABLE
@@ -1427,10 +1502,9 @@ em_npoll_compat(struct ifnet *ifp, void *arg __unused, int count)
 	}
 
 	em_rxeof(adapter, count);
-	em_txeof(adapter);
 
-	if (!ifq_is_empty(&ifp->if_snd))
-		if_devstart(ifp);
+	em_tx_intr(adapter);
+	em_try_txgc(adapter, 1);
 }
 
 static void
@@ -1447,14 +1521,12 @@ em_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 		info->ifpi_rx[cpuid].arg = NULL;
 		info->ifpi_rx[cpuid].serializer = ifp->if_serializer;
 
-		if (ifp->if_flags & IFF_RUNNING)
-			em_disable_intr(adapter);
 		ifq_set_cpuid(&ifp->if_snd, cpuid);
 	} else {
-		if (ifp->if_flags & IFF_RUNNING)
-			em_enable_intr(adapter);
 		ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(adapter->intr_res));
 	}
+	if (ifp->if_flags & IFF_RUNNING)
+		em_init(adapter);
 }
 
 #endif /* IFPOLL_ENABLE */
@@ -1499,11 +1571,8 @@ em_intr_body(struct adapter *adapter, boolean_t chk_asserted)
 		if (reg_icr &
 		    (E1000_ICR_RXT0 | E1000_ICR_RXDMT0 | E1000_ICR_RXO))
 			em_rxeof(adapter, -1);
-		if (reg_icr & E1000_ICR_TXDW) {
-			em_txeof(adapter);
-			if (!ifq_is_empty(&ifp->if_snd))
-				if_devstart(ifp);
-		}
+		if (reg_icr & E1000_ICR_TXDW)
+			em_tx_intr(adapter);
 	}
 
 	/* Link status change */
@@ -1813,6 +1882,7 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp,
 		KKASSERT(adapter->num_tx_desc_avail > nsegs);
 		adapter->num_tx_desc_avail -= nsegs;
 	}
+	adapter->tx_nmbuf++;
 
 	tx_buffer->m_head = m_head;
 	tx_buffer_mapped->map = tx_buffer->map;
@@ -2204,6 +2274,8 @@ em_stop(struct adapter *adapter)
 	ifp->if_flags &= ~IFF_RUNNING;
 	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_timer = 0;
+	adapter->tx_running = 0;
+	callout_stop(&adapter->tx_gc_timer);
 
 	e1000_reset_hw(&adapter->hw);
 	if (adapter->hw.mac.type >= e1000_82544)
@@ -2212,11 +2284,8 @@ em_stop(struct adapter *adapter)
 	for (i = 0; i < adapter->num_tx_desc; i++) {
 		struct em_buffer *tx_buffer = &adapter->tx_buffer_area[i];
 
-		if (tx_buffer->m_head != NULL) {
-			bus_dmamap_unload(adapter->txtag, tx_buffer->map);
-			m_freem(tx_buffer->m_head);
-			tx_buffer->m_head = NULL;
-		}
+		if (tx_buffer->m_head != NULL)
+			em_free_txbuffer(adapter, tx_buffer);
 	}
 
 	for (i = 0; i < adapter->num_rx_desc; i++) {
@@ -2812,6 +2881,8 @@ em_init_tx_ring(struct adapter *adapter)
 	adapter->next_avail_tx_desc = 0;
 	adapter->next_tx_to_clean = 0;
 	adapter->num_tx_desc_avail = adapter->num_tx_desc;
+	adapter->tx_nmbuf = 0;
+	adapter->tx_running = 0;
 }
 
 static void
@@ -3064,15 +3135,12 @@ em_txeof(struct adapter *adapter)
 			while (first != dd_idx) {
 				logif(pkt_txclean);
 
+				KKASSERT(num_avail < adapter->num_tx_desc);
 				num_avail++;
 
 				tx_buffer = &adapter->tx_buffer_area[first];
-				if (tx_buffer->m_head) {
-					bus_dmamap_unload(adapter->txtag,
-							  tx_buffer->map);
-					m_freem(tx_buffer->m_head);
-					tx_buffer->m_head = NULL;
-				}
+				if (tx_buffer->m_head != NULL)
+					em_free_txbuffer(adapter, tx_buffer);
 
 				if (++first == adapter->num_tx_desc)
 					first = 0;
@@ -3096,10 +3164,11 @@ em_txeof(struct adapter *adapter)
 		if (adapter->num_tx_desc_avail == adapter->num_tx_desc)
 			ifp->if_timer = 0;
 	}
+	adapter->tx_running = EM_TX_RUNNING;
 }
 
 static void
-em_tx_collect(struct adapter *adapter)
+em_tx_collect(struct adapter *adapter, boolean_t gc)
 {
 	struct ifnet *ifp = &adapter->arpcom.ac_if;
 	struct em_buffer *tx_buffer;
@@ -3109,8 +3178,13 @@ em_tx_collect(struct adapter *adapter)
 		return;
 
 	tdh = E1000_READ_REG(&adapter->hw, E1000_TDH(0));
-	if (tdh == adapter->next_tx_to_clean)
+	if (tdh == adapter->next_tx_to_clean) {
+		if (gc && adapter->tx_nmbuf > 0)
+			adapter->tx_running = EM_TX_RUNNING;
 		return;
+	}
+	if (gc)
+		adapter->tx_gc++;
 
 	if (adapter->tx_dd_head != adapter->tx_dd_tail)
 		dd_idx = adapter->tx_dd[adapter->tx_dd_head];
@@ -3121,15 +3195,12 @@ em_tx_collect(struct adapter *adapter)
 	while (first != tdh) {
 		logif(pkt_txclean);
 
+		KKASSERT(num_avail < adapter->num_tx_desc);
 		num_avail++;
 
 		tx_buffer = &adapter->tx_buffer_area[first];
-		if (tx_buffer->m_head) {
-			bus_dmamap_unload(adapter->txtag,
-					  tx_buffer->map);
-			m_freem(tx_buffer->m_head);
-			tx_buffer->m_head = NULL;
-		}
+		if (tx_buffer->m_head != NULL)
+			em_free_txbuffer(adapter, tx_buffer);
 
 		if (first == dd_idx) {
 			EM_INC_TXDD_IDX(adapter->tx_dd_head);
@@ -3155,6 +3226,8 @@ em_tx_collect(struct adapter *adapter)
 		if (adapter->num_tx_desc_avail == adapter->num_tx_desc)
 			ifp->if_timer = 0;
 	}
+	if (!gc || adapter->tx_nmbuf > 0)
+		adapter->tx_running = EM_TX_RUNNING;
 }
 
 /*
@@ -3169,7 +3242,7 @@ em_tx_purge(struct adapter *adapter)
 	struct ifnet *ifp = &adapter->arpcom.ac_if;
 
 	if (!adapter->link_active && ifp->if_timer) {
-		em_tx_collect(adapter);
+		em_tx_collect(adapter, FALSE);
 		if (ifp->if_timer) {
 			if_printf(ifp, "Link lost, TX pending, reinit\n");
 			ifp->if_timer = 0;
@@ -4197,6 +4270,10 @@ em_add_sysctl(struct adapter *adapter)
 	    OID_AUTO, "wreg_tx_nsegs", CTLFLAG_RW,
 	    &adapter->tx_wreg_nsegs, 0,
 	    "# segments before write to hardware register");
+	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO, "tx_nmbuf",
+	    CTLFLAG_RD, &adapter->tx_nmbuf, 0, "# of pending TX mbufs");
+	SYSCTL_ADD_ULONG(ctx, SYSCTL_CHILDREN(tree), OID_AUTO, "tx_gc",
+	    CTLFLAG_RW, &adapter->tx_gc, "# of TX GC");
 }
 
 static int

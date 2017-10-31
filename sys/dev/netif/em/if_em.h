@@ -316,6 +316,11 @@ struct adapter {
 	bus_dma_tag_t		txtag;		/* dma tag for tx */
 	int			spare_tx_desc;
 	int			oact_tx_desc;
+	int			tx_nmbuf;
+	int			tx_running;
+#define EM_TX_RUNNING		100
+#define EM_TX_RUNNING_DEC	25
+	struct callout		tx_gc_timer;
 
 	/* Saved csum offloading context information */
 	int			csum_flags;
@@ -408,6 +413,7 @@ struct adapter {
 	unsigned long		rx_irq;
 	unsigned long		tx_irq;
 	unsigned long		link_irq;
+	unsigned long		tx_gc;
 
 	/* 82547 workaround */
 	uint32_t		tx_fifo_size;
