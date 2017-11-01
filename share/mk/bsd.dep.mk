@@ -169,6 +169,13 @@ _ALL_DEPENDS=${__FLAGS_FILES:N*.[sS]:N*.c:N*.cc:N*.C:N*.cpp:N*.cpp:N*.cxx:N*.m}
 .if !empty(${_FG:M_}) && !empty(_DEPENDFILES)
 	cat ${_DEPENDFILES} >> ${.TARGET}
 .endif
+.if defined(MKDEPINTDEPS) && !empty(MKDEPINTDEPS)
+. for _ITD in ${MKDEPINTDEPS:O:u}
+	TMP=_depend$$$$; \
+	sed -e "s,${_ITD:C/^(.*:)(.*)/\1,\2 \1/},g" < ${.TARGET} > $$TMP; \
+	mv $$TMP ${.TARGET}
+. endfor
+.endif
 .endfor
 
 .if target(_EXTRADEPEND)
