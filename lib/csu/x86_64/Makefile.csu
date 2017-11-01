@@ -5,6 +5,10 @@ OBJS+=		Scrt1.o gcrt1.o
 INSTALLOBJS+=	crt1.o crti.o crtn.o Scrt1.o gcrt1.o
 CLEANFILES=	crt1.s gcrt1.s Scrt1.s
 CLEANFILES+=	crt1.o crti.o crtn.o Scrt1.o gcrt1.o
+MKDEPINTDEPS=	crt1.o:crt1.s
+MKDEPINTDEPS+=	crt1.o:gcrt1.s
+MKDEPINTDEPS+=	crt1.o:Scrt1.s
+NOIMPLICITDEPEND=
 WARNS?=		2
 
 CFLAGS+=	-I${CSUDIR}/../common \
