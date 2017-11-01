@@ -1,5 +1,4 @@
 # $FreeBSD: src/share/mk/bsd.links.mk,v 1.2.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/bsd.links.mk,v 1.3 2005/07/07 11:49:56 corecode Exp $
 
 .if !target(__<bsd.init.mk>__)
 .error bsd.links.mk cannot be included directly.
@@ -27,6 +26,9 @@ _installlinks:
 		t=${DESTDIR}$$1; \
 		shift; \
 		${ECHO} $$t -\> $$l; \
+		if test -d $$t -a ! -L $$t; then \
+		  ${ECHO} "warning: symlinking over dir $$t. Not intended?"; \
+		fi; \
 		${LN} -fhs $$l $$t; \
 	done; true
 .endif
