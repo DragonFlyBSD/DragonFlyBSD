@@ -7,6 +7,7 @@ FILES=	100.clean-disks \
 	140.clean-rwho \
 	150.clean-hoststat \
 	160.clean-hammer \
+	161.clean-hammer2 \
 	200.backup-passwd \
 	210.backup-aliases \
 	300.calendar \
