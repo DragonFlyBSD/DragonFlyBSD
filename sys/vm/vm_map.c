@@ -3473,18 +3473,12 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 			vm_object_chain_acquire(oobject, 0);
 		}
 
-#if 0
-		pmap_protect(src_map->pmap,
-			     src_entry->start, src_entry->end,
-			     VM_PROT_NONE);
-#else
 		if ((src_entry->eflags & MAP_ENTRY_NEEDS_COPY) == 0) {
 			pmap_protect(src_map->pmap,
 			    src_entry->start,
 			    src_entry->end,
 			    src_entry->protection & ~VM_PROT_WRITE);
 		}
-#endif
 
 		/*
 		 * Make a copy of the object.
