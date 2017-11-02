@@ -40,10 +40,14 @@ struct RtldLockInfo
 	void  (*lock_release)(void *);
 	int   (*thread_set_flag)(int);
 	int   (*thread_clr_flag)(int);
-	void  (*at_fork)(void);
+	void  (*at_fork)(void *handle);
 };
 
 extern void _rtld_thread_init(struct RtldLockInfo *);
+extern void _rtld_thread_prefork(void);
+extern void _rtld_thread_postfork(void);
+extern void _rtld_thread_childfork(void);
+
 
 #ifdef IN_RTLD
 

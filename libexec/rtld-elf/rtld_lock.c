@@ -176,6 +176,7 @@ thread_mask_clear(int mask)
 struct rtld_lock {
 	void	*handle;
 	int	 mask;
+	RtldLockState forkstate;
 } rtld_locks[RTLD_LOCK_CNT];
 
 rtld_lock_t	rtld_bind_lock = &rtld_locks[0];
@@ -201,7 +202,6 @@ rlock_acquire(rtld_lock_t lock, RtldLockState *lockstate)
 void
 wlock_acquire(rtld_lock_t lock, RtldLockState *lockstate)
 {
-
 	if (lockstate == NULL)
 		return;
 
@@ -217,7 +217,6 @@ wlock_acquire(rtld_lock_t lock, RtldLockState *lockstate)
 void
 lock_release(rtld_lock_t lock, RtldLockState *lockstate)
 {
-
 	if (lockstate == NULL)
 		return;
 
@@ -237,7 +236,6 @@ lock_release(rtld_lock_t lock, RtldLockState *lockstate)
 void
 lock_upgrade(rtld_lock_t lock, RtldLockState *lockstate)
 {
-
 	if (lockstate == NULL)
 		return;
 
@@ -248,7 +246,6 @@ lock_upgrade(rtld_lock_t lock, RtldLockState *lockstate)
 void
 lock_restart_for_upgrade(RtldLockState *lockstate)
 {
-
 	if (lockstate == NULL)
 		return;
 
@@ -321,13 +318,15 @@ _rtld_thread_init(struct RtldLockInfo *pli)
 		pli = &deflockinfo;
 
 
-	for (i = 0; i < RTLD_LOCK_CNT; i++)
+	for (i = 0; i < RTLD_LOCK_CNT; i++) {
 		if ((locks[i] = pli->lock_create()) == NULL)
 			break;
+	}
 
 	if (i < RTLD_LOCK_CNT) {
-		while (--i >= 0)
+		while (--i >= 0) {
 			pli->lock_destroy(locks[i]);
+		}
 		abort();
 	}
 
@@ -358,4 +357,37 @@ _rtld_thread_init(struct RtldLockInfo *pli)
 	thread_mask_clear(~0);
 	thread_mask_set(flags);
 	dbg("_rtld_thread_init: done");
+}
+
+void
+_rtld_thread_prefork(void)
+{
+	int i;
+
+	for (i = 0; i < RTLD_LOCK_CNT; i++) {
+		if (rtld_locks[i].handle == NULL)
+			continue;
+		wlock_acquire(&rtld_locks[i], &rtld_locks[i].forkstate);
+	}
+}
+
+void
+_rtld_thread_postfork(void)
+{
+	int i;
+
+	for (i = 0; i < RTLD_LOCK_CNT; i++) {
+		if (rtld_locks[i].handle == NULL)
+			continue;
+		lock_release(&rtld_locks[i], &rtld_locks[i].forkstate);
+	}
+}
+
+/*
+ * pthreads already called _rtld_thread_init(NULL) in the child, so there
+ * is nothing for us to do here.
+ */
+void
+_rtld_thread_childfork(void)
+{
 }
