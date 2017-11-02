@@ -102,7 +102,7 @@ _thr_suspend_check(struct pthread *curthread)
 		cycle = curthread->cycle;
 
 		/* Wake the thread suspending us. */
-		_thr_umtx_wake(&curthread->cycle, INT_MAX);
+		_thr_umtx_wake(&curthread->cycle, 0);
 
 		/*
 		 * if we are from pthread_exit, we don't want to
