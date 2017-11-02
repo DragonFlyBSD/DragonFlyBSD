@@ -1,12 +1,11 @@
 # $FreeBSD: src/sys/Makefile,v 1.20.2.1 2000/07/10 08:22:34 obrien Exp $
-# $DragonFly: src/sys/Makefile,v 1.16 2007/12/30 20:02:56 hasso Exp $
 
-# This is the old aout only boot loader.
+# The boot loader
 .if	exists(${.CURDIR}/boot)
 SUBDIR=	boot
 .endif
 
-# KLD modules build for both a.out and ELF
+# Loadable kernel modules
 #
 .if defined(MODULES_WITH_WORLD)
 .if defined(MODULES_OVERRIDE)
@@ -21,8 +20,6 @@ SUBDIR+=netgraph
 SUBDIR+=libiconv
 .endif
 .endif
-
-HTAGSFLAGS+= -at `awk -F= '/^RELEASE *=/{release=$2}; END {print "FreeBSD", release, "kernel"}' < conf/newvers.sh`
 
 .include <bsd.subdir.mk>
 
