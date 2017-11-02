@@ -136,7 +136,7 @@ sem_module_init(void)
 	_pthread_mutexattr_settype(&ma,  PTHREAD_MUTEX_RECURSIVE);
 	_pthread_mutex_init(&sem_lock, &ma);
 	_pthread_mutexattr_destroy(&ma);
-	_pthread_atfork(sem_prefork, sem_postfork, sem_child_postfork);
+	_thr_atfork_kern(sem_prefork, sem_postfork, sem_child_postfork);
 }
 
 static inline int
@@ -231,8 +231,10 @@ _sem_destroy(sem_t *sem)
 int
 _sem_getvalue(sem_t * __restrict sem, int * __restrict sval)
 {
-	if (sem_check_validity(sem) != 0)
+	if (sem_check_validity(sem) != 0) {
+		errno = EINVAL;
 		return (-1);
+	}
 
 	*sval = (*sem)->count;
 	return (0);
@@ -243,8 +245,10 @@ _sem_trywait(sem_t *sem)
 {
 	int val;
 
-	if (sem_check_validity(sem) != 0)
+	if (sem_check_validity(sem) != 0) {
+		errno = EINVAL;
 		return (-1);
+	}
 
 	while ((val = (*sem)->count) > 0) {
 		if (atomic_cmpset_int(&(*sem)->count, val, val - 1))
@@ -260,12 +264,15 @@ _sem_wait(sem_t *sem)
 	struct pthread *curthread;
 	int val, oldcancel, retval;
 
-	if (sem_check_validity(sem) != 0)
+	if (sem_check_validity(sem) != 0) {
+		errno = EINVAL;
 		return (-1);
+	}
 
 	curthread = tls_get_curthread();
 	_pthread_testcancel();
-	do {
+
+	for (;;) {
 		while ((val = (*sem)->count) > 0) {
 			if (atomic_cmpset_acq_int(&(*sem)->count, val, val - 1))
 				return (0);
@@ -273,8 +280,11 @@ _sem_wait(sem_t *sem)
 		oldcancel = _thr_cancel_enter(curthread);
 		retval = _thr_umtx_wait(&(*sem)->count, 0, NULL, 0);
 		_thr_cancel_leave(curthread, oldcancel);
-	} while (retval == 0);
+		/* ignore retval */
+	}
+
 	errno = retval;
+
 	return (-1);
 }
 
@@ -289,19 +299,20 @@ _sem_timedwait(sem_t * __restrict sem, const struct timespec * __restrict abstim
 		return (-1);
 
 	curthread = tls_get_curthread();
+	_pthread_testcancel();
 
 	/*
 	 * The timeout argument is only supposed to
 	 * be checked if the thread would have blocked.
 	 */
-	_pthread_testcancel();
 	do {
 		while ((val = (*sem)->count) > 0) {
 			if (atomic_cmpset_acq_int(&(*sem)->count, val, val - 1))
 				return (0);
 		}
 		if (abstime == NULL ||
-				abstime->tv_nsec >= 1000000000 || abstime->tv_nsec < 0) {
+		    abstime->tv_nsec >= 1000000000 ||
+		    abstime->tv_nsec < 0) {
 			errno = EINVAL;
 			return (-1);
 		}
@@ -309,10 +320,12 @@ _sem_timedwait(sem_t * __restrict sem, const struct timespec * __restrict abstim
 		TIMESPEC_SUB(&ts2, abstime, &ts);
 		oldcancel = _thr_cancel_enter(curthread);
 		retval = _thr_umtx_wait(&(*sem)->count, 0, &ts2,
-				CLOCK_REALTIME);
+					CLOCK_REALTIME);
 		_thr_cancel_leave(curthread, oldcancel);
-	} while (retval == 0);
+	} while (retval != ETIMEDOUT && retval != EINTR);
+
 	errno = retval;
+
 	return (-1);
 }
 

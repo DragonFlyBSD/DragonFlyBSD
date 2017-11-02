@@ -35,10 +35,10 @@
 
 typedef int umtx_t;
 
-int	__thr_umtx_lock(volatile umtx_t *mtx, int timo);
-int	__thr_umtx_timedlock(volatile umtx_t *mtx,
+int	__thr_umtx_lock(volatile umtx_t *mtx, int id, int timo);
+int	__thr_umtx_timedlock(volatile umtx_t *mtx, int id,
 		 const struct timespec *timeout);
-void	__thr_umtx_unlock(volatile umtx_t *mtx);
+void	__thr_umtx_unlock(volatile umtx_t *mtx, int id);
 
 static inline void
 _thr_umtx_init(volatile umtx_t *mtx)
@@ -47,36 +47,40 @@ _thr_umtx_init(volatile umtx_t *mtx)
 }
 
 static inline int
-_thr_umtx_trylock(volatile umtx_t *mtx, int id __unused)
+_thr_umtx_trylock(volatile umtx_t *mtx, int id)
 {
-	if (atomic_cmpset_acq_int(mtx, 0, 1))
+	if (atomic_cmpset_acq_int(mtx, 0, id)) {
 		return (0);
+	}
 	return (EBUSY);
 }
 
 static inline int
-_thr_umtx_lock(volatile umtx_t *mtx, int id __unused)
+_thr_umtx_lock(volatile umtx_t *mtx, int id)
 {
-	if (atomic_cmpset_acq_int(mtx, 0, 1))
+	if (atomic_cmpset_acq_int(mtx, 0, id)) {
 		return (0);
-	return (__thr_umtx_lock(mtx, 0));
+	}
+	return (__thr_umtx_lock(mtx, id, 0));
 }
 
 static inline int
-_thr_umtx_timedlock(volatile umtx_t *mtx, int id __unused,
+_thr_umtx_timedlock(volatile umtx_t *mtx, int id,
     const struct timespec *timeout)
 {
-	if (atomic_cmpset_acq_int(mtx, 0, 1))
+	if (atomic_cmpset_acq_int(mtx, 0, id)) {
 		return (0);
-	return (__thr_umtx_timedlock(mtx, timeout));
+	}
+	return (__thr_umtx_timedlock(mtx, id, timeout));
 }
 
 static inline void
-_thr_umtx_unlock(volatile umtx_t *mtx, int id __unused)
+_thr_umtx_unlock(volatile umtx_t *mtx, int id)
 {
-	if (atomic_cmpset_acq_int(mtx, 1, 0))
+	if (atomic_cmpset_acq_int(mtx, id, 0)) {
 		return;
-	__thr_umtx_unlock(mtx);
+	}
+	__thr_umtx_unlock(mtx, id);
 }
 
 int _thr_umtx_wait(volatile umtx_t *mtx, umtx_t exp,

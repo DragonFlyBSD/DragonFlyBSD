@@ -35,10 +35,45 @@
 #include "un-namespace.h"
 #include "thr_private.h"
 
+#ifdef _PTHREADS_DEBUGGING
+
+#include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
+#include <sys/file.h>
+
+#endif
+
 /* maximum number of times a read lock may be obtained */
 #define	MAX_READ_LOCKS		(INT_MAX - 1)
 
 umtx_t	_rwlock_static_lock;
+
+#ifdef _PTHREADS_DEBUGGING
+
+static
+void
+rwlock_log(const char *ctl, ...)
+{
+	char buf[256];
+	va_list va;
+	size_t len;
+
+	va_start(va, ctl);
+	len = vsnprintf(buf, sizeof(buf), ctl, va);
+	va_end(va);
+	_thr_log(buf, len);
+}
+
+#else
+
+static __inline
+void
+rwlock_log(const char *ctl __unused, ...)
+{
+}
+
+#endif
 
 static int
 rwlock_init(pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *attr __unused)
@@ -53,9 +88,9 @@ rwlock_init(pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *attr __unused)
 		return (ENOMEM);
 
 	/* initialize the lock */
-	if ((ret = _pthread_mutex_init(&prwlock->lock, NULL)) != 0)
+	if ((ret = _pthread_mutex_init(&prwlock->lock, NULL)) != 0) {
 		free(prwlock);
-	else {
+	} else {
 		/* initialize the read condition signal */
 		ret = _pthread_cond_init(&prwlock->read_signal, NULL);
 
@@ -82,19 +117,31 @@ rwlock_init(pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *attr __unused)
 	return (ret);
 }
 
+#if 0
+void
+_rwlock_reinit(pthread_rwlock_t prwlock)
+{
+	_mutex_reinit(&prwlock->lock);
+	_cond_reinit(prwlock->read_signal);
+	prwlock->state = 0;
+	prwlock->blocked_writers = 0;
+}
+#endif
+
 int
 _pthread_rwlock_destroy (pthread_rwlock_t *rwlock)
 {
 	int ret;
 
-	if (rwlock == NULL)
+	if (rwlock == NULL) {
 		ret = EINVAL;
-	else if (*rwlock == NULL)
+	} else if (*rwlock == NULL) {
 		ret = 0;
-	else {
+	} else {
 		pthread_rwlock_t prwlock;
 
 		prwlock = *rwlock;
+		rwlock_log("rwlock_destroy %p\n", prwlock);
 
 		_pthread_mutex_destroy(&prwlock->lock);
 		_pthread_cond_destroy(&prwlock->read_signal);
@@ -151,14 +198,18 @@ rwlock_rdlock_common(pthread_rwlock_t *rwlock, const struct timespec *abstime)
 
 		prwlock = *rwlock;
 	}
+	rwlock_log("rwlock_rdlock_common %p\n", prwlock);
 
 	/* grab the monitor lock */
-	if ((ret = _pthread_mutex_lock(&prwlock->lock)) != 0)
+	if ((ret = _pthread_mutex_lock(&prwlock->lock)) != 0) {
+		rwlock_log("rwlock_rdlock_common %p (failedA)\n", prwlock);
 		return (ret);
+	}
 
 	/* check lock count */
 	if (prwlock->state == MAX_READ_LOCKS) {
 		_pthread_mutex_unlock(&prwlock->lock);
+		rwlock_log("rwlock_rdlock_common %p (failedB)\n", prwlock);
 		return (EAGAIN);
 	}
 
@@ -178,18 +229,27 @@ rwlock_rdlock_common(pthread_rwlock_t *rwlock, const struct timespec *abstime)
 		 */
 		;	/* nothing needed */
 	} else {
-		/* give writers priority over readers */
+		/*
+		 * Give writers priority over readers
+		 *
+		 * WARNING: pthread_cond*() temporarily releases the
+		 *	    mutex.
+		 */
 		while (prwlock->blocked_writers || prwlock->state < 0) {
-			if (abstime)
-				ret = _pthread_cond_timedwait
-				    (&prwlock->read_signal,
-				    &prwlock->lock, abstime);
-			else
-				ret = _pthread_cond_wait(&prwlock->read_signal,
-			    &prwlock->lock);
+			if (abstime) {
+				ret = _pthread_cond_timedwait(
+					    &prwlock->read_signal,
+					    &prwlock->lock, abstime);
+			} else {
+				ret = _pthread_cond_wait(
+					    &prwlock->read_signal,
+					    &prwlock->lock);
+			}
 			if (ret != 0) {
 				/* can't do a whole lot if this fails */
 				_pthread_mutex_unlock(&prwlock->lock);
+				rwlock_log("rwlock_rdlock_common %p "
+					   "(failedC)\n", prwlock);
 				return (ret);
 			}
 		}
@@ -205,6 +265,7 @@ rwlock_rdlock_common(pthread_rwlock_t *rwlock, const struct timespec *abstime)
 	 * don't have the monitor lock.
 	 */
 	_pthread_mutex_unlock(&prwlock->lock);
+	rwlock_log("rwlock_rdlock_common %p (return %d)\n", prwlock, ret);
 
 	return (ret);
 }
@@ -319,28 +380,38 @@ _pthread_rwlock_unlock (pthread_rwlock_t *rwlock)
 	if (prwlock == NULL)
 		return (EINVAL);
 
+	rwlock_log("rwlock_unlock %p\n", prwlock);
+
 	/* grab the monitor lock */
 	if ((ret = _pthread_mutex_lock(&prwlock->lock)) != 0)
 		return (ret);
 
 	curthread = tls_get_curthread();
 	if (prwlock->state > 0) {
+		/*
+		 * Unlock reader
+		 */
 		curthread->rdlock_count--;
 		prwlock->state--;
 		if (prwlock->state == 0 && prwlock->blocked_writers)
 			ret = _pthread_cond_signal(&prwlock->write_signal);
 	} else if (prwlock->state < 0) {
+		/*
+		 * unlock writer
+		 */
 		prwlock->state = 0;
 
 		if (prwlock->blocked_writers)
 			ret = _pthread_cond_signal(&prwlock->write_signal);
 		else
 			ret = _pthread_cond_broadcast(&prwlock->read_signal);
-	} else
+	} else {
 		ret = EINVAL;
+	}
 
 	/* see the comment on this in pthread_rwlock_rdlock */
 	_pthread_mutex_unlock(&prwlock->lock);
+	rwlock_log("rwlock_unlock %p (return %d)\n", prwlock, ret);
 
 	return (ret);
 }
@@ -364,23 +435,43 @@ rwlock_wrlock_common (pthread_rwlock_t *rwlock, const struct timespec *abstime)
 
 		prwlock = *rwlock;
 	}
+	rwlock_log("rwlock_wrlock_common %p\n", prwlock);
 
 	/* grab the monitor lock */
-	if ((ret = _pthread_mutex_lock(&prwlock->lock)) != 0)
+	if ((ret = _pthread_mutex_lock(&prwlock->lock)) != 0) {
+		rwlock_log("rwlock_wrlock_common %p (failedA)\n", prwlock);
 		return (ret);
+	}
 
 	while (prwlock->state != 0) {
 		prwlock->blocked_writers++;
 
-		if (abstime != NULL)
+		/*
+		 * WARNING: pthread_cond*() temporarily releases the
+		 *	    mutex.
+		 */
+		if (abstime != NULL) {
 			ret = _pthread_cond_timedwait(&prwlock->write_signal,
-			    &prwlock->lock, abstime);
-		else
+						      &prwlock->lock,
+						      abstime);
+		} else {
 			ret = _pthread_cond_wait(&prwlock->write_signal,
-			    &prwlock->lock);
+						 &prwlock->lock);
+		}
+
+		/*
+		 * Undo on failure.  When the blocked_writers count drops
+		 * to 0 we may have to wakeup blocked readers.
+		 */
 		if (ret != 0) {
 			prwlock->blocked_writers--;
+			if (prwlock->blocked_writers == 0 &&
+			    prwlock->state >= 0) {
+				_pthread_cond_broadcast(&prwlock->read_signal);
+			}
 			_pthread_mutex_unlock(&prwlock->lock);
+			rwlock_log("rwlock_wrlock_common %p (failedB %d)\n",
+				   prwlock, ret);
 			return (ret);
 		}
 
@@ -392,6 +483,7 @@ rwlock_wrlock_common (pthread_rwlock_t *rwlock, const struct timespec *abstime)
 
 	/* see the comment on this in pthread_rwlock_rdlock */
 	_pthread_mutex_unlock(&prwlock->lock);
+	rwlock_log("rwlock_wrlock_common %p (returns %d)\n", prwlock, ret);
 
 	return (ret);
 }

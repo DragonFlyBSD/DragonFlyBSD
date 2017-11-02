@@ -187,7 +187,6 @@ int		_thr_page_size;
 static void	init_private(void);
 static void	_libpthread_uninit(void);
 static void	init_main_thread(struct pthread *thread);
-static int	init_once = 0;
 
 void	_thread_init(void) __attribute__ ((constructor));
 void
@@ -368,21 +367,15 @@ init_main_thread(struct pthread *thread)
 static void
 init_private(void)
 {
+	static int init_once = 0;
 	size_t len;
 	int mib[2];
-
-	_thr_umtx_init(&_mutex_static_lock);
-	_thr_umtx_init(&_cond_static_lock);
-	_thr_umtx_init(&_rwlock_static_lock);
-	_thr_umtx_init(&_keytable_lock);
-	_thr_umtx_init(&_thr_atfork_lock);
-	_thr_umtx_init(&_thr_event_lock);
-	_thr_spinlock_init();
-	_thr_list_init();
 
 	/*
 	 * Avoid reinitializing some things if they don't need to be,
 	 * e.g. after a fork().
+	 *
+	 * NOTE: _thr_atfork_*list must remain intact after a fork.
 	 */
 	if (init_once == 0) {
 		/* Find the stack top */
@@ -395,8 +388,18 @@ init_private(void)
 		_thr_guard_default = _thr_page_size;
 		_pthread_attr_default.guardsize_attr = _thr_guard_default;
 		TAILQ_INIT(&_thr_atfork_list);
+		TAILQ_INIT(&_thr_atfork_kern_list);
+		init_once = 1;
 	}
-	init_once = 1;
+
+	_thr_umtx_init(&_mutex_static_lock);
+	_thr_umtx_init(&_cond_static_lock);
+	_thr_umtx_init(&_rwlock_static_lock);
+	_thr_umtx_init(&_keytable_lock);
+	_thr_umtx_init(&_thr_atfork_lock);
+	_thr_umtx_init(&_thr_event_lock);
+	_thr_spinlock_init();
+	_thr_list_init();
 }
 
 __strong_reference(_pthread_init_early, pthread_init_early);

@@ -74,11 +74,16 @@
 #include "thr_private.h"
 
 struct atfork_head	_thr_atfork_list;
+struct atfork_head	_thr_atfork_kern_list;
 umtx_t	_thr_atfork_lock;
 
+/*
+ * Execute a function in parent before and after the fork, and
+ * in the child.
+ */
 int
 _pthread_atfork(void (*prepare)(void), void (*parent)(void),
-    void (*child)(void))
+		void (*child)(void))
 {
 	struct pthread *curthread;
 	struct pthread_atfork *af;
@@ -94,6 +99,34 @@ _pthread_atfork(void (*prepare)(void), void (*parent)(void),
 	TAILQ_INSERT_TAIL(&_thr_atfork_list, af, qe);
 	THR_UMTX_UNLOCK(curthread, &_thr_atfork_lock);
 	return (0);
+}
+
+/*
+ * Private at-fork used by the rtld and sem code, guaranteed to order
+ * after user fork handlers in prepare, and before user fork handlers
+ * in the post-fork parent and in the child.
+ *
+ * This is used to ensure no interference between internal and user
+ * fork handlers, in particular we do not want to lock-out rtld or
+ * semaphores before user fork handlers run, and we want to recover
+ * before any user post-fork handlers run.
+ */
+void
+_thr_atfork_kern(void (*prepare)(void), void (*parent)(void),
+		 void (*child)(void))
+{
+	struct pthread *curthread;
+	struct pthread_atfork *af;
+
+	af = malloc(sizeof(struct pthread_atfork));
+
+	curthread = tls_get_curthread();
+	af->prepare = prepare;
+	af->parent = parent;
+	af->child = child;
+	THR_UMTX_LOCK(curthread, &_thr_atfork_lock);
+	TAILQ_INSERT_TAIL(&_thr_atfork_kern_list, af, qe);
+	THR_UMTX_UNLOCK(curthread, &_thr_atfork_lock);
 }
 
 void
@@ -161,6 +194,10 @@ _fork(void)
 		if (af->prepare != NULL)
 			af->prepare();
 	}
+	TAILQ_FOREACH_REVERSE(af, &_thr_atfork_kern_list, atfork_head, qe) {
+		if (af->prepare != NULL)
+			af->prepare();
+	}
 
 #ifndef __DragonFly__
 	/*
@@ -180,6 +217,9 @@ _fork(void)
 	 * Block all signals until we reach a safe point.
 	 */
 	_thr_signal_block(curthread);
+#ifdef _PTHREADS_DEBUGGING
+	_thr_log("fork-parent\n", 12);
+#endif
 
 	/* Fork a new process: */
 	if ((ret = __syscall(SYS_fork)) == 0) {
@@ -203,6 +243,9 @@ _fork(void)
 
 		/* reinitialize libc spinlocks, this includes __malloc_lock. */
 		_thr_spinlock_init();
+#ifdef _PTHREADS_DEBUGGING
+		_thr_log("fork-child\n", 11);
+#endif
 		_mutex_fork(curthread);
 
 		/* reinitalize library. */
@@ -212,6 +255,10 @@ _fork(void)
 		_thr_signal_unblock(curthread);
 
 		/* Run down atfork child handlers. */
+		TAILQ_FOREACH(af, &_thr_atfork_kern_list, qe) {
+			if (af->child != NULL)
+				af->child();
+		}
 		TAILQ_FOREACH(af, &_thr_atfork_list, qe) {
 			if (af->child != NULL)
 				af->child();
@@ -224,11 +271,17 @@ _fork(void)
 		if (unlock_malloc)
 			_spinunlock(__malloc_lock);
 #endif
-
+#ifdef _PTHREADS_DEBUGGING
+		_thr_log("fork-done\n", 10);
+#endif
 		/* Ready to continue, unblock signals. */
 		_thr_signal_unblock(curthread);
 
 		/* Run down atfork parent handlers. */
+		TAILQ_FOREACH(af, &_thr_atfork_kern_list, qe) {
+			if (af->parent != NULL)
+				af->parent();
+		}
 		TAILQ_FOREACH(af, &_thr_atfork_list, qe) {
 			if (af->parent != NULL)
 				af->parent();
