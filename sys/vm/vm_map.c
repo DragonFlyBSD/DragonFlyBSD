@@ -3304,8 +3304,6 @@ vm_map_split(vm_map_entry_t entry)
 			LIST_INSERT_HEAD(&bobject->shadow_head,
 					 nobject, shadow_list);
 			vm_object_clear_flag(bobject, OBJ_ONEMAPPING); /*XXX*/
-			vm_object_chain_release(bobject);
-			vm_object_drop(bobject);
 			vm_object_set_flag(nobject, OBJ_ONSHADOW);
 		}
 	}
