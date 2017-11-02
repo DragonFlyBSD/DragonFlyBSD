@@ -356,6 +356,7 @@ proc0_init(void *dummy __unused)
 {
 	struct proc *p;
 	struct lwp *lp;
+	struct uidinfo *uip;
 
 	p = &proc0;
 	lp = &lwp0;
@@ -411,10 +412,12 @@ proc0_init(void *dummy __unused)
 	bcopy("swapper", thread0.td_comm, sizeof ("swapper"));
 
 	/* Create credentials. */
+	uip = uicreate(0);	/* for cr_ruidinfo */
+	uihold(uip);		/* for cr_uidinfo */
 	p->p_ucred = crget();
-	p->p_ucred->cr_ruidinfo = uifind(0);
+	p->p_ucred->cr_ruidinfo = uip;
+	p->p_ucred->cr_uidinfo = uip;
 	p->p_ucred->cr_ngroups = 1;	/* group 0 */
-	p->p_ucred->cr_uidinfo = uifind(0);
 	thread0.td_ucred = crhold(p->p_ucred);	/* bootstrap fork1() */
 
 	/* Don't jail it */

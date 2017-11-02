@@ -66,7 +66,6 @@ static struct spinlock uihash_lock;
 static LIST_HEAD(uihashhead, uidinfo) *uihashtbl;
 static u_long uihash;		/* size of hash table - 1 */
 
-static struct uidinfo	*uicreate (uid_t uid);
 static struct uidinfo	*uilookup (uid_t uid);
 
 /*
@@ -937,8 +936,11 @@ uilookup(uid_t uid)
 /*
  * Helper function to creat ea uid that could not be found.
  * This function will properly deal with races.
+ *
+ * WARNING! Should only be used by this source file and by the proc0
+ *	    creation code.
  */
-static struct uidinfo *
+struct uidinfo *
 uicreate(uid_t uid)
 {
 	struct	uidinfo *uip, *tmp;
@@ -984,6 +986,20 @@ struct uidinfo *
 uifind(uid_t uid)
 {
 	struct uidinfo *uip;
+	thread_t td = curthread;
+
+	if (td->td_ucred) {
+		uip = td->td_ucred->cr_uidinfo;
+		if (uip->ui_uid == uid) {
+			uihold(uip);
+			return uip;
+		}
+		uip = td->td_ucred->cr_ruidinfo;
+		if (uip->ui_uid == uid) {
+			uihold(uip);
+			return uip;
+		}
+	}
 
 	spin_lock_shared(&uihash_lock);
 	uip = uilookup(uid);

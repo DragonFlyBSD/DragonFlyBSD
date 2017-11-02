@@ -632,7 +632,7 @@ lockmgr_upgrade(struct lock *lkp, u_int flags)
 			return EBUSY;
 		} else {
 			/*
-			 * Multiuple shared locks present, request the
+			 * Multiple shared locks present, request the
 			 * upgrade and break to the next loop.
 			 */
 			pflags = (extflags & LK_PCATCH) ? PCATCH : 0;

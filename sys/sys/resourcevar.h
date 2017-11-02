@@ -134,6 +134,7 @@ int	chgproccnt (struct uidinfo *uip, int diff, int max);
 int	chgsbsize (struct uidinfo *uip, u_long *hiwat, u_long to, rlim_t max);
 void	ruadd (struct rusage *ru, struct rusage *ru2);
 struct uidinfo *uifind (uid_t uid);
+struct uidinfo *uicreate(uid_t uid);
 void	uihold (struct uidinfo *uip);
 void	uidrop (struct uidinfo *uip);
 void	uireplace (struct uidinfo **puip, struct uidinfo *nuip);

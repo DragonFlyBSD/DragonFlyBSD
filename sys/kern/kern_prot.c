@@ -1070,10 +1070,8 @@ cratom(struct ucred **pcr)
 	newcr = crget();	/* this might block */
 	oldcr = *pcr;		/* re-cache after potentially blocking */
 	*newcr = *oldcr;
-	if (newcr->cr_uidinfo)
-		uihold(newcr->cr_uidinfo);
-	if (newcr->cr_ruidinfo)
-		uihold(newcr->cr_ruidinfo);
+	uihold(newcr->cr_uidinfo);
+	uihold(newcr->cr_ruidinfo);
 	if (jailed(newcr))
 		prison_hold(newcr->cr_prison);
 	newcr->cr_ref = 1;
@@ -1104,10 +1102,8 @@ cratom_proc(struct proc *p)
 	newcr = crget();	/* this might block */
 	oldcr = p->p_ucred;	/* so re-cache oldcr (do not re-test) */
 	*newcr = *oldcr;
-	if (newcr->cr_uidinfo)
-		uihold(newcr->cr_uidinfo);
-	if (newcr->cr_ruidinfo)
-		uihold(newcr->cr_ruidinfo);
+	uihold(newcr->cr_uidinfo);
+	uihold(newcr->cr_ruidinfo);
 	if (jailed(newcr))
 		prison_hold(newcr->cr_prison);
 	newcr->cr_ref = 1;
@@ -1130,10 +1126,8 @@ crdup(struct ucred *cr)
 
 	newcr = crget();
 	*newcr = *cr;
-	if (newcr->cr_uidinfo)
-		uihold(newcr->cr_uidinfo);
-	if (newcr->cr_ruidinfo)
-		uihold(newcr->cr_ruidinfo);
+	uihold(newcr->cr_uidinfo);
+	uihold(newcr->cr_ruidinfo);
 	if (jailed(newcr))
 		prison_hold(newcr->cr_prison);
 	newcr->cr_ref = 1;
