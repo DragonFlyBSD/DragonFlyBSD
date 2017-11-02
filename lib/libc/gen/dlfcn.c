@@ -201,3 +201,21 @@ _rtld_get_stack_prot(void)
 {
 	return (PROT_EXEC | PROT_READ | PROT_WRITE);
 }
+
+#pragma weak _rtld_thread_prefork
+void
+_rtld_thread_prefork(void)
+{
+}
+
+#pragma weak _rtld_thread_postfork
+void
+_rtld_thread_postfork(void)
+{
+}
+
+#pragma weak _rtld_thread_childfork
+void
+_rtld_thread_childfork(void)
+{
+}
