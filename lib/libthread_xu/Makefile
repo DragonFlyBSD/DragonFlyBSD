@@ -22,6 +22,15 @@ CFLAGS+=-I${.CURDIR}/../../libexec/rtld-elf
 # enable extra internal consistancy checks
 CFLAGS+=-D_PTHREADS_INVARIANTS
 
+# debugging
+.if defined(PTHREADS_DEBUGGING)
+CFLAGS+=-D_PTHREADS_DEBUGGING
+.endif
+.if defined(PTHREADS_DEBUGGING2)
+CFLAGS+=-D_PTHREADS_DEBUGGING2
+.endif
+
+
 PRECIOUSLIB=	yes
 
 LIBDIR=	/usr/lib/thread

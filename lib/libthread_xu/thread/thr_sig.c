@@ -35,6 +35,12 @@
 
 #include "thr_private.h"
 
+#if defined(_PTHREADS_DEBUGGING) || defined(_PTHREADS_DEBUGGING2)
+#include <sys/file.h>
+#include <stdio.h>
+#include <string.h>
+#endif
+
 /* #define DEBUG_SIGNAL */
 #ifdef DEBUG_SIGNAL
 #define DBG_MSG		stdout_debug
@@ -46,6 +52,10 @@ int	__sigwait(const sigset_t *set, int *sig);
 int	__sigwaitinfo(const sigset_t *set, siginfo_t *info);
 int	__sigtimedwait(const sigset_t *set, siginfo_t *info,
 		const struct timespec * timeout);
+
+#if defined(_PTHREADS_DEBUGGING) || defined(_PTHREADS_DEBUGGING2)
+static void _thr_debug_sig(int signo);
+#endif
 
 static void
 sigcancel_handler(int sig __unused, siginfo_t *info __unused,
@@ -122,6 +132,17 @@ _thr_signal_init(void)
 	act.sa_flags = SA_SIGINFO | SA_RESTART;
 	act.sa_sigaction = (__siginfohandler_t *)&sigcancel_handler;
 	__sys_sigaction(SIGCANCEL, &act, NULL);
+
+#if defined(_PTHREADS_DEBUGGING) || defined(_PTHREADS_DEBUGGING2)
+	/*
+	 * If enabled, rwlock, mutex, and condition variable operations
+	 * are recorded in a text buffer and signal 63 dumps the buffer
+	 * to /tmp/cond${pid}.log.
+	 */
+	act.sa_flags = SA_RESTART;
+	act.sa_handler = _thr_debug_sig;
+	__sys_sigaction(63, &act, NULL);
+#endif
 }
 
 void
@@ -259,3 +280,75 @@ __sigwait(const sigset_t *set, int *sig)
 }
 
 __strong_reference(__sigwait, sigwait);
+
+#if defined(_PTHREADS_DEBUGGING) || defined(_PTHREADS_DEBUGGING2)
+
+#define LOGBUF_SIZE	(4 * 1024 * 1024)
+#define LOGBUF_MASK	(LOGBUF_SIZE - 1)
+
+char LogBuf[LOGBUF_SIZE];
+unsigned long LogWIndex;
+
+void
+_thr_log(const char *buf, size_t bytes)
+{
+	struct pthread *curthread;
+	unsigned long i;
+	char prefix[32];
+	size_t plen;
+
+	curthread = tls_get_curthread();
+	if (curthread) {
+		plen = snprintf(prefix, sizeof(prefix), "%d.%d: ",
+				(int)__sys_getpid(),
+				curthread->tid);
+	} else {
+		plen = snprintf(prefix, sizeof(prefix), "unknown: ");
+	}
+
+	if (bytes == 0)
+		bytes = strlen(buf);
+	i = atomic_fetchadd_long(&LogWIndex, plen + bytes);
+	i = i & LOGBUF_MASK;
+	if (plen <= (size_t)(LOGBUF_SIZE - i)) {
+		bcopy(prefix, LogBuf + i, plen);
+	} else {
+		bcopy(prefix, LogBuf + i, LOGBUF_SIZE - i);
+		plen -= LOGBUF_SIZE - i;
+		bcopy(prefix, LogBuf, plen);
+	}
+
+	i += plen;
+	i = i & LOGBUF_MASK;
+	if (bytes <= (size_t)(LOGBUF_SIZE - i)) {
+		bcopy(buf, LogBuf + i, bytes);
+	} else {
+		bcopy(buf, LogBuf + i, LOGBUF_SIZE - i);
+		bytes -= LOGBUF_SIZE - i;
+		bcopy(buf, LogBuf, bytes);
+	}
+}
+
+static void
+_thr_debug_sig(int signo __unused)
+{
+        char buf[256];
+	int fd;
+	unsigned long i;
+
+	snprintf(buf, sizeof(buf), "/tmp/cond%d.log", (int)__sys_getpid());
+	fd = open(buf, O_RDWR|O_CREAT|O_TRUNC|O_CLOEXEC, 0666);
+	if (fd >= 0) {
+		i = LogWIndex;
+		if (i < LOGBUF_SIZE) {
+			write(fd, LogBuf, i);
+		} else {
+			i &= LOGBUF_MASK;
+			write(fd, LogBuf + i, LOGBUF_SIZE - i);
+			write(fd, LogBuf, i);
+		}
+		close(fd);
+	}
+}
+
+#endif

@@ -35,7 +35,41 @@
 
 #include "thr_private.h"
 
+#ifdef _PTHREADS_DEBUGGING
+#include <stdio.h>
+#include <stdarg.h>
+#include <sys/file.h>
+#endif
+
+#define cpu_ccfence()	__asm __volatile("" : : : "memory")
+
 umtx_t		_cond_static_lock;
+
+#ifdef _PTHREADS_DEBUGGING
+
+static
+void
+cond_log(const char *ctl, ...)
+{
+	char buf[256];
+	va_list va;
+	size_t len;
+
+	va_start(va, ctl);
+	len = vsnprintf(buf, sizeof(buf), ctl, va);
+	va_end(va);
+	_thr_log(buf, len);
+}
+
+#else
+
+static __inline
+void
+cond_log(const char *ctl __unused, ...)
+{
+}
+
+#endif
 
 /*
  * Prototypes
@@ -43,7 +77,6 @@ umtx_t		_cond_static_lock;
 int	__pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex);
 int	__pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
 				 const struct timespec *abstime);
-static int cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr);
 static int cond_wait_common(pthread_cond_t *cond, pthread_mutex_t *mutex,
 			    const struct timespec *abstime, int cancel);
 static int cond_signal_common(pthread_cond_t *cond, int broadcast);
@@ -62,9 +95,6 @@ cond_init(pthread_cond_t *cond, const pthread_condattr_t *cond_attr)
 		 * Initialise the condition variable structure:
 		 */
 		_thr_umtx_init(&pcond->c_lock);
-		pcond->c_seqno = 0;
-		pcond->c_waiters = 0;
-		pcond->c_broadcast = 0;
 		if (cond_attr == NULL || *cond_attr == NULL) {
 			pcond->c_pshared = 0;
 			pcond->c_clockid = CLOCK_REALTIME;
@@ -72,11 +102,28 @@ cond_init(pthread_cond_t *cond, const pthread_condattr_t *cond_attr)
 			pcond->c_pshared = (*cond_attr)->c_pshared;
 			pcond->c_clockid = (*cond_attr)->c_clockid;
 		}
+		TAILQ_INIT(&pcond->c_waitlist);
 		*cond = pcond;
 	}
 	/* Return the completion status: */
 	return (rval);
 }
+
+#if 0
+void
+_cond_reinit(pthread_cond_t cond)
+{
+	if (cond) {
+		_thr_umtx_init(&cond->c_lock);
+#if 0
+		/* retain state */
+		cond->c_pshared = 0;
+		cond->c_clockid = CLOCK_REALTIME;
+#endif
+		TAILQ_INIT(&cond->c_waitlist);
+	}
+}
+#endif
 
 static int
 init_static(struct pthread *thread, pthread_cond_t *cond)
@@ -116,7 +163,7 @@ _pthread_cond_destroy(pthread_cond_t *cond)
 	else {
 		/* Lock the condition variable structure: */
 		THR_LOCK_ACQUIRE(curthread, &(*cond)->c_lock);
-		if ((*cond)->c_waiters != 0) {
+		if (TAILQ_FIRST(&(*cond)->c_waitlist)) {
 			THR_LOCK_RELEASE(curthread, &(*cond)->c_lock);
 			return (EBUSY);
 		}
@@ -144,12 +191,12 @@ _pthread_cond_destroy(pthread_cond_t *cond)
 	return (rval);
 }
 
-struct cond_cancel_info
-{
+struct cond_cancel_info {
+	TAILQ_ENTRY(cond_cancel_info) entry;
 	pthread_mutex_t	*mutex;
 	pthread_cond_t	*cond;
-	int		seqno;
 	int		count;
+	int		queued;
 };
 
 static void
@@ -159,108 +206,129 @@ cond_cancel_handler(void *arg)
 	struct cond_cancel_info *info = (struct cond_cancel_info *)arg;
 	pthread_cond_t cv;
 
-	cv = *(info->cond);
+	cv = *info->cond;
 	THR_LOCK_ACQUIRE(curthread, &cv->c_lock);
-	if (--cv->c_waiters == 0)
-		cv->c_broadcast = 0;
-	if (cv->c_seqno != info->seqno) {
-		_thr_umtx_wake(&cv->c_seqno, 1);
-		/* cv->c_seqno++; XXX why was this here? */
-		_thr_umtx_wake(&cv->c_seqno, 1);
+	cond_log("cond_cancel %p\n", cv);
+
+	if (info->queued) {
+		info->queued = 0;
+		cond_log("cond_cancel %p: info %p\n", cv, info);
+		TAILQ_REMOVE(&cv->c_waitlist, info, entry);
+		_thr_umtx_wake(&info->queued, 0);
 	}
 	THR_LOCK_RELEASE(curthread, &cv->c_lock);
 
-	_mutex_cv_lock(info->mutex, info->count);
+	/* _mutex_cv_lock(info->mutex, info->count); */
 }
 
+/*
+ * Wait for pthread_cond_t to be signaled.
+ *
+ * NOTE: EINTR is ignored and may not be returned by this function.
+ */
 static int
 cond_wait_common(pthread_cond_t *cond, pthread_mutex_t *mutex,
-	const struct timespec *abstime, int cancel)
+		 const struct timespec *abstime, int cancel)
 {
 	struct pthread	*curthread = tls_get_curthread();
 	struct timespec ts, ts2, *tsp;
 	struct cond_cancel_info info;
 	pthread_cond_t  cv;
-	int		seq, oldseq;
 	int		oldcancel;
-	int		ret = 0;
+	int		ret;
 
 	/*
 	 * If the condition variable is statically initialized,
 	 * perform the dynamic initialization:
 	 */
+	cond_log("cond_wait_common %p on mutex %p info %p\n",
+		*cond, *mutex, &info);
 	if (__predict_false(*cond == NULL &&
-	    (ret = init_static(curthread, cond)) != 0))
-		return (ret);
-
-	cv = *cond;
-/*	fprintf(stderr, "waiton1 %p\n", cv);*/
-	THR_LOCK_ACQUIRE(curthread, &cv->c_lock);
-	oldseq = cv->c_seqno;
-/*	fprintf(stderr, "waiton2 %p %d\n", cv, oldseq);*/
-	ret = _mutex_cv_unlock(mutex, &info.count);
-	if (ret) {
-		THR_LOCK_RELEASE(curthread, &cv->c_lock);
+	    (ret = init_static(curthread, cond)) != 0)) {
+		cond_log("cond_wait_common %p (failedA %d)\n", *cond, ret);
 		return (ret);
 	}
-	seq = cv->c_seqno;
+
+	cv = *cond;
+	THR_LOCK_ACQUIRE(curthread, &cv->c_lock);
+	ret = _mutex_cv_unlock(mutex, &info.count);
+	if (ret) {
+		cond_log("cond_wait_common %p (failedB %d)\n", cv, ret);
+		THR_LOCK_RELEASE(curthread, &cv->c_lock);
+		return ret;
+	}
+
+	cpu_ccfence();
 	info.mutex = mutex;
 	info.cond  = cond;
-	info.seqno = oldseq;
-
-	++cv->c_waiters;
+	info.queued = 1;
+	TAILQ_INSERT_TAIL(&cv->c_waitlist, &info, entry);
 
 	/*
 	 * loop if we have never been told to wake up
 	 * or we lost a race.
 	 */
-	while (seq == oldseq /* || cv->c_wakeups == 0*/) {
+	while (info.queued) {
 		THR_LOCK_RELEASE(curthread, &cv->c_lock);
 
 		if (abstime != NULL) {
 			clock_gettime(cv->c_clockid, &ts);
 			TIMESPEC_SUB(&ts2, abstime, &ts);
 			tsp = &ts2;
-		} else
+		} else {
 			tsp = NULL;
+		}
 
 		if (cancel) {
 			THR_CLEANUP_PUSH(curthread, cond_cancel_handler, &info);
 			oldcancel = _thr_cancel_enter(curthread);
-			ret = _thr_umtx_wait(&cv->c_seqno, seq, tsp,
-				cv->c_clockid);
+			ret = _thr_umtx_wait(&info.queued, 1, tsp,
+					     cv->c_clockid);
 			_thr_cancel_leave(curthread, oldcancel);
 			THR_CLEANUP_POP(curthread, 0);
 		} else {
-			ret = _thr_umtx_wait(&cv->c_seqno, seq, tsp,
-				cv->c_clockid);
+			ret = _thr_umtx_wait(&info.queued, 1, tsp,
+					     cv->c_clockid);
 		}
 
+		/*
+		 * Ignore EINTR.  Make sure ret is 0 if not ETIMEDOUT.
+		 */
 		THR_LOCK_ACQUIRE(curthread, &cv->c_lock);
-		seq = cv->c_seqno;
 		if (abstime != NULL && ret == ETIMEDOUT)
 			break;
+		cpu_ccfence();
 	}
-	if (--cv->c_waiters == 0)
-		cv->c_broadcast = 0;
-	if (seq != oldseq)
+
+	if (info.queued) {
+		info.queued = 0;
+		TAILQ_REMOVE(&cv->c_waitlist, &info, entry);
+		ret = ETIMEDOUT;
+	} else {
 		ret = 0;
+	}
 	THR_LOCK_RELEASE(curthread, &cv->c_lock);
+
+	cond_log("cond_wait_common %p (doneA)\n", cv);
 	_mutex_cv_lock(mutex, info.count);
+
+	if (ret)
+		cond_log("cond_wait_common %p (failed %d)\n", cv, ret);
+	else
+		cond_log("cond_wait_common %p (doneB)\n", cv);
+
 	return (ret);
 }
 
 int
 _pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
 {
-
 	return (cond_wait_common(cond, mutex, NULL, 0));
 }
 
 int
 __pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
 {
-
 	return (cond_wait_common(cond, mutex, NULL, 1));
 }
 
@@ -290,46 +358,52 @@ static int
 cond_signal_common(pthread_cond_t *cond, int broadcast)
 {
 	struct pthread	*curthread = tls_get_curthread();
+	struct cond_cancel_info *info;
 	pthread_cond_t	cv;
 	int		ret = 0;
+
+	cond_log("cond_signal_common %p broad=%d\n", *cond, broadcast);
 
 	/*
 	 * If the condition variable is statically initialized, perform dynamic
 	 * initialization.
 	 */
 	if (__predict_false(*cond == NULL &&
-	    (ret = init_static(curthread, cond)) != 0))
+			    (ret = init_static(curthread, cond)) != 0)) {
+		cond_log("cond_signal_common %p (failedA %d)\n", *cond, ret);
 		return (ret);
+	}
 
 	cv = *cond;
-/*	fprintf(stderr, "signal %p\n", cv);*/
 	/* Lock the condition variable structure. */
 	THR_LOCK_ACQUIRE(curthread, &cv->c_lock);
-	cv->c_seqno++;
-	if (cv->c_broadcast == 0)
-		cv->c_broadcast = broadcast;
-
-	if (cv->c_waiters) {
-		if (cv->c_broadcast)
-			_thr_umtx_wake(&cv->c_seqno, INT_MAX);
-		else
-			_thr_umtx_wake(&cv->c_seqno, 1);
+	while ((info = TAILQ_FIRST(&cv->c_waitlist)) != NULL) {
+		info->queued = 0;
+		TAILQ_REMOVE(&cv->c_waitlist, info, entry);
+		cond_log("cond_signal_common %p: wakeup %p\n", *cond, info);
+		_thr_umtx_wake(&info->queued, 0);
+		if (broadcast == 0)
+			break;
 	}
 	THR_LOCK_RELEASE(curthread, &cv->c_lock);
+
+	if (ret)
+		cond_log("cond_signal_common %p (failedB %d)\n", *cond, ret);
+	else
+		cond_log("cond_signal_common %p (done)\n", *cond);
+
 	return (ret);
 }
 
 int
 _pthread_cond_signal(pthread_cond_t * cond)
 {
-
 	return (cond_signal_common(cond, 0));
 }
 
 int
 _pthread_cond_broadcast(pthread_cond_t * cond)
 {
-
 	return (cond_signal_common(cond, 1));
 }
 

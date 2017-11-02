@@ -116,7 +116,7 @@ join_common(pthread_t pthread, void **thread_return,
 		} else
 			tsp = NULL;
 		ret = _thr_umtx_wait(&pthread->state, state, tsp,
-			 CLOCK_REALTIME);
+				     CLOCK_REALTIME);
 		if (ret == ETIMEDOUT)
 			break;
 	}

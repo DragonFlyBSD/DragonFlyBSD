@@ -29,6 +29,7 @@
 #include "namespace.h"
 #include <machine/tls.h>
 #include <stdlib.h>
+#include <string.h>
 #include <pthread.h>
 
 #include "un-namespace.h"
@@ -129,7 +130,9 @@ void
 _thr_rtld_init(void)
 {
 	struct RtldLockInfo li;
+	static int once = 0;
 
+	memset(&li, 0, sizeof(li));
 	li.lock_create  = _thr_rtld_lock_create;
 	li.lock_destroy = _thr_rtld_lock_destroy;
 	li.rlock_acquire = _thr_rtld_rlock_acquire;
@@ -139,6 +142,12 @@ _thr_rtld_init(void)
 	li.thread_clr_flag = _thr_rtld_clr_flag;
 	li.at_fork = NULL;
 	_rtld_thread_init(&li);
+	if (once == 0) {
+		once = 1;
+		_thr_atfork_kern(_rtld_thread_prefork,
+				 _rtld_thread_postfork,
+				 _rtld_thread_childfork);
+	}
 }
 
 void

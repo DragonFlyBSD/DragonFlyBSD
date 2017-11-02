@@ -42,6 +42,9 @@
 /*
  * This is called when the first thread (other than the initial
  * thread) is created.
+ *
+ * NOTE: Once rtld is initialized for threading, we never de-initialize
+ *	 it (we do not call _thr_rtld_fini()).
  */
 int
 _thr_setthreaded(int threaded)
@@ -50,11 +53,8 @@ _thr_setthreaded(int threaded)
 		return (0);
 
 	__isthreaded = threaded;
-	if (threaded != 0) {
+	if (threaded != 0)
 		_thr_rtld_init();
-	} else {
-		_thr_rtld_fini();
-	}
 
 	return (0);
 }

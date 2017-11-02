@@ -43,6 +43,15 @@
 
 #include "thr_private.h"
 
+#ifdef _PTHREADS_DEBUGGING
+
+#include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
+#include <sys/file.h>
+
+#endif
+
 #if defined(_PTHREADS_INVARIANTS)
 #define MUTEX_INIT_LINK(m)		do {		\
 	(m)->m_qe.tqe_prev = NULL;			\
@@ -74,6 +83,58 @@
 } while (0)
 
 umtx_t	_mutex_static_lock;
+
+#ifdef _PTHREADS_DEBUGGING
+
+static
+void
+mutex_log(const char *ctl, ...)
+{
+	char buf[256];
+	va_list va;
+	size_t len;
+
+	va_start(va, ctl);
+	len = vsnprintf(buf, sizeof(buf), ctl, va);
+	va_end(va);
+	_thr_log(buf, len);
+}
+
+#else
+
+static __inline
+void
+mutex_log(const char *ctl __unused, ...)
+{
+}
+
+#endif
+
+#ifdef _PTHREADS_DEBUGGING2
+
+static void
+mutex_log2(struct pthread *curthread, struct pthread_mutex *m, int op)
+{
+	if (curthread) {
+		if (curthread->tid < 32)
+			m->m_lastop[curthread->tid] =
+				(__sys_getpid() << 16) | op;
+	} else {
+			m->m_lastop[0] =
+				(__sys_getpid() << 16) | op;
+	}
+}
+
+#else
+
+static __inline
+void
+mutex_log2(struct pthread *curthread __unused,
+	   struct pthread_mutex *m __unused, int op __unused)
+{
+}
+
+#endif
 
 /*
  * Prototypes
@@ -110,6 +171,7 @@ mutex_init_body(struct pthread_mutex *pmutex,
 	pmutex->m_type = attr->m_type;
 	pmutex->m_protocol = attr->m_protocol;
 	TAILQ_INIT(&pmutex->m_queue);
+	mutex_log2(tls_get_curthread(), pmutex, 32);
 	pmutex->m_owner = NULL;
 	pmutex->m_flags = attr->m_flags | MUTEX_FLAGS_INITED;
 	if (private)
@@ -195,19 +257,25 @@ __pthread_mutex_init(pthread_mutex_t *mutex,
 	return mutex_init(mutex, mutex_attr, 0);
 }
 
+#if 0
 int
-_mutex_reinit(pthread_mutex_t *mutex)
+_mutex_reinit(pthread_mutex_t *mutexp)
 {
-	_thr_umtx_init(&(*mutex)->m_lock);
-	TAILQ_INIT(&(*mutex)->m_queue);
-	MUTEX_INIT_LINK(*mutex);
-	(*mutex)->m_owner = NULL;
-	(*mutex)->m_count = 0;
-	(*mutex)->m_refcount = 0;
-	(*mutex)->m_prio = 0;
-	(*mutex)->m_saved_prio = 0;
+	pthread_mutex_t mutex = *mutexp;
+
+	_thr_umtx_init(&mutex->m_lock);
+	TAILQ_INIT(&mutex->m_queue);
+	MUTEX_INIT_LINK(mutex);
+	mutex_log2(tls_get_curthread(), mutex, 33);
+	mutex->m_owner = NULL;
+	mutex->m_count = 0;
+	mutex->m_refcount = 0;
+	mutex->m_prio = 0;
+	mutex->m_saved_prio = 0;
+
 	return (0);
 }
+#endif
 
 void
 _mutex_fork(struct pthread *curthread)
@@ -225,14 +293,14 @@ _pthread_mutex_destroy(pthread_mutex_t *mutex)
 	pthread_mutex_t m;
 	int ret = 0;
 
-	if (mutex == NULL)
+	if (mutex == NULL) {
 		ret = EINVAL;
-	else if (*mutex == NULL)
+	} else if (*mutex == NULL) {
 		ret = 0;
-	else {
+	} else {
 		/*
 		 * Try to lock the mutex structure, we only need to
-		 * try once, if failed, the mutex is in used.
+		 * try once, if failed, the mutex is in use.
 		 */
 		ret = THR_UMTX_TRYLOCK(curthread, &(*mutex)->m_lock);
 		if (ret)
@@ -279,16 +347,19 @@ mutex_trylock_common(struct pthread *curthread, pthread_mutex_t *mutex)
 	int ret;
 
 	m = *mutex;
+	mutex_log("mutex_lock_trylock_common %p\n", m);
 	ret = THR_UMTX_TRYLOCK(curthread, &m->m_lock);
 	if (ret == 0) {
+		mutex_log2(curthread, m, 1);
 		m->m_owner = curthread;
 		/* Add to the list of owned mutexes: */
 		MUTEX_ASSERT_NOT_OWNED(m);
-		TAILQ_INSERT_TAIL(&curthread->mutexq,
-		    m, m_qe);
+		TAILQ_INSERT_TAIL(&curthread->mutexq, m, m_qe);
 	} else if (m->m_owner == curthread) {
+		mutex_log2(curthread, m, 2);
 		ret = mutex_self_trylock(m);
 	} /* else {} */
+	mutex_log("mutex_lock_trylock_common %p (returns %d)\n", m, ret);
 
 	return (ret);
 }
@@ -340,13 +411,14 @@ mutex_lock_common(struct pthread *curthread, pthread_mutex_t *mutex,
 	int	ret = 0;
 
 	m = *mutex;
+	mutex_log("mutex_lock_common %p\n", m);
 	ret = THR_UMTX_TRYLOCK(curthread, &m->m_lock);
 	if (ret == 0) {
+		mutex_log2(curthread, m, 3);
 		m->m_owner = curthread;
 		/* Add to the list of owned mutexes: */
 		MUTEX_ASSERT_NOT_OWNED(m);
-		TAILQ_INSERT_TAIL(&curthread->mutexq,
-		    m, m_qe);
+		TAILQ_INSERT_TAIL(&curthread->mutexq, m, m_qe);
 	} else if (m->m_owner == curthread) {
 		ret = mutex_self_lock(m, abstime);
 	} else {
@@ -360,23 +432,18 @@ mutex_lock_common(struct pthread *curthread, pthread_mutex_t *mutex,
 		} else {
 			clock_gettime(CLOCK_REALTIME, &ts);
 			TIMESPEC_SUB(&ts2, abstime, &ts);
-			ret = THR_UMTX_TIMEDLOCK(curthread,
-				&m->m_lock, &ts2);
-			/*
-			 * Timed out wait is not restarted if
-			 * it was interrupted, not worth to do it.
-			 */
-			if (ret == EINTR)
-				ret = ETIMEDOUT;
+			ret = THR_UMTX_TIMEDLOCK(curthread, &m->m_lock, &ts2);
 		}
 		if (ret == 0) {
+			mutex_log2(curthread, m, 4);
 			m->m_owner = curthread;
 			/* Add to the list of owned mutexes: */
 			MUTEX_ASSERT_NOT_OWNED(m);
-			TAILQ_INSERT_TAIL(&curthread->mutexq,
-			    m, m_qe);
+			TAILQ_INSERT_TAIL(&curthread->mutexq, m, m_qe);
 		}
 	}
+	mutex_log("mutex_lock_common %p (returns %d) lock %d,%d\n",
+		  m, ret, m->m_lock, m->m_count);
 	return (ret);
 }
 
@@ -573,15 +640,22 @@ mutex_unlock_common(pthread_mutex_t *mutex)
 	struct pthread *curthread = tls_get_curthread();
 	struct pthread_mutex *m;
 
-	if (__predict_false((m = *mutex)== NULL))
+	if (__predict_false((m = *mutex) == NULL)) {
+		mutex_log2(curthread, m, 252);
 		return (EINVAL);
-	if (__predict_false(m->m_owner != curthread))
+	}
+	mutex_log("mutex_unlock_common %p\n", m);
+	if (__predict_false(m->m_owner != curthread)) {
+		mutex_log("mutex_unlock_common %p (failedA)\n", m);
+		mutex_log2(curthread, m, 253);
 		return (EPERM);
+	}
 
-	if (__predict_false(
-		m->m_type == PTHREAD_MUTEX_RECURSIVE &&
-		m->m_count > 0)) {
+	if (__predict_false(m->m_type == PTHREAD_MUTEX_RECURSIVE &&
+			    m->m_count > 0)) {
 		m->m_count--;
+		mutex_log("mutex_unlock_common %p (returns 0, partial)\n", m);
+		mutex_log2(curthread, m, 254);
 	} else {
 		/*
 		 * Clear the count in case this is a recursive mutex.
@@ -591,11 +665,17 @@ mutex_unlock_common(pthread_mutex_t *mutex)
 		/* Remove the mutex from the threads queue. */
 		MUTEX_ASSERT_IS_OWNED(m);
 		TAILQ_REMOVE(&curthread->mutexq, m, m_qe);
+		mutex_log2(tls_get_curthread(), m, 35);
 		MUTEX_INIT_LINK(m);
+		mutex_log2(tls_get_curthread(), m, 36);
 		/*
 		 * Hand off the mutex to the next waiting thread.
 		 */
+		mutex_log("mutex_unlock_common %p (returns 0) lock %d\n",
+			  m, m->m_lock);
 		THR_UMTX_UNLOCK(curthread, &m->m_lock);
+		mutex_log2(tls_get_curthread(), m, 37);
+		mutex_log2(curthread, m, 255);
 	}
 	return (0);
 }
@@ -660,12 +740,14 @@ _mutex_cv_unlock(pthread_mutex_t *mutex, int *count)
 	*count = m->m_count;
 	m->m_count = 0;
 	m->m_refcount++;
+	mutex_log2(tls_get_curthread(), m, 45);
 	m->m_owner = NULL;
 	/* Remove the mutex from the threads queue. */
 	MUTEX_ASSERT_IS_OWNED(m);
 	TAILQ_REMOVE(&curthread->mutexq, m, m_qe);
 	MUTEX_INIT_LINK(m);
 	THR_UMTX_UNLOCK(curthread, &m->m_lock);
+	mutex_log2(curthread, m, 250);
 	return (0);
 }
 

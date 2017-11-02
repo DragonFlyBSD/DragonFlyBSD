@@ -54,6 +54,10 @@
 #include <pthread.h>
 #include <pthread_np.h>
 
+#if defined(_PTHREADS_DEBUGGING) || defined(_PTHREADS_DEBUGGING2)
+void	_thr_log(const char *buf, size_t bytes);
+#endif
+
 #include "pthread_md.h"
 #include "thr_umtx.h"
 #include "thread_db.h"
@@ -113,6 +117,9 @@ struct pthread_mutex {
 	 * Lock for accesses to this structure.
 	 */
 	volatile umtx_t			m_lock;
+#ifdef _PTHREADS_DEBUGGING2
+	int				m_lastop[32];
+#endif
 	enum pthread_mutextype		m_type;
 	int				m_protocol;
 	TAILQ_HEAD(mutex_head, pthread)	m_queue;
@@ -143,9 +150,13 @@ struct pthread_mutex {
 
 #define TAILQ_INITIALIZER	{ NULL, NULL }
 
-#define PTHREAD_MUTEX_STATIC_INITIALIZER   \
-	{0, PTHREAD_MUTEX_DEFAULT, PTHREAD_PRIO_NONE, TAILQ_INITIALIZER, \
-	NULL, { NULL }, MUTEX_FLAGS_PRIVATE, 0, 0, 0, TAILQ_INITIALIZER }
+#define PTHREAD_MUTEX_STATIC_INITIALIZER   		\
+	{	.m_lock = 0,				\
+		.m_type = PTHREAD_MUTEX_DEFAULT,	\
+		.m_protocol = PTHREAD_PRIO_NONE,	\
+		.m_queue = TAILQ_INITIALIZER,		\
+		.m_flags = MUTEX_FLAGS_PRIVATE		\
+	}
 /*
  * Flags for mutexes.
  */
@@ -162,16 +173,17 @@ struct pthread_mutex_attr {
 #define PTHREAD_MUTEXATTR_STATIC_INITIALIZER \
 	{ PTHREAD_MUTEX_DEFAULT, PTHREAD_PRIO_NONE, 0, MUTEX_FLAGS_PRIVATE }
 
+struct cond_cancel_info;
+
 struct pthread_cond {
 	/*
 	 * Lock for accesses to this structure.
 	 */
 	volatile umtx_t	c_lock;
-	volatile umtx_t	c_seqno;
-	volatile int	c_waiters;
-	volatile int	c_broadcast;
+	volatile int	c_unused01;
 	int		c_pshared;
 	int		c_clockid;
+	TAILQ_HEAD(, cond_cancel_info)	c_waitlist;
 };
 
 struct pthread_cond_attr {
@@ -609,6 +621,7 @@ extern struct thread_head	_thread_gc_list;
 extern int	_thread_active_threads;
 
 extern struct	atfork_head	_thr_atfork_list;
+extern struct	atfork_head	_thr_atfork_kern_list;
 extern umtx_t	_thr_atfork_lock;
 
 /* Default thread attributes */
@@ -642,15 +655,23 @@ int	_thr_setthreaded(int);
 int	_mutex_cv_lock(pthread_mutex_t *, int count);
 int	_mutex_cv_unlock(pthread_mutex_t *, int *count);
 void	_mutex_notify_priochange(struct pthread *, struct pthread *, int);
-int	_mutex_reinit(pthread_mutex_t *);
 void	_mutex_fork(struct pthread *curthread);
 void	_mutex_unlock_private(struct pthread *);
+
+#if 0
+int	_mutex_reinit(pthread_mutex_t *);
+void	_cond_reinit(pthread_cond_t pcond);
+void	_rwlock_reinit(pthread_rwlock_t prwlock);
+#endif
+
 void	_libpthread_init(struct pthread *);
 struct pthread *_thr_alloc(struct pthread *);
 void	_thread_exit(const char *, int, const char *) __dead2;
 void	_thread_exitf(const char *, int, const char *, ...) __dead2
 	    __printflike(3, 4);
 void	_thr_exit_cleanup(void);
+void	_thr_atfork_kern(void (*prepare)(void), void (*parent)(void),
+			void (*child)(void));
 int	_thr_ref_add(struct pthread *, struct pthread *, int);
 void	_thr_ref_delete(struct pthread *, struct pthread *);
 void	_thr_ref_delete_unlocked(struct pthread *, struct pthread *);
