@@ -893,15 +893,15 @@ RestartScan:
 			/*
 			 * Pass the page information to the user
 			 */
-			error = subyte( vec + vecindex, mincoreinfo);
+			error = subyte(vec + vecindex, mincoreinfo);
 			if (error) {
 				error = EFAULT;
 				goto done;
 			}
 
 			/*
-			 * If the map has changed, due to the subyte, the previous
-			 * output may be invalid.
+			 * If the map has changed, due to the subyte,
+			 * the previous output may be invalid.
 			 */
 			vm_map_lock_read(map);
 			if (timestamp != map->timestamp)
@@ -1084,7 +1084,7 @@ retry:
 			entry->eflags |= MAP_ENTRY_NEEDS_WAKEUP;
 			++mycpu->gd_cnt.v_intrans_coll;
 			++mycpu->gd_cnt.v_intrans_wait;
-			vm_map_transition_wait(map);
+			vm_map_transition_wait(map, 1);
 			goto retry;
 		}
 
@@ -1098,7 +1098,6 @@ retry:
 			vm_fault_unwire(map, entry);
 	}
 
-	map->timestamp++;
 	vm_map_unlock(map);
 
 	return (rc);

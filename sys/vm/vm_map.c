@@ -1,11 +1,13 @@
 /*
- * (MPSAFE)
- *
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 2003-2017 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
  * The Mach Operating System project at Carnegie-Mellon University.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -131,7 +133,11 @@ static struct objcache *vmspace_cache;
 #define MAPENTRYBSP_CACHE	(MAXCPU+1)
 #define MAPENTRYAP_CACHE	8
 
-#define MAP_ENTRY_PARTITION_SIZE	((vm_offset_t)(16 * 1024 * 1024))
+/*
+ * Partioning threaded programs with large anonymous memory areas can
+ * improve concurrent fault performance.
+ */
+#define MAP_ENTRY_PARTITION_SIZE	((vm_offset_t)(32 * 1024 * 1024))
 #define MAP_ENTRY_PARTITION_MASK	(MAP_ENTRY_PARTITION_SIZE - 1)
 
 #define VM_MAP_ENTRY_WITHIN_PARTITION(entry)	\
@@ -149,7 +155,10 @@ SYSCTL_INT(_vm, OID_AUTO, randomize_mmap, CTLFLAG_RW, &randomize_mmap, 0,
     "Randomize mmap offsets");
 static int vm_map_relock_enable = 1;
 SYSCTL_INT(_vm, OID_AUTO, map_relock_enable, CTLFLAG_RW,
-	   &vm_map_relock_enable, 0, "Randomize mmap offsets");
+	   &vm_map_relock_enable, 0, "insert pop pgtable optimization");
+static int vm_map_partition_enable = 1;
+SYSCTL_INT(_vm, OID_AUTO, map_partition_enable, CTLFLAG_RW,
+	   &vm_map_partition_enable, 0, "Break up larger vm_map_entry's");
 
 static void vmspace_drop_notoken(struct vmspace *vm);
 static void vm_map_entry_shadow(vm_map_entry_t entry, int addref);
@@ -1651,12 +1660,13 @@ _vm_map_clip_end(vm_map_t map, vm_map_entry_t entry, vm_offset_t end,
  * is unlocked for the sleep and relocked before the return.
  */
 void
-vm_map_transition_wait(vm_map_t map)
+vm_map_transition_wait(vm_map_t map, int relock)
 {
 	tsleep_interlock(map, 0);
 	vm_map_unlock(map);
 	tsleep(map, PINTERLOCKED, "vment", 0);
-	vm_map_lock(map);
+	if (relock)
+		vm_map_lock(map);
 }
 
 /*
@@ -1722,7 +1732,7 @@ again:
 		entry->eflags |= MAP_ENTRY_NEEDS_WAKEUP;
 		++mycpu->gd_cnt.v_intrans_coll;
 		++mycpu->gd_cnt.v_intrans_wait;
-		vm_map_transition_wait(map);
+		vm_map_transition_wait(map, 1);
 		/*
 		 * entry and/or start_entry may have been clipped while
 		 * we slept, or may have gone away entirely.  We have
@@ -1762,7 +1772,7 @@ again:
 			next->eflags |= MAP_ENTRY_NEEDS_WAKEUP;
 			++mycpu->gd_cnt.v_intrans_coll;
 			++mycpu->gd_cnt.v_intrans_wait;
-			vm_map_transition_wait(map);
+			vm_map_transition_wait(map, 1);
 
 			/*
 			 * clips might have occured while we blocked.
@@ -1771,6 +1781,7 @@ again:
 			CLIP_CHECK_BACK(start_entry, start);
 			continue;
 		}
+
 		/*
 		 * No restart necessary even though clip_end may block, we
 		 * are holding the map lock.
@@ -1958,7 +1969,6 @@ vm_map_protect(vm_map_t map, vm_offset_t start, vm_offset_t end,
 		 * Update physical map if necessary. Worry about copy-on-write
 		 * here -- CHECK THIS XXX
 		 */
-
 		if (current->protection != old_prot) {
 #define MASK(entry)	(((entry)->eflags & MAP_ENTRY_COW) ? ~VM_PROT_WRITE : \
 							VM_PROT_ALL)
@@ -1973,7 +1983,6 @@ vm_map_protect(vm_map_t map, vm_offset_t start, vm_offset_t end,
 
 		current = current->next;
 	}
-
 	vm_map_unlock(map);
 	vm_map_entry_release(count);
 	return (KERN_SUCCESS);
@@ -2432,9 +2441,9 @@ vm_map_unwire(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
 done:
 	vm_map_unclip_range(map, start_entry, start, real_end, &count,
 		MAP_CLIP_NO_HOLES);
-	map->timestamp++;
 	vm_map_unlock(map);
 	vm_map_entry_release(count);
+
 	return (rv);
 }
 
@@ -2636,7 +2645,6 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 done:
 	vm_map_unclip_range(map, start_entry, start, real_end,
 			    &count, MAP_CLIP_NO_HOLES);
-	map->timestamp++;
 	vm_map_unlock(map);
 failure:
 	if (kmflags & KM_KRESERVE)
@@ -2960,7 +2968,7 @@ again:
 			start = entry->start;
 			++mycpu->gd_cnt.v_intrans_coll;
 			++mycpu->gd_cnt.v_intrans_wait;
-			vm_map_transition_wait(map);
+			vm_map_transition_wait(map, 1);
 			goto again;
 		}
 		vm_map_clip_end(map, entry, end, countp);
@@ -3025,6 +3033,10 @@ again:
 			     OBJ_ONEMAPPING &&
 			    (object->type == OBJT_DEFAULT ||
 			     object->type == OBJT_SWAP)) {
+				/*
+				 * When ONEMAPPING is set we can destroy the
+				 * pages underlying the entry's range.
+				 */
 				vm_object_collapse(object, NULL);
 				vm_object_page_remove(object, offidxstart,
 						      offidxend, FALSE);
@@ -3147,6 +3159,9 @@ vm_map_check_protection(vm_map_t map, vm_offset_t start, vm_offset_t end,
  * and moves the VM pages from the original object to the new object.
  * The original object will also be collapsed, if possible.
  *
+ * Caller must supply entry->object.vm_object held and chain_acquired, and
+ * should chain_release and drop the object upon return.
+ *
  * We can only do this for normal memory objects with a single mapping, and
  * it only makes sense to do it if there are 2 or more refs on the original
  * object.  i.e. typically a memory object that has been extended into
@@ -3164,10 +3179,10 @@ vm_map_check_protection(vm_map_t map, vm_offset_t start, vm_offset_t end,
  * The vm_map must be locked and its token held.
  */
 static void
-vm_map_split(vm_map_entry_t entry)
+vm_map_split(vm_map_entry_t entry, vm_object_t oobject)
 {
 	/* OPTIMIZED */
-	vm_object_t oobject, nobject, bobject;
+	vm_object_t nobject, bobject;
 	vm_offset_t s, e;
 	vm_page_t m;
 	vm_pindex_t offidxstart, offidxend, idx;
@@ -3182,33 +3197,22 @@ vm_map_split(vm_map_entry_t entry)
 	 * OBJ_ONEMAPPING doesn't apply to vnode objects but clear the flag
 	 * anyway.
 	 */
-	oobject = entry->object.vm_object;
 	if (oobject->type != OBJT_DEFAULT && oobject->type != OBJT_SWAP) {
 		vm_object_reference_quick(oobject);
 		vm_object_clear_flag(oobject, OBJ_ONEMAPPING);
 		return;
 	}
 
+#if 0
 	/*
-	 * Setup.  Chain lock the original object throughout the entire
-	 * routine to prevent new page faults from occuring.
-	 *
-	 * XXX can madvise WILLNEED interfere with us too?
+	 * Original object cannot be split?
 	 */
-	vm_object_hold(oobject);
-	vm_object_chain_acquire(oobject, 0);
-
-	/*
-	 * Original object cannot be split?  Might have also changed state.
-	 */
-	if (oobject->handle == NULL || (oobject->type != OBJT_DEFAULT &&
-					oobject->type != OBJT_SWAP)) {
-		vm_object_chain_release(oobject);
-		vm_object_reference_locked(oobject);
+	if (oobject->handle == NULL) {
+		vm_object_reference_locked_chain_held(oobject);
 		vm_object_clear_flag(oobject, OBJ_ONEMAPPING);
-		vm_object_drop(oobject);
 		return;
 	}
+#endif
 
 	/*
 	 * Collapse original object with its backing store as an
@@ -3224,10 +3228,8 @@ vm_map_split(vm_map_entry_t entry)
 	if (oobject->ref_count <= 1 ||
 	    (oobject->type != OBJT_DEFAULT && oobject->type != OBJT_SWAP) ||
 	    (oobject->flags & (OBJ_NOSPLIT|OBJ_ONEMAPPING)) != OBJ_ONEMAPPING) {
-		vm_object_chain_release(oobject);
-		vm_object_reference_locked(oobject);
+		vm_object_reference_locked_chain_held(oobject);
 		vm_object_clear_flag(oobject, OBJ_ONEMAPPING);
-		vm_object_drop(oobject);
 		return;
 	}
 
@@ -3246,7 +3248,7 @@ vm_map_split(vm_map_entry_t entry)
 			/* ref for shadowing below */
 			vm_object_reference_locked(bobject);
 			vm_object_chain_acquire(bobject, 0);
-			KKASSERT(bobject->backing_object == bobject);
+			KKASSERT(oobject->backing_object == bobject);
 			KKASSERT((bobject->flags & OBJ_DEAD) == 0);
 		} else {
 			/*
@@ -3284,6 +3286,10 @@ vm_map_split(vm_map_entry_t entry)
 		KKASSERT(0);
 	}
 
+	/*
+	 * If we could not allocate nobject just clear ONEMAPPING on
+	 * oobject and return.
+	 */
 	if (nobject == NULL) {
 		if (bobject) {
 			if (useshadowlist) {
@@ -3294,10 +3300,8 @@ vm_map_split(vm_map_entry_t entry)
 				vm_object_deallocate(bobject);
 			}
 		}
-		vm_object_chain_release(oobject);
-		vm_object_reference_locked(oobject);
+		vm_object_reference_locked_chain_held(oobject);
 		vm_object_clear_flag(oobject, OBJ_ONEMAPPING);
-		vm_object_drop(oobject);
 		return;
 	}
 
@@ -3314,6 +3318,9 @@ vm_map_split(vm_map_entry_t entry)
 	 *
 	 * Adding an object to bobject's shadow list requires refing bobject
 	 * which we did above in the useshadowlist case.
+	 *
+	 * XXX it is unclear if we need to clear ONEMAPPING on bobject here
+	 *     or not.
 	 */
 	if (bobject) {
 		nobject->backing_object_offset =
@@ -3382,6 +3389,13 @@ vm_map_split(vm_map_entry_t entry)
 	entry->offset = 0LL;
 
 	/*
+	 * The map is being split and nobject is going to wind up on both
+	 * vm_map_entry's, so make sure OBJ_ONEMAPPING is cleared on
+	 * nobject.
+	 */
+	vm_object_clear_flag(nobject, OBJ_ONEMAPPING);
+
+	/*
 	 * Cleanup
 	 *
 	 * NOTE: There is no need to remove OBJ_ONEMAPPING from oobject, the
@@ -3397,10 +3411,27 @@ vm_map_split(vm_map_entry_t entry)
 		vm_object_chain_release(bobject);
 		vm_object_drop(bobject);
 	}
-	vm_object_chain_release(oobject);
+
+#if 0
+	if (oobject->resident_page_count) {
+		kprintf("oobject %p still contains %jd pages!\n",
+			oobject, (intmax_t)oobject->resident_page_count);
+		for (idx = 0; idx < size; idx++) {
+			vm_page_t m;
+
+			m = vm_page_lookup_busy_wait(oobject, offidxstart + idx,
+						     TRUE, "vmpg");
+			if (m) {
+				kprintf("oobject %p idx %jd\n",
+					oobject,
+					offidxstart + idx);
+				vm_page_wakeup(m);
+			}
+		}
+	}
+#endif
 	/*vm_object_clear_flag(oobject, OBJ_ONEMAPPING);*/
 	vm_object_deallocate_locked(oobject);
-	vm_object_drop(oobject);
 }
 
 /*
@@ -3418,6 +3449,7 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 		  vm_map_entry_t src_entry, vm_map_entry_t dst_entry)
 {
 	vm_object_t src_object;
+	vm_object_t oobject;
 
 	if (dst_entry->maptype == VM_MAPTYPE_SUBMAP ||
 	    dst_entry->maptype == VM_MAPTYPE_UKSMAP)
@@ -3430,13 +3462,29 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 		/*
 		 * If the source entry is marked needs_copy, it is already
 		 * write-protected.
+		 *
+		 * To avoid interacting with a vm_fault that might have
+		 * released its vm_map, we must acquire the fronting
+		 * object.
 		 */
+		oobject = src_entry->object.vm_object;
+		if (oobject) {
+			vm_object_hold(oobject);
+			vm_object_chain_acquire(oobject, 0);
+		}
+
+#if 0
+		pmap_protect(src_map->pmap,
+			     src_entry->start, src_entry->end,
+			     VM_PROT_NONE);
+#else
 		if ((src_entry->eflags & MAP_ENTRY_NEEDS_COPY) == 0) {
 			pmap_protect(src_map->pmap,
 			    src_entry->start,
 			    src_entry->end,
 			    src_entry->protection & ~VM_PROT_WRITE);
 		}
+#endif
 
 		/*
 		 * Make a copy of the object.
@@ -3452,10 +3500,12 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 		 * to retry, otherwise the concurrent fault might improperly
 		 * install a RW pte when its supposed to be a RO(COW) pte.
 		 * This race can occur because a vnode-backed fault may have
-		 * to temporarily release the map lock.
+		 * to temporarily release the map lock.  This was handled
+		 * when the caller locked the map exclusively.
 		 */
-		if (src_entry->object.vm_object != NULL) {
-			vm_map_split(src_entry);
+		if (oobject) {
+			vm_map_split(src_entry, oobject);
+
 			src_object = src_entry->object.vm_object;
 			dst_entry->object.vm_object = src_object;
 			src_entry->eflags |= (MAP_ENTRY_COW |
@@ -3463,14 +3513,17 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 			dst_entry->eflags |= (MAP_ENTRY_COW |
 					      MAP_ENTRY_NEEDS_COPY);
 			dst_entry->offset = src_entry->offset;
-			++src_map->timestamp;
 		} else {
 			dst_entry->object.vm_object = NULL;
 			dst_entry->offset = 0;
 		}
-
 		pmap_copy(dst_map->pmap, src_map->pmap, dst_entry->start,
-		    dst_entry->end - dst_entry->start, src_entry->start);
+			  dst_entry->end - dst_entry->start,
+			  src_entry->start);
+		if (oobject) {
+			vm_object_chain_release(oobject);
+			vm_object_drop(oobject);
+		}
 	} else {
 		/*
 		 * Of course, wired down pages can't be set copy-on-write.
@@ -3510,8 +3563,13 @@ vmspace_fork(struct vmspace *vm1)
 
 	vm2 = vmspace_alloc(old_map->min_offset, old_map->max_offset);
 	lwkt_gettoken(&vm2->vm_map.token);
+
+	/*
+	 * We must bump the timestamp to force any concurrent fault
+	 * to retry.
+	 */
 	bcopy(&vm1->vm_startcopy, &vm2->vm_startcopy,
-	    (caddr_t)&vm1->vm_endcopy - (caddr_t)&vm1->vm_startcopy);
+	      (caddr_t)&vm1->vm_endcopy - (caddr_t)&vm1->vm_startcopy);
 	new_map = &vm2->vm_map;	/* XXX */
 	new_map->timestamp = 1;
 
@@ -3594,7 +3652,7 @@ vmspace_fork_normal_entry(vm_map_t old_map, vm_map_t new_map,
 			 *
 			 * Optimize vnode objects.  OBJ_ONEMAPPING
 			 * is non-applicable but clear it anyway,
-			 * and its terminal so we don'th ave to deal
+			 * and its terminal so we don't have to deal
 			 * with chains.  Reduces SMP conflicts.
 			 *
 			 * XXX assert that object.vm_object != NULL
@@ -3628,7 +3686,6 @@ vmspace_fork_normal_entry(vm_map_t old_map, vm_map_t new_map,
 		 * Insert the entry into the new map -- we know we're
 		 * inserting at the end of the new map.
 		 */
-
 		vm_map_entry_link(new_map, new_map->header.prev,
 				  new_entry);
 
@@ -4211,7 +4268,6 @@ RetryLookup:
 		 * If we don't need to write the page, we just demote the
 		 * permissions allowed.
 		 */
-
 		if (fault_type & VM_PROT_WRITE) {
 			/*
 			 * Not allowed if TDF_NOFAULT is set as the shadowing
@@ -4235,7 +4291,6 @@ RetryLookup:
 				goto RetryLookup;
 			}
 			use_read_lock = 0;
-
 			vm_map_entry_shadow(entry, 0);
 		} else {
 			/*
@@ -4265,12 +4320,13 @@ RetryLookup:
 		 */
 		if (vaddr < VM_MAX_USER_ADDRESS &&
 		    entry->maptype == VM_MAPTYPE_NORMAL &&
-		    ((entry->start ^ entry->end) & ~MAP_ENTRY_PARTITION_MASK)) {
+		    ((entry->start ^ entry->end) & ~MAP_ENTRY_PARTITION_MASK) &&
+		    vm_map_partition_enable) {
 			if (entry->eflags & MAP_ENTRY_IN_TRANSITION) {
 				entry->eflags |= MAP_ENTRY_NEEDS_WAKEUP;
 				++mycpu->gd_cnt.v_intrans_coll;
 				++mycpu->gd_cnt.v_intrans_wait;
-				vm_map_transition_wait(map);
+				vm_map_transition_wait(map, 0);
 				goto RetryLookup;
 			}
 			vm_map_entry_partition(map, entry, vaddr, &count);

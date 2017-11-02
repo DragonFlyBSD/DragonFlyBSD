@@ -207,6 +207,12 @@ struct vm_object {
  *		    be clear in those cases.  It might not be set on other
  *		    object types (particularly OBJT_VNODE).
  *
+ *		    This flag indicates that any given page index within the
+ *		    object is only mapped to a single vm_map_entry.  Split
+ *		    vm_map_entry's (denoting distinct non-overlapping page
+ *		    ranges) do not clear this flag.  This flag is typically
+ *		    cleared on fork().
+ *
  * OBJ_NOPAGEIN   - vn and tmpfs set this flag, indicating to swapoff
  *		    that the objects aren't intended to have any vm_page's,
  *		    only swap blocks.  vn and tmpfs don't know how to deal
@@ -222,7 +228,7 @@ struct vm_object {
 #define OBJ_MIGHTBEDIRTY 0x0100		/* object might be dirty */
 #define OBJ_CLEANING	0x0200
 #define OBJ_DEADWNT	0x1000		/* waiting because object is dead */
-#define	OBJ_ONEMAPPING	0x2000		/* flag single vm_map_entry mapping */
+#define	OBJ_ONEMAPPING	0x2000
 #define OBJ_NOMSYNC	0x4000		/* disable msync() system call */
 
 #define CHAINLK_EXCL	0x80000000
@@ -361,6 +367,9 @@ void vm_object_unlock(vm_object_t);
 		debugvm_object_reference_quick(obj, __FILE__, __LINE__)
 #define vm_object_reference_locked(obj)		\
 		debugvm_object_reference_locked(obj, __FILE__, __LINE__)
+#define vm_object_reference_locked_chain_held(obj)		\
+		debugvm_object_reference_locked_chain_held(	\
+					obj, __FILE__, __LINE__)
 #define vm_object_deallocate(obj)		\
 		debugvm_object_deallocate(obj, __FILE__, __LINE__)
 #define vm_object_deallocate_locked(obj)	\
@@ -380,6 +389,8 @@ void VMOBJDEBUG(vm_object_hold_shared)(vm_object_t object VMOBJDBARGS);
 void VMOBJDEBUG(vm_object_drop)(vm_object_t object VMOBJDBARGS);
 void VMOBJDEBUG(vm_object_reference_quick)(vm_object_t object VMOBJDBARGS);
 void VMOBJDEBUG(vm_object_reference_locked)(vm_object_t object VMOBJDBARGS);
+void VMOBJDEBUG(vm_object_reference_locked_chain_held)(
+			vm_object_t object VMOBJDBARGS);
 void VMOBJDEBUG(vm_object_deallocate)(vm_object_t object VMOBJDBARGS);
 void VMOBJDEBUG(vm_object_deallocate_locked)(vm_object_t object VMOBJDBARGS);
 

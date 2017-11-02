@@ -152,10 +152,13 @@ static int debug_fault = 0;
 SYSCTL_INT(_vm, OID_AUTO, debug_fault, CTLFLAG_RW, &debug_fault, 0, "");
 static int debug_cluster = 0;
 SYSCTL_INT(_vm, OID_AUTO, debug_cluster, CTLFLAG_RW, &debug_cluster, 0, "");
+static int virtual_copy_enable = 1;
+SYSCTL_INT(_vm, OID_AUTO, virtual_copy_enable, CTLFLAG_RW,
+		&virtual_copy_enable, 0, "");
 int vm_shared_fault = 1;
 TUNABLE_INT("vm.shared_fault", &vm_shared_fault);
-SYSCTL_INT(_vm, OID_AUTO, shared_fault, CTLFLAG_RW, &vm_shared_fault, 0,
-	   "Allow shared token on vm_object");
+SYSCTL_INT(_vm, OID_AUTO, shared_fault, CTLFLAG_RW,
+		&vm_shared_fault, 0, "Allow shared token on vm_object");
 
 static int vm_fault_object(struct faultstate *, vm_pindex_t, vm_prot_t, int);
 static int vm_fault_vpagetable(struct faultstate *, vm_pindex_t *,
@@ -258,6 +261,82 @@ _unlock_things(struct faultstate *fs, int dealloc)
 #define unlock_things(fs) _unlock_things(fs, 0)
 #define unlock_and_deallocate(fs) _unlock_things(fs, 1)
 #define cleanup_successful_fault(fs) _cleanup_successful_fault(fs, 1)
+
+/*
+ * Virtual copy tests.   Used by the fault code to determine if a
+ * page can be moved from an orphan vm_object into its shadow
+ * instead of copying its contents.
+ */
+static __inline int
+virtual_copy_test(struct faultstate *fs)
+{
+	/*
+	 * Must be holding exclusive locks
+	 */
+	if (fs->first_shared || fs->shared || virtual_copy_enable == 0)
+		return 0;
+
+	/*
+	 * Map, if present, has not changed
+	 */
+	if (fs->map && fs->map_generation != fs->map->timestamp)
+		return 0;
+
+	/*
+	 * Only one shadow object
+	 */
+	if (fs->object->shadow_count != 1)
+		return 0;
+
+	/*
+	 * No COW refs, except us
+	 */
+	if (fs->object->ref_count != 1)
+		return 0;
+
+	/*
+	 * No one else can look this object up
+	 */
+	if (fs->object->handle != NULL)
+		return 0;
+
+	/*
+	 * No other ways to look the object up
+	 */
+	if (fs->object->type != OBJT_DEFAULT &&
+	    fs->object->type != OBJT_SWAP)
+		return 0;
+
+	/*
+	 * We don't chase down the shadow chain
+	 */
+	if (fs->object != fs->first_object->backing_object)
+		return 0;
+
+	return 1;
+}
+
+static __inline int
+virtual_copy_ok(struct faultstate *fs)
+{
+	if (virtual_copy_test(fs)) {
+		/*
+		 * Grab the lock and re-test changeable items.
+		 */
+		if (fs->lookup_still_valid == FALSE && fs->map) {
+			if (lockmgr(&fs->map->lock, LK_EXCLUSIVE|LK_NOWAIT))
+				return 0;
+			fs->lookup_still_valid = TRUE;
+			if (virtual_copy_test(fs)) {
+				fs->map_generation = ++fs->map->timestamp;
+				return 1;
+			}
+			fs->lookup_still_valid = FALSE;
+			lockmgr(&fs->map->lock, LK_RELEASE);
+		}
+	}
+	return 0;
+}
 
 /*
  * TRYPAGER 
@@ -1975,6 +2054,7 @@ readrest:
 	 * is held.]
 	 *
 	 * object still held.
+	 * vm_map may not be locked (determined by fs->lookup_still_valid)
 	 *
 	 * local shared variable may be different from fs->shared.
 	 *
@@ -2000,46 +2080,7 @@ readrest:
 			 * dirty in the first object so that it will go out 
 			 * to swap when needed.
 			 */
-			if (
-				/*
-				 * Must be holding exclusive locks
-				 */
-				fs->first_shared == 0 &&
-				fs->shared == 0 &&
-				/*
-				 * Map, if present, has not changed
-				 */
-				(fs->map == NULL ||
-				fs->map_generation == fs->map->timestamp) &&
-				/*
-				 * Only one shadow object
-				 */
-				(fs->object->shadow_count == 1) &&
-				/*
-				 * No COW refs, except us
-				 */
-				(fs->object->ref_count == 1) &&
-				/*
-				 * No one else can look this object up
-				 */
-				(fs->object->handle == NULL) &&
-				/*
-				 * No other ways to look the object up
-				 */
-				((fs->object->type == OBJT_DEFAULT) ||
-				 (fs->object->type == OBJT_SWAP)) &&
-				/*
-				 * We don't chase down the shadow chain
-				 */
-				(fs->object == fs->first_object->backing_object) &&
-
-				/*
-				 * grab the lock if we need to
-				 */
-				(fs->lookup_still_valid ||
-				 fs->map == NULL ||
-				 lockmgr(&fs->map->lock, LK_EXCLUSIVE|LK_NOWAIT) == 0)
-			    ) {
+			if (virtual_copy_ok(fs)) {
 				/*
 				 * (first_m) and (m) are both busied.  We have
 				 * move (m) into (first_m)'s object/pindex
@@ -2051,7 +2092,6 @@ readrest:
 				 * block so we don't do it until after the
 				 * rename.
 				 */
-				fs->lookup_still_valid = 1;
 				vm_page_protect(fs->first_m, VM_PROT_NONE);
 				vm_page_remove(fs->first_m);
 				vm_page_rename(fs->m, fs->first_object,
@@ -2403,6 +2443,7 @@ vm_fault_copy_entry(vm_map_t dst_map, vm_map_t src_map,
 	 */
 	vm_object_hold(src_object);
 	vm_object_hold(dst_object);
+
 	for (vaddr = dst_entry->start, dst_offset = 0;
 	     vaddr < dst_entry->end;
 	     vaddr += PAGE_SIZE, dst_offset += PAGE_SIZE) {

@@ -480,7 +480,8 @@ vm_object_allocate_hold(objtype_t type, vm_pindex_t size)
  * Referencing a chain-locked object can blow up the fairly sensitive
  * ref_count and shadow_count tests in the deallocator.  Most callers
  * will call vm_object_chain_wait() prior to calling
- * vm_object_reference_locked() to avoid the case.
+ * vm_object_reference_locked() to avoid the case.  The held token
+ * allows the caller to pair the wait and ref.
  *
  * The object must be held, but may be held shared if desired (hence why
  * we use an atomic op).
@@ -491,6 +492,26 @@ VMOBJDEBUG(vm_object_reference_locked)(vm_object_t object VMOBJDBARGS)
 	KKASSERT(object != NULL);
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
 	KKASSERT((object->chainlk & (CHAINLK_EXCL | CHAINLK_MASK)) == 0);
+	atomic_add_int(&object->ref_count, 1);
+	if (object->type == OBJT_VNODE) {
+		vref(object->handle);
+		/* XXX what if the vnode is being destroyed? */
+	}
+#if defined(DEBUG_LOCKS)
+	debugvm_object_add(object, file, line, 1);
+#endif
+}
+
+/*
+ * This version explicitly allows the chain to be held (i.e. by the
+ * caller).  The token must also be held.
+ */
+void
+VMOBJDEBUG(vm_object_reference_locked_chain_held)(vm_object_t object
+	   VMOBJDBARGS)
+{
+	KKASSERT(object != NULL);
+	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
 	atomic_add_int(&object->ref_count, 1);
 	if (object->type == OBJT_VNODE) {
 		vref(object->handle);
@@ -2278,7 +2299,7 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 		}
 
 		/*
-		 * Hold the backing_object and check for races
+		 * Hold (token lock) the backing_object and retest conditions.
 		 */
 		vm_object_hold(backing_object);
 		if (backing_object != object->backing_object ||
@@ -2303,8 +2324,8 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 		}
 
 		/*
-		 * we check the backing object first, because it is most likely
-		 * not collapsable.
+		 * We check the backing object first, because it is most
+		 * likely not collapsable.
 		 */
 		if (backing_object->handle != NULL ||
 		    (backing_object->type != OBJT_DEFAULT &&
@@ -2320,8 +2341,7 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 		/*
 		 * If paging is in progress we can't do a normal collapse.
 		 */
-		if (
-		    object->paging_in_progress != 0 ||
+		if (object->paging_in_progress != 0 ||
 		    backing_object->paging_in_progress != 0
 		) {
 			vm_object_qcollapse(object, backing_object);
@@ -2795,25 +2815,16 @@ done:
 }
 
 /*
- * Coalesces two objects backing up adjoining regions of memory into a
- * single object.
- *
- * returns TRUE if objects were combined.
- *
- * NOTE: Only works at the moment if the second object is NULL -
- *	 if it's not, which object do we lock first?
- *
- * Parameters:
- *	prev_object	First object to coalesce
- *	prev_offset	Offset into prev_object
- *	next_object	Second object into coalesce
- *	next_offset	Offset into next_object
- *
- *	prev_size	Size of reference to prev_object
- *	next_size	Size of reference to next_object
+ * Try to extend prev_object into an adjoining region of virtual
+ * memory, return TRUE on success.
  *
  * The caller does not need to hold (prev_object) but must have a stable
  * pointer to it (typically by holding the vm_map locked).
+ *
+ * This function only works for anonymous memory objects which either
+ * have (a) one reference or (b) we are extending the object's size.
+ * Otherwise the related VM pages we want to use for the object might
+ * be in use by another mapping.
  */
 boolean_t
 vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
@@ -2839,11 +2850,9 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 	vm_object_collapse(prev_object, NULL);
 
 	/*
-	 * Can't coalesce if: . more than one reference . paged out . shadows
-	 * another object . has a copy elsewhere (any of which mean that the
-	 * pages not mapped to prev_entry may be in use anyway)
+	 * We can't coalesce if we shadow another object (figuring out the
+	 * relationships become too complex).
 	 */
-
 	if (prev_object->backing_object != NULL) {
 		vm_object_chain_release(prev_object);
 		vm_object_drop(prev_object);
@@ -2854,8 +2863,12 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 	next_size >>= PAGE_SHIFT;
 	next_pindex = prev_pindex + prev_size;
 
-	if ((prev_object->ref_count > 1) &&
-	    (prev_object->size != next_pindex)) {
+	/*
+	 * We can't if the object has more than one ref count unless we
+	 * are extending it into newly minted space.
+	 */
+	if (prev_object->ref_count > 1 &&
+	    prev_object->size != next_pindex) {
 		vm_object_chain_release(prev_object);
 		vm_object_drop(prev_object);
 		return (FALSE);
@@ -2879,9 +2892,9 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 	 */
 	if (next_pindex + next_size > prev_object->size)
 		prev_object->size = next_pindex + next_size;
-
 	vm_object_chain_release(prev_object);
 	vm_object_drop(prev_object);
+
 	return (TRUE);
 }
 

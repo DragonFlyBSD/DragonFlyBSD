@@ -1,9 +1,13 @@
 /*
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 2003-2017 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
  * The Mach Operating System project at Carnegie-Mellon University.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -649,7 +653,7 @@ int vm_map_growstack (vm_map_t map, vm_offset_t addr);
 vm_offset_t vmspace_swap_count (struct vmspace *vmspace);
 vm_offset_t vmspace_anonymous_count (struct vmspace *vmspace);
 void vm_map_set_wired_quick(vm_map_t map, vm_offset_t addr, vm_size_t size, int *);
-void vm_map_transition_wait(vm_map_t map);
+void vm_map_transition_wait(vm_map_t map, int relock);
 
 void vm_map_interlock(vm_map_t map, struct vm_map_ilock *ilock,
 			vm_offset_t ran_beg, vm_offset_t ran_end);
