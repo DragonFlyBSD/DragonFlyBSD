@@ -659,6 +659,9 @@ DFprivate_1.0 {
     _rtld_error;
     _rtld_get_stack_prot;
     _rtld_thread_init;
+    _rtld_thread_prefork;
+    _rtld_thread_postfork;
+    _rtld_thread_childfork;
     _seekdir;
     _setcontext;
     _sigwait;
