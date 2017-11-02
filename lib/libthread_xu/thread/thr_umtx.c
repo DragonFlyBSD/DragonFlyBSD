@@ -34,8 +34,13 @@
 
 #include "thr_private.h"
 
+#define cpu_ccfence()	__asm __volatile("" : : : "memory")
+
 /*
  * This function is used to acquire a contested lock.
+ *
+ * A *mtx value of 1 indicates locked normally.
+ * A *mtx value of 2 indicates locked and contested.
  */
 int
 __thr_umtx_lock(volatile umtx_t *mtx, int timo)
@@ -43,14 +48,17 @@ __thr_umtx_lock(volatile umtx_t *mtx, int timo)
 	int v, errval, ret = 0;
 
 	/* contested */
-	do {
+	for (;;) {
 		v = *mtx;
+		cpu_ccfence();
+		if (v == 0 && atomic_cmpset_acq_int(mtx, 0, 1))
+			break;
 		if (v == 2 || atomic_cmpset_acq_int(mtx, 1, 2)) {
-			if (timo == 0)
+			if (timo == 0) {
 				_umtx_sleep_err(mtx, 2, timo);
-			else if ( (errval = _umtx_sleep_err(mtx, 2, timo)) > 0) {
+			} else if ((errval = _umtx_sleep_err(mtx, 2, timo)) > 0) {
 				if (errval == EAGAIN) {
-					if (atomic_cmpset_acq_int(mtx, 0, 2))
+					if (atomic_cmpset_acq_int(mtx, 0, 1))
 						ret = 0;
 					else
 						ret = ETIMEDOUT;
@@ -58,11 +66,15 @@ __thr_umtx_lock(volatile umtx_t *mtx, int timo)
 				}
 			}
 		}
-	} while (!atomic_cmpset_acq_int(mtx, 0, 2));
+	}
 
 	return (ret);
 }
 
+/*
+ * Release a mutex.  A contested mutex has a value
+ * of 2, an uncontested mutex has a value of 1.
+ */
 void
 __thr_umtx_unlock(volatile umtx_t *mtx)
 {
@@ -70,11 +82,10 @@ __thr_umtx_unlock(volatile umtx_t *mtx)
 
 	for (;;) {
 		v = *mtx;
-		if (atomic_cmpset_acq_int(mtx, v, v-1)) {
-			if (v != 1) {
-				*mtx = 0;
+		cpu_ccfence();
+		if (atomic_cmpset_acq_int(mtx, v, 0)) {
+			if (v != 1)
 				_umtx_wakeup_err(mtx, 1);
-			}
 			break;
 		}
 	}
@@ -128,16 +139,17 @@ _thr_umtx_wait(volatile umtx_t *mtx, int exp, const struct timespec *timeout,
 	struct timespec ts, ts2, ts3;
 	int timo, errval, ret = 0;
 
+	cpu_ccfence();
 	if (*mtx != exp)
 		return (0);
 
 	if (timeout == NULL) {
-		while ( (errval = _umtx_sleep_err(mtx, exp, 10000000)) > 0) {
+		while ((errval = _umtx_sleep_err(mtx, exp, 10000000)) > 0) {
 			if (errval == EBUSY)
 				break;
 			if (errval == EINTR) {
 				ret = EINTR;
-			break;
+				break;
 			}
 #if 0
 			if (errval == ETIMEDOUT || errval == EWOULDBLOCK) {
@@ -172,11 +184,12 @@ _thr_umtx_wait(volatile umtx_t *mtx, int exp, const struct timespec *timeout,
 			timo = 1000000;
 		}
 
-		if ( (errval = _umtx_sleep_err(mtx, exp, timo)) > 0) {
+		if ((errval = _umtx_sleep_err(mtx, exp, timo)) > 0) {
 			if (errval == EBUSY) {
 				ret = 0;
 				break;
-			} else if (errval == EINTR) {
+			}
+			if (errval == EINTR) {
 				ret = EINTR;
 				break;
 			}

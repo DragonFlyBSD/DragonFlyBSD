@@ -31,6 +31,8 @@
 
 #include "thr_private.h"
 
+#define cpu_ccfence()       __asm __volatile("" : : : "memory")
+
 int _pthread_timedjoin_np(pthread_t pthread, void **thread_return,
 	const struct timespec *abstime);
 
@@ -102,6 +104,7 @@ join_common(pthread_t pthread, void **thread_return,
 	oldcancel = _thr_cancel_enter(curthread);
 
 	while ((state = pthread->state) != PS_DEAD) {
+		cpu_ccfence();
 		if (abstime != NULL) {
 			clock_gettime(CLOCK_REALTIME, &ts);
 			TIMESPEC_SUB(&ts2, abstime, &ts);

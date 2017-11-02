@@ -688,6 +688,14 @@ int sysvipc_semop (int semid, struct sembuf *sops, unsigned nsops) {
 			semptr->semzcnt++;
 		else
 			semptr->semncnt++;
+
+		/*
+		 * Get interlock value before rleeasing sem_mutex.
+		 *
+		 * XXX horrible hack until we get a umtx_sleep16() (and a umtx_sleep64())
+		 * system call.
+		 */
+		val_to_sleep = *(int *)&semptr->semval;
 #ifdef SYSV_SEMS
 		sysv_mutex_unlock(&semptr->sem_mutex);
 #endif
@@ -698,7 +706,7 @@ int sysvipc_semop (int semid, struct sembuf *sops, unsigned nsops) {
 		for (j = 0; j < i; j++) {
 			xsemptr = &semaptr->ds.sem_base[sops[j].sem_num];
 #ifdef SYSV_SEMS
-			sysv_mutex_lock(&semptr->sem_mutex);
+			sysv_mutex_lock(&xsemptr->sem_mutex);
 #endif
 			xsemptr->semval -= sops[j].sem_op;
 			if (xsemptr->semval == 0 && xsemptr->semzcnt > 0)
@@ -706,7 +714,7 @@ int sysvipc_semop (int semid, struct sembuf *sops, unsigned nsops) {
 			if (xsemptr->semval <= 0 && xsemptr->semncnt > 0)
 				umtx_wakeup((int *)&xsemptr->semval, 0); //?!
 #ifdef SYSV_SEMS
-			sysv_mutex_unlock(&semptr->sem_mutex);
+			sysv_mutex_unlock(&xsemptr->sem_mutex);
 #endif
 		}
 
@@ -731,9 +739,7 @@ int sysvipc_semop (int semid, struct sembuf *sops, unsigned nsops) {
 		 * race.
 		 *
 		 */
-
 		sysv_print("semop:  good night!\n");
-		val_to_sleep = semptr->semval;
 		rwlock_unlock(semid, semaptr);
 		put_shmdata(semid);
 
@@ -790,8 +796,10 @@ int sysvipc_semop (int semid, struct sembuf *sops, unsigned nsops) {
 		 * Is it really morning, or was our sleep interrupted?
 		 * (Delayed check of tsleep() return code because we
 		 * need to decrement sem[nz]cnt either way.)
+		 *
+		 * Always retry on EBUSY
 		 */
-		if (eval) {
+		if (eval == EAGAIN) {
 			eval = EINTR;
 			goto done;
 		}

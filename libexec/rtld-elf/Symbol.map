@@ -23,6 +23,9 @@ DFprivate_1.0 {
     _rtld_free_tls;
     _rtld_call_init;
     _rtld_thread_init;
+    _rtld_thread_prefork;
+    _rtld_thread_postfork;
+    _rtld_thread_childfork;
     _rtld_addr_phdr;
     _rtld_get_stack_prot;
     _r_debug_postinit;
