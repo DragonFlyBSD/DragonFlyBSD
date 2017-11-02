@@ -3225,7 +3225,7 @@ vm_map_split(vm_map_entry_t entry)
 			/* ref for shadowing below */
 			vm_object_reference_locked(bobject);
 			vm_object_chain_acquire(bobject, 0);
-			KKASSERT(bobject->backing_object == bobject);
+			KKASSERT(oobject->backing_object == bobject);
 			KKASSERT((bobject->flags & OBJ_DEAD) == 0);
 		} else {
 			/*
@@ -3359,6 +3359,13 @@ vm_map_split(vm_map_entry_t entry)
 	}
 	entry->object.vm_object = nobject;
 	entry->offset = 0LL;
+
+	/*
+	 * The map is being split and nobject is going to wind up on both
+	 * vm_map_entry's, so make sure OBJ_ONEMAPPING is cleared on
+	 * nobject.
+	 */
+	vm_object_clear_flag(nobject, OBJ_ONEMAPPING);
 
 	/*
 	 * Cleanup
