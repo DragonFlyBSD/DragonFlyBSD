@@ -44,9 +44,14 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#ifdef _PTHREADS_DEBUGGING
+#include <stdio.h>
+#endif
 #include "un-namespace.h"
 
 #include "thr_private.h"
+
+#define cpu_ccfence()        __asm __volatile("" : : : "memory")
 
 #define container_of(ptr, type, member)				\
 ({								\
@@ -58,11 +63,11 @@
  * Semaphore definitions.
  */
 struct sem {
-	u_int32_t		magic;
 	volatile umtx_t		count;
+	u_int32_t		magic;
 	int			semid;
 	int			unused; /* pad */
-};
+} __cachealign;
 
 #define	SEM_MAGIC	((u_int32_t) 0x09fa4012)
 
@@ -98,12 +103,34 @@ struct sem_info {
 	LIST_ENTRY(sem_info) next;
 };
 
-
-
-static pthread_once_t once = PTHREAD_ONCE_INIT;
 static pthread_mutex_t sem_lock;
 static LIST_HEAD(,sem_info) sem_list = LIST_HEAD_INITIALIZER(sem_list);
 
+#ifdef _PTHREADS_DEBUGGING
+
+static
+void
+sem_log(const char *ctl, ...)
+{
+        char buf[256];
+        va_list va;
+        size_t len;
+
+        va_start(va, ctl);
+        len = vsnprintf(buf, sizeof(buf), ctl, va);
+        va_end(va);
+        _thr_log(buf, len);
+}
+
+#else
+
+static __inline
+void
+sem_log(const char *ctl __unused, ...)
+{
+}
+
+#endif
 
 #define SEMID_LWP	0
 #define SEMID_FORK	1
@@ -127,8 +154,8 @@ sem_child_postfork(void)
 	_pthread_mutex_unlock(&sem_lock);
 }
 
-static void
-sem_module_init(void)
+void
+_thr_sem_init(void)
 {
 	pthread_mutexattr_t ma;
 
@@ -187,6 +214,9 @@ sem_alloc(unsigned int value, int pshared)
 	sem->magic = SEM_MAGIC;
 	sem->count = (u_int32_t)value;
 	sem->semid = semid;
+
+	sem_log("sem_alloc %p (%d)\n", sem, value);
+
 	return (sem);
 }
 
@@ -235,8 +265,8 @@ _sem_getvalue(sem_t * __restrict sem, int * __restrict sval)
 		errno = EINVAL;
 		return (-1);
 	}
-
 	*sval = (*sem)->count;
+
 	return (0);
 }
 
@@ -250,11 +280,16 @@ _sem_trywait(sem_t *sem)
 		return (-1);
 	}
 
+	sem_log("sem_trywait %p %d\n", *sem, (*sem)->count);
 	while ((val = (*sem)->count) > 0) {
-		if (atomic_cmpset_int(&(*sem)->count, val, val - 1))
+		cpu_ccfence();
+		if (atomic_cmpset_int(&(*sem)->count, val, val - 1)) {
+			sem_log("sem_trywait %p %d (success)\n", *sem, val - 1);
 			return (0);
+		}
 	}
 	errno = EAGAIN;
+	sem_log("sem_trywait %p %d (failure)\n", *sem, val);
 	return (-1);
 }
 
@@ -272,17 +307,28 @@ _sem_wait(sem_t *sem)
 	curthread = tls_get_curthread();
 	_pthread_testcancel();
 
-	for (;;) {
+	sem_log("sem_wait %p %d (begin)\n", *sem, (*sem)->count);
+
+	do {
+		cpu_ccfence();
 		while ((val = (*sem)->count) > 0) {
-			if (atomic_cmpset_acq_int(&(*sem)->count, val, val - 1))
+			cpu_ccfence();
+			if (atomic_cmpset_acq_int(&(*sem)->count, val, val - 1)) {
+				sem_log("sem_wait %p %d (success)\n",
+					*sem, val - 1);
 				return (0);
+			}
 		}
 		oldcancel = _thr_cancel_enter(curthread);
-		retval = _thr_umtx_wait(&(*sem)->count, 0, NULL, 0);
+		sem_log("sem_wait %p %d (wait)\n", *sem, val);
+		retval = _thr_umtx_wait_intr(&(*sem)->count, 0);
+		sem_log("sem_wait %p %d (wait return %d)\n",
+			*sem, (*sem)->count, retval);
 		_thr_cancel_leave(curthread, oldcancel);
 		/* ignore retval */
-	}
+	} while (retval != EINTR);
 
+	sem_log("sem_wait %p %d (error %d)\n", *sem, retval);
 	errno = retval;
 
 	return (-1);
@@ -300,6 +346,7 @@ _sem_timedwait(sem_t * __restrict sem, const struct timespec * __restrict abstim
 
 	curthread = tls_get_curthread();
 	_pthread_testcancel();
+	sem_log("sem_timedwait %p %d (begin)\n", *sem, (*sem)->count);
 
 	/*
 	 * The timeout argument is only supposed to
@@ -307,23 +354,32 @@ _sem_timedwait(sem_t * __restrict sem, const struct timespec * __restrict abstim
 	 */
 	do {
 		while ((val = (*sem)->count) > 0) {
-			if (atomic_cmpset_acq_int(&(*sem)->count, val, val - 1))
+			cpu_ccfence();
+			if (atomic_cmpset_acq_int(&(*sem)->count, val, val - 1)) {
+				sem_log("sem_wait %p %d (success)\n",
+					*sem, val - 1);
 				return (0);
+			}
 		}
 		if (abstime == NULL ||
 		    abstime->tv_nsec >= 1000000000 ||
 		    abstime->tv_nsec < 0) {
+			sem_log("sem_wait %p %d (bad abstime)\n", *sem, val);
 			errno = EINVAL;
 			return (-1);
 		}
 		clock_gettime(CLOCK_REALTIME, &ts);
 		TIMESPEC_SUB(&ts2, abstime, &ts);
 		oldcancel = _thr_cancel_enter(curthread);
+		sem_log("sem_wait %p %d (wait)\n", *sem, val);
 		retval = _thr_umtx_wait(&(*sem)->count, 0, &ts2,
 					CLOCK_REALTIME);
+		sem_log("sem_wait %p %d (wait return %d)\n",
+			*sem, (*sem)->count, retval);
 		_thr_cancel_leave(curthread, oldcancel);
 	} while (retval != ETIMEDOUT && retval != EINTR);
 
+	sem_log("sem_wait %p %d (error %d)\n", *sem, retval);
 	errno = retval;
 
 	return (-1);
@@ -341,10 +397,10 @@ _sem_post(sem_t *sem)
 	 * sem_post() is required to be safe to call from within
 	 * signal handlers, these code should work as that.
 	 */
-	do {
-		val = (*sem)->count;
-	} while (!atomic_cmpset_acq_int(&(*sem)->count, val, val + 1));
-	_thr_umtx_wake(&(*sem)->count, val + 1);
+	val = atomic_fetchadd_int(&(*sem)->count, 1) + 1;
+	sem_log("sem_post %p %d\n", *sem, val);
+	_thr_umtx_wake(&(*sem)->count, 0);
+
 	return (0);
 }
 
@@ -485,8 +541,6 @@ _sem_open(const char *name, int oflag, ...)
 		errno = EINVAL;
 		return (SEM_FAILED);
 	}
-
-	_pthread_once(&once, sem_module_init);
 
 	_pthread_mutex_lock(&sem_lock);
 
@@ -649,8 +703,6 @@ error:
 int
 _sem_close(sem_t *sem)
 {
-	_pthread_once(&once, sem_module_init);
-
 	_pthread_mutex_lock(&sem_lock);
 
 	if (sem_check_validity(sem)) {

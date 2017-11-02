@@ -28,7 +28,8 @@
 #ifndef _RTLD_LOCK_H_
 #define	_RTLD_LOCK_H_
 
-#define	RTLI_VERSION	0x01
+#define	RTLI_VERSION		0x02
+#define	RTLI_VERSION_FORK	0x02
 
 struct RtldLockInfo
 {
@@ -41,22 +42,23 @@ struct RtldLockInfo
 	int   (*thread_set_flag)(int);
 	int   (*thread_clr_flag)(int);
 	void  (*at_fork)(void *handle);
+	void  (*fork_acquire)(void *);
+	void  (*fork_release)(void *);
 };
 
-extern void _rtld_thread_init(struct RtldLockInfo *);
+extern void _rtld_thread_init(void *);
 extern void _rtld_thread_prefork(void);
 extern void _rtld_thread_postfork(void);
 extern void _rtld_thread_childfork(void);
 
-
 #ifdef IN_RTLD
 
-struct rtld_lock;
-typedef struct rtld_lock *rtld_lock_t;
+struct Struct_Lock;
+typedef struct Struct_Lock *rtld_lock_t;
 
-extern rtld_lock_t	rtld_bind_lock;
-extern rtld_lock_t	rtld_libc_lock;
-extern rtld_lock_t	rtld_phdr_lock;
+rtld_lock_t rtld_bind_lock;
+rtld_lock_t rtld_libc_lock;
+rtld_lock_t rtld_phdr_lock;
 
 #define	RTLD_LOCK_UNLOCKED	0
 #define	RTLD_LOCK_RLOCKED	1

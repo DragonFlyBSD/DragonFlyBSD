@@ -68,6 +68,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <spinlock.h>
+#include <sys/file.h>
 #include "un-namespace.h"
 
 #include "libc_private.h"
@@ -174,6 +175,7 @@ _fork(void)
 	if (!_thr_is_inited())
 		return (__syscall(SYS_fork));
 
+	errsave = errno;
 	curthread = tls_get_curthread();
 
 	THR_UMTX_LOCK(curthread, &_thr_atfork_lock);
@@ -194,10 +196,6 @@ _fork(void)
 		if (af->prepare != NULL)
 			af->prepare();
 	}
-	TAILQ_FOREACH_REVERSE(af, &_thr_atfork_kern_list, atfork_head, qe) {
-		if (af->prepare != NULL)
-			af->prepare();
-	}
 
 #ifndef __DragonFly__
 	/*
@@ -213,19 +211,38 @@ _fork(void)
 	}
 #endif
 
-	/*
-	 * Block all signals until we reach a safe point.
-	 */
-	_thr_signal_block(curthread);
 #ifdef _PTHREADS_DEBUGGING
 	_thr_log("fork-parent\n", 12);
 #endif
 
+	_thr_signal_block(curthread);
+
+	/*
+	 * Must be executed Just before the fork.
+	 */
+	TAILQ_FOREACH_REVERSE(af, &_thr_atfork_kern_list, atfork_head, qe) {
+		if (af->prepare != NULL)
+			af->prepare();
+	}
+
 	/* Fork a new process: */
 	if ((ret = __syscall(SYS_fork)) == 0) {
-		/* Child process */
-		errsave = errno;
+		/*
+		 * Child process.
+		 *
+		 * NOTE: We are using the saved errno from above.  Do not
+		 *	 reload errno here.
+		 */
 		inprogress = 0;
+
+		/*
+		 * Internal child fork handlers must be run immediately.
+		 */
+		TAILQ_FOREACH(af, &_thr_atfork_kern_list, qe) {
+			if (af->child != NULL)
+				af->child();
+		}
+
 		curthread->cancelflags &= ~THR_CANCEL_NEEDED;
 		/*
 		 * Thread list will be reinitialized, and later we call
@@ -255,10 +272,6 @@ _fork(void)
 		_thr_signal_unblock(curthread);
 
 		/* Run down atfork child handlers. */
-		TAILQ_FOREACH(af, &_thr_atfork_kern_list, qe) {
-			if (af->child != NULL)
-				af->child();
-		}
 		TAILQ_FOREACH(af, &_thr_atfork_list, qe) {
 			if (af->child != NULL)
 				af->child();
@@ -274,14 +287,15 @@ _fork(void)
 #ifdef _PTHREADS_DEBUGGING
 		_thr_log("fork-done\n", 10);
 #endif
-		/* Ready to continue, unblock signals. */
-		_thr_signal_unblock(curthread);
-
 		/* Run down atfork parent handlers. */
 		TAILQ_FOREACH(af, &_thr_atfork_kern_list, qe) {
 			if (af->parent != NULL)
 				af->parent();
 		}
+
+		/* Ready to continue, unblock signals. */
+		_thr_signal_unblock(curthread);
+
 		TAILQ_FOREACH(af, &_thr_atfork_list, qe) {
 			if (af->parent != NULL)
 				af->parent();
@@ -290,7 +304,7 @@ _fork(void)
 		THR_UMTX_LOCK(curthread, &_thr_atfork_lock);
 		inprogress = 0;
 		if (waiters)
-			_thr_umtx_wake(&inprogress, waiters);
+			_thr_umtx_wake(&inprogress, 0);
 		THR_UMTX_UNLOCK(curthread, &_thr_atfork_lock);
 	}
 	errno = errsave;

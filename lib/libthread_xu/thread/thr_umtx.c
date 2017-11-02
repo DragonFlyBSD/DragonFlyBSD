@@ -47,19 +47,18 @@ __thr_umtx_lock(volatile umtx_t *mtx, int id, int timo)
 {
 	int v, errval, ret = 0;
 
+	v = *mtx;
+	cpu_ccfence();
 	id &= 0x3FFFFFFF;
-	/* contested */
+
 	for (;;) {
-		v = *mtx;
-		cpu_ccfence();
 		if (v == 0) {
 			if (atomic_cmpset_acq_int(mtx, 0, id)) {
 				break;
 			}
 			continue;
 		}
-		if ((v & 0x40000000) ||
-		    atomic_cmpset_acq_int(mtx, v, v|0x40000000)) {
+		if (atomic_fcmpset_int(mtx, &v, v|0x40000000)) {
 			if (timo == 0) {
 				_umtx_sleep_err(mtx, v|0x40000000, timo);
 			} else if ((errval = _umtx_sleep_err(mtx, v|0x40000000, timo)) > 0) {
@@ -85,13 +84,14 @@ __thr_umtx_unlock(volatile umtx_t *mtx, int id)
 {
 	int v;
 
+	v = *mtx;
+	cpu_ccfence();
 	id &= 0x3FFFFFFF;
+
 	for (;;) {
-		v = *mtx;
-		cpu_ccfence();
-		if (atomic_cmpset_acq_int(mtx, v, 0)) {
+		if (atomic_fcmpset_int(mtx, &v, 0)) {
 			if (v & 0x40000000)
-				_umtx_wakeup_err(mtx, 1);
+				_umtx_wakeup_err(mtx, 0);
 			THR_ASSERT((v & 0x3FFFFFFF) == id,
 				   "thr_umtx_unlock: wrong owner");
 			break;
@@ -144,6 +144,9 @@ __thr_umtx_timedlock(volatile umtx_t *mtx, int id,
 	return (ret);
 }
 
+/*
+ * Regular umtx wait that cannot return EINTR
+ */
 int
 _thr_umtx_wait(volatile umtx_t *mtx, int exp, const struct timespec *timeout,
 	       int clockid)
@@ -216,6 +219,33 @@ _thr_umtx_wait(volatile umtx_t *mtx, int exp, const struct timespec *timeout,
 			ret = ETIMEDOUT;
 			break;
 		}
+	}
+	return (ret);
+}
+
+/*
+ * Simple version without a timeout which can also return EINTR
+ */
+int
+_thr_umtx_wait_intr(volatile umtx_t *mtx, int exp)
+{
+	int ret = 0;
+	int errval;
+
+	cpu_ccfence();
+	for (;;) {
+		if (*mtx != exp)
+			return (0);
+		errval = _umtx_sleep_err(mtx, exp, 10000000);
+		if (errval == 0)
+			break;
+		if (errval == EBUSY)
+			break;
+		if (errval == EINTR) {
+			ret = errval;
+			break;
+		}
+		cpu_ccfence();
 	}
 	return (ret);
 }

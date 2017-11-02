@@ -36,112 +36,12 @@
 #include "rtld_lock.h"
 #include "thr_private.h"
 
-static int	_thr_rtld_clr_flag(int);
-static void	*_thr_rtld_lock_create(void);
-static void	_thr_rtld_lock_destroy(void *);
-static void	_thr_rtld_lock_release(void *);
-static void	_thr_rtld_rlock_acquire(void *);
-static int	_thr_rtld_set_flag(int);
-static void	_thr_rtld_wlock_acquire(void *);
-
-static void *
-_thr_rtld_lock_create(void)
-{
-	pthread_rwlock_t prwlock;
-	if (_pthread_rwlock_init(&prwlock, NULL))
-		return (NULL);
-	return (prwlock);
-}
-
-static void
-_thr_rtld_lock_destroy(void *lock)
-{
-	pthread_rwlock_t prwlock;
-
-	prwlock = (pthread_rwlock_t)lock;
-	if (prwlock != NULL)
-		_pthread_rwlock_destroy(&prwlock);
-}
-
-static void
-_thr_rtld_rlock_acquire(void *lock)
-{
-	pthread_rwlock_t prwlock;
-
-	prwlock = (pthread_rwlock_t)lock;
-	_pthread_rwlock_rdlock(&prwlock);
-}
-
-static void
-_thr_rtld_wlock_acquire(void *lock)
-{
-	pthread_rwlock_t prwlock;
-
-	prwlock = (pthread_rwlock_t)lock;
-	_pthread_rwlock_wrlock(&prwlock);
-}
-
-static void
-_thr_rtld_lock_release(void *lock)
-{
-	pthread_rwlock_t prwlock;
-
-	prwlock = (pthread_rwlock_t)lock;
-	_pthread_rwlock_unlock(&prwlock);
-}
-
-
-static int
-_thr_rtld_set_flag(int mask)
-{
-	struct pthread *curthread;
-	int bits;
-
-	curthread = tls_get_curthread();
-	if (curthread != NULL) {
-		bits = curthread->rtld_bits;
-		curthread->rtld_bits |= mask;
-	} else {
-		bits = 0;
-		PANIC("No current thread in rtld call");
-	}
-
-	return (bits);
-}
-
-static int
-_thr_rtld_clr_flag(int mask)
-{
-	struct pthread *curthread;
-	int bits;
-
-	curthread = tls_get_curthread();
-	if (curthread != NULL) {
-		bits = curthread->rtld_bits;
-		curthread->rtld_bits &= ~mask;
-	} else {
-		bits = 0;
-		PANIC("No current thread in rtld call");
-	}
-	return (bits);
-}
-
 void
 _thr_rtld_init(void)
 {
-	struct RtldLockInfo li;
 	static int once = 0;
 
-	memset(&li, 0, sizeof(li));
-	li.lock_create  = _thr_rtld_lock_create;
-	li.lock_destroy = _thr_rtld_lock_destroy;
-	li.rlock_acquire = _thr_rtld_rlock_acquire;
-	li.wlock_acquire = _thr_rtld_wlock_acquire;
-	li.lock_release  = _thr_rtld_lock_release;
-	li.thread_set_flag = _thr_rtld_set_flag;
-	li.thread_clr_flag = _thr_rtld_clr_flag;
-	li.at_fork = NULL;
-	_rtld_thread_init(&li);
+	_rtld_thread_init(NULL);
 	if (once == 0) {
 		once = 1;
 		_thr_atfork_kern(_rtld_thread_prefork,
@@ -153,5 +53,5 @@ _thr_rtld_init(void)
 void
 _thr_rtld_fini(void)
 {
-	_rtld_thread_init(NULL);
+	/* _rtld_thread_init(NULL); */
 }

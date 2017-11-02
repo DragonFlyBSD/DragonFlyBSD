@@ -152,7 +152,7 @@ exit_thread(void)
 		THR_GCLIST_ADD(curthread);
 	THREAD_LIST_UNLOCK(curthread);
 	if (curthread->joiner)
-		_thr_umtx_wake(&curthread->state, INT_MAX);
+		_thr_umtx_wake(&curthread->state, 0);
 	if (SHOULD_REPORT_EVENT(curthread, TD_DEATH))
 		_thr_report_death(curthread);
 	/* Exit and set terminated to once we're really dead. */

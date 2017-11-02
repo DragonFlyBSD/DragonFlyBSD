@@ -85,5 +85,6 @@ _thr_umtx_unlock(volatile umtx_t *mtx, int id)
 
 int _thr_umtx_wait(volatile umtx_t *mtx, umtx_t exp,
 		   const struct timespec *timeout, int clockid);
+int _thr_umtx_wait_intr(volatile umtx_t *mtx, umtx_t exp);
 void _thr_umtx_wake(volatile umtx_t *mtx, int count);
 #endif
