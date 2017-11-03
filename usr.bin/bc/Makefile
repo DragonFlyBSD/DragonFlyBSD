@@ -9,9 +9,7 @@ DPADD=		${LIBEDIT} ${LIBNCURSES}
 LDADD=		-lprivate_edit -lprivate_ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
-SCRIPTS=	bc.library
-SCRIPTSMODE=	444
-SCRIPTSDIR=	/usr/share/misc
-SCRIPTSNAME_bc.library= ${SCRIPTS}
+FILES=		bc.library
+FILESDIR=	/usr/share/misc
 
 .include <bsd.prog.mk>
