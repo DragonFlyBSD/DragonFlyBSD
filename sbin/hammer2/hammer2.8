@@ -490,7 +490,7 @@ TODO.
 .Sh RESTORING FROM A SNAPSHOT BACKUP
 TODO.
 .Sh PERFORMANCE TUNING
-Because HAMMER2 implements compression, decompression, and deup natively,
+Because HAMMER2 implements compression, decompression, and dedup natively,
 it always double-buffers file data.  This means that the file data is
 cached via the device vnode (in compressed / dedupped-form) and the same
 data is also cached by the file vnode (in decompressed / non-dedupped form).
