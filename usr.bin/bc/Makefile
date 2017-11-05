@@ -9,7 +9,9 @@ DPADD=		${LIBEDIT} ${LIBNCURSES}
 LDADD=		-lprivate_edit -lprivate_ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
+.if !defined(NO_SHARE)
 FILES=		bc.library
 FILESDIR=	/usr/share/misc
+.endif
 
 .include <bsd.prog.mk>

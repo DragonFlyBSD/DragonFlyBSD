@@ -1,17 +1,18 @@
-# $FreeBSD: src/gnu/usr.bin/groff/contrib/mm/Makefile,v 1.6 2002/10/11 08:58:13 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/contrib/mm/Makefile,v 1.3 2005/09/01 20:47:12 asmodai Exp $
+# $FreeBSD: src/gnu/usr.bin/groff/contrib/mm/Makefile,v 1.6 2002/10/11 08:58:13 ru Exp 2
 
 SCRIPTS=	mmroff.pl
 MAN=		mmroff.1
 
 TMACDIR?=	${SHAREDIR}/tmac
 
+.if !defined(NO_SHARE)
 FILES=		m.tmac mm.tmac mse.tmac mmse.tmac
 FILESDIR_m.tmac=${TMACDIR}
 FILESDIR_mse.tmac=${TMACDIR}
 FILES+=		0.MT 5.MT 4.MT ms.cov se_ms.cov
 FILESDIR=	${TMACDIR}/mm
 LOCALE=		locale se_locale
+.endif
 
 MAN+=		groff_mm.7 groff_mmse.7
 MLINKS=		groff_mm.7 mm.7 groff_mmse.7 mmse.7

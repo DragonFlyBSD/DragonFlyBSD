@@ -4,11 +4,13 @@
 PROG=	vfontedpr
 SRCS=	regexp.c vfontedpr.c
 SCRIPTS=vgrind.sh
+.if !defined(NO_SHARE)
 FILES=	vgrindefs.src vgrindefs.src.db tmac.vgrind
 FILESNAME_vgrindefs.src=	vgrindefs
 FILESNAME_vgrindefs.src.db=	vgrindefs.db
 FILESDIR=	${SHAREDIR}/misc
 FILESDIR_tmac.vgrind=	${SHAREDIR}/tmac
+.endif
 MAN=	vgrind.1 vgrindefs.5
 WARNS?=	3
 

@@ -54,8 +54,10 @@ LDADD=	-lprivate_ncurses
 CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
+.if !defined(NO_SHARE)
 FILES=		larnmaze larnopts larn.help
 FILESDIR=	${SHAREDIR}/games/larn
+.endif
 HIDEGAME=	hidegame
 
 .PATH: ${.CURDIR}/datfiles

@@ -3,7 +3,8 @@ MAGICDIR= ${CONTRIBDIR}/../magic
 .PATH: ${CONTRIBDIR}
 
 VER!=	grep -w VERSION ${.CURDIR}/config.h | awk -F\" '{print $$2}'
-MAGIC=	${FILESDIR}/magic
+MAGICSHAREDIR=${SHAREDIR}/misc
+MAGIC=	${MAGICSHAREDIR}/magic
 
 LIB=	magic
 SHLIB_MAJOR=	2
@@ -44,8 +45,10 @@ MLINKS+=	libmagic.3 magic_version.3
 
 CLEANFILES+=	magic magic.mgc libmagic.3
 
+.if !defined(NO_SHARE)
 FILES=		magic magic.mgc
-FILESDIR=	${SHAREDIR}/misc
+FILESDIR=	${MAGICSHAREDIR}
+.endif
 
 MAGFILES=	${MAGICDIR}/Header ${MAGICDIR}/Localstuff \
 		${MAGICDIR}/Magdir/[a-z]*

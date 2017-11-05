@@ -15,6 +15,7 @@ MAN+=	catclose.3 catgets.3 catopen.3
 # NOTE: C.msg should not be processed here, it's used as a template
 #       for translators.
 
+.if !defined(NO_SHARE)
 NLSNAME=	libc
 NLS+=	be_BY.UTF-8
 NLS+=	ca_ES.ISO8859-1
@@ -42,3 +43,4 @@ NLS+=	uk_UA.UTF-8
 NLS+=	zh_Hans_CN.GB18030
 NLS+=	zh_Hans_CN.GB2312
 NLS+=	zh_Hans_CN.UTF-8
+.endif

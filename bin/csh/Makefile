@@ -67,6 +67,7 @@ LINKS=	${BINDIR}/csh ${BINDIR}/tcsh
 
 CLEANFILES= ${GENHDRS} gethost.nx csh.1
 
+.if !defined(NO_SHARE)
 FILESDIR= ${SHAREDIR}/examples/tcsh
 FILES= complete.tcsh
 
@@ -97,6 +98,7 @@ NLS+=		${catalog:C/.*://}
 NLSSRCDIR_${catalog:C/.*://}= ${TCSHDIR}/nls/${catalog:C/:.*//}
 NLSSRCFILES_${catalog:C/.*://}!= cd ${NLSSRCDIR_${catalog:C/.*://}}; echo set[0-9]*
 .endfor
+.endif
 
 csh.1: tcsh.man
 	${LN} -sf ${.ALLSRC} ${.TARGET}

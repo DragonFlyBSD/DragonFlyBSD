@@ -3,10 +3,12 @@
 SCRIPTS=	pdfroff
 MAN=		pdfroff.1
 
+.if !defined(NO_SHARE)
 TMACDIR?=	${SHAREDIR}/tmac
 
 FILES=		pdfmark.tmac spdf.tmac
 FILESDIR=	${TMACDIR}
+.endif
 
 CLEANFILES+=	${SCRIPTS} ${MAN}
 

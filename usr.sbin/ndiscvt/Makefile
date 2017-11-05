@@ -19,9 +19,11 @@ CFLAGS+=-I. -I${.CURDIR} -I${.CURDIR}/../../sys
 
 CLEANFILES= y.output
 
+.if !defined(NO_SHARE)
 FILES= windrv_stub.c
 FILESNAME= windrv_stub.c
 FILESDIR= /usr/share/misc
+.endif
 
 SCRIPTS= ndisgen.sh
 

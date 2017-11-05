@@ -11,8 +11,10 @@ LDADD=	-ll -lm -lprivate_ncurses
 
 CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+.if !defined(NO_SHARE)
 FILES=		Game_List Killer crossover default easy game_2
 FILESDIR=	${SHAREDIR}/games/atc
+.endif
 HIDEGAME=	hidegame
 
 .PATH: ${.CURDIR}/games

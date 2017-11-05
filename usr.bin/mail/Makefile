@@ -5,7 +5,9 @@ PROG=	mail
 SRCS=	version.c cmd1.c cmd2.c cmd3.c cmdtab.c collect.c edit.c fio.c \
 	getname.c head.c v7.local.c lex.c list.c main.c names.c popen.c \
 	quit.c send.c strings.c temp.c tty.c util.c vars.c
+.if !defined(NO_SHARE)
 FILES=	mail.help mail.tildehelp
+.endif
 FILESDIR=	${SHAREDIR}/misc
 EFILES=	mail.rc
 LINKS=	${BINDIR}/mail ${BINDIR}/Mail ${BINDIR}/mail ${BINDIR}/mailx

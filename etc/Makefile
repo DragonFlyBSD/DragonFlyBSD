@@ -357,6 +357,7 @@ distrib-dirs:
 	-chflags xlink ${DESTDIR}/* ${DESTDIR}/usr/* ${DESTDIR}/var/* \
 			${DESTDIR}/home/*
 	cd ${DESTDIR}/; test -e sys || (rm -f sys;  ${LN} -s usr/src/sys sys)
+.if !defined(NO_SHARE)
 	cd ${DESTDIR}/usr/share/nls; \
 	set - `grep "^[a-zA-Z]" ${.CURDIR}/nls.alias`; \
 	while [ $$# -gt 0 ] ; \
@@ -365,6 +366,7 @@ distrib-dirs:
 		${LN} -s "$$2" "$$1"; \
 		shift; shift; \
 	done
+.endif
 
 etc-examples:
 	cd ${.CURDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \

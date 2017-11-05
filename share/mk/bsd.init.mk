@@ -25,3 +25,8 @@ NOSHARED= ${NO_SHARED}
 .if defined(NO_MAN) && !defined(NOMAN)
 NOMAN= ${NO_MAN}
 .endif
+
+# Imply NOMAN for NO_SHARE case
+.if defined(NO_SHARE) && !defined(NOMAN)
+NOMAN= noman
+.endif
