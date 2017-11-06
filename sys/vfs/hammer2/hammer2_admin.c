@@ -661,7 +661,7 @@ hammer2_xop_active(hammer2_xop_head_t *xop)
  * No xop lock is needed because we are only manipulating fields under
  * our direct control.
  *
- * Returns 0 on success and a hammer error code if sync is permanently
+ * Returns 0 on success and a hammer2 error code if sync is permanently
  * lost.  The caller retains a ref on the chain but by convention
  * the lock is typically inherited by the xop (caller loses lock).
  *

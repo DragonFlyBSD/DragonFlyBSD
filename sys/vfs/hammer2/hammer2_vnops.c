@@ -2188,7 +2188,7 @@ done2:
 
 	/*
 	 * Issue the namecache update after unlocking all the internal
-	 * hammer structures, otherwise we might deadlock.
+	 * hammer2 structures, otherwise we might deadlock.
 	 */
 	if (error == 0 && tip) {
 		cache_unlink(ap->a_tnch);
