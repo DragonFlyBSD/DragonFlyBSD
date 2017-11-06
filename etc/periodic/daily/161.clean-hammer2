@@ -13,7 +13,7 @@ fi
 case "$daily_clean_hammer2_enable" in
     [Yy][Ee][Ss])
 	echo ""
-	echo "HAMMER maintenance:"
+	echo "HAMMER2 maintenance:"
 	case "$daily_clean_hammer2_verbose" in
 	    [Yy][Ee][Ss])
 		verbose=-v;;
