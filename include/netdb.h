@@ -58,7 +58,17 @@
 #define _NETDB_H_
 
 #include <sys/cdefs.h>
-#include <sys/types.h>
+#include <stdint.h>
+
+#ifndef _IN_ADDR_T_DECLARED
+typedef	__uint32_t	in_addr_t;	/* base type for internet address */
+#define	_IN_ADDR_T_DECLARED
+#endif
+
+#ifndef _IN_PORT_T_DECLARED
+typedef	__uint16_t	in_port_t;
+#define	_IN_PORT_T_DECLARED
+#endif
 
 #ifndef _SIZE_T_DECLARED
 typedef	__size_t	size_t;
@@ -78,7 +88,9 @@ typedef	__socklen_t	socklen_t;
 #define	_PATH_PROTOCOLS	"/etc/protocols"
 #define	_PATH_SERVICES	"/etc/services"
 
+#if __BSD_VISIBLE || (__POSIX_VISIBLE && __POSIX_VISIBLE <= 200112)
 #define	h_errno (*__h_errno())
+#endif
 
 /*
  * Structures returned by network data base library.  All addresses are
@@ -91,7 +103,9 @@ struct hostent {
 	int	h_addrtype;	/* host address type */
 	int	h_length;	/* length of address */
 	char	**h_addr_list;	/* list of addresses from name server */
+#if __BSD_VISIBLE
 #define	h_addr	h_addr_list[0]	/* address, for backward compatibility */
+#endif
 };
 
 struct netent {
@@ -130,34 +144,48 @@ struct addrinfo {
  * (left in h_errno).
  */
 
+#if __BSD_VISIBLE
 #define	NETDB_INTERNAL	-1	/* see errno */
 #define	NETDB_SUCCESS	0	/* no problem */
+#endif
+#if __BSD_VISIBLE || (__POSIX_VISIBLE && __POSIX_VISIBLE <= 200112)
 #define	HOST_NOT_FOUND	1 /* Authoritative Answer Host not found */
 #define	TRY_AGAIN	2 /* Non-Authoritative Host not found, or SERVERFAIL */
 #define	NO_RECOVERY	3 /* Non recoverable errors, FORMERR, REFUSED, NOTIMP */
 #define	NO_DATA		4 /* Valid name, no data record of requested type */
+#endif
+#if __BSD_VISIBLE
 #define	NO_ADDRESS	NO_DATA		/* no address, look for MX record */
+#endif
 
 /*
  * Error return codes from getaddrinfo()
  */
+#if __BSD_VISIBLE
 /* XXX deprecated */
 #define	EAI_ADDRFAMILY	 1	/* address family for hostname not supported */
+#endif
 #define	EAI_AGAIN	 2	/* temporary failure in name resolution */
 #define	EAI_BADFLAGS	 3	/* invalid value for ai_flags */
 #define	EAI_FAIL	 4	/* non-recoverable failure in name resolution */
 #define	EAI_FAMILY	 5	/* ai_family not supported */
 #define	EAI_MEMORY	 6	/* memory allocation failure */
+#if __BSD_VISIBLE
 /* XXX deprecated */
 #define	EAI_NODATA	 7	/* no address associated with hostname */
+#endif
 #define	EAI_NONAME	 8	/* hostname nor servname provided, or not known */
 #define	EAI_SERVICE	 9	/* servname not supported for ai_socktype */
 #define	EAI_SOCKTYPE	10	/* ai_socktype not supported */
 #define	EAI_SYSTEM	11	/* system error returned in errno */
+#if __BSD_VISIBLE
 #define	EAI_BADHINTS	12	/* invalid value for hints */
 #define	EAI_PROTOCOL	13	/* resolved protocol is unknown */
+#endif
 #define	EAI_OVERFLOW	14	/* argument buffer overflow */
+#if __BSD_VISIBLE
 #define	EAI_MAX		15
+#endif
 
 /*
  * Flag values for getaddrinfo()
@@ -166,15 +194,20 @@ struct addrinfo {
 #define	AI_CANONNAME	0x00000002 /* fill ai_canonname */
 #define	AI_NUMERICHOST	0x00000004 /* prevent host name resolution */
 #define	AI_NUMERICSERV	0x00000008 /* prevent service name resolution */
+#if __BSD_VISIBLE
 /* valid flags for addrinfo (not a standard def, apps should not use it) */
 #define AI_MASK \
     (AI_PASSIVE | AI_CANONNAME | AI_NUMERICHOST | AI_NUMERICSERV | \
     AI_ADDRCONFIG)
+#endif
 
 #define	AI_ALL		0x00000100 /* IPv6 and IPv4-mapped (with AI_V4MAPPED) */
+#if __BSD_VISIBLE
 #define	AI_V4MAPPED_CFG	0x00000200 /* accept IPv4-mapped if kernel supports */
+#endif
 #define	AI_ADDRCONFIG	0x00000400 /* only if any address is assigned */
 #define	AI_V4MAPPED	0x00000800 /* accept IPv4-mapped IPv6 address */
+#if __BSD_VISIBLE
 /* special recommended flags for getipnodebyname */
 #define	AI_DEFAULT	(AI_V4MAPPED_CFG | AI_ADDRCONFIG)
 
@@ -183,6 +216,7 @@ struct addrinfo {
  */
 #define	NI_MAXHOST	1025
 #define	NI_MAXSERV	32
+#endif
 
 /*
  * Flag values for getnameinfo()
@@ -192,14 +226,17 @@ struct addrinfo {
 #define	NI_NAMEREQD	0x00000004
 #define	NI_NUMERICSERV	0x00000008
 #define	NI_DGRAM	0x00000010
+#if __BSD_VISIBLE
 #define	NI_WITHSCOPEID	0x00000020	/* XXX deprecated */
+#endif
 #define	NI_NUMERICSCOPE	0x00000040
 
-
+#if __BSD_VISIBLE
 /*
  * Scope delimit character
  */
 #define	SCOPE_DELIMITER	'%'
+#endif
 
 __BEGIN_DECLS
 void		endhostent(void);
@@ -226,6 +263,7 @@ void		setnetent(int);
 void		setprotoent(int);
 int		getaddrinfo(const char *, const char *,
 			    const struct addrinfo *, struct addrinfo **);
+/* XXX nodeLen and serviceLen should be socklen_t */
 int		getnameinfo(const struct sockaddr *, socklen_t, char *,
 			    size_t, char *, size_t, int);
 void		freeaddrinfo(struct addrinfo *);

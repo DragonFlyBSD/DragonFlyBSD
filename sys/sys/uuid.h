@@ -24,13 +24,17 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/uuid.h,v 1.6 2005/10/07 13:37:10 marcel Exp $
- * $DragonFly: src/sys/sys/uuid.h,v 1.5 2007/10/09 17:19:09 dillon Exp $
  */
 
 #ifndef _SYS_UUID_H_
 #define	_SYS_UUID_H_
 
 #include <sys/cdefs.h>
+#ifndef _KERNEL
+#include <machine/stdint.h>
+#else
+#include <sys/types.h>
+#endif
 
 /* Length of a node address (an IEEE 802 address). */
 #define	_UUID_NODE_LEN		6
@@ -43,12 +47,12 @@
  * A DCE 1.1 compatible source representation of UUIDs.
  */
 struct uuid {
-	uint32_t	time_low;
-	uint16_t	time_mid;
-	uint16_t	time_hi_and_version;
-	uint8_t		clock_seq_hi_and_reserved;
-	uint8_t		clock_seq_low;
-	uint8_t		node[_UUID_NODE_LEN];
+	__uint32_t	time_low;
+	__uint16_t	time_mid;
+	__uint16_t	time_hi_and_version;
+	__uint8_t	clock_seq_hi_and_reserved;
+	__uint8_t	clock_seq_low;
+	__uint8_t	node[_UUID_NODE_LEN];
 };
 
 #ifdef _KERNEL

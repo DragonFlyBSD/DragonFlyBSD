@@ -30,24 +30,17 @@
 #define _SPAWN_H_
 
 #include <sys/cdefs.h>
-#include <sys/types.h>
 #include <sys/signal.h>
+#include <sys/stdint.h>
 
-#if 0
 #ifndef _MODE_T_DECLARED
-typedef	__mode_t	mode_t;
+typedef	__uint16_t	mode_t;
 #define	_MODE_T_DECLARED
 #endif
 
 #ifndef _PID_T_DECLARED
 typedef	__pid_t		pid_t;
 #define	_PID_T_DECLARED
-#endif
-
-#ifndef _SIGSET_T_DECLARED
-#define	_SIGSET_T_DECLARED
-typedef	__sigset_t	sigset_t;
-#endif
 #endif
 
 struct sched_param;

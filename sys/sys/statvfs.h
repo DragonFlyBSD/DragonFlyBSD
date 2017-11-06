@@ -30,18 +30,31 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/sys/statvfs.h,v 1.10 2008/06/02 16:55:08 dillon Exp $
  */
 
 #ifndef _SYS_STATVFS_H_
 #define _SYS_STATVFS_H_
 
-#include <sys/types.h>
+#include <machine/stdint.h>
 #include <sys/uuid.h>
 
+#ifndef _FSBLKCNT_T_DECLARED
+typedef	__uint64_t	fsblkcnt_t;	/* filesystem block count */
+#define	_FSBLKCNT_T_DECLARED
+#endif
+#ifndef _FSFILCNT_T_DECLARED
+typedef	__uint64_t	fsfilcnt_t;	/* filesystem file count */
+#define	_FSFILCNT_T_DECLARED
+#endif
+#ifndef _UID_T_DECLARED
+typedef	__uint32_t	uid_t;		/* user id */
+#define	_UID_T_DECLARED
+#endif
+
+#if __BSD_VISIBLE
 struct fhandle;
 struct statfs;
+#endif
 
 /*
  * The POSIX 1003.1 standard uses free and available nomenclature to mean the
@@ -65,11 +78,11 @@ struct statvfs {
 	uid_t		f_owner;	/* user that mounted the filesystem */
 	unsigned int	f_type;		/* filesystem type */
 
-	uint64_t  	f_syncreads;	/* count of sync reads since mount */
-	uint64_t  	f_syncwrites;	/* count of sync writes since mount */
+	__uint64_t  	f_syncreads;	/* count of sync reads since mount */
+	__uint64_t  	f_syncwrites;	/* count of sync writes since mount */
 
-	uint64_t  	f_asyncreads;	/* count of async reads since mount */
-	uint64_t  	f_asyncwrites;	/* count of async writes since mount */
+	__uint64_t  	f_asyncreads;	/* count of async reads since mount */
+	__uint64_t  	f_asyncwrites;	/* count of async writes since mount */
 
 	/*
 	 * DragonFly extensions - full uuid FSID and owner
@@ -84,18 +97,22 @@ struct statvfs {
 #define ST_RDONLY	0x00000001	/* fs is read-only */
 #define ST_NOSUID	0x00000002	/* ST_ISUID or ST_ISGID not supported */
 
+#if __BSD_VISIBLE
 /*
  * DragonFly specific flags
  */
 #define ST_FSID_UUID	0x40000000	/* f_fsid_uuid field is valid */
 #define ST_OWNER_UUID	0x80000000	/* f_owner_uuid field is valid */
+#endif
 
 __BEGIN_DECLS
 int	fstatvfs(int, struct statvfs *);
 int	statvfs(const char * __restrict, struct statvfs * __restrict);
-int     fhstatvfs (const struct fhandle *, struct statvfs * __restrict);
-int	getvfsstat (struct statfs * __restrict, struct statvfs * __restrict, long, int);
 
+#if __BSD_VISIBLE
+int	fhstatvfs(const struct fhandle *, struct statvfs * __restrict);
+int	getvfsstat(struct statfs * __restrict, struct statvfs * __restrict, long, int);
+#endif
 __END_DECLS
 
 #endif /* _SYS_STATVFS_H_ */

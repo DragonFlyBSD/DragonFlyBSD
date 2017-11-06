@@ -84,8 +84,14 @@ typedef	volatile char *	v_caddr_t;	/* core address, pointer to volatile */
 typedef	__int32_t	daddr_t;	/* disk address */
 typedef	__uint32_t	u_daddr_t;	/* unsigned disk address */
 typedef	__uint32_t	fixpt_t;	/* fixed point number */
+#ifndef _FSBLKCNT_T_DECLARED
 typedef	__uint64_t	fsblkcnt_t;	/* filesystem block count */
+#define	_FSBLKCNT_T_DECLARED
+#endif
+#ifndef _FSFILCNT_T_DECLARED
 typedef	__uint64_t	fsfilcnt_t;	/* filesystem file count */
+#define	_FSFILCNT_T_DECLARED
+#endif
 #ifndef _GID_T_DECLARED
 typedef	__uint32_t	gid_t;		/* group id */
 #define	_GID_T_DECLARED
