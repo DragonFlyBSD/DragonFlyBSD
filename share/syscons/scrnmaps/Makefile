@@ -1,5 +1,4 @@
 # $FreeBSD: src/share/syscons/scrnmaps/Makefile,v 1.14.2.3 2002/08/07 16:31:52 ru Exp $
-# $DragonFly: src/share/syscons/scrnmaps/Makefile,v 1.3 2004/03/22 20:58:17 dillon Exp $
 
 SCRMAPS = iso-8859-1_to_cp437.scm iso-8859-4_for_vga9.scm \
 	  iso-8859-7_to_cp437.scm \
@@ -12,13 +11,10 @@ CLEANFILES+= ${SCRMAPS_MK} ${SCRMAPS}
 
 NOMAN = noman
 
-all: ${SCRMAPS}
+FILES=		${SCRMAPS}
+FILESDIR=	${SCRDIR}
 
 build-tools: ${SCRMAPS_MK}
-
-install:
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${SHAREMODE} \
-	    ${SCRMAPS} ${DESTDIR}${SCRDIR}
 
 ${SCRMAPS}: ${.TARGET:R}.mk
 	./${.TARGET:R}.mk ${.TARGET:R}.tmp
