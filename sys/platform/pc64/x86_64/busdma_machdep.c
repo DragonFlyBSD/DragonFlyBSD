@@ -48,6 +48,7 @@
 #include <vm/vm_map.h>
 
 #include <machine/md_var.h>
+#include <machine/pmap.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
@@ -1477,4 +1478,23 @@ busdma_swi(void)
 		spin_lock(&bounce_map_list_spin);
 	}
 	spin_unlock(&bounce_map_list_spin);
+}
+
+int
+bus_space_map(bus_space_tag_t t __unused, bus_addr_t addr, bus_size_t size,
+    int flags __unused, bus_space_handle_t *bshp)
+{
+
+	if (t == X86_64_BUS_SPACE_MEM)
+		*bshp = (uintptr_t)pmap_mapdev(addr, size);
+	else
+		*bshp = addr;
+	return (0);
+}
+
+void
+bus_space_unmap(bus_space_tag_t t, bus_space_handle_t bsh, bus_size_t size)
+{
+	if (t == X86_64_BUS_SPACE_MEM)
+		pmap_unmapdev(bsh, size);
 }
