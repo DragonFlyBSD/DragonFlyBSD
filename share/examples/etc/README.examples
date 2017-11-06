@@ -46,7 +46,6 @@ newsyslog.conf	- configuration for system log file rotator
 nscd.conf	- caching daemon configuration file (see nscd(8))
 nsmb.conf	- smbfs configuration file (see mount_smbfs(8))
 opieaccess	- OPIE(4) database of trusted networks
-pam.conf	- configuration file for pam(8)
 pccard_ether	- confiuration script for ethernet pccards
 pf.conf		- configuration file for pf(4)
 pf.os		- operating system fingerprint file for pf(4)
