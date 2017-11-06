@@ -1929,6 +1929,7 @@ hammer2_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	hammer2_pfs_t *pmp;
 	hammer2_dev_t *hmp;
 	hammer2_blockref_t bref;
+	struct statfs tmp;
 	int i;
 
 	/*
@@ -1936,11 +1937,7 @@ hammer2_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	 */
 	pmp = MPTOPMP(mp);
 
-	mp->mnt_stat.f_files = 0;
-	mp->mnt_stat.f_ffree = 0;
-	mp->mnt_stat.f_blocks = 0;
-	mp->mnt_stat.f_bfree = 0;
-	mp->mnt_stat.f_bavail = 0;
+	bzero(&tmp, sizeof(tmp));
 
 	for (i = 0; i < pmp->iroot->cluster.nchains; ++i) {
 		hmp = pmp->pfs_hmps[i];
@@ -1951,23 +1948,29 @@ hammer2_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 		else
 			bzero(&bref, sizeof(bref));
 
-		mp->mnt_stat.f_files = bref.embed.stats.inode_count;
-		mp->mnt_stat.f_ffree = 0;
-		mp->mnt_stat.f_blocks = hmp->voldata.allocator_size /
-					mp->mnt_vstat.f_bsize;
-		mp->mnt_stat.f_bfree = hmp->voldata.allocator_free /
-					mp->mnt_vstat.f_bsize;
-		mp->mnt_stat.f_bavail = mp->mnt_stat.f_bfree;
+		tmp.f_files = bref.embed.stats.inode_count;
+		tmp.f_ffree = 0;
+		tmp.f_blocks = hmp->voldata.allocator_size /
+			       mp->mnt_vstat.f_bsize;
+		tmp.f_bfree = hmp->voldata.allocator_free /
+			      mp->mnt_vstat.f_bsize;
+		tmp.f_bavail = tmp.f_bfree;
 
 		if (cred && cred->cr_uid != 0) {
 			uint64_t adj;
 
 			/* 5% */
 			adj = hmp->free_reserved / mp->mnt_vstat.f_bsize;
-			mp->mnt_stat.f_blocks -= adj;
-			mp->mnt_stat.f_bfree -= adj;
-			mp->mnt_stat.f_bavail -= adj;
+			tmp.f_blocks -= adj;
+			tmp.f_bfree -= adj;
+			tmp.f_bavail -= adj;
 		}
+
+		mp->mnt_stat.f_blocks = tmp.f_blocks;
+		mp->mnt_stat.f_bfree = tmp.f_bfree;
+		mp->mnt_stat.f_bavail = tmp.f_bavail;
+		mp->mnt_stat.f_files = tmp.f_files;
+		mp->mnt_stat.f_ffree = tmp.f_ffree;
 
 		*sbp = mp->mnt_stat;
 	}
@@ -1981,19 +1984,14 @@ hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 	hammer2_pfs_t *pmp;
 	hammer2_dev_t *hmp;
 	hammer2_blockref_t bref;
+	struct statvfs tmp;
 	int i;
 
 	/*
 	 * NOTE: iroot might not have validated the cluster yet.
 	 */
 	pmp = MPTOPMP(mp);
-
-	mp->mnt_vstat.f_bsize = 0;
-	mp->mnt_vstat.f_files = 0;
-	mp->mnt_vstat.f_ffree = 0;
-	mp->mnt_vstat.f_blocks = 0;
-	mp->mnt_vstat.f_bfree = 0;
-	mp->mnt_vstat.f_bavail = 0;
+	bzero(&tmp, sizeof(tmp));
 
 	for (i = 0; i < pmp->iroot->cluster.nchains; ++i) {
 		hmp = pmp->pfs_hmps[i];
@@ -2004,24 +2002,29 @@ hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 		else
 			bzero(&bref, sizeof(bref));
 
-		mp->mnt_vstat.f_bsize = HAMMER2_PBUFSIZE;
-		mp->mnt_vstat.f_files = bref.embed.stats.inode_count;
-		mp->mnt_vstat.f_ffree = 0;
-		mp->mnt_vstat.f_blocks = hmp->voldata.allocator_size /
-					mp->mnt_vstat.f_bsize;
-		mp->mnt_vstat.f_bfree = hmp->voldata.allocator_free /
-					mp->mnt_vstat.f_bsize;
-		mp->mnt_vstat.f_bavail = mp->mnt_vstat.f_bfree;
+		tmp.f_files = bref.embed.stats.inode_count;
+		tmp.f_ffree = 0;
+		tmp.f_blocks = hmp->voldata.allocator_size /
+			       mp->mnt_vstat.f_bsize;
+		tmp.f_bfree = hmp->voldata.allocator_free /
+			      mp->mnt_vstat.f_bsize;
+		tmp.f_bavail = tmp.f_bfree;
 
 		if (cred && cred->cr_uid != 0) {
 			uint64_t adj;
 
 			/* 5% */
 			adj = hmp->free_reserved / mp->mnt_vstat.f_bsize;
-			mp->mnt_vstat.f_blocks -= adj;
-			mp->mnt_vstat.f_bfree -= adj;
-			mp->mnt_vstat.f_bavail -= adj;
+			tmp.f_blocks -= adj;
+			tmp.f_bfree -= adj;
+			tmp.f_bavail -= adj;
 		}
+
+		mp->mnt_vstat.f_blocks = tmp.f_blocks;
+		mp->mnt_vstat.f_bfree = tmp.f_bfree;
+		mp->mnt_vstat.f_bavail = tmp.f_bavail;
+		mp->mnt_vstat.f_files = tmp.f_files;
+		mp->mnt_vstat.f_ffree = tmp.f_ffree;
 
 		*sbp = mp->mnt_vstat;
 	}
