@@ -82,7 +82,10 @@ implementation optimized the count = 1 case but otherwise just wakes up
 all processes sleeping on the address.
 .Pp
 Kernel support for userland mutexes is based on the physical memory backing
-the user address.  Two userland programs may use this facility through
+the user address.
+That is, the kernel will typically construct a sleep id based on the
+underlying physical memory address.
+Two userland programs may use this facility through
 .Fn mmap ,
 .Fn sysv ,
 .Fn rfork ,
@@ -114,56 +117,17 @@ will generally return 0 unless the address is bad.
 void
 userland_get_mutex(struct umtx *mtx)
 {
-    int v;
+	int v;
 
-    for (;;) {
 	v = mtx->lock;
-	if ((v & MTX_LOCKED) == 0) {
-	    /*
-	     * not locked, attempt to lock.
-	     */
-	    if (cmp_and_exg(&mtx->lock, v, v | MTX_LOCKED) == 0)
-		return;
-	} else {
-	    /*
-	     * Locked, bump the contested count and obtain the contested
-	     * mutex.
-	     */
-	    if (cmp_and_exg(&mtx->lock, v, v + 1) == 0) {
-		userland_get_mutex_contested(mtx);
-		return;
-	    }
+	for (;;) {
+		if (v == 0) {
+			if (atomic_fcmpset_int(&mtx->lock, &v, 1))
+				break;
+		} else if (atomic_fcmpset_int(&mtx->lock, &v, 2)) {
+			umtx_sleep(&mtx->lock, 2, 0);
+		}
 	}
-    }
-}
-
-static void
-userland_get_mutex_contested(struct umtx *mtx)
-{
-    int v;
-
-    for (;;) {
-	v = mtx->lock;
-	assert(v & ~MTX_LOCKED);	/* our contesting count still there */
-	if ((v & MTX_LOCKED) == 0) {
-	    /*
-	     * not locked, attempt to remove our contested count and
-	     * lock at the same time.
-	     */
-	    if (cmp_and_exg(&mtx->lock, v, (v - 1) | MTX_LOCKED) == 0)
-		return;
-	} else {
-	    /*
-	     * Still locked, sleep and try again.
-	     */
-	    umtx_sleep(&mtx->lock, v, 0);
-	    /*
-	     * XXX note: if we are woken up here but do not proceed to
-	     * attempt to obtain the mutex, we should chain the
-	     * umtx_wakeup() along.
-	     */
-	}
-    }
 }
 
 void
@@ -171,40 +135,70 @@ userland_rel_mutex(struct umtx *mtx)
 {
     int v;
 
-    for (;;) {
-	v = mtx->lock;
-	assert(v & MTX_LOCKED);	/* we still have it locked */
-	if (v == MTX_LOCKED) {
-	    /*
-	     * We hold an uncontested lock, try to set to an unlocked
-	     * state.
-	     */
-	    if (cmp_and_exg(&mtx->lock, MTX_LOCKED, 0) == 0)
-		return;
-	} else {
-	    /*
-	     * We hold a contested lock, unlock and wakeup exactly
-	     * one sleeper.  It is possible for this to race a new
-	     * thread obtaining a lock, in which case any contested
-	     * sleeper we wake up will simply go back to sleep.
-	     */
-	    if (cmp_and_exg(&mtx->lock, v, v & ~MTX_LOCKED) == 0) {
-		umtx_wakeup(&mtx->lock, 1);
-		return;
-	    }
-	}
-    }
+    v = atomic_swap_int(&mtx->lock, 0);
+    if (v == 2)
+	    umtx_wakeup(&mtx->lock, 1);
 }
 .Ed
+.Sh WARNINGS
+.Pp
+This function can return -1 with errno set to
+.Er EWOULDBLOCK
+early and even if no timeout is specified due to the kernel failsafe
+timeout activating.
+The caller is advised to track the timeout independently using
+.Fn clock_gettime .
+.Pp
+This function can return -1 with errno set to
+.Er EINTR
+and it is up to the caller to loop if the caller's own API disallows
+returning EINTR.
+.Pp
+This function can also return -1 with errno set to
+.Er EBUSY
+due to internal kernel effects.
+.Pp
+This function can return without error when woken up via internal
+kernal effects and not necessarily just by a
+.Fn umtx_wakeup
+call.
+.Pp
+Because the kernel will always use the underlying physical address
+for its tsleep/wakeup id (e.g. which is required to properly supported
+memory-mapped locks shared between processes), certain actions taken by
+the program and/or by the kernel can disrupt synchronization between
+.Fn umtx_sleep
+and
+.Fn umtx_wakeup .
+The kernel is responsible for handling
+.Fn fork
+actions, and will typically wakeup all blocked
+.Fn
+umtx_sleep
+for all threads of a process upon any thread forking.
+However, other actions such as pagein and pageout can also desynchronize
+sleeps and wakeups.
+To deal with these actions, the kernel typically implements a failsafe
+timeout of around 2 seconds for
+.Fn umtx_sleep .
+To properly resynchronize the physical address, ALL threads blocking on
+the address should perform a modifying operation on the underlying memory
+before re-entering the wait state,
+or otherwise be willing to incur the failsafe timeout as their recovery
+mechanism.
 .Sh ERRORS
 .Bl -tag -width Er
 .It Bq Er EBUSY
 The contents of
 .Fa *ptr
-did not match
+possibly did not match
 .Fa value
 .It Bq Er EWOULDBLOCK
-The specified timeout occurred.
+The specified timeout occurred,
+or a kernel-defined failsafe timeout occurred.
+Callers should not assume that the precise requested timeout occurred
+when this error is returned, and this error can be returned even
+when no timeout is specified.
 .It Bq Er EINTR
 The
 .Fn umtx_sleep

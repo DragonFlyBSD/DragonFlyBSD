@@ -85,6 +85,38 @@ to the parent process, no child process is created, and the global
 variable
 .Va errno
 is set to indicate the error.
+.Sh MULTI-THREADING CONSIDERATIONS
+.Fn fork
+can create severe issues for multi-threaded programs due to the fact that
+the memory state of the child process will record the asynchronous state
+of the threads that are running in the parent.
+.Fn Fork
+will only be synchronous for the specific thread making the call.
+In particular,
+locks used internally by
+.Xr pthread 3
+and
+.Xr rtld 1
+can be caught in a bad state.
+To deal with these issues, the pthreads library goes to great lengths
+to synchronize internal locks when
+a
+.Fn fork
+call is issued.
+The threaded program itself as well as third party libraries used by the
+program might or might not properly handle these issues when it comes to
+their own internal state.
+.Pp
+If at all possible, programs should use
+.Xr vfork 2
+instead of
+.Fn fork
+when forking for the purposes of issuing an exec of some sort.
+Attempting to fork a threaded program without issuing an exec is not
+recommended.
+Attempting to bypass pthreads and implement threading manually is also
+not recommended as it is doubtful that homegrown implementations could
+properly deal with rtld races.
 .Sh ERRORS
 .Fn Fork
 will fail and no child process will be created if:
