@@ -3267,6 +3267,9 @@ TO_REMOVE+=/usr/bin/rdist
 TO_REMOVE+=/usr/share/man/man1/rdist.1.gz
 TO_REMOVE+=/usr/libexec/sm.bin
 TO_REMOVE+=/usr/lib/aout
+TO_REMOVE+=/usr/share/calendar/de_DE.ISO_8859-1
+TO_REMOVE+=/usr/share/calendar/de_DE.ISO_8859-15
+TO_REMOVE+=/usr/share/calendar/hr_HR.ISO_8859-2
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
