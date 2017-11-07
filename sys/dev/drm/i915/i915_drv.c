@@ -958,6 +958,12 @@ i915_get_device_id(int device)
 	return (NULL);
 }
 
+static int i915_sysctl_init(struct drm_device *dev, struct sysctl_ctx_list *ctx,
+			    struct sysctl_oid *top)
+{
+	return drm_add_busid_modesetting(dev, ctx, top);
+}
+
 extern devclass_t drm_devclass;
 
 /**
@@ -1784,6 +1790,7 @@ static struct drm_driver driver = {
 	.dumb_map_offset = i915_gem_mmap_gtt,
 	.dumb_destroy = drm_gem_dumb_destroy,
 	.ioctls = i915_ioctls,
+	.sysctl_init = i915_sysctl_init,
 	.name = DRIVER_NAME,
 	.desc = DRIVER_DESC,
 	.date = DRIVER_DATE,
