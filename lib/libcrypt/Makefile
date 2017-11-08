@@ -26,7 +26,7 @@ CFLAGS+=	-I${.CURDIR} -DHAS_DES -DHAS_BLOWFISH
 # And the auth_getval() code and support.
 .PATH:		${.CURDIR}/../libutil
 SRCS+=		auth.c property.c
-.for sym in MD5Init MD5Final MD5Update MD5Pad auth_getval \
+.for sym in MD5Init MD5Final MD5Update MD5Pad MD5Transform auth_getval \
 	    property_find properties_read properties_free
 CFLAGS+=	-D${sym}=_libcrypt_${sym}
 .endfor
