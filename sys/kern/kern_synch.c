@@ -47,6 +47,7 @@
 #include <sys/sysctl.h>
 #include <sys/lock.h>
 #include <sys/uio.h>
+#include <sys/priv.h>
 #include <sys/kcollect.h>
 #ifdef KTRACE
 #include <sys/ktrace.h>
@@ -127,6 +128,56 @@ SYSCTL_INT(_kern, OID_AUTO, pctcpu_decay, CTLFLAG_RW, &pctcpu_decay, 0, "");
  */
 int     fscale __unused = FSCALE;	/* exported to systat */
 SYSCTL_INT(_kern, OID_AUTO, fscale, CTLFLAG_RD, 0, FSCALE, "");
+
+/*
+ * Issue a wakeup() from userland (debugging)
+ */
+static int
+sysctl_wakeup(SYSCTL_HANDLER_ARGS)
+{
+	uint64_t ident = 1;
+	int error = 0;
+
+	if (req->newptr != NULL) {
+		if (priv_check(curthread, PRIV_ROOT))
+			return (EPERM);
+		error = SYSCTL_IN(req, &ident, sizeof(ident));
+		if (error)
+			return error;
+		kprintf("issue wakeup %016jx\n", ident);
+		wakeup((void *)(intptr_t)ident);
+	}
+	if (req->oldptr != NULL) {
+		error = SYSCTL_OUT(req, &ident, sizeof(ident));
+	}
+	return error;
+}
+
+static int
+sysctl_wakeup_umtx(SYSCTL_HANDLER_ARGS)
+{
+	uint64_t ident = 1;
+	int error = 0;
+
+	if (req->newptr != NULL) {
+		if (priv_check(curthread, PRIV_ROOT))
+			return (EPERM);
+		error = SYSCTL_IN(req, &ident, sizeof(ident));
+		if (error)
+			return error;
+		kprintf("issue wakeup %016jx, PDOMAIN_UMTX\n", ident);
+		wakeup_domain((void *)(intptr_t)ident, PDOMAIN_UMTX);
+	}
+	if (req->oldptr != NULL) {
+		error = SYSCTL_OUT(req, &ident, sizeof(ident));
+	}
+	return error;
+}
+
+SYSCTL_PROC(_debug, OID_AUTO, wakeup, CTLTYPE_UQUAD|CTLFLAG_RW, 0, 0,
+	    sysctl_wakeup, "Q", "issue wakeup(addr)");
+SYSCTL_PROC(_debug, OID_AUTO, wakeup_umtx, CTLTYPE_UQUAD|CTLFLAG_RW, 0, 0,
+	    sysctl_wakeup_umtx, "Q", "issue wakeup(addr, PDOMAIN_UMTX)");
 
 /*
  * Recompute process priorities, once a second.

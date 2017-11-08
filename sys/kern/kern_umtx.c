@@ -1,7 +1,6 @@
 /*
- * (MPSAFE)
- *
- * Copyright (c) 2003,2004,2010 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003,2004,2010,2017 The DragonFly Project.
+ * All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com> and David Xu <davidxu@freebsd.org>
@@ -47,6 +46,7 @@
 #include <sys/sysunion.h>
 #include <sys/sysent.h>
 #include <sys/syscall.h>
+#include <sys/sysctl.h>
 #include <sys/module.h>
 
 #include <cpu/lwbuf.h>
@@ -68,6 +68,10 @@
 #include <machine/vmm.h>
 
 static void umtx_sleep_page_action_cow(vm_page_t m, vm_page_action_t action);
+
+static int umtx_timeout_max = 2000000;  /* microseconds */
+SYSCTL_INT(_kern, OID_AUTO, umtx_timeout_max, CTLFLAG_RW,
+	   &umtx_timeout_max, 0, "");
 
 /*
  * If the contents of the userland-supplied pointer matches the specified
@@ -143,10 +147,11 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
      * a wakeup from another cpu.  The lfence forces synchronization.
      */
     if (*(int *)(lwbuf_kva(lwb) + offset) == uap->value) {
-	if ((timeout = uap->timeout) != 0) {
-	    timeout = (timeout / 1000000) * hz +
-		      ((timeout % 1000000) * hz + 999999) / 1000000;
-	}
+	timeout = umtx_timeout_max;
+	if (uap->timeout && uap->timeout < timeout)
+		timeout = uap->timeout;
+	timeout = (timeout / 1000000) * hz +
+		  ((timeout % 1000000) * hz + 999999) / 1000000;
 	waddr = (void *)((intptr_t)VM_PAGE_TO_PHYS(m) + offset);
 
 	/*
