@@ -213,8 +213,6 @@ typedef struct slglobaldata {
  * WARNING: A limited number of spinlocks are available, BIGXSIZE should
  *	    not be larger then 64.
  */
-#define ZERO_LENGTH_PTR	((void *)&malloc_dummy_pointer)
-
 #define BIGHSHIFT	10			/* bigalloc hash table */
 #define BIGHSIZE	(1 << BIGHSHIFT)
 #define BIGHMASK	(BIGHSIZE - 1)
@@ -276,6 +274,7 @@ struct magazine {
 SLIST_HEAD(magazinelist, magazine);
 
 static spinlock_t zone_mag_lock;
+static spinlock_t depot_spinlock;
 static struct magazine zone_magazine = {
 	.flags = M_BURST | M_BURST_EARLY,
 	.capacity = M_ZONE_ROUNDS,
@@ -314,8 +313,9 @@ typedef struct thr_mags {
 
 /*
  * With this attribute set, do not require a function call for accessing
- * this variable when the code is compiled -fPIC. Empty for libc_rtld
- * (like __thread).
+ * this variable when the code is compiled -fPIC.
+ *
+ * Must be empty for libc_rtld (similar to __thread).
  */
 #ifdef __LIBC_RTLD
 #define TLS_ATTRIBUTE
@@ -323,7 +323,6 @@ typedef struct thr_mags {
 #define TLS_ATTRIBUTE __attribute__ ((tls_model ("initial-exec")))
 #endif
 
-static int mtmagazine_free_live;
 static __thread thr_mags thread_mags TLS_ATTRIBUTE;
 static pthread_key_t thread_mags_key;
 static pthread_once_t thread_mags_once = PTHREAD_ONCE_INIT;
@@ -347,7 +346,6 @@ static volatile void *bigcache_array[BIGCACHE];		/* atomic swap */
 static volatile size_t bigcache_size_array[BIGCACHE];	/* SMP races ok */
 static volatile int bigcache_index;			/* SMP races ok */
 static int malloc_panic;
-static int malloc_dummy_pointer;
 static size_t excess_alloc;				/* excess big allocs */
 
 static void *_slaballoc(size_t size, int flags);
@@ -417,6 +415,7 @@ malloc_init(void)
 void
 _nmalloc_thr_init(void)
 {
+	static int init_once;
 	thr_mags *tp;
 
 	/*
@@ -426,12 +425,39 @@ _nmalloc_thr_init(void)
 	tp = &thread_mags;
 	tp->init = -1;
 
-	if (mtmagazine_free_live == 0) {
-		mtmagazine_free_live = 1;
+	if (init_once == 0) {
+		init_once = 1;
 		pthread_once(&thread_mags_once, mtmagazine_init);
 	}
 	pthread_setspecific(thread_mags_key, tp);
 	tp->init = 1;
+}
+
+void
+_nmalloc_thr_prepfork(void)
+{
+	if (__isthreaded) {
+		_SPINLOCK(&zone_mag_lock);
+		_SPINLOCK(&depot_spinlock);
+	}
+}
+
+void
+_nmalloc_thr_parentfork(void)
+{
+	if (__isthreaded) {
+		_SPINUNLOCK(&depot_spinlock);
+		_SPINUNLOCK(&zone_mag_lock);
+	}
+}
+
+void
+_nmalloc_thr_childfork(void)
+{
+	if (__isthreaded) {
+		_SPINUNLOCK(&depot_spinlock);
+		_SPINUNLOCK(&zone_mag_lock);
+	}
 }
 
 /*
@@ -455,14 +481,22 @@ static __inline void
 depot_lock(magazine_depot *dp) 
 {
 	if (__isthreaded)
+		_SPINLOCK(&depot_spinlock);
+#if 0
+	if (__isthreaded)
 		_SPINLOCK(&dp->lock);
+#endif
 }
 
 static __inline void
 depot_unlock(magazine_depot *dp)
 {
 	if (__isthreaded)
+		_SPINUNLOCK(&depot_spinlock);
+#if 0
+	if (__isthreaded)
 		_SPINUNLOCK(&dp->lock);
+#endif
 }
 
 static __inline void
@@ -922,7 +956,7 @@ _slaballoc(size_t size, int flags)
 	 * also realloc() later on.  Joy.
 	 */
 	if (size == 0)
-		return(ZERO_LENGTH_PTR);
+		size = 1;
 
 	/* Capture global flags */
 	flags |= g_malloc_flags;
@@ -1134,14 +1168,12 @@ _slabrealloc(void *ptr, size_t size)
 	slzone_t z;
 	size_t chunking;
 
-	if (ptr == NULL || ptr == ZERO_LENGTH_PTR) {
+	if (ptr == NULL) {
 		return(_slaballoc(size, 0));
 	}
 
-	if (size == 0) {
-		free(ptr);
-		return(ZERO_LENGTH_PTR);
-	}
+	if (size == 0)
+		size = 1;
 
 	/*
 	 * Handle oversized allocations. 
@@ -1319,8 +1351,6 @@ _slabfree(void *ptr, int flags, bigalloc_t *rbigp)
 	 * Handle NULL frees and special 0-byte allocations
 	 */
 	if (ptr == NULL)
-		return;
-	if (ptr == ZERO_LENGTH_PTR)
 		return;
 
 	/*

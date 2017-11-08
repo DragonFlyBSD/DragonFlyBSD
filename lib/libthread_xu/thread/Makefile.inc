@@ -38,6 +38,7 @@ SRCS+= \
 	thr_pspinlock.c \
 	thr_resume_np.c \
 	thr_rtld.c \
+	thr_malloc.c \
 	thr_rwlock.c \
 	thr_rwlockattr.c \
 	thr_self.c \

@@ -92,6 +92,9 @@ extern void (*__cleanup)(void);
 /* execve() with PATH processing to implement posix_spawnp() */
 int _execvpe(const char *, char * const *, char * const *);
 void _nmalloc_thr_init(void);
+void _nmalloc_thr_prepfork(void);
+void _nmalloc_thr_parentfork(void);
+void _nmalloc_thr_childfork(void);
 
 struct dl_phdr_info;
 int __elf_phdr_match_addr(struct dl_phdr_info *, void *);
