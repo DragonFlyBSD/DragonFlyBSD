@@ -303,25 +303,49 @@ boot(int howto)
 	 */
 	if (!cold && (howto & RB_NOSYNC) == 0 && waittime < 0) {
 		int iter, nbusy, pbusy;
+		int zcount;
 
 		waittime = 0;
+		zcount = 0;
 		kprintf("\nsyncing disks... ");
 
-		sys_sync(NULL);	/* YYY was sync(&proc0, NULL). why proc0 ? */
+		sys_sync(NULL);
 
 		/*
-		 * With soft updates, some buffers that are
-		 * written will be remarked as dirty until other
-		 * buffers are written.
+		 * With soft updates, some buffers that are written will be
+		 * remarked as dirty until other buffers are written.
+		 *
+		 * sys_sync() usually runs asynchronously, to give us a
+		 * better chance of syncing the rest of the filesystems when
+		 * one or more of them are stuck.
 		 */
-		for (iter = pbusy = 0; iter < 20; iter++) {
-			nbusy = scan_all_buffers(shutdown_busycount1, NULL);
-			if (nbusy == 0)
-				break;
+		for (iter = pbusy = 0; iter < 20 + zcount; iter++) {
+			if (iter <= 10)
+				nbusy = scan_all_buffers(shutdown_busycount1,
+							 &iter);
+			else
+				nbusy = scan_all_buffers(shutdown_busycount2,
+							 &iter);
 			kprintf("%d ", nbusy);
-			if (nbusy < pbusy)
-				iter = 0;
+			if (nbusy == 0) {
+				if (++zcount == 3)
+					break;
+			} else {
+				zcount = 0;
+			}
+
+			/*
+			 * There could be a lot to sync, only allow iter to
+			 * proceed while there is progress.
+			 */
+			if (nbusy < pbusy) {
+				if (iter > 10)
+					iter = 10;
+				else
+					iter = 0;
+			}
 			pbusy = nbusy;
+
 			/*
 			 * XXX:
 			 * Process soft update work queue if buffers don't sync
@@ -330,16 +354,12 @@ boot(int howto)
 			if (iter > 5)
 				bio_ops_sync(NULL);
  
-			sys_sync(NULL); /* YYY was sync(&proc0, NULL). why proc0 ? */
+			sys_sync(NULL);
 			tsleep(boot, 0, "shutdn", hz * iter / 20 + 1);
 		}
 		kprintf("\n");
-		/*
-		 * Count only busy local buffers to prevent forcing 
-		 * a fsck if we're just a client of a wedged NFS server
-		 */
-		nbusy = scan_all_buffers(shutdown_busycount2, NULL);
-		if (nbusy) {
+
+		if (zcount < 3) {
 			/*
 			 * Failed to sync all blocks. Indicate this and don't
 			 * unmount filesystems (thus forcing an fsck on reboot).
@@ -352,6 +372,7 @@ boot(int howto)
 			tsleep(boot, 0, "shutdn", hz * 5 + 1);
 		} else {
 			kprintf("done\n");
+
 			/*
 			 * Unmount filesystems
 			 */
@@ -391,7 +412,7 @@ boot(int howto)
  *	We ignore TMPFS mounts in this pass.
  */
 static int
-shutdown_busycount1(struct buf *bp, void *info)
+shutdown_busycount1(struct buf *bp, void *info __unused)
 {
 	struct vnode *vp;
 
@@ -413,6 +434,8 @@ static int
 shutdown_busycount2(struct buf *bp, void *info)
 {
 	struct vnode *vp;
+	int *iterp = info;
+	const char *mpath;
 
 	/*
 	 * Ignore tmpfs and nfs mounts
@@ -441,13 +464,19 @@ shutdown_busycount2(struct buf *bp, void *info)
 		    bio_track_active(&bp->b_vp->v_track_write) == 0) {
 			return (0);
 		}
-#if defined(SHOW_BUSYBUFS) || defined(DIAGNOSTIC)
-		kprintf(
-	    "%p dev:?, flags:%08x, loffset:%jd, doffset:%jd\n",
-		    bp, 
-		    bp->b_flags, (intmax_t)bp->b_loffset,
-		    (intmax_t)bp->b_bio2.bio_offset);
-#endif
+		if (*iterp > 15) {
+			mpath = "?";
+			if (bp->b_vp->v_mount)
+				mpath = bp->b_vp->v_mount->mnt_stat.f_mntonname;
+
+			kprintf("%p on %s, flags:%08x, loffset:%jd, "
+				"doffset:%jd\n",
+				bp,
+				mpath,
+				bp->b_flags,
+				(intmax_t)bp->b_loffset,
+				(intmax_t)bp->b_bio2.bio_offset);
+		}
 		return(1);
 	}
 	return(0);
