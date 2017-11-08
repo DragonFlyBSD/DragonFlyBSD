@@ -676,6 +676,7 @@ int	_thr_ref_add(struct pthread *, struct pthread *, int);
 void	_thr_ref_delete(struct pthread *, struct pthread *);
 void	_thr_ref_delete_unlocked(struct pthread *, struct pthread *);
 int	_thr_find_thread(struct pthread *, struct pthread *, int);
+void	_thr_malloc_init(void);
 void	_thr_rtld_init(void);
 void	_thr_rtld_fini(void);
 int	_thr_stack_alloc(struct pthread_attr *);

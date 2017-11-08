@@ -3,6 +3,9 @@ DF404.0 {
     __cxa_finalize;
     _Exit;
     _nmalloc_thr_init;
+    _nmalloc_thr_prepfork;
+    _nmalloc_thr_parentfork;
+    _nmalloc_thr_childfork;
     _system;
     a64l;
     abort;

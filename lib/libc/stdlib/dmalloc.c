@@ -1,7 +1,7 @@
 /*
  * DMALLOC.C	- Dillon's malloc
  *
- * Copyright (c) 2011 The DragonFly Project. All rights reserved.
+ * Copyright (c) 2011,2017 The DragonFly Project. All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>.
@@ -34,16 +34,11 @@
  * SUCH DAMAGE.
  */
 /*
- * This module implements a modified slab allocator drop-in replacement for
- * the libc malloc().  The slab algorithm has been adjusted to support dynamic
- * sizing of slabs which effectively allows slabs to be used for allocations of
- * any size.  Because of this we neither have a small-block allocator or a
- * big-block allocator and the code paths are simplified to the point where
- * allocations, caching, and freeing, is screaming fast.
- *
- * There is very little interaction between threads.  A global depot accessed
- * via atomic cmpxchg instructions (only! no spinlocks!) is used as a
- * catch-all and to deal with thread exits and such.
+ * This module implements a modified slab allocator as a drop-in replacement
+ * for the libc malloc().  The slab algorithm has been adjusted to support
+ * dynamic sizing of slabs which effectively allows slabs to be used for
+ * allocations of any size.  Because of this we neither have a small-block
+ * allocator or a big-block allocator and the code paths are simplified.
  *
  * To support dynamic slab sizing available user virtual memory is broken
  * down into ~1024 regions.  Each region has fixed slab size whos value is
@@ -66,7 +61,7 @@
  *	8192-16383	1024		8
  *	16384-32767	2048		8
  *	32768-65535	4096		8
- *	... continues unlimited ...	4 zones
+ *	... continues forever ...	4 zones
  *
  *	For a 2^63 memory space each doubling >= 64K is broken down into
  *	4 chunking zones, so we support 88 + (48 * 4) = 280 zones.
@@ -81,6 +76,9 @@
  *    + ability to allocate arbitrarily large chunks of memory
  *    + realloc will reuse the passed pointer if possible, within the
  *	limitations of the zone chunking.
+ *
+ * On top of th slab allocator we also implement a 16-entry-per-thread
+ * magazine cache for allocations <= NOMSLABSIZE.
  *
  *				FUTURE FEATURES
  *
@@ -234,24 +232,31 @@ struct slab {
 	int		flags;
 	region_t	region;		/* related region */
 	char		*chunks;	/* chunk base */
-	slglobaldata_t	slgd;
+	slglobaldata_t	slgd;		/* localized to thread else NULL */
 };
 
 /*
- * per-thread data
+ * per-thread data + global depot
+ *
+ * NOTE: The magazine shortcut is only used for per-thread data.
  */
+#define NMAGSHORTCUT	16
+
 struct slglobaldata {
+	spinlock_t	lock;		/* only used by slglobaldepot */
 	struct zoneinfo {
 		slab_t	avail_base;
 		slab_t	empty_base;
 		int	best_region;
+		int	mag_index;
+		int	avail_count;
 		int	empty_count;
+		void	*mag_shortcut[NMAGSHORTCUT];
 	} zone[NZONES];
-	struct slab_list full_zones;		/* via entry */
+	struct slab_list full_zones;	/* via entry */
 	int		masked;
 	int		biggest_index;
 	size_t		nslabs;
-	slglobaldata_t	sldepot;
 };
 
 #define SLAB_ZEROD		0x0001
@@ -288,14 +293,22 @@ struct slglobaldata {
 				#exp, __func__);		\
 			    } while (0)
 
-/* With this attribute set, do not require a function call for accessing
- * this variable when the code is compiled -fPIC */
+/*
+ * With this attribute set, do not require a function call for accessing
+ * this variable when the code is compiled -fPIC.
+ *
+ * Must be empty for libc_rtld (similar to __thread)
+ */
+#if defined(__LIBC_RTLD)
+#define TLS_ATTRIBUTE
+#else
 #define TLS_ATTRIBUTE __attribute__ ((tls_model ("initial-exec")));
+#endif
 
 static __thread struct slglobaldata slglobal TLS_ATTRIBUTE;
 static pthread_key_t thread_malloc_key;
 static pthread_once_t thread_malloc_once = PTHREAD_ONCE_INIT;
-static struct slglobaldata sldepots[NDEPOTS];
+static struct slglobaldata slglobaldepot;
 
 static int opt_madvise = 0;
 static int opt_free = 0;
@@ -303,7 +316,6 @@ static int opt_cache = 4;
 static int opt_utrace = 0;
 static int g_malloc_flags = 0;
 static int malloc_panic;
-static int malloc_started = 0;
 
 static const int32_t weirdary[16] = {
 	WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR,
@@ -355,18 +367,8 @@ static void
 malloc_init(void)
 {
 	const char *p = NULL;
-	static spinlock_t malloc_init_lock;
 
-	if (malloc_started)
-		return;
-
-	if (__isthreaded) {
-		_SPINLOCK(&malloc_init_lock);
-		if (malloc_started) {
-			_SPINUNLOCK(&malloc_init_lock);
-			return;
-		}
-	}
+	TAILQ_INIT(&slglobal.full_zones);
 
 	Regions[0].mask = -1; /* disallow activity in lowest region */
 
@@ -412,11 +414,6 @@ malloc_init(void)
 	}
 
 	UTRACE((void *) -1, 0, NULL);
-	_nmalloc_thr_init();
-	malloc_started = 1;
-
-	if (__isthreaded)
-		_SPINUNLOCK(&malloc_init_lock);
 }
 
 /*
@@ -434,13 +431,8 @@ void
 _nmalloc_thr_init(void)
 {
 	static int did_init;
-	static int SLGI;
-	int slgi;
 
-	slgi = SLGI++;
-	cpu_ccfence();
 	TAILQ_INIT(&slglobal.full_zones);
-	slglobal.sldepot = &sldepots[slgi & (NDEPOTS - 1)];
 
 	if (slglobal.masked)
 		return;
@@ -452,6 +444,27 @@ _nmalloc_thr_init(void)
 	}
 	pthread_setspecific(thread_malloc_key, &slglobal);
 	slglobal.masked = 0;
+}
+
+void
+_nmalloc_thr_prepfork(void)
+{
+	if (__isthreaded)
+		_SPINLOCK(&slglobaldepot.lock);
+}
+
+void
+_nmalloc_thr_parentfork(void)
+{
+	if (__isthreaded)
+		_SPINUNLOCK(&slglobaldepot.lock);
+}
+
+void
+_nmalloc_thr_childfork(void)
+{
+	if (__isthreaded)
+		_SPINUNLOCK(&slglobaldepot.lock);
 }
 
 /*
@@ -476,19 +489,34 @@ static void
 _nmalloc_thr_destructor(void *thrp)
 {
 	slglobaldata_t slgd = thrp;
+	struct zoneinfo *zinfo;
 	slab_t slab;
+	void *ptr;
 	int i;
+	int j;
 
 	slgd->masked = 1;
 
 	for (i = 0; i <= slgd->biggest_index; i++) {
-		while ((slab = slgd->zone[i].empty_base) != NULL) {
-			slgd->zone[i].empty_base = slab->next;
+		zinfo = &slgd->zone[i];
+
+		while ((j = zinfo->mag_index) > 0) {
+			--j;
+			ptr = zinfo->mag_shortcut[j];
+			zinfo->mag_shortcut[j] = NULL;	/* SAFETY */
+			zinfo->mag_index = j;
+			memfree(ptr, 0);
+		}
+
+		while ((slab = zinfo->empty_base) != NULL) {
+			zinfo->empty_base = slab->next;
+			--zinfo->empty_count;
 			slabterm(slgd, slab);
 		}
 
-		while ((slab = slgd->zone[i].avail_base) != NULL) {
-			slgd->zone[i].avail_base = slab->next;
+		while ((slab = zinfo->avail_base) != NULL) {
+			zinfo->avail_base = slab->next;
+			--zinfo->avail_count;
 			slabterm(slgd, slab);
 		}
 
@@ -502,6 +530,9 @@ _nmalloc_thr_destructor(void *thrp)
 /*
  * Calculate the zone index for the allocation request size and set the
  * allocation request size to that particular zone's chunk size.
+ *
+ * Minimum alignment is 16 bytes for allocations >= 16 bytes to conform
+ * with malloc requirements for intel/amd.
  */
 static __inline int
 zoneindex(size_t *bytes, size_t *chunking)
@@ -512,9 +543,15 @@ zoneindex(size_t *bytes, size_t *chunking)
 	int i;
 
 	if (n < 128) {
-		*bytes = n = (n + 7) & ~7;
-		*chunking = 8;
-		return(n / 8);			/* 8 byte chunks, 16 zones */
+		if (n < 16) {
+			*bytes = n = (n + 7) & ~7;
+			*chunking = 8;
+			return(n / 8 - 1);	/* 8 byte chunks, 2 zones */
+		} else {
+			*bytes = n = (n + 15) & ~15;
+			*chunking = 16;
+			return(n / 16 + 2);	/* 16 byte chunks, 8 zones */
+		}
 	}
 	if (n < 4096) {
 		x = 256;
@@ -607,7 +644,7 @@ zoneindex(size_t *bytes, size_t *chunking)
  * malloc() - call internal slab allocator
  */
 void *
-malloc(size_t size)
+__malloc(size_t size)
 {
 	void *ptr;
 
@@ -623,7 +660,7 @@ malloc(size_t size)
  * calloc() - call internal slab allocator
  */
 void *
-calloc(size_t number, size_t size)
+__calloc(size_t number, size_t size)
 {
 	void *ptr;
 
@@ -643,7 +680,7 @@ calloc(size_t number, size_t size)
  * zone.
  */
 void *
-realloc(void *ptr, size_t size)
+__realloc(void *ptr, size_t size)
 {
 	void *ret;
 
@@ -669,7 +706,7 @@ realloc(void *ptr, size_t size)
  * matching the requirements.
  */
 int
-posix_memalign(void **memptr, size_t alignment, size_t size)
+__posix_memalign(void **memptr, size_t alignment, size_t size)
 {
 	/*
 	 * OpenGroup spec issue 6 checks
@@ -700,7 +737,7 @@ posix_memalign(void **memptr, size_t alignment, size_t size)
  * free() (SLAB ALLOCATOR) - do the obvious
  */
 void
-free(void *ptr)
+__free(void *ptr)
 {
 	if (ptr) {
 		UTRACE(ptr, 0, 0);
@@ -727,11 +764,8 @@ memalloc(size_t size, int flags)
 #ifdef INVARIANTS
 	int i;
 #endif
-	size_t off;
+	int j;
 	char *obj;
-
-	if (!malloc_started)
-		malloc_init();
 
 	/*
 	 * If 0 bytes is requested we have to return a unique pointer, allocate
@@ -750,13 +784,26 @@ memalloc(size_t size, int flags)
 		return(NULL);
 
 	/*
+	 * Try magazine shortcut first
+	 */
+	slgd = &slglobal;
+	zinfo = &slgd->zone[zi];
+
+	if ((j = zinfo->mag_index) != 0) {
+		zinfo->mag_index = --j;
+		obj = zinfo->mag_shortcut[j];
+		zinfo->mag_shortcut[j] = NULL;	/* SAFETY */
+		if (flags & SAFLAG_ZERO)
+			bzero(obj, size);
+		return obj;
+	}
+
+	/*
 	 * Locate a slab with available space.  If no slabs are available
 	 * back-off to the empty list and if we still come up dry allocate
 	 * a new slab (which will try the depot first).
 	 */
 retry:
-	slgd = &slglobal;
-	zinfo = &slgd->zone[zi];
 	if ((slab = zinfo->avail_base) == NULL) {
 		if ((slab = zinfo->empty_base) == NULL) {
 			/*
@@ -767,6 +814,7 @@ retry:
 				return(NULL);
 			slab->next = zinfo->avail_base;
 			zinfo->avail_base = slab;
+			++zinfo->avail_count;
 			slab->state = AVAIL;
 			if (slgd->biggest_index < zi)
 				slgd->biggest_index = zi;
@@ -778,6 +826,7 @@ retry:
 			zinfo->empty_base = slab->next;
 			slab->next = zinfo->avail_base;
 			zinfo->avail_base = slab;
+			++zinfo->avail_count;
 			slab->state = AVAIL;
 			--zinfo->empty_count;
 		}
@@ -809,6 +858,7 @@ retry:
 	 */
 	if (slab->navail == 0) {
 		zinfo->avail_base = slab->next;
+		--zinfo->avail_count;
 		slab->state = FULL;
 		TAILQ_INSERT_TAIL(&slgd->full_zones, slab, entry);
 		goto retry;
@@ -920,9 +970,9 @@ memfree(void *ptr, int flags)
 	slab_t slab;
 	slab_t stmp;
 	slab_t *slabp;
-	char *obj;
 	int bmi;
 	int bno;
+	int j;
 	u_long *bmp;
 
 	/*
@@ -948,7 +998,28 @@ memfree(void *ptr, int flags)
 	else
 		bcopy(weirdary, ptr, sizeof(weirdary));
 #endif
+	slgd = &slglobal;
 
+	/*
+	 * Use mag_shortcut[] when possible
+	 */
+	if (slgd->masked == 0 && slab->chunk_size <= NOMSLABSIZE) {
+		struct zoneinfo *zinfo;
+
+		zinfo = &slgd->zone[slab->zone_index];
+		j = zinfo->mag_index;
+		if (j < NMAGSHORTCUT) {
+			zinfo->mag_shortcut[j] = ptr;
+			zinfo->mag_index = j + 1;
+			return;
+		}
+	}
+
+	/*
+	 * Free to slab and increment navail.  We can delay incrementing
+	 * navail to prevent the slab from being destroyed out from under
+	 * us while we do other optimizations.
+	 */
 	bno = ((uintptr_t)ptr - (uintptr_t)slab->chunks) / slab->chunk_size;
 	bmi = bno >> LONG_BITS_SHIFT;
 	bno &= (LONG_BITS - 1);
@@ -957,15 +1028,16 @@ memfree(void *ptr, int flags)
 	MASSERT(bmi >= 0 && bmi < slab->nmax);
 	MASSERT((*bmp & (1LU << bno)) == 0);
 	atomic_set_long(bmp, 1LU << bno);
-	atomic_add_int(&slab->navail, 1);
 
-	/*
-	 * We can only do the following if we own the slab
-	 */
-	slgd = &slglobal;
 	if (slab->slgd == slgd) {
+		/*
+		 * We can only do the following if we own the slab.  Note
+		 * that navail can be incremented by any thread even if
+		 * we own the slab.
+		 */
 		struct zoneinfo *zinfo;
 
+		atomic_add_int(&slab->navail, 1);
 		if (slab->free_index > bmi) {
 			slab->free_index = bmi;
 			slab->free_bit = bno;
@@ -976,22 +1048,26 @@ memfree(void *ptr, int flags)
 		zinfo = &slgd->zone[slab->zone_index];
 
 		/*
-		 * Freeing an object from a full slab will move it to the
-		 * available list.  If the available list already has a
-		 * slab we terminate the full slab instead, moving it to
-		 * the depot.
+		 * Freeing an object from a full slab makes it less than
+		 * full.  The slab must be moved to the available list.
+		 *
+		 * If the available list has too many slabs, release some
+		 * to the depot.
 		 */
 		if (slab->state == FULL) {
 			TAILQ_REMOVE(&slgd->full_zones, slab, entry);
-			if (zinfo->avail_base == NULL) {
-				slab->state = AVAIL;
-				stmp = zinfo->avail_base;
-				slab->next = stmp;
-				zinfo->avail_base = slab;
-			} else {
+			slab->state = AVAIL;
+			stmp = zinfo->avail_base;
+			slab->next = stmp;
+			zinfo->avail_base = slab;
+			++zinfo->avail_count;
+			while (zinfo->avail_count > opt_cache) {
+				slab = zinfo->avail_base;
+				zinfo->avail_base = slab->next;
+				--zinfo->avail_count;
 				slabterm(slgd, slab);
-				goto done;
 			}
+			goto done;
 		}
 
 		/*
@@ -1007,6 +1083,7 @@ memfree(void *ptr, int flags)
 			while ((stmp = *slabp) != slab)
 				slabp = &stmp->next;
 			*slabp = slab->next;
+			--zinfo->avail_count;
 
 			if (opt_free || opt_cache == 0) {
 				/*
@@ -1044,6 +1121,63 @@ memfree(void *ptr, int flags)
 				zinfo->empty_base = slab;
 			}
 		}
+	} else if (slab->slgd == NULL && slab->navail + 1 == slab->nmax) {
+		slglobaldata_t sldepot;
+
+		/*
+		 * If freeing to a slab owned by the global depot, and
+		 * the slab becomes completely EMPTY, try to move it to
+		 * the correct list.
+		 */
+		sldepot = &slglobaldepot;
+		if (__isthreaded)
+			_SPINLOCK(&sldepot->lock);
+		if (slab->slgd == NULL && slab->navail + 1 == slab->nmax) {
+			struct zoneinfo *zinfo;
+
+			/*
+			 * Move the slab to the empty list
+			 */
+			MASSERT(slab->state == AVAIL);
+			atomic_add_int(&slab->navail, 1);
+			zinfo = &sldepot->zone[slab->zone_index];
+			slabp = &zinfo->avail_base;
+			while (slab != *slabp)
+				slabp = &(*slabp)->next;
+			*slabp = slab->next;
+			--zinfo->avail_count;
+
+			/*
+			 * Clean out excessive empty entries from the
+			 * depot.
+			 */
+			slab->state = EMPTY;
+			slab->next = zinfo->empty_base;
+			zinfo->empty_base = slab;
+			++zinfo->empty_count;
+			while (zinfo->empty_count > opt_cache) {
+				slab = zinfo->empty_base;
+				zinfo->empty_base = slab->next;
+				--zinfo->empty_count;
+				slab->state = UNKNOWN;
+				if (__isthreaded)
+					_SPINUNLOCK(&sldepot->lock);
+				slabfree(slab);
+				if (__isthreaded)
+					_SPINLOCK(&sldepot->lock);
+			}
+		} else {
+			atomic_add_int(&slab->navail, 1);
+		}
+		if (__isthreaded)
+			_SPINUNLOCK(&sldepot->lock);
+	} else {
+		/*
+		 * We can't act on the slab other than by adjusting navail
+		 * (and the bitmap which we did in the common code at the
+		 * top).
+		 */
+		atomic_add_int(&slab->navail, 1);
 	}
 done:
 	;
@@ -1061,7 +1195,6 @@ slaballoc(int zi, size_t chunking, size_t chunk_size)
 	region_t region;
 	void *save;
 	slab_t slab;
-	slab_t stmp;
 	size_t slab_desire;
 	size_t slab_size;
 	size_t region_mask;
@@ -1083,20 +1216,24 @@ slaballoc(int zi, size_t chunking, size_t chunk_size)
 	 * resulting in a large VSZ.
 	 */
 	slgd = &slglobal;
-	sldepot = slgd->sldepot;
+	sldepot = &slglobaldepot;
 	zinfo = &sldepot->zone[zi];
 
-	while ((slab = zinfo->avail_base) != NULL) {
-		if ((void *)slab == LOCKEDPTR) {
-			cpu_pause();
-			continue;
-		}
-		if (atomic_cmpset_ptr(&zinfo->avail_base, slab, LOCKEDPTR)) {
+	if (zinfo->avail_base) {
+		if (__isthreaded)
+			_SPINLOCK(&sldepot->lock);
+		slab = zinfo->avail_base;
+		if (slab) {
 			MASSERT(slab->slgd == NULL);
 			slab->slgd = slgd;
 			zinfo->avail_base = slab->next;
-			return(slab);
+			--zinfo->avail_count;
+			if (__isthreaded)
+				_SPINUNLOCK(&sldepot->lock);
+			return slab;
 		}
+		if (__isthreaded)
+			_SPINUNLOCK(&sldepot->lock);
 	}
 
 	/*
@@ -1107,7 +1244,9 @@ slaballoc(int zi, size_t chunking, size_t chunk_size)
 
 	/*
 	 * Calculate the start of the data chunks relative to the start
-	 * of the slab.
+	 * of the slab.  If chunk_size is a power of 2 we guarantee
+	 * power of 2 alignment.  If it is not we guarantee alignment
+	 * to the chunk size.
 	 */
 	if ((chunk_size ^ (chunk_size - 1)) == (chunk_size << 1) - 1) {
 		ispower2 = 1;
@@ -1410,40 +1549,48 @@ slabfree(slab_t slab)
 static void
 slabterm(slglobaldata_t slgd, slab_t slab)
 {
-	slglobaldata_t sldepot = slgd->sldepot;
+	slglobaldata_t sldepot;
 	struct zoneinfo *zinfo;
-	slab_t dnext;
 	int zi = slab->zone_index;
 
 	slab->slgd = NULL;
 	--slgd->nslabs;
+	sldepot = &slglobaldepot;
 	zinfo = &sldepot->zone[zi];
 
 	/*
-	 * If the slab can be freed and the depot is either locked or not
-	 * empty, then free the slab.
+	 * Move the slab to the avail list or the empty list.
 	 */
-	if (slab->navail == slab->nmax && zinfo->avail_base) {
-		slab->state = UNKNOWN;
-		slabfree(slab);
-		return;
+	if (__isthreaded)
+		_SPINLOCK(&sldepot->lock);
+	if (slab->navail == slab->nmax) {
+		slab->state = EMPTY;
+		slab->next = zinfo->empty_base;
+		zinfo->empty_base = slab;
+		++zinfo->empty_count;
+	} else {
+		slab->state = AVAIL;
+		slab->next = zinfo->avail_base;
+		zinfo->avail_base = slab;
+		++zinfo->avail_count;
 	}
-	slab->state = AVAIL;
 
 	/*
-	 * Link the slab into the depot
+	 * Clean extra slabs out of the empty list
 	 */
-	for (;;) {
-		dnext = zinfo->avail_base;
-		cpu_ccfence();
-		if ((void *)dnext == LOCKEDPTR) {
-			cpu_pause();
-			continue;
-		}
-		slab->next = dnext;
-		if (atomic_cmpset_ptr(&zinfo->avail_base, dnext, slab))
-			break;
+	while (zinfo->empty_count > opt_cache) {
+		slab = zinfo->empty_base;
+		zinfo->empty_base = slab->next;
+		--zinfo->empty_count;
+		slab->state = UNKNOWN;
+		if (__isthreaded)
+			_SPINUNLOCK(&sldepot->lock);
+		slabfree(slab);
+		if (__isthreaded)
+			_SPINLOCK(&sldepot->lock);
 	}
+	if (__isthreaded)
+		_SPINUNLOCK(&sldepot->lock);
 }
 
 /*
@@ -1541,3 +1688,9 @@ _mpanic(const char *ctl, ...)
 	}
 	abort();
 }
+
+__weak_reference(__malloc, malloc);
+__weak_reference(__calloc, calloc);
+__weak_reference(__posix_memalign, posix_memalign);
+__weak_reference(__realloc, realloc);
+__weak_reference(__free, free);

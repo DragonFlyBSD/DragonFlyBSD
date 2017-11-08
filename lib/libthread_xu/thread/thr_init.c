@@ -287,6 +287,7 @@ _libpthread_init(struct pthread *curthread)
 		if (td_eventismember(&_thread_event_mask, TD_CREATE))
 			_thr_report_creation(curthread, curthread);
 		_thr_rtld_init();
+		_thr_malloc_init();
 		_thr_sem_init();
 	}
 }
