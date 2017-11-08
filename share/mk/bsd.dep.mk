@@ -19,6 +19,8 @@
 #
 # MKDEPCMD	Makefile dependency list program [mkdep]
 #
+# MKDEPINTDEPS	Extra internal dependencies for intermediates [not set]
+#
 # SRCS          List of source files (c, c++, assembler)
 #
 #
