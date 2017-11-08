@@ -17,6 +17,11 @@ CFLAGS+=-DINET6
 DPADD=	${LIBWRAP}
 LDADD=	-lwrap
 
+# XXX NOSHARED libwrap.a(rfc931.o): multiple definition of 'rfc931_timeout'
+.if defined(NOSHARED) && ( ${NOSHARED} != "no" && ${NOSHARED} != "NO" )
+LDFLAGS+=	-Wl,--allow-multiple-definition
+.endif
+
 .PATH:	${.CURDIR}/../../contrib/tcp_wrappers
 
 .include <bsd.prog.mk>
