@@ -233,6 +233,12 @@ struct vm_map_entry {
 #define MAP_RESERVE_SLOP	64
 #define MAP_RESERVE_HYST	(MAP_RESERVE_SLOP - MAP_RESERVE_SLOP / 8)
 
+/*
+ * vm_map_lookup wflags
+ */
+#define FW_WIRED	0x0001
+#define FW_DIDCOW	0x0002
+
 static __inline u_char   
 vm_map_entry_behavior(struct vm_map_entry *entry)
 {                  
@@ -632,8 +638,9 @@ int vm_map_insert (vm_map_t, int *, void *, void *,
 		   vm_ooffset_t, vm_offset_t, vm_offset_t,
 		   vm_maptype_t, vm_subsys_t id,
 		   vm_prot_t, vm_prot_t, int);
-int vm_map_lookup (vm_map_t *, vm_offset_t, vm_prot_t, vm_map_entry_t *, vm_object_t *,
-    vm_pindex_t *, vm_prot_t *, boolean_t *);
+int vm_map_lookup (vm_map_t *, vm_offset_t, vm_prot_t,
+		vm_map_entry_t *, vm_object_t *,
+		vm_pindex_t *, vm_prot_t *, int *);
 void vm_map_lookup_done (vm_map_t, vm_map_entry_t, int);
 boolean_t vm_map_lookup_entry (vm_map_t, vm_offset_t, vm_map_entry_t *);
 int vm_map_wire (vm_map_t, vm_offset_t, vm_offset_t, int);

@@ -144,7 +144,7 @@ struct faultstate {
 	int map_generation;
 	int shared;
 	int first_shared;
-	boolean_t wired;
+	int wflags;
 	struct vnode *vp;
 };
 
@@ -348,8 +348,9 @@ virtual_copy_ok(struct faultstate *fs)
  * a wiring fault or if the FS entry is wired.
  */
 #define TRYPAGER(fs)	\
-		(fs->object->type != OBJT_DEFAULT && \
-		(((fs->fault_flags & VM_FAULT_WIRE_MASK) == 0) || fs->wired))
+		(fs->object->type != OBJT_DEFAULT &&			\
+		(((fs->fault_flags & VM_FAULT_WIRE_MASK) == 0) ||	\
+		 (fs->wflags & FW_WIRED)))
 
 /*
  * vm_fault:
@@ -416,7 +417,7 @@ RetryFault:
 	fs.map = map;
 	result = vm_map_lookup(&fs.map, vaddr, fault_type,
 			       &fs.entry, &fs.first_object,
-			       &first_pindex, &fs.first_prot, &fs.wired);
+			       &first_pindex, &fs.first_prot, &fs.wflags);
 
 	/*
 	 * If the lookup failed or the map protections are incompatible,
@@ -455,13 +456,15 @@ RetryFault:
 		 * currently COW RO sections now, because it is NOT desirable
 		 * to COW .text.  We simply keep .text from ever being COW'ed
 		 * and take the heat that one cannot debug wired .text sections.
+		 *
+		 * XXX Try to allow the above by specifying OVERRIDE_WRITE.
 		 */
 		result = vm_map_lookup(&fs.map, vaddr,
 				       VM_PROT_READ|VM_PROT_WRITE|
 				        VM_PROT_OVERRIDE_WRITE,
 				       &fs.entry, &fs.first_object,
 				       &first_pindex, &fs.first_prot,
-				       &fs.wired);
+				       &fs.wflags);
 		if (result != KERN_SUCCESS) {
 			/* could also be KERN_FAILURE_NOFAULT */
 			result = KERN_FAILURE;
@@ -527,7 +530,7 @@ RetryFault:
 			goto done2;
 		}
 		pmap_enter(fs.map->pmap, vaddr, &fakem, fs.prot | inherit_prot,
-			   fs.wired, fs.entry);
+			   (fs.wflags & FW_WIRED), fs.entry);
 		goto done_success;
 	}
 
@@ -565,7 +568,7 @@ RetryFault:
 	/*
 	 * If the entry is wired we cannot change the page protection.
 	 */
-	if (fs.wired)
+	if (fs.wflags & FW_WIRED)
 		fault_type = fs.first_prot;
 
 	/*
@@ -660,9 +663,9 @@ RetryFault:
 	if (debug_fault > 0) {
 		--debug_fault;
 		kprintf("VM_FAULT result %d addr=%jx type=%02x flags=%02x "
-			"fs.m=%p fs.prot=%02x fs.wired=%02x fs.entry=%p\n",
+			"fs.m=%p fs.prot=%02x fs.wflags=%02x fs.entry=%p\n",
 			result, (intmax_t)vaddr, fault_type, fault_flags,
-			fs.m, fs.prot, fs.wired, fs.entry);
+			fs.m, fs.prot, fs.wflags, fs.entry);
 	}
 
 	if (result == KERN_TRY_AGAIN) {
@@ -687,7 +690,7 @@ RetryFault:
 	KKASSERT(fs.lookup_still_valid == TRUE);
 	vm_page_flag_set(fs.m, PG_REFERENCED);
 	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot | inherit_prot,
-		   fs.wired, fs.entry);
+		   fs.wflags & FW_WIRED, fs.entry);
 
 	if (didilock)
 		vm_map_deinterlock(fs.map, &ilock);
@@ -700,7 +703,7 @@ RetryFault:
 	 * can find it.
 	 */
 	if (fs.fault_flags & VM_FAULT_WIRE_MASK) {
-		if (fs.wired)
+		if (fs.wflags & FW_WIRED)
 			vm_page_wire(fs.m);
 		else
 			vm_page_unwire(fs.m, 1);
@@ -724,7 +727,7 @@ RetryFault:
 	 */
 	if ((fault_flags & VM_FAULT_BURST) &&
 	    (fs.fault_flags & VM_FAULT_WIRE_MASK) == 0 &&
-	    fs.wired == 0) {
+	    (fs.wflags & FW_WIRED) == 0) {
 		if (fs.first_shared == 0 && fs.shared == 0) {
 			vm_prefault(fs.map->pmap, vaddr,
 				    fs.entry, fs.prot, fault_flags);
@@ -842,9 +845,11 @@ vm_fault_page(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type,
 	int result;
 	int retry;
 	int growstack;
+	int didcow;
 	vm_prot_t orig_fault_type = fault_type;
 
 	retry = 0;
+	didcow = 0;
 	fs.hardfault = 0;
 	fs.fault_flags = fault_flags;
 	KKASSERT((fault_flags & VM_FAULT_WIRE_MASK) == 0);
@@ -857,10 +862,10 @@ vm_fault_page(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type,
 	 * NULL for host lookups of vkernel maps in VMM mode.
 	 *
 	 * NOTE: pmap_fault_page_quick() might not busy the page.  If
-	 *	 VM_PROT_WRITE or VM_PROT_OVERRIDE_WRITE is set in
-	 *	 fault_type and pmap_fault_page_quick() returns non-NULL,
-	 *	 it will safely dirty the returned vm_page_t for us.  We
-	 *	 cannot safely dirty it here (it might not be busy).
+	 *	 VM_PROT_WRITE is set in fault_type and pmap_fault_page_quick()
+	 *	 returns non-NULL, it will safely dirty the returned vm_page_t
+	 *	 for us.  We cannot safely dirty it here (it might not be
+	 *	 busy).
 	 */
 	fs.m = pmap_fault_page_quick(map->pmap, vaddr, fault_type, busyp);
 	if (fs.m) {
@@ -904,7 +909,7 @@ RetryFault:
 	fs.map = map;
 	result = vm_map_lookup(&fs.map, vaddr, fault_type,
 			       &fs.entry, &fs.first_object,
-			       &first_pindex, &fs.first_prot, &fs.wired);
+			       &first_pindex, &fs.first_prot, &fs.wflags);
 
 	if (result != KERN_SUCCESS) {
 		if (result == KERN_FAILURE_NOFAULT) {
@@ -942,7 +947,7 @@ RetryFault:
 				        VM_PROT_OVERRIDE_WRITE,
 				       &fs.entry, &fs.first_object,
 				       &first_pindex, &fs.first_prot,
-				       &fs.wired);
+				       &fs.wflags);
 		if (result != KERN_SUCCESS) {
 			/* could also be KERN_FAILURE_NOFAULT */
 			*errorp = KERN_FAILURE;
@@ -1041,7 +1046,7 @@ RetryFault:
 	/*
 	 * If the entry is wired we cannot change the page protection.
 	 */
-	if (fs.wired)
+	if (fs.wflags & FW_WIRED)
 		fault_type = fs.first_prot;
 
 	/*
@@ -1102,6 +1107,7 @@ RetryFault:
 	if (result == KERN_TRY_AGAIN) {
 		vm_object_drop(fs.first_object);
 		++retry;
+		didcow |= fs.wflags & FW_DIDCOW;
 		goto RetryFault;
 	}
 	if (result != KERN_SUCCESS) {
@@ -1119,28 +1125,30 @@ RetryFault:
 	}
 
 	/*
-	 * DO NOT UPDATE THE PMAP!!!  This function may be called for
-	 * a pmap unrelated to the current process pmap, in which case
-	 * the current cpu core will not be listed in the pmap's pm_active
-	 * mask.  Thus invalidation interlocks will fail to work properly.
+	 * Generally speaking we don't want to update the pmap because
+	 * this routine can be called many times for situations that do
+	 * not require updating the pmap, not to mention the page might
+	 * already be in the pmap.
 	 *
-	 * (for example, 'ps' uses procfs to read program arguments from
-	 * each process's stack).
-	 *
-	 * In addition to the above this function will be called to acquire
-	 * a page that might already be faulted in, re-faulting it
-	 * continuously is a waste of time.
-	 *
-	 * XXX could this have been the cause of our random seg-fault
-	 *     issues?  procfs accesses user stacks.
+	 * However, if our vm_map_lookup() results in a COW, we need to
+	 * at least remove the pte from the pmap to guarantee proper
+	 * visibility of modifications made to the process.  For example,
+	 * modifications made by vkernel uiocopy/related routines and
+	 * modifications made by ptrace().
 	 */
 	vm_page_flag_set(fs.m, PG_REFERENCED);
 #if 0
-	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot, fs.wired, NULL);
+	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot,
+		   fs.wflags & FW_WIRED, NULL);
 	mycpu->gd_cnt.v_vm_faults++;
 	if (curthread->td_lwp)
 		++curthread->td_lwp->lwp_ru.ru_minflt;
 #endif
+	if ((fs.wflags | didcow) | FW_DIDCOW) {
+		pmap_remove(fs.map->pmap,
+			    vaddr & ~PAGE_MASK,
+			    (vaddr & ~PAGE_MASK) + PAGE_SIZE);
+	}
 
 	/*
 	 * On success vm_fault_object() does not unlock or deallocate, and fs.m
@@ -1172,7 +1180,7 @@ RetryFault:
 	 * Unlock everything, and return the held or busied page.
 	 */
 	if (busyp) {
-		if (fault_type & (VM_PROT_WRITE|VM_PROT_OVERRIDE_WRITE)) {
+		if (fault_type & VM_PROT_WRITE) {
 			vm_page_dirty(fs.m);
 			*busyp = 1;
 		} else {
@@ -1248,7 +1256,7 @@ RetryFault:
 	fs.first_object = object;
 	fs.entry = &entry;
 	fs.first_prot = fault_type;
-	fs.wired = 0;
+	fs.wflags = 0;
 	/*fs.map_generation = 0; unused */
 
 	/*
@@ -3106,7 +3114,7 @@ vm_prefault_quick(pmap_t pmap, vm_offset_t addra,
 		 * If the page is in PQ_CACHE we have to fall-through
 		 * and hard-busy it so we can move it out of PQ_CACHE.
 		 */
-		if ((prot & (VM_PROT_WRITE|VM_PROT_OVERRIDE_WRITE)) == 0) {
+		if ((prot & VM_PROT_WRITE) == 0) {
 			m = vm_page_lookup_sbusy_try(object, pindex,
 						     0, PAGE_SIZE);
 			if (m == NULL)

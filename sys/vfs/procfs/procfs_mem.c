@@ -155,7 +155,7 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 		}
 
 		/*
-		 * Cleanup tmap then create a temporary KVA mapping and
+		 * Cleanup pmap then create a temporary KVA mapping and
 		 * do the I/O.  We can switch between cpus so don't bother
 		 * synchronizing across all cores.
 		 */

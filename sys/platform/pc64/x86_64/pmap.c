@@ -1415,11 +1415,11 @@ pmap_extract_done(void *handle)
  * If busyp is not NULL and this function sets *busyp to zero, the returned
  * page is held (and not busied).
  *
- * If VM_PROT_WRITE or VM_PROT_OVERRIDE_WRITE is set in prot, and the pte
- * is already writable, the returned page will be dirtied.  If the pte
- * is not already writable NULL is returned.  In otherwords, if either
- * bit is set and a vm_page_t is returned, any COW will already have happened
- * and that page can be written by the caller.
+ * If VM_PROT_WRITE is set in prot, and the pte is already writable, the
+ * returned page will be dirtied.  If the pte is not already writable NULL
+ * is returned.  In otherwords, if the bit is set and a vm_page_t is returned,
+ * any COW will already have happened and that page can be written by the
+ * caller.
  *
  * WARNING! THE RETURNED PAGE IS ONLY HELD AND NOT SUITABLE FOR READING
  *	    OR WRITING AS-IS.
@@ -1439,7 +1439,7 @@ pmap_fault_page_quick(pmap_t pmap, vm_offset_t va, vm_prot_t prot, int *busyp)
 
 		req = pmap->pmap_bits[PG_V_IDX] |
 		      pmap->pmap_bits[PG_U_IDX];
-		if (prot & (VM_PROT_WRITE | VM_PROT_OVERRIDE_WRITE))
+		if (prot & VM_PROT_WRITE)
 			req |= pmap->pmap_bits[PG_RW_IDX];
 
 		pt_pv = pv_get(pmap, pmap_pt_pindex(va), NULL);
@@ -1453,7 +1453,7 @@ pmap_fault_page_quick(pmap_t pmap, vm_offset_t va, vm_prot_t prot, int *busyp)
 		pte_pv = pv_get_try(pmap, pmap_pte_pindex(va), NULL, &error);
 		if (pte_pv && error == 0) {
 			m = pte_pv->pv_m;
-			if (prot & (VM_PROT_WRITE | VM_PROT_OVERRIDE_WRITE)) {
+			if (prot & VM_PROT_WRITE) {
 				/* interlocked by presence of pv_entry */
 				vm_page_dirty(m);
 			}

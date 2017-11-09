@@ -65,7 +65,7 @@ pread (struct proc *procp, unsigned int addr, unsigned int *retval) {
 	vm_offset_t	pageno;		/* page number */
 	vm_map_entry_t	out_entry;
 	vm_prot_t	out_prot;
-	boolean_t	wired;
+	int		wflags;
 	vm_pindex_t	pindex;
 
 	/* Map page into kernel space */
@@ -77,7 +77,7 @@ pread (struct proc *procp, unsigned int addr, unsigned int *retval) {
 
 	tmap = map;
 	rv = vm_map_lookup(&tmap, pageno, VM_PROT_READ, &out_entry,
-			   &object, &pindex, &out_prot, &wired);
+			   &object, &pindex, &out_prot, &wflags);
 
 	if (rv != KERN_SUCCESS)
 		return EINVAL;
@@ -116,7 +116,7 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum) {
 	vm_offset_t	pageno;		/* page number */
 	vm_map_entry_t	out_entry;
 	vm_prot_t	out_prot;
-	boolean_t	wired;
+	int		wflags;
 	vm_pindex_t	pindex;
 	boolean_t	fix_prot = 0;
 
@@ -146,7 +146,7 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum) {
 	}
 
 	/*
-	 * Now we need to get the page.  out_entry, out_prot, wired, and
+	 * Now we need to get the page.  out_entry, out_prot, wflags, and
 	 * single_use aren't used.  One would think the vm code would be
 	 * a *bit* nicer...  We use tmap because vm_map_lookup() can
 	 * change the map argument.
@@ -154,7 +154,7 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum) {
 
 	tmap = map;
 	rv = vm_map_lookup(&tmap, pageno, VM_PROT_WRITE, &out_entry,
-			   &object, &pindex, &out_prot, &wired);
+			   &object, &pindex, &out_prot, &wflags);
 	if (rv != KERN_SUCCESS)
 		return EINVAL;
 

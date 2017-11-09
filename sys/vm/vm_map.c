@@ -4138,7 +4138,7 @@ vm_map_lookup(vm_map_t *var_map,		/* IN/OUT */
 	      vm_object_t *object,		/* OUT */
 	      vm_pindex_t *pindex,		/* OUT */
 	      vm_prot_t *out_prot,		/* OUT */
-	      boolean_t *wired)			/* OUT */
+	      int *wflags)			/* OUT */
 {
 	vm_map_entry_t entry;
 	vm_map_t map = *var_map;
@@ -4219,9 +4219,11 @@ RetryLookup:
 	 * If this page is not pageable, we have to get it for all possible
 	 * accesses.
 	 */
-	*wired = (entry->wired_count != 0);
-	if (*wired)
+	*wflags = 0;
+	if (entry->wired_count) {
+		*wflags |= FW_WIRED;
 		prot = fault_type = entry->protection;
+	}
 
 	/*
 	 * Virtual page tables may need to update the accessed (A) bit
@@ -4284,6 +4286,7 @@ RetryLookup:
 			}
 			use_read_lock = 0;
 			vm_map_entry_shadow(entry, 0);
+			*wflags |= FW_DIDCOW;
 		} else {
 			/*
 			 * We're attempting to read a copy-on-write page --
