@@ -9,7 +9,6 @@
 #    libthread_xu|libc_r must be built before libpthread.
 #    libpthread must be built before liblmza, libprop.
 #    libprop must be built before libdevattr
-#    libpam must be built before pam_module
 #
 # libmd must be built before libfetch, libarchive.
 # libcrypt must be built before libfetch, libarchive, and libradius.
@@ -101,8 +100,7 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libvgl \
 	libwrap \
 	liby \
-	libypclnt \
-	pam_module
+	libypclnt
 
 .if make(install)
 SUBDIR:=	libc ${SUBDIR:Nlibc}

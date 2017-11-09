@@ -1072,7 +1072,7 @@ lib/libopie__L: lib/librecrypto__L
 _prebuild_libs+= lib/libopie
 
 _prebuild_libs+= lib/libradius lib/libsbuf lib/libtacplus lib/libm \
-		lib/libpam lib/libypclnt lib/lib${THREAD_LIB} \
+		lib/libpam/libpam lib/libypclnt lib/lib${THREAD_LIB} \
 		lib/libpthread lib/liblzma lib/libprop lib/libdevattr
 
 _generic_libs+=	usr.bin/flex/lib

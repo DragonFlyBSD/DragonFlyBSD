@@ -359,4 +359,3 @@ dolastlog(pam_handle_t *pamh, int quiet, const struct passwd *pwd,
 #endif
 
 PAM_MODULE_ENTRY("pam_lastlog");
-

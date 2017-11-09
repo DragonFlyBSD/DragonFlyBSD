@@ -1,4 +1,4 @@
-CONTRIBDIR= ${.CURDIR}/../../../contrib/pam_passwdqc
+CONTRIBDIR= ${.CURDIR}/../../../../contrib/pam_passwdqc
 .PATH: ${CONTRIBDIR}
 
 LIB=	pam_passwdqc

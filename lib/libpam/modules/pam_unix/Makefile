@@ -1,4 +1,3 @@
-# $DragonFly: src/lib/pam_module/pam_unix/Makefile,v 1.5 2006/02/18 19:40:10 joerg Exp $
 
 LIB=	pam_unix
 SRCS=	pam_unix.c
