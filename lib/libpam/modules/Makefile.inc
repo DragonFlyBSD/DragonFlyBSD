@@ -10,7 +10,8 @@ TARGET_SHLIBDIR=	${LIBDIR}/security
 
 CFLAGS+=	-I${LIBPAMDIR}
 LDADD+=	-lpam
-DPADD+=	${LIBPAM}
+# XXX workaround for recursive depends
+DPADD+= ${LIBPAM:M*libpam.a:R:S/$/.so/}
 
 OPENPAM_DIR=	${.CURDIR}/../../../../contrib/openpam
 

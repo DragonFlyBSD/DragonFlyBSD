@@ -1,4 +1,11 @@
-LIB=	pam
+
+#
+# Only build shared lib here, libpam.a is built by static_libpam.
+# This is done to avoid circular dependencies for static modules.
+#
+.if !defined(LIB)
+SHLIB_NAME=	libpam.so.${SHLIB_MAJOR}
+.endif
 
 SRCDIR=	${.CURDIR}/../../../contrib/openpam
 
@@ -6,7 +13,7 @@ MODULE_DIR=	${LIBDIR}/security
 
 CFLAGS+= -DHAVE_CONFIG_H
 CFLAGS+= -DOPENPAM_MODULES_DIR='"${MODULE_DIR}/"'
-CFLAGS+= -I${SRCDIR}/lib -I${SRCDIR}/include -I${.CURDIR}
+CFLAGS+= -I${SRCDIR}/lib -I${SRCDIR}/include -I${.CURDIR}/../libpam
 
 WARNS=	3
 
@@ -64,9 +71,6 @@ SRCS=	\
 # Local files
 SRCS+=	pam_debug_log.c
 
-# only when OPENPAM_STATIC_MODULES
-#SRCS+=	openpam_static.c
-
 PAMINCS=openpam.h \
 	openpam_attr.h \
 	openpam_version.h \
@@ -74,10 +78,10 @@ PAMINCS=openpam.h \
 	pam_constants.h \
 	pam_modules.h \
 	pam_types.h
-INCS=	${PAMINCS:S;^;${SRCDIR}/include/security/;} security/pam_mod_misc.h
+INCS?=	${PAMINCS:S;^;${SRCDIR}/include/security/;} security/pam_mod_misc.h
 INCSDIR=	${INCLUDEDIR}/security
 
-MAN=	openpam.3 \
+MAN?=	openpam.3 \
 	openpam_borrow_cred.3 \
 	openpam_free_data.3 \
 	openpam_free_envlist.3 \
