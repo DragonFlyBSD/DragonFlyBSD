@@ -28,7 +28,6 @@
  *
  *	@(#)defs.h	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/crypto/telnet/telnetd/defs.h,v 1.1.1.1.8.1 2002/04/13 10:59:08 markm Exp $
- * $DragonFly: src/crypto/telnet/telnetd/defs.h,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 /*
