@@ -109,9 +109,7 @@ SUBDIR:=	libc ${SUBDIR:Nlibc}
 .endif
 
 .if !defined(NO_CRYPT)
-#.  if defined(WANT_HAMMER2)
 _libdmsg=	libdmsg
-#.  endif
 
 SUBDIR+=	libldns \
 		libtcplay

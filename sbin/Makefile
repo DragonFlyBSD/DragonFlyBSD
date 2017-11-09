@@ -118,14 +118,12 @@ SUBDIR+= ${MACHINE_ARCH}
 SUBDIR+=cryptdisks \
 	tcplay
 
-# include hammer2 utilities (requires LibreSSL)
+# include hammer2 utilities (requires LibreSSL/OpenSSL)
 #
-#.  if defined(WANT_HAMMER2)
 _mount_hammer2= mount_hammer2
 _newfs_hammer2=	newfs_hammer2
 _hammer2=	hammer2
-.  endif
-#.endif
+.endif
 
 # maximum parallelism
 #
