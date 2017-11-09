@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/linker_set.h,v 1.4.2.1 2000/08/02 21:52:20 peter Exp $
- * $DragonFly: src/sys/sys/linker_set.h,v 1.4 2004/08/27 12:08:41 joerg Exp $
  */
 
 #ifndef _SYS_LINKER_SET_H_
@@ -64,7 +63,7 @@
 	__GLOBL(__CONCAT(__start_set_,set));				\
 	__GLOBL(__CONCAT(__stop_set_,set));				\
 	static void const * const __set_##set##_sym_##sym		\
-	__section("set_" #set) __used = &sym
+	__section("set_" #set) __used = &(sym)
 
 #define TEXT_SET(set, sym) __MAKE_SET(set, sym)
 #define DATA_SET(set, sym) __MAKE_SET(set, sym)
@@ -75,6 +74,9 @@
 #define SET_DECLARE(set, ptype)				\
 	extern ptype *__CONCAT(__start_set_,set);	\
 	extern ptype *__CONCAT(__stop_set_,set)
+#define SET_DECLARE_WEAK(set, ptype)				\
+	extern ptype __weak_symbol *__CONCAT(__start_set_,set);	\
+	extern ptype __weak_symbol *__CONCAT(__stop_set_,set)
 
 #define SET_BEGIN(set)		(&__CONCAT(__start_set_,set))
 #define SET_LIMIT(set)		(&__CONCAT(__stop_set_,set))
