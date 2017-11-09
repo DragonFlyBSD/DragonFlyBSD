@@ -59,7 +59,7 @@
 #include <libtelnet/encrypt.h>
 #endif
 #include <libtelnet/misc.h>
-
+
 #define	strip(x) ((my_want_state_is_wont(TELOPT_BINARY)) ? ((x)&0x7f) : (x))
 
 static unsigned char	subbuffer[SUBBUFSIZE],
@@ -154,7 +154,7 @@ static int is_unique(char *, char **, char **);
  */
 
 Clocks clocks;
-
+
 /*
  * Initialize telnet environment.
  */
@@ -188,7 +188,7 @@ init_telnet(void)
     flushline = 1;
     telrcv_state = TS_DATA;
 }
-
+
 
 /*
  * These routines are in charge of sending option negotiations
@@ -1068,7 +1068,7 @@ lm_mode(unsigned char *cmd, int len, int init)
 	setconnmode(0);	/* set changed mode */
 }
 
-
+
 
 /*
  * slc()
@@ -1612,7 +1612,7 @@ env_opt_end(int emptyok)
 	}
 }
 
-
+
 
 int
 telrcv(void)
@@ -1997,7 +1997,7 @@ telsnd(void)
 	ring_consumed(&ttyiring, count);
     return returnValue||count;		/* Non-zero if we did anything */
 }
-
+
 /*
  * Scheduler()
  *
@@ -2050,7 +2050,7 @@ Scheduler(int block)
     }
     return returnValue;
 }
-
+
 #ifdef	AUTHENTICATION
 #define __unusedhere
 #else
@@ -2117,7 +2117,7 @@ telnet(char *user __unusedhere)
 	}
     }
 }
-
+
 #if	0	/* XXX - this not being in is a bug */
 /*
  * nextitem()
@@ -2182,7 +2182,7 @@ netclear(void)
 {
 	/* Deleted */
 }
-
+
 /*
  * These routines add various telnet commands to the data stream.
  */

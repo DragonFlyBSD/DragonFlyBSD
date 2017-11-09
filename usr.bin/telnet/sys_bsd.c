@@ -796,7 +796,7 @@ NetNonblockingIO(int fd, int onoff)
     ioctl(fd, FIONBIO, (char *)&onoff);
 }
 
-
+
 /*
  * Various signal handling routines.
  */
@@ -871,7 +871,7 @@ ayt(int sig __unused)
 }
 #endif
 
-
+
 void
 sys_telnet_init(void)
 {

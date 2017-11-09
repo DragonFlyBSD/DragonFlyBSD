@@ -28,7 +28,6 @@
  *
  * @(#)terminal.c	8.2 (Berkeley) 2/16/95
  * $FreeBSD: src/crypto/telnet/telnet/terminal.c,v 1.2.8.2 2002/04/13 10:59:08 markm Exp $
- * $DragonFly: src/crypto/telnet/telnet/terminal.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 #include <arpa/telnet.h>
@@ -153,7 +152,7 @@ ttyflush(int drop)
     return n0 - n + 1;
 }
 
-
+
 /*
  * These routines decides on what the mode should be (based on the values
  * of various global variables).

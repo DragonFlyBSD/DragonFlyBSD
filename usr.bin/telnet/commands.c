@@ -279,7 +279,7 @@ struct sendlist {
     int		nbyte;		/* Number of bytes to send this command */
     int		what;		/* Character to be sent (<0 ==> special) */
 };
-
+
 
 static int
 	send_esc(void),
@@ -504,7 +504,7 @@ send_help(void)
     }
     return(0);
 }
-
+
 /*
  * The following are the routines and data structures referred
  * to by the arguments to the "toggle" command.
@@ -844,7 +844,7 @@ toggle(int argc, char *argv[])
     }
     return retval;
 }
-
+
 /*
  * The following perform the "set" command.
  */
@@ -1040,7 +1040,7 @@ unsetcmd(int argc, char *argv[])
     }
     return 1;
 }
-
+
 /*
  * The following are the data structures and routines for the
  * 'mode' command.
@@ -1197,7 +1197,7 @@ modecmd(int argc, char *argv[])
     }
     return 0;
 }
-
+
 /*
  * The following data structures and routines implement the
  * "display" command.
@@ -1263,7 +1263,7 @@ display(int argc, char *argv[])
 #undef	doset
 #undef	dotog
 }
-
+
 /*
  * The following are the data structures, and many of the routines,
  * relating to command processing.
@@ -1420,7 +1420,7 @@ logout(void)
 	return 1;
 }
 
-
+
 /*
  * The SLC command.
  */
@@ -1493,7 +1493,7 @@ slccmd(int argc, char *argv[])
     slcstate();
     return 1;
 }
-
+
 /*
  * The ENVIRON command.
  */
@@ -2657,7 +2657,7 @@ command(int top, const char *tbuf, int cnt)
 	setconnmode(0);
     }
 }
-
+
 /*
  * Help command.
  */

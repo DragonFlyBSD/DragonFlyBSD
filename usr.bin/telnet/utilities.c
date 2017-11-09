@@ -92,7 +92,7 @@ SetSockOpt(int fd, int level, int option, int yesno)
     return setsockopt(fd, level, option,
 				(char *)&yesno, sizeof yesno);
 }
-
+
 /*
  * The following are routines used to print out debugging information.
  */
