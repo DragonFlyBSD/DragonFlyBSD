@@ -115,7 +115,7 @@ extern int
     netdata,		/* Print out network data flow */
     prettydump,		/* Print "netdata" output in user readable format */
     termdata,		/* Print out terminal data flow */
-    debug,		/* Debug level */
+    telnet_debug,	/* Debug level */
     doaddrlookup,	/* do a reverse lookup? */
     clienteof;		/* Client received EOF */
 

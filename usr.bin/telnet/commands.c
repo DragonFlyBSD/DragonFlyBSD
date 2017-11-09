@@ -522,11 +522,11 @@ togdebug(void)
 {
 #ifndef	NOT43
     if (net > 0 &&
-	(SetSockOpt(net, SOL_SOCKET, SO_DEBUG, debug)) < 0) {
+	(SetSockOpt(net, SOL_SOCKET, SO_DEBUG, telnet_debug)) < 0) {
 	    perror("setsockopt (SO_DEBUG)");
     }
 #else	/* NOT43 */
-    if (debug) {
+    if (telnet_debug) {
 	if (net > 0 && SetSockOpt(net, SOL_SOCKET, SO_DEBUG, 1) < 0)
 	    perror("setsockopt (SO_DEBUG)");
     } else
@@ -731,7 +731,7 @@ static struct togglelist Togglelist[] = {
     { "debug",
 	"debugging",
 	    (int (*)(int))togdebug,
-		&debug,
+		&telnet_debug,
 		    "turn on socket level debugging" },
     { "netdata",
 	"printing of hexadecimal network data (debugging)",
@@ -2395,7 +2395,7 @@ tn(int argc, char *argv[])
 	}
 #endif	/* defined(IPPROTO_IP) && defined(IP_TOS) */
 
-	if (debug && SetSockOpt(net, SOL_SOCKET, SO_DEBUG, 1) < 0) {
+	if (telnet_debug && SetSockOpt(net, SOL_SOCKET, SO_DEBUG, 1) < 0) {
 		perror("setsockopt (SO_DEBUG)");
 	}
 
