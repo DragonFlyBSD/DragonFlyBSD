@@ -192,6 +192,7 @@ static void usage(void);
 int	xdr_dir(XDR *, char *);
 int	xdr_explist(XDR *, caddr_t);
 int	xdr_explist_brief(XDR *, caddr_t);
+int	xdr_explist_common(XDR *, caddr_t, int);
 int	xdr_fhs(XDR *, caddr_t);
 int	xdr_mlist(XDR *, caddr_t);
 void	terminate(int) __dead2;
@@ -951,7 +952,7 @@ xdr_fhs(XDR *xdrsp, caddr_t cp)
 }
 
 int
-xdr_mlist(XDR *xdrsp, caddr_t cp)
+xdr_mlist(XDR *xdrsp, caddr_t cp __unused)
 {
 	struct mountlist *mlp;
 	int true = 1;
@@ -979,7 +980,7 @@ xdr_mlist(XDR *xdrsp, caddr_t cp)
  * Xdr conversion for export list
  */
 int
-xdr_explist_common(XDR *xdrsp, caddr_t cp, int brief)
+xdr_explist_common(XDR *xdrsp, caddr_t cp __unused, int brief)
 {
 	struct exportlist *ep;
 	int false = 0;
@@ -1093,7 +1094,7 @@ xdr_explist_brief(XDR *xdrsp, caddr_t cp)
 }
 
 char *line;
-int linesize;
+size_t linesize;
 FILE *exp_file;
 
 /*
@@ -2687,18 +2688,18 @@ sa_rawaddr(struct sockaddr *sa, int *nbytes) {
 }
 
 void
-huphandler1(int sig)
+huphandler1(int sig __unused)
 {
 	got_sighup1 = 1;
 }
 
 void
-huphandler2(int sig)
+huphandler2(int sig __unused)
 {
 	got_sighup2 = 1;
 }
 
-void terminate(int sig)
+void terminate(int sig __unused)
 {
 	pidfile_remove(pfh);
 	rpcb_unset(RPCPROG_MNT, RPCMNT_VER1, NULL);
