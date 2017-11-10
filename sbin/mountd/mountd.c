@@ -256,9 +256,9 @@ main(int argc, char **argv)
 	int maxrec = RPC_MAXDATASIZE;
 
 	def_anon.cr_ref = 1;
-	def_anon.cr_uid = (uid_t)-2;
+	def_anon.cr_uid = (uid_t)65534;
 	def_anon.cr_ngroups = 1;
-	def_anon.cr_groups[0] = (gid_t)-2;
+	def_anon.cr_groups[0] = (gid_t)65533;
 
 	/* Check that another mountd isn't already running. */
 	pfh = pidfile_open(_PATH_MOUNTDPID, 0600, &otherpid);
@@ -2283,8 +2283,8 @@ parsecred(char *namelist, struct ucred *cr)
 	 * Set up the unprivileged user.
 	 */
 	cr->cr_ref = 1;
-	cr->cr_uid = -2;
-	cr->cr_groups[0] = -2;
+	cr->cr_uid = 65534;
+	cr->cr_groups[0] = 65533;
 	cr->cr_ngroups = 1;
 	/*
 	 * Get the user's password table entry.
