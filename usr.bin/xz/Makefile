@@ -45,6 +45,11 @@ CFLAGS+= -I${LIBLZMADIR} -I${XZDIR}/common
 DPADD=	${LIBLZMA}
 LDADD=	-llzma
 
+.if defined(NOSHARED) && ( ${NOSHARED} != "no" && ${NOSHARED} != "NO" )
+DPADD+=	${LIBPTHREAD}
+LDADD+=	-lpthread
+.endif
+
 .PATH: ${XZDIR}/scripts
 SCRIPTS=	xzdiff xzgrep xzless xzmore
 MAN+=	${SCRIPTS:S/$/.1/g}
