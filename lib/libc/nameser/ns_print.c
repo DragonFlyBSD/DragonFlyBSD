@@ -13,11 +13,9 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * $Id: ns_print.c,v 1.10 2005/04/27 04:56:40 sra Exp $
  */
-
-#ifndef lint
-static const char rcsid[] = "$Id: ns_print.c,v 1.10 2005/04/27 04:56:40 sra Exp $";
-#endif
 
 /* Import. */
 

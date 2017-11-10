@@ -13,11 +13,9 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * $Id: ns_parse.c,v 1.9 2007/08/27 03:32:26 marka Exp $
  */
-
-#ifndef lint
-static const char rcsid[] = "$Id: ns_parse.c,v 1.9 2007/08/27 03:32:26 marka Exp $";
-#endif
 
 /* Import. */
 

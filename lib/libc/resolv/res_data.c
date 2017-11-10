@@ -13,11 +13,9 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * $Id: res_data.c,v 1.5 2007/09/14 05:32:25 marka Exp $
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static const char rcsid[] = "$Id: res_data.c,v 1.5 2007/09/14 05:32:25 marka Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include "port_before.h"
 

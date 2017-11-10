@@ -13,15 +13,13 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * $Id: ev_streams.c,v 1.5 2005/04/27 04:56:36 sra Exp $
  */
 
 /* ev_streams.c - implement asynch stream file IO for the eventlib
  * vix 04mar96 [initial]
  */
-
-#if !defined(LINT) && !defined(CODECENTER)
-static const char rcsid[] = "$Id: ev_streams.c,v 1.5 2005/04/27 04:56:36 sra Exp $";
-#endif
 
 #include "port_before.h"
 #ifndef _LIBC

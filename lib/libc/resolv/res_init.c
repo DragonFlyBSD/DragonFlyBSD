@@ -1,4 +1,9 @@
 /*
+ * @(#)res_init.c	8.1 (Berkeley) 6/7/93
+ * $Id: res_init.c,v 1.23 2007/07/09 01:43:23 marka Exp $
+ */
+
+/*
  * Copyright (c) 1985, 1989, 1993
  *    The Regents of the University of California.  All rights reserved.
  * 
@@ -63,11 +68,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static const char sccsid[] = "@(#)res_init.c	8.1 (Berkeley) 6/7/93";
-static const char rcsid[] = "$Id: res_init.c,v 1.23 2007/07/09 01:43:23 marka Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 #include "port_before.h"
 

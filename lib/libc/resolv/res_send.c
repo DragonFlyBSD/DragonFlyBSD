@@ -1,4 +1,9 @@
 /*
+ * @(#)res_send.c	8.1 (Berkeley) 6/4/93
+ * $Id: res_send.c,v 1.18.10.1 2008/01/27 02:06:46 marka Exp $
+ */
+
+/*
  * Copyright (c) 1985, 1989, 1993
  *    The Regents of the University of California.  All rights reserved.
  * 
@@ -63,11 +68,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static const char sccsid[] = "@(#)res_send.c	8.1 (Berkeley) 6/4/93";
-static const char rcsid[] = "$Id: res_send.c,v 1.18.10.1 2008/01/27 02:06:46 marka Exp $";
-#endif /* LIBC_SCCS and not lint */
 
 /*! \file
  * \brief

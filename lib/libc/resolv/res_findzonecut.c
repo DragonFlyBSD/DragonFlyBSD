@@ -1,7 +1,3 @@
-#if !defined(lint) && !defined(SABER)
-static const char rcsid[] = "$Id: res_findzonecut.c,v 1.10 2005/10/11 00:10:16 marka Exp $";
-#endif /* not lint */
-
 /*
  * Copyright (c) 2004 by Internet Systems Consortium, Inc. ("ISC")
  * Copyright (c) 1999 by Internet Software Consortium.
@@ -17,6 +13,8 @@ static const char rcsid[] = "$Id: res_findzonecut.c,v 1.10 2005/10/11 00:10:16 m
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * $Id: res_findzonecut.c,v 1.10 2005/10/11 00:10:16 marka Exp $
  */
 
 /* Import. */

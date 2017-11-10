@@ -13,15 +13,13 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * $Id: ev_timers.c,v 1.6 2005/04/27 04:56:36 sra Exp $
  */
 
 /* ev_timers.c - implement timers for the eventlib
  * vix 09sep95 [initial]
  */
-
-#if !defined(LINT) && !defined(CODECENTER)
-static const char rcsid[] = "$Id: ev_timers.c,v 1.6 2005/04/27 04:56:36 sra Exp $";
-#endif
 
 /* Import. */
 
