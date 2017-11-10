@@ -15,5 +15,6 @@ CFLAGS+=-DLOGIN_CAP -DPAM
 
 DPADD=	${LIBPAM} ${LIBUTIL}
 LDADD=	${MINUSLPAM} -lutil
+LDFLAGS+= ${LDFLAGSPAM}
 
 .include <bsd.prog.mk>

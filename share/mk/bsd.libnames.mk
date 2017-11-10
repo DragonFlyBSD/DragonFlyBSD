@@ -63,9 +63,15 @@ LIBOPIE?=	${DESTDIR}${LIBDIR}/libopie.a
 LIBPAM?=	${DESTDIR}${LIBDIR}/libpam.a
 MINUSLPAM?=	-lpam
 .if defined(NOSHARED) && ${NOSHARED} != "no" && ${NOSHARED} != "NO"
-LIBPAM+=	${LIBRADIUS} ${LIBTACPLUS} ${LIBOPIE} ${LIBCRYPT} ${LIBMD} \
-		${LIBUTIL}
-MINUSLPAM+=	-lradius -ltacplus -lopie -lcrypt -lmd -lutil
+.if !defined(NO_CRYPT)
+LIBPAM+=	${LIBSSH}
+MINUSLPAM+=	-lprivate_ssh
+.endif
+LIBPAM+=	${LIBRADIUS} ${LIBTACPLUS} ${LIBOPIE} ${LIBYPCLNT} \
+		${LIBCRYPT} ${LIBMD} ${LIBRECRYPTO} ${LIBUTIL}
+MINUSLPAM+=	-lradius -ltacplus -lopie -lypclnt \
+		-lcrypt -lmd -lprivate_crypto -lutil
+LDFLAGSPAM+=	${PRIVATELIB_LDFLAGS}
 .endif
 
 LIBPANEL?=	${DESTDIR}${LIBDIR}/priv/libprivate_panel.a

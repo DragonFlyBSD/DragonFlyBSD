@@ -1,12 +1,12 @@
 # From:	@(#)Makefile	8.3 (Berkeley) 4/2/94
 # $FreeBSD: src/usr.bin/passwd/Makefile,v 1.46 2004/12/29 08:16:39 ache Exp $
-# $DragonFly: src/usr.bin/passwd/Makefile,v 1.5 2007/08/27 16:50:57 pavalos Exp $
 
 PROG=	passwd
 BINOWN=	root
 BINMODE= 4555
 DPADD=	${LIBPAM}
 LDADD=	${MINUSLPAM}
+LDFLAGS+= ${LDFLAGSPAM}
 .if !defined(NO_NIS)
 LINKS=	${BINDIR}/passwd ${BINDIR}/yppasswd
 MLINKS=	passwd.1 yppasswd.1

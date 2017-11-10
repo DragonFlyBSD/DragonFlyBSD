@@ -39,6 +39,7 @@ CFLAGS+=-DINET6
 CFLAGS+=-DUSE_PAM
 DPADD+= ${LIBPAM}
 LDADD+= ${MINUSLPAM}
+LDFLAGS+= ${LDFLAGSPAM}
 .endif
 
 .include <bsd.prog.mk>
