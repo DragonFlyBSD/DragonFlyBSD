@@ -27,6 +27,9 @@ SRCS=	autoload.c \
 
 BOOT_DLOADER=	yes
 
+# DO NOT USE -static, this is a special case
+.undef NOSHARED
+
 CFLAGS+=	-I${.CURDIR}
 CFLAGS+=	-I${.CURDIR}/arch/${MACHINE}
 CFLAGS+=	-I${.CURDIR}/../include

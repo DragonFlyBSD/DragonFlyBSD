@@ -9,6 +9,9 @@ BINDIR=		/libexec
 SYMLINKS=	${BINDIR}/${PROG} /usr/libexec/${PROG}
 WARNS?=		2
 
+# DO NOT USE -static, this is a special case
+.undef NOSHARED
+
 # To activate LD_DEBUG functionality, define ENABLE_DEBUG
 # e.g. make -DENABLE_DEBUG
 

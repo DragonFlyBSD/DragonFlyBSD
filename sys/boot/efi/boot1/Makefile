@@ -9,6 +9,9 @@ WARNS?=		6
 # architecture-specific loader code
 SRCS=	boot1.c self_reloc.c start.S ufs_module.c
 
+# DO NOT USE -static, this is a special case
+.undef NOSHARED
+
 CFLAGS+=	-I.
 CFLAGS+=	-I${.CURDIR}/../include
 CFLAGS+=	-I${.CURDIR}/../include/${MACHINE}
