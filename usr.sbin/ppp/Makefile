@@ -68,8 +68,9 @@ CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 CFLAGS+=-DNORADIUS
 .else
 SRCS+=	radius.c
-LDADD+=	-lradius
-DPADD+= ${LIBRADIUS}
+LDADD+=	-lradius -lprivate_crypto
+DPADD+= ${LIBRADIUS} ${LIBRECRYPTO}
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 .endif
 
 .if defined(WANT_NETGRAPH7)

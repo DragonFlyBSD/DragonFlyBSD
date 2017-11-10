@@ -1,8 +1,9 @@
 PROG=	bsdtar
 SRCS=	bsdtar.c cmdline.c creation_set.c read.c subst.c util.c write.c
 SRCS+=	err.c line_reader.c passphrase.c
-DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBLZMA} ${LIBMD} ${LIBZ}
-LDADD=	-larchive -lbz2 -llzma -lmd -lz
+DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBLZMA} ${LIBMD} ${LIBRECRYPTO} ${LIBZ}
+LDADD=	-larchive -lbz2 -llzma -lmd -lprivate_crypto -lz
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive/tar
 .PATH: ${CONTRIBDIR} ${CONTRIBDIR}/../libarchive_fe
