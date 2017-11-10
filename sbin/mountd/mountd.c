@@ -379,7 +379,7 @@ main(int argc, char **argv)
 	 * list.
 	 */
 	if (nhosts == 0) {
-		hosts = malloc(sizeof(char**));
+		hosts = malloc(sizeof(char *));
 		if (hosts == NULL)
 			out_of_mem();
 		hosts[0] = "*";
@@ -928,7 +928,7 @@ int
 xdr_fhs(XDR *xdrsp, caddr_t cp)
 {
 	struct fhreturn *fhrp = (struct fhreturn *)cp;
-	u_long ok = 0, len, auth;
+	long ok = 0, len, auth;
 
 	if (!xdr_long(xdrsp, &ok))
 		return (0);
@@ -1346,11 +1346,8 @@ get_exportlist(int incremental)
 	struct grouplist *grp, *tgrp;
 	struct statfs *fsp, *mntbufp;
 	struct vfsconf vfc;
-	char *dirp;
 	int num, i;
 	int done;
-
-	dirp = NULL;
 
 	/*
 	 * First, get rid of the old list
@@ -2276,7 +2273,8 @@ parsecred(char *namelist, struct ucred *cr)
 	char *names;
 	struct passwd *pw;
 	struct group *gr;
-	gid_t ngroups, groups[NGROUPS + 1];
+	gid_t groups[NGROUPS + 1];
+	int ngroups;
 
 	/*
 	 * Set up the unprivileged user.
