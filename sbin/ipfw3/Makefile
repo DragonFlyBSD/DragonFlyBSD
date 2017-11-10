@@ -7,4 +7,7 @@ SRCS += ipfw3sync.c ipfw3sync.h
 SRCS += ipfw3nat.c ipfw3nat.h
 WARNS?=	2
 
+# DO NOT USE -static, dlopen() for ipfw3 modules
+.undef NOSHARED
+
 .include <bsd.prog.mk>

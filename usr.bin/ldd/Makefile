@@ -2,4 +2,7 @@
 
 PROG=	ldd
 
+# DO NOT USE -static, dlopen() for shared libs
+.undef NOSHARED
+
 .include <bsd.prog.mk>

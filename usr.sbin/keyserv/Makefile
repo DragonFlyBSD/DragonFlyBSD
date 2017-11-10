@@ -6,6 +6,9 @@ WARNS?=	2
 
 MAN=	keyserv.8
 
+# DO NOT USE -static, dlopen() for _des_crypt symbol
+# XXX .undef NOSHARED
+
 CFLAGS+= -DKEYSERV_RANDOM -DBROKEN_DES -I.
 
 DPADD=	${LIBRPCSVC}
