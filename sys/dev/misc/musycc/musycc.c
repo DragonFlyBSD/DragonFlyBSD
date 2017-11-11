@@ -57,7 +57,7 @@
 #include "pci_if.h"
 
 #include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>  
+#include <netgraph/netgraph.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -95,16 +95,16 @@ struct groupr {
 	u_int32_t	tcct[32];  /* Channel Configuration [5-26]	     */
 	u_int8_t	rtsm[128]; /* Time Slot Map [5-22] 		     */
 	u_int8_t	rscm[256]; /* Subchannel Map [5-24]		     */
-	u_int32_t	rcct[32];  /* Channel Configuration [5-26]           */
+	u_int32_t	rcct[32];  /* Channel Configuration [5-26]	     */
 	u_int32_t	__glcd;	   /* Global Configuration Descriptor [5-10] */
 	u_int32_t	__iqp;	   /* Interrupt Queue Pointer [5-36]	     */
 	u_int32_t	__iql;	   /* Interrupt Queue Length [5-36]	     */
 	u_int32_t	grcd;	   /* Group Configuration Descriptor [5-16]  */
 	u_int32_t	mpd;	   /* Memory Protection Descriptor [5-18]    */
-	u_int32_t	mld;	   /* Message Length Descriptor [5-20]       */
+	u_int32_t	mld;	   /* Message Length Descriptor [5-20]	     */
 	u_int32_t	pcd;	   /* Port Configuration Descriptor [5-19]   */
-	u_int32_t	__rbist;   /* Receive BIST status [5-4]              */
-	u_int32_t	__tbist;   /* Receive BIST status [5-4]              */
+	u_int32_t	__rbist;   /* Receive BIST status [5-4]		     */
+	u_int32_t	__tbist;   /* Receive BIST status [5-4]		     */
 };
 
 struct globalr {
@@ -121,20 +121,20 @@ struct globalr {
 	u_int32_t	tcct[32];  /* Channel Configuration [5-26]	     */
 	u_int8_t	rtsm[128]; /* Time Slot Map [5-22] 		     */
 	u_int8_t	rscm[256]; /* Subchannel Map [5-24]		     */
-	u_int32_t	rcct[32];  /* Channel Configuration [5-26]           */
+	u_int32_t	rcct[32];  /* Channel Configuration [5-26]	     */
 	u_int32_t	glcd;	   /* Global Configuration Descriptor [5-10] */
 	u_int32_t	iqp;	   /* Interrupt Queue Pointer [5-36]	     */
 	u_int32_t	iql;	   /* Interrupt Queue Length [5-36]	     */
 	u_int32_t	grcd;	   /* Group Configuration Descriptor [5-16]  */
 	u_int32_t	mpd;	   /* Memory Protection Descriptor [5-18]    */
-	u_int32_t	mld;	   /* Message Length Descriptor [5-20]       */
+	u_int32_t	mld;	   /* Message Length Descriptor [5-20]	     */
 	u_int32_t	pcd;	   /* Port Configuration Descriptor [5-19]   */
-	u_int32_t	rbist;   /* Receive BIST status [5-4]              */
-	u_int32_t	tbist;   /* Receive BIST status [5-4]              */
+	u_int32_t	rbist;   /* Receive BIST status [5-4]		     */
+	u_int32_t	tbist;   /* Receive BIST status [5-4]		     */
 };
 
 /*
- * Because the chan_group must be 2k aligned we create this super 
+ * Because the chan_group must be 2k aligned we create this super
  * structure so we can use the remaining 476 bytes for something useful
  */
 
@@ -276,7 +276,7 @@ static  ng_disconnect_t musycc_disconnect;
 static struct ng_type ngtypestruct = {
 	NG_VERSION,
 	NG_NODETYPE,
-	NULL, 
+	NULL,
 	musycc_constructor,
 	musycc_rcvmsg,
 	musycc_shutdown,
@@ -337,6 +337,7 @@ parse_ts(const char *s, int *nbit)
 
 static LIST_HEAD(, csoftc) sc_list = LIST_HEAD_INITIALIZER(&sc_list);
 
+#if 0
 static void
 poke_847x(void *dummy)
 {
@@ -363,6 +364,7 @@ poke_847x(void *dummy)
 #endif
 	}
 }
+#endif
 
 static void
 init_card(struct csoftc *csc)
@@ -375,14 +377,19 @@ init_card(struct csoftc *csc)
 	tsleep(csc, PCATCH, "icard", hz / 10);
 	csc->reg->gbp = vtophys(csc->ram);
 	csc->ram->glcd = 0x3f30;	/* XXX: designer magic */
-	
+
 	csc->ram->iqp = vtophys(csc->iqd);
 	csc->ram->iql = NIQD - 1;
 	csc->ram->dacbp = 0;		/* 32bit only */
 
 	csc->reg->srd = csc->serial[0].last = 0x400;
 	tsleep(&csc->serial[0].last, PCATCH, "con1", hz);
+/*
 	timeout(poke_847x, NULL, 1);
+*/
+#if 0
+	DELAY(20000);
+#endif
 	csc->state = C_RUNNING;
 }
 
@@ -452,7 +459,7 @@ status_chans(struct softc *sc, char *s)
 		    time_uptime - scp->last_xmit,
 		    time_uptime - scp->last_txerr,
 		    time_uptime - scp->last_txdrop);
-		ksprintf(s + strlen(s), " TXdrop %lu Pend %lu", 
+		ksprintf(s + strlen(s), " TXdrop %lu Pend %lu",
 		    scp->tx_drop,
 		    scp->tx_pending);
 		ksprintf(s + strlen(s), " CRC %lu Dribble %lu Long %lu Short %lu Abort %lu",
@@ -540,45 +547,45 @@ init_8370(struct softc *sc)
 	int i;
 	u_int32_t *p = sc->ds8370;
 
-        p[0x001] = 0x80; /* CR0 - Reset */
-        DELAY(20);
-        p[0x001] = 0x00; /* CR0 - E1, RFRAME: FAS only */
-        DELAY(20);
-	if (sc->clocksource == INT) 
+	p[0x001] = 0x80; /* CR0 - Reset */
+	DELAY(20);
+	p[0x001] = 0x00; /* CR0 - E1, RFRAME: FAS only */
+	DELAY(20);
+	if (sc->clocksource == INT)
 		p[0x002] = 0x40; /* JAT_CR - XXX */
 	else
 		p[0x002] = 0x20; /* JAT_CR - XXX */
-        p[0x00D] = 0x01; /* IER6 - ONESEC */
-        p[0x014] = 0x00; /* LOOP - */
-        p[0x015] = 0x00; /* DL3_TS - */
-        p[0x016] = 0x00; /* DL3_BIT - */
-        p[0x017] = 0x00; /* DL3_BIT - */
-        p[0x018] = 0xFF; /* PIO - XXX */
-        p[0x019] = 0x3c; /* POE - CLADO_OE|RCKO_OE */
+	p[0x00D] = 0x01; /* IER6 - ONESEC */
+	p[0x014] = 0x00; /* LOOP - */
+	p[0x015] = 0x00; /* DL3_TS - */
+	p[0x016] = 0x00; /* DL3_BIT - */
+	p[0x017] = 0x00; /* DL3_BIT - */
+	p[0x018] = 0xFF; /* PIO - XXX */
+	p[0x019] = 0x3c; /* POE - CLADO_OE|RCKO_OE */
 	if (sc->clocksource == INT)
 		p[0x01A] = 0x37; /* CMUX - RSBCKI(RSBCKI), TSBCKI(CLADO), CLADO(RCKO), TCKI(CLADO) */
 	else
 		p[0x01A] = 0x37; /* CMUX - RSBCKI(RSBCKI), TSBCKI(RSBCKI), CLADO(RCKO), TCKI(RCKO) */
 
-        /* I.431/G.775 */
-        p[0x020] = 0x41; /* LIU_CR - SQUELCH */
-        p[0x022] = 0xb1; /* RLIU_CR - */
-        p[0x024] = 0x1d; /* VGA_MAX - */
-        p[0x027] = 0xba; /* DSLICE - */
-        p[0x028] = 0xda; /* EQ_OUT - */
-        p[0x02a] = 0xa6; /* PRE_EQ - */
+	/* I.431/G.775 */
+	p[0x020] = 0x41; /* LIU_CR - SQUELCH */
+	p[0x022] = 0xb1; /* RLIU_CR - */
+	p[0x024] = 0x1d; /* VGA_MAX - */
+	p[0x027] = 0xba; /* DSLICE - */
+	p[0x028] = 0xda; /* EQ_OUT - */
+	p[0x02a] = 0xa6; /* PRE_EQ - */
 
 	if (sc->framing == E1U || sc->framing == T1U)
 		p[0x040] = 0x49; /* RCRO - XXX */
 	else
 		p[0x040] = 0x09; /* RCRO - XXX */
 
-        p[0x041] = 0x00; /* RPATT - XXX */
-        p[0x045] = 0x00; /* RALM - XXX */
-        p[0x046] = 0x05; /* LATCH - LATCH_CNT|LATCH_ALM */
+	p[0x041] = 0x00; /* RPATT - XXX */
+	p[0x045] = 0x00; /* RALM - XXX */
+	p[0x046] = 0x05; /* LATCH - LATCH_CNT|LATCH_ALM */
 
-        p[0x068] = 0x4c; /* TLIU_CR - TERM|Pulse=6 */
-        p[0x070] = 0x04; /* TCR0 - TFRAME=4 */
+	p[0x068] = 0x4c; /* TLIU_CR - TERM|Pulse=6 */
+	p[0x070] = 0x04; /* TCR0 - TFRAME=4 */
 
 	if (sc->framing == E1U || sc->framing == T1U)
 		p[0x071] = 0x41; /* TCR1 - TZCS */
@@ -590,19 +597,19 @@ init_8370(struct softc *sc)
 	else
 		p[0x072] = 0x1b; /* TCR1 - INS_YEL|INS_MF|INS_CRC|INS_FBIT */
 
-        p[0x073] = 0x00; /* TERROR */
-        p[0x074] = 0x00; /* TMAN */
+	p[0x073] = 0x00; /* TERROR */
+	p[0x074] = 0x00; /* TMAN */
 
 	if (sc->framing == E1U || sc->framing == T1U)
 		p[0x075] = 0x0; /* TALM */
 	else
 		p[0x075] = 0x10; /* TALM - AUTO_YEL */
 
-        p[0x076] = 0x00; /* TPATT */
-        p[0x077] = 0x00; /* TLP */
+	p[0x076] = 0x00; /* TPATT */
+	p[0x077] = 0x00; /* TLP */
 
-        p[0x090] = 0x05; /* CLAD_CR - XXX */
-        p[0x091] = 0x01; /* CSEL - 2048kHz */
+	p[0x090] = 0x05; /* CLAD_CR - XXX */
+	p[0x091] = 0x01; /* CSEL - 2048kHz */
 
 	if (sc->framing == E1U || sc->framing == T1U) {
 		p[0x0a0] = 0x00;
@@ -610,22 +617,22 @@ init_8370(struct softc *sc)
 		p[0x0b1] = 0x00;
 	}
 
-        p[0x0d0] = 0x46; /* SBI_CR - SBI=6 */
-        p[0x0d1] = 0x70; /* RSB_CR - XXX */
-        p[0x0d2] = 0x00; /* RSYNC_BIT - 0 */
-        p[0x0d3] = 0x00; /* RSYNC_TS - 0 */
-        p[0x0d4] = 0x30; /* TSB_CR - XXX */
-        p[0x0d5] = 0x00; /* TSYNC_BIT - 0 */
-        p[0x0d6] = 0x00; /* TSYNC_TS - 0 */
-	if (sc->framing == E1U || sc->framing == T1U) 
+	p[0x0d0] = 0x46; /* SBI_CR - SBI=6 */
+	p[0x0d1] = 0x70; /* RSB_CR - XXX */
+	p[0x0d2] = 0x00; /* RSYNC_BIT - 0 */
+	p[0x0d3] = 0x00; /* RSYNC_TS - 0 */
+	p[0x0d4] = 0x30; /* TSB_CR - XXX */
+	p[0x0d5] = 0x00; /* TSYNC_BIT - 0 */
+	p[0x0d6] = 0x00; /* TSYNC_TS - 0 */
+	if (sc->framing == E1U || sc->framing == T1U)
 		p[0x0d7] = 0x05; /* RSIG_CR - 0  | FRZ_OFF*/
-	else 
+	else
 		p[0x0d7] = 0x01; /* RSIG_CR - 0 */
-        p[0x0d8] = 0x00; /* RSIG_FRM - 0 */
-        for (i = 0; i < 32; i ++) {
-                p[0x0e0 + i] = 0x0d; /* SBC$i - RINDO|TINDO|ASSIGN */
-                p[0x100 + i] = 0x00; /* TPC$i - 0 */
-                p[0x180 + i] = 0x00; /* RPC$i - 0 */
+	p[0x0d8] = 0x00; /* RSIG_FRM - 0 */
+	for (i = 0; i < 32; i ++) {
+		p[0x0e0 + i] = 0x0d; /* SBC$i - RINDO|TINDO|ASSIGN */
+		p[0x100 + i] = 0x00; /* TPC$i - 0 */
+		p[0x180 + i] = 0x00; /* RPC$i - 0 */
 	}
 }
 
@@ -707,10 +714,10 @@ musycc_intr0_rx_eom(struct softc *sc, int ch)
 					ng_queue_data(sch->hook, m, NULL);
 				} else {
 					/*
-				         * We didn't get a mbuf cluster,
+					 * We didn't get a mbuf cluster,
 					 * drop received packet, free the
 					 * mbuf we cannot use and recycle
-				         * the mbuf+cluster we already had.
+					 * the mbuf+cluster we already had.
 					 */
 					m_freem(m2);
 					sch->last_rdrop = time_uptime;
@@ -739,7 +746,7 @@ musycc_intr0_rx_eom(struct softc *sc, int ch)
 		} else {
 			sch->last_rxerr = time_uptime;
 			/* Receive error, print some useful info */
-			kprintf("%s %s: RX 0x%08x ", sch->sc->nodename, 
+			kprintf("%s %s: RX 0x%08x ", sch->sc->nodename,
 			    sch->hookname, status);
 			/* Don't print a lot, just the begining will do */
 			if (m->m_len > 16)
@@ -842,12 +849,12 @@ musycc_intr1(void *arg)
 	struct softc *sc;
 	u_int32_t *u;
 	u_int8_t irr;
-	
+
 	csc = arg;
 
 	for (i = 0; i < csc->nchan; i++) {
 		sc = &csc->serial[i];
-                u = sc->ds8370;
+		u = sc->ds8370;
 		irr = u[3];
 		if (irr == 0)
 			continue;
@@ -905,7 +912,7 @@ musycc_config(node_p node, char *set, char *ret)
 
 	sc = node->private;
 	csc = sc->csc;
-	if (csc->state == C_IDLE) 
+	if (csc->state == C_IDLE)
 		init_card(csc);
 	while (csc->state != C_RUNNING)
 		tsleep(&csc->state, PCATCH, "crun", hz/10);
@@ -954,7 +961,7 @@ musycc_config(node_p node, char *set, char *ret)
 		} else {
 			kprintf("%s CONFIG SET [%s]\n", sc->nodename, set);
 			goto barf;
-		}		
+		}
 
 		return;
 	}
@@ -990,7 +997,7 @@ musycc_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_m
 		goto out;
 
 	if (msg->header.cmd == NGM_TEXT_STATUS) {
-		NG_MKRESPONSE(*resp, msg, 
+		NG_MKRESPONSE(*resp, msg,
 		    sizeof(struct ng_mesg) + NG_TEXTRESPONSE, M_NOWAIT);
 		if (*resp == NULL) {
 			kfree(msg, M_NETGRAPH);
@@ -1002,14 +1009,14 @@ musycc_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_m
 		(*resp)->header.arglen = strlen(s) + 1;
 		kfree(msg, M_NETGRAPH);
 		return (0);
-        } else if (msg->header.cmd == NGM_TEXT_CONFIG) {
+	} else if (msg->header.cmd == NGM_TEXT_CONFIG) {
 		if (msg->header.arglen) {
 			s = (char *)msg->data;
 		} else {
 			s = NULL;
 		}
-		
-		NG_MKRESPONSE(*resp, msg, 
+
+		NG_MKRESPONSE(*resp, msg,
 		    sizeof(struct ng_mesg) + NG_TEXTRESPONSE, M_NOWAIT);
 		if (*resp == NULL) {
 			kfree(msg, M_NETGRAPH);
@@ -1021,7 +1028,7 @@ musycc_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_m
 		(*resp)->header.arglen = strlen(r) + 1;
 		kfree(msg, M_NETGRAPH);
 		return (0);
-        }
+	}
 
 out:
 	if (resp)
@@ -1061,7 +1068,7 @@ musycc_newhook(node_p node, hook_p hook, const char *name)
 		;
 	else if (ts & 1)
 		return (EINVAL);
-		
+
 	if (sc->chan[chan] == NULL) {
 		sch = kmalloc(sizeof(*sch), M_MUSYCC, M_WAITOK | M_ZERO);
 		sch->sc = sc;
@@ -1110,7 +1117,7 @@ musycc_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		kprintf("sch->state = %d\n", sch->state);
 		NG_FREE_DATA(m, meta);
 		return (0);
-	} 
+	}
 	if (sch->tx_pending + m->m_pkthdr.len > sch->tx_limit * maxlatency) {
 		sch->tx_drop++;
 		sch->last_txdrop = time_uptime;
@@ -1209,11 +1216,11 @@ musycc_connect(hook_p hook)
 		if (sch->ts & (1 << i)) {
 			sc->ram->rtsm[i] = ch | (4 << 5);
 			sc->ram->ttsm[i] = ch | (4 << 5);
-			nts++;		
+			nts++;
 		}
 	}
 
-	/* 
+	/*
 	 * Find the length of the first run of timeslots.
 	 * XXX: find the longest instead.
 	 */
@@ -1224,8 +1231,8 @@ musycc_connect(hook_p hook)
 		else
 			break;
 	}
-		
-	kprintf("Connect ch= %d ts= %08x nts= %d nbuf = %d\n", 
+
+	kprintf("Connect ch= %d ts= %08x nts= %d nbuf = %d\n",
 	    ch, sch->ts, nts, nbuf);
 
 	/* Reread the Time Slot Map */
@@ -1386,19 +1393,19 @@ musycc_probe(device_t self)
 	char desc[40];
 
 	if (sizeof(struct groupr) != 1572) {
-		kprintf("sizeof(struct groupr) = %d, should be 1572\n",
+		kprintf("sizeof(struct groupr) = %zu, should be 1572\n",
 		    sizeof(struct groupr));
 		return(ENXIO);
 	}
 
 	if (sizeof(struct globalr) != 1572) {
-		kprintf("sizeof(struct globalr) = %d, should be 1572\n",
+		kprintf("sizeof(struct globalr) = %zu, should be 1572\n",
 		    sizeof(struct globalr));
 		return(ENXIO);
 	}
 
 	if (sizeof(struct mycg) > 2048) {
-		kprintf("sizeof(struct mycg) = %d, should be <= 2048\n",
+		kprintf("sizeof(struct mycg) = %zu, should be <= 2048\n",
 		    sizeof(struct mycg));
 		return(ENXIO);
 	}
@@ -1437,10 +1444,10 @@ musycc_attach(device_t self)
 	if (!once) {
 		once++;
 		error = ng_newtype(&ngtypestruct);
-		if (error != 0) 
+		if (error != 0)
 			kprintf("ng_newtype() failed %d\n", error);
 	}
-	kprintf("We have %d pad bytes in mycg\n", 2048 - sizeof(struct mycg));
+	kprintf("We have %zu pad bytes in mycg\n", 2048 - sizeof(struct mycg));
 
 	f = pci_get_function(self);
 	/* For function zero allocate a csoftc */
@@ -1493,7 +1500,7 @@ musycc_attach(device_t self)
 		return (0);
 
 	for (i = 0; i < 2; i++)
-		kprintf("f%d: device %p virtual %p physical %08x\n",
+		kprintf("f%d: device %p virtual %p physical %08lx\n",
 		    i, csc->f[i], csc->virbase[i], csc->physbase[i]);
 
 	csc->reg = (struct globalr *)csc->virbase[0];
@@ -1509,7 +1516,7 @@ musycc_attach(device_t self)
 
 	csc->creg = 0xfe;
 	csc->cregp = &u32p[0x1000];
-	*csc->cregp = csc->creg;	
+	*csc->cregp = csc->creg;
 	for (i = 0; i < csc->nchan; i++) {
 		sc = &csc->serial[i];
 		sc->csc = csc;
@@ -1527,7 +1534,7 @@ musycc_attach(device_t self)
 		if (error) {
 			kprintf("ng_make_node_common() failed %d\n", error);
 			continue;
-		}	
+		}
 		sc->node->private = sc;
 		ksprintf(sc->nodename, "sync-%d-%d-%d",
 			csc->bus,
@@ -1554,7 +1561,7 @@ static device_method_t musycc_methods[] = {
 
 	DEVMETHOD_END
 };
- 
+
 static driver_t musycc_driver = {
 	"musycc",
 	musycc_methods,
@@ -1562,4 +1569,3 @@ static driver_t musycc_driver = {
 };
 
 DRIVER_MODULE(musycc, pci, musycc_driver, musycc_devclass, NULL, NULL);
-
