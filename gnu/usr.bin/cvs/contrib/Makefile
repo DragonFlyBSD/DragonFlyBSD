@@ -16,7 +16,7 @@ FILES=	 README cvshelp.man descend.man intro.doc
 EXAMPDIR=	${SHAREDIR}/examples/cvs
 FILESDIR=	${EXAMPDIR}/contrib
 SCRIPTSDIR=	${FILESDIR}
-PERLPATH=	/usr/bin/perl
+PERLPATH=	/usr/bin/env perl
 CLEANFILES+=	$(SCRIPTS)
 
 .SUFFIXES: .sh .pl .in
