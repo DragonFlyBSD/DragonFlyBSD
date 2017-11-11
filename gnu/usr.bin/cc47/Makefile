@@ -2,7 +2,9 @@ SUBDIR= 	cc_prep
 SUBDIR+=	libiberty
 SUBDIR+=	libdecnumber
 SUBDIR+=	cc_tools
+.if !defined(REALLY_NOSHARED)
 SUBDIR+=	liblto_plugin
+.endif
 SUBDIR+=	libbackend
 SUBDIR+=	libcommon
 SUBDIR+=	libcommon-target

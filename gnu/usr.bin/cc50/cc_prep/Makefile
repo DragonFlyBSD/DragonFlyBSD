@@ -64,6 +64,10 @@ tm.h:
 	echo '#ifndef LIBC_BIONIC'	>> ${.TARGET}
 	echo '# define LIBC_BIONIC 3'	>> ${.TARGET}
 	echo '#endif'			>> ${.TARGET}
+.if defined(REALLY_NOSHARED)
+	echo '#undef HAVE_LTO_PLUGIN'	>> ${.TARGET}
+	echo '#define HAVE_LTO_PLUGIN 0'>> ${.TARGET}
+.endif
 	echo '#ifdef IN_GCC'		>> ${.TARGET}
 .for H in ${TARGET_INC}
 	echo '# include "$H"'		>> ${.TARGET}

@@ -52,7 +52,9 @@ CFLAGS+=	-DDEFAULT_LD_Z_RELRO=0
 
 # link-time optimization requires dlopen() which means ld cannot be built
 # statically and also support -plugin, not even for cross-tools.
+.if !defined(REALLY_NOSHARED)
 .undef NOSHARED
+.endif
 
 ldemul.c: ldemul-list.h
 

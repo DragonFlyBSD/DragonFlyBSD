@@ -44,7 +44,9 @@ CFLAGS+=	-DENABLE_PLUGINS -DHAVE_CONFIG_H
 CFLAGS+=	-DTARGET_SYSTEM_ROOT=\"${USRDATA_PREFIX}\"
 # link-time optimization requires dlopen() which means ld cannot be built
 # statically and also support -plugin, not even for cross-tools.
+.if !defined(REALLY_NOSHARED)
 .undef NOSHARED
+.endif
 
 ldemul.c: ldemul-list.h
 

@@ -12,6 +12,8 @@ SUBDIR+=	libcpp
 SUBDIR+=	libdecnumber
 SUBDIR+=	libiberty
 SUBDIR+=	libiberty-pic
+.if !defined(REALLY_NOSHARED)
 SUBDIR+=	liblto_plugin
+.endif
 
 .include <bsd.subdir.mk>

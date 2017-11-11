@@ -9,6 +9,8 @@ NOMAN=
 
 # link-time optimization requires dlopen() which means ld cannot be built
 # statically and also support -plugin, not even for cross-tools.
+.if !defined(REALLY_NOSHARED)
 .undef NOSHARED
+.endif
 
 .include <bsd.prog.mk>

@@ -16,7 +16,9 @@ CFLAGS+=	-I${SRCDIR}/binutils \
 
 # link-time optimization requires dlopen() which means ar cannot be built
 # statically and also support -plugin, not even for cross-tools.
+.if !defined(REALLY_NOSHARED)
 .undef NOSHARED
+.endif
 
 ${MFILE}: ${SRCDIR}/binutils/doc/ar.1
 	cp ${.ALLSRC} ${.TARGET}
