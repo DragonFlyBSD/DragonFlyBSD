@@ -286,6 +286,7 @@ endfly(void)
 	signal(SIGALRM, SIG_DFL);
 	mvcur(0, COLS - 1, LINES - 1, 0);
 	endwin();
+	setlinebuf(stdout);
 	signal(SIGTSTP, SIG_DFL);
 	signal(SIGINT, oldsig);
 }
