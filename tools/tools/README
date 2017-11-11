@@ -7,8 +7,6 @@ other categories.
 
 Please make a subdir per program, and add a brief description to this file.
 
-commitsdb	A tool for reconstructing commit history using md5
-		checksums of the commit logs.
 convert_usb_ids Convert FreeBSD USB device IDs to DragonFly device IDs.
 crypto		Exercise the crypto framework through /dev/crypto
 editing		Editor modes and the like to help editing FreeBSD code.
