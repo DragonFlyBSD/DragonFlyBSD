@@ -13,7 +13,6 @@ MAN=	ascii.7 \
 	hier.7 \
 	hostname.7 \
 	intro.7 \
-	mailaddr.7 \
 	nls.7 \
 	operator.7 \
 	release.7 \
