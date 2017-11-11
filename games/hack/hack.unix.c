@@ -18,6 +18,8 @@
 
 #include <sys/types.h>	/* for time_t and stat */
 #include <sys/stat.h>
+#include <err.h>
+#include <limits.h>
 #include <time.h>
 
 static struct tm *getlt(void);
@@ -94,13 +96,33 @@ struct stat buf, hbuf;
 void
 gethdate(const char *name)
 {
-/* old version - for people short of space */
-	char *np;
+	const char *p;
+	char *np, *path;
+	char filename[PATH_MAX+1];
 
-	name = "/usr/games/hack";
-	if (stat(name, &hbuf))
-		error("Cannot get status of %s.",
-		      (np = strrchr(name, '/')) ? np + 1 : name);
+	if (strchr(name, '/') != NULL || (p = getenv("PATH")) == NULL)
+		p = "";
+	np = path = strdup(p);	/* Make a copy for strsep. */
+	if (path == NULL)
+		err(1, NULL);
+
+	for (;;) {
+		if ((p = strsep(&np, ":")) == NULL)
+			break;
+		if (*p == '\0')			/* :: */
+			(void) strlcpy(filename, name, sizeof filename);
+		else
+			(void) snprintf(filename, sizeof filename,
+			    "%s/%s", p, name);
+
+		if (stat(filename, &hbuf) == 0) {
+			free(path);
+			return;
+		}
+	}
+	error("Cannot get status of %s.",
+		(p = strrchr(name, '/')) ? p+1 : name);
+	free(path);
 }
 
 bool
