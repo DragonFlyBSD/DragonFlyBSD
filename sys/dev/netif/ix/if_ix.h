@@ -194,6 +194,11 @@ struct ix_i2c_req {
 	uint8_t		data[8];
 };
 
+struct ix_mc_addr {
+	uint8_t		addr[IXGBE_ETH_LENGTH_OF_ADDRESS];
+	uint32_t	vmdq;
+};
+
 struct ix_tx_buf {
 	struct mbuf	*m_head;
 	bus_dmamap_t	map;
@@ -322,6 +327,13 @@ struct ix_softc {
 	uint32_t		link_speed;
 	bool			link_up;
 	boolean_t		sfp_probe;	/* plyggable optics */
+	uint32_t		phy_layer;
+
+	uint32_t		caps;		/* IX_CAP_ */
+#define IX_CAP_DETECT_FANFAIL	0x0001
+#define IX_CAP_TEMP_SENSOR	0x0002
+#define IX_CAP_EEE		0x0004
+#define IX_CAP_LEGACY_INTR	0x0008
 
 	struct ixgbe_hw_stats 	stats;
 
@@ -348,7 +360,7 @@ struct ix_softc {
 	int			nserialize;
 	struct lwkt_serialize	**serializes;
 
-	uint8_t			*mta;		/* Multicast array memory */
+	struct ix_mc_addr	*mta;		/* Multicast array memory */
 
 	int			if_flags;
 	int			advspeed;	/* advertised link speeds */

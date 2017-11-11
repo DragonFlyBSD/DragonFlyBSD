@@ -1,30 +1,30 @@
 /*
- * Copyright (c) 2001-2014, Intel Corporation 
+ * Copyright (c) 2001-2017, Intel Corporation
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without 
+ * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- *  1. Redistributions of source code must retain the above copyright notice, 
+ *  1. Redistributions of source code must retain the above copyright notice,
  *     this list of conditions and the following disclaimer.
  *
- *  2. Redistributions in binary form must reproduce the above copyright 
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *
- *  3. Neither the name of the Intel Corporation nor the names of its 
- *     contributors may be used to endorse or promote products derived from 
+ *  3. Neither the name of the Intel Corporation nor the names of its
+ *     contributors may be used to endorse or promote products derived from
  *     this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE 
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
@@ -70,6 +70,7 @@
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 
+#include <dev/netif/ix/ixgbe_common.h>
 #include <dev/netif/ix/ixgbe_api.h>
 #include <dev/netif/ix/if_ix.h>
 
@@ -122,9 +123,25 @@ static struct ix_device {
 	IX_DEVICE(X540T),
 	IX_DEVICE(X540T1),
 	IX_DEVICE(X550T),
+	IX_DEVICE(X550T1),
 	IX_DEVICE(X550EM_X_KR),
 	IX_DEVICE(X550EM_X_KX4),
 	IX_DEVICE(X550EM_X_10G_T),
+	IX_DEVICE(X550EM_X_1G_T),
+	IX_DEVICE(X550EM_X_SFP),
+	IX_DEVICE(X550EM_A_KR),
+	IX_DEVICE(X550EM_A_KR_L),
+	IX_DEVICE(X550EM_A_SFP),
+	IX_DEVICE(X550EM_A_SFP_N),
+	IX_DEVICE(X550EM_A_SGMII),
+	IX_DEVICE(X550EM_A_SGMII_L),
+	IX_DEVICE(X550EM_A_10G_T),
+	IX_DEVICE(X550EM_A_1G_T),
+	IX_DEVICE(X550EM_A_1G_T_L),
+#if 0
+	IX_DEVICE(X540_BYPASS),
+	IX_DEVICE(82599_BYPASS),
+#endif
 
 	/* required last entry */
 	IX_DEVICE_NULL
@@ -184,9 +201,11 @@ static int	ix_alloc_rings(struct ix_softc *);
 static void	ix_free_rings(struct ix_softc *);
 static void	ix_setup_ifp(struct ix_softc *);
 static void	ix_setup_serialize(struct ix_softc *);
+static void	ix_setup_caps(struct ix_softc *);
 static void	ix_set_ring_inuse(struct ix_softc *, boolean_t);
 static void	ix_set_timer_cpuid(struct ix_softc *, boolean_t);
 static void	ix_update_stats(struct ix_softc *);
+static void	ix_detect_fanfail(struct ix_softc *, uint32_t, boolean_t);
 
 static void	ix_set_promisc(struct ix_softc *);
 static void	ix_set_multi(struct ix_softc *);
@@ -229,6 +248,7 @@ static void	ix_rx_discard(struct ix_rx_ring *, int, boolean_t);
 static void	ix_enable_rx_drop(struct ix_softc *);
 static void	ix_disable_rx_drop(struct ix_softc *);
 
+static void	ix_config_gpie(struct ix_softc *);
 static void	ix_alloc_msix(struct ix_softc *);
 static void	ix_free_msix(struct ix_softc *, boolean_t);
 static void	ix_setup_msix_eims(const struct ix_softc *, int,
@@ -242,6 +262,7 @@ static void	ix_disable_intr(struct ix_softc *);
 static void	ix_set_ivar(struct ix_softc *, uint8_t, uint8_t, int8_t);
 static void	ix_set_eitr(struct ix_softc *, int, int);
 static void	ix_intr_status(struct ix_softc *, uint32_t);
+static void	ix_intr_82598(void *);
 static void	ix_intr(void *);
 static void	ix_msix_rxtx(void *);
 static void	ix_msix_rx(void *);
@@ -250,7 +271,7 @@ static void	ix_msix_status(void *);
 
 static void	ix_config_link(struct ix_softc *);
 static boolean_t ix_sfp_probe(struct ix_softc *);
-static boolean_t ix_is_sfp(const struct ixgbe_hw *);
+static boolean_t ix_is_sfp(struct ixgbe_hw *);
 static void	ix_update_link_status(struct ix_softc *);
 static void	ix_handle_link(struct ix_softc *);
 static void	ix_handle_mod(struct ix_softc *);
@@ -260,9 +281,6 @@ static int	ix_powerdown(struct ix_softc *);
 static void	ix_config_flowctrl(struct ix_softc *);
 static void	ix_config_dmac(struct ix_softc *);
 static void	ix_init_media(struct ix_softc *);
-
-/* XXX Missing shared code prototype */
-extern void ixgbe_stop_mac_link_on_d3_82599(struct ixgbe_hw *);
 
 static device_method_t ix_methods[] = {
 	/* Device interface */
@@ -445,12 +463,12 @@ ix_attach(device_t dev)
 	struct ix_softc *sc = device_get_softc(dev);
 	struct ixgbe_hw *hw;
 	int error, ring_cnt, ring_cntmax;
-	uint16_t csum;
 	uint32_t ctrl_ext;
 	char flowctrl[IFM_ETH_FC_STRLEN];
 
-	sc->dev = sc->osdep.dev = dev;
+	sc->dev = dev;
 	hw = &sc->hw;
+	hw->back = sc;
 
 	if_initname(&sc->arpcom.ac_if, device_get_name(dev),
 	    device_get_unit(dev));
@@ -475,12 +493,6 @@ ix_attach(device_t dev)
 	hw->subsystem_vendor_id = pci_read_config(dev, PCIR_SUBVEND_0, 2);
 	hw->subsystem_device_id = pci_read_config(dev, PCIR_SUBDEV_0, 2);
 
-	ixgbe_set_mac_type(hw);
-
-	/* Pick up the 82599 */
-	if (hw->mac.type != ixgbe_mac_82598EB)
-		hw->phy.smart_speed = ix_smart_speed;
-
 	/* Enable bus mastering */
 	pci_enable_busmaster(dev);
 
@@ -500,7 +512,52 @@ ix_attach(device_t dev)
 	sc->osdep.mem_bus_space_handle = rman_get_bushandle(sc->mem_res);
 
 	sc->hw.hw_addr = (uint8_t *)&sc->osdep.mem_bus_space_handle;
-	sc->hw.back = &sc->osdep;
+
+	/* Let hardware know driver is loaded */
+	ctrl_ext = IXGBE_READ_REG(hw, IXGBE_CTRL_EXT);
+	ctrl_ext |= IXGBE_CTRL_EXT_DRV_LOAD;
+	IXGBE_WRITE_REG(hw, IXGBE_CTRL_EXT, ctrl_ext);
+
+	/*
+	 * Initialize the shared code
+	 */
+	if (ixgbe_init_shared_code(hw)) {
+		device_printf(dev, "Unable to initialize the shared code\n");
+		error = ENXIO;
+		goto failed;
+	}
+
+	if (hw->mbx.ops.init_params)
+		hw->mbx.ops.init_params(hw);
+
+	hw->allow_unsupported_sfp = ix_unsupported_sfp;
+
+	/* Pick up the 82599 settings */
+	if (hw->mac.type != ixgbe_mac_82598EB)
+		hw->phy.smart_speed = ix_smart_speed;
+
+	/* Setup hardware capabilities */
+	ix_setup_caps(sc);
+
+	/* Allocate multicast array memory. */
+	sc->mta = kmalloc(sizeof(*sc->mta) * IX_MAX_MCASTADDR,
+	    M_DEVBUF, M_WAITOK);
+
+	/* Save initial wake up filter configuration; WOL is disabled. */
+	sc->wufc = IXGBE_READ_REG(hw, IXGBE_WUFC);
+
+	/* Verify adapter fan is still functional (if applicable) */
+	if (sc->caps & IX_CAP_DETECT_FANFAIL)
+		ix_detect_fanfail(sc, IXGBE_READ_REG(hw, IXGBE_ESDP), FALSE);
+
+	/* Ensure SW/FW semaphore is free */
+	ixgbe_init_swfw_semaphore(hw);
+
+#ifdef notyet
+	/* Enable EEE power saving */
+	if (sc->caps & IX_CAP_EEE)
+		hw->mac.ops.setup_eee(hw, true);
+#endif
 
 	/*
 	 * Configure total supported RX/TX ring count
@@ -529,13 +586,9 @@ ix_attach(device_t dev)
 	/* Setup serializes */
 	ix_setup_serialize(sc);
 
-	/* Allocate multicast array memory. */
-	sc->mta = kmalloc(IXGBE_ETH_LENGTH_OF_ADDRESS * IX_MAX_MCASTADDR,
-	    M_DEVBUF, M_WAITOK);
-
-	/* Initialize the shared code */
-	hw->allow_unsupported_sfp = ix_unsupported_sfp;
-	error = ixgbe_init_shared_code(hw);
+	hw->phy.reset_if_overtemp = TRUE;
+	error = ixgbe_reset_hw(hw);
+	hw->phy.reset_if_overtemp = FALSE;
 	if (error == IXGBE_ERR_SFP_NOT_PRESENT) {
 		/*
 		 * No optics in this port; ask timer routine
@@ -548,19 +601,19 @@ ix_attach(device_t dev)
 		error = EIO;
 		goto failed;
 	} else if (error) {
-		device_printf(dev, "Unable to initialize the shared code\n");
+		device_printf(dev, "Hardware initialization failed\n");
 		error = EIO;
 		goto failed;
 	}
 
 	/* Make sure we have a good EEPROM before we read from it */
-	if (ixgbe_validate_eeprom_checksum(&sc->hw, &csum) < 0) {
+	if (ixgbe_validate_eeprom_checksum(&sc->hw, NULL) < 0) {
 		device_printf(dev, "The EEPROM Checksum Is Not Valid\n");
 		error = EIO;
 		goto failed;
 	}
 
-	error = ixgbe_init_hw(hw);
+	error = ixgbe_start_hw(hw);
 	if (error == IXGBE_ERR_EEPROM_VERSION) {
 		device_printf(dev, "Pre-production device detected\n");
 	} else if (error == IXGBE_ERR_SFP_NOT_SUPPORTED) {
@@ -570,6 +623,12 @@ ix_attach(device_t dev)
 	} else if (error == IXGBE_ERR_SFP_NOT_PRESENT) {
 		device_printf(dev, "No SFP+ Module found\n");
 	}
+
+	/* Enable the optics for 82599 SFP+ fiber */
+	ixgbe_enable_tx_laser(hw);
+
+	/* Enable power to the phy. */
+	ixgbe_set_phy_power(hw, TRUE);
 
 	sc->ifm_media = IX_IFM_DEFAULT;
 	/* Get default flow control settings */
@@ -596,14 +655,6 @@ ix_attach(device_t dev)
 	/* Check PCIE slot type/speed/width */
 	ix_slot_info(sc);
 
-	/* Save initial wake up filter configuration */
-	sc->wufc = IXGBE_READ_REG(hw, IXGBE_WUFC);
-
-	/* Let hardware know driver is loaded */
-	ctrl_ext = IXGBE_READ_REG(hw, IXGBE_CTRL_EXT);
-	ctrl_ext |= IXGBE_CTRL_EXT_DRV_LOAD;
-	IXGBE_WRITE_REG(hw, IXGBE_CTRL_EXT, ctrl_ext);
-
 	return 0;
 failed:
 	ix_detach(dev);
@@ -617,7 +668,6 @@ ix_detach(device_t dev)
 
 	if (device_is_attached(dev)) {
 		struct ifnet *ifp = &sc->arpcom.ac_if;
-		uint32_t ctrl_ext;
 
 		ix_sync_netisr(sc, IFF_UP);
 		taskqueue_drain(taskqueue_thread[0], &sc->wdog_task);
@@ -631,6 +681,10 @@ ix_detach(device_t dev)
 
 		callout_terminate(&sc->timer);
 		ether_ifdetach(ifp);
+	}
+
+	if (sc->mem_res != NULL) {
+		uint32_t ctrl_ext;
 
 		/* Let hardware know driver is unloading */
 		ctrl_ext = IXGBE_READ_REG(&sc->hw, IXGBE_CTRL_EXT);
@@ -861,7 +915,7 @@ ix_init(void *xsc)
 	struct ix_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct ixgbe_hw *hw = &sc->hw;
-	uint32_t gpie, rxctrl;
+	uint32_t rxctrl;
 	int i, error;
 	boolean_t polling;
 
@@ -907,31 +961,8 @@ ix_init(void *xsc)
 	/* Configure RX settings */
 	ix_init_rx_unit(sc, polling);
 
-	gpie = IXGBE_READ_REG(hw, IXGBE_GPIE);
-
-	/* Enable Fan Failure Interrupt */
-	gpie |= IXGBE_SDP1_GPIEN_BY_MAC(hw);
-
-	/* Add for Module detection */
-	if (hw->mac.type == ixgbe_mac_82599EB)
-		gpie |= IXGBE_SDP2_GPIEN;
-
-	/*
-	 * Thermal Failure Detection (X540)
-	 * Link Detection (X552)
-	 */
-	if (hw->mac.type == ixgbe_mac_X540 ||
-	    hw->device_id == IXGBE_DEV_ID_X550EM_X_SFP ||
-	    hw->device_id == IXGBE_DEV_ID_X550EM_X_10G_T)
-		gpie |= IXGBE_SDP0_GPIEN_X540;
-
-	if (sc->intr_type == PCI_INTR_TYPE_MSIX) {
-		/* Enable Enhanced MSIX mode */
-		gpie |= IXGBE_GPIE_MSIX_MODE;
-		gpie |= IXGBE_GPIE_EIAME | IXGBE_GPIE_PBA_SUPPORT |
-		    IXGBE_GPIE_OCD;
-	}
-	IXGBE_WRITE_REG(hw, IXGBE_GPIE, gpie);
+	/* Enable SDP & MSI-X interrupts based on adapter */
+	ix_config_gpie(sc);
 
 	/* Set MTU size */
 	if (ifp->if_mtu > ETHERMTU) {
@@ -1165,6 +1196,19 @@ ix_intr(void *xsc)
 }
 
 static void
+ix_intr_82598(void *xsc)
+{
+	struct ix_softc *sc = xsc;
+
+	ASSERT_SERIALIZED(&sc->main_serialize);
+
+	/* Software workaround for 82598 errata #26 */
+	IXGBE_WRITE_REG(&sc->hw, IXGBE_EIMC, IXGBE_IRQ_CLEAR_MASK);
+
+	ix_intr(sc);
+}
+
+static void
 ix_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	struct ix_softc *sc = ifp->if_softc;
@@ -1185,11 +1229,12 @@ ix_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 	}
 	ifmr->ifm_status |= IFM_ACTIVE;
 
-	layer = ixgbe_get_supported_physical_layer(&sc->hw);
+	layer = sc->phy_layer;
 
 	if ((layer & IXGBE_PHYSICAL_LAYER_10GBASE_T) ||
 	    (layer & IXGBE_PHYSICAL_LAYER_1000BASE_T) ||
-	    (layer & IXGBE_PHYSICAL_LAYER_100BASE_TX)) {
+	    (layer & IXGBE_PHYSICAL_LAYER_100BASE_TX) ||
+	    (layer & IXGBE_PHYSICAL_LAYER_10BASE_T)) {
 		switch (sc->link_speed) {
 		case IXGBE_LINK_SPEED_10GB_FULL:
 			ifmr->ifm_active |= IFM_10G_T | IFM_FDX;
@@ -1199,6 +1244,9 @@ ix_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 			break;
 		case IXGBE_LINK_SPEED_100_FULL:
 			ifmr->ifm_active |= IFM_100_TX | IFM_FDX;
+			break;
+		case IXGBE_LINK_SPEED_10_FULL:
+			ifmr->ifm_active |= IFM_10_T | IFM_FDX;
 			break;
 		}
 	} else if ((layer & IXGBE_PHYSICAL_LAYER_SFP_PLUS_CU) ||
@@ -1259,6 +1307,7 @@ ix_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 			break;
 		}
 	} else if ((layer & IXGBE_PHYSICAL_LAYER_10GBASE_KX4) ||
+	    (layer & IXGBE_PHYSICAL_LAYER_2500BASE_KX) ||
 	    (layer & IXGBE_PHYSICAL_LAYER_1000BASE_KX)) {
 		/*
 		 * XXX: These need to use the proper media types once
@@ -1542,11 +1591,11 @@ ix_set_multi(struct ix_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct ifmultiaddr *ifma;
 	uint32_t fctrl;
-	uint8_t	*mta;
+	struct ix_mc_addr *mta;
 	int mcnt = 0;
 
 	mta = sc->mta;
-	bzero(mta, IXGBE_ETH_LENGTH_OF_ADDRESS * IX_MAX_MCASTADDR);
+	bzero(mta, sizeof(*mta) * IX_MAX_MCASTADDR);
 
 	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
@@ -1554,8 +1603,7 @@ ix_set_multi(struct ix_softc *sc)
 		if (mcnt == IX_MAX_MCASTADDR)
 			break;
 		bcopy(LLADDR((struct sockaddr_dl *)ifma->ifma_addr),
-		    &mta[mcnt * IXGBE_ETH_LENGTH_OF_ADDRESS],
-		    IXGBE_ETH_LENGTH_OF_ADDRESS);
+		    mta[mcnt].addr, IXGBE_ETH_LENGTH_OF_ADDRESS);
 		mcnt++;
 	}
 
@@ -1573,7 +1621,7 @@ ix_set_multi(struct ix_softc *sc)
 
 	if (mcnt < IX_MAX_MCASTADDR) {
 		ixgbe_update_mc_addr_list(&sc->hw,
-		    mta, mcnt, ix_mc_array_itr, TRUE);
+		    (uint8_t *)mta, mcnt, ix_mc_array_itr, TRUE);
 	}
 }
 
@@ -1585,13 +1633,12 @@ ix_set_multi(struct ix_softc *sc)
 static uint8_t *
 ix_mc_array_itr(struct ixgbe_hw *hw, uint8_t **update_ptr, uint32_t *vmdq)
 {
-	uint8_t *addr = *update_ptr;
-	uint8_t *newptr;
-	*vmdq = 0;
+	struct ix_mc_addr *mta = (struct ix_mc_addr *)*update_ptr;
 
-	newptr = addr + IXGBE_ETH_LENGTH_OF_ADDRESS;
-	*update_ptr = newptr;
-	return addr;
+	*vmdq = mta->vmdq;
+	*update_ptr = (uint8_t *)(mta + 1);
+
+	return (mta->addr);
 }
 
 static void
@@ -1786,24 +1833,34 @@ ix_setup_ifp(struct ix_softc *sc)
 	}
 
 	/* Specify the media types supported by this adapter */
+	sc->phy_layer = ixgbe_get_supported_physical_layer(hw);
 	ix_init_media(sc);
 }
 
 static boolean_t
-ix_is_sfp(const struct ixgbe_hw *hw)
+ix_is_sfp(struct ixgbe_hw *hw)
 {
-	switch (hw->phy.type) {
-	case ixgbe_phy_sfp_avago:
-	case ixgbe_phy_sfp_ftl:
-	case ixgbe_phy_sfp_intel:
-	case ixgbe_phy_sfp_unknown:
-	case ixgbe_phy_sfp_passive_tyco:
-	case ixgbe_phy_sfp_passive_unknown:
-	case ixgbe_phy_qsfp_passive_unknown:
-	case ixgbe_phy_qsfp_active_unknown:
-	case ixgbe_phy_qsfp_intel:
-	case ixgbe_phy_qsfp_unknown:
-		return TRUE;
+	switch (hw->mac.type) {
+	case ixgbe_mac_82598EB:
+		if (hw->phy.type == ixgbe_phy_nl)
+			return TRUE;
+		return FALSE;
+
+	case ixgbe_mac_82599EB:
+		switch (hw->mac.ops.get_media_type(hw)) {
+		case ixgbe_media_type_fiber:
+		case ixgbe_media_type_fiber_qsfp:
+			return TRUE;
+		default:
+			return FALSE;
+		}
+
+	case ixgbe_mac_X550EM_x:
+	case ixgbe_mac_X550EM_a:
+		if (hw->mac.ops.get_media_type(hw) == ixgbe_media_type_fiber)
+			return TRUE;
+		return FALSE;
+
 	default:
 		return FALSE;
 	}
@@ -1816,14 +1873,10 @@ ix_config_link(struct ix_softc *sc)
 	boolean_t sfp;
 
 	sfp = ix_is_sfp(hw);
-	if (sfp) { 
-		if (hw->phy.multispeed_fiber) {
-			hw->mac.ops.setup_sfp(hw);
+	if (sfp) {
+		if (hw->phy.multispeed_fiber)
 			ixgbe_enable_tx_laser(hw);
-			ix_handle_msf(sc);
-		} else {
-			ix_handle_mod(sc);
-		}
+		ix_handle_mod(sc);
 	} else {
 		uint32_t autoneg, err = 0;
 
@@ -2100,8 +2153,6 @@ ix_init_tx_unit(struct ix_softc *sc)
 		case ixgbe_mac_82598EB:
 			txctrl = IXGBE_READ_REG(hw, IXGBE_DCA_TXCTRL(i));
 			break;
-		case ixgbe_mac_82599EB:
-		case ixgbe_mac_X540:
 		default:
 			txctrl = IXGBE_READ_REG(hw, IXGBE_DCA_TXCTRL_82599(i));
 			break;
@@ -2111,8 +2162,6 @@ ix_init_tx_unit(struct ix_softc *sc)
 		case ixgbe_mac_82598EB:
 			IXGBE_WRITE_REG(hw, IXGBE_DCA_TXCTRL(i), txctrl);
 			break;
-		case ixgbe_mac_82599EB:
-		case ixgbe_mac_X540:
 		default:
 			IXGBE_WRITE_REG(hw, IXGBE_DCA_TXCTRL_82599(i), txctrl);
 			break;
@@ -3066,10 +3115,6 @@ ix_enable_intr(struct ix_softc *sc)
 
 	sc->intr_mask = (IXGBE_EIMS_ENABLE_MASK & ~IXGBE_EIMS_RTX_QUEUE);
 
-	/* Enable Fan Failure detection */
-	if (hw->device_id == IXGBE_DEV_ID_82598AT)
-		sc->intr_mask |= IXGBE_EIMS_GPI_SDP1;
-
 	switch (hw->mac.type) {
 	case ixgbe_mac_82599EB:
 		sc->intr_mask |= IXGBE_EIMS_ECC;
@@ -3089,19 +3134,31 @@ ix_enable_intr(struct ix_softc *sc)
 		break;
 
 	case ixgbe_mac_X550:
-	case ixgbe_mac_X550EM_a:
-	case ixgbe_mac_X550EM_x:
 		sc->intr_mask |= IXGBE_EIMS_ECC;
 		/* MAC thermal sensor is automatically enabled */
 		sc->intr_mask |= IXGBE_EIMS_TS;
+		break;
+
+	case ixgbe_mac_X550EM_a:
+	case ixgbe_mac_X550EM_x:
+		sc->intr_mask |= IXGBE_EIMS_ECC;
 		/* Some devices use SDP0 for important information */
 		if (hw->device_id == IXGBE_DEV_ID_X550EM_X_SFP ||
+		    hw->device_id == IXGBE_DEV_ID_X550EM_A_SFP ||
+		    hw->device_id == IXGBE_DEV_ID_X550EM_A_SFP_N ||
 		    hw->device_id == IXGBE_DEV_ID_X550EM_X_10G_T)
 			sc->intr_mask |= IXGBE_EIMS_GPI_SDP0_BY_MAC(hw);
-		/* FALL THROUGH */
+		if (hw->phy.type == ixgbe_phy_x550em_ext_t)
+			sc->intr_mask |= IXGBE_EICR_GPI_SDP0_X540;
+		break;
+
 	default:
 		break;
 	}
+
+	/* Enable Fan Failure detection */
+	if (sc->caps & IX_CAP_DETECT_FANFAIL)
+		sc->intr_mask |= IXGBE_EIMS_GPI_SDP1;
 
 	/* With MSI-X we use auto clear for RX and TX rings */
 	if (sc->intr_type == PCI_INTR_TYPE_MSIX) {
@@ -3167,92 +3224,68 @@ ix_disable_intr(struct ix_softc *sc)
 		lwkt_serialize_handler_disable(sc->intr_data[i].intr_serialize);
 }
 
-uint16_t
-ixgbe_read_pci_cfg(struct ixgbe_hw *hw, uint32_t reg)
-{
-	return pci_read_config(((struct ixgbe_osdep *)hw->back)->dev,
-	    reg, 2);
-}
-
-void
-ixgbe_write_pci_cfg(struct ixgbe_hw *hw, uint32_t reg, uint16_t value)
-{
-	pci_write_config(((struct ixgbe_osdep *)hw->back)->dev,
-	    reg, value, 2);
-}
-
 static void
 ix_slot_info(struct ix_softc *sc)
 {
-	struct ixgbe_hw *hw = &sc->hw;
 	device_t dev = sc->dev;
-	struct ixgbe_mac_info *mac = &hw->mac;
-	uint16_t link;
+	struct ixgbe_hw *hw = &sc->hw;
 	uint32_t offset;
+	uint16_t link;
+	boolean_t bus_info_valid = TRUE;
 
-	/* For most devices simply call the shared code routine */
-	if (hw->device_id != IXGBE_DEV_ID_82599_SFP_SF_QP) {
-		ixgbe_get_bus_info(hw);
-		/* These devices don't use PCI-E */
-		if (hw->mac.type == ixgbe_mac_X550EM_x ||
-		    hw->mac.type == ixgbe_mac_X550EM_a)
-			return;
+	/* Some devices are behind an internal bridge */
+	switch (hw->device_id) {
+	case IXGBE_DEV_ID_82599_SFP_SF_QP:
+	case IXGBE_DEV_ID_82599_QSFP_SF_QP:
+		goto get_parent_info;
+	default:
+		break;
+	}
+
+	ixgbe_get_bus_info(hw);
+
+	/*
+	 * Some devices don't use PCI-E, but there is no need
+	 * to display "Unknown" for bus speed and width.
+	 */
+	switch (hw->mac.type) {
+	case ixgbe_mac_X550EM_x:
+	case ixgbe_mac_X550EM_a:
+		return;
+	default:
 		goto display;
 	}
 
+get_parent_info:
 	/*
-	 * For the Quad port adapter we need to parse back
-	 * up the PCI tree to find the speed of the expansion
-	 * slot into which this adapter is plugged. A bit more work.
+	 * For the Quad port adapter we need to parse back up
+	 * the PCI tree to find the speed of the expansion slot
+	 * into which this adapter is plugged.  A bit more work.
 	 */
 	dev = device_get_parent(device_get_parent(dev));
 #ifdef IXGBE_DEBUG
-	device_printf(dev, "parent pcib = %x,%x,%x\n",
-	    pci_get_bus(dev), pci_get_slot(dev), pci_get_function(dev));
+	device_printf(dev, "parent pcib = %x,%x,%x\n", pci_get_bus(dev),
+	    pci_get_slot(dev), pci_get_function(dev));
 #endif
 	dev = device_get_parent(device_get_parent(dev));
 #ifdef IXGBE_DEBUG
-	device_printf(dev, "slot pcib = %x,%x,%x\n",
-	    pci_get_bus(dev), pci_get_slot(dev), pci_get_function(dev));
+	device_printf(dev, "slot pcib = %x,%x,%x\n", pci_get_bus(dev),
+	    pci_get_slot(dev), pci_get_function(dev));
 #endif
 	/* Now get the PCI Express Capabilities offset */
 	offset = pci_get_pciecap_ptr(dev);
+	if (offset == 0) {
+		/*
+		 * Hmm...can't get PCI-Express capabilities.
+		 * Falling back to default method.
+		 */
+		bus_info_valid = FALSE;
+		ixgbe_get_bus_info(hw);
+		goto display;
+	}
 	/* ...and read the Link Status Register */
 	link = pci_read_config(dev, offset + PCIER_LINKSTAT, 2);
-	switch (link & IXGBE_PCI_LINK_WIDTH) {
-	case IXGBE_PCI_LINK_WIDTH_1:
-		hw->bus.width = ixgbe_bus_width_pcie_x1;
-		break;
-	case IXGBE_PCI_LINK_WIDTH_2:
-		hw->bus.width = ixgbe_bus_width_pcie_x2;
-		break;
-	case IXGBE_PCI_LINK_WIDTH_4:
-		hw->bus.width = ixgbe_bus_width_pcie_x4;
-		break;
-	case IXGBE_PCI_LINK_WIDTH_8:
-		hw->bus.width = ixgbe_bus_width_pcie_x8;
-		break;
-	default:
-		hw->bus.width = ixgbe_bus_width_unknown;
-		break;
-	}
-
-	switch (link & IXGBE_PCI_LINK_SPEED) {
-	case IXGBE_PCI_LINK_SPEED_2500:
-		hw->bus.speed = ixgbe_bus_speed_2500;
-		break;
-	case IXGBE_PCI_LINK_SPEED_5000:
-		hw->bus.speed = ixgbe_bus_speed_5000;
-		break;
-	case IXGBE_PCI_LINK_SPEED_8000:
-		hw->bus.speed = ixgbe_bus_speed_8000;
-		break;
-	default:
-		hw->bus.speed = ixgbe_bus_speed_unknown;
-		break;
-	}
-
-	mac->ops.set_lan_id(hw);
+	ixgbe_set_pci_config_data_generic(hw, link);
 
 display:
 	device_printf(dev, "PCI Express Bus: Speed %s %s\n",
@@ -3263,16 +3296,29 @@ display:
 	    hw->bus.width == ixgbe_bus_width_pcie_x4 ? "Width x4" :
 	    hw->bus.width == ixgbe_bus_width_pcie_x1 ? "Width x1" : "Unknown");
 
-	if (hw->device_id != IXGBE_DEV_ID_82599_SFP_SF_QP &&
-	    hw->bus.width <= ixgbe_bus_width_pcie_x4 &&
-	    hw->bus.speed == ixgbe_bus_speed_2500) {
-		device_printf(dev, "For optimal performance a x8 "
-		    "PCIE, or x4 PCIE Gen2 slot is required.\n");
-	} else if (hw->device_id == IXGBE_DEV_ID_82599_SFP_SF_QP &&
-	    hw->bus.width <= ixgbe_bus_width_pcie_x8 &&
-	    hw->bus.speed < ixgbe_bus_speed_8000) {
-		device_printf(dev, "For optimal performance a x8 "
-		    "PCIE Gen3 slot is required.\n");
+	if (bus_info_valid) {
+		if (hw->device_id != IXGBE_DEV_ID_82599_SFP_SF_QP &&
+		    hw->bus.width <= ixgbe_bus_width_pcie_x4 &&
+		    hw->bus.speed == ixgbe_bus_speed_2500) {
+			device_printf(dev, "PCI-Express bandwidth available "
+			    "for this card is not sufficient for optimal "
+			    "performance.\n");
+			device_printf(dev, "For optimal performance a "
+			    "x8 PCIE, or x4 PCIE Gen2 slot is required.\n");
+		}
+		if (hw->device_id == IXGBE_DEV_ID_82599_SFP_SF_QP &&
+		    hw->bus.width <= ixgbe_bus_width_pcie_x8 &&
+		    hw->bus.speed < ixgbe_bus_speed_8000) {
+			device_printf(dev, "PCI-Express bandwidth available "
+			    "for this card is not sufficient for optimal "
+			    "performance.\n");
+			device_printf(dev, "For optimal performance a "
+			    "x8 PCIE Gen3 slot is required.\n");
+		}
+	} else {
+		device_printf(dev, "Unable to determine slot speed/width.  "
+		    "The speed/width reported are that of the internal "
+		    "switch.\n");
 	}
 }
 
@@ -3344,18 +3390,16 @@ ix_sfp_probe(struct ix_softc *sc)
 			return FALSE;
 
 		ret = hw->phy.ops.reset(hw);
+		sc->sfp_probe = FALSE;
 		if (ret == IXGBE_ERR_SFP_NOT_SUPPORTED) {
 			if_printf(&sc->arpcom.ac_if,
 			     "Unsupported SFP+ module detected!  "
 			     "Reload driver with supported module.\n");
-			sc->sfp_probe = FALSE;
 			return FALSE;
 		}
 		if_printf(&sc->arpcom.ac_if, "SFP+ module detected!\n");
 
 		/* We now have supported optics */
-		sc->sfp_probe = FALSE;
-
 		return TRUE;
 	}
 	return FALSE;
@@ -3377,13 +3421,40 @@ ix_handle_mod(struct ix_softc *sc)
 	struct ixgbe_hw *hw = &sc->hw;
 	uint32_t err;
 
+	if (sc->hw.need_crosstalk_fix) {
+		uint32_t cage_full = 0;
+
+		switch (hw->mac.type) {
+		case ixgbe_mac_82599EB:
+			cage_full = IXGBE_READ_REG(hw, IXGBE_ESDP) &
+			    IXGBE_ESDP_SDP2;
+			break;
+
+		case ixgbe_mac_X550EM_x:
+		case ixgbe_mac_X550EM_a:
+			cage_full = IXGBE_READ_REG(hw, IXGBE_ESDP) &
+			    IXGBE_ESDP_SDP0;
+			break;
+
+		default:
+			break;
+		}
+
+		if (!cage_full)
+			return;
+	}
+
 	err = hw->phy.ops.identify_sfp(hw);
 	if (err == IXGBE_ERR_SFP_NOT_SUPPORTED) {
 		if_printf(&sc->arpcom.ac_if,
 		    "Unsupported SFP+ module type was detected.\n");
 		return;
 	}
-	err = hw->mac.ops.setup_sfp(hw);
+
+	if (hw->mac.type == ixgbe_mac_82598EB)
+		err = hw->phy.ops.reset(hw);
+	else
+		err = hw->mac.ops.setup_sfp(hw);
 	if (err == IXGBE_ERR_SFP_NOT_SUPPORTED) {
 		if_printf(&sc->arpcom.ac_if,
 		    "Setup failure - unsupported SFP+ module type.\n");
@@ -3401,7 +3472,7 @@ ix_handle_msf(struct ix_softc *sc)
 	struct ixgbe_hw *hw = &sc->hw;
 	uint32_t autoneg;
 
-	hw->phy.ops.identify_sfp(hw);
+	sc->phy_layer = ixgbe_get_supported_physical_layer(hw);
 	ix_init_media(sc);
 
 	if (sc->advspeed != IXGBE_LINK_SPEED_UNKNOWN)
@@ -3439,44 +3510,46 @@ ix_update_stats(struct ix_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct ixgbe_hw *hw = &sc->hw;
+	struct ixgbe_hw_stats *stats = &sc->stats;
 	uint32_t missed_rx = 0, bprc, lxon, lxoff, total;
 	uint64_t total_missed_rx = 0;
 	int i;
 
-	sc->stats.crcerrs += IXGBE_READ_REG(hw, IXGBE_CRCERRS);
-	sc->stats.illerrc += IXGBE_READ_REG(hw, IXGBE_ILLERRC);
-	sc->stats.errbc += IXGBE_READ_REG(hw, IXGBE_ERRBC);
-	sc->stats.mspdc += IXGBE_READ_REG(hw, IXGBE_MSPDC);
+	stats->crcerrs += IXGBE_READ_REG(hw, IXGBE_CRCERRS);
+	stats->illerrc += IXGBE_READ_REG(hw, IXGBE_ILLERRC);
+	stats->errbc += IXGBE_READ_REG(hw, IXGBE_ERRBC);
+	stats->mspdc += IXGBE_READ_REG(hw, IXGBE_MSPDC);
+	stats->mpc[0] += IXGBE_READ_REG(hw, IXGBE_MPC(0));
 
 	for (i = 0; i < 16; i++) {
-		sc->stats.qprc[i] += IXGBE_READ_REG(hw, IXGBE_QPRC(i));
-		sc->stats.qptc[i] += IXGBE_READ_REG(hw, IXGBE_QPTC(i));
-		sc->stats.qprdc[i] += IXGBE_READ_REG(hw, IXGBE_QPRDC(i));
+		stats->qprc[i] += IXGBE_READ_REG(hw, IXGBE_QPRC(i));
+		stats->qptc[i] += IXGBE_READ_REG(hw, IXGBE_QPTC(i));
+		stats->qprdc[i] += IXGBE_READ_REG(hw, IXGBE_QPRDC(i));
 	}
-	sc->stats.mlfc += IXGBE_READ_REG(hw, IXGBE_MLFC);
-	sc->stats.mrfc += IXGBE_READ_REG(hw, IXGBE_MRFC);
-	sc->stats.rlec += IXGBE_READ_REG(hw, IXGBE_RLEC);
+	stats->mlfc += IXGBE_READ_REG(hw, IXGBE_MLFC);
+	stats->mrfc += IXGBE_READ_REG(hw, IXGBE_MRFC);
+	stats->rlec += IXGBE_READ_REG(hw, IXGBE_RLEC);
 
 	/* Hardware workaround, gprc counts missed packets */
-	sc->stats.gprc += IXGBE_READ_REG(hw, IXGBE_GPRC);
-	sc->stats.gprc -= missed_rx;
+	stats->gprc += IXGBE_READ_REG(hw, IXGBE_GPRC);
+	stats->gprc -= missed_rx;
 
 	if (hw->mac.type != ixgbe_mac_82598EB) {
-		sc->stats.gorc += IXGBE_READ_REG(hw, IXGBE_GORCL) +
+		stats->gorc += IXGBE_READ_REG(hw, IXGBE_GORCL) +
 		    ((uint64_t)IXGBE_READ_REG(hw, IXGBE_GORCH) << 32);
-		sc->stats.gotc += IXGBE_READ_REG(hw, IXGBE_GOTCL) +
+		stats->gotc += IXGBE_READ_REG(hw, IXGBE_GOTCL) +
 		    ((uint64_t)IXGBE_READ_REG(hw, IXGBE_GOTCH) << 32);
-		sc->stats.tor += IXGBE_READ_REG(hw, IXGBE_TORL) +
+		stats->tor += IXGBE_READ_REG(hw, IXGBE_TORL) +
 		    ((uint64_t)IXGBE_READ_REG(hw, IXGBE_TORH) << 32);
-		sc->stats.lxonrxc += IXGBE_READ_REG(hw, IXGBE_LXONRXCNT);
-		sc->stats.lxoffrxc += IXGBE_READ_REG(hw, IXGBE_LXOFFRXCNT);
+		stats->lxonrxc += IXGBE_READ_REG(hw, IXGBE_LXONRXCNT);
+		stats->lxoffrxc += IXGBE_READ_REG(hw, IXGBE_LXOFFRXCNT);
 	} else {
-		sc->stats.lxonrxc += IXGBE_READ_REG(hw, IXGBE_LXONRXC);
-		sc->stats.lxoffrxc += IXGBE_READ_REG(hw, IXGBE_LXOFFRXC);
+		stats->lxonrxc += IXGBE_READ_REG(hw, IXGBE_LXONRXC);
+		stats->lxoffrxc += IXGBE_READ_REG(hw, IXGBE_LXOFFRXC);
 		/* 82598 only has a counter in the high register */
-		sc->stats.gorc += IXGBE_READ_REG(hw, IXGBE_GORCH);
-		sc->stats.gotc += IXGBE_READ_REG(hw, IXGBE_GOTCH);
-		sc->stats.tor += IXGBE_READ_REG(hw, IXGBE_TORH);
+		stats->gorc += IXGBE_READ_REG(hw, IXGBE_GORCH);
+		stats->gotc += IXGBE_READ_REG(hw, IXGBE_GOTCH);
+		stats->tor += IXGBE_READ_REG(hw, IXGBE_TORH);
 	}
 
 	/*
@@ -3484,57 +3557,57 @@ ix_update_stats(struct ix_softc *sc)
 	 * broadcasts, so for now we subtract those.
 	 */
 	bprc = IXGBE_READ_REG(hw, IXGBE_BPRC);
-	sc->stats.bprc += bprc;
-	sc->stats.mprc += IXGBE_READ_REG(hw, IXGBE_MPRC);
+	stats->bprc += bprc;
+	stats->mprc += IXGBE_READ_REG(hw, IXGBE_MPRC);
 	if (hw->mac.type == ixgbe_mac_82598EB)
-		sc->stats.mprc -= bprc;
+		stats->mprc -= bprc;
 
-	sc->stats.prc64 += IXGBE_READ_REG(hw, IXGBE_PRC64);
-	sc->stats.prc127 += IXGBE_READ_REG(hw, IXGBE_PRC127);
-	sc->stats.prc255 += IXGBE_READ_REG(hw, IXGBE_PRC255);
-	sc->stats.prc511 += IXGBE_READ_REG(hw, IXGBE_PRC511);
-	sc->stats.prc1023 += IXGBE_READ_REG(hw, IXGBE_PRC1023);
-	sc->stats.prc1522 += IXGBE_READ_REG(hw, IXGBE_PRC1522);
+	stats->prc64 += IXGBE_READ_REG(hw, IXGBE_PRC64);
+	stats->prc127 += IXGBE_READ_REG(hw, IXGBE_PRC127);
+	stats->prc255 += IXGBE_READ_REG(hw, IXGBE_PRC255);
+	stats->prc511 += IXGBE_READ_REG(hw, IXGBE_PRC511);
+	stats->prc1023 += IXGBE_READ_REG(hw, IXGBE_PRC1023);
+	stats->prc1522 += IXGBE_READ_REG(hw, IXGBE_PRC1522);
 
 	lxon = IXGBE_READ_REG(hw, IXGBE_LXONTXC);
-	sc->stats.lxontxc += lxon;
+	stats->lxontxc += lxon;
 	lxoff = IXGBE_READ_REG(hw, IXGBE_LXOFFTXC);
-	sc->stats.lxofftxc += lxoff;
+	stats->lxofftxc += lxoff;
 	total = lxon + lxoff;
 
-	sc->stats.gptc += IXGBE_READ_REG(hw, IXGBE_GPTC);
-	sc->stats.mptc += IXGBE_READ_REG(hw, IXGBE_MPTC);
-	sc->stats.ptc64 += IXGBE_READ_REG(hw, IXGBE_PTC64);
-	sc->stats.gptc -= total;
-	sc->stats.mptc -= total;
-	sc->stats.ptc64 -= total;
-	sc->stats.gotc -= total * ETHER_MIN_LEN;
+	stats->gptc += IXGBE_READ_REG(hw, IXGBE_GPTC);
+	stats->mptc += IXGBE_READ_REG(hw, IXGBE_MPTC);
+	stats->ptc64 += IXGBE_READ_REG(hw, IXGBE_PTC64);
+	stats->gptc -= total;
+	stats->mptc -= total;
+	stats->ptc64 -= total;
+	stats->gotc -= total * ETHER_MIN_LEN;
 
-	sc->stats.ruc += IXGBE_READ_REG(hw, IXGBE_RUC);
-	sc->stats.rfc += IXGBE_READ_REG(hw, IXGBE_RFC);
-	sc->stats.roc += IXGBE_READ_REG(hw, IXGBE_ROC);
-	sc->stats.rjc += IXGBE_READ_REG(hw, IXGBE_RJC);
-	sc->stats.mngprc += IXGBE_READ_REG(hw, IXGBE_MNGPRC);
-	sc->stats.mngpdc += IXGBE_READ_REG(hw, IXGBE_MNGPDC);
-	sc->stats.mngptc += IXGBE_READ_REG(hw, IXGBE_MNGPTC);
-	sc->stats.tpr += IXGBE_READ_REG(hw, IXGBE_TPR);
-	sc->stats.tpt += IXGBE_READ_REG(hw, IXGBE_TPT);
-	sc->stats.ptc127 += IXGBE_READ_REG(hw, IXGBE_PTC127);
-	sc->stats.ptc255 += IXGBE_READ_REG(hw, IXGBE_PTC255);
-	sc->stats.ptc511 += IXGBE_READ_REG(hw, IXGBE_PTC511);
-	sc->stats.ptc1023 += IXGBE_READ_REG(hw, IXGBE_PTC1023);
-	sc->stats.ptc1522 += IXGBE_READ_REG(hw, IXGBE_PTC1522);
-	sc->stats.bptc += IXGBE_READ_REG(hw, IXGBE_BPTC);
-	sc->stats.xec += IXGBE_READ_REG(hw, IXGBE_XEC);
-	sc->stats.fccrc += IXGBE_READ_REG(hw, IXGBE_FCCRC);
-	sc->stats.fclast += IXGBE_READ_REG(hw, IXGBE_FCLAST);
+	stats->ruc += IXGBE_READ_REG(hw, IXGBE_RUC);
+	stats->rfc += IXGBE_READ_REG(hw, IXGBE_RFC);
+	stats->roc += IXGBE_READ_REG(hw, IXGBE_ROC);
+	stats->rjc += IXGBE_READ_REG(hw, IXGBE_RJC);
+	stats->mngprc += IXGBE_READ_REG(hw, IXGBE_MNGPRC);
+	stats->mngpdc += IXGBE_READ_REG(hw, IXGBE_MNGPDC);
+	stats->mngptc += IXGBE_READ_REG(hw, IXGBE_MNGPTC);
+	stats->tpr += IXGBE_READ_REG(hw, IXGBE_TPR);
+	stats->tpt += IXGBE_READ_REG(hw, IXGBE_TPT);
+	stats->ptc127 += IXGBE_READ_REG(hw, IXGBE_PTC127);
+	stats->ptc255 += IXGBE_READ_REG(hw, IXGBE_PTC255);
+	stats->ptc511 += IXGBE_READ_REG(hw, IXGBE_PTC511);
+	stats->ptc1023 += IXGBE_READ_REG(hw, IXGBE_PTC1023);
+	stats->ptc1522 += IXGBE_READ_REG(hw, IXGBE_PTC1522);
+	stats->bptc += IXGBE_READ_REG(hw, IXGBE_BPTC);
+	stats->xec += IXGBE_READ_REG(hw, IXGBE_XEC);
+	stats->fccrc += IXGBE_READ_REG(hw, IXGBE_FCCRC);
+	stats->fclast += IXGBE_READ_REG(hw, IXGBE_FCLAST);
 	/* Only read FCOE on 82599 */
 	if (hw->mac.type != ixgbe_mac_82598EB) {
-		sc->stats.fcoerpdc += IXGBE_READ_REG(hw, IXGBE_FCOERPDC);
-		sc->stats.fcoeprc += IXGBE_READ_REG(hw, IXGBE_FCOEPRC);
-		sc->stats.fcoeptc += IXGBE_READ_REG(hw, IXGBE_FCOEPTC);
-		sc->stats.fcoedwrc += IXGBE_READ_REG(hw, IXGBE_FCOEDWRC);
-		sc->stats.fcoedwtc += IXGBE_READ_REG(hw, IXGBE_FCOEDWTC);
+		stats->fcoerpdc += IXGBE_READ_REG(hw, IXGBE_FCOERPDC);
+		stats->fcoeprc += IXGBE_READ_REG(hw, IXGBE_FCOEPRC);
+		stats->fcoeptc += IXGBE_READ_REG(hw, IXGBE_FCOEPTC);
+		stats->fcoedwrc += IXGBE_READ_REG(hw, IXGBE_FCOEDWRC);
+		stats->fcoedwtc += IXGBE_READ_REG(hw, IXGBE_FCOEDWTC);
 	}
 
 	/* Rx Errors */
@@ -3836,8 +3909,28 @@ ix_alloc_intr(struct ix_softc *sc)
 	/*
 	 * Allocate MSI/legacy interrupt resource
 	 */
-	sc->intr_type = pci_alloc_1intr(sc->dev, ix_msi_enable,
-	    &intr->intr_rid, &intr_flags);
+	if (sc->caps & IX_CAP_LEGACY_INTR) {
+		sc->intr_type = pci_alloc_1intr(sc->dev, ix_msi_enable,
+		    &intr->intr_rid, &intr_flags);
+	} else {
+		int cpu;
+
+		/*
+		 * Only MSI is supported.
+		 */
+		cpu = device_getenv_int(sc->dev, "msi.cpu", -1);
+		if (cpu >= ncpus)
+			cpu = ncpus - 1;
+
+		if (pci_alloc_msi(sc->dev, &intr->intr_rid, 1, cpu) == 0) {
+			sc->intr_type = PCI_INTR_TYPE_MSI;
+			intr_flags = RF_ACTIVE;
+		} else {
+			sc->intr_type = PCI_INTR_TYPE_LEGACY;
+			device_printf(sc->dev, "Unable to allocate MSI\n");
+			return ENXIO;
+		}
+	}
 
 	intr->intr_res = bus_alloc_resource_any(sc->dev, SYS_RES_IRQ,
 	    &intr->intr_rid, intr_flags);
@@ -3849,7 +3942,10 @@ ix_alloc_intr(struct ix_softc *sc)
 
 	intr->intr_serialize = &sc->main_serialize;
 	intr->intr_cpuid = rman_get_cpuid(intr->intr_res);
-	intr->intr_func = ix_intr;
+	if (sc->hw.mac.type == ixgbe_mac_82598EB)
+		intr->intr_func = ix_intr_82598;
+	else
+		intr->intr_func = ix_intr;
 	intr->intr_funcarg = sc;
 	intr->intr_rate = IX_INTR_RATE;
 	intr->intr_use = IX_INTR_USE_RXTX;
@@ -4860,38 +4956,70 @@ ix_intr_status(struct ix_softc *sc, uint32_t eicr)
 
 	if (hw->mac.type != ixgbe_mac_82598EB) {
 		if (eicr & IXGBE_EICR_ECC)
-			if_printf(&sc->arpcom.ac_if, "ECC ERROR!!  Reboot!!\n");
+			if_printf(&sc->arpcom.ac_if, "ECC ERROR!!  REBOOT!!\n");
 
 		/* Check for over temp condition */
-		if (eicr & IXGBE_EICR_TS) {
-			if_printf(&sc->arpcom.ac_if, "CRITICAL: OVER TEMP!!  "
-			    "PHY IS SHUT DOWN!!  Shutdown!!\n");
+		if (sc->caps & IX_CAP_TEMP_SENSOR) {
+			int32_t retval;
+
+			switch (sc->hw.mac.type) {
+			case ixgbe_mac_X550EM_a:
+				if ((eicr & IXGBE_EICR_GPI_SDP0_X550EM_a) == 0)
+					break;
+				retval = hw->phy.ops.check_overtemp(hw);
+				if (retval != IXGBE_ERR_OVERTEMP)
+					break;
+
+				/* Disable more temp sensor interrupts. */
+				IXGBE_WRITE_REG(hw, IXGBE_EIMC,
+				    IXGBE_EICR_GPI_SDP0_X550EM_a);
+				if_printf(&sc->arpcom.ac_if, "CRITICAL: "
+				    "OVER TEMP!!  PHY IS SHUT DOWN!!  "
+				    "SHUTDOWN!!\n");
+				break;
+
+			default:
+				if ((eicr & IXGBE_EICR_TS) == 0)
+					break;
+				retval = hw->phy.ops.check_overtemp(hw);
+				if (retval != IXGBE_ERR_OVERTEMP)
+					break;
+
+				/* Disable more temp sensor interrupts. */
+				IXGBE_WRITE_REG(hw, IXGBE_EIMC, IXGBE_EICR_TS);
+				if_printf(&sc->arpcom.ac_if, "CRITICAL: "
+				    "OVER TEMP!!  PHY IS SHUT DOWN!!  "
+				    "SHUTDOWN!!\n");
+				break;
+			}
 		}
 	}
 
 	if (ix_is_sfp(hw)) {
-		uint32_t mod_mask;
+		uint32_t eicr_mask;
 
 		/* Pluggable optics-related interrupt */
-		if (hw->device_id == IXGBE_DEV_ID_X550EM_X_SFP)
-			mod_mask = IXGBE_EICR_GPI_SDP0_X540;
+		if (hw->mac.type >= ixgbe_mac_X540)
+			eicr_mask = IXGBE_EICR_GPI_SDP0_X540;
 		else
-			mod_mask = IXGBE_EICR_GPI_SDP2_BY_MAC(hw);
-		if (eicr & IXGBE_EICR_GPI_SDP1_BY_MAC(hw))
-			ix_handle_msf(sc);
-		else if (eicr & mod_mask)
+			eicr_mask = IXGBE_EICR_GPI_SDP2_BY_MAC(hw);
+
+		if (eicr & eicr_mask)
 			ix_handle_mod(sc);
+
+		if (hw->mac.type == ixgbe_mac_82599EB &&
+		    (eicr & IXGBE_EICR_GPI_SDP1_BY_MAC(hw)))
+			ix_handle_msf(sc);
 	}
 
 	/* Check for fan failure */
-	if (hw->device_id == IXGBE_DEV_ID_82598AT &&
-	    (eicr & IXGBE_EICR_GPI_SDP1))
-		if_printf(&sc->arpcom.ac_if, "FAN FAILURE!!  Replace!!\n");
+	if (sc->caps & IX_CAP_DETECT_FANFAIL)
+		ix_detect_fanfail(sc, eicr, TRUE);
 
 	/* External PHY interrupt */
-	if (hw->device_id == IXGBE_DEV_ID_X550EM_X_10G_T &&
+	if (hw->phy.type == ixgbe_phy_x550em_ext_t &&
 	    (eicr & IXGBE_EICR_GPI_SDP0_X540))
-	    	ix_handle_phy(sc);
+		ix_handle_phy(sc);
 }
 
 static void
@@ -5102,7 +5230,7 @@ ix_powerdown(struct ix_softc *sc)
 	struct ixgbe_hw *hw = &sc->hw;
 	int error = 0;
 
-	/* Limit power managment flow to X550EM baseT */
+	/* Limit power management flow to X550EM baseT */
 	if (hw->device_id == IXGBE_DEV_ID_X550EM_X_10G_T &&
 	    hw->phy.ops.enter_lplu) {
 		/* Turn off support for APM wakeup. (Using ACPI instead) */
@@ -5218,11 +5346,11 @@ static void
 ix_init_media(struct ix_softc *sc)
 {
 	struct ixgbe_hw *hw = &sc->hw;
-	int layer, msf_ifm = IFM_NONE;
+	uint32_t layer;
 
 	ifmedia_removeall(&sc->media);
 
-	layer = ixgbe_get_supported_physical_layer(hw);
+	layer = sc->phy_layer;
 
 	/*
 	 * Media types with matching DragonFlyBSD media defines
@@ -5240,32 +5368,10 @@ ix_init_media(struct ix_softc *sc)
 		    0, NULL);
 		/* No half-duplex support */
 	}
-
-	if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_LR) {
-		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_10G_LR | IFM_FDX,
+	if (layer & IXGBE_PHYSICAL_LAYER_10BASE_T) {
+		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_10_T | IFM_FDX,
 		    0, NULL);
-		msf_ifm = IFM_1000_LX;
-	}
-	if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_LRM) {
-		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_10G_LRM | IFM_FDX,
-		    0, NULL);
-		msf_ifm = IFM_1000_LX;
-	}
-	if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_SR) {
-		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_10G_SR | IFM_FDX,
-		    0, NULL);
-		msf_ifm = IFM_1000_SX;
-	}
-
-	/* Add media for multispeed fiber */
-	if (ix_is_sfp(hw) && hw->phy.multispeed_fiber && msf_ifm != IFM_NONE) {
-		uint32_t linkcap;
-		bool autoneg;
-
-		hw->mac.ops.get_link_capabilities(hw, &linkcap, &autoneg);
-		if (linkcap & IXGBE_LINK_SPEED_1GB_FULL)
-			ifmedia_add_nodup(&sc->media,
-			    IFM_ETHER | msf_ifm | IFM_FDX, 0, NULL);
+		/* No half-duplex support */
 	}
 
 	if ((layer & IXGBE_PHYSICAL_LAYER_SFP_PLUS_CU) ||
@@ -5273,12 +5379,38 @@ ix_init_media(struct ix_softc *sc)
 		ifmedia_add_nodup(&sc->media,
 		    IFM_ETHER | IFM_10G_TWINAX | IFM_FDX, 0, NULL);
 	}
-	if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_CX4) {
-		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_10G_CX4 | IFM_FDX,
+
+	if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_LR) {
+		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_10G_LR | IFM_FDX,
+		    0, NULL);
+		if (hw->phy.multispeed_fiber) {
+			ifmedia_add_nodup(&sc->media,
+			    IFM_ETHER | IFM_1000_LX | IFM_FDX, 0, NULL);
+		}
+	}
+	if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_LRM) {
+		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_10G_LRM | IFM_FDX,
+		    0, NULL);
+		if (hw->phy.multispeed_fiber) {
+			ifmedia_add_nodup(&sc->media,
+			    IFM_ETHER | IFM_1000_LX | IFM_FDX, 0, NULL);
+		}
+	}
+
+	if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_SR) {
+		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_10G_SR | IFM_FDX,
+		    0, NULL);
+		if (hw->phy.multispeed_fiber) {
+			ifmedia_add_nodup(&sc->media,
+			    IFM_ETHER | IFM_1000_SX | IFM_FDX, 0, NULL);
+		}
+	} else if (layer & IXGBE_PHYSICAL_LAYER_1000BASE_SX) {
+		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_1000_SX | IFM_FDX,
 		    0, NULL);
 	}
-	if (layer & IXGBE_PHYSICAL_LAYER_1000BASE_SX) {
-		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_1000_SX | IFM_FDX,
+
+	if (layer & IXGBE_PHYSICAL_LAYER_10GBASE_CX4) {
+		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_10G_CX4 | IFM_FDX,
 		    0, NULL);
 	}
 
@@ -5307,8 +5439,14 @@ ix_init_media(struct ix_softc *sc)
 		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_1000_CX | IFM_FDX,
 		    0, NULL);
 	}
+	if (layer & IXGBE_PHYSICAL_LAYER_2500BASE_KX) {
+		if_printf(&sc->arpcom.ac_if, "Media supported: 2500baseKX\n");
+		if_printf(&sc->arpcom.ac_if,
+		    "2500baseKX mapped to 2500baseSX\n");
+		ifmedia_add_nodup(&sc->media, IFM_ETHER | IFM_2500_SX | IFM_FDX,
+		    0, NULL);
+	}
 	if (layer & IXGBE_PHYSICAL_LAYER_1000BASE_BX) {
-		/* Someday, someone will care about you... */
 		if_printf(&sc->arpcom.ac_if,
 		    "Media supported: 1000baseBX, ignored\n");
 	}
@@ -5328,4 +5466,96 @@ ix_init_media(struct ix_softc *sc)
 		sc->ifm_media = IX_IFM_DEFAULT | flowctrl;
 		ifmedia_set(&sc->media, sc->ifm_media);
 	}
+}
+
+static void
+ix_setup_caps(struct ix_softc *sc)
+{
+
+	sc->caps |= IX_CAP_LEGACY_INTR;
+
+	switch (sc->hw.mac.type) {
+	case ixgbe_mac_82598EB:
+		if (sc->hw.device_id == IXGBE_DEV_ID_82598AT)
+			sc->caps |= IX_CAP_DETECT_FANFAIL;
+		break;
+
+	case ixgbe_mac_X550:
+		sc->caps |= IX_CAP_TEMP_SENSOR;
+		break;
+
+	case ixgbe_mac_X550EM_x:
+		if (sc->hw.device_id == IXGBE_DEV_ID_X550EM_X_KR)
+			sc->caps |= IX_CAP_EEE;
+		break;
+
+	case ixgbe_mac_X550EM_a:
+		sc->caps &= ~IX_CAP_LEGACY_INTR;
+		if (sc->hw.device_id == IXGBE_DEV_ID_X550EM_A_1G_T ||
+		    sc->hw.device_id == IXGBE_DEV_ID_X550EM_A_1G_T_L)
+			sc->caps |= IX_CAP_TEMP_SENSOR | IX_CAP_EEE;
+		break;
+
+	case ixgbe_mac_82599EB:
+		if (sc->hw.device_id == IXGBE_DEV_ID_82599_QSFP_SF_QP)
+			sc->caps &= ~IX_CAP_LEGACY_INTR;
+		break;
+
+	default:
+		break;
+	}
+}
+
+static void
+ix_detect_fanfail(struct ix_softc *sc, uint32_t reg, boolean_t intr)
+{
+	uint32_t mask;
+
+	mask = intr ? IXGBE_EICR_GPI_SDP1_BY_MAC(&sc->hw) : IXGBE_ESDP_SDP1;
+	if (reg & mask) {
+		if_printf(&sc->arpcom.ac_if,
+		    "CRITICAL: FAN FAILURE!!  REPLACE IMMEDIATELY!!\n");
+	}
+}
+
+static void
+ix_config_gpie(struct ix_softc *sc)
+{
+	struct ixgbe_hw *hw = &sc->hw;
+	uint32_t gpie;
+
+	gpie = IXGBE_READ_REG(hw, IXGBE_GPIE);
+
+	if (sc->intr_type == PCI_INTR_TYPE_MSIX) {
+		/* Enable Enhanced MSI-X mode */
+		gpie |= IXGBE_GPIE_MSIX_MODE |
+		    IXGBE_GPIE_EIAME |
+		    IXGBE_GPIE_PBA_SUPPORT |
+		    IXGBE_GPIE_OCD;
+	}
+
+	/* Fan Failure Interrupt */
+	if (sc->caps & IX_CAP_DETECT_FANFAIL)
+		gpie |= IXGBE_SDP1_GPIEN;
+
+	/* Thermal Sensor Interrupt */
+	if (sc->caps & IX_CAP_TEMP_SENSOR)
+		gpie |= IXGBE_SDP0_GPIEN_X540;
+
+	/* Link detection */
+	switch (hw->mac.type) {
+	case ixgbe_mac_82599EB:
+		gpie |= IXGBE_SDP1_GPIEN | IXGBE_SDP2_GPIEN;
+		break;
+
+	case ixgbe_mac_X550EM_x:
+	case ixgbe_mac_X550EM_a:
+		gpie |= IXGBE_SDP0_GPIEN_X540;
+		break;
+
+	default:
+		break;
+	}
+
+	IXGBE_WRITE_REG(hw, IXGBE_GPIE, gpie);
 }

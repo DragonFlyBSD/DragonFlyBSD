@@ -1,31 +1,31 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2014, Intel Corporation 
+  Copyright (c) 2001-2017, Intel Corporation
   All rights reserved.
-  
-  Redistribution and use in source and binary forms, with or without 
+
+  Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
-  
-   1. Redistributions of source code must retain the above copyright notice, 
+
+   1. Redistributions of source code must retain the above copyright notice,
       this list of conditions and the following disclaimer.
-  
-   2. Redistributions in binary form must reproduce the above copyright 
-      notice, this list of conditions and the following disclaimer in the 
+
+   2. Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-  
-   3. Neither the name of the Intel Corporation nor the names of its 
-      contributors may be used to endorse or promote products derived from 
+
+   3. Neither the name of the Intel Corporation nor the names of its
+      contributors may be used to endorse or promote products derived from
       this software without specific prior written permission.
-  
+
   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
-  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
-  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE 
-  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
-  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
-  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
-  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
-  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE.
 
@@ -33,8 +33,8 @@
 /*$FreeBSD$*/
 
 
-#ifndef _IXGBE_OS_H_
-#define _IXGBE_OS_H_
+#ifndef _IXGBE_OSDEP_H_
+#define _IXGBE_OSDEP_H_
 
 #include <sys/types.h>
 #include <sys/param.h>
@@ -54,13 +54,13 @@
 #include <bus/pci/pcireg.h>
 
 #define ASSERT(x) if(!(x)) panic("IXGBE: x")
-#define EWARN(H, W, S) kprintf(W)
+#define EWARN(H, W) kprintf(W)
 
 /* The happy-fun DELAY macro is defined in /usr/src/sys/i386/include/clock.h */
 #define usec_delay(x) DELAY(x)
 #define msec_delay(x) DELAY(1000*(x))
 
-#define DBG 0 
+#define DBG 0
 #define MSGOUT(S, A, B)     kprintf(S "\n", A, B)
 #define DEBUGFUNC(F)        DEBUGOUT(F);
 #if DBG
@@ -111,10 +111,13 @@
 #define IXGBE_NTOHS(_i)	ntohs(_i)
 
 /* XXX these need to be revisited */
+#define IXGBE_CPU_TO_LE16 htole16
 #define IXGBE_CPU_TO_LE32 htole32
+#define IXGBE_LE32_TO_CPU le32toh
 #define IXGBE_LE32_TO_CPUS(x)
 #define IXGBE_CPU_TO_BE16 htobe16
 #define IXGBE_CPU_TO_BE32 htobe32
+#define IXGBE_BE32_TO_CPU be32toh
 
 typedef uint8_t		u8;
 typedef int8_t		s8;
@@ -132,7 +135,7 @@ typedef uint64_t	u64;
 #define __be32  u32
 #define __be64  u64
 
-#define le16_to_cpu 
+#define le16_to_cpu
 
 #if defined(__i386__) || defined(__x86_64__)
 #define mb()	__asm volatile("mfence" ::: "memory")
@@ -159,7 +162,7 @@ void prefetch(void *x)
  * non-overlapping regions and 32-byte padding on both src and dst.
  */
 static __inline int
-ixgbe_bcopy(void *_src, void *_dst, int l)
+ixgbe_bcopy(void *restrict _src, void *restrict _dst, int l)
 {
 	uint64_t *src = _src;
 	uint64_t *dst = _dst;
@@ -177,54 +180,36 @@ struct ixgbe_osdep
 {
 	bus_space_tag_t    mem_bus_space_tag;
 	bus_space_handle_t mem_bus_space_handle;
-	device_t           dev;
 };
 
+/* These routines need struct ixgbe_hw declared */
+struct ixgbe_hw;
+
 /* These routines are needed by the shared code */
-struct ixgbe_hw; 
-extern u16 ixgbe_read_pci_cfg(struct ixgbe_hw *, u32);
-#define IXGBE_READ_PCIE_WORD ixgbe_read_pci_cfg
+extern u16 ixgbe_read_pci_cfg_vf(struct ixgbe_hw *, u32);
+extern u16 ixgbe_read_pci_cfg_pf(struct ixgbe_hw *, u32);
 
-extern void ixgbe_write_pci_cfg(struct ixgbe_hw *, u32, u16);
-#define IXGBE_WRITE_PCIE_WORD ixgbe_write_pci_cfg
-
-static __inline uint32_t
-ixgbe_read_reg_osdep(struct ixgbe_osdep *osdep, uint32_t reg)
-{
-	uint32_t value;
-	int count = 0;
-
-	do {
-		value = bus_space_read_4(osdep->mem_bus_space_tag,
-		    osdep->mem_bus_space_handle, reg);
-	} while (value == 0xdeadbeef && ++count < 10);
-
-	if (count > 1)
-		device_printf(osdep->dev, "%d register reads @ 0x%8x\n",
-		    count, reg);
-
-	return value;
-}
-
-#define IXGBE_READ_REG(a, reg) ixgbe_read_reg_osdep((a)->back, reg)
+extern void ixgbe_write_pci_cfg_vf(struct ixgbe_hw *, u32, u16);
+extern void ixgbe_write_pci_cfg_pf(struct ixgbe_hw *, u32, u16);
 
 #define IXGBE_WRITE_FLUSH(a) IXGBE_READ_REG(a, IXGBE_STATUS)
 
-#define IXGBE_WRITE_REG(a, reg, value) (\
-   bus_space_write_4( ((struct ixgbe_osdep *)(a)->back)->mem_bus_space_tag, \
-                     ((struct ixgbe_osdep *)(a)->back)->mem_bus_space_handle, \
-                     reg, value))
+extern u32 ixgbe_read_reg_vf(struct ixgbe_hw *, u32);
+extern u32 ixgbe_read_reg_pf(struct ixgbe_hw *, u32);
+extern void ixgbe_write_reg_vf(struct ixgbe_hw *, u32, u32);
+extern void ixgbe_write_reg_pf(struct ixgbe_hw *, u32, u32);
 
+extern u32 ixgbe_read_reg_array_vf(struct ixgbe_hw *, u32, u32);
+extern u32 ixgbe_read_reg_array_pf(struct ixgbe_hw *, u32, u32);
 
-#define IXGBE_READ_REG_ARRAY(a, reg, offset) (\
-   bus_space_read_4( ((struct ixgbe_osdep *)(a)->back)->mem_bus_space_tag, \
-                     ((struct ixgbe_osdep *)(a)->back)->mem_bus_space_handle, \
-                     (reg + ((offset) << 2))))
+extern void ixgbe_write_reg_array_vf(struct ixgbe_hw *, u32, u32, u32);
+extern void ixgbe_write_reg_array_pf(struct ixgbe_hw *, u32, u32, u32);
 
-#define IXGBE_WRITE_REG_ARRAY(a, reg, offset, value) (\
-      bus_space_write_4( ((struct ixgbe_osdep *)(a)->back)->mem_bus_space_tag, \
-                      ((struct ixgbe_osdep *)(a)->back)->mem_bus_space_handle, \
-                      (reg + ((offset) << 2)), value))
+#define IXGBE_READ_REG ixgbe_read_reg_pf
+#define IXGBE_READ_PCIE_WORD ixgbe_read_pci_cfg_pf
+#define IXGBE_WRITE_PCIE_WORD ixgbe_write_pci_cfg_pf
+#define IXGBE_WRITE_REG ixgbe_write_reg_pf
+#define IXGBE_READ_REG_ARRAY ixgbe_read_reg_array_pf
+#define IXGBE_WRITE_REG_ARRAY ixgbe_write_reg_array_pf
 
-
-#endif /* _IXGBE_OS_H_ */
+#endif /* _IXGBE_OSDEP_H_ */

@@ -1,31 +1,31 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2014, Intel Corporation 
+  Copyright (c) 2001-2017, Intel Corporation
   All rights reserved.
-  
-  Redistribution and use in source and binary forms, with or without 
+
+  Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
-  
-   1. Redistributions of source code must retain the above copyright notice, 
+
+   1. Redistributions of source code must retain the above copyright notice,
       this list of conditions and the following disclaimer.
-  
-   2. Redistributions in binary form must reproduce the above copyright 
-      notice, this list of conditions and the following disclaimer in the 
+
+   2. Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-  
-   3. Neither the name of the Intel Corporation nor the names of its 
-      contributors may be used to endorse or promote products derived from 
+
+   3. Neither the name of the Intel Corporation nor the names of its
+      contributors may be used to endorse or promote products derived from
       this software without specific prior written permission.
-  
+
   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
-  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
-  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE 
-  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
-  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
-  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
-  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
-  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE.
 
@@ -82,8 +82,7 @@ s32 ixgbe_init_ops_X540(struct ixgbe_hw *hw)
 	/* PHY */
 	phy->ops.init = ixgbe_init_phy_ops_generic;
 	phy->ops.reset = NULL;
-	if (!ixgbe_mng_present(hw))
-		phy->ops.set_phy_power = ixgbe_set_copper_phy_power;
+	phy->ops.set_phy_power = ixgbe_set_copper_phy_power;
 
 	/* MAC */
 	mac->ops.reset_hw = ixgbe_reset_hw_X540;
@@ -101,6 +100,7 @@ s32 ixgbe_init_ops_X540(struct ixgbe_hw *hw)
 	mac->ops.get_fcoe_boot_status = ixgbe_get_fcoe_boot_status_generic;
 	mac->ops.acquire_swfw_sync = ixgbe_acquire_swfw_sync_X540;
 	mac->ops.release_swfw_sync = ixgbe_release_swfw_sync_X540;
+	mac->ops.init_swfw_sync = ixgbe_init_swfw_sync_X540;
 	mac->ops.disable_sec_rx_path = ixgbe_disable_sec_rx_path_generic;
 	mac->ops.enable_sec_rx_path = ixgbe_enable_sec_rx_path_generic;
 
@@ -123,6 +123,10 @@ s32 ixgbe_init_ops_X540(struct ixgbe_hw *hw)
 	mac->ops.setup_link = ixgbe_setup_mac_link_X540;
 	mac->ops.setup_rxpba = ixgbe_set_rxpba_generic;
 	mac->ops.check_link = ixgbe_check_mac_link_generic;
+	mac->ops.bypass_rw = ixgbe_bypass_rw_generic;
+	mac->ops.bypass_valid_rd = ixgbe_bypass_valid_rd_generic;
+	mac->ops.bypass_set = ixgbe_bypass_set_generic;
+	mac->ops.bypass_rd_eep = ixgbe_bypass_rd_eep_generic;
 
 
 	mac->mcft_size		= IXGBE_X540_MC_TBL_SIZE;
@@ -138,8 +142,8 @@ s32 ixgbe_init_ops_X540(struct ixgbe_hw *hw)
 	 * ARC supported; valid only if manageability features are
 	 * enabled.
 	 */
-	mac->arc_subsystem_valid = (IXGBE_READ_REG(hw, IXGBE_FWSM) &
-				   IXGBE_FWSM_MODE_MASK) ? TRUE : FALSE;
+	mac->arc_subsystem_valid = !!(IXGBE_READ_REG(hw, IXGBE_FWSM_BY_MAC(hw))
+				     & IXGBE_FWSM_MODE_MASK);
 
 	hw->mbx.ops.init_params = ixgbe_init_mbx_params_pf;
 
@@ -209,6 +213,7 @@ s32 ixgbe_reset_hw_X540(struct ixgbe_hw *hw)
 {
 	s32 status;
 	u32 ctrl, i;
+	u32 swfw_mask = hw->phy.phy_semaphore_mask;
 
 	DEBUGFUNC("ixgbe_reset_hw_X540");
 
@@ -221,10 +226,17 @@ s32 ixgbe_reset_hw_X540(struct ixgbe_hw *hw)
 	ixgbe_clear_tx_pending(hw);
 
 mac_reset_top:
+	status = hw->mac.ops.acquire_swfw_sync(hw, swfw_mask);
+	if (status != IXGBE_SUCCESS) {
+		ERROR_REPORT2(IXGBE_ERROR_CAUTION,
+			"semaphore failed with %d", status);
+		return IXGBE_ERR_SWFW_SYNC;
+	}
 	ctrl = IXGBE_CTRL_RST;
 	ctrl |= IXGBE_READ_REG(hw, IXGBE_CTRL);
 	IXGBE_WRITE_REG(hw, IXGBE_CTRL, ctrl);
 	IXGBE_WRITE_FLUSH(hw);
+	hw->mac.ops.release_swfw_sync(hw, swfw_mask);
 
 	/* Poll for reset bit to self-clear indicating reset is complete */
 	for (i = 0; i < 10; i++) {
@@ -270,11 +282,15 @@ mac_reset_top:
 
 	/* Add the SAN MAC address to the RAR only if it's a valid address */
 	if (ixgbe_validate_mac_addr(hw->mac.san_addr) == 0) {
-		hw->mac.ops.set_rar(hw, hw->mac.num_rar_entries - 1,
-				    hw->mac.san_addr, 0, IXGBE_RAH_AV);
-
 		/* Save the SAN MAC RAR index */
 		hw->mac.san_mac_rar_index = hw->mac.num_rar_entries - 1;
+
+		hw->mac.ops.set_rar(hw, hw->mac.san_mac_rar_index,
+				    hw->mac.san_addr, 0, IXGBE_RAH_AV);
+
+		/* clear VMDq pool/queue selection for this RAR */
+		hw->mac.ops.clear_vmdq(hw, hw->mac.san_mac_rar_index,
+				       IXGBE_CLEAR_VMDQ_ALL);
 
 		/* Reserve the last RAR for the SAN MAC address */
 		hw->mac.num_rar_entries--;
@@ -318,9 +334,9 @@ out:
  *
  *  Determines physical layer capabilities of the current configuration.
  **/
-u32 ixgbe_get_supported_physical_layer_X540(struct ixgbe_hw *hw)
+u64 ixgbe_get_supported_physical_layer_X540(struct ixgbe_hw *hw)
 {
-	u32 physical_layer = IXGBE_PHYSICAL_LAYER_UNKNOWN;
+	u64 physical_layer = IXGBE_PHYSICAL_LAYER_UNKNOWN;
 	u16 ext_ability = 0;
 
 	DEBUGFUNC("ixgbe_get_supported_physical_layer_X540");
@@ -356,7 +372,7 @@ s32 ixgbe_init_eeprom_params_X540(struct ixgbe_hw *hw)
 		eeprom->semaphore_delay = 10;
 		eeprom->type = ixgbe_flash;
 
-		eec = IXGBE_READ_REG(hw, IXGBE_EEC);
+		eec = IXGBE_READ_REG(hw, IXGBE_EEC_BY_MAC(hw));
 		eeprom_size = (u16)((eec & IXGBE_EEC_SIZE) >>
 				    IXGBE_EEC_SIZE_SHIFT);
 		eeprom->word_size = 1 << (eeprom_size +
@@ -488,7 +504,6 @@ s32 ixgbe_calc_eeprom_checksum_X540(struct ixgbe_hw *hw)
 	u16 length = 0;
 	u16 pointer = 0;
 	u16 word = 0;
-	u16 checksum_last_word = IXGBE_EEPROM_CHECKSUM;
 	u16 ptr_start = IXGBE_PCIE_ANALOG_PTR;
 
 	/* Do not use hw->eeprom.ops.read because we do not want to take
@@ -498,14 +513,15 @@ s32 ixgbe_calc_eeprom_checksum_X540(struct ixgbe_hw *hw)
 
 	DEBUGFUNC("ixgbe_calc_eeprom_checksum_X540");
 
-	/* Include 0x0-0x3F in the checksum */
-	for (i = 0; i <= checksum_last_word; i++) {
+	/* Include 0x0 up to IXGBE_EEPROM_CHECKSUM; do not include the
+	 * checksum itself
+	 */
+	for (i = 0; i < IXGBE_EEPROM_CHECKSUM; i++) {
 		if (ixgbe_read_eerd_generic(hw, i, &word)) {
 			DEBUGOUT("EEPROM read failed\n");
 			return IXGBE_ERR_EEPROM;
 		}
-		if (i != IXGBE_EEPROM_CHECKSUM)
-			checksum += word;
+		checksum += word;
 	}
 
 	/* Include all data from pointers 0x3, 0x6-0xE.  This excludes the
@@ -681,8 +697,8 @@ s32 ixgbe_update_flash_X540(struct ixgbe_hw *hw)
 		goto out;
 	}
 
-	flup = IXGBE_READ_REG(hw, IXGBE_EEC) | IXGBE_EEC_FLUP;
-	IXGBE_WRITE_REG(hw, IXGBE_EEC, flup);
+	flup = IXGBE_READ_REG(hw, IXGBE_EEC_BY_MAC(hw)) | IXGBE_EEC_FLUP;
+	IXGBE_WRITE_REG(hw, IXGBE_EEC_BY_MAC(hw), flup);
 
 	status = ixgbe_poll_flash_update_done_X540(hw);
 	if (status == IXGBE_SUCCESS)
@@ -691,11 +707,11 @@ s32 ixgbe_update_flash_X540(struct ixgbe_hw *hw)
 		DEBUGOUT("Flash update time out\n");
 
 	if (hw->mac.type == ixgbe_mac_X540 && hw->revision_id == 0) {
-		flup = IXGBE_READ_REG(hw, IXGBE_EEC);
+		flup = IXGBE_READ_REG(hw, IXGBE_EEC_BY_MAC(hw));
 
 		if (flup & IXGBE_EEC_SEC1VAL) {
 			flup |= IXGBE_EEC_FLUP;
-			IXGBE_WRITE_REG(hw, IXGBE_EEC, flup);
+			IXGBE_WRITE_REG(hw, IXGBE_EEC_BY_MAC(hw), flup);
 		}
 
 		status = ixgbe_poll_flash_update_done_X540(hw);
@@ -724,7 +740,7 @@ static s32 ixgbe_poll_flash_update_done_X540(struct ixgbe_hw *hw)
 	DEBUGFUNC("ixgbe_poll_flash_update_done_X540");
 
 	for (i = 0; i < IXGBE_FLUDONE_ATTEMPTS; i++) {
-		reg = IXGBE_READ_REG(hw, IXGBE_EEC);
+		reg = IXGBE_READ_REG(hw, IXGBE_EEC_BY_MAC(hw));
 		if (reg & IXGBE_EEC_FLUDONE) {
 			status = IXGBE_SUCCESS;
 			break;
@@ -768,19 +784,24 @@ s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u32 mask)
 
 	swmask |= swi2c_mask;
 	fwmask |= swi2c_mask << 2;
+	if (hw->mac.type == ixgbe_mac_X550)
+		timeout = 1000;
+
 	for (i = 0; i < timeout; i++) {
 		/* SW NVM semaphore bit is used for access to all
 		 * SW_FW_SYNC bits (not just NVM)
 		 */
-		if (ixgbe_get_swfw_sync_semaphore(hw))
+		if (ixgbe_get_swfw_sync_semaphore(hw)) {
+			DEBUGOUT("Failed to get NVM access and register semaphore, returning IXGBE_ERR_SWFW_SYNC\n");
 			return IXGBE_ERR_SWFW_SYNC;
+		}
 
-		swfw_sync = IXGBE_READ_REG(hw, IXGBE_SWFW_SYNC);
+		swfw_sync = IXGBE_READ_REG(hw, IXGBE_SWFW_SYNC_BY_MAC(hw));
 		if (!(swfw_sync & (fwmask | swmask | hwmask))) {
 			swfw_sync |= swmask;
-			IXGBE_WRITE_REG(hw, IXGBE_SWFW_SYNC, swfw_sync);
+			IXGBE_WRITE_REG(hw, IXGBE_SWFW_SYNC_BY_MAC(hw),
+					swfw_sync);
 			ixgbe_release_swfw_sync_semaphore(hw);
-			msec_delay(5);
 			return IXGBE_SUCCESS;
 		}
 		/* Firmware currently using resource (fwmask), hardware
@@ -791,24 +812,19 @@ s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u32 mask)
 		msec_delay(5);
 	}
 
-	/* Failed to get SW only semaphore */
-	if (swmask == IXGBE_GSSR_SW_MNG_SM) {
-		ERROR_REPORT1(IXGBE_ERROR_POLLING,
-			     "Failed to get SW only semaphore");
-		return IXGBE_ERR_SWFW_SYNC;
-	}
-
 	/* If the resource is not released by the FW/HW the SW can assume that
 	 * the FW/HW malfunctions. In that case the SW should set the SW bit(s)
 	 * of the requested resource(s) while ignoring the corresponding FW/HW
 	 * bits in the SW_FW_SYNC register.
 	 */
-	if (ixgbe_get_swfw_sync_semaphore(hw))
+	if (ixgbe_get_swfw_sync_semaphore(hw)) {
+		DEBUGOUT("Failed to get NVM sempahore and register semaphore while forcefully ignoring FW sempahore bit(s) and setting SW semaphore bit(s), returning IXGBE_ERR_SWFW_SYNC\n");
 		return IXGBE_ERR_SWFW_SYNC;
-	swfw_sync = IXGBE_READ_REG(hw, IXGBE_SWFW_SYNC);
+	}
+	swfw_sync = IXGBE_READ_REG(hw, IXGBE_SWFW_SYNC_BY_MAC(hw));
 	if (swfw_sync & (fwmask | hwmask)) {
 		swfw_sync |= swmask;
-		IXGBE_WRITE_REG(hw, IXGBE_SWFW_SYNC, swfw_sync);
+		IXGBE_WRITE_REG(hw, IXGBE_SWFW_SYNC_BY_MAC(hw), swfw_sync);
 		ixgbe_release_swfw_sync_semaphore(hw);
 		msec_delay(5);
 		return IXGBE_SUCCESS;
@@ -820,15 +836,18 @@ s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u32 mask)
 	 */
 	if (swfw_sync & swmask) {
 		u32 rmask = IXGBE_GSSR_EEP_SM | IXGBE_GSSR_PHY0_SM |
-			    IXGBE_GSSR_PHY1_SM | IXGBE_GSSR_MAC_CSR_SM;
+			    IXGBE_GSSR_PHY1_SM | IXGBE_GSSR_MAC_CSR_SM |
+			    IXGBE_GSSR_SW_MNG_SM;
 
 		if (swi2c_mask)
 			rmask |= IXGBE_GSSR_I2C_MASK;
 		ixgbe_release_swfw_sync_X540(hw, rmask);
 		ixgbe_release_swfw_sync_semaphore(hw);
+		DEBUGOUT("Resource not released by other SW, returning IXGBE_ERR_SWFW_SYNC\n");
 		return IXGBE_ERR_SWFW_SYNC;
 	}
 	ixgbe_release_swfw_sync_semaphore(hw);
+	DEBUGOUT("Returning error IXGBE_ERR_SWFW_SYNC\n");
 
 	return IXGBE_ERR_SWFW_SYNC;
 }
@@ -852,12 +871,12 @@ void ixgbe_release_swfw_sync_X540(struct ixgbe_hw *hw, u32 mask)
 		swmask |= mask & IXGBE_GSSR_I2C_MASK;
 	ixgbe_get_swfw_sync_semaphore(hw);
 
-	swfw_sync = IXGBE_READ_REG(hw, IXGBE_SWFW_SYNC);
+	swfw_sync = IXGBE_READ_REG(hw, IXGBE_SWFW_SYNC_BY_MAC(hw));
 	swfw_sync &= ~swmask;
-	IXGBE_WRITE_REG(hw, IXGBE_SWFW_SYNC, swfw_sync);
+	IXGBE_WRITE_REG(hw, IXGBE_SWFW_SYNC_BY_MAC(hw), swfw_sync);
 
 	ixgbe_release_swfw_sync_semaphore(hw);
-	msec_delay(5);
+	msec_delay(2);
 }
 
 /**
@@ -881,7 +900,7 @@ static s32 ixgbe_get_swfw_sync_semaphore(struct ixgbe_hw *hw)
 		 * If the SMBI bit is 0 when we read it, then the bit will be
 		 * set and we have the semaphore
 		 */
-		swsm = IXGBE_READ_REG(hw, IXGBE_SWSM);
+		swsm = IXGBE_READ_REG(hw, IXGBE_SWSM_BY_MAC(hw));
 		if (!(swsm & IXGBE_SWSM_SMBI)) {
 			status = IXGBE_SUCCESS;
 			break;
@@ -892,7 +911,7 @@ static s32 ixgbe_get_swfw_sync_semaphore(struct ixgbe_hw *hw)
 	/* Now get the semaphore between SW/FW through the REGSMP bit */
 	if (status == IXGBE_SUCCESS) {
 		for (i = 0; i < timeout; i++) {
-			swsm = IXGBE_READ_REG(hw, IXGBE_SWFW_SYNC);
+			swsm = IXGBE_READ_REG(hw, IXGBE_SWFW_SYNC_BY_MAC(hw));
 			if (!(swsm & IXGBE_SWFW_REGSMP))
 				break;
 
@@ -932,15 +951,45 @@ static void ixgbe_release_swfw_sync_semaphore(struct ixgbe_hw *hw)
 
 	/* Release both semaphores by writing 0 to the bits REGSMP and SMBI */
 
-	swsm = IXGBE_READ_REG(hw, IXGBE_SWFW_SYNC);
+	swsm = IXGBE_READ_REG(hw, IXGBE_SWFW_SYNC_BY_MAC(hw));
 	swsm &= ~IXGBE_SWFW_REGSMP;
-	IXGBE_WRITE_REG(hw, IXGBE_SWFW_SYNC, swsm);
+	IXGBE_WRITE_REG(hw, IXGBE_SWFW_SYNC_BY_MAC(hw), swsm);
 
-	swsm = IXGBE_READ_REG(hw, IXGBE_SWSM);
+	swsm = IXGBE_READ_REG(hw, IXGBE_SWSM_BY_MAC(hw));
 	swsm &= ~IXGBE_SWSM_SMBI;
-	IXGBE_WRITE_REG(hw, IXGBE_SWSM, swsm);
+	IXGBE_WRITE_REG(hw, IXGBE_SWSM_BY_MAC(hw), swsm);
 
 	IXGBE_WRITE_FLUSH(hw);
+}
+
+/**
+ *  ixgbe_init_swfw_sync_X540 - Release hardware semaphore
+ *  @hw: pointer to hardware structure
+ *
+ *  This function reset hardware semaphore bits for a semaphore that may
+ *  have be left locked due to a catastrophic failure.
+ **/
+void ixgbe_init_swfw_sync_X540(struct ixgbe_hw *hw)
+{
+	u32 rmask;
+
+	/* First try to grab the semaphore but we don't need to bother
+	 * looking to see whether we got the lock or not since we do
+	 * the same thing regardless of whether we got the lock or not.
+	 * We got the lock - we release it.
+	 * We timeout trying to get the lock - we force its release.
+	 */
+	ixgbe_get_swfw_sync_semaphore(hw);
+	ixgbe_release_swfw_sync_semaphore(hw);
+
+	/* Acquire and release all software resources. */
+	rmask = IXGBE_GSSR_EEP_SM | IXGBE_GSSR_PHY0_SM |
+		IXGBE_GSSR_PHY1_SM | IXGBE_GSSR_MAC_CSR_SM |
+		IXGBE_GSSR_SW_MNG_SM;
+
+	rmask |= IXGBE_GSSR_I2C_MASK;
+	ixgbe_acquire_swfw_sync_X540(hw, rmask);
+	ixgbe_release_swfw_sync_X540(hw, rmask);
 }
 
 /**
@@ -959,6 +1008,9 @@ s32 ixgbe_blink_led_start_X540(struct ixgbe_hw *hw, u32 index)
 	bool link_up;
 
 	DEBUGFUNC("ixgbe_blink_led_start_X540");
+
+	if (index > 3)
+		return IXGBE_ERR_PARAM;
 
 	/*
 	 * Link should be up in order for the blink bit in the LED control
@@ -993,6 +1045,9 @@ s32 ixgbe_blink_led_stop_X540(struct ixgbe_hw *hw, u32 index)
 {
 	u32 macc_reg;
 	u32 ledctl_reg;
+
+	if (index > 3)
+		return IXGBE_ERR_PARAM;
 
 	DEBUGFUNC("ixgbe_blink_led_stop_X540");
 
