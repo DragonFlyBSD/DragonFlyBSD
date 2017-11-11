@@ -12,7 +12,7 @@ Update version in sshd_config, sshd_config.5, version.h.
 
 Used in:
 lib/libssh/
-lib/pam_module/pam_ssh/
+lib/libpam/modules/pam_ssh/
 libexec/sftp-server/
 libexec/ssh-keysign/
 usr.bin/scp/
