@@ -391,8 +391,6 @@
         smb
         ..
     ..
-    openssl
-    ..
     pcap
     ..
     priv

@@ -16,8 +16,6 @@
     lib
         debug
         ..
-        engines
-        ..
         gcc47
             plugin
                 include
@@ -853,28 +851,6 @@
             zh_Hans_CN.GB2312
             ..
             zh_Hans_CN.UTF-8
-            ..
-        ..
-        openssl
-            man
-/set uname=man
-                cat1
-                ..
-                cat3
-                ..
-                cat5
-                ..
-                cat7
-                ..
-/set uname=root
-                man1
-                ..
-                man3
-                ..
-                man5
-                ..
-                man7
-                ..
             ..
         ..
         skel
