@@ -3270,6 +3270,7 @@ TO_REMOVE+=/usr/lib/aout
 TO_REMOVE+=/usr/share/calendar/de_DE.ISO_8859-1
 TO_REMOVE+=/usr/share/calendar/de_DE.ISO_8859-15
 TO_REMOVE+=/usr/share/calendar/hr_HR.ISO_8859-2
+TO_REMOVE+=/usr/share/man/man7/mailaddr.7.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
