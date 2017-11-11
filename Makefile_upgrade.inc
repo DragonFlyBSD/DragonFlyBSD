@@ -1,4 +1,5 @@
 # Append all obsolete files to this file
+# Late variant is special and requires approval from other committers first
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
 # Formatted manual pages (i.e., cat[1-9]) need not be specified separately
 
@@ -653,6 +654,17 @@ TO_REMOVE+=/usr/share/man/man8/dhcpd.8.gz
 TO_REMOVE+=/usr/share/man/man8/dhcrelay.8.gz
 TO_REMOVE+=/usr/include/machine/pci_cfgreg.h
 TO_REMOVE+=/usr/include/libusbhid.h
+TO_REMOVE+=/etc/pam.conf
+TO_REMOVE+=/usr/lib/pam_cleartext_pass_ok.so
+TO_REMOVE+=/usr/lib/pam_deny.so
+TO_REMOVE+=/usr/lib/pam_opie.so
+TO_REMOVE+=/usr/lib/pam_opieaccess.so
+TO_REMOVE+=/usr/lib/pam_permit.so
+TO_REMOVE+=/usr/lib/pam_radius.so
+TO_REMOVE+=/usr/lib/pam_skey.so
+TO_REMOVE+=/usr/lib/pam_ssh.so
+TO_REMOVE+=/usr/lib/pam_tacplus.so
+TO_REMOVE+=/usr/lib/pam_unix.so
 TO_REMOVE+=/usr/share/examples/cvsup/DragonFly-cvs-supfile
 TO_REMOVE+=/usr/share/examples/cvsup/DragonFly-preview-supfile
 TO_REMOVE+=/usr/share/examples/cvsup/DragonFly-release1_2-supfile
@@ -3282,19 +3294,18 @@ TO_REMOVE+=/usr/share/installer/sources.conf
 TO_REMOVE+=/usr/share/man/man8/installer.8.gz
 .endif
 
-.if defined(REMOVE_OPENSSL_FILES)
-TO_REMOVE+=/lib/libcrypto.so.5
-TO_REMOVE+=/usr/lib/libssl.a
-TO_REMOVE+=/usr/lib/libssl.so
-TO_REMOVE+=/usr/lib/libssl.so.5
-TO_REMOVE+=/usr/lib/engines
-TO_REMOVE+=/usr/lib/libcrypto.so
-TO_REMOVE+=/usr/lib/libcrypto.a
-TO_REMOVE+=/usr/lib/profile/libssl.a
-TO_REMOVE+=/usr/lib/profile/libcrypto.a
-TO_REMOVE+=/usr/include/openssl
-TO_REMOVE+=/usr/share/openssl
-.endif
+# Very special cases only.
+TO_REMOVE_LATE+=/lib/libcrypto.so.5
+TO_REMOVE_LATE+=/usr/lib/libssl.a
+TO_REMOVE_LATE+=/usr/lib/libssl.so
+TO_REMOVE_LATE+=/usr/lib/libssl.so.5
+TO_REMOVE_LATE+=/usr/lib/engines
+TO_REMOVE_LATE+=/usr/lib/libcrypto.so
+TO_REMOVE_LATE+=/usr/lib/libcrypto.a
+TO_REMOVE_LATE+=/usr/lib/profile/libssl.a
+TO_REMOVE_LATE+=/usr/lib/profile/libcrypto.a
+TO_REMOVE_LATE+=/usr/include/openssl
+TO_REMOVE_LATE+=/usr/share/openssl
 
 # XXX Remove when pfsync(4) has been fixed
 TO_REMOVE+=/usr/share/man/man4/pfsync.4.gz

@@ -91,6 +91,33 @@ remove-obsolete-files:
 		fi; \
 	done
 
+remove-deprecated-files:
+.if defined(REMOVE_DEPRECATED)
+	@echo "===> Remove now deprecated files"
+	@for item in ${TO_REMOVE_LATE}; do \
+		if [ -e ${DESTDIR}$${item} -o -L ${DESTDIR}$${item} ]; then \
+			echo "${DESTDIR}$${item}"; \
+			chflags -Rf noschg "${DESTDIR}$${item}"; \
+			rm -rf "${DESTDIR}$${item}"; \
+		fi; \
+	done;
+.else
+	@echo "===> Checking for deprecated files"
+	@count=0; for item in ${TO_REMOVE_LATE}; do \
+		if [ -e ${DESTDIR}$${item} -o -L ${DESTDIR}$${item} ]; then \
+			echo "${DESTDIR}$${item} is deprecated"; \
+			count=`expr $$count + 1`; \
+		fi; \
+	done; \
+	if [ "$$count" -gt 0 ]; then \
+		echo "==================================================================" ; \
+		echo "= You have $$count now deprecated files." ; \
+		echo "= Once you are sure that none of your third party (ports or local)" ; \
+		echo "= software are still using them, rerun with REMOVE_DEPRECATED set." ; \
+		echo "==================================================================" ; \
+	fi;
+.endif
+
 preupgrade:
 	(pw -V ${DESTDIR}/etc usershow mail -q > /dev/null) || \
 		pw -V ${DESTDIR}/etc useradd mail -u 6 -g 6 \
@@ -131,7 +158,7 @@ upgrade_check:
 		/usr/bin/false ; \
 	fi
 
-upgrade_etc:	upgrade_check preupgrade remove-obsolete-files
+upgrade_base:	upgrade_check preupgrade remove-obsolete-files
 	# files that should be dirs (not possible with Makefile_upgrade.inc)
 .for f in usr/include/dev/misc/ppi usr/share/initrd/sbin
 	[ -d ${DESTDIR}/${f} ] || rm -f ${DESTDIR}/${f}
@@ -177,9 +204,6 @@ upgrade_etc:	upgrade_check preupgrade remove-obsolete-files
 .endif
 .endfor
 .endif
-	# these removals must occur AFTER any pam conversion
-	csh -c "rm -f /usr/lib/pam_{cleartext_pass_ok,deny,opie,opieaccess,permit,radius,skey,ssh,tacplus,unix}.so"
-	rm -f /etc/pam.conf
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these files
 	cd ${UPGRADE_SRCDIR}/..; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    COPYRIGHT ${DESTDIR}/
@@ -244,6 +268,9 @@ upgrade_etc:	upgrade_check preupgrade remove-obsolete-files
 		echo "	cd ${UPGRADE_SRCDIR}/pam.d"; \
 		echo "	make install"; \
 	fi
+
+upgrade_etc:	upgrade_base remove-deprecated-files
+	@echo "Upgrade was successful"
 
 distribution:
 	cd ${.CURDIR}; \
