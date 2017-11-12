@@ -4,5 +4,4 @@ PROG=	unstr
 NOMAN=	noman
 CFLAGS+= -I${.CURDIR}/../strfile
 
-.include "${.CURDIR}/../../Makefile.inc"
 .include <bsd.prog.mk>

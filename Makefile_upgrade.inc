@@ -3292,6 +3292,8 @@ TO_REMOVE+=/usr/games/hide
 TO_REMOVE+=/usr/share/examples/etc/dm.conf
 TO_REMOVE+=/usr/share/man/man5/dm.conf.5.gz
 TO_REMOVE+=/usr/share/man/man8/dm.8.gz
+TO_REMOVE+=/usr/games/strfile
+TO_REMOVE+=/usr/games/unstr
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

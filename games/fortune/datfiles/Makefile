@@ -20,8 +20,7 @@ FILES+=		$f $f.dat
 CLEANFILES+=	$f.dat
 .if !(target($f.dat))
 $f.dat: $f
-	PATH=$$PATH:/usr/games:${.OBJDIR}/../strfile \
-	    strfile -Cs ${.ALLSRC} ${.TARGET}
+	${.OBJDIR}/../strfile/strfile.nx -Cs ${.ALLSRC} ${.TARGET}
 .endif
 .endfor
 

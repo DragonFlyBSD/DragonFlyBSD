@@ -5,9 +5,8 @@
 .include <bsd.own.mk>
 
 SRCDIR=		${.CURDIR}/../../contrib/nvi2
-SUBDIR+=	vidump
 .if !defined(NO_SHARE)
-SUBDIR+=	catalog
+SUBDIR+=	vidump catalog
 .endif
 
 WARNS?=	1

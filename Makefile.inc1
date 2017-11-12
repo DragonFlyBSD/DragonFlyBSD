@@ -847,16 +847,13 @@ installmost:
 # rpcgen:	old rpcgen used a hardwired cpp path, newer OBJFORMAT_PATH
 #		envs are not compatible with older objformat binaries.
 #
-.if exists(${.CURDIR}/games) && !defined(NO_GAMES)
-_strfile=	games/fortune/strfile
-.endif
 
 # BSTRAPDIRS1 - must be built in strict order, no parallelism
 #
 # order is very important. yacc before m4 before flex.  flex exec's m4,
 # m4's parser file needs the latest byacc (insanity!).
 #
-BSTRAPDIRS1= ${_strfile} \
+BSTRAPDIRS1= \
 	usr.bin/patch \
 	bin/chmod bin/cp bin/cpdup bin/dd bin/mkdir bin/rm bin/echo \
 	bin/test bin/cat bin/ln bin/mv bin/csh bin/expr bin/sh \

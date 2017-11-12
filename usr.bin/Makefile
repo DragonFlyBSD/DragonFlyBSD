@@ -180,6 +180,7 @@ SUBDIR=	alias \
 	sort \
 	split \
 	stat \
+	strfile \
 	su \
 	symorder \
 	systat \
@@ -210,6 +211,7 @@ SUBDIR=	alias \
 	unifdef \
 	uniq \
 	units \
+	unstr \
 	unvis \
 	unzip \
 	usbhidaction \
