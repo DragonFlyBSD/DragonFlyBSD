@@ -32,7 +32,7 @@
 .\"     @(#)strfile.8	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: head/usr.bin/fortune/strfile/strfile.8 203926 2010-02-15 15:10:21Z uqs $
 .\"
-.Dd September 1, 2016
+.Dd November 12, 2017
 .Dt STRFILE 8
 .Os
 .Sh NAME
@@ -112,16 +112,16 @@ field to be set.
 The format of the header is:
 .Bd -literal
 #define	VERSION	1
-unsigned long	str_version;	/* version number */
-unsigned long	str_numstr;	/* # of strings in the file */
-unsigned long	str_longlen;	/* length of longest string */
-unsigned long	str_shortlen;	/* length of shortest string */
+uint32_t	str_version;	/* version number */
+uint32_t	str_numstr;	/* # of strings in the file */
+uint32_t	str_longlen;	/* length of longest string */
+uint32_t	str_shortlen;	/* length of shortest string */
 #define	STR_RANDOM	0x1	/* randomized pointers */
 #define	STR_ORDERED	0x2	/* ordered pointers */
 #define	STR_ROTATED	0x4	/* rot-13'd text */
 #define	STR_COMMENTS	0x8	/* embedded comments */
-unsigned long	str_flags;	/* bit field for flags */
-char		str_delim;	/* delimiting character */
+uint32_t	str_flags;	/* bit field for flags */
+unsigned char	str_delim;	/* delimiting character */
 .Ed
 .Pp
 All fields are written in network byte order.

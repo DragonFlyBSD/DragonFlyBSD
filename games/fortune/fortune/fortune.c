@@ -31,26 +31,26 @@
  *
  * @(#) Copyright (c) 1986, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fortune.c   8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/fortune/fortune/fortune.c,v 1.18.2.1 2001/07/02 00:35:27 dd Exp $
+ * $FreeBSD: head/usr.bin/fortune/fortune/fortune.c 259057 2013-12-07 02:20:22Z marcel $
  */
 
 #include <sys/param.h>
 #include <sys/stat.h>
-#include <netinet/in.h>
+#include <sys/endian.h>
 
+#include <assert.h>
+#include <ctype.h>
 #include <dirent.h>
 #include <err.h>
 #include <fcntl.h>
-#include <assert.h>
-#include <unistd.h>
+#include <locale.h>
+#include <regex.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include <locale.h>
 #include <time.h>
-#include <regex.h>
+#include <unistd.h>
 
 #include "strfile.h"
 #include "pathnames.h"
@@ -59,7 +59,7 @@
 #define	CPERS	20		/* # of chars for each sec */
 #define	SLEN	160		/* # of chars in short fortune */
 
-#define	POS_UNKNOWN	((long)-1)	/* pos for file unknown */
+#define	POS_UNKNOWN	((uint32_t)-1)	/* pos for file unknown */
 #define	NO_PROB		(-1)		/* no prob specified for file */
 
 #ifdef	DEBUG
@@ -73,7 +73,7 @@
 typedef struct fd {
 	int		percent;
 	int		fd, datfd;
-	long		pos;
+	uint32_t	pos;
 	FILE		*inf;
 	const char	*name;
 	const char	*path;
@@ -105,7 +105,7 @@ static char *Fortbuf = NULL;		/* fortune buffer for -m */
 
 static int Fort_len = 0;
 
-static long Seekpts[2];			/* seek pointers to fortunes */
+static off_t Seekpts[2];		/* seek pointers to fortunes */
 
 static FILEDESC *File_list = NULL;	/* Head of file list */
 static FILEDESC *File_tail = NULL;	/* Tail of file list */
@@ -213,7 +213,7 @@ display(FILEDESC *fp)
 	char line[BUFSIZ];
 
 	open_fp(fp);
-	fseek(fp->inf, Seekpts[0], SEEK_SET);
+	fseeko(fp->inf, Seekpts[0], SEEK_SET);
 	for (Fort_len = 0; fgets(line, sizeof line, fp->inf) != NULL &&
 	    !STR_ENDSTRING(line, fp->tbl); Fort_len++) {
 		if (fp->tbl.str_flags & STR_ROTATED)
@@ -245,10 +245,10 @@ fortlen(void)
 	char line[BUFSIZ];
 
 	if (!(Fortfile->tbl.str_flags & (STR_RANDOM | STR_ORDERED)))
-		nchar = (Seekpts[1] - Seekpts[0] <= SLEN);
+		nchar = (int)(Seekpts[1] - Seekpts[0]);
 	else {
 		open_fp(Fortfile);
-		fseek(Fortfile->inf, Seekpts[0], SEEK_SET);
+		fseeko(Fortfile->inf, Seekpts[0], SEEK_SET);
 		nchar = 0;
 		while (fgets(line, sizeof line, Fortfile->inf) != NULL &&
 		       !STR_ENDSTRING(line, Fortfile->tbl))
@@ -589,7 +589,7 @@ new_fp(void)
 {
 	FILEDESC *fp;
 
-	fp = (FILEDESC *)do_malloc(sizeof(*fp));
+	fp = do_malloc(sizeof(*fp));
 	fp->datfd = -1;
 	fp->pos = POS_UNKNOWN;
 	fp->inf = NULL;
@@ -969,17 +969,17 @@ get_fort(void)
 		if (fp->next != NULL) {
 			sum_noprobs(fp);
 			choice = arc4random_uniform(Noprob_tbl.str_numstr);
-			DPRINTF(1, (stderr, "choice = %d (of %ld) \n", choice,
+			DPRINTF(1, (stderr, "choice = %d (of %u) \n", choice,
 				    Noprob_tbl.str_numstr));
 			while ((unsigned int)choice >= fp->tbl.str_numstr) {
 				choice -= fp->tbl.str_numstr;
 				fp = fp->next;
 				DPRINTF(1, (stderr,
-					    "    skip \"%s\", %ld (choice = %d)\n",
+					    "    skip \"%s\", %u (choice = %d)\n",
 					    fp->name, fp->tbl.str_numstr,
 					    choice));
 			}
-			DPRINTF(1, (stderr, "using \"%s\", %ld\n", fp->name,
+			DPRINTF(1, (stderr, "using \"%s\", %u\n", fp->name,
 				    fp->tbl.str_numstr));
 		}
 		get_tbl(fp);
@@ -994,8 +994,8 @@ get_fort(void)
 	lseek(fp->datfd,
 		     (off_t) (sizeof fp->tbl + fp->pos * sizeof Seekpts[0]), SEEK_SET);
 	read(fp->datfd, Seekpts, sizeof Seekpts);
-	Seekpts[0] = ntohl(Seekpts[0]);
-	Seekpts[1] = ntohl(Seekpts[1]);
+	Seekpts[0] = be64toh(Seekpts[0]);
+	Seekpts[1] = be64toh(Seekpts[1]);
 }
 
 /*
@@ -1020,15 +1020,15 @@ pick_child(FILEDESC *parent)
 	else {
 		get_tbl(parent);
 		choice = arc4random_uniform(parent->tbl.str_numstr);
-		DPRINTF(1, (stderr, "    choice = %d (of %ld)\n",
+		DPRINTF(1, (stderr, "    choice = %d (of %u)\n",
 			    choice, parent->tbl.str_numstr));
 		for (fp = parent->child; (unsigned int)choice >= fp->tbl.str_numstr;
 		     fp = fp->next) {
 			choice -= fp->tbl.str_numstr;
-			DPRINTF(1, (stderr, "\tskip %s, %ld (choice = %d)\n",
+			DPRINTF(1, (stderr, "\tskip %s, %u (choice = %d)\n",
 				    fp->name, fp->tbl.str_numstr, choice));
 		}
-		DPRINTF(1, (stderr, "    using %s, %ld\n", fp->name,
+		DPRINTF(1, (stderr, "    using %s, %u\n", fp->name,
 			    fp->tbl.str_numstr));
 		return (fp);
 	}
@@ -1112,7 +1112,7 @@ get_pos(FILEDESC *fp)
 	}
 	if ((unsigned int)++(fp->pos) >= fp->tbl.str_numstr)
 		fp->pos -= fp->tbl.str_numstr;
-	DPRINTF(1, (stderr, "pos for %s is %ld\n", fp->name, fp->pos));
+	DPRINTF(1, (stderr, "pos for %s is %ld\n", fp->name, (long)fp->pos));
 }
 
 /*
@@ -1137,11 +1137,11 @@ get_tbl(FILEDESC *fp)
 			    "fortune: %s corrupted\n", fp->path);
 			exit(1);
 		}
-		/* fp->tbl.str_version = ntohl(fp->tbl.str_version); */
-		fp->tbl.str_numstr = ntohl(fp->tbl.str_numstr);
-		fp->tbl.str_longlen = ntohl(fp->tbl.str_longlen);
-		fp->tbl.str_shortlen = ntohl(fp->tbl.str_shortlen);
-		fp->tbl.str_flags = ntohl(fp->tbl.str_flags);
+		/* fp->tbl.str_version = be32toh(fp->tbl.str_version); */
+		fp->tbl.str_numstr = be32toh(fp->tbl.str_numstr);
+		fp->tbl.str_longlen = be32toh(fp->tbl.str_longlen);
+		fp->tbl.str_shortlen = be32toh(fp->tbl.str_shortlen);
+		fp->tbl.str_flags = be32toh(fp->tbl.str_flags);
 		close(fd);
 	}
 	else {
@@ -1163,7 +1163,7 @@ zero_tbl(STRFILE *tp)
 {
 	tp->str_numstr = 0;
 	tp->str_longlen = 0;
-	tp->str_shortlen = ~((unsigned long)0);
+	tp->str_shortlen = ~0;
 }
 
 /*
