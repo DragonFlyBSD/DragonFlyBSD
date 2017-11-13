@@ -10,12 +10,10 @@ CFLAGS+=	-D_XOPEN_SOURCE_EXTENDED
 CFLAGS+=	-DENABLE_WIDEC
 SW_WIDEC=	1
 SW_TYPE=	cchar_t
-LIB_SUFFIX=	w
 SYMBOL_MAPS+=	${.CURDIR}/../Symbol.wide.map
 .else
 SW_WIDEC=	0
 SW_TYPE=	chtype
-LIB_SUFFIX=
 .endif
 
 CFLAGS+=	-I.

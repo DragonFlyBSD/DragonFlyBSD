@@ -1,4 +1,5 @@
-LIB=    private_ncurses${LIB_SUFFIX}
+# Build standard version of ncurses
+LIB?=	private_ncurses
 PRIVATELIB=
 
 SHLIBDIR?=	/lib
@@ -239,9 +240,6 @@ SRCS+=	lib_trace.c \
 
 # Generated
 SRCS+=	${GENSRCS} ${GENHDRS}
-
-NCSTATIC=	libprivate_ncurses${LIB_SUFFIX}.a
-NCDYN=		libprivate_ncurses${LIB_SUFFIX}.so
 
 .if defined(ENABLE_WIDEC)
 INCS=		${HEADERS} ${SRCHDRS}

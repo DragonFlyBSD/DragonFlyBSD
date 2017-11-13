@@ -1,6 +1,5 @@
-ZPANEL=	yes
-
-LIB=    private_panel${LIB_SUFFIX}
+# Build standard version of panel
+LIB?=	private_panel
 PRIVATELIB=
 
 SHLIBDIR?=	/lib
@@ -27,6 +26,8 @@ SRCS=	ncurses_def.h \
 ${SRCS:M*.c}: curses.h
 
 INCS=	panel.h
+
+ZPANEL=	yes
 
 .if defined(ENABLE_WIDEC)	# for term.h
 CFLAGS+=	-I${.OBJDIR}/../libncursesw
