@@ -711,7 +711,7 @@
             ..
         ..
         man
-/set uname=man 
+/set uname=man
             cat1
             ..
             cat2
@@ -730,6 +730,7 @@
             ..
             cat9
             ..
+/set uname=root
             man1
             ..
             man2
