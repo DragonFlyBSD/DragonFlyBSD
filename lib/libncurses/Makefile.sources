@@ -1,0 +1,261 @@
+# All ncurses, ncursesw details
+
+GENHDRS_NW+=	curses.h
+GENHDRS_NW+=	hashsize.h
+GENHDRS_NW+=	init_keytry.h
+GENHDRS_NW+=	ncurses_def.h
+GENHDRS_NW+=	parametrized.h
+GENHDRS_NW+=	term.h
+
+GENSRCS_NW+=	codes.c
+GENSRCS_NW+=	comp_captab.c
+GENSRCS_NW+=	expanded.c
+GENSRCS_NW+=	fallback.c
+GENSRCS_NW+=	lib_gen.c
+GENSRCS_NW+=	lib_keyname.c
+GENSRCS_NW+=	names.c
+GENSRCS_NW+=	unctrl.c
+
+# Headers to install
+HEADERS=	curses.h term.h termcap.h unctrl.h
+SRCHDRS=	ncurses_dll.h
+
+# Generators
+# Careful! Some of contrib scripts may invoke make_hash and make_keys internally.
+term.h: MKterm.h.awk edit_cfg.sh Caps
+	awk -f ${.CURDIR}/../include/MKterm.h.awk ${TERMINFO_CAPS} > ${.TARGET}.new
+	sh ${NCURSESDIR}/include/edit_cfg.sh ${.CURDIR}/../include/ncurses_cfg.h ${.TARGET}.new
+	mv -f ${.TARGET}.new ${.TARGET}
+
+hashsize.h: MKhashsize.sh Caps
+	sh ${NCURSESDIR}/include/MKhashsize.sh ${TERMINFO_CAPS} > ${.TARGET}
+
+parametrized.h: MKparametrized.sh Caps
+	sh ${NCURSESDIR}/include/MKparametrized.sh ${TERMINFO_CAPS} > ${.TARGET}
+
+init_keytry.h: make_keys keys.list
+	./make_keys keys.list > ${.TARGET}
+
+make_keys: make_keys.c names.c ncurses_def.h ${VERSION_MAP} ${HEADERS}
+	${NXCC} ${NXCFLAGS} -static ${NCURSESTINFODIR}/make_keys.c ${NXLDLIBS} -o ${.TARGET}
+
+keys.list: MKkeys_list.sh Caps
+	sh ${NCURSESTINFODIR}/MKkeys_list.sh ${TERMINFO_CAPS} | LC_ALL=C sort > ${.TARGET}
+
+names.c: MKnames.awk Caps
+	awk -f ${NCURSESTINFODIR}/MKnames.awk bigstrings=1 ${TERMINFO_CAPS} > ${.TARGET}
+
+codes.c: MKcodes.awk Caps
+	awk -f ${NCURSESTINFODIR}/MKcodes.awk bigstrings=1 ${TERMINFO_CAPS} > ${.TARGET}
+
+comp_captab.c: make_hash MKcaptab.sh MKcaptab.awk Caps
+	sh -e ${NCURSESTINFODIR}/MKcaptab.sh awk 1 ${NCURSESTINFODIR}/MKcaptab.awk ${TERMINFO_CAPS} > ${.TARGET}
+
+make_hash: make_hash.c hashsize.h ncurses_def.h ${HEADERS}
+	${NXCC} ${NXCFLAGS} -static -DMAIN_PROGRAM ${NCURSESTINFODIR}/make_hash.c ${NXLDLIBS} -o ${.TARGET}
+
+expanded.c: MKexpanded.sh ${GENHDRS_NW}
+	sh ${NCURSESSERIALDIR}/MKexpanded.sh "${CC}" -E ${CFLAGS} > ${.TARGET}
+
+fallback.c: MKfallback.sh
+	sh ${NCURSESTINFODIR}/MKfallback.sh /usr/share/terminfo ${NCURSESDIR}/misc/terminfo.src > ${.TARGET}
+
+lib_gen.c: MKlib_gen.sh curses.h
+	sh ${NCURSESBASEDIR}/MKlib_gen.sh "${CC} -E ${CFLAGS}" awk generated <curses.h > ${.TARGET}
+
+lib_keyname.c: MKkeyname.awk keys.list
+	awk -f ${NCURSESBASEDIR}/MKkeyname.awk bigstrings=1 keys.list > ${.TARGET}
+
+unctrl.c: MKunctrl.awk
+	echo | awk -f ${NCURSESBASEDIR}/MKunctrl.awk bigstrings=1 > ${.TARGET}
+
+# Generated
+SRCS_ALL+=	${GENSRCS_NW} ${GENHDRS_NW}
+CLEANFILES+=	${GENSRCS_NW} ${GENHDRS_NW} term.h.new curses.h.new
+CLEANFILES+=	make_keys make_hash keys.list
+
+# Base
+SRCS_NW+=	define_key.c
+SRCS_NW+=	key_defined.c
+SRCS_NW+=	keybound.c
+SRCS_NW+=	keyok.c
+SRCS_NW+=	legacy_coding.c
+SRCS_NW+=	lib_addch.c
+SRCS_NW+=	lib_addstr.c
+SRCS_NW+=	lib_beep.c
+SRCS_NW+=	lib_bkgd.c
+SRCS_NW+=	lib_box.c
+SRCS_NW+=	lib_chgat.c
+SRCS_NW+=	lib_clear.c
+SRCS_NW+=	lib_clearok.c
+SRCS_NW+=	lib_clrbot.c
+SRCS_NW+=	lib_clreol.c
+SRCS_NW+=	lib_color.c
+SRCS_NW+=	lib_colorset.c
+SRCS_NW+=	lib_delch.c
+SRCS_NW+=	lib_delwin.c
+SRCS_NW+=	lib_dft_fgbg.c
+SRCS_NW+=	lib_echo.c
+SRCS_NW+=	lib_endwin.c
+SRCS_NW+=	lib_erase.c
+SRCS_NW+=	lib_flash.c
+SRCS_NW+=	lib_freeall.c
+SRCS_NW+=	lib_getch.c
+SRCS_NW+=	lib_getstr.c
+SRCS_NW+=	lib_hline.c
+SRCS_NW+=	lib_immedok.c
+SRCS_NW+=	lib_inchstr.c
+SRCS_NW+=	lib_initscr.c
+SRCS_NW+=	lib_insch.c
+SRCS_NW+=	lib_insdel.c
+SRCS_NW+=	lib_insnstr.c
+SRCS_NW+=	lib_instr.c
+SRCS_NW+=	lib_isendwin.c
+SRCS_NW+=	lib_leaveok.c
+SRCS_NW+=	lib_mouse.c
+SRCS_NW+=	lib_move.c
+SRCS_NW+=	lib_mvwin.c
+SRCS_NW+=	lib_newterm.c
+SRCS_NW+=	lib_newwin.c
+SRCS_NW+=	lib_nl.c
+SRCS_NW+=	lib_overlay.c
+SRCS_NW+=	lib_pad.c
+SRCS_NW+=	lib_printw.c
+SRCS_NW+=	lib_redrawln.c
+SRCS_NW+=	lib_refresh.c
+SRCS_NW+=	lib_restart.c
+SRCS_NW+=	lib_scanw.c
+SRCS_NW+=	lib_screen.c
+SRCS_NW+=	lib_scroll.c
+SRCS_NW+=	lib_scrollok.c
+SRCS_NW+=	lib_scrreg.c
+SRCS_NW+=	lib_set_term.c
+SRCS_NW+=	lib_slk.c
+SRCS_NW+=	lib_slkatr_set.c
+SRCS_NW+=	lib_slkatrof.c
+SRCS_NW+=	lib_slkatron.c
+SRCS_NW+=	lib_slkatrset.c
+SRCS_NW+=	lib_slkattr.c
+SRCS_NW+=	lib_slkclear.c
+SRCS_NW+=	lib_slkcolor.c
+SRCS_NW+=	lib_slkinit.c
+SRCS_NW+=	lib_slklab.c
+SRCS_NW+=	lib_slkrefr.c
+SRCS_NW+=	lib_slkset.c
+SRCS_NW+=	lib_slktouch.c
+SRCS_NW+=	lib_touch.c
+SRCS_NW+=	lib_ungetch.c
+SRCS_NW+=	lib_vline.c
+SRCS_NW+=	lib_wattroff.c
+SRCS_NW+=	lib_wattron.c
+SRCS_NW+=	lib_winch.c
+SRCS_NW+=	lib_window.c
+SRCS_NW+=	nc_panel.c
+SRCS_NW+=	resizeterm.c
+SRCS_NW+=	safe_sprintf.c
+SRCS_NW+=	tries.c
+SRCS_NW+=	use_window.c
+SRCS_NW+=	version.c
+SRCS_NW+=	vsscanf.c
+SRCS_NW+=	wresize.c
+
+# Serial
+SRCS_NW+=	hardscroll.c
+SRCS_NW+=	hashmap.c
+SRCS_NW+=	lib_mvcur.c
+SRCS_NW+=	lib_tstp.c
+SRCS_NW+=	lib_twait.c
+SRCS_NW+=	lib_vidattr.c
+SRCS_NW+=	tty_update.c
+
+# Tinfo
+SRCS_NW+=	access.c
+SRCS_NW+=	add_tries.c
+SRCS_NW+=	alloc_entry.c
+SRCS_NW+=	alloc_ttype.c
+SRCS_NW+=	captoinfo.c
+SRCS_NW+=	comp_error.c
+SRCS_NW+=	comp_expand.c
+SRCS_NW+=	comp_hash.c
+SRCS_NW+=	comp_parse.c
+SRCS_NW+=	comp_scan.c
+SRCS_NW+=	db_iterator.c
+SRCS_NW+=	doalloc.c
+SRCS_NW+=	entries.c
+SRCS_NW+=	free_ttype.c
+SRCS_NW+=	getenv_num.c
+SRCS_NW+=	hashed_db.c
+SRCS_NW+=	home_terminfo.c
+SRCS_NW+=	init_keytry.c
+SRCS_NW+=	lib_acs.c
+SRCS_NW+=	lib_baudrate.c
+SRCS_NW+=	lib_cur_term.c
+SRCS_NW+=	lib_data.c
+SRCS_NW+=	lib_has_cap.c
+SRCS_NW+=	lib_kernel.c
+SRCS_NW+=	lib_longname.c
+SRCS_NW+=	lib_napms.c
+SRCS_NW+=	lib_options.c
+SRCS_NW+=	lib_print.c
+SRCS_NW+=	lib_raw.c
+SRCS_NW+=	lib_setup.c
+SRCS_NW+=	lib_termcap.c
+SRCS_NW+=	lib_termname.c
+SRCS_NW+=	lib_tgoto.c
+SRCS_NW+=	lib_ti.c
+SRCS_NW+=	lib_tparm.c
+SRCS_NW+=	lib_tputs.c
+SRCS_NW+=	lib_ttyflags.c
+SRCS_NW+=	name_match.c
+SRCS_NW+=	obsolete.c
+SRCS_NW+=	parse_entry.c
+SRCS_NW+=	read_entry.c
+SRCS_NW+=	read_termcap.c
+SRCS_NW+=	strings.c
+SRCS_NW+=	trim_sgr0.c
+SRCS_NW+=	use_screen.c
+SRCS_NW+=	write_entry.c
+
+# Trace
+SRCS_NW+=	lib_trace.c
+SRCS_NW+=	lib_traceatr.c
+SRCS_NW+=	lib_tracebits.c
+SRCS_NW+=	lib_tracechr.c
+SRCS_NW+=	lib_tracedmp.c
+SRCS_NW+=	lib_tracemse.c
+SRCS_NW+=	trace_buf.c
+SRCS_NW+=	trace_tries.c
+SRCS_NW+=	trace_xnames.c
+SRCS_NW+=	varargs.c
+SRCS_NW+=	visbuf.c
+
+# Whidechar
+SRCS_W+=	charable.c
+SRCS_W+=	lib_add_wch.c
+SRCS_W+=	lib_box_set.c
+SRCS_W+=	lib_cchar.c
+SRCS_W+=	lib_erasewchar.c
+SRCS_W+=	lib_get_wch.c
+SRCS_W+=	lib_get_wstr.c
+SRCS_W+=	lib_hline_set.c
+SRCS_W+=	lib_in_wch.c
+SRCS_W+=	lib_in_wchnstr.c
+SRCS_W+=	lib_ins_wch.c
+SRCS_W+=	lib_inwstr.c
+SRCS_W+=	lib_key_name.c
+SRCS_W+=	lib_pecho_wchar.c
+SRCS_W+=	lib_slk_wset.c
+SRCS_W+=	lib_unget_wch.c
+SRCS_W+=	lib_vid_attr.c
+SRCS_W+=	lib_vline_set.c
+SRCS_W+=	lib_wacs.c
+SRCS_W+=	lib_wunctrl.c
+
+# Sources to compile
+SRCS_ALL+=	${SRCS_NW}
+.if defined(ENABLE_WIDEC)
+SRCS_ALL+=	${SRCS_W}
+.endif
+
+# Sort objects for reproducible libs
+SRCS+=	${SRCS_ALL:O}
