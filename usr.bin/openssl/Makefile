@@ -3,7 +3,6 @@
 PROG=	openssl
 WARNS?=	2
 
-.include "Makefile.man"
 .include "${.CURDIR}/../../lib/librecrypto/Makefile.inc"
 
 DPADD+=		${LIBRESSL} ${LIBRECRYPTO}
