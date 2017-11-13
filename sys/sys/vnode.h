@@ -112,6 +112,14 @@ struct mountctl_opt {
  * deal with clustered cache coherency issues and, more immediately, to
  * protect operations associated with the kernel-managed journaling module.
  *
+ * Generally speaking modification timestamps for inodes get set as-of the
+ * time the write occurs.  However, files mmap()'d R+W may not see the
+ * underlying pages get flushed until well after close().  In this situation,
+ * v_lastwrite_ts is set to the timestamp that the filesystem should use
+ * for such updates.  VFS's should be aware that symlink data sometimes uses
+ * the file write mechanism to set the symlink content and v_writecount
+ * will probably be 0.  v_lastwrite_ts should not be used in that situation.
+ *
  * NOTE: Certain fields within the vnode structure requires v_token to be
  *	 held.  The vnode's normal lock need not be held when accessing
  *	 these fields as long as the vnode is deterministically referenced
@@ -186,6 +194,7 @@ struct vnode {
 	} v_pollinfo;
 	struct vmresident *v_resident;		/* optional vmresident */
 	struct mount *v_pfsmp;			/* real mp for pfs/nullfs mt */
+	struct timespec v_lastwrite_ts;		/* async mmap flush ts */
 };
 #define	v_socket	v_un.vu_socket
 #define v_umajor	v_un.vu_cdev.vu_umajor

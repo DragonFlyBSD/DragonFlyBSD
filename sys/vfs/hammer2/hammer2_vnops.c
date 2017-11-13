@@ -1089,7 +1089,15 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 	} else if (modified) {
 		hammer2_mtx_ex(&ip->lock);
 		hammer2_inode_modify(ip);
-		hammer2_update_time(&ip->meta.mtime);
+		if (ip->vp && ip->vp->v_writecount == 0 &&
+		    ip->vp->v_type == VREG) {
+			ip->meta.mtime =
+				(unsigned long)ip->vp->v_lastwrite_ts.tv_sec *
+				 1000000 +
+				ip->vp->v_lastwrite_ts.tv_nsec / 1000;
+		} else {
+			hammer2_update_time(&ip->meta.mtime);
+		}
 		if (ip->flags & HAMMER2_INODE_MODIFIED)
 			hammer2_inode_chain_sync(ip);
 		hammer2_mtx_unlock(&ip->lock);

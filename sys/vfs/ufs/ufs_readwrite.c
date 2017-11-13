@@ -282,6 +282,8 @@ ffs_write(struct vop_write_args *ap)
 	if ((ioflag & IO_SYNC) && !DOINGASYNC(vp))
 		flags |= B_SYNC;
 
+	ip->i_flag |= IN_WRITING;
+
 	for (error = 0; uio->uio_resid > 0;) {
 		lbn = lblkno(fs, uio->uio_offset);
 		blkoffset = blkoff(fs, uio->uio_offset);
@@ -405,7 +407,10 @@ ffs_write(struct vop_write_args *ap)
 		}
 	} else if (resid > uio->uio_resid && (ioflag & IO_SYNC)) {
 		error = ffs_update(vp, 1);
+	} else {
+		ufs_itimes(vp);
 	}
+	ip->i_flag &= ~IN_WRITING;
 
 	return (error);
 }

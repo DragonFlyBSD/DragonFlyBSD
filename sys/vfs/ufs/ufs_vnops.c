@@ -156,20 +156,26 @@ ufs_itimes(struct vnode *vp)
 		ip->i_flag |= IN_LAZYMOD;
 	else
 		ip->i_flag |= IN_MODIFIED;
+
 	if ((vp->v_mount->mnt_flag & MNT_RDONLY) == 0) {
 		vfs_timestamp(&ts);
 		if (ip->i_flag & IN_ACCESS) {
 			ip->i_atime = ts.tv_sec;
 			ip->i_atimensec = ts.tv_nsec;
 		}
-		if (ip->i_flag & IN_UPDATE) {
-			ip->i_mtime = ts.tv_sec;
-			ip->i_mtimensec = ts.tv_nsec;
-			ip->i_modrev++;
-		}
 		if (ip->i_flag & IN_CHANGE) {
 			ip->i_ctime = ts.tv_sec;
 			ip->i_ctimensec = ts.tv_nsec;
+		}
+		if (ip->i_flag & IN_UPDATE) {
+			if (vp->v_writecount == 0 &&
+			    (ip->i_flag & IN_WRITING) &&
+			    vp->v_type == VREG) {
+				ts = vp->v_lastwrite_ts;
+			}
+			ip->i_mtime = ts.tv_sec;
+			ip->i_mtimensec = ts.tv_nsec;
+			ip->i_modrev++;
 		}
 	}
 	ip->i_flag &= ~(IN_ACCESS | IN_CHANGE | IN_UPDATE);

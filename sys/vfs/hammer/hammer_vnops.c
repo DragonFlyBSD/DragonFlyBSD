@@ -496,6 +496,7 @@ hammer_vop_write(struct vop_write_args *ap)
 	hammer_inode_t ip;
 	hammer_mount_t hmp;
 	thread_t td;
+	struct vnode *vp;
 	struct uio *uio;
 	int offset;
 	off_t base_offset;
@@ -508,7 +509,8 @@ hammer_vop_write(struct vop_write_args *ap)
 	int seqcount;
 	int bigwrite;
 
-	if (ap->a_vp->v_type != VREG)
+	vp = ap->a_vp;
+	if (vp->v_type != VREG)
 		return (EINVAL);
 	ip = VTOI(ap->a_vp);
 	hmp = ip->hmp;
@@ -524,6 +526,16 @@ hammer_vop_write(struct vop_write_args *ap)
 	 */
 	hammer_start_transaction(&trans, hmp);
 	uio = ap->a_uio;
+
+	/*
+	 * Use v_lastwrite_ts if file not open for writing
+	 * (i.e. a late msync)
+	 */
+	if (vp->v_writecount == 0) {
+		trans.time = vp->v_lastwrite_ts.tv_sec * 1000000 +
+			     vp->v_lastwrite_ts.tv_nsec / 1000;
+	}
+
 
 	/*
 	 * Check append mode

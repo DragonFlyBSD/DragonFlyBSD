@@ -1190,6 +1190,10 @@ vop_stdopen(struct vop_open_args *ap)
  * (struct vnode *a_vp, int a_fflag)
  *
  * a_fflag: note, 'F' modes, e.g. FREAD, FWRITE.  same as a_mode in stdopen?
+ *
+ * v_lastwrite_ts is used to record the timestamp that should be used to
+ * set the file mtime for any asynchronously flushed pages modified via
+ * mmap(), which can occur after the last close().
  */
 int
 vop_stdclose(struct vop_close_args *ap)
@@ -1203,6 +1207,7 @@ vop_stdclose(struct vop_close_args *ap)
 		KASSERT(vp->v_writecount > 0,
 			("VOP_STDCLOSE: BAD WRITECOUNT %p %d",
 			vp, vp->v_writecount));
+		vfs_timestamp(&vp->v_lastwrite_ts);
 		atomic_add_int(&vp->v_writecount, -1);
 	}
 	atomic_add_int(&vp->v_opencount, -1);

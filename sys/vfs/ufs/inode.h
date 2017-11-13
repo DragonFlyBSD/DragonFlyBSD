@@ -137,6 +137,7 @@ struct inode {
 #define	IN_EXLOCK	0x0040		/* File has exclusive lock. */
 #define	IN_HASHED	0x0080		/* Inode is on hash list */
 #define	IN_LAZYMOD	0x0100		/* Modified, but don't write yet. */
+#define IN_WRITING	0x0200		/* Write in progress */
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
