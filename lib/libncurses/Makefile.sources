@@ -1,23 +1,32 @@
-# All ncurses, ncursesw details
+# All ncurses, ncursesw, panel, panelw, tic details
+
+############ Legend ##############
+# B - bootstrap tic specific
+# N - ncurses standard lib
+# P - libpanel
+# W - ncurses wide lib
+# T - reserved for future libtinfo
+# t - specific to -DTRACE
+##################################
 
 GENHDRS_NWP+=	curses.h
-GENHDRS_NW+=	hashsize.h
-GENHDRS_NW+=	init_keytry.h
+GENHDRS_NWB+=	hashsize.h
+GENHDRS_NWB+=	init_keytry.h
 GENHDRS_NWP+=	ncurses_def.h
-GENHDRS_NW+=	parametrized.h
+GENHDRS_NWB+=	parametrized.h
 GENHDRS_NWP+=	term.h
 
-GENSRCS_NW+=	codes.c
-GENSRCS_NW+=	comp_captab.c
+GENSRCS_NWB+=	codes.c
+GENSRCS_NWB+=	comp_captab.c
 GENSRCS_NW+=	expanded.c
-GENSRCS_NW+=	fallback.c
+GENSRCS_NWB+=	fallback.c
 GENSRCS_NW+=	lib_gen.c
-GENSRCS_NW+=	lib_keyname.c
-GENSRCS_NW+=	names.c
-GENSRCS_NW+=	unctrl.c
+GENSRCS_NWB+=	lib_keyname.c
+GENSRCS_NWB+=	names.c
+GENSRCS_NWB+=	unctrl.c
 
 # Headers to install
-.if defined(ZNCURSES)
+.if defined(ZNCURSES) || defined(ZTIC)
 HEADERS=	curses.h term.h termcap.h unctrl.h
 SRCHDRS=	ncurses_dll.h
 .endif
@@ -44,7 +53,7 @@ term.h: MKterm.h.awk edit_cfg.sh Caps
 	sh ${NCURSESDIR}/include/edit_cfg.sh ${.CURDIR}/../include/ncurses_cfg.h ${.TARGET}.new
 	mv -f ${.TARGET}.new ${.TARGET}
 
-.if defined(ZNCURSES)
+.if defined(ZNCURSES) || defined(ZTIC)
 hashsize.h: MKhashsize.sh Caps
 	sh ${NCURSESDIR}/include/MKhashsize.sh ${TERMINFO_CAPS} > ${.TARGET}
 
@@ -72,7 +81,7 @@ comp_captab.c: make_hash MKcaptab.sh MKcaptab.awk Caps
 make_hash: make_hash.c hashsize.h ncurses_def.h ${HEADERS}
 	${NXCC} ${NXCFLAGS} -static -DMAIN_PROGRAM ${NCURSESTINFODIR}/make_hash.c ${NXLDLIBS} -o ${.TARGET}
 
-expanded.c: MKexpanded.sh ${GENHDRS_NW}
+expanded.c: MKexpanded.sh ${GENHDRS_NWP}
 	sh ${NCURSESSERIALDIR}/MKexpanded.sh "${CC}" -E ${CFLAGS} > ${.TARGET}
 
 fallback.c: MKfallback.sh
@@ -89,18 +98,22 @@ unctrl.c: MKunctrl.awk
 .endif
 
 # Generated
-SRCS_ALL+=	${GENSRCS_NWP} ${GENHDRS_NWP}
+SRCS_ALL+=	${GENHDRS_NWP}
+.if defined(ZNCURSES) || defined(ZTIC)
+SRCS_ALL+=	${GENHDRS_NWB} ${GENSRCS_NWB}
+CLEANFILES+=	${GENHDRS_NWB} ${GENSRCS_NWB}
+CLEANFILES+=	make_keys make_hash keys.list
+.endif
 .if defined(ZNCURSES)
 SRCS_ALL+=	${GENSRCS_NW} ${GENHDRS_NW}
 CLEANFILES+=	${GENSRCS_NW} ${GENHDRS_NW}
-CLEANFILES+=	make_keys make_hash keys.list
 .endif
-CLEANFILES+=	${GENSRCS_NWP} ${GENHDRS_NWP} term.h.new curses.h.new
+CLEANFILES+=	${GENHDRS_NWP} term.h.new curses.h.new
 
 # Base
 SRCS_NW+=	define_key.c
-SRCS_NW+=	key_defined.c
-SRCS_NW+=	keybound.c
+SRCS_NWB+=	key_defined.c
+SRCS_NWB+=	keybound.c
 SRCS_NW+=	keyok.c
 SRCS_NW+=	legacy_coding.c
 SRCS_NW+=	lib_addch.c
@@ -176,9 +189,9 @@ SRCS_NW+=	lib_window.c
 SRCS_NW+=	nc_panel.c
 SRCS_NW+=	resizeterm.c
 SRCS_NW+=	safe_sprintf.c
-SRCS_NW+=	tries.c
+SRCS_NWB+=	tries.c
 SRCS_NW+=	use_window.c
-SRCS_NW+=	version.c
+SRCS_NWB+=	version.c
 SRCS_NW+=	vsscanf.c
 SRCS_NW+=	wresize.c
 
@@ -192,65 +205,65 @@ SRCS_NW+=	lib_vidattr.c
 SRCS_NW+=	tty_update.c
 
 # Tinfo
-SRCS_NW+=	access.c
-SRCS_NW+=	add_tries.c
-SRCS_NW+=	alloc_entry.c
-SRCS_NW+=	alloc_ttype.c
-SRCS_NW+=	captoinfo.c
-SRCS_NW+=	comp_error.c
-SRCS_NW+=	comp_expand.c
-SRCS_NW+=	comp_hash.c
-SRCS_NW+=	comp_parse.c
-SRCS_NW+=	comp_scan.c
-SRCS_NW+=	db_iterator.c
-SRCS_NW+=	doalloc.c
-SRCS_NW+=	entries.c
-SRCS_NW+=	free_ttype.c
-SRCS_NW+=	getenv_num.c
+SRCS_NWB+=	access.c
+SRCS_NWB+=	add_tries.c
+SRCS_NWB+=	alloc_entry.c
+SRCS_NWB+=	alloc_ttype.c
+SRCS_NWB+=	captoinfo.c
+SRCS_NWB+=	comp_error.c
+SRCS_NWB+=	comp_expand.c
+SRCS_NWB+=	comp_hash.c
+SRCS_NWB+=	comp_parse.c
+SRCS_NWB+=	comp_scan.c
+SRCS_NWB+=	db_iterator.c
+SRCS_NWB+=	doalloc.c
+SRCS_NWB+=	entries.c
+SRCS_NWB+=	free_ttype.c
+SRCS_NWB+=	getenv_num.c
 SRCS_NW+=	hashed_db.c
-SRCS_NW+=	home_terminfo.c
-SRCS_NW+=	init_keytry.c
+SRCS_NWB+=	home_terminfo.c
+SRCS_NWB+=	init_keytry.c
 SRCS_NW+=	lib_acs.c
-SRCS_NW+=	lib_baudrate.c
-SRCS_NW+=	lib_cur_term.c
-SRCS_NW+=	lib_data.c
-SRCS_NW+=	lib_has_cap.c
+SRCS_NWB+=	lib_baudrate.c
+SRCS_NWB+=	lib_cur_term.c
+SRCS_NWB+=	lib_data.c
+SRCS_NWB+=	lib_has_cap.c
 SRCS_NW+=	lib_kernel.c
 SRCS_NW+=	lib_longname.c
-SRCS_NW+=	lib_napms.c
-SRCS_NW+=	lib_options.c
+SRCS_NWB+=	lib_napms.c
+SRCS_NWB+=	lib_options.c
 SRCS_NW+=	lib_print.c
-SRCS_NW+=	lib_raw.c
-SRCS_NW+=	lib_setup.c
-SRCS_NW+=	lib_termcap.c
+SRCS_NWB+=	lib_raw.c
+SRCS_NWB+=	lib_setup.c
+SRCS_NWB+=	lib_termcap.c
 SRCS_NW+=	lib_termname.c
-SRCS_NW+=	lib_tgoto.c
-SRCS_NW+=	lib_ti.c
-SRCS_NW+=	lib_tparm.c
-SRCS_NW+=	lib_tputs.c
-SRCS_NW+=	lib_ttyflags.c
-SRCS_NW+=	name_match.c
+SRCS_NWB+=	lib_tgoto.c
+SRCS_NWB+=	lib_ti.c
+SRCS_NWB+=	lib_tparm.c
+SRCS_NWB+=	lib_tputs.c
+SRCS_NWB+=	lib_ttyflags.c
+SRCS_NWB+=	name_match.c
 SRCS_NW+=	obsolete.c
-SRCS_NW+=	parse_entry.c
-SRCS_NW+=	read_entry.c
-SRCS_NW+=	read_termcap.c
-SRCS_NW+=	strings.c
-SRCS_NW+=	trim_sgr0.c
+SRCS_NWB+=	parse_entry.c
+SRCS_NWB+=	read_entry.c
+SRCS_NWB+=	read_termcap.c
+SRCS_NWB+=	strings.c
+SRCS_NWB+=	trim_sgr0.c
 SRCS_NW+=	use_screen.c
-SRCS_NW+=	write_entry.c
+SRCS_NWB+=	write_entry.c
 
 # Trace
-SRCS_NW+=	lib_trace.c
-SRCS_NW+=	lib_traceatr.c
-SRCS_NW+=	lib_tracebits.c
-SRCS_NW+=	lib_tracechr.c
-SRCS_NW+=	lib_tracedmp.c
-SRCS_NW+=	lib_tracemse.c
-SRCS_NW+=	trace_buf.c
-SRCS_NW+=	trace_tries.c
-SRCS_NW+=	trace_xnames.c
-SRCS_NW+=	varargs.c
-SRCS_NW+=	visbuf.c
+SRCS_NWB+=	lib_trace.c
+SRCS_NWt+=	lib_traceatr.c
+SRCS_NWt+=	lib_tracebits.c
+SRCS_NWt+=	lib_tracechr.c
+SRCS_NWt+=	lib_tracedmp.c
+SRCS_NWt+=	lib_tracemse.c
+SRCS_NWt+=	trace_buf.c
+SRCS_NWt+=	trace_tries.c
+SRCS_NWt+=	trace_xnames.c
+SRCS_NWt+=	varargs.c
+SRCS_NWB+=	visbuf.c
 
 # Whidechar
 SRCS_W+=	charable.c
@@ -293,7 +306,14 @@ SRCS_P+=	p_win.c
 #SRCS_P+=	panel.c
 
 # Sources to compile
+.if defined(ZTIC)
+SRCS_ALL+=	${SRCS_NWB}
+.endif
+.if defined(ZTRACE)
+SRCS_ALL+=	${SRCS_NWt}
+.endif
 .if defined(ZNCURSES)
+SRCS_ALL+=	${SRCS_NWB}
 SRCS_ALL+=	${SRCS_NW}
 .endif
 .if defined(ZNCURSES) && defined(ENABLE_WIDEC)

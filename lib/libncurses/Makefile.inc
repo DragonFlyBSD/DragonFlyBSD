@@ -35,7 +35,7 @@ NCURSESWIDEDIR=		${NCURSESDIR}/ncurses/widechar
 .if defined(ZPANEL)
 .PATH:	${NCURSESDIR}/panel
 .endif
-.if defined(ZNCURSES)
+.if defined(ZNCURSES) || defined(ZTIC)
 .PATH:	${NCURSESBASEDIR}
 .PATH:	${NCURSESSERIALDIR}
 .PATH:	${NCURSESTINFODIR}
