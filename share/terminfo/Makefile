@@ -7,9 +7,15 @@ CLEANDIRS+=	terminfo
 
 TINFODIR=	${SHAREDIR}/terminfo
 MISCDIR=	${.CURDIR}/../../contrib/ncurses/misc
-PSOURCE=	${.CURDIR}/../../contrib/ncurses/progs
 TSOURCE=	${MISCDIR}/terminfo.src
-CFLAGS+=	-I${PSOURCE} -I${.CURDIR}/../../lib/libncurses/include
+TICBOOTSTRAP=	${.OBJDIR}/../../lib/libncurses/tic_next/tic_next.nx
+
+# Allow to override to reduce breakage surface (just in case)
+.if exists(${TICBOOTSTRAP})
+TIC?=	${TICBOOTSTRAP}
+.else
+TIC?=	tic
+.endif
 
 all: terminfo
 
@@ -24,7 +30,7 @@ run_tic.sh:
 	  -e 's;@DESTDIR@;;g' \
 	  -e 's;@TERMINFO@;${.CURDIR}/terminfo;g' \
 	  -e 's;@TERMINFO_SRC@;${TSOURCE};g' \
-	  -e 's;@TIC_PATH@;tic;g' \
+	  -e 's;@TIC_PATH@;${TIC};g' \
 	  -e 's;@NCURSES_EXT_FUNCS@;1;g' \
 	  -e 's;@LN_S@;ln -s -f;g' \
 	  -e 's;@prefix@;/usr;g' \
@@ -43,14 +49,9 @@ terminfo: run_tic.sh terminfo.tmp
 	sh run_tic.sh
 
 install:
-# Directories aren't created on the fly; handled by mtree/BSD.usr.dist
-#	for ITEM in ${LEVEL1}; do \
-#		${INSTALL} -d -m 755 -o ${BINOWN} -g ${BINGRP} \
-#		${DESTDIR}${TINFODIR}/$${ITEM}; \
-#	done
 	for ITEM in ${ENTRY}; do \
 		${INSTALL} -m 644 -o ${BINOWN} -g ${BINGRP}  \
 		terminfo/$${ITEM} ${DESTDIR}${TINFODIR}/$${ITEM}; \
 	done
 
-.include <bsd.prog.mk>
+.include <bsd.lib.mk>

@@ -872,7 +872,7 @@ BSTRAPDIRS2= \
 	usr.bin/gencat usr.bin/chflags usr.bin/expand usr.bin/paste \
 	usr.bin/uuencode usr.bin/cap_mkdb usr.bin/true usr.bin/false \
 	usr.bin/cmp usr.bin/xargs usr.bin/id usr.bin/env usr.bin/dirname \
-	usr.bin/tail usr.bin/unifdef usr.bin/tic \
+	usr.bin/tail usr.bin/unifdef \
 	usr.sbin/chown usr.sbin/mtree usr.sbin/config \
 	usr.sbin/btxld usr.sbin/zic usr.sbin/makewhatis \
 	gnu/usr.bin/grep usr.bin/sort usr.bin/gzip usr.bin/bzip2 \
