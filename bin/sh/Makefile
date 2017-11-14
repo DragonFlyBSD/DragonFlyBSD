@@ -28,25 +28,7 @@ CFLAGS+=-DSHELL -I. -I${.CURDIR}
 
 .if defined(BOOTSTRAPPING)
 CFLAGS+= -DNO_HISTORY
-.  if exists(/usr/lib/libedit.a)
-DPADD= /usr/lib/libedit.a
-LDADD= -ledit
-.  elif exists(/usr/lib/libprivate_edit.a)
-DPADD= /usr/lib/libprivate_edit.a
-LDADD= -lprivate_edit
-.  else
-DPADD= ${LIBEDIT}
-LDADD= -lprivate_edit
-LDFLAGS+=	${PRIVATELIB_BLDFLAGS}
-.  endif
-.  if exists(/usr/lib/libtermcap.a)
-DPADD+= /usr/lib/libtermcap.a
-LDADD+= -ltermcap
-.  else
-DPADD+= ${LIBNCURSES}
-LDADD+= -lprivate_ncurses
-LDFLAGS+=	${PRIVATELIB_BLDFLAGS}
-.  endif
+# LIBEDIT is not needed here
 .else
 DPADD= ${LIBEDIT} ${LIBNCURSES}
 LDADD= -lprivate_edit -lprivate_ncurses
