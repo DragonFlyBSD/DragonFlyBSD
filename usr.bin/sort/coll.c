@@ -35,7 +35,9 @@
 #include <langinfo.h>
 #include <limits.h>
 #include <math.h>
+#if defined(SORT_RANDOM)
 #include <md5.h>
+#endif
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
@@ -58,7 +60,9 @@ static int gnumcoll(struct key_value*, struct key_value *, size_t offset);
 static int monthcoll(struct key_value*, struct key_value *, size_t offset);
 static int numcoll(struct key_value*, struct key_value *, size_t offset);
 static int hnumcoll(struct key_value*, struct key_value *, size_t offset);
+#if defined(SORT_RANDOM)
 static int randomcoll(struct key_value*, struct key_value *, size_t offset);
+#endif
 static int versioncoll(struct key_value*, struct key_value *, size_t offset);
 
 /*
@@ -458,8 +462,10 @@ get_sort_func(struct sort_mods *sm)
 		return (gnumcoll);
 	else if (sm->Mflag)
 		return (monthcoll);
+#if defined(SORT_RANDOM)
 	else if (sm->Rflag)
 		return (randomcoll);
+#endif
 	else if (sm->Vflag)
 		return (versioncoll);
 	else
@@ -967,6 +973,7 @@ hnumcoll(struct key_value *kv1, struct key_value *kv2, size_t offset)
 /*
  * Implements random sort (-R).
  */
+#if defined(SORT_RANDOM)
 static int
 randomcoll(struct key_value *kv1, struct key_value *kv2,
     size_t offset __unused)
@@ -1016,6 +1023,7 @@ randomcoll(struct key_value *kv1, struct key_value *kv2,
 		return (cmp_res);
 	}
 }
+#endif
 
 /*
  * Implements version sort (-V).

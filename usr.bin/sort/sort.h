@@ -37,7 +37,9 @@
 #include <wchar.h>
 
 #include <sys/types.h>
+#if defined(SORT_RANDOM)
 #include <md5.h>
+#endif
 
 #define	VERSION	"2.3-FreeBSD"
 
@@ -66,7 +68,9 @@ extern bool debug_sort;
 /*
  * MD5 context for random hash function
  */
+#if defined(SORT_RANDOM)
 extern MD5_CTX md5_ctx;
+#endif
 
 /*
  * sort.c
@@ -114,7 +118,9 @@ struct sort_mods
 	bool		Mflag;
 	bool		nflag;
 	bool		rflag;
+#if defined(SORT_RANDOM)
 	bool		Rflag;
+#endif
 	bool		Vflag;
 	bool		hflag;
 };

@@ -37,7 +37,9 @@
 #include <getopt.h>
 #include <limits.h>
 #include <locale.h>
+#if defined(SORT_RANDOM)
 #include <md5.h>
+#endif
 #include <regex.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -57,8 +59,13 @@
 nl_catd catalog;
 #endif
 
+#if defined(SORT_RANDOM)
 #define	OPTIONS	"bcCdfghik:Mmno:RrsS:t:T:uVz"
+#else
+#define	OPTIONS	"bcCdfghik:Mmno:rsS:t:T:uVz"
+#endif
 
+#if defined(SORT_RANDOM)
 #define DEFAULT_RANDOM_SORT_SEED_FILE ("/dev/random")
 #define MAX_DEFAULT_RANDOM_SEED_DATA_SIZE (1024)
 
@@ -68,6 +75,7 @@ static const void *random_seed;
 static size_t random_seed_size;
 
 MD5_CTX md5_ctx;
+#endif
 
 /*
  * Default messages to use when NLS is disabled or no catalogue
@@ -94,7 +102,11 @@ const char *nlsstr[] = { "",
       "[--parallel thread_no] "
 #endif
       "[--human-numeric-sort] "
+#if defined(SORT_RANDOM)
       "[--version-sort] [--random-sort [--random-source file]] "
+#else
+      "[--version-sort] "
+#endif
       "[--compress-program program] [file ...]\n" };
 
 struct sort_opts sort_opts_vals;
@@ -134,7 +146,9 @@ enum
 #if defined(SORT_THREADS)
 	PARALLEL_OPT,
 #endif
+#if defined(SORT_RANDOM)
 	RANDOMSOURCE_OPT,
+#endif
 	COMPRESSPROGRAM_OPT,
 	QSORT_OPT,
 	MERGESORT_OPT,
@@ -175,8 +189,10 @@ static struct option long_options[] = {
 #endif
 				{ "qsort", no_argument, NULL, QSORT_OPT },
 				{ "radixsort", no_argument, NULL, RADIXSORT_OPT },
+#if defined(SORT_RANDOM)
 				{ "random-sort", no_argument, NULL, 'R' },
 				{ "random-source", required_argument, NULL, RANDOMSOURCE_OPT },
+#endif
 				{ "reverse", no_argument, NULL, 'r' },
 				{ "sort", required_argument, NULL, SORT_OPT },
 				{ "stable", no_argument, NULL, 's' },
@@ -200,7 +216,10 @@ sort_modifier_empty(struct sort_mods *sm)
 	if (sm == NULL)
 		return (true);
 	return (!(sm->Mflag || sm->Vflag || sm->nflag || sm->gflag ||
-	    sm->rflag || sm->Rflag || sm->hflag || sm->dflag || sm->fflag));
+#ifdef SORT_RANDOM
+	    sm->Rflag ||
+#endif
+	    sm->rflag || sm->hflag || sm->dflag || sm->fflag));
 }
 
 /*
@@ -588,10 +607,12 @@ set_sort_modifier(struct sort_mods *sm, int c)
 		case 'i':
 			sm->iflag = true;
 			break;
+#ifdef SORT_RANDOM
 		case 'R':
 			sm->Rflag = true;
 			need_random = true;
 			break;
+#endif
 		case 'M':
 			initialise_months();
 			sm->Mflag = true;
@@ -911,6 +932,7 @@ fix_obsolete_keys(int *argc, char **argv)
 /*
  * Set random seed
  */
+#if defined(SORT_RANDOM)
 static void
 set_random_seed(void)
 {
@@ -963,6 +985,7 @@ set_random_seed(void)
 		}
 	}
 }
+#endif
 
 /*
  * Main function.
@@ -1097,8 +1120,10 @@ main(int argc, char **argv)
 						set_sort_modifier(sm, 'n');
 					else if (!strcmp(optarg, "month"))
 						set_sort_modifier(sm, 'M');
+#if defined(SORT_RANDOM)
 					else if (!strcmp(optarg, "random"))
 						set_sort_modifier(sm, 'R');
+#endif
 					else
 						unknown(optarg);
 				}
@@ -1127,9 +1152,11 @@ main(int argc, char **argv)
 			case RADIXSORT_OPT:
 				sort_opts_vals.sort_method = SORT_RADIXSORT;
 				break;
+#if defined(SORT_RANDOM)
 			case RANDOMSOURCE_OPT:
 				random_source = strdup(optarg);
 				break;
+#endif
 			case COMPRESSPROGRAM_OPT:
 				compress_program = strdup(optarg);
 				break;
@@ -1230,7 +1257,9 @@ main(int argc, char **argv)
 		}
 	}
 
+#if defined(SORT_RANDOM)
 	set_random_seed();
+#endif
 
 	/* Case when the outfile equals one of the input files: */
 	if (strcmp(outfile, "-")) {
