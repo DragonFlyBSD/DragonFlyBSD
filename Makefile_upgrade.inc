@@ -3348,6 +3348,7 @@ TO_REMOVE+=/usr/share/man/man1/version.1.gz
 TO_REMOVE+=/usr/share/man/man1/x509.1.gz
 TO_REMOVE+=/usr/share/man/man5/config.5.gz
 TO_REMOVE+=/usr/share/man/man5/x509v3_config.5.gz
+TO_REMOVE+=/usr/include/panel.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

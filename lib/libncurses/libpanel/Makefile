@@ -6,8 +6,8 @@ SHLIBDIR?=	/lib
 
 ZPANEL=	yes
 
-# XXX TODO privatize too
-INCS=	panel.h
+INCS=		panel.h
+INCSDIR=	${INCLUDEDIR}/priv/ncurses
 
 .include "${.CURDIR}/../Makefile.sources"
 .include <bsd.lib.mk>
