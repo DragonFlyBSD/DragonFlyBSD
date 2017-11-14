@@ -9,13 +9,16 @@ SRCS=	bwstring.c \
 	sort.c \
 	vsort.c
 
+CFLAGS+= -DWITHOUT_NLS
+
 DPADD=	${LIBMD}
 LDADD=	-lmd
 
+.if !defined(BOOTSTRAPPING)
 DPADD+=	${LIBPTHREAD}
 LDADD+=	-lpthread
 CFLAGS+= -DSORT_THREADS
-CFLAGS+= -DWITHOUT_NLS
+.endif
 
 # XXX sys/md5.h shim errata for bootstrap REMOVE_OPENSSL_FILES
 CFLAGS+= -I${_SHLIBDIRPREFIX}/usr/include/priv
