@@ -1,11 +1,11 @@
 # All ncurses, ncursesw details
 
-GENHDRS_NW+=	curses.h
+GENHDRS_NWP+=	curses.h
 GENHDRS_NW+=	hashsize.h
 GENHDRS_NW+=	init_keytry.h
-GENHDRS_NW+=	ncurses_def.h
+GENHDRS_NWP+=	ncurses_def.h
 GENHDRS_NW+=	parametrized.h
-GENHDRS_NW+=	term.h
+GENHDRS_NWP+=	term.h
 
 GENSRCS_NW+=	codes.c
 GENSRCS_NW+=	comp_captab.c
@@ -17,16 +17,34 @@ GENSRCS_NW+=	names.c
 GENSRCS_NW+=	unctrl.c
 
 # Headers to install
+.if defined(ZNCURSES)
 HEADERS=	curses.h term.h termcap.h unctrl.h
 SRCHDRS=	ncurses_dll.h
+.endif
 
 # Generators
 # Careful! Some of contrib scripts may invoke make_hash and make_keys internally.
+ncurses_def.h:	MKncurses_def.sh ncurses_defs
+	AWK=awk sh ${NCURSESDIR}/include/MKncurses_def.sh \
+	${NCURSESDIR}/include/ncurses_defs > ${.TARGET}
+
+curses.h: $(TERMINFO_CAPS) curses.head curses.tail MKkey_defs.sh
+	cat ${.CURDIR}/../include/curses.head | \
+	sed -e 's|SET_NEED_WCHAR_H|${SW_WIDEC}|' \
+	    -e 's|SET_NCURSES_CH_T|${SW_TYPE}|' > ${.TARGET}.new
+	AWK=awk sh ${NCURSESDIR}/include/MKkey_defs.sh $(TERMINFO_CAPS) >> ${.TARGET}.new
+.if defined(ENABLE_WIDEC)
+	cat ${NCURSESDIR}/include/curses.wide >> ${.TARGET}.new
+.endif
+	cat ${NCURSESDIR}/include/curses.tail >> ${.TARGET}.new
+	mv -f ${.TARGET}.new ${.TARGET}
+
 term.h: MKterm.h.awk edit_cfg.sh Caps
 	awk -f ${.CURDIR}/../include/MKterm.h.awk ${TERMINFO_CAPS} > ${.TARGET}.new
 	sh ${NCURSESDIR}/include/edit_cfg.sh ${.CURDIR}/../include/ncurses_cfg.h ${.TARGET}.new
 	mv -f ${.TARGET}.new ${.TARGET}
 
+.if defined(ZNCURSES)
 hashsize.h: MKhashsize.sh Caps
 	sh ${NCURSESDIR}/include/MKhashsize.sh ${TERMINFO_CAPS} > ${.TARGET}
 
@@ -68,11 +86,16 @@ lib_keyname.c: MKkeyname.awk keys.list
 
 unctrl.c: MKunctrl.awk
 	echo | awk -f ${NCURSESBASEDIR}/MKunctrl.awk bigstrings=1 > ${.TARGET}
+.endif
 
 # Generated
+SRCS_ALL+=	${GENSRCS_NWP} ${GENHDRS_NWP}
+.if defined(ZNCURSES)
 SRCS_ALL+=	${GENSRCS_NW} ${GENHDRS_NW}
-CLEANFILES+=	${GENSRCS_NW} ${GENHDRS_NW} term.h.new curses.h.new
+CLEANFILES+=	${GENSRCS_NW} ${GENHDRS_NW}
 CLEANFILES+=	make_keys make_hash keys.list
+.endif
+CLEANFILES+=	${GENSRCS_NWP} ${GENHDRS_NWP} term.h.new curses.h.new
 
 # Base
 SRCS_NW+=	define_key.c
@@ -251,10 +274,33 @@ SRCS_W+=	lib_vline_set.c
 SRCS_W+=	lib_wacs.c
 SRCS_W+=	lib_wunctrl.c
 
+# Panel
+SRCS_P+=	p_above.c
+SRCS_P+=	p_below.c
+SRCS_P+=	p_bottom.c
+SRCS_P+=	p_delete.c
+SRCS_P+=	p_hidden.c
+SRCS_P+=	p_hide.c
+SRCS_P+=	p_move.c
+SRCS_P+=	p_new.c
+SRCS_P+=	p_replace.c
+SRCS_P+=	p_show.c
+SRCS_P+=	p_top.c
+SRCS_P+=	p_update.c
+SRCS_P+=	p_user.c
+SRCS_P+=	p_win.c
+# only when TRACE
+#SRCS_P+=	panel.c
+
 # Sources to compile
+.if defined(ZNCURSES)
 SRCS_ALL+=	${SRCS_NW}
-.if defined(ENABLE_WIDEC)
+.endif
+.if defined(ZNCURSES) && defined(ENABLE_WIDEC)
 SRCS_ALL+=	${SRCS_W}
+.endif
+.if defined(ZPANEL)
+SRCS_ALL+=	${SRCS_P}
 .endif
 
 # Sort objects for reproducible libs

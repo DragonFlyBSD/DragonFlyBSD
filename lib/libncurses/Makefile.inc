@@ -45,19 +45,4 @@ NCURSESWIDEDIR=		${NCURSESDIR}/ncurses/widechar
 . endif
 .endif
 
-ncurses_def.h:	MKncurses_def.sh ncurses_defs
-	AWK=awk sh ${NCURSESDIR}/include/MKncurses_def.sh \
-	${NCURSESDIR}/include/ncurses_defs > ${.TARGET}
-
-curses.h: $(TERMINFO_CAPS) curses.head curses.tail MKkey_defs.sh
-	cat ${.CURDIR}/../include/curses.head | \
-	sed -e 's|SET_NEED_WCHAR_H|${SW_WIDEC}|' \
-	    -e 's|SET_NCURSES_CH_T|${SW_TYPE}|' > ${.TARGET}.new
-	AWK=awk sh ${NCURSESDIR}/include/MKkey_defs.sh $(TERMINFO_CAPS) >> ${.TARGET}.new
-.if defined(ENABLE_WIDEC)
-	cat ${NCURSESDIR}/include/curses.wide >> ${.TARGET}.new
-.endif
-	cat ${NCURSESDIR}/include/curses.tail >> ${.TARGET}.new
-	mv -f ${.TARGET}.new ${.TARGET}
-
 .include "../Makefile.inc"
