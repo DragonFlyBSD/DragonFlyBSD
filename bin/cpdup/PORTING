@@ -15,7 +15,7 @@ $DragonFly: src/bin/cpdup/PORTING,v 1.2 2008/04/11 17:33:11 dillon Exp $
     This script should suffice when compiling under linux.  For some reason
     that I cannot fathom, linux defaults to using a 32 bit off_t.  It makes
     no sense at all to me why they would want to do this, BSDs went to
-    a 64 bit default off_t over 15 years ago.  In anycase, fixing it 
+    a 64 bit default off_t over 15 years ago.  In anycase, fixing it
     requires a few -D options.
 
     #!/bin/csh

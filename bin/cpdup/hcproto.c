@@ -122,7 +122,6 @@ hc_slave(int fdin, int fdout)
 {
     hcc_slave(fdin, fdout, HCDispatchTable,
 	      sizeof(HCDispatchTable) / sizeof(HCDispatchTable[0]));
-    
 }
 
 /*
@@ -1720,7 +1719,7 @@ hc_rename(struct HostConf *hc, const char *name1, const char *name2)
 {
     hctransaction_t trans;
     struct HCHead *head;
-  
+
     if (NotForRealOpt)
 	return(0);
     if (hc == NULL || hc->host == NULL)

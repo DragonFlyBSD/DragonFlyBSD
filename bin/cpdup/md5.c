@@ -26,7 +26,7 @@ static MD5Node *MD5Base;
 static int MD5SCacheDirLen;
 static int MD5SCacheDirty;
 
-void 
+void
 md5_flush(void)
 {
     if (MD5SCacheDirty && MD5SCache && NotForRealOpt == 0) {
@@ -37,8 +37,8 @@ md5_flush(void)
 
 	    for (node = MD5Base; node; node = node->md_Next) {
 		if (node->md_Accessed && node->md_Code) {
-		    fprintf(fo, "%s %zu %s\n", 
-			node->md_Code, 
+		    fprintf(fo, "%s %zu %s\n",
+			node->md_Code,
 			strlen(node->md_Name),
 			node->md_Name
 		    );
@@ -123,7 +123,7 @@ md5_cache(const char *spath, int sdirlen)
 		free(s);
 	    }
 	    /*
-	     * extracting md_Name - name may contain embedded control 
+	     * extracting md_Name - name may contain embedded control
 	     * characters.
 	     */
 	    CountSourceReadBytes += nlen+1;

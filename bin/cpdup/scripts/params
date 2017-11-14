@@ -1,6 +1,6 @@
 # sourced by do* scripts
 #
-# do not include the BLAH/mirrors subdirectory when specifying the backup 
+# do not include the BLAH/mirrors subdirectory when specifying the backup
 # path and the remote path.  The scripts will add it themselves, as a safety
 # feature.
 #

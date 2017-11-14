@@ -24,7 +24,7 @@ static FSMIDNode *FSMIDBase;
 static int FSMIDDCacheDirLen;
 static int FSMIDDCacheDirty;
 
-void 
+void
 fsmid_flush(void)
 {
     if (FSMIDDCacheDirty && FSMIDDCache && NotForRealOpt == 0) {
@@ -35,8 +35,8 @@ fsmid_flush(void)
 
 	    for (node = FSMIDBase; node; node = node->fid_Next) {
 		if (node->fid_Accessed && node->fid_Code) {
-		    fprintf(fo, "%016jx %zu %s\n", 
-			(intmax_t)node->fid_Code, 
+		    fprintf(fo, "%016jx %zu %s\n",
+			(intmax_t)node->fid_Code,
 			strlen(node->fid_Name),
 			node->fid_Name
 		    );
@@ -117,7 +117,7 @@ fsmid_cache(const char *dpath, int ddirlen)
 		free(s);
 	    }
 	    /*
-	     * extracting fid_Name - name may contain embedded control 
+	     * extracting fid_Name - name may contain embedded control
 	     * characters.
 	     */
 	    CountSourceReadBytes += nlen+1;

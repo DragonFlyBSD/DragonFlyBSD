@@ -7,9 +7,9 @@
  *     use and distribute based on the FreeBSD copyright.  Supplied as-is,
  *     USE WITH EXTREME CAUTION.
  *
- * This program attempts to duplicate the source onto the destination as 
+ * This program attempts to duplicate the source onto the destination as
  * exactly as possible, retaining modify times, flags, perms, uid, and gid.
- * It can duplicate devices, files (including hardlinks), softlinks, 
+ * It can duplicate devices, files (including hardlinks), softlinks,
  * directories, and so forth.  It is recursive by default!  The duplication
  * is inclusive of removal of files/directories on the destination that do
  * not exist on the source.  This program supports a per-directory exception
@@ -34,10 +34,10 @@
  *	- copies uid, gid, mtime, perms, flags, softlinks, devices, hardlinks,
  *	  and recurses through directories.
  *
- *	- accesses a per-directory exclusion file, .cpignore, containing 
+ *	- accesses a per-directory exclusion file, .cpignore, containing
  *	  standard wildcarded ( ? / * style, NOT regex) exclusions.
  *
- *	- tries to play permissions and flags smart in regards to overwriting 
+ *	- tries to play permissions and flags smart in regards to overwriting
  *	  schg files and doing related stuff.
  *
  *	- Can do MD5 consistancy checks
@@ -750,7 +750,7 @@ DoCopy(copy_info_t info, struct stat *stat1, int depth)
 		     * hard link is not correct, attempt to unlink it
 		     */
                     if (xremove(&DstHost, dpath) < 0) {
-			logerr("%-32s hardlink: unable to unlink: %s\n", 
+			logerr("%-32s hardlink: unable to unlink: %s\n",
 			    ((dpath) ? dpath : spath), strerror(errno));
                         hltdelete(hln);
 			hln = NULL;
@@ -780,7 +780,7 @@ DoCopy(copy_info_t info, struct stat *stat1, int depth)
 		}
                 if (r == 0) {
 		    if (VerboseOpt) {
-			logstd("%-32s hardlink: %s\n", 
+			logstd("%-32s hardlink: %s\n",
 			    (dpath ? dpath : spath),
 			    (st2Valid ? "relinked" : "linked")
 			);
@@ -1111,7 +1111,7 @@ relink:
 #ifndef NOMD5
 	if (mres < 0)
 	    logerr("%-32s md5-CHECK-FAILED\n", (dpath) ? dpath : spath);
-	else 
+	else
 #endif
 	if (fres < 0)
 	    logerr("%-32s fsmid-CHECK-FAILED\n", (dpath) ? dpath : spath);
@@ -1274,7 +1274,7 @@ skip_copy:
 		    if (DstRootPrivs || ChgrpAllowed(stat1->st_gid))
 			hc_lchown(&DstHost, path, stat1->st_uid, stat1->st_gid);
 		    /*
-		     * there is no lchmod() or lchflags(), we 
+		     * there is no lchmod() or lchflags(), we
 		     * cannot chmod or chflags a softlink.
 		     */
 		    if (st2Valid && xrename(path, dpath, st2_flags) != 0) {
@@ -1301,7 +1301,7 @@ skip_copy:
 	    }
 	    CountSourceBytes += n1;
 	    CountSourceReadBytes += n1;
-	    if (n2 > 0) 
+	    if (n2 > 0)
 		CountTargetReadBytes += n2;
 	    CountSourceItems++;
 	} else {
@@ -1315,7 +1315,7 @@ skip_copy:
 	char *path = NULL;
 
 	if (ForceOpt ||
-	    st2Valid == 0 || 
+	    st2Valid == 0 ||
 	    stat1->st_mode != st2.st_mode ||
 	    stat1->st_rdev != st2.st_rdev ||
 	    !OwnerMatch(stat1, &st2)
@@ -1343,7 +1343,7 @@ skip_copy:
 		CountCopiedItems++;
 	    } else {
 		r = 1;
-		logerr("%-32s dev failed: %s\n", 
+		logerr("%-32s dev failed: %s\n",
 		    (dpath ? dpath : spath), strerror(errno)
 		);
 	    }
@@ -1631,8 +1631,8 @@ shash(const char *s)
     hv = 0xA4FB3255;
 
     while (*s) {
-	if (*s == '*' || *s == '?' || 
-	    *s == '{' || *s == '}' || 
+	if (*s == '*' || *s == '?' ||
+	    *s == '{' || *s == '}' ||
 	    *s == '[' || *s == ']' ||
 	    *s == '|'
 	) {
@@ -1661,7 +1661,7 @@ YesNo(const char *path)
 /*
  * xrename() - rename with override
  *
- *	If the rename fails, attempt to override st_flags on the 
+ *	If the rename fails, attempt to override st_flags on the
  *	destination and rename again.  If that fails too, try to
  *	set the flags back the way they were and give up.
  */
