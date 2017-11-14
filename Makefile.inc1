@@ -856,7 +856,7 @@ installmost:
 BSTRAPDIRS1= \
 	usr.bin/patch \
 	bin/chmod bin/cp bin/cpdup bin/dd bin/mkdir bin/rm bin/echo \
-	bin/test bin/cat bin/ln bin/mv bin/csh bin/expr bin/sh \
+	bin/test bin/cat bin/ln bin/mv bin/expr bin/sh \
 	bin/hostname bin/kill \
 	usr.bin/yacc usr.bin/m4 usr.bin/localedef \
 	usr.bin/uudecode usr.bin/xinstall \

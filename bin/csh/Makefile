@@ -36,27 +36,11 @@ MLINKS= csh.1 tcsh.1
 # utilities of the same name are handled with the associated manpage,
 # builtin.1 in share/man/man1/.
 
-.if defined(BOOTSTRAPPING)
-.  if exists(/usr/lib/libtermcap.a)
-DPADD=	/usr/lib/libtermcap.a ${LIBCRYPT}
-LDADD=	-ltermcap -lcrypt
-.  else
-.  if exists(/usr/lib/priv/libprivate_crypto.a)
-DPADD=	${LIBNCURSES} ${LIBCRYPT} ${LIBRECRYPTO}
-LDADD=	-lprivate_ncurses -lcrypt -lprivate_crypto
-LDFLAGS+=	${PRIVATELIB_BLDFLAGS}
-.  else
-DPADD=	${LIBNCURSES} ${LIBCRYPT} ${LIBRECRYPTO}
-LDADD=	-lprivate_ncurses -lcrypt -lcrypto
-LDFLAGS+=	${PRIVATELIB_BLDFLAGS}
-.  endif
-.  endif
-.else
 DPADD=	${LIBNCURSES} ${LIBCRYPT} ${LIBRECRYPTO}
 LDADD=	-lprivate_ncurses -lcrypt -lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
-.endif
 
+# XXX hmmm
 .if defined(BOOTSTRAPPING)
 . if ${CFLAGS:M-flto}
 LDFLAGS+=	-Wl,--allow-multiple-definition
