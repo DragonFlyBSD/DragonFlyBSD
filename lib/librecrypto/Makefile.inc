@@ -1,6 +1,3 @@
-OPENSSL_VER=	2.4.2
-OPENSSL_DATE=	2016-08-01
-
 .if exists (${.CURDIR}/../../Makefile.inc1)
 LIBRESSL_SRC=	${.CURDIR}/../../crypto/libressl
 .elif exists (${.CURDIR}/../../../Makefile.inc1)
