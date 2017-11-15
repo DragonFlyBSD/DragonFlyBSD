@@ -125,6 +125,7 @@ hammer2_cluster_type(hammer2_cluster_t *cluster)
 	return 0;
 }
 
+#ifdef INVARIANTS
 /*
  * Returns non-zero if the cluster's focus is flagged as being modified.
  *
@@ -140,6 +141,7 @@ hammer2_cluster_modified(hammer2_cluster_t *cluster)
 	}
 	return 0;
 }
+#endif
 
 /*
  * Returns the bref of the cluster's focus, sans any data-offset information
