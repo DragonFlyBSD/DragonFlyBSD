@@ -28,12 +28,11 @@
  *
  *      From: @(#)extern.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/lpr/lpd/extern.h,v 1.5.2.3 2001/06/25 01:01:00 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpd/extern.h,v 1.2 2003/06/17 04:29:56 dillon Exp $
  */
 
 #include <sys/cdefs.h>
 
-extern char scnkey[][HEIGHT];	/* in lpdchar.c */
+extern const char scnkey[][HEIGHT];	/* in lpdchar.c */
 extern int lflag;		/* in lpd.c */
 
 struct	printer;
