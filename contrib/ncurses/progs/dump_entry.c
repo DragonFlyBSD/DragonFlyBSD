@@ -1165,7 +1165,6 @@ dump_entry(TERMTYPE *tterm,
     const char *legend;
     bool infodump;
 
-#ifndef BOOTSTRAPPING
     if (quickdump) {
 	char bigbuf[65536];
 	unsigned n;
@@ -1207,7 +1206,6 @@ dump_entry(TERMTYPE *tterm,
 	}
 	return;
     }
-#endif
 
     if (outform == F_TERMCAP || outform == F_TCONVERR) {
 	critlen = MAX_TERMCAP_LENGTH;
