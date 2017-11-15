@@ -17,7 +17,6 @@ SUBDIR=	alias \
 	asa \
 	at \
 	awk \
-	banner \
 	basename \
 	bc \
 	biff \
