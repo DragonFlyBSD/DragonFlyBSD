@@ -263,6 +263,8 @@
         games
             atc
             ..
+            boggle
+            ..
             fortune
             ..
             larn

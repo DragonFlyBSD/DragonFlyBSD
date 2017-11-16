@@ -9,6 +9,7 @@ SUBDIR= adventure \
 	battlestar \
 	bcd \
 	bs \
+	boggle \
 	caesar \
 	canfield \
 	cribbage \
