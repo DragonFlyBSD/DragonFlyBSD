@@ -38,6 +38,7 @@ SUBDIR= adventure \
 	rogue \
 	sail \
 	snake \
+	tetris \
 	trek \
 	wargames \
 	worm \
