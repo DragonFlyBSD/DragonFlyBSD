@@ -30,7 +30,6 @@
  *
  * $OpenBSD: connect.c,v 1.6 2003/06/11 08:45:24 pjanzen Exp $
  * $NetBSD: connect.c,v 1.3 1997/10/11 08:13:40 lukem Exp $
- * $DragonFly: src/games/hunt/hunt/connect.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -61,16 +60,16 @@ do_connect(char *name, u_int8_t team, u_int32_t enter_status)
 	if (Ttyname == NULL)
 		Ttyname = "not a tty";
 	memset(buf, '\0', sizeof buf);
-	(void) strlcpy(buf, Ttyname, sizeof buf);
+	strlcpy(buf, Ttyname, sizeof buf);
 
 	uid = htonl(getuid());
 	enter_status = htonl(enter_status);
 	mode = htonl(mode);
 
-	(void) write(Socket, &uid, sizeof uid);
-	(void) write(Socket, name, NAMELEN);
-	(void) write(Socket, &team, sizeof team);
-	(void) write(Socket, &enter_status, sizeof enter_status);
-	(void) write(Socket, buf, NAMELEN);
-	(void) write(Socket, &mode, sizeof mode);
+	write(Socket, &uid, sizeof uid);
+	write(Socket, name, NAMELEN);
+	write(Socket, &team, sizeof team);
+	write(Socket, &enter_status, sizeof enter_status);
+	write(Socket, buf, NAMELEN);
+	write(Socket, &mode, sizeof mode);
 }

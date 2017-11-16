@@ -407,7 +407,7 @@ glo(int foo)
 	tf = lock;
 	while (*tf && *tf != '.')
 		tf++;
-	(void)sprintf(tf, ".%d", foo);
+	sprintf(tf, ".%d", foo);
 }
 
 /*

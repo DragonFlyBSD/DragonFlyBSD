@@ -105,7 +105,7 @@ main(int ac, char **av)
 		switch (c) {
 		case 'l':	/* rsh compatibility */
 		case 'n':
-			(void) strlcpy(name, optarg, sizeof name);
+			strlcpy(name, optarg, sizeof name);
 			break;
 		case 't':
 			team = *optarg;
@@ -191,12 +191,12 @@ main(int ac, char **av)
 	if (Otto_mode) {
 		if (Am_monitor)
 			errx(1, "otto mode incompatible with monitor mode");
-		(void) strlcpy(name, "otto", sizeof name);
+		strlcpy(name, "otto", sizeof name);
 		team = ' ';
 	} else
 		fill_in_blanks();
 
-	(void) fflush(stdout);
+	fflush(stdout);
 	display_open();
 	in_visual = TRUE;
 	if (LINES < SCREEN_HEIGHT || COLS < SCREEN_WIDTH) {
@@ -204,9 +204,9 @@ main(int ac, char **av)
 		leave(1, "Need a larger window");
 	}
 	display_clear_the_screen();
-	(void) signal(SIGINT, intr);
-	(void) signal(SIGTERM, sigterm);
-	/* (void) signal(SIGPIPE, SIG_IGN); */
+	signal(SIGINT, intr);
+	signal(SIGTERM, sigterm);
+	/* signal(SIGPIPE, SIG_IGN); */
 
 	Daemon.sa_len = 0;
     ask_driver:
@@ -398,7 +398,7 @@ dump_scores(void)
 		}
 		if (cnt < 0)
 			warn("read");
-		(void)close(s);
+		close(s);
 		if (Sock_host)
 			break;
 	}
@@ -463,7 +463,7 @@ intr(int dummy __unused)
 	int	explained;
 	int	y, x;
 
-	(void) signal(SIGINT, SIG_IGN);
+	signal(SIGINT, SIG_IGN);
 	display_getyx(&y, &x);
 	display_move(HEIGHT, 0);
 	display_put_str("Really quit? ");
@@ -476,13 +476,13 @@ intr(int dummy __unused)
 			ch = tolower(ch);
 		if (ch == 'y') {
 			if (Socket != 0) {
-				(void) write(Socket, "q", 1);
-				(void) close(Socket);
+				write(Socket, "q", 1);
+				close(Socket);
 			}
 			leave(0, NULL);
 		}
 		else if (ch == 'n') {
-			(void) signal(SIGINT, intr);
+			signal(SIGINT, intr);
 			display_move(y, x);
 			display_refresh();
 			return;

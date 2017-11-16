@@ -30,7 +30,6 @@
  *
  * $OpenBSD: answer.c,v 1.11 2007/11/06 10:22:29 chl Exp $
  * $NetBSD: answer.c,v 1.3 1997/10/10 16:32:50 lukem Exp $
- * $DragonFly: src/games/hunt/huntd/answer.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 
 #include <sys/socket.h>
@@ -115,7 +114,7 @@ answer_first(void)
 	 */
 	flags = fcntl(newsock, F_GETFL, 0);
 	flags |= O_NDELAY;
-	(void) fcntl(newsock, F_SETFL, flags);
+	fcntl(newsock, F_SETFL, flags);
 
 	/* Start listening to the spawning connection */
 	sp->fd = newsock;
@@ -212,7 +211,7 @@ answer_next(struct spawn *sp)
 
 	/* Tell the other end this server's hunt driver version: */
 	version = htonl((u_int32_t) HUNT_VERSION);
-	(void) write(sp->fd, &version, sizeof version);
+	write(sp->fd, &version, sizeof version);
 
 	if (sp->mode == C_MESSAGE) {
 		/* The clients only wants to send a message: */
@@ -397,7 +396,7 @@ stplayer(PLAYER *newpp, int enter_status)
 		check(pp, y, x);
 
 	/* Create a score line for the new player: */
-	(void) snprintf(Buf, sizeof Buf, "%5.2f%c%-10.10s %c",
+	snprintf(Buf, sizeof Buf, "%5.2f%c%-10.10s %c",
 		newpp->p_ident->i_score, stat_char(newpp),
 		newpp->p_ident->i_name, newpp->p_ident->i_team);
 	len = strlen(Buf);

@@ -346,10 +346,10 @@ main(int argc, char **argv)
 		lflags &= ~TIOCM_RTS;
 		olflags = lflags;
 		ioctl(line, TIOCMSET, &lflags);
-		(void)signal(SIGHUP, sighandler);
-		(void)signal(SIGINT, sighandler);
-		(void)signal(SIGQUIT, sighandler);
-		(void)signal(SIGTERM, sighandler);
+		signal(SIGHUP, sighandler);
+		signal(SIGINT, sighandler);
+		signal(SIGQUIT, sighandler);
+		signal(SIGTERM, sighandler);
 	}
 
 	argc -= optind;
@@ -612,5 +612,5 @@ sighandler(int signo)
 	tcsetattr(line, TCSANOW, &otty);
 
 	signal(signo, SIG_DFL);
-	(void)kill(getpid(), signo);
+	kill(getpid(), signo);
 }

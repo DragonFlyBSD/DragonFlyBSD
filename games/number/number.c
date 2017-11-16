@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)number.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/games/number/number.c,v 1.12 1999/12/12 03:22:35 billf Exp $
- * $DragonFly: src/games/number/number.c,v 1.5 2008/06/05 18:06:30 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -99,13 +98,13 @@ main(int argc, char **argv)
 			if (strchr(line, '\n') == NULL)
 				errx(1, "line too long.");
 			if (!first)
-				(void)printf("...\n");
+				printf("...\n");
 			convert(line);
 		}
 	else
 		for (first = 1; *argv != NULL; first = 0, ++argv) {
 			if (!first)
-				(void)printf("...\n");
+				printf("...\n");
 			convert(*argv);
 		}
 	exit(0);
@@ -152,7 +151,7 @@ badnum:			errx(1, "illegal number: %s", line);
 		errx(1, "number too large, max %d digits.", MAXNUM);
 
 	if (*line == '-') {
-		(void)printf("minus%s", lflag ? " " : "\n");
+		printf("minus%s", lflag ? " " : "\n");
 		++line;
 		--len;
 	}
@@ -162,21 +161,21 @@ badnum:			errx(1, "illegal number: %s", line);
 		for (p = fraction; *p != '\0'; ++p)
 			if (*p != '0') {
 				if (rval)
-					(void)printf("%sand%s",
+					printf("%sand%s",
 					    lflag ? " " : "",
 					    lflag ? " " : "\n");
 				if (unit(flen, fraction)) {
 					if (lflag)
-						(void)printf(" ");
+						printf(" ");
 					pfract(flen);
 					rval = 1;
 				}
 				break;
 			}
 	if (!rval)
-		(void)printf("zero%s", lflag ? "" : ".\n");
+		printf("zero%s", lflag ? "" : ".\n");
 	if (lflag)
-		(void)printf("\n");
+		printf("\n");
 }
 
 int
@@ -191,7 +190,7 @@ unit(int len, char *p)
 			len -= off;
 			if (number(p, off)) {
 				rval = 1;
-				(void)printf(" %s%s",
+				printf(" %s%s",
 				    name3[len / 3], lflag ? " " : ".\n");
 			}
 			p += off;
@@ -200,14 +199,14 @@ unit(int len, char *p)
 			len -= 3;
 			if (number(p, 3)) {
 				rval = 1;
-				(void)printf(" %s%s",
+				printf(" %s%s",
 				    name3[len / 3], lflag ? " " : ".\n");
 			}
 		}
 	}
 	if (number(p, len)) {
 		if (!lflag)
-			(void)printf(".\n");
+			printf(".\n");
 		rval = 1;
 	}
 	return (rval);
@@ -223,7 +222,7 @@ number(char *p, int len)
 	case 3:
 		if (*p != '0') {
 			rval = 1;
-			(void)printf("%s hundred", name1[*p - '0']);
+			printf("%s hundred", name1[*p - '0']);
 		}
 		++p;
 		/* FALLTHROUGH */
@@ -231,13 +230,13 @@ number(char *p, int len)
 		val = (p[1] - '0') + (p[0] - '0') * 10;
 		if (val) {
 			if (rval)
-				(void)printf(" ");
+				printf(" ");
 			if (val < 20)
-				(void)printf("%s", name1[val]);
+				printf("%s", name1[val]);
 			else {
-				(void)printf("%s", name2[val / 10]);
+				printf("%s", name2[val / 10]);
 				if (val % 10)
-					(void)printf("-%s", name1[val % 10]);
+					printf("-%s", name1[val % 10]);
 			}
 			rval = 1;
 		}
@@ -245,7 +244,7 @@ number(char *p, int len)
 	case 1:
 		if (*p != '0') {
 			rval = 1;
-			(void)printf("%s", name1[*p - '0']);
+			printf("%s", name1[*p - '0']);
 		}
 	}
 	return (rval);
@@ -258,13 +257,13 @@ pfract(int len)
 
 	switch(len) {
 	case 1:
-		(void)printf("tenths.\n");
+		printf("tenths.\n");
 		break;
 	case 2:
-		(void)printf("hundredths.\n");
+		printf("hundredths.\n");
 		break;
 	default:
-		(void)printf("%s%sths.\n", pref[len % 3], name3[len / 3]);
+		printf("%s%sths.\n", pref[len % 3], name3[len / 3]);
 		break;
 	}
 }
@@ -272,6 +271,6 @@ pfract(int len)
 void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: number [# ...]\n");
+	fprintf(stderr, "usage: number [# ...]\n");
 	exit(1);
 }

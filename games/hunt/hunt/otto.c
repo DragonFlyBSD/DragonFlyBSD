@@ -30,7 +30,6 @@
  *
  * $OpenBSD: otto.c,v 1.9 2006/03/27 00:10:15 tedu Exp $
  * $NetBSD: otto.c,v 1.2 1997/10/10 16:32:39 lukem Exp $
- * $DragonFly: src/games/hunt/hunt/otto.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 
 /*
@@ -427,7 +426,7 @@ attack(int rel_dir, struct item *itemp)
 			rel_dir = LEFT;
 		else
 			rel_dir = RIGHT;
-		(void) face_and_move_direction(rel_dir, 0);
+		face_and_move_direction(rel_dir, 0);
 		command[comlen++] = 'f';
 		command[comlen++] = 'f';
 		duck(FRONT);

@@ -328,7 +328,7 @@ init(void)
 	struct sigaction	sact;
 	struct servent *se;
 
-	(void) setsid();
+	setsid();
 	if (setpgid(getpid(), getpid()) == -1)
 		err(1, "setpgid");
 
@@ -358,7 +358,7 @@ init(void)
 
 	if (chdir("/") == -1)
 		warn("chdir");
-	(void) umask(0777);
+	umask(0777);
 
 	/* Initialize statistics socket: */
 	addr.sin_family = AF_INET;
@@ -599,7 +599,7 @@ checkdam(PLAYER *victim, PLAYER *attacker, IDENT *credit, int damage,
 		}
 
 		/* Set the death message: */
-		(void) snprintf(victim->p_death, sizeof victim->p_death,
+		snprintf(victim->p_death, sizeof victim->p_death,
 			"| %s by %s |", cp, blame);
 
 		/* No further score crediting needed. */
@@ -607,7 +607,7 @@ checkdam(PLAYER *victim, PLAYER *attacker, IDENT *credit, int damage,
 	}
 
 	/* Set the death message: */
-	(void) snprintf(victim->p_death, sizeof victim->p_death,
+	snprintf(victim->p_death, sizeof victim->p_death,
 		"| %s by %s |", cp, credit->i_name);
 
 	if (victim == attacker) {
@@ -756,7 +756,7 @@ zap(PLAYER *pp, FLAG was_player)
 			char buf[BUFSIZ];
 
 			/* Detonate: */
-			(void) add_shot(expl_type, pp->p_y, pp->p_x,
+			add_shot(expl_type, pp->p_y, pp->p_x,
 			    pp->p_face, expl_charge, NULL,
 			    TRUE, SPACE);
 
@@ -811,7 +811,7 @@ zap(PLAYER *pp, FLAG was_player)
 			} while (Maze[y][x] != SPACE);
 
 			/* Convert volcano charge into lava: */
-			(void) add_shot(LAVA, y, x, LEFTS, volcano,
+			add_shot(LAVA, y, x, LEFTS, volcano,
 				NULL, TRUE, SPACE);
 			volcano = 0;
 
@@ -836,7 +836,7 @@ zap(PLAYER *pp, FLAG was_player)
 
 		/* Tell the zapped player's client to shut down. */
 		sendcom(pp, ENDWIN, ' ');
-		(void) fclose(pp->p_output);
+		fclose(pp->p_output);
 
 		/* Close up the gap in the Player array: */
 		End_player--;
@@ -860,7 +860,7 @@ zap(PLAYER *pp, FLAG was_player)
 
 		/* Close the session: */
 		sendcom(pp, ENDWIN, LAST_PLAYER);
-		(void) fclose(pp->p_output);
+		fclose(pp->p_output);
 
 		/* shuffle the monitor table */
 		End_monitor--;
@@ -972,12 +972,12 @@ cleanup(int eval)
 
 	/* And close their connections: */
 	for (pp = Player; pp < End_player; pp++)
-		(void) fclose(pp->p_output);
+		fclose(pp->p_output);
 	for (pp = Monitor; pp < End_monitor; pp++)
-		(void) fclose(pp->p_output);
+		fclose(pp->p_output);
 
 	/* Close the server socket: */
-	(void) close(Socket);
+	close(Socket);
 
 	/* The end: */
 	logx(LOG_INFO, "game over");
@@ -1021,18 +1021,18 @@ send_stats(void)
 	/* Don't allow the writes to block: */
 	flags = fcntl(s, F_GETFL, 0);
 	flags |= O_NDELAY;
-	(void) fcntl(s, F_SETFL, flags);
+	fcntl(s, F_SETFL, flags);
 
 	fp = fdopen(s, "w");
 	if (fp == NULL) {
 		logit(LOG_ERR, "fdopen");
-		(void) close(s);
+		close(s);
 		return;
 	}
 
 	print_stats(fp);
 
-	(void) fclose(fp);
+	fclose(fp);
 }
 
 /*

@@ -32,7 +32,6 @@
  *
  * @(#)rxp.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/quiz/rxp.c,v 1.5 1999/12/12 02:29:54 billf Exp $
- * $DragonFly: src/games/quiz/rxp.c,v 1.4 2005/04/25 16:10:24 liamfoy Exp $
  */
 
 /*
@@ -106,7 +105,7 @@ rxp__compile(char *s, int first)
 	*rp++ = 0;
 	for (; *sp; ++sp) {
 		if (rp - rxpbuf >= RXP_LINE_SZ - 4) {
-			(void)snprintf(rxperr, sizeof(rxperr),
+			snprintf(rxperr, sizeof(rxperr),
 			    "regular expression too long %s", s);
 			return (FALSE);
 		}
@@ -148,7 +147,7 @@ rxp__compile(char *s, int first)
 					*alt_ptr = rp - rxpbuf;
 				}
 				if (first) {
-					(void)snprintf(rxperr, sizeof(rxperr),
+					snprintf(rxperr, sizeof(rxperr),
 					    "unmatched alternator in regexp %s",
 					     s);
 					return (FALSE);
@@ -164,7 +163,7 @@ rxp__compile(char *s, int first)
 		}
 	}
 	if (!first) {
-		(void)snprintf(rxperr, sizeof(rxperr),
+		snprintf(rxperr, sizeof(rxperr),
 		    "unmatched alternator in regexp %s", s);
 		return (FALSE);
 	}

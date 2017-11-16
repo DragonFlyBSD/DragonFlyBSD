@@ -110,10 +110,9 @@ gethdate(const char *name)
 		if ((p = strsep(&np, ":")) == NULL)
 			break;
 		if (*p == '\0')			/* :: */
-			(void) strlcpy(filename, name, sizeof filename);
+			strlcpy(filename, name, sizeof filename);
 		else
-			(void) snprintf(filename, sizeof filename,
-			    "%s/%s", p, name);
+			snprintf(filename, sizeof filename, "%s/%s", p, name);
 
 		if (stat(filename, &hbuf) == 0) {
 			free(path);

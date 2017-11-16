@@ -1,11 +1,10 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.u_init.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.u_init.c,v 1.4 1999/11/16 02:57:13 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.u_init.c,v 1.5 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
-#define	Strcpy	(void) strcpy
-#define	Strcat	(void) strcat
+#define	Strcpy	strcpy
+#define	Strcat	strcat
 #define	UNDEF_TYP	0
 #define	UNDEF_SPE	'\177'
 

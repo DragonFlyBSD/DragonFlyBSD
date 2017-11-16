@@ -30,7 +30,6 @@
  *
  * $OpenBSD: terminal.c,v 1.10 2008/06/20 13:08:44 ragge Exp $
  * $NetBSD: terminal.c,v 1.2 1997/10/10 16:34:05 lukem Exp $
- * $DragonFly: src/games/hunt/huntd/terminal.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 
 #include <stdarg.h>
@@ -89,7 +88,7 @@ outch(PLAYER *pp, char ch)
 		pp->p_curx = 0;
 		pp->p_cury++;
 	}
-	(void) putc(ch, pp->p_output);
+	putc(ch, pp->p_output);
 }
 
 /*
@@ -111,7 +110,7 @@ outstr(PLAYER *pp, const char *str, int	len)
 	pp->p_cury += (pp->p_curx / TERM_WIDTH);
 	pp->p_curx %= TERM_WIDTH;
 	while (len--)
-		(void) putc(*str++, pp->p_output);
+		putc(*str++, pp->p_output);
 }
 
 /*

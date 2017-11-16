@@ -67,7 +67,7 @@ main(int argc, char **argv)
 			break;
 		case 'h':
 		default:
-			(void)fprintf(stderr, "usage: rain [-d delay]\n");
+			fprintf(stderr, "usage: rain [-d delay]\n");
 			exit(1);
 		}
 	srandomdev();
@@ -76,12 +76,12 @@ main(int argc, char **argv)
 	cols = COLS - 4;
 	lines = LINES - 4;
 
-	(void)signal(SIGHUP, onsig);
-	(void)signal(SIGINT, onsig);
-	(void)signal(SIGQUIT, onsig);
-	(void)signal(SIGSTOP, onsig);
-	(void)signal(SIGTSTP, onsig);
-	(void)signal(SIGTERM, onsig);
+	signal(SIGHUP, onsig);
+	signal(SIGINT, onsig);
+	signal(SIGQUIT, onsig);
+	signal(SIGSTOP, onsig);
+	signal(SIGTSTP, onsig);
+	signal(SIGTERM, onsig);
 
 	for (j = 4; j >= 0; --j) {
 		xpos[j] = random() % cols + 2;

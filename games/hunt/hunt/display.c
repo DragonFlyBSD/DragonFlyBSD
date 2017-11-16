@@ -34,27 +34,27 @@ int	cur_row, cur_col;
 static void
 tstp(int dummy)
 {
-        int     y, x;
+	int     y, x;
 
-        y = cur_row;
-        x = cur_col;
-        mvcur(cur_row, cur_col, HEIGHT, 0);
-        cur_row = HEIGHT;
-        cur_col = 0;
-        _puts(VE);
-        _puts(TE);
-        (void) fflush(stdout);
-        tcsetattr(0, TCSADRAIN, &__orig_termios);
-        (void) kill(getpid(), SIGSTOP);
-        (void) signal(SIGTSTP, tstp);
-        tcsetattr(0, TCSADRAIN, &saved_tty);
-        _puts(TI);
-        _puts(VS);
-        cur_row = y;
-        cur_col = x;
-        _puts(tgoto(CM, cur_row, cur_col));
-        display_redraw_screen();
-        (void) fflush(stdout);
+	y = cur_row;
+	x = cur_col;
+	mvcur(cur_row, cur_col, HEIGHT, 0);
+	cur_row = HEIGHT;
+	cur_col = 0;
+	_puts(VE);
+	_puts(TE);
+	fflush(stdout);
+	tcsetattr(0, TCSADRAIN, &__orig_termios);
+	kill(getpid(), SIGSTOP);
+	signal(SIGTSTP, tstp);
+	tcsetattr(0, TCSADRAIN, &saved_tty);
+	_puts(TI);
+	_puts(VS);
+	cur_row = y;
+	cur_col = x;
+	_puts(tgoto(CM, cur_row, cur_col));
+	display_redraw_screen();
+	fflush(stdout);
 }
 
 /*
@@ -69,15 +69,15 @@ display_open(void)
 	if (!isatty(0) || (term = getenv("TERM")) == NULL)
 		errx(1, "no terminal type");
 
-        gettmode();
-        (void) setterm(term);
-        (void) noecho();
-        (void) cbreak();
-        tcgetattr(0, &saved_tty);
-        _puts(TI);
-        _puts(VS);
+	gettmode();
+	setterm(term);
+	noecho();
+	cbreak();
+	tcgetattr(0, &saved_tty);
+	_puts(TI);
+	_puts(VS);
 #ifdef SIGTSTP
-        (void) signal(SIGTSTP, tstp);
+	signal(SIGTSTP, tstp);
 #endif
 }
 
@@ -88,7 +88,7 @@ display_open(void)
 void
 display_beep(void)
 {
-	(void) putchar('\a');
+	putchar('\a');
 }
 
 /*
@@ -98,7 +98,7 @@ display_beep(void)
 void
 display_refresh(void)
 {
-	(void) fflush(stdout);
+	fflush(stdout);
 }
 
 /*
@@ -259,8 +259,8 @@ void
 display_open(void)
 {
         initscr();
-        (void) noecho();
-        (void) cbreak();
+        noecho();
+        cbreak();
 }
 
 void

@@ -85,13 +85,13 @@ timestr(int t)
 	static char	s[80];
 
 	if (DAY(t) > 0)
-		(void)sprintf(s, "%dd+%02dhrs", DAY(t), HOUR(t));
+		sprintf(s, "%dd+%02dhrs", DAY(t), HOUR(t));
 	else if (HOUR(t) > 0)
-		(void)sprintf(s, "%d:%02d:%02d", HOUR(t), MIN(t), SEC(t));
+		sprintf(s, "%d:%02d:%02d", HOUR(t), MIN(t), SEC(t));
 	else if (MIN(t) > 0)
-		(void)sprintf(s, "%d:%02d", MIN(t), SEC(t));
+		sprintf(s, "%d:%02d", MIN(t), SEC(t));
 	else if (SEC(t) > 0)
-		(void)sprintf(s, ":%02d", SEC(t));
+		sprintf(s, ":%02d", SEC(t));
 	else
 		*s = '\0';
 

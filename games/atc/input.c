@@ -31,7 +31,6 @@
  *
  * @(#)input.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/atc/input.c,v 1.7 2000/02/27 23:02:47 mph Exp $
- * $DragonFly: src/games/atc/input.c,v 1.4 2006/09/09 02:21:49 pavalos Exp $
  */
 
 /*
@@ -230,7 +229,7 @@ push(int ruleno, int ch)
 {
 	int	newstate, newpos;
 
-	(void)sprintf(T_STR, st[T_STATE].rule[ruleno].str, tval);
+	sprintf(T_STR, st[T_STATE].rule[ruleno].str, tval);
 	T_RULE = ruleno;
 	T_CH = ch;
 	newstate = st[T_STATE].rule[ruleno].to_state;

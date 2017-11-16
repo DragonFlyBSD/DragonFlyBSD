@@ -31,7 +31,6 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)pom.c       8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/pom/pom.c,v 1.9 1999/11/30 03:49:09 billf Exp $
- * $DragonFly: src/games/pom/pom.c,v 1.4 2006/08/08 17:08:49 pavalos Exp $
  */
 
 /*
@@ -69,32 +68,30 @@ main(void)
 	double days, today, tomorrow;
 	int cnt;
 
-	(void) time(&tt);
+	time(&tt);
 	GMT = gmtime(&tt);
 	days = (GMT->tm_yday + 1) + ((GMT->tm_hour +
 	    (GMT->tm_min / 60.0) + (GMT->tm_sec / 3600.0)) / 24.0);
 	for (cnt = EPOCH; cnt < GMT->tm_year; ++cnt)
 		days += isleap(1900 + cnt) ? 366 : 365;
 	today = potm(days) + .5;
-	(void)printf("The Moon is ");
+	printf("The Moon is ");
 	if ((int)today == 100)
-		(void)printf("Full\n");
+		printf("Full\n");
 	else if (!(int)today)
-		(void)printf("New\n");
+		printf("New\n");
 	else {
 		tomorrow = potm(days + 1);
 		if ((int)today == 50)
-			(void)printf("%s\n", tomorrow > today ?
+			printf("%s\n", tomorrow > today ?
 			    "at the First Quarter" : "at the Last Quarter");
 		else {
-			(void)printf("%s ", tomorrow > today ?
+			printf("%s ", tomorrow > today ?
 			    "Waxing" : "Waning");
 			if (today > 50)
-				(void)printf("Gibbous (%1.0f%% of Full)\n",
-				    today);
+				printf("Gibbous (%1.0f%% of Full)\n", today);
 			else if (today < 50)
-				(void)printf("Crescent (%1.0f%% of Full)\n",
-				    today);
+				printf("Crescent (%1.0f%% of Full)\n", today);
 		}
 	}
 

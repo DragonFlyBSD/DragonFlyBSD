@@ -32,7 +32,6 @@
  * @(#) Copyright (c) 1994 The Regents of the University of California.  All rights reserved.
  * @(#)random.c	8.5 (Berkeley) 4/5/94
  * $FreeBSD: src/games/random/random.c,v 1.17 2005/02/09 18:22:15 ru Exp $
- * $DragonFly: src/games/random/random.c,v 1.4 2005/03/02 06:59:23 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -156,7 +155,7 @@ main(int argc, char *argv[])
 	selected = (int)(denom * random() / LONG_MAX) == 0;
 	while ((ch = getchar()) != EOF) {
 		if (selected)
-			(void)putchar(ch);
+			putchar(ch);
 		if (ch == '\n') {
 			/* End of that line.  See if we got an error. */
 			if (ferror(stdout))

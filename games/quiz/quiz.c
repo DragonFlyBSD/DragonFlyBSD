@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quiz.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/games/quiz/quiz.c,v 1.12 1999/12/12 02:29:54 billf Exp $
- * $DragonFly: src/games/quiz/quiz.c,v 1.7 2007/09/08 10:49:00 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -138,7 +137,7 @@ get_file(const char *file)
 			++qsize;
 		}
 	}
-	(void)fclose(fp);
+	fclose(fp);
 }
 
 void
@@ -150,21 +149,21 @@ show_index(void)
 
 	if ((pf = popen(_PATH_PAGER, "w")) == NULL)
 		err("%s: %s", _PATH_PAGER, strerror(errno));
-	(void)fprintf(pf, "Subjects:\n\n");
+	fprintf(pf, "Subjects:\n\n");
 	for (qp = qlist.q_next; qp; qp = qp->q_next) {
 		for (s = next_cat(qp->q_text); s; s = next_cat(s)) {
 			if (!rxp_compile(s))
 				err("%s", rxperr);
 			if ((p = rxp_expand()) != '\0')
-				(void)fprintf(pf, "%s ", p);
+				fprintf(pf, "%s ", p);
 		}
-		(void)fprintf(pf, "\n");
+		fprintf(pf, "\n");
 	}
-	(void)fprintf(pf, "\n%s\n%s\n%s\n",
+	fprintf(pf, "\n%s\n%s\n%s\n",
 "For example, \"quiz victim killer\" prints a victim's name and you reply",
 "with the killer, and \"quiz killer victim\" works the other way around.",
 "Type an empty line to get the correct answer.");
-	(void)pclose(pf);
+	pclose(pf);
 }
 
 void
@@ -241,7 +240,7 @@ quiz(void)
 			qp->q_answered = TRUE;
 			continue;
 		}
-		(void)strcpy(question, t);
+		strcpy(question, t);
 		s = qp->q_text;
 		for (i = 0; i < cattwo - 1; i++)
 			s = next_cat(s);
@@ -253,7 +252,7 @@ quiz(void)
 			continue;
 		}
 		qp->q_asked = TRUE;
-		(void)printf("%s?\n", question);
+		printf("%s?\n", question);
 		for (;; ++guesses) {
 			if ((answer = fgetln(stdin, &len)) == NULL) {
 				score(rights, wrongs, guesses);
@@ -262,19 +261,19 @@ quiz(void)
 			answer[len - 1] = '\0';
 			downcase(answer);
 			if (rxp_match(answer)) {
-				(void)printf("Right!\n");
+				printf("Right!\n");
 				++rights;
 				qp->q_answered = TRUE;
 				break;
 			}
 			if (*answer == '\0') {
-				(void)printf("%s\n", t);
+				printf("%s\n", t);
 				++wrongs;
 				if (!tflag)
 					qp->q_answered = TRUE;
 				break;
 			}
-			(void)printf("What?\n");
+			printf("What?\n");
 		}
 	}
 	score(rights, wrongs, guesses);
@@ -323,10 +322,10 @@ appdstr(char *s, char *tp, size_t len)
 void
 score(u_int r, u_int w, u_int g)
 {
-	(void)printf("Rights %d, wrongs %d,", r, w);
+	printf("Rights %d, wrongs %d,", r, w);
 	if (g)
-		(void)printf(" extra guesses %d,", g);
-	(void)printf(" score %d%%\n", (r + w + g) ? r * 100 / (r + w + g) : 0);
+		printf(" extra guesses %d,", g);
+	printf(" score %d%%\n", (r + w + g) ? r * 100 / (r + w + g) : 0);
 }
 
 void
@@ -342,7 +341,7 @@ downcase(char *p)
 void
 usage(void)
 {
-	(void)fprintf(stderr, "quiz [-t] [-i file] category1 category2\n");
+	fprintf(stderr, "quiz [-t] [-i file] category1 category2\n");
 	exit(1);
 }
 
@@ -353,9 +352,9 @@ err(const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	(void)fprintf(stderr, "quiz: ");
-	(void)vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "quiz: ");
+	vfprintf(stderr, fmt, ap);
 	va_end(ap);
-	(void)fprintf(stderr, "\n");
+	fprintf(stderr, "\n");
 	exit(1);
 }

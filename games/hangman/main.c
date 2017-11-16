@@ -96,6 +96,6 @@ die(int sig __unused)
 __dead2 void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: hangman [-k] [-d wordlist]\n");
+	fprintf(stderr, "usage: hangman [-k] [-d wordlist]\n");
 	exit(1);
 }

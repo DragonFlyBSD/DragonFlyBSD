@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/games/random/randomize_fd.c,v 1.2.2.1 2003/02/15 10:34:35 seanc Exp $
- * $DragonFly: src/games/random/randomize_fd.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -194,7 +193,7 @@ randomize_fd(int fd, int type, int unique, double denom)
 		}
 	}
 
-	(void)close(fd);
+	close(fd);
 
 	/* Necessary evil to compensate for files that don't end with a newline */
 	if (bufc != i) {

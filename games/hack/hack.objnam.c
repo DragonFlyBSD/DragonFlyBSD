@@ -3,9 +3,9 @@
 /* $FreeBSD: src/games/hack/hack.objnam.c,v 1.3 1999/11/16 02:57:08 billf Exp $ */
 
 #include "hack.h"
-#define	Sprintf	(void) sprintf
-#define	Strcat	(void) strcat
-#define	Strcpy	(void) strcpy
+#define	Sprintf	sprintf
+#define	Strcat	strcat
+#define	Strcpy	strcpy
 #define	PREFIX	15
 extern int bases[];
 

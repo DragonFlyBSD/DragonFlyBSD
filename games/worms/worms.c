@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)worms.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/worms/worms.c,v 1.8.2.1 2000/12/04 10:36:17 alex Exp $
- * $DragonFly: src/games/worms/worms.c,v 1.5 2007/04/18 18:32:12 swildner Exp $
  */
 
 /*
@@ -214,7 +213,7 @@ main(int argc, char **argv)
 			break;
 		case '?':
 		default:
-			(void)fprintf(stderr,
+			fprintf(stderr,
 			    "usage: worms [-ft] [-d delay] [-l length] [-n number]\n");
 			exit(1);
 		}
@@ -251,12 +250,12 @@ main(int argc, char **argv)
 			*ip++ = -1;
 	}
 
-	(void)signal(SIGHUP, onsig);
-	(void)signal(SIGINT, onsig);
-	(void)signal(SIGQUIT, onsig);
-	(void)signal(SIGSTOP, onsig);
-	(void)signal(SIGTSTP, onsig);
-	(void)signal(SIGTERM, onsig);
+	signal(SIGHUP, onsig);
+	signal(SIGINT, onsig);
+	signal(SIGQUIT, onsig);
+	signal(SIGSTOP, onsig);
+	signal(SIGTSTP, onsig);
+	signal(SIGTERM, onsig);
 
 	if (field) {
 		const char *p = field;

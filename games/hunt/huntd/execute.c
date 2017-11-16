@@ -30,7 +30,6 @@
  *
  * $OpenBSD: execute.c,v 1.8 2004/01/16 00:13:19 espie Exp $
  * $NetBSD: execute.c,v 1.2 1997/10/10 16:33:13 lukem Exp $
- * $DragonFly: src/games/hunt/huntd/execute.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 
 #include <stdlib.h>
@@ -67,7 +66,7 @@ mon_execute(PLAYER *pp)
 		break;
 	  case 'q':
 		/* Quit client */
-		(void) strlcpy(pp->p_death, "| Quit |", sizeof pp->p_death);
+		strlcpy(pp->p_death, "| Quit |", sizeof pp->p_death);
 		break;
 	  default:
 		/* Ignore everything else */
@@ -93,7 +92,7 @@ execute(PLAYER *pp)
 			sendcom(pp, REDRAW);
 			break;
 		  case 'q':
-			(void) strlcpy(pp->p_death, "| Quit |",
+			strlcpy(pp->p_death, "| Quit |",
 			    sizeof pp->p_death);
 			break;
 		}
@@ -185,7 +184,7 @@ execute(PLAYER *pp)
 		cloak(pp);
 		break;
 	  case 'q':			/* quit */
-		(void) strlcpy(pp->p_death, "| Quit |", sizeof pp->p_death);
+		strlcpy(pp->p_death, "| Quit |", sizeof pp->p_death);
 		break;
 	}
 }

@@ -3,7 +3,7 @@
 /* $FreeBSD: src/games/hack/hack.end.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
 
 #include "hack.h"
-#define	Sprintf	(void) sprintf
+#define	Sprintf	sprintf
 
 #define	newttentry()	alloc(sizeof(struct toptenentry))
 #define	NAMSZ	8

@@ -30,7 +30,6 @@
  *
  * $OpenBSD: playit.c,v 1.8 2003/06/11 08:45:25 pjanzen Exp $
  * $NetBSD: playit.c,v 1.4 1997/10/20 00:37:15 lukem Exp $
- * $DragonFly: src/games/hunt/hunt/playit.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -176,7 +175,7 @@ playit(void)
 		}
 	}
 out:
-	(void) close(Socket);
+	close(Socket);
 }
 
 /*
@@ -260,7 +259,7 @@ send_stuff(void)
 		nchar_send -= count;
 		if (nchar_send < 0)
 			count += nchar_send;
-		(void) write(Socket, inp, count);
+		write(Socket, inp, count);
 		if (Otto_mode) {
 			/*
 			 * The user can insert commands over otto.
@@ -413,5 +412,5 @@ do_message(void)
 		bad_con();
 		/* NOTREACHED */
 	}
-	(void) close(Socket);
+	close(Socket);
 }

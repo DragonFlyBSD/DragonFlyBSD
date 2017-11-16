@@ -2,7 +2,6 @@
  * David Leonard <d@openbsd.org>, 1999. Public domain.
  *
  * $OpenBSD: conf.c,v 1.7 2007/03/20 03:43:50 tedu Exp $
- * $DragonFly: src/games/hunt/huntd/conf.c,v 1.3 2008/11/10 15:28:13 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/types.h>
@@ -266,7 +265,7 @@ load_config(FILE *f, char *fnm)
 			logx(LOG_ERR, "%s:%d: line too long", fnm, line);
 			continue;
 		}
-		(void)memcpy(buf, p, len);
+		memcpy(buf, p, len);
 		buf[len] = '\0';
 		parse_line(buf, fnm, &line);
 	}

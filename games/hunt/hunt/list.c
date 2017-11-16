@@ -306,7 +306,7 @@ probe_drivers(u_int16_t req, char *preferred)
 			continue;
 
 		start_probe((struct sockaddr *)target, req);
-        }
-        free(inbuf);
-        (void) close(fd);
+	}
+	free(inbuf);
+	close(fd);
 }
