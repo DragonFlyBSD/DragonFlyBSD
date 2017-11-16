@@ -137,7 +137,7 @@ scan_out(int scfd, char *scsp, int dlm)
 			;
 		strp++;
 		*strp++ = '\n';
-		(void) write(scfd, outbuf, strp-outbuf);
+		write(scfd, outbuf, strp-outbuf);
 	}
 }
 
@@ -150,7 +150,7 @@ main(int argc __unused, char *argv[])
 	char word[10+1];			/* strings limited to 10 chars */
 
 	while (*++argv) {
-		(void)strlcpy(word, *argv, sizeof (word));
+		strlcpy(word, *argv, sizeof (word));
 		scan_out(1, word, '\0');
 	}
 	exit(0);
