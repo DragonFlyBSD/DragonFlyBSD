@@ -563,3 +563,7 @@ DEST can be created on the fly, it must be a slave PFS, and will be read-only.
 See "man HAMMER" for details.
 %
 Moo
+%
+Just started parallel buildworld?  Try typing "hangman -k" and tell
+what that kernel symbol does.
+%
