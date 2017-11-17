@@ -2237,7 +2237,7 @@ ExInterlockedAddLargeStatistic(uint64_t *addend, uint32_t inc)
 	mtx_spinlock(&ntoskrnl_interlock);
 	*addend += inc;
 	mtx_spinunlock(&ntoskrnl_interlock);
-};
+}
 
 mdl *
 IoAllocateMdl(void *vaddr, uint32_t len, uint8_t secondarybuf,

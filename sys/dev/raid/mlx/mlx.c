@@ -675,7 +675,7 @@ mlx_intr(void *arg)
 
     /* collect finished commands, queue anything waiting */
     mlx_done(sc);
-};
+}
 
 /*******************************************************************************
  * Receive a buf structure from a child device and queue it on a particular

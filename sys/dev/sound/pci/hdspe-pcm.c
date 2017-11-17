@@ -95,7 +95,7 @@ hdspe_hw_mixer(struct sc_chinfo *ch, unsigned int dst,
 	    data & 0xFFFF);
 
 	return 0;
-};
+}
 
 static int
 hdspechan_setgain(struct sc_chinfo *ch)
