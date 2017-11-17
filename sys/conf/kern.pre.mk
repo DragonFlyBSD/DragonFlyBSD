@@ -25,7 +25,7 @@ COPTFLAGS?=-O2 -pipe
 .if !defined(NO_CPU_COPTFLAGS)
 COPTFLAGS+= ${_CPUCFLAGS}
 .endif
-# don't use -I- so we can use proper source-relative locality for local 
+# don't use -I- so we can use proper source-relative locality for local
 # includes.
 #
 # -I.  - this is to access the opt_*.h and use_*.h header files generated

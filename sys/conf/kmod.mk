@@ -105,7 +105,7 @@ CFLAGS+=	-nostdinc ${_ICFLAGS}
 # set because there are no standard paths for non-headers.
 #
 # NOTE!  Traditional architecture paths such as <i386/i386/blah.h>
-# must run through the "machine_base" softlink using 
+# must run through the "machine_base" softlink using
 # <machine_base/i386/blah.h>.  An explicit cross-architecture path must
 # operate relative to /usr/src/sys using e.g. <arch/i386/i386/blah.h>
 #
@@ -246,7 +246,7 @@ SYSDIR=	${_dir}
 .endif
 S=	${SYSDIR}
 
-#	path=`(cd $$path && /bin/pwd)` ; 
+#	path=`(cd $$path && /bin/pwd)` ;
 
 ${_ILINKS}:
 	@case ${.TARGET} in \
@@ -441,7 +441,7 @@ assym.s: @/kern/genassym.sh
 .endif
 	sh @/kern/genassym.sh genassym.o > ${.TARGET}
 .if exists(@)
-genassym.o: @/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.c          
+genassym.o: @/platform/${MACHINE_PLATFORM}/${MACHINE_ARCH}/genassym.c
 .endif
 genassym.o: @ ${SRCS:Mopt_*.h}
 	${CC} -c ${CFLAGS:N-fno-common:N-flto:N-mcmodel=small} ${WERROR} \

@@ -113,7 +113,7 @@ cpu		HAMMER_CPU
 # Options for CPU features.
 #
 # CPU_DISABLE_AVX disables AVX instruction set.
-# 
+#
 options 	CPU_DISABLE_AVX
 
 #####################################################################

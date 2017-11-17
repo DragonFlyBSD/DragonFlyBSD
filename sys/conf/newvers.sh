@@ -43,7 +43,7 @@ BRANCH="DEVELOPMENT_5_1"
 
 TYPE="DragonFly"
 
-# Figure out the revision and subversion, if any.  If the tag is in 
+# Figure out the revision and subversion, if any.  If the tag is in
 # the form NAME_X_Y the revision is extracted from X and Y and the branch
 # tag is truncated to just NAME.  Otherwise we are on the HEAD branch and
 # we are either HEAD or PREVIEW and the programmed revision is used.
