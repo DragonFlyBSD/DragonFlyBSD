@@ -58,7 +58,7 @@
 
 extern  struct sockaddr_storage peeraddr; /* filled in by main */
 extern  int     f;			/* the opened socket */
-extern  int     trace;
+extern  int     tftp_trace;
 extern  int     verbose;
 extern  int     rexmtval;
 extern  int     maxtimeout;
@@ -124,7 +124,7 @@ xmitfile(int fd, char *name, char *mode)
 		timeout = 0;
 		(void) setjmp(timeoutbuf);
 send_data:
-		if (trace)
+		if (tftp_trace)
 			tpacket("sent", dp, size + 4);
 		n = sendto(f, dp, size + 4, 0,
 		    (struct sockaddr *)&peer, peer.ss_len);
@@ -153,7 +153,7 @@ send_data:
 				goto abort;
 			}
 			peer = from;
-			if (trace)
+			if (tftp_trace)
 				tpacket("received", ap, n);
 			/* should verify packet came from server */
 			ap->th_opcode = ntohs(ap->th_opcode);
@@ -174,7 +174,7 @@ send_data:
 				 * both sides.
 				 */
 				j = synchnet(f);
-				if (j && trace) {
+				if (j && tftp_trace) {
 					printf("discarded %d packets\n",
 							j);
 				}
@@ -238,7 +238,7 @@ recvfile(int fd, char *name, char *mode)
 		timeout = 0;
 		(void) setjmp(timeoutbuf);
 send_ack:
-		if (trace)
+		if (tftp_trace)
 			tpacket("sent", ap, size);
 		if (sendto(f, ackbuf, size, 0, (struct sockaddr *)&peer,
 		    peer.ss_len) != size) {
@@ -267,7 +267,7 @@ send_ack:
 				goto abort;
 			}
 			peer = from;
-			if (trace)
+			if (tftp_trace)
 				tpacket("received", dp, n);
 			/* should verify client address */
 			dp->th_opcode = ntohs(dp->th_opcode);
@@ -288,7 +288,7 @@ send_ack:
 				 * both sides.
 				 */
 				j = synchnet(f);
-				if (j && trace) {
+				if (j && tftp_trace) {
 					printf("discarded %d packets\n", j);
 				}
 				if (dp->th_block == (block-1)) {
@@ -372,7 +372,7 @@ nak(int error, struct sockaddr *peer)
 	}
 	strcpy(tp->th_msg, pe->e_msg);
 	length = strlen(pe->e_msg) + 4;
-	if (trace)
+	if (tftp_trace)
 		tpacket("sent", tp, length);
 	if (sendto(f, ackbuf, length, 0, peer, peer->sa_len) != length)
 		warn("nak");

@@ -63,7 +63,7 @@
 
 struct	sockaddr_storage peeraddr;
 int	f;
-int	trace;
+int	tftp_trace;
 int	verbose;
 int	connected;
 char	mode[32];
@@ -533,7 +533,7 @@ status(int argc __unused, char **argv __unused)
 	else
 		printf("Not connected.\n");
 	printf("Mode: %s Verbose: %s Tracing: %s\n", mode,
-		verbose ? "on" : "off", trace ? "on" : "off");
+		verbose ? "on" : "off", tftp_trace ? "on" : "off");
 	printf("Rexmt-interval: %d seconds, Max-timeout: %d seconds\n",
 		rexmtval, maxtimeout);
 }
@@ -724,8 +724,8 @@ help(int argc, char **argv)
 void
 settrace(int argc __unused, char **argv __unused)
 {
-	trace = !trace;
-	printf("Packet tracing %s.\n", trace ? "on" : "off");
+	tftp_trace = !tftp_trace;
+	printf("Packet tracing %s.\n", tftp_trace ? "on" : "off");
 }
 
 void
