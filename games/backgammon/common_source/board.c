@@ -153,7 +153,7 @@ lastline:
 		writec('\n');
 		writec('\n');
 	}
-	fixtty(raw);
+	fixtty(bgraw);
 }
 
 static void

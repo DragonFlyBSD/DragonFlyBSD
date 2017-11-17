@@ -114,12 +114,12 @@ text(const char *const *t)
 			writec('\n');
 		} else {
 			writel("-->");
-			fixtty(raw);
+			fixtty(bgraw);
 			while ((i = readc()) != ' ' && i != '\n');
 			fixtty(noech);
 			clear();
 		}
 		t++;
 	}
-	fixtty(raw);
+	fixtty(bgraw);
 }

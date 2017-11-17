@@ -65,13 +65,13 @@ main(int argc, char **argv)
 	if (tcgetattr(0, &tty) == -1)			/* get old tty mode */
 		errexit("teachgammon(tcgetattr)");
 	old = tty.c_lflag;
-	raw = ((noech = old & ~ECHO) & ~ICANON);	/* set up modes */
+	bgraw = ((noech = old & ~ECHO) & ~ICANON);	/* set up modes */
 	ospeed = cfgetospeed(&tty);			/* for termlib */
 	tflag = getcaps(getenv("TERM"));
 	getarg(argc, argv);
 	if (tflag) {
 		noech &= ~(ICRNL | OXTABS);
-		raw &= ~(ICRNL | OXTABS);
+		bgraw &= ~(ICRNL | OXTABS);
 		clear();
 	}
 	text(hello);

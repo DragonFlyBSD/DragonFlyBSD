@@ -90,4 +90,4 @@ int	p[5];
 int	rscore;
 int	table[6][6];
 int	wscore;
-struct termios	tty, old, noech, raw;
+struct termios	tty, old, noech, bgraw;

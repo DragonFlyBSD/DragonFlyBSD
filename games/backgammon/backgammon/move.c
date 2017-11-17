@@ -136,7 +136,7 @@ move(int okay)
 	if (mvlim == 0) {
 		writel(" but cannot use it.\n");
 		nexturn();
-		fixtty(raw);
+		fixtty(bgraw);
 		return;
 	}
 
@@ -174,7 +174,7 @@ move(int okay)
 		buflush();
 		sleep(3);
 	}
-	fixtty(raw);		/* no more tty interrupt */
+	fixtty(bgraw);		/* no more tty interrupt */
 }
 
 /*
