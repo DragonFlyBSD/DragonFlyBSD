@@ -194,19 +194,24 @@ OBJS+=  ${SRCS:N*.h:N*.patch:R:S/$/.o/g}
 PROG=	${KMOD}.ko
 .endif
 
+# In case of LTO provide all standard CFLAGS!
+.if ${CFLAGS:M-flto}
+ELDFLAGS+= ${CFLAGS}
+.endif
+
 .if ${MACHINE_ARCH} != x86_64
 ${PROG}: ${KMOD}.kld
-	${CC} -nostdlib -Wl,--hash-style=sysv \
+	${CC} ${ELDFLAGS} -nostdlib -Wl,--hash-style=sysv \
 	-Wl,-Bshareable ${LDFLAGS} -o ${.TARGET} ${KMOD}.kld
 .endif
 
 .if ${MACHINE_ARCH} != x86_64
 ${KMOD}.kld: ${OBJS}
-	${CC} -nostdlib -Wl,--hash-style=sysv \
+	${CC} ${ELDFLAGS} -nostdlib -Wl,--hash-style=sysv \
 	${LDFLAGS} -r -o ${.TARGET} ${OBJS}
 .else
 ${PROG}: ${OBJS}
-	${CC} -nostdlib -Wl,--hash-style=sysv \
+	${CC} ${ELDFLAGS} -nostdlib -Wl,--hash-style=sysv \
 	${LDFLAGS} -r -Wl,-d -o ${.TARGET} ${OBJS}
 .endif
 
