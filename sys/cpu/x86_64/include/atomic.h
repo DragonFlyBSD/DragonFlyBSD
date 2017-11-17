@@ -74,7 +74,7 @@
 	extern void atomic_##NAME##_##TYPE##_xacquire	\
 		(volatile u_##TYPE *p, u_##TYPE v);	\
 	extern void atomic_##NAME##_##TYPE##_xrelease	\
-		(volatile u_##TYPE *p, u_##TYPE v);	\
+		(volatile u_##TYPE *p, u_##TYPE v);
 
 int	atomic_testandset_int(volatile u_int *p, u_int v);
 int	atomic_testandset_long(volatile u_long *p, u_long v);

@@ -586,7 +586,7 @@ aac_remove_ ## name (struct aac_command *cm)				\
 	TAILQ_REMOVE(&cm->cm_sc->aac_ ## name, cm, cm_link);		\
 	cm->cm_flags &= ~AAC_ON_ ## index;				\
 	AACQ_REMOVE(cm->cm_sc, index);					\
-}									\
+}
 
 AACQ_COMMAND_QUEUE(free, AACQ_FREE);
 AACQ_COMMAND_QUEUE(ready, AACQ_READY);
