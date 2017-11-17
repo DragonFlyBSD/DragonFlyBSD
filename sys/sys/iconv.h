@@ -135,7 +135,7 @@ struct iconv_cspair {
 	"iconv_"#name, iconv_converter_handler,		\
 	(void*)&iconv_ ## name ## _class		\
     };							\
-    DECLARE_MODULE(iconv_ ## name, iconv_ ## name ## _mod, SI_SUB_DRIVERS, SI_ORDER_ANY);
+    DECLARE_MODULE(iconv_ ## name, iconv_ ## name ## _mod, SI_SUB_DRIVERS, SI_ORDER_ANY)
 
 #define	KICONV_CES(name,size)				\
     static DEFINE_CLASS(iconv_ces_ ## name, iconv_ces_ ## name ## _methods, (size)); \
@@ -143,7 +143,7 @@ struct iconv_cspair {
 	"iconv_ces_"#name, iconv_cesmod_handler,	\
 	(void*)&iconv_ces_ ## name ## _class		\
     };							\
-    DECLARE_MODULE(iconv_ces_ ## name, iconv_ces_ ## name ## _mod, SI_SUB_DRIVERS, SI_ORDER_ANY);
+    DECLARE_MODULE(iconv_ces_ ## name, iconv_ces_ ## name ## _mod, SI_SUB_DRIVERS, SI_ORDER_ANY)
 
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_ICONV);

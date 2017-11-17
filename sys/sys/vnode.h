@@ -338,7 +338,7 @@ extern	int		vttoif_tab[];
 
 #define	VNODEOP_SET(f) \
 	SYSINIT(f##init, SI_SUB_VFS, SI_ORDER_SECOND, vfs_nadd_vnodeops_sysinit, &f); \
-	SYSUNINIT(f##uninit, SI_SUB_VFS, SI_ORDER_SECOND,vfs_nrm_vnodeops_sysinit, &f);
+	SYSUNINIT(f##uninit, SI_SUB_VFS, SI_ORDER_SECOND,vfs_nrm_vnodeops_sysinit, &f)
 
 /*
  * Global vnode data.

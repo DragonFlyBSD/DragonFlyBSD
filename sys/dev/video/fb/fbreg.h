@@ -153,7 +153,7 @@ typedef struct video_driver {
 	static struct video_driver name##_driver = {	\
 		#name, &sw, config			\
 	};						\
-	DATA_SET(videodriver_set, name##_driver);
+	DATA_SET(videodriver_set, name##_driver)
 
 /* global variables */
 extern struct video_switch **vidsw;

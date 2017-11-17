@@ -381,7 +381,7 @@ int sndstat_unregisterfile(char *str);
 #define __SND_DECLARE_FILE(uniq, version) \
 	static char sndstat_vinfo[] = version; \
 	SYSINIT(sdf_ ## uniq, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, sndstat_registerfile, sndstat_vinfo); \
-	SYSUNINIT(sdf_ ## uniq, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, sndstat_unregisterfile, sndstat_vinfo);
+	SYSUNINIT(sdf_ ## uniq, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, sndstat_unregisterfile, sndstat_vinfo)
 
 /* usage of flags in device config entry (config file) */
 #define DV_F_DRQ_MASK	0x00000007	/* mask for secondary drq */
