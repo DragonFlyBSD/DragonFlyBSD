@@ -107,11 +107,11 @@ SYSTEM_LD= @${CC} -nostdlib -ffreestanding -Wl,--hash-style=sysv \
 # In case of LTO provide all standard CFLAGS!
 .if ${CFLAGS:M-flto}
 SYSTEM_LD+= ${CFLAGS}
-# XXX this one eats a lot of ram, but needed to correctly link the kernel.
-# Default "balanced" might create kernel that "Fatal trap 12" on boot!!!
-. if !${CFLAGS:M-flto-partition=*}
-SYSTEM_LD+= -flto-partition=one -flto-report-wpa
-. endif
+## This one eats a lot of ram, may be needed to correctly link the kernel.
+## Default "balanced" might create kernel that "Fatal trap 12" on boot!!!
+#. if !${CFLAGS:M-flto-partition=*}
+#SYSTEM_LD+= -flto-partition=one -flto-report-wpa
+#. endif
 .endif
 
 # The max-page-size for gnu ld is 0x200000 on x86_64
