@@ -16,6 +16,10 @@ SRCS=	cmds.c cmdtab.c complete.c domacro.c fetch.c ftp.c main.c \
 CFLAGS+=-I${.CURDIR} -I${.OBJDIR} -I${CONTRIBDIR} \
 	-I${.CURDIR}/../../lib/libc/stdtime \
 	-D__dead=__dead2 -DUSE_GLOB_H
+
+# Avoid symbol conflict with ncurses(lib_trace.c:void trace(unsigned))
+CFLAGS+=-Dtrace=ftp_trace
+
 LDADD=	-lprivate_edit -lprivate_ncurses -lutil
 DPADD=	${LIBEDIT} ${LIBNCURSES} ${LIBUTIL}
 
