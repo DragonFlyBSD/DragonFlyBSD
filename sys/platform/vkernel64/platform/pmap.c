@@ -340,6 +340,33 @@ vtopde(vm_offset_t va)
 	return x;
 }
 
+/*
+ * Returns the physical address translation from va for a user address.
+ * (vm_paddr_t)-1 is returned on failure.
+ */
+vm_paddr_t
+uservtophys(vm_offset_t va)
+{
+	vm_paddr_t pa;
+	pt_entry_t pte;
+	pt_entry_t *ptep;
+	pmap_t pmap;
+
+	pmap = vmspace_pmap(mycpu->gd_curthread->td_lwp->lwp_vmspace);
+	pa = (vm_paddr_t)-1;
+	if (va < VM_MAX_USER_ADDRESS) {
+		vm_object_hold_shared(pmap->pm_pteobj);
+		ptep = pmap_pte(pmap, va);
+		if (ptep) {
+			pte = *ptep;
+			if (pte & VPTE_V)
+				pa = (pte & PG_FRAME) | (va & PAGE_MASK);
+		}
+		vm_object_drop(pmap->pm_pteobj);
+	}
+	return pa;
+}
+
 static uint64_t
 allocpages(vm_paddr_t *firstaddr, int n)
 {
