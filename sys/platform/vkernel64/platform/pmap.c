@@ -364,7 +364,7 @@ uservtophys(vm_offset_t va)
 	if (error)
 		return ((vm_paddr_t)-1);
 
-	pa = VM_PAGE_TO_PHYS(m);
+	pa = VM_PAGE_TO_PHYS(m) | (va & PAGE_MASK);
 	if (busy)
 		vm_page_wakeup(m);
 	else
