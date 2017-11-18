@@ -41,7 +41,7 @@
 #include <sys/indefinite.h>
 #endif
 #ifndef _SYS_GLOBALDATA_H_
-#include <sys/glolbaldata.h>
+#include <sys/globaldata.h>
 #endif
 #ifdef _KERNEL_VIRTUAL
 #include <pthread.h>
