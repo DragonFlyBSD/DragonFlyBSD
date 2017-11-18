@@ -1318,6 +1318,9 @@ vclean_vxlocked(struct vnode *vp, int flags)
 	}
 	KKASSERT((vp->v_flag & VOBJBUF) == 0);
 
+	if (vp->v_flag & VOBJDIRTY)
+		vclrobjdirty(vp);
+
 	/*
 	 * Reclaim the vnode if not already dead.
 	 */
