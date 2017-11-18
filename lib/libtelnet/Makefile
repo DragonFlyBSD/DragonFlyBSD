@@ -5,14 +5,11 @@ LIB=		telnet
 
 INTERNALLIB=
 
-SRCS=		genget.c getent.c misc.c
+SRCS=		auth.c enc_des.c encrypt.c genget.c getent.c misc.c sra.c pk.c
 
 WARNS?=		2
 
-.if !defined(NO_CRYPT)
-SRCS+=		encrypt.c auth.c enc_des.c sra.c pk.c
 CFLAGS+=	-DENCRYPTION -DAUTHENTICATION -DSRA
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
-.endif
 
 .include <bsd.lib.mk>

@@ -11,7 +11,7 @@ CONTRIBDIR= ${.CURDIR}/../../contrib/tnftp
 
 PROG=	ftp
 SRCS=	cmds.c cmdtab.c complete.c domacro.c fetch.c ftp.c main.c \
-	progressbar.c ruserpass.c util.c
+	progressbar.c ruserpass.c ssl.c util.c
 
 CFLAGS+=-I${.CURDIR} -I${.OBJDIR} -I${CONTRIBDIR} \
 	-I${.CURDIR}/../../lib/libc/stdtime \
@@ -26,12 +26,9 @@ DPADD=	${LIBEDIT} ${LIBNCURSES} ${LIBUTIL}
 CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
-.if !defined(NO_CRYPT)
-SRCS+=		ssl.c
 CFLAGS+=	-DWITH_SSL -I${.CURDIR}/../../crypto/libressl/include
 LDADD+=		-lprivate_ssl -lprivate_crypto
 DPADD+=		${LIBRESSL} ${LIBRECRYPTO}
-.endif
 
 LINKS=	${BINDIR}/ftp ${BINDIR}/pftp \
 	${BINDIR}/ftp ${BINDIR}/gate-ftp

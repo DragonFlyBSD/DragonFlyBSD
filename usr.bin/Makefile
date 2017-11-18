@@ -20,6 +20,7 @@ SUBDIR=	alias \
 	banner \
 	basename \
 	bc \
+	bdes \
 	biff \
 	bmake \
 	brandelf \
@@ -36,6 +37,7 @@ SUBDIR=	alias \
 	checknr \
 	checkpt \
 	chflags \
+	chkey \
 	chpass \
 	cksum \
 	cmp \
@@ -50,8 +52,10 @@ SUBDIR=	alias \
 	csplit \
 	ctags \
 	cut \
+	dc \
 	dfregress \
 	dirname \
+	drill \
 	du \
 	ee \
 	enigma \
@@ -59,6 +63,7 @@ SUBDIR=	alias \
 	evtranalyze \
 	expand \
 	false \
+	fetch \
 	file \
 	file2c \
 	find \
@@ -69,6 +74,7 @@ SUBDIR=	alias \
 	from \
 	fstat \
 	fsync \
+	ftp \
 	gcore \
 	gencat \
 	getconf \
@@ -132,11 +138,13 @@ SUBDIR=	alias \
 	ncal \
 	netstat \
 	newgrp \
+	newkey \
 	nfsstat \
 	nice \
 	nl \
 	nohup \
 	objformat \
+	openssl \
 	opieinfo \
 	opiekey \
 	opiepasswd \
@@ -167,10 +175,12 @@ SUBDIR=	alias \
 	rusers \
 	rwall \
 	rwho \
+	scp \
 	script \
 	sdpquery \
 	sed \
 	seq \
+	sftp \
 	shar \
 	shlock \
 	showmount \
@@ -179,6 +189,11 @@ SUBDIR=	alias \
 	soelim \
 	sort \
 	split \
+	ssh \
+	ssh-add \
+	ssh-agent \
+	ssh-keygen \
+	ssh-keyscan \
 	stat \
 	strfile \
 	su \
@@ -190,6 +205,7 @@ SUBDIR=	alias \
 	tar \
 	tcopy \
 	tee \
+	telnet \
 	tftp \
 	time \
 	tic \
@@ -248,29 +264,6 @@ SUBDIR=	alias \
 
 .if defined(WANT_HESIOD)
 SUBDIR+=hesinfo
-.endif
-
-# Uses lib[re]ssl but can build without it
-SUBDIR+=ftp \
-	telnet
-
-# Requires lib[re]ssl
-#
-.if !defined(NO_CRYPT)
-SUBDIR+=chkey \
-	dc \
-	drill \
-	fetch \
-	newkey \
-	bdes \
-	openssl \
-	scp \
-	sftp \
-	ssh \
-	ssh-add \
-	ssh-agent \
-	ssh-keygen \
-	ssh-keyscan
 .endif
 
 .include <bsd.subdir.mk>

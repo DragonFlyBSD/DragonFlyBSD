@@ -28,7 +28,7 @@ SUBDIR=	UI \
 	tty \
 	vjc
 
-.if !defined(NO_CRYPT) && exists(${.CURDIR}/../crypto/rc4/rc4.c)
+.if exists(${.CURDIR}/../crypto/rc4/rc4.c)
 SUBDIR+=	mppc
 .endif
 

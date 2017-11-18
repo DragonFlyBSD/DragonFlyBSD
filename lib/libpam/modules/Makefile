@@ -1,4 +1,3 @@
-
 SUBDIR=	pam_chroot \
 	pam_deny \
 	pam_echo \
@@ -18,12 +17,9 @@ SUBDIR=	pam_chroot \
 	pam_rootok \
 	pam_securetty \
 	pam_self \
+	pam_ssh \
 	pam_tacplus \
 	pam_unix
-
-.if !defined(NO_CRYPT)
-SUBDIR+= pam_ssh
-.endif
 
 # maximum parallelism
 #

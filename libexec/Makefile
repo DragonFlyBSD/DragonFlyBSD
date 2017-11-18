@@ -24,18 +24,15 @@ SUBDIR=	atrun \
 	rpc.sprayd \
 	rshd \
 	rtld-elf \
+	sftp-server \
+	ssh-keysign \
+	ssh-pkcs11-helper \
 	talkd \
 	tcpd \
 	telnetd \
 	tftpd \
 	utmp_update \
 	ypxfr
-
-.if !defined(NO_CRYPT)
-SUBDIR+= sftp-server \
-	ssh-keysign \
-	ssh-pkcs11-helper
-.endif
 
 # maximum parallelism
 #

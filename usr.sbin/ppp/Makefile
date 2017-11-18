@@ -54,7 +54,7 @@ CFLAGS+=-DNOSUID
 SRCS+=	id.c
 .endif
 
-.if defined(NO_CRYPT) || defined(NODES)
+.if defined(NODES)
 CFLAGS+=-DNODES
 .else
 SRCS+=		chap_ms.c mppe.c

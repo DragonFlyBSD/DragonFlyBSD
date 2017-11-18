@@ -2,7 +2,7 @@
 
 PROG=		telnet
 
-SRCS=		commands.c main.c network.c ring.c sys_bsd.c \
+SRCS=		authenc.c commands.c main.c network.c ring.c sys_bsd.c \
 		telnet.c terminal.c utilities.c
 
 CFLAGS+=	-DKLUDGELINEMODE -DUSE_TERMIO -DENV_HACK -DOPIE \
@@ -25,12 +25,9 @@ CFLAGS+=	-DIPSEC
 DPADD+=		${LIBIPSEC}
 LDADD+=		-lipsec
 
-.if !defined(NO_CRYPT)
-SRCS+=		authenc.c
 CFLAGS+=	-DENCRYPTION -DAUTHENTICATION
 DPADD+=		${LIBRECRYPTO} ${LIBCRYPT} ${LIBPAM}
 LDADD+=		-lprivate_crypto -lcrypt ${MINUSLPAM}
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
-.endif
 
 .include <bsd.prog.mk>

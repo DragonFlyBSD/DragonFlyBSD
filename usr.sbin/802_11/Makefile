@@ -1,8 +1,4 @@
-SUBDIR=	ndis_events wpa_cli wpa_passphrase
-
-.if !defined(NO_CRYPT)
-SUBDIR+= wpa_supplicant
-.endif
+SUBDIR=	ndis_events wpa_cli wpa_passphrase wpa_supplicant
 
 SUBDIR_ORDERED=		# maximum parallelism
 

@@ -51,6 +51,7 @@ SUBDIR= 802_11 \
 	jls \
 	kbdcontrol \
 	kbdmap \
+	keyserv \
 	lastlogin \
 	mailwrapper \
 	makewhatis \
@@ -150,10 +151,6 @@ SUBDIR+=ppp \
 # from old secure/
 #
 SUBDIR+=sshd
-
-.if !defined(NO_CRYPT)
-SUBDIR+=keyserv
-.endif
 
 .if !defined(NO_LPR)
 SUBDIR+=lpr

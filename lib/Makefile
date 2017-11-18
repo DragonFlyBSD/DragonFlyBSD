@@ -22,13 +22,11 @@
 #
 # Otherwise, the SUBDIR list should be in alphabetical order.
 
-SUBDIR_ORDERED=	${_libc_r}
-
-.if !defined(NO_CRYPT)
-SUBDIR_ORDERED+=librecrypto libressl libssh
-.endif
-
-SUBDIR_ORDERED+= \
+SUBDIR_ORDERED= \
+	${_libc_r} \
+	librecrypto \
+	libressl \
+	libssh \
 	libcrypt \
 	libarchive \
 	libz \
@@ -106,12 +104,10 @@ SUBDIR=	${SUBDIR_ORDERED} \
 SUBDIR:=	libc ${SUBDIR:Nlibc}
 .endif
 
-.if !defined(NO_CRYPT)
 _libdmsg=	libdmsg
 
 SUBDIR+=	libldns \
 		libtcplay
-.endif
 
 .if !defined(NO_LIBC_R)
 _libc_r=	libc_r

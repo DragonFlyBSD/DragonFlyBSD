@@ -6,7 +6,7 @@
 PROG=		telnetd
 MAN=		telnetd.8
 
-SRCS=		global.c slc.c state.c sys_term.c telnetd.c \
+SRCS=		authenc.c global.c slc.c state.c sys_term.c telnetd.c \
 		termstat.c utility.c
 
 WARNS?=		2
@@ -25,12 +25,9 @@ LDADD=		-lutil -lprivate_ncurses ${LIBTELNET}
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 
-.if !defined(NO_CRYPT)
-SRCS+=		authenc.c
 CFLAGS+=	-DAUTHENTICATION -DENCRYPTION
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 DPADD+=		${LIBRECRYPTO} ${LIBCRYPT} ${LIBPAM}
 LDADD+=		-lprivate_crypto -lcrypt ${MINUSLPAM}
-.endif
 
 .include <bsd.prog.mk>

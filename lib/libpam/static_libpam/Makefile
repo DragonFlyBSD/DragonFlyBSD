@@ -37,12 +37,9 @@ MODULES=	pam_chroot \
 		pam_rootok \
 		pam_securetty \
 		pam_self \
+		pam_ssh \
 		pam_tacplus \
 		pam_unix
-
-.if !defined(NO_CRYPT)
-MODULES+=	pam_ssh
-.endif
 
 STATIC_MODULES=	${MODULES:C/.*/${MODULESDIR}\/&\/lib&.a/}
 STATICOBJS+=	openpam_static_modules.o

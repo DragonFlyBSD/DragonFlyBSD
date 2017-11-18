@@ -63,10 +63,8 @@ LIBOPIE?=	${DESTDIR}${LIBDIR}/libopie.a
 LIBPAM?=	${DESTDIR}${LIBDIR}/libpam.a
 MINUSLPAM?=	-lpam
 .if defined(NOSHARED) && ${NOSHARED} != "no" && ${NOSHARED} != "NO"
-.if !defined(NO_CRYPT)
 LIBPAM+=	${LIBSSH}
 MINUSLPAM+=	-lprivate_ssh
-.endif
 LIBPAM+=	${LIBRADIUS} ${LIBTACPLUS} ${LIBOPIE} ${LIBYPCLNT} \
 		${LIBCRYPT} ${LIBMD} ${LIBRECRYPTO} ${LIBUTIL}
 MINUSLPAM+=	-lradius -ltacplus -lopie -lypclnt \

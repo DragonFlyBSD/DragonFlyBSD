@@ -10,17 +10,10 @@ MAN=		fetch.3
 CLEANFILES=	ftperr.h httperr.h
 NO_STRICT_ALIASING=
 
-.if !defined(NO_CRYPT)
 CFLAGS+=	-DWITH_SSL -I${.CURDIR}/../../crypto/libressl/include
 DPADD=		${LIBRESSL} ${LIBRECRYPTO}
 LDADD=		-lprivate_ssl -lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
-.else
-# XXX sys/md5.h shim errata for bootstrap REMOVE_OPENSSL_FILES
-CFLAGS+= -I${_SHLIBDIRPREFIX}/usr/include/priv
-DPADD=		${LIBMD}
-LDADD=		-lmd
-.endif
 
 SHLIB_MAJOR=    4
 
