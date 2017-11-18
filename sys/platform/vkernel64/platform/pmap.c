@@ -347,23 +347,29 @@ vtopde(vm_offset_t va)
 vm_paddr_t
 uservtophys(vm_offset_t va)
 {
+	struct vmspace *vm = curproc->p_vmspace;
+	vm_page_t m;
 	vm_paddr_t pa;
-	pt_entry_t pte;
-	pt_entry_t *ptep;
-	pmap_t pmap;
+	int error;
+	int busy;
 
-	pmap = vmspace_pmap(mycpu->gd_curthread->td_lwp->lwp_vmspace);
-	pa = (vm_paddr_t)-1;
-	if (va < VM_MAX_USER_ADDRESS) {
-		vm_object_hold_shared(pmap->pm_pteobj);
-		ptep = pmap_pte(pmap, va);
-		if (ptep) {
-			pte = *ptep;
-			if (pte & VPTE_V)
-				pa = (pte & PG_FRAME) | (va & PAGE_MASK);
-		}
-		vm_object_drop(pmap->pm_pteobj);
-	}
+	/* XXX No idea how to handle this case in a simple way, just abort */
+	if (PAGE_SIZE - (va & PAGE_MASK) < sizeof(u_int))
+		return ((vm_paddr_t)-1);
+
+	m = vm_fault_page(&vm->vm_map, trunc_page(va),
+			  VM_PROT_READ|VM_PROT_WRITE,
+			  VM_FAULT_NORMAL,
+			  &error, &busy);
+	if (error)
+		return ((vm_paddr_t)-1);
+
+	pa = VM_PAGE_TO_PHYS(m);
+	if (busy)
+		vm_page_wakeup(m);
+	else
+		vm_page_unhold(m);
+
 	return pa;
 }
 
