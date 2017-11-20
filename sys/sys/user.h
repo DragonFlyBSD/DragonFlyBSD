@@ -91,7 +91,6 @@
 #ifndef _MACHINE_PCB_H_
 #include <machine/pcb.h>
 #endif
-#include <machine/coredump.h>
 #include <sys/kinfo.h>
 
 #endif
