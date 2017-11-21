@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/lib/libc/sys/kqueue.2,v 1.1.2.16 2002/07/02 21:05:08 mp Exp $
 .\"
-.Dd June 8, 2016
+.Dd November 22, 2017
 .Dt KQUEUE 2
 .Os
 .Sh NAME
@@ -431,8 +431,7 @@ This filter automatically sets the
 .Dv EV_CLEAR
 flag internally.
 .It Dv EVFILT_FS
-Establishes a file system monitor identified by
-.Fa ident .
+Establishes a file system monitor.
 Currently it only monitors file system mount and unmount actions.
 .El
 .Sh RETURN VALUES
