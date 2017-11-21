@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/printf.9,v 1.8 2006/09/08 14:05:03 ru Exp $
 .\"
-.Dd November 21, 2017
+.Dd December 21, 2012
 .Dt KPRINTF 9
 .Os
 .Sh NAME
@@ -59,12 +59,13 @@
 .Ft void
 .Fn krateprintf "struct krate *rate" "const char *format" ...
 .Ft int
-.Fn log "int pri" "const char *format" ...
-.Ft int
 .Fn uprintf "const char *format" ...
 .In sys/tprintf.h
 .Ft int
 .Fn tprintf "struct proc *p" "int pri" "const char *format" ...
+.In sys/syslog.h
+.Ft int
+.Fn log "int pri" "const char *format" ...
 .Sh DESCRIPTION
 The
 .Nm
