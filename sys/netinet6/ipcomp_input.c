@@ -50,7 +50,6 @@
 #include <net/if.h>
 #include <net/route.h>
 #include <net/netisr.h>
-#include <net/zlib.h>
 #include <machine/cpu.h>
 
 #include <netinet/in.h>
