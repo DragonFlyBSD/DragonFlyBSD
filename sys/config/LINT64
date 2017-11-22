@@ -2200,7 +2200,6 @@ options 	SCSI_NCR_DEBUG
 options 	SCSI_NCR_MAX_SYNC=10000
 options 	SCSI_NCR_MAX_WIDE=1
 options 	SCSI_NCR_MYADDR=7
-options 	SHOW_BUSYBUFS	# List buffers that prevent root unmount
 options 	SI_DEBUG
 options		SLAB_DEBUG
 options 	SOCKBUF_DEBUG
