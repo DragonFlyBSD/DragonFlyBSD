@@ -29,6 +29,7 @@ static int ata_nvidia_chipinit(device_t dev);
 static int ata_nvidia_allocate(device_t dev);
 static int ata_nvidia_status(device_t dev);
 static void ata_nvidia_reset(device_t dev);
+static void ata_nvidia_setmode(device_t dev, int mode);
 
 /*
  * nVidia chipset support functions
@@ -135,7 +136,7 @@ ata_nvidia_chipinit(device_t dev)
     else {
 	/* disable prefetch, postwrite */
 	pci_write_config(dev, 0x51, pci_read_config(dev, 0x51, 1) & 0x0f, 1);
-	ctlr->setmode = ata_via_family_setmode;
+	ctlr->setmode = ata_nvidia_setmode;
     }
     return 0;
 }
@@ -197,4 +198,39 @@ ata_nvidia_reset(device_t dev)
 {
     if (ata_sata_phy_reset(dev))
 	ata_generic_reset(dev);
+}
+
+static void
+ata_nvidia_setmode(device_t dev, int mode)
+{
+    device_t gparent = GRANDPARENT(dev);
+    struct ata_pci_controller *ctlr = device_get_softc(gparent);
+    struct ata_channel *ch = device_get_softc(device_get_parent(dev));
+    struct ata_device *atadev = device_get_softc(dev);
+    u_int8_t timings[] = { 0xa8, 0x65, 0x42, 0x22, 0x20, 0x42, 0x22, 0x20,
+			   0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 };
+    int modes[7] = { 0xc2, 0xc1, 0xc0, 0xc4, 0xc5, 0xc6, 0xc7 };
+    int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
+    int reg = 0x53 - devno;
+    int error;
+
+    mode = ata_limit_mode(dev, mode, ctlr->chip->max_dma);
+    mode = ata_check_80pin(dev, mode);
+
+    if (ctlr->chip->cfg2 & NVIDIA)
+       reg += 0x10;
+
+    error = ata_controlcmd(dev, ATA_SETFEATURES, ATA_SF_SETXFER, 0, mode);
+    if (bootverbose)
+	device_printf(dev, "%ssetting %s on %s chip\n",
+		      (error) ? "FAILURE " : "", ata_mode2str(mode),
+		      ctlr->chip->text);
+    if (!error) {
+	pci_write_config(gparent, reg - 0x08, timings[ata_mode2idx(mode)], 1);
+	if (mode >= ATA_UDMA0)
+	    pci_write_config(gparent, reg, modes[mode & ATA_MODE_MASK], 1);
+	else
+	    pci_write_config(gparent, reg, 0x8b, 1);
+	atadev->mode = mode;
+    }
 }

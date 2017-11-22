@@ -83,9 +83,6 @@ static void ata_ahci_reset(device_t dev);
 /* used by ata-ahci.c and ata-siliconimage.c */
 static int ata_request2fis_h2d(struct ata_request *request, u_int8_t *fis);
 
-/* used by ata-amd.c ata-nvidia.c ata-via.c */
-static void ata_via_family_setmode(device_t dev, int mode);
-
 /* ata-ati.c depends on ata-siliconimage.c */
 /* used by ata-ati.c and ata-siliconimage.c */
 static int ata_sii_chipinit(device_t dev);
@@ -388,61 +385,6 @@ ata_request2fis_h2d(struct ata_request *request, u_int8_t *fis)
     }
     return 0;
 }
-
-/* common code for VIA, AMD & nVidia */
-static void
-ata_via_family_setmode(device_t dev, int mode)
-{
-    device_t gparent = GRANDPARENT(dev);
-    struct ata_pci_controller *ctlr = device_get_softc(gparent);
-    struct ata_channel *ch = device_get_softc(device_get_parent(dev));
-    struct ata_device *atadev = device_get_softc(dev);
-    u_int8_t timings[] = { 0xa8, 0x65, 0x42, 0x22, 0x20, 0x42, 0x22, 0x20,
-			   0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 };
-    int modes[][7] = {
-	{ 0xc2, 0xc1, 0xc0, 0x00, 0x00, 0x00, 0x00 },   /* VIA ATA33 */
-	{ 0xee, 0xec, 0xea, 0xe9, 0xe8, 0x00, 0x00 },   /* VIA ATA66 */
-	{ 0xf7, 0xf6, 0xf4, 0xf2, 0xf1, 0xf0, 0x00 },   /* VIA ATA100 */
-	{ 0xf7, 0xf7, 0xf6, 0xf4, 0xf2, 0xf1, 0xf0 },   /* VIA ATA133 */
-	{ 0xc2, 0xc1, 0xc0, 0xc4, 0xc5, 0xc6, 0xc7 }};  /* AMD/nVIDIA */
-    int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
-    int reg = 0x53 - devno;
-    int error;
-
-    mode = ata_limit_mode(dev, mode, ctlr->chip->max_dma);
-
-    if (ctlr->chip->cfg2 & AMDCABLE) {
-	if (mode > ATA_UDMA2 &&
-	    !(pci_read_config(gparent, 0x42, 1) & (1 << devno))) {
-	    ata_print_cable(dev, "controller");
-	    mode = ATA_UDMA2;
-	}
-    }
-    else
-	mode = ata_check_80pin(dev, mode);
-
-    if (ctlr->chip->cfg2 & NVIDIA)
-	reg += 0x10;
-
-    if (ctlr->chip->cfg1 != VIA133)
-	pci_write_config(gparent, reg - 0x08, timings[ata_mode2idx(mode)], 1);
-
-    error = ata_controlcmd(dev, ATA_SETFEATURES, ATA_SF_SETXFER, 0, mode);
-
-    if (bootverbose)
-	device_printf(dev, "%ssetting %s on %s chip\n",
-		      (error) ? "FAILURE " : "", ata_mode2str(mode),
-		      ctlr->chip->text);
-    if (!error) {
-	if (mode >= ATA_UDMA0)
-	    pci_write_config(gparent, reg,
-			     modes[ctlr->chip->cfg1][mode & ATA_MODE_MASK], 1);
-	else
-	    pci_write_config(gparent, reg, 0x8b, 1);
-	atadev->mode = mode;
-    }
-}
-
 
 /* misc functions */
 static struct ata_chip_id *
