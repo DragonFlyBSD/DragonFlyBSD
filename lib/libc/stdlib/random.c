@@ -282,7 +282,7 @@ srandomdev(void)
 	/*
 	 * Standard
 	 */
-	fd = _open("/dev/random", O_RDONLY, 0);
+	fd = _open("/dev/random", O_RDONLY|O_CLOEXEC, 0);
 	if (fd >= 0) {
 		n = _read(fd, (void *)state, len);
 		_close(fd);
