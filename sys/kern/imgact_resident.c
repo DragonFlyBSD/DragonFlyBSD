@@ -48,7 +48,6 @@
 #include <sys/sysent.h>
 #include <sys/stat.h>
 #include <sys/vnode.h>
-#include <sys/inflate.h>
 #include <sys/sysctl.h>
 #include <sys/lock.h>
 #include <sys/resident.h>
