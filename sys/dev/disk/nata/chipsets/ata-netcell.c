@@ -1,0 +1,72 @@
+/*-
+ * Copyright (c) 1998 - 2008 Søren Schmidt <sos@FreeBSD.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer,
+ *    without modification, immediately at the beginning of the file.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/* local prototypes */
+static int ata_netcell_chipinit(device_t dev);
+static int ata_netcell_allocate(device_t dev);
+
+/*
+ * NetCell chipset support functions
+ */
+int
+ata_netcell_ident(device_t dev)
+{
+    struct ata_pci_controller *ctlr = device_get_softc(dev);
+
+    if (pci_get_devid(dev) == ATA_NETCELL_SR) {
+	device_set_desc(dev, "Netcell SyncRAID SR3000/5000 RAID Controller");
+	ctlr->chipinit = ata_netcell_chipinit;
+	return 0;
+    }
+    return ENXIO;
+}
+
+static int
+ata_netcell_chipinit(device_t dev)
+{
+    struct ata_pci_controller *ctlr = device_get_softc(dev);
+
+    if (ata_generic_chipinit(dev))
+	return ENXIO;
+
+    ctlr->allocate = ata_netcell_allocate;
+    return 0;
+}
+
+static int
+ata_netcell_allocate(device_t dev)
+{
+    struct ata_channel *ch = device_get_softc(dev);
+
+    /* setup the usual register normal pci style */
+    if (ata_pci_allocate(dev))
+	return ENXIO;
+
+    /* the NetCell only supports 16 bit PIO transfers */
+    ch->flags |= ATA_USE_16BIT;
+
+    return 0;
+}

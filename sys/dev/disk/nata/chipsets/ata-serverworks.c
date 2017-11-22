@@ -1,0 +1,217 @@
+/*-
+ * Copyright (c) 1998 - 2008 Søren Schmidt <sos@FreeBSD.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer,
+ *    without modification, immediately at the beginning of the file.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/* local prototypes */
+static int ata_serverworks_chipinit(device_t dev);
+static int ata_serverworks_allocate(device_t dev);
+static void ata_serverworks_setmode(device_t dev, int mode);
+
+/*
+ * ServerWorks chipset support functions
+ */
+int
+ata_serverworks_ident(device_t dev)
+{
+    struct ata_pci_controller *ctlr = device_get_softc(dev);
+    struct ata_chip_id *idx;
+    static struct ata_chip_id ids[] =
+    {{ ATA_ROSB4,     0x00, SWKS33,  0, ATA_UDMA2, "ROSB4" },
+     { ATA_CSB5,      0x92, SWKS100, 0, ATA_UDMA5, "CSB5" },
+     { ATA_CSB5,      0x00, SWKS66,  0, ATA_UDMA4, "CSB5" },
+     { ATA_CSB6,      0x00, SWKS100, 0, ATA_UDMA5, "CSB6" },
+     { ATA_CSB6_1,    0x00, SWKS66,  0, ATA_UDMA4, "CSB6" },
+     { ATA_HT1000,    0x00, SWKS100, 0, ATA_UDMA5, "HT1000" },
+     { ATA_HT1000_S1, 0x00, SWKS100, 4, ATA_SA150, "HT1000" },
+     { ATA_HT1000_S2, 0x00, SWKSMIO, 4, ATA_SA150, "HT1000" },
+     { ATA_K2,        0x00, SWKSMIO, 4, ATA_SA150, "K2" },
+     { ATA_FRODO4,    0x00, SWKSMIO, 4, ATA_SA150, "Frodo4" },
+     { ATA_FRODO8,    0x00, SWKSMIO, 8, ATA_SA150, "Frodo8" },
+     { 0, 0, 0, 0, 0, 0}};
+    char buffer[64];
+
+    if (!(idx = ata_match_chip(dev, ids)))
+	return ENXIO;
+
+    ksprintf(buffer, "ServerWorks %s %s controller",
+	    idx->text, ata_mode2str(idx->max_dma));
+    device_set_desc_copy(dev, buffer);
+    ctlr->chip = idx;
+    ctlr->chipinit = ata_serverworks_chipinit;
+    return 0;
+}
+
+static int
+ata_serverworks_chipinit(device_t dev)
+{
+    struct ata_pci_controller *ctlr = device_get_softc(dev);
+
+    if (ata_setup_interrupt(dev))
+	return ENXIO;
+
+    if (ctlr->chip->cfg1 == SWKSMIO) {
+	ctlr->r_type2 = SYS_RES_MEMORY;
+	ctlr->r_rid2 = PCIR_BAR(5);
+	if (!(ctlr->r_res2 = bus_alloc_resource_any(dev, ctlr->r_type2,
+						    &ctlr->r_rid2, RF_ACTIVE))){
+	    ata_teardown_interrupt(dev);
+	    return ENXIO;
+	}
+
+	ctlr->channels = ctlr->chip->cfg2;
+	ctlr->allocate = ata_serverworks_allocate;
+	ctlr->setmode = ata_sata_setmode;
+	return 0;
+    }
+    else if (ctlr->chip->cfg1 == SWKS33) {
+	device_t *children;
+	int nchildren, i;
+
+	/* locate the ISA part in the southbridge and enable UDMA33 */
+	if (!device_get_children(device_get_parent(dev), &children,&nchildren)){
+	    for (i = 0; i < nchildren; i++) {
+		if (pci_get_devid(children[i]) == ATA_ROSB4_ISA) {
+		    pci_write_config(children[i], 0x64,
+				     (pci_read_config(children[i], 0x64, 4) &
+				      ~0x00002000) | 0x00004000, 4);
+		    break;
+		}
+	    }
+	    kfree(children, M_TEMP);
+	}
+    }
+    else {
+	pci_write_config(dev, 0x5a,
+			 (pci_read_config(dev, 0x5a, 1) & ~0x40) |
+			 (ctlr->chip->cfg1 == SWKS100) ? 0x03 : 0x02, 1);
+    }
+    ctlr->setmode = ata_serverworks_setmode;
+    return 0;
+}
+
+static int
+ata_serverworks_allocate(device_t dev)
+{
+    struct ata_pci_controller *ctlr = device_get_softc(device_get_parent(dev));
+    struct ata_channel *ch = device_get_softc(dev);
+    int ch_offset;
+    int i;
+
+    ch_offset = ch->unit * 0x100;
+
+    for (i = ATA_DATA; i < ATA_MAX_RES; i++)
+	ch->r_io[i].res = ctlr->r_res2;
+
+    /* setup ATA registers */
+    ch->r_io[ATA_DATA].offset = ch_offset + 0x00;
+    ch->r_io[ATA_FEATURE].offset = ch_offset + 0x04;
+    ch->r_io[ATA_COUNT].offset = ch_offset + 0x08;
+    ch->r_io[ATA_SECTOR].offset = ch_offset + 0x0c;
+    ch->r_io[ATA_CYL_LSB].offset = ch_offset + 0x10;
+    ch->r_io[ATA_CYL_MSB].offset = ch_offset + 0x14;
+    ch->r_io[ATA_DRIVE].offset = ch_offset + 0x18;
+    ch->r_io[ATA_COMMAND].offset = ch_offset + 0x1c;
+    ch->r_io[ATA_CONTROL].offset = ch_offset + 0x20;
+    ata_default_registers(dev);
+
+    /* setup DMA registers */
+    ch->r_io[ATA_BMCMD_PORT].offset = ch_offset + 0x30;
+    ch->r_io[ATA_BMSTAT_PORT].offset = ch_offset + 0x32;
+    ch->r_io[ATA_BMDTP_PORT].offset = ch_offset + 0x34;
+
+    /* setup SATA registers */
+    ch->r_io[ATA_SSTATUS].offset = ch_offset + 0x40;
+    ch->r_io[ATA_SERROR].offset = ch_offset + 0x44;
+    ch->r_io[ATA_SCONTROL].offset = ch_offset + 0x48;
+
+    ch->flags |= ATA_NO_SLAVE;
+    ata_pci_hw(dev);
+
+    /* chip does not reliably do 64K DMA transfers */
+    if (ch->dma)
+	ch->dma->max_iosize = 126 * DEV_BSIZE;
+
+    return 0;
+}
+
+static void
+ata_serverworks_setmode(device_t dev, int mode)
+{
+    device_t gparent = GRANDPARENT(dev);
+    struct ata_pci_controller *ctlr = device_get_softc(gparent);
+    struct ata_channel *ch = device_get_softc(device_get_parent(dev));
+    struct ata_device *atadev = device_get_softc(dev);
+    int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
+    int offset = (devno ^ 0x01) << 3;
+    int error;
+    u_int8_t piotimings[] = { 0x5d, 0x47, 0x34, 0x22, 0x20, 0x34, 0x22, 0x20,
+			      0x20, 0x20, 0x20, 0x20, 0x20, 0x20 };
+    u_int8_t dmatimings[] = { 0x77, 0x21, 0x20 };
+
+    mode = ata_limit_mode(dev, mode, ctlr->chip->max_dma);
+
+    mode = ata_check_80pin(dev, mode);
+
+    error = ata_controlcmd(dev, ATA_SETFEATURES, ATA_SF_SETXFER, 0, mode);
+
+    if (bootverbose)
+	device_printf(dev, "%ssetting %s on %s chip\n",
+		      (error) ? "FAILURE " : "",
+		      ata_mode2str(mode), ctlr->chip->text);
+    if (!error) {
+	if (mode >= ATA_UDMA0) {
+	    pci_write_config(gparent, 0x56,
+			     (pci_read_config(gparent, 0x56, 2) &
+			      ~(0xf << (devno << 2))) |
+			     ((mode & ATA_MODE_MASK) << (devno << 2)), 2);
+	    pci_write_config(gparent, 0x54,
+			     pci_read_config(gparent, 0x54, 1) |
+			     (0x01 << devno), 1);
+	    pci_write_config(gparent, 0x44,
+			     (pci_read_config(gparent, 0x44, 4) &
+			      ~(0xff << offset)) |
+			     (dmatimings[2] << offset), 4);
+	}
+	else if (mode >= ATA_WDMA0) {
+	    pci_write_config(gparent, 0x54,
+			     pci_read_config(gparent, 0x54, 1) &
+			      ~(0x01 << devno), 1);
+	    pci_write_config(gparent, 0x44,
+			     (pci_read_config(gparent, 0x44, 4) &
+			      ~(0xff << offset)) |
+			     (dmatimings[mode & ATA_MODE_MASK] << offset), 4);
+	}
+	else
+	    pci_write_config(gparent, 0x54,
+			     pci_read_config(gparent, 0x54, 1) &
+			     ~(0x01 << devno), 1);
+
+	pci_write_config(gparent, 0x40,
+			 (pci_read_config(gparent, 0x40, 4) &
+			  ~(0xff << offset)) |
+			 (piotimings[ata_mode2idx(mode)] << offset), 4);
+	atadev->mode = mode;
+    }
+}
