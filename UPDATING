@@ -12,6 +12,14 @@
 +         UPGRADING DRAGONFLY FROM 5.0 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+VARIOUS FORMER OPTIONS REMOVED
+------------------------------
+
+Various former kernel configuration options which had been no-ops for
+some time were completely removed: SYSVMSG, SYSVSEM, SYSVSHM, P1003_1B,
+_KPOSIX_VERSION and DSCHED_FQ. Users that have any of these still in
+their kernel configuration files have to remove them.
+
 BOOTSTRAPPING LIMITED FROM PRE 4.4
 ----------------------------------
 
