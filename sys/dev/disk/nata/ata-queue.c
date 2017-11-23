@@ -682,7 +682,7 @@ atawritereorder(struct ata_channel *ch)
     }
 }
 
-char *
+const char *
 ata_cmd2str(struct ata_request *request)
 {
     static char buffer[20];

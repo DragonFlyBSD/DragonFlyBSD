@@ -547,7 +547,7 @@ int ata_identify(device_t dev);
 void ata_default_registers(device_t dev);
 void ata_modify_if_48bit(struct ata_request *request);
 void ata_udelay(int interval);
-char *ata_mode2str(int mode);
+const char *ata_mode2str(int mode);
 void ata_print_cable(device_t dev, u_int8_t *who);
 int ata_atapi(device_t dev);
 int ata_pmode(struct ata_params *ap);
@@ -566,7 +566,7 @@ void ata_finish(struct ata_request *request);
 void ata_timeout(struct ata_request *);
 void ata_catch_inflight(device_t dev);
 void ata_fail_requests(device_t dev);
-char *ata_cmd2str(struct ata_request *request);
+const char *ata_cmd2str(struct ata_request *request);
 
 /* ata-lowlevel.c: */
 void ata_generic_hw(device_t dev);

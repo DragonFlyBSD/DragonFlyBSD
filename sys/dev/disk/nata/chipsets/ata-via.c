@@ -50,8 +50,7 @@ int
 ata_via_ident(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
-    struct ata_chip_id *idx;
-    static struct ata_chip_id ids[] =
+    static const struct ata_chip_id ids[] =
     {{ ATA_VIA82C586, 0x02, VIA33,  0x00,    ATA_UDMA2, "82C586B" },
      { ATA_VIA82C586, 0x00, VIA33,  0x00,    ATA_WDMA2, "82C586" },
      { ATA_VIA82C596, 0x12, VIA66,  VIACLK,  ATA_UDMA4, "82C596B" },
@@ -68,7 +67,7 @@ ata_via_ident(device_t dev)
      { ATA_VIA8237A,  0x00, VIA133, 0x00,    ATA_UDMA6, "8237A" },
      { ATA_VIA8251,   0x00, VIA133, 0x00,    ATA_UDMA6, "8251" },
      { 0, 0, 0, 0, 0, 0 }};
-    static struct ata_chip_id new_ids[] =
+    static const struct ata_chip_id new_ids[] =
     {{ ATA_VIA6410,   0x00, 0,      0x00,    ATA_UDMA6, "6410" },
      { ATA_VIA6420,   0x00, 7,      0x00,    ATA_SA150, "6420" },
      { ATA_VIA6421,   0x00, 6,      VIABAR,  ATA_SA150, "6421" },
@@ -76,21 +75,20 @@ ata_via_ident(device_t dev)
      { ATA_VIA8237S,  0x00, 7,      0x00,    ATA_SA150, "8237S" },
      { ATA_VIA8251,   0x00, 0,      VIAAHCI, ATA_SA300, "8251" },
      { 0, 0, 0, 0, 0, 0 }};
-    char buffer[64];
+
+    if (pci_get_vendor(dev) != ATA_VIA_ID)
+	return ENXIO;
 
     if (pci_get_devid(dev) == ATA_VIA82C571) {
-	if (!(idx = ata_find_chip(dev, ids, -99)))
+	if (!(ctlr->chip = ata_find_chip(dev, ids, -99)))
 	    return ENXIO;
     }
     else {
-	if (!(idx = ata_match_chip(dev, new_ids)))
+	if (!(ctlr->chip = ata_match_chip(dev, new_ids)))
 	    return ENXIO;
     }
 
-    ksprintf(buffer, "VIA %s %s controller",
-	    idx->text, ata_mode2str(idx->max_dma));
-    device_set_desc_copy(dev, buffer);
-    ctlr->chip = idx;
+    ata_set_desc(dev);
     ctlr->chipinit = ata_via_chipinit;
     return 0;
 }
@@ -231,10 +229,10 @@ ata_via_new_setmode(device_t dev, int mode)
     int error;
 
     if ((ctlr->chip->cfg2 & VIABAR) && (ch->unit > 1)) {
-	u_int8_t pio_timings[] = { 0xa8, 0x65, 0x65, 0x32, 0x20,
+	static const uint8_t pio_timings[] = { 0xa8, 0x65, 0x65, 0x32, 0x20,
 				   0x65, 0x32, 0x20,
 				   0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 };
-	u_int8_t dma_timings[] = { 0xee, 0xe8, 0xe6, 0xe4, 0xe2, 0xe1, 0xe0 };
+	static const uint8_t dma_timings[] = { 0xee, 0xe8, 0xe6, 0xe4, 0xe2, 0xe1, 0xe0 };
 
 	mode = ata_check_80pin(dev, ata_limit_mode(dev, mode, ATA_UDMA6));
 	error = ata_controlcmd(dev, ATA_SETFEATURES, ATA_SF_SETXFER, 0, mode);
@@ -257,20 +255,21 @@ ata_via_new_setmode(device_t dev, int mode)
 static void
 ata_via_old_setmode(device_t dev, int mode)
 {
-    device_t gparent = GRANDPARENT(dev);
-    struct ata_pci_controller *ctlr = device_get_softc(gparent);
-    struct ata_channel *ch = device_get_softc(device_get_parent(dev));
-    struct ata_device *atadev = device_get_softc(dev);
-    u_int8_t timings[] = { 0xa8, 0x65, 0x42, 0x22, 0x20, 0x42, 0x22, 0x20,
+	device_t gparent = GRANDPARENT(dev);
+	struct ata_pci_controller *ctlr = device_get_softc(gparent);
+	struct ata_channel *ch = device_get_softc(device_get_parent(dev));
+	struct ata_device *atadev = device_get_softc(dev);
+	int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
+	int reg = 0x53 - devno;
+	int error;
+	static const uint8_t timings[] =
+			 { 0xa8, 0x65, 0x42, 0x22, 0x20, 0x42, 0x22, 0x20,
 			   0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 };
-    int modes[][7] = {
-	{ 0xc2, 0xc1, 0xc0, 0x00, 0x00, 0x00, 0x00 },   /* VIA ATA33 */
-	{ 0xee, 0xec, 0xea, 0xe9, 0xe8, 0x00, 0x00 },   /* VIA ATA66 */
-	{ 0xf7, 0xf6, 0xf4, 0xf2, 0xf1, 0xf0, 0x00 },   /* VIA ATA100 */
-	{ 0xf7, 0xf7, 0xf6, 0xf4, 0xf2, 0xf1, 0xf0 } }; /* VIA ATA133 */
-    int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
-    int reg = 0x53 - devno;
-    int error;
+	static const uint8_t modes[][7] = {
+	    { 0xc2, 0xc1, 0xc0, 0x00, 0x00, 0x00, 0x00 },   /* VIA ATA33 */
+	    { 0xee, 0xec, 0xea, 0xe9, 0xe8, 0x00, 0x00 },   /* VIA ATA66 */
+	    { 0xf7, 0xf6, 0xf4, 0xf2, 0xf1, 0xf0, 0x00 },   /* VIA ATA100 */
+	    { 0xf7, 0xf7, 0xf6, 0xf4, 0xf2, 0xf1, 0xf0 } }; /* VIA ATA133 */
 
     mode = ata_limit_mode(dev, mode, ctlr->chip->max_dma);
     mode = ata_check_80pin(dev, mode);

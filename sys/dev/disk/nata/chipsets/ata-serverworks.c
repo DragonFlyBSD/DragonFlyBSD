@@ -42,8 +42,7 @@ int
 ata_serverworks_ident(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
-    struct ata_chip_id *idx;
-    static struct ata_chip_id ids[] =
+    static const struct ata_chip_id ids[] =
     {{ ATA_ROSB4,     0x00, SWKS_33,  0, ATA_UDMA2, "ROSB4" },
      { ATA_CSB5,      0x92, SWKS_100, 0, ATA_UDMA5, "CSB5" },
      { ATA_CSB5,      0x00, SWKS_66,  0, ATA_UDMA4, "CSB5" },
@@ -56,15 +55,14 @@ ata_serverworks_ident(device_t dev)
      { ATA_FRODO4,    0x00, SWKS_MIO, 4, ATA_SA150, "Frodo4" },
      { ATA_FRODO8,    0x00, SWKS_MIO, 8, ATA_SA150, "Frodo8" },
      { 0, 0, 0, 0, 0, 0}};
-    char buffer[64];
 
-    if (!(idx = ata_match_chip(dev, ids)))
+    if (pci_get_vendor(dev) != ATA_SERVERWORKS_ID)
 	return ENXIO;
 
-    ksprintf(buffer, "ServerWorks %s %s controller",
-	    idx->text, ata_mode2str(idx->max_dma));
-    device_set_desc_copy(dev, buffer);
-    ctlr->chip = idx;
+    if (!(ctlr->chip = ata_match_chip(dev, ids)))
+	return ENXIO;
+
+    ata_set_desc(dev);
     ctlr->chipinit = ata_serverworks_chipinit;
     return 0;
 }
@@ -172,9 +170,10 @@ ata_serverworks_setmode(device_t dev, int mode)
     int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
     int offset = (devno ^ 0x01) << 3;
     int error;
-    u_int8_t piotimings[] = { 0x5d, 0x47, 0x34, 0x22, 0x20, 0x34, 0x22, 0x20,
+    static const uint8_t piotimings[] =
+			    { 0x5d, 0x47, 0x34, 0x22, 0x20, 0x34, 0x22, 0x20,
 			      0x20, 0x20, 0x20, 0x20, 0x20, 0x20 };
-    u_int8_t dmatimings[] = { 0x77, 0x21, 0x20 };
+    static const uint8_t dmatimings[] = { 0x77, 0x21, 0x20 };
 
     mode = ata_limit_mode(dev, mode, ctlr->chip->max_dma);
 

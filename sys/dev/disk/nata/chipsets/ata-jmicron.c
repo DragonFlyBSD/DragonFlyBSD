@@ -38,8 +38,8 @@ int
 ata_jmicron_ident(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
-    struct ata_chip_id *idx;
-    static struct ata_chip_id ids[] =
+    const struct ata_chip_id *idx;
+    static const struct ata_chip_id ids[] =
     {{ ATA_JMB360, 0, 1, 0, ATA_SA300, "JMB360" },
      { ATA_JMB361, 0, 1, 1, ATA_SA300, "JMB361" },
      { ATA_JMB363, 0, 2, 1, ATA_SA300, "JMB363" },
@@ -48,6 +48,9 @@ ata_jmicron_ident(device_t dev)
      { ATA_JMB368, 0, 0, 1, ATA_UDMA6, "JMB368" },
      { 0, 0, 0, 0, 0, 0}};
     char buffer[64];
+
+    if (pci_get_vendor(dev) != ATA_JMICRON_ID)
+	return ENXIO;
 
     if (!(idx = ata_match_chip(dev, ids)))
         return ENXIO;

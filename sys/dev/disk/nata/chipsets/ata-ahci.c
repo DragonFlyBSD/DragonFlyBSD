@@ -38,7 +38,7 @@ int
 ata_ahci_ident(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
-    static struct ata_chip_id id = {0, 0, 0, 0x00, ATA_SA300, "AHCI"};
+    static const struct ata_chip_id id = {0, 0, 0, 0x00, ATA_SA300, "AHCI"};
     char buffer[64];
 
     if (pci_read_config(dev, PCIR_PROGIF, 1) != PCIP_STORAGE_SATA_AHCI_1_0)

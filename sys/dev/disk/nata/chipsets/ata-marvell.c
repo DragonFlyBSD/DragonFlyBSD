@@ -68,8 +68,7 @@ int
 ata_marvell_ident(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
-    struct ata_chip_id *idx;
-    static struct ata_chip_id ids[] =
+    static const struct ata_chip_id ids[] =
     {{ ATA_M88SX5040, 0, 4, MV_50XX, ATA_SA150, "88SX5040" },
      { ATA_M88SX5041, 0, 4, MV_50XX, ATA_SA150, "88SX5041" },
      { ATA_M88SX5080, 0, 8, MV_50XX, ATA_SA150, "88SX5080" },
@@ -79,15 +78,15 @@ ata_marvell_ident(device_t dev)
      { ATA_M88SX6101, 0, 1, MV_61XX, ATA_UDMA6, "88SX6101" },
      { ATA_M88SX6145, 0, 2, MV_61XX, ATA_UDMA6, "88SX6145" },
      { 0, 0, 0, 0, 0, 0}};
-    char buffer[64];
 
-    if (!(idx = ata_match_chip(dev, ids)))
+    if (pci_get_vendor(dev) != ATA_MARVELL_ID)
 	return ENXIO;
 
-    ksprintf(buffer, "Marvell %s %s controller",
-	    idx->text, ata_mode2str(idx->max_dma));
-    device_set_desc_copy(dev, buffer);
-    ctlr->chip = idx;
+    if (!(ctlr->chip = ata_match_chip(dev, ids)))
+	return ENXIO;
+
+    ata_set_desc(dev);
+
     switch (ctlr->chip->cfg2) {
     case MV_50XX:
     case MV_60XX:

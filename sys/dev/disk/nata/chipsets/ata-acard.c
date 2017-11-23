@@ -43,23 +43,21 @@ int
 ata_acard_ident(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
-    struct ata_chip_id *idx;
-    static struct ata_chip_id ids[] =
+    static const struct ata_chip_id ids[] =
     {{ ATA_ATP850R, 0, ATP_OLD, 0x00, ATA_UDMA2, "ATP850" },
      { ATA_ATP860A, 0, 0,       0x00, ATA_UDMA4, "ATP860A" },
      { ATA_ATP860R, 0, 0,       0x00, ATA_UDMA4, "ATP860R" },
      { ATA_ATP865A, 0, 0,       0x00, ATA_UDMA6, "ATP865A" },
      { ATA_ATP865R, 0, 0,       0x00, ATA_UDMA6, "ATP865R" },
      { 0, 0, 0, 0, 0, 0}};
-    char buffer[64];
 
-    if (!(idx = ata_match_chip(dev, ids)))
+    if (pci_get_vendor(dev) != ATA_ACARD_ID)
 	return ENXIO;
 
-    ksprintf(buffer, "Acard %s %s controller",
-	    idx->text, ata_mode2str(idx->max_dma));
-    device_set_desc_copy(dev, buffer);
-    ctlr->chip = idx;
+    if (!(ctlr->chip = ata_match_chip(dev, ids)))
+	return ENXIO;
+
+    ata_set_desc(dev);
     ctlr->chipinit = ata_acard_chipinit;
     return 0;
 }

@@ -62,14 +62,16 @@ ata_cyrix_chipinit(device_t dev)
 static void
 ata_cyrix_setmode(device_t dev, int mode)
 {
-    struct ata_channel *ch = device_get_softc(device_get_parent(dev));
-    struct ata_device *atadev = device_get_softc(dev);
-    int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
-    u_int32_t piotiming[] =
-	{ 0x00009172, 0x00012171, 0x00020080, 0x00032010, 0x00040010 };
-    u_int32_t dmatiming[] = { 0x00077771, 0x00012121, 0x00002020 };
-    u_int32_t udmatiming[] = { 0x00921250, 0x00911140, 0x00911030 };
-    int error;
+	struct ata_channel *ch = device_get_softc(device_get_parent(dev));
+	struct ata_device *atadev = device_get_softc(dev);
+	int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
+	int error;
+	static const uint32_t piotiming[] =
+	    { 0x00009172, 0x00012171, 0x00020080, 0x00032010, 0x00040010 };
+	static const uint32_t dmatiming[] =
+	    { 0x00077771, 0x00012121, 0x00002020 };
+	static const uint32_t udmatiming[] =
+	    { 0x00921250, 0x00911140, 0x00911030 };
 
     ch->dma->alignment = 16;
     ch->dma->max_iosize = 126 * DEV_BSIZE;

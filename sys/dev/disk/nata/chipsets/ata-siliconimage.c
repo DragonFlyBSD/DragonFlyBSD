@@ -55,8 +55,7 @@ int
 ata_sii_ident(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
-    struct ata_chip_id *idx;
-    static struct ata_chip_id ids[] =
+    static const struct ata_chip_id ids[] =
     {{ ATA_SII3114,   0x00, SII_MEMIO, SII_4CH,    ATA_SA150, "SiI 3114" },
      { ATA_SII3512,   0x02, SII_MEMIO, 0,          ATA_SA150, "SiI 3512" },
      { ATA_SII3112,   0x02, SII_MEMIO, 0,          ATA_SA150, "SiI 3112" },
@@ -72,14 +71,14 @@ ata_sii_ident(device_t dev)
      { ATA_CMD646,    0x07, 0,         0,          ATA_UDMA2, "CMD 646U2" },
      { ATA_CMD646,    0x00, 0,         0,          ATA_WDMA2, "CMD 646" },
      { 0, 0, 0, 0, 0, 0}};
-    char buffer[64];
 
-    if (!(idx = ata_match_chip(dev, ids)))
+    if (pci_get_vendor(dev) != ATA_SILICON_IMAGE_ID)
 	return ENXIO;
 
-    ksprintf(buffer, "%s %s controller", idx->text, ata_mode2str(idx->max_dma));
-    device_set_desc_copy(dev, buffer);
-    ctlr->chip = idx;
+    if (!(ctlr->chip = ata_match_chip(dev, ids)))
+	return ENXIO;
+
+    ata_set_desc(dev);
     ctlr->chipinit = ata_sii_chipinit;
     return 0;
 }
@@ -222,6 +221,14 @@ ata_cmd_setmode(device_t dev, int mode)
     struct ata_device *atadev = device_get_softc(dev);
     int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
     int error;
+	int treg = 0x54 + ((devno < 3) ? (devno << 1) : 7);
+	int ureg = ch->unit ? 0x7b : 0x73;
+	static const uint8_t piotimings[] =
+	    { 0xa9, 0x57, 0x44, 0x32, 0x3f };
+	static const uint8_t dmatimings[] = { 0x87, 0x32, 0x3f };
+	static const uint8_t udmatimings[][2] =
+	    { { 0x31,  0xc2 }, { 0x21,  0x82 }, { 0x11,  0x42 },
+	      { 0x25,  0x8a }, { 0x15,  0x4a }, { 0x05,  0x0a } };
 
     mode = ata_limit_mode(dev, mode, ctlr->chip->max_dma);
 
@@ -234,14 +241,7 @@ ata_cmd_setmode(device_t dev, int mode)
 		      (error) ? "FAILURE " : "",
 		      ata_mode2str(mode), ctlr->chip->text);
     if (!error) {
-	int treg = 0x54 + ((devno < 3) ? (devno << 1) : 7);
-	int ureg = ch->unit ? 0x7b : 0x73;
-
 	if (mode >= ATA_UDMA0) {
-	    int udmatimings[][2] = { { 0x31,  0xc2 }, { 0x21,  0x82 },
-				     { 0x11,  0x42 }, { 0x25,  0x8a },
-				     { 0x15,  0x4a }, { 0x05,  0x0a } };
-
 	    u_int8_t umode = pci_read_config(gparent, ureg, 1);
 
 	    umode &= ~(atadev->unit == ATA_MASTER ? 0x35 : 0xca);
@@ -249,15 +249,12 @@ ata_cmd_setmode(device_t dev, int mode)
 	    pci_write_config(gparent, ureg, umode, 1);
 	}
 	else if (mode >= ATA_WDMA0) {
-	    int dmatimings[] = { 0x87, 0x32, 0x3f };
-
 	    pci_write_config(gparent, treg, dmatimings[mode & ATA_MODE_MASK],1);
 	    pci_write_config(gparent, ureg,
 			     pci_read_config(gparent, ureg, 1) &
 			     ~(atadev->unit == ATA_MASTER ? 0x35 : 0xca), 1);
 	}
 	else {
-	   int piotimings[] = { 0xa9, 0x57, 0x44, 0x32, 0x3f };
 	    pci_write_config(gparent, treg,
 			     piotimings[(mode & ATA_MODE_MASK) - ATA_PIO0], 1);
 	    pci_write_config(gparent, ureg,
@@ -345,15 +342,23 @@ ata_sii_reset(device_t dev)
 static void
 ata_sii_setmode(device_t dev, int mode)
 {
-    device_t gparent = GRANDPARENT(dev);
-    struct ata_pci_controller *ctlr = device_get_softc(gparent);
-    struct ata_channel *ch = device_get_softc(device_get_parent(dev));
-    struct ata_device *atadev = device_get_softc(dev);
-    int rego = (ch->unit << 4) + (ATA_DEV(atadev->unit) << 1);
-    int mreg = ch->unit ? 0x84 : 0x80;
-    int mask = 0x03 << (ATA_DEV(atadev->unit) << 2);
-    int mval = pci_read_config(gparent, mreg, 1) & ~mask;
-    int error;
+	device_t gparent = GRANDPARENT(dev);
+	struct ata_pci_controller *ctlr = device_get_softc(gparent);
+	struct ata_channel *ch = device_get_softc(device_get_parent(dev));
+	struct ata_device *atadev = device_get_softc(dev);
+	int rego = (ch->unit << 4) + (ATA_DEV(atadev->unit) << 1);
+	int mreg = ch->unit ? 0x84 : 0x80;
+	int mask = 0x03 << (ATA_DEV(atadev->unit) << 2);
+	int mval = pci_read_config(gparent, mreg, 1) & ~mask;
+	int error;
+	u_int8_t preg = 0xa4 + rego;
+	u_int8_t dreg = 0xa8 + rego;
+	u_int8_t ureg = 0xac + rego;
+	static const uint16_t piotimings[] =
+	    { 0x328a, 0x2283, 0x1104, 0x10c3, 0x10c1 };
+	static const uint16_t dmatimings[] = { 0x2208, 0x10c2, 0x10c1 };
+	static const uint8_t udmatimings[] =
+	    { 0xf, 0xb, 0x7, 0x5, 0x3, 0x2, 0x1 };
 
     mode = ata_limit_mode(dev, mode, ctlr->chip->max_dma);
 
@@ -377,9 +382,6 @@ ata_sii_setmode(device_t dev, int mode)
 	return;
 
     if (mode >= ATA_UDMA0) {
-	u_int8_t udmatimings[] = { 0xf, 0xb, 0x7, 0x5, 0x3, 0x2, 0x1 };
-	u_int8_t ureg = 0xac + rego;
-
 	pci_write_config(gparent, mreg,
 			 mval | (0x03 << (ATA_DEV(atadev->unit) << 2)), 1);
 	pci_write_config(gparent, ureg,
@@ -388,18 +390,12 @@ ata_sii_setmode(device_t dev, int mode)
 
     }
     else if (mode >= ATA_WDMA0) {
-	u_int8_t dreg = 0xa8 + rego;
-	u_int16_t dmatimings[] = { 0x2208, 0x10c2, 0x10c1 };
-
 	pci_write_config(gparent, mreg,
 			 mval | (0x02 << (ATA_DEV(atadev->unit) << 2)), 1);
 	pci_write_config(gparent, dreg, dmatimings[mode & ATA_MODE_MASK], 2);
 
     }
     else {
-	u_int8_t preg = 0xa4 + rego;
-	u_int16_t piotimings[] = { 0x328a, 0x2283, 0x1104, 0x10c3, 0x10c1 };
-
 	pci_write_config(gparent, mreg,
 			 mval | (0x01 << (ATA_DEV(atadev->unit) << 2)), 1);
 	pci_write_config(gparent, preg, piotimings[mode & ATA_MODE_MASK], 2);

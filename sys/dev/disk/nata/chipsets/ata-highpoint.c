@@ -44,8 +44,8 @@ int
 ata_highpoint_ident(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
-    struct ata_chip_id *idx;
-    static struct ata_chip_id ids[] =
+    const struct ata_chip_id *idx;
+    static const struct ata_chip_id ids[] =
     {{ ATA_HPT374, 0x07, HPT_374, 0x00,    ATA_UDMA6, "HPT374" },
      { ATA_HPT372, 0x02, HPT_372, 0x00,    ATA_UDMA6, "HPT372N" },
      { ATA_HPT372, 0x01, HPT_372, 0x00,    ATA_UDMA6, "HPT372" },
@@ -57,6 +57,9 @@ ata_highpoint_ident(device_t dev)
      { ATA_HPT302, 0x01, HPT_372, 0x00,    ATA_UDMA6, "HPT302" },
      { 0, 0, 0, 0, 0, 0}};
     char buffer[64];
+
+    if (pci_get_vendor(dev) != ATA_HIGHPOINT_ID)
+        return ENXIO;
 
     if (!(idx = ata_match_chip(dev, ids)))
 	return ENXIO;
@@ -124,14 +127,14 @@ ata_highpoint_allocate(device_t dev)
 static void
 ata_highpoint_setmode(device_t dev, int mode)
 {
-    device_t gparent = GRANDPARENT(dev);
-    struct ata_pci_controller *ctlr = device_get_softc(gparent);
-    struct ata_channel *ch = device_get_softc(device_get_parent(dev));
-    struct ata_device *atadev = device_get_softc(dev);
-    int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
-    int error;
-    u_int32_t timings33[][4] = {
-    /*    HPT366      HPT370      HPT372      HPT374               mode */
+	device_t gparent = GRANDPARENT(dev);
+	struct ata_pci_controller *ctlr = device_get_softc(gparent);
+	struct ata_channel *ch = device_get_softc(device_get_parent(dev));
+	struct ata_device *atadev = device_get_softc(dev);
+	int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
+	int error;
+	static const uint32_t timings33[][4] = {
+	/*    HPT366      HPT370      HPT372      HPT374           mode */
 	{ 0x40d0a7aa, 0x06914e57, 0x0d029d5e, 0x0ac1f48a },     /* PIO 0 */
 	{ 0x40d0a7a3, 0x06914e43, 0x0d029d26, 0x0ac1f465 },     /* PIO 1 */
 	{ 0x40d0a753, 0x06514e33, 0x0c829ca6, 0x0a81f454 },     /* PIO 2 */
@@ -147,7 +150,7 @@ ata_highpoint_setmode(device_t dev, int mode)
 	{ 0x10c9a731, 0x16454e31, 0x1c8a9c62, 0x12ac8242 },     /* UDMA 4 */
 	{ 0,          0x16454e31, 0x1c8a9c62, 0x12848242 },     /* UDMA 5 */
 	{ 0,          0,          0x1c869c62, 0x12808242 }      /* UDMA 6 */
-    };
+	};
 
     mode = ata_limit_mode(dev, mode, ctlr->chip->max_dma);
 

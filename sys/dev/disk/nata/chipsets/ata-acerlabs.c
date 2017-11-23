@@ -43,8 +43,7 @@ int
 ata_ali_ident(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
-    struct ata_chip_id *idx;
-    static struct ata_chip_id ids[] =
+    static const struct ata_chip_id ids[] =
     {{ ATA_ALI_5289, 0x00, 2, ALI_SATA, ATA_SA150, "M5289" },
      { ATA_ALI_5288, 0x00, 4, ALI_SATA, ATA_SA300, "M5288" },
      { ATA_ALI_5287, 0x00, 4, ALI_SATA, ATA_SA150, "M5287" },
@@ -55,15 +54,14 @@ ata_ali_ident(device_t dev)
      { ATA_ALI_5229, 0x20, 0, ALI_OLD,  ATA_UDMA2, "M5229" },
      { ATA_ALI_5229, 0x00, 0, ALI_OLD,  ATA_WDMA2, "M5229" },
      { 0, 0, 0, 0, 0, 0}};
-    char buffer[64];
 
-    if (!(idx = ata_match_chip(dev, ids)))
+    if (pci_get_vendor(dev) != ATA_ACER_LABS_ID)
 	return ENXIO;
 
-    ksprintf(buffer, "AcerLabs %s %s controller",
-	    idx->text, ata_mode2str(idx->max_dma));
-    device_set_desc_copy(dev, buffer);
-    ctlr->chip = idx;
+    if (!(ctlr->chip = ata_match_chip(dev, ids)))
+	return ENXIO;
+
+    ata_set_desc(dev);
     ctlr->chipinit = ata_ali_chipinit;
     return 0;
 }
@@ -220,12 +218,18 @@ ata_ali_reset(device_t dev)
 static void
 ata_ali_setmode(device_t dev, int mode)
 {
-    device_t gparent = GRANDPARENT(dev);
-    struct ata_pci_controller *ctlr = device_get_softc(gparent);
-    struct ata_channel *ch = device_get_softc(device_get_parent(dev));
-    struct ata_device *atadev = device_get_softc(dev);
-    int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
-    int error;
+	device_t gparent = GRANDPARENT(dev);
+	struct ata_pci_controller *ctlr = device_get_softc(gparent);
+	struct ata_channel *ch = device_get_softc(device_get_parent(dev));
+	struct ata_device *atadev = device_get_softc(dev);
+	int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
+	int error;
+	static const uint32_t piotimings[] =
+		{ 0x006d0003, 0x00580002, 0x00440001, 0x00330001,
+		  0x00310001, 0x00440001, 0x00330001, 0x00310001};
+	static const uint8_t udma[] =
+		{0x0c, 0x0b, 0x0a, 0x09, 0x08, 0x0f, 0x0d};
+	uint32_t word54;
 
     mode = ata_limit_mode(dev, mode, ctlr->chip->max_dma);
 
@@ -257,8 +261,7 @@ ata_ali_setmode(device_t dev, int mode)
 		   ata_mode2str(mode), ctlr->chip->text);
     if (!error) {
 	if (mode >= ATA_UDMA0) {
-	    u_int8_t udma[] = {0x0c, 0x0b, 0x0a, 0x09, 0x08, 0x0f, 0x0d};
-	    u_int32_t word54 = pci_read_config(gparent, 0x54, 4);
+	    word54 = pci_read_config(gparent, 0x54, 4);
 
 	    word54 &= ~(0x000f000f << (devno << 2));
 	    word54 |= (((udma[mode&ATA_MODE_MASK]<<16)|0x05)<<(devno<<2));
@@ -267,10 +270,6 @@ ata_ali_setmode(device_t dev, int mode)
 			     0x00310001, 4);
 	}
 	else {
-	    u_int32_t piotimings[] =
-		{ 0x006d0003, 0x00580002, 0x00440001, 0x00330001,
-		  0x00310001, 0x00440001, 0x00330001, 0x00310001};
-
 	    pci_write_config(gparent, 0x54, pci_read_config(gparent, 0x54, 4) &
 					    ~(0x0008000f << (devno << 2)), 4);
 	    pci_write_config(gparent, 0x58 + (ch->unit << 2),

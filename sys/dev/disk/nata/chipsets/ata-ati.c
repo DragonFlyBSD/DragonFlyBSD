@@ -39,8 +39,7 @@ int
 ata_ati_ident(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
-    struct ata_chip_id *idx;
-    static struct ata_chip_id ids[] =
+    static const struct ata_chip_id ids[] =
     {{ ATA_ATI_IXP200,    0x00, 0,        0, ATA_UDMA5, "IXP200" },
      { ATA_ATI_IXP300,    0x00, 0,        0, ATA_UDMA6, "IXP300" },
      { ATA_ATI_IXP300_S1, 0x00, SII_MEMIO, 0, ATA_SA150, "IXP300" },
@@ -51,15 +50,14 @@ ata_ati_ident(device_t dev)
      { ATA_ATI_IXP600_S1, 0x00, ATI_AHCI, 0, ATA_SA300, "IXP600" },
      { ATA_ATI_IXP600_S2, 0x00, ATI_AHCI, 0, ATA_SA300, "IXP600" },
      { 0, 0, 0, 0, 0, 0}};
-    char buffer[64];
 
-    if (!(idx = ata_match_chip(dev, ids)))
+    if (pci_get_vendor(dev) != ATA_ATI_ID)
 	return ENXIO;
 
-    ksprintf(buffer, "ATI %s %s controller",
-	    idx->text, ata_mode2str(idx->max_dma));
-    device_set_desc_copy(dev, buffer);
-    ctlr->chip = idx;
+    if (!(ctlr->chip = ata_match_chip(dev, ids)))
+	return ENXIO;
+
+    ata_set_desc(dev);
 
     /*
      * The ATI SATA controllers are actually a SiI 3112 controller, except
@@ -97,16 +95,17 @@ ata_ati_chipinit(device_t dev)
 static void
 ata_ati_setmode(device_t dev, int mode)
 {
-    device_t gparent = GRANDPARENT(dev);
-    struct ata_pci_controller *ctlr = device_get_softc(gparent);
-    struct ata_channel *ch = device_get_softc(device_get_parent(dev));
-    struct ata_device *atadev = device_get_softc(dev);
-    int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
-    int offset = (devno ^ 0x01) << 3;
-    int error;
-    u_int8_t piotimings[] = { 0x5d, 0x47, 0x34, 0x22, 0x20, 0x34, 0x22, 0x20,
+	device_t gparent = GRANDPARENT(dev);
+	struct ata_pci_controller *ctlr = device_get_softc(gparent);
+	struct ata_channel *ch = device_get_softc(device_get_parent(dev));
+	struct ata_device *atadev = device_get_softc(dev);
+	int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
+	int offset = (devno ^ 0x01) << 3;
+	int error;
+	static const uint8_t piotimings[] =
+			    { 0x5d, 0x47, 0x34, 0x22, 0x20, 0x34, 0x22, 0x20,
 			      0x20, 0x20, 0x20, 0x20, 0x20, 0x20 };
-    u_int8_t dmatimings[] = { 0x77, 0x21, 0x20 };
+	static const uint8_t dmatimings[] = { 0x77, 0x21, 0x20 };
 
     mode = ata_limit_mode(dev, mode, ctlr->chip->max_dma);
 

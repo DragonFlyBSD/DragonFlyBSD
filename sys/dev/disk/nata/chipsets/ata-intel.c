@@ -46,8 +46,7 @@ int
 ata_intel_ident(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
-    struct ata_chip_id *idx;
-    static struct ata_chip_id ids[] =
+    static const struct ata_chip_id ids[] =
     {{ ATA_I82371FB,     0,          0, 0, ATA_WDMA2, "PIIX" },
      { ATA_I82371SB,     0,          0, 0, ATA_WDMA2, "PIIX3" },
      { ATA_I82371AB,     0,          0, 0, ATA_UDMA2, "PIIX4" },
@@ -99,15 +98,14 @@ ata_intel_ident(device_t dev)
      { ATA_I82801IB_AH6, 0, INTEL_AHCI, 0, ATA_SA300, "ICH9" },
      { ATA_I31244,       0,          0, 0, ATA_SA150, "31244" },
      { 0, 0, 0, 0, 0, 0}};
-    char buffer[64];
 
-    if (!(idx = ata_match_chip(dev, ids)))
+    if (pci_get_vendor(dev) != ATA_INTEL_ID)
 	return ENXIO;
 
-    ksprintf(buffer, "Intel %s %s controller",
-	    idx->text, ata_mode2str(idx->max_dma));
-    device_set_desc_copy(dev, buffer);
-    ctlr->chip = idx;
+    if (!(ctlr->chip = ata_match_chip(dev, ids)))
+	return ENXIO;
+
+    ata_set_desc(dev);
     ctlr->chipinit = ata_intel_chipinit;
     return 0;
 }
@@ -262,7 +260,8 @@ ata_intel_new_setmode(device_t dev, int mode)
     u_int32_t mask40 = 0, new40 = 0;
     u_int8_t mask44 = 0, new44 = 0;
     int error;
-    u_int8_t timings[] = { 0x00, 0x00, 0x10, 0x21, 0x23, 0x10, 0x21, 0x23,
+	static const uint8_t timings[] =
+			 { 0x00, 0x00, 0x10, 0x21, 0x23, 0x10, 0x21, 0x23,
 			   0x23, 0x23, 0x23, 0x23, 0x23, 0x23, 0x23 };
 			/* PIO0  PIO1  PIO2  PIO3  PIO4  WDMA0 WDMA1 WDMA2 */
 			/* UDMA0 UDMA1 UDMA2 UDMA3 UDMA4 UDMA5 UDMA6 */

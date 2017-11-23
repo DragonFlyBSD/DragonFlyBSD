@@ -39,22 +39,20 @@ int
 ata_amd_ident(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
-    struct ata_chip_id *idx;
-    static struct ata_chip_id ids[] =
+    static const struct ata_chip_id ids[] =
     {{ ATA_AMD756,  0x00, 0x00,              0, ATA_UDMA4, "756" },
      { ATA_AMD766,  0x00, AMD_CABLE|AMD_BUG, 0, ATA_UDMA5, "766" },
      { ATA_AMD768,  0x00, AMD_CABLE,         0, ATA_UDMA5, "768" },
      { ATA_AMD8111, 0x00, AMD_CABLE,         0, ATA_UDMA6, "8111" },
      { 0, 0, 0, 0, 0, 0}};
-    char buffer[64];
 
-    if (!(idx = ata_match_chip(dev, ids)))
+    if (pci_get_vendor(dev) != ATA_AMD_ID)
 	return ENXIO;
 
-    ksprintf(buffer, "AMD %s %s controller",
-	    idx->text, ata_mode2str(idx->max_dma));
-    device_set_desc_copy(dev, buffer);
-    ctlr->chip = idx;
+    if (!(ctlr->chip = ata_match_chip(dev, ids)))
+	return ENXIO;
+
+    ata_set_desc(dev);
     ctlr->chipinit = ata_amd_chipinit;
     return 0;
 }
@@ -80,16 +78,18 @@ ata_amd_chipinit(device_t dev)
 static void
 ata_amd_setmode(device_t dev, int mode)
 {
-    device_t gparent = GRANDPARENT(dev);
-    struct ata_pci_controller *ctlr = device_get_softc(gparent);
-    struct ata_channel *ch = device_get_softc(device_get_parent(dev));
-    struct ata_device *atadev = device_get_softc(dev);
-    u_int8_t timings[] = { 0xa8, 0x65, 0x42, 0x22, 0x20, 0x42, 0x22, 0x20,
+	device_t gparent = GRANDPARENT(dev);
+	struct ata_pci_controller *ctlr = device_get_softc(gparent);
+	struct ata_channel *ch = device_get_softc(device_get_parent(dev));
+	struct ata_device *atadev = device_get_softc(dev);
+	int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
+	static const uint8_t timings[] =
+			 { 0xa8, 0x65, 0x42, 0x22, 0x20, 0x42, 0x22, 0x20,
 			   0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 };
-    int modes[7] = { 0xc2, 0xc1, 0xc0, 0xc4, 0xc5, 0xc6, 0xc7 };
-    int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
-    int reg = 0x53 - devno;
-    int error;
+	static const uint8_t modes[] =
+	    { 0xc2, 0xc1, 0xc0, 0xc4, 0xc5, 0xc6, 0xc7 };
+	int reg = 0x53 - devno;
+	int error;
 
     mode = ata_limit_mode(dev, mode, ctlr->chip->max_dma);
 

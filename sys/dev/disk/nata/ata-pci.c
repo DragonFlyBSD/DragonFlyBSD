@@ -625,8 +625,20 @@ ata_teardown_interrupt(device_t dev)
     }
 }
 
-struct ata_chip_id *
-ata_match_chip(device_t dev, struct ata_chip_id *index)
+void
+ata_set_desc(device_t dev)
+{
+    struct ata_pci_controller *ctlr = device_get_softc(dev);
+    char buffer[64];
+
+    ksprintf(buffer, "%s %s %s controller",
+	     ata_pcivendor2str(dev), ctlr->chip->text,
+	     ata_mode2str(ctlr->chip->max_dma));
+    device_set_desc_copy(dev, buffer);
+}
+
+const struct ata_chip_id *
+ata_match_chip(device_t dev, const struct ata_chip_id *index)
 {
     while (index->chipid != 0) {
 	if (pci_get_devid(dev) == index->chipid &&
@@ -637,14 +649,14 @@ ata_match_chip(device_t dev, struct ata_chip_id *index)
     return NULL;
 }
 
-struct ata_chip_id *
-ata_find_chip(device_t dev, struct ata_chip_id *index, int slot)
+const struct ata_chip_id *
+ata_find_chip(device_t dev, const struct ata_chip_id *index, int slot)
 {
     device_t *children;
     int nchildren, i;
 
     if (device_get_children(device_get_parent(dev), &children, &nchildren))
-	return 0;
+	return NULL;
 
     while (index->chipid != 0) {
 	for (i = 0; i < nchildren; i++) {
@@ -674,7 +686,7 @@ ata_check_80pin(device_t dev, int mode)
     return mode;
 }
 
-char *
+const char *
 ata_pcivendor2str(device_t dev)
 {
     switch (pci_get_vendor(dev)) {

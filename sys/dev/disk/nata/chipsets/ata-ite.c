@@ -35,20 +35,18 @@ int
 ata_ite_ident(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
-    struct ata_chip_id *idx;
-    static struct ata_chip_id ids[] =
+    static const struct ata_chip_id ids[] =
     {{ ATA_IT8212F, 0x00, 0x00, 0x00, ATA_UDMA6, "IT8212F" },
      { ATA_IT8211F, 0x00, 0x00, 0x00, ATA_UDMA6, "IT8211F" },
      { 0, 0, 0, 0, 0, 0}};
-    char buffer[64];
 
-    if (!(idx = ata_match_chip(dev, ids)))
+    if (pci_get_vendor(dev) != ATA_ITE_ID)
 	return ENXIO;
 
-    ksprintf(buffer, "ITE %s %s controller",
-	    idx->text, ata_mode2str(idx->max_dma));
-    device_set_desc_copy(dev, buffer);
-    ctlr->chip = idx;
+    if (!(ctlr->chip = ata_match_chip(dev, ids)))
+	return ENXIO;
+
+    ata_set_desc(dev);
     ctlr->chipinit = ata_ite_chipinit;
     return 0;
 }
@@ -80,6 +78,10 @@ ata_ite_setmode(device_t dev, int mode)
     struct ata_device *atadev = device_get_softc(dev);
     int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
     int error;
+	static const uint8_t udmatiming[] =
+		{ 0x44, 0x42, 0x31, 0x21, 0x11, 0xa2, 0x91 };
+	static const uint8_t chtiming[] =
+		{ 0xaa, 0xa3, 0xa1, 0x33, 0x31, 0x88, 0x32, 0x31 };
 
     /* correct the mode for what the HW supports */
     mode = ata_limit_mode(dev, mode, ATA_UDMA6);
@@ -101,9 +103,6 @@ ata_ite_setmode(device_t dev, int mode)
     /* if the device accepted the mode change, setup the HW accordingly */
     if (!error) {
 	if (mode >= ATA_UDMA0) {
-	    u_int8_t udmatiming[] =
-		{ 0x44, 0x42, 0x31, 0x21, 0x11, 0xa2, 0x91 };
-
 	    /* enable UDMA mode */
 	    pci_write_config(gparent, 0x50,
 			     pci_read_config(gparent, 0x50, 1) &
@@ -115,9 +114,6 @@ ata_ite_setmode(device_t dev, int mode)
 			     udmatiming[mode & ATA_MODE_MASK], 1);
 	}
 	else {
-	    u_int8_t chtiming[] =
-		{ 0xaa, 0xa3, 0xa1, 0x33, 0x31, 0x88, 0x32, 0x31 };
-
 	    /* disable UDMA mode */
 	    pci_write_config(gparent, 0x50,
 			     pci_read_config(gparent, 0x50, 1) |

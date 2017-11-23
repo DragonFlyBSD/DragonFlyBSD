@@ -38,7 +38,7 @@ struct ata_chip_id {
     int                 cfg1;
     int                 cfg2;
     u_int8_t            max_dma;
-    char                *text;
+    const char          *text;
 };
 
 /* structure describing a PCI ATA controller */
@@ -52,7 +52,7 @@ struct ata_pci_controller {
     struct resource     *r_res2;
     struct resource     *r_irq;
     void                *handle;
-    struct ata_chip_id  *chip;
+    const struct ata_chip_id *chip;
     int			legacy;
     int                 channels;
     int                 (*chipinit)(device_t);
@@ -395,13 +395,14 @@ int ata_pci_allocate(device_t dev);
 int ata_pci_status(device_t dev);
 void ata_pci_hw(device_t dev);
 void ata_pci_dmainit(device_t);
-char *ata_pcivendor2str(device_t dev);
+const char *ata_pcivendor2str(device_t dev);
 int ata_legacy(device_t);
 void ata_generic_intr(void *data);
 int ata_setup_interrupt(device_t dev);
 void ata_teardown_interrupt(device_t dev);
-struct ata_chip_id *ata_match_chip(device_t dev, struct ata_chip_id *index);
-struct ata_chip_id *ata_find_chip(device_t dev, struct ata_chip_id *index, int slot);
+void ata_set_desc(device_t dev);
+const struct ata_chip_id *ata_match_chip(device_t dev, const struct ata_chip_id *index);
+const struct ata_chip_id *ata_find_chip(device_t dev, const struct ata_chip_id *index, int slot);
 int ata_check_80pin(device_t dev, int mode);
 int ata_mode2idx(int mode);
 

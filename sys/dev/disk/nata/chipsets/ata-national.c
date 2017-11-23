@@ -64,12 +64,14 @@ ata_national_setmode(device_t dev, int mode)
     struct ata_channel *ch = device_get_softc(device_get_parent(dev));
     struct ata_device *atadev = device_get_softc(dev);
     int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
-    u_int32_t piotiming[] =
-	{ 0x9172d132, 0x21717121, 0x00803020, 0x20102010, 0x00100010,
-	  0x00803020, 0x20102010, 0x00100010,
-	  0x00100010, 0x00100010, 0x00100010 };
-    u_int32_t dmatiming[] = { 0x80077771, 0x80012121, 0x80002020 };
-    u_int32_t udmatiming[] = { 0x80921250, 0x80911140, 0x80911030 };
+	static const uint32_t piotiming[] =
+	    { 0x9172d132, 0x21717121, 0x00803020, 0x20102010, 0x00100010,
+	      0x00803020, 0x20102010, 0x00100010,
+	      0x00100010, 0x00100010, 0x00100010 };
+	static const uint32_t dmatiming[] =
+	    { 0x80077771, 0x80012121, 0x80002020 };
+	static const uint32_t udmatiming[] =
+	    { 0x80921250, 0x80911140, 0x80911030 };
     int error;
 
     ch->dma->alignment = 16;

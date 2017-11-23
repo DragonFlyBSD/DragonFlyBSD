@@ -848,7 +848,7 @@ ata_udelay(int interval)
 	tsleep(&interval, 0, "ataslp", 1 + interval / (1000000 / hz));
 }
 
-char *
+const char *
 ata_mode2str(int mode)
 {
     switch (mode) {
