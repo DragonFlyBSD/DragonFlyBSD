@@ -33,6 +33,9 @@ static void ata_acard_86X_setmode(device_t dev, int mode);
 
 static int ata_serialize(device_t dev, int flags);
 
+/* misc defines */
+#define ATP_OLD		1
+
 /*
  * Acard chipset support functions
  */
@@ -42,7 +45,7 @@ ata_acard_ident(device_t dev)
     struct ata_pci_controller *ctlr = device_get_softc(dev);
     struct ata_chip_id *idx;
     static struct ata_chip_id ids[] =
-    {{ ATA_ATP850R, 0, ATPOLD, 0x00, ATA_UDMA2, "ATP850" },
+    {{ ATA_ATP850R, 0, ATP_OLD, 0x00, ATA_UDMA2, "ATP850" },
      { ATA_ATP860A, 0, 0,       0x00, ATA_UDMA4, "ATP860A" },
      { ATA_ATP860R, 0, 0,       0x00, ATA_UDMA4, "ATP860R" },
      { ATA_ATP865A, 0, 0,       0x00, ATA_UDMA6, "ATP865A" },
@@ -70,7 +73,7 @@ ata_acard_chipinit(device_t dev)
 	return ENXIO;
 
     ctlr->allocate = ata_acard_allocate;
-    if (ctlr->chip->cfg1 == ATPOLD) {
+    if (ctlr->chip->cfg1 == ATP_OLD) {
 	ctlr->setmode = ata_acard_850_setmode;
 	ctlr->locking = ata_serialize;
     }
@@ -98,7 +101,7 @@ ata_acard_status(device_t dev)
     struct ata_pci_controller *ctlr = device_get_softc(device_get_parent(dev));
     struct ata_channel *ch = device_get_softc(dev);
 
-    if (ctlr->chip->cfg1 == ATPOLD &&
+    if (ctlr->chip->cfg1 == ATP_OLD &&
 	ATA_LOCKING(ch->dev, ATA_LF_WHICH) != ch->unit)
 	    return 0;
     if (ch->dma && (ch->dma->flags & ATA_DMA_ACTIVE)) {

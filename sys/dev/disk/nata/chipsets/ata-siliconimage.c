@@ -40,6 +40,14 @@ static void ata_siiprb_reset(device_t dev);
 static void ata_siiprb_dmasetprd(void *xsc, bus_dma_segment_t *segs, int nsegs, int error);
 static void ata_siiprb_dmainit(device_t dev);
 
+/* misc defines */
+#define SII_MEMIO	1
+#define SII_PRBIO	2
+#define SII_INTR	0x01
+#define SII_SETCLK	0x02
+#define SII_BUG		0x04
+#define SII_4CH		0x08
+
 /*
  * Silicon Image Inc. (SiI) (former CMD) chipset support functions
  */
@@ -49,20 +57,20 @@ ata_sii_ident(device_t dev)
     struct ata_pci_controller *ctlr = device_get_softc(dev);
     struct ata_chip_id *idx;
     static struct ata_chip_id ids[] =
-    {{ ATA_SII3114,   0x00, SIIMEMIO, SII4CH,    ATA_SA150, "SiI 3114" },
-     { ATA_SII3512,   0x02, SIIMEMIO, 0,         ATA_SA150, "SiI 3512" },
-     { ATA_SII3112,   0x02, SIIMEMIO, 0,         ATA_SA150, "SiI 3112" },
-     { ATA_SII3112_1, 0x02, SIIMEMIO, 0,         ATA_SA150, "SiI 3112" },
-     { ATA_SII3512,   0x00, SIIMEMIO, SIIBUG,    ATA_SA150, "SiI 3512" },
-     { ATA_SII3112,   0x00, SIIMEMIO, SIIBUG,    ATA_SA150, "SiI 3112" },
-     { ATA_SII3112_1, 0x00, SIIMEMIO, SIIBUG,    ATA_SA150, "SiI 3112" },
-     { ATA_SII3124,   0x00, SIIPRBIO, SII4CH,    ATA_SA300, "SiI 3124" },
-     { ATA_SII3132,   0x00, SIIPRBIO, 0,         ATA_SA300, "SiI 3132" },
-     { ATA_SII0680,   0x00, SIIMEMIO, SIISETCLK, ATA_UDMA6, "SiI 0680" },
-     { ATA_CMD649,    0x00, 0,        SIIINTR,   ATA_UDMA5, "CMD 649" },
-     { ATA_CMD648,    0x00, 0,        SIIINTR,   ATA_UDMA4, "CMD 648" },
-     { ATA_CMD646,    0x07, 0,        0,         ATA_UDMA2, "CMD 646U2" },
-     { ATA_CMD646,    0x00, 0,        0,         ATA_WDMA2, "CMD 646" },
+    {{ ATA_SII3114,   0x00, SII_MEMIO, SII_4CH,    ATA_SA150, "SiI 3114" },
+     { ATA_SII3512,   0x02, SII_MEMIO, 0,          ATA_SA150, "SiI 3512" },
+     { ATA_SII3112,   0x02, SII_MEMIO, 0,          ATA_SA150, "SiI 3112" },
+     { ATA_SII3112_1, 0x02, SII_MEMIO, 0,          ATA_SA150, "SiI 3112" },
+     { ATA_SII3512,   0x00, SII_MEMIO, SII_BUG,    ATA_SA150, "SiI 3512" },
+     { ATA_SII3112,   0x00, SII_MEMIO, SII_BUG,    ATA_SA150, "SiI 3112" },
+     { ATA_SII3112_1, 0x00, SII_MEMIO, SII_BUG,    ATA_SA150, "SiI 3112" },
+     { ATA_SII3124,   0x00, SII_PRBIO, SII_4CH,    ATA_SA300, "SiI 3124" },
+     { ATA_SII3132,   0x00, SII_PRBIO, 0,          ATA_SA300, "SiI 3132" },
+     { ATA_SII0680,   0x00, SII_MEMIO, SII_SETCLK, ATA_UDMA6, "SiI 0680" },
+     { ATA_CMD649,    0x00, 0,         SII_INTR,   ATA_UDMA5, "CMD 649" },
+     { ATA_CMD648,    0x00, 0,         SII_INTR,   ATA_UDMA4, "CMD 648" },
+     { ATA_CMD646,    0x07, 0,         0,          ATA_UDMA2, "CMD 646U2" },
+     { ATA_CMD646,    0x00, 0,         0,          ATA_WDMA2, "CMD 646" },
      { 0, 0, 0, 0, 0, 0}};
     char buffer[64];
 
@@ -85,7 +93,7 @@ ata_sii_chipinit(device_t dev)
 	return ENXIO;
 
     switch (ctlr->chip->cfg1) {
-    case SIIPRBIO:
+    case SII_PRBIO:
 	ctlr->r_type1 = SYS_RES_MEMORY;
 	ctlr->r_rid1 = PCIR_BAR(0);
 	if (!(ctlr->r_res1 = bus_alloc_resource_any(dev, ctlr->r_type1,
@@ -106,7 +114,7 @@ ata_sii_chipinit(device_t dev)
 	ctlr->reset = ata_siiprb_reset;
 	ctlr->dmainit = ata_siiprb_dmainit;
 	ctlr->setmode = ata_sata_setmode;
-	ctlr->channels = (ctlr->chip->cfg2 == SII4CH) ? 4 : 2;
+	ctlr->channels = (ctlr->chip->cfg2 == SII_4CH) ? 4 : 2;
 
 	/* reset controller */
 	ATA_OUTL(ctlr->r_res1, 0x0040, 0x80000000);
@@ -118,7 +126,7 @@ ata_sii_chipinit(device_t dev)
 			 pci_read_config(dev, PCIR_COMMAND, 2) & ~0x0400, 2);
 	break;
 
-    case SIIMEMIO:
+    case SII_MEMIO:
 	ctlr->r_type2 = SYS_RES_MEMORY;
 	ctlr->r_rid2 = PCIR_BAR(5);
 	if (!(ctlr->r_res2 = bus_alloc_resource_any(dev, ctlr->r_type2,
@@ -127,7 +135,7 @@ ata_sii_chipinit(device_t dev)
 	    return ENXIO;
 	}
 
-	if (ctlr->chip->cfg2 & SIISETCLK) {
+	if (ctlr->chip->cfg2 & SII_SETCLK) {
 	    if ((pci_read_config(dev, 0x8a, 1) & 0x30) != 0x10)
 		pci_write_config(dev, 0x8a,
 				 (pci_read_config(dev, 0x8a, 1) & 0xcf)|0x10,1);
@@ -137,7 +145,7 @@ ata_sii_chipinit(device_t dev)
 	}
 
 	/* if we have 4 channels enable the second set */
-	if (ctlr->chip->cfg2 & SII4CH) {
+	if (ctlr->chip->cfg2 & SII_4CH) {
 	    ATA_OUTL(ctlr->r_res2, 0x0200, 0x00000002);
 	    ctlr->channels = 4;
 	}
@@ -184,7 +192,7 @@ ata_cmd_allocate(device_t dev)
     if (ata_pci_allocate(dev))
 	return ENXIO;
 
-    if (ctlr->chip->cfg2 & SIIINTR)
+    if (ctlr->chip->cfg2 & SII_INTR)
 	ch->hw.status = ata_cmd_status;
 
     return 0;
@@ -297,7 +305,7 @@ ata_sii_allocate(device_t dev)
 	ATA_OUTL(ctlr->r_res2, 0x148 + (unit01 << 7) + (unit10 << 8),(1 << 16));
     }
 
-    if ((ctlr->chip->cfg2 & SIIBUG) && ch->dma) {
+    if ((ctlr->chip->cfg2 & SII_BUG) && ch->dma) {
 	/* work around errata in early chips */
 	ch->dma->boundary = 16 * DEV_BSIZE;
 	ch->dma->segsize = 15 * DEV_BSIZE;
@@ -349,7 +357,7 @@ ata_sii_setmode(device_t dev, int mode)
 
     mode = ata_limit_mode(dev, mode, ctlr->chip->max_dma);
 
-    if (ctlr->chip->cfg2 & SIISETCLK) {
+    if (ctlr->chip->cfg2 & SII_SETCLK) {
 	if (mode > ATA_UDMA2 && (pci_read_config(gparent, 0x79, 1) &
 				 (ch->unit ? 0x02 : 0x01))) {
 	    ata_print_cable(dev, "controller");

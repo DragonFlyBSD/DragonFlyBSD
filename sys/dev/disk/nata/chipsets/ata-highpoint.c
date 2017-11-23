@@ -30,6 +30,13 @@ static int ata_highpoint_allocate(device_t dev);
 static void ata_highpoint_setmode(device_t dev, int mode);
 static int ata_highpoint_check_80pin(device_t dev, int mode);
 
+/* misc defines */
+#define HPT_366		0
+#define HPT_370		1
+#define HPT_372		2
+#define HPT_374		3
+#define HPT_OLD		0x01
+
 /*
  * HighPoint chipset support functions
  */
@@ -39,15 +46,15 @@ ata_highpoint_ident(device_t dev)
     struct ata_pci_controller *ctlr = device_get_softc(dev);
     struct ata_chip_id *idx;
     static struct ata_chip_id ids[] =
-    {{ ATA_HPT374, 0x07, HPT374, 0x00,   ATA_UDMA6, "HPT374" },
-     { ATA_HPT372, 0x02, HPT372, 0x00,   ATA_UDMA6, "HPT372N" },
-     { ATA_HPT372, 0x01, HPT372, 0x00,   ATA_UDMA6, "HPT372" },
-     { ATA_HPT371, 0x01, HPT372, 0x00,   ATA_UDMA6, "HPT371" },
-     { ATA_HPT366, 0x05, HPT372, 0x00,   ATA_UDMA6, "HPT372" },
-     { ATA_HPT366, 0x03, HPT370, 0x00,   ATA_UDMA5, "HPT370" },
-     { ATA_HPT366, 0x02, HPT366, 0x00,   ATA_UDMA4, "HPT368" },
-     { ATA_HPT366, 0x00, HPT366, HPTOLD, ATA_UDMA4, "HPT366" },
-     { ATA_HPT302, 0x01, HPT372, 0x00,   ATA_UDMA6, "HPT302" },
+    {{ ATA_HPT374, 0x07, HPT_374, 0x00,    ATA_UDMA6, "HPT374" },
+     { ATA_HPT372, 0x02, HPT_372, 0x00,    ATA_UDMA6, "HPT372N" },
+     { ATA_HPT372, 0x01, HPT_372, 0x00,    ATA_UDMA6, "HPT372" },
+     { ATA_HPT371, 0x01, HPT_372, 0x00,    ATA_UDMA6, "HPT371" },
+     { ATA_HPT366, 0x05, HPT_372, 0x00,    ATA_UDMA6, "HPT372" },
+     { ATA_HPT366, 0x03, HPT_370, 0x00,    ATA_UDMA5, "HPT370" },
+     { ATA_HPT366, 0x02, HPT_366, 0x00,    ATA_UDMA4, "HPT368" },
+     { ATA_HPT366, 0x00, HPT_366, HPT_OLD, ATA_UDMA4, "HPT366" },
+     { ATA_HPT302, 0x01, HPT_372, 0x00,    ATA_UDMA6, "HPT302" },
      { 0, 0, 0, 0, 0, 0}};
     char buffer[64];
 
@@ -56,7 +63,7 @@ ata_highpoint_ident(device_t dev)
 
     strcpy(buffer, "HighPoint ");
     strcat(buffer, idx->text);
-    if (idx->cfg1 == HPT374) {
+    if (idx->cfg1 == HPT_374) {
 	if (pci_get_function(dev) == 0)
 	    strcat(buffer, " (channel 0+1)");
 	if (pci_get_function(dev) == 1)
@@ -77,7 +84,7 @@ ata_highpoint_chipinit(device_t dev)
     if (ata_setup_interrupt(dev))
 	return ENXIO;
 
-    if (ctlr->chip->cfg2 == HPTOLD) {
+    if (ctlr->chip->cfg2 == HPT_OLD) {
 	/* disable interrupt prediction */
 	pci_write_config(dev, 0x51, (pci_read_config(dev, 0x51, 1) & ~0x80), 1);
     }
@@ -90,7 +97,7 @@ ata_highpoint_chipinit(device_t dev)
 	pci_write_config(dev, 0x5a, (pci_read_config(dev, 0x5a, 1) & ~0x10), 1);
 
 	/* set clocks etc */
-	if (ctlr->chip->cfg1 < HPT372)
+	if (ctlr->chip->cfg1 < HPT_372)
 	    pci_write_config(dev, 0x5b, 0x22, 1);
 	else
 	    pci_write_config(dev, 0x5b,
@@ -144,7 +151,7 @@ ata_highpoint_setmode(device_t dev, int mode)
 
     mode = ata_limit_mode(dev, mode, ctlr->chip->max_dma);
 
-    if (ctlr->chip->cfg1 == HPT366 && ata_atapi(dev))
+    if (ctlr->chip->cfg1 == HPT_366 && ata_atapi(dev))
 	mode = ata_limit_mode(dev, mode, ATA_PIO_MAX);
 
     mode = ata_highpoint_check_80pin(dev, mode);
@@ -173,7 +180,7 @@ ata_highpoint_check_80pin(device_t dev, int mode)
     struct ata_channel *ch = device_get_softc(device_get_parent(dev));
     u_int8_t reg, val, res;
 
-    if (ctlr->chip->cfg1 == HPT374 && pci_get_function(gparent) == 1) {
+    if (ctlr->chip->cfg1 == HPT_374 && pci_get_function(gparent) == 1) {
 	reg = ch->unit ? 0x57 : 0x53;
 	val = pci_read_config(gparent, reg, 1);
 	pci_write_config(gparent, reg, val | 0x80, 1);

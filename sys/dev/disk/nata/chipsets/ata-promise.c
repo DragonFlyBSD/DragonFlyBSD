@@ -48,6 +48,20 @@ static int ata_promise_apkt(u_int8_t *bytep, struct ata_request *request);
 static void ata_promise_queue_hpkt(struct ata_pci_controller *ctlr, u_int32_t hpkt);
 static void ata_promise_next_hpkt(struct ata_pci_controller *ctlr);
 
+/* misc defines */
+#define PR_OLD		0
+#define PR_NEW		1
+#define PR_TX		2
+#define PR_MIO		3
+#define PR_TX4		0x01
+#define PR_SX4X		0x02
+#define PR_SX6K		0x04
+#define PR_PATA		0x08
+#define PR_CMBO		0x10
+#define PR_CMBO2	0x20
+#define PR_SATA		0x40
+#define PR_SATA2	0x80
+
 #define ATA_PDC_APKT_OFFSET     0x00000010
 #define ATA_PDC_HPKT_OFFSET     0x00000040
 #define ATA_PDC_ASG_OFFSET      0x00000080
@@ -85,42 +99,42 @@ ata_promise_ident(device_t dev)
     struct ata_pci_controller *ctlr = device_get_softc(dev);
     struct ata_chip_id *idx;
     static struct ata_chip_id ids[] =
-    {{ ATA_PDC20246,  0, PROLD, 0x00,    ATA_UDMA2, "PDC20246" },
-     { ATA_PDC20262,  0, PRNEW, 0x00,    ATA_UDMA4, "PDC20262" },
-     { ATA_PDC20263,  0, PRNEW, 0x00,    ATA_UDMA4, "PDC20263" },
-     { ATA_PDC20265,  0, PRNEW, 0x00,    ATA_UDMA5, "PDC20265" },
-     { ATA_PDC20267,  0, PRNEW, 0x00,    ATA_UDMA5, "PDC20267" },
-     { ATA_PDC20268,  0, PRTX,  PRTX4,   ATA_UDMA5, "PDC20268" },
-     { ATA_PDC20269,  0, PRTX,  0x00,    ATA_UDMA6, "PDC20269" },
-     { ATA_PDC20270,  0, PRTX,  PRTX4,   ATA_UDMA5, "PDC20270" },
-     { ATA_PDC20271,  0, PRTX,  0x00,    ATA_UDMA6, "PDC20271" },
-     { ATA_PDC20275,  0, PRTX,  0x00,    ATA_UDMA6, "PDC20275" },
-     { ATA_PDC20276,  0, PRTX,  PRSX6K,  ATA_UDMA6, "PDC20276" },
-     { ATA_PDC20277,  0, PRTX,  0x00,    ATA_UDMA6, "PDC20277" },
-     { ATA_PDC20318,  0, PRMIO, PRSATA,  ATA_SA150, "PDC20318" },
-     { ATA_PDC20319,  0, PRMIO, PRSATA,  ATA_SA150, "PDC20319" },
-     { ATA_PDC20371,  0, PRMIO, PRCMBO,  ATA_SA150, "PDC20371" },
-     { ATA_PDC20375,  0, PRMIO, PRCMBO,  ATA_SA150, "PDC20375" },
-     { ATA_PDC20376,  0, PRMIO, PRCMBO,  ATA_SA150, "PDC20376" },
-     { ATA_PDC20377,  0, PRMIO, PRCMBO,  ATA_SA150, "PDC20377" },
-     { ATA_PDC20378,  0, PRMIO, PRCMBO,  ATA_SA150, "PDC20378" },
-     { ATA_PDC20379,  0, PRMIO, PRCMBO,  ATA_SA150, "PDC20379" },
-     { ATA_PDC20571,  0, PRMIO, PRCMBO2, ATA_SA150, "PDC20571" },
-     { ATA_PDC20575,  0, PRMIO, PRCMBO2, ATA_SA150, "PDC20575" },
-     { ATA_PDC20579,  0, PRMIO, PRCMBO2, ATA_SA150, "PDC20579" },
-     { ATA_PDC20771,  0, PRMIO, PRCMBO2, ATA_SA300, "PDC20771" },
-     { ATA_PDC40775,  0, PRMIO, PRCMBO2, ATA_SA300, "PDC40775" },
-     { ATA_PDC20617,  0, PRMIO, PRPATA,  ATA_UDMA6, "PDC20617" },
-     { ATA_PDC20618,  0, PRMIO, PRPATA,  ATA_UDMA6, "PDC20618" },
-     { ATA_PDC20619,  0, PRMIO, PRPATA,  ATA_UDMA6, "PDC20619" },
-     { ATA_PDC20620,  0, PRMIO, PRPATA,  ATA_UDMA6, "PDC20620" },
-     { ATA_PDC20621,  0, PRMIO, PRSX4X,  ATA_UDMA5, "PDC20621" },
-     { ATA_PDC20622,  0, PRMIO, PRSX4X,  ATA_SA150, "PDC20622" },
-     { ATA_PDC40518,  0, PRMIO, PRSATA2, ATA_SA150, "PDC40518" },
-     { ATA_PDC40519,  0, PRMIO, PRSATA2, ATA_SA150, "PDC40519" },
-     { ATA_PDC40718,  0, PRMIO, PRSATA2, ATA_SA300, "PDC40718" },
-     { ATA_PDC40719,  0, PRMIO, PRSATA2, ATA_SA300, "PDC40719" },
-     { ATA_PDC40779,  0, PRMIO, PRSATA2, ATA_SA300, "PDC40779" },
+    {{ ATA_PDC20246,  0, PR_OLD, 0x00,     ATA_UDMA2, "PDC20246" },
+     { ATA_PDC20262,  0, PR_NEW, 0x00,     ATA_UDMA4, "PDC20262" },
+     { ATA_PDC20263,  0, PR_NEW, 0x00,     ATA_UDMA4, "PDC20263" },
+     { ATA_PDC20265,  0, PR_NEW, 0x00,     ATA_UDMA5, "PDC20265" },
+     { ATA_PDC20267,  0, PR_NEW, 0x00,     ATA_UDMA5, "PDC20267" },
+     { ATA_PDC20268,  0, PR_TX,  PR_TX4,   ATA_UDMA5, "PDC20268" },
+     { ATA_PDC20269,  0, PR_TX,  0x00,     ATA_UDMA6, "PDC20269" },
+     { ATA_PDC20270,  0, PR_TX,  PR_TX4,   ATA_UDMA5, "PDC20270" },
+     { ATA_PDC20271,  0, PR_TX,  0x00,     ATA_UDMA6, "PDC20271" },
+     { ATA_PDC20275,  0, PR_TX,  0x00,     ATA_UDMA6, "PDC20275" },
+     { ATA_PDC20276,  0, PR_TX,  PR_SX6K,  ATA_UDMA6, "PDC20276" },
+     { ATA_PDC20277,  0, PR_TX,  0x00,     ATA_UDMA6, "PDC20277" },
+     { ATA_PDC20318,  0, PR_MIO, PR_SATA,  ATA_SA150, "PDC20318" },
+     { ATA_PDC20319,  0, PR_MIO, PR_SATA,  ATA_SA150, "PDC20319" },
+     { ATA_PDC20371,  0, PR_MIO, PR_CMBO,  ATA_SA150, "PDC20371" },
+     { ATA_PDC20375,  0, PR_MIO, PR_CMBO,  ATA_SA150, "PDC20375" },
+     { ATA_PDC20376,  0, PR_MIO, PR_CMBO,  ATA_SA150, "PDC20376" },
+     { ATA_PDC20377,  0, PR_MIO, PR_CMBO,  ATA_SA150, "PDC20377" },
+     { ATA_PDC20378,  0, PR_MIO, PR_CMBO,  ATA_SA150, "PDC20378" },
+     { ATA_PDC20379,  0, PR_MIO, PR_CMBO,  ATA_SA150, "PDC20379" },
+     { ATA_PDC20571,  0, PR_MIO, PR_CMBO2, ATA_SA150, "PDC20571" },
+     { ATA_PDC20575,  0, PR_MIO, PR_CMBO2, ATA_SA150, "PDC20575" },
+     { ATA_PDC20579,  0, PR_MIO, PR_CMBO2, ATA_SA150, "PDC20579" },
+     { ATA_PDC20771,  0, PR_MIO, PR_CMBO2, ATA_SA300, "PDC20771" },
+     { ATA_PDC40775,  0, PR_MIO, PR_CMBO2, ATA_SA300, "PDC40775" },
+     { ATA_PDC20617,  0, PR_MIO, PR_PATA,  ATA_UDMA6, "PDC20617" },
+     { ATA_PDC20618,  0, PR_MIO, PR_PATA,  ATA_UDMA6, "PDC20618" },
+     { ATA_PDC20619,  0, PR_MIO, PR_PATA,  ATA_UDMA6, "PDC20619" },
+     { ATA_PDC20620,  0, PR_MIO, PR_PATA,  ATA_UDMA6, "PDC20620" },
+     { ATA_PDC20621,  0, PR_MIO, PR_SX4X,  ATA_UDMA5, "PDC20621" },
+     { ATA_PDC20622,  0, PR_MIO, PR_SX4X,  ATA_SA150, "PDC20622" },
+     { ATA_PDC40518,  0, PR_MIO, PR_SATA2, ATA_SA150, "PDC40518" },
+     { ATA_PDC40519,  0, PR_MIO, PR_SATA2, ATA_SA150, "PDC40519" },
+     { ATA_PDC40718,  0, PR_MIO, PR_SATA2, ATA_SA300, "PDC40718" },
+     { ATA_PDC40719,  0, PR_MIO, PR_SATA2, ATA_SA300, "PDC40719" },
+     { ATA_PDC40779,  0, PR_MIO, PR_SATA2, ATA_SA300, "PDC40779" },
      { 0, 0, 0, 0, 0, 0}};
     char buffer[64];
     uintptr_t devid = 0;
@@ -129,7 +143,7 @@ ata_promise_ident(device_t dev)
 	return ENXIO;
 
     /* if we are on a SuperTrak SX6000 dont attach */
-    if ((idx->cfg2 & PRSX6K) && pci_get_class(GRANDPARENT(dev))==PCIC_BRIDGE &&
+    if ((idx->cfg2 & PR_SX6K) && pci_get_class(GRANDPARENT(dev))==PCIC_BRIDGE &&
 	!BUS_READ_IVAR(device_get_parent(GRANDPARENT(dev)),
 		       GRANDPARENT(dev), PCI_IVAR_DEVID, &devid) &&
 	devid == ATA_I960RM)
@@ -139,7 +153,7 @@ ata_promise_ident(device_t dev)
     strcat(buffer, idx->text);
 
     /* if we are on a FastTrak TX4, adjust the interrupt resource */
-    if ((idx->cfg2 & PRTX4) && pci_get_class(GRANDPARENT(dev))==PCIC_BRIDGE &&
+    if ((idx->cfg2 & PR_TX4) && pci_get_class(GRANDPARENT(dev))==PCIC_BRIDGE &&
 	!BUS_READ_IVAR(device_get_parent(GRANDPARENT(dev)),
 		       GRANDPARENT(dev), PCI_IVAR_DEVID, &devid) &&
 	((devid == ATA_DEC_21150) || (devid == ATA_DEC_21150_1))) {
@@ -175,26 +189,26 @@ ata_promise_chipinit(device_t dev)
 	return ENXIO;
 
     switch  (ctlr->chip->cfg1) {
-    case PRNEW:
+    case PR_NEW:
 	/* setup clocks */
 	ATA_OUTB(ctlr->r_res1, 0x11, ATA_INB(ctlr->r_res1, 0x11) | 0x0a);
 
 	ctlr->dmainit = ata_promise_dmainit;
 	/* FALLTHROUGH */
 
-    case PROLD:
+    case PR_OLD:
 	/* enable burst mode */
 	ATA_OUTB(ctlr->r_res1, 0x1f, ATA_INB(ctlr->r_res1, 0x1f) | 0x01);
 	ctlr->allocate = ata_promise_allocate;
 	ctlr->setmode = ata_promise_setmode;
 	return 0;
 
-    case PRTX:
+    case PR_TX:
 	ctlr->allocate = ata_promise_tx2_allocate;
 	ctlr->setmode = ata_promise_setmode;
 	return 0;
 
-    case PRMIO:
+    case PR_MIO:
 	ctlr->r_type1 = SYS_RES_MEMORY;
 	ctlr->r_rid1 = PCIR_BAR(4);
 	if (!(ctlr->r_res1 = bus_alloc_resource_any(dev, ctlr->r_type1,
@@ -207,7 +221,7 @@ ata_promise_chipinit(device_t dev)
 						    &ctlr->r_rid2, RF_ACTIVE)))
 	    goto failnfree;
 
-	if (ctlr->chip->cfg2 == PRSX4X) {
+	if (ctlr->chip->cfg2 == PR_SX4X) {
 	    struct ata_promise_sx4 *hpkt;
 	    u_int32_t dimm = ATA_INL(ctlr->r_res2, 0x000c0080);
 
@@ -253,24 +267,24 @@ ata_promise_chipinit(device_t dev)
 	}
 
 	switch (ctlr->chip->cfg2) {
-	case PRPATA:
+	case PR_PATA:
 	    ctlr->channels = ((ATA_INL(ctlr->r_res2, 0x48) & 0x01) > 0) +
 			     ((ATA_INL(ctlr->r_res2, 0x48) & 0x02) > 0) + 2;
 	    goto sata150;
-	case PRCMBO:
+	case PR_CMBO:
 	    ctlr->channels = 3;
 	    goto sata150;
-	case PRSATA:
+	case PR_SATA:
 	    ctlr->channels = 4;
 sata150:
 	    fake_reg = 0x60;
 	    stat_reg = 0x6c;
 	    break;
 
-	case PRCMBO2:
+	case PR_CMBO2:
 	    ctlr->channels = 3;
 	    goto sataii;
-	case PRSATA2:
+	case PR_SATA2:
 	default:
 	    ctlr->channels = 4;
 sataii:
@@ -404,7 +418,7 @@ ata_promise_setmode(device_t dev, int mode)
     int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
     int error;
     u_int32_t timings[][2] = {
-    /*    PROLD       PRNEW                mode */
+    /*    PR_OLD      PR_NEW               mode */
 	{ 0x004ff329, 0x004fff2f },     /* PIO 0 */
 	{ 0x004fec25, 0x004ff82a },     /* PIO 1 */
 	{ 0x004fe823, 0x004ff026 },     /* PIO 2 */
@@ -424,8 +438,8 @@ ata_promise_setmode(device_t dev, int mode)
     mode = ata_limit_mode(dev, mode, ctlr->chip->max_dma);
 
     switch (ctlr->chip->cfg1) {
-    case PROLD:
-    case PRNEW:
+    case PR_OLD:
+    case PR_NEW:
 	if (mode > ATA_UDMA2 && (pci_read_config(gparent, 0x50, 2) &
 				 (ch->unit ? 1 << 11 : 1 << 10))) {
 	    ata_print_cable(dev, "controller");
@@ -435,7 +449,7 @@ ata_promise_setmode(device_t dev, int mode)
 	    mode = ata_limit_mode(dev, mode, ATA_PIO_MAX);
 	break;
 
-    case PRTX:
+    case PR_TX:
 	ATA_IDX_OUTB(ch, ATA_BMDEVSPEC_0, 0x0b);
 	if (mode > ATA_UDMA2 &&
 	    ATA_IDX_INB(ch, ATA_BMDEVSPEC_1) & 0x04) {
@@ -444,10 +458,10 @@ ata_promise_setmode(device_t dev, int mode)
 	}
 	break;
 
-    case PRMIO:
+    case PR_MIO:
 	if (mode > ATA_UDMA2 &&
 	    (ATA_INL(ctlr->r_res2,
-		     (ctlr->chip->cfg2 & PRSX4X ? 0x000c0260 : 0x0260) +
+		     (ctlr->chip->cfg2 & PR_SX4X ? 0x000c0260 : 0x0260) +
 		     (ch->unit << 7)) & 0x01000000)) {
 	    ata_print_cable(dev, "controller");
 	    mode = ATA_UDMA2;
@@ -462,7 +476,7 @@ ata_promise_setmode(device_t dev, int mode)
 		     (error) ? "FAILURE " : "",
 		     ata_mode2str(mode), ctlr->chip->text);
     if (!error) {
-	if (ctlr->chip->cfg1 < PRTX)
+	if (ctlr->chip->cfg1 < PR_TX)
 	    pci_write_config(gparent, 0x60 + (devno << 2),
 			     timings[ata_mode2idx(mode)][ctlr->chip->cfg1], 4);
 	atadev->mode = mode;
@@ -499,7 +513,7 @@ ata_promise_mio_allocate(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(device_get_parent(dev));
     struct ata_channel *ch = device_get_softc(dev);
-    int offset = (ctlr->chip->cfg2 & PRSX4X) ? 0x000c0000 : 0;
+    int offset = (ctlr->chip->cfg2 & PR_SX4X) ? 0x000c0000 : 0;
     int i;
 
     for (i = ATA_DATA; i <= ATA_COMMAND; i++) {
@@ -510,8 +524,8 @@ ata_promise_mio_allocate(device_t dev)
     ch->r_io[ATA_CONTROL].offset = offset + 0x0238 + (ch->unit << 7);
     ch->r_io[ATA_IDX_ADDR].res = ctlr->r_res2;
     ata_default_registers(dev);
-    if ((ctlr->chip->cfg2 & (PRSATA | PRSATA2)) ||
-	((ctlr->chip->cfg2 & (PRCMBO | PRCMBO2)) && ch->unit < 2)) {
+    if ((ctlr->chip->cfg2 & (PR_SATA | PR_SATA2)) ||
+	((ctlr->chip->cfg2 & (PR_CMBO | PR_CMBO2)) && ch->unit < 2)) {
 	ch->r_io[ATA_SSTATUS].res = ctlr->r_res2;
 	ch->r_io[ATA_SSTATUS].offset = 0x400 + (ch->unit << 8);
 	ch->r_io[ATA_SERROR].res = ctlr->r_res2;
@@ -523,7 +537,7 @@ ata_promise_mio_allocate(device_t dev)
     ch->flags |= ATA_USE_16BIT;
 
     ata_generic_hw(dev);
-    if (ctlr->chip->cfg2 & PRSX4X) {
+    if (ctlr->chip->cfg2 & PR_SX4X) {
 	ch->hw.command = ata_promise_sx4_command;
     }
     else {
@@ -542,13 +556,13 @@ ata_promise_mio_intr(void *data)
     int unit, fake_reg;
 
     switch (ctlr->chip->cfg2) {
-    case PRPATA:
-    case PRCMBO:
-    case PRSATA:
+    case PR_PATA:
+    case PR_CMBO:
+    case PR_SATA:
 	fake_reg = 0x60;
 	break;
-    case PRCMBO2:
-    case PRSATA2:
+    case PR_CMBO2:
+    case PR_SATA2:
     default:
 	fake_reg = 0x54;
 	break;
@@ -582,14 +596,14 @@ ata_promise_mio_status(device_t dev)
     u_int32_t fake_reg, stat_reg, vector, status;
 
     switch (ctlr->chip->cfg2) {
-    case PRPATA:
-    case PRCMBO:
-    case PRSATA:
+    case PR_PATA:
+    case PR_CMBO:
+    case PR_SATA:
 	fake_reg = 0x60;
 	stat_reg = 0x6c;
 	break;
-    case PRCMBO2:
-    case PRSATA2:
+    case PR_CMBO2:
+    case PR_SATA2:
     default:
 	fake_reg = 0x54;
 	stat_reg = 0x60;
@@ -675,7 +689,7 @@ ata_promise_mio_reset(device_t dev)
     struct ata_promise_sx4 *hpktp;
 
     switch (ctlr->chip->cfg2) {
-    case PRSX4X:
+    case PR_SX4X:
 
 	/* softreset channel ATA module */
 	hpktp = device_get_ivars(ctlr->dev);
@@ -697,11 +711,11 @@ ata_promise_mio_reset(device_t dev)
 	ata_generic_reset(dev);
 	break;
 
-    case PRPATA:
-    case PRCMBO:
-    case PRSATA:
-	if ((ctlr->chip->cfg2 == PRSATA) ||
-	    ((ctlr->chip->cfg2 == PRCMBO) && (ch->unit < 2))) {
+    case PR_PATA:
+    case PR_CMBO:
+    case PR_SATA:
+	if ((ctlr->chip->cfg2 == PR_SATA) ||
+	    ((ctlr->chip->cfg2 == PR_CMBO) && (ch->unit < 2))) {
 
 	    /* mask plug/unplug intr */
 	    ATA_OUTL(ctlr->r_res2, 0x06c, (0x00110000 << ch->unit));
@@ -714,8 +728,8 @@ ata_promise_mio_reset(device_t dev)
 		 (ATA_INL(ctlr->r_res2, 0x0260 + (ch->unit << 7)) &
 		  ~0x00003f9f) | (ch->unit + 1));
 
-	if ((ctlr->chip->cfg2 == PRSATA) ||
-	    ((ctlr->chip->cfg2 == PRCMBO) && (ch->unit < 2))) {
+	if ((ctlr->chip->cfg2 == PR_SATA) ||
+	    ((ctlr->chip->cfg2 == PR_CMBO) && (ch->unit < 2))) {
 
 	    if (ata_sata_phy_reset(dev))
 		ata_generic_reset(dev);
@@ -727,10 +741,10 @@ ata_promise_mio_reset(device_t dev)
 	    ata_generic_reset(dev);
 	break;
 
-    case PRCMBO2:
-    case PRSATA2:
-	if ((ctlr->chip->cfg2 == PRSATA2) ||
-	    ((ctlr->chip->cfg2 == PRCMBO2) && (ch->unit < 2))) {
+    case PR_CMBO2:
+    case PR_SATA2:
+	if ((ctlr->chip->cfg2 == PR_SATA2) ||
+	    ((ctlr->chip->cfg2 == PR_CMBO2) && (ch->unit < 2))) {
 	    /* set portmultiplier port */
 	    ATA_OUTL(ctlr->r_res2, 0x4e8 + (ch->unit << 8), 0x0f);
 
@@ -745,8 +759,8 @@ ata_promise_mio_reset(device_t dev)
 		 (ATA_INL(ctlr->r_res2, 0x0260 + (ch->unit << 7)) &
 		  ~0x00003f9f) | (ch->unit + 1));
 
-	if ((ctlr->chip->cfg2 == PRSATA2) ||
-	    ((ctlr->chip->cfg2 == PRCMBO2) && (ch->unit < 2))) {
+	if ((ctlr->chip->cfg2 == PR_SATA2) ||
+	    ((ctlr->chip->cfg2 == PR_CMBO2) && (ch->unit < 2))) {
 
 	    /* set PHY mode to "improved" */
 	    ATA_OUTL(ctlr->r_res2, 0x414 + (ch->unit << 8),
@@ -783,10 +797,10 @@ ata_promise_mio_setmode(device_t dev, int mode)
     struct ata_pci_controller *ctlr = device_get_softc(gparent);
     struct ata_channel *ch = device_get_softc(device_get_parent(dev));
 
-    if ( (ctlr->chip->cfg2 == PRSATA) ||
-	((ctlr->chip->cfg2 == PRCMBO) && (ch->unit < 2)) ||
-	(ctlr->chip->cfg2 == PRSATA2) ||
-	((ctlr->chip->cfg2 == PRCMBO2) && (ch->unit < 2)))
+    if ( (ctlr->chip->cfg2 == PR_SATA) ||
+	((ctlr->chip->cfg2 == PR_CMBO) && (ch->unit < 2)) ||
+	(ctlr->chip->cfg2 == PR_SATA2) ||
+	((ctlr->chip->cfg2 == PR_CMBO2) && (ch->unit < 2)))
 	ata_sata_setmode(dev, mode);
     else
 	ata_promise_setmode(dev, mode);

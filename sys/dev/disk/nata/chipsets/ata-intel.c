@@ -36,6 +36,9 @@ static int ata_intel_31244_status(device_t dev);
 static int ata_intel_31244_command(struct ata_request *request);
 static void ata_intel_31244_reset(device_t dev);
 
+/* misc defines */
+#define INTEL_AHCI	1
+
 /*
  * Intel chipset support functions
  */
@@ -45,56 +48,56 @@ ata_intel_ident(device_t dev)
     struct ata_pci_controller *ctlr = device_get_softc(dev);
     struct ata_chip_id *idx;
     static struct ata_chip_id ids[] =
-    {{ ATA_I82371FB,     0,    0, 0x00, ATA_WDMA2, "PIIX" },
-     { ATA_I82371SB,     0,    0, 0x00, ATA_WDMA2, "PIIX3" },
-     { ATA_I82371AB,     0,    0, 0x00, ATA_UDMA2, "PIIX4" },
-     { ATA_I82443MX,     0,    0, 0x00, ATA_UDMA2, "PIIX4" },
-     { ATA_I82451NX,     0,    0, 0x00, ATA_UDMA2, "PIIX4" },
-     { ATA_I82801AB,     0,    0, 0x00, ATA_UDMA2, "ICH0" },
-     { ATA_I82801AA,     0,    0, 0x00, ATA_UDMA4, "ICH" },
-     { ATA_I82372FB,     0,    0, 0x00, ATA_UDMA4, "ICH" },
-     { ATA_I82801BA,     0,    0, 0x00, ATA_UDMA5, "ICH2" },
-     { ATA_I82801BA_1,   0,    0, 0x00, ATA_UDMA5, "ICH2" },
-     { ATA_I82801CA,     0,    0, 0x00, ATA_UDMA5, "ICH3" },
-     { ATA_I82801CA_1,   0,    0, 0x00, ATA_UDMA5, "ICH3" },
-     { ATA_I82801DB,     0,    0, 0x00, ATA_UDMA5, "ICH4" },
-     { ATA_I82801DB_1,   0,    0, 0x00, ATA_UDMA5, "ICH4" },
-     { ATA_I82801EB,     0,    0, 0x00, ATA_UDMA5, "ICH5" },
-     { ATA_I82801EB_S1,  0,    0, 0x00, ATA_SA150, "ICH5" },
-     { ATA_I82801EB_R1,  0,    0, 0x00, ATA_SA150, "ICH5" },
-     { ATA_I6300ESB,     0,    0, 0x00, ATA_UDMA5, "6300ESB" },
-     { ATA_I6300ESB_S1,  0,    0, 0x00, ATA_SA150, "6300ESB" },
-     { ATA_I6300ESB_R1,  0,    0, 0x00, ATA_SA150, "6300ESB" },
-     { ATA_I82801FB,     0,    0, 0x00, ATA_UDMA5, "ICH6" },
-     { ATA_I82801FB_S1,  0, AHCI, 0x00, ATA_SA150, "ICH6" },
-     { ATA_I82801FB_R1,  0, AHCI, 0x00, ATA_SA150, "ICH6" },
-     { ATA_I82801FBM,    0, AHCI, 0x00, ATA_SA150, "ICH6M" },
-     { ATA_I82801GB,     0,    0, 0x00, ATA_UDMA5, "ICH7" },
-     { ATA_I82801GB_S1,  0, AHCI, 0x00, ATA_SA300, "ICH7" },
-     { ATA_I82801GB_R1,  0, AHCI, 0x00, ATA_SA300, "ICH7" },
-     { ATA_I82801GB_AH,  0, AHCI, 0x00, ATA_SA300, "ICH7" },
-     { ATA_I82801GBM_S1, 0, AHCI, 0x00, ATA_SA300, "ICH7M" },
-     { ATA_I82801GBM_R1, 0, AHCI, 0x00, ATA_SA300, "ICH7M" },
-     { ATA_I82801GBM_AH, 0, AHCI, 0x00, ATA_SA300, "ICH7M" },
-     { ATA_I63XXESB2,    0,    0, 0x00, ATA_UDMA5, "63XXESB2" },
-     { ATA_I63XXESB2_S1, 0, AHCI, 0x00, ATA_SA300, "63XXESB2" },
-     { ATA_I63XXESB2_S2, 0, AHCI, 0x00, ATA_SA300, "63XXESB2" },
-     { ATA_I63XXESB2_R1, 0, AHCI, 0x00, ATA_SA300, "63XXESB2" },
-     { ATA_I63XXESB2_R2, 0, AHCI, 0x00, ATA_SA300, "63XXESB2" },
-     { ATA_I82801HB_S1,  0, AHCI, 0x00, ATA_SA300, "ICH8" },
-     { ATA_I82801HB_S2,  0, AHCI, 0x00, ATA_SA300, "ICH8" },
-     { ATA_I82801HB_R1,  0, AHCI, 0x00, ATA_SA300, "ICH8" },
-     { ATA_I82801HB_AH4, 0, AHCI, 0x00, ATA_SA300, "ICH8" },
-     { ATA_I82801HB_AH6, 0, AHCI, 0x00, ATA_SA300, "ICH8" },
-     { ATA_I82801HBM_S1, 0,    0, 0x00, ATA_SA300, "ICH8M" },
-     { ATA_I82801HBM_S2, 0, AHCI, 0x00, ATA_SA300, "ICH8M" },
-     { ATA_I82801HBM_S3, 0, AHCI, 0x00, ATA_SA300, "ICH8M" },
-     { ATA_I82801IB_S1,  0, AHCI, 0x00, ATA_SA300, "ICH9" },
-     { ATA_I82801IB_S2,  0, AHCI, 0x00, ATA_SA300, "ICH9" },
-     { ATA_I82801IB_AH2, 0, AHCI, 0x00, ATA_SA300, "ICH9" },
-     { ATA_I82801IB_AH4, 0, AHCI, 0x00, ATA_SA300, "ICH9" },
-     { ATA_I82801IB_AH6, 0, AHCI, 0x00, ATA_SA300, "ICH9" },
-     { ATA_I31244,      0,    0, 0x00, ATA_SA150, "31244" },
+    {{ ATA_I82371FB,     0,          0, 0, ATA_WDMA2, "PIIX" },
+     { ATA_I82371SB,     0,          0, 0, ATA_WDMA2, "PIIX3" },
+     { ATA_I82371AB,     0,          0, 0, ATA_UDMA2, "PIIX4" },
+     { ATA_I82443MX,     0,          0, 0, ATA_UDMA2, "PIIX4" },
+     { ATA_I82451NX,     0,          0, 0, ATA_UDMA2, "PIIX4" },
+     { ATA_I82801AB,     0,          0, 0, ATA_UDMA2, "ICH0" },
+     { ATA_I82801AA,     0,          0, 0, ATA_UDMA4, "ICH" },
+     { ATA_I82372FB,     0,          0, 0, ATA_UDMA4, "ICH" },
+     { ATA_I82801BA,     0,          0, 0, ATA_UDMA5, "ICH2" },
+     { ATA_I82801BA_1,   0,          0, 0, ATA_UDMA5, "ICH2" },
+     { ATA_I82801CA,     0,          0, 0, ATA_UDMA5, "ICH3" },
+     { ATA_I82801CA_1,   0,          0, 0, ATA_UDMA5, "ICH3" },
+     { ATA_I82801DB,     0,          0, 0, ATA_UDMA5, "ICH4" },
+     { ATA_I82801DB_1,   0,          0, 0, ATA_UDMA5, "ICH4" },
+     { ATA_I82801EB,     0,          0, 0, ATA_UDMA5, "ICH5" },
+     { ATA_I82801EB_S1,  0,          0, 0, ATA_SA150, "ICH5" },
+     { ATA_I82801EB_R1,  0,          0, 0, ATA_SA150, "ICH5" },
+     { ATA_I6300ESB,     0,          0, 0, ATA_UDMA5, "6300ESB" },
+     { ATA_I6300ESB_S1,  0,          0, 0, ATA_SA150, "6300ESB" },
+     { ATA_I6300ESB_R1,  0,          0, 0, ATA_SA150, "6300ESB" },
+     { ATA_I82801FB,     0,          0, 0, ATA_UDMA5, "ICH6" },
+     { ATA_I82801FB_S1,  0, INTEL_AHCI, 0, ATA_SA150, "ICH6" },
+     { ATA_I82801FB_R1,  0, INTEL_AHCI, 0, ATA_SA150, "ICH6" },
+     { ATA_I82801FBM,    0, INTEL_AHCI, 0, ATA_SA150, "ICH6M" },
+     { ATA_I82801GB,     0,          0, 0, ATA_UDMA5, "ICH7" },
+     { ATA_I82801GB_S1,  0, INTEL_AHCI, 0, ATA_SA300, "ICH7" },
+     { ATA_I82801GB_R1,  0, INTEL_AHCI, 0, ATA_SA300, "ICH7" },
+     { ATA_I82801GB_AH,  0, INTEL_AHCI, 0, ATA_SA300, "ICH7" },
+     { ATA_I82801GBM_S1, 0, INTEL_AHCI, 0, ATA_SA300, "ICH7M" },
+     { ATA_I82801GBM_R1, 0, INTEL_AHCI, 0, ATA_SA300, "ICH7M" },
+     { ATA_I82801GBM_AH, 0, INTEL_AHCI, 0, ATA_SA300, "ICH7M" },
+     { ATA_I63XXESB2,    0,          0, 0, ATA_UDMA5, "63XXESB2" },
+     { ATA_I63XXESB2_S1, 0, INTEL_AHCI, 0, ATA_SA300, "63XXESB2" },
+     { ATA_I63XXESB2_S2, 0, INTEL_AHCI, 0, ATA_SA300, "63XXESB2" },
+     { ATA_I63XXESB2_R1, 0, INTEL_AHCI, 0, ATA_SA300, "63XXESB2" },
+     { ATA_I63XXESB2_R2, 0, INTEL_AHCI, 0, ATA_SA300, "63XXESB2" },
+     { ATA_I82801HB_S1,  0, INTEL_AHCI, 0, ATA_SA300, "ICH8" },
+     { ATA_I82801HB_S2,  0, INTEL_AHCI, 0, ATA_SA300, "ICH8" },
+     { ATA_I82801HB_R1,  0, INTEL_AHCI, 0, ATA_SA300, "ICH8" },
+     { ATA_I82801HB_AH4, 0, INTEL_AHCI, 0, ATA_SA300, "ICH8" },
+     { ATA_I82801HB_AH6, 0, INTEL_AHCI, 0, ATA_SA300, "ICH8" },
+     { ATA_I82801HBM_S1, 0,          0, 0, ATA_SA300, "ICH8M" },
+     { ATA_I82801HBM_S2, 0, INTEL_AHCI, 0, ATA_SA300, "ICH8M" },
+     { ATA_I82801HBM_S3, 0, INTEL_AHCI, 0, ATA_SA300, "ICH8M" },
+     { ATA_I82801IB_S1,  0, INTEL_AHCI, 0, ATA_SA300, "ICH9" },
+     { ATA_I82801IB_S2,  0, INTEL_AHCI, 0, ATA_SA300, "ICH9" },
+     { ATA_I82801IB_AH2, 0, INTEL_AHCI, 0, ATA_SA300, "ICH9" },
+     { ATA_I82801IB_AH4, 0, INTEL_AHCI, 0, ATA_SA300, "ICH9" },
+     { ATA_I82801IB_AH6, 0, INTEL_AHCI, 0, ATA_SA300, "ICH9" },
+     { ATA_I31244,       0,          0, 0, ATA_SA150, "31244" },
      { 0, 0, 0, 0, 0, 0}};
     char buffer[64];
 
@@ -158,7 +161,7 @@ ata_intel_chipinit(device_t dev)
 	 * if we have AHCI capability and BAR(5) as a memory resource
 	 * and AHCI or RAID mode enabled in BIOS we go for AHCI mode
 	 */
-	if ((ctlr->chip->cfg1 == AHCI) &&
+	if ((ctlr->chip->cfg1 == INTEL_AHCI) &&
 	    (pci_read_config(dev, 0x90, 1) & 0xc0) &&
 	    (ata_ahci_chipinit(dev) != ENXIO))
 	    return 0;

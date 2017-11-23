@@ -31,6 +31,11 @@ static int ata_ali_sata_allocate(device_t dev);
 static void ata_ali_reset(device_t dev);
 static void ata_ali_setmode(device_t dev, int mode);
 
+/* misc defines */
+#define ALI_OLD		0x01
+#define ALI_NEW		0x02
+#define ALI_SATA	0x04
+
 /*
  * Acer Labs Inc (ALI) chipset support functions
  */
@@ -40,15 +45,15 @@ ata_ali_ident(device_t dev)
     struct ata_pci_controller *ctlr = device_get_softc(dev);
     struct ata_chip_id *idx;
     static struct ata_chip_id ids[] =
-    {{ ATA_ALI_5289, 0x00, 2, ALISATA, ATA_SA150, "M5289" },
-     { ATA_ALI_5288, 0x00, 4, ALISATA, ATA_SA300, "M5288" },
-     { ATA_ALI_5287, 0x00, 4, ALISATA, ATA_SA150, "M5287" },
-     { ATA_ALI_5281, 0x00, 2, ALISATA, ATA_SA150, "M5281" },
-     { ATA_ALI_5229, 0xc5, 0, ALINEW,  ATA_UDMA6, "M5229" },
-     { ATA_ALI_5229, 0xc4, 0, ALINEW,  ATA_UDMA5, "M5229" },
-     { ATA_ALI_5229, 0xc2, 0, ALINEW,  ATA_UDMA4, "M5229" },
-     { ATA_ALI_5229, 0x20, 0, ALIOLD,  ATA_UDMA2, "M5229" },
-     { ATA_ALI_5229, 0x00, 0, ALIOLD,  ATA_WDMA2, "M5229" },
+    {{ ATA_ALI_5289, 0x00, 2, ALI_SATA, ATA_SA150, "M5289" },
+     { ATA_ALI_5288, 0x00, 4, ALI_SATA, ATA_SA300, "M5288" },
+     { ATA_ALI_5287, 0x00, 4, ALI_SATA, ATA_SA150, "M5287" },
+     { ATA_ALI_5281, 0x00, 2, ALI_SATA, ATA_SA150, "M5281" },
+     { ATA_ALI_5229, 0xc5, 0, ALI_NEW,  ATA_UDMA6, "M5229" },
+     { ATA_ALI_5229, 0xc4, 0, ALI_NEW,  ATA_UDMA5, "M5229" },
+     { ATA_ALI_5229, 0xc2, 0, ALI_NEW,  ATA_UDMA4, "M5229" },
+     { ATA_ALI_5229, 0x20, 0, ALI_OLD,  ATA_UDMA2, "M5229" },
+     { ATA_ALI_5229, 0x00, 0, ALI_OLD,  ATA_WDMA2, "M5229" },
      { 0, 0, 0, 0, 0, 0}};
     char buffer[64];
 
@@ -72,7 +77,7 @@ ata_ali_chipinit(device_t dev)
 	return ENXIO;
 
     switch (ctlr->chip->cfg2) {
-    case ALISATA:
+    case ALI_SATA:
 	ctlr->channels = ctlr->chip->cfg1;
 	ctlr->allocate = ata_ali_sata_allocate;
 	ctlr->setmode = ata_sata_setmode;
@@ -87,7 +92,7 @@ ata_ali_chipinit(device_t dev)
 			 pci_read_config(dev, PCIR_COMMAND, 2) & ~0x0400, 2);
 	break;
 
-    case ALINEW:
+    case ALI_NEW:
 	/* use device interrupt as byte count end */
 	pci_write_config(dev, 0x4a, pci_read_config(dev, 0x4a, 1) | 0x20, 1);
 
@@ -107,7 +112,7 @@ ata_ali_chipinit(device_t dev)
 	ctlr->setmode = ata_ali_setmode;
 	break;
 
-    case ALIOLD:
+    case ALI_OLD:
 	/* deactivate the ATAPI FIFO and enable ATAPI UDMA */
 	pci_write_config(dev, 0x53, pci_read_config(dev, 0x53, 1) | 0x03, 1);
 	ctlr->setmode = ata_ali_setmode;
@@ -224,7 +229,7 @@ ata_ali_setmode(device_t dev, int mode)
 
     mode = ata_limit_mode(dev, mode, ctlr->chip->max_dma);
 
-    if (ctlr->chip->cfg2 & ALINEW) {
+    if (ctlr->chip->cfg2 & ALI_NEW) {
 	if (mode > ATA_UDMA2 &&
 	    pci_read_config(gparent, 0x4a, 1) & (1 << ch->unit)) {
 	    ata_print_cable(dev, "controller");
@@ -234,7 +239,7 @@ ata_ali_setmode(device_t dev, int mode)
     else
 	mode = ata_check_80pin(dev, mode);
 
-    if (ctlr->chip->cfg2 & ALIOLD) {
+    if (ctlr->chip->cfg2 & ALI_OLD) {
 	/* doesn't support ATAPI DMA on write */
 	ch->flags |= ATA_ATAPI_DMA_RO;
 	if (ch->devices & ATA_ATAPI_MASTER && ch->devices & ATA_ATAPI_SLAVE) {

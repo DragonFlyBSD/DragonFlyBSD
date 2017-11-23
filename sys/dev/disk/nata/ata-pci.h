@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.h,v 1.76 2007/03/09 22:23:39 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-pci.h,v 1.9 2008/07/12 16:38:10 mneumann Exp $
  */
 
 #include <sys/param.h>
@@ -71,7 +70,7 @@ struct ata_pci_controller {
 /* structure for SATA connection update hotplug/hotswap support */
 struct ata_connect_task {
     struct task task;
-    device_t    dev;  
+    device_t    dev;
     int         action;
 #define ATA_C_ATTACH    1
 #define ATA_C_DETACH    2
@@ -383,74 +382,6 @@ struct ata_connect_task {
 #define ATA_VIA6410             0x31641106
 #define ATA_VIA6420             0x31491106
 #define ATA_VIA6421             0x32491106
-
-/* chipset setup related defines */
-#define AHCI            1
-#define ATPOLD          1
-
-#define ALIOLD          0x01
-#define ALINEW          0x02
-#define ALISATA         0x04
-
-#define HPT366          0
-#define HPT370          1
-#define HPT372          2
-#define HPT374          3
-#define HPTOLD          0x01
-
-#define MV50XX		50
-#define MV60XX		60
-#define MV61XX		61
-
-#define PROLD           0
-#define PRNEW           1
-#define PRTX            2
-#define PRMIO           3
-#define PRTX4           0x01
-#define PRSX4X          0x02
-#define PRSX6K          0x04
-#define PRPATA          0x08
-#define PRCMBO          0x10
-#define PRCMBO2         0x20
-#define PRSATA          0x40
-#define PRSATA2         0x80
-
-#define SWKS33          0
-#define SWKS66          1
-#define SWKS100         2
-#define SWKSMIO         3
-
-#define SIIMEMIO        1
-#define SIIPRBIO        2
-#define ATIAHCI         4
-#define SIIINTR         0x01
-#define SIISETCLK       0x02
-#define SIIBUG          0x04
-#define SII4CH          0x08
-
-#define SIS_SOUTH       1
-#define SISSATA         2
-#define SIS133NEW       3
-#define SIS133OLD       4
-#define SIS100NEW       5
-#define SIS100OLD       6
-#define SIS66           7
-#define SIS33           8
-
-#define VIA33           0
-#define VIA66           1
-#define VIA100          2
-#define VIA133          3
-
-#define AMDCABLE        0x0001
-#define AMDBUG          0x0002
-#define NV4             0x0010
-#define NVQ		0x0020
-#define VIACLK          0x0100
-#define VIABUG          0x0200
-#define VIABAR          0x0400
-#define VIAAHCI         0x0800
-
 
 /* global prototypes ata-pci.c */
 int ata_pci_probe(device_t dev);

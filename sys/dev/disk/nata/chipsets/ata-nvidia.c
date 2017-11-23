@@ -31,6 +31,10 @@ static int ata_nvidia_status(device_t dev);
 static void ata_nvidia_reset(device_t dev);
 static void ata_nvidia_setmode(device_t dev, int mode);
 
+/* misc defines */
+#define NV4		0x01
+#define NVQ		0x02
+
 /*
  * nVidia chipset support functions
  */

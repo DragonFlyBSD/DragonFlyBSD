@@ -30,6 +30,15 @@ static int ata_sis_allocate(device_t dev);
 static void ata_sis_reset(device_t dev);
 static void ata_sis_setmode(device_t dev, int mode);
 
+/* misc defines */
+#define SIS_33		1
+#define SIS_66		2
+#define SIS_100NEW	3
+#define SIS_100OLD	4
+#define SIS_133NEW	5
+#define SIS_133OLD	6
+#define SIS_SATA	7
+
 /*
  * Silicon Integrated Systems Corp. (SiS) chipset support functions
  */
@@ -39,31 +48,31 @@ ata_sis_ident(device_t dev)
     struct ata_pci_controller *ctlr = device_get_softc(dev);
     struct ata_chip_id *idx;
     static struct ata_chip_id ids[] =
-    {{ ATA_SIS182,  0x00, SISSATA,   0, ATA_SA150, "182" }, /* south */
-     { ATA_SIS181,  0x00, SISSATA,   0, ATA_SA150, "181" }, /* south */
-     { ATA_SIS180,  0x00, SISSATA,   0, ATA_SA150, "180" }, /* south */
-     { ATA_SIS965,  0x00, SIS133NEW, 0, ATA_UDMA6, "965" }, /* south */
-     { ATA_SIS964,  0x00, SIS133NEW, 0, ATA_UDMA6, "964" }, /* south */
-     { ATA_SIS963,  0x00, SIS133NEW, 0, ATA_UDMA6, "963" }, /* south */
-     { ATA_SIS962,  0x00, SIS133NEW, 0, ATA_UDMA6, "962" }, /* south */
+    {{ ATA_SIS182,  0x00, SIS_SATA,   0, ATA_SA150, "182" }, /* south */
+     { ATA_SIS181,  0x00, SIS_SATA,   0, ATA_SA150, "181" }, /* south */
+     { ATA_SIS180,  0x00, SIS_SATA,   0, ATA_SA150, "180" }, /* south */
+     { ATA_SIS965,  0x00, SIS_133NEW, 0, ATA_UDMA6, "965" }, /* south */
+     { ATA_SIS964,  0x00, SIS_133NEW, 0, ATA_UDMA6, "964" }, /* south */
+     { ATA_SIS963,  0x00, SIS_133NEW, 0, ATA_UDMA6, "963" }, /* south */
+     { ATA_SIS962,  0x00, SIS_133NEW, 0, ATA_UDMA6, "962" }, /* south */
 
-     { ATA_SIS745,  0x00, SIS100NEW, 0, ATA_UDMA5, "745" }, /* 1chip */
-     { ATA_SIS735,  0x00, SIS100NEW, 0, ATA_UDMA5, "735" }, /* 1chip */
-     { ATA_SIS733,  0x00, SIS100NEW, 0, ATA_UDMA5, "733" }, /* 1chip */
-     { ATA_SIS730,  0x00, SIS100OLD, 0, ATA_UDMA5, "730" }, /* 1chip */
+     { ATA_SIS745,  0x00, SIS_100NEW, 0, ATA_UDMA5, "745" }, /* 1chip */
+     { ATA_SIS735,  0x00, SIS_100NEW, 0, ATA_UDMA5, "735" }, /* 1chip */
+     { ATA_SIS733,  0x00, SIS_100NEW, 0, ATA_UDMA5, "733" }, /* 1chip */
+     { ATA_SIS730,  0x00, SIS_100OLD, 0, ATA_UDMA5, "730" }, /* 1chip */
 
-     { ATA_SIS635,  0x00, SIS100NEW, 0, ATA_UDMA5, "635" }, /* 1chip */
-     { ATA_SIS633,  0x00, SIS100NEW, 0, ATA_UDMA5, "633" }, /* unknown */
-     { ATA_SIS630,  0x30, SIS100OLD, 0, ATA_UDMA5, "630S"}, /* 1chip */
-     { ATA_SIS630,  0x00, SIS66,     0, ATA_UDMA4, "630" }, /* 1chip */
-     { ATA_SIS620,  0x00, SIS66,     0, ATA_UDMA4, "620" }, /* 1chip */
+     { ATA_SIS635,  0x00, SIS_100NEW, 0, ATA_UDMA5, "635" }, /* 1chip */
+     { ATA_SIS633,  0x00, SIS_100NEW, 0, ATA_UDMA5, "633" }, /* unknown */
+     { ATA_SIS630,  0x30, SIS_100OLD, 0, ATA_UDMA5, "630S"}, /* 1chip */
+     { ATA_SIS630,  0x00, SIS_66,     0, ATA_UDMA4, "630" }, /* 1chip */
+     { ATA_SIS620,  0x00, SIS_66,     0, ATA_UDMA4, "620" }, /* 1chip */
 
-     { ATA_SIS550,  0x00, SIS66,     0, ATA_UDMA5, "550" },
-     { ATA_SIS540,  0x00, SIS66,     0, ATA_UDMA4, "540" },
-     { ATA_SIS530,  0x00, SIS66,     0, ATA_UDMA4, "530" },
+     { ATA_SIS550,  0x00, SIS_66,     0, ATA_UDMA5, "550" },
+     { ATA_SIS540,  0x00, SIS_66,     0, ATA_UDMA4, "540" },
+     { ATA_SIS530,  0x00, SIS_66,     0, ATA_UDMA4, "530" },
 
-     { ATA_SIS5513, 0xc2, SIS33,     1, ATA_UDMA2, "5513" },
-     { ATA_SIS5513, 0x00, SIS33,     1, ATA_WDMA2, "5513" },
+     { ATA_SIS5513, 0xc2, SIS_33,     1, ATA_UDMA2, "5513" },
+     { ATA_SIS5513, 0x00, SIS_33,     1, ATA_WDMA2, "5513" },
      { 0, 0, 0, 0, 0, 0 }};
     char buffer[64];
     int found = 0;
@@ -77,7 +86,7 @@ ata_sis_ident(device_t dev)
 	pci_write_config(dev, 0x57, (reg57 & 0x7f), 1);
 	if (pci_read_config(dev, PCIR_DEVVENDOR, 4) == ATA_SIS5518) {
 	    found = 1;
-	    idx->cfg1 = SIS133NEW;
+	    idx->cfg1 = SIS_133NEW;
 	    idx->max_dma = ATA_UDMA6;
 	    ksprintf(buffer, "SiS 962/963 %s controller",
 		    ata_mode2str(idx->max_dma));
@@ -94,11 +103,11 @@ ata_sis_ident(device_t dev)
 
 	    found = 1;
 	    if (ata_find_chip(dev, id, pci_get_slot(dev))) {
-		idx->cfg1 = SIS133OLD;
+		idx->cfg1 = SIS_133OLD;
 		idx->max_dma = ATA_UDMA6;
 	    }
 	    else {
-		idx->cfg1 = SIS100NEW;
+		idx->cfg1 = SIS_100NEW;
 		idx->max_dma = ATA_UDMA5;
 	    }
 	    ksprintf(buffer, "SiS 961 %s controller",ata_mode2str(idx->max_dma));
@@ -124,21 +133,21 @@ ata_sis_chipinit(device_t dev)
 	return ENXIO;
 
     switch (ctlr->chip->cfg1) {
-    case SIS33:
+    case SIS_33:
 	break;
-    case SIS66:
-    case SIS100OLD:
+    case SIS_66:
+    case SIS_100OLD:
 	pci_write_config(dev, 0x52, pci_read_config(dev, 0x52, 1) & ~0x04, 1);
 	break;
-    case SIS100NEW:
-    case SIS133OLD:
+    case SIS_100NEW:
+    case SIS_133OLD:
 	pci_write_config(dev, 0x49, pci_read_config(dev, 0x49, 1) & ~0x01, 1);
 	break;
-    case SIS133NEW:
+    case SIS_133NEW:
 	pci_write_config(dev, 0x50, pci_read_config(dev, 0x50, 2) | 0x0008, 2);
 	pci_write_config(dev, 0x52, pci_read_config(dev, 0x52, 2) | 0x0008, 2);
 	break;
-    case SISSATA:
+    case SIS_SATA:
 	ctlr->r_type2 = SYS_RES_IOPORT;
 	ctlr->r_rid2 = PCIR_BAR(5);
 	if ((ctlr->r_res2 = bus_alloc_resource_any(dev, ctlr->r_type2,
@@ -203,7 +212,7 @@ ata_sis_setmode(device_t dev, int mode)
 
     mode = ata_limit_mode(dev, mode, ctlr->chip->max_dma);
 
-    if (ctlr->chip->cfg1 == SIS133NEW) {
+    if (ctlr->chip->cfg1 == SIS_133NEW) {
 	if (mode > ATA_UDMA2 &&
 	    pci_read_config(gparent, ch->unit ? 0x52 : 0x50,2) & 0x8000) {
 	    ata_print_cable(dev, "controller");
@@ -226,7 +235,7 @@ ata_sis_setmode(device_t dev, int mode)
 		      ata_mode2str(mode), ctlr->chip->text);
     if (!error) {
 	switch (ctlr->chip->cfg1) {
-	case SIS133NEW: {
+	case SIS_133NEW: {
 	    u_int32_t timings[] =
 		{ 0x28269008, 0x0c266008, 0x04263008, 0x0c0a3008, 0x05093008,
 		  0x22196008, 0x0c0a3008, 0x05093008, 0x050939fc, 0x050936ac,
@@ -237,7 +246,7 @@ ata_sis_setmode(device_t dev, int mode)
 	    pci_write_config(gparent, reg, timings[ata_mode2idx(mode)], 4);
 	    break;
 	    }
-	case SIS133OLD: {
+	case SIS_133OLD: {
 	    u_int16_t timings[] =
 	     { 0x00cb, 0x0067, 0x0044, 0x0033, 0x0031, 0x0044, 0x0033, 0x0031,
 	       0x8f31, 0x8a31, 0x8731, 0x8531, 0x8331, 0x8231, 0x8131 };
@@ -247,7 +256,7 @@ ata_sis_setmode(device_t dev, int mode)
 	    pci_write_config(gparent, reg, timings[ata_mode2idx(mode)], 2);
 	    break;
 	    }
-	case SIS100NEW: {
+	case SIS_100NEW: {
 	    u_int16_t timings[] =
 		{ 0x00cb, 0x0067, 0x0044, 0x0033, 0x0031, 0x0044, 0x0033,
 		  0x0031, 0x8b31, 0x8731, 0x8531, 0x8431, 0x8231, 0x8131 };
@@ -256,9 +265,9 @@ ata_sis_setmode(device_t dev, int mode)
 	    pci_write_config(gparent, reg, timings[ata_mode2idx(mode)], 2);
 	    break;
 	    }
-	case SIS100OLD:
-	case SIS66:
-	case SIS33: {
+	case SIS_100OLD:
+	case SIS_66:
+	case SIS_33: {
 	    u_int16_t timings[] =
 		{ 0x0c0b, 0x0607, 0x0404, 0x0303, 0x0301, 0x0404, 0x0303,
 		  0x0301, 0xf301, 0xd301, 0xb301, 0xa301, 0x9301, 0x8301 };

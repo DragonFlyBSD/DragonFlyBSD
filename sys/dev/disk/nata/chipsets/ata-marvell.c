@@ -37,6 +37,11 @@ static void ata_marvell_edma_reset(device_t dev);
 static void ata_marvell_edma_dmasetprd(void *xsc, bus_dma_segment_t *segs, int nsegs, int error);
 static void ata_marvell_edma_dmainit(device_t dev);
 
+/* misc defines */
+#define MV_50XX		50
+#define MV_60XX		60
+#define MV_61XX		61
+
 #define ATA_MV_HOST_BASE(ch) \
 	((ch->unit & 3) * 0x0100) + (ch->unit > 3 ? 0x30000 : 0x20000)
 #define ATA_MV_EDMA_BASE(ch) \
@@ -65,14 +70,14 @@ ata_marvell_ident(device_t dev)
     struct ata_pci_controller *ctlr = device_get_softc(dev);
     struct ata_chip_id *idx;
     static struct ata_chip_id ids[] =
-    {{ ATA_M88SX5040, 0, 4, MV50XX, ATA_SA150, "88SX5040" },
-     { ATA_M88SX5041, 0, 4, MV50XX, ATA_SA150, "88SX5041" },
-     { ATA_M88SX5080, 0, 8, MV50XX, ATA_SA150, "88SX5080" },
-     { ATA_M88SX5081, 0, 8, MV50XX, ATA_SA150, "88SX5081" },
-     { ATA_M88SX6041, 0, 4, MV60XX, ATA_SA300, "88SX6041" },
-     { ATA_M88SX6081, 0, 8, MV60XX, ATA_SA300, "88SX6081" },
-     { ATA_M88SX6101, 0, 1, MV61XX, ATA_UDMA6, "88SX6101" },
-     { ATA_M88SX6145, 0, 2, MV61XX, ATA_UDMA6, "88SX6145" },
+    {{ ATA_M88SX5040, 0, 4, MV_50XX, ATA_SA150, "88SX5040" },
+     { ATA_M88SX5041, 0, 4, MV_50XX, ATA_SA150, "88SX5041" },
+     { ATA_M88SX5080, 0, 8, MV_50XX, ATA_SA150, "88SX5080" },
+     { ATA_M88SX5081, 0, 8, MV_50XX, ATA_SA150, "88SX5081" },
+     { ATA_M88SX6041, 0, 4, MV_60XX, ATA_SA300, "88SX6041" },
+     { ATA_M88SX6081, 0, 8, MV_60XX, ATA_SA300, "88SX6081" },
+     { ATA_M88SX6101, 0, 1, MV_61XX, ATA_UDMA6, "88SX6101" },
+     { ATA_M88SX6145, 0, 2, MV_61XX, ATA_UDMA6, "88SX6145" },
      { 0, 0, 0, 0, 0, 0}};
     char buffer[64];
 
@@ -84,11 +89,11 @@ ata_marvell_ident(device_t dev)
     device_set_desc_copy(dev, buffer);
     ctlr->chip = idx;
     switch (ctlr->chip->cfg2) {
-    case MV50XX:
-    case MV60XX:
+    case MV_50XX:
+    case MV_60XX:
 	ctlr->chipinit = ata_marvell_edma_chipinit;
 	break;
-    case MV61XX:
+    case MV_61XX:
 	ctlr->chipinit = ata_marvell_pata_chipinit;
 	break;
     }
@@ -209,7 +214,7 @@ ata_marvell_edma_allocate(device_t dev)
 
     /* set SATA resources */
     switch (ctlr->chip->cfg2) {
-    case MV50XX:
+    case MV_50XX:
 	ch->r_io[ATA_SSTATUS].res = ctlr->r_res1;
 	ch->r_io[ATA_SSTATUS].offset =  0x00100 + ATA_MV_HOST_BASE(ch);
 	ch->r_io[ATA_SERROR].res = ctlr->r_res1;
@@ -217,7 +222,7 @@ ata_marvell_edma_allocate(device_t dev)
 	ch->r_io[ATA_SCONTROL].res = ctlr->r_res1;
 	ch->r_io[ATA_SCONTROL].offset = 0x00108 + ATA_MV_HOST_BASE(ch);
 	break;
-    case MV60XX:
+    case MV_60XX:
 	ch->r_io[ATA_SSTATUS].res = ctlr->r_res1;
 	ch->r_io[ATA_SSTATUS].offset =  0x02300 + ATA_MV_EDMA_BASE(ch);
 	ch->r_io[ATA_SERROR].res = ctlr->r_res1;

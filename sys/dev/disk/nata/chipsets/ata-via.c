@@ -32,6 +32,17 @@ static void ata_via_old_setmode(device_t dev, int mode);
 static void ata_via_southbridge_fixup(device_t dev);
 static void ata_via_new_setmode(device_t dev, int mode);
 
+/* misc defines */
+#define VIA33           0
+#define VIA66           1
+#define VIA100          2
+#define VIA133          3
+
+#define VIACLK          0x01
+#define VIABUG          0x02
+#define VIABAR          0x04
+#define VIAAHCI         0x08
+
 /*
  * VIA Technologies Inc. chipset support functions
  */

@@ -29,6 +29,12 @@ static int ata_serverworks_chipinit(device_t dev);
 static int ata_serverworks_allocate(device_t dev);
 static void ata_serverworks_setmode(device_t dev, int mode);
 
+/* misc defines */
+#define SWKS_33		0
+#define SWKS_66		1
+#define SWKS_100	2
+#define SWKS_MIO	3
+
 /*
  * ServerWorks chipset support functions
  */
@@ -38,17 +44,17 @@ ata_serverworks_ident(device_t dev)
     struct ata_pci_controller *ctlr = device_get_softc(dev);
     struct ata_chip_id *idx;
     static struct ata_chip_id ids[] =
-    {{ ATA_ROSB4,     0x00, SWKS33,  0, ATA_UDMA2, "ROSB4" },
-     { ATA_CSB5,      0x92, SWKS100, 0, ATA_UDMA5, "CSB5" },
-     { ATA_CSB5,      0x00, SWKS66,  0, ATA_UDMA4, "CSB5" },
-     { ATA_CSB6,      0x00, SWKS100, 0, ATA_UDMA5, "CSB6" },
-     { ATA_CSB6_1,    0x00, SWKS66,  0, ATA_UDMA4, "CSB6" },
-     { ATA_HT1000,    0x00, SWKS100, 0, ATA_UDMA5, "HT1000" },
-     { ATA_HT1000_S1, 0x00, SWKS100, 4, ATA_SA150, "HT1000" },
-     { ATA_HT1000_S2, 0x00, SWKSMIO, 4, ATA_SA150, "HT1000" },
-     { ATA_K2,        0x00, SWKSMIO, 4, ATA_SA150, "K2" },
-     { ATA_FRODO4,    0x00, SWKSMIO, 4, ATA_SA150, "Frodo4" },
-     { ATA_FRODO8,    0x00, SWKSMIO, 8, ATA_SA150, "Frodo8" },
+    {{ ATA_ROSB4,     0x00, SWKS_33,  0, ATA_UDMA2, "ROSB4" },
+     { ATA_CSB5,      0x92, SWKS_100, 0, ATA_UDMA5, "CSB5" },
+     { ATA_CSB5,      0x00, SWKS_66,  0, ATA_UDMA4, "CSB5" },
+     { ATA_CSB6,      0x00, SWKS_100, 0, ATA_UDMA5, "CSB6" },
+     { ATA_CSB6_1,    0x00, SWKS_66,  0, ATA_UDMA4, "CSB6" },
+     { ATA_HT1000,    0x00, SWKS_100, 0, ATA_UDMA5, "HT1000" },
+     { ATA_HT1000_S1, 0x00, SWKS_100, 4, ATA_SA150, "HT1000" },
+     { ATA_HT1000_S2, 0x00, SWKS_MIO, 4, ATA_SA150, "HT1000" },
+     { ATA_K2,        0x00, SWKS_MIO, 4, ATA_SA150, "K2" },
+     { ATA_FRODO4,    0x00, SWKS_MIO, 4, ATA_SA150, "Frodo4" },
+     { ATA_FRODO8,    0x00, SWKS_MIO, 8, ATA_SA150, "Frodo8" },
      { 0, 0, 0, 0, 0, 0}};
     char buffer[64];
 
@@ -71,7 +77,7 @@ ata_serverworks_chipinit(device_t dev)
     if (ata_setup_interrupt(dev))
 	return ENXIO;
 
-    if (ctlr->chip->cfg1 == SWKSMIO) {
+    if (ctlr->chip->cfg1 == SWKS_MIO) {
 	ctlr->r_type2 = SYS_RES_MEMORY;
 	ctlr->r_rid2 = PCIR_BAR(5);
 	if (!(ctlr->r_res2 = bus_alloc_resource_any(dev, ctlr->r_type2,
@@ -85,7 +91,7 @@ ata_serverworks_chipinit(device_t dev)
 	ctlr->setmode = ata_sata_setmode;
 	return 0;
     }
-    else if (ctlr->chip->cfg1 == SWKS33) {
+    else if (ctlr->chip->cfg1 == SWKS_33) {
 	device_t *children;
 	int nchildren, i;
 
@@ -105,7 +111,7 @@ ata_serverworks_chipinit(device_t dev)
     else {
 	pci_write_config(dev, 0x5a,
 			 (pci_read_config(dev, 0x5a, 1) & ~0x40) |
-			 (ctlr->chip->cfg1 == SWKS100) ? 0x03 : 0x02, 1);
+			 (ctlr->chip->cfg1 == SWKS_100) ? 0x03 : 0x02, 1);
     }
     ctlr->setmode = ata_serverworks_setmode;
     return 0;

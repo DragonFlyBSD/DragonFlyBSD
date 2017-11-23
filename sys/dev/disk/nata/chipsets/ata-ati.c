@@ -28,6 +28,10 @@
 static int ata_ati_chipinit(device_t dev);
 static void ata_ati_setmode(device_t dev, int mode);
 
+/* misc defines */
+#define ATI_AHCI	0x04
+#define SII_MEMIO	1
+
 /*
  * ATI chipset support functions
  */
@@ -41,11 +45,11 @@ ata_ati_ident(device_t dev)
      { ATA_ATI_IXP300,    0x00, 0,        0, ATA_UDMA6, "IXP300" },
      { ATA_ATI_IXP400,    0x00, 0,        0, ATA_UDMA6, "IXP400" },
      { ATA_ATI_SB600,     0x00, 0,        0, ATA_UDMA6, "SB600"  },
-     { ATA_ATI_IXP300_S1, 0x00, SIIMEMIO, 0, ATA_SA150, "IXP300" },
-     { ATA_ATI_IXP400_S1, 0x00, SIIMEMIO, 0, ATA_SA150, "IXP400" },
-     { ATA_ATI_IXP400_S2, 0x00, SIIMEMIO, 0, ATA_SA150, "IXP400" },
-     { ATA_ATI_SB600_S1,  0x00, ATIAHCI,     0, ATA_SA300, "SB600"  },
-     { ATA_ATI_SB600_S2,  0x00, ATIAHCI,     0, ATA_SA300, "SB600"  },
+     { ATA_ATI_IXP300_S1, 0x00, SII_MEMIO, 0, ATA_SA150, "IXP300" },
+     { ATA_ATI_IXP400_S1, 0x00, SII_MEMIO, 0, ATA_SA150, "IXP400" },
+     { ATA_ATI_IXP400_S2, 0x00, SII_MEMIO, 0, ATA_SA150, "IXP400" },
+     { ATA_ATI_SB600_S1,  0x00, ATI_AHCI, 0, ATA_SA300, "SB600" },
+     { ATA_ATI_SB600_S2,  0x00, ATI_AHCI, 0, ATA_SA300, "SB600" },
      { 0, 0, 0, 0, 0, 0}};
     char buffer[64];
 
@@ -61,7 +65,7 @@ ata_ati_ident(device_t dev)
      * The ATI SATA controllers are actually a SiI 3112 controller, except
      * for the SB600.
      */
-    if (ctlr->chip->cfg1 & SIIMEMIO)
+    if (ctlr->chip->cfg1 & SII_MEMIO)
 	ctlr->chipinit = ata_sii_chipinit;
     else
 	ctlr->chipinit = ata_ati_chipinit;
@@ -77,7 +81,7 @@ ata_ati_chipinit(device_t dev)
 	return ENXIO;
 
     /* The SB600 needs special treatment. */
-    if (ctlr->chip->cfg1 & ATIAHCI) {
+    if (ctlr->chip->cfg1 & ATI_AHCI) {
 	/* Check if the chip is configured as an AHCI part. */
 	if ((pci_get_subclass(dev) == PCIS_STORAGE_SATA) &&
 	    (pci_read_config(dev, PCIR_PROGIF, 1) == PCIP_STORAGE_SATA_AHCI_1_0)) {

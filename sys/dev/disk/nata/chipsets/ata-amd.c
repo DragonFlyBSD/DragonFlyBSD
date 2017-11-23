@@ -28,6 +28,10 @@
 static int ata_amd_chipinit(device_t dev);
 static void ata_amd_setmode(device_t dev, int mode);
 
+/* misc defines */
+#define AMD_BUG		0x01
+#define AMD_CABLE	0x02
+
 /*
  * Advanced Micro Devices (AMD) chipset support functions
  */
@@ -38,9 +42,9 @@ ata_amd_ident(device_t dev)
     struct ata_chip_id *idx;
     static struct ata_chip_id ids[] =
     {{ ATA_AMD756,  0x00, 0x00,              0, ATA_UDMA4, "756" },
-     { ATA_AMD766,  0x00, AMDCABLE|AMDBUG,   0, ATA_UDMA5, "766" },
-     { ATA_AMD768,  0x00, AMDCABLE,          0, ATA_UDMA5, "768" },
-     { ATA_AMD8111, 0x00, AMDCABLE,          0, ATA_UDMA6, "8111" },
+     { ATA_AMD766,  0x00, AMD_CABLE|AMD_BUG, 0, ATA_UDMA5, "766" },
+     { ATA_AMD768,  0x00, AMD_CABLE,         0, ATA_UDMA5, "768" },
+     { ATA_AMD8111, 0x00, AMD_CABLE,         0, ATA_UDMA6, "8111" },
      { 0, 0, 0, 0, 0, 0}};
     char buffer[64];
 
@@ -64,7 +68,7 @@ ata_amd_chipinit(device_t dev)
 	return ENXIO;
 
     /* disable/set prefetch, postwrite */
-    if (ctlr->chip->cfg1 & AMDBUG)
+    if (ctlr->chip->cfg1 & AMD_BUG)
 	pci_write_config(dev, 0x41, pci_read_config(dev, 0x41, 1) & 0x0f, 1);
     else
 	pci_write_config(dev, 0x41, pci_read_config(dev, 0x41, 1) | 0xf0, 1);
@@ -89,7 +93,7 @@ ata_amd_setmode(device_t dev, int mode)
 
     mode = ata_limit_mode(dev, mode, ctlr->chip->max_dma);
 
-    if (ctlr->chip->cfg1 & AMDCABLE) {
+    if (ctlr->chip->cfg1 & AMD_CABLE) {
 	if (mode > ATA_UDMA2 &&
 	    !(pci_read_config(gparent, 0x42, 1) & (1 << devno))) {
 	    ata_print_cable(dev, "controller");
