@@ -444,7 +444,6 @@ struct ata_connect_task {
 
 #define AMDCABLE        0x0001
 #define AMDBUG          0x0002
-#define NVIDIA          0x0004
 #define NV4             0x0010
 #define NVQ		0x0020
 #define VIACLK          0x0100

@@ -40,35 +40,35 @@ ata_nvidia_ident(device_t dev)
     struct ata_pci_controller *ctlr = device_get_softc(dev);
     struct ata_chip_id *idx;
     static struct ata_chip_id ids[] =
-    {{ ATA_NFORCE1,         0, NVIDIA,  0, ATA_UDMA5, "nForce" },
-     { ATA_NFORCE2,         0, NVIDIA,  0, ATA_UDMA6, "nForce2" },
-     { ATA_NFORCE2_PRO,     0, NVIDIA,  0, ATA_UDMA6, "nForce2 Pro" },
+    {{ ATA_NFORCE1,         0, 0,       0, ATA_UDMA5, "nForce" },
+     { ATA_NFORCE2,         0, 0,       0, ATA_UDMA6, "nForce2" },
+     { ATA_NFORCE2_PRO,     0, 0,       0, ATA_UDMA6, "nForce2 Pro" },
      { ATA_NFORCE2_PRO_S1,  0, 0,       0, ATA_SA150, "nForce2 Pro" },
-     { ATA_NFORCE3,         0, NVIDIA,  0, ATA_UDMA6, "nForce3" },
-     { ATA_NFORCE3_PRO,     0, NVIDIA,  0, ATA_UDMA6, "nForce3 Pro" },
+     { ATA_NFORCE3,         0, 0,       0, ATA_UDMA6, "nForce3" },
+     { ATA_NFORCE3_PRO,     0, 0,       0, ATA_UDMA6, "nForce3 Pro" },
      { ATA_NFORCE3_PRO_S1,  0, 0,       0, ATA_SA150, "nForce3 Pro" },
      { ATA_NFORCE3_PRO_S2,  0, 0,       0, ATA_SA150, "nForce3 Pro" },
-     { ATA_NFORCE_MCP04,    0, NVIDIA,  0, ATA_UDMA6, "nForce MCP" },
+     { ATA_NFORCE_MCP04,    0, 0,       0, ATA_UDMA6, "nForce MCP" },
      { ATA_NFORCE_MCP04_S1, 0, NV4,     0, ATA_SA150, "nForce MCP" },
      { ATA_NFORCE_MCP04_S2, 0, NV4,     0, ATA_SA150, "nForce MCP" },
-     { ATA_NFORCE_CK804,    0, NVIDIA,  0, ATA_UDMA6, "nForce CK804" },
+     { ATA_NFORCE_CK804,    0, 0,       0, ATA_UDMA6, "nForce CK804" },
      { ATA_NFORCE_CK804_S1, 0, NV4,     0, ATA_SA300, "nForce CK804" },
      { ATA_NFORCE_CK804_S2, 0, NV4,     0, ATA_SA300, "nForce CK804" },
-     { ATA_NFORCE_MCP51,    0, NVIDIA,  0, ATA_UDMA6, "nForce MCP51" },
+     { ATA_NFORCE_MCP51,    0, 0,       0, ATA_UDMA6, "nForce MCP51" },
      { ATA_NFORCE_MCP51_S1, 0, NV4|NVQ, 0, ATA_SA300, "nForce MCP51" },
      { ATA_NFORCE_MCP51_S2, 0, NV4|NVQ, 0, ATA_SA300, "nForce MCP51" },
-     { ATA_NFORCE_MCP55,    0, NVIDIA,  0, ATA_UDMA6, "nForce MCP55" },
+     { ATA_NFORCE_MCP55,    0, 0,       0, ATA_UDMA6, "nForce MCP55" },
      { ATA_NFORCE_MCP55_S1, 0, NV4|NVQ, 0, ATA_SA300, "nForce MCP55" },
      { ATA_NFORCE_MCP55_S2, 0, NV4|NVQ, 0, ATA_SA300, "nForce MCP55" },
-     { ATA_NFORCE_MCP61,    0, NVIDIA,  0, ATA_UDMA6, "nForce MCP61" },
+     { ATA_NFORCE_MCP61,    0, 0,       0, ATA_UDMA6, "nForce MCP61" },
      { ATA_NFORCE_MCP61_S1, 0, NV4|NVQ, 0, ATA_SA300, "nForce MCP61" },
      { ATA_NFORCE_MCP61_S2, 0, NV4|NVQ, 0, ATA_SA300, "nForce MCP61" },
      { ATA_NFORCE_MCP61_S3, 0, NV4|NVQ, 0, ATA_SA300, "nForce MCP61" },
-     { ATA_NFORCE_MCP65,    0, NVIDIA,  0, ATA_UDMA6, "nForce MCP65" },
-     { ATA_NFORCE_MCP67,    0, NVIDIA,  0, ATA_UDMA6, "nForce MCP67" },
+     { ATA_NFORCE_MCP65,    0, 0,       0, ATA_UDMA6, "nForce MCP65" },
+     { ATA_NFORCE_MCP67,    0, 0,       0, ATA_UDMA6, "nForce MCP67" },
      { ATA_NFORCE_MCP67_S2, 0, NV4|NVQ, 0, ATA_SA300, "nForce MCP67" },
-     { ATA_NFORCE_MCP73,    0, NVIDIA,  0, ATA_UDMA6, "nForce MCP73" },
-     { ATA_NFORCE_MCP77,    0, NVIDIA,  0, ATA_UDMA6, "nForce MCP77" },
+     { ATA_NFORCE_MCP73,    0, 0,       0, ATA_UDMA6, "nForce MCP73" },
+     { ATA_NFORCE_MCP77,    0, 0,       0, ATA_UDMA6, "nForce MCP77" },
      { 0, 0, 0, 0, 0, 0}} ;
     char buffer[64] ;
 
@@ -211,14 +211,11 @@ ata_nvidia_setmode(device_t dev, int mode)
 			   0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 };
     int modes[7] = { 0xc2, 0xc1, 0xc0, 0xc4, 0xc5, 0xc6, 0xc7 };
     int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
-    int reg = 0x53 - devno;
+    int reg = 0x63 - devno;
     int error;
 
     mode = ata_limit_mode(dev, mode, ctlr->chip->max_dma);
     mode = ata_check_80pin(dev, mode);
-
-    if (ctlr->chip->cfg1 & NVIDIA)
-       reg += 0x10;
 
     error = ata_controlcmd(dev, ATA_SETFEATURES, ATA_SF_SETXFER, 0, mode);
     if (bootverbose)
