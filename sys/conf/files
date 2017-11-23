@@ -145,10 +145,11 @@ dev/disk/nata/ata-chipset.c		optional nata pci
 dev/disk/nata/ata-disk.c		optional natadisk
 dev/disk/nata/ata-dma.c			optional nata pci
 dev/disk/nata/ata-isa.c			optional nata isa
-dev/disk/nata/ata-lowlevel.c	optional nata
+dev/disk/nata/ata-lowlevel.c		optional nata
 dev/disk/nata/ata-pci.c			optional nata pci
 dev/disk/nata/ata-queue.c		optional nata
 dev/disk/nata/ata-raid.c		optional nataraid
+dev/disk/nata/ata-sata.c		optional nata pci
 dev/disk/nata/atapi-cam.c		optional natapicam
 dev/disk/nata/atapi-cd.c		optional natapicd
 dev/disk/nata/atapi-fd.c		optional natapifd

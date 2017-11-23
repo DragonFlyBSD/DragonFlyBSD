@@ -152,14 +152,14 @@ ata_intel_chipinit(device_t dev)
     /* SATA parts can be either compat or AHCI */
     else {
 	/* force all ports active "the legacy way" */
-	pci_write_config(dev, 0x92, pci_read_config(dev, 0x92, 2) | 0x0f,2);
+	pci_write_config(dev, 0x92, pci_read_config(dev, 0x92, 2) | 0x0f, 2);
 
 	ctlr->allocate = ata_intel_allocate;
 	ctlr->reset = ata_intel_reset;
 
 	/*
-	 * if we have AHCI capability and BAR(5) as a memory resource
-	 * and AHCI or RAID mode enabled in BIOS we go for AHCI mode
+	 * if we have AHCI capability and AHCI or RAID mode enabled
+	 * in BIOS we try for AHCI mode
 	 */
 	if ((ctlr->chip->cfg1 == INTEL_AHCI) &&
 	    (pci_read_config(dev, 0x90, 1) & 0xc0) &&

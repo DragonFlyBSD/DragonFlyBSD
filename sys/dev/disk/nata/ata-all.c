@@ -555,6 +555,12 @@ ata_boot_attach(void)
 
 #endif
 
+void
+ata_print_cable(device_t dev, u_int8_t *who)
+{
+    device_printf(dev,
+		  "DMA limited to UDMA33, %s found non-ATA66 cable\n", who);
+}
 
 /*
  * misc support functions
@@ -611,7 +617,6 @@ ata_getparam(struct ata_device *atadev, int init)
     if (!error && (isprint(atadev->param.model[0]) ||
 		   isprint(atadev->param.model[1]))) {
 	struct ata_params *atacap = &atadev->param;
-	char buffer[64];
 	int16_t *ptr;
 
 	for (ptr = (int16_t *)atacap;
@@ -643,6 +648,8 @@ ata_getparam(struct ata_device *atadev, int init)
 		   (atacap->hwres & ATA_CABLE_ID) ? "80":"40");
 
 	if (init) {
+	    char buffer[64];
+
 	    ksprintf(buffer, "%.40s/%.8s", atacap->model, atacap->revision);
 	    device_set_desc_copy(atadev->dev, buffer);
 	    if ((atadev->param.config & ATA_PROTO_ATAPI) &&
@@ -749,7 +756,7 @@ ata_modify_if_48bit(struct ata_request *request)
 
     atadev->flags &= ~ATA_D_48BIT_ACTIVE;
 
-    if ((request->u.ata.lba + request->u.ata.count >= ATA_MAX_28BIT_LBA ||
+    if (((request->u.ata.lba + request->u.ata.count) >= ATA_MAX_28BIT_LBA ||
 	 request->u.ata.count > 256) &&
 	atadev->param.support.command2 & ATA_SUPPORT_ADDRESS48) {
 
@@ -872,6 +879,16 @@ ata_mode2str(int mode)
 	else
 	    return "BIOSPIO";
     }
+}
+
+int
+ata_atapi(device_t dev)
+{
+    struct ata_channel *ch = device_get_softc(device_get_parent(dev));
+    struct ata_device *atadev = device_get_softc(dev);
+
+    return ((atadev->unit == ATA_MASTER && ch->devices & ATA_ATAPI_MASTER) ||
+	    (atadev->unit == ATA_SLAVE && ch->devices & ATA_ATAPI_SLAVE));
 }
 
 int

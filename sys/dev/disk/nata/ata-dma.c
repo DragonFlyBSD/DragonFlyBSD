@@ -39,7 +39,6 @@
 #include <machine/bus_dma.h>
 
 #include "ata-all.h"
-#include "ata-pci.h"
 #include "ata_if.h"
 
 /* prototypes */

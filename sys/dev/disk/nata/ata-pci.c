@@ -59,20 +59,9 @@ static const struct none_atapci {
 	{ 0xffff, 0, 0, 0 }
 };
 
-int
-ata_legacy(device_t dev)
-{
-    return (((pci_read_config(dev, PCIR_PROGIF, 1)&PCIP_STORAGE_IDE_MASTERDEV)&&
-	    ((pci_read_config(dev, PCIR_PROGIF, 1) &
-	      (PCIP_STORAGE_IDE_MODEPRIM | PCIP_STORAGE_IDE_MODESEC)) !=
-	     (PCIP_STORAGE_IDE_MODEPRIM | PCIP_STORAGE_IDE_MODESEC))) ||
-	    (!pci_read_config(dev, PCIR_BAR(0), 4) &&
-	     !pci_read_config(dev, PCIR_BAR(1), 4) &&
-	     !pci_read_config(dev, PCIR_BAR(2), 4) &&
-	     !pci_read_config(dev, PCIR_BAR(3), 4) &&
-	     !pci_read_config(dev, PCIR_BAR(5), 4)));
-}
-
+/*
+ * generic PCI ATA device probe
+ */
 int
 ata_pci_probe(device_t dev)
 {
@@ -87,7 +76,7 @@ ata_pci_probe(device_t dev)
 
     /* run through the vendor specific drivers */
     switch (pci_get_vendor(dev)) {
-    case ATA_ACARD_ID: 
+    case ATA_ACARD_ID:
 	if (!ata_acard_ident(dev))
 	    return ATA_PROBE_OK;
 	break;
@@ -111,7 +100,7 @@ ata_pci_probe(device_t dev)
 	if (!ata_cypress_ident(dev))
 	    return ATA_PROBE_OK;
 	break;
-    case ATA_HIGHPOINT_ID: 
+    case ATA_HIGHPOINT_ID:
 	if (!ata_highpoint_ident(dev))
 	    return ATA_PROBE_OK;
 	break;
@@ -147,7 +136,7 @@ ata_pci_probe(device_t dev)
 	if (!ata_promise_ident(dev))
 	    return ATA_PROBE_OK;
 	break;
-    case ATA_SERVERWORKS_ID: 
+    case ATA_SERVERWORKS_ID:
 	if (!ata_serverworks_ident(dev))
 	    return ATA_PROBE_OK;
 	break;
@@ -159,7 +148,7 @@ ata_pci_probe(device_t dev)
 	if (!ata_sis_ident(dev))
 	    return ATA_PROBE_OK;
 	break;
-    case ATA_VIA_ID: 
+    case ATA_VIA_ID:
 	if (!ata_via_ident(dev))
 	    return ATA_PROBE_OK;
 	break;
@@ -174,7 +163,7 @@ ata_pci_probe(device_t dev)
 	if (pci_get_devid(dev) == ATA_MICRON_RZ1000 ||
 	    pci_get_devid(dev) == ATA_MICRON_RZ1001) {
 	    ata_generic_ident(dev);
-	    device_set_desc(dev, 
+	    device_set_desc(dev,
 		"RZ 100? ATA controller !WARNING! data loss/corruption risk");
 	    return ATA_PROBE_OK;
 	}
@@ -417,7 +406,7 @@ ata_pci_teardown_intr(device_t dev, device_t child, struct resource *irq,
 	return 0;
     }
 }
-    
+
 int
 ata_pci_allocate(device_t dev)
 {
@@ -453,15 +442,6 @@ ata_pci_allocate(device_t dev)
 
     ata_pci_hw(dev);
     return 0;
-}
-
-void
-ata_pci_hw(device_t dev)
-{
-    struct ata_channel *ch = device_get_softc(dev);
-
-    ata_generic_hw(dev);
-    ch->hw.status = ata_pci_status;
 }
 
 int
@@ -502,6 +482,15 @@ ata_pci_status(device_t dev)
 	    return 0;
     }
     return 1;
+}
+
+void
+ata_pci_hw(device_t dev)
+{
+    struct ata_channel *ch = device_get_softc(dev);
+
+    ata_generic_hw(dev);
+    ch->hw.status = ata_pci_status;
 }
 
 static int
@@ -569,34 +558,161 @@ ata_pci_dmainit(device_t dev)
     }
 }
 
+/*
+ * misc support fucntions
+ */
+int
+ata_legacy(device_t dev)
+{
+    return (((pci_read_config(dev, PCIR_PROGIF, 1)&PCIP_STORAGE_IDE_MASTERDEV)&&
+	    ((pci_read_config(dev, PCIR_PROGIF, 1) &
+	      (PCIP_STORAGE_IDE_MODEPRIM | PCIP_STORAGE_IDE_MODESEC)) !=
+	     (PCIP_STORAGE_IDE_MODEPRIM | PCIP_STORAGE_IDE_MODESEC))) ||
+	    (!pci_read_config(dev, PCIR_BAR(0), 4) &&
+	     !pci_read_config(dev, PCIR_BAR(1), 4) &&
+	     !pci_read_config(dev, PCIR_BAR(2), 4) &&
+	     !pci_read_config(dev, PCIR_BAR(3), 4) &&
+	     !pci_read_config(dev, PCIR_BAR(5), 4)));
+}
+
+void
+ata_generic_intr(void *data)
+{
+    struct ata_pci_controller *ctlr = data;
+    struct ata_channel *ch;
+    int unit;
+
+    for (unit = 0; unit < ctlr->channels; unit++) {
+	if ((ch = ctlr->interrupt[unit].argument))
+	    ctlr->interrupt[unit].function(ch);
+    }
+}
+
+int
+ata_setup_interrupt(device_t dev)
+{
+    struct ata_pci_controller *ctlr = device_get_softc(dev);
+    int rid = ATA_IRQ_RID;
+
+    if (!ctlr->legacy) {
+	if (!(ctlr->r_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
+						   RF_SHAREABLE | RF_ACTIVE))) {
+	    device_printf(dev, "unable to map interrupt\n");
+	    return ENXIO;
+	}
+	if ((bus_setup_intr(dev, ctlr->r_irq, ATA_INTR_FLAGS,
+			    ata_generic_intr, ctlr, &ctlr->handle, NULL))) {
+	    device_printf(dev, "unable to setup interrupt\n");
+	    bus_release_resource(dev, SYS_RES_IRQ, rid, ctlr->r_irq);
+	    ctlr->r_irq = 0;
+	    return ENXIO;
+	}
+    }
+    return 0;
+}
+
+void
+ata_teardown_interrupt(device_t dev)
+{
+    struct ata_pci_controller *ctlr = device_get_softc(dev);
+
+    if (!ctlr->legacy) {
+	if (ctlr->r_irq) {
+	    bus_teardown_intr(dev, ctlr->r_irq, ctlr->handle);
+	    bus_release_resource(dev, SYS_RES_IRQ, ATA_IRQ_RID, ctlr->r_irq);
+	    ctlr->r_irq = 0;
+	}
+    }
+}
+
+struct ata_chip_id *
+ata_match_chip(device_t dev, struct ata_chip_id *index)
+{
+    while (index->chipid != 0) {
+	if (pci_get_devid(dev) == index->chipid &&
+	    pci_get_revid(dev) >= index->chiprev)
+	    return index;
+	index++;
+    }
+    return NULL;
+}
+
+struct ata_chip_id *
+ata_find_chip(device_t dev, struct ata_chip_id *index, int slot)
+{
+    device_t *children;
+    int nchildren, i;
+
+    if (device_get_children(device_get_parent(dev), &children, &nchildren))
+	return 0;
+
+    while (index->chipid != 0) {
+	for (i = 0; i < nchildren; i++) {
+	    if (((slot >= 0 && pci_get_slot(children[i]) == slot) ||
+		 (slot < 0 && pci_get_slot(children[i]) <= -slot)) &&
+		pci_get_devid(children[i]) == index->chipid &&
+		pci_get_revid(children[i]) >= index->chiprev) {
+		kfree(children, M_TEMP);
+		return index;
+	    }
+	}
+	index++;
+    }
+    kfree(children, M_TEMP);
+    return NULL;
+}
+
+int
+ata_check_80pin(device_t dev, int mode)
+{
+    struct ata_device *atadev = device_get_softc(dev);
+
+    if (mode > ATA_UDMA2 && !(atadev->param.hwres & ATA_CABLE_ID)) {
+	ata_print_cable(dev, "device");
+	mode = ATA_UDMA2;
+    }
+    return mode;
+}
+
 char *
 ata_pcivendor2str(device_t dev)
 {
     switch (pci_get_vendor(dev)) {
-    case ATA_ACARD_ID:		return "Acard";
-    case ATA_ACER_LABS_ID:	return "AcerLabs";
-    case ATA_AMD_ID:		return "AMD";
-    case ATA_ATI_ID:		return "ATI";
-    case ATA_CYRIX_ID:		return "Cyrix";
-    case ATA_CYPRESS_ID:	return "Cypress";
-    case ATA_HIGHPOINT_ID:	return "HighPoint";
-    case ATA_INTEL_ID:		return "Intel";
-    case ATA_ITE_ID:		return "ITE";
-    case ATA_JMICRON_ID:	return "JMicron";
-    case ATA_MARVELL_ID:	return "Marvell";
-    case ATA_NATIONAL_ID:	return "National";
-    case ATA_NETCELL_ID:	return "Netcell";
-    case ATA_NVIDIA_ID:		return "nVidia";
-    case ATA_PROMISE_ID:	return "Promise";
-    case ATA_SERVERWORKS_ID:	return "ServerWorks";
-    case ATA_SILICON_IMAGE_ID:	return "SiI";
-    case ATA_SIS_ID:		return "SiS";
-    case ATA_VIA_ID:		return "VIA";
-    case ATA_CENATEK_ID:	return "Cenatek";
-    case ATA_MICRON_ID:		return "Micron";
-    default:			return "Generic";
+    case ATA_ACARD_ID:          return "Acard";
+    case ATA_ACER_LABS_ID:      return "AcerLabs";
+    case ATA_AMD_ID:            return "AMD";
+    case ATA_ATI_ID:            return "ATI";
+    case ATA_CYRIX_ID:          return "Cyrix";
+    case ATA_CYPRESS_ID:        return "Cypress";
+    case ATA_HIGHPOINT_ID:      return "HighPoint";
+    case ATA_INTEL_ID:          return "Intel";
+    case ATA_ITE_ID:            return "ITE";
+    case ATA_JMICRON_ID:        return "JMicron";
+    case ATA_MARVELL_ID:        return "Marvell";
+    case ATA_NATIONAL_ID:       return "National";
+    case ATA_NETCELL_ID:        return "Netcell";
+    case ATA_NVIDIA_ID:         return "nVidia";
+    case ATA_PROMISE_ID:        return "Promise";
+    case ATA_SERVERWORKS_ID:    return "ServerWorks";
+    case ATA_SILICON_IMAGE_ID:  return "SiI";
+    case ATA_SIS_ID:            return "SiS";
+    case ATA_VIA_ID:            return "VIA";
+    case ATA_CENATEK_ID:        return "Cenatek";
+    case ATA_MICRON_ID:         return "Micron";
+    default:                    return "Generic";
     }
 }
+
+int
+ata_mode2idx(int mode)
+{
+    if ((mode & ATA_DMA_MASK) == ATA_UDMA0)
+	return (mode & ATA_MODE_MASK) + 8;
+    if ((mode & ATA_DMA_MASK) == ATA_WDMA0)
+	return (mode & ATA_MODE_MASK) + 5;
+    return (mode & ATA_MODE_MASK) - ATA_PIO0;
+}
+
 
 static device_method_t ata_pci_methods[] = {
     /* device interface */

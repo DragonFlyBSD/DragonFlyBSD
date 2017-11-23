@@ -93,7 +93,6 @@
 
 #define ATA_CTLOFFSET                   0x206   /* control register offset */
 #define ATA_PCCARD_CTLOFFSET            0x0e    /* do for PCCARD devices */
-#define ATA_PC98_CTLOFFSET              0x10c   /* do for PC98 devices */
 #define         ATA_A_IDS               0x02    /* disable interrupts */
 #define         ATA_A_RESET             0x04    /* RESET controller */
 #define         ATA_A_4BIT              0x08    /* 4 head bits */
@@ -244,25 +243,25 @@
 #define ATA_AHCI_CT_SIZE                256
 
 struct ata_ahci_dma_prd {
-    u_int64_t			dba;
-    u_int32_t			reserved;
-    u_int32_t			dbc;		/* 0 based */
-#define ATA_AHCI_PRD_MASK	0x003fffff	/* max 4MB */
-#define ATA_AHCI_PRD_IPC	(1<<31)
+    u_int64_t                   dba;
+    u_int32_t                   reserved;
+    u_int32_t                   dbc;            /* 0 based */
+#define ATA_AHCI_PRD_MASK       0x003fffff      /* max 4MB */
+#define ATA_AHCI_PRD_IPC        (1<<31)
 } __packed;
 
 struct ata_ahci_cmd_tab {
-    u_int8_t			cfis[64];
-    u_int8_t			acmd[32];
-    u_int8_t			reserved[32];
-    struct ata_ahci_dma_prd	prd_tab[16];
+    u_int8_t                    cfis[64];
+    u_int8_t                    acmd[32];
+    u_int8_t                    reserved[32];
+    struct ata_ahci_dma_prd     prd_tab[16];
 } __packed;
 
 struct ata_ahci_cmd_list {
-    u_int16_t			cmd_flags;
-    u_int16_t			prd_length;	/* PRD entries */
-    u_int32_t			bytecount;
-    u_int64_t			cmd_table_phys;	/* 128byte aligned */
+    u_int16_t                   cmd_flags;
+    u_int16_t                   prd_length;     /* PRD entries */
+    u_int32_t                   bytecount;
+    u_int64_t                   cmd_table_phys; /* 128byte aligned */
 } __packed;
 
 /* DMA register defines */
@@ -293,17 +292,12 @@ struct ata_ahci_cmd_list {
 /* misc defines */
 #define ATA_PRIMARY                     0x1f0
 #define ATA_SECONDARY                   0x170
-#define ATA_PC98_BANK                   0x432
 #define ATA_IOSIZE                      0x08
-#define ATA_PC98_IOSIZE                 0x10
 #define ATA_CTLIOSIZE                   0x01
 #define ATA_BMIOSIZE                    0x08
-#define ATA_PC98_BANKIOSIZE             0x01
 #define ATA_IOADDR_RID                  0
 #define ATA_CTLADDR_RID                 1
 #define ATA_BMADDR_RID                  0x20
-#define ATA_PC98_CTLADDR_RID            8
-#define ATA_PC98_BANKADDR_RID           9
 #define ATA_IRQ_RID                     0
 #define ATA_DEV(device)                 ((device == ATA_MASTER) ? 0 : 1)
 #define ATA_CFA_MAGIC1                  0x844A
@@ -461,7 +455,7 @@ struct ata_dma {
     u_int32_t                   segsize;        /* DMA SG list segment size */
     u_int32_t                   max_iosize;     /* DMA data max IO size */
     u_int32_t                   cur_iosize;     /* DMA data current IO size */
-    u_int64_t			max_address;	/* highest DMA'able address */
+    u_int64_t                   max_address;    /* highest DMA'able address */
     int                         flags;
 #define ATA_DMA_READ                    0x01    /* transaction is a read */
 #define ATA_DMA_LOADED                  0x02    /* DMA tables etc loaded */
@@ -538,7 +532,7 @@ struct ata_channel {
 extern int (*ata_raid_ioctl_func)(u_long cmd, caddr_t data);
 extern devclass_t ata_devclass;
 extern int ata_wc;
- 
+
 /* public prototypes */
 /* ata-all.c: */
 int ata_probe(device_t dev);
@@ -554,6 +548,8 @@ void ata_default_registers(device_t dev);
 void ata_modify_if_48bit(struct ata_request *request);
 void ata_udelay(int interval);
 char *ata_mode2str(int mode);
+void ata_print_cable(device_t dev, u_int8_t *who);
+int ata_atapi(device_t dev);
 int ata_pmode(struct ata_params *ap);
 int ata_wmode(struct ata_params *ap);
 int ata_umode(struct ata_params *ap);
@@ -578,6 +574,16 @@ int ata_begin_transaction(struct ata_request *);
 int ata_end_transaction(struct ata_request *);
 void ata_generic_reset(device_t dev);
 int ata_generic_command(struct ata_request *request);
+
+/* ata-dma.c: */
+void ata_dmainit(device_t);
+
+/* ata-sata.c: */
+void ata_sata_phy_check_events(device_t dev);
+void ata_sata_phy_event(void *context, int dummy);
+int ata_sata_phy_reset(device_t dev);
+void ata_sata_setmode(device_t dev, int mode);
+int ata_request2fis_h2d(struct ata_request *request, u_int8_t *fis);
 
 /* macros for alloc/free of struct ata_request */
 extern struct objcache *ata_request_cache;
@@ -700,4 +706,3 @@ MALLOC_DECLARE(M_ATA);
 
 /* Dragonfly: Default request timeout increased from 5 to 10 */
 #define ATA_DEFAULT_TIMEOUT	10
-

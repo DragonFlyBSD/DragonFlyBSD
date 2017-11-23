@@ -43,13 +43,13 @@ ata_ati_ident(device_t dev)
     static struct ata_chip_id ids[] =
     {{ ATA_ATI_IXP200,    0x00, 0,        0, ATA_UDMA5, "IXP200" },
      { ATA_ATI_IXP300,    0x00, 0,        0, ATA_UDMA6, "IXP300" },
-     { ATA_ATI_IXP400,    0x00, 0,        0, ATA_UDMA6, "IXP400" },
-     { ATA_ATI_SB600,     0x00, 0,        0, ATA_UDMA6, "SB600"  },
      { ATA_ATI_IXP300_S1, 0x00, SII_MEMIO, 0, ATA_SA150, "IXP300" },
+     { ATA_ATI_IXP400,    0x00, 0,        0, ATA_UDMA6, "IXP400" },
      { ATA_ATI_IXP400_S1, 0x00, SII_MEMIO, 0, ATA_SA150, "IXP400" },
      { ATA_ATI_IXP400_S2, 0x00, SII_MEMIO, 0, ATA_SA150, "IXP400" },
-     { ATA_ATI_SB600_S1,  0x00, ATI_AHCI, 0, ATA_SA300, "SB600" },
-     { ATA_ATI_SB600_S2,  0x00, ATI_AHCI, 0, ATA_SA300, "SB600" },
+     { ATA_ATI_IXP600,    0x00, 0,        0, ATA_UDMA6, "IXP600" },
+     { ATA_ATI_IXP600_S1, 0x00, ATI_AHCI, 0, ATA_SA300, "IXP600" },
+     { ATA_ATI_IXP600_S2, 0x00, ATI_AHCI, 0, ATA_SA300, "IXP600" },
      { 0, 0, 0, 0, 0, 0}};
     char buffer[64];
 
