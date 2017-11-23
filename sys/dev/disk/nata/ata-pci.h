@@ -441,7 +441,6 @@ struct ata_connect_task {
 #define VIA66           1
 #define VIA100          2
 #define VIA133          3
-#define AMDNVIDIA       4
 
 #define AMDCABLE        0x0001
 #define AMDBUG          0x0002
