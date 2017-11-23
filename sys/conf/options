@@ -205,6 +205,27 @@ ISP_TARGET_MODE		opt_isp.h
 # Options used in the 'nata' ATA/ATAPI driver
 ATA_STATIC_ID		opt_ata.h
 
+# Options used in the 'nata' chipset driver
+ATA_NO_ACARD		opt_ata.h
+ATA_NO_ACERLABS		opt_ata.h
+ATA_NO_AHCI		opt_ata.h
+ATA_NO_AMD		opt_ata.h
+ATA_NO_CYPRESS		opt_ata.h
+ATA_NO_CYRIX		opt_ata.h
+ATA_NO_HIGHPOINT	opt_ata.h
+ATA_NO_INTEL		opt_ata.h
+ATA_NO_ITE		opt_ata.h
+ATA_NO_JMICRON		opt_ata.h
+ATA_NO_MARVELL		opt_ata.h
+ATA_NO_NATIONAL		opt_ata.h
+ATA_NO_NETCELL		opt_ata.h
+ATA_NO_NVIDIA		opt_ata.h
+ATA_NO_PROMISE		opt_ata.h
+ATA_NO_SERVERWORKS	opt_ata.h
+ATA_NO_SILICONIMAGE	opt_ata.h
+ATA_NO_SIS		opt_ata.h
+ATA_NO_VIA		opt_ata.h
+
 # Net stuff.
 # altq stuff
 ALTQ			opt_global.h

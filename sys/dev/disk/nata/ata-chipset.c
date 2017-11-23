@@ -55,23 +55,31 @@
 #include "ata-pci.h"
 #include "ata_if.h"
 
+/* ATA_NO_SMTH helper */
+#define ATA_IDENT_DUMMY(name) int ata_ ## name ## _ident	\
+				(device_t x __unused){return 1;}
+
 /* local prototypes */
 /* ata-chipset.c */
 static int ata_generic_chipinit(device_t dev);
 static void ata_generic_intr(void *data);
 static void ata_generic_setmode(device_t dev, int mode);
 
-static void ata_sata_phy_check_events(device_t dev);
-static void ata_sata_phy_event(void *context, int dummy);
-static int ata_sata_connect(struct ata_channel *ch);
+static void ata_sata_phy_check_events(device_t dev) __used;
+static void ata_sata_phy_event(void *context, int dummy) __used;
+static int ata_sata_connect(struct ata_channel *ch) __used;
 
 /* used by ata-{ahci,intel,marvel,nvidia,promise,siliconimage,sis,via}.c */
-static int ata_sata_phy_reset(device_t dev);
+static int ata_sata_phy_reset(device_t dev) __used;
 
 /* used by ata-{acerlabs,ahci,intel,jmicron,marvel,nvidia}.c */
 /*         ata-{promise,serverworks,siliconimage,sis,via}.c */
-static void ata_sata_setmode(device_t dev, int mode);
+static void ata_sata_setmode(device_t dev, int mode) __used;
 
+/* used by ata-ahci.c and ata-siliconimage.c */
+static int ata_request2fis_h2d(struct ata_request *request, u_int8_t *fis) __used;
+
+#if !defined(ATA_NO_AHCI)
 /* used by ata-{ahci,acerlabs,ati,intel,jmicron,via}.c */
 static int ata_ahci_chipinit(device_t dev);
 
@@ -79,52 +87,153 @@ static int ata_ahci_chipinit(device_t dev);
 static int ata_ahci_allocate(device_t dev);
 static void ata_ahci_dmainit(device_t dev);
 static void ata_ahci_reset(device_t dev);
+#endif
 
-/* used by ata-ahci.c and ata-siliconimage.c */
-static int ata_request2fis_h2d(struct ata_request *request, u_int8_t *fis);
-
+#if !defined(ATA_NO_SILICONIMAGE)
 /* ata-ati.c depends on ata-siliconimage.c */
 /* used by ata-ati.c and ata-siliconimage.c */
 static int ata_sii_chipinit(device_t dev);
+#endif
 
 
 /* misc functions */
-static struct ata_chip_id *ata_match_chip(device_t dev, struct ata_chip_id *index);
-static struct ata_chip_id *ata_find_chip(device_t dev, struct ata_chip_id *index, int slot);
-static int ata_setup_interrupt(device_t dev);
-static void ata_teardown_interrupt(device_t dev);
-static void ata_print_cable(device_t dev, u_int8_t *who);
-static int ata_atapi(device_t dev);
+static struct ata_chip_id *ata_match_chip(device_t dev, struct ata_chip_id
+					  *index) __used;
+static struct ata_chip_id *ata_find_chip(device_t dev, struct ata_chip_id
+					 *index, int slot) __used;
+static int ata_atapi(device_t dev) __used;
 static int ata_check_80pin(device_t dev, int mode);
-static int ata_mode2idx(int mode);
+static int ata_mode2idx(int mode) __used;
+static void ata_print_cable(device_t dev, u_int8_t *who);
+static int ata_setup_interrupt(device_t dev);
+static void ata_teardown_interrupt(device_t dev) __used;
+
 
 /*
- * ahci capable chipset support functions
+ * ahci capable chipset support functions (needed for some vendor chipsets)
  */
+#if !defined(ATA_NO_AHCI)
 #include "chipsets/ata-ahci.c"
+#else
+ATA_IDENT_DUMMY(ahci)
+#endif
 
 /*
  * various vendor specific chipset support functions
  */
+#if !defined(ATA_NO_ACARD)
 #include "chipsets/ata-acard.c"
+#else
+ATA_IDENT_DUMMY(acard)
+#endif
+
+#if !defined(ATA_NO_ACERLABS) && !defined(ATA_NO_AHCI)
 #include "chipsets/ata-acerlabs.c"
+#else
+ATA_IDENT_DUMMY(ali)
+#endif
+
+#if !defined(ATA_NO_AMD)
 #include "chipsets/ata-amd.c"
+#else
+ATA_IDENT_DUMMY(amd)
+#endif
+
+#if !defined(ATA_NO_AHCI) && !defined(ATA_NO_SILICONIMAGE)
 #include "chipsets/ata-ati.c"
+#else
+ATA_IDENT_DUMMY(ati)
+#endif
+
+#if !defined(ATA_NO_CYPRESS)
 #include "chipsets/ata-cypress.c"
+#else
+ATA_IDENT_DUMMY(cypress)
+#endif
+
+#if !defined(ATA_NO_CYRIX)
 #include "chipsets/ata-cyrix.c"
+#else
+ATA_IDENT_DUMMY(cyrix)
+#endif
+
+#if !defined(ATA_NO_HIGHPOINT)
 #include "chipsets/ata-highpoint.c"
+#else
+ATA_IDENT_DUMMY(highpoint)
+#endif
+
+#if !defined(ATA_NO_INTEL) && !defined(ATA_NO_AHCI)
 #include "chipsets/ata-intel.c"
+#else
+ATA_IDENT_DUMMY(intel)
+#endif
+
+#if !defined(ATA_NO_ITE)
 #include "chipsets/ata-ite.c"
+#else
+ATA_IDENT_DUMMY(ite)
+#endif
+
+#if !defined(ATA_NO_JMICRON) && !defined(ATA_NO_AHCI)
 #include "chipsets/ata-jmicron.c"
+#else
+ATA_IDENT_DUMMY(jmicron)
+#endif
+
+#if !defined(ATA_NO_MARVELL)
 #include "chipsets/ata-marvell.c"
+#else
+ATA_IDENT_DUMMY(marvell)
+#endif
+
+#if !defined(ATA_NO_NATIONAL)
 #include "chipsets/ata-national.c"
+#else
+ATA_IDENT_DUMMY(national)
+#endif
+
+#if !defined(ATA_NO_NETCELL)
 #include "chipsets/ata-netcell.c"
+#else
+ATA_IDENT_DUMMY(netcell)
+#endif
+
+#if !defined(ATA_NO_NVIDIA)
 #include "chipsets/ata-nvidia.c"
+#else
+ATA_IDENT_DUMMY(nvidia)
+#endif
+
+#if !defined(ATA_NO_PROMISE)
 #include "chipsets/ata-promise.c"
+#else
+ATA_IDENT_DUMMY(promise)
+#endif
+
+#if !defined(ATA_NO_SERVERWORKS)
 #include "chipsets/ata-serverworks.c"
+#else
+ATA_IDENT_DUMMY(serverworks)
+#endif
+
+#if !defined(ATA_NO_SILICONIMAGE)
 #include "chipsets/ata-siliconimage.c"
+#else
+ATA_IDENT_DUMMY(sii)
+#endif
+
+#if !defined(ATA_NO_SIS)
 #include "chipsets/ata-sis.c"
+#else
+ATA_IDENT_DUMMY(sis)
+#endif
+
+#if !defined(ATA_NO_VIA) && !defined(ATA_NO_AHCI)
 #include "chipsets/ata-via.c"
+#else
+ATA_IDENT_DUMMY(via)
+#endif
 
 /*
  * generic ATA support functions
@@ -425,6 +534,44 @@ ata_find_chip(device_t dev, struct ata_chip_id *index, int slot)
 }
 
 static int
+ata_atapi(device_t dev)
+{
+    struct ata_channel *ch = device_get_softc(device_get_parent(dev));
+    struct ata_device *atadev = device_get_softc(dev);
+
+    return ((atadev->unit == ATA_MASTER && ch->devices & ATA_ATAPI_MASTER) ||
+	    (atadev->unit == ATA_SLAVE && ch->devices & ATA_ATAPI_SLAVE));
+}
+
+static int
+ata_check_80pin(device_t dev, int mode)
+{
+    struct ata_device *atadev = device_get_softc(dev);
+
+    if (mode > ATA_UDMA2 && !(atadev->param.hwres & ATA_CABLE_ID)) {
+	ata_print_cable(dev, "device");
+	mode = ATA_UDMA2;
+    }
+    return mode;
+}
+
+static int
+ata_mode2idx(int mode)
+{
+    if ((mode & ATA_DMA_MASK) == ATA_UDMA0)
+	 return (mode & ATA_MODE_MASK) + 8;
+    if ((mode & ATA_DMA_MASK) == ATA_WDMA0)
+	 return (mode & ATA_MODE_MASK) + 5;
+    return (mode & ATA_MODE_MASK) - ATA_PIO0;
+}
+
+static void
+ata_print_cable(device_t dev, u_int8_t *who)
+{
+    device_printf(dev, "DMA limited to UDMA33, %s found non-ATA66 cable\n",who);
+}
+
+static int
 ata_setup_interrupt(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
@@ -459,43 +606,4 @@ ata_teardown_interrupt(device_t dev)
 	    ctlr->r_irq = 0;
 	}
     }
-}
-
-static void
-ata_print_cable(device_t dev, u_int8_t *who)
-{
-    device_printf(dev,
-		  "DMA limited to UDMA33, %s found non-ATA66 cable\n", who);
-}
-
-static int
-ata_atapi(device_t dev)
-{
-    struct ata_channel *ch = device_get_softc(device_get_parent(dev));
-    struct ata_device *atadev = device_get_softc(dev);
-
-    return ((atadev->unit == ATA_MASTER && ch->devices & ATA_ATAPI_MASTER) ||
-	    (atadev->unit == ATA_SLAVE && ch->devices & ATA_ATAPI_SLAVE));
-}
-
-static int
-ata_check_80pin(device_t dev, int mode)
-{
-    struct ata_device *atadev = device_get_softc(dev);
-
-    if (mode > ATA_UDMA2 && !(atadev->param.hwres & ATA_CABLE_ID)) {
-	ata_print_cable(dev, "device");
-	mode = ATA_UDMA2;
-    }
-    return mode;
-}
-
-static int
-ata_mode2idx(int mode)
-{
-    if ((mode & ATA_DMA_MASK) == ATA_UDMA0)
-	 return (mode & ATA_MODE_MASK) + 8;
-    if ((mode & ATA_DMA_MASK) == ATA_WDMA0)
-	 return (mode & ATA_MODE_MASK) + 5;
-    return (mode & ATA_MODE_MASK) - ATA_PIO0;
 }
