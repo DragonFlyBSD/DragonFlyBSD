@@ -27,6 +27,7 @@
 /* local prototypes */
 static int ata_netcell_chipinit(device_t dev);
 static int ata_netcell_allocate(device_t dev);
+static void ata_netcell_setmode(device_t dev, int mode);
 
 /*
  * NetCell chipset support functions
@@ -49,10 +50,11 @@ ata_netcell_chipinit(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
 
-    if (ata_generic_chipinit(dev))
+    if (ata_setup_interrupt(dev, ata_generic_intr))
 	return ENXIO;
 
     ctlr->allocate = ata_netcell_allocate;
+    ctlr->setmode = ata_netcell_setmode;
     return 0;
 }
 
@@ -69,4 +71,15 @@ ata_netcell_allocate(device_t dev)
     ch->flags |= ATA_USE_16BIT;
 
     return 0;
+}
+
+static void
+ata_netcell_setmode(device_t dev, int mode)
+{
+    struct ata_device *atadev = device_get_softc(dev);
+
+    mode = ata_limit_mode(dev, mode, ATA_UDMA2);
+    mode = ata_check_80pin(dev, mode);
+    if (!ata_controlcmd(dev, ATA_SETFEATURES, ATA_SF_SETXFER, 0, mode))
+	atadev->mode = mode;
 }

@@ -49,19 +49,17 @@ ata_cyrix_chipinit(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
 
-    if (ata_setup_interrupt(dev))
+    if (ata_setup_interrupt(dev, ata_generic_intr))
 	return ENXIO;
 
-    if (ctlr->r_res1)
-	ctlr->setmode = ata_cyrix_setmode;
-    else
-	ctlr->setmode = ata_generic_setmode;
+    ctlr->setmode = ata_cyrix_setmode;
     return 0;
 }
 
 static void
 ata_cyrix_setmode(device_t dev, int mode)
 {
+	struct ata_pci_controller *ctlr = device_get_softc(GRANDPARENT(dev));
 	struct ata_channel *ch = device_get_softc(device_get_parent(dev));
 	struct ata_device *atadev = device_get_softc(dev);
 	int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
@@ -73,9 +71,6 @@ ata_cyrix_setmode(device_t dev, int mode)
 	static const uint32_t udmatiming[] =
 	    { 0x00921250, 0x00911140, 0x00911030 };
 
-    ch->dma->alignment = 16;
-    ch->dma->max_iosize = 126 * DEV_BSIZE;
-
     mode = ata_limit_mode(dev, mode, ATA_UDMA2);
 
     error = ata_controlcmd(dev, ATA_SETFEATURES, ATA_SF_SETXFER, 0, mode);
@@ -85,6 +80,11 @@ ata_cyrix_setmode(device_t dev, int mode)
 		      (error) ? "FAILURE " : "", ata_mode2str(mode));
 
     if (!error) {
+	/* dont try to set the mode if we dont have the resource */
+	if (ctlr->r_res1) {
+	    ch->dma->alignment = 16;
+	    ch->dma->max_iosize = 126 * DEV_BSIZE;
+
 	    if (mode >= ATA_UDMA0) {
 		ATA_OUTL(ch->r_io[ATA_BMCMD_PORT].res,
 			 0x24 + (devno << 3), udmatiming[mode & ATA_MODE_MASK]);
@@ -97,6 +97,7 @@ ata_cyrix_setmode(device_t dev, int mode)
 		ATA_OUTL(ch->r_io[ATA_BMCMD_PORT].res,
 			 0x20 + (devno << 3), piotiming[mode & ATA_MODE_MASK]);
 	    }
+	}
 	atadev->mode = mode;
     }
 }

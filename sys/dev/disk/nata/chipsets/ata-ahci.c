@@ -75,7 +75,7 @@ ata_ahci_chipinit(device_t dev)
 
     /* setup interrupt delivery if not done allready by a vendor driver */
     if (!ctlr->r_irq) {
-	if (ata_setup_interrupt(dev))
+	if (ata_setup_interrupt(dev, ata_generic_intr))
 	    return ENXIO;
     }
     else
@@ -452,6 +452,8 @@ ata_ahci_dmasetprd(void *xsc, bus_dma_segment_t *segs, int nsegs, int error)
 	    prd[i].dbc = htole32((segs[i].ds_len - 1) & ATA_AHCI_PRD_MASK);
 	}
     }
+
+    KASSERT(nsegs <= ATA_DMA_ENTRIES, ("too many DMA segment entries\n"));
     args->nsegs = nsegs;
 }
 

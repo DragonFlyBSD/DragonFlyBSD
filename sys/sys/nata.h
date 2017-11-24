@@ -234,7 +234,7 @@ struct ata_params {
 #define ATA_READ48                      0x24    /* read 48bit LBA */
 #define ATA_READ_DMA48                  0x25    /* read DMA 48bit LBA */
 #define ATA_READ_DMA_QUEUED48           0x26    /* read DMA QUEUED 48bit LBA */
-#define ATA_READ_NATIVE_MAX_ADDDRESS48  0x27    /* read native max addr 48bit */
+#define ATA_READ_NATIVE_MAX_ADDRESS48   0x27    /* read native max addr 48bit */
 #define ATA_READ_MUL48                  0x29    /* read multi 48bit LBA */
 #define ATA_WRITE                       0x30    /* write */
 #define ATA_WRITE48                     0x34    /* write 48bit LBA */
@@ -281,7 +281,7 @@ struct ata_params {
 #define		ATA_SF_ENAB_ACCOUS	0x42	/* enable acoustic mgmt */
 #define		ATA_SF_DIS_ACCOUS	0xc2	/* disable acoustic mgmt */
 #define ATA_SECURITY_FREEE_LOCK         0xf5    /* freeze security config */
-#define ATA_READ_NATIVE_MAX_ADDDRESS    0xf8    /* read native max address */
+#define ATA_READ_NATIVE_MAX_ADDRESS     0xf8    /* read native max address */
 #define ATA_SET_MAX_ADDRESS             0xf9    /* set max address */
 
 

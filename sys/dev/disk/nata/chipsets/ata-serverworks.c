@@ -72,7 +72,7 @@ ata_serverworks_chipinit(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
 
-    if (ata_setup_interrupt(dev))
+    if (ata_setup_interrupt(dev, ata_generic_intr))
 	return ENXIO;
 
     if (ctlr->chip->cfg1 == SWKS_MIO) {

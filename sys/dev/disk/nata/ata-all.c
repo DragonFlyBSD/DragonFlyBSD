@@ -822,8 +822,8 @@ ata_modify_if_48bit(struct ata_request *request)
 	case ATA_FLUSHCACHE:
 	    request->u.ata.command = ATA_FLUSHCACHE48;
 	    break;
-	case ATA_READ_NATIVE_MAX_ADDDRESS:
-	    request->u.ata.command = ATA_READ_NATIVE_MAX_ADDDRESS48;
+	case ATA_READ_NATIVE_MAX_ADDRESS:
+	    request->u.ata.command = ATA_READ_NATIVE_MAX_ADDRESS48;
 	    break;
 	case ATA_SET_MAX_ADDRESS:
 	    request->u.ata.command = ATA_SET_MAX_ADDRESS48;

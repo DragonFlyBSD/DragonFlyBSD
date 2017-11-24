@@ -589,7 +589,7 @@ ata_generic_intr(void *data)
 }
 
 int
-ata_setup_interrupt(device_t dev)
+ata_setup_interrupt(device_t dev, void *intr_func)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
     int rid = ATA_IRQ_RID;
@@ -601,7 +601,7 @@ ata_setup_interrupt(device_t dev)
 	    return ENXIO;
 	}
 	if ((bus_setup_intr(dev, ctlr->r_irq, ATA_INTR_FLAGS,
-			    ata_generic_intr, ctlr, &ctlr->handle, NULL))) {
+			    intr_func, ctlr, &ctlr->handle, NULL))) {
 	    device_printf(dev, "unable to setup interrupt\n");
 	    bus_release_resource(dev, SYS_RES_IRQ, rid, ctlr->r_irq);
 	    ctlr->r_irq = 0;

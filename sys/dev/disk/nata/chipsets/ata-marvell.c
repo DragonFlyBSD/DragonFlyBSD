@@ -104,7 +104,7 @@ ata_marvell_pata_chipinit(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
 
-    if (ata_setup_interrupt(dev))
+    if (ata_setup_interrupt(dev, ata_generic_intr))
 	return ENXIO;
 
     ctlr->allocate = ata_marvell_pata_allocate;
@@ -146,7 +146,7 @@ ata_marvell_edma_chipinit(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
 
-    if (ata_setup_interrupt(dev))
+    if (ata_setup_interrupt(dev, ata_generic_intr))
 	return ENXIO;
 
     ctlr->r_type1 = SYS_RES_MEMORY;
@@ -494,6 +494,8 @@ ata_marvell_edma_dmasetprd(void *xsc, bus_dma_segment_t *segs, int nsegs,
 	prd[i].addrhi = htole32((u_int64_t)segs[i].ds_addr >> 32);
     }
     prd[i - 1].count |= htole32(ATA_DMA_EOT);
+    KASSERT(nsegs <= ATA_DMA_ENTRIES, ("too many DMA segment entries\n"));
+    args->nsegs = nsegs;
 }
 
 static void

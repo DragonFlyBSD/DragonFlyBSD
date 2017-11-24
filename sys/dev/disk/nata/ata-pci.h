@@ -398,7 +398,7 @@ void ata_pci_dmainit(device_t);
 const char *ata_pcivendor2str(device_t dev);
 int ata_legacy(device_t);
 void ata_generic_intr(void *data);
-int ata_setup_interrupt(device_t dev);
+int ata_setup_interrupt(device_t dev, void *intr_func);
 void ata_teardown_interrupt(device_t dev);
 void ata_set_desc(device_t dev);
 const struct ata_chip_id *ata_match_chip(device_t dev, const struct ata_chip_id *index);

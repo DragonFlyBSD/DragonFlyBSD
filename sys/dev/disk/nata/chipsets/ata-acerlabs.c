@@ -71,7 +71,7 @@ ata_ali_chipinit(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
 
-    if (ata_setup_interrupt(dev))
+    if (ata_setup_interrupt(dev, ata_generic_intr))
 	return ENXIO;
 
     switch (ctlr->chip->cfg2) {
