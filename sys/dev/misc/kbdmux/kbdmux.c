@@ -875,7 +875,7 @@ kbdmux_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 	kbdmux_state_t	*state = (kbdmux_state_t *) kbd->kb_data;
 	kbdmux_kbd_t	*k;
 	keyboard_info_t	*ki;
-	int		 error = 0, mode;
+	int		 error = 0, mode, i;
 
 	if (state == NULL)
 		return (ENXIO);
@@ -1024,23 +1024,17 @@ kbdmux_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		/* NOT REACHED */
 
 	case KDSETREPEAT: /* set keyboard repeat rate (new interface) */
-	case KDSETRAD: /* set keyboard repeat rate (old interface) */
-		if (cmd == KDSETREPEAT) {
-			int	i;
+		/* lookup delay */
+		for (i = NELEM(delays) - 1; i > 0; i --)
+			if (((int *)arg)[0] >= delays[i])
+				break;
+		mode = i << 5;
 
-			/* lookup delay */
-			for (i = NELEM(delays) - 1; i > 0; i --)
-				if (((int *)arg)[0] >= delays[i])
-					break;
-			mode = i << 5;
-
-			/* lookup rate */
-			for (i = NELEM(rates) - 1; i > 0; i --)
-				if (((int *)arg)[1] >= rates[i])
-					break;
-			mode |= i;
-		} else
-			mode = *(int *)arg;
+		/* lookup rate */
+		for (i = NELEM(rates) - 1; i > 0; i --)
+			if (((int *)arg)[1] >= rates[i])
+				break;
+		mode |= i;
 
 		if (mode & ~0x7f)
 			return (EINVAL);

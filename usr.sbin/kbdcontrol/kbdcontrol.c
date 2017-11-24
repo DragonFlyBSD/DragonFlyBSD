@@ -905,17 +905,13 @@ set_keyrates(char *opt)
 	int arg[2];
 	int repeat;
 	int delay;
-	int r, d;
 
 	if (!strcmp(opt, "slow")) {
 		delay = 1000, repeat = 500;
-		d = 3, r = 31;
 	} else if (!strcmp(opt, "normal")) {
 		delay = 500, repeat = 125;
-		d = 1, r = 15;
 	} else if (!strcmp(opt, "fast")) {
 		delay = repeat = 0;
-		d = r = 0;
 	} else {
 		int		n;
 		char		*v1;
@@ -933,19 +929,15 @@ badopt:
 		for (n = 0; n < ndelays - 1; n++)
 			if (delay <= delays[n])
 				break;
-		d = n;
 		for (n = 0; n < nrepeats - 1; n++)
 			if (repeat <= repeats[n])
 				break;
-		r = n;
 	}
 
 	arg[0] = delay;
 	arg[1] = repeat;
-	if (ioctl(0, KDSETREPEAT, arg)) {
-		if (ioctl(0, KDSETRAD, (d << 5) | r))
-			warn("setting keyboard rate");
-	}
+	if (ioctl(0, KDSETREPEAT, arg) == -1)
+		warn("setting keyboard rate");
 }
 
 

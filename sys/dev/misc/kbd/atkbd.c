@@ -42,16 +42,6 @@
 #include <sys/malloc.h>
 #include <sys/thread2.h>
 
-#ifdef __i386__
-#include <machine/md_var.h>
-#include <machine/psl.h>
-#include <machine/vm86.h>
-#include <machine/pc/bios.h>
-
-#include <vm/vm.h>
-#include <vm/pmap.h>
-#endif /* __i386__ */
-
 #include <sys/kbio.h>
 #include "kbdreg.h"
 #include "atkbdreg.h"
@@ -923,18 +913,6 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		}
 		return error;
 
-	case KDSETRAD:		/* set keyboard repeat rate (old interface) */
-		crit_exit();
-		if (!KBD_HAS_DEVICE(kbd)) {
-			return 0;
-		}
-		error = write_kbd(state->kbdc, KBDC_SET_TYPEMATIC, *(int *)arg);
-		if (error == 0) {
-			kbd->kb_delay1 = typematic_delay(*(int *)arg);
-			kbd->kb_delay2 = typematic_rate(*(int *)arg);
-		}
-		return error;
-
 	case PIO_KEYMAP:	/* set keyboard translation table */
 	case PIO_KEYMAPENT:	/* set keyboard translation table entry */
 	case PIO_DEADKEYMAP:	/* set accent key translation table */
@@ -1019,34 +997,7 @@ atkbd_poll(keyboard_t *kbd, int on)
 static int
 get_typematic(keyboard_t *kbd)
 {
-#ifdef __i386__
-	/*
-	 * Only some systems allow us to retrieve the keyboard repeat 
-	 * rate previously set via the BIOS...
-	 */
-	struct vm86frame vmf;
-	u_int32_t p;
-
-	bzero(&vmf, sizeof(vmf));
-	vmf.vmf_ax = 0xc000;
-	vm86_intcall(0x15, &vmf);
-	if ((vmf.vmf_eflags & PSL_C) || vmf.vmf_ah)
-		return ENODEV;
-        p = BIOS_PADDRTOVADDR(((u_int32_t)vmf.vmf_es << 4) + vmf.vmf_bx);
-	if ((readb(p + 6) & 0x40) == 0)	/* int 16, function 0x09 supported? */
-		return ENODEV;
-	vmf.vmf_ax = 0x0900;
-	vm86_intcall(0x16, &vmf);
-	if ((vmf.vmf_al & 0x08) == 0)	/* int 16, function 0x0306 supported? */
-		return ENODEV;
-	vmf.vmf_ax = 0x0306;
-	vm86_intcall(0x16, &vmf);
-	kbd->kb_delay1 = typematic_delay(vmf.vmf_bh << 5);
-	kbd->kb_delay2 = typematic_rate(vmf.vmf_bl);
-	return 0;
-#else
 	return ENODEV;
-#endif /* __i386__ */
 }
 
 static int

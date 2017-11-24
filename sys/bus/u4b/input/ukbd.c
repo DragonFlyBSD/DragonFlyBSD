@@ -351,7 +351,6 @@ static const uint8_t ukbd_boot_desc[] = {
 /* prototypes */
 static void	ukbd_timeout(void *);
 static void	ukbd_set_leds(struct ukbd_softc *, uint8_t);
-static int	ukbd_set_typematic(keyboard_t *, int);
 #ifdef UKBD_EMULATE_ATSCANCODE
 static int	ukbd_key2scan(struct ukbd_softc *, int, int, int);
 #endif
@@ -1868,10 +1867,6 @@ ukbd_ioctl_locked(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		kbd->kb_delay2 = ((int *)arg)[1];
 		return (0);
 
-	case KDSETRAD:			/* set keyboard repeat rate (old
-					 * interface) */
-		return (ukbd_set_typematic(kbd, *(int *)arg));
-
 	case PIO_KEYMAP:		/* set keyboard translation table */
 	case PIO_KEYMAPENT:		/* set keyboard translation table
 					 * entry */
@@ -1986,23 +1981,6 @@ ukbd_set_leds(struct ukbd_softc *sc, uint8_t leds)
 	/* start transfer, if not already started */
 
 	usbd_transfer_start(sc->sc_xfer[UKBD_CTRL_LED]);
-}
-
-static int
-ukbd_set_typematic(keyboard_t *kbd, int code)
-{
-	static const int delays[] = {250, 500, 750, 1000};
-	static const int rates[] = {34, 38, 42, 46, 50, 55, 59, 63,
-		68, 76, 84, 92, 100, 110, 118, 126,
-		136, 152, 168, 184, 200, 220, 236, 252,
-	272, 304, 336, 368, 400, 440, 472, 504};
-
-	if (code & ~0x7f) {
-		return (EINVAL);
-	}
-	kbd->kb_delay1 = delays[(code >> 5) & 3];
-	kbd->kb_delay2 = rates[code & 0x1f];
-	return (0);
 }
 
 #ifdef UKBD_EMULATE_ATSCANCODE

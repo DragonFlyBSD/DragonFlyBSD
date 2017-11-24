@@ -1396,17 +1396,6 @@ scioctl(struct dev_ioctl_args *ap)
 	lwkt_reltoken(&tty_token);
 	return error;
 
-    case KDSETRAD:      	/* set keyboard repeat & delay rates (old) */
-	if (*(int *)data & ~0x7f) {
-	    lwkt_reltoken(&tty_token);
-	    return EINVAL;
-	}
-	error = kbd_ioctl(sc->kbd, cmd, data);
-	if (error == ENOIOCTL)
-	    error = ENODEV;
-	lwkt_reltoken(&tty_token);
-	return error;
-
     case KDSKBMODE:     	/* set keyboard mode */
 	switch (*(int *)data) {
 	case K_XLATE:   	/* switch to XLT ascii mode */

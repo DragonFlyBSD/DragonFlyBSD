@@ -59,8 +59,10 @@
 #define KDGETLED	_IOR('K', 65, int)
 #define KDSETLED	_IO('K', 66 /*, int */)
 
+#if 0 /* deprecated ioctl */
 /* set keyboard repeat rate (obsolete, use KDSETREPEAT below) */
 #define KDSETRAD	_IO('K', 67 /*, int */)
+#endif
 
 /* see console.h for the definition of the following ioctl */
 #if 0 /* notdef */
