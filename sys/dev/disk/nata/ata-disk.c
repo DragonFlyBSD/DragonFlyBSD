@@ -175,6 +175,11 @@ ad_attach(device_t dev)
 
     disk_setdiskinfo(&adp->disk, &info);
 
+#if defined(__DragonFly__)
+    callout_init_mp(&atadev->spindown_timer);
+#else
+    callout_init(&atadev->spindown_timer, 1);
+#endif
     return 0;
 }
 
@@ -182,6 +187,7 @@ static int
 ad_detach(device_t dev)
 {
     struct ad_softc *adp = device_get_ivars(dev);
+    struct ata_device *atadev = device_get_softc(dev);
     device_t *children;
     int nchildren, i;
 
@@ -189,12 +195,9 @@ ad_detach(device_t dev)
     if (!adp)
 	return ENXIO;
 
-#if 0 /* XXX TGEN Probably useless, we fail the queue below. */
-    /* check that the disk is closed */
-    if (adp->ad_flags & AD_DISK_OPEN)
-        return EBUSY;
-#endif /* 0 */
-    
+    /* destroy the power timeout */
+    callout_drain(&atadev->spindown_timer);
+
     /* detach & delete all children */
     if (!device_get_children(dev, &children, &nchildren)) {
 	for (i = 0; i < nchildren; i++)
@@ -242,6 +245,37 @@ ad_reinit(device_t dev)
     return 0;
 }
 
+static void
+ad_power_callback(struct ata_request *request)
+{
+    device_printf(request->dev, "drive spun down.\n");
+    ata_free_request(request);
+}
+
+static void
+ad_spindown(void *priv)
+{
+    device_t dev = priv;
+    struct ata_device *atadev = device_get_softc(dev);
+    struct ata_request *request;
+
+    if (!atadev->spindown)
+	return;
+    device_printf(dev, "Idle, spin down\n");
+    atadev->spindown_state = 1;
+    if (!(request = ata_alloc_request())) {
+	device_printf(dev, "FAILURE - out of memory in ad_spindown\n");
+	return;
+    }
+    request->dev = dev;
+    request->flags = ATA_R_CONTROL;
+    request->timeout = ATA_DEFAULT_TIMEOUT;
+    request->retries = 1;
+    request->callback = ad_power_callback;
+    request->u.ata.command = ATA_STANDBY_IMMEDIATE;
+    ata_queue_request(request);
+}
+
 static int
 ad_open(struct dev_open_args *ap)
 {
@@ -286,6 +320,10 @@ ad_strategy(struct dev_strategy_args *ap)
     struct ata_request *request;
     struct ad_softc *adp = device_get_ivars(dev);
 
+    if (atadev->spindown)
+	callout_reset(&atadev->spindown_timer, hz * atadev->spindown,
+		      ad_spindown, dev);
+
     if (!(request = ata_alloc_request())) {
 	device_printf(dev, "FAILURE - out of memory in strategy\n");
 	bbp->b_flags |= B_ERROR;
@@ -298,7 +336,13 @@ ad_strategy(struct dev_strategy_args *ap)
     request->dev = dev;
     request->bio = bp;
     request->callback = ad_done;
-    request->timeout = ATA_DEFAULT_TIMEOUT;
+    if (atadev->spindown_state) {
+	device_printf(dev, "request while spun down, starting.\n");
+	atadev->spindown_state = 0;
+	request->timeout = MAX(ATA_DEFAULT_TIMEOUT, 31);
+    } else {
+	request->timeout = ATA_DEFAULT_TIMEOUT;
+    }
     request->retries = 2;
     request->data = bbp->b_data;
     request->bytecount = bbp->b_bcount;

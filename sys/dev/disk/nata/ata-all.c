@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1998 - 2006 Søren Schmidt <sos@FreeBSD.org>
+ * Copyright (c) 1998 - 2008 Søren Schmidt <sos@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -527,6 +527,12 @@ ata_device_ioctl(device_t dev, u_long cmd, caddr_t data)
 
     case IOCATAGMODE:
 	*mode = atadev->mode;
+	return 0;
+    case IOCATASSPINDOWN:
+	atadev->spindown = *mode;
+	return 0;
+    case IOCATAGSPINDOWN:
+	*mode = atadev->spindown;
 	return 0;
     default:
 	return ENOTTY;

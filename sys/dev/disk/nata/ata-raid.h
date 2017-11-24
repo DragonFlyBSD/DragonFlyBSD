@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.h,v 1.44 2006/02/17 13:02:10 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-raid.h,v 1.2 2007/02/06 15:17:44 tgen Exp $
  */
 
 #include <sys/param.h>
@@ -59,7 +58,7 @@ struct ar_softc {
 #define AR_T_SPAN               0x0002
 #define AR_T_RAID0              0x0004
 #define AR_T_RAID1              0x0008
-#define AR_T_RAID01             0x0010  
+#define AR_T_RAID01             0x0010
 #define AR_T_RAID3              0x0020
 #define AR_T_RAID4              0x0040
 #define AR_T_RAID5              0x0080
@@ -216,7 +215,7 @@ struct hptv2_raid_conf {
 	u_int8_t        reason;
 #define HPTV2_R_REMOVED         0xfe
 #define HPTV2_R_BROKEN          0xff
-	
+
 	u_int8_t        disk;
 	u_int8_t        status;
 	u_int8_t        sectors;
@@ -245,7 +244,7 @@ struct hptv3_raid_conf {
     u_int8_t            mode;
 #define HPTV3_BOOT_MARK         0x01
 #define HPTV3_USER_MODE         0x02
-    
+
     u_int8_t            user_mode;
     u_int8_t            config_entries;
     struct {
@@ -378,7 +377,7 @@ struct ite_raid_conf {
     u_int32_t           filler_7[5];
     u_int64_t           total_sectors __packed;
     u_int32_t           filler_8[12];
-    
+
     u_int16_t           filler_9;
     u_int8_t            type;
 #define ITE_T_RAID0             0x00
@@ -743,7 +742,7 @@ struct sii_raid_conf {
     u_int32_t           generation;
     u_int8_t            status;
 #define SII_S_READY             0x01
-    
+
     u_int8_t            base_raid1_position;
     u_int8_t            base_raid0_position;
     u_int8_t            position;

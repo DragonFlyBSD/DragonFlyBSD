@@ -264,6 +264,7 @@ struct ata_ahci_cmd_list {
     u_int64_t                   cmd_table_phys; /* 128byte aligned */
 } __packed;
 
+
 /* DMA register defines */
 #define ATA_DMA_ENTRIES                 256
 #define ATA_DMA_EOT                     0x80000000
@@ -415,6 +416,9 @@ struct ata_device {
     struct ata_params           param;          /* ata param structure */
     int                         mode;           /* current transfermode */
     u_int32_t                   max_iosize;     /* max IO size */
+    int                         spindown;       /* idle spindown timeout */
+    struct callout              spindown_timer;
+    int                         spindown_state;
     int                         flags;
 #define         ATA_D_USE_CHS           0x0001
 #define         ATA_D_MEDIA_CHANGED     0x0002

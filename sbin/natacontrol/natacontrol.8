@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/sbin/atacontrol/atacontrol.8,v 1.28 2005/11/18 10:32:09 ru Exp $
 .\"
-.Dd March 23, 2013
+.Dd December 31, 2017
 .Dt NATACONTROL 8
 .Os
 .Sh NAME
@@ -75,6 +75,10 @@
 .Nm
 .Ic feature
 .Ar device apm apmlevel
+.Nm
+.Ic spindown
+.Ar device
+.Op Ar seconds
 .Nm
 .Ic list
 .Sh DESCRIPTION
@@ -249,6 +253,14 @@ command, and that the number of incremental power savings levels
 do not typically have as wide of a range as this command will
 support.
 .El
+.It Ic spindown
+Set or report timeout after which the
+.Ar device
+will be spun down.
+To arm the timeout the device needs at least one more request after
+setting the timeout.
+To disable spindown, set the timeout to zero.
+No further actions are needed in this case.
 .It Ic info
 Show info about the attached devices on the
 .Ar channel .

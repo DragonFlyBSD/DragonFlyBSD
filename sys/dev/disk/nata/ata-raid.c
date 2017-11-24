@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2000 - 2006 Søren Schmidt <sos@FreeBSD.org>
+ * Copyright (c) 2000 - 2008 Søren Schmidt <sos@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -74,7 +74,7 @@ static struct dev_ops ar_ops = {
 /* prototypes */
 static void ata_raid_done(struct ata_request *request);
 static void ata_raid_config_changed(struct ar_softc *rdp, int writeback);
-static int ata_raid_status(struct ata_ioc_raid_config *config);
+static int ata_raid_status(struct ata_ioc_raid_status *status);
 static int ata_raid_create(struct ata_ioc_raid_config *config);
 static int ata_raid_delete(int array);
 static int ata_raid_addspare(struct ata_ioc_raid_config *config);
@@ -230,13 +230,14 @@ ata_raid_attach(struct ar_softc *rdp, int writeback)
 static int
 ata_raid_ioctl(u_long cmd, caddr_t data)
 {
+    struct ata_ioc_raid_status *status = (struct ata_ioc_raid_status *)data;
     struct ata_ioc_raid_config *config = (struct ata_ioc_raid_config *)data;
     int *lun = (int *)data;
     int error = EOPNOTSUPP;
 
     switch (cmd) {
     case IOCATARAIDSTATUS:
-	error = ata_raid_status(config);
+	error = ata_raid_status(status);
 	break;
 			
     case IOCATARAIDCREATE:
@@ -919,6 +920,7 @@ ata_raid_config_changed(struct ar_softc *rdp, int writeback)
     int disk, count, status;
 
     lockmgr(&rdp->lock, LK_EXCLUSIVE);
+
     /* set default all working mode */
     status = rdp->status;
     rdp->status &= ~AR_S_DEGRADED;
@@ -979,10 +981,14 @@ ata_raid_config_changed(struct ar_softc *rdp, int writeback)
      * those of the missing or failed drives (in all cases).
      */
     if (rdp->status != status) {
+
+	/* raid status has changed, update metadata */
+	writeback = 1;
+
+	/* announce we have trouble ahead */
 	if (!(rdp->status & AR_S_READY)) {
 	    kprintf("ar%d: FAILURE - %s array broken\n",
 		   rdp->lun, ata_raid_type(rdp));
-	    writeback = 1;
 	}
 	else if (rdp->status & AR_S_DEGRADED) {
 	    if (rdp->type & (AR_T_RAID1 | AR_T_RAID01))
@@ -991,7 +997,6 @@ ata_raid_config_changed(struct ar_softc *rdp, int writeback)
 		kprintf("ar%d: WARNING - parity", rdp->lun);
 	    kprintf(" protection lost. %s array in DEGRADED mode\n",
 		   ata_raid_type(rdp));
-	    writeback = 1;
 	}
     }
     lockmgr(&rdp->lock, LK_RELEASE);
@@ -1001,25 +1006,32 @@ ata_raid_config_changed(struct ar_softc *rdp, int writeback)
 }
 
 static int
-ata_raid_status(struct ata_ioc_raid_config *config)
+ata_raid_status(struct ata_ioc_raid_status *status)
 {
     struct ar_softc *rdp;
     int i;
 	
-    if (!(rdp = ata_raid_arrays[config->lun]))
+    if (!(rdp = ata_raid_arrays[status->lun]))
 	return ENXIO;
 	
-    config->type = rdp->type;
-    config->total_disks = rdp->total_disks;
+    status->type = rdp->type;
+    status->total_disks = rdp->total_disks;
     for (i = 0; i < rdp->total_disks; i++ ) {
-	if ((rdp->disks[i].flags & AR_DF_PRESENT) && rdp->disks[i].dev)  
-	    config->disks[i] = device_get_unit(rdp->disks[i].dev);
-	else
-	    config->disks[i] = -1;
+	status->disks[i].state = 0;
+	if ((rdp->disks[i].flags & AR_DF_PRESENT) && rdp->disks[i].dev) {
+	    status->disks[i].lun = device_get_unit(rdp->disks[i].dev);
+	    if (rdp->disks[i].flags & AR_DF_PRESENT)
+		status->disks[i].state |= AR_DISK_PRESENT;
+	    if (rdp->disks[i].flags & AR_DF_ONLINE)
+		status->disks[i].state |= AR_DISK_ONLINE;
+	    if (rdp->disks[i].flags & AR_DF_SPARE)
+		status->disks[i].state |= AR_DISK_SPARE;
+	} else
+	    status->disks[i].lun = -1;
     }
-    config->interleave = rdp->interleave;
-    config->status = rdp->status;
-    config->progress = 100 * rdp->rebuild_lba / rdp->total_sectors;
+    status->interleave = rdp->interleave;
+    status->status = rdp->status;
+    status->progress = 100 * rdp->rebuild_lba / rdp->total_sectors;
     return 0;
 }
 
@@ -1031,7 +1043,6 @@ ata_raid_create(struct ata_ioc_raid_config *config)
     int array, disk;
     int ctlr = 0, total_disks = 0;
     u_int disk_size = 0;
-    device_t gpdev;
 
     for (array = 0; array < MAX_ARRAYS; array++) {
 	if (!ata_raid_arrays[array])
@@ -1056,9 +1067,7 @@ ata_raid_create(struct ata_ioc_raid_config *config)
 	    }
 	    rdp->disks[disk].dev = device_get_parent(subdisk);
 
-	    gpdev = GRANDPARENT(rdp->disks[disk].dev);
-
-	    switch (pci_get_vendor(gpdev)) {
+	    switch (pci_get_vendor(GRANDPARENT(rdp->disks[disk].dev))) {
 	    case ATA_HIGHPOINT_ID:
 		/* 
 		 * we need some way to decide if it should be v2 or v3
@@ -1404,17 +1413,12 @@ static int
 ata_raid_read_metadata(device_t subdisk)
 {
     devclass_t pci_devclass = devclass_find("pci");
+    devclass_t atapci_devclass = devclass_find("atapci");
     devclass_t devclass=device_get_devclass(GRANDPARENT(GRANDPARENT(subdisk)));
-    device_t gpdev;
-    uint16_t vendor;
 
     /* prioritize vendor native metadata layout if possible */
-    if (devclass == pci_devclass) {
-	gpdev = device_get_parent(subdisk);
-	gpdev = GRANDPARENT(gpdev);
-	vendor = pci_get_vendor(gpdev);
-
-	switch (vendor) {
+    if (devclass == pci_devclass || devclass == atapci_devclass) {
+	switch (pci_get_vendor(GRANDPARENT(device_get_parent(subdisk)))) {
 	case ATA_HIGHPOINT_ID: 
 	    if (ata_raid_hptv3_read_meta(subdisk, ata_raid_arrays))
 		return 0;
@@ -2267,8 +2271,15 @@ ata_raid_intel_read_meta(device_t dev, struct ar_softc **raidp)
 	if (meta->generation >= raid->generation) {
 	    for (disk = 0; disk < raid->total_disks; disk++) {
 		struct ata_device *atadev = device_get_softc(parent);
+		int len;
 
-		if (!strncmp(raid->disks[disk].serial, atadev->param.serial,
+		for (len = 0; len < sizeof(atadev->param.serial); len++) {
+		    if (atadev->param.serial[len] < 0x20)
+			break;
+		}
+		len = (len > sizeof(raid->disks[disk].serial)) ?
+		    len - sizeof(raid->disks[disk].serial) : 0;
+		if (!strncmp(raid->disks[disk].serial, atadev->param.serial + len,
 		    sizeof(raid->disks[disk].serial))) {
 		    raid->disks[disk].dev = parent;
 		    raid->disks[disk].flags |= (AR_DF_PRESENT | AR_DF_ONLINE);
@@ -2336,8 +2347,15 @@ ata_raid_intel_write_meta(struct ar_softc *rdp)
 		device_get_softc(device_get_parent(rdp->disks[disk].dev));
 	    struct ata_device *atadev =
 		device_get_softc(rdp->disks[disk].dev);
+	    int len;
 
-	    bcopy(atadev->param.serial, meta->disk[disk].serial,
+	    for (len = 0; len < sizeof(atadev->param.serial); len++) {
+		if (atadev->param.serial[len] < 0x20)
+		    break;
+	    }
+	    len = (len > sizeof(rdp->disks[disk].serial)) ?
+	        len - sizeof(rdp->disks[disk].serial) : 0;
+	    bcopy(atadev->param.serial + len, meta->disk[disk].serial,
 		  sizeof(rdp->disks[disk].serial));
 	    meta->disk[disk].sectors = rdp->disks[disk].sectors;
 	    meta->disk[disk].id = (ch->unit << 16) | ATA_DEV(atadev->unit);
@@ -4166,7 +4184,10 @@ ata_raid_subdisk_detach(device_t dev)
 	    ars->raid[volume]->disks[ars->disk_number[volume]].flags &= 
 		~(AR_DF_PRESENT | AR_DF_ONLINE);
 	    ars->raid[volume]->disks[ars->disk_number[volume]].dev = NULL;
-	    ata_raid_config_changed(ars->raid[volume], 1);
+#if 0
+	    if (mtx_initialized(&ars->raid[volume]->lock))
+#endif
+		ata_raid_config_changed(ars->raid[volume], 1);
 	    ars->raid[volume] = NULL;
 	    ars->disk_number[volume] = -1;
 	}
@@ -4224,6 +4245,10 @@ ata_raid_module_event_handler(module_t mod, int what, void *arg)
 
 	    if (!rdp || !rdp->status)
 		continue;
+#if 0
+	    if (mtx_initialized(&rdp->lock))
+		lockuninit(&rdp->lock);
+#endif
 	    disk_destroy(&rdp->disk);
 	}
 	if (testing || bootverbose)

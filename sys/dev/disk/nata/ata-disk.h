@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1998 - 2006 Søren Schmidt <sos@FreeBSD.org>
+ * Copyright (c) 1998 - 2008 Søren Schmidt <sos@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.h,v 1.51 2006/01/05 21:27:19 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-disk.h,v 1.1 2006/12/04 14:40:37 tgen Exp $
  */
 
 #include <sys/param.h>
@@ -33,20 +32,20 @@
 #include <sys/disk.h>
 
 /* structure describing an ATA disk */
-struct ad_softc {  
+struct ad_softc {
     u_int64_t                   total_secs;     /* total # of sectors (LBA) */
     u_int8_t                    heads;
     u_int8_t                    sectors;
     u_int32_t                   transfersize;   /* size of each transfer */
     int                         num_tags;       /* number of tags supported */
     int                         flags;          /* drive flags */
-#define         AD_F_LABELLING          0x0001          
+#define         AD_F_LABELLING          0x0001
 #define         AD_F_CHS_USED           0x0002
 #define         AD_F_32B_ENABLED        0x0004
 #define         AD_F_TAG_ENABLED        0x0008
 #define         AD_F_RAID_SUBDISK       0x0010
 
-    struct devstat		stats;          /* devstat entry */
+    struct devstat              stats;          /* devstat entry */
     struct disk                 disk;           /* disklabel/slice stuff */
     cdev_t                      cdev;           /* device placeholder */
 };
