@@ -107,9 +107,6 @@ network_ipv6_start()
 
 	# Setup static routes
 	network6_static_routes_setup
-
-	# Setup faith
-	network6_faith_setup
 }
 
 load_rc_config $name

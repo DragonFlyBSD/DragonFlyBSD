@@ -58,7 +58,7 @@
  *					or name a tcpmux service 
  *					or specify a unix domain socket
  *	socket type			stream/dgram/raw/rdm/seqpacket
- *	protocol			tcp[4][6][/faith,ttcp], udp[4][6], unix
+ *	protocol			tcp[4][6][/ttcp], udp[4][6], unix
  *	wait/nowait			single-threaded/multi-threaded
  *	user				user to run daemon as
  *	server program			full path name
@@ -1230,14 +1230,6 @@ setsockopt(fd, SOL_SOCKET, opt, (char *)&on, sizeof (on))
 		if (setsockopt(sep->se_fd, IPPROTO_TCP, TCP_NOPUSH,
 		    (char *)&on, sizeof (on)) < 0)
 			syslog(LOG_ERR, "setsockopt (TCP_NOPUSH): %m");
-#ifdef IPV6_FAITH
-	if (sep->se_type == FAITH_TYPE) {
-		if (setsockopt(sep->se_fd, IPPROTO_IPV6, IPV6_FAITH, &on,
-				sizeof(on)) < 0) {
-			syslog(LOG_ERR, "setsockopt (IPV6_FAITH): %m");
-		}
-	}
-#endif
 #ifdef IPSEC
 	ipsecsetup(sep);
 #endif
@@ -1654,15 +1646,8 @@ more:
 		if (arg != NULL) {
 			if (strcmp(arg, "ttcp") == 0)
 				sep->se_type = TTCP_TYPE;
-			else if (strcmp(arg, "faith") == 0)
-				sep->se_type = FAITH_TYPE;
 		}
 	} else {
-		if (sep->se_type == NORM_TYPE &&
-		    strncmp(arg, "faith/", 6) == 0) {
-			arg += 6;
-			sep->se_type = FAITH_TYPE;
-		}
 		sep->se_proto = newstr(arg);
 	}
         if (strncmp(sep->se_proto, "rpc/", 4) == 0) {

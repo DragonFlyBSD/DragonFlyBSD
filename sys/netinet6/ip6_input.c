@@ -541,19 +541,6 @@ ip6_input(netmsg_t msg)
 	}
 
 	/*
-	 * FAITH (Firewall Aided Internet Translator)
-	 */
-	if (ip6_keepfaith) {
-		if (ip6_forward_rt.ro_rt && ip6_forward_rt.ro_rt->rt_ifp
-		 && ip6_forward_rt.ro_rt->rt_ifp->if_type == IFT_FAITH) {
-			/* XXX do we need more sanity checks? */
-			ours = 1;
-			deliverifp = ip6_forward_rt.ro_rt->rt_ifp; /* faith */
-			goto hbhcheck;
-		}
-	}
-
-	/*
 	 * Now there is no reason to process the packet if it's not our own
 	 * and we're not a router.
 	 */
@@ -567,8 +554,7 @@ hbhcheck:
 	/*
 	 * record address information into m_aux, if we don't have one yet.
 	 * note that we are unable to record it, if the address is not listed
-	 * as our interface address (e.g. multicast addresses, addresses
-	 * within FAITH prefixes and such).
+	 * as our interface address (e.g. multicast addresses and such).
 	 */
 	if (deliverifp && !ip6_getdstifaddr(m)) {
 		struct in6_ifaddr *ia6;

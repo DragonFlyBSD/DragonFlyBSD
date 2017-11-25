@@ -398,7 +398,6 @@ getnameinfo_link(const struct sockaddr *sa, socklen_t salen __unused,
 	switch (sdl->sdl_type) {
 	/*
 	 * The following have zero-length addresses.
-	 * IFT_FAITH	(net/faith/if_faith.c)
 	 * IFT_GIF	(net/gif/if_gif.c)
 	 * IFT_LOOP	(net/if_loop.c, net/disc/if_disc.c)
 	 * IFT_PPP	(net/sppp/if_spppsubr.c)

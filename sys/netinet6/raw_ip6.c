@@ -141,12 +141,6 @@ rip6_input(struct mbuf **mp, int *offp, int proto)
 
 	rip6stat.rip6s_ipackets++;
 
-	if (faithprefix_p != NULL && (*faithprefix_p)(&ip6->ip6_dst)) {
-		/* XXX send icmp6 host/port unreach? */
-		m_freem(m);
-		return IPPROTO_DONE;
-	}
-
 	init_sin6(&rip6src, m); /* general init */
 
 	LIST_FOREACH(in6p, &ripcbinfo.pcblisthead, inp_list) {

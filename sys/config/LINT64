@@ -319,8 +319,6 @@ device		mn	# Munich32x/Falc54 Nx64kbit/sec cards.
 #  IPv6 over IPv6 tunneling.
 #  The `gre' device implements two types of IP4 over IP4 tunneling:
 #  GRE and MOBILE, as specified in the RFC1701 and RFC2004.
-#  The `faith' pseudo-device captures packets sent to it and diverts them
-#  to the IPv4/IPv6 translation daemon.
 #  The `stf' device implements 6to4 encapsulation.
 #  The `ef' pseudo-device provides support for multiple ethernet frame types
 #  specified via ETHER_* options. See ef(4) for details.
@@ -339,7 +337,6 @@ pseudo-device	gre			#IP over IP tunneling
 
 # for IPv6
 pseudo-device	gif			#IPv6 and IPv4 tunneling
-pseudo-device	faith	1		#for IPv6 and IPv4 translation
 pseudo-device	stf			#6to4 IPv6 over IPv4 encapsulation
 
 #

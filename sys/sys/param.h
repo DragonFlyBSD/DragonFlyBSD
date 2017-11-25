@@ -164,9 +164,10 @@
  * 500100 - 5.1 development
  * 500101 - kernel ppp removal
  * 500102 - <sys/sysref{,2}.h> inclusions removed from some public headers
+ * 500103 - faith removal
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500102	/* propagated to newvers */
+#define __DragonFly_version 500103	/* propagated to newvers */
 
 #include <sys/_null.h>
 

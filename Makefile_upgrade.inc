@@ -3353,6 +3353,11 @@ TO_REMOVE+=/usr/include/cpu/coredump.h
 TO_REMOVE+=/usr/include/machine/coredump.h
 TO_REMOVE+=/usr/share/man/man9/lockcount.9.gz
 TO_REMOVE+=/usr/share/man/man9/lockcountnb.9.gz
+TO_REMOVE+=/boot/kernel/if_faith.ko
+TO_REMOVE+=/usr/sbin/faithd
+TO_REMOVE+=/usr/share/man/man4/faith.4.gz
+TO_REMOVE+=/usr/share/man/man4/if_faith.4.gz
+TO_REMOVE+=/usr/share/man/man8/faithd.8.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

@@ -436,7 +436,6 @@ int	ip6_rr_prune = 5;	/* router renumbering prefix
 				 * walk list every 5 sec. */
 
 u_int32_t ip6_id = 0UL;
-int	ip6_keepfaith = 0;
 time_t	ip6_log_time = (time_t)0L;
 
 /* icmp6 */
@@ -536,9 +535,6 @@ SYSCTL_INT(_net_inet6_ip6, IPV6CTL_MAXFRAGPACKETS, maxfragpackets,
     CTLFLAG_RW, &ip6_maxfragpackets, 0, "Maximum packets in reassembly queue");
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_ACCEPT_RTADV, accept_rtadv,
     CTLFLAG_RW, &ip6_accept_rtadv, 0, "Acts as a host not a router");
-SYSCTL_INT(_net_inet6_ip6, IPV6CTL_KEEPFAITH,
-    keepfaith, CTLFLAG_RW, &ip6_keepfaith, 0,
-    "Enable packet capture for FAITH IPv4->IPv6 translator daemon");
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_LOG_INTERVAL,
 	log_interval, CTLFLAG_RW,	&ip6_log_interval,	0, "");
 SYSCTL_INT(_net_inet6_ip6, IPV6CTL_HDRNESTLIMIT, hdrnestlimit, CTLFLAG_RW,

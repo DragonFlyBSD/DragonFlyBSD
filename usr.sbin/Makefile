@@ -34,7 +34,6 @@ SUBDIR= 802_11 \
 	edquota \
 	efisetup \
 	efivar \
-	faithd \
 	fdcontrol \
 	fdformat \
 	fdwrite \

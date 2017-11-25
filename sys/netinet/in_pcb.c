@@ -1554,8 +1554,7 @@ in_pcblookup_pkthash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
 		 * Check local group first
 		 */
 		if (pcbinfo->localgrphashbase != NULL &&
-		    m != NULL && (m->m_flags & M_HASH) &&
-		    !(ifp && ifp->if_type == IFT_FAITH)) {
+		    m != NULL && (m->m_flags & M_HASH)) {
 			inp = inp_localgroup_lookup(pcbinfo,
 			    laddr, lport, m->m_pkthdr.hash);
 			if (inp != NULL) {
@@ -1597,9 +1596,6 @@ in_pcblookup_pkthash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
 						continue;
 			}
 			if (inp->inp_lport == lport) {
-				if (ifp && ifp->if_type == IFT_FAITH &&
-				    !(inp->inp_flags & INP_FAITH))
-					continue;
 				if (inp->inp_laddr.s_addr == laddr.s_addr) {
 					if (cred != NULL && jailed(cred)) {
 						jinp = inp;

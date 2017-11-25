@@ -92,7 +92,6 @@ MAN=	aac.4 \
 	em.4 \
 	et.4 \
 	exca.4 \
-	faith.4 \
 	fast_ipsec.4 \
 	fd.4 \
 	fdc.4 \
@@ -438,7 +437,6 @@ MLINKS+=em.4 emx.4 \
 	em.4 if_em.4 \
 	em.4 if_emx.4
 MLINKS+=et.4 if_et.4
-MLINKS+=faith.4 if_faith.4
 MLINKS+=fd.4 stderr.4 \
 	fd.4 stdin.4 \
 	fd.4 stdout.4

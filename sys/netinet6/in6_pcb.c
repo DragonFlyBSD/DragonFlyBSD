@@ -835,12 +835,6 @@ in6_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in6_addr *faddr,
 	struct inpcb *inp;
 	struct inpcb *jinp = NULL;
 	u_short fport = fport_arg, lport = lport_arg;
-	int faith;
-
-	if (faithprefix_p != NULL)
-		faith = (*faithprefix_p)(laddr);
-	else
-		faith = 0;
 
 	/*
 	 * First look for an exact match.
@@ -916,8 +910,6 @@ in6_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in6_addr *faddr,
 			}
 			if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_faddr) &&
 			    inp->inp_lport == lport) {
-				if (faith && (inp->inp_flags & INP_FAITH) == 0)
-					continue;
 				if (IN6_ARE_ADDR_EQUAL(&inp->in6p_laddr,
 						       laddr)) {
 					if (cred != NULL && jailed(cred)) {

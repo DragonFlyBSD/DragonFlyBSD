@@ -429,7 +429,6 @@ struct route_in6 {
 #if 1 /* IPSEC */
 #define IPV6_IPSEC_POLICY	28 /* struct; get/set security policy */
 #endif
-#define IPV6_FAITH		29 /* bool; accept FAITH'ed connections */
 
 #if 1 /* IPV6FIREWALL */
 #define IPV6_FW_ADD		30 /* add a firewall rule to chain */
@@ -557,7 +556,6 @@ struct ip6_mtuinfo {
 #define IPV6CTL_SOURCECHECK	10	/* verify source route and intf */
 #define IPV6CTL_SOURCECHECK_LOGINT 11	/* minimume logging interval */
 #define IPV6CTL_ACCEPT_RTADV	12
-#define IPV6CTL_KEEPFAITH	13
 #define IPV6CTL_LOG_INTERVAL	14
 #define IPV6CTL_HDRNESTLIMIT	15
 #define IPV6CTL_DAD_COUNT	16
@@ -621,8 +619,6 @@ void	addrsel_policy_init (void);
 #define	satosin6(sa)	((struct sockaddr_in6 *)(sa))
 #define	sin6tosa(sin6)	((struct sockaddr *)(sin6))
 #define	ifatoia6(ifa)	((struct in6_ifaddr *)(ifa))
-
-extern int (*faithprefix_p)(struct in6_addr *);
 #endif /* _KERNEL */
 
 #include <sys/cdefs.h>		/* for __BEGIN_DECLS and __END_DECLS */

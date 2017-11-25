@@ -159,12 +159,6 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 
 	ip6 = mtod(m, struct ip6_hdr *);
 
-	if (faithprefix_p != NULL && (*faithprefix_p)(&ip6->ip6_dst)) {
-		/* XXX send icmp6 host/port unreach? */
-		m_freem(m);
-		return IPPROTO_DONE;
-	}
-
 	udp_stat.udps_ipackets++;
 
 	plen = ntohs(ip6->ip6_plen) - off + sizeof(*ip6);

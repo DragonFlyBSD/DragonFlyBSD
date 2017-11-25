@@ -26,14 +26,16 @@ BOOTSTRAPPING LIMITED FROM PRE 4.4
 Upgrading to 5.1 and later versions now require at least 4.4 in
 preparations for upcoming base compilers updates.
 
+IF_PPP, PPPD, IF_FAITH, AND FAITHD REMOVED
+------------------------------------------
 
-IF_PPP AND PPPD REMOVED
------------------------
-
-It has been replaced by "user ppp", i.e. ppp(8) and tun(4). It had
+if_ppp has been replaced by "user ppp", i.e. ppp(8) and tun(4). It had
 already been removed from our default kernel configuration before 5.0,
 so only people with custom configurations based on earlier X86_64_GENERIC
 will have to remove it manually.
+
+The faith(4) interface has been completely removed after it had also
+been removed from our default kernel configuration. 
 
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 4.8 TO LATER VERSIONS                +

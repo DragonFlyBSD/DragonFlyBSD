@@ -155,11 +155,6 @@ SYSCTL_INT(_net_inet_ip, IPCTL_ACCEPTSOURCEROUTE, accept_sourceroute,
     CTLFLAG_RW, &ip_acceptsourceroute, 0,
     "Enable accepting source routed IP packets");
 
-static int ip_keepfaith = 0;
-SYSCTL_INT(_net_inet_ip, IPCTL_KEEPFAITH, keepfaith, CTLFLAG_RW,
-    &ip_keepfaith, 0,
-    "Enable packet capture for FAITH IPv4->IPv6 translator daemon");
-
 static int maxnipq;
 SYSCTL_INT(_net_inet_ip, OID_AUTO, maxfragpackets, CTLFLAG_RW,
     &maxnipq, 0,
@@ -826,18 +821,6 @@ pass:
 		goto ours;
 	if (ip->ip_dst.s_addr == INADDR_ANY)
 		goto ours;
-
-	/*
-	 * FAITH(Firewall Aided Internet Translator)
-	 */
-	if (m->m_pkthdr.rcvif && m->m_pkthdr.rcvif->if_type == IFT_FAITH) {
-		if (ip_keepfaith) {
-			if (ip->ip_p == IPPROTO_TCP || ip->ip_p == IPPROTO_ICMP)
-				goto ours;
-		}
-		m_freem(m);
-		return;
-	}
 
 	/*
 	 * Not for us; forward if possible and desirable.

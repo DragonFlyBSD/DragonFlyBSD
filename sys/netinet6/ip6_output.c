@@ -1439,7 +1439,6 @@ ip6_ctloutput(struct socket *so, struct sockopt *sopt)
 			case IPV6_HOPLIMIT:
 			/* FALLTHROUGH */
 			case IPV6_UNICAST_HOPS:
-			case IPV6_FAITH:
 
 			case IPV6_V6ONLY:
 				if (optlen != sizeof(int)) {
@@ -1572,10 +1571,6 @@ do { \
 
 				case IPV6_AUTOFLOWLABEL:
 					OPTSET(IN6P_AUTOFLOWLABEL);
-					break;
-
-				case IPV6_FAITH:
-					OPTSET(IN6P_FAITH);
 					break;
 
 				case IPV6_V6ONLY:
@@ -1837,7 +1832,6 @@ do { \
 			case IPV6_RECVPATHMTU:
 			case IPV6_RECVTCLASS:
 			case IPV6_AUTOFLOWLABEL:
-			case IPV6_FAITH:
 			case IPV6_V6ONLY:
 			case IPV6_PORTRANGE:
 				switch (optname) {
@@ -1881,10 +1875,6 @@ do { \
 
 				case IPV6_UNICAST_HOPS:
 					optval = in6p->in6p_hops;
-					break;
-
-				case IPV6_FAITH:
-					optval = OPTBIT(IN6P_FAITH);
 					break;
 
 				case IPV6_V6ONLY:

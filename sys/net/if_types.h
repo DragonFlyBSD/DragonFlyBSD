@@ -28,7 +28,6 @@
  *
  *	@(#)if_types.h	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sys/net/if_types.h,v 1.8.2.4 2002/12/23 23:02:21 kbyanc Exp $
- * $DragonFly: src/sys/net/if_types.h,v 1.6 2007/08/16 20:03:57 dillon Exp $
  * $NetBSD: if_types.h,v 1.16 2000/04/19 06:30:53 itojun Exp $
  */
 
@@ -244,7 +243,6 @@
 /* not based on IANA assignments */
 #define	IFT_GIF		0xf0
 #define	IFT_PVC		0xf1
-#define	IFT_FAITH	0xf2
 #define	IFT_STF		0xf3
 #define	IFT_ENC		0xf4
 #define	IFT_PFLOG	0xf5		/* Packet filter logging */

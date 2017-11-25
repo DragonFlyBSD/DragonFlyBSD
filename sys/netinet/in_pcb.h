@@ -333,7 +333,6 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 #define	INP_ANONPORT		0x40	/* port chosen for user */
 #define	INP_RECVIF		0x80	/* receive incoming interface */
 #define	INP_MTUDISC		0x100	/* user can do MTU discovery */
-#define	INP_FAITH		0x200	/* accept FAITH'ed connections */
 #define	INP_WILDCARD		0x400	/* wildcard match */
 #define INP_FLAG_PROTO2		0x800	/* protocol specific */
 #define	INP_CONNECTED		0x1000	/* exact match */
@@ -375,7 +374,6 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 #define	IN6P_ANONPORT		INP_ANONPORT
 #define	IN6P_RECVIF		INP_RECVIF
 #define	IN6P_MTUDISC		INP_MTUDISC
-#define	IN6P_FAITH		INP_FAITH
 #define	IN6P_CONTROLOPTS INP_CONTROLOPTS
 	/*
 	 * socket AF version is {newer than,or include}

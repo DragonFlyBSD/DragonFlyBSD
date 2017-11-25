@@ -348,7 +348,6 @@ struct sockaddr_in {
 #define	IP_RECVIF		20   /* bool; receive reception if w/dgram */
 /* for IPSEC */
 #define	IP_IPSEC_POLICY		21   /* int; set/get security policy */
-#define	IP_FAITH		22   /* bool; accept FAITH'ed connections */
 
 #define	IP_FW_TBL_CREATE	40   /* create ipfw table */
 #define	IP_FW_TBL_DESTROY	41   /* destroy ipfw table */
@@ -496,7 +495,6 @@ struct ip_mreq {
 #define	IPCTL_STATS		12	/* ipstat structure */
 #define	IPCTL_ACCEPTSOURCEROUTE	13	/* may accept source routed packets */
 #define	IPCTL_FASTFORWARDING	14	/* use fast IP forwarding code */
-#define	IPCTL_KEEPFAITH		15	/* FAITH IPv4->IPv6 translater ctl */
 #define	IPCTL_GIF_TTL		16	/* default TTL for gif encap packet */
 #define	IPCTL_MAXID		17
 

@@ -141,8 +141,6 @@ static int	in6_control_internal(u_long, caddr_t, struct ifnet *,
 
 struct in6_multihead in6_multihead;	/* XXX BSS initialization */
 
-int	(*faithprefix_p)(struct in6_addr *);
-
 /*
  * Subroutine for in6_ifaddloop() and in6_ifremloop().
  * This routine does actual work.
@@ -2433,15 +2431,8 @@ in6if_do_dad(struct ifnet *ifp)
 	switch (ifp->if_type) {
 #ifdef IFT_DUMMY
 	case IFT_DUMMY:
-#endif
-	case IFT_FAITH:
-		/*
-		 * These interfaces do not have the IFF_LOOPBACK flag,
-		 * but loop packets back.  We do not have to do DAD on such
-		 * interfaces.  We should even omit it, because loop-backed
-		 * NS would confuse the DAD procedure.
-		 */
 		return (0);
+#endif
 	default:
 		/*
 		 * Our DAD routine requires the interface up and running.

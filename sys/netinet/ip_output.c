@@ -1426,7 +1426,6 @@ ip_ctloutput(netmsg_t msg)
 		case IP_RECVDSTADDR:
 		case IP_RECVIF:
 		case IP_RECVTTL:
-		case IP_FAITH:
 			error = soopt_to_kbuf(sopt, &optval, sizeof optval,
 					     sizeof optval);
 			if (error)
@@ -1469,10 +1468,6 @@ ip_ctloutput(netmsg_t msg)
 
 			case IP_RECVTTL:
 				OPTSET(INP_RECVTTL);
-				break;
-
-			case IP_FAITH:
-				OPTSET(INP_FAITH);
 				break;
 			}
 			break;
@@ -1565,7 +1560,6 @@ ip_ctloutput(netmsg_t msg)
 		case IP_RECVTTL:
 		case IP_RECVIF:
 		case IP_PORTRANGE:
-		case IP_FAITH:
 			switch (sopt->sopt_name) {
 
 			case IP_TOS:
@@ -1608,10 +1602,6 @@ ip_ctloutput(netmsg_t msg)
 					optval = IP_PORTRANGE_LOW;
 				else
 					optval = 0;
-				break;
-
-			case IP_FAITH:
-				optval = OPTBIT(INP_FAITH);
 				break;
 			}
 			soopt_from_kbuf(sopt, &optval, sizeof optval);
