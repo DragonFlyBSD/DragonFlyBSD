@@ -41,7 +41,6 @@
 #include <sys/sched.h>
 #include <sys/sysctl.h>
 #include <sys/systm.h>
-#include <sys/proc.h>
 #include <sys/thread.h>
 #include <sys/globaldata.h>
 

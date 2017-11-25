@@ -38,7 +38,6 @@
 #if defined(_PTHREADS_DEBUGGING) || defined(_PTHREADS_DEBUGGING2)
 #include <sys/file.h>
 #include <stdio.h>
-#include <string.h>
 #endif
 
 /* #define DEBUG_SIGNAL */
