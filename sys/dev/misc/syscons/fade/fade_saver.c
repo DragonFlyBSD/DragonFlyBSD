@@ -72,7 +72,7 @@ fade_saver(video_adapter_t *adp, int blank)
 			}
 		} else {
 	    		(*vidsw[adp->va_index]->blank_display)(adp,
-							       V_DISPLAY_OFF);
+							       V_DISPLAY_BLANK);
 		}
 	} else {
 		if (ISPALAVAIL(adp->va_flags)) {

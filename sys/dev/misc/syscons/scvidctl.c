@@ -592,6 +592,23 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	lwkt_reltoken(&tty_token);
 	return ret;
 
+    case FBIO_BLANK:
+	if (scp != scp->sc->cur_scp) {
+	    lwkt_reltoken(&tty_token);
+	    return ENODEV;
+	}
+	if (scp->sc->fbi != NULL && ISGRAPHSC(scp)) {
+	    if (*(int *)data == V_DISPLAY_ON)
+		sc_stop_scrn_saver(scp->sc);
+	    else
+		sc_start_scrn_saver(scp->sc);
+	    ret = 0;
+	} else {
+	    ret = ENODEV;
+	}
+	lwkt_reltoken(&tty_token);
+	return ret;
+
     case FBIO_GETPALETTE:
     case FBIO_SETPALETTE:
     case FBIOPUTCMAP:

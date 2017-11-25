@@ -418,4 +418,12 @@ typedef struct video_color_palette video_color_palette_t;
 #define FBIO_GETPALETTE	_IOW('F', 113, video_color_palette_t)
 #define FBIO_SETPALETTE	_IOW('F', 114, video_color_palette_t)
 
+/* blank display */
+#define V_DISPLAY_ON		0
+#define V_DISPLAY_BLANK		1
+#define V_DISPLAY_STAND_BY	2
+#define V_DISPLAY_SUSPEND	3
+
+#define FBIO_BLANK	_IOW('F', 115, int)
+
 #endif /* !_SYS_FBIO_H_ */

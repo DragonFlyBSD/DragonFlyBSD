@@ -54,7 +54,7 @@ blank_saver(video_adapter_t *adp, int blank)
 	}
 
 	(*vidsw[adp->va_index]->blank_display)
-		(adp, blank ? V_DISPLAY_OFF : V_DISPLAY_ON);
+		(adp, blank ? V_DISPLAY_BLANK : V_DISPLAY_ON);
 
 	blanked = blank;
 

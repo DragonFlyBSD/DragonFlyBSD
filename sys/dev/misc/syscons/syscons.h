@@ -524,6 +524,8 @@ void		sc_save_font(scr_stat *scp, int page, int size, u_char *font,
 			     int base, int count);
 void		sc_show_font(scr_stat *scp, int page);
 
+void		sc_start_scrn_saver(sc_softc_t *sc);
+void		sc_stop_scrn_saver(sc_softc_t *sc);
 void		sc_touch_scrn_saver(void);
 void		sc_draw_cursor_image(scr_stat *scp);
 void		sc_remove_cursor_image(scr_stat *scp);

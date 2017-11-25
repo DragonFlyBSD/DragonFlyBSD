@@ -1678,7 +1678,7 @@ vga_blank_display(video_adapter_t *adp, int mode)
 	val = inb(CRTC + 1);
 	outb(CRTC + 1, val & ~0x80);
 	break;
-    case V_DISPLAY_OFF:
+    case V_DISPLAY_BLANK:
 	outb(TSIDX, 0x01);
 	val = inb(TSREG);
 	outb(TSIDX, 0x01);

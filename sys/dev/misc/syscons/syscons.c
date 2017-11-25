@@ -2142,9 +2142,10 @@ scrn_timer(void *arg)
 	    run_scrn_saver = TRUE;
     }
 #if NSPLASH > 0
-    if ((saver_mode != CONS_LKM_SAVER) || !(sc->flags & SC_SCRN_IDLE))
-	if (sc->flags & SC_SCRN_BLANKED)
+    if ((saver_mode != CONS_LKM_SAVER) || !(sc->flags & SC_SCRN_IDLE)) {
+	if ((sc->flags & SC_SCRN_BLANKED) && !ISGRAPHSC(sc->cur_scp))
             stop_scrn_saver(sc, current_saver);
+    }
 #endif /* NSPLASH */
 
     /* should we just return ? */
@@ -2648,6 +2649,23 @@ restore_scrn_saver_mode(scr_stat *scp, int changemode)
 	return 1;
     }
     /* NOTREACHED */
+}
+
+void
+sc_start_scrn_saver(sc_softc_t *sc)
+{
+#if NSPLASH > 0
+    (*current_saver)(sc, TRUE);
+#endif
+}
+
+void
+sc_stop_scrn_saver(sc_softc_t *sc)
+{
+#if NSPLASH > 0
+    if (sc->flags & SC_SCRN_BLANKED)
+	stop_scrn_saver(sc, current_saver);
+#endif
 }
 
 static void
