@@ -84,6 +84,10 @@ ata_pci_probe(device_t dev)
 	if (!ata_ali_ident(dev))
 	    return ATA_PROBE_OK;
 	break;
+    case ATA_ADAPTEC_ID:
+	if (!ata_adaptec_ident(dev))
+	    return ATA_PROBE_OK;
+	break;
     case ATA_AMD_ID:
 	if (!ata_amd_ident(dev))
 	    return ATA_PROBE_OK;
@@ -153,20 +157,12 @@ ata_pci_probe(device_t dev)
 	    return ATA_PROBE_OK;
 	break;
     case ATA_CENATEK_ID:
-	if (pci_get_devid(dev) == ATA_CENATEK_ROCKET) {
-	    ata_generic_ident(dev);
-	    device_set_desc(dev, "Cenatek Rocket Drive controller");
+	if (!ata_cenatek_ident(dev))
 	    return ATA_PROBE_OK;
-	}
 	break;
     case ATA_MICRON_ID:
-	if (pci_get_devid(dev) == ATA_MICRON_RZ1000 ||
-	    pci_get_devid(dev) == ATA_MICRON_RZ1001) {
-	    ata_generic_ident(dev);
-	    device_set_desc(dev,
-		"RZ 100? ATA controller !WARNING! data loss/corruption risk");
+	if (!ata_micron_ident(dev))
 	    return ATA_PROBE_OK;
-	}
 	break;
     }
 
@@ -693,6 +689,7 @@ ata_pcivendor2str(device_t dev)
     case ATA_ACARD_ID:          return "Acard";
     case ATA_ACER_LABS_ID:      return "AcerLabs";
     case ATA_AMD_ID:            return "AMD";
+    case ATA_ADAPTEC_ID:        return "Adaptec";
     case ATA_ATI_ID:            return "ATI";
     case ATA_CYRIX_ID:          return "Cyrix";
     case ATA_CYPRESS_ID:        return "Cypress";

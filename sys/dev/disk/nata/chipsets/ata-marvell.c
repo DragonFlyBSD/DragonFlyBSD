@@ -28,7 +28,6 @@
 static int ata_marvell_pata_chipinit(device_t dev);
 static int ata_marvell_pata_allocate(device_t dev);
 static void ata_marvell_pata_setmode(device_t dev, int mode);
-static int ata_marvell_edma_chipinit(device_t dev);
 static int ata_marvell_edma_allocate(device_t dev);
 static int ata_marvell_edma_status(device_t dev);
 static int ata_marvell_edma_begin_transaction(struct ata_request *request);
@@ -76,6 +75,7 @@ ata_marvell_ident(device_t dev)
      { ATA_M88SX6041, 0, 4, MV_60XX, ATA_SA300, "88SX6041" },
      { ATA_M88SX6081, 0, 8, MV_60XX, ATA_SA300, "88SX6081" },
      { ATA_M88SX6101, 0, 1, MV_61XX, ATA_UDMA6, "88SX6101" },
+     { ATA_M88SX6121, 0, 1, MV_61XX, ATA_UDMA6, "88SX6121" },
      { ATA_M88SX6145, 0, 2, MV_61XX, ATA_UDMA6, "88SX6145" },
      { 0, 0, 0, 0, 0, 0}};
 
@@ -513,6 +513,6 @@ ata_marvell_edma_dmainit(device_t dev)
 	    ch->dma->max_address = BUS_SPACE_MAXADDR;
 
 	/* chip does not reliably do 64K DMA transfers */
-	ch->dma->max_iosize = 126 * DEV_BSIZE;
+	ch->dma->max_iosize = 64 * DEV_BSIZE;
     }
 }

@@ -25,79 +25,47 @@
  */
 
 /* local prototypes */
-static int ata_cyrix_chipinit(device_t dev);
-static void ata_cyrix_setmode(device_t dev, int mode);
+static int ata_micron_chipinit(device_t dev);
+static void ata_micron_setmode(device_t dev, int mode);
 
 /*
- * Cyrix chipset support functions
+ * Micron chipset support functions
  */
 int
-ata_cyrix_ident(device_t dev)
+ata_micron_ident(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
 
-    if (pci_get_devid(dev) == ATA_CYRIX_5530) {
-	device_set_desc(dev, "Cyrix 5530 ATA33 controller");
-	ctlr->chipinit = ata_cyrix_chipinit;
+    if (pci_get_devid(dev) == ATA_MICRON_RZ1000 ||
+	pci_get_devid(dev) == ATA_MICRON_RZ1001) {
+	device_set_desc(dev,
+	    "RZ 100? ATA controller !WARNING! data loss/corruption risk");
+	ctlr->chipinit = ata_micron_chipinit;
 	return 0;
     }
-    return ENXIO;
+    else
+	return ENXIO;
 }
 
 static int
-ata_cyrix_chipinit(device_t dev)
+ata_micron_chipinit(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
 
     if (ata_setup_interrupt(dev, ata_generic_intr))
 	return ENXIO;
 
-    ctlr->setmode = ata_cyrix_setmode;
+    ctlr->setmode = ata_micron_setmode;
     return 0;
 }
 
 static void
-ata_cyrix_setmode(device_t dev, int mode)
+ata_micron_setmode(device_t dev, int mode)
 {
-	struct ata_pci_controller *ctlr = device_get_softc(GRANDPARENT(dev));
-	struct ata_channel *ch = device_get_softc(device_get_parent(dev));
-	struct ata_device *atadev = device_get_softc(dev);
-	int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
-	int error;
-	static const uint32_t piotiming[] =
-	    { 0x00009172, 0x00012171, 0x00020080, 0x00032010, 0x00040010 };
-	static const uint32_t dmatiming[] =
-	    { 0x00077771, 0x00012121, 0x00002020 };
-	static const uint32_t udmatiming[] =
-	    { 0x00921250, 0x00911140, 0x00911030 };
+    struct ata_device *atadev = device_get_softc(dev);
 
     mode = ata_limit_mode(dev, mode, ATA_UDMA2);
-
-    error = ata_controlcmd(dev, ATA_SETFEATURES, ATA_SF_SETXFER, 0, mode);
-
-    if (bootverbose)
-	device_printf(dev, "%ssetting %s on Cyrix chip\n",
-		      (error) ? "FAILURE " : "", ata_mode2str(mode));
-
-    if (!error) {
-	/* dont try to set the mode if we dont have the resource */
-	if (ctlr->r_res1) {
-	    ch->dma->alignment = 16;
-	    ch->dma->max_iosize = 64 * DEV_BSIZE;
-
-	    if (mode >= ATA_UDMA0) {
-		ATA_OUTL(ch->r_io[ATA_BMCMD_PORT].res,
-			 0x24 + (devno << 3), udmatiming[mode & ATA_MODE_MASK]);
-	    }
-	    else if (mode >= ATA_WDMA0) {
-		ATA_OUTL(ch->r_io[ATA_BMCMD_PORT].res,
-			 0x24 + (devno << 3), dmatiming[mode & ATA_MODE_MASK]);
-	    }
-	    else {
-		ATA_OUTL(ch->r_io[ATA_BMCMD_PORT].res,
-			 0x20 + (devno << 3), piotiming[mode & ATA_MODE_MASK]);
-	    }
-	}
+    mode = ata_check_80pin(dev, mode);
+    if (!ata_controlcmd(dev, ATA_SETFEATURES, ATA_SF_SETXFER, 0, mode))
 	atadev->mode = mode;
-    }
 }

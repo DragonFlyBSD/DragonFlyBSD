@@ -71,6 +71,11 @@ static void ata_ahci_dmainit(device_t dev);
 static void ata_ahci_reset(device_t dev);
 #endif
 
+#if !defined(ATA_NO_MARVELL)
+/* ata-adaptec.c depends on ata-marwell.c */
+static int ata_marvell_edma_chipinit(device_t dev);
+#endif
+
 #if !defined(ATA_NO_SILICONIMAGE)
 /* ata-ati.c depends on ata-siliconimage.c */
 /* used by ata-ati.c and ata-siliconimage.c */
@@ -151,8 +156,10 @@ ATA_IDENT_DUMMY(jmicron)
 #endif
 
 #if !defined(ATA_NO_MARVELL)
+#include "chipsets/ata-adaptec.c"
 #include "chipsets/ata-marvell.c"
 #else
+ATA_IDENT_DUMMY(adaptec)
 ATA_IDENT_DUMMY(marvell)
 #endif
 
@@ -203,6 +210,13 @@ ATA_IDENT_DUMMY(sis)
 #else
 ATA_IDENT_DUMMY(via)
 #endif
+
+/*
+ * various vendor specific chipset support functions based on generic ATA
+ */
+
+#include "chipsets/ata-cenatek.c"
+#include "chipsets/ata-micron.c"
 
 /*
  * generic ATA support functions

@@ -101,6 +101,9 @@ struct ata_connect_task {
 #define ATA_AMD768              0x74411022
 #define ATA_AMD8111             0x74691022
 
+#define ATA_ADAPTEC_ID          0x9005
+#define ATA_ADAPTEC_1420        0x02419005
+
 #define ATA_ATI_ID              0x1002
 #define ATA_ATI_IXP200          0x43491002
 #define ATA_ATI_IXP300          0x43691002
@@ -204,6 +207,7 @@ struct ata_connect_task {
 #define ATA_M88SX6041           0x604111ab
 #define ATA_M88SX6081           0x608111ab
 #define ATA_M88SX6101           0x610111ab
+#define ATA_M88SX6121           0x612111ab
 #define ATA_M88SX6145           0x614511ab
 
 #define ATA_MICRON_ID           0x1042
@@ -408,6 +412,9 @@ int ata_mode2idx(int mode);
 
 /* global prototypes ata-chipset.c */
 int ata_generic_ident(device_t);
+int ata_cenatek_ident(device_t dev);
+int ata_micron_ident(device_t dev);
+int ata_adaptec_ident(device_t dev);
 int ata_ahci_ident(device_t);
 int ata_acard_ident(device_t);
 int ata_ali_ident(device_t);
