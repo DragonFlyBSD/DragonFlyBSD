@@ -28,7 +28,7 @@
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
 .\"
-.Dd May 3, 2017
+.Dd November 25, 2017
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -126,7 +126,7 @@ OpenSSH configuration files;
 see
 .Xr ssh 1
 .It Pa ssl/
-OpenSSL configuration files
+LibreSSL configuration files
 .It Pa upgrade/
 Files relevant to system upgrades
 .El
@@ -239,8 +239,6 @@ kernel key-management service
 SMB/CIFS requester
 .It Pa nfs/
 C include files for NFS (Network File System)
-.It Pa openssl/
-OpenSSL (Cryptography/SSL toolkit) headers
 .It Pa pcap/
 Packet Capture (libpcap) headers;
 see
@@ -287,14 +285,6 @@ see
 .Pp
 .It Pa lib/
 archive libraries
-.Pp
-.Bl -tag -width ".Pa engines/" -compact
-.It Pa aout/
-a.out archive libraries
-.It Pa engines/
-OpenSSL dynamic engines
-.El
-.Pp
 .It Pa libdata/
 misc. utility data files
 .It Pa libexec/
@@ -327,10 +317,6 @@ see
 utilities and filters for LP print system;
 see
 .Xr lpr 1
-.It Pa sm.bin/
-restricted shell for sendmail;
-see
-.Xr smrsh 8
 .El
 .Pp
 .It Pa local/
@@ -439,13 +425,6 @@ see
 national language support files;
 see
 .Xr nls 7
-.It Pa openssl/
-.Pp
-.Bl -tag -width ".Pa man/" -compact
-.It Pa man/
-OpenSSL manual pages
-.El
-.Pp
 .It Pa sendmail/
 sendmail configuration files;
 see
