@@ -254,11 +254,16 @@ struct ata_ahci_cmd_tab {
     u_int8_t                    cfis[64];
     u_int8_t                    acmd[32];
     u_int8_t                    reserved[32];
-    struct ata_ahci_dma_prd     prd_tab[16];
+#define ATA_AHCI_DMA_ENTRIES            64
+    struct ata_ahci_dma_prd     prd_tab[ATA_AHCI_DMA_ENTRIES];
 } __packed;
 
 struct ata_ahci_cmd_list {
     u_int16_t                   cmd_flags;
+#define ATA_AHCI_CMD_ATAPI		0x0020
+#define ATA_AHCI_CMD_WRITE		0x0040
+#define ATA_AHCI_CMD_PREFETCH		0x0080
+
     u_int16_t                   prd_length;     /* PRD entries */
     u_int32_t                   bytecount;
     u_int64_t                   cmd_table_phys; /* 128byte aligned */

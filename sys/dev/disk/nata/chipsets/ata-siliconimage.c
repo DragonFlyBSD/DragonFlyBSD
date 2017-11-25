@@ -36,6 +36,7 @@ static int ata_siiprb_allocate(device_t dev);
 static int ata_siiprb_status(device_t dev);
 static int ata_siiprb_begin_transaction(struct ata_request *request);
 static int ata_siiprb_end_transaction(struct ata_request *request);
+static u_int32_t ata_siiprb_softreset(device_t dev);
 static void ata_siiprb_reset(device_t dev);
 static void ata_siiprb_dmasetprd(void *xsc, bus_dma_segment_t *segs, int nsegs, int error);
 static void ata_siiprb_dmainit(device_t dev);
@@ -491,7 +492,7 @@ ata_siiprb_begin_transaction(struct ata_request *request)
     struct ata_siiprb_dma_prdentry *prd;
     int offset = ch->unit * 0x2000;
     u_int64_t prb_bus;
-    int tag = 0, dummy;
+    int dummy;
 
     /* SOS XXX */
     if (request->u.ata.command == ATA_DEVICE_RESET) {
@@ -503,8 +504,7 @@ ata_siiprb_begin_transaction(struct ata_request *request)
     ata_modify_if_48bit(request);
 
     /* get a piece of the workspace for this request */
-    prb = (struct ata_siiprb_command *)
-	(ch->dma->work + (sizeof(struct ata_siiprb_command) * tag));
+    prb = (struct ata_siiprb_command *)ch->dma->work;
 
     /* set basic prd options ata/atapi etc etc */
     bzero(prb, sizeof(struct ata_siiprb_command));
@@ -545,11 +545,9 @@ ata_siiprb_begin_transaction(struct ata_request *request)
     }
 
     /* activate the prb */
-    prb_bus = ch->dma->work_bus + (sizeof(struct ata_siiprb_command) * tag);
-    ATA_OUTL(ctlr->r_res2,
-	     0x1c00 + offset + (tag * sizeof(u_int64_t)), prb_bus);
-    ATA_OUTL(ctlr->r_res2,
-	     0x1c04 + offset + (tag * sizeof(u_int64_t)), prb_bus>>32);
+    prb_bus = ch->dma->work_bus;
+    ATA_OUTL(ctlr->r_res2, 0x1c00 + offset, prb_bus);
+    ATA_OUTL(ctlr->r_res2, 0x1c04 + offset, prb_bus>>32);
 
     /* start the timeout */
     callout_reset(&request->callout, request->timeout * hz,
@@ -564,13 +562,13 @@ ata_siiprb_end_transaction(struct ata_request *request)
     struct ata_channel *ch = device_get_softc(device_get_parent(request->dev));
     struct ata_siiprb_command *prb;
     int offset = ch->unit * 0x2000;
-    int error, timeout, tag = 0;
+    int error, timeout;
 
     /* kill the timeout */
     callout_stop_sync(&request->callout);
 
     prb = (struct ata_siiprb_command *)
-	((u_int8_t *)rman_get_virtual(ctlr->r_res2) + (tag << 7) + offset);
+	((u_int8_t *)rman_get_virtual(ctlr->r_res2) + offset);
 
     /* any controller errors flagged ? */
     if ((error = ATA_INL(ctlr->r_res2, 0x1024 + offset))) {
@@ -618,16 +616,70 @@ ata_siiprb_end_transaction(struct ata_request *request)
     return ATA_OP_FINISHED;
 }
 
+static int
+ata_siiprb_issue_cmd(device_t dev)
+{
+    struct ata_pci_controller *ctlr = device_get_softc(device_get_parent(dev));
+    struct ata_channel *ch = device_get_softc(dev);
+    u_int64_t prb_bus = ch->dma->work_bus;
+    u_int32_t status;
+    int offset = ch->unit * 0x2000;
+    int timeout;
+
+    /* issue command to chip */
+    ATA_OUTL(ctlr->r_res2, 0x1c00 + offset, prb_bus);
+    ATA_OUTL(ctlr->r_res2, 0x1c04 + offset, prb_bus >> 32);
+
+    /* poll for command finished */
+    for (timeout = 0; timeout < 10000; timeout++) {
+        DELAY(1000);
+        if ((status = ATA_INL(ctlr->r_res2, 0x1008 + offset)) & 0x00010000)
+            break;
+    }
+    if (timeout >= 1000)
+	return EIO;
+
+    if (bootverbose)
+	device_printf(ch->dev, "ata_siiprb_issue_cmd time=%dms status=%08x\n",
+		      timeout, status);
+    return 0;
+}
+
+static u_int32_t
+ata_siiprb_softreset(device_t dev)
+{
+    struct ata_pci_controller *ctlr = device_get_softc(device_get_parent(dev));
+    struct ata_channel *ch = device_get_softc(dev);
+    struct ata_siiprb_command *prb = (struct ata_siiprb_command *)ch->dma->work;
+    u_int32_t signature;
+    int offset = ch->unit * 0x2000;
+
+    /* setup the workspace for a soft reset command */
+    bzero(prb, sizeof(struct ata_siiprb_command));
+    prb->control = htole16(0x0080);
+
+    /* issue soft reset */
+    if (ata_siiprb_issue_cmd(dev))
+	return -1;
+
+    ata_udelay(150000);
+
+    /* get possible signature */
+    prb = (struct ata_siiprb_command *)
+	((u_int8_t *)rman_get_virtual(ctlr->r_res2) + offset);
+    signature=prb->fis[12]|(prb->fis[4]<<8)|(prb->fis[5]<<16)|(prb->fis[6]<<24);
+
+    return signature;
+}
+
 static void
 ata_siiprb_reset(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(device_get_parent(dev));
     struct ata_channel *ch = device_get_softc(dev);
     int offset = ch->unit * 0x2000;
-    struct ata_siiprb_command *prb;
-    u_int64_t prb_bus;
     u_int32_t status, signature;
-    int timeout, tag = 0;
+    int timeout;
 
     /* reset channel HW */
     ATA_OUTL(ctlr->r_res2, 0x1000 + offset, 0x00000001);
@@ -657,51 +709,22 @@ ata_siiprb_reset(device_t dev)
 	goto finish;
     }
 
-    /* get a piece of the workspace for a soft reset request */
-    prb = (struct ata_siiprb_command *)
-	(ch->dma->work + (sizeof(struct ata_siiprb_command) * tag));
-    bzero(prb, sizeof(struct ata_siiprb_command));
-    prb->control = htole16(0x0080);
-
-    /* activate the soft reset prb */
-    prb_bus = ch->dma->work_bus + (sizeof(struct ata_siiprb_command) * tag);
-    ATA_OUTL(ctlr->r_res2,
-	     0x1c00 + offset + (tag * sizeof(u_int64_t)), prb_bus);
-    ATA_OUTL(ctlr->r_res2,
-	     0x1c04 + offset + (tag * sizeof(u_int64_t)), prb_bus>>32);
-
-    /* poll for command finished */
-    for (timeout = 0; timeout < 10000; timeout++) {
-        DELAY(1000);
-        if ((status = ATA_INL(ctlr->r_res2, 0x1008 + offset)) & 0x00010000)
-            break;
-    }
-    if (timeout >= 1000) {
-	device_printf(ch->dev, "reset timeout - no device found\n");
-	ch->devices = 0;
-	goto finish;
-    }
-    if (bootverbose)
-	device_printf(ch->dev, "soft reset exec time=%dms status=%08x\n",
-			timeout, status);
-
-    /* find out whats there */
-    prb = (struct ata_siiprb_command *)
-	((u_int8_t *)rman_get_virtual(ctlr->r_res2) + (tag << 7) + offset);
-    signature =
-	prb->fis[12]|(prb->fis[4]<<8)|(prb->fis[5]<<16)|(prb->fis[6]<<24);
+    /* issue soft reset */
+    signature = ata_siiprb_softreset(dev);
     if (bootverbose)
 	device_printf(ch->dev, "SIGNATURE=%08x\n", signature);
-    switch (signature) {
-    case 0x00000101:
+
+    /* figure out whats there */
+    switch (signature >> 16) {
+    case 0x0000:
 	ch->devices = ATA_ATA_MASTER;
 	break;
-    case 0x96690101:
+    case 0x9669:
 	ch->devices = ATA_PORTMULTIPLIER;
 	device_printf(ch->dev, "Portmultipliers not supported yet\n");
 	ch->devices = 0;
 	break;
-    case 0xeb140101:
+    case 0xeb14:
 	ch->devices = ATA_ATAPI_MASTER;
 	break;
     default:

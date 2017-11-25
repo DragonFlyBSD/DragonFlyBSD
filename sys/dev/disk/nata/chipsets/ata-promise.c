@@ -40,6 +40,7 @@ static void ata_promise_mio_intr(void *data);
 static int ata_promise_mio_status(device_t dev);
 static int ata_promise_mio_command(struct ata_request *request);
 static void ata_promise_mio_reset(device_t dev);
+static u_int32_t ata_promise_mio_softreset(device_t dev);
 static void ata_promise_mio_dmainit(device_t dev);
 static void ata_promise_mio_setprd(void *xsc, bus_dma_segment_t *segs, int nsegs, int error);
 static void ata_promise_mio_setmode(device_t dev, int mode);
@@ -754,7 +755,7 @@ ata_promise_mio_reset(device_t dev)
 	if ((ctlr->chip->cfg2 == PR_SATA2) ||
 	    ((ctlr->chip->cfg2 == PR_CMBO2) && (ch->unit < 2))) {
 	    /* set portmultiplier port */
-	    ATA_OUTL(ctlr->r_res2, 0x4e8 + (ch->unit << 8), 0x0f);
+	    //ATA_OUTL(ctlr->r_res2, 0x4e8 + (ch->unit << 8), 0x0f);
 
 	    /* mask plug/unplug intr */
 	    ATA_OUTL(ctlr->r_res2, 0x060, (0x00110000 << ch->unit));
@@ -775,8 +776,33 @@ ata_promise_mio_reset(device_t dev)
 		     (ATA_INL(ctlr->r_res2, 0x414 + (ch->unit << 8)) &
 		     ~0x00000003) | 0x00000001);
 
-	    if (ata_sata_phy_reset(dev))
-		ata_generic_reset(dev);
+	    if (ata_sata_phy_reset(dev)) {
+		u_int32_t signature = ata_promise_mio_softreset(dev);
+
+		if (bootverbose)
+		    device_printf(dev, "SIGNATURE=%08x\n", signature);
+
+		/* figure out whats there */
+		switch (signature >> 16) {
+		case 0x0000:
+		    ch->devices = ATA_ATA_MASTER;
+		    break;
+		case 0x9669:
+		    ch->devices = ATA_PORTMULTIPLIER;
+		    device_printf(ch->dev,
+				  "Portmultipliers not supported yet\n");
+		    ch->devices = 0;
+		    break;
+		case 0xeb14:
+		    ch->devices = ATA_ATAPI_MASTER;
+		    break;
+		default:
+		    ch->devices = 0;
+		}
+		if (bootverbose)
+		    device_printf(dev, "ata_promise_mio_reset devices=%08x\n",
+				  ch->devices);
+	    }
 
 	    /* reset and enable plug/unplug intr */
 	    ATA_OUTL(ctlr->r_res2, 0x060, (0x00000011 << ch->unit));
@@ -789,6 +815,48 @@ ata_promise_mio_reset(device_t dev)
 	break;
 
     }
+}
+
+/* must be called with ATA channel locked and state_mtx held */
+static u_int32_t
+ata_promise_mio_softreset(device_t dev)
+{
+    struct ata_pci_controller *ctlr = device_get_softc(device_get_parent(dev));
+    struct ata_channel *ch = device_get_softc(dev);
+    int timeout;
+
+    /* set portmultiplier port */
+    ATA_OUTB(ctlr->r_res2, 0x4e8 + (ch->unit << 8), 0x0f);
+
+    /* softreset device on this channel */
+    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | ATA_D_LBA | ATA_DEV(ATA_MASTER));
+    DELAY(10);
+    ATA_IDX_OUTB(ch, ATA_CONTROL, ATA_A_IDS | ATA_A_RESET);
+    ata_udelay(10000);
+    ATA_IDX_OUTB(ch, ATA_CONTROL, ATA_A_IDS);
+    ata_udelay(150000);
+    ATA_IDX_INB(ch, ATA_ERROR);
+
+    /* wait for BUSY to go inactive */
+    for (timeout = 0; timeout < 100; timeout++) {
+	uint8_t /* err, */ stat;
+
+	/* err = */ ATA_IDX_INB(ch, ATA_ERROR);
+	stat = ATA_IDX_INB(ch, ATA_STATUS);
+
+	if (!(stat & ATA_S_BUSY)) {
+	    return ATA_IDX_INB(ch, ATA_COUNT) |
+		   (ATA_IDX_INB(ch, ATA_SECTOR) << 8) |
+		   (ATA_IDX_INB(ch, ATA_CYL_LSB) << 16) |
+		   (ATA_IDX_INB(ch, ATA_CYL_MSB) << 24);
+	}
+
+	/* wait for master and/or slave */
+	if (!(stat & ATA_S_BUSY) || (stat == 0xff && timeout > 10))
+	    break;
+	ata_udelay(100000);
+    }
+    return -1;
 }
 
 static void
