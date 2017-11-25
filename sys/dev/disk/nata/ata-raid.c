@@ -57,6 +57,16 @@
 #include "ata-pci.h"
 #include "ata_if.h"
 
+/* local implementation, to trigger a warning */
+static inline void
+biofinish(struct bio *bp, struct bio *x __unused, int error)
+{
+	struct buf *bbp = bp->bio_buf;
+
+	bbp->b_flags |= B_ERROR;
+	bbp->b_error = error;
+	biodone(bp);
+}
 
 /* device structure */
 static	d_strategy_t	ata_raid_strategy;
@@ -124,7 +134,7 @@ static void ata_raid_sii_print_meta(struct sii_raid_conf *meta);
 static void ata_raid_sis_print_meta(struct sis_raid_conf *meta);
 static void ata_raid_via_print_meta(struct via_raid_conf *meta);
 
-/* internal vars */   
+/* internal vars */
 static struct ar_softc *ata_raid_arrays[MAX_ARRAYS];
 static MALLOC_DEFINE(M_AR, "ar_driver", "ATA PseudoRAID driver");
 static devclass_t ata_raid_sub_devclass;
@@ -282,7 +292,7 @@ ata_raid_flush(struct ar_softc *rdp, struct bio *bp)
 	request->u.ata.lba = 0;
 	request->u.ata.count = 0;
 	request->u.ata.feature = 0;
-	request->timeout = 1;
+	request->timeout = 1;	/* ATA_DEFAULT_TIMEOUT */
 	request->retries = 0;
 	request->flags |= ATA_R_ORDERED | ATA_R_DIRECT;
 	ata_queue_request(request);
@@ -309,19 +319,14 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 	int error;
 
 	error = ata_raid_flush(rdp, bp);
-	if (error != 0) {
-		bbp->b_flags |= B_ERROR;
-		bbp->b_error = error;
-		biodone(bp);
-	}
+	if (error != 0)
+		biofinish(bp, NULL, error);
 	return(0);
     }
 
     if (!(rdp->status & AR_S_READY) ||
 	(bbp->b_cmd != BUF_CMD_READ && bbp->b_cmd != BUF_CMD_WRITE)) {
-	bbp->b_flags |= B_ERROR;
-	bbp->b_error = EIO;
-	biodone(bp);
+	biofinish(bp, NULL, EIO);
 	return(0);
     }
 
@@ -370,9 +375,7 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 
 	default:
 	    kprintf("ar%d: unknown array type in ata_raid_strategy\n", rdp->lun);
-	    bbp->b_flags |= B_ERROR;
-	    bbp->b_error = EIO;
-	    biodone(bp);
+	    biofinish(bp, NULL, EIO);
 	    return(0);
 	}
 	 
@@ -381,9 +384,7 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 	    lba += rdp->offset_sectors;
 
 	if (!(request = ata_raid_init_request(rdp, bp))) {
-	    bbp->b_flags |= B_ERROR;
-	    bbp->b_error = EIO;
-	    biodone(bp);
+	    biofinish(bp, NULL, EIO);
 	    return(0);
 	}
 	request->data = data;
@@ -401,9 +402,7 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 		rdp->disks[drv].flags &= ~AR_DF_ONLINE;
 		ata_raid_config_changed(rdp, 1);
 		ata_free_request(request);
-		bbp->b_flags |= B_ERROR;
-		bbp->b_error = EIO;
-		biodone(bp);
+		biofinish(bp, NULL, EIO);
 		return(0);
 	    }
 	    request->this = drv;
@@ -429,9 +428,7 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 		ata_raid_config_changed(rdp, 1);
 	    if (!(rdp->status & AR_S_READY)) {
 		ata_free_request(request);
-		bbp->b_flags |= B_ERROR;
-		bbp->b_error = EIO;
-		biodone(bp);
+		biofinish(bp, NULL, EIO);
 		return(0);
 	    }
 
@@ -606,9 +603,7 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 		ata_raid_config_changed(rdp, 1);
 	    if (!(rdp->status & AR_S_READY)) {
 		ata_free_request(request);
-		bbp->b_flags |= B_ERROR;
-		bbp->b_error = EIO;
-		biodone(bp);
+		biofinish(bp, NULL, EIO);
 		return(0);
 	    }
 	    if (rdp->status & AR_S_DEGRADED) {
@@ -620,16 +615,15 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 		if (bbp->b_cmd == BUF_CMD_READ) {
 		    ata_raid_send_request(request);
 		}
-		if (bbp->b_cmd == BUF_CMD_WRITE) { 
+		if (bbp->b_cmd == BUF_CMD_WRITE) {
 		    ata_raid_send_request(request);
-		    /* XXX TGEN no, I don't speak Danish either */
 		    /*
-		     * sikre at læs-modify-skriv til hver disk er atomarisk.
-		     * par kopi af request
-		     * læse orgdata fra drv
-		     * skriv nydata til drv
-		     * læse parorgdata fra par
-		     * skriv orgdata xor parorgdata xor nydata til par
+		     * ensure that read-modify-write to each disk is atomic.
+		     * couple of copies of request
+		     * read old data data from drv
+		     * write new data to drv
+		     * read smth-smth data from pairs
+		     * write old data xor smth-smth data xor data to pairs
 		     */
 		}
 	    }
@@ -4048,11 +4042,6 @@ ata_raid_init_request(struct ar_softc *rdp, struct bio *bio)
     default:
 	kprintf("ar%d: FAILURE - unknown BUF operation\n", rdp->lun);
 	ata_free_request(request);
-#if 0
-	bio->bio_buf->b_flags |= B_ERROR;
-	bio->bio_buf->b_error = EIO;
-	biodone(bio);
-#endif /* 0 */
 	return(NULL);
     }
     return request;
@@ -4113,7 +4102,7 @@ ata_raid_rw(device_t dev, u_int64_t lba, void *data, u_int bcount, int flags)
 
     /* setup request */
     request->dev = dev;
-    request->timeout = 10;
+    request->timeout = ATA_DEFAULT_TIMEOUT;
     request->retries = 0;
     request->data = data;
     request->bytecount = bcount;

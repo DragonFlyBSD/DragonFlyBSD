@@ -737,7 +737,7 @@ ata_cmd2str(struct ata_request *request)
 	case 0x5b: return ("CLOSE_TRACK/SESSION");
 	case 0x5c: return ("READ_BUFFER_CAPACITY");
 	case 0x5d: return ("SEND_CUE_SHEET");
-        case 0x96: return ("READ_CAPACITY_16");
+	case 0x96: return ("READ_CAPACITY_16");
 	case 0xa1: return ("BLANK_CMD");
 	case 0xa3: return ("SEND_KEY");
 	case 0xa4: return ("REPORT_KEY");
@@ -759,6 +759,7 @@ ata_cmd2str(struct ata_request *request)
 	case 0x24: return ("READ48");
 	case 0x25: return ("READ_DMA48");
 	case 0x26: return ("READ_DMA_QUEUED48");
+	case 0x27: return ("READ_NATIVE_MAX_ADDRESS48");
 	case 0x29: return ("READ_MUL48");
 	case 0x30: return ("WRITE");
 	case 0x34: return ("WRITE48");
@@ -792,6 +793,7 @@ ata_cmd2str(struct ata_request *request)
 	    }
 	    ksprintf(buffer, "SETFEATURES 0x%02x", request->u.ata.feature);
 	    return buffer;
+	case 0xf8: return ("READ_NATIVE_MAX_ADDRESS");
 	}
     }
     ksprintf(buffer, "unknown CMD (0x%02x)", request->u.ata.command);

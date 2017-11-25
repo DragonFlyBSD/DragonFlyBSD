@@ -317,6 +317,9 @@ struct ata_ahci_cmd_list {
 #define ATA_OP_FINISHED                 1
 #define ATA_MAX_28BIT_LBA               268435455UL
 
+/* Dragonfly: Default request timeout increased from 5 to 10 */
+#define ATA_DEFAULT_TIMEOUT		10
+
 /* structure used for composite atomic operations */
 #define MAX_COMPOSITES          32              /* u_int32_t bits */
 struct ata_composite {
@@ -707,6 +710,3 @@ MALLOC_DECLARE(M_ATA);
 
 #define ATA_IDX_OUTSL_STRM(ch, idx, addr, count) \
 	ATA_OUTSL_STRM(ch->r_io[idx].res, ch->r_io[idx].offset, addr, count)
-
-/* Dragonfly: Default request timeout increased from 5 to 10 */
-#define ATA_DEFAULT_TIMEOUT	10

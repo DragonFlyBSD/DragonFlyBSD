@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.h,v 1.26 2006/03/05 20:30:54 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-fd.h,v 1.1 2006/12/04 14:40:37 tgen Exp $
  */
 
 #include <sys/param.h>

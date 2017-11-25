@@ -47,6 +47,17 @@
 #include "atapi-fd.h"
 #include "ata_if.h"
 
+/* local implementation, to trigger a warning */
+static inline void
+biofinish(struct bio *bp, struct bio *x __unused, int error)
+{
+	struct buf *bbp = bp->bio_buf;
+
+	bbp->b_flags |= B_ERROR;
+	bbp->b_error = error;
+	biodone(bp);
+}
+
 /* device structure */
 static	d_open_t	afd_open;
 static	d_close_t	afd_close;
@@ -218,12 +229,6 @@ afd_close(struct dev_close_args *ap)
     return 0;
 }
 
-static int
-afd_ioctl(struct dev_ioctl_args *ap)
-{
-    return ata_device_ioctl(ap->a_head.a_dev->si_drv1, ap->a_cmd, ap->a_data);
-}
-
 static int 
 afd_strategy(struct dev_strategy_args *ap)
 {
@@ -246,9 +251,7 @@ afd_strategy(struct dev_strategy_args *ap)
 
     /* should reject all queued entries if media have changed. */
     if (atadev->flags & ATA_D_MEDIA_CHANGED) {
-	bbp->b_flags |= B_ERROR;
-	bbp->b_error = EIO;
-	biodone(bp);
+	biofinish(bp, NULL, EIO);
 	return 0;
     }
 
@@ -267,9 +270,7 @@ afd_strategy(struct dev_strategy_args *ap)
 	break;
     default:
 	device_printf(dev, "unknown BUF operation\n");
-	bbp->b_flags |= B_ERROR;
-	bbp->b_error = EIO;
-	biodone(bp);
+	biofinish(bp, NULL, EIO);
 	return 0;
     }
 
@@ -281,9 +282,7 @@ afd_strategy(struct dev_strategy_args *ap)
     ccb[8] = count;
 
     if (!(request = ata_alloc_request())) {
-	bbp->b_flags |= B_ERROR;
-	bbp->b_error = ENOMEM;
-	biodone(bp);
+	biofinish(bp, NULL, ENOMEM);
 	return 0;
     }
     request->dev = dev;
@@ -330,6 +329,12 @@ afd_done(struct ata_request *request)
     devstat_end_transaction_buf(&fdp->stats, bbp);
     biodone(bp);
     ata_free_request(request);
+}
+
+static int
+afd_ioctl(struct dev_ioctl_args *ap)
+{
+    return ata_device_ioctl(ap->a_head.a_dev->si_drv1, ap->a_cmd, ap->a_data);
 }
 
 static int 
@@ -441,11 +446,9 @@ afd_describe(device_t dev)
     char sizestring[16];
 
     if (fdp->mediasize > 1048576 * 5)
-	ksprintf(sizestring, "%lluMB", (unsigned long long)
-		(fdp->mediasize / 1048576));
+	ksprintf(sizestring, "%juMB", fdp->mediasize / 1048576);
     else if (fdp->mediasize)
-	ksprintf(sizestring, "%lluKB", (unsigned long long)
-		(fdp->mediasize / 1024));
+	ksprintf(sizestring, "%juKB", fdp->mediasize / 1024);
     else
 	strcpy(sizestring, "(no media)");
  
@@ -455,11 +458,10 @@ afd_describe(device_t dev)
 		  (atadev->unit == ATA_MASTER) ? "master" : "slave",
 		  ata_mode2str(atadev->mode));
     if (bootverbose) {
-	device_printf(dev, "%llu sectors [%lluC/%dH/%dS]\n",
-	    	      (unsigned long long)(fdp->mediasize / fdp->sectorsize),
-	    	      (unsigned long long)
-		     (fdp->mediasize/(fdp->sectorsize*fdp->sectors*fdp->heads)),
-	    	      fdp->heads, fdp->sectors);
+	device_printf(dev, "%ju sectors [%juC/%dH/%dS]\n",
+		      fdp->mediasize / fdp->sectorsize,
+		     fdp->mediasize/(fdp->sectorsize*fdp->sectors*fdp->heads),
+		      fdp->heads, fdp->sectors);
     }
 }
 

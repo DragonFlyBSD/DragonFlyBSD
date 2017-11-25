@@ -49,6 +49,17 @@
 #include "ata-disk.h"
 #include "ata_if.h"
 
+/* local implementation, to trigger a warning */
+static inline void
+biofinish(struct bio *bp, struct bio *x __unused, int error)
+{
+	struct buf *bbp = bp->bio_buf;
+
+	bbp->b_flags |= B_ERROR;
+	bbp->b_error = error;
+	biodone(bp);
+}
+
 /* device structure */
 static	d_open_t	ad_open;
 static	d_close_t	ad_close;
@@ -287,27 +298,13 @@ ad_open(struct dev_open_args *ap)
     if(!device_is_attached(dev))
 	return EBUSY;
 
-#if 0 /* XXX TGEN Probably useless, queue will be failed on detach. */
-    adp->ad_flags &= AD_DISK_OPEN;
-#endif /* 0 */
     return 0;
 }
 
 static int
 ad_close(struct dev_close_args *ap)
 {
-#if 0 /* XXX TGEN Probably useless, queue will be failed on detach. */
-    device_t dev = ap->a_head.a_dev->si_drv1;
-    struct ad_softc *adp = device_get_ivars(dev);
-    adp->ad_flags |= AD_DISK_OPEN;
-#endif /* 0 */
     return 0;
-}
-
-static int
-ad_ioctl(struct dev_ioctl_args *ap)
-{
-    return ata_device_ioctl(ap->a_head.a_dev->si_drv1, ap->a_cmd, ap->a_data);
 }
 
 static int
@@ -326,9 +323,7 @@ ad_strategy(struct dev_strategy_args *ap)
 
     if (!(request = ata_alloc_request())) {
 	device_printf(dev, "FAILURE - out of memory in strategy\n");
-	bbp->b_flags |= B_ERROR;
-	bbp->b_error = ENOMEM;
-	biodone(bp);
+	biofinish(bp, NULL, ENOMEM);
 	return(0);
     }
 
@@ -388,9 +383,7 @@ ad_strategy(struct dev_strategy_args *ap)
     default:
 	device_printf(dev, "FAILURE - unknown BUF operation\n");
 	ata_free_request(request);
-	bbp->b_flags |= B_ERROR;
-	bbp->b_error = EIO;
-	biodone(bp);
+	biofinish(bp, NULL, EIO);
 	return(0);
     }
     request->flags |= ATA_R_ORDERED;
@@ -413,6 +406,12 @@ ad_done(struct ata_request *request)
     devstat_end_transaction_buf(&adp->stats, bbp);
     biodone(bp);
     ata_free_request(request);
+}
+
+static int
+ad_ioctl(struct dev_ioctl_args *ap)
+{
+    return ata_device_ioctl(ap->a_head.a_dev->si_drv1, ap->a_cmd, ap->a_data);
 }
 
 static int
@@ -518,18 +517,17 @@ ad_describe(device_t dev)
 	strncpy(product, atadev->param.model, 40);
     }
 
-    device_printf(dev, "%lluMB <%s%s %.8s> at ata%d-%s %s%s\n",
-		  (unsigned long long)(adp->total_secs / (1048576 / DEV_BSIZE)),
+    device_printf(dev, "%juMB <%s%s %.8s> at ata%d-%s %s%s\n",
+		  adp->total_secs / (1048576 / DEV_BSIZE),
 		  vendor, product, atadev->param.revision,
 		  device_get_unit(ch->dev),
 		  (atadev->unit == ATA_MASTER) ? "master" : "slave",
 		  (adp->flags & AD_F_TAG_ENABLED) ? "tagged " : "",
 		  ata_mode2str(atadev->mode));
     if (bootverbose) {
-	device_printf(dev, "%llu sectors [%lluC/%dH/%dS] "
-		      "%d sectors/interrupt %d depth queue\n",
-		      (unsigned long long)adp->total_secs,(unsigned long long)(
-		      adp->total_secs / (adp->heads * adp->sectors)),
+	device_printf(dev, "%ju sectors [%juC/%dH/%dS] "
+		      "%d sectors/interrupt %d depth queue\n", adp->total_secs,
+		      adp->total_secs / (adp->heads * adp->sectors),
 		      adp->heads, adp->sectors, atadev->max_iosize / DEV_BSIZE,
 		      adp->num_tags + 1);
     }

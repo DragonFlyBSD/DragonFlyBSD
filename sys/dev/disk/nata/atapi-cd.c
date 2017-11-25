@@ -106,6 +106,17 @@ static int acd_format(device_t, struct cdr_format_params *);
 #endif /* ACD_CDR_FORMAT */
 static int acd_test_ready(device_t);
 
+/* local implementation */
+static inline void
+g_io_deliver(struct bio *bp, int error)
+{
+	struct buf *bbp = bp->bio_buf;
+
+	bbp->b_flags |= B_ERROR;
+	bbp->b_error = error;
+	biodone(bp);
+}
+
 /* internal vars */
 static MALLOC_DEFINE(M_ACD, "acd_driver", "ATAPI CD driver buffers");
 
@@ -479,13 +490,6 @@ acd_ioctl(struct dev_ioctl_args *ap)
 	}
 	break;
 
-/* XXX TGEN Remove this and the rest of the nocopyout logic? */
-#if 0 /* __FreeBSD_version > 600008 */
-    case CDIOCREADSUBCHANNEL_SYSSPACE:
-	nocopyout = 1;
-	/* FALLTHROUGH */
-
-#endif
     case CDIOCREADSUBCHANNEL:
 	{
 	    struct ioc_read_subchannel *args =
@@ -529,7 +533,6 @@ acd_ioctl(struct dev_ioctl_args *ap)
 		    break;
 		}
 	    }
-	    /* XXX TGEN Remove this and the rest of the nocopyout logic? */
 	    if (nocopyout == 0) {
 		error = copyout(&cdp->subchan, args->data, args->data_len);
 	    } else {
@@ -779,16 +782,12 @@ acd_strategy(struct dev_strategy_args *ap)
     cdev_t cdev = cdp->cdev;
 
     if (bbp->b_cmd != BUF_CMD_READ && bbp->b_cmd != BUF_CMD_WRITE) {
-	bbp->b_flags |= B_ERROR;
-	bbp->b_error = EOPNOTSUPP;
-	biodone(bp);
+	g_io_deliver(bp, EOPNOTSUPP);
 	return 0;
     }
 
     if (bbp->b_cmd == BUF_CMD_READ && cdp->disk_size == -1) {
-	bbp->b_flags |= B_ERROR;
-	bbp->b_error = EIO;
-	biodone(bp);
+	g_io_deliver(bp, EIO);
 	return 0;
     }
 
@@ -815,9 +814,7 @@ acd_start(device_t dev, struct bio *bp)
 
     /* reject all queued entries if media changed */
     if (atadev->flags & ATA_D_MEDIA_CHANGED) {
-	bbp->b_flags |= B_ERROR;
-	bbp->b_error = EIO;
-	biodone(bp);
+	g_io_deliver(bp, EIO);
 	return;
     }
 
@@ -831,9 +828,7 @@ acd_start(device_t dev, struct bio *bp)
 
     if (track) {
 	if (track > MAXTRK) {
-	    bbp->b_flags |= B_ERROR;
-	    bbp->b_error = EIO;
-	    biodone(bp);
+	    g_io_deliver(bp, EIO);
 	    return;
 	}
 	blocksize = (cdp->toc.tab[track - 1].control & 4) ? 2048 : 2352;
@@ -890,9 +885,7 @@ acd_start(device_t dev, struct bio *bp)
     ccb[8] = count;
 
     if (!(request = ata_alloc_request())) {
-	bbp->b_flags |= B_ERROR;
-	bbp->b_error = ENOMEM;
-	biodone(bp);
+	g_io_deliver(bp, ENOMEM);
 	return;
     }
     request->dev = dev;
@@ -919,9 +912,7 @@ acd_start(device_t dev, struct bio *bp)
     default:
 	device_printf(dev, "unknown BUF operation\n");
 	ata_free_request(request);
-	bbp->b_flags |= B_ERROR;
-	bbp->b_error = EIO;
-	biodone(bp);
+	g_io_deliver(bp, EIO);
 	return;
     }
     devstat_start_transaction(&cdp->stats);
@@ -1074,33 +1065,6 @@ acd_read_toc(device_t dev)
     }
 #endif
 }
-
-/*
- * Makes a new device node for the numbered track and returns a struct
- * acd_tracknode pointer to be included in the list of tracks available on the
- * medium.
- */
-
-#if 0
-
-static struct acd_tracknode *
-acd_make_tracknode(device_t dev, int track)
-{
-    struct acd_softc *cdp = device_get_ivars(dev);
-    struct acd_tracknode *tracknode;
-    char name[16];
-
-    ksprintf(name, "acd%dt%d", device_get_unit(dev), track);
-    tracknode = kmalloc(sizeof(struct acd_tracknode), M_ACD, M_WAITOK | M_ZERO);
-    tracknode->cdev = make_dev(&acd_ops, (device_get_unit(dev) << 3) |
-			      (track << 16), UID_ROOT, GID_OPERATOR, 0644,
-			      name, NULL);
-    tracknode->cdev->si_drv1 = cdp->cdev->si_drv1;
-    reference_dev(tracknode->cdev);
-    return tracknode;
-}
-
-#endif
 
 /*
  * Destroys the device node of a numbered track and frees the related struct

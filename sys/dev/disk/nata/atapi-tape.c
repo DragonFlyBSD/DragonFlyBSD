@@ -48,6 +48,17 @@
 #include "atapi-tape.h"
 #include "ata_if.h"
 
+/* local implementation, to trigger a warning */
+static inline void
+biofinish(struct bio *bp, struct bio *x __unused, int error)
+{
+	struct buf *bbp = bp->bio_buf;
+
+	bbp->b_flags |= B_ERROR;
+	bbp->b_error = error;
+	biodone(bp);
+}
+
 /* device structure */
 static  d_open_t        ast_open;
 static  d_close_t       ast_close;
@@ -55,12 +66,12 @@ static  d_ioctl_t       ast_ioctl;
 static  d_strategy_t    ast_strategy;
 static struct dev_ops ast_ops = {
 	{ "ast", 119, D_TAPE | D_TRACKCLOSE },
-	.d_open =	ast_open,
-	.d_close =	ast_close,
-	.d_read =	physread,
-	.d_write =	physwrite,
-	.d_ioctl =	ast_ioctl,
-	.d_strategy =	ast_strategy
+	.d_open =       ast_open,
+	.d_close =      ast_close,
+	.d_read =       physread,
+	.d_write =      physwrite,
+	.d_ioctl =      ast_ioctl,
+	.d_strategy =   ast_strategy
 };
 
 /* prototypes */
@@ -253,8 +264,7 @@ ast_close(struct dev_close_args *ap)
 
     stp->flags &= ~F_CTL_WARN;
 #ifdef AST_DEBUG
-    device_printf(dev, "%llu total bytes transferred\n",
-		  (unsigned long long)ast_total);
+    device_printf(dev, "%ju total bytes transferred\n", (uintmax_t)ast_total);
 #endif
     return 0;
 }
@@ -397,24 +407,18 @@ ast_strategy(struct dev_strategy_args *ap)
 	return 0;
     }
     if (!(bbp->b_cmd == BUF_CMD_READ) && (stp->flags & F_WRITEPROTECT)) {
-	bbp->b_flags |= B_ERROR;
-	bbp->b_error = EPERM;
-	biodone(bp);
+	biofinish(bp, NULL, EPERM);
 	return 0;
     }
     if (bbp->b_cmd != BUF_CMD_READ && bbp->b_cmd != BUF_CMD_WRITE) {
-	bbp->b_flags |= B_ERROR;
-	bbp->b_error = EIO;
-	biodone(bp);
+	biofinish(bp, NULL, EIO);
 	return 0;
     }
 	
     /* check for != blocksize requests */
     if (bbp->b_bcount % stp->blksize) {
 	device_printf(dev, "transfers must be multiple of %d\n", stp->blksize);
-	bbp->b_flags |= B_ERROR;
-	bbp->b_error = EIO;
-	biodone(bp);
+	biofinish(bp, NULL, EIO);
 	return 0;
     }
 
@@ -442,9 +446,7 @@ ast_strategy(struct dev_strategy_args *ap)
     ccb[4] = blkcount;
 
     if (!(request = ata_alloc_request())) {
-	bbp->b_flags |= B_ERROR;
-	bbp->b_error = ENOMEM;
-	biodone(bp);
+	biofinish(bp, NULL, ENOMEM);
 	return 0;
     }
     request->dev = dev;
