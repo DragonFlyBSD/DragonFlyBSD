@@ -3351,6 +3351,8 @@ TO_REMOVE+=/usr/share/man/man5/x509v3_config.5.gz
 TO_REMOVE+=/usr/include/panel.h
 TO_REMOVE+=/usr/include/cpu/coredump.h
 TO_REMOVE+=/usr/include/machine/coredump.h
+TO_REMOVE+=/usr/share/man/man9/lockcount.9.gz
+TO_REMOVE+=/usr/share/man/man9/lockcountnb.9.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

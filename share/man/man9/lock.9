@@ -26,12 +26,11 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/lock.9,v 1.11 2003/09/08 19:57:21 ru Exp $
 .\"
-.Dd January 19, 2014
+.Dd November 25, 2017
 .Dt LOCK 9
 .Os
 .Sh NAME
 .Nm lockinit ,
-.Nm lockcount ,
 .Nm lockmgr ,
 .Nm lockstatus ,
 .Nm lockmgr_printinfo ,
@@ -44,10 +43,6 @@
 .Fn lockinit "struct lock *lkp" "const char *wmesg" "int timo" "int flags"
 .Ft void
 .Fn lockuninit "struct lock *lkp"
-.Ft int
-.Fn lockcount "struct lock *lkp"
-.Ft int
-.Fn lockcountnb "struct lock *lkp"
 .Ft int
 .Fn lockmgr "struct lock *lkp" "u_int flags"
 .Ft int
@@ -92,19 +87,6 @@ The
 .Fn lockuninit
 function destroys a lock that was previously initialized using
 .Fn lockinit .
-.Pp
-The
-.Fn lockcount
-function returns a count of the number of exclusive locks and shared locks
-held against the lock
-.Fa lkp .
-.Pp
-The
-.Fn lockcountnb
-function is a non-blocking counter-part of
-.Fn lockcount .
-which, can be safely used in assertion statements e.g. a
-.Xr KASSERT 9 .
 .Pp
 The
 .Fn lockmgr
@@ -195,10 +177,6 @@ The
 .Fn lockowned
 function is used to determine whether the calling thread owns a lock.
 .Sh RETURN VALUES
-The
-.Fn lockcount
-function returns an integer greater than or equal to zero.
-.Pp
 The
 .Fn lockmgr
 function returns 0 on success and non-zero on failure.

@@ -622,9 +622,7 @@ MLINKS+=ktr.9 KTR_COND_LOG.9 \
 	ktr.9 KTR_INFO_MASTER_EXTERN.9 \
 	ktr.9 KTR_LOG.9
 MLINKS+=kether_ntoa.9 kether_aton.9
-MLINKS+=lock.9 lockcount.9 \
-	lock.9 lockcountnb.9 \
-	lock.9 lockinit.9 \
+MLINKS+=lock.9 lockinit.9 \
 	lock.9 lockmgr.9 \
 	lock.9 lockmgr_printinfo.9 \
 	lock.9 lockowned.9 \
