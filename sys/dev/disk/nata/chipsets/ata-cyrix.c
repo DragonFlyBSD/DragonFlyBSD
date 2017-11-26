@@ -62,7 +62,7 @@ ata_cyrix_setmode(device_t dev, int mode)
 	struct ata_pci_controller *ctlr = device_get_softc(GRANDPARENT(dev));
 	struct ata_channel *ch = device_get_softc(device_get_parent(dev));
 	struct ata_device *atadev = device_get_softc(dev);
-	int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
+	int devno = (ch->unit << 1) + atadev->unit;
 	int error;
 	static const uint32_t piotiming[] =
 	    { 0x00009172, 0x00012171, 0x00020080, 0x00032010, 0x00040010 };

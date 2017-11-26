@@ -36,7 +36,7 @@ static int ata_siiprb_allocate(device_t dev);
 static int ata_siiprb_status(device_t dev);
 static int ata_siiprb_begin_transaction(struct ata_request *request);
 static int ata_siiprb_end_transaction(struct ata_request *request);
-static u_int32_t ata_siiprb_softreset(device_t dev);
+static u_int32_t ata_siiprb_softreset(device_t dev, int port);
 static void ata_siiprb_reset(device_t dev);
 static void ata_siiprb_dmasetprd(void *xsc, bus_dma_segment_t *segs, int nsegs, int error);
 static void ata_siiprb_dmainit(device_t dev);
@@ -225,7 +225,7 @@ ata_cmd_setmode(device_t dev, int mode)
     struct ata_pci_controller *ctlr = device_get_softc(gparent);
     struct ata_channel *ch = device_get_softc(device_get_parent(dev));
     struct ata_device *atadev = device_get_softc(dev);
-    int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
+    int devno = (ch->unit << 1) + atadev->unit;
     int error;
 	int treg = 0x54 + ((devno < 3) ? (devno << 1) : 7);
 	int ureg = ch->unit ? 0x7b : 0x73;
@@ -251,7 +251,7 @@ ata_cmd_setmode(device_t dev, int mode)
 	    u_int8_t umode = pci_read_config(gparent, ureg, 1);
 
 	    umode &= ~(atadev->unit == ATA_MASTER ? 0x35 : 0xca);
-	    umode |= udmatimings[mode & ATA_MODE_MASK][ATA_DEV(atadev->unit)];
+	    umode |= udmatimings[mode & ATA_MODE_MASK][atadev->unit];
 	    pci_write_config(gparent, ureg, umode, 1);
 	}
 	else if (mode >= ATA_WDMA0) {
@@ -310,7 +310,7 @@ ata_sii_allocate(device_t dev)
 
     if ((ctlr->chip->cfg2 & SII_BUG) && ch->dma) {
 	/* work around errata in early chips */
-	ch->dma->boundary = 16 * DEV_BSIZE;
+	ch->dma->boundary = 8192;
 	ch->dma->segsize = 15 * DEV_BSIZE;
     }
 
@@ -352,9 +352,9 @@ ata_sii_setmode(device_t dev, int mode)
 	struct ata_pci_controller *ctlr = device_get_softc(gparent);
 	struct ata_channel *ch = device_get_softc(device_get_parent(dev));
 	struct ata_device *atadev = device_get_softc(dev);
-	int rego = (ch->unit << 4) + (ATA_DEV(atadev->unit) << 1);
+	int rego = (ch->unit << 4) + (atadev->unit << 1);
 	int mreg = ch->unit ? 0x84 : 0x80;
-	int mask = 0x03 << (ATA_DEV(atadev->unit) << 2);
+	int mask = 0x03 << (atadev->unit << 2);
 	int mval = pci_read_config(gparent, mreg, 1) & ~mask;
 	int error;
 	u_int8_t preg = 0xa4 + rego;
@@ -389,7 +389,7 @@ ata_sii_setmode(device_t dev, int mode)
 
     if (mode >= ATA_UDMA0) {
 	pci_write_config(gparent, mreg,
-			 mval | (0x03 << (ATA_DEV(atadev->unit) << 2)), 1);
+			 mval | (0x03 << (atadev->unit << 2)), 1);
 	pci_write_config(gparent, ureg,
 			 (pci_read_config(gparent, ureg, 1) & ~0x3f) |
 			 udmatimings[mode & ATA_MODE_MASK], 1);
@@ -397,13 +397,13 @@ ata_sii_setmode(device_t dev, int mode)
     }
     else if (mode >= ATA_WDMA0) {
 	pci_write_config(gparent, mreg,
-			 mval | (0x02 << (ATA_DEV(atadev->unit) << 2)), 1);
+			 mval | (0x02 << (atadev->unit << 2)), 1);
 	pci_write_config(gparent, dreg, dmatimings[mode & ATA_MODE_MASK], 2);
 
     }
     else {
 	pci_write_config(gparent, mreg,
-			 mval | (0x01 << (ATA_DEV(atadev->unit) << 2)), 1);
+			 mval | (0x01 << (atadev->unit << 2)), 1);
 	pci_write_config(gparent, preg, piotimings[mode & ATA_MODE_MASK], 2);
     }
     atadev->mode = mode;
@@ -457,6 +457,7 @@ ata_siiprb_allocate(device_t dev)
     ch->hw.begin_transaction = ata_siiprb_begin_transaction;
     ch->hw.end_transaction = ata_siiprb_end_transaction;
     ch->hw.command = NULL;	/* not used here */
+    ch->hw.softreset = ata_siiprb_softreset;
     return 0;
 }
 
@@ -646,7 +647,7 @@ ata_siiprb_issue_cmd(device_t dev)
 }
 
 static u_int32_t
-ata_siiprb_softreset(device_t dev)
+ata_siiprb_softreset(device_t dev, int port)
 {
     struct ata_pci_controller *ctlr = device_get_softc(device_get_parent(dev));
     struct ata_channel *ch = device_get_softc(dev);
@@ -657,6 +658,7 @@ ata_siiprb_softreset(device_t dev)
     /* setup the workspace for a soft reset command */
     bzero(prb, sizeof(struct ata_siiprb_command));
     prb->control = htole16(0x0080);
+    prb->fis[1] = port & 0x0f;
 
     /* issue soft reset */
     if (ata_siiprb_issue_cmd(dev))
@@ -710,9 +712,9 @@ ata_siiprb_reset(device_t dev)
     }
 
     /* issue soft reset */
-    signature = ata_siiprb_softreset(dev);
+    signature = ata_siiprb_softreset(dev, ATA_PM);
     if (bootverbose)
-	device_printf(ch->dev, "SIGNATURE=%08x\n", signature);
+	device_printf(ch->dev, "SIGNATURE: %08x\n", signature);
 
     /* figure out whats there */
     switch (signature >> 16) {

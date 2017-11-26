@@ -131,7 +131,7 @@ ata_highpoint_setmode(device_t dev, int mode)
 	struct ata_pci_controller *ctlr = device_get_softc(gparent);
 	struct ata_channel *ch = device_get_softc(device_get_parent(dev));
 	struct ata_device *atadev = device_get_softc(dev);
-	int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
+	int devno = (ch->unit << 1) + atadev->unit;
 	int error;
 	static const uint32_t timings33[][4] = {
 	/*    HPT366      HPT370      HPT372      HPT374           mode */

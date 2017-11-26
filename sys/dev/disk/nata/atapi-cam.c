@@ -150,10 +150,14 @@ atapi_cam_identify(device_t *dev, device_t parent)
 	    kmalloc(sizeof(struct atapi_xpt_softc), M_ATACAM, M_INTWAIT|M_ZERO);
 	device_t child;
 
+	if (scp == NULL) {
+		kprintf ("atapi_cam_identify: out of memory");
+		return;
+	}
+
 	/* Assume one atapicam instance per parent channel instance. */
 	child = device_add_child(parent, "atapicam", -1);
 	if (child == NULL) {
-		/* XXX TGEN Use device_printf()? */
 		kprintf("atapi_cam_identify: out of memory, can't add child");
 		kfree(scp, M_ATACAM);
 		return;
@@ -172,7 +176,7 @@ atapi_cam_probe(device_t dev)
 	KASSERT(atadev != NULL, ("expect valid struct ata_device"));
 	if (atadev->unit < 0) {
 		device_set_desc(dev, "ATAPI CAM Attachment");
-		return(0);
+		return (0);
 	} else {
 		return ENXIO;
 	}
@@ -308,7 +312,7 @@ reinit_bus(struct atapi_xpt_softc *scp, enum reinit_reason reason) {
 	    xpt_async(AC_BUS_RESET, scp->path, NULL);
 
 	    if (!dev_changed)
-		    break;
+		break;
 
 	    /*FALLTHROUGH*/
 	case ATTACH:
@@ -592,8 +596,11 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 
 	if ((ccb_h->flags & CAM_DIR_MASK) == CAM_DIR_IN && (len & 1)) {
 	    /* ATA always transfers an even number of bytes */
-	    buf = hcb->dxfer_alloc =
-		kmalloc(++len, M_ATACAM, M_INTWAIT | M_ZERO);
+	    if ((buf = hcb->dxfer_alloc
+		 = kmalloc(++len, M_ATACAM, M_INTWAIT | M_ZERO)) == NULL) {
+		kprintf("cannot allocate ATAPI/CAM buffer\n");
+		goto action_oom;
+	    }
 	}
 
 	/*

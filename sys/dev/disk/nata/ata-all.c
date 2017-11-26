@@ -594,11 +594,9 @@ ata_getparam(struct ata_device *atadev, int init)
     u_int8_t command = 0;
     int error = ENOMEM, retries = 2;
 
-    if (ch->devices &
-	(atadev->unit == ATA_MASTER ? ATA_ATA_MASTER : ATA_ATA_SLAVE))
+    if (ch->devices & (ATA_ATA_MASTER << atadev->unit))
 	command = ATA_ATA_IDENTIFY;
-    if (ch->devices &
-	(atadev->unit == ATA_MASTER ? ATA_ATAPI_MASTER : ATA_ATAPI_SLAVE))
+    if (ch->devices & (ATA_ATAPI_MASTER << atadev->unit))
 	command = ATA_ATAPI_IDENTIFY;
     if (!command)
 	return ENXIO;
@@ -685,54 +683,37 @@ int
 ata_identify(device_t dev)
 {
     struct ata_channel *ch = device_get_softc(dev);
-    struct ata_device *master = NULL, *slave = NULL;
-    device_t master_child = NULL, slave_child = NULL;
-    int master_unit = -1, slave_unit = -1;
+    struct ata_device *atadev;
+    device_t child;
+    int i;
 
-    if (ch->devices & (ATA_ATA_MASTER | ATA_ATAPI_MASTER)) {
-	if (!(master = kmalloc(sizeof(struct ata_device),
-			      M_ATA, M_INTWAIT | M_ZERO))) {
-	    device_printf(dev, "out of memory\n");
-	    return ENOMEM;
-	}
-	master->unit = ATA_MASTER;
-    }
-    if (ch->devices & (ATA_ATA_SLAVE | ATA_ATAPI_SLAVE)) {
-	if (!(slave = kmalloc(sizeof(struct ata_device),
-			     M_ATA, M_INTWAIT | M_ZERO))) {
-	    kfree(master, M_ATA);
-	    device_printf(dev, "out of memory\n");
-	    return ENOMEM;
-	}
-	slave->unit = ATA_SLAVE;
-    }
+    if (bootverbose)
+	device_printf(dev, "identify ch->devices=%08x\n", ch->devices);
 
+    for (i = 0; i < ATA_PM; ++i) {
+	if (ch->devices & (((ATA_ATA_MASTER | ATA_ATAPI_MASTER) << i))) {
+	    int unit = -1;
+
+	    if (!(atadev = kmalloc(sizeof(struct ata_device),
+				   M_ATA, M_INTWAIT | M_ZERO))) {
+		device_printf(dev, "out of memory\n");
+		return ENOMEM;
+	    }
+	    atadev->unit = i;
 #ifdef ATA_STATIC_ID
-    if (ch->devices & ATA_ATA_MASTER)
-	master_unit = (device_get_unit(dev) << 1);
+	    if (ch->devices & ((ATA_ATA_MASTER << i)))
+		unit = (device_get_unit(dev) << 1) + i;
 #endif
-    if (master && !(master_child = ata_add_child(dev, master, master_unit))) {
-	kfree(master, M_ATA);
-	master = NULL;
+	    if ((child = ata_add_child(dev, atadev, unit))) {
+		if (ata_getparam(atadev, 1)) {
+		    device_delete_child(dev, child);
+		    kfree(atadev, M_ATA);
+		}
+	    }
+	    else
+		kfree(atadev, M_ATA);
+	}
     }
-#ifdef ATA_STATIC_ID
-    if (ch->devices & ATA_ATA_SLAVE)
-	slave_unit = (device_get_unit(dev) << 1) + 1;
-#endif
-    if (slave && !(slave_child = ata_add_child(dev, slave, slave_unit))) {
-	kfree(slave, M_ATA);
-	slave = NULL;
-    }
-
-    if (slave && ata_getparam(slave, 1)) {
-	device_delete_child(dev, slave_child);
-	kfree(slave, M_ATA);
-    }
-    if (master && ata_getparam(master, 1)) {
-	device_delete_child(dev, master_child);
-	kfree(master, M_ATA);
-    }
-
     bus_generic_probe(dev);
     bus_generic_attach(dev);
     return 0;

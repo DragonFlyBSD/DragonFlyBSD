@@ -63,7 +63,7 @@ ata_national_setmode(device_t dev, int mode)
     device_t gparent = GRANDPARENT(dev);
     struct ata_channel *ch = device_get_softc(device_get_parent(dev));
     struct ata_device *atadev = device_get_softc(dev);
-    int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
+    int devno = (ch->unit << 1) + atadev->unit;
 	static const uint32_t piotiming[] =
 	    { 0x9172d132, 0x21717121, 0x00803020, 0x20102010, 0x00100010,
 	      0x00803020, 0x20102010, 0x00100010,

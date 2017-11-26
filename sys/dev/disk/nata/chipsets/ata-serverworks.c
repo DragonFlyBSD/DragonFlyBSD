@@ -208,7 +208,7 @@ ata_serverworks_tf_write(struct ata_request *request)
 				       ((request->u.ata.lba >> 8) & 0x00ff));
 	ATA_IDX_OUTW(ch, ATA_CYL_MSB, ((request->u.ata.lba >> 32) & 0xff00) |
 				       ((request->u.ata.lba >> 16) & 0x00ff));
-	ATA_IDX_OUTW(ch, ATA_DRIVE, ATA_D_LBA | atadev->unit);
+	ATA_IDX_OUTW(ch, ATA_DRIVE, ATA_D_LBA | ATA_DEV(atadev->unit));
     }
     else {
 	ATA_IDX_OUTW(ch, ATA_FEATURE, request->u.ata.feature);
@@ -230,7 +230,7 @@ ata_serverworks_tf_write(struct ata_request *request)
 			 (request->u.ata.lba / (sectors * heads)));
 	    ATA_IDX_OUTW(ch, ATA_CYL_MSB,
 			 (request->u.ata.lba / (sectors * heads)) >> 8);
-	    ATA_IDX_OUTW(ch, ATA_DRIVE, ATA_D_IBM | atadev->unit |
+	    ATA_IDX_OUTW(ch, ATA_DRIVE, ATA_D_IBM | ATA_DEV(atadev->unit) |
 			 (((request->u.ata.lba% (sectors * heads)) /
 			   sectors) & 0xf));
 	}
@@ -239,7 +239,7 @@ ata_serverworks_tf_write(struct ata_request *request)
 	    ATA_IDX_OUTW(ch, ATA_CYL_LSB, request->u.ata.lba >> 8);
 	    ATA_IDX_OUTW(ch, ATA_CYL_MSB, request->u.ata.lba >> 16);
 	    ATA_IDX_OUTW(ch, ATA_DRIVE,
-			 ATA_D_IBM | ATA_D_LBA | atadev->unit |
+			 ATA_D_IBM | ATA_D_LBA | ATA_DEV(atadev->unit) |
 			 ((request->u.ata.lba >> 24) & 0x0f));
 	}
     }
@@ -252,7 +252,7 @@ ata_serverworks_setmode(device_t dev, int mode)
     struct ata_pci_controller *ctlr = device_get_softc(gparent);
     struct ata_channel *ch = device_get_softc(device_get_parent(dev));
     struct ata_device *atadev = device_get_softc(dev);
-    int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
+    int devno = (ch->unit << 1) + atadev->unit;
     int offset = (devno ^ 0x01) << 3;
     int error;
     static const uint8_t piotimings[] =

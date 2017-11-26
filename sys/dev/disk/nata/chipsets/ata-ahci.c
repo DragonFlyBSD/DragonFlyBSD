@@ -29,7 +29,7 @@ static int ata_ahci_ctlr_reset(device_t dev);
 static int ata_ahci_status(device_t dev);
 static int ata_ahci_begin_transaction(struct ata_request *request);
 static int ata_ahci_end_transaction(struct ata_request *request);
-static u_int32_t ata_ahci_softreset(device_t dev);
+static u_int32_t ata_ahci_softreset(device_t dev, int port);
 static void ata_ahci_dmasetprd(void *xsc, bus_dma_segment_t *segs, int nsegs, int error);
 static int ata_ahci_setup_fis(struct ata_ahci_cmd_tab *ctp, struct ata_request *request);
 
@@ -171,6 +171,7 @@ ata_ahci_allocate(device_t dev)
     ch->hw.begin_transaction = ata_ahci_begin_transaction;
     ch->hw.end_transaction = ata_ahci_end_transaction;
     ch->hw.command = NULL;      /* not used here */
+    ch->hw.softreset = ata_ahci_softreset;
 
     return 0;
 }
@@ -236,9 +237,11 @@ ata_ahci_begin_transaction(struct ata_request *request)
 {
     struct ata_pci_controller *ctlr=device_get_softc(GRANDPARENT(request->dev));
     struct ata_channel *ch = device_get_softc(request->parent);
+    struct ata_device *atadev = device_get_softc(request->dev);
     struct ata_ahci_cmd_tab *ctp;
     struct ata_ahci_cmd_list *clp;
     int offset = ch->unit << 7;
+    int port = atadev->unit & 0x0f;
     int tag = 0, entries = 0;
     int fis_size;
 
@@ -272,7 +275,8 @@ ata_ahci_begin_transaction(struct ata_request *request)
     clp->cmd_flags = (request->flags & ATA_R_WRITE ? ATA_AHCI_CMD_WRITE : 0) |
 		     (request->flags & ATA_R_ATAPI ?
 		      (ATA_AHCI_CMD_ATAPI | ATA_AHCI_CMD_PREFETCH) : 0) |
-		     (fis_size / sizeof(u_int32_t));
+		     (fis_size / sizeof(u_int32_t)) |
+		     (port << 12);
     clp->bytecount = 0;
     clp->cmd_table_phys = htole64(ch->dma->work_bus + ATA_AHCI_CT_OFFSET +
 				  (ATA_AHCI_CT_SIZE * tag));
@@ -291,7 +295,7 @@ ata_ahci_begin_transaction(struct ata_request *request)
 		 ~ATA_AHCI_P_CMD_ATAPI);
 
     /* set PM port to address */
-    /* TODO */
+    //ATA_OUTL(ctlr->r_res2, ATA_AHCI_P_FBS + offset, (port << 8) | 0x00000001);
 
     /* issue command to controller */
     ATA_OUTL(ctlr->r_res2, ATA_AHCI_P_CI + offset, (1 << tag));
@@ -410,7 +414,7 @@ ata_ahci_restart(device_t dev)
 }
 
 static u_int32_t
-ata_ahci_softreset(device_t dev)
+ata_ahci_softreset(device_t dev, int port __unused)
 {
     struct ata_pci_controller *ctlr = device_get_softc(device_get_parent(dev));
     struct ata_channel *ch = device_get_softc(dev);
@@ -487,9 +491,9 @@ ata_ahci_reset(device_t dev)
 	return;
     }
 
-    signature = ata_ahci_softreset(dev);
+    signature = ata_ahci_softreset(dev, 0);
     if (bootverbose)
-	device_printf(ch->dev, "SIGNATURE=%08x\n", signature);
+	device_printf(ch->dev, "SIGNATURE: %08x\n", signature);
 
     switch (signature >> 16) {
     case 0x0000:

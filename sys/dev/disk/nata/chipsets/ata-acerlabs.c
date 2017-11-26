@@ -222,7 +222,7 @@ ata_ali_setmode(device_t dev, int mode)
 	struct ata_pci_controller *ctlr = device_get_softc(gparent);
 	struct ata_channel *ch = device_get_softc(device_get_parent(dev));
 	struct ata_device *atadev = device_get_softc(dev);
-	int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
+	int devno = (ch->unit << 1) + atadev->unit;
 	int error;
 	static const uint32_t piotimings[] =
 		{ 0x006d0003, 0x00580002, 0x00440001, 0x00330001,

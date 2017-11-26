@@ -210,8 +210,8 @@ ata_request2fis_h2d(struct ata_request *request, u_int8_t *fis)
     struct ata_device *atadev = device_get_softc(request->dev);
 
     if (request->flags & ATA_R_ATAPI) {
-	fis[0] = 0x27;  /* host to device */
-	fis[1] = 0x80;  /* command FIS (note PM goes here) */
+	fis[0] = 0x27;			/* host to device */
+	fis[1] = 0x80 | (atadev->unit & 0x0f);
 	fis[2] = ATA_PACKET_CMD;
 	if (request->flags & (ATA_R_READ | ATA_R_WRITE))
 	    fis[3] = ATA_F_DMA;
@@ -219,22 +219,22 @@ ata_request2fis_h2d(struct ata_request *request, u_int8_t *fis)
 	    fis[5] = request->transfersize;
 	    fis[6] = request->transfersize >> 8;
 	}
-	fis[7] = ATA_D_LBA | atadev->unit;
+	fis[7] = ATA_D_LBA;
 	fis[15] = ATA_A_4BIT;
 	return 20;
     }
     else {
 	ata_modify_if_48bit(request);
-	fis[0] = 0x27;  /* host to device */
-	fis[1] = 0x80;  /* command FIS (note PM goes here) */
+	fis[0] = 0x27;			/* host to device */
+	fis[1] = 0x80 | (atadev->unit & 0x0f);
 	fis[2] = request->u.ata.command;
 	fis[3] = request->u.ata.feature;
 	fis[4] = request->u.ata.lba;
 	fis[5] = request->u.ata.lba >> 8;
 	fis[6] = request->u.ata.lba >> 16;
-	fis[7] = ATA_D_LBA | atadev->unit;
+	fis[7] = ATA_D_LBA;
 	if (!(atadev->flags & ATA_D_48BIT_ACTIVE))
-	    fis[7] |= (request->u.ata.lba >> 24 & 0x0f);
+	    fis[7] |= (ATA_D_IBM | (request->u.ata.lba >> 24 & 0x0f));
 	fis[8] = request->u.ata.lba >> 24;
 	fis[9] = request->u.ata.lba >> 32;
 	fis[10] = request->u.ata.lba >> 40;

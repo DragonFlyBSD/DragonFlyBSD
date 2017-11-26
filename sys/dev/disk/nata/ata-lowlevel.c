@@ -153,7 +153,7 @@ ata_begin_transaction(struct ata_request *request)
     case ATA_R_ATAPI:
 	/* is this just a POLL DSC command ? */
 	if (request->u.atapi.ccb[0] == ATAPI_POLL_DSC) {
-	    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | atadev->unit);
+	    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | ATA_DEV(atadev->unit));
 	    DELAY(10);
 	    if (!(ATA_IDX_INB(ch, ATA_ALTSTAT) & ATA_S_DSC))
 		request->result = EBUSY;
@@ -172,7 +172,7 @@ ata_begin_transaction(struct ata_request *request)
     case ATA_R_ATAPI|ATA_R_DMA:
 	/* is this just a POLL DSC command ? */
 	if (request->u.atapi.ccb[0] == ATAPI_POLL_DSC) {
-	    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | atadev->unit);
+	    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | ATA_DEV(atadev->unit));
 	    DELAY(10);
 	    if (!(ATA_IDX_INB(ch, ATA_ALTSTAT) & ATA_S_DSC))
 		request->result = EBUSY;
@@ -457,7 +457,7 @@ ata_generic_reset(device_t dev)
     int mask = 0, timeout;
 
     /* do we have any signs of ATA/ATAPI HW being present ? */
-    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | ATA_D_LBA | ATA_MASTER);
+    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | ATA_D_LBA | ATA_DEV(ATA_MASTER));
     DELAY(10);
     ostat0 = ATA_IDX_INB(ch, ATA_STATUS);
     if ((ostat0 & 0xf8) != 0xf8 && ostat0 != 0xa5) {
@@ -467,7 +467,7 @@ ata_generic_reset(device_t dev)
 
     /* in some setups we dont want to test for a slave */
     if (!(ch->flags & ATA_NO_SLAVE)) {
-	ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | ATA_D_LBA | ATA_SLAVE);
+	ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | ATA_D_LBA | ATA_DEV(ATA_SLAVE));
 	DELAY(10);      
 	ostat1 = ATA_IDX_INB(ch, ATA_STATUS);
 	if ((ostat1 & 0xf8) != 0xf8 && ostat1 != 0xa5) {
@@ -487,7 +487,7 @@ ata_generic_reset(device_t dev)
 	return;
 
     /* reset (both) devices on this channel */
-    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | ATA_D_LBA | ATA_MASTER);
+    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | ATA_D_LBA | ATA_DEV(ATA_MASTER));
     DELAY(10);
     ATA_IDX_OUTB(ch, ATA_CONTROL, ATA_A_IDS | ATA_A_RESET);
     ata_udelay(10000); 
@@ -498,7 +498,7 @@ ata_generic_reset(device_t dev)
     /* wait for BUSY to go inactive */
     for (timeout = 0; timeout < 310; timeout++) {
 	if ((mask & 0x01) && (stat0 & ATA_S_BUSY)) {
-	    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | ATA_MASTER);
+	    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | ATA_DEV(ATA_MASTER));
 	    DELAY(10);
 	    err = ATA_IDX_INB(ch, ATA_ERROR);
 	    lsb = ATA_IDX_INB(ch, ATA_CYL_LSB);
@@ -528,7 +528,7 @@ ata_generic_reset(device_t dev)
 
 	if ((mask & 0x02) && (stat1 & ATA_S_BUSY) &&
 	    !((mask & 0x01) && (stat0 & ATA_S_BUSY))) {
-	    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | ATA_SLAVE);
+	    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | ATA_DEV(ATA_SLAVE));
 	    DELAY(10);
 	    err = ATA_IDX_INB(ch, ATA_ERROR);
 	    lsb = ATA_IDX_INB(ch, ATA_CYL_LSB);
@@ -608,7 +608,7 @@ ata_wait(struct ata_channel *ch, struct ata_device *atadev, u_int8_t mask)
 
 	/* if drive fails status, reselect the drive and try again */
 	if (status == 0xff) {
-	    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | atadev->unit);
+	    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | ATA_DEV(atadev->unit));
 	    timeout += 1000;
 	    DELAY(1000);
 	    continue;
@@ -652,7 +652,7 @@ ata_generic_command(struct ata_request *request)
     struct ata_device *atadev = device_get_softc(request->dev);
 
     /* select device */
-    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | ATA_D_LBA | atadev->unit);
+    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | ATA_D_LBA | ATA_DEV(atadev->unit));
 
     /* ready to issue command ? */
     if (ata_wait(ch, atadev, 0) < 0) { 
@@ -763,7 +763,7 @@ ata_tf_write(struct ata_request *request)
 	ATA_IDX_OUTB(ch, ATA_CYL_LSB, request->u.ata.lba >> 8);
 	ATA_IDX_OUTB(ch, ATA_CYL_MSB, request->u.ata.lba >> 40);
 	ATA_IDX_OUTB(ch, ATA_CYL_MSB, request->u.ata.lba >> 16);
-	ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_LBA | atadev->unit);
+	ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_LBA | ATA_DEV(atadev->unit));
     }
     else {
 	ATA_IDX_OUTB(ch, ATA_FEATURE, request->u.ata.feature);
@@ -785,7 +785,7 @@ ata_tf_write(struct ata_request *request)
 			 (request->u.ata.lba / (sectors * heads)));
 	    ATA_IDX_OUTB(ch, ATA_CYL_MSB,
 			 (request->u.ata.lba / (sectors * heads)) >> 8);
-	    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | atadev->unit |
+	    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | ATA_DEV(atadev->unit) |
 			 (((request->u.ata.lba% (sectors * heads)) /
 			   sectors) & 0xf));
 	}
@@ -794,7 +794,7 @@ ata_tf_write(struct ata_request *request)
 	    ATA_IDX_OUTB(ch, ATA_CYL_LSB, request->u.ata.lba >> 8);
 	    ATA_IDX_OUTB(ch, ATA_CYL_MSB, request->u.ata.lba >> 16);
 	    ATA_IDX_OUTB(ch, ATA_DRIVE,
-			 ATA_D_IBM | ATA_D_LBA | atadev->unit |
+			 ATA_D_IBM | ATA_D_LBA | ATA_DEV(atadev->unit) |
 			 ((request->u.ata.lba >> 24) & 0x0f));
 	}
     }

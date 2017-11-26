@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1998 - 2006 Søren Schmidt <sos@FreeBSD.org>
+ * Copyright (c) 1998 - 2008 Søren Schmidt <sos@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -301,7 +301,7 @@ struct ata_ahci_cmd_list {
 #define ATA_CTLADDR_RID                 1
 #define ATA_BMADDR_RID                  0x20
 #define ATA_IRQ_RID                     0
-#define ATA_DEV(device)                 ((device == ATA_MASTER) ? 0 : 1)
+#define ATA_DEV(unit)                   ((unit > 0) ? 0x10 : 0)
 #define ATA_CFA_MAGIC1                  0x844A
 #define ATA_CFA_MAGIC2                  0x848A
 #define ATA_CFA_MAGIC3                  0x8400
@@ -415,7 +415,8 @@ struct ata_device {
     device_t                    dev;            /* device handle */
     int                         unit;           /* physical unit */
 #define         ATA_MASTER              0x00
-#define         ATA_SLAVE               0x10
+#define         ATA_SLAVE               0x01
+#define         ATA_PM                  0x0f
 
     struct ata_params           param;          /* ata param structure */
     int                         mode;           /* current transfermode */
@@ -481,6 +482,7 @@ struct ata_dma {
 
 /* structure holding lowlevel functions */
 struct ata_lowlevel {
+    u_int32_t (*softreset)(device_t dev, int pmport);
     int (*status)(device_t dev);
     int (*begin_transaction)(struct ata_request *request);
     int (*end_transaction)(struct ata_request *request);
@@ -512,11 +514,11 @@ struct ata_channel {
 #define         ATA_ALWAYS_DMASTAT      0x10
 
     int                         devices;        /* what is present */
-#define         ATA_ATA_MASTER          0x01
-#define         ATA_ATA_SLAVE           0x02
-#define         ATA_ATAPI_MASTER        0x04
-#define         ATA_ATAPI_SLAVE         0x08
-#define		ATA_PORTMULTIPLIER	0x10
+#define         ATA_ATA_MASTER          0x00000001
+#define         ATA_ATA_SLAVE           0x00000002
+#define         ATA_PORTMULTIPLIER      0x00008000
+#define         ATA_ATAPI_MASTER        0x00010000
+#define         ATA_ATAPI_SLAVE         0x00020000
 
     struct lock			state_mtx;      /* state lock */
     int                         state;          /* ATA channel state */

@@ -251,7 +251,7 @@ ata_intel_new_setmode(device_t dev, int mode)
     struct ata_pci_controller *ctlr = device_get_softc(gparent);
     struct ata_channel *ch = device_get_softc(device_get_parent(dev));
     struct ata_device *atadev = device_get_softc(dev);
-    int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
+    int devno = (ch->unit << 1) + atadev->unit;
     u_int32_t reg40 = pci_read_config(gparent, 0x40, 4);
     u_int8_t reg44 = pci_read_config(gparent, 0x44, 1);
     u_int8_t reg48 = pci_read_config(gparent, 0x48, 1);
@@ -355,7 +355,7 @@ ata_intel_sata_setmode(device_t dev, int mode)
 	atadev->param.satacapabilities != 0xffff) {
 
 	struct ata_channel *ch = device_get_softc(device_get_parent(dev));
-	int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
+	int devno = (ch->unit << 1) + atadev->unit;
 
 	/* on some drives we need to set the transfer mode */
 	ata_controlcmd(dev, ATA_SETFEATURES, ATA_SF_SETXFER, 0,
@@ -451,7 +451,7 @@ ata_intel_31244_tf_write(struct ata_request *request)
 				       ((request->u.ata.lba >> 8) & 0x00ff));
 	ATA_IDX_OUTW(ch, ATA_CYL_MSB, ((request->u.ata.lba >> 32) & 0xff00) |
 				       ((request->u.ata.lba >> 16) & 0x00ff));
-	ATA_IDX_OUTW(ch, ATA_DRIVE, ATA_D_LBA | atadev->unit);
+	ATA_IDX_OUTW(ch, ATA_DRIVE, ATA_D_LBA | ATA_DEV(atadev->unit));
     }
     else {
 	ATA_IDX_OUTB(ch, ATA_FEATURE, request->u.ata.feature);
@@ -472,7 +472,7 @@ ata_intel_31244_tf_write(struct ata_request *request)
 			 (request->u.ata.lba / (sectors * heads)));
 	    ATA_IDX_OUTB(ch, ATA_CYL_MSB,
 			 (request->u.ata.lba / (sectors * heads)) >> 8);
-	    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | atadev->unit |
+	    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | ATA_DEV(atadev->unit) |
 			 (((request->u.ata.lba% (sectors * heads)) /
 			   sectors) & 0xf));
 	}
@@ -481,7 +481,7 @@ ata_intel_31244_tf_write(struct ata_request *request)
 	    ATA_IDX_OUTB(ch, ATA_CYL_LSB, request->u.ata.lba >> 8);
 	    ATA_IDX_OUTB(ch, ATA_CYL_MSB, request->u.ata.lba >> 16);
 	    ATA_IDX_OUTB(ch, ATA_DRIVE,
-			 ATA_D_IBM | ATA_D_LBA | atadev->unit |
+			 ATA_D_IBM | ATA_D_LBA | ATA_DEV(atadev->unit) |
 			 ((request->u.ata.lba >> 24) & 0x0f));
 	}
     }

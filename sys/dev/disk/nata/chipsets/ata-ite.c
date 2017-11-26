@@ -76,7 +76,7 @@ ata_ite_setmode(device_t dev, int mode)
     device_t gparent = GRANDPARENT(dev);
     struct ata_channel *ch = device_get_softc(device_get_parent(dev));
     struct ata_device *atadev = device_get_softc(dev);
-    int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
+    int devno = (ch->unit << 1) + atadev->unit;
     int error;
 	static const uint8_t udmatiming[] =
 		{ 0x44, 0x42, 0x31, 0x21, 0x11, 0xa2, 0x91 };
@@ -110,7 +110,7 @@ ata_ite_setmode(device_t dev, int mode)
 
 	    /* set UDMA timing */
 	    pci_write_config(gparent,
-			     0x56 + (ch->unit << 2) + ATA_DEV(atadev->unit),
+			     0x56 + (ch->unit << 2) + atadev->unit,
 			     udmatiming[mode & ATA_MODE_MASK], 1);
 	}
 	else {

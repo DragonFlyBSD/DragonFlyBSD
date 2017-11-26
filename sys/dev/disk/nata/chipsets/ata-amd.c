@@ -82,7 +82,7 @@ ata_amd_setmode(device_t dev, int mode)
 	struct ata_pci_controller *ctlr = device_get_softc(gparent);
 	struct ata_channel *ch = device_get_softc(device_get_parent(dev));
 	struct ata_device *atadev = device_get_softc(dev);
-	int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
+	int devno = (ch->unit << 1) + atadev->unit;
 	static const uint8_t timings[] =
 			 { 0xa8, 0x65, 0x42, 0x22, 0x20, 0x42, 0x22, 0x20,
 			   0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 };
