@@ -296,11 +296,10 @@ ata_suspend(device_t dev)
 int
 ata_resume(device_t dev)
 {
-    struct ata_channel *ch;
     int error;
 
     /* check for valid device */
-    if (!dev || !(ch = device_get_softc(dev)))
+    if (!dev || !device_get_softc(dev))
 	return ENXIO;
 
     /* reinit the devices, we dont know what mode/state they are in */
@@ -467,6 +466,7 @@ ata_device_ioctl(device_t dev, u_long cmd, caddr_t data)
 	    kfree(buf, M_ATA);
 	    return  ENOMEM;
 	}
+	request->dev = atadev->dev;
 	if (ioc_request->flags & ATA_CMD_WRITE) {
 	    error = copyin(ioc_request->data, buf, ioc_request->count);
 	    if (error) {
@@ -475,7 +475,6 @@ ata_device_ioctl(device_t dev, u_long cmd, caddr_t data)
 		return error;
 	    }
 	}
-	request->dev = dev;
 	if (ioc_request->flags & ATA_CMD_ATAPI) {
 	    request->flags = ATA_R_ATAPI;
 	    bcopy(ioc_request->u.atapi.ccb, request->u.atapi.ccb, 16);
@@ -648,7 +647,7 @@ ata_getparam(struct ata_device *atadev, int init)
 	if (bootverbose)
 	    kprintf("ata%d-%s: pio=%s wdma=%s udma=%s cable=%s wire\n",
 		   device_get_unit(ch->dev),
-		   atadev->unit == ATA_MASTER ? "master" : "slave",
+		   ata_unit2str(atadev),
 		   ata_mode2str(ata_pmode(atacap)),
 		   ata_mode2str(ata_wmode(atacap)),
 		   ata_mode2str(ata_umode(atacap)),
@@ -853,6 +852,15 @@ ata_udelay(int interval)
 	DELAY(interval);
     else
 	tsleep(&interval, 0, "ataslp", 1 + interval / (1000000 / hz));
+}
+
+const char *
+ata_unit2str(struct ata_device *atadev)
+{
+    static char str[8];
+
+    ksprintf(str, "%s", atadev->unit == ATA_MASTER ? "master" : "slave");
+    return str;
 }
 
 const char *

@@ -78,10 +78,11 @@ static struct dev_ops ad_ops = {
 };
 
 /* prototypes */
-static void ad_init(device_t);
-static void ad_done(struct ata_request *);
+static void ad_init(device_t dev);
+static void ad_get_geometry(device_t dev);
+static void ad_done(struct ata_request *request);
 static void ad_describe(device_t dev);
-static int ad_version(u_int16_t);
+static int ad_version(u_int16_t version);
 
 /* local vars */
 static MALLOC_DEFINE(M_AD, "ad_driver", "ATA disk driver");
@@ -108,8 +109,6 @@ ad_attach(device_t dev)
     struct disk_info info;
     struct ad_softc *adp;
     cdev_t cdev;
-    u_int32_t lbasize;
-    u_int64_t lbasize48;
 
     /* check that we have a virgin disk to attach */
     if (device_get_ivars(dev))
@@ -118,37 +117,8 @@ ad_attach(device_t dev)
     adp = kmalloc(sizeof(struct ad_softc), M_AD, M_INTWAIT | M_ZERO);
     device_set_ivars(dev, adp);
 
-    if ((atadev->param.atavalid & ATA_FLAG_54_58) &&
-	atadev->param.current_heads && atadev->param.current_sectors) {
-	adp->heads = atadev->param.current_heads;
-	adp->sectors = atadev->param.current_sectors;
-	adp->total_secs = (u_int32_t)atadev->param.current_size_1 |
-			  ((u_int32_t)atadev->param.current_size_2 << 16);
-    }
-    else {
-	adp->heads = atadev->param.heads;
-	adp->sectors = atadev->param.sectors;
-	adp->total_secs = atadev->param.cylinders * adp->heads * adp->sectors;  
-    }
-    lbasize = (u_int32_t)atadev->param.lba_size_1 |
-	      ((u_int32_t)atadev->param.lba_size_2 << 16);
-
-    /* does this device need oldstyle CHS addressing */
-    if (!ad_version(atadev->param.version_major) || !lbasize)
-	atadev->flags |= ATA_D_USE_CHS;
-
-    /* use the 28bit LBA size if valid or bigger than the CHS mapping */
-    if (atadev->param.cylinders == 16383 || adp->total_secs < lbasize)
-	adp->total_secs = lbasize;
-
-    /* use the 48bit LBA size if valid */
-    lbasize48 = ((u_int64_t)atadev->param.lba_size48_1) |
-		((u_int64_t)atadev->param.lba_size48_2 << 16) |
-		((u_int64_t)atadev->param.lba_size48_3 << 32) |
-		((u_int64_t)atadev->param.lba_size48_4 << 48);
-    if ((atadev->param.support.command2 & ATA_SUPPORT_ADDRESS48) &&
-	lbasize48 > ATA_MAX_28BIT_LBA)
-	adp->total_secs = lbasize48;
+    /* get device geometry into internal structs */
+    ad_get_geometry(dev);
 
     /* init device parameters */
     ad_init(dev);
@@ -378,7 +348,7 @@ ad_strategy(struct dev_strategy_args *ap)
 	request->flags = ATA_R_CONTROL;
 	request->u.ata.command = ATA_FLUSHCACHE;
 	/* ATA FLUSHCACHE requests may take up to 30 sec to timeout */
-	request->timeout = 30;
+	request->timeout = 30;		/* ATA_DEFAULT_TIMEOUT */
 	break;
     default:
 	device_printf(dev, "FAILURE - unknown BUF operation\n");
@@ -489,6 +459,47 @@ ad_init(device_t dev)
 }
 
 static void
+ad_get_geometry(device_t dev)
+{
+    struct ata_device *atadev = device_get_softc(dev);
+    struct ad_softc *adp = device_get_ivars(dev);
+    u_int64_t lbasize48;
+    u_int32_t lbasize;
+
+    if ((atadev->param.atavalid & ATA_FLAG_54_58) &&
+	atadev->param.current_heads && atadev->param.current_sectors) {
+	adp->heads = atadev->param.current_heads;
+	adp->sectors = atadev->param.current_sectors;
+	adp->total_secs = (u_int32_t)atadev->param.current_size_1 |
+			  ((u_int32_t)atadev->param.current_size_2 << 16);
+    }
+    else {
+	adp->heads = atadev->param.heads;
+	adp->sectors = atadev->param.sectors;
+	adp->total_secs = atadev->param.cylinders * adp->heads * adp->sectors;
+    }
+    lbasize = (u_int32_t)atadev->param.lba_size_1 |
+	      ((u_int32_t)atadev->param.lba_size_2 << 16);
+
+    /* does this device need oldstyle CHS addressing */
+    if (!ad_version(atadev->param.version_major) || !lbasize)
+	atadev->flags |= ATA_D_USE_CHS;
+
+    /* use the 28bit LBA size if valid or bigger than the CHS mapping */
+    if (atadev->param.cylinders == 16383 || adp->total_secs < lbasize)
+	adp->total_secs = lbasize;
+
+    /* use the 48bit LBA size if valid */
+    lbasize48 = ((u_int64_t)atadev->param.lba_size48_1) |
+		((u_int64_t)atadev->param.lba_size48_2 << 16) |
+		((u_int64_t)atadev->param.lba_size48_3 << 32) |
+		((u_int64_t)atadev->param.lba_size48_4 << 48);
+    if ((atadev->param.support.command2 & ATA_SUPPORT_ADDRESS48) &&
+	lbasize48 > ATA_MAX_28BIT_LBA)
+	adp->total_secs = lbasize48;
+}
+
+static void
 ad_describe(device_t dev)
 {
     struct ata_channel *ch = device_get_softc(device_get_parent(dev));
@@ -520,8 +531,7 @@ ad_describe(device_t dev)
     device_printf(dev, "%juMB <%s%s %.8s> at ata%d-%s %s%s\n",
 		  adp->total_secs / (1048576 / DEV_BSIZE),
 		  vendor, product, atadev->param.revision,
-		  device_get_unit(ch->dev),
-		  (atadev->unit == ATA_MASTER) ? "master" : "slave",
+		  device_get_unit(ch->dev), ata_unit2str(atadev),
 		  (adp->flags & AD_F_TAG_ENABLED) ? "tagged " : "",
 		  ata_mode2str(atadev->mode));
     if (bootverbose) {

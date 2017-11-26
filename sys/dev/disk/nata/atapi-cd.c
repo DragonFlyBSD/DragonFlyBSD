@@ -1768,8 +1768,7 @@ acd_describe(device_t dev)
 			(cdp->cap.media & MST_WRITE_CDRW) ? "CDRW" :
 			 (cdp->cap.media & MST_WRITE_CDR) ? "CDR" : 
 			  (cdp->cap.media & MST_READ_DVDROM) ? "DVDROM":"CDROM",
-		      device_get_unit(ch->dev),
-		      (atadev->unit == ATA_MASTER) ? "master" : "slave");
+		      device_get_unit(ch->dev), ata_unit2str(atadev));
 
 	device_printf(dev, "%s", "");
 	if (cdp->cap.cur_read_speed) {
@@ -1939,8 +1938,7 @@ acd_describe(device_t dev)
 			  "CDROM");
 	kprintf("<%.40s/%.8s> at ata%d-%s %s\n",
 	       atadev->param.model, atadev->param.revision,
-	       device_get_unit(ch->dev),
-	       (atadev->unit == ATA_MASTER) ? "master" : "slave",
+	       device_get_unit(ch->dev), ata_unit2str(atadev),
 	       ata_mode2str(atadev->mode) );
     }
 }

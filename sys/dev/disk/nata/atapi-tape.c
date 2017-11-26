@@ -697,8 +697,7 @@ ast_describe(device_t dev)
     if (bootverbose) {
 	device_printf(dev, "<%.40s/%.8s> tape drive at ata%d as %s\n",
 		      atadev->param.model, atadev->param.revision,
-		      device_get_unit(ch->dev),
-		      (atadev->unit == ATA_MASTER) ? "master" : "slave");
+		      device_get_unit(ch->dev), ata_unit2str(atadev));
 	device_printf(dev, "%dKB/s, ", stp->cap.max_speed);
 	kprintf("transfer limit %d blk%s, ",
 	       stp->cap.ctl, (stp->cap.ctl > 1) ? "s" : "");
@@ -736,8 +735,7 @@ ast_describe(device_t dev)
     else {
 	device_printf(dev, "TAPE <%.40s/%.8s> at ata%d-%s %s\n",
 		      atadev->param.model, atadev->param.revision,
-		      device_get_unit(ch->dev),
-		      (atadev->unit == ATA_MASTER) ? "master" : "slave",
+		      device_get_unit(ch->dev), ata_unit2str(atadev),
 		      ata_mode2str(atadev->mode));
     }
 }

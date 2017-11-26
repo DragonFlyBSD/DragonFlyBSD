@@ -555,6 +555,7 @@ int ata_identify(device_t dev);
 void ata_default_registers(device_t dev);
 void ata_modify_if_48bit(struct ata_request *request);
 void ata_udelay(int interval);
+const char *ata_unit2str(struct ata_device *atadev);
 const char *ata_mode2str(int mode);
 void ata_print_cable(device_t dev, u_int8_t *who);
 int ata_atapi(device_t dev);

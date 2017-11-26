@@ -454,8 +454,7 @@ afd_describe(device_t dev)
  
     device_printf(dev, "%s <%.40s %.8s> at ata%d-%s %s\n",
 		  sizestring, atadev->param.model, atadev->param.revision,
-		  device_get_unit(ch->dev),
-		  (atadev->unit == ATA_MASTER) ? "master" : "slave",
+		  device_get_unit(ch->dev), ata_unit2str(atadev),
 		  ata_mode2str(atadev->mode));
     if (bootverbose) {
 	device_printf(dev, "%ju sectors [%juC/%dH/%dS]\n",
