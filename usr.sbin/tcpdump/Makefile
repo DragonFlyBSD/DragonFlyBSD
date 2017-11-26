@@ -53,7 +53,6 @@ DPADD=	${LIBL} ${LIBPCAP}
 LDADD=	-ll -lpcap
 DPADD+=		${LIBRECRYPTO}
 LDADD+=		-lprivate_crypto
-CFLAGS+=	-DHAVE_LIBCRYPTO -DHAVE_OPENSSL_EVP_H
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 WARNS?=	2

@@ -101,7 +101,7 @@
 #define HAVE_INTTYPES_H 1
 
 /* Define to 1 if you have the `crypto' library (-lcrypto). */
-/* #undef HAVE_LIBCRYPTO */
+#define HAVE_LIBCRYPTO 1
 
 /* Define to 1 if you have the `rpc' library (-lrpc). */
 /* #undef HAVE_LIBRPC */
@@ -125,7 +125,7 @@
 /* #undef HAVE_NET_PFVAR_H */
 
 /* Define to 1 if you have the <openssl/evp.h> header file. */
-/* #undef HAVE_OPENSSL_EVP_H */
+#define HAVE_OPENSSL_EVP_H 1
 
 /* if there's an os_proto.h for this platform, to use additional prototypes */
 /* #undef HAVE_OS_PROTO_H */
