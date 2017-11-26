@@ -235,7 +235,7 @@ static int
 ata_ahci_begin_transaction(struct ata_request *request)
 {
     struct ata_pci_controller *ctlr=device_get_softc(GRANDPARENT(request->dev));
-    struct ata_channel *ch = device_get_softc(device_get_parent(request->dev));
+    struct ata_channel *ch = device_get_softc(request->parent);
     struct ata_ahci_cmd_tab *ctp;
     struct ata_ahci_cmd_list *clp;
     int offset = ch->unit << 7;
@@ -327,7 +327,7 @@ static int
 ata_ahci_end_transaction(struct ata_request *request)
 {
     struct ata_pci_controller *ctlr=device_get_softc(GRANDPARENT(request->dev));
-    struct ata_channel *ch = device_get_softc(device_get_parent(request->dev));
+    struct ata_channel *ch = device_get_softc(request->parent);
     struct ata_ahci_cmd_list *clp;
     u_int32_t tf_data;
     int offset = ch->unit << 7;

@@ -441,27 +441,28 @@ ata_intel_31244_command(struct ata_request *request)
 {
     struct ata_channel *ch = device_get_softc(device_get_parent(request->dev));
     struct ata_device *atadev = device_get_softc(request->dev);
-    u_int64_t lba;
 
-    if (!(atadev->flags & ATA_D_48BIT_ACTIVE))
-	    return (ata_generic_command(request));
+    if (atadev->flags & ATA_D_48BIT_ACTIVE) {
+	ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | ATA_D_LBA | atadev->unit);
+	/* enable interrupt */
+	ATA_IDX_OUTB(ch, ATA_CONTROL, ATA_A_4BIT);
+	ATA_IDX_OUTW(ch, ATA_FEATURE, request->u.ata.feature);
+	ATA_IDX_OUTW(ch, ATA_COUNT, request->u.ata.count);
+	ATA_IDX_OUTW(ch, ATA_SECTOR, ((request->u.ata.lba >> 16) & 0xff00) |
+				      (request->u.ata.lba & 0x00ff));
+	ATA_IDX_OUTW(ch, ATA_CYL_LSB, ((request->u.ata.lba >> 24) & 0xff00) |
+				       ((request->u.ata.lba >> 8) & 0x00ff));
+	ATA_IDX_OUTW(ch, ATA_CYL_MSB, ((request->u.ata.lba >> 32) & 0xff00) |
+				       ((request->u.ata.lba >> 16) & 0x00ff));
 
-    lba = request->u.ata.lba;
-    ATA_IDX_OUTB(ch, ATA_DRIVE, ATA_D_IBM | ATA_D_LBA | atadev->unit);
-    /* enable interrupt */
-    ATA_IDX_OUTB(ch, ATA_CONTROL, ATA_A_4BIT);
-    ATA_IDX_OUTW(ch, ATA_FEATURE, request->u.ata.feature);
-    ATA_IDX_OUTW(ch, ATA_COUNT, request->u.ata.count);
-    ATA_IDX_OUTW(ch, ATA_SECTOR, ((lba >> 16) & 0xff00) | (lba & 0x00ff));
-    ATA_IDX_OUTW(ch, ATA_CYL_LSB, ((lba >> 24) & 0xff00) |
-				  ((lba >> 8) & 0x00ff));
-    ATA_IDX_OUTW(ch, ATA_CYL_MSB, ((lba >> 32) & 0xff00) |
-				  ((lba >> 16) & 0x00ff));
+	/* issue command to controller */
+	ATA_IDX_OUTB(ch, ATA_COMMAND, request->u.ata.command);
 
-    /* issue command to controller */
-    ATA_IDX_OUTB(ch, ATA_COMMAND, request->u.ata.command);
-
-    return 0;
+	return 0;
+    }
+    else {
+	return (ata_generic_command(request));
+    }
 }
 
 static void

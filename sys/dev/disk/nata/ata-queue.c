@@ -81,7 +81,7 @@ ata_queue_request(struct ata_request *request)
     /* treat request as virgin (this might be an ATA_R_REQUEUE) */
     request->result = request->status = request->error = 0;
 
-    /* check that that the device is still valid */
+    /* check that the device is still valid */
     if (!(request->parent = device_get_parent(request->dev))) {
 	request->result = ENXIO;
 	if (request->callback)

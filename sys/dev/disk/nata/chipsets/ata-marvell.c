@@ -306,7 +306,7 @@ static int
 ata_marvell_edma_begin_transaction(struct ata_request *request)
 {
     struct ata_pci_controller *ctlr=device_get_softc(GRANDPARENT(request->dev));
-    struct ata_channel *ch = device_get_softc(device_get_parent(request->dev));
+    struct ata_channel *ch = device_get_softc(request->parent);
     u_int32_t req_in;
     u_int8_t *bytep;
     u_int16_t *wordp;
@@ -398,7 +398,7 @@ static int
 ata_marvell_edma_end_transaction(struct ata_request *request)
 {
     struct ata_pci_controller *ctlr=device_get_softc(GRANDPARENT(request->dev));
-    struct ata_channel *ch = device_get_softc(device_get_parent(request->dev));
+    struct ata_channel *ch = device_get_softc(request->parent);
     int offset = (ch->unit > 3 ? 0x30014 : 0x20014);
     u_int32_t icr = ATA_INL(ctlr->r_res1, offset);
     int res;

@@ -487,7 +487,7 @@ static int
 ata_siiprb_begin_transaction(struct ata_request *request)
 {
     struct ata_pci_controller *ctlr=device_get_softc(GRANDPARENT(request->dev));
-    struct ata_channel *ch = device_get_softc(device_get_parent(request->dev));
+    struct ata_channel *ch = device_get_softc(request->parent);
     struct ata_siiprb_command *prb;
     struct ata_siiprb_dma_prdentry *prd;
     int offset = ch->unit * 0x2000;
@@ -559,7 +559,7 @@ static int
 ata_siiprb_end_transaction(struct ata_request *request)
 {
     struct ata_pci_controller *ctlr=device_get_softc(GRANDPARENT(request->dev));
-    struct ata_channel *ch = device_get_softc(device_get_parent(request->dev));
+    struct ata_channel *ch = device_get_softc(request->parent);
     struct ata_siiprb_command *prb;
     int offset = ch->unit * 0x2000;
     int error, timeout;
