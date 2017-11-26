@@ -58,6 +58,8 @@ ata_generic_hw(device_t dev)
     ch->hw.end_transaction = ata_end_transaction;
     ch->hw.status = ata_generic_status;
     ch->hw.command = ata_generic_command;
+    ch->hw.tf_read = ata_tf_read;
+    ch->hw.tf_write = ata_tf_write;
 }
 
 /* must be called with ATA channel locked and state_mtx held */
@@ -239,7 +241,7 @@ ata_end_transaction(struct ata_request *request)
 
 	/* on control commands read back registers to the request struct */
 	if (request->flags & ATA_R_CONTROL) {
-	    ata_tf_read(request);
+	    ch->hw.tf_read(request);
 	}
 
 	/* if we got an error we are done with the HW */
@@ -574,9 +576,8 @@ ata_generic_reset(device_t dev)
     }
 
     if (bootverbose)
-	device_printf(dev, "reset tp2 stat0=%02x stat1=%02x devices=0x%b\n",
-		      stat0, stat1, ch->devices,
-		      "\20\4ATAPI_SLAVE\3ATAPI_MASTER\2ATA_SLAVE\1ATA_MASTER");
+	device_printf(dev, "reset tp2 stat0=%02x stat1=%02x devices=0x%x\n",
+		      stat0, stat1, ch->devices);
 }
 
 /* must be called with ATA channel locked and state_mtx held */
@@ -707,7 +708,7 @@ ata_generic_command(struct ata_request *request)
 			   ATA_PROTO_ATAPI_12 ? 6 : 8);
     }
     else {
-	ata_tf_write(request);
+	ch->hw.tf_write(request);
 
 	/* issue command to controller */
 	ATA_IDX_OUTB(ch, ATA_COMMAND, request->u.ata.command);
