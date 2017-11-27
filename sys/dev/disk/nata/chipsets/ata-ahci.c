@@ -125,14 +125,19 @@ static int
 ata_ahci_ctlr_reset(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(dev);
+    int timeout;
 
     /* enable AHCI mode */
     ATA_OUTL(ctlr->r_res2, ATA_AHCI_GHC, ATA_AHCI_GHC_AE);
 
     /* reset AHCI controller */
-    ATA_OUTL(ctlr->r_res2, ATA_AHCI_GHC, ATA_AHCI_GHC_HR);
-    DELAY(1000000);
-    if (ATA_INL(ctlr->r_res2, ATA_AHCI_GHC) & ATA_AHCI_GHC_HR) {
+    ATA_OUTL(ctlr->r_res2, ATA_AHCI_GHC, ATA_AHCI_GHC_AE|ATA_AHCI_GHC_HR);
+    for (timeout = 1000; timeout > 0; timeout--) {
+	    DELAY(1000);
+	    if ((ATA_INL(ctlr->r_res2, ATA_AHCI_GHC) & ATA_AHCI_GHC_HR) == 0)
+		    break;
+    }
+    if (timeout == 0) {
 	device_printf(dev, "AHCI controller reset failure\n");
 	return ENXIO;
     }
@@ -193,7 +198,7 @@ ata_ahci_status(device_t dev)
 
 	/* clear interrupt(s) */
 	ATA_OUTL(ctlr->r_res2, ATA_AHCI_P_IS + offset, istatus);
-	ATA_OUTL(ctlr->r_res2, ATA_AHCI_IS, action & (1 << ch->unit));
+	ATA_OUTL(ctlr->r_res2, ATA_AHCI_IS, 1 << ch->unit);
 
 	/* do we have any PHY events ? */
 	if (istatus & (ATA_AHCI_P_IX_PRC | ATA_AHCI_P_IX_PC))
@@ -420,17 +425,20 @@ ata_ahci_softreset(device_t dev, int port __unused)
     struct ata_channel *ch = device_get_softc(dev);
     int offset = ch->unit << 7;
     int timeout = 0;
+    uint32_t val;
+
 #ifdef AHCI_PM
 #endif
-    do {
+    while ((val = ATA_INL(ctlr->r_res2, ATA_AHCI_P_TFD + offset)) &
+	(ATA_S_BUSY | ATA_S_DRQ)) {
 	    DELAY(1000);
 	    if (timeout++ > 1000) {
-		device_printf(dev, "still BUSY after softreset\n");
+		device_printf(dev, "port is not ready (timeout 1s) tfd = %08x\n", val);
 		break;
 	    }
-    } while (ATA_INL(ctlr->r_res2, ATA_AHCI_P_TFD + offset) & ATA_S_BUSY);
+    }
     if (bootverbose)
-	device_printf(dev, "BUSY wait time=%dms\n", timeout);
+	device_printf(dev, "ready wait time=%dms\n", timeout);
 
     return ATA_INL(ctlr->r_res2, ATA_AHCI_P_SIG + offset);
 }
@@ -443,6 +451,9 @@ ata_ahci_reset(device_t dev)
     u_int64_t work;
     u_int32_t cmd, signature;
     int offset = ch->unit << 7;
+
+    if (bootverbose)
+	device_printf(dev, "AHCI reset...\n");
 
     /* Disable port interrupts */
     ATA_OUTL(ctlr->r_res2, ATA_AHCI_P_IE + offset, 0);
@@ -481,7 +492,7 @@ ata_ahci_reset(device_t dev)
     /* reset PHY and decide what is present */
     if (!ata_sata_phy_reset(dev)) {
 	if (bootverbose)
-	    device_printf(dev, "phy reset found no device\n");
+	    device_printf(dev, "AHCI reset done: phy reset found no device\n");
 	ch->devices = 0;
 
 	/* kill off all activity on this channel */
