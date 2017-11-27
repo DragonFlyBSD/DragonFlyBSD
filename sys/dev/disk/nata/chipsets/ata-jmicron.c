@@ -95,7 +95,7 @@ ata_jmicron_chipinit(device_t dev)
 	pci_write_config(dev, 0x40, 0x80c0a131, 4);
 	pci_write_config(dev, 0x80, 0x01200000, 4);
 
-	if ((error = ata_ahci_chipinit(dev))) {
+	if (ctlr->chip->cfg1 && (error = ata_ahci_chipinit(dev))) {
 	    ata_teardown_interrupt(dev);
 	    return error;
 	}

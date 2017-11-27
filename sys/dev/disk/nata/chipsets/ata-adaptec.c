@@ -25,7 +25,10 @@
  */
 
 /* misc defines */
+#undef MV_60XX
+#undef MV_7042
 #define MV_60XX		60		//must match ata_marvell.c's definition
+#define MV_7042		72		//must match ata_marvell.c's definition
 
 /*
  * Adaptec chipset support functions
@@ -36,6 +39,7 @@ ata_adaptec_ident(device_t dev)
     struct ata_pci_controller *ctlr = device_get_softc(dev);
     static struct ata_chip_id ids[] =
     {{ ATA_ADAPTEC_1420, 0, 4, MV_60XX, ATA_SA300, "1420SA" },
+     { ATA_ADAPTEC_1430, 0, 4, MV_7042, ATA_SA300, "1430SA" },
      { 0, 0, 0, 0, 0, 0}};
 
     if (pci_get_vendor(dev) != ATA_ADAPTEC_ID)

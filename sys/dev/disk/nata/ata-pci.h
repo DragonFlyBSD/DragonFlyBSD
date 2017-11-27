@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2003 - 2006 Søren Schmidt <sos@FreeBSD.org>
+ * Copyright (c) 2003 - 2008 Søren Schmidt <sos@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -100,9 +100,11 @@ struct ata_connect_task {
 #define ATA_AMD766              0x74111022
 #define ATA_AMD768              0x74411022
 #define ATA_AMD8111             0x74691022
+#define ATA_AMD5536             0x209a1022
 
 #define ATA_ADAPTEC_ID          0x9005
 #define ATA_ADAPTEC_1420        0x02419005
+#define ATA_ADAPTEC_1430        0x02439005
 
 #define ATA_ATI_ID              0x1002
 #define ATA_ATI_IXP200          0x43491002
@@ -114,6 +116,13 @@ struct ata_connect_task {
 #define ATA_ATI_IXP600          0x438c1002
 #define ATA_ATI_IXP600_S1       0x43801002
 #define ATA_ATI_IXP600_S2       0x43811002
+#define ATA_ATI_IXP700          0x439c1002
+#define ATA_ATI_IXP700_S1       0x43901002
+#define ATA_ATI_IXP700_S2       0x43911002
+#define ATA_ATI_IXP700_S3       0x43921002
+#define ATA_ATI_IXP700_S4       0x43931002
+#define ATA_ATI_IXP800_S1       0x43941002
+#define ATA_ATI_IXP800_S2       0x43951002
 
 #define ATA_CENATEK_ID          0x16ca
 #define ATA_CENATEK_ROCKET      0x000116ca
@@ -190,6 +199,7 @@ struct ata_connect_task {
 #define ATA_ITE_ID              0x1283
 #define ATA_IT8211F             0x82111283
 #define ATA_IT8212F             0x82121283
+#define ATA_IT8213F             0x82131283
 
 #define ATA_JMICRON_ID          0x197b
 #define ATA_JMB360              0x2360197b
@@ -205,7 +215,9 @@ struct ata_connect_task {
 #define ATA_M88SX5080           0x508011ab
 #define ATA_M88SX5081           0x508111ab
 #define ATA_M88SX6041           0x604111ab
+#define ATA_M88SX6042           0x604211ab
 #define ATA_M88SX6081           0x608111ab
+#define ATA_M88SX7042           0x704211ab
 #define ATA_M88SX6101           0x610111ab
 #define ATA_M88SX6121           0x612111ab
 #define ATA_M88SX6145           0x614511ab
@@ -246,10 +258,78 @@ struct ata_connect_task {
 #define ATA_NFORCE_MCP61_S2     0x03f610de
 #define ATA_NFORCE_MCP61_S3     0x03f710de
 #define ATA_NFORCE_MCP65        0x044810de
+#define ATA_NFORCE_MCP65_A0     0x044c10de
+#define ATA_NFORCE_MCP65_A1     0x044d10de
+#define ATA_NFORCE_MCP65_A2     0x044e10de
+#define ATA_NFORCE_MCP65_A3     0x044f10de
+#define ATA_NFORCE_MCP65_A4     0x045c10de
+#define ATA_NFORCE_MCP65_A5     0x045d10de
+#define ATA_NFORCE_MCP65_A6     0x045e10de
+#define ATA_NFORCE_MCP65_A7     0x045f10de
 #define ATA_NFORCE_MCP67        0x056010de
-#define ATA_NFORCE_MCP67_S2     0x055810de
+#define ATA_NFORCE_MCP67_A0     0x055010de
+#define ATA_NFORCE_MCP67_A1     0x055110de
+#define ATA_NFORCE_MCP67_A2     0x055210de
+#define ATA_NFORCE_MCP67_A3     0x055310de
+#define ATA_NFORCE_MCP67_A4     0x055410de
+#define ATA_NFORCE_MCP67_A5     0x055510de
+#define ATA_NFORCE_MCP67_A6     0x055610de
+#define ATA_NFORCE_MCP67_A7     0x055710de
+#define ATA_NFORCE_MCP67_A8     0x055810de
+#define ATA_NFORCE_MCP67_A9     0x055910de
+#define ATA_NFORCE_MCP67_AA     0x055A10de
+#define ATA_NFORCE_MCP67_AB     0x055B10de
+#define ATA_NFORCE_MCP67_AC     0x058410de
 #define ATA_NFORCE_MCP73        0x056c10de
+#define ATA_NFORCE_MCP73_A0     0x07f010de
+#define ATA_NFORCE_MCP73_A1     0x07f110de
+#define ATA_NFORCE_MCP73_A2     0x07f210de
+#define ATA_NFORCE_MCP73_A3     0x07f310de
+#define ATA_NFORCE_MCP73_A4     0x07f410de
+#define ATA_NFORCE_MCP73_A5     0x07f510de
+#define ATA_NFORCE_MCP73_A6     0x07f610de
+#define ATA_NFORCE_MCP73_A7     0x07f710de
+#define ATA_NFORCE_MCP73_A8     0x07f810de
+#define ATA_NFORCE_MCP73_A9     0x07f910de
+#define ATA_NFORCE_MCP73_AA     0x07fa10de
+#define ATA_NFORCE_MCP73_AB     0x07fb10de
 #define ATA_NFORCE_MCP77        0x075910de
+#define ATA_NFORCE_MCP77_A0     0x0ad010de
+#define ATA_NFORCE_MCP77_A1     0x0ad110de
+#define ATA_NFORCE_MCP77_A2     0x0ad210de
+#define ATA_NFORCE_MCP77_A3     0x0ad310de
+#define ATA_NFORCE_MCP77_A4     0x0ad410de
+#define ATA_NFORCE_MCP77_A5     0x0ad510de
+#define ATA_NFORCE_MCP77_A6     0x0ad610de
+#define ATA_NFORCE_MCP77_A7     0x0ad710de
+#define ATA_NFORCE_MCP77_A8     0x0ad810de
+#define ATA_NFORCE_MCP77_A9     0x0ad910de
+#define ATA_NFORCE_MCP77_AA     0x0ada10de
+#define ATA_NFORCE_MCP77_AB     0x0adb10de
+#define ATA_NFORCE_MCP79_A0     0x0ab410de
+#define ATA_NFORCE_MCP79_A1     0x0ab510de
+#define ATA_NFORCE_MCP79_A2     0x0ab610de
+#define ATA_NFORCE_MCP79_A3     0x0ab710de
+#define ATA_NFORCE_MCP79_A4     0x0ab810de
+#define ATA_NFORCE_MCP79_A5     0x0ab910de
+#define ATA_NFORCE_MCP79_A6     0x0aba10de
+#define ATA_NFORCE_MCP79_A7     0x0abb10de
+#define ATA_NFORCE_MCP79_A8     0x0abc10de
+#define ATA_NFORCE_MCP79_A9     0x0abd10de
+#define ATA_NFORCE_MCP79_AA     0x0abe10de
+#define ATA_NFORCE_MCP79_AB     0x0abf10de
+#define ATA_NFORCE_MCP89_A0     0x0d8410de
+#define ATA_NFORCE_MCP89_A1     0x0d8510de
+#define ATA_NFORCE_MCP89_A2     0x0d8610de
+#define ATA_NFORCE_MCP89_A3     0x0d8710de
+#define ATA_NFORCE_MCP89_A4     0x0d8810de
+#define ATA_NFORCE_MCP89_A5     0x0d8910de
+#define ATA_NFORCE_MCP89_A6     0x0d8a10de
+#define ATA_NFORCE_MCP89_A7     0x0d8b10de
+#define ATA_NFORCE_MCP89_A8     0x0d8c10de
+#define ATA_NFORCE_MCP89_A9     0x0d8d10de
+#define ATA_NFORCE_MCP89_AA     0x0d8e10de
+#define ATA_NFORCE_MCP89_AB     0x0d8f10de
 
 #define ATA_PROMISE_ID          0x105a
 #define ATA_PDC20246            0x4d33105a
@@ -311,6 +391,8 @@ struct ata_connect_task {
 #define ATA_SII3112_1           0x02401095
 #define ATA_SII3124		0x31241095
 #define ATA_SII3132		0x31321095
+#define ATA_SII3132_1		0x02421095
+#define ATA_SII3132_2		0x02441095
 #define ATA_SII0680             0x06801095
 #define ATA_CMD646              0x06461095
 #define ATA_CMD648              0x06481095
@@ -378,6 +460,8 @@ struct ata_connect_task {
 #define ATA_VIA8237             0x32271106
 #define ATA_VIA8237A            0x05911106
 #define ATA_VIA8237S            0x53371106
+#define ATA_VIA8237_5372        0x53721106
+#define ATA_VIA8237_7372        0x73721106
 #define ATA_VIA8251             0x33491106
 #define ATA_VIA8361             0x31121106
 #define ATA_VIA8363             0x03051106

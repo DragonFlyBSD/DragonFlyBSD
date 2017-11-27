@@ -42,6 +42,7 @@ static void ata_siiprb_dmasetprd(void *xsc, bus_dma_segment_t *segs, int nsegs, 
 static void ata_siiprb_dmainit(device_t dev);
 
 /* misc defines */
+#undef SII_MEMIO
 #define SII_MEMIO	1
 #define SII_PRBIO	2
 #define SII_INTR	0x01
@@ -66,6 +67,8 @@ ata_sii_ident(device_t dev)
      { ATA_SII3112_1, 0x00, SII_MEMIO, SII_BUG,    ATA_SA150, "SiI 3112" },
      { ATA_SII3124,   0x00, SII_PRBIO, SII_4CH,    ATA_SA300, "SiI 3124" },
      { ATA_SII3132,   0x00, SII_PRBIO, 0,          ATA_SA300, "SiI 3132" },
+     { ATA_SII3132_1, 0x00, SII_PRBIO, 0,          ATA_SA300, "SiI 3132" },
+     { ATA_SII3132_2, 0x00, SII_PRBIO, 0,          ATA_SA300, "SiI 3132" },
      { ATA_SII0680,   0x00, SII_MEMIO, SII_SETCLK, ATA_UDMA6, "SiI 0680" },
      { ATA_CMD649,    0x00, 0,         SII_INTR,   ATA_UDMA5, "CMD 649" },
      { ATA_CMD648,    0x00, 0,         SII_INTR,   ATA_UDMA4, "CMD 648" },
@@ -671,6 +674,9 @@ ata_siiprb_softreset(device_t dev, int port)
 	((u_int8_t *)rman_get_virtual(ctlr->r_res2) + offset);
     signature=prb->fis[12]|(prb->fis[4]<<8)|(prb->fis[5]<<16)|(prb->fis[6]<<24);
 
+    /* clear error bits/interrupt */
+    ATA_IDX_OUTL(ch, ATA_SERROR, 0xffffffff);
+
     return signature;
 }
 
@@ -682,6 +688,9 @@ ata_siiprb_reset(device_t dev)
     int offset = ch->unit * 0x2000;
     u_int32_t status, signature;
     int timeout;
+
+    /* disable interrupts */
+    ATA_OUTL(ctlr->r_res2, 0x1014 + offset, 0x000000ff);
 
     /* reset channel HW */
     ATA_OUTL(ctlr->r_res2, 0x1000 + offset, 0x00000001);

@@ -34,6 +34,7 @@ static void ata_nvidia_setmode(device_t dev, int mode);
 /* misc defines */
 #define NV4		0x01
 #define NVQ		0x02
+#define NVAHCI          0x04
 
 /*
  * nVidia chipset support functions
@@ -68,10 +69,78 @@ ata_nvidia_ident(device_t dev)
      { ATA_NFORCE_MCP61_S2, 0, NV4|NVQ, 0, ATA_SA300, "nForce MCP61" },
      { ATA_NFORCE_MCP61_S3, 0, NV4|NVQ, 0, ATA_SA300, "nForce MCP61" },
      { ATA_NFORCE_MCP65,    0, 0,       0, ATA_UDMA6, "nForce MCP65" },
+     { ATA_NFORCE_MCP65_A0, 0, NVAHCI,  0, ATA_SA300, "nForce MCP65" },
+     { ATA_NFORCE_MCP65_A1, 0, NVAHCI,  0, ATA_SA300, "nForce MCP65" },
+     { ATA_NFORCE_MCP65_A2, 0, NVAHCI,  0, ATA_SA300, "nForce MCP65" },
+     { ATA_NFORCE_MCP65_A3, 0, NVAHCI,  0, ATA_SA300, "nForce MCP65" },
+     { ATA_NFORCE_MCP65_A4, 0, NVAHCI,  0, ATA_SA300, "nForce MCP65" },
+     { ATA_NFORCE_MCP65_A5, 0, NVAHCI,  0, ATA_SA300, "nForce MCP65" },
+     { ATA_NFORCE_MCP65_A6, 0, NVAHCI,  0, ATA_SA300, "nForce MCP65" },
+     { ATA_NFORCE_MCP65_A7, 0, NVAHCI,  0, ATA_SA300, "nForce MCP65" },
      { ATA_NFORCE_MCP67,    0, 0,       0, ATA_UDMA6, "nForce MCP67" },
-     { ATA_NFORCE_MCP67_S2, 0, NV4|NVQ, 0, ATA_SA300, "nForce MCP67" },
+     { ATA_NFORCE_MCP67_A0, 0, NVAHCI,  0, ATA_SA300, "nForce MCP67" },
+     { ATA_NFORCE_MCP67_A1, 0, NVAHCI,  0, ATA_SA300, "nForce MCP67" },
+     { ATA_NFORCE_MCP67_A2, 0, NVAHCI,  0, ATA_SA300, "nForce MCP67" },
+     { ATA_NFORCE_MCP67_A3, 0, NVAHCI,  0, ATA_SA300, "nForce MCP67" },
+     { ATA_NFORCE_MCP67_A4, 0, NVAHCI,  0, ATA_SA300, "nForce MCP67" },
+     { ATA_NFORCE_MCP67_A5, 0, NVAHCI,  0, ATA_SA300, "nForce MCP67" },
+     { ATA_NFORCE_MCP67_A6, 0, NVAHCI,  0, ATA_SA300, "nForce MCP67" },
+     { ATA_NFORCE_MCP67_A7, 0, NVAHCI,  0, ATA_SA300, "nForce MCP67" },
+     { ATA_NFORCE_MCP67_A8, 0, NVAHCI,  0, ATA_SA300, "nForce MCP67" },
+     { ATA_NFORCE_MCP67_A9, 0, NVAHCI,  0, ATA_SA300, "nForce MCP67" },
+     { ATA_NFORCE_MCP67_AA, 0, NVAHCI,  0, ATA_SA300, "nForce MCP67" },
+     { ATA_NFORCE_MCP67_AB, 0, NVAHCI,  0, ATA_SA300, "nForce MCP67" },
+     { ATA_NFORCE_MCP67_AC, 0, NVAHCI,  0, ATA_SA300, "nForce MCP67" },
      { ATA_NFORCE_MCP73,    0, 0,       0, ATA_UDMA6, "nForce MCP73" },
+     { ATA_NFORCE_MCP73_A0, 0, NVAHCI,  0, ATA_SA300, "nForce MCP73" },
+     { ATA_NFORCE_MCP73_A1, 0, NVAHCI,  0, ATA_SA300, "nForce MCP73" },
+     { ATA_NFORCE_MCP73_A2, 0, NVAHCI,  0, ATA_SA300, "nForce MCP73" },
+     { ATA_NFORCE_MCP73_A3, 0, NVAHCI,  0, ATA_SA300, "nForce MCP73" },
+     { ATA_NFORCE_MCP73_A4, 0, NVAHCI,  0, ATA_SA300, "nForce MCP73" },
+     { ATA_NFORCE_MCP73_A5, 0, NVAHCI,  0, ATA_SA300, "nForce MCP73" },
+     { ATA_NFORCE_MCP73_A6, 0, NVAHCI,  0, ATA_SA300, "nForce MCP73" },
+     { ATA_NFORCE_MCP73_A7, 0, NVAHCI,  0, ATA_SA300, "nForce MCP73" },
+     { ATA_NFORCE_MCP73_A8, 0, NVAHCI,  0, ATA_SA300, "nForce MCP73" },
+     { ATA_NFORCE_MCP73_A9, 0, NVAHCI,  0, ATA_SA300, "nForce MCP73" },
+     { ATA_NFORCE_MCP73_AA, 0, NVAHCI,  0, ATA_SA300, "nForce MCP73" },
+     { ATA_NFORCE_MCP73_AB, 0, NVAHCI,  0, ATA_SA300, "nForce MCP73" },
      { ATA_NFORCE_MCP77,    0, 0,       0, ATA_UDMA6, "nForce MCP77" },
+     { ATA_NFORCE_MCP77_A0, 0, NVAHCI,  0, ATA_SA300, "nForce MCP77" },
+     { ATA_NFORCE_MCP77_A1, 0, NVAHCI,  0, ATA_SA300, "nForce MCP77" },
+     { ATA_NFORCE_MCP77_A2, 0, NVAHCI,  0, ATA_SA300, "nForce MCP77" },
+     { ATA_NFORCE_MCP77_A3, 0, NVAHCI,  0, ATA_SA300, "nForce MCP77" },
+     { ATA_NFORCE_MCP77_A4, 0, NVAHCI,  0, ATA_SA300, "nForce MCP77" },
+     { ATA_NFORCE_MCP77_A5, 0, NVAHCI,  0, ATA_SA300, "nForce MCP77" },
+     { ATA_NFORCE_MCP77_A6, 0, NVAHCI,  0, ATA_SA300, "nForce MCP77" },
+     { ATA_NFORCE_MCP77_A7, 0, NVAHCI,  0, ATA_SA300, "nForce MCP77" },
+     { ATA_NFORCE_MCP77_A8, 0, NVAHCI,  0, ATA_SA300, "nForce MCP77" },
+     { ATA_NFORCE_MCP77_A9, 0, NVAHCI,  0, ATA_SA300, "nForce MCP77" },
+     { ATA_NFORCE_MCP77_AA, 0, NVAHCI,  0, ATA_SA300, "nForce MCP77" },
+     { ATA_NFORCE_MCP77_AB, 0, NVAHCI,  0, ATA_SA300, "nForce MCP77" },
+     { ATA_NFORCE_MCP79_A0, 0, NVAHCI,  0, ATA_SA300, "nForce MCP79" },
+     { ATA_NFORCE_MCP79_A1, 0, NVAHCI,  0, ATA_SA300, "nForce MCP79" },
+     { ATA_NFORCE_MCP79_A2, 0, NVAHCI,  0, ATA_SA300, "nForce MCP79" },
+     { ATA_NFORCE_MCP79_A3, 0, NVAHCI,  0, ATA_SA300, "nForce MCP79" },
+     { ATA_NFORCE_MCP79_A4, 0, NVAHCI,  0, ATA_SA300, "nForce MCP79" },
+     { ATA_NFORCE_MCP79_A5, 0, NVAHCI,  0, ATA_SA300, "nForce MCP79" },
+     { ATA_NFORCE_MCP79_A6, 0, NVAHCI,  0, ATA_SA300, "nForce MCP79" },
+     { ATA_NFORCE_MCP79_A7, 0, NVAHCI,  0, ATA_SA300, "nForce MCP79" },
+     { ATA_NFORCE_MCP79_A8, 0, NVAHCI,  0, ATA_SA300, "nForce MCP79" },
+     { ATA_NFORCE_MCP79_A9, 0, NVAHCI,  0, ATA_SA300, "nForce MCP79" },
+     { ATA_NFORCE_MCP79_AA, 0, NVAHCI,  0, ATA_SA300, "nForce MCP79" },
+     { ATA_NFORCE_MCP79_AB, 0, NVAHCI,  0, ATA_SA300, "nForce MCP79" },
+     { ATA_NFORCE_MCP89_A0, 0, NVAHCI,  0, ATA_SA300, "nForce MCP89" },
+     { ATA_NFORCE_MCP89_A1, 0, NVAHCI,  0, ATA_SA300, "nForce MCP89" },
+     { ATA_NFORCE_MCP89_A2, 0, NVAHCI,  0, ATA_SA300, "nForce MCP89" },
+     { ATA_NFORCE_MCP89_A3, 0, NVAHCI,  0, ATA_SA300, "nForce MCP89" },
+     { ATA_NFORCE_MCP89_A4, 0, NVAHCI,  0, ATA_SA300, "nForce MCP89" },
+     { ATA_NFORCE_MCP89_A5, 0, NVAHCI,  0, ATA_SA300, "nForce MCP89" },
+     { ATA_NFORCE_MCP89_A6, 0, NVAHCI,  0, ATA_SA300, "nForce MCP89" },
+     { ATA_NFORCE_MCP89_A7, 0, NVAHCI,  0, ATA_SA300, "nForce MCP89" },
+     { ATA_NFORCE_MCP89_A8, 0, NVAHCI,  0, ATA_SA300, "nForce MCP89" },
+     { ATA_NFORCE_MCP89_A9, 0, NVAHCI,  0, ATA_SA300, "nForce MCP89" },
+     { ATA_NFORCE_MCP89_AA, 0, NVAHCI,  0, ATA_SA300, "nForce MCP89" },
+     { ATA_NFORCE_MCP89_AB, 0, NVAHCI,  0, ATA_SA300, "nForce MCP89" },
      { 0, 0, 0, 0, 0, 0}} ;
 
     if (pci_get_vendor(dev) != ATA_NVIDIA_ID)
@@ -81,7 +150,10 @@ ata_nvidia_ident(device_t dev)
 	return ENXIO;
 
     ata_set_desc(dev);
-    ctlr->chipinit = ata_nvidia_chipinit;
+    if (ctlr->chip->cfg1 & NVAHCI)
+	ctlr->chipinit = ata_ahci_chipinit;
+    else
+	ctlr->chipinit = ata_nvidia_chipinit;
     return 0;
 }
 
@@ -108,7 +180,8 @@ ata_nvidia_chipinit(device_t dev)
 
 	    /* enable control access */
 	    pci_write_config(dev, 0x50, pci_read_config(dev, 0x50, 1) | 0x04,1);
-
+	    /* MCP55 seems to need some time to allow r_res2 read. */
+	    DELAY(10);
 	    if (ctlr->chip->cfg1 & NVQ) {
 		/* clear interrupt status */
 		ATA_OUTL(ctlr->r_res2, offset, 0x00ff00ff);

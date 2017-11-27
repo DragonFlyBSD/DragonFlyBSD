@@ -44,6 +44,7 @@ ata_amd_ident(device_t dev)
      { ATA_AMD766,  0x00, AMD_CABLE|AMD_BUG, 0, ATA_UDMA5, "766" },
      { ATA_AMD768,  0x00, AMD_CABLE,         0, ATA_UDMA5, "768" },
      { ATA_AMD8111, 0x00, AMD_CABLE,         0, ATA_UDMA6, "8111" },
+     { ATA_AMD5536, 0x00, 0x00,              0, ATA_UDMA5, "CS5536" },
      { 0, 0, 0, 0, 0, 0}};
 
     if (pci_get_vendor(dev) != ATA_AMD_ID)

@@ -37,8 +37,12 @@ static void ata_marvell_edma_dmasetprd(void *xsc, bus_dma_segment_t *segs, int n
 static void ata_marvell_edma_dmainit(device_t dev);
 
 /* misc defines */
+#undef MV_60XX
+#undef MV_7042
 #define MV_50XX		50
 #define MV_60XX		60
+#define MV_6042		62
+#define MV_7042		72
 #define MV_61XX		61
 
 #define ATA_MV_HOST_BASE(ch) \
@@ -73,7 +77,9 @@ ata_marvell_ident(device_t dev)
      { ATA_M88SX5080, 0, 8, MV_50XX, ATA_SA150, "88SX5080" },
      { ATA_M88SX5081, 0, 8, MV_50XX, ATA_SA150, "88SX5081" },
      { ATA_M88SX6041, 0, 4, MV_60XX, ATA_SA300, "88SX6041" },
+     { ATA_M88SX6042, 0, 4, MV_6042, ATA_SA300, "88SX6042" },
      { ATA_M88SX6081, 0, 8, MV_60XX, ATA_SA300, "88SX6081" },
+     { ATA_M88SX7042, 0, 4, MV_7042, ATA_SA300, "88SX7042" },
      { ATA_M88SX6101, 0, 1, MV_61XX, ATA_UDMA6, "88SX6101" },
      { ATA_M88SX6121, 0, 1, MV_61XX, ATA_UDMA6, "88SX6121" },
      { ATA_M88SX6145, 0, 2, MV_61XX, ATA_UDMA6, "88SX6145" },
@@ -90,6 +96,8 @@ ata_marvell_ident(device_t dev)
     switch (ctlr->chip->cfg2) {
     case MV_50XX:
     case MV_60XX:
+    case MV_6042:
+    case MV_7042:
 	ctlr->chipinit = ata_marvell_edma_chipinit;
 	break;
     case MV_61XX:
@@ -195,11 +203,14 @@ ata_marvell_edma_allocate(device_t dev)
 {
     struct ata_pci_controller *ctlr = device_get_softc(device_get_parent(dev));
     struct ata_channel *ch = device_get_softc(dev);
-    u_int64_t work = ch->dma->work_bus;
+    u_int64_t work;
     int i;
 
+    work = ch->dma->work_bus;
     /* clear work area */
     bzero(ch->dma->work, 1024+256);
+    bus_dmamap_sync(ch->dma->work_tag, ch->dma->work_map,
+	BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 
     /* set legacy ATA resources */
     for (i = ATA_DATA; i <= ATA_COMMAND; i++) {
@@ -222,6 +233,8 @@ ata_marvell_edma_allocate(device_t dev)
 	ch->r_io[ATA_SCONTROL].offset = 0x00108 + ATA_MV_HOST_BASE(ch);
 	break;
     case MV_60XX:
+    case MV_6042:
+    case MV_7042:
 	ch->r_io[ATA_SSTATUS].res = ctlr->r_res1;
 	ch->r_io[ATA_SSTATUS].offset =  0x02300 + ATA_MV_EDMA_BASE(ch);
 	ch->r_io[ATA_SERROR].res = ctlr->r_res1;
@@ -309,14 +322,14 @@ ata_marvell_edma_begin_transaction(struct ata_request *request)
     struct ata_channel *ch = device_get_softc(request->parent);
     u_int32_t req_in;
     u_int8_t *bytep;
-    u_int16_t *wordp;
-    u_int32_t *quadp;
-    int i, tag = 0x07;
+    int i, tag = 0x07;	/* XXX why 0x07 ? */
     int dummy, error, slot;
 
     /* only DMA R/W goes through the EMDA machine */
     if (request->u.ata.command != ATA_READ_DMA &&
-	request->u.ata.command != ATA_WRITE_DMA) {
+	request->u.ata.command != ATA_WRITE_DMA &&
+	request->u.ata.command != ATA_READ_DMA48 &&
+	request->u.ata.command != ATA_WRITE_DMA48) {
 
 	/* disable the EDMA machinery */
 	if (ATA_INL(ctlr->r_res1, 0x02028 + ATA_MV_EDMA_BASE(ch)) & 0x00000001)
@@ -341,13 +354,15 @@ ata_marvell_edma_begin_transaction(struct ata_request *request)
     slot = (((req_in & ~0xfffffc00) >> 5) + 0) & 0x1f;
     bytep = (u_int8_t *)(ch->dma->work);
     bytep += (slot << 5);
-    wordp = (u_int16_t *)bytep;
-    quadp = (u_int32_t *)bytep;
 
     /* fill in this request */
-    quadp[0] = (long)ch->dma->sg_bus & 0xffffffff;
-    quadp[1] = (u_int64_t)ch->dma->sg_bus >> 32;
-    wordp[4] = (request->flags & ATA_R_READ ? 0x01 : 0x00) | (tag<<1);
+    le32enc(bytep + 0 * sizeof(u_int32_t),
+	(long)ch->dma->sg_bus & 0xffffffff);
+    le32enc(bytep + 1 * sizeof(u_int32_t),
+	(u_int64_t)ch->dma->sg_bus >> 32);
+    if (ctlr->chip->cfg2 != MV_6042 && ctlr->chip->cfg2 != MV_7042) {
+	    le16enc(bytep + 4 * sizeof(u_int16_t),
+		(request->flags & ATA_R_READ ? 0x01 : 0x00) | (tag<<1));
 
 	    i = 10;
 	    bytep[i++] = (request->u.ata.count >> 8) & 0xff;
@@ -375,6 +390,34 @@ ata_marvell_edma_begin_transaction(struct ata_request *request)
 
 	    bytep[i++] = request->u.ata.command;
 	    bytep[i++] = 0x90 | ATA_COMMAND;
+    } else {
+	    le32enc(bytep + 2 * sizeof(u_int32_t),
+		(request->flags & ATA_R_READ ? 0x01 : 0x00) | (tag<<1));
+
+	    i = 16;
+	    bytep[i++] = 0;
+	    bytep[i++] = 0;
+	    bytep[i++] = request->u.ata.command;
+	    bytep[i++] = request->u.ata.feature & 0xff;
+
+	    bytep[i++] = request->u.ata.lba & 0xff;
+	    bytep[i++] = (request->u.ata.lba >> 8) & 0xff;
+	    bytep[i++] = (request->u.ata.lba >> 16) & 0xff;
+	    bytep[i++] = ATA_D_LBA | ATA_D_IBM | ((request->u.ata.lba >> 24) & 0x0f);
+
+	    bytep[i++] = (request->u.ata.lba >> 24) & 0xff;
+	    bytep[i++] = (request->u.ata.lba >> 32) & 0xff;
+	    bytep[i++] = (request->u.ata.lba >> 40) & 0xff;
+	    bytep[i++] = (request->u.ata.feature >> 8) & 0xff;
+
+	    bytep[i++] = request->u.ata.count & 0xff;
+	    bytep[i++] = (request->u.ata.count >> 8) & 0xff;
+	    bytep[i++] = 0;
+	    bytep[i++] = 0;
+    }
+
+    bus_dmamap_sync(ch->dma->work_tag, ch->dma->work_map,
+	BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 
     /* enable EDMA machinery if needed */
     if (!(ATA_INL(ctlr->r_res1, 0x02028 + ATA_MV_EDMA_BASE(ch)) & 0x00000001)) {
@@ -418,6 +461,8 @@ ata_marvell_edma_end_transaction(struct ata_request *request)
 	slot = (((rsp_in & ~0xffffff00) >> 3)) & 0x1f;
 	rsp_out &= 0xffffff00;
 	rsp_out += (slot << 3);
+	bus_dmamap_sync(ch->dma->work_tag, ch->dma->work_map,
+	    BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
 	response = (struct ata_marvell_response *)
 		   (ch->dma->work + 1024 + (slot << 3));
 
@@ -492,6 +537,7 @@ ata_marvell_edma_dmasetprd(void *xsc, bus_dma_segment_t *segs, int nsegs,
 	prd[i].addrlo = htole32(segs[i].ds_addr);
 	prd[i].count = htole32(segs[i].ds_len);
 	prd[i].addrhi = htole32((u_int64_t)segs[i].ds_addr >> 32);
+	prd[i].reserved = 0;
     }
     prd[i - 1].count |= htole32(ATA_DMA_EOT);
     KASSERT(nsegs <= ATA_DMA_ENTRIES, ("too many DMA segment entries\n"));
@@ -513,6 +559,9 @@ ata_marvell_edma_dmainit(device_t dev)
 	    ch->dma->max_address = BUS_SPACE_MAXADDR;
 
 	/* chip does not reliably do 64K DMA transfers */
-	ch->dma->max_iosize = 64 * DEV_BSIZE;
+	if (ctlr->chip->cfg2 == MV_50XX || ctlr->chip->cfg2 == MV_60XX)
+	    ch->dma->max_iosize = 64 * DEV_BSIZE;
+	else
+	    ch->dma->max_iosize = (ATA_DMA_ENTRIES - 1) * PAGE_SIZE;
     }
 }
