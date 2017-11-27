@@ -88,7 +88,8 @@ ata_intel_ident(device_t dev)
      { ATA_I82801HB_R1,  0, INTEL_AHCI, 0, ATA_SA300, "ICH8" },
      { ATA_I82801HB_AH4, 0, INTEL_AHCI, 0, ATA_SA300, "ICH8" },
      { ATA_I82801HB_AH6, 0, INTEL_AHCI, 0, ATA_SA300, "ICH8" },
-     { ATA_I82801HBM_S1, 0,          0, 0, ATA_SA300, "ICH8M" },
+     { ATA_I82801HBM,    0,          0, 1, ATA_UDMA5, "ICH8M" },
+     { ATA_I82801HBM_S1, 0, INTEL_AHCI, 0, ATA_SA300, "ICH8M" },
      { ATA_I82801HBM_S2, 0, INTEL_AHCI, 0, ATA_SA300, "ICH8M" },
      { ATA_I82801HBM_S3, 0, INTEL_AHCI, 0, ATA_SA300, "ICH8M" },
      { ATA_I82801IB_S1,  0, INTEL_AHCI, 0, ATA_SA300, "ICH9" },
@@ -96,7 +97,20 @@ ata_intel_ident(device_t dev)
      { ATA_I82801IB_AH2, 0, INTEL_AHCI, 0, ATA_SA300, "ICH9" },
      { ATA_I82801IB_AH4, 0, INTEL_AHCI, 0, ATA_SA300, "ICH9" },
      { ATA_I82801IB_AH6, 0, INTEL_AHCI, 0, ATA_SA300, "ICH9" },
-     { ATA_I31244,       0,          0, 0, ATA_SA150, "31244" },
+     { ATA_I82801IB_R1,  0, INTEL_AHCI, 0, ATA_SA300, "ICH9" },
+     { ATA_I82801JIB_S1, 0, INTEL_AHCI, 0, ATA_SA300, "ICH10" },
+     { ATA_I82801JIB_AH, 0, INTEL_AHCI, 0, ATA_SA300, "ICH10" },
+     { ATA_I82801JIB_R1, 0, INTEL_AHCI, 0, ATA_SA300, "ICH10" },
+     { ATA_I82801JIB_S2, 0, INTEL_AHCI, 0, ATA_SA300, "ICH10" },
+     { ATA_I82801JD_S1,  0, INTEL_AHCI, 0, ATA_SA300, "ICH10" },
+     { ATA_I82801JD_AH,  0, INTEL_AHCI, 0, ATA_SA300, "ICH10" },
+     { ATA_I82801JD_R1,  0, INTEL_AHCI, 0, ATA_SA300, "ICH10" },
+     { ATA_I82801JD_S2,  0, INTEL_AHCI, 0, ATA_SA300, "ICH10" },
+     { ATA_I82801JI_S1,  0, INTEL_AHCI, 0, ATA_SA300, "ICH10" },
+     { ATA_I82801JI_AH,  0, INTEL_AHCI, 0, ATA_SA300, "ICH10" },
+     { ATA_I82801JI_R1,  0, INTEL_AHCI, 0, ATA_SA300, "ICH10" },
+     { ATA_I82801JI_S2,  0, INTEL_AHCI, 0, ATA_SA300, "ICH10" },
+     { ATA_I31244,       0,          0, 2, ATA_SA150, "31244" },
      { 0, 0, 0, 0, 0, 0}};
 
     if (pci_get_vendor(dev) != ATA_INTEL_ID)
@@ -143,6 +157,7 @@ ata_intel_chipinit(device_t dev)
 
     /* non SATA intel chips goes here */
     else if (ctlr->chip->max_dma < ATA_SA150) {
+	ctlr->channels = ctlr->chip->cfg2;
 	ctlr->allocate = ata_intel_allocate;
 	ctlr->setmode = ata_intel_new_setmode;
     }
@@ -261,10 +276,12 @@ ata_intel_new_setmode(device_t dev, int mode)
     u_int8_t mask44 = 0, new44 = 0;
     int error;
 	static const uint8_t timings[] =
-			 { 0x00, 0x00, 0x10, 0x21, 0x23, 0x10, 0x21, 0x23,
+			 { 0x00, 0x00, 0x10, 0x21, 0x23, 0x00, 0x21, 0x23,
 			   0x23, 0x23, 0x23, 0x23, 0x23, 0x23, 0x23 };
 			/* PIO0  PIO1  PIO2  PIO3  PIO4  WDMA0 WDMA1 WDMA2 */
 			/* UDMA0 UDMA1 UDMA2 UDMA3 UDMA4 UDMA5 UDMA6 */
+	static const uint8_t utimings[] =
+			 { 0x00, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02 };
 
     mode = ata_limit_mode(dev, mode, ctlr->chip->max_dma);
 
@@ -280,25 +297,30 @@ ata_intel_new_setmode(device_t dev, int mode)
 		      (error) ? "FAILURE " : "",
 		      ata_mode2str(mode), ctlr->chip->text);
     if (!error) {
-	reg48 &= ~(0x0001 << devno);
-	reg4a &= ~(0x3 << (devno << 2));
 	if (mode >= ATA_UDMA0) {
-	    reg48 |= 0x0001 << devno;
-	    if (mode > ATA_UDMA0)
-		reg4a |= (1 + !(mode & 0x01)) << (devno << 2);
+	    pci_write_config(gparent, 0x48, reg48 | (0x0001 << devno), 2);
+	    pci_write_config(gparent, 0x4a,
+			     (reg4a & ~(0x3 << (devno << 2))) |
+			     (utimings[mode & ATA_MODE_MASK] << (devno<<2)), 2);
 	}
-	pci_write_config(gparent, 0x48, reg48, 2);
-	pci_write_config(gparent, 0x4a, reg4a, 2);
-
+	else {
+	    pci_write_config(gparent, 0x48, reg48 & ~(0x0001 << devno), 2);
+	    pci_write_config(gparent, 0x4a, (reg4a & ~(0x3 << (devno << 2))),2);
+	}
 	reg54 |= 0x0400;	/* set vendor specific bit */
-	reg54 &= ~((0x1 << devno) | (0x1000 << devno));
-
+	if (mode >= ATA_UDMA3)
+	    reg54 |= (0x1 << devno);
+	else
+	    reg54 &= ~(0x1 << devno);
 	if (mode >= ATA_UDMA5)
 	    reg54 |= (0x1000 << devno);
-	else if (mode >= ATA_UDMA3)	/* XXX should this be ATA_UDMA3 or 4? */
-	    reg54 |= (0x1 << devno);
+	else
+	    reg54 &= ~(0x1000 << devno);
 
 	pci_write_config(gparent, 0x54, reg54, 2);
+
+	reg40 &= ~0x00ff00ff;
+	reg40 |= 0x40774077;
 
 	/* Modify reg40 according to the table */
 	if (atadev->unit == ATA_MASTER) {
@@ -310,27 +332,6 @@ ata_intel_new_setmode(device_t dev, int mode)
 	    new44 = ((timings[ata_mode2idx(mode)] & 0x30) >> 2) |
 		    (timings[ata_mode2idx(mode)] & 0x03);
 	}
-
-	/* Slave ATA timing register enable */
-	mask40 |= 0x4000;
-	new40  |= 0x4000;
-
-	if (atadev->unit == ATA_MASTER) {
-	    mask40 |= 0x0F;
-	    new40 |= 0x03;
-	    if (!ata_atapi(dev))
-		new40 |= 0x04;
-	} else {
-	    mask40 |= 0xF0;
-	    new40 |= 0x30;
-	    if (!ata_atapi(dev))
-	        new40 |= 0x40;
-	}
-
-	/*
-	reg40 &= ~0x00ff00ff;
-	reg40 |= 0x40774077;
-	 */
 
 	/* Primary or Secondary controller */
 	if (ch->unit) {
