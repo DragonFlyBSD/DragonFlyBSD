@@ -221,10 +221,8 @@ _pci_get_rle(struct pci_dev *pdev, int bar)
 
 	/* Some child devices don't have registered resources, they
 	 * are only present in the parent */
-	if (dinfo == NULL) {
-		kprintf("_pci_get_rle: dinfo was NULL, trying again with parent\n");
+	if (dinfo == NULL)
 		dev = device_get_parent(dev);
-	}
 	dinfo = device_get_ivars(dev);
 	if (dinfo == NULL)
 		return NULL;
@@ -268,9 +266,6 @@ pci_resource_len(struct pci_dev *pdev, int bar)
 	rle = _pci_get_rle(pdev, bar);
 	if (rle == NULL)
 		return -1;
-
-	kprintf("pci_resource_len(0x%x, 0x%x) = 0x%lx\n",
-		pdev->device, PCIR_BAR(bar), rman_get_size(rle->res));
 
 	return  rman_get_size(rle->res);
 }
