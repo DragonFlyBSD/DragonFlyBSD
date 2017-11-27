@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 François Tigeot
+ * Copyright (c) 2015-2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -75,7 +75,13 @@ io_mapping_map_wc(struct io_mapping *mapping, unsigned long offset)
 	return io_mapping_map_atomic_wc(mapping, offset);
 }
 
-static inline void io_mapping_unmap_atomic(void *vaddr)
+static inline void
+io_mapping_unmap(void *vaddr)
+{
+}
+
+static inline void
+io_mapping_unmap_atomic(void *vaddr)
 {
 }
 

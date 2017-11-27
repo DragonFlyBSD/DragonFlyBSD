@@ -1,4 +1,4 @@
-/*-
+/*
  * Copyright (c) 2015-2017 François Tigeot
  * All rights reserved.
  *
@@ -87,6 +87,14 @@ local_clock(void)
 
 	getnanouptime(&ts);
 	return (ts.tv_sec * NSEC_PER_SEC) + ts.tv_nsec;
+}
+
+#define MAX_SCHEDULE_TIMEOUT    LONG_MAX
+
+static inline void
+yield(void)
+{
+	lwkt_yield();
 }
 
 #endif	/* _LINUX_SCHED_H_ */

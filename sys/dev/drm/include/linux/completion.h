@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 François Tigeot
+ * Copyright (c) 2014-2017 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,7 @@
 #define	_LINUX_COMPLETION_H_
 
 #include <linux/wait.h>
+#include <linux/errno.h>
 
 struct completion {
 	unsigned int done;
@@ -72,8 +73,8 @@ complete_all(struct completion *c)
 }
 
 static inline long
-wait_for_completion_interruptible_timeout(struct completion *c,
-		unsigned long timeout)
+__wait_for_completion_generic(struct completion *c,
+			      unsigned long timeout, int flags)
 {
 	int start_jiffies, elapsed_jiffies, remaining_jiffies;
 	bool timeout_expired = false, awakened = false;
@@ -83,7 +84,7 @@ wait_for_completion_interruptible_timeout(struct completion *c,
 
 	lockmgr(&c->wait.lock, LK_EXCLUSIVE);
 	while (c->done == 0 && !timeout_expired) {
-		ret = lksleep(&c->wait, &c->wait.lock, PCATCH, "wfcit", timeout);
+		ret = lksleep(&c->wait, &c->wait.lock, flags, "lwfcg", timeout);
 		switch(ret) {
 		case EWOULDBLOCK:
 			timeout_expired = true;
@@ -105,6 +106,44 @@ wait_for_completion_interruptible_timeout(struct completion *c,
 		if (remaining_jiffies > 0)
 			ret = remaining_jiffies;
 	}
+
+	return ret;
+}
+
+static inline long
+wait_for_completion_interruptible_timeout(struct completion *c,
+		unsigned long timeout)
+{
+	return __wait_for_completion_generic(c, timeout, PCATCH);
+}
+
+static inline unsigned long
+wait_for_completion_timeout(struct completion *c, unsigned long timeout)
+{
+	return __wait_for_completion_generic(c, timeout, 0);
+}
+
+/*
+ * try_wait_for_completion: try to decrement a completion without blocking
+ * 			    its thread
+ * return: false if the completion thread would need to be blocked/queued
+ * 	   true if a non-blocking decrement was successful
+ */
+static inline bool
+try_wait_for_completion(struct completion *c)
+{
+	bool ret = false;
+
+	/* we can't decrement c->done below 0 */
+	if (READ_ONCE(c->done) == 0)
+		return false;
+
+	lockmgr(&c->wait.lock, LK_EXCLUSIVE);
+	if (c->done > 0) {
+		c->done--;
+		ret = true;
+	}
+	lockmgr(&c->wait.lock, LK_RELEASE);
 
 	return ret;
 }

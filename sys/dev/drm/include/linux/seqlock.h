@@ -1,9 +1,5 @@
 /*
- * Copyright (c) 2010 Isilon Systems, Inc.
- * Copyright (c) 2010 iX Systems, Inc.
- * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
- * Copyright (c) 2016-2017 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2017 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,29 +23,64 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef	_LINUX_MODULE_H_
-#define	_LINUX_MODULE_H_
 
-#include <linux/list.h>
+#ifndef _LINUX_SEQLOCK_H_
+#define _LINUX_SEQLOCK_H_
+
+#include <linux/spinlock.h>
+#include <linux/lockdep.h>
 #include <linux/compiler.h>
-#include <linux/cache.h>
-#include <linux/kobject.h>
-#include <linux/moduleparam.h>
-#include <linux/jump_label.h>
-#include <linux/export.h>
 
-#define MODULE_AUTHOR(name)
-#define MODULE_DESCRIPTION(name)
+typedef struct {
+	unsigned sequence;
+	struct spinlock lock;
+} seqlock_t;
 
-#ifndef MODULE_VERSION
-#define MODULE_VERSION(name)
-#endif
 
-#define	THIS_MODULE	((struct module *)0)
+static inline void
+seqlock_init(seqlock_t *sl)
+{
+	sl->sequence = 0;
+	spin_init(&sl->lock, "lsql");
+}
 
-#define MODULE_FIRMWARE(name)
+/*
+ * Writers always use a spinlock. We still use store barriers
+ * in order to quickly update the state of the sequence variable
+ * for readers.
+ */
+static inline void
+write_seqlock(seqlock_t *sl)
+{
+	spin_lock(&sl->lock);
+	sl->sequence++;
+	cpu_sfence();
+}
 
-#define module_init(fname)	\
-	SYSINIT(fname, SI_SUB_DRIVERS, SI_ORDER_FIRST, fname, NULL);
+static inline void
+write_sequnlock(seqlock_t *sl)
+{
+	sl->sequence--;
+	spin_unlock(&sl->lock);
+	cpu_sfence();
+}
 
-#endif	/* _LINUX_MODULE_H_ */
+/*
+ * Read functions are fully unlocked.
+ * We use load barriers to obtain a reasonably up-to-date state
+ * for the sequence number.
+ */
+static inline unsigned
+read_seqbegin(const seqlock_t *sl)
+{
+	return READ_ONCE(sl->sequence);
+}
+
+static inline unsigned
+read_seqretry(const seqlock_t *sl, unsigned start)
+{
+	cpu_lfence();
+	return (sl->sequence != start);
+}
+
+#endif	/* _LINUX_SEQLOCK_H_ */

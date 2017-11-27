@@ -3,6 +3,7 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
+ * Copyright (c) 2017 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,6 +31,9 @@
 #ifndef	_LINUX_NOTIFIER_H_
 #define	_LINUX_NOTIFIER_H_
 
+#include <linux/errno.h>
+#include <linux/mutex.h>
+
 #include <sys/eventhandler.h>
 
 /*
@@ -53,5 +57,19 @@ struct notifier_block {
 #define	NETDEV_CHANGEADDR       0x0005
 #define	NETDEV_CHANGEIFADDR     0x0006
 
+struct atomic_notifier_head {
+};
+
+static inline void
+ATOMIC_INIT_NOTIFIER_HEAD(struct atomic_notifier_head *anh)
+{
+}
+
+static inline int
+atomic_notifier_call_chain(struct atomic_notifier_head *anh,
+					unsigned long val, void *v)
+{
+	return 0;
+}
 
 #endif	/* _LINUX_NOTIFIER_H_ */

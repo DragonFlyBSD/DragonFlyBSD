@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2017 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,5 +40,11 @@ MALLOC_DECLARE(M_DRM);
 } while (0)
 
 #define kcalloc(n, size, flags)	kzalloc((n) * (size), flags)
+
+static inline void *
+kmalloc_array(size_t n, size_t size, gfp_t flags)
+{
+	return kmalloc(n * size, M_DRM, flags);
+}
 
 #endif	/* _LINUX_SLAB_H_ */

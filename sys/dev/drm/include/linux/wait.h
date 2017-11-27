@@ -28,8 +28,8 @@
 #ifndef _LINUX_WAIT_H_
 #define _LINUX_WAIT_H_
 
+#include <linux/list.h>
 #include <linux/spinlock.h>
-#include <sys/param.h>
 
 typedef struct {
 } wait_queue_t;

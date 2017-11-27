@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2017 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,6 +40,16 @@ static inline void async_synchronize_full(void) {
 	 * XXX: This function is supposed to wait until all asynchronous
 	 * function calls have been done
 	 */
+}
+
+/*
+ * This function is supposed to wait until all asynchronous function calls
+ * prior to cookie have finished
+ *
+ */
+static inline void
+async_synchronize_cookie(async_cookie_t cookie)
+{
 }
 
 #endif	/* _LINUX_ASYNC_H_ */

@@ -1,10 +1,11 @@
-/*-
+/*
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
  * Copyright (c) 2015 Matthew Dillon <dillon@backplane.com>
  * Copyright (c) 2016 Matt Macy <mmacy@nextbsd.org>
+ * Copyright (c) 2017 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -103,15 +104,6 @@ sg_set_page(struct scatterlist *sg, struct vm_page *page, unsigned int len,
 	if (offset > PAGE_SIZE)
 		panic("sg_set_page: Invalid offset %d\n", offset);
 }
-
-#if 0
-static inline void
-sg_set_buf(struct scatterlist *sg, const void *buf, unsigned int buflen)
-{
-	sg_set_page(sg, virt_to_page(buf), buflen,
-	    ((uintptr_t)buf) & ~PAGE_MASK);
-}
-#endif
 
 static inline void
 sg_init_table(struct scatterlist *sg, unsigned int nents)
@@ -551,6 +543,24 @@ sg_copy_to_buffer(struct scatterlist *sgl, unsigned int nents,
 {
 
 	return (sg_pcopy_to_buffer(sgl, nents, buf, buflen, 0));
+}
+
+static inline bool
+sg_is_last(struct scatterlist *sg)
+{
+	return (sg->flags & SG_END);
+}
+
+static inline bool
+sg_is_chain(struct scatterlist *sg)
+{
+	return (sg->flags & SG_CHAIN);
+}
+
+static inline struct scatterlist *
+sg_chain_ptr(struct scatterlist *sg)
+{
+	return sg->sl_un.sg;
 }
 
 #endif	/* _LINUX_SCATTERLIST_H_ */

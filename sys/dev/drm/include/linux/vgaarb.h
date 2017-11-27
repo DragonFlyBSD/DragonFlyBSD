@@ -1,9 +1,5 @@
 /*
- * Copyright (c) 2010 Isilon Systems, Inc.
- * Copyright (c) 2010 iX Systems, Inc.
- * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
- * Copyright (c) 2016-2017 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2017 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,29 +23,25 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef	_LINUX_MODULE_H_
-#define	_LINUX_MODULE_H_
 
-#include <linux/list.h>
-#include <linux/compiler.h>
-#include <linux/cache.h>
-#include <linux/kobject.h>
-#include <linux/moduleparam.h>
-#include <linux/jump_label.h>
-#include <linux/export.h>
+#ifndef _LINUX_VGAARB_H_
+#define _LINUX_VGAARB_H_
 
-#define MODULE_AUTHOR(name)
-#define MODULE_DESCRIPTION(name)
+#define VGA_RSRC_LEGACY_IO     0x01
 
-#ifndef MODULE_VERSION
-#define MODULE_VERSION(name)
-#endif
+struct pci_dev;
 
-#define	THIS_MODULE	((struct module *)0)
+static inline int
+vga_get_uninterruptible(struct pci_dev *pdev, unsigned int rsrc)
+{
+	/* XXX: not implemented */
+	return 0;
+}
 
-#define MODULE_FIRMWARE(name)
+static inline void
+vga_put(struct pci_dev *pdev, unsigned int rsrc)
+{
+	/* XXX: not implemented */
+}
 
-#define module_init(fname)	\
-	SYSINIT(fname, SI_SUB_DRIVERS, SI_ORDER_FIRST, fname, NULL);
-
-#endif	/* _LINUX_MODULE_H_ */
+#endif	/* _LINUX_VGAARB_H_ */

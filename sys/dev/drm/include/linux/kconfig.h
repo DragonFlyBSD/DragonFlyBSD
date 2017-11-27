@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2017 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,15 @@
 #ifndef LINUX_KCONFIG_H
 #define LINUX_KCONFIG_H
 
-#define IS_ENABLED(x)	x
+#define __kconfig_value1	1,
+
+/*
+ * Clever code to always return either 0 or 1 even if x is not defined
+ */
+
+#define IS_ENABLED(x)			IS_ENABLED2(x)
+#define IS_ENABLED2(x)			IS_ENABLED3(__kconfig_value##x)
+#define IS_ENABLED3(x)			IS_ENABLED4(x 1, 0)
+#define IS_ENABLED4(one, two, ...)	two
 
 #endif /* LINUX_KCONFIG_H */

@@ -3,6 +3,7 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
+ * Copyright (c) 2017 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,7 +31,9 @@
 #ifndef	_LINUX_MODULEPARAM_H_
 #define	_LINUX_MODULEPARAM_H_
 
-#include <linux/types.h>
+#include <linux/init.h>
+#include <linux/stringify.h>
+#include <linux/kernel.h>
 
 /*
  * These are presently not hooked up to anything.  In linux the parameters
@@ -96,6 +99,8 @@ param_sysinit(struct kernel_param *param)
 
 #define module_param_array(var, type, addr_argc, mode)                  \
         module_param_named(var, var, type, mode)
+
+#define module_param_unsafe(name, type, perm)
 
 #define	MODULE_PARM_DESC(name, desc)
 

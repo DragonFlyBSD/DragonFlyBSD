@@ -51,4 +51,10 @@ mutex_lock_interruptible(struct lock *lock)
 	struct lock mutex;	\
 	LOCK_SYSINIT(mutex, &mutex, "lmutex", LK_CANRECURSE)
 
+static inline void
+mutex_destroy(struct lock *mutex)
+{
+	lockuninit(mutex);
+}
+
 #endif	/* _LINUX_MUTEX_H_ */

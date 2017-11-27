@@ -2,7 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2015-2016 François Tigeot
+ * Copyright (c) 2015-2017 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,15 +32,14 @@
 #include <sys/types.h>
 #include <sys/systm.h>
 
+#include <asm/types.h>
+
 #define BIT(nr)			(1UL << (nr))
-#ifdef __LP64__
 #define	BITS_PER_LONG		64
-#else
-#define	BITS_PER_LONG		32
-#endif
 #define	BIT_MASK(n)		(~0UL >> (BITS_PER_LONG - (n)))
 #define	BITS_TO_LONGS(n)	howmany((n), BITS_PER_LONG)
 #define BIT_WORD(nr)		((nr) / BITS_PER_LONG)
+#define BITS_PER_BYTE		8
 
 static inline int
 __ffs(int mask)
@@ -500,7 +499,7 @@ bitmap_release_region(unsigned long *bitmap, int pos, int order)
 
 /* Returns a contiguous bitmask from bits h to l */
 #define GENMASK(h, l)	\
-	((~0UL) >> (BITS_PER_LONG - h - 1)) & ((~0UL) << l)
+	(((~0UL) >> (BITS_PER_LONG - (h) - 1)) & ((~0UL) << (l)))
 
 #include <asm/bitops/non-atomic.h>
 #include <asm/bitops/const_hweight.h>
