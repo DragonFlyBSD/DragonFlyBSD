@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 François Tigeot
+ * Copyright (c) 2017 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,6 +26,7 @@
 
 #include <sys/_null.h>
 #include <sys/queue.h>
+#include <vm/vm_extern.h>
 
 #include <linux/vmalloc.h>
 #include <linux/slab.h>
@@ -96,4 +97,20 @@ is_vmalloc_addr(const void *x)
 	}
 
 	return false;
+}
+
+/* allocate zeroed virtually contiguous memory for userspace */
+void *
+vmalloc_user(unsigned long size)
+{
+	return kmalloc(size, M_DRM, M_WAITOK | M_ZERO);
+}
+
+void
+vfree(const void *addr)
+{
+	void *nc_addr;
+
+	memcpy(&nc_addr, &addr, sizeof(void *));
+	kfree(nc_addr);
 }

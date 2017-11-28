@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 François Tigeot
+ * Copyright (c) 2015-2017 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,11 +27,19 @@
 #ifndef _LINUX_VMALLOC_H_
 #define _LINUX_VMALLOC_H_
 
-#include <vm/vm_extern.h>
+#include <linux/spinlock.h>
+#include <linux/init.h>
+#include <linux/list.h>
+#include <asm/page.h>		/* pgprot_t */
+#include <linux/rbtree.h>
 
 void *vmap(struct vm_page **pages, unsigned int count,
 	   unsigned long flags, unsigned long prot);
 
 void vunmap(const void *addr);
+
+void *vmalloc_user(unsigned long size);
+
+void vfree(const void *addr);
 
 #endif	/* _LINUX_VMALLOC_H_ */
