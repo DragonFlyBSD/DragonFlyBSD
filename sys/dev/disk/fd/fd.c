@@ -795,8 +795,16 @@ fdc_attach(device_t dev)
 	if ((fdc->flags & FDC_NODMA) == 0) {
 		/* Acquire the DMA channel forever, The driver will do the rest */
 				/* XXX should integrate with rman */
-		isa_dma_acquire(fdc->dmachan);
-		isa_dmainit(fdc->dmachan, 128 << 3 /* XXX max secsize */);
+		error = isa_dma_acquire(fdc->dmachan);
+		if (!error) {
+			isa_dma_init(fdc->dmachan, 128 << 3 /* XXX max secsize */,
+				     M_WAITOK);
+			if (error) {
+				isa_dma_release(fdc->dmachan);
+				device_printf(dev, "disabling dma\n");
+				fdc->flags |= FDC_NODMA;
+			}
+		}
 	}
 	fdc->state = DEVIDLE;
 
@@ -853,7 +861,9 @@ static driver_t fdc_driver = {
 };
 
 DRIVER_MODULE(fdc, isa, fdc_driver, fdc_devclass, NULL, NULL);
+#if 0
 DRIVER_MODULE(fdc, acpi, fdc_driver, fdc_devclass, NULL, NULL);
+#endif
 
 /******************************************************************/
 /*
@@ -879,7 +889,7 @@ fd_probe(device_t dev)
 	fd->fdsu = fdsu;
 	fd->fdu = device_get_unit(dev);
 
-#ifdef __i386__
+#ifdef __x86_64__
 	/* look up what bios thinks we have */
 	switch (fd->fdu) {
 	case 0:

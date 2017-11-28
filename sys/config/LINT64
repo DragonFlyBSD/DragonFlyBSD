@@ -998,17 +998,21 @@ options 	ATA_STATIC_ID
 #device		nata1	at isa? port IO_WD2 irq 15
 
 #
-# Standard floppy disk controllers: `fdc' and `fd'
+# Standard floppy disk controllers: `fdc' and `fd' (see fdc(4))
 #
-#device		fdc0	at isa? port IO_FD1 irq 6 drq 2
+device		fdc0	at isa? port IO_FD1 irq 6 drq 2
 #
 # FDC_DEBUG enables floppy debugging.  Since the debug output is huge, you
 # gotta turn it actually on by setting the variable fd_debug with DDB,
 # however.
-#options 	FDC_DEBUG
+options 	FDC_DEBUG
 
-#device		fd0	at fdc0 drive 0
-#device		fd1	at fdc0 drive 1
+device		fd0	at fdc0 drive 0
+device		fd1	at fdc0 drive 1
+
+# LMC/SBE LMC1504 quad T1/E1 driver
+#
+device		musycc
 
 #
 # sio: serial ports (see sio(4))

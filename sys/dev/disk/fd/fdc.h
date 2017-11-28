@@ -28,7 +28,6 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fdc.h,v 1.20.2.3 2002/02/03 14:08:46 nyan Exp $
- * $DragonFly: src/sys/dev/disk/fd/fdc.h,v 1.7 2007/05/21 04:22:23 dillon Exp $
  *
  */
 
@@ -72,7 +71,7 @@ struct fdc_data
 	bus_space_tag_t ctlt;
 	bus_space_handle_t ctlh;
 	void	*fdc_intr;
-	struct	device *fdc_dev;
+	device_t fdc_dev;
 	struct	callout pseudointr_ch;
 	void	(*fdctl_wr)(struct fdc_data *fdc, u_int8_t v);
 };

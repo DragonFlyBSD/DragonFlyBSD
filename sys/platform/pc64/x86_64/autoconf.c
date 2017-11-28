@@ -122,6 +122,19 @@ configure_first(void *dummy)
 static void
 configure(void *dummy)
 {
+#if NISA > 0
+	void *low_dma_reserve;
+
+	/*
+	 * Try to reserve 512k of low dma memory for later isa attach.
+	 * Document as a REALLY bad hack.
+	 */
+	low_dma_reserve = contigmalloc(0x80000, M_TEMP, M_NOWAIT, 0ul,
+				       0xfffffful, 1ul, 0x20000ul);
+	if (bootverbose)
+		kprintf("low dma reserve placed @ %p\n", low_dma_reserve);
+#endif
+
 	/*
 	 * This will configure all devices, generally starting with the
 	 * nexus (i386/i386/nexus.c).  The nexus ISA code explicitly
@@ -132,6 +145,16 @@ configure(void *dummy)
 	root_bus_configure();
 
 #if NISA > 0
+	/*
+	 * Free up reserve if we got it.
+	 */
+	if (low_dma_reserve != NULL) {
+		kprintf("Freeing low dma reserve @ %p\n", low_dma_reserve);
+		contigfree(low_dma_reserve, 0x80000, M_TEMP);
+	} else if (bootverbose) {
+		kprintf("low dma reserve was not allocated\n");
+	}
+
 	/*
 	 * Explicitly probe and attach ISA last.  The isa bus saves
 	 * it's device node at attach time for us here.

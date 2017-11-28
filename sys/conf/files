@@ -101,6 +101,8 @@ dev/raid/aac/aac_disk.c			optional aac
 dev/raid/aac/aac_pci.c			optional aac pci
 dev/raid/arcmsr/arcmsr.c		optional arcmsr pci
 
+dev/disk/fd/fd.c			optional fd
+dev/disk/fd/fd_pccard.c			optional fd pccard
 
 dev/pccard/pccbb/pccbb.c		optional cbb
 dev/pccard/pccbb/pccbb_isa.c		optional cbb isa
