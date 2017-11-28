@@ -5,7 +5,7 @@
 /* #undef ARCHIVE_CRYPTO_MD5_LIBC */
 
 /* MD5 via ARCHIVE_CRYPTO_MD5_LIBMD supported. */
-#define ARCHIVE_CRYPTO_MD5_LIBMD 1
+/* #undef ARCHIVE_CRYPTO_MD5_LIBMD */
 
 /* MD5 via ARCHIVE_CRYPTO_MD5_LIBSYSTEM supported. */
 /* #undef ARCHIVE_CRYPTO_MD5_LIBSYSTEM */
@@ -23,7 +23,7 @@
 /* #undef ARCHIVE_CRYPTO_RMD160_LIBC */
 
 /* RMD160 via ARCHIVE_CRYPTO_RMD160_LIBMD supported. */
-#define ARCHIVE_CRYPTO_RMD160_LIBMD 1
+/* #undef ARCHIVE_CRYPTO_RMD160_LIBMD */
 
 /* RMD160 via ARCHIVE_CRYPTO_RMD160_NETTLE supported. */
 /* #undef ARCHIVE_CRYPTO_RMD160_NETTLE */
@@ -35,7 +35,7 @@
 /* #undef ARCHIVE_CRYPTO_SHA1_LIBC */
 
 /* SHA1 via ARCHIVE_CRYPTO_SHA1_LIBMD supported. */
-#define ARCHIVE_CRYPTO_SHA1_LIBMD 1
+/* #undef ARCHIVE_CRYPTO_SHA1_LIBMD */
 
 /* SHA1 via ARCHIVE_CRYPTO_SHA1_LIBSYSTEM supported. */
 /* #undef ARCHIVE_CRYPTO_SHA1_LIBSYSTEM */
@@ -59,7 +59,7 @@
 /* #undef ARCHIVE_CRYPTO_SHA256_LIBC3 */
 
 /* SHA256 via ARCHIVE_CRYPTO_SHA256_LIBMD supported. */
-#define ARCHIVE_CRYPTO_SHA256_LIBMD 1
+/* #undef ARCHIVE_CRYPTO_SHA256_LIBMD */
 
 /* SHA256 via ARCHIVE_CRYPTO_SHA256_LIBSYSTEM supported. */
 /* #undef ARCHIVE_CRYPTO_SHA256_LIBSYSTEM */
@@ -104,7 +104,7 @@
 /* #undef ARCHIVE_CRYPTO_SHA512_LIBC3 */
 
 /* SHA512 via ARCHIVE_CRYPTO_SHA512_LIBMD supported. */
-#define ARCHIVE_CRYPTO_SHA512_LIBMD 1
+/* #undef ARCHIVE_CRYPTO_SHA512_LIBMD */
 
 /* SHA512 via ARCHIVE_CRYPTO_SHA512_LIBSYSTEM supported. */
 /* #undef ARCHIVE_CRYPTO_SHA512_LIBSYSTEM */
@@ -119,13 +119,13 @@
 /* #undef ARCHIVE_CRYPTO_SHA512_WIN */
 
 /* Version number of bsdcat */
-/* #undef BSDCAT_VERSION_STRING */
+#define BSDCAT_VERSION_STRING "3.2.0"
 
 /* Version number of bsdcpio */
-/* #undef BSDCPIO_VERSION_STRING */
+#define BSDCPIO_VERSION_STRING "3.2.0"
 
 /* Version number of bsdtar */
-/* #undef BSDTAR_VERSION_STRING */
+#define BSDTAR_VERSION_STRING "3.2.0"
 
 /* Define to 1 if you have the `acl_create_entry' function. */
 /* #undef HAVE_ACL_CREATE_ENTRY */
@@ -394,16 +394,10 @@
 #define HAVE_GRP_H 1
 
 /* Define if you have the iconv() function and it works. */
-/*
- * Shared libraries only
- * #define HAVE_ICONV 1
- */
+#define HAVE_ICONV 1
 
 /* Define to 1 if you have the <iconv.h> header file. */
-/*
- * Shared libraries only
- * #define HAVE_ICONV_H 1
- */
+#define HAVE_ICONV_H 1
 
 /* Define to 1 if the system has the type `intmax_t'. */
 #define HAVE_INTMAX_T 1
@@ -466,7 +460,7 @@
 /* #undef HAVE_LIBLZO2 */
 
 /* Define to 1 if you have the `md' library (-lmd). */
-#define HAVE_LIBMD 1
+/* #undef HAVE_LIBMD */
 
 /* Define to 1 if you have the `nettle' library (-lnettle). */
 /* #undef HAVE_LIBNETTLE */
@@ -626,7 +620,7 @@
 #define HAVE_OPENAT 1
 
 /* Define to 1 if you have the <openssl/evp.h> header file. */
-/* #undef HAVE_OPENSSL_EVP_H */
+#define HAVE_OPENSSL_EVP_H 1
 
 /* Define to 1 if you have the <paths.h> header file. */
 #define HAVE_PATHS_H 1
@@ -968,10 +962,10 @@
 #define ICONV_CONST 
 
 /* Version number of libarchive as a single integer */
-/* #undef LIBARCHIVE_VERSION_NUMBER */
+#define LIBARCHIVE_VERSION_NUMBER "3002000"
 
 /* Version number of libarchive */
-/* #undef LIBARCHIVE_VERSION_STRING */
+#define LIBARCHIVE_VERSION_STRING "3.2.0"
 
 /* Define to 1 if `lstat' dereferences a symlink specified with a trailing
    slash. */
@@ -1002,7 +996,7 @@
 #define PACKAGE_NAME "libarchive"
 
 /* Define to the full name and version of this package. */
-/* #undef PACKAGE_STRING */
+#define PACKAGE_STRING "libarchive 3.2.0"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "libarchive"
@@ -1011,7 +1005,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-/* #undef PACKAGE_VERSION */
+#define PACKAGE_VERSION "3.2.0"
 
 /* Define to 1 if PCRE_STATIC needs to be defined. */
 /* #undef PCRE_STATIC */
@@ -1051,7 +1045,7 @@
 
 
 /* Version number of package */
-/* #undef VERSION */
+#define VERSION "3.2.0"
 
 /* Define to '0x0502' for Windows Server 2003 APIs. */
 /* #undef WINVER */
