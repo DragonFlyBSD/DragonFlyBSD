@@ -347,6 +347,7 @@ dev/netif/ix/ixgbe_dcb.c	optional ix
 dev/netif/ix/ixgbe_dcb_82598.c	optional ix
 dev/netif/ix/ixgbe_dcb_82599.c	optional ix
 dev/netif/ix/ixgbe_mbx.c	optional ix
+dev/netif/ix/ixgbe_osdep_pf.c	optional ix
 dev/netif/ix/ixgbe_phy.c	optional ix
 dev/netif/ix/ixgbe_x540.c	optional ix
 dev/netif/ix/ixgbe_x550.c	optional ix
