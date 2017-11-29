@@ -3369,6 +3369,12 @@ TO_REMOVE+=/usr/share/installer/sources.conf
 TO_REMOVE+=/usr/share/man/man8/installer.8.gz
 .endif
 
+.if defined(INSTALL_OFFENSIVE_FORTUNES) && ${INSTALL_OFFENSIVE_FORTUNES:MNO*}
+TO_REMOVE+=/usr/share/games/fortune/fortunes-o
+TO_REMOVE+=/usr/share/games/fortune/limerick
+TO_REMOVE+=/usr/share/games/fortune/murphy-o
+.endif
+
 # Very special cases only.
 TO_REMOVE_LATE+=/lib/libcrypto.so.5
 TO_REMOVE_LATE+=/usr/lib/libssl.a
