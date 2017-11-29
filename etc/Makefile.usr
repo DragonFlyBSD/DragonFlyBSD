@@ -104,6 +104,10 @@ dports-check: git-check
 	@/bin/test ! -d ${.CURDIR}/dports/.git || \
 		   (echo "Error: ${.CURDIR}/dports already exists"; /usr/bin/false)
 
+dports-download-check:
+	@/bin/test ! -d ${.CURDIR}/dports || \
+		   (echo "Error: ${.CURDIR}/dports already exists"; /usr/bin/false)
+
 dports-check-hasdir: git-check
 	@/bin/test -d ${.CURDIR}/dports || \
 		   (echo "Error: ${.CURDIR}/dports does not exist"; /usr/bin/false)
@@ -132,7 +136,7 @@ dports-create-shallow: dports-check
 	@echo ${WSTARS}
 .endif
 
-dports-download: dports-check
+dports-download: dports-download-check
 	rm -f ${DPTBALL}
 	fetch -o ${DPTBALL} ${DPDLURL}
 	tar -xf ${DPTBALL} -C ${.CURDIR}
