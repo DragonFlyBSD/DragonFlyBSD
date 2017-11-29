@@ -107,6 +107,8 @@ dports-check: git-check
 dports-download-check:
 	@/bin/test ! -d ${.CURDIR}/dports || \
 		   (echo "Error: ${.CURDIR}/dports already exists"; /usr/bin/false)
+	@/bin/test ! -d ${.CURDIR}/DragonFlyBSD-DPorts-* || \
+		   (echo "Error: ${.CURDIR}/DragonFlyBSD-DPorts-* already exists"; /usr/bin/false)
 
 dports-check-hasdir: git-check
 	@/bin/test -d ${.CURDIR}/dports || \
