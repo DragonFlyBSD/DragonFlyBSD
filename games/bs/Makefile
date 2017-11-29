@@ -2,10 +2,6 @@
 
 PROG=	bs
 MAN=	bs.6
-DPADD=	${LIBNCURSES}
-LDADD=	-lprivate_ncurses
-
-LDFLAGS+=	${PRIVATELIB_LDFLAGS}
-CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
+GAMESCURSES=
 
 .include <bsd.prog.mk>

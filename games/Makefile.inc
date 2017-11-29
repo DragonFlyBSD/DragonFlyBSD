@@ -10,3 +10,19 @@ WARNS?=		6
 BINGRP=		games
 BINMODE=	550
 .endif
+
+# Handle libcrypto dependency
+.if defined(GAMESCRYPTO)
+LDADD+=		-lprivate_crypto
+DPADD+=		${LIBRECRYPTO}
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv
+LDFLAGS+=       ${PRIVATELIB_LDFLAGS}
+.endif
+
+# Handle libncurses dependency
+.if defined(GAMESCURSES)
+DPADD+=		${LIBNCURSES}
+LDADD+=		-lprivate_ncurses
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+.endif

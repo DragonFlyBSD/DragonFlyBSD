@@ -4,15 +4,13 @@
 PROG=	phantasia
 MAN=	phantasia.6
 SRCS=	main.c fight.c io.c interplayer.c gamesupport.c misc.c phantglobs.c
-DPADD=	${LIBM} ${LIBNCURSES}
-LDADD=	-lm -lprivate_ncurses
-
-CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
-LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+DPADD=	${LIBM}
+LDADD=	-lm
+VARGAMES=
+GAMESCURSES=
 
 NXLDLIBS=	-lm
 
-VARGAMES=	yes
 DATAFILES=	characs gold lastdead mess monsters motd scoreboard void
 CLEANFILES=	${DATAFILES} cross-phantglobs.no map setup.nx setup.no \
 		stamp.setuprun

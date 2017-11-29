@@ -15,21 +15,17 @@ SRCS=	alloc.c hack.Decl.c hack.apply.c hack.bones.c hack.c hack.cmd.c \
 	hack.wizard.c hack.worm.c hack.worn.c hack.zap.c rnd.c \
 	hack.onames.h
 MAN=	hack.6
-DPADD=	${LIBNCURSES}
-LDADD=	-lprivate_ncurses
+VARGAMES=
+GAMESCURSES=
 
-CFLAGS+= 	-I${.CURDIR} -I.
-CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
-LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+NO_STRICT_ALIASING=
+CFLAGS= 	-I${.CURDIR} -I.
 
 FILES=		rumors help hh data
 FILESMODE_rumors=	440
 FILESGRP=	${BINGRP}
 FILESDIR=	/var/games/hackdir
 CLEANFILES=	hack.onames.h makedefs.nx makedefs.no
-NO_STRICT_ALIASING=
-
-VARGAMES=	yes
 
 build-tools: makedefs.nx
 

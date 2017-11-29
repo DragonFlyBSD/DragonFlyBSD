@@ -4,13 +4,8 @@
 PROG=	canfield
 MAN=	canfield.6
 MLINKS=	canfield.6 cfscores.6
-DPADD=	${LIBNCURSES}
-LDADD=	-lprivate_ncurses
-
-CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
-LDFLAGS+=	${PRIVATELIB_LDFLAGS}
-
-VARGAMES=	yes
+VARGAMES=
+GAMESCURSES=
 
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/cfscores)

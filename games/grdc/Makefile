@@ -2,10 +2,6 @@
 
 PROG=	grdc
 MAN=	grdc.6
-DPADD=	${LIBNCURSES}
-LDADD=	-lprivate_ncurses
-
-CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
-LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+GAMESCURSES=
 
 .include <bsd.prog.mk>

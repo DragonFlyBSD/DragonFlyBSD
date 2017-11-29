@@ -2,20 +2,15 @@
 # $FreeBSD: src/games/cribbage/Makefile,v 1.7.2.5 2002/08/07 16:31:41 ru Exp $
 
 PROG=	cribbage
-DPADD=	${LIBNCURSES}
-LDADD=	-lprivate_ncurses
-
-CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
-LDFLAGS+=	${PRIVATELIB_LDFLAGS}
-
 SRCS=	extern.c crib.c cards.c instr.c io.c score.c support.c
+MAN=	cribbage.6
+VARGAMES=
+GAMESCURSES=
+
 .if !defined(NO_SHARE)
 FILES=	cribbage.n
 FILESNAME_cribbage.n=	cribbage.instr
 .endif
-MAN=	cribbage.6
-
-VARGAMES=	yes
 
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/criblog)

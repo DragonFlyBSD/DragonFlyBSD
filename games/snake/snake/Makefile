@@ -5,13 +5,10 @@ PROG=	snake
 SRCS=	snake.c
 MAN=	snake.6
 MLINKS=	snake.6 snscore.6
-DPADD=	${LIBM} ${LIBNCURSES}
-LDADD=	-lm -lprivate_ncurses
-
-CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
-LDFLAGS+=	${PRIVATELIB_LDFLAGS}
-
-VARGAMES=	yes
+DPADD=	${LIBM}
+LDADD=	-lm
+VARGAMES=
+GAMESCURSES=
 
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/snakerawscores)

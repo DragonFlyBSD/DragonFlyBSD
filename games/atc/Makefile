@@ -6,17 +6,16 @@ CFLAGS+=-I${.CURDIR} -I.
 SRCS=	extern.c grammar.y graphics.c input.c lex.l list.c log.c \
 	main.c tunable.c update.c y.tab.h
 MAN=	atc.6
-DPADD=	${LIBL} ${LIBM} ${LIBNCURSES}
-LDADD=	-ll -lm -lprivate_ncurses
+VARGAMES=
+GAMESCURSES=
 
-CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
-LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+DPADD=	${LIBL} ${LIBM}
+LDADD=	-ll -lm
+
 .if !defined(NO_SHARE)
 FILES=		Game_List Killer crossover default easy game_2
 FILESDIR=	${SHAREDIR}/games/atc
 .endif
-
-VARGAMES=	yes
 
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/atc_score)

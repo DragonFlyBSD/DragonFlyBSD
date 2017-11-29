@@ -44,22 +44,18 @@
 
 PROG=	larn
 MAN=	larn.6
-CFLAGS+=-DVER=12 -DSUBVER=0 -DNONAP -DUIDSCORE
 SRCS=	main.c object.c create.c tok.c display.c global.c data.c io.c \
 	monster.c store.c diag.c help.c config.c nap.c bill.c scores.c \
 	signal.c moreobj.c movem.c regen.c fortune.c savelev.c
-DPADD=	${LIBNCURSES}
-LDADD=	-lprivate_ncurses
+VARGAMES=
+GAMESCURSES=
 
-CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
-LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+CFLAGS=	-DVER=12 -DSUBVER=0 -DNONAP -DUIDSCORE
 
 .if !defined(NO_SHARE)
 FILES=		larnmaze larnopts larn.help
 FILESDIR=	${SHAREDIR}/games/larn
 .endif
-
-VARGAMES=	yes
 
 .PATH: ${.CURDIR}/datfiles
 

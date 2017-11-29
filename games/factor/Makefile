@@ -3,15 +3,13 @@
 
 PROG=	factor
 SRCS=	factor.c pr_tbl.c
-CFLAGS+=-I${.CURDIR}/../primes
-
-CFLAGS+=	-DHAVE_OPENSSL -I${.CURDIR}/../../crypto/libressl/include
-LDADD=		-lprivate_crypto
-DPADD=		${LIBRECRYPTO}
-LDFLAGS+=	${PRIVATELIB_LDFLAGS}
-
 MAN=	factor.6
 MLINKS+=factor.6 primes.6
+GAMESCRYPTO=
+
+CFLAGS=	-I${.CURDIR}/../primes
+CFLAGS+=	-DHAVE_OPENSSL
+
 .PATH:	${.CURDIR}/../primes
 
 .include <bsd.prog.mk>
