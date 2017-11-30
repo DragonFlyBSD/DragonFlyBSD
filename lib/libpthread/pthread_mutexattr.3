@@ -26,7 +26,7 @@
 .\" EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man3/pthread_mutexattr.3,v 1.13 2007/10/22 10:08:00 ru Exp $
-.\" $DragonFly: src/lib/libc_r/man/pthread_mutexattr.3,v 1.2 2003/06/17 04:26:48 dillon Exp $
+.\"
 .Dd July 10, 2009
 .Dt PTHREAD_MUTEXATTR 3
 .Os
@@ -38,7 +38,9 @@
 .Nm pthread_mutexattr_setprotocol ,
 .Nm pthread_mutexattr_getprotocol ,
 .Nm pthread_mutexattr_settype ,
-.Nm pthread_mutexattr_gettype
+.Nm pthread_mutexattr_gettype ,
+.Nm pthread_mutexattr_getpshared ,
+.Nm pthread_mutexattr_setpshared
 .Nd mutex attribute operations
 .Sh LIBRARY
 .Lb libpthread
@@ -60,6 +62,10 @@
 .Fn pthread_mutexattr_settype "pthread_mutexattr_t *attr" "int type"
 .Ft int
 .Fn pthread_mutexattr_gettype "pthread_mutexattr_t *attr" "int *type"
+.Ft int
+.Fn pthread_mutexattr_setpshared "pthread_mutexattr_t *attr" "int pshared"
+.Ft int
+.Fn pthread_mutexattr_getpshared "const pthread_mutexattr_t * restrict attr" "int * restrict pshared"
 .Sh DESCRIPTION
 Mutex attributes are used to specify parameters to
 .Fn pthread_mutex_init .
@@ -81,6 +87,11 @@ function destroys
 The
 .Fn pthread_mutexattr_set*
 functions set the attribute that corresponds to each function name.
+Note that the
+.Fn pthread_mutexattr_setpshared
+function only supports
+.Dv PTHREAD_PROCESS_PRIVATE
+at the moment.
 .Pp
 The
 .Fn pthread_mutexattr_get*
@@ -145,6 +156,18 @@ function will fail if:
 .It Bq Er EINVAL
 Invalid value for
 .Fa attr .
+.El
+.Pp
+The
+.Fn pthread_mutexattr_getpshared
+and
+.Fn pthread_mutexattr_setpshared
+functions will fail if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+The value specified by
+.Fa attr
+is invalid.
 .El
 .Pp
 The

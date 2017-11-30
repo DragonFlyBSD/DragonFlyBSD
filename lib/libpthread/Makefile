@@ -39,6 +39,7 @@ MAN+=	\
 	pthread_main_np.3 \
 	pthread_multi_np.3 \
 	pthread_mutex_destroy.3 \
+	pthread_mutex_getprioceiling.3 \
 	pthread_mutex_init.3 \
 	pthread_mutex_lock.3 \
 	pthread_mutex_timedlock.3 \
@@ -112,15 +113,22 @@ MLINKS+= \
 	pthread_barrier_destroy.3 pthread_barrier_wait.3 \
 	pthread_condattr.3 pthread_condattr_destroy.3 \
 	pthread_condattr.3 pthread_condattr_init.3 \
+	pthread_condattr.3 pthread_condattr_getclock.3 \
+	pthread_condattr.3 pthread_condattr_getpshared.3 \
+	pthread_condattr.3 pthread_condattr_setclock.3 \
+	pthread_condattr.3 pthread_condattr_setpshared.3 \
 	pthread_getconcurrency.3 pthread_setconcurrency.3 \
 	pthread_multi_np.3 pthread_single_np.3 \
+	pthread_mutex_getprioceiling.3 pthread_mutex_setprioceiling.3 \
 	pthread_mutexattr.3 pthread_mutexattr_destroy.3 \
 	pthread_mutexattr.3 pthread_mutexattr_getprioceiling.3 \
 	pthread_mutexattr.3 pthread_mutexattr_getprotocol.3 \
+	pthread_mutexattr.3 pthread_mutexattr_getpshared.3 \
 	pthread_mutexattr.3 pthread_mutexattr_gettype.3 \
 	pthread_mutexattr.3 pthread_mutexattr_init.3 \
 	pthread_mutexattr.3 pthread_mutexattr_setprioceiling.3 \
 	pthread_mutexattr.3 pthread_mutexattr_setprotocol.3 \
+	pthread_mutexattr.3 pthread_mutexattr_setpshared.3 \
 	pthread_mutexattr.3 pthread_mutexattr_settype.3 \
 	pthread_mutexattr_getkind_np.3 pthread_mutexattr_setkind_np.3 \
 	pthread_rwlock_rdlock.3 pthread_rwlock_tryrdlock.3 \
