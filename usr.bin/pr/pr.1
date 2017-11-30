@@ -359,15 +359,15 @@ letter.
 .Sh EXIT STATUS
 .Ex -std
 .Sh DIAGNOSTICS
-Error messages are written to standard error during the printing
-process (if output is redirected) or after all successful
-file printing is complete (when printing to a terminal).
-.Pp
 If
 .Nm
 receives an interrupt while printing to a terminal, it
 flushes all accumulated error messages to the screen before
 terminating.
+.Pp
+Error messages are written to standard error during the printing
+process (if output is redirected) or after all successful
+file printing is complete (when printing to a terminal).
 .Sh SEE ALSO
 .Xr cat 1 ,
 .Xr more 1 ,
@@ -383,3 +383,7 @@ A
 .Nm
 command appeared in
 .At v1 .
+.Sh BUGS
+The
+.Nm
+utility does not recognize multibyte characters.

@@ -51,7 +51,7 @@ int	 otln(char *, int, int *, int *, int);
 void	 pfail(void);
 int	 prhead(char *, const char *, int);
 int	 prtail(int, int);
-int	 setup(int, char **);
+int	 setup(int, char *[]);
 void	 terminate(int);
 void	 usage(void);
 int	 vertcol(int, char **);

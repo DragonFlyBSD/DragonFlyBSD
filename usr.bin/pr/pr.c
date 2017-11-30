@@ -120,6 +120,7 @@ main(int argc, char **argv)
 			ret_val = horzcol(argc, argv);
 		else
 			ret_val = vertcol(argc, argv);
+		free(timefrmt);
 	} else
 		usage();
 	flsh_errs();
@@ -522,7 +523,7 @@ vertcol(int argc, char **argv)
 				for (i = 0; i < pln; ++i) {
 					ips = 0;
 					ops = 0;
-					if (offst&& otln(buf,offst,&ips,&ops,1))
+					if (offst && otln(buf,offst,&ips,&ops,1))
 						return(1);
 					tvc = i;
 
@@ -620,7 +621,7 @@ vertcol(int argc, char **argv)
  * horzcol:	print files with more than one column of output across a page
  */
 int
-horzcol(int argc, char **argv)
+horzcol(int argc, char *argv[])
 {
 	char *ptbf;
 	int pln;
@@ -763,7 +764,7 @@ horzcol(int argc, char **argv)
  *		more than one file concurrently
  */
 int
-mulfile(int argc, char **argv)
+mulfile(int argc, char *argv[])
 {
 	char *ptbf;
 	int j;
@@ -1422,8 +1423,8 @@ prhead(char *buf, const char *fname, int pagcnt)
 	 * restrictions. The specification for header line format
 	 * in the spec clearly does not limit length. No pr currently
 	 * restricts header length. However if we need to truncate in
-	 * an reasonable way, adjust the length of the printf by
-	 * changing HDFMT to allow a length max as an arguement printf.
+	 * a reasonable way, adjust the length of the printf by
+	 * changing HDFMT to allow a length max as an argument to printf.
 	 * buf (which contains the offset spaces and time field could
 	 * also be trimmed
 	 *
@@ -1503,7 +1504,7 @@ prtail(int cnt, int incomp)
  * terminate():	when a SIGINT is recvd
  */
 void
-terminate(int which_sig)
+terminate(int which_sig __unused)
 {
 	flsh_errs();
 	exit(1);
@@ -1557,7 +1558,7 @@ usage(void)
  *		checks on options
  */
 int
-setup(int argc, char **argv)
+setup(int argc, char *argv[])
 {
 	int c;
 	int d_first;
@@ -1589,7 +1590,7 @@ setup(int argc, char **argv)
 			break;
 		case '-':
 			if ((clcnt = atoi(eoptarg)) < 1) {
-			    (void)fputs("pr: -columns must be 1 or more\n",err);
+			    (void)fputs("pr: -columns must be 1 or more\n", err);
 			    return(1);
 			}
 			if (clcnt > 1)
@@ -1812,7 +1813,7 @@ setup(int argc, char **argv)
 	(void) setlocale(LC_TIME, (Lflag != NULL) ? Lflag : "");
 
 	d_first = (*nl_langinfo(D_MD_ORDER) == 'd');
-	timefrmt = d_first ? TIMEFMTD : TIMEFMTM;
+	timefrmt = strdup(d_first ? TIMEFMTD : TIMEFMTM);
 
 	return(0);
 }
