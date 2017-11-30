@@ -172,7 +172,7 @@ onecol(int argc, char **argv)
 	char *hbuf;
 	char *ohbuf;
 	FILE *inf;
-	char *fname;
+	const char *fname;
 	int mor;
 
 	if (nmwd)
@@ -324,7 +324,7 @@ vertcol(int argc, char **argv)
 	char *buf;
 	char *hbuf;
 	char *ohbuf;
-	char *fname;
+	const char *fname;
 	FILE *inf;
 	int ips = 0;
 	int cps = 0;
@@ -634,7 +634,7 @@ horzcol(int argc, char **argv)
 	char *buf;
 	char *hbuf;
 	char *ohbuf;
-	char *fname;
+	const char *fname;
 	FILE *inf;
 	int ips = 0;
 	int cps = 0;
@@ -780,7 +780,7 @@ mulfile(int argc, char **argv)
 	char *buf;
 	char *hbuf;
 	char *ohbuf;
-	char *fname;
+	const char *fname;
 	int ips = 0;
 	int cps = 0;
 	int ops = 0;
@@ -1247,7 +1247,7 @@ inskip(FILE *inf, int pgcnt, int lncnt)
  *	dt	if set skips the date processing (used with -m)
  */
 FILE *
-nxtfile(int argc, char **argv, char **fname, char *buf, int dt)
+nxtfile(int argc, char **argv, const char **fname, char *buf, int dt)
 {
 	FILE *inf = NULL;
 	struct timeval tv;
@@ -1408,7 +1408,7 @@ addnum(char *buf, int wdth, int line)
  *	pagcnt	page number
  */
 int
-prhead(char *buf, char *fname, int pagcnt)
+prhead(char *buf, const char *fname, int pagcnt)
 {
 	int ips = 0;
 	int ops = 0;
