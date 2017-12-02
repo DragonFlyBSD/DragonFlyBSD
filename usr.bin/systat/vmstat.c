@@ -324,7 +324,7 @@ labelkre(void)
 	mvprintw(MEMROW + 1, MEMCOLB, "VM-swp");
 	mvprintw(MEMROW + 1, MEMCOLB + 15, "/");
 
-	mvprintw(PAGEROW, PAGECOL,     "          VN PAGER    SWAP PAGER ");
+	mvprintw(PAGEROW, PAGECOL,     "       VNODE PAGER    SWAP PAGER ");
 	mvprintw(PAGEROW + 1, PAGECOL, "          in   out      in   out ");
 	mvprintw(PAGEROW + 2, PAGECOL, "bytes");
 	mvprintw(PAGEROW + 3, PAGECOL, "count");
