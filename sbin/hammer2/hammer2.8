@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd March 26, 2015
+.Dd December 2, 2017
 .Dt HAMMER2 8
 .Os
 .Sh NAME
@@ -83,6 +83,9 @@ locally on the host in order to be able to issue commands for other PFSs
 on the filesystem.
 The mount also enables PFS configuration scanning for that filesystem.
 .Bl -tag -width indent
+.\" ==== cleanup ====
+.It Cm cleanup Op path
+Perform manual cleanup passes on paths or all mounted partitions.
 .\" ==== connect ====
 .It Cm connect Ar target
 Add a cluster link entry to the volume header.
