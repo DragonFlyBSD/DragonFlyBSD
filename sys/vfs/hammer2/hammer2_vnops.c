@@ -2180,9 +2180,16 @@ done2:
 	/*
 	 * Issue the namecache update after unlocking all the internal
 	 * hammer2 structures, otherwise we might deadlock.
+	 *
+	 * The target namespace must be atomic, so we depend on
+	 * cache_rename() to atomically rename a_fnch to a_tnch
+	 * and then unlink the old a_tnch.  If we do it before-hand
+	 * we leave a small window of opportunity where the target
+	 * namespace does not exist that another thread can squeeze
+	 * in and set.
 	 */
 	if (error == 0 && tip) {
-		cache_unlink(ap->a_tnch);
+		/*cache_unlink(ap->a_tnch); see above */
 		cache_setunresolved(ap->a_tnch);
 	}
 	if (error == 0) {
