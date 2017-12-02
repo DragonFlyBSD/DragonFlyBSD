@@ -51,7 +51,7 @@
 #endif
 
 #if !defined(SC_HISTORY_SIZE)
-#define SC_HISTORY_SIZE		(ROW * 4)
+#define SC_HISTORY_SIZE		(ROW * 10)
 #endif
 
 #if (SC_HISTORY_SIZE * MAXCONS * NSC) > SC_MAX_HISTORY_SIZE
