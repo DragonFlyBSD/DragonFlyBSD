@@ -576,9 +576,9 @@ _cache_lock_shared(struct namecache *ncp)
 			if (didwarn == 0) {
 				didwarn = ticks - nclockwarn;
 				kprintf("[diagnostic] cache_lock_shared: "
-					"%s blocked on %p %08x",
-					curthread->td_comm, ncp, count);
-				kprintf(" \"%*.*s\"\n",
+					"%s blocked on %p %08x "
+					"\"%*.*s\"\n",
+					curthread->td_comm, ncp, count,
 					ncp->nc_nlen, ncp->nc_nlen,
 					ncp->nc_name);
 			}
