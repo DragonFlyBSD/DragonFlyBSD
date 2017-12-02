@@ -982,6 +982,9 @@ igb_init(void *xsc)
 
 	E1000_WRITE_REG(&sc->hw, E1000_VET, ETHERTYPE_VLAN);
 
+	/* Clear bad data from Rx FIFOs */
+	e1000_rx_fifo_flush_82575(&sc->hw);
+
 	/* Configure for OS presence */
 	igb_get_mgmt(sc);
 
@@ -2542,6 +2545,20 @@ igb_init_rx_unit(struct igb_softc *sc, boolean_t polling)
 		rctl |= E1000_RCTL_SZ_2048;
 	}
 
+	/*
+	 * If TX flow control is disabled and more the 1 RX rings
+	 * are enabled, enable DROP.
+	 *
+	 * This drops frames rather than hanging the RX MAC for all
+	 * RX rings.
+	 */
+	if (sc->rx_ring_inuse > 1 &&
+	    (sc->ifm_flowctrl & IFM_ETH_TXPAUSE) == 0) {
+		srrctl |= E1000_SRRCTL_DROP_EN;
+		if (bootverbose)
+			if_printf(ifp, "enable RX drop\n");
+	}
+
 	/* Setup the Base and Length of the Rx Descriptor Rings */
 	for (i = 0; i < sc->rx_ring_inuse; ++i) {
 		struct igb_rx_ring *rxr = &sc->rx_rings[i];
@@ -3104,8 +3121,14 @@ igb_update_stats_counters(struct igb_softc *sc)
 	stats->roc += E1000_READ_REG(hw, E1000_ROC);
 	stats->rjc += E1000_READ_REG(hw, E1000_RJC);
 
-	stats->tor += E1000_READ_REG(hw, E1000_TORH);
-	stats->tot += E1000_READ_REG(hw, E1000_TOTH);
+	stats->mgprc += E1000_READ_REG(hw, E1000_MGTPRC);
+	stats->mgpdc += E1000_READ_REG(hw, E1000_MGTPDC);
+	stats->mgptc += E1000_READ_REG(hw, E1000_MGTPTC);
+
+	stats->tor += E1000_READ_REG(hw, E1000_TORL) +
+	    ((uint64_t)E1000_READ_REG(hw, E1000_TORH) << 32);
+	stats->tot += E1000_READ_REG(hw, E1000_TOTL) +
+	    ((uint64_t)E1000_READ_REG(hw, E1000_TOTH) << 32);
 
 	stats->tpr += E1000_READ_REG(hw, E1000_TPR);
 	stats->tpt += E1000_READ_REG(hw, E1000_TPT);

@@ -112,6 +112,7 @@
 #define E1000_PBS	0x01008  /* Packet Buffer Size */
 #define E1000_PBECCSTS	0x0100C  /* Packet Buffer ECC Status - RW */
 #define E1000_EEMNGCTL	0x01010  /* MNG EEprom Control */
+#define E1000_EEMNGCTL_I210	0x01010  /* i210 MNG EEprom Mode Control */
 #define E1000_EEARBC	0x01024  /* EEPROM Auto Read Bus Control */
 #define E1000_FLASHT	0x01028  /* FLASH Timer Register */
 #define E1000_EEARBC_I210	0x12024 /* EEPROM Auto Read Bus Control */

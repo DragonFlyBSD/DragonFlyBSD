@@ -367,6 +367,7 @@
 #define E1000_RCTL_RDMTS_QUAT	0x00000100 /* Rx desc min thresh size */
 #define E1000_RCTL_RDMTS_EIGTH	0x00000200 /* Rx desc min thresh size */
 #define E1000_RCTL_RDMTS_HEX	0x00010000
+#define E1000_RCTL_RDMTS1_HEX	E1000_RCTL_RDMTS_HEX
 #define E1000_RCTL_MO_SHIFT	12 /* multicast offset shift */
 #define E1000_RCTL_MO_0		0x00000000 /* multicast offset 11:0 */
 #define E1000_RCTL_MO_1		0x00001000 /* multicast offset 12:1 */
@@ -1237,6 +1238,7 @@
 #define E1000_M88E1543_PAGE_ADDR	0x16       /* Page Offset Register */
 #define E1000_M88E1543_EEE_CTRL_1	0x0
 #define E1000_M88E1543_EEE_CTRL_1_MS	0x0001     /* EEE Master/Slave */
+#define E1000_M88E1543_FIBER_CTRL	0x0        /* Fiber Control Register */
 #define E1000_EEE_ADV_DEV_I354		7
 #define E1000_EEE_ADV_ADDR_I354		60
 #define E1000_EEE_ADV_100_SUPPORTED	(1 << 1)   /* 100BaseTx EEE Supported */
