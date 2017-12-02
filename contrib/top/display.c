@@ -384,7 +384,8 @@ display_write(int x, int y, int newcolor, int eol, char *new)
     {
 	/* if either character or color are different, an update is needed */
 	/* but only when the screen is wide enough */
-	if (x < display_width && (ch != *bufp || newcolor != *colorp))
+	if (y < (smart_terminal ? screen_length : Largest) && x < display_width &&
+	    (ch != *bufp || newcolor != *colorp))
 	{
 	    /* check cursor */
 	    if (y != curr_y || x != curr_x)
@@ -716,7 +717,10 @@ display_resize()
     }
 
     /* adjust total lines on screen to lines available for procs */
-    top_lines -= y_procs;
+    if (top_lines > y_procs)
+	top_lines -= y_procs;
+    else
+	top_lines = 0;
 
     /* return number of lines available */
     /* for dumb terminals, pretend like we can show any amount */
