@@ -2651,23 +2651,6 @@ restore_scrn_saver_mode(scr_stat *scp, int changemode)
     /* NOTREACHED */
 }
 
-void
-sc_start_scrn_saver(sc_softc_t *sc)
-{
-#if NSPLASH > 0
-    (*current_saver)(sc, TRUE);
-#endif
-}
-
-void
-sc_stop_scrn_saver(sc_softc_t *sc)
-{
-#if NSPLASH > 0
-    if (sc->flags & SC_SCRN_BLANKED)
-	stop_scrn_saver(sc, current_saver);
-#endif
-}
-
 static void
 stop_scrn_saver(sc_softc_t *sc, void (*saver)(sc_softc_t *, int))
 {
@@ -2711,6 +2694,23 @@ wait_scrn_saver_stop(sc_softc_t *sc, int need_unlock)
     return error;
 }
 #endif /* NSPLASH */
+
+void
+sc_start_scrn_saver(sc_softc_t *sc)
+{
+#if NSPLASH > 0
+    (*current_saver)(sc, TRUE);
+#endif
+}
+
+void
+sc_stop_scrn_saver(sc_softc_t *sc)
+{
+#if NSPLASH > 0
+    if (sc->flags & SC_SCRN_BLANKED)
+	stop_scrn_saver(sc, current_saver);
+#endif
+}
 
 void
 sc_touch_scrn_saver(void)
