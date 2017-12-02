@@ -179,8 +179,6 @@ cam_periph_alloc(periph_ctor_t *periph_ctor,
 	periph->periph_oninval = periph_oninvalidate;
 	periph->type = type;
 	periph->periph_name = name;
-	periph->unit_number = camperiphunit(*p_drv, sim, path_id,
-					    target_id, lun_id);
 	periph->immediate_priority = CAM_PRIORITY_NONE;
 	periph->refcount = 0;
 	periph->sim = sim;
@@ -192,31 +190,38 @@ cam_periph_alloc(periph_ctor_t *periph_ctor,
 	init_level++;	/* 2 */
 
 	periph->path = path;
-	status = xpt_add_periph(periph);
 
-	if (status != CAM_REQ_CMP)
-		goto failure;
-
+	/*
+	 * Finalize with buses locked.  Allocate unit number and add to
+	 * list to reserve the unit number.  Undo later if the XPT fails.
+	 */
 	xpt_lock_buses();
+	periph->unit_number = camperiphunit(*p_drv, sim, path_id,
+					    target_id, lun_id);
 	cur_periph = TAILQ_FIRST(&(*p_drv)->units);
-	while (cur_periph != NULL
-	    && cur_periph->unit_number < periph->unit_number)
+	while (cur_periph != NULL &&
+	       cur_periph->unit_number < periph->unit_number) {
 		cur_periph = TAILQ_NEXT(cur_periph, unit_links);
-
-	if (cur_periph != NULL)
+	}
+	if (cur_periph != NULL) {
 		TAILQ_INSERT_BEFORE(cur_periph, periph, unit_links);
-	else {
+	} else {
 		TAILQ_INSERT_TAIL(&(*p_drv)->units, periph, unit_links);
 		(*p_drv)->generation++;
 	}
 	xpt_unlock_buses();
 
-	init_level++;
+	status = xpt_add_periph(periph);
+
+	if (status != CAM_REQ_CMP)
+		goto failure;
+
+	init_level++;	/* 3 */
 
 	status = periph_ctor(periph, arg);
 
 	if (status == CAM_REQ_CMP)
-		init_level++;
+		init_level++; /* 4 */
 
 failure:
 	switch (init_level) {
@@ -225,12 +230,12 @@ failure:
 		CAM_SIM_UNLOCK(sim);
 		break;
 	case 3:
+	case 2:
 		xpt_lock_buses();
 		TAILQ_REMOVE(&(*p_drv)->units, periph, unit_links);
 		xpt_unlock_buses();
-		xpt_remove_periph(periph);
-		/* FALLTHROUGH */
-	case 2:
+		if (init_level == 3)
+			xpt_remove_periph(periph);
 		periph->path = NULL;
 		/* FALLTHROUGH */
 	case 1:
@@ -410,8 +415,7 @@ camperiphnextunit(struct periph_driver *p_drv, u_int newunit, int wired,
 	const char *dname, *strval;
 
 	periph_name = p_drv->driver_name;
-	for (;;newunit++) {
-
+	for (;;) {
 		for (periph = TAILQ_FIRST(&p_drv->units);
 		     periph != NULL && periph->unit_number != newunit;
 		     periph = TAILQ_NEXT(periph, unit_links))
@@ -427,6 +431,7 @@ camperiphnextunit(struct periph_driver *p_drv, u_int newunit, int wired,
 				    target, lun);
 				wired = 0;
 			}
+			++newunit;
 			continue;
 		}
 		if (wired)
@@ -444,13 +449,15 @@ camperiphnextunit(struct periph_driver *p_drv, u_int newunit, int wired,
 			/* if no "target" and no specific scbus, skip */
 			if (resource_int_value(dname, dunit, "target", &val) &&
 			    (resource_string_value(dname, dunit, "at",&strval)||
-			     strcmp(strval, "scbus") == 0))
+			     strcmp(strval, "scbus") == 0)) {
 				continue;
+			}
 			if (newunit == dunit)
 				break;
 		}
 		if (i == -1)
 			break;
+		++newunit;
 	}
 	return (newunit);
 }
