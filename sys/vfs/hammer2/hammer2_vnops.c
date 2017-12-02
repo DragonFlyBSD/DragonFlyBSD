@@ -2198,16 +2198,24 @@ done2:
 	 * Issue the namecache update after unlocking all the internal
 	 * hammer2 structures, otherwise we might deadlock.
 	 *
-	 * The target namespace must be atomic, so we depend on
-	 * cache_rename() to atomically rename a_fnch to a_tnch
-	 * and then unlink the old a_tnch.  If we do it before-hand
-	 * we leave a small window of opportunity where the target
-	 * namespace does not exist that another thread can squeeze
-	 * in and set.
+	 * WARNING! The target namespace must be updated atomically,
+	 *	    and we depend on cache_rename() to handle that for
+	 *	    us.  Do not do a separate cache_unlink() because
+	 *	    that leaves a small window of opportunity for other
+	 *	    threads to allocate the target namespace before we
+	 *	    manage to complete our rename.
+	 *
+	 * WARNING! cache_rename() (and cache_unlink()) will properly
+	 *	    set VREF_FINALIZE on any attached vnode.  Do not
+	 *	    call cache_setunresolved() manually before-hand as
+	 *	    this will prevent the flag from being set later via
+	 *	    cache_rename().  If VREF_FINALIZE is not properly set
+	 *	    and the inode is no longer in the topology, related
+	 *	    chains can remain dirty indefinitely.
 	 */
 	if (error == 0 && tip) {
 		/*cache_unlink(ap->a_tnch); see above */
-		cache_setunresolved(ap->a_tnch);
+		/*cache_setunresolved(ap->a_tnch); see above */
 	}
 	if (error == 0) {
 		cache_rename(ap->a_fnch, ap->a_tnch);
