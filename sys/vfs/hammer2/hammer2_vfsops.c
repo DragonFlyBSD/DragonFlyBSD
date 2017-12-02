@@ -2717,22 +2717,15 @@ hammer2_pfs_memory_wakeup(hammer2_pfs_t *pmp)
 {
 	uint32_t waiting;
 
-	if (pmp == NULL)
-		return;
-
-	for (;;) {
-		waiting = pmp->inmem_dirty_chains;
-		cpu_ccfence();
-		if (atomic_cmpset_int(&pmp->inmem_dirty_chains,
-				       waiting,
-				       (waiting - 1) &
-					~HAMMER2_DIRTYCHAIN_WAITING)) {
-			break;
+	if (pmp) {
+		waiting = atomic_fetchadd_int(&pmp->inmem_dirty_chains, -1);
+		/* don't need --waiting to test flag */
+		if (waiting & HAMMER2_DIRTYCHAIN_WAITING) {
+			atomic_clear_int(&pmp->inmem_dirty_chains,
+					 HAMMER2_DIRTYCHAIN_WAITING);
+			wakeup(&pmp->inmem_dirty_chains);
 		}
 	}
-
-	if (waiting & HAMMER2_DIRTYCHAIN_WAITING)
-		wakeup(&pmp->inmem_dirty_chains);
 }
 
 /*
