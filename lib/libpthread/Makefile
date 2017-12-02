@@ -118,6 +118,7 @@ MLINKS+= \
 	pthread_condattr.3 pthread_condattr_setclock.3 \
 	pthread_condattr.3 pthread_condattr_setpshared.3 \
 	pthread_getconcurrency.3 pthread_setconcurrency.3 \
+	pthread_join.3 pthread_timedjoin_np.3 \
 	pthread_multi_np.3 pthread_single_np.3 \
 	pthread_mutex_getprioceiling.3 pthread_mutex_setprioceiling.3 \
 	pthread_mutexattr.3 pthread_mutexattr_destroy.3 \
