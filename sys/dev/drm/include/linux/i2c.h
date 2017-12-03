@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016 François Tigeot
+ * Copyright (c) 2013-2017 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -45,6 +45,7 @@ struct i2c_adapter {
 	int timeout;
 	int retries;
 	struct device dev;
+	void *private_data;
 
 	char name[48];
 };
@@ -61,5 +62,17 @@ struct i2c_algorithm {
 
 extern int i2c_add_adapter(struct i2c_adapter *);
 extern void i2c_del_adapter(struct i2c_adapter *);
+
+static inline void
+i2c_set_adapdata(struct i2c_adapter *dev, void *data)
+{
+	dev->private_data = data;
+}
+
+static inline void *
+i2c_get_adapdata(const struct i2c_adapter *dev)
+{
+	return dev->private_data;
+}
 
 #endif	/* _LINUX_I2C_H_ */
