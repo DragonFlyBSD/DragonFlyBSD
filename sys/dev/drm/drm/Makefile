@@ -48,6 +48,7 @@ SRCS	= \
 	drm_vma_manager.c \
 	linux_async.c \
 	linux_compat.c \
+	linux_dma.c \
 	linux_hdmi.c \
 	linux_i2c.c \
 	linux_hrtimer.c \
