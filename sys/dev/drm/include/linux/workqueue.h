@@ -1,9 +1,9 @@
-/*-
+/*
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
- * Copyright (c) 2014-2017 François Tigeot
+ * Copyright (c) 2014-2017 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -259,6 +259,7 @@ destroy_work_on_stack(struct work_struct *work)
 extern struct workqueue_struct *system_wq;
 extern struct workqueue_struct *system_long_wq;
 extern struct workqueue_struct *system_power_efficient_wq;
+extern struct workqueue_struct *system_unbound_wq;
 
 static inline unsigned int
 work_busy(struct work_struct *work)
