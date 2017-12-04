@@ -197,11 +197,11 @@ mapscan(kvm_t *kd, vm_map_entry_t entryp, vm_offset_t *lastp)
     kkread(kd, (u_long)entryp, &entry, sizeof(entry));
     mapscan(kd, entry.rb_entry.rbe_left, lastp);
     if (*lastp != entry.start) {
-	    printf("%4ldM %p %08lx-%08lx (%6ldK) EMPTY\n",
+	    printf("%4ldM %p %08lx-%08lx (%s) EMPTY\n",
 		total_used / 1024 / 1024,
 		entryp,
 		*lastp, entry.start,
-		(entry.start - *lastp) / 1024);
+		formatnum(entry.start - *lastp));
 	    total_empty += entry.start - *lastp;
     }
     printf("%4ldM %p %08lx-%08lx (%6ldK) id=%-8s object=%p\n",
