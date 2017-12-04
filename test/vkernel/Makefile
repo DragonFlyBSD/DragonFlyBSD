@@ -5,7 +5,7 @@
 SRCDIR ?= ${.CURDIR}/../..
 PHYSMEM ?= 256m
 NCPUS ?= 2
-FSTYPE ?=
+FSTYPE ?= ufs
 EXTRAOPTS ?=
 MAKE_JOBS?=     $$(sysctl -n hw.ncpu)
 
@@ -32,7 +32,7 @@ help:
 	@echo ""
 	@echo "    setenv ROOTSIZE size (optional)"
 	@echo "    setenv VKDIR target_dir"
-	@echo "    setenv FSTYPE fstype (optional. values:hammer, 4.2BSD)"
+	@echo "    setenv FSTYPE fstype (optional. values: hammer, hammer2, ufs)"
 	@echo "    setenv MAKE_JOBS njobs (optional)"
 	@echo ""
 	@echo "Meta target components:"
@@ -102,7 +102,11 @@ root:	check
 	fdisk -IB `cat ${VKDIR}/vn.which`
 	disklabel -r -w `cat ${VKDIR}/vn.which`s1 auto
 	disklabel `cat ${VKDIR}/vn.which`s1 > ${VKDIR}/label.tmp
+.if ${FSTYPE} == "ufs"
+	echo 'a: * 0 4.2BSD' >> ${VKDIR}/label.tmp
+.else
 	echo 'a: * 0 ${FSTYPE}' >> ${VKDIR}/label.tmp
+.endif
 	disklabel -R `cat ${VKDIR}/vn.which`s1 ${VKDIR}/label.tmp
 	disklabel -B `cat ${VKDIR}/vn.which`s1
 	${NEWFS_CMD} ${NEWFS_ARGS} /dev/`cat ${VKDIR}/vn.which`s1a
@@ -111,7 +115,7 @@ root:	check
 
 mount: check
 	vnconfig -c -s labels `cat ${VKDIR}/vn.which` ${VKDIR}/root.img
-.	if ${FSTYPE} == "4.2BSD"
+.	if ${FSTYPE} == "ufs"
 		fsck -p /dev/`cat ${VKDIR}/vn.which`s1a
 .	endif
 	${MOUNT_CMD} /dev/`cat ${VKDIR}/vn.which`s1a ${VKDIR}/root
@@ -131,9 +135,13 @@ install: mount
 	    make -j 4 DESTDIR=${VKDIR}/root NO_BACKUP=TRUE installworld
 	cd ${SRCDIR}/etc && \
 	    make -j 4 DESTDIR=${VKDIR}/root distribution
+.if ${FSTYPE} == "ufs"
 	echo '/dev/vkd0s1a	/	ufs	rw	1 1' > ${VKDIR}/root/etc/fstab
+.else
+	echo '/dev/vkd0s1a	/	${FSTYPE}	rw	0 0' > ${VKDIR}/root/etc/fstab
+.endif
 	echo 'proc		/proc	procfs	rw	0 0' >> ${VKDIR}/root/etc/fstab
-	echo 'vfs.root.mountfrom="ufs:vkd0s1a"' > ${VKDIR}/root/boot/loader.conf
+	echo "vfs.root.mountfrom=\"${FSTYPE}:vkd0s1a\"" > ${VKDIR}/root/boot/loader.conf
 	#(egrep -v '^console' ${VKDIR}/root/etc/ttys; echo 'console "/usr/libexec/getty Pc"	cons25	on	secure') > ${VKDIR}/root/etc/ttys.new
 	#mv -f ${VKDIR}/root/etc/ttys.new ${VKDIR}/root/etc/ttys
 	cd ${SRCDIR} && \
@@ -178,7 +186,7 @@ run: check
 	sysctl vm.vkernel_enable=1
 	cd ${VKDIR} && ./vkernel -m ${PHYSMEM} -n ${NCPUS} \
 			-r root.img -U -v \
-			-I /var/run/vknet ${EXTRAOPTS}
+			-I /var/run/vknet ${EXTRAOPTS} ${MNTOPTS}
 
 # When running w/ a NFS root
 #
@@ -212,12 +220,22 @@ NEWFS_CMD = newfs_${FSTYPE}
 NEWFS_ARGS = -L VKROOT -f
 MOUNT_CMD = mount_${FSTYPE}
 ROOTSIZE ?= 5G
-.else
-FSTYPE = 4.2BSD
+MNTOPTS += -e vfs.root.mountfrom=\'${FSTYPE}:vkd0s1a\'
+.elif ${FSTYPE} == "hammer2"
+NEWFS_CMD = newfs_${FSTYPE}
+NEWFS_ARGS = -f
+MOUNT_CMD = mount_${FSTYPE}
+ROOTSIZE ?= 5G
+MNTOPTS += -e vfs.root.mountfrom=\'${FSTYPE}:vkd0s1a\'
+.elif ${FSTYPE} == "ufs"
 NEWFS_CMD = newfs
 NEWFS_ARGS =
 MOUNT_CMD = mount
 ROOTSIZE ?= 2G
+.else
+	@(echo "\"${FSTYPE}\" is not a valid filesystem"; /usr/bin/false)
+.endif
+.if ${FSTYPE} == "hammer" || ${FSTYPE} == "hammer2"
 .endif
 
 
