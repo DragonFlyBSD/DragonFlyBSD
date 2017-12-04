@@ -2165,7 +2165,6 @@ options 	CAM_DEBUG_DELAY
 options 	CLUSTERDEBUG
 options 	DEBUG
 options 	DEBUG_CRIT_SECTIONS
-#options 	DISABLE_PSE
 options		BCE_RSS_DEBUG
 options		BCE_TSS_DEBUG
 options		BNX_RSS_DEBUG

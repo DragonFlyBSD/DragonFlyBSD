@@ -46,7 +46,6 @@
  */
 
 #if 0 /* JG */
-#include "opt_disable_pse.h"
 #include "opt_pmap.h"
 #endif
 #include "opt_msgbuf.h"
@@ -168,7 +167,6 @@ vm_offset_t KvaEnd;		/* VA end of KVA space (non-inclusive) */
 vm_offset_t KvaSize;		/* max size of kernel virtual address space */
 static boolean_t pmap_initialized = FALSE;	/* Has pmap_init completed? */
 //static int pgeflag;		/* PG_G or-in */
-//static int pseflag;		/* PG_PS or-in */
 uint64_t PatMsr;
 
 static int ndmpdp;
@@ -258,8 +256,6 @@ SYSCTL_INT(_machdep, OID_AUTO, pmap_lock_delay, CTLFLAG_RW,
 static int pmap_nx_enable = 0;
 /* needs manual TUNABLE in early probe, see below */
 
-#define DISABLE_PSE
-
 /* Standard user access funtions */
 extern int std_copyinstr (const void *udaddr, void *kaddr, size_t len,
     size_t *lencopied);
@@ -321,8 +317,6 @@ static vm_offset_t pmap_kmem_choose(vm_offset_t addr);
 static void pmap_pinit_defaults(struct pmap *pmap);
 static void pv_placemarker_wait(pmap_t pmap, vm_pindex_t *pmark);
 static void pv_placemarker_wakeup(pmap_t pmap, vm_pindex_t *pmark);
-
-static unsigned pdir4mb;
 
 static int
 pv_entry_compare(pv_entry_t pv1, pv_entry_t pv2)
@@ -1098,33 +1092,6 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	 */
 //	pgeflag = 0;
 
-/*
- * Initialize the 4MB page size flag
- */
-//	pseflag = 0;
-/*
- * The 4MB page version of the initial
- * kernel page mapping.
- */
-	pdir4mb = 0;
-
-#if !defined(DISABLE_PSE)
-	if (cpu_feature & CPUID_PSE) {
-		pt_entry_t ptditmp;
-		/*
-		 * Note that we have enabled PSE mode
-		 */
-//		pseflag = kernel_pmap.pmap_bits[PG_PS_IDX];
-		ptditmp = *(PTmap + x86_64_btop(KERNBASE));
-		ptditmp &= ~(NBPDR - 1);
-		ptditmp |= pmap_bits_default[PG_V_IDX] |
-		    pmap_bits_default[PG_RW_IDX] |
-		    pmap_bits_default[PG_PS_IDX] |
-		    pmap_bits_default[PG_U_IDX];
-//		    pgeflag;
-		pdir4mb = ptditmp;
-	}
-#endif
 	cpu_invltlb();
 
 	/* Initialize the PAT MSR */
@@ -1217,9 +1184,8 @@ pmap_set_opt(void)
 {
 	if (cpu_feature & CPUID_PSE) {
 		load_cr4(rcr4() | CR4_PSE);
-		if (pdir4mb && mycpu->gd_cpuid == 0) {	/* only on BSP */
+		if (mycpu->gd_cpuid == 0) 	/* only on BSP */
 			cpu_invltlb();
-		}
 	}
 }
 
