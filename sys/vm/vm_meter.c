@@ -67,28 +67,28 @@ __cachealign struct vmstats vmstats;
 
 static int maxslp = MAXSLP;
 
-SYSCTL_UINT(_vm, VM_V_FREE_MIN, v_free_min,
+SYSCTL_ULONG(_vm, VM_V_FREE_MIN, v_free_min,
 	CTLFLAG_RW, &vmstats.v_free_min, 0,
 	"Minimum number of pages desired free");
-SYSCTL_UINT(_vm, VM_V_FREE_TARGET, v_free_target,
+SYSCTL_ULONG(_vm, VM_V_FREE_TARGET, v_free_target,
 	CTLFLAG_RW, &vmstats.v_free_target, 0,
 	"Number of pages desired free");
-SYSCTL_UINT(_vm, VM_V_FREE_RESERVED, v_free_reserved,
+SYSCTL_ULONG(_vm, VM_V_FREE_RESERVED, v_free_reserved,
 	CTLFLAG_RW, &vmstats.v_free_reserved, 0,
 	"Number of pages reserved for deadlock");
-SYSCTL_UINT(_vm, VM_V_INACTIVE_TARGET, v_inactive_target,
+SYSCTL_ULONG(_vm, VM_V_INACTIVE_TARGET, v_inactive_target,
 	CTLFLAG_RW, &vmstats.v_inactive_target, 0,
 	"Number of pages desired inactive");
-SYSCTL_UINT(_vm, VM_V_CACHE_MIN, v_cache_min,
+SYSCTL_ULONG(_vm, VM_V_CACHE_MIN, v_cache_min,
 	CTLFLAG_RW, &vmstats.v_cache_min, 0,
 	"Min number of pages desired on cache queue");
-SYSCTL_UINT(_vm, VM_V_CACHE_MAX, v_cache_max,
+SYSCTL_ULONG(_vm, VM_V_CACHE_MAX, v_cache_max,
 	CTLFLAG_RW, &vmstats.v_cache_max, 0,
 	"Max number of pages in cached obj");
-SYSCTL_UINT(_vm, VM_V_PAGEOUT_FREE_MIN, v_pageout_free_min,
+SYSCTL_ULONG(_vm, VM_V_PAGEOUT_FREE_MIN, v_pageout_free_min,
 	CTLFLAG_RW, &vmstats.v_pageout_free_min, 0,
 	"Min number pages reserved for kernel");
-SYSCTL_UINT(_vm, OID_AUTO, v_free_severe,
+SYSCTL_ULONG(_vm, OID_AUTO, v_free_severe,
 	CTLFLAG_RW, &vmstats.v_free_severe, 0, "");
 
 SYSCTL_STRUCT(_vm, VM_LOADAVG, loadavg,
@@ -379,46 +379,46 @@ SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_kthreadpages, CTLTYPE_UINT|CTLFLAG_RD,
 SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
 	v_page_size, CTLFLAG_RD, &vmstats.v_page_size, 0,
 	"Page size in bytes");
-SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
+SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_page_count, CTLFLAG_RD, &vmstats.v_page_count, 0, 
 	"Total number of pages in system");
-SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
+SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_free_reserved, CTLFLAG_RD, &vmstats.v_free_reserved, 0,
 	"Number of pages reserved for deadlock");
-SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
+SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_free_target, CTLFLAG_RD, &vmstats.v_free_target, 0,
 	"Number of pages desired free");
-SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
+SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_free_min, CTLFLAG_RD, &vmstats.v_free_min, 0,
 	"Minimum number of pages desired free");
-SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
+SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_free_count, CTLFLAG_RD, &vmstats.v_free_count, 0,
 	"Number of pages free");
-SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
+SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_wire_count, CTLFLAG_RD, &vmstats.v_wire_count, 0,
 	"Number of pages wired down");
-SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
+SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_active_count, CTLFLAG_RD, &vmstats.v_active_count, 0,
 	"Number of pages active");
-SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
+SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_inactive_target, CTLFLAG_RD, &vmstats.v_inactive_target, 0,
 	"Number of pages desired inactive");
-SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
+SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_inactive_count, CTLFLAG_RD, &vmstats.v_inactive_count, 0,
 	"Number of pages inactive");
-SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
+SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_cache_count, CTLFLAG_RD, &vmstats.v_cache_count, 0,
 	"Number of pages on buffer cache queue");
-SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
+SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_cache_min, CTLFLAG_RD, &vmstats.v_cache_min, 0,
 	"Min number of pages desired on cache queue");
-SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
+SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_cache_max, CTLFLAG_RD, &vmstats.v_cache_max, 0,
 	"Max number of pages in cached obj");
-SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
+SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_pageout_free_min, CTLFLAG_RD, &vmstats.v_pageout_free_min, 0,
 	"Min number pages reserved for kernel");
-SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
+SYSCTL_ULONG(_vm_stats_vm, OID_AUTO,
 	v_interrupt_free_min, CTLFLAG_RD, &vmstats.v_interrupt_free_min, 0,
 	"Reserved number of pages for int code");
 
@@ -597,26 +597,26 @@ vmstats_rollup(void)
 void
 vmstats_rollup_cpu(globaldata_t gd)
 {
-	int value;
+	long value;
 
 	if (gd->gd_vmstats_adj.v_free_count) {
-		value = atomic_swap_int(&gd->gd_vmstats_adj.v_free_count, 0);
-		atomic_add_int(&vmstats.v_free_count, value);
+		value = atomic_swap_long(&gd->gd_vmstats_adj.v_free_count, 0);
+		atomic_add_long(&vmstats.v_free_count, value);
 	}
 	if (gd->gd_vmstats_adj.v_cache_count) {
-		value = atomic_swap_int(&gd->gd_vmstats_adj.v_cache_count, 0);
-		atomic_add_int(&vmstats.v_cache_count, value);
+		value = atomic_swap_long(&gd->gd_vmstats_adj.v_cache_count, 0);
+		atomic_add_long(&vmstats.v_cache_count, value);
 	}
 	if (gd->gd_vmstats_adj.v_inactive_count) {
-		value =atomic_swap_int(&gd->gd_vmstats_adj.v_inactive_count, 0);
-		atomic_add_int(&vmstats.v_inactive_count, value);
+		value=atomic_swap_long(&gd->gd_vmstats_adj.v_inactive_count, 0);
+		atomic_add_long(&vmstats.v_inactive_count, value);
 	}
 	if (gd->gd_vmstats_adj.v_active_count) {
-		value = atomic_swap_int(&gd->gd_vmstats_adj.v_active_count, 0);
-		atomic_add_int(&vmstats.v_active_count, value);
+		value = atomic_swap_long(&gd->gd_vmstats_adj.v_active_count, 0);
+		atomic_add_long(&vmstats.v_active_count, value);
 	}
 	if (gd->gd_vmstats_adj.v_wire_count) {
-		value = atomic_swap_int(&gd->gd_vmstats_adj.v_wire_count, 0);
-		atomic_add_int(&vmstats.v_wire_count, value);
+		value = atomic_swap_long(&gd->gd_vmstats_adj.v_wire_count, 0);
+		atomic_add_long(&vmstats.v_wire_count, value);
 	}
 }

@@ -94,7 +94,7 @@ vm_page_count_severe(void)
  */
 static __inline 
 int
-vm_page_count_min(int donotcount)
+vm_page_count_min(long donotcount)
 {
     globaldata_t gd = mycpu;
 
@@ -134,7 +134,7 @@ vm_page_count_target(void)
  * This function DOES NOT return TRUE or FALSE.
  */
 static __inline 
-int
+long
 vm_paging_target(void)
 {
     globaldata_t gd = mycpu;

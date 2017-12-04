@@ -101,8 +101,8 @@
  */
 
 /* the kernel process "vm_pageout"*/
-static int vm_pageout_page(vm_page_t m, int *max_launderp,
-			   int *vnodes_skippedp, struct vnode **vpfailedp,
+static int vm_pageout_page(vm_page_t m, long *max_launderp,
+			   long *vnodes_skippedp, struct vnode **vpfailedp,
 			   int pass, int vmflush_flags);
 static int vm_pageout_clean_helper (vm_page_t, int);
 static int vm_pageout_free_page_calc (vm_size_t count);
@@ -228,10 +228,10 @@ static void vm_pageout_page_stats(int q);
  * So what we do is calculate a value that can be satisfied nominally by
  * only having to scan half the queues.
  */
-static __inline int
-PQAVERAGE(int n)
+static __inline long
+PQAVERAGE(long n)
 {
-	int avg;
+	long avg;
 
 	if (n >= 0) {
 		avg = ((n + (PQ_L2_SIZE - 1)) / (PQ_L2_SIZE / 2) + 1);
@@ -620,8 +620,8 @@ vm_pageout_mdp_callback(struct pmap_pgscan_info *info, vm_offset_t va,
 	 * and improves write performance.
 	 */
 	if (cleanit) {
-		int max_launder = 0x7FFF;
-		int vnodes_skipped = 0;
+		long max_launder = 0x7FFF;
+		long vnodes_skipped = 0;
 		int vmflush_flags;
 		struct vnode *vpfailed = NULL;
 
@@ -737,15 +737,15 @@ static int vm_pageout_scan_callback(struct proc *p, void *data);
  * WARNING! Can be called from two pagedaemon threads simultaneously.
  */
 static int
-vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
-			 int *vnodes_skipped)
+vm_pageout_scan_inactive(int pass, int q, long avail_shortage,
+			 long *vnodes_skipped)
 {
 	vm_page_t m;
 	struct vm_page marker;
 	struct vnode *vpfailed;		/* warning, allowed to be stale */
 	int maxscan;
-	int delta = 0;
-	int max_launder;
+	long delta = 0;
+	long max_launder;
 	int isep;
 
 	isep = (curthread == emergpager);
@@ -933,7 +933,7 @@ vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
  * of by this function.
  */
 static int
-vm_pageout_page(vm_page_t m, int *max_launderp, int *vnodes_skippedp,
+vm_pageout_page(vm_page_t m, long *max_launderp, long *vnodes_skippedp,
 		struct vnode **vpfailedp, int pass, int vmflush_flags)
 {
 	vm_object_t object;
@@ -1265,14 +1265,14 @@ vm_pageout_page(vm_page_t m, int *max_launderp, int *vnodes_skippedp,
  */
 static int
 vm_pageout_scan_active(int pass, int q,
-		       int avail_shortage, int inactive_shortage,
-		       int *recycle_countp)
+		       long avail_shortage, long inactive_shortage,
+		       long *recycle_countp)
 {
 	struct vm_page marker;
 	vm_page_t m;
 	int actcount;
-	int delta = 0;
-	int maxscan;
+	long delta = 0;
+	long maxscan;
 	int isep;
 
 	isep = (curthread == emergpager);
@@ -1533,8 +1533,8 @@ next:
  * WARNING! Can be called from two pagedaemon threads simultaneously.
  */
 static void
-vm_pageout_scan_cache(int avail_shortage, int pass,
-		      int vnodes_skipped, int recycle_count)
+vm_pageout_scan_cache(long avail_shortage, int pass,
+		      long vnodes_skipped, long recycle_count)
 {
 	static int lastkillticks;
 	struct vm_pageout_scan_info info;
@@ -1642,10 +1642,11 @@ next_rover:
 	    isep == 0 &&
 	    (vm_page_count_min(recycle_count) || avail_shortage > 0)) {
 		kprintf("Warning: system low on memory+swap "
-			"shortage %d for %d ticks!\n",
+			"shortage %ld for %d ticks!\n",
 			avail_shortage, ticks - swap_fail_ticks);
 		if (bootverbose)
-		kprintf("Metrics: spaf=%d spf=%d pass=%d avail=%d target=%d last=%u\n",
+		kprintf("Metrics: spaf=%d spf=%d pass=%d "
+			"avail=%ld target=%ld last=%u\n",
 			swap_pager_almost_full,
 			swap_pager_full,
 			pass,
@@ -1745,8 +1746,8 @@ vm_pageout_page_stats(int q)
 	static int fullintervalcount = 0;
 	struct vm_page marker;
 	vm_page_t m;
-	int pcount, tpcount;		/* Number of pages to check */
-	int page_shortage;
+	long pcount, tpcount;		/* Number of pages to check */
+	long page_shortage;
 
 	page_shortage = (vmstats.v_inactive_target + vmstats.v_cache_max +
 			 vmstats.v_free_min) -
@@ -2069,11 +2070,11 @@ skip_setup:
 	 */
 	while (TRUE) {
 		int error;
-		int avail_shortage;
-		int inactive_shortage;
-		int vnodes_skipped = 0;
-		int recycle_count = 0;
-		int tmp;
+		long avail_shortage;
+		long inactive_shortage;
+		long vnodes_skipped = 0;
+		long recycle_count = 0;
+		long tmp;
 
 		/*
 		 * Wait for an action request.  If we timeout check to
@@ -2161,7 +2162,7 @@ skip_setup:
 		vm_pageout_deficit = 0;
 
 		if (avail_shortage > 0) {
-			int delta = 0;
+			long delta = 0;
 			int qq;
 
 			qq = q1iterator;
@@ -2236,7 +2237,7 @@ skip_setup:
 			inactive_shortage = vm_emerg_launder;
 
 		if (/*avail_shortage > 0 ||*/ inactive_shortage > 0) {
-			int delta = 0;
+			long delta = 0;
 			int qq;
 
 			qq = q2iterator;

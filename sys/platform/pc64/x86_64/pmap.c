@@ -194,7 +194,7 @@ static uint64_t	DMPDPphys;	/* phys addr of direct mapped level 3 */
  */
 static vm_zone_t pvzone;
 static struct vm_zone pvzone_store;
-static int pv_entry_max=0, pv_entry_high_water=0;
+static vm_pindex_t pv_entry_max=0, pv_entry_high_water=0;
 static int pmap_pagedaemon_waken = 0;
 static struct pv_entry *pvinit;
 
@@ -1233,8 +1233,8 @@ pmap_set_opt(void)
 void
 pmap_init(void)
 {
-	int i;
-	int initial_pvs;
+	vm_pindex_t initial_pvs;
+	vm_pindex_t i;
 
 	/*
 	 * Allocate memory for random pmap data structures.  Includes the
@@ -1275,12 +1275,12 @@ pmap_init(void)
 void
 pmap_init2(void)
 {
-	int shpgperproc = PMAP_SHPGPERPROC;
-	int entry_max;
+	vm_pindex_t shpgperproc = PMAP_SHPGPERPROC;
+	vm_pindex_t entry_max;
 
-	TUNABLE_INT_FETCH("vm.pmap.shpgperproc", &shpgperproc);
+	TUNABLE_LONG_FETCH("vm.pmap.shpgperproc", &shpgperproc);
 	pv_entry_max = shpgperproc * maxproc + vm_page_array_size;
-	TUNABLE_INT_FETCH("vm.pmap.pv_entries", &pv_entry_max);
+	TUNABLE_LONG_FETCH("vm.pmap.pv_entries", &pv_entry_max);
 	pv_entry_high_water = 9 * (pv_entry_max / 10);
 
 	/*

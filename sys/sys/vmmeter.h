@@ -120,29 +120,30 @@ struct vmstats {
 	 * Distribution of page usages.
 	 */
 	u_int v_page_size;	/* page size in bytes */
-	int v_page_count;	/* total number of pages in system */
-	int v_free_reserved;	/* number of pages reserved for deadlock */
-	int v_free_target;	/* number of pages desired free */
-	int v_free_min;		/* minimum number of pages desired free */
+	u_int v_unused01;
+	long v_page_count;	/* total number of pages in system */
+	long v_free_reserved;	/* number of pages reserved for deadlock */
+	long v_free_target;	/* number of pages desired free */
+	long v_free_min;	/* minimum number of pages desired free */
 
-	int v_cache_min;	/* min number of pages desired on cache queue */
-	int v_cache_max;	/* max number of pages in cached obj */
-	int v_pageout_free_min;	/* min number pages reserved for kernel */
-	int v_interrupt_free_min; /* reserved number of pages for int code */
-	int v_free_severe;	/* severe depletion of pages below this pt */
-	int v_dma_pages;	/* total dma-reserved pages */
+	long v_cache_min;	/* min number of pages desired on cache queue */
+	long v_cache_max;	/* max number of pages in cached obj */
+	long v_pageout_free_min; /* min number pages reserved for kernel */
+	long v_interrupt_free_min; /* reserved number of pages for int code */
+	long v_free_severe;	/* severe depletion of pages below this pt */
+	long v_dma_pages;	/* total dma-reserved pages */
 
-	int v_unused_fixed[5];
+	long v_unused_fixed[5];
 
-	int v_free_count;	/* number of pages free */
-	int v_wire_count;	/* number of pages wired down */
-	int v_active_count;	/* number of pages active */
-	int v_inactive_target;	/* number of pages desired inactive */
-	int v_inactive_count;	/* number of pages inactive */
-	int v_cache_count;	/* number of pages on buffer cache queue */
-	int v_dma_avail;	/* free dma-reserved pages */
+	long v_free_count;	/* number of pages free */
+	long v_wire_count;	/* number of pages wired down */
+	long v_active_count;	/* number of pages active */
+	long v_inactive_target;	/* number of pages desired inactive */
+	long v_inactive_count;	/* number of pages inactive */
+	long v_cache_count;	/* number of pages on buffer cache queue */
+	long v_dma_avail;	/* free dma-reserved pages */
 
-	int v_unused_variable[9];
+	long v_unused_variable[9];
 };
 
 #define VMMETER_SLOP_COUNT	128

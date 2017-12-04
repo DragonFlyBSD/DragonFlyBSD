@@ -121,7 +121,7 @@
 #include <sys/spinlock2.h>
 #include <vm/vm_page2.h>
 
-static void vm_contig_pg_free(int start, u_long size);
+static void vm_contig_pg_free(vm_pindex_t start, u_long size);
 
 /*
  * vm_contig_pg_clean:
@@ -140,7 +140,7 @@ static void vm_contig_pg_free(int start, u_long size);
  * 	pageout (daemon) flush routine is invoked.
  */
 static void
-vm_contig_pg_clean(int queue, int count)
+vm_contig_pg_clean(int queue, vm_pindex_t count)
 {
 	vm_object_t object;
 	vm_page_t m, m_tmp;
@@ -165,7 +165,8 @@ vm_contig_pg_clean(int queue, int count)
 	 * acquired before the pageq spinlock so it's easiest to simply
 	 * not hold it in the loop iteration.
 	 */
-	while (count-- > 0 && (m = TAILQ_NEXT(&marker, pageq)) != NULL) {
+	while ((long)count-- > 0 &&
+	       (m = TAILQ_NEXT(&marker, pageq)) != NULL) {
 		vm_page_and_queue_spin_lock(m);
 		if (m != TAILQ_NEXT(&marker, pageq)) {
 			vm_page_and_queue_spin_unlock(m);
@@ -245,14 +246,15 @@ vm_contig_pg_clean(int queue, int count)
  * Malloc()'s data structures have been used for collection of
  * statistics and for allocations of less than a page.
  */
-static int
+static vm_pindex_t
 vm_contig_pg_alloc(unsigned long size, vm_paddr_t low, vm_paddr_t high,
 		   unsigned long alignment, unsigned long boundary, int mflags)
 {
-	int i, q, start, pass;
+	vm_pindex_t i, q, start;
 	vm_offset_t phys;
 	vm_page_t pga = vm_page_array;
 	vm_page_t m;
+	int pass;
 	int pqtype;
 
 	size = round_page(size);
@@ -432,7 +434,7 @@ again:
 	/*
 	 * Failed.
 	 */
-	return (-1);
+	return ((vm_pindex_t)-1);
 }
 
 /*
@@ -446,7 +448,7 @@ again:
  * No other requirements.
  */
 static void
-vm_contig_pg_free(int start, u_long size)
+vm_contig_pg_free(vm_pindex_t start, u_long size)
 {
 	vm_page_t pga = vm_page_array;
 	
@@ -473,7 +475,7 @@ vm_contig_pg_free(int start, u_long size)
  * No requirements.
  */
 static vm_offset_t
-vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
+vm_contig_pg_kmap(vm_pindex_t start, u_long size, vm_map_t map, int flags)
 {
 	vm_offset_t addr;
 	vm_paddr_t pa;
@@ -521,11 +523,11 @@ contigmalloc_map(unsigned long size, struct malloc_type *type,
 		 unsigned long alignment, unsigned long boundary,
 		 vm_map_t map)
 {
-	int index;
+	vm_pindex_t index;
 	void *rv;
 
 	index = vm_contig_pg_alloc(size, low, high, alignment, boundary, flags);
-	if (index < 0) {
+	if (index == (vm_pindex_t)-1) {
 		kprintf("contigmalloc_map: failed size %lu low=%llx "
 			"high=%llx align=%lu boundary=%lu flags=%08x\n",
 			size, (long long)low, (long long)high,

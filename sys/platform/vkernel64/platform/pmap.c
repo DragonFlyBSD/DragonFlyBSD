@@ -148,9 +148,9 @@ extern void *vkernel_stack;
  */
 static vm_zone_t pvzone;
 static struct vm_zone pvzone_store;
-static int pv_entry_count = 0;
-static int pv_entry_max = 0;
-static int pv_entry_high_water = 0;
+static vm_pindex_t pv_entry_count = 0;
+static vm_pindex_t pv_entry_max = 0;
+static vm_pindex_t pv_entry_high_water = 0;
 static int pmap_pagedaemon_waken = 0;
 static struct pv_entry *pvinit;
 
@@ -633,8 +633,8 @@ pmap_bootstrap(vm_paddr_t *firstaddr, int64_t ptov_offset)
 void
 pmap_init(void)
 {
-	int i;
-	int initial_pvs;
+	vm_pindex_t i;
+	vm_pindex_t initial_pvs;
 
 	/*
 	 * object for kernel page table pages
@@ -647,7 +647,7 @@ pmap_init(void)
 	 * Allocate memory for random pmap data structures.  Includes the
 	 * pv_head_table.
 	 */
-	for(i = 0; i < vm_page_array_size; i++) {
+	for (i = 0; i < vm_page_array_size; i++) {
 		vm_page_t m;
 
 		m = &vm_page_array[i];
@@ -683,11 +683,11 @@ pmap_init(void)
 void
 pmap_init2(void)
 {
-	int shpgperproc = PMAP_SHPGPERPROC;
+	vm_pindex_t shpgperproc = PMAP_SHPGPERPROC;
 
-	TUNABLE_INT_FETCH("vm.pmap.shpgperproc", &shpgperproc);
+	TUNABLE_LONG_FETCH("vm.pmap.shpgperproc", &shpgperproc);
 	pv_entry_max = shpgperproc * maxproc + vm_page_array_size;
-	TUNABLE_INT_FETCH("vm.pmap.pv_entries", &pv_entry_max);
+	TUNABLE_LONG_FETCH("vm.pmap.pv_entries", &pv_entry_max);
 	pv_entry_high_water = 9 * (pv_entry_max / 10);
 	zinitna(pvzone, NULL, 0, pv_entry_max, ZONE_INTERRUPT);
 }
@@ -1788,8 +1788,7 @@ cpu_vmspace_free(struct vmspace *vm)
 static __inline void
 free_pv_entry(pv_entry_t pv)
 {
-	atomic_add_int(&pv_entry_count, -1);
-	KKASSERT(pv_entry_count >= 0);
+	atomic_add_long(&pv_entry_count, -1);
 	zfree(pvzone, pv);
 }
 
@@ -1800,7 +1799,7 @@ free_pv_entry(pv_entry_t pv)
 static pv_entry_t
 get_pv_entry(void)
 {
-	atomic_add_int(&pv_entry_count, 1);
+	atomic_add_long(&pv_entry_count, 1);
 	if (pv_entry_high_water &&
 	    (pv_entry_count > pv_entry_high_water) &&
 	    atomic_swap_int(&pmap_pagedaemon_waken, 1) == 0) {

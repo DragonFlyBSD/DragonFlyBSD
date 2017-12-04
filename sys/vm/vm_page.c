@@ -169,8 +169,8 @@ vm_page_queue_init(void)
 /*
  * note: place in initialized data section?  Is this necessary?
  */
-long first_page = 0;
-int vm_page_array_size = 0;
+vm_pindex_t first_page = 0;
+vm_pindex_t vm_page_array_size = 0;
 vm_page_t vm_page_array = NULL;
 vm_paddr_t vm_low_phys_reserved;
 
@@ -227,11 +227,11 @@ vm_add_new_page(vm_paddr_t pa)
 	 * contigmalloc() to use.
 	 */
 	if (pa < vm_low_phys_reserved) {
-		atomic_add_int(&vmstats.v_page_count, 1);
-		atomic_add_int(&vmstats.v_dma_pages, 1);
+		atomic_add_long(&vmstats.v_page_count, 1);
+		atomic_add_long(&vmstats.v_dma_pages, 1);
 		m->queue = PQ_NONE;
 		m->wire_count = 1;
-		atomic_add_int(&vmstats.v_wire_count, 1);
+		atomic_add_long(&vmstats.v_wire_count, 1);
 		alist_free(&vm_contig_alist, pa >> PAGE_SHIFT, 1);
 		return;
 	}
@@ -242,8 +242,8 @@ vm_add_new_page(vm_paddr_t pa)
 	m->queue = m->pc + PQ_FREE;
 	KKASSERT(m->dirty == 0);
 
-	atomic_add_int(&vmstats.v_page_count, 1);
-	atomic_add_int(&vmstats.v_free_count, 1);
+	atomic_add_long(&vmstats.v_page_count, 1);
+	atomic_add_long(&vmstats.v_free_count, 1);
 	vpq = &vm_page_queues[m->queue];
 	TAILQ_INSERT_HEAD(&vpq->pl, m, pageq);
 	++vpq->lcnt;
@@ -269,7 +269,7 @@ vm_page_startup(void)
 {
 	vm_offset_t vaddr = virtual2_start ? virtual2_start : virtual_start;
 	vm_offset_t mapped;
-	vm_size_t npages;
+	vm_pindex_t npages;
 	vm_paddr_t page_range;
 	vm_paddr_t new_end;
 	int i;
@@ -592,7 +592,7 @@ vm_page_startup_finish(void *dummy __unused)
 				blk, count, rblk);
 			break;
 		}
-		atomic_add_int(&vmstats.v_dma_pages, -count);
+		atomic_add_long(&vmstats.v_dma_pages, -count);
 		spin_unlock(&vm_contig_spin);
 
 		m = PHYS_TO_VM_PAGE((vm_paddr_t)blk << PAGE_SHIFT);
@@ -775,7 +775,7 @@ _vm_page_rem_queue_spinlocked(vm_page_t m)
 	struct vpgqueues *pq;
 	u_short queue;
 	u_short oqueue;
-	int *cnt;
+	long *cnt;
 
 	queue = m->queue;
 	if (queue != PQ_NONE) {
@@ -793,15 +793,15 @@ _vm_page_rem_queue_spinlocked(vm_page_t m)
 		 * mastership changes in the global vmstats, which can be
 		 * particularly bad in multi-socket systems.
 		 */
-		cnt = (int *)((char *)&mycpu->gd_vmstats_adj + pq->cnt_offset);
-		atomic_add_int(cnt, -1);
+		cnt = (long *)((char *)&mycpu->gd_vmstats_adj + pq->cnt_offset);
+		atomic_add_long(cnt, -1);
 		if (*cnt < -VMMETER_SLOP_COUNT) {
-			u_int copy = atomic_swap_int(cnt, 0);
-			cnt = (int *)((char *)&vmstats + pq->cnt_offset);
-			atomic_add_int(cnt, copy);
-			cnt = (int *)((char *)&mycpu->gd_vmstats +
+			u_long copy = atomic_swap_long(cnt, 0);
+			cnt = (long *)((char *)&vmstats + pq->cnt_offset);
+			atomic_add_long(cnt, copy);
+			cnt = (long *)((char *)&mycpu->gd_vmstats +
 				      pq->cnt_offset);
-			atomic_add_int(cnt, copy);
+			atomic_add_long(cnt, copy);
 		}
 		pq->lcnt--;
 		m->queue = PQ_NONE;
@@ -825,7 +825,7 @@ static __inline void
 _vm_page_add_queue_spinlocked(vm_page_t m, u_short queue, int athead)
 {
 	struct vpgqueues *pq;
-	u_int *cnt;
+	u_long *cnt;
 
 	KKASSERT(m->queue == PQ_NONE);
 
@@ -839,8 +839,8 @@ _vm_page_add_queue_spinlocked(vm_page_t m, u_short queue, int athead)
 		 * to incorporate the count it will call vmstats_rollup()
 		 * to roll it all up into the global vmstats strufture.
 		 */
-		cnt = (int *)((char *)&mycpu->gd_vmstats_adj + pq->cnt_offset);
-		atomic_add_int(cnt, 1);
+		cnt = (long *)((char *)&mycpu->gd_vmstats_adj + pq->cnt_offset);
+		atomic_add_long(cnt, 1);
 
 		/*
 		 * PQ_FREE is always handled LIFO style to try to provide
@@ -1965,7 +1965,7 @@ vm_page_alloc_contig(vm_paddr_t low, vm_paddr_t high,
 {
 	alist_blk_t blk;
 	vm_page_t m;
-	int i;
+	vm_pindex_t i;
 
 	alignment >>= PAGE_SHIFT;
 	if (alignment == 0)
@@ -2004,9 +2004,10 @@ vm_page_alloc_contig(vm_paddr_t low, vm_paddr_t high,
 	}
 
 	m = PHYS_TO_VM_PAGE((vm_paddr_t)blk << PAGE_SHIFT);
-	if (memattr != VM_MEMATTR_DEFAULT)
-		for (i = 0;i < size;i++)
+	if (memattr != VM_MEMATTR_DEFAULT) {
+		for (i = 0;i < size; i++)
 			pmap_page_set_memattr(&m[i], memattr);
+	}
 	return m;
 }
 
@@ -2397,7 +2398,7 @@ vm_page_wire(vm_page_t m)
 		if (atomic_fetchadd_int(&m->wire_count, 1) == 0) {
 			if ((m->flags & PG_UNMANAGED) == 0)
 				vm_page_unqueue(m);
-			atomic_add_int(&mycpu->gd_vmstats_adj.v_wire_count, 1);
+			atomic_add_long(&mycpu->gd_vmstats_adj.v_wire_count, 1);
 		}
 		KASSERT(m->wire_count != 0,
 			("vm_page_wire: wire_count overflow m=%p", m));
@@ -2442,7 +2443,7 @@ vm_page_unwire(vm_page_t m, int activate)
 		panic("vm_page_unwire: invalid wire count: %d", m->wire_count);
 	} else {
 		if (atomic_fetchadd_int(&m->wire_count, -1) == 1) {
-			atomic_add_int(&mycpu->gd_vmstats_adj.v_wire_count, -1);
+			atomic_add_long(&mycpu->gd_vmstats_adj.v_wire_count,-1);
 			if (m->flags & PG_UNMANAGED) {
 				;
 			} else if (activate || (m->flags & PG_NEED_COMMIT)) {
@@ -3223,16 +3224,17 @@ vm_page_test_dirty(vm_page_t m)
 
 DB_SHOW_COMMAND(page, vm_page_print_page_info)
 {
-	db_printf("vmstats.v_free_count: %d\n", vmstats.v_free_count);
-	db_printf("vmstats.v_cache_count: %d\n", vmstats.v_cache_count);
-	db_printf("vmstats.v_inactive_count: %d\n", vmstats.v_inactive_count);
-	db_printf("vmstats.v_active_count: %d\n", vmstats.v_active_count);
-	db_printf("vmstats.v_wire_count: %d\n", vmstats.v_wire_count);
-	db_printf("vmstats.v_free_reserved: %d\n", vmstats.v_free_reserved);
-	db_printf("vmstats.v_free_min: %d\n", vmstats.v_free_min);
-	db_printf("vmstats.v_free_target: %d\n", vmstats.v_free_target);
-	db_printf("vmstats.v_cache_min: %d\n", vmstats.v_cache_min);
-	db_printf("vmstats.v_inactive_target: %d\n", vmstats.v_inactive_target);
+	db_printf("vmstats.v_free_count: %ld\n", vmstats.v_free_count);
+	db_printf("vmstats.v_cache_count: %ld\n", vmstats.v_cache_count);
+	db_printf("vmstats.v_inactive_count: %ld\n", vmstats.v_inactive_count);
+	db_printf("vmstats.v_active_count: %ld\n", vmstats.v_active_count);
+	db_printf("vmstats.v_wire_count: %ld\n", vmstats.v_wire_count);
+	db_printf("vmstats.v_free_reserved: %ld\n", vmstats.v_free_reserved);
+	db_printf("vmstats.v_free_min: %ld\n", vmstats.v_free_min);
+	db_printf("vmstats.v_free_target: %ld\n", vmstats.v_free_target);
+	db_printf("vmstats.v_cache_min: %ld\n", vmstats.v_cache_min);
+	db_printf("vmstats.v_inactive_target: %ld\n",
+		  vmstats.v_inactive_target);
 }
 
 DB_SHOW_COMMAND(pageq, vm_page_print_pageq_info)

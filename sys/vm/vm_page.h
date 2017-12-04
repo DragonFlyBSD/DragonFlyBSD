@@ -302,8 +302,8 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
  */
 
 extern struct vm_page *vm_page_array;	/* First resident page in table */
-extern int vm_page_array_size;		/* number of vm_page_t's */
-extern long first_page;			/* first physical page number */
+extern vm_pindex_t vm_page_array_size;	/* number of vm_page_t's */
+extern vm_pindex_t first_page;		/* first physical page number */
 
 #define VM_PAGE_TO_PHYS(entry)	\
 		((entry)->phys_addr)
