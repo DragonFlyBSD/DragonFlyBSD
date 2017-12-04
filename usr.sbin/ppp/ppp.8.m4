@@ -44,7 +44,7 @@ changecom(,)dnl
 This is a user process
 .Em PPP
 software package with the help of the tunnel device driver
-.Xr ( tun 4 ).
+.Xr ( tun 4 ) .
 .Pp
 The
 .Fl nat

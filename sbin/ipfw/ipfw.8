@@ -1,6 +1,5 @@
 .\"
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
-.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.20 2008/11/23 21:55:52 swildner Exp $
 .\"
 .Dd October 15, 2017
 .Dt IPFW 8
@@ -781,14 +780,14 @@ Matches any network or host addresses in the
 .Cm table
 specified by the
 .Ar number .
-.It Cm Op Ar ifX
+.It Op Ar ifX
 Matches the first IPv4 address assigned to the
 .Ar ifX .
 It is intended to help matching the IPv4 address assigned to the
 .Ar ifX
 dynamically,
 e.g. by DHCP.
-.It Cm Op ifX Ns Cm :net
+.It Op ifX Ns Cm :net
 Matches the IPv4 network of the first IPv4 address assigned to the
 .Ar ifX .
 It is intended to help matching the IPv4 network of the IPv4 address

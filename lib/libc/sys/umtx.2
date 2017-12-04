@@ -141,7 +141,6 @@ userland_rel_mutex(struct umtx *mtx)
 }
 .Ed
 .Sh WARNINGS
-.Pp
 This function can return -1 with errno set to
 .Er EWOULDBLOCK
 early and even if no timeout is specified due to the kernel failsafe
@@ -152,7 +151,8 @@ The caller is advised to track the timeout independently using
 This function can return -1 with errno set to
 .Er EINTR
 and it is up to the caller to loop if the caller's own API disallows
-returning EINTR.
+returning
+.Er EINTR .
 .Pp
 This function can also return -1 with errno set to
 .Er EBUSY
@@ -173,8 +173,7 @@ and
 The kernel is responsible for handling
 .Fn fork
 actions, and will typically wakeup all blocked
-.Fn
-umtx_sleep
+.Fn umtx_sleep
 for all threads of a process upon any thread forking.
 However, other actions such as pagein and pageout can also desynchronize
 sleeps and wakeups.
