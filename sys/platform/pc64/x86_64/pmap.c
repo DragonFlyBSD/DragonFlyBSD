@@ -171,7 +171,6 @@ uint64_t PatMsr;
 
 static int ndmpdp;
 static vm_paddr_t dmaplimit;
-static int nkpt;
 vm_offset_t kernel_vm_end = VM_MIN_KERNEL_ADDRESS;
 
 static pt_entry_t pat_pte_index[PAT_INDEX_SIZE];	/* PAT -> PG_ bits */
@@ -181,8 +180,8 @@ static uint64_t KPTbase;
 static uint64_t KPTphys;
 static uint64_t	KPDphys;	/* phys addr of kernel level 2 */
 static uint64_t	KPDbase;	/* phys addr of kernel level 2 @ KERNBASE */
-uint64_t KPDPphys;	/* phys addr of kernel level 3 */
-uint64_t KPML4phys;	/* phys addr of kernel level 4 */
+uint64_t KPDPphys;		/* phys addr of kernel level 3 */
+uint64_t KPML4phys;		/* phys addr of kernel level 4 */
 
 static uint64_t	DMPDphys;	/* phys addr of direct mapped level 2 */
 static uint64_t	DMPDPphys;	/* phys addr of direct mapped level 3 */
@@ -802,55 +801,83 @@ create_pagetables(vm_paddr_t *firstaddr)
 	long i;		/* must be 64 bits */
 	long nkpt_base;
 	long nkpt_phys;
+	long nkpd_phys;
 	int j;
 
 	/*
 	 * We are running (mostly) V=P at this point
 	 *
-	 * Calculate NKPT - number of kernel page tables.  We have to
-	 * accomodoate prealloction of the vm_page_array, dump bitmap,
-	 * MSGBUF_SIZE, and other stuff.  Be generous.
+	 * Calculate how many 1GB PD entries in our PDP pages are needed
+	 * for the DMAP.  This is only allocated if the system does not
+	 * support 1GB pages.  Otherwise ndmpdp is simply a count of
+	 * the number of 1G terminal entries in our PDP pages are needed.
 	 *
-	 * Maxmem is in pages.
-	 *
-	 * ndmpdp is the number of 1GB pages we wish to map.
+	 * NOTE: Maxmem is in pages
 	 */
 	ndmpdp = (ptoa(Maxmem) + NBPDP - 1) >> PDPSHIFT;
 	if (ndmpdp < 4)		/* Minimum 4GB of dirmap */
 		ndmpdp = 4;
-	KKASSERT(ndmpdp <= NKPDPE * NPDEPG);
+	KKASSERT(ndmpdp <= NDMPML4E * NPML4EPG);
 
 	/*
-	 * Starting at the beginning of kvm (not KERNBASE).
-	 */
-	nkpt_phys = (Maxmem * sizeof(struct vm_page) + NBPDR - 1) / NBPDR;
-	nkpt_phys += (Maxmem * sizeof(struct pv_entry) + NBPDR - 1) / NBPDR;
-	nkpt_phys += ((nkpt + nkpt + 1 + NKPML4E + NKPDPE + NDMPML4E +
-		       ndmpdp) + 511) / 512;
-	nkpt_phys += 128;
-
-	/*
-	 * Starting at KERNBASE - map 2G worth of page table pages.
-	 * KERNBASE is offset -2G from the end of kvm.
+	 * Starting at KERNBASE - map all 2G worth of page table pages.
+	 * KERNBASE is offset -2G from the end of kvm.  This will accomodate
+	 * all KVM allocations above KERNBASE, including the SYSMAPs below.
+	 *
+	 * We do this by allocating 2*512 PT pages.  Each PT page can map
+	 * 2MB, for 2GB total.
 	 */
 	nkpt_base = (NPDPEPG - KPDPI) * NPTEPG;	/* typically 2 x 512 */
 
 	/*
-	 * Allocate pages
+	 * Starting at the beginning of kvm (VM_MIN_KERNEL_ADDRESS),
+	 * Calculate how many page table pages we need to preallocate
+	 * for early vm_map allocations.
+	 *
+	 * A few extra won't hurt, they will get used up in the running
+	 * system.
+	 *
+	 * vm_page array
+	 * initial pventry's
 	 */
-	KPTbase = allocpages(firstaddr, nkpt_base);
-	KPTphys = allocpages(firstaddr, nkpt_phys);
-	KPML4phys = allocpages(firstaddr, 1);
-	KPDPphys = allocpages(firstaddr, NKPML4E);
-	KPDphys = allocpages(firstaddr, NKPDPE);
+	nkpt_phys = (Maxmem * sizeof(struct vm_page) + NBPDR - 1) / NBPDR;
+	nkpt_phys += (Maxmem * sizeof(struct pv_entry) + NBPDR - 1) / NBPDR;
+	nkpt_phys += 128;	/* a few extra */
 
 	/*
-	 * Calculate the page directory base for KERNBASE,
-	 * that is where we start populating the page table pages.
-	 * Basically this is the end - 2.
+	 * The highest value nkpd_phys can be set to is
+	 * NKPDPE - (NPDPEPG - KPDPI) (i.e. NKPDPE - 2).
+	 *
+	 * Doing so would cause all PD pages to be pre-populated for
+	 * a maximal KVM space (approximately 16*512 pages, or 32MB.
+	 * We can save memory by not doing this.
 	 */
-	KPDbase = KPDphys + ((NKPDPE - (NPDPEPG - KPDPI)) << PAGE_SHIFT);
+	nkpd_phys = (nkpt_phys + NPDPEPG - 1) / NPDPEPG;
 
+	/*
+	 * Allocate pages
+	 *
+	 * Normally NKPML4E=1-16 (1-16 kernel PDP page)
+	 * Normally NKPDPE= NKPML4E*512-1 (511 min kernel PD pages)
+	 *
+	 * Only allocate enough PD pages
+	 * NOTE: We allocate all kernel PD pages up-front, typically
+	 *	 ~511G of KVM, requiring 511 PD pages.
+	 */
+	KPTbase = allocpages(firstaddr, nkpt_base);	/* KERNBASE to end */
+	KPTphys = allocpages(firstaddr, nkpt_phys);	/* KVA start */
+	KPML4phys = allocpages(firstaddr, 1);		/* recursive PML4 map */
+	KPDPphys = allocpages(firstaddr, NKPML4E);	/* kernel PDP pages */
+	KPDphys = allocpages(firstaddr, nkpd_phys);	/* kernel PD pages */
+
+	/*
+	 * Alloc PD pages for the area starting at KERNBASE.
+	 */
+	KPDbase = allocpages(firstaddr, NPDPEPG - KPDPI);
+
+	/*
+	 * Stuff for our DMAP
+	 */
 	DMPDPphys = allocpages(firstaddr, NDMPML4E);
 	if ((amd_feature & AMDID_PAGE1GB) == 0)
 		DMPDphys = allocpages(firstaddr, ndmpdp);
@@ -905,13 +932,29 @@ create_pagetables(vm_paddr_t *firstaddr)
 	}
 
 	/*
-	 * And connect up the PD to the PDP.  The kernel pmap is expected
-	 * to pre-populate all of its PDs.  See NKPDPE in vmparam.h.
+	 * Load PD addresses into the PDP pages for primary KVA space to
+	 * cover existing page tables.  PD's for KERNBASE are handled in
+	 * the next loop.
+	 *
+	 * expected to pre-populate all of its PDs.  See NKPDPE in vmparam.h.
 	 */
-	for (i = 0; i < NKPDPE; i++) {
-		((pdp_entry_t *)KPDPphys)[NPDPEPG - NKPDPE + i] =
+	for (i = 0; i < nkpd_phys; i++) {
+		((pdp_entry_t *)KPDPphys)[NKPML4E * NPDPEPG - NKPDPE + i] =
 				KPDphys + (i << PAGE_SHIFT);
-		((pdp_entry_t *)KPDPphys)[NPDPEPG - NKPDPE + i] |=
+		((pdp_entry_t *)KPDPphys)[NKPML4E * NPDPEPG - NKPDPE + i] |=
+		    pmap_bits_default[PG_RW_IDX] |
+		    pmap_bits_default[PG_V_IDX] |
+		    pmap_bits_default[PG_U_IDX];
+	}
+
+	/*
+	 * Load PDs for KERNBASE to the end
+	 */
+	i = (NKPML4E - 1) * NPDPEPG + KPDPI;
+	for (j = 0; j < NPDPEPG - KPDPI; ++j) {
+		((pdp_entry_t *)KPDPphys)[i + j] =
+				KPDbase + (j << PAGE_SHIFT);
+		((pdp_entry_t *)KPDPphys)[i + j] |=
 		    pmap_bits_default[PG_RW_IDX] |
 		    pmap_bits_default[PG_V_IDX] |
 		    pmap_bits_default[PG_U_IDX];
@@ -982,11 +1025,16 @@ create_pagetables(vm_paddr_t *firstaddr)
 	/*
 	 * Connect the KVA slot up to the PML4
 	 */
-	((pdp_entry_t *)KPML4phys)[KPML4I] = KPDPphys;
-	((pdp_entry_t *)KPML4phys)[KPML4I] |=
-	    pmap_bits_default[PG_RW_IDX] |
-	    pmap_bits_default[PG_V_IDX] |
-	    pmap_bits_default[PG_U_IDX];
+	for (j = 0; j < NKPML4E; ++j) {
+		((pdp_entry_t *)KPML4phys)[KPML4I + j] =
+		    KPDPphys + ((vm_paddr_t)j << PAGE_SHIFT);
+		((pdp_entry_t *)KPML4phys)[KPML4I + j] |=
+		    pmap_bits_default[PG_RW_IDX] |
+		    pmap_bits_default[PG_V_IDX] |
+		    pmap_bits_default[PG_U_IDX];
+	}
+	cpu_mfence();
+	cpu_invltlb();
 }
 
 /*
@@ -1984,10 +2032,13 @@ pmap_pinit(struct pmap *pmap)
 			    pmap->pmap_bits[PG_V_IDX] |
 			    pmap->pmap_bits[PG_U_IDX];
 		}
-		pmap->pm_pml4[KPML4I] = KPDPphys |
-		    pmap->pmap_bits[PG_RW_IDX] |
-		    pmap->pmap_bits[PG_V_IDX] |
-		    pmap->pmap_bits[PG_U_IDX];
+		for (j = 0; j < NKPML4E; ++j) {
+			pmap->pm_pml4[KPML4I + j] =
+			    (KPDPphys + ((vm_paddr_t)j << PAGE_SHIFT)) |
+			    pmap->pmap_bits[PG_RW_IDX] |
+			    pmap->pmap_bits[PG_V_IDX] |
+			    pmap->pmap_bits[PG_U_IDX];
+		}
 
 		/*
 		 * install self-referential address mapping entry
@@ -3133,7 +3184,7 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 	vm_offset_t ptppaddr;
 	vm_page_t nkpg;
 	pd_entry_t *pt, newpt;
-	pdp_entry_t newpd;
+	pdp_entry_t *pd, newpd;
 	int update_kernel_vm_end;
 
 	/*
@@ -3141,11 +3192,15 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 	 */
 	if (kernel_vm_end == 0) {
 		kernel_vm_end = VM_MIN_KERNEL_ADDRESS;
-		nkpt = 0;
-		while ((*pmap_pt(&kernel_pmap, kernel_vm_end) & kernel_pmap.pmap_bits[PG_V_IDX]) != 0) {
+
+		for (;;) {
+			pt = pmap_pt(&kernel_pmap, kernel_vm_end);
+			if (pt == NULL)
+				break;
+			if ((*pt & kernel_pmap.pmap_bits[PG_V_IDX]) == 0)
+				break;
 			kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) &
-					~(PAGE_SIZE * NPTEPG - 1);
-			nkpt++;
+					~(vm_offset_t)(PAGE_SIZE * NPTEPG - 1);
 			if (kernel_vm_end - 1 >= kernel_map.max_offset) {
 				kernel_vm_end = kernel_map.max_offset;
 				break;                       
@@ -3167,8 +3222,8 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		update_kernel_vm_end = 0;
 	}
 
-	kstart = rounddown2(kstart, PAGE_SIZE * NPTEPG);
-	kend = roundup2(kend, PAGE_SIZE * NPTEPG);
+	kstart = rounddown2(kstart, (vm_offset_t)(PAGE_SIZE * NPTEPG));
+	kend = roundup2(kend, (vm_offset_t)(PAGE_SIZE * NPTEPG));
 
 	if (kend - 1 >= kernel_map.max_offset)
 		kend = kernel_map.max_offset;
@@ -3176,7 +3231,9 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 	while (kstart < kend) {
 		pt = pmap_pt(&kernel_pmap, kstart);
 		if (pt == NULL) {
-			/* We need a new PD entry */
+			/*
+			 * We need a new PD entry
+			 */
 			nkpg = vm_page_alloc(NULL, mycpu->gd_rand_incr++,
 			                     VM_ALLOC_NORMAL |
 					     VM_ALLOC_SYSTEM |
@@ -3187,18 +3244,27 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 			}
 			paddr = VM_PAGE_TO_PHYS(nkpg);
 			pmap_zero_page(paddr);
+			pd = pmap_pd(&kernel_pmap, kstart);
+
 			newpd = (pdp_entry_t)
 			    (paddr |
 			    kernel_pmap.pmap_bits[PG_V_IDX] |
 			    kernel_pmap.pmap_bits[PG_RW_IDX] |
 			    kernel_pmap.pmap_bits[PG_A_IDX] |
 			    kernel_pmap.pmap_bits[PG_M_IDX]);
-			*pmap_pd(&kernel_pmap, kstart) = newpd;
+			atomic_swap_long(pd, newpd);
+
+#if 0
+			kprintf("NEWPD pd=%p pde=%016jx phys=%016jx\n",
+				pd, newpd, paddr);
+#endif
+
 			continue; /* try again */
 		}
+
 		if ((*pt & kernel_pmap.pmap_bits[PG_V_IDX]) != 0) {
 			kstart = (kstart + PAGE_SIZE * NPTEPG) &
-				 ~(PAGE_SIZE * NPTEPG - 1);
+				 ~(vm_offset_t)(PAGE_SIZE * NPTEPG - 1);
 			if (kstart - 1 >= kernel_map.max_offset) {
 				kstart = kernel_map.max_offset;
 				break;                       
@@ -3226,10 +3292,10 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 				     kernel_pmap.pmap_bits[PG_RW_IDX] |
 				     kernel_pmap.pmap_bits[PG_A_IDX] |
 				     kernel_pmap.pmap_bits[PG_M_IDX]);
-		atomic_swap_long(pmap_pt(&kernel_pmap, kstart), newpt);
+		atomic_swap_long(pt, newpt);
 
 		kstart = (kstart + PAGE_SIZE * NPTEPG) &
-			  ~(PAGE_SIZE * NPTEPG - 1);
+			  ~(vm_offset_t)(PAGE_SIZE * NPTEPG - 1);
 
 		if (kstart - 1 >= kernel_map.max_offset) {
 			kstart = kernel_map.max_offset;

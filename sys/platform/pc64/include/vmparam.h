@@ -101,23 +101,24 @@
  * Because of the page that is both a PD and PT, it looks a little
  * messy at times, but hey, we'll do anything to save a page :-)
  *
- * The kernel address space can be up to (I think) 511 page directory
- * pages.  Each one represents 1G.  NKPDPE defines the size of the kernel
- * address space.  The recommended value is between 128 and 511.
+ * NKPDPE is the number of PD's representing KVM.  Not all are immediately
+ * populated.  There are 512 PD's per PDP and the value is calculated from
+ * NKPML4E (see pmap.h).
  *
  * The ending address is non-inclusive of the per-cpu data array
  * which starts at MPPTDI (-16MB mark).  MPPTDI is the page directory
  * index in the last PD of the kernel address space and is typically
  * set to (NPDEPG - 8) = (512 - 8).
  */
-#define NKPDPE			511
-#define	VM_MIN_KERNEL_ADDRESS	KVADDR(KPML4I, NPDPEPG - NKPDPE, 0, 0)
-#define	VM_MAX_KERNEL_ADDRESS	KVADDR(KPML4I, NPDPEPG - 1, MPPTDI, NPTEPG - 1)
+#define NKPDPE			(NKPML4E*NPDPEPG-1)
+#define	VM_MIN_KERNEL_ADDRESS	KVADDR(KPML4I, NKPML4E*NPDPEPG - NKPDPE, 0, 0)
+#define	VM_MAX_KERNEL_ADDRESS	KVADDR(KPML4I + NKPML4E - 1,		\
+					NPDPEPG - 1, MPPTDI, NPTEPG - 1)
 
 #define	DMAP_MIN_ADDRESS	KVADDR(DMPML4I, 0, 0, 0)
 #define	DMAP_MAX_ADDRESS	KVADDR(DMPML4I+NDMPML4E, 0, 0, 0)
 
-#define	KERNBASE		KVADDR(KPML4I, KPDPI, 0, 0)
+#define	KERNBASE		KVADDR(KPML4I + NKPML4E - 1, KPDPI, 0, 0)
 #define	PTOV_OFFSET		KERNBASE
 
 #define UPT_MAX_ADDRESS		KVADDR(PML4PML4I, PML4PML4I, PML4PML4I, PML4PML4I)

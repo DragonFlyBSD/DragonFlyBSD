@@ -75,9 +75,14 @@
 	((unsigned long)(l1) << PAGE_SHIFT))
 
 /*
+ * NKPML4E is the number of PML4E slots used for KVM.  Each slot represents
+ * 512GB of KVM.  A number between 1 and 128 may be specified.  To support
+ * the maximum machine configuration of 64TB we recommend around
+ * 16 slots (8TB of KVM).
+ *
  * NOTE: We no longer hardwire NKPT, it is calculated in create_pagetables()
  */
-#define NKPML4E		1		/* number of kernel PML4 slots */
+#define NKPML4E		16
 /* NKPDPE defined in vmparam.h */
 
 /*
@@ -97,14 +102,11 @@
 #define NUPTE_USER	((vm_pindex_t)NPTEPG * NPDEPG * NPDPEPG * NUPDP_USER)
 
 /*
- * Number of 512G dmap PML4 slots (max ~254 or so but don't go over 64,
- * which gives us 32TB of ram).  Because we cache free, empty pmaps the
- * initialization overhead is minimal.
- *
- * It should be possible to bump this up to 255 (but not 256), which would
- * be able to address a maximum of ~127TB of physical ram.
+ * Number of 512G dmap PML4 slots.  There are 512 slots of which 256 are
+ * used by the kernel.  Of those 256 we allow up to 128 to be used by the
+ * DMAP (for 64TB of ram), leaving 128 for the kernel and other incidentals.
  */
-#define	NDMPML4E	64
+#define	NDMPML4E	128
 
 /*
  * The *PML4I values control the layout of virtual memory.  Each PML4
@@ -112,8 +114,16 @@
  */
 #define	PML4PML4I	(NPML4EPG/2)	/* Index of recursive pml4 mapping */
 
-#define	KPML4I		(NPML4EPG-1)	/* Top 512GB for KVM */
+#define	KPML4I		(NPML4EPG-NKPML4E) /* Start of KVM */
 #define	DMPML4I		(KPML4I-NDMPML4E) /* Next 512GBxN down for dmap */
+
+/*
+ * Make sure the kernel map and DMAP don't overflow the 256 PDP entries
+ * we have available.  Minus one for the PML4PML4I.
+ */
+#if NKPML4E + NDMPML4E >= 255
+#error "NKPML4E or NDMPML4E is too large"
+#endif
 
 /*
  * The location of KERNBASE in the last PD of the kernel's KVM (KPML4I)
@@ -128,7 +138,7 @@
  * in the future or 16MB of space.  Each PD represents 2MB so
  * use NPDEPG-8 to place the per-CPU data.
  */
-#define	MPPML4I		KPML4I
+#define	MPPML4I		(KPML4I + NKPML4E - 1)
 #define	MPPDPI		KPDPI
 #define	MPPTDI		(NPDEPG-8)
 

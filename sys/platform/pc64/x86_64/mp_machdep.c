@@ -140,7 +140,6 @@ int	current_postcode;
 /** XXX FIXME: what system files declare these??? */
 extern struct region_descriptor r_gdt;
 
-extern int nkpt;
 extern int naps;
 
 int64_t tsc0_offset;
