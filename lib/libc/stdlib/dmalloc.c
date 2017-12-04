@@ -72,12 +72,11 @@
  *	Above that power-of-2 sized allocations are page-aligned.  Non
  *	power-of-2 sized allocations are aligned the same as the chunk
  *	size for their zone.
- *    + malloc(0) returns a special non-NULL value
  *    + ability to allocate arbitrarily large chunks of memory
  *    + realloc will reuse the passed pointer if possible, within the
  *	limitations of the zone chunking.
  *
- * On top of th slab allocator we also implement a 16-entry-per-thread
+ * On top of the slab allocator we also implement a 16-entry-per-thread
  * magazine cache for allocations <= NOMSLABSIZE.
  *
  *				FUTURE FEATURES
