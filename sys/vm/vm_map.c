@@ -4147,10 +4147,21 @@ vm_map_lookup(vm_map_t *var_map,		/* IN/OUT */
 	int use_read_lock = 1;
 	int rv = KERN_SUCCESS;
 	int count;
+	thread_t td = curthread;
 
+	/*
+	 * vm_map_entry_reserve() implements an important mitigation
+	 * against mmap() span running the kernel out of vm_map_entry
+	 * structures, but it can also cause an infinite call recursion.
+	 * Use td_nest_count to prevent an infinite recursion (allows
+	 * the vm_map code to dig into the pcpu vm_map_entry reserve).
+	 */
 	count = 0;
-	if (vaddr < VM_MAX_USER_ADDRESS)
+	if (td->td_nest_count == 0) {
+		++td->td_nest_count;
 		count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
+		--td->td_nest_count;
+	}
 RetryLookup:
 	if (use_read_lock)
 		vm_map_lock_read(map);
@@ -4313,7 +4324,7 @@ RetryLookup:
 		 * to improve concurrent fault performance.  This is only
 		 * applicable to userspace.
 		 */
-		if (vaddr < VM_MAX_USER_ADDRESS &&
+		if (map != &kernel_map &&
 		    entry->maptype == VM_MAPTYPE_NORMAL &&
 		    ((entry->start ^ entry->end) & ~MAP_ENTRY_PARTITION_MASK) &&
 		    vm_map_partition_enable) {
@@ -4353,7 +4364,7 @@ done:
 	} else {
 		vm_map_unlock(map);
 	}
-	if (vaddr < VM_MAX_USER_ADDRESS)
+	if (count > 0)
 		vm_map_entry_release(count);
 
 	return (rv);
