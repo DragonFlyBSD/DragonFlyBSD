@@ -732,11 +732,11 @@ dosum(void)
 	printf("%9u pages freed\n", vmm.v_tfree);
 	printf("%9u pages freed by daemon\n", vmm.v_dfree);
 	printf("%9u pages freed by exiting processes\n", vmm.v_pfree);
-	printf("%9u pages active\n", vms.v_active_count);
-	printf("%9u pages inactive\n", vms.v_inactive_count);
-	printf("%9u pages in VM cache\n", vms.v_cache_count);
-	printf("%9u pages wired down\n", vms.v_wire_count);
-	printf("%9u pages free\n", vms.v_free_count);
+	printf("%9lu pages active\n", vms.v_active_count);
+	printf("%9lu pages inactive\n", vms.v_inactive_count);
+	printf("%9lu pages in VM cache\n", vms.v_cache_count);
+	printf("%9lu pages wired down\n", vms.v_wire_count);
+	printf("%9lu pages free\n", vms.v_free_count);
 	printf("%9u bytes per page\n", vms.v_page_size);
 	printf("%9u global smp invltlbs\n", vmm.v_smpinvltlb);
 	
