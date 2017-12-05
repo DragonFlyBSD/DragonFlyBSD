@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/secure/lib/libcipher/crypt.c,v 1.6 1999/08/28 01:30:21 peter Exp $
- * $DragonFly: src/secure/lib/libcipher/crypt.c,v 1.3 2005/05/21 10:31:08 corecode Exp $
  *
  * This is an original implementation of the DES and the crypt(3) interfaces
  * by David Burren <davidb@werj.com.au>.
@@ -200,7 +199,7 @@ ascii_to_bin(char ch)
 
 
 static void
-des_init()
+des_init(void)
 {
 	int	i, j, b, k, inbit, obit;
 	u_long	*p, *il, *ir, *fl, *fr;
