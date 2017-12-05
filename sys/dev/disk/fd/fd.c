@@ -797,8 +797,8 @@ fdc_attach(device_t dev)
 				/* XXX should integrate with rman */
 		error = isa_dma_acquire(fdc->dmachan);
 		if (!error) {
-			isa_dma_init(fdc->dmachan, 128 << 3 /* XXX max secsize */,
-				     M_WAITOK);
+			error = isa_dma_init(fdc->dmachan, 128 << 3 /* XXX max secsize */,
+					     M_WAITOK);
 			if (error) {
 				isa_dma_release(fdc->dmachan);
 				device_printf(dev, "disabling dma\n");
