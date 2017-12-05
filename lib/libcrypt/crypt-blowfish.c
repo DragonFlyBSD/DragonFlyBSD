@@ -100,16 +100,8 @@ static const u_int8_t index_64[128] =
 };
 #define CHAR64(c)  ( (c) > 127 ? 255 : index_64[(c)])
 
-#ifdef __STDC__
 static void
 decode_base64(u_int8_t *buffer, u_int16_t len, u_int8_t *data)
-#else
-static void
-decode_base64(buffer, len, data)
-	u_int8_t *buffer;
-	u_int16_t len;
-	u_int8_t *data;
-#endif
 {
 	u_int8_t *bp = buffer;
 	u_int8_t *p = data;
@@ -143,17 +135,8 @@ decode_base64(buffer, len, data)
 	}
 }
 
-#ifdef __STDC__
 static void
 encode_salt(char *salt, u_int8_t *csalt, u_int16_t clen, u_int8_t logr)
-#else
-static void
-encode_salt(salt, csalt, clen, logr)
-	char   *salt;
-	u_int8_t *csalt;
-	u_int16_t clen;
-	u_int8_t logr;
-#endif
 {
 	salt[0] = '$';
 	salt[1] = BCRYPT_VERSION;
@@ -169,14 +152,8 @@ encode_salt(salt, csalt, clen, logr)
    seems sensible.
  */
 
-#ifdef __STDC__
 char *
 bcrypt_gensalt(u_int8_t log_rounds)
-#else
-char *
-bcrypt_gensalt(log_rounds)
-	u_int8_t log_rounds;
-#endif
 {
 	u_int8_t csalt[BCRYPT_MAXSALT];
 	u_int16_t i;
@@ -311,16 +288,8 @@ crypt_blowfish(key, salt)
 	return encrypted;
 }
 
-#ifdef __STDC__
 static void
 encode_base64(u_int8_t *buffer, u_int8_t *data, u_int16_t len)
-#else
-static void
-encode_base64(buffer, data, len)
-	u_int8_t *buffer;
-	u_int8_t *data;
-	u_int16_t len;
-#endif
 {
 	u_int8_t *bp = buffer;
 	u_int8_t *p = data;
