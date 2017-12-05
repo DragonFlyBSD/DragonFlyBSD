@@ -110,6 +110,7 @@ static struct command db_command_table[] = {
 	{ "s",		db_single_step_cmd,	0,	NULL },
 	{ "continue",	db_continue_cmd,	0,	NULL },
 	{ "c",		db_continue_cmd,	0,	NULL },
+	{ "i",		db_invltlb_cmd,		0,	NULL },
 	{ "until",	db_trace_until_call_cmd,0,	NULL },
 	{ "next",	db_trace_until_matching_cmd,0,	NULL },
 	{ "match",	db_trace_until_matching_cmd,0,	NULL },

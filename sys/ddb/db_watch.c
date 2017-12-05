@@ -305,3 +305,10 @@ db_hwatchpoint_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 	if (rc < 0)
 		db_printf("hardware watchpoint could not be set\n");
 }
+
+void
+db_invltlb_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
+	       char *modif)
+{
+	cpu_invltlb();
+}

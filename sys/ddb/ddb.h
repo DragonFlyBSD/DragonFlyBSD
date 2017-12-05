@@ -117,6 +117,7 @@ void		kdb_init (void);
 
 db_cmdfcn_t	db_breakpoint_cmd;
 db_cmdfcn_t	db_continue_cmd;
+db_cmdfcn_t	db_invltlb_cmd;
 db_cmdfcn_t	db_delete_cmd;
 db_cmdfcn_t	db_deletehwatch_cmd;
 db_cmdfcn_t	db_deletewatch_cmd;
