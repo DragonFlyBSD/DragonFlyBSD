@@ -709,9 +709,6 @@ struct netexport {
 #endif
 
 #ifdef _KERNEL
-
-extern	char *mountrootfsname;
-
 /*
  * exported vnode operations
  */
