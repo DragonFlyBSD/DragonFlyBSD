@@ -674,10 +674,19 @@ resident_skip2:
     map_stacks_exec(NULL);
 
     dbg("resolving ifuncs");
-    if (resolve_objects_ifunc(obj_main,
-      ld_bind_now != NULL && *ld_bind_now != '\0', SYMLOOK_EARLY,
-      NULL) == -1)
-	die();
+    {
+	    RtldLockState lockstate;
+
+	    wlock_acquire(rtld_bind_lock, &lockstate);
+	    if (resolve_objects_ifunc(
+		    obj_main,
+		    (ld_bind_now != NULL && *ld_bind_now != '\0'),
+		    SYMLOOK_EARLY,
+		    &lockstate) == -1) {
+		    die();
+	    }
+	    lock_release(rtld_bind_lock, &lockstate);
+    }
 
     /*
      * Do NOT call the initlist here, give libc a chance to set up
