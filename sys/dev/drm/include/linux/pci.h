@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2017 François Tigeot
+ * Copyright (c) 2014-2017 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -71,6 +71,7 @@ struct pci_dev {
 	uint8_t revision;		/* revision ID */
 
 	unsigned int irq;		/* handle with care */
+	void *pci_dev_data;
 };
 
 struct pci_bus {
@@ -78,6 +79,9 @@ struct pci_bus {
 	struct device *dev;		/* handle to dev */
 
 	unsigned char number;		/* bus addr number */
+};
+
+struct pci_driver {
 };
 
 #define PCI_DEVFN(slot, func)   ((((slot) & 0x1f) << 3) | ((func) & 0x07))
@@ -301,6 +305,24 @@ pci_bus_read_config_word(struct pci_bus *bus, unsigned int devfn, int where, u16
 	const struct pci_dev *pdev = container_of(&bus, struct pci_dev, bus);
 
 	*val = (u16)pci_read_config(pdev->dev.bsddev, where, 2);
+	return 0;
+}
+
+static inline void *
+pci_get_drvdata(struct pci_dev *pdev)
+{
+	return pdev->pci_dev_data;
+}
+
+static inline void
+pci_set_drvdata(struct pci_dev *pdev, void *data)
+{
+	pdev->pci_dev_data = data;
+}
+
+static inline int
+pci_register_driver(struct pci_driver *drv)
+{
 	return 0;
 }
 
