@@ -176,9 +176,7 @@ bcrypt_gensalt(u_int8_t log_rounds)
    i.e. $2$04$iwouldntknowwhattosayetKdJ6iFtacBqJdKe6aW7ou */
 
 char   *
-crypt_blowfish(key, salt)
-	const char   *key;
-	const char   *salt;
+crypt_blowfish(const char *key, const char *salt)
 {
 	blf_ctx state;
 	u_int32_t rounds, i, k;

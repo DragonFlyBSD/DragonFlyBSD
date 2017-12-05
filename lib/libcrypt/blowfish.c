@@ -69,10 +69,7 @@
 #define BLFRND(s,p,i,j,n) (i ^= F(s,j) ^ (p)[n])
 
 void
-Blowfish_encipher(c, xl, xr)
-	blf_ctx *c;
-	u_int32_t *xl;
-	u_int32_t *xr;
+Blowfish_encipher(blf_ctx *c, u_int32_t *xl, u_int32_t *xr)
 {
 	u_int32_t Xl;
 	u_int32_t Xr;
@@ -97,10 +94,7 @@ Blowfish_encipher(c, xl, xr)
 }
 
 void
-Blowfish_decipher(c, xl, xr)
-	blf_ctx *c;
-	u_int32_t *xl;
-	u_int32_t *xr;
+Blowfish_decipher(blf_ctx *c, u_int32_t *xl, u_int32_t *xr)
 {
 	u_int32_t Xl;
 	u_int32_t Xr;
@@ -125,8 +119,7 @@ Blowfish_decipher(c, xl, xr)
 }
 
 void
-Blowfish_initstate(c)
-	blf_ctx *c;
+Blowfish_initstate(blf_ctx *c)
 {
 
 /* P-box and S-box tables initialized with digits of Pi */
