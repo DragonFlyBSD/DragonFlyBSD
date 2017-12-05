@@ -127,7 +127,7 @@ fi
 #
 #
 gpt add -i 0 -s 524288 -t "EFI System" ${drive}
-sects=`gpt show /dev/nvme0 | sort -n +1 | tail -1 | awk '{ print $2; }'`
+sects=`gpt show ${drive} | sort -n +1 | tail -1 | awk '{ print $2; }'`
 sects=$(($sects / 2048 * 2048))
 gpt add -i 1 -s $sects -t "DragonFly Label64" ${drive}
 sleep 0.5
@@ -163,7 +163,7 @@ if [ $? != 0 ]; then fail "disklabel setup"; fi
 sleep 0.5
 newfs ${drive}s1a
 if [ $? != 0 ]; then fail "newfs ${drive}s1a"; fi
-newfs_hammer -L ROOT ${drive}s1d
+newfs_hammer -f -L ROOT ${drive}s1d
 if [ $? != 0 ]; then fail "newfs_hammer ${drive}s1d"; fi
 
 # DragonFly mounts, setup for installation
