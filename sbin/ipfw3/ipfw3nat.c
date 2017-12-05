@@ -961,7 +961,7 @@ get_kern_boottime(void)
 }
 
 void
-nat_flush()
+nat_flush(void)
 {
 	int cmd = IP_FW_NAT_FLUSH;
 	if (!do_force) {
