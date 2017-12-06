@@ -161,19 +161,28 @@ vfs_subr_init(void)
 	/*
 	 * Desiredvnodes is kern.maxvnodes.  We want to scale it 
 	 * according to available system memory but we may also have
-	 * to limit it based on available KVM, which is capped on 32 bit
-	 * systems, to ~80K vnodes or so.
+	 * to limit it based on available KVM.
 	 *
 	 * WARNING!  For machines with 64-256M of ram we have to be sure
 	 *	     that the default limit scales down well due to HAMMER
 	 *	     taking up significantly more memory per-vnode vs UFS.
 	 *	     We want around ~5800 on a 128M machine.
+	 *
+	 * WARNING!  Now that KVM is substantially larger (e.g. 8TB+),
+	 *	     also limit maxvnodes based on a 128GB metric.  This
+	 *	     gives us something like ~3 millon vnodes.  sysctl
+	 *	     can be used to increase it further if desired.
+	 *
+	 *	     For disk cachhing purposes, filesystems like HAMMER1
+	 *	     and HAMMER2 will or can be told to cache file data
+	 *	     via the block device instead of excessively in vnodes.
 	 */
 	factor1 = 25 * (sizeof(struct vm_object) + sizeof(struct vnode));
 	factor2 = 30 * (sizeof(struct vm_object) + sizeof(struct vnode));
 	maxvnodes = imin((int64_t)vmstats.v_page_count * PAGE_SIZE / factor1,
 			 KvaSize / factor2);
 	maxvnodes = imax(maxvnodes, maxproc * 8);
+	maxvnodes = imin(maxvnodes, 64LL*1024*1024*1024 / factor2);
 
 	lwkt_token_init(&spechash_token, "spechash");
 }

@@ -1049,6 +1049,11 @@ softdep_initialize(void)
 	LIST_INIT(&softdep_workitem_pending);
 	max_softdeps = min(maxvnodes * 8, M_INODEDEP->ks_limit / (2 * idsize));
 
+	/*
+	 * Cap it at 100,000, having more just gets kinda silly.
+	 */
+	max_softdeps = min(max_softdeps, 100000);
+
 	pagedep_hashtbl = hashinit(hsize / 4, M_PAGEDEP, &pagedep_hash);
 	lockinit(&lk, "ffs_softdep", 0, LK_CANRECURSE);
 	sema_init(&pagedep_in_progress, "pagedep", 0);

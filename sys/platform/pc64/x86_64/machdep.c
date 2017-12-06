@@ -2,7 +2,7 @@
  * Copyright (c) 1982, 1987, 1990 The Regents of the University of California.
  * Copyright (c) 1992 Terrence R. Lambert.
  * Copyright (c) 2003 Peter Wemm.
- * Copyright (c) 2008 The DragonFly Project.
+ * Copyright (c) 2008-2017 The DragonFly Project.
  * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -417,15 +417,21 @@ again:
 	}
 
 	/*
-	 * Do not allow the sizeof(struct buf) * nbuf to exceed half of
+	 * Do not allow the sizeof(struct buf) * nbuf to exceed 1/4 of
 	 * the valloc space which is just the virtual_end - virtual_start
-	 * section.  We use valloc() to allocate the buf header array.
+	 * section.  This is typically ~2GB regardless of the amount of
+	 * memory, so we use 500MB as a metric.
+	 *
+	 * This is because we use valloc() to allocate the buf header array.
+	 *
+	 * NOTE: buffer space in bytes is limited by vfs.*bufspace sysctls.
 	 */
-	if (nbuf > (virtual_end - virtual_start) / sizeof(struct buf) / 2) {
+	if (nbuf > (virtual_end - virtual_start) / sizeof(struct buf) / 4) {
 		nbuf = (virtual_end - virtual_start) /
 		       sizeof(struct buf) / 2;
-		kprintf("Warning: nbufs capped at %ld due to valloc "
-			"considerations\n", nbuf);
+		kprintf("Warning: nbufs capped at %ld due to "
+			"valloc considerations\n",
+			nbuf);
 	}
 
 	nswbuf_mem = lmax(lmin(nbuf / 32, 512), 8);
