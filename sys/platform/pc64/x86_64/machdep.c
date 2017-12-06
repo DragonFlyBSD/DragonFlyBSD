@@ -2110,6 +2110,8 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 			 */
 			if (pa >= 0x200000 && pa < first) {
 				incr = first - pa;
+				if (pa + incr > end)
+					incr = end - pa;
 				goto do_dump_avail;
 			}
 
@@ -2122,6 +2124,8 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 				incr = dcons_addr + dcons_size - pa;
 				incr = (incr + PAGE_MASK) &
 				       ~(vm_paddr_t)PAGE_MASK;
+				if (pa + incr > end)
+					incr = end - pa;
 				goto do_dump_avail;
 			}
 
