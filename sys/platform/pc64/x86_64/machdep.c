@@ -2022,6 +2022,9 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 
 	/*
 	 * Align anything else used in the validation loop.
+	 *
+	 * Also make sure that our 2MB kernel text+data+bss mappings
+	 * do not overlap potentially allocatable space.
 	 */
 	first = (first + PHYSMAP_ALIGN_MASK) & ~PHYSMAP_ALIGN_MASK;
 
@@ -2047,10 +2050,14 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 	 * Validate the physical memory.  The physical memory segments
 	 * have already been aligned to PHYSMAP_ALIGN which is a multiple
 	 * of PAGE_SIZE.
+	 *
+	 * We no longer perform an exhaustive memory test.  Instead we
+	 * simply test the first and last word in each physmap[]
+	 * segment.
 	 */
 	for (i = 0; i <= physmap_idx; i += 2) {
 		vm_paddr_t end;
-		vm_paddr_t incr = PHYSMAP_ALIGN;
+		vm_paddr_t incr;
 
 		end = physmap[i + 1];
 
@@ -2059,43 +2066,54 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 			volatile uint64_t *ptr = (uint64_t *)CADDR1;
 			uint64_t tmp;
 
-			incr = PHYSMAP_ALIGN;
 			full = FALSE;
 
 			/*
-			 * block out kernel memory as not available.
+			 * Calculate incr.  Just test the first and
+			 * last page in each physmap[] segment.
 			 */
-			if (pa >= 0x200000 && pa < first)
-				goto do_dump_avail;
+			if (pa == end - PAGE_SIZE)
+				incr = PAGE_SIZE;
+			else
+				incr = end - pa - PAGE_SIZE;
 
 			/*
-			 * block out dcons buffer
+			 * Make sure we don't skip blacked out areas.
 			 */
-			if (dcons_addr > 0
-			    && pa >= trunc_page(dcons_addr)
-			    && pa < dcons_addr + dcons_size) {
+			if (pa < 0x200000 && 0x200000 < end) {
+				incr = 0x200000 - pa;
+			}
+			if (dcons_addr > 0 &&
+			    pa < dcons_addr &&
+			    dcons_addr < end) {
+				incr = dcons_addr - pa;
+			}
+
+			/*
+			 * Block out kernel memory as not available.
+			 */
+			if (pa >= 0x200000 && pa < first) {
+				incr = first - pa;
+				goto do_dump_avail;
+			}
+
+			/*
+			 * Block out the dcons buffer if it exists.
+			 */
+			if (dcons_addr > 0 &&
+			    pa >= trunc_page(dcons_addr) &&
+			    pa < dcons_addr + dcons_size) {
+				incr = dcons_addr + dcons_size - pa;
+				incr = (incr + PAGE_MASK) &
+				       ~(vm_paddr_t)PAGE_MASK;
 				goto do_dump_avail;
 			}
 
 			page_bad = FALSE;
 
 			/*
-			 * Always test the first and last block supplied in
-			 * the map entry, but it just takes too long to run
-			 * the test these days and we already have to skip
-			 * pages.  Handwave it on PHYSMAP_HANDWAVE boundaries.
-			 */
-			if (pa != physmap[i]) {
-				vm_paddr_t bytes = end - pa;
-				if ((pa & PHYSMAP_HANDWAVE_MASK) == 0 &&
-				    bytes >= PHYSMAP_HANDWAVE + PHYSMAP_ALIGN) {
-					incr = PHYSMAP_HANDWAVE;
-					goto handwaved;
-				}
-			}
-
-			/*
-			 * map page into kernel: valid, read/write,non-cacheable
+			 * Map the page non-cacheable for the memory
+			 * test.
 			 */
 			*pte = pa |
 			    kernel_pmap.pmap_bits[PG_V_IDX] |
@@ -2104,7 +2122,11 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 			cpu_invlpg(__DEVOLATILE(void *, ptr));
 			cpu_mfence();
 
+			/*
+			 * Save original value for restoration later.
+			 */
 			tmp = *ptr;
+
 			/*
 			 * Test for alternating 1's and 0's
 			 */
@@ -2133,32 +2155,42 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 			cpu_mfence();
 			if (*ptr != 0x0)
 				page_bad = TRUE;
+
 			/*
 			 * Restore original value.
 			 */
 			*ptr = tmp;
-handwaved:
 
 			/*
 			 * Adjust array of valid/good pages.
 			 */
-			if (page_bad == TRUE)
+			if (page_bad == TRUE) {
+				incr = PAGE_SIZE;
 				continue;
+			}
 
 			/*
-			 * If this good page is a continuation of the
-			 * previous set of good pages, then just increase
-			 * the end pointer. Otherwise start a new chunk.
-			 * Note that "end" points one higher than end,
-			 * making the range >= start and < end.
-			 * If we're also doing a speculative memory
-			 * test and we at or past the end, bump up Maxmem
-			 * so that we keep going. The first bad page
-			 * will terminate the loop.
+			 * Collapse page address into phys_avail[].  Do a
+			 * continuation of the current phys_avail[] index
+			 * when possible.
 			 */
 			if (phys_avail[pa_indx].phys_end == pa) {
+				/*
+				 * Continuation
+				 */
 				phys_avail[pa_indx].phys_end += incr;
+			} else if (phys_avail[pa_indx].phys_beg ==
+				   phys_avail[pa_indx].phys_end) {
+				/*
+				 * Current phys_avail is completely empty,
+				 * reuse the index.
+				 */
+				phys_avail[pa_indx].phys_beg = pa;
+				phys_avail[pa_indx].phys_end = pa + incr;
 			} else {
+				/*
+				 * Allocate next phys_avail index.
+				 */
 				++pa_indx;
 				if (pa_indx == PHYS_AVAIL_ARRAY_END) {
 					kprintf(
@@ -2171,6 +2203,10 @@ handwaved:
 				phys_avail[pa_indx].phys_end = pa + incr;
 			}
 			physmem += incr / PAGE_SIZE;
+
+			/*
+			 * pa available for dumping
+			 */
 do_dump_avail:
 			if (dump_avail[da_indx].phys_end == pa) {
 				dump_avail[da_indx].phys_end += incr;
