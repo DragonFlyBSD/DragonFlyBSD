@@ -258,35 +258,45 @@ static int
 sysctl_hw_physmem(SYSCTL_HANDLER_ARGS)
 {
 	u_long pmem = ctob(physmem);
+	int error;
 
-	int error = sysctl_handle_long(oidp, &pmem, 0, req);
+	error = sysctl_handle_long(oidp, &pmem, 0, req);
+
 	return (error);
 }
 
 SYSCTL_PROC(_hw, HW_PHYSMEM, physmem, CTLTYPE_ULONG|CTLFLAG_RD,
-	0, 0, sysctl_hw_physmem, "LU", "Total system memory in bytes (number of pages * page size)");
+	0, 0, sysctl_hw_physmem, "LU",
+	"Total system memory in bytes (number of pages * page size)");
 
 static int
 sysctl_hw_usermem(SYSCTL_HANDLER_ARGS)
 {
-	int error = sysctl_handle_int(oidp, 0,
-		ctob(physmem - vmstats.v_wire_count), req);
+	u_long usermem = ctob(physmem - vmstats.v_wire_count);
+	int error;
+
+	error = sysctl_handle_long(oidp, &usermem, 0, req);
+
 	return (error);
 }
 
-SYSCTL_PROC(_hw, HW_USERMEM, usermem, CTLTYPE_INT|CTLFLAG_RD,
-	0, 0, sysctl_hw_usermem, "IU", "");
+SYSCTL_PROC(_hw, HW_USERMEM, usermem, CTLTYPE_ULONG|CTLFLAG_RD,
+	0, 0, sysctl_hw_usermem, "LU", "");
 
 static int
 sysctl_hw_availpages(SYSCTL_HANDLER_ARGS)
 {
-	int error = sysctl_handle_int(oidp, 0,
-		x86_64_btop(avail_end - avail_start), req);
+	int error;
+	u_long availpages;
+
+	availpages = x86_64_btop(avail_end - avail_start);
+	error = sysctl_handle_long(oidp, &availpages, 0, req);
+
 	return (error);
 }
 
-SYSCTL_PROC(_hw, OID_AUTO, availpages, CTLTYPE_INT|CTLFLAG_RD,
-	0, 0, sysctl_hw_availpages, "I", "");
+SYSCTL_PROC(_hw, OID_AUTO, availpages, CTLTYPE_ULONG|CTLFLAG_RD,
+	0, 0, sysctl_hw_availpages, "LU", "");
 
 vm_paddr_t Maxmem;
 vm_paddr_t Realmem;

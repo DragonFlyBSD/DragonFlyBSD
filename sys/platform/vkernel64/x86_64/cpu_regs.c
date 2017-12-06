@@ -117,8 +117,10 @@ static int
 sysctl_hw_physmem(SYSCTL_HANDLER_ARGS)
 {
 	u_long pmem = ctob(physmem);
+	int error;
 
-	int error = sysctl_handle_long(oidp, &pmem, 0, req);
+	error = sysctl_handle_long(oidp, &pmem, 0, req);
+
 	return (error);
 }
 
@@ -128,14 +130,16 @@ SYSCTL_PROC(_hw, HW_PHYSMEM, physmem, CTLTYPE_ULONG|CTLFLAG_RD,
 static int
 sysctl_hw_usermem(SYSCTL_HANDLER_ARGS)
 {
-	/* JG */
-	int error = sysctl_handle_int(oidp, 0,
-		ctob((int)Maxmem - vmstats.v_wire_count), req);
+	u_long usermem = ctob(Maxmem - vmstats.v_wire_count);
+	int error;
+
+	error = sysctl_handle_long(oidp, &usermem, 0, req);
+
 	return (error);
 }
 
-SYSCTL_PROC(_hw, HW_USERMEM, usermem, CTLTYPE_INT|CTLFLAG_RD,
-	0, 0, sysctl_hw_usermem, "IU", "");
+SYSCTL_PROC(_hw, HW_USERMEM, usermem, CTLTYPE_ULONG|CTLFLAG_RD,
+	0, 0, sysctl_hw_usermem, "LU", "");
 
 SYSCTL_ULONG(_hw, OID_AUTO, availpages, CTLFLAG_RD, &Maxmem, 0, "");
 
