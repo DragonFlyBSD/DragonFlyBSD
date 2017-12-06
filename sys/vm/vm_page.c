@@ -592,7 +592,7 @@ vm_page_startup_finish(void *dummy __unused)
 				blk, count, rblk);
 			break;
 		}
-		atomic_add_long(&vmstats.v_dma_pages, -count);
+		atomic_add_long(&vmstats.v_dma_pages, -(long)count);
 		spin_unlock(&vm_contig_spin);
 
 		m = PHYS_TO_VM_PAGE((vm_paddr_t)blk << PAGE_SHIFT);
