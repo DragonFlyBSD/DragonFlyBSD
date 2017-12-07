@@ -121,6 +121,8 @@
 #include <sys/spinlock2.h>
 #include <vm/vm_page2.h>
 
+#include <machine/bus_dma.h>
+
 static void vm_contig_pg_free(vm_pindex_t start, u_long size);
 
 /*
@@ -269,11 +271,17 @@ vm_contig_pg_alloc(unsigned long size, vm_paddr_t low, vm_paddr_t high,
 	 * See if we can get the pages from the contiguous page reserve
 	 * alist.  The returned pages will be allocated and wired but not
 	 * busied.
+	 *
+	 * If high is not set to BUS_SPACE_MAXADDR we try using our
+	 * free memory reserve first, otherwise we try it last.
 	 */
-	m = vm_page_alloc_contig(
-		low, high, alignment, boundary, size, VM_MEMATTR_DEFAULT);
-	if (m)
-		return (m - &pga[0]);
+	if (high != BUS_SPACE_MAXADDR) {
+		m = vm_page_alloc_contig(
+			low, high, alignment, boundary,
+			size, VM_MEMATTR_DEFAULT);
+		if (m)
+			return (m - &pga[0]);
+	}
 
 	/*
 	 * Three passes (0, 1, 2).  Each pass scans the VM page list for
@@ -295,7 +303,8 @@ again:
 			if (((pqtype == PQ_FREE) || (pqtype == PQ_CACHE)) &&
 			    (phys >= low) && (phys < high) &&
 			    ((phys & (alignment - 1)) == 0) &&
-			    (((phys ^ (phys + size - 1)) & ~(boundary - 1)) == 0) &&
+			    (((phys ^ (phys + size - 1)) & /* bitwise and */
+			     ~(boundary - 1)) == 0) &&
 			    m->wire_count == 0 && m->hold_count == 0 &&
 			    (m->busy_count &
 			     (PBUSY_LOCKED | PBUSY_MASK)) == 0 &&
@@ -429,6 +438,18 @@ again:
 		 * Our job is done, return the index page of vm_page_array.
 		 */
 		return (start); /* aka &pga[start] */
+	}
+
+	/*
+	 * Failed, if we haven't already tried, allocate from our reserved
+	 * dma memory.
+	 */
+	if (high == BUS_SPACE_MAXADDR) {
+		m = vm_page_alloc_contig(
+			low, high, alignment, boundary,
+			size, VM_MEMATTR_DEFAULT);
+		if (m)
+			return (m - &pga[0]);
 	}
 
 	/*

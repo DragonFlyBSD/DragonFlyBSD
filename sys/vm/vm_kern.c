@@ -436,7 +436,8 @@ kmem_alloc_attr(vm_map_t map, vm_size_t size, vm_subsys_t id,
 	vm_map_entry_release(count);
 	vm_object_drop(&kernel_object);
 	for (i = 0; i < size; i += PAGE_SIZE) {
-		m = vm_page_alloc_contig(low, high, PAGE_SIZE, 0, PAGE_SIZE, memattr);
+		m = vm_page_alloc_contig(low, high, PAGE_SIZE, 0,
+					 PAGE_SIZE, memattr);
 		if (!m) {
 			return (0);
 		}

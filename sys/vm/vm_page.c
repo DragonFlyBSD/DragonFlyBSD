@@ -91,6 +91,7 @@
 #include <machine/inttypes.h>
 #include <machine/md_var.h>
 #include <machine/specialreg.h>
+#include <machine/bus_dma.h>
 
 #include <vm/vm_page2.h>
 #include <sys/spinlock2.h>
@@ -1966,6 +1967,7 @@ vm_page_alloc_contig(vm_paddr_t low, vm_paddr_t high,
 	alist_blk_t blk;
 	vm_page_t m;
 	vm_pindex_t i;
+	static vm_pindex_t contig_rover;
 
 	alignment >>= PAGE_SHIFT;
 	if (alignment == 0)
@@ -1975,35 +1977,55 @@ vm_page_alloc_contig(vm_paddr_t low, vm_paddr_t high,
 		boundary = 1;
 	size = (size + PAGE_MASK) >> PAGE_SHIFT;
 
-	spin_lock(&vm_contig_spin);
-	blk = alist_alloc(&vm_contig_alist, 0, size);
-	if (blk == ALIST_BLOCK_NONE) {
-		spin_unlock(&vm_contig_spin);
-		if (bootverbose) {
-			kprintf("vm_page_alloc_contig: %ldk nospace\n",
-				(size + PAGE_MASK) * (PAGE_SIZE / 1024));
+	if (high == BUS_SPACE_MAXADDR && alignment <= PAGE_SIZE &&
+	    boundary <= PAGE_SIZE && size == 1 &&
+	    memattr == VM_MEMATTR_DEFAULT) {
+		/*
+		 * Any page will work, use vm_page_alloc()
+		 * (e.g. when used from kmem_alloc_attr())
+		 */
+		m = vm_page_alloc(NULL, (contig_rover++) & 0x7FFFFFFF,
+				  VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM |
+				  VM_ALLOC_INTERRUPT);
+		m->valid = VM_PAGE_BITS_ALL;
+		vm_page_wire(m);
+		vm_page_wakeup(m);
+	} else {
+		/*
+		 * Use the low-memory dma reserve
+		 */
+		spin_lock(&vm_contig_spin);
+		blk = alist_alloc(&vm_contig_alist, 0, size);
+		if (blk == ALIST_BLOCK_NONE) {
+			spin_unlock(&vm_contig_spin);
+			if (bootverbose) {
+				kprintf("vm_page_alloc_contig: %ldk nospace\n",
+					(size << PAGE_SHIFT) / 1024);
+				print_backtrace(5);
+			}
+			return(NULL);
 		}
-		return(NULL);
-	}
-	if (high && ((vm_paddr_t)(blk + size) << PAGE_SHIFT) > high) {
-		alist_free(&vm_contig_alist, blk, size);
-		spin_unlock(&vm_contig_spin);
-		if (bootverbose) {
-			kprintf("vm_page_alloc_contig: %ldk high "
-				"%016jx failed\n",
-				(size + PAGE_MASK) * (PAGE_SIZE / 1024),
-				(intmax_t)high);
+		if (high && ((vm_paddr_t)(blk + size) << PAGE_SHIFT) > high) {
+			alist_free(&vm_contig_alist, blk, size);
+			spin_unlock(&vm_contig_spin);
+			if (bootverbose) {
+				kprintf("vm_page_alloc_contig: %ldk high "
+					"%016jx failed\n",
+					(size << PAGE_SHIFT) / 1024,
+					(intmax_t)high);
+			}
+			return(NULL);
 		}
-		return(NULL);
+		spin_unlock(&vm_contig_spin);
+		m = PHYS_TO_VM_PAGE((vm_paddr_t)blk << PAGE_SHIFT);
 	}
-	spin_unlock(&vm_contig_spin);
 	if (vm_contig_verbose) {
-		kprintf("vm_page_alloc_contig: %016jx/%ldk\n",
-			(intmax_t)(vm_paddr_t)blk << PAGE_SHIFT,
-			(size + PAGE_MASK) * (PAGE_SIZE / 1024));
+		kprintf("vm_page_alloc_contig: %016jx/%ldk "
+			"(%016jx-%016jx al=%lu bo=%lu pgs=%lu attr=%d\n",
+			(intmax_t)m->phys_addr,
+			(size << PAGE_SHIFT) / 1024,
+			low, high, alignment, boundary, size, memattr);
 	}
-
-	m = PHYS_TO_VM_PAGE((vm_paddr_t)blk << PAGE_SHIFT);
 	if (memattr != VM_MEMATTR_DEFAULT) {
 		for (i = 0;i < size; i++)
 			pmap_page_set_memattr(&m[i], memattr);
