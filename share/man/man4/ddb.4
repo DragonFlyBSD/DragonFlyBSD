@@ -59,7 +59,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ddb.4,v 1.7.2.6 2001/08/17 13:08:37 ru Exp $
 .\"
-.Dd July 19, 2015
+.Dd December 7, 2017
 .Dt DDB 4
 .Os
 .Sh NAME
@@ -346,6 +346,19 @@ If the
 modifier is specified, print the call nesting depth and the
 cumulative instruction count at each call or return.  Otherwise,
 only print when the matching return is hit.
+.It Cm call Ar function
+Call kernel
+.Ar function .
+Could be used for kernel dump with
+.Cm call
+.Ar dumpsys .
+.It Cm i
+Issue a
+.Fn cpu_invltlb
+on the current CPU.
+Useful when testing MMU/PMAP.
+.It Cm reset
+Reset the system.
 .It Xo
 .Cm trace Ns Op Cm /u
 .Op Ar frame
