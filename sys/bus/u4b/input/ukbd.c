@@ -39,6 +39,7 @@ __FBSDID("$FreeBSD: head/sys/dev/usb/input/ukbd.c 262972 2014-03-10 08:52:30Z hs
 
 #include "opt_kbd.h"
 #include "opt_ukbd.h"
+#include "opt_evdev.h"
 
 #include <sys/stdint.h>
 #include <sys/param.h>
@@ -68,6 +69,11 @@ __FBSDID("$FreeBSD: head/sys/dev/usb/input/ukbd.c 262972 2014-03-10 08:52:30Z hs
 #include <bus/u4b/usb_debug.h>
 
 #include <bus/u4b/quirk/usb_quirk.h>
+
+#ifdef EVDEV_SUPPORT
+#include <dev/misc/evdev/input.h>
+#include <dev/misc/evdev/evdev.h>
+#endif
 
 #include <sys/ioccom.h>
 #include <sys/filio.h>
@@ -162,6 +168,9 @@ struct ukbd_softc {
 	struct usb_device *sc_udev;
 	struct usb_interface *sc_iface;
 	struct usb_xfer *sc_xfer[UKBD_N_TRANSFER];
+#ifdef EVDEV_SUPPORT
+	struct evdev_dev *sc_evdev;
+#endif
 
 	uint32_t sc_ntime[UKBD_NKEYCODE];
 	uint32_t sc_otime[UKBD_NKEYCODE];
@@ -367,6 +376,12 @@ static device_attach_t ukbd_attach;
 static device_detach_t ukbd_detach;
 static device_resume_t ukbd_resume;
 
+#ifdef EVDEV_SUPPORT
+static const struct evdev_methods ukbd_evdev_methods = {
+	.ev_event = evdev_ev_kbd_event,
+};
+#endif
+
 static uint8_t
 ukbd_any_key_pressed(struct ukbd_softc *sc)
 {
@@ -394,6 +409,14 @@ ukbd_put_key(struct ukbd_softc *sc, uint32_t key)
 
 	DPRINTF("0x%02x (%d) %s\n", key, key,
 	    (key & KEY_RELEASE) ? "released" : "pressed");
+
+#ifdef EVDEV_SUPPORT
+	if (evdev_rcpt_mask & EVDEV_RCPT_HW_KBD && sc->sc_evdev != NULL) {
+		evdev_push_event(sc->sc_evdev, EV_KEY,
+		    evdev_hid2key(KEY_INDEX(key)), !(key & KEY_RELEASE));
+		evdev_sync(sc->sc_evdev);
+	}
+#endif
 
 	if (sc->sc_inputs < UKBD_IN_BUF_SIZE) {
 		sc->sc_input[sc->sc_inputtail] = key;
@@ -799,14 +822,14 @@ ukbd_intr_callback(struct usb_xfer *xfer, usb_error_t error)
 #endif
 		if (sc->sc_modifiers & MOD_FN) {
 			for (i = 0; i < UKBD_NKEYCODE; i++) {
-				sc->sc_ndata.keycode[i] = 
+				sc->sc_ndata.keycode[i] =
 				    ukbd_apple_fn(sc->sc_ndata.keycode[i]);
 			}
 		}
 
 		if (sc->sc_flags & UKBD_FLAG_APPLE_SWAP) {
 			for (i = 0; i < UKBD_NKEYCODE; i++) {
-				sc->sc_ndata.keycode[i] = 
+				sc->sc_ndata.keycode[i] =
 				    ukbd_apple_swap(sc->sc_ndata.keycode[i]);
 			}
 		}
@@ -909,6 +932,11 @@ ukbd_set_leds_callback(struct usb_xfer *xfer, usb_error_t error)
 		/* if no leds, nothing to do */
 		if (!any)
 			break;
+
+#ifdef EVDEV_SUPPORT
+		if (sc->sc_evdev != NULL)
+			evdev_push_leds(sc->sc_evdev, sc->sc_leds);
+#endif
 
 		/* range check output report length */
 		len = sc->sc_led_size;
@@ -1045,7 +1073,7 @@ ukbd_parse_hid(struct ukbd_softc *sc, const uint8_t *ptr, uint32_t len)
 	    hid_input, 0, &sc->sc_loc_apple_eject, &flags,
 	    &sc->sc_id_apple_eject)) {
 		if (flags & HIO_VARIABLE)
-			sc->sc_flags |= UKBD_FLAG_APPLE_EJECT | 
+			sc->sc_flags |= UKBD_FLAG_APPLE_EJECT |
 			    UKBD_FLAG_APPLE_SWAP;
 		DPRINTFN(1, "Found Apple eject-key\n");
 	}
@@ -1176,6 +1204,10 @@ ukbd_attach(device_t dev)
 	usb_error_t err;
 	uint16_t n;
 	uint16_t hid_len;
+#ifdef EVDEV_SUPPORT
+	struct evdev_dev *evdev;
+	int i;
+#endif
 #ifdef USB_DEBUG
 	int rate;
 #endif
@@ -1244,7 +1276,7 @@ ukbd_attach(device_t dev)
 
 		DPRINTF("Forcing boot protocol\n");
 
-		err = usbd_req_set_protocol(sc->sc_udev, NULL, 
+		err = usbd_req_set_protocol(sc->sc_udev, NULL,
 			sc->sc_iface_index, 0);
 
 		if (err != 0) {
@@ -1274,6 +1306,37 @@ ukbd_attach(device_t dev)
 		goto detach;
 	}
 #endif
+
+#ifdef EVDEV_SUPPORT
+	evdev = evdev_alloc();
+	evdev_set_name(evdev, device_get_desc(dev));
+	evdev_set_phys(evdev, device_get_nameunit(dev));
+	evdev_set_id(evdev, BUS_USB, uaa->info.idVendor,
+	   uaa->info.idProduct, 0);
+	evdev_set_serial(evdev, usb_get_serial(uaa->device));
+	evdev_set_methods(evdev, kbd, &ukbd_evdev_methods);
+	evdev_support_event(evdev, EV_SYN);
+	evdev_support_event(evdev, EV_KEY);
+	if (sc->sc_flags & (UKBD_FLAG_NUMLOCK | UKBD_FLAG_CAPSLOCK |
+			    UKBD_FLAG_SCROLLLOCK))
+		evdev_support_event(evdev, EV_LED);
+	evdev_support_event(evdev, EV_REP);
+
+	for (i = 0x00; i <= 0xFF; i++)
+		evdev_support_key(evdev, evdev_hid2key(i));
+	if (sc->sc_flags & UKBD_FLAG_NUMLOCK)
+		evdev_support_led(evdev, LED_NUML);
+	if (sc->sc_flags & UKBD_FLAG_CAPSLOCK)
+		evdev_support_led(evdev, LED_CAPSL);
+	if (sc->sc_flags & UKBD_FLAG_SCROLLLOCK)
+		evdev_support_led(evdev, LED_SCROLLL);
+
+	if (evdev_register(evdev))
+		evdev_free(evdev);
+	else
+		sc->sc_evdev = evdev;
+#endif
+
 	sc->sc_flags |= UKBD_FLAG_ATTACHED;
 
 	if (bootverbose) {
@@ -1351,6 +1414,11 @@ ukbd_detach(device_t dev)
 		}
 	}
 #endif
+
+#ifdef EVDEV_SUPPORT
+	evdev_free(sc->sc_evdev);
+#endif
+
 	if (KBD_IS_CONFIGURED(&sc->sc_kbd)) {
 		/*
 		 * kbd_unregister requires kb_lock to be held
@@ -1865,6 +1933,10 @@ ukbd_ioctl_locked(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		else
 			kbd->kb_delay1 = ((int *)arg)[0];
 		kbd->kb_delay2 = ((int *)arg)[1];
+#ifdef EVDEV_SUPPORT
+		if (sc->sc_evdev != NULL)
+			evdev_push_repeats(sc->sc_evdev, kbd);
+#endif
 		return (0);
 
 	case PIO_KEYMAP:		/* set keyboard translation table */
@@ -2128,4 +2200,7 @@ static driver_t ukbd_driver = {
 
 DRIVER_MODULE(ukbd, uhub, ukbd_driver, ukbd_devclass, ukbd_driver_load, NULL);
 MODULE_DEPEND(ukbd, usb, 1, 1, 1);
+#ifdef EVDEV_SUPPORT
+MODULE_DEPEND(ukbd, evdev, 1, 1, 1);
+#endif
 MODULE_VERSION(ukbd, 1);
