@@ -546,6 +546,15 @@ devfs_vop_getattr(struct vop_getattr_args *ap)
 	if (!devfs_node_is_accessible(node))
 		return ENOENT;
 #endif
+
+	/*
+	 * XXX This is a temporary hack to prevent crashes when the device is
+	 * being destroyed (and so the underlying node will be gone) while
+	 * a userland program is blocked in a read().
+	 */
+	if (node == NULL)
+		return EIO;
+
 	node_sync_dev_get(node);
 
 	/* start by zeroing out the attributes */
