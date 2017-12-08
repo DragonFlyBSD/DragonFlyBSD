@@ -2156,6 +2156,11 @@ options		RSS_DEBUG	# enable RSS (Receive Side Scaling) debugging
 # clock interrupt.  Use pctrack(8) to dump this information.
 options		DEBUG_PCTRACK
 
+# evdev interface
+device		evdev		# input event device support
+options		EVDEV_SUPPORT	# evdev support in legacy drivers
+options		EVDEV_DEBUG	# enable event debug messages
+
 # More undocumented options for linting.
 # Note that documenting these are not considered an affront.
 
