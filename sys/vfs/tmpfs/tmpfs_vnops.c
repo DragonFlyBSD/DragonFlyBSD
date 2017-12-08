@@ -743,7 +743,7 @@ tmpfs_write(struct vop_write_args *ap)
 	 * flushing it.
 	 */
 	if (vp->v_writecount) {
-		node->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_MODIFIED;
+		node->tn_status |= TMPFS_NODE_MODIFIED;
 	} else {
 		node->tn_mtime = vp->v_lastwrite_ts.tv_sec;
 		node->tn_mtimensec = vp->v_lastwrite_ts.tv_nsec;
@@ -939,8 +939,7 @@ tmpfs_nremove(struct vop_nremove_args *ap)
 
 	if (node->tn_links > 0) {
 	        TMPFS_NODE_LOCK(node);
-		node->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED | \
-	                TMPFS_NODE_MODIFIED;
+		node->tn_status |= TMPFS_NODE_CHANGED;
 	        TMPFS_NODE_UNLOCK(node);
 	}
 
@@ -1364,8 +1363,7 @@ tmpfs_nrmdir(struct vop_nrmdir_args *ap)
 	 * Must set parent linkage to NULL (tested by ncreate to disallow
 	 * the creation of new files/dirs in a deleted directory)
 	 */
-	node->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED |
-			   TMPFS_NODE_MODIFIED;
+	node->tn_status |= TMPFS_NODE_CHANGED;
 
 	dnode->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED |
 			    TMPFS_NODE_MODIFIED;
