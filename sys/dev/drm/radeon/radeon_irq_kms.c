@@ -262,16 +262,28 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 	if (r) {
 		return r;
 	}
+
 	/* enable msi */
 	rdev->msi_enabled = (rdev->ddev->irq_type == PCI_INTR_TYPE_MSI);
 
+#ifndef __DragonFly__
+	if (radeon_msi_ok(rdev)) {
+		int ret = pci_enable_msi(rdev->pdev);
+		if (!ret) {
+			rdev->msi_enabled = 1;
+			dev_info(rdev->dev, "radeon: using MSI.\n");
+		}
+	}
+#endif
+
 	TASK_INIT(&rdev->hotplug_work, 0, radeon_hotplug_work_func, rdev);
+#if 0
+	INIT_WORK(&rdev->dp_work, radeon_dp_work_func);
+#endif
 	TASK_INIT(&rdev->audio_work, 0, r600_audio_update_hdmi, rdev);
 
 	rdev->irq.installed = true;
-	DRM_UNLOCK(rdev->ddev);
 	r = drm_irq_install(rdev->ddev, rdev->ddev->irq);
-	DRM_LOCK(rdev->ddev);
 	if (r) {
 		rdev->irq.installed = false;
 		taskqueue_drain(rdev->tq, &rdev->hotplug_work);
