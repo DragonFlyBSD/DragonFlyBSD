@@ -5,7 +5,6 @@
  * Largely rewritten by J.T. Conklin (jtc@wimsey.com)
  *
  * $FreeBSD: src/bin/expr/expr.y,v 1.14.2.3 2001/08/01 02:37:46 obrien Exp $
- * $DragonFly: src/bin/expr/expr.y,v 1.6 2005/11/06 11:44:02 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -59,7 +58,7 @@ struct val	*op_rem (struct val *, struct val *);
 struct val	*op_times (struct val *, struct val *);
 quad_t		to_integer (struct val *);
 void		to_string (struct val *);
-int		yyerror (const char *);
+int		yyerror (const char *) __dead2;
 int		yylex (void);
 
 char **av;

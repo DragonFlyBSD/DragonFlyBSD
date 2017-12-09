@@ -32,7 +32,6 @@
  *
  *	@(#)extern.h	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/extern.h,v 1.9.2.1 2000/08/07 08:30:17 ps Exp $
- * $DragonFly: src/bin/dd/extern.h,v 1.4 2008/01/28 16:08:02 matthias Exp $
  */
 
 #include <sys/cdefs.h>
@@ -47,7 +46,7 @@ void pos_in (void);
 void pos_out (void);
 void summary (void);
 void summaryx (int);
-void terminate (int);
+void terminate (int) __dead2;
 void unblock (void);
 void unblock_close (void);
 void bitswab (void *, size_t);

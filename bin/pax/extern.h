@@ -32,7 +32,6 @@
  *
  *	@(#)extern.h	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/extern.h,v 1.6.2.2 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/extern.h,v 1.5 2006/09/27 19:18:00 pavalos Exp $
  */
 
 /*
@@ -235,7 +234,7 @@ extern char *tempfile;
 extern char *tempbase;
 
 int main (int, char **);
-void sig_cleanup (int);
+void sig_cleanup (int) __dead2;
 
 /*
  * sel_subs.c

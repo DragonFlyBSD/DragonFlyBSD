@@ -41,7 +41,7 @@
 #include <unistd.h>
 
 static char *getcwd_logical(void);
-static void usage(void);
+static void usage(void) __dead2;
 
 int
 main(int argc, char *argv[])

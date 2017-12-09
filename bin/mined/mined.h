@@ -307,7 +307,7 @@ void	 bad_write(int fd);
 void	 catch(int sig);
 void	 abort_mined(void);
 void	 raw_mode(FLAG state);
-void	 panic(const char *message);
+void	 panic(const char *message) __dead2;
 void	*alloc(int bytes);
 void	 free_space(char *p);
 void	 initialize(void);

@@ -28,7 +28,6 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/rcp/extern.h,v 1.5.2.3 2002/07/19 07:54:51 jmallett Exp $
- * $DragonFly: src/bin/rcp/extern.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
  */
 
 typedef struct {
@@ -40,7 +39,7 @@ extern int iamremote;
 
 BUF	*allocbuf(BUF *, int, int);
 char	*colon(char *);
-void	 lostconn(int);
+void	 lostconn(int) __dead2;
 void	 nospace(void);
 int	 okname(char *);
 void	 run_err(const char *, ...) __printflike(1, 2);

@@ -110,7 +110,7 @@ static void	 sink(int, char *[]);
 static void	 source(int, char *[]);
 static void	 tolocal(int, char *[]);
 static void	 toremote(char *, int, char *[]);
-static void	 usage(void);
+static void	 usage(void) __dead2;
 
 int
 main(int argc, char *argv[])

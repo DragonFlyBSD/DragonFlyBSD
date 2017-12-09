@@ -28,7 +28,6 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/stty/extern.h,v 1.5 1999/08/27 23:15:40 peter Exp $
- * $DragonFly: src/bin/stty/extern.h,v 1.3 2003/09/21 04:26:26 drhodus Exp $
  */
 
 int	c_cchars (const void *, const void *);
@@ -41,6 +40,6 @@ int	ksearch (char ***, struct info *);
 int	msearch (char ***, struct info *);
 void	optlist (void);
 void	print (struct termios *, struct winsize *, int, enum FMT);
-void	usage (void);
+void	usage (void) __dead2;
 
 extern struct cchar cchars1[], cchars2[];

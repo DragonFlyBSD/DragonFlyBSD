@@ -28,7 +28,6 @@
  *
  *	from: @(#)extern.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/ls/extern.h,v 1.23 2004/05/02 11:25:37 tjr Exp $
- * $DragonFly: src/bin/ls/extern.h,v 1.8 2008/01/19 15:33:42 matthias Exp $
  */
 
 int	 acccmp(const FTSENT *, const FTSENT *);
@@ -47,7 +46,7 @@ void	 printlong(const DISPLAY *);
 int	 printname(const char *);
 void	 printscol(const DISPLAY *);
 void	 printstream(const DISPLAY *);
-void	 usage(void);
+void	 usage(void) __dead2;
 int	 prn_normal(const char *);
 size_t	 len_octal(const char *, int);
 int	 prn_octal(const char *);

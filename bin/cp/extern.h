@@ -46,5 +46,5 @@ int	copy_file(const FTSENT *, int);
 int	copy_link(const FTSENT *, int);
 int	copy_special(struct stat *, int);
 int	setfile(struct stat *, int);
-void	usage(void);
+void	usage(void) __dead2;
 __END_DECLS

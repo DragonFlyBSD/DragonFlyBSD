@@ -1,7 +1,5 @@
 /*
  * CPDUP.H
- *
- * $DragonFly: src/bin/cpdup/cpdup.h,v 1.9 2008/04/14 05:40:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,7 +43,7 @@
 void logstd(const char *ctl, ...) __printflike(1, 2);
 void logerr(const char *ctl, ...) __printflike(1, 2);
 char *mprintf(const char *ctl, ...) __printflike(1, 2);
-void fatal(const char *ctl, ...) __printf0like(1, 2);
+void fatal(const char *ctl, ...) __dead2 __printf0like(1, 2);
 char *fextract(FILE *fi, int n, int *pc, int skip);
 
 int16_t hc_bswap16(int16_t var);
