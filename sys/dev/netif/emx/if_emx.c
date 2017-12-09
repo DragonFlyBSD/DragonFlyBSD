@@ -175,7 +175,7 @@ static const struct emx_device {
 	EMX_DEVICE(PCH_SPT_I219_V),
 	EMX_DEVICE(PCH_SPT_I219_LM2),
 	EMX_DEVICE(PCH_SPT_I219_V2),
-	EMX_DEVICE(PCH_SPT_I219_LM3),
+	EMX_DEVICE(PCH_LBG_I219_LM3),
 	EMX_DEVICE(PCH_SPT_I219_LM4),
 	EMX_DEVICE(PCH_SPT_I219_V4),
 	EMX_DEVICE(PCH_SPT_I219_LM5),
@@ -257,6 +257,9 @@ static void	emx_update_link_status(struct emx_softc *);
 static void	emx_smartspeed(struct emx_softc *);
 static void	emx_set_itr(struct emx_softc *, uint32_t);
 static void	emx_disable_aspm(struct emx_softc *);
+static void	emx_flush_tx_ring(struct emx_softc *);
+static void	emx_flush_rx_ring(struct emx_softc *);
+static void	emx_flush_txrx_ring(struct emx_softc *);
 
 static void	emx_print_debug_info(struct emx_softc *);
 static void	emx_print_nvm_info(struct emx_softc *);
@@ -665,6 +668,16 @@ again:
 		 * XXX this goof is actually not used.
 		 */
 		sc->hw.flash_address = (uint8_t *)sc->flash;
+	} else if (sc->hw.mac.type == e1000_pch_spt) {
+		/*
+		 * In the new SPT device flash is not a seperate BAR,
+		 * rather it is also in BAR0, so use the same tag and
+		 * an offset handle for the FLASH read/write macros
+		 * in the shared code.
+		 */
+		sc->osdep.flash_bus_space_tag = sc->osdep.mem_bus_space_tag;
+		sc->osdep.flash_bus_space_handle =
+		    sc->osdep.mem_bus_space_handle + E1000_FLASH_BASE_ADDR;
 	}
 
 	/* Do Shared Code initialization */
@@ -1791,13 +1804,30 @@ emx_set_promisc(struct emx_softc *sc)
 static void
 emx_disable_promisc(struct emx_softc *sc)
 {
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t reg_rctl;
+	int mcnt = 0;
 
 	reg_rctl = E1000_READ_REG(&sc->hw, E1000_RCTL);
+	reg_rctl &= ~(E1000_RCTL_UPE | E1000_RCTL_SBP);
 
-	reg_rctl &= ~E1000_RCTL_UPE;
-	reg_rctl &= ~E1000_RCTL_MPE;
-	reg_rctl &= ~E1000_RCTL_SBP;
+	if (ifp->if_flags & IFF_ALLMULTI) {
+		mcnt = EMX_MCAST_ADDR_MAX;
+	} else {
+		const struct ifmultiaddr *ifma;
+
+		TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+			if (ifma->ifma_addr->sa_family != AF_LINK)
+				continue;
+			if (mcnt == EMX_MCAST_ADDR_MAX)
+				break;
+			mcnt++;
+		}
+	}
+	/* Don't disable if in MAX groups */
+	if (mcnt < EMX_MCAST_ADDR_MAX)
+		reg_rctl &= ~E1000_RCTL_MPE;
+
 	E1000_WRITE_REG(&sc->hw, E1000_RCTL, reg_rctl);
 }
 
@@ -1874,6 +1904,8 @@ emx_update_link_status(struct emx_softc *sc)
 	switch (hw->phy.media_type) {
 	case e1000_media_type_copper:
 		if (hw->mac.get_link_status) {
+			if (hw->mac.type == e1000_pch_spt)
+				msec_delay(50);
 			/* Do the work to read phy */
 			e1000_check_for_link(hw);
 			link_check = !hw->mac.get_link_status;
@@ -1970,6 +2002,10 @@ emx_stop(struct emx_softc *sc)
 		tdata->tx_running = 0;
 		callout_stop(&tdata->tx_gc_timer);
 	}
+
+	/* I219 needs some special flushing to avoid hangs */
+	if (sc->hw.mac.type == e1000_pch_spt)
+		emx_flush_txrx_ring(sc);
 
 	/*
 	 * Disable multiple receive queues.
@@ -2086,6 +2122,10 @@ emx_reset(struct emx_softc *sc)
 	} else if (sc->hw.mac.type == e1000_80003es2lan) {
 		sc->hw.fc.pause_time = 0xFFFF;
 	}
+
+	/* I219 needs some special flushing to avoid hangs */
+	if (sc->hw.mac.type == e1000_pch_spt)
+		emx_flush_txrx_ring(sc);
 
 	/* Issue a global reset */
 	e1000_reset_hw(&sc->hw);
@@ -2410,6 +2450,15 @@ emx_init_tx_unit(struct emx_softc *sc)
 		/* Setup the HW Tx Head and Tail descriptor pointers */
 		E1000_WRITE_REG(&sc->hw, E1000_TDT(i), 0);
 		E1000_WRITE_REG(&sc->hw, E1000_TDH(i), 0);
+
+		txdctl = 0x1f;		/* PTHRESH */
+		txdctl |= 1 << 8;	/* HTHRESH */
+		txdctl |= 1 << 16;	/* WTHRESH */
+		txdctl |= 1 << 22;	/* Reserved bit 22 must always be 1 */
+		txdctl |= E1000_TXDCTL_GRAN;
+		txdctl |= 1 << 25;	/* LWTHRESH */
+
+		E1000_WRITE_REG(&sc->hw, E1000_TXDCTL(i), txdctl);
 	}
 
 	/* Set the default values for the Tx Inter Packet Gap timer */
@@ -2451,12 +2500,23 @@ emx_init_tx_unit(struct emx_softc *sc)
 		tarc |= EMX_TARC_SPEED_MODE;
 		E1000_WRITE_REG(&sc->hw, E1000_TARC(0), tarc);
 	} else if (sc->hw.mac.type == e1000_80003es2lan) {
+		/* errata: program both queues to unweighted RR */
 		tarc = E1000_READ_REG(&sc->hw, E1000_TARC(0));
 		tarc |= 1;
 		E1000_WRITE_REG(&sc->hw, E1000_TARC(0), tarc);
 		tarc = E1000_READ_REG(&sc->hw, E1000_TARC(1));
 		tarc |= 1;
 		E1000_WRITE_REG(&sc->hw, E1000_TARC(1), tarc);
+	} else if (sc->hw.mac.type == e1000_82574) {
+		tarc = E1000_READ_REG(&sc->hw, E1000_TARC(0));
+		tarc |= EMX_TARC_ERRATA;
+		if (sc->tx_ring_inuse > 1) {
+			tarc |= (EMX_TARC_COMPENSATION_MODE | EMX_TARC_MQ_FIX);
+			E1000_WRITE_REG(&sc->hw, E1000_TARC(0), tarc);
+			E1000_WRITE_REG(&sc->hw, E1000_TARC(1), tarc);
+		} else {
+			E1000_WRITE_REG(&sc->hw, E1000_TARC(0), tarc);
+		}
 	}
 
 	/* Program the Transmit Control Register */
@@ -2476,6 +2536,15 @@ emx_init_tx_unit(struct emx_softc *sc)
 		tarc = E1000_READ_REG(&sc->hw, E1000_TARC(1));
 		tarc &= ~(1 << 28);
 		E1000_WRITE_REG(&sc->hw, E1000_TARC(1), tarc);
+	} else if (sc->hw.mac.type == e1000_pch_spt) {
+		uint32_t reg;
+
+		reg = E1000_READ_REG(&sc->hw, E1000_IOSFPC);
+		reg |= E1000_RCTL_RDMTS_HEX;
+		E1000_WRITE_REG(&sc->hw, E1000_IOSFPC, reg);
+		reg = E1000_READ_REG(&sc->hw, E1000_TARC(0));
+		reg |= E1000_TARC0_CB_MULTIQ_3_REQ;
+		E1000_WRITE_REG(&sc->hw, E1000_TARC(0), reg);
 	}
 
 	if (sc->tx_ring_inuse > 1) {
@@ -2997,7 +3066,7 @@ emx_init_rx_unit(struct emx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint64_t bus_addr;
-	uint32_t rctl, itr, rfctl;
+	uint32_t rctl, itr, rfctl, rxcsum;
 	int i;
 
 	/*
@@ -3005,7 +3074,9 @@ emx_init_rx_unit(struct emx_softc *sc)
 	 * up the descriptor ring
 	 */
 	rctl = E1000_READ_REG(&sc->hw, E1000_RCTL);
-	E1000_WRITE_REG(&sc->hw, E1000_RCTL, rctl & ~E1000_RCTL_EN);
+	/* Do not disable if ever enabled on this hardware */
+	if (sc->hw.mac.type != e1000_82574)
+		E1000_WRITE_REG(&sc->hw, E1000_RCTL, rctl & ~E1000_RCTL_EN);
 
 	/*
 	 * Set the interrupt throttling rate. Value is calculated
@@ -3018,12 +3089,11 @@ emx_init_rx_unit(struct emx_softc *sc)
 	emx_set_itr(sc, itr);
 
 	/* Use extended RX descriptor */
-	rfctl = E1000_RFCTL_EXTEN;
-
+	rfctl = E1000_READ_REG(&sc->hw, E1000_RFCTL);
+	rfctl |= E1000_RFCTL_EXTEN;
 	/* Disable accelerated ackknowledge */
 	if (sc->hw.mac.type == e1000_82574)
 		rfctl |= E1000_RFCTL_ACK_DIS;
-
 	E1000_WRITE_REG(&sc->hw, E1000_RFCTL, rfctl);
 
 	/*
@@ -3033,12 +3103,9 @@ emx_init_rx_unit(struct emx_softc *sc)
 	 * queue is to be supported, since we need it to figure out
 	 * packet type.
 	 */
+	rxcsum = E1000_READ_REG(&sc->hw, E1000_RXCSUM);
 	if ((ifp->if_capenable & IFCAP_RXCSUM) ||
 	    sc->rx_ring_cnt > 1) {
-		uint32_t rxcsum;
-
-		rxcsum = E1000_READ_REG(&sc->hw, E1000_RXCSUM);
-
 		/*
 		 * NOTE:
 		 * PCSD must be enabled to enable multiple
@@ -3046,8 +3113,11 @@ emx_init_rx_unit(struct emx_softc *sc)
 		 */
 		rxcsum |= E1000_RXCSUM_IPOFL | E1000_RXCSUM_TUOFL |
 			  E1000_RXCSUM_PCSD;
-		E1000_WRITE_REG(&sc->hw, E1000_RXCSUM, rxcsum);
+	} else {
+		rxcsum &= ~(E1000_RXCSUM_IPOFL | E1000_RXCSUM_TUOFL |
+			    E1000_RXCSUM_PCSD);
 	}
+	E1000_WRITE_REG(&sc->hw, E1000_RXCSUM, rxcsum);
 
 	/*
 	 * Configure multiple receive queue (RSS)
@@ -3143,6 +3213,20 @@ emx_init_rx_unit(struct emx_softc *sc)
 		E1000_WRITE_REG(&sc->hw, E1000_RDH(i), 0);
 		E1000_WRITE_REG(&sc->hw, E1000_RDT(i),
 		    sc->rx_data[i].num_rx_desc - 1);
+	}
+
+	/* Set PTHRESH for improved jumbo performance */
+	if (ifp->if_mtu > ETHERMTU && sc->hw.mac.type == e1000_82574) {
+		uint32_t rxdctl;
+
+		for (i = 0; i < sc->rx_ring_cnt; ++i) {
+			rxdctl = E1000_READ_REG(&sc->hw, E1000_RXDCTL(i));
+                	rxdctl |= 0x20;		/* PTHRESH */
+                	rxdctl |= 4 << 8;	/* HTHRESH */
+                	rxdctl |= 4 << 16;	/* WTHRESH */
+			rxdctl |= 1 << 24;	/* Switch to granularity */
+			E1000_WRITE_REG(&sc->hw, E1000_RXDCTL(i), rxdctl);
+		}
 	}
 
 	if (sc->hw.mac.type >= e1000_pch2lan) {
@@ -4360,4 +4444,126 @@ emx_get_txring_inuse(const struct emx_softc *sc, boolean_t polling)
 		return sc->tx_ring_cnt;
 	else
 		return 1;
+}
+
+/*
+ * Remove all descriptors from the TX ring.
+ *
+ * We want to clear all pending descriptors from the TX ring.  Zeroing
+ * happens when the HW reads the regs.  We assign the ring itself as
+ * the data of the next descriptor.  We don't care about the data we
+ * are about to reset the HW.
+ */
+static void
+emx_flush_tx_ring(struct emx_softc *sc)
+{
+	struct e1000_hw *hw = &sc->hw;
+	uint32_t tctl;
+	int i;
+
+	tctl = E1000_READ_REG(hw, E1000_TCTL);
+	E1000_WRITE_REG(hw, E1000_TCTL, tctl | E1000_TCTL_EN);
+
+	for (i = 0; i < sc->tx_ring_inuse; ++i) {
+		struct emx_txdata *tdata = &sc->tx_data[i];
+		struct e1000_tx_desc *txd;
+
+		if (E1000_READ_REG(hw, E1000_TDLEN(i)) == 0)
+			continue;
+
+		txd = &tdata->tx_desc_base[tdata->next_avail_tx_desc++];
+		if (tdata->next_avail_tx_desc == tdata->num_tx_desc)
+			tdata->next_avail_tx_desc = 0;
+
+		/* Just use the ring as a dummy buffer addr */
+		txd->buffer_addr = tdata->tx_desc_paddr;
+		txd->lower.data = htole32(E1000_TXD_CMD_IFCS | 512);
+		txd->upper.data = 0;
+
+		E1000_WRITE_REG(hw, E1000_TDT(i), tdata->next_avail_tx_desc);
+		usec_delay(250);
+	}
+}
+
+/*
+ * Remove all descriptors from the RX rings.
+ *
+ * Mark all descriptors in the RX rings as consumed and disable the RX rings.
+ */
+static void
+emx_flush_rx_ring(struct emx_softc *sc)
+{
+	struct e1000_hw	*hw = &sc->hw;
+	uint32_t rctl;
+	int i;
+
+	rctl = E1000_READ_REG(hw, E1000_RCTL);
+	E1000_WRITE_REG(hw, E1000_RCTL, rctl & ~E1000_RCTL_EN);
+	E1000_WRITE_FLUSH(hw);
+	usec_delay(150);
+
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
+		uint32_t rxdctl;
+
+		rxdctl = E1000_READ_REG(hw, E1000_RXDCTL(i));
+		/* Zero the lower 14 bits (prefetch and host thresholds) */
+		rxdctl &= 0xffffc000;
+		/*
+		 * Update thresholds: prefetch threshold to 31, host threshold
+		 * to 1 and make sure the granularity is "descriptors" and not
+		 * "cache lines".
+		 */
+		rxdctl |= (0x1F | (1 << 8) | E1000_RXDCTL_THRESH_UNIT_DESC);
+		E1000_WRITE_REG(hw, E1000_RXDCTL(i), rxdctl);
+	}
+
+	/* Momentarily enable the RX rings for the changes to take effect */
+	E1000_WRITE_REG(hw, E1000_RCTL, rctl | E1000_RCTL_EN);
+	E1000_WRITE_FLUSH(hw);
+	usec_delay(150);
+	E1000_WRITE_REG(hw, E1000_RCTL, rctl & ~E1000_RCTL_EN);
+}
+
+/*
+ * Remove all descriptors from the descriptor rings.
+ *
+ * In i219, the descriptor rings must be emptied before resetting the HW
+ * or before changing the device state to D3 during runtime (runtime PM).
+ *
+ * Failure to do this will cause the HW to enter a unit hang state which
+ * can only be released by PCI reset on the device.
+ */
+static void
+emx_flush_txrx_ring(struct emx_softc *sc)
+{
+	struct e1000_hw *hw = &sc->hw;
+	device_t dev = sc->dev;
+	uint16_t hang_state;
+	uint32_t fext_nvm11, tdlen;
+	int i;
+
+	/*
+	 * First, disable MULR fix in FEXTNVM11.
+	 */
+	fext_nvm11 = E1000_READ_REG(hw, E1000_FEXTNVM11);
+	fext_nvm11 |= E1000_FEXTNVM11_DISABLE_MULR_FIX;
+	E1000_WRITE_REG(hw, E1000_FEXTNVM11, fext_nvm11);
+
+	/* 
+	 * Do nothing if we're not in faulty state, or if the queue is
+	 * empty.
+	 */
+	tdlen = 0;
+	for (i = 0; i < sc->tx_ring_inuse; ++i)
+		tdlen += E1000_READ_REG(hw, E1000_TDLEN(i));
+	hang_state = pci_read_config(dev, EMX_PCICFG_DESC_RING_STATUS, 2);
+	if ((hang_state & EMX_FLUSH_DESC_REQUIRED) && tdlen)
+		emx_flush_tx_ring(sc);
+
+	/*
+	 * Recheck, maybe the fault is caused by the RX ring.
+	 */
+	hang_state = pci_read_config(dev, EMX_PCICFG_DESC_RING_STATUS, 2);
+	if (hang_state & EMX_FLUSH_DESC_REQUIRED)
+		emx_flush_rx_ring(sc);
 }

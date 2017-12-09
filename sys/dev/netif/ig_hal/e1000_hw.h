@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2014, Intel Corporation 
+  Copyright (c) 2001-2015, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,7 +30,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD:$*/
+/*$FreeBSD$*/
 
 #ifndef _E1000_HW_H_
 #define _E1000_HW_H_
@@ -41,9 +41,7 @@
 
 struct e1000_hw;
 
-#ifndef NO_82542_SUPPORT
 #define E1000_DEV_ID_82542			0x1000
-#endif
 #define E1000_DEV_ID_82543GC_FIBER		0x1001
 #define E1000_DEV_ID_82543GC_COPPER		0x1004
 #define E1000_DEV_ID_82544EI_COPPER		0x1008
@@ -126,27 +124,25 @@ struct e1000_hw;
 #define E1000_DEV_ID_ICH10_D_BM_LM		0x10DE
 #define E1000_DEV_ID_ICH10_D_BM_LF		0x10DF
 #define E1000_DEV_ID_ICH10_D_BM_V		0x1525
-
 #define E1000_DEV_ID_PCH_M_HV_LM		0x10EA
 #define E1000_DEV_ID_PCH_M_HV_LC		0x10EB
 #define E1000_DEV_ID_PCH_D_HV_DM		0x10EF
 #define E1000_DEV_ID_PCH_D_HV_DC		0x10F0
 #define E1000_DEV_ID_PCH2_LV_LM			0x1502
 #define E1000_DEV_ID_PCH2_LV_V			0x1503
-
 #define E1000_DEV_ID_PCH_LPT_I217_LM		0x153A
 #define E1000_DEV_ID_PCH_LPT_I217_V		0x153B
 #define E1000_DEV_ID_PCH_LPTLP_I218_LM		0x155A
 #define E1000_DEV_ID_PCH_LPTLP_I218_V		0x1559
 #define E1000_DEV_ID_PCH_I218_LM2		0x15A0
 #define E1000_DEV_ID_PCH_I218_V2		0x15A1
-#define E1000_DEV_ID_PCH_I218_LM3		0x15A2	/* Wildcat Point PCH */
-#define E1000_DEV_ID_PCH_I218_V3		0x15A3	/* Wildcat Point PCH */
-#define E1000_DEV_ID_PCH_SPT_I219_LM		0x156F	/* SPT */
-#define E1000_DEV_ID_PCH_SPT_I219_V		0x1570
-#define E1000_DEV_ID_PCH_SPT_I219_LM2		0x15B7
-#define E1000_DEV_ID_PCH_SPT_I219_V2		0x15B8
-#define E1000_DEV_ID_PCH_SPT_I219_LM3		0x15B9	/* LEWISBURG PCH */
+#define E1000_DEV_ID_PCH_I218_LM3		0x15A2 /* Wildcat Point PCH */
+#define E1000_DEV_ID_PCH_I218_V3		0x15A3 /* Wildcat Point PCH */
+#define E1000_DEV_ID_PCH_SPT_I219_LM		0x156F /* Sunrise Point PCH */
+#define E1000_DEV_ID_PCH_SPT_I219_V		0x1570 /* Sunrise Point PCH */
+#define E1000_DEV_ID_PCH_SPT_I219_LM2		0x15B7 /* Sunrise Point-H PCH */
+#define E1000_DEV_ID_PCH_SPT_I219_V2		0x15B8 /* Sunrise Point-H PCH */
+#define E1000_DEV_ID_PCH_LBG_I219_LM3		0x15B9 /* LEWISBURG PCH */
 #define E1000_DEV_ID_PCH_SPT_I219_LM4		0x15D7
 #define E1000_DEV_ID_PCH_SPT_I219_V4		0x15D8
 #define E1000_DEV_ID_PCH_SPT_I219_LM5		0x15E3
@@ -213,9 +209,7 @@ struct e1000_hw;
 
 enum e1000_mac_type {
 	e1000_undefined = 0,
-#ifndef NO_82542_SUPPORT
 	e1000_82542,
-#endif
 	e1000_82543,
 	e1000_82544,
 	e1000_82540,
@@ -819,9 +813,7 @@ struct e1000_mac_info {
 	bool autoneg_failed;
 	bool get_link_status;
 	bool in_ifs_mode;
-#ifndef NO_82542_SUPPORT
 	bool report_tx_early;
-#endif
 	enum e1000_serdes_link_state serdes_link_state;
 	bool serdes_has_link;
 	bool tx_pkt_filtering;
@@ -903,12 +895,10 @@ struct e1000_dev_spec_82541 {
 	bool phy_init_script;
 };
 
-#ifndef NO_82542_SUPPORT
 struct e1000_dev_spec_82542 {
 	bool dma_fairness;
 };
 
-#endif /* NO_82542_SUPPORT */
 struct e1000_dev_spec_82543 {
 	u32  tbi_compatibility;
 	bool dma_fairness;
@@ -969,7 +959,7 @@ struct e1000_dev_spec_82575 {
 	bool media_changed;
 };
 
-#define E1000_SHADOW_RAM_WORDS  2048
+#define E1000_SHADOW_RAM_WORDS		2048
 
 /* I218 PHY Ultra Low Power (ULP) states */
 enum e1000_ulp_state {
@@ -1009,9 +999,7 @@ struct e1000_hw {
 
 	union {
 		struct e1000_dev_spec_82541 _82541;
-#ifndef NO_82542_SUPPORT
 		struct e1000_dev_spec_82542 _82542;
-#endif
 		struct e1000_dev_spec_82543 _82543;
 		struct e1000_dev_spec_82571 _82571;
 		struct e1000_dev_spec_80003es2lan _80003es2lan;
@@ -1037,10 +1025,8 @@ struct e1000_hw {
 #include "e1000_i210.h"
 
 /* These functions must be implemented by drivers */
-#ifndef NO_82542_SUPPORT
 void e1000_pci_clear_mwi(struct e1000_hw *hw);
 void e1000_pci_set_mwi(struct e1000_hw *hw);
-#endif
 s32  e1000_read_pcie_cap_reg(struct e1000_hw *hw, u32 reg, u16 *value);
 s32  e1000_write_pcie_cap_reg(struct e1000_hw *hw, u32 reg, u16 *value);
 void e1000_read_pci_cfg(struct e1000_hw *hw, u32 reg, u16 *value);

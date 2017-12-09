@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2014, Intel Corporation 
+  Copyright (c) 2001-2015, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -42,25 +42,23 @@
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 
-#define usec_delay(x)		DELAY(x)
-#define usec_delay_irq usec_delay
-#define msec_delay(x)		DELAY(1000*(x))
-/* TODO: Should we be paranoid about delaying in interrupt context? */
-#define msec_delay_irq(x)	DELAY(1000*(x))
+#define usec_delay(x) DELAY(x)
+#define usec_delay_irq(x) usec_delay(x)
+#define msec_delay(x) DELAY(1000*(x))
+#define msec_delay_irq(x) DELAY(1000*(x))
 
 extern int e1000_debug;
 
-#define DEBUGPRINT(S, args...)		\
+#define DEBUGOUT(S, args...)		\
 do {					\
 	if (e1000_debug)		\
 		kprintf(S, ##args);	\
 } while (0)
-#define DEBUGFUNC(F)		DEBUGOUT(F)
-#define DEBUGOUT(S)		DEBUGPRINT(S)
-#define DEBUGOUT1(S,A)		DEBUGPRINT(S, A)
-#define DEBUGOUT2(S,A,B)	DEBUGPRINT(S, A, B)
-#define DEBUGOUT3(S,A,B,C)	DEBUGPRINT(S, A, B, C)
-#define DEBUGOUT7(S,A,B,C,D,E,F,G) DEBUGPRINT(S, A, B, C, D, E, F, G)
+#define DEBUGOUT1(S, args...)	DEBUGOUT(S, ##args)
+#define DEBUGOUT2(S, args...)	DEBUGOUT(S, ##args)
+#define DEBUGOUT3(S, args...)	DEBUGOUT(S, ##args)
+#define DEBUGOUT7(S, args...)	DEBUGOUT(S, ##args)
+#define DEBUGFUNC(F)		DEBUGOUT(F "\n")
 
 #define CMD_MEM_WRT_INVALIDATE	0x0010  /* BIT_4 */
 #define PCI_COMMAND_REGISTER	PCIR_COMMAND
@@ -114,18 +112,8 @@ struct e1000_osdep {
         ((struct e1000_osdep *)(hw)->back)->mem_bus_space_handle, \
         E1000_REGISTER(hw, reg))
 
-#define E1000_READ_REG16(hw, reg) \
-    bus_space_read_2(((struct e1000_osdep *)(hw)->back)->mem_bus_space_tag, \
-        ((struct e1000_osdep *)(hw)->back)->mem_bus_space_handle, \
-        E1000_REGISTER(hw, reg))
-
 #define E1000_WRITE_REG(hw, reg, value) \
     bus_space_write_4(((struct e1000_osdep *)(hw)->back)->mem_bus_space_tag, \
-        ((struct e1000_osdep *)(hw)->back)->mem_bus_space_handle, \
-        E1000_REGISTER(hw, reg), value)
-
-#define E1000_WRITE_REG16(hw, reg, value) \
-    bus_space_write_2(((struct e1000_osdep *)(hw)->back)->mem_bus_space_tag, \
         ((struct e1000_osdep *)(hw)->back)->mem_bus_space_handle, \
         E1000_REGISTER(hw, reg), value)
 
@@ -139,8 +127,8 @@ struct e1000_osdep {
         ((struct e1000_osdep *)(hw)->back)->mem_bus_space_handle, \
         E1000_REGISTER(hw, reg) + ((index)<< 2), value)
 
-#define E1000_READ_REG_ARRAY_DWORD	E1000_READ_REG_ARRAY
-#define E1000_WRITE_REG_ARRAY_DWORD	E1000_WRITE_REG_ARRAY
+#define E1000_READ_REG_ARRAY_DWORD E1000_READ_REG_ARRAY
+#define E1000_WRITE_REG_ARRAY_DWORD E1000_WRITE_REG_ARRAY
 
 #define E1000_READ_REG_ARRAY_BYTE(hw, reg, index) \
     bus_space_read_1(((struct e1000_osdep *)(hw)->back)->mem_bus_space_tag, \
@@ -166,23 +154,19 @@ struct e1000_osdep {
         (hw)->io_base + 4, value); } while (0)
 
 #define E1000_READ_FLASH_REG(hw, reg) \
-    (((hw)->mac.type == e1000_pch_spt) ? E1000_READ_REG(hw, (reg) + 0xE000):   \
     bus_space_read_4(((struct e1000_osdep *)(hw)->back)->flash_bus_space_tag, \
-        ((struct e1000_osdep *)(hw)->back)->flash_bus_space_handle, reg))
+        ((struct e1000_osdep *)(hw)->back)->flash_bus_space_handle, reg)
 
 #define E1000_READ_FLASH_REG16(hw, reg) \
-    (((hw)->mac.type == e1000_pch_spt) ? E1000_READ_REG16(hw, (reg) + 0xE000): \
     bus_space_read_2(((struct e1000_osdep *)(hw)->back)->flash_bus_space_tag, \
-        ((struct e1000_osdep *)(hw)->back)->flash_bus_space_handle, reg))
+        ((struct e1000_osdep *)(hw)->back)->flash_bus_space_handle, reg)
 
 #define E1000_WRITE_FLASH_REG(hw, reg, value) \
-    (((hw)->mac.type == e1000_pch_spt) ? E1000_WRITE_REG(hw, (reg) + 0xE000, value):   \
     bus_space_write_4(((struct e1000_osdep *)(hw)->back)->flash_bus_space_tag, \
-        ((struct e1000_osdep *)(hw)->back)->flash_bus_space_handle, reg, value))
+        ((struct e1000_osdep *)(hw)->back)->flash_bus_space_handle, reg, value)
 
 #define E1000_WRITE_FLASH_REG16(hw, reg, value) \
-    (((hw)->mac.type == e1000_pch_spt) ? E1000_WRITE_REG16(hw, (reg) + 0xE000, value):   \
     bus_space_write_2(((struct e1000_osdep *)(hw)->back)->flash_bus_space_tag, \
-        ((struct e1000_osdep *)(hw)->back)->flash_bus_space_handle, reg, value))
+        ((struct e1000_osdep *)(hw)->back)->flash_bus_space_handle, reg, value)
 
 #endif	/* _DRAGONFLY_OS_H_ */

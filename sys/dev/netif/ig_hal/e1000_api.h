@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2014, Intel Corporation 
+  Copyright (c) 2001-2015, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,16 +30,14 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD:$*/
+/*$FreeBSD$*/
 
 #ifndef _E1000_API_H_
 #define _E1000_API_H_
 
 #include "e1000_hw.h"
 
-#ifndef NO_82542_SUPPORT
 extern void e1000_init_function_pointers_82542(struct e1000_hw *hw);
-#endif
 extern void e1000_init_function_pointers_82543(struct e1000_hw *hw);
 extern void e1000_init_function_pointers_82540(struct e1000_hw *hw);
 extern void e1000_init_function_pointers_82571(struct e1000_hw *hw);
@@ -119,9 +117,7 @@ s32 e1000_mng_host_if_write(struct e1000_hw *hw, u8 *buffer, u16 length,
 s32 e1000_mng_write_cmd_header(struct e1000_hw *hw,
 			       struct e1000_host_mng_command_header *hdr);
 s32 e1000_mng_write_dhcp_info(struct e1000_hw *hw, u8 *buffer, u16 length);
-#ifndef NO_82542_SUPPORT
 u32  e1000_translate_register_82542(u32 reg);
-#endif
 
 
 

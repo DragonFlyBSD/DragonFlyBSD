@@ -140,6 +140,9 @@
 #define EMX_FC_PAUSE_TIME		1000
 #define EMX_EEPROM_APME			0x400;
 
+#define EMX_PCICFG_DESC_RING_STATUS	0xe4
+#define EMX_FLUSH_DESC_REQUIRED		0x100
+
 /*
  * TDBA/RDBA should be aligned on 16 byte boundary. But TDLEN/RDLEN should be
  * multiple of 128 bytes. So we align TDBA/RDBA on 128 byte boundary. This will
@@ -152,6 +155,13 @@
  * 82571EB/82572EI only, used to improve small packet transmit performance.
  */
 #define EMX_TARC_SPEED_MODE		(1 << 21)
+
+#define EMX_TARC_COMPENSATION_MODE	(1 << 7) /* Compensation Mode */
+
+#define EMX_TARC_MQ_FIX			(1 << 23) | \
+					(1 << 24) | \
+					(1 << 25) /* Handle errata in MQ mode */
+#define EMX_TARC_ERRATA 		(1 << 26) /* 82574 errata */
 
 /*
  * Multiple TX queues arbitration count mask in TARC0/TARC1.

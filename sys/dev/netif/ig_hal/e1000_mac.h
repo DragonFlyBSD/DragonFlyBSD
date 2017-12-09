@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2014, Intel Corporation 
+  Copyright (c) 2001-2015, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,15 +30,12 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD:$*/
+/*$FreeBSD$*/
 
 #ifndef _E1000_MAC_H_
 #define _E1000_MAC_H_
 
 void e1000_init_mac_ops_generic(struct e1000_hw *hw);
-#ifndef E1000_REMOVED
-#define E1000_REMOVED(a) (0)
-#endif /* E1000_REMOVED */
 void e1000_null_mac_generic(struct e1000_hw *hw);
 s32  e1000_null_ops_generic(struct e1000_hw *hw);
 s32  e1000_null_link_info(struct e1000_hw *hw, u16 *s, u16 *d);
@@ -72,9 +69,7 @@ s32  e1000_led_on_generic(struct e1000_hw *hw);
 s32  e1000_led_off_generic(struct e1000_hw *hw);
 void e1000_update_mc_addr_list_generic(struct e1000_hw *hw,
 				       u8 *mc_addr_list, u32 mc_addr_count);
-#ifndef NO_82542_SUPPORT
 s32  e1000_set_default_fc_generic(struct e1000_hw *hw);
-#endif
 s32  e1000_set_fc_watermarks_generic(struct e1000_hw *hw);
 s32  e1000_setup_fiber_serdes_link_generic(struct e1000_hw *hw);
 s32  e1000_setup_led_generic(struct e1000_hw *hw);

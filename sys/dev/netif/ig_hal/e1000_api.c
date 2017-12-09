@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2014, Intel Corporation 
+  Copyright (c) 2001-2015, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,7 +30,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD:$*/
+/*$FreeBSD$*/
 
 #include "e1000_api.h"
 
@@ -155,11 +155,9 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 	DEBUGFUNC("e1000_set_mac_type");
 
 	switch (hw->device_id) {
-#ifndef NO_82542_SUPPORT
 	case E1000_DEV_ID_82542:
 		mac->type = e1000_82542;
 		break;
-#endif
 	case E1000_DEV_ID_82543GC_FIBER:
 	case E1000_DEV_ID_82543GC_COPPER:
 		mac->type = e1000_82543;
@@ -301,12 +299,12 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 	case E1000_DEV_ID_PCH_I218_LM3:
 	case E1000_DEV_ID_PCH_I218_V3:
 		mac->type = e1000_pch_lpt;
- 		break;
+		break;
 	case E1000_DEV_ID_PCH_SPT_I219_LM:
 	case E1000_DEV_ID_PCH_SPT_I219_V:
 	case E1000_DEV_ID_PCH_SPT_I219_LM2:
 	case E1000_DEV_ID_PCH_SPT_I219_V2:
-	case E1000_DEV_ID_PCH_SPT_I219_LM3:
+	case E1000_DEV_ID_PCH_LBG_I219_LM3:
 	case E1000_DEV_ID_PCH_SPT_I219_LM4:
 	case E1000_DEV_ID_PCH_SPT_I219_V4:
 	case E1000_DEV_ID_PCH_SPT_I219_LM5:
@@ -427,11 +425,9 @@ s32 e1000_setup_init_funcs(struct e1000_hw *hw, bool init_device)
 	 * the functions in that family.
 	 */
 	switch (hw->mac.type) {
-#ifndef NO_82542_SUPPORT
 	case e1000_82542:
 		e1000_init_function_pointers_82542(hw);
 		break;
-#endif
 	case e1000_82543:
 	case e1000_82544:
 		e1000_init_function_pointers_82543(hw);

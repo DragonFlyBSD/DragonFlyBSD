@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2014, Intel Corporation 
+  Copyright (c) 2001-2015, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,7 +30,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD:$*/
+/*$FreeBSD$*/
 
 #ifndef _E1000_DEFINES_H_
 #define _E1000_DEFINES_H_
@@ -727,9 +727,7 @@
 #define E1000_COLD_SHIFT		12
 
 /* Default values for the transmit IPG register */
-#ifndef NO_82542_SUPPORT
 #define DEFAULT_82542_TIPG_IPGT		10
-#endif
 #define DEFAULT_82543_TIPG_IPGT_FIBER	9
 #define DEFAULT_82543_TIPG_IPGT_COPPER	8
 
@@ -737,15 +735,11 @@
 #define E1000_TIPG_IPGR1_MASK		0x000FFC00
 #define E1000_TIPG_IPGR2_MASK		0x3FF00000
 
-#ifndef NO_82542_SUPPORT
 #define DEFAULT_82542_TIPG_IPGR1	2
-#endif
 #define DEFAULT_82543_TIPG_IPGR1	8
 #define E1000_TIPG_IPGR1_SHIFT		10
 
-#ifndef NO_82542_SUPPORT
 #define DEFAULT_82542_TIPG_IPGR2	10
-#endif
 #define DEFAULT_82543_TIPG_IPGR2	6
 #define DEFAULT_80003ES2LAN_TIPG_IPGR2	7
 #define E1000_TIPG_IPGR2_SHIFT		20
@@ -755,6 +749,8 @@
 
 #define ETHERNET_FCS_SIZE		4
 #define MAX_JUMBO_FRAME_SIZE		0x3F00
+/* The datasheet maximum supported RX size is 9.5KB (9728 bytes) */
+#define MAX_RX_JUMBO_FRAME_SIZE		0x2600
 #define E1000_TX_PTR_GAP		0x1F
 
 /* Extended Configuration Control and Size */
@@ -1141,6 +1137,12 @@
 
 #define E1000_TSYNCTXCTL_VALID		0x00000001 /* Tx timestamp valid */
 #define E1000_TSYNCTXCTL_ENABLED	0x00000010 /* enable Tx timestamping */
+
+/* HH Time Sync */
+#define E1000_TSYNCTXCTL_MAX_ALLOWED_DLY_MASK	0x0000F000 /* max delay */
+#define E1000_TSYNCTXCTL_SYNC_COMP_ERR		0x20000000 /* sync err */
+#define E1000_TSYNCTXCTL_SYNC_COMP		0x40000000 /* sync complete */
+#define E1000_TSYNCTXCTL_START_SYNC		0x80000000 /* initiate sync */
 
 #define E1000_TSYNCRXCTL_VALID		0x00000001 /* Rx timestamp valid */
 #define E1000_TSYNCRXCTL_TYPE_MASK	0x0000000E /* Rx type mask */

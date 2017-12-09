@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2014, Intel Corporation 
+  Copyright (c) 2001-2015, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,7 +30,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD:$*/
+/*$FreeBSD$*/
 
 #ifndef _E1000_REGS_H_
 #define _E1000_REGS_H_
@@ -65,9 +65,9 @@
 #define E1000_FEXTNVM4	0x00024  /* Future Extended NVM 4 - RW */
 #define E1000_FEXTNVM6	0x00010  /* Future Extended NVM 6 - RW */
 #define E1000_FEXTNVM7	0x000E4  /* Future Extended NVM 7 - RW */
-#define E1000_FEXTNVM9	0x5BB4
-#define E1000_FEXTNVM11	0x5BBC
-#define E1000_PCIEANACFG 0x00F18
+#define E1000_FEXTNVM9	0x5BB4  /* Future Extended NVM 9 - RW */
+#define E1000_FEXTNVM11	0x5BBC  /* Future Extended NVM 11 - RW */
+#define E1000_PCIEANACFG	0x00F18 /* PCIE Analog Config */
 
 #define E1000_FCT	0x00030  /* Flow Control Type - RW */
 #define E1000_CONNSW	0x00034  /* Copper/Fiber switch control - RW */
@@ -111,6 +111,7 @@
 #define E1000_PBA	0x01000  /* Packet Buffer Allocation - RW */
 #define E1000_PBS	0x01008  /* Packet Buffer Size */
 #define E1000_PBECCSTS	0x0100C  /* Packet Buffer ECC Status - RW */
+#define E1000_IOSFPC	0x00F28  /* TX corrupted data  */
 #define E1000_EEMNGCTL	0x01010  /* MNG EEprom Control */
 #define E1000_EEMNGCTL_I210	0x01010  /* i210 MNG EEprom Mode Control */
 #define E1000_EEARBC	0x01024  /* EEPROM Auto Read Bus Control */
@@ -602,6 +603,10 @@
 #define E1000_TIMADJL	0x0B60C /* Time sync time adjustment offset Low - RW */
 #define E1000_TIMADJH	0x0B610 /* Time sync time adjustment offset High - RW */
 #define E1000_TSAUXC	0x0B640 /* Timesync Auxiliary Control register */
+#define	E1000_SYSSTMPL	0x0B648 /* HH Timesync system stamp low register */
+#define	E1000_SYSSTMPH	0x0B64C /* HH Timesync system stamp hi register */
+#define	E1000_PLTSTMPL	0x0B640 /* HH Timesync platform stamp low register */
+#define	E1000_PLTSTMPH	0x0B644 /* HH Timesync platform stamp hi register */
 #define E1000_RXMTRL	0x0B634 /* Time sync Rx EtherType and Msg Type - RW */
 #define E1000_RXUDP	0x0B638 /* Time Sync Rx UDP Port - RW */
 #define E1000_SYSTIMR	0x0B6F8 /* System time register Residue */

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2004 Joerg Sonnenberger <joerg@bec.de>.  All rights reserved.
  *
- * Copyright (c) 2001-2014, Intel Corporation
+ * Copyright (c) 2001-2015, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -117,7 +117,7 @@
 #define DEBUG_HW 0
 
 #define EM_NAME	"Intel(R) PRO/1000 Network Connection "
-#define EM_VER	" 7.4.2"
+#define EM_VER	" 7.6.2"
 
 #define _EM_DEVICE(id, ret)	\
 	{ EM_VENDOR_ID, E1000_DEV_ID_##id, ret, EM_NAME #id EM_VER }
@@ -246,7 +246,7 @@ static const struct em_vendor_info em_vendor_info_array[] = {
 	EM_EMX_DEVICE(PCH_SPT_I219_V),
 	EM_EMX_DEVICE(PCH_SPT_I219_LM2),
 	EM_EMX_DEVICE(PCH_SPT_I219_V2),
-	EM_EMX_DEVICE(PCH_SPT_I219_LM3),
+	EM_EMX_DEVICE(PCH_LBG_I219_LM3),
 	EM_EMX_DEVICE(PCH_SPT_I219_LM4),
 	EM_EMX_DEVICE(PCH_SPT_I219_V4),
 	EM_EMX_DEVICE(PCH_SPT_I219_LM5),
@@ -322,6 +322,9 @@ static void	em_update_link_status(struct adapter *);
 static void	em_smartspeed(struct adapter *);
 static void	em_set_itr(struct adapter *, uint32_t);
 static void	em_disable_aspm(struct adapter *);
+static void	em_flush_tx_ring(struct adapter *);
+static void	em_flush_rx_ring(struct adapter *);
+static void	em_flush_txrx_ring(struct adapter *);
 
 /* Hardware workarounds */
 static int	em_82547_fifo_workaround(struct adapter *, int);
@@ -501,11 +504,18 @@ em_attach(device_t dev)
 	struct ifnet *ifp = &adapter->arpcom.ac_if;
 	int tsize, rsize;
 	int error = 0;
+	int cap;
 	uint16_t eeprom_data, device_id, apme_mask;
 	driver_intr_t *intr_func;
 	char flowctrl[IFM_ETH_FC_STRLEN];
 
 	adapter->dev = adapter->osdep.dev = dev;
+
+	/*
+	 * Some versions of I219 only have PCI AF.
+	 */
+	if (pci_is_pcie(dev) || pci_find_extcap(dev, PCIY_PCIAF, &cap) == 0)
+		adapter->flags |= EM_FLAG_GEN2;
 
 	callout_init_mp(&adapter->timer);
 	callout_init_mp(&adapter->tx_fifo_timer);
@@ -559,6 +569,17 @@ em_attach(device_t dev)
 		 * XXX this goof is actually not used.
 		 */
 		adapter->hw.flash_address = (uint8_t *)adapter->flash;
+	} else if (adapter->hw.mac.type == e1000_pch_spt) {
+		/*
+		 * In the new SPT device flash is not a seperate BAR,
+		 * rather it is also in BAR0, so use the same tag and
+		 * an offset handle for the FLASH read/write macros
+		 * in the shared code.
+		 */
+		adapter->osdep.flash_bus_space_tag =
+		    adapter->osdep.mem_bus_space_tag;
+		adapter->osdep.flash_bus_space_handle =
+		    adapter->osdep.mem_bus_space_handle + E1000_FLASH_BASE_ADDR;
 	}
 
 	switch (adapter->hw.mac.type) {
@@ -582,7 +603,7 @@ em_attach(device_t dev)
 		/* FALL THROUGH */
 
 	default:
-		if (pci_is_pcie(dev))
+		if (adapter->flags & EM_FLAG_GEN2)
 			adapter->flags |= EM_FLAG_TSO;
 		break;
 	}
@@ -2077,13 +2098,30 @@ em_set_promisc(struct adapter *adapter)
 static void
 em_disable_promisc(struct adapter *adapter)
 {
+	struct ifnet *ifp = &adapter->arpcom.ac_if;
 	uint32_t reg_rctl;
+	int mcnt = 0;
 
 	reg_rctl = E1000_READ_REG(&adapter->hw, E1000_RCTL);
+	reg_rctl &= ~(E1000_RCTL_UPE | E1000_RCTL_SBP);
 
-	reg_rctl &= ~E1000_RCTL_UPE;
-	reg_rctl &= ~E1000_RCTL_MPE;
-	reg_rctl &= ~E1000_RCTL_SBP;
+	if (ifp->if_flags & IFF_ALLMULTI) {
+		mcnt = MAX_NUM_MULTICAST_ADDRESSES;
+	} else {
+		const struct ifmultiaddr *ifma;
+
+		TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+			if (ifma->ifma_addr->sa_family != AF_LINK)
+				continue;
+			if (mcnt == MAX_NUM_MULTICAST_ADDRESSES)
+				break;
+			mcnt++;
+		}
+	}
+	/* Don't disable if in MAX groups */
+	if (mcnt < MAX_NUM_MULTICAST_ADDRESSES)
+		reg_rctl &= ~E1000_RCTL_MPE;
+
 	E1000_WRITE_REG(&adapter->hw, E1000_RCTL, reg_rctl);
 }
 
@@ -2180,6 +2218,8 @@ em_update_link_status(struct adapter *adapter)
 	switch (hw->phy.media_type) {
 	case e1000_media_type_copper:
 		if (hw->mac.get_link_status) {
+			if (hw->mac.type == e1000_pch_spt)
+				msec_delay(50);
 			/* Do the work to read phy */
 			e1000_check_for_link(hw);
 			link_check = !hw->mac.get_link_status;
@@ -2221,7 +2261,7 @@ em_update_link_status(struct adapter *adapter)
 			int tarc0;
 
 			tarc0 = E1000_READ_REG(hw, E1000_TARC(0));
-			tarc0 &= ~SPEED_MODE_BIT;
+			tarc0 &= ~TARC_SPEED_MODE_BIT;
 			E1000_WRITE_REG(hw, E1000_TARC(0), tarc0);
 		}
 		if (bootverbose) {
@@ -2276,6 +2316,10 @@ em_stop(struct adapter *adapter)
 	ifp->if_timer = 0;
 	adapter->tx_running = 0;
 	callout_stop(&adapter->tx_gc_timer);
+
+	/* I219 needs some special flushing to avoid hangs */
+	if (adapter->hw.mac.type == e1000_pch_spt)
+		em_flush_txrx_ring(adapter);
 
 	e1000_reset_hw(&adapter->hw);
 	if (adapter->hw.mac.type >= e1000_82544)
@@ -2338,7 +2382,7 @@ em_alloc_pci_res(struct adapter *adapter)
 {
 	device_t dev = adapter->dev;
 	u_int intr_flags;
-	int val, rid, msi_enable, cap;
+	int val, rid, msi_enable;
 
 	/* Enable bus mastering */
 	pci_enable_busmaster(dev);
@@ -2401,13 +2445,10 @@ em_alloc_pci_res(struct adapter *adapter)
 	 *
 	 * Don't enable MSI on 82571/82572, see:
 	 * 82571/82572 specification update errata #63
-	 *
-	 * Some versions of I219 only have PCI AF.
 	 */
 	msi_enable = em_msi_enable;
 	if (msi_enable &&
-	    (!(pci_is_pcie(dev) ||
-	       pci_find_extcap(dev, PCIY_PCIAF, &cap) == 0) ||
+	    ((adapter->flags & EM_FLAG_GEN2) == 0 ||
 	     adapter->hw.mac.type == e1000_82571 ||
 	     adapter->hw.mac.type == e1000_82572))
 		msi_enable = 0;
@@ -2647,6 +2688,10 @@ em_reset(struct adapter *adapter)
 			adapter->hw.fc.pause_time = 0xFFFF;
 		break;
 	}
+
+	/* I219 needs some special flushing to avoid hangs */
+	if (adapter->hw.mac.type == e1000_pch_spt)
+		em_flush_txrx_ring(adapter);
 
 	/* Issue a global reset */
 	e1000_reset_hw(&adapter->hw);
@@ -2902,6 +2947,18 @@ em_init_tx_unit(struct adapter *adapter)
 	/* Setup the HW Tx Head and Tail descriptor pointers */
 	E1000_WRITE_REG(&adapter->hw, E1000_TDT(0), 0);
 	E1000_WRITE_REG(&adapter->hw, E1000_TDH(0), 0);
+	if (adapter->flags & EM_FLAG_GEN2) {
+		uint32_t txdctl = 0;
+
+		txdctl |= 0x1f;		/* PTHRESH */
+		txdctl |= 1 << 8;	/* HTHRESH */
+		txdctl |= 1 << 16;	/* WTHRESH */
+		txdctl |= 1 << 22;	/* Reserved bit 22 must always be 1 */
+		txdctl |= E1000_TXDCTL_GRAN;
+		txdctl |= 1 << 25;	/* LWTHRESH */
+
+		E1000_WRITE_REG(&adapter->hw, E1000_TXDCTL(0), txdctl);
+	}
 
 	/* Set the default values for the Tx Inter Packet Gap timer */
 	switch (adapter->hw.mac.type) {
@@ -2939,15 +2996,20 @@ em_init_tx_unit(struct adapter *adapter)
 	if (adapter->hw.mac.type == e1000_82571 ||
 	    adapter->hw.mac.type == e1000_82572) {
 		tarc = E1000_READ_REG(&adapter->hw, E1000_TARC(0));
-		tarc |= SPEED_MODE_BIT;
+		tarc |= TARC_SPEED_MODE_BIT;
 		E1000_WRITE_REG(&adapter->hw, E1000_TARC(0), tarc);
 	} else if (adapter->hw.mac.type == e1000_80003es2lan) {
+		/* errata: program both queues to unweighted RR */
 		tarc = E1000_READ_REG(&adapter->hw, E1000_TARC(0));
 		tarc |= 1;
 		E1000_WRITE_REG(&adapter->hw, E1000_TARC(0), tarc);
 		tarc = E1000_READ_REG(&adapter->hw, E1000_TARC(1));
 		tarc |= 1;
 		E1000_WRITE_REG(&adapter->hw, E1000_TARC(1), tarc);
+	} else if (adapter->hw.mac.type == e1000_82574) {
+		tarc = E1000_READ_REG(&adapter->hw, E1000_TARC(0));
+		tarc |= TARC_ERRATA_BIT;
+		E1000_WRITE_REG(&adapter->hw, E1000_TARC(0), tarc);
 	}
 
 	/* Program the Transmit Control Register */
@@ -2969,6 +3031,15 @@ em_init_tx_unit(struct adapter *adapter)
 		tarc = E1000_READ_REG(&adapter->hw, E1000_TARC(1));
 		tarc &= ~(1 << 28);
 		E1000_WRITE_REG(&adapter->hw, E1000_TARC(1), tarc);
+	} else if (adapter->hw.mac.type == e1000_pch_spt) {
+		uint32_t reg;
+
+		reg = E1000_READ_REG(&adapter->hw, E1000_IOSFPC);
+		reg |= E1000_RCTL_RDMTS_HEX;
+		E1000_WRITE_REG(&adapter->hw, E1000_IOSFPC, reg);
+		reg = E1000_READ_REG(&adapter->hw, E1000_TARC(0));
+		reg |= E1000_TARC0_CB_MULTIQ_3_REQ;
+		E1000_WRITE_REG(&adapter->hw, E1000_TARC(0), reg);
 	}
 }
 
@@ -3388,14 +3459,17 @@ em_init_rx_unit(struct adapter *adapter)
 {
 	struct ifnet *ifp = &adapter->arpcom.ac_if;
 	uint64_t bus_addr;
-	uint32_t rctl;
+	uint32_t rctl, rxcsum;
 
 	/*
 	 * Make sure receives are disabled while setting
 	 * up the descriptor ring
 	 */
 	rctl = E1000_READ_REG(&adapter->hw, E1000_RCTL);
-	E1000_WRITE_REG(&adapter->hw, E1000_RCTL, rctl & ~E1000_RCTL_EN);
+	/* Do not disable if ever enabled on this hardware */
+	if (adapter->hw.mac.type != e1000_82574 &&
+	    adapter->hw.mac.type != e1000_82583)
+		E1000_WRITE_REG(&adapter->hw, E1000_RCTL, rctl & ~E1000_RCTL_EN);
 
 	if (adapter->hw.mac.type >= e1000_82540) {
 		uint32_t itr;
@@ -3413,18 +3487,20 @@ em_init_rx_unit(struct adapter *adapter)
 
 	/* Disable accelerated ackknowledge */
 	if (adapter->hw.mac.type == e1000_82574) {
-		E1000_WRITE_REG(&adapter->hw,
-		    E1000_RFCTL, E1000_RFCTL_ACK_DIS);
+		uint32_t rfctl;
+
+		rfctl = E1000_READ_REG(&adapter->hw, E1000_RFCTL);
+		rfctl |= E1000_RFCTL_ACK_DIS;
+		E1000_WRITE_REG(&adapter->hw, E1000_RFCTL, rfctl);
 	}
 
-	/* Receive Checksum Offload for TCP and UDP */
-	if (ifp->if_capenable & IFCAP_RXCSUM) {
-		uint32_t rxcsum;
-
-		rxcsum = E1000_READ_REG(&adapter->hw, E1000_RXCSUM);
+	/* Receive Checksum Offload for IP and TCP/UDP */
+	rxcsum = E1000_READ_REG(&adapter->hw, E1000_RXCSUM);
+	if (ifp->if_capenable & IFCAP_RXCSUM)
 		rxcsum |= (E1000_RXCSUM_IPOFL | E1000_RXCSUM_TUOFL);
-		E1000_WRITE_REG(&adapter->hw, E1000_RXCSUM, rxcsum);
-	}
+	else
+		rxcsum &= ~(E1000_RXCSUM_IPOFL | E1000_RXCSUM_TUOFL);
+	E1000_WRITE_REG(&adapter->hw, E1000_RXCSUM, rxcsum);
 
 	/*
 	 * XXX TEMPORARY WORKAROUND: on some systems with 82573
@@ -3456,14 +3532,23 @@ em_init_rx_unit(struct adapter *adapter)
 	E1000_WRITE_REG(&adapter->hw, E1000_RDT(0), adapter->num_rx_desc - 1);
 
 	/* Set PTHRESH for improved jumbo performance */
-	if (((adapter->hw.mac.type == e1000_ich9lan) ||
-	    (adapter->hw.mac.type == e1000_pch2lan) ||
-	    (adapter->hw.mac.type == e1000_ich10lan)) &&
-	    (ifp->if_mtu > ETHERMTU)) {
+	if (ifp->if_mtu > ETHERMTU) {
 		uint32_t rxdctl;
 
-		rxdctl = E1000_READ_REG(&adapter->hw, E1000_RXDCTL(0));
-		E1000_WRITE_REG(&adapter->hw, E1000_RXDCTL(0), rxdctl | 3);
+		if (adapter->hw.mac.type == e1000_ich9lan ||
+		    adapter->hw.mac.type == e1000_pch2lan ||
+		    adapter->hw.mac.type == e1000_ich10lan) {
+			rxdctl = E1000_READ_REG(&adapter->hw, E1000_RXDCTL(0));
+			E1000_WRITE_REG(&adapter->hw, E1000_RXDCTL(0),
+			    rxdctl | 3);
+		} else if (adapter->hw.mac.type == e1000_82574) {
+			rxdctl = E1000_READ_REG(&adapter->hw, E1000_RXDCTL(0));
+                	rxdctl |= 0x20;		/* PTHRESH */
+                	rxdctl |= 4 << 8;	/* HTHRESH */
+                	rxdctl |= 4 << 16;	/* WTHRESH */
+			rxdctl |= 1 << 24;	/* Switch to granularity */
+			E1000_WRITE_REG(&adapter->hw, E1000_RXDCTL(0), rxdctl);
+		}
 	}
 
 	if (adapter->hw.mac.type >= e1000_pch2lan) {
@@ -4558,4 +4643,110 @@ em_tso_setup(struct adapter *adapter, struct mbuf *mp,
 
 	adapter->next_avail_tx_desc = curr_txd;
 	return 1;
+}
+
+/*
+ * Remove all descriptors from the TX ring.
+ *
+ * We want to clear all pending descriptors from the TX ring.  Zeroing
+ * happens when the HW reads the regs.  We assign the ring itself as
+ * the data of the next descriptor.  We don't care about the data we
+ * are about to reset the HW.
+ */
+static void
+em_flush_tx_ring(struct adapter *adapter)
+{
+	struct e1000_hw *hw = &adapter->hw;
+	struct e1000_tx_desc *txd;
+	uint32_t tctl;
+
+	tctl = E1000_READ_REG(hw, E1000_TCTL);
+	E1000_WRITE_REG(hw, E1000_TCTL, tctl | E1000_TCTL_EN);
+
+	txd = &adapter->tx_desc_base[adapter->next_avail_tx_desc++];
+	if (adapter->next_avail_tx_desc == adapter->num_tx_desc)
+		adapter->next_avail_tx_desc = 0;
+
+	/* Just use the ring as a dummy buffer addr */
+	txd->buffer_addr = adapter->txdma.dma_paddr;
+	txd->lower.data = htole32(E1000_TXD_CMD_IFCS | 512);
+	txd->upper.data = 0;
+
+	E1000_WRITE_REG(hw, E1000_TDT(0), adapter->next_avail_tx_desc);
+	usec_delay(250);
+}
+
+/*
+ * Remove all descriptors from the RX ring.
+ *
+ * Mark all descriptors in the RX ring as consumed and disable the RX ring.
+ */
+static void
+em_flush_rx_ring(struct adapter *adapter)
+{
+	struct e1000_hw	*hw = &adapter->hw;
+	uint32_t rctl, rxdctl;
+
+	rctl = E1000_READ_REG(hw, E1000_RCTL);
+	E1000_WRITE_REG(hw, E1000_RCTL, rctl & ~E1000_RCTL_EN);
+	E1000_WRITE_FLUSH(hw);
+	usec_delay(150);
+
+	rxdctl = E1000_READ_REG(hw, E1000_RXDCTL(0));
+	/* Zero the lower 14 bits (prefetch and host thresholds) */
+	rxdctl &= 0xffffc000;
+	/*
+	 * Update thresholds: prefetch threshold to 31, host threshold to 1
+	 * and make sure the granularity is "descriptors" and not "cache
+	 * lines".
+	 */
+	rxdctl |= (0x1F | (1 << 8) | E1000_RXDCTL_THRESH_UNIT_DESC);
+	E1000_WRITE_REG(hw, E1000_RXDCTL(0), rxdctl);
+
+	/* Momentarily enable the RX ring for the changes to take effect */
+	E1000_WRITE_REG(hw, E1000_RCTL, rctl | E1000_RCTL_EN);
+	E1000_WRITE_FLUSH(hw);
+	usec_delay(150);
+	E1000_WRITE_REG(hw, E1000_RCTL, rctl & ~E1000_RCTL_EN);
+}
+
+/*
+ * Remove all descriptors from the descriptor rings.
+ *
+ * In i219, the descriptor rings must be emptied before resetting the HW
+ * or before changing the device state to D3 during runtime (runtime PM).
+ *
+ * Failure to do this will cause the HW to enter a unit hang state which
+ * can only be released by PCI reset on the device.
+ */
+static void
+em_flush_txrx_ring(struct adapter *adapter)
+{
+	struct e1000_hw *hw = &adapter->hw;
+	device_t dev = adapter->dev;
+	uint16_t hang_state;
+	uint32_t fext_nvm11;
+
+	/*
+	 * First, disable MULR fix in FEXTNVM11.
+	 */
+	fext_nvm11 = E1000_READ_REG(hw, E1000_FEXTNVM11);
+	fext_nvm11 |= E1000_FEXTNVM11_DISABLE_MULR_FIX;
+	E1000_WRITE_REG(hw, E1000_FEXTNVM11, fext_nvm11);
+
+	/* 
+	 * Do nothing if we're not in faulty state, or if the queue is
+	 * empty.
+	 */
+	hang_state = pci_read_config(dev, PCICFG_DESC_RING_STATUS, 2);
+	if ((hang_state & FLUSH_DESC_REQUIRED) &&
+	    E1000_READ_REG(hw, E1000_TDLEN(0)))
+		em_flush_tx_ring(adapter);
+
+	/*
+	 * Recheck, maybe the fault is caused by the RX ring.
+	 */
+	hang_state = pci_read_config(dev, PCICFG_DESC_RING_STATUS, 2);
+	if (hang_state & FLUSH_DESC_REQUIRED)
+		em_flush_rx_ring(adapter);
 }

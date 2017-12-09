@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2014, Intel Corporation 
+  Copyright (c) 2001-2015, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,7 +30,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD:$*/
+/*$FreeBSD$*/
 
 #ifndef _E1000_NVM_H_
 #define _E1000_NVM_H_
@@ -89,9 +89,7 @@ s32  e1000_write_nvm_microwire(struct e1000_hw *hw, u16 offset,
 s32  e1000_write_nvm_spi(struct e1000_hw *hw, u16 offset, u16 words,
 			 u16 *data);
 s32  e1000_update_nvm_checksum_generic(struct e1000_hw *hw);
-#ifndef NO_82542_SUPPORT
 void e1000_stop_nvm(struct e1000_hw *hw);
-#endif
 void e1000_release_nvm_generic(struct e1000_hw *hw);
 void e1000_get_fw_version(struct e1000_hw *hw,
 			  struct e1000_fw_version *fw_vers);

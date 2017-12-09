@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2014, Intel Corporation 
+  Copyright (c) 2001-2015, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,7 +30,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD:$*/
+/*$FreeBSD$*/
 
 #include "e1000_api.h"
 
@@ -944,11 +944,7 @@ s32 e1000_check_for_serdes_link_generic(struct e1000_hw *hw)
  *  Read the EEPROM for the default values for flow control and store the
  *  values.
  **/
-#ifdef NO_82542_SUPPORT
-static s32 e1000_set_default_fc_generic(struct e1000_hw *hw)
-#else
 s32 e1000_set_default_fc_generic(struct e1000_hw *hw)
-#endif
 {
 	s32 ret_val;
 	u16 nvm_data;
@@ -2102,8 +2098,7 @@ s32 e1000_disable_pcie_master_generic(struct e1000_hw *hw)
 
 	while (timeout) {
 		if (!(E1000_READ_REG(hw, E1000_STATUS) &
-		      E1000_STATUS_GIO_MASTER_ENABLE) ||
-				E1000_REMOVED(hw->hw_addr))
+		      E1000_STATUS_GIO_MASTER_ENABLE))
 			break;
 		usec_delay(100);
 		timeout--;
