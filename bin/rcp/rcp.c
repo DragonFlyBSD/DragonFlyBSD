@@ -101,16 +101,16 @@ static char **argv_copy;
 static char cmd[CMDNEEDS];		/* must hold "rcp -r -p -d\0" */
 
 #ifdef KERBEROS
-int	 kerberos(char **, char *, char *, char *);
-void	 oldw(const char *, ...) __printflike(1, 2);
+static int	 kerberos(char **, char *, char *, char *);
+static void	 oldw(const char *, ...) __printflike(1, 2);
 #endif
-int	 response(void);
-void	 rsource(char *, struct stat *);
-void	 sink(int, char *[]);
-void	 source(int, char *[]);
-void	 tolocal(int, char *[]);
-void	 toremote(char *, int, char *[]);
-void	 usage(void);
+static int	 response(void);
+static void	 rsource(char *, struct stat *);
+static void	 sink(int, char *[]);
+static void	 source(int, char *[]);
+static void	 tolocal(int, char *[]);
+static void	 toremote(char *, int, char *[]);
+static void	 usage(void);
 
 int
 main(int argc, char *argv[])
@@ -271,7 +271,7 @@ main(int argc, char *argv[])
 	exit(errs);
 }
 
-void
+static void
 toremote(char *targ, int argc, char *argv[])
 {
 	int i, len, tos;
@@ -364,7 +364,7 @@ toremote(char *targ, int argc, char *argv[])
 	}
 }
 
-void
+static void
 tolocal(int argc, char *argv[])
 {
 	int i, len, tos;
@@ -430,7 +430,7 @@ tolocal(int argc, char *argv[])
 	}
 }
 
-void
+static void
 source(int argc, char *argv[])
 {
 	struct stat stb;
@@ -516,7 +516,7 @@ next:			(void)close(fd);
 	}
 }
 
-void
+static void
 rsource(char *name, struct stat *statp)
 {
 	DIR *dirp;
@@ -567,7 +567,7 @@ rsource(char *name, struct stat *statp)
 	response();
 }
 
-void
+static void
 sink(int argc, char *argv[])
 {
 	static BUF buffer;
@@ -803,7 +803,7 @@ screwup:
 }
 
 #ifdef KERBEROS
-int
+static int
 kerberos(char **host, char *bp, char *locuser, char *user)
 {
 	if (use_kerberos) {
@@ -840,7 +840,7 @@ kerberos(char **host, char *bp, char *locuser, char *user)
 }
 #endif /* KERBEROS */
 
-int
+static int
 response(void)
 {
 	char ch, *cp, resp, rbuf[BUFSIZ];
@@ -873,7 +873,7 @@ response(void)
 	/* NOTREACHED */
 }
 
-void
+static void
 usage(void)
 {
 #ifdef KERBEROS
@@ -897,7 +897,7 @@ usage(void)
 #include <stdarg.h>
 
 #ifdef KERBEROS
-void
+static void
 oldw(const char *fmt, ...)
 {
 	va_list ap;
