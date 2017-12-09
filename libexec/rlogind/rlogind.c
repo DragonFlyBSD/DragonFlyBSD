@@ -81,16 +81,16 @@
 extern int __check_rhosts_file;
 extern	char **environ;
 
-char	*env[2];
+static char	*env[2];
 #define	NMAX 30
-char	lusername[NMAX+1], rusername[NMAX+1];
-static	char term[64] = "TERM=";
+static char	lusername[NMAX+1], rusername[NMAX+1];
+static char	term[64] = "TERM=";
 #define	ENVSIZE	(sizeof("TERM=")-1)	/* skip null for concatenation */
-int	keepalive = 1;
-int	check_all = 0;
-int	no_delay;
+static int	keepalive = 1;
+static int	check_all = 0;
+static int	no_delay;
 
-struct	passwd *pwd;
+static struct	passwd *pwd;
 
 union sockunion {
 	struct sockinet {
@@ -105,16 +105,15 @@ union sockunion {
 #define su_family	su_si.si_family
 #define su_port		su_si.si_port
 
-void	doit(int, union sockunion *);
-int	control(int, char *, int);
-void	protocol(int, int);
-void	cleanup(int);
-void	fatal(int, const char *, int);
-int	do_rlogin(union sockunion *);
-void	getstr(char *, int, const char *);
-void	setup_term(int);
-int	do_krb_login(struct sockaddr_in *);
-void	usage(void);
+static void	doit(int, union sockunion *);
+static int	control(int, char *, int);
+static void	protocol(int, int);
+static void	cleanup(int);
+static void	fatal(int, const char *, int);
+static int	do_rlogin(union sockunion *);
+static void	getstr(char *, int, const char *);
+static void	setup_term(int);
+static void	usage(void);
 
 
 int
@@ -177,15 +176,14 @@ main(int argc, char *argv[])
 	return 0;
 }
 
-int	child;
-int	netf;
-char	line[MAXPATHLEN];
-int	confirmed;
+static int	netf;
+static char	line[MAXPATHLEN];
+static int	confirmed;
 
-struct winsize win = { 0, 0, 0, 0 };
+static struct winsize win = { 0, 0, 0, 0 };
 
 
-void
+static void
 doit(int f, union sockunion *fromp)
 {
 	int master, pid, on = 1;
@@ -312,15 +310,15 @@ doit(int f, union sockunion *fromp)
 	cleanup(0);
 }
 
-char	magic[2] = { 0377, 0377 };
-char	oobdata[] = {TIOCPKT_WINDOW};
+static char	magic[2] = { 0377, 0377 };
+static char	oobdata[] = {TIOCPKT_WINDOW};
 
 /*
  * Handle a "control" request (signaled by magic being present)
  * in the data stream.  For now, we are only willing to handle
  * window size changes.
  */
-int
+static int
 control(int pty, char *cp, int n)
 {
 	struct winsize w;
@@ -340,7 +338,7 @@ control(int pty, char *cp, int n)
 /*
  * rlogin "protocol" machine.
  */
-void
+static void
 protocol(int f, int p)
 {
 	char pibuf[1024+1], fibuf[1024], *pbp = NULL, *fbp = NULL;
@@ -496,7 +494,7 @@ protocol(int f, int p)
 	}
 }
 
-void
+static void
 cleanup(int signo __unused)
 {
 	char *p;
@@ -515,7 +513,7 @@ cleanup(int signo __unused)
 	exit(1);
 }
 
-void
+static void
 fatal(int f, const char *msg, int syserr)
 {
 	int len;
@@ -536,7 +534,7 @@ fatal(int f, const char *msg, int syserr)
 	exit(1);
 }
 
-int
+static int
 do_rlogin(union sockunion *dest)
 {
 
@@ -553,7 +551,7 @@ do_rlogin(union sockunion *dest)
 			    lusername));
 }
 
-void
+static void
 getstr(char *buf, int cnt, const char *errmsg)
 {
 	char c;
@@ -567,7 +565,7 @@ getstr(char *buf, int cnt, const char *errmsg)
 	} while (c != 0);
 }
 
-void
+static void
 setup_term(int fd)
 {
 	register char *cp = index(term+ENVSIZE, '/');
@@ -607,7 +605,7 @@ setup_term(int fd)
 	environ = env;
 }
 
-void
+static void
 usage(void)
 {
 	syslog(LOG_ERR, "usage: rlogind [-" ARGSTR "]");
