@@ -41,7 +41,7 @@
 #include <unistd.h>
 
 static char *getcwd_logical(void);
-void usage(void);
+static void usage(void);
 
 int
 main(int argc, char *argv[])
@@ -82,11 +82,11 @@ main(int argc, char *argv[])
 	exit(0);
 }
 
-void
+static void
 usage(void)
 {
 
-	(void)fprintf(stderr, "usage: pwd [-L | -P]\n");
+	fprintf(stderr, "usage: pwd [-L | -P]\n");
   	exit(1);
 }
 
