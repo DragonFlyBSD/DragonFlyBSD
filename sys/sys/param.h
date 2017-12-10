@@ -165,9 +165,10 @@
  * 500101 - kernel ppp removal
  * 500102 - <sys/sysref{,2}.h> inclusions removed from some public headers
  * 500103 - faith removal
+ * 500104 - cfmakesane()
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500103	/* propagated to newvers */
+#define __DragonFly_version 500104	/* propagated to newvers */
 
 #include <sys/_null.h>
 

@@ -82,6 +82,7 @@ pid_t	tcgetsid(int);
 
 #if __BSD_VISIBLE
 void	cfmakeraw(struct termios *);
+void	cfmakesane(struct termios *);
 int	cfsetspeed(struct termios *, speed_t);
 #endif /* __BSD_VISIBLE */
 __END_DECLS

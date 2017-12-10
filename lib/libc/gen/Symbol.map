@@ -466,6 +466,10 @@ DF410.0 {
     pthread_getthreadid_np;
 };
 
+DF502.0 {
+    cfmakesane;
+};
+
 DFprivate_1.0 {
 	/* pthread stubs */
     _pthread_atfork;
