@@ -3,6 +3,7 @@
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
 # Formatted manual pages (i.e., cat[1-9]) need not be specified separately
 
+TO_REMOVE+=/usr/share/man/man8/adding_user.8.gz
 TO_REMOVE+=/usr/libexec/named-xfer
 TO_REMOVE+=/usr/bin/dnsquery
 TO_REMOVE+=/usr/bin/dnskeygen
