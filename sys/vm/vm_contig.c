@@ -274,8 +274,14 @@ vm_contig_pg_alloc(unsigned long size, vm_paddr_t low, vm_paddr_t high,
 	 *
 	 * If high is not set to BUS_SPACE_MAXADDR we try using our
 	 * free memory reserve first, otherwise we try it last.
+	 *
+	 * XXX Always use the dma reserve first for performance, until
+	 * we find a better way to differentiate the DRM API.
 	 */
-	if (high != BUS_SPACE_MAXADDR) {
+#if 0
+	if (high != BUS_SPACE_MAXADDR)
+#endif
+	{
 		m = vm_page_alloc_contig(
 			low, high, alignment, boundary,
 			size, VM_MEMATTR_DEFAULT);
@@ -440,9 +446,12 @@ again:
 		return (start); /* aka &pga[start] */
 	}
 
+#if 0
 	/*
 	 * Failed, if we haven't already tried, allocate from our reserved
 	 * dma memory.
+	 *
+	 * XXX (see conditionalized code above)
 	 */
 	if (high == BUS_SPACE_MAXADDR) {
 		m = vm_page_alloc_contig(
@@ -451,6 +460,7 @@ again:
 		if (m)
 			return (m - &pga[0]);
 	}
+#endif
 
 	/*
 	 * Failed.

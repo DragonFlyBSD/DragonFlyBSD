@@ -1,9 +1,13 @@
 /*
  * Copyright (c) 1991 Regents of the University of California.
  * All rights reserved.
+ * Copyright (c) 2003-2011 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
  * The Mach Operating System project at Carnegie-Mellon University.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -1967,7 +1971,9 @@ vm_page_alloc_contig(vm_paddr_t low, vm_paddr_t high,
 	alist_blk_t blk;
 	vm_page_t m;
 	vm_pindex_t i;
+#if 0
 	static vm_pindex_t contig_rover;
+#endif
 
 	alignment >>= PAGE_SHIFT;
 	if (alignment == 0)
@@ -1977,6 +1983,11 @@ vm_page_alloc_contig(vm_paddr_t low, vm_paddr_t high,
 		boundary = 1;
 	size = (size + PAGE_MASK) >> PAGE_SHIFT;
 
+#if 0
+	/*
+	 * Disabled temporarily until we find a solution for DRM (a flag
+	 * to always use the free space reserve, for performance).
+	 */
 	if (high == BUS_SPACE_MAXADDR && alignment <= PAGE_SIZE &&
 	    boundary <= PAGE_SIZE && size == 1 &&
 	    memattr == VM_MEMATTR_DEFAULT) {
@@ -1990,7 +2001,9 @@ vm_page_alloc_contig(vm_paddr_t low, vm_paddr_t high,
 		m->valid = VM_PAGE_BITS_ALL;
 		vm_page_wire(m);
 		vm_page_wakeup(m);
-	} else {
+	} else
+#endif
+	{
 		/*
 		 * Use the low-memory dma reserve
 		 */
