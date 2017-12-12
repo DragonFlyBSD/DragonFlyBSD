@@ -42,7 +42,7 @@ __FBSDID("$FreeBSD: head/sys/boot/efi/libefi/efinet.c 295210 2016-02-03 14:34:25
 #include <efi.h>
 #include <efilib.h>
 
-static EFI_GUID sn_guid = EFI_SIMPLE_NETWORK_PROTOCOL;
+static EFI_GUID sn_guid = EFI_SIMPLE_NETWORK_PROTOCOL_GUID;
 
 static void efinet_end(struct netif *);
 static int efinet_get(struct iodesc *, void *, size_t, time_t);

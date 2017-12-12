@@ -46,12 +46,12 @@ Revision History
 #include "efibind.h"
 #include "efidef.h"
 #include "efidevp.h"
-#include "efi_nii.h"
 #include "efipxebc.h"
-#include "efinet.h"
 #include <Protocol/GraphicsOutput.h>
+#include <Protocol/NetworkInterfaceIdentifier.h>
 #include <Protocol/PciIo.h>
 #include <Protocol/SerialIo.h>
+#include <Protocol/SimpleNetwork.h>
 #include <Protocol/SimpleTextIn.h>
 #include <Protocol/SimpleTextOut.h>
 #include <Protocol/UgaDraw.h>
