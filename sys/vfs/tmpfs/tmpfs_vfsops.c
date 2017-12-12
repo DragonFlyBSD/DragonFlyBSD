@@ -213,7 +213,7 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	else
 		nodes = nodes_max;
 
-	maxfsize = IDX_TO_OFF(pages_limit);
+	maxfsize = 0x7FFFFFFFFFFFFFFFLLU - TMPFS_BLKSIZE;
 	if (maxfsize_max != 0 && maxfsize > maxfsize_max)
 		maxfsize = maxfsize_max;
 
