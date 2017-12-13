@@ -3337,7 +3337,6 @@ TO_REMOVE+=/usr/share/man/man1/sess_id.1.gz
 TO_REMOVE+=/usr/share/man/man1/sha.1.gz
 TO_REMOVE+=/usr/share/man/man1/sha224.1.gz
 TO_REMOVE+=/usr/share/man/man1/sha384.1.gz
-TO_REMOVE+=/usr/share/man/man1/sha512.1.gz
 TO_REMOVE+=/usr/share/man/man1/smime.1.gz
 TO_REMOVE+=/usr/share/man/man1/speed.1.gz
 TO_REMOVE+=/usr/share/man/man1/spkac.1.gz
