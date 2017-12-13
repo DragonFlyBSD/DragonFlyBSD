@@ -6,7 +6,6 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libmd/mdXhl.c,v 1.19 2006/01/17 15:35:56 phk Exp $
- * $DragonFly: src/lib/libmd/mdXhl.c,v 1.3 2008/09/11 20:25:34 swildner Exp $
  */
 /*
  * This code has been deprecated, do not put this in libmd or anywhere else please.
@@ -84,11 +83,11 @@ SHA1_FileChunk(const char *filename, char *buf, off_t ofs, off_t len)
 			i = read(f, buffer, sizeof(buffer));
 		else
 			i = read(f, buffer, n);
-		if (i < 0) 
+		if (i < 0)
 			break;
 		SHA1_Update(&ctx, buffer, i);
 		n -= i;
-	} 
+	}
 	e = errno;
 	close(f);
 	errno = e;
@@ -98,7 +97,7 @@ SHA1_FileChunk(const char *filename, char *buf, off_t ofs, off_t len)
 }
 
 char *
-SHA1_Data (const void *data, unsigned int len, char *buf)
+SHA1_Data(const void *data, unsigned int len, char *buf)
 {
 	SHA1_CTX ctx;
 
