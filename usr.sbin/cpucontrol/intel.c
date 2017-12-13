@@ -39,7 +39,6 @@ __FBSDID("$FreeBSD: release/10.0.0/usr.sbin/cpucontrol/intel.c 245491 2013-01-16
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
-#include <sys/ioccom.h>
 #include <sys/cpuctl.h>
 
 #include <machine/cpufunc.h>

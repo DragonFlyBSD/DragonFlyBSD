@@ -72,7 +72,6 @@
 #include <sys/malloc.h>
 #include <sys/uio.h>
 #include <sys/sysctl.h>
-#include <sys/ioccom.h>
 #include <sys/endian.h>
 #include <sys/queue.h>
 #include <sys/kthread.h>

@@ -47,7 +47,6 @@
 #include <bus/u4b/usbhid.h>
 #include "usbdevs.h"
 
-#include <sys/ioccom.h>
 #include <sys/fcntl.h>
 #include <sys/tty.h>
 

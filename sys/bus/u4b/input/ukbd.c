@@ -75,7 +75,6 @@ __FBSDID("$FreeBSD: head/sys/dev/usb/input/ukbd.c 262972 2014-03-10 08:52:30Z hs
 #include <dev/misc/evdev/evdev.h>
 #endif
 
-#include <sys/ioccom.h>
 #include <sys/filio.h>
 #include <sys/tty.h>
 #include <sys/kbio.h>

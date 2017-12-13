@@ -49,7 +49,6 @@
 #include <sys/endian.h>
 #include <sys/sysctl.h>
 #include <sys/kthread.h>
-#include <sys/ioccom.h>
 
 #include <sys/buf2.h>
 

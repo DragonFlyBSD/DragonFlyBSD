@@ -29,6 +29,8 @@
 #ifndef _CPUCTL_H_
 #define	_CPUCTL_H_
 
+#include <sys/ioccom.h>
+
 typedef struct {
 	int		msr;	/* MSR to read */
 	uint64_t	data;

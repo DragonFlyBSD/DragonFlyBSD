@@ -69,7 +69,6 @@
 #include <dev/misc/evdev/evdev.h>
 #endif
 
-#include <sys/ioccom.h>
 #include <sys/filio.h>
 #include <sys/tty.h>
 #include <sys/mouse.h>

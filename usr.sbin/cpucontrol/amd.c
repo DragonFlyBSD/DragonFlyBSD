@@ -38,7 +38,6 @@ __FBSDID("$FreeBSD: release/10.0.0/usr.sbin/cpucontrol/amd.c 236504 2012-06-03 0
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
-#include <sys/ioccom.h>
 #include <sys/cpuctl.h>
 
 #include <machine/cpufunc.h>

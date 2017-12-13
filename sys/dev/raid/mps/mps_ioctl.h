@@ -64,6 +64,8 @@
 #ifndef _MPS_IOCTL_H_
 #define	_MPS_IOCTL_H_
 
+#include <sys/ioccom.h>
+
 #include <dev/raid/mps/mpi/mpi2_type.h>
 #include <dev/raid/mps/mpi/mpi2.h>
 #include <dev/raid/mps/mpi/mpi2_cnfg.h>

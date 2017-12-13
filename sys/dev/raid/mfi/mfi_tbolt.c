@@ -41,7 +41,6 @@
 #include <sys/conf.h>
 #include <sys/bio.h>
 #include <sys/buf2.h>
-#include <sys/ioccom.h>
 #include <sys/eventhandler.h>
 #include <sys/callout.h>
 #include <sys/uio.h>

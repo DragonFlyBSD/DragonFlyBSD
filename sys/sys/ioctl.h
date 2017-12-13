@@ -58,8 +58,6 @@ struct ttysize {
 #define	TIOCGSIZE	TIOCGWINSZ
 #define	TIOCSSIZE	TIOCSWINSZ
 
-#include <sys/ioccom.h>
-
 #include <sys/filio.h>
 #include <sys/sockio.h>
 

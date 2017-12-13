@@ -31,7 +31,6 @@
 #include <sys/systm.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
-#include <sys/ioccom.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/priv.h>

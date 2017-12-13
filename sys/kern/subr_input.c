@@ -43,7 +43,6 @@
 #include <sys/bus_private.h>
 #include <sys/systm.h>
 #include <sys/uio.h>
-#include <sys/ioccom.h>
 #include <sys/machintr.h>
 
 #include <machine/stdarg.h>	/* for device_printf() */
