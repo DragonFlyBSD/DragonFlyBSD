@@ -129,7 +129,7 @@ static const struct devtype devtypes[] = {
 	{ NULL, 0 }
 };
 
-int
+void
 syntax_error(const char *fmt, ...)
 {
 	char buf[1024];
@@ -138,8 +138,8 @@ syntax_error(const char *fmt, ...)
 	va_start(ap, fmt);
 	vsnprintf(buf, sizeof(buf), fmt, ap);
 	va_end(ap);
-	errx(1, "%s: syntax error on line %d: %s\n",file_stack[line_stack_depth],
-			line_stack[line_stack_depth], buf);
+	errx(1, "%s: syntax error on line %d: %s\n",
+	    file_stack[line_stack_depth], line_stack[line_stack_depth], buf);
 }
 
 static int
