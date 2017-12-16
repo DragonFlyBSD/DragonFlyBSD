@@ -3250,6 +3250,7 @@ TO_REMOVE+=/usr/share/man/man3/mparse_reset.3.gz
 TO_REMOVE+=/usr/share/man/man3/mparse_result.3.gz
 TO_REMOVE+=/usr/share/man/man3/mparse_strerror.3.gz
 TO_REMOVE+=/usr/share/man/man3/mparse_strlevel.3.gz
+TO_REMOVE+=/boot/efiboot.img
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
