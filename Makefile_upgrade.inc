@@ -3359,6 +3359,7 @@ TO_REMOVE+=/usr/share/man/man4/faith.4.gz
 TO_REMOVE+=/usr/share/man/man4/if_faith.4.gz
 TO_REMOVE+=/usr/share/man/man8/faithd.8.gz
 TO_REMOVE+=/usr/share/man/man8/adding_user.8.gz
+TO_REMOVE+=/boot/efiboot.img
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
