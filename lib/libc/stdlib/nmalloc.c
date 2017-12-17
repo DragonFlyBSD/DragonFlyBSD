@@ -4,7 +4,7 @@
  * Copyright (c) 2003,2004,2009,2010 The DragonFly Project. All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Matthew Dillon <dillon@backplane.com> and by 
+ * by Matthew Dillon <dillon@backplane.com> and by
  * Venkatesh Srinivas <me@endeavour.zapto.org>.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -81,8 +81,8 @@
  * Multithreaded enhancements for small allocations introduced August 2010.
  * These are in the spirit of 'libumem'. See:
  *	Bonwick, J.; Adams, J. (2001). "Magazines and Vmem: Extending the
- *	slab allocator to many CPUs and arbitrary resources". In Proc. 2001 
- * 	USENIX Technical Conference. USENIX Association.
+ *	slab allocator to many CPUs and arbitrary resources". In Proc. 2001
+ *	USENIX Technical Conference. USENIX Association.
  *
  * Oversized allocations employ the BIGCACHE mechanic whereby large
  * allocations may be handed significantly larger buffers, allowing them
@@ -96,7 +96,7 @@
  * containing various flags to tune nmalloc.
  *
  * 'U'   / ['u']	Generate / do not generate utrace entries for ktrace(1)
- *			This will generate utrace events for all malloc, 
+ *			This will generate utrace events for all malloc,
  *			realloc, and free calls. There are tools (mtrplay) to
  *			replay and allocation pattern or to graph heap structure
  *			(mtrgraph) which can interpret these logs.
@@ -105,7 +105,7 @@
  *			reallocf will be initialized to 0. This is intended for
  *			debugging and will affect performance negatively.
  * 'H'	/  ['h']	Pass a hint to the kernel about pages unused by the
- *			allocation functions. 
+ *			allocation functions.
  */
 
 /* cc -shared -fPIC -g -O -I/usr/src/lib/libc/include -o nmalloc.so nmalloc.c */
@@ -247,7 +247,7 @@ typedef struct slglobaldata {
 			    } while (0)
 
 /*
- * Magazines 
+ * Magazines
  */
 
 #define M_MAX_ROUNDS	64
@@ -264,10 +264,10 @@ struct magazine {
 	SLIST_ENTRY(magazine) nextmagazine;
 
 	int		flags;
-	int 		capacity;	/* Max rounds in this magazine */
-	int 		rounds;		/* Current number of free rounds */ 
+	int		capacity;	/* Max rounds in this magazine */
+	int		rounds;		/* Current number of free rounds */
 	int		burst_factor;	/* Number of blocks to prefill with */
-	int 		low_factor;	/* Free till low_factor from full mag */
+	int		low_factor;	/* Free till low_factor from full mag */
 	void		*objects[M_MAX_ROUNDS];
 };
 
@@ -385,7 +385,7 @@ malloc_init(void)
 {
 	const char *p = NULL;
 
-	if (issetugid() == 0) 
+	if (issetugid() == 0)
 		p = getenv("MALLOC_OPTIONS");
 
 	for (; p != NULL && *p != '\0'; p++) {
@@ -395,7 +395,7 @@ malloc_init(void)
 		case 'h':	opt_madvise = 0; break;
 		case 'H':	opt_madvise = 1; break;
 		case 'z':	g_malloc_flags = 0; break;
-		case 'Z': 	g_malloc_flags = SAFLAG_ZERO; break;
+		case 'Z':	g_malloc_flags = SAFLAG_ZERO; break;
 		default:
 			break;
 		}
@@ -478,7 +478,7 @@ slgd_unlock(slglobaldata_t slgd)
 }
 
 static __inline void
-depot_lock(magazine_depot *dp) 
+depot_lock(magazine_depot *dp)
 {
 	if (__isthreaded)
 		_SPINLOCK(&depot_spinlock);
@@ -1176,7 +1176,7 @@ _slabrealloc(void *ptr, size_t size)
 		size = 1;
 
 	/*
-	 * Handle oversized allocations. 
+	 * Handle oversized allocations.
 	 */
 	if ((bigp = bigalloc_check_and_lock(ptr)) != NULL) {
 		bigalloc_t big;
@@ -1554,7 +1554,7 @@ mtmagazine_alloc(int zi)
 		}
 		depot_unlock(d);
 		break;
-	} 
+	}
 
 	return (obj);
 }
@@ -1643,12 +1643,12 @@ mtmagazine_free(int zi, void *ptr)
 			tp->mags[zi].loaded = mp;
 		}
 		depot_unlock(d);
-	} 
+	}
 
 	return rc;
 }
 
-static void 
+static void
 mtmagazine_init(void)
 {
 	int error;
@@ -1672,11 +1672,11 @@ mtmagazine_drain(struct magazine *mp)
 	}
 }
 
-/* 
+/*
  * mtmagazine_destructor()
  *
  * When a thread exits, we reclaim all its resources; all its magazines are
- * drained and the structures are freed. 
+ * drained and the structures are freed.
  *
  * WARNING!  The destructor can be called multiple times if the larger user
  *	     program has its own destructors which run after ours which
@@ -1728,7 +1728,7 @@ mtmagazine_destructor(void *thrp)
  * M_BURST_EARLY enabled, so honor the burst request from the magazine.
  */
 static slzone_t
-zone_alloc(int flags) 
+zone_alloc(int flags)
 {
 	slglobaldata_t slgd = &SLGlobalData;
 	int burst = 1;
@@ -1774,7 +1774,7 @@ zone_free(void *z)
 
 	zone_magazine_lock();
 	slgd_unlock(slgd);
-	
+
 	bzero(z, sizeof(struct slzone));
 
 	if (opt_madvise)
@@ -1796,7 +1796,7 @@ zone_free(void *z)
 
 		zone_magazine_unlock();
 
-		for (i = 0; i < j; i++) 
+		for (i = 0; i < j; i++)
 			_vmem_free(excess[i], ZoneSize);
 
 		_vmem_free(z, ZoneSize);
