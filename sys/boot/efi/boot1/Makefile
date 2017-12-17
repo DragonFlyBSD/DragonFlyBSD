@@ -14,11 +14,14 @@ SRCS=	boot1.c self_reloc.c start.S ufs_module.c
 
 CFLAGS+=	-I.
 CFLAGS+=	-I${.CURDIR}/../include
-CFLAGS+=	-I${.CURDIR}/../include/${MACHINE}
 CFLAGS+=	-I${.CURDIR}/../../../contrib/dev/acpica/source/include
 CFLAGS+=	-I${.CURDIR}/../../../contrib/edk2/Include
 CFLAGS+=	-I${.CURDIR}/../../..
 CFLAGS+=	-DEFI_UFS_BOOT
+
+.if ${MACHINE_ARCH} == "x86_64"
+CFLAGS+=	-I${.CURDIR}/../../../contrib/edk2/Include/X64
+.endif
 
 # Disable stack protector
 CFLAGS+=	-fno-stack-protector

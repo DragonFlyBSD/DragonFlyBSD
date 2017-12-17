@@ -38,7 +38,6 @@ __FBSDID("$FreeBSD: head/sys/boot/efi/libefi/efipart.c 293724 2016-01-12 02:17:3
 
 #include <efi.h>
 #include <efilib.h>
-#include <efiprot.h>
 
 static EFI_GUID blkio_guid = BLOCK_IO_PROTOCOL;
 static EFI_GUID devpath_guid = DEVICE_PATH_PROTOCOL;

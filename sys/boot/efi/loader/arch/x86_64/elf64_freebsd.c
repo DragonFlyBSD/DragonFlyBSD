@@ -44,13 +44,14 @@ __FBSDID("$FreeBSD: head/sys/boot/efi/loader/arch/amd64/elf64_freebsd.c 293724 2
 #include "platform/acdragonfly.h"
 #include "acconfig.h"
 #define ACPI_SYSTEM_XFACE
+#define ACPI_USE_SYSTEM_INTTYPES
 #include "actypes.h"
 #include "actbl.h"
 
 #include "loader_efi.h"
 
 static EFI_GUID acpi_guid = ACPI_TABLE_GUID;
-static EFI_GUID acpi20_guid = ACPI_20_TABLE_GUID;
+static EFI_GUID acpi20_guid = EFI_ACPI_TABLE_GUID;
 
 extern int bi_load(char *args, vm_offset_t *modulep, vm_offset_t *kernendp);
 

@@ -14,4 +14,5 @@ CFLAGS+=	-fno-stack-protector
 
 CFLAGS+=	-fPIC
 CFLAGS+=	-I${.CURDIR}/../../../contrib/edk2/Include
+CFLAGS+=	-I${.CURDIR}/../../../contrib/edk2/Include/X64
 LDFLAGS+=	-Wl,-znocombreloc

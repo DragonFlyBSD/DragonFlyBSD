@@ -193,8 +193,8 @@ efinet_init(struct iodesc *desc, void *machdep_hint)
 	h = nif->nif_driver->netif_ifs[nif->nif_unit].dif_private;
 	status = BS->HandleProtocol(h, &sn_guid, (VOID **)&nif->nif_devdata);
 	if (status != EFI_SUCCESS) {
-		printf("net%d: cannot start interface (status=%lu)\n",
-		    nif->nif_unit, EFI_ERROR_CODE(status));
+		printf("net%d: cannot start interface (status=%llu)\n",
+		    nif->nif_unit, status);
 		return;
 	}
 
@@ -202,8 +202,8 @@ efinet_init(struct iodesc *desc, void *machdep_hint)
 	if (net->Mode->State == EfiSimpleNetworkStopped) {
 		status = net->Start(net);
 		if (status != EFI_SUCCESS) {
-			printf("net%d: cannot start interface (status=%ld)\n",
-			    nif->nif_unit, (long)status);
+			printf("net%d: cannot start interface (status=%llu)\n",
+			    nif->nif_unit, status);
 			return;
 		}
 	}
@@ -211,8 +211,8 @@ efinet_init(struct iodesc *desc, void *machdep_hint)
 	if (net->Mode->State != EfiSimpleNetworkInitialized) {
 		status = net->Initialize(net, 0, 0);
 		if (status != EFI_SUCCESS) {
-			printf("net%d: cannot init. interface (status=%ld)\n",
-			    nif->nif_unit, (long)status);
+			printf("net%d: cannot init. interface (status=%llu)\n",
+			    nif->nif_unit, status);
 			return;
 		}
 	}
@@ -223,8 +223,8 @@ efinet_init(struct iodesc *desc, void *machdep_hint)
 
 		status = net->ReceiveFilters(net, mask, 0, FALSE, 0, 0);
 		if (status != EFI_SUCCESS) {
-			printf("net%d: cannot set rx. filters (status=%ld)\n",
-			    nif->nif_unit, (long)status);
+			printf("net%d: cannot set rx. filters (status=%llu)\n",
+			    nif->nif_unit, status);
 			return;
 		}
 	}

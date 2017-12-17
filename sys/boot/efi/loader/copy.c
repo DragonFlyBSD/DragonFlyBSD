@@ -58,8 +58,8 @@ efi_copy_init(void)
 	status = BS->AllocatePages(AllocateAnyPages, EfiLoaderData,
 	    pages, &staging);
 	if (EFI_ERROR(status)) {
-		printf("failed to allocate %uMB staging area: %lu\n",
-		    EFI_STAGING_SIZE, EFI_ERROR_CODE(status));
+		printf("failed to allocate %uMB staging area: %llu\n",
+		    EFI_STAGING_SIZE, status);
 		printf("retrying with smaller %uMB allocation\n",
 		    EFI_STAGING_SIZE/2);
 		pages /= 2;
@@ -67,8 +67,8 @@ efi_copy_init(void)
 		    pages, &staging);
 	}
 	if (EFI_ERROR(status)) {
-		printf("failed to allocate staging area: %lu\n",
-		    EFI_ERROR_CODE(status));
+		printf("failed to allocate staging area: %llu\n",
+		    status);
 		return (status);
 	}
 	staging_end = staging + pages * EFI_PAGE_SIZE;

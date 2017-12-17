@@ -61,9 +61,9 @@ dskread(void *buf, u_int64_t lba, int nblk)
 
 	if (status != EFI_SUCCESS) {
 		DPRINTF("dskread: failed dev: %p, id: %u, lba: %lu, size: %d, "
-		    "status: %lu\n", devinfo->dev,
+		    "status: %llu\n", devinfo->dev,
 		    devinfo->dev->Media->MediaId, lba, size,
-		    EFI_ERROR_CODE(status));
+		    status);
 		return (-1);
 	}
 
@@ -148,8 +148,8 @@ load(const char *filepath, dev_info_t *dev, void **bufp, size_t *bufsize)
 
 	if ((status = bs->AllocatePool(EfiLoaderData, size, &buf)) !=
 	    EFI_SUCCESS) {
-		printf("Failed to allocate read buffer %zu for '%s' (%lu)\n",
-		    size, filepath, EFI_ERROR_CODE(status));
+		printf("Failed to allocate read buffer %zu for '%s' (%llu)\n",
+		    size, filepath, status);
 		return (status);
 	}
 

@@ -53,16 +53,16 @@ extern char bootprog_maker[];
 struct arch_switch archsw;	/* MI/MD interface boundary */
 
 EFI_GUID acpi = ACPI_TABLE_GUID;
-EFI_GUID acpi20 = ACPI_20_TABLE_GUID;
+EFI_GUID acpi20 = EFI_ACPI_TABLE_GUID;
 EFI_GUID devid = DEVICE_PATH_PROTOCOL;
 EFI_GUID imgid = LOADED_IMAGE_PROTOCOL;
-EFI_GUID mps = MPS_TABLE_GUID;
+EFI_GUID mps = EFI_MPS_TABLE_GUID;
 EFI_GUID netid = EFI_SIMPLE_NETWORK_PROTOCOL_GUID;
 EFI_GUID smbios = SMBIOS_TABLE_GUID;
 EFI_GUID dxe = DXE_SERVICES_TABLE_GUID;
-EFI_GUID hoblist = HOB_LIST_TABLE_GUID;
+EFI_GUID hoblist = HOB_LIST_GUID;
 EFI_GUID memtype = MEMORY_TYPE_INFORMATION_TABLE_GUID;
-EFI_GUID debugimg = DEBUG_IMAGE_INFO_TABLE_GUID;
+EFI_GUID debugimg = EFI_DEBUG_IMAGE_INFO_TABLE_GUID;
 EFI_GUID fdtdtb = FDT_TABLE_GUID;
 EFI_GUID inputid = SIMPLE_INPUT_PROTOCOL;
 
@@ -652,14 +652,14 @@ efi_print_var(CHAR16 *varnamearg, EFI_GUID *matchguid, int lflag)
 	status = RS->GetVariable(varnamearg, matchguid, &attr,
 	    &datasz, NULL);
 	if (status != EFI_BUFFER_TOO_SMALL) {
-		printf("Can't get the variable: error %#lx\n", status);
+		printf("Can't get the variable: error %#llx\n", status);
 		return (CMD_ERROR);
 	}
 	data = malloc(datasz);
 	status = RS->GetVariable(varnamearg, matchguid, &attr,
 	    &datasz, data);
 	if (status != EFI_SUCCESS) {
-		printf("Can't get the variable: error %#lx\n", status);
+		printf("Can't get the variable: error %#llx\n", status);
 		return (CMD_ERROR);
 	}
 	uuid_to_string((uuid_t *)matchguid, &str, &uuid_status);
@@ -896,7 +896,7 @@ command_efi_set(int argc, char *argv[])
 	    EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_RUNTIME_ACCESS | EFI_VARIABLE_BOOTSERVICE_ACCESS,
 	    strlen(val) + 1, val);
 	if (EFI_ERROR(err)) {
-		printf("Failed to set variable: error %lu\n", EFI_ERROR_CODE(err));
+		printf("Failed to set variable: error %llu\n", err);
 		return (CMD_ERROR);
 	}
 	return (CMD_OK);
@@ -927,7 +927,7 @@ command_efi_unset(int argc, char *argv[])
 	cpy8to16(var, wvar, sizeof(wvar));
 	err = RS->SetVariable(wvar, &guid, 0, 0, NULL);
 	if (EFI_ERROR(err)) {
-		printf("Failed to unset variable: error %lu\n", EFI_ERROR_CODE(err));
+		printf("Failed to unset variable: error %llu\n", err);
 		return (CMD_ERROR);
 	}
 	return (CMD_OK);
