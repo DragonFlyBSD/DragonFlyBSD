@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1983, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)dumpfs.c	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/sbin/dumpfs/dumpfs.c,v 1.13.2.1 2001/01/22 18:10:11 iedowse Exp $
- * $DragonFly: src/sbin/dumpfs/dumpfs.c,v 1.10 2008/08/07 11:15:45 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -46,25 +45,25 @@
 #include <string.h>
 #include <unistd.h>
 
-union {
+static union {
 	struct fs fs;
 	char pad[MAXBSIZE];
 } fsun;
 #define	afs	fsun.fs
 
-union {
+static union {
 	struct cg cg;
 	char pad[MAXBSIZE];
 } cgun;
 #define	acg	cgun.cg
 
-long	dev_bsize = 1;
+static long	dev_bsize = 1;
 
-int	dumpfs(char *);
-int	dumpcg(char *, int, int);
-int	marshal(const char*);
-void	pbits(void *, int);
-void	usage(void);
+static int	dumpfs(char *);
+static int	dumpcg(char *, int, int);
+static int	marshal(const char*);
+static void	pbits(void *, int);
+static void	usage(void);
 
 int
 main(int argc, char **argv)
@@ -103,7 +102,7 @@ main(int argc, char **argv)
 	exit(eval);
 }
 
-int
+static int
 dumpfs(char *name)
 {
 	ssize_t n;
@@ -242,7 +241,7 @@ err:	if (fd != -1)
 	return (1);
 };
 
-int
+static int
 dumpcg(char *name, int fd, int c)
 {
 	off_t cur;
@@ -307,7 +306,7 @@ dumpcg(char *name, int fd, int c)
 	return (0);
 };
 
-int
+static int
 marshal(const char *name)
 {
 	ssize_t n;
@@ -381,7 +380,7 @@ err:    if (fd != -1)
 
 }
 
-void
+static void
 pbits(void *vp, int max)
 {
 	int i;
@@ -403,7 +402,7 @@ pbits(void *vp, int max)
 	printf("\n");
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "usage: dumpfs filesys | device\n");
