@@ -853,6 +853,14 @@ __posix_memalign(void **memptr, size_t alignment, size_t size)
 		size = alignment;
 	else
 		size = (size + alignment - 1) & ~(size_t)(alignment - 1);
+
+	/*
+	 * If we have overflown above when rounding to the nearest alignment
+	 * boundary, just return ENOMEM, size should be == N * sizeof(void *).
+	 */
+	if (size == 0)
+		return(ENOMEM);
+
 	if (size < PAGE_SIZE && (size | (size - 1)) + 1 == (size << 1)) {
 		*memptr = _slaballoc(size, 0);
 		return(*memptr ? 0 : ENOMEM);
