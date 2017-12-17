@@ -53,13 +53,13 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-struct mntopt mopts[] = {
+static struct mntopt mopts[] = {
 	MOPT_STDOPTS,
 	MOPT_UPDATE,
 	MOPT_NULL
 };
 
-void	usage(void);
+static void	usage(void);
 
 int
 main(int argc, char **argv)
@@ -125,7 +125,7 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "usage: mount_udf [-o options] special node\n");
