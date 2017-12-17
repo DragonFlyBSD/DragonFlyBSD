@@ -45,7 +45,7 @@
 #include <vis.h>
 #include <sys/syslog.h>
 
-struct nlist nl[] = {
+static struct nlist nl[] = {
 #define	X_MSGBUF	0
 	{ "_msgbufp",	0, 0, 0, 0 },
 	{ NULL,		0, 0, 0, 0 },
@@ -53,14 +53,14 @@ struct nlist nl[] = {
 
 static void dumpbuf(char *bp, size_t bufpos, size_t buflen,
 		    int *newl, int *skip, int *pri);
-void usage(void);
+static void usage(void);
 
 #define	KREAD(addr, var) \
 	kvm_read(kd, addr, &var, sizeof(var)) != sizeof(var)
 
 #define INCRBUFSIZE	65536
 
-int all_opt;
+static int all_opt;
 
 int
 main(int argc, char **argv)
@@ -269,7 +269,7 @@ dumpbuf(char *bp, size_t bufpos, size_t buflen,
 	} while (++p != ep);
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "usage: dmesg [-ac] [-M core] [-N system]\n");
