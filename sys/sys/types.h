@@ -44,7 +44,6 @@
 #ifndef _STDINT_H_
 #include <stdint.h>
 #endif
-#include <machine/stdarg.h>
 #include <machine/endian.h>
 #ifndef _MACHINE_TYPES_H_
 #include <machine/types.h>

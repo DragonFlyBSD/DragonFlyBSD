@@ -42,6 +42,7 @@
 #endif
 
 #include <machine/db_machdep.h>		/* type definitions */
+#include <machine/stdarg.h>
 
 #ifndef _MACHINE_GLOBALDATA_H_
 #include <machine/globaldata.h>

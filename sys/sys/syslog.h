@@ -184,9 +184,9 @@ CODE facilitynames[] = {
  * places (<machine/varargs.h> and <machine/stdarg.h>), so if we include one
  * of them here we may collide with the utility's includes.  It's unreasonable
  * for utilities to have to include one of them to include syslog.h, so we get
- * __va_list from <sys/types.h> and use it.
+ * __va_list from <machine/stdarg.h> and use it.
  */
-#include <sys/types.h>
+#include <machine/stdarg.h>
 #endif
 
 __BEGIN_DECLS
