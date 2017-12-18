@@ -893,12 +893,28 @@ sysctl_handle_long(SYSCTL_HANDLER_ARGS)
 
 	if (!arg1)
 		return (EINVAL);
-	error = SYSCTL_OUT(req, arg1, sizeof(long));
+	if (req->oldlen == sizeof(int) &&
+	    *(long *)arg1 >= INT_MIN &&
+	    *(long *)arg1 <= INT_MAX) {
+		/*
+		 * Backwards compatibility for read-only fields promoted
+		 * from int to long.  Allow userland to request the field
+		 * as an integer if the value is in-range.
+		 */
+		int val = (int)*(long *)arg1;
+		error = SYSCTL_OUT(req, &val, sizeof(int));
+	} else {
+		/*
+		 * Normal operation fo a long
+		 */
+		error = SYSCTL_OUT(req, arg1, sizeof(long));
+	}
 
 	if (error || !req->newptr)
 		return (error);
 
 	error = SYSCTL_IN(req, arg1, sizeof(long));
+
 	return (error);
 }
 
