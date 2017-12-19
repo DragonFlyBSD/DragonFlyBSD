@@ -31,7 +31,6 @@
  *
  * @(#)apply.c	8.4 (Berkeley) 4/4/94
  * $FreeBSD: src/usr.bin/apply/apply.c,v 1.8.2.3 2001/08/01 23:28:04 obrien Exp $
- * $DragonFly: src/usr.bin/apply/apply.c,v 1.5 2005/01/04 05:45:02 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -49,7 +48,7 @@
 
 #define EXEC	"exec "
 
-static int	exec_shell(const char *, char *, char *);
+static int	exec_shell(const char *, const char *, const char *);
 static void	usage(void);
 
 int
@@ -225,7 +224,7 @@ main(int argc, char *argv[])
  * 	arguments.
  */
 static int
-exec_shell(const char *command, char *use_shell, char *use_name)
+exec_shell(const char *command, const char *use_shell, const char *use_name)
 {
 	pid_t pid;
 	int omask, pstat;
@@ -253,7 +252,7 @@ exec_shell(const char *command, char *use_shell, char *use_name)
 	return(pid == -1 ? -1 : pstat);
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr,
