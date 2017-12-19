@@ -759,7 +759,7 @@ ENTRY(cpu_kthread_restore)
 	 * rax and rbx come from the switchout code.  Call
 	 * lwkt_switch_return(otd).
 	 *
-	 * NOTE: unlike i386, %rsi and %rdi are not call-saved regs.
+	 * NOTE: unlike i386, the %rsi and %rdi are not call-saved regs.
 	 */
 	pushq	%rax
 	movq	%rbx,%rdi

@@ -28,7 +28,7 @@
  */
 
 /*
- * Subset of the i386 bios support code.  We cannot make bios16 nor bios32
+ * Subset of the x86 bios support code.  We cannot make bios16 nor bios32
  * calls, so we can leave that out.  However, searching for bios rom
  * signatures can be useful for locating tables, eg: powernow settings.
  */
@@ -49,7 +49,7 @@
  *
  * Search some or all of the BIOS region for a signature string.
  *
- * (start)	Optional offset returned from this function 
+ * (start)	Optional offset returned from this function
  *		(for searching for multiple matches), or NULL
  *		to start the search from the base of the BIOS.
  *		Note that this will be a _physical_ address in
@@ -67,7 +67,7 @@ u_int32_t
 bios_sigsearch(u_int32_t start, u_char *sig, int siglen, int paralen, int sigofs)
 {
     u_char	*sp, *end;
-    
+
     /* compute the starting address */
     if ((start >= BIOS_START) && (start <= (BIOS_START + BIOS_SIZE))) {
 	sp = (char *)BIOS_PADDRTOVADDR(start);
@@ -82,7 +82,7 @@ bios_sigsearch(u_int32_t start, u_char *sig, int siglen, int paralen, int sigofs
 
     /* loop searching */
     while ((sp + sigofs + siglen) < end) {
-	
+
 	/* compare here */
 	if (!bcmp(sp + sigofs, sig, siglen)) {
 	    /* convert back to physical address */

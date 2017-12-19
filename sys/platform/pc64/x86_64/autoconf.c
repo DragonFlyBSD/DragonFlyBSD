@@ -137,7 +137,7 @@ configure(void *dummy)
 
 	/*
 	 * This will configure all devices, generally starting with the
-	 * nexus (i386/i386/nexus.c).  The nexus ISA code explicitly
+	 * nexus (pc64/x86_64/nexus.c).  The nexus ISA code explicitly
 	 * dummies up the attach in order to delay legacy initialization
 	 * until after all other busses/subsystems have had a chance
 	 * at those resources.
@@ -305,7 +305,7 @@ hwaddr_to_sockaddr(char *ev, struct sockaddr_dl *sa)
 }
 
 static int
-decode_nfshandle(char *ev, u_char *fh) 
+decode_nfshandle(char *ev, u_char *fh)
 {
 	u_char	*cp;
 	int	len, val;
@@ -378,7 +378,7 @@ pxe_setup_nfsdiskless(void)
 				if ((sdl->sdl_type == ourdl.sdl_type) &&
 				    (sdl->sdl_alen == ourdl.sdl_alen) &&
 				    !bcmp(sdl->sdl_data + sdl->sdl_nlen,
-					  ourdl.sdl_data + ourdl.sdl_nlen, 
+					  ourdl.sdl_data + ourdl.sdl_nlen,
 					  sdl->sdl_alen)) {
 					strlcpy(nd->myif.ifra_name,
 					    ifp->if_xname,
@@ -412,7 +412,7 @@ match_done:
 	nd->root_saddr.sin_port = htons(NFS_PORT);
 
 	/*
-	 * A tftp-only loader may pass NFS path information without a 
+	 * A tftp-only loader may pass NFS path information without a
 	 * root handle.  Generate a warning but continue configuring.
 	 */
 	if (decode_nfshandle("boot.nfsroot.nfshandle", &nd->root_fh[0]) == 0) {

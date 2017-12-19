@@ -113,7 +113,7 @@ cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
 	/* Ensure that lp1's pcb is up to date. */
 	if (mdcpu->gd_npxthread == lp1->lwp_thread)
 		npxsave(lp1->lwp_thread->td_savefpu);
-	
+
 	/*
 	 * Copy lp1's PCB.  This really only applies to the
 	 * debug registers and FP state, but its faster to just copy the
@@ -270,7 +270,7 @@ cpu_lwp_exit(void)
 
 	pcb = td->td_pcb;
 
-	/* Some i386 functionality was dropped */
+	/* Some x86 functionality was dropped */
 	KKASSERT(pcb->pcb_ext == NULL);
 
 	/*

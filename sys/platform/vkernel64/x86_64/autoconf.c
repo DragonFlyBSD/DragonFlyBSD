@@ -210,7 +210,7 @@ configure(void *dummy)
 
 	/*
 	 * This will configure all devices, generally starting with the
-	 * nexus (i386/i386/nexus.c).  The nexus ISA code explicitly
+	 * nexus (pc64/x86_64/nexus.c).  The nexus ISA code explicitly
 	 * dummies up the attach in order to delay legacy initialization
 	 * until after all other busses/subsystems have had a chance
 	 * at those resources.

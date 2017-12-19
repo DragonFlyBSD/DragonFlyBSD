@@ -45,7 +45,7 @@
 #include <sys/vkernel.h>	/* vpte_t */
 #endif
 #include <machine/segments.h>	/* struct segment_descriptor */
-#include <machine/tss.h>	/* struct i386tss */
+#include <machine/tss.h>	/* struct x86_64tss */
 #include <machine/npx.h>
 
 /*
@@ -100,7 +100,7 @@ struct mdglobaldata {
  *	     takes 3 segments per cpu (12MB).
  */
 #define PRIVATESPACE_SEGPAD	\
-	(SEG_SIZE - 		\
+	(SEG_SIZE -		\
 	((sizeof(struct mdglobaldata) + MDGLOBALDATA_PAD + PAGE_SIZE * 4 +  \
 	UPAGES * PAGE_SIZE) % SEG_SIZE))				    \
 
@@ -112,7 +112,7 @@ struct privatespace {
 	/* idle stack (UPAGES pages) */
 	char		idlestack[UPAGES * PAGE_SIZE];
 };
-#define mdcpu  		((struct mdglobaldata *)_get_mycpu())
+#define mdcpu		((struct mdglobaldata *)_get_mycpu())
 
 #endif
 

@@ -36,7 +36,7 @@
 #define	_MACHINE_PROC_H_
 
 /*
- * Machine-dependent part of the proc structure for i386.  It's a good idea
+ * Machine-dependent part of the proc structure for x86_64.  It's a good idea
  * to only put pointers here since any machine-specific structures will also
  * required you to pull in a bunch of MD headers, which we don't want.
  */

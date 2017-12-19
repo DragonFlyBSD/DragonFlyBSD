@@ -8,7 +8,7 @@ SUBDIR=${MODULES_OVERRIDE}
 SUBDIR=bus
 .endif
 SUBDIR+=crypto emulation dev gnu kern net netbt netproto vfs
-.if defined(WANT_NETGRAPH7) 
+.if defined(WANT_NETGRAPH7)
 SUBDIR+=netgraph7
 .else
 SUBDIR+=netgraph

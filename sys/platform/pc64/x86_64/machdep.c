@@ -865,7 +865,7 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	regs->tf_rip -= SZSIGCODE_EXTRA_BYTES;
 
 	/*
-	 * i386 abi specifies that the direction flag must be cleared
+	 * x86 abi specifies that the direction flag must be cleared
 	 * on function entry
 	 */
 	regs->tf_rflags &= ~(PSL_T | PSL_D);
@@ -1006,7 +1006,7 @@ sys_sigreturn(struct sigreturn_args *uap)
 		 */
 		if (!EFL_SECURE(rflags & ~PSL_RF, regs->tf_rflags & ~PSL_RF)) {
 			kprintf("sigreturn: rflags = 0x%lx\n", (long)rflags);
-	    		return(EINVAL);
+			return(EINVAL);
 		}
 
 		/*
@@ -1069,7 +1069,7 @@ cpu_halt(void)
  *
  * The main loop is entered with a critical section held, we must release
  * the critical section before doing anything else.  lwkt_switch() will
- * check for pending interrupts due to entering and exiting its own 
+ * check for pending interrupts due to entering and exiting its own
  * critical section.
  *
  * NOTE: On an SMP system we rely on a scheduler IPI to wake a HLTed cpu up.
@@ -1321,9 +1321,8 @@ exec_setregs(u_long entry, u_long stack, u_long ps_strings)
 	struct pcb *pcb = td->td_pcb;
 	struct trapframe *regs = lp->lwp_md.md_regs;
 
-	/* was i386_user_cleanup() in NetBSD */
 	user_ldt_free(pcb);
-  
+
 	clear_quickret();
 	bzero((char *)regs, sizeof(struct trapframe));
 	regs->tf_rip = entry;
@@ -1375,7 +1374,7 @@ exec_setregs(u_long entry, u_long stack, u_long ps_strings)
 
 	/*
 	 * NOTE: The MSR values must be correct so we can return to
-	 * 	 userland.  gd_user_fs/gs must be correct so the switch
+	 *	 userland.  gd_user_fs/gs must be correct so the switch
 	 *	 code knows what the current MSR values are.
 	 */
 	pcb->pcb_fsbase = 0;	/* Values loaded from PCB on switch */
@@ -1426,7 +1425,7 @@ SYSCTL_INT(_machdep, CPU_DISRTCSET, disable_rtc_set,
 	CTLFLAG_RW, &disable_rtc_set, 0, "");
 
 #if 0 /* JG */
-SYSCTL_STRUCT(_machdep, CPU_BOOTINFO, bootinfo, 
+SYSCTL_STRUCT(_machdep, CPU_BOOTINFO, bootinfo,
 	CTLFLAG_RD, &bootinfo, bootinfo, "");
 #endif
 
@@ -1488,7 +1487,7 @@ struct soft_segment_descriptor gdt_segs[] = {
 	0,			/* segment descriptor present */
 	0,			/* long */
 	0,			/* default 32 vs 16 bit size */
-	0  			/* limit granularity (byte/page units)*/ },
+	0			/* limit granularity (byte/page units)*/ },
 /* GCODE_SEL	1 Code Descriptor for kernel */
 {	0x0,			/* segment base address  */
 	0xfffff,		/* length - all address space */
@@ -1497,7 +1496,7 @@ struct soft_segment_descriptor gdt_segs[] = {
 	1,			/* segment descriptor present */
 	1,			/* long */
 	0,			/* default 32 vs 16 bit size */
-	1  			/* limit granularity (byte/page units)*/ },
+	1			/* limit granularity (byte/page units)*/ },
 /* GDATA_SEL	2 Data Descriptor for kernel */
 {	0x0,			/* segment base address  */
 	0xfffff,		/* length - all address space */
@@ -1506,7 +1505,7 @@ struct soft_segment_descriptor gdt_segs[] = {
 	1,			/* segment descriptor present */
 	1,			/* long */
 	0,			/* default 32 vs 16 bit size */
-	1  			/* limit granularity (byte/page units)*/ },
+	1			/* limit granularity (byte/page units)*/ },
 /* GUCODE32_SEL	3 32 bit Code Descriptor for user */
 {	0x0,			/* segment base address  */
 	0xfffff,		/* length - all address space */
@@ -1515,7 +1514,7 @@ struct soft_segment_descriptor gdt_segs[] = {
 	1,			/* segment descriptor present */
 	0,			/* long */
 	1,			/* default 32 vs 16 bit size */
-	1  			/* limit granularity (byte/page units)*/ },
+	1			/* limit granularity (byte/page units)*/ },
 /* GUDATA_SEL	4 32/64 bit Data Descriptor for user */
 {	0x0,			/* segment base address  */
 	0xfffff,		/* length - all address space */
@@ -1524,7 +1523,7 @@ struct soft_segment_descriptor gdt_segs[] = {
 	1,			/* segment descriptor present */
 	0,			/* long */
 	1,			/* default 32 vs 16 bit size */
-	1  			/* limit granularity (byte/page units)*/ },
+	1			/* limit granularity (byte/page units)*/ },
 /* GUCODE_SEL	5 64 bit Code Descriptor for user */
 {	0x0,			/* segment base address  */
 	0xfffff,		/* length - all address space */
@@ -1533,7 +1532,7 @@ struct soft_segment_descriptor gdt_segs[] = {
 	1,			/* segment descriptor present */
 	1,			/* long */
 	0,			/* default 32 vs 16 bit size */
-	1  			/* limit granularity (byte/page units)*/ },
+	1			/* limit granularity (byte/page units)*/ },
 /* GPROC0_SEL	6 Proc 0 Tss Descriptor */
 {
 	0x0,			/* segment base address */
@@ -1543,7 +1542,7 @@ struct soft_segment_descriptor gdt_segs[] = {
 	1,			/* segment descriptor present */
 	0,			/* long */
 	0,			/* unused - default 32 vs 16 bit size */
-	0  			/* limit granularity (byte/page units)*/ },
+	0			/* limit granularity (byte/page units)*/ },
 /* Actually, the TSS is a system descriptor which is double size */
 {	0x0,			/* segment base address  */
 	0x0,			/* length */
@@ -1552,7 +1551,7 @@ struct soft_segment_descriptor gdt_segs[] = {
 	0,			/* segment descriptor present */
 	0,			/* long */
 	0,			/* default 32 vs 16 bit size */
-	0  			/* limit granularity (byte/page units)*/ },
+	0			/* limit granularity (byte/page units)*/ },
 /* GUGS32_SEL	8 32 bit GS Descriptor for user */
 {	0x0,			/* segment base address  */
 	0xfffff,		/* length - all address space */
@@ -1561,7 +1560,7 @@ struct soft_segment_descriptor gdt_segs[] = {
 	1,			/* segment descriptor present */
 	0,			/* long */
 	1,			/* default 32 vs 16 bit size */
-	1  			/* limit granularity (byte/page units)*/ },
+	1			/* limit granularity (byte/page units)*/ },
 };
 
 void
@@ -2414,7 +2413,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	setidt_global(IDT_DE, &IDTVEC(div),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt_global(IDT_DB, &IDTVEC(dbg),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt_global(IDT_NMI, &IDTVEC(nmi),  SDT_SYSIGT, SEL_KPL, 1);
- 	setidt_global(IDT_BP, &IDTVEC(bpt),  SDT_SYSIGT, SEL_UPL, 0);
+	setidt_global(IDT_BP, &IDTVEC(bpt),  SDT_SYSIGT, SEL_UPL, 0);
 	setidt_global(IDT_OF, &IDTVEC(ofl),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt_global(IDT_BR, &IDTVEC(bnd),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt_global(IDT_UD, &IDTVEC(ill),  SDT_SYSIGT, SEL_KPL, 0);
@@ -2604,9 +2603,9 @@ cpu_gdinit(struct mdglobaldata *gd, int cpu)
 	if (cpu)
 		gd->mi.gd_curthread = &gd->mi.gd_idlethread;
 
-	lwkt_init_thread(&gd->mi.gd_idlethread, 
-			gd->mi.gd_prvspace->idlestack, 
-			sizeof(gd->mi.gd_prvspace->idlestack), 
+	lwkt_init_thread(&gd->mi.gd_idlethread,
+			gd->mi.gd_prvspace->idlestack,
+			sizeof(gd->mi.gd_prvspace->idlestack),
 			0, &gd->mi);
 	lwkt_set_comm(&gd->mi.gd_idlethread, "idle_%d", cpu);
 	gd->mi.gd_idlethread.td_switch = cpu_lwkt_switch;
@@ -2821,11 +2820,11 @@ set_dbregs(struct lwp *lp, struct dbreg *dbregs)
 		 * carried to decide if it is safe and useful to
 		 * provide access to that capability
 		 */
-		for (i = 0, mask1 = 0x3<<16, mask2 = 0x2<<16; i < 4; 
+		for (i = 0, mask1 = 0x3<<16, mask2 = 0x2<<16; i < 4;
 		     i++, mask1 <<= 4, mask2 <<= 4)
 			if ((dbregs->dr[7] & mask1) == mask2)
 				return (EINVAL);
-		
+
 		pcb = lp->lwp_thread->td_pcb;
 		ucred = lp->lwp_proc->p_ucred;
 
@@ -2895,7 +2894,7 @@ user_dbreg_trap(void)
         int nbp;            /* number of breakpoints that triggered */
         caddr_t addr[4];    /* breakpoint addresses */
         int i;
-        
+
         dr7 = rdr7();
         if ((dr7 & 0xff) == 0) {
                 /*

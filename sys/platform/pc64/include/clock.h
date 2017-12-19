@@ -4,7 +4,6 @@
  * This file is in the public domain.
  *
  * $FreeBSD: src/sys/i386/include/clock.h,v 1.38.2.1 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/include/clock.h,v 1.9 2008/05/10 17:24:08 dillon Exp $
  */
 
 #ifndef _MACHINE_CLOCK_H_
@@ -34,7 +33,7 @@ typedef int64_t	tsc_sclock_t;
 #ifdef _KERNEL
 
 /*
- * i386 to clock driver interface.
+ * x86 to clock driver interface.
  * XXX large parts of the driver and its interface are misplaced.
  */
 extern int	adjkerntz;

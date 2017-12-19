@@ -19,7 +19,7 @@ typedef uint64_t tsc_uclock_t;
 typedef int64_t tsc_sclock_t;
 
 /*
- * i386 to clock driver interface.
+ * x86 to clock driver interface.
  * XXX large parts of the driver and its interface are misplaced.
  */
 extern int	adjkerntz;

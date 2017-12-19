@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/platform/vkernel/i386/locore.s,v 1.6 2007/01/08 03:33:43 dillon Exp $
  */
 
 #include <sys/syscall.h>

@@ -283,7 +283,7 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	regs->tf_rip -= SZSIGCODE_EXTRA_BYTES;
 
 	/*
-	 * i386 abi specifies that the direction flag must be cleared
+	 * x86 abi specifies that the direction flag must be cleared
 	 * on function entry
 	 */
 	regs->tf_rflags &= ~(PSL_T|PSL_D);
@@ -556,7 +556,6 @@ exec_setregs(u_long entry, u_long stack, u_long ps_strings)
 	struct pcb *pcb = td->td_pcb;
 	struct trapframe *regs = lp->lwp_md.md_regs;
 
-	/* was i386_user_cleanup() in NetBSD */
 	user_ldt_free(pcb);
 
 	bzero((char *)regs, sizeof(struct trapframe));
@@ -611,7 +610,7 @@ exec_setregs(u_long entry, u_long stack, u_long ps_strings)
 
 	/*
 	 * NOTE: The MSR values must be correct so we can return to
-	 * 	 userland.  gd_user_fs/gs must be correct so the switch
+	 *	 userland.  gd_user_fs/gs must be correct so the switch
 	 *	 code knows what the current MSR values are.
 	 */
 	pcb->pcb_fsbase = 0;	/* Values loaded from PCB on switch */

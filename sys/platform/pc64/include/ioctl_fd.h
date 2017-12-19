@@ -25,7 +25,6 @@
  * DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/ioctl_fd.h,v 1.13.2.1 2001/07/19 13:16:54 joerg Exp $
- * $DragonFly: src/sys/platform/pc64/include/ioctl_fd.h,v 1.1 2007/08/21 19:45:45 corecode Exp $
  */
 
 #ifndef	_MACHINE_IOCTL_FD_H_
@@ -124,7 +123,7 @@ struct fdc_status {
 #define FDOPT_NOERRLOG 0x002	/* no "hard error" kernel log messages */
 
 /*
- * The following definitions duplicate those in sys/i386/isa/fdreg.h
+ * The following definitions duplicate those in sys/dev/disk/fd/fdreg.h
  * They are here since their values are to be used in the above
  * structure when formatting a floppy. For very obvious reasons, both
  * definitions must match ;-)

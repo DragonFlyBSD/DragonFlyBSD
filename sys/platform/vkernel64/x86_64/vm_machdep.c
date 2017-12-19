@@ -259,7 +259,7 @@ cpu_lwp_exit(void)
 
 	pcb = td->td_pcb;
 
-	/* Some i386 functionality was dropped */
+	/* Some x86 functionality was dropped */
 	KKASSERT(pcb->pcb_ext == NULL);
 
 	/*
