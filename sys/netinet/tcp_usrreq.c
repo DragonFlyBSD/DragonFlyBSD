@@ -584,6 +584,8 @@ tcp_usr_connect(netmsg_t msg)
 	struct tcpcb *tp;
 	struct sockaddr_in *sinp;
 
+	ASSERT_NETISR_NCPUS(mycpuid);
+
 	COMMON_START(so, inp, 0);
 
 	/*
@@ -630,6 +632,8 @@ tcp6_usr_connect(netmsg_t msg)
 	struct inpcb *inp;
 	struct tcpcb *tp;
 	struct sockaddr_in6 *sin6p;
+
+	ASSERT_NETISR_NCPUS(mycpuid);
 
 	COMMON_START(so, inp, 0);
 
