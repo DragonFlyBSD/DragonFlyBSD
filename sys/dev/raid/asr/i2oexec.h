@@ -93,21 +93,8 @@
 
 #define	I2OEXEC_REV 1_5_4  /* I2OExec header file revision string */
 
-#if ((defined(KERNEL) || defined(_KERNEL)) && defined(__FreeBSD__))
-# if (!defined(KERN_VERSION))
-#  include <sys/sysctl.h>
-# endif
-# if (KERN_VERSION < 3)
-#  include   "i386/pci/i2omsg.h"      /* Include the Base Message file */
-#  include   "i386/pci/i2outil.h"
-# else
-#  include   "dev/asr/i2omsg.h"	     /* Include the Base Message file */
-#  include   "dev/asr/i2outil.h"
-# endif
-#else
-# include   "i2omsg.h"	    /* Include the Base Message file */
-# include   "i2outil.h"
-#endif
+#include   "i2omsg.h"	    /* Include the Base Message file */
+#include   "i2outil.h"
 
 
 /*

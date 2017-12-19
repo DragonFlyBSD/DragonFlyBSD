@@ -84,15 +84,7 @@
 #if !defined(I2O_BASE_SCSI_HDR)
 #define	I2O_BASE_SCSI_HDR
 
-#if ((defined(KERNEL) || defined(_KERNEL)) && defined(__FreeBSD__))
-# if (KERN_VERSION < 3)
-#  include    "i386/pci/i2omsg.h"	   /* Include the Base Message file */
-# else
-#  include    "dev/asr/i2omsg.h"
-# endif
-#else
-# include    "i2omsg.h"		 /* Include the Base Message file */
-#endif
+#include    "i2omsg.h"		 /* Include the Base Message file */
 
 
 #define	I2OBSCSI_REV 1_5_1	/* Header file revision string */

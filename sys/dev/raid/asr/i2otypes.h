@@ -88,15 +88,7 @@
 
 /* include architecture/compiler dependencies */
 
-#if ((defined(KERNEL) || defined(_KERNEL)) && defined(__FreeBSD__))
-# if (KERN_VERSION < 3)
-#  include "i386/pci/i2odep.h"
-# else
-#  include "dev/asr/i2odep.h"
-# endif
-#else
-# include "i2odep.h"
-#endif
+#include "i2odep.h"
 
 
 /* 64 bit defines */

@@ -117,15 +117,7 @@
 
 
 
-#if ((defined(KERNEL) || defined(_KERNEL)) && defined(__FreeBSD__))
-# if (KERN_VERSION < 3)
-#  include "i386/pci/i2otypes.h"
-# else
-#  include "dev/asr/i2otypes.h"
-# endif
-#else
-# include "i2otypes.h"
-#endif
+#include "i2otypes.h"
 
 
 PRAGMA_ALIGN_PUSH
