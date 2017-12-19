@@ -2468,11 +2468,6 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 		Debugger("Boot flags requested debugger");
 #endif
 
-#if 0 /* JG */
-	finishidentcpu();	/* Final stage of CPU initialization */
-	setidt(6, &IDTVEC(ill),  SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-	setidt(13, &IDTVEC(prot),  SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-#endif
 	identify_cpu();		/* Final stage of CPU initialization */
 	initializecpu(0);	/* Initialize CPU registers */
 

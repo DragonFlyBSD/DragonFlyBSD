@@ -61,7 +61,6 @@
  * us for the use of the swapgs instruction.  We cannot be interrupted
  * until the GS.base value is correct.  For most traps, we automatically
  * then enable interrupts if the interrupted context had them enabled.
- * This is equivalent to the i386 port's use of SDT_SYS386TGT.
  *
  * The cpu will push a certain amount of state onto the kernel stack for
  * the current process.  See x86_64/include/frame.h.
@@ -147,7 +146,7 @@ IDTVEC(align)
 	/*
 	 * alltraps entry point.  Use swapgs if this is the first time in the
 	 * kernel from userland.  Reenable interrupts if they were enabled
-	 * before the trap.  This approximates SDT_SYS386TGT on the i386 port.
+	 * before the trap.
 	 */
 
 	SUPERALIGN_TEXT
@@ -191,8 +190,7 @@ calltrap:
 
 	/*
 	 * alltraps_noen entry point.  Unlike alltraps above, we want to
-	 * leave the interrupts disabled.  This corresponds to
-	 * SDT_SYS386IGT on the i386 port.
+	 * leave the interrupts disabled.
 	 */
 	SUPERALIGN_TEXT
 	.globl	alltraps_noen
