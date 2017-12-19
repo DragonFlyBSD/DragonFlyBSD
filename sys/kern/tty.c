@@ -1560,28 +1560,6 @@ ttyunblock(struct tty *tp)
 	lwkt_reltoken(&tty_token);
 }
 
-#ifdef notyet
-/* Not used by any current (i386) drivers. */
-/*
- * Restart after an inter-char delay.
- */
-void
-ttrstrt(void *tp_arg)
-{
-	struct tty *tp;
-
-	KASSERT(tp_arg != NULL, ("ttrstrt"));
-
-	tp = tp_arg;
-	crit_enter();
-	lwkt_gettoken(&tty_token);
-	CLR(tp->t_state, TS_TIMEOUT);
-	ttstart(tp);
-	lwkt_reltoken(&tty_token);
-	crit_exit();
-}
-#endif
-
 int
 ttstart(struct tty *tp)
 {

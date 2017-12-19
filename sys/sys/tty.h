@@ -259,7 +259,6 @@ int	 tputchar (int c, struct tty *tp);
 int	 ttcompat (struct tty *tp, u_long com, caddr_t data, int flag);
 int	 ttioctl (struct tty *tp, u_long com, void *data, int flag);
 int	 ttread (struct tty *tp, struct uio *uio, int flag);
-void	 ttrstrt (void *tp);
 int	 ttsetcompat (struct tty *tp, u_long *com, caddr_t data,
 	    struct termios *term);
 void	 ttsetwater (struct tty *tp);

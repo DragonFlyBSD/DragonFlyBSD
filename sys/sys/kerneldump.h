@@ -73,7 +73,6 @@ struct kerneldumpheader {
 #define	KERNELDUMPVERSION	1
 	uint32_t	architectureversion;
 #define	KERNELDUMP_AMD64_VERSION	2
-#define	KERNELDUMP_I386_VERSION		2
 #define	KERNELDUMP_TEXT_VERSION		1
 	uint64_t	dumplength;		/* excl headers */
 	uint64_t	dumptime;
