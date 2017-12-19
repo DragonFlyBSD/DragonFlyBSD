@@ -288,6 +288,7 @@ typedef	__uint32_t	uid_t;		/* XXX __uid_t */
 #if __BSD_VISIBLE
 #define	_SC_NPROCESSORS_CONF	57
 #define	_SC_NPROCESSORS_ONLN	58
+#define	_SC_LEVEL1_DCACHE_LINESIZE 128
 #endif
 
 /* Extensions found in Solaris and Linux. */

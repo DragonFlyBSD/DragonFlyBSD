@@ -166,9 +166,10 @@
  * 500102 - <sys/sysref{,2}.h> inclusions removed from some public headers
  * 500103 - faith removal
  * 500104 - cfmakesane()
+ * 500105 - _SC_LEVEL1_DCACHE_LINESIZE sysconf()
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500104	/* propagated to newvers */
+#define __DragonFly_version 500105	/* propagated to newvers */
 
 #include <sys/_null.h>
 

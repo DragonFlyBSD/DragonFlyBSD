@@ -28,7 +28,7 @@
 .\"	@(#)sysconf.3	8.3 (Berkeley) 4/19/94
 .\" $FreeBSD: src/lib/libc/gen/sysconf.3,v 1.8.2.6 2001/12/14 18:33:51 ru Exp $
 .\"
-.Dd July 25, 2016
+.Dd December 19, 2017
 .Dt SYSCONF 3
 .Os
 .Sh NAME
@@ -98,6 +98,8 @@ and
 .Xr sendmsg 2 .
 .It Dv _SC_JOB_CONTROL
 Return 1 if job control is available on this system, otherwise \-1.
+.It Dv _SC_LEVEL1_DCACHE_LINESIZE
+Returns the L1 cache line size.
 .It Dv _SC_LINE_MAX
 The maximum length in bytes of a text-processing utility's input
 line.

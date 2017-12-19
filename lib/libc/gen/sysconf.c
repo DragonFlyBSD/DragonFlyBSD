@@ -637,6 +637,9 @@ yesno:
 		return (lvalue);
 #endif
 
+	case _SC_LEVEL1_DCACHE_LINESIZE:
+		return (__VM_CACHELINE_SIZE);
+
 	default:
 		errno = EINVAL;
 		return (-1);
