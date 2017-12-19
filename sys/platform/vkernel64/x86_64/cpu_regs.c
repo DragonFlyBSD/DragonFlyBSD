@@ -656,7 +656,7 @@ SYSCTL_PROC(_machdep, CPU_ADJKERNTZ, adjkerntz, CTLTYPE_INT|CTLFLAG_RW,
 	&adjkerntz, 0, sysctl_machdep_adjkerntz, "I", "");
 
 /*
- * Initialize 386 and configure to run kernel
+ * Initialize x86 and configure to run kernel
  */
 
 /*

@@ -1453,7 +1453,7 @@ SYSCTL_PROC(_machdep, OID_AUTO, efi_map, CTLTYPE_OPAQUE|CTLFLAG_RD, NULL, 0,
     efi_map_sysctl_handler, "S,efi_map_header", "Raw EFI Memory Map");
 
 /*
- * Initialize 386 and configure to run kernel
+ * Initialize x86 and configure to run kernel
  */
 
 /*
