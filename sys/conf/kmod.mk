@@ -104,10 +104,10 @@ CFLAGS+=	-nostdinc ${_ICFLAGS}
 # need any -I paths for this.  Similar defaults for .PATH can't be
 # set because there are no standard paths for non-headers.
 #
-# NOTE!  Traditional architecture paths such as <i386/i386/blah.h>
+# NOTE!  Traditional platform paths such as <platform/pc64/blah.h>
 # must run through the "machine_base" softlink using
-# <machine_base/i386/blah.h>.  An explicit cross-architecture path must
-# operate relative to /usr/src/sys using e.g. <arch/i386/i386/blah.h>
+# <machine_base/blah.h>.  An explicit cross-platform path must
+# operate relative to /usr/src/sys using e.g. <platform/pc64/isa/blah.h>
 #
 CFLAGS+=	-I. -I@
 

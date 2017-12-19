@@ -6,7 +6,6 @@
  * This file is placed in the public domain by Peter Wemm.
  *
  * $FreeBSD: src/sys/sys/fnv_hash.h,v 1.2.2.1 2001/03/21 10:50:59 peter Exp $
- * $DragonFly: src/sys/sys/fnv_hash.h,v 1.3 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_FNV_HASH_H_
@@ -66,7 +65,7 @@ static __inline Fnv64_t
 fnv_64_str(const char *str, Fnv64_t hval)
 {
 	const u_int8_t *s = (const u_int8_t *)str;
-	u_register_t c;		 /* 32 bit on i386, 64 bit on alpha,ia64 */
+	u_register_t c;		 /* 64 bit on x86_64 */
 
 	while ((c = *s++) != 0) {
 		hval *= FNV_64_PRIME;

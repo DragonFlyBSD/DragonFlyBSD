@@ -104,7 +104,7 @@ UDF		opt_dontuse.h
 AUTOFS		opt_dontuse.h
 
 # These static filesystems has one slightly bogus static dependency in
-# sys/platform/.../i386/autoconf.c.  If any of these filesystems are
+# sys/platform/.../x86_64/autoconf.c.  If any of these filesystems are
 # statically compiled into the kernel, code for mounting them as root
 # filesystems will be enabled - but look below.  Boot-code is purposely
 # unavailable for the LKM-based versions.

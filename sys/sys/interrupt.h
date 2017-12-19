@@ -85,8 +85,7 @@ typedef void inthand2_t (void *, void *);
 #define	SWI_UNUSED02	(FIRST_SOFTINT + 6)
 
 /*
- * Corresponding interrupt-pending bits for spending.  NOTE: i386 only
- * supports 32 software interupts (due to its gd_spending mask).
+ * Corresponding interrupt-pending bits for spending.
  */
 #define	SWI_TTY_PENDING		(1 << (SWI_TTY - FIRST_SOFTINT))
 #define	SWI_UNUSED01_PENDING	(1 << (SWI_UNUSED01 - FIRST_SOFTINT))

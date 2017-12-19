@@ -55,13 +55,13 @@
  * Memory usage is a very complex function of the the exact allocation
  * pattern, but always very compact:
  *    * For the very typical case where a single unbroken run of unit
- *      numbers are allocated 44 bytes are used on i386.
+ *      numbers are allocated 44 bytes are used on x86.
  *    * For a unit number space of 1000 units and the random pattern
  *      in the usermode test program included, the worst case usage
- *	was 252 bytes on i386 for 500 allocated and 500 free units.
+ *	was 252 bytes on x86 for 500 allocated and 500 free units.
  *    * For a unit number space of 10000 units and the random pattern
  *      in the usermode test program included, the worst case usage
- *	was 798 bytes on i386 for 5000 allocated and 5000 free units.
+ *	was 798 bytes on x86 for 5000 allocated and 5000 free units.
  *    * The worst case is where every other unit number is allocated and
  *	the the rest are free.  In that case 44 + N/4 bytes are used where
  *	N is the number of the highest unit allocated.

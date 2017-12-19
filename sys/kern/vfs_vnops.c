@@ -58,11 +58,11 @@
 static int vn_closefile (struct file *fp);
 static int vn_ioctl (struct file *fp, u_long com, caddr_t data,
 		struct ucred *cred, struct sysmsg *msg);
-static int vn_read (struct file *fp, struct uio *uio, 
+static int vn_read (struct file *fp, struct uio *uio,
 		struct ucred *cred, int flags);
 static int vn_kqfilter (struct file *fp, struct knote *kn);
 static int vn_statfile (struct file *fp, struct stat *sb, struct ucred *cred);
-static int vn_write (struct file *fp, struct uio *uio, 
+static int vn_write (struct file *fp, struct uio *uio,
 		struct ucred *cred, int flags);
 
 struct fileops vnode_fileops = {
@@ -139,7 +139,7 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 		 *
 		 * Setting NLC_CREATE causes a negative hit to store
 		 * the negative hit ncp and not return an error.  Then
-		 * nc_error or nc_vp may be checked to see if the ncp 
+		 * nc_error or nc_vp may be checked to see if the ncp
 		 * represents a negative hit.  NLC_CREATE also requires
 		 * write permission on the governing directory or EPERM
 		 * is returned.
@@ -182,7 +182,7 @@ again:
 			if (fmode & O_EXCL) {
 				error = EEXIST;
 			} else {
-				error = cache_vget(&nd->nl_nch, cred, 
+				error = cache_vget(&nd->nl_nch, cred,
 						    LK_EXCLUSIVE, &vp);
 			}
 			if (error)
@@ -278,7 +278,7 @@ again:
 
 	/*
 	 * Setup the fp so VOP_OPEN can override it.  No descriptor has been
-	 * associated with the fp yet so we own it clean.  
+	 * associated with the fp yet so we own it clean.
 	 *
 	 * f_nchandle inherits nl_nch.  This used to be necessary only for
 	 * directories but now we do it unconditionally so f*() ops
@@ -393,7 +393,7 @@ vn_writechk(struct vnode *vp, struct nchandle *nch)
 }
 
 /*
- * Check whether the underlying mount is read-only.  The mount point 
+ * Check whether the underlying mount is read-only.  The mount point
  * referenced by the namecache may be different from the mount point
  * used by the underlying vnode in the case of NULLFS, so a separate
  * check is needed.
@@ -467,7 +467,7 @@ sequential_heuristic(struct uio *uio, struct file *fp)
  * set - set and unlock the f_offset field.
  *
  * These routines serve the dual purpose of serializing access to the
- * f_offset field (at least on i386) and guaranteeing operational integrity
+ * f_offset field (at least on x86) and guaranteeing operational integrity
  * when multiple read()ers and write()ers are present on the same fp.
  *
  * MPSAFE
@@ -554,7 +554,7 @@ vn_poll_fpf_offset(struct file *fp)
  */
 int
 vn_rdwr(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
-	off_t offset, enum uio_seg segflg, int ioflg, 
+	off_t offset, enum uio_seg segflg, int ioflg,
 	struct ucred *cred, int *aresid)
 {
 	struct uio auio;
@@ -590,7 +590,7 @@ vn_rdwr(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
 /*
  * Package up an I/O request on a vnode into a uio and do it.  The I/O
  * request is split up into smaller chunks and we try to avoid saturating
- * the buffer cache while potentially holding a vnode locked, so we 
+ * the buffer cache while potentially holding a vnode locked, so we
  * check bwillwrite() before calling vn_rdwr().  We also call lwkt_user_yield()
  * to give other processes a chance to lock the vnode (either other processes
  * core'ing the same binary, or unrelated processes scanning the directory).
@@ -849,8 +849,8 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 	}
 
         /*
-	 * According to www.opengroup.org, the meaning of st_blksize is 
-	 *   "a filesystem-specific preferred I/O block size for this 
+	 * According to www.opengroup.org, the meaning of st_blksize is
+	 *   "a filesystem-specific preferred I/O block size for this
 	 *    object.  In some filesystem types, this may vary from file
 	 *    to file"
 	 * Default to PAGE_SIZE after much discussion.
@@ -874,7 +874,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 	} else {
 		sb->st_blksize = PAGE_SIZE;
 	}
-	
+
 	sb->st_flags = vap->va_flags;
 
 	error = priv_check_cred(cred, PRIV_VFS_GENERATION, 0);
@@ -986,7 +986,7 @@ int
 vn_lock(struct vnode *vp, int flags)
 {
 	int error;
-	
+
 	do {
 		error = lockmgr(&vp->v_lock, flags);
 		if (error == 0)

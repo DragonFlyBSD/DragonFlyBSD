@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2005 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Sergey Glushchenko <deen@smz.com.ua>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -30,7 +30,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  */
 
 #include <sys/errno.h>
@@ -39,7 +39,7 @@
 #include <sys/priv.h>
 #include <sys/sysproto.h>		/* struct usched_set_args */
 #include <sys/systm.h>			/* strcmp() */
-#include <sys/usched.h>	
+#include <sys/usched.h>
 
 #include <machine/cpumask.h>
 #include <machine/smp.h>
@@ -51,8 +51,8 @@ cpumask_t usched_mastermask = CPUMASK_INITIALIZER_ALLONES;
 static int setaffinity_lp(struct lwp *lp, cpumask_t *mask);
 
 /*
- * Called from very low level boot code, i386/i386/machdep.c/init386().
- * We cannot do anything fancy.  no malloc's, no nothing other then 
+ * Called from very low level boot code, sys/kern/init_main.c:mi_proc0init().
+ * We cannot do anything fancy.  no malloc's, no nothing other then
  * static initialization.
  */
 struct usched *
@@ -83,7 +83,7 @@ usched_init(void)
  *
  * SYNOPSIS:
  * 	Add/remove usched to/from list.
- * 	
+ *
  * ARGUMENTS:
  * 	usched - pointer to target scheduler
  * 	action - addition or removal ?
@@ -170,7 +170,7 @@ usched_schedulerclock(struct lwp *lp, sysclock_t periodic, sysclock_t time)
  * ARGUMENTS:
  *	pid	-
  *	cmd	-
- * 	data	- 
+ * 	data	-
  *	bytes	-
  * RETURN VALUES:
  * 	0 - success
@@ -211,7 +211,7 @@ sys_usched_set(struct usched_set_args *uap)
 
 		/*
 		 * If the scheduler for a process is being changed, disassociate
-		 * the old scheduler before switching to the new one.  
+		 * the old scheduler before switching to the new one.
 		 *
 		 * XXX we might have to add an additional ABI call to do a 'full
 		 * disassociation' and another ABI call to do a 'full

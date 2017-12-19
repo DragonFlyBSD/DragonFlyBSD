@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_module.c,v 1.6 1999/10/11 15:19:10 peter Exp $
- * $DragonFly: src/sys/kern/subr_module.c,v 1.4 2004/05/26 08:32:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -126,9 +125,9 @@ preload_search_next_name(caddr_t base)
     caddr_t	curp;
     u_int32_t	*hdr;
     int		next;
-    
+
     if (preload_metadata != NULL) {
-	
+
 	/* Pick up where we left off last time */
 	if (base) {
 	    /* skip to next field */
@@ -176,8 +175,8 @@ preload_search_info(caddr_t mod, int inf)
 	/* end of module data? */
 	if (hdr[0] == 0 && hdr[1] == 0)
 	    break;
-	/* 
-	 * We give up once we've looped back to what we were looking at 
+	/*
+	 * We give up once we've looped back to what we were looking at
 	 * first - this should normally be a MODINFO_NAME field.
 	 */
 	if (type == 0) {
@@ -186,10 +185,10 @@ preload_search_info(caddr_t mod, int inf)
 	    if (hdr[0] == type)
 		break;
 	}
-	
-	/* 
+
+	/*
 	 * Attribute match? Return pointer to data.
-	 * Consumer may safely assume that size value preceeds	
+	 * Consumer may safely assume that size value preceeds
 	 * data.
 	 */
 	if (hdr[0] == inf)
@@ -220,7 +219,7 @@ preload_delete_name(const char *name)
     int		clearing;
     int		i;
     char	*scanname;
-    
+
     if (preload_metadata != NULL) {
 	clearing = 0;
 	curp = preload_metadata;
@@ -253,7 +252,7 @@ preload_delete_name(const char *name)
     }
 }
 
-/* Called from locore on i386.  Convert physical pointers to kvm. Sigh. */
+/* Called from hammer_time() on pc64.  Convert physical pointers to kvm. Sigh. */
 void
 preload_bootstrap_relocate(vm_offset_t offset)
 {
@@ -261,9 +260,9 @@ preload_bootstrap_relocate(vm_offset_t offset)
     u_int32_t	*hdr;
     vm_offset_t	*ptr;
     int		next;
-    
+
     if (preload_metadata != NULL) {
-	
+
 	curp = preload_metadata;
 	for (;;) {
 	    hdr = (u_int32_t *)curp;

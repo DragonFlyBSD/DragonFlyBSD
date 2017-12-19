@@ -41,7 +41,7 @@
  * no representations about the suitability of this software for any
  * purpose.  It is provided "as is" without express or implied
  * warranty.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY M.I.T. ``AS IS''.  M.I.T. DISCLAIMS
  * ALL EXPRESS OR IMPLIED WARRANTIES WITH REGARD TO THIS SOFTWARE,
  * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -67,7 +67,7 @@
 
 /*
  * This implementation simply passes the request up to the parent
- * bus, which in our case is the special i386 nexus, substituting any
+ * bus, which in our case is the special x86_64 nexus, substituting any
  * configured values if the caller defaulted.  We can get away with
  * this because there is no special mapping for ISA resources on an Intel
  * platform.  When porting this code to another architecture, it may be
@@ -87,7 +87,7 @@ isa_alloc_resource(device_t bus, device_t child, int type, int *rid,
 	struct isa_device* idev = DEVTOISA(child);
 	struct resource_list *rl = &idev->id_resources;
 	struct resource_list_entry *rle;
-	
+
 	if (!passthrough && !isdefault) {
 		rle = resource_list_find(rl, type, *rid);
 		if (!rle) {
@@ -136,7 +136,7 @@ isa_release_resource(device_t bus, device_t child, int type, int rid,
 /*
  * We can't use the bus_generic_* versions of these methods because those
  * methods always pass the bus param as the requesting device, and we need
- * to pass the child (the i386 nexus knows about this and is prepared to
+ * to pass the child (the x86_64 nexus knows about this and is prepared to
  * deal).
  */
 int

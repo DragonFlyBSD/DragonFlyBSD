@@ -36,7 +36,7 @@
 
 /*
  * Bits in the spending bitmap variable must be set atomically because
- * spending may be manipulated by interrupts or other cpu's without holding 
+ * spending may be manipulated by interrupts or other cpu's without holding
  * any locks.
  *
  * Note: setbits uses a locked or, making simple cases MP safe.

@@ -1,8 +1,8 @@
 # VKERNEL64 - configuration for a 64-bit virtual kernel
 
-platform	vkernel64	# platform architecture (i386, vkernel, etc)
+platform	vkernel64
 machine		x86_64
-machine_arch	x86_64		# cpu architecture (i386, etc)
+machine_arch	x86_64
 ident		VKERNEL64
 maxusers	0
 

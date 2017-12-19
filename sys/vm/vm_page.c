@@ -335,8 +335,8 @@ vm_page_startup(void)
 	 * The amd64 port needs this to indicate which direct map pages
 	 * need to be dumped, via calls to dump_add_page()/dump_drop_page().
 	 *
-	 * However, i386 still needs this workspace internally within the
-	 * minidump code.  In theory, they are not needed on i386, but are
+	 * However, x86 still needs this workspace internally within the
+	 * minidump code.  In theory, they are not needed on x86, but are
 	 * included should the sf_buf code decide to use them.
 	 */
 	page_range = phys_avail[i].phys_end / PAGE_SIZE;

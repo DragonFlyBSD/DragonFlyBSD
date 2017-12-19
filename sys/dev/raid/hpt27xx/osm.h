@@ -43,7 +43,7 @@
 extern int os_max_cache_size;
 
 
-#define DMAPOOL_PAGE_SIZE 0x1000 /* PAGE_SIZE (i386/x86_64) */
+#define DMAPOOL_PAGE_SIZE 0x1000 /* PAGE_SIZE (x86_64) */
 #define os_max_cache_pages (os_max_cache_size/DMAPOOL_PAGE_SIZE)
 
 /* data types */

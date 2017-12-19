@@ -115,7 +115,7 @@ SYSTEM_LD+= ${CFLAGS}
 .endif
 
 # The max-page-size for gnu ld is 0x200000 on x86_64
-# For the gold linker, it is only 0x1000 on both x86_64 and i386
+# For the gold linker, it is only 0x1000 on both x86_64
 # The penalty for changing the gold default for x86_64 is larger binaries
 # and shared libraries, and forcing them to use more address space than
 # required.  The only application that needs such a large page size is the

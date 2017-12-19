@@ -839,14 +839,14 @@ RestartScan:
 				pindex = OFF_TO_IDX(offset);
 
 				/*
-				 * if the page is resident, then gather 
+				 * if the page is resident, then gather
 				 * information about it.  spl protection is
-				 * required to maintain the object 
+				 * required to maintain the object
 				 * association.  And XXX what if the page is
 				 * busy?  What's the deal with that?
 				 *
 				 * XXX vm_token - legacy for pmap_ts_referenced
-				 *     in i386 and vkernel pmap code.
+				 *     in x86 and vkernel pmap code.
 				 */
 				lwkt_gettoken(&vm_token);
 				vm_object_hold(current->object.vm_object);
