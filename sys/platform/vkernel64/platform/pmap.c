@@ -165,7 +165,7 @@ uint64_t KPTphys;
 
 static PMAP_INLINE void	free_pv_entry (pv_entry_t pv);
 static pv_entry_t get_pv_entry (void);
-static void	i386_protection_init (void);
+static void	x86_64_protection_init (void);
 static __inline void	pmap_clearbit (vm_page_t m, int bit);
 
 static void	pmap_remove_all (vm_page_t m);
@@ -317,7 +317,7 @@ pmap_pte(pmap_t pmap, vm_offset_t va)
 	pde = pmap_pde(pmap, va);
 	if (pde == NULL || (*pde & VPTE_V) == 0)
 		return NULL;
-	if ((*pde & VPTE_PS) != 0)	/* compat with i386 pmap_pte() */
+	if ((*pde & VPTE_PS) != 0)	/* compat with x86 pmap_pte() */
 		return ((pt_entry_t *)pde);
 	return (pmap_pde_to_pte(pde, va));
 }
@@ -533,7 +533,7 @@ pmap_page_init(struct vm_page *m)
 /*
  *	Bootstrap the system enough to run with virtual memory.
  *
- *	On the i386 this is called after mapping has already been enabled
+ *	On x86_64 this is called after mapping has already been enabled
  *	and just syncs the pmap module with what has already been done.
  *	[We can't call it easily with mapping off since the kernel is not
  *	mapped with PA == VA, hence we would have to relocate every address
@@ -562,7 +562,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr, int64_t ptov_offset)
 	/*
 	 * Initialize protection array.
 	 */
-	i386_protection_init();
+	x86_64_protection_init();
 
 	/*
 	 * The kernel's pmap is statically allocated so we don't have to use
@@ -3214,7 +3214,7 @@ pmap_clear_reference(vm_page_t m)
  * Miscellaneous support routines follow
  */
 static void
-i386_protection_init(void)
+x86_64_protection_init(void)
 {
 	uint64_t *kp;
 	int prot;

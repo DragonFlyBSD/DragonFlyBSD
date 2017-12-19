@@ -305,7 +305,7 @@ static void pmap_protect_callback(pmap_t pmap, struct pmap_scan_info *info,
 		      pv_entry_t pt_pv, int sharept,
 		      vm_offset_t va, pt_entry_t *ptep, void *arg __unused);
 
-static void i386_protection_init (void);
+static void x86_64_protection_init (void);
 static void create_pagetables(vm_paddr_t *firstaddr);
 static void pmap_remove_all (vm_page_t m);
 static boolean_t pmap_testbit (vm_page_t m, int bit);
@@ -1040,7 +1040,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 /*
  *	Bootstrap the system enough to run with virtual memory.
  *
- *	On the i386 this is called after mapping has already been enabled
+ *	On x86_64 this is called after mapping has already been enabled
  *	and just syncs the pmap module with what has already been done.
  *	[We can't call it easily with mapping off since the kernel is not
  *	mapped with PA == VA, hence we would have to relocate every address
@@ -1080,7 +1080,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	/*
 	 * Initialize protection array.
 	 */
-	i386_protection_init();
+	x86_64_protection_init();
 
 	/*
 	 * The kernel's pmap is statically allocated so we don't have to use
@@ -5924,7 +5924,7 @@ pmap_clear_reference(vm_page_t m)
 
 static
 void
-i386_protection_init(void)
+x86_64_protection_init(void)
 {
 	uint64_t *kp;
 	int prot;
