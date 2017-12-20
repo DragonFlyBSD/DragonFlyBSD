@@ -181,7 +181,7 @@ void	huphandler2(int sig);
 int     makemask(struct sockaddr_storage *ssp, int bitlen);
 void	mntsrv(struct svc_req *, SVCXPRT *);
 void	nextfield(char **, char **);
-void	out_of_mem(void);
+void	out_of_mem(void) __dead2;
 void	parsecred(char *, struct ucred *);
 int	put_exlist(struct dirlist *, XDR *, struct dirlist *, int *, int);
 void    *sa_rawaddr(struct sockaddr *sa, int *nbytes);
@@ -194,7 +194,7 @@ int	xdr_explist(XDR *, caddr_t);
 int	xdr_explist_brief(XDR *, caddr_t);
 int	xdr_fhs(XDR *, caddr_t);
 int	xdr_mlist(XDR *, caddr_t);
-void	terminate(int);
+void	terminate(int) __dead2;
 
 struct exportlist *exphead;
 struct mountlist *mlhead;

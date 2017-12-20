@@ -74,7 +74,7 @@ struct mntopt mopts[] = {
 	MOPT_NULL,
 };
 
-void	fatal(const char *fmt, ...) __printflike(1, 2);
+void	fatal(const char *fmt, ...) __dead2 __printflike(1, 2);
 
 #define	COMPAT			/* allow non-labeled disks */
 

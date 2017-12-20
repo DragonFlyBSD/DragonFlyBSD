@@ -20,7 +20,7 @@
 #define EXIT_DELAY	10000
 #define MAX_EXIT_DELAY	999999
 
-extern void Quit(const char *);
+extern void Quit(const char *) __dead2;
 extern void Warn(const char *);
 extern int SendNeedFragIcmp(int, struct ip *, int);
 

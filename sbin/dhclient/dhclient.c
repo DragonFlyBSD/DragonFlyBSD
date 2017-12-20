@@ -90,7 +90,7 @@ struct client_config *config;
 
 int		findproto(char *, int);
 struct sockaddr	*get_ifa(char *, int);
-void		usage(void);
+void		usage(void) __dead2;
 int		check_option(struct client_lease *l, int option);
 int		check_classless_option(unsigned char *data, int len);
 int		ipv4addrs(char * buf);

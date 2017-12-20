@@ -102,7 +102,7 @@ int	getasciipartspec(char *, struct disklabel32 *, int, int);
 int	checklabel(struct disklabel32 *);
 void	setbootflag(struct disklabel32 *);
 void	Warning(const char *, ...) __printflike(1, 2);
-void	usage(void);
+void	usage(void) __dead2;
 int	checkoldboot(int, const char *);
 const char *fixlabel(int, struct disklabel32 *, int);
 struct disklabel32 *getvirginlabel(void);

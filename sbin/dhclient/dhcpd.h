@@ -211,7 +211,7 @@ void do_packet(int, unsigned int, struct iaddr, struct hardware *);
 
 /* errwarn.c */
 extern int warnings_occurred;
-void error(char *, ...) __attribute__ ((__format__ (__printf__, 1, 2)));
+void error(char *, ...) __attribute__((__noreturn__)) __attribute__ ((__format__ (__printf__, 1, 2)));
 int warning(char *, ...) __attribute__ ((__format__ (__printf__, 1, 2)));
 int note(char *, ...) __attribute__ ((__format__ (__printf__, 1, 2)));
 #ifdef DEBUG
@@ -246,7 +246,7 @@ ssize_t receive_packet(struct sockaddr_in *, struct hardware *);
 
 /* dispatch.c */
 void discover_interface(void);
-void dispatch(void);
+void dispatch(void) __dead2;
 void got_one(void);
 void set_timeout(time_t, void (*)(void));
 void set_timeout_interval(time_t, void (*)(void));

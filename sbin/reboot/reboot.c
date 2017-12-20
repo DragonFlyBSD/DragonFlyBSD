@@ -46,7 +46,7 @@
 #include <string.h>
 #include <unistd.h>
 
-void usage(void);
+void usage(void) __dead2;
 u_int get_pageins(void);
 
 int dohalt;

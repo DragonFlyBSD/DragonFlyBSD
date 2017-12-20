@@ -33,7 +33,6 @@
 /*
  * $Id: vext.h,v 1.17 2000/05/07 04:17:12 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/vext.h,v 1.16.2.2 2000/06/08 01:53:16 grog Exp $
- * $DragonFly: src/sbin/vinum/vext.h,v 1.4 2007/07/29 23:27:34 dillon Exp $
  */
 
 #define MAXARGS 64					    /* maximum number of args on a line */
@@ -56,7 +55,7 @@ void parseline(int c, char *args[]);			    /* parse a line with c parameters at 
 void checkentry(int index);
 int haveargs(int);					    /* check arg, error message if not valid */
 void setsigs();
-void catchsig(int ignore);
+void catchsig(int ignore) __dead2;
 void vinum_create(int argc, char *argv[], char *arg0[]);
 void vinum_read(int argc, char *argv[], char *arg0[]);
 void vinum_modify(int argc, char *argv[], char *arg0[]);
@@ -79,7 +78,7 @@ void continue_revive(int plexno);
 void vinum_stop(int argc, char *argv[], char *arg0[]);
 void vinum_makedev(int argc, char *argv[], char *arg0[]);
 void vinum_help(int argc, char *argv[], char *arg0[]);
-void vinum_quit(int argc, char *argv[], char *arg0[]);
+void vinum_quit(int argc, char *argv[], char *arg0[]) __dead2;
 void vinum_setdaemon(int argc, char *argv[], char *arg0[]);
 void vinum_replace(int argc, char *argv[], char *arg0[]);
 void vinum_readpol(int argc, char *argv[], char *arg0[]);

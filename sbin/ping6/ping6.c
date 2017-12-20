@@ -245,7 +245,7 @@ int	 get_pathmtu(struct msghdr *);
 struct in6_pktinfo *get_rcvpktinfo(struct msghdr *);
 void	 onsignal(int);
 void	 retransmit(void);
-void	 onint(int);
+void	 onint(int) __dead2;
 size_t	 pingerlen(void);
 int	 pinger(void);
 const char *pr_addr(struct sockaddr *, int);
@@ -267,7 +267,7 @@ void	 summary(void);
 void	 tvsub(struct timeval *, struct timeval *);
 int	 setpolicy(int, char *);
 char	*nigroup(char *);
-void	 usage(void);
+void	 usage(void) __dead2;
 
 int
 main(int argc, char **argv)

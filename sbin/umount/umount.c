@@ -70,7 +70,7 @@ int	 sacmp (struct sockaddr *, struct sockaddr *);
 int	 umountall (char **);
 int	 checkname (char *, char **);
 int	 umountfs (char *, char *, char *);
-void	 usage (void);
+void	 usage (void) __dead2;
 int	 xdr_dir (XDR *, char *);
 
 int

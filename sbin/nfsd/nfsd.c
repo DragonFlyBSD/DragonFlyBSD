@@ -73,17 +73,17 @@ struct nfsd_srvargs nsd;
 pid_t	children[MAXNFSDCNT];	/* PIDs of children */
 int	nfsdcnt;		/* number of children */
 
-void	cleanup(int);
-void	child_cleanup(int);
+void	cleanup(int) __dead2;
+void	child_cleanup(int) __dead2;
 void	killchildren(void);
-void	nfsd_exit(int);
+void	nfsd_exit(int) __dead2;
 void	nonfs(int);
 void	reapchild(int);
 int	setbindhost(struct addrinfo **ia, const char *bindhost,
 	    struct addrinfo hints);
-void	start_server(int);
+void	start_server(int) __dead2;
 void	unregistration(void);
-void	usage(void);
+void	usage(void) __dead2;
 
 /*
  * Nfs server daemon mostly just a user context for nfssvc()

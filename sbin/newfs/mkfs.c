@@ -134,7 +134,7 @@ int makedir(struct direct *, int);
 void parentready(int);
 void rdfs(daddr_t, int, char *);
 void setblock(struct fs *, unsigned char *, int);
-void started(int);
+void started(int) __dead2;
 void erfs(off_t, off_t);
 void wtfs(daddr_t, int, char *);
 void wtfsflush(void);

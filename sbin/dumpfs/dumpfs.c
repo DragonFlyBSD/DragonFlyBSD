@@ -63,7 +63,7 @@ static int	dumpfs(char *);
 static int	dumpcg(char *, int, int);
 static int	marshal(const char*);
 static void	pbits(void *, int);
-static void	usage(void);
+static void	usage(void) __dead2;
 
 int
 main(int argc, char **argv)

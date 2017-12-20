@@ -134,7 +134,7 @@ int	getasciipartspec(char *, struct disklabel64 *, int, int, uint32_t);
 int	getasciipartuuid(char *, struct disklabel64 *, int, int, uint32_t);
 int	checklabel(struct disklabel64 *);
 void	Warning(const char *, ...) __printflike(1, 2);
-void	usage(void);
+void	usage(void) __dead2;
 struct disklabel64 *getvirginlabel(void);
 
 #define	DEFEDITOR	_PATH_VI

@@ -28,7 +28,6 @@
  *
  *	@(#)fsck.h	8.4 (Berkeley) 5/9/95
  * $FreeBSD: src/sbin/fsck/fsck.h,v 1.12.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/fsck.h,v 1.9 2007/04/20 22:20:10 dillon Exp $
  */
 
 #include <unistd.h>
@@ -254,7 +253,7 @@ int		bread(int, char *, ufs_daddr_t, long);
 void		bufinit(void);
 void		bwrite(int, char *, ufs_daddr_t, long);
 void		cacheino(struct ufs1_dinode *, ufs1_ino_t);
-void		catch(int);
+void		catch(int) __dead2;
 void		catchquit(int);
 int		changeino(ufs1_ino_t, char *, ufs1_ino_t);
 int		checkfstab(int, int,
@@ -292,7 +291,7 @@ void		inodirty(void);
 struct inostat *inoinfo(ufs1_ino_t);
 int		linkup(ufs1_ino_t, ufs1_ino_t, char *);
 int		makeentry(ufs1_ino_t, ufs1_ino_t, char *);
-void		panic(const char *, ...) __printflike(1, 2);
+void		panic(const char *, ...) __dead2 __printflike(1, 2);
 void		pass1(void);
 void		pass1b(void);
 int		pass1check(struct inodesc *);

@@ -53,7 +53,7 @@ static struct nlist nl[] = {
 
 static void dumpbuf(char *bp, size_t bufpos, size_t buflen,
 		    int *newl, int *skip, int *pri);
-static void usage(void);
+static void usage(void) __dead2;
 
 #define	KREAD(addr, var) \
 	kvm_read(kd, addr, &var, sizeof(var)) != sizeof(var)

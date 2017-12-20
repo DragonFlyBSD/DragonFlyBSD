@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tunefs.c	8.2 (Berkeley) 4/19/94
  * $FreeBSD: src/sbin/tunefs/tunefs.c,v 1.11.2.5 2001/10/14 21:50:39 iedowse Exp $
- * $DragonFly: src/sbin/tunefs/tunefs.c,v 1.7 2006/04/03 01:58:49 dillon Exp $
  */
 
 /*
@@ -68,7 +67,7 @@ void bwrite(daddr_t, const char *, int);
 int bread(daddr_t, char *, int);
 void getsb(struct fs *, const char *);
 void putsb(struct fs *, const char *, int);
-void usage(void);
+void usage(void) __dead2;
 void printfs(void);
 
 int

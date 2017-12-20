@@ -111,7 +111,7 @@ void	*needchk(struct fstab *);
 int	 oneof(char *, char*[], int);
 void	 resetinodebuf(void);
 int	 update(char *, char *, int);
-void	 usage(void);
+void	 usage(void) __dead2;
 
 int
 main(int argc, char **argv)

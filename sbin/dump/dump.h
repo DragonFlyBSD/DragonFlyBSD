@@ -105,7 +105,7 @@ void	lastdump(int);		/* int should be char */
 void	msg(const char *, ...) __printflike(1, 2);
 void	msgtail(const char *, ...) __printflike(1, 2);
 int	query(const char *);
-void	quit(const char *, ...) __printflike(1, 2);
+void	quit(const char *, ...) __dead2 __printflike(1, 2);
 void	timeest(void);
 time_t	unctime(const char *);
 
@@ -132,7 +132,7 @@ void	trewind(void);
 void	writerec(const void *, int);
 
 void	Exit(int) __dead2;
-void	dumpabort(int);
+void	dumpabort(int) __dead2;
 void	dump_getfstab(void);
 
 char	*rawname(char *);
