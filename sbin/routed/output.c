@@ -26,17 +26,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * @(#)output.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/routed/output.c,v 1.5.2.1 2000/08/14 17:00:03 sheldonh Exp $
  */
 
 #include "defs.h"
-
-#if !defined(__NetBSD__)
-static char sccsid[] __attribute__((unused)) = "@(#)output.c	8.1 (Berkeley) 6/5/93";
-#elif defined(__NetBSD__)
-__RCSID("$NetBSD$");
-#endif
-
 
 u_int update_seqno;
 
@@ -443,8 +437,7 @@ supply_out(struct ag_info *ag)
  */
 /* ARGSUSED */
 static int
-walk_supply(struct radix_node *rn,
-	    struct walkarg *argp UNUSED)
+walk_supply(struct radix_node *rn, __unused struct walkarg *argp)
 {
 #define RT ((struct rt_entry *)rn)
 	u_short ags;

@@ -26,6 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * @(#)trace.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/routed/trace.c,v 1.5.2.1 2002/11/07 17:19:13 imp Exp $
  */
 
@@ -35,13 +36,6 @@
 #include <sys/stat.h>
 #include <sys/signal.h>
 #include <fcntl.h>
-
-#if !defined(__NetBSD__)
-static char sccsid[] __attribute__((unused)) = "@(#)trace.c	8.1 (Berkeley) 6/5/93";
-#elif defined(__NetBSD__)
-__RCSID("$NetBSD$");
-#endif
-
 
 #define	NRECORDS	50		/* size of circular trace buffer */
 
@@ -53,7 +47,7 @@ char	inittracename[MAXPATHLEN+1];
 int	file_trace;			/* 1=tracing to file, not stdout */
 
 static void trace_dump(void);
-static void tmsg(const char *, ...) PATTRIB(1,2);
+static void tmsg(const char *, ...) __printflike(1, 2);
 
 
 /* convert string to printable characters
@@ -371,7 +365,7 @@ set_tracefile(const char *filename,
 
 /* ARGSUSED */
 void
-sigtrace_on(int s UNUSED)
+sigtrace_on(__unused int s)
 {
 	new_tracelevel++;
 	sigtrace_pat = "SIGUSR1: %s";
@@ -380,7 +374,7 @@ sigtrace_on(int s UNUSED)
 
 /* ARGSUSED */
 void
-sigtrace_off(int s UNUSED)
+sigtrace_off(__unused int s)
 {
 	new_tracelevel--;
 	sigtrace_pat = "SIGUSR2: %s";
@@ -803,8 +797,7 @@ trace_add_del(const char * action, struct rt_entry *rt)
 
 /* ARGSUSED */
 static int
-walk_trace(struct radix_node *rn,
-	   struct walkarg *w UNUSED)
+walk_trace(struct radix_node *rn, __unused struct walkarg *w)
 {
 #define RT ((struct rt_entry *)rn)
 	struct rt_spare *rts;

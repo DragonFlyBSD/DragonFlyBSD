@@ -26,16 +26,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * @(#)tables.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/routed/table.c,v 1.9.2.2 2000/08/14 17:00:04 sheldonh Exp $
  */
 
 #include "defs.h"
-
-#if !defined(__NetBSD__)
-static char sccsid[] __attribute__((unused)) = "@(#)tables.c	8.1 (Berkeley) 6/5/93";
-#elif defined(__NetBSD__)
-__RCSID("$NetBSD$");
-#endif
 
 static struct rt_spare *rts_better(struct rt_entry *);
 static struct rt_spare rts_empty = {0,0,0,HOPCNT_INFINITY,0,0,0};
@@ -1385,8 +1380,7 @@ kern_out(struct ag_info *ag)
 
 /* ARGSUSED */
 static int
-walk_kern(struct radix_node *rn,
-	  struct walkarg *argp UNUSED)
+walk_kern(struct radix_node *rn, __unused struct walkarg *argp)
 {
 #define RT ((struct rt_entry *)rn)
 	char metric, pref;
@@ -1955,8 +1949,7 @@ rtbad_sub(struct rt_entry *rt)
  */
 /* ARGSUSED */
 int
-walk_bad(struct radix_node *rn,
-	 struct walkarg *argp UNUSED)
+walk_bad(struct radix_node *rn, __unused struct walkarg *argp)
 {
 #define RT ((struct rt_entry *)rn)
 	struct rt_spare *rts;
@@ -1998,8 +1991,7 @@ walk_bad(struct radix_node *rn,
  */
 /* ARGSUSED */
 static int
-walk_age(struct radix_node *rn,
-	   struct walkarg *argp UNUSED)
+walk_age(struct radix_node *rn, __unused struct walkarg *argp)
 {
 #define RT ((struct rt_entry *)rn)
 	struct interface *ifp;

@@ -37,12 +37,6 @@
 
 #include "defs.h"
 
-#if !defined(__NetBSD__)
-static char sccsid[] __attribute__((unused)) = "@(#)rdisc.c	8.1 (Berkeley) x/y/95";
-#elif defined(__NetBSD__)
-__RCSID("$NetBSD$");
-#endif
-
 #define log(x, msg) syslog(x, msg)
 #define panic(s) {log(LOG_ERR,s); exit(1);}
 #define min(a,b) (((a)<(b))?(a):(b))

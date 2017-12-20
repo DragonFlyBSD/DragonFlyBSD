@@ -73,8 +73,6 @@
 #include <sys/sysctl.h>
 #include <sys/socket.h>
 #include "radix.h"
-#define UNUSED __attribute__((unused))
-#define PATTRIB(f,l) __attribute__((format (printf,f,l)))
 #include <net/if.h>
 #include <net/route.h>
 #include <net/if_dl.h>
@@ -494,7 +492,7 @@ extern void rip_bcast(int);
 extern void supply(struct sockaddr_in *, struct interface *,
 		   enum output_type, int, int, int);
 
-extern void	msglog(const char *, ...) PATTRIB(1,2);
+extern void	msglog(const char *, ...) __printflike(1, 2);
 struct msg_limit {
     time_t	reuse;
     struct msg_sub {
@@ -504,9 +502,9 @@ struct msg_limit {
     } subs[MSG_SUBJECT_N];
 };
 extern void	msglim(struct msg_limit *, naddr,
-		       const char *, ...) PATTRIB(3,4);
+		       const char *, ...) __printflike(3, 4);
 #define	LOGERR(msg) msglog(msg ": %s", strerror(errno))
-extern void	logbad(int, const char *, ...) __dead2 PATTRIB(2,3);
+extern void	logbad(int, const char *, ...) __dead2 __printflike(2, 3);
 #define	BADERR(dump,msg) logbad(dump,msg ": %s", strerror(errno))
 #ifdef DEBUG
 #define	DBGERR(dump,msg) BADERR(dump,msg)
@@ -530,12 +528,12 @@ extern void	lastlog(void);
 extern void	trace_close(int);
 extern void	set_tracefile(const char *, const char *, int);
 extern void	tracelevel_msg(const char *, int);
-extern void	trace_off(const char*, ...) PATTRIB(1,2);
+extern void	trace_off(const char*, ...) __printflike(1, 2);
 extern void	set_tracelevel(void);
 extern void	trace_flush(void);
-extern void	trace_misc(const char *, ...) PATTRIB(1,2);
-extern void	trace_act(const char *, ...) PATTRIB(1,2);
-extern void	trace_pkt(const char *, ...) PATTRIB(1,2);
+extern void	trace_misc(const char *, ...) __printflike(1, 2);
+extern void	trace_act(const char *, ...) __printflike(1, 2);
+extern void	trace_pkt(const char *, ...) __printflike(1, 2);
 extern void	trace_add_del(const char *, struct rt_entry *);
 extern void	trace_change(struct rt_entry *, u_int, struct rt_spare *,
 			     const char *);

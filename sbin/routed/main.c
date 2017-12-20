@@ -26,6 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * @(#)main.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/routed/main.c,v 1.11.2.1 2000/08/14 17:00:03 sheldonh Exp $
  */
 
@@ -34,18 +35,6 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <sys/file.h>
-
-#if !defined(__NetBSD__)
-char copyright[] =
-"@(#) Copyright (c) 1983, 1988, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-static char sccsid[] __attribute__((unused)) = "@(#)main.c	8.1 (Berkeley) 6/5/93";
-#elif defined(__NetBSD__)
-__RCSID("$NetBSD$");
-__COPYRIGHT("@(#) Copyright (c) 1983, 1988, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n");
-#endif
-
 
 pid_t	mypid;
 
@@ -525,7 +514,7 @@ usage:
 
 /* ARGSUSED */
 void
-sigalrm(int s UNUSED)
+sigalrm(__unused int s)
 {
 	/* Historically, SIGALRM would cause the daemon to check for
 	 * new and broken interfaces.

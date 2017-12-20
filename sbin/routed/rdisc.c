@@ -26,6 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * @(#)rdisc.c	8.1 (Berkeley) x/y/95
  * $FreeBSD: src/sbin/routed/rdisc.c,v 1.5.2.1 2000/08/14 17:00:04 sheldonh Exp $
  */
 
@@ -33,12 +34,6 @@
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
-
-#if !defined(__NetBSD__)
-static char sccsid[] __attribute__((unused)) = "@(#)rdisc.c	8.1 (Berkeley) x/y/95";
-#elif defined(__NetBSD__)
-__RCSID("$NetBSD$");
-#endif
 
 /* router advertisement ICMP packet */
 struct icmp_ad {

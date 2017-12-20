@@ -26,19 +26,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * @(#)if.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/routed/parms.c,v 1.7.2.1 2000/08/14 17:00:03 sheldonh Exp $
  */
 
 #include "defs.h"
 #include "pathnames.h"
 #include <sys/stat.h>
-
-#if !defined(__NetBSD__)
-static char sccsid[] __attribute__((unused)) = "@(#)if.c	8.1 (Berkeley) 6/5/93";
-#elif defined(__NetBSD__)
-__RCSID("$NetBSD$");
-#endif
-
 
 struct parm *parms;
 struct intnet *intnets;
