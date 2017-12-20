@@ -28,9 +28,9 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  *	$NetBSD: ext.h,v 1.6 2000/04/25 23:02:51 jdolecek Exp $
  * $FreeBSD: src/sbin/fsck_msdosfs/ext.h,v 1.1.2.1 2001/08/01 05:47:56 obrien Exp $
- * $DragonFly: src/sbin/fsck_msdosfs/ext.h,v 1.3 2003/11/01 17:15:58 drhodus Exp $
  */
 
 #ifndef EXT_H
@@ -57,7 +57,7 @@ extern struct dosDirEntry *rootDir;
 /*
  * function declarations
  */
-int ask(int, const char *, ...) __attribute__((__format__(__printf__,2,3)));
+int ask(int, const char *, ...) __printflike(2, 3);
 
 /*
  * Check filesystem given as arg
