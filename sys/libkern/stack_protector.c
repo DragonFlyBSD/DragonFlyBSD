@@ -41,7 +41,7 @@ int __guard = 0xff0a0000;
 void 
 __stack_smash_handler(char func[], int damaged)
 {
-#ifdef __i386__
+#ifdef __i386__ /* used in sys/boot */
 	void *caller;
 	__asm __volatile("movl 4(%%ebp), %0" : "=r" (caller));
 	panic("stack overflow in function %p (%s)", caller, func);
