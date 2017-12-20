@@ -715,15 +715,16 @@ in_pcbbind_remote(struct inpcb *inp, const struct sockaddr *remote,
 	const struct sockaddr_in *sin = (const struct sockaddr_in *)remote;
 	struct sockaddr_in jsin;
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
-	struct inpcbportinfo *portinfo;
 	struct ucred *cred = NULL;
-	u_short first, last, lport, step, first0, last0;
-	int count, error, selfconn;
-	int portinfo_first, portinfo_idx;
-	int hash_cpu, hash_count, hash_count0;
-	uint32_t hash_base = 0, hash, cut;
+	u_short first, last, lport;
+	int count, hash_count;
+	int error, selfconn = 0;
+	int cpuid = mycpuid;
+	uint32_t hash_base = 0, hash;
 
-	if (TAILQ_EMPTY(&in_ifaddrheads[mycpuid])) /* XXX broken! */
+	ASSERT_NETISR_NCPUS(cpuid);
+
+	if (TAILQ_EMPTY(&in_ifaddrheads[cpuid])) /* XXX broken! */
 		return (EADDRNOTAVAIL);
 
 	KKASSERT(inp->inp_laddr.s_addr != INADDR_ANY);
@@ -741,24 +742,20 @@ in_pcbbind_remote(struct inpcb *inp, const struct sockaddr *remote,
 	}
 	inp->inp_laddr.s_addr = jsin.sin_addr.s_addr;
 
-	hash_count0 = ip_porthash_trycount;
-	if (hash_count0 > 0) {
+	hash_count = ip_porthash_trycount;
+	if (hash_count > 0) {
 		hash_base = toeplitz_piecemeal_addr(sin->sin_addr.s_addr) ^
 		    toeplitz_piecemeal_addr(inp->inp_laddr.s_addr) ^
 		    toeplitz_piecemeal_port(sin->sin_port);
 	} else {
-		hash_count0 = 0;
+		hash_count = 0;
 	}
 
 	inp->inp_flags |= INP_ANONPORT;
 
-	step = pcbinfo->portinfo_cnt;
-	portinfo_first = mycpuid % pcbinfo->portinfo_cnt;
-	portinfo_idx = portinfo_first;
-
 	if (inp->inp_flags & INP_HIGHPORT) {
-		first0 = ipport_hifirstauto;	/* sysctl */
-		last0  = ipport_hilastauto;
+		first = ipport_hifirstauto;	/* sysctl */
+		last  = ipport_hilastauto;
 	} else if (inp->inp_flags & INP_LOWPORT) {
 		if (cred &&
 		    (error =
@@ -766,45 +763,27 @@ in_pcbbind_remote(struct inpcb *inp, const struct sockaddr *remote,
 			inp->inp_laddr.s_addr = INADDR_ANY;
 			return (error);
 		}
-		first0 = ipport_lowfirstauto;	/* 1023 */
-		last0  = ipport_lowlastauto;	/* 600 */
+		first = ipport_lowfirstauto;	/* 1023 */
+		last = ipport_lowlastauto;	/* 600 */
 	} else {
-		first0 = ipport_firstauto;	/* sysctl */
-		last0  = ipport_lastauto;
+		first = ipport_firstauto;	/* sysctl */
+		last  = ipport_lastauto;
 	}
-	if (first0 > last0) {
-		lport = last0;
-		last0 = first0;
-		first0 = lport;
+	if (first > last) {
+		lport = last;
+		last = first;
+		first = lport;
 	}
-	KKASSERT(last0 >= first0);
+	KKASSERT(last >= first);
 
-	cut = karc4random();
-loop:
-	hash_cpu = portinfo_idx % netisr_ncpus;
-	portinfo = &pcbinfo->portinfo[portinfo_idx];
-	selfconn = 0;
-	first = first0;
-	last = last0;
-
-	/* This could happen on loopback interface */
-#define IS_SELFCONNECT(inp, lport, sin)			\
-	(__predict_false((sin)->sin_port == (lport) &&	\
-	 (sin)->sin_addr.s_addr == (inp)->inp_laddr.s_addr))
+	count = last - first;
+	lport = (karc4random() % count) + first;
+	count += hash_count;
 
 	/*
 	 * Simple check to ensure all ports are not used up causing
 	 * a deadlock here.
 	 */
-	hash_count = hash_count0;
-
-	in_pcbportrange(&last, &first, portinfo->offset, step);
-	lport = last - first;
-	count = (lport / step) + hash_count;
-
-	lport = rounddown(cut % lport, step) + first;
-	KKASSERT(lport % step == portinfo->offset);
-
 	for (;;) {
 		u_short lport_no;
 
@@ -813,13 +792,13 @@ loop:
 			break;
 		}
 
-		if (__predict_false(lport < first || lport > last)) {
+		if (__predict_false(lport < first || lport > last))
 			lport = first;
-			KKASSERT(lport % step == portinfo->offset);
-		}
-
 		lport_no = htons(lport);
-		if (IS_SELFCONNECT(inp, lport_no, sin)) {
+
+		/* This could happen on loopback interface */
+		if (__predict_false(sin->sin_port == lport_no &&
+		    sin->sin_addr.s_addr == inp->inp_laddr.s_addr)) {
 			if (!selfconn) {
 				++count; /* don't count this try */
 				selfconn = 1;
@@ -831,32 +810,23 @@ loop:
 			--hash_count;
 			hash = hash_base ^
 			    toeplitz_piecemeal_port(lport_no);
-			if (netisr_hashcpu(hash) != hash_cpu &&
-			    hash_count)
+			if (netisr_hashcpu(hash) != cpuid && hash_count)
 				goto next;
 		}
 
-		if (in_pcbporthash_update4(portinfo,
+		if (in_pcbporthash_update4(
+		    &pcbinfo->portinfo[lport % pcbinfo->portinfo_cnt],
 		    inp, lport_no, sin, cred)) {
 			error = 0;
 			break;
 		}
 next:
-		lport += step;
-		KKASSERT(lport % step == portinfo->offset);
+		++lport;
 	}
 
-#undef IS_SELFCONNECT
-
-	if (error) {
-		/* Try next portinfo */
-		portinfo_idx++;
-		portinfo_idx %= pcbinfo->portinfo_cnt;
-		if (portinfo_idx != portinfo_first)
-			goto loop;
+	if (error)
 		inp->inp_laddr.s_addr = INADDR_ANY;
-	}
-	return error;
+	return (error);
 }
 
 /*
