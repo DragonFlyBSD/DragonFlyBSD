@@ -76,7 +76,7 @@ __FBSDID("$FreeBSD: head/sys/dev/de/if_de.c 271849 2014-09-19 03:51:26Z glebius 
 /*
  * Intel CPUs should use I/O mapped access.
  */
-#if defined(__i386__)
+#if defined(__x86_64__)
 #define	TULIP_IOMAPPED
 #endif
 
