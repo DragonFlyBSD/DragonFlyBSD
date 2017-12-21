@@ -462,10 +462,10 @@ main(int argc, char *argv[])
 			} while (*++argv);
 		} else {
 			char foo[10];	/* All morse chars shorter than this */
-			int isblank, i;
+			int blank, i;
 
 			i = 0;
-			isblank = 0;
+			blank = 0;
 			while ((ch = getchar()) != EOF) {
 				if (ch == '-' || ch == '.') {
 					foo[i++] = ch;
@@ -477,20 +477,20 @@ main(int argc, char *argv[])
 						while ((ch = getchar()) != EOF &&
 						    (ch == '.' || ch == '-'))
 							;
-						isblank = 1;
+						blank = 1;
 					}
 				} else if (i) {
 					foo[i] = '\0';
 					decode(foo);
 					i = 0;
-					isblank = 0;
+					blank = 0;
 				} else if (isspace(ch)) {
-					if (isblank) {
+					if (blank) {
 						/* print whitespace for each double blank */
 						putchar(' ');
-						isblank = 0;
+						blank = 0;
 					} else
-						isblank = 1;
+						blank = 1;
 				}
 			}
 		}
