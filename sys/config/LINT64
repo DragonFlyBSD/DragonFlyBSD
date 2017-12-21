@@ -1192,11 +1192,6 @@ device		"snd_uaudio"
 #                              as much as possible (the default trying to
 #                              avoid it). Possible slowdown.
 #
-# SND_PCM_64                   (Only applicable for i386/32bit arch)
-#                              Process 32bit samples through 64bit
-#                              integer/arithmetic. Slight increase of dynamic
-#                              range at a cost of possible slowdown.
-#
 # SND_OLDSTEREO                Only 2 channels are allowed, effectively
 #                              disabling multichannel processing.
 #
@@ -1205,7 +1200,6 @@ options		SND_DEBUG
 options		SND_FEEDER_MULTIFORMAT
 options		SND_FEEDER_FULL_MULTIFORMAT
 options		SND_FEEDER_RATE_HP
-options		SND_PCM_64
 options		SND_OLDSTEREO
 
 #
