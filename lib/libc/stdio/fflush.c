@@ -66,13 +66,12 @@ fflush(FILE *fp)
 	 * Given that applications may be written with the expectation of
 	 * either of these two behaviours, the only safe (non-astonishing)
 	 * option is to return EBADF and ask that applications be fixed.
+	 * But for c++ compatibility do not enforce it and match FreeBSD.
 	 */
-	if ((fp->pub._flags & (__SWR | __SRW)) == 0) {
-		errno = EBADF;
-		retval = EOF;
-	} else {
+	if ((fp->pub._flags & (__SWR | __SRW)) == 0)
+		retval = 0;
+	else
 		retval = __sflush(fp);
-	}
 	FUNLOCKFILE(fp);
 	return (retval);
 }
@@ -88,12 +87,10 @@ __fflush(FILE *fp)
 
 	if (fp == NULL)
 		return (_fwalk(sflush_locked));
-	if ((fp->pub._flags & (__SWR | __SRW)) == 0) {
-		errno = EBADF;
-		retval = EOF;
-	} else {
+	if ((fp->pub._flags & (__SWR | __SRW)) == 0)
+		retval = 0;
+	else
 		retval = __sflush(fp);
-	}
 	return (retval);
 }
 
@@ -122,6 +119,14 @@ __sflush(FILE *fp)
 	for (; n > 0; n -= t, p += t) {
 		t = _swrite(fp, (char *)p, n);
 		if (t <= 0) {
+			/* Reset _p and _w. */
+			if (p > fp->pub._p) {
+				/* Some was written. */
+				memmove(fp->pub._p, p, n);
+				fp->pub._p += n;
+				if ((fp->pub._flags & (__SLBF | __SNBF)) == 0)
+					fp->pub._w -= n;
+			}
 			fp->pub._flags |= __SERR;
 			return (EOF);
 		}

@@ -58,7 +58,7 @@ fpurge(FILE *fp)
 			FREEUB(fp);
 		fp->pub._p = fp->_bf._base;
 		fp->pub._r = 0;
-		fp->pub._w = fp->pub._flags & (__SLBF|__SNBF) ? 0 : fp->_bf._size;
+		fp->pub._w = fp->pub._flags & (__SLBF|__SNBF|__SRD) ? 0 : fp->_bf._size;
 		retval = 0;
 	}
 	FUNLOCKFILE(fp);
