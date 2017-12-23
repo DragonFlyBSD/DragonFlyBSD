@@ -142,7 +142,7 @@ SYSCTL_NODE(_net, PF_LINK, link, CTLFLAG_RW, 0, "Link layers");
 SYSCTL_NODE(_net_link, 0, generic, CTLFLAG_RW, 0, "Generic link-management");
 SYSCTL_NODE(_net_link, OID_AUTO, ringmap, CTLFLAG_RW, 0, "link ringmap");
 
-static int ifsq_stage_cntmax = 4;
+static int ifsq_stage_cntmax = 16;
 TUNABLE_INT("net.link.stage_cntmax", &ifsq_stage_cntmax);
 SYSCTL_INT(_net_link, OID_AUTO, stage_cntmax, CTLFLAG_RW,
     &ifsq_stage_cntmax, 0, "ifq staging packet count max");
