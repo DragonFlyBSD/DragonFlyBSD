@@ -38,9 +38,6 @@
 #ifdef __x86_64__
 #define NDIS_BUS_SPACE_IO	X86_64_BUS_SPACE_IO
 #define NDIS_BUS_SPACE_MEM	X86_64_BUS_SPACE_MEM
-#else
-#define NDIS_BUS_SPACE_IO	I386_BUS_SPACE_IO
-#define NDIS_BUS_SPACE_MEM	I386_BUS_SPACE_MEM
 #endif
 
 extern image_patch_table hal_functbl[];

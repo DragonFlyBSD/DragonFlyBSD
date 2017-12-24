@@ -71,9 +71,6 @@
 #include "pcib_if.h"
 #endif
 
-#define I386_BUS_SPACE_IO       0       /* space is i/o space */
-#define I386_BUS_SPACE_MEM      1       /* space is mem space */
-
 #define ELF_KERN_STR    ("elf"__XSTRING(__ELF_WORD_SIZE)" kernel")
 
 static MALLOC_DEFINE(M_NEXUSDEV, "nexusdev", "Nexus device");
@@ -404,9 +401,9 @@ nexus_alloc_resource(device_t bus, device_t child, int type, int *rid,
 	rman_set_rid(rv, *rid);
 
 	if (type == SYS_RES_MEMORY) {
-		rman_set_bustag(rv, I386_BUS_SPACE_MEM);
+		rman_set_bustag(rv, X86_64_BUS_SPACE_MEM);
 	} else if (type == SYS_RES_IOPORT) {
-		rman_set_bustag(rv, I386_BUS_SPACE_IO);
+		rman_set_bustag(rv, X86_64_BUS_SPACE_IO);
 		rman_set_bushandle(rv, rv->r_start);
 	}
 
@@ -427,7 +424,7 @@ nexus_activate_resource(device_t bus, device_t child, int type, int rid,
 	/*
 	 * If this is a memory resource, map it into the kernel.
 	 */
-	if (rman_get_bustag(r) == I386_BUS_SPACE_MEM) {
+	if (rman_get_bustag(r) == X86_64_BUS_SPACE_MEM) {
 		caddr_t vaddr = 0;
 
 		if (rman_get_end(r) < 1024 * 1024) {
@@ -460,7 +457,7 @@ nexus_deactivate_resource(device_t bus, device_t child, int type, int rid,
 	/*
 	 * If this is a memory resource, unmap it.
 	 */
-	if ((rman_get_bustag(r) == I386_BUS_SPACE_MEM) &&
+	if ((rman_get_bustag(r) == X86_64_BUS_SPACE_MEM) &&
 	    (rman_get_end(r) >= 1024 * 1024)) {
 		u_int32_t psize;
 
