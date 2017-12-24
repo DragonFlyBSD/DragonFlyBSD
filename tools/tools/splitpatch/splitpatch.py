@@ -48,7 +48,7 @@ def directory_save(filename, patch, suffix = None, root = None, forceful = False
 	output_name  = os.path.join(root, "%s%s" % (filename.replace('/',','), suffix))
 	
 	if os.path.exists(output_name) and not forceful:
-		raise IOError, 'file exists'
+		raise IOError('file exists')
 	f = open(output_name,"w")
 	f.write(patch)
 	f.close()
@@ -74,7 +74,7 @@ def splitpatch(source, output = directory_save, quiet = False):
 				filename = line.split()[1]
 
 			if filename and not quiet:
-				print "Found patch for %s" % filename
+				print("Found patch for %s" % filename)
 
 			buf.append(line)
 		elif diff_line.get(line[0]):
