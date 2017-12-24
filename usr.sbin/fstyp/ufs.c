@@ -30,17 +30,30 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/param.h>
 #include <sys/types.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-typedef int64_t ufs_time_t;
-typedef int64_t ufs2_daddr_t;
-#include "../../sys/boot/common/fs.h"
+#include <vfs/ufs/ufs_types.h>
+#include <vfs/ufs/fs.h>
 
 #include "fstyp.h"
+
+/*
+ * Filesystem identification
+ */
+#define FS_UFS1_MAGIC	0x011954	/* UFS1 fast filesystem magic number */
+#define FS_UFS2_MAGIC	0x19540119	/* UFS2 fast filesystem magic number */
+
+#define SBLOCK_FLOPPY        0
+#define SBLOCK_UFS1       8192
+#define SBLOCK_UFS2      65536
+#define SBLOCK_PIGGY    262144
+#define SBLOCKSIZE        8192
+#define SBLOCKSEARCH	\
+	{ SBLOCK_UFS2, SBLOCK_UFS1, SBLOCK_FLOPPY, SBLOCK_PIGGY, -1 }
 
 static const int superblocks[] = SBLOCKSEARCH;
 
