@@ -44,7 +44,7 @@
 /*
  * Filesystem identification
  */
-#define FS_UFS1_MAGIC	0x011954	/* UFS1 fast filesystem magic number */
+#define FS_UFS1_MAGIC	FS_MAGIC	/* UFS1 fast filesystem magic number */
 #define FS_UFS2_MAGIC	0x19540119	/* UFS2 fast filesystem magic number */
 
 #define SBLOCK_FLOPPY        0
