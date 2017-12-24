@@ -189,7 +189,8 @@ SYSCTL_PROC(_net_inet_ip_portrange, OID_AUTO, hifirst, CTLTYPE_INT|CTLFLAG_RW,
 SYSCTL_PROC(_net_inet_ip_portrange, OID_AUTO, hilast, CTLTYPE_INT|CTLFLAG_RW,
 	   &ipport_hilastauto, 0, &sysctl_net_ipport_check, "I", "");
 
-static int ip_porthash_trycount = 15;
+/* Initialized by ip_init() */
+int ip_porthash_trycount;
 SYSCTL_INT(_net_inet_ip, OID_AUTO, porthash_trycount, CTLFLAG_RW,
     &ip_porthash_trycount, 0,
     "Number of tries to find local port matching hash of 4-tuple");

@@ -411,6 +411,8 @@ ip_init(void)
 		callout_reset_bycpu(&fragq->timeo_ch, IPFRAG_TIMEO,
 		    ipfrag_timeo, NULL, cpu);
 	}
+
+	ip_porthash_trycount = 2 * netisr_ncpus;
 }
 
 /* Do transport protocol processing. */
