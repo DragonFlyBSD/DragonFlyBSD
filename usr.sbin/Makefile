@@ -12,6 +12,7 @@ SUBDIR= 802_11 \
 	asf \
 	authpf \
 	autofs \
+	boot0cfg \
 	bootparamd \
 	btconfig \
 	bthcid \
@@ -76,6 +77,7 @@ SUBDIR= 802_11 \
 	pfctl \
 	pflogd \
 	powerd \
+	ppp \
 	pppctl \
 	prefix \
 	procctl \
@@ -110,6 +112,7 @@ SUBDIR= 802_11 \
 	sensorsd \
 	service \
 	setkey \
+	sshd \
 	sshlockout \
 	sliplogin \
 	slstat \
@@ -119,6 +122,7 @@ SUBDIR= 802_11 \
 	tcpdchk \
 	tcpdmatch \
 	tcpdrop \
+	tcpdump \
 	timed \
 	traceroute \
 	traceroute6 \
@@ -142,15 +146,6 @@ SUBDIR= 802_11 \
 	ypset \
 	zic
 
-# Uses lib[re]ssl but can build without it
-#
-SUBDIR+=ppp \
-	tcpdump
-
-# from old secure/
-#
-SUBDIR+=sshd
-
 .if !defined(NO_LPR)
 SUBDIR+=lpr
 .endif
@@ -166,10 +161,6 @@ SUBDIR+=btxld \
 	mptable \
 	rndcontrol \
 	sicontrol
-.endif
-
-.ifdef BOOT0CFG_SUPPORT
-SUBDIR+=boot0cfg
 .endif
 
 .ifdef WANT_INSTALLER
