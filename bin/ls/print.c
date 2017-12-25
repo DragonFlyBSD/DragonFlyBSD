@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1989, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -212,7 +212,7 @@ printstream(const DISPLAY *dp)
 	if (chcnt)
 		putchar('\n');
 }
-		
+
 void
 printcol(const DISPLAY *dp)
 {

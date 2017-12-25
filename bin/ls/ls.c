@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1989, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -114,7 +114,7 @@ static int f_singlecol;		/* use single column output */
        int f_size;		/* list size in short listing */
        int f_slash;		/* similar to f_type, but only for dirs */
        int f_sizesort;		/* Sort by size */
-       int f_sortacross;	/* sort across rows, not down columns */ 
+       int f_sortacross;	/* sort across rows, not down columns */
        int f_statustime;	/* use time of last mode change */
 static int f_stream;		/* stream the output, separate with commas */
 static int f_timesort;		/* sort by time vice name */
@@ -171,8 +171,8 @@ main(int argc, char *argv[])
 		f_listdot = 1;
 
 	fts_options = FTS_PHYSICAL;
-	while ((ch = getopt(argc, argv, "1ABCFGHILPSRTWabcdfghiklmnopqrstuwxy"))
-	    != -1) {
+	while ((ch = getopt(argc, argv,
+	    "1ABCFGHILPSRTWabcdfghiklmnopqrstuwxy")) != -1) {
 		switch (ch) {
 		/*
 		 * The -1, -C, -x and -l options all override each other so
@@ -252,7 +252,7 @@ main(int argc, char *argv[])
 			break;
 		case 'f':
 			f_nosort = 1;
-		       /* FALLTHROUGH */
+			/* FALLTHROUGH */
 		case 'a':
 			fts_options |= FTS_SEEDOT;
 			/* FALLTHROUGH */
@@ -716,7 +716,7 @@ display(const FTSENT *p, FTSENT *list)
 				} else {
 					fsmid = 0;
 					fsmidlen = 0;
-				} 
+				}
 #else
 				fsmidlen = 0;
 #endif
@@ -742,7 +742,7 @@ display(const FTSENT *p, FTSENT *list)
 #ifdef _ST_FSMID_PRESENT_
 				if (f_fsmid) {
 					np->fsmid = np->data + ulen + glen + flen + 3;
-					snprintf(np->fsmid, fsmidlen + 1,  
+					snprintf(np->fsmid, fsmidlen + 1,
 						 "%016jx", (intmax_t)fsmid);
 				}
 #endif

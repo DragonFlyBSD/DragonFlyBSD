@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1989, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -31,7 +31,6 @@
  *
  * @(#)util.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ls/util.c,v 1.35 2004/05/03 11:48:55 tjr Exp $
- * $DragonFly: src/bin/ls/util.c,v 1.8 2008/02/14 09:33:24 matthias Exp $
  */
 
 #include <sys/types.h>
@@ -128,7 +127,7 @@ prn_printable(const char *s)
  * to fix this as an efficient fix would involve a lookup table. Same goes
  * for the rather inelegant code in prn_octal.
  *
- *                                              DES 1998/04/23
+ *						DES 1998/04/23
  */
 
 size_t
@@ -177,9 +176,9 @@ prn_octal(const char *s)
 	while ((clen = mbrtowc(&wc, s, MB_LEN_MAX, &mbs)) != 0) {
 		goodchar = clen != (size_t)-1 && clen != (size_t)-2;
 		if (goodchar && iswprint(wc) && wc != L'\"' && wc != L'\\') {
-			 for (i = 0; i < (int)clen; i++)
-				 putchar((unsigned char)s[i]);
-			 len += wcwidth(wc);
+			for (i = 0; i < (int)clen; i++)
+				putchar((unsigned char)s[i]);
+			len += wcwidth(wc);
 		} else if (goodchar && f_octal_escape && wc >= 0 &&
 		    wc <= (wchar_t)UCHAR_MAX &&
 		    (p = strchr(esc, (char)wc)) != NULL) {
@@ -196,11 +195,11 @@ prn_octal(const char *s)
 			for (i = 0; i < prtlen; i++) {
 				ch = (unsigned char)s[i];
 				putchar('\\');
-		                putchar('0' + (ch >> 6));
-		                putchar('0' + ((ch >> 3) & 7));
-		                putchar('0' + (ch & 7));
-		                len += 4;
-		        }
+				putchar('0' + (ch >> 6));
+				putchar('0' + ((ch >> 3) & 7));
+				putchar('0' + (ch & 7));
+				len += 4;
+			}
 		}
 		if (clen == (size_t)-2)
 			break;

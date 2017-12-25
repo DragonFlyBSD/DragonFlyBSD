@@ -1,5 +1,4 @@
-
-/*
+/*-
  * Copyright (c) 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +31,6 @@
  *
  *	from: @(#)ls.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/ls/ls.h,v 1.21 2005/01/10 08:39:23 imp Exp $
- * $DragonFly: src/bin/ls/ls.h,v 1.7 2005/09/18 17:54:48 asmodai Exp $
  */
 
 #define NO_PRINT	1
@@ -51,7 +49,7 @@ extern int f_nonprint;		/* show unprintables as ? */
 extern int f_sectime;		/* print the real time for all files */
 extern int f_size;		/* list size in short listing */
 extern int f_slash;		/* append a '/' if the file is a directory */
-extern int f_sortacross;	/* sort across rows, not down columns */ 
+extern int f_sortacross;	/* sort across rows, not down columns */
 extern int f_statustime;	/* use time of last mode change */
 extern int f_notabs;		/* don't use tab-separated multi-col output */
 extern int f_type;		/* add type character for non-regular files */
