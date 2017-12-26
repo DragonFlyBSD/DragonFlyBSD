@@ -45,6 +45,7 @@ extern int f_inode;		/* print inode */
 extern int f_longform;		/* long listing format */
 extern int f_octal;		/* print unprintables in octal */
 extern int f_octal_escape;	/* like f_octal but use C escapes if possible */
+extern int f_nanotime;		/* include nanotime in long format */
 extern int f_nonprint;		/* show unprintables as ? */
 extern int f_sectime;		/* print the real time for all files */
 extern int f_size;		/* list size in short listing */

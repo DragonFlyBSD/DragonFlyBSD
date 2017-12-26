@@ -58,7 +58,7 @@
 
 static int	printaname(const FTSENT *, u_long, u_long);
 static void	printlink(const FTSENT *);
-static void	printtime(time_t);
+static void	printtime(const struct timespec);
 static int	printtype(u_int);
 static void	printsize(size_t, off_t);
 #ifdef COLORLS
@@ -166,11 +166,11 @@ printlong(const DISPLAY *dp)
 		else
 			printsize(dp->s_size, sp->st_size);
 		if (f_accesstime)
-			printtime(sp->st_atime);
+			printtime(sp->st_atim);
 		else if (f_statustime)
-			printtime(sp->st_ctime);
+			printtime(sp->st_ctim);
 		else
-			printtime(sp->st_mtime);
+			printtime(sp->st_mtim);
 		putchar(' ');
 #ifdef COLORLS
 		if (f_color)
@@ -346,10 +346,11 @@ printaname(const FTSENT *p, u_long inodefield, u_long sizefield)
 }
 
 static void
-printtime(time_t ftime)
+printtime(const struct timespec stt)
 {
 	char longstring[80];
 	static time_t now;
+	const struct tm *ptime;
 	const char *format;
 	static char *lc_time;
 	static int posix_time;
@@ -384,7 +385,7 @@ printtime(time_t ftime)
 		 *        If file was modified within the past 6 months,
 		 *        return equivalent of: date "+%b %e %H:%M"
 		 */
-		if ((ftime > now) || (ftime < now - SIXMONTHS))
+		if ((stt.tv_sec > now) || (stt.tv_sec < now - SIXMONTHS))
 			format = "%b %e  %Y";
 		else
 			format = "%b %e %R";
@@ -396,9 +397,18 @@ printtime(time_t ftime)
 		format = "%d-%b-%Y %H:%M";
 	}
 
-	strftime_l(longstring, sizeof(longstring), format, localtime(&ftime),
-            NULL);
+	/*
+	 * If printing the nanotime field, always use GMT time
+	 */
+	if (f_nanotime)
+		ptime = gmtime(&(stt.tv_sec));
+	else
+		ptime = localtime(&(stt.tv_sec));
+
+	strftime_l(longstring, sizeof(longstring), format, ptime, NULL);
 	fputs(longstring, stdout);
+	if (f_nanotime)
+		printf(".%09ju", stt.tv_nsec);
 }
 
 static int

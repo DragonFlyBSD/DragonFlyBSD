@@ -101,6 +101,7 @@ static int f_kblocks;		/* print size in kilobytes */
 static int f_listdir;		/* list actual directory, not contents */
 static int f_listdot;		/* list files beginning with . */
        int f_longform;		/* long listing format */
+       int f_nanotime;		/* include nanotime in long format */
        int f_nonprint;		/* show unprintables as ? */
 static int f_nosort;		/* don't sort output */
        int f_notabs;		/* don't use tab-separated multi-col output */
@@ -140,6 +141,7 @@ main(int argc, char *argv[])
 	struct winsize win;
 	int ch, fts_options, notused;
 	char *p;
+	const char nanotime_format[] = "%Y-%m-%d %H:%M:%S";
 #ifdef COLORLS
 	char termcapbuf[1024];	/* termcap definition buffer */
 	char tcapbuf[512];	/* capability buffer */
@@ -173,7 +175,7 @@ main(int argc, char *argv[])
 
 	fts_options = FTS_PHYSICAL;
 	while ((ch = getopt(argc, argv,
-	    "1ABCD:FGHILPRSTWabcdfghiklmnopqrstuwxy")) != -1) {
+	    "1ABCD:FGHILPRSTW_abcdfghiklmnopqrstuwxy")) != -1) {
 		switch (ch) {
 		/*
 		 * The -1, -C, -x and -l options all override each other so
@@ -321,6 +323,10 @@ main(int argc, char *argv[])
 			f_nonprint = 0;
 			f_octal = 0;
 			f_octal_escape = 0;
+			break;
+		case '_':
+			f_nanotime = 1;
+			f_timeformat = nanotime_format;
 			break;
 		default:
 		case '?':

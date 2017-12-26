@@ -39,7 +39,7 @@
 .Nd list directory contents
 .Sh SYNOPSIS
 .Nm
-.Op Fl 1ABCFGHILPRSTWabcdfghiklmnopqrstuwxy
+.Op Fl 1ABCFGHILPRSTW_abcdfghiklmnopqrstuwxy
 .Op Fl D Ar format
 .Op Ar
 .Sh DESCRIPTION
@@ -291,6 +291,10 @@ Force output to be
 one entry per line.
 This is the default when
 output is not to a terminal.
+.It Fl _
+(underscore) When printing in the long
+.Pq Fl l
+format, use GMT based date and time output with nanotime timestamp.
 .El
 .Pp
 The
@@ -668,6 +672,8 @@ utility conforms to
 .St -p1003.1-2001 .
 The options
 .Fl B , D , G , I , T , W , b , h , w , y
+and
+.Fl _
 are compatible extensions not defined in
 .St -p1003.1-2001 .
 .Sh HISTORY
