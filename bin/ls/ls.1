@@ -40,6 +40,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl 1ABCFGHILPRSTWabcdfghiklmnopqrstuwxy
+.Op Fl D Ar format
 .Op Ar
 .Sh DESCRIPTION
 For each operand that names a
@@ -81,6 +82,21 @@ where
 is the numeric value of the character in octal.
 .It Fl C
 Force multi-column output; this is the default when output is to a terminal.
+.It Fl D Ar format
+When printing in the long
+.Pq Fl l
+format, use
+.Ar format
+to format the date and time output.
+The argument
+.Ar format
+is a string used by
+.Xr strftime 3 .
+Depending on the choice of format string, this may result in a
+different number of columns in the output.
+This option overrides the
+.Fl T
+option.
 .It Fl F
 Display a slash
 .Pq Ql /
@@ -649,6 +665,10 @@ and
 the
 .Nm
 utility conforms to
+.St -p1003.1-2001 .
+The options
+.Fl B , D , G , I , T , W , b , h , w , y
+are compatible extensions not defined in
 .St -p1003.1-2001 .
 .Sh HISTORY
 An

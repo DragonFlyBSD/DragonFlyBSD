@@ -364,7 +364,12 @@ printtime(time_t ftime)
 		posix_time = (strcmp(lc_time, "C") == 0);
 	}
 
-	if (f_sectime) {
+	if (f_timeformat) {
+		/*
+		 * User specified format
+		 */
+		format = f_timeformat;
+	} else if (f_sectime) {
 		/*
 		 * POSIX: Not covered by standard.  If C/POSIX locale used
 		 *        the old convention of mmm dd hh:mm:ss yyyy is kept.

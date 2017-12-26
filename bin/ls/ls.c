@@ -117,6 +117,7 @@ static int f_singlecol;		/* use single column output */
        int f_sortacross;	/* sort across rows, not down columns */
        int f_statustime;	/* use time of last mode change */
 static int f_stream;		/* stream the output, separate with commas */
+       const char *f_timeformat;	/* user-specified time format */
 static int f_timesort;		/* sort by time vice name */
        int f_type;		/* add type character for non-regular files */
 static int f_whiteout;		/* show whiteout entries */
@@ -172,7 +173,7 @@ main(int argc, char *argv[])
 
 	fts_options = FTS_PHYSICAL;
 	while ((ch = getopt(argc, argv,
-	    "1ABCFGHILPRSTWabcdfghiklmnopqrstuwxy")) != -1) {
+	    "1ABCD:FGHILPRSTWabcdfghiklmnopqrstuwxy")) != -1) {
 		switch (ch) {
 		/*
 		 * The -1, -C, -x and -l options all override each other so
@@ -214,6 +215,9 @@ main(int argc, char *argv[])
 		case 'u':
 			f_accesstime = 1;
 			f_statustime = 0;
+			break;
+		case 'D':
+			f_timeformat = optarg;
 			break;
 		case 'F':
 			f_type = 1;
