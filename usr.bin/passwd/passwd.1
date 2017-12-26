@@ -104,7 +104,7 @@ capability in the user's login class.
 .Pp
 To change another user's Kerberos password, one must first
 run
-.Xr kinit 1
+.Xr kinit 1 Pq Pa security/heimdal
 followed by
 .Nm .
 The super-user is not required to provide a user's current password
@@ -228,12 +228,12 @@ configure authentication services
 .El
 .Sh SEE ALSO
 .Xr chpass 1 ,
-.Xr kinit 1 ,
+.Xr kinit 1 Pq Pa security/heimdal ,
 .Xr login 1 ,
 .Xr login.conf 5 ,
 .Xr passwd 5 ,
-.Xr kerberos 8 ,
-.Xr kpasswdd 8 ,
+.Xr kerberos 8 Pq Pa security/heimdal ,
+.Xr kpasswdd 8 Pq Pa security/heimdal ,
 .Xr pw 8 ,
 .Xr pwd_mkdb 8 ,
 .Xr vipw 8

@@ -183,7 +183,7 @@ for the staff accounts.  This way an intruder may be able to steal the password
 file but will not be able to break into any staff accounts (or, indirectly,
 root, even if root has a crypted password associated with it).  Staff members
 get into their staff accounts through a secure login mechanism such as
-.Xr kerberos 8
+.Xr kerberos 8 Pq Pa security/heimdal
 or
 .Xr ssh 1
 using a private/public
@@ -670,7 +670,7 @@ machines.
 .Xr firewall 7 ,
 .Xr accton 8 ,
 .Xr init 8 ,
-.Xr kerberos 8 ,
+.Xr kerberos 8 Pq Pa security/heimdal ,
 .Xr sshd 8 ,
 .Xr sysctl 8 ,
 .Xr syslogd 8 ,
