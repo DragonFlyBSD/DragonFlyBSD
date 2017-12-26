@@ -34,8 +34,8 @@ SUBDIR=
 SUBDIR+= libexec
 .endif
 
-# We must do include and lib early so that the perl *.ph generation
-# works correctly as it uses the header files installed by this.
+# We need to do include and lib early.
+#
 .if exists(${.CURDIR}/include)
 SUBDIR+= include
 .endif
@@ -43,7 +43,7 @@ SUBDIR+= include
 SUBDIR+= lib
 .endif
 # This exists simply to ensure that the obj dir hierarchy is
-# intact for nrelease, allowing the nrelease Makefile's to 
+# intact for nrelease, allowing the nrelease Makefile's to
 # reference ${.OBJDIR}.
 #
 .if exists(${.CURDIR}/nrelease)
@@ -266,7 +266,7 @@ TMAKE=		${TMAKEENV} make -f Makefile.inc1 -DBOOTSTRAPPING \
 # cross-tool stage
 #
 # note: TOOLS_PREFIX points to the obj root holding the cross
-#	compiler binaries, while USRDATA_PREFIX points to the obj root 
+#	compiler binaries, while USRDATA_PREFIX points to the obj root
 #	holding the target environment (and also determines where cross-built
 #	libraries, crt*.o, and include files are installed).
 #
@@ -569,7 +569,7 @@ reinstall:
 # for building kernels and only the first of these is designated
 # as the one being installed.
 #
-# You can specify INSTALLSTRIPPED=1 if you wish the installed 
+# You can specify INSTALLSTRIPPED=1 if you wish the installed
 # kernel and modules to be stripped of its debug info (required
 # symbols are left intact).  You can specify INSTALLSTRIPPEDMODULES
 # if you only want to strip the modules of their debug info.  These
