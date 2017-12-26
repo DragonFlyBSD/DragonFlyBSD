@@ -31,7 +31,7 @@
 .\"     @(#)ls.1	8.7 (Berkeley) 7/29/94
 .\" $FreeBSD: src/bin/ls/ls.1,v 1.86 2005/02/13 22:25:09 ru Exp $
 .\"
-.Dd December 8, 2015
+.Dd December 26, 2017
 .Dt LS 1
 .Os
 .Sh NAME
@@ -39,7 +39,7 @@
 .Nd list directory contents
 .Sh SYNOPSIS
 .Nm
-.Op Fl ABCFGHILPRTWabcdfghiklmnopqrstuwxy1
+.Op Fl 1ABCFGHILPRSTWabcdfghiklmnopqrstuwxy
 .Op Ar
 .Sh DESCRIPTION
 For each operand that names a
@@ -107,6 +107,8 @@ This option is equivalent to defining
 .Ev CLICOLOR
 in the environment.
 (See below.)
+This functionality can be compiled out by removing the definition of
+.Ev COLORLS .
 .It Fl H
 Symbolic links on the command line are followed.
 This option is assumed if
@@ -488,7 +490,7 @@ variable is defined.
 .It Ev CLICOLOR_FORCE
 Color sequences are normally disabled if the output is not directed to
 a terminal.
-This can be overridden by setting this flag.
+This can be overridden by setting this variable.
 The
 .Ev TERM
 variable still needs to reference a color capable terminal however
@@ -634,6 +636,7 @@ specification.
 .Xr chmod 1 ,
 .Xr sort 1 ,
 .Xr xterm 1 Pq Pa x11/xterm ,
+.Xr strftime 3 ,
 .Xr termcap 5 ,
 .Xr symlink 7 ,
 .Xr sticky 8

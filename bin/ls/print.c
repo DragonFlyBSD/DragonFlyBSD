@@ -171,6 +171,7 @@ printlong(const DISPLAY *dp)
 			printtime(sp->st_ctime);
 		else
 			printtime(sp->st_mtime);
+		putchar(' ');
 #ifdef COLORLS
 		if (f_color)
 			color_printed = colortype(sp->st_mode);
@@ -370,7 +371,7 @@ printtime(time_t ftime)
 		 * Named locales use the extended ISO 8601 format without T:
 		 *        YYYY-DD-MM hh:mm:ss
 		 */
-		format = posix_time ? "%b %e %T %Y " : "%F %T ";
+		format = posix_time ? "%b %e %T %Y" : "%F %T";
 	} else if (posix_time) {
 		/*
 		 * POSIX: Future or older than 6 months returns equivalent of
@@ -379,15 +380,15 @@ printtime(time_t ftime)
 		 *        return equivalent of: date "+%b %e %H:%M"
 		 */
 		if ((ftime > now) || (ftime < now - SIXMONTHS))
-			format = "%b %e  %Y ";
+			format = "%b %e  %Y";
 		else
-			format = "%b %e %R ";
+			format = "%b %e %R";
 	} else {
 		/*
 		 * Named locales use format DD-MMM-YYYY hh:mm
 		 * Regardless of locale, English is used for month field
 		 */
-		format = "%d-%b-%Y %H:%M ";
+		format = "%d-%b-%Y %H:%M";
 	}
 
 	strftime_l(longstring, sizeof(longstring), format, localtime(&ftime),

@@ -172,7 +172,7 @@ main(int argc, char *argv[])
 
 	fts_options = FTS_PHYSICAL;
 	while ((ch = getopt(argc, argv,
-	    "1ABCFGHILPSRTWabcdfghiklmnopqrstuwxy")) != -1) {
+	    "1ABCFGHILPRSTWabcdfghiklmnopqrstuwxy")) != -1) {
 		switch (ch) {
 		/*
 		 * The -1, -C, -x and -l options all override each other so
