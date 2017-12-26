@@ -456,7 +456,8 @@ soclose(struct socket *so, int fflag)
 	if (!use_soclose_fast ||
 	    (so->so_proto->pr_flags & PR_SYNC_PORT) ||
 	    ((so->so_state & SS_ISCONNECTED) &&
-	     (so->so_options & SO_LINGER))) {
+	     (so->so_options & SO_LINGER) &&
+	     so->so_linger != 0)) {
 		error = soclose_sync(so, fflag);
 	} else {
 		soclose_fast(so);
