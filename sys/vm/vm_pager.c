@@ -191,11 +191,11 @@ static int pbuf_raw_count;
 static int pbuf_kva_count;
 static int pbuf_mem_count;
 
-SYSCTL_INT(_vfs, OID_AUTO, pbuf_raw_count, CTLFLAG_RD, &pbuf_raw_count, 0,
+SYSCTL_INT(_vm, OID_AUTO, pbuf_raw_count, CTLFLAG_RD, &pbuf_raw_count, 0,
     "Kernel pbuf raw reservations");
-SYSCTL_INT(_vfs, OID_AUTO, pbuf_kva_count, CTLFLAG_RD, &pbuf_kva_count, 0,
+SYSCTL_INT(_vm, OID_AUTO, pbuf_kva_count, CTLFLAG_RD, &pbuf_kva_count, 0,
     "Kernel pbuf kva reservations");
-SYSCTL_INT(_vfs, OID_AUTO, pbuf_mem_count, CTLFLAG_RD, &pbuf_mem_count, 0,
+SYSCTL_INT(_vm, OID_AUTO, pbuf_mem_count, CTLFLAG_RD, &pbuf_mem_count, 0,
     "Kernel pbuf mem reservations");
 
 /*
