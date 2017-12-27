@@ -990,6 +990,15 @@ _slaballoc(size_t size, int flags)
 		 * (don't count as excess).
 		 */
 		size = (size + PAGE_MASK) & ~(size_t)PAGE_MASK;
+
+		/*
+		 * If we have overflown above when rounding to the page
+		 * boundary, something has passed us (size_t)[-PAGE_MASK..-1]
+		 * so just return NULL, size at this point should be >= 0.
+		*/
+		if (size == 0)
+			return (NULL);
+
 		if ((size & (PAGE_SIZE * 2 - 1)) == 0)
 			size += PAGE_SIZE;
 
