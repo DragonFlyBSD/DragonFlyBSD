@@ -128,7 +128,6 @@ vm_page_t bogus_page;
  */
 long bufspace;			/* atomic ops */
 long maxbufspace;
-static long bufmallocspace;	/* atomic ops */
 long maxbufmallocspace, lobufspace, hibufspace;
 static long lorunningspace;
 static long hirunningspace;
@@ -142,7 +141,6 @@ static long runningbufcount;		/* atomic */
 long lodirtybufspace;
 long hidirtybufspace;
 static int getnewbufcalls;
-static int recoverbufcalls;
 static int needsbuffer;			/* atomic */
 static int runningbufreq;		/* atomic */
 static int bd_request;			/* atomic */
@@ -158,7 +156,6 @@ static long bufcache_bw = 200 * 1024 * 1024;
 static struct thread *bufdaemon_td;
 static struct thread *bufdaemonhw_td;
 static u_int lowmempgallocs;
-static u_int lowmempgfails;
 static u_int flushperqueue = 1024;
 
 /*
@@ -178,8 +175,6 @@ SYSCTL_LONG(_vfs, OID_AUTO, bufcache_bw, CTLFLAG_RW, &bufcache_bw, 0,
 	"Buffer-cache -> VM page cache transfer bandwidth");
 SYSCTL_UINT(_vfs, OID_AUTO, lowmempgallocs, CTLFLAG_RW, &lowmempgallocs, 0,
 	"Page allocations done during periods of very low free memory");
-SYSCTL_UINT(_vfs, OID_AUTO, lowmempgfails, CTLFLAG_RW, &lowmempgfails, 0,
-	"Page allocations which failed during periods of very low free memory");
 SYSCTL_UINT(_vfs, OID_AUTO, vm_cycle_point, CTLFLAG_RW, &vm_cycle_point, 0,
 	"Recycle pages to active or inactive queue transition pt 0-64");
 /*
@@ -211,12 +206,8 @@ SYSCTL_LONG(_vfs, OID_AUTO, bufspace, CTLFLAG_RD, &bufspace, 0,
 	"Amount of memory available for buffers");
 SYSCTL_LONG(_vfs, OID_AUTO, maxmallocbufspace, CTLFLAG_RD, &maxbufmallocspace,
 	0, "Maximum amount of memory reserved for buffers using malloc");
-SYSCTL_LONG(_vfs, OID_AUTO, bufmallocspace, CTLFLAG_RD, &bufmallocspace, 0,
-	"Amount of memory left for buffers using malloc-scheme");
 SYSCTL_INT(_vfs, OID_AUTO, getnewbufcalls, CTLFLAG_RD, &getnewbufcalls, 0,
 	"New buffer header acquisition requests");
-SYSCTL_INT(_vfs, OID_AUTO, recoverbufcalls, CTLFLAG_RD, &recoverbufcalls, 0,
-	"Recover VM space in an emergency");
 SYSCTL_INT(_vfs, OID_AUTO, debug_commit, CTLFLAG_RW, &debug_commit, 0, "");
 SYSCTL_INT(_vfs, OID_AUTO, debug_bufbio, CTLFLAG_RW, &debug_bufbio, 0, "");
 SYSCTL_INT(_vfs, OID_AUTO, debug_kvabio, CTLFLAG_RW, &debug_kvabio, 0, "");
