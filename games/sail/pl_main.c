@@ -37,7 +37,7 @@
 static void initialize(void);
 
 /*ARGSUSED*/
-int
+void
 pl_main(void)
 {
 
@@ -48,7 +48,6 @@ pl_main(void)
 	initialize();
 	Signal("Aye aye, Sir", NULL);
 	play();
-	return 0;			/* for lint,  play() never returns */
 }
 
 static void

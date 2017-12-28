@@ -400,7 +400,7 @@ void leftview(void);
 void rightview(void);
 
 /* pl_main.c */
-int pl_main(void);
+void pl_main(void);
 
 /* sync.c */
 void fmtship(char *, size_t, const char *, struct ship *);

@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/main.c,v 1.5 1999/11/30 03:49:34 billf Exp $
- * $DragonFly: src/games/sail/main.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "externs.h"
@@ -86,7 +85,7 @@ main(int argc __unused, char **argv)
 
 	switch (mode) {
 	case MODE_PLAYER:
-		return pl_main();
+		pl_main();
 	case MODE_DRIVER:
 		return dr_main();
 	case MODE_LOGGER:
