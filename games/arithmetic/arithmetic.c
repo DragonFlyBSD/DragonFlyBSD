@@ -71,21 +71,21 @@
 #include <time.h>
 #include <unistd.h>
 
-int getrandom(int, int, int);
-void intr(int);
-int opnum(int);
-void penalise(int, int, int);
-int problem(void);
-void showstats(void);
+static int getrandom(int, int, int);
+static void intr(int);
+static int opnum(int);
+static void penalise(int, int, int);
+static int problem(void);
+static void showstats(void);
 static void usage(void);
 
-const char keylist[] = "+-x/";
-const char defaultkeys[] = "+-";
-const char *keys = defaultkeys;
-int nkeys = sizeof(defaultkeys) - 1;
-int rangemax = 10;
-int nright, nwrong;
-time_t qtime;
+static const char keylist[] = "+-x/";
+static const char defaultkeys[] = "+-";
+static const char *keys = defaultkeys;
+static int nkeys = sizeof(defaultkeys) - 1;
+static int rangemax = 10;
+static int nright, nwrong;
+static time_t qtime;
 #define	NQUESTS	20
 
 /*
@@ -147,7 +147,7 @@ main(int argc, char *argv[])
 }
 
 /* Handle interrupt character.  Print score and exit. */
-void
+static void
 intr(__unused int sig)
 {
 	showstats();
@@ -155,7 +155,7 @@ intr(__unused int sig)
 }
 
 /* Print score.  Original `arithmetic' had a delay after printing it. */
-void
+static void
 showstats(void)
 {
 	if (nright + nwrong > 0) {
@@ -176,7 +176,7 @@ showstats(void)
  * answer causes the numbers in the problem to be penalised, so that they are
  * more likely to appear in subsequent problems.
  */
-int
+static int
 problem(void)
 {
 	char *p;
@@ -278,8 +278,8 @@ retry:
  * penalties themselves.
  */
 
-int penalty[sizeof(keylist) - 1][2];
-struct penalty {
+static int penalty[sizeof(keylist) - 1][2];
+static struct penalty {
 	int value, penalty;	/* Penalised value and its penalty. */
 	struct penalty *next;
 } *penlist[sizeof(keylist) - 1][2];
@@ -291,7 +291,7 @@ struct penalty {
  * operand number `operand' (0 or 1).  If we run out of memory, we just
  * forget about the penalty (how likely is this, anyway?).
  */
-void
+static void
 penalise(int value, int op, int operand)
 {
 	struct penalty *p;
@@ -311,7 +311,7 @@ penalise(int value, int op, int operand)
  * as a value, or represents a position in the penalty list.  If the latter,
  * we find the corresponding value and return that, decreasing its penalty.
  */
-int
+static int
 getrandom(int maxval, int op, int operand)
 {
 	int value;
@@ -356,7 +356,7 @@ getrandom(int maxval, int op, int operand)
 }
 
 /* Return an index for the character op, which is one of [+-x/]. */
-int
+static int
 opnum(int op)
 {
 	char *p;
