@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)worm.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/worm/worm.c,v 1.9 1999/12/07 02:01:27 billf Exp $
- * $DragonFly: src/games/worm/worm.c,v 1.5 2006/09/07 21:28:27 pavalos Exp $
  */
 
 /*
@@ -51,33 +50,33 @@
 #define RUNLEN 8
 #define CNTRL(p) (p-'A'+1)
 
-WINDOW *tv;
-WINDOW *stw;
-struct body {
+static WINDOW *tv;
+static WINDOW *stw;
+static struct body {
 	int x;
 	int y;
 	struct body *prev;
 	struct body *next;
 } *head, *tail, goody;
-int growing = 0;
-int running = 0;
-int slow = 0;
-int score = 0;
-int start_len = LENGTH;
-char lastch;
-char outbuf[BUFSIZ];
+static int growing = 0;
+static int running = 0;
+static int slow = 0;
+static int score = 0;
+static int start_len = LENGTH;
+static char lastch;
+static char outbuf[BUFSIZ];
 
-void crash(void);
-void display(struct body *, char);
-void leave(int);
-void life(void);
-void newpos(struct body *);
-void prize(void);
-void process(char);
-long rnd(int);
-void setup(void);
-void suspend(int);
-void wake(int);
+static void crash(void);
+static void display(struct body *, char);
+static void leave(int);
+static void life(void);
+static void newpos(struct body *);
+static void prize(void);
+static void process(char);
+static long rnd(int);
+static void setup(void);
+static void suspend(int);
+static void wake(int);
 
 int
 main(int argc, char **argv)
@@ -130,7 +129,7 @@ main(int argc, char **argv)
 	}
 }
 
-void
+static void
 life(void)
 {
 	struct body *bp, *np;
@@ -154,21 +153,21 @@ life(void)
 	tail->prev = NULL;
 }
 
-void
+static void
 display(struct body *pos, char chr)
 {
 	wmove(tv, pos->y, pos->x);
 	waddch(tv, chr);
 }
 
-void
+static void
 leave(int sig __unused)
 {
 	endwin();
 	exit(0);
 }
 
-void
+static void
 wake(int sig __unused)
 {
 	signal(SIGALRM, wake);
@@ -176,13 +175,13 @@ wake(int sig __unused)
 	process(lastch);
 }
 
-long
+static long
 rnd(int range)
 {
 	return (random() % range);
 }
 
-void
+static void
 newpos(struct body *bp)
 {
 	do {
@@ -192,7 +191,7 @@ newpos(struct body *bp)
 	} while(winch(tv) != ' ');
 }
 
-void
+static void
 prize(void)
 {
 	int value;
@@ -203,7 +202,7 @@ prize(void)
 	wrefresh(tv);
 }
 
-void
+static void
 process(char ch)
 {
 	int x,y;
@@ -224,8 +223,8 @@ process(char ch)
 		case 'L': x++; running = RUNLEN; ch = tolower(ch); break;
 		case '\f': setup(); return;
 		case CNTRL('Z'): suspend(0); return;
-		case CNTRL('C'): crash(); return;
-		case CNTRL('D'): crash(); return;
+		case CNTRL('C'): crash();
+		case CNTRL('D'): crash();
 		default: if (! running) alarm(1);
 			   return;
 	}
@@ -266,7 +265,7 @@ process(char ch)
 		alarm(1);
 }
 
-void
+static void
 crash(void)
 {
 	sleep(2);
@@ -278,7 +277,7 @@ crash(void)
 	leave(0);
 }
 
-void
+static void
 suspend(int sig __unused)
 {
 	move(LINES-1, 0);
@@ -292,7 +291,7 @@ suspend(int sig __unused)
 	setup();
 }
 
-void
+static void
 setup(void)
 {
 	clear();
