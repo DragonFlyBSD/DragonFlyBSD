@@ -39,8 +39,8 @@
 #include <string.h>
 #include <unistd.h>
 
-void pigout (char *, int);
-void usage (void);
+static void pigout(char *, int);
+static void usage(void);
 
 int
 main(int argc, char **argv)
@@ -76,7 +76,7 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-void
+static void
 pigout(char *buf, int len)
 {
 	int ch, start;
@@ -105,7 +105,7 @@ pigout(char *buf, int len)
 	printf("%.*say", olen, buf + start);
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "usage: pig\n");
