@@ -28,7 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/lib/libc/locale/wcstof.c 227753 2011-11-20 14:45:42Z theraven $
+ * $FreeBSD: head/lib/libc/locale/wcstof.c 326193 2017-11-25 17:12:48Z pfg $
  */
 
 
@@ -50,27 +50,37 @@ wcstof_l(const wchar_t * __restrict nptr, wchar_t ** __restrict endptr,
 	char *buf, *end;
 	const wchar_t *wcp;
 	size_t len;
+	size_t spaces;
 	FIX_LOCALE(locale);
 
-	while (iswspace_l(*nptr, locale))
-		nptr++;
-
 	wcp = nptr;
+	spaces = 0;
+	while (iswspace_l(*wcp, locale)) {
+		wcp++;
+		spaces++;
+	}
+
 	mbs = initial;
 	if ((len = wcsrtombs_l(NULL, &wcp, 0, &mbs, locale)) == (size_t)-1) {
 		if (endptr != NULL)
 			*endptr = (wchar_t *)nptr;
 		return (0.0);
 	}
-	if ((buf = malloc(len + 1)) == NULL)
+	if ((buf = malloc(len + 1)) == NULL) {
+		if (endptr != NULL)
+			*endptr = (wchar_t *)nptr;
 		return (0.0);
+	}
 	mbs = initial;
 	wcsrtombs_l(buf, &wcp, len + 1, &mbs, locale);
 
 	val = strtof_l(buf, &end, locale);
 
-	if (endptr != NULL)
+	if (endptr != NULL) {
 		*endptr = (wchar_t *)nptr + (end - buf);
+		if (buf != end)
+			*endptr += spaces;
+	}
 
 	free(buf);
 
