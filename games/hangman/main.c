@@ -33,7 +33,7 @@
 #include "hangman.h"
 #include <paths.h>
 
-void usage(void);
+void usage(void) __dead2;
 
 /*
  * This game written by Ken Arnold.
@@ -93,7 +93,7 @@ die(int sig __unused)
 	exit(0);
 }
 
-__dead2 void
+void
 usage(void)
 {
 	fprintf(stderr, "usage: hangman [-k] [-d wordlist]\n");
