@@ -164,10 +164,10 @@ static struct	worm {
 	short *xpos, *ypos;
 } *worm;
 
-volatile sig_atomic_t sig_caught = 0;
+static volatile sig_atomic_t sig_caught = 0;
 
-void nomem(void);
-void onsig(int);
+static void nomem(void);
+static void onsig(int);
 
 int
 main(int argc, char **argv)
@@ -318,13 +318,13 @@ main(int argc, char **argv)
 	}
 }
 
-void
+static void
 onsig(int signo __unused)
 {
 	sig_caught = 1;
 }
 
-void
+static void
 nomem(void)
 {
 	errx(1, "not enough memory.");
