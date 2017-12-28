@@ -353,12 +353,12 @@ bool boarding(struct ship *, char);
 void unboard(struct ship *, struct ship *, char);
 
 /* pl_1.c */
-void leave(int);
-void choke(int);
+void leave(int) __dead2;
+void choke(int) __dead2;
 void child(int);
 
 /* pl_2.c */
-void play(void);
+void play(void) __dead2;
 
 /* pl_3.c */
 void acceptcombat(void);
@@ -400,7 +400,7 @@ void leftview(void);
 void rightview(void);
 
 /* pl_main.c */
-void pl_main(void);
+void pl_main(void) __dead2;
 
 /* sync.c */
 void fmtship(char *, size_t, const char *, struct ship *);

@@ -174,4 +174,4 @@ extern int	classic;
 
 int fits_in(const struct shape *, int);
 void place(const struct shape *, int, int);
-void stop(const char *);
+void stop(const char *) __dead2;

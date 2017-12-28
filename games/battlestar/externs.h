@@ -29,7 +29,6 @@
  *	@(#)externs.h	8.1 (Berkeley) 5/31/93
  *
  *	$FreeBSD: src/games/battlestar/externs.h,v 1.9.2.1 2001/03/05 11:45:36 kris Exp $
- *	$DragonFly: src/games/battlestar/externs.h,v 1.4 2006/08/08 16:47:20 pavalos Exp $
  */
 
 #include <errno.h>
@@ -313,7 +312,7 @@ int card(const char *, int);
 void chime(void);
 void crash(void);
 int cypher(void);
-void die(int);
+void die(int) __dead2;
 void dig(void);
 int draw(void);
 void drink(void);
@@ -331,7 +330,7 @@ void kiss(void);
 int land(void);
 int launch(void);
 void light(void);
-void live(void);
+void live(void) __dead2;
 void love(void);
 void murder(void);
 void news(void);

@@ -29,7 +29,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $OpenBSD: client.h,v 1.4 2003/06/17 00:44:21 pjanzen Exp $
- * $DragonFly: src/games/hunt/hunt/client.h,v 1.1 2008/09/02 21:50:20 dillon Exp $
  */
 
 /* hunt.c */
@@ -39,8 +38,8 @@ extern char *	Send_message;		/* -w message */
 extern int	Socket;			/* connection to server */
 extern char     map_key[256];		/* HUNT envvar */
 
-void	bad_con(void);
-void	bad_ver(void);
+void	bad_con(void) __dead2;
+void	bad_ver(void) __dead2;
 void	intr(int);
 
 /* connect.c */

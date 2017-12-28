@@ -14,7 +14,7 @@ extern	void	leavegame(void);
 /* phantglobs.c */
 extern	double	drandom(void);
 
-void	catchalarm(int);
+void	catchalarm(int) __dead2;
 int	getanswer(const char *, bool);
 void	getstring(char *, int);
 double	infloat(void);

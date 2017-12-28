@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  *	@(#)cribbage.h	8.1 (Berkeley) 5/31/93
- * $DragonFly: src/games/cribbage/cribbage.h,v 1.3 2005/08/03 13:31:00 eirikn Exp $
  */
 
 
@@ -71,7 +70,7 @@ char	*get_line(void);
 int	 getuchar(void);
 int	 infrom(CARD [], int, const char *);
 void	 instructions(void);
-void	 intr(int);
+void	 intr(int) __dead2;
 bool	 isone(CARD, CARD [], int);
 void	 makedeck(CARD []);
 void	 makeknown(CARD [], int);

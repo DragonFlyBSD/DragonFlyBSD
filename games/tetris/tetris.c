@@ -62,7 +62,7 @@ char	key_msg[100];
 int	showpreview, classic;
 
 static void elide(void);
-void onintr(int __unused);
+__dead2 void onintr(int __unused);
 const struct shape *randshape(void);
 static void setup_board(void);
 __dead2 void usage(void);

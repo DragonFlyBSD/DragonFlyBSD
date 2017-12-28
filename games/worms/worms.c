@@ -166,7 +166,7 @@ static struct	worm {
 
 static volatile sig_atomic_t sig_caught = 0;
 
-static void nomem(void);
+static void nomem(void) __dead2;
 static void onsig(int);
 
 int

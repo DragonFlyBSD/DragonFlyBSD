@@ -66,9 +66,9 @@ static int start_len = LENGTH;
 static char lastch;
 static char outbuf[BUFSIZ];
 
-static void crash(void);
+static void crash(void) __dead2;
 static void display(struct body *, char);
-static void leave(int);
+static void leave(int) __dead2;
 static void life(void);
 static void newpos(struct body *);
 static void prize(void);

@@ -30,7 +30,6 @@
  *
  * $OpenBSD: server.h,v 1.9 2004/01/16 00:13:19 espie Exp $
  * $NetBSD: hunt.h,v 1.5 1998/09/13 15:27:28 hubertf Exp $
- * $DragonFly: src/games/hunt/huntd/server.h,v 1.1 2008/09/02 21:50:21 dillon Exp $
  */
 
 
@@ -233,7 +232,7 @@ void	message(PLAYER *, const char *);
 /* driver.c */
 int	rand_num(int);
 void	checkdam(PLAYER *, PLAYER *, IDENT *, int, char);
-void	cleanup(int);
+void	cleanup(int) __dead2;
 
 /* execute.c */
 void	mon_execute(PLAYER *);

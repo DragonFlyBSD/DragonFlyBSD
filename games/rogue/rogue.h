@@ -459,12 +459,12 @@ void	s_con_mon(object *);
 
 /* init.c */
 boolean	init(int, char**);
-void	clean_up(const char *);
+void	clean_up(const char *) __dead2;
 void	start_window(void);
 void	stop_window(void);
 void	byebye(int);
 void	onintr(int);
-void	error_save(int);
+void	error_save(int) __dead2;
 
 /* inventory.c */
 void	inventory(const object *, unsigned short);
@@ -503,7 +503,7 @@ const char	*md_gln(void);
 void	md_sleep(int);
 char	*md_getenv(const char *);
 char	*md_malloc(int);
-void	md_exit(int);
+void	md_exit(int) __dead2;
 void	md_lock(boolean);
 void	md_shell(const char *);
 #endif
@@ -627,10 +627,10 @@ void	save_into_file(const char *);
 void	restore(const char *);
 
 /* score.c */
-void	killed_by(const object *, short);
-void	win(void);
+void	killed_by(const object *, short) __dead2;
+void	win(void) __dead2;
 void	quit(boolean);
-void	put_scores(const object *, short);
+void	put_scores(const object *, short) __dead2;
 boolean	is_vowel(short);
 void	xxxx(char *, short);
 long	xxx(boolean);

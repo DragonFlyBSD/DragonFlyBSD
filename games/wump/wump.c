@@ -118,7 +118,7 @@ static void pit_survive(void);
 static int shoot(char *);
 static void shoot_self(void);
 static int take_action(void);
-static void usage(void);
+static void usage(void) __dead2;
 static void wump_kill(void);
 static int wump_nearby(void);
 

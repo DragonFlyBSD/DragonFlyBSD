@@ -67,7 +67,7 @@ extern void	ioclrtobot(void);
 extern void	ioclrtoeol(int);
 extern void	ioerror(int, int, const char *);
 extern void	iomove(int);
-extern void	loser(const PLANE *, const char *);
+extern void	loser(const PLANE *, const char *) __dead2;
 extern void	planewin(void);
 extern void	redraw(void);
 extern void	setup_screen(const C_SCREEN *);
@@ -81,7 +81,7 @@ extern void	delete(LIST *, PLANE *);
 extern PLANE	*newplane(void);
 /* log.c */
 extern int	log_score(int);
-extern void	log_score_quit(int);
+extern void	log_score_quit(int) __dead2;
 extern void	open_score_file(void);
 /* update.c */
 extern int	addplane(void);

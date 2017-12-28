@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/games/mille/mille.c,v 1.10 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/mille.c,v 1.5 2006/08/27 17:17:23 pavalos Exp $
  *
  * @(#) Copyright (c) 1982, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mille.c	8.1 (Berkeley) 5/31/93
@@ -42,7 +41,7 @@
  * @(#)mille.c	1.3 (Berkeley) 5/10/83
  */
 
-static void usage (void);
+static void usage (void) __dead2;
 
 int
 main(int ac, char *av[])

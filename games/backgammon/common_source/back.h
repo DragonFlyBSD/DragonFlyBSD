@@ -134,7 +134,7 @@ int	count(void);
 void	curmove(int, int);
 void	dble(void);
 int	dblgood(void);
-void	errexit(const char *);
+void	errexit(const char *) __dead2;
 void	fancyc(char);
 void	fboard(void);
 void	fixtty(int);
@@ -142,7 +142,7 @@ int	freemen(int);
 void	getarg(int, char **);
 int	getcaps(const char *);
 void	getmove(void);
-void	getout(int);		/* function to exit backgammon cleanly */
+void	getout(int) __dead2;	/* function to exit backgammon cleanly */
 void	gwrite(void);
 void	init(void);
 int	makmove(int);

@@ -72,12 +72,12 @@
 #include <unistd.h>
 
 static int getrandom(int, int, int);
-static void intr(int);
+static void intr(int) __dead2;
 static int opnum(int);
 static void penalise(int, int, int);
 static int problem(void);
 static void showstats(void);
-static void usage(void);
+static void usage(void) __dead2;
 
 static const char keylist[] = "+-x/";
 static const char defaultkeys[] = "+-";

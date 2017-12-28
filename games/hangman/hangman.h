@@ -91,7 +91,7 @@ extern int syms;
 extern int symfd;
 extern off_t symoffs, symsize;
 
-void	die(int);
+void	die(int) __dead2;
 void	endgame(void);
 void	getguess(void);
 void	getword(void);

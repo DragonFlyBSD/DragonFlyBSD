@@ -29,8 +29,10 @@
  *	@(#)tutor.h	8.1 (Berkeley) 5/31/93
  */
 
-void	leave(void);
-void	tutor(void);
+#include <sys/cdefs.h>
+
+void	leave(void) __dead2;
+void	tutor(void) __dead2;
 
 struct situatn  {
 	int	brd[26];

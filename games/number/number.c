@@ -68,7 +68,7 @@ static void	convert(char *);
 static int	number(char *, int);
 static void	pfract(int);
 static int	unit(int, char *);
-static void	usage(void);
+static void	usage(void) __dead2;
 
 static int lflag;
 

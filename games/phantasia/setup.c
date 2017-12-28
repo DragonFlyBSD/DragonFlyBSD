@@ -2,7 +2,6 @@
  * setup.c - set up all files for Phantasia
  *
  * $FreeBSD: src/games/phantasia/setup.c,v 1.11 1999/11/16 02:57:34 billf Exp $
- * $DragonFly: src/games/phantasia/setup.c,v 1.3 2005/05/31 00:06:26 swildner Exp $
  */
 #include "include.h"
 #include <sys/types.h>
@@ -13,7 +12,7 @@
 /* phantglobs.c */
 extern	double	drandom(void);
 
-void	Error(const char *, const char *);
+void	Error(const char *, const char *) __dead2;
 
 static const char *files[] = {		/* all files to create */
 	_SPATH_MONST,

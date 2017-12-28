@@ -1,5 +1,4 @@
 /*	header.h		Larn is copyrighted 1986 by Noah Morgan. */
-/* $DragonFly: src/games/larn/header.h,v 1.5 2006/08/26 17:05:05 pavalos Exp $ */
 
 #include <fcntl.h>
 #include <stdio.h>
@@ -357,7 +356,7 @@ extern struct _itm itm_[];
 extern const char *potionhide[], *potionname[], *scrollhide[], *scrollname[];
 
 /* bill.c */
-void	mailbill(void);
+void	mailbill(void) __dead2;
 
 /* create.c */
 void	makeplayer(void);

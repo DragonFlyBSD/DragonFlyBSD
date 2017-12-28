@@ -50,7 +50,6 @@
  * <URL:ftp://ftp.gmd.de/if-archive/games/source/advent-original.tar.gz>.
  *
  * $FreeBSD: src/games/adventure/hdr.h,v 1.5.2.1 2001/03/05 11:43:11 kris Exp $
- * $DragonFly: src/games/adventure/hdr.h,v 1.3 2004/09/12 17:19:58 dillon Exp $
  */
 
 /* hdr.h: included by c advent files */
@@ -157,7 +156,7 @@ int abbnum, bonus, clock1, clock2, closed,	/* various flags and counters */
 int demo, limit;
 
 int at(int objj);
-int bug(int n);
+int bug(int n) __dead2;
 void carry(int, int);
 void caveclose(void);
 void checkhints(void);
@@ -169,7 +168,7 @@ int dark(void);
 void datime(int *d, int *t);
 char *decr(const char *, const char *, const char *, const char *, const char *);
 void die(int entry);
-void done(int entry);
+void done(int entry) __dead2;
 void drop(int object, int where);
 void dstroy(int);
 int fdwarf(void);

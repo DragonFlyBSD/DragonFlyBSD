@@ -104,7 +104,7 @@ void make_level(void);
 void move_robots(int);
 void play_level(void);
 int query(const char *);
-void quit(int);
+void quit(int) __dead2;
 void reset_count(void);
 COORD *rnd_pos(void);
 void score(void);

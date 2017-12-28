@@ -29,7 +29,6 @@
  *	@(#)mille.h	8.1 (Berkeley) 5/31/93
  *
  * $FreeBSD: src/games/mille/mille.h,v 1.7 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/mille.h,v 1.6 2006/08/27 17:17:23 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -220,7 +219,7 @@ void	calcmove(void);
 bool	canplay(PLAY *, PLAY *, CARD);
 bool	check_ext(bool);
 void	check_more(void);
-void	die(int);
+void	die(int) __dead2;
 void	domove(void);
 bool	error(const char *, ...);
 #ifdef EXTRAP
