@@ -225,7 +225,7 @@ rangematch(const char *pattern, wchar_t test, int flags, char **newp,
 	 * consistency with the regular expression syntax.
 	 * J.T. Conklin (conklin@ngai.kaleida.com)
 	 */
-	if ( (negate = (*pattern == '!' || *pattern == '^')) )
+	if ((negate = (*pattern == '!' || *pattern == '^')))
 		++pattern;
 
 	if (flags & FNM_CASEFOLD)
@@ -273,8 +273,8 @@ rangematch(const char *pattern, wchar_t test, int flags, char **newp,
 
 			if (table->__collate_load_error ?
 			    c <= test && test <= c2 :
-			       __collate_range_cmp(table, c, test) <= 0
-			    && __collate_range_cmp(table, test, c2) <= 0
+			       __wcollate_range_cmp(c, test) <= 0
+			    && __wcollate_range_cmp(test, c2) <= 0
 			   )
 				ok = 1;
 		} else if (c == test)
