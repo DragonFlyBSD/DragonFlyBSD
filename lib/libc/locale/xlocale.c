@@ -66,10 +66,8 @@ int __has_thread_locale;
 /*
  * Private functions in setlocale.c.
  */
-const char *
-__get_locale_env(int category);
-int
-__detect_path_locale(void);
+const char * __get_locale_env(int category);
+int __detect_path_locale(void);
 
 struct _xlocale __xlocale_global_locale = {
 	{0},

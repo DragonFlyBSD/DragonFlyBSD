@@ -81,7 +81,7 @@ static char current_categories[_LC_LAST][ENCODING_LEN + 1] = {
 /*
  * Path to locale storage directory
  */
-char	*_PathLocale;
+char *_PathLocale;
 
 /*
  * The locales we are going to try and load
@@ -91,15 +91,15 @@ static char saved_categories[_LC_LAST][ENCODING_LEN + 1];
 
 static char current_locale_string[_LC_LAST * (ENCODING_LEN + 1/*"/"*/ + 1)];
 
-static char	*currentlocale(void);
-static char	*loadlocale(int);
+static char *currentlocale(void);
+static char *loadlocale(int);
 const char *__get_locale_env(int);
 
 char *
 setlocale(int category, const char *locale)
 {
 	int i, j, len, saverr;
-        const char *env, *r;
+	const char *env, *r;
 
 	if (category < LC_ALL || category >= _LC_LAST) {
 		errno = EINVAL;
@@ -160,7 +160,7 @@ setlocale(int category, const char *locale)
 			}
 			do {
 				if (i == _LC_LAST)
-					break;  /* Too many slashes... */
+					break;	/* Too many slashes... */
 				if ((len = r - locale) > ENCODING_LEN) {
 					errno = EINVAL;
 					return (NULL);
@@ -283,22 +283,22 @@ loadlocale(int category)
 const char *
 __get_locale_env(int category)
 {
-        const char *env;
+	const char *env;
 
-        /* 1. check LC_ALL. */
-        env = getenv(categories[0]);
+	/* 1. check LC_ALL. */
+	env = getenv(categories[0]);
 
-        /* 2. check LC_* */
+	/* 2. check LC_* */
 	if (env == NULL || !*env)
-                env = getenv(categories[category]);
+		env = getenv(categories[category]);
 
-        /* 3. check LANG */
+	/* 3. check LANG */
 	if (env == NULL || !*env)
-                env = getenv("LANG");
+		env = getenv("LANG");
 
-        /* 4. if none is set, fall to "C" */
+	/* 4. if none is set, fall to "C" */
 	if (env == NULL || !*env)
-                env = "C";
+		env = "C";
 
 	return (env);
 }
