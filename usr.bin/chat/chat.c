@@ -107,70 +107,70 @@
 #define	MAX_REPORTS		50
 #define	DEFAULT_CHAT_TIMEOUT	45
 
-int echo          = 0;
-int verbose       = 0;
-int to_log        = 1;
-int to_stderr     = 0;
-int Verbose       = 0;
-int quiet         = 0;
-int exit_code     = 0;
-FILE* report_fp   = NULL;
-char *report_file = NULL;
-char *chat_file   = NULL;
-char *phone_num   = NULL;
-char *phone_num2  = NULL;
-int timeout       = DEFAULT_CHAT_TIMEOUT;
+static int echo          = 0;
+static int verbose       = 0;
+static int to_log        = 1;
+static int to_stderr     = 0;
+static int Verbose       = 0;
+static int quiet         = 0;
+static int exit_code     = 0;
+static FILE* report_fp   = NULL;
+static char *report_file = NULL;
+static char *chat_file   = NULL;
+static char *phone_num   = NULL;
+static char *phone_num2  = NULL;
+static int timeout       = DEFAULT_CHAT_TIMEOUT;
 
 static char blank[] = "";
 
-int have_tty_parameters = 0;
+static int have_tty_parameters = 0;
 
 #define term_parms struct termios
 #define get_term_param(param) tcgetattr(0, param)
 #define set_term_param(param) tcsetattr(0, TCSANOW, param)
-struct termios saved_tty_parameters;
+static struct termios saved_tty_parameters;
 
-char *abort_string[MAX_ABORTS], *fail_reason = NULL,
+static char *abort_string[MAX_ABORTS], *fail_reason = NULL,
 	fail_buffer[50];
-int n_aborts = 0, abort_next = 0, timeout_next = 0, echo_next = 0;
-int clear_abort_next = 0;
+static int n_aborts = 0, abort_next = 0, timeout_next = 0, echo_next = 0;
+static int clear_abort_next = 0;
 
-char *report_string[MAX_REPORTS] ;
-char  report_buffer[50] ;
-int n_reports = 0, report_next = 0, report_gathering = 0 ; 
-int clear_report_next = 0;
+static char *report_string[MAX_REPORTS] ;
+static char  report_buffer[50] ;
+static int n_reports = 0, report_next = 0, report_gathering = 0 ; 
+static int clear_report_next = 0;
 
-int say_next = 0, hup_next = 0;
+static int say_next = 0, hup_next = 0;
 
-void *dup_mem(void *b, size_t c);
-void *copy_of(char *s);
+static void *dup_mem(void *b, size_t c);
+static void *copy_of(char *s);
 static void usage(void);
-void chat_logf(const char *fmt, ...);
-void fatal(int code, const char *fmt, ...);
-SIGTYPE sigalrm(int signo);
-SIGTYPE sigint(int signo);
-SIGTYPE sigterm(int signo);
-SIGTYPE sighup(int signo);
-void init(void);
-void set_tty_parameters(void);
-void echo_stderr(int);
-void break_sequence(void);
-void terminate(int status);
-void do_file(char *chatfile);
-int  get_string(char *string);
-int  put_string(char *s);
-int  write_char(int c);
-int  put_char(int c);
-int  get_char(void);
-void chat_send(char *s);
-char *character(int c);
-void chat_expect(char *s);
-char *clean(char *s, int sending);
-void pack_array(char **array, int end);
-char *expect_strtok(char *, const char *);
-int vfmtmsg(char *, int, const char *, va_list);	/* vsprintf++ */
+static void chat_logf(const char *fmt, ...);
+static void fatal(int code, const char *fmt, ...);
+static SIGTYPE sigalrm(int signo);
+static SIGTYPE sigint(int signo);
+static SIGTYPE sigterm(int signo);
+static SIGTYPE sighup(int signo);
+static void init(void);
+static void set_tty_parameters(void);
+static void echo_stderr(int);
+static void break_sequence(void);
+static void terminate(int status);
+static void do_file(char *chatfile);
+static int  get_string(char *string);
+static int  put_string(char *s);
+static int  write_char(int c);
+static int  put_char(int c);
+static int  get_char(void);
+static void chat_send(char *s);
+static char *character(int c);
+static void chat_expect(char *s);
+static char *clean(char *s, int sending);
+static void pack_array(char **array, int end);
+static char *expect_strtok(char *, const char *);
+static int vfmtmsg(char *, int, const char *, va_list);	/* vsprintf++ */
 
-void *
+static void *
 dup_mem(void *b, size_t c)
 {
     void *ans = malloc (c);
@@ -181,7 +181,7 @@ dup_mem(void *b, size_t c)
     return ans;
 }
 
-void *
+static void *
 copy_of(char *s)
 {
     return dup_mem (s, strlen (s) + 1);
@@ -314,7 +314,7 @@ main(int argc, char *argv[])
  *  Process a chat script when read from a file.
  */
 
-void
+static void
 do_file(char *chatfile)
 {
     int linect, sendflg;
@@ -394,12 +394,12 @@ usage(void)
     exit(1);
 }
 
-char line[1024];
+static char line[1024];
 
 /*
  * Send a message to syslog and/or stderr.
  */
-void
+static void
 chat_logf(const char *fmt, ...)
 {
     va_list args;
@@ -416,7 +416,7 @@ chat_logf(const char *fmt, ...)
  *	Print an error message and terminate.
  */
 
-void
+static void
 fatal(int code, const char *fmt, ...)
 {
     va_list args;
@@ -430,9 +430,9 @@ fatal(int code, const char *fmt, ...)
     terminate(code);
 }
 
-int alarmed = 0;
+static int alarmed = 0;
 
-SIGTYPE sigalrm(int signo __unused)
+static SIGTYPE sigalrm(int signo __unused)
 {
     int flags;
 
@@ -450,22 +450,22 @@ SIGTYPE sigalrm(int signo __unused)
 	chat_logf("alarm");
 }
 
-SIGTYPE sigint(int signo __unused)
+static SIGTYPE sigint(int signo __unused)
 {
     fatal(2, "SIGINT");
 }
 
-SIGTYPE sigterm(int signo __unused)
+static SIGTYPE sigterm(int signo __unused)
 {
     fatal(2, "SIGTERM");
 }
 
-SIGTYPE sighup(int signo __unused)
+static SIGTYPE sighup(int signo __unused)
 {
     fatal(2, "SIGHUP");
 }
 
-void init(void)
+static void init(void)
 {
     signal(SIGINT, sigint);
     signal(SIGTERM, sigterm);
@@ -477,7 +477,7 @@ void init(void)
     alarmed = 0;
 }
 
-void set_tty_parameters(void)
+static void set_tty_parameters(void)
 {
 #if defined(get_term_param)
     term_parms t;
@@ -501,12 +501,12 @@ void set_tty_parameters(void)
 #endif
 }
 
-void break_sequence(void)
+static void break_sequence(void)
 {
     tcsendbreak (0, 0);
 }
 
-void terminate(int status)
+static void terminate(int status)
 {
     echo_stderr(-1);
     if (report_file != NULL && report_fp != NULL) {
@@ -549,7 +549,7 @@ void terminate(int status)
 /*
  *	'Clean up' this string.
  */
-char *
+static char *
 clean(char *s, int sending)
 {
     char temp[STR_LEN], cur_chr;
@@ -700,7 +700,7 @@ clean(char *s, int sending)
  * A modified version of 'strtok'. This version skips \ sequences.
  */
 
-char *
+static char *
 expect_strtok (char *s, const char *term)
 {
     static  char *str   = blank;
@@ -755,7 +755,7 @@ expect_strtok (char *s, const char *term)
  * Process the expect string
  */
 
-void
+static void
 chat_expect(char *s)
 {
     char *expect;
@@ -844,7 +844,7 @@ chat_expect(char *s)
  * the data.
  */
 
-char *
+static char *
 character(int c)
 {
     static char string[10];
@@ -866,7 +866,7 @@ character(int c)
 /*
  *  process the reply string
  */
-void
+static void
 chat_send(char *s)
 {
     if (say_next) {
@@ -1016,7 +1016,7 @@ chat_send(char *s)
 	fatal(1, "Failed");
 }
 
-int
+static int
 get_char(void)
 {
     int status;
@@ -1042,7 +1042,7 @@ get_char(void)
     }
 }
 
-int put_char(int c)
+static int put_char(int c)
 {
     int status;
     char ch = c;
@@ -1069,7 +1069,7 @@ int put_char(int c)
     }
 }
 
-int
+static int
 write_char(int c)
 {
     if (alarmed || put_char(c) < 0) {
@@ -1087,7 +1087,7 @@ write_char(int c)
     return (1);
 }
 
-int
+static int
 put_string(char *s)
 {
     quiet = 0;
@@ -1138,7 +1138,7 @@ put_string(char *s)
  *	When called with -1, a '\n' character is generated when
  *	the cursor is not at the beginning of a line.
  */
-void
+static void
 echo_stderr(int n)
 {
     static int need_lf;
@@ -1166,7 +1166,7 @@ echo_stderr(int n)
 /*
  *	'Wait for' this string to appear on this file descriptor.
  */
-int
+static int
 get_string(char *string)
 {
     char temp[STR_LEN];
@@ -1315,7 +1315,7 @@ get_string(char *string)
     return (0);
 }
 
-void
+static void
 pack_array(char **array, int end)
 {
     int i, j;
@@ -1341,7 +1341,7 @@ pack_array(char **array, int end)
  */
 #define OUTCHAR(c)	(buflen > 0? (--buflen, *buf++ = (c)): 0)
 
-int
+static int
 vfmtmsg(char *buf, int buflen, const char *fmt, va_list args)
 {
     int c, i, n;
