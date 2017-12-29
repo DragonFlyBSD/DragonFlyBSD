@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cap_mkdb.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/cap_mkdb/cap_mkdb.c,v 1.14 2005/02/22 23:29:53 ru Exp $
- * $DragonFly: src/usr.bin/cap_mkdb/cap_mkdb.c,v 1.5 2007/09/25 04:53:48 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -43,15 +42,15 @@
 #include <string.h>
 #include <unistd.h>
 
-void	 db_build(char **);
-void	 dounlink(void);
-void	 usage(void);
+static void	 db_build(char **);
+static void	 dounlink(void);
+static void	 usage(void);
 
-DB *capdbp;
-int verbose;
-char *capdb, *capname, buf[8 * 1024];
+static DB *capdbp;
+static int verbose;
+static char *capname, buf[8 * 1024];
 
-HASHINFO openinfo = {
+static HASHINFO openinfo = {
 	4096,		/* bsize */
 	0,		/* ffactor */
 	0,		/* nelem */
@@ -124,7 +123,7 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-void
+static void
 dounlink(void)
 {
 	if (capname != NULL)
@@ -143,7 +142,7 @@ dounlink(void)
  * Db_build() builds the name and capability databases according to the
  * details above.
  */
-void
+static void
 db_build(char **ifiles)
 {
 	DBT key, data;
@@ -249,7 +248,7 @@ db_build(char **ifiles)
 		(void)printf("cap_mkdb: %d capability records\n", reccnt);
 }
 
-void
+static void
 usage(void)
 {
 	(void)fprintf(stderr,
