@@ -71,18 +71,16 @@
 
 #include "extern.h"
 
-char *pname = "crunchide";
+static char *pname = "crunchide";
 
-void usage(void);
+static void usage(void);
 
-void add_to_keep_list(char *symbol);
-void add_file_to_keep_list(char *filename);
+static void add_to_keep_list(char *symbol);
+static void add_file_to_keep_list(char *filename);
 
-int hide_syms(const char *filename);
+static int hide_syms(const char *filename);
 
-int verbose;
-
-int main(int, char *[]);
+static int verbose;
 
 int
 main(int argc, char **argv)
@@ -121,7 +119,7 @@ main(int argc, char **argv)
     return errors;
 }
 
-void
+static void
 usage(void)
 {
     fprintf(stderr,
@@ -132,12 +130,12 @@ usage(void)
 
 /* ---------------------------- */
 
-struct keep {
+static struct keep {
     struct keep *next;
     char *sym;
 } *keep_list;
 
-void
+static void
 add_to_keep_list(char *symbol)
 {
     struct keep *newp, *prevp, *curp;
@@ -177,7 +175,7 @@ in_keep_list(const char *symbol)
     return curp && cmp == 0;
 }
 
-void
+static void
 add_file_to_keep_list(char *filename)
 {
     FILE *keepf;
@@ -201,7 +199,7 @@ add_file_to_keep_list(char *filename)
 
 /* ---------------------------- */
 
-struct {
+static struct {
 	const char *name;
 	int	(*check)(int, const char *);	/* 1 if match, zero if not */
 	int	(*hide)(int, const char *);	/* non-zero if error */
@@ -220,7 +218,7 @@ struct {
 #endif
 };
 
-int
+static int
 hide_syms(const char *filename)
 {
 	int fd, i, n, rv;
