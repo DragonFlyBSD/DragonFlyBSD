@@ -94,6 +94,7 @@ static char current_locale_string[_LC_LAST * (ENCODING_LEN + 1/*"/"*/ + 1)];
 static char *currentlocale(void);
 static char *loadlocale(int);
 const char *__get_locale_env(int);
+int __get_locale_str(int category, const char *str, char * const res);
 
 char *
 setlocale(int category, const char *locale)
@@ -279,6 +280,67 @@ loadlocale(int category)
 
 	return (NULL);
 }
+
+static int
+getlocstr(const char *name, const char *str, char * const res)
+{
+	const char *np, *cp;
+	int len;
+
+	np = str;
+	len = strlen(str);
+
+	while ((cp = strchr (np, '=')) != NULL) {
+		if (!strncmp(np, name, (cp - np))) {
+			np = cp + 1;
+			cp = strchr(cp, ';');
+			if (cp == NULL)
+				cp = str + len;
+			len = cp - np;
+			if (len > 30)
+				len = 30;
+			strncpy(res, np, len);
+			res[len] = '\0';
+			return 0;
+		} else {
+			cp = strchr(cp, ';');
+			if (cp != NULL)
+				np = cp + 1;
+			else
+				break;
+		}
+	}
+
+	return 1;
+}
+/*
+ * Similar function like __get_locale_env() but from a string.
+ */
+int
+__get_locale_str(int category, const char *str, char * const res)
+{
+	int check;
+
+	/* 1. check LC_ALL. */
+	check = getlocstr(categories[0], str, res);
+
+	/* 2. check LC_* */
+	if (check)
+		check = getlocstr(categories[category], str, res);
+
+	/* 3. check LANG */
+	if (check)
+		check = getlocstr("LANG", str, res);
+
+	/* 4. if none is set, fall to "C" */
+	if (check) {
+		res[0] = 'C';
+		res[1] = '\0';
+	}
+
+	return check;
+}
+
 
 const char *
 __get_locale_env(int category)

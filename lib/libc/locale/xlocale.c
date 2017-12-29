@@ -67,6 +67,7 @@ int __has_thread_locale;
  * Private functions in setlocale.c.
  */
 const char * __get_locale_env(int category);
+int __get_locale_str(int category, const char *str, char * const res);
 int __detect_path_locale(void);
 
 struct _xlocale __xlocale_global_locale = {
@@ -249,7 +250,9 @@ locale_t newlocale(int mask, const char *locale, locale_t base)
 {
 	int type;
 	const char *realLocale = locale;
+	char lres[31] = "";
 	int useenv = 0;
+	int usestr = 0;
 	int success = 1;
 
 	_once(&once_control, init_key);
@@ -266,12 +269,21 @@ locale_t newlocale(int mask, const char *locale, locale_t base)
 		realLocale = "C";
 	} else if ('\0' == locale[0]) {
 		useenv = 1;
+	} else if ('L' == locale[0] && strchr(locale, ';') != NULL) {
+		/*
+		 * We are called from c++ runtime lib with LC_*; string??
+		 */
+		usestr = 1;
 	}
 
 	for (type=0 ; type<XLC_LAST ; type++) {
 		if (mask & 1) {
 			if (useenv) {
-				realLocale = __get_locale_env(type);
+				realLocale = __get_locale_env(type + 1);
+			}
+			if (usestr) {
+				__get_locale_str(type + 1, locale, lres);
+				realLocale = lres;
 			}
 			new->components[type] =
 			     constructors[type](realLocale, new);
