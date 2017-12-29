@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/c99/c99.c,v 1.4 2005/05/21 09:55:05 ru Exp $
- * $DragonFly: src/usr.bin/c99/c99.c,v 1.2 2007/09/22 21:26:24 pavalos Exp $
  */
 
 /*
@@ -43,12 +42,12 @@
 #include <string.h>
 #include <unistd.h>
 
-char **args;
-u_int cargs, nargs;
+static char **args;
+static u_int cargs, nargs;
 
-void addarg(const char *);
-void addlib(const char *);
-void usage(void);
+static void addarg(const char *);
+static void addlib(const char *);
+static void usage(void);
 
 int
 main(int argc, char *argv[])
@@ -91,7 +90,7 @@ main(int argc, char *argv[])
 	err(1, "/usr/bin/cc");
 }
 
-void
+static void
 addarg(const char *item)
 {
 	if (nargs + 1 >= cargs) {
@@ -104,7 +103,7 @@ addarg(const char *item)
 	args[nargs] = NULL;
 }
 
-void
+static void
 addlib(const char *lib)
 {
 
@@ -120,7 +119,7 @@ addlib(const char *lib)
 	}
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
