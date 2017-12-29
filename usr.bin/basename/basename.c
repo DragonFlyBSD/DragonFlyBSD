@@ -42,8 +42,8 @@
 #include <unistd.h>
 #include <wchar.h>
 
-void stripsuffix(char *, const char *, size_t);
-void usage(void);
+static void stripsuffix(char *, const char *, size_t);
+static void usage(void);
 
 int
 main(int argc, char **argv)
@@ -99,7 +99,7 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-void
+static void
 stripsuffix(char *p, const char *suffix, size_t suffixlen)
 {
 	char *q;
@@ -124,7 +124,7 @@ stripsuffix(char *p, const char *suffix, size_t suffixlen)
 	}
 }
 
-void
+static void
 usage(void)
 {
 
