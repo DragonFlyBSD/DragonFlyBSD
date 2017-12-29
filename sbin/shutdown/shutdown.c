@@ -342,7 +342,9 @@ timeout(int signo __unused)
 static void
 die_you_gravy_sucking_pig_dog(void)
 {
+#ifndef DEBUG
 	char *empty_environ[] = { NULL };
+#endif
 
 	syslog(LOG_NOTICE, "%s by %s: %s",
 	    doreboot ? "reboot" : dohalt ? "halt" : dopower ? "power-down" :
