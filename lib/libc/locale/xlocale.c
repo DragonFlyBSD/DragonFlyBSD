@@ -29,6 +29,7 @@
  * $FreeBSD: head/lib/libc/locale/xlocale.c 303495 2016-07-29 17:18:47Z ed $
  */
 
+#include <errno.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <string.h>
@@ -250,8 +251,11 @@ locale_t newlocale(int mask, const char *locale, locale_t base)
 {
 	int type;
 	const char *realLocale = locale;
-	char lres[31] = "";
+	const char *np, *cp;
+	char lres[ENCODING_LEN + 1] = "";
+	int len;
 	int useenv = 0;
+	int useslh = 0;
 	int usestr = 0;
 	int success = 1;
 
@@ -269,6 +273,13 @@ locale_t newlocale(int mask, const char *locale, locale_t base)
 		realLocale = "C";
 	} else if ('\0' == locale[0]) {
 		useenv = 1;
+	} else if (strchr(locale, '/') != NULL) {
+		/*
+		 * Handle system native locale string
+		 * e.g. "C/en_US.UTF-8/C/C/lt_LT/C"
+		 */
+		useslh = 1;
+		np = locale;
 	} else if ('L' == locale[0] && strchr(locale, ';') != NULL) {
 		/*
 		 * We are called from c++ runtime lib with LC_*; string??
@@ -277,11 +288,32 @@ locale_t newlocale(int mask, const char *locale, locale_t base)
 	}
 
 	for (type=0 ; type<XLC_LAST ; type++) {
+		if (useslh) {
+			cp = strchr(np, '/');
+			if (cp == NULL && type == XLC_LAST - 1) {
+				cp = locale + strlen(locale);
+			} else if (cp == NULL || type == XLC_LAST - 1) {
+				errno = EINVAL;
+				success = 0;
+				break;
+			}
+			len = cp - np;
+			if (len > ENCODING_LEN || len <= 0) {
+				errno = EINVAL;
+				success = 0;
+				break;
+			}
+			strncpy(lres, np, len);
+			lres[len] = '\0';
+			np = cp + 1;
+		}
+
 		if (mask & 1) {
 			if (useenv) {
 				realLocale = __get_locale_env(type + 1);
-			}
-			if (usestr) {
+			} else if (useslh) {
+				realLocale = lres;
+			} else if (usestr) {
 				__get_locale_str(type + 1, locale, lres);
 				realLocale = lres;
 			}

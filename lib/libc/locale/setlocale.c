@@ -101,6 +101,7 @@ setlocale(int category, const char *locale)
 {
 	int i, j, len, saverr;
 	const char *env, *r;
+	char lres[ENCODING_LEN + 1] = "";
 
 	if (category < LC_ALL || category >= _LC_LAST) {
 		errno = EINVAL;
@@ -145,14 +146,7 @@ setlocale(int category, const char *locale)
 		}
 		(void)strcpy(new_categories[category], locale);
 	} else {
-		if ((r = strchr(locale, '/')) == NULL) {
-			if (strlen(locale) > ENCODING_LEN) {
-				errno = EINVAL;
-				return (NULL);
-			}
-			for (i = 1; i < _LC_LAST; ++i)
-				(void)strcpy(new_categories[i], locale);
-		} else {
+		if ((r = strchr(locale, '/')) != NULL) {
 			for (i = 1; r[1] == '/'; ++r)
 				;
 			if (!r[1]) {
@@ -177,9 +171,21 @@ setlocale(int category, const char *locale)
 			} while (*locale);
 			while (i < _LC_LAST) {
 				(void)strcpy(new_categories[i],
-					     new_categories[i-1]);
+					     new_categories[i - 1]);
 				i++;
 			}
+		} else if ('L' == locale[0] && strchr(locale, ';')) {
+			for (i = 1; i < _LC_LAST; ++i) {
+				__get_locale_str(i, locale, lres);
+				(void)strcpy(new_categories[i], lres);
+			}
+		} else {
+			if (strlen(locale) > ENCODING_LEN) {
+				errno = EINVAL;
+				return (NULL);
+			}
+			for (i = 1; i < _LC_LAST; ++i)
+				(void)strcpy(new_categories[i], locale);
 		}
 	}
 
@@ -288,17 +294,16 @@ getlocstr(const char *name, const char *str, char * const res)
 	int len;
 
 	np = str;
-	len = strlen(str);
 
 	while ((cp = strchr (np, '=')) != NULL) {
 		if (!strncmp(np, name, (cp - np))) {
 			np = cp + 1;
 			cp = strchr(cp, ';');
 			if (cp == NULL)
-				cp = str + len;
+				cp = str + strlen(str);
 			len = cp - np;
-			if (len > 30)
-				len = 30;
+			if (len > ENCODING_LEN)
+				len = ENCODING_LEN;
 			strncpy(res, np, len);
 			res[len] = '\0';
 			return 0;
