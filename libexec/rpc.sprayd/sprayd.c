@@ -56,14 +56,14 @@ static int from_inetd = 1;
 
 #define TIMEOUT 120
 
-void
+static void
 cleanup(int sig)
 {
 	(void)rpcb_unset(SPRAYPROG, SPRAYVERS, NULL);
 	exit(0);
 }
 
-void
+static void
 die(int sig)
 {
 	exit(0);
