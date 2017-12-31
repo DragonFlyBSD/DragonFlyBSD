@@ -1,8 +1,8 @@
 /*	$NetBSD: refuse.c,v 1.94 2011/07/09 17:16:46 tron Exp $	*/
 
 /*
- * Copyright © 2007 Alistair Crooks.  All rights reserved.
- * Copyright © 2007 Antti Kantee.  All rights reserved.
+ * Copyright (c) 2007 Alistair Crooks.  All rights reserved.
+ * Copyright (c) 2007 Antti Kantee.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

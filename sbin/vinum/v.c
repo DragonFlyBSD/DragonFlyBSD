@@ -177,7 +177,7 @@ main(int argc, char *argv[], char *envp[])
 	    return 1;
 	}
     }
-    /* Check if the dæmon is running.  If not, start it in the
+    /* Check if the daemon is running.  If not, start it in the
      * background */
     start_daemon();
 
