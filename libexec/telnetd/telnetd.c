@@ -73,8 +73,6 @@ static int debug = 0;
 int keepalive = 1;
 const char *altlogin;
 
-void doit(struct sockaddr *);
-int terminaltypeok(char *);
 void startslave(char *, int, char *);
 extern void usage(void);
 static void _gettermname(void);
