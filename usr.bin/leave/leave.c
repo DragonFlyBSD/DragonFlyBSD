@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1980, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)leave.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/leave/leave.c,v 1.5.2.2 2001/07/30 09:43:30 dd Exp $
- * $DragonFly: src/usr.bin/leave/leave.c,v 1.7 2006/08/14 07:37:38 swildner Exp $
  */
 
 #include <err.h>
@@ -41,7 +40,7 @@
 #include <time.h>
 #include <unistd.h>
 
-void doalarm(u_int);
+static void doalarm(u_int);
 static void usage(void);
 
 /*
@@ -124,7 +123,7 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-void
+static void
 doalarm(u_int secs)
 {
 	int bother;
