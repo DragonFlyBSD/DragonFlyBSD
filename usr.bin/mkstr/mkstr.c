@@ -65,17 +65,17 @@
  * existing error message file for recompilation of single routines.
  */
 
-FILE	*mesgread, *mesgwrite;
-char	name[100], *np;
+static FILE	*mesgread, *mesgwrite;
+static char	name[100], *np;
 
-void copystr(void);
-int fgetNUL(char *, int, FILE *);
-unsigned hashit(char *, int, unsigned);
-void inithash(void);
-int match(const char *);
-int octdigit(char);
-void process(void);
-void usage(void);
+static void copystr(void);
+static int fgetNUL(char *, int, FILE *);
+static unsigned hashit(char *, int, unsigned);
+static void inithash(void);
+static int match(const char *);
+static int octdigit(char);
+static void process(void);
+static void usage(void);
 
 int
 main(int argc, char *argv[])
@@ -119,14 +119,14 @@ main(int argc, char *argv[])
 	exit(0);
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "usage: mkstr [-] mesgfile prefix file ...\n");
 	exit(1);
 }
 
-void
+static void
 process(void)
 {
 	int c;
@@ -150,7 +150,7 @@ process(void)
 	}
 }
 
-int
+static int
 match(const char *ocp)
 {
 	const char *cp;
@@ -168,7 +168,7 @@ match(const char *ocp)
 	return (1);
 }
 
-void
+static void
 copystr(void)
 {
 	int c, ch;
@@ -234,14 +234,14 @@ out:
 	printf("%d", hashit(buf, 1, 0));
 }
 
-int
+static int
 octdigit(char c)
 {
 
 	return (c >= '0' && c <= '7');
 }
 
-void
+static void
 inithash(void)
 {
 	char buf[512];
@@ -256,13 +256,13 @@ inithash(void)
 
 #define	NBUCKETS	511
 
-struct	hash {
+static struct	hash {
 	long	hval;
 	unsigned hpt;
 	struct	hash *hnext;
 } *bucket[NBUCKETS];
 
-unsigned
+static unsigned
 hashit(char *str, int really, unsigned fakept)
 {
 	int i;
@@ -308,7 +308,7 @@ hashit(char *str, int really, unsigned fakept)
 	return (hp->hpt);
 }
 
-int
+static int
 fgetNUL(char *obuf, int rmdr, FILE *file)
 {
 	int c;
