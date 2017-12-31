@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl -wC
+#!/usr/bin/env perl -wC
 
 use strict;
 use File::Copy;

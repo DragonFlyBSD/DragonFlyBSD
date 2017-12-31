@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl -w
 
 if ($#ARGV != 2) {
 	print STDERR "Usage: $0 <charmap in> <charmap out> <offset>\n";

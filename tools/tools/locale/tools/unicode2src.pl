@@ -1,4 +1,4 @@
-#!/usr/bin/perl -wC
+#!/usr/bin/env perl -wC
 
 #
 # $FreeBSD$
