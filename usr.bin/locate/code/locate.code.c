@@ -95,24 +95,24 @@
 
 #define	BGBUFSIZE	(NBG * 2)	/* size of bigram buffer */
 
-u_char buf1[MAXPATHLEN] = " ";	
-u_char buf2[MAXPATHLEN];
-u_char bigrams[BGBUFSIZE + 1] = { 0 };
+static u_char buf1[MAXPATHLEN] = " ";	
+static u_char buf2[MAXPATHLEN];
+static u_char bigrams[BGBUFSIZE + 1] = { 0 };
 
 #define LOOKUP 1 /* use a lookup array instead a function, 3x faster */
 
 #ifdef LOOKUP
 #define BGINDEX(x) (big[(u_char)*x][(u_char)*(x + 1)])
 typedef short bg_t;
-bg_t big[UCHAR_MAX + 1][UCHAR_MAX + 1];
+static bg_t big[UCHAR_MAX + 1][UCHAR_MAX + 1];
 #else
 #define BGINDEX(x) bgindex(x)
 typedef int bg_t;
-int	bgindex(char *);
+static int	bgindex(char *);
 #endif /* LOOKUP */
 
 
-void	usage(void);
+static void	usage(void);
 
 int
 main(int argc, char *argv[])
@@ -246,7 +246,7 @@ main(int argc, char *argv[])
 }
 
 #ifndef LOOKUP
-int
+static int
 bgindex(bg)			/* Return location of bg in bigrams or -1. */
 	char *bg;
 {
@@ -261,7 +261,7 @@ bgindex(bg)			/* Return location of bg in bigrams or -1. */
 }
 #endif /* !LOOKUP */
 
-void
+static void
 usage(void)
 {
 	(void)fprintf(stderr,

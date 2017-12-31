@@ -41,7 +41,7 @@
 #ifndef _LOCATE_STATISTIC_
 #define _LOCATE_STATISTIC_
 
-void 
+static void 
 statistic (FILE *fp, char *path_fcodes)
 {
 	int lines, chars, size, big, zwerg;
@@ -102,7 +102,7 @@ statistic (FILE *fp, char *path_fcodes)
 #endif /* _LOCATE_STATISTIC_ */
 
 
-void
+static void
 #ifdef FF_MMAP
 
 
