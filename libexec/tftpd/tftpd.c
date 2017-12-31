@@ -67,17 +67,17 @@
 #define	TIMEOUT		5
 #define	MAX_TIMEOUTS	5
 
-int	peer;
-int	rexmtval = TIMEOUT;
-int	max_rexmtval = 2*TIMEOUT;
+static int	peer;
+static int	rexmtval = TIMEOUT;
+static int	max_rexmtval = 2*TIMEOUT;
 
 #define	PKTSIZE	SEGSIZE+4
-char	buf[PKTSIZE];
-char	ackbuf[PKTSIZE];
-struct	sockaddr_storage from;
-int	fromlen;
+static char	buf[PKTSIZE];
+static char	ackbuf[PKTSIZE];
+static struct	sockaddr_storage from;
+static int	fromlen;
 
-void	tftp(struct tftphdr *, int);
+static void tftp(struct tftphdr *, int);
 static void unmappedaddr(struct sockaddr_in6 *);
 
 /*
@@ -305,11 +305,11 @@ main(int argc, char *argv[])
 }
 
 struct formats;
-int	validate_access(char **, int);
-void	xmitfile(struct formats *);
-void	recvfile(struct formats *);
+static int	validate_access(char **, int);
+static void	xmitfile(struct formats *);
+static void	recvfile(struct formats *);
 
-struct formats {
+static struct formats {
 	const char	*f_mode;
 	int	(*f_validate)(char **, int);
 	void	(*f_send)(struct formats *);
@@ -324,7 +324,7 @@ struct formats {
 	{ 0,		NULL,			NULL,		NULL,	  0 }
 };
 
-struct options {
+static struct options {
 	const char	*o_type;
 	char	*o_request;
 	int	o_reply;	/* turn into union if need be */
@@ -342,7 +342,7 @@ enum opt_enum {
 /*
  * Handle initial connection protocol.
  */
-void
+static void
 tftp(struct tftphdr *tp, int size)
 {
 	char *cp;
@@ -455,7 +455,7 @@ option_fail:
 }
 
 
-FILE *file;
+static FILE *file;
 
 /*
  * Validate file access.  Since we
@@ -468,7 +468,7 @@ FILE *file;
  * Note also, full path name must be
  * given as we have no login directory.
  */
-int
+static int
 validate_access(char **filep, int mode)
 {
 	struct stat stbuf;
@@ -561,10 +561,10 @@ validate_access(char **filep, int mode)
 	return (0);
 }
 
-int	timeouts;
-jmp_buf	timeoutbuf;
+static int	timeouts;
+static jmp_buf	timeoutbuf;
 
-void
+static void
 timer(int sig __unused)
 {
 	if (++timeouts > MAX_TIMEOUTS)
@@ -575,7 +575,7 @@ timer(int sig __unused)
 /*
  * Send the requested file.
  */
-void
+static void
 xmitfile(struct formats *pf)
 {
 	struct tftphdr *dp;
@@ -644,7 +644,7 @@ abort:
 	(void) fclose(file);
 }
 
-void
+static void
 justquit(int sig __unused)
 {
 	exit(0);
@@ -654,7 +654,7 @@ justquit(int sig __unused)
 /*
  * Receive a file.
  */
-void
+static void
 recvfile(struct formats *pf)
 {
 	struct tftphdr *dp;
@@ -728,7 +728,7 @@ abort:
 	return;
 }
 
-struct errmsg {
+static struct errmsg {
 	int	e_code;
 	const char	*e_msg;
 } errmsgs[] = {
