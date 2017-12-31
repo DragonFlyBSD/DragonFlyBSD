@@ -42,7 +42,7 @@ extern void rusers_service();
 
 int from_inetd = 1;
 
-void
+void __dead2
 cleanup(int sig)
 {
 	(void) rpcb_unset(RUSERSPROG, RUSERSVERS_IDLE, NULL);

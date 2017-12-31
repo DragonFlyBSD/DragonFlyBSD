@@ -64,7 +64,7 @@ char	ptyibuf[BUFSIZ], *ptyip = ptyibuf;
 char	ptyibuf2[BUFSIZ];
 
 int readstream(int, char *, int);
-void doit(struct sockaddr *);
+void doit(struct sockaddr *) __dead2;
 int terminaltypeok(char *);
 
 int	hostinfo = 1;			/* do we print login banner? */
@@ -74,7 +74,7 @@ int keepalive = 1;
 const char *altlogin;
 
 void startslave(char *, int, char *);
-extern void usage(void);
+extern void usage(void) __dead2;
 static void _gettermname(void);
 
 /*
@@ -112,7 +112,7 @@ int family = AF_INET;
 char *hostname;
 char host_name[MAXHOSTNAMELEN];
 
-extern void telnet(int, int, char *);
+extern void telnet(int, int, char *) __dead2;
 
 int level;
 char user_name[256];

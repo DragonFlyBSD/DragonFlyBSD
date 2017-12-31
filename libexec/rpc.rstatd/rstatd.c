@@ -40,7 +40,7 @@ extern void rstat_service();
 int from_inetd = 1;     /* started from inetd ? */
 int closedown = 20;	/* how long to wait before going dormant */
 
-void
+void __dead2
 cleanup(int sig)
 {
         (void) rpcb_unset(RSTATPROG, RSTATVERS_TIME, NULL);

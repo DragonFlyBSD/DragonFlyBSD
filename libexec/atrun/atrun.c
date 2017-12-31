@@ -82,9 +82,9 @@ gid_t real_gid, effective_gid;
 static const char * const atrun = "atrun"; /* service name for syslog etc. */
 static int debug = 0;
 
-void		perr(const char *fmt, ...) __printflike(1, 2);
-void		perrx(const char *fmt, ...) __printflike(1, 2);
-static void	usage(void);
+void		perr(const char *fmt, ...) __dead2 __printflike(1, 2);
+void		perrx(const char *fmt, ...) __dead2 __printflike(1, 2);
+static void	usage(void) __dead2;
 
 /* Local functions */
 static int

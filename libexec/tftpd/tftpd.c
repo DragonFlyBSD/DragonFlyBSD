@@ -77,7 +77,7 @@ static char	ackbuf[PKTSIZE];
 static struct	sockaddr_storage from;
 static int	fromlen;
 
-static void tftp(struct tftphdr *, int);
+static void tftp(struct tftphdr *, int) __dead2;
 static void unmappedaddr(struct sockaddr_in6 *);
 
 /*

@@ -40,7 +40,6 @@
  * Author: Jeff Forys, University of Utah CSS
  *
  * $FreeBSD: src/libexec/rbootd/defs.h,v 1.2.6.1 2001/02/18 02:54:11 kris Exp $
- * $DragonFly: src/libexec/rbootd/defs.h,v 1.3 2003/11/14 03:54:30 dillon Exp $
  */
 
 #include "rmp.h"
@@ -160,7 +159,7 @@ void	 DebugOn (int);
 void	 DispPkt (RMPCONN *, int);
 void	 DoTimeout (void);
 void	 DspFlnm (u_int, char *);
-void	 Exit (int);
+void	 Exit (int) __dead2;
 CLIENT	*FindClient (RMPCONN *);
 RMPCONN	*FindConn (RMPCONN *);
 void	 FreeClients (void);
