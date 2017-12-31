@@ -25,7 +25,6 @@
  *
  * FreeBSD: src/usr.bin/locale/locale.c,v 1.10 2003/06/26 11:05:56 phantom Exp
  * $NetBSD: locale.c,v 1.5 2006/02/16 19:19:49 tnozaki Exp $
- * $DragonFly: src/usr.bin/locale/locale.c,v 1.2 2007/09/20 07:40:51 hasso Exp $
  */
 
 /*
@@ -52,27 +51,26 @@
 #include <unistd.h>
 
 /* Local prototypes */
-void	init_locales_list(void);
-void	list_charmaps(void);
-void	list_locales(void);
-const char *lookup_localecat(int);
-char	*kwval_lconv(int);
-int	kwval_lookup(char *, char **, int *, int *);
-void	showdetails(char *);
-void	showkeywordslist(void);
-void	showlocale(void);
-void	usage(void);
+static void	init_locales_list(void);
+static void	list_charmaps(void);
+static void	list_locales(void);
+static const char *lookup_localecat(int);
+static char	*kwval_lconv(int);
+static int	kwval_lookup(char *, char **, int *, int *);
+static void	showdetails(char *);
+static void	showkeywordslist(void);
+static void	showlocale(void);
+static void	usage(void);
 
 /* Global variables */
 static StringList *locales = NULL;
 
-int	all_locales = 0;
-int	all_charmaps = 0;
-int	prt_categories = 0;
-int	prt_keywords = 0;
-int	more_params = 0;
+static int	all_locales = 0;
+static int	all_charmaps = 0;
+static int	prt_categories = 0;
+static int	prt_keywords = 0;
 
-struct _lcinfo {
+static struct _lcinfo {
 	const char	*name;
 	int		id;
 } lcinfo [] = {
@@ -110,7 +108,7 @@ struct _lcinfo {
 #define KW_INT_P_SIGN_POSN 	(KW_ZERO+21)
 #define KW_INT_N_SIGN_POSN 	(KW_ZERO+22)
 
-struct _kwinfo {
+static struct _kwinfo {
 	const char	*name;
 	int		isstr;		/* true - string, false - number */
 	int		catid;		/* LC_* */
@@ -285,7 +283,7 @@ main(int argc, char *argv[])
 	return (0);
 }
 
-void
+static void
 usage(void)
 {
 	printf("usage: locale [ -a | -m ]\n"
@@ -301,7 +299,7 @@ usage(void)
  *     inconsistent thus setlocale() will fail.  Maybe add '-V' function to
  *     also validate these locales?
  */
-void
+static void
 list_locales(void)
 {
 	size_t i;
@@ -328,7 +326,7 @@ scmp(const void *s1, const void *s2)
  *     list of locales, spliting their codeset part and building list of
  *     them.
  */
-void
+static void
 list_charmaps(void)
 {
 	size_t i;
@@ -370,7 +368,7 @@ list_charmaps(void)
  * Retrieve sorted list of system locales (or user locales, if PATH_LOCALE
  * environment variable is set)
  */
-void
+static void
 init_locales_list(void)
 {
 	DIR *dirp;
@@ -429,7 +427,7 @@ init_locales_list(void)
 /*
  * Show current locale status, depending on environment variables
  */
-void
+static void
 showlocale(void)
 {
 	size_t	i;
@@ -473,7 +471,7 @@ showlocale(void)
 /*
  * keyword value lookup helper (via localeconv())
  */
-char *
+static char *
 kwval_lconv(int id)
 {
 	struct lconv *lc;
@@ -557,7 +555,7 @@ kwval_lconv(int id)
 /*
  * keyword value and properties lookup
  */
-int
+static int
 kwval_lookup(char *kwname, char **kwval, int *cat, int *isstr)
 {
 	int	rval;
@@ -585,7 +583,7 @@ kwval_lookup(char *kwname, char **kwval, int *cat, int *isstr)
  * Show details about requested keyword according to '-k' and/or '-c'
  * command line options specified.
  */
-void
+static void
 showdetails(char *kw)
 {
 	int	isstr, cat, tmpval;
@@ -625,7 +623,7 @@ showdetails(char *kw)
 /*
  * Convert locale category id into string
  */
-const char *
+static const char *
 lookup_localecat(int cat)
 {
 	size_t	i;
@@ -640,7 +638,7 @@ lookup_localecat(int cat)
 /*
  * Show list of keywords
  */
-void
+static void
 showkeywordslist(void)
 {
 	size_t	i;
