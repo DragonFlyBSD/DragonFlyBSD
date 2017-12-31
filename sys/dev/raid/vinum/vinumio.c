@@ -549,7 +549,7 @@ format_config(char *config, int len)
 }
 
 /*
- * issue a save config request to the dæmon.  The actual work
+ * issue a save config request to the daemon.  The actual work
  * is done in process context by daemon_save_config
  */
 void
@@ -562,7 +562,7 @@ save_config(void)
 
 /*
  * Write the configuration to all vinum slices.  This
- * is performed by the dæmon only
+ * is performed by the daemon only
  */
 void
 daemon_save_config(void)

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1992-1998 Sen Schmidt
+ * Copyright (c) 1992-1998 Søren Schmidt
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbdtables.h,v 1.47.2.1 2000/03/19 08:07:09 nyan Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbdtables.h,v 1.4 2005/08/20 19:22:37 swildner Exp $
  */
 
 #ifndef KBD_DFLT_KEYMAP

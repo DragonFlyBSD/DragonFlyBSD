@@ -516,7 +516,7 @@ nsclpcsio_vlm_update(struct nsclpcsio_softc *sc)
 			scale = 2;
 		}
 
-		/* Vi = (2.45±0.05)*VREF *RDCHVi / 256 */
+		/* Vi = (2.45 +/- 0.05)*VREF *RDCHVi / 256 */
 		rfact = 10 * scale * ((245 * SIO_VREF) >> 8);
 		sc->sensors[SIO_VLM_OFF + i].value = data * rfact;
 	}

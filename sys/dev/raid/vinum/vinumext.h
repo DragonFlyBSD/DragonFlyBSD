@@ -237,7 +237,7 @@ struct rangelock *lockrange(vinum_off_t stripe, struct buf *bp, struct plex *ple
 int lock_config(void);
 void unlock_config(void);
 
-/* Dæmon */
+/* Daemon */
 
 void vinum_daemon(void);
 int vinum_finddaemon(void);
@@ -264,4 +264,3 @@ void FFree(void *mem, char *, int);
 #define Malloc(x)  malloc ((x))		/* just the size */
 #define Free(x)	   free ((x))		/* just the address */
 #endif
-

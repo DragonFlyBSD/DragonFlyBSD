@@ -243,7 +243,7 @@ queue_daemon_request(enum daemonrq type, union daemoninfo info)
 	dqend = qelt;
     }
     crit_exit();
-    wakeup(&vinum_daemon);				    /* and give the dæmon a kick */
+    wakeup(&vinum_daemon);				    /* and give the daemon a kick */
 }
 
 /*

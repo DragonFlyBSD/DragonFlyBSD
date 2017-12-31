@@ -626,8 +626,8 @@ bre5(struct request *rq,
  * Things are slightly different for the parity
  * block.  In this case, the bounds defined by
  * mp->writeoffset and mp->writelen also play a
- * rôle.  Select this case by setting the
- * parameter forparity != 0
+ * role.  Select this case by setting the
+ * parameter for parity != 0
  */
 void
 setrqebounds(struct rqelement *rqe, struct metrics *mp)

@@ -1522,7 +1522,7 @@ struct SENSE_DATA {
 **									as the target of a transaction, terminates it with a Target Abort. 
 **                                                            In PCI-X mode this bit is also set when it forwards a SCM with a target abort error code.
 ** 10:09       01                             DEVSEL# Timing: Indicates slowest response to a non-configuration command on the primary interface. 
-**                                                            Returns ¡§01b¡¨ when read, indicating that bridge responds no slower than with medium timing.
+**                                                            Returns "01b" when read, indicating that bridge responds no slower than with medium timing.
 ** 08          0                    Master Data Parity Error: The bridge sets this bit to a 1b when all of the following conditions are true: 
 **									The bridge is the current master on the primary bus
 **                                                            S_PERR# is detected asserted or is asserted by bridge
@@ -1605,7 +1605,7 @@ struct SENSE_DATA {
 ** Bit       Default                       Description
 ** 07           0                Multi-function device (MVD): 80331 is a single-function device.
 ** 06:00       01h                       Header Type (HTYPE): Defines the layout of addresses 10h through 3Fh in configuration space. 
-**                                                            Returns ¡§01h¡¨ when read indicating 
+**                                                            Returns "01h" when read indicating
 **								that the register layout conforms to the standard PCI-to-PCI bridge layout.
 **==============================================================================
 */
@@ -1705,7 +1705,7 @@ struct SENSE_DATA {
 **								as the target of a transaction, terminates it with a Target Abort. 
 **                                                            In PCI-X mode this bit is also set when it forwards a SCM with a target abort error code.
 ** 10:09       01b                            DEVSEL# Timing: Indicates slowest response to a non-configuration command on the secondary interface. 
-**                                                            Returns ¡§01b¡¨ when read, indicating that bridge responds no slower than with medium timing.
+**                                                            Returns "01b" when read, indicating that bridge responds no slower than with medium timing.
 ** 08           0b                  Master Data Parity Error: The bridge sets this bit to a 1b when all of the following conditions are true:
 **                                                            The bridge is the current master on the secondary bus
 **                                                            S_PERR# is detected asserted or is asserted by bridge
@@ -1871,8 +1871,9 @@ struct SENSE_DATA {
 **								 and transaction forwarding of the following VGA transactions from the primary bus 
 **									to the secondary bus:
 **                                                            frame buffer memory addresses 000A0000h:000BFFFFh, 
-**									VGA I/O addresses 3B0:3BBh and 3C0h:3DFh, where AD[31:16]=¡§0000h?**									?and AD[15:10] are either not decoded (i.e., don't cares),
-**										 or must be ¡§000000b¡¨
+**									VGA I/O addresses 3B0:3BBh and 3C0h:3DFh, where AD[31:16]="0000h"
+**									and AD[15:10] are either not decoded (i.e., don't cares),
+**										 or must be "000000b"
 **                                                            depending upon the state of the VGA Alias Filter Enable bit. (bit(4) of this register)
 **                                                            I/O and Memory Enable bits must be set in the Command register 
 **										to enable forwarding of VGA cycles.
@@ -1995,7 +1996,7 @@ struct SENSE_DATA {
 **  0x45-0x44: Bridge Control Register 1 - BCR1 (Sheet 2 of 2)
 ** Bit       Default                       Description
 ** 15:08    0000000b                         Reserved
-** 07:06         00b                   Alias Command Mapping: This two bit field determines how bridge handles PCI-X ¡§Alias¡¨ commands, 
+** 07:06         00b                   Alias Command Mapping: This two bit field determines how bridge handles PCI-X "Alias" commands,
 **								specifically the Alias to Memory Read Block and Alias to Memory Write Block commands. 
 **                                                            The three options for handling these alias commands are to either pass it as is, 
 **									re-map to the actual block memory read/write command encoding, or ignore
@@ -2009,7 +2010,7 @@ struct SENSE_DATA {
 **                                                            The watchdog timers are used to detect prohibitively long latencies in the system. 
 **                                                            The watchdog timer expires when any Posted Memory Write (PMW), Delayed Request, 
 **                                                            or Split Requests (PCI-X mode) is not completed within 2 24 events 
-**                                                            (¡§events¡¨ are defined as PCI Clocks when operating in PCI-X mode, 
+**                                                            ("events" are defined as PCI Clocks when operating in PCI-X mode,
 **								and as the number of times being retried when operating in Conventional PCI mode)
 **                                                            0b=All 2 24 watchdog timers are enabled.
 **                                                            1b=All 2 24 watchdog timers are disabled and there is no limits to 
@@ -2063,9 +2064,9 @@ struct SENSE_DATA {
 **                                        secondary PCI clock outputs. Some, or all secondary clock outputs (S_CLKO[3:0])
 **                                        default to being enabled following the rising edge of P_RST#, depending on the
 **                                        frequency of the secondary bus clock:
-**                                               ¡E Designs with 100 MHz (or lower) Secondary PCI clock power up with 
-**								all four S_CLKOs enabled by default. (SCLKO[3:0])¡P
-**                                               ¡E Designs with 133 MHz Secondary PCI clock power up 
+**                                               * Designs with 100 MHz (or lower) Secondary PCI clock power up with
+**								all four S_CLKOs enabled by default. (SCLKO[3:0])
+**                                               * Designs with 133 MHz Secondary PCI clock power up
 **								with the lower order 3 S_CLKOs enabled by default. 
 **								(S_CLKO[2:0]) Only those SCLKs that power up enabled by can be connected 
 **								to downstream device clock inputs.
@@ -2404,7 +2405,7 @@ struct SENSE_DATA {
 ** 07          0         Bus Power/Clock Control Enable (BPCC_En): Indicates that the bus power/clock control policies have been disabled.
 ** 06          0                B2/B3 support for D3 Hot (B2_B3#): The state of this bit determines the action that 
 **									is to occur as a direct result of programming the function to D3 hot.
-**                                                                 This bit is only meaningful when bit 7 (BPCC_En) is a ¡§1¡¨.
+**                                                                 This bit is only meaningful when bit 7 (BPCC_En) is a "1".
 ** 05:00     00h                            Reserved
 **===============================================================================
 **  0xE3: Power Management Data Register - PMDR
@@ -2598,7 +2599,7 @@ struct SENSE_DATA {
 **						When set, allows the device to behave as a PCI bus master.
 **                                          When operating in the PCI-X mode, ATU initiates a split completion transaction regardless 
 **						of the state of this bit.
-**  01          0 2                         Memory Enable - Controls the ATU interface¡¦s response to PCI memory addresses. 
+**  01          0 2                         Memory Enable - Controls the ATU interface's response to PCI memory addresses.
 **						When cleared, the ATU interface does not respond to any memory access on the PCI bus.
 **  00          0 2                         I/O Space Enable - Controls the ATU interface response to I/O transactions. 
 **						Not implemented and a reserved bit field.
@@ -2611,10 +2612,11 @@ struct SENSE_DATA {
 **  -----------------------------------------------------------------
 **  Bit       Default                       Description
 **  15          0 2                         Detected Parity Error - set when a parity error is detected in data received by the ATU on the PCI bus even
-**  					when the ATUCMD register¡¦s Parity Error Response bit is cleared. Set under the following conditions:
-**  										¡E Write Data Parity Error when the ATU is a target (inbound write).
-**  										¡E Read Data Parity Error when the ATU is a requester (outbound read).
-**  										¡E Any Address or Attribute (PCI-X Only) Parity Error on the Bus **	** **  								(including one generated by the ATU).
+**  					when the ATUCMD register's Parity Error Response bit is cleared. Set under the following conditions:
+**  										* Write Data Parity Error when the ATU is a target (inbound write).
+**  										* Read Data Parity Error when the ATU is a requester (outbound read).
+**  										* Any Address or Attribute (PCI-X Only) Parity Error on the Bus
+**										(including one generated by the ATU).
 **  14          0 2                         SERR# Asserted - set when SERR# is asserted on the PCI bus by the ATU.
 **  13          0 2                         Master Abort - set when a transaction initiated by the ATU PCI master interface, ends in a Master-Abort
 **                                          or when the ATU receives a Master Abort Split Completion Error Message in PCI-X mode.
@@ -2631,12 +2633,12 @@ struct SENSE_DATA {
 **  										11 2=Reserved
 **                                          The ATU interface uses Medium timing.
 **  08           0 2                        Master Parity Error - The ATU interface sets this bit under the following conditions:
-**  										¡E The ATU asserted PERR# itself or the ATU observed PERR# asserted.
-**  										¡E And the ATU acted as the requester 
+**  										* The ATU asserted PERR# itself or the ATU observed PERR# asserted.
+**  										* And the ATU acted as the requester
 **											for the operation in which the error occurred.
-**  										¡E And the ATUCMD register¡¦s Parity Error Response bit is set
-**  										¡E Or (PCI-X Mode Only) the ATU received a Write Data Parity Error Message
-**  										¡E And the ATUCMD register¡¦s Parity Error Response bit is set
+**  										* And the ATUCMD register's Parity Error Response bit is set
+**  										* Or (PCI-X Mode Only) the ATU received a Write Data Parity Error Message
+**  										* And the ATUCMD register's Parity Error Response bit is set
 **  07           1 2  (Conventional mode)
 **               0 2  (PCI-X mode)
 **  							Fast Back-to-Back - The ATU/Messaging Unit interface is capable of accepting fast back-to-back
@@ -2650,7 +2652,7 @@ struct SENSE_DATA {
 **  										0=ATU interrupt signal deasserted.
 **  										1=ATU interrupt signal asserted.
 **  		NOTE: Setting the Interrupt Disable bit to a 1 has no effect on the state of this bit. Refer to
-**  		Section 3.10.23, ¡§ATU Interrupt Pin Register - ATUIPR¡¨ on page 236 for details on the ATU
+**  		Section 3.10.23, "ATU Interrupt Pin Register - ATUIPR" on page 236 for details on the ATU
 **  										interrupt signal.
 **  02:00      00000 2                      Reserved.
 ***********************************************************************************
@@ -2971,7 +2973,7 @@ struct SENSE_DATA {
 **  ATU Capabilities Pointer Register - ATU_CAP_PTR
 **  -----------------------------------------------------------------
 **  Bit Default Description
-**  07:00     C0H                           Capability List Pointer - This provides an offset in this function¡¦s configuration space 
+**  07:00     C0H                           Capability List Pointer - This provides an offset in this function's configuration space
 **						that points to the 80331 PCl Bus Power Management extended capability.
 ***********************************************************************************
 */
@@ -3037,10 +3039,10 @@ struct SENSE_DATA {
 **  ATU Interrupt Line Register - ATUILR
 **  -----------------------------------------------------------------
 **  Bit       Default                       Description
-**  07:00       FFH                         Interrupt Assigned - system-assigned value identifies which system interrupt controller¡¦s interrupt
+**  07:00       FFH                         Interrupt Assigned - system-assigned value identifies which system interrupt controller's interrupt
 **                                                               request line connects to the device's PCI interrupt request lines 
 **								(as specified in the interrupt pin register).
-**                                                               A value of FFH signifies ¡§no connection¡¨ or ¡§unknown¡¨.
+**                                                               A value of FFH signifies "no connection" or "unknown".
 ***********************************************************************************
 */
 #define     ARCMSR_ATU_INTERRUPT_LINE_REG		     0x3C    /*byte*/
@@ -3080,24 +3082,24 @@ struct SENSE_DATA {
 **  These PCI bus initiators can read or write 80331 memory-mapped registers or 80331 local memory space. 
 **  The process of inbound address translation involves two steps:
 **  1. Address Detection.
-**             ¡E Determine when the 32-bit PCI address (64-bit PCI address during DACs) is
+**             * Determine when the 32-bit PCI address (64-bit PCI address during DACs) is
 **                within the address windows defined for the inbound ATU.
-**             ¡E Claim the PCI transaction with medium DEVSEL# timing in the conventional PCI
+**             * Claim the PCI transaction with medium DEVSEL# timing in the conventional PCI
 **                mode and with Decode A DEVSEL# timing in the PCI-X mode.
 **  2. Address Translation.
-**             ¡E Translate the 32-bit PCI address (lower 32-bit PCI address during DACs) to a 32-bit 80331 internal bus address.
+**             * Translate the 32-bit PCI address (lower 32-bit PCI address during DACs) to a 32-bit 80331 internal bus address.
 **  				The ATU uses the following registers in inbound address window 0 translation:
-**  				¡E Inbound ATU Base Address Register 0
-**  				¡E Inbound ATU Limit Register 0
-**  				¡E Inbound ATU Translate Value Register 0
+**  				* Inbound ATU Base Address Register 0
+**  				* Inbound ATU Limit Register 0
+**  				* Inbound ATU Translate Value Register 0
 **  				The ATU uses the following registers in inbound address window 2 translation:
-**  				¡E Inbound ATU Base Address Register 2
-**  				¡E Inbound ATU Limit Register 2
-**  				¡E Inbound ATU Translate Value Register 2
+**  				* Inbound ATU Base Address Register 2
+**  				* Inbound ATU Limit Register 2
+**  				* Inbound ATU Translate Value Register 2
 **  				The ATU uses the following registers in inbound address window 3 translation:
-**  				¡E Inbound ATU Base Address Register 3
-**  				¡E Inbound ATU Limit Register 3
-**  				¡E Inbound ATU Translate Value Register 3
+**  				* Inbound ATU Base Address Register 3
+**  				* Inbound ATU Limit Register 3
+**  				* Inbound ATU Translate Value Register 3
 **    Note: Inbound Address window 1 is not a translate window. 
 **          Instead, window 1 may be used to allocate host memory for Private Devices.
 **          Inbound Address window 3 does not reside in the standard section of the configuration header (offsets 00H - 3CH), 
@@ -3168,8 +3170,8 @@ struct SENSE_DATA {
 **  Inbound address translation for memory window 0 occurs for data transfers occurring from the PCI
 **  bus (originated from the PCI bus) to the 80331 internal bus. The address translation block converts
 **  PCI addresses to internal bus addresses.
-**  The 80331 translate value register¡¦s programmed value must be naturally aligned with the base
-**  address register¡¦s programmed value. The limit register is used as a mask; thus, the lower address
+**  The 80331 translate value register's programmed value must be naturally aligned with the base
+**  address register's programmed value. The limit register is used as a mask; thus, the lower address
 **  bits programmed into the 80331 translate value register are invalid. Refer to the PCI Local Bus
 **  Specification, Revision 2.3 for additional information on programming base address registers.
 **  Bits 31 to 12 within the IALR0 have a direct effect on the IABAR0 register, bits 31 to 12, with a
@@ -3266,11 +3268,11 @@ struct SENSE_DATA {
 **  bus (originated from the PCI bus) to the 80331 internal bus. The address translation block converts
 **  PCI addresses to internal bus addresses.
 **  The inbound translation base address for inbound window 2 is specified in Section 3.10.15. When
-**  determining block size requirements ¡X as described in Section 3.10.21 ¡X the translation limit
+**  determining block size requirements ( as described in Section 3.10.21 ) the translation limit
 **  register provides the block size requirements for the base address register. The remaining registers
 **  used for performing address translation are discussed in Section 3.2.1.1.
-**  The 80331 translate value register¡¦s programmed value must be naturally aligned with the base
-**  address register¡¦s programmed value. The limit register is used as a mask; thus, the lower address
+**  The 80331 translate value register's programmed value must be naturally aligned with the base
+**  address register's programmed value. The limit register is used as a mask; thus, the lower address
 **  bits programmed into the 80331 translate value register are invalid. Refer to the PCI Local Bus
 **  Specification, Revision 2.3 for additional information on programming base address registers.
 **  Bits 31 to 12 within the IALR2 have a direct effect on the IABAR2 register, bits 31 to 12, with a
@@ -3458,7 +3460,7 @@ struct SENSE_DATA {
 **  18          0 2                         Detected Address or Attribute Parity Error - set when a parity error is detected during either the address
 **  					or attribute phase of a transaction on the PCI bus even when the ATUCMD register Parity Error
 **  					Response bit is cleared. Set under the following conditions:
-**  					¡E Any Address or Attribute (PCI-X Only) Parity Error on the Bus (including one generated by the ATU).
+**  					* Any Address or Attribute (PCI-X Only) Parity Error on the Bus (including one generated by the ATU).
 **  17:16  Varies with
 **  										external state
 **  										of DEVSEL#,
@@ -3525,21 +3527,21 @@ struct SENSE_DATA {
 **  								this bit triggers the assertion of the M_RST# pin for
 **  								initialization of registered DIMMs. When set:
 **  								When operating in the conventional PCI mode:
-**  								¡E All current PCI transactions being mastered by the ATU completes, 
+**  								* All current PCI transactions being mastered by the ATU completes,
 **  								and the ATU master interfaces
 **  								proceeds to an idle state. No additional transactions is mastered by these units
 **  								until the internal bus reset is complete.
-**  								¡E All current transactions being slaved by the ATU on either the PCI bus 
+**  								* All current transactions being slaved by the ATU on either the PCI bus
 **  								or the internal bus
 **  								completes, and the ATU target interfaces proceeds to an idle state. 
 **  								All future slave transactions master aborts, 
 **  								with the exception of the completion cycle for the transaction that set the Reset
 **  								Internal Bus bit in the PCSR.
-**  								¡E When the value of the Core Processor Reset bit in the PCSR (upon P_RST# assertion) 
+**  								* When the value of the Core Processor Reset bit in the PCSR (upon P_RST# assertion)
 **  								is set, the Intel XScale core is held in reset when the internal bus reset is complete.
-**  								¡E The ATU ignores configuration cycles, and they appears as master aborts for: 32 
+**  								* The ATU ignores configuration cycles, and they appears as master aborts for: 32
 **  								Internal Bus clocks.
-**  								¡E The 80331 hardware clears this bit after the reset operation completes.
+**  								* The 80331 hardware clears this bit after the reset operation completes.
 **  								When operating in the PCI-X mode:
 **  								The ATU hardware responds the same as in Conventional PCI-X mode. 
 **  								However, this may create a problem in PCI-X mode for split requests in 
@@ -3628,10 +3630,10 @@ struct SENSE_DATA {
 **  														the ATU Power State Transition Interrupt mask bit is cleared, this bit is set.
 **  10          0 2                         P_SERR# Asserted - set when P_SERR# is asserted on the PCI bus by the ATU.
 **  09          0 2                         Detected Parity Error - set when a parity error is detected on the PCI bus even when the ATUCMD
-**  														register¡¦s Parity Error Response bit is cleared. Set under the following conditions:
-**  														¡E Write Data Parity Error when the ATU is a target (inbound write).
-**  														¡E Read Data Parity Error when the ATU is an initiator (outbound read).
-**  														¡E Any Address or Attribute (PCI-X Only) Parity Error on the Bus.
+**  														register's Parity Error Response bit is cleared. Set under the following conditions:
+**  														* Write Data Parity Error when the ATU is a target (inbound write).
+**  														* Read Data Parity Error when the ATU is an initiator (outbound read).
+**  														* Any Address or Attribute (PCI-X Only) Parity Error on the Bus.
 **  08          0 2                         ATU BIST Interrupt - When set, generates the ATU BIST Start Interrupt and indicates the host processor
 **  														has set the Start BIST bit (ATUBISTR register bit 6), when the ATU BIST interrupt is enabled (ATUCR
 **  														register bit 3). The Intel XScale core can initiate the software BIST and store the result in ATUBISTR
@@ -3646,11 +3648,11 @@ struct SENSE_DATA {
 **  01          0 2                         PCI Target Abort (target) - set when the ATU interface, acting as a target, terminates the transaction on the PCI bus with a target abort.
 **  00          0 2                         PCI Master Parity Error - Master Parity Error - The ATU interface sets this bit under the following
 **  														conditions:
-**  														¡E The ATU asserted PERR# itself or the ATU observed PERR# asserted.
-**  														¡E And the ATU acted as the requester for the operation in which the error occurred.
-**  														¡E And the ATUCMD register¡¦s Parity Error Response bit is set
-**  														¡E Or (PCI-X Mode Only) the ATU received a Write Data Parity Error Message
-**  														¡E And the ATUCMD register¡¦s Parity Error Response bit is set
+**  														* The ATU asserted PERR# itself or the ATU observed PERR# asserted.
+**  														* And the ATU acted as the requester for the operation in which the error occurred.
+**  														* And the ATUCMD register's Parity Error Response bit is set
+**  														* Or (PCI-X Mode Only) the ATU received a Write Data Parity Error Message
+**  														* And the ATUCMD register's Parity Error Response bit is set
 ***********************************************************************************
 */
 #define     ARCMSR_ATU_INTERRUPT_STATUS_REG		          0x88    /*dword 0x8B,0x8A,0x89,0x88*/
@@ -3727,7 +3729,7 @@ struct SENSE_DATA {
 **  					during an inbound read transaction where the data phase that was target aborted on the internal bus is
 **  					actually requested from the inbound read queue.
 **  														0=Disconnect with data 
-**  														(the data being up to 64 bits of 1¡¦s)
+**  														(the data being up to 64 bits of 1's)
 **  														1=Target Abort
 **  		NOTE: In PCI-X Mode, The ATU initiates a Split Completion Error Message (with message class=2h -
 **  			completer error and message index=81h - 80331 internal bus target abort) on the PCI bus,
@@ -3805,11 +3807,11 @@ struct SENSE_DATA {
 **  bus (originated from the PCI bus) to the 80331 internal bus. The address translation block converts
 **  PCI addresses to internal bus addresses.
 **  The inbound translation base address for inbound window 3 is specified in Section 3.10.15. When
-**  determining block size requirements ¡X as described in Section 3.10.21 ¡X the translation limit
+**  determining block size requirements ( as described in Section 3.10.21 ) the translation limit
 **  register provides the block size requirements for the base address register. The remaining registers
 **  used for performing address translation are discussed in Section 3.2.1.1.
-**  The 80331 translate value register¡¦s programmed value must be naturally aligned with the base
-**  address register¡¦s programmed value. The limit register is used as a mask; thus, the lower address
+**  The 80331 translate value register's programmed value must be naturally aligned with the base
+**  address register's programmed value. The limit register is used as a mask; thus, the lower address
 **  bits programmed into the 80331 translate value register are invalid. Refer to the PCI Local Bus
 **  Specification, Revision 2.3 for additional information on programming base address registers.
 **  Bits 31 to 12 within the IALR3 have a direct effect on the IABAR3 register, bits 31 to 12, with a
@@ -3895,7 +3897,7 @@ struct SENSE_DATA {
 **  with an ID of 03H as defined by the PCI Local Bus Specification, Revision 2.3.
 **  -----------------------------------------------------------------
 **  Bit       Default                       Description
-**  07:00       03H               Cap_Id - This field with its¡¦ 03H value identifies this item in the linked list of Extended Capability
+**  07:00       03H               Cap_Id - This field with its' 03H value identifies this item in the linked list of Extended Capability
 **                                Headers as being the VPD capability registers.
 ***********************************************************************************
 */
@@ -3905,12 +3907,12 @@ struct SENSE_DATA {
 **  VPD Next Item Pointer Register - VPD_NXTP
 **  
 **  The Next Item Pointer Register bits adhere to the definitions in the PCI Local Bus Specification,
-**  Revision 2.3. This register describes the location of the next item in the function¡¦s capability list.
+**  Revision 2.3. This register describes the location of the next item in the function's capability list.
 **  For the 80331, this the final capability list, and hence, this register is set to 00H.
 **  -----------------------------------------------------------------
 **  Bit       Default                       Description
-**  07:00       00H               Next_ Item_ Pointer - This field provides an offset into the function¡¦s configuration space pointing to the
-**                                next item in the function¡¦s capability list. Since the VPD capabilities are the last in the linked list of
+**  07:00       00H               Next_ Item_ Pointer - This field provides an offset into the function's configuration space pointing to the
+**                                next item in the function's capability list. Since the VPD capabilities are the last in the linked list of
 **                                extended capabilities in the 80331, the register is set to 00H.
 ***********************************************************************************
 */
@@ -3927,7 +3929,7 @@ struct SENSE_DATA {
 **  -----------------------------------------------------------------
 **  Bit       Default                       Description
 **  15          0 2          Flag - A flag is used to indicate when a transfer of data between the VPD Data Register and the storage
-**                           component has completed. Please see Section 3.9, ¡§Vital Product Data¡¨ on page 201 for more details on
+**                           component has completed. Please see Section 3.9, "Vital Product Data" on page 201 for more details on
 **                           how the 80331 handles the data transfer.
 **  14:0       0000H         VPD Address - This register is written to set the DWORD-aligned byte address used to read or write
 **                           Vital Product Data from the VPD storage component.
@@ -3956,7 +3958,7 @@ struct SENSE_DATA {
 **  Interface Specification, Revision 1.1.
 **  -----------------------------------------------------------------
 **  Bit       Default                       Description
-**  07:00       01H                         Cap_Id - This field with its¡¦ 01H value identifies this item in the linked list of Extended Capability
+**  07:00       01H                         Cap_Id - This field with its' 01H value identifies this item in the linked list of Extended Capability
 **                                          Headers as being the PCI Power Management Registers.
 ***********************************************************************************
 */
@@ -3966,12 +3968,12 @@ struct SENSE_DATA {
 **  Power Management Next Item Pointer Register - PM_NXTP
 **
 **  The Next Item Pointer Register bits adhere to the definitions in the PCI Local Bus Specification,
-**  Revision 2.3. This register describes the location of the next item in the function¡¦s capability list.
+**  Revision 2.3. This register describes the location of the next item in the function's capability list.
 **  For the 80331, the next capability (MSI capability list) is located at off-set D0H.
 **  -----------------------------------------------------------------
 **  Bit       Default                       Description
-**  07:00       D0H                         Next_ Item_ Pointer - This field provides an offset into the function¡¦s configuration space pointing to the
-**                          next item in the function¡¦s capability list which in the 80331 is the MSI extended capabilities header.
+**  07:00       D0H                         Next_ Item_ Pointer - This field provides an offset into the function's configuration space pointing to the
+**                          next item in the function's capability list which in the 80331 is the MSI extended capabilities header.
 ***********************************************************************************
 */
 #define     ARCMSR_POWER_NEXT_ITEM_PTR_REG		          0xC1    /*byte*/
@@ -4035,7 +4037,7 @@ struct SENSE_DATA {
 **  an ID of 07H as defined by the PCI-X Addendum to the PCI Local Bus Specification, Revision 1.0a.
 **  -----------------------------------------------------------------
 **  Bit       Default                       Description
-**  07:00       07H                         Cap_Id - This field with its¡¦ 07H value identifies this item in the linked list of Extended Capability
+**  07:00       07H                         Cap_Id - This field with its' 07H value identifies this item in the linked list of Extended Capability
 **                                          Headers as being the PCI-X capability registers.
 ***********************************************************************************
 */
@@ -4045,7 +4047,7 @@ struct SENSE_DATA {
 **  PCI-X Next Item Pointer Register - PX_NXTP
 **  
 **  The Next Item Pointer Register bits adhere to the definitions in the PCI Local Bus Specification,
-**  Revision 2.3. This register describes the location of the next item in the function¡¦s capability list.
+**  Revision 2.3. This register describes the location of the next item in the function's capability list.
 **  By default, the PCI-X capability is the last capabilities list for the 80331, thus this register defaults
 **  to 00H.
 **  However, this register may be written to B8H prior to host configuration to include the VPD
@@ -4055,12 +4057,12 @@ struct SENSE_DATA {
 **  In order to guarantee that this register is written prior to host configuration, the 80331 must be
 **  initialized at P_RST# assertion to Retry Type 0 configuration cycles (bit 2 of PCSR). Typically,
 **  the Intel XScale core would be enabled to boot immediately following P_RST# assertion in
-**  this case (bit 1 of PCSR), as well. Please see Table 125, ¡§PCI Configuration and Status Register -
-**  PCSR¡¨ on page 253 for more details on the 80331 initialization modes.
+**  this case (bit 1 of PCSR), as well. Please see Table 125, "PCI Configuration and Status Register -
+**  PCSR" on page 253 for more details on the 80331 initialization modes.
 **  -----------------------------------------------------------------
 **  Bit       Default                       Description
-**  07:00       00H                         Next_ Item_ Pointer - This field provides an offset into the function¡¦s configuration space pointing to the
-**  			next item in the function¡¦s capability list. Since the PCI-X capabilities are the last in the linked list of
+**  07:00       00H                         Next_ Item_ Pointer - This field provides an offset into the function's configuration space pointing to the
+**  			next item in the function's capability list. Since the PCI-X capabilities are the last in the linked list of
 **  			extended capabilities in the 80331, the register is set to 00H.
 **  			However, this field may be written prior to host configuration with B8H to extend the list to include the
 **  			VPD extended capabilities header.
@@ -4128,7 +4130,7 @@ struct SENSE_DATA {
 **  22:21       01 2                        Designed Maximum Memory Read Byte Count - The 80331 can generate memory reads with byte counts up 
 **                                          to 1024 bytes.
 **  20           1 2                        80331 is a complex device.
-**  19           0 2                        Unexpected Split Completion - This bit is set when an unexpected Split Completion with this device¡¦s
+**  19           0 2                        Unexpected Split Completion - This bit is set when an unexpected Split Completion with this device's
 **  					Requester ID is received. Once set, this bit remains set until software writes a 1 to this location.
 **  					0=no unexpected Split Completion has been received.
 **  					1=an unexpected Split Completion has been received.
@@ -4139,7 +4141,7 @@ struct SENSE_DATA {
 **  					0=no Split Completion has been discarded.
 **  					1=a Split Completion has been discarded.
 **  		NOTE: The 80331 does not set this bit since there is no Inbound address responding to Inbound Read
-**  			Requests with Split Responses (Memory or Register) that has ¡§read side effects.¡¨
+**  			Requests with Split Responses (Memory or Register) that has "read side effects."
 **  17           1 2                        80331 is a 133 MHz capable device.
 **  16           1 2 or P_32BITPCI#	80331 with bridge enabled (BRG_EN=1) implements the ATU with a 64-bit interface on the secondary PCI bus, 
 **  					therefore this bit is always set.
@@ -4195,111 +4197,111 @@ struct SENSE_DATA {
 **	processed as split transactions. The ATUs PCI interface claims the read transaction and forwards
 **	the read request through to the internal bus and returns the read data to the PCI bus. Data flow for
 **	an inbound read transaction on the PCI bus is summarized in the following statements:
-**	¡E The ATU claims the PCI read transaction when the PCI address is within the inbound
+**	* The ATU claims the PCI read transaction when the PCI address is within the inbound
 **	translation window defined by ATU Inbound Base Address Register (and Inbound Upper Base
 **	Address Register during DACs) and Inbound Limit Register.
-**	¡E When operating in the conventional PCI mode, when the ITQ is currently holding transaction
+**	* When operating in the conventional PCI mode, when the ITQ is currently holding transaction
 **	information from a previous delayed read, the current transaction information is compared to
 **	the previous transaction information (based on the setting of the DRC Alias bit in
-**	Section 3.10.39, ¡§ATU Configuration Register - ATUCR¡¨ on page 252). When there is a
+**	Section 3.10.39, "ATU Configuration Register - ATUCR" on page 252). When there is a
 **	match and the data is in the IRQ, return the data to the master on the PCI bus. When there is a
 **	match and the data is not available, a Retry is signaled with no other action taken. When there
 **	is not a match and when the ITQ has less than eight entries, capture the transaction
 **	information, signal a Retry and initiate a delayed transaction. When there is not a match and
 **	when the ITQ is full, then signal a Retry with no other action taken.
-**	¡X When an address parity error is detected, the address parity response defined in
+**	+ When an address parity error is detected, the address parity response defined in
 **	Section 3.7 is used.
-**	¡E When operating in the conventional PCI mode, once read data is driven onto the PCI bus from
+**	* When operating in the conventional PCI mode, once read data is driven onto the PCI bus from
 **	the IRQ, it continues until one of the following is true:
-**	¡X The initiator completes the PCI transaction. When there is data left unread in the IRQ, the
+**	+ The initiator completes the PCI transaction. When there is data left unread in the IRQ, the
 **	data is flushed.
-**	¡X An internal bus Target Abort was detected. In this case, the QWORD associated with the
+**	+ An internal bus Target Abort was detected. In this case, the QWORD associated with the
 **	Target Abort is never entered into the IRQ, and therefore is never returned.
-**	¡X Target Abort or a Disconnect with Data is returned in response to the Internal Bus Error.
-**	¡X The IRQ becomes empty. In this case, the PCI interface signals a Disconnect with data to
+**	+ Target Abort or a Disconnect with Data is returned in response to the Internal Bus Error.
+**	+ The IRQ becomes empty. In this case, the PCI interface signals a Disconnect with data to
 **	the initiator on the last data word available.
-**	¡E When operating in the PCI-X mode, when ITQ is not full, the PCI address, attribute and
+**	* When operating in the PCI-X mode, when ITQ is not full, the PCI address, attribute and
 **	command are latched into the available ITQ and a Split Response Termination is signalled to
 **	the initiator.
-**	¡E When operating in the PCI-X mode, when the transaction does not cross a 1024 byte aligned
+**	* When operating in the PCI-X mode, when the transaction does not cross a 1024 byte aligned
 **	boundary, then the ATU waits until it receives the full byte count from the internal bus target
 **	before returning read data by generating the split completion transaction on the PCI-X bus.
 **	When the read requested crosses at least one 1024 byte boundary, then ATU completes the
 **	transfer by returning data in 1024 byte aligned chunks.
-**	¡E When operating in the PCI-X mode, once a split completion transaction has started, it
+**	* When operating in the PCI-X mode, once a split completion transaction has started, it
 **	continues until one of the following is true:
-**	¡X The requester (now the target) generates a Retry Termination, or a Disconnection at Next
+**	+ The requester (now the target) generates a Retry Termination, or a Disconnection at Next
 **	ADB (when the requester is a bridge)
-**	¡X The byte count is satisfied.
-**	¡X An internal bus Target Abort was detected. The ATU generates a Split Completion
+**	+ The byte count is satisfied.
+**	+ An internal bus Target Abort was detected. The ATU generates a Split Completion
 **	Message (message class=2h - completer error, and message index=81h - target abort) to
 **	inform the requester about the abnormal condition. The ITQ for this transaction is flushed.
 **	Refer to Section 3.7.1.
-**	¡X An internal bus Master Abort was detected. The ATU generates a Split Completion
+**	+ An internal bus Master Abort was detected. The ATU generates a Split Completion
 **	Message (message class=2h - completer error, and message index=80h - Master abort) to
 **	inform the requester about the abnormal condition. The ITQ for this transaction is flushed.
 **	Refer to Section 3.7.1
-**	¡E When operating in the conventional PCI mode, when the master inserts wait states on the PCI
+**	* When operating in the conventional PCI mode, when the master inserts wait states on the PCI
 **	bus, the ATU PCI slave interface waits with no premature disconnects.
-**	¡E When a data parity error occurs signified by PERR# asserted from the initiator, no action is
+**	* When a data parity error occurs signified by PERR# asserted from the initiator, no action is
 **	taken by the target interface. Refer to Section 3.7.2.5.
-**	¡E When operating in the conventional PCI mode, when the read on the internal bus is
+**	* When operating in the conventional PCI mode, when the read on the internal bus is
 **	target-aborted, either a target-abort or a disconnect with data is signaled to the initiator. This is
 **	based on the ATU ECC Target Abort Enable bit (bit 0 of the ATUIMR for ATU). When set, a
 **	target abort is used, when clear, a disconnect is used.
-**	¡E When operating in the PCI-X mode (with the exception of the MU queue ports at offsets 40h
+**	* When operating in the PCI-X mode (with the exception of the MU queue ports at offsets 40h
 **	and 44h), when the transaction on the internal bus resulted in a target abort, the ATU generates
 **	a Split Completion Message (message class=2h - completer error, and message index=81h -
 **	internal bus target abort) to inform the requester about the abnormal condition. For the MU
 **	queue ports, the ATU returns either a target abort or a single data phase disconnect depending
 **	on the ATU ECC Target Abort Enable bit (bit 0 of the ATUIMR for ATU). The ITQ for this
 **	transaction is flushed. Refer to Section 3.7.1.
-**	¡E When operating in the conventional PCI mode, when the transaction on the internal bus
+**	* When operating in the conventional PCI mode, when the transaction on the internal bus
 **	resulted in a master abort, the ATU returns a target abort to inform the requester about the
 **	abnormal condition. The ITQ for this transaction is flushed. Refer to Section 3.7.1
-**	¡E When operating in the PCI-X mode, when the transaction on the internal bus resulted in a
+**	* When operating in the PCI-X mode, when the transaction on the internal bus resulted in a
 **	master abort, the ATU generates a Split Completion Message (message class=2h - completer
 **	error, and message index=80h - internal bus master abort) to inform the requester about the
 **	abnormal condition. The ITQ for this transaction is flushed. Refer to Section 3.7.1.
-**	¡E When operating in the PCI-X mode, when the Split Completion transaction completes with
+**	* When operating in the PCI-X mode, when the Split Completion transaction completes with
 **	either Master-Abort or Target-Abort, the requester is indicating a failure condition that
 **	prevents it from accepting the completion it requested. In this case, since the Split Request
 **	addresses a location that has no read side effects, the completer must discard the Split
 **	Completion and take no further action.
 **	The data flow for an inbound read transaction on the internal bus is summarized in the following
 **	statements:
-**	¡E The ATU internal bus master interface requests the internal bus when a PCI address appears in
+**	* The ATU internal bus master interface requests the internal bus when a PCI address appears in
 **		an ITQ and transaction ordering has been satisfied. When operating in the PCI-X mode the
 **		ATU does not use the information provided by the Relax Ordering Attribute bit. That is, ATU
 **		always uses conventional PCI ordering rules.
-**	¡E Once the internal bus is granted, the internal bus master interface drives the translated address
+**	* Once the internal bus is granted, the internal bus master interface drives the translated address
 **		onto the bus and wait for IB_DEVSEL#. When a Retry is signaled, the request is repeated.
 **		When a master abort occurs, the transaction is considered complete and a target abort is loaded
 **		into the associated IRQ for return to the PCI initiator (transaction is flushed once the PCI
 **		master has been delivered the target abort).
-**	¡E Once the translated address is on the bus and the transaction has been accepted, the internal
+**	* Once the translated address is on the bus and the transaction has been accepted, the internal
 **		bus target starts returning data with the assertion of IB_TRDY#. Read data is continuously
 **		received by the IRQ until one of the following is true:
-**	¡X The full byte count requested by the ATU read request is received. The ATU internal bus
+**	+ The full byte count requested by the ATU read request is received. The ATU internal bus
 **	    initiator interface performs a initiator completion in this case.
-**	¡X When operating in the conventional PCI mode, a Target Abort is received on the internal
+**	+ When operating in the conventional PCI mode, a Target Abort is received on the internal
 **		bus from the internal bus target. In this case, the transaction is aborted and the PCI side is
 **		informed.
-**	¡X When operating in the PCI-X mode, a Target Abort is received on the internal bus from
+**	+ When operating in the PCI-X mode, a Target Abort is received on the internal bus from
 **		the internal bus target. In this case, the transaction is aborted. The ATU generates a Split
 **		Completion Message (message class=2h - completer error, and message index=81h -
 **		target abort) on the PCI bus to inform the requester about the abnormal condition. The
 **		ITQ for this transaction is flushed.
-**	¡X When operating in the conventional PCI mode, a single data phase disconnection is
+**	+ When operating in the conventional PCI mode, a single data phase disconnection is
 **		received from the internal bus target. When the data has not been received up to the next
 **		QWORD boundary, the ATU internal bus master interface attempts to reacquire the bus.
 **		When not, the bus returns to idle.
-**	¡X When operating in the PCI-X mode, a single data phase disconnection is received from
+**	+ When operating in the PCI-X mode, a single data phase disconnection is received from
 **		the internal bus target. The ATU IB initiator interface attempts to reacquire the bus to
 **		obtain remaining data.
-**	¡X When operating in the conventional PCI mode, a disconnection at Next ADB is received
+**	+ When operating in the conventional PCI mode, a disconnection at Next ADB is received
 **	    from the internal bus target. The bus returns to idle.
-**	¡X When operating in the PCI-X mode, a disconnection at Next ADB is received from the
+**	+ When operating in the PCI-X mode, a disconnection at Next ADB is received from the
 **		internal bus target. The ATU IB initiator interface attempts to reacquire the bus to obtain
 **		remaining data.
 **		To support PCI Local Bus Specification, Revision 2.0 devices, the ATU can be programmed to
@@ -4322,20 +4324,20 @@ struct SENSE_DATA {
 **	  An inbound write transaction is initiated by a PCI master and is targeted at either 80331 local
 **	  memory or a 80331 memory-mapped register.
 **	Data flow for an inbound write transaction on the PCI bus is summarized as:
-**	¡E The ATU claims the PCI write transaction when the PCI address is within the inbound
+**	* The ATU claims the PCI write transaction when the PCI address is within the inbound
 **	  translation window defined by the ATU Inbound Base Address Register (and Inbound Upper
 **	  Base Address Register during DACs) and Inbound Limit Register.
-**	¡E When the IWADQ has at least one address entry available and the IWQ has at least one buffer
+**	* When the IWADQ has at least one address entry available and the IWQ has at least one buffer
 **	  available, the address is captured and the first data phase is accepted.
-**	¡E The PCI interface continues to accept write data until one of the following is true:
-**	  ¡X The initiator performs a disconnect.
-**	  ¡X The transaction crosses a buffer boundary.
-**	¡E When an address parity error is detected during the address phase of the transaction, the
+**	* The PCI interface continues to accept write data until one of the following is true:
+**	  + The initiator performs a disconnect.
+**	  + The transaction crosses a buffer boundary.
+**	* When an address parity error is detected during the address phase of the transaction, the
 **	  address parity error mechanisms are used. Refer to Section 3.7.1 for details of the address
 **	  parity error response.
-**	¡E When operating in the PCI-X mode when an attribute parity error is detected, the attribute
+**	* When operating in the PCI-X mode when an attribute parity error is detected, the attribute
 **	  parity error mechanism described in Section 3.7.1 is used.
-**	¡E When a data parity error is detected while accepting data, the slave interface sets the
+**	* When a data parity error is detected while accepting data, the slave interface sets the
 **	  appropriate bits based on PCI specifications. No other action is taken. Refer to Section 3.7.2.6
 **	  for details of the inbound write data parity error response.
 **	  Once the PCI interface places a PCI address in the IWADQ, when IWQ has received data sufficient
@@ -4352,39 +4354,39 @@ struct SENSE_DATA {
 **	  Also, when operating in the PCI-X mode a write sequence may contain multiple write transactions.
 **	  The ATU handles such transactions as independent transactions.
 **	  Data flow for the inbound write transaction on the internal bus is summarized as:
-**	¡E The ATU internal bus master requests the internal bus when IWADQ has at least one entry
+**	* The ATU internal bus master requests the internal bus when IWADQ has at least one entry
 **	  with associated data in the IWQ.
-**	¡E When the internal bus is granted, the internal bus master interface initiates the write
+**	* When the internal bus is granted, the internal bus master interface initiates the write
 **	  transaction by driving the translated address onto the internal bus. For details on inbound
 **	  address translation.
-**	¡E When IB_DEVSEL# is not returned, a master abort condition is signaled on the internal bus.
+**	* When IB_DEVSEL# is not returned, a master abort condition is signaled on the internal bus.
 **	  The current transaction is flushed from the queue and SERR# may be asserted on the PCI
 **	  interface.
-**	¡E The ATU initiator interface asserts IB_REQ64# to attempt a 64-bit transfer. When
+**	* The ATU initiator interface asserts IB_REQ64# to attempt a 64-bit transfer. When
 **	  IB_ACK64# is not returned, a 32-bit transfer is used. Transfers of less than 64-bits use the
 **	  IB_C/BE[7:0]# to mask the bytes not written in the 64-bit data phase. Write data is transferred
 **	  from the IWQ to the internal bus when data is available and the internal bus interface retains
 **	  internal bus ownership.
-**	¡E The internal bus interface stops transferring data from the current transaction to the internal
+**	* The internal bus interface stops transferring data from the current transaction to the internal
 **	  bus when one of the following conditions becomes true:
-**	¡X The internal bus initiator interface loses bus ownership. The ATU internal initiator
+**	+ The internal bus initiator interface loses bus ownership. The ATU internal initiator
 **	  terminates the transfer (initiator disconnection) at the next ADB (for the internal bus ADB
 **	  is defined as a naturally aligned 128-byte boundary) and attempt to reacquire the bus to
 **	  complete the delivery of remaining data using the same sequence ID but with the
 **	  modified starting address and byte count.
-**	¡X A Disconnect at Next ADB is signaled on the internal bus from the internal target. When
+**	+ A Disconnect at Next ADB is signaled on the internal bus from the internal target. When
 **	  the transaction in the IWQ completes at that ADB, the initiator returns to idle. When the
 **	  transaction in the IWQ is not complete, the initiator attempts to reacquire the bus to
 **	  complete the delivery of remaining data using the same sequence ID but with the
 **	  modified starting address and byte count.
-**	¡X A Single Data Phase Disconnect is signaled on the internal bus from the internal target.
+**	+ A Single Data Phase Disconnect is signaled on the internal bus from the internal target.
 **	  When the transaction in the IWQ needs only a single data phase, the master returns to idle.
 **	  When the transaction in the IWQ is not complete, the initiator attempts to reacquire the
 **	  bus to complete the delivery of remaining data using the same sequence ID but with the
 **	  modified starting address and byte count.
-**	¡X The data from the current transaction has completed (satisfaction of byte count). An
+**	+ The data from the current transaction has completed (satisfaction of byte count). An
 **	  initiator termination is performed and the bus returns to idle.
-**	¡X A Master Abort is signaled on the internal bus. SERR# may be asserted on the PCI bus.
+**	+ A Master Abort is signaled on the internal bus. SERR# may be asserted on the PCI bus.
 **	  Data is flushed from the IWQ.
 *****************************************************************
 */
@@ -4439,12 +4441,12 @@ struct SENSE_DATA {
 **	the PCI Bus. When an error occurs, the ATU continues accepting data until the initiator of the write
 **	transaction completes or a queue fill condition is reached. Specifically, the following actions with
 **	the given constraints are taken by the ATU:
-**	¡E PERR# is asserted two clocks cycles (three clock cycles when operating in the PCI-X mode)
+**	* PERR# is asserted two clocks cycles (three clock cycles when operating in the PCI-X mode)
 **	following the data phase in which the data parity error is detected on the bus. This is only
 **	done when the Parity Error Response bit in the ATUCMD is set.
-**	¡E The Detected Parity Error bit in the ATUSR is set. When the ATU sets this bit, additional
+**	* The Detected Parity Error bit in the ATUSR is set. When the ATU sets this bit, additional
 **	actions is taken:
-**	¡X When the ATU Detected Parity Error Interrupt Mask bit in the ATUIMR is clear, set the
+**	+ When the ATU Detected Parity Error Interrupt Mask bit in the ATUIMR is clear, set the
 **	Detected Parity Error bit in the ATUISR. When set, no action.
 ***************************************************************************
 */
@@ -4462,33 +4464,33 @@ struct SENSE_DATA {
 **  assertion of STOP# (signalling a Retry) until PAR is driven by the master. A parity error during a
 **  delayed write transaction (inbound configuration write cycle) can occur in any of the following
 **  parts of the transactions:
-**  ¡E During the initial Delayed Write Request cycle on the PCI bus when the ATU latches the
+**  * During the initial Delayed Write Request cycle on the PCI bus when the ATU latches the
 **  address/command and data for delayed delivery to the internal configuration register.
-**  ¡E During the Delayed Write Completion cycle on the PCI bus when the ATU delivers the status
+**  * During the Delayed Write Completion cycle on the PCI bus when the ATU delivers the status
 **  of the operation back to the original master.
 **  The 80331 ATU PCI interface has the following responses to a delayed write parity error for
 **  inbound transactions during Delayed Write Request cycles with the given constraints:
-**  ¡E When the Parity Error Response bit in the ATUCMD is set, the ATU asserts TRDY#
+**  * When the Parity Error Response bit in the ATUCMD is set, the ATU asserts TRDY#
 **  (disconnects with data) and two clock cycles later asserts PERR# notifying the initiator of the
 **  parity error. The delayed write cycle is not enqueued and forwarded to the internal bus.
 **  When the Parity Error Response bit in the ATUCMD is cleared, the ATU retries the
 **  transaction by asserting STOP# and enqueues the Delayed Write Request cycle to be
 **  forwarded to the internal bus. PERR# is not asserted.
-**  ¡E The Detected Parity Error bit in the ATUSR is set. When the ATU sets this bit, additional
+**  * The Detected Parity Error bit in the ATUSR is set. When the ATU sets this bit, additional
 **  actions is taken:
-**  ¡X When the ATU Detected Parity Error Interrupt Mask bit in the ATUIMR is clear, set the
+**  + When the ATU Detected Parity Error Interrupt Mask bit in the ATUIMR is clear, set the
 **  Detected Parity Error bit in the ATUISR. When set, no action.
 **  For the original write transaction to be completed, the initiator retries the transaction on the PCI
 **  bus and the ATU returns the status from the internal bus, completing the transaction.
 **  For the Delayed Write Completion transaction on the PCI bus where a data parity error occurs and
 **  therefore does not agree with the status being returned from the internal bus (i.e. status being
 **  returned is normal completion) the ATU performs the following actions with the given constraints:
-**  ¡E When the Parity Error Response Bit is set in the ATUCMD, the ATU asserts TRDY#
+**  * When the Parity Error Response Bit is set in the ATUCMD, the ATU asserts TRDY#
 **  (disconnects with data) and two clocks later asserts PERR#. The Delayed Completion cycle in
 **  the IDWQ remains since the data of retried command did not match the data within the queue.
-**  ¡E The Detected Parity Error bit in the ATUSR is set. When the ATU sets this bit, additional
+**  * The Detected Parity Error bit in the ATUSR is set. When the ATU sets this bit, additional
 **  actions is taken:
-**  ¡X When the ATU Detected Parity Error Interrupt Mask bit in the ATUIMR is clear, set the
+**  + When the ATU Detected Parity Error Interrupt Mask bit in the ATUIMR is clear, set the
 **  Detected Parity Error bit in the ATUISR. When set, no action.
 **  =================================================== 
 **                       PCI-X Mode
@@ -4497,19 +4499,19 @@ struct SENSE_DATA {
 **  PERR# assertion and delivery of a Split Completion Error Message on the PCI Bus. When an error
 **  occurs, the ATU accepts the write data and complete with a Split Response Termination.
 **  Specifically, the following actions with the given constraints are then taken by the ATU:
-**  ¡E When the Parity Error Response bit in the ATUCMD is set, PERR# is asserted three clocks
+**  * When the Parity Error Response bit in the ATUCMD is set, PERR# is asserted three clocks
 **  cycles following the Split Response Termination in which the data parity error is detected on
 **  the bus. When the ATU asserts PERR#, additional actions is taken:
-**  ¡X A Split Write Data Parity Error message (with message class=2h - completer error and
+**  + A Split Write Data Parity Error message (with message class=2h - completer error and
 **  message index=01h - Split Write Data Parity Error) is initiated by the ATU on the PCI bus
 **  that addresses the requester of the configuration write.
-**  ¡X When the Initiated Split Completion Error Message Interrupt Mask in the ATUIMR is
+**  + When the Initiated Split Completion Error Message Interrupt Mask in the ATUIMR is
 **  clear, set the Initiated Split Completion Error Message bit in the ATUISR. When set, no
 **  action.
-**  ¡X The Split Write Request is not enqueued and forwarded to the internal bus.
-**  ¡E The Detected Parity Error bit in the ATUSR is set. When the ATU sets this bit, additional
+**  + The Split Write Request is not enqueued and forwarded to the internal bus.
+**  * The Detected Parity Error bit in the ATUSR is set. When the ATU sets this bit, additional
 **  actions is taken:
-**  ¡X When the ATU Detected Parity Error Interrupt Mask bit in the ATUIMR is clear, set the
+**  + When the ATU Detected Parity Error Interrupt Mask bit in the ATUIMR is clear, set the
 **  Detected Parity Error bit in the ATUISR. When set, no action.
 **
 ***************************************************************************
@@ -4524,13 +4526,13 @@ struct SENSE_DATA {
 **  PERR# (when enabled) or SERR# (when enabled) on the PCI Bus. When an error occurs, the
 **  ATU accepts the data and complete normally. Specifically, the following actions with the given
 **  constraints are taken by the ATU:
-**  ¡E PERR# is asserted three clocks cycles following the data phase in which the data parity error
+**  * PERR# is asserted three clocks cycles following the data phase in which the data parity error
 **  is detected on the bus. This is only done when the Parity Error Response bit in the ATUCMD
 **  is set. When the ATU asserts PERR#, additional actions is taken:
-**  ¡X The Master Parity Error bit in the ATUSR is set.
-**  ¡X When the ATU PCI Master Parity Error Interrupt Mask Bit in the ATUIMR is clear, set the
+**  + The Master Parity Error bit in the ATUSR is set.
+**  + When the ATU PCI Master Parity Error Interrupt Mask Bit in the ATUIMR is clear, set the
 **  PCI Master Parity Error bit in the ATUISR. When set, no action.
-**  ¡X When the SERR# Enable bit in the ATUCMD is set, and the Data Parity Error Recover
+**  + When the SERR# Enable bit in the ATUCMD is set, and the Data Parity Error Recover
 **  Enable bit in the PCIXCMD register is clear, assert SERR#; otherwise no action is taken.
 **  When the ATU asserts SERR#, additional actions is taken:
 **  Set the SERR# Asserted bit in the ATUSR.
@@ -4538,18 +4540,18 @@ struct SENSE_DATA {
 **  SERR# Asserted bit in the ATUISR. When set, no action.
 **  When the ATU SERR# Detected Interrupt Enable Bit in the ATUCR is set, set the
 **  SERR# Detected bit in the ATUISR. When clear, no action.
-**  ¡E When the SCE bit (Split Completion Error -- bit 30 of the Completer Attributes) is set during
+**  * When the SCE bit (Split Completion Error -- bit 30 of the Completer Attributes) is set during
 **  the Attribute phase, the Received Split Completion Error Message bit in the PCIXSR is set.
 **  When the ATU sets this bit, additional actions is taken:
-**  ¡X When the ATU Received Split Completion Error Message Interrupt Mask bit in the
+**  + When the ATU Received Split Completion Error Message Interrupt Mask bit in the
 **  ATUIMR is clear, set the Received Split Completion Error Message bit in the ATUISR.
 **  When set, no action.
-**  ¡E The Detected Parity Error bit in the ATUSR is set. When the ATU sets this bit, additional
+**  * The Detected Parity Error bit in the ATUSR is set. When the ATU sets this bit, additional
 **  actions is taken:
-**  ¡X When the ATU Detected Parity Error Interrupt Mask bit in the ATUIMR is clear, set the
+**  + When the ATU Detected Parity Error Interrupt Mask bit in the ATUIMR is clear, set the
 **  Detected Parity Error bit in the ATUISR. When set, no action.
-**  ¡E The transaction associated with the Split Completion Message is discarded.
-**  ¡E When the discarded transaction was a read, a completion error message (with message
+**  * The transaction associated with the Split Completion Message is discarded.
+**  * When the discarded transaction was a read, a completion error message (with message
 **  class=2h - completer error and message index=82h - PCI bus read parity error) is generated on
 **  the internal bus of the 80331.
 *****************************************************************************
@@ -4957,11 +4959,11 @@ struct SENSE_DATA {
 **  The MU implements four circular queues. There are 2 inbound queues and 2 outbound queues. In
 **  this case, inbound and outbound refer to the direction of the flow of posted messages.
 **  Inbound messages are either:
-**  						¡E posted messages by other processors for the Intel XScale core to process or
-**  						¡E free (or empty) messages that can be reused by other processors.
+**  						* posted messages by other processors for the Intel XScale core to process or
+**  						* free (or empty) messages that can be reused by other processors.
 **  Outbound messages are either:
-** 							¡E posted messages by the Intel XScale core for other processors to process or
-** 							¡E free (or empty) messages that can be reused by the Intel XScale core.
+** 							* posted messages by the Intel XScale core for other processors to process or
+** 							* free (or empty) messages that can be reused by the Intel XScale core.
 **  Therefore, free inbound messages flow away from the 80331 and free outbound messages flow toward the 80331.
 **  The four Circular Queues are used to pass messages in the following manner. 
 **  	. The two inbound queues are used to handle inbound messages 
@@ -5266,11 +5268,11 @@ struct SENSE_DATA {
 **  31:06     000000H 00 2                  Reserved
 **  05:01     00001 2                       Circular Queue Size - This field determines the size of each Circular Queue. 
 **  					All four queues are the same size.
-**  					¡E 00001 2 - 4K Entries (16 Kbytes)
-**  					¡E 00010 2 - 8K Entries (32 Kbytes)
-**  					¡E 00100 2 - 16K Entries (64 Kbytes)
-**  					¡E 01000 2 - 32K Entries (128 Kbytes)
-**  					¡E 10000 2 - 64K Entries (256 Kbytes)
+**  					* 00001 2 - 4K Entries (16 Kbytes)
+**  					* 00010 2 - 8K Entries (32 Kbytes)
+**  					* 00100 2 - 16K Entries (64 Kbytes)
+**  					* 01000 2 - 32K Entries (128 Kbytes)
+**  					* 10000 2 - 64K Entries (256 Kbytes)
 **  00        0 2                       Circular Queue Enable - This bit enables or disables the Circular Queues. When clear the Circular
 **  					Queues are disabled, however the MU accepts PCI accesses to the Circular Queue Ports but ignores
 ** 					the data for Writes and return FFFF.FFFFH for Reads. Interrupts are not generated to the core when
