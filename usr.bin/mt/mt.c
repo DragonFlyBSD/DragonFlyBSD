@@ -64,7 +64,7 @@
 #define FALSE 0
 #endif
 
-struct commands {
+static struct commands {
 	char *c_name;
 	int c_code;
 	int c_ronly;
@@ -117,17 +117,17 @@ struct commands {
 	{ NULL }
 };
 
-void printreg(char *, u_int, char *);
-void status(struct mtget *);
-void usage(void);
+static void printreg(char *, u_int, char *);
+static void status(struct mtget *);
+static void usage(void);
 #if defined (__DragonFly__)
-void st_status (struct mtget *);
-int stringtodens (const char *s);
-const char *denstostring (int d);
-int denstobp(int d, int bpi);
-u_int32_t stringtocomp(const char *s);
-const char * comptostring(u_int32_t comp);
-void warn_eof(void);
+static void st_status(struct mtget *);
+static int stringtodens(const char *s);
+static const char *denstostring(int d);
+static int denstobp(int d, int bpi);
+static u_int32_t stringtocomp(const char *s);
+static const char *comptostring(u_int32_t comp);
+static void warn_eof(void);
 #endif /* defined (__DragonFly__) */
 
 int
@@ -321,7 +321,7 @@ main(int argc, char **argv)
 #include <sundev/arreg.h>
 #endif
 
-struct tape_desc {
+static struct tape_desc {
 	short	t_type;		/* type of magtape device */
 	char	*t_name;	/* printing name */
 	char	*t_dsbits;	/* "drive status" register */
@@ -348,7 +348,7 @@ struct tape_desc {
 /*
  * Interpret the status buffer returned
  */
-void
+static void
 status(struct mtget *bp)
 {
 	struct tape_desc *mt;
@@ -379,7 +379,7 @@ status(struct mtget *bp)
 /*
  * Print a register a la the %b format of the kernel's printf.
  */
-void
+static void
 printreg(char *s, u_int v, char *bits)
 {
 	int i, any = 0;
@@ -409,7 +409,7 @@ printreg(char *s, u_int v, char *bits)
 	}
 }
 
-void
+static void
 usage(void)
 {
 	(void)fprintf(stderr, "usage: mt [-f device] command [ count ]\n");
@@ -418,7 +418,7 @@ usage(void)
 
 #if defined (__DragonFly__)
 
-struct densities {
+static struct densities {
 	int dens;
 	int bpmm;
 	int bpi;
@@ -474,7 +474,7 @@ struct densities {
 	{ 0, 0, 0, NULL }
 };
 
-struct compression_types {
+static struct compression_types {
 	u_int32_t	comp_number;
 	const char 	*name;
 } comp_types[] = {
@@ -487,7 +487,7 @@ struct compression_types {
 	{ 0xf0f0f0f0, NULL}
 };
 
-const char *
+static const char *
 denstostring(int d)
 {
 	static char buf[20];
@@ -512,7 +512,7 @@ denstostring(int d)
  * Given a specific density number, return either the bits per inch or bits
  * per millimeter for the given density.
  */
-int
+static int
 denstobp(int d, int bpi)
 {
 	struct densities *sd;
@@ -530,7 +530,7 @@ denstobp(int d, int bpi)
 	}
 }
 
-int
+static int
 stringtodens(const char *s)
 {
 	struct densities *sd;
@@ -543,7 +543,7 @@ stringtodens(const char *s)
 }
 
 
-const char *
+static const char *
 getblksiz(int bs)
 {
 	static char buf[25];
@@ -555,7 +555,7 @@ getblksiz(int bs)
 	}
 }
 
-const char *
+static const char *
 comptostring(u_int32_t comp)
 {
 	static char buf[20];
@@ -577,7 +577,7 @@ comptostring(u_int32_t comp)
 		return(ct->name);
 }
 
-u_int32_t
+static u_int32_t
 stringtocomp(const char *s)
 {
 	struct compression_types *ct;
@@ -590,7 +590,7 @@ stringtocomp(const char *s)
 	return(ct->comp_number);
 }
 
-void
+static void
 st_status(struct mtget *bp)
 {
 	printf("Mode      Density              Blocksize      bpi      "
@@ -671,7 +671,7 @@ st_status(struct mtget *bp)
 	    bp->mt_fileno, bp->mt_blkno, bp->mt_resid);
 }
 
-void
+static void
 warn_eof(void)
 {
 	fprintf(stderr,
