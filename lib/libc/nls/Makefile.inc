@@ -10,7 +10,6 @@ SRCS+=	msgcat.c
 
 .if ${LIB} == "c"
 MAN+=	catclose.3 catgets.3 catopen.3
-.endif
 
 # NOTE: C.msg should not be processed here, it's used as a template
 #       for translators.
@@ -43,4 +42,5 @@ NLS+=	uk_UA.UTF-8
 NLS+=	zh_Hans_CN.GB18030
 NLS+=	zh_Hans_CN.GB2312
 NLS+=	zh_Hans_CN.UTF-8
+.endif
 .endif
