@@ -15,13 +15,11 @@ SUBDIR=	atrun \
 	pppoed \
 	rbootd \
 	revnetgroup \
-	rlogind \
 	rpc.rquotad \
 	rpc.rstatd \
 	rpc.rusersd \
 	rpc.rwalld \
 	rpc.sprayd \
-	rshd \
 	rtld-elf \
 	sftp-server \
 	ssh-keysign \

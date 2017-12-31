@@ -28,7 +28,7 @@
 .\"	@(#)telnet.1	8.6 (Berkeley) 6/1/94
 .\" $FreeBSD: src/crypto/telnet/telnet/telnet.1,v 1.4.2.9 2002/04/13 10:59:08 markm Exp $
 .\"
-.Dd August 26, 2009
+.Dd December 31, 2017
 .Dt TELNET 1
 .Os
 .Sh NAME
@@ -186,7 +186,7 @@ See the
 command below.
 .It Fl r
 Specifies a user interface similar to
-.Xr rlogin 1 .
+.Xr rlogin 1 Pq Pa net/bsdrcmds .
 In this
 mode, the escape character is set to the tilde (~) character,
 unless modified by the
@@ -1406,8 +1406,8 @@ option.
 user customized telnet startup values
 .El
 .Sh SEE ALSO
-.Xr rlogin 1 ,
-.Xr rsh 1 ,
+.Xr rlogin 1 Pq Pa net/bsdrcmds ,
+.Xr rsh 1 Pq Pa net/bsdrcmds ,
 .Xr hosts 5 ,
 .Xr nologin 5 ,
 .Xr telnetd 8

@@ -28,7 +28,7 @@
 .\"     from: @(#)inetd.8	8.3 (Berkeley) 4/13/94
 .\" $FreeBSD: src/usr.sbin/inetd/inetd.8,v 1.46.2.13 2003/03/12 22:08:14 trhodes Exp $
 .\"
-.Dd February 7, 1996
+.Dd December 31, 2017
 .Dt INETD 8
 .Os
 .Sh NAME
@@ -780,7 +780,7 @@ Here are several example service entries for the various types of services:
 ftp          stream  tcp   nowait root  /usr/libexec/ftpd        ftpd -l
 ntalk        dgram   udp   wait   root  /usr/libexec/ntalkd      ntalkd
 telnet       stream  tcp6  nowait root  /usr/libexec/telnetd  telnetd
-shell        stream  tcp46  nowait root  /usr/libexec/rshd rshd
+shell        stream  tcp46  nowait root  /usr/local/sbin/rshd rshd
 tcpmux/+date stream  tcp   nowait guest /bin/date                date
 tcpmux/phonebook stream tcp nowait guest /usr/local/bin/phonebook phonebook
 rstatd/1-3   dgram   rpc/udp wait root  /usr/libexec/rpc.rstatd  rpc.rstatd
@@ -882,9 +882,9 @@ socket but was unable to.
 .Xr comsat 8 ,
 .Xr fingerd 8 ,
 .Xr ftpd 8 ,
-.Xr rlogind 8 ,
+.Xr rlogind 8 Pq Pa net/bsdrcmds ,
 .Xr rpcbind 8 ,
-.Xr rshd 8 ,
+.Xr rshd 8 Pq Pa net/bsdrcmds ,
 .Xr telnetd 8 ,
 .Xr tftpd 8
 .Rs

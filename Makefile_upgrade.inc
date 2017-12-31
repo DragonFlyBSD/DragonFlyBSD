@@ -3359,6 +3359,16 @@ TO_REMOVE+=/usr/share/man/man4/if_faith.4.gz
 TO_REMOVE+=/usr/share/man/man8/faithd.8.gz
 TO_REMOVE+=/usr/share/man/man8/adding_user.8.gz
 TO_REMOVE+=/boot/efiboot.img
+TO_REMOVE+=/bin/rcp
+TO_REMOVE+=/usr/bin/rlogin
+TO_REMOVE+=/usr/bin/rsh
+TO_REMOVE+=/usr/libexec/rlogind
+TO_REMOVE+=/usr/libexec/rshd
+TO_REMOVE+=/usr/share/man/man1/rcp.1.gz
+TO_REMOVE+=/usr/share/man/man1/rlogin.1.gz
+TO_REMOVE+=/usr/share/man/man1/rsh.1.gz
+TO_REMOVE+=/usr/share/man/man8/rlogind.8.gz
+TO_REMOVE+=/usr/share/man/man8/rshd.8.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

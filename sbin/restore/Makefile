@@ -4,7 +4,6 @@
 PROG=	restore
 LINKS=	${BINDIR}/restore ${BINDIR}/rrestore
 CFLAGS+=-DRRESTORE -DNTREC_LONG
-CFLAGS+=-I${.CURDIR}/../../libexec/rlogind
 SRCS=	main.c interactive.c restore.c dirs.c symtab.c tape.c utilities.c \
 	dumprmt.c
 MAN=	restore.8

@@ -71,10 +71,10 @@
 #define	_PATH_MAN	"/usr/share/man"
 #define	_PATH_MEM	__SYS_PATH_MEM
 #define	_PATH_NOLOGIN	"/var/run/nologin"
-#define	_PATH_RCP	"/bin/rcp"
-#define	_PATH_RLOGIN	"/usr/bin/rlogin"
+#define	_PATH_RCP	"/usr/local/bin/rcp"
+#define	_PATH_RLOGIN	"/usr/local/bin/rlogin"
 #define	_PATH_RM	"/bin/rm"
-#define	_PATH_RSH	"/usr/bin/rsh"
+#define	_PATH_RSH	"/usr/local/bin/rsh"
 #define	_PATH_SENDMAIL	"/usr/sbin/sendmail"
 #define	_PATH_SHELLS	"/etc/shells"
 #define	_PATH_TTY	__SYS_PATH_TTY

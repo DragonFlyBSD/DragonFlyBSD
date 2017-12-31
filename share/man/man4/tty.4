@@ -28,7 +28,7 @@
 .\"     @(#)tty.4	8.3 (Berkeley) 4/19/94
 .\" $FreeBSD: src/share/man/man4/tty.4,v 1.9.2.6 2001/12/17 11:30:12 ru Exp $
 .\"
-.Dd August 14, 1992
+.Dd December 31, 2017
 .Dt TTY 4
 .Os
 .Sh NAME
@@ -54,7 +54,7 @@ These special terminal devices are called
 .Em ptys
 and provide the mechanism necessary to give users the same interface to the
 system when logging in over a network (using
-.Xr rlogin 1 ,
+.Xr rlogin 1 Pq Pa net/bsdrcmds ,
 or
 .Xr telnet 1
 for example).  Even in these cases the details of how the terminal

@@ -165,11 +165,9 @@ SUBDIR=	alias \
 	renice \
 	rev \
 	rfcomm_sppd \
-	rlogin \
 	rpcgen \
 	rpcinfo \
 	rs \
-	rsh \
 	rup \
 	ruptime \
 	rusers \

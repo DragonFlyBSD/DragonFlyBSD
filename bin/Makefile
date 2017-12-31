@@ -25,7 +25,6 @@ SUBDIR= cat \
 	pax \
 	ps \
 	pwd \
-	rcp \
 	realpath \
 	rm \
 	rmdir \

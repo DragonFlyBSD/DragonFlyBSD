@@ -28,9 +28,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/net/rcmdsh.3,v 1.7 2007/01/09 00:28:02 imp Exp $
-.\" $DragonFly: src/lib/libc/net/rcmdsh.3,v 1.4 2007/08/18 20:48:47 swildner Exp $
 .\"
-.Dd September 1, 1996
+.Dd December 31, 2017
 .Dt RCMDSH 3
 .Os
 .Sh NAME
@@ -56,7 +55,7 @@ function
 is used by normal users to execute a command on
 a remote machine using an authentication scheme based
 on reserved port numbers using
-.Xr rshd 8
+.Xr rshd 8 Pq Pa net/bsdrcmds
 or the value of
 .Fa rshprog
 (if
@@ -102,10 +101,10 @@ returns a valid socket descriptor on success.
 Otherwise, \-1 is returned
 and a diagnostic message is printed on the standard error.
 .Sh SEE ALSO
-.Xr rsh 1 ,
+.Xr rsh 1 Pq Pa net/bsdrcmds ,
 .Xr socketpair 2 ,
 .Xr rcmd 3 ,
-.Xr rshd 8
+.Xr rshd 8 Pq Pa net/bsdrcmds
 .Sh HISTORY
 The
 .Fn rcmdsh
@@ -115,5 +114,5 @@ and made its way into
 .Fx 4.6 .
 .Sh BUGS
 If
-.Xr rsh 1
+.Xr rsh 1 Pq Pa net/bsdrcmds
 encounters an error, a file descriptor is still returned instead of \-1.

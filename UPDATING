@@ -12,6 +12,12 @@
 +         UPGRADING DRAGONFLY FROM 5.0 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+VARIOUS 'R' COMMANDS AND DAEMONS REMOVED
+----------------------------------------
+
+rcp(1), rlogin(1), rlogind(8), rsh(1) and rshd(8) have been removed.
+For those that still need them, there is the net/bsdrcmds port.
+
 VARIOUS FORMER OPTIONS REMOVED
 ------------------------------
 

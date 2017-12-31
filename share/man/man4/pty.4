@@ -27,9 +27,8 @@
 .\"
 .\"     @(#)pty.4	8.2 (Berkeley) 11/30/93
 .\" $FreeBSD: src/share/man/man4/pty.4,v 1.8.2.3 2001/08/17 13:08:39 ru Exp $
-.\" $DragonFly: src/share/man/man4/pty.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
 .\"
-.Dd November 30, 1993
+.Dd December 31, 2017
 .Dt PTY 4
 .Os
 .Sh NAME
@@ -120,9 +119,9 @@ to be read from the master side may be detected by a
 for exceptional conditions.
 .Pp
 This mode is used by
-.Xr rlogin 1
+.Xr rlogin 1 Pq Pa net/bsdrcmds
 and
-.Xr rlogind 8
+.Xr rlogind 8 Pq Pa net/bsdrcmds
 to implement a remote-echoed, locally
 .Ql ^S/^Q
 flow-controlled

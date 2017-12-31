@@ -27,9 +27,8 @@
 .\"
 .\"     From: @(#)rcmd.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/net/rcmd.3,v 1.27 2008/12/14 22:48:48 murray Exp $
-.\" $DragonFly: src/lib/libc/net/rcmd.3,v 1.4 2007/11/23 23:16:36 swildner Exp $
 .\"
-.Dd March 3, 2000
+.Dd December 31, 2017
 .Dt RCMD 3
 .Os
 .Sh NAME
@@ -79,7 +78,7 @@ to authenticate clients requesting service with
 .Fn rcmd .
 All three functions are present in the same file and are used
 by the
-.Xr rshd 8
+.Xr rshd 8 Pq Pa net/bsdrcmds
 server (among others).
 .Pp
 The
@@ -129,7 +128,7 @@ provision is made for sending arbitrary signals to the remote process,
 although you may be able to get its attention by using out-of-band data.
 .Pp
 The protocol is described in detail in
-.Xr rshd 8 .
+.Xr rshd 8 Pq Pa net/bsdrcmds .
 .Pp
 The
 .Fn rresvport
@@ -245,7 +244,7 @@ is also allowed.
 When using the
 .Fn rcmd
 function, this variable is used as the program to run instead of
-.Xr rsh 1 .
+.Xr rsh 1 Pq Pa net/bsdrcmds .
 .El
 .Sh DIAGNOSTICS
 The
@@ -266,11 +265,11 @@ The error code
 .Er EAGAIN
 is overloaded to mean ``All network ports in use.''
 .Sh SEE ALSO
-.Xr rlogin 1 ,
-.Xr rsh 1 ,
+.Xr rlogin 1 Pq Pa net/bsdrcmds ,
+.Xr rsh 1 Pq Pa net/bsdrcmds ,
 .Xr intro 2 ,
-.Xr rlogind 8 ,
-.Xr rshd 8
+.Xr rlogind 8 Pq Pa net/bsdrcmds ,
+.Xr rshd 8 Pq Pa net/bsdrcmds
 .Rs
 .%A W. Stevens
 .%A M. Thomas
