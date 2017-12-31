@@ -160,7 +160,7 @@ show_mb(const char *mb)
 
 static char	*widemsg;
 
-void
+__printflike(1, 2) void
 werr(const char *fmt, ...)
 {
 	char	*msg;

@@ -829,7 +829,7 @@ yyerror(const char *msg)
 	exit(4);
 }
 
-void
+__printflike(1, 2) void
 errf(const char *fmt, ...)
 {
 	char	*msg;
@@ -845,7 +845,7 @@ errf(const char *fmt, ...)
 	exit(4);
 }
 
-void
+__printflike(1, 2) void
 warn(const char *fmt, ...)
 {
 	char	*msg;
