@@ -65,6 +65,9 @@ static const struct none_atapci {
 int
 ata_pci_probe(device_t dev)
 {
+    if (resource_disabled("atapci", device_get_unit(dev)))
+	 return (ENXIO);
+
     if (pci_get_class(dev) != PCIC_STORAGE)
 	return ENXIO;
 
