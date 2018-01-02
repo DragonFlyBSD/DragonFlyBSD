@@ -123,7 +123,7 @@
     ..
     share
         calendar
-            de_AT.ISO_8859-15
+            de_AT.ISO8859-15
             ..
             de_DE.ISO8859-1
             ..

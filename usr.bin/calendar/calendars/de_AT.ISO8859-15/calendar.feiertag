@@ -2,7 +2,6 @@
  * Feiertage
  *
  * $FreeBSD: src/usr.bin/calendar/calendars/de_AT.ISO_8859-15/calendar.feiertag,v 1.1 2004/05/23 13:22:01 josef Exp $
- * $DragonFly: src/usr.bin/calendar/calendars/de_AT.ISO_8859-15/calendar.feiertag,v 1.1 2007/09/24 21:38:18 pavalos Exp $
  */
 
 #ifndef _de_AT_ISO8859_15_feiertag_
@@ -51,7 +50,7 @@ Dec Sun+3		4. Advent
 03/20*	Frühlingsanfang
 06/21*	Sommeranfang
 09/23*	Herbstanfang
-12/21*	Winteranfang	
+12/21*	Winteranfang
 
 /* Sommer- und Winterzeit */
 03/SundayLast	Anfang der Sommerzeit

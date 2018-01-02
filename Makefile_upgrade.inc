@@ -3368,6 +3368,7 @@ TO_REMOVE+=/usr/share/man/man1/rlogin.1.gz
 TO_REMOVE+=/usr/share/man/man1/rsh.1.gz
 TO_REMOVE+=/usr/share/man/man8/rlogind.8.gz
 TO_REMOVE+=/usr/share/man/man8/rshd.8.gz
+TO_REMOVE+=/usr/share/calendar/de_AT.ISO_8859-15
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
