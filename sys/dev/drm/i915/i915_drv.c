@@ -367,6 +367,19 @@ static const struct intel_device_info intel_kabylake_gt3_info = {
 	.ring_mask = RENDER_RING | BSD_RING | BLT_RING | VEBOX_RING | BSD2_RING,
 };
 
+static const struct intel_device_info intel_coffeelake_info = {
+	BDW_FEATURES, \
+	.is_kabylake = 1,
+	.gen = 9,
+};
+
+static const struct intel_device_info intel_coffeelake_gt3_info = {
+	BDW_FEATURES, \
+	.is_kabylake = 1,
+	.gen = 9,
+	.ring_mask = RENDER_RING | BSD_RING | BLT_RING | VEBOX_RING | BSD2_RING,
+};
+
 /*
  * Make sure any device matches here are from most specific to most
  * general.  For example, since the Quanta match is based on the subsystem
@@ -414,6 +427,9 @@ static const struct pci_device_id pciidlist[] = {
 	INTEL_KBL_GT2_IDS(&intel_kabylake_info),
 	INTEL_KBL_GT3_IDS(&intel_kabylake_gt3_info),
 	INTEL_KBL_GT4_IDS(&intel_kabylake_gt3_info),
+	INTEL_CFL_S_IDS(&intel_coffeelake_info),
+	INTEL_CFL_H_IDS(&intel_coffeelake_info),
+	INTEL_CFL_U_IDS(&intel_coffeelake_gt3_info),
 	{0, 0, 0}
 };
 
