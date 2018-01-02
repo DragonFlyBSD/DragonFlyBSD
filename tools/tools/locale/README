@@ -9,7 +9,7 @@ extract in a directory ~/unicode/cldr/v27.0.1 for example
 fetch unidata from http://www.unicode.org/Public/zipped/ (latest version)
 extract in a directory ~/unicode/UNIDATA/8.0.0 for example
 
-either modify tools/tools/locales/etc/unicode.conf or export variables:
+either modify tools/tools/locale/etc/unicode.conf or export variables:
 CLDRDIR="~/unicode/cldr/v27.0.1"
 UNIDATADIR="~/unicode/UNIDATA/8.0.0"
 

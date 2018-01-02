@@ -40,15 +40,15 @@ install:
 .for t in ${TYPES}
 .  if ${KNOWN:M${t}}
 	rm -rf ${.CURDIR}/${t}.draft
-	rm -rf ${DESTDIR}/usr/src/share/${t}
-	mv ${.CURDIR}/${t} ${DESTDIR}/usr/src/share/
+	rm -rf ${.CURDIR}/../../../share/${t}
+	mv ${.CURDIR}/${t} ${.CURDIR}/../../../share/
 .  endif
 .endfor
 
 post-install:
 .for t in ${TYPES}
 .  if ${KNOWN:M${t}}
-	(cd ${DESTDIR}/usr/src/share/${t} && \
+	(cd ${.CURDIR}/../../../share/${t} && \
 		make && make install && make clean)
 .  endif
 .endfor
@@ -92,8 +92,6 @@ BASE_LOCALES_OF_INTEREST?= \
 	uk_UA \
 	kk_Cyrl_KZ mn_Cyrl_MN sr_Cyrl_RS sr_Latn_RS \
 	zh_Hans_CN zh_Hant_HK zh_Hant_TW \
-	\
-	\
 	bn_IN gu_IN or_IN ta_IN te_IN kn_IN ml_IN si_LK \
 	th_TH lo_LA bo_IN my_MM pa_Guru_IN ka_GE chr_US \
 	km_KH shi_Tfng_MA ii_CN vai_Vaii_LR vi_VN
@@ -119,4 +117,4 @@ POSIX:
 .endif
 
 clean-POSIX:
-	rm -f {CLDRDIR}/posix/*
+	rm -f ${CLDRDIR}/posix/*
