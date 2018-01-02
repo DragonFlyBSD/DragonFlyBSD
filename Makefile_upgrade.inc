@@ -2202,7 +2202,6 @@ TO_REMOVE+=/usr/share/locale/fi_FI.ISO8859-1
 TO_REMOVE+=/usr/share/locale/fr_BE.ISO8859-1
 TO_REMOVE+=/usr/share/locale/fr_CH.ISO8859-1
 TO_REMOVE+=/usr/share/locale/fr_FR.ISO8859-1
-TO_REMOVE+=/usr/share/locale/is_IS.ISO8859-1
 TO_REMOVE+=/usr/share/locale/it_??.ISO8859-1
 TO_REMOVE+=/usr/share/locale/n?_NO.ISO8859-1
 TO_REMOVE+=/usr/share/locale/nl_??.ISO8859-1
