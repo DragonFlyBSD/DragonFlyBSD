@@ -381,13 +381,10 @@ distrib-dirs:
 	cd ${DESTDIR}/; test -e sys || (rm -f sys;  ${LN} -s usr/src/sys sys)
 .if !defined(NO_SHARE)
 	cd ${DESTDIR}/usr/share/nls; \
-	set - `grep "^[a-zA-Z]" ${.CURDIR}/nls.alias`; \
-	while [ $$# -gt 0 ] ; \
-	do \
-		rm -rf "$$1"; \
-		${LN} -s "$$2" "$$1"; \
-		shift; shift; \
-	done
+	rm -rf "POSIX"; \
+	rm -rf "en_US.US-ASCII"; \
+	${LN} -s "C" "POSIX"; \
+	${LN} -s "C" "en_US.US-ASCII"
 .endif
 
 etc-examples:

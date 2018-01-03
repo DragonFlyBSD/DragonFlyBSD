@@ -1,4 +1,0 @@
-# $FreeBSD: head/etc/nls.alias 116133 2003-06-10 01:22:30Z ache $
-
-POSIX                   C
-en_US.US-ASCII          C
