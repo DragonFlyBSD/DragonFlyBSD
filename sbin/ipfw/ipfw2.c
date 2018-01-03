@@ -1861,7 +1861,7 @@ fill_ip(ipfw_insn_ip *cmd, char *av)
 		/*
 		 * Interface IP: "[ifname[:net]]"
 		 */
-		cmd1->o.len = F_INSN_SIZE(ipfw_insn_ifip);
+		cmd1->o.len |= F_INSN_SIZE(ipfw_insn_ifip);
 		cmd1->o.opcode = O_IP_DST_IFIP;
 		cmd1->o.arg1 = 0;
 		cmd1->addr.s_addr = 0;
