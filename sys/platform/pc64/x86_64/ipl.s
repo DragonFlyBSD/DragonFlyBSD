@@ -206,7 +206,7 @@ doreti_next:
 	.globl	doreti_iret
 	.globl	doreti_syscall_ret
 doreti_syscall_ret:
-	POP_FRAME		/* registers and %gs (+cli) */
+	POP_FRAME()		/* registers and %gs (+cli) */
 	/* WARNING: special global doreti_iret is  also used by exception.S */
 doreti_iret:
 	iretq

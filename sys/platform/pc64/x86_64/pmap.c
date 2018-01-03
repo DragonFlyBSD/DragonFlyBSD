@@ -251,6 +251,9 @@ SYSCTL_INT(_machdep, OID_AUTO, pmap_dynamic_delete, CTLFLAG_RW,
 int pmap_lock_delay = 100;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_lock_delay, CTLFLAG_RW,
     &pmap_lock_delay, 0, "Spin loops");
+static int vm_isolated_user_pmap = 0;
+SYSCTL_INT(_vm, OID_AUTO, isolated_user_pmap, CTLFLAG_RW,
+    &vm_isolated_user_pmap, 0, "Userland pmap isolation");
 
 static int pmap_nx_enable = 0;
 /* needs manual TUNABLE in early probe, see below */
@@ -2005,15 +2008,16 @@ pmap_pinit(struct pmap *pmap)
 	if (pmap->pm_pml4 == NULL) {
 		pmap->pm_pml4 =
 		    (pml4_entry_t *)kmem_alloc_pageable(&kernel_map,
-							PAGE_SIZE,
+							PAGE_SIZE * 2,
 							VM_SUBSYS_PML4);
+		pmap->pm_pml4_iso = (void *)((char *)pmap->pm_pml4 + PAGE_SIZE);
 	}
 
 	/*
-	 * Allocate the page directory page, which wires it even though
-	 * it isn't being entered into some higher level page table (it
-	 * being the highest level).  If one is already cached we don't
-	 * have to do anything.
+	 * Allocate the PML4e table, which wires it even though it isn't
+	 * being entered into some higher level page table (it being the
+	 * highest level).  If one is already cached we don't have to do
+	 * anything.
 	 */
 	if ((pv = pmap->pm_pmlpv) == NULL) {
 		pv = pmap_allocpte(pmap, pmap_pml4_pindex(), NULL);
@@ -2053,9 +2057,36 @@ pmap_pinit(struct pmap *pmap)
 		KKASSERT(pv->pv_m->flags & PG_WRITEABLE);
 	}
 	KKASSERT(pmap->pm_pml4[255] == 0);
-	KKASSERT(RB_ROOT(&pmap->pm_pvroot) == pv);
-	KKASSERT(pv->pv_entry.rbe_left == NULL);
-	KKASSERT(pv->pv_entry.rbe_right == NULL);
+
+	/*
+	 * When implementing an isolated userland pmap, a second PML4e table
+	 * is needed.  We use pmap_pml4_pindex() + 1 for convenience, but
+	 * note that we do not operate on this table using our API functions
+	 * so handling of the + 1 case is mostly just to prevent implosions.
+	 */
+	if ((pv = pmap->pm_pmlpv_iso) == NULL && vm_isolated_user_pmap) {
+		pv = pmap_allocpte(pmap, pmap_pml4_pindex() + 1, NULL);
+		pmap->pm_pmlpv_iso = pv;
+		pmap_kenter((vm_offset_t)pmap->pm_pml4_iso,
+			    VM_PAGE_TO_PHYS(pv->pv_m));
+		pv_put(pv);
+
+		/*
+		 * Install just enough KMAP for our trampoline.  DMAP not
+		 * needed at all.  XXX
+		 */
+		for (j = 0; j < NKPML4E; ++j) {
+			pmap->pm_pml4_iso[KPML4I + j] =
+			    (KPDPphys + ((vm_paddr_t)j << PAGE_SHIFT)) |
+			    pmap->pmap_bits[PG_RW_IDX] |
+			    pmap->pmap_bits[PG_V_IDX] |
+			    pmap->pmap_bits[PG_U_IDX];
+		}
+		KKASSERT(pmap->pm_pml4_iso[255] == 0);
+	} else if (pv) {
+		KKASSERT(pv->pv_m->flags & PG_MAPPED);
+		KKASSERT(pv->pv_m->flags & PG_WRITEABLE);
+	}
 }
 
 /*
@@ -2083,18 +2114,30 @@ pmap_puninit(pmap_t pmap)
 		KKASSERT(p->flags & (PG_FICTITIOUS|PG_UNMANAGED));
 		vm_page_unwire(p, 0);
 		vm_page_flag_clear(p, PG_MAPPED | PG_WRITEABLE);
-
-		/*
-		 * XXX eventually clean out PML4 static entries and
-		 * use vm_page_free_zero()
-		 */
 		vm_page_free(p);
 		pmap->pm_pmlpv = NULL;
 	}
+	if ((pv = pmap->pm_pmlpv_iso) != NULL) {
+		if (pv_hold_try(pv) == 0)
+			pv_lock(pv);
+		KKASSERT(pv == pmap->pm_pmlpv_iso);
+		p = pmap_remove_pv_page(pv);
+		pv_free(pv, NULL);
+		pv = NULL;	/* safety */
+		pmap_kremove((vm_offset_t)pmap->pm_pml4_iso);
+		vm_page_busy_wait(p, FALSE, "pgpun");
+		KKASSERT(p->flags & (PG_FICTITIOUS|PG_UNMANAGED));
+		vm_page_unwire(p, 0);
+		vm_page_flag_clear(p, PG_MAPPED | PG_WRITEABLE);
+		vm_page_free(p);
+		pmap->pm_pmlpv_iso = NULL;
+	}
 	if (pmap->pm_pml4) {
 		KKASSERT(pmap->pm_pml4 != (void *)(PTOV_OFFSET + KPML4phys));
-		kmem_free(&kernel_map, (vm_offset_t)pmap->pm_pml4, PAGE_SIZE);
+		kmem_free(&kernel_map,
+			  (vm_offset_t)pmap->pm_pml4, PAGE_SIZE * 2);
 		pmap->pm_pml4 = NULL;
+		pmap->pm_pml4_iso = NULL;
 	}
 	KKASSERT(pmap->pm_stats.resident_count == 0);
 	KKASSERT(pmap->pm_stats.wired_count == 0);
@@ -2123,6 +2166,7 @@ pv_entry_t
 pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 {
 	pt_entry_t *ptep;
+	pt_entry_t *ptep_iso;
 	pv_entry_t pv;
 	pv_entry_t pvp;
 	pt_entry_t v;
@@ -2292,6 +2336,10 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 		     pmap->pmap_bits[PG_A_IDX] |
 		     pmap->pmap_bits[PG_M_IDX]);
 		ptep = pv_pte_lookup(pvp, ptepindex);
+		if (pvp == pmap->pm_pmlpv && pmap->pm_pmlpv_iso)
+			ptep_iso = pv_pte_lookup(pmap->pm_pmlpv_iso, ptepindex);
+		else
+			ptep_iso  = NULL;
 		if (*ptep & pmap->pmap_bits[PG_V_IDX]) {
 			pt_entry_t pte;
 
@@ -2299,7 +2347,12 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 				panic("pmap_allocpte: unexpected pte %p/%d",
 				      pvp, (int)ptepindex);
 			}
-			pte = pmap_inval_smp(pmap, (vm_offset_t)-1, 1, ptep, v);
+			pte = pmap_inval_smp(pmap, (vm_offset_t)-1, 1,
+					     ptep, v);
+			if (ptep_iso) {
+				pmap_inval_smp(pmap, (vm_offset_t)-1, 1,
+					       ptep_iso, v);
+			}
 			if (vm_page_unwire_quick(
 					PHYS_TO_VM_PAGE(pte & PG_FRAME))) {
 				panic("pmap_allocpte: shared pgtable "
@@ -2309,6 +2362,8 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 			pt_entry_t pte;
 
 			pte = atomic_swap_long(ptep, v);
+			if (ptep_iso)
+				atomic_swap_long(ptep_iso, v);
 			if (pte != 0) {
 				kprintf("install pgtbl mixup 0x%016jx "
 					"old/new 0x%016jx/0x%016jx\n",
@@ -2674,12 +2729,19 @@ pmap_release(struct pmap *pmap)
 
 
 	/*
-	 * One resident page (the pml4 page) should remain.
+	 * One resident page (the pml4 page) should remain.  Two if
+	 * the pmap has implemented an isolated userland PML4E table.
 	 * No wired pages should remain.
 	 */
+	int expected_res = 0;
+
+	if ((pmap->pm_flags & PMAP_FLAG_SIMPLE) == 0)
+		++expected_res;
+	if (pmap->pm_pmlpv_iso)
+		++expected_res;
+
 #if 1
-	if (pmap->pm_stats.resident_count !=
-	    ((pmap->pm_flags & PMAP_FLAG_SIMPLE) ? 0 : 1) ||
+	if (pmap->pm_stats.resident_count != expected_res ||
 	    pmap->pm_stats.wired_count != 0) {
 		kprintf("fatal pmap problem - pmap %p flags %08x "
 			"rescnt=%jd wirecnt=%jd\n",
@@ -2690,8 +2752,7 @@ pmap_release(struct pmap *pmap)
 		tsleep(pmap, 0, "DEAD", 0);
 	}
 #else
-	KKASSERT(pmap->pm_stats.resident_count ==
-		 ((pmap->pm_flags & PMAP_FLAG_SIMPLE) ? 0 : 1));
+	KKASSERT(pmap->pm_stats.resident_count == expected_res);
 	KKASSERT(pmap->pm_stats.wired_count == 0);
 #endif
 }
@@ -2749,13 +2810,9 @@ pmap_release_callback(pv_entry_t pv, void *data)
 		pindex += NUPTE_TOTAL + NUPT_TOTAL + NUPD_TOTAL;
 	} else if (pv->pv_pindex < pmap_pml4_pindex()) {
 		/*
-		 * I am PDP, parent is PML4 (there's only one)
+		 * I am PDP, parent is PML4.  We always calculate the
+		 * normal PML4 here, not the isolated PML4.
 		 */
-#if 0
-		pindex = (pv->pv_pindex - NUPTE_TOTAL - NUPT_TOTAL -
-			   NUPD_TOTAL) >> NPML4EPGSHIFT;
-		pindex += NUPTE_TOTAL + NUPT_TOTAL + NUPD_TOTAL + NUPDP_TOTAL;
-#endif
 		pindex = pmap_pml4_pindex();
 	} else {
 		/*
@@ -2829,8 +2886,10 @@ pmap_release_pv(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk)
 	 *
 	 * Since we are leaving the top-level pv intact we need
 	 * to break out of what would otherwise be an infinite loop.
+	 *
+	 * This covers both the normal and the isolated PML4 page.
 	 */
-	if (pv->pv_pindex == pmap_pml4_pindex()) {
+	if (pv->pv_pindex >= pmap_pml4_pindex()) {
 		pv_put(pv);
 		return(-1);
 	}
@@ -2895,9 +2954,13 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk,
 
 	KKASSERT(pmap);
 
-	if (ptepindex == pmap_pml4_pindex()) {
+	if (ptepindex >= pmap_pml4_pindex()) {
 		/*
 		 * We are the top level PML4E table, there is no parent.
+		 *
+		 * This is either the normal or isolated PML4E table.
+		 * Only the normal is used in regular operation, the isolated
+		 * is only passed in when breaking down the whole pmap.
 		 */
 		p = pmap->pm_pmlpv->pv_m;
 		KKASSERT(pv->pv_m == p);	/* debugging */
@@ -2910,6 +2973,7 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk,
 		vm_pindex_t pml4_pindex;
 		vm_pindex_t pdp_index;
 		pml4_entry_t *pdp;
+		pml4_entry_t *pdp_iso;
 
 		pdp_index = ptepindex - pmap_pdp_pindex(0);
 		if (pvp == NULL) {
@@ -2923,6 +2987,16 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk,
 		KKASSERT((*pdp & pmap->pmap_bits[PG_V_IDX]) != 0);
 		p = PHYS_TO_VM_PAGE(*pdp & PG_FRAME);
 		pmap_inval_bulk(bulk, (vm_offset_t)-1, pdp, 0);
+
+		/*
+		 * Also remove the PDP from the isolated PML4E if the
+		 * process uses one.
+		 */
+		if (pvp == pmap->pm_pmlpv && pmap->pm_pmlpv_iso) {
+			pdp_iso = &pmap->pm_pml4_iso[pdp_index &
+						((1ul << NPML4EPGSHIFT) - 1)];
+			pmap_inval_bulk(bulk, (vm_offset_t)-1, pdp_iso, 0);
+		}
 		KKASSERT(pv->pv_m == p);	/* debugging */
 	} else if (ptepindex >= pmap_pd_pindex(0)) {
 		/*
@@ -3129,7 +3203,7 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, pmap_inval_bulk_t *bulk,
 		    pvp->pv_m &&
 		    pvp->pv_m->wire_count == 1 &&
 		    (pvp->pv_hold & PV_HOLD_MASK) == 2 &&
-		    pvp->pv_pindex != pmap_pml4_pindex()) {
+		    pvp->pv_pindex < pmap_pml4_pindex()) {
 			if (pmap_dynamic_delete == 2)
 				kprintf("A %jd %08x\n", pvp->pv_pindex, pvp->pv_hold);
 			if (pmap != &kernel_pmap) {
@@ -4606,7 +4680,7 @@ pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
 		    pt_pv->pv_m &&
 		    pt_pv->pv_m->wire_count == 1 &&
 		    (pt_pv->pv_hold & PV_HOLD_MASK) == 2 &&
-		    pt_pv->pv_pindex != pmap_pml4_pindex()) {
+		    pt_pv->pv_pindex < pmap_pml4_pindex()) {
 			if (pmap_dynamic_delete == 2)
 				kprintf("B %jd %08x\n", pt_pv->pv_pindex, pt_pv->pv_hold);
 			pv_hold(pt_pv);	/* extra hold */
@@ -6214,14 +6288,16 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 {
 	struct vmspace *oldvm;
 	struct pmap *pmap;
+	thread_t td;
 
 	oldvm = lp->lwp_vmspace;
 
 	if (oldvm != newvm) {
 		crit_enter();
+		td = curthread;
 		KKASSERT((newvm->vm_refcnt & VM_REF_DELETED) == 0);
 		lp->lwp_vmspace = newvm;
-		if (curthread->td_lwp == lp) {
+		if (td->td_lwp == lp) {
 			pmap = vmspace_pmap(newvm);
 			ATOMIC_CPUMASK_ORBIT(pmap->pm_active, mycpu->gd_cpuid);
 			if (pmap->pm_active_lock & CPULOCK_EXCL)
@@ -6230,13 +6306,42 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 			tlb_flush_count++;
 #endif
 			if (pmap->pmap_bits[TYPE_IDX] == REGULAR_PMAP) {
-				curthread->td_pcb->pcb_cr3 = vtophys(pmap->pm_pml4);
+				td->td_pcb->pcb_cr3 = vtophys(pmap->pm_pml4);
+				if (vm_isolated_user_pmap &&
+				    pmap->pm_pmlpv_iso) {
+					td->td_pcb->pcb_cr3_iso =
+						vtophys(pmap->pm_pml4_iso);
+					td->td_pcb->pcb_flags |= PCB_ISOMMU;
+				} else {
+					td->td_pcb->pcb_cr3_iso = 0;
+					td->td_pcb->pcb_flags &= ~PCB_ISOMMU;
+				}
 			} else if (pmap->pmap_bits[TYPE_IDX] == EPT_PMAP) {
-				curthread->td_pcb->pcb_cr3 = KPML4phys;
+				td->td_pcb->pcb_cr3 = KPML4phys;
+				td->td_pcb->pcb_cr3_iso = 0;
+				td->td_pcb->pcb_flags &= ~PCB_ISOMMU;
 			} else {
 				panic("pmap_setlwpvm: unknown pmap type\n");
 			}
-			load_cr3(curthread->td_pcb->pcb_cr3);
+
+			/*
+			 * The MMU separation fields needs to be updated.
+			 * (it can't access the pcb directly from the
+			 * restricted user pmap).
+			 */
+			if (td == curthread) {
+				mdcpu->gd_pcb_cr3 = td->td_pcb->pcb_cr3;
+				mdcpu->gd_pcb_cr3_iso = td->td_pcb->pcb_cr3_iso;
+				mdcpu->gd_pcb_flags = td->td_pcb->pcb_flags;
+				/* gd_pcb_rsp doesn't change */
+			}
+
+			/*
+			 * In kernel-land we always use the normal PML4E
+			 * so the kernel is fully mapped and can also access
+			 * user memory.
+			 */
+			load_cr3(td->td_pcb->pcb_cr3);
 			pmap = vmspace_pmap(oldvm);
 			ATOMIC_CPUMASK_NANDBIT(pmap->pm_active,
 					       mycpu->gd_cpuid);

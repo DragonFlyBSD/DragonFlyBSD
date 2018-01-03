@@ -287,7 +287,9 @@ RB_PROTOTYPE2(pv_entry_rb_tree, pv_entry, pv_entry,
 
 struct pmap {
 	pml4_entry_t		*pm_pml4;	/* KVA of level 4 page table */
+	pml4_entry_t		*pm_pml4_iso;	/* (isolated version) */
 	struct pv_entry		*pm_pmlpv;	/* PV entry for pml4 */
+	struct pv_entry		*pm_pmlpv_iso;	/* (isolated version) */
 	TAILQ_ENTRY(pmap)	pm_pmnode;	/* list of pmaps */
 	RB_HEAD(pv_entry_rb_tree, pv_entry) pm_pvroot;
 	int			pm_count;	/* reference count */

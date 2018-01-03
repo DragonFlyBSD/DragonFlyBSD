@@ -48,8 +48,9 @@
 #include <machine/npx.h>
 
 struct pcb {
-	register_t	padxx[8];
-	register_t	pcb_cr3;
+	register_t	padxx[7];
+	register_t	pcb_cr3_iso;	/* isolated U (+minimal K) PML4e */
+	register_t	pcb_cr3;	/* U+K PML4e */
 	register_t	pcb_r15;
 	register_t	pcb_r14;
 	register_t	pcb_r13;
@@ -83,10 +84,11 @@ struct pcb {
 	struct  pcb_ext *pcb_ext;	/* optional pcb extension */
 };
 
-#define	PCB_DBREGS	0x02	/* process using debug registers */
-#define	PCB_FPUINITDONE	0x08	/* fpu state is initialized */
-#define FP_SOFTFP       0x01    /* process using software fltng pnt emulator */
-#define	FP_VIRTFP	0x04	/* virtual kernel wants exception */
+#define	PCB_DBREGS	0x00000002	/* process using debug registers */
+#define	PCB_FPUINITDONE	0x00000008	/* fpu state is initialized */
+#define PCB_ISOMMU	0x00000010	/* isolated mmu context active */
+#define FP_SOFTFP       0x01		/* process using soft flt emulator */
+#define	FP_VIRTFP	0x04		/* vkernel wants exception */
 
 #ifdef _KERNEL
 void	savectx(struct pcb *);

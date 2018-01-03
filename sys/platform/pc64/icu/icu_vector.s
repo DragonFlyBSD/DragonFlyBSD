@@ -85,7 +85,7 @@
  * Macro helpers
  */
 #define ICU_PUSH_FRAME							\
-	PUSH_FRAME ;		/* 15 regs + space for 5 extras */	\
+	PUSH_FRAME_TFRIP ;	/* 15 regs + space for 5 extras */	\
 	movl $0,TF_XFLAGS(%rsp) ;					\
 	movl $0,TF_TRAPNO(%rsp) ;					\
 	movl $0,TF_ADDR(%rsp) ;						\

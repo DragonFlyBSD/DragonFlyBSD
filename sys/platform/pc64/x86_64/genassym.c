@@ -115,6 +115,7 @@ ASSYM(GD_CPUMASK_SIMPLE, offsetof(struct mdglobaldata, mi.gd_cpumask_simple));
 ASSYM(GD_CPUMASK_OFFSET, offsetof(struct mdglobaldata, mi.gd_cpumask_offset));
 ASSYM(GD_IRESERVED, offsetof(struct mdglobaldata, mi.gd_ireserved[0]));
 
+ASSYM(PCB_CR3_ISO, offsetof(struct pcb, pcb_cr3_iso));
 ASSYM(PCB_CR3, offsetof(struct pcb, pcb_cr3));
 ASSYM(PCB_R15, offsetof(struct pcb, pcb_r15));
 ASSYM(PCB_R14, offsetof(struct pcb, pcb_r14));
@@ -133,7 +134,10 @@ ASSYM(PCB_DR2, offsetof(struct pcb, pcb_dr2));
 ASSYM(PCB_DR3, offsetof(struct pcb, pcb_dr3));
 ASSYM(PCB_DR6, offsetof(struct pcb, pcb_dr6));
 ASSYM(PCB_DR7, offsetof(struct pcb, pcb_dr7));
+
 ASSYM(PCB_DBREGS, PCB_DBREGS);
+ASSYM(PCB_ISOMMU, PCB_ISOMMU);
+
 ASSYM(PCB_EXT, offsetof(struct pcb, pcb_ext));
 ASSYM(PCB_FLAGS, offsetof(struct pcb, pcb_flags));
 ASSYM(PCB_ONFAULT, offsetof(struct pcb, pcb_onfault));
@@ -200,15 +204,29 @@ ASSYM(FIRST_SOFTINT, FIRST_SOFTINT);
 ASSYM(MDGLOBALDATA_BASEALLOC_PAGES, MDGLOBALDATA_BASEALLOC_PAGES);
 
 ASSYM(GD_PRIVATE_TSS, offsetof(struct mdglobaldata, gd_private_tss));
-ASSYM(GD_SCRATCH_RSP, offsetof(struct mdglobaldata, gd_scratch_rsp));
+ASSYM(GD_TRAMPOLINE, offsetof(struct privatespace, trampoline));
 ASSYM(GD_USER_FS, offsetof(struct mdglobaldata, gd_user_fs));
 ASSYM(GD_USER_GS, offsetof(struct mdglobaldata, gd_user_gs));
 ASSYM(GD_INTR_NESTING_LEVEL, offsetof(struct mdglobaldata, mi.gd_intr_nesting_level));
+
+ASSYM(TR_CR2, offsetof(struct trampframe, tr_cr2));
+ASSYM(TR_R10, offsetof(struct trampframe, tr_r10));
+ASSYM(TR_R11, offsetof(struct trampframe, tr_r11));
+ASSYM(TR_ERR, offsetof(struct trampframe, tr_err));
+ASSYM(TR_RIP, offsetof(struct trampframe, tr_rip));
+ASSYM(TR_CS, offsetof(struct trampframe, tr_cs));
+ASSYM(TR_RFLAGS, offsetof(struct trampframe, tr_rflags));
+ASSYM(TR_RSP, offsetof(struct trampframe, tr_rsp));
+ASSYM(TR_SS, offsetof(struct trampframe, tr_ss));
 
 ASSYM(GD_IPENDING, offsetof(struct mdglobaldata, gd_ipending));
 ASSYM(GD_SPENDING, offsetof(struct mdglobaldata, gd_spending));
 ASSYM(GD_COMMON_TSS, offsetof(struct mdglobaldata, gd_common_tss));
 ASSYM(GD_COMMON_TSSD, offsetof(struct mdglobaldata, gd_common_tssd));
+ASSYM(GD_PCB_RSP, offsetof(struct mdglobaldata, gd_pcb_rsp));
+ASSYM(GD_PCB_FLAGS, offsetof(struct mdglobaldata, gd_pcb_flags));
+ASSYM(GD_PCB_CR3_ISO, offsetof(struct mdglobaldata, gd_pcb_cr3_iso));
+ASSYM(GD_PCB_CR3, offsetof(struct mdglobaldata, gd_pcb_cr3));
 ASSYM(GD_TSS_GDT, offsetof(struct mdglobaldata, gd_tss_gdt));
 ASSYM(GD_NPXTHREAD, offsetof(struct mdglobaldata, gd_npxthread));
 ASSYM(GD_FPU_LOCK, offsetof(struct mdglobaldata, gd_fpu_lock));

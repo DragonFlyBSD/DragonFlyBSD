@@ -80,18 +80,18 @@ struct mdglobaldata {
 	u_int		gd_unused002;
 	u_int		gd_unused003;
 	u_int		gd_ss_eflags;
-	pt_entry_t	*gd_cunused0;
-	pt_entry_t	*gd_cunused1;
-	pt_entry_t	*gd_cunused2;
-	pt_entry_t	*gd_cunused3;
+	char		*gd_pcb_rsp;	/* transfer trampoline to td stack */
+	long		gd_pcb_flags;	/* pcb control flags */
+	long		gd_pcb_cr3_iso;	/* pcb isolated mmu cr3 */
+	long		gd_pcb_cr3;	/* pcb normal mmu cr3 */
 	caddr_t		gd_aunused0;
 	caddr_t		gd_aunused1;
 	caddr_t		gd_aunused2;
 	struct pv_entry	*gd_newpv;
 	u_int		gd_acpi_id;
 	u_int		gd_apic_id;
-	register_t	gd_scratch_rsp;
-	register_t	unused004;
+	register_t	gd_unused004;
+	register_t	gd_unused005;
 	register_t	gd_user_fs;	/* current user fs in MSR */
 	register_t	gd_user_gs;	/* current user gs in MSR */
 	cpumask_t	gd_unused006;
@@ -116,15 +116,21 @@ struct privatespace {
 	struct mdglobaldata mdglobaldata;
 	char		__filler0[MDGLOBALDATA_PAD];
 
-	/* page 1..4 - CPAGE1,CPAGE2,CPAGE3,PPAGE1 (unused) */
-	char		unused1[PAGE_SIZE];
+	/*
+	 * page 1 - trap and interrupt trampoline (rsp0 points to top,
+	 *	    then minus whatever hardware pushes)
+	 */
+	char		reserved1[PAGE_SIZE - sizeof(struct trampframe)];
+	struct trampframe trampoline;
+
+	/* page 2, 3, 4 - CPAGE2,CPAGE3,PPAGE1 (unused) */
 	char		unused2[PAGE_SIZE];
 	char		unused3[PAGE_SIZE];
 	char		unused4[PAGE_SIZE];
 
 	/* page 5..4+UPAGES - idle stack (UPAGES pages) */
 	char		idlestack[UPAGES * PAGE_SIZE];
-};
+} __packed;
 #define mdcpu  		((struct mdglobaldata *)_get_mycpu())
 
 #endif

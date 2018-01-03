@@ -88,6 +88,7 @@ void
 cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
 {
 	struct pcb *pcb2;
+	struct pmap *pmap2;
 
 	if ((flags & RFPROC) == 0) {
 		if ((flags & RFMEM) == 0) {
@@ -146,8 +147,16 @@ cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
 	/*
 	 * Set registers for trampoline to user mode.  Leave space for the
 	 * return address on stack.  These are the kernel mode register values.
+	 *
+	 * Set the new pmap CR3.  If the new process uses isolated VM spaces,
+	 * also set the isolated CR3.
 	 */
-	pcb2->pcb_cr3 = vtophys(vmspace_pmap(lp2->lwp_proc->p_vmspace)->pm_pml4);
+	pmap2 = vmspace_pmap(lp2->lwp_proc->p_vmspace);
+	pcb2->pcb_cr3 = vtophys(pmap2->pm_pml4);
+	if (pcb2->pcb_flags & PCB_ISOMMU)
+		pcb2->pcb_cr3_iso = vtophys(pmap2->pm_pml4_iso);
+	else
+		pcb2->pcb_cr3_iso = 0;
 	pcb2->pcb_rbx = (unsigned long)fork_return;	/* fork_trampoline argument */
 	pcb2->pcb_rbp = 0;
 	pcb2->pcb_rsp = (unsigned long)lp2->lwp_md.md_regs - sizeof(void *);
@@ -164,7 +173,7 @@ cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
 	/*
 	 * pcb2->pcb_ldt:	duplicated below, if necessary.
 	 * pcb2->pcb_savefpu:	cloned above.
-	 * pcb2->pcb_flags:	cloned above (always 0 here?).
+	 * pcb2->pcb_flags:	cloned above
 	 * pcb2->pcb_onfault:	cloned above (always NULL here).
 	 * pcb2->pcb_onfault_sp:cloned above (dont care)
 	 */

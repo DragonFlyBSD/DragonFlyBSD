@@ -118,6 +118,18 @@ struct intrframe {
 	register_t	if_ss;
 };
 
+struct trampframe {
+	register_t	tr_cr2;
+	register_t	tr_r10;
+	register_t	tr_r11;
+	register_t	tr_err;
+	register_t	tr_rip;
+	register_t	tr_cs;
+	register_t	tr_rflags;
+	register_t	tr_rsp;
+	register_t	tr_ss;
+};
+
 int	kdb_trap(int, int, struct trapframe *);
 
 #endif /* _CPU_FRAME_H_ */

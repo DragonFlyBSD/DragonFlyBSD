@@ -362,7 +362,13 @@ END(cpu_exit_switch)
 
 ENTRY(cpu_heavy_restore)
 	movq	TD_PCB(%rax),%rdx		/* RDX = PCB */
-	movq	%rdx, PCPU(common_tss) + TSS_RSP0
+	movq	%rdx, PCPU(pcb_rsp)
+	movq	PCB_FLAGS(%rdx), %rcx
+	movq	%rcx, PCPU(pcb_flags)
+	movq	PCB_CR3_ISO(%rdx), %rcx
+	movq	%rcx, PCPU(pcb_cr3_iso)
+	movq	PCB_CR3(%rdx), %rcx
+	movq	%rcx, PCPU(pcb_cr3)
 	popfq
 
 #if defined(SWTCH_OPTIM_STATS)
@@ -459,15 +465,22 @@ ENTRY(cpu_heavy_restore)
 	jnz	2f
 #endif
 
+#if 0
 	/*
-	 * Going back to the common_tss.  We may need to update TSS_RSP0
-	 * which sets the top of the supervisor stack when entering from
-	 * usermode.  The PCB is at the top of the stack but we need another
-	 * 16 bytes to take vm86 into account.
+	 * Going back to the common_tss.  (this was already executed at
+	 * the top).
+	 *
+	 * Set the top of the supervisor stack for the new thread
+	 * in gd_thread_pcb so the trampoline code can load it into %rsp.
 	 */
-	movq	%rdx,%rcx
-	/*leaq	-TF_SIZE(%rdx),%rcx*/
-	movq	%rcx, PCPU(common_tss) + TSS_RSP0
+	movq	%rdx, PCPU(pcb_rsp)
+	movq	PCB_FLAGS(%rdx), %rcx
+	movq	%rcx, PCPU(pcb_flags)
+	movq	PCB_CR3_ISO(%rdx), %rcx
+	movq	%rcx, PCPU(pcb_cr3_iso)
+	movq	PCB_CR3(%rdx), %rcx
+	movq	%rcx, PCPU(pcb_cr3)
+#endif
 
 #if 0 /* JG */
 	cmpl	$0,PCPU(private_tss)	/* don't have to reload if      */
@@ -855,15 +868,6 @@ ENTRY(cpu_lwkt_restore)
 	je	1f
 	movq	%rcx,%cr3
 1:
-	/*
-	 * Safety, clear RSP0 in the tss so it isn't pointing at the
-	 * previous thread's kstack (if a heavy weight user thread).
-	 * RSP0 should only be used in ring 3 transitions and kernel
-	 * threads run in ring 0 so there should be none.
-	 */
-	xorq	%rdx,%rdx
-	movq	%rdx, PCPU(common_tss) + TSS_RSP0
-
 	/*
 	 * NOTE: %rbx is the previous thread and %rax is the new thread.
 	 *	 %rbx is retained throughout so we can return it.

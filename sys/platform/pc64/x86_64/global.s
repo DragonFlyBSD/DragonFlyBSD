@@ -49,7 +49,14 @@
 	 * Define layout of the global data.  On SMP this lives in
 	 * the per-cpu address space, otherwise it's in the data segment.
 	 */
+	.globl	gd_trampoline
+	.globl	gd_pcb_rsp, gd_pcb_flags, gd_pcb_cr3_iso, gd_pcb_cr3
 	.globl	gd_curthread, gd_npxthread, gd_reqflags, gd_common_tss
+	.set	gd_trampoline,globaldata + GD_TRAMPOLINE
+	.set	gd_pcb_rsp,globaldata + GD_PCB_RSP
+	.set	gd_pcb_flags,globaldata + GD_PCB_FLAGS
+	.set	gd_pcb_cr3_iso,globaldata + GD_PCB_CR3_ISO
+	.set	gd_pcb_cr3,globaldata + GD_PCB_CR3
 	.set	gd_curthread,globaldata + GD_CURTHREAD
 	.set	gd_npxthread,globaldata + GD_NPXTHREAD
 	.set	gd_reqflags,globaldata + GD_REQFLAGS
@@ -77,7 +84,6 @@
 	.globl	gd_ss_eflags, gd_intr_nesting_level
 	.globl  gd_spending, gd_ipending
 	.globl	gd_cnt, gd_private_tss
-	.globl	gd_scratch_rsp
 	.globl	gd_user_fs, gd_user_gs
 	.globl	gd_sample_pc
 	.globl	gd_sample_sp
@@ -94,7 +100,6 @@
 	.set	gd_ipending,globaldata + GD_IPENDING
 	.set	gd_spending,globaldata + GD_SPENDING
 	.set	gd_cnt,globaldata + GD_CNT
-	.set	gd_scratch_rsp,globaldata + GD_SCRATCH_RSP
 	.set	gd_user_fs,globaldata + GD_USER_FS
 	.set	gd_user_gs,globaldata + GD_USER_GS
 	.set	gd_sample_pc,globaldata + GD_SAMPLE_PC

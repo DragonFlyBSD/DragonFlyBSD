@@ -2519,12 +2519,16 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 			ioapic_enable = 1;
 	}
 
-	/* make an initial tss so cpu can get interrupt stack on syscall! */
+	/*
+	 * TSS entry point for interrupts, traps, and exceptions
+	 * (sans NMI).  This will always go to the top of the pcpu
+	 * trampoline area.  Hardware-pushed data will be copied into
+	 * the trap-frame on entry, and (if necessary) returned to the
+	 * trampoline on exit.
+	 */
 	gd->gd_common_tss.tss_rsp0 =
-		(register_t)(thread0.td_kstack +
-			     KSTACK_PAGES * PAGE_SIZE - sizeof(struct pcb));
-	/* Ensure the stack is aligned to 16 bytes */
-	gd->gd_common_tss.tss_rsp0 &= ~(register_t)0xF;
+		(register_t)(&CPU_prvspace[0]->trampoline + 1);
+	gd->gd_pcb_rsp = (void *)gd->gd_common_tss.tss_rsp0;
 
 	/* double fault stack */
 	gd->gd_common_tss.tss_ist1 =

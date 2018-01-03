@@ -34,8 +34,8 @@
 
 #define MPLOCKED     lock ;
 
-#define APIC_PUSH_FRAME							\
-	PUSH_FRAME ;		/* 15 regs + space for 5 extras */	\
+#define APIC_PUSH_FRAME_TFRIP						\
+	PUSH_FRAME_TFRIP ;	/* 15 regs + space for 5 extras */	\
 	movq $0,TF_XFLAGS(%rsp) ;					\
 	movq $0,TF_TRAPNO(%rsp) ;					\
 	movq $0,TF_ADDR(%rsp) ;						\
@@ -48,8 +48,8 @@
  * segment register being changed (e.g. by procfs), which is why syscalls
  * have to use doreti.
  */
-#define APIC_POP_FRAME							\
-	POP_FRAME ;							\
+#define APIC_POP_FRAME(lastinsn)					\
+	POP_FRAME(lastinsn) 						\
 
 #define IOAPICADDR(irq_num) \
 	CNAME(ioapic_irqs) + IOAPIC_IRQI_SIZE * (irq_num) + IOAPIC_IRQI_ADDR
@@ -118,7 +118,7 @@
 	.text ;								\
 	SUPERALIGN_TEXT ;						\
 IDTVEC(ioapic_intr##irq_num) ;						\
-	APIC_PUSH_FRAME ;						\
+	APIC_PUSH_FRAME_TFRIP ;						\
 	FAKE_MCOUNT(TF_RIP(%rsp)) ;					\
 	MASK_LEVEL_IRQ(irq_num) ;					\
 	movq	lapic, %rax ;						\
@@ -172,12 +172,11 @@ IDTVEC(ioapic_intr##irq_num) ;						\
 	SUPERALIGN_TEXT
 	.globl Xspuriousint
 Xspuriousint:
-	APIC_PUSH_FRAME
+	APIC_PUSH_FRAME_TFRIP
 	/* No EOI cycle used here */
 	FAKE_MCOUNT(TF_RIP(%rsp))
 	MEXITCOUNT
-	APIC_POP_FRAME
-	jmp	doreti_iret
+	APIC_POP_FRAME(jmp doreti_iret)
 
 /*
  * Handle TLB shootdowns.
@@ -188,7 +187,7 @@ Xspuriousint:
 	SUPERALIGN_TEXT
 	.globl	Xinvltlb
 Xinvltlb:
-	APIC_PUSH_FRAME
+	APIC_PUSH_FRAME_TFRIP
 	movq	lapic, %rax
 	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
 	FAKE_MCOUNT(TF_RIP(%rsp))
@@ -213,7 +212,7 @@ Xinvltlb:
 	SUPERALIGN_TEXT
 	.globl	Xsniff
 Xsniff:
-	APIC_PUSH_FRAME
+	APIC_PUSH_FRAME_TFRIP
 	movq	lapic, %rax
 	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
 	FAKE_MCOUNT(TF_RIP(%rsp))
@@ -223,8 +222,7 @@ Xsniff:
 	movq	TF_RSP(%rsp),%rax
 	movq	%rax,PCPU(sample_sp)
 	MEXITCOUNT
-	APIC_POP_FRAME
-	jmp	doreti_iret
+	APIC_POP_FRAME(jmp doreti_iret)
 
 /*
  * Executed by a CPU when it receives an Xcpustop IPI from another CPU,
@@ -240,7 +238,7 @@ Xsniff:
 	SUPERALIGN_TEXT
 	.globl Xcpustop
 Xcpustop:
-	APIC_PUSH_FRAME
+	APIC_PUSH_FRAME_TFRIP
 	movq	lapic, %rax
 	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
 
@@ -338,7 +336,7 @@ Xcpustop:
 	SUPERALIGN_TEXT
 	.globl Xipiq
 Xipiq:
-	APIC_PUSH_FRAME
+	APIC_PUSH_FRAME_TFRIP
 	movq	lapic, %rax
 	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
 	FAKE_MCOUNT(TF_RIP(%rsp))
@@ -364,14 +362,13 @@ Xipiq:
 1:
 	orl	$RQF_IPIQ,PCPU(reqflags)
 	MEXITCOUNT
-	APIC_POP_FRAME
-	jmp	doreti_iret
+	APIC_POP_FRAME(jmp doreti_iret)
 
 	.text
 	SUPERALIGN_TEXT
 	.globl Xtimer
 Xtimer:
-	APIC_PUSH_FRAME
+	APIC_PUSH_FRAME_TFRIP
 	movq	lapic, %rax
 	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
 	FAKE_MCOUNT(TF_RIP(%rsp))
@@ -404,8 +401,7 @@ Xtimer:
 1:
 	orl	$RQF_TIMER,PCPU(reqflags)
 	MEXITCOUNT
-	APIC_POP_FRAME
-	jmp	doreti_iret
+	APIC_POP_FRAME(jmp doreti_iret)
 
 MCOUNT_LABEL(bintr)
 	INTR_HANDLER(0)

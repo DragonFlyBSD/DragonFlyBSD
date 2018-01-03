@@ -81,27 +81,27 @@ MCOUNT_LABEL(user)
 MCOUNT_LABEL(btrap)
 
 /*
- * Interrupts are enabled for all traps, otherwise horrible livelocks
- * can occur with the smp_invltlb and cpusync ode.
+ * Interrupts must be disabled for all traps, otherwise horrible %gs
+ * issues will occur.
  */
-#if 0
-#define	TRAP_NOEN(a)	\
-	subq $TF_RIP,%rsp; \
-	movq $0,TF_XFLAGS(%rsp) ; \
-	movq $(a),TF_TRAPNO(%rsp) ; \
-	movq $0,TF_ADDR(%rsp) ; \
-	movq $0,TF_ERR(%rsp) ; \
-	jmp alltraps_noen
-#endif
 
 /* Regular traps; The cpu does not supply tf_err for these. */
 #define	TRAP(a)	 \
-	subq $TF_RIP,%rsp; \
-	movq $0,TF_XFLAGS(%rsp) ; \
-	movq $(a),TF_TRAPNO(%rsp) ; \
-	movq $0,TF_ADDR(%rsp) ; \
-	movq $0,TF_ERR(%rsp) ; \
+	PUSH_FRAME_TFRIP ;			\
+	movq $0,TF_XFLAGS(%rsp) ;		\
+	movq $(a),TF_TRAPNO(%rsp) ;		\
+	movq $0,TF_ADDR(%rsp) ;			\
+	movq $0,TF_ERR(%rsp) ;			\
 	jmp alltraps
+
+/* This group of traps have tf_err already pushed by the cpu */
+#define	TRAP_ERR(a)				\
+	PUSH_FRAME_TFERR ;			\
+	movq $(a),TF_TRAPNO(%rsp) ;		\
+	movq $0,TF_ADDR(%rsp) ;			\
+	movq $0,TF_XFLAGS(%rsp) ;		\
+	jmp alltraps
+
 IDTVEC(dbg)
 	TRAP(T_TRCTRAP)
 IDTVEC(bpt)
@@ -127,13 +127,6 @@ IDTVEC(fpu)
 IDTVEC(xmm)
 	TRAP(T_XMMFLT)
 
-/* This group of traps have tf_err already pushed by the cpu */
-#define	TRAP_ERR(a)	\
-	subq $TF_ERR,%rsp; \
-	movq $(a),TF_TRAPNO(%rsp) ; \
-	movq $0,TF_ADDR(%rsp) ; \
-	movq $0,TF_XFLAGS(%rsp) ; \
-	jmp alltraps
 IDTVEC(tss)
 	TRAP_ERR(T_TSSFLT)
 IDTVEC(missing)
@@ -147,20 +140,15 @@ IDTVEC(align)
 	 * alltraps entry point.  Use swapgs if this is the first time in the
 	 * kernel from userland.  Reenable interrupts if they were enabled
 	 * before the trap.
+	 *
+	 * WARNING!  %gs not available until after our swapgs code
 	 */
-
 	SUPERALIGN_TEXT
 	.globl	alltraps
 	.type	alltraps,@function
 alltraps:
-	/* Fixup %gs if coming from userland */
-	testb	$SEL_RPL_MASK,TF_CS(%rsp)
-	jz	alltraps_testi
-	swapgs
-alltraps_testi:
-	testq	$PSL_I,TF_RFLAGS(%rsp)
-	jz	alltraps_pushregs
-	sti
+
+#if 0
 alltraps_pushregs:
 	movq	%rdi,TF_RDI(%rsp)
 alltraps_pushregs_no_rdi:
@@ -178,6 +166,8 @@ alltraps_pushregs_no_rdi:
 	movq	%r13,TF_R13(%rsp)
 	movq	%r14,TF_R14(%rsp)
 	movq	%r15,TF_R15(%rsp)
+#endif
+	sti
 	FAKE_MCOUNT(TF_RIP(%rsp))
 	.globl	calltrap
 	.type	calltrap,@function
@@ -188,66 +178,27 @@ calltrap:
 	MEXITCOUNT
 	jmp	doreti			/* Handle any pending ASTs */
 
-	/*
-	 * alltraps_noen entry point.  Unlike alltraps above, we want to
-	 * leave the interrupts disabled.
-	 */
-	SUPERALIGN_TEXT
-	.globl	alltraps_noen
-	.type	alltraps_noen,@function
-alltraps_noen:
-	/* Fixup %gs if coming from userland */
-	testb	$SEL_RPL_MASK,TF_CS(%rsp)
-	jz	alltraps_pushregs
-	swapgs
-	jmp	alltraps_pushregs
-
 IDTVEC(dblfault)
-	subq	$TF_ERR,%rsp
+	PUSH_FRAME_TFERR
 	movq	$T_DOUBLEFLT,TF_TRAPNO(%rsp)
 	movq	$0,TF_ADDR(%rsp)
-	movq	$0,TF_ERR(%rsp)
 	movq	$0,TF_XFLAGS(%rsp)
-	movq	%rdi,TF_RDI(%rsp)
-	movq	%rsi,TF_RSI(%rsp)
-	movq	%rdx,TF_RDX(%rsp)
-	movq	%rcx,TF_RCX(%rsp)
-	movq	%r8,TF_R8(%rsp)
-	movq	%r9,TF_R9(%rsp)
-	movq	%rax,TF_RAX(%rsp)
-	movq	%rbx,TF_RBX(%rsp)
-	movq	%rbp,TF_RBP(%rsp)
-	movq	%r10,TF_R10(%rsp)
-	movq	%r11,TF_R11(%rsp)
-	movq	%r12,TF_R12(%rsp)
-	movq	%r13,TF_R13(%rsp)
-	movq	%r14,TF_R14(%rsp)
-	movq	%r15,TF_R15(%rsp)
-	testb	$SEL_RPL_MASK,TF_CS(%rsp)
-	jz	1f
-	swapgs
-1:	movq	%rsp, %rdi
+
 	cld
+	movq	%rsp, %rdi
 	call	dblfault_handler
 2:	hlt
 	jmp	2b
 
+	/*
+	 * We need to save the contents of %cr2 before PUSH_FRAME* messes
+	 * with %cr3.
+	 */
 IDTVEC(page)
-	subq	$TF_ERR,%rsp
+	PUSH_FRAME_TFERR_SAVECR2
 	movq	$T_PAGEFLT,TF_TRAPNO(%rsp)
-	/* Fixup %gs if coming from userland */
-	testb	$SEL_RPL_MASK,TF_CS(%rsp)
-	jz	1f
-	swapgs
-1:
-	movq	%rdi,TF_RDI(%rsp)	/* free up a GP register */
-	movq	%cr2,%rdi		/* preserve %cr2 before ..  */
-	movq	%rdi,TF_ADDR(%rsp)	/* enabling interrupts. */
 	movq	$0,TF_XFLAGS(%rsp)
-	testq	$PSL_I,TF_RFLAGS(%rsp)
-	jz	alltraps_pushregs_no_rdi
-	sti
-	jmp	alltraps_pushregs_no_rdi
+	jmp	alltraps
 
 	/*
 	 * We have to special-case this one.  If we get a trap in doreti() at
@@ -256,48 +207,43 @@ IDTVEC(page)
 	 * XXX linux has a trap handler for their equivalent of load_gs().
 	 */
 IDTVEC(prot)
-	subq	$TF_ERR,%rsp
+	pushq	%r10
+	leaq	doreti_iret(%rip),%r10
+	cmpq	%r10,TF_RIP-TF_ERR+8(%rsp)		/* +8 due to pushq */
+	jne	prot_normal
+	testb	$SEL_RPL_MASK,TF_CS-TF_ERR+8(%rsp)	/* +8 due to pushq */
+	jnz	prot_normal
+	swapgs			/* doreti_iret fault from kernel mode */
+prot_normal:
+	popq	%r10
+	PUSH_FRAME_TFERR
 	movq	$T_PROTFLT,TF_TRAPNO(%rsp)
 	movq	$0,TF_ADDR(%rsp)
 	movq	$0,TF_XFLAGS(%rsp)
-	movq	%rdi,TF_RDI(%rsp)	/* free up a GP register */
-
-	/*
-	 * Fixup %gs if coming from userland.  Handle the special case where
-	 * %fs faults in doreti at the iretq instruction itself.
-	 */
-	leaq	doreti_iret(%rip),%rdi
-	cmpq	%rdi,TF_RIP(%rsp)		/* special iretq fault case */
-	je	2f
-	testb	$SEL_RPL_MASK,TF_CS(%rsp)	/* check if from userland */
-	jz	1f
-2:
-	swapgs
-1:
-	testq	$PSL_I,TF_RFLAGS(%rsp)
-	jz	alltraps_pushregs_no_rdi
-	sti
-	jmp	alltraps_pushregs_no_rdi
+	jmp	alltraps
 
 /*
  * Fast syscall entry point.  We enter here with just our new %cs/%ss set,
  * and the new privilige level.  We are still running on the old user stack
  * pointer.  We have to juggle a few things around to find our stack etc.
  * swapgs gives us access to our PCPU space only.
+ *
+ * We use GD_TRAMPOLINE+TR_R10
  */
 IDTVEC(fast_syscall)
-	swapgs
-	movq	%rsp,PCPU(scratch_rsp)
-	movq    PCPU(common_tss) + TSS_RSP0, %rsp
+	swapgs					/* get kernel %gs */
+	movq	%rsp,PCPU(trampoline)+TR_R10	/* save user %rsp */
+	movq	PCPU(pcb_rsp),%rsp
+	KMMUENTER_SYSCALL
+
 	/* Now emulate a trapframe. Make the 8 byte alignment odd for call. */
 	subq	$TF_SIZE,%rsp
 	/* defer TF_RSP till we have a spare register */
 	movq	%r11,TF_RFLAGS(%rsp)
 	movq	%rcx,TF_RIP(%rsp)	/* %rcx original value is in %r10 */
-	movq	PCPU(scratch_rsp),%r11	/* %r11 already saved */
+	movq	PCPU(trampoline)+TR_R10,%r11	/* %r11 already saved */
 	movq	%r11,TF_RSP(%rsp)	/* user stack pointer */
 	orl	$RQF_QUICKRET,PCPU(reqflags)
-	sti
 	movq	$KUDSEL,TF_SS(%rsp)
 	movq	$KUCSEL,TF_CS(%rsp)
 	movq	$2,TF_ERR(%rsp)
@@ -316,6 +262,7 @@ IDTVEC(fast_syscall)
 	movq	%r13,TF_R13(%rsp)	/* C preserved */
 	movq	%r14,TF_R14(%rsp)	/* C preserved */
 	movq	%r15,TF_R15(%rsp)	/* C preserved */
+	sti
 	FAKE_MCOUNT(TF_RIP(%rsp))
 	movq	%rsp, %rdi
 	call	syscall2
@@ -336,8 +283,10 @@ IDTVEC(fast_syscall)
 	movq	TF_RFLAGS(%rsp),%r11
 	movq	TF_RIP(%rsp),%rcx
 	movq	TF_RSP(%rsp),%rsp
+	KMMUEXIT_SYSCALL
 	swapgs
 	sysretq
+
 	/*
 	 * Normal slow / full iret
 	 */
@@ -376,64 +325,19 @@ IDTVEC(fast_syscall32)
  */
 
 IDTVEC(nmi)
-	subq	$TF_RIP,%rsp
-	movq	$(T_NMI),TF_TRAPNO(%rsp)
+	PUSH_FRAME_TFRIP
+	movq	$0,TF_XFLAGS(%rsp)
+	movq	$T_NMI,TF_TRAPNO(%rsp)
 	movq	$0,TF_ADDR(%rsp)
 	movq	$0,TF_ERR(%rsp)
-	movq	$0,TF_XFLAGS(%rsp)
-	movq	%rdi,TF_RDI(%rsp)
-	movq	%rsi,TF_RSI(%rsp)
-	movq	%rdx,TF_RDX(%rsp)
-	movq	%rcx,TF_RCX(%rsp)
-	movq	%r8,TF_R8(%rsp)
-	movq	%r9,TF_R9(%rsp)
-	movq	%rax,TF_RAX(%rsp)
-	movq	%rbx,TF_RBX(%rsp)
-	movq	%rbp,TF_RBP(%rsp)
-	movq	%r10,TF_R10(%rsp)
-	movq	%r11,TF_R11(%rsp)
-	movq	%r12,TF_R12(%rsp)
-	movq	%r13,TF_R13(%rsp)
-	movq	%r14,TF_R14(%rsp)
-	movq	%r15,TF_R15(%rsp)
-	xorl	%ebx,%ebx
-	testb	$SEL_RPL_MASK,TF_CS(%rsp)
-	jnz	nmi_needswapgs		/* we came from userland */
-	movl	$MSR_GSBASE,%ecx
-	rdmsr
-	cmpl	$VM_MAX_USER_ADDRESS >> 32,%edx
-	jae	nmi_calltrap		/* GS.base holds a kernel VA */
-nmi_needswapgs:
-	incl	%ebx
-	swapgs
-/* Note: this label is also used by ddb and gdb: */
-nmi_calltrap:
+
 	FAKE_MCOUNT(TF_RIP(%rsp))
 	cld
 	movq	%rsp, %rdi
 	call	trap
 	MEXITCOUNT
-	testl	%ebx,%ebx
-	jz	nmi_restoreregs
-	swapgs
-nmi_restoreregs:
-	movq	TF_RDI(%rsp),%rdi
-	movq	TF_RSI(%rsp),%rsi
-	movq	TF_RDX(%rsp),%rdx
-	movq	TF_RCX(%rsp),%rcx
-	movq	TF_R8(%rsp),%r8
-	movq	TF_R9(%rsp),%r9
-	movq	TF_RAX(%rsp),%rax
-	movq	TF_RBX(%rsp),%rbx
-	movq	TF_RBP(%rsp),%rbp
-	movq	TF_R10(%rsp),%r10
-	movq	TF_R11(%rsp),%r11
-	movq	TF_R12(%rsp),%r12
-	movq	TF_R13(%rsp),%r13
-	movq	TF_R14(%rsp),%r14
-	movq	TF_R15(%rsp),%r15
-	addq	$TF_RIP,%rsp
-	iretq
+
+	POP_FRAME(jmp doreti_iret)
 
 /*
  * This function is what cpu_heavy_restore jumps to after a new process

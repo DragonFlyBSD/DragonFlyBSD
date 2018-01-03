@@ -141,7 +141,174 @@
 			.type __CONCAT(X,name),@function; __CONCAT(X,name):
 
 /*
- * Macros to create and destroy a trap frame.
+ * stack frame macro support - supports mmu isolation, swapgs, and
+ * stack frame pushing and popping.
+ */
+
+/*
+ * Kernel pmap isolation to work-around the massive Intel mmu bug
+ * that allows kernel memory to be sussed out due to speculative memory
+ * reads and instruction execution creating timing differences that can
+ * be detected by userland.  e.g. force speculative read, speculatively
+ * execute a cmp/branch sequence, detect timing.  Iterate cmp $values
+ * to suss-out content of speculatively read kernel memory.
+ *
+ * KMMUENTER -	Executed by the trampoline when a user->kernel transition
+ *		is detected.  The stack pointer points into the pcpu
+ *		trampoline space and is available for register save/restore.
+ *		Other registers have not yet been saved.  %gs points at
+ *		the kernel pcpu structure.
+ *
+ *		Caller has already determined that a transition is in
+ *		progress and has already issued the swapgs.  hwtf indicates
+ *		how much hardware has already pushed.
+ *
+ * KMMUEXIT  -	Executed when a kernel->user transition is made.  The stack
+ *		pointer points into the pcpu trampoline space and we are
+ *		almost ready to iretq.  %gs still points at the kernel pcpu
+ *		structure.
+ *
+ *		Caller has already determined that a transition is in
+ *		progress.  hwtf indicates how much hardware has already
+ *		pushed.
+ */
+#define KMMUENTER_TFRIP							\
+	subq	$TR_RIP, %rsp ;						\
+	movq	%r10, TR_R10(%rsp) ;					\
+	movq	%r11, TR_R11(%rsp) ;					\
+	testq	$PCB_ISOMMU,PCPU(pcb_flags) ;				\
+	je	40f ;							\
+	movq	PCPU(pcb_cr3),%r10 ;					\
+	movq	%r10,%cr3 ;						\
+40:									\
+	movq	%rsp, %r10 ;		/* trampoline rsp */		\
+	movq	PCPU(pcb_rsp),%rsp ;	/* kstack rsp */		\
+	movq	TR_SS(%r10), %r11 ;					\
+	pushq	%r11 ;							\
+	movq	TR_RSP(%r10), %r11 ;					\
+	pushq	%r11 ;							\
+	movq	TR_RFLAGS(%r10), %r11 ;					\
+	pushq	%r11 ;							\
+	movq	TR_CS(%r10), %r11 ;					\
+	pushq	%r11 ;							\
+	movq	TR_RIP(%r10), %r11 ;					\
+	pushq	%r11 ;							\
+	movq	TR_R11(%r10), %r11 ;					\
+	movq	TR_R10(%r10), %r10					\
+
+#define KMMUENTER_TFERR							\
+	subq	$TR_ERR, %rsp ;						\
+	movq	%r10, TR_R10(%rsp) ;					\
+	movq	%r11, TR_R11(%rsp) ;					\
+	testq	$PCB_ISOMMU,PCPU(pcb_flags) ;				\
+	je	40f ;							\
+	movq	PCPU(pcb_cr3),%r10 ;					\
+	movq	%r10,%cr3 ;						\
+40:									\
+	movq	%rsp, %r10 ;		/* trampoline rsp */		\
+	movq	PCPU(pcb_rsp),%rsp ;	/* kstack rsp */		\
+	movq	TR_SS(%r10), %r11 ;					\
+	pushq	%r11 ;							\
+	movq	TR_RSP(%r10), %r11 ;					\
+	pushq	%r11 ;							\
+	movq	TR_RFLAGS(%r10), %r11 ;					\
+	pushq	%r11 ;							\
+	movq	TR_CS(%r10), %r11 ;					\
+	pushq	%r11 ;							\
+	movq	TR_RIP(%r10), %r11 ;					\
+	pushq	%r11 ;							\
+	movq	TR_ERR(%r10), %r11 ;					\
+	pushq	%r11 ;							\
+	movq	TR_R11(%r10), %r11 ;					\
+	movq	TR_R10(%r10), %r10					\
+
+#define KMMUENTER_TFERR_SAVECR2						\
+	subq	$TR_ERR, %rsp ;						\
+	movq	%r10, TR_R10(%rsp) ;					\
+	movq	%r11, TR_R11(%rsp) ;					\
+	movq	%cr2, %r10 ;						\
+	movq	%r10, PCPU(trampoline)+TR_CR2 ;				\
+	testq	$PCB_ISOMMU,PCPU(pcb_flags) ;				\
+	je	40f ;							\
+	movq	PCPU(pcb_cr3),%r10 ;					\
+	movq	%r10,%cr3 ;						\
+40:									\
+	movq	%rsp, %r10 ;		/* trampoline rsp */		\
+	movq	PCPU(pcb_rsp),%rsp ;	/* kstack rsp */		\
+	movq	TR_SS(%r10), %r11 ;					\
+	pushq	%r11 ;							\
+	movq	TR_RSP(%r10), %r11 ;					\
+	pushq	%r11 ;							\
+	movq	TR_RFLAGS(%r10), %r11 ;					\
+	pushq	%r11 ;							\
+	movq	TR_CS(%r10), %r11 ;					\
+	pushq	%r11 ;							\
+	movq	TR_RIP(%r10), %r11 ;					\
+	pushq	%r11 ;							\
+	movq	TR_ERR(%r10), %r11 ;					\
+	pushq	%r11 ;							\
+	movq	TR_R11(%r10), %r11 ;					\
+	movq	TR_R10(%r10), %r10					\
+
+/*
+ * Set %cr3 if necessary on syscall entry.  No registers may be
+ * disturbed.
+ */
+#define KMMUENTER_SYSCALL						\
+	testq	$PCB_ISOMMU,PCPU(pcb_flags) ;				\
+	je	40f ;							\
+	pushq	%r10 ;							\
+	movq	PCPU(pcb_cr3),%r10 ;					\
+	movq	%r10,%cr3 ;						\
+	popq	%r10 ;							\
+40:									\
+
+/*
+ * We are positioned at the base of the trapframe.  Advance the trapframe
+ * and handle MMU isolation.  MMU isolation requires us to copy the
+ * hardware frame to the trampoline area before setting %cr3 to the
+ * isolated map.  We then set the %rsp for iretq to TR_RIP in the
+ * trampoline area (after restoring the register we saved in TR_ERR).
+ */
+#define KMMUEXIT							\
+	addq	$TF_RIP,%rsp ;						\
+	testq	$PCB_ISOMMU,PCPU(pcb_flags) ;				\
+	je	40f ;							\
+	movq	%r11, PCPU(trampoline)+TR_ERR ;	/* save in TR_ERR */	\
+	popq	%r11 ;				/* copy %rip */		\
+	movq	%r11, PCPU(trampoline)+TR_RIP ;				\
+	popq	%r11 ;				/* copy %cs */		\
+	movq	%r11, PCPU(trampoline)+TR_CS ;				\
+	popq	%r11 ;				/* copy %rflags */	\
+	movq	%r11, PCPU(trampoline)+TR_RFLAGS ;			\
+	popq	%r11 ;				/* copy %rsp */		\
+	movq	%r11, PCPU(trampoline)+TR_RSP ;				\
+	popq	%r11 ;				/* copy %ss */		\
+	movq	%r11, PCPU(trampoline)+TR_SS ;				\
+	movq	%gs:0,%r11 ;						\
+	addq	$GD_TRAMPOLINE+TR_ERR,%r11 ;				\
+	movq	%r11,%rsp ;						\
+	movq	PCPU(pcb_cr3_iso),%r11 ;				\
+	movq	%r11,%cr3 ;						\
+	popq	%r11 ;		/* positioned at TR_RIP after this */	\
+40:									\
+
+/*
+ * Warning: user stack pointer already loaded into %rsp at this
+ * point.  We still have the kernel %gs.
+ */
+#define KMMUEXIT_SYSCALL						\
+	testq	$PCB_ISOMMU,PCPU(pcb_flags) ;				\
+	je	40f ;							\
+	movq	%r10, PCPU(trampoline)+TR_R10 ;				\
+	movq	PCPU(pcb_cr3_iso),%r10 ;				\
+	movq	%r10,%cr3 ;						\
+	movq	PCPU(trampoline)+TR_R10, %r10 ;				\
+40:									\
+
+/*
+ * Macros to create and destroy a trap frame.  rsp has already been shifted
+ * to the base of the trapframe in the thread structure.
  */
 #define PUSH_FRAME_REGS							\
 	movq	%rdi,TF_RDI(%rsp) ;					\
@@ -160,19 +327,56 @@
 	movq	%r14,TF_R14(%rsp) ;					\
 	movq	%r15,TF_R15(%rsp)
 
-#define PUSH_FRAME							\
-	subq	$TF_RIP,%rsp ;	/* extend hardware frame to trapframe */ \
-	testb	$SEL_RPL_MASK,TF_CS(%rsp) ; /* come from kernel? */	\
-	jz	1f ;		/* Yes, dont swapgs again */		\
-	swapgs ;							\
+/*
+ * PUSH_FRAME is the first thing executed upon interrupt entry.  We are
+ * responsible for swapgs execution and the KMMUENTER dispatch.
+ */
+#define PUSH_FRAME_TFRIP						\
+	testb	$SEL_RPL_MASK,TF_CS-TF_RIP(%rsp) ; /* from userland? */	\
+	jz	1f ;							\
+	swapgs ;		/* from userland */			\
+	KMMUENTER_TFRIP ;	/* from userland */			\
 1:									\
-	PUSH_FRAME_REGS							\
+	subq	$TF_RIP,%rsp ;						\
+	PUSH_FRAME_REGS 						\
 
+#define PUSH_FRAME_TFERR						\
+	testb	$SEL_RPL_MASK,TF_CS-TF_ERR(%rsp) ; /* from userland? */	\
+	jz	1f ;							\
+	swapgs ;		/* from userland */			\
+	KMMUENTER_TFERR ;	/* from userland */			\
+1:									\
+	subq	$TF_ERR,%rsp ;						\
+	PUSH_FRAME_REGS 						\
+
+#define PUSH_FRAME_TFERR_SAVECR2					\
+	testb	$SEL_RPL_MASK,TF_CS-TF_ERR(%rsp) ;			\
+	jz	1f ;							\
+	swapgs ;		/* from userland */			\
+	KMMUENTER_TFERR_SAVECR2 ;/* from userland */			\
+	subq	$TF_ERR,%rsp ;						\
+	PUSH_FRAME_REGS ;						\
+	movq	PCPU(trampoline)+TR_CR2, %r10 ;				\
+	jmp 2f ;							\
+1:									\
+	subq	$TF_ERR,%rsp ;						\
+	PUSH_FRAME_REGS ;						\
+	movq	%cr2, %r10 ;						\
+2:									\
+	movq	%r10, TF_ADDR(%rsp)
+
+/*
+ * Called when the iretq in doreti_iret faults.  XXX
+ */
 #define PUSH_FRAME_NOSWAP						\
-	subq	$TF_RIP,%rsp ;	/* extend hardware frame to trapframe */ \
+	KMMUENTER_TFRIP ;						\
 	PUSH_FRAME_REGS							\
 
-#define POP_FRAME							\
+/*
+ * POP_FRAME is issued just prior to the iretq, or just prior to a
+ * jmp doreti_iret.  These must be passed in to the macro.
+ */
+#define POP_FRAME(lastinsn)						\
 	movq	TF_RDI(%rsp),%rdi ;					\
 	movq	TF_RSI(%rsp),%rsi ;					\
 	movq	TF_RDX(%rsp),%rdx ;					\
@@ -188,11 +392,16 @@
 	movq	TF_R13(%rsp),%r13 ;					\
 	movq	TF_R14(%rsp),%r14 ;					\
 	movq	TF_R15(%rsp),%r15 ;					\
-	testb	$SEL_RPL_MASK,TF_CS(%rsp) ; /* come from kernel? */	\
-	jz	1f ;		/* keep kernel GS.base */		\
-	cli ;								\
-	swapgs ;							\
-1:	addq	$TF_RIP,%rsp	/* skip over tf_err, tf_trapno, tf_xflags */
+	testb	$SEL_RPL_MASK,TF_CS(%rsp) ; /* return to user? */	\
+	jz	1f ;							\
+	cli ;			/* return to user */			\
+	KMMUEXIT ;		/* return to user */			\
+	swapgs ;		/* return to user */			\
+	jmp	2f ;							\
+1:									\
+	addq	$TF_RIP,%rsp ;	/* setup for iretq */			\
+2:									\
+	lastinsn
 
 /*
  * Access per-CPU data.

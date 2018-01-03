@@ -285,7 +285,13 @@ init_secondary(void)
 
 	md = mdcpu;	/* loaded through %gs:0 (mdglobaldata.mi.gd_prvspace)*/
 
-	md->gd_common_tss.tss_rsp0 = 0;	/* not used until after switch */
+	/*
+	 * Each cpu gets its own trampoline area for interrupts, traps, and
+	 * exceptions.
+	 */
+	md->gd_common_tss.tss_rsp0 =
+		(register_t)(&CPU_prvspace[md->mi.gd_cpuid]->trampoline + 1);
+	md->gd_pcb_rsp = (void *)md->gd_common_tss.tss_rsp0;
 #if 0 /* JG XXX */
 	md->gd_common_tss.tss_ioopt = (sizeof md->gd_common_tss) << 16;
 #endif
