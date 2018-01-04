@@ -187,6 +187,8 @@
             ..
         ..
         misc
+            evdev
+            ..
             lpt
             ..
             ppi
