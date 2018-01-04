@@ -273,13 +273,13 @@ struct tone_data {
 	size_t	len;
 };
 
-void		alloc_soundbuf(struct tone_data *, double, int);
-void		morse(char, int);
-void		decode(const char *);
-void		show(const char *, int);
-void		play(const char *, int);
-void		ttyout(const char *, int);
-void		sighandler(int);
+static void		alloc_soundbuf(struct tone_data *, double, int);
+static void		morse(char, int);
+static void		decode(const char *);
+static void		show(const char *, int);
+static void		play(const char *, int);
+static void		ttyout(const char *, int);
+static void		sighandler(int);
 
 #define GETOPTOPTS "d:ef:lopP:rsw:W:"
 #define USAGE \
@@ -544,7 +544,7 @@ main(int argc, char *argv[])
 	exit(0);
 }
 
-void
+static void
 alloc_soundbuf(struct tone_data *tone, double len, int on)
 {
 	int samples, i;
@@ -596,7 +596,7 @@ alloc_soundbuf(struct tone_data *tone, double len, int on)
 	}
 }
 
-void
+static void
 morse(char c, int prosign)
 {
 	const struct morsetab *m;
@@ -633,7 +633,7 @@ morse(char c, int prosign)
 	}
 }
 
-void
+static void
 decode(const char *s)
 {
 	int i;
@@ -669,7 +669,7 @@ decode(const char *s)
 	putchar('x');	/* line noise */
 }
 
-void
+static void
 show(const char *s, int prosign)
 {
 	if (lflag) {
@@ -684,7 +684,7 @@ show(const char *s, int prosign)
 		printf("\n");
 }
 
-void
+static void
 play(const char *s, int prosign)
 {
 	const char *c;
@@ -728,7 +728,7 @@ play(const char *s, int prosign)
 		ioctl(spkr, SNDCTL_DSP_SYNC, NULL);
 }
 
-void
+static void
 ttyout(const char *s, int prosign)
 {
 	const char *c;
@@ -774,7 +774,7 @@ ttyout(const char *s, int prosign)
 	}
 }
 
-void
+static void
 sighandler(int signo)
 {
 
