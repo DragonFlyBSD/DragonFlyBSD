@@ -80,10 +80,10 @@ struct mdglobaldata {
 	u_int		gd_unused002;
 	u_int		gd_unused003;
 	u_int		gd_ss_eflags;
-	char		*gd_pcb_rsp;	/* transfer trampoline to td stack */
-	long		gd_pcb_flags;	/* pcb control flags */
-	long		gd_pcb_cr3_iso;	/* pcb isolated mmu cr3 */
-	long		gd_pcb_cr3;	/* pcb normal mmu cr3 */
+	long		gd_lunused0;
+	long		gd_lunused1;
+	long		gd_lunused2;
+	long		gd_lunusde3;
 	caddr_t		gd_aunused0;
 	caddr_t		gd_aunused1;
 	caddr_t		gd_aunused2;
@@ -131,7 +131,9 @@ struct privatespace {
 	/* page 5..4+UPAGES - idle stack (UPAGES pages) */
 	char		idlestack[UPAGES * PAGE_SIZE];
 } __packed;
+
 #define mdcpu  		((struct mdglobaldata *)_get_mycpu())
+#define pscpu  		((struct privatespace *)_get_mycpu())
 
 #endif
 

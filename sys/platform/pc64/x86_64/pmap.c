@@ -6330,10 +6330,13 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 			 * restricted user pmap).
 			 */
 			if (td == curthread) {
-				mdcpu->gd_pcb_cr3 = td->td_pcb->pcb_cr3;
-				mdcpu->gd_pcb_cr3_iso = td->td_pcb->pcb_cr3_iso;
-				mdcpu->gd_pcb_flags = td->td_pcb->pcb_flags;
-				/* gd_pcb_rsp doesn't change */
+				struct trampframe *tramp;
+
+				tramp = &pscpu->trampoline;
+				tramp->tr_pcb_cr3 = td->td_pcb->pcb_cr3;
+				tramp->tr_pcb_cr3_iso = td->td_pcb->pcb_cr3_iso;
+				tramp->tr_pcb_flags = td->td_pcb->pcb_flags;
+				/* tr_pcb_rsp doesn't change */
 			}
 
 			/*

@@ -50,13 +50,8 @@
 	 * the per-cpu address space, otherwise it's in the data segment.
 	 */
 	.globl	gd_trampoline
-	.globl	gd_pcb_rsp, gd_pcb_flags, gd_pcb_cr3_iso, gd_pcb_cr3
 	.globl	gd_curthread, gd_npxthread, gd_reqflags, gd_common_tss
 	.set	gd_trampoline,globaldata + GD_TRAMPOLINE
-	.set	gd_pcb_rsp,globaldata + GD_PCB_RSP
-	.set	gd_pcb_flags,globaldata + GD_PCB_FLAGS
-	.set	gd_pcb_cr3_iso,globaldata + GD_PCB_CR3_ISO
-	.set	gd_pcb_cr3,globaldata + GD_PCB_CR3
 	.set	gd_curthread,globaldata + GD_CURTHREAD
 	.set	gd_npxthread,globaldata + GD_NPXTHREAD
 	.set	gd_reqflags,globaldata + GD_REQFLAGS

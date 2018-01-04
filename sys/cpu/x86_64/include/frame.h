@@ -118,6 +118,11 @@ struct intrframe {
 	register_t	if_ss;
 };
 
+/*
+ * The trampframe is placed at the top of the trampoline page and
+ * contains all the information needed to trampoline into and out
+ * of the isolated user pmap.
+ */
 struct trampframe {
 	register_t	tr_cr2;
 	register_t	tr_r10;
@@ -128,6 +133,16 @@ struct trampframe {
 	register_t	tr_rflags;
 	register_t	tr_rsp;
 	register_t	tr_ss;
+
+	/*
+	 * Top of hw stack in TSS is &tr_pcb_rsp (first push is tr_ss).
+	 * Make sure this is at least 16-byte aligned, so be sure the
+	 * fields below are in multiples of 16 bytes.
+	 */
+	register_t	tr_pcb_rsp;	/* hw frame tramp top of stack */
+	register_t	tr_pcb_flags;	/* copy of pcb control flags */
+	register_t	tr_pcb_cr3_iso;	/* copy of isolated pml4e */
+	register_t	tr_pcb_cr3;	/* copy of primary pml4e */
 };
 
 int	kdb_trap(int, int, struct trapframe *);

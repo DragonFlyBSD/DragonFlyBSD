@@ -2521,14 +2521,21 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 
 	/*
 	 * TSS entry point for interrupts, traps, and exceptions
-	 * (sans NMI).  This will always go to the top of the pcpu
+	 * (sans NMI).  This will always go to near the top of the pcpu
 	 * trampoline area.  Hardware-pushed data will be copied into
 	 * the trap-frame on entry, and (if necessary) returned to the
 	 * trampoline on exit.
+	 *
+	 * We store some pcb data for the trampoline code above the
+	 * stack the cpu hw pushes into, and arrange things so the
+	 * address of tr_pcb_rsp is the same as the desired top of
+	 * stack.
 	 */
 	gd->gd_common_tss.tss_rsp0 =
-		(register_t)(&CPU_prvspace[0]->trampoline + 1);
-	gd->gd_pcb_rsp = (void *)gd->gd_common_tss.tss_rsp0;
+		(register_t)&((struct privatespace *)gd)->trampoline.tr_pcb_rsp;
+
+	((struct privatespace *)gd)->trampoline.tr_pcb_rsp =
+		gd->gd_common_tss.tss_rsp0;
 
 	/* double fault stack */
 	gd->gd_common_tss.tss_ist1 =

@@ -362,13 +362,13 @@ END(cpu_exit_switch)
 
 ENTRY(cpu_heavy_restore)
 	movq	TD_PCB(%rax),%rdx		/* RDX = PCB */
-	movq	%rdx, PCPU(pcb_rsp)
+	movq	%rdx, PCPU(trampoline)+TR_PCB_RSP
 	movq	PCB_FLAGS(%rdx), %rcx
-	movq	%rcx, PCPU(pcb_flags)
+	movq	%rcx, PCPU(trampoline)+TR_PCB_FLAGS
 	movq	PCB_CR3_ISO(%rdx), %rcx
-	movq	%rcx, PCPU(pcb_cr3_iso)
+	movq	%rcx, PCPU(trampoline)+TR_PCB_CR3_ISO
 	movq	PCB_CR3(%rdx), %rcx
-	movq	%rcx, PCPU(pcb_cr3)
+	movq	%rcx, PCPU(trampoline)+TR_PCB_CR3
 	popfq
 
 #if defined(SWTCH_OPTIM_STATS)
@@ -473,13 +473,13 @@ ENTRY(cpu_heavy_restore)
 	 * Set the top of the supervisor stack for the new thread
 	 * in gd_thread_pcb so the trampoline code can load it into %rsp.
 	 */
-	movq	%rdx, PCPU(pcb_rsp)
+	movq	%rdx, PCPU(trampoline)+TR_PCB_RSP
 	movq	PCB_FLAGS(%rdx), %rcx
-	movq	%rcx, PCPU(pcb_flags)
+	movq	%rcx, PCPU(trampoline)+TR_PCB_FLAGS
 	movq	PCB_CR3_ISO(%rdx), %rcx
-	movq	%rcx, PCPU(pcb_cr3_iso)
+	movq	%rcx, PCPU(trampoline)+TR_PCB_CR3_ISO
 	movq	PCB_CR3(%rdx), %rcx
-	movq	%rcx, PCPU(pcb_cr3)
+	movq	%rcx, PCPU(trampoline)+TR_PCB_CR3
 #endif
 
 #if 0 /* JG */

@@ -233,7 +233,7 @@ prot_normal:
 IDTVEC(fast_syscall)
 	swapgs					/* get kernel %gs */
 	movq	%rsp,PCPU(trampoline)+TR_R10	/* save user %rsp */
-	movq	PCPU(pcb_rsp),%rsp
+	movq	PCPU(trampoline)+TR_PCB_RSP,%rsp
 	KMMUENTER_SYSCALL
 
 	/* Now emulate a trapframe. Make the 8 byte alignment odd for call. */

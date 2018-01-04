@@ -153,6 +153,20 @@
  * execute a cmp/branch sequence, detect timing.  Iterate cmp $values
  * to suss-out content of speculatively read kernel memory.
  *
+ * We do this by creating a trampoline area for all user->kernel and
+ * kernel->user transitions.  The trampoline area allows us to limit
+ * the reach the kernel map in the isolated version of the user pmap
+ * to JUST the trampoline area (for all cpus), tss, and vector area.
+ *
+ * It is very important that these transitions not access any memory
+ * outside of the trampoline page while the isolated user process pmap
+ * is active in %cr3.
+ *
+ * The trampoline does not add much overhead when pmap isolation is
+ * disabled, so we just run with it regardless.  Of course, when pmap
+ * isolation is enabled, the %cr3 loads add 150-250ns to every system
+ * call as well as (without PCID) smash the TLB.
+ *
  * KMMUENTER -	Executed by the trampoline when a user->kernel transition
  *		is detected.  The stack pointer points into the pcpu
  *		trampoline space and is available for register save/restore.
@@ -176,13 +190,13 @@
 	subq	$TR_RIP, %rsp ;						\
 	movq	%r10, TR_R10(%rsp) ;					\
 	movq	%r11, TR_R11(%rsp) ;					\
-	testq	$PCB_ISOMMU,PCPU(pcb_flags) ;				\
+	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
 	je	40f ;							\
-	movq	PCPU(pcb_cr3),%r10 ;					\
+	movq	PCPU(trampoline)+TR_PCB_CR3,%r10 ;			\
 	movq	%r10,%cr3 ;						\
 40:									\
 	movq	%rsp, %r10 ;		/* trampoline rsp */		\
-	movq	PCPU(pcb_rsp),%rsp ;	/* kstack rsp */		\
+	movq	PCPU(trampoline)+TR_PCB_RSP,%rsp ; /* kstack rsp */	\
 	movq	TR_SS(%r10), %r11 ;					\
 	pushq	%r11 ;							\
 	movq	TR_RSP(%r10), %r11 ;					\
@@ -200,13 +214,13 @@
 	subq	$TR_ERR, %rsp ;						\
 	movq	%r10, TR_R10(%rsp) ;					\
 	movq	%r11, TR_R11(%rsp) ;					\
-	testq	$PCB_ISOMMU,PCPU(pcb_flags) ;				\
+	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
 	je	40f ;							\
-	movq	PCPU(pcb_cr3),%r10 ;					\
+	movq	PCPU(trampoline)+TR_PCB_CR3,%r10 ;			\
 	movq	%r10,%cr3 ;						\
 40:									\
 	movq	%rsp, %r10 ;		/* trampoline rsp */		\
-	movq	PCPU(pcb_rsp),%rsp ;	/* kstack rsp */		\
+	movq	PCPU(trampoline)+TR_PCB_RSP,%rsp ; /* kstack rsp */	\
 	movq	TR_SS(%r10), %r11 ;					\
 	pushq	%r11 ;							\
 	movq	TR_RSP(%r10), %r11 ;					\
@@ -228,13 +242,13 @@
 	movq	%r11, TR_R11(%rsp) ;					\
 	movq	%cr2, %r10 ;						\
 	movq	%r10, PCPU(trampoline)+TR_CR2 ;				\
-	testq	$PCB_ISOMMU,PCPU(pcb_flags) ;				\
+	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
 	je	40f ;							\
-	movq	PCPU(pcb_cr3),%r10 ;					\
+	movq	PCPU(trampoline)+TR_PCB_CR3,%r10 ;			\
 	movq	%r10,%cr3 ;						\
 40:									\
 	movq	%rsp, %r10 ;		/* trampoline rsp */		\
-	movq	PCPU(pcb_rsp),%rsp ;	/* kstack rsp */		\
+	movq	PCPU(trampoline)+TR_PCB_RSP,%rsp ; /* kstack rsp */	\
 	movq	TR_SS(%r10), %r11 ;					\
 	pushq	%r11 ;							\
 	movq	TR_RSP(%r10), %r11 ;					\
@@ -255,10 +269,10 @@
  * disturbed.
  */
 #define KMMUENTER_SYSCALL						\
-	testq	$PCB_ISOMMU,PCPU(pcb_flags) ;				\
+	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
 	je	40f ;							\
 	pushq	%r10 ;							\
-	movq	PCPU(pcb_cr3),%r10 ;					\
+	movq	PCPU(trampoline)+TR_PCB_CR3,%r10 ;			\
 	movq	%r10,%cr3 ;						\
 	popq	%r10 ;							\
 40:									\
@@ -272,7 +286,7 @@
  */
 #define KMMUEXIT							\
 	addq	$TF_RIP,%rsp ;						\
-	testq	$PCB_ISOMMU,PCPU(pcb_flags) ;				\
+	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
 	je	40f ;							\
 	movq	%r11, PCPU(trampoline)+TR_ERR ;	/* save in TR_ERR */	\
 	popq	%r11 ;				/* copy %rip */		\
@@ -288,7 +302,7 @@
 	movq	%gs:0,%r11 ;						\
 	addq	$GD_TRAMPOLINE+TR_ERR,%r11 ;				\
 	movq	%r11,%rsp ;						\
-	movq	PCPU(pcb_cr3_iso),%r11 ;				\
+	movq	PCPU(trampoline)+TR_PCB_CR3_ISO,%r11 ;			\
 	movq	%r11,%cr3 ;						\
 	popq	%r11 ;		/* positioned at TR_RIP after this */	\
 40:									\
@@ -298,10 +312,10 @@
  * point.  We still have the kernel %gs.
  */
 #define KMMUEXIT_SYSCALL						\
-	testq	$PCB_ISOMMU,PCPU(pcb_flags) ;				\
+	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
 	je	40f ;							\
 	movq	%r10, PCPU(trampoline)+TR_R10 ;				\
-	movq	PCPU(pcb_cr3_iso),%r10 ;				\
+	movq	PCPU(trampoline)+TR_PCB_CR3_ISO,%r10 ;			\
 	movq	%r10,%cr3 ;						\
 	movq	PCPU(trampoline)+TR_R10, %r10 ;				\
 40:									\
