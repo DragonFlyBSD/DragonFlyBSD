@@ -406,9 +406,9 @@
 	movq	TF_R13(%rsp),%r13 ;					\
 	movq	TF_R14(%rsp),%r14 ;					\
 	movq	TF_R15(%rsp),%r15 ;					\
+	cli ;								\
 	testb	$SEL_RPL_MASK,TF_CS(%rsp) ; /* return to user? */	\
 	jz	1f ;							\
-	cli ;			/* return to user */			\
 	KMMUEXIT ;		/* return to user */			\
 	swapgs ;		/* return to user */			\
 	jmp	2f ;							\

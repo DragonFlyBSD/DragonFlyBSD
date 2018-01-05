@@ -2315,13 +2315,16 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	int metadata_missing, off;
 #endif
 	struct mdglobaldata *gd;
+	struct privatespace *ps;
 	u_int64_t msr;
 
 	/*
 	 * Prevent lowering of the ipl if we call tsleep() early.
 	 */
 	gd = &CPU_prvspace[0]->mdglobaldata;
+	ps = (struct privatespace *)gd;
 	bzero(gd, sizeof(*gd));
+	bzero(&ps->common_tss, sizeof(ps->common_tss));
 
 	/*
 	 * Note: on both UP and SMP curthread must be set non-NULL
@@ -2379,7 +2382,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	 * make gdt memory segments
 	 */
 	gdt_segs[GPROC0_SEL].ssd_base =
-		(uintptr_t) &CPU_prvspace[0]->mdglobaldata.gd_common_tss;
+		(uintptr_t) &CPU_prvspace[0]->common_tss;
 
 	gd->mi.gd_prvspace = CPU_prvspace[0];
 
@@ -2531,19 +2534,15 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	 * address of tr_pcb_rsp is the same as the desired top of
 	 * stack.
 	 */
-	gd->gd_common_tss.tss_rsp0 =
-		(register_t)&((struct privatespace *)gd)->trampoline.tr_pcb_rsp;
-
-	((struct privatespace *)gd)->trampoline.tr_pcb_rsp =
-		gd->gd_common_tss.tss_rsp0;
+	ps->common_tss.tss_rsp0 = (register_t)&ps->trampoline.tr_pcb_rsp;
+	ps->trampoline.tr_pcb_rsp = ps->common_tss.tss_rsp0;
 
 	/* double fault stack */
-	gd->gd_common_tss.tss_ist1 =
-		(long)&gd->mi.gd_prvspace->idlestack[
-			sizeof(gd->mi.gd_prvspace->idlestack)];
+	ps->common_tss.tss_ist1 = (register_t)ps->dblstack +
+				  sizeof(ps->dblstack);
 
 	/* Set the IO permission bitmap (empty due to tss seg limit) */
-	gd->gd_common_tss.tss_iobase = sizeof(struct x86_64tss);
+	ps->common_tss.tss_iobase = sizeof(struct x86_64tss);
 
 	gsel_tss = GSEL(GPROC0_SEL, SEL_KPL);
 	gd->gd_tss_gdt = &gdt[GPROC0_SEL];

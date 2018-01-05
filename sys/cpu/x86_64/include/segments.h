@@ -234,10 +234,11 @@ struct region_descriptor {
 #ifndef LOCORE
 
 #ifdef _KERNEL
-extern struct user_segment_descriptor gdt[];
 extern struct soft_segment_descriptor gdt_segs[];
 extern struct gate_descriptor idt_arr[MAXCPU][NIDT];
 extern struct region_descriptor r_idt_arr[];
+extern struct region_descriptor r_gdt;
+extern struct user_segment_descriptor gdt[NGDT * MAXCPU];
 
 void	lgdt(struct region_descriptor *rdp);
 void	sdtossd(struct user_segment_descriptor *sdp,

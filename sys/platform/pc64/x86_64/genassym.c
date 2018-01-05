@@ -204,6 +204,7 @@ ASSYM(FIRST_SOFTINT, FIRST_SOFTINT);
 ASSYM(MDGLOBALDATA_BASEALLOC_PAGES, MDGLOBALDATA_BASEALLOC_PAGES);
 
 ASSYM(GD_PRIVATE_TSS, offsetof(struct mdglobaldata, gd_private_tss));
+ASSYM(GD_COMMON_TSS, offsetof(struct privatespace, common_tss));
 ASSYM(GD_TRAMPOLINE, offsetof(struct privatespace, trampoline));
 ASSYM(GD_USER_FS, offsetof(struct mdglobaldata, gd_user_fs));
 ASSYM(GD_USER_GS, offsetof(struct mdglobaldata, gd_user_gs));
@@ -225,7 +226,6 @@ ASSYM(TR_PCB_CR3, offsetof(struct trampframe, tr_pcb_cr3));
 
 ASSYM(GD_IPENDING, offsetof(struct mdglobaldata, gd_ipending));
 ASSYM(GD_SPENDING, offsetof(struct mdglobaldata, gd_spending));
-ASSYM(GD_COMMON_TSS, offsetof(struct mdglobaldata, gd_common_tss));
 ASSYM(GD_COMMON_TSSD, offsetof(struct mdglobaldata, gd_common_tssd));
 ASSYM(GD_TSS_GDT, offsetof(struct mdglobaldata, gd_tss_gdt));
 ASSYM(GD_NPXTHREAD, offsetof(struct mdglobaldata, gd_npxthread));

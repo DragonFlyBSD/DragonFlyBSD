@@ -68,7 +68,6 @@ struct mdglobaldata {
 	struct user_segment_descriptor gd_common_tssd;
 	struct user_segment_descriptor *gd_tss_gdt;
 	struct thread   *gd_npxthread;
-	struct x86_64tss gd_common_tss;
 	union savefpu	gd_savefpu;	/* fast bcopy/zero temp fpu save area */
 	int		gd_fpu_lock;	/* fast bcopy/zero cpu lock */
 	int		gd_xinvaltlb;	/* reentrancy check invaltlb routine */
@@ -109,24 +108,43 @@ struct mdglobaldata {
  * This is the upper (0xff800000) address space layout that is per-cpu.
  * It is setup in locore.s and pmap.c for the BSP and in mp_machdep.c for
  * each AP.  genassym helps export this to the assembler code.
+ *
+ * Most of the major elements in struct privatespace must be
+ * PAGE_SIZE aligned.
  */
 struct privatespace {
-	/* JG TODO: fix comments describing layout */
-	/* page 0 - data page */
+	/*
+	 * page 0 - data page
+	 */
 	struct mdglobaldata mdglobaldata;
 	char		__filler0[MDGLOBALDATA_PAD];
 
 	/*
-	 * page 1 - trap and interrupt trampoline (rsp0 points to top,
-	 *	    then minus whatever hardware pushes)
+	 * page 1 - Unused (unmapped)
 	 */
-	char		reserved1[PAGE_SIZE - sizeof(struct trampframe)];
-	struct trampframe trampoline;
-
-	/* page 2, 3, 4 - CPAGE2,CPAGE3,PPAGE1 (unused) */
 	char		unused2[PAGE_SIZE];
-	char		unused3[PAGE_SIZE];
-	char		unused4[PAGE_SIZE];
+
+	/*
+	 * page 2 - Trampoline page.  Put the trampoline and common_tss
+	 *	    in the same page to make them easier to isolate
+	 *	    from the rest of the kernel map.  See x86_64/pmap.c
+	 *
+	 *	    rsp0 points into trampoline.  Interrupts are always
+	 *	    disabled for this case but leave reserved1[]
+	 *	    reserved just in case.
+	 */
+	char		reserved1[PAGE_SIZE -
+				  sizeof(struct trampframe) -
+				  sizeof(uint64_t) -
+				  sizeof(struct x86_64tss)];
+	struct trampframe trampoline;
+	uint64_t	reserved1b;	/* 16-byte-align trampoline */
+	struct x86_64tss common_tss;
+
+	/*
+	 * page 3, 4 - Double fault stack
+	 */
+	char		dblstack[PAGE_SIZE * 2];
 
 	/* page 5..4+UPAGES - idle stack (UPAGES pages) */
 	char		idlestack[UPAGES * PAGE_SIZE];

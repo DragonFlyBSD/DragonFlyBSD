@@ -939,7 +939,7 @@ vmx_vminit(struct vmm_guest_options *options)
 	 */
 	gd = mycpu;
 	ERROR_IF(vmwrite(VMCS_HOST_GS_BASE, (uint64_t)gd));
-	ERROR_IF(vmwrite(VMCS_HOST_TR_BASE, (uint64_t)&gd->gd_prvspace->mdglobaldata.gd_common_tss));
+	ERROR_IF(vmwrite(VMCS_HOST_TR_BASE, (uint64_t)&gd->gd_prvspace->common_tss));
 
 	ERROR_IF(vmwrite(VMCS_HOST_GDTR_BASE, (uint64_t)&gdt[gd->gd_cpuid * NGDT]));
 	ERROR_IF(vmwrite(VMCS_HOST_IDTR_BASE, (uint64_t)r_idt_arr[gd->gd_cpuid].rd_base));
@@ -1070,7 +1070,7 @@ vmx_handle_cpu_migration(void)
 
 		/* Host related registers */
 		ERROR_IF(vmwrite(VMCS_HOST_GS_BASE, (uint64_t) gd)); /* mycpu points to %gs:0 */
-		ERROR_IF(vmwrite(VMCS_HOST_TR_BASE, (uint64_t) &gd->gd_prvspace->mdglobaldata.gd_common_tss));
+		ERROR_IF(vmwrite(VMCS_HOST_TR_BASE, (uint64_t) &gd->gd_prvspace->common_tss));
 
 		ERROR_IF(vmwrite(VMCS_HOST_GDTR_BASE, (uint64_t) &gdt[gd->gd_cpuid * NGDT]));
 		ERROR_IF(vmwrite(VMCS_HOST_IDTR_BASE, (uint64_t) r_idt_arr[gd->gd_cpuid].rd_base));

@@ -43,6 +43,13 @@
  */
 /*
  * Manage physical address maps for x86-64 systems.
+ *
+ * Some notes:
+ *	- The 'M'odified bit is only applicable to terminal PTEs.
+ *
+ *	- The 'U'ser access bit can be set for higher-level PTEs as
+ *	  long as it isn't set for terminal PTEs for pages we don't
+ *	  want user access to.
  */
 
 #if 0 /* JG */
@@ -77,6 +84,7 @@
 #include <vm/vm_page2.h>
 
 #include <machine/cputypes.h>
+#include <machine/cpu.h>
 #include <machine/md_var.h>
 #include <machine/specialreg.h>
 #include <machine/smp.h>
@@ -153,6 +161,7 @@
 static uint64_t protection_codes[PROTECTION_CODES_SIZE];
 
 struct pmap kernel_pmap;
+struct pmap iso_pmap;
 
 MALLOC_DEFINE(M_OBJPMAP, "objpmap", "pmaps associated with VM objects");
 
@@ -947,7 +956,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 		((pdp_entry_t *)KPDPphys)[NKPML4E * NPDPEPG - NKPDPE + i] |=
 		    pmap_bits_default[PG_RW_IDX] |
 		    pmap_bits_default[PG_V_IDX] |
-		    pmap_bits_default[PG_U_IDX];
+		    pmap_bits_default[PG_A_IDX];
 	}
 
 	/*
@@ -960,7 +969,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 		((pdp_entry_t *)KPDPphys)[i + j] |=
 		    pmap_bits_default[PG_RW_IDX] |
 		    pmap_bits_default[PG_V_IDX] |
-		    pmap_bits_default[PG_U_IDX];
+		    pmap_bits_default[PG_A_IDX];
 	}
 
 	/*
@@ -971,6 +980,9 @@ create_pagetables(vm_paddr_t *firstaddr)
 	 * entries are set to zero as we allocated enough PD pages
 	 */
 	if ((amd_feature & AMDID_PAGE1GB) == 0) {
+		/*
+		 * Use 2MB pages
+		 */
 		for (i = 0; i < NPDEPG * ndmpdp; i++) {
 			((pd_entry_t *)DMPDphys)[i] = i << PDRSHIFT;
 			((pd_entry_t *)DMPDphys)[i] |=
@@ -990,10 +1002,12 @@ create_pagetables(vm_paddr_t *firstaddr)
 							(i << PAGE_SHIFT);
 			((pdp_entry_t *)DMPDPphys)[i] |=
 			    pmap_bits_default[PG_RW_IDX] |
-			    pmap_bits_default[PG_V_IDX] |
-			    pmap_bits_default[PG_U_IDX];
+			    pmap_bits_default[PG_V_IDX];
 		}
 	} else {
+		/*
+		 * 1GB pages
+		 */
 		for (i = 0; i < ndmpdp; i++) {
 			((pdp_entry_t *)DMPDPphys)[i] =
 						(vm_paddr_t)i << PDPSHIFT;
@@ -1012,7 +1026,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 	((pdp_entry_t *)KPML4phys)[PML4PML4I] |=
 	    pmap_bits_default[PG_RW_IDX] |
 	    pmap_bits_default[PG_V_IDX] |
-	    pmap_bits_default[PG_U_IDX];
+	    pmap_bits_default[PG_A_IDX];
 
 	/*
 	 * Connect the Direct Map slots up to the PML4
@@ -1022,7 +1036,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 		    (DMPDPphys + ((vm_paddr_t)j << PAGE_SHIFT)) |
 		    pmap_bits_default[PG_RW_IDX] |
 		    pmap_bits_default[PG_V_IDX] |
-		    pmap_bits_default[PG_U_IDX];
+		    pmap_bits_default[PG_A_IDX];
 	}
 
 	/*
@@ -1034,7 +1048,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 		((pdp_entry_t *)KPML4phys)[KPML4I + j] |=
 		    pmap_bits_default[PG_RW_IDX] |
 		    pmap_bits_default[PG_V_IDX] |
-		    pmap_bits_default[PG_U_IDX];
+		    pmap_bits_default[PG_A_IDX];
 	}
 	cpu_mfence();
 	cpu_invltlb();
@@ -1288,7 +1302,16 @@ pmap_init(void)
  * Initialize the address space (zone) for the pv_entries.  Set a
  * high water mark so that the system can recover from excessive
  * numbers of pv entries.
+ *
+ * Also create the kernel page table template for isolated user
+ * pmaps.
  */
+static void pmap_init_iso_range(vm_offset_t base, size_t bytes);
+static void pmap_init2_iso_pmap(void);
+#if 0
+static void dump_pmap(pmap_t pmap, pt_entry_t pte, int level, vm_offset_t base);
+#endif
+
 void
 pmap_init2(void)
 {
@@ -1322,7 +1345,167 @@ pmap_init2(void)
 		else
 			pmap_dynamic_delete = 0;
 	}
+
+	pmap_init2_iso_pmap();
 }
+
+/*
+ * Create the isolation pmap template.  Once created, the template
+ * is static and its PML4e entries are used to populate the
+ * kernel portion of any isolated user pmaps.
+ *
+ * Our isolation pmap must contain:
+ * (1) trampoline area for all cpus
+ * (2) common_tss area for all cpus (its part of the trampoline area now)
+ * (3) IDT for all cpus
+ * (4) GDT for all cpus
+ */
+static void
+pmap_init2_iso_pmap(void)
+{
+	int n;
+
+	kprintf("Initialize isolation pmap\n");
+
+	/*
+	 * Try to use our normal API calls to make this easier.  We have
+	 * to scrap the shadowed kernel PDPs pmap_pinit() creates for our
+	 * iso_pmap.
+	 */
+	pmap_pinit(&iso_pmap);
+	bzero(iso_pmap.pm_pml4, PAGE_SIZE);
+
+	/*
+	 * Install areas needed by the cpu and trampoline.
+	 */
+	for (n = 0; n < ncpus; ++n) {
+		struct privatespace *ps;
+
+		ps = CPU_prvspace[n];
+		pmap_init_iso_range((vm_offset_t)&ps->trampoline,
+				    sizeof(ps->trampoline));
+		pmap_init_iso_range((vm_offset_t)&ps->common_tss,
+				    sizeof(ps->common_tss));
+		pmap_init_iso_range(r_idt_arr[n].rd_base,
+				    r_idt_arr[n].rd_limit + 1);
+	}
+	pmap_init_iso_range((register_t)gdt, sizeof(gdt));
+	pmap_init_iso_range((vm_offset_t)(int *)btext,
+			    (vm_offset_t)(int *)etext -
+			     (vm_offset_t)(int *)btext);
+
+#if 0
+	kprintf("Dump iso_pmap:\n");
+	dump_pmap(&iso_pmap, vtophys(iso_pmap.pm_pml4), 0, 0);
+	kprintf("\nDump kernel_pmap:\n");
+	dump_pmap(&kernel_pmap, vtophys(kernel_pmap.pm_pml4), 0, 0);
+#endif
+}
+
+/*
+ * This adds a kernel virtual address range to the isolation pmap.
+ */
+static void
+pmap_init_iso_range(vm_offset_t base, size_t bytes)
+{
+	pv_entry_t pv;
+	pv_entry_t pvp;
+	pt_entry_t *ptep;
+	pt_entry_t pte;
+	vm_offset_t va;
+
+	kprintf("isolate %016jx-%016jx (%zd)\n",
+		base, base + bytes, bytes);
+	va = base & ~(vm_offset_t)PAGE_MASK;
+	while (va < base + bytes) {
+		if ((va & PDRMASK) == 0 && va + NBPDR <= base + bytes &&
+		    (ptep = pmap_pt(&kernel_pmap, va)) != NULL &&
+		    (*ptep & kernel_pmap.pmap_bits[PG_V_IDX]) &&
+		    (*ptep & kernel_pmap.pmap_bits[PG_PS_IDX])) {
+			/*
+			 * Use 2MB pages if possible
+			 */
+			pte = *ptep;
+			pv = pmap_allocpte(&iso_pmap, pmap_pd_pindex(va), &pvp);
+			ptep = pv_pte_lookup(pv, (va >> PDRSHIFT) & 511);
+			*ptep = pte;
+			va += NBPDR;
+		} else {
+			/*
+			 * Otherwise use 4KB pages
+			 */
+			pv = pmap_allocpte(&iso_pmap, pmap_pt_pindex(va), &pvp);
+			ptep = pv_pte_lookup(pv, (va >> PAGE_SHIFT) & 511);
+			*ptep = vtophys(va) | kernel_pmap.pmap_bits[PG_RW_IDX] |
+					      kernel_pmap.pmap_bits[PG_V_IDX] |
+					      kernel_pmap.pmap_bits[PG_A_IDX] |
+					      kernel_pmap.pmap_bits[PG_M_IDX];
+
+			va += PAGE_SIZE;
+		}
+		pv_put(pv);
+		pv_put(pvp);
+	}
+}
+
+#if 0
+/*
+ * Useful debugging pmap dumper, do not remove (#if 0 when not in use)
+ */
+static
+void
+dump_pmap(pmap_t pmap, pt_entry_t pte, int level, vm_offset_t base)
+{
+	pt_entry_t *ptp;
+	vm_offset_t incr;
+	int i;
+
+	switch(level) {
+	case 0:					/* PML4e page, 512G entries */
+		incr = (1LL << 48) / 512;
+		break;
+	case 1:					/* PDP page, 1G entries */
+		incr = (1LL << 39) / 512;
+		break;
+	case 2:					/* PD page, 2MB entries */
+		incr = (1LL << 30) / 512;
+		break;
+	case 3:					/* PT page, 4KB entries */
+		incr = (1LL << 21) / 512;
+		break;
+	default:
+		incr = 0;
+		break;
+	}
+
+	if (level == 0)
+		kprintf("cr3 %016jx @ va=%016jx\n", pte, base);
+	ptp = (void *)PHYS_TO_DMAP(pte & ~(pt_entry_t)PAGE_MASK);
+	for (i = 0; i < 512; ++i) {
+		if (level == 0 && i == 128)
+			base += 0xFFFF000000000000LLU;
+		if (ptp[i]) {
+			kprintf("%*.*s ", level * 4, level * 4, "");
+			if (level == 1 && (ptp[i] & 0x180) == 0x180) {
+				kprintf("va=%016jx %3d term %016jx (1GB)\n",
+					base, i, ptp[i]);
+			} else if (level == 2 && (ptp[i] & 0x180) == 0x180) {
+				kprintf("va=%016jx %3d term %016jx (2MB)\n",
+					base, i, ptp[i]);
+			} else if (level == 3) {
+				kprintf("va=%016jx %3d term %016jx\n",
+					base, i, ptp[i]);
+			} else {
+				kprintf("va=%016jx %3d deep %016jx\n",
+					base, i, ptp[i]);
+				dump_pmap(pmap, ptp[i], level + 1, base);
+			}
+		}
+		base += incr;
+	}
+}
+
+#endif
 
 /*
  * Typically used to initialize a fictitious page by vm/device_pager.c
@@ -2034,14 +2217,14 @@ pmap_pinit(struct pmap *pmap)
 			    (DMPDPphys + ((vm_paddr_t)j << PAGE_SHIFT)) |
 			    pmap->pmap_bits[PG_RW_IDX] |
 			    pmap->pmap_bits[PG_V_IDX] |
-			    pmap->pmap_bits[PG_U_IDX];
+			    pmap->pmap_bits[PG_A_IDX];
 		}
 		for (j = 0; j < NKPML4E; ++j) {
 			pmap->pm_pml4[KPML4I + j] =
 			    (KPDPphys + ((vm_paddr_t)j << PAGE_SHIFT)) |
 			    pmap->pmap_bits[PG_RW_IDX] |
 			    pmap->pmap_bits[PG_V_IDX] |
-			    pmap->pmap_bits[PG_U_IDX];
+			    pmap->pmap_bits[PG_A_IDX];
 		}
 
 		/*
@@ -2050,8 +2233,7 @@ pmap_pinit(struct pmap *pmap)
 		pmap->pm_pml4[PML4PML4I] = VM_PAGE_TO_PHYS(pv->pv_m) |
 		    pmap->pmap_bits[PG_V_IDX] |
 		    pmap->pmap_bits[PG_RW_IDX] |
-		    pmap->pmap_bits[PG_A_IDX] |
-		    pmap->pmap_bits[PG_M_IDX];
+		    pmap->pmap_bits[PG_A_IDX];
 	} else {
 		KKASSERT(pv->pv_m->flags & PG_MAPPED);
 		KKASSERT(pv->pv_m->flags & PG_WRITEABLE);
@@ -2063,8 +2245,13 @@ pmap_pinit(struct pmap *pmap)
 	 * is needed.  We use pmap_pml4_pindex() + 1 for convenience, but
 	 * note that we do not operate on this table using our API functions
 	 * so handling of the + 1 case is mostly just to prevent implosions.
+	 *
+	 * We install an isolated version of the kernel PDPs into this
+	 * second PML4e table.  The pmap code will mirror all user PDPs
+	 * between the primary and secondary PML4e table.
 	 */
-	if ((pv = pmap->pm_pmlpv_iso) == NULL && vm_isolated_user_pmap) {
+	if ((pv = pmap->pm_pmlpv_iso) == NULL && vm_isolated_user_pmap &&
+	    pmap != &iso_pmap) {
 		pv = pmap_allocpte(pmap, pmap_pml4_pindex() + 1, NULL);
 		pmap->pm_pmlpv_iso = pv;
 		pmap_kenter((vm_offset_t)pmap->pm_pml4_iso,
@@ -2072,17 +2259,13 @@ pmap_pinit(struct pmap *pmap)
 		pv_put(pv);
 
 		/*
-		 * Install just enough KMAP for our trampoline.  DMAP not
-		 * needed at all.  XXX
+		 * Install an isolated version of the kernel pmap for
+		 * user consumption, using PDPs constructed in iso_pmap.
 		 */
 		for (j = 0; j < NKPML4E; ++j) {
 			pmap->pm_pml4_iso[KPML4I + j] =
-			    (KPDPphys + ((vm_paddr_t)j << PAGE_SHIFT)) |
-			    pmap->pmap_bits[PG_RW_IDX] |
-			    pmap->pmap_bits[PG_V_IDX] |
-			    pmap->pmap_bits[PG_U_IDX];
+				iso_pmap.pm_pml4[KPML4I + j];
 		}
-		KKASSERT(pmap->pm_pml4_iso[255] == 0);
 	} else if (pv) {
 		KKASSERT(pv->pv_m->flags & PG_MAPPED);
 		KKASSERT(pv->pv_m->flags & PG_WRITEABLE);
@@ -2196,9 +2379,13 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 	 * a pt_pv is not being requested for kernel VAs.  The kernel
 	 * pre-wires all higher-level page tables so don't overload managed
 	 * higher-level page tables on top of it!
+	 *
+	 * However, its convenient for us to allow the case when creating
+	 * iso_pmap.  This is a bit of a hack but it simplifies iso_pmap
+	 * a lot.
 	 */
 	if (ptepindex < pmap_pt_pindex(0)) {
-		if (ptepindex >= NUPTE_USER) {
+		if (ptepindex >= NUPTE_USER && pmap != &iso_pmap) {
 			/* kernel manages this manually for KVM */
 			KKASSERT(pvpp == NULL);
 		} else {
@@ -2330,11 +2517,14 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 	 */
 	if (pvp) {
 		v = VM_PAGE_TO_PHYS(m) |
-		    (pmap->pmap_bits[PG_U_IDX] |
-		     pmap->pmap_bits[PG_RW_IDX] |
+		    (pmap->pmap_bits[PG_RW_IDX] |
 		     pmap->pmap_bits[PG_V_IDX] |
-		     pmap->pmap_bits[PG_A_IDX] |
-		     pmap->pmap_bits[PG_M_IDX]);
+		     pmap->pmap_bits[PG_A_IDX]);
+		if (ptepindex < NUPTE_USER)
+			v |= pmap->pmap_bits[PG_U_IDX];
+		if (ptepindex < pmap_pt_pindex(0))
+			v |= pmap->pmap_bits[PG_M_IDX];
+
 		ptep = pv_pte_lookup(pvp, ptepindex);
 		if (pvp == pmap->pm_pmlpv && pmap->pm_pmlpv_iso)
 			ptep_iso = pv_pte_lookup(pmap->pm_pmlpv_iso, ptepindex);
@@ -2381,11 +2571,13 @@ notnew:
 		KKASSERT(pvp->pv_m != NULL);
 		ptep = pv_pte_lookup(pvp, ptepindex);
 		v = VM_PAGE_TO_PHYS(pv->pv_m) |
-		    (pmap->pmap_bits[PG_U_IDX] |
-		     pmap->pmap_bits[PG_RW_IDX] |
+		    (pmap->pmap_bits[PG_RW_IDX] |
 		     pmap->pmap_bits[PG_V_IDX] |
-		     pmap->pmap_bits[PG_A_IDX] |
-		     pmap->pmap_bits[PG_M_IDX]);
+		     pmap->pmap_bits[PG_A_IDX]);
+		if (ptepindex < NUPTE_USER)
+			v |= pmap->pmap_bits[PG_U_IDX];
+		if (ptepindex < pmap_pt_pindex(0))
+			v |= pmap->pmap_bits[PG_M_IDX];
 		if (*ptep != v) {
 			kprintf("mismatched upper level pt %016jx/%016jx\n",
 				*ptep, v);
@@ -3324,8 +3516,7 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 			    (paddr |
 			    kernel_pmap.pmap_bits[PG_V_IDX] |
 			    kernel_pmap.pmap_bits[PG_RW_IDX] |
-			    kernel_pmap.pmap_bits[PG_A_IDX] |
-			    kernel_pmap.pmap_bits[PG_M_IDX]);
+			    kernel_pmap.pmap_bits[PG_A_IDX]);
 			atomic_swap_long(pd, newpd);
 
 #if 0
@@ -3364,8 +3555,7 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		newpt = (pd_entry_t)(ptppaddr |
 				     kernel_pmap.pmap_bits[PG_V_IDX] |
 				     kernel_pmap.pmap_bits[PG_RW_IDX] |
-				     kernel_pmap.pmap_bits[PG_A_IDX] |
-				     kernel_pmap.pmap_bits[PG_M_IDX]);
+				     kernel_pmap.pmap_bits[PG_A_IDX]);
 		atomic_swap_long(pt, newpt);
 
 		kstart = (kstart + PAGE_SIZE * NPTEPG) &
@@ -6329,13 +6519,14 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 			 * (it can't access the pcb directly from the
 			 * restricted user pmap).
 			 */
-			if (td == curthread) {
+			{
 				struct trampframe *tramp;
 
 				tramp = &pscpu->trampoline;
 				tramp->tr_pcb_cr3 = td->td_pcb->pcb_cr3;
 				tramp->tr_pcb_cr3_iso = td->td_pcb->pcb_cr3_iso;
 				tramp->tr_pcb_flags = td->td_pcb->pcb_flags;
+				tramp->tr_pcb_rsp = (register_t)td->td_pcb;
 				/* tr_pcb_rsp doesn't change */
 			}
 

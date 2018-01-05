@@ -138,7 +138,6 @@
 int	current_postcode;
 
 /** XXX FIXME: what system files declare these??? */
-extern struct region_descriptor r_gdt;
 
 extern int naps;
 
@@ -251,8 +250,7 @@ init_secondary(void)
 
 	ps = CPU_prvspace[myid];
 
-	gdt_segs[GPROC0_SEL].ssd_base =
-		(long) &ps->mdglobaldata.gd_common_tss;
+	gdt_segs[GPROC0_SEL].ssd_base = (long)&ps->common_tss;
 	ps->mdglobaldata.mi.gd_prvspace = ps;
 
 	/* We fill the 32-bit segment descriptors */
@@ -297,21 +295,18 @@ init_secondary(void)
 	 * address of tr_pcb_rsp is the same as the desired top of
 	 * stack.
 	 */
-	md->gd_common_tss.tss_rsp0 =
-		(register_t)&((struct privatespace *)md)->trampoline.tr_pcb_rsp;
-	((struct privatespace *)md)->trampoline.tr_pcb_rsp =
-		md->gd_common_tss.tss_rsp0;
+	ps->common_tss.tss_rsp0 = (register_t)&ps->trampoline.tr_pcb_rsp;
+	ps->trampoline.tr_pcb_rsp = ps->common_tss.tss_rsp0;
 
 #if 0 /* JG XXX */
-	md->gd_common_tss.tss_ioopt = (sizeof md->gd_common_tss) << 16;
+	ps->common_tss.tss_ioopt = (sizeof ps->common_tss) << 16;
 #endif
 	md->gd_tss_gdt = &gdt[myid * NGDT + GPROC0_SEL];
 	md->gd_common_tssd = *md->gd_tss_gdt;
 
 	/* double fault stack */
-	md->gd_common_tss.tss_ist1 =
-		(long)&md->mi.gd_prvspace->idlestack[
-			sizeof(md->mi.gd_prvspace->idlestack)];
+	ps->common_tss.tss_ist1 = (register_t)ps->dblstack +
+				  sizeof(ps->dblstack);
 
 	ltr(gsel_tss);
 

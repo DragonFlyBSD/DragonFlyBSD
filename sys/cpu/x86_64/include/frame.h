@@ -124,6 +124,7 @@ struct intrframe {
  * of the isolated user pmap.
  */
 struct trampframe {
+	register_t	tr_unused01;
 	register_t	tr_cr2;
 	register_t	tr_r10;
 	register_t	tr_r11;
