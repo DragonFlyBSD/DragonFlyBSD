@@ -734,7 +734,7 @@ int     __sys_openat(int, const char *, int, ...);
 int	__sys_ioctl(int, unsigned long, ...);
 #endif
 
-/* #inclde <sched.h> */
+/* #include <sched.h> */
 #ifdef	_SCHED_H_
 int	__sys_sched_yield(void);
 #endif
