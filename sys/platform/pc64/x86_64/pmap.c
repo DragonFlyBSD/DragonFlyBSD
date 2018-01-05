@@ -260,9 +260,10 @@ SYSCTL_INT(_machdep, OID_AUTO, pmap_dynamic_delete, CTLFLAG_RW,
 int pmap_lock_delay = 100;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_lock_delay, CTLFLAG_RW,
     &pmap_lock_delay, 0, "Spin loops");
-static int vm_isolated_user_pmap = 0;
-SYSCTL_INT(_vm, OID_AUTO, isolated_user_pmap, CTLFLAG_RW,
-    &vm_isolated_user_pmap, 0, "Userland pmap isolation");
+static int isolated_user_pmap = -1;
+TUNABLE_INT("machdep.isolated_user_pmap", &isolated_user_pmap);
+SYSCTL_INT(_machdep, OID_AUTO, isolated_user_pmap, CTLFLAG_RW,
+    &isolated_user_pmap, 0, "Userland pmap isolation");
 
 static int pmap_nx_enable = 0;
 /* needs manual TUNABLE in early probe, see below */
@@ -1255,11 +1256,11 @@ pmap_set_opt(void)
 }
 
 /*
- *	Initialize the pmap module.
- *	Called by vm_init, to initialize any structures that the pmap
- *	system needs to map virtual memory.
- *	pmap_init has been enhanced to support in a fairly consistant
- *	way, discontiguous physical memory.
+ * Early initialization of the pmap module.
+ *
+ * Called by vm_init, to initialize any structures that the pmap
+ * system needs to map virtual memory.  pmap_init has been enhanced to
+ * support in a fairly consistant way, discontiguous physical memory.
  */
 void
 pmap_init(void)
@@ -1271,7 +1272,6 @@ pmap_init(void)
 	 * Allocate memory for random pmap data structures.  Includes the
 	 * pv_head_table.
 	 */
-
 	for (i = 0; i < vm_page_array_size; i++) {
 		vm_page_t m;
 
@@ -1346,6 +1346,26 @@ pmap_init2(void)
 			pmap_dynamic_delete = 0;
 	}
 
+	/*
+	 * Automatic detection of Intel meltdown bug requiring user/kernel
+	 * mmap isolation.
+	 *
+	 * Currently there are so many Intel cpu's impacted that its better
+	 * to whitelist future Intel CPUs.  Most? AMD cpus are not impacted
+	 * so the default is off for AMD.
+	 */
+	if (isolated_user_pmap < 0) {
+		if (cpu_vendor_id == CPU_VENDOR_INTEL)
+			isolated_user_pmap = 1;
+		else
+			isolated_user_pmap = 0;
+	}
+	if (isolated_user_pmap) {
+		kprintf("machdep.isolated_user_pmap enabled to "
+			"protect against (mostly Intel) meltdown bug\n");
+		kprintf("system call performance will be impacted\n");
+	}
+
 	pmap_init2_iso_pmap();
 }
 
@@ -1365,7 +1385,8 @@ pmap_init2_iso_pmap(void)
 {
 	int n;
 
-	kprintf("Initialize isolation pmap\n");
+	if (bootverbose)
+		kprintf("Initialize isolation pmap\n");
 
 	/*
 	 * Try to use our normal API calls to make this easier.  We have
@@ -1414,8 +1435,10 @@ pmap_init_iso_range(vm_offset_t base, size_t bytes)
 	pt_entry_t pte;
 	vm_offset_t va;
 
-	kprintf("isolate %016jx-%016jx (%zd)\n",
-		base, base + bytes, bytes);
+	if (bootverbose) {
+		kprintf("isolate %016jx-%016jx (%zd)\n",
+			base, base + bytes, bytes);
+	}
 	va = base & ~(vm_offset_t)PAGE_MASK;
 	while (va < base + bytes) {
 		if ((va & PDRMASK) == 0 && va + NBPDR <= base + bytes &&
@@ -2250,7 +2273,7 @@ pmap_pinit(struct pmap *pmap)
 	 * second PML4e table.  The pmap code will mirror all user PDPs
 	 * between the primary and secondary PML4e table.
 	 */
-	if ((pv = pmap->pm_pmlpv_iso) == NULL && vm_isolated_user_pmap &&
+	if ((pv = pmap->pm_pmlpv_iso) == NULL && isolated_user_pmap &&
 	    pmap != &iso_pmap) {
 		pv = pmap_allocpte(pmap, pmap_pml4_pindex() + 1, NULL);
 		pmap->pm_pmlpv_iso = pv;
@@ -6497,8 +6520,7 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 #endif
 			if (pmap->pmap_bits[TYPE_IDX] == REGULAR_PMAP) {
 				td->td_pcb->pcb_cr3 = vtophys(pmap->pm_pml4);
-				if (vm_isolated_user_pmap &&
-				    pmap->pm_pmlpv_iso) {
+				if (isolated_user_pmap && pmap->pm_pmlpv_iso) {
 					td->td_pcb->pcb_cr3_iso =
 						vtophys(pmap->pm_pml4_iso);
 					td->td_pcb->pcb_flags |= PCB_ISOMMU;
