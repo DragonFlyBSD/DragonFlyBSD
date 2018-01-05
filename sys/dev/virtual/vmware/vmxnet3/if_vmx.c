@@ -932,7 +932,7 @@ vmxnet3_free_interrupt(struct vmxnet3_softc *sc,
 	}
 }
 
-#if ___FreeBSD__
+#ifdef __FreeBSD__
 static void
 vmxnet3_free_interrupts(struct vmxnet3_softc *sc)
 {
