@@ -34,7 +34,7 @@
 
 /*
  * Taught to send *real* morse by Lyndon Nerenberg (VE7TCP/VE6BBM)
- * <lyndon@orthanc.com>
+ * <lyndon@orthanc.ca>
  */
 
 #include <sys/time.h>
