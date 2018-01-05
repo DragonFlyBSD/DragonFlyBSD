@@ -29,10 +29,10 @@
  */
 
 #include <sys/param.h>
+#include <sys/errno.h>
 
 #ifdef _KERNEL
 #include <sys/ctype.h>
-#include <sys/errno.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/systm.h>
@@ -40,7 +40,6 @@
 #include <machine/stdarg.h>
 #else /* _KERNEL */
 #include <ctype.h>
-#include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>

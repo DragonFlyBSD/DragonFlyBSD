@@ -65,7 +65,6 @@
 #include <libutil.h>
 #include <pwd.h>
 #include <string.h>
-#include <errno.h>
 #include "rpcbind.h"
 
 /* Global variables */

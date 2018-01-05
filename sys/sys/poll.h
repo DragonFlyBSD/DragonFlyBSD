@@ -96,10 +96,6 @@ struct pollfd {
 #endif
 
 __BEGIN_DECLS
-/*
- * XXX logically, poll() should be declared in <poll.h>, but SVR4 at
- * least has it here in <sys/poll.h>.
- */
 #if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE
 int	poll(struct pollfd *, nfds_t, int);
 #endif
