@@ -54,21 +54,21 @@
 #define	NOTFOUNDEXIT	1
 #define	ERREXIT		2
 
-char	*exclude[SPACE];
-struct	nlist order[SPACE];
+static char	*exclude[SPACE];
+static struct	nlist order[SPACE];
 
-struct	exec exec;
-struct	stat stb;
-struct	nlist *newtab, *symtab;
-off_t	sa;
-int	nexclude, nsym, strtabsize, symfound, symkept, small, missing, clean;
-char	*kfile, *newstrings, *strings, asym[BUFSIZ];
+static struct	exec exec;
+static struct	stat stb;
+static struct	nlist *newtab, *symtab;
+static off_t	sa;
+static int	nexclude, nsym, strtabsize, symfound, symkept, small, missing, clean;
+static char	*kfile, *newstrings, *strings, asym[BUFSIZ];
 
-void badfmt(char *);
-int excluded(struct nlist *);
-int inlist(struct nlist *);
-void reorder(struct nlist *, struct nlist *, int);
-int savesymb(struct nlist *);
+static void badfmt(char *);
+static int excluded(struct nlist *);
+static int inlist(struct nlist *);
+static void reorder(struct nlist *, struct nlist *, int);
+static int savesymb(struct nlist *);
 static void usage(void);
 
 int
@@ -249,7 +249,7 @@ main(int argc, char **argv)
 	exit(OKEXIT);
 }
 
-int
+static int
 savesymb(struct nlist *s)
 {
 	if ((s->n_type & N_EXT) != N_EXT)
@@ -263,7 +263,7 @@ savesymb(struct nlist *s)
 	}
 }
 
-void
+static void
 reorder(struct nlist *st1, struct nlist *st2, int entries)
 {
 	struct nlist *p;
@@ -284,7 +284,7 @@ reorder(struct nlist *st1, struct nlist *st2, int entries)
 	}
 }
 
-int
+static int
 inlist(struct nlist *p)
 {
 	char *nam;
@@ -304,7 +304,7 @@ inlist(struct nlist *p)
 	return (-1);
 }
 
-int
+static int
 excluded(struct nlist *p)
 {
 	char *nam;
@@ -321,7 +321,7 @@ excluded(struct nlist *p)
 	return (0);
 }
 
-void
+static void
 badfmt(char *why)
 {
 	errx(ERREXIT, "%s: %s: %s", kfile, why, strerror(EFTYPE));
