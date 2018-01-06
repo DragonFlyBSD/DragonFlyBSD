@@ -52,35 +52,35 @@
 
 #define	ignore(a)	((void) a)
 
-off_t	tellpt;
+static off_t	tellpt;
 
-off_t	mesgpt;
-char	cstrings[] =	"strings";
-char	*strings =	cstrings;
+static off_t	mesgpt;
+static char	cstrings[] =	"strings";
+static char	*strings =	cstrings;
 
-int	cflg;
-int	vflg;
-int	readstd;
+static int	cflg;
+static int	vflg;
+static int	readstd;
 
-char lastchr(char *);
+static char lastchr(char *);
 
-int fgetNUL(char *, int, FILE *);
-int istail(char *, char *);
-int octdigit(char);
-int xgetc(FILE *);
+static int fgetNUL(char *, int, FILE *);
+static int istail(char *, char *);
+static int octdigit(char);
+static int xgetc(FILE *);
 
-off_t hashit(char *, int);
-off_t yankstr(char **);
+static off_t hashit(char *, int);
+static off_t yankstr(char **);
 
 static void usage(void);
 
-void flushsh(void);
-void found(int, off_t, char *);
-void inithash(void);
-void onintr(int);
-void process(const char *);
-void prstr(char *);
-void xsdotc(void);
+static void flushsh(void);
+static void found(int, off_t, char *);
+static void inithash(void);
+static void onintr(int);
+static void process(const char *);
+static void prstr(char *);
+static void xsdotc(void);
 
 int
 main(int argc, char *argv[])
@@ -145,9 +145,9 @@ usage(void)
 	exit (1);
 }
 
-char linebuf[BUFSIZ];
+static char linebuf[BUFSIZ];
 
-void
+static void
 process(const char *name)
 {
 	char *cp;
@@ -215,7 +215,7 @@ out:
 		warn("x.c"), onintr(0);
 }
 
-off_t
+static off_t
 yankstr(char **cpp)
 {
 	char *cp = *cpp;
@@ -275,13 +275,13 @@ out:
 	return (hashit(dbuf, 1));
 }
 
-int
+static int
 octdigit(char c)
 {
 	return (isdigit(c) && c != '8' && c != '9');
 }
 
-void
+static void
 inithash(void)
 {
 	char buf[BUFSIZ];
@@ -298,7 +298,7 @@ inithash(void)
 	ignore(fclose(mesgread));
 }
 
-int
+static int
 fgetNUL(char *obuf, int rmdr, FILE *file)
 {
 	int c;
@@ -310,7 +310,7 @@ fgetNUL(char *obuf, int rmdr, FILE *file)
 	return ((feof(file) || ferror(file)) ? 0 : 1);
 }
 
-int
+static int
 xgetc(FILE *file)
 {
 
@@ -320,14 +320,14 @@ xgetc(FILE *file)
 
 #define	BUCKETS	128
 
-struct	hash {
+static struct	hash {
 	off_t	hpt;
 	char	*hstr;
 	struct	hash *hnext;
 	short	hnew;
 } bucket[BUCKETS];
 
-off_t
+static off_t
 hashit(char *str, int new)
 {
 	int i;
@@ -352,7 +352,7 @@ hashit(char *str, int new)
 	return (hp->hpt);
 }
 
-void
+static void
 flushsh(void)
 {
 	int i;
@@ -385,7 +385,7 @@ flushsh(void)
 		err(4, "%s", strings);
 }
 
-void
+static void
 found(int new, off_t off, char *str)
 {
 	if (vflg == 0)
@@ -398,7 +398,7 @@ found(int new, off_t off, char *str)
 	fprintf(stderr, "\n");
 }
 
-void
+static void
 prstr(char *cp)
 {
 	int c;
@@ -414,7 +414,7 @@ prstr(char *cp)
 			fprintf(stderr, "%c", c);
 }
 
-void
+static void
 xsdotc(void)
 {
 	FILE *strf = fopen(strings, "r");
@@ -449,7 +449,7 @@ out:
 	ignore(fclose(strf));
 }
 
-char
+static char
 lastchr(char *cp)
 {
 
@@ -458,7 +458,7 @@ lastchr(char *cp)
 	return (*cp);
 }
 
-int
+static int
 istail(char *str, char *of)
 {
 	int d = strlen(of) - strlen(str);
@@ -468,7 +468,7 @@ istail(char *str, char *of)
 	return (d);
 }
 
-void
+static void
 onintr(int dummy __unused)
 {
 
