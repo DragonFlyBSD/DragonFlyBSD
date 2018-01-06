@@ -56,18 +56,18 @@
 
 typedef const char *ccharp;
 
-int opt_a, opt_b, opt_m, opt_q, opt_s, opt_u, opt_x;
-ccharp *bindirs, *mandirs, *sourcedirs;
-char **query;
+static int opt_a, opt_b, opt_m, opt_q, opt_s, opt_u, opt_x;
+static ccharp *bindirs, *mandirs, *sourcedirs;
+static char **query;
 
-const char *sourcepath = PATH_SOURCES;
+static const char *sourcepath = PATH_SOURCES;
 
-char	*colonify(ccharp *);
-int	 contains(ccharp *, const char *);
-void	 decolonify(char *, ccharp **, int *);
-void	 defaults(void);
-void	 scanopts(int, char **);
-void	 usage(void);
+static char	*colonify(ccharp *);
+static int	 contains(ccharp *, const char *);
+static void	 decolonify(char *, ccharp **, int *);
+static void	 defaults(void);
+static void	 scanopts(int, char **);
+static void	 usage(void);
 
 /*
  * Throughout this program, a number of strings are dynamically
@@ -85,7 +85,7 @@ void	 usage(void);
  * abort(3) in case of an allocation failure.
  */
 
-void
+static void
 usage(void)
 {
 	errx(EX_USAGE,
@@ -98,7 +98,7 @@ usage(void)
  * Note that the -B/-M/-S options expect a list of directory
  * names that must be terminated with -f.
  */
-void
+static void
 scanopts(int argc, char **argv)
 {
 	int c, i;
@@ -173,7 +173,7 @@ breakout:
 /*
  * Find out whether string `s' is contained in list `cpp'.
  */
-int
+static int
 contains(ccharp *cpp, const char *s)
 {
 	ccharp cp;
@@ -196,7 +196,7 @@ contains(ccharp *cpp, const char *s)
  * partial string is only added if it has a length greater than 0, and
  * if it's not already contained in the string list.
  */
-void
+static void
 decolonify(char *s, ccharp **cppp, int *ip)
 {
 	char *cp;
@@ -222,7 +222,7 @@ decolonify(char *s, ccharp **cppp, int *ip)
 /*
  * Join string list `cpp' into a colon-separated string.
  */
-char *
+static char *
 colonify(ccharp *cpp)
 {
 	size_t s;
@@ -248,7 +248,7 @@ colonify(ccharp *cpp)
 /*
  * Provide defaults for all options and directory lists.
  */
-void
+static void
 defaults(void)
 {
 	size_t s;
