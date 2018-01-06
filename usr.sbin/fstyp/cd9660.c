@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/param.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

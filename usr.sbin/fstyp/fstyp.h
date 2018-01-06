@@ -33,8 +33,6 @@
 #ifndef FSTYP_H
 #define	FSTYP_H
 
-#define	MIN(a,b) (((a)<(b))?(a):(b))
-
 void	*read_buf(FILE *fp, off_t off, size_t len);
 char	*checked_strdup(const char *s);
 void	rtrim(char *label, size_t size);
