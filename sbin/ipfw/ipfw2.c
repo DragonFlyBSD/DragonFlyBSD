@@ -4013,6 +4013,12 @@ ipfw_main(int ac, char **av)
 	NEED1("bad arguments, for usage summary ``ipfw''");
 
 	/*
+	 * Reset do_pipe and do_table.
+	 */
+	do_pipe = 0;
+	do_table = 0;
+
+	/*
 	 * optional: pipe, queue or table
 	 */
 	if (!strncmp(*av, "pipe", strlen(*av))) {
