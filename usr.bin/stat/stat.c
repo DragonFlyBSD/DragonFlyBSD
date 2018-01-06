@@ -171,18 +171,18 @@
 #define SHOW_filename	'N'
 #define SHOW_sizerdev	'Z'
 
-void	usage(const char *);
-void	output(const struct stat *, const char *,
-	    const char *, int, int);
-int	format1(const struct stat *,	/* stat info */
-	    const char *,		/* the file name */
-	    const char *, int,		/* the format string itself */
-	    char *, size_t,		/* a place to put the output */
-	    int, int, int, int,		/* the parsed format */
-	    int, int);
-int	hex2byte(const char [2]);
+static void	usage(const char *);
+static void	output(const struct stat *, const char *,
+		    const char *, int, int);
+static int	format1(const struct stat *,	/* stat info */
+		    const char *,		/* the file name */
+		    const char *, int,		/* the format string itself */
+		    char *, size_t,		/* a place to put the output */
+		    int, int, int, int,		/* the parsed format */
+		    int, int);
+static int	hex2byte(const char [2]);
 #if HAVE_STRUCT_STAT_ST_FLAGS
-char   *xfflagstostr(unsigned long);
+static char	*xfflagstostr(unsigned long);
 #endif
 
 static const char *timefmt;
@@ -380,7 +380,7 @@ main(int argc, char *argv[])
 /*
  * fflagstostr() wrapper that leaks only once
  */
-char *
+static char *
 xfflagstostr(unsigned long fflags)
 {
 	static char *str = NULL;
@@ -395,7 +395,7 @@ xfflagstostr(unsigned long fflags)
 }
 #endif /* HAVE_STRUCT_STAT_ST_FLAGS */
 
-void
+static void
 usage(const char *synopsis)
 {
 
@@ -406,7 +406,7 @@ usage(const char *synopsis)
 /* 
  * Parses a format string.
  */
-void
+static void
 output(const struct stat *st, const char *file,
     const char *statfmt, int fn, int nonl)
 {
@@ -599,7 +599,7 @@ output(const struct stat *st, const char *file,
 /*
  * Arranges output according to a single parsed format substring.
  */
-int
+static int
 format1(const struct stat *st,
     const char *file,
     const char *fmt, int flen,
@@ -1084,7 +1084,7 @@ format1(const struct stat *st,
 
 
 #define hex2nibble(c) (c <= '9' ? c - '0' : toupper(c) - 'A' + 10)
-int
+static int
 hex2byte(const char c[2]) {
 	if (!(ishexnumber(c[0]) && ishexnumber(c[1])))
 		return -1;
