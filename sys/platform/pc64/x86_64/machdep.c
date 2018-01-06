@@ -2586,6 +2586,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	/* setup proc 0's pcb */
 	thread0.td_pcb->pcb_flags = 0;
 	thread0.td_pcb->pcb_cr3 = KPML4phys;
+	thread0.td_pcb->pcb_cr3_iso = 0;
 	thread0.td_pcb->pcb_ext = NULL;
 	lwp0.lwp_md.md_regs = &proc0_tf;	/* XXX needed? */
 

@@ -153,10 +153,12 @@ cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
 	 */
 	pmap2 = vmspace_pmap(lp2->lwp_proc->p_vmspace);
 	pcb2->pcb_cr3 = vtophys(pmap2->pm_pml4);
-	if (pcb2->pcb_flags & PCB_ISOMMU)
+	if ((pcb2->pcb_flags & PCB_ISOMMU) && pmap2->pm_pmlpv_iso) {
 		pcb2->pcb_cr3_iso = vtophys(pmap2->pm_pml4_iso);
-	else
+	} else {
+		pcb2->pcb_flags &= ~PCB_ISOMMU;
 		pcb2->pcb_cr3_iso = 0;
+	}
 	pcb2->pcb_rbx = (unsigned long)fork_return;	/* fork_trampoline argument */
 	pcb2->pcb_rbp = 0;
 	pcb2->pcb_rsp = (unsigned long)lp2->lwp_md.md_regs - sizeof(void *);
