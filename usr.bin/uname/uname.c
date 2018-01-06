@@ -53,20 +53,20 @@
 #define	GFLAG2  0x0100
 
 typedef void (*get_t)(void);
-get_t get_ident, get_machine, get_hostname, get_arch;
-get_t get_release, get_sysname, get_version, get_pkgabi;
+static get_t get_ident, get_machine, get_hostname, get_arch;
+static get_t get_release, get_sysname, get_version, get_pkgabi;
   
-void native_ident(void);
-void native_machine(void);
-void native_hostname(void);
-void native_arch(void);
-void native_release(void);
-void native_sysname(void);
-void native_version(void);
-void native_pkgabi(void);
-void print_uname(void);
-void setup_get(void);
-void usage(void);
+static void native_ident(void);
+static void native_machine(void);
+static void native_hostname(void);
+static void native_arch(void);
+static void native_release(void);
+static void native_sysname(void);
+static void native_version(void);
+static void native_pkgabi(void);
+static void print_uname(void);
+static void setup_get(void);
+static void usage(void);
 
 static char *ident, *machine, *hostname, *arch;
 static char *release, *sysname, *version, *pkgabi;
@@ -154,7 +154,7 @@ CHECK_ENV(const char *envname, get_t *getp, get_t nativep, char **varp)
 	*getp = NULL;
 }
 
-void
+static void
 setup_get(void)
 {
 	CHECK_ENV("UNAME_s", &get_sysname, native_sysname, &sysname);
@@ -178,7 +178,7 @@ setup_get(void)
 		printf("%s", var);		\
 	}
 
-void
+static void
 print_uname(void)
 {
 	PRINT_FLAG(flags, SFLAG, sysname);
@@ -193,7 +193,7 @@ print_uname(void)
 }
 
 #define	NATIVE_SYSCTL2_GET(var,mib0,mib1)	\
-void						\
+static void						\
 native_##var(void)				\
 {						\
 	int mib[] = { (mib0), (mib1) };		\
@@ -207,7 +207,7 @@ native_##var(void)				\
 		err(1, "sysctl");
 
 #define	NATIVE_SYSCTLNAME_GET(var,name)		\
-void						\
+static void						\
 native_##var(void)				\
 {						\
 	size_t len;				\
@@ -256,7 +256,7 @@ NATIVE_SYSCTL2_GET(arch, CTL_HW, HW_MACHINE_ARCH) {
 NATIVE_SYSCTLNAME_GET(ident, "kern.ident") {
 } NATIVE_SET;
 
-void						\
+static void						\
 native_pkgabi(void)				\
 {
 	char osrel[64];
@@ -291,7 +291,7 @@ native_pkgabi(void)				\
 	asprintf(&pkgabi, "dragonfly:%3.1f:%s", d, mach);
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "usage: uname [-aimnprsv]\n");
