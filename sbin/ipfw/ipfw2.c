@@ -734,38 +734,49 @@ static void
 fill_icmptypes(ipfw_insn_u32 *cmd, char *av)
 {
 	u_int8_t type;
+	int idx_max = 0, idx;
 
-	cmd->d[0] = 0;
+	/* 256 / 32, (max icmp types / 32 bits). */
+	for (idx = 0; idx < 8; ++idx)
+		cmd->d[idx] = 0;
+
 	while (*av) {
 		if (*av == ',')
 			av++;
 
 		type = strtoul(av, &av, 0);
-
 		if (*av != ',' && *av != '\0')
 			errx(EX_DATAERR, "invalid ICMP type");
 
-		if (type > 31)
-			errx(EX_DATAERR, "ICMP type out of range");
+		idx = type / 32;
+		cmd->d[idx] |= 1 << (type % 32);
 
-		cmd->d[0] |= 1 << type;
+		if (idx > idx_max)
+			idx_max = idx;
 	}
 	cmd->o.opcode = O_ICMPTYPE;
-	cmd->o.len |= F_INSN_SIZE(ipfw_insn_u32);
+	cmd->o.len |= (F_INSN_SIZE(ipfw_insn_u32) + idx_max);
 }
 
 static void
 print_icmptypes(ipfw_insn_u32 *cmd)
 {
-	int i;
+	int idx, idx_max;
 	char sep= ' ';
 
+	idx_max = F_LEN(&cmd->o) - F_INSN_SIZE(ipfw_insn);
+
 	printf(" icmptypes");
-	for (i = 0; i < 32; i++) {
-		if ( (cmd->d[0] & (1 << (i))) == 0)
-			continue;
-		printf("%c%d", sep, i);
-		sep = ',';
+	for (idx = 0; idx < idx_max; ++idx) {
+		uint32_t types = cmd->d[idx];
+
+		while (types != 0) {
+			int type_shift = ffs(types) - 1;
+
+			types &= ~(1 << type_shift);
+			printf("%c%d", sep, (idx * 32) + type_shift);
+			sep = ',';
+		}
 	}
 }
 
