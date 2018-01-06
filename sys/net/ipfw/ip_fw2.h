@@ -170,6 +170,8 @@ typedef struct	_ipfw_insn {	/* template for instructions */
 	uint16_t	arg1;
 } ipfw_insn;
 
+#define IPFW_INSN_SIZE_MAX	63	/* unit: uint32_t */
+
 /*
  * The F_INSN_SIZE(type) computes the size, in 4-byte words, of
  * a given type.
