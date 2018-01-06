@@ -68,10 +68,10 @@ static struct command *commands;
 
 #define SIZE 4000
 
-void usage(void);
-struct command *parse_conf(const char *, report_desc_t, int, int);
-void docmd(struct command *, int, const char *, int, char **);
-void freecommands(struct command *);
+static void usage(void);
+static struct command *parse_conf(const char *, report_desc_t, int, int);
+static void docmd(struct command *, int, const char *, int, char **);
+static void freecommands(struct command *);
 
 static void
 sighup(int sig __unused)
@@ -253,7 +253,7 @@ next:
 	exit(0);
 }
 
-void
+static void
 usage(void)
 {
 
@@ -273,7 +273,7 @@ peek(FILE *f)
 	return c;
 }
 
-struct command *
+static struct command *
 parse_conf(const char *conf, report_desc_t repd, int reportid, int ignore)
 {
 	FILE *f;
@@ -462,7 +462,7 @@ parse_conf(const char *conf, report_desc_t repd, int reportid, int ignore)
 	return (cmds);
 }
 
-void
+static void
 docmd(struct command *cmd, int value, const char *hid, int argc, char **argv)
 {
 	char cmdbuf[SIZE], *p, *q;
@@ -507,7 +507,7 @@ docmd(struct command *cmd, int value, const char *hid, int argc, char **argv)
 		printf("return code = 0x%x\n", r);
 }
 
-void
+static void
 freecommands(struct command *cmd)
 {
 	struct command *next;
