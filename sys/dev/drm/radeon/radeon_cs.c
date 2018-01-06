@@ -668,7 +668,7 @@ int radeon_cs_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		return r;
 	}
 
-#if TRACE_TODO
+#ifdef TRACE_TODO
 	trace_radeon_cs(&parser);
 #endif
 

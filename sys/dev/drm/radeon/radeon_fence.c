@@ -410,7 +410,7 @@ static int radeon_fence_wait_seq_timeout(struct radeon_device *rdev,
 			continue;
 
 		radeon_irq_kms_sw_irq_put(rdev, i);
-#if TRACE_TODO
+#ifdef TRACE_TODO
 		trace_radeon_fence_wait_end(rdev->ddev, i, target_seq[i]);
 #endif
 	}

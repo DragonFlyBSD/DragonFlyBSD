@@ -86,6 +86,7 @@
 
 #include <drm/drm_gem.h>
 #define CONFIG_ACPI 1
+#define __OS_HAS_AGP 0
 
 #include "radeon_family.h"
 #include "radeon_mode.h"
