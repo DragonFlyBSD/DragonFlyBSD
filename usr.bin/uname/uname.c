@@ -66,7 +66,7 @@ static void native_version(void);
 static void native_pkgabi(void);
 static void print_uname(void);
 static void setup_get(void);
-static void usage(void);
+static void usage(void) __dead2;
 
 static char *ident, *machine, *hostname, *arch;
 static char *release, *sysname, *version, *pkgabi;

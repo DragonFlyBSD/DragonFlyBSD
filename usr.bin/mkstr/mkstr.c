@@ -75,7 +75,7 @@ static void inithash(void);
 static int match(const char *);
 static int octdigit(char);
 static void process(void);
-static void usage(void);
+static void usage(void) __dead2;
 
 int
 main(int argc, char *argv[])

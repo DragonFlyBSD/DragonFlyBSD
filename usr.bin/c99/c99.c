@@ -47,7 +47,7 @@ static u_int cargs, nargs;
 
 static void addarg(const char *);
 static void addlib(const char *);
-static void usage(void);
+static void usage(void) __dead2;
 
 int
 main(int argc, char *argv[])

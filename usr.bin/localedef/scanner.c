@@ -821,7 +821,7 @@ yylex(void)
 	return (EOF);
 }
 
-void
+__dead2 void
 yyerror(const char *msg)
 {
 	(void) fprintf(stderr, "%s: %d: error: %s\n",

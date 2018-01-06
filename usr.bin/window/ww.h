@@ -358,7 +358,7 @@ void	wwputc(char, struct ww *);
 void	wwputs(const char *, struct ww *);
 void	wwredraw(void);
 void	wwredrawwin1(struct ww *,int, int, int);
-void	wwquit(int);
+void	wwquit(int) __dead2;
 void	wwreset(void);
 void	wwrint(void);
 void	wwscroll(struct ww *, int);

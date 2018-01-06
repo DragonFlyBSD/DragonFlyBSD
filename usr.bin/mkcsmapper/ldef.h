@@ -37,5 +37,5 @@ typedef struct {
 
 extern int	 debug;
 extern int	 linenumber;
-extern int	 yyerror(const char *);
+extern int	 yyerror(const char *) __dead2;
 extern int	 yylex(void);

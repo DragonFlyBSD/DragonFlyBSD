@@ -40,8 +40,8 @@
 #include <time.h>
 #include <unistd.h>
 
-static void doalarm(u_int);
-static void usage(void);
+static void doalarm(u_int) __dead2;
+static void usage(void) __dead2;
 
 /*
  * leave [[+]hhmm]

@@ -73,7 +73,7 @@
 
 static char *pname = "crunchide";
 
-static void usage(void);
+static void usage(void) __dead2;
 
 static void add_to_keep_list(char *symbol);
 static void add_file_to_keep_list(char *filename);

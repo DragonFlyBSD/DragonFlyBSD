@@ -67,7 +67,7 @@ static int	 contains(ccharp *, const char *);
 static void	 decolonify(char *, ccharp **, int *);
 static void	 defaults(void);
 static void	 scanopts(int, char **);
-static void	 usage(void);
+static void	 usage(void) __dead2;
 
 /*
  * Throughout this program, a number of strings are dynamically

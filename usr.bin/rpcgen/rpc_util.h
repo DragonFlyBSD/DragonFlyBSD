@@ -28,7 +28,6 @@
  *
  * @(#)rpc_util.h 1.16     94/05/15 SMI; 1.5  90/08/29  (C) 1987 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_util.h,v 1.12 2005/11/13 21:17:24 dwmalone Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_util.h,v 1.2 2004/06/19 16:40:36 joerg Exp $
  */
 
 /*	Copyright (c) 1984, 1986, 1987, 1988, 1989 AT&T	*/
@@ -150,7 +149,7 @@ extern pid_t childpid;
  * rpc_util routines
  */
 void		reinitialize(void);
-void		crash(void);
+void		crash(void) __dead2;
 void		add_type(int, const char *);
 void		storeval(list **, definition *);
 void		*xmalloc(size_t);
@@ -174,10 +173,10 @@ void		pvname(const char *, const char *);
 void		ptype(const char *, const char *, int);
 int		isvectordef(const char *, relation);
 int		streq(const char *, const char *);
-void		error(const char *);
-void		expected1(tok_kind);
-void		expected2(tok_kind, tok_kind);
-void		expected3(tok_kind, tok_kind, tok_kind);
+void		error(const char *) __dead2;
+void		expected1(tok_kind) __dead2;
+void		expected2(tok_kind, tok_kind) __dead2;
+void		expected3(tok_kind, tok_kind, tok_kind) __dead2;
 void		tabify(FILE *, int);
 void		record_open(const char *);
 bas_type	*find_type(const char *);

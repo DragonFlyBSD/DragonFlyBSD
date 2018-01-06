@@ -51,7 +51,7 @@ static void	cwarnx(const char *, ...) __printflike(1, 2);
 static void	decompress(const char *, const char *, int);
 static int	permission(const char *);
 static void	setfile(const char *, struct stat *);
-static void	usage(int);
+static void	usage(int) __dead2;
 
 static int eval, force, verbose;
 

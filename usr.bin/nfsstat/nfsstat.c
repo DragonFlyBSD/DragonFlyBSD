@@ -67,8 +67,8 @@ static int widemode = 0;
 
 static void intpr(int, int);
 static void printhdr(int, int);
-static void sidewaysintpr(u_int, int, int);
-static void usage(void);
+static void sidewaysintpr(u_int, int, int) __dead2;
+static void usage(void) __dead2;
 static char *sperc1(int, int);
 static char *sperc2(int, int);
 

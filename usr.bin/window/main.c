@@ -45,7 +45,7 @@
 #include "char.h"
 #include "local.h"
 
-void	usage(void);
+void	usage(void) __dead2;
 
 int
 main(int argc, char **argv)

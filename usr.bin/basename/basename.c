@@ -43,7 +43,7 @@
 #include <wchar.h>
 
 static void stripsuffix(char *, const char *, size_t);
-static void usage(void);
+static void usage(void) __dead2;
 
 int
 main(int argc, char **argv)

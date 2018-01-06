@@ -112,7 +112,7 @@ static int	bgindex(char *);
 #endif /* LOOKUP */
 
 
-static void	usage(void);
+static void	usage(void) __dead2;
 
 int
 main(int argc, char *argv[])

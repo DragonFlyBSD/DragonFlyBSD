@@ -68,7 +68,7 @@ static struct command *commands;
 
 #define SIZE 4000
 
-static void usage(void);
+static void usage(void) __dead2;
 static struct command *parse_conf(const char *, report_desc_t, int, int);
 static void docmd(struct command *, int, const char *, int, char **);
 static void freecommands(struct command *);

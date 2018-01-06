@@ -1,5 +1,4 @@
 /* $NetBSD: rfcomm_sppd.c,v 1.8 2007/04/21 10:39:30 dsl Exp $ */
-/* $DragonFly: src/usr.bin/rfcomm_sppd/rfcomm_sppd.c,v 1.2 2008/02/11 20:10:23 swildner Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.
@@ -88,7 +87,7 @@ int open_client(bdaddr_t *, bdaddr_t *, int, const char *);
 int open_server(bdaddr_t *, uint8_t, int, const char *);
 void copy_data(int, int);
 void sighandler(int);
-void usage(void);
+void usage(void) __dead2;
 void reset_tio(void);
 
 int done;		/* got a signal */

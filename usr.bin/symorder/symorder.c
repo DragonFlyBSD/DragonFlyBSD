@@ -64,12 +64,12 @@ static off_t	sa;
 static int	nexclude, nsym, strtabsize, symfound, symkept, small, missing, clean;
 static char	*kfile, *newstrings, *strings, asym[BUFSIZ];
 
-static void badfmt(char *);
+static void badfmt(char *) __dead2;
 static int excluded(struct nlist *);
 static int inlist(struct nlist *);
 static void reorder(struct nlist *, struct nlist *, int);
 static int savesymb(struct nlist *);
-static void usage(void);
+static void usage(void) __dead2;
 
 int
 main(int argc, char **argv)

@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/truss/extern.h,v 1.1.2.1 2002/02/15 11:43:51 des Exp $
- * $DragonFly: src/usr.bin/truss/extern.h,v 1.4 2005/05/28 00:22:04 swildner Exp $
  */
 
 #include <stdio.h>
@@ -41,7 +40,7 @@ extern int Procfd;
 
 extern int setup_and_wait(char **);
 extern int start_tracing(int, int);
-extern void restore_proc(int);
+extern void restore_proc(int) __dead2;
 extern const char *ioctlname(register_t val);
 #ifdef __x86_64__
 extern void x86_64_syscall_entry(struct trussinfo *, int);

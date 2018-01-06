@@ -118,7 +118,7 @@ static void	MCDelMsg(int);
 static void	MCAddMsg(int, const char *);
 static void	MCAddSet(int);
 static void	MCDelSet(int);
-static void	usage(void);
+static void	usage(void) __dead2;
 
 static void
 usage(void)

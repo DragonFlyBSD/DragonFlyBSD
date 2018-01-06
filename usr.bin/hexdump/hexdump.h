@@ -28,7 +28,6 @@
  *
  *	@(#)hexdump.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/hexdump/hexdump.h,v 1.2.6.1 2002/07/23 14:27:06 tjr Exp $
- * $DragonFly: src/usr.bin/hexdump/hexdump.h,v 1.3 2005/02/05 01:05:12 cpressey Exp $
  */
 
 typedef struct _pr {
@@ -80,10 +79,10 @@ extern int exitval;
 
 void	 add(const char *);
 void	 addfile(char *);
-void	 badcnt(char *);
-void	 badconv(char *);
-void	 badfmt(const char *);
-void	 badsfmt(void);
+void	 badcnt(char *) __dead2;
+void	 badconv(char *) __dead2;
+void	 badfmt(const char *) __dead2;
+void	 badsfmt(void) __dead2;
 void	 bpad(PR *);
 void	 conv_c(PR *, u_char *);
 void	 conv_u(PR *, u_char *);
@@ -97,4 +96,4 @@ void	 nomem(void);
 void	 oldsyntax(int, char ***);
 void	 rewrite(FS *);
 int	 size(FS *);
-void	 usage(void);
+void	 usage(void) __dead2;

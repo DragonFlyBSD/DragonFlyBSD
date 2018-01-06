@@ -55,8 +55,8 @@ static u_int64_t	lastrec, record, size, tsize;
 static FILE	*msg;
 
 static void	*getspace(int);
-static void	 intr(int);
-static void	 usage(void);
+static void	 intr(int) __dead2;
+static void	 usage(void) __dead2;
 static void	 verify(int, int, char *);
 static void	 writeop(int, int);
 static void	 rewind_tape(int);

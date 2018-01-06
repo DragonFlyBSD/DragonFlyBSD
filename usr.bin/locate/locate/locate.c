@@ -108,7 +108,7 @@ static int f_limit;	/* limit number of output lines, 0 == infinite */
 static u_int counter;	/* counter for matches [-c] */
 
 
-static void    usage(void);
+static void    usage(void) __dead2;
 static void    statistic(FILE *, char *);
 static void    fastfind(FILE *, char *, char *);
 static void    fastfind_icase(FILE *, char *, char *);

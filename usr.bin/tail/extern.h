@@ -29,7 +29,6 @@
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  *
  * $FreeBSD: src/usr.bin/tail/extern.h,v 1.4.6.2 2001/12/19 20:29:29 iedowse Exp $
- * $DragonFly: src/usr.bin/tail/extern.h,v 1.6 2005/03/01 21:37:33 cpressey Exp $
  */
 
 #define	WR(p, size) do { \
@@ -65,7 +64,7 @@ int display_bytes(FILE *, off_t);
 int display_lines(FILE *, off_t);
 
 void ierr(void);
-void oerr(void);
+void oerr(void) __dead2;
 int mapprint(struct mapinfo *, off_t, off_t);
 int maparound(struct mapinfo *, off_t);
 void showfilename(int, const char *);

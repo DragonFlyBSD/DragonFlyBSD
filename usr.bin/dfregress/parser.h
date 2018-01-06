@@ -29,7 +29,7 @@
 
 typedef void (*parser_t)(void *, char **);
 
-void syntax_error(const char *, ...) __printflike(1, 2);
+void syntax_error(const char *, ...) __dead2 __printflike(1, 2);
 int entry_check_num_args(char **tokens, int num);
 int parse_options(char *str, char **options);
 int process_file(const char *file, parser_t parser, void *arg, int *nlines);

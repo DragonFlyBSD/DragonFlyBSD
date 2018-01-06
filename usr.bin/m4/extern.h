@@ -98,7 +98,7 @@ extern void	getdiv(int);
 extern ptrdiff_t indx(const char *, const char *);
 extern void	initspaces(void);
 extern void	killdiv(void);
-extern void	onintr(int);
+extern void	onintr(int) __dead2;
 extern void	pbnum(int);
 extern void	pbnumbase(int, int, int);
 extern void	pbunsigned(unsigned long);
@@ -108,11 +108,11 @@ extern void	*xalloc(size_t, const char *fmt, ...) __printf0like(2, 3);
 extern void	*xrealloc(void *, size_t, const char *fmt, ...)
 		    __printf0like(3, 4);
 extern char	*xstrdup(const char *);
-extern void	usage(void);
+extern void	usage(void) __dead2;
 extern void	resizedivs(int);
 extern size_t	buffer_mark(void);
 extern void	dump_buffer(FILE *, size_t);
-extern void	m4errx(int, const char *, ...) __printflike(2, 3);
+extern void	m4errx(int, const char *, ...) __dead2 __printflike(2, 3);
 
 extern int	obtain_char(struct input_file *);
 extern void	set_input(struct input_file *, FILE *, const char *);

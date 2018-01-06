@@ -63,10 +63,10 @@ static void	 cleanup(void);
 static void	 do_lineno(const char *);
 static void	 do_rexp(const char *);
 static char	*get_line(void);
-static void	 handlesig(int);
+static void	 handlesig(int) __dead2;
 static FILE	*newfile(void);
 static void	 toomuch(FILE *, long);
-static void	 usage(void);
+static void	 usage(void) __dead2;
 
 /*
  * Command line options

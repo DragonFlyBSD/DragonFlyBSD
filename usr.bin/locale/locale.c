@@ -60,7 +60,7 @@ static int	kwval_lookup(char *, char **, int *, int *);
 static void	showdetails(char *);
 static void	showkeywordslist(void);
 static void	showlocale(void);
-static void	usage(void);
+static void	usage(void) __dead2;
 
 /* Global variables */
 static StringList *locales = NULL;

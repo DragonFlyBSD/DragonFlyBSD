@@ -40,7 +40,7 @@
 #include <time.h>
 #include <unistd.h>
 
-static void usage(void);
+static void usage(void) __dead2;
 
 int
 main(int ac, char *av[])

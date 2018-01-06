@@ -64,7 +64,7 @@ static char	*interval(time_t, const char *);
 static int	 lcmp(const void *, const void *);
 static int	 tcmp(const void *, const void *);
 static int	 ucmp(const void *, const void *);
-static void	 usage(void);
+static void	 usage(void) __dead2;
 
 int
 main(int argc, char *argv[])

@@ -30,7 +30,7 @@ struct termios;
 
 int		yylex(void);
 void		yyerror(char *);
-void		fatal(const char *);
+void		fatal(const char *) __dead2;
 void		abort_line(int);
 int		gettty(struct termios *);
 void		tstpcont(int);

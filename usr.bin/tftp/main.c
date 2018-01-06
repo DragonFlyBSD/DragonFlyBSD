@@ -73,13 +73,13 @@ int	margc;
 char	*margv[MAX_MARGV];
 jmp_buf	toplevel;
 volatile int txrx_error;
-void	intr(int);
+void	intr(int) __dead2;
 
 void	get(int, char **);
 void	help(int, char **);
 void	modecmd(int, char **);
 void	put(int, char **);
-void	quit(int, char **);
+void	quit(int, char **) __dead2;
 void	setascii(int, char **);
 void	setbinary(int, char **);
 void	setpeer0(char *, const char *);

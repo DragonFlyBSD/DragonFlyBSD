@@ -52,7 +52,7 @@ extern int warnings;
 
 int yylex(void);
 void yyerror(const char *);
-void errf(const char *, ...);
+void errf(const char *, ...) __dead2;
 void warn(const char *, ...);
 
 int putl_category(const char *, FILE *);

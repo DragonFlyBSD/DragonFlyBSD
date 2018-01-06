@@ -119,7 +119,7 @@ static struct commands {
 
 static void printreg(char *, u_int, char *);
 static void status(struct mtget *);
-static void usage(void);
+static void usage(void) __dead2;
 #if defined (__DragonFly__)
 static void st_status(struct mtget *);
 static int stringtodens(const char *s);
@@ -127,7 +127,7 @@ static const char *denstostring(int d);
 static int denstobp(int d, int bpi);
 static u_int32_t stringtocomp(const char *s);
 static const char *comptostring(u_int32_t comp);
-static void warn_eof(void);
+static void warn_eof(void) __dead2;
 #endif /* defined (__DragonFly__) */
 
 int

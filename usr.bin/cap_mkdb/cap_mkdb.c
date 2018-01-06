@@ -44,7 +44,7 @@
 
 static void	 db_build(char **);
 static void	 dounlink(void);
-static void	 usage(void);
+static void	 usage(void) __dead2;
 
 static DB *capdbp;
 static int verbose;

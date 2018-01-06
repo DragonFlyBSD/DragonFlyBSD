@@ -171,7 +171,7 @@
 #define SHOW_filename	'N'
 #define SHOW_sizerdev	'Z'
 
-static void	usage(const char *);
+static void	usage(const char *) __dead2;
 static void	output(const struct stat *, const char *,
 		    const char *, int, int);
 static int	format1(const struct stat *,	/* stat info */

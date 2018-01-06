@@ -103,7 +103,7 @@ static int list_mode;
 /* general library routines */
 
 static void status(const char *str);
-static void out_of_memory(void);
+static void out_of_memory(void) __dead2;
 static void add_string(strlst_t **listp, char *str);
 static int is_dir(const char *pathname);
 static int is_nonempty_file(const char *pathname);
@@ -112,7 +112,7 @@ static int in_list(strlst_t **listp, char *str);
 
 /* helper routines for main() */
 
-static void usage(void);
+static void usage(void) __dead2;
 static void parse_conf_file(void);
 static void gen_outputs(void);
 
