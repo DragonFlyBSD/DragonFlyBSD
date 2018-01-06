@@ -1205,7 +1205,7 @@ is_icmp_query(struct ip *ip)
 {
 	int type = L3HDR(struct icmp, ip)->icmp_type;
 
-	return (type <= ICMP_MAXTYPE && (TT & (1 << type)));
+	return (type < 32 && (TT & (1 << type)));
 }
 
 #undef TT
