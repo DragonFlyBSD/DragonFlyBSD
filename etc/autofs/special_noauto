@@ -11,7 +11,7 @@ print_one() {
 	local _mntpoint
 
 	_mntpoint="${1%/}"
-	
+
 	sed 's/#.*//' /etc/fstab | awk '
 	$2 == "'"${_mntpoint}"'" && $4 ~ /noauto/ {
 		if ($1 ~ /:/) { dev=$1 } else { dev=":"$1 }

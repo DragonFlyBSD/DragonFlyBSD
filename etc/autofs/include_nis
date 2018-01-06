@@ -44,7 +44,7 @@
 #
 #       The first form, with one argument, emits the entire named NIS map.
 #       The second form, with two arguments, emits the map entry for the
-#       key given in the second argument. 
+#       key given in the second argument.
 #
 #       This script attempts to determine the names and IP addresses
 #       of the local host. Map entries matching the local host are
