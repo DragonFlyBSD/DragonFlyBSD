@@ -590,7 +590,7 @@ lacp_port_destroy(struct lagg_port *lgp)
 	lacp_unselect(lp);
 
 	/* The address may have already been removed by if_purgemaddrs() */
-#if XXX
+#if 0 /* XXX */
 	if (!lgp->lp_detaching)
 		if_delmulti_ifma(lp->lp_ifma);
 #endif
@@ -820,7 +820,7 @@ lacp_attach(struct lagg_softc *sc)
 	lacp_attach_sysctl(lsc, oid);
 	lacp_attach_sysctl_debug(lsc, oid);
 
-#if XXX
+#if 0 /* XXX */
 	callout_init_mtx(&lsc->lsc_transit_callout, &lsc->lsc_lock, 0);
 	callout_init_mtx(&lsc->lsc_callout, &lsc->lsc_lock, 0);
 #endif
@@ -894,7 +894,7 @@ lacp_select_tx_port(struct lagg_softc *sc, struct mbuf *m)
 		return (NULL);
 	}
 
-#if XXX
+#if 0 /* XXX */
 	if (sc->use_flowid && (m->m_flags & M_FLOWID))
 		hash = m->m_pkthdr.flowid;
 	else
