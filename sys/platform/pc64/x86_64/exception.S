@@ -202,18 +202,31 @@ IDTVEC(page)
 
 	/*
 	 * We have to special-case this one.  If we get a trap in doreti() at
-	 * the iretq stage, we'll reenter with the wrong gs state.  We'll have
-	 * to do a special the swapgs in this case even coming from the kernel.
-	 * XXX linux has a trap handler for their equivalent of load_gs().
+	 * the iretq stage, we'll reenter as a kernel exception with the
+	 * wrong gs and isolation state.  We have to act as through we came
+	 * in from userland.
 	 */
 IDTVEC(prot)
 	pushq	%r10
 	leaq	doreti_iret(%rip),%r10
 	cmpq	%r10,TF_RIP-TF_ERR+8(%rsp)		/* +8 due to pushq */
 	jne	prot_normal
-	testb	$SEL_RPL_MASK,TF_CS-TF_ERR+8(%rsp)	/* +8 due to pushq */
+	testb	$SEL_RPL_MASK,TF_CS-TF_ERR+8(%rsp)      /* +8 due to pushq */
 	jnz	prot_normal
-	swapgs			/* doreti_iret fault from kernel mode */
+
+	/*
+	 * Special fault during iretq
+	 */
+	popq	%r10
+	swapgs
+	KMMUENTER_TFERR
+	subq	$TF_ERR,%rsp
+	PUSH_FRAME_REGS
+	movq	$T_PROTFLT,TF_TRAPNO(%rsp)
+	movq	$0,TF_ADDR(%rsp)
+	movq	$0,TF_XFLAGS(%rsp)
+	jmp	alltraps
+
 prot_normal:
 	popq	%r10
 	PUSH_FRAME_TFERR

@@ -420,12 +420,22 @@ trap(struct trapframe *frame)
 		 * it is better than running with interrupts disabled until
 		 * they are accidentally enabled later.
 		 */
+
 		type = frame->tf_trapno;
 		if (ISPL(frame->tf_cs) == SEL_UPL) {
 			/* JG curproc can be NULL */
 			kprintf(
 			    "pid %ld (%s): trap %d with interrupts disabled\n",
 			    (long)curproc->p_pid, curproc->p_comm, type);
+		} else if ((type == T_STKFLT || type == T_PROTFLT ||
+			    type == T_SEGNPFLT) &&
+			   frame->tf_rip == (long)doreti_iret) {
+			/*
+			 * iretq fault from kernel mode during return to
+			 * userland.
+			 *
+			 * This situation is expected, don't complain.
+			 */
 		} else if (type != T_NMI && type != T_BPTFLT &&
 			   type != T_TRCTRAP) {
 			/*
@@ -638,6 +648,15 @@ trap(struct trapframe *frame)
 						td->td_pcb->pcb_onfault;
 					goto out2;
 				}
+
+				/*
+				 * If the iretq in doreti faults during
+				 * return to user, it will be special-cased
+				 * in IDTVEC(prot) to get here.  We want
+				 * to 'return' to doreti_iret_fault in
+				 * ipl.s in approximately the same state we
+				 * were in at the iretq.
+				 */
 				if (frame->tf_rip == (long)doreti_iret) {
 					frame->tf_rip = (long)doreti_iret_fault;
 					goto out2;

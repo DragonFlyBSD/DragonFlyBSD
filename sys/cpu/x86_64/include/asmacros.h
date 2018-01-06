@@ -380,13 +380,6 @@
 	movq	%r10, TF_ADDR(%rsp)
 
 /*
- * Called when the iretq in doreti_iret faults.  XXX
- */
-#define PUSH_FRAME_NOSWAP						\
-	KMMUENTER_TFRIP ;						\
-	PUSH_FRAME_REGS							\
-
-/*
  * POP_FRAME is issued just prior to the iretq, or just prior to a
  * jmp doreti_iret.  These must be passed in to the macro.
  */

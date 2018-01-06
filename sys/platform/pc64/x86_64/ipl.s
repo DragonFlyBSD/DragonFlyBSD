@@ -213,10 +213,14 @@ doreti_iret:
 
 	/*
 	 * doreti_iret_fault.  Alternative return code for the case where
-	 * we get a fault in the doreti_exit code above.  trap()
-	 * (sys/platform/pc64/x86_64/trap.c) catches this specific * case,
-	 * sends the process a signal and continues in the corresponding
-	 * place in the code below.
+	 * we get a fault from iretq above.
+	 *
+	 * iretq -> IDT(prot) -> trap -> iretq -> doreti_iret_fault.
+	 *
+	 * The iretq above was trying to return to usermode and issued
+	 * a KMMUEXIT, so it might be on the trampoline stack.  We must
+	 * issue a KMMUENTER to ensure that we are on the correct stack
+	 * and have the correct mmu context.
 	 *
 	 * Interrupts are likely disabled due to the above interlock
 	 * between cli/iretq.  We must enable them before calling any
@@ -225,7 +229,9 @@ doreti_iret:
 	ALIGN_TEXT
 	.globl	doreti_iret_fault
 doreti_iret_fault:
-	PUSH_FRAME_NOSWAP
+	KMMUENTER_TFRIP
+	subq	$TF_RIP,%rsp
+	PUSH_FRAME_REGS
 	sti
 	movq	$T_PROTFLT,TF_TRAPNO(%rsp)
 	movq	$0,TF_ERR(%rsp)	/* XXX should be the error code */
