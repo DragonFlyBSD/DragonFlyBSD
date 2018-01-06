@@ -55,22 +55,22 @@
 #include <paths.h>
 #include <err.h>
 
-struct nlist nl[] = {
+static struct nlist nl[] = {
 #define	N_NFSSTAT	0
 	{ .n_name = "_nfsstats" },
 	{ .n_name = "" },
 };
-kvm_t *kd;
+static kvm_t *kd;
 
 static int deadkernel = 0;
 static int widemode = 0;
 
-void intpr(int, int);
-void printhdr(int, int);
-void sidewaysintpr(u_int, int, int);
-void usage(void);
-char *sperc1(int, int);
-char *sperc2(int, int);
+static void intpr(int, int);
+static void printhdr(int, int);
+static void sidewaysintpr(u_int, int, int);
+static void usage(void);
+static char *sperc1(int, int);
+static char *sperc2(int, int);
 
 #define DELTA(field)	(nfsstats.field - lastst.field)
 
@@ -151,7 +151,7 @@ main(int argc, char **argv)
  * Read the nfs stats using sysctl(3) for live kernels, or kvm_read
  * for dead ones.
  */
-void
+static void
 readstats(struct nfsstats *stp)
 {
 	if(deadkernel) {
@@ -178,7 +178,7 @@ readstats(struct nfsstats *stp)
 /*
  * Print a description of the nfs stats.
  */
-void
+static void
 intpr(int clientOnly, int serverOnly)
 {
 	struct nfsstats nfsstats;
@@ -326,15 +326,13 @@ intpr(int clientOnly, int serverOnly)
 	}
 }
 
-u_char	signalled;			/* set if alarm goes off "early" */
-
 /*
  * Print a running summary of nfs statistics.
  * Repeat display every interval seconds, showing statistics
  * collected over that interval.  Assumes that interval is non-zero.
  * First line printed at top of screen is always cumulative.
  */
-void
+static void
 sidewaysintpr(u_int interval, int clientOnly, int serverOnly)
 {
 	struct nfsstats nfsstats, lastst;
@@ -404,7 +402,7 @@ sidewaysintpr(u_int interval, int clientOnly, int serverOnly)
 	/*NOTREACHED*/
 }
 
-void
+static void
 printhdr(int clientOnly, int serverOnly)
 {
 	printf("%s%6.6s %6.6s %6.6s %6.6s %6.6s %6.6s %6.6s %6.6s",
@@ -418,7 +416,7 @@ printhdr(int clientOnly, int serverOnly)
 	fflush(stdout);
 }
 
-void
+static void
 usage(void)
 {
 	(void)fprintf(stderr,
@@ -429,7 +427,7 @@ usage(void)
 static char SPBuf[64][8];
 static int SPIndex;
 
-char * 
+static char * 
 sperc1(int hits, int misses)
 {
 	char *p = SPBuf[SPIndex];
@@ -444,7 +442,7 @@ sperc1(int hits, int misses)
 	return(p);
 }
 
-char * 
+static char * 
 sperc2(int ttl, int misses)
 {
 	char *p = SPBuf[SPIndex];
