@@ -125,10 +125,13 @@ main(int argc, char *argv[])
 		if (!readstd && freopen(argv[0], "r", stdin) == NULL)
 			err(2, "%s", argv[0]);
 		process("x.c");
-		if (readstd == 0)
-			argc--, argv++;
-		else
+		if (readstd == 0) {
+			argc--;
+			argv++;
+		}
+		else {
 			readstd = 0;
+		}
 	}
 	flushsh();
 	if (cflg == 0)
@@ -151,7 +154,7 @@ static void
 process(const char *name)
 {
 	char *cp;
-	int c;
+	char c;
 	int incomm = 0;
 	int ret;
 
@@ -211,15 +214,18 @@ def:
 		}
 	}
 out:
-	if (ferror(stdout))
-		warn("x.c"), onintr(0);
+	if (ferror(stdout)) {
+		warn("x.c");
+		onintr(0);
+	}
+
 }
 
 static off_t
 yankstr(char **cpp)
 {
 	char *cp = *cpp;
-	int c, ch;
+	char c, ch;
 	char dbuf[BUFSIZ];
 	char *dp = dbuf;
 	char *tp;
@@ -260,10 +266,14 @@ yankstr(char **cpp)
 			c -= '0';
 			if (!octdigit(*cp))
 				break;
-			c <<= 3, c += *cp++ - '0';
+			c <<= 3;
+			c += *cp - '0';
+			++cp;
 			if (!octdigit(*cp))
 				break;
-			c <<= 3, c += *cp++ - '0';
+			c <<= 3;
+			c += *cp - '0';
+			++cp;
 			break;
 		}
 gotc:
