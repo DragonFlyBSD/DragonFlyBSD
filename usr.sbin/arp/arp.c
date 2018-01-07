@@ -68,21 +68,21 @@
 #include <string.h>
 #include <unistd.h>
 
-void search(u_long addr, void (*action)(struct sockaddr_dl *sdl,
+static void search(u_long addr, void (*action)(struct sockaddr_dl *sdl,
 	struct sockaddr_inarp *sin, struct rt_msghdr *rtm));
-void print_entry(struct sockaddr_dl *sdl,
+static void print_entry(struct sockaddr_dl *sdl,
 	struct sockaddr_inarp *addr, struct rt_msghdr *rtm);
-void nuke_entry(struct sockaddr_dl *sdl,
+static void nuke_entry(struct sockaddr_dl *sdl,
 	struct sockaddr_inarp *addr, struct rt_msghdr *rtm);
-int delete(char *host, char *info);
-void usage(void);
-int set(int argc, char **argv);
-int get(char *host);
-int file(char *name);
-void getsocket(void);
-int my_ether_aton(char *a, struct ether_addr *n);
-int rtmsg(int cmd);
-int get_ether_addr(u_int32_t ipaddr, struct ether_addr *hwaddr);
+static int delete(char *host, char *info);
+static void usage(void);
+static int set(int argc, char **argv);
+static int get(char *host);
+static int file(char *name);
+static void getsocket(void);
+static int my_ether_aton(char *a, struct ether_addr *n);
+static int rtmsg(int cmd);
+static int get_ether_addr(u_int32_t ipaddr, struct ether_addr *hwaddr);
 
 static int pid;
 static int nflag;	/* no reverse dns lookups */
@@ -90,12 +90,12 @@ static int aflag;	/* do it for all entries */
 static int cpuflag = -1;
 static int s = -1;
 
-struct	sockaddr_in so_mask;
-struct	sockaddr_inarp blank_sin, sin_m;
-struct	sockaddr_dl blank_sdl, sdl_m;
-int	flags, doing_proxy, proxy_only, found_entry;
-time_t	expire_time;
-struct	{
+static struct	sockaddr_in so_mask;
+static struct	sockaddr_inarp blank_sin, sin_m;
+static struct	sockaddr_dl blank_sdl, sdl_m;
+static int	flags, doing_proxy, proxy_only, found_entry;
+static time_t	expire_time;
+static struct	{
 	struct	rt_msghdr m_rtm;
 	char	m_space[512];
 }	m_rtmsg;
@@ -202,7 +202,7 @@ main(int argc, char **argv)
 /*
  * Process a file to set standard arp entries
  */
-int
+static int
 file(char *name)
 {
 	FILE *fp;
@@ -237,7 +237,7 @@ file(char *name)
 	return(retval);
 }
 
-void
+static void
 getsocket(void)
 {
 	if (s < 0) {
@@ -250,7 +250,7 @@ getsocket(void)
 /*
  * Set an individual arp entry
  */
-int
+static int
 set(int argc, char **argv)
 {
 	struct hostent *hp;
@@ -349,7 +349,7 @@ overwrite:
 /*
  * Display an individual arp entry
  */
-int
+static int
 get(char *host)
 {
 	struct hostent *hp;
@@ -375,7 +375,7 @@ get(char *host)
 /*
  * Delete an arp entry
  */
-int
+static int
 delete(char *host, char *info)
 {
 	struct hostent *hp;
@@ -450,7 +450,7 @@ delete:
 /*
  * Search the arp table and do some action on matching entries
  */
-void
+static void
 search(u_long addr, void (*action)(struct sockaddr_dl *sdl,
 	struct sockaddr_inarp *sin, struct rt_msghdr *rtm))
 {
@@ -499,7 +499,7 @@ search(u_long addr, void (*action)(struct sockaddr_dl *sdl,
 /*
  * Display an arp entry
  */
-void
+static void
 print_entry(struct sockaddr_dl *sdl,
 	struct sockaddr_inarp *addr, struct rt_msghdr *rtm)
 {
@@ -558,7 +558,7 @@ print_entry(struct sockaddr_dl *sdl,
 /*
  * Nuke an arp entry
  */
-void
+static void
 nuke_entry(struct sockaddr_dl *sdl __unused,
 	struct sockaddr_inarp *addr, struct rt_msghdr *rtm __unused)
 {
@@ -568,7 +568,7 @@ nuke_entry(struct sockaddr_dl *sdl __unused,
 	delete(ip, NULL);
 }
 
-int
+static int
 my_ether_aton(char *a, struct ether_addr *n)
 {
 	struct ether_addr *ea;
@@ -581,7 +581,7 @@ my_ether_aton(char *a, struct ether_addr *n)
 	return(0);
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
@@ -595,7 +595,7 @@ usage(void)
 	exit(1);
 }
 
-int
+static int
 rtmsg(int cmd)
 {
 	static int seq;
@@ -668,7 +668,7 @@ doit:
  */
 #define MAX_IFS		32
 
-int
+static int
 get_ether_addr(u_int32_t ipaddr, struct ether_addr *hwaddr)
 {
 	struct ifreq *ifr, *ifend, *ifp;
