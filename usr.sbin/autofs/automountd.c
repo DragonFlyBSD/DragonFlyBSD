@@ -371,7 +371,6 @@ register_sigchld(void)
 	error = sigaction(SIGCHLD, &sa, NULL);
 	if (error != 0)
 		log_err(1, "sigaction");
-
 }
 
 

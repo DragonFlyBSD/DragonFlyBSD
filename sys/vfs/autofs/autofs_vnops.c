@@ -44,12 +44,6 @@ static int	autofs_trigger_vn(struct vnode *vp, const char *path,
 
 extern struct autofs_softc	*autofs_softc;
 
-static __inline int
-autofs_trigger_vn_dir(struct vnode *vp, struct vnode **newvp)
-{
-	return (autofs_trigger_vn(vp, "", 0, newvp));
-}
-
 static __inline size_t
 autofs_dirent_reclen(const char *name)
 {
@@ -116,6 +110,7 @@ autofs_getattr(struct vop_getattr_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct vattr *vap = ap->a_vap;
 	struct autofs_node *anp = VTOI(vp);
+	static bool warned = false;
 
 	KASSERT(vp->v_type == VDIR, ("!VDIR"));
 
@@ -124,10 +119,17 @@ autofs_getattr(struct vop_getattr_args *ap)
 	 * namely fts(3), assumes that stat(".") results will not change
 	 * between chdir("subdir") and chdir(".."), and fails with ENOENT
 	 * otherwise.
+	 *
 	 * XXX: Not supported on DragonFly.
+	 * With the current trigger mechanism on DragonFly, the process
+	 * will hang while in nlookup() in nlookup_fs_root().
 	 */
-	if (autofs_mount_on_stat)
-		AUTOFS_WARN("vfs.autofs.mount_on_stat is not supported");
+	if (autofs_mount_on_stat) {
+		if (!warned) {
+			AUTOFS_WARN("vfs.autofs.mount_on_stat not supported");
+			warned = true;
+		}
+	}
 
 	vap->va_type = VDIR;
 	vap->va_mode = 0755;
@@ -319,7 +321,7 @@ autofs_readdir(struct vop_readdir_args *ap)
 	if (autofs_cached(anp, NULL, 0) == false &&
 	    autofs_ignore_thread() == false) {
 		struct vnode *newvp = NULL;
-		error = autofs_trigger_vn_dir(vp, &newvp);
+		error = autofs_trigger_vn(vp, "", 0, &newvp);
 		if (error)
 			return (error);
 		if (newvp != NULL) {

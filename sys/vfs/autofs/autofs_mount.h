@@ -31,6 +31,10 @@
 #include <sys/types.h>
 #include <sys/mount.h>
 
+/*
+ * Arguments to mount autofs filesystem.
+ * This structure should only be used by automount(8).
+ */
 struct autofs_mount_info {
 	const char	*from;
 	const char	*master_options;

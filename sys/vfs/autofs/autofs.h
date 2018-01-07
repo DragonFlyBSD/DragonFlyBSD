@@ -64,12 +64,6 @@ extern struct vop_ops autofs_vnode_vops;
 extern int autofs_debug;
 extern int autofs_mount_on_stat;
 
-/*
- * APRINTF is only for debugging.
- */
-#define APRINTF(A, B, ...)				\
-	kprintf(A " %s(%s): " B, __func__, curthread->td_comm, ## __VA_ARGS__)
-
 #define	AUTOFS_DEBUG(X, ...)				\
 	do {						\
 		if (autofs_debug > 1)			\
@@ -87,6 +81,13 @@ extern int autofs_mount_on_stat;
 
 #define	AUTOFS_FATAL(X, ...)				\
 	kprintf("FATAL: %s: " X "\n", __func__, ## __VA_ARGS__)
+
+/*
+ * APRINTF is only for debugging.
+ */
+#define APRINTF(X, ...)					\
+	kprintf("### %s(%s): " X,			\
+	    __func__, curproc->p_comm, ## __VA_ARGS__)
 
 #define AUTOFS_LOCK_STATUS(lock)	(lockstatus((lock), curthread))
 #define AUTOFS_ASSERT_LOCKED(X)				\
