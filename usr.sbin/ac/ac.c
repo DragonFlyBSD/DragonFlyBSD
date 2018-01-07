@@ -80,25 +80,27 @@ static struct tty_list *Ttys = NULL;
 static int Debug = 0;
 #endif
 
-int			ac(FILE *);
-struct tty_list		*add_tty(char *);
-int			do_tty(char *);
-FILE			*file(char *);
-struct utmp_list	*log_in(struct utmp_list *, struct utmp *);
-struct utmp_list	*log_out(struct utmp_list *, struct utmp *);
-int			on_console(struct utmp_list *);
-void			show(char *, time_t);
-void			show_today(struct user_list *, struct utmp_list *,
+static int		ac(FILE *);
+static struct tty_list	*add_tty(char *);
+static int		do_tty(char *);
+static FILE		*file(const char *);
+static struct utmp_list	*log_in(struct utmp_list *, struct utmp *);
+static struct utmp_list	*log_out(struct utmp_list *, struct utmp *);
+#ifdef CONSOLE_TTY
+static int		on_console(struct utmp_list *);
+#endif
+static void		show(const char *, time_t);
+static void		show_today(struct user_list *, struct utmp_list *,
 			    time_t);
-void			show_users(struct user_list *);
-struct user_list	*update_user(struct user_list *, char *, time_t);
-void			usage(void);
+static void		show_users(struct user_list *);
+static struct user_list	*update_user(struct user_list *, char *, time_t);
+static void		usage(void);
 
 /*
  * open wtmp or die
  */
-FILE *
-file(char *name)
+static FILE *
+file(const char *name)
 {
 	FILE *fp;
 
@@ -110,7 +112,7 @@ file(char *name)
 	return fp;
 }
 
-struct tty_list *
+static struct tty_list *
 add_tty(char *name)
 {
 	struct tty_list *tp;
@@ -140,7 +142,7 @@ add_tty(char *name)
 /*
  * should we process the named tty?
  */
-int
+static int
 do_tty(char *name)
 {
 	struct tty_list *tp;
@@ -164,7 +166,7 @@ do_tty(char *name)
 /*
  * is someone logged in on Console?
  */
-int
+static int
 on_console(struct utmp_list *head)
 {
 	struct utmp_list *up;
@@ -181,7 +183,7 @@ on_console(struct utmp_list *head)
 /*
  * update user's login time
  */
-struct user_list *
+static struct user_list *
 update_user(struct user_list *head, char *name, time_t secs)
 {
 	struct user_list *up;
@@ -278,14 +280,14 @@ main(int argc, char **argv)
 /*
  * print login time in decimal hours
  */
-void
-show(char *name, time_t secs)
+static void
+show(const char *name, time_t secs)
 {
 	printf("\t%-*s %8.2f\n", UT_NAMESIZE, name,
 	    ((double)secs / 3600));
 }
 
-void
+static void
 show_users(struct user_list *list)
 {
 	struct user_list *lp;
@@ -297,7 +299,7 @@ show_users(struct user_list *list)
 /*
  * print total login time for 24hr period in decimal hours
  */
-void
+static void
 show_today(struct user_list *users, struct utmp_list *logins, time_t secs)
 {
 	struct user_list *up;
@@ -334,7 +336,7 @@ show_today(struct user_list *users, struct utmp_list *logins, time_t secs)
  * if ut_line is "~", we log all users out as the system has
  * been shut down.
  */
-struct utmp_list *
+static struct utmp_list *
 log_out(struct utmp_list *head, struct utmp *up)
 {
 	struct utmp_list *lp, *lp2, *tlp;
@@ -374,7 +376,7 @@ log_out(struct utmp_list *head, struct utmp *up)
 /*
  * if do_tty says ok, login a user
  */
-struct utmp_list *
+static struct utmp_list *
 log_in(struct utmp_list *head, struct utmp *up)
 {
 	struct utmp_list *lp;
@@ -439,7 +441,7 @@ log_in(struct utmp_list *head, struct utmp *up)
 	return head;
 }
 
-int
+static int
 ac(FILE *fp)
 {
 	struct utmp_list *lp, *head = NULL;
@@ -447,6 +449,8 @@ ac(FILE *fp)
 	struct tm *ltm;
 	time_t secs;
 	int day = -1;
+
+	secs = 0;
 
 	while (fread((char *)&usr, sizeof(usr), 1, fp) == 1) {
 		if (!FirstTime)
@@ -530,7 +534,7 @@ ac(FILE *fp)
 	return 0;
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr,
