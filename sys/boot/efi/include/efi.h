@@ -24,8 +24,7 @@
 #undef MIN
 #undef MAX
 
-#include <Uefi/UefiBaseType.h>
-#include <Uefi/UefiSpec.h>
+#include <Uefi.h>
 #include <Guid/Acpi.h>
 #include <Guid/DebugImageInfoTable.h>
 #include <Guid/DxeServices.h>
