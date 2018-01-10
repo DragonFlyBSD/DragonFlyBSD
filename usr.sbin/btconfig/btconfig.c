@@ -59,22 +59,22 @@ struct result {
 	int8_t		rssi;
 };
 
-void badarg(const char *);
-void badparam(const char *);
-void usage(void);
-int set_unit(unsigned long);
-void config_unit(void);
-void print_info(int);
-void print_stats(void);
-void print_class(const char *);
-void print_voice(int);
-void tag(const char *);
-void print_features(const char *, uint8_t *);
-void do_inquiry(void);
-void print_result(int, struct result *, int);
-void printb(uint16_t v, const char *bits);
+static void badarg(const char *);
+static void badparam(const char *);
+static void usage(void);
+static int set_unit(unsigned long);
+static void config_unit(void);
+static void print_info(int);
+static void print_stats(void);
+static void print_class(const char *);
+static void print_voice(int);
+static void tag(const char *);
+static void print_features(const char *, uint8_t *);
+static void do_inquiry(void);
+static void print_result(int, struct result *, int);
+static void printb(uint16_t v, const char *bits);
 
-void hci_req(uint16_t, uint8_t , void *, size_t, void *, size_t);
+static void hci_req(uint16_t, uint8_t , void *, size_t, void *, size_t);
 #define save_value(opcode, cbuf, clen)	hci_req(opcode, 0, cbuf, clen, NULL, 0)
 #define load_value(opcode, rbuf, rlen)	hci_req(opcode, 0, NULL, 0, rbuf, rlen)
 #define hci_cmd(opcode, cbuf, clen)	hci_req(opcode, 0, cbuf, clen, NULL, 0)
@@ -82,21 +82,21 @@ void hci_req(uint16_t, uint8_t , void *, size_t, void *, size_t);
 #define MAX_STR_SIZE	0xff
 
 /* print width */
-int width = 0;
+static int width = 0;
 #define MAX_WIDTH	70
 
 /* global variables */
-int hci;
-struct btreq btr;
+static int hci;
+static struct btreq btr;
 
 /* command line flags */
-int verbose = 0;	/* more info */
-int lflag = 0;		/* list devices */
-int sflag = 0;		/* get/zero stats */
+static int verbose = 0;	/* more info */
+static int lflag = 0;	/* list devices */
+static int sflag = 0;	/* get/zero stats */
 
 /* device up/down (flag) */
-int opt_enable = 0;
-int opt_reset = 0;
+static int opt_enable = 0;
+static int opt_reset = 0;
 #define FLAGBITS	"\001UP"		\
 			"\002RUNNING"		\
 			"\003XMIT_CMD"		\
@@ -107,55 +107,55 @@ int opt_reset = 0;
 			"\010INIT_FEATURES"
 
 /* authorisation (flag) */
-int opt_auth = 0;
+static int opt_auth = 0;
 
 /* encryption (flag) */
-int opt_encrypt = 0;
+static int opt_encrypt = 0;
 
 /* scan enable options (flags) */
-int opt_pscan = 0;
-int opt_iscan = 0;
+static int opt_pscan = 0;
+static int opt_iscan = 0;
 
 /* link policy options (flags) */
-int opt_switch = 0;
-int opt_hold = 0;
-int opt_sniff = 0;
-int opt_park = 0;
+static int opt_switch = 0;
+static int opt_hold = 0;
+static int opt_sniff = 0;
+static int opt_park = 0;
 
 /* class of device (hex value) */
-int opt_class = 0;
-uint32_t class;
+static int opt_class = 0;
+static uint32_t class;
 
 /* packet type mask (hex value) */
-int opt_ptype = 0;
-uint32_t ptype;
+static int opt_ptype = 0;
+static uint32_t ptype;
 
 /* unit name (string) */
-int opt_name = 0;
-char name[MAX_STR_SIZE];
+static int opt_name = 0;
+static char name[MAX_STR_SIZE];
 
 /* pin type */
-int opt_pin = 0;
+static int opt_pin = 0;
 
 /* Inquiry */
-int opt_rssi = 0;			/* inquiry_with_rssi (flag) */
-int opt_inquiry = 0;
+static int opt_rssi = 0;			/* inquiry_with_rssi (flag) */
+static int opt_inquiry = 0;
 #define INQUIRY_LENGTH		10	/* about 12 seconds */
 #define INQUIRY_MAX_RESPONSES	10
 
 /* Voice Settings */
-int opt_voice = 0;
-uint32_t voice;
+static int opt_voice = 0;
+static uint32_t voice;
 
 /* Page Timeout */
-int opt_pto = 0;
-uint32_t pto;
+static int opt_pto = 0;
+static uint32_t pto;
 
 /* set SCO mtu */
-int opt_scomtu;
-uint32_t scomtu;
+static int opt_scomtu;
+static uint32_t scomtu;
 
-struct parameter {
+static struct parameter {
 	const char	*name;
 	enum { P_SET, P_CLR, P_STR, P_HEX, P_NUM } type;
 	int		*opt;
@@ -307,21 +307,21 @@ main(int ac, char *av[])
 	return EXIT_SUCCESS;
 }
 
-void
+static void
 badparam(const char *param)
 {
 	fprintf(stderr, "unknown parameter '%s'\n", param);
 	exit(EXIT_FAILURE);
 }
 
-void
+static void
 badarg(const char *param)
 {
 	fprintf(stderr, "parameter '%s' needs argument\n", param);
 	exit(EXIT_FAILURE);
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "usage:	%s [-svz] [device [parameters]]\n", getprogname());
@@ -332,7 +332,7 @@ usage(void)
 /*
  * pretty printing feature
  */
-void
+static void
 tag(const char *f)
 {
 	if (f == NULL) {
@@ -362,7 +362,7 @@ tag(const char *f)
  * if rbuf/rlen is given, results will be copied into the result buffer for
  * COMMAND_COMPLETE/event responses.
  */
-void
+static void
 hci_req(uint16_t opcode, uint8_t event, void *cbuf, size_t clen, void *rbuf, size_t rlen)
 {
 	uint8_t msg[sizeof(hci_cmd_hdr_t) + HCI_CMD_PKT_SIZE];
@@ -437,7 +437,7 @@ hci_req(uint16_t opcode, uint8_t event, void *cbuf, size_t clen, void *rbuf, siz
 	}
 }
 
-int
+static int
 set_unit(unsigned long cmd)
 {
 	if (ioctl(hci, cmd, &btr) == -1)
@@ -463,7 +463,7 @@ set_unit(unsigned long cmd)
 /*
  * apply configuration parameters to unit
  */
-void
+static void
 config_unit(void)
 {
 	if (opt_enable) {
@@ -602,7 +602,7 @@ config_unit(void)
 /*
  * Print info for Bluetooth Device with varying verbosity levels
  */
-void
+static void
 print_info(int level)
 {
 	uint8_t val, buf[MAX_STR_SIZE];
@@ -710,7 +710,7 @@ print_info(int level)
 	print_features("\tfeatures:", buf);
 }
 
-void
+static void
 print_stats(void)
 {
 	if (sflag == 0)
@@ -736,7 +736,7 @@ print_stats(void)
 		btr.btr_stats.err_rx, btr.btr_stats.err_tx);
 }
 
-void
+static void
 print_features(const char *str, uint8_t *f)
 {
 	width = printf("%s", str);
@@ -810,7 +810,7 @@ print_features(const char *str, uint8_t *f)
 	tag(NULL);
 }
 
-void
+static void
 print_class(const char *str)
 {
 	int major, minor;
@@ -941,7 +941,7 @@ print_class(const char *str)
 	tag(NULL);
 }
 
-void
+static void
 print_voice(int level)
 {
 	printf("\tvoice: [0x%4.4x]\n", voice);
@@ -977,7 +977,7 @@ print_voice(int level)
 	printf("\n");
 }
 
-void
+static void
 print_result(int num, struct result *r, int rssi)
 {
 	hci_remote_name_req_cp ncp;
@@ -1032,7 +1032,7 @@ print_result(int num, struct result *r, int rssi)
 	printf("\n");
 }
 
-void
+static void
 do_inquiry(void)
 {
 	uint8_t buf[HCI_EVENT_PKT_SIZE];
@@ -1148,7 +1148,7 @@ do_inquiry(void)
  * Print a value a la the %b format of the kernel's printf borrowed
  * from ifconfig(8).
  */
-void
+static void
 printb(uint16_t v, const char *bits)
 {
 	int i, any = 0;
