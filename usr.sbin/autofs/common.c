@@ -1198,9 +1198,9 @@ main(int argc, char **argv)
 	if (strcmp(cmdname, "automount") == 0)
 		return (main_automount(argc, argv));
 	else if (strcmp(cmdname, "automountd") == 0)
-		return (main_automountd(argc, argv));
+		main_automountd(argc, argv);
 	else if (strcmp(cmdname, "autounmountd") == 0)
-		return (main_autounmountd(argc, argv));
+		main_autounmountd(argc, argv);
 	else
 		log_errx(1, "binary name should be either \"automount\", "
 		    "\"automountd\", or \"autounmountd\"");

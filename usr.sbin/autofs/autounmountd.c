@@ -258,7 +258,7 @@ do_wait(int kq, double sleep_time)
 	}
 }
 
-int
+void
 main_autounmountd(int argc, char **argv)
 {
 	struct kevent event;
@@ -349,6 +349,4 @@ main_autounmountd(int argc, char **argv)
 
 		do_wait(kq, sleep_time);
 	}
-
-	return (0);
 }

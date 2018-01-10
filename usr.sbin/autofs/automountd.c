@@ -415,7 +415,7 @@ usage_automountd(void)
 	exit(1);
 }
 
-int
+void
 main_automountd(int argc, char **argv)
 {
 	struct pidfh *pidfh;
@@ -545,9 +545,4 @@ main_automountd(int argc, char **argv)
 		pidfile_close(pidfh);
 		handle_request(&request, options, incomplete_hierarchy);
 	}
-
-	pidfile_close(pidfh);
-
-	return (0);
 }
-
