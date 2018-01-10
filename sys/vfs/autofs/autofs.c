@@ -590,34 +590,6 @@ autofs_ioctl_request(struct autofs_daemon_request *adr)
 }
 
 static int
-autofs_ioctl_done_101(struct autofs_daemon_done_101 *add)
-{
-	struct autofs_request *ar;
-
-	lockmgr(&autofs_softc->sc_lock, LK_EXCLUSIVE);
-	TAILQ_FOREACH(ar, &autofs_softc->sc_requests, ar_next) {
-		if (ar->ar_id == add->add_id)
-			break;
-	}
-
-	if (ar == NULL) {
-		lockmgr(&autofs_softc->sc_lock, LK_RELEASE);
-		AUTOFS_DEBUG("id %d not found", add->add_id);
-		return (ESRCH);
-	}
-
-	ar->ar_error = add->add_error;
-	ar->ar_wildcards = true;
-	ar->ar_done = true;
-	ar->ar_in_progress = false;
-	cv_broadcast(&autofs_softc->sc_cv);
-
-	lockmgr(&autofs_softc->sc_lock, LK_RELEASE);
-
-	return (0);
-}
-
-static int
 autofs_ioctl_done(struct autofs_daemon_done *add)
 {
 	struct autofs_request *ar;
@@ -691,9 +663,6 @@ autofs_ioctl(struct dev_ioctl_args *ap)
 	case AUTOFSREQUEST:
 		return (autofs_ioctl_request(
 		    (struct autofs_daemon_request *)arg));
-	case AUTOFSDONE101:
-		return (autofs_ioctl_done_101(
-		    (struct autofs_daemon_done_101 *)arg));
 	case AUTOFSDONE:
 		return (autofs_ioctl_done(
 		    (struct autofs_daemon_done *)arg));
@@ -701,4 +670,5 @@ autofs_ioctl(struct dev_ioctl_args *ap)
 		AUTOFS_DEBUG("invalid cmd %lx", cmd);
 		return (EINVAL);
 	}
+	return (EINVAL);
 }
