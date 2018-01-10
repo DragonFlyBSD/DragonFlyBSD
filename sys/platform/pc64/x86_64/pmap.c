@@ -260,10 +260,10 @@ SYSCTL_INT(_machdep, OID_AUTO, pmap_dynamic_delete, CTLFLAG_RW,
 int pmap_lock_delay = 100;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_lock_delay, CTLFLAG_RW,
     &pmap_lock_delay, 0, "Spin loops");
-static int isolated_user_pmap = -1;
-TUNABLE_INT("machdep.isolated_user_pmap", &isolated_user_pmap);
-SYSCTL_INT(_machdep, OID_AUTO, isolated_user_pmap, CTLFLAG_RW,
-    &isolated_user_pmap, 0, "Userland pmap isolation");
+static int meltdown_mitigation = -1;
+TUNABLE_INT("machdep.meltdown_mitigation", &meltdown_mitigation);
+SYSCTL_INT(_machdep, OID_AUTO, meltdown_mitigation, CTLFLAG_RW,
+    &meltdown_mitigation, 0, "Userland pmap isolation");
 
 static int pmap_nx_enable = 0;
 /* needs manual TUNABLE in early probe, see below */
@@ -1354,14 +1354,14 @@ pmap_init2(void)
 	 * to whitelist future Intel CPUs.  Most? AMD cpus are not impacted
 	 * so the default is off for AMD.
 	 */
-	if (isolated_user_pmap < 0) {
+	if (meltdown_mitigation < 0) {
 		if (cpu_vendor_id == CPU_VENDOR_INTEL)
-			isolated_user_pmap = 1;
+			meltdown_mitigation = 1;
 		else
-			isolated_user_pmap = 0;
+			meltdown_mitigation = 0;
 	}
-	if (isolated_user_pmap) {
-		kprintf("machdep.isolated_user_pmap enabled to "
+	if (meltdown_mitigation) {
+		kprintf("machdep.meltdown_mitigation enabled to "
 			"protect against (mostly Intel) meltdown bug\n");
 		kprintf("system call performance will be impacted\n");
 	}
@@ -2273,7 +2273,7 @@ pmap_pinit(struct pmap *pmap)
 	 * second PML4e table.  The pmap code will mirror all user PDPs
 	 * between the primary and secondary PML4e table.
 	 */
-	if ((pv = pmap->pm_pmlpv_iso) == NULL && isolated_user_pmap &&
+	if ((pv = pmap->pm_pmlpv_iso) == NULL && meltdown_mitigation &&
 	    pmap != &iso_pmap) {
 		pv = pmap_allocpte(pmap, pmap_pml4_pindex() + 1, NULL);
 		pmap->pm_pmlpv_iso = pv;
@@ -6520,7 +6520,7 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 #endif
 			if (pmap->pmap_bits[TYPE_IDX] == REGULAR_PMAP) {
 				td->td_pcb->pcb_cr3 = vtophys(pmap->pm_pml4);
-				if (isolated_user_pmap && pmap->pm_pmlpv_iso) {
+				if (meltdown_mitigation && pmap->pm_pmlpv_iso) {
 					td->td_pcb->pcb_cr3_iso =
 						vtophys(pmap->pm_pml4_iso);
 					td->td_pcb->pcb_flags |= PCB_ISOMMU;
