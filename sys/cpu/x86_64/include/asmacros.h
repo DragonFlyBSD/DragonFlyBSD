@@ -188,94 +188,132 @@
  */
 #define KMMUENTER_TFRIP							\
 	subq	$TR_RIP, %rsp ;						\
-	movq	%r10, TR_R10(%rsp) ;					\
-	movq	%r11, TR_R11(%rsp) ;					\
+	movq	%rcx, TR_RCX(%rsp) ;					\
+	movq	%rdx, TR_RDX(%rsp) ;					\
 	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
 	je	40f ;							\
-	movq	PCPU(trampoline)+TR_PCB_CR3,%r10 ;			\
-	movq	%r10,%cr3 ;						\
-40:									\
-	movq	%rsp, %r10 ;		/* trampoline rsp */		\
+	movq	PCPU(trampoline)+TR_PCB_CR3,%rcx ;			\
+	movq	%rcx,%cr3 ;						\
+40:	testq	$PCB_IBRS1,PCPU(trampoline)+TR_PCB_GFLAGS ;	\
+	je	41f ;							\
+	movq	%rax, TR_RAX(%rsp) ;					\
+	movl	$0x48,%ecx ;						\
+	movl	$1,%eax ;						\
+	xorl	%edx,%edx ;						\
+	wrmsr ;								\
+	movq	TR_RAX(%rsp), %rax ;					\
+41:									\
+	movq	%rsp, %rcx ;		/* trampoline rsp */		\
 	movq	PCPU(trampoline)+TR_PCB_RSP,%rsp ; /* kstack rsp */	\
-	movq	TR_SS(%r10), %r11 ;					\
-	pushq	%r11 ;							\
-	movq	TR_RSP(%r10), %r11 ;					\
-	pushq	%r11 ;							\
-	movq	TR_RFLAGS(%r10), %r11 ;					\
-	pushq	%r11 ;							\
-	movq	TR_CS(%r10), %r11 ;					\
-	pushq	%r11 ;							\
-	movq	TR_RIP(%r10), %r11 ;					\
-	pushq	%r11 ;							\
-	movq	TR_R11(%r10), %r11 ;					\
-	movq	TR_R10(%r10), %r10					\
+	movq	TR_SS(%rcx), %rdx ;					\
+	pushq	%rdx ;							\
+	movq	TR_RSP(%rcx), %rdx ;					\
+	pushq	%rdx ;							\
+	movq	TR_RFLAGS(%rcx), %rdx ;					\
+	pushq	%rdx ;							\
+	movq	TR_CS(%rcx), %rdx ;					\
+	pushq	%rdx ;							\
+	movq	TR_RIP(%rcx), %rdx ;					\
+	pushq	%rdx ;							\
+	movq	TR_RDX(%rcx), %rdx ;					\
+	movq	TR_RCX(%rcx), %rcx					\
 
 #define KMMUENTER_TFERR							\
 	subq	$TR_ERR, %rsp ;						\
-	movq	%r10, TR_R10(%rsp) ;					\
-	movq	%r11, TR_R11(%rsp) ;					\
+	movq	%rcx, TR_RCX(%rsp) ;					\
+	movq	%rdx, TR_RDX(%rsp) ;					\
 	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
 	je	40f ;							\
-	movq	PCPU(trampoline)+TR_PCB_CR3,%r10 ;			\
-	movq	%r10,%cr3 ;						\
-40:									\
-	movq	%rsp, %r10 ;		/* trampoline rsp */		\
+	movq	PCPU(trampoline)+TR_PCB_CR3,%rcx ;			\
+	movq	%rcx,%cr3 ;						\
+40:	testq	$PCB_IBRS1,PCPU(trampoline)+TR_PCB_GFLAGS ;	\
+	je	41f ;							\
+	movq	%rax, TR_RAX(%rsp) ;					\
+	movl	$0x48,%ecx ;						\
+	movl	$1,%eax ;						\
+	xorl	%edx,%edx ;						\
+	wrmsr ;								\
+	movq	TR_RAX(%rsp), %rax ;					\
+41:									\
+	movq	%rsp, %rcx ;		/* trampoline rsp */		\
 	movq	PCPU(trampoline)+TR_PCB_RSP,%rsp ; /* kstack rsp */	\
-	movq	TR_SS(%r10), %r11 ;					\
-	pushq	%r11 ;							\
-	movq	TR_RSP(%r10), %r11 ;					\
-	pushq	%r11 ;							\
-	movq	TR_RFLAGS(%r10), %r11 ;					\
-	pushq	%r11 ;							\
-	movq	TR_CS(%r10), %r11 ;					\
-	pushq	%r11 ;							\
-	movq	TR_RIP(%r10), %r11 ;					\
-	pushq	%r11 ;							\
-	movq	TR_ERR(%r10), %r11 ;					\
-	pushq	%r11 ;							\
-	movq	TR_R11(%r10), %r11 ;					\
-	movq	TR_R10(%r10), %r10					\
+	movq	TR_SS(%rcx), %rdx ;					\
+	pushq	%rdx ;							\
+	movq	TR_RSP(%rcx), %rdx ;					\
+	pushq	%rdx ;							\
+	movq	TR_RFLAGS(%rcx), %rdx ;					\
+	pushq	%rdx ;							\
+	movq	TR_CS(%rcx), %rdx ;					\
+	pushq	%rdx ;							\
+	movq	TR_RIP(%rcx), %rdx ;					\
+	pushq	%rdx ;							\
+	movq	TR_ERR(%rcx), %rdx ;					\
+	pushq	%rdx ;							\
+	movq	TR_RDX(%rcx), %rdx ;					\
+	movq	TR_RCX(%rcx), %rcx					\
 
 #define KMMUENTER_TFERR_SAVECR2						\
 	subq	$TR_ERR, %rsp ;						\
-	movq	%r10, TR_R10(%rsp) ;					\
-	movq	%r11, TR_R11(%rsp) ;					\
-	movq	%cr2, %r10 ;						\
-	movq	%r10, PCPU(trampoline)+TR_CR2 ;				\
+	movq	%rcx, TR_RCX(%rsp) ;					\
+	movq	%rdx, TR_RDX(%rsp) ;					\
+	movq	%cr2, %rcx ;						\
+	movq	%rcx, PCPU(trampoline)+TR_CR2 ;				\
 	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
 	je	40f ;							\
-	movq	PCPU(trampoline)+TR_PCB_CR3,%r10 ;			\
-	movq	%r10,%cr3 ;						\
-40:									\
-	movq	%rsp, %r10 ;		/* trampoline rsp */		\
+	movq	PCPU(trampoline)+TR_PCB_CR3,%rcx ;			\
+	movq	%rcx,%cr3 ;						\
+40:	testq	$PCB_IBRS1,PCPU(trampoline)+TR_PCB_GFLAGS ;	\
+	je	41f ;							\
+	movq	%rax, TR_RAX(%rsp) ;					\
+	movl	$0x48,%ecx ;						\
+	movl	$1,%eax ;						\
+	xorl	%edx,%edx ;						\
+	wrmsr ;								\
+	movq	TR_RAX(%rsp), %rax ;					\
+41:									\
+	movq	%rsp, %rcx ;		/* trampoline rsp */		\
 	movq	PCPU(trampoline)+TR_PCB_RSP,%rsp ; /* kstack rsp */	\
-	movq	TR_SS(%r10), %r11 ;					\
-	pushq	%r11 ;							\
-	movq	TR_RSP(%r10), %r11 ;					\
-	pushq	%r11 ;							\
-	movq	TR_RFLAGS(%r10), %r11 ;					\
-	pushq	%r11 ;							\
-	movq	TR_CS(%r10), %r11 ;					\
-	pushq	%r11 ;							\
-	movq	TR_RIP(%r10), %r11 ;					\
-	pushq	%r11 ;							\
-	movq	TR_ERR(%r10), %r11 ;					\
-	pushq	%r11 ;							\
-	movq	TR_R11(%r10), %r11 ;					\
-	movq	TR_R10(%r10), %r10					\
+	movq	TR_SS(%rcx), %rdx ;					\
+	pushq	%rdx ;							\
+	movq	TR_RSP(%rcx), %rdx ;					\
+	pushq	%rdx ;							\
+	movq	TR_RFLAGS(%rcx), %rdx ;					\
+	pushq	%rdx ;							\
+	movq	TR_CS(%rcx), %rdx ;					\
+	pushq	%rdx ;							\
+	movq	TR_RIP(%rcx), %rdx ;					\
+	pushq	%rdx ;							\
+	movq	TR_ERR(%rcx), %rdx ;					\
+	pushq	%rdx ;							\
+	movq	TR_RDX(%rcx), %rdx ;					\
+	movq	TR_RCX(%rcx), %rcx					\
 
 /*
  * Set %cr3 if necessary on syscall entry.  No registers may be
  * disturbed.
+ *
+ * NOTE: TR_RCX is used by the caller, we cannot use it here
  */
 #define KMMUENTER_SYSCALL						\
 	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
 	je	40f ;							\
-	pushq	%r10 ;							\
-	movq	PCPU(trampoline)+TR_PCB_CR3,%r10 ;			\
-	movq	%r10,%cr3 ;						\
-	popq	%r10 ;							\
-40:									\
+	pushq	%rcx ;							\
+	movq	PCPU(trampoline)+TR_PCB_CR3,%rcx ;			\
+	movq	%rcx,%cr3 ;						\
+	popq	%rcx ;							\
+40:	testq	$PCB_IBRS1,PCPU(trampoline)+TR_PCB_GFLAGS ;	\
+	je	41f ;							\
+	pushq	%rax ;							\
+	pushq	%rcx ;							\
+	pushq	%rdx ;							\
+	movl	$0x48,%ecx ;						\
+	movl	$1,%eax ;						\
+	xorl	%edx,%edx ;						\
+	wrmsr ;								\
+	popq	%rdx ;							\
+	popq	%rcx ;							\
+	popq	%rax ;							\
+41:									\
 
 /*
  * We are positioned at the base of the trapframe.  Advance the trapframe
@@ -286,25 +324,37 @@
  */
 #define KMMUEXIT							\
 	addq	$TF_RIP,%rsp ;						\
-	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
+	testq	$PCB_IBRS1,PCPU(trampoline)+TR_PCB_GFLAGS ;		\
+	je	41f ;							\
+	movq	%rax, PCPU(trampoline)+TR_RAX ;				\
+	movq	%rcx, PCPU(trampoline)+TR_RCX ;				\
+	movq	%rdx, PCPU(trampoline)+TR_RDX ;				\
+	movl	$0x48,%ecx ;						\
+	movl	$0,%eax ;						\
+	xorl	%edx,%edx ;						\
+	wrmsr ;								\
+	movq	PCPU(trampoline)+TR_RDX, %rdx ;				\
+	movq	PCPU(trampoline)+TR_RCX, %rcx ;				\
+	movq	PCPU(trampoline)+TR_RAX, %rax ;				\
+41:	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
 	je	40f ;							\
-	movq	%r11, PCPU(trampoline)+TR_ERR ;	/* save in TR_ERR */	\
-	popq	%r11 ;				/* copy %rip */		\
-	movq	%r11, PCPU(trampoline)+TR_RIP ;				\
-	popq	%r11 ;				/* copy %cs */		\
-	movq	%r11, PCPU(trampoline)+TR_CS ;				\
-	popq	%r11 ;				/* copy %rflags */	\
-	movq	%r11, PCPU(trampoline)+TR_RFLAGS ;			\
-	popq	%r11 ;				/* copy %rsp */		\
-	movq	%r11, PCPU(trampoline)+TR_RSP ;				\
-	popq	%r11 ;				/* copy %ss */		\
-	movq	%r11, PCPU(trampoline)+TR_SS ;				\
-	movq	%gs:0,%r11 ;						\
-	addq	$GD_TRAMPOLINE+TR_ERR,%r11 ;				\
-	movq	%r11,%rsp ;						\
-	movq	PCPU(trampoline)+TR_PCB_CR3_ISO,%r11 ;			\
-	movq	%r11,%cr3 ;						\
-	popq	%r11 ;		/* positioned at TR_RIP after this */	\
+	movq	%rcx, PCPU(trampoline)+TR_ERR ;	/* save in TR_ERR */	\
+	popq	%rcx ;				/* copy %rip */		\
+	movq	%rcx, PCPU(trampoline)+TR_RIP ;				\
+	popq	%rcx ;				/* copy %cs */		\
+	movq	%rcx, PCPU(trampoline)+TR_CS ;				\
+	popq	%rcx ;				/* copy %rflags */	\
+	movq	%rcx, PCPU(trampoline)+TR_RFLAGS ;			\
+	popq	%rcx ;				/* copy %rsp */		\
+	movq	%rcx, PCPU(trampoline)+TR_RSP ;				\
+	popq	%rcx ;				/* copy %ss */		\
+	movq	%rcx, PCPU(trampoline)+TR_SS ;				\
+	movq	%gs:0,%rcx ;						\
+	addq	$GD_TRAMPOLINE+TR_ERR,%rcx ;				\
+	movq	%rcx,%rsp ;						\
+	movq	PCPU(trampoline)+TR_PCB_CR3_ISO,%rcx ;			\
+	movq	%rcx,%cr3 ;						\
+	popq	%rcx ;		/* positioned at TR_RIP after this */	\
 40:									\
 
 /*
@@ -312,12 +362,24 @@
  * point.  We still have the kernel %gs.
  */
 #define KMMUEXIT_SYSCALL						\
-	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
+	testq	$PCB_IBRS1,PCPU(trampoline)+TR_PCB_GFLAGS ;		\
+	je	41f ;							\
+	movq	%rax, PCPU(trampoline)+TR_RAX ;				\
+	movq	%rcx, PCPU(trampoline)+TR_RCX ;				\
+	movq	%rdx, PCPU(trampoline)+TR_RDX ;				\
+	movl	$0x48,%ecx ;						\
+	movl	$0,%eax ;						\
+	xorl	%edx,%edx ;						\
+	wrmsr ;								\
+	movq	PCPU(trampoline)+TR_RDX, %rdx ;				\
+	movq	PCPU(trampoline)+TR_RCX, %rcx ;				\
+	movq	PCPU(trampoline)+TR_RAX, %rax ;				\
+41:	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
 	je	40f ;							\
-	movq	%r10, PCPU(trampoline)+TR_R10 ;				\
-	movq	PCPU(trampoline)+TR_PCB_CR3_ISO,%r10 ;			\
-	movq	%r10,%cr3 ;						\
-	movq	PCPU(trampoline)+TR_R10, %r10 ;				\
+	movq	%rcx, PCPU(trampoline)+TR_RCX ;				\
+	movq	PCPU(trampoline)+TR_PCB_CR3_ISO,%rcx ;			\
+	movq	%rcx,%cr3 ;						\
+	movq	PCPU(trampoline)+TR_RCX, %rcx ;				\
 40:									\
 
 /*

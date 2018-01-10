@@ -124,10 +124,10 @@ struct intrframe {
  * of the isolated user pmap.
  */
 struct trampframe {
-	register_t	tr_unused01;
 	register_t	tr_cr2;
-	register_t	tr_r10;
-	register_t	tr_r11;
+	register_t	tr_rax;
+	register_t	tr_rcx;
+	register_t	tr_rdx;
 	register_t	tr_err;
 	register_t	tr_rip;
 	register_t	tr_cs;
@@ -144,6 +144,8 @@ struct trampframe {
 	register_t	tr_pcb_flags;	/* copy of pcb control flags */
 	register_t	tr_pcb_cr3_iso;	/* copy of isolated pml4e */
 	register_t	tr_pcb_cr3;	/* copy of primary pml4e */
+	register_t	tr_pcb_gflags;	/* global flags (IBRS support) */
+	register_t	tr_pcb_unused01;
 };
 
 int	kdb_trap(int, int, struct trapframe *);

@@ -216,6 +216,8 @@ cpuctl_do_msr(int cpu, cpuctl_msr_args_t *data, u_long cmd)
 /*
  * Actually perform microcode update.
  */
+extern void spectre_vm_setup(void *arg);
+
 static int
 cpuctl_do_update(int cpu, cpuctl_update_args_t *data)
 {
@@ -242,6 +244,10 @@ cpuctl_do_update(int cpu, cpuctl_update_args_t *data)
 		ret = update_via(cpu, data);
 	else
 		ret = ENXIO;
+
+	if (ret == 0)
+		spectre_vm_setup((void *)(intptr_t)1);
+
 	return (ret);
 }
 

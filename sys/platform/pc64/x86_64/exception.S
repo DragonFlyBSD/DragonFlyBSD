@@ -241,11 +241,11 @@ prot_normal:
  * pointer.  We have to juggle a few things around to find our stack etc.
  * swapgs gives us access to our PCPU space only.
  *
- * We use GD_TRAMPOLINE+TR_R10
+ * We use GD_TRAMPOLINE+TR_RCX
  */
 IDTVEC(fast_syscall)
 	swapgs					/* get kernel %gs */
-	movq	%rsp,PCPU(trampoline)+TR_R10	/* save user %rsp */
+	movq	%rsp,PCPU(trampoline)+TR_RCX	/* save user %rsp */
 	movq	PCPU(common_tss)+TSS_RSP0,%rsp
 	KMMUENTER_SYSCALL
 	movq	PCPU(trampoline)+TR_PCB_RSP,%rsp
@@ -255,7 +255,7 @@ IDTVEC(fast_syscall)
 	/* defer TF_RSP till we have a spare register */
 	movq	%r11,TF_RFLAGS(%rsp)
 	movq	%rcx,TF_RIP(%rsp)	/* %rcx original value is in %r10 */
-	movq	PCPU(trampoline)+TR_R10,%r11	/* %r11 already saved */
+	movq	PCPU(trampoline)+TR_RCX,%r11	/* %r11 already saved */
 	movq	%r11,TF_RSP(%rsp)	/* user stack pointer */
 	orl	$RQF_QUICKRET,PCPU(reqflags)
 	movq	$KUDSEL,TF_SS(%rsp)

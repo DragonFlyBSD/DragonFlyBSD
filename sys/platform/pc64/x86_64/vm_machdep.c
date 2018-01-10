@@ -2,7 +2,7 @@
  * Copyright (c) 1982, 1986 The Regents of the University of California.
  * Copyright (c) 1989, 1990 William Jolitz
  * Copyright (c) 1994 John Dyson
- * Copyright (c) 2008 The DragonFly Project.
+ * Copyright (c) 2008-2018 The DragonFly Project.
  * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -79,6 +79,9 @@
 #include <bus/isa/isa.h>
 
 static void	cpu_reset_real (void);
+
+int spectre_mitigation = -1;
+
 /*
  * Finish a fork operation, with lwp lp2 nearly set up.
  * Copy and update the pcb, set up the stack so that the child
@@ -159,6 +162,24 @@ cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
 		pcb2->pcb_flags &= ~PCB_ISOMMU;
 		pcb2->pcb_cr3_iso = 0;
 	}
+
+#if 0
+	/*
+	 * Per-process spectre mitigation (future)
+	 */
+	pcb2->pcb_flags &= ~(PCB_IBRS1 | PCB_IBRS2);
+	switch (spectre_mitigation) {
+	case 1:
+		pcb2->pcb_flags |= PCB_IBRS1;
+		break;
+	case 2:
+		pcb2->pcb_flags |= PCB_IBRS2;
+		break;
+	default:
+		break;
+	}
+#endif
+
 	pcb2->pcb_rbx = (unsigned long)fork_return;	/* fork_trampoline argument */
 	pcb2->pcb_rbp = 0;
 	pcb2->pcb_rsp = (unsigned long)lp2->lwp_md.md_regs - sizeof(void *);
@@ -379,7 +400,193 @@ swi_vm_setup(void *arg)
 	register_swi_mp(SWI_VM, swi_vm, NULL, "swi_vm", NULL, 0);
 }
 
-SYSINIT(vm_setup, SI_BOOT2_MACHDEP, SI_ORDER_ANY, swi_vm_setup, NULL);
+SYSINIT(swi_vm_setup, SI_BOOT2_MACHDEP, SI_ORDER_ANY, swi_vm_setup, NULL);
+
+/*
+ * NOTE: This routine is also called after a successful microcode
+ *	 reload on cpu 0.
+ */
+void spectre_vm_setup(void *arg);
+
+/*
+ * Check for IBRS support
+ */
+static
+int
+spectre_check_support(void)
+{
+	uint32_t p[4];
+
+	p[0] = 0;
+	p[1] = 0;
+	p[2] = 0;
+	p[3] = 0;
+	cpuid_count(7, 0, p);
+	if ((p[3] & 0x0C000000U) == 0x0C000000U) {
+
+		/*
+		 * SPEC_CTRL (bit 26) and STIBP support (bit 27)
+		 *
+		 * 0x80000008 p[0] bit 12 indicates IBPB support
+		 */
+		p[0] = 0;
+		p[1] = 0;
+		p[2] = 0;
+		p[3] = 0;
+		do_cpuid(0x80000008U, p);
+		if (p[0] & 0x00001000)
+			return 1;
+	}
+	return 0;
+}
+
+/*
+ * Iterate CPUs and adjust MSR for global operations, since
+ * the KMMU* code won't do it if spectre_mitigation is 0 or 2.
+ */
+static
+void
+spectre_sysctl_changed(int old_value)
+{
+	globaldata_t save_gd;
+	int n;
+
+	save_gd = mycpu;
+	for (n = 0; n < ncpus; ++n) {
+		lwkt_setcpu_self(globaldata_find(n));
+
+		pscpu->trampoline.tr_pcb_gflags &= ~(PCB_IBRS1 | PCB_IBRS2);
+
+		switch(spectre_mitigation) {
+		case 0:
+			if (old_value >= 0)
+				wrmsr(0x48, 0);
+			break;
+		case 1:
+			pscpu->trampoline.tr_pcb_gflags |= PCB_IBRS1;
+			wrmsr(0x48, 1);
+			break;
+		case 2:
+			pscpu->trampoline.tr_pcb_gflags |= PCB_IBRS2;
+			wrmsr(0x48, 1);
+			break;
+		}
+	}
+	if (save_gd != mycpu)
+		lwkt_setcpu_self(save_gd);
+}
+
+/*
+ * User changes sysctl value
+ */
+static int
+sysctl_spectre_mitigation(SYSCTL_HANDLER_ARGS)
+{
+	int new_spectre;
+	int old_spectre;
+	int error;
+
+	old_spectre = spectre_mitigation;
+	new_spectre = old_spectre;
+	error = sysctl_handle_int(oidp, &new_spectre, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	spectre_mitigation = new_spectre;
+	spectre_sysctl_changed(old_spectre);
+
+	return 0;
+}
+
+SYSCTL_PROC(_machdep, OID_AUTO, spectre_mitigation, CTLTYPE_INT | CTLFLAG_RW,
+	0, 0, sysctl_spectre_mitigation, "I", "Spectre exploit mitigation");
+
+void
+spectre_vm_setup(void *arg)
+{
+	int inconsistent = 0;
+	int old_value = spectre_mitigation;
+
+	if (spectre_mitigation < 0) {
+		TUNABLE_INT_FETCH("machdep.spectre_mitigation",
+				  &spectre_mitigation);
+	}
+
+	if (cpu_vendor_id == CPU_VENDOR_INTEL) {
+		if (spectre_check_support()) {
+			/*
+			 * Must be supported on all cpus before we
+			 * can enable it.  Returns silently if it
+			 * isn't.
+			 *
+			 * NOTE! arg != NULL indicates we were called
+			 *	 from cpuctl after a successful microcode
+			 *	 update.
+			 */
+			if (arg != NULL) {
+				globaldata_t save_gd;
+				int n;
+
+				save_gd = mycpu;
+				for (n = 0; n < ncpus; ++n) {
+					lwkt_setcpu_self(globaldata_find(n));
+					if (spectre_check_support() == 0) {
+						inconsistent = 1;
+						break;
+					}
+				}
+				if (save_gd != mycpu)
+					lwkt_setcpu_self(save_gd);
+			}
+			if (inconsistent == 0) {
+				if (spectre_mitigation < 0)
+					spectre_mitigation = 1;
+			} else {
+				spectre_mitigation = -1;
+			}
+		} else {
+			spectre_mitigation = -1;
+		}
+	} else {
+                spectre_mitigation = -1;                /* no support */
+	}
+
+	/*
+	 * Be silent while microcode is being loaded on various CPUs,
+	 * until all done.
+	 */
+	if (inconsistent)
+		return;
+
+	/*
+	 * Disallow sysctl changes when there is no support (otherwise
+	 * the wrmsr will cause a protection fault).
+	 */
+	switch(spectre_mitigation) {
+	case 0:
+		sysctl___machdep_spectre_mitigation.oid_kind |= CTLFLAG_WR;
+		kprintf("machdep.spectre_mitigation available but disabled\n");
+		break;
+	case 1:
+		sysctl___machdep_spectre_mitigation.oid_kind |= CTLFLAG_WR;
+		kprintf("machdep.spectre_mitigation available, system call\n"
+			"performance and kernel operation will be impacted\n");
+		break;
+	case 2:
+		sysctl___machdep_spectre_mitigation.oid_kind |= CTLFLAG_WR;
+		kprintf("machdep.spectre_mitigation available, whole machine\n"
+			"performance will be impacted\n");
+		break;
+	default:
+		sysctl___machdep_spectre_mitigation.oid_kind &= ~CTLFLAG_WR;
+		if (cpu_vendor_id == CPU_VENDOR_INTEL)
+			kprintf("no microcode spectre mitigation available\n");
+		break;
+	}
+	spectre_sysctl_changed(old_value);
+}
+
+SYSINIT(spectre_vm_setup, SI_BOOT2_MACHDEP, SI_ORDER_ANY,
+	spectre_vm_setup, NULL);
 
 /*
  * platform-specific vmspace initialization (nothing for x86_64)

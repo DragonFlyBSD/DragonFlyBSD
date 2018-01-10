@@ -177,8 +177,8 @@ SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 #endif
 SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_halt,
 	CTLFLAG_RD, &cpu_mwait_halt_global, 0, "");
-SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_spin, CTLFLAG_RD, &cpu_mwait_spin, 0,
-    "monitor/mwait target state");
+SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_spin,
+	CTLFLAG_RD, &cpu_mwait_spin, 0, "monitor/mwait target state");
 
 #define CPU_MWAIT_HAS_CX	\
 	((cpu_feature2 & CPUID2_MON) && \
@@ -1217,19 +1217,37 @@ cpu_idle(void)
 		}
 		++stat->repeat_last;
 
+		/*
+		 * General idle thread halt code
+		 *
+		 * IBRS NOTES - IBRS is a SPECTRE mitigation.  When going
+		 *		idle, IBRS
+		 */
 		++gd->gd_idle_repeat;
 		reqflags = gd->gd_reqflags;
 		quick = (cpu_idle_hlt == 1) ||
 			(cpu_idle_hlt == 2 &&
 			 gd->gd_idle_repeat < cpu_idle_repeat);
 
+
 		if (quick && (cpu_mi_feature & CPU_MI_MONITOR) &&
 		    (reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
+			/*
+			 * MWAIT halt
+			 */
 			splz(); /* XXX */
 			crit_enter_gd(gd);
 			ATOMIC_CPUMASK_ORBIT(smp_idleinvl_mask, gd->gd_cpuid);
+			if (pscpu->trampoline.tr_pcb_gflags &
+			    (PCB_IBRS1 | PCB_IBRS2)) {
+				wrmsr(0x48, 0);	/* IBRS (spectre) */
+			}
 			cpu_mmw_pause_int(&gd->gd_reqflags, reqflags,
-			    cpu_mwait_cx_hint(stat), 0);
+					  cpu_mwait_cx_hint(stat), 0);
+			if (pscpu->trampoline.tr_pcb_gflags &
+			    (PCB_IBRS1 | PCB_IBRS2)) {
+				wrmsr(0x48, 1);	/* IBRS (spectre) */
+			}
 			stat->halt++;
 			ATOMIC_CPUMASK_NANDBIT(smp_idleinvl_mask, gd->gd_cpuid);
 			if (ATOMIC_CPUMASK_TESTANDCLR(smp_idleinvl_reqs,
@@ -1239,6 +1257,9 @@ cpu_idle(void)
 			}
 			crit_exit_gd(gd);
 		} else if (cpu_idle_hlt) {
+			/*
+			 * Idle halt
+			 */
 			__asm __volatile("cli");
 			splz();
 			crit_enter_gd(gd);
@@ -1247,9 +1268,27 @@ cpu_idle(void)
 				if (cpu_idle_hlt == 5) {
 					__asm __volatile("sti");
 				} else if (quick || cpu_idle_hlt == 4) {
+					if (pscpu->trampoline.tr_pcb_gflags &
+					    (PCB_IBRS1 | PCB_IBRS2)) {
+						/* IBRS (spectre) */
+						wrmsr(0x48, 0);
+					}
 					cpu_idle_default_hook();
+					if (pscpu->trampoline.tr_pcb_gflags &
+					    (PCB_IBRS1 | PCB_IBRS2)) {
+						/* IBRS (spectre) */
+						wrmsr(0x48, 1);
+					}
 				} else {
+					if (pscpu->trampoline.tr_pcb_gflags &
+					    (PCB_IBRS1 | PCB_IBRS2)) {
+						wrmsr(0x48, 0);
+					}
 					cpu_idle_hook();
+					if (pscpu->trampoline.tr_pcb_gflags &
+					    (PCB_IBRS1 | PCB_IBRS2)) {
+						wrmsr(0x48, 1);
+					}
 				}
 			}
 			__asm __volatile("sti");

@@ -87,6 +87,8 @@ struct pcb {
 #define	PCB_DBREGS	0x00000002	/* process using debug registers */
 #define	PCB_FPUINITDONE	0x00000008	/* fpu state is initialized */
 #define PCB_ISOMMU	0x00000010	/* isolated mmu context active */
+#define PCB_IBRS1	0x00000020	/* IBRS mode 1 (kernel only) */
+#define PCB_IBRS2	0x00000040	/* IBRS mode 2 (always) */
 #define FP_SOFTFP       0x01		/* process using soft flt emulator */
 #define	FP_VIRTFP	0x04		/* vkernel wants exception */
 
