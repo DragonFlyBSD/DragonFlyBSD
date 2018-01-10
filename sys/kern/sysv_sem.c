@@ -286,7 +286,7 @@ semundo_clear(int semid, int semnum)
 	sunext = TAILQ_FIRST(&semu_list);
 	while ((suptr = sunext) != NULL) {
 		if ((p = suptr->un_proc) == NULL) {
-			suptr = TAILQ_NEXT(suptr, un_entry);
+			sunext = TAILQ_NEXT(suptr, un_entry);
 			continue;
 		}
 		++suptr->un_refs;
