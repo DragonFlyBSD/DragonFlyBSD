@@ -34,6 +34,7 @@
 #define _CPU_ASMACROS_H_
 
 #include <sys/cdefs.h>
+#include <machine/specialreg.h>
 
 /* XXX too much duplication in various asm*.h's. */
 
@@ -186,23 +187,50 @@
  *		progress.  hwtf indicates how much hardware has already
  *		pushed.
  */
-#define KMMUENTER_TFRIP							\
-	subq	$TR_RIP, %rsp ;						\
-	movq	%rcx, TR_RCX(%rsp) ;					\
-	movq	%rdx, TR_RDX(%rsp) ;					\
+
+/*
+ * KMMUENTER_CORE - Handles ISOMMU, IBRS, and IBPB.  Caller has already
+ *		    saved %rcx and %rdx.  We have to deal with %rax.
+ *
+ *		    XXX If IBPB is not supported, try to clear the
+ *		    call return hw cache w/ many x chained call sequence?
+ *
+ *	IBRS2 note - We are leaving IBRS on full-time.  However, Intel
+ *	believes it is not safe unless the MSR is poked on each user->kernel
+ *	transition, so poke the MSR for both IBRS1 and IBRS2.
+ */
+#define KMMUENTER_CORE							\
 	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
 	je	40f ;							\
 	movq	PCPU(trampoline)+TR_PCB_CR3,%rcx ;			\
 	movq	%rcx,%cr3 ;						\
-40:	testq	$PCB_IBRS1,PCPU(trampoline)+TR_PCB_GFLAGS ;	\
-	je	41f ;							\
+40:	testq	$PCB_IBRS1|PCB_IBRS2|PCB_IBPB,PCPU(trampoline)+TR_PCB_GFLAGS ;\
+	je	43f ;							\
 	movq	%rax, TR_RAX(%rsp) ;					\
-	movl	$0x48,%ecx ;						\
-	movl	$1,%eax ;						\
+	testq	$PCB_IBRS1|PCB_IBRS2,PCPU(trampoline)+TR_PCB_GFLAGS ;	\
+	je	41f ;							\
+	movl	$MSR_SPEC_CTRL,%ecx ;					\
+	movl	$MSR_IBRS_ENABLE,%eax ;					\
 	xorl	%edx,%edx ;						\
 	wrmsr ;								\
-	movq	TR_RAX(%rsp), %rax ;					\
-41:									\
+41:	testq	$PCB_IBPB,PCPU(trampoline)+TR_PCB_GFLAGS ;		\
+	je	42f ;							\
+	movl	$MSR_PRED_CMD,%ecx ;					\
+	movl	$MSR_IBPB_BARRIER,%eax ;				\
+	xorl	%edx,%edx ;						\
+	wrmsr ;								\
+42:	movq	TR_RAX(%rsp), %rax ;					\
+43:									\
+
+
+/*
+ * Enter with trampoline, hardware pushed up to %rip
+ */
+#define KMMUENTER_TFRIP							\
+	subq	$TR_RIP, %rsp ;						\
+	movq	%rcx, TR_RCX(%rsp) ;					\
+	movq	%rdx, TR_RDX(%rsp) ;					\
+	KMMUENTER_CORE ;						\
 	movq	%rsp, %rcx ;		/* trampoline rsp */		\
 	movq	PCPU(trampoline)+TR_PCB_RSP,%rsp ; /* kstack rsp */	\
 	movq	TR_SS(%rcx), %rdx ;					\
@@ -218,23 +246,14 @@
 	movq	TR_RDX(%rcx), %rdx ;					\
 	movq	TR_RCX(%rcx), %rcx					\
 
+/*
+ * Enter with trampoline, hardware pushed up to ERR
+ */
 #define KMMUENTER_TFERR							\
 	subq	$TR_ERR, %rsp ;						\
 	movq	%rcx, TR_RCX(%rsp) ;					\
 	movq	%rdx, TR_RDX(%rsp) ;					\
-	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
-	je	40f ;							\
-	movq	PCPU(trampoline)+TR_PCB_CR3,%rcx ;			\
-	movq	%rcx,%cr3 ;						\
-40:	testq	$PCB_IBRS1,PCPU(trampoline)+TR_PCB_GFLAGS ;	\
-	je	41f ;							\
-	movq	%rax, TR_RAX(%rsp) ;					\
-	movl	$0x48,%ecx ;						\
-	movl	$1,%eax ;						\
-	xorl	%edx,%edx ;						\
-	wrmsr ;								\
-	movq	TR_RAX(%rsp), %rax ;					\
-41:									\
+	KMMUENTER_CORE ;						\
 	movq	%rsp, %rcx ;		/* trampoline rsp */		\
 	movq	PCPU(trampoline)+TR_PCB_RSP,%rsp ; /* kstack rsp */	\
 	movq	TR_SS(%rcx), %rdx ;					\
@@ -252,25 +271,17 @@
 	movq	TR_RDX(%rcx), %rdx ;					\
 	movq	TR_RCX(%rcx), %rcx					\
 
+/*
+ * Enter with trampoline, hardware pushed up to ERR and
+ * we need to save %cr2 early (before potentially reloading %cr3).
+ */
 #define KMMUENTER_TFERR_SAVECR2						\
 	subq	$TR_ERR, %rsp ;						\
 	movq	%rcx, TR_RCX(%rsp) ;					\
 	movq	%rdx, TR_RDX(%rsp) ;					\
 	movq	%cr2, %rcx ;						\
 	movq	%rcx, PCPU(trampoline)+TR_CR2 ;				\
-	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
-	je	40f ;							\
-	movq	PCPU(trampoline)+TR_PCB_CR3,%rcx ;			\
-	movq	%rcx,%cr3 ;						\
-40:	testq	$PCB_IBRS1,PCPU(trampoline)+TR_PCB_GFLAGS ;	\
-	je	41f ;							\
-	movq	%rax, TR_RAX(%rsp) ;					\
-	movl	$0x48,%ecx ;						\
-	movl	$1,%eax ;						\
-	xorl	%edx,%edx ;						\
-	wrmsr ;								\
-	movq	TR_RAX(%rsp), %rax ;					\
-41:									\
+	KMMUENTER_CORE ;						\
 	movq	%rsp, %rcx ;		/* trampoline rsp */		\
 	movq	PCPU(trampoline)+TR_PCB_RSP,%rsp ; /* kstack rsp */	\
 	movq	TR_SS(%rcx), %rdx ;					\
@@ -292,28 +303,34 @@
  * Set %cr3 if necessary on syscall entry.  No registers may be
  * disturbed.
  *
- * NOTE: TR_RCX is used by the caller, we cannot use it here
+ * NOTE: TR_CR2 is used by the caller to save %rsp, we cannot use it here.
  */
 #define KMMUENTER_SYSCALL						\
-	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
-	je	40f ;							\
-	pushq	%rcx ;							\
-	movq	PCPU(trampoline)+TR_PCB_CR3,%rcx ;			\
-	movq	%rcx,%cr3 ;						\
-	popq	%rcx ;							\
-40:	testq	$PCB_IBRS1,PCPU(trampoline)+TR_PCB_GFLAGS ;	\
+	movq	%rcx, PCPU(trampoline)+TR_RCX ;				\
+	movq	%rdx, PCPU(trampoline)+TR_RDX ;				\
+	KMMUENTER_CORE ;						\
+	movq	PCPU(trampoline)+TR_RDX, %rdx ;				\
+	movq	PCPU(trampoline)+TR_RCX, %rcx 				\
+
+/*
+ * KMMUEXIT_CORE handles IBRS and IBPB, but not ISOMMU
+ *
+ * We don't re-execute the IBPB barrier on exit atm.
+ */
+#define KMMUEXIT_CORE							\
+	testq	$PCB_IBRS1,PCPU(trampoline)+TR_PCB_GFLAGS ;		\
 	je	41f ;							\
-	pushq	%rax ;							\
-	pushq	%rcx ;							\
-	pushq	%rdx ;							\
-	movl	$0x48,%ecx ;						\
-	movl	$1,%eax ;						\
+	movq	%rax, PCPU(trampoline)+TR_RAX ;				\
+	movq	%rcx, PCPU(trampoline)+TR_RCX ;				\
+	movq	%rdx, PCPU(trampoline)+TR_RDX ;				\
+	movl	$MSR_SPEC_CTRL,%ecx ;					\
+	movl	$MSR_IBRS_DISABLE,%eax ;				\
 	xorl	%edx,%edx ;						\
 	wrmsr ;								\
-	popq	%rdx ;							\
-	popq	%rcx ;							\
-	popq	%rax ;							\
-41:									\
+	movq	PCPU(trampoline)+TR_RDX, %rdx ;				\
+	movq	PCPU(trampoline)+TR_RCX, %rcx ;				\
+	movq	PCPU(trampoline)+TR_RAX, %rax ;				\
+41:
 
 /*
  * We are positioned at the base of the trapframe.  Advance the trapframe
@@ -324,19 +341,8 @@
  */
 #define KMMUEXIT							\
 	addq	$TF_RIP,%rsp ;						\
-	testq	$PCB_IBRS1,PCPU(trampoline)+TR_PCB_GFLAGS ;		\
-	je	41f ;							\
-	movq	%rax, PCPU(trampoline)+TR_RAX ;				\
-	movq	%rcx, PCPU(trampoline)+TR_RCX ;				\
-	movq	%rdx, PCPU(trampoline)+TR_RDX ;				\
-	movl	$0x48,%ecx ;						\
-	movl	$0,%eax ;						\
-	xorl	%edx,%edx ;						\
-	wrmsr ;								\
-	movq	PCPU(trampoline)+TR_RDX, %rdx ;				\
-	movq	PCPU(trampoline)+TR_RCX, %rcx ;				\
-	movq	PCPU(trampoline)+TR_RAX, %rax ;				\
-41:	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
+	KMMUEXIT_CORE ;							\
+	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
 	je	40f ;							\
 	movq	%rcx, PCPU(trampoline)+TR_ERR ;	/* save in TR_ERR */	\
 	popq	%rcx ;				/* copy %rip */		\
@@ -360,21 +366,13 @@
 /*
  * Warning: user stack pointer already loaded into %rsp at this
  * point.  We still have the kernel %gs.
+ *
+ * Caller will sysexit, we do not have to copy anything to the
+ * trampoline area.
  */
 #define KMMUEXIT_SYSCALL						\
-	testq	$PCB_IBRS1,PCPU(trampoline)+TR_PCB_GFLAGS ;		\
-	je	41f ;							\
-	movq	%rax, PCPU(trampoline)+TR_RAX ;				\
-	movq	%rcx, PCPU(trampoline)+TR_RCX ;				\
-	movq	%rdx, PCPU(trampoline)+TR_RDX ;				\
-	movl	$0x48,%ecx ;						\
-	movl	$0,%eax ;						\
-	xorl	%edx,%edx ;						\
-	wrmsr ;								\
-	movq	PCPU(trampoline)+TR_RDX, %rdx ;				\
-	movq	PCPU(trampoline)+TR_RCX, %rcx ;				\
-	movq	PCPU(trampoline)+TR_RAX, %rax ;				\
-41:	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
+	KMMUEXIT_CORE ;							\
+	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
 	je	40f ;							\
 	movq	%rcx, PCPU(trampoline)+TR_RCX ;				\
 	movq	PCPU(trampoline)+TR_PCB_CR3_ISO,%rcx ;			\

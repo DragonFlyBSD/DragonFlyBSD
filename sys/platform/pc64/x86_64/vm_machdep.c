@@ -63,6 +63,7 @@
 #include <machine/pcb_ext.h>
 #include <machine/segments.h>
 #include <machine/globaldata.h>	/* npxthread */
+#include <machine/specialreg.h>
 #include <machine/vmm.h>
 
 #include <vm/vm.h>
@@ -81,6 +82,19 @@
 static void	cpu_reset_real (void);
 
 int spectre_mitigation = -1;
+
+static int spectre_ibrs_mode = 0;
+SYSCTL_INT(_machdep, OID_AUTO, spectre_ibrs_mode, CTLFLAG_RD,
+	&spectre_ibrs_mode, 0, "current IBRS mode");
+static int spectre_ibpb_mode = 0;
+SYSCTL_INT(_machdep, OID_AUTO, spectre_ibpb_mode, CTLFLAG_RD,
+	&spectre_ibpb_mode, 0, "current IBPB mode");
+static int spectre_ibrs_supported = 0;
+SYSCTL_INT(_machdep, OID_AUTO, spectre_ibrs_supported, CTLFLAG_RD,
+	&spectre_ibrs_supported, 0, "IBRS mode supported");
+static int spectre_ibpb_supported = 0;
+SYSCTL_INT(_machdep, OID_AUTO, spectre_ibpb_supported, CTLFLAG_RD,
+	&spectre_ibpb_supported, 0, "IBPB mode supported");
 
 /*
  * Finish a fork operation, with lwp lp2 nearly set up.
@@ -409,35 +423,49 @@ SYSINIT(swi_vm_setup, SI_BOOT2_MACHDEP, SI_ORDER_ANY, swi_vm_setup, NULL);
 void spectre_vm_setup(void *arg);
 
 /*
- * Check for IBRS support
+ * Check for IBPB and IBRS support
+ *
+ * Returns a mask: 	0x1	IBRS supported
+ *			0x2	IBPB supported
  */
 static
 int
 spectre_check_support(void)
 {
 	uint32_t p[4];
+	int rv = 0;
 
+	/*
+	 * SPEC_CTRL (bit 26) and STIBP support (bit 27)
+	 *
+	 * XXX Not sure what the STIBP flag is meant to be used for.
+	 *
+	 * SPEC_CTRL indicates IBRS and IBPB support.
+	 */
 	p[0] = 0;
 	p[1] = 0;
 	p[2] = 0;
 	p[3] = 0;
 	cpuid_count(7, 0, p);
-	if ((p[3] & 0x0C000000U) == 0x0C000000U) {
+	if (p[3] & CPUID_7_0_I3_SPEC_CTRL)
+		rv |= 3;
 
-		/*
-		 * SPEC_CTRL (bit 26) and STIBP support (bit 27)
-		 *
-		 * 0x80000008 p[0] bit 12 indicates IBPB support
-		 */
+	/*
+	 * 0x80000008 p[1] bit 12 indicates IBPB support
+	 *
+	 * This bit might be set even though SPEC_CTRL is not set.
+	 */
+	if (cpu_vendor_id == CPU_VENDOR_INTEL) {
 		p[0] = 0;
 		p[1] = 0;
 		p[2] = 0;
 		p[3] = 0;
 		do_cpuid(0x80000008U, p);
-		if (p[0] & 0x00001000)
-			return 1;
+		if (p[1] & CPUID_80000008_I1_IBPB_SUPPORT)
+			rv |= 2;
 	}
-	return 0;
+
+	return rv;
 }
 
 /*
@@ -446,30 +474,106 @@ spectre_check_support(void)
  */
 static
 void
-spectre_sysctl_changed(int old_value)
+spectre_sysctl_changed(void)
 {
 	globaldata_t save_gd;
+	struct trampframe *tr;
 	int n;
 
+	/*
+	 * Console message on mitigation mode change
+	 */
+	kprintf("machdep.spectre_mitigation=%d: ", spectre_mitigation);
+
+	if (spectre_ibrs_supported == 0) {
+		kprintf("IBRS=NOSUPPORT, ");
+	} else {
+		switch(spectre_mitigation & 3) {
+		case 0:
+			kprintf("IBRS=0 (disabled), ");
+			break;
+		case 1:
+			kprintf("IBRS=1 (kern-only), ");
+			break;
+		case 2:
+			kprintf("IBRS=2 (always-on), ");
+			break;
+		case 3:
+			kprintf("IBRS=?, ");
+			break;
+		}
+	}
+
+	if (spectre_ibpb_supported == 0) {
+		kprintf("IBPB=NOSUPPORT\n");
+	} else {
+		switch(spectre_mitigation & 4) {
+		case 0:
+			kprintf("IBPB=0 (disabled)\n");
+			break;
+		case 4:
+			kprintf("IBPB=1 (enabled)\n");
+			break;
+		}
+	}
+
+	/*
+	 * Fixup state
+	 */
 	save_gd = mycpu;
 	for (n = 0; n < ncpus; ++n) {
 		lwkt_setcpu_self(globaldata_find(n));
+		cpu_ccfence();
+		tr = &pscpu->trampoline;
 
-		pscpu->trampoline.tr_pcb_gflags &= ~(PCB_IBRS1 | PCB_IBRS2);
+		tr->tr_pcb_gflags &= ~(PCB_IBRS1 | PCB_IBRS2 | PCB_IBPB);
+		spectre_ibrs_mode = 0;
+		spectre_ibpb_mode = 0;
 
-		switch(spectre_mitigation) {
+		/*
+		 * IBRS mode
+		 */
+		switch(spectre_mitigation & 3) {
 		case 0:
-			if (old_value >= 0)
-				wrmsr(0x48, 0);
+			/*
+			 * Disable IBRS
+			 *
+			 * Make sure IBRS is turned off in case we were in
+			 * a global mode before.
+			 */
+			if (spectre_ibrs_supported)
+				wrmsr(MSR_SPEC_CTRL, 0);
 			break;
 		case 1:
-			pscpu->trampoline.tr_pcb_gflags |= PCB_IBRS1;
-			wrmsr(0x48, 1);
+			/*
+			 * IBRS in kernel
+			 */
+			if (spectre_ibrs_supported) {
+				tr->tr_pcb_gflags |= PCB_IBRS1;
+				wrmsr(MSR_SPEC_CTRL, 1);
+				spectre_ibrs_mode = 1;
+			}
 			break;
 		case 2:
-			pscpu->trampoline.tr_pcb_gflags |= PCB_IBRS2;
-			wrmsr(0x48, 1);
+			/*
+			 * IBRS at all times
+			 */
+			if (spectre_ibrs_supported) {
+				tr->tr_pcb_gflags |= PCB_IBRS2;
+				wrmsr(MSR_SPEC_CTRL, 1);
+				spectre_ibrs_mode = 2;
+			}
 			break;
+		}
+
+		/*
+		 * IBPB mode
+		 */
+		if (spectre_mitigation & 4) {
+			if (spectre_ibpb_supported) {
+				tr->tr_pcb_gflags |= PCB_IBPB;
+				spectre_ibpb_mode = 1;
+			}
 		}
 	}
 	if (save_gd != mycpu)
@@ -482,17 +586,15 @@ spectre_sysctl_changed(int old_value)
 static int
 sysctl_spectre_mitigation(SYSCTL_HANDLER_ARGS)
 {
-	int new_spectre;
-	int old_spectre;
+	int spectre;
 	int error;
 
-	old_spectre = spectre_mitigation;
-	new_spectre = old_spectre;
-	error = sysctl_handle_int(oidp, &new_spectre, 0, req);
+	spectre = spectre_mitigation;
+	error = sysctl_handle_int(oidp, &spectre, 0, req);
 	if (error || req->newptr == NULL)
 		return error;
-	spectre_mitigation = new_spectre;
-	spectre_sysctl_changed(old_spectre);
+	spectre_mitigation = spectre;
+	spectre_sysctl_changed();
 
 	return 0;
 }
@@ -500,89 +602,113 @@ sysctl_spectre_mitigation(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_machdep, OID_AUTO, spectre_mitigation, CTLTYPE_INT | CTLFLAG_RW,
 	0, 0, sysctl_spectre_mitigation, "I", "Spectre exploit mitigation");
 
+/*
+ * NOTE: Called at SI_BOOT2_MACHDEP and also when the microcode is
+ *	 updated.  Microcode updates must be applied to all cpus
+ *	 for support to be recognized.
+ */
 void
 spectre_vm_setup(void *arg)
 {
 	int inconsistent = 0;
-	int old_value = spectre_mitigation;
+	int supmask;
 
+	/*
+	 * Fetch tunable in auto mode
+	 */
 	if (spectre_mitigation < 0) {
 		TUNABLE_INT_FETCH("machdep.spectre_mitigation",
 				  &spectre_mitigation);
 	}
 
-	if (cpu_vendor_id == CPU_VENDOR_INTEL) {
-		if (spectre_check_support()) {
-			/*
-			 * Must be supported on all cpus before we
-			 * can enable it.  Returns silently if it
-			 * isn't.
-			 *
-			 * NOTE! arg != NULL indicates we were called
-			 *	 from cpuctl after a successful microcode
-			 *	 update.
-			 */
-			if (arg != NULL) {
-				globaldata_t save_gd;
-				int n;
+	if ((supmask = spectre_check_support()) != 0) {
+		/*
+		 * Must be supported on all cpus before we
+		 * can enable it.  Returns silently if it
+		 * isn't.
+		 *
+		 * NOTE! arg != NULL indicates we were called
+		 *	 from cpuctl after a successful microcode
+		 *	 update.
+		 */
+		if (arg != NULL) {
+			globaldata_t save_gd;
+			int n;
 
-				save_gd = mycpu;
-				for (n = 0; n < ncpus; ++n) {
-					lwkt_setcpu_self(globaldata_find(n));
-					if (spectre_check_support() == 0) {
-						inconsistent = 1;
-						break;
-					}
+			save_gd = mycpu;
+			for (n = 0; n < ncpus; ++n) {
+				lwkt_setcpu_self(globaldata_find(n));
+				if (spectre_check_support() !=
+				    supmask) {
+					inconsistent = 1;
+					break;
 				}
-				if (save_gd != mycpu)
-					lwkt_setcpu_self(save_gd);
 			}
-			if (inconsistent == 0) {
-				if (spectre_mitigation < 0)
-					spectre_mitigation = 1;
-			} else {
-				spectre_mitigation = -1;
-			}
-		} else {
-			spectre_mitigation = -1;
+			if (save_gd != mycpu)
+				lwkt_setcpu_self(save_gd);
 		}
-	} else {
-                spectre_mitigation = -1;                /* no support */
 	}
+
+	/*
+	 * IBRS support
+	 */
+	if (supmask & 1)
+		spectre_ibrs_supported = 1;
+	else
+		spectre_ibrs_supported = 0;
+
+	/*
+	 * IBPB support.
+	 */
+	if (supmask & 2)
+		spectre_ibpb_supported = 1;
+	else
+		spectre_ibpb_supported = 0;
 
 	/*
 	 * Be silent while microcode is being loaded on various CPUs,
 	 * until all done.
 	 */
-	if (inconsistent)
+	if (inconsistent) {
+		spectre_mitigation = -1;
 		return;
+	}
+
+	/*
+	 * Enable spectre_mitigation, set defaults if -1, adjust
+	 * tuned value according to support if not.
+	 *
+	 * NOTE!  We do not enable IBPB for user->kernel transitions
+	 *	  by default, so this code is commented out for now.
+	 */
+	if (spectre_ibrs_supported || spectre_ibpb_supported) {
+		if (spectre_mitigation < 0) {
+			spectre_mitigation = 0;
+			if (spectre_ibrs_supported)
+				spectre_mitigation |= 1;
+#if 0
+			if (spectre_ibpb_supported)
+				spectre_mitigation |= 4;
+#endif
+		}
+		if (spectre_ibrs_supported == 0)
+			spectre_mitigation &= ~3;
+		if (spectre_ibpb_supported == 0)
+			spectre_mitigation &= ~4;
+	} else {
+		spectre_mitigation = -1;
+	}
 
 	/*
 	 * Disallow sysctl changes when there is no support (otherwise
 	 * the wrmsr will cause a protection fault).
 	 */
-	switch(spectre_mitigation) {
-	case 0:
-		sysctl___machdep_spectre_mitigation.oid_kind |= CTLFLAG_WR;
-		kprintf("machdep.spectre_mitigation available but disabled\n");
-		break;
-	case 1:
-		sysctl___machdep_spectre_mitigation.oid_kind |= CTLFLAG_WR;
-		kprintf("machdep.spectre_mitigation available, system call\n"
-			"performance and kernel operation will be impacted\n");
-		break;
-	case 2:
-		sysctl___machdep_spectre_mitigation.oid_kind |= CTLFLAG_WR;
-		kprintf("machdep.spectre_mitigation available, whole machine\n"
-			"performance will be impacted\n");
-		break;
-	default:
+	if (spectre_mitigation < 0)
 		sysctl___machdep_spectre_mitigation.oid_kind &= ~CTLFLAG_WR;
-		if (cpu_vendor_id == CPU_VENDOR_INTEL)
-			kprintf("no microcode spectre mitigation available\n");
-		break;
-	}
-	spectre_sysctl_changed(old_value);
+	else
+		sysctl___machdep_spectre_mitigation.oid_kind |= CTLFLAG_WR;
+
+	spectre_sysctl_changed();
 }
 
 SYSINIT(spectre_vm_setup, SI_BOOT2_MACHDEP, SI_ORDER_ANY,

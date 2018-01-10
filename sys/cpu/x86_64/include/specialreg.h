@@ -313,6 +313,8 @@
 #define	MSR_APICBASE		0x01b
 #define	MSR_EBL_CR_POWERON	0x02a
 #define	MSR_TEST_CTL		0x033
+#define MSR_SPEC_CTRL		0x048	/* IBRS Spectre mitigation */
+#define MSR_PRED_CMD		0x049	/* IBPB Spectre mitigation */
 #define	MSR_BIOS_UPDT_TRIG	0x079
 #define	MSR_BBL_CR_D0		0x088
 #define	MSR_BBL_CR_D1		0x089
@@ -388,6 +390,24 @@
 #define	APICBASE_BSP		0x00000100
 #define	APICBASE_ENABLED	0x00000800
 #define	APICBASE_ADDRESS	0xfffff000
+
+/*
+ * IBRS and IBPB Spectre mitigation
+ *
+ * NOTE: Either CPUID_80000008_I1_IBPB_SUPPORT or CPUID_7_0_I3_SPEC_CTRL
+ *	 indicates IBPB support.  However, note that MSR_PRED_CMD is
+ *	 a command register that may only be written, not read.
+ *
+ *	 MSR_IBPB_BARRIER is written to MSR_PRED_CMD unconditionally.
+ *	 Writing 0 has no effect.
+ */
+#define MSR_IBRS_DISABLE		0	/* MSR_SPEC_CTRL (bit 0) */
+#define MSR_IBRS_ENABLE			1
+#define MSR_IBPB_BARRIER		1	/* MSR_PRED_CMD */
+
+#define CPUID_7_0_I3_SPEC_CTRL		0x04000000	/* in EDX (index 3) */
+#define CPUID_7_0_I3_STIBP		0x08000000	/* in EDX (index 3) */
+#define CPUID_80000008_I1_IBPB_SUPPORT	0x00001000	/* in EBX (index 1) */
 
 /*
  * PAT modes.
