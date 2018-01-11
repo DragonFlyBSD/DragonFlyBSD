@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/burncd/burncd.c,v 1.10.2.6 2002/11/20 00:26:18 njl Exp $
- * $DragonFly: src/usr.sbin/burncd/burncd.c,v 1.4 2008/06/05 18:06:33 swildner Exp $
  */
 
 #include <unistd.h>
@@ -57,14 +56,14 @@ struct track_info {
 static struct track_info tracks[100];
 static int fd, quiet, verbose, saved_block_size, notracks;
 
-void add_track(char *, int, int, int);
-void do_DAO(int, int);
-void do_TAO(int, int);
-int write_file(struct track_info *);
-int roundup_blocks(struct track_info *);
-void cue_ent(struct cdr_cue_entry *, int, int, int, int, int, int, int);
-void cleanup(int);
-void usage(void);
+static void add_track(char *, int, int, int);
+static void do_DAO(int, int);
+static void do_TAO(int, int);
+static int write_file(struct track_info *);
+static int roundup_blocks(struct track_info *);
+static void cue_ent(struct cdr_cue_entry *, int, int, int, int, int, int, int);
+static void cleanup(int);
+static void usage(void);
 
 int
 main(int argc, char **argv)
@@ -286,7 +285,7 @@ main(int argc, char **argv)
 	exit(EX_OK);
 }
 
-void
+static void
 add_track(char *name, int block_size, int block_type, int nogap)
 {
 	struct stat sb;
@@ -338,7 +337,7 @@ add_track(char *name, int block_size, int block_type, int nogap)
 	notracks++;
 }
 
-void
+static void
 do_DAO(int test_write, int multi)
 {
 	struct cdr_cuesheet sheet;
@@ -438,7 +437,7 @@ do_DAO(int test_write, int multi)
 	ioctl(fd, CDRIOCFLUSH);
 }
 
-void
+static void
 do_TAO(int test_write, int preemp)
 {
 	struct cdr_track track;
@@ -463,7 +462,7 @@ do_TAO(int test_write, int preemp)
 	}
 }
 
-int
+static int
 write_file(struct track_info *track_info)
 {
 	int size, count, filesize;
@@ -532,13 +531,13 @@ write_file(struct track_info *track_info)
 	return 0;
 }
 
-int
+static int
 roundup_blocks(struct track_info *track)
 {
 	return ((track->file_size + track->block_size - 1) / track->block_size);
 }
 
-void
+static void
 cue_ent(struct cdr_cue_entry *cue, int ctl, int adr, int track, int idx,
 	int dataform, int scms, int lba)
 {
@@ -554,14 +553,14 @@ cue_ent(struct cdr_cue_entry *cue, int ctl, int adr, int track, int idx,
 	cue->frame = (lba % (60*75)) % 75;
 }
 
-void
+static void
 cleanup(int dummy __unused)
 {
 	if (ioctl(fd, CDRIOCSETBLOCKSIZE, &saved_block_size) < 0) 
 		err(EX_IOERR, "ioctl(CDRIOCSETBLOCKSIZE)");
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr,
