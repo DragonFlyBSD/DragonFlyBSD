@@ -25,7 +25,6 @@
  * DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/fdcontrol/fdcontrol.c,v 1.6 1999/08/28 01:16:13 peter Exp $
- * $DragonFly: src/usr.sbin/fdcontrol/fdcontrol.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
  */
 
 #include <err.h>
@@ -35,7 +34,7 @@
 #include <machine/ioctl_fd.h>
 #include <sys/file.h>
 
-int
+static int
 getnumber(void)
 {
   int i;
@@ -48,7 +47,7 @@ getnumber(void)
   return i;
 }
 
-void
+static void
 usage(void)
 {
   fprintf(stderr, "usage: fdcontrol [-d 0|1] | [-s] device-node\n");
