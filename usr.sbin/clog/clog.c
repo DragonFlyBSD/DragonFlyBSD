@@ -25,7 +25,6 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $Id: clog.c,v 1.3 2001/10/02 18:51:26 jdw Exp $
- * $DragonFly: src/usr.sbin/clog/clog.c,v 1.4 2007/06/26 23:30:05 josepht Exp $
  */
 
 
@@ -57,11 +56,11 @@
  */
 #define BUFFER_SIZE 16384
 
-void init_log(const char *lname, size_t size);
-void read_log(const char *lname, int optf);
-void usage(void);
+static void init_log(const char *lname, size_t size);
+static void read_log(const char *lname, int optf);
+static void usage(void);
 
-const char *pname;
+static const char *pname;
 
 int
 main(int argc, char **argv)
@@ -111,7 +110,7 @@ main(int argc, char **argv)
 }
 
 
-void
+static void
 usage(void)
 {
   fprintf(stderr,"usage: %s [-i -s log_size] [ -f ] log_file\n",pname);
@@ -119,7 +118,7 @@ usage(void)
 }
 
 
-void
+static void
 read_log(const char *lname, int optf)
 {
 	int fd;
@@ -182,7 +181,7 @@ read_log(const char *lname, int optf)
 }
 
 
-void
+static void
 init_log(const char *lname, size_t size)
 {
 	int fd;
@@ -230,5 +229,3 @@ init_log(const char *lname, size_t size)
 	close(fd);
 	exit(0);
 }
-
-
