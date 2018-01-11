@@ -206,7 +206,7 @@
 	movq	%rcx,%cr3 ;						\
 40:	testq	$PCB_IBRS1|PCB_IBRS2|PCB_IBPB,PCPU(trampoline)+TR_PCB_GFLAGS ;\
 	je	43f ;							\
-	movq	%rax, TR_RAX(%rsp) ;					\
+	movq	%rax, PCPU(trampoline)+TR_RAX ;				\
 	testq	$PCB_IBRS1|PCB_IBRS2,PCPU(trampoline)+TR_PCB_GFLAGS ;	\
 	je	41f ;							\
 	movl	$MSR_SPEC_CTRL,%ecx ;					\
@@ -219,7 +219,7 @@
 	movl	$MSR_IBPB_BARRIER,%eax ;				\
 	xorl	%edx,%edx ;						\
 	wrmsr ;								\
-42:	movq	TR_RAX(%rsp), %rax ;					\
+42:	movq	PCPU(trampoline)+TR_RAX, %rax ;				\
 43:									\
 
 

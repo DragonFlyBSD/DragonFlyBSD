@@ -247,6 +247,13 @@ IDTVEC(fast_syscall)
 	swapgs					/* get kernel %gs */
 	movq	%rsp,PCPU(trampoline)+TR_CR2	/* save user %rsp */
 	movq	PCPU(common_tss)+TSS_RSP0,%rsp
+
+	/*
+	 * NOTE: KMMUENTER_SYSCALL does not actually use the stack but
+	 *	 adjust the stack pointer for correctness in case we
+	 *	 do in the future.
+	 */
+	subq	$TR_PCB_RSP,%rsp
 	KMMUENTER_SYSCALL
 	movq	PCPU(trampoline)+TR_PCB_RSP,%rsp
 
