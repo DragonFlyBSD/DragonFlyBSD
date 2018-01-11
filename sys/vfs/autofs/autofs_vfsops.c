@@ -47,7 +47,6 @@ autofs_mount(struct mount *mp, char *mntpt, caddr_t data, struct ucred *cred)
 	struct autofs_mount_info info;
 	struct autofs_mount *amp;
 	struct statfs *sbp = &mp->mnt_stat;
-	char buf[MAXPATHLEN];
 	int error;
 
 	if (mp->mnt_flag & MNT_UPDATE) {
@@ -59,36 +58,50 @@ autofs_mount(struct mount *mp, char *mntpt, caddr_t data, struct ucred *cred)
 	if (error)
 		return (error);
 
+	/*
+	 * Copy-in ->f_mntfromname string.
+	 */
 	memset(sbp->f_mntfromname, 0, sizeof(sbp->f_mntfromname));
 	error = copyinstr(info.from, sbp->f_mntfromname,
 	    sizeof(sbp->f_mntfromname), NULL);
 	if (error)
 		return (error);
-
+	/*
+	 * Copy-in ->f_mntonname string.
+	 */
 	memset(sbp->f_mntonname, 0, sizeof(sbp->f_mntonname));
 	error = copyinstr(mntpt, sbp->f_mntonname,
 	    sizeof(sbp->f_mntonname), NULL);
 	if (error)
 		return (error);
 
+	/*
+	 * Allocate the autofs mount.
+	 */
 	amp = kmalloc(sizeof(*amp), M_AUTOFS, M_WAITOK | M_ZERO);
 	mp->mnt_data = (qaddr_t)amp;
 	amp->am_mp = mp;
 	strlcpy(amp->am_from, sbp->f_mntfromname, sizeof(amp->am_from));
 	strlcpy(amp->am_on, sbp->f_mntonname, sizeof(amp->am_on));
 
-	memset(buf, 0, sizeof(buf));
-	error = copyinstr(info.master_options, buf, sizeof(buf), NULL);
+	/*
+	 * Copy-in master_options string.
+	 */
+	error = copyinstr(info.master_options, amp->am_options,
+	    sizeof(amp->am_options), NULL);
 	if (error)
 		goto fail;
-	strlcpy(amp->am_options, buf, sizeof(amp->am_options));
-
-	memset(buf, 0, sizeof(buf));
-	error = copyinstr(info.master_prefix, buf, sizeof(buf), NULL);
+	/*
+	 * Copy-in master_prefix string.
+	 */
+	error = copyinstr(info.master_prefix, amp->am_prefix,
+	    sizeof(amp->am_prefix), NULL);
 	if (error)
 		goto fail;
-	strlcpy(amp->am_prefix, buf, sizeof(amp->am_prefix));
 
+	/*
+	 * Initialize the autofs mount.
+	 */
 	lockinit(&amp->am_lock, "autofsmnlk", 0, 0);
 	amp->am_last_ino = AUTOFS_ROOTINO;
 
