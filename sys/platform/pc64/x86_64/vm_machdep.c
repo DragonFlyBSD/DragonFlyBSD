@@ -526,9 +526,21 @@ spectre_sysctl_changed(void)
 		cpu_ccfence();
 		tr = &pscpu->trampoline;
 
+		/*
+		 * Make sure we are cleaned out.
+		 *
+		 * XXX cleanup, reusing globals inside the loop (they get
+		 * set to the same thing each loop)
+		 */
 		tr->tr_pcb_gflags &= ~(PCB_IBRS1 | PCB_IBRS2 | PCB_IBPB);
 		spectre_ibrs_mode = 0;
 		spectre_ibpb_mode = 0;
+
+		/*
+		 * Don't try to parse if not available
+		 */
+		if (spectre_mitigation < 0)
+			continue;
 
 		/*
 		 * IBRS mode
@@ -576,8 +588,8 @@ spectre_sysctl_changed(void)
 			}
 		}
 	}
-	if (save_gd != mycpu)
-		lwkt_setcpu_self(save_gd);
+	lwkt_setcpu_self(save_gd);
+	cpu_ccfence();
 }
 
 /*
@@ -638,15 +650,27 @@ spectre_vm_setup(void *arg)
 			save_gd = mycpu;
 			for (n = 0; n < ncpus; ++n) {
 				lwkt_setcpu_self(globaldata_find(n));
+				cpu_ccfence();
 				if (spectre_check_support() !=
 				    supmask) {
 					inconsistent = 1;
 					break;
 				}
 			}
-			if (save_gd != mycpu)
-				lwkt_setcpu_self(save_gd);
+			lwkt_setcpu_self(save_gd);
+			cpu_ccfence();
 		}
+	}
+
+	/*
+	 * Be silent while microcode is being loaded on various CPUs,
+	 * until all done.
+	 */
+	if (inconsistent) {
+		spectre_mitigation = -1;
+		spectre_ibrs_supported = 0;
+		spectre_ibpb_supported = 0;
+		return;
 	}
 
 	/*
@@ -664,15 +688,6 @@ spectre_vm_setup(void *arg)
 		spectre_ibpb_supported = 1;
 	else
 		spectre_ibpb_supported = 0;
-
-	/*
-	 * Be silent while microcode is being loaded on various CPUs,
-	 * until all done.
-	 */
-	if (inconsistent) {
-		spectre_mitigation = -1;
-		return;
-	}
 
 	/*
 	 * Enable spectre_mitigation, set defaults if -1, adjust
