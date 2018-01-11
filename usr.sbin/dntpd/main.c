@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/usr.sbin/dntpd/main.c,v 1.11 2007/06/26 02:40:20 dillon Exp $
  */
 
 #include "defs.h"
@@ -66,7 +64,6 @@ main(int ac, char **av)
 {
     int test_opt = 0;
     pid_t pid;
-    int rc;
     int ch;
     int i;
 
@@ -74,7 +71,6 @@ main(int ac, char **av)
      * Really randomize
      */
     srandomdev();
-    rc = 0;
 
     /*
      * Process Options
@@ -265,8 +261,8 @@ main(int ac, char **av)
     sysntp_clear_alternative_corrections();
     client_init();
     client_check_duplicate_ips(servers, nservers);
-    rc = client_main(servers, nservers);
-    return(rc);
+    client_main(servers, nservers);
+    return(0);
 }
 
 static

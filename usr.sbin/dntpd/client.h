@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/usr.sbin/dntpd/client.h,v 1.7 2007/06/25 21:33:36 dillon Exp $
  */
 
 struct server_info {
@@ -125,7 +123,7 @@ struct server_info {
 typedef struct server_info *server_info_t;
 
 void client_init(void);
-int client_main(struct server_info **info_ary, int count);
+void client_main(struct server_info **info_ary, int count);
 void client_poll(server_info_t info, int poll_interval, 
 		  int calc_offset_correction);
 void client_check(struct server_info **check, 

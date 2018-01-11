@@ -41,7 +41,7 @@ client_init(void)
 {
 }
 
-int
+void
 client_main(struct server_info **info_ary, int count)
 {
     struct server_info *best_off;
