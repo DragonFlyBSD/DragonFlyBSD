@@ -98,7 +98,7 @@ void	client_read(struct session *);
 void	client_write(struct session *);
 int	drop_privs(void);
 void	end_session(struct session *);
-int	exit_daemon(void);
+void	exit_daemon(void);
 int	get_line(char *, size_t *);
 void	handle_connection(const int);
 void	handle_signal(int);
@@ -364,7 +364,7 @@ end_session(struct session *s)
 	session_count--;
 }
 
-int
+void
 exit_daemon(void)
 {
 	struct session *s, *tmp;
@@ -377,9 +377,6 @@ exit_daemon(void)
 		closelog();
 
 	exit(0);
-
-	/* NOTREACHED */
-	return (-1);
 }
 
 int
