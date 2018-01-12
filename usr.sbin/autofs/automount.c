@@ -75,8 +75,18 @@ mount_autofs(const char *from, const char *fspath, const char *options,
 {
 	struct autofs_mount_info info;
 	int error;
+	char *cwd;
 
+	/*
+	 * There is no guarantee we are at /, so chdir to /.
+	 */
+	cwd = getcwd(NULL, 0);
+	if (chdir("/") != 0)
+		log_warn("failed to chdir to /");
 	create_directory(fspath);
+	if (chdir(cwd) != 0)
+		log_warn("failed to restore cwd");
+	free(cwd);
 
 	log_debugx("mounting %s on %s, prefix \"%s\", options \"%s\"",
 	    from, fspath, prefix, options);
