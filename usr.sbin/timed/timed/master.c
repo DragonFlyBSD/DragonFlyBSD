@@ -57,7 +57,7 @@ static void mchgdate(struct tsp *);
  * master's name, remote requests to set the network time, ...), and
  * takes the appropriate action.
  */
-int
+void
 master(void)
 {
 	struct hosttbl *htp;

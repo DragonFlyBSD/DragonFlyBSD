@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
- * $DragonFly: src/usr.sbin/timed/timed/extern.h,v 1.3 2003/11/03 19:31:43 eirikn Exp $
  */
 
 struct hosttbl;
@@ -62,7 +61,7 @@ void	 ignoreack(void);
 int	 in_cksum(u_short *, int);
 void	 lookformaster(struct netinfo *);
 void	 makeslave(struct netinfo *);
-int	 master(void);
+void	 master(void);
 void	 masterack(void);
 void	 masterup(struct netinfo *);
 int	 measure(u_long, u_long, char *, struct sockaddr_in *, int);
