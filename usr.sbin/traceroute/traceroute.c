@@ -271,47 +271,47 @@ struct icmp_ext_obj_hdr {
 #define MPLS_STACK(x)   (((x) & 0x00000100) >> 8)
 #define MPLS_TTL(x)     ((x) & 0x000000ff)
 
-struct in_addr gateway[MAX_LSRR + 1];
-int lsrrlen = 0;
-int32_t sec_perturb;
-int32_t usec_perturb;
+static struct in_addr gateway[MAX_LSRR + 1];
+static int lsrrlen = 0;
+static int32_t sec_perturb;
+static int32_t usec_perturb;
 
-u_char packet[512], *outpacket;	/* last inbound (icmp) packet */
+static u_char packet[512], *outpacket;	/* last inbound (icmp) packet */
 
-void decode_extensions(unsigned char *, int);
-void dump_packet(void);
-int wait_for_reply(int, struct sockaddr_in *, struct timeval *);
-void send_probe(int, u_int8_t, int, struct sockaddr_in *);
-int packet_ok(u_char *, int, struct sockaddr_in *, int, int);
-const char *pr_type(u_int8_t);
-void print(u_char *, int, struct sockaddr_in *);
-char *inetname(struct in_addr);
-u_short in_cksum(u_short *, int);
-void usage(void);
+static void decode_extensions(unsigned char *, int);
+static void dump_packet(void);
+static int wait_for_reply(int, struct sockaddr_in *, struct timeval *);
+static void send_probe(int, u_int8_t, int, struct sockaddr_in *);
+static int packet_ok(u_char *, int, struct sockaddr_in *, int, int);
+static const char *pr_type(u_int8_t);
+static void print(u_char *, int, struct sockaddr_in *);
+static char *inetname(struct in_addr);
+static u_short in_cksum(u_short *, int);
+static void usage(void);
 
-int s;				/* receive (icmp) socket file descriptor */
-int sndsock;			/* send (udp) socket file descriptor */
+static int s;			/* receive (icmp) socket file descriptor */
+static int sndsock;		/* send (udp) socket file descriptor */
 
-int datalen;			/* How much data */
-int headerlen;			/* How long packet's header is */
+static int datalen;		/* How much data */
+static int headerlen;		/* How long packet's header is */
 
-char *source = NULL;
-char *hostname;
+static char *source = NULL;
+static char *hostname;
 
-int nprobes = 3;
-u_int8_t max_ttl = IPDEFTTL;
-u_int8_t first_ttl = 1;
-u_short ident;
-u_short port = 32768+666;	/* start udp dest port # for probe packets */
-u_char	proto = IPPROTO_UDP;
-u_int8_t  icmp_type = ICMP_ECHO; /* default ICMP code/type */
-u_char  icmp_code = 0;
-int options;			/* socket options */
-int verbose;
-int waittime = 5;		/* time to wait for response (in seconds) */
-int nflag;			/* print addresses numerically */
-int dump;
-int Mflag;			/* show MPLS labels if any */
+static int nprobes = 3;
+static u_int8_t max_ttl = IPDEFTTL;
+static u_int8_t first_ttl = 1;
+static u_short ident;
+static u_short port = 32768+666; /* start udp dest port # for probe packets */
+static u_char	proto = IPPROTO_UDP;
+static u_int8_t  icmp_type = ICMP_ECHO; /* default ICMP code/type */
+static u_char  icmp_code = 0;
+static int options;		/* socket options */
+static int verbose;
+static int waittime = 5;	/* time to wait for response (in seconds) */
+static int nflag;		/* print addresses numerically */
+static int dump;
+static int Mflag;		/* show MPLS labels if any */
 
 int
 main(int argc, char *argv[])
@@ -731,7 +731,7 @@ main(int argc, char *argv[])
 	exit(0);
 }
 
-int
+static int
 wait_for_reply(int sock, struct sockaddr_in *from, struct timeval *sent)
 {
 	socklen_t fromlen = sizeof (*from);
@@ -762,7 +762,7 @@ wait_for_reply(int sock, struct sockaddr_in *from, struct timeval *sent)
 	return (cc);
 }
 
-void
+static void
 decode_extensions(unsigned char *buf, int ip_len)
 {
 	 uint32_t *cmn_hdr;
@@ -876,7 +876,7 @@ decode_extensions(unsigned char *buf, int ip_len)
 	}
 }
 
-void
+static void
 dump_packet(void)
 {
 	u_char *p;
@@ -891,7 +891,7 @@ dump_packet(void)
 	fprintf(stderr, "\n");
 }
 
-void
+static void
 send_probe(int seq, u_int8_t ttl, int iflag, struct sockaddr_in *to)
 {
 	struct ip *ip = (struct ip *)outpacket;
@@ -995,7 +995,7 @@ static const char *ttab[] = {
 /*
  * Convert an ICMP "type" field to a printable string.
  */
-const char *
+static const char *
 pr_type(u_int8_t t)
 {
 	if (t > 18)
@@ -1003,7 +1003,7 @@ pr_type(u_int8_t t)
 	return (ttab[t]);
 }
 
-int
+static int
 packet_ok(u_char *buf, int cc, struct sockaddr_in *from, int seq, int iflag)
 {
 	struct icmp *icp;
@@ -1084,7 +1084,7 @@ packet_ok(u_char *buf, int cc, struct sockaddr_in *from, int seq, int iflag)
 	return (0);
 }
 
-void
+static void
 print(u_char *buf, int cc, struct sockaddr_in *from)
 {
 	struct ip *ip;
@@ -1108,7 +1108,7 @@ print(u_char *buf, int cc, struct sockaddr_in *from)
 /*
  * Checksum routine for Internet Protocol family headers (C Version)
  */
-u_short
+static u_short
 in_cksum(u_short *addr, int len)
 {
 	u_short *w = addr, answer;
@@ -1143,7 +1143,7 @@ in_cksum(u_short *addr, int len)
  * If the nflag has been supplied, give
  * numeric value, otherwise try for symbolic name.
  */
-char *
+static char *
 inetname(struct in_addr in)
 {
 	static char domain[MAXHOSTNAMELEN], line[MAXHOSTNAMELEN];
@@ -1171,7 +1171,7 @@ inetname(struct in_addr in)
 	return (inet_ntoa(in));
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr,
