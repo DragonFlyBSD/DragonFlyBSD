@@ -293,54 +293,51 @@ struct opacket {
 	struct tv32 tv;		/* time packet left */
 } __attribute__((__packed__));
 
-u_char	packet[512];		/* last inbound (icmp) packet */
-struct opacket	*outpacket;	/* last output (udp) packet */
+static u_char	packet[512];		/* last inbound (icmp) packet */
+static struct opacket	*outpacket;	/* last output (udp) packet */
 
-int	wait_for_reply(int, struct msghdr *);
+static int	wait_for_reply(int, struct msghdr *);
 #ifdef IPSEC
 #ifdef IPSEC_POLICY_IPSEC
-int	setpolicy(int so, char *policy);
+static int	setpolicy(int so, char *policy);
 #endif
 #endif
-void	send_probe(int, u_long);
-void	*get_uphdr(struct ip6_hdr *, u_char *);
-int	get_hoplim(struct msghdr *);
-double	deltaT(struct timeval *, struct timeval *);
-char	*pr_type(int);
-int	packet_ok(struct msghdr *, int, int);
-void	print(struct msghdr *, int);
-const char *inetname(struct sockaddr *);
-void	usage(void);
+static void	send_probe(int, u_long);
+static void	*get_uphdr(struct ip6_hdr *, u_char *);
+static double	deltaT(struct timeval *, struct timeval *);
+static char	*pr_type(int);
+static int	packet_ok(struct msghdr *, int, int);
+static void	print(struct msghdr *, int);
+static const char *inetname(struct sockaddr *);
+static void	usage(void);
 
-int rcvsock;			/* receive (icmp) socket file descriptor */
-int sndsock;			/* send (udp) socket file descriptor */
+static int rcvsock;		/* receive (icmp) socket file descriptor */
+static int sndsock;		/* send (udp) socket file descriptor */
 
-struct msghdr rcvmhdr;
-struct iovec rcviov[2];
-int rcvhlim;
-struct in6_pktinfo *rcvpktinfo;
+static struct msghdr rcvmhdr;
+static struct iovec rcviov[2];
+static int rcvhlim;
+static struct in6_pktinfo *rcvpktinfo;
 
-struct sockaddr_in6 Src, Dst, Rcv;
-u_long datalen;			/* How much data */
+static struct sockaddr_in6 Src, Dst, Rcv;
+static u_long datalen;		/* How much data */
 #define	ICMP6ECHOLEN	8
-/* XXX: 2064 = 127(max hops in type 0 rthdr) * sizeof(ip6_hdr) + 16(margin) */
-char rtbuf[2064];
 
-char *source = NULL;
-char *hostname;
+static char *source = NULL;
+static char *hostname;
 
-u_long nprobes = 3;
-u_long first_hop = 1;
-u_long max_hops = 30;
-u_int16_t srcport;
-u_int16_t port = 32768+666;	/* start udp dest port # for probe packets */
-u_int16_t ident;
-int options;			/* socket options */
-int verbose;
-int waittime = 5;		/* time to wait for response (in seconds) */
-int nflag;			/* print addresses numerically */
-int useproto = IPPROTO_UDP;	/* protocol to use to send packet */
-int lflag;			/* print both numerical address & hostname */
+static u_long nprobes = 3;
+static u_long first_hop = 1;
+static u_long max_hops = 30;
+static u_int16_t srcport;
+static u_int16_t port = 32768+666; /* start udp dest port # for probe packets */
+static u_int16_t ident;
+static int options;		/* socket options */
+static int verbose;
+static int waittime = 5;	/* time to wait for response (in seconds) */
+static int nflag;		/* print addresses numerically */
+static int useproto = IPPROTO_UDP; /* protocol to use to send packet */
+static int lflag;		/* print both numerical address & hostname */
 
 int
 main(int argc, char **argv)
@@ -881,7 +878,7 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-int
+static int
 wait_for_reply(int sock, struct msghdr *mhdr)
 {
 #ifdef HAVE_POLL
@@ -918,7 +915,7 @@ wait_for_reply(int sock, struct msghdr *mhdr)
 
 #ifdef IPSEC
 #ifdef IPSEC_POLICY_IPSEC
-int
+static int
 setpolicy(int so, char *policy)
 {
 	char *buf;
@@ -938,7 +935,7 @@ setpolicy(int so, char *policy)
 #endif
 #endif
 
-void
+static void
 send_probe(int seq, u_long hops)
 {
 	struct icmp6_hdr *icp;
@@ -996,23 +993,7 @@ send_probe(int seq, u_long hops)
 	}
 }
 
-int
-get_hoplim(struct msghdr *mhdr)
-{
-	struct cmsghdr *cm;
-
-	for (cm = (struct cmsghdr *)CMSG_FIRSTHDR(mhdr); cm;
-	    cm = (struct cmsghdr *)CMSG_NXTHDR(mhdr, cm)) {
-		if (cm->cmsg_level == IPPROTO_IPV6 &&
-		    cm->cmsg_type == IPV6_HOPLIMIT &&
-		    cm->cmsg_len == CMSG_LEN(sizeof(int)))
-			return(*(int *)CMSG_DATA(cm));
-	}
-
-	return(-1);
-}
-
-double
+static double
 deltaT(struct timeval *t1p, struct timeval *t2p)
 {
 	double dt;
@@ -1025,7 +1006,7 @@ deltaT(struct timeval *t1p, struct timeval *t2p)
 /*
  * Convert an ICMP "type" field to a printable string.
  */
-char *
+static char *
 pr_type(int t0)
 {
 	u_char t = t0 & 0xff;
@@ -1081,7 +1062,7 @@ pr_type(int t0)
 	return cp;
 }
 
-int
+static int
 packet_ok(struct msghdr *mhdr, int cc, int seq)
 {
 	struct icmp6_hdr *icp;
@@ -1221,7 +1202,7 @@ packet_ok(struct msghdr *mhdr, int cc, int seq)
 /*
  * Increment pointer until find the UDP or ICMP header.
  */
-void *
+static void *
 get_uphdr(struct ip6_hdr *ip6, u_char *lim)
 {
 	u_char *cp = (u_char *)ip6, nh;
@@ -1265,7 +1246,7 @@ get_uphdr(struct ip6_hdr *ip6, u_char *lim)
 	return(NULL);
 }
 
-void
+static void
 print(struct msghdr *mhdr, int cc)
 {
 	struct sockaddr_in6 *from = (struct sockaddr_in6 *)mhdr->msg_name;
@@ -1299,7 +1280,7 @@ print(struct msghdr *mhdr, int cc)
  * If the nflag has been supplied, give
  * numeric value, otherwise try for symbolic name.
  */
-const char *
+static const char *
 inetname(struct sockaddr *sa)
 {
 	static char line[NI_MAXHOST], domain[MAXHOSTNAMELEN + 1];
@@ -1333,7 +1314,7 @@ inetname(struct sockaddr *sa)
 	return line;
 }
 
-void
+static void
 usage(void)
 {
 
