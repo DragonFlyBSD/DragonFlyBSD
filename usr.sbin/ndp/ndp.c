@@ -135,7 +135,7 @@ static struct in6_nbrinfo *getnbrinfo(struct in6_addr *addr,
 					   int ifindex, int);
 static char *ether_str(struct sockaddr_dl *);
 int ndp_ether_aton(char *, u_char *);
-void usage(void);
+void usage(void) __dead2;
 int rtmsg(int);
 void ifinfo(int, char **);
 void rtrlist(void);

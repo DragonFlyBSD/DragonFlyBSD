@@ -75,7 +75,7 @@ extern u_char m_buf[BUFSIZ];
 extern u_int m_len;
 extern int f_debug;
 
-void yyfatal(const char *s);
+void yyfatal(const char *s) __dead2;
 void yyerror(const char *s);
 extern void parse_init(void);
 int parse(FILE **);

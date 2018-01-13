@@ -182,7 +182,7 @@ reaper(int sig)
 	return;
 }
 
-void
+__dead2 void
 usage(void)
 {
 	fprintf(stderr, "usage: rpc.ypxfrd [-p path]\n");

@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
- * $DragonFly: src/usr.sbin/timed/timedc/extern.h,v 1.3 2003/11/03 19:31:43 eirikn Exp $
  */
 
 #if __STDC__
@@ -40,10 +39,10 @@ void	bytehostorder(struct tsp *);
 void	bytenetorder(struct tsp *);
 void	clockdiff(int, char *[]);
 void	help(int, char *[]);
-void	intr(int);
+void	intr(int) __dead2;
 void	makeargv(void);
 void	msite(int, char *[]);
 int	priv_resources(void);
-void	quit(void);
+void	quit(void) __dead2;
 void	testing(int, char *[]);
 void	tracing(int, char *[]);

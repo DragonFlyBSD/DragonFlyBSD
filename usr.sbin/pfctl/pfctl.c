@@ -58,7 +58,7 @@
 #include "pfctl_parser.h"
 #include "pfctl.h"
 
-void	 usage(void);
+void	 usage(void) __dead2;
 int	 pfctl_enable(int, int);
 int	 pfctl_disable(int, int);
 int	 pfctl_clear_stats(int, int);

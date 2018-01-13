@@ -52,16 +52,16 @@
 #include "inetd.h"
 
 void		chargen_dg(int, struct servtab *);
-void		chargen_stream(int, struct servtab *);
+void		chargen_stream(int, struct servtab *) __dead2;
 void		daytime_dg(int, struct servtab *);
 void		daytime_stream(int, struct servtab *);
 void		discard_dg(int, struct servtab *);
-void		discard_stream(int, struct servtab *);
+void		discard_stream(int, struct servtab *) __dead2;
 void		echo_dg(int, struct servtab *);
-void		echo_stream(int, struct servtab *);
+void		echo_stream(int, struct servtab *) __dead2;
 static int	get_line(int, char *, int);
-void		iderror(int, int, int, const char *);
-void		ident_stream(int, struct servtab *);
+void		iderror(int, int, int, const char *) __dead2;
+void		ident_stream(int, struct servtab *) __dead2;
 void		initring(void);
 unsigned long	machtime(void);
 void		machtime_dg(int, struct servtab *);

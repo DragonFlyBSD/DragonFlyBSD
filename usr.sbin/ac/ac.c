@@ -94,7 +94,7 @@ static void		show_today(struct user_list *, struct utmp_list *,
 			    time_t);
 static void		show_users(struct user_list *);
 static struct user_list	*update_user(struct user_list *, char *, time_t);
-static void		usage(void);
+static void		usage(void) __dead2;
 
 /*
  * open wtmp or die

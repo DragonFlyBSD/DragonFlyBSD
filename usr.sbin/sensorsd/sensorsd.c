@@ -74,7 +74,7 @@ struct sdlim_t {
 	TAILQ_HEAD(, limits_t)	limits;
 };
 
-static void		 usage(void);
+static void		 usage(void) __dead2;
 static void		 create(void);
 static struct sdlim_t	*create_sdlim(struct sensordev *);
 static void		 destroy_sdlim(struct sdlim_t *);

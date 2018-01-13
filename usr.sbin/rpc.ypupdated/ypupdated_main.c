@@ -174,7 +174,7 @@ reaper(int sig)
 	}
 }
 
-void
+__dead2 void
 usage(void)
 {
 	fprintf(stderr, "rpc.ypupdatedd [-p path]\n");

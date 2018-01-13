@@ -45,7 +45,7 @@
 
 #define MAX_CLIENTS	256
 
-void usage(void);
+void usage(void) __dead2;
 
 
 struct pollfd poll_fds[MAX_CLIENTS];

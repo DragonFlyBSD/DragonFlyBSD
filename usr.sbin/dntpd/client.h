@@ -123,7 +123,7 @@ struct server_info {
 typedef struct server_info *server_info_t;
 
 void client_init(void);
-void client_main(struct server_info **info_ary, int count);
+void client_main(struct server_info **info_ary, int count) __dead2;
 void client_poll(server_info_t info, int poll_interval, 
 		  int calc_offset_correction);
 void client_check(struct server_info **check, 

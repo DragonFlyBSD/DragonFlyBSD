@@ -309,7 +309,7 @@ static char	*pr_type(int);
 static int	packet_ok(struct msghdr *, int, int);
 static void	print(struct msghdr *, int);
 static const char *inetname(struct sockaddr *);
-static void	usage(void);
+static void	usage(void) __dead2;
 
 static int rcvsock;		/* receive (icmp) socket file descriptor */
 static int sndsock;		/* send (udp) socket file descriptor */

@@ -91,7 +91,7 @@ void  sig_alrm(int);
 void  sig_usr1(int);
 void  sig_close(int);
 void  sig_hup(int);
-void  usage(void);
+void  usage(void) __dead2;
 
 static int try_reset_dump(int);
 

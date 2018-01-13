@@ -53,10 +53,10 @@
 
 #include "libpfkey.h"
 
-void Usage(void);
+void Usage(void) __dead2;
 int get_supported(void);
 void sendkeyshort(u_int);
-void promisc(void);
+void promisc(void) __dead2;
 int sendkeymsg(void);
 int postproc(struct sadb_msg *, int);
 const char *numstr(int);

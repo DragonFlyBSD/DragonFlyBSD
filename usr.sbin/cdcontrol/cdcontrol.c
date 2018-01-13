@@ -136,7 +136,7 @@ static int		 play_blocks(int blk, int len);
 static int		 run(int cmd, char *arg);
 static char		*parse(char *buf, int *cmd);
 static void		 help(void);
-static void		 usage(void);
+static void		 usage(void) __dead2;
 static char		*use_cdrom_instead(const char *);
 static const char	*strstatus(int);
 static u_int		 dbprog_discid(void);

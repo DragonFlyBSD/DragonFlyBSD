@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pwd_mkdb.c	8.5 (Berkeley) 4/20/94
  * $FreeBSD: src/usr.sbin/pwd_mkdb/pwd_mkdb.c,v 1.51 2005/06/15 10:13:04 dd Exp $
- * $DragonFly: src/usr.sbin/pwd_mkdb/pwd_mkdb.c,v 1.5 2005/12/05 02:40:27 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -76,7 +75,7 @@ static int is_comment;	/* flag for comments */
 static char line[LINE_MAX];
 
 void	cleanup(void);
-void	error(const char *);
+void	error(const char *) __dead2;
 void	cp(char *, char *, mode_t mode);
 void	mv(char *, char *);
 int	scan(FILE *, struct passwd *);

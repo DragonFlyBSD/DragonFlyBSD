@@ -63,7 +63,7 @@ static int write_file(struct track_info *);
 static int roundup_blocks(struct track_info *);
 static void cue_ent(struct cdr_cue_entry *, int, int, int, int, int, int, int);
 static void cleanup(int);
-static void usage(void);
+static void usage(void) __dead2;
 
 int
 main(int argc, char **argv)

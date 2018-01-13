@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypbind/ypbind.c,v 1.40 2004/10/17 19:33:33 stefanf Exp $
- * $DragonFly: src/usr.sbin/ypbind/ypbind.c,v 1.6 2005/11/24 22:23:02 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -101,7 +100,7 @@ int	ping(struct _dom_binding *);
 int	tell_parent(char *, struct sockaddr_in *);
 void	handle_children(struct _dom_binding *);
 void	reaper(int);
-void	terminate(int);
+void	terminate(int) __dead2;
 void	yp_restricted_mode(char *);
 int	verify(struct in_addr);
 

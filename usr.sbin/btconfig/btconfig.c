@@ -59,9 +59,9 @@ struct result {
 	int8_t		rssi;
 };
 
-static void badarg(const char *);
-static void badparam(const char *);
-static void usage(void);
+static void badarg(const char *) __dead2;
+static void badparam(const char *) __dead2;
+static void usage(void) __dead2;
 static int set_unit(unsigned long);
 static void config_unit(void);
 static void print_info(int);

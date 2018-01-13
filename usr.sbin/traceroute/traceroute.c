@@ -287,7 +287,7 @@ static const char *pr_type(u_int8_t);
 static void print(u_char *, int, struct sockaddr_in *);
 static char *inetname(struct in_addr);
 static u_short in_cksum(u_short *, int);
-static void usage(void);
+static void usage(void) __dead2;
 
 static int s;			/* receive (icmp) socket file descriptor */
 static int sndsock;		/* send (udp) socket file descriptor */

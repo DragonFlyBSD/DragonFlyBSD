@@ -34,7 +34,7 @@
 
 static volatile sig_atomic_t	quit = 0;
 
-static void	usage(void);
+static void	usage(void) __dead2;
 static void	sighdlr(int);
 
 static void

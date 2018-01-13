@@ -56,9 +56,9 @@
  */
 #define BUFFER_SIZE 16384
 
-static void init_log(const char *lname, size_t size);
-static void read_log(const char *lname, int optf);
-static void usage(void);
+static void init_log(const char *lname, size_t size) __dead2;
+static void read_log(const char *lname, int optf) __dead2;
+static void usage(void) __dead2;
 
 static const char *pname;
 

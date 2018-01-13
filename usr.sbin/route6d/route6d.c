@@ -221,7 +221,7 @@ static void ifdump(int);
 static void ifdump0(FILE *, const struct ifc *);
 static void rtdump(int);
 static void rt_entry(struct rt_msghdr *, int);
-static void rtdexit(void);
+static void rtdexit(void) __dead2;
 static void riprequest(struct ifc *, struct netinfo6 *, int,
 	struct sockaddr_in6 *);
 static void ripflush(struct ifc *, struct sockaddr_in6 *);
@@ -243,7 +243,7 @@ static struct ifac *ifa_match(const struct ifc *, const struct in6_addr *, int);
 static struct in6_addr *plen2mask(int);
 static struct riprt *rtsearch(struct netinfo6 *, struct riprt **);
 static int ripinterval(int);
-static void fatal(const char *, ...) __printflike(1, 2);
+static void fatal(const char *, ...) __dead2 __printflike(1, 2);
 static void trace(int, const char *, ...) __printflike(2, 3);
 static void tracet(int, const char *, ...) __printflike(2, 3);
 static struct ifc *ifc_find(char *);

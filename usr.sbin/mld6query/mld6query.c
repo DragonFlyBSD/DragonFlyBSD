@@ -64,9 +64,9 @@ static int s;
 #define QUERY_RESPONSE_INTERVAL 10000
 
 static void make_msg(int, struct in6_addr *, u_int);
-static void usage(void);
+static void usage(void) __dead2;
 static void dump(int);
-static void quit(int);
+static void quit(int) __dead2;
 
 int
 main(int argc, char *argv[])

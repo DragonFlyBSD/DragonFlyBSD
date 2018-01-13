@@ -31,7 +31,6 @@
  *
  * $NetBSD: lockd.c,v 1.7 2000/08/12 18:08:44 thorpej Exp $
  * $FreeBSD: src/usr.sbin/rpc.lockd/lockd.c,v 1.6 2001/03/19 12:50:09 alfred Exp $
- * $DragonFly: src/usr.sbin/rpc.lockd/lockd.c,v 1.5 2005/11/25 00:32:49 swildner Exp $
  */
 
 /*
@@ -84,9 +83,9 @@ void	nlm_prog_0(struct svc_req *, SVCXPRT *);
 void	nlm_prog_1(struct svc_req *, SVCXPRT *);
 void	nlm_prog_3(struct svc_req *, SVCXPRT *);
 void	nlm_prog_4(struct svc_req *, SVCXPRT *);
-void	out_of_mem(void);
+void	out_of_mem(void) __dead2;
 
-static void	usage(void);
+static void	usage(void) __dead2;
 
 void	sigalarm_handler(void);
 

@@ -127,7 +127,7 @@ static void in_status(int);
 static void in6_status(int);
 #endif
 static void ether_status(int);
-static void Perror(char *);
+static void Perror(char *) __dead2;
 static void in_getaddr(char *, int);
 #ifdef INET6
 static void in6_getaddr(char *, int);

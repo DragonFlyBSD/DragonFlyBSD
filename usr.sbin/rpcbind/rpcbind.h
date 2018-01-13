@@ -112,9 +112,9 @@ void *rpcbproc_taddr2uaddr_com(void *, struct svc_req *, SVCXPRT *,
 int create_rmtcall_fd(struct netconfig *);
 void rpcbproc_callit_com(struct svc_req *, SVCXPRT *, rpcvers_t,
 			      rpcvers_t);
-void my_svc_run(void);
+void my_svc_run(void) __dead2;
 
-void rpcbind_abort(void);
+void rpcbind_abort(void) __dead2;
 void reap(int);
 void toggle_verboselog(int);
 

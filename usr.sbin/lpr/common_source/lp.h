@@ -263,7 +263,7 @@ void	 delay(int _millisec);
 void	 displayq(struct printer *_pp, int _format);
 void	 dump(const char *_nfile, const char *_datafile, int _copies);
 void	 fatal(const struct printer *_pp, const char *_msg, ...)
-	    __printflike(2, 3);
+	    __dead2 __printflike(2, 3);
 int	 firstprinter(struct printer *_pp, int *_error);
 void	 free_printer(struct printer *_pp);
 void	 free_request(struct request *_rp);
@@ -288,7 +288,7 @@ const
 char	*pcaperr(int _error);
 void	 prank(int _n);
 void	 process(const struct printer *_pp, char *_file);
-void	 rmjob(const char *_printer);
+void	 rmjob(const char *_printer) __dead2;
 void	 rmremote(const struct printer *_pp);
 void	 setprintcap(char *_newfile);
 int	 set_qstate(int _action, const char *_lfname);

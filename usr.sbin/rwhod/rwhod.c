@@ -142,11 +142,11 @@ static int	 configure(int);
 static void	 getboottime(void);
 static void	 send_host_information(void);
 static void	 hup(int);
-static void	 quit(const char *, int);
+static void	 quit(const char *, int) __dead2;
 static void	 rt_xaddrs(caddr_t, caddr_t, struct rt_addrinfo *);
 static int	 verify(char *, int);
 static void	 handleread(int);
-static void	 usage(void);
+static void	 usage(void) __dead2;
 static void	 timeadd(struct timeval *, time_t, struct timeval *);
 
 #ifdef DEBUG

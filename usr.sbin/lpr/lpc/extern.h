@@ -30,7 +30,6 @@
  *      @(#)extern.h	8.1 (Berkeley) 6/6/93
  *
  * $FreeBSD: src/usr.sbin/lpr/lpc/extern.h,v 1.3.6.8 2002/07/26 03:12:07 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpc/extern.h,v 1.2 2003/06/17 04:29:56 dillon Exp $
  */
 
 
@@ -56,7 +55,7 @@ void	 generic(void (*_specificrtn)(struct printer *_pp), int _cmdopts,
 	    void (*_initcmd)(int _argc, char *_argv[]),
 	    int _argc, char *_argv[]);
 void	 help(int _argc, char *_argv[]);
-void	 quit(int _argc, char *_argv[]);
+void	 quit(int _argc, char *_argv[]) __dead2;
 void	 restart_q(struct printer *_pp);
 void	 setstatus_gi(int _argc, char *_argv[]);
 void	 setstatus_q(struct printer *_pp);

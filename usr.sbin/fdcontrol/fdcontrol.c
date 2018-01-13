@@ -47,7 +47,7 @@ getnumber(void)
   return i;
 }
 
-static void
+__dead2 static void
 usage(void)
 {
   fprintf(stderr, "usage: fdcontrol [-d 0|1] | [-s] device-node\n");

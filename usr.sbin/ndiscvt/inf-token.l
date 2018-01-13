@@ -43,7 +43,7 @@
 
 int lineno = 1;
 
-void yyerror(const char *);
+void yyerror(const char *) __dead2;
 
 static void
 update_lineno(const char *cp)

@@ -75,7 +75,7 @@ static void print_entry(struct sockaddr_dl *sdl,
 static void nuke_entry(struct sockaddr_dl *sdl,
 	struct sockaddr_inarp *addr, struct rt_msghdr *rtm);
 static int delete(char *host, char *info);
-static void usage(void);
+static void usage(void) __dead2;
 static int set(int argc, char **argv);
 static int get(char *host);
 static int file(char *name);

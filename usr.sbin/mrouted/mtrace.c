@@ -326,7 +326,7 @@ int			mtrace_callback(int, u_char *, int, struct igmp *,
 int			send_recv(u_int32 dst, int type, int code,
 					int tries, struct resp_buf *save,
 					callback_t callback);
-void			passive_mode(void);
+void			passive_mode(void) __dead2;
 char *			print_host(u_int32 addr);
 char *			print_host2(u_int32 addr1, u_int32 addr2);
 void			print_trace(int idx, struct resp_buf *buf,
