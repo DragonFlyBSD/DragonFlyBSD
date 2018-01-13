@@ -74,29 +74,29 @@ struct sdlim_t {
 	TAILQ_HEAD(, limits_t)	limits;
 };
 
-void		 usage(void);
-void		 create(void);
-struct sdlim_t	*create_sdlim(struct sensordev *);
-void		 destroy_sdlim(struct sdlim_t *);
-void		 check(time_t);
-void		 check_sdlim(struct sdlim_t *, time_t);
-void		 execute(char *);
-void		 report(time_t);
-void		 report_sdlim(struct sdlim_t *, time_t);
-static char	*print_sensor(enum sensor_type, int64_t);
-void		 parse_config(char *);
-void		 parse_config_sdlim(struct sdlim_t *, char *);
-int64_t		 get_val(char *, int, enum sensor_type);
-void		 reparse_cfg(int);
+static void		 usage(void);
+static void		 create(void);
+static struct sdlim_t	*create_sdlim(struct sensordev *);
+static void		 destroy_sdlim(struct sdlim_t *);
+static void		 check(time_t);
+static void		 check_sdlim(struct sdlim_t *, time_t);
+static void		 execute(char *);
+static void		 report(time_t);
+static void		 report_sdlim(struct sdlim_t *, time_t);
+static char		*print_sensor(enum sensor_type, int64_t);
+static void		 parse_config(char *);
+static void		 parse_config_sdlim(struct sdlim_t *, char *);
+static int64_t		 get_val(char *, int, enum sensor_type);
+static void		 reparse_cfg(int);
 
 TAILQ_HEAD(sdlimhead_t, sdlim_t);
-struct sdlimhead_t sdlims = TAILQ_HEAD_INITIALIZER(sdlims);
+static struct sdlimhead_t sdlims = TAILQ_HEAD_INITIALIZER(sdlims);
 
-char			 *configfile;
-volatile sig_atomic_t	  reload = 0;
-int			  debug = 0;
+static char			 *configfile;
+static volatile sig_atomic_t	  reload = 0;
+static int			  debug = 0;
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "usage: %s [-d] [-c check]\n", getprogname());
@@ -161,7 +161,7 @@ main(int argc, char *argv[])
 	}
 }
 
-void
+static void
 create(void)
 {
 	struct sensordev sensordev;
@@ -187,7 +187,7 @@ create(void)
 	syslog(LOG_INFO, "startup, system has %d sensors", sensor_cnt);
 }
 
-struct sdlim_t *
+static struct sdlim_t *
 create_sdlim(struct sensordev *snsrdev)
 {
 	struct sensor	 sensor;
@@ -230,7 +230,7 @@ create_sdlim(struct sensordev *snsrdev)
 	return (sdlim);
 }
 
-void
+static void
 destroy_sdlim(struct sdlim_t *sdlim)
 {
 	struct limits_t		*limit;
@@ -244,7 +244,7 @@ destroy_sdlim(struct sdlim_t *sdlim)
 	free(sdlim);
 }
 
-void
+static void
 check(time_t this_check)
 {
 	struct sensordev	 sensordev;
@@ -319,7 +319,7 @@ check(time_t this_check)
 			syslog(LOG_ALERT, "inconsistent sdlims queue");
 }
 
-void
+static void
 check_sdlim(struct sdlim_t *sdlim, time_t this_check)
 {
 	struct sensor		 sensor;
@@ -385,7 +385,7 @@ check_sdlim(struct sdlim_t *sdlim, time_t this_check)
 	}
 }
 
-void
+static void
 execute(char *command)
 {
 	const char *argp[] = {"sh", "-c", command, NULL};
@@ -403,7 +403,7 @@ execute(char *command)
 	}
 }
 
-void
+static void
 report(time_t last_report)
 {
 	struct sdlim_t	*sdlim;
@@ -412,7 +412,7 @@ report(time_t last_report)
 		report_sdlim(sdlim, last_report);
 }
 
-void
+static void
 report_sdlim(struct sdlim_t *sdlim, time_t last_report)
 {
 	struct limits_t	*limit;
@@ -597,7 +597,7 @@ report_sdlim(struct sdlim_t *sdlim, time_t last_report)
 	}
 }
 
-const char *drvstat[] = {
+static const char *drvstat[] = {
 	NULL, "empty", "ready", "powerup", "online", "idle", "active",
 	"rebuild", "powerdown", "fail", "pfail"
 };
@@ -665,7 +665,7 @@ print_sensor(enum sensor_type type, int64_t value)
 	return (fbuf);
 }
 
-void
+static void
 parse_config(char *cf)
 {
 	struct sdlim_t	 *sdlim;
@@ -674,7 +674,7 @@ parse_config(char *cf)
 		parse_config_sdlim(sdlim, cf);
 }
 
-void
+static void
 parse_config_sdlim(struct sdlim_t *sdlim, char *cf)
 {
 	struct limits_t	 *p;
@@ -711,7 +711,7 @@ parse_config_sdlim(struct sdlim_t *sdlim, char *cf)
 	}
 }
 
-int64_t
+static int64_t
 get_val(char *buf, int upper, enum sensor_type type)
 {
 	double	 val;
@@ -780,7 +780,7 @@ get_val(char *buf, int upper, enum sensor_type type)
 }
 
 /* ARGSUSED */
-void
+static void
 reparse_cfg(__unused int signo)
 {
 	reload = 1;
