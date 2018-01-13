@@ -107,14 +107,14 @@
 #define INADDR_WHOD_GROUP (u_long)0xe0000103      /* 224.0.1.3 */
 					  /* (belongs in protocols/rwhod.h) */
 
-int			insecure_mode;
-int			quiet_mode;
-int			iff_flag = IFF_POINTOPOINT;
-int			multicast_mode  = NO_MULTICAST;
-int			multicast_scope;
-struct sockaddr_in	multicast_addr;
+static int			insecure_mode;
+static int			quiet_mode;
+static int			iff_flag = IFF_POINTOPOINT;
+static int			multicast_mode  = NO_MULTICAST;
+static int			multicast_scope;
+static struct sockaddr_in	multicast_addr;
 
-char	myname[MAXHOSTNAMELEN];
+static char	myname[MAXHOSTNAMELEN];
 
 /*
  * We communicate with each neighbor in a list constructed at the time we're
@@ -129,29 +129,29 @@ struct	neighbor {
 	int	n_flags;		/* should forward?, interface flags */
 };
 
-struct	neighbor *neighbors;
-struct	whod mywd;
-struct	servent *sp;
-int	s, utmpf;
-volatile sig_atomic_t	onsighup;
+static struct	neighbor *neighbors;
+static struct	whod mywd;
+static struct	servent *sp;
+static int	s, utmpf;
+static volatile sig_atomic_t	onsighup;
 
 #define	WHDRSIZE	(sizeof(mywd) - sizeof(mywd.wd_we))
 
-void	 run_as(uid_t *, gid_t *);
-int	 configure(int);
-void	 getboottime(void);
-void	 send_host_information(void);
-void	 hup(int);
-void	 quit(const char *, int);
-void	 rt_xaddrs(caddr_t, caddr_t, struct rt_addrinfo *);
-int	 verify(char *, int);
-void	 handleread(int);
-static void usage(void);
-void	 timeadd(struct timeval *, time_t, struct timeval *);
+static void	 run_as(uid_t *, gid_t *);
+static int	 configure(int);
+static void	 getboottime(void);
+static void	 send_host_information(void);
+static void	 hup(int);
+static void	 quit(const char *, int);
+static void	 rt_xaddrs(caddr_t, caddr_t, struct rt_addrinfo *);
+static int	 verify(char *, int);
+static void	 handleread(int);
+static void	 usage(void);
+static void	 timeadd(struct timeval *, time_t, struct timeval *);
 
 #ifdef DEBUG
-char	*interval(int, const char *);
-ssize_t	Sendto(int, const void *, size_t, int,
+static char	*interval(int, const char *);
+static ssize_t	Sendto(int, const void *, size_t, int,
 		     const struct sockaddr *, int);
 #else
 #define Sendto sendto
@@ -305,13 +305,13 @@ main(int argc, char *argv[])
 	}
 }
 
-void
+static void
 timeadd(struct timeval *now, time_t delta, struct timeval *next)
 {
 	(next)->tv_sec = (now)->tv_sec + delta;
 }
 
-void
+static void
 handleread(int sock)
 {
 	struct sockaddr_in from;
@@ -393,13 +393,13 @@ usage(void)
 	exit(1);
 }
 
-void
+static void
 hup(int signo __unused)
 {
 	onsighup = 1;
 }
 
-void
+static void
 run_as(uid_t *uid, gid_t *gid)
 {
 	struct passwd *pw;
@@ -423,7 +423,7 @@ run_as(uid_t *uid, gid_t *gid)
  * and other funnies before allowing a file
  * to be created.  Sorry, but blanks aren't allowed.
  */
-int
+static int
 verify(char *name, int maxlen)
 {
 	int size = 0;
@@ -437,13 +437,13 @@ verify(char *name, int maxlen)
 	return (size > 0);
 }
 
-int	utmptime;
-int	utmpent;
-int	utmpsize;
-struct	utmp *utmp;
-int	alarmcount;
+static int	utmptime;
+static int	utmpent;
+static int	utmpsize;
+static struct	utmp *utmp;
+static int	alarmcount;
 
-void
+static void
 send_host_information(void)
 {
 	struct neighbor *np;
@@ -543,7 +543,7 @@ send_host_information(void)
 	}
 }
 
-void
+static void
 getboottime(void)
 {
 	int mib[2];
@@ -563,7 +563,7 @@ getboottime(void)
  * If wrterrno == WITH_ERRNO, we will print
  * errno. If not, we leave errno out.
  */
-void
+static void
 quit(const char *msg, int wrterrno)
 {
 	if (wrterrno)
@@ -573,7 +573,7 @@ quit(const char *msg, int wrterrno)
 	exit(1);
 }
 
-void
+static void
 rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
 {
 	struct sockaddr *sa;
@@ -592,7 +592,7 @@ rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
  * Figure out device configuration and select
  * networks which deserve status information.
  */
-int
+static int
 configure(int c_sock)
 {
 	struct neighbor *np;
@@ -723,7 +723,7 @@ configure(int c_sock)
 }
 
 #ifdef DEBUG
-ssize_t
+static ssize_t
 Sendto(int s_debug, const void *buf, size_t cc, int flags,
        const struct sockaddr *to, int tolen)
 {
@@ -765,7 +765,7 @@ Sendto(int s_debug, const void *buf, size_t cc, int flags,
 	return(ret);
 }
 
-char *
+static char *
 interval(int inter_time, const char *updown)
 {
 	static char resbuf[32];
