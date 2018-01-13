@@ -78,31 +78,26 @@
 #include <kvm.h>
 #include <fcntl.h>
 
-struct	ifreq		ifr;
-struct	ifaliasreq	addreq;
+static struct	ifreq		ifr;
+static struct	ifaliasreq	addreq;
 #ifdef INET6
-struct	in6_ifreq	in6_ifr;
-struct	in6_aliasreq	in6_addreq;
+static struct	in6_ifreq	in6_ifr;
+static struct	in6_aliasreq	in6_addreq;
 #endif
 
-char	name[32];
-int	flags;
-int	metric;
-int	mtu;
-int	setpsrc = 0;
-int	newaddr = 0;
-int	s;
-kvm_t	*kvmd;
+static char	name[32];
+static int	flags;
+static int	metric;
+static int	mtu;
+static int	setpsrc = 0;
+static int	newaddr = 0;
+static int	s;
 
-#ifdef INET6
-char ntop_buf[INET6_ADDRSTRLEN];	/*inet_ntop()*/
-#endif
-
-void setifpsrc(char *, int);
-void setifpdst(char *, int);
-void setifflags(char *, int);
+static void setifpsrc(char *, int);
+static void setifpdst(char *, int);
+static void setifflags(char *, int);
 #ifdef SIOCDIFPHYADDR
-void delifaddrs(char *, int);
+static void delifaddrs(char *, int);
 #endif
 
 #define	NEXTARG		0xffffff
@@ -125,26 +120,24 @@ static struct	cmd {
  * XNS support liberally adapted from code written at the University of
  * Maryland principally by James O'Toole and Chris Torek.
  */
-void status(void);
-void phys_status(int);
-void in_status(int);
+static void status(void);
+static void phys_status(int);
+static void in_status(int);
 #ifdef INET6
-void in6_status(int);
+static void in6_status(int);
 #endif
-void ether_status(int);
-void Perror(char *);
-void in_getaddr(char *, int);
+static void ether_status(int);
+static void Perror(char *);
+static void in_getaddr(char *, int);
 #ifdef INET6
-void in6_getaddr(char *, int);
-void in6_getprefix(char *, int);
+static void in6_getaddr(char *, int);
+static void in6_getprefix(char *, int);
 #endif
-void printb(char *, unsigned int, char *);
-int prefix(void *, int);
-
-char ntop_buf[INET6_ADDRSTRLEN];
+static void printb(char *, unsigned int, char *);
+static int prefix(void *, int);
 
 /* Known address families */
-struct afswtch {
+static struct afswtch {
 	char *af_name;
 	short af_af;
 	void (*af_status)(int);
@@ -165,12 +158,12 @@ struct afswtch {
 	{ 0,	0,	    0,		0,	0 }
 };
 
-struct afswtch *afp = NULL;	/*the address family being set or asked about*/
+static struct afswtch *afp = NULL;	/*the address family being set or asked about*/
 
-void	rt_xaddrs(caddr_t, caddr_t, struct rt_addrinfo *);
-int	ifconfig(int argc, char *argv[], int af, struct afswtch *rafp);
+static void	rt_xaddrs(caddr_t, caddr_t, struct rt_addrinfo *);
+static int	ifconfig(int argc, char *argv[], int af, struct afswtch *rafp);
 
-void
+static void
 rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
 {
 	struct sockaddr *sa;
@@ -190,11 +183,11 @@ rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
  * Grunge for new-style sysctl() decoding.. :-(
  * Apologies to the world for committing gross things like this in 1996..
  */
-struct if_msghdr *ifm;
-struct ifa_msghdr *ifam;
-struct sockaddr_dl *sdl;
-struct rt_addrinfo info;
-char *buf, *lim, *next;
+static struct if_msghdr *ifm;
+static struct ifa_msghdr *ifam;
+static struct sockaddr_dl *sdl;
+static struct rt_addrinfo info;
+static char *buf, *lim, *next;
 
 
 int
@@ -335,7 +328,7 @@ main(int argc, char **argv)
 }
 
 
-int
+static int
 ifconfig(int argc, char **argv, int af, struct afswtch *rafp)
 {
 
@@ -399,7 +392,7 @@ ifconfig(int argc, char **argv, int af, struct afswtch *rafp)
 #define PDST	1
 
 /*ARGSUSED*/
-void
+static void
 setifpsrc(char *addr, int param)
 {
 	param = 0;	/*fool gcc*/
@@ -408,7 +401,7 @@ setifpsrc(char *addr, int param)
 }
 
 /*ARGSUSED*/
-void
+static void
 setifpdst(char *addr, int param)
 {
 	param = 0;	/*fool gcc*/
@@ -416,7 +409,7 @@ setifpdst(char *addr, int param)
 	newaddr = 1;
 }
 
-void
+static void
 setifflags(char *vname, int value)
 {
  	if (ioctl(s, SIOCGIFFLAGS, (caddr_t)&ifr) < 0) {
@@ -439,7 +432,7 @@ setifflags(char *vname, int value)
 
 #ifdef SIOCDIFPHYADDR
 /* ARGSUSED */
-void
+static void
 delifaddrs(char *vname, int param)
 {
 	param = 0;		/* fool gcc */
@@ -458,7 +451,7 @@ delifaddrs(char *vname, int param)
  * Print the status of the interface.  If an address family was
  * specified, show it and it only; otherwise, show them all.
  */
-void
+static void
 status(void)
 {
 	struct afswtch *p = NULL;
@@ -527,7 +520,7 @@ status(void)
 	phys_status(0);
 }
 
-void
+static void
 phys_status(int force)
 {
 	char psrcaddr[256];
@@ -615,7 +608,7 @@ phys_status(int force)
 #endif
 }
 
-void
+static void
 in_status(int force)
 {
 	struct sockaddr_in *sin, null_sin;
@@ -657,7 +650,7 @@ in_status(int force)
 }
 
 #ifdef INET6
-void
+static void
 in6_status(int force)
 {
 	struct sockaddr_in6 *sin, null_sin;
@@ -721,7 +714,7 @@ in6_status(int force)
 #endif /*INET6*/
 
 /*ARGSUSED*/
-void
+static void
 ether_status(int dummy)
 {
 	char *cp;
@@ -741,7 +734,7 @@ ether_status(int dummy)
 	}
 }
 
-void
+static void
 Perror(char *cmd)
 {
 	switch (errno) {
@@ -760,10 +753,10 @@ Perror(char *cmd)
 }
 
 #define SIN(x) ((struct sockaddr_in *) &(x))
-struct sockaddr_in *sintab[] = {
+static struct sockaddr_in *sintab[] = {
 SIN(addreq.ifra_addr), SIN(addreq.ifra_dstaddr)};
 
-void
+static void
 in_getaddr(char *s, int which)
 {
 	struct sockaddr_in *sin = sintab[which];
@@ -785,10 +778,10 @@ in_getaddr(char *s, int which)
 
 #ifdef INET6
 #define SIN6(x) ((struct sockaddr_in6 *) &(x))
-struct sockaddr_in6 *sin6tab[] = {
+static struct sockaddr_in6 *sin6tab[] = {
 SIN6(in6_addreq.ifra_addr), SIN6(in6_addreq.ifra_dstaddr)};
 
-void
+static void
 in6_getaddr(char *s, int which)
 {
 	struct sockaddr_in6 *sin = sin6tab[which];
@@ -800,7 +793,7 @@ in6_getaddr(char *s, int which)
 		errx(1, "%s: bad value", s);
 }
 
-void
+static void
 in6_getprefix(char *plen, int which)
 {
 	struct sockaddr_in6 *sin = sin6tab[which];
@@ -824,7 +817,7 @@ in6_getprefix(char *plen, int which)
 /*
  * Print a value a la the %b format of the kernel's printf
  */
-void
+static void
 printb(char *s, unsigned int v, char *bits)
 {
 	int i, any = 0;
@@ -853,7 +846,7 @@ printb(char *s, unsigned int v, char *bits)
 }
 
 #ifdef INET6
-int
+static int
 prefix(void *val, int size)
 {
         u_char *name = (u_char *)val;
