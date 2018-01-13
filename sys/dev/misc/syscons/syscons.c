@@ -461,8 +461,8 @@ sc_font_scale(scr_stat *scp, int max_cols, int max_rows)
 	 */
 	if (desired_cols == 0) {
 		int nomag = 1;
-		while (scp->xpixel / (scp->font_width * nomag) >= 80 &&
-		       scp->ypixel / (scp->font_height * nomag) >= 25) {
+		while (scp->xpixel / (scp->font_width * nomag) >= COL &&
+		       scp->ypixel / (scp->font_height * nomag) >= ROW) {
 			++nomag;
 		}
 		if (nomag > 1)
@@ -3585,7 +3585,7 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
 
 	/* The first vty uses a statically allocated 80x25 buffer */
 	if (vty == sc->first_vty)
-		sc_font_scale(scp, 80, 25);
+		sc_font_scale(scp, COL, ROW);
 	else
 		sc_font_scale(scp, 0, 0);
 
