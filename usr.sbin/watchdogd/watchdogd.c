@@ -32,12 +32,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-volatile sig_atomic_t	quit = 0;
+static volatile sig_atomic_t	quit = 0;
 
-void	usage(void);
-void	sighdlr(int);
+static void	usage(void);
+static void	sighdlr(int);
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "usage: %s [-dnq] [-i interval] [-p period]\n",
@@ -46,7 +46,7 @@ usage(void)
 }
 
 /* ARGSUSED */
-void
+static void
 sighdlr(__unused int signum)
 {
 	quit = 1;
