@@ -3059,7 +3059,8 @@ exchange_scr(sc_softc_t *sc)
     if (sc->fbi == NULL && ISGRAPHSC(sc->old_scp))
 	load_palette(sc->adp, sc->palette);
 #endif
-    sc_set_border(scp, scp->border);
+    if (!ISGRAPHSC(scp) || sc->fbi == NULL)
+	sc_set_border(scp, scp->border);
 
     /* set up the keyboard for the new screen */
     if (sc->old_scp->kbd_mode != scp->kbd_mode)
