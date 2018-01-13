@@ -1020,7 +1020,7 @@ mps_setup_sysctl(struct mps_softc *sc)
 	    OID_AUTO, "max_chains", CTLFLAG_RD,
 	    &sc->max_chains, 0,"maximum chain frames that will be allocated");
 
-#if __FreeBSD_version >= 900030
+#if 0 /* __FreeBSD_version >= 900030 */
 	SYSCTL_ADD_UQUAD(sysctl_ctx, SYSCTL_CHILDREN(sysctl_tree),
 	    OID_AUTO, "chain_alloc_fail", CTLFLAG_RD,
 	    &sc->chain_alloc_fail, "chain allocation failures");

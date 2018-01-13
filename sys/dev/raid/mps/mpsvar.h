@@ -301,7 +301,7 @@ struct mps_softc {
 	int				chain_free;
 	int				max_chains;
 	int				chain_free_lowwater;
-#if __FreeBSD_version >= 900030
+#if 0 /* __FreeBSD_version >= 900030 */
 	uint64_t			chain_alloc_fail;
 #endif
 	struct sysctl_ctx_list		sysctl_ctx;
@@ -493,7 +493,7 @@ mps_alloc_chain(struct mps_softc *sc)
 		if (sc->chain_free < sc->chain_free_lowwater)
 			sc->chain_free_lowwater = sc->chain_free;
 	}
-#if __FreeBSD_version >= 900030
+#if 0 /* __FreeBSD_version >= 900030 */
 	else
 		sc->chain_alloc_fail++;
 #endif

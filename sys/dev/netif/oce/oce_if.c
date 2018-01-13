@@ -1004,7 +1004,7 @@ oce_tx_restart(POCE_SOFTC sc, struct oce_wq *wq)
 	if ((sc->ifp->if_flags & IFF_RUNNING) != IFF_RUNNING)
 		return;
 
-#if __FreeBSD_version >= 800000
+#if 0 /* __FreeBSD_version >= 800000 */
 	if (!drbr_empty(sc->ifp, wq->br))
 #else
 	if (!ifq_is_empty(&sc->ifp->if_snd))
@@ -1321,7 +1321,7 @@ oce_rx(struct oce_rq *rq, uint32_t rqe_idx, struct oce_nic_rx_cqe *cqe)
 		}
 
 		m->m_pkthdr.rcvif = sc->ifp;
-#if __FreeBSD_version >= 800000
+#if 0 /* __FreeBSD_version >= 800000 */
 		if (rq->queue_index)
 			m->m_pkthdr.flowid = (rq->queue_index - 1);
 		else

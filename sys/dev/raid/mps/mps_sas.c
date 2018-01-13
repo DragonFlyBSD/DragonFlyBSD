@@ -149,7 +149,7 @@ static void mpssas_direct_drive_io(struct mpssas_softc *sassc,
 static void mpssas_action_scsiio(struct mpssas_softc *, union ccb *);
 static void mpssas_scsiio_complete(struct mps_softc *, struct mps_command *);
 static void mpssas_action_resetdev(struct mpssas_softc *, union ccb *);
-#if __FreeBSD_version >= 900026
+#if 0 /* __FreeBSD_version >= 900026 */
 static void mpssas_smpio_complete(struct mps_softc *sc, struct mps_command *cm);
 static void mpssas_send_smpcmd(struct mpssas_softc *sassc, union ccb *ccb,
 			       uint64_t sasaddr);
@@ -161,7 +161,7 @@ static int  mpssas_send_reset(struct mps_softc *sc, struct mps_command *tm, uint
 static void mpssas_rescan(struct mpssas_softc *sassc, union ccb *ccb);
 static void mpssas_rescan_done(struct cam_periph *periph, union ccb *done_ccb);
 static void mpssas_scanner_thread(void *arg);
-#if __FreeBSD_version >= 1000006
+#if 0 /* __FreeBSD_version >= 1000006 */
 static void mpssas_async(void *callback_arg, uint32_t code,
 			 struct cam_path *path, void *arg);
 #else
@@ -685,7 +685,7 @@ int
 mps_attach_sas(struct mps_softc *sc)
 {
 	struct mpssas_softc *sassc;
-#if __FreeBSD_version >= 1000006
+#if 0 /* __FreeBSD_version >= 1000006 */
 	cam_status status;
 #endif
 	int unit, error = 0;
@@ -763,7 +763,7 @@ mps_attach_sas(struct mps_softc *sc)
 
 	sassc->tm_count = 0;
 
-#if __FreeBSD_version >= 1000006
+#if 0 /* __FreeBSD_version >= 1000006 */
 	status = xpt_register_async(AC_ADVINFO_CHANGED, mpssas_async, sc, NULL);
 	if (status != CAM_REQ_CMP) {
 		mps_printf(sc, "Error %#x registering async handler for "
@@ -805,7 +805,7 @@ mps_detach_sas(struct mps_softc *sc)
 	mps_lock(sc);
 
 	/* Deregister our async handler */
-#if __FreeBSD_version >= 1000006
+#if 0 /* __FreeBSD_version >= 1000006 */
 	xpt_register_async(0, mpssas_async, sc, NULL);
 #endif
 
@@ -923,7 +923,7 @@ mpssas_action(struct cam_sim *sim, union ccb *ccb)
 		cpi->transport_version = 0;
 		cpi->protocol = PROTO_SCSI;
 		cpi->protocol_version = SCSI_REV_SPC;
-#if __FreeBSD_version >= 800001
+#if 0 /* __FreeBSD_version >= 800001 */
 		/*
 		 * XXX KDM where does this number come from?
 		 */
@@ -992,7 +992,7 @@ mpssas_action(struct cam_sim *sim, union ccb *ccb)
 	case XPT_SCSI_IO:
 		mpssas_action_scsiio(sassc, ccb);
 		return;
-#if __FreeBSD_version >= 900026
+#if 0 /* __FreeBSD_version >= 900026 */
 	case XPT_SMP_IO:
 		mpssas_action_smpio(sassc, ccb);
 		return;
@@ -2392,7 +2392,7 @@ mpssas_direct_drive_io(struct mpssas_softc *sassc, struct mps_command *cm,
 	}
 }
 
-#if __FreeBSD_version >= 900026
+#if 0 /* __FreeBSD_version >= 900026 */
 static void
 mpssas_smpio_complete(struct mps_softc *sc, struct mps_command *cm)
 {
@@ -2870,7 +2870,7 @@ mpssas_rescan_done(struct cam_periph *periph, union ccb *done_ccb)
 	xpt_free_path(done_ccb->ccb_h.path);
 	xpt_free_ccb(done_ccb);
 
-#if __FreeBSD_version < 1000006
+#if 1 /* __FreeBSD_version < 1000006 */
 	/*
 	 * Before completing scan, get EEDP stuff for all of the existing
 	 * targets.
@@ -2946,7 +2946,7 @@ mpssas_rescan(struct mpssas_softc *sassc, union ccb *ccb)
 	wakeup(&sassc->ccb_scanq);
 }
 
-#if __FreeBSD_version >= 1000006
+#if 0 /* __FreeBSD_version >= 1000006 */
 static void
 mpssas_async(void *callback_arg, uint32_t code, struct cam_path *path,
 	     void *arg)
