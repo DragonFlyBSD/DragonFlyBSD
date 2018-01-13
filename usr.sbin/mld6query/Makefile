@@ -16,7 +16,6 @@
 
 PROG=	mld6query
 MAN=	mld6query.8
-WARNS?=	2
 
 CFLAGS+= -DINET6 -DIPSEC
 

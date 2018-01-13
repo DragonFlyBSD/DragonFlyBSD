@@ -29,8 +29,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/mld6query/mld6.c,v 1.1.1.1.2.2 2001/07/03 11:02:06 ume Exp $
- * $DragonFly: src/usr.sbin/mld6query/mld6.c,v 1.4 2004/12/18 22:48:04 swildner Exp $
  */
+
 #include <sys/param.h>
 #include <sys/uio.h>
 #include <sys/socket.h>
@@ -53,20 +53,20 @@
 #include <string.h>
 #include <err.h>
 
-struct msghdr m;
-struct sockaddr_in6 dst;
-struct mld6_hdr mldh;
-struct in6_addr maddr = IN6ADDR_ANY_INIT, any = IN6ADDR_ANY_INIT;
-struct ipv6_mreq mreq;
-u_short ifindex;
-int s;
+static struct msghdr m;
+static struct sockaddr_in6 dst;
+static struct mld6_hdr mldh;
+static struct in6_addr maddr = IN6ADDR_ANY_INIT, any = IN6ADDR_ANY_INIT;
+static struct ipv6_mreq mreq;
+static u_short ifindex;
+static int s;
 
 #define QUERY_RESPONSE_INTERVAL 10000
 
-void make_msg(int index, struct in6_addr *addr, u_int type);
-void usage(void);
-void dump(int);
-void quit(int);
+static void make_msg(int, struct in6_addr *, u_int);
+static void usage(void);
+static void dump(int);
+static void quit(int);
 
 int
 main(int argc, char *argv[])
@@ -152,8 +152,8 @@ main(int argc, char *argv[])
 	}
 }
 
-void
-make_msg(int index, struct in6_addr *addr, u_int type)
+static void
+make_msg(int idx, struct in6_addr *addr, u_int type)
 {
 	static struct iovec iov[2];
 	static u_char *cmsgbuf;
@@ -197,7 +197,7 @@ make_msg(int index, struct in6_addr *addr, u_int type)
 	cmsgp->cmsg_level = IPPROTO_IPV6;
 	cmsgp->cmsg_type = IPV6_PKTINFO;
 	pi = (struct in6_pktinfo *)CMSG_DATA(cmsgp);
-	pi->ipi6_ifindex = index;
+	pi->ipi6_ifindex = idx;
 	memset(&pi->ipi6_addr, 0, sizeof(pi->ipi6_addr));
 	/* specifiy to insert router alert option in a hop-by-hop opt hdr. */
 	cmsgp = CMSG_NXTHDR(&m, cmsgp);
@@ -210,22 +210,22 @@ make_msg(int index, struct in6_addr *addr, u_int type)
 		errx(1, "inet6_option_append failed\n");
 }
 
-void
-dump(int s)
+static void
+dump(int sockdesc)
 {
-	int i;
+	ssize_t i;
 	struct mld6_hdr *mld;
 	u_char buf[1024];
 	struct sockaddr_in6 from;
 	int from_len = sizeof(from);
 	char ntop_buf[256];
 
-	if ((i = recvfrom(s, buf, sizeof(buf), 0,
+	if ((i = recvfrom(sockdesc, buf, sizeof(buf), 0,
 			  (struct sockaddr *)&from,
 			  &from_len)) < 0)
 		return;
 
-	if (i < sizeof(struct mld6_hdr)) {
+	if ((size_t)i < sizeof(struct mld6_hdr)) {
 		printf("too short!\n");
 		return;
 	}
@@ -253,8 +253,8 @@ dump(int s)
 }
 
 /* ARGSUSED */
-void
-quit(int signum) {
+static void
+quit(__unused int signum) {
 	mreq.ipv6mr_multiaddr = any;
 	mreq.ipv6mr_interface = ifindex;
 	if (setsockopt(s, IPPROTO_IPV6, IPV6_LEAVE_GROUP, &mreq,
@@ -264,7 +264,7 @@ quit(int signum) {
 	exit(0);
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "usage: mld6query ifname [addr]\n");
