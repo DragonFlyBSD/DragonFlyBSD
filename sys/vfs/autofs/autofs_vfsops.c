@@ -170,6 +170,11 @@ autofs_unmount(struct mount *mp, int mntflags)
 	lockmgr(&amp->am_lock, LK_EXCLUSIVE);
 	while (!RB_EMPTY(&amp->am_root->an_children)) {
 		anp = RB_MIN(autofs_node_tree, &amp->am_root->an_children);
+		if (!RB_EMPTY(&anp->an_children)) {
+			AUTOFS_DEBUG("%s has children", anp->an_name);
+			lockmgr(&amp->am_lock, LK_RELEASE);
+			return EBUSY;
+		}
 		autofs_node_delete(anp);
 	}
 	autofs_node_delete(amp->am_root);
