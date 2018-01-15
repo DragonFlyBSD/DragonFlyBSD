@@ -1,6 +1,6 @@
 PROG=	open_non_existing
 SRCS=	open_non_existing.c common.c
-NO_MAN=
+NOMAN=
 LDADD=  -lpthread
 
 CFLAGS= -I ${.CURDIR}/../common

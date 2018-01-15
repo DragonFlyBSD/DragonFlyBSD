@@ -1,7 +1,7 @@
 #$FreeBSD: head/rescue/rescue/Makefile 252356 2013-06-28 21:00:08Z davide $
 #	@(#)Makefile	8.1 (Berkeley) 6/2/93
 
-NO_MAN=	YES
+NOMAN=
 
 .include <bsd.own.mk>
 

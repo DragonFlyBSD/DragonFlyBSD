@@ -2,7 +2,7 @@
 
 BINDIR=		/usr/share/initrd/sbin
 NOSHARED=	yes
-NO_MAN=		yes
+NOMAN=
 
 LVM2_DIR=	${.CURDIR}/../../../contrib/lvm2
 LVM2_DISTDIR=       ${LVM2_DIR}/dist

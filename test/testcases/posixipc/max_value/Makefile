@@ -1,6 +1,6 @@
 PROG=	max_value
 SRCS=	max_value.c common.c
-NO_MAN=
+NOMAN=
 LDADD=  -lpthread
 
 CFLAGS= -I ${.CURDIR}/../common

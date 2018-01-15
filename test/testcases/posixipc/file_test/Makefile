@@ -1,6 +1,6 @@
 PROG=	file_test
 SRCS=	file_test.c common.c
-NO_MAN=
+NOMAN=
 LDADD=  -lpthread
 
 CFLAGS= -I ${.CURDIR}/../common

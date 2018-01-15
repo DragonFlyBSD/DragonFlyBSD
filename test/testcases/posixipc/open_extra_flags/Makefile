@@ -1,6 +1,6 @@
 PROG=	open_extra_flags
 SRCS=	open_extra_flags.c common.c
-NO_MAN=
+NOMAN=
 LDADD=  -lpthread
 
 CFLAGS= -I ${.CURDIR}/../common

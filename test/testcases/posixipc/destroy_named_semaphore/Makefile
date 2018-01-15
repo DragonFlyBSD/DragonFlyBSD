@@ -1,6 +1,6 @@
 PROG=	destroy_named_semaphore
 SRCS=	destroy_named_semaphore.c common.c
-NO_MAN=
+NOMAN=
 LDADD=  -lpthread
 
 CFLAGS= -I ${.CURDIR}/../common

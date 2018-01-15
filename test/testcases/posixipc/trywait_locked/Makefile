@@ -1,6 +1,6 @@
 PROG=	trywait_locked
 SRCS=	trywait_locked.c common.c
-NO_MAN=
+NOMAN=
 LDADD=  -lpthread
 
 CFLAGS= -I ${.CURDIR}/../common

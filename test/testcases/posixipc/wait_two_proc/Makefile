@@ -1,6 +1,6 @@
 PROG=	wait_two_proc
 SRCS=	wait_two_proc.c common.c
-NO_MAN=
+NOMAN=
 LDADD=  -lpthread
 
 CFLAGS= -I ${.CURDIR}/../common

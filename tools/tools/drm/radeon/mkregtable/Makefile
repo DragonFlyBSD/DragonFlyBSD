@@ -4,7 +4,7 @@ all: regtables
 
 PROG=	mkregtable
 
-NO_MAN=
+NOMAN=
 
 MKREGTABLE=	${PROG}
 KERNSRCDIR=	${.CURDIR}/../../../../../sys

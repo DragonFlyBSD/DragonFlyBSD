@@ -1,6 +1,6 @@
 PROG=	wait_unlocked
 SRCS=	wait_unlocked.c common.c
-NO_MAN=
+NOMAN=
 LDADD=  -lpthread
 
 CFLAGS= -I ${.CURDIR}/../common

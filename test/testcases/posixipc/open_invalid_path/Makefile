@@ -1,6 +1,6 @@
 PROG=	open_invalid_path
 SRCS=	open_invalid_path.c common.c
-NO_MAN=
+NOMAN=
 LDADD=  -lpthread
 
 CFLAGS= -I ${.CURDIR}/../common

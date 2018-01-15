@@ -1,6 +1,6 @@
 PROG=	open_named_semaphore
 SRCS=	open_named_semaphore.c common.c
-NO_MAN=
+NOMAN=
 LDADD=  -lpthread
 
 CFLAGS= -I ${.CURDIR}/../common

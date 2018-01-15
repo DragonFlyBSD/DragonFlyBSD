@@ -1,6 +1,6 @@
 PROG=	close_unnamed_semaphore
 SRCS=	close_unnamed_semaphore.c common.c
-NO_MAN=
+NOMAN=
 LDADD=  -lpthread
 
 CFLAGS= -I ${.CURDIR}/../common

@@ -1,6 +1,6 @@
 PROG=	timedwait_locked
 SRCS=	timedwait_locked.c common.c
-NO_MAN=
+NOMAN=
 LDADD=  -lpthread
 
 CFLAGS= -I ${.CURDIR}/../common

@@ -1,6 +1,6 @@
 PROG=	open_bad_value
 SRCS=	open_bad_value.c common.c
-NO_MAN=
+NOMAN=
 LDADD=  -lpthread
 
 CFLAGS= -I ${.CURDIR}/../common

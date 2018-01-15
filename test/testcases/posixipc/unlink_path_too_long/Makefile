@@ -1,6 +1,6 @@
 PROG=	unlink_path_too_long
 SRCS=	unlink_path_too_long.c common.c
-NO_MAN=
+NOMAN=
 LDADD=  -lpthread
 
 CFLAGS= -I ${.CURDIR}/../common

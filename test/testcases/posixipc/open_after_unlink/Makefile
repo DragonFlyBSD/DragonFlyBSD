@@ -1,6 +1,6 @@
 PROG=	open_after_unlink
 SRCS=	open_after_unlink.c common.c
-NO_MAN=
+NOMAN=
 LDADD=  -lpthread
 
 CFLAGS= -I ${.CURDIR}/../common
