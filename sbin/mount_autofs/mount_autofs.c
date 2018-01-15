@@ -38,7 +38,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-#include <fs/autofs/autofs_mount.h>
+#include <vfs/autofs/autofs_mount.h>
 
 #include "mount_autofs.h"
 
