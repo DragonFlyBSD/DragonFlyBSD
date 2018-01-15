@@ -2,7 +2,6 @@
 # $FreeBSD: src/games/snake/snake/Makefile,v 1.5.2.3 2002/08/07 16:31:42 ru Exp $
 
 PROG=	snake
-SRCS=	snake.c
 MAN=	snake.6
 MLINKS=	snake.6 snscore.6
 DPADD=	${LIBM}

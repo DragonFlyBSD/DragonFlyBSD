@@ -5,7 +5,6 @@ MAN=	authpf.8
 BINOWN=	root
 BINGRP=	authpf
 BINMODE=	6555
-SRCS=	authpf.c
 
 .PATH:	${.CURDIR}/../pfctl
 CFLAGS+=	-I${.CURDIR}/../pfctl

@@ -1,5 +1,4 @@
 PROG=	ident
-SRCS=	ident.c
 CFLAGS+= -I${.CURDIR}/../lib
 LDADD=  ${LIBRCS}
 DPADD=  ${LIBRCS}

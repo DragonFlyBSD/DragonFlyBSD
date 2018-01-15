@@ -4,7 +4,6 @@
 .PATH: ${SRCDIR}/binutils ${SRCDIR}/binutils/doc
 
 PROG=	size
-SRCS=	size.c
 MFILE=	size${MANPAGEVER}.1
 MAN=	${MFILE}
 LDADD=	${STD_LDADD} -lz

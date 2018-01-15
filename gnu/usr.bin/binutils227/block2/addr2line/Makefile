@@ -4,7 +4,6 @@
 .PATH: ${SRCDIR}/binutils ${SRCDIR}/binutils/doc
 
 PROG=	addr2line
-SRCS=	addr2line.c
 MFILE=	addr2line${MANPAGEVER}.1
 MAN=	${MFILE}
 LDADD=	${STD_LDADD} -lz

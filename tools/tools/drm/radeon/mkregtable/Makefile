@@ -4,8 +4,6 @@ all: regtables
 
 PROG=	mkregtable
 
-SRCS=	mkregtable.c
-
 NO_MAN=
 
 MKREGTABLE=	${PROG}

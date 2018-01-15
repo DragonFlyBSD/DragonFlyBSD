@@ -5,8 +5,6 @@ PROG=	gcov
 MFILE=	gcov${MANPAGEVER}.1
 MAN=	${MFILE}
 
-SRCS=	gcov.c
-
 ${MFILE}: ${GCCDIR}/gcc/doc/gcov.1
 	cp ${.ALLSRC} ${.TARGET}
 

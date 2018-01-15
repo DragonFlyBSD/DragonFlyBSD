@@ -1,5 +1,4 @@
 PROG=	rcsmerge
-SRCS=	rcsmerge.c
 CFLAGS+= -I${.CURDIR}/../lib
 LDADD=	${LIBRCS}
 DPADD=	${LIBRCS}

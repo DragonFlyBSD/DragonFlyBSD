@@ -1,7 +1,6 @@
 # $OpenBSD: mickey $
 
 PROG=		watchdogd
-SRCS=		watchdogd.c
 
 LINTFLAGS+=	-u -z
 NOSHARED?=	yes
