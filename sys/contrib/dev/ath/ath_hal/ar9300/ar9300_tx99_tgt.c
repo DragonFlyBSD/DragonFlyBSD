@@ -31,6 +31,7 @@
 
 #include "ah.h"
 #include "ah_internal.h"
+#include "ar9300.h"
 #include "ar9300phy.h"
 #include "ar9300reg.h"
 #include "ar9300eep.h"
