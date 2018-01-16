@@ -198,6 +198,7 @@ static driver_t acpi_cst_driver = {
     "cpu_cst",
     acpi_cst_methods,
     sizeof(struct acpi_cst_softc),
+    .gpri = KOBJ_GPRI_ACPI
 };
 
 static devclass_t acpi_cst_devclass;

@@ -85,6 +85,7 @@ static driver_t acpi_acad_driver = {
     "acpi_acad",
     acpi_acad_methods,
     sizeof(struct acpi_acad_softc),
+    .gpri = KOBJ_GPRI_ACPI
 };
 
 static devclass_t acpi_acad_devclass;

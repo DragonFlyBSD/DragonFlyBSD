@@ -94,7 +94,8 @@ static device_method_t acpi_cpu_methods[] = {
 static driver_t acpi_cpu_driver = {
     "cpu",
     acpi_cpu_methods,
-    sizeof(struct acpi_cpu_softc)
+    sizeof(struct acpi_cpu_softc),
+    .gpri = KOBJ_GPRI_ACPI
 };
 
 static devclass_t acpi_cpu_devclass;

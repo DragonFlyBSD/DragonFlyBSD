@@ -94,6 +94,7 @@ static driver_t	acpi_smbat_driver = {
 	"battery",
 	acpi_smbat_methods,
 	sizeof(struct acpi_smbat_softc),
+	.gpri = KOBJ_GPRI_ACPI
 };
 
 static devclass_t acpi_smbat_devclass;

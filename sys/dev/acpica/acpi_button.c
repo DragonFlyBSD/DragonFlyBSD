@@ -86,6 +86,7 @@ static driver_t acpi_button_driver = {
     "acpi_button",
     acpi_button_methods,
     sizeof(struct acpi_button_softc),
+    .gpri = KOBJ_GPRI_ACPI
 };
 
 static devclass_t acpi_button_devclass;

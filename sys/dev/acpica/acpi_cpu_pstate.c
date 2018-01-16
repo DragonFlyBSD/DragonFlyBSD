@@ -224,7 +224,8 @@ static device_method_t acpi_pst_methods[] = {
 static driver_t acpi_pst_driver = {
 	"cpu_pst",
 	acpi_pst_methods,
-	sizeof(struct acpi_pst_softc)
+	sizeof(struct acpi_pst_softc),
+	.gpri = KOBJ_GPRI_ACPI
 };
 
 static devclass_t acpi_pst_devclass;

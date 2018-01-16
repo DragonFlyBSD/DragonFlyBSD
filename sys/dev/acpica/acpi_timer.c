@@ -93,6 +93,7 @@ static driver_t acpi_timer_driver = {
     "acpi_timer",
     acpi_timer_methods,
     0,
+    .gpri = KOBJ_GPRI_ACPI
 };
 
 static devclass_t acpi_timer_devclass;

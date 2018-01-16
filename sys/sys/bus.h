@@ -245,6 +245,7 @@ struct resource_list *
 int     bus_generic_config_intr(device_t, device_t, int, enum intr_trigger,
 					enum intr_polarity);
 int	bus_generic_attach(device_t dev);
+int	bus_generic_attach_gpri(device_t dev, u_int gpri);
 int	bus_generic_child_present(device_t dev, device_t child);
 int	bus_generic_deactivate_resource(device_t dev, device_t child, int type,
 					int rid, struct resource *r);
@@ -383,7 +384,9 @@ int	device_is_quiet(device_t dev);
 int	device_print_prettyname(device_t dev);
 int	device_printf(device_t dev, const char *, ...) __printflike(2, 3);
 int	device_probe_and_attach(device_t dev);
+int	device_probe_and_attach_gpri(device_t dev, u_int gpri);
 int	device_probe_child(device_t dev, device_t child);
+int	device_probe_child_gpri(device_t dev, device_t child, u_int gpri);
 void	device_quiet(device_t dev);
 void	device_set_desc(device_t dev, const char* desc);
 void	device_set_desc_copy(device_t dev, const char* desc);

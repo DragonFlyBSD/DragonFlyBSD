@@ -1113,6 +1113,7 @@ static driver_t acpi_pci_link_driver = {
 	"pci_link",
 	acpi_pci_link_methods,
 	sizeof(struct acpi_pci_link_softc),
+	.gpri = KOBJ_GPRI_ACPI
 };
 
 static devclass_t pci_link_devclass;

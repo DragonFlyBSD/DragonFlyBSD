@@ -77,6 +77,7 @@ static driver_t acpi_lid_driver = {
     "acpi_lid",
     acpi_lid_methods,
     sizeof(struct acpi_lid_softc),
+    .gpri = KOBJ_GPRI_ACPI
 };
 
 static devclass_t acpi_lid_devclass;

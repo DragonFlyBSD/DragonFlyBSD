@@ -291,6 +291,7 @@ static driver_t acpi_ec_driver = {
     "acpi_ec",
     acpi_ec_methods,
     sizeof(struct acpi_ec_softc),
+    .gpri = KOBJ_GPRI_ACPI
 };
 
 static devclass_t acpi_ec_devclass;

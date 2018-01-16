@@ -661,6 +661,7 @@ static driver_t acpi_sysres_driver = {
     "acpi_sysresource",
     acpi_sysres_methods,
     0,
+    .gpri = KOBJ_GPRI_ACPI
 };
 
 static devclass_t acpi_sysres_devclass;

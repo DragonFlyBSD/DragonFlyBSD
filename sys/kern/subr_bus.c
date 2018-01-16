@@ -1233,9 +1233,10 @@ device_add_child_ordered(device_t dev, int order, const char *name, int unit)
 		return child;
 	child->order = order;
 
-	TAILQ_FOREACH(place, &dev->children, link)
+	TAILQ_FOREACH(place, &dev->children, link) {
 		if (place->order > order)
 			break;
+	}
 
 	if (place) {
 		/*
@@ -1392,8 +1393,103 @@ device_probe_child(device_t dev, device_t child)
 		return(0);
 
 	for (; dc; dc = dc->parent) {
-    		for (dl = first_matching_driver(dc, child); dl;
+		for (dl = first_matching_driver(dc, child); dl;
 		     dl = next_matching_driver(dc, child, dl)) {
+			PDEBUG(("Trying %s", DRIVERNAME(dl->driver)));
+			device_set_driver(child, dl->driver);
+			if (!hasclass)
+				device_set_devclass(child, dl->driver->name);
+			result = DEVICE_PROBE(child);
+			if (!hasclass)
+				device_set_devclass(child, 0);
+
+			/*
+			 * If the driver returns SUCCESS, there can be
+			 * no higher match for this device.
+			 */
+			if (result == 0) {
+				best = dl;
+				pri = 0;
+				break;
+			}
+
+			/*
+			 * The driver returned an error so it
+			 * certainly doesn't match.
+			 */
+			if (result > 0) {
+				device_set_driver(child, NULL);
+				continue;
+			}
+
+			/*
+			 * A priority lower than SUCCESS, remember the
+			 * best matching driver. Initialise the value
+			 * of pri for the first match.
+			 */
+			if (best == NULL || result > pri) {
+				best = dl;
+				pri = result;
+				continue;
+			}
+		}
+		/*
+	         * If we have unambiguous match in this devclass,
+	         * don't look in the parent.
+	         */
+	        if (best && pri == 0)
+			break;
+	}
+
+	/*
+	 * If we found a driver, change state and initialise the devclass.
+	 */
+	if (best) {
+		if (!child->devclass)
+			device_set_devclass(child, best->driver->name);
+		device_set_driver(child, best->driver);
+		if (pri < 0) {
+			/*
+			 * A bit bogus. Call the probe method again to make
+			 * sure that we have the right description.
+			 */
+			DEVICE_PROBE(child);
+		}
+
+		bus_data_generation_update();
+		child->state = DS_ALIVE;
+		return(0);
+	}
+
+	return(ENXIO);
+}
+
+int
+device_probe_child_gpri(device_t dev, device_t child, u_int gpri)
+{
+	devclass_t dc;
+	driverlink_t best = NULL;
+	driverlink_t dl;
+	int result, pri = 0;
+	int hasclass = (child->devclass != NULL);
+
+	dc = dev->devclass;
+	if (!dc)
+		panic("device_probe_child: parent device has no devclass");
+
+	if (child->state == DS_ALIVE)
+		return(0);
+
+	for (; dc; dc = dc->parent) {
+		for (dl = first_matching_driver(dc, child); dl;
+			dl = next_matching_driver(dc, child, dl)) {
+			/*
+			 * GPRI handling, only probe drivers with the
+			 * specific GPRI.
+			 */
+			if (dl->driver->gpri != gpri)
+				continue;
+
 			PDEBUG(("Trying %s", DRIVERNAME(dl->driver)));
 			device_set_driver(child, dl->driver);
 			if (!hasclass)
@@ -1437,7 +1533,7 @@ device_probe_child(device_t dev, device_t child)
 	         * don't look in the parent.
 	         */
 	        if (best && pri == 0)
-	    	        break;
+			break;
 	}
 
 	/*
@@ -1826,6 +1922,62 @@ device_probe_and_attach(device_t dev)
 
 	/*
 	 * Output the exact device chain prior to the attach in case the  
+	 * system locks up during attach, and generate the full info after
+	 * the attach so correct irq and other information is displayed.
+	 */
+	if (bootverbose && !device_is_quiet(dev)) {
+		device_t tmp;
+
+		kprintf("%s", device_get_nameunit(dev));
+		for (tmp = dev->parent; tmp; tmp = tmp->parent)
+			kprintf(".%s", device_get_nameunit(tmp));
+		kprintf("\n");
+	}
+	if (!device_is_quiet(dev))
+		device_print_child(bus, dev);
+	if ((dev->flags & DF_ASYNCPROBE) && do_async_attach) {
+		kprintf("%s: probing asynchronously\n",
+			device_get_nameunit(dev));
+		dev->state = DS_INPROGRESS;
+		device_attach_async(dev);
+		error = 0;
+	} else {
+		error = device_doattach(dev);
+	}
+	return(error);
+}
+
+int
+device_probe_and_attach_gpri(device_t dev, u_int gpri)
+{
+	device_t bus = dev->parent;
+	int error = 0;
+
+	if (dev->state >= DS_ALIVE)
+		return(0);
+
+	if ((dev->flags & DF_ENABLED) == 0) {
+		if (bootverbose) {
+			device_print_prettyname(dev);
+			kprintf("not probed (disabled)\n");
+		}
+		return(0);
+	}
+
+	error = device_probe_child_gpri(bus, dev, gpri);
+	if (error) {
+#if 0
+		if (!(dev->flags & DF_DONENOMATCH)) {
+			BUS_PROBE_NOMATCH(bus, dev);
+			devnomatch(dev);
+			dev->flags |= DF_DONENOMATCH;
+		}
+#endif
+		return(error);
+	}
+
+	/*
+	 * Output the exact device chain prior to the attach in case the
 	 * system locks up during attach, and generate the full info after
 	 * the attach so correct irq and other information is displayed.
 	 */
@@ -2627,6 +2779,18 @@ bus_generic_attach(device_t dev)
 
 	TAILQ_FOREACH(child, &dev->children, link) {
 		device_probe_and_attach(child);
+	}
+
+	return(0);
+}
+
+int
+bus_generic_attach_gpri(device_t dev, u_int gpri)
+{
+	device_t child;
+
+	TAILQ_FOREACH(child, &dev->children, link) {
+		device_probe_and_attach_gpri(child, gpri);
 	}
 
 	return(0);

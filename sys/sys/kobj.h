@@ -65,7 +65,8 @@ struct kobj_method {
 	size_t		size;		/* object size */		\
 	kobj_class_t	*baseclasses;	/* base classes */		\
 	u_int		refs;		/* reference count */		\
-	kobj_ops_t	ops		/* compiled method table */
+	kobj_ops_t	ops;		/* compiled method table */	\
+	u_int		gpri		/* global probe/attach pri */
 
 struct kobj_class {
 	KOBJ_CLASS_FIELDS;
@@ -80,6 +81,14 @@ struct kobj_class {
 struct kobj {
 	KOBJ_FIELDS;
 };
+
+/*
+ * gpri values (higher values probe/attach first, allows us to
+ * default the field to 0).
+ */
+#define KOBJ_GPRI_ACPI		0x00FFU
+#define KOBJ_GPRI_LAST		0x0000U
+#define KOBJ_GPRI_DEFAULT	KOBJ_GPRI_LAST
 
 /*
  * The ops table is used as a cache of results from kobj_lookup_method().

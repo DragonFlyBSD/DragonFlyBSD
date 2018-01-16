@@ -167,6 +167,7 @@ static driver_t acpi_tz_driver = {
     "acpi_tz",
     acpi_tz_methods,
     sizeof(struct acpi_tz_softc),
+    .gpri = KOBJ_GPRI_ACPI
 };
 
 static char *acpi_tz_tmp_name = "_TMP";
