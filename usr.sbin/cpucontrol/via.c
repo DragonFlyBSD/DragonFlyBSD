@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+ *
  * Copyright (c) 2011 Fabien Thomas <fabient@FreeBSD.org>.
  * All rights reserved.
  *
@@ -24,7 +26,7 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: release/10.0.0/usr.sbin/cpucontrol/via.c 245491 2013-01-16 05:00:51Z eadler $");
+__FBSDID("$FreeBSD$");
 
 #include <assert.h>
 #include <stdio.h>
@@ -39,6 +41,7 @@ __FBSDID("$FreeBSD: release/10.0.0/usr.sbin/cpucontrol/via.c 245491 2013-01-16 0
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
+#include <sys/ioccom.h>
 #include <sys/cpuctl.h>
 
 #include <machine/cpufunc.h>
@@ -137,7 +140,7 @@ via_update(const char *dev, const char *path)
 	fd = open(path, O_RDONLY, 0);
 	if (fd < 0) {
 		WARN(0, "open(%s)", path);
-		return;
+		goto fail;
 	}
 	error = fstat(fd, &st);
 	if (error != 0) {

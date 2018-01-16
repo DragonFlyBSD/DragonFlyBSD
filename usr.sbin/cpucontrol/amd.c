@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+ *
  * Copyright (c) 2006, 2008 Stanislav Sedov <stas@FreeBSD.org>.
  * All rights reserved.
  *
@@ -24,7 +26,7 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: release/10.0.0/usr.sbin/cpucontrol/amd.c 236504 2012-06-03 08:30:00Z avg $");
+__FBSDID("$FreeBSD$");
 
 #include <assert.h>
 #include <stdio.h>
@@ -38,6 +40,7 @@ __FBSDID("$FreeBSD: release/10.0.0/usr.sbin/cpucontrol/amd.c 236504 2012-06-03 0
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
+#include <sys/ioccom.h>
 #include <sys/cpuctl.h>
 
 #include <machine/cpufunc.h>
