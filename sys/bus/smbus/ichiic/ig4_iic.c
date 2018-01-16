@@ -558,6 +558,7 @@ ig4iic_attach(ig4iic_softc_t *sc)
 	reg_write(sc, IG4_REG_SS_SCL_LCNT, 125);
 	reg_write(sc, IG4_REG_FS_SCL_HCNT, 100);
 	reg_write(sc, IG4_REG_FS_SCL_LCNT, 125);
+	reg_write(sc, IG4_REG_SDA_HOLD, 1);
 
 	/*
 	 * Use a threshold of 1 so we get interrupted on each character,
@@ -609,10 +610,16 @@ ig4iic_attach(ig4iic_softc_t *sc)
 	/*
 	 * Interrupt on STOP detect or receive character ready
 	 */
-	if (set_controller(sc, 0))
+	if (set_controller(sc, 0)) {
 		device_printf(sc->dev, "controller error during attach-1\n");
-	if (set_controller(sc, IG4_I2C_ENABLE))
+		error = ENXIO;
+		goto done;
+	}
+	if (set_controller(sc, IG4_I2C_ENABLE)) {
 		device_printf(sc->dev, "controller error during attach-2\n");
+		error = ENXIO;
+		goto done;
+	}
 	error = bus_setup_intr(sc->dev, sc->intr_res, INTR_MPSAFE,
 			       ig4iic_intr, sc, &sc->intr_handle, NULL);
 	if (error) {
