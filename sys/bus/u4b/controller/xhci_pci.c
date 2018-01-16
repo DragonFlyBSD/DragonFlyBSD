@@ -141,6 +141,7 @@ static void
 xhci_interrupt_poll(void *_sc)
 {
 	struct xhci_softc *sc = _sc;
+
 	USB_BUS_UNLOCK(&sc->sc_bus);
 	xhci_interrupt(sc);
 	USB_BUS_LOCK(&sc->sc_bus);
@@ -186,7 +187,7 @@ xhci_pci_attach(device_t self)
 
 	rid = PCI_XHCI_CBMEM;
 	sc->sc_io_res = bus_alloc_resource_any(self, SYS_RES_MEMORY, &rid,
-	    RF_ACTIVE);
+					       RF_ACTIVE);
 	if (!sc->sc_io_res) {
 		device_printf(self, "Could not map memory\n");
 		return (ENOMEM);
@@ -217,6 +218,7 @@ xhci_pci_attach(device_t self)
 	pci_enable_busmaster(self);
 
 	usb_callout_init_mtx(&sc->sc_callout, &sc->sc_bus.bus_lock, 0);
+	USB_BUS_LOCK(&sc->sc_bus);
 
 	rid = 0;
 #if defined(__DragonFly__)
@@ -242,7 +244,7 @@ xhci_pci_attach(device_t self)
 	if (xhci_use_polling() == 0) {
 #if defined(__DragonFly__)
 		sc->sc_irq_res = bus_alloc_resource_any(self, SYS_RES_IRQ,
-		    &rid, irq_flags);
+							&rid, irq_flags);
 #else
 		sc->sc_irq_res = bus_alloc_resource_any(
 					self, SYS_RES_IRQ,
@@ -266,24 +268,19 @@ xhci_pci_attach(device_t self)
 
 	if (sc->sc_irq_res != NULL) {
 		err = bus_setup_intr(self, sc->sc_irq_res, INTR_MPSAFE,
-		    (driver_intr_t *)xhci_interrupt, sc, &sc->sc_intr_hdl, NULL);
+				     (driver_intr_t *)xhci_interrupt, sc,
+				     &sc->sc_intr_hdl, NULL);
 		if (err != 0) {
 			bus_release_resource(self, SYS_RES_IRQ,
-			    rman_get_rid(sc->sc_irq_res), sc->sc_irq_res);
+					     rman_get_rid(sc->sc_irq_res),
+					     sc->sc_irq_res);
 			sc->sc_irq_res = NULL;
 			pci_release_msi(self);
-			device_printf(self, "Could not setup IRQ, err=%d\n", err);
+			device_printf(self,
+				      "Could not setup IRQ, err=%d\n",
+				      err);
 			sc->sc_intr_hdl = NULL;
 		}
-	}
-	if (sc->sc_irq_res == NULL || sc->sc_intr_hdl == NULL) {
-		if (xhci_use_polling() != 0) {
-			device_printf(self, "Interrupt polling at %dHz\n", hz);
-			USB_BUS_LOCK(&sc->sc_bus);
-			xhci_interrupt_poll(sc);
-			USB_BUS_UNLOCK(&sc->sc_bus);
-		} else
-			goto error;
 	}
 
 	/* On Intel chipsets reroute ports from EHCI to XHCI controller. */
@@ -308,16 +305,30 @@ xhci_pci_attach(device_t self)
 	if (err == 0)
 		err = xhci_start_controller(sc);
 
-	if (err == 0)
+	if (sc->sc_irq_res == NULL || sc->sc_intr_hdl == NULL) {
+		if (xhci_use_polling() != 0) {
+			device_printf(self, "Interrupt polling at %dHz\n", hz);
+			xhci_interrupt_poll(sc);
+		} else {
+			goto error;
+		}
+	}
+	USB_BUS_UNLOCK(&sc->sc_bus);
+
+	if (err == 0) {
 		err = device_probe_and_attach(sc->sc_bus.bdev);
+	}
 
 	if (err) {
-		device_printf(self, "XHCI halt/start/probe failed err=%d\n", err);
+		device_printf(self,
+			      "XHCI halt/start/probe failed err=%d\n",
+			      err);
 		goto error;
 	}
 	return (0);
 
 error:
+	USB_BUS_UNLOCK(&sc->sc_bus);
 	xhci_pci_detach(self);
 	return (ENXIO);
 }
@@ -377,33 +388,31 @@ xhci_pci_take_controller(device_t self)
 	eec = -1;
 
 	/* Synchronise with the BIOS if it owns the controller. */
-	for (eecp = XHCI_HCS0_XECP(cparams) << 2; eecp != 0 && XHCI_XECP_NEXT(eec);
-	    eecp += XHCI_XECP_NEXT(eec) << 2) {
+	for (eecp = XHCI_HCS0_XECP(cparams) << 2;
+	     eecp != 0 && XHCI_XECP_NEXT(eec);
+	     eecp += XHCI_XECP_NEXT(eec) << 2) {
 		eec = XREAD4(sc, capa, eecp);
 
 		if (XHCI_XECP_ID(eec) != XHCI_ID_USB_LEGACY)
 			continue;
-		bios_sem = XREAD1(sc, capa, eecp +
-		    XHCI_XECP_BIOS_SEM);
+		bios_sem = XREAD1(sc, capa, eecp + XHCI_XECP_BIOS_SEM);
 		if (bios_sem == 0)
 			continue;
 		device_printf(sc->sc_bus.bdev, "waiting for BIOS "
-		    "to give up control\n");
-		XWRITE1(sc, capa, eecp +
-		    XHCI_XECP_OS_SEM, 1);
+			      "to give up control\n");
+		XWRITE1(sc, capa, eecp + XHCI_XECP_OS_SEM, 1);
 		to = 500;
 		while (1) {
-			bios_sem = XREAD1(sc, capa, eecp +
-			    XHCI_XECP_BIOS_SEM);
+			bios_sem = XREAD1(sc, capa, eecp + XHCI_XECP_BIOS_SEM);
 			if (bios_sem == 0)
 				break;
 
 			if (--to == 0) {
 				device_printf(sc->sc_bus.bdev,
-				    "timed out waiting for BIOS\n");
+					      "timed out waiting for BIOS\n");
 				break;
 			}
-			usb_pause_mtx(NULL, hz / 100);	/* wait 10ms */
+			usb_pause_mtx(NULL, hz / 100 + 1); /* wait 10ms */
 		}
 	}
 	return (0);
