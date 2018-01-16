@@ -315,7 +315,7 @@ bus_dmamem_coherent_any(bus_dma_tag_t parent, bus_size_t alignment,
  */
 void _bus_dmamap_sync(bus_dma_tag_t, bus_dmamap_t, bus_dmasync_op_t);
 #define bus_dmamap_sync(dmat, dmamap, op) 		\
-	if ((dmamap) != NULL)				\
+	if ((dmamap) != NULL && (dmamap) != (void *)-1)	\
 		_bus_dmamap_sync(dmat, dmamap, op)
 
 /*
@@ -323,7 +323,7 @@ void _bus_dmamap_sync(bus_dma_tag_t, bus_dmamap_t, bus_dmasync_op_t);
  */
 void _bus_dmamap_unload(bus_dma_tag_t dmat, bus_dmamap_t map);
 #define bus_dmamap_unload(dmat, dmamap) 		\
-	if ((dmamap) != NULL)				\
+	if ((dmamap) != NULL && (dmamap) != (void *)-1)	\
 		_bus_dmamap_unload(dmat, dmamap)
 
 #endif /* _SYS_BUS_DMA_H_ */
