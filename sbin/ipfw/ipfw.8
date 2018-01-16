@@ -1,7 +1,7 @@
 .\"
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
 .\"
-.Dd January 6, 2018
+.Dd January 16, 2018
 .Dt IPFW 8
 .Os
 .Sh NAME
@@ -921,6 +921,13 @@ Matches all TCP or UDP packets sent by or received for a
 A
 .Ar group
 may be specified by name or number.
+.It Cm icmpcodes Ar codes
+Matches ICMP packets whose ICMP code is in the list
+.Ar codes .
+The list may be specified as any combination of ranges or
+individual types separated by commas.
+It should be used along with
+.Cm icmptypes .
 .It Cm icmptypes Ar types
 Matches ICMP packets whose ICMP type is in the list
 .Ar types .

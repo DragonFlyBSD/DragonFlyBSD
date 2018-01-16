@@ -1194,6 +1194,18 @@ icmptype_match(struct ip *ip, ipfw_insn_u32 *cmd)
 	return (cmd->d[idx] & (1 << (type % 32)));
 }
 
+static __inline int
+icmpcode_match(struct ip *ip, ipfw_insn_u32 *cmd)
+{
+	int code = L3HDR(struct icmp,ip)->icmp_code;
+	int idx_max = F_LEN(&cmd->o) - F_INSN_SIZE(ipfw_insn);
+	int idx = code / 32;
+
+	if (idx >= idx_max)
+		return (0);
+	return (cmd->d[idx] & (1 << (code % 32)));
+}
+
 #define TT	((1 << ICMP_ECHO) | \
 		 (1 << ICMP_ROUTERSOLICIT) | \
 		 (1 << ICMP_TSTAMP) | \
@@ -3880,6 +3892,12 @@ check_body:
 				}
 				break;
 
+			case O_ICMPCODE:
+				match = (lc.offset == 0 &&
+				    lc.proto==IPPROTO_ICMP &&
+				    icmpcode_match(ip, (ipfw_insn_u32 *)cmd));
+				break;
+
 			case O_ICMPTYPE:
 				match = (lc.offset == 0 &&
 				    lc.proto==IPPROTO_ICMP &&
@@ -5434,6 +5452,7 @@ ipfw_check_ioc_rule(struct ipfw_ioc_rule *rule, int size, uint32_t *rule_flags)
 				goto bad_size;
 			break;
 
+		case O_ICMPCODE:
 		case O_ICMPTYPE:
 			if (cmdlen < F_INSN_SIZE(ipfw_insn_u32))
 				goto bad_size;

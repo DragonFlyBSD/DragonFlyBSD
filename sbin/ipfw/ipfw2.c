@@ -223,6 +223,7 @@ enum tokens {
 	TOK_TCPSEQ,
 	TOK_TCPACK,
 	TOK_TCPWIN,
+	TOK_ICMPCODES,
 	TOK_ICMPTYPES,
 	TOK_MAC,
 	TOK_MACTYPE,
@@ -328,6 +329,8 @@ struct _s_x rule_options[] = {
 	{ "tcpseq",		TOK_TCPSEQ },
 	{ "tcpack",		TOK_TCPACK },
 	{ "tcpwin",		TOK_TCPWIN },
+	{ "icmpcode",		TOK_ICMPCODES },
+	{ "icmpcodes",		TOK_ICMPCODES },
 	{ "icmptype",		TOK_ICMPTYPES },
 	{ "icmptypes",		TOK_ICMPTYPES },
 	{ "dst-ip",		TOK_DSTIP },
@@ -731,7 +734,7 @@ print_mac(u_char *addr, u_char *mask)
 }
 
 static void
-fill_icmptypes(ipfw_insn_u32 *cmd, char *av)
+fill_icmp(enum ipfw_opcodes op, ipfw_insn_u32 *cmd, char *av)
 {
 	u_int8_t type;
 	int idx_max = 0, idx;
@@ -745,8 +748,10 @@ fill_icmptypes(ipfw_insn_u32 *cmd, char *av)
 			av++;
 
 		type = strtoul(av, &av, 0);
-		if (*av != ',' && *av != '\0')
-			errx(EX_DATAERR, "invalid ICMP type");
+		if (*av != ',' && *av != '\0') {
+			errx(EX_DATAERR, "invalid ICMP %s",
+			    op == O_ICMPTYPE ? "types" : "codes");
+		}
 
 		idx = type / 32;
 		cmd->d[idx] |= 1 << (type % 32);
@@ -754,19 +759,22 @@ fill_icmptypes(ipfw_insn_u32 *cmd, char *av)
 		if (idx > idx_max)
 			idx_max = idx;
 	}
-	cmd->o.opcode = O_ICMPTYPE;
+	cmd->o.opcode = op;
 	cmd->o.len |= (F_INSN_SIZE(ipfw_insn_u32) + idx_max);
 }
 
 static void
-print_icmptypes(ipfw_insn_u32 *cmd)
+print_icmp(ipfw_insn_u32 *cmd)
 {
 	int idx, idx_max;
 	char sep= ' ';
 
 	idx_max = F_LEN(&cmd->o) - F_INSN_SIZE(ipfw_insn);
 
-	printf(" icmptypes");
+	if (cmd->o.opcode == O_ICMPTYPE)
+		printf(" icmptypes");
+	else
+		printf(" icmpcodes");
 	for (idx = 0; idx < idx_max; ++idx) {
 		uint32_t types = cmd->d[idx];
 
@@ -1151,8 +1159,9 @@ show_ipfw(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 				print_flags("iptos", cmd, f_iptos);
 				break;
 
+			case O_ICMPCODE:
 			case O_ICMPTYPE:
-				print_icmptypes((ipfw_insn_u32 *)cmd);
+				print_icmp((ipfw_insn_u32 *)cmd);
 				break;
 
 			case O_ESTAB:
@@ -3114,9 +3123,15 @@ read_options:
 				cmd->opcode = O_VIA;
 			break;
 
+		case TOK_ICMPCODES:
+			NEED1("icmpcodes requires list of codes");
+			fill_icmp(O_ICMPCODE, (ipfw_insn_u32 *)cmd, *av);
+			av++; ac--;
+			break;
+
 		case TOK_ICMPTYPES:
 			NEED1("icmptypes requires list of types");
-			fill_icmptypes((ipfw_insn_u32 *)cmd, *av);
+			fill_icmp(O_ICMPTYPE, (ipfw_insn_u32 *)cmd, *av);
 			av++; ac--;
 			break;
 

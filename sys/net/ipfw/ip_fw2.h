@@ -86,7 +86,7 @@ enum ipfw_opcodes {		/* arguments (4 byte each)	*/
 	O_TCPWIN,		/* arg1 = desired win		*/
 	O_TCPSEQ,		/* u32 = desired seq.		*/
 	O_TCPACK,		/* u32 = desired seq.		*/
-	O_ICMPTYPE,		/* u32 = icmp bitmap		*/
+	O_ICMPTYPE,		/* 1*u32 = icmp type bitmap	*/
 	O_TCPOPTS,		/* arg1 = 2*u8 bitmap		*/
 
 	/* States. */
@@ -125,6 +125,9 @@ enum ipfw_opcodes {		/* arguments (4 byte each)	*/
 
 	/* Translates. */
 	O_REDIRECT,		/* ipfw_insn_rdr		*/
+	O_RESERVED1,		/* reserved for NAT		*/
+
+	O_ICMPCODE,		/* 1*u32 = icmp code bitmap	*/
 
 	O_LAST_OPCODE		/* not an opcode!		*/
 };
