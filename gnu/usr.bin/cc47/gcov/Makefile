@@ -2,6 +2,7 @@
 .include "../../Makefile.cco"
 
 PROG=	gcov
+MANPAGEVER= 47
 MFILE=	gcov${MANPAGEVER}.1
 MAN=	${MFILE}
 

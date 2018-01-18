@@ -3,6 +3,7 @@
 .include "../../Makefile.cco"
 
 PROG=	cpp
+MANPAGEVER= 47
 MFILE=	cpp${MANPAGEVER}.1
 MAN=	${MFILE}
 

@@ -3,6 +3,7 @@ GCC_LANG_DIR=	gcc/cp
 .include "../../Makefile.cco"
 
 PROG=	c++
+MANPAGEVER= 47
 MFILE=	g++${MANPAGEVER}.1
 MAN=	${MFILE}
 
