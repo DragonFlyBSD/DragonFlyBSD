@@ -76,7 +76,7 @@ static void MDString(const Algorithm_t *, const char *);
 static void MDTimeTrial(const Algorithm_t *);
 static void MDTestSuite(const Algorithm_t *);
 static void MDFilter(const Algorithm_t *, int);
-static void usage(int excode);
+static void usage(int excode) __dead2;
 
 typedef union {
 	MD5_CTX md5;

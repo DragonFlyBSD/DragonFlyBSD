@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ipcrm/ipcrm.c,v 1.6 1999/08/28 01:02:14 peter Exp $
- * $DragonFly: src/usr.bin/ipcrm/ipcrm.c,v 1.4 2004/11/19 18:35:29 liamfoy Exp $
  */
 
 #include <ctype.h>
@@ -50,7 +49,7 @@
 
 volatile sig_atomic_t  signaled;
 
-static void	usage(void);
+static void	usage(void) __dead2;
 static int	msgrm(key_t, int);
 static int	shmrm(key_t, int);
 static int	semrm(key_t, int);

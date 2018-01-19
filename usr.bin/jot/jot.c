@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)jot.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/jot/jot.c,v 1.13.2.3 2001/12/17 13:49:50 gallatin Exp $
- * $DragonFly: src/usr.bin/jot/jot.c,v 1.4 2004/07/31 10:19:53 eirikn Exp $
  */
 
 /*
@@ -74,7 +73,7 @@ char	format[BUFSIZ];
 void		getformat(void);
 int		getprec(char *);
 int		putdata(double, long);
-static void	usage(void);
+static void	usage(void) __dead2;
 
 int
 main(int argc, char **argv)

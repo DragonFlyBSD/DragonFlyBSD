@@ -41,7 +41,7 @@ static void __hammer_parse_blkdevs(const char *blkdevs, int oflags,
 		int verify_volume, int verify_count);
 static void sigalrm(int signo);
 static void sigintr(int signo);
-static void usage(int exit_code);
+static void usage(int exit_code) __dead2;
 
 int RecurseOpt;
 int VerboseOpt;

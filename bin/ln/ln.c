@@ -55,7 +55,7 @@ static int	wflag;			/* Warn if symlink target does not
 static char	linkch;
 
 static int	linkit(const char *, const char *, int);
-static void	usage(void);
+static void	usage(void) __dead2;
 
 int
 main(int argc, char *argv[])

@@ -31,7 +31,6 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/usr.sbin/sicontrol/sicontrol.c,v 1.12.2.1 2000/12/11 01:03:39 obrien Exp $
- * $DragonFly: src/usr.sbin/sicontrol/sicontrol.c,v 1.6 2007/04/09 09:15:48 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -72,7 +71,7 @@ static void	mstate(int, char **);
 static void	nport(int, char **);
 static int	opencontrol(void);
 static void	prlevels(int);
-static void	prusage(int, int);
+static void	prusage(int, int) __dead2;
 static void	rxint(int, char **);
 static void	tty_stat(int, char **);
 static void	txint(int, char **);
