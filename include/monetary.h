@@ -44,7 +44,8 @@ typedef	__ssize_t	ssize_t;
 
 __BEGIN_DECLS
 #if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE
-ssize_t	strfmon(char * __restrict, size_t, const char * __restrict, ...);
+ssize_t	strfmon(char * __restrict, size_t, const char * __restrict, ...)
+	    __strfmonlike(3, 4);
 #endif
 
 #if __POSIX_VISIBLE >= 200809 || defined(_XLOCALE_H_)
