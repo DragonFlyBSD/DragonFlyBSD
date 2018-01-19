@@ -84,6 +84,7 @@ next:			c = *fmt++;
 				goto next;
 			case 'p':
 				islong = 1;
+				/* FALLTHROUGH */
 			case 'd':
 			case 'u':
 			case 'x':
