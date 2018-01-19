@@ -24,7 +24,7 @@ CFLAGS		+= -std=${CSTD}
 . if defined(WARNS)
 .  if ${WARNS} >= 1
 CWARNFLAGS	+=	-Wmissing-include-dirs -Wsystem-headers
-.   if !defined(NO_WERROR) && ${CCVER:Mgcc*}
+.   if !defined(NO_WERROR) && (${CCVER} == "gcc47" || ${CCVER} == "gcc50")
 CWARNFLAGS	+=	-Werror
 .   endif
 .  endif
@@ -89,7 +89,7 @@ WFORMAT		=	1
 . if defined(WFORMAT)
 .  if ${WFORMAT} > 0
 CWARNFLAGS	+=	-Wformat=2 -Wno-format-extra-args
-.   if !defined(NO_WERROR) && ${CCVER:Mgcc*}
+.   if !defined(NO_WERROR) && (${CCVER} == "gcc47" || ${CCVER} == "gcc50")
 CWARNFLAGS	+=	-Werror
 .   endif
 .  endif
