@@ -1298,16 +1298,6 @@ static	int	ncr_attach	(device_t dev);
 **==========================================================
 */
 
-
-/*
- * $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
- */
-static const u_long	ncr_version = NCR_VERSION	* 11
-	+ (u_long) sizeof (struct ncb)	*  7
-	+ (u_long) sizeof (struct nccb)	*  5
-	+ (u_long) sizeof (struct lcb)	*  3
-	+ (u_long) sizeof (struct tcb)	*  2;
-
 #ifdef _KERNEL
 
 static int ncr_debug = SCSI_NCR_DEBUG;
