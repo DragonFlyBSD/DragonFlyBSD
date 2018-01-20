@@ -191,7 +191,7 @@ intro(void)
     if(signal(SIGQUIT,SIG_IGN) != SIG_IGN)
 		signal(SIGQUIT,sighandler);
 
-    if(tmpname != '\0') {
+    if(tmpname != NULL) {
 		strcpy(name,tmpname);
 		name[0] = toupper(name[0]);
     } else {
