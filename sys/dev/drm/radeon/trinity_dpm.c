@@ -116,6 +116,7 @@ static const u32 trinity_mgcg_shls_default[] =
 	0x00009294, 0x00000000, 0xffffffff
 };
 
+#if 0 /* unused */
 static const u32 trinity_mgcg_shls_enable[] =
 {
 	/* Register, Value, Mask */
@@ -126,7 +127,9 @@ static const u32 trinity_mgcg_shls_enable[] =
 	0x000008fc, 0x00000000, 0xE00B03FC,
 	0x00009150, 0x96944200, 0xffffffff
 };
+#endif
 
+#if 0 /* unused */
 static const u32 trinity_mgcg_shls_disable[] =
 {
 	/* Register, Value, Mask */
@@ -138,10 +141,12 @@ static const u32 trinity_mgcg_shls_disable[] =
 	0x000008fc, 0xffffffff, 0xE00B03FC
 };
 #endif
+#endif
 
 #ifndef TRINITY_SYSLS_SEQUENCE
 #define TRINITY_SYSLS_SEQUENCE  100
 
+#if 0 /* unused */
 static const u32 trinity_sysls_default[] =
 {
 	/* Register, Value, Mask */
@@ -163,6 +168,7 @@ static const u32 trinity_sysls_default[] =
 	0x00000c7c, 0x00000000, 0xffffffff,
 	0x00006dfc, 0x00000000, 0xffffffff
 };
+#endif
 
 static const u32 trinity_sysls_disable[] =
 {
