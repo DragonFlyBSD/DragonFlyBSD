@@ -343,9 +343,10 @@ checkname(char *name, char **typelist)
 						    origname);
 						free(origname);
 						return (0);
-					} else
+					} else {
 						free(origname);
 						return (1);
+					}
 				}
 			}
 		}
