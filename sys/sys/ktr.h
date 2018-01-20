@@ -217,18 +217,10 @@ SYSCTL_DECL(_debug_ktr);
 
 #else
 
-#define KTR_INFO_MASTER(master)						\
-	    static const int ktr_ ## master ## _enable = 0
-
-#define KTR_INFO_MASTER_EXTERN(master)					\
-	    static const int ktr_ ## master ## _enable
-
-#define KTR_INFO(compile, master, name, maskbit, format, ...)		\
-	    static const int ktr_ ## master ## _ ## name ## _mask =	\
-		    (1 << maskbit)
-
+#define KTR_INFO_MASTER(master)
+#define KTR_INFO_MASTER_EXTERN(master)
+#define KTR_INFO(compile, master, name, maskbit, format, ...)
 #define KTR_LOG(info, args...)
-
 #define KTR_COND_LOG(info, args...)
 
 #endif
