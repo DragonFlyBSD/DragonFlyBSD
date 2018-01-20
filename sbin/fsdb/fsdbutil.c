@@ -120,7 +120,8 @@ printstat(const char *cp, ino_t inum, struct ufs1_dinode *dp)
 	puts("fifo");
 	break;
     }
-    printf("I=%lu MODE=%o SIZE=%qu", (u_long)inum, dp->di_mode, dp->di_size);
+    printf("I=%ju MODE=%o SIZE=%ju", (uintmax_t)inum, dp->di_mode,
+	(uintmax_t)dp->di_size);
     t = dp->di_mtime;
     p = ctime(&t);
     printf("\n\tMTIME=%15.15s %4.4s [%d nsec]", &p[4], &p[20],
@@ -235,7 +236,7 @@ printblocks(ino_t inum, struct ufs1_dinode *dp)
     int i, nfrags;
     long ndb, offset;
 
-    printf("Blocks for inode %d:\n", inum);
+    printf("Blocks for inode %ju:\n", (uintmax_t)inum);
     printf("Direct blocks:\n");
     ndb = howmany(dp->di_size, sblock.fs_bsize);
     for (i = 0; i < NDADDR; i++) {
@@ -284,7 +285,7 @@ checkactivedir(void)
 	return 0;
     }
     if ((curinode->di_mode & IFMT) != IFDIR) {
-	warnx("inode %d not a directory", curinum);
+	warnx("inode %ju not a directory", (uintmax_t)curinum);
 	return 0;
     }
     return 1;
@@ -309,11 +310,11 @@ printactive(int doblocks)
 	    printstat("current inode", curinum, curinode);
 	break;
     case 0:
-	printf("current inode %d: unallocated inode\n", curinum);
+	printf("current inode %ju: unallocated inode\n", (uintmax_t)curinum);
 	break;
     default:
-	printf("current inode %d: screwy itype 0%o (mode 0%o)?\n",
-	       curinum, curinode->di_mode & IFMT, curinode->di_mode);
+	printf("current inode %ju: screwy itype 0%o (mode 0%o)?\n",
+	       (uintmax_t)curinum, curinode->di_mode & IFMT, curinode->di_mode);
 	break;
     }
     return 0;

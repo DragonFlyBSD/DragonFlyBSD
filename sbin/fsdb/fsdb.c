@@ -28,7 +28,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsdb/fsdb.c,v 1.13.2.3 2002/03/20 13:39:02 joerg Exp $
- * $DragonFly: src/sbin/fsdb/fsdb.c,v 1.9 2006/04/03 01:58:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -196,7 +195,8 @@ char *
 prompt(EditLine *el)
 {
     static char pstring[64];
-    snprintf(pstring, sizeof(pstring), "fsdb (inum: %d)> ", curinum);
+    snprintf(pstring, sizeof(pstring), "fsdb (inum: %ju)> ",
+	(uintmax_t)curinum);
     return pstring;
 }
 
@@ -277,8 +277,8 @@ ino_t curinum, ocurrent;
 
 #define GETINUM(ac,inum)    inum = strtoul(argv[ac], &cp, 0); \
     if (inum < ROOTINO || inum > maxino || cp == argv[ac] || *cp != '\0' ) { \
-	printf("inode %d out of range; range is [%d,%d]\n", \
-	       inum, ROOTINO, maxino); \
+	printf("inode %ju out of range; range is [%ju,%ju]\n", \
+	       (uintmax_t)inum, (uintmax_t)ROOTINO, (uintmax_t)maxino); \
 	return 1; \
     }
 
@@ -342,7 +342,8 @@ CMDFUNCSTART(uplink)
 {
     if (!checkactive())
 	return 1;
-    printf("inode %d link count now %d\n", curinum, ++curinode->di_nlink);
+    printf("inode %ju link count now %d\n", (uintmax_t)curinum,
+	++curinode->di_nlink);
     inodirty();
     return 0;
 }
@@ -351,7 +352,8 @@ CMDFUNCSTART(downlink)
 {
     if (!checkactive())
 	return 1;
-    printf("inode %d link count now %d\n", curinum, --curinode->di_nlink);
+    printf("inode %ju link count now %d\n", (uintmax_t)curinum,
+	--curinode->di_nlink);
     inodirty();
     return 0;
 }
@@ -471,7 +473,7 @@ CMDFUNCSTART(ln)
 	return 1;
     rval = makeentry(curinum, inum, argv[2]);
     if (rval)
-	printf("Ino %d entered as `%s'\n", inum, argv[2]);
+	printf("Ino %ju entered as `%s'\n", (uintmax_t)inum, argv[2]);
     else
 	printf("could not enter name? weird.\n");
     curinode = ginode(curinum);

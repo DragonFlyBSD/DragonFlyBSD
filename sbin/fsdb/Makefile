@@ -13,6 +13,6 @@ DPADD+=	${LIBEDIT} ${LIBNCURSES}
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .PATH:	${.CURDIR}/../fsck ${.CURDIR}/../../sys/vfs/ufs
-WARNS?=	1
+WARNS?=	2
 
 .include <bsd.prog.mk>
