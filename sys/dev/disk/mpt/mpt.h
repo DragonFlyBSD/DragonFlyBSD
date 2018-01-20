@@ -916,7 +916,7 @@ enum {
 
 #define mpt_lprt(mpt, level, ...)		\
 do {						\
-	if (level <= (mpt)->verbose)		\
+	if ((level) <= (mpt)->verbose)		\
 		mpt_prt(mpt, __VA_ARGS__);	\
 } while (0)
 
