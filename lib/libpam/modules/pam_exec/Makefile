@@ -4,6 +4,6 @@ LIB=	pam_exec
 SRCS=	pam_exec.c
 MAN=	pam_exec.8
 
-WARNS?=	1
+WARNS?=	3
 
 .include <bsd.lib.mk>
