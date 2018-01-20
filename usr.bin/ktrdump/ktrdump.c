@@ -1251,8 +1251,8 @@ conversion_size(const char *fmt, enum argument_class *argclass)
 			convsize = sizeof(double);
 		else
 			convsize = sizeof(float);
-		break;
 		*argclass = ARGCLASS_FP;
+		break;
 	case 's':
 		convsize = sizeof(char *);
 		*argclass = ARGCLASS_INTEGER;
