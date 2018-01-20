@@ -54,7 +54,9 @@ static const char *roles[4] = {
     "(none)", "Target", "Initiator", "Target/Initiator"
 };
 static const char prom3[] = "Chan %d PortID 0x%06x Departed from Target %u because of %s";
+#ifdef ISP_TARGET_MODE
 static const char rqo[] = "%s: Request Queue Overflow\n";
+#endif
 
 static void isp_freeze_loopdown(ispsoftc_t *, int, char *);
 static d_ioctl_t ispioctl;
