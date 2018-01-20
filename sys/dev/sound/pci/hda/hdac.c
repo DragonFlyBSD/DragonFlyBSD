@@ -178,6 +178,7 @@ static const struct {
 	{ HDA_ULI_ALL,    "ULI",		0, 0 },
 };
 
+#if 0 /* unused */
 static const struct {
 	uint16_t vendor;
 	uint8_t reg;
@@ -188,6 +189,7 @@ static const struct {
 	{    ATI_VENDORID, 0x42, 0xf8, 0x02 },
 	{ NVIDIA_VENDORID, 0x4e, 0xf0, 0x0f },
 };
+#endif
 
 /****************************************************************************
  * Function prototypes
