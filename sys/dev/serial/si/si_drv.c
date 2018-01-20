@@ -35,12 +35,6 @@
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
  */
 
-#ifndef lint
-static const char si_copyright1[] =  "@(#) Copyright (C) Specialix International, 1990,1992,1998",
-		  si_copyright2[] =  "@(#) Copyright (C) Andy Rutter 1993",
-		  si_copyright3[] =  "@(#) Copyright (C) Peter Wemm 2000";
-#endif	/* not lint */
-
 #include "opt_debug_si.h"
 
 #include <sys/param.h>
