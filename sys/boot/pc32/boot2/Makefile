@@ -36,13 +36,13 @@ REL1D = `${.OBJDIR}/bootasmdef.nx -d BOOT1_ORIGIN`
 ORG1 = `${.OBJDIR}/bootasmdef.nx MEM_BIOS_LADDR`
 ORG1D = `${.OBJDIR}/bootasmdef.nx -d MEM_BIOS_LADDR`
 
-# WARNING!  The ORG2 calculation is the origin of boot2.bin relative to 
-# the start of the BTX *USER* address space, not the start of physical 
+# WARNING!  The ORG2 calculation is the origin of boot2.bin relative to
+# the start of the BTX *USER* address space, not the start of physical
 # memory.
 #
 ORG2=	`${.OBJDIR}/bootasmdef.nx BOOT2_VORIGIN`
 
-WOLRD_CCOPTLEVEL=	s	# -Os for size constraints in boot2_32
+WORLD_CCOPTLEVEL=	s	# -Os for size constraints in boot2_32
 CFLAGS=	-Os \
 	-fomit-frame-pointer \
 	-fno-unwind-tables \
