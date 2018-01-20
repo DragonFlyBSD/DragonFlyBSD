@@ -49,38 +49,8 @@ is_power_of_2(unsigned long n)
 static inline unsigned long
 rounddown_pow_of_two(unsigned long x)
 {
-        return (1UL << (flsl(x) - 1));
+	return (1UL << (flsl(x) - 1));
 }
-
-
-/*
- * deal with unrepresentable constant logarithms
- */
-extern __attribute__((const, noreturn))
-int ____ilog2_NaN(void);
-
-/*
- * non-constant log of base 2 calculators
- * - the arch may override these in asm/bitops.h if they can be implemented
- *   more efficiently than using fls() and fls64()
- * - the arch is not required to handle n==0 if implementing the fallback
- */
-#ifndef CONFIG_ARCH_HAS_ILOG2_U32
-static inline __attribute__((const))
-int __ilog2_u32(u32 n)
-{
-	return flsl(n) - 1;
-}
-#endif
-
-#ifndef CONFIG_ARCH_HAS_ILOG2_U64
-static inline __attribute__((const))
-int __ilog2_u64(u64 n)
-{
-	return flsl(n) - 1;
-}
-#endif
-
 
 /**
  * ilog2 - log of base 2 of 32-bit or a 64-bit unsigned value
@@ -92,10 +62,10 @@ int __ilog2_u64(u64 n)
  *
  * selects the appropriately-sized optimised version depending on sizeof(n)
  */
-#define ilog2(n)				\
+#define	ilog2(n)				\
 (						\
 	__builtin_constant_p(n) ? (		\
-		(n) < 1 ? ____ilog2_NaN() :	\
+		(n) < 2 ? 0 :			\
 		(n) & (1ULL << 63) ? 63 :	\
 		(n) & (1ULL << 62) ? 62 :	\
 		(n) & (1ULL << 61) ? 61 :	\
@@ -158,15 +128,11 @@ int __ilog2_u64(u64 n)
 		(n) & (1ULL <<  4) ?  4 :	\
 		(n) & (1ULL <<  3) ?  3 :	\
 		(n) & (1ULL <<  2) ?  2 :	\
-		(n) & (1ULL <<  1) ?  1 :	\
-		(n) & (1ULL <<  0) ?  0 :	\
-		____ilog2_NaN()			\
-				   ) :		\
+		1 ) :				\
 	(sizeof(n) <= 4) ?			\
-	__ilog2_u32(n) :			\
-	__ilog2_u64(n)				\
- )
+	fls((u32)(n)) - 1 : flsll((u64)(n)) - 1	\
+)
 
-#define order_base_2(n) ilog2(roundup_pow_of_two(n))
+#define	order_base_2(n) ilog2(roundup_pow_of_two(n))
 
 #endif	/* _LINUX_LOG2_H_ */
