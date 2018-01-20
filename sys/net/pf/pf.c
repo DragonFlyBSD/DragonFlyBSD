@@ -6018,9 +6018,6 @@ pf_route(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 	struct pf_src_node	*sn = NULL;
 	int			 error = 0;
 	int sw_csum;
-#ifdef IPSEC
-	struct m_tag		*mtag;
-#endif /* IPSEC */
 
 	ASSERT_LWKT_TOKEN_HELD(&pf_token);
 
