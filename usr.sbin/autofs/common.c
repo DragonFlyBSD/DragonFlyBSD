@@ -42,7 +42,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <vfs/autofs/autofs_ioctl.h>
 
 #include "common.h"
 
