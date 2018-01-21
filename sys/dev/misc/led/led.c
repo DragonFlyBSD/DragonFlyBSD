@@ -21,6 +21,7 @@
 #include <dev/misc/led/led.h>
 #include <sys/uio.h>
 #include <sys/device.h>
+#include <sys/module.h>
 
 struct ledsc {
 	LIST_ENTRY(ledsc)	list;
@@ -339,14 +340,59 @@ led_destroy(struct cdev *dev)
 	lockmgr(&led_lock2, LK_RELEASE);
 }
 
-static void
-led_drvinit(void *unused)
+static int
+led_drvinit(void)
 {
 
 	led_unit = new_unrhdr(0, INT_MAX, NULL);
 	lockinit(&led_lock, "LED lock", 0, LK_CANRECURSE);
 	lockinit(&led_lock2, "LED lock2", 0, LK_CANRECURSE);
 	callout_init_mp(&led_ch);
+	return 0;
 }
 
-SYSINIT(leddev, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, led_drvinit, NULL);
+static int
+led_drvexit(void)
+{
+	int error = 0;
+
+	lockmgr(&led_lock, LK_EXCLUSIVE);
+	/* A minimal sanity check, before unloading. */
+	if (!LIST_EMPTY(&led_list))
+		error = EINVAL;
+	lockmgr(&led_lock, LK_RELEASE);
+	if (error == 0) {
+		callout_stop_sync(&led_ch);
+		delete_unrhdr(led_unit);
+		lockuninit(&led_lock);
+		lockuninit(&led_lock2);
+	}
+	return error;
+}
+
+static int
+led_modevent(module_t mod, int type, void *unused)
+{
+	int error;
+
+	switch (type) {
+	case MOD_LOAD:
+		error = led_drvinit();
+		break;
+        case MOD_UNLOAD:
+		error = led_drvexit();
+		break;
+	default:
+		error = EINVAL;
+		break;
+	}
+	return error;
+}
+
+static moduledata_t led_mod = {
+	"led",
+	led_modevent,
+	0
+};
+DECLARE_MODULE(led, led_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE);
+MODULE_VERSION(led, 1);

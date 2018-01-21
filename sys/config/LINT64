@@ -2261,4 +2261,5 @@ options 	ALTQ_DEBUG	#for debugging
 options		WDOG_DISABLE_ON_PANIC	# Automatically disable watchdogs on panic
 
 # LED
+device		led
 options		ERROR_LED_ON_PANIC	# If an error led is present, light it up on panic

@@ -1029,7 +1029,7 @@ dev/misc/ipmi/ipmi_smbus.c	optional ipmi smbus
 dev/misc/ipmi/ipmi_smbios.c	optional ipmi
 dev/misc/ipmi/ipmi_ssif.c	optional ipmi smbus
 dev/misc/ipmi/ipmi_pci.c	optional ipmi pci
-dev/misc/led/led.c		standard
+dev/misc/led/led.c		optional led
 dev/disk/md/md.c		optional md
 dev/raid/mfi/mfi.c		optional mfi
 dev/raid/mfi/mfi_debug.c	optional mfi

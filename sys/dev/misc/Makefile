@@ -1,4 +1,4 @@
-SUBDIR= amdsbwd cmx cpuctl dcons ecc ichwd ipmi joy kbdmux lpbb \
+SUBDIR= amdsbwd cmx cpuctl dcons ecc ichwd ipmi joy kbdmux led lpbb \
 	nmdm pcfclock putter snp syscons tbridge coremctl dimm aperf
 
 .if ${MACHINE_ARCH} == "x86_64"
