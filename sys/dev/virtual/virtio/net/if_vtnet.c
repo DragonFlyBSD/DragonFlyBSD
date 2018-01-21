@@ -2167,7 +2167,7 @@ static int
 vtnet_ctrl_mac_cmd(struct vtnet_softc *sc, uint8_t *hwaddr)
 {
 	struct {
-		struct virtio_net_ctrl_hdr hdr __aligned(2);
+		struct virtio_net_ctrl_hdr hdr /*__aligned(2)*/;
 		uint8_t pad1;
 		char aligned_hwaddr[ETHER_ADDR_LEN] __aligned(8);
 		uint8_t pad2;
@@ -2226,7 +2226,7 @@ vtnet_ctrl_rx_cmd(struct vtnet_softc *sc, int cmd, int on)
 	struct sglist_seg segs[3];
 	struct sglist sg;
 	struct {
-		struct virtio_net_ctrl_hdr hdr __aligned(2);
+		struct virtio_net_ctrl_hdr hdr /*__aligned(2)*/;
 		uint8_t pad1;
 		uint8_t onoff;
 		uint8_t pad2;
@@ -2385,7 +2385,7 @@ vtnet_exec_vlan_filter(struct vtnet_softc *sc, int add, uint16_t tag)
 	struct sglist_seg segs[3];
 	struct sglist sg;
 	struct {
-		struct virtio_net_ctrl_hdr hdr __aligned(2);
+		struct virtio_net_ctrl_hdr hdr /*__aligned(2)*/;
 		uint8_t pad1;
 		uint16_t tag;
 		uint8_t pad2;
