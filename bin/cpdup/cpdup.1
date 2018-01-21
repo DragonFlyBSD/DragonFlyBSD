@@ -243,7 +243,7 @@ not used then the filename
 is not considered special and will
 be copied along with everything else.
 .It Fl X Ar file
-Works the same as
+Works similarly to
 .Fl x
 but allows you to specify the name of the exclusion file.  This file is
 automatically excluded from the copy.  Only one exclusion file may be
@@ -252,12 +252,14 @@ specified.
 When an absolute path is used, the same exclusive file is read for
 every directory and may contain full paths or wildcarded paths based
 on the full source path as specified on the cpdup command line.
+In this situation, the exclusive file is read from the host running
+the command, NOT from the source host (if remote).
 .Pp
 When a relative path is used (or
 .Fl x
 is specified), the exclusion file is only applicable to the directory
-it resides in and only path elements (the directory elements) are matched
-against it.
+it resides in on the source host and only path elements (the directory
+elements) are matched against it.
 .El
 .Sh REMOTE COPYING
 .Nm

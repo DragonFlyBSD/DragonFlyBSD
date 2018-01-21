@@ -1373,6 +1373,7 @@ ScanDir(List *list, struct HostConf *host, const char *path,
 	int64_t *CountReadBytes, int n)
 {
     DIR *dir;
+    struct HostConf *cphost;
     struct HCDirEntry *den;
     struct stat *statptr;
 
@@ -1391,13 +1392,16 @@ ScanDir(List *list, struct HostConf *host, const char *path,
 
 	    if (UseCpFile[0] == '/') {
 		fpath = mprintf("%s", UseCpFile);
+		cphost = NULL;
 	    } else {
 		fpath = mprintf("%s/%s", path, UseCpFile);
+		AddList(list, strrchr(fpath, '/') + 1, 1, NULL);
+		cphost = host;
 	    }
-	    AddList(list, strrchr(fpath, '/') + 1, 1, NULL);
-	    if ((fd = hc_open(host, fpath, O_RDONLY, 0)) >= 0) {
+	    fd = hc_open(cphost, fpath, O_RDONLY, 0);
+	    if (fd >= 0) {
 		bufused = 0;
-		while ((nread = hc_read(host, fd, buf + bufused,
+		while ((nread = hc_read(cphost, fd, buf + bufused,
 			GETBUFSIZE - bufused - 1)) > 0) {
 		    *CountReadBytes += nread;
 		    bufused += nread;
@@ -1415,7 +1419,7 @@ ScanDir(List *list, struct HostConf *host, const char *path,
 		    buf[bufused] = 0;
 		    AddList(list, buf, 1, NULL);
 		}
-		hc_close(host, fd);
+		hc_close(cphost, fd);
 	    }
 	    free(fpath);
 	    free(buf);
