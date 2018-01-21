@@ -110,6 +110,7 @@ static void InitList(List *list);
 static void ResetList(List *list);
 static Node *IterateList(List *list, Node *node, int n);
 static int AddList(List *list, const char *name, int n, struct stat *st);
+static int CheckList(List *list, const char *path, const char *name);
 static int getbool(const char *str);
 static char *SplitRemote(char **pathp);
 static int ChgrpAllowed(gid_t g);
@@ -1439,8 +1440,13 @@ ScanDir(List *list, struct HostConf *host, const char *path,
 	/*
 	 * ignore . and ..
 	 */
-	if (strcmp(den->d_name, ".") != 0 && strcmp(den->d_name, "..") != 0)
+	if (strcmp(den->d_name, ".") != 0 && strcmp(den->d_name, "..") != 0) {
+	     if (UseCpFile && UseCpFile[0] == '/') {
+		 if (CheckList(list, path, den->d_name) == 0)
+			continue;
+	     }
 	     AddList(list, den->d_name, n, statptr);
+	}
     }
     hc_closedir(host, dir);
 
@@ -1586,7 +1592,6 @@ AddList(List *list, const char *name, int n, struct stat *st)
      * Scan against wildcards.  Only a node value of 1 can be a wildcard
      * ( usually scanned from .cpignore )
      */
-
     for (node = list->li_Hash[0]; node; node = node->no_HNext) {
 	if (strcmp(name, node->no_Name) == 0 ||
 	    (n != 1 && node->no_Value == 1 &&
@@ -1621,6 +1626,50 @@ AddList(List *list, const char *name, int n, struct stat *st)
     node->no_Stat = st;
 
     return(n);
+}
+
+/*
+ * Match against n=1 (cpignore) entries
+ *
+ * Returns 0 on match, non-zero if no match
+ */
+static int
+CheckList(List *list, const char *path, const char *name)
+{
+    char *fpath = NULL;
+    Node *node;
+    int hv;
+
+    asprintf(&fpath, "%s/%s", path, name);
+
+    /*
+     * Scan against wildcards.  Only a node value of 1 can be a wildcard
+     * ( usually scanned from .cpignore )
+     */
+    for (node = list->li_Hash[0]; node; node = node->no_HNext) {
+	if (node->no_Value != 1)
+		continue;
+	if (fnmatch(node->no_Name, fpath, 0) == 0) {
+		free(fpath);
+		return 0;
+	}
+    }
+
+    /*
+     * Look for exact match
+     */
+    hv = shash(fpath);
+    for (node = list->li_Hash[hv]; node; node = node->no_HNext) {
+	if (node->no_Value != 1)
+		continue;
+	if (strcmp(fpath, node->no_Name) == 0) {
+		free(fpath);
+		return 0;
+	}
+    }
+
+    free(fpath);
+    return 1;
 }
 
 static int

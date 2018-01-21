@@ -248,6 +248,16 @@ Works the same as
 but allows you to specify the name of the exclusion file.  This file is
 automatically excluded from the copy.  Only one exclusion file may be
 specified.
+.Pp
+When an absolute path is used, the same exclusive file is read for
+every directory and may contain full paths or wildcarded paths based
+on the full source path as specified on the cpdup command line.
+.Pp
+When a relative path is used (or
+.Fl x
+is specified), the exclusion file is only applicable to the directory
+it resides in and only path elements (the directory elements) are matched
+against it.
 .El
 .Sh REMOTE COPYING
 .Nm
