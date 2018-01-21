@@ -1085,12 +1085,12 @@ hammer2_inode_repoint_one(hammer2_inode_t *ip, hammer2_cluster_t *cluster,
 	} else {
 		ochain = NULL;
 		nchain = cluster->array[idx].chain;
-		ip->cluster.nchains = idx + 1;
 		for (i = ip->cluster.nchains; i <= idx; ++i) {
 			bzero(&ip->cluster.array[i],
 			      sizeof(ip->cluster.array[i]));
 			ip->cluster.array[i].flags |= HAMMER2_CITEM_INVALID;
 		}
+		ip->cluster.nchains = idx + 1;
 	}
 	if (ochain != nchain) {
 		/*
