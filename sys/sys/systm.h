@@ -193,7 +193,7 @@ void	init_param1 (void);
 void	init_param2 (int physpages);
 void	tablefull (const char *);
 int	kvcprintf (char const *, void (*)(int, void*), void *, int,
-		      __va_list) __printflike(1, 0);
+		      __va_list) __printf0like(1, 0);
 void	kvcreinitspin(void);
 int	log (int, const char *, ...) __printflike(2, 3);
 void	logwakeup (void);
@@ -358,7 +358,7 @@ extern struct globaldata	*panic_cpu_gd;
  * Common `proc' functions are declared here so that proc.h can be included
  * less often.
  */
-int	tsleep(const volatile void *, int, const char *, int) __nonnull(1);
+int	tsleep(const volatile void *, int, const char *, int);
 int	ssleep(const volatile void *, struct spinlock *, int, const char *, int)
 	    __nonnull(1);
 int	lksleep(const volatile void *, struct lock *, int, const char *, int)

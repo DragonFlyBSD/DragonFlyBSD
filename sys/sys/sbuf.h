@@ -73,7 +73,7 @@ int		 sbuf_cpy(struct sbuf *, const char *);
 int		 sbuf_printf(struct sbuf *, const char *, ...)
 	__printflike(2, 3);
 int		 sbuf_vprintf(struct sbuf *, const char *, __va_list)
-	__printflike(2, 0);
+	__printf0like(2, 0);
 int		 sbuf_putc(struct sbuf *, int);
 void		 sbuf_set_drain(struct sbuf *, sbuf_drain_func *, void *);
 int		 sbuf_trim(struct sbuf *);

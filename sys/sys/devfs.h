@@ -399,7 +399,7 @@ struct devfs_node *devfs_find_device_node_by_name(struct devfs_node *, char *);
 cdev_t devfs_new_cdev(struct dev_ops *, int, struct dev_ops *);
 void devfs_assume_knotes(cdev_t dev, struct kqinfo *kqi);
 
-cdev_t devfs_find_device_by_name(const char *, ...) __printflike(1, 2);
+cdev_t devfs_find_device_by_name(const char *, ...) __printf0like(1, 2);
 cdev_t devfs_find_device_by_udev(udev_t);
 
 struct vnode *devfs_inode_to_vnode(struct mount *, ino_t);

@@ -220,8 +220,7 @@ char	*kstrndup(const char *, size_t maxlen, struct malloc_type *)
 #endif
 void	*kmalloc_cachealign(unsigned long size, struct malloc_type *type,
 			    int flags) __heedresult;
-void	kfree(void *addr, struct malloc_type *type)
-	    __nonnull(1) __nonnull(2);
+void	kfree(void *addr, struct malloc_type *type) __nonnull(2);
 long	kmalloc_limit(struct malloc_type *type);
 void	slab_cleanup(void);
 
