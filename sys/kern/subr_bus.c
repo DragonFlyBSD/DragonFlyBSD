@@ -607,9 +607,12 @@ devaddq(const char *type, const char *what, device_t dev)
 	devctl_queue_data(data);
 	return;
 bad:
-	kfree(pnp, M_BUS);
-	kfree(loc, M_BUS);
-	kfree(data, M_BUS);
+	if (pnp != NULL)
+		kfree(pnp, M_BUS);
+	if (loc != NULL)
+		kfree(loc, M_BUS);
+	if (loc != NULL)
+		kfree(data, M_BUS);
 	return;
 }
 
