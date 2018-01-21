@@ -335,6 +335,8 @@ key_sendup_mbuf(struct socket *so, struct mbuf *m, int target)
 			if (kp->kp_registered)
 				sendup++;
 			break;
+		default:
+			panic("Unknown KEY_SENDUP=%d", target);
 		}
 		pfkeystat.in_msgtarget[target]++;
 
