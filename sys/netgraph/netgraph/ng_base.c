@@ -175,6 +175,7 @@ static const struct ng_parse_type ng_generic_nodeinfoarray_type = {
 	&ng_nodeinfoarray_type_info
 };
 
+#if 0 /* unused */
 /* Array type for a variable length array of struct typelist */
 static const struct ng_parse_array_info ng_typeinfoarray_type_info = {
 	&ng_generic_typeinfo_type,
@@ -184,6 +185,7 @@ static const struct ng_parse_type ng_generic_typeinfoarray_type = {
 	&ng_parse_array_type,
 	&ng_typeinfoarray_type_info
 };
+#endif
 
 /* Array type for array of struct linkinfo in struct hooklist */
 static const struct ng_parse_array_info ng_generic_linkinfo_array_type_info = {
@@ -195,7 +197,9 @@ static const struct ng_parse_type ng_generic_linkinfo_array_type = {
 	&ng_generic_linkinfo_array_type_info
 };
 
+#if 0 /* unused */
 DEFINE_PARSE_STRUCT_TYPE(typelist, TYPELIST, (&ng_generic_nodeinfoarray_type));
+#endif
 DEFINE_PARSE_STRUCT_TYPE(hooklist, HOOKLIST,
 	(&ng_generic_nodeinfo_type, &ng_generic_linkinfo_array_type));
 DEFINE_PARSE_STRUCT_TYPE(listnodes, LISTNODES,

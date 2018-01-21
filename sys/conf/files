@@ -1154,7 +1154,7 @@ mxge_rss_ethp_z8e.fw	optional mxgefw					\
 	clean		"mxge_rss_ethp_z8e.fw"
 net/zlib.c			optional mxge pci
 dev/netif/my/if_my.c		optional my
-dev/misc/musycc/musycc.c	optional musycc
+dev/misc/musycc/musycc.c	optional musycc netgraph
 dev/netif/nge/if_nge.c		optional nge
 dev/misc/nmdm/nmdm.c		optional nmdm
 dev/netif/oce/oce_hw.c		optional oce pci
@@ -1920,7 +1920,7 @@ dev/video/vga/vga_switcheroo.c	optional vga_switcheroo
 dev/netif/dc/if_dc.c		optional dc
 dev/netif/de/if_de.c		optional de
 dev/netif/pcn/if_pcn.c		optional pcn
-dev/netif/mn/if_mn.c		optional mn
+dev/netif/mn/if_mn.c		optional mn netgraph
 dev/netif/re/if_re.c		optional re
 dev/netif/re/re.c		optional re
 dev/netif/rl/if_rl.c		optional rl
