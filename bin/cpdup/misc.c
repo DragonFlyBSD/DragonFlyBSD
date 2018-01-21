@@ -199,7 +199,7 @@ fatal(const char *ctl, ...)
 	     "                to be the same.\n"
 	     "    -VV         same as -V but ignore mtime entirely\n"
 	     "    -x          use .cpignore as exclusion file\n"
-	     "    -X file     specify exclusion file (cna match full source\n"
+	     "    -X file     specify exclusion file (can match full source\n"
 	     "                patch if the exclusion file is specified via\n"
 	     "                an absolute path.\n"
 	     " Version 1.20 by Matt Dillon, Dima Ruban, & Oliver Fromme\n"
