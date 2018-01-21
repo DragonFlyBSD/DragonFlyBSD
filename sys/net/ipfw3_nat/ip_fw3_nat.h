@@ -179,8 +179,6 @@ int ipfw_ctl_nat_flush(struct sockopt *sopt);
 int ipfw_ctl_nat_sockopt(struct sockopt *sopt);
 void nat_init_ctx_dispatch(netmsg_t msg);
 int ipfw_ctl_nat_get_cfg(struct sockopt *sopt);
-void del_redir_spool_cfg(struct cfg_nat *n, struct redir_chain *head);
-int add_redir_spool_cfg(char *buf, struct cfg_nat *ptr);
 int ipfw_ctl_nat_get_record(struct sockopt *sopt);
 #endif
 #endif

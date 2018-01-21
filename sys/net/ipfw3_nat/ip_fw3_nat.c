@@ -287,19 +287,19 @@ badnat:
 				);
 
 		switch (ip->ip_p) {
-			case IPPROTO_TCP:
-				th = (struct tcphdr *)(ip + 1);
-				th->th_x2 = 0;
-				th->th_sum = cksum;
-				mcl->m_pkthdr.csum_data =
-					offsetof(struct tcphdr, th_sum);
-				break;
-			case IPPROTO_UDP:
-				uh = (struct udphdr *)(ip + 1);
-				uh->uh_sum = cksum;
-				mcl->m_pkthdr.csum_data =
-					offsetof(struct udphdr, uh_sum);
-				break;
+		case IPPROTO_TCP:
+			th = (struct tcphdr *)(ip + 1);
+			th->th_x2 = 0;
+			th->th_sum = cksum;
+			mcl->m_pkthdr.csum_data =
+				offsetof(struct tcphdr, th_sum);
+			break;
+		case IPPROTO_UDP:
+			uh = (struct udphdr *)(ip + 1);
+			uh->uh_sum = cksum;
+			mcl->m_pkthdr.csum_data =
+				offsetof(struct udphdr, uh_sum);
+			break;
 		}
 		/*
 		 * No hw checksum offloading: do it
@@ -321,7 +321,7 @@ badnat:
 	return IP_FW_NAT;
 }
 
-void
+static void
 del_redir_spool_cfg(struct cfg_nat *n, struct redir_chain *head)
 {
 	struct cfg_redir *r, *tmp_r;
@@ -331,35 +331,32 @@ del_redir_spool_cfg(struct cfg_nat *n, struct redir_chain *head)
 	LIST_FOREACH_MUTABLE(r, head, _next, tmp_r) {
 		num = 1; /* Number of alias_link to delete. */
 		switch (r->mode) {
-			case REDIR_PORT:
-				num = r->pport_cnt;
-				/* FALLTHROUGH */
-			case REDIR_ADDR:
-			case REDIR_PROTO:
-				/* Delete all libalias redirect entry. */
-				for (i = 0; i < num; i++)
-					LibAliasRedirectDelete(n->lib,
-							r->alink[i]);
-
-				/* Del spool cfg if any. */
-				LIST_FOREACH_MUTABLE(s, &r->spool_chain,
-						_next, tmp_s) {
-					LIST_REMOVE(s, _next);
-					kfree(s, M_IPFW_NAT);
-				}
-				kfree(r->alink, M_IPFW_NAT);
-				LIST_REMOVE(r, _next);
-				kfree(r, M_IPFW_NAT);
-				break;
-			default:
-				kprintf("unknown redirect mode: %u\n", r->mode);
-				/* XXX - panic?!?!? */
-				break;
+		case REDIR_PORT:
+			num = r->pport_cnt;
+			/* FALLTHROUGH */
+		case REDIR_ADDR:
+		case REDIR_PROTO:
+			/* Delete all libalias redirect entry. */
+			for (i = 0; i < num; i++)
+				LibAliasRedirectDelete(n->lib, r->alink[i]);
+			/* Del spool cfg if any. */
+			LIST_FOREACH_MUTABLE(s, &r->spool_chain, _next, tmp_s) {
+				LIST_REMOVE(s, _next);
+				kfree(s, M_IPFW_NAT);
+			}
+			kfree(r->alink, M_IPFW_NAT);
+			LIST_REMOVE(r, _next);
+			kfree(r, M_IPFW_NAT);
+			break;
+		default:
+			kprintf("unknown redirect mode: %u\n", r->mode);
+			/* XXX - panic?!?!? */
+			break;
 		}
 	}
 }
 
-int
+static int
 add_redir_spool_cfg(char *buf, struct cfg_nat *ptr)
 {
 	struct cfg_redir *r, *ser_r;
@@ -374,58 +371,51 @@ add_redir_spool_cfg(char *buf, struct cfg_nat *ptr)
 		LIST_INIT(&r->spool_chain);
 		off += SOF_REDIR;
 		r->alink = kmalloc(sizeof(struct alias_link *) * r->pport_cnt,
-				M_IPFW_NAT, M_WAITOK | M_ZERO);
+		    M_IPFW_NAT, M_WAITOK | M_ZERO);
 		switch (r->mode) {
-			case REDIR_ADDR:
-				r->alink[0] = LibAliasRedirectAddr(ptr->lib,
-							r->laddr, r->paddr);
-				break;
-			case REDIR_PORT:
-				for (i = 0 ; i < r->pport_cnt; i++) {
-					/*
-					 * If remotePort is all ports
-					 * set it to 0.
-					 */
-					u_short remotePortCopy = r->rport + i;
-					if (r->rport_cnt == 1 && r->rport == 0)
-						remotePortCopy = 0;
-						r->alink[i] =
-
-						LibAliasRedirectPort(ptr->lib,
-						r->laddr,htons(r->lport + i),
-						r->raddr,htons(remotePortCopy),
-						r->paddr,htons(r->pport + i),
-						r->proto);
-
-					if (r->alink[i] == NULL) {
-						r->alink[0] = NULL;
-						break;
-					}
+		case REDIR_ADDR:
+			r->alink[0] = LibAliasRedirectAddr(ptr->lib, r->laddr,
+			    r->paddr);
+			break;
+		case REDIR_PORT:
+			for (i = 0 ; i < r->pport_cnt; i++) {
+				/* If remotePort is all ports, set it to 0. */
+				u_short remotePortCopy = r->rport + i;
+				if (r->rport_cnt == 1 && r->rport == 0)
+					remotePortCopy = 0;
+				r->alink[i] = LibAliasRedirectPort(ptr->lib,
+				    r->laddr, htons(r->lport + i), r->raddr,
+				    htons(remotePortCopy), r->paddr,
+				    htons(r->pport + i), r->proto);
+				if (r->alink[i] == NULL) {
+					r->alink[0] = NULL;
+					break;
 				}
-				break;
-			case REDIR_PROTO:
-				r->alink[0] = LibAliasRedirectProto(ptr->lib,
-					r->laddr, r->raddr, r->paddr, r->proto);
-				break;
-			default:
-				kprintf("unknown redirect mode: %u\n", r->mode);
-				break;
+			}
+			break;
+		case REDIR_PROTO:
+			r->alink[0] = LibAliasRedirectProto(ptr->lib, r->laddr,
+			    r->raddr, r->paddr, r->proto);
+			break;
+		default:
+			kprintf("unknown redirect mode: %u\n", r->mode);
+			break;
 		}
 		if (r->alink[0] == NULL) {
 			panic_err = "LibAliasRedirect* returned NULL";
 			goto bad;
-		} else /* LSNAT handling. */
-			for (i = 0; i < r->spool_cnt; i++) {
-				ser_s = (struct cfg_spool *)&buf[off];
-				s = kmalloc(SOF_REDIR, M_IPFW_NAT,
-						M_WAITOK | M_ZERO);
-				memcpy(s, ser_s, SOF_SPOOL);
-				LibAliasAddServer(ptr->lib, r->alink[0],
-						s->addr, htons(s->port));
-				off += SOF_SPOOL;
-				/* Hook spool entry. */
-				HOOK_SPOOL(&r->spool_chain, s);
-			}
+		}
+		/* LSNAT handling. */
+		for (i = 0; i < r->spool_cnt; i++) {
+			ser_s = (struct cfg_spool *)&buf[off];
+			s = kmalloc(SOF_REDIR, M_IPFW_NAT, M_WAITOK | M_ZERO);
+			memcpy(s, ser_s, SOF_SPOOL);
+			LibAliasAddServer(ptr->lib, r->alink[0],
+			    s->addr, htons(s->port));
+			off += SOF_SPOOL;
+			/* Hook spool entry. */
+			HOOK_SPOOL(&r->spool_chain, s);
+		}
 		/* And finally hook this redir entry. */
 		HOOK_REDIR(&ptr->redir_chain, r);
 	}
@@ -740,24 +730,24 @@ ipfw_ctl_nat_sockopt(struct sockopt *sopt)
 {
 	int error = 0;
 	switch (sopt->sopt_name) {
-		case IP_FW_NAT_ADD:
-			error = ipfw_ctl_nat_add(sopt);
-			break;
-		case IP_FW_NAT_DEL:
-			error = ipfw_ctl_nat_del(sopt);
-			break;
-		case IP_FW_NAT_FLUSH:
-			error = ipfw_ctl_nat_flush(sopt);
-			break;
-		case IP_FW_NAT_GET:
-			error = ipfw_ctl_nat_get_cfg(sopt);
-			break;
-		case IP_FW_NAT_GET_RECORD:
-			error = ipfw_ctl_nat_get_record(sopt);
-			break;
-		default:
-			kprintf("ipfw3 nat invalid socket option %d\n",
-					sopt->sopt_name);
+	case IP_FW_NAT_ADD:
+		error = ipfw_ctl_nat_add(sopt);
+		break;
+	case IP_FW_NAT_DEL:
+		error = ipfw_ctl_nat_del(sopt);
+		break;
+	case IP_FW_NAT_FLUSH:
+		error = ipfw_ctl_nat_flush(sopt);
+		break;
+	case IP_FW_NAT_GET:
+		error = ipfw_ctl_nat_get_cfg(sopt);
+		break;
+	case IP_FW_NAT_GET_RECORD:
+		error = ipfw_ctl_nat_get_record(sopt);
+		break;
+	default:
+		kprintf("ipfw3 nat invalid socket option %d\n",
+				sopt->sopt_name);
 	}
 	return error;
 }
@@ -853,12 +843,12 @@ static int
 ipfw_nat_modevent(module_t mod, int type, void *data)
 {
 	switch (type) {
-		case MOD_LOAD:
-			return ipfw_nat_init();
-		case MOD_UNLOAD:
-			return ipfw_nat_fini();
-		default:
-			break;
+	case MOD_LOAD:
+		return ipfw_nat_init();
+	case MOD_UNLOAD:
+		return ipfw_nat_fini();
+	default:
+		break;
 	}
 	return 0;
 }
