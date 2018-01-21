@@ -4,7 +4,7 @@
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
  * by Venkatesh Srinivas <vsrinivas@dragonflybsd.org>
- * by Daniel Flores (GSOC 2013 - mentored by Matthew Dillon, compression) 
+ * by Daniel Flores (GSOC 2013 - mentored by Matthew Dillon, compression)
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -931,7 +931,7 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 		new_eof = old_eof;
 	}
 	hammer2_mtx_unlock(&ip->lock);
-	
+
 	/*
 	 * UIO write loop
 	 */
@@ -959,7 +959,7 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 		lblksize = hammer2_calc_logical(ip, uio->uio_offset,
 						&lbase, NULL);
 		loff = (int)(uio->uio_offset - lbase);
-		
+
 		KKASSERT(lblksize <= 65536);
 
 		/*
@@ -1665,7 +1665,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	size_t name_len;
 	hammer2_tid_t inum;
 	int error;
-	
+
 	dip = VTOI(ap->a_dvp);
 	if (dip->pmp->ronly)
 		return (EROFS);
@@ -2245,7 +2245,7 @@ hammer2_vop_ioctl(struct vop_ioctl_args *ap)
 }
 
 static
-int 
+int
 hammer2_vop_mountctl(struct vop_mountctl_args *ap)
 {
 	struct mount *mp;
@@ -2415,8 +2415,6 @@ struct vop_ops hammer2_vnode_vops = {
 	.vop_setattr	= hammer2_vop_setattr,
 	.vop_readdir	= hammer2_vop_readdir,
 	.vop_readlink	= hammer2_vop_readlink,
-	.vop_getpages	= vop_stdgetpages,
-	.vop_putpages	= vop_stdputpages,
 	.vop_read	= hammer2_vop_read,
 	.vop_write	= hammer2_vop_write,
 	.vop_open	= hammer2_vop_open,
