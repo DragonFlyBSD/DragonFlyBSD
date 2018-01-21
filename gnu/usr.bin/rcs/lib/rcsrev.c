@@ -228,8 +228,14 @@ int cmpnumfld(num1, num2, fld)
 			continue;
 	}
         /* Now s1 and s2 point to the beginning of the respective fields */
-	while (*s1=='0') ++s1;  for (d1=0; isdigit(*(s1+d1)); d1++) continue;
-	while (*s2=='0') ++s2;  for (d2=0; isdigit(*(s2+d2)); d2++) continue;
+	while (*s1=='0')
+		++s1;
+	for (d1=0; isdigit(*(s1+d1)); d1++)
+		continue;
+	while (*s2=='0')
+		++s2;
+	for (d2=0; isdigit(*(s2+d2)); d2++)
+		continue;
 
 	return d1<d2 ? -1 : d1==d2 ? memcmp(s1,s2,d1) : 1;
 }
@@ -250,8 +256,12 @@ cmpdate(d1, d2)
 	if (r)
 		return r;
 	else {
-		while (isdigit(*d1)) d1++;  d1 += *d1=='.';
-		while (isdigit(*d2)) d2++;  d2 += *d2=='.';
+		while (isdigit(*d1))
+			d1++;
+		d1 += *d1=='.';
+		while (isdigit(*d2))
+			d2++;
+		d2 += *d2=='.';
 		return cmpnum(d1, d2);
 	}
 }
@@ -326,8 +336,14 @@ compartial(num1, num2, length)
 	    if (!*s1) return 1;
 	    if (!*s2) return -1;
 
-	    while (*s1=='0') ++s1; for (d1=0; isdigit(*(s1+d1)); d1++) continue;
-	    while (*s2=='0') ++s2; for (d2=0; isdigit(*(s2+d2)); d2++) continue;
+	    while (*s1=='0')
+		    ++s1;
+	    for (d1=0; isdigit(*(s1+d1)); d1++)
+		    continue;
+	    while (*s2=='0')
+		    ++s2;
+	    for (d2=0; isdigit(*(s2+d2)); d2++)
+		    continue;
 
 	    if (d1 != d2)
 		    return d1<d2 ? -1 : 1;

@@ -987,12 +987,14 @@ extractdelta(pdelta)
 	    while (strcmp(pstate->status, pdelta->state) != 0)
 		if (!(pstate = pstate->nextstate))
 		    return false;
-	if (lockflag) /* only locked revisions wanted */
-	    for (plock = Locks;  ;  plock = plock->nextlock)
+	if (lockflag) { /* only locked revisions wanted */
+	    for (plock = Locks;  ;  plock = plock->nextlock) {
 		if (!plock)
 		    return false;
 		else if (plock->delta == pdelta)
 		    break;
+	    }
+	}
 	if ((prevision = Revlst)) /* only certain revs or branches wanted */
 	    for (;;) {
                 length = prevision->numfld;
