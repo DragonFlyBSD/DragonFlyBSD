@@ -16,6 +16,12 @@ common_out_object_file=	i386-common.o
 OBJS=		${OBJS-libcommon-target}
 CFLAGS+= 	-DPREFIX=\"${TOOLS_PREFIX}/usr\"
 
+# XXX workaround g++80 -Wnarrowing
+# error: narrowing conversion of '-1' from 'int' to 'unsigned int' inside { }
+.if ${CCVER:Mgcc80}
+CFLAGS+=	-Wno-narrowing
+.endif
+
 .for ofile in ${OBJS-libcommon-target}
 ${ofile}: ${ofile:.o=.c}
 	${CXX} ${STATIC_CXXFLAGS} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}

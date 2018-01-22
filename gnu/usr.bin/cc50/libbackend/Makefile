@@ -373,6 +373,11 @@ BACKEND_OBJS= \
 OBJS=	${BACKEND_OBJS}
 SRCS=	wide-int.cc wide-int-print.cc
 
+# XXX workaround g++80 -Wnarrowing
+.if ${CCVER:Mgcc80}
+CFLAGS+=	-Wno-narrowing
+.endif
+
 # hack to force c++ compiler to compile *.c files to create library
 .for cfile in ${BACKEND_OBJS}
 ${cfile}: ${cfile:.o=.c}
