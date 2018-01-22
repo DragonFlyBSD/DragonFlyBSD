@@ -11,8 +11,6 @@ PROG=		dmsetup
 
 MAN=		dmsetup.8
 
-WARNS?=		1
-
 CFLAGS+=	-I${LIBDM_DISTDIR}/ -I${LIBDM_DISTDIR}/misc \
 		-I. -I${LIBDM_DISTDIR}/ioctl -I${LVM2_DISTDIR}/include
 
