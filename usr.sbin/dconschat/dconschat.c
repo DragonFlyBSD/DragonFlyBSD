@@ -403,7 +403,8 @@ ok:
 
 #if 1
 	if (verbose)
-		printf("[%d]", rlen); fflush(stdout);
+		printf("[%d]", rlen);
+	fflush(stdout);
 #endif
 
 again:
