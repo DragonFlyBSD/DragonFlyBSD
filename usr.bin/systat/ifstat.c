@@ -52,12 +52,16 @@
 #define C4	60		/* 60-80 */
 #define C5	80		/* Used for label positioning. */
 
+#if 0
 static const int col0 = 0;
 static const int col1 = C1;
+#endif
 static const int col2 = C2;
 static const int col3 = C3;
 static const int col4 = C4;
+#if 0
 static const int col5 = C5;
+#endif
 
 
 static SLIST_HEAD(, if_stat) curlist;

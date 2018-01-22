@@ -21,10 +21,9 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: head/sbin/ifconfig/regdomain.c 200587 2009-12-15 20:44:12Z gavin $
  */
-#ifndef lint
-static const char rcsid[] = "$FreeBSD: head/sbin/ifconfig/regdomain.c 200587 2009-12-15 20:44:12Z gavin $";
-#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/errno.h>

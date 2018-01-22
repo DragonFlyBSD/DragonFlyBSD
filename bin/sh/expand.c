@@ -926,7 +926,7 @@ varvalue(const char *name, int quoted, int subtype, int flag)
 				p = shellparam.p[num - 1];
 			else
 				return;
-				strtodest(p, flag, subtype, quoted);
+			strtodest(p, flag, subtype, quoted);
 			}
 		return;
 		}

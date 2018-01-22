@@ -29,16 +29,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)getmntopts.c	8.3 (Berkeley) 3/29/95
+ * $Id: getmntopts.c,v 1.1 2000/03/29 01:26:41 bp Exp $
  */
-
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)getmntopts.c	8.3 (Berkeley) 3/29/95";
-#else
-static const char rcsid[] =
-	"$Id: getmntopts.c,v 1.1 2000/03/29 01:26:41 bp Exp $";
-#endif
-#endif /* not lint */
 
 #include <sys/param.h>
 
