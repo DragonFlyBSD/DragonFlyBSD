@@ -2568,7 +2568,6 @@ ENTRY=	1/1178 \
 	x/xterm-r6 \
 	x/xterm-sco \
 	x/xterm-sun \
-        x/xterm-termite \
 	x/xterm-utf8 \
 	x/xterm-vt220 \
 	x/xterm-vt52 \
