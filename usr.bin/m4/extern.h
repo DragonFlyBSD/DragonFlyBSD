@@ -112,7 +112,7 @@ extern void	usage(void) __dead2;
 extern void	resizedivs(int);
 extern size_t	buffer_mark(void);
 extern void	dump_buffer(FILE *, size_t);
-extern void	m4errx(int, const char *, ...) __dead2 __printflike(2, 3);
+extern void	m4errx(int, const char *, ...) __dead2 __printf0like(2, 3);
 
 extern int	obtain_char(struct input_file *);
 extern void	set_input(struct input_file *, FILE *, const char *);
