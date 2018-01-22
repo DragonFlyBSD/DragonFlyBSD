@@ -28,7 +28,7 @@
 #define	_USB_HUB_H_
 
 /*
- * The following structure defines an USB port.
+ * The following structure defines an USB port. 
  */
 struct usb_port {
 	uint8_t	restartcnt;
@@ -36,7 +36,7 @@ struct usb_port {
 	uint8_t	device_index;		/* zero means not valid */
 	enum usb_hc_mode usb_mode;	/* host or device mode */
 #if USB_HAVE_TT_SUPPORT
-	struct usb_device_request req_reset_tt /*__aligned(4)*/;
+	struct usb_device_request req_reset_tt __aligned(4);
 #endif
 };
 
