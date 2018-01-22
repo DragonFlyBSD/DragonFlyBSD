@@ -23,6 +23,10 @@ CFLAGS+=	-Wold-style-declaration \
 .if ${CCVER:Mgcc4[789]} || ${CCVER:Mgcc[5-]*}
 CWARNFLAGS+=	-Wno-unused-but-set-variable
 .endif
+# XXX drm/i915 is too noisy for gcc80, keep till i915 update
+.if ${CCVER:Mgcc80}
+CWARNFLAGS+=	-Wno-error=unused-const-variable
+.endif
 .endif
 
 
