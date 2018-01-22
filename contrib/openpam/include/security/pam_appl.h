@@ -78,28 +78,25 @@ int
 pam_get_data(const pam_handle_t *_pamh,
 	const char *_module_data_name,
 	const void **_data)
-	OPENPAM_NONNULL((1,2,3));
+	OPENPAM_NONNULL((2,3));
 
 int
 pam_get_item(const pam_handle_t *_pamh,
 	int _item_type,
 	const void **_item)
-	OPENPAM_NONNULL((1,3));
+	OPENPAM_NONNULL((3));
 
 int
 pam_get_user(pam_handle_t *_pamh,
 	const char **_user,
-	const char *_prompt)
-	OPENPAM_NONNULL((1,2));
+	const char *_prompt);
 
 const char *
 pam_getenv(pam_handle_t *_pamh,
-	const char *_name)
-	OPENPAM_NONNULL((1,2));
+	const char *_name);
 
 char **
-pam_getenvlist(pam_handle_t *_pamh)
-	OPENPAM_NONNULL((1));
+pam_getenvlist(pam_handle_t *_pamh);
 
 int
 pam_open_session(pam_handle_t *_pamh,
@@ -108,8 +105,7 @@ pam_open_session(pam_handle_t *_pamh,
 
 int
 pam_putenv(pam_handle_t *_pamh,
-	const char *_namevalue)
-	OPENPAM_NONNULL((1,2));
+	const char *_namevalue);
 
 int
 pam_set_data(pam_handle_t *_pamh,
@@ -118,13 +114,12 @@ pam_set_data(pam_handle_t *_pamh,
 	void (*_cleanup)(pam_handle_t *_pamh,
 		void *_data,
 		int _pam_end_status))
-	OPENPAM_NONNULL((1,2));
+	OPENPAM_NONNULL((2));
 
 int
 pam_set_item(pam_handle_t *_pamh,
 	int _item_type,
-	const void *_item)
-	OPENPAM_NONNULL((1));
+	const void *_item);
 
 int
 pam_setcred(pam_handle_t *_pamh,

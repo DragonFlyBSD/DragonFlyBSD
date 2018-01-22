@@ -97,8 +97,7 @@ int
 pam_get_authtok(pam_handle_t *_pamh,
 	int _item,
 	const char **_authtok,
-	const char *_prompt)
-	OPENPAM_NONNULL((1,3));
+	const char *_prompt);
 
 int
 pam_info(const pam_handle_t *_pamh,
@@ -120,8 +119,7 @@ int
 pam_setenv(pam_handle_t *_pamh,
 	const char *_name,
 	const char *_value,
-	int _overwrite)
-	OPENPAM_NONNULL((1,2,3));
+	int _overwrite);
 
 int
 pam_vinfo(const pam_handle_t *_pamh,

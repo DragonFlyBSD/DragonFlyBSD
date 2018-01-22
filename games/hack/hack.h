@@ -588,7 +588,7 @@ void	more(void);
 void	cmore(const char *);
 void	clrlin(void);
 void	pline(const char *, ...) __printflike(1, 2);
-void	vpline(const char *, va_list) __printflike(1, 0);
+void	vpline(const char *, va_list) __printf0like(1, 0);
 void	putsym(char);
 void	putstr(const char *);
 
