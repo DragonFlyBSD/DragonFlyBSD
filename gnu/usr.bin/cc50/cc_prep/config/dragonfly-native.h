@@ -23,22 +23,22 @@
 
 #undef	LINK_SPEC
 #define LINK_SPEC DFBSD_LINK_SPEC \
-"%{pg: -L"PREFIX2"/lib/gcc"GCCSHORTVER"/profile \
-  %{!static: "RUNPATH" /usr/lib/gcc"GCCSHORTVER"/profile} \
+"%{pg: -L" PREFIX2 "/lib/gcc" GCCSHORTVER "/profile \
+  %{!static: " RUNPATH " /usr/lib/gcc" GCCSHORTVER "/profile} \
  } \
- -L"PREFIX2"/lib/gcc"GCCSHORTVER" \
- %{!static: "RUNPATH" /usr/lib/gcc"GCCSHORTVER"} \
+ -L" PREFIX2 "/lib/gcc" GCCSHORTVER " \
+ %{!static: " RUNPATH " /usr/lib/gcc" GCCSHORTVER "} \
  %{pg: \
   %{!nostdlib: \
-   %{!nodefaultlibs: -L"PREFIX2"/lib/profile \
-    %{!static: "RUNPATH" /usr/lib/profile} \
+   %{!nodefaultlibs: -L" PREFIX2 "/lib/profile \
+    %{!static: " RUNPATH " /usr/lib/profile} \
    } \
   } \
  }"
 
-#define NATIVE_SYSTEM_HEADER_DIR	PREFIX2"/include"
-#define STD_EXEC_PATH			PREFIX1"/libexec/gcc"GCCSHORTVER
-#define STANDARD_EXEC_PREFIX		STD_EXEC_PATH"/"
+#define NATIVE_SYSTEM_HEADER_DIR	PREFIX2 "/include"
+#define STD_EXEC_PATH			PREFIX1 "/libexec/gcc" GCCSHORTVER
+#define STANDARD_EXEC_PREFIX		STD_EXEC_PATH "/"
 #define STANDARD_LIBEXEC_PREFIX 	STANDARD_EXEC_PREFIX
 #define STANDARD_BINDIR_PREFIX		STANDARD_EXEC_PREFIX
 #define STANDARD_STARTFILE_PREFIX	STANDARD_EXEC_PREFIX
@@ -49,14 +49,14 @@
 #define MD_STARTFILE_PREFIX_1		""
 #define TOOLDIR_BASE_PREFIX		"./"
 
-#define STARTFILE_PREFIX_SPEC		PREFIX2"/lib/gcc"GCCSHORTVER"/ "PREFIX2"/lib/"
+#define STARTFILE_PREFIX_SPEC		PREFIX2 "/lib/gcc" GCCSHORTVER "/ " PREFIX2 "/lib/"
 
-#define GPLUSPLUS_INCLUDE_DIR		PREFIX2"/include/c++/"GCCPOINTVER
+#define GPLUSPLUS_INCLUDE_DIR		PREFIX2 "/include/c++/" GCCPOINTVER
 #define GPLUSPLUS_INCLUDE_DIR_ADD_SYSROOT 0
 #undef	GPLUSPLUS_TOOL_INCLUDE_DIR
-#define	GPLUSPLUS_BACKWARD_INCLUDE_DIR	PREFIX2"/include/c++/"GCCPOINTVER"/backward"
+#define	GPLUSPLUS_BACKWARD_INCLUDE_DIR	PREFIX2 "/include/c++/" GCCPOINTVER "/backward"
 #undef	LOCAL_INCLUDE_DIR
-#define	GCC_INCLUDE_DIR			PREFIX2"/libdata/gcc"GCCSHORTVER
+#define	GCC_INCLUDE_DIR			PREFIX2 "/libdata/gcc" GCCSHORTVER
 #undef	FIXED_INCLUDE_DIR
 #undef	CROSS_INCLUDE_DIR
 #undef	TOOL_INCLUDE_DIR
