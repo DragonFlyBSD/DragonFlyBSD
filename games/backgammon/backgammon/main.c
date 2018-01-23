@@ -449,7 +449,7 @@ main(int argc, char **argv)
 		mflag = 0;
 		l = bar + 7 * cturn;
 		for (i = bar; i != l; i += cturn)
-			if (board[i] * cturn)
+			if (board[i] && cturn)
 				mflag++;
 
 		/* compute game value */

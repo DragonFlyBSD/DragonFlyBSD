@@ -487,7 +487,7 @@ The arrow is weakly shot and can go no further!\n");
 		/* each time you shoot, it's more likely the wumpus moves */
 		static int lastchance = 2;
 
-		if (random() % level == EASY ? 12 : 9 < (lastchance += 2)) {
+		if (random() % (level == EASY ? 12 : 9) < (lastchance += 2)) {
 			move_wump();
 			if (wumpus_loc == player_loc)
 				wump_kill();
