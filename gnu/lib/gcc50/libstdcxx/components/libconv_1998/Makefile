@@ -30,7 +30,9 @@ COWG=	messages.x
 GENCC=	atomicity.cc basic_file.cc c++locale.cc
 GENCC+=	${COWD:.x=_members_cow.cc} ${COWG:.x=_members_cow.cc}
 
-FLAGS_GROUPS=		gnu11 cow concept explicit
+FLAGS_GROUPS=		deprecated gnu11 cow concept explicit
+deprecated_FLAGS=	-std=gnu++98 -D_BACKWARD_BACKWARD_WARNING_H
+deprecated_FLAGS_FILES=	strstream.cc
 gnu11_FLAGS=		-std=gnu++11 -fno-implicit-templates
 gnu11_FLAGS_FILES=	locale_init.cc localename.cc
 cow_FLAGS=		-D_GLIBCXX_USE_CXX11_ABI=0 -fimplicit-templates
@@ -41,7 +43,8 @@ parallel_FLAGS=		-D_GLIBCXX_PARALLEL -fno-implicit-templates
 parallel_FLAGS_FILES=	parallel_settings.cc
 explicit_FLAGS=		-fno-implicit-templates
 
-REFERENCED_FILES=	${gnu11_FLAGS_FILES} ${cow_FLAGS_FILES} \
+REFERENCED_FILES=	${deprecated_FLAGS_FILES} \
+			${gnu11_FLAGS_FILES} ${cow_FLAGS_FILES} \
 			${concept_FLAGS_FILES} ${parallel_FLAGS_FILES}
 
 .for F in ${SRCS}

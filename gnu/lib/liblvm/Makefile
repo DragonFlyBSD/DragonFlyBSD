@@ -30,8 +30,6 @@ SRCS+=		activate.c lvmcache.c toolcontext.c config.c btree.c \
 # empty source ("empty for now")
 #SRCS+=	util.c
 
-WARNS?=		1
-
 .PATH:	${LVM2_DISTDIR}/lib/
 .PATH:	${LVM2_DISTDIR}/lib/activate
 .PATH:	${LVM2_DISTDIR}/lib/cache

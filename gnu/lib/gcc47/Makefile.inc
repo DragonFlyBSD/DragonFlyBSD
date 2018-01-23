@@ -45,3 +45,5 @@ CFLAGS+=	-I${CCDIR}/../gmp
 WORLD_CCOPTLEVEL:=	1
 .MAKEFLAGS: WORLD_CCOPTLEVEL=1
 .endif
+
+.include "../Makefile.inc"

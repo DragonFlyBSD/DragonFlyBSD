@@ -1,7 +1,6 @@
 .include "../Makefile.inc"
 
 LIB=		gcov
-WARNS?=1
 
 CFLAGS+=	-I.
 CFLAGS+=	-I${GCCDIR}/libgcc

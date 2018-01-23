@@ -23,8 +23,6 @@ SRCS+=		bitset.c hash.c list.c libdm-common.c libdm-file.c \
 		dbg_malloc.c pool.c matcher.c parse_rx.c ttree.c \
 		libdm-dragonfly-iface.c libdm_dragonfly.c
 
-WARNS?=		1
-
 .PATH: ${LIBDM_DISTDIR}/
 .PATH: ${LIBDM_DISTDIR}/datastruct
 .PATH: ${LIBDM_DISTDIR}/mm
