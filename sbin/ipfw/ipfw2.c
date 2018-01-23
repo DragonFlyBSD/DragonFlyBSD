@@ -1928,7 +1928,7 @@ fill_ip(ipfw_insn_ip *cmd, char *av)
 		else if (i > 32)
 			errx(EX_DATAERR, "bad width ``%s''", p);
 		else
-			cmd->mask.s_addr = htonl(~0 << (32 - i));
+			cmd->mask.s_addr = htonl(~0U << (32 - i));
 		break;
 	default:
 		cmd->mask.s_addr = htonl(~0);
@@ -2478,7 +2478,7 @@ get_mac_addr_mask(char *p, u_char *addr, u_char *mask)
 	if (*p == '/') { /* mask len */
 		l = strtol(p+1, &p, 0);
 		for (i=0; l>0; l -=8, i++)
-			mask[i] = (l >=8) ? 0xff : (~0) << (8-l);
+			mask[i] = (l >=8) ? 0xff : (~0U) << (8-l);
 	} else if (*p == '&') { /* mask */
 		for (i=0, p++; *p && i<6;i++, p++) {
 			mask[i] = strtol(p, &p, 16);
@@ -2783,6 +2783,7 @@ add(int ac, char *av[])
 	case TOK_QUEUE:
 	case TOK_PIPE:
 		action->len = F_INSN_SIZE(ipfw_insn_pipe);
+		/* FALLTHROUGH */
 	case TOK_SKIPTO:
 		if (i == TOK_QUEUE)
 			action->opcode = O_QUEUE;
