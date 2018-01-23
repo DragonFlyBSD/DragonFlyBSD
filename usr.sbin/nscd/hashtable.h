@@ -132,7 +132,7 @@ typedef int hashtable_index_t;
 		(entry)->field.capacity *= 2;				\
 		(entry)->field.values = (type *)realloc((entry)->field.values, \
 			(entry)->field.capacity * sizeof(type));	\
-	while (0)
+	} while (0)
 
 #define HASHTABLE_ENTRY_CAPACITY_DECREASE(entry, field, type)		\
 	(entry)->field.capacity /= 2;					\

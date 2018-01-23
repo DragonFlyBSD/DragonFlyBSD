@@ -379,7 +379,7 @@ deliver_to_host(struct qitem *it, struct mx_hostentry *host)
 			       host->host, host->addr, c, neterr); \
 			return (1); \
 		} \
-	while (0)
+	} while (0)
 
 	/* Check first reply from remote host */
 	if ((config.features & SECURETRANS) == 0 ||
