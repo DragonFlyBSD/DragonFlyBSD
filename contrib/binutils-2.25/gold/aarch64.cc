@@ -1953,12 +1953,12 @@ class AArch64_relocate_functions
 	aarch64_howto[AArch64_reloc_property::INST_MOVW].dst_mask;
 
     // Clear immediate fields and opc code.
-    val &= ~(dst_mask | (0x11 << 29));
+    val &= ~(dst_mask | (0x3 << 29));
 
     // Set instruction to movz or movn.
     // movz: [30:29] is 10   movn: [30:29] is 00
     if (is_movz)
-      val |= (0x10 << 29);
+      val |= (0x2 << 29);
 
     elfcpp::Swap<32, big_endian>::writeval(wv,
       static_cast<Valtype>(val | (immed << doffset)));
