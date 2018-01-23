@@ -1553,9 +1553,11 @@ extern NCURSES_EXPORT_VAR(SIG_ATOMIC_T) _nc_have_sigwinch;
  * tries to limp along after a failure.
  */
 #define TYPE_MALLOC(type, size, name) \
-	name = typeMalloc(type, size); \
-	if (name == 0) \
-	    _nc_err_abort(MSG_NO_MEMORY)
+	do {
+	    name = typeMalloc(type, size); \
+	    if (name == 0) \
+		_nc_err_abort(MSG_NO_MEMORY) \
+	} while (0)
 
 #define TYPE_REALLOC(type, size, name) \
 	name = typeRealloc(type, size, name); \
