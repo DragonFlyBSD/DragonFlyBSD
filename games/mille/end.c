@@ -28,7 +28,6 @@
  *
  * @(#)end.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/end.c,v 1.5 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/end.c,v 1.4 2006/08/27 17:17:23 pavalos Exp $
  */
 
 #include "mille.h"
@@ -88,11 +87,10 @@ static int	Last_tot[2];	/* last tot used for extrapolate	*/
 void
 extrapolate(PLAY *pp)
 {
-
 	int		x, num, tot, count;
 
 	num = pp - Player;
-	tot += SC_TRIP + SC_DELAY + SC_EXT;
+	tot += SC_TRIP + SC_DELAY + SC_EXTENSION;
 	x = num * 6 + 21 + 3;
 	for (tot = 5; tot <= 9; tot++)
 		mvaddch(tot, x, '0');
@@ -133,9 +131,8 @@ extrapolate(PLAY *pp)
 void
 undoex(void)
 {
-
-	reg PLAY	*pp;
-	reg int		i;
+	PLAY	*pp;
+	int		i;
 
 	i = 0;
 	for (pp = Player; pp < &Player[2]; pp++) {

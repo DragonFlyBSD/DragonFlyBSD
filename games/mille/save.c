@@ -28,7 +28,6 @@
  *
  * @(#)save.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/save.c,v 1.6 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/save.c,v 1.5 2006/08/27 17:17:23 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -139,9 +138,8 @@ over:
  * be cleaned up before the game starts.
  */
 bool
-rest_f(char *file)
+rest_f(const char *file)
 {
-
 	char	*sp;
 	int	inf;
 	char	buf[80];

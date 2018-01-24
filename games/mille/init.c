@@ -28,7 +28,6 @@
  *
  * @(#)init.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/init.c,v 1.5 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/init.c,v 1.3 2006/08/27 17:17:23 pavalos Exp $
  */
 
 #include "mille.h"
@@ -44,7 +43,7 @@ init(void)
 	int	i, j;
 	CARD	card;
 
-	bzero(Numseen, sizeof Numseen);
+	memset(Numseen, 0, sizeof Numseen);
 	Numgos = 0;
 
 	for (i = 0; i < 2; i++) {

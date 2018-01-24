@@ -28,7 +28,6 @@
  *
  * @(#)print.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/print.c,v 1.5 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/print.c,v 1.4 2006/08/27 17:17:23 pavalos Exp $
  */
 
 #include "mille.h"

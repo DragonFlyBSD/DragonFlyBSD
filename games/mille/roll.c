@@ -28,7 +28,6 @@
  *
  * @(#)roll.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/roll.c,v 1.6 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/roll.c,v 1.3 2006/08/27 17:17:23 pavalos Exp $
  */
 
 #include "mille.h"
@@ -43,8 +42,7 @@
 int
 roll(int ndie, int nsides)
 {
-
-	int		tot;
+	int	tot;
 
 	tot = 0;
 	while (ndie--)

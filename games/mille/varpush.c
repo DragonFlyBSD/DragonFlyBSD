@@ -28,7 +28,6 @@
  *
  * @(#)varpush.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/varpush.c,v 1.6 1999/12/12 06:17:25 billf Exp $
- * $DragonFly: src/games/mille/varpush.c,v 1.3 2006/08/27 17:17:23 pavalos Exp $
  */
 
 #include <errno.h>
@@ -79,7 +78,7 @@ varpush(int file, ssize_t (*func)(int, const struct iovec *, int))
 			char	buf[80];
 over:
 			printf("Debug file:");
-			fgets(buf, 80, stdin);
+			fgets(buf, sizeof(buf), stdin);
 			if ((outf = fopen(buf, "w")) == NULL) {
 				perror(buf);
 				goto over;

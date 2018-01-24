@@ -28,7 +28,6 @@
  *
  * @(#)comp.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/comp.c,v 1.5 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/comp.c,v 1.4 2008/06/05 18:06:30 swildner Exp $
  */
 
 #include "mille.h"
@@ -57,7 +56,7 @@ calcmove(void)
 	pp = &Player[COMP];
 	op = &Player[PLAYER];
 	safe = 0;
-	cango = 0;
+	cango = FALSE;
 	canstop = FALSE;
 	foundend = FALSE;
 
@@ -69,7 +68,7 @@ calcmove(void)
 		switch (card) {
 		  case C_STOP:	case C_CRASH:
 		  case C_FLAT:	case C_EMPTY:
-			if ((playit[i] = canplay(pp, op, card)) != 0)
+			if ((playit[i] = canplay(pp, op, card)))
 				canstop = TRUE;
 			goto norm;
 		  case C_LIMIT:
@@ -88,7 +87,7 @@ calcmove(void)
 			playit[i] = canplay(pp, op, card);
 norm:
 			if (playit[i])
-				++cango;
+				cango = TRUE;
 			break;
 		  case C_GAS_SAFE:	case C_DRIVE_SAFE:
 		  case C_SPARE_SAFE:	case C_RIGHT_WAY:
@@ -172,7 +171,7 @@ redoit:
 	value = valbuf;
 	for (i = 0; i < HAND_SZ; i++) {
 		card = pp->hand[i];
-		if (issafety(card) || playit[i] == (cango != 0)) {
+		if (issafety(card) || playit[i] == cango) {
 #ifdef DEBUG
 			if (Debug)
 				fprintf(outf, "CALCMOVE: switch(\"%s\")\n",
@@ -189,9 +188,8 @@ redoit:
 					    && count[C_25] > 0)
 						goto okay;
 					*value = 0;
-					if (--cango <= 0)
-						goto redoit;
-					break;
+					cango = FALSE;
+					goto redoit;
 				}
 okay:
 				*value = (Value[card] >> 3);
@@ -210,7 +208,9 @@ okay:
 					*value = 0;
 					break;
 				}
-			  case C_75:	case C_100:
+				/* FALLTHROUGH */
+			  case C_100:
+			  case C_75:
 				*value = (Value[card] >> 3);
 				if (pp->speed == C_LIMIT)
 					--*value;
@@ -396,7 +396,7 @@ play_it:
  * Return true if the given player could conceivably win with his next card.
  */
 bool
-onecard(PLAY *pp)
+onecard(const PLAY *pp)
 {
 	CARD	bat, spd, card;
 
@@ -418,6 +418,7 @@ onecard(PLAY *pp)
 				card = (End - pp->mileage == 75 ? C_75 : C_100);
 			if (spd == C_LIMIT)
 				return Numseen[S_RIGHT_WAY] == 0;
+			/* FALLTHROUGH */
 		  case 50:
 		  case 25:
 			if (card == -1)
@@ -428,7 +429,7 @@ onecard(PLAY *pp)
 }
 
 bool
-canplay(PLAY *pp, PLAY *op, CARD card)
+canplay(const PLAY *pp, const PLAY *op, CARD card)
 {
 	switch (card) {
 	  case C_200:

@@ -28,7 +28,6 @@
  *
  * @(#)misc.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/misc.c,v 1.8.2.1 2001/06/13 13:52:14 dwmalone Exp $
- * $DragonFly: src/games/mille/misc.c,v 1.4 2006/08/27 17:17:23 pavalos Exp $
  */
 
 #include <sys/file.h>
@@ -113,24 +112,20 @@ cont:		;
 bool
 check_ext(bool forcomp)
 {
-
-
-	if (End == 700)
+	if (End == 700) {
 		if (Play == PLAYER) {
 			if (getyn(EXTENSIONPROMPT)) {
 extend:
 				if (!forcomp)
 					End = 1000;
 				return TRUE;
-			}
-			else {
+			} else {
 done:
 				if (!forcomp)
 					Finished = TRUE;
 				return FALSE;
 			}
-		}
-		else {
+		} else {
 			PLAY	*pp, *op;
 			int	i, safe, miles;
 
@@ -157,7 +152,7 @@ done:
 				goto extend;
 			goto done;
 		}
-	else
+	} else
 		goto done;
 }
 
@@ -213,7 +208,7 @@ void
 check_more(void)
 {
 	On_exit = TRUE;
-	if (Player[PLAYER].total >= 5000 || Player[COMP].total >= 5000)
+	if (Player[PLAYER].total >= 5000 || Player[COMP].total >= 5000) {
 		if (getyn(ANOTHERGAMEPROMPT))
 			return;
 		else {
@@ -227,7 +222,7 @@ check_more(void)
 			Player[COMP].total = 0;
 			Player[PLAYER].total = 0;
 		}
-	else
+	} else
 		if (getyn(ANOTHERHANDPROMPT))
 			return;
 	if (!Saved && getyn(SAVEGAMEPROMPT))

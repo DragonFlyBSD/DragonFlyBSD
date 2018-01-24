@@ -28,7 +28,6 @@
  *
  * @(#)move.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/move.c,v 1.6 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/move.c,v 1.5 2006/08/27 17:17:23 pavalos Exp $
  */
 
 #include <termios.h>
@@ -70,12 +69,12 @@ domove(void)
 	switch (Movetype) {
 	  case M_DISCARD:
 		if (haspicked(pp)) {
-			if (pp->hand[Card_no] == C_INIT)
+			if (pp->hand[Card_no] == C_INIT) {
 				if (Card_no == 6)
 					Finished = TRUE;
 				else
 					error("no card there");
-			else {
+			} else {
 				if (issafety(pp->hand[Card_no])) {
 					error("discard a safety?");
 					goodplay = FALSE;
@@ -218,12 +217,15 @@ mustpick:
 	  case C_200:
 		if (pp->nummiles[C_200] == 2)
 			return error("only two 200's per hand");
+		/* FALLTHROUGH */
 	  case C_100:	case C_75:
 		if (pp->speed == C_LIMIT)
 			return error("limit of 50");
+		/* FALLTHROUGH */
 	  case C_50:
 		if (pp->mileage + Value[card] > End)
 			return error("puts you over %d", End);
+		/* FALLTHROUGH */
 	  case C_25:
 		if (!pp->can_go)
 			return error("cannot move now");
@@ -520,7 +522,7 @@ account(CARD card)
 void
 prompt(int promptno)
 {
-	static const char	*names[] = {
+	static const char	*const names[] = {
 				">>:Move:",
 				"Really?",
 				"Another hand?",

@@ -28,7 +28,6 @@
  *
  * @(#)extern.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/extern.c,v 1.3 1999/11/30 03:49:01 billf Exp $
- * $DragonFly: src/games/mille/extern.c,v 1.3 2006/08/27 17:17:23 pavalos Exp $
  */
 
 #include "mille.h"
@@ -46,8 +45,8 @@ bool	Debug,			/* set if debugging code on		*/
 
 char	Initstr[100];		/* initial string for error field	*/
 const char *C_fmt = "%-18.18s";	/* format for printing cards		*/
-char *Fromfile = NULL;		/* startup file for game		*/
-const char *_cn[NUM_CARDS] = {	/* Card name buffer			*/
+const char *Fromfile = NULL;	/* startup file for game		*/
+const char *const _cn[NUM_CARDS] = {	/* Card name buffer		*/
 		"",
 		"25",
 		"50",
@@ -69,7 +68,7 @@ const char *_cn[NUM_CARDS] = {	/* Card name buffer			*/
 		"Driving Ace",
 		"Right of Way"
 };
-const char **C_name = &_cn[1];	/* Card names				*/
+const char *const *C_name = &_cn[1];	/* Card names			*/
 
 int	Card_no,		/* Card number for current move		*/
 	End,			/* End value for current hand		*/
@@ -79,7 +78,8 @@ int	Card_no,		/* Card number for current move		*/
 	Numgos,			/* Number of Go cards used by computer	*/
 	Window = W_SMALL,	/* Current window wanted		*/
 	Numseen[NUM_CARDS];	/* Number of cards seen in current hand	*/
-int	Value[NUM_MILES] = {	/* Value of mileage cards		*/
+
+const int	Value[NUM_MILES] = {	/* Value of mileage cards	*/
 		25, 50, 75, 100, 200
 	},
 	Numcards[NUM_CARDS] = {	/* Number of cards in deck		*/
@@ -130,7 +130,7 @@ int	Numneed[NUM_CARDS] = {	/* number of cards needed per hand	*/
 CARD	Discard,		/* Top of discard pile			*/
 	Sh_discard,		/* Last discard card shown		*/
 	*Topcard;		/* Pointer to next card to be picked	*/
-CARD	Opposite[NUM_CARDS] = {	/* Opposites of each card		*/
+const CARD	Opposite[NUM_CARDS] = {	/* Opposites of each card		*/
 		C_25, C_50, C_75, C_100, C_200, C_GAS, C_SPARE,
 		C_REPAIRS, C_GO, C_END_LIMIT, C_EMPTY, C_FLAT, C_CRASH,
 		C_STOP, C_LIMIT, C_EMPTY, C_FLAT, C_CRASH, C_STOP, C_INIT

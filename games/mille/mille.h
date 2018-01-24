@@ -51,7 +51,7 @@
 
 #define	HAND_SZ		7	/* number of cards in a hand	*/
 #define	DECK_SZ		101	/* number of cards in decks	*/
-#define	NUM_SAFE	4	/* number of saftey cards	*/
+#define	NUM_SAFE	4	/* number of safety cards	*/
 #define	NUM_MILES	5	/* number of milestones types	*/
 #define	NUM_CARDS	20	/* number of types of cards	*/
 #define	BOARD_Y		17	/* size of board screen		*/
@@ -195,14 +195,15 @@ typedef struct {
 
 extern bool	Debug, Finished, Next, On_exit, Order, Saved;
 
-extern char	*Fromfile, Initstr[];
-extern const char	*C_fmt, **C_name;
+extern char	Initstr[];
+extern const char	*C_fmt, *const *C_name, *Fromfile;
 
-extern int	Card_no, End, Handstart, Movetype, Numcards[], Numgos,
-		Numneed[], Numseen[NUM_CARDS], Play, Value[], Window;
+extern int	Card_no, End, Handstart, Movetype, Numgos,
+		Numneed[], Numseen[NUM_CARDS], Play, Window;
+extern const int	Numcards[], Value[];
 
-extern CARD	Deck[DECK_SZ], Discard, Opposite[NUM_CARDS], Sh_discard,
-		*Topcard;
+extern CARD	Deck[DECK_SZ], Discard, Sh_discard, *Topcard;
+extern const CARD	Opposite[NUM_CARDS];
 
 extern FILE	*outf;
 
@@ -216,7 +217,7 @@ extern WINDOW	*Board, *Miles, *Score;
 
 void	account(CARD);
 void	calcmove(void);
-bool	canplay(PLAY *, PLAY *, CARD);
+bool	canplay(const PLAY *, const PLAY *, CARD);
 bool	check_ext(bool);
 void	check_more(void);
 void	die(int) __dead2;
@@ -232,12 +233,12 @@ void	init(void);
 int	isrepair(CARD);
 void	newboard(void);
 void	newscore(void);
-bool	onecard(PLAY *);
+bool	onecard(const PLAY *);
 void	prboard(void);
 void	prompt(int);
 void	prscore(bool);
 char	readch(void);
-bool	rest_f(char *);
+bool	rest_f(const char *);
 int	roll(int, int);
 void	rub(int);
 CARD	safety(CARD);
