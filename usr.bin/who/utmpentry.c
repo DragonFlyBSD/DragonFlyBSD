@@ -310,9 +310,9 @@ getentry(struct utmpentry *e, struct utmp *up)
 	 * reason we use the size of the _source_ as the length
 	 * argument.
 	 */
-	(void)strncpy(e->name, up->ut_name, sizeof(up->ut_name));
-	(void)strncpy(e->line, up->ut_line, sizeof(up->ut_line));
-	(void)strncpy(e->host, up->ut_host, sizeof(up->ut_host));
+	(void)strncpy(e->name, up->ut_name, sizeof(e->name));
+	(void)strncpy(e->line, up->ut_line, sizeof(e->line));
+	(void)strncpy(e->host, up->ut_host, sizeof(e->host));
 
 	e->tv.tv_sec = up->ut_time;
 	e->tv.tv_usec = 0;
@@ -343,9 +343,9 @@ getentryx(struct utmpentry *e, struct utmpx *up)
 	 * reason we use the size of the _source_ as the length
 	 * argument.
 	 */
-	(void)strncpy(e->name, up->ut_name, sizeof(up->ut_name));
-	(void)strncpy(e->line, up->ut_line, sizeof(up->ut_line));
-	(void)strncpy(e->host, up->ut_host, sizeof(up->ut_host));
+	(void)strncpy(e->name, up->ut_name, sizeof(e->name));
+	(void)strncpy(e->line, up->ut_line, sizeof(e->line));
+	(void)strncpy(e->host, up->ut_host, sizeof(e->host));
 
 	e->tv = up->ut_tv;
 	e->pid = up->ut_pid;
