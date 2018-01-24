@@ -64,7 +64,7 @@ usage(void)
 
 static int TimedOut = 0;
 static void
-Timeout(int Sig)
+Timeout(int Sig __unused)
 {
     TimedOut = 1;
 }
@@ -77,7 +77,7 @@ static char *passwd;
 static char *prompt;
 
 static char *
-GetPrompt(EditLine *e)
+GetPrompt(EditLine *e __unused)
 {
     if (prompt == NULL)
         prompt = "";
@@ -87,6 +87,7 @@ GetPrompt(EditLine *e)
 static int
 Receive(int fd, int display)
 {
+    char temp[sizeof(Buffer)];
     int Result;
     int len;
     char *last;
@@ -95,8 +96,8 @@ Receive(int fd, int display)
     len = 0;
     while (Result = read(fd, Buffer+len, sizeof(Buffer)-len-1), Result != -1) {
         if (Result == 0 && errno != EINTR) {
-          Result = -1;
-          break;
+            Result = -1;
+            break;
         }
         len += Result;
         Buffer[len] = '\0';
@@ -142,7 +143,8 @@ Receive(int fd, int display)
             else
                 flush = last - Buffer + 1;
             write(1, Buffer, flush);
-            strcpy(Buffer, Buffer + flush);
+            strcpy(temp, Buffer + flush);
+            strcpy(Buffer, temp);
             len -= flush;
         }
     }
@@ -154,7 +156,7 @@ static int data = -1;
 static jmp_buf pppdead;
 
 static void
-check_fd(int sig)
+check_fd(int sig __unused)
 {
   if (data != -1) {
     struct timeval t;
