@@ -690,7 +690,7 @@ kvm_ktrinfo(void *kptr, struct save_ctx *ctx)
 		return(NULL);
 	if (ctx->save_kptr != kptr) {
 		if (kvm_read(kd, (uintptr_t)kptr, ki, sizeof(*ki)) == -1) {
-			bzero(&ki, sizeof(*ki));
+			bzero(ki, sizeof(*ki));
 		} else {
 			ctx->save_kptr = kptr;
 		}
