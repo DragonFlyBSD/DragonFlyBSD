@@ -1277,7 +1277,7 @@ vinum_dumpconfig(int argc, char *argv[], char *argv0[])
 void
 dumpconfig(char *part)
 {
-    char partname[MAXPATHLEN];
+    char partname[MAXPATHLEN + 1];
     char *partid;
     int partition;					    /* UNIX partition */
     int slice;
