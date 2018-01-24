@@ -94,7 +94,7 @@ static char _hostname[MAXHOSTNAMELEN];
 
 static int help(int, char **);
 static int call(intrtn_t, ...);
-static void cmdrc(char *, char *);
+static void cmdrc(const char *, const char *);
 #ifdef INET6
 static int switch_af(struct addrinfo **);
 #endif
@@ -1508,12 +1508,12 @@ struct envlist {
 extern struct env_lst *
 	env_define(const unsigned char *, unsigned char *);
 extern void
-	env_undefine(unsigned char *),
+	env_undefine(const unsigned char *),
 	env_export(const unsigned char *),
 	env_unexport(const unsigned char *),
-	env_send(unsigned char *),
+	env_send(const unsigned char *),
 #if defined(OLD_ENVIRON) && defined(ENV_HACK)
-	env_varval(unsigned char *),
+	env_varval(const unsigned char *),
 #endif
 	env_list(void);
 static void
@@ -1690,7 +1690,7 @@ env_define(const unsigned char *var, unsigned char *value)
 }
 
 void
-env_undefine(unsigned char *var)
+env_undefine(const unsigned char *var)
 {
 	struct env_lst *ep;
 
@@ -1725,7 +1725,7 @@ env_unexport(const unsigned char *var)
 }
 
 void
-env_send(unsigned char *var)
+env_send(const unsigned char *var)
 {
 	struct env_lst *ep;
 
@@ -1768,7 +1768,7 @@ env_default(int init, int welldefined)
 
 	if (init) {
 		nep = &envlisthead;
-		return(NULL);
+		return NULL;
 	}
 	if (nep) {
 		while ((nep = nep->next)) {
@@ -1791,7 +1791,7 @@ env_getvalue(const unsigned char *var)
 
 #if defined(OLD_ENVIRON) && defined(ENV_HACK)
 void
-env_varval(unsigned char *what)
+env_varval(const unsigned char *what)
 {
 	extern int old_env_var, old_env_value, env_auto;
 	int len = strlen((char *)what);
@@ -2175,7 +2175,7 @@ tn(int argc, char *argv[])
 	return 0;
     }
     if (argc < 2) {
-	(void) strcpy(line, "open ");
+	(void) strlcpy(line, "open ", sizeof(line));
 	printf("(to) ");
 	(void) fgets(&line[strlen(line)], sizeof(line) - strlen(line), stdin);
 	makeargv();
@@ -2459,7 +2459,7 @@ tn(int argc, char *argv[])
     if (src_res0 != NULL)
         freeaddrinfo(src_res0);
     cmdrc(hostp, hostname);
- af_unix:    
+ af_unix:
     if (autologin && user == NULL) {
 	struct passwd *pw;
 
@@ -2692,15 +2692,16 @@ help(int argc, char *argv[])
 static char *rcname = NULL;
 static char rcbuf[128];
 
-void
-cmdrc(char *m1, char *m2)
+static void
+cmdrc(const char *m1, const char *m2)
 {
     Command *c;
     FILE *rcfile;
     int gotmachine = 0;
     int l1 = strlen(m1);
     int l2 = strlen(m2);
-    char m1save[MAXHOSTNAMELEN];
+    char m1save[MAXHOSTNAMELEN + 1];
+    char temp[sizeof(line)];
 
     if (skiprc)
 	return;
@@ -2736,13 +2737,16 @@ cmdrc(char *m1, char *m2)
 	if (gotmachine == 0) {
 	    if (isspace(line[0]))
 		continue;
-	    if (strncasecmp(line, m1, l1) == 0)
-		strncpy(line, &line[l1], sizeof(line) - l1);
-	    else if (strncasecmp(line, m2, l2) == 0)
-		strncpy(line, &line[l2], sizeof(line) - l2);
-	    else if (strncasecmp(line, "DEFAULT", 7) == 0)
-		strncpy(line, &line[7], sizeof(line) - 7);
-	    else
+	    if (strncasecmp(line, m1, l1) == 0) {
+		strncpy(temp, &line[l1], sizeof(line) - l1);
+		strncpy(line, temp, sizeof(line) - l1);
+	    } else if (strncasecmp(line, m2, l2) == 0) {
+		strncpy(temp, &line[l2], sizeof(line) - l2);
+		strncpy(line, temp, sizeof(line) - l2);
+	    } else if (strncasecmp(line, "DEFAULT", 7) == 0) {
+		strncpy(temp, &line[7], sizeof(line) - 7);
+		strncpy(line, temp, sizeof(line) - 7);
+	    } else
 		continue;
 	    if (line[0] != ' ' && line[0] != '\t' && line[0] != '\n')
 		continue;
