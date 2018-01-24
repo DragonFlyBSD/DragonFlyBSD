@@ -637,8 +637,10 @@ xcmp (const char *file1, const char *file2)
 	do 
 	{
 	    read1 = block_read (fd1, buf1, buf_size);
-	    if (read1 == (size_t)-1)
+	    if (read1 == (size_t)-1) {
 		error (1, errno, "cannot read file %s for comparing", file1);
+		exit(1);	/* to suppress -Wstringop-overflow */
+	    }
 
 	    read2 = block_read (fd2, buf2, buf_size);
 	    if (read2 == (size_t)-1)
