@@ -607,7 +607,7 @@ remove_stale_rulesets(void)
 			struct pfioc_trans_e	t_e[PF_RULESET_MAX+1];
 			struct pfioc_trans	t_local;
 
-			bzero(&t, sizeof(t_local));
+			bzero(&t_local, sizeof(t_local));
 			bzero(t_e, sizeof(t_e));
 			t_local.size = PF_RULESET_MAX+1;
 			t_local.esize = sizeof(t_e[0]);
