@@ -44,8 +44,11 @@ panic(const char *str, ...)
 {
 	va_list ap;
 
-	if (panicking++)	/* avoid loops - this should never happen*/
+	if (panicking)		/* avoid loops - this should never happen*/
 		exit(1);
+	else
+		panicking = true;
+
 	home();
 	puts(" Suddenly, the dungeon collapses.");
 	fputs(" ERROR:  ", stdout);
