@@ -25,6 +25,7 @@ CFLAGS+=	-I${LVM2_DISTDIR}/lib -I${LVM2_DISTDIR}/include \
 		-I${LIBDM_DISTDIR}
 
 CFLAGS+=	-DLVM_SHARED_PATH=\"$(BINDIR)/lvm\"
+CFLAGS+=	-DREADLINE_SUPPORT -I${_SHLIBDIRPREFIX}/usr/include/priv
 
 # Some parts of the code can't be protected because if its
 # alloca() usage.
