@@ -1,0 +1,32 @@
+EDIT_121213 {
+    add_history;
+    completion_matches;
+    el_end;
+    el_get;
+    el_gets;
+    el_init;
+    el_insertstr;
+    el_line;
+    el_parse;
+    el_push;
+    el_resize;
+    el_set;
+    el_source;
+    history;
+    history_end;
+    history_init;
+    history_length;
+    read_history;
+    readline;
+    remove_history;
+    rl_attempted_completion_function;
+    rl_attempted_completion_over;
+    rl_line_buffer;
+    rl_readline_name;
+    stifle_history;
+    write_history;
+};
+
+EDITprivate_1.0 {
+    _el_fn_complete;
+};
