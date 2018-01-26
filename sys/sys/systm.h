@@ -223,9 +223,9 @@ void	kprint_cpuset(cpumask_t *mask);
 #define	HD_OMIT_HEX	(1 << 17)
 #define	HD_OMIT_CHARS	(1 << 18)
 int	ksscanf(const char *, char const *, ...)
-	    __nonnull(1) __nonnull(2) __scanflike(2, 3);
+	    __nonnull(1, 2) __scanflike(2, 3);
 int	kvsscanf(const char *, char const *, __va_list)
-	    __nonnull(1) __nonnull(2) __scanflike(2, 0);
+	    __nonnull(1, 2) __scanflike(2, 0);
 void	kvasfree(char **);
 
 long	strtol(const char *, char **, int) __nonnull(1);
@@ -238,26 +238,24 @@ u_quad_t strtouq(const char *, char **, int) __nonnull(1);
  * pointers to volatile storage, volatile set to avoid warnings.
  */
 void	bcopy(volatile const void *from, volatile void *to, size_t len)
-	    __nonnull(1) __nonnull(2);
+	    __nonnull(1, 2);
 void	bzero(volatile void *buf, size_t len) __nonnull(1);
 void	bzeront(volatile void *buf, size_t len) __nonnull(1);
 void	*memcpy(void *to, const void *from, size_t len)
-	    __nonnull(1) __nonnull(2);
+	    __nonnull(1, 2);
 
 long	kreadmem64(const void *addr);
 
 int	copystr (const void *kfaddr, void *kdaddr, size_t len,
-		size_t *lencopied) __nonnull(1) __nonnull(2);
+		size_t *lencopied) __nonnull(1, 2);
 int	copyinstr (const void *udaddr, void *kaddr, size_t len,
-		size_t *lencopied) __nonnull(1) __nonnull(2);
-int	copyin(const void *udaddr, void *kaddr, size_t len)
-	    __nonnull(1) __nonnull(2);
+		size_t *lencopied) __nonnull(1, 2);
+int	copyin(const void *udaddr, void *kaddr, size_t len) __nonnull(1, 2);
 int	copyin_nofault(const void *udaddr, void *kaddr, size_t len)
-	    __nonnull(1) __nonnull(2);
-int	copyout(const void *kaddr, void *udaddr, size_t len)
-	    __nonnull(1) __nonnull(2);
+	    __nonnull(1, 2);
+int	copyout(const void *kaddr, void *udaddr, size_t len) __nonnull(1, 2);
 int	copyout_nofault(const void *kaddr, void *udaddr, size_t len)
-	    __nonnull(1) __nonnull(2);
+	    __nonnull(1, 2);
 
 int	fubyte (const uint8_t *base);
 int	subyte (uint8_t *base, uint8_t byte);

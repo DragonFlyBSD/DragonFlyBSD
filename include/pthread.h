@@ -184,11 +184,10 @@ int	pthread_cond_init(pthread_cond_t *, const pthread_condattr_t *)
 int	pthread_cond_signal(pthread_cond_t *) __nonnull(1);
 int	pthread_cond_timedwait(pthread_cond_t *, pthread_mutex_t *,
 			       const struct timespec *) __nonnull(2);
-int	pthread_cond_wait(pthread_cond_t *, pthread_mutex_t *)
-			  __nonnull(1) __nonnull(2);
+int	pthread_cond_wait(pthread_cond_t *, pthread_mutex_t *) __nonnull(1, 2);
 
 int	pthread_create(pthread_t *, const pthread_attr_t *,
-		       void *(*) (void *), void *) __nonnull(1) __nonnull(3);
+		       void *(*) (void *), void *) __nonnull(1, 3);
 int	pthread_detach(pthread_t);
 int	pthread_equal(pthread_t, pthread_t);
 void	pthread_exit(void *) __dead2;
@@ -220,9 +219,9 @@ int	pthread_rwlock_init(pthread_rwlock_t *, const pthread_rwlockattr_t *)
 			    __nonnull(1);
 int	pthread_rwlock_rdlock(pthread_rwlock_t *) __nonnull(1);
 int	pthread_rwlock_timedrdlock(pthread_rwlock_t *, const struct timespec *)
-				   __nonnull(1) __nonnull(2);
+				   __nonnull(1, 2);
 int	pthread_rwlock_timedwrlock(pthread_rwlock_t *, const struct timespec *)
-				   __nonnull(1) __nonnull(2);
+				   __nonnull(1, 2);
 int	pthread_rwlock_tryrdlock(pthread_rwlock_t *);
 int	pthread_rwlock_trywrlock(pthread_rwlock_t *);
 int	pthread_rwlock_unlock(pthread_rwlock_t *);
@@ -230,7 +229,7 @@ int	pthread_rwlock_wrlock(pthread_rwlock_t *) __nonnull(1);
 
 int	pthread_rwlockattr_destroy(pthread_rwlockattr_t *);
 int	pthread_rwlockattr_getpshared(const pthread_rwlockattr_t *, int *)
-				      __nonnull(1) __nonnull(2);
+				      __nonnull(1, 2);
 int	pthread_rwlockattr_init(pthread_rwlockattr_t *);
 int	pthread_rwlockattr_setpshared(pthread_rwlockattr_t *, int) __nonnull(1);
 

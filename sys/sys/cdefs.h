@@ -170,7 +170,7 @@
 #define	__alloc_size(x)
 #define	__section(x)
 #define	__always_inline
-#define	__nonnull(x)
+#define	__nonnull(...)
 #define	__heedresult
 #define	__malloclike
 #define	__returns_twice
@@ -209,10 +209,10 @@
 #endif
 
 #if __GNUC_PREREQ__(3, 3)
-#define	__nonnull(x)	__attribute__((__nonnull__(x)))
+#define	__nonnull(...)	__attribute__((__nonnull__(__VA_ARGS__)))
 #define	__used		__attribute__((__used__))
 #else
-#define	__nonnull(x)
+#define	__nonnull(...)
 #define	__used		__unused
 #endif
 
