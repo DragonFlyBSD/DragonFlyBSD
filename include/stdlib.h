@@ -90,7 +90,7 @@ int	 atoi(const char *);
 long	 atol(const char *);
 void	*bsearch(const void *, const void *, size_t,
 		 size_t, int (*)(const void *, const void *));
-void	*calloc(size_t, size_t) __malloclike __heedresult;
+void	*calloc(size_t, size_t) __alloc_size2(1, 2) __malloclike __heedresult;
 div_t	 div(int, int) __pure2;
 void	 exit(int) __dead2;
 void	 free(void *);
