@@ -846,6 +846,9 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 	return 0;
 }
 
+/*
+ * Like _bus_dmamap_load(), but for ccb.
+ */
 int
 bus_dmamap_load_ccb(bus_dma_tag_t dmat, bus_dmamap_t map, union ccb *ccb,
     bus_dmamap_callback_t *callback, void *callback_arg, int flags)
