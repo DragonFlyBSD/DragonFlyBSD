@@ -1591,6 +1591,43 @@ delete_oldest_timelog(const struct conf_entry *ent, const char *archive_dir)
 }
 
 /*
+ * Generate a log filename, when using classic filenames.
+ */
+static void
+gen_classiclog_fname(char *fname, size_t fname_sz, const char *archive_dir,
+    const char *namepart, int numlogs_c)
+{
+
+	if (archive_dir[0] != '\0')
+		(void) snprintf(fname, fname_sz, "%s/%s.%d", archive_dir,
+		    namepart, numlogs_c);
+	else
+		(void) snprintf(fname, fname_sz, "%s.%d", namepart, numlogs_c);
+}
+
+/*
+ * Delete a rotated logfiles, when using classic filenames.
+ */
+static void
+delete_classiclog(const char *archive_dir, const char *namepart, int numlog_c)
+{
+	char file1[MAXPATHLEN], zfile1[MAXPATHLEN];
+	int c;
+
+	gen_classiclog_fname(file1, sizeof(file1), archive_dir, namepart,
+	    numlog_c);
+
+	for (c = 0; c < COMPRESS_TYPES; c++) {
+		(void) snprintf(zfile1, sizeof(zfile1), "%s%s", file1,
+		    compress_type[c].suffix);
+		if (noaction)
+			printf("\trm -f %s\n", zfile1);
+		else
+			(void) unlink(zfile1);
+	}
+}
+
+/*
  * Only add to the queue if the file hasn't already been added. This is
  * done to prevent circular include loops.
  */
@@ -1654,7 +1691,6 @@ do_rotate(const struct conf_entry *ent)
 	struct stat st;
 	struct tm tm;
 	time_t now;
-	int c;
 
 	flags = ent->flags;
 	free_or_keep = FREE_ENT;
@@ -1684,35 +1720,28 @@ do_rotate(const struct conf_entry *ent)
 			strlcpy(namepart, ent->log, sizeof(namepart));
 		else
 			strlcpy(namepart, p + 1, sizeof(namepart));
-
-		/* name of oldest log */
-		snprintf(file1, sizeof(file1), "%s/%s.%d", dirpart,
-		    namepart, ent->numlogs);
 	} else {
 		/*
-		 * Tell delete_oldest_timelog() we are not using an
-		 * archive dir.
+		 * Tell utility functions we are not using an archive
+		 * dir.
 		 */
 		dirpart[0] = '\0';
-
-		/* name of oldest log */
-		snprintf(file1, sizeof(file1), "%s.%d", ent->log,
-		    ent->numlogs);
+		strlcpy(namepart, ent->log, sizeof(namepart));
 	}
 
 	/* Delete old logs */
 	if (timefnamefmt != NULL)
 		delete_oldest_timelog(ent, dirpart);
 	else {
-		/* name of oldest log */
-		for (c = 0; c < COMPRESS_TYPES; c++) {
-			snprintf(zfile1, sizeof(zfile1), "%s%s", file1,
-			    compress_type[c].suffix);
-			if (noaction)
-				printf("\trm -f %s\n", zfile1);
-			else
-				unlink(zfile1);
-		}
+		/*
+		 * Handle cleaning up after legacy newsyslog where we
+		 * kept ent->numlogs + 1 files.  This code can go away
+		 * at some point in the future.
+		 */
+		delete_classiclog(dirpart, namepart, ent->numlogs);
+
+		if (ent->numlogs > 0)
+			delete_classiclog(dirpart, namepart, ent->numlogs - 1);
 	}
 
 	if (timefnamefmt != NULL) {
@@ -1731,21 +1760,19 @@ do_rotate(const struct conf_entry *ent)
 		}
 
 		/* Don't run the code to move down logs */
-		numlogs_c = 0;
-	} else
-		numlogs_c = ent->numlogs;		/* copy for countdown */
+		numlogs_c = -1;
+	} else {
+		gen_classiclog_fname(file1, sizeof(file1), dirpart, namepart,
+		    ent->numlogs - 1);
+		numlogs_c = ent->numlogs - 2;           /* copy for countdown */
+	}
 
 	/* Move down log files */
-	while (numlogs_c--) {
+	for (; numlogs_c >= 0; numlogs_c--) {
 
 		strlcpy(file2, file1, sizeof(file2));
-
-		if (archtodir)
-			snprintf(file1, sizeof(file1), "%s/%s.%d",
-			    dirpart, namepart, numlogs_c);
-		else
-			snprintf(file1, sizeof(file1), "%s.%d",
-			    ent->log, numlogs_c);
+		gen_classiclog_fname(file1, sizeof(file1), dirpart, namepart,
+		    numlogs_c);
 
 		logfile_suffix = get_logfile_suffix(file1);
 		if (logfile_suffix == NULL)
