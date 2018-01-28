@@ -1,4 +1,4 @@
-BASEDIR=	${.CURDIR}/${RELATIVE}../../../../contrib/gdb-7
+BASEDIR=	${.CURDIR}/../../../../contrib/gdb-7
 
 GDBLIBS+=	${.OBJDIR}/../libreadline/libreadline.a
 GDBLIBS+=	${.OBJDIR}/../libopcodes/libopcodes.a

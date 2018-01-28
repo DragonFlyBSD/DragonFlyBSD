@@ -1,1 +1,1 @@
-BASEDIR=	${.CURDIR}/${RELATIVE}../../../../contrib/diffutils
+BASEDIR=	${.CURDIR}/../../../../contrib/diffutils

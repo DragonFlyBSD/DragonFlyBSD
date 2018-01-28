@@ -1,1 +1,1 @@
-BASEDIR=	${.CURDIR}/${RELATIVE}../../../contrib/libedit
+BASEDIR=	${.CURDIR}/../../../contrib/libedit

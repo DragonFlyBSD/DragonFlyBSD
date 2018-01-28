@@ -1,3 +1,3 @@
-BASEDIR=	${.CURDIR}/${RELATIVE}../../../../contrib/grep
+BASEDIR=	${.CURDIR}/../../../../contrib/grep
 
 CSTD=	c11
