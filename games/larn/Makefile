@@ -50,7 +50,7 @@ SRCS=	main.c object.c create.c tok.c display.c global.c data.c io.c \
 VARGAMES=
 GAMESCURSES=
 
-CFLAGS=	-DVER=12 -DSUBVER=0 -DNONAP -DUIDSCORE
+CFLAGS+=	-DVER=12 -DSUBVER=0 -DNONAP -DUIDSCORE
 
 .if !defined(NO_SHARE)
 FILES=		larnmaze larnopts larn.help

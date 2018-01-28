@@ -19,7 +19,7 @@ VARGAMES=
 GAMESCURSES=
 
 NO_STRICT_ALIASING=
-CFLAGS= 	-I${.CURDIR} -I.
+CFLAGS+= 	-I${.CURDIR} -I.
 
 FILES=		rumors help hh data
 FILESMODE_rumors=	440

@@ -9,7 +9,7 @@ SRCS=	hit.c init.c inventory.c level.c machdep.c main.c \
 VARGAMES=
 GAMESCURSES=
 
-CFLAGS=	-DUNIX
+CFLAGS+=	-DUNIX
 
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/rogue.scores)

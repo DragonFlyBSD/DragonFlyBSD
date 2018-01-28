@@ -6,7 +6,7 @@ SRCS=	connect.c hunt.c otto.c playit.c display.c list.c
 MAN=	hunt.6
 GAMESCURSES=
 
-CFLAGS=	-I${.CURDIR}/../huntd
+CFLAGS+=	-I${.CURDIR}/../huntd
 
 .include "../../Makefile.inc"
 .include <bsd.prog.mk>

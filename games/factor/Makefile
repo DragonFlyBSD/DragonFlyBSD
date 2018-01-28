@@ -7,7 +7,7 @@ MAN=	factor.6
 MLINKS+=factor.6 primes.6
 GAMESCRYPTO=
 
-CFLAGS=	-I${.CURDIR}/../primes
+CFLAGS+=	-I${.CURDIR}/../primes
 CFLAGS+=	-DHAVE_OPENSSL
 
 .PATH:	${.CURDIR}/../primes
