@@ -264,7 +264,9 @@ get_cat_section(char *section)
 	char *cat_section;
 
 	cat_section = strdup(section);
-	strncpy(cat_section, "cat", 3);
+	cat_section[0] = 'c';
+	cat_section[1] = 'a';
+	cat_section[2] = 't';
 	return(cat_section);
 }
 
@@ -467,7 +469,7 @@ scan_section(char *mandir, char *section, char *cat_section)
 	int i, e;
 	enum Ziptype zipped;
 	char *page_name;
-	char page_path[MAXPATHLEN];
+	char page_path[MAXPATHLEN - 3]; /* allow for '.gz' addition */
 	char cat_path[MAXPATHLEN];
 	char zip_path[MAXPATHLEN];
 
