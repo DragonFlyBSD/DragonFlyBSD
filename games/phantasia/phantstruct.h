@@ -1,7 +1,7 @@
+/*	$NetBSD: phantstruct.h,v 1.5 2005/02/15 12:58:21 jsm Exp $	*/
+
 /*
  * phantstruct.h - structure definitions for Phantasia
- *
- * $DragonFly: src/games/phantasia/phantstruct.h,v 1.3 2005/05/31 00:06:26 swildner Exp $
  */
 
 struct	player	    	/* player statistics */

@@ -1,38 +1,11 @@
+/*	$NetBSD: gamesupport.c,v 1.11 2009/08/31 08:27:16 dholland Exp $	*/
+
 /*
  * gamesupport.c - auxiliary routines for support of Phantasia
- *
- * $FreeBSD: src/games/phantasia/gamesupport.c,v 1.6 1999/11/16 02:57:33 billf Exp $
- * $DragonFly: src/games/phantasia/gamesupport.c,v 1.3 2005/05/31 00:06:26 swildner Exp $
  */
 
 #include <string.h>
 #include "include.h"
-
-/* functions which we need to know about */
-/* interplayer.c */
-extern	void	userlist(bool);
-/* io.c */
-extern	int	getanswer(const char *, bool);
-extern	void	getstring(char *, int);
-extern	double	infloat(void);
-extern	void	more(int);
-/* main.c */
-extern	void	cleanup(bool);
-/* misc.c */
-extern	const char	*descrstatus(struct player *);
-extern	const char	*descrtype(struct player *, bool);
-extern	void	error(const char *);
-extern	long	findname(char *, struct player *);
-extern	void	freerecord(struct player *, long);
-extern	void	truncstring(char *);
-extern	void	writerecord(struct player *, long);
-
-void	activelist(void);
-void	changestats(bool);
-void	enterscore(void);
-void	monstlist(void);
-void	purgeoldplayers(void);
-void	scorelist(void);
 
 /*
  * FUNCTION: examine/change statistics for a player

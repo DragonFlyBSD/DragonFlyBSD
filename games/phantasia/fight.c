@@ -1,42 +1,22 @@
+/*	$NetBSD: fight.c,v 1.13 2009/08/31 08:27:16 dholland Exp $	*/
+
 /*
  * fight.c   Phantasia monster fighting routines
- *
- * $FreeBSD: src/games/phantasia/fight.c,v 1.7 1999/11/16 02:57:33 billf Exp $
- * $DragonFly: src/games/phantasia/fight.c,v 1.3 2005/05/31 00:06:26 swildner Exp $
  */
 
 #include <string.h>
 #include "include.h"
 
-/* functions which we need to know about */
-/* io.c */
-extern	int	getanswer(const char *, bool);
-extern	void	getstring(char *, int);
-extern	double	infloat(void);
-extern	int	inputoption(void);
-extern	void	more(int);
-/* misc.c */
-extern	void	altercoordinates(double, double, int);
-extern	void	collecttaxes(double, double);
-extern	void	death(const char *);
-extern	void	displaystats(void);
-extern	void	readmessage(void);
-extern	void	truncstring(char *);
-extern	void	writerecord(struct player *, long);
-/* phantglobs.c */
-extern	double	drandom(void);
-
-void	awardtreasure(void);
-void	callmonster(int);
-void	cancelmonster(void);
-void	cursedtreasure(void);
-void	encounter(int);
-void	hitmonster(double);
-int	pickmonster(void);
-void	monsthits(void);
-void	playerhits(void);
-void	scramblestats(void);
-void	throwspell(void);
+static void awardtreasure(void);
+static void callmonster(int);
+static void cancelmonster(void);
+static void cursedtreasure(void);
+static void hitmonster(double);
+static void monsthits(void);
+static int pickmonster(void);
+static void playerhits(void);
+static void scramblestats(void);
+static void throwspell(void);
 
 /*
  * FUNCTION: monster battle routine
@@ -207,7 +187,7 @@ encounter(int particular)
  *	routine may also need to be changed.
  */
 
-int
+static int
 pickmonster(void)
 {
 	if (Player.p_specialtype == SC_VALAR)
@@ -250,7 +230,7 @@ pickmonster(void)
  *	Process all monster battle options.
  */
 
-void
+static void
 playerhits(void)
 {
 	double inflict; /* damage inflicted */
@@ -402,11 +382,11 @@ playerhits(void)
  *	one, simply roll a hit against the player.
  */
 
-void
+static void
 monsthits(void)
 {
-	double inflict;         /* damage inflicted */
-	int ch;                 /* input */
+	double inflict;		/* damage inflicted */
+	int ch;			/* input */
 
 	switch (Curmonster.m_type) {
 	/* may be a special monster */
@@ -652,7 +632,7 @@ SPECIALHIT:
  *	flock.  This is the same as having the monster run away.
  */
 
-void
+static void
 cancelmonster(void)
 {
 	Curmonster.m_energy = 0.0;
@@ -676,7 +656,7 @@ cancelmonster(void)
  *	and a few special monsters.
  */
 
-void
+static void
 hitmonster(double inflict)
 {
 	mvprintw(Lines++, 0, "You hit %s %.0f times!", Enemyname, inflict);
@@ -713,7 +693,7 @@ hitmonster(double inflict)
  *	Prompt player and process magic spells.
  */
 
-void
+static void
 throwspell(void)
 {
 	double inflict;		/* damage inflicted */
@@ -925,7 +905,7 @@ throwspell(void)
  *	Handle some special monsters.
  */
 
-void
+static void
 callmonster(int which)
 {
 	struct monster Othermonster;	/* to find a name for mimics */
@@ -1013,7 +993,7 @@ callmonster(int which)
  *	Handle cursed treasure.
  */
 
-void
+static void
 awardtreasure(void)
 {
 	int whichtreasure;	/* calculated treasure to grant */
@@ -1365,6 +1345,7 @@ awardtreasure(void)
 				}
 			/* end treasure types 10 - 13 */
 			/* fall through to treasure type 9 if no treasure from above */
+				/* FALLTHROUGH */
 
 			case 9:	/* treasure type 9 */
 				switch (whichtreasure) {
@@ -1376,7 +1357,7 @@ awardtreasure(void)
 						++Player.p_crowns;
 						break;
 					}
-				/* fall through otherwise */
+					/* FALLTHROUGH */
 
 				case 2:
 					addstr("You've been blessed!\n");
@@ -1414,7 +1395,7 @@ awardtreasure(void)
  *	the player from the curse.
  */
 
-void
+static void
 cursedtreasure(void)
 {
 	if (Player.p_charms > 0) {
@@ -1440,7 +1421,7 @@ cursedtreasure(void)
  *	Swap a few player statistics randomly.
  */
 
-void
+static void
 scramblestats(void)
 {
 	double dbuf[6];		/* to put statistic in */

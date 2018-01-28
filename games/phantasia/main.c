@@ -1,11 +1,10 @@
+/*	$NetBSD: main.c,v 1.23 2009/08/31 08:27:16 dholland Exp $	*/
+
 /*
  * Phantasia 3.3.2 -- Interterminal fantasy game
  *
  * Edward A. Estes
  * AT&T, March 12, 1986
- *
- * $FreeBSD: src/games/phantasia/main.c,v 1.8 1999/11/16 02:57:34 billf Exp $
- * $DragonFly: src/games/phantasia/main.c,v 1.3 2005/05/31 00:06:26 swildner Exp $
  */
 
 /* DISCLAIMER:
@@ -51,56 +50,21 @@
 
 #include "include.h"
 
-/* functions which we need to know about */
-/* fight.c */
-extern	void	encounter(int);
-/* gamesupport.c */
-extern	void	activelist(void);
-extern	void	changestats(bool);
-extern	void	monstlist(void);
-extern	void	purgeoldplayers(void);
-extern	void	scorelist(void);
-/* interplayer.c */
-extern	void	checkbattle(void);
-extern	void	checktampered(void);
-extern	void	dotampered(void);
-extern	void	throneroom(void);
-extern	void	userlist(bool);
-/* io.c */
-extern	int	getanswer(const char *, bool);
-extern	void	getstring(char *, int);
-extern	double	infloat(void);
-extern	int	inputoption(void);
-extern	void	more(int);
-/* misc.c */
-extern	void	adjuststats(void);
-extern	long	allocrecord(void);
-extern	void	allstatslist(void);
-extern	void	altercoordinates(double, double, int);
-extern	void	collecttaxes(double, double);
-extern	void	death(const char *);
-extern	void	displaystats(void);
-extern	double	distance(double, double, double, double);
-extern	void	error(const char *);
-extern	long	findname(char *, struct player *);
-extern	void	initplayer(struct player *);
-extern	void	leavegame(void);
-extern	void	readmessage(void);
-extern	void	tradingpost(void);
-extern	void	truncstring(char *);
-extern	void	writerecord(struct player *, long);
-/* phantglobs.c */
-extern	double	drandom(void);
+static void genchar(int);
+static void initialstate(void);
+static void neatstuff(void);
+static void playinit(void);
+static void procmain(void);
+static long recallplayer(void);
+static long rollnewplayer(void);
+static void titlelist(void);
 
-void	cleanup(bool);
-void	genchar(int);
-void	initialstate(void);
-void	neatstuff(void);
-void	playinit(void);
-void	procmain(void);
-long	recallplayer(void);
-long	rollnewplayer(void);
-void	titlelist(void);
+static void __dead2
+cleanup_dead(void)
+{
+	cleanup(TRUE);
+	exit(0);
+}
 
 /*
  * FUNCTION: initialize state, and call main process
@@ -139,12 +103,12 @@ main(int argc, char **argv)
 
 		case 'a':	/* all users */
 			activelist();
-			cleanup(TRUE);
+			cleanup_dead();
 			/* NOTREACHED */
 
 		case 'p':	/* purge old players */
 			purgeoldplayers();
-			cleanup(TRUE);
+			cleanup_dead();
 			/* NOTREACHED */
 
 		case 'S':	/* set 'Wizard' */
@@ -157,12 +121,12 @@ main(int argc, char **argv)
 
 		case 'm':	/* monsters */
 			monstlist();
-			cleanup(TRUE);
+			cleanup_dead();
 			/* NOTREACHED */
 
 		case 'b':	/* scoreboard */
 			scorelist();
-			cleanup(TRUE);
+			cleanup_dead();
 			/* NOTREACHED */
 		}
 
@@ -199,7 +163,7 @@ main(int argc, char **argv)
 			break;
 
 		case 'Q':
-			cleanup(TRUE);
+			cleanup_dead();
 			/* NOTREACHED */
 
 		default:
@@ -328,7 +292,7 @@ main(int argc, char **argv)
  *	Set global flags, and open files which remain open.
  */
 
-void
+static void
 initialstate(void)
 {
 	Beyond = FALSE;
@@ -376,7 +340,7 @@ initialstate(void)
  *	Prompt player, and roll up new character.
  */
 
-long
+static long
 rollnewplayer(void)
 {
 	int chartype;		/* character type */
@@ -473,7 +437,7 @@ rollnewplayer(void)
  *	Process main menu options.
  */
 
-void
+static void
 procmain(void)
 {
 	int ch;			/* input */
@@ -684,7 +648,7 @@ procmain(void)
  *	Print important information about game, players, etc.
  */
 
-void
+static void
 titlelist(void)
 {
 	FILE *fp;			/* used for opening various files */
@@ -798,7 +762,7 @@ titlelist(void)
  *	Search for a character of a certain name, and check password.
  */
 
-long
+static long
 recallplayer(void)
 {
 	long loc = 0L;		/* location in player file */
@@ -864,7 +828,7 @@ recallplayer(void)
  *	Handle gurus, medics, etc.
  */
 
-void
+static void
 neatstuff(void)
 {
 	double temp;	/* for temporary calculations */
@@ -977,11 +941,11 @@ neatstuff(void)
  *	Use the lookup table for rolling stats.
  */
 
-void
+static void
 genchar(int type)
 {
-	int subscript;			/* used for subscripting into Stattable */
-	struct charstats *statptr;	/* for pointing into Stattable */
+	int subscript;	/* used for subscripting into Stattable */
+	const struct charstats *statptr; /* for pointing into Stattable */
 
 	subscript = type - '1';
 
@@ -1024,7 +988,7 @@ genchar(int type)
  *	Catch a bunch of signals, and turn on curses stuff.
  */
 
-void
+static void
 playinit(void)
 {
 	/* catch/ingnore signals */

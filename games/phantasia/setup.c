@@ -8,13 +8,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-/* functions which we need to know about */
-/* phantglobs.c */
-extern	double	drandom(void);
+void Error(const char *, const char *) __dead2;
 
-void	Error(const char *, const char *) __dead2;
-
-static const char *files[] = {		/* all files to create */
+static const char *const files[] = {		/* all files to create */
 	_SPATH_MONST,
 	_SPATH_PEOPLE,
 	_SPATH_MESS,
@@ -47,7 +43,7 @@ const char *monsterfile = "monsters.asc";
 int
 main(int argc, char *argv[])
 {
-	const	char	**filename;	/* for pointing to file names */
+	const char *const *filename;	/* for pointing to file names */
 	int	fd;			/* file descriptor */
 	FILE	*fp;			/* for opening files */
 	struct stat	fbuf;		/* for getting files statistics */

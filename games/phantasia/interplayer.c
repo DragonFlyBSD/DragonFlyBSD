@@ -1,49 +1,18 @@
+/*	$NetBSD: interplayer.c,v 1.12 2009/08/31 08:27:16 dholland Exp $	*/
+
 /*
  * interplayer.c - player to player routines for Phantasia
- *
- * $FreeBSD: src/games/phantasia/interplayer.c,v 1.6 1999/11/16 02:57:33 billf Exp $
- * $DragonFly: src/games/phantasia/interplayer.c,v 1.3 2005/05/31 00:06:26 swildner Exp $
  */
 
 #include <string.h>
 #include "include.h"
 
-/* functions which we need to know about */
-/* fight.c */
-extern	void	encounter(int);
-/* io.c */
-extern	int	getanswer(const char *, bool);
-extern	void	getstring(char *, int);
-extern	double	infloat(void);
-extern	int	inputoption(void);
-extern	void	more(int);
-/* misc.c */
-extern	void	altercoordinates(double, double, int);
-extern	void	collecttaxes(double, double);
-extern	void	death(const char *);
-extern	const char	*descrlocation(struct player *, bool);
-extern	const char	*descrstatus(struct player *);
-extern	const char	*descrtype(struct player *, bool);
-extern	void	displaystats(void);
-extern	double	distance(double, double, double, double);
-extern	long	findname(char *, struct player *);
-extern	void	readmessage(void);
-extern	void	readrecord(struct player *, long);
-extern	void	truncstring(char *);
-extern	void	writerecord(struct player *, long);
-/* phantglobs.c */
-extern	double	drandom(void);
 
-size_t	allocvoid(void);
-void	battleplayer(long);
-void	checkbattle(void);
-void	checktampered(void);
-void	dotampered(void);
-void	myturn(void);
-void	tampered(int, double, double);
-void	throneroom(void);
-void	userlist(bool);
-void	writevoid(struct energyvoid *, long);
+static size_t allocvoid(void);
+static void battleplayer(long);
+static void myturn(void);
+static void tampered(int, double, double);
+static void writevoid(struct energyvoid *, long);
 
 /*
  * FUNCTION: check to see if current player should battle another
@@ -120,7 +89,7 @@ checkbattle(void)
  *		set to total damage inflicted so far; changes to indicate action
  */
 
-void
+static void
 battleplayer(long foeplace)
 {
 	double dtemp;		/* for temporary calculations */
@@ -342,7 +311,7 @@ LEAVE:
  *	for next iteration.
  */
 
-void
+static void
 myturn(void)
 {
 	double dtemp;		/* for temporary calculations */
@@ -477,7 +446,7 @@ checktampered(void)
  *	action on current player.
  */
 
-void
+static void
 tampered(int what, double arg1, double arg2)
 {
 	long loc;		/* location in file of other players */
@@ -998,7 +967,7 @@ dotampered(void)
  *	Write out energy void structure at specified location.
  */
 
-void
+static void
 writevoid(struct energyvoid *vp, long loc)
 {
 	fseek(Energyvoidfp, loc, SEEK_SET);
@@ -1020,7 +989,7 @@ writevoid(struct energyvoid *vp, long loc)
  *	If no inactive ones are found, return one more than last location.
  */
 
-size_t
+static size_t
 allocvoid(void)
 {
 	size_t loc = 0;		/* location of new energy void */

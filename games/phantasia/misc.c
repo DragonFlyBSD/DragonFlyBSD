@@ -1,49 +1,13 @@
+/*	$NetBSD: misc.c,v 1.21 2011/09/01 07:18:50 plunky Exp $	*/
+
 /*
  * misc.c  Phantasia miscellaneous support routines
- *
- * $FreeBSD: src/games/phantasia/misc.c,v 1.7 1999/11/16 02:57:34 billf Exp $
- * $DragonFly: src/games/phantasia/misc.c,v 1.7 2006/09/09 02:21:49 pavalos Exp $
  */
 
 #include <string.h>
 #include "include.h"
 
-/* functions which we need to know about */
-/* gamesupport.c */
-extern	void	enterscore(void);
-/* io.c */
-extern	int	getanswer(const char *, bool);
-extern	double	infloat(void);
-extern	void	more(int);
-/* main.c */
-extern	void	cleanup(bool);
-/* phantglobs.c */
-extern	double	drandom(void);
-
-void	adjuststats(void);
-long	allocrecord(void);
-void	allstatslist(void);
-void	altercoordinates(double, double, int);
-void	collecttaxes(double, double);
-void	death(const char *);
-const char	*descrlocation(struct player *, bool);
-const char	*descrstatus(struct player *);
-const char	*descrtype(struct player *, bool);
-void	displaystats(void);
-double	distance(double, double, double, double);
-void	error(const char *);
-double	explevel(double);
-long	findname(char *, struct player *);
-void	freerecord(struct player *, long);
-void	ill_sig(int);
-void	initplayer(struct player *);
-void	leavegame(void);
-void	movelevel(void);
-void	readmessage(void);
-void	readrecord(struct player *, long);
-void	tradingpost(void);
-void	truncstring(char *);
-void	writerecord(struct player *, long);
+static double explevel(double);
 
 /*
  * FUNCTION: move player to new level
@@ -60,10 +24,10 @@ void	writerecord(struct player *, long);
  *	Check for council of wise, and being too big to be king.
  */
 
-void
+static void
 movelevel(void)
 {
-	struct charstats *statptr;	/* for pointing into Stattable */
+	const struct charstats *statptr; /* for pointing into Stattable */
 	double new;		/* new level */
 	double inc;		/* increment between new and old levels */
 
@@ -618,7 +582,7 @@ descrtype(struct player *playerp, bool shortflag)
  */
 
 long
-findname(char *name, struct player *playerp)
+findname(const char *name, struct player *playerp)
 {
 	long loc = 0;	/* location in the file */
 
@@ -715,6 +679,7 @@ leavegame(void)
 
 	cleanup(TRUE);
 	/* NOTREACHED */
+	exit(1);
 }
 
 /*
@@ -740,7 +705,7 @@ death(const char *how)
 {
 	FILE *fp;	/* for updating various files */
 	int ch;		/* input */
-	static const char *deathmesg[] =
+	static const char *const deathmesg[] =
 	/* add more messages here, if desired */
 	{
 		"You have been wounded beyond repair.  ",
@@ -865,7 +830,7 @@ writerecord(struct player *playerp, long place)
  *	tuned over the years, and probably should not be changed.
  */
 
-double
+static double
 explevel(double experience)
 {
 	if (experience < 1.1e7)
@@ -921,7 +886,7 @@ altercoordinates(double xnew, double ynew, int operation)
 	case A_NEAR:		/* pick random coordinates near */
 		xnew = Player.p_x + ROLL(1.0, 5.0);
 		ynew = Player.p_y - ROLL(1.0, 5.0);
-	/* fall through for check */
+		/* FALLTHROUGH */
 
 	case A_SPECIFIC:	/* just move player */
 		if (Beyond && fabs(xnew) < D_BEYOND && fabs(ynew) < D_BEYOND) {
