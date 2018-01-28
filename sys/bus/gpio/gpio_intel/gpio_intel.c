@@ -428,7 +428,8 @@ static device_method_t gpio_intel_methods[] = {
 static driver_t gpio_intel_driver = {
         "gpio_intel",
         gpio_intel_methods,
-        sizeof(struct gpio_intel_softc)
+        sizeof(struct gpio_intel_softc),
+	.gpri = KOBJ_GPRI_ACPI+2
 };
 
 static devclass_t gpio_intel_devclass;

@@ -98,7 +98,7 @@ static driver_t acpi_hpet_driver = {
 	"acpi_hpet",
 	acpi_hpet_methods,
 	sizeof(struct acpi_hpet_softc),
-	.gpri = KOBJ_GPRI_ACPI
+	.gpri = KOBJ_GPRI_ACPI+2
 };
 
 static devclass_t acpi_hpet_devclass;

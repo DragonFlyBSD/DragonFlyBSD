@@ -214,7 +214,7 @@ static driver_t acpi_driver = {
     "acpi",
     acpi_methods,
     sizeof(struct acpi_softc),
-    .gpri = KOBJ_GPRI_ACPI
+    .gpri = KOBJ_GPRI_ACPI+2
 };
 
 static devclass_t acpi_devclass;
@@ -1667,18 +1667,22 @@ acpi_probe_children(device_t bus)
 
     /* Probe/attach all children, created staticly and from the namespace. */
     ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "first bus_generic_attach\n"));
-    bus_generic_attach_gpri(bus, KOBJ_GPRI_ACPI);
+    bus_generic_attach_gpri(bus, KOBJ_GPRI_ACPI+2);
     ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "second bus_generic_attach\n"));
+    bus_generic_attach_gpri(bus, KOBJ_GPRI_ACPI+1);
+    ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "third bus_generic_attach\n"));
+    bus_generic_attach_gpri(bus, KOBJ_GPRI_ACPI);
+    ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "fourth bus_generic_attach\n"));
     bus_generic_attach_gpri(bus, KOBJ_GPRI_ACPI);
 
     /*
      * Some of these children may have attached others as part of their attach
      * process (eg. the root PCI bus driver), so rescan.
      */
-    ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "third bus_generic_attach\n"));
+    ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "fifth bus_generic_attach\n"));
     bus_generic_attach(bus);
 
-    ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "fourth bus_generic_attach\n"));
+    ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "sixth bus_generic_attach\n"));
     bus_generic_attach(bus);
 
     /* Attach wake sysctls. */

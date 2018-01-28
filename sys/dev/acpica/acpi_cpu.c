@@ -95,7 +95,7 @@ static driver_t acpi_cpu_driver = {
     "cpu",
     acpi_cpu_methods,
     sizeof(struct acpi_cpu_softc),
-    .gpri = KOBJ_GPRI_ACPI
+    .gpri = KOBJ_GPRI_ACPI+2
 };
 
 static devclass_t acpi_cpu_devclass;

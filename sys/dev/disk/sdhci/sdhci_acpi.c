@@ -353,6 +353,7 @@ static driver_t sdhci_acpi_driver = {
 	"sdhci_acpi",
 	sdhci_methods,
 	sizeof(struct sdhci_acpi_softc),
+	.gpri = KOBJ_GPRI_ACPI
 };
 static devclass_t sdhci_acpi_devclass;
 

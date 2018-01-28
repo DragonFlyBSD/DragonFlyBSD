@@ -83,7 +83,7 @@ static driver_t acpi_isab_driver = {
 	"isab",
 	acpi_isab_methods,
 	sizeof(struct acpi_isab_softc),
-	.gpri = KOBJ_GPRI_ACPI
+	.gpri = KOBJ_GPRI_ACPI+2
 };
 
 DRIVER_MODULE(acpi_isab, acpi, acpi_isab_driver, isab_devclass, NULL, NULL);

@@ -196,7 +196,8 @@ static device_method_t ig4iic_acpi_methods[] = {
 static driver_t ig4iic_acpi_driver = {
         "ig4iic",
         ig4iic_acpi_methods,
-        sizeof(struct ig4iic_softc)
+        sizeof(struct ig4iic_softc),
+	.gpri = KOBJ_GPRI_ACPI+1
 };
 
 static devclass_t ig4iic_acpi_devclass;
