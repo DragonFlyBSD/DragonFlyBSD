@@ -140,6 +140,9 @@ static int	acpi_isa_pnp_probe(device_t bus, device_t child,
 		    struct isa_pnp_id *ids);
 static void	acpi_probe_children(device_t bus);
 static void	acpi_probe_order(ACPI_HANDLE handle, int *order);
+static void	acpi_disable_not_present(device_t child);
+static void	acpi_reprobe_children(device_t bus, device_t *children,
+		    int cnt);
 static ACPI_STATUS acpi_probe_child(ACPI_HANDLE handle, UINT32 level,
 		    void *context, void **status);
 static ACPI_STATUS acpi_EnterSleepState(struct acpi_softc *sc, int state);
@@ -948,6 +951,9 @@ acpi_read_ivar(device_t dev, device_t child, int index, uintptr_t *result)
     case ACPI_IVAR_FLAGS:
 	*(int *)result = ad->ad_flags;
 	break;
+    case ACPI_IVAR_RECHECK:
+	*(int *)result = ad->ad_recheck;
+	break;
     case ISA_IVAR_VENDORID:
     case ISA_IVAR_SERIAL:
     case ISA_IVAR_COMPATID:
@@ -985,6 +991,9 @@ acpi_write_ivar(device_t dev, device_t child, int index, uintptr_t value)
 	break;
     case ACPI_IVAR_FLAGS:
 	ad->ad_flags = (int)value;
+	break;
+    case ACPI_IVAR_RECHECK:
+	ad->ad_recheck = (int)value;
 	break;
     default:
 	panic("bad ivar write request (%d)", index);
@@ -1643,6 +1652,8 @@ acpi_enable_pcie(void)
 static void
 acpi_probe_children(device_t bus)
 {
+    device_t *children;
+    int cnt;
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
@@ -1658,6 +1669,8 @@ acpi_probe_children(device_t bus)
     ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "namespace scan\n"));
     AcpiWalkNamespace(ACPI_TYPE_ANY, ACPI_ROOT_OBJECT, 100,
 	acpi_probe_child, NULL, bus, NULL);
+    /* This gets us all the children that we added from the ACPI namespace. */
+    device_get_children(bus, &children, &cnt);
 
     /* Pre-allocate resources for our rman from any sysresource devices. */
     acpi_sysres_alloc(bus);
@@ -1670,6 +1683,9 @@ acpi_probe_children(device_t bus)
     bus_generic_attach_gpri(bus, KOBJ_GPRI_ACPI+2);
     ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "second bus_generic_attach\n"));
     bus_generic_attach_gpri(bus, KOBJ_GPRI_ACPI+1);
+    /* Re-check device presence for previously disabled devices. */
+    acpi_reprobe_children(bus, children, cnt);
+    kfree(children, M_TEMP);
     ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "third bus_generic_attach\n"));
     bus_generic_attach_gpri(bus, KOBJ_GPRI_ACPI);
     ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "fourth bus_generic_attach\n"));
@@ -1715,6 +1731,49 @@ acpi_probe_order(ACPI_HANDLE handle, int *order)
 	*order = 3;
     else if (type == ACPI_TYPE_PROCESSOR)
 	*order = 100000;
+}
+
+/*
+ * Flag a device as disabled, because it isn't present according to the
+ * _STA method. We set the recheck instance-variable, to make sure that we
+ * recheck the device presence at a later point.
+ */
+static void
+acpi_disable_not_present(device_t child)
+{
+	device_disable(child);
+	acpi_set_recheck(child, 1);
+}
+
+/*
+ * This rechecks the device presence for all the devices which were disabled
+ * using acpi_disable_not_present().
+ */
+static void
+acpi_reprobe_children(device_t bus, device_t *children, int cnt)
+{
+	int i;
+
+	for (i = 0; i < cnt; i++) {
+		device_t dev = children[i];
+
+		if (device_is_enabled(dev))
+			continue;
+
+		if (acpi_get_recheck(dev)) {
+			if (acpi_DeviceIsPresent(dev)) {
+				acpi_set_recheck(dev, 0);
+				device_enable(dev);
+				/*
+				 * Currently we parse the resources for every
+				 * device at the first time, when we see
+				 * that it is present.
+				 */
+				acpi_parse_resources(dev, acpi_get_handle(dev),
+				    &acpi_res_parse_set, NULL);
+			}
+		}
+	}
 }
 
 /*
@@ -1801,7 +1860,7 @@ acpi_probe_child(ACPI_HANDLE handle, UINT32 level, void *context, void **status)
 		if (ACPI_SUCCESS(AcpiGetHandle(handle, "_DCK", &h)))
 		    break;
 
-		device_disable(child);
+		acpi_disable_not_present(child);
 		break;
 	    }
 

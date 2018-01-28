@@ -95,6 +95,7 @@ struct acpi_device {
     uintptr_t			ad_magic;
     void			*ad_private;
     int				ad_flags;
+    int				ad_recheck;	/* Should re-check presence. */
 
     /* Resources */
     struct resource_list	ad_rl;
@@ -246,6 +247,7 @@ extern int	acpi_quirks;
 #define ACPI_IVAR_MAGIC		0x101
 #define ACPI_IVAR_PRIVATE	0x102
 #define ACPI_IVAR_FLAGS		0x103
+#define ACPI_IVAR_RECHECK	0x104
 
 /*
  * Accessor functions for our ivars.  Default value for BUS_READ_IVAR is
@@ -272,6 +274,7 @@ __ACPI_BUS_ACCESSOR(acpi, handle, ACPI, HANDLE, ACPI_HANDLE)
 __ACPI_BUS_ACCESSOR(acpi, magic, ACPI, MAGIC, uintptr_t)
 __ACPI_BUS_ACCESSOR(acpi, private, ACPI, PRIVATE, void *)
 __ACPI_BUS_ACCESSOR(acpi, flags, ACPI, FLAGS, int)
+__ACPI_BUS_ACCESSOR(acpi, recheck, ACPI, RECHECK, int)
 
 void acpi_fake_objhandler(ACPI_HANDLE h, void *data);
 static __inline device_t
