@@ -168,7 +168,7 @@ extern long fallrate;	/* less than 1 billion; smaller => faster */
 
 extern int	score;		/* the obvious thing */
 
-extern char	key_msg[100];
+extern char	key_msg[120];
 extern int	showpreview;
 extern int	classic;
 

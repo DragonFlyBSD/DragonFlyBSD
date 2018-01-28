@@ -58,7 +58,7 @@ const struct shape *curshape;
 const struct shape *nextshape;
 long	fallrate;
 int	score;
-char	key_msg[100];
+char	key_msg[120];
 int	showpreview, classic;
 
 static void elide(void);
@@ -143,13 +143,15 @@ randshape(void)
 	return (tmp);
 }
 
+#define NUMKEYS 6
+
 int
 main(int argc, char *argv[])
 {
 	int pos, c;
 	const char *keys;
 	int level = 2;
-	char key_write[6][10];
+	char key_write[NUMKEYS][10];
 	const char *errstr;
 	int ch, i, j;
 
@@ -167,7 +169,7 @@ main(int argc, char *argv[])
 			classic = 1;
 			break;
 		case 'k':
-			if (strlen(keys = optarg) != 6)
+			if (strlen(keys = optarg) != NUMKEYS)
 				usage();
 			break;
 		case 'l':
@@ -195,8 +197,8 @@ main(int argc, char *argv[])
 
 	fallrate = 1000000000L / level;
 
-	for (i = 0; i <= 5; i++) {
-		for (j = i+1; j <= 5; j++) {
+	for (i = 0; i <= (NUMKEYS-1); i++) {
+		for (j = i+1; j <= (NUMKEYS-1); j++) {
 			if (keys[i] == keys[j])
 				errx(1, "duplicate command keys specified.");
 		}
@@ -208,7 +210,7 @@ main(int argc, char *argv[])
 		}
 	}
 
-	snprintf(key_msg, sizeof key_msg,
+	snprintf(key_msg, sizeof(key_msg),
 "%s - left   %s - rotate   %s - right   %s - drop   %s - pause   %s - quit",
 		key_write[0], key_write[1], key_write[2], key_write[3],
 		key_write[4], key_write[5]);

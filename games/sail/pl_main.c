@@ -55,7 +55,7 @@ initialize(void)
 {
 	struct File *fp;
 	struct ship *sp;
-	char captain[80];
+	char captain[20];
 	char message[60];
 	int load;
 	int n;
@@ -75,7 +75,7 @@ reprint:
 		printf("\nScenario number? ");
 		fflush(stdout);
 		scanf("%d", &game);
-		while (getchar() != '\n')
+		while (getchar() != '\n' && !feof(stdin))
 			;
 	}
 	if (game < 0 || game >= NSCENE) {
