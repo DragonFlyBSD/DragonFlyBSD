@@ -17,6 +17,9 @@ CFLAGS		+= -std=iso9899:1999
 CFLAGS		+= -std=${CSTD}
 .endif
 
+# Explicitly clear _cnowarnflags (should not be used in Makefiles).
+_cnowarnflags=
+
 # Enable various levels of compiler warning checks.  These may be
 # overridden (e.g. if using a non-gcc compiler) by defining NO_WARNS.
 
@@ -29,12 +32,14 @@ CWARNFLAGS	+=	-Werror
 .   endif
 .  endif
 .  if ${WARNS} >= 2
-CWARNFLAGS	+=	-Wall -Wformat-security -Winit-self -Wno-pointer-sign
+CWARNFLAGS	+=	-Wall -Wformat-security -Winit-self
+_cnowarnflags	+=	-Wno-pointer-sign
 .  endif
 .  if ${WARNS} >= 3
-CWARNFLAGS	+=	-Wextra -Wno-unused-parameter -Wstrict-prototypes\
+CWARNFLAGS	+=	-Wextra -Wstrict-prototypes\
 			-Wmissing-prototypes -Wpointer-arith\
 			-Wold-style-definition
+_cnowarnflags	+=	-Wno-unused-parameter
 .  endif
 .  if ${WARNS} >= 4
 CWARNFLAGS	+=	-Wreturn-type -Wcast-qual -Wwrite-strings -Wswitch\
@@ -48,25 +53,25 @@ CWARNFLAGS	+=	-Wchar-subscripts -Winline -Wnested-externs\
 # XXX Delete -Wmaybe-uninitialized by default for now -- the compiler doesn't
 # XXX always get it right.
 .   if ${CCVER:Mgcc*}
-CWARNFLAGS	+=	-Wno-maybe-uninitialized
+_cnowarnflags	+=	-Wno-maybe-uninitialized
 .   else
-CWARNFLAGS	+=	-Wno-uninitialized
+_cnowarnflags	+=	-Wno-uninitialized
 .   endif
 .  endif
 # Activate gcc47's -Wunused-but-set-variable (which is in -Wall) and
 # -Wunused-but-set-parameter (which is in -Wextra) only at WARNS >= 4
 # (which is the level when also -Wunused-parameter comes into play).
 .  if ${WARNS} >= 2 && ${WARNS} <= 3 && ${CCVER:Mgcc*}
-CWARNFLAGS	+=	-Wno-unused-but-set-variable
+_cnowarnflags	+=	-Wno-unused-but-set-variable
 .  endif
 .  if ${WARNS} == 3 && ${CCVER:Mgcc*}
-CWARNFLAGS	+=	-Wno-unused-but-set-parameter
+_cnowarnflags	+=	-Wno-unused-but-set-parameter
 .  endif
 .  if ${WARNS} == 3 && (${CCVER:Mgcc49} || ${CCVER:Mgcc[5-]*})
-CWARNFLAGS	+=	-Wno-unused-value
+_cnowarnflags	+=	-Wno-unused-value
 .  endif
 .  if ${WARNS} >= 2 && ${CCVER:Mgcc4[789]}
-CWARNFLAGS	+=	-Wno-error=maybe-uninitialized\
+_cnowarnflags	+=	-Wno-error=maybe-uninitialized\
 			-Wno-error=uninitialized\
 			-Wno-error=shadow
 .  endif
@@ -88,7 +93,8 @@ WFORMAT		=	1
 . endif
 . if defined(WFORMAT)
 .  if ${WFORMAT} > 0
-CWARNFLAGS	+=	-Wformat=2 -Wno-format-extra-args
+CWARNFLAGS	+=	-Wformat=2
+_cnowarnflags	+=	-Wno-format-extra-args
 .   if !defined(NO_WERROR) && (${CCVER} == "gcc47" || ${CCVER} == "gcc50")
 CWARNFLAGS	+=	-Werror
 .   endif
@@ -97,7 +103,7 @@ CWARNFLAGS	+=	-Werror
 .endif
 
 .if defined(NO_WARRAY_BOUNDS)
-CWARNFLAGS	+=      -Wno-array-bounds
+_cnowarnflags	+=      -Wno-array-bounds
 .endif
 .if defined(NO_STRICT_OVERFLOW)
 CFLAGS		+=	-fno-strict-overflow
@@ -106,6 +112,11 @@ CFLAGS		+=	-fno-strict-overflow
 CFLAGS		+=      -fno-strict-aliasing
 .endif
 
+
+# Add -Wno-foo flags last
+.if !defined(WARNS_AUDIT)
+CWARNFLAGS	+=	${_cnowarnflags}
+.endif
 
 # Allow user-specified additional warning flags
 CFLAGS		+=	${CWARNFLAGS}
