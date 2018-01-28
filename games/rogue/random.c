@@ -31,7 +31,6 @@
  *
  * @(#)random.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/random.c,v 1.6 1999/11/30 03:49:26 billf Exp $
- * $DragonFly: src/games/rogue/random.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 #include "rogue.h"
@@ -60,7 +59,7 @@ get_rand(int x, int y)
 		x = t;
 	}
 	lr = rrandom();
-	lr &= (long) 0x00003fff;
+	lr &= 0x00003fffL;
 	r = (int)lr;
 	r = (r % ((y - x) + 1)) + x;
 	return(r);

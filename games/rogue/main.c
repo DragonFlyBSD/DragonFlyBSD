@@ -31,8 +31,7 @@
  *
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/games/rogue/main.c,v 1.3 1999/11/30 03:49:23 billf Exp $
- * $DragonFly: src/games/rogue/main.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
+ * $NetBSD: main.c,v 1.9 2008/07/20 01:03:22 lukem Exp $
  */
 
 /*
@@ -48,8 +47,6 @@
  */
 
 #include "rogue.h"
-
-extern short party_room;
 
 int
 main(int argc, char *argv[])

@@ -31,7 +31,6 @@
  *
  * @(#)object.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/object.c,v 1.5 1999/11/30 03:49:25 billf Exp $
- * $DragonFly: src/games/rogue/object.c,v 1.4 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -51,8 +50,9 @@
 object level_objects;
 unsigned short dungeon[DROWS][DCOLS];
 short foods = 0;
-object *free_list = NULL;
 char *fruit = NULL;
+
+static object *free_list = NULL;
 
 fighter rogue = {
 	INIT_AW,	/* armor, weapon */
@@ -148,10 +148,6 @@ struct id id_rings[RINGS] = {
 	 {290, "                                 ", "of maintain armor ",0},
 	 {270, "                                 ", "of searching ",0},
 };
-
-extern short cur_level, max_level;
-extern short party_room;
-extern boolean is_wood[];
 
 static void gr_armor(object *);
 static void gr_potion(object *);
@@ -624,6 +620,7 @@ alloc_object(void)
 	} else if (!(obj = (object *) md_malloc(sizeof(object)))) {
 			message("cannot allocate object, saving game", 0);
 			save_into_file(error_file);
+			clean_up("alloc_object:  save failed");
 	}
 	obj->quantity = 1;
 	obj->ichar = 'L';

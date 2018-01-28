@@ -192,6 +192,8 @@
 
 #define MAX_OPT_LEN 40
 
+#define HIT_MESSAGE_SIZE 80
+
 #define HUNGER_STR_LEN 8
 
 #define MAX_ID_TITLE_LEN 64
@@ -228,7 +230,7 @@ struct obj {				/* comment is monster meaning */
 	unsigned long m_flags;	/* monster flags */
 	const char *damage;		/* damage it does */
 	short quantity;			/* hit points to kill */
-	short ichar;			/* 'A' is for aquatar */
+	short ichar;			/* 'A' is for aquator */
 	short kill_exp;			/* exp for killing it */
 	short is_protected;		/* level starts */
 	short is_cursed;		/* level ends */
@@ -355,7 +357,6 @@ extern struct id id_rings[];
 extern struct id id_weapons[];
 extern struct id id_armors[];
 
-extern object mon_tab[];
 extern object level_monsters;
 
 #define MONSTERS 26
@@ -439,7 +440,8 @@ struct rogue_time {
 	short second;	/* 0 - 59 */
 };
 
-/* external routine declarations.
+/*
+ * external routine declarations.
  */
 #define rrandom random
 
@@ -679,6 +681,62 @@ void	bounce(short, short, short, short, short);
 /*
  * external variable declarations.
  */
-extern  char    hunger_str[HUNGER_STR_LEN];
-extern  char    login_name[MAX_OPT_LEN];
-extern  const char   *error_file;
+extern	boolean	ask_quit;
+extern	boolean	being_held;
+extern	boolean	cant_int;
+extern	boolean	con_mon;
+extern	boolean	detect_monster;
+extern	boolean	did_int;
+extern	boolean	flush;
+extern	boolean	interrupted;
+extern	boolean	is_wood[];
+extern	boolean	jump;
+extern	boolean	maintain_armor;
+extern	boolean	mon_disappeared;
+extern	boolean	msg_cleared;
+extern	boolean	no_skull;
+extern	boolean	passgo;
+extern	boolean	r_see_invisible;
+extern	boolean	r_teleport;
+extern	boolean	save_is_interactive;
+extern	boolean	score_only;
+extern	boolean	see_invisible;
+extern	boolean	sustain_strength;
+extern	boolean	trap_door;
+extern	boolean	wizard;
+extern	char	hit_message[HIT_MESSAGE_SIZE];
+extern	char	hunger_str[HUNGER_STR_LEN];
+extern	char	login_name[MAX_OPT_LEN];
+extern	const char   *byebye_string;
+extern	const char   curse_message[];
+extern	const char   *error_file;
+extern	char   *fruit;
+extern	const char   *const m_names[];
+extern	const char   *more;
+extern	const char   *new_level_message;
+extern	char   *nick_name;
+extern	const char   *press_space;
+extern	char   *save_file;
+extern	const char   you_can_move_again[];
+extern	const long	level_points[];
+extern	short	add_strength;
+extern	short	auto_search;
+extern	short	bear_trap;
+extern	short	blind;
+extern	short	confused;
+extern	short	cur_level;
+extern	short	cur_room;
+extern	short	e_rings;
+extern	short	extra_hp;
+extern	short	foods;
+extern	short	halluc;
+extern	short	haste_self;
+extern	short	less_hp;
+extern	short	levitate;
+extern	short	m_moves;
+extern	short	max_level;
+extern	short	party_room;
+extern	short	r_rings;
+extern	short	regeneration;
+extern	short	ring_exp;
+extern	short	stealthy;

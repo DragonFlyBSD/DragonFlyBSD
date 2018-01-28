@@ -31,7 +31,6 @@
  *
  * @(#)zap.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/zap.c,v 1.3 1999/11/30 03:49:29 billf Exp $
- * $DragonFly: src/games/rogue/zap.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -54,9 +53,6 @@ static void wdrain_life(object *);
 static void zap_monster(object *, unsigned short);
 
 boolean wizard = 0;
-
-extern boolean being_held, score_only, detect_monster;
-extern short cur_room;
 
 void
 zapp(void)

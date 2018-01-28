@@ -31,7 +31,6 @@
  *
  * @(#)monster.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/monster.c,v 1.6 1999/11/30 03:49:24 billf Exp $
- * $DragonFly: src/games/rogue/monster.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -80,7 +79,7 @@ const char *const m_names[] = {
 	"zombie"
 };
 
-object mon_tab[MONSTERS] = {
+static object mon_tab[MONSTERS] = {
 	{(ASLEEP|WAKENS|WANDERS|RUSTS),"0d0",25,'A',20,9,18,100,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,NULL},
 	{(ASLEEP|WANDERS|FLITS|FLIES),"1d3",10,'B',2,1,8,60,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,NULL},
 	{(ASLEEP|WANDERS),"3d3/2d5",32,'C',15,7,16,85,0,10,0,0,0,0,0,0,0,0,0,0,0,0,0,NULL},
@@ -120,12 +119,6 @@ static boolean mtry(object *, short, short);
 static boolean no_room_for_monster(int);
 static void put_m_at(short, short, object *);
 static short rogue_is_around(int, int);
-
-extern short cur_level;
-extern short cur_room, party_room;
-extern short blind, halluc, haste_self;
-extern boolean detect_monster, see_invisible, r_see_invisible;
-extern short stealthy;
 
 void
 put_mons(void)
@@ -223,7 +216,7 @@ NM:		test_mons = level_monsters.next_monster;
 				monster = next_monster;
 				break;
 			}
-			test_mons = test_mons->next_monster;
+			test_mons = test_mons -> next_monster;
 		}
 	}
 }
@@ -236,6 +229,7 @@ party_monsters(int rn, int n)
 	object *monster;
 	boolean found;
 
+	row = col = 0;
 	n += n;
 
 	for (i = 0; i < MONSTERS; i++) {
@@ -675,7 +669,7 @@ create_monster(void)
 
 	for (i = 0; i < 9; i++) {
 		rand_around(i, &row, &col);
-		if (((row == rogue.row) && (col = rogue.col)) ||
+		if (((row == rogue.row) && (col == rogue.col)) ||
 				(row < MIN_ROW) || (row > (DROWS-2)) ||
 				(col < 0) || (col > (DCOLS-1))) {
 			continue;
@@ -715,6 +709,8 @@ aim_monster(object *monster)
 	short i, rn, d, r;
 
 	rn = get_room_number(monster->row, monster->col);
+	if (rn == NO_ROOM)
+		clean_up("aim_monster: monster not in room");
 	r = get_rand(0, 12);
 
 	for (i = 0; i < 4; i++) {

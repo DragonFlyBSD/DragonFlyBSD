@@ -54,14 +54,14 @@ static void env_get_value(char **, char *, boolean);
 static void init_str(char **, const char *);
 static void player_init(void);
 
+static char *rest_file = NULL;
+static boolean init_curses = 0;
 
 char login_name[MAX_OPT_LEN];
 char *nick_name = NULL;
-char *rest_file = NULL;
 boolean cant_int = 0;
 boolean did_int = 0;
 boolean score_only;
-boolean init_curses = 0;
 boolean save_is_interactive = 1;
 boolean ask_quit = 1;
 boolean no_skull = 0;
@@ -69,11 +69,6 @@ boolean passgo = 0;
 boolean flush = 1;
 const char *error_file = "rogue.esave";
 const char *byebye_string = "Okay, bye bye!";
-
-extern char *fruit;
-extern char *save_file;
-extern short party_room;
-extern boolean jump;
 
 boolean
 init(int argc, char *argv[])
@@ -326,6 +321,8 @@ env_get_value(char **s, char *e, boolean add_blank)
 	}
 	/* note: edit_opts() in room.c depends on this being the right size */
 	*s = md_malloc(MAX_OPT_LEN + 2);
+	if (*s == NULL)
+		clean_up("out of memory");
 	strncpy(*s, t, i);
 	if (add_blank) {
 		(*s)[i++] = ' ';
@@ -339,6 +336,8 @@ init_str(char **str, const char *dflt)
 	if (!(*str)) {
 		/* note: edit_opts() in room.c depends on this size */
 		*str = md_malloc(MAX_OPT_LEN + 2);
+		if (*str == NULL)
+			clean_up("out of memory");
 		strcpy(*str, dflt);
 	}
 }

@@ -31,7 +31,6 @@
  *
  * @(#)play.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/play.c,v 1.3 1999/11/30 03:49:26 billf Exp $
- * $DragonFly: src/games/rogue/play.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -49,11 +48,8 @@
 #include "rogue.h"
 
 boolean interrupted = 0;
-const char *unknown_command = "unknown command";
 
-extern short party_room, bear_trap;
-extern char hit_message[];
-extern boolean wizard, trap_door;
+static const char unknown_command[] = "unknown command";
 
 void
 play_level(void)
@@ -215,6 +211,7 @@ CH:
 			break;
 		case 'Q':
 			quit(0);
+			/* FALLTHROUGH */
 		case '0':
 		case '1':
 		case '2':

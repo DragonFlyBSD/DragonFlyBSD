@@ -31,7 +31,6 @@
  *
  * @(#)score.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/score.c,v 1.4 1999/11/30 03:49:27 billf Exp $
- * $DragonFly: src/games/rogue/score.c,v 1.4 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -50,11 +49,6 @@
 #include "rogue.h"
 #include "pathnames.h"
 
-extern char *m_names[];
-extern short max_level;
-extern boolean score_only, no_skull, msg_cleared;
-extern char *byebye_string, *nick_name;
-
 static void center(short, const char *);
 static int get_value(const object *);
 static void id_all(void);
@@ -63,7 +57,7 @@ static void insert_score(char [][82], char [][30], const char *, short, short,
 static int name_cmp(char *, const char *);
 static void nickize(char *, const char *, const char *);
 static void sell_pack(void);
-static void sf_error(void);
+static void sf_error(void) __dead2;
 
 void
 killed_by(const object *monster, short other)

@@ -31,7 +31,6 @@
  *
  * @(#)level.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/level.c,v 1.3 1999/11/30 03:49:23 billf Exp $
- * $DragonFly: src/games/rogue/level.c,v 1.4 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -48,7 +47,7 @@
 
 #include "rogue.h"
 
-#define swap(x,y) {t = x; x = y; y = t;}
+#define SWAP(x,y) {t = (x); (x) = (y); (y) = t;}
 
 static void	add_mazes(void);
 static boolean	connect_rooms(short, short);
@@ -71,7 +70,8 @@ short max_level = 1;
 short cur_room;
 const char *new_level_message = NULL;
 short party_room = NO_ROOM;
-short r_de;
+
+static short r_de;
 
 const long level_points[MAX_EXP_LEVEL] = {
 		  10L,
@@ -97,19 +97,16 @@ const long level_points[MAX_EXP_LEVEL] = {
 	99900000L
 };
 
-short random_rooms[MAXROOMS] = {3, 7, 5, 2, 0, 6, 1, 4, 8};
-
-extern boolean being_held, wizard, detect_monster;
-extern boolean see_invisible;
-extern short bear_trap, levitate, extra_hp, less_hp;
+static short random_rooms[MAXROOMS] = {3, 7, 5, 2, 0, 6, 1, 4, 8};
 
 void
 make_level(void)
 {
 	short i, j;
-	short must_1, must_2 = 0, must_3 = 0;
+	short must_1, must_2, must_3;
 	boolean big_room;
 
+	must_2 = must_3 = 0;
 	if (cur_level < LAST_DUNGEON) {
 		cur_level++;
 	}
@@ -428,8 +425,8 @@ draw_simple_passage(short row1, short col1, short row2, short col2, short dir)
 
 	if ((dir == LEFT) || (dir == RIGHT)) {
 		if (col1 > col2) {
-			swap(row1, row2);
-			swap(col1, col2);
+			SWAP(row1, row2);
+			SWAP(col1, col2);
 		}
 		middle = get_rand(col1+1, col2-1);
 		for (i = col1+1; i != middle; i++) {
@@ -443,8 +440,8 @@ draw_simple_passage(short row1, short col1, short row2, short col2, short dir)
 		}
 	} else {
 		if (row1 > row2) {
-			swap(row1, row2);
-			swap(col1, col2);
+			SWAP(row1, row2);
+			SWAP(col1, col2);
 		}
 		middle = get_rand(row1+1, row2-1);
 		for (i = row1+1; i != middle; i++) {
@@ -657,7 +654,7 @@ make_maze(short r, short c, short tr, short br, short lc, short rc)
 			t1 = get_rand(0, 3);
 			t2 = get_rand(0, 3);
 
-			swap(dirs[t1], dirs[t2]);
+			SWAP(dirs[t1], dirs[t2]);
 		}
 	}
 	for (i = 0; i < 4; i++) {
@@ -711,10 +708,10 @@ hide_boxed_passage(short row1, short col1, short row2, short col2, short n)
 
 	if (cur_level > 2) {
 		if (row1 > row2) {
-			swap(row1, row2);
+			SWAP(row1, row2);
 		}
 		if (col1 > col2) {
-			swap(col1, col2);
+			SWAP(col1, col2);
 		}
 		h = row2 - row1;
 		w = col2 - col1;
@@ -737,8 +734,11 @@ hide_boxed_passage(short row1, short col1, short row2, short col2, short n)
 	}
 }
 
+/*
+ * try not to put in this room
+ */
 void
-put_player(short nr)		/* try not to put in this room */
+put_player(short nr)
 {
 	short rn = nr, misses;
 	short row, col;
@@ -892,6 +892,6 @@ mix_random_rooms(void)
 			x = get_rand(0, (MAXROOMS-1));
 			y = get_rand(0, (MAXROOMS-1));
 		} while (x == y);
-		swap(random_rooms[x], random_rooms[y]);
+		SWAP(random_rooms[x], random_rooms[y]);
 	}
 }

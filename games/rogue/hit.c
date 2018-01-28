@@ -47,16 +47,12 @@
 
 #include "rogue.h"
 
-extern short halluc, blind, cur_level;
-extern short add_strength, ring_exp, r_rings;
-extern boolean being_held, interrupted, wizard, con_mon;
-
 static short damage_for_strength(void);
 static int get_w_damage(const object *);
 static int to_hit(const object *);
 
-object *fight_monster = NULL;
-char hit_message[80] = "";
+static object *fight_monster = NULL;
+char hit_message[HIT_MESSAGE_SIZE] = "";
 
 void
 mon_hit(object *monster)

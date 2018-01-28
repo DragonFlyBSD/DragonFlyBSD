@@ -31,7 +31,6 @@
  *
  * @(#)room.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/room.c,v 1.7 1999/11/30 03:49:26 billf Exp $
- * $DragonFly: src/games/rogue/room.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -49,15 +48,11 @@
 #include "rogue.h"
 
 room rooms[MAXROOMS];
-boolean rooms_visited[MAXROOMS];
 
-extern short blind;
-extern boolean detect_monster, jump, passgo, no_skull, ask_quit, flush;
-extern char *nick_name, *fruit, *save_file, *press_space;
+static boolean rooms_visited[MAXROOMS];
 
 #define NOPTS 8
-
-struct option {
+static const struct option {
 	const char *prompt;
 	boolean is_bool;
 	char **strval;
@@ -289,6 +284,7 @@ party_objects(short rn)
 	short n, N, row, col;
 	boolean found;
 
+	row = col = 0;
 	N = ((rooms[rn].bottom_row - rooms[rn].top_row) - 1) *
 		((rooms[rn].right_col - rooms[rn].left_col) - 1);
 	n =  get_rand(5, 10);
@@ -450,6 +446,8 @@ dr_course(object *monster, boolean entering, short row, short col)
 			}
 		}
 		/* look for door to dead end */
+		if (rn == NO_ROOM)
+			clean_up("dr_course:  monster not in room");
 		for (i = rooms[rn].top_row; i <= rooms[rn].bottom_row; i++) {
 			for (j = rooms[rn].left_col; j <= rooms[rn].right_col; j++) {
 				if ((i != monster->row) && (j != monster->col) &&
@@ -477,7 +475,7 @@ dr_course(object *monster, boolean entering, short row, short col)
 		/* no place to send monster */
 		monster->trow = NO_ROOM;
 	} else {		/* exiting room */
-		if (!get_oth_room(rn, &row, &col)) {
+		if (rn == NO_ROOM || !get_oth_room(rn, &row, &col)) {
 			monster->trow = NO_ROOM;
 		} else {
 			monster->trow = row;
@@ -565,6 +563,7 @@ CH:
 				opt_go(++i);
 				break;
 			}
+			/* FALLTHROUGH */
 		default:
 			if (options[i].is_bool) {
 				sound_bell();
@@ -588,6 +587,11 @@ CH:
 					ch = rgetchar();
 				} while ((ch != '\012') && (ch != '\015') && (ch != '\033'));
 				if (j != 0) {
+					/*
+					 * We rely on the option string being
+					 * allocated to hold MAX_OPT_LEN+2
+					 * bytes. This is arranged in init.c.
+					 */
 					strcpy(*(options[i].strval), buf);
 				}
 				opt_show(i);
@@ -611,7 +615,7 @@ static void
 opt_show(int i)
 {
 	const char *s;
-	struct option *opt = &options[i];
+	const struct option *opt = &options[i];
 
 	opt_erase(i);
 
@@ -626,7 +630,7 @@ opt_show(int i)
 static void
 opt_erase(int i)
 {
-	struct option *opt = &options[i];
+	const struct option *opt = &options[i];
 
 	mvaddstr(i, 0, opt->prompt);
 	clrtoeol();

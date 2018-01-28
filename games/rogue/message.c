@@ -49,15 +49,13 @@
 #include "rogue.h"
 #include "pathnames.h"
 
-char msgs[NMESSAGES][DCOLS] = {"", "", "", "", ""};
-short msg_col = 0, imsg = -1;
-boolean msg_cleared = 1, rmsg = 0;
+static char msgs[NMESSAGES][DCOLS] = {"", "", "", "", ""};
+static short msg_col = 0, imsg = -1;
+static boolean rmsg = 0;
+
+boolean msg_cleared = 1;
 char hunger_str[HUNGER_STR_LEN] = "";
 const char *more = "-more-";
-
-extern boolean cant_int, did_int, interrupted, save_is_interactive, flush;
-extern short add_strength;
-extern short cur_level;
 
 static void pad(const char *, short);
 static void save_screen(void);

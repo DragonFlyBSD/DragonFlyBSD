@@ -31,7 +31,6 @@
  *
  * @(#)throw.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/throw.c,v 1.3 1999/11/30 03:49:28 billf Exp $
- * $DragonFly: src/games/rogue/throw.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -47,10 +46,6 @@
  */
 
 #include "rogue.h"
-
-extern short cur_room;
-extern char *curse_message;
-extern char hit_message[];
 
 static void flop_weapon(object *, short, short);
 static object *get_thrown_at_monster(object *, short, short *, short *);

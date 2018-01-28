@@ -31,7 +31,6 @@
  *
  * @(#)pack.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/pack.c,v 1.8 1999/11/30 03:49:25 billf Exp $
- * $DragonFly: src/games/rogue/pack.c,v 1.4 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -49,9 +48,7 @@
 #include <unistd.h>
 #include "rogue.h"
 
-const char *curse_message = "you can't, it appears to be cursed";
-
-extern short levitate;
+const char curse_message[] = "you can't, it appears to be cursed";
 
 static object *check_duplicate(object *, object *);
 static boolean is_pack_letter(short *, unsigned short *);
@@ -252,7 +249,9 @@ next_avail_ichar(void)
 	}
 	obj = rogue.pack.next_object;
 	while (obj) {
-		ichars[(obj->ichar - 'a')] = 1;
+		if (obj->ichar >= 'a' && obj->ichar <= 'z') {
+			ichars[(obj->ichar - 'a')] = 1;
+		}
 		obj = obj->next_object;
 	}
 	for (i = 0; i < 26; i++) {

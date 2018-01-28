@@ -31,7 +31,6 @@
  *
  * @(#)move.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/move.c,v 1.7 1999/11/30 03:49:24 billf Exp $
- * $DragonFly: src/games/rogue/move.c,v 1.4 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -50,13 +49,7 @@
 
 short m_moves = 0;
 boolean jump = 0;
-const char *you_can_move_again = "you can move again";
-
-extern short cur_room, halluc, blind, levitate;
-extern short cur_level, max_level;
-extern short bear_trap, haste_self, confused;
-extern short e_rings, regeneration, auto_search;
-extern boolean being_held, interrupted, r_teleport, passgo;
+const char you_can_move_again[] = "you can move again";
 
 static boolean can_turn(short, short);
 static boolean check_hunger(boolean);
@@ -110,6 +103,8 @@ one_move_rogue(short dirch, short pickup)
 	if (dungeon[row][col] & DOOR) {
 		if (cur_room == PASSAGE) {
 			cur_room = get_room_number(row, col);
+			if (cur_room == NO_ROOM)
+				clean_up("one_move_rogue: door to nowhere");
 			light_up_room(cur_room);
 			wake_room(cur_room, 1, row, col);
 		} else {

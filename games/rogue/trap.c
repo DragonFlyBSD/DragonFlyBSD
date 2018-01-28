@@ -31,7 +31,6 @@
  *
  * @(#)trap.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/trap.c,v 1.6 1999/11/30 03:49:28 billf Exp $
- * $DragonFly: src/games/rogue/trap.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -52,7 +51,7 @@ trap traps[MAX_TRAPS];
 boolean trap_door = 0;
 short bear_trap = 0;
 
-const char *const trap_strings[TRAPS * 2] = {
+static const char *const trap_strings[TRAPS * 2] = {
 	"trap door",
 			"you fell down a trap",
 	"bear trap",
@@ -66,15 +65,6 @@ const char *const trap_strings[TRAPS * 2] = {
 	"rust trap",
 			"a gush of water hits you on the head"
 };
-
-extern short cur_level, party_room;
-extern const char *new_level_message;
-extern boolean interrupted;
-extern short ring_exp;
-extern boolean sustain_strength;
-extern short blind;
-
-static short trap_at(int, int);
 
 static short
 trap_at(int row, int col)

@@ -31,7 +31,6 @@
  *
  * @(#)ring.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/ring.c,v 1.3 1999/11/30 03:49:26 billf Exp $
- * $DragonFly: src/games/rogue/ring.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -48,8 +47,9 @@
 
 #include "rogue.h"
 
-const char *left_or_right = "left or right hand?";
-const char *no_ring = "there's no ring on that hand";
+static const char left_or_right[] = "left or right hand?";
+static const char no_ring[] = "there's no ring on that hand";
+
 short stealthy;
 short r_rings;
 short add_strength;
@@ -61,9 +61,6 @@ boolean r_teleport;
 boolean r_see_invisible;
 boolean sustain_strength;
 boolean maintain_armor;
-
-extern char *curse_message;
-extern boolean wizard;
 
 void
 put_on_ring(void)
@@ -245,7 +242,8 @@ inv_rings(void)
 		}
 	}
 	if (wizard) {
-		sprintf(buf, "ste %d, r_r %d, e_r %d, r_t %d, s_s %d, a_s %d, reg %d, r_e %d, s_i %d, m_a %d, aus %d",
+		sprintf(buf, "ste %hi, r_r %hi, e_r %hi, r_t %d, s_s %d"
+			", a_s %hi, reg %hi, r_e %hi, s_i %d, m_a %d, aus %hi",
 			stealthy, r_rings, e_rings, r_teleport, sustain_strength,
 			add_strength, regeneration, ring_exp, r_see_invisible,
 			maintain_armor, auto_search);

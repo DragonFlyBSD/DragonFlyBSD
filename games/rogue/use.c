@@ -56,14 +56,9 @@ boolean see_invisible = 0;
 short extra_hp = 0;
 boolean detect_monster = 0;
 boolean con_mon = 0;
-const char *strange_feeling = "you have a strange feeling for a moment, then it passes";
 
-extern short bear_trap;
-extern short cur_room;
-extern long level_points[];
-extern boolean being_held;
-extern char *fruit, *you_can_move_again;
-extern boolean sustain_strength;
+static const char strange_feeling[] =
+	"you have a strange feeling for a moment, then it passes";
 
 static const char *get_ench_color(void);
 static void go_blind(void);

@@ -76,7 +76,7 @@
  *      #endif
  *      }
  *
- * Appropriate variations of this are of course acceptible.
+ * Appropriate variations of this are of course acceptable.
  * The use of "#elseif" is discouraged because of non-portability.
  * If the correct #define doesn't exist, "UNIX_SYSV" in this case, make it up
  * and insert it in the list at the top of the file.  Alter the CFLAGS

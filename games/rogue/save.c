@@ -31,7 +31,6 @@
  *
  * @(#)save.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/save.c,v 1.6 1999/11/30 03:49:27 billf Exp $
- * $DragonFly: src/games/rogue/save.c,v 1.4 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -50,28 +49,8 @@
 #include <unistd.h>
 #include "rogue.h"
 
-extern short cur_level, max_level;
-extern short party_room;
-extern short foods;
-extern boolean is_wood[];
-extern short cur_room;
-extern boolean being_held;
-extern short bear_trap;
-extern short halluc;
-extern short blind;
-extern short confused;
-extern short levitate;
-extern short haste_self;
-extern boolean see_invisible;
-extern boolean detect_monster;
-extern boolean wizard;
-extern boolean score_only;
-extern short m_moves;
-
-extern boolean msg_cleared;
-
 static boolean	has_been_touched(const struct rogue_time *,
-			 const struct rogue_time *);
+			const struct rogue_time *);
 static void	del_save_file(void);
 static void	r_read(FILE *, char *, int);
 static void	r_write(FILE *, const char *, int);
@@ -83,9 +62,10 @@ static void	rw_rooms(FILE *, boolean);
 static void	write_pack(const object *, FILE *);
 static void	write_string(char *, FILE *);
 
-short write_failed = 0;
-char *save_file = NULL;
+static short write_failed = 0;
 static char save_name[80];
+
+char *save_file = NULL;
 
 void
 save_game(void)
@@ -374,10 +354,13 @@ read_string(char *s, FILE *fp, size_t len)
 	short n;
 
 	r_read(fp, (char *) &n, sizeof(short));
-	if (n > (short)len)
+	if (n < 0 || n > (short)len) {
 		clean_up("read_string: corrupt game file");
+	}
 	r_read(fp, s, n);
 	xxxx(s, n);
+	/* ensure null termination */
+	s[n-1] = 0;
 }
 
 static void

@@ -31,7 +31,6 @@
  *
  * @(#)spec_hit.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/spec_hit.c,v 1.4 1999/11/30 03:49:28 billf Exp $
- * $DragonFly: src/games/rogue/spec_hit.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -61,12 +60,6 @@ static boolean	try_to_cough(short, short, object *);
 
 short less_hp = 0;
 boolean being_held;
-
-extern short cur_level, max_level, blind, levitate, ring_exp;
-extern long level_points[];
-extern boolean detect_monster, mon_disappeared;
-extern boolean sustain_strength, maintain_armor;
-extern char *you_can_move_again;
 
 void
 special_hit(object *monster)

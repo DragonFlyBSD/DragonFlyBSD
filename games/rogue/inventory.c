@@ -47,14 +47,10 @@
 
 #include "rogue.h"
 
-static boolean	pr_com_id(int);
-static boolean	get_com_id(int *, short);
-static boolean	pr_motion_char(int);
-
 boolean is_wood[WANDS];
 const char *press_space = " --press space to continue--";
 
-const char *const wand_materials[WAND_MATERIALS] = {
+static const char *const wand_materials[WAND_MATERIALS] = {
 	"steel ",
 	"bronze ",
 	"gold ",
@@ -87,7 +83,7 @@ const char *const wand_materials[WAND_MATERIALS] = {
 	"wooden "
 };
 
-const char *const gems[GEMS] = {
+static const char *const gems[GEMS] = {
 	"diamond ",
 	"stibotantalite ",
 	"lapi-lazuli ",
@@ -104,7 +100,7 @@ const char *const gems[GEMS] = {
 	"garnet "
 };
 
-const char *const syllables[MAXSYLLABLES] = {
+static const char *const syllables[MAXSYLLABLES] = {
 	"blech ",
 	"foo ",
 	"barf ",
@@ -154,7 +150,7 @@ struct id_com_s {
 	const char *com_desc;
 };
 
-const struct id_com_s com_id_tab[COMS] = {
+static const struct id_com_s com_id_tab[COMS] = {
 	{ '?',		"?       prints help" },
 	{ 'r',		"r       read scroll" },
 	{ '/',		"/     	 identify object" },
@@ -205,8 +201,9 @@ const struct id_com_s com_id_tab[COMS] = {
 	{ 'q',		"q       quaff potion" }
 };
 
-extern boolean wizard;
-extern char *m_names[], *more;
+static boolean get_com_id(int *, short);
+static boolean pr_com_id(int);
+static boolean pr_motion_char(int);
 
 void
 inventory(const object *pack, unsigned short mask)
