@@ -41,15 +41,14 @@
 
 #include <dev/misc/syscons/syscons.h>
 
-#include "isareg.h"
-#include "isavar.h"
-
 static devclass_t	sc_devclass;
 
+static void	scidentify(driver_t *driver, device_t parent);
 static int	scprobe(device_t dev);
 static int	scattach(device_t dev);
 
 static device_method_t sc_methods[] = {
+	DEVMETHOD(device_identify,      scidentify),
 	DEVMETHOD(device_probe,         scprobe),
 	DEVMETHOD(device_attach,        scattach),
 	DEVMETHOD_END
@@ -63,13 +62,31 @@ static driver_t sc_driver = {
 
 static sc_softc_t main_softc;
 
+static void
+scidentify(driver_t *driver, device_t parent)
+{
+	device_t child;
+	int i, u;
+	int f;
+
+	for (i = -1; (i = resource_locate(i, SC_DRIVER_NAME)) >= 0;) {
+		u = resource_query_unit(i);
+		if (u < 0)
+			continue;
+		if (resource_disabled(SC_DRIVER_NAME, u))
+			continue;
+		if (resource_int_value(SC_DRIVER_NAME, u, "flags", &f) != 0)
+			f = 0;
+	        child = BUS_ADD_CHILD(parent, parent, 0, "sc", u);
+	        if (child == NULL)
+			panic("%s", __func__);
+		device_set_flags(child, f);
+	}
+}
+
 static int
 scprobe(device_t dev)
 {
-	/* No pnp support */
-	if (isa_get_vendorid(dev))
-		return (ENXIO);
-
 	device_set_desc(dev, "System console");
 	return sc_probe_unit(device_get_unit(dev), device_get_flags(dev));
 }
@@ -137,7 +154,6 @@ sc_find_softc(struct video_adapter *adp, struct keyboard *kbd)
 int
 sc_get_cons_priority(int *unit, int *flags)
 {
-	int disabled;
 	int u, f;
 	int i;
 	int have_efi_fb = (probe_efi_fb(1) == 0);
@@ -145,8 +161,7 @@ sc_get_cons_priority(int *unit, int *flags)
 	*unit = -1;
 	for (i = -1; (i = resource_locate(i, SC_DRIVER_NAME)) >= 0;) {
 		u = resource_query_unit(i);
-		if ((resource_int_value(SC_DRIVER_NAME, u, "disabled",
-					&disabled) == 0) && disabled)
+		if (resource_disabled(SC_DRIVER_NAME, u))
 			continue;
 		if (resource_int_value(SC_DRIVER_NAME, u, "flags", &f) != 0)
 			f = 0;
@@ -194,4 +209,4 @@ sc_tone(int hertz)
 #endif
 }
 
-DRIVER_MODULE(sc, isa, sc_driver, sc_devclass, NULL, NULL);
+DRIVER_MODULE(sc, nexus, sc_driver, sc_devclass, NULL, NULL);

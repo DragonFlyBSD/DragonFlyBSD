@@ -160,7 +160,7 @@ pseudo-device	splash
 
 # syscons is the default console driver, resembling an SCO console
 # only one syscons with efi framebuffer flag (0x400) allowed
-device		sc0	at isa? flags 0x500
+device		sc0	at nexus? flags 0x500
 options 	SC_PIXEL_MODE		# add support for the raster text mode
 options		SC_DFLT_FONT
 makeoptions	SC_DFLT_FONT=cp437

@@ -211,7 +211,7 @@ dev/misc/ppc/ppc.c			optional	ppc
 dev/misc/psm/psm.c			optional	psm
 dev/serial/sio/sio.c			optional	sio
 dev/serial/sio/sio_pccard.c		optional	sio pccard
-bus/isa/syscons_isa.c			optional	sc
+dev/misc/syscons/syscons_nexus.c	optional	sc
 bus/isa/vga_isa.c			optional	vga
 platform/pc64/isa/clock.c		standard
 platform/pc64/isa/isa_intr.c		optional	isa
