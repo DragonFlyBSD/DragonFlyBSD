@@ -124,6 +124,7 @@
 				/*    process when trimming this file. */
 #define	CE_CREATE	0x0100	/* Create the log file if it does not exist. */
 #define	CE_NODUMP	0x0200	/* Set 'nodump' on newly created log file. */
+#define	CE_PID2CMD	0x0400	/* Replace PID file with a shell command.*/
 
 #define	MIN_PID         5	/* Don't touch pids lower than this */
 #define	MAX_PID		PID_MAX	/* was lower, see /usr/include/sys/proc.h */
@@ -153,7 +154,7 @@ const struct compress_types compress_type[COMPRESS_TYPES] = {
 struct conf_entry {
 	STAILQ_ENTRY(conf_entry) cf_nextp;
 	char *log;		/* Name of the log */
-	char *pid_file;		/* PID file */
+	char *pid_cmd_file;		/* PID or command file */
 	char *r_reason;		/* The reason this file is being rotated */
 	int firstcreate;	/* Creating log for the first time (-C). */
 	int rotate;		/* Non-zero if this file should be rotated */
@@ -177,7 +178,8 @@ struct sigwork_entry {
 	int	 sw_pidok;		/* true if pid value is valid */
 	pid_t	 sw_pid;		/* the process id from the PID file */
 	const char *sw_pidtype;		/* "daemon" or "process group" */
-	char	 sw_fname[1];		/* file the PID was read from */
+	int	 run_cmd;		/* run command or send PID to signal */
+	char	 sw_fname[1];		/* file the PID was read from or shell cmd */
 };
 
 struct zipwork_entry {
@@ -383,9 +385,9 @@ init_entry(const char *fname, struct conf_entry *src_entry)
 		err(1, "strdup for %s", fname);
 
 	if (src_entry != NULL) {
-		tempwork->pid_file = NULL;
-		if (src_entry->pid_file)
-			tempwork->pid_file = strdup(src_entry->pid_file);
+		tempwork->pid_cmd_file = NULL;
+		if (src_entry->pid_cmd_file)
+			tempwork->pid_cmd_file = strdup(src_entry->pid_cmd_file);
 		tempwork->r_reason = NULL;
 		tempwork->firstcreate = 0;
 		tempwork->rotate = 0;
@@ -405,7 +407,7 @@ init_entry(const char *fname, struct conf_entry *src_entry)
 		tempwork->def_cfg = src_entry->def_cfg;
 	} else {
 		/* Initialize as a "do-nothing" entry */
-		tempwork->pid_file = NULL;
+		tempwork->pid_cmd_file = NULL;
 		tempwork->r_reason = NULL;
 		tempwork->firstcreate = 0;
 		tempwork->rotate = 0;
@@ -440,9 +442,9 @@ free_entry(struct conf_entry *ent)
 		ent->log = NULL;
 	}
 
-	if (ent->pid_file != NULL) {
-		free(ent->pid_file);
-		ent->pid_file = NULL;
+	if (ent->pid_cmd_file != NULL) {
+		free(ent->pid_cmd_file);
+		ent->pid_cmd_file = NULL;
 	}
 
 	if (ent->r_reason != NULL) {
@@ -1290,6 +1292,9 @@ no_trimat:
 			case 'n':
 				working->flags |= CE_NOSIGNAL;
 				break;
+			case 'r':
+				working->flags |= CE_PID2CMD;
+				break;
 			case 'u':
 				working->flags |= CE_SIGNALGROUP;
 				break;
@@ -1323,10 +1328,10 @@ no_trimat:
 			*parse = '\0';
 		}
 
-		working->pid_file = NULL;
+		working->pid_cmd_file = NULL;
 		if (q && *q) {
 			if (*q == '/')
-				working->pid_file = strdup(q);
+				working->pid_cmd_file = strdup(q);
 			else if (isdigit(*q))
 				goto got_sig;
 			else
@@ -1363,16 +1368,16 @@ no_trimat:
 		if ((working->flags & CE_NOSIGNAL) == CE_NOSIGNAL) {
 			/*
 			 * This config-entry specified 'n' for nosignal,
-			 * see if it also specified an explicit pid_file.
+			 * see if it also specified an explicit pid_cmd_file.
 			 * This would be a pretty pointless combination.
 			 */
-			if (working->pid_file != NULL) {
+			if (working->pid_cmd_file != NULL) {
 				warnx("Ignoring '%s' because flag 'n' was specified in line:\n%s",
-				    working->pid_file, errline);
-				free(working->pid_file);
-				working->pid_file = NULL;
+				    working->pid_cmd_file, errline);
+				free(working->pid_cmd_file);
+				working->pid_cmd_file = NULL;
 			}
-		} else if (working->pid_file == NULL) {
+		} else if (working->pid_cmd_file == NULL) {
 			/*
 			 * This entry did not specify the 'n' flag, which
 			 * means it should signal syslogd unless it had
@@ -1387,7 +1392,7 @@ no_trimat:
 				working->flags &= ~CE_SIGNALGROUP;
 			}
 			if (needroot)
-				working->pid_file = strdup(path_syslogpid);
+				working->pid_cmd_file = strdup(path_syslogpid);
 		}
 
 		/*
@@ -1825,7 +1830,7 @@ do_rotate(const struct conf_entry *ent)
 	 * multiple log files had to be rotated.
 	 */
 	swork = NULL;
-	if (ent->pid_file != NULL)
+	if (ent->pid_cmd_file != NULL)
 		swork = save_sigwork(ent);
 	if (ent->numlogs > 0 && ent->compress > COMPRESS_NONE) {
 		/*
@@ -1844,6 +1849,7 @@ do_sigwork(struct sigwork_entry *swork)
 {
 	struct sigwork_entry *nextsig;
 	int kres, secs;
+	char *tmp;
 
 	if (!(swork->sw_pidok) || swork->sw_pid == 0)
 		return;			/* no work to do... */
@@ -1883,6 +1889,24 @@ do_sigwork(struct sigwork_entry *swork)
 		    (int)swork->sw_pid, swork->sw_fname);
 		if (secs > 0)
 			printf("\tsleep %d\n", secs);
+		return;
+	}
+
+	if (swork->run_cmd) {
+		asprintf(&tmp, "%s %d", swork->sw_fname, swork->sw_signum);
+		if (tmp == NULL) {
+			warn("can't allocate memory to run %s",
+			    swork->sw_fname);
+			return;
+		}
+		if (verbose)
+			printf("Run command: %s\n", tmp);
+		kres = system(tmp);
+		if (kres) {
+			warnx("%s: returned non-zero exit code: %d",
+			    tmp, kres);
+		}
+		free(tmp);
 		return;
 	}
 
@@ -2016,7 +2040,7 @@ save_sigwork(const struct conf_entry *ent)
 	sprev = NULL;
 	ndiff = 1;
 	SLIST_FOREACH(stmp, &swhead, sw_nextp) {
-		ndiff = strcmp(ent->pid_file, stmp->sw_fname);
+		ndiff = strcmp(ent->pid_cmd_file, stmp->sw_fname);
 		if (ndiff > 0)
 			break;
 		if (ndiff == 0) {
@@ -2032,11 +2056,18 @@ save_sigwork(const struct conf_entry *ent)
 	if (stmp != NULL && ndiff == 0)
 		return (stmp);
 
-	tmpsiz = sizeof(struct sigwork_entry) + strlen(ent->pid_file) + 1;
+	tmpsiz = sizeof(struct sigwork_entry) + strlen(ent->pid_cmd_file) + 1;
 	stmp = malloc(tmpsiz);
-	set_swpid(stmp, ent);
+
+	stmp->run_cmd = 0;
+	/* If this is a command to run we just set the flag and run command */
+	if (ent->flags & CE_PID2CMD) {
+		stmp->run_cmd = 1;
+	} else {
+		set_swpid(stmp, ent);
+	}
 	stmp->sw_signum = ent->sig;
-	strcpy(stmp->sw_fname, ent->pid_file);
+	strcpy(stmp->sw_fname, ent->pid_cmd_file);
 	if (sprev == NULL)
 		SLIST_INSERT_HEAD(&swhead, stmp, sw_nextp);
 	else
@@ -2113,7 +2144,7 @@ set_swpid(struct sigwork_entry *swork, const struct conf_entry *ent)
 		swork->sw_pidtype = "process-group";
 	}
 
-	f = fopen(ent->pid_file, "r");
+	f = fopen(ent->pid_cmd_file, "r");
 	if (f == NULL) {
 		if (errno == ENOENT && enforcepid == 0) {
 			/*
@@ -2124,9 +2155,9 @@ set_swpid(struct sigwork_entry *swork, const struct conf_entry *ent)
 			 * files that the process would have been using.
 			 */
 			swork->sw_pidok = 1;
-			warnx("pid file doesn't exist: %s", ent->pid_file);
+			warnx("pid file doesn't exist: %s", ent->pid_cmd_file);
 		} else
-			warn("can't open pid file: %s", ent->pid_file);
+			warn("can't open pid file: %s", ent->pid_cmd_file);
 		return;
 	}
 
@@ -2139,9 +2170,10 @@ set_swpid(struct sigwork_entry *swork, const struct conf_entry *ent)
 		 */
 		if (feof(f) && enforcepid == 0) {
 			swork->sw_pidok = 1;
-			warnx("pid file is empty: %s", ent->pid_file);
+			warnx("pid/cmd file is empty: %s", ent->pid_cmd_file);
 		} else
-			warn("can't read from pid file: %s", ent->pid_file);
+			warn("can't read from pid file: %s", ent->pid_cmd_file);
+
 		fclose(f);
 		return;
 	}
@@ -2154,10 +2186,10 @@ set_swpid(struct sigwork_entry *swork, const struct conf_entry *ent)
 	rval = strtol(linep, &endp, 10);
 	if (*endp != '\0' && !isspacech(*endp)) {
 		warnx("pid file does not start with a valid number: %s",
-		    ent->pid_file);
+		    ent->pid_cmd_file);
 	} else if (rval < minok || rval > maxok) {
 		warnx("bad value '%ld' for process number in %s",
-		    rval, ent->pid_file);
+		    rval, ent->pid_cmd_file);
 		if (verbose)
 			warnx("\t(expecting value between %ld and %ld)",
 			    minok, maxok);
