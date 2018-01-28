@@ -484,7 +484,7 @@ outentry(int rank, struct toptenentry *t1, int so)
 		char hpbuf[10];
 		int hppos;
 
-		Sprintf(hpbuf, "%s", (t1->hp > 0) ? itoa(t1->hp) : "-");
+		snprintf(hpbuf, sizeof hpbuf, "%s", (t1->hp > 0) ? itoa(t1->hp) : "-");
 		hppos = COLNO - 7 - strlen(hpbuf);
 		if (bp <= linebuf + hppos) {
 			while (bp < linebuf + hppos)
@@ -513,10 +513,10 @@ outentry(int rank, struct toptenentry *t1, int so)
 static char *
 itoa(int a)
 {
-	static char buf[12];
+	static char buf[10];
 
-	Sprintf(buf, "%d", a);
-	return (buf);
+	snprintf(buf, sizeof buf, "%d", a);
+	return(buf);
 }
 
 static const char *

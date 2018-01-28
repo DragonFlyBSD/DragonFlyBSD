@@ -56,7 +56,7 @@ getdate(void)
 	static char datestr[7];
 	struct tm *lt = getlt();
 
-	snprintf(datestr, sizeof(datestr), "%02d%02d%02d",
+	snprintf(datestr, sizeof(datestr), "%02hu%02hu%02hu",
 	    lt->tm_year % 100, lt->tm_mon + 1, lt->tm_mday);
 	return (datestr);
 }

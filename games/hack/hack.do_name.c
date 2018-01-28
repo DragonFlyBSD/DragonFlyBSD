@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.do_name.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.do_name.c,v 1.5 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.do_name.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 
@@ -231,7 +230,7 @@ xmonnam(struct monst *mtmp, int vb)
 			strcpy(buf, shkname(mtmp));
 			break;
 		}
-	/* fall into next case */
+		/* FALLTHROUGH */
 	default:
 		sprintf(buf, "the %s%s",
 			mtmp->minvis ? "invisible " : "",

@@ -602,6 +602,7 @@ askchain(struct obj *objchn, char *olets, int allflag,
 		switch (sym) {
 		case 'a':
 			allflag = 1;
+			/* FALLTHROUGH */
 		case 'y':
 			cnt += (*fn)(otmp);
 			if (--max == 0)

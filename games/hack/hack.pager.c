@@ -41,7 +41,7 @@ dowhatis(void)
 					if (buf[1] == '\t') {
 						buf = bufr;
 						buf[0] = q;
-						strncpy(buf + 1, "       ", 7);
+						memcpy(buf + 1, "       ", 7);
 					}
 					pline("%s", buf);
 					if (ep[-1] == ';') {

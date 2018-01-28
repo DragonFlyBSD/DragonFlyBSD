@@ -529,7 +529,7 @@ lookaround(void)
 					break;
 				if (flags.run != 1)
 					goto stop;
-			/* fall into next case */
+			/* FALLTHROUGH */
 			case CORR_SYM:
 corr:
 				if (flags.run == 1 || flags.run == 3) {

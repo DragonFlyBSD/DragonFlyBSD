@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.wizard.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.wizard.c,v 1.3 1999/11/16 02:57:14 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.wizard.c,v 1.3 2006/08/21 19:45:32 pavalos Exp $ */
 
 /* wizard code - inspired by rogue code from Merlyn Leroy (digi-g!brian) */
 
@@ -143,7 +142,7 @@ inrange(struct monst *mtmp)
 				case 1:
 					pline("\"Destroy the thief, my pets!\"");
 					aggravate(); /* aggravate all the monsters */
-					/* fall into next case */
+					/* FALLTHROUGH */
 				case 2:
 					if (flags.no_of_wizards == 1 && rnd(5) == 0)
 						/* if only 1 wizard, clone himself */

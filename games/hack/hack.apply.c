@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.apply.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.apply.c,v 1.4.2.1 2001/02/18 02:20:07 kris Exp $ */
-/* $DragonFly: src/games/hack/hack.apply.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 #include "def.edog.h"
@@ -44,7 +43,7 @@ doapply(void)
 			use_magic_whistle(obj);
 			break;
 		}
-		/* fall into next case */
+		/* FALLTHROUGH */
 	case WHISTLE:
 		use_whistle(obj);
 		break;

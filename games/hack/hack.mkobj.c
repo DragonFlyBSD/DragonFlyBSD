@@ -80,7 +80,7 @@ mksobj(int otyp)
 		if (otmp->otyp == TIN)
 			otmp->spe = rnd(...);
 #endif /* NOT_YET_IMPLEMENTED */
-	/* fall into next case */
+		/* FALLTHROUGH */
 	case GEM_SYM:
 		otmp->quan = rn2(6) ? 1 : 2;
 	case TOOL_SYM:
