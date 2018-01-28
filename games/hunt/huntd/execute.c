@@ -290,6 +290,7 @@ move_player(PLAYER *pp, int dir)
 	  /* Picking up a boot, or two: */
 	  case BOOT_PAIR:
 		pp->p_nboots++;
+		/* FALLTHROUGH */
 	  case BOOT:
 		pp->p_nboots++;
 		for (newp = Boot; newp < &Boot[NBOOTS]; newp++) {

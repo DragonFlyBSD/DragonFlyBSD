@@ -180,6 +180,7 @@ smm:					screen[m][k] = 127;
 				case OMIRROR:
 					if (mitem[m][k] == VAMPIRE)
 						goto smm;
+					/* FALLTHROUGH */
 				default:
 					screen[m][k] = 0;
 					break;
@@ -426,6 +427,7 @@ movsphere(void)
 		case 1:
 		case 2:		/* change direction to a random one */
 			sp->dir = rnd(8);
+			/* FALLTHROUGH */
 		default:	/* move in normal direction */
 			dir = sp->dir;
 			len = sp->lifetime;

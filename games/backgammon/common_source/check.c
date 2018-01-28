@@ -28,7 +28,6 @@
  *
  * @(#)check.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/common_source/check.c,v 1.4 1999/11/30 03:48:25 billf Exp $
- * $DragonFly: src/games/backgammon/common_source/check.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include "back.h"
@@ -59,6 +58,7 @@ getmove(void)
 					bflag = pnum;
 				return;
 			}
+			/* FALLTHROUGH */
 		case -4:
 		case 0:
 			if (tflag)

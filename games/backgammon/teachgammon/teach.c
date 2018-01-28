@@ -53,7 +53,7 @@ const char *const contin[] = {
 };
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
 	int i;
 
@@ -91,35 +91,35 @@ main(int argc, char **argv)
 			wrboard();
 			if ((i = text(intro2)) != 0)
 				break;
-
+			/* FALLTHROUGH */
 		case 3:
 			if ((i = text(moves)) != 0)
 				break;
-
+			/* FALLTHROUGH */
 		case 4:
 			if ((i = text(remove)) != 0)
 				break;
-
+			/* FALLTHROUGH */
 		case 5:
 			if ((i = text(hits)) != 0)
 				break;
-
+			/* FALLTHROUGH */
 		case 6:
 			if ((i = text(endgame)) != 0)
 				break;
-
+			/* FALLTHROUGH */
 		case 7:
 			if ((i = text(doubl)) != 0)
 				break;
-
+			/* FALLTHROUGH */
 		case 8:
 			if ((i = text(stragy)) != 0)
 				break;
-
+			/* FALLTHROUGH */
 		case 9:
 			if ((i = text(prog)) != 0)
 				break;
-
+			/* FALLTHROUGH */
 		case 10:
 			if ((i = text(lastch)) != 0)
 				break;

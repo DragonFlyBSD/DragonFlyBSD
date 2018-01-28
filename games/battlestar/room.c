@@ -28,7 +28,6 @@
  *
  * @(#)room.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/room.c,v 1.7.2.2 2001/03/05 11:45:36 kris Exp $
- * $DragonFly: src/games/battlestar/room.c,v 1.3 2006/08/08 16:47:20 pavalos Exp $
  */
 
 #include "externs.h"
@@ -116,7 +115,7 @@ truedirec(int way, unsigned int option)
 		case WEST:
 			return ("right");
 		}
-
+		break;
 	case SOUTH:
 		switch (direction) {
 		case NORTH:
@@ -128,7 +127,7 @@ truedirec(int way, unsigned int option)
 		case WEST:
 			return ("left");
 		}
-
+		break;
 	case EAST:
 		switch (direction) {
 		case NORTH:
@@ -140,7 +139,7 @@ truedirec(int way, unsigned int option)
 		case WEST:
 			return (option == '+' ? "behind you" : "back");
 		}
-
+		break;
 	case WEST:
 		switch (direction) {
 		case NORTH:
@@ -152,12 +151,14 @@ truedirec(int way, unsigned int option)
 		case WEST:
 			return ("ahead");
 		}
-
+		break;
 	default:
-		printf("Error: room %d.  More than four directions wanted.",
+		printf("Error: room %d.  More than four ways wanted.",
 		    position);
 		return ("!!");
 	}
+	printf("Error: room %d.  More than four directions wanted.", position);
+	return ("!!");
 }
 
 void

@@ -28,7 +28,6 @@
  *
  * @(#)pl_5.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/pl_5.c,v 1.6 1999/11/30 03:49:37 billf Exp $
- * $DragonFly: src/games/sail/pl_5.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include <string.h>
@@ -65,6 +64,7 @@ acceptmove(void)
 		switch (*p) {
 		case 'l':
 			dir -= 2;
+			/* FALLTHROUGH */
 		case 'r':
 			if (++dir == 0)
 				dir = 8;

@@ -991,18 +991,25 @@ dirsub(int *x, int *y)
 		switch (getchr()) {
 		case 'b':
 			i++;
+			/* FALLTHROUGH */
 		case 'n':
 			i++;
+			/* FALLTHROUGH */
 		case 'y':
 			i++;
+			/* FALLTHROUGH */
 		case 'u':
 			i++;
+			/* FALLTHROUGH */
 		case 'h':
 			i++;
+			/* FALLTHROUGH */
 		case 'k':
 			i++;
+			/* FALLTHROUGH */
 		case 'l':
 			i++;
+			/* FALLTHROUGH */
 		case 'j':
 			i++;
 			goto out;

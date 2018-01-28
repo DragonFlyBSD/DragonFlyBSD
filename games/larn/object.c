@@ -139,6 +139,7 @@ lookforobject(void)
 			return;
 		item[playerx][playery] = OTELEPORTER;
 		know[playerx][playery] = 1;
+		/* FALLTHROUGH */
 
 	case OTELEPORTER:
 		lprcat("\nZaaaappp!  You've been teleported!\n");
@@ -393,6 +394,7 @@ lookforobject(void)
 			return;
 		item[playerx][playery] = OTRAPARROW;
 		know[playerx][playery] = 0;
+		/* FALLTHROUGH */
 
 	case OTRAPARROW:
 		lprcat("\nYou are hit by an arrow");
@@ -407,6 +409,7 @@ lookforobject(void)
 			return;
 		item[playerx][playery] = ODARTRAP;
 		know[playerx][playery] = 0;
+		/* FALLTHROUGH */
 
 	case ODARTRAP:
 		lprcat("\nYou are hit by a dart");
@@ -423,6 +426,7 @@ lookforobject(void)
 			return;
 		item[playerx][playery] = OTRAPDOOR;
 		know[playerx][playery] = 1;
+		/* FALLTHROUGH */
 
 	case OTRAPDOOR:
 		lastnum = 272;		/* a trap door */

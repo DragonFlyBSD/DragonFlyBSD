@@ -771,6 +771,7 @@ parse(void)
 			savegame(savefilename);
 			wizard = 1;
 			died(-257);	/* save the game - doesn't return */
+			exit(1);	/* hint for a compiler */
 
 		case 'Z':
 			yrepcount = 0;
@@ -895,6 +896,7 @@ parse(void)
 		case 'g':
 			cursors();
 			lprintf("\nThe stuff you are carrying presently weighs %d pounds", (long)packweight());
+			/* FALLTHROUGH */
 		case ' ':
 			yrepcount = 0;
 			nomove = 1;
@@ -903,7 +905,8 @@ parse(void)
 		case 'v':
 			yrepcount = 0;
 			cursors();
-			lprintf("\nCaverns of Larn, Version %d.%d, Diff=%d", (long)VERSION, (long)SUBVERSION, (long)c[HARDGAME]);
+			lprintf("\nCaverns of Larn, Version %d.%d, Diff=%d",
+				(long)VERSION, (long)SUBVERSION, (long)c[HARDGAME]);
 			if (wizard)
 				lprcat(" Wizard");
 			nomove = 1;

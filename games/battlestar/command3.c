@@ -28,7 +28,6 @@
  *
  * @(#)com3.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/com3.c,v 1.8.2.1 2001/03/05 11:45:35 kris Exp $
- * $DragonFly: src/games/battlestar/com3.c,v 1.3 2006/08/08 16:47:20 pavalos Exp $
  */
 
 #include "externs.h"
@@ -137,9 +136,11 @@ bury(void)
 			case NATIVE:
 			case NORMGOD:
 				puts("She screams as you wrestle her into the hole.");
+				/* FALLTHROUGH */
 			case TIMER:
 				power += 7;
 				ego -= 10;
+				/* FALLTHROUGH */
 			case AMULET:
 			case MEDALION:
 			case TALISMAN:

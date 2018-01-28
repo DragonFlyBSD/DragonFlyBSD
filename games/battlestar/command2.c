@@ -28,7 +28,6 @@
  *
  * @(#)com2.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/com2.c,v 1.8.2.2 2002/05/01 09:17:16 roam Exp $
- * $DragonFly: src/games/battlestar/com2.c,v 1.3 2006/08/08 16:47:20 pavalos Exp $
  */
 
 #include "externs.h"
@@ -222,6 +221,7 @@ murder(void)
 				puts("Your fantasy is over.");
 				die(0);
 			}
+			/* FALLTHROUGH */
 		case -1:
 			puts("Kill what?");
 			break;
