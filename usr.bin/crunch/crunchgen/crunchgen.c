@@ -85,7 +85,7 @@ static strlst_t *libs      = NULL;
 static strlst_t *libs_so   = NULL;
 static prog_t   *progs     = NULL;
 
-static char confname[MAXPATHLEN], infilename[MAXPATHLEN];
+static char confname[MAXPATHLEN - 32], infilename[MAXPATHLEN];
 static char outmkname[MAXPATHLEN], outcfname[MAXPATHLEN], execfname[MAXPATHLEN];
 static char tempfname[MAXPATHLEN], cachename[MAXPATHLEN], curfilename[MAXPATHLEN];
 static char outhdrname[MAXPATHLEN]; /* user-supplied header for *.mk */
