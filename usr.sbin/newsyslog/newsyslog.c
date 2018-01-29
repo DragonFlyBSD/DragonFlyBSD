@@ -46,7 +46,7 @@
  * for any purpose.  It is provided "as is" without express or implied
  * warranty.
  *
- * $FreeBSD: src/usr.sbin/newsyslog/newsyslog.c,v 1.117 2011/01/31 10:57:54 mm Exp $
+ * $FreeBSD: head/usr.sbin/newsyslog/newsyslog.c 327451 2017-12-31 22:01:36Z eadler $
  */
 
 /*
@@ -151,7 +151,7 @@ struct compress_types {
 	const char *flag;	/* Flag in configuration file */
 	const char *suffix;	/* Compression suffix */
 	const char *path;	/* Path to compression program */
-	char **args;		/* Compression arguments */
+	char **args;		/* Compression program arguments */
 };
 
 static char f_arg[] = "-f";
@@ -225,49 +225,51 @@ typedef enum {
 }	fk_entry;
 
 STAILQ_HEAD(cflist, conf_entry);
-static SLIST_HEAD(swlisthead, sigwork_entry) swhead = SLIST_HEAD_INITIALIZER(swhead);
-static SLIST_HEAD(zwlisthead, zipwork_entry) zwhead = SLIST_HEAD_INITIALIZER(zwhead);
+static SLIST_HEAD(swlisthead, sigwork_entry) swhead =
+    SLIST_HEAD_INITIALIZER(swhead);
+static SLIST_HEAD(zwlisthead, zipwork_entry) zwhead =
+    SLIST_HEAD_INITIALIZER(zwhead);
 STAILQ_HEAD(ilist, include_entry);
 
 int dbg_at_times;		/* -D Show details of 'trim_at' code */
 
-static int archtodir = 0;		/* Archive old logfiles to other directory */
-static int createlogs;			/* Create (non-GLOB) logfiles which do not */
+static int archtodir = 0;	/* Archive old logfiles to other directory */
+static int createlogs;		/* Create (non-GLOB) logfiles which do not */
 				/*    already exist.  1=='for entries with */
 				/*    C flag', 2=='for all entries'. */
 int verbose = 0;		/* Print out what's going on */
-static int needroot = 1;		/* Root privs are necessary */
+static int needroot = 1;	/* Root privs are necessary */
 int noaction = 0;		/* Don't do anything, just show it */
-static int norotate = 0;		/* Don't rotate */
-static int nosignal;			/* Do not send any signals */
-static int enforcepid = 0;		/* If PID file does not exist or empty, do nothing */
-static int force = 0;			/* Force the trim no matter what */
-static int rotatereq = 0;		/* -R = Always rotate the file(s) as given */
+static int norotate = 0;	/* Don't rotate */
+static int nosignal;		/* Do not send any signals */
+static int enforcepid = 0;	/* If PID file does not exist or empty, do nothing */
+static int force = 0;		/* Force the trim no matter what */
+static int rotatereq = 0;	/* -R = Always rotate the file(s) as given */
 				/*    on the command (this also requires   */
 				/*    that a list of files *are* given on  */
 				/*    the run command). */
 static char *requestor;		/* The name given on a -R request */
-static char *timefnamefmt = NULL;	/* Use time based filenames instead of .0 etc */
-static char *archdirname;		/* Directory path to old logfiles archive */
-static char *destdir = NULL;		/* Directory to treat at root for logs */
-static const char *conf;		/* Configuration file to use */
+static char *timefnamefmt = NULL; /* Use time based filenames instead of .0 */
+static char *archdirname;	/* Directory path to old logfiles archive */
+static char *destdir = NULL;	/* Directory to treat at root for logs */
+static const char *conf;	/* Configuration file to use */
 
 struct ptime_data *dbg_timenow;	/* A "timenow" value set via -D option */
-static struct ptime_data *timenow;	/* The time to use for checking at-fields */
+static struct ptime_data *timenow; /* The time to use for checking at-fields */
 
 #define	DAYTIME_LEN	16
-static char daytime[DAYTIME_LEN];	/* The current time in human readable form,
-					* used for rotation-tracking messages. */
+static char daytime[DAYTIME_LEN]; /* The current time in human readable form,
+				   * used for rotation-tracking messages. */
 
 /* Another buffer to hold the current time in RFC5424 format. Fractional
  * seconds are allowed by the RFC, but are not included in the
  * rotation-tracking messages written by newsyslog and so are not accounted for
  * in the length below.
  */
-#define        DAYTIME_RFC5424_LEN     sizeof("YYYY-MM-DDTHH:MM:SS+00:00")
+#define	DAYTIME_RFC5424_LEN	sizeof("YYYY-MM-DDTHH:MM:SS+00:00")
 static char daytime_rfc5424[DAYTIME_RFC5424_LEN];
 
-static char hostname[MAXHOSTNAMELEN];	/* hostname */
+static char hostname[MAXHOSTNAMELEN]; /* hostname */
 
 static const char *path_syslogpid = _PATH_SYSLOGPID;
 
@@ -812,8 +814,8 @@ usage(void)
 {
 
 	fprintf(stderr,
-	    "usage: newsyslog [-CFNnrsv] [-a directory] [-d directory] [-f config-file]\n"
-	    "                 [-S pidfile] [-t timefmt ] [ [-R tagname] filename ... ]\n");
+	    "usage: newsyslog [-CFNPnrsv] [-a directory] [-d directory] [-f config_file]\n"
+	    "                 [-S pidfile] [-t timefmt] [[-R tagname] file ...]\n");
 	exit(1);
 }
 
@@ -1665,7 +1667,7 @@ gen_classiclog_fname(char *fname, size_t fname_sz, const char *archive_dir,
 }
 
 /*
- * Delete a rotated logfiles, when using classic filenames.
+ * Delete a rotated logfile, when using classic filenames.
  */
 static void
 delete_classiclog(const char *archive_dir, const char *namepart, int numlog_c)
@@ -1823,13 +1825,13 @@ do_rotate(const struct conf_entry *ent)
 	} else {
 		gen_classiclog_fname(file1, sizeof(file1), dirpart, namepart,
 		    ent->numlogs - 1);
-		numlogs_c = ent->numlogs - 2;           /* copy for countdown */
+		numlogs_c = ent->numlogs - 2;		/* copy for countdown */
 	}
 
 	/* Move down log files */
 	for (; numlogs_c >= 0; numlogs_c--) {
-
 		strlcpy(file2, file1, sizeof(file2));
+
 		gen_classiclog_fname(file1, sizeof(file1), dirpart, namepart,
 		    numlogs_c);
 
@@ -2060,7 +2062,6 @@ do_zipwork(struct zipwork_entry *zwork)
 	else
 		pgm_name++;
 
-
 	args[0] = strdup(pgm_name);
 	if (args[0] == NULL)
 		err(1, "strdup()");
@@ -2289,7 +2290,6 @@ set_swpid(struct sigwork_entry *swork, const struct conf_entry *ent)
 			warnx("pid/cmd file is empty: %s", ent->pid_cmd_file);
 		} else
 			warn("can't read from pid file: %s", ent->pid_cmd_file);
-
 		fclose(f);
 		return;
 	}

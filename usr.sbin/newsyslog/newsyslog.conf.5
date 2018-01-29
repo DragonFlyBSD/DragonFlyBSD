@@ -5,7 +5,7 @@
 .\" This file contains changes from the Open Software Foundation.
 .\"
 .\"     from: @(#)newsyslog.8
-.\" $FreeBSD: src/usr.sbin/newsyslog/newsyslog.conf.5,v 1.12 2011/01/31 11:30:26 mm Exp $
+.\" $FreeBSD: head/usr.sbin/newsyslog/newsyslog.conf.5 328035 2018-01-16 00:47:53Z jhb $
 .\"
 .\" Copyright 1988, 1989 by the Massachusetts Institute of Technology
 .\"
@@ -130,7 +130,7 @@ Additionally, the format may also be constructed with a
 sign along with a rotation time specification of once
 a day, once a week, or once a month.
 .Pp
-If a time is specified, the log file will only be trimmed if
+Time based trimming happens only if
 .Xr newsyslog 8
 is run within one hour of the specified time.
 If an interval is specified, the log file will be trimmed if that many
@@ -155,8 +155,17 @@ The particular format of the time in restricted
 .Tn ISO 8601
 is:
 .Sm off
-.Oo Oo Oo Oo Oo Va cc Oc Va yy Oc Va mm Oc Va dd Oc
-.Oo Li T Oo Va hh Oo Va mm Oo Va ss Oc Oc Oc Oc Oc .
+.Oo Oo Oo Oo Oo
+.Va cc Oc
+.Va yy Oc
+.Va mm Oc
+.Va dd Oc
+.Oo
+.Li T Oo
+.Va hh Oo
+.Va mm Oo
+.Va ss
+.Oc Oc Oc Oc Oc .
 .Sm on
 Optional date fields default to the appropriate component of the
 current date; optional time fields default to midnight; hence if today
@@ -288,18 +297,6 @@ indicates that
 should attempt to save disk space by compressing the rotated
 log file using
 .Xr bzip2 1 .
-.It Cm X
-indicates that
-.Xr newsyslog 8
-should attempt to save disk space by compressing the rotated
-log file using
-.Xr xz 1 .
-.It Cm Y
-indicates that
-.Xr newsyslog 8
-should attempt to save disk space by compressing the rotated
-log file using
-.Xr zstd 1 .
 .It Cm N
 indicates that there is no process which needs to be signaled
 when this log file is rotated.
@@ -323,6 +320,18 @@ indicates that the file specified by
 will contain the ID for a process group instead of a process.
 This option also requires that the first line in that file
 be a negative value to distinguish it from a process ID.
+.It Cm X
+indicates that
+.Xr newsyslog 8
+should attempt to save disk space by compressing the rotated
+log file using
+.Xr xz 1 .
+.It Cm Y
+indicates that
+.Xr newsyslog 8
+should attempt to save disk space by compressing the rotated
+log file using
+.Xr zstd 1 .
 .It Cm Z
 indicates that
 .Xr newsyslog 8
@@ -380,6 +389,11 @@ Alternatively,
 can be the signal number, e.g., 30 for
 .Dv SIGUSR1 .
 .El
+.Sh EXAMPLES
+The following is an example of the
+.Dq Aq Li include
+entry:
+.Dl "<include> /etc/newsyslog-local.conf"
 .Sh SEE ALSO
 .Xr bzip2 1 ,
 .Xr gzip 1 ,

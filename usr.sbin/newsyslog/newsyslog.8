@@ -1,7 +1,7 @@
 .\" This file contains changes from the Open Software Foundation.
 .\"
 .\"	from: @(#)newsyslog.8
-.\" $FreeBSD: src/usr.sbin/newsyslog/newsyslog.8,v 1.57 2011/01/31 11:30:26 mm Exp $
+.\" $FreeBSD: head/usr.sbin/newsyslog/newsyslog.8 318960 2017-05-26 16:36:30Z dab $
 .\"
 .\" Copyright 1988, 1989 by the Massachusetts Institute of Technology
 .\"
@@ -155,6 +155,7 @@ will create the
 .Dq rotated
 logfiles using the specified time format instead of the default
 sequential filenames.
+The filename used will be kept until it is deleted.
 The time format is described in the
 .Xr strftime 3
 manual page.
@@ -259,10 +260,16 @@ If additional command line arguments are given,
 will only examine log files that match those arguments; otherwise, it
 will examine all files listed in the configuration file.
 .Sh FILES
-.Bl -tag -width /etc/newsyslog.confxxxx -compact
+.Bl -tag -width ".Pa /usr/local/etc/newsyslog.conf.d" -compact
 .It Pa /etc/newsyslog.conf
 .Nm
 configuration file
+.It Pa /etc/newsyslog.conf.d
+Each file in this directory will be included by the default
+.Pa newsyslog.conf .
+.It Pa /usr/local/etc/newsyslog.conf.d
+Each file in this directory will be included by the default
+.Pa newsyslog.conf .
 .El
 .Sh COMPATIBILITY
 Previous versions of the

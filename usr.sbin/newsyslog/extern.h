@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+ *
  * ------+---------+---------+---------+---------+---------+---------+---------*
  * Copyright (c) 2003  - Garance Alistair Drosehn <gad@FreeBSD.org>.
  * All rights reserved.
@@ -29,8 +31,7 @@
  * official policies, either expressed or implied, of the FreeBSD Project.
  *
  * ------+---------+---------+---------+---------+---------+---------+---------*
- * $FreeBSD: src/usr.sbin/newsyslog/extern.h,v 1.2 2003/09/23 00:00:26 gad Exp $
- * $DragonFly: src/usr.sbin/newsyslog/extern.h,v 1.1 2007/05/12 08:52:00 swildner Exp $
+ * $FreeBSD: head/usr.sbin/newsyslog/extern.h 326276 2017-11-27 15:37:16Z pfg $
  * ------+---------+---------+---------+---------+---------+---------+---------*
  */
 

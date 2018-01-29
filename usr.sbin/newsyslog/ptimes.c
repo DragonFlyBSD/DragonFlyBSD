@@ -39,8 +39,7 @@
  * it works fine for newsyslog but might not work for other uses.
  * ------+---------+---------+---------+---------+---------+---------+---------*
  *
- * $FreeBSD: src/usr.sbin/newsyslog/ptimes.c,v 1.5 2004/06/07 21:53:27 gad Exp $
- * $DragonFly: src/usr.sbin/newsyslog/ptimes.c,v 1.1 2007/05/12 08:52:00 swildner Exp $
+ * $FreeBSD: head/usr.sbin/newsyslog/ptimes.c 318960 2017-05-26 16:36:30Z dab $
  */
 
 #include <ctype.h>
@@ -342,7 +341,7 @@ ptime_init(const struct ptime_data *optsrc)
 int
 ptime_adjust4dst(struct ptime_data *ptime, const struct ptime_data *dstsrc)
 {
-	struct ptime_data adjtim;
+	struct ptime_data adjtime;
 
 	if (ptime == NULL)
 		return (-1);
@@ -351,22 +350,22 @@ ptime_adjust4dst(struct ptime_data *ptime, const struct ptime_data *dstsrc)
 	 * Changes are not made to the given time until after all
 	 * of the calculations have been successful.
 	 */
-	adjtim = *ptime;
+	adjtime = *ptime;
 
 	/* Check to see if this adjustment was already made */
-	if ((adjtim.did_adj4dst != TNYET_ADJ4DST) &&
-	    (adjtim.did_adj4dst == dstsrc->tm.tm_isdst))
+	if ((adjtime.did_adj4dst != TNYET_ADJ4DST) &&
+	    (adjtime.did_adj4dst == dstsrc->tm.tm_isdst))
 		return (0);		/* yes, so don't make it twice */
 
 	/* See if daylight-saving has changed between the two times. */
-	if (dstsrc->tm.tm_isdst != adjtim.tm.tm_isdst) {
-		if (adjtim.tm.tm_isdst == 1)
-			adjtim.tsecs -= SECS_PER_HOUR;
-		else if (adjtim.tm.tm_isdst == 0)
-			adjtim.tsecs += SECS_PER_HOUR;
-		adjtim.tm = *(localtime(&adjtim.tsecs));
+	if (dstsrc->tm.tm_isdst != adjtime.tm.tm_isdst) {
+		if (adjtime.tm.tm_isdst == 1)
+			adjtime.tsecs -= SECS_PER_HOUR;
+		else if (adjtime.tm.tm_isdst == 0)
+			adjtime.tsecs += SECS_PER_HOUR;
+		adjtime.tm = *(localtime(&adjtime.tsecs));
 		/* Remember that this adjustment has been made */
-		adjtim.did_adj4dst = dstsrc->tm.tm_isdst;
+		adjtime.did_adj4dst = dstsrc->tm.tm_isdst;
 		/*
 		 * XXX - Should probably check to see if changing the
 		 *	hour also changed the value of is_dst.  What
@@ -374,7 +373,7 @@ ptime_adjust4dst(struct ptime_data *ptime, const struct ptime_data *dstsrc)
 		 */
 	}
 
-	*ptime = adjtim;
+	*ptime = adjtime;
 	return (0);
 }
 
