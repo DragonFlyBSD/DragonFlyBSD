@@ -1334,9 +1334,11 @@ no_trimat:
 			case 'x':
 				working->compress = COMPRESS_XZ;
 				break;
+#if 0
 			case 'y':
 				working->compress = COMPRESS_ZSTD;
 				break;
+#endif
 			case 'z':
 				working->compress = COMPRESS_GZIP;
 				break;
