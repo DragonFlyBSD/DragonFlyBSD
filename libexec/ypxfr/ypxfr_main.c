@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/ypxfr/ypxfr_main.c,v 1.14.2.1 2002/02/15 00:46:54 des Exp $
- * $DragonFly: src/libexec/ypxfr/ypxfr_main.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
 
 #include <errno.h>
@@ -55,12 +54,12 @@ struct dom_binding {};
 const char *progname = "ypxfr";
 const char *yp_dir = _PATH_YP;
 int _rpcpmstart = 0;
-int ypxfr_use_yplib = 0; /* Assume the worst. */
-int ypxfr_clear = 1;
-int ypxfr_prognum = 0;
-struct sockaddr_in ypxfr_callback_addr;
-struct yppushresp_xfr ypxfr_resp;
-DB *dbp;
+static int ypxfr_use_yplib = 0; /* Assume the worst. */
+static int ypxfr_clear = 1;
+static int ypxfr_prognum = 0;
+static struct sockaddr_in ypxfr_callback_addr;
+static struct yppushresp_xfr ypxfr_resp;
+static DB *dbp;
 
 static void
 ypxfr_exit(ypxfrstat retval, char *temp)
@@ -167,7 +166,7 @@ main(int argc, char *argv[])
 	unsigned long ypxfr_order = -1, ypxfr_skew_check = -1;
 	char *ypxfr_mapname = NULL;
 	int ypxfr_args = 0;
-	char ypxfr_temp_map[MAXPATHLEN + 2];
+	char ypxfr_temp_map[MAXPATHLEN + 2 + 3];
 	char tempmap[MAXPATHLEN + 2];
 	char buf[MAXPATHLEN + 2];
 	DBT key, data;

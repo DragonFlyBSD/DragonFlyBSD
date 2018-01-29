@@ -35,6 +35,7 @@
 #include <err.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -183,7 +184,6 @@ main(int argc, char *argv[])
 	 * write to stdout; the db library doesn't let you
 	 * write to a file stream like that.
 	 */
-
 	if (!strcmp(infile, "-")) {
 		ifp = stdin;
 	} else {
@@ -218,7 +218,7 @@ main(int argc, char *argv[])
 
 	key.data = "YP_LAST_MODIFIED";
 	key.size = sizeof("YP_LAST_MODIFIED") - 1;
-	snprintf(buf, sizeof(buf), "%lu", time(NULL));
+	snprintf(buf, sizeof(buf), "%jd", (intmax_t)time(NULL));
 	data.data = (char *)&buf;
 	data.size = strlen(buf);
 	yp_put_record(dbp, &key, &data, 0);
@@ -325,7 +325,6 @@ main(int argc, char *argv[])
 	dbp->close(dbp);
 
 doclear:
-
 	if (clear) {
 		char in = 0;
 		char *out = NULL;

@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypserv/yp_svc_udp.c,v 1.8 2003/05/03 21:06:42 obrien Exp $
- * $DragonFly: src/usr.sbin/ypserv/yp_svc_udp.c,v 1.3 2004/03/31 23:20:22 cpressey Exp $
  */
 
 #include <rpc/rpc.h>

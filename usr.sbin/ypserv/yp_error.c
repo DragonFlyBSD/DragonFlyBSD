@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypserv/yp_error.c,v 1.10 2003/05/03 21:06:42 obrien Exp $
- * $DragonFly: src/usr.sbin/ypserv/yp_error.c,v 1.4 2004/03/31 23:20:22 cpressey Exp $
  */
 
 /*
@@ -45,10 +44,9 @@
 #include "yp_extern.h"
 
 int debug;
+
 extern int _rpcpmstart;
-
 extern char *progname;
-
 static void __verr(const char *fmt, va_list ap) __printflike(1, 0);
 
 static void

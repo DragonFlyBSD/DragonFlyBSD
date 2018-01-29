@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ypcat/ypcat.c,v 1.4.2.2 2002/02/15 00:46:56 des Exp $
- * $DragonFly: src/usr.bin/ypcat/ypcat.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -45,7 +44,7 @@
 #include <rpcsvc/yp_prot.h>
 #include <rpcsvc/ypclnt.h>
 
-struct ypalias {
+static const struct ypalias {
 	const char *alias, *name;
 } ypaliases[] = {
 	{ "passwd", "passwd.byname" },
@@ -59,7 +58,7 @@ struct ypalias {
 	{ "ethers", "ethers.byname" },
 };
 
-int key;
+static int key;
 
 static void
 usage(void)
@@ -83,7 +82,7 @@ printit(unsigned long instatus, char *inkey, int inkeylen, char *inval, int inva
 }
 
 int
-main(int argc, char  **argv)
+main(int argc, char  *argv[])
 {
 	char *domainname = NULL;
 	struct ypall_callback ypcb;

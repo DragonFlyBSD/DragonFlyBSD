@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypserv/yp_dblookup.c,v 1.25 2003/05/03 21:06:42 obrien Exp $
- * $DragonFly: src/usr.sbin/ypserv/yp_dblookup.c,v 1.4 2004/12/18 22:48:15 swildner Exp $
  */
 
 #include <db.h>

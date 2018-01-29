@@ -42,8 +42,8 @@
 
 extern bool_t xdr_ypresp_all_seq(XDR *, unsigned long *);
 
-int (*ypresp_allfn)(int, char *, int, char *, int, char *);
-void *ypresp_data;
+extern int (*ypresp_allfn)(int, char *, int, char *, int, char *);
+extern void *ypresp_data;
 extern enum ypstat yp_errno;
 
 /*

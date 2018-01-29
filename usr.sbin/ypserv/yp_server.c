@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypserv/yp_server.c,v 1.40 2006/06/09 14:01:07 maxim Exp $
- * $DragonFly: src/usr.sbin/ypserv/yp_server.c,v 1.4 2005/11/24 22:23:02 swildner Exp $
  */
 
 #include "yp.h"
@@ -708,6 +707,7 @@ yp_maplist_create(const char *domain)
 				yp_error("strdup() failed: %s",strerror(errno));
 				closedir(dird);
 				yp_maplist_free(yp_maplist);
+				free(cur);
 				return(NULL);
 			}
 			cur->next = yp_maplist;

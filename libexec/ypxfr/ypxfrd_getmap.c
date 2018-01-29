@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/ypxfr/ypxfrd_getmap.c,v 1.7.2.1 2002/02/15 00:46:54 des Exp $
- * $DragonFly: src/libexec/ypxfr/ypxfrd_getmap.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
 
 #include <errno.h>
@@ -47,7 +46,7 @@
 #include <sys/types.h>
 #include "ypxfr_extern.h"
 
-int fp = 0;
+static int fp = 0;
 
 static bool_t
 xdr_my_xfr(register XDR *xdrs, xfr *objp)

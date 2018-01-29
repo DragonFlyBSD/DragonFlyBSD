@@ -58,7 +58,7 @@
 
 extern bool_t xdr_domainname();
 
-struct ypalias {
+static const struct ypalias {
 	char *alias, *name;
 } ypaliases[] = {
 	{ "passwd", "passwd.byname" },
@@ -134,7 +134,7 @@ bind_host(char *dom, struct sockaddr_in *lsin)
 }
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
 	char *domnam = NULL, *master;
 	char *map = NULL;
