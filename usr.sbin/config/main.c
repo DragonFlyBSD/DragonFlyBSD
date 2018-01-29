@@ -57,7 +57,7 @@
 
 char *	PREFIX;
 char 	destdir[MAXPATHLEN];
-char 	srcdir[MAXPATHLEN];
+char 	srcdir[MAXPATHLEN - 32];
 
 static int no_config_clobber = TRUE;
 int	debugging;
