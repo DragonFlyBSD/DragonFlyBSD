@@ -378,7 +378,7 @@ load_font(char *type, char *filename)
 		errc(1, errno, "obtaining current video mode parameters");
 	}
 
-	snprintf(size_sufx, sizeof(size_sufx), "-8x%d", vinfo.font_size);
+	snprintf(size_sufx, sizeof(size_sufx), "-8x%hu", vinfo.font_size);
 
 	fd = openguess(a, b, c, d, &name);
 
