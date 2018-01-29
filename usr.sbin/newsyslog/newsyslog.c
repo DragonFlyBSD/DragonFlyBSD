@@ -1080,7 +1080,7 @@ parse_file(FILE *cf, struct cflist *work_p, struct cflist *glob_p,
 		 * at any time, etc).
 		 */
 		if (strcasecmp(DEBUG_MARKER, q) == 0) {
-			q = parse = missing_field(sob(++parse), errline);
+			q = parse = missing_field(sob(parse + 1), errline);
 			parse = son(parse);
 			if (!*parse)
 				warnx("debug line specifies no option:\n%s",
@@ -1093,7 +1093,7 @@ parse_file(FILE *cf, struct cflist *work_p, struct cflist *glob_p,
 		} else if (strcasecmp(INCLUDE_MARKER, q) == 0) {
 			if (verbose)
 				printf("Found: %s", errline);
-			q = parse = missing_field(sob(++parse), errline);
+			q = parse = missing_field(sob(parse + 1), errline);
 			parse = son(parse);
 			if (!*parse) {
 				warnx("include line missing argument:\n%s",
@@ -1135,7 +1135,7 @@ parse_file(FILE *cf, struct cflist *work_p, struct cflist *glob_p,
 			defconf_p = working;
 		}
 
-		q = parse = missing_field(sob(++parse), errline);
+		q = parse = missing_field(sob(parse + 1), errline);
 		parse = son(parse);
 		if (!*parse)
 			errx(1, "malformed line (missing fields):\n%s",
@@ -1169,7 +1169,7 @@ parse_file(FILE *cf, struct cflist *work_p, struct cflist *glob_p,
 			} else
 				working->gid = (gid_t)-1;
 
-			q = parse = missing_field(sob(++parse), errline);
+			q = parse = missing_field(sob(parse + 1), errline);
 			parse = son(parse);
 			if (!*parse)
 				errx(1, "malformed line (missing fields):\n%s",
@@ -1184,7 +1184,7 @@ parse_file(FILE *cf, struct cflist *work_p, struct cflist *glob_p,
 			errx(1, "error in config file; bad permissions:\n%s",
 			    errline);
 
-		q = parse = missing_field(sob(++parse), errline);
+		q = parse = missing_field(sob(parse + 1), errline);
 		parse = son(parse);
 		if (!*parse)
 			errx(1, "malformed line (missing fields):\n%s",
@@ -1194,7 +1194,7 @@ parse_file(FILE *cf, struct cflist *work_p, struct cflist *glob_p,
 			errx(1, "error in config file; bad value for count of logs to save:\n%s",
 			    errline);
 
-		q = parse = missing_field(sob(++parse), errline);
+		q = parse = missing_field(sob(parse + 1), errline);
 		parse = son(parse);
 		if (!*parse)
 			errx(1, "malformed line (missing fields):\n%s",
@@ -1212,7 +1212,7 @@ parse_file(FILE *cf, struct cflist *work_p, struct cflist *glob_p,
 
 		working->flags = 0;
 		working->compress = COMPRESS_NONE;
-		q = parse = missing_field(sob(++parse), errline);
+		q = parse = missing_field(sob(parse + 1), errline);
 		parse = son(parse);
 		eol = !*parse;
 		*parse = '\0';
@@ -1254,7 +1254,7 @@ no_trimat:
 		if (eol)
 			q = NULL;
 		else {
-			q = parse = sob(++parse);	/* Optional field */
+			q = parse = sob(parse + 1);	/* Optional field */
 			parse = son(parse);
 			if (!*parse)
 				eol = 1;
@@ -1324,7 +1324,7 @@ no_trimat:
 		if (eol)
 			q = NULL;
 		else {
-			q = parse = sob(++parse);	/* Optional field */
+			q = parse = sob(parse + 1);	/* Optional field */
 			parse = son(parse);
 			if (!*parse)
 				eol = 1;
@@ -1345,7 +1345,7 @@ no_trimat:
 		if (eol)
 			q = NULL;
 		else {
-			q = parse = sob(++parse);	/* Optional field */
+			q = parse = sob(parse + 1);	/* Optional field */
 			*(parse = son(parse)) = '\0';
 		}
 
