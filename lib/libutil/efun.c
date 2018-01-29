@@ -40,11 +40,17 @@
 
 static void (*efunc)(int, const char *, ...) = err;
 
+static void __dead2
+efun_exit(int status, const char *a __unused, ...)
+{
+	exit(status);
+}
+
 void (*
 esetfunc(void (*ef)(int, const char *, ...)))(int, const char *, ...)
 {
 	void (*of)(int, const char *, ...) = efunc;
-	efunc = ef == NULL ? (void (*)(int, const char *, ...))exit : ef;
+	efunc = (ef == NULL) ? efun_exit : ef;
 	return of;
 }
 
