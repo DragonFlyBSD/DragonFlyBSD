@@ -15,7 +15,6 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/lib/misc.c,v 1.8.2.2 2002/04/28 22:45:53 dwmalone Exp $
- * $DragonFly: src/usr.sbin/cron/lib/misc.c,v 1.5 2004/12/18 22:48:03 swildner Exp $
  */
 
 /* vix 26jan87 [RCS has the rest of the log]
@@ -244,7 +243,7 @@ acquire_daemonlock(int closeflag)
 		if ((-1 == (fd = open(pidfile, O_RDWR|O_CREAT, 0644)))
 		    || (NULL == (fp = fdopen(fd, "r+")))
 		    ) {
-			sprintf(buf, "can't open or create %s: %s",
+			sprintf(buf, "can't open or create %.64s: %s",
 				pidfile, strerror(errno));
 			log_it("CRON", getpid(), "DEATH", buf);
 			errx(ERROR_EXIT, "%s", buf);
@@ -254,7 +253,7 @@ acquire_daemonlock(int closeflag)
 			int save_errno = errno;
 
 			fscanf(fp, "%d", &otherpid);
-			sprintf(buf, "can't lock %s, otherpid may be %d: %s",
+			sprintf(buf, "can't lock %.64s, otherpid may be %d: %s",
 				pidfile, otherpid, strerror(save_errno));
 			log_it("CRON", getpid(), "DEATH", buf);
 			errx(ERROR_EXIT, "%s", buf);

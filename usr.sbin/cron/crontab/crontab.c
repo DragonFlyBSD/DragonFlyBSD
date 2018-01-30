@@ -486,7 +486,7 @@ edit_cmd(void)
 static int
 replace_cmd(void)
 {
-	char	n[MAX_FNAME], envstr[MAX_ENVSTR], tn[MAX_FNAME];
+	char	n[MAX_FNAME - 5], envstr[MAX_ENVSTR], tn[MAX_FNAME];
 	FILE	*tmp;
 	int	ch, eof;
 	entry	*e;
