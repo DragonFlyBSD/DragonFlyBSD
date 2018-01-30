@@ -16,6 +16,7 @@ CLEANFILES= nlm_prot_svc.c test
 
 RPCSRC= ${DESTDIR}/usr/include/rpcsvc/nlm_prot.x
 RPCGEN= rpcgen -L -C
+NO_WCAST_FUNCTION_TYPE=
 
 nlm_prot_svc.c: ${RPCSRC}
 	${RPCGEN} -m -o ${.TARGET} ${RPCSRC}

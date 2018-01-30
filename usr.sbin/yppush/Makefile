@@ -14,6 +14,7 @@ WARNS?=	3
 CFLAGS+= -I. -I${.CURDIR}/../../libexec/ypxfr
 
 RPCGEN= rpcgen -C
+NO_WCAST_FUNCTION_TYPE=
 
 CLEANFILES= ${GENSRCS}
 

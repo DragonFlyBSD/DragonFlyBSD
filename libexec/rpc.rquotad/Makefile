@@ -7,4 +7,6 @@ MAN  =	rpc.rquotad.8
 DPADD=	${LIBRPCSVC}
 LDADD=	-lrpcsvc
 
+NO_WCAST_FUNCTION_TYPE=
+
 .include <bsd.prog.mk>

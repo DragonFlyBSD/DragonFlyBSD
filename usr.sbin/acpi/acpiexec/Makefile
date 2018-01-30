@@ -225,4 +225,7 @@ CFLAGS+= \
 LDADD+=	-lpthread
 DPADD+=	${LIBPTHREAD}
 
+# XXX issue with ACPI_OSD_EXEC_CALLBACK
+NO_WCAST_FUNCTION_TYPE=
+
 .include <bsd.prog.mk>

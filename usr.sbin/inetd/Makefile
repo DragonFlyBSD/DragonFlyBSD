@@ -12,4 +12,7 @@ CFLAGS+=-DINET6 -DLOGIN_CAP
 DPADD+=	${LIBUTIL} ${LIBWRAP}
 LDADD+=	-lutil -lwrap
 
+# smth very strange with "sep = tcpmux(ctrl)"
+NO_WCAST_FUNCTION_TYPE=
+
 .include <bsd.prog.mk>

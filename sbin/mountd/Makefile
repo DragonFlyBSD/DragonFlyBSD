@@ -9,4 +9,6 @@ WARNS?=	3
 DPADD=	${LIBUTIL}
 LDADD=	-lutil
 
+NO_WCAST_FUNCTION_TYPE=
+
 .include <bsd.prog.mk>

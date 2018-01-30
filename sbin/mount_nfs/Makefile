@@ -9,6 +9,7 @@ MAN=	mount_nfs.8
 LDADD=	-lutil
 DPADD=	${LIBUTIL}
 
+NO_WCAST_FUNCTION_TYPE=
 UMNTALL= ${.CURDIR}/../../usr.sbin/rpc.umntall
 CFLAGS+= -DNFS -I${UMNTALL}
 .PATH: ${UMNTALL}

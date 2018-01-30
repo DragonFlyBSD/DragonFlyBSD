@@ -3,6 +3,7 @@
 PROG=	yp_mkdb
 SRCS=	yp_mkdb.c yp_dblookup.c yp_dbwrite.c
 WARNS?=	3
+NO_WCAST_FUNCTION_TYPE=
 
 MAN=	yp_mkdb.8
 

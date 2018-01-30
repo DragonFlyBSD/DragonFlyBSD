@@ -25,6 +25,7 @@ RPCGEN=	rpcgen -C
 RPCSRC=	${.CURDIR}/../../include/rpcsvc/yp.x
 RPCSRC_PW=	${.CURDIR}/../../include/rpcsvc/yppasswd.x
 RPCSRC_PRIV=	${.CURDIR}/../../usr.sbin/rpc.yppasswdd/yppasswd_private.x
+NO_WCAST_FUNCTION_TYPE=
 
 yp.h: ${RPCSRC}
 	${RPCGEN} -h -o ${.TARGET} ${RPCSRC}

@@ -1,12 +1,12 @@
 #	@(#)Makefile	8.4 (Berkeley) 6/22/95
 #
 # $FreeBSD: src/sbin/umount/Makefile,v 1.6.2.1 2001/04/25 10:58:54 ru Exp $
-# $DragonFly: src/sbin/umount/Makefile,v 1.3 2006/10/17 00:55:44 pavalos Exp $
 
 PROG=	umount
 SRCS=	umount.c vfslist.c mounttab.c
 MAN=	umount.8
 
+NO_WCAST_FUNCTION_TYPE=
 MOUNT=	${.CURDIR}/../mount
 UMNTALL= ${.CURDIR}/../../usr.sbin/rpc.umntall
 CFLAGS+= -I${MOUNT} -I${UMNTALL}

@@ -101,6 +101,9 @@ CWARNFLAGS	+=	-Werror
 . endif
 .endif
 
+.if defined(NO_WCAST_FUNCTION_TYPE) && ${WARNS} >= 3 && ${CCVER:Mgcc8*}
+_cnowarnflags	+=      -Wno-cast-function-type
+.endif
 .if defined(NO_WARRAY_BOUNDS)
 _cnowarnflags	+=      -Wno-array-bounds
 .endif

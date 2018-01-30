@@ -13,6 +13,7 @@ CLEANFILES= sm_inter_svc.c sm_inter.h
 
 RPCSRC= ${DESTDIR}/usr/include/rpcsvc/sm_inter.x
 RPCGEN= rpcgen -L -C
+NO_WCAST_FUNCTION_TYPE=
 
 sm_inter_svc.c: ${RPCSRC}
 	${RPCGEN} -m -o ${.TARGET} ${RPCSRC}

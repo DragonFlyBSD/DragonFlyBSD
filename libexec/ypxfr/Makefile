@@ -20,6 +20,7 @@ CLEANFILES= ${GENSRCS}
 
 RPCDIR= ${.CURDIR}/../../include/rpcsvc
 RPCGEN= rpcgen -I -C
+NO_WCAST_FUNCTION_TYPE=
 
 ypxfr_clnt.c: ${RPCDIR}/yp.x
 	rm -f ${.TARGET}
