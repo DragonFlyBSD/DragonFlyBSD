@@ -72,7 +72,7 @@ static int dumpnr;
 static int quiet;
 static int verbose;
 
-static char crashdir[PATH_MAX];
+static char crashdir[PATH_MAX - 24]; /* allow for appending filenames */
 static char *kernel;
 static char *remote;
 static char *vmcore;
