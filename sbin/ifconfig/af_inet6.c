@@ -196,7 +196,7 @@ in6_status(int s __unused, const struct rt_addrinfo * info)
 	if (sin == NULL)
 		return;
 
-	strncpy(ifr6.ifr_name, ifr.ifr_name, sizeof(ifr.ifr_name));
+	strlcpy(ifr6.ifr_name, ifr.ifr_name, IFNAMSIZ);
 	if ((s6 = socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
 		warn("socket(AF_INET6,SOCK_DGRAM)");
 		return;
@@ -452,7 +452,7 @@ in6_status_tunnel(int s)
 	const struct sockaddr *sa = (const struct sockaddr *) &in6_ifr.ifr_addr;
 
 	memset(&in6_ifr, 0, sizeof(in6_ifr));
-	strncpy(in6_ifr.ifr_name, name, IFNAMSIZ);
+	strlcpy(in6_ifr.ifr_name, name, IFNAMSIZ);
 
 	if (ioctl(s, SIOCGIFPSRCADDR_IN6, (caddr_t)&in6_ifr) < 0)
 		return;
@@ -481,7 +481,7 @@ in6_set_tunnel(int s, struct addrinfo *srcres, struct addrinfo *dstres)
 	struct in6_aliasreq in6_addreq; 
 
 	memset(&in6_addreq, 0, sizeof(in6_addreq));
-	strncpy(in6_addreq.ifra_name, name, IFNAMSIZ);
+	strlcpy(in6_addreq.ifra_name, name, IFNAMSIZ);
 	memcpy(&in6_addreq.ifra_addr, srcres->ai_addr, srcres->ai_addr->sa_len);
 	memcpy(&in6_addreq.ifra_dstaddr, dstres->ai_addr,
 	    dstres->ai_addr->sa_len);
