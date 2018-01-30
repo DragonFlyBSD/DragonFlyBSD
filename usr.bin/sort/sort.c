@@ -204,7 +204,7 @@ static struct option long_options[] = {
 				{ NULL, no_argument, NULL, 0 }
 };
 
-void fix_obsolete_keys(int *argc, char **argv);
+static void fix_obsolete_keys(int *argc, char **argv);
 
 /*
  * Check where sort modifier is present
@@ -228,14 +228,10 @@ sort_modifier_empty(struct sort_mods *sm)
 static void
 usage(bool opt_err)
 {
-//	struct option *o;
 	FILE *out;
 
-	out = stdout;
-//	o = &(long_options[0]);
+	out = opt_err ? stderr : stdout;
 
-	if (opt_err)
-		out = stderr;
 	fprintf(out, getstr(12), getprogname());
 	if (opt_err)
 		exit(2);
@@ -875,10 +871,10 @@ end:
 /*
  * "Translate" obsolete +POS1 -POS2 syntax into new -kPOS1,POS2 syntax
  */
-void
+static void
 fix_obsolete_keys(int *argc, char **argv)
 {
-	char sopt[129];
+	char *snew = NULL;
 
 	for (int i = 1; i < *argc; i++) {
 		char *arg1;
@@ -912,9 +908,12 @@ fix_obsolete_keys(int *argc, char **argv)
 						    &f2, &c2, sopts2) >= 0) {
 							if (c2 > 0)
 								f2 += 1;
-							sprintf(sopt, "-k%d.%d%s,%d.%d%s",
-							    f1, c1, sopts1, f2, c2, sopts2);
-							argv[i] = sort_strdup(sopt);
+							if (asprintf(&snew,
+							    "-k%d.%d%s,%d.%d%s",
+							    f1, c1, sopts1,
+							    f2, c2, sopts2)== -1)
+								return;
+							argv[i] = snew;
 							for (int j = i + 1; j + 1 < *argc; j++)
 								argv[j] = argv[j + 1];
 							*argc -= 1;
@@ -922,8 +921,8 @@ fix_obsolete_keys(int *argc, char **argv)
 						}
 					}
 				}
-				sprintf(sopt, "-k%d.%d%s", f1, c1, sopts1);
-				argv[i] = sort_strdup(sopt);
+				asprintf(&snew, "-k%d.%d%s", f1, c1, sopts1);
+				argv[i] = snew;
 			}
 		}
 	}
