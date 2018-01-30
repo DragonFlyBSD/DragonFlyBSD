@@ -51,11 +51,11 @@ static int qflag;
 static int rflag;
 static int sflag;
 
-typedef void (DIGEST_Init)(void *);
-typedef void (DIGEST_Update)(void *, const unsigned char *, size_t);
+typedef int (DIGEST_Init)(void *);
+typedef int (DIGEST_Update)(void *, const unsigned char *, size_t);
 typedef char *(DIGEST_End)(void *, char *);
 
-extern const char *MD5TestOutput[MDTESTCOUNT];
+extern const char *MD5_TestOutput[MDTESTCOUNT];
 extern const char *SHA1_TestOutput[MDTESTCOUNT];
 extern const char *SHA256_TestOutput[MDTESTCOUNT];
 extern const char *SHA512_TestOutput[MDTESTCOUNT];
@@ -94,8 +94,8 @@ typedef union {
 /* algorithm function table */
 
 static const struct Algorithm_t Algorithm[] = {
-	{ "md5", "MD5", &MD5TestOutput, (DIGEST_Init*)&MD5Init,
-		(DIGEST_Update*)&MD5Update, (DIGEST_End*)&MD5End,
+	{ "md5", "MD5", &MD5_TestOutput, (DIGEST_Init*)&MD5_Init,
+		(DIGEST_Update*)&MD5_Update, (DIGEST_End*)&MD5End,
 		&MD5Data, &MD5File },
 	{ "sha1", "SHA1", &SHA1_TestOutput, (DIGEST_Init*)&SHA1_Init,
 		(DIGEST_Update*)&SHA1_Update, (DIGEST_End*)&SHA1_End,
@@ -408,8 +408,8 @@ MDTimeTrial(const Algorithm_t *alg)
 	printf(" done\n");
 	printf("Digest = %s", p);
 	printf("\nTime = %f seconds\n", seconds);
-	printf("Speed = %f bytes/second\n",
-	    (float) TEST_BLOCK_LEN * (float) TEST_BLOCK_COUNT / seconds);
+	printf("Speed = %f MiB/second\n", (float) TEST_BLOCK_LEN *
+		(float) TEST_BLOCK_COUNT / seconds / (1 << 20));
 }
 /*
  * Digests a reference suite of strings and prints the results.
@@ -427,7 +427,7 @@ static const char *MDTestInput[MDTESTCOUNT] = {
 that its security is in some doubt"
 };
 
-const char *MD5TestOutput[MDTESTCOUNT] = {
+const char *MD5_TestOutput[MDTESTCOUNT] = {
 	"d41d8cd98f00b204e9800998ecf8427e",
 	"0cc175b9c0f1b6a831c399e269772661",
 	"900150983cd24fb0d6963f7d28e17f72",
