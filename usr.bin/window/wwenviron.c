@@ -92,7 +92,7 @@ wwenviron(struct ww *wp)
 	 * 1. setenv() copies the string,
 	 * 2. we've already called tgetent which copies the termcap entry.
 	 */
-	(void) sprintf(buf, "%sco#%d:li#%d:%s",
+	(void) sprintf(buf, "%sco#%d:li#%d:%.800s",
 		WWT_TERMCAP, wp->ww_w.nc, wp->ww_w.nr, wwwintermcap);
 	(void) setenv("TERMCAP", buf, 1);
 	(void) sprintf(buf, "%d", wp->ww_id + 1);

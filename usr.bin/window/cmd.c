@@ -64,6 +64,7 @@ docmd(void)
 		default:
 			if (c != escapec)
 				break;
+			/* FALLTHROUGH */
 		case 'h': case 'j': case 'k': case 'l':
 		case 'y': case 'p':
 		case ctrl('y'):
@@ -193,6 +194,7 @@ docmd(void)
 				c_debug();
 				break;
 			}
+			/* FALLTHROUGH */
 		default:
 			if (c == escapec) {
 				if (checkproc(selwin) >= 0) {

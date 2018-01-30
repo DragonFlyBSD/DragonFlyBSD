@@ -67,6 +67,7 @@ p_expr(struct value *v, char flag)
 	switch (t.v_type) {
 	case V_NUM:
 		p_error("%d: Not a variable.", t.v_num);
+		/* FALLTHROUGH */
 	case V_ERR:
 		t.v_str = 0;
 		break;
@@ -98,6 +99,7 @@ p_expr0(struct value *v, char flag)
 		p_error("?: Numeric left operand required.");
 		str_free(v->v_str);
 		v->v_type = V_ERR;
+		/* FALLTHROUGH */
 	case V_ERR:
 		flag = 0;
 		break;
@@ -136,6 +138,7 @@ p_expr1(struct value *v, char flag)
 			p_error("||: Numeric operands required.");
 			str_free(v->v_str);
 			v->v_type = V_ERR;
+			/* FALLTHROUGH */
 		case V_ERR:
 			flag = 0;
 			break;
@@ -169,6 +172,7 @@ p_expr2(struct value *v, char flag)
 			p_error("&&: Numeric operands required.");
 			str_free(v->v_str);
 			v->v_type = V_ERR;
+			/* FALLTHROUGH */
 		case V_ERR:
 			flag = 0;
 			break;

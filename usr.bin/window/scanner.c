@@ -288,6 +288,7 @@ loop:
 			break;
 		default:
 			(void) s_ungetc(c);
+			/* FALLTHROUGH */
 		case EOF:
 			*p = 0;
 			cx.x_token = T_STR;
@@ -335,6 +336,7 @@ loop:
 		switch (c) {
 		case '\n':
 			(void) s_ungetc(c);
+			/* FALLTHROUGH */
 		case EOF:
 		case '"':
 			state = 2;
@@ -359,6 +361,7 @@ loop:
 		switch (c) {
 		case '\n':
 			(void) s_ungetc(c);
+			/* FALLTHROUGH */
 		case EOF:
 		case '\'':
 			state = 2;

@@ -100,6 +100,7 @@ top:
 	case V_STR:
 		p_error("if: Numeric value required.");
 		str_free(t.v_str);
+		/* FALLTHROUGH */
 	case V_ERR:
 		flag = 0;
 		break;

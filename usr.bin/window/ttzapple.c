@@ -158,11 +158,13 @@ same_row:
 		switch (x) {
 		case 2:
 			ttctrl('f');
+			/* FALLTHROUGH */
 		case 1:
 			ttctrl('f');
 			goto out;
 		case -2:
 			ttctrl('h');
+			/* FALLTHROUGH */
 		case -1:
 			ttctrl('h');
 			goto out;
@@ -181,11 +183,13 @@ same_row:
 		switch (row - tt.tt_row) {
 		case 2:
 			ttctrl('j');
+			/* FALLTHROUGH */
 		case 1:
 			ttctrl('j');
 			goto out;
 		case -2:
 			ttctrl('k');
+			/* FALLTHROUGH */
 		case -1:
 			ttctrl('k');
 			goto out;
