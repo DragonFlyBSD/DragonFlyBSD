@@ -826,7 +826,7 @@ install_zoneinfo(const char *zoneinfo)
 {
 	int		rv;
 	FILE		*f;
-	char		path_zoneinfo_file[MAXPATHLEN];
+	char		path_zoneinfo_file[MAXPATHLEN + 2];
 
 	sprintf(path_zoneinfo_file, "%s/%s", path_zoneinfo, zoneinfo);
 	rv = install_zoneinfo_file(path_zoneinfo_file);
