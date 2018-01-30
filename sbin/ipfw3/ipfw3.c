@@ -2653,7 +2653,7 @@ ipfw_readfile(int ac, char *av[])
 {
 	char	buf[BUFSIZ];
 	char	*a, *p, *args[MAX_ARGS], *cmd = NULL;
-	char	linename[10];
+	char	linename[17];
 	int	i=0, lineno=0, qflag=0, pflag=0, status;
 	FILE	*f = NULL;
 	pid_t	preproc = 0;

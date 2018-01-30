@@ -1255,7 +1255,7 @@ main(int ac, char **av)
 #define	WHITESP		" \t\f\v\n\r"
 	char	buf[BUFSIZ];
 	char	*a, *p, *args[MAX_ARGS], *cmd = NULL;
-	char	linename[10];
+	char	linename[17];
 	int 	i, c, lineno, qflag, pflag, status;
 	FILE	*f = NULL;
 	pid_t	preproc = 0;
