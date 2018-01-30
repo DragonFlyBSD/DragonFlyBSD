@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/iostat.c,v 1.9.2.1 2000/07/02 10:03:17 ps Exp $
- * $DragonFly: src/usr.bin/systat/iostat.c,v 1.7 2008/11/10 04:59:45 swildner Exp $
  *
  * @(#)iostat.c	8.1 (Berkeley) 6/6/93
  */
@@ -208,7 +207,7 @@ numlabels(int row)
 				if (row > wnd->_maxy - (linesperregion + 1))
 					break;
 			}
-			sprintf(tmpstr, "%s%d", dev_select[i].device_name,
+			sprintf(tmpstr, "%.6s%d", dev_select[i].device_name,
 				dev_select[i].unit_number);
 			mvwaddstr(wnd, row, _col + 4, tmpstr);
 			mvwaddstr(wnd, row + 1, _col, "  KB/t tps  MB/s ");
@@ -232,9 +231,9 @@ barlabels(int row)
 		if (dev_select[i].selected) {
 			if (row > wnd->_maxy - linesperregion)
 				break;
-			sprintf(tmpstr, "%s%d", dev_select[i].device_name,
+			sprintf(tmpstr, "%.4s%d", dev_select[i].device_name,
 				dev_select[i].unit_number);
-			mvwprintw(wnd, row++, 0, "%-5.5s MB/s|", 
+			mvwprintw(wnd, row++, 0, "%-5.5s MB/s|",
 				  tmpstr);
 			mvwaddstr(wnd, row++, 0, "      tps|");
 			if (kbpt)
