@@ -29,7 +29,6 @@
  * @(#)rpc_callmsg.c	2.1 88/07/29 4.0 RPCSRC
  * $NetBSD: rpc_callmsg.c,v 1.16 2000/07/14 08:40:42 fvdl Exp $
  * $FreeBSD: src/lib/libc/rpc/rpc_callmsg.c,v 1.13 2007/11/20 01:51:20 jb Exp $
- * $DragonFly: src/lib/libc/rpc/rpc_callmsg.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -190,11 +189,11 @@ xdr_callmsg(XDR *xdrs, struct rpc_msg *cmsg)
 	    xdr_u_int32_t(xdrs, &(cmsg->rm_xid)) &&
 	    xdr_enum(xdrs, (enum_t *) prm_direction) &&
 	    (cmsg->rm_direction == CALL) &&
-	    xdr_u_int32_t(xdrs, &(cmsg->rm_call.cb_rpcvers)) &&
+	    xdr_rpcvers(xdrs, &(cmsg->rm_call.cb_rpcvers)) &&
 	    (cmsg->rm_call.cb_rpcvers == RPC_MSG_VERSION) &&
-	    xdr_u_int32_t(xdrs, &(cmsg->rm_call.cb_prog)) &&
-	    xdr_u_int32_t(xdrs, &(cmsg->rm_call.cb_vers)) &&
-	    xdr_u_int32_t(xdrs, &(cmsg->rm_call.cb_proc)) &&
+	    xdr_rpcprog(xdrs, &(cmsg->rm_call.cb_prog)) &&
+	    xdr_rpcvers(xdrs, &(cmsg->rm_call.cb_vers)) &&
+	    xdr_rpcproc(xdrs, &(cmsg->rm_call.cb_proc)) &&
 	    xdr_opaque_auth(xdrs, &(cmsg->rm_call.cb_cred)) )
 		return (xdr_opaque_auth(xdrs, &(cmsg->rm_call.cb_verf)));
 	return (FALSE);

@@ -1,9 +1,8 @@
 .\" @(#)getrpcent.3n	2.2 88/08/02 4.0 RPCSRC; from 1.11 88/03/14 SMI
 .\" $NetBSD: getrpcent.3,v 1.6 1998/02/05 18:49:06 perry Exp $
 .\" $FreeBSD: src/lib/libc/rpc/getrpcent.3,v 1.18 2005/01/20 09:17:04 ru Exp $
-.\" $DragonFly: src/lib/libc/rpc/getrpcent.3,v 1.4 2007/08/18 20:48:47 swildner Exp $
 .\"
-.Dd December 14, 1987
+.Dd February 2, 2018
 .Dt GETRPCENT 3
 .Os
 .Sh NAME
@@ -20,7 +19,7 @@
 .Ft struct rpcent *
 .Fn getrpcent void
 .Ft struct rpcent *
-.Fn getrpcbyname "char *name"
+.Fn getrpcbyname "const char *name"
 .Ft struct rpcent *
 .Fn getrpcbynumber "int number"
 .Ft void

@@ -29,7 +29,6 @@
  * @(#)clnt_simple.c	2.2 88/08/01 4.0 RPCSRC
  * $NetBSD: clnt_simple.c,v 1.21 2000/07/06 03:10:34 christos Exp $
  * $FreeBSD: src/lib/libc/rpc/clnt_simple.c,v 1.20 2006/02/27 22:10:59 deischen Exp $
- * $DragonFly: src/lib/libc/rpc/clnt_simple.c,v 1.5 2005/11/13 12:27:04 swildner Exp $
  */
 /*
  * Copyright (c) 1986-1991 by Sun Microsystems Inc.
@@ -93,17 +92,19 @@ rpc_call_destroy(void *vp)
  * the future calls to same prog, vers, host and nettype combination.
  *
  * The total time available is 25 seconds.
+ *
+ * host    - host name
+ * prognum - program number
+ * versnum - version number
+ * procnum - procedure number
+ * inproc, outproc - in/out XDR procedures
+ * in, out - recv/send data
+ * nettype - nettype
  */
 enum clnt_stat
-rpc_call(const char *host,			/* host name */
-	rpcprog_t prognum,			/* program number */
-	rpcvers_t versnum,			/* version number */
-	rpcproc_t procnum,			/* procedure number */
-	xdrproc_t inproc,
-	const char *in,
-	xdrproc_t outproc,			/* in/out XDR procedures */
-	char  *out,				/* recv/send data */
-	const char *nettype)			/* nettype */
+rpc_call(const char *host, const rpcprog_t prognum, const rpcvers_t versnum,
+    const rpcproc_t procnum, const xdrproc_t inproc, const char *in,
+    const xdrproc_t outproc, char *out, const char *nettype)
 {
 	struct rpc_call_private *rcp = NULL;
 	enum clnt_stat clnt_stat;
