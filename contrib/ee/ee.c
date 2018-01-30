@@ -4420,10 +4420,10 @@ spell_op()	/* check spelling of words in the editor	*/
 				   and read the results back into the editor */
 }
 
-void 
+void
 ispell_op()
 {
-	char template[128], *name = NULL;
+	char template[128];
 	char string[256];
 	int fd;
 
@@ -4435,20 +4435,20 @@ ispell_op()
 	fd = mkstemp(template);
 	if (fd < 0) {
 		wmove(com_win, 0, 0);
-		wprintw(com_win, create_file_fail_msg, name);
+		wprintw(com_win, create_file_fail_msg, template);
 		wrefresh(com_win);
 		return;
 	}
 	close(fd);
-	if (write_file(name, 0))
+	if (write_file(template, 0))
 	{
-		sprintf(string, "ispell %s", name);
+		sprintf(string, "ispell %s", template);
 		sh_command(string);
 		delete_text();
-		tmp_file = name;
+		tmp_file = template;
 		recv_file = TRUE;
 		check_fp();
-		unlink(name);
+		unlink(template);
 	}
 }
 
