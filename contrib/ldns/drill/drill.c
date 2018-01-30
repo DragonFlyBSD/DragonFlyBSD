@@ -360,9 +360,7 @@ main(int argc, char *argv[])
 						tsig_algorithm[strlen(optarg) - tsig_separator2 - 1] = '\0';
 					} else {
 						tsig_separator2 = strlen(optarg);
-						tsig_algorithm = xmalloc(26);
-						strncpy(tsig_algorithm, "hmac-md5.sig-alg.reg.int.", 25);
-						tsig_algorithm[25] = '\0';
+						tsig_algorithm = strdup("hmac-md5.sig-alg.reg.int");
 					}
 					tsig_name = xmalloc(tsig_separator + 1);
 					tsig_data = xmalloc(tsig_separator2 - tsig_separator);
