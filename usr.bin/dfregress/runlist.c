@@ -108,9 +108,9 @@ runlist_run_test(void *arg, prop_dictionary_t testcase)
 {
 	prop_array_t runlist = (prop_array_t)arg;
 	struct testcase_result tr;
-	char testcase_path[FILENAME_MAX];
+	char testcase_path[FILENAME_MAX+2];
 	char testcase_dir_only[FILENAME_MAX];
-	char prepost_path[FILENAME_MAX];
+	char prepost_path[FILENAME_MAX+2];
 	char errbuf[FILENAME_MAX*2];
 	int r, nopre, nopost;
 	char *str;
