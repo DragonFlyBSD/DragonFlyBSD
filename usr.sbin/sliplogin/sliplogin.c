@@ -112,11 +112,11 @@ make_ipaddr(void)
 	address[0] = '\0';
 	if ((he = gethostbyname(raddr)) != NULL) {
 		ipaddr = ntohl(*(long *)he->h_addr_list[0]);
-		sprintf(address, "%lu.%lu.%lu.%lu",
-		    ipaddr >> 24,
-		    (ipaddr & 0x00ff0000) >> 16,
-		    (ipaddr & 0x0000ff00) >> 8,
-		    (ipaddr & 0x000000ff));
+		sprintf(address, "%hu.%hu.%hu.%hu",
+		    (ushort)(ipaddr >> 24),
+		    (ushort)((ipaddr & 0x00ff0000) >> 16),
+		    (ushort)((ipaddr & 0x0000ff00) >> 8),
+		    (ushort)((ipaddr & 0x000000ff)));
 	}
 
 	return address;
@@ -292,7 +292,7 @@ hup_handler(int s)
 
 	close(0);
 	seteuid(0);
-	snprintf(logoutfile, sizeof(logoutfile), "%s.%s", _PATH_SLOGOUT, loginname);
+	snprintf(logoutfile, sizeof(logoutfile), "%s.%.990s", _PATH_SLOGOUT, loginname);
 	if (access(logoutfile, R_OK|X_OK) != 0) {
 		strncpy(logoutfile, _PATH_SLOGOUT, sizeof(logoutfile)-1);
 		logoutfile[sizeof(logoutfile)-1] = '\0';
