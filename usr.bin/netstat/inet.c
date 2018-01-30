@@ -275,7 +275,7 @@ outputpcb(int proto, const char *name, struct inpcb *inp, struct xsocket *so, st
 	if (Lflag) {
 		char buf[15];
 
-		snprintf(buf, sizeof(buf), "%d/%d/%d", so->so_qlen,
+		snprintf(buf, sizeof(buf), "%hd/%hd/%hd", so->so_qlen,
 			 so->so_incqlen, so->so_qlimit);
 		printf("%-13.13s ", buf);
 	} else if (Bflag) {

@@ -33,7 +33,6 @@
  *	@(#)mroute.c	8.2 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/usr.bin/netstat/mroute.c,v 1.11.2.4 2001/09/17 14:53:17 ru Exp $
- * $DragonFly: src/usr.bin/netstat/mroute.c,v 1.5 2005/08/04 17:31:23 drhodus Exp $
  */
 
 /*
@@ -190,7 +189,7 @@ print_bw_meter(struct bw_meter *bw_meter, int *banner_printed)
 		sprintf(s2, "%ju", (uintmax_t)bw_meter->bm_measured.b_bytes);
 	else
 		sprintf(s2, "?");
-	sprintf(s0, "%lu.%lu|%s|%s",
+	sprintf(s0, "%lu.%lu|%.64s|%.64s",
 		bw_meter->bm_start_time.tv_sec,
 		bw_meter->bm_start_time.tv_usec,
 		s1, s2);
@@ -213,7 +212,7 @@ print_bw_meter(struct bw_meter *bw_meter, int *banner_printed)
 		sprintf(s2, "%ju", (uintmax_t)bw_meter->bm_threshold.b_bytes);
 	else
 		sprintf(s2, "?");
-	sprintf(s0, "%lu.%lu|%s|%s",
+	sprintf(s0, "%lu.%lu|%.64s|%.64s",
 		bw_meter->bm_threshold.b_time.tv_sec,
 		bw_meter->bm_threshold.b_time.tv_usec,
 		s1, s2);

@@ -341,7 +341,7 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 				char linknum[10];
 				cp = (char *)LLADDR(sdl);
 				n = sdl->sdl_alen;
-				sprintf(linknum, "<Link#%d>", sdl->sdl_index);
+				sprintf(linknum, "<Link#%hu>", sdl->sdl_index);
 				m = printf("%-11.11s ", linknum);
 				}
 				goto hexprint;
@@ -531,7 +531,7 @@ sidewaysintpr(unsigned interval1, u_long off, int ncpus)
 			interesting = ip;
 			interesting_off = off;
 		}
-		snprintf(ip->ift_name, 16, "(%s)", name);
+		snprintf(ip->ift_name, 16, "(%.13s)", name);
 		if ((ipn = malloc(sizeof(struct iftot))) == NULL) {
 			printf("malloc failed\n");
 			exit(1);
