@@ -197,7 +197,7 @@ read_archive(struct bsdtar *bsdtar, char mode, struct archive *writer)
 		/* Prepend magic code to ignore options for
 		 * a format or  modules which are not added to
 		 *  the archive read object. */
-		strncpy(p, IGNORE_WRONG_MODULE_NAME,
+		memcpy(p, IGNORE_WRONG_MODULE_NAME,
 		    sizeof(IGNORE_WRONG_MODULE_NAME) -1);
 		strcpy(p + sizeof(IGNORE_WRONG_MODULE_NAME) -1, reader_options);
 		r = archive_read_set_options(a, p);
