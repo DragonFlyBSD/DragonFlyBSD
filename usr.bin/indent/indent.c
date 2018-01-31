@@ -132,11 +132,11 @@ main(int argc, char **argv)
 
     scase = ps.pcase = false;
     squest = 0;
-    sc_end = 0;
-    bp_save = 0;
-    be_save = 0;
+    sc_end = NULL;
+    bp_save = NULL;
+    be_save = NULL;
 
-    output = 0;
+    output = NULL;
     tabs_to_var = 0;
 
     /*--------------------------------------------------*\
@@ -183,22 +183,22 @@ main(int argc, char **argv)
 	/*
 	 * look thru args (if any) for changes to defaults
 	 */
-	if (argv[i][0] != '-') {/* no flag on parameter */
-	    if (input == 0) {	/* we must have the input file */
+	if (argv[i][0] != '-') {	/* no flag on parameter */
+	    if (input == NULL) {	/* we must have the input file */
 		in_name = argv[i];	/* remember name of input file */
 		input = fopen(in_name, "r");
-		if (input == 0)		/* check for open error */
+		if (input == NULL)	/* check for open error */
 			err(1, "%s", in_name);
 		continue;
 	    }
-	    else if (output == 0) {	/* we have the output file */
+	    else if (output == NULL) {	/* we have the output file */
 		out_name = argv[i];	/* remember name of output file */
 		if (strcmp(in_name, out_name) == 0) {	/* attempt to overwrite
 							 * the file */
 		    errx(1, "input and output files must be different");
 		}
 		output = fopen(out_name, "w");
-		if (output == 0)	/* check for create error */
+		if (output == NULL)	/* check for create error */
 			err(1, "%s", out_name);
 		continue;
 	    }
@@ -207,9 +207,9 @@ main(int argc, char **argv)
 	else
 	    set_option(argv[i]);
     }				/* end of for */
-    if (input == 0)
+    if (input == NULL)
 	input = stdin;
-    if (output == 0) {
+    if (output == NULL) {
 	if (troff || input == stdin)
 	    output = stdout;
 	else {
@@ -311,7 +311,7 @@ main(int argc, char **argv)
 
 	    case lbrace:	/* this is a brace that starts the compound
 				 * stmt */
-		if (sc_end == 0) {	/* ignore buffering if a comment wasnt
+		if (sc_end == NULL) {	/* ignore buffering if a comment wasn't
 					 * stored up */
 		    ps.search_brace = false;
 		    goto check_type;
@@ -324,9 +324,9 @@ main(int argc, char **argv)
 		}
 	    case comment:	/* we have a comment, so we must copy it into
 				 * the buffer */
-		if (!flushed_nl || sc_end != 0) {
-		    if (sc_end == 0) {	/* if this is the first comment, we
-					 * must set up the buffer */
+		if (!flushed_nl || sc_end != NULL) {
+		    if (sc_end == NULL) { /* if this is the first comment, we
+					   * must set up the buffer */
 			save_com[0] = save_com[1] = ' ';
 			sc_end = &(save_com[2]);
 		    }
@@ -369,7 +369,7 @@ main(int argc, char **argv)
 			&& e_code != s_code && e_code[-1] == '}'))
 		    force_nl = false;
 
-		if (sc_end == 0) {	/* ignore buffering if comment wasnt
+		if (sc_end == NULL) {	/* ignore buffering if comment wasn't
 					 * saved up */
 		    ps.search_brace = false;
 		    goto check_type;
@@ -400,7 +400,7 @@ main(int argc, char **argv)
 					 * save_com */
 		*sc_end++ = ' ';/* add trailing blank, just in case */
 		buf_end = sc_end;
-		sc_end = 0;
+		sc_end = NULL;
 		break;
 	    }			/* end of switch */
 	    if (type_code != 0)	/* we must make this check, just in case there
@@ -779,8 +779,8 @@ check_type:
 		/* ?		dec_ind = 0; */
 	    }
 	    else {
-		ps.decl_on_line = false;	/* we cant be in the middle of
-						 * a declaration, so dont do
+		ps.decl_on_line = false;	/* we can't be in the middle of
+						 * a declaration, so don't do
 						 * special indentation of
 						 * comments */
 		if (blanklines_after_declarations_at_proctop
@@ -1080,9 +1080,9 @@ check_type:
 
 		while (e_lab > s_lab && (e_lab[-1] == ' ' || e_lab[-1] == '\t'))
 		    e_lab--;
-		if (e_lab - s_lab == com_end && bp_save == 0) {	/* comment on
-								 * preprocessor line */
-		    if (sc_end == 0)	/* if this is the first comment, we
+		if (e_lab - s_lab == com_end && bp_save == NULL) {
+		    /* comment on preprocessor line */
+		    if (sc_end == NULL)	/* if this is the first comment, we
 					 * must set up the buffer */
 			sc_end = &(save_com[0]);
 		    else {
@@ -1105,7 +1105,7 @@ check_type:
 					 * save_com */
 		    *sc_end++ = ' ';	/* add trailing blank, just in case */
 		    buf_end = sc_end;
-		    sc_end = 0;
+		    sc_end = NULL;
 		}
 		*e_lab = '\0';	/* null terminate line */
 		ps.pcase = false;
@@ -1208,11 +1208,11 @@ bakcopy(void)
 
     /* re-open backup file as the input file */
     input = fopen(bakfile, "r");
-    if (input == 0)
+    if (input == NULL)
 	err(1, "%s", bakfile);
     /* now the original input file will be the output */
     output = fopen(in_name, "w");
-    if (output == 0) {
+    if (output == NULL) {
 	unlink(bakfile);
 	err(1, "%s", in_name);
     }

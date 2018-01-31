@@ -270,9 +270,9 @@ found:
 	    break;
 
 	case STDIN:
-	    if (input == 0)
+	    if (input == NULL)
 		input = stdin;
-	    if (output == 0)
+	    if (output == NULL)
 		output = stdout;
 	    break;
 

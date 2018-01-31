@@ -84,6 +84,7 @@ parse(int tk) /* tk: the code for the construct scanned */
     case ifstmt:		/* scanned if (...) */
 	if (ps.p_stack[ps.tos] == elsehead && ps.else_if)	/* "else if ..." */
 	    ps.i_l_follow = ps.il[ps.tos];
+	/* FALLTHROUGH */
     case dolit:		/* 'do' */
     case forstmt:		/* for (...) */
 	ps.p_stack[++ps.tos] = tk;
@@ -287,7 +288,7 @@ reduce(void)
 	    case swstmt:
 		/* <switch> <stmt> */
 		case_ind = ps.cstk[ps.tos - 1];
-
+		/* FALLTHROUGH */
 	    case decl:		/* finish of a declaration */
 	    case elsehead:
 		/* <<if> <stmt> else> <stmt> */
