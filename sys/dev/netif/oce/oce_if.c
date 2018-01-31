@@ -1445,8 +1445,9 @@ oce_cqe_portid_valid(POCE_SOFTC sc, struct oce_nic_rx_cqe *cqe)
 		port_id =  cqe_v1->u0.s.port;
 		if (sc->port_id != port_id)
 			return 0;
-	} else
+	} else {
 		;/* For BE3 legacy and Lancer this is dummy */
+	}
 
 	return 1;
 

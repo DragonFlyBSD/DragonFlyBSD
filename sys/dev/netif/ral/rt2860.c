@@ -1500,8 +1500,9 @@ rt2860_intr(void *arg)
 	if (r & RT2860_MAC_INT_0)	/* TBTT */
 		rt2860_tbtt_intr(sc);
 
-	if (r & RT2860_MAC_INT_3)	/* Auto wakeup */
+	if (r & RT2860_MAC_INT_3) {	/* Auto wakeup */
 		/* TBD wakeup */;
+	}
 
 	if (r & RT2860_MAC_INT_4)	/* GP timer */
 		rt2860_gp_intr(sc);
