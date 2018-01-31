@@ -43,7 +43,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-long	flags;
+static long	flags;
 #define	TRANSPOSE	000001
 #define	MTRANSPOSE	000002
 #define	ONEPERLINE	000004
@@ -62,34 +62,34 @@ long	flags;
 #define ONEPERCHAR	0100000
 #define NOARGS		0200000
 
-short	*colwidths;
-short	*cord;
-short	*icbd;
-short	*ocbd;
-int	nelem;
-char	**elem;
-char	**endelem;
-char	*curline;
-int	allocsize = BUFSIZ;
-int	curlen;
-int	irows, icols;
-int	orows, ocols;
-int	maxlen;
-int	skip;
-int	propgutter;
-char	isep = ' ', osep = ' ';
-char	blank[] = "";
-int	owidth = 80, gutter = 2;
+static short	*colwidths;
+static short	*cord;
+static short	*icbd;
+static short	*ocbd;
+static int	nelem;
+static char	**elem;
+static char	**endelem;
+static char	*curline;
+static int	allocsize = BUFSIZ;
+static int	curlen;
+static int	irows, icols;
+static int	orows, ocols;
+static int	maxlen;
+static int	skip;
+static int	propgutter;
+static char	isep = ' ', osep = ' ';
+static char	blank[] = "";
+static int	owidth = 80, gutter = 2;
 
-void	  getargs(int, char *[]);
-void	  getfile(void);
-int	  get_line(void);
-char	 *getlist(short **, char *);
-char	 *getnum(int *, char *, int);
-char	**getptrs(char **);
-void	  prepfile(void);
-void	  prints(char *, int);
-void	  putfile(void);
+static void	  getargs(int, char *[]);
+static void	  getfile(void);
+static int	  get_line(void);
+static char	 *getlist(short **, char *);
+static char	 *getnum(int *, char *, int);
+static char	**getptrs(char **);
+static void	  prepfile(void);
+static void	  prints(char *, int);
+static void	  putfile(void);
 static void usage(void);
 
 #define	INCR(ep) do {			\
@@ -111,7 +111,7 @@ main(int argc, char *argv[])
 	exit(0);
 }
 
-void
+static void
 getfile(void)
 {
 	char *p;
@@ -177,7 +177,7 @@ getfile(void)
 	nelem = ep - elem;
 }
 
-void
+static void
 putfile(void)
 {
 	char **ep;
@@ -199,7 +199,7 @@ putfile(void)
 		}
 }
 
-void
+static void
 prints(char *s, int col)
 {
 	int n;
@@ -225,7 +225,7 @@ usage(void)
 	exit(1);
 }
 
-void
+static void
 prepfile(void)
 {
 	char **ep;
@@ -318,9 +318,9 @@ prepfile(void)
 }
 
 #define	BSIZE	2048
-char	ibuf[BSIZE];		/* two screenfuls should do */
+static char	ibuf[BSIZE];		/* two screenfuls should do */
 
-int
+static int
 get_line(void)	/* get line; maintain curline, curlen; manage storage */
 {
 	static	int putlength;
@@ -356,7 +356,7 @@ get_line(void)	/* get line; maintain curline, curlen; manage storage */
 	return(c);
 }
 
-char **
+static char **
 getptrs(char **sp)
 {
 	char **p;
@@ -371,7 +371,7 @@ getptrs(char **sp)
 	return(sp);
 }
 
-void
+static void
 getargs(int ac, char *av[])
 {
 	char *p;
@@ -384,11 +384,13 @@ getargs(int ac, char *av[])
 			switch (*p) {
 			case 'T':
 				flags |= MTRANSPOSE;
+				/* FALLTHROUGH */
 			case 't':
 				flags |= TRANSPOSE;
 				break;
 			case 'c':		/* input col. separator */
 				flags |= ONEISEPONLY;
+				/* FALLTHROUGH */
 			case 's':		/* one or more allowed */
 				if (p[1])
 					isep = *++p;
@@ -397,6 +399,7 @@ getargs(int ac, char *av[])
 				break;
 			case 'C':
 				flags |= ONEOSEPONLY;
+				/* FALLTHROUGH */
 			case 'S':
 				if (p[1])
 					osep = *++p;
@@ -410,6 +413,7 @@ getargs(int ac, char *av[])
 				break;
 			case 'K':			/* skip N lines */
 				flags |= SKIPPRINT;
+				/* FALLTHROUGH */
 			case 'k':			/* skip, do not print */
 				p = getnum(&skip, p, 0);
 				if (!skip)
@@ -441,6 +445,7 @@ getargs(int ac, char *av[])
 				break;
 			case 'H':			/* print shape only */
 				flags |= DETAILSHAPE;
+				/* FALLTHROUGH */
 			case 'h':
 				flags |= SHAPEONLY;
 				break;
@@ -471,8 +476,10 @@ getargs(int ac, char *av[])
 		opages = atoi(av[2]);*/
 	case 2:
 		ocols = atoi(av[1]);
+		/* FALLTHROUGH */
 	case 1:
 		orows = atoi(av[0]);
+		/* FALLTHROUGH */
 	case 0:
 		break;
 	default:
@@ -480,7 +487,7 @@ getargs(int ac, char *av[])
 	}
 }
 
-char *
+static char *
 getlist(short **list, char *p)
 {
 	int count = 1;
@@ -516,7 +523,7 @@ getlist(short **list, char *p)
  * num = number p points to; if (strict) complain
  * returns pointer to end of num
  */
-char *
+static char *
 getnum(int *num, char *p, int strict)
 {
 	char *t = p;
