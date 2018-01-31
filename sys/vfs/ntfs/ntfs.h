@@ -318,8 +318,8 @@ MALLOC_DECLARE(M_NTFSNTHASH);
 #define ddprintf(a)
 #endif
 #else
-#define dprintf(a)
-#define ddprintf(a)
+#define dprintf(a)	do { } while (0)
+#define ddprintf(a)	do { } while (0)
 #endif
 #endif
 
