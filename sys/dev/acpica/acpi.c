@@ -881,8 +881,9 @@ acpi_driver_added(device_t dev, driver_t *driver)
 	child = devlist[i];
 	if (device_get_state(child) == DS_NOTPRESENT) {
 	    /* pci_set_powerstate(child, PCI_POWERSTATE_D0); */
-	    if (device_probe_and_attach(child) != 0)
+	    if (device_probe_and_attach(child) != 0) {
 		; /* pci_set_powerstate(child, PCI_POWERSTATE_D3); */
+	    }
 	}
     }
     kfree(devlist, M_TEMP);
