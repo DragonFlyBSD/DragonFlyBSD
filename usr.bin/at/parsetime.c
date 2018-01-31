@@ -33,7 +33,6 @@
  *                                   \PLUS NUMBER MINUTES|HOURS|DAYS|WEEKS/
  *
  * $FreeBSD: src/usr.bin/at/parsetime.c,v 1.27 2005/08/18 08:18:02 stefanf Exp $
- * $DragonFly: src/usr.bin/at/parsetime.c,v 1.6 2007/08/26 16:12:27 pavalos Exp $
  */
 
 /* System Headers */
@@ -69,7 +68,7 @@ enum {	/* symbols */
 
 /* parse translation table - table driven parsers can be your FRIEND!
  */
-struct {
+static const struct {
     const char *name;	/* token name */
     int value;		/* token id */
     int plural;		/* is this plural? */
@@ -300,6 +299,7 @@ plus(struct tm *tm)
 	    break;
     case WEEKS:
 	    delay *= 7;
+	    /* FALLTHROUGH */
     case DAYS:
 	    tm->tm_mday += delay;
 	    break;
@@ -458,6 +458,7 @@ month(struct tm *tm)
 	    /* do something tomorrow */
 	    tm->tm_mday ++;
 	    tm->tm_wday ++;
+	    /* FALLTHROUGH */
     case TODAY:	/* force ourselves to stay in today - no further processing */
 	    token();
 	    break;
@@ -581,6 +582,7 @@ parsetime(int argc, char **argv)
 	    }
 	    /* now is optional prefix for PLUS tree */
 	    expect(PLUS);
+	    /* FALLTHROUGH */
     case PLUS:
 	    plus(&runtime);
 	    break;
@@ -599,8 +601,10 @@ parsetime(int argc, char **argv)
 	     */
     case TEATIME:
 	    hr += 4;
+	    /* FALLTHROUGH */
     case NOON:
 	    hr += 12;
+	    /* FALLTHROUGH */
     case MIDNIGHT:
 	    if (runtime.tm_hour >= hr) {
 		runtime.tm_mday++;
@@ -609,7 +613,7 @@ parsetime(int argc, char **argv)
 	    runtime.tm_hour = hr;
 	    runtime.tm_min = 0;
 	    token();
-	    /* FALLTHROUGH to month setting */
+	    /* FALLTHROUGH */
     default:
 	    month(&runtime);
 	    break;

@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/at/at.c,v 1.30 2007/09/21 01:55:11 kevlo Exp $
- * $DragonFly: src/usr.bin/at/at.c,v 1.9 2007/09/22 20:22:51 pavalos Exp $
  */
 
 #define _USE_BSD 1
@@ -804,7 +803,7 @@ main(int argc, char **argv)
 
 	case 'd':
 	    warnx("-d is deprecated; use -r instead");
-	    /* fall through to 'r' */
+	    /* FALLTHROUGH */
 
 	case 'r':
 	    if (program != AT)
