@@ -66,7 +66,7 @@ void tws_init_qs(struct tws_softc *sc);
             tws_trace(__FILE__, __func__, __LINE__, sc, desc, \
                                    (u_int64_t)val1, (u_int64_t)val2)
 #else
-    #define TWS_TRACE_DEBUG(sc, desc, val1, val2)
+    #define TWS_TRACE_DEBUG(sc, desc, val1, val2) do { } while (0)
 #endif
 
 #ifdef TWS_TRACE_ON
@@ -74,7 +74,7 @@ void tws_init_qs(struct tws_softc *sc);
             tws_trace(__FILE__, __func__, __LINE__, sc, desc, \
                                    (u_int64_t)val1, (u_int64_t)val2)
 #else
-    #define TWS_TRACE(sc, desc, val1, val2)
+    #define TWS_TRACE(sc, desc, val1, val2)	do { } while (0)
 #endif
 
 /* ---------------- logging ---------------- */

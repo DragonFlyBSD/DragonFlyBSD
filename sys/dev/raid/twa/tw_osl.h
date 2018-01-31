@@ -297,8 +297,8 @@ extern TW_INT32	TW_DEBUG_LEVEL_FOR_OSL;
 
 #else /* TW_OSL_DEBUG */
 
-#define tw_osli_dbg_dprintf(dbg_level, sc, fmt, args...)
-#define tw_osli_dbg_printf(dbg_level, fmt, args...)
+#define tw_osli_dbg_dprintf(dbg_level, sc, fmt, args...) do { } while (0)
+#define tw_osli_dbg_printf(dbg_level, fmt, args...)	do { } while (0)
 
 #endif /* TW_OSL_DEBUG */
 
