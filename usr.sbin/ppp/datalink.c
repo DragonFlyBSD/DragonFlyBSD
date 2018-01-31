@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/datalink.c,v 1.57.2.11 2002/09/01 02:12:26 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/datalink.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -758,12 +757,12 @@ datalink_LayerDown(void *v, struct fsm *fp)
         fsm2initial(&dl->physical->link.ccp.fsm);
         datalink_NewState(dl, DATALINK_LCP);  /* before parent TLD */
         (*dl->parent->LayerDown)(dl->parent->object, fp);
-        /* FALLTHROUGH (just in case) */
+        /* FALLTHROUGH */
 
       case DATALINK_CBCP:
         if (!dl->cbcp.required)
           cbcp_Down(&dl->cbcp);
-        /* FALLTHROUGH (just in case) */
+        /* FALLTHROUGH */
 
       case DATALINK_AUTH:
         timer_Stop(&dl->pap.authtimer);

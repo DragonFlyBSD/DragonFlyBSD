@@ -1657,7 +1657,7 @@ SetVariable(struct cmdargs const *arg)
       default:
         log_Printf(LogWARN, "Altering authname while at phase %s\n",
                    bundle_PhaseName(arg->bundle));
-        /* drop through */
+        /* FALLTHROUGH */
       case PHASE_DEAD:
       case PHASE_ESTABLISH:
         strncpy(arg->bundle->cfg.auth.name, argp,
