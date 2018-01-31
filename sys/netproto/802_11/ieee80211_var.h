@@ -1021,16 +1021,16 @@ void ieee80211_discard_mac(const struct ieee80211vap *,
 	const char *fmt, ...)
 	__printflike(4, 5);
 #else
-#define	IEEE80211_DPRINTF(_vap, _m, _fmt, ...)
-#define	IEEE80211_NOTE(_vap, _m, _ni, _fmt, ...)
-#define	IEEE80211_NOTE_FRAME(_vap, _m, _wh, _fmt, ...)
-#define	IEEE80211_NOTE_MAC(_vap, _m, _mac, _fmt, ...)
+#define	IEEE80211_DPRINTF(_vap, _m, _fmt, ...)		do { } while (0)
+#define	IEEE80211_NOTE(_vap, _m, _ni, _fmt, ...)	do { } while (0)
+#define	IEEE80211_NOTE_FRAME(_vap, _m, _wh, _fmt, ...)	do { } while (0)
+#define	IEEE80211_NOTE_MAC(_vap, _m, _mac, _fmt, ...)	do { } while (0)
 #define	ieee80211_msg_dumppkts(_vap)	0
 #define	ieee80211_msg(_vap, _m)		0
 
-#define	IEEE80211_DISCARD(_vap, _m, _wh, _type, _fmt, ...)
-#define	IEEE80211_DISCARD_IE(_vap, _m, _wh, _type, _fmt, ...)
-#define	IEEE80211_DISCARD_MAC(_vap, _m, _mac, _type, _fmt, ...)
+#define	IEEE80211_DISCARD(_vap, _m, _wh, _type, _fmt, ...) do { } while (0)
+#define	IEEE80211_DISCARD_IE(_vap, _m, _wh, _type, _fmt, ...) do { } while (0)
+#define	IEEE80211_DISCARD_MAC(_vap, _m, _mac, _type, _fmt, ...) do { } while (0)
 #endif
 
 #endif /* _NET80211_IEEE80211_VAR_H_ */

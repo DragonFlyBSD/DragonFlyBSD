@@ -211,8 +211,9 @@ do { \
 			/* inflate: Z_OK can indicate the end of decode */
 			if (mode && !p && zs.avail_out != 0)
 				goto terminate;
-			else
+			else {
 				; /* once more. */
+			}
 		} else {
 			if (zs.msg) {
 				ipseclog((LOG_ERR, "ipcomp_%scompress: "
@@ -249,8 +250,9 @@ do { \
 		else if (zerror == Z_OK) {
 			if (mode && zs.avail_out != 0)
 				goto terminate;
-			else
+			else {
 				; /* once more. */
+			}
 		} else {
 			if (zs.msg) {
 				ipseclog((LOG_ERR, "ipcomp_%scompress: "
