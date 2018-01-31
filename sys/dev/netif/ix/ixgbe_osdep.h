@@ -76,18 +76,18 @@
 	#define ERROR_REPORT2(S,A,B)    kprintf(S "\n",A,B)
 	#define ERROR_REPORT3(S,A,B,C)  kprintf(S "\n",A,B,C)
 #else
-	#define DEBUGOUT(S)
-	#define DEBUGOUT1(S,A)
-	#define DEBUGOUT2(S,A,B)
-	#define DEBUGOUT3(S,A,B,C)
-	#define DEBUGOUT4(S,A,B,C,D)
-	#define DEBUGOUT5(S,A,B,C,D,E)
-	#define DEBUGOUT6(S,A,B,C,D,E,F)
-	#define DEBUGOUT7(S,A,B,C,D,E,F,G)
+	#define DEBUGOUT(S)		do { } while (0)
+	#define DEBUGOUT1(S,A)		do { } while (0)
+	#define DEBUGOUT2(S,A,B)	do { } while (0)
+	#define DEBUGOUT3(S,A,B,C)	do { } while (0)
+	#define DEBUGOUT4(S,A,B,C,D)	do { } while (0)
+	#define DEBUGOUT5(S,A,B,C,D,E)	do { } while (0)
+	#define DEBUGOUT6(S,A,B,C,D,E,F) do { } while (0)
+	#define DEBUGOUT7(S,A,B,C,D,E,F,G) do { } while (0)
 
-	#define ERROR_REPORT1(S,A)
-	#define ERROR_REPORT2(S,A,B)
-	#define ERROR_REPORT3(S,A,B,C)
+	#define ERROR_REPORT1(S,A)	do { } while (0)
+	#define ERROR_REPORT2(S,A,B)	do { } while (0)
+	#define ERROR_REPORT3(S,A,B,C)	do { } while (0)
 #endif
 
 #define FALSE               0
