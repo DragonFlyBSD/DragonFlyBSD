@@ -991,6 +991,7 @@ device		nataraid	# support for ATA software RAID controllers
 # ATA_STATIC_ID:	controller numbering is static (like the old driver)
 #			else the device numbers are dynamically allocated.
 # ATA_NO_*:		leave out support for the specified controller brand
+#
 options 	ATA_STATIC_ID
 #options 	ATA_NO_ACARD
 #options 	ATA_NO_ACERLABS
