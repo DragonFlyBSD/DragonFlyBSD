@@ -38,8 +38,8 @@
 #include <linux/export.h>
 #include <linux/wait.h>
 
-#define TTM_ASSERT_LOCKED(param)
-#define TTM_DEBUG(fmt, arg...)
+#define TTM_ASSERT_LOCKED(param)	do { } while (0)
+#define TTM_DEBUG(fmt, arg...)		do { } while (0)
 #define TTM_BO_HASH_ORDER 13
 
 static int ttm_bo_setup_vm(struct ttm_buffer_object *bo);
