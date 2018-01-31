@@ -1030,6 +1030,7 @@ get_char(void)
 
     default:
 	chat_logf("warning: read() on stdin returned %d", status);
+	/* FALLTHROUGH */
 
     case -1:
 	if ((status = fcntl(0, F_GETFL, 0)) == -1)
@@ -1057,7 +1058,8 @@ static int put_char(int c)
 	
     default:
 	chat_logf("warning: write() on stdout returned %d", status);
-	
+	/* FALLTHROUGH */
+
     case -1:
 	if ((status = fcntl(0, F_GETFL, 0)) == -1)
 	    fatal(2, "Can't get file mode flags on stdin, %m");
