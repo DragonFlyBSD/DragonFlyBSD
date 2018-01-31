@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/truncate/truncate.c,v 1.6.2.1 2000/08/04 08:05:52 sheldonh Exp $
- * $DragonFly: src/usr.bin/truncate/truncate.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
  */
 
 #include <sys/stat.h>
@@ -158,6 +157,7 @@ parselength(char *ls, off_t *sz)
 	switch (*ls) {
 	case '-':
 		lsign = -1;
+		/* FALLTHROUGH */
 	case '+':
 		ls++;
 	}
@@ -173,12 +173,18 @@ parselength(char *ls, off_t *sz)
 	}
 
 	switch (*ls) {
+	case 'T':
+		oflow = length * 1024;
+		ASSIGN_CHK_OFLOW(oflow, length);
+		/* FALLTHROUGH */
 	case 'G':
 		oflow = length * 1024;
 		ASSIGN_CHK_OFLOW(oflow, length);
+		/* FALLTHROUGH */
 	case 'M':
 		oflow = length * 1024;
 		ASSIGN_CHK_OFLOW(oflow, length);
+		/* FALLTHROUGH */
 	case 'K':
 		if (ls[1] != '\0')
 			return -1;
@@ -198,7 +204,7 @@ static void
 usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
-	    "usage: truncate [-c] -s [+|-]size[K|M|G] file ...",
+	    "usage: truncate [-c] -s [+|-]size[K|M|G|T] file ...",
 	    "       truncate [-c] -r rfile file ...");
 	exit(EXIT_FAILURE);
 }
