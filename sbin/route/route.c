@@ -93,10 +93,10 @@ static uid_t	uid;
 
 static void	 flushroutes(int, char **);
 static void	 set_metric(char *, int);
-static void	 newroute(int, char **);
+static void	 newroute(int, char **) __dead2;
 static void	 inet_makenetandmask(u_long, struct sockaddr_in *, u_long);
 static void	 interfaces(void);
-static void	 monitor(void);
+static void	 monitor(void) __dead2;
 static void	 sockaddr(const char *, struct sockaddr *);
 static void	 sodump(sup, const char *);
 static void	 bprintf(FILE *, int, u_char *);
