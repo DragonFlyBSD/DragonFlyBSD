@@ -146,6 +146,7 @@ command_help(int argc, char *argv[])
     switch(argc) {
     case 3:
 	subtopic = strdup(argv[2]);
+	/* FALLTHROUGH */
     case 2:
 	topic = strdup(argv[1]);
 	break;
