@@ -105,8 +105,8 @@ extern vm_paddr_t Maxmem;	/* Highest physical memory address in system */
 					__FILE__, __LINE__); } while (0)
 #define __debugvar
 #else
-#define	KASSERT(exp,msg)
-#define	KKASSERT(exp)
+#define	KASSERT(exp,msg)	do { } while (0)
+#define	KKASSERT(exp)		do { } while (0)
 #define __debugvar		__attribute__((__unused__))
 #endif
 
