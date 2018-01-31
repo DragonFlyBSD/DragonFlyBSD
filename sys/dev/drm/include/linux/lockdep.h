@@ -33,6 +33,6 @@ lockdep_assert_held(struct lock *l)
 	/* XXX: This function does nothing */
 }
 
-#define might_lock(lock)
+#define might_lock(lock) do { } while (0)
 
 #endif	/* _LINUX_LOCKDEP_H_ */
