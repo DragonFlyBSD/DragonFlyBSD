@@ -120,11 +120,11 @@ prlongname(char *buf)
 static char **
 process(const char *cap, const char *str, char **argv)
 {
-	static char errfew[] =
+	static const char errfew[] =
 	    "not enough arguments (%d) for capability `%s'";
-	static char errmany[] =
+	static const char errmany[] =
 	    "too many arguments (%d) for capability `%s'";
-	static char erresc[] =
+	static const char erresc[] =
 	    "unknown %% escape `%c' for capability `%s'";
 	const char *cp;
 	int arg_need, arg_rows, arg_cols;
@@ -153,6 +153,7 @@ process(const char *cap, const char *str, char **argv)
 					cp++;
 					break;
 				    }
+				    /* FALLTHROUGH */
 			    default:
 				/*
 				 * hpux has lot's of them, but we complain
