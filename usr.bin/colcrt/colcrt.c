@@ -144,6 +144,7 @@ main(int argc, char *argv[])
 				outcol &= ~7;
 				outcol--;
 				c = ' ';
+				/* FALLTHROUGH */
 			default:
 				if ((w = wcwidth(c)) <= 0)
 					w = 1;	/* XXX */
