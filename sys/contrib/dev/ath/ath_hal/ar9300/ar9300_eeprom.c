@@ -1713,7 +1713,7 @@ HAL_BOOL ar9300_ant_ctrl_apply(struct ath_hal *ah, HAL_BOOL is_2ghz)
     if ( AR_SREV_POSEIDON(ah) && (ahp->ah_lna_div_use_bt_ant_enable == TRUE) ) {
         value &= ~AR_SWITCH_TABLE_COM2_ALL;
         value |= ah->ah_config.ath_hal_ant_ctrl_comm2g_switch_enable;
-	HALDEBUG(ah, HAL_DEBUG_RESET, "%s: com2=0x%08x\n", __func__, value)
+	HALDEBUG(ah, HAL_DEBUG_RESET, "%s: com2=0x%08x\n", __func__, value);
     }
 #endif  /* ATH_ANT_DIV_COMB */
     OS_REG_RMW_FIELD(ah, AR_PHY_SWITCH_COM_2, AR_SWITCH_TABLE_COM2_ALL, value);
@@ -1820,7 +1820,7 @@ HAL_BOOL ar9300_ant_ctrl_apply(struct ath_hal *ah, HAL_BOOL is_2ghz)
              * This will not affect HB125 LNA diversity feature.
              */
 	     HALDEBUG(ah, HAL_DEBUG_RESET, "%s: com2=0x%08x\n", __func__,
-	         ah->ah_config.ath_hal_ant_ctrl_comm2g_switch_enable)
+	         ah->ah_config.ath_hal_ant_ctrl_comm2g_switch_enable);
             OS_REG_RMW_FIELD(ah, AR_PHY_SWITCH_COM_2, AR_SWITCH_TABLE_COM2_ALL, 
                 ah->ah_config.ath_hal_ant_ctrl_comm2g_switch_enable);
             break;

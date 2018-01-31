@@ -642,12 +642,12 @@ extern	int ath_hal_debug;	/* Global debug flags */
 		      ((struct ath_hal *) (_ah))->ah_config.ah_debug & (__m))) {	\
 			DO_HALDEBUG((_ah), (__m), __VA_ARGS__);	\
 		}						\
-	} while(0);
+	} while(0)
 
 extern	void DO_HALDEBUG(struct ath_hal *ah, u_int mask, const char* fmt, ...)
 	__printflike(3,4);
 #else
-#define HALDEBUG(_ah, __m, ...)
+#define HALDEBUG(_ah, __m, ...)	do { } while (0)
 #endif /* AH_DEBUG */
 
 /*
