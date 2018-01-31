@@ -343,10 +343,6 @@ SYSCTL_DECL(_hw_drm);
 
 #define DRM_SYSCTL_HANDLER_ARGS	(SYSCTL_HANDLER_ARGS)
 
-typedef void			irqreturn_t;
-#define IRQ_HANDLED		/* nothing */
-#define IRQ_NONE		/* nothing */
-
 #define drm_get_device_from_kdev(_kdev) (_kdev->si_drv1)
 
 #define DRM_MTRR_WC		MDF_WRITECOMBINE

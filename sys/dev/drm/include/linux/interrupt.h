@@ -29,8 +29,9 @@
 
 #include <linux/kernel.h>
 #include <linux/bitops.h>
-#include <linux/irqflags.h>
+#include <linux/irqreturn.h>
 #include <linux/hardirq.h>
+#include <linux/irqflags.h>
 #include <linux/hrtimer.h>
 #include <linux/kref.h>
 
