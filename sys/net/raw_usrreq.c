@@ -139,8 +139,9 @@ raw_ctlinput(netmsg_t msg)
 {
 	int error = 0;
 
-	if (msg->ctlinput.nm_cmd < 0 || msg->ctlinput.nm_cmd > PRC_NCMDS)
-		;
+	if (msg->ctlinput.nm_cmd < 0 || msg->ctlinput.nm_cmd > PRC_NCMDS) {
+		; /* no-op */
+	}
 	lwkt_replymsg(&msg->lmsg, error);
 }
 

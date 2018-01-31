@@ -81,7 +81,7 @@ SYSCTL_INT(_debug, OID_AUTO, lock_test_mode, CTLFLAG_RW,
 #ifdef DEBUG_LOCKS
 #define COUNT(td, x) (td)->td_locks += (x)
 #else
-#define COUNT(td, x)
+#define COUNT(td, x) do { } while (0)
 #endif
 
 /*

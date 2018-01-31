@@ -220,8 +220,8 @@ SYSCTL_DECL(_debug_ktr);
 #define KTR_INFO_MASTER(master)
 #define KTR_INFO_MASTER_EXTERN(master)
 #define KTR_INFO(compile, master, name, maskbit, format, ...)
-#define KTR_LOG(info, args...)
-#define KTR_COND_LOG(info, args...)
+#define KTR_LOG(info, args...)		do { } while (0)
+#define KTR_COND_LOG(info, args...)	do { } while (0)
 
 #endif
 
