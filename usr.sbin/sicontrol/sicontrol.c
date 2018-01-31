@@ -306,6 +306,7 @@ rxint(int ac, char **av)
 	switch (ac) {
 	case 0:
 		printf("%s: ", Devname);
+		/* FALLTHROUGH */
 	case -1:
 		if (ioctl(ctlfd, TCSIGRXIT, &tc) < 0)
 			err(1, "TCSIGRXIT");
@@ -332,6 +333,7 @@ txint(int ac, char **av)
 	switch (ac) {
 	case 0:
 		printf("%s: ", Devname);
+		/* FALLTHROUGH */
 	case -1:
 		if (ioctl(ctlfd, TCSIGIT, &tc) < 0)
 			err(1, "TCSIGIT");
@@ -353,6 +355,7 @@ mstate(int ac, char **av __unused)
 	switch (ac) {
 	case 0:
 		printf("%s: ", Devname);
+		/* FALLTHROUGH */
 	case -1:
 		break;
 	default:
