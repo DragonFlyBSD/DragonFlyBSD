@@ -233,7 +233,7 @@ void HPTLIBAPI fShutdownVDev(PVDevice pVDev);
 void HPTLIBAPI fResetVBus(_VBUS_ARG0);
 void HPTLIBAPI fCompleteAllCommandsSynchronously(PVBus _vbus_p);
 
-#define RegisterVDevice(pVDev)
+#define RegisterVDevice(pVDev)	do { } while (0)
 #define OsRegisterDevice(pVDev)
 #define OsUnregisterDevice(pVDev)
 

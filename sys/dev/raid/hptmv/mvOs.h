@@ -142,11 +142,11 @@ extern int hpt_dbg_level;
 #define KdPrintE(_x_) do{ if (hpt_dbg_level>0) kprintf _x_; }while(0)
 #define KdPrint(x) KdPrintI(x)
 #else
-#define HPT_ASSERT(x)
-#define KdPrint(x)
-#define KdPrintI(x)
-#define KdPrintW(x)
-#define KdPrintE(x)
+#define HPT_ASSERT(x)	do { } while (0)
+#define KdPrint(x)	do { } while (0)
+#define KdPrintI(x)	do { } while (0)
+#define KdPrintW(x)	do { } while (0)
+#define KdPrintE(x)	do { } while (0)
 #endif
 
 #endif

@@ -230,8 +230,8 @@ void __os_dbgbreak(const char *file, int line);
 void os_check_stack(const char *location, int size);
 #define HPT_CHECK_STACK(size) os_check_stack(__func__, (size))
 #else
-#define KdPrint(x)
-#define HPT_ASSERT(x)
+#define KdPrint(x)	do { } while (0)
+#define HPT_ASSERT(x)	do { } while (0)
 #define HPT_CHECK_STACK(size)
 #endif
 

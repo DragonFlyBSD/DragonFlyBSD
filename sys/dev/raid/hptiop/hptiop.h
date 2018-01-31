@@ -36,7 +36,7 @@
 int hpt_iop_dbg_level = 0;
 #define KdPrint(x)  do { if (hpt_iop_dbg_level) kprintf x; } while (0)
 #else
-#define KdPrint(x)
+#define KdPrint(x)	do { } while (0)
 #endif
 
 #define HPT_SRB_MAX_REQ_SIZE                600

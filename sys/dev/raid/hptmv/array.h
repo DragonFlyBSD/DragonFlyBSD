@@ -247,7 +247,9 @@ void HPTLIBAPI fFixRAID01Stripe(_VBUS_ARG PVDevice pStripe);
 	ZeroMemory(pVArray, ARRAY_VDEV_SIZE); \
 		_SET_ARRAY_BUS_(pVArray) \
 		_SET_ARRAY_VER_(pVArray) \
-    } else
+	} else { \
+		/* no-op */ \
+	}
 
 #define mArFreeArrayTable(pVArray) \
 	do { \
