@@ -1061,6 +1061,7 @@ show_ipfw(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 
 		case O_IP_DSTPORT:
 			show_prerequisites(&flags, HAVE_IP, 0);
+			/* FALLTHROUGH */
 		case O_IP_SRCPORT:
 			show_prerequisites(&flags, HAVE_PROTO|HAVE_SRCIP, 0);
 			if ((cmd->len & F_OR) && !or_block)
