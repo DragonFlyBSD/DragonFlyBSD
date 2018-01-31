@@ -32,13 +32,13 @@
 #include <asm/bug.h>
 #include <linux/compiler.h>
 
-#define	BUILD_BUG_ON(CONDITION)	CTASSERT(!(CONDITION))
+#define	BUILD_BUG_ON(x)	CTASSERT(!(x))
 
 #define	BUILD_BUG_ON_NOT_POWER_OF_2(n)			      \
 	CTASSERT(((n) != 0) && (((n) & ((n) - 1)) == 0))
 
-#define BUILD_BUG()	BUILD_BUG_ON(1)
+#define	BUILD_BUG()	BUILD_BUG_ON(1)
 
-#define BUILD_BUG_ON_MSG(cond, msg)
+#define	BUILD_BUG_ON_MSG(cond, msg)	do { } while (0)
 
 #endif /* LINUX_BUG_H */
