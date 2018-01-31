@@ -1258,10 +1258,12 @@ findinode(struct s_spcl *header)
 		case TS_TAPE:
 			panic("unexpected tape header\n");
 			/* NOTREACHED */
+			exit(1); /* hint for a compiler */
 
 		default:
 			panic("unknown tape header type %d\n", spcl.c_type);
 			/* NOTREACHED */
+			exit(1); /* hint for a compiler */
 
 		}
 	} while (htype == TS_ADDR);

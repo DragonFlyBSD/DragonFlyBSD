@@ -174,6 +174,7 @@ loop:
 	case 'h':
 		if (strncmp(cmd, "help", strlen(cmd)) != 0)
 			goto bad;
+		/* FALLTHROUGH */
 	case '?':
 		fprintf(stderr, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
 			"Available commands are:\n",
