@@ -1792,7 +1792,7 @@ dm_setup(const char *mapname, struct tcplay_info *info)
 
 			/*  /dev/ad0s0a              0 */
 			/* dev---^       block off --^ */
-			snprintf(params, 512, "%s 0", dev);
+			snprintf(params, 512, "%.88s 0", dev);
 
 			if ((dm_task_add_target(dmt, 0,
 				INFO_TO_DM_BLOCKS(info, offset),
@@ -1807,7 +1807,7 @@ dm_setup(const char *mapname, struct tcplay_info *info)
 
 		/* aes-cbc-essiv:sha256 7997f8af... 0 /dev/ad0s0a 8 <opts> */
 		/*			   iv off---^  block off--^ <opts> */
-		snprintf(params, 512, "%s %s %"PRIu64 " %s %"PRIu64 " %s",
+		snprintf(params, 512, "%s %s %"PRIu64 " %.88s %"PRIu64 " %s",
 		    cipher_chain->cipher->dm_crypt_str, cipher_chain->dm_key,
 		    (uint64_t)INFO_TO_DM_BLOCKS(info, skip), dev,
 		    (uint64_t)offset,

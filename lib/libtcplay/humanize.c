@@ -91,18 +91,25 @@ _dehumanize_number(const char *buf, uint64_t *dest)
 	switch (tolower(buf[len-1])) {
 	case 'y':
 		multiplier *= 1024;
+		/* FALLTHROUGH */
 	case 'z':
 		multiplier *= 1024;
+		/* FALLTHROUGH */
 	case 'e':
 		multiplier *= 1024;
+		/* FALLTHROUGH */
 	case 'p':
 		multiplier *= 1024;
+		/* FALLTHROUGH */
 	case 't':
 		multiplier *= 1024;
+		/* FALLTHROUGH */
 	case 'g':
 		multiplier *= 1024;
+		/* FALLTHROUGH */
 	case 'm':
 		multiplier *= 1024;
+		/* FALLTHROUGH */
 	case 'k':
 		multiplier *= 1024;
 		break;
