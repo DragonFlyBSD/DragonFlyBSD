@@ -41,7 +41,9 @@
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_plane_helper.h>
 #include <drm/drm_rect.h>
+#include <linux/dma_remapping.h>
 #include <linux/reservation.h>
+#include <linux/dma-buf.h>
 
 /* Primary plane formats for gen <= 3 */
 static const uint32_t i8xx_primary_formats[] = {

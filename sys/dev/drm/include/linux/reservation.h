@@ -40,11 +40,14 @@
 #define _LINUX_RESERVATION_H
 
 #include <linux/ww_mutex.h>
+#include <linux/fence.h>
+#include <linux/rcupdate.h>
 
 extern struct ww_class reservation_ww_class;
 
 struct reservation_object {
 	struct ww_mutex lock;
+	struct fence *fence_excl;
 };
 
 #endif /* _LINUX_RESERVATION_H */
