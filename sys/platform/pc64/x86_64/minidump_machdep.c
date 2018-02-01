@@ -60,7 +60,7 @@ CTASSERT(sizeof(struct kerneldumpheader) == 512);
 extern uint64_t KPDPphys;
 
 uint64_t *vm_page_dump;
-int vm_page_dump_size;
+vm_offset_t vm_page_dump_size;
 
 static struct kerneldumpheader kdh;
 static off_t dumplo;
@@ -183,18 +183,33 @@ void
 minidumpsys(struct dumperinfo *di)
 {
 	uint64_t dumpsize;
-	uint32_t ptesize;
+	uint64_t ptesize;
 	vm_offset_t va;
 	vm_offset_t kern_end;
 	int error;
 	uint64_t bits;
 	uint64_t *pdp, *pd, *pt, pa;
 	int i, j, k, bit;
-	struct minidumphdr mdhdr;
+	int kpdp, klo, khi;
+	int lpdp = -1;
+	long lpdpttl = 0;
+	struct minidumphdr2 mdhdr;
 	struct mdglobaldata *md;
 
 	cnpoll(TRUE);
 	counter = 0;
+
+	/*
+	 * minidump page table format is an array of PD entries (1GB pte's),
+	 * representing the entire user and kernel virtual address space
+	 * (256TB).
+	 *
+	 * However, we will only dump the KVM portion of this space.  And we
+	 * only copy the PDP pages for direct access, the PD and PT pages
+	 * will be included in the dump as part of the physical map.
+	 */
+	ptesize = NPML4EPG * NPDPEPG * 8;
+
 	/*
 	 * Walk page table pages, set bits in vm_page_dump.
 	 *
@@ -203,8 +218,6 @@ minidumpsys(struct dumperinfo *di)
 	 *	 all the way to the end of the address space might
 	 *	 overflow the loop variable.
 	 */
-	ptesize = 0;
-
 	md = (struct mdglobaldata *)globaldata_find(0);
 
 	kern_end = KvaEnd;
@@ -220,18 +233,45 @@ minidumpsys(struct dumperinfo *di)
 			break;
 
 		/*
-		 * We always write a page, even if it is zero. Each
-		 * page written corresponds to 2MB of space
+		 * KPDPphys[] is relative to VM_MIN_KERNEL_ADDRESS. It
+		 * contains NKPML4E PDP pages (so we can get to all kernel
+		 * PD entries from this array).
 		 */
-		i = (va >> PDPSHIFT) & ((1ul << NPDPEPGSHIFT) - 1);
-		ptesize += PAGE_SIZE;
+		i = ((va - VM_MIN_KERNEL_ADDRESS) >> PDPSHIFT) &
+		    (NPML4EPG * NPDPEPG - 1);
+		if (i != lpdp) {
+			if (lpdpttl) {
+				kprintf("pdp %04x ttl %jdMB\n",
+					lpdp, (intmax_t)lpdpttl / 1024 / 1024);
+			}
+			lpdp = i;
+			lpdpttl = 0;
+		}
+
+		/*
+		 * Calculate the PD index in the PDP.  Each PD represents 1GB.
+		 * KVA space can cover multiple PDP pages.  The PDP array
+		 * has been initialized for the entire kernel address space.
+		 *
+		 * We include the PD entries in the PDP in the dump
+		 */
+		i = ((va - VM_MIN_KERNEL_ADDRESS) >> PDPSHIFT) &
+		    (NPML4EPG * NPDPEPG - 1);
 		if ((pdp[i] & kernel_pmap.pmap_bits[PG_V_IDX]) == 0)
 			continue;
+
+		/*
+		 * Add the PD page from the PDP to the dump
+		 */
+		dump_add_page(pdp[i] & PG_FRAME);
+		lpdpttl += PAGE_SIZE;
+
 		pd = (uint64_t *)PHYS_TO_DMAP(pdp[i] & PG_FRAME);
 		j = ((va >> PDRSHIFT) & ((1ul << NPDEPGSHIFT) - 1));
 		if ((pd[j] & (kernel_pmap.pmap_bits[PG_PS_IDX] | kernel_pmap.pmap_bits[PG_V_IDX])) ==
 		    (kernel_pmap.pmap_bits[PG_PS_IDX] | kernel_pmap.pmap_bits[PG_V_IDX]))  {
 			/* This is an entire 2M page. */
+			lpdpttl += PAGE_SIZE * NPTEPG;
 			pa = pd[j] & PG_PS_FRAME;
 			for (k = 0; k < NPTEPG; k++) {
 				if (is_dumpable(pa))
@@ -240,12 +280,21 @@ minidumpsys(struct dumperinfo *di)
 			}
 			continue;
 		}
-		if ((pd[j] & kernel_pmap.pmap_bits[PG_V_IDX]) == kernel_pmap.pmap_bits[PG_V_IDX]) {
+		if ((pd[j] & kernel_pmap.pmap_bits[PG_V_IDX]) ==
+		    kernel_pmap.pmap_bits[PG_V_IDX]) {
+			/*
+			 * Add the PT page from the PD to the dump (it is no
+			 * longer included in the ptemap.
+			 */
+			dump_add_page(pd[j] & PG_FRAME);
+			lpdpttl += PAGE_SIZE;
+
 			/* set bit for each valid page in this 2MB block */
 			pt = (uint64_t *)PHYS_TO_DMAP(pd[j] & PG_FRAME);
 			for (k = 0; k < NPTEPG; k++) {
 				if ((pt[k] & kernel_pmap.pmap_bits[PG_V_IDX]) == kernel_pmap.pmap_bits[PG_V_IDX]) {
 					pa = pt[k] & PG_FRAME;
+					lpdpttl += PAGE_SIZE;
 					if (is_dumpable(pa))
 						dump_add_page(pa);
 				}
@@ -255,10 +304,16 @@ minidumpsys(struct dumperinfo *di)
 		}
 	}
 
+	if (lpdpttl) {
+		kprintf("pdp %04x ttl %jdMB\n",
+			lpdp, (intmax_t)lpdpttl / 1024 / 1024);
+	}
+
 	/* Calculate dump size. */
 	dumpsize = ptesize;
 	dumpsize += round_page(msgbufp->msg_size);
 	dumpsize += round_page(vm_page_dump_size);
+
 	for (i = 0; i < vm_page_dump_size / sizeof(*vm_page_dump); i++) {
 		bits = vm_page_dump[i];
 		while (bits) {
@@ -286,8 +341,8 @@ minidumpsys(struct dumperinfo *di)
 
 	/* Initialize mdhdr */
 	bzero(&mdhdr, sizeof(mdhdr));
-	strcpy(mdhdr.magic, MINIDUMP_MAGIC);
-	mdhdr.version = MINIDUMP_VERSION;
+	strcpy(mdhdr.magic, MINIDUMP2_MAGIC);
+	mdhdr.version = MINIDUMP2_VERSION;
 	mdhdr.msgbufsize = msgbufp->msg_size;
 	mdhdr.bitmapsize = vm_page_dump_size;
 	mdhdr.ptesize = ptesize;
@@ -296,7 +351,7 @@ minidumpsys(struct dumperinfo *di)
 	mdhdr.dmapend = DMAP_MAX_ADDRESS;
 
 	mkdumpheader(&kdh, KERNELDUMPMAGIC, KERNELDUMP_AMD64_VERSION,
-	    dumpsize, di->blocksize);
+		     dumpsize, di->blocksize);
 
 	kprintf("Physical memory: %jd MB\n", (intmax_t)ptoa(physmem) / 1048576);
 	kprintf("Dumping %jd MB:", (intmax_t)dumpsize >> 20);
@@ -308,9 +363,9 @@ minidumpsys(struct dumperinfo *di)
 	dumplo += sizeof(kdh);
 
 	/* Dump my header */
-	bzero(&fakept, sizeof(fakept));
-	bcopy(&mdhdr, &fakept, sizeof(mdhdr));
-	error = blk_write(di, (char *)&fakept, 0, PAGE_SIZE);
+	bzero(fakept, sizeof(fakept));
+	bcopy(&mdhdr, fakept, sizeof(mdhdr));
+	error = blk_write(di, (char *)fakept, 0, PAGE_SIZE);
 	if (error)
 		goto fail;
 
@@ -324,63 +379,38 @@ minidumpsys(struct dumperinfo *di)
 	if (error)
 		goto fail;
 
-	/* Dump kernel page table pages */
+	/*
+	 * Dump a full PDP array for the entire KVM space, user and kernel.
+	 * This is 512*512 1G PD entries (512*512*8 = 2MB).
+	 *
+	 * The minidump only dumps PD entries related to KVA space.  Also
+	 * note that pdp[] (aka KPDPphys[]) only covers VM_MIN_KERNEL_ADDRESS
+	 * to VM_MAX_KERNEL_ADDRESS.
+	 *
+	 * The actual KPDPphys[] array covers a KVA space starting at KVA
+	 * KPDPPHYS_KVA.
+	 *
+	 * By dumping a PDP[] array of PDs representing the entire virtual
+	 * address space we can expand what we dump in the future.
+	 */
 	pdp = (uint64_t *)PHYS_TO_DMAP(KPDPphys);
-	for (va = VM_MIN_KERNEL_ADDRESS; va < kern_end; va += NBPDR) {
-		/*
-		 * The loop probably overflows a 64-bit int due to NBPDR.
-		 */
-		if (va < VM_MIN_KERNEL_ADDRESS)
-			break;
+	kpdp = (KPDPPHYS_KVA >> PDPSHIFT) &
+		    (NPML4EPG * NPDPEPG - 1);
+	klo = (int)(VM_MIN_KERNEL_ADDRESS >> PDPSHIFT) &
+		    (NPML4EPG * NPDPEPG - 1);
+	khi = (int)(VM_MAX_KERNEL_ADDRESS >> PDPSHIFT) &
+		    (NPML4EPG * NPDPEPG - 1);
 
-		/*
-		 * We always write a page, even if it is zero
-		 */
-		i = (va >> PDPSHIFT) & ((1ul << NPDPEPGSHIFT) - 1);
-		if ((pdp[i] & kernel_pmap.pmap_bits[PG_V_IDX]) == 0) {
-			bzero(fakept, sizeof(fakept));
-			error = blk_write(di, (char *)&fakept, 0, PAGE_SIZE);
-			if (error)
-				goto fail;
-			/* flush, in case we reuse fakept in the same block */
-			error = blk_flush(di);
-			if (error)
-				goto fail;
-			continue;
-		}
-		pd = (uint64_t *)PHYS_TO_DMAP(pdp[i] & PG_FRAME);
-		j = ((va >> PDRSHIFT) & ((1ul << NPDEPGSHIFT) - 1));
-		if ((pd[j] & (kernel_pmap.pmap_bits[PG_PS_IDX] | kernel_pmap.pmap_bits[PG_V_IDX])) ==
-		    (kernel_pmap.pmap_bits[PG_PS_IDX] | kernel_pmap.pmap_bits[PG_V_IDX]))  {
-			/* This is a single 2M block. Generate a fake PTP */
-			pa = pd[j] & PG_PS_FRAME;
-			for (k = 0; k < NPTEPG; k++) {
-				fakept[k] = (pa + (k * PAGE_SIZE)) |
-				    kernel_pmap.pmap_bits[PG_V_IDX] |
-				    kernel_pmap.pmap_bits[PG_RW_IDX] |
-				    kernel_pmap.pmap_bits[PG_A_IDX] |
-				    kernel_pmap.pmap_bits[PG_M_IDX];
-			}
-			error = blk_write(di, (char *)&fakept, 0, PAGE_SIZE);
-			if (error)
-				goto fail;
-			/* flush, in case we reuse fakept in the same block */
-			error = blk_flush(di);
-			if (error)
-				goto fail;
-			continue;
-		}
-		if ((pd[j] & kernel_pmap.pmap_bits[PG_V_IDX]) == kernel_pmap.pmap_bits[PG_V_IDX]) {
-			pt = (uint64_t *)PHYS_TO_DMAP(pd[j] & PG_FRAME);
-			error = blk_write(di, (char *)pt, 0, PAGE_SIZE);
-			if (error)
-				goto fail;
+	for (i = 0; i < NPML4EPG * NPDPEPG; ++i) {
+		if (i < klo || i > khi) {
+			fakept[i & (NPDPEPG - 1)] = 0;
 		} else {
-			bzero(fakept, sizeof(fakept));
-			error = blk_write(di, (char *)&fakept, 0, PAGE_SIZE);
+			fakept[i & (NPDPEPG - 1)] = pdp[i - kpdp];
+		}
+		if ((i & (NPDPEPG - 1)) == (NPDPEPG - 1)) {
+			error = blk_write(di, (char *)fakept, 0, PAGE_SIZE);
 			if (error)
 				goto fail;
-			/* flush, in case we reuse fakept in the same block */
 			error = blk_flush(di);
 			if (error)
 				goto fail;

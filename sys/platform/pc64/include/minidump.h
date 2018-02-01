@@ -29,15 +29,31 @@
 #ifndef	_MACHINE_MINIDUMP_H_
 #define	_MACHINE_MINIDUMP_H_ 1
 
-#define	MINIDUMP_MAGIC		"minidump FreeBSD/amd64"
-#define	MINIDUMP_VERSION	1
+#define	MINIDUMP1_MAGIC		"minidump FreeBSD/amd64"
+#define	MINIDUMP1_VERSION	1
 
-struct minidumphdr {
+struct minidumphdr1 {
 	char magic[24];
 	uint32_t version;
 	uint32_t msgbufsize;
 	uint32_t bitmapsize;
-	uint32_t ptesize;
+	uint32_t ptesize;	/* 2-level page table */
+	uint64_t kernbase;
+	uint64_t dmapbase;
+	uint64_t dmapend;
+};
+
+#define	MINIDUMP2_MAGIC		"minidump DFlyBSD/x86-64"
+#define	MINIDUMP2_VERSION	2
+
+struct minidumphdr2 {
+	char magic[24];
+	uint32_t version;
+	uint32_t unused01;
+
+	uint64_t msgbufsize;
+	uint64_t bitmapsize;
+	uint64_t ptesize;	/* 4-level page table */
 	uint64_t kernbase;
 	uint64_t dmapbase;
 	uint64_t dmapend;
