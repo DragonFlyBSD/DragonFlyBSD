@@ -39,13 +39,16 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
+#include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/syslog.h>
 #include <sys/rman.h>
+#include <sys/kbio.h>
 
 #include <machine/clock.h>
 
 #include "atkbdcreg.h"
+#include "kbdreg.h"
 
 #include <bus/isa/isareg.h>
 
@@ -140,6 +143,24 @@ atkbdc_attach_unit(int unit, atkbdc_softc_t *sc, struct resource *port0,
 			    rman_get_bushandle(port1));
 }
 
+extern int acpi_fadt_8042_nolegacy;
+int kicked_by_syscons = 0;
+
+static void
+atkbdc_fadt_done(void)
+{
+	if (kicked_by_syscons) {
+		/*
+		 * Configuring all keyboards is fine, because only atkbd
+		 * really does something here, anyway.
+		 */
+		kbd_configure(KB_CONF_PROBE_ONLY);
+	}
+}
+
+/* After fadt_probe in platform/pc64/acpica/acpi_fadt.c. */
+SYSINIT(atkbdc_kick, SI_BOOT2_PRESMP, SI_ORDER_THIRD, atkbdc_fadt_done, 0);
+
 /* the backdoor to the keyboard controller! XXX */
 int
 atkbdc_configure(void)
@@ -152,6 +173,10 @@ atkbdc_configure(void)
 #if defined(__x86_64__)
 	int i;
 #endif
+
+	kicked_by_syscons = 1;
+	if (acpi_fadt_8042_nolegacy != 0)
+		return ENXIO;
 
 	port0 = IO_KBD;
 	resource_int_value("atkbdc", 0, "port", &port0);

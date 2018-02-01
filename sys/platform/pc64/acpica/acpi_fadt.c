@@ -74,6 +74,9 @@ static const struct acpi_sci_mode acpi_sci_modes[] = {
 	{ INTR_TRIGGER_CONFORM,	INTR_POLARITY_CONFORM }
 };
 
+/* Defaulting to 1, to stop atkbdc from being configured early, via cninit() */
+int acpi_fadt_8042_nolegacy = 1;
+
 static void
 fadt_probe(void)
 {
@@ -86,6 +89,7 @@ fadt_probe(void)
 
 	fadt_paddr = sdt_search(ACPI_SIG_FADT);
 	if (fadt_paddr == 0) {
+		acpi_fadt_8042_nolegacy = 0;
 		kprintf("fadt_probe: can't locate FADT\n");
 		return;
 	}
@@ -102,9 +106,18 @@ fadt_probe(void)
 	}
 
 	if (fadt->Header.Length < ACPI_FADT_V1_SIZE) {
+		acpi_fadt_8042_nolegacy = 0;
 		kprintf("fadt_probe: invalid FADT length %u (< %u)\n",
 		    fadt->Header.Length, ACPI_FADT_V1_SIZE);
 		goto back;
+	}
+
+	if (fadt->Header.Length >= ACPI_FADT_V3_SIZE &&
+	    fadt->Header.Revision >= 3) {
+		if ((fadt->BootFlags & ACPI_FADT_8042) != 0)
+			acpi_fadt_8042_nolegacy = 0;
+	} else {
+		acpi_fadt_8042_nolegacy = 0;
 	}
 
 	kgetenv_int("hw.acpi.sci.enabled", &enabled);

@@ -101,9 +101,12 @@ static struct isa_pnp_id atkbdc_ids[] = {
 	{ 0 }
 };
 
+extern int acpi_fadt_8042_nolegacy;
+
 static int
 atkbdc_probe(device_t dev)
 {
+	device_t parent = device_get_parent(dev);
 	struct resource	*port0;
 	struct resource	*port1;
 	int		error;
@@ -114,8 +117,22 @@ atkbdc_probe(device_t dev)
 	volatile int	i;
 #endif
 
+	if (strcmp(device_get_name(parent), "acpi") != 0 &&
+	    acpi_fadt_8042_nolegacy != 0) {
+		device_t acpidev = devclass_find_unit("acpi", 0);
+
+		/*
+		 * If acpi didn't attach, we should go ahead with the legacy
+		 * i8042 probing.
+		 */
+		if (acpidev != NULL && device_is_attached(acpidev)) {
+			/* We should find i8042 via the ACPI namespace. */
+			return ENXIO;
+		}
+	}
+
 	/* check PnP IDs */
-	if (ISA_PNP_PROBE(device_get_parent(dev), dev, atkbdc_ids) == ENXIO)
+	if (ISA_PNP_PROBE(parent, dev, atkbdc_ids) == ENXIO)
 		return ENXIO;
 
 	device_set_desc(dev, "Keyboard controller (i8042)");
