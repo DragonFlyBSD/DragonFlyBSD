@@ -15,7 +15,7 @@ CFLAGS+= -pthread
 LDADD=	-ldmsg -lm -lutil
 DPADD=	${LIBDMSG} ${LIBM} ${LIBUTIL}
 
-DPADD+=		${LIBRECRYPTO}
+DPADD+=		${LIBCRYPTO}
 LDADD+=		-lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include

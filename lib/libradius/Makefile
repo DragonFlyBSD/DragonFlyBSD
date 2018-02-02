@@ -28,7 +28,7 @@ LIB=		radius
 SRCS=		radlib.c
 INCS=		radlib.h radlib_vs.h
 
-DPADD=		${LIBRECRYPTO}
+DPADD=		${LIBCRYPTO}
 LDADD=		-lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-DWITH_SSL -I${.CURDIR}/../../crypto/libressl/include

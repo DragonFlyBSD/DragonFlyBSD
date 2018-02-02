@@ -36,7 +36,7 @@ MLINKS= csh.1 tcsh.1
 # utilities of the same name are handled with the associated manpage,
 # builtin.1 in share/man/man1/.
 
-DPADD=	${LIBNCURSES} ${LIBCRYPT} ${LIBRECRYPTO}
+DPADD=	${LIBNCURSES} ${LIBCRYPT} ${LIBCRYPTO}
 LDADD=	-lprivate_ncurses -lcrypt -lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 

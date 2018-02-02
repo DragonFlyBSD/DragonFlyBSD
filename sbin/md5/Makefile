@@ -15,7 +15,7 @@ MLINKS=	md5.1 rmd160.1 \
 	md5.1 sha256.1 \
 	md5.1 sha512.1
 
-DPADD=	${LIBMD} ${LIBRECRYPTO}
+DPADD=	${LIBMD} ${LIBCRYPTO}
 LDADD=	-lmd -lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include

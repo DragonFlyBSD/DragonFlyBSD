@@ -8,7 +8,7 @@ WARNS?= 2
 .PATH:	${.CURDIR}/../../contrib/ldns/drill
 
 LDADD=		-lprivate_ldns -lprivate_crypto
-DPADD=		${LIBLDNS} ${LIBRECRYPTO}
+DPADD=		${LIBLDNS} ${LIBCRYPTO}
 CFLAGS+=	-I${.CURDIR} -I${LDNS} -I${LDNS}/drill -I${LDNSBASE}
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}

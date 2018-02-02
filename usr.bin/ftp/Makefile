@@ -28,7 +28,7 @@ LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 CFLAGS+=	-DWITH_SSL -I${.CURDIR}/../../crypto/libressl/include
 LDADD+=		-lprivate_ssl -lprivate_crypto
-DPADD+=		${LIBRESSL} ${LIBRECRYPTO}
+DPADD+=		${LIBSSL} ${LIBCRYPTO}
 
 LINKS=	${BINDIR}/ftp ${BINDIR}/pftp \
 	${BINDIR}/ftp ${BINDIR}/gate-ftp

@@ -30,7 +30,7 @@ ACCESSFILE?=	\"/etc/opieaccess\"
 CFLAGS+=	-DINSECURE_OVERRIDE -DPATH_ACCESS_FILE=${ACCESSFILE}
 
 LDADD+=	-lmd -lprivate_crypto
-DPADD+=	${LIBMD} ${LIBRECRYPTO}
+DPADD+=	${LIBMD} ${LIBCRYPTO}
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 

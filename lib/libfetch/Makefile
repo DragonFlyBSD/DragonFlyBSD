@@ -11,7 +11,7 @@ CLEANFILES=	ftperr.h httperr.h
 NO_STRICT_ALIASING=
 
 CFLAGS+=	-DWITH_SSL -I${.CURDIR}/../../crypto/libressl/include
-DPADD=		${LIBRESSL} ${LIBRECRYPTO}
+DPADD=		${LIBSSL} ${LIBCRYPTO}
 LDADD=		-lprivate_ssl -lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 

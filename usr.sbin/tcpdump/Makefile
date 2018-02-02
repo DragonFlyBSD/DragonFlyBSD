@@ -51,7 +51,7 @@ CFLAGS+=	-DINET6 -DHAVE_GETNAMEINFO
 
 DPADD=	${LIBL} ${LIBPCAP}
 LDADD=	-ll -lpcap
-DPADD+=		${LIBRECRYPTO}
+DPADD+=		${LIBCRYPTO}
 LDADD+=		-lprivate_crypto
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}

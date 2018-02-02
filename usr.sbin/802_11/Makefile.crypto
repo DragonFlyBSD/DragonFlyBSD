@@ -1,7 +1,7 @@
 # $FreeBSD: head/usr.sbin/wpa/Makefile.crypto 252726 2013-07-04 21:12:58Z rpaulo $
 
 SRCS+=		crypto_openssl.c random.c sha1-prf.c sha256-prf.c
-DPADD+=		${LIBRESSL} ${LIBRECRYPTO}
+DPADD+=		${LIBSSL} ${LIBCRYPTO}
 LDADD+=		-lprivate_ssl -lprivate_crypto
 CFLAGS+= 	-DCONFIG_SHA256 -I${.CURDIR}/../../../crypto/libressl/include
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}

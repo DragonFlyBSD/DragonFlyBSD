@@ -19,8 +19,7 @@ LIBCAM?=	${DESTDIR}${LIBDIR}/libcam.a
 LIBCIPHER?=	${DESTDIR}${LIBDIR}/libcipher.a
 LIBCOMPAT?=	${DESTDIR}${LIBDIR}/libcompat.a
 LIBCRYPT?=	${DESTDIR}${LIBDIR}/libcrypt.a
-LIBCRYPTO?=	${DESTDIR}${LIBDIR}/libcrypto.a
-LIBRECRYPTO?=	${DESTDIR}${LIBDIR}/priv/libprivate_crypto.a
+LIBCRYPTO?=	${DESTDIR}${LIBDIR}/priv/libprivate_crypto.a
 LIBCRYPTSETUP?=	${DESTDIR}${LIBDIR}/libcryptsetup.a
 LIBDEVATTR?=	${DESTDIR}${LIBDIR}/libdevattr.a
 LIBDEVINFO?=	${DESTDIR}${LIBDIR}/libdevinfo.a
@@ -66,7 +65,7 @@ MINUSLPAM?=	-lpam
 LIBPAM+=	${LIBSSH}
 MINUSLPAM+=	-lprivate_ssh
 LIBPAM+=	${LIBRADIUS} ${LIBTACPLUS} ${LIBOPIE} ${LIBYPCLNT} \
-		${LIBCRYPT} ${LIBMD} ${LIBRECRYPTO} ${LIBUTIL}
+		${LIBCRYPT} ${LIBMD} ${LIBCRYPTO} ${LIBUTIL}
 MINUSLPAM+=	-lradius -ltacplus -lopie -lypclnt \
 		-lcrypt -lmd -lprivate_crypto -lutil
 LDFLAGSPAM+=	${PRIVATELIB_LDFLAGS}
@@ -85,8 +84,7 @@ LIBSBUF?=	${DESTDIR}${LIBDIR}/libsbuf.a
 LIBSDP?=	${DESTDIR}${LIBDIR}/libsdp.a
 LIBSMB?=	${DESTDIR}${LIBDIR}/libsmb.a
 LIBSSH?=	${DESTDIR}${LIBDIR}/priv/libprivate_ssh.a
-LIBSSL?=	${DESTDIR}${LIBDIR}/libssl.a
-LIBRESSL?=	${DESTDIR}${LIBDIR}/priv/libprivate_ssl.a
+LIBSSL?=	${DESTDIR}${LIBDIR}/priv/libprivate_ssl.a
 LIBSTAND?=	${DESTDIR}${LIBDIR}/libstand.a
 LIBTACPLUS?=	${DESTDIR}${LIBDIR}/libtacplus.a
 LIBTCPLAY?=	${DESTDIR}${LIBDIR}/libtcplay.a

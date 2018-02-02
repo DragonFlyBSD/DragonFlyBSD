@@ -11,7 +11,7 @@ SRCS=	compare.c crc.c create.c excludes.c misc.c mtree.c spec.c verify.c
 .if !defined(BOOTSTRAPPING)
 SRCS+=	sha1hl.c
 CFLAGS+= -DUSE_MD5 -DUSE_SHA1 -DUSE_RMD160
-DPADD=  ${LIBMD} ${LIBRECRYPTO}
+DPADD=  ${LIBMD} ${LIBCRYPTO}
 LDADD=  -lmd -lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+= 	-I${.CURDIR}/../../crypto/libressl/include

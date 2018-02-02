@@ -26,7 +26,7 @@ DPADD+=		${LIBIPSEC}
 LDADD+=		-lipsec
 
 CFLAGS+=	-DENCRYPTION -DAUTHENTICATION
-DPADD+=		${LIBRECRYPTO} ${LIBCRYPT} ${LIBPAM}
+DPADD+=		${LIBCRYPTO} ${LIBCRYPT} ${LIBPAM}
 LDADD+=		-lprivate_crypto -lcrypt ${MINUSLPAM}
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 

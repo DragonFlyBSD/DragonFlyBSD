@@ -24,7 +24,7 @@ INCS=	dtls1.h srtp.h ssl.h ssl2.h ssl23.h ssl3.h tls1.h
 INCSDIR=	${INCLUDEDIR}/priv/openssl
 
 LDADD=		-lprivate_crypto
-DPADD=		${LIBRECRYPTO}
+DPADD=		${LIBCRYPTO}
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .PATH:	${LSSL_SRC} ${LIBRESSL_SRC}/include/openssl

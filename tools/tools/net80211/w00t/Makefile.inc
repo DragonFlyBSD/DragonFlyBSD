@@ -6,7 +6,7 @@ DPADD=		${W00T}/libw00t.a ${LIBZ}
 LDADD=		-lw00t -lz
 LDFLAGS=	-L${W00T}
 
-DPADD+=		${LIBRECRYPTO}
+DPADD+=		${LIBCRYPTO}
 LDADD+=		-lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../../../../crypto/libressl/include

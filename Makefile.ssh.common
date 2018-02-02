@@ -19,7 +19,7 @@ CFLAGS+=	-I${SSHC_SYSDIR}/crypto/libressl/include
 CFLAGS+=	-I${SSHC_SYSDIR}/lib/libssh -I${SSHDIR}
 
 .if ${.CURDIR:T} != "libssh"
-DPADD+=		${LIBSSH} ${LIBRECRYPTO} ${LIBUTIL} ${LIBZ} ${LIBPTHREAD}
+DPADD+=		${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ} ${LIBPTHREAD}
 LDADD+=		-lprivate_ssh -lprivate_crypto -lutil -lz -lpthread
 LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}
 .endif

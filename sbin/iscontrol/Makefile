@@ -2,7 +2,7 @@
 
 SRCS= iscontrol.c pdu.c fsm.c config.c login.c auth_subr.c misc.c
 PROG= iscontrol
-DPADD= ${LIBCAM} ${LIBMD} ${LIBRECRYPTO}
+DPADD= ${LIBCAM} ${LIBMD} ${LIBCRYPTO}
 LDADD= -lcam -lmd -lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include

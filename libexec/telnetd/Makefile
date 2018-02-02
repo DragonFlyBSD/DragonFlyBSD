@@ -27,7 +27,7 @@ CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 
 CFLAGS+=	-DAUTHENTICATION -DENCRYPTION
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
-DPADD+=		${LIBRECRYPTO} ${LIBCRYPT} ${LIBPAM}
+DPADD+=		${LIBCRYPTO} ${LIBCRYPT} ${LIBPAM}
 LDADD+=		-lprivate_crypto -lcrypt ${MINUSLPAM}
 
 .include <bsd.prog.mk>

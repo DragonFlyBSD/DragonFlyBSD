@@ -11,7 +11,7 @@ MAN=	hammer.8
 
 CFLAGS+= -I${.CURDIR}/../../sys
 LDADD=	-lm -lutil -lhammer -lprivate_crypto
-DPADD=	${LIBM} ${LIBUTIL} ${LIBHAMMER} ${LIBRECRYPTO}
+DPADD=	${LIBM} ${LIBUTIL} ${LIBHAMMER} ${LIBCRYPTO}
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .PATH: ${.CURDIR}/../../sys/libkern

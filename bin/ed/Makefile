@@ -7,7 +7,7 @@ LINKS=	${BINDIR}/ed ${BINDIR}/red
 MLINKS=	ed.1 red.1
 
 CFLAGS+=	-DDES -I${.CURDIR}/../../crypto/libressl/include
-DPADD=		${LIBRECRYPTO}
+DPADD=		${LIBCRYPTO}
 LDADD=		-lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 

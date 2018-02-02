@@ -5,7 +5,7 @@ SRCS=	uefisign.c child.c pe.c
 MAN=	uefisign.8
 
 LDADD=	-lprivate_crypto
-DPADD=	${LIBRECRYPTO}
+DPADD=	${LIBCRYPTO}
 LDFLAGS+= ${PRIVATELIB_LDFLAGS}
 CFLAGS+= -I${.CURDIR}/../../crypto/libressl/include
 

@@ -5,7 +5,7 @@ PROG=	bdes
 
 WARNS?=	2
 
-DPADD=		${LIBRECRYPTO}
+DPADD=		${LIBCRYPTO}
 LDADD=		-lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include

@@ -1,7 +1,7 @@
 PROG=	bsdcpio
 SRCS=	cmdline.c cpio.c
 SRCS+=	err.c line_reader.c passphrase.c
-DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBLZMA} ${LIBMD} ${LIBRECRYPTO} ${LIBZ}
+DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBLZMA} ${LIBMD} ${LIBCRYPTO} ${LIBZ}
 LDADD=	-larchive -lbz2 -llzma -lmd -lprivate_crypto -lz
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 

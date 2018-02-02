@@ -14,7 +14,7 @@ BINMODE=	550
 # Handle libcrypto dependency
 .if defined(GAMESCRYPTO)
 LDADD+=		-lprivate_crypto
-DPADD+=		${LIBRECRYPTO}
+DPADD+=		${LIBCRYPTO}
 CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv
 LDFLAGS+=       ${PRIVATELIB_LDFLAGS}
 .endif

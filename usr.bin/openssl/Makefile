@@ -5,7 +5,7 @@ WARNS?=	2
 
 .include "${.CURDIR}/../../lib/librecrypto/Makefile.inc"
 
-DPADD+=		${LIBRESSL} ${LIBRECRYPTO}
+DPADD+=		${LIBSSL} ${LIBCRYPTO}
 LDADD+=		-lprivate_ssl -lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include

@@ -59,7 +59,7 @@ CFLAGS+=-DNODES
 .else
 SRCS+=		chap_ms.c mppe.c
 LDADD+= 	-lprivate_crypto
-DPADD+= 	${LIBRECRYPTO}
+DPADD+= 	${LIBCRYPTO}
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 .endif
@@ -69,7 +69,7 @@ CFLAGS+=-DNORADIUS
 .else
 SRCS+=	radius.c
 LDADD+=	-lradius -lprivate_crypto
-DPADD+= ${LIBRADIUS} ${LIBRECRYPTO}
+DPADD+= ${LIBRADIUS} ${LIBCRYPTO}
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 .endif
 

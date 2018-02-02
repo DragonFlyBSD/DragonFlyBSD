@@ -9,7 +9,7 @@ BINOWN=	root
 BINMODE=4555
 
 LDADD=	-lipsec -lm -lmd -lprivate_crypto
-DPADD= ${LIBIPSEC} ${LIBM} ${LIBMD} ${LIBRECRYPTO}
+DPADD= ${LIBIPSEC} ${LIBM} ${LIBMD} ${LIBCRYPTO}
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 NO_STRICT_ALIASING=

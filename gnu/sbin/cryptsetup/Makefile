@@ -24,7 +24,7 @@ CFLAGS+=	-I${CRYPTSETUP_SRCDIR} -I${CRYPTSETUP_LIBDIR} \
 DPADD+=		${LIBDM} ${LIBPROP}
 LDADD+=		-ldm -lprop
 
-DPADD+=		${LIBRECRYPTO}
+DPADD+=		${LIBCRYPTO}
 LDADD+=		-lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../../crypto/libressl/include

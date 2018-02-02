@@ -4,7 +4,7 @@ MAN=	pam_ssh.8
 WARNS?=	4
 
 LDADD=		-lprivate_ssh -lprivate_crypto -lcrypt
-DPADD=		${LIBSSH} ${LIBRECRYPTO} ${LIBCRYPT}
+DPADD=		${LIBSSH} ${LIBCRYPTO} ${LIBCRYPT}
 
 CFLAGS+=	-I${.CURDIR}/../../../../crypto/openssh
 CFLAGS+=	-I${.CURDIR}/../../../../crypto/libressl/include

@@ -20,7 +20,7 @@ CFLAGS+=-DHAVE_ARC4RANDOM_BUF -DHAVE_STRTONUM	\
 	-I${.CURDIR}/../../crypto/libressl/include		\
 	-I${.CURDIR}/../../crypto/libressl/include/compat
 
-DPADD=	${LIBRECRYPTO} ${LIBRESSL}
+DPADD=	${LIBCRYPTO} ${LIBSSL}
 LDADD=	-lprivate_ssl -lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 

@@ -290,11 +290,11 @@ that need to be linked.   We prefer use of ``DPLIBS`` but the more
 traditional ``DPADD`` and ``LDADD`` work just as well.
 That is::
 
-	DPLIBS += ${LIBRECRYPTO}
+	DPLIBS += ${LIBCRYPTO}
 
 is equivalent to::
 
-	DPADD += ${LIBRECRYPTO}
+	DPADD += ${LIBCRYPTO}
 	LDADD += -lprivate_crypto
 
 obj.mk

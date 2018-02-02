@@ -10,7 +10,7 @@ CFLAGS+=	-DHAVE_REALLOCF -DHAVE_STRLCPY -DHAVE_GETPROGNAME
 CFLAGS+=	-DCONF_PATH='"/etc/dma"'
 CFLAGS+=	-DLIBEXEC_PATH='"/usr/libexec"' -DDMA_VERSION='"v0.9+"'
 
-DPADD=		${LIBRESSL} ${LIBRECRYPTO}
+DPADD=		${LIBSSL} ${LIBCRYPTO}
 LDADD=		-lprivate_ssl -lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../../crypto/libressl/include
