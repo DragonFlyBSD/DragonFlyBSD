@@ -383,6 +383,8 @@ vm_page_startup(void)
 	 * Initialize the mem entry structures now, and put them in the free
 	 * queue.
 	 */
+	if (bootverbose && ctob(physmem) >= 400LL*1024*1024*1024)
+		kprintf("initializing vm_page_array ");
 	new_end = trunc_page(end - page_range * sizeof(struct vm_page));
 	mapped = pmap_map(&vaddr, new_end, end, VM_PROT_READ | VM_PROT_WRITE);
 	vm_page_array = (vm_page_t)mapped;
@@ -407,6 +409,8 @@ vm_page_startup(void)
 	 */
 	bzero((caddr_t) vm_page_array, page_range * sizeof(struct vm_page));
 	vm_page_array_size = page_range;
+	if (bootverbose && ctob(physmem) >= 400LL*1024*1024*1024)
+		kprintf("size = 0x%zx\n", vm_page_array_size);
 
 	m = &vm_page_array[0];
 	pa = ptoa(first_page);
