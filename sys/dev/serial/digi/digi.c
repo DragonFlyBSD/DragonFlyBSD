@@ -1884,10 +1884,12 @@ digi_errortxt(int id)
 int
 digi_attach(struct digi_softc *sc)
 {
+	char tbuf[MAKEDEV_MINNBUF];
+
 	lwkt_gettoken(&tty_token);
 	sc->res.ctldev = make_dev(&digi_ops,
 	    (sc->res.unit << 16) | CTRL_DEV, UID_ROOT, GID_WHEEL,
-	    0600, "digi%r.ctl", sc->res.unit);
+	    0600, "digi%s.ctl", makedev_unit_b32(tbuf, sc->res.unit));
 
 	digi_loaddata(sc);
 	digi_init(sc);

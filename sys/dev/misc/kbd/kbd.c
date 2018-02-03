@@ -601,6 +601,7 @@ int
 kbd_attach(keyboard_t *kbd)
 {
 	cdev_t dev;
+	char tbuf[MAKEDEV_MINNBUF];
 
 	lwkt_gettoken(&tty_token);
 	if (kbd->kb_index >= keyboards) {
@@ -614,8 +615,8 @@ kbd_attach(keyboard_t *kbd)
 
 	if (kbd->kb_dev == NULL) {
 		kbd->kb_dev = make_dev(&kbd_ops, kbd->kb_index,
-				       UID_ROOT, GID_WHEEL, 0600,
-				       "kbd%r", kbd->kb_index);
+				       UID_ROOT, GID_WHEEL, 0600, "kbd%s",
+				       makedev_unit_b32(tbuf, kbd->kb_index));
 	}
 	dev = kbd->kb_dev;
 	if (dev->si_drv1 == NULL) {

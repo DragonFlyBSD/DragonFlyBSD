@@ -539,6 +539,7 @@ sc_attach_unit(int unit, int flags)
     int vc;
     cdev_t dev;
     flags &= ~SC_KERNEL_CONSOLE;
+    char tbuf[MAKEDEV_MINNBUF];
 
     if ((flags & SC_EFI_FB) && probe_efi_fb(0) != 0)
 	flags &= ~SC_EFI_FB;
@@ -577,9 +578,9 @@ sc_attach_unit(int unit, int flags)
     if (flags & SC_KERNEL_CONSOLE) {
 	KKASSERT(sc->dev == NULL);
 	sc->dev = kmalloc(sizeof(cdev_t)*sc->vtys, M_SYSCONS, M_WAITOK|M_ZERO);
-	sc->dev[0] = make_dev(&sc_ops, sc_console_unit*MAXCONS, UID_ROOT, 
-			      GID_WHEEL, 0600, 
-			      "ttyv%r", sc_console_unit*MAXCONS);
+	sc->dev[0] = make_dev(&sc_ops, sc_console_unit*MAXCONS, UID_ROOT,
+			      GID_WHEEL, 0600, "ttyv%s", makedev_unit_b32(tbuf,
+			      sc_console_unit * MAXCONS));
 	sc->dev[0]->si_tty = ttymalloc(sc->dev[0]->si_tty);
 	sc->dev[0]->si_drv1 = sc_console;
     }
@@ -633,8 +634,8 @@ sc_attach_unit(int unit, int flags)
      */
     for (vc = 1; vc < sc->vtys; vc++) {
 	dev = make_dev(&sc_ops, vc + unit * MAXCONS,
-			UID_ROOT, GID_WHEEL,
-			0600, "ttyv%r", vc + unit * MAXCONS);
+			UID_ROOT, GID_WHEEL, 0600, "ttyv%s",
+			makedev_unit_b32(tbuf, vc + unit * MAXCONS));
 	sc->dev[vc] = dev;
     }
     cctl_dev = make_dev(&sc_ops, SC_CONSOLECTL,
@@ -3187,6 +3188,7 @@ scinit(int unit, int flags)
     sc_softc_t *sc;
     scr_stat *scp;
     video_adapter_t *adp;
+    char tbuf[MAKEDEV_MINNBUF];
     int col;
     int row;
     int i;
@@ -3286,8 +3288,9 @@ scinit(int unit, int flags)
 	    /* assert(sc_malloc) */
 	    sc->dev = kmalloc(sizeof(cdev_t)*sc->vtys, M_SYSCONS, M_WAITOK | M_ZERO);
 
-	    sc->dev[0] = make_dev(&sc_ops, unit*MAXCONS, UID_ROOT, 
-				GID_WHEEL, 0600, "ttyv%r", unit*MAXCONS);
+	    sc->dev[0] = make_dev(&sc_ops, unit*MAXCONS, UID_ROOT,
+				  GID_WHEEL, 0600, "ttyv%s",
+				  makedev_unit_b32(tbuf, unit * MAXCONS));
 
 	    sc->dev[0]->si_tty = ttymalloc(sc->dev[0]->si_tty);
 	    scp = alloc_scp(sc, sc->first_vty);

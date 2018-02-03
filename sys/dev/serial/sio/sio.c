@@ -968,6 +968,8 @@ sioattach(device_t dev, int xrid, u_long rclk)
 	int		rid;
 	struct resource *port;
 	int		ret;
+	char		tbuf[MAKEDEV_MINNBUF];
+	char		*unit_in_base32;
 	static int	did_init;
 
 	lwkt_gettoken(&tty_token);
@@ -1191,18 +1193,19 @@ determined_type: ;
 		sio_registered = TRUE;
 	}
 	minorbase = UNIT_TO_MINOR(unit);
+	unit_in_base32 = makedev_unit_b32(tbuf, unit);
 	make_dev(&sio_ops, minorbase,
-	    UID_ROOT, GID_WHEEL, 0600, "ttyd%r", unit);
+	    UID_ROOT, GID_WHEEL, 0600, "ttyd%s", unit_in_base32);
 	make_dev(&sio_ops, minorbase | CONTROL_INIT_STATE,
-	    UID_ROOT, GID_WHEEL, 0600, "ttyid%r", unit);
+	    UID_ROOT, GID_WHEEL, 0600, "ttyid%s", unit_in_base32);
 	make_dev(&sio_ops, minorbase | CONTROL_LOCK_STATE,
-	    UID_ROOT, GID_WHEEL, 0600, "ttyld%r", unit);
+	    UID_ROOT, GID_WHEEL, 0600, "ttyld%s", unit_in_base32);
 	make_dev(&sio_ops, minorbase | CALLOUT_MASK,
-	    UID_UUCP, GID_DIALER, 0660, "cuaa%r", unit);
+	    UID_UUCP, GID_DIALER, 0660, "cuaa%s", unit_in_base32);
 	make_dev(&sio_ops, minorbase | CALLOUT_MASK | CONTROL_INIT_STATE,
-	    UID_UUCP, GID_DIALER, 0660, "cuaia%r", unit);
+	    UID_UUCP, GID_DIALER, 0660, "cuaia%s", unit_in_base32);
 	make_dev(&sio_ops, minorbase | CALLOUT_MASK | CONTROL_LOCK_STATE,
-	    UID_UUCP, GID_DIALER, 0660, "cuala%r", unit);
+	    UID_UUCP, GID_DIALER, 0660, "cuala%s", unit_in_base32);
 	com->flags = flags;
 	com->pps.ppscap = PPS_CAPTUREASSERT | PPS_CAPTURECLEAR;
 	pps_init(&com->pps);
@@ -3092,6 +3095,7 @@ static void
 siocninit_fini(struct consdev *cp)
 {
 	cdev_t dev;
+	char tbuf[MAKEDEV_MINNBUF];
 	int unit;
 
 	if (cp->cn_probegood) {
@@ -3103,7 +3107,8 @@ siocninit_fini(struct consdev *cp)
 		 * If it isn't found, the serial port was not attached at all and we
 		 * shouldn't be here, so assert this case.
 		 */
-		dev = devfs_find_device_by_name("ttyd%r", unit);
+		dev = devfs_find_device_by_name("ttyd%s",
+						makedev_unit_b32(tbuf, unit));
 
 		KKASSERT(dev != NULL);
 		cp->cn_dev = dev;
