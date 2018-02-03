@@ -195,9 +195,9 @@ ptyinit(int n)
 
 	pt = kmalloc(sizeof(*pt), M_PTY, M_WAITOK | M_ZERO);
 	pt->devs = devs = make_dev(&pts_ops, n,
-	    0, 0, 0666, "tty%c%r", names[n / 32], n % 32);
+	    0, 0, 0666, "tty%c%c", names[n / 32], hex2ascii(n % 32));
 	pt->devc = devc = make_dev(&ptc_ops, n,
-	    0, 0, 0666, "pty%c%r", names[n / 32], n % 32);
+	    0, 0, 0666, "pty%c%c", names[n / 32], hex2ascii(n % 32));
 
 	pt->pt_tty.t_dev = devs;
 	pt->pt_uminor = n;

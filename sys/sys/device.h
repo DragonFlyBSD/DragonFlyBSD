@@ -371,6 +371,8 @@ int dev_ops_remove_minor(struct dev_ops *ops, int minor);
 struct dev_ops *dev_ops_intercept(cdev_t, struct dev_ops *);
 void dev_ops_restore(cdev_t, struct dev_ops *);
 
+#define MAKEDEV_MINNBUF	14
+char  *makedev_unit_b32(char *nbuf, uintmax_t num);
 cdev_t make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 		int perms, const char *fmt, ...) __printflike(6, 7);
 cdev_t make_dev_covering(struct dev_ops *ops,  struct dev_ops *bops, int minor,

@@ -159,6 +159,22 @@ makeudev(int x, int y)
 }
 
 /*
+ * Put a NUL-terminated ASCII number (base == 32) for use as device suffix.
+ * The buffer pointed to by `nbuf' must have length >= MAKEDEV_MINNBUF.
+ */
+char *
+makedev_unit_b32(char *nbuf, uintmax_t num)
+{
+	char *p = &nbuf[MAKEDEV_MINNBUF - 1];
+
+	*p = '\0';
+	do {
+		*--p = hex2ascii(num % 32);
+	} while (num /= 32);
+	return (p);
+}
+
+/*
  * Create an internal or external device.
  *
  * This routine creates and returns an unreferenced ad-hoc entry for the
