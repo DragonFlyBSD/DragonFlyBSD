@@ -1210,7 +1210,7 @@ int ttm_bo_mmap_single(struct ttm_bo_device *bdev, vm_ooffset_t *offset,
 struct ttm_buffer_object;
 void ttm_bo_release_mmap(struct ttm_buffer_object *bo);
 
-/* simplified version of kvasnrprintf() for drm needs. */
+/* simplified version of kvasnprintf() for drm needs. */
 char *drm_vasprintf(int flags, const char *format, __va_list ap) __printflike(2, 0);
 char *drm_asprintf(int flags, const char *format, ...) __printflike(2, 3);
 

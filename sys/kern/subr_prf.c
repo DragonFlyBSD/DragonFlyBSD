@@ -148,7 +148,7 @@ uprintf(const char *fmt, ...)
 		pca.tty = p->p_session->s_ttyp;
 		pca.flags = TOTTY;
 
-		retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
+		retval = kvcprintf(fmt, kputchar, &pca, ap);
 		__va_end(ap);
 	}
 	return (retval);
@@ -193,7 +193,7 @@ tprintf(tpr_t tpr, const char *fmt, ...)
 	pca.tty = tp;
 	pca.flags = flags;
 	pca.pri = LOG_INFO;
-	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
+	retval = kvcprintf(fmt, kputchar, &pca, ap);
 	__va_end(ap);
 	msgbuftrigger = 1;
 	return (retval);
@@ -214,7 +214,7 @@ ttyprintf(struct tty *tp, const char *fmt, ...)
 	__va_start(ap, fmt);
 	pca.tty = tp;
 	pca.flags = TOTTY;
-	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
+	retval = kvcprintf(fmt, kputchar, &pca, ap);
 	__va_end(ap);
 	return (retval);
 }
@@ -239,7 +239,7 @@ log(int level, const char *fmt, ...)
 		pca.flags = TOCONS;
 
 	__va_start(ap, fmt);
-	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
+	retval = kvcprintf(fmt, kputchar, &pca, ap);
 	__va_end(ap);
 
 	msgbuftrigger = 1;
@@ -308,7 +308,7 @@ kprintf(const char *fmt, ...)
 	pca.tty = NULL;
 	pca.flags = kprintf_logging & ~TOTTY;
 	pca.pri = -1;
-	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
+	retval = kvcprintf(fmt, kputchar, &pca, ap);
 	__va_end(ap);
 	if (!panicstr)
 		msgbuftrigger = 1;
@@ -328,7 +328,7 @@ kvprintf(const char *fmt, __va_list ap)
 	pca.tty = NULL;
 	pca.flags = kprintf_logging & ~TOTTY;
 	pca.pri = -1;
-	retval = kvcprintf(fmt, kputchar, &pca, 10, ap);
+	retval = kvcprintf(fmt, kputchar, &pca, ap);
 	if (!panicstr)
 		msgbuftrigger = 1;
 	consintr = savintr;		/* reenable interrupts */
@@ -401,7 +401,7 @@ ksprintf(char *buf, const char *cfmt, ...)
 	__va_list ap;
 
 	__va_start(ap, cfmt);
-	retval = kvcprintf(cfmt, NULL, buf, 10, ap);
+	retval = kvcprintf(cfmt, NULL, buf, ap);
 	buf[retval] = '\0';
 	__va_end(ap);
 	return (retval);
@@ -415,7 +415,7 @@ kvsprintf(char *buf, const char *cfmt, __va_list ap)
 {
 	int retval;
 
-	retval = kvcprintf(cfmt, NULL, buf, 10, ap);
+	retval = kvcprintf(cfmt, NULL, buf, ap);
 	buf[retval] = '\0';
 	return (retval);
 }
@@ -446,41 +446,14 @@ kvsnprintf(char *str, size_t size, const char *format, __va_list ap)
 
 	info.str = str;
 	info.remain = size;
-	retval = kvcprintf(format, snprintf_func, &info, 10, ap);
+	retval = kvcprintf(format, snprintf_func, &info, ap);
 	if (info.remain >= 1)
 		*info.str++ = '\0';
 	return (retval);
 }
 
 int
-ksnrprintf(char *str, size_t size, int radix, const char *format, ...)
-{
-	int retval;
-	__va_list ap;
-
-	__va_start(ap, format);
-	retval = kvsnrprintf(str, size, radix, format, ap);
-	__va_end(ap);
-	return(retval);
-}
-
-int
-kvsnrprintf(char *str, size_t size, int radix, const char *format, __va_list ap)
-{
-	struct snprintf_arg info;
-	int retval;
-
-	info.str = str;
-	info.remain = size;
-	retval = kvcprintf(format, snprintf_func, &info, radix, ap);
-	if (info.remain >= 1)
-		*info.str++ = '\0';
-	return (retval);
-}
-
-int
-kvasnrprintf(char **strp, size_t size, int radix,
-	     const char *format, __va_list ap)
+kvasnprintf(char **strp, size_t size, const char *format, __va_list ap)
 {
 	struct snprintf_arg info;
 	int retval;
@@ -488,7 +461,7 @@ kvasnrprintf(char **strp, size_t size, int radix,
 	*strp = kmalloc(size, M_TEMP, M_WAITOK);
 	info.str = *strp;
 	info.remain = size;
-	retval = kvcprintf(format, snprintf_func, &info, radix, ap);
+	retval = kvcprintf(format, snprintf_func, &info, ap);
 	if (info.remain >= 1)
 		*info.str++ = '\0';
 	return (retval);
@@ -562,8 +535,7 @@ ksprintn(char *nbuf, uintmax_t num, int base, int *lenp, int upper)
 #define PCHAR(c) {int cc=(c); if(func) (*func)(cc,arg); else *d++=cc; retval++;}
 
 int
-kvcprintf(char const *fmt, void (*func)(int, void*), void *arg,
-	  int radix, __va_list ap)
+kvcprintf(char const *fmt, void (*func)(int, void*), void *arg, __va_list ap)
 {
 	char nbuf[MAXNBUF];
 	char *d;
@@ -599,9 +571,6 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg,
 
 	if (fmt == NULL)
 		fmt = "(fmt null)\n";
-
-	if (radix < 2 || radix > 36)
-		radix = 10;
 
 	usespin = (func == kputchar &&
 		   (kprintf_logging & TONOSPIN) == 0 &&
@@ -748,11 +717,6 @@ reswitch:
 		case 'q':
 			qflag = 1;
 			goto reswitch;
-		case 'r':
-			base = radix;
-			if (sign)
-				goto handle_sign;
-			goto handle_nosign;
 		case 's':
 			p = __va_arg(ap, char *);
 			if (p == NULL)

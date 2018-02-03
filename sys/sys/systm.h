@@ -192,7 +192,7 @@ uint32_t calculate_crc32c(uint32_t crc32c, const unsigned char *buffer,
 void	init_param1 (void);
 void	init_param2 (int physpages);
 void	tablefull (const char *);
-int	kvcprintf (char const *, void (*)(int, void*), void *, int,
+int	kvcprintf (char const *, void (*)(int, void*), void *,
 		      __va_list) __printf0like(1, 0);
 void	kvcreinitspin(void);
 int	log (int, const char *, ...) __printflike(2, 3);
@@ -202,16 +202,13 @@ int	kprintf (const char *, ...) __printflike(1, 2);
 void	kprintf0 (const char *, ...) __printflike(1, 2);
 void	krateprintf (struct krate *, const char *, ...) __printflike(2, 3);
 int	ksnprintf (char *, size_t, const char *, ...) __printflike(3, 4);
-int	ksnrprintf (char *, size_t, int, const char *, ...) __printflike(4, 5);
 int	ksprintf (char *buf, const char *, ...) __printflike(2, 3);
 int	uprintf (const char *, ...) __printflike(1, 2);
 int	kvprintf (const char *, __va_list) __printflike(1, 0);
 int	kvsnprintf (char *, size_t, const char *,
 			__va_list) __printflike(3, 0);
-int	kvsnrprintf (char *, size_t, int, const char *,
-			__va_list) __printflike(4, 0);
-int	kvasnrprintf (char **, size_t, int, const char *,
-			__va_list) __printflike(4, 0);
+int	kvasnprintf (char **, size_t, const char *,
+			__va_list) __printflike(3, 0);
 int	kvsprintf (char *buf, const char *,
 			__va_list) __printflike(2, 0);
 int	ttyprintf (struct tty *, const char *, ...) __printflike(2, 3);

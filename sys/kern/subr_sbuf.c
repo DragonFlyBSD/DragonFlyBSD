@@ -550,7 +550,7 @@ sbuf_vprintf(struct sbuf *s, const char *fmt, __va_list ap)
 	KASSERT(fmt != NULL,
 	    ("%s called with a NULL format string", __func__));
 
-	(void)kvcprintf(fmt, sbuf_putc_func, s, 10, ap);
+	(void)kvcprintf(fmt, sbuf_putc_func, s, ap);
 	if (s->s_error != 0)
 		return (-1);
 	return (0);

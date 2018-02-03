@@ -59,7 +59,7 @@ fb_get_options(const char *connector_name, char **option)
 }
 
 /*
- * Implement simplified version of kvasnrprintf() for drm needs using
+ * Implement simplified version of kvasnprintf() for drm needs using
  * M_DRM and kvsnprintf(). Since it is unclear what string size is
  * optimal thus use of an actual length.
  */
@@ -82,7 +82,7 @@ char *drm_vasprintf(int flags, const char *format, __va_list ap)
 	return str;
 }
 
-/* mimic ksnrprintf(), return pointer to char* and match drm api */
+/* mimic ksnprintf(), return pointer to char* and match drm api */
 char *drm_asprintf(int flags, const char *format, ...)
 {
 	char *str;

@@ -199,8 +199,7 @@ make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 
 	devfs_dev = devfs_new_cdev(ops, minor, NULL);
 	__va_start(ap, fmt);
-	kvsnrprintf(devfs_dev->si_name, sizeof(devfs_dev->si_name),
-		    32, fmt, ap);
+	kvsnprintf(devfs_dev->si_name, sizeof(devfs_dev->si_name), fmt, ap);
 	__va_end(ap);
 
 	devfs_debug(DEVFS_DEBUG_INFO,
@@ -230,8 +229,7 @@ make_dev_covering(struct dev_ops *ops, struct dev_ops *bops, int minor,
 
 	devfs_dev = devfs_new_cdev(ops, minor, bops);
 	__va_start(ap, fmt);
-	kvsnrprintf(devfs_dev->si_name, sizeof(devfs_dev->si_name),
-		    32, fmt, ap);
+	kvsnprintf(devfs_dev->si_name, sizeof(devfs_dev->si_name), fmt, ap);
 	__va_end(ap);
 
 	devfs_debug(DEVFS_DEBUG_INFO,
@@ -261,8 +259,7 @@ make_only_devfs_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 	 * Set additional fields (XXX DEVFS interface goes here)
 	 */
 	__va_start(ap, fmt);
-	kvsnrprintf(devfs_dev->si_name, sizeof(devfs_dev->si_name),
-		    32, fmt, ap);
+	kvsnprintf(devfs_dev->si_name, sizeof(devfs_dev->si_name), fmt, ap);
 	__va_end(ap);
 
 	devfs_create_dev(devfs_dev, uid, gid, perms);
@@ -290,8 +287,7 @@ make_only_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 	 * Set additional fields (XXX DEVFS interface goes here)
 	 */
 	__va_start(ap, fmt);
-	kvsnrprintf(devfs_dev->si_name, sizeof(devfs_dev->si_name),
-		    32, fmt, ap);
+	kvsnprintf(devfs_dev->si_name, sizeof(devfs_dev->si_name), fmt, ap);
 	__va_end(ap);
 
 	reference_dev(devfs_dev);
@@ -319,8 +315,7 @@ make_only_dev_covering(struct dev_ops *ops, struct dev_ops *bops, int minor,
 	 * Set additional fields (XXX DEVFS interface goes here)
 	 */
 	__va_start(ap, fmt);
-	kvsnrprintf(devfs_dev->si_name, sizeof(devfs_dev->si_name),
-		    32, fmt, ap);
+	kvsnprintf(devfs_dev->si_name, sizeof(devfs_dev->si_name), fmt, ap);
 	__va_end(ap);
 
 	reference_dev(devfs_dev);
@@ -382,7 +377,7 @@ make_dev_alias(cdev_t target, const char *fmt, ...)
 	char *name;
 
 	__va_start(ap, fmt);
-	kvasnrprintf(&name, PATH_MAX, 32, fmt, ap);
+	kvasnprintf(&name, PATH_MAX, fmt, ap);
 	__va_end(ap);
 
 	devfs_make_alias(name, target);
@@ -398,7 +393,7 @@ destroy_dev_alias(cdev_t target, const char *fmt, ...)
 	char *name;
 
 	__va_start(ap, fmt);
-	kvasnrprintf(&name, PATH_MAX, 32, fmt, ap);
+	kvasnprintf(&name, PATH_MAX, fmt, ap);
 	__va_end(ap);
 
 	devfs_destroy_alias(name, target);
@@ -418,7 +413,7 @@ make_autoclone_dev(struct dev_ops *ops, struct devfs_bitmap *bitmap,
 	char *name;
 
 	__va_start(ap, fmt);
-	kvasnrprintf(&name, PATH_MAX, 32, fmt, ap);
+	kvasnprintf(&name, PATH_MAX, fmt, ap);
 	__va_end(ap);
 
 	if (bitmap != NULL)

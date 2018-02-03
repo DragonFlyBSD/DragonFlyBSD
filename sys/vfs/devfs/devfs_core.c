@@ -827,7 +827,7 @@ devfs_find_device_by_name(const char *fmt, ...)
 		return NULL;
 
 	__va_start(ap, fmt);
-	kvasnrprintf(&target, PATH_MAX, 10, fmt, ap);
+	kvasnprintf(&target, PATH_MAX, fmt, ap);
 	__va_end(ap);
 
 	msg = devfs_msg_get();
@@ -1989,7 +1989,7 @@ devfs_create_device_node(struct devfs_node *root, cdev_t dev,
 
 	if (path_fmt != NULL) {
 		__va_start(ap, path_fmt);
-		kvasnrprintf(&path, PATH_MAX, 10, path_fmt, ap);
+		kvasnprintf(&path, PATH_MAX, path_fmt, ap);
 		__va_end(ap);
 	}
 

@@ -184,7 +184,7 @@ db_printf(const char *fmt, ...)
 	__va_list listp;
 
 	__va_start(listp, fmt);
-	kvcprintf (fmt, db_putchar, NULL, db_radix, listp);
+	kvcprintf (fmt, db_putchar, NULL, listp);
 	__va_end(listp);
 /*	DELAY(100000);*/
 }
@@ -192,7 +192,7 @@ db_printf(const char *fmt, ...)
 void
 db_vprintf(const char *fmt, __va_list va)
 {
-	kvcprintf (fmt, db_putchar, NULL, db_radix, va);
+	kvcprintf (fmt, db_putchar, NULL, va);
 /*	DELAY(100000);*/
 }
 
@@ -209,7 +209,7 @@ db_iprintf(const char *fmt,...)
 	while (--i >= 0)
 		db_printf(" ");
 	__va_start(listp, fmt);
-	kvcprintf (fmt, db_putchar, NULL, db_radix, listp);
+	kvcprintf (fmt, db_putchar, NULL, listp);
 	__va_end(listp);
 }
 
@@ -312,7 +312,7 @@ kprintf0(const char *fmt, ...)
 	__va_list ap;
 
 	__va_start(ap, fmt);
-	kvcprintf(fmt, PCHAR_, NULL, 10, ap);
+	kvcprintf(fmt, PCHAR_, NULL, ap);
 	__va_end(ap);
 }
 

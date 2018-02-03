@@ -111,7 +111,7 @@ throw_rude_remark(int error, char *msg,...)
 	 * We can't just format to ioctl_reply, since it
 	 * may contain our input parameters
 	 */
-	    kvasnrprintf(&text, MSG_MAX, 10, msg, ap);
+	    kvasnprintf(&text, MSG_MAX, msg, ap);
 	    strcpy(ioctl_reply->msg, text);
 	    ioctl_reply->error = error;			    /* first byte is the error number */
 	    kvasfree(&text);
