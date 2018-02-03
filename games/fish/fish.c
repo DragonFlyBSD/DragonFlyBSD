@@ -169,10 +169,15 @@ usermove(void)
 			continue;
 		}
 		n = p - cards;
-		if (userhand[n]) {
+		if (userhand[n] <= 3) {
 			userasked[n] = 1;
 			return(n);
 		}
+		if (userhand[n] == 4) {
+			(void)printf("You already have all of those.\n");
+			continue;
+		}
+
 		if (nrandom(3) == 1)
 			printf("You don't have any of those!\n");
 		else
