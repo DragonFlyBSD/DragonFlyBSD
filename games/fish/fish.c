@@ -174,7 +174,7 @@ usermove(void)
 			return(n);
 		}
 		if (userhand[n] == 4) {
-			(void)printf("You already have all of those.\n");
+			printf("You already have all of those.\n");
 			continue;
 		}
 
