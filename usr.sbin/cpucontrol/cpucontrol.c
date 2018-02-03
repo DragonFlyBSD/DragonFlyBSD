@@ -346,7 +346,9 @@ do_eval_cpu_features(const char *dev)
 		WARN(0, "error opening %s for writing", dev);
 		return (1);
 	}
-#if 0
+#if 1
+	error = 0; /* XXX not implemented yet in cpuctl(4) */
+#else
 	error = ioctl(fd, CPUCTL_EVAL_CPU_FEATURES, NULL);
 	if (error < 0)
 		WARN(0, "ioctl(%s, CPUCTL_EVAL_CPU_FEATURES)", dev);
