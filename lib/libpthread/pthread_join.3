@@ -30,7 +30,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man3/pthread_join.3 209588 2010-06-29 14:32:01Z jhb $
 .\"
-.Dd December 12, 2017
+.Dd February 3, 2018
 .Dt PTHREAD_JOIN 3
 .Os
 .Sh NAME
@@ -43,6 +43,7 @@
 .In pthread.h
 .Ft int
 .Fn pthread_join "pthread_t thread" "void **value_ptr"
+.In pthread_np.h
 .Ft int
 .Fn pthread_timedjoin_np "pthread_t thread" "void **value_ptr" "const struct timespec *abstime"
 .Sh DESCRIPTION
