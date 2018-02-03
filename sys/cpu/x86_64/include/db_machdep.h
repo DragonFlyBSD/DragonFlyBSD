@@ -40,6 +40,7 @@ typedef	long		db_expr_t;	/* expression - signed */
 typedef struct x86_64_saved_state db_regs_t;
 
 #ifdef _KERNEL
+#define	DDB_EXPR_FMT	"l"		/* expression is long */
 extern db_regs_t        ddb_regs;       /* register state */
 #define DDB_REGS        (&ddb_regs)
 

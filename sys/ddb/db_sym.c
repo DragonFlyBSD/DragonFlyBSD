@@ -34,6 +34,7 @@
 #include <sys/systm.h>
 
 #include <ddb/ddb.h>
+#include <ddb/db_output.h>
 #include <ddb/db_sym.h>
 
 /*
@@ -263,7 +264,7 @@ db_symbol_values(c_db_sym_t sym, const char **namep, db_expr_t *valuep)
  * not accept symbols whose value is "small" (and use plain hex).
  */
 
-db_expr_t	db_maxoff = 0x10000;
+db_expr_t	db_maxoff = 0x100000;
 
 void
 db_printsym(db_expr_t off, db_strategy_t strategy)
@@ -274,22 +275,27 @@ db_printsym(db_expr_t off, db_strategy_t strategy)
 	db_expr_t	value;
 	int 		linenum;
 	c_db_sym_t	cursym;
+	char		tbuf[24];
 
 	cursym = db_search_symbol(off, strategy, &d);
 	db_symbol_values(cursym, &name, &value);
 	if (name == NULL)
 		value = off;
 	if (value >= DB_SMALL_VALUE_MIN && value <= DB_SMALL_VALUE_MAX) {
-		db_printf("%+#lr", (long)off);
+		db_format_radix(tbuf, 24, (long)off, TRUE);
+		db_printf("%s", tbuf);
 		return;
 	}
 	if (name == NULL || d >= (unsigned long)db_maxoff) {
-		db_printf("%#lr", (unsigned long)off);
+		db_format_radix(tbuf, 24, (unsigned long)off, TRUE);
+		db_printf("%s", tbuf);
 		return;
 	}
 	db_printf("%s", name);
-	if (d)
-		db_printf("+%+#lr", (long)d);
+	if (d) {
+		db_format_radix(tbuf, 24, (long)d, TRUE);
+		db_printf("+%s", tbuf);
+	}
 	if (strategy == DB_STGY_PROC) {
 		if (db_line_at_pc(cursym, &filename, &linenum, off))
 			db_printf(" [%s:%d]", filename, linenum);

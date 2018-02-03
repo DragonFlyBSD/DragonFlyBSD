@@ -255,6 +255,32 @@ db_more(int *nl)
 }
 
 /*
+ * Replacement for old '%r' kprintf format.
+ */
+void
+db_format_radix(char *buf, size_t bufsiz, quad_t val, int altflag)
+{
+	const char *fmt;
+
+	if (db_radix == 16) {
+		db_format_hex(buf, bufsiz, val, altflag);
+		return;
+	}
+
+	if (db_radix == 8)
+		fmt = altflag ? "-%#qo" : "-%qo";
+	else
+		fmt = altflag ? "-%#qu" : "-%qu";
+
+	if (val < 0)
+		val = -val;
+	else
+		++fmt;
+
+	ksnprintf(buf, bufsiz, fmt, val);
+}
+
+/*
  * Replacement for old '%z' kprintf format.
  */
 void

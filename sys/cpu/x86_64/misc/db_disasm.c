@@ -62,6 +62,7 @@
 
 #include <ddb/ddb.h>
 #include <ddb/db_access.h>
+#include <ddb/db_output.h>
 #include <ddb/db_sym.h>
 
 /*
@@ -1328,6 +1329,8 @@ db_disasm(db_addr_t loc, boolean_t altfmt, db_regs_t *dummy)
 	     i_mode != 0;
 	     i_mode >>= 8, first = FALSE)
 	{
+	    char tbuf[24];
+
 	    if (!first)
 		db_printf(",");
 
@@ -1424,50 +1427,60 @@ db_disasm(db_addr_t loc, boolean_t altfmt, db_regs_t *dummy)
 
 		case I:
 		    len = db_lengths[size];
-		    get_value_inc(imm, loc, len, FALSE);
-		    db_printf("$%#r", imm);
+		    get_value_inc(imm, loc, len, FALSE);	/* unsigned */
+		    db_format_radix(tbuf, 24, (unsigned int)imm, true);
+		    db_printf("$%s", tbuf);
 		    break;
 
 		case Is:
 		    len = db_lengths[(size == LONG && (rex & REX_W)) ? QUAD : size];
-		    get_value_inc(imm, loc, len, FALSE);
-		    db_printf("$%+#r", imm);
+		    get_value_inc(imm, loc, len, TRUE);	/* signed */
+		    db_format_radix(tbuf, 24, imm, TRUE);
+		    db_printf("$%s", tbuf);
 		    break;
 
 		case Ib:
-		    get_value_inc(imm, loc, 1, FALSE);
-		    db_printf("$%#r", imm);
+		    get_value_inc(imm, loc, 1, FALSE);	/* unsigned */
+		    db_format_radix(tbuf, 24, (unsigned int)imm, TRUE);
+		    db_printf("$%s", tbuf);
 		    break;
 
 		case Iba:
 		    get_value_inc(imm, loc, 1, FALSE);
-		    if (imm != 0x0a)
-			db_printf("$%#r", imm);
+		    if (imm != 0x0a) {
+			db_format_radix(tbuf, 24, (unsigned int)imm, TRUE);
+			db_printf("$%s", tbuf);
+		    }
 		    break;
 
 		case Ibs:
-		    get_value_inc(imm, loc, 1, TRUE);
+		    get_value_inc(imm, loc, 1, TRUE);	/* signed */
 		    if (size == WORD)
 			imm &= 0xFFFF;
-		    db_printf("$%+#r", imm);
+		    db_format_radix(tbuf, 24, imm, TRUE);
+		    db_printf("$%s", tbuf);
 		    break;
 
 		case Iw:
-		    get_value_inc(imm, loc, 2, FALSE);
-		    db_printf("$%#r", imm);
+		    get_value_inc(imm, loc, 2, FALSE);	/* unsigned */
+		    db_format_radix(tbuf, 24, (unsigned int)imm, TRUE);
+		    db_printf("$%s", tbuf);
 		    break;
 
 		case Ilq:
 		    len = db_lengths[rex & REX_W ? QUAD : LONG];
 		    get_value_inc(imm64, loc, len, FALSE);
-		    db_printf("$%#lr", imm64);
+		    db_format_radix(tbuf, 24, imm64, TRUE);
+		    db_printf("$%s", tbuf);
 		    break;
 
 		case O:
 		    len = (short_addr ? 2 : 4);
 		    get_value_inc(displ, loc, len, FALSE);
-		    if (seg)
-			db_printf("%s:%+#r",seg, displ);
+		    if (seg) {
+			db_format_radix(tbuf, 24, displ, TRUE);
+			db_printf("%s:%s", seg, tbuf);
+		    }
 		    else
 			db_printsym((db_addr_t)displ, DB_STGY_ANY);
 		    break;
@@ -1501,7 +1514,10 @@ db_disasm(db_addr_t loc, boolean_t altfmt, db_regs_t *dummy)
 		    len = db_lengths[size];
 		    get_value_inc(imm, loc, len, FALSE);	/* offset */
 		    get_value_inc(imm2, loc, 2, FALSE);	/* segment */
-		    db_printf("$%#r,%#r", imm2, imm);
+		    db_format_radix(tbuf, 24, (unsigned int)imm, TRUE);
+		    db_printf("$%s", tbuf);
+		    db_format_radix(tbuf, 24, (unsigned int)imm2, TRUE);
+		    db_printf(",%s", tbuf);
 		    break;
 	    }
 	}

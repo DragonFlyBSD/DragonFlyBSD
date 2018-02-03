@@ -24,7 +24,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_lex.c,v 1.18 1999/08/28 00:41:08 peter Exp $
- * $DragonFly: src/sys/ddb/db_lex.c,v 1.5 2005/12/23 21:35:44 swildner Exp $
  */
 
 /*
@@ -35,6 +34,7 @@
  * Lexical analyzer.
  */
 #include <sys/param.h>
+#include <sys/systm.h>
 
 #include <ddb/ddb.h>
 #include <ddb/db_lex.h>
@@ -117,6 +117,35 @@ db_expr_t	db_tok_number;
 char	db_tok_string[TOK_STRING_SIZE];
 
 db_expr_t	db_radix = 16;
+
+/*
+ * Convert the number to a string in the current radix.
+ * This replaces the non-standard %n printf() format.
+ */
+
+char *
+db_num_to_str(db_expr_t val)
+{
+
+	/*
+	 * 2 chars for "0x", 1 for a sign ("-")
+	 * up to 21 chars for a 64-bit number:
+	 *   % echo 2^64 | bc | wc -c
+	 *   21
+	 * and 1 char for a terminal NUL
+	 * 2+1+21+1 => 25
+	 */
+	static char buf[25];
+
+	if (db_radix == 16)
+		ksnprintf(buf, sizeof(buf), "%" DDB_EXPR_FMT "x", val);
+	else if (db_radix == 8)
+		ksnprintf(buf, sizeof(buf), "%" DDB_EXPR_FMT "o", val);
+	else
+		ksnprintf(buf, sizeof(buf), "%" DDB_EXPR_FMT "u", val);
+
+	return (buf);
+}
 
 void
 db_flush_lex(void)

@@ -24,7 +24,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_lex.h,v 1.12 1999/08/28 00:41:08 peter Exp $
- * $DragonFly: src/sys/ddb/db_lex.h,v 1.4 2006/05/20 02:42:01 dillon Exp $
  */
 
 #ifndef _DDB_DB_LEX_H_
@@ -69,6 +68,7 @@
  * Lexical analyzer.
  */
 void	db_flush_lex (void);
+char   *db_num_to_str(db_expr_t);
 int	db_read_line (void);
 int	db_read_token (void);
 void	db_unread_token (int t);
