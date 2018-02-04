@@ -218,8 +218,8 @@ DB_SHOW_ALL_COMMAND(mesh, db_show_mesh)
 static void
 _db_show_txampdu(const char *sep, int ix, const struct ieee80211_tx_ampdu *tap)
 {
-	db_printf("%stxampdu[%d]: %p flags %b %s\n",
-		sep, ix, tap, tap->txa_flags, IEEE80211_AGGR_BITS,
+	db_printf("%stxampdu[%d]: %p flags %pb%i %s\n",
+		sep, ix, tap, IEEE80211_AGGR_BITS, tap->txa_flags,
 		ieee80211_wme_acnames[TID_TO_WME_AC(tap->txa_tid)]);
 	db_printf("%s  token %u lastsample %d pkts %d avgpps %d qbytes %d qframes %d\n",
 		sep, tap->txa_token, tap->txa_lastsample, tap->txa_pkts,
@@ -258,7 +258,7 @@ _db_show_sta(const struct ieee80211_node *ni)
 		ether_sprintf(ni->ni_macaddr), ieee80211_node_refcnt(ni));
 	db_printf("\tvap %p wdsvap %p ic %p table %p\n",
 		ni->ni_vap, ni->ni_wdsvap, ni->ni_ic, ni->ni_table);
-	db_printf("\tflags=%b\n", ni->ni_flags, IEEE80211_NODE_BITS);
+	db_printf("\tflags=%pb%i\n", IEEE80211_NODE_BITS, ni->ni_flags);
 	db_printf("\tscangen %u authmode %u ath_flags 0x%x ath_defkeyix %u\n",
 		ni->ni_scangen, ni->ni_authmode,
 		ni->ni_ath_flags, ni->ni_ath_defkeyix);
@@ -293,19 +293,19 @@ _db_show_sta(const struct ieee80211_node *ni)
 	db_printf("\tavgrssi 0x%x (rssi %d) noise %d\n",
 		ni->ni_avgrssi, IEEE80211_RSSI_GET(ni->ni_avgrssi),
 		ni->ni_noise);
-	db_printf("\tintval %u capinfo %b\n",
-		ni->ni_intval, ni->ni_capinfo, IEEE80211_CAPINFO_BITS);
+	db_printf("\tintval %u capinfo %pb%i\n",
+		ni->ni_intval, IEEE80211_CAPINFO_BITS, ni->ni_capinfo);
 	db_printf("\tbssid %s", ether_sprintf(ni->ni_bssid));
 	_db_show_ssid(" essid ", 0, ni->ni_esslen, ni->ni_essid);
 	db_printf("\n");
 	_db_show_channel("\tchannel", ni->ni_chan);
 	db_printf("\n");
-	db_printf("\terp %b dtim_period %u dtim_count %u\n",
-		ni->ni_erp, IEEE80211_ERP_BITS,
+	db_printf("\terp %pb%i dtim_period %u dtim_count %u\n",
+		IEEE80211_ERP_BITS, ni->ni_erp,
 		ni->ni_dtim_period, ni->ni_dtim_count);
 
-	db_printf("\thtcap %b htparam 0x%x htctlchan %u ht2ndchan %u\n",
-		ni->ni_htcap, IEEE80211_HTCAP_BITS,
+	db_printf("\thtcap %pb%i htparam 0x%x htctlchan %u ht2ndchan %u\n",
+		IEEE80211_HTCAP_BITS, ni->ni_htcap,
 		ni->ni_htparam, ni->ni_htctlchan, ni->ni_ht2ndchan);
 	db_printf("\thtopmode 0x%x htstbc 0x%x chw %u\n",
 		ni->ni_htopmode, ni->ni_htstbc, ni->ni_chw);
@@ -322,8 +322,8 @@ _db_show_sta(const struct ieee80211_node *ni)
 		ni->ni_inact, ni->ni_inact_reload, ni->ni_txrate);
 #ifdef IEEE80211_SUPPORT_MESH
 	_db_show_ssid("\tmeshid ", 0, ni->ni_meshidlen, ni->ni_meshid);
-	db_printf(" mlstate %b mllid 0x%x mlpid 0x%x mlrcnt %u mltval %u\n",
-	    ni->ni_mlstate, IEEE80211_MESH_MLSTATE_BITS,
+	db_printf(" mlstate %pb%i mllid 0x%x mlpid 0x%x mlrcnt %u mltval %u\n",
+	    IEEE80211_MESH_MLSTATE_BITS, ni->ni_mlstate,
 	    ni->ni_mllid, ni->ni_mlpid, ni->ni_mlrcnt, ni->ni_mltval);
 #endif
 }
@@ -375,14 +375,14 @@ _db_show_vap(const struct ieee80211vap *vap, int showmesh, int showprocs)
 	struct sysctllog	*iv_sysctl;	/* dynamic sysctl context */
 #endif
 	db_printf("\n");
-	db_printf("\tdebug=%b\n", vap->iv_debug, IEEE80211_MSG_BITS);
+	db_printf("\tdebug=%pb%i\n", IEEE80211_MSG_BITS, vap->iv_debug);
 
-	db_printf("\tflags=%b\n", vap->iv_flags, IEEE80211_F_BITS);
-	db_printf("\tflags_ext=%b\n", vap->iv_flags_ext, IEEE80211_FEXT_BITS);
-	db_printf("\tflags_ht=%b\n", vap->iv_flags_ht, IEEE80211_FHT_BITS);
-	db_printf("\tflags_ven=%b\n", vap->iv_flags_ven, IEEE80211_FVEN_BITS);
-	db_printf("\tcaps=%b\n", vap->iv_caps, IEEE80211_C_BITS);
-	db_printf("\thtcaps=%b\n", vap->iv_htcaps, IEEE80211_C_HTCAP_BITS);
+	db_printf("\tflags=%pb%i\n", IEEE80211_F_BITS, vap->iv_flags);
+	db_printf("\tflags_ext=%pb%i\n", IEEE80211_FEXT_BITS, vap->iv_flags_ext);
+	db_printf("\tflags_ht=%pb%i\n", IEEE80211_FHT_BITS, vap->iv_flags_ht);
+	db_printf("\tflags_ven=%pb%i\n", IEEE80211_FVEN_BITS, vap->iv_flags_ven);
+	db_printf("\tcaps=%pb%i\n", IEEE80211_C_BITS, vap->iv_caps);
+	db_printf("\thtcaps=%pb%i\n", IEEE80211_C_HTCAP_BITS, vap->iv_htcaps);
 
 	_db_show_stats(&vap->iv_stats);
 
@@ -541,14 +541,14 @@ _db_show_com(const struct ieee80211com *ic, int showvaps, int showsta,
 	db_printf(" inact %p", &ic->ic_inact);
 	db_printf("\n");
 
-	db_printf("\tflags=%b\n", ic->ic_flags, IEEE80211_F_BITS);
-	db_printf("\tflags_ext=%b\n", ic->ic_flags_ext, IEEE80211_FEXT_BITS);
-	db_printf("\tflags_ht=%b\n", ic->ic_flags_ht, IEEE80211_FHT_BITS);
-	db_printf("\tflags_ven=%b\n", ic->ic_flags_ven, IEEE80211_FVEN_BITS);
-	db_printf("\tcaps=%b\n", ic->ic_caps, IEEE80211_C_BITS);
-	db_printf("\tcryptocaps=%b\n",
-	    ic->ic_cryptocaps, IEEE80211_CRYPTO_BITS);
-	db_printf("\thtcaps=%b\n", ic->ic_htcaps, IEEE80211_HTCAP_BITS);
+	db_printf("\tflags=%pb%i\n", IEEE80211_F_BITS, ic->ic_flags);
+	db_printf("\tflags_ext=%pb%i\n", IEEE80211_FEXT_BITS, ic->ic_flags_ext);
+	db_printf("\tflags_ht=%pb%i\n", IEEE80211_FHT_BITS, ic->ic_flags_ht);
+	db_printf("\tflags_ven=%pb%i\n", IEEE80211_FVEN_BITS, ic->ic_flags_ven);
+	db_printf("\tcaps=%pb%i\n", IEEE80211_C_BITS, ic->ic_caps);
+	db_printf("\tcryptocaps=%pb%i\n",
+	    IEEE80211_CRYPTO_BITS, ic->ic_cryptocaps);
+	db_printf("\thtcaps=%pb%i\n", IEEE80211_HTCAP_BITS, ic->ic_htcaps);
 
 #if 0
 	uint8_t			ic_modecaps[2];	/* set of mode capabilities */
@@ -720,9 +720,9 @@ _db_show_channel(const char *tag, const struct ieee80211_channel *c)
 	else if (c == IEEE80211_CHAN_ANYC)
 		db_printf("<ANY>");
 	else
-		db_printf("[%u (%u) flags=%b maxreg %d maxpow %d minpow %d state 0x%x extieee %u]",
+		db_printf("[%u (%u) flags=%pb%i maxreg %d maxpow %d minpow %d state 0x%x extieee %u]",
 		    c->ic_freq, c->ic_ieee,
-		    c->ic_flags, IEEE80211_CHAN_BITS,
+		    IEEE80211_CHAN_BITS, c->ic_flags,
 		    c->ic_maxregpower, c->ic_maxpower, c->ic_minpower,
 		    c->ic_state, c->ic_extieee);
 }
@@ -820,7 +820,7 @@ _db_show_key(const char *tag, int ix, const struct ieee80211_key *wk)
 		if (cip->ic_cipher != IEEE80211_CIPHER_WEP &&
 		    wk->wk_keytsc != 0)
 			db_printf(" tsc %ju", (uintmax_t)wk->wk_keytsc);
-		db_printf(" flags=%b", wk->wk_flags, IEEE80211_KEY_BITS);
+		db_printf(" flags=%pb%i", IEEE80211_KEY_BITS, wk->wk_flags);
 	}
 	db_printf("\n");
 }
@@ -872,9 +872,9 @@ _db_show_ageq(const char *tag, const struct ieee80211_ageq *q)
 	    tag, &q->aq_lock, q->aq_len, q->aq_maxlen, q->aq_drops,
 	    q->aq_head, q->aq_tail);
 	for (m = q->aq_head; m != NULL; m = m->m_nextpkt)
-		db_printf("%s %p (len %d, %b)\n", tag, m, m->m_len,
+		db_printf("%s %p (len %d, %pb%i)\n", tag, m, m->m_len,
 		    /* XXX could be either TX or RX but is mostly TX */
-		    m->m_flags, IEEE80211_MBUF_TX_FLAG_BITS);
+		    IEEE80211_MBUF_TX_FLAG_BITS, m->m_flags);
 }
 
 static void

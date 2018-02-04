@@ -371,7 +371,7 @@ ngmn_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_mes
 	}
 
 	pos = 0;
-	pos += ksprintf(pos + r,"Framer status %b;\n", sc->framer_state, "\20"
+	pos += ksprintf(pos + r,"Framer status %pb%i;\n", "\20"
 	    "\40LOS\37AIS\36LFA\35RRA"
 	    "\34AUXP\33NMF\32LMFA\31frs0.0"
 	    "\30frs1.7\27TS16RA\26TS16LOS\25TS16AIS"
@@ -379,11 +379,11 @@ ngmn_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_mes
 	    "\20RS1\17rsw.6\16RRA\15RY0"
 	    "\14RY1\13RY2\12RY3\11RY4"
 	    "\10SI1\7SI2\6rsp.5\5rsp.4"
-	    "\4rsp.3\3RSIF\2RS13\1RS15");
+	    "\4rsp.3\3RSIF\2RS13\1RS15", sc->framer_state);
 	pos += ksprintf(pos + r,"    Framing errors: %lu", sc->cnt_fec);
 	pos += ksprintf(pos + r,"  Code Violations: %lu\n", sc->cnt_cvc);
 	
-	pos += ksprintf(pos + r,"    Falc State %b;\n", sc->falc_state, "\20"
+	pos += ksprintf(pos + r,"    Falc State %pb%i;\n", "\20"
 	    "\40LOS\37AIS\36LFA\35RRA"
 	    "\34AUXP\33NMF\32LMFA\31frs0.0"
 	    "\30frs1.7\27TS16RA\26TS16LOS\25TS16AIS"
@@ -391,12 +391,13 @@ ngmn_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_mes
 	    "\20RS1\17rsw.6\16RRA\15RY0"
 	    "\14RY1\13RY2\12RY3\11RY4"
 	    "\10SI1\7SI2\6rsp.5\5rsp.4"
-	    "\4rsp.3\3RSIF\2RS13\1RS15");
-	pos += ksprintf(pos + r, "    Falc IRQ %b\n", sc->falc_irq, "\20"
+	    "\4rsp.3\3RSIF\2RS13\1RS15", sc->falc_state);
+	pos += ksprintf(pos + r, "    Falc IRQ %pb%i\n", "\20"
 	    "\40RME\37RFS\36T8MS\35RMB\34CASC\33CRC4\32SA6SC\31RPF"
 	    "\30b27\27RDO\26ALLS\25XDU\24XMB\23b22\22XLSC\21XPR"
 	    "\20FAR\17LFA\16MFAR\15T400MS\14AIS\13LOS\12RAR\11RA"
-	    "\10ES\7SEC\6LMFA16\5AIS16\4RA16\3API\2SLN\1SLP");
+	    "\10ES\7SEC\6LMFA16\5AIS16\4RA16\3API\2SLN\1SLP",
+	    sc->falc_irq);
 	for (i = 0; i < M32_CHAN; i++) {
 		if (!sc->ch[i])
 			continue;
@@ -431,9 +432,9 @@ ngmn_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_mes
 		pos += ksprintf(r + pos, " Abort: %lu", sch->abort_error);
 		pos += ksprintf(r + pos, " Overflow: %lu\n", sch->overflow_error);
 
-		pos += ksprintf(r + pos, "    Last error: %b  Prev error: %b\n",
-		    sch->last_error, "\20\7SHORT\5CRC\4MOD8\3LONG\2ABORT\1OVERRUN",
-		    sch->prev_error, "\20\7SHORT\5CRC\4MOD8\3LONG\2ABORT\1OVERRUN");
+		pos += ksprintf(r + pos, "    Last error: %pb%i  Prev error: %pb%i\n",
+		    "\20\7SHORT\5CRC\4MOD8\3LONG\2ABORT\1OVERRUN", sch->last_error,
+		    "\20\7SHORT\5CRC\4MOD8\3LONG\2ABORT\1OVERRUN", sch->prev_error);
 		pos += ksprintf(r + pos, "    Xmit bytes pending %ld\n",
 		    sch->tx_pending);
 	}
@@ -1021,11 +1022,11 @@ f54_intr(struct softc *sc)
 	/* don't chat about the 1 sec heart beat */
 	if (u & ~0x40) {
 #if 0
-		kprintf("%s*: FALC54 IRQ GIS:%02x %b\n", sc->name, g, u, "\20"
+		kprintf("%s*: FALC54 IRQ GIS:%02x %pb%i\n", sc->name, g, "\20"
 		    "\40RME\37RFS\36T8MS\35RMB\34CASC\33CRC4\32SA6SC\31RPF"
 		    "\30b27\27RDO\26ALLS\25XDU\24XMB\23b22\22XLSC\21XPR"
 		    "\20FAR\17LFA\16MFAR\15T400MS\14AIS\13LOS\12RAR\11RA"
-		    "\10ES\7SEC\6LMFA16\5AIS16\4RA16\3API\2SLN\1SLP");
+		    "\10ES\7SEC\6LMFA16\5AIS16\4RA16\3API\2SLN\1SLP", u);
 #endif
 		s = sc->f54r->frs0 << 24;
 		s |= sc->f54r->frs1 << 16;
@@ -1038,11 +1039,11 @@ f54_intr(struct softc *sc)
 		s &= ~0x00780000;	/* XXX: TS16 related */
 		s &= ~0x06000000;	/* XXX: Multiframe related */
 #if 0
-		kprintf("%s*: FALC54 Status %b\n", sc->name, s, "\20"
+		kprintf("%s*: FALC54 Status %pb%i\n", sc->name, "\20"
 		    "\40LOS\37AIS\36LFA\35RRA\34AUXP\33NMF\32LMFA\31frs0.0"
 		    "\30frs1.7\27TS16RA\26TS16LOS\25TS16AIS\24TS16LFA\23frs1.2\22XLS\21XLO"
 		    "\20RS1\17rsw.6\16RRA\15RY0\14RY1\13RY2\12RY3\11RY4"
-		    "\10SI1\7SI2\6rsp.5\5rsp.4\4rsp.3\3RSIF\2RS13\1RS15");
+		    "\10SI1\7SI2\6rsp.5\5rsp.4\4rsp.3\3RSIF\2RS13\1RS15", s);
 #endif
 		if (s != sc->framer_state) {
 #if 0

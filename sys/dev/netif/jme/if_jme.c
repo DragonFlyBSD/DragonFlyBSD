@@ -2352,8 +2352,8 @@ jme_rxpkt(struct jme_rxdata *rdata, int cpuid)
 		IFNET_STAT_INC(ifp, ierrors, 1);
 		jme_discard_rxbufs(rdata, cons, nsegs);
 #ifdef JME_SHOW_ERRORS
-		if_printf(ifp, "%s : receive error = 0x%b\n",
-		    __func__, JME_RX_ERR(status), JME_RX_ERR_BITS);
+		if_printf(ifp, "%s : receive error = 0x%pb%i\n",
+		    __func__, JME_RX_ERR_BITS, JME_RX_ERR(status));
 #endif
 		rdata->jme_rx_cons += nsegs;
 		rdata->jme_rx_cons %= rdata->jme_rx_desc_cnt;

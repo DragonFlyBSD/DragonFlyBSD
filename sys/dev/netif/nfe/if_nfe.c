@@ -1175,8 +1175,8 @@ nfe_txeof(struct nfe_softc *sc, int start)
 				goto skip;
 
 			if ((flags & NFE_TX_ERROR_V1) != 0) {
-				if_printf(ifp, "tx v1 error 0x%4b\n", flags,
-					  NFE_V1_TXERR);
+				if_printf(ifp, "tx v1 error 0x%pb%i\n",
+					  NFE_V1_TXERR, flags);
 				IFNET_STAT_INC(ifp, oerrors, 1);
 			} else {
 				IFNET_STAT_INC(ifp, opackets, 1);
@@ -1186,8 +1186,8 @@ nfe_txeof(struct nfe_softc *sc, int start)
 				goto skip;
 
 			if ((flags & NFE_TX_ERROR_V2) != 0) {
-				if_printf(ifp, "tx v2 error 0x%4b\n", flags,
-					  NFE_V2_TXERR);
+				if_printf(ifp, "tx v2 error 0x%pb%i\n",
+					  NFE_V2_TXERR, flags);
 				IFNET_STAT_INC(ifp, oerrors, 1);
 			} else {
 				IFNET_STAT_INC(ifp, opackets, 1);

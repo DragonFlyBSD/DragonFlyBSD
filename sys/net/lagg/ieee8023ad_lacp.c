@@ -2045,7 +2045,7 @@ lacp_format_lagid_aggregator(const struct lacp_aggregator *la,
 const char *
 lacp_format_state(uint8_t state, char *buf, size_t buflen)
 {
-	ksnprintf(buf, buflen, "%b", state, LACP_STATE_BITS);
+	ksnprintf(buf, buflen, "%pb%i", LACP_STATE_BITS, state);
 	return (buf);
 }
 
