@@ -515,7 +515,6 @@ ksprintn(char *nbuf, uintmax_t num, int base, int *lenp, int upper)
  * Two additional formats:
  *
  * The format %pb%i is supported to decode error registers.
- * The use %b format is deprecated.
  * Its usage is:
  *
  *	kprintf("reg=%pb%i\n", "<base><arg>*", regval);
@@ -644,29 +643,6 @@ reswitch:
 			else
 				width = n;
 			goto reswitch;
-		case 'b':
-			num = (u_int)__va_arg(ap, int);
-			p = __va_arg(ap, char *);
-			for (q = ksprintn(nbuf, num, *p++, NULL, 0); *q;)
-				PCHAR(*q--);
-
-			if (num == 0)
-				break;
-
-			for (tmp = 0; *p;) {
-				n = *p++;
-				if (num & (1 << (n - 1))) {
-					PCHAR(tmp ? ',' : '<');
-					for (; (n = *p) > ' '; ++p)
-						PCHAR(n);
-					tmp = 1;
-				} else
-					for (; *p > ' '; ++p)
-						continue;
-			}
-			if (tmp)
-				PCHAR('>');
-			break;
 		case 'c':
 			PCHAR(__va_arg(ap, int));
 			break;

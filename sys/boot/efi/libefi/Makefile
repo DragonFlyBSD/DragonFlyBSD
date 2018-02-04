@@ -21,8 +21,6 @@ CFLAGS+= -I${.CURDIR}/../../common
 # Disable stack protector
 CFLAGS+= -fno-stack-protector
 
-# Handle FreeBSD specific %b and %D printf format specifiers
-CFLAGS+= ${FORMAT_EXTENSIONS}
 CFLAGS+= -DTERM_EMU
 
 .include <bsd.lib.mk>

@@ -620,9 +620,6 @@ static const format_flag_pair strfmon_flag_pairs[] =
 };
 
 
-static const format_char_info dfly_ext_char_info =
-{ NULL,  1, STD_EXT, { T89_C,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN }, "",      "cR", NULL };
-
 static const format_char_info print_char_table[] =
 {
   /* C89 conversion specifiers.  */
@@ -643,14 +640,6 @@ static const format_char_info print_char_table[] =
   { "S",   1, STD_EXT, { TEX_W,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN }, "-wp",       "R",  NULL },
   /* GNU conversion specifiers.  */
   { "m",   0, STD_EXT, { T89_V,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN }, "-wp",       "",   NULL },
-  /* BSD conversion specifiers.  */
-  /* DragonFly kernel extensions (src/sys/kern/subr_prf.c).
-     The format %b is supported to decode error registers.
-     Its usage is:	printf("reg=%b\n", regval, "<base><arg>*");
-     which produces:	reg=3<BITTWO,BITONE>
-   */
-  { "b",   0, STD_EXT, { T89_I,  BADLEN,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN }, "-wp",       "",   &dfly_ext_char_info },
-  { "ry",  0, STD_EXT, { T89_I,  BADLEN,   BADLEN,   T89_L,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN }, "-wp0 +#",   "i",  NULL },
   { NULL,  0, STD_C89, NOLENGTHS, NULL, NULL, NULL }
 };
 

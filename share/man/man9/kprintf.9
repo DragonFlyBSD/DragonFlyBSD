@@ -111,11 +111,11 @@ functions add another conversion specifier to
 .Fa format :
 .Pp
 The
-.Cm \&%b
+.Cm \&%pb%i
 identifier expects two arguments: an
-.Vt int
+.Vt "char *"
 and a
-.Vt "char *" .
+.Vt int .
 These are used as a register value and a print mask for decoding bitmasks.
 The print mask is made up of two parts: the base and the
 arguments.
@@ -185,7 +185,7 @@ and
 functions return the number of characters displayed.
 .Sh EXAMPLES
 This example demonstrates the use of the
-.Cm \&%b
+.Cm \&%pb%i
 conversion specifier.
 The function
 .Bd -literal -offset indent
@@ -193,7 +193,7 @@ void
 kprintf_test(void)
 {
 
-	kprintf("reg=%b\en", 3, "\e10\e2BITTWO\e1BITONE\en");
+	kprintf("reg=%pb%i\en", "\e10\e2BITTWO\e1BITONE\en", 3);
 }
 .Ed
 .Pp

@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/lib/libstand/libstand.3,v 1.5.2.11 2002/06/26 19:14:43 schweikh Exp $
 .\"
-.Dd February 10, 2016
+.Dd February 14, 2018
 .Dt LIBSTAND 3
 .Os
 .Sh NAME
@@ -288,37 +288,6 @@ are supported:
 .Cm c , d , n , o , p , s , u , x .
 The following modifiers are supported:
 .Cm + , - , # , * , 0 , field width , precision , l .
-.Pp
-The
-.Cm b
-conversion is provided to decode error registers.
-Its usage is:
-.Bd -ragged -offset indent
-printf(
-.Qq reg=%b\en ,
-regval,
-.Qq <base><arg>*
-);
-.Ed
-.Pp
-where <base> is the output expressed as a control character, e.g.\& \e10 gives
-octal, \e20 gives hex.
-Each <arg> is a sequence of characters, the first of
-which gives the bit number to be inspected (origin 1) and the next characters
-(up to a character less than 32) give the text to be displayed if the bit is set.
-Thus
-.Bd -ragged -offset indent
-printf(
-.Qq reg=%b\en ,
-3,
-.Qq \e10\e2BITTWO\e1BITONE\en
-);
-.Ed
-.Pp
-would give the output
-.Bd -ragged -offset indent
-reg=3<BITTWO,BITONE>
-.Ed
 .El
 .Sh CHARACTER TESTS AND CONVERSIONS
 .Bl -hang -width 10n

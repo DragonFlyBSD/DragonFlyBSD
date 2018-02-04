@@ -59,8 +59,7 @@ struct snprintf_arg {
 #define MAXNBUF (sizeof(intmax_t) * CHAR_BIT + 1)
 
 static char	*ksprintn (char *buf, uintmax_t num, int base, int *len, int upper);
-static int	kvprintf(const char *, void (*)(int, void *), void *, int,
-			 va_list);
+static int	kvprintf(const char *, void (*)(int, void *), void *, va_list);
 static void	putchar_wrapper(int, void *);
 static void	snprintf_func(int, void *);
 
@@ -77,7 +76,7 @@ printf(const char *fmt, ...)
 	int retval;
 
 	va_start(ap, fmt);
-	retval = kvprintf(fmt, putchar_wrapper, NULL, 10, ap);
+	retval = kvprintf(fmt, putchar_wrapper, NULL, ap);
 	va_end(ap);
 	return retval;
 }
@@ -86,7 +85,7 @@ void
 vprintf(const char *fmt, va_list ap)
 {
 
-	kvprintf(fmt, putchar_wrapper, NULL, 10, ap);
+	kvprintf(fmt, putchar_wrapper, NULL, ap);
 }
 
 int
@@ -96,7 +95,7 @@ sprintf(char *buf, const char *cfmt, ...)
 	va_list ap;
 
 	va_start(ap, cfmt);
-	retval = kvprintf(cfmt, NULL, buf, 10, ap);
+	retval = kvprintf(cfmt, NULL, buf, ap);
 	buf[retval] = '\0';
 	va_end(ap);
 	return retval;
@@ -106,8 +105,8 @@ void
 vsprintf(char *buf, const char *cfmt, va_list ap)
 {
 	int	retval;
-	
-	retval = kvprintf(cfmt, NULL, buf, 10, ap);
+
+	retval = kvprintf(cfmt, NULL, buf, ap);
 	buf[retval] = '\0';
 }
 
@@ -131,7 +130,7 @@ vsnprintf(char *buf, size_t size, const char *cfmt, va_list ap)
 
 	info.buf = buf;
 	info.remain = size;
-	retval = kvprintf(cfmt, snprintf_func, &info, 10, ap);
+	retval = kvprintf(cfmt, snprintf_func, &info, ap);
 	if (info.remain >= 1)
 		*info.buf++ = '\0';
 	return(retval);
@@ -172,35 +171,14 @@ ksprintn(char *nbuf, uintmax_t num, int base, int *lenp, int upper)
 
 /*
  * Scaled down version of printf(3).
- *
- * Two additional formats:
- *
- * The format %b is supported to decode error registers.
- * Its usage is:
- *
- *	printf("reg=%b\n", regval, "<base><arg>*");
- *
- * where <base> is the output base expressed as a control character, e.g.
- * \10 gives octal; \20 gives hex.  Each arg is a sequence of characters,
- * the first of which gives the bit number to be inspected (origin 1), and
- * the next characters (up to a control character, i.e. a character <= 32),
- * give the name of the register.  Thus:
- *
- *	kvprintf("reg=%b\n", 3, "\10\2BITTWO\1BITONE\n");
- *
- * would produce output:
- *
- *	reg=3<BITTWO,BITONE>
- *
  */
 static int
-kvprintf(char const *fmt, void (*func)(int, void *), void *arg, int radix,
-	 va_list ap)
+kvprintf(char const *fmt, void (*func)(int, void *), void *arg, va_list ap)
 {
 #define PCHAR(c) {int cc=(c); if (func) (*func)(cc, arg); else *d++ = cc; retval++; }
 	char nbuf[MAXNBUF];
 	char *d;
-	const char *p, *percent, *q;
+	const char *p, *percent;
 	int ch, n;
 	uintmax_t num;
 	int base, lflag, qflag, tmp, width, ladjust, sharpflag, neg, sign, dot;
@@ -217,9 +195,6 @@ kvprintf(char const *fmt, void (*func)(int, void *), void *arg, int radix,
 
 	if (fmt == NULL)
 		fmt = "(fmt null)\n";
-
-	if (radix < 2 || radix > 36)
-		radix = 10;
 
 	for (;;) {
 		padc = ' ';
@@ -279,29 +254,6 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 			else
 				width = n;
 			goto reswitch;
-		case 'b':
-			num = (u_int)va_arg(ap, int);
-			p = va_arg(ap, char *);
-			for (q = ksprintn(nbuf, num, *p++, NULL, 0); *q;)
-				PCHAR(*q--);
-
-			if (num == 0)
-				break;
-
-			for (tmp = 0; *p;) {
-				n = *p++;
-				if (num & (1 << (n - 1))) {
-					PCHAR(tmp ? ',' : '<');
-					for (; (n = *p) > ' '; ++p)
-						PCHAR(n);
-					tmp = 1;
-				} else
-					for (; *p > ' '; ++p)
-						continue;
-			}
-			if (tmp)
-				PCHAR('>');
-			break;
 		case 'c':
 			PCHAR(va_arg(ap, int));
 			break;
@@ -355,11 +307,6 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 		case 'q':
 			qflag = 1;
 			goto reswitch;
-		case 'r':
-			base = radix;
-			if (sign)
-				goto handle_sign;
-			goto handle_nosign;
 		case 's':
 			p = va_arg(ap, char *);
 			if (p == NULL)
@@ -392,10 +339,6 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 		case 'x':
 			base = 16;
 			goto handle_nosign;
-		case 'y':
-			base = 16;
-			sign = 1;
-			goto handle_sign;
 		case 'z':
 			zflag = 1;
 			goto reswitch;

@@ -437,8 +437,9 @@ controller_print(int unit, void *arg)
 	    printf("  Firmware Build Number       %d\n", enq.me_firmware_build);
 	    printf("  Fault Management Type       %d\n", enq.me_fault_mgmt_type);
 #if 0
-	    printf("  Features                    %b\n", enq.me_firmware_features,
-		      "\20\4Background Init\3Read Ahead\2MORE\1Cluster\n");
+	    printf("  Features                    %pb%i\n",
+		      "\20\4Background Init\3Read Ahead\2MORE\1Cluster\n",
+		      enq.me_firmware_features);
 #endif
 	}
 

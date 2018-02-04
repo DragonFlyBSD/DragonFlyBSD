@@ -990,7 +990,7 @@ Perror(const char *cmd)
 }
 
 /*
- * Print a value a la the %b format of the kernel's printf
+ * Print a value a la the %pb%i format of the kernel's kprintf()
  */
 void
 printb(const char *s, unsigned v, const char *bits)

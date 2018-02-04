@@ -815,7 +815,7 @@ in6_getprefix(char *plen, int which)
 #endif
 
 /*
- * Print a value a la the %b format of the kernel's printf
+ * Print a value a la the %pb%i format of the kernel's kprintf()
  */
 static void
 printb(char *s, unsigned int v, char *bits)

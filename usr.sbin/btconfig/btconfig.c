@@ -1145,7 +1145,7 @@ do_inquiry(void)
 }
 
 /*
- * Print a value a la the %b format of the kernel's printf borrowed
+ * Print a value a la the %pb%i format of the kernel's kprintf() borrowed
  * from ifconfig(8).
  */
 static void
