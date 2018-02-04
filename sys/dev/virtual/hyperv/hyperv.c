@@ -232,7 +232,7 @@ hyperv_identify(void)
 	kprintf("Hyper-V Version: %d.%d.%d [SP%d]\n",
 	    regs[1] >> 16, regs[1] & 0xffff, regs[0], regs[2]);
 
-	kprintf("  Features=0x%b\n", hyperv_features,
+	kprintf("  Features=0x%pb%i\n",
 	    "\020"
 	    "\001VPRUNTIME"	/* MSR_HV_VP_RUNTIME */
 	    "\002TMREFCNT"	/* MSR_HV_TIME_REF_COUNT */
@@ -246,13 +246,14 @@ hyperv_identify(void)
 	    "\012REFTSC"	/* MSR_HV_REFERENCE_TSC */
 	    "\013IDLE"		/* MSR_HV_GUEST_IDLE */
 	    "\014TMFREQ"	/* MSR_HV_{TSC,APIC}_FREQUENCY */
-	    "\015DEBUG");	/* MSR_HV_SYNTH_DEBUG_ */
-	kprintf("  PM Features=0x%b [C%u]\n",
-	    (hyperv_pm_features & ~CPUPM_HV_CSTATE_MASK),
+	    "\015DEBUG",	/* MSR_HV_SYNTH_DEBUG_ */
+	    hyperv_features);
+	kprintf("  PM Features=0x%pb%i [C%u]\n",
 	    "\020"
 	    "\005C3HPET",	/* HPET is required for C3 state */
+	    (hyperv_pm_features & ~CPUPM_HV_CSTATE_MASK),
 	    CPUPM_HV_CSTATE(hyperv_pm_features));
-	kprintf("  Features3=0x%b\n", hyperv_features3,
+	kprintf("  Features3=0x%pb%i\n",
 	    "\020"
 	    "\001MWAIT"		/* MWAIT */
 	    "\002DEBUG"		/* guest debug support */
@@ -267,7 +268,8 @@ hyperv_identify(void)
 	    "\013CRASH"		/* MSRs for guest crash */
 	    "\014DEBUGMSR"	/* MSRs for guest debug */
 	    "\015NPIEP"		/* NPIEP */
-	    "\016HVDIS");	/* disabling hypervisor */
+	    "\016HVDIS",	/* disabling hypervisor */
+	    hyperv_features3);
 
 	do_cpuid(CPUID_LEAF_HV_RECOMMENDS, regs);
 	hyperv_recommends = regs[0];

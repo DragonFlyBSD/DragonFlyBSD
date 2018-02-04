@@ -296,12 +296,12 @@ tpm_tis12_probe(bus_space_tag_t bt, bus_space_handle_t bh)
 		return 0;
 
 #ifdef TPM_DEBUG
-	kprintf("tpm: caps=%b\n", r, TPM_CAPBITS);
+	kprintf("tpm: caps=%pb%i\n", TPM_CAPBITS, r);
 #endif
 	if ((r & TPM_CAPSREQ) != TPM_CAPSREQ ||
 	    !(r & (TPM_INTF_INT_EDGE_RISING | TPM_INTF_INT_LEVEL_LOW))) {
 #ifdef TPM_DEBUG
-		kprintf("tpm: caps too low (caps=%b)\n", r, TPM_CAPBITS);
+		kprintf("tpm: caps too low (caps=%pb%i)\n", TPM_CAPBITS, r);
 #endif
 		return 0;
 	}
@@ -363,11 +363,12 @@ tpm_tis12_init(struct tpm_softc *sc, int irq, const char *name)
 
 	r = bus_space_read_4(sc->sc_bt, sc->sc_bh, TPM_INTF_CAPABILITIES);
 #ifdef TPM_DEBUG
-	kprintf(" caps=%b ", r, TPM_CAPBITS);
+	kprintf(" caps=%pb%i ", TPM_CAPBITS, r);
 #endif
 	if ((r & TPM_CAPSREQ) != TPM_CAPSREQ ||
 	    !(r & (TPM_INTF_INT_EDGE_RISING | TPM_INTF_INT_LEVEL_LOW))) {
-		kprintf(": capabilities too low (caps=%b)\n", r, TPM_CAPBITS);
+		kprintf(": capabilities too low (caps=%pb%i)\n",
+		    TPM_CAPBITS, r);
 		return 1;
 	}
 	sc->sc_capabilities = r;
@@ -430,7 +431,7 @@ tpm_request_locality(struct tpm_softc *sc, int l)
 	if ((r & (TPM_ACCESS_VALID | TPM_ACCESS_ACTIVE_LOCALITY)) !=
 	    (TPM_ACCESS_VALID | TPM_ACCESS_ACTIVE_LOCALITY)) {
 #ifdef TPM_DEBUG
-		kprintf("%s: access %b\n", __func__, r, TPM_ACCESS_BITS);
+		kprintf("%s: access %pb%i\n", __func__, TPM_ACCESS_BITS, r);
 #endif
 		return EBUSY;
 	}
@@ -606,8 +607,8 @@ tpm_waitfor_int(struct tpm_softc *sc, u_int8_t mask, int tmo, void *c,
 
 	sc->sc_stat = tpm_status(sc);
 #ifdef TPM_DEBUG
-	kprintf("%s: woke up with rv %d stat %b\n", __func__, rv,
-	    sc->sc_stat, TPM_STS_BITS);
+	kprintf("%s: woke up with rv %d stat %pb%i\n", __func__, rv,
+	    TPM_STS_BITS, sc->sc_stat);
 #endif
 	if ((sc->sc_stat & mask) == mask)
 		rv = 0;
@@ -633,7 +634,7 @@ tpm_waitfor(struct tpm_softc *sc, u_int8_t b0, int tmo, void *c)
 	int re, to, rv;
 
 #ifdef TPM_DEBUG
-	kprintf("%s: b0 %b\n", __func__, b0, TPM_STS_BITS);
+	kprintf("%s: b0 %pb%i\n", __func__, TPM_STS_BITS, b0);
 #endif
 
 	/*
@@ -704,8 +705,8 @@ again:
 
 	if ((sc->sc_stat & b) != b) {
 #ifdef TPM_DEBUG
-		kprintf("%s: timeout: stat=%b b=%b\n", __func__,
-		    sc->sc_stat, TPM_STS_BITS, b, TPM_STS_BITS);
+		kprintf("%s: timeout: stat=%pb%i b=%pb%i\n", __func__,
+		    TPM_STS_BITS, sc->sc_stat, TPM_STS_BITS, b);
 #endif
 		if (re-- && (b0 & TPM_STS_VALID)) {
 			bus_space_write_1(sc->sc_bt, sc->sc_bh, TPM_STS,
@@ -737,8 +738,8 @@ tpm_tis12_start(struct tpm_softc *sc, int flag)
 	sc->sc_stat = tpm_status(sc);
 	if (sc->sc_stat & TPM_STS_CMD_READY) {
 #ifdef TPM_DEBUG
-		kprintf("%s: UIO_WRITE status %b\n", __func__, sc->sc_stat,
-		   TPM_STS_BITS);
+		kprintf("%s: UIO_WRITE status %pb%i\n", __func__,
+		   TPM_STS_BITS, sc->sc_stat);
 #endif
 		return 0;
 	}
@@ -833,8 +834,8 @@ tpm_tis12_write(struct tpm_softc *sc, void *buf, int len)
 		sc->sc_stat = tpm_status(sc);
 		if (!(sc->sc_stat & TPM_STS_DATA_EXPECT)) {
 #ifdef TPM_DEBUG
-			kprintf("%s: failed rv %d stat=%b\n", __func__, rv,
-			    sc->sc_stat, TPM_STS_BITS);
+			kprintf("%s: failed rv %d stat=%pb%i\n", __func__, rv,
+			    TPM_STS_BITS, sc->sc_stat);
 #endif
 			return EIO;
 		}
@@ -851,8 +852,8 @@ tpm_tis12_write(struct tpm_softc *sc, void *buf, int len)
 	}
 	if ((sc->sc_stat & TPM_STS_DATA_EXPECT) != 0) {
 #ifdef TPM_DEBUG
-		kprintf("%s: failed rv %d stat=%b\n", __func__, rv,
-		    sc->sc_stat, TPM_STS_BITS);
+		kprintf("%s: failed rv %d stat=%pb%i\n", __func__, rv,
+		    TPM_STS_BITS, sc->sc_stat);
 #endif
 		return EIO;
 	}
@@ -879,8 +880,8 @@ tpm_tis12_end(struct tpm_softc *sc, int flag, int err)
 		sc->sc_stat = tpm_status(sc);
 		if (!err && ((sc->sc_stat & TPM_STS_DATA_AVAIL) == TPM_STS_DATA_AVAIL)) {
 #ifdef TPM_DEBUG
-			kprintf("%s: read failed stat=%b\n", __func__,
-			    sc->sc_stat, TPM_STS_BITS);
+			kprintf("%s: read failed stat=%pb%i\n", __func__,
+			    TPM_STS_BITS, sc->sc_stat);
 #endif
 			rv = EIO;
 		}
@@ -896,8 +897,8 @@ tpm_tis12_end(struct tpm_softc *sc, int flag, int err)
 		sc->sc_stat = tpm_status(sc);
 		if (!err && (sc->sc_stat & TPM_STS_DATA_EXPECT)) {
 #ifdef TPM_DEBUG
-			kprintf("%s: write failed stat=%b\n", __func__,
-			    sc->sc_stat, TPM_STS_BITS);
+			kprintf("%s: write failed stat=%pb%i\n", __func__,
+			    TPM_STS_BITS, sc->sc_stat);
 #endif
 			rv = EIO;
 		}
@@ -921,8 +922,8 @@ tpm_intr(void *v)
 	r = bus_space_read_4(sc->sc_bt, sc->sc_bh, TPM_INT_STATUS);
 #ifdef TPM_DEBUG
 	if (r != 0)
-		kprintf("%s: int=%b (%d)\n", __func__, r,
-		    TPM_INTERRUPT_ENABLE_BITS, cnt);
+		kprintf("%s: int=%pb%i (%d)\n", __func__,
+		    TPM_INTERRUPT_ENABLE_BITS, r, cnt);
 	else
 		cnt++;
 #endif

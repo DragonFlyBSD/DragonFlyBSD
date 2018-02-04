@@ -662,9 +662,8 @@ hdaa_eld_dump(struct hdaa_widget *w)
 	    "ELD nid=%d: Aud_Synch_Delay=%ums\n",
 	    w->nid, w->eld[6] * 2);
 	device_printf(dev,
-	    "ELD nid=%d: Channels=0x%b\n",
-	    w->nid, w->eld[7],
-	    "\020\07RLRC\06FLRC\05RC\04RLR\03FC\02LFE\01FLR");
+	    "ELD nid=%d: Channels=0x%pb%i\n", w->nid,
+	    "\020\07RLRC\06FLRC\05RC\04RLR\03FC\02LFE\01FLR", w->eld[7]);
 	device_printf(dev,
 	    "ELD nid=%d: Port_ID=0x%02x%02x%02x%02x%02x%02x%02x%02x\n",
 	    w->nid, w->eld[8], w->eld[9], w->eld[10], w->eld[11],
@@ -689,13 +688,13 @@ hdaa_eld_dump(struct hdaa_widget *w)
 				fmt += 14;
 		}
 		device_printf(dev,
-		    "ELD nid=%d: %s %dch freqs=0x%b",
+		    "ELD nid=%d: %s %dch freqs=0x%pb%i",
 		    w->nid, HDA_HDMI_CODING_TYPES[fmt], (sad[0] & 0x07) + 1,
-		    sad[1], "\020\007192\006176\00596\00488\00348\00244\00132");
+		    "\020\007192\006176\00596\00488\00348\00244\00132", sad[1]);
 		switch (fmt) {
 		case HDA_HDMI_CODING_TYPE_LPCM:
-			kprintf(" sizes=0x%b",
-			    sad[2] & 0x07, "\020\00324\00220\00116");
+			kprintf(" sizes=0x%pb%i",
+			    "\020\00324\00220\00116", sad[2] & 0x07);
 			break;
 		case HDA_HDMI_CODING_TYPE_AC3:
 		case HDA_HDMI_CODING_TYPE_MPEG1:

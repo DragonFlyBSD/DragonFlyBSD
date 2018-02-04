@@ -66,7 +66,7 @@
 		return (0);						\
 									\
 	sbuf_printf(s, "\n\t");						\
-	sbuf_printf(s, "snddev flags=0x%b", d->flags, SD_F_BITS);	\
+	sbuf_printf(s, "snddev flags=0x%pb%i", SD_F_BITS, d->flags);	\
 									\
 	CHN_FOREACH(c, d, channels.pcm) {				\
 									\
@@ -122,8 +122,8 @@
 				sndbuf_getblkcnt(c->bufsoft));		\
 		sbuf_printf(s, "\n\t");					\
 									\
-		sbuf_printf(s, "channel flags=0x%b", c->flags,		\
-		    CHN_F_BITS);					\
+		sbuf_printf(s, "channel flags=0x%pb%i",			\
+		    CHN_F_BITS, c->flags);				\
 		sbuf_printf(s, "\n\t");					\
 									\
 		sbuf_printf(s, "{%s}",					\

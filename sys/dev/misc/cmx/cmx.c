@@ -398,7 +398,7 @@ cmx_tick(void *xsc)
 	CMX_LOCK(sc);
 	if (sc->polling && !sc->dying) {
 		bsr = cmx_read_BSR(sc);
-		DEBUG_printf(sc->dev, "BSR=%b\n", bsr, BSRBITS);
+		DEBUG_printf(sc->dev, "BSR=%pb%i\n", BSRBITS, bsr);
 		if (cmx_test(bsr, BSR_BULK_IN_FULL, 1)) {
 			sc->polling = 0;
 			KNOTE(&sc->kq.ki_note, 0);
@@ -431,8 +431,8 @@ cmx_open(struct dev_open_args *ap)
 	sc->open = 1;
 	CMX_UNLOCK(sc);
 
-	DEBUG_printf(sc->dev, "open (flags=%b thread=%p)\n",
-			ap->a_oflags, MODEBITS, curthread);
+	DEBUG_printf(sc->dev, "open (flags=%pb%i thread=%p)\n",
+			MODEBITS, ap->a_oflags, curthread);
 	return 0;
 }
 
@@ -465,8 +465,8 @@ cmx_close(struct dev_close_args *ap)
 	sc->open = 0;
 	CMX_UNLOCK(sc);
 
-	DEBUG_printf(sc->dev, "close (flags=%b thread=%p)\n",
-			ap->a_fflag, MODEBITS, curthread);
+	DEBUG_printf(sc->dev, "close (flags=%pb%i thread=%p)\n",
+			MODEBITS, ap->a_fflag, curthread);
 	return 0;
 }
 
@@ -491,8 +491,8 @@ cmx_read(struct dev_read_args *ap)
 	if (sc == NULL || sc->dying)
 		return ENXIO;
 
-	DEBUG_printf(sc->dev, "called (len=%d flag=%b)\n",
-		uio->uio_resid, ap->a_ioflag, MODEBITS);
+	DEBUG_printf(sc->dev, "called (len=%d flag=%pb%i)\n",
+		uio->uio_resid, MODEBITS, ap->a_ioflag);
 
 	CMX_LOCK(sc);
 	if (sc->polling) {
@@ -592,8 +592,8 @@ cmx_write(struct dev_write_args *ap)
 	if (sc == NULL || sc->dying)
 		return ENXIO;
 
-	DEBUG_printf(sc->dev, "called (len=%d flag=%b)\n",
-			uio->uio_resid, ap->a_ioflag, MODEBITS);
+	DEBUG_printf(sc->dev, "called (len=%d flag=%pb%i)\n",
+			uio->uio_resid, MODEBITS, ap->a_ioflag);
 
 	if (uio->uio_resid == 0) {
 		return 0;
@@ -741,9 +741,9 @@ cmx_intr(void *arg)
 	if (sc == NULL || sc->dying)
 		return;
 
-	DEBUG_printf(sc->dev, "received interrupt (SCR=%b BSR=%b)\n",
-			cmx_read_SCR(sc), SCRBITS,
-			cmx_read_BSR(sc), BSRBITS);
+	DEBUG_printf(sc->dev, "received interrupt (SCR=%pb%i BSR=%pb%i)\n",
+			SCRBITS, cmx_read_SCR(sc),
+			BSRBITS, cmx_read_BSR(sc));
 
 	return;
 }
