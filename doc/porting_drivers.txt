@@ -1,7 +1,7 @@
 		    PORTING FREEBSD DRIVERS TO DRAGONFLY
 
 * Copy the driver code to the appropriate DragonFly directory.  For example,
-  a disk driver /usr/src/sys/dev/blah in FreeBSD would likely be 
+  a disk driver /usr/src/sys/dev/blah in FreeBSD would likely be
   /usr/src/sys/dev/disk/blah in DragonFly.
 
 * Keep all the SVN IDs in the files as a future reference point. dports' SVN
@@ -35,7 +35,7 @@
 
   Instances of <sys/mutex.h> should be replaced with <sys/spinlock.h>.
 
-  When replacing mutexes with spinlocks it is a good idea to rename 
+  When replacing mutexes with spinlocks it is a good idea to rename
   the structural field (typically 'mtx') to something else (typically 'spin').
 
   The &Giant mutex is typically converted to get_mplock() and rel_mplock().
@@ -49,7 +49,7 @@
   As a rule of thumb, MTX_DEF mutexes should be replaced with exclusive,
   recursive lockmgr locks.
 
-  So, suppose the original code is using 
+  So, suppose the original code is using
 	struct mtx my_mtx;
   you'd normally rename it to
 	struct lock my_lock;
@@ -98,7 +98,7 @@
   calls.
 
 * rwlock conversion: Use lockmgr locks
-	
+
 * UMA conversion - generally speaking UMA should be converted to a standard
   kmalloc.
 
@@ -176,6 +176,25 @@
   particular proc subsystem locking semantics differ enough between FreeBSD
   and DragonFly that this would cause problems
 
+* In DragonFly 5.1 format specifier %b was replaced by args safe "%pb%i" version
+  that only needs argument swapping. Replacement functions where not added.
+
+	kvcprintf("reg=%pb%i\n", "\10\2BITTWO\1BITONE\n", 3);
+
+* In DragonFly 5.1 format specifier %r was removed from kprintf. As a
+  replacement function makedev_unit_b32() was added.
+
+  - Unit suffix encoded as base32 for make_dev() device creation:
+
+	char tbuf[MAKEDEV_MINNBUF];
+
+	kbd->kb_dev = make_dev(&kbd_ops, kbd->kb_index,
+				UID_ROOT, GID_WHEEL, 0600, "kbd%s",
+				makedev_unit_b32(tbuf, kbd->kb_index));
+
+  - For single character case the hex2ascii() can be used to avoid buffers:
+
+	kprintf("%c\n", hex2ascii(n % base));
 
 * In DragonFly 3.3 format specifier %D was removed from kprintf. As a
   replacement functions kether_ntoa() and hexncpy() were added.
