@@ -2833,9 +2833,9 @@ mlx_describe_controller(struct mlx_softc *sc)
 		      8 << (sc->mlx_enq2->me_scsi_cap & 0x3));
 	device_printf(sc->mlx_dev, "  Firmware Build Number       %d\n", sc->mlx_enq2->me_firmware_build);
 	device_printf(sc->mlx_dev, "  Fault Management Type       %d\n", sc->mlx_enq2->me_fault_mgmt_type);
-	device_printf(sc->mlx_dev, "  Features                    %b\n", sc->mlx_enq2->me_firmware_features,
-		      "\20\4Background Init\3Read Ahead\2MORE\1Cluster\n");
-	
+	device_printf(sc->mlx_dev, "  Features                    %pb%i\n",
+		      "\20\4Background Init\3Read Ahead\2MORE\1Cluster\n",
+		      sc->mlx_enq2->me_firmware_features);
     }
 }
 

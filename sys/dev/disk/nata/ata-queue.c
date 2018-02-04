@@ -393,14 +393,16 @@ ata_completed(void *context, int dummy)
 	if (!request->result && request->status & ATA_S_ERROR) {
 	    if (!(request->flags & ATA_R_QUIET)) {
 		device_printf(request->dev,
-			      "FAILURE - %s status=%b error=%b", 
+			      "FAILURE - %s status=%pb%i error=%pb%i",
 			      ata_cmd2str(request),
-			      request->status, "\20\10BUSY\7READY\6DMA_READY"
+			      "\20\10BUSY\7READY\6DMA_READY"
 			      "\5DSC\4DRQ\3CORRECTABLE\2INDEX\1ERROR",
-			      request->error, "\20\10ICRC\7UNCORRECTABLE"
+			      request->status,
+			      "\20\10ICRC\7UNCORRECTABLE"
 			      "\6MEDIA_CHANGED\5NID_NOT_FOUND"
 			      "\4MEDIA_CHANGE_REQEST"
-			      "\3ABORTED\2NO_MEDIA\1ILLEGAL_LENGTH");
+			      "\3ABORTED\2NO_MEDIA\1ILLEGAL_LENGTH",
+			      request->error);
 		if ((request->flags & ATA_R_DMA) &&
 		    (request->dmastat & ATA_BMSTAT_ERROR))
 		    kprintf(" dma=0x%02x", request->dmastat);

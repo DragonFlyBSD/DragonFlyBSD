@@ -2719,8 +2719,7 @@ aac_describe_controller(struct aac_softc *sc)
 		    info->KernelRevision.buildNumber,
 		    (u_int32_t)(info->SerialNumber & 0xffffff));
 
-		device_printf(sc->aac_dev, "Supported Options=%b\n",
-			      sc->supported_options,
+		device_printf(sc->aac_dev, "Supported Options=%pb%i\n",
 			      "\20"
 			      "\1SNAPSHOT"
 			      "\2CLUSTERS"
@@ -2740,7 +2739,8 @@ aac_describe_controller(struct aac_softc *sc)
 			      "\21ADPTINFO"
 			      "\22NEWCOMM"
 			      "\23ARRAY64BIT"
-			      "\24HEATSENSOR");
+			      "\24HEATSENSOR"
+			      , sc->supported_options);
 	}
 
 	if (sc->supported_options & AAC_SUPPORTED_SUPPLEMENT_ADAPTER_INFO) {

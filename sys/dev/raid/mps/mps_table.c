@@ -188,10 +188,10 @@ struct mps_table_lookup mps_sasdev_reason[] = {
 void
 mps_describe_devinfo(uint32_t devinfo, char *string, int len)
 {
-	ksnprintf(string, len, "%b,%s", devinfo,
+	ksnprintf(string, len, "%pb%i,%s",
 	    "\20" "\4SataHost" "\5SmpInit" "\6StpInit" "\7SspInit"
 	    "\10SataDev" "\11SmpTarg" "\12StpTarg" "\13SspTarg" "\14Direct"
-	    "\15LsiDev" "\16AtapiDev" "\17SepDev",
+	    "\15LsiDev" "\16AtapiDev" "\17SepDev", devinfo,
 	    mps_describe_table(mps_sasdev0_devtype, devinfo & 0x03));
 }
 
@@ -210,11 +210,11 @@ mps_print_iocfacts(struct mps_softc *sc, MPI2_IOC_FACTS_REPLY *facts)
 	MPS_PRINTFIELD(sc, facts, NumberOfPorts, %d);
 	MPS_PRINTFIELD(sc, facts, RequestCredit, %d);
 	MPS_PRINTFIELD(sc, facts, ProductID, 0x%x);
-	mps_dprint_field(sc, MPS_INFO, "IOCCapabilities: %b\n",
-	    facts->IOCCapabilities, "\20" "\3ScsiTaskFull" "\4DiagTrace"
+	mps_dprint_field(sc, MPS_INFO, "IOCCapabilities: %pb%i\n",
+	    "\20" "\3ScsiTaskFull" "\4DiagTrace"
 	    "\5SnapBuf" "\6ExtBuf" "\7EEDP" "\10BiDirTarg" "\11Multicast"
 	    "\14TransRetry" "\15IR" "\16EventReplay" "\17RaidAccel"
-	    "\20MSIXIndex" "\21HostDisc");
+	    "\20MSIXIndex" "\21HostDisc", facts->IOCCapabilities);
 	mps_dprint_field(sc, MPS_INFO, "FWVersion= %d-%d-%d-%d\n",
 	    facts->FWVersion.Struct.Major,
 	    facts->FWVersion.Struct.Minor,
@@ -225,8 +225,8 @@ mps_print_iocfacts(struct mps_softc *sc, MPI2_IOC_FACTS_REPLY *facts)
 	MPS_PRINTFIELD(sc, facts, MaxTargets, %d);
 	MPS_PRINTFIELD(sc, facts, MaxSasExpanders, %d);
 	MPS_PRINTFIELD(sc, facts, MaxEnclosures, %d);
-	mps_dprint_field(sc, MPS_INFO, "ProtocolFlags: %b\n",
-	    facts->ProtocolFlags, "\20" "\1ScsiTarg" "\2ScsiInit");
+	mps_dprint_field(sc, MPS_INFO, "ProtocolFlags: %pb%i\n",
+	    "\20" "\1ScsiTarg" "\2ScsiInit", facts->ProtocolFlags);
 	MPS_PRINTFIELD(sc, facts, HighPriorityCredit, %d);
 	MPS_PRINTFIELD(sc, facts, MaxReplyDescriptorPostQueueDepth, %d);
 	MPS_PRINTFIELD(sc, facts, ReplyFrameSize, %d);
@@ -271,10 +271,10 @@ mps_print_sasdev0(struct mps_softc *sc, MPI2_CONFIG_PAGE_SAS_DEV_0 *buf)
 	MPS_PRINTFIELD(sc, buf, DevHandle, 0x%x);
 	MPS_PRINTFIELD(sc, buf, AttachedPhyIdentifier, 0x%x);
 	MPS_PRINTFIELD(sc, buf, ZoneGroup, %d);
-	mps_dprint_field(sc, MPS_INFO, "DeviceInfo: %b,%s\n", buf->DeviceInfo,
+	mps_dprint_field(sc, MPS_INFO, "DeviceInfo: %pb%i,%s\n",
 	    "\20" "\4SataHost" "\5SmpInit" "\6StpInit" "\7SspInit"
 	    "\10SataDev" "\11SmpTarg" "\12StpTarg" "\13SspTarg" "\14Direct"
-	    "\15LsiDev" "\16AtapiDev" "\17SepDev",
+	    "\15LsiDev" "\16AtapiDev" "\17SepDev", buf->DeviceInfo,
 	    mps_describe_table(mps_sasdev0_devtype, buf->DeviceInfo & 0x03));
 	MPS_PRINTFIELD(sc, buf, Flags, 0x%x);
 	MPS_PRINTFIELD(sc, buf, PhysicalPort, %d);
@@ -298,20 +298,20 @@ mps_print_evt_sas(struct mps_softc *sc, MPI2_EVENT_NOTIFICATION_REPLY *event)
 		MPI2_EVENT_DATA_SAS_DISCOVERY *data;
 
 		data = (MPI2_EVENT_DATA_SAS_DISCOVERY *)&event->EventData;
-		mps_dprint_field(sc, MPS_EVENT, "Flags: %b\n", data->Flags,
-		    "\20" "\1InProgress" "\2DeviceChange");
+		mps_dprint_field(sc, MPS_EVENT, "Flags: %pb%i\n",
+		    "\20" "\1InProgress" "\2DeviceChange", data->Flags);
 		mps_dprint_field(sc, MPS_EVENT, "ReasonCode: %s\n",
 		    mps_describe_table(mps_sasdisc_reason, data->ReasonCode));
 		MPS_EVENTFIELD(sc, data, PhysicalPort, %d);
-		mps_dprint_field(sc, MPS_EVENT, "DiscoveryStatus: %b\n",
-		    data->DiscoveryStatus,  "\20"
+		mps_dprint_field(sc, MPS_EVENT, "DiscoveryStatus: %pb%i\n",
+		    "\20"
 		    "\1Loop" "\2UnaddressableDev" "\3DupSasAddr" "\5SmpTimeout"
 		    "\6ExpRouteFull" "\7RouteIndexError" "\10SmpFailed"
 		    "\11SmpCrcError" "\12SubSubLink" "\13TableTableLink"
 		    "\14UnsupDevice" "\15TableSubLink" "\16MultiDomain"
 		    "\17MultiSub" "\20MultiSubSub" "\34DownstreamInit"
 		    "\35MaxPhys" "\36MaxTargs" "\37MaxExpanders"
-		    "\40MaxEnclosures");
+		    "\40MaxEnclosures", data->DiscoveryStatus);
 		break;
 	}
 	case MPI2_EVENT_SAS_TOPOLOGY_CHANGE_LIST:
@@ -400,11 +400,11 @@ mps_print_expander1(struct mps_softc *sc, MPI2_CONFIG_PAGE_EXPANDER_1 *buf)
 	mps_dprint_field(sc, MPS_INFO, "PhyInfo Reason: %s (0x%x)\n",
 	    mps_describe_table(mps_phyinfo_reason_names,
 	    (buf->PhyInfo >> 16) & 0xf), buf->PhyInfo);
-	mps_dprint_field(sc, MPS_INFO, "AttachedDeviceInfo: %b,%s\n",
-	    buf->AttachedDeviceInfo, "\20" "\4SATAhost" "\5SMPinit" "\6STPinit"
+	mps_dprint_field(sc, MPS_INFO, "AttachedDeviceInfo: %pb%i,%s\n",
+	    "\20" "\4SATAhost" "\5SMPinit" "\6STPinit"
 	    "\7SSPinit" "\10SATAdev" "\11SMPtarg" "\12STPtarg" "\13SSPtarg"
 	    "\14Direct" "\15LSIdev" "\16ATAPIdev" "\17SEPdev",
-	    mps_describe_table(mps_sasdev0_devtype,
+	    buf->AttachedDeviceInfo, mps_describe_table(mps_sasdev0_devtype,
 	    buf->AttachedDeviceInfo & 0x03));
 	MPS_PRINTFIELD(sc, buf, ExpanderDevHandle, 0x%04x);
 	MPS_PRINTFIELD(sc, buf, ChangeCount, %d);

@@ -448,19 +448,19 @@ ahci_pci_attach(device_t dev)
 	if (reg >= AHCI_REG_VS_1_3) {
 		cap2 = ahci_read(sc, AHCI_REG_CAP2);
 		device_printf(dev,
-			      "%s cap 0x%b cap2 0x%b, %d ports, "
+			      "%s cap 0x%pb%i cap2 0x%pb%i, %d ports, "
 			      "%d tags/port, gen %s\n",
 			      revbuf,
-			      cap, AHCI_FMT_CAP,
-			      cap2, AHCI_FMT_CAP2,
+			      AHCI_FMT_CAP, cap,
+			      AHCI_FMT_CAP2, cap2,
 			      AHCI_REG_CAP_NP(cap), sc->sc_ncmds, gen);
 	} else {
 		cap2 = 0;
 		device_printf(dev,
-			      "%s cap 0x%b, %d ports, "
+			      "%s cap 0x%pb%i, %d ports, "
 			      "%d tags/port, gen %s\n",
 			      revbuf,
-			      cap, AHCI_FMT_CAP,
+			      AHCI_FMT_CAP, cap,
 			      AHCI_REG_CAP_NP(cap), sc->sc_ncmds, gen);
 	}
 	sc->sc_cap2 = cap2;

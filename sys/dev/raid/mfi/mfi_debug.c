@@ -52,14 +52,14 @@
 static void
 mfi_print_frame_flags(device_t dev, uint32_t flags)
 {
-	device_printf(dev, "flags=%b\n", flags,
+	device_printf(dev, "flags=%pb%i\n",
 	    "\20"
 	    "\1NOPOST"
 	    "\2SGL64"
 	    "\3SENSE64"
 	    "\4WRITE"
 	    "\5READ"
-	    "\6IEEESGL");
+	    "\6IEEESGL", flags);
 }
 
 static void
@@ -197,7 +197,7 @@ mfi_print_cmd(struct mfi_command *cm)
 	device_printf(dev, "cm=%p index=%d total_frame_size=%d "
 	    "extra_frames=%d\n", cm, cm->cm_index, cm->cm_total_frame_size,
 	    cm->cm_extra_frames);
-	device_printf(dev, "flags=%b\n", cm->cm_flags,
+	device_printf(dev, "flags=%pb%i\n",
 	    "\20"
 	    "\1MAPPED"
 	    "\2DATAIN"
@@ -206,7 +206,7 @@ mfi_print_cmd(struct mfi_command *cm)
 	    "\5POLLED"
 	    "\6Q_FREE"
 	    "\7Q_READY"
-	    "\10Q_BUSY");
+	    "\10Q_BUSY", cm->cm_flags);
 
 	switch (cm->cm_frame->header.cmd) {
 	case MFI_CMD_DCMD:

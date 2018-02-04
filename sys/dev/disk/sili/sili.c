@@ -93,8 +93,8 @@ static void sili_ata_cmd_done(struct sili_ccb *ccb);
 int
 sili_init(struct sili_softc *sc)
 {
-	DPRINTF(SILI_D_VERBOSE, " GHC 0x%b",
-		sili_read(sc, SILI_REG_GHC), SILI_FMT_GHC);
+	DPRINTF(SILI_D_VERBOSE, " GHC 0x%pb%i",
+		SILI_FMT_GHC, sili_read(sc, SILI_REG_GHC));
 
 	/*
 	 * Reset the entire chip.  This also resets all ports.
@@ -1709,10 +1709,10 @@ sili_port_intr(struct sili_port *ap, int blockable)
 		active = ap->ap_active & ~ap->ap_expired;
 		error = sili_pread(ap, SILI_PREG_CERROR);
 		kprintf("%s.%d target error %d active=%08x hactive=%08x "
-			"SERR=%b\n",
+			"SERR=%pb%i\n",
 			PORTNAME(ap), target, error,
 			active, sili_pread(ap, SILI_PREG_SLOTST),
-			sili_pread(ap, SILI_PREG_SERR), SILI_PFMT_SERR);
+			SILI_PFMT_SERR, sili_pread(ap, SILI_PREG_SERR));
 
 		while (active) {
 			slot = ffs(active) - 1;
@@ -1829,11 +1829,11 @@ sili_port_intr(struct sili_port *ap, int blockable)
 		sili_pwrite(ap, SILI_PREG_INT_STATUS, is & fatal_mask);
 
 		serr = sili_pread(ap, SILI_PREG_SERR);
-		kprintf("%s: Unrecoverable errors (IS: %b, SERR: %b), "
+		kprintf("%s: Unrecoverable errors (IS: %pb%i, SERR: %pb%i), "
 			"disabling port.\n",
 			PORTNAME(ap),
-			is, SILI_PFMT_INT_STATUS,
-			serr, SILI_PFMT_SERR
+			SILI_PFMT_INT_STATUS, is,
+			SILI_PFMT_SERR, serr
 		);
 		is &= ~fatal_mask;
 		/* XXX try recovery first */
@@ -2356,9 +2356,9 @@ sili_ata_cmd(struct ata_xfer *xa)
 	if (ccb->ccb_port->ap_state == AP_S_FATAL_ERROR)
 		goto failcmd;
 #if 0
-	kprintf("%s: started std command %b ccb %d ccb_at %p %d\n",
+	kprintf("%s: started std command %pb%i ccb %d ccb_at %p %d\n",
 		ATANAME(ccb->ccb_port, ccb->ccb_xa.at),
-		sili_pread(ccb->ccb_port, SILI_PREG_CMD), SILI_PFMT_CMD,
+		SILI_PFMT_CMD, sili_pread(ccb->ccb_port, SILI_PREG_CMD),
 		ccb->ccb_slot,
 		ccb->ccb_xa.at,
 		ccb->ccb_xa.at ? ccb->ccb_xa.at->at_target : -1);

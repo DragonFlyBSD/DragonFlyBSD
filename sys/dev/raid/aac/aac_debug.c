@@ -173,7 +173,7 @@ aac_print_fib(struct aac_softc *sc, struct aac_fib *fib, const char *caller)
 		return;
 	}
 	device_printf(sc->aac_dev, "%s: FIB @ %p\n", caller, fib);
-	device_printf(sc->aac_dev, "  XferState %b\n", fib->Header.XferState,
+	device_printf(sc->aac_dev, "  XferState %pb%i\n",
 		      "\20"
 		      "\1HOSTOWNED"
 		      "\2ADAPTEROWNED"
@@ -195,7 +195,7 @@ aac_print_fib(struct aac_softc *sc, struct aac_fib *fib, const char *caller)
 		      "\22ADAPMICROFIB"
 		      "\23BIOSFIB"
 		      "\24FAST_RESPONSE"
-		      "\25APIFIB\n");
+		      "\25APIFIB\n", fib->Header.XferState);
 	device_printf(sc->aac_dev, "  Command       %d\n", fib->Header.Command);
 	device_printf(sc->aac_dev, "  StructType    %d\n",
 		      fib->Header.StructType);

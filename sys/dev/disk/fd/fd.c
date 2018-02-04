@@ -1817,8 +1817,8 @@ fdstate(fdc_p fdc)
 					failed = 1;
 				if ((st3 & NE7_ST3_T0) == 0) {
 					kprintf(
-		"fd%d: Seek to cyl 0, but not really there (ST3 = %b)\n",
-					       fdu, st3, NE7_ST3BITS);
+		"fd%d: Seek to cyl 0, but not really there (ST3 = %pb%i)\n",
+					       fdu, NE7_ST3BITS, st3);
 					failed = 1;
 				}
 
@@ -2111,8 +2111,8 @@ fdstate(fdc_p fdc)
 				 * this one if it seems to be the first
 				 * time in a line
 				 */
-				kprintf("fd%d: recal failed ST0 %b cyl %d\n",
-				       fdu, st0, NE7_ST0BITS, cyl);
+				kprintf("fd%d: recal failed ST0 %pb%i cyl %d\n",
+				       fdu, NE7_ST0BITS, st0, cyl);
 			if(fdc->retry < 3) fdc->retry = 3;
 			return (retrier(fdc));
 		}
@@ -2211,10 +2211,10 @@ retrier(struct fdc_data *fdc)
 			if (printerror) {
 				if (fdc->flags & FDC_STAT_VALID)
 					kprintf(
-			" (ST0 %b ST1 %b ST2 %b cyl %u hd %u sec %u)\n",
-					       fdc->status[0], NE7_ST0BITS,
-					       fdc->status[1], NE7_ST1BITS,
-					       fdc->status[2], NE7_ST2BITS,
+			" (ST0 %pb%i ST1 %pb%i ST2 %pb%i cyl %u hd %u sec %u)\n",
+					       NE7_ST0BITS, fdc->status[0],
+					       NE7_ST1BITS, fdc->status[1],
+					       NE7_ST2BITS, fdc->status[2],
 					       fdc->status[3], fdc->status[4],
 					       fdc->status[5]);
 				else

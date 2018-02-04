@@ -193,10 +193,10 @@ sili_pm_identify(struct sili_port *ap)
 			--nports;
 	}
 
-	kprintf("%s: Port multiplier: chip=%08x rev=0x%b nports=%d\n",
+	kprintf("%s: Port multiplier: chip=%08x rev=0x%pb%i nports=%d\n",
 		PORTNAME(ap),
 		chipid,
-		rev, SATA_PFMT_PM_REV,
+		SATA_PFMT_PM_REV, rev,
 		nports);
 	if (has_dummy_port) {
 		kprintf("%s: Port multiplier: Ignoring dummy port #%d\n",
@@ -208,16 +208,12 @@ sili_pm_identify(struct sili_port *ap)
 		kprintf("%s: Port multiplier: Warning, "
 			"cannot read feature register\n", PORTNAME(ap));
 	} else {
-		kprintf("%s: Port multiplier features: 0x%b\n",
-			PORTNAME(ap),
-			data1,
-			SATA_PFMT_PM_FEA);
+		kprintf("%s: Port multiplier features: 0x%pb%i\n",
+			PORTNAME(ap), SATA_PFMT_PM_FEA, data1);
 	}
 	if (sili_pm_read(ap, 15, SATA_PMREG_FEAEN, &data2) == 0) {
-		kprintf("%s: Port multiplier defaults: 0x%b\n",
-			PORTNAME(ap),
-			data2,
-			SATA_PFMT_PM_FEA);
+		kprintf("%s: Port multiplier defaults: 0x%pb%i\n",
+			PORTNAME(ap), SATA_PFMT_PM_FEA, data2);
 	}
 
 	/*

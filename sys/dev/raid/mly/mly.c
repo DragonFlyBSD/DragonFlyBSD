@@ -2607,7 +2607,9 @@ mly_print_command(struct mly_command *mc)
     if (mc->mc_packet != NULL)
 	mly_print_packet(mc);
     mly_printf(sc, "  data      %p/%d\n", mc->mc_data, mc->mc_length);
-    mly_printf(sc, "  flags     %b\n", mc->mc_flags, "\20\1busy\2complete\3slotted\4mapped\5datain\6dataout\n");
+    mly_printf(sc, "  flags     %pb%i\n",
+	       "\20\1busy\2complete\3slotted\4mapped\5datain\6dataout\n",
+	       mc->mc_flags);
     mly_printf(sc, "  complete  %p\n", mc->mc_complete);
     mly_printf(sc, "  private   %p\n", mc->mc_private);
 }

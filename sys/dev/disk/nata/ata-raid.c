@@ -4320,8 +4320,8 @@ ata_raid_print_meta(struct ar_softc *raid)
     kprintf("=================================================\n");
     kprintf("format              %s\n", ata_raid_format(raid));
     kprintf("type                %s\n", ata_raid_type(raid));
-    kprintf("flags               0x%02x %b\n", raid->status, raid->status,
-	   "\20\3REBUILDING\2DEGRADED\1READY\n");
+    kprintf("flags               0x%02x %pb%i\n", raid->status,
+	   "\20\3REBUILDING\2DEGRADED\1READY\n", raid->status);
     kprintf("magic_0             0x%016jx\n", raid->magic_0);
     kprintf("magic_1             0x%016jx\n",raid->magic_1);
     kprintf("generation          %u\n", raid->generation);
@@ -4334,8 +4334,8 @@ ata_raid_print_meta(struct ar_softc *raid)
     kprintf("interleave          %u\n", raid->interleave);
     kprintf("total_disks         %u\n", raid->total_disks);
     for (i = 0; i < raid->total_disks; i++) {
-	kprintf("    disk %d:      flags = 0x%02x %b\n", i, raid->disks[i].flags,
-	       raid->disks[i].flags, "\20\4ONLINE\3SPARE\2ASSIGNED\1PRESENT\n");
+	kprintf("    disk %d:      flags = 0x%02x %pb%i\n", i, raid->disks[i].flags,
+	       "\20\4ONLINE\3SPARE\2ASSIGNED\1PRESENT\n", raid->disks[i].flags);
 	if (raid->disks[i].dev) {
 	    kprintf("        ");
 	    device_printf(raid->disks[i].dev, " sectors %jd\n",
@@ -4520,8 +4520,8 @@ ata_raid_hptv3_print_meta(struct hptv3_raid_conf *meta)
 	kprintf("    total_disks         %u\n", meta->configs[i].total_disks);
 	kprintf("    disk_number         %u\n", meta->configs[i].disk_number);
 	kprintf("    stripe_shift        %u\n", meta->configs[i].stripe_shift);
-	kprintf("    status              %b\n", meta->configs[i].status,
-	       "\20\2RAID5\1NEED_REBUILD\n");
+	kprintf("    status              %pb%i\n",
+	       "\20\2RAID5\1NEED_REBUILD\n", meta->configs[i].status);
 	kprintf("    critical_disks      %u\n", meta->configs[i].critical_disks);
 	kprintf("    rebuild_lba         %ju\n",
 	       meta->configs_high[0].rebuild_lba +
@@ -4534,8 +4534,8 @@ ata_raid_hptv3_print_meta(struct hptv3_raid_conf *meta)
     kprintf("checksum_1          0x%02x\n", meta->checksum_1);
     kprintf("dummy_0             0x%02x\n", meta->dummy_0);
     kprintf("dummy_1             0x%02x\n", meta->dummy_1);
-    kprintf("flags               %b\n", meta->flags,
-	   "\20\4RCACHE\3WCACHE\2NCQ\1TCQ\n");
+    kprintf("flags               %pb%i\n",
+	   "\20\4RCACHE\3WCACHE\2NCQ\1TCQ\n", meta->flags);
     kprintf("=================================================\n");
 }
 
@@ -4864,12 +4864,12 @@ ata_raid_promise_print_meta(struct promise_raid_conf *meta)
     kprintf("magic_0             0x%016jx\n", meta->magic_0);
     kprintf("magic_1             0x%04x\n", meta->magic_1);
     kprintf("magic_2             0x%08x\n", meta->magic_2);
-    kprintf("integrity           0x%08x %b\n", meta->raid.integrity,
-		meta->raid.integrity, "\20\10VALID\n" );
-    kprintf("flags               0x%02x %b\n",
-	   meta->raid.flags, meta->raid.flags,
+    kprintf("integrity           0x%08x %pb%i\n", meta->raid.integrity,
+	   "\20\10VALID\n", meta->raid.integrity);
+    kprintf("flags               0x%02x %pb%i\n",
+	   meta->raid.flags,
 	   "\20\10READY\7DOWN\6REDIR\5DUPLICATE\4SPARE"
-	   "\3ASSIGNED\2ONLINE\1VALID\n");
+	   "\3ASSIGNED\2ONLINE\1VALID\n", meta->raid.flags);
     kprintf("disk_number         %d\n", meta->raid.disk_number);
     kprintf("channel             0x%02x\n", meta->raid.channel);
     kprintf("device              0x%02x\n", meta->raid.device);
@@ -4878,9 +4878,10 @@ ata_raid_promise_print_meta(struct promise_raid_conf *meta)
     kprintf("disk_sectors        %u\n", meta->raid.disk_sectors);
     kprintf("rebuild_lba         0x%08x\n", meta->raid.rebuild_lba);
     kprintf("generation          0x%04x\n", meta->raid.generation);
-    kprintf("status              0x%02x %b\n",
-	    meta->raid.status, meta->raid.status,
-	   "\20\6MARKED\5DEGRADED\4READY\3INITED\2ONLINE\1VALID\n");
+    kprintf("status              0x%02x %pb%i\n",
+	    meta->raid.status,
+	   "\20\6MARKED\5DEGRADED\4READY\3INITED\2ONLINE\1VALID\n",
+	    meta->raid.status);
     kprintf("type                %s\n", ata_raid_promise_type(meta->raid.type));
     kprintf("total_disks         %u\n", meta->raid.total_disks);
     kprintf("stripe_shift        %u\n", meta->raid.stripe_shift);
@@ -4893,10 +4894,10 @@ ata_raid_promise_print_meta(struct promise_raid_conf *meta)
     kprintf("magic_1             0x%016jx\n", meta->raid.magic_1);
     kprintf("DISK#   flags dummy_0 channel device  magic_0\n");
     for (i = 0; i < 8; i++) {
-	kprintf("  %d    %b    0x%02x  0x%02x  0x%02x  ",
-	       i, meta->raid.disk[i].flags,
+	kprintf("  %d    %pb%i    0x%02x  0x%02x  0x%02x  ", i,
 	       "\20\10READY\7DOWN\6REDIR\5DUPLICATE\4SPARE"
-	       "\3ASSIGNED\2ONLINE\1VALID\n", meta->raid.disk[i].dummy_0,
+	       "\3ASSIGNED\2ONLINE\1VALID\n",
+	       meta->raid.disk[i].flags, meta->raid.disk[i].dummy_0,
 	       meta->raid.disk[i].channel, meta->raid.disk[i].device);
 	kprintf("0x%016jx\n", meta->raid.disk[i].magic_0);
     }
@@ -4942,9 +4943,8 @@ ata_raid_sii_print_meta(struct sii_raid_conf *meta)
     kprintf("raid1_ident         %u\n", meta->raid1_ident);
     kprintf("rebuild_lba         %ju\n", meta->rebuild_lba);
     kprintf("generation          0x%08x\n", meta->generation);
-    kprintf("status              0x%02x %b\n",
-	    meta->status, meta->status,
-	   "\20\1READY\n");
+    kprintf("status              0x%02x %pb%i\n",
+	    meta->status, "\20\1READY\n", meta->status);
     kprintf("base_raid1_position %02x\n", meta->base_raid1_position);
     kprintf("base_raid0_position %02x\n", meta->base_raid0_position);
     kprintf("position            %02x\n", meta->position);

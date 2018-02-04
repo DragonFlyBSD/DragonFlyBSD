@@ -83,7 +83,7 @@
 /* XXX this is a little harsh, but necessary to chase down firmware problems */
 #define TWE_STATUS_PANIC_BITS			(TWE_STATUS_MICROCONTROLLER_ERROR)
 
-/* for use with the %b kprintf format */
+/* for use with the %pb%i or deprecated %b printf formats */
 #define TWE_STATUS_BITS_DESCRIPTION \
 	"\20\15CQEMPTY\16UCREADY\17RQEMPTY\20CQFULL\21RINTR\22CINTR\23AINTR\24HINTR\25PCIABRT\26MCERR\27QERR\30PCIPERR\n"
 

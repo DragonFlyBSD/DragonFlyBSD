@@ -1739,16 +1739,18 @@ twe_check_bits(struct twe_softc *sc, u_int32_t status_reg)
      * TWE_DEBUG is not set, which will call us again as part of the soft reset.
      */
     if ((status_reg & TWE_STATUS_PANIC_BITS) != 0) {
-	twe_printf(sc, "FATAL STATUS BIT(S) %b\n", status_reg & TWE_STATUS_PANIC_BITS,
-		   TWE_STATUS_BITS_DESCRIPTION);
+	twe_printf(sc, "FATAL STATUS BIT(S) %pb%i\n",
+		   TWE_STATUS_BITS_DESCRIPTION,
+		   status_reg & TWE_STATUS_PANIC_BITS);
 	twe_panic(sc, "fatal status bits");
     }
 
     result = 0;
     if ((status_reg & TWE_STATUS_EXPECTED_BITS) != TWE_STATUS_EXPECTED_BITS) {
 	if (time_uptime > (lastwarn[0] + 5)) {
-	    twe_printf(sc, "missing expected status bit(s) %b\n", ~status_reg & TWE_STATUS_EXPECTED_BITS, 
-		       TWE_STATUS_BITS_DESCRIPTION);
+	    twe_printf(sc, "missing expected status bit(s) %pb%i\n",
+		       TWE_STATUS_BITS_DESCRIPTION,
+		       ~status_reg & TWE_STATUS_EXPECTED_BITS);
 	    lastwarn[0] = time_uptime;
 	}
 	result = 1;
@@ -1756,8 +1758,9 @@ twe_check_bits(struct twe_softc *sc, u_int32_t status_reg)
 
     if ((status_reg & TWE_STATUS_UNEXPECTED_BITS) != 0) {
 	if (time_uptime > (lastwarn[1] + 5)) {
-	    twe_printf(sc, "unexpected status bit(s) %b\n", status_reg & TWE_STATUS_UNEXPECTED_BITS, 
-		       TWE_STATUS_BITS_DESCRIPTION);
+	    twe_printf(sc, "unexpected status bit(s) %pb%i\n",
+		       TWE_STATUS_BITS_DESCRIPTION,
+		       status_reg & TWE_STATUS_UNEXPECTED_BITS);
 	    lastwarn[1] = time_uptime;
 	}
 	result = 1;
@@ -1900,7 +1903,7 @@ twe_print_controller(struct twe_softc *sc)
     u_int32_t		status_reg;
 
     status_reg = TWE_STATUS(sc);
-    twe_printf(sc, "status   %b\n", status_reg, TWE_STATUS_BITS_DESCRIPTION);
+    twe_printf(sc, "status   %pb%i\n", TWE_STATUS_BITS_DESCRIPTION, status_reg);
     twe_printf(sc, "          current  max    min\n");
     twe_printf(sc, "free      %04d     %04d   %04d\n",
 	sc->twe_qstat[TWEQ_FREE].q_length, sc->twe_qstat[TWEQ_FREE].q_max, sc->twe_qstat[TWEQ_FREE].q_min);

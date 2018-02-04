@@ -211,9 +211,8 @@ retry:
 	ccb->ccb_xa.state = ATA_S_PENDING;
 
 	if (bootverbose) {
-		kprintf("%s: PMPROBE PreStatus 0x%b\n",
-			PORTNAME(ap),
-			ahci_pread(ap, AHCI_PREG_TFD), AHCI_PFMT_TFD_STS);
+		kprintf("%s: PMPROBE PreStatus 0x%pb%i\n", PORTNAME(ap),
+			AHCI_PFMT_TFD_STS, ahci_pread(ap, AHCI_PREG_TFD));
 	}
 
 	/*
@@ -244,9 +243,8 @@ retry:
 	}
 
 	if (bootverbose) {
-		kprintf("%s: PMPROBE PosStatus 0x%b\n",
-			PORTNAME(ap),
-			ahci_pread(ap, AHCI_PREG_TFD), AHCI_PFMT_TFD_STS);
+		kprintf("%s: PMPROBE PosStatus 0x%pb%i\n", PORTNAME(ap),
+			AHCI_PFMT_TFD_STS, ahci_pread(ap, AHCI_PREG_TFD));
 	}
 #if 0
 	/*
@@ -471,11 +469,8 @@ ahci_pm_identify(struct ahci_port *ap)
 			--nports;
 	}
 
-	kprintf("%s: Port multiplier: chip=%08x rev=0x%b nports=%d\n",
-		PORTNAME(ap),
-		chipid,
-		rev, SATA_PFMT_PM_REV,
-		nports);
+	kprintf("%s: Port multiplier: chip=%08x rev=0x%pb%i nports=%d\n",
+		PORTNAME(ap), chipid, SATA_PFMT_PM_REV, rev, nports);
 	if (has_dummy_port) {
 		kprintf("%s: Port multiplier: Ignoring dummy port #%d\n",
 		PORTNAME(ap), nports);
@@ -486,16 +481,12 @@ ahci_pm_identify(struct ahci_port *ap)
 		kprintf("%s: Port multiplier: Warning, "
 			"cannot read feature register\n", PORTNAME(ap));
 	} else {
-		kprintf("%s: Port multiplier features: 0x%b\n",
-			PORTNAME(ap),
-			data1,
-			SATA_PFMT_PM_FEA);
+		kprintf("%s: Port multiplier features: 0x%pb%i\n",
+			PORTNAME(ap), SATA_PFMT_PM_FEA, data1);
 	}
 	if (ahci_pm_read(ap, 15, SATA_PMREG_FEAEN, &data2) == 0) {
-		kprintf("%s: Port multiplier defaults: 0x%b\n",
-			PORTNAME(ap),
-			data2,
-			SATA_PFMT_PM_FEA);
+		kprintf("%s: Port multiplier defaults: 0x%pb%i\n",
+			PORTNAME(ap), SATA_PFMT_PM_FEA, data2);
 	}
 
 	/*

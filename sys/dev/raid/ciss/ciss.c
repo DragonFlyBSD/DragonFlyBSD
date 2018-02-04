@@ -1213,11 +1213,12 @@ ciss_identify_adapter(struct ciss_softc *sc)
 
 	ciss_printf(sc, "  signature '%.4s'\n", sc->ciss_cfg->signature);
 	ciss_printf(sc, "  valence %d\n", sc->ciss_cfg->valence);
-	ciss_printf(sc, "  supported I/O methods 0x%b\n",
-		    sc->ciss_cfg->supported_methods,
-		    "\20\1READY\2simple\3performant\4MEMQ\n");
-	ciss_printf(sc, "  active I/O method 0x%b\n",
-		    sc->ciss_cfg->active_method, "\20\2simple\3performant\4MEMQ\n");
+	ciss_printf(sc, "  supported I/O methods 0x%pb%i\n",
+		    "\20\1READY\2simple\3performant\4MEMQ\n",
+		    sc->ciss_cfg->supported_methods);
+	ciss_printf(sc, "  active I/O method 0x%pb%i\n",
+		    "\20\2simple\3performant\4MEMQ\n",
+		    sc->ciss_cfg->active_method);
 	ciss_printf(sc, "  4G page base 0x%08x\n",
 		    sc->ciss_cfg->command_physlimit);
 	ciss_printf(sc, "  interrupt coalesce delay %dus\n",
@@ -1226,8 +1227,9 @@ ciss_identify_adapter(struct ciss_softc *sc)
 		    sc->ciss_cfg->interrupt_coalesce_count);
 	ciss_printf(sc, "  max outstanding commands %d\n",
 		    sc->ciss_cfg->max_outstanding_commands);
-	ciss_printf(sc, "  bus types 0x%b\n", sc->ciss_cfg->bus_types,
-		    "\20\1ultra2\2ultra3\10fibre1\11fibre2\n");
+	ciss_printf(sc, "  bus types 0x%pb%i\n",
+		    "\20\1ultra2\2ultra3\10fibre1\11fibre2\n",
+		    sc->ciss_cfg->bus_types);
 	ciss_printf(sc, "  server name '%.16s'\n", sc->ciss_cfg->server_name);
 	ciss_printf(sc, "  heartbeat 0x%x\n", sc->ciss_cfg->heartbeat);
     }
@@ -3938,12 +3940,12 @@ ciss_notify_logical(struct ciss_softc *sc, struct ciss_notify *cn)
 	switch (cn->detail) {
 	case 0:
 	    ciss_name_device(sc, bus, target);
-	    ciss_printf(sc, "logical drive %d (%s) changed status %s->%s, spare status 0x%b\n",
+	    ciss_printf(sc, "logical drive %d (%s) changed status %s->%s, spare status 0x%pb%i\n",
 			cn->data.logical_status.logical_drive, ld->cl_name,
 			ciss_name_ldrive_status(cn->data.logical_status.previous_state),
 			ciss_name_ldrive_status(cn->data.logical_status.new_state),
-			cn->data.logical_status.spare_state,
-			"\20\1configured\2rebuilding\3failed\4in use\5available\n");
+			"\20\1configured\2rebuilding\3failed\4in use\5available\n",
+			cn->data.logical_status.spare_state);
 
 	    /*
 	     * Update our idea of the drive's status.
@@ -4152,9 +4154,9 @@ ciss_print_request(struct ciss_request *cr)
     cc = cr->cr_cc;
 
     ciss_printf(sc, "REQUEST @ %p\n", cr);
-    ciss_printf(sc, "  data %p/%d  tag %d  flags %b\n",
-	      cr->cr_data, cr->cr_length, cr->cr_tag, cr->cr_flags,
-	      "\20\1mapped\2sleep\3poll\4dataout\5datain\n");
+    ciss_printf(sc, "  data %p/%d  tag %d  flags %pb%i\n",
+	      cr->cr_data, cr->cr_length, cr->cr_tag,
+	      "\20\1mapped\2sleep\3poll\4dataout\5datain\n", cr->cr_flags);
     ciss_printf(sc, "  sg list/total %d/%d  host tag 0x%x\n",
 		cc->header.sg_in_list, cc->header.sg_total, cc->header.host_tag);
     switch(cc->header.address.mode.mode) {
@@ -4279,8 +4281,9 @@ ciss_print_adapter(struct ciss_softc *sc)
 	    sc->ciss_qstat[i].q_max);
     }
     ciss_printf(sc, "max_requests %d\n", sc->ciss_max_requests);
-    ciss_printf(sc, "flags %b\n", sc->ciss_flags,
-	"\20\1notify_ok\2control_open\3aborting\4running\21fake_synch\22bmic_abort\n");
+    ciss_printf(sc, "flags %pb%i\n",
+	"\20\1notify_ok\2control_open\3aborting\4running\21fake_synch\22bmic_abort\n",
+	sc->ciss_flags);
 
     for (i = 0; i < sc->ciss_max_logical_bus; i++) {
 	for (j = 0; j < CISS_MAX_LOGICAL; j++) {
