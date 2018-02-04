@@ -114,6 +114,7 @@ typedef enum {
 } cd_flags;
 
 typedef enum {
+	CD_CCB_POLLED		= 0x00,
 	CD_CCB_PROBE		= 0x01,
 	CD_CCB_BUFFER_IO	= 0x02,
 	CD_CCB_WAITING		= 0x03,
@@ -1361,6 +1362,7 @@ static union ccb *
 cdgetccb(struct cam_periph *periph, u_int32_t priority)
 {
 	struct cd_softc *softc;
+	static union ccb *ccb;
 
 	softc = (struct cd_softc *)periph->softc;
 
@@ -1391,7 +1393,10 @@ cdgetccb(struct cam_periph *periph, u_int32_t priority)
 					       periph->sim->lock);
 		}
 	}
-	return(cam_periph_getccb(periph, priority));
+	ccb = cam_periph_getccb(periph, priority);
+	ccb->ccb_h.ccb_state = CD_CCB_POLLED;
+
+	return ccb;
 }
 
 /*
@@ -1837,6 +1842,10 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 		wakeup(&done_ccb->ccb_h.cbfcnp);
 		return;
 	}
+	case CD_CCB_POLLED:
+		/* Caller releases CCB */
+		wakeup(&done_ccb->ccb_h.cbfcnp);
+		return;
 	default:
 		break;
 	}

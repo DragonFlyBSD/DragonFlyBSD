@@ -105,6 +105,7 @@ typedef enum {
 } da_quirks;
 
 typedef enum {
+	DA_CCB_POLLED		= 0x00,
 	DA_CCB_PROBE		= 0x01,
 	DA_CCB_PROBE2		= 0x02,
 	DA_CCB_BUFFER_IO	= 0x03,
@@ -582,6 +583,7 @@ daclose(struct dev_close_args *ap)
 		union	ccb *ccb;
 
 		ccb = cam_periph_getccb(periph, /*priority*/1);
+		ccb->ccb_h.ccb_state = DA_CCB_POLLED;
 
 		scsi_synchronize_cache(&ccb->csio,
 				       /*retries*/1,
@@ -1936,6 +1938,10 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 	case DA_CCB_DUMP:
 		/* No-op.  We're polling */
 		return;
+	case DA_CCB_POLLED:
+		/* Caller releases ccb */
+		wakeup(&done_ccb->ccb_h.cbfcnp);
+		return;
 	default:
 		break;
 	}
@@ -2002,6 +2008,7 @@ daprevent(struct cam_periph *periph, int action)
 	}
 
 	ccb = cam_periph_getccb(periph, /*priority*/1);
+	ccb->ccb_h.ccb_state = DA_CCB_POLLED;
 
 	scsi_prevent(&ccb->csio,
 		     /*retries*/1,
@@ -2109,6 +2116,8 @@ dagetcapacity(struct cam_periph *periph)
 							 M_SCSIDA, M_INTWAIT);
 		
 	ccb = cam_periph_getccb(periph, /*priority*/1);
+	ccb->ccb_h.ccb_state = DA_CCB_POLLED;
+
 	scsi_read_capacity(&ccb->csio,
 			   /*retries*/4,
 			   /*cbfncp*/dadone,

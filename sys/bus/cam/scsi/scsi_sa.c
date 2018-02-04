@@ -112,14 +112,16 @@ typedef enum {
 #define ccb_pflags	ppriv_field0
 #define ccb_bio	 	ppriv_ptr1
 
-#define	SA_CCB_BUFFER_IO	0x0
-#define	SA_CCB_WAITING		0x1
-#define	SA_CCB_TYPEMASK		0x1
-#define	SA_POSITION_UPDATED	0x2
+#define	SA_CCB_POLLED		0x00
+#define	SA_CCB_BUFFER_IO	0x01
+#define	SA_CCB_WAITING		0x02
+#define	SA_CCB_TYPEMASK		0x0F
+#define	SA_POSITION_UPDATED	0x10
 
-#define	Set_CCB_Type(x, type)				\
+#define	Set_CCB_Type(x, type) do {			\
 	x->ccb_h.ccb_pflags &= ~SA_CCB_TYPEMASK;	\
-	x->ccb_h.ccb_pflags |= type
+	x->ccb_h.ccb_pflags |= type;			\
+    } while (0)
 
 #define	CCB_Type(x)	(x->ccb_h.ccb_pflags & SA_CCB_TYPEMASK)
 
@@ -1727,6 +1729,7 @@ sadone(struct cam_periph *periph, union ccb *done_ccb)
 
 	softc = (struct sa_softc *)periph->softc;
 	csio = &done_ccb->csio;
+
 	switch (CCB_Type(csio)) {
 	case SA_CCB_BUFFER_IO:
 	{
@@ -1828,6 +1831,10 @@ sadone(struct cam_periph *periph, union ccb *done_ccb)
 		wakeup(&done_ccb->ccb_h.cbfcnp);
 		return;
 	}
+	case SA_CCB_POLLED:
+		/* polled, caller releases ccb */
+		wakeup(&done_ccb->ccb_h.cbfcnp);
+		return;
 	}
 	xpt_release_ccb(done_ccb);
 }
@@ -1858,10 +1865,13 @@ samount(struct cam_periph *periph, __unused int oflags, __unused cdev_t dev)
 	
 	if (softc->flags & SA_FLAG_TAPE_MOUNTED) {
 		ccb = cam_periph_getccb(periph, 1);
+		Set_CCB_Type(ccb, SA_CCB_POLLED);
+
 		scsi_test_unit_ready(&ccb->csio, 0, sadone,
-		    MSG_SIMPLE_Q_TAG, SSD_FULL_SIZE, IO_TIMEOUT);
+				     MSG_SIMPLE_Q_TAG, SSD_FULL_SIZE,
+				     IO_TIMEOUT);
 		error = cam_periph_runccb(ccb, saerror, 0, SF_NO_PRINT,
-		    &softc->device_stats);
+					  &softc->device_stats);
 		QFRLS(ccb);
 		if (error == ENXIO) {
 			softc->flags &= ~SA_FLAG_TAPE_MOUNTED;
@@ -1887,10 +1897,12 @@ samount(struct cam_periph *periph, __unused int oflags, __unused cdev_t dev)
 			return (error);
 		}
 		ccb = cam_periph_getccb(periph, 1);
+		Set_CCB_Type(ccb, SA_CCB_POLLED);
 		scsi_test_unit_ready(&ccb->csio, 0, sadone,
-		    MSG_SIMPLE_Q_TAG, SSD_FULL_SIZE, IO_TIMEOUT);
+				     MSG_SIMPLE_Q_TAG, SSD_FULL_SIZE,
+				     IO_TIMEOUT);
 		error = cam_periph_runccb(ccb, saerror, 0, SF_NO_PRINT,
-		    &softc->device_stats);
+					  &softc->device_stats);
 		QFRLS(ccb);
 	}
 
@@ -2539,6 +2551,7 @@ sagetparams(struct cam_periph *periph, sa_params params_to_get,
 
 	softc = (struct sa_softc *)periph->softc;
 	ccb = cam_periph_getccb(periph, 1);
+	Set_CCB_Type(ccb, SA_CCB_POLLED);
 	if (softc->quirks & SA_QUIRK_NO_CPAGE)
 		cpage = SA_DEVICE_CONFIGURATION_PAGE;
 	else
@@ -2764,6 +2777,7 @@ sasetparams(struct cam_periph *periph, sa_params params_to_set,
 	mode_blk = (struct scsi_mode_blk_desc *)&mode_hdr[1];
 
 	ccb = cam_periph_getccb(periph, 1);
+	Set_CCB_Type(ccb, SA_CCB_POLLED);
 
 retry:
 
@@ -3047,6 +3061,7 @@ saprevent(struct cam_periph *periph, int action)
 		sf = SF_QUIET_IR;
 
 	ccb = cam_periph_getccb(periph, 1);
+	Set_CCB_Type(ccb, SA_CCB_POLLED);
 
 	/* It is safe to retry this operation */
 	scsi_prevent(&ccb->csio, 5, sadone, MSG_SIMPLE_Q_TAG, action,
@@ -3074,6 +3089,7 @@ sarewind(struct cam_periph *periph)
 	softc = (struct sa_softc *)periph->softc;
 
 	ccb = cam_periph_getccb(periph, 1);
+	Set_CCB_Type(ccb, SA_CCB_POLLED);
 
 	/* It is safe to retry this operation */
 	scsi_rewind(&ccb->csio, 2, sadone, MSG_SIMPLE_Q_TAG, FALSE,
@@ -3104,6 +3120,7 @@ saspace(struct cam_periph *periph, int count, scsi_space_code code)
 	softc = (struct sa_softc *)periph->softc;
 
 	ccb = cam_periph_getccb(periph, 1);
+	Set_CCB_Type(ccb, SA_CCB_POLLED);
 
 	/* This cannot be retried */
 
@@ -3179,6 +3196,8 @@ sawritefilemarks(struct cam_periph *periph, int nmarks, int setmarks)
 		return (EBADF);
 
 	ccb = cam_periph_getccb(periph, 1);
+	Set_CCB_Type(ccb, SA_CCB_POLLED);
+
 	/*
 	 * Clear residual because we will be using it.
 	 */
@@ -3241,8 +3260,9 @@ sardpos(struct cam_periph *periph, int hard, u_int32_t *blkptr)
 	}
 
 	ccb = cam_periph_getccb(periph, 1);
+	Set_CCB_Type(ccb, SA_CCB_POLLED);
 	scsi_read_position(&ccb->csio, 1, sadone, MSG_SIMPLE_Q_TAG,
-	    hard, &loc, SSD_FULL_SIZE, SCSIOP_TIMEOUT);
+			   hard, &loc, SSD_FULL_SIZE, SCSIOP_TIMEOUT);
 	softc->dsreg = MTIO_DSREG_RBSY;
 	error = cam_periph_runccb(ccb, saerror, 0, 0, &softc->device_stats);
 	softc->dsreg = MTIO_DSREG_REST;
@@ -3278,7 +3298,7 @@ sasetpos(struct cam_periph *periph, int hard, u_int32_t *blkptr)
 
 	softc = (struct sa_softc *)periph->softc;
 	ccb = cam_periph_getccb(periph, 1);
-
+	Set_CCB_Type(ccb, SA_CCB_POLLED);
 	
 	scsi_set_position(&ccb->csio, 1, sadone, MSG_SIMPLE_Q_TAG,
 	    hard, *blkptr, SSD_FULL_SIZE, SPACE_TIMEOUT);
@@ -3307,6 +3327,7 @@ saretension(struct cam_periph *periph)
 	softc = (struct sa_softc *)periph->softc;
 
 	ccb = cam_periph_getccb(periph, 1);
+	Set_CCB_Type(ccb, SA_CCB_POLLED);
 
 	/* It is safe to retry this operation */
 	scsi_load_unload(&ccb->csio, 5, sadone, MSG_SIMPLE_Q_TAG, FALSE,
@@ -3335,6 +3356,7 @@ sareservereleaseunit(struct cam_periph *periph, int reserve)
 
 	softc = (struct sa_softc *)periph->softc;
 	ccb = cam_periph_getccb(periph,  1);
+	Set_CCB_Type(ccb, SA_CCB_POLLED);
 
 	/* It is safe to retry this operation */
 	scsi_reserve_release_unit(&ccb->csio, 2, sadone, MSG_SIMPLE_Q_TAG,
@@ -3367,6 +3389,7 @@ saloadunload(struct cam_periph *periph, int load)
 	softc = (struct sa_softc *)periph->softc;
 
 	ccb = cam_periph_getccb(periph, 1);
+	Set_CCB_Type(ccb, SA_CCB_POLLED);
 
 	/* It is safe to retry this operation */
 	scsi_load_unload(&ccb->csio, 5, sadone, MSG_SIMPLE_Q_TAG, FALSE,
@@ -3398,6 +3421,7 @@ saerase(struct cam_periph *periph, int longerase)
 		return (EBADF);
 
 	ccb = cam_periph_getccb(periph, 1);
+	Set_CCB_Type(ccb, SA_CCB_POLLED);
 
 	scsi_erase(&ccb->csio, 1, sadone, MSG_SIMPLE_Q_TAG, FALSE, longerase,
 	    SSD_FULL_SIZE, ERASE_TIMEOUT);

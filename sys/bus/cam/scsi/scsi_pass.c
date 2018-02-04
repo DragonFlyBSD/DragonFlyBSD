@@ -66,6 +66,7 @@ typedef enum {
 } pass_state;
 
 typedef enum {
+	PASS_CCB_POLLED,
 	PASS_CCB_BUFFER_IO,
 	PASS_CCB_WAITING
 } pass_ccb_types;
@@ -413,9 +414,14 @@ passdone(struct cam_periph *periph, union ccb *done_ccb)
 	struct ccb_scsiio *csio;
 
 	csio = &done_ccb->csio;
+
 	switch (csio->ccb_h.ccb_type) {
 	case PASS_CCB_WAITING:
 		/* Caller will release the CCB */
+		wakeup(&done_ccb->ccb_h.cbfcnp);
+		return;
+	case PASS_CCB_POLLED:
+		/* polled, caller releases ccb */
 		wakeup(&done_ccb->ccb_h.cbfcnp);
 		return;
 	}
@@ -493,6 +499,7 @@ passioctl(struct dev_ioctl_args *ap)
 			break;
 		}
 
+		ccb->ccb_h.ccb_type = PASS_CCB_POLLED;
 		error = passsendccb(periph, ccb, inccb);
 
 		if (ccb_malloced)

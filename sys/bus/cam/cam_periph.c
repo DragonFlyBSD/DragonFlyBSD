@@ -94,6 +94,40 @@ TUNABLE_INT("kern.cam.periph_noresrc_delay", &periph_noresrc_delay);
 static int periph_busy_delay = 500;
 TUNABLE_INT("kern.cam.periph_busy_delay", &periph_busy_delay);
 
+/*
+ * This is a horrible hack.  The CAM code was just bulk-copying the ccb
+ * to 'restore' it from the saved version.  This completely destroys list
+ * linkages and such, so hack the hack to not copy-over fields that cannot
+ * be safely copied over.
+ *
+ * This fixes list races when scsi errors occur simultaneously on multiple
+ * requests.
+ */
+#define RESTORE_CCB(saved, ccbh, field)	\
+	bcopy(&(saved)->field, &(ccbh)->field, sizeof((ccbh)->field))
+
+#define saved_ccb_ptr ppriv_ptr0
+
+static void
+restore_ccb(struct ccb_hdr *ccb_h)
+{
+	struct ccb_hdr *saved;
+
+	saved = ccb_h->saved_ccb_ptr;
+	bcopy(saved + 1, ccb_h + 1, sizeof(union ccb) - sizeof(*saved));
+	RESTORE_CCB(saved, ccb_h, retry_count);
+	RESTORE_CCB(saved, ccb_h, cbfcnp);
+	RESTORE_CCB(saved, ccb_h, func_code);
+	RESTORE_CCB(saved, ccb_h, status);
+	RESTORE_CCB(saved, ccb_h, path);
+	RESTORE_CCB(saved, ccb_h, path_id);
+	RESTORE_CCB(saved, ccb_h, target_id);
+	RESTORE_CCB(saved, ccb_h, target_lun);
+	RESTORE_CCB(saved, ccb_h, flags);
+	RESTORE_CCB(saved, ccb_h, periph_priv);
+	RESTORE_CCB(saved, ccb_h, sim_priv);
+	RESTORE_CCB(saved, ccb_h, timeout);
+}
 
 void
 periphdriver_register(void *data)
@@ -984,7 +1018,6 @@ cam_release_devq(struct cam_path *path, u_int32_t relsim_flags,
 	return (crs.qfrozen_cnt);
 }
 
-#define saved_ccb_ptr ppriv_ptr0
 static void
 camperiphdone(struct cam_periph *periph, union ccb *done_ccb)
 {
@@ -1059,8 +1092,7 @@ camperiphdone(struct cam_periph *periph, union ccb *done_ccb)
 				}
 			}
 		}
-		bcopy(done_ccb->ccb_h.saved_ccb_ptr, done_ccb,
-		      sizeof(union ccb));
+		restore_ccb(&done_ccb->ccb_h);
 
 		periph->flags &= ~CAM_PERIPH_RECOVERY_INPROG;
 
@@ -1145,8 +1177,7 @@ camperiphdone(struct cam_periph *periph, union ccb *done_ccb)
 				 * CCB so that final error processing is
 				 * performed by the owner of the CCB.
 				 */
-				bcopy(done_ccb->ccb_h.saved_ccb_ptr,		
-				      done_ccb, sizeof(union ccb));
+				restore_ccb(&done_ccb->ccb_h);
 
 				periph->flags &= ~CAM_PERIPH_RECOVERY_INPROG;
 
@@ -1159,8 +1190,7 @@ camperiphdone(struct cam_periph *periph, union ccb *done_ccb)
 			 * Fire the CCB again to return it to the
 			 * caller.
 			 */
-			bcopy(done_ccb->ccb_h.saved_ccb_ptr,
-			      done_ccb, sizeof(union ccb));
+			restore_ccb(&done_ccb->ccb_h);
 
 			periph->flags &= ~CAM_PERIPH_RECOVERY_INPROG;
 
@@ -1169,8 +1199,7 @@ camperiphdone(struct cam_periph *periph, union ccb *done_ccb)
 		}
 		break;
 	default:
-		bcopy(done_ccb->ccb_h.saved_ccb_ptr, done_ccb,
-		      sizeof(union ccb));
+		restore_ccb(&done_ccb->ccb_h);
 
 		periph->flags &= ~CAM_PERIPH_RECOVERY_INPROG;
 

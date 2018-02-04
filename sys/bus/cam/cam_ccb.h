@@ -257,6 +257,9 @@ typedef union {
 	u_int8_t	bytes[CCB_SIM_PRIV_SIZE * sizeof(ccb_priv_entry)];
 } ccb_spriv_area;
 
+/*
+ * WARNING!  Fields are specifically copied in cam_periph.c's restore_ccb()
+ */
 struct ccb_hdr {
 	cam_pinfo	pinfo;		/* Info for priority scheduling */
 	camq_entry	xpt_links;	/* For chaining in the XPT layer */	

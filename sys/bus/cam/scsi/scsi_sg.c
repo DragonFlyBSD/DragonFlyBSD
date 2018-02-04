@@ -73,6 +73,7 @@ typedef enum {
 } sg_rdwr_state;
 
 typedef enum {
+	SG_CCB_POLLED,
 	SG_CCB_RDWR_IO,
 	SG_CCB_WAITING
 } sg_ccb_types;
@@ -337,6 +338,7 @@ sgdone(struct cam_periph *periph, union ccb *done_ccb)
 
 	softc = (struct sg_softc *)periph->softc;
 	csio = &done_ccb->csio;
+
 	switch (csio->ccb_h.ccb_type) {
 	case SG_CCB_WAITING:
 		/* Caller will release the CCB */
@@ -360,6 +362,9 @@ sgdone(struct cam_periph *periph, union ccb *done_ccb)
 		wakeup(rdwr);
 		break;
 	}
+	case SG_CCB_POLLED:
+		wakeup(&done_ccb->ccb_h.cbfcnp);
+		return;
 	default:
 		panic("unknown sg CCB type");
 	}
@@ -503,10 +508,10 @@ sgioctl(struct dev_ioctl_args *ap)
 		}
 
 		ccb = cam_periph_getccb(periph, /*priority*/5);
+		ccb->ccb_h.ccb_type = SG_CCB_POLLED;
 		csio = &ccb->csio;
 
-		error = copyin(req.cmdp, &csio->cdb_io.cdb_bytes,
-		    req.cmd_len);
+		error = copyin(req.cmdp, &csio->cdb_io.cdb_bytes, req.cmd_len);
 		if (error) {
 			xpt_release_ccb(ccb);
 			break;
