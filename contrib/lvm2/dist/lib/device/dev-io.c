@@ -306,7 +306,7 @@ static int _dev_get_size_dev(const struct device *dev, uint64_t *size)
 	}
 
 	if (ioctl(fd, DIOCGPART, &pinfo) < 0) {
-		log_debug("ioctl DIOCGPART", name);
+		log_debug("%s: ioctl DIOCGPART", name);
 		close(fd);
 		return 0;
 	} else {
