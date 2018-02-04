@@ -94,7 +94,6 @@ WFORMAT		=	1
 . if defined(WFORMAT)
 .  if ${WFORMAT} > 0
 CWARNFLAGS	+=	-Wformat=2
-_cnowarnflags	+=	-Wno-format-extra-args
 .   if !defined(NO_WERROR) && (${CCVER} == "gcc47" || ${CCVER} == "gcc50")
 CWARNFLAGS	+=	-Werror
 .   endif
