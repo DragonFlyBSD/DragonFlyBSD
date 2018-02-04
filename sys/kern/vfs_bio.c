@@ -4586,7 +4586,7 @@ DB_SHOW_COMMAND(buffer, db_show_buffer)
 		return;
 	}
 
-	db_printf("b_flags = 0x%b\n", (u_int)bp->b_flags, PRINT_BUF_FLAGS);
+	db_printf("b_flags = 0x%pb%i\n", PRINT_BUF_FLAGS, bp->b_flags);
 	db_printf("b_cmd = %d\n", bp->b_cmd);
 	db_printf("b_error = %d, b_bufsize = %d, b_bcount = %d, "
 		  "b_resid = %d\n, b_data = %p, "

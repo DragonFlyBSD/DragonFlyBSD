@@ -200,7 +200,7 @@ printcpuinfo(void)
 			 * to check that all CPUs >= Pentium have a TSC and
 			 * MSRs.
 			 */
-			kprintf("\n  Features=0x%b", cpu_feature,
+			kprintf("\n  Features=0x%pb%i",
 			"\020"
 			"\001FPU"	/* Integral FPU */
 			"\002VME"	/* Extended VM86 mode support */
@@ -234,10 +234,10 @@ printcpuinfo(void)
 			"\036TM"	/* Thermal Monitor clock slowdown */
 			"\037IA64"	/* CPU can execute IA64 instructions */
 			"\040PBE"	/* Pending Break Enable */
-			);
+			, cpu_feature);
 
 			if (cpu_feature2 != 0) {
-				kprintf("\n  Features2=0x%b", cpu_feature2,
+				kprintf("\n  Features2=0x%pb%i",
 				"\020"
 				"\001SSE3"	/* SSE3 */
 				"\002PCLMULQDQ"	/* Carry-Less Mul Quadword */
@@ -271,7 +271,7 @@ printcpuinfo(void)
 				"\036F16C"	/* Half-precision conversions */
 				"\037RDRND"	/* RDRAND RNG function */
 				"\040VMM"	/*  Running on a hypervisor */
-				);
+				, cpu_feature2);
 			}
 
 			/*
@@ -284,7 +284,7 @@ printcpuinfo(void)
 			 * ftp://download.intel.com/design/Pentium4/manuals/25366617.pdf
 			 */
 			if (amd_feature != 0) {
-				kprintf("\n  AMD Features=0x%b", amd_feature,
+				kprintf("\n  AMD Features=0x%pb%i",
 				"\020"		/* in hex */
 				"\001<s0>"	/* Same */
 				"\002<s1>"	/* Same */
@@ -318,11 +318,11 @@ printcpuinfo(void)
 				"\036LM"	/* 64 bit long mode */
 				"\0373DNow!+"	/* AMD 3DNow! Extensions */
 				"\0403DNow!"	/* AMD 3DNow! */
-				);
+				, amd_feature);
 			}
 
 			if (amd_feature2 != 0) {
-				kprintf("\n  AMD Features2=0x%b", amd_feature2,
+				kprintf("\n  AMD Features2=0x%pb%i",
 				"\020"
 				"\001LAHF"	/* LAHF/SAHF in long mode */
 				"\002CMP"	/* CMP legacy */
@@ -356,12 +356,11 @@ printcpuinfo(void)
 		       	        "\036MWAITX"	/* MONITORX/MWAITX instructions */
 				"\037<b30>"
 				"\040<b31>"
-				);
+				, amd_feature2);
 			}
 
 			if (cpu_stdext_feature != 0) {
-				kprintf("\n  Structured Extended Features=0x%b",
-				    cpu_stdext_feature,
+				kprintf("\n  Structured Extended Features=0x%pb%i",
 				       "\020"
 				       /* RDFSBASE/RDGSBASE/WRFSBASE/WRGSBASE */
 				       "\001GSFSBASE"
@@ -387,12 +386,11 @@ printcpuinfo(void)
 				       "\024ADX"
 				       /* Supervisor Mode Access Prevention */
 				       "\025SMAP"
-				       );
+				       , cpu_stdext_feature);
 			}
 
 			if (cpu_thermal_feature != 0) {
-				kprintf("\n  Thermal and PM Features=0x%b",
-				    cpu_thermal_feature,
+				kprintf("\n  Thermal and PM Features=0x%pb%i",
 				    "\020"
 				    /* Digital temperature sensor */
 				    "\001SENSOR"
@@ -408,18 +406,17 @@ printcpuinfo(void)
 				    "\007PTM"
 				    /* Hardware P-states */
 				    "\010HWP"
-				    );
+				    , cpu_thermal_feature);
 			}
 
 			if (cpu_mwait_feature != 0) {
-				kprintf("\n  MONITOR/MWAIT Features=0x%b",
-				    cpu_mwait_feature,
+				kprintf("\n  MONITOR/MWAIT Features=0x%pb%i",
 				    "\020"
 				    /* Enumeration of Monitor-Mwait extension */
 				    "\001CST"
 				    /*  interrupts as break-event for MWAIT */
 				    "\002INTBRK"
-				    );
+				    , cpu_mwait_feature);
 			}
 
 			if (cpu_vendor_id == CPU_VENDOR_CENTAUR)
@@ -743,12 +740,12 @@ print_via_padlock_info(void)
 	else
 		return;
 
-	kprintf("\n  VIA Padlock Features=0x%b", regs[3],
+	kprintf("\n  VIA Padlock Features=0x%pb%i",
 	"\020"
 	"\003RNG"		/* RNG */
 	"\007AES"		/* ACE */
 	"\011AES-CTR"		/* ACE2 */
 	"\013SHA1,SHA256"	/* PHE */
 	"\015RSA"		/* PMM */
-	);
+	, regs[3]);
 }
