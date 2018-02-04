@@ -332,7 +332,12 @@ disk_probe(struct disk *dp, int reprobe)
 	struct dev_ops *dops;
 	char uuid_buf[128];
 
-	KKASSERT (info->d_media_blksize != 0);
+	/*
+	 * d_media_blksize can be 0 for non-disk storage devices such
+	 * as audio CDs.
+	 */
+	if (info->d_media_blksize == 0)
+		return;
 
 	osp = dp->d_slice;
 	dp->d_slice = dsmakeslicestruct(BASE_SLICE, info);
