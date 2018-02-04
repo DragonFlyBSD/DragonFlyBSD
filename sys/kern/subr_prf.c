@@ -117,6 +117,11 @@ static int	kprintf_logging = TOLOG | TOCONS;
 SYSCTL_INT(_kern, OID_AUTO, kprintf_logging, CTLFLAG_RW,
     &kprintf_logging, 0, "");
 
+static int ptr_restrict = 0;
+TUNABLE_INT("security.ptr_restrict", &ptr_restrict);
+SYSCTL_INT(_security, OID_AUTO, ptr_restrict, CTLFLAG_RW, &ptr_restrict, 0,
+    "Prevent leaking the kernel pointers back to userland");
+
 static int unprivileged_read_msgbuf = 1;
 SYSCTL_INT(_security, OID_AUTO, unprivileged_read_msgbuf, CTLFLAG_RW,
     &unprivileged_read_msgbuf, 0,
@@ -548,6 +553,7 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg, __va_list ap)
 	char padc;
 	int retval = 0, stop = 0;
 	int usespin;
+	int ddb_active;
 
 	/*
 	 * Make a supreme effort to avoid reentrant panics or deadlocks.
@@ -562,6 +568,12 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg, __va_list ap)
 			return(0);
 		atomic_set_long(&mycpu->gd_flags, GDF_KPRINTF);
 	}
+
+#ifdef DDB
+	ddb_active = db_active;
+#else
+	ddb_active = 0;
+#endif
 
 	num = 0;
 	if (!func)
@@ -717,6 +729,15 @@ reswitch:
 			sharpflag = (width == 0);
 			sign = 0;
 			num = (uintptr_t)__va_arg(ap, void *);
+			if (ptr_restrict && fmt[0] != 'x' &&
+			    !(panicstr || dumping || ddb_active)) {
+				if (ptr_restrict == 1) {
+					/* zero out upper bits */
+					num &= 0xffffffUL;
+				} else {
+					num = 0xc0ffee;
+				}
+			}
 			goto number;
 		case 'q':
 			qflag = 1;
