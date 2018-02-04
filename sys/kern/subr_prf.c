@@ -514,10 +514,11 @@ ksprintn(char *nbuf, uintmax_t num, int base, int *lenp, int upper)
  *
  * Two additional formats:
  *
- * The format %b is supported to decode error registers.
+ * The format %pb%i is supported to decode error registers.
+ * The use %b format is deprecated.
  * Its usage is:
  *
- *	kprintf("reg=%b\n", regval, "<base><arg>*");
+ *	kprintf("reg=%pb%i\n", "<base><arg>*", regval);
  *
  * where <base> is the output base expressed as a control character, e.g.
  * \10 gives octal; \20 gives hex.  Each arg is a sequence of characters,
@@ -525,7 +526,7 @@ ksprintn(char *nbuf, uintmax_t num, int base, int *lenp, int upper)
  * the next characters (up to a control character, i.e. a character <= 32),
  * give the name of the register.  Thus:
  *
- *	kvcprintf("reg=%b\n", 3, "\10\2BITTWO\1BITONE\n");
+ *	kvcprintf("reg=%pb%i\n", "\10\2BITTWO\1BITONE\n", 3);
  *
  * would produce output:
  *
@@ -709,6 +710,33 @@ reswitch:
 			base = 8;
 			goto handle_nosign;
 		case 'p':
+			/* peek if this is a /b/ hiding as /p/ or not */
+			if (fmt[0] == 'b' && fmt[1] == '%' && fmt[2] == 'i') {
+				fmt += 3; /* consume "b%i" */
+				p = __va_arg(ap, char *);
+				num = (u_int)__va_arg(ap, int);
+				for (q = ksprintn(nbuf, num, *p++, NULL, 0);*q;)
+					PCHAR(*q--);
+
+				if (num == 0)
+					break;
+
+				for (tmp = 0; *p;) {
+					n = *p++;
+					if (num & (1 << (n - 1))) {
+						PCHAR(tmp ? ',' : '<');
+						for (; (n = *p) > ' '; ++p)
+							PCHAR(n);
+						tmp = 1;
+					} else {
+						for (; *p > ' '; ++p)
+							continue;
+					}
+				}
+				if (tmp)
+					PCHAR('>');
+				break;
+			}
 			base = 16;
 			sharpflag = (width == 0);
 			sign = 0;
