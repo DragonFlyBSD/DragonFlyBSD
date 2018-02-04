@@ -2704,10 +2704,13 @@ process_error:
 				bytes = rfis->sector_count * 512;
 
 				/* NOTE: expect type == 0x34 */
-				kprintf("%s: TFES RFIS-%02x flg=%02x "
+				kprintf("%s: TFES ccb=%p slot=%d RFIS-%02x "
+					"flg=%02x "
 					"st=%02x err=%02x dev=%02x "
 					"off=%jd/%d\n",
 					PORTNAME(ap),
+					ccb->ccb_xa.atascsi_private,
+					ccb->ccb_slot,
 					rfis->type,
 					rfis->flags,
 					rfis->status,
