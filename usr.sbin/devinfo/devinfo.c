@@ -137,12 +137,19 @@ print_device(struct devinfo_dev *dev, void *arg)
 	struct indent_arg	ia;
 	int			i, indent;
 
-	if (vflag ||
+	if (vflag > 1 ||
+	    (vflag && (dev->dd_flags & DIF_ENABLED)) ||
 	    (dev->dd_name[0] != 0 && dev->dd_state >= DIS_INPROGRESS)) {
 		indent = (int)(intptr_t)arg;
 		for (i = 0; i < indent; i++)
 			printf(" ");
-		printf("%s", dev->dd_name[0] ? dev->dd_name : "unknown");
+		if (vflag && (dev->dd_flags & DIF_ENABLED) == 0) {
+			if (dev->dd_name[0])
+				printf("%s", dev->dd_name);
+			printf("(disabled)");
+		} else {
+			printf("%s", dev->dd_name[0] ? dev->dd_name : "unknown");
+		}
 		if (vflag && *dev->dd_pnpinfo)
 			printf(" pnpinfo %s", dev->dd_pnpinfo);
 		if (vflag && *dev->dd_location)

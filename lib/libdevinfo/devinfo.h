@@ -60,7 +60,8 @@ struct devinfo_dev {
 	char			*dd_location;	/* Where bus thinks dev at */
 	uint32_t		dd_devflags;	/* API flags */
 	uint16_t		dd_flags;	/* internal dev flags */
-	devinfo_state_t		dd_state;	/* attacement state of dev */
+#define DIF_ENABLED	0x0001		/* device should be probed/attached */
+	devinfo_state_t		dd_state;	/* attachement state of dev */
 };
 
 struct devinfo_rman {
