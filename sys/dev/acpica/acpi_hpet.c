@@ -35,10 +35,18 @@
 #include <sys/systimer.h>
 #include <sys/rman.h>
 
+#if !defined(KLD_MODULE)
+#include <machine/pmap.h>
+#endif
+
 #include "acpi.h"
 #include "accommon.h"
 #include "acpivar.h"
 #include "acpi_hpet.h"
+
+#if !defined(KLD_MODULE)
+#include <platform/pc64/acpica/acpi_sdt_var.h>
+#endif
 
 /* Hooks for the ACPICA debugging infrastructure */
 #define _COMPONENT	ACPI_TIMER
@@ -112,6 +120,164 @@ acpi_hpet_read(void)
 				HPET_MAIN_COUNTER);
 }
 
+#if !defined(KLD_MODULE)
+extern int i8254_cputimer_disable;
+
+static vm_offset_t ptr = 0;
+
+static int acpi_hpet_for_calibration = 1;
+TUNABLE_INT("hw.calibrate_timers_with_hpet", &acpi_hpet_for_calibration);
+
+static sysclock_t
+acpi_hpet_early_get_timecount(void)
+{
+	return readl(ptr + HPET_MAIN_COUNTER) + acpi_hpet_timer.base;
+}
+
+static void
+acpi_hpet_early_construct(struct cputimer *timer, sysclock_t oldclock)
+{
+	uint32_t val;
+
+	val = readl(ptr + HPET_CONFIG);
+	writel(ptr + HPET_CONFIG, val | HPET_CNF_ENABLE);
+
+	timer->base = 0;
+	timer->base = oldclock - acpi_hpet_early_get_timecount();
+}
+
+static void
+acpi_hpet_early_destruct(struct cputimer *timer)
+{
+	uint32_t val;
+
+	val = readl(ptr + HPET_CONFIG);
+	writel(ptr + HPET_CONFIG, val & ~HPET_CNF_ENABLE);
+}
+
+static int
+acpi_hpet_early_init(void)
+{
+	uintmax_t freq;
+	uint64_t old_tsc, new_tsc;
+	uint32_t val, val2;
+
+	val = readl(ptr + HPET_CONFIG);
+	writel(ptr + HPET_CONFIG, val | HPET_CNF_ENABLE);
+
+	/* Read basic statistics about the timer. */
+	val = readl(ptr + HPET_PERIOD);
+	if (val == 0) {
+		kprintf("acpi_hpet: invalid period\n");
+		val = readl(ptr + HPET_CONFIG);
+		writel(ptr + HPET_CONFIG, val & ~HPET_CNF_ENABLE);
+		return ENXIO;
+	}
+
+	freq = (1000000000000000LL + val / 2) / val;
+	if (bootverbose) {
+		val = readl(ptr + HPET_CAPABILITIES);
+		kprintf("acpi_hpet: "
+		    "vend: 0x%x, rev: 0x%x, num: %d, opts:%s%s\n",
+		    val >> 16, val & HPET_CAP_REV_ID,
+		    (val & HPET_CAP_NUM_TIM) >> 8,
+		    (val & HPET_CAP_LEG_RT) ? " legacy_route" : "",
+		    (val & HPET_CAP_COUNT_SIZE) ? " 64-bit" : "");
+	}
+
+#if 0
+	if (ktestenv("debug.acpi.hpet_test"))
+		acpi_hpet_test(sc);
+#endif
+
+	/*
+	 * Don't attach if the timer never increments.  Since the spec
+	 * requires it to be at least 10 MHz, it has to change in 1 us.
+	 */
+	val = readl(ptr + HPET_MAIN_COUNTER);
+	/* This delay correspond to 1us, even at 6 GHz TSC. */
+	old_tsc = rdtsc();
+	do {
+		cpu_pause();
+		new_tsc = rdtsc();
+	} while (new_tsc - old_tsc < 6000);
+	val2 = readl(ptr + HPET_MAIN_COUNTER);
+	if (val == val2) {
+		kprintf("acpi_hpet: HPET never increments, disabling\n");
+		val = readl(ptr + HPET_CONFIG);
+		writel(ptr + HPET_CONFIG, val & ~HPET_CNF_ENABLE);
+		return ENXIO;
+	}
+
+	val = readl(ptr + HPET_CONFIG);
+	writel(ptr + HPET_CONFIG, val & ~HPET_CNF_ENABLE);
+	acpi_hpet_timer.freq = freq;
+	kprintf("acpi_hpet: frequency %u\n", acpi_hpet_timer.freq);
+
+	acpi_hpet_timer.count = acpi_hpet_early_get_timecount;
+	acpi_hpet_timer.construct = acpi_hpet_early_construct;
+	acpi_hpet_timer.destruct = acpi_hpet_early_destruct;
+
+	cputimer_register(&acpi_hpet_timer);
+	cputimer_select(&acpi_hpet_timer, 0);
+	return 0;
+}
+
+static void
+acpi_hpet_cputimer_register(void)
+{
+	ACPI_TABLE_HPET *hpet;
+	vm_paddr_t hpet_paddr;
+
+	if (acpi_hpet_for_calibration == 0)
+		return;
+
+	if (acpi_disabled("hpet"))
+		return;
+
+	hpet_paddr = sdt_search(ACPI_SIG_HPET);
+	if (hpet_paddr == 0) {
+		if (bootverbose)
+			kprintf("acpi_hpet: can't locate HPET\n");
+		return;
+	}
+
+	hpet = sdt_sdth_map(hpet_paddr);
+	if (hpet == NULL)
+		return;
+
+	if (hpet->Header.Length < 56) {
+		kprintf("acpi_hpet: HPET table too short. Length: 0x%x\n",
+		    hpet->Header.Length);
+		return;
+	}
+
+	if (hpet->Sequence != 0) {
+		kprintf("acpi_hpet: "
+		    "HPET table Sequence not 0. Sequence: 0x%x\n", hpet->Id);
+		goto done;
+	}
+
+	acpi_hpet_res_start = hpet->Address.Address;
+	if (acpi_hpet_res_start == 0)
+		goto done;
+
+	ptr = (vm_offset_t)pmap_mapdev(acpi_hpet_res_start, HPET_MEM_WIDTH);
+	if (acpi_hpet_early_init() == 0) {
+		i8254_cputimer_disable = 1;
+	} else {
+		pmap_unmapdev(ptr, HPET_MEM_WIDTH);
+		ptr = 0;
+	}
+
+done:
+	sdt_sdth_unmap(&hpet->Header);
+	return;
+}
+
+TIMECOUNTER_INIT(acpi_hpet_init, acpi_hpet_cputimer_register);
+#endif
+
 /*
  * Locate the ACPI timer using the FADT, set up and allocate the I/O resources
  * we will be using.
@@ -135,6 +301,31 @@ acpi_hpet_identify(driver_t *driver, device_t parent)
 	/* Only one HPET device can be added. */
 	if (devclass_get_device(acpi_hpet_devclass, 0))
 		return ENXIO;
+
+#if !defined(KLD_MODULE)
+	if (ptr != 0) {
+		/* Use data from early boot for attachment. */
+		child = BUS_ADD_CHILD(parent, parent, 0, "acpi_hpet", 0);
+		if (child == NULL) {
+			device_printf(parent, "%s: can't add acpi_hpet0\n",
+			    __func__);
+			return ENXIO;
+		}
+
+		/* Record a magic value so we can detect this device later. */
+		acpi_set_magic(child, (uintptr_t)&acpi_hpet_devclass);
+
+		if (bus_set_resource(child, SYS_RES_MEMORY, 0,
+		    acpi_hpet_res_start, HPET_MEM_WIDTH, -1)) {
+			device_printf(child,
+			    "could not set iomem resources: 0x%jx, %d\n",
+			    (uintmax_t)acpi_hpet_res_start, HPET_MEM_WIDTH);
+			return ENOMEM;
+		}
+
+		return 0;
+	}
+#endif
 
 	/* Currently, ID and minimum clock tick info is unused. */
 
@@ -232,6 +423,15 @@ acpi_hpet_attach(device_t dev)
 
 	acpi_hpet_bsh = rman_get_bushandle(sc->mem_res);
 	acpi_hpet_bst = rman_get_bustag(sc->mem_res);
+
+#if !defined(KLD_MODULE)
+	if (ptr != 0) {
+		/* Use data from early boot for attachment. */
+		if (ktestenv("debug.acpi.hpet_test"))
+			acpi_hpet_test(sc);
+		return 0;
+	}
+#endif
 
 	/* Be sure timer is enabled. */
 	acpi_hpet_enable(sc);
