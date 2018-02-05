@@ -44,6 +44,7 @@ typedef __uintptr_t	devinfo_handle_t;
 typedef enum devinfo_state {
 	DIS_NOTPRESENT,			/* not probed or probe failed */
 	DIS_ALIVE,			/* probe succeeded */
+	DIS_INPROGRESS,			/* attach in progress */
 	DIS_ATTACHED,			/* attach method called */
 	DIS_BUSY			/* device is open */
 } devinfo_state_t;
