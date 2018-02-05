@@ -91,6 +91,20 @@ static struct dev_ops mem_ops = {
 	.d_uksmap =	memuksmap
 };
 
+static struct dev_ops mem_ops_mem = {
+	{ "mem", 0, D_MEM | D_MPSAFE | D_QUICK },
+	.d_open =	mmopen,
+	.d_close =	mmclose,
+	.d_read =	mmread,
+	.d_write =	mmwrite,
+	.d_ioctl =	mmioctl,
+	.d_kqfilter =	mmkqfilter,
+#if 0
+	.d_mmap =	memmmap,
+#endif
+	.d_uksmap =	memuksmap
+};
+
 static struct dev_ops mem_ops_noq = {
 	{ "mem", 0, D_MPSAFE },
 	.d_open =	mmopen,
@@ -762,8 +776,8 @@ mem_drvinit(void *unused)
 	if (mem_range_softc.mr_op != NULL)
 		mem_range_softc.mr_op->init(&mem_range_softc);
 
-	make_dev(&mem_ops, 0, UID_ROOT, GID_KMEM, 0640, "mem");
-	make_dev(&mem_ops, 1, UID_ROOT, GID_KMEM, 0640, "kmem");
+	make_dev(&mem_ops_mem, 0, UID_ROOT, GID_KMEM, 0640, "mem");
+	make_dev(&mem_ops_mem, 1, UID_ROOT, GID_KMEM, 0640, "kmem");
 	make_dev(&mem_ops, 2, UID_ROOT, GID_WHEEL, 0666, "null");
 	make_dev(&mem_ops, 3, UID_ROOT, GID_WHEEL, 0644, "random");
 	make_dev(&mem_ops, 4, UID_ROOT, GID_WHEEL, 0644, "urandom");
