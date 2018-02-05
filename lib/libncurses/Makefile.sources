@@ -64,7 +64,7 @@ init_keytry.h: make_keys keys.list
 	./make_keys keys.list > ${.TARGET}
 
 make_keys: make_keys.c names.c ncurses_def.h ${VERSION_MAP} ${HEADERS}
-	${NXCC} ${NXCFLAGS} -static ${NCURSESTINFODIR}/make_keys.c ${NXLDLIBS} -o ${.TARGET}
+	${NXCC} ${NXCFLAGS:N-flto:N-W*} -static ${NCURSESTINFODIR}/make_keys.c ${NXLDLIBS} -o ${.TARGET}
 
 keys.list: MKkeys_list.sh Caps
 	sh ${NCURSESTINFODIR}/MKkeys_list.sh ${TERMINFO_CAPS} | LC_ALL=C sort > ${.TARGET}
@@ -79,16 +79,16 @@ comp_captab.c: make_hash MKcaptab.sh MKcaptab.awk Caps
 	sh -e ${NCURSESTINFODIR}/MKcaptab.sh awk 1 ${NCURSESTINFODIR}/MKcaptab.awk ${TERMINFO_CAPS} > ${.TARGET}
 
 make_hash: make_hash.c hashsize.h ncurses_def.h ${HEADERS}
-	${NXCC} ${NXCFLAGS} -static -DMAIN_PROGRAM ${NCURSESTINFODIR}/make_hash.c ${NXLDLIBS} -o ${.TARGET}
+	${NXCC} ${NXCFLAGS:N-flto:N-W*} -static -DMAIN_PROGRAM ${NCURSESTINFODIR}/make_hash.c ${NXLDLIBS} -o ${.TARGET}
 
 expanded.c: MKexpanded.sh ${GENHDRS_NWP}
-	sh ${NCURSESSERIALDIR}/MKexpanded.sh "${CC}" -E ${CFLAGS} > ${.TARGET}
+	${NXENV} sh ${NCURSESSERIALDIR}/MKexpanded.sh "${CC}" -E ${NXCFLAGS:N-W*} > ${.TARGET}
 
 fallback.c: MKfallback.sh
 	sh ${NCURSESTINFODIR}/MKfallback.sh /usr/share/terminfo ${NCURSESDIR}/misc/terminfo.src > ${.TARGET}
 
 lib_gen.c: MKlib_gen.sh curses.h
-	sh ${NCURSESBASEDIR}/MKlib_gen.sh "${CC} -E ${CFLAGS}" awk generated <curses.h > ${.TARGET}
+	${NXENV} sh ${NCURSESBASEDIR}/MKlib_gen.sh "${CC} -E ${NXCFLAGS:N-W*}" awk generated <curses.h > ${.TARGET}
 
 lib_keyname.c: MKkeyname.awk keys.list
 	awk -f ${NCURSESBASEDIR}/MKkeyname.awk bigstrings=1 keys.list > ${.TARGET}
