@@ -41,11 +41,16 @@ LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 	${.CURDIR}/../test \
 	${.CURDIR}/../../usr.bin/printf
 
-CLEANFILES+= mknodes.nx mknodes.no \
-	mksyntax.nx mksyntax.no
+#
+# NOTE: the headers and sources in pregenerated/ must be updated upon any
+# changes to the nodetypes nodes.c.pat mkbuiltins mknodes.c mksyntax.c mktokens
+# files using following scripts and build programs.
+#
+.if 1 # not updating sh(1)
+.PATH: ${.CURDIR}/pregenerated
+CFLAGS+= -I${.CURDIR}/pregenerated
+.else
 CLEANFILES+= ${GENSRCS} ${GENHDRS}
-
-build-tools: mknodes.nx mksyntax.nx
 
 .ORDER: builtins.c builtins.h
 builtins.c builtins.h: mkbuiltins builtins.def
@@ -56,19 +61,18 @@ builtins.c builtins.h: mkbuiltins builtins.def
 # XXX we have a default .c rule, but no default .o rule.
 .o:
 	${CC} ${CFLAGS} ${LDFLAGS} ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
-mknodes.nx: mknodes.no
-mksyntax.nx: mksyntax.no
 
 .ORDER: nodes.c nodes.h
-nodes.c nodes.h: mknodes.nx nodetypes nodes.c.pat
-	./mknodes.nx ${.CURDIR}/nodetypes ${.CURDIR}/nodes.c.pat
+nodes.c nodes.h: nodetypes nodes.c.pat
+	${.OBJDIR}/mknodes/mknodes.nx ${.ALLSRC}
 
 .ORDER: syntax.c syntax.h
-syntax.c syntax.h: mksyntax.nx
-	./mksyntax.nx
+syntax.c syntax.h:
+	${.OBJDIR}/mksyntax/mksyntax.nx
 
 token.h: mktokens
 	sh ${.CURDIR}/mktokens
+.endif
 
 regress: sh
 	cd ${.CURDIR}/../../tools/regression/bin/sh && ${MAKE} SH=${.OBJDIR}/sh

@@ -126,7 +126,7 @@ objs: ${OUTMK} .META
 	${CRUNCHENV} MAKEOBJDIRPREFIX=${CRUNCHOBJS} \
 	    ${MAKE} -f ${OUTMK} objs
 
-# <sigh> Someone should replace the bin/csh and bin/sh build-tools with
+# <sigh> Someone should replace the bin/csh build-tools with
 # shell scripts so we can remove this nonsense.
 .for _tool in ${CRUNCH_BUILDTOOLS}
 build-tools-${_tool}:
