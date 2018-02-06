@@ -53,10 +53,10 @@ Array members containing NULL will be silently ignored.
 .Pp
 If
 .Fa timeout
-is a non-nil pointer, it specifies a maximum interval to suspend.
+is non-NULL, it specifies a maximum interval to suspend.
 If
 .Fa timeout
-is a nil pointer, the suspend blocks indefinitely.
+is a null pointer, the suspend blocks indefinitely.
 To effect a poll, the
 .Fa timeout
 should point to a zero-value timespec structure.

@@ -27,7 +27,6 @@
 .\"
 .\"     @(#)acct.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/acct.2,v 1.6.2.5 2004/04/17 10:04:10 brueffer Exp $
-.\" $DragonFly: src/lib/libc/sys/acct.2,v 1.4 2006/05/26 19:39:37 swildner Exp $
 .\"
 .Dd April 17, 2004
 .Dt ACCT 2
@@ -48,7 +47,7 @@ call enables or disables the collection of system accounting
 records.
 If the argument
 .Fa file
-is a nil pointer, accounting is disabled.
+is a null pointer, accounting is disabled.
 If
 .Fa file
 is an

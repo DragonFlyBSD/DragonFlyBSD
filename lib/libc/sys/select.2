@@ -27,7 +27,6 @@
 .\"
 .\"     @(#)select.2	8.2 (Berkeley) 3/25/94
 .\" $FreeBSD: src/lib/libc/sys/select.2,v 1.14.2.5 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/select.2,v 1.8 2007/08/02 00:21:54 swildner Exp $
 .\"
 .Dd March 25, 1994
 .Dt SELECT 2
@@ -101,31 +100,31 @@ to the maximum number of descriptors supported by the system.
 .Pp
 If
 .Fa timeout
-is a non-nil pointer, it specifies the maximum interval to wait for the
+is non-NULL, it specifies the maximum interval to wait for the
 selection to complete.  System activity can lengthen the interval by
 an indeterminate amount.
 .Pp
 If
 .Fa timeout
-is a nil pointer, the select blocks indefinitely.
+is a null pointer, the select blocks indefinitely.
 .Pp
 To effect a poll, the
 .Fa timeout
-argument should be non-nil, pointing to a zero-valued timeval structure.
+argument should be non-NULL, pointing to a zero-valued timeval structure.
 .Pp
 Any of
 .Fa readfds ,
 .Fa writefds ,
 and
 .Fa exceptfds
-may be given as nil pointers if no descriptors are of interest.
+may be given as null pointers if no descriptors are of interest.
 .Pp
 Even if no descriptors are of interest, the timeout works as described,
 effectively putting the process into an interruptible sleep for the
 specified timeout.
 If
 .Fa timeout
-is nil, the process will block until a signal is received.
+is NULL, the process will block until a signal is received.
 .Sh RETURN VALUES
 .Fn Select
 returns the number of ready descriptors that are contained in
