@@ -31,8 +31,7 @@ CFLAGS+= -DNO_HISTORY
 # LIBEDIT is not needed here
 .else
 DPADD= ${LIBEDIT} ${LIBNCURSES}
-LDADD= -lprivate_edit -lprivate_ncurses
-LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+LDADD= ${LIBEDIT} ${LIBNCURSES}
 .endif
 
 
