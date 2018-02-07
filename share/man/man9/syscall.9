@@ -23,7 +23,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd September 17, 2015
+.Dd February 7, 2018
 .Dt SYSCALL 9
 .Os
 .Sh NAME
@@ -123,9 +123,22 @@ It is customary to extract system call arguments with the
 macro, which is defined in
 .Pa sys/sys/sysent.h
 file.
-Last, in order to return a value to userland, the
-.Fa uap->sysmsg_result
-variable and friends of it are used, as defined in
+.Pp
+Any value which the
+.Fn sys_mycall
+kernel function returns ends up in
+.Va errno
+after executing the
+.Fn mycall
+libc function, and the return value of
+.Fn mycall
+is automatically -1 or 0 depending on whether
+.Va errno
+was set or not.
+A function that needs to return a different value to userland, e.g.\& a
+file descriptor, must override the default value in
+.Fa uap->sysmsg_result ,
+as defined in
 .Pa sys/sys/sysmsg.h .
 .Sh IMPLEMENTATION NOTES
 In the kernel, a syscall is implemented by a
