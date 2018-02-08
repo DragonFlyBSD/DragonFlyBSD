@@ -321,6 +321,12 @@ int	fcntl(int, int, ...);
 #if __BSD_VISIBLE
 int	flock(int, int);
 #endif /* __BSD_VISIBLE */
+#if 0 /* XXX missing */
+#if __POSIX_VISIBLE >= 200112
+int	posix_fadvise(int, off_t, off_t, int);
+int	posix_fallocate(int, off_t, off_t);
+#endif
+#endif
 __END_DECLS
 #endif
 
