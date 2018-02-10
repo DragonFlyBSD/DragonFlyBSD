@@ -222,21 +222,10 @@ TAILQ_HEAD(, ifg_group) ifg_head = TAILQ_HEAD_INITIALIZER(ifg_head);
 static void
 ifinit(void *dummy)
 {
-	struct ifnet *ifp;
 
 	callout_init_mp(&if_slowtimo_timer);
 	netmsg_init(&if_slowtimo_netmsg, NULL, &netisr_adone_rport,
 	    MSGF_PRIORITY, if_slowtimo_dispatch);
-
-	/* XXX is this necessary? */
-	ifnet_lock();
-	TAILQ_FOREACH(ifp, &ifnetlist, if_link) {
-		if (ifp->if_snd.altq_maxlen == 0) {
-			if_printf(ifp, "XXX: driver didn't set altq_maxlen\n");
-			ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
-		}
-	}
-	ifnet_unlock();
 
 	/* Start if_slowtimo */
 	lwkt_sendmsg(netisr_cpuport(0), &if_slowtimo_netmsg.lmsg);
