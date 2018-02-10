@@ -469,7 +469,8 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	struct ifaltq *ifq;
 	struct ifnet **old_ifindex2ifnet = NULL;
 	struct ifnet_array *old_ifnet_array;
-	int i, q;
+	int i, q, qlen;
+	char qlenname[64];
 
 	static int if_indexlim = 8;
 
@@ -581,6 +582,15 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	if (ifq->altq_maxlen == 0) {
 		if_printf(ifp, "driver didn't set altq_maxlen\n");
 		ifq_set_maxlen(ifq, ifqmaxlen);
+	}
+
+	/* Allow user to override driver's setting. */
+	ksnprintf(qlenname, sizeof(qlenname), "net.%s.qlenmax", ifp->if_xname);
+	qlen = -1;
+	TUNABLE_INT_FETCH(qlenname, &qlen);
+	if (qlen > 0) {
+		if_printf(ifp, "qlenmax -> %d\n", qlen);
+		ifq_set_maxlen(ifq, qlen);
 	}
 
 	for (q = 0; q < ifq->altq_subq_cnt; ++q) {
