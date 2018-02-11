@@ -3811,14 +3811,27 @@ _cache_cleanneg(long count)
 	struct namecache *ncp;
 	static uint32_t neg_rover;
 	uint32_t n;
+	long vnegs;
 
 	n = neg_rover++;	/* SMP heuristical, race ok */
 	cpu_ccfence();
 	n = n % (uint32_t)ncpus;
 
+	/*
+	 * Normalize vfscache_negs and count.  count is sometimes based
+	 * on vfscache_negs.  vfscache_negs is heuristical and can sometimes
+	 * have crazy values.
+	 */
+	vnegs = vfscache_negs;
+	cpu_ccfence();
+	if (vnegs <= MINNEG)
+		vnegs = MINNEG;
+	if (count < 1)
+		count = 1;
+
 	pn = &pcpu_ncache[n];
 	spin_lock(&pn->neg_spin);
-	count = pn->neg_count * count / vfscache_negs + 1;
+	count = pn->neg_count * count / vnegs + 1;
 	spin_unlock(&pn->neg_spin);
 
 	/*
@@ -3848,8 +3861,8 @@ _cache_cleanneg(long count)
 				if (ncp)
 					_cache_drop(ncp);
 			} else {
-				kprintf("cache_cleanneg: race avoided\n");
 				_cache_unlock(ncp);
+				_cache_drop(ncp);
 			}
 		} else {
 			_cache_drop(ncp);
