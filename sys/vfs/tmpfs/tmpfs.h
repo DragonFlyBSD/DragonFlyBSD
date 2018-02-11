@@ -236,20 +236,18 @@ struct tmpfs_node {
 		/* The link's target, allocated from a string pool. */
 		char *			tn_link;
 
-		/* Valid when tn_type == VREG. */
+		/*
+		 * Valid when tn_type == VREG.
+		 *
+		 * aobj is used as backing store for the vnode object.  It
+		 * typically only contains swap assignments, but we also use
+		 * it to save the vnode object's vm_page's when the vnode
+		 * becomes inactive.
+		 */
 		struct tn_reg {
-			/* The contents of regular files stored in a tmpfs
-			 * file system are represented by a single anonymous
-			 * memory object (aobj, for short).  The aobj provides
-			 * direct access to any position within the file,
-			 * because its contents are always mapped in a
-			 * contiguous region of virtual memory.  It is a task
-			 * of the memory management subsystem (see uvm(9)) to
-			 * issue the required page ins or page outs whenever
-			 * a position within the file is accessed. */
 			vm_object_t		tn_aobj;
 			size_t			tn_aobj_pages;
-
+			int			tn_pages_in_aobj;
 		} tn_reg;
 
 		/* Valid when tn_type = VFIFO */

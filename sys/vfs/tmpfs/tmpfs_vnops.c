@@ -45,6 +45,7 @@
 #include <sys/sched.h>
 #include <sys/stat.h>
 #include <sys/systm.h>
+#include <sys/sysctl.h>
 #include <sys/unistd.h>
 #include <sys/vfsops.h>
 #include <sys/vnode.h>
@@ -66,6 +67,12 @@
 #include "tmpfs.h"
 
 static void tmpfs_strategy_done(struct bio *bio);
+static void tmpfs_move_pages(vm_object_t src, vm_object_t dst);
+
+static int tmpfs_cluster_enable = 1;
+SYSCTL_NODE(_vfs, OID_AUTO, tmpfs, CTLFLAG_RW, 0, "TMPFS filesystem");
+SYSCTL_INT(_vfs_tmpfs, OID_AUTO, cluster_enable, CTLFLAG_RW,
+		&tmpfs_cluster_enable, 0, "");
 
 static __inline
 void
@@ -231,7 +238,16 @@ tmpfs_open(struct vop_open_args *ap)
 	    (mode & (FWRITE | O_APPEND)) == FWRITE) {
 		error = EPERM;
 	} else {
-		error = (vop_stdopen(ap));
+		if (node->tn_reg.tn_pages_in_aobj) {
+			TMPFS_NODE_LOCK(node);
+			if (node->tn_reg.tn_pages_in_aobj) {
+				tmpfs_move_pages(node->tn_reg.tn_aobj,
+						 vp->v_object);
+				node->tn_reg.tn_pages_in_aobj = 0;
+			}
+			TMPFS_NODE_UNLOCK(node);
+		}
+		error = vop_stdopen(ap);
 	}
 
 	return (error);
@@ -371,6 +387,11 @@ tmpfs_setattr(struct vop_setattr_args *ap)
 	}
 
 	if (error == 0 && (vap->va_size != VNOVAL)) {
+		/* restore any saved pages before proceeding */
+		if (node->tn_reg.tn_pages_in_aobj) {
+			tmpfs_move_pages(node->tn_reg.tn_aobj, vp->v_object);
+			node->tn_reg.tn_pages_in_aobj = 0;
+		}
 		if (vap->va_size > node->tn_size)
 			kflags |= NOTE_WRITE | NOTE_EXTEND;
 		else
@@ -450,6 +471,7 @@ tmpfs_read(struct vop_read_args *ap)
 	size_t len;
 	size_t resid;
 	int error;
+	int seqcount;
 
 	/*
 	 * Check the basics
@@ -466,6 +488,7 @@ tmpfs_read(struct vop_read_args *ap)
 	 */
 	node = VP_TO_TMPFS_NODE(vp);
         resid = uio->uio_resid;
+	seqcount = ap->a_ioflag >> 16;
         error = vop_helper_read_shortcut(ap);
         if (error)
                 return error;
@@ -473,6 +496,18 @@ tmpfs_read(struct vop_read_args *ap)
 		if (resid)
 			goto finished;
 		return error;
+	}
+
+	/*
+	 * restore any saved pages before proceeding
+	 */
+	if (node->tn_reg.tn_pages_in_aobj) {
+		TMPFS_NODE_LOCK(node);
+		if (node->tn_reg.tn_pages_in_aobj) {
+			tmpfs_move_pages(node->tn_reg.tn_aobj, vp->v_object);
+			node->tn_reg.tn_pages_in_aobj = 0;
+		}
+		TMPFS_NODE_UNLOCK(node);
 	}
 
 	/*
@@ -486,8 +521,18 @@ tmpfs_read(struct vop_read_args *ap)
 		base_offset = (off_t)uio->uio_offset - offset;
 		bp = getcacheblk(vp, base_offset, TMPFS_BLKSIZE, GETBLK_KVABIO);
 		if (bp == NULL) {
-			error = bread_kvabio(vp, base_offset,
-					     TMPFS_BLKSIZE, &bp);
+			if (tmpfs_cluster_enable) {
+				error = cluster_readx(vp, node->tn_size,
+						     base_offset,
+						     TMPFS_BLKSIZE,
+						     B_NOTMETA | B_KVABIO,
+						     uio->uio_resid,
+						     seqcount * MAXBSIZE,
+						     &bp);
+			} else {
+				error = bread_kvabio(vp, base_offset,
+						     TMPFS_BLKSIZE, &bp);
+			}
 			if (error) {
 				brelse(bp);
 				kprintf("tmpfs_read bread error %d\n", error);
@@ -566,6 +611,14 @@ tmpfs_write(struct vop_write_args *ap)
 	seqcount = ap->a_ioflag >> 16;
 
 	TMPFS_NODE_LOCK(node);
+
+	/*
+	 * restore any saved pages before proceeding
+	 */
+	if (node->tn_reg.tn_pages_in_aobj) {
+		tmpfs_move_pages(node->tn_reg.tn_aobj, vp->v_object);
+		node->tn_reg.tn_pages_in_aobj = 0;
+	}
 
 	oldsize = node->tn_size;
 	if (ap->a_ioflag & IO_APPEND)
@@ -836,6 +889,9 @@ tmpfs_strategy(struct vop_strategy_args *ap)
  * If we were unable to commit the pages to swap make sure they are marked
  * as needing a commit (again).  If we were, clear the flag to allow the
  * pages to be freed.
+ *
+ * Do not error-out the buffer.  In particular, vinvalbuf() needs to
+ * always work.
  */
 static void
 tmpfs_strategy_done(struct bio *bio)
@@ -1585,6 +1641,27 @@ tmpfs_inactive(struct vop_inactive_args *ap)
 			tmpfs_truncate(vp, 0);
 		vrecycle(vp);
 	} else {
+		/*
+		 * We must retain any VM pages belonging to the vnode's
+		 * object as the vnode will destroy the object during a
+		 * later reclaim.  We call vinvalbuf(V_SAVE) to clean
+		 * out the buffer cache.
+		 *
+		 * On DragonFlyBSD, vnodes are not immediately deactivated
+		 * on the 1->0 refs, so this is a relatively optimal
+		 * operation.  We have to do this in tmpfs_inactive()
+		 * because the pages will have already been thrown away
+		 * at the time tmpfs_reclaim() is called.
+		 */
+		if (node->tn_type == VREG &&
+		    node->tn_reg.tn_pages_in_aobj == 0) {
+			vinvalbuf(vp, V_SAVE, 0, 0);
+			KKASSERT(RB_EMPTY(&vp->v_rbdirty_tree));
+			KKASSERT(RB_EMPTY(&vp->v_rbclean_tree));
+			tmpfs_move_pages(vp->v_object, node->tn_reg.tn_aobj);
+			node->tn_reg.tn_pages_in_aobj = 1;
+		}
+
 		TMPFS_NODE_UNLOCK(node);
 	}
 	lwkt_reltoken(&mp->mnt_token);
@@ -1851,6 +1928,56 @@ filt_tmpfsvnode(struct knote *kn, long hint)
 	return (kn->kn_fflags != 0);
 }
 
+/*
+ * Helper to move VM pages between objects
+ *
+ * NOTE: The vm_page_rename() dirties the page, so we can clear the
+ *	 PG_NEED_COMMIT flag.  If the pages are being moved into tn_aobj,
+ *	 the pageout daemon will be able to page them out.
+ */
+static int
+tmpfs_move_pages_callback(vm_page_t p, void *data)
+{
+	struct rb_vm_page_scan_info *info = data;
+	vm_pindex_t pindex;
+
+	pindex = p->pindex;
+	if (vm_page_busy_try(p, TRUE)) {
+		vm_page_sleep_busy(p, TRUE, "tpgmov");
+		info->error = -1;
+		return -1;
+	}
+	if (p->object != info->object || p->pindex != pindex) {
+		vm_page_wakeup(p);
+		info->error = -1;
+		return -1;
+	}
+	vm_page_rename(p, info->backing_object, pindex);
+	vm_page_clear_commit(p);
+	vm_page_wakeup(p);
+	/* page automaticaly made dirty */
+
+	return 0;
+}
+
+static
+void
+tmpfs_move_pages(vm_object_t src, vm_object_t dst)
+{
+	struct rb_vm_page_scan_info info;
+
+	vm_object_hold(src);
+	vm_object_hold(dst);
+	info.object = src;
+	info.backing_object = dst;
+	do {
+		info.error = 1;
+		vm_page_rb_tree_RB_SCAN(&src->rb_memq, NULL,
+					tmpfs_move_pages_callback, &info);
+	} while (info.error < 0);
+	vm_object_drop(dst);
+	vm_object_drop(src);
+}
 
 /* --------------------------------------------------------------------- */
 

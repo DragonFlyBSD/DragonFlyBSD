@@ -159,8 +159,8 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 		break;
 
 	case VREG:
-		nnode->tn_reg.tn_aobj =
-		    swap_pager_alloc(NULL, 0, VM_PROT_DEFAULT, 0);
+		nnode->tn_reg.tn_aobj = swap_pager_alloc(NULL, 0,
+							 VM_PROT_DEFAULT, 0);
 		nnode->tn_reg.tn_aobj_pages = 0;
 		nnode->tn_size = 0;
 		vm_object_set_flag(nnode->tn_reg.tn_aobj, OBJ_NOPAGEIN);
@@ -967,8 +967,9 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 	 * also adjust our backing VM object (aobj).  The blocksize
 	 * used must match the block sized we use for the buffer cache.
 	 *
-	 * The backing VM object contains no VM pages, only swap
-	 * assignments.
+	 * The backing VM object may contain VM pages as well as swap
+	 * assignments if we previously renamed main object pages into
+	 * it during deactivation.
 	 */
 	if (newsize < oldsize) {
 		vm_pindex_t osize;
@@ -984,6 +985,8 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 				aobj->size = osize;
 				swap_pager_freespace(aobj, nsize,
 						     osize - nsize);
+				vm_object_page_remove(aobj, nsize, osize,
+						      FALSE);
 			}
 		}
 	} else {
