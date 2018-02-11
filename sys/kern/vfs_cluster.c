@@ -1056,7 +1056,7 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset, off_t doffset,
 			vm_page_wakeup(m);
 			vm_object_pip_add(m->object, 1);
 			if ((bp->b_xio.xio_npages == 0) ||
-				(bp->b_xio.xio_pages[bp->b_xio.xio_npages-1] != m)) {
+			    (bp->b_xio.xio_pages[bp->b_xio.xio_npages-1] != m)) {
 				bp->b_xio.xio_pages[bp->b_xio.xio_npages] = m;
 				bp->b_xio.xio_npages++;
 			}
