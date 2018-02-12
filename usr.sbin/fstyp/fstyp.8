@@ -28,7 +28,7 @@
 .\"
 .\" $FreeBSD$
 .\"
-.Dd October 12, 2017
+.Dd February 12, 2018
 .Dt FSTYP 8
 .Os
 .Sh NAME
@@ -44,7 +44,7 @@
 The
 .Nm
 utility is used to determine the filesystem type on a given device.
-It can recognize ISO-9660, Ext2, FAT, NTFS, UFS, HAMMER, and HAMMER2 filesystems.
+It can recognize ISO-9660, exFAT, Ext2, FAT, NTFS, UFS, HAMMER, and HAMMER2 filesystems.
 When the
 .Fl u
 flag is specified,
@@ -58,6 +58,8 @@ as, respectively:
 .Bl -item -offset indent -compact
 .It
 cd9660
+.It
+exfat
 .It
 ext2fs
 .It

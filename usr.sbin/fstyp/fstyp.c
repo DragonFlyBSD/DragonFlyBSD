@@ -55,6 +55,7 @@ static struct {
 	bool		unmountable;
 } fstypes[] = {
 	{ "cd9660", &fstyp_cd9660, false },
+	{ "exfat", &fstyp_exfat, false },
 	{ "ext2fs", &fstyp_ext2fs, false },
 	{ "msdosfs", &fstyp_msdosfs, false },
 	{ "ntfs", &fstyp_ntfs, false },
