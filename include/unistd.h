@@ -485,7 +485,6 @@ int	 symlink(const char * __restrict, const char * __restrict);
 /* X/Open System Interfaces */
 #if __XSI_VISIBLE
 char	*crypt(const char *, const char *);
-/* char	*ctermid(char *); */		/* XXX ??? */
 int	 encrypt(char *, int);
 long	 gethostid(void);
 int	 lockf(int, int, off_t);
