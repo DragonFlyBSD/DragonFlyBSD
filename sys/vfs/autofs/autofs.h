@@ -41,6 +41,7 @@
 #include <sys/objcache.h>
 #include <sys/tree.h>
 #include <sys/lock.h>
+#include <sys/mutex2.h>
 #include <sys/condvar.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
@@ -106,7 +107,7 @@ struct autofs_node {
 	    autofs_node)		an_children;
 	struct autofs_mount		*an_mount;
 	struct vnode			*an_vnode;
-	struct lock			an_vnode_lock;
+	mtx_t				an_vnode_lock;
 	bool				an_cached;
 	bool				an_wildcards;
 	struct callout			an_callout;

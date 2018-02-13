@@ -427,10 +427,10 @@ autofs_reclaim(struct vop_reclaim_args *ap)
 	 * We do not free autofs_node here; instead we are
 	 * destroying them in autofs_node_delete().
 	 */
-	lockmgr(&anp->an_vnode_lock, LK_EXCLUSIVE);
+	mtx_lock_ex_quick(&anp->an_vnode_lock);
 	anp->an_vnode = NULL;
 	vp->v_data = NULL;
-	lockmgr(&anp->an_vnode_lock, LK_RELEASE);
+	mtx_unlock_ex(&anp->an_vnode_lock);
 
 	return (0);
 }
@@ -503,7 +503,7 @@ autofs_node_new(struct autofs_node *parent, struct autofs_mount *amp,
 		anp->an_name = kstrdup(name, M_AUTOFS);
 	anp->an_ino = amp->am_last_ino++;
 	callout_init(&anp->an_callout);
-	lockinit(&anp->an_vnode_lock, "autofsvnlk", 0, 0);
+	mtx_init(&anp->an_vnode_lock, "autofsvnlk");
 	getnanotime(&anp->an_ctime);
 	anp->an_parent = parent;
 	anp->an_mount = amp;
@@ -559,7 +559,7 @@ autofs_node_delete(struct autofs_node *anp)
 	if (anp->an_parent != NULL)
 		RB_REMOVE(autofs_node_tree, &anp->an_parent->an_children, anp);
 
-	lockuninit(&anp->an_vnode_lock);
+	mtx_uninit(&anp->an_vnode_lock);
 	kfree(anp->an_name, M_AUTOFS);
 	objcache_put(autofs_node_objcache, anp);
 }
@@ -572,12 +572,12 @@ autofs_node_vn(struct autofs_node *anp, struct mount *mp, int flags,
 	int error;
 retry:
 	AUTOFS_ASSERT_UNLOCKED(anp->an_mount);
-	lockmgr(&anp->an_vnode_lock, LK_EXCLUSIVE);
+	mtx_lock_ex_quick(&anp->an_vnode_lock);
 
 	vp = anp->an_vnode;
 	if (vp != NULL) {
 		vhold(vp);
-		lockmgr(&anp->an_vnode_lock, LK_RELEASE);
+		mtx_unlock_ex(&anp->an_vnode_lock);
 
 		error = vget(vp, flags | LK_RETRY);
 		if (error) {
@@ -590,7 +590,7 @@ retry:
 		return (0);
 	}
 
-	lockmgr(&anp->an_vnode_lock, LK_RELEASE);
+	mtx_unlock_ex(&anp->an_vnode_lock);
 
 	error = getnewvnode(VT_AUTOFS, mp, &vp, VLKTIMEOUT, LK_CANRECURSE);
 	if (error)
