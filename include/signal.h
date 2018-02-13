@@ -78,7 +78,7 @@ int	sigstack(const struct sigstack *, struct sigstack *);
 
 #if __POSIX_VISIBLE >= 199506
 #if 0
-int	sigqueue(__pid_t, int, const union sigval);
+int	sigqueue(__pid_t, int, union sigval);
 #endif
 int	sigtimedwait(const sigset_t * __restrict, siginfo_t * __restrict,
 	    const struct timespec * __restrict);
