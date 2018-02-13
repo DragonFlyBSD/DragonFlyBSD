@@ -364,7 +364,7 @@ autofs_set_sigmask(sigset_t *oldset)
 	SIGFILLSET(newset);
 	/* Remove the autofs set of signals from newset */
 	lwkt_gettoken(&lp->lwp_token);
-	for (i = 0; i < sizeof(autofs_sig_set)/sizeof(int); i++) {
+	for (i = 0; i < nitems(autofs_sig_set); i++) {
 		/*
 		 * But make sure we leave the ones already masked
 		 * by the process, i.e. remove the signal from the
