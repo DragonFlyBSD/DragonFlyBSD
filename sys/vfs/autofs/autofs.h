@@ -124,9 +124,6 @@ struct autofs_mount {
 	char				am_options[MAXPATHLEN];
 	char				am_prefix[MAXPATHLEN];
 	ino_t				am_last_ino;
-#if 0
-	struct netexport		am_export;
-#endif
 };
 
 struct autofs_request {

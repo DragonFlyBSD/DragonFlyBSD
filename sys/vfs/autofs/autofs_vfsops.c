@@ -244,11 +244,6 @@ static struct vfsops autofs_vfsops = {
 	.vfs_statvfs =		autofs_statvfs,
 	.vfs_init =		autofs_init,
 	.vfs_uninit =		autofs_uninit,
-#if 0
-	.vfs_vptofh =		NULL,
-	.vfs_fhtovp =		NULL,
-	.vfs_checkexp =		NULL,
-#endif
 };
 
 VFS_SET(autofs_vfsops, autofs, VFCF_SYNTHETIC | VFCF_NETWORK);

@@ -439,25 +439,14 @@ static int
 autofs_mountctl(struct vop_mountctl_args *ap)
 {
 	struct mount *mp;
-#if 0
-	struct autofs_mount *amp;
-#endif
 	int res;
 
 	mp = ap->a_head.a_ops->head.vv_mount;
 	lwkt_gettoken(&mp->mnt_token);
 
 	switch (ap->a_op) {
-#if 0
-	case MOUNTCTL_SET_EXPORT:
-		amp = (struct autofs_mount*)mp->mnt_data;
-		if (ap->a_ctllen != sizeof(struct export_args))
-			res = (EINVAL);
-		else
-			res = vfs_export(mp, &amp->am_export,
-			    (const struct export_args*)ap->a_ctl);
-		break;
-#endif
+	//case ...:
+	//	break;
 	default:
 		res = vop_stdmountctl(ap);
 		break;
@@ -491,9 +480,6 @@ struct vop_ops autofs_vnode_vops = {
 	.vop_reclaim =		autofs_reclaim,
 	.vop_mountctl =		autofs_mountctl,
 	.vop_print =		autofs_print,
-#if 0
-	.vop_nlookupdotdot =	NULL,
-#endif
 };
 
 int
