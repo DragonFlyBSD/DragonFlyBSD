@@ -52,7 +52,12 @@ struct recover_dict {
 #define DICTF_PARENT	0x04	/* parent attached for real */
 #define DICTF_TRAVERSED	0x80
 
-typedef struct bigblock *bigblock_t;
+typedef struct bigblock {
+	RB_ENTRY(bigblock) entry;
+	hammer_off_t phys_offset; /* zone-2 */
+	struct hammer_blockmap_layer1 layer1;
+	struct hammer_blockmap_layer2 layer2;
+} *bigblock_t;
 
 static void recover_top(char *ptr, hammer_off_t offset);
 static void recover_elm(hammer_btree_leaf_elm_t leaf);
@@ -69,13 +74,6 @@ static bigblock_t get_bigblock_entry(hammer_off_t offset);
 static const char *TargetDir;
 static int CachedFd = -1;
 static char *CachedPath;
-
-typedef struct bigblock {
-	RB_ENTRY(bigblock) entry;
-	hammer_off_t phys_offset; /* zone-2 */
-	struct hammer_blockmap_layer1 layer1;
-	struct hammer_blockmap_layer2 layer2;
-} *bigblock_t;
 
 static int
 bigblock_cmp(bigblock_t b1, bigblock_t b2)
