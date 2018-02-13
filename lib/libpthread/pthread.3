@@ -30,7 +30,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man3/pthread.3,v 1.33 2009/04/01 08:08:25 trhodes Exp $
 .\"
-.Dd August 6, 2013
+.Dd February 13, 2018
 .Dt PTHREAD 3
 .Os
 .Sh NAME
@@ -62,6 +62,8 @@ Mutex Routines
 Condition Variable Routines
 .It
 Read/Write Lock Routines
+.It
+Spin Lock Routines
 .It
 Barrier Routines
 .It
@@ -101,6 +103,21 @@ Compares two thread IDs.
 Terminates the calling thread.
 .It Xo
 .Ft int
+.Fn pthread_getconcurrency void
+.Xc
+Get the current thread's level of concurrency.
+.It Xo
+.Ft int
+.Fn pthread_getcpuclockid "pthread_t thread" "clockid_t *clock_id"
+.Xc
+Access a specific thread's CPU-time clock.
+.It Xo
+.Ft int
+.Fn pthread_getschedparam "pthread_t thread" "int *policy" "struct sched_param *param"
+.Xc
+Get the scheduling parameters of a specific thread.
+.It Xo
+.Ft int
 .Fn pthread_join "pthread_t thread" "void **value_ptr"
 .Xc
 Causes the calling thread to wait for the termination of the specified thread.
@@ -130,6 +147,21 @@ Sets the current thread's cancelability state.
 .Xc
 Sets the current thread's cancelability type.
 .It Xo
+.Ft int
+.Fn pthread_setconcurrency "int new_level"
+.Xc
+Set the current thread's level of concurrency.
+.It Xo
+.Ft int
+.Fn pthread_setschedparam "pthread_t thread" "int policy" "struct sched_param *param"
+.Xc
+Set the scheduling parameters for a specific thread.
+.It Xo
+.Ft void
+.Fn pthread_sigmask "int how" "const sigset_t *set" "sigset_t *oset"
+.Xc
+Examine and/or change the calling thread's signal mask.
+.It Xo
 .Ft void
 .Fn pthread_testcancel void
 .Xc
@@ -147,6 +179,13 @@ Allows the scheduler to run another thread instead of the current one.
 .Fn pthread_attr_destroy "pthread_attr_t *attr"
 .Xc
 Destroy a thread attributes object.
+.It Xo
+.Ft int
+.Fo pthread_attr_getguardsize
+.Fa "const pthread_attr_t *attr" "size_t *guardsize"
+.Fc
+.Xc
+Get the guard size attribute from a thread attributes object.
 .It Xo
 .Ft int
 .Fo pthread_attr_getinheritsched
@@ -173,6 +212,11 @@ Get the scheduling policy attribute from a thread attributes object.
 Get the contention scope attribute from a thread attributes object.
 .It Xo
 .Ft int
+.Fn pthread_attr_getstack "const pthread_attr_t *attr" "void **stackaddr" "size_t *stacksize"
+.Xc
+Get the stack attributes from a thread attributes object.
+.It Xo
+.Ft int
 .Fn pthread_attr_getstacksize "const pthread_attr_t *attr" "size_t *stacksize"
 .Xc
 Get the stack size attribute from a thread attributes object.
@@ -191,6 +235,13 @@ Get the detach state attribute from a thread attributes object.
 .Fn pthread_attr_init "pthread_attr_t *attr"
 .Xc
 Initialize a thread attributes object with default values.
+.It Xo
+.Ft int
+.Fo pthread_attr_setguardsize
+.Fa "pthread_attr_t *attr" "size_t guardsize"
+.Fc
+.Xc
+Set the guard size attribute in a thread attributes object.
 .It Xo
 .Ft int
 .Fn pthread_attr_setinheritsched "pthread_attr_t *attr" "int inheritsched"
@@ -213,6 +264,11 @@ Set the scheduling policy attribute in a thread attributes object.
 .Fn pthread_attr_setscope "pthread_attr_t *attr" "int contentionscope"
 .Xc
 Set the contention scope attribute in a thread attributes object.
+.It Xo
+.Ft int
+.Fn pthread_attr_setstack "pthread_attr_t *attr" "void *stackaddr" "size_t stacksize"
+.Xc
+Set the stack attributes in a thread attributes object.
 .It Xo
 .Ft int
 .Fn pthread_attr_setstacksize "pthread_attr_t *attr" "size_t stacksize"
@@ -248,6 +304,11 @@ Obtain priority ceiling attribute of mutex attribute object.
 Obtain protocol attribute of mutex attribute object.
 .It Xo
 .Ft int
+.Fn pthread_mutexattr_getpshared "const pthread_mutexattr_t *attr" "int *pshared"
+.Xc
+Get the process shared setting from a mutex attributes object.
+.It Xo
+.Ft int
 .Fn pthread_mutexattr_gettype "pthread_mutexattr_t *attr" "int *type"
 .Xc
 Obtain the mutex type attribute in the specified mutex attributes object.
@@ -268,6 +329,11 @@ Set priority ceiling attribute of mutex attribute object.
 Set protocol attribute of mutex attribute object.
 .It Xo
 .Ft int
+.Fn pthread_mutexattr_setpshared "pthread_mutexattr_t *attr" "int pshared"
+.Xc
+Set the process shared setting in a mutex attributes object.
+.It Xo
+.Ft int
 .Fn pthread_mutexattr_settype "pthread_mutexattr_t *attr" "int type"
 .Xc
 Set the mutex type attribute that is used when a mutex is created.
@@ -276,6 +342,11 @@ Set the mutex type attribute that is used when a mutex is created.
 .Fn pthread_mutex_destroy "pthread_mutex_t *mutex"
 .Xc
 Destroy a mutex.
+.It Xo
+.Ft int
+.Fn pthread_mutex_getprioceiling "const pthread_mutex_t *mutex" "int *ceiling"
+.Xc
+Get the priority ceiling of a mutex.
 .It Xo
 .Ft int
 .Fo pthread_mutex_init
@@ -288,6 +359,11 @@ Initialize a mutex with specified attributes.
 .Fn pthread_mutex_lock "pthread_mutex_t *mutex"
 .Xc
 Lock a mutex and block until it becomes available.
+.It Xo
+.Ft int
+.Fn pthread_mutex_setprioceiling "pthread_mutex_t *mutex" "int ceiling" "int *old_ceiling"
+.Xc
+Set the priority ceiling of a mutex.
 .It Xo
 .Ft int
 .Fo pthread_mutex_timedlock
@@ -316,9 +392,29 @@ Unlock a mutex.
 Destroy a condition variable attributes object.
 .It Xo
 .Ft int
+.Fn pthread_condattr_getclock "const pthread_condattr_t *attr" "clockid_t *clock_id"
+.Xc
+Get the clock selection attribute from a condition variable attributes object.
+.It Xo
+.Ft int
 .Fn pthread_condattr_init "pthread_condattr_t *attr"
 .Xc
 Initialize a condition variable attributes object with default values.
+.It Xo
+.Ft int
+.Fn pthread_condattr_getpshared "const pthread_condattr_t *attr" "int *pshared"
+.Xc
+Get the process shared setting from a condition variable attributes object.
+.It Xo
+.Ft int
+.Fn pthread_condattr_setclock "pthread_condattr_t *attr" "clockid_t clock_id"
+.Xc
+Set the clock selection attribute in a condition variable attributes object.
+.It Xo
+.Ft int
+.Fn pthread_condattr_setpshared "pthread_condattr_t *attr" "int pshared"
+.Xc
+Set the process shared setting in a condition variable attributes object.
 .It Xo
 .Ft int
 .Fn pthread_cond_broadcast "pthread_cond_t *cond"
@@ -376,6 +472,16 @@ Lock a read/write lock for reading, blocking until the lock can be
 acquired.
 .It Xo
 .Ft int
+.Fn pthread_rwlock_timedrdlock "pthread_rwlock_t *lock" "const struct timespec *abstime"
+.Xc
+Lock a read/write lock for reading with a timeout.
+.It Xo
+.Ft int
+.Fn pthread_rwlock_timedwrlock "pthread_rwlock_t *lock" "const struct timespec *abstime"
+.Xc
+Lock a read/write lock for writing with a timeout.
+.It Xo
+.Ft int
 .Fn pthread_rwlock_tryrdlock "pthread_rwlock_t *lock"
 .Xc
 Attempt to lock a read/write lock for reading, without blocking if the
@@ -420,6 +526,34 @@ Initialize a read/write lock attribute object.
 .Fn pthread_rwlockattr_setpshared "pthread_rwlockattr_t *attr" "int pshared"
 .Xc
 Set the process shared setting for the read/write lock attribute object.
+.El
+.Ss Spin Lock Routines
+.Bl -tag -width indent
+.It Xo
+.Ft int
+.Fn pthread_spin_destroy "pthread_spinlock_t *lock"
+.Xc
+Destroy a spin lock object.
+.It Xo
+.Ft int
+.Fn pthread_spin_init "pthread_spinlock_t *lock" "int pshared"
+.Xc
+Initialize a spin lock object.
+.It Xo
+.Ft int
+.Fn pthread_spin_lock "pthread_spinlock_t *lock"
+.Xc
+Lock a spin lock object.
+.It Xo
+.Ft int
+.Fn pthread_spin_trylock "pthread_spinlock_t *lock"
+.Xc
+Lock a spin lock object if it is not held.
+.It Xo
+.Ft int
+.Fn pthread_spin_unlock "pthread_spinlock_t *lock"
+.Xc
+Unlock a spin lock object.
 .El
 .Ss Barrier Routines
 .Bl -tag -width indent
@@ -600,13 +734,42 @@ instead of
 .Fa libc .
 .Sh SEE ALSO
 .Xr pthread_atfork 3 ,
-.Xr pthread_barrierattr 3 ,
+.Xr pthread_attr_destroy 3 ,
+.Xr pthread_attr_getdetachstate 3 ,
+.Xr pthread_attr_getguardsize 3 ,
+.Xr pthread_attr_getinheritsched 3 ,
+.Xr pthread_attr_getschedparam 3 ,
+.Xr pthread_attr_getschedpolicy 3 ,
+.Xr pthread_attr_getscope 3 ,
+.Xr pthread_attr_getstack 3 ,
+.Xr pthread_attr_getstackaddr 3 ,
+.Xr pthread_attr_getstacksize 3 ,
+.Xr pthread_attr_init 3 ,
+.Xr pthread_attr_setdetachstate 3 ,
+.Xr pthread_attr_setguardsize 3 ,
+.Xr pthread_attr_setinheritsched 3 ,
+.Xr pthread_attr_setschedparam 3 ,
+.Xr pthread_attr_setschedpolicy 3 ,
+.Xr pthread_attr_setscope 3 ,
+.Xr pthread_attr_setstack 3 ,
+.Xr pthread_attr_setstackaddr 3 ,
+.Xr pthread_attr_setstacksize 3 ,
+.Xr pthread_barrierattr_destroy 3 ,
+.Xr pthread_barrierattr_getpshared 3 ,
+.Xr pthread_barrierattr_init 3 ,
+.Xr pthread_barrierattr_setpshared 3 ,
 .Xr pthread_barrier_destroy 3 ,
+.Xr pthread_barrier_init 3 ,
+.Xr pthread_barrier_wait 3 ,
 .Xr pthread_cancel 3 ,
 .Xr pthread_cleanup_pop 3 ,
 .Xr pthread_cleanup_push 3 ,
 .Xr pthread_condattr_destroy 3 ,
+.Xr pthread_condattr_getclock 3 ,
+.Xr pthread_condattr_getpshared 3 ,
 .Xr pthread_condattr_init 3 ,
+.Xr pthread_condattr_setclock 3 ,
+.Xr pthread_condattr_setpshared 3 ,
 .Xr pthread_cond_broadcast 3 ,
 .Xr pthread_cond_destroy 3 ,
 .Xr pthread_cond_init 3 ,
@@ -617,21 +780,30 @@ instead of
 .Xr pthread_detach 3 ,
 .Xr pthread_equal 3 ,
 .Xr pthread_exit 3 ,
+.Xr pthread_getconcurrency 3 ,
+.Xr pthread_getcpuclockid 3 ,
+.Xr pthread_getschedparam 3 ,
 .Xr pthread_getspecific 3 ,
 .Xr pthread_join 3 ,
+.Xr pthread_key_create 3 ,
 .Xr pthread_key_delete 3 ,
 .Xr pthread_kill 3 ,
 .Xr pthread_mutexattr_destroy 3 ,
 .Xr pthread_mutexattr_getprioceiling 3 ,
 .Xr pthread_mutexattr_getprotocol 3 ,
+.Xr pthread_mutexattr_getpshared 3 ,
 .Xr pthread_mutexattr_gettype 3 ,
 .Xr pthread_mutexattr_init 3 ,
 .Xr pthread_mutexattr_setprioceiling 3 ,
 .Xr pthread_mutexattr_setprotocol 3 ,
+.Xr pthread_mutexattr_setpshared 3 ,
 .Xr pthread_mutexattr_settype 3 ,
 .Xr pthread_mutex_destroy 3 ,
+.Xr pthread_mutex_getprioceiling 3 ,
 .Xr pthread_mutex_init 3 ,
 .Xr pthread_mutex_lock 3 ,
+.Xr pthread_mutex_setprioceiling 3 ,
+.Xr pthread_mutex_timedlock 3 ,
 .Xr pthread_mutex_trylock 3 ,
 .Xr pthread_mutex_unlock 3 ,
 .Xr pthread_once 3 ,
@@ -642,13 +814,26 @@ instead of
 .Xr pthread_rwlock_destroy 3 ,
 .Xr pthread_rwlock_init 3 ,
 .Xr pthread_rwlock_rdlock 3 ,
+.Xr pthread_rwlock_timedrdlock 3 ,
+.Xr pthread_rwlock_timedwrlock 3 ,
+.Xr pthread_rwlock_tryrdlock 3 ,
+.Xr pthread_rwlock_trywrlock 3 ,
 .Xr pthread_rwlock_unlock 3 ,
 .Xr pthread_rwlock_wrlock 3 ,
 .Xr pthread_self 3 ,
 .Xr pthread_setcancelstate 3 ,
 .Xr pthread_setcanceltype 3 ,
+.Xr pthread_setconcurrency 3 ,
+.Xr pthread_setschedparam 3 ,
 .Xr pthread_setspecific 3 ,
-.Xr pthread_testcancel 3
+.Xr pthread_sigmask 3 ,
+.Xr pthread_spin_destroy 3 ,
+.Xr pthread_spin_init 3 ,
+.Xr pthread_spin_lock 3 ,
+.Xr pthread_spin_trylock 3 ,
+.Xr pthread_spin_unlock 3 ,
+.Xr pthread_testcancel 3 ,
+.Xr pthread_yield 3
 .Sh STANDARDS
 The functions with the
 .Nm pthread_
