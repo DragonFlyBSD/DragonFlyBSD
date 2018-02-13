@@ -102,15 +102,15 @@ autofs_mount(struct mount *mp, char *mntpt, caddr_t data, struct ucred *cred)
 	/*
 	 * Initialize the autofs mount.
 	 */
-	lockinit(&amp->am_lock, "autofsmnlk", 0, 0);
+	mtx_init(&amp->am_lock, "autofsmnlk");
 	amp->am_last_ino = AUTOFS_ROOTINO;
 
 	vfs_getnewfsid(mp);
 	vfs_add_vnodeops(mp, &autofs_vnode_vops, &mp->mnt_vn_norm_ops);
 
-	lockmgr(&amp->am_lock, LK_EXCLUSIVE);
+	mtx_lock_ex_quick(&amp->am_lock);
 	error = autofs_node_new(NULL, amp, ".", -1, &amp->am_root);
-	lockmgr(&amp->am_lock, LK_RELEASE);
+	mtx_unlock_ex(&amp->am_lock);
 	KKASSERT(error == 0);
 	KKASSERT(amp->am_root->an_ino == AUTOFS_ROOTINO);
 
@@ -167,21 +167,21 @@ autofs_unmount(struct mount *mp, int mntflags)
 		tsleep(&dummy, 0, "autofs_umount", hz);
 	}
 
-	lockmgr(&amp->am_lock, LK_EXCLUSIVE);
+	mtx_lock_ex_quick(&amp->am_lock);
 	while (!RB_EMPTY(&amp->am_root->an_children)) {
 		anp = RB_MIN(autofs_node_tree, &amp->am_root->an_children);
 		if (!RB_EMPTY(&anp->an_children)) {
 			AUTOFS_DEBUG("%s has children", anp->an_name);
-			lockmgr(&amp->am_lock, LK_RELEASE);
+			mtx_unlock_ex(&amp->am_lock);
 			return EBUSY;
 		}
 		autofs_node_delete(anp);
 	}
 	autofs_node_delete(amp->am_root);
 	mp->mnt_data = NULL;
-	lockmgr(&amp->am_lock, LK_RELEASE);
+	mtx_unlock_ex(&amp->am_lock);
 
-	lockuninit(&amp->am_lock);
+	mtx_uninit(&amp->am_lock);
 
 	kfree(amp, M_AUTOFS);
 

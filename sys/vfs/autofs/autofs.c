@@ -316,9 +316,9 @@ autofs_cached(struct autofs_node *anp, const char *component, int componentlen)
 	 */
 	if (anp->an_parent == NULL && componentlen != 0 && anp->an_wildcards) {
 		KKASSERT(amp->am_root == anp);
-		lockmgr(&amp->am_lock, LK_SHARED);
+		mtx_lock_sh_quick(&amp->am_lock);
 		error = autofs_node_find(anp, component, componentlen, NULL);
-		lockmgr(&amp->am_lock, LK_RELEASE);
+		mtx_unlock_sh(&amp->am_lock);
 		if (error)
 			return (false);
 	}
@@ -340,12 +340,12 @@ autofs_flush(struct autofs_mount *amp)
 	struct autofs_node *anp = amp->am_root;
 	struct autofs_node *child;
 
-	lockmgr(&amp->am_lock, LK_EXCLUSIVE);
+	mtx_lock_ex_quick(&amp->am_lock);
 	RB_FOREACH(child, autofs_node_tree, &anp->an_children) {
 		autofs_node_uncache(child);
 	}
 	autofs_node_uncache(amp->am_root);
-	lockmgr(&amp->am_lock, LK_RELEASE);
+	mtx_unlock_ex(&amp->am_lock);
 
 	AUTOFS_DEBUG("%s flushed", amp->am_on);
 }
@@ -400,7 +400,7 @@ autofs_trigger_one(struct autofs_node *anp,
 	int error = 0, request_error, last;
 	bool wildcards;
 
-	KKASSERT(AUTOFS_LOCK_STATUS(&autofs_softc->sc_lock) == LK_EXCLUSIVE);
+	KKASSERT(lockstatus(&autofs_softc->sc_lock, curthread) == LK_EXCLUSIVE);
 
 	if (anp->an_parent == NULL) {
 		key = kstrndup(component, componentlen, M_AUTOFS);

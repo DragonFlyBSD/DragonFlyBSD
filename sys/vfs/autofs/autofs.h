@@ -90,13 +90,12 @@ extern int autofs_mount_on_stat;
 	kprintf("### %s(%s): " X,			\
 	    __func__, curproc->p_comm, ## __VA_ARGS__)
 
-#define AUTOFS_LOCK_STATUS(lock)	(lockstatus((lock), curthread))
 #define AUTOFS_ASSERT_LOCKED(X)				\
-	KKASSERT(AUTOFS_LOCK_STATUS(&(X)->am_lock) & (LK_EXCLUSIVE | LK_SHARED))
+	KKASSERT(mtx_islocked(&(X)->am_lock))
 #define AUTOFS_ASSERT_XLOCKED(X)			\
-	KKASSERT(AUTOFS_LOCK_STATUS(&(X)->am_lock) == LK_EXCLUSIVE)
+	KKASSERT(mtx_islocked_ex(&(X)->am_lock))
 #define AUTOFS_ASSERT_UNLOCKED(X)			\
-	KKASSERT(AUTOFS_LOCK_STATUS(&(X)->am_lock) == 0)
+	KKASSERT(mtx_notlocked(&(X)->am_lock))
 
 struct autofs_node {
 	RB_ENTRY(autofs_node)		an_link;
@@ -119,7 +118,7 @@ struct autofs_mount {
 	TAILQ_ENTRY(autofs_mount)	am_next;
 	struct autofs_node		*am_root;
 	struct mount			*am_mp;
-	struct lock			am_lock;
+	mtx_t				am_lock;
 	char				am_from[MAXPATHLEN];
 	char				am_on[MAXPATHLEN];
 	char				am_options[MAXPATHLEN];

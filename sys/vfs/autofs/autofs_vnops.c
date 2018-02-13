@@ -232,9 +232,9 @@ autofs_nresolve(struct vop_nresolve_args *ap)
 		return (0);
 	}
 
-	lockmgr(&amp->am_lock, LK_SHARED);
+	mtx_lock_sh_quick(&amp->am_lock);
 	error = autofs_node_find(anp, ncp->nc_name, ncp->nc_nlen, &child);
-	lockmgr(&amp->am_lock, LK_RELEASE);
+	mtx_unlock_sh(&amp->am_lock);
 
 	if (error) {
 		cache_setvp(nch, NULL);
@@ -272,9 +272,9 @@ autofs_nmkdir(struct vop_nmkdir_args *ap)
 	if (autofs_ignore_thread() == false)
 		return (EPERM);
 
-	lockmgr(&amp->am_lock, LK_EXCLUSIVE);
+	mtx_lock_ex_quick(&amp->am_lock);
 	error = autofs_node_new(anp, amp, ncp->nc_name, ncp->nc_nlen, &child);
-	lockmgr(&amp->am_lock, LK_RELEASE);
+	mtx_unlock_ex(&amp->am_lock);
 	KKASSERT(error == 0);
 
 	error = autofs_node_vn(child, dvp->v_mount, LK_EXCLUSIVE, &vp);
@@ -368,7 +368,7 @@ autofs_readdir(struct vop_readdir_args *ap)
 	/*
 	 * Write out the directory entries for subdirectories.
 	 */
-	lockmgr(&amp->am_lock, LK_SHARED);
+	mtx_lock_sh_quick(&amp->am_lock);
 	RB_FOREACH(child, autofs_node_tree, &anp->an_children) {
 		/*
 		 * Check the offset to skip entries returned by previous
@@ -383,7 +383,7 @@ autofs_readdir(struct vop_readdir_args *ap)
 		 * Prevent seeking into the middle of dirent.
 		 */
 		if (uio->uio_offset != reclens) {
-			lockmgr(&amp->am_lock, LK_RELEASE);
+			mtx_unlock_sh(&amp->am_lock);
 			return (EINVAL);
 		}
 
@@ -391,11 +391,11 @@ autofs_readdir(struct vop_readdir_args *ap)
 		    child->an_ino, &reclen);
 		reclens += reclen;
 		if (error) {
-			lockmgr(&amp->am_lock, LK_RELEASE);
+			mtx_unlock_sh(&amp->am_lock);
 			goto out;
 		}
 	}
-	lockmgr(&amp->am_lock, LK_RELEASE);
+	mtx_unlock_sh(&amp->am_lock);
 
 	if (ap->a_eofflag != NULL)
 		*ap->a_eofflag = TRUE;
