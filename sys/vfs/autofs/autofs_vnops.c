@@ -488,10 +488,10 @@ autofs_node_new(struct autofs_node *parent, struct autofs_mount *amp,
 {
 	struct autofs_node *anp;
 
-	AUTOFS_ASSERT_XLOCKED(amp);
+	KKASSERT(mtx_islocked_ex(&amp->am_lock));
 
 	if (parent != NULL) {
-		AUTOFS_ASSERT_XLOCKED(parent->an_mount);
+		KKASSERT(mtx_islocked_ex(&parent->an_mount->am_lock));
 		KASSERT(autofs_node_find(parent, name, namelen, NULL) == ENOENT,
 		    ("node \"%s\" already exists", name));
 	}
@@ -527,7 +527,7 @@ autofs_node_find(struct autofs_node *parent, const char *name,
 	struct autofs_node *anp, find;
 	int error;
 
-	AUTOFS_ASSERT_LOCKED(parent->an_mount);
+	KKASSERT(mtx_islocked(&parent->an_mount->am_lock));
 
 	if (namelen >= 0)
 		find.an_name = kstrndup(name, namelen, M_AUTOFS);
@@ -551,7 +551,7 @@ autofs_node_find(struct autofs_node *parent, const char *name,
 void
 autofs_node_delete(struct autofs_node *anp)
 {
-	AUTOFS_ASSERT_XLOCKED(anp->an_mount);
+	KKASSERT(mtx_islocked_ex(&anp->an_mount->am_lock));
 	KASSERT(RB_EMPTY(&anp->an_children), ("have children"));
 
 	callout_drain(&anp->an_callout);
@@ -571,7 +571,7 @@ autofs_node_vn(struct autofs_node *anp, struct mount *mp, int flags,
 	struct vnode *vp = NULL;
 	int error;
 retry:
-	AUTOFS_ASSERT_UNLOCKED(anp->an_mount);
+	KKASSERT(mtx_notlocked(&anp->an_mount->am_lock));
 	mtx_lock_ex_quick(&anp->an_vnode_lock);
 
 	vp = anp->an_vnode;

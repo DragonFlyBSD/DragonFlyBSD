@@ -305,7 +305,7 @@ autofs_cached(struct autofs_node *anp, const char *component, int componentlen)
 	struct autofs_mount *amp = anp->an_mount;
 	int error;
 
-	AUTOFS_ASSERT_UNLOCKED(amp);
+	KKASSERT(mtx_notlocked(&amp->am_lock));
 
 	/*
 	 * For root node we need to request automountd(8) assistance even

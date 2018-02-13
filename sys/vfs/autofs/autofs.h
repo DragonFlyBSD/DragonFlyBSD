@@ -90,13 +90,6 @@ extern int autofs_mount_on_stat;
 	kprintf("### %s(%s): " X,			\
 	    __func__, curproc->p_comm, ## __VA_ARGS__)
 
-#define AUTOFS_ASSERT_LOCKED(X)				\
-	KKASSERT(mtx_islocked(&(X)->am_lock))
-#define AUTOFS_ASSERT_XLOCKED(X)			\
-	KKASSERT(mtx_islocked_ex(&(X)->am_lock))
-#define AUTOFS_ASSERT_UNLOCKED(X)			\
-	KKASSERT(mtx_notlocked(&(X)->am_lock))
-
 struct autofs_node {
 	RB_ENTRY(autofs_node)		an_link;
 	char				*an_name;
