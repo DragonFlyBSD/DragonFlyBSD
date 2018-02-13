@@ -32,9 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#ifndef HAMMER_UUID_H_
-#define HAMMER_UUID_H_
-
 #include "hammer_util.h"
 
 #include <uuid.h>
@@ -81,5 +78,3 @@ int hammer_uuid_compare(const hammer_uuid_t *uuid1, const hammer_uuid_t *uuid2)
 {
 	return(uuid_compare(uuid1, uuid2, NULL));
 }
-
-#endif /* !HAMMER_UUID_H_ */
