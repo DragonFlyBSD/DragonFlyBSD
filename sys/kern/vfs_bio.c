@@ -3398,6 +3398,8 @@ vn_strategy(struct vnode *vp, struct bio *bio)
 /*
  * vn_cache_strategy()
  *
+ * Returns 1 if the interrupt was successful, 0 if not.
+ *
  * NOTE: This function supports the KVABIO API wherein b_data might not
  *	 be synchronized to the current cpu.
  */

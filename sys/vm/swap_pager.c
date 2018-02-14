@@ -933,7 +933,8 @@ swap_pager_unswapped(vm_page_t m)
  *
  * This implements a VM OBJECT strategy function using swap backing store.
  * This can operate on any VM OBJECT type, not necessarily just OBJT_SWAP
- * types.
+ * types.  Only BUF_CMD_{READ,WRITE,FREEBLKS} is supported, any other
+ * requests will return EINVAL.
  *
  * This is intended to be a cacheless interface (i.e. caching occurs at
  * higher levels), and is also used as a swap-based SSD cache for vnode
@@ -976,6 +977,21 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		track = &swapdev_vp->v_track_write;
 #endif
 
+	/*
+	 * Only supported commands
+	 */
+	if (bp->b_cmd != BUF_CMD_FREEBLKS &&
+	    bp->b_cmd != BUF_CMD_READ &&
+	    bp->b_cmd != BUF_CMD_WRITE) {
+		bp->b_error = EINVAL;
+		bp->b_flags |= B_ERROR | B_INVAL;
+		biodone(bio);
+		return;
+	}
+
+	/*
+	 * bcount must be an integral number of pages.
+	 */
 	if (bp->b_bcount & PAGE_MASK) {
 		bp->b_error = EINVAL;
 		bp->b_flags |= B_ERROR | B_INVAL;
@@ -1046,7 +1062,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		 * new block and build it into the object.
 		 */
 		blk = swp_pager_meta_ctl(object, start, 0);
-		if ((blk == SWAPBLK_NONE) && bp->b_cmd != BUF_CMD_READ) {
+		if ((blk == SWAPBLK_NONE) && bp->b_cmd == BUF_CMD_WRITE) {
 			blk = swp_pager_getswapspace(object, 1);
 			if (blk == SWAPBLK_NONE) {
 				bp->b_error = ENOMEM;
@@ -1064,18 +1080,24 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		 *	- we cross a physical disk boundry in the
 		 *	  stripe.
 		 */
-		if (
-		    biox && (biox_blkno + btoc(bufx->b_bcount) != blk ||
-		     ((biox_blkno ^ blk) & ~SWB_DMMASK)
-		    )
-		) {
-			if (bp->b_cmd == BUF_CMD_READ) {
+		if (biox &&
+		    (biox_blkno + btoc(bufx->b_bcount) != blk ||
+		     ((biox_blkno ^ blk) & ~SWB_DMMASK))) {
+			switch(bp->b_cmd) {
+			case BUF_CMD_READ:
 				++mycpu->gd_cnt.v_swapin;
-				mycpu->gd_cnt.v_swappgsin += btoc(bufx->b_bcount);
-			} else {
+				mycpu->gd_cnt.v_swappgsin +=
+					btoc(bufx->b_bcount);
+				break;
+			case BUF_CMD_WRITE:
 				++mycpu->gd_cnt.v_swapout;
-				mycpu->gd_cnt.v_swappgsout += btoc(bufx->b_bcount);
+				mycpu->gd_cnt.v_swappgsout +=
+					btoc(bufx->b_bcount);
 				bufx->b_dirtyend = bufx->b_bcount;
+				break;
+			default:
+				/* NOT REACHED */
+				break;
 			}
 
 			/*
