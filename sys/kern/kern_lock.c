@@ -1000,6 +1000,13 @@ lockmgr_cancel_end(struct lock *lkp, u_int flags)
  * to 0.  This function is also used by the release code for the less
  * optimal race to 0 case.
  *
+ * WARNING! Since we are unconditionally decrementing LKC_SCOUNT, it is
+ *	    possible for the lock to get into a LKC_SHARED + ZERO SCOUNT
+ *	    situation.  A shared request can block with a ZERO SCOUNT if
+ *	    EXREQ or UPREQ is pending in this situation.  Be sure to always
+ *	    issue a wakeup() in this situation if we are unable to
+ *	    transition to an exclusive lock, to handle the race.
+ *
  * Always succeeds
  * Must not block
  */
@@ -1024,6 +1031,7 @@ undo_shreq(struct lock *lkp)
 				/* count = ncount; NOT USED */
 				break;
 			}
+			wakeup(lkp);
 			continue;
 		}
 		if (count & LKC_EXREQ) {
@@ -1034,11 +1042,13 @@ undo_shreq(struct lock *lkp)
 				/* count = ncount; NOT USED */
 				break;
 			}
+			wakeup(lkp);
 			continue;
 		}
 		if (count & LKC_CANCEL) {
 			ncount = count & ~LKC_CANCEL;
 			if (atomic_fcmpset_64(&lkp->lk_count, &count, ncount)) {
+				wakeup(lkp);
 				/* count = ncount; NOT USED */
 				break;
 			}
