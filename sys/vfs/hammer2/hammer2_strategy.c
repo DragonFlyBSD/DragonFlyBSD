@@ -372,6 +372,10 @@ hammer2_strategy_xop_read(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	 * kernel cache/swapcache device buffers more and (decompressed)
 	 * logical buffers less, since that will significantly improve
 	 * the amount of end-user data that can be cached.
+	 *
+	 * NOTE: The chain->data for xop->head.cluster.focus will be
+	 *	 synchronized to the current cpu by xop_collect(),
+	 *	 but other chains in the cluster might not be.
 	 */
 	error = hammer2_xop_collect(&xop->head, HAMMER2_XOP_COLLECT_NOWAIT);
 

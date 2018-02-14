@@ -291,6 +291,13 @@ struct buf {
  *			of the buffer will only operate on the buffer's
  *			b_data via the API.  Locked buffers only.  This
  *			flag is cleared on brelse/bqrelse
+ *
+ * WARNING! bp->b_data is not necessarily synchronized to the current cpu
+ *	    when B_KVABIO operations is specified.  Callers using bp->b_data
+ *	    who specify B_KVABIO operation must call bkvasync() if they use
+ *	    bp->b_data directly, or whenever they pass a buffer between cpus
+ *	    (between threads, e.g. from helper threads) if the target thread
+ *	    intends to access bp->b_data.
  */
 
 #define	B_AGE		0x00000001	/* Reuse more quickly */

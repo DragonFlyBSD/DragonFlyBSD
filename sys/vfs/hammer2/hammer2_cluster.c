@@ -1011,9 +1011,15 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 	 * Focus now set, adjust ddflag.  Skip this pass if the focus
 	 * is bad or if we are at the PFS root (the bref won't match at
 	 * the PFS root, obviously).
+	 *
+	 * Also make sure the chain's data is synchronized to the cpu.
 	 */
 	focus = cluster->focus;
 	if (focus) {
+		if (focus->data) {
+			if (focus->dio)
+				hammer2_io_bkvasync(focus->dio);
+		}
 		cluster->ddflag =
 			(cluster->focus->bref.type == HAMMER2_BREF_TYPE_INODE);
 	} else {
