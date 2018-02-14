@@ -339,6 +339,8 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 			 * for it, bail out.  Check for superuser, only if
 			 * we're at securelevel < 1, to allow the XIG X server
 			 * to continue to work.
+			 *
+			 * PROT_WRITE + MAP_SHARED
 			 */
 			if ((flags & MAP_SHARED) != 0 || vp->v_type == VCHR) {
 				if ((fp->f_flag & FWRITE) != 0) {
@@ -349,6 +351,17 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 					if ((va.va_flags &
 					    (IMMUTABLE|APPEND)) == 0) {
 						maxprot |= VM_PROT_WRITE;
+
+						/*
+						 * SHARED+RW file mmap()
+						 * updates v_lastwrite_ts.
+						 */
+						if ((prot & PROT_WRITE) &&
+						    vn_lock(vp, LK_EXCLUSIVE | LK_RETRY) == 0) {
+							vfs_timestamp(&vp->v_lastwrite_ts);
+							vsetflags(vp, VLASTWRITETS);
+							vn_unlock(vp);
+						}
 					} else if (prot & PROT_WRITE) {
 						error = EPERM;
 						goto done;

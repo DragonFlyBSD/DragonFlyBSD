@@ -168,13 +168,16 @@ ufs_itimes(struct vnode *vp)
 			ip->i_ctimensec = ts.tv_nsec;
 		}
 		if (ip->i_flag & IN_UPDATE) {
-			if (vp->v_writecount == 0 &&
-			    (ip->i_flag & IN_WRITING) &&
-			    vp->v_type == VREG) {
-				ts = vp->v_lastwrite_ts;
+			if (ip->i_flag & IN_NOCOPYWRITE) {
+				if (vp->v_flag & VLASTWRITETS) {
+					ip->i_mtime = vp->v_lastwrite_ts.tv_sec;
+					ip->i_mtimensec =
+						vp->v_lastwrite_ts.tv_nsec;
+				}
+			} else {
+				ip->i_mtime = ts.tv_sec;
+				ip->i_mtimensec = ts.tv_nsec;
 			}
-			ip->i_mtime = ts.tv_sec;
-			ip->i_mtimensec = ts.tv_nsec;
 			ip->i_modrev++;
 		}
 	}
@@ -476,6 +479,7 @@ ufs_setattr(struct vop_setattr_args *ap)
 		if (vap->va_mtime.tv_sec != VNOVAL) {
 			ip->i_mtime = vap->va_mtime.tv_sec;
 			ip->i_mtimensec = vap->va_mtime.tv_nsec;
+			vclrflags(vp, VLASTWRITETS);
 		}
 		error = ffs_update(vp, 0);
 		if (error)

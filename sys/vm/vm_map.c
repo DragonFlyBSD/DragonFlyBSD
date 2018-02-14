@@ -1943,6 +1943,26 @@ vm_map_protect(vm_map_t map, vm_offset_t start, vm_offset_t end,
 			vm_map_entry_release(count);
 			return (KERN_PROTECTION_FAILURE);
 		}
+
+		/*
+		 * When making a SHARED+RW file mmap writable, update
+		 * v_lastwrite_ts.
+		 */
+		if (new_prot & PROT_WRITE &&
+		    (current->eflags & MAP_ENTRY_NEEDS_COPY) == 0 &&
+		    (current->maptype == VM_MAPTYPE_NORMAL ||
+		     current->maptype == VM_MAPTYPE_VPAGETABLE) &&
+		    current->object.vm_object &&
+		    current->object.vm_object->type == OBJT_VNODE) {
+			struct vnode *vp;
+
+			vp = current->object.vm_object->handle;
+			if (vp && vn_lock(vp, LK_EXCLUSIVE | LK_RETRY | LK_NOWAIT) == 0) {
+				vfs_timestamp(&vp->v_lastwrite_ts);
+				vsetflags(vp, VLASTWRITETS);
+				vn_unlock(vp);
+			}
+		}
 		current = current->next;
 	}
 

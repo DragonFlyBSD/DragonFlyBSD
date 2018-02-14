@@ -1207,7 +1207,6 @@ vop_stdclose(struct vop_close_args *ap)
 		KASSERT(vp->v_writecount > 0,
 			("VOP_STDCLOSE: BAD WRITECOUNT %p %d",
 			vp, vp->v_writecount));
-		vfs_timestamp(&vp->v_lastwrite_ts);
 		atomic_add_int(&vp->v_writecount, -1);
 	}
 	atomic_add_int(&vp->v_opencount, -1);

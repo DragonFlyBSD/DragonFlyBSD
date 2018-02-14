@@ -795,11 +795,14 @@ tmpfs_write(struct vop_write_args *ap)
 	 * order to be able to dispose of the buffer cache buffer without
 	 * flushing it.
 	 */
-	if (vp->v_writecount) {
-		node->tn_status |= TMPFS_NODE_MODIFIED;
+	if (uio->uio_segflg == UIO_NOCOPY) {
+		if (vp->v_flag & VLASTWRITETS) {
+			node->tn_mtime = vp->v_lastwrite_ts.tv_sec;
+			node->tn_mtimensec = vp->v_lastwrite_ts.tv_nsec;
+		}
 	} else {
-		node->tn_mtime = vp->v_lastwrite_ts.tv_sec;
-		node->tn_mtimensec = vp->v_lastwrite_ts.tv_nsec;
+		node->tn_status |= TMPFS_NODE_MODIFIED;
+		vclrflags(vp, VLASTWRITETS);
 	}
 
 	if (extended)

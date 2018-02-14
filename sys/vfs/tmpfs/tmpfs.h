@@ -177,12 +177,12 @@ struct tmpfs_node {
 	mode_t			tn_mode;
 	int			tn_flags;
 	nlink_t			tn_links;
-	int32_t			tn_atime;
-	int32_t			tn_atimensec;
-	int32_t			tn_mtime;
-	int32_t			tn_mtimensec;
-	int32_t			tn_ctime;
-	int32_t			tn_ctimensec;
+	long			tn_atime;
+	long			tn_atimensec;
+	long			tn_mtime;
+	long			tn_mtimensec;
+	long			tn_ctime;
+	long			tn_ctimensec;
 	unsigned long		tn_gen;
 	struct lockf		tn_advlock;
 

@@ -531,11 +531,16 @@ hammer_vop_write(struct vop_write_args *ap)
 	 * Use v_lastwrite_ts if file not open for writing
 	 * (i.e. a late msync)
 	 */
-	if (vp->v_writecount == 0) {
-		trans.time = vp->v_lastwrite_ts.tv_sec * 1000000 +
-			     vp->v_lastwrite_ts.tv_nsec / 1000;
+	if (uio->uio_segflg == UIO_NOCOPY) {
+		if (vp->v_flag & VLASTWRITETS) {
+			trans.time = vp->v_lastwrite_ts.tv_sec * 1000000 +
+				     vp->v_lastwrite_ts.tv_nsec / 1000;
+		} else {
+			trans.time = ip->ino_data.mtime;
+		}
+	} else {
+		vclrflags(vp, VLASTWRITETS);
 	}
-
 
 	/*
 	 * Check append mode
@@ -2281,6 +2286,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			ip->ino_data.mtime = trans.time;
 			/* XXX safe to use SDIRTY instead of DDIRTY here? */
 			modflags |= HAMMER_INODE_MTIME | HAMMER_INODE_DDIRTY;
+			vclrflags(ap->a_vp, VLASTWRITETS);
 
 			/*
 			 * On-media truncation is cached in the inode until
@@ -2325,6 +2331,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			ip->ino_data.size = vap->va_size;
 			ip->ino_data.mtime = trans.time;
 			modflags |= HAMMER_INODE_MTIME | HAMMER_INODE_DDIRTY;
+			vclrflags(ap->a_vp, VLASTWRITETS);
 			kflags |= NOTE_ATTRIB;
 			break;
 		default:
@@ -2342,6 +2349,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 		ip->ino_data.mtime = hammer_timespec_to_time(&vap->va_mtime);
 		modflags |= HAMMER_INODE_MTIME;
 		kflags |= NOTE_ATTRIB;
+		vclrflags(ap->a_vp, VLASTWRITETS);
 	}
 	if (vap->va_mode != (mode_t)VNOVAL) {
 		mode_t   cur_mode = ip->ino_data.mode;

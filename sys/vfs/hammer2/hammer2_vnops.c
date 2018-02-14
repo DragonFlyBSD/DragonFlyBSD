@@ -422,6 +422,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 			}
 			hammer2_inode_modify(ip);
 			ip->meta.mtime = ctime;
+			vclrflags(vp, VLASTWRITETS);
 			break;
 		default:
 			error = EINVAL;
@@ -455,6 +456,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 		hammer2_inode_modify(ip);
 		ip->meta.mtime = hammer2_timespec_to_time(&vap->va_mtime);
 		kflags |= NOTE_ATTRIB;
+		vclrflags(vp, VLASTWRITETS);
 	}
 
 done:
@@ -1087,16 +1089,20 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 			hammer2_inode_chain_sync(ip);
 		hammer2_mtx_unlock(&ip->lock);
 	} else if (modified) {
+		struct vnode *vp = ip->vp;
+
 		hammer2_mtx_ex(&ip->lock);
 		hammer2_inode_modify(ip);
-		if (ip->vp && ip->vp->v_writecount == 0 &&
-		    ip->vp->v_type == VREG) {
-			ip->meta.mtime =
-				(unsigned long)ip->vp->v_lastwrite_ts.tv_sec *
-				 1000000 +
-				ip->vp->v_lastwrite_ts.tv_nsec / 1000;
+		if (uio->uio_segflg == UIO_NOCOPY) {
+			if (vp->v_flag & VLASTWRITETS) {
+				ip->meta.mtime =
+				    (unsigned long)vp->v_lastwrite_ts.tv_sec *
+				    1000000 +
+				    vp->v_lastwrite_ts.tv_nsec / 1000;
+			}
 		} else {
 			hammer2_update_time(&ip->meta.mtime);
+			vclrflags(vp, VLASTWRITETS);
 		}
 		if (ip->flags & HAMMER2_INODE_MODIFIED)
 			hammer2_inode_chain_sync(ip);

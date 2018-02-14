@@ -1222,8 +1222,10 @@ tmpfs_chtimes(struct vnode *vp, struct timespec *atime, struct timespec *mtime,
 	if (atime->tv_sec != VNOVAL && atime->tv_nsec != VNOVAL)
 		node->tn_status |= TMPFS_NODE_ACCESSED;
 
-	if (mtime->tv_sec != VNOVAL && mtime->tv_nsec != VNOVAL)
+	if (mtime->tv_sec != VNOVAL && mtime->tv_nsec != VNOVAL) {
 		node->tn_status |= TMPFS_NODE_MODIFIED;
+		vclrflags(vp, VLASTWRITETS);
+	}
 
 	TMPFS_NODE_UNLOCK(node);
 
@@ -1268,8 +1270,10 @@ tmpfs_itimes(struct vnode *vp, const struct timespec *acc,
 		node->tn_ctime = now.tv_sec;
 		node->tn_ctimensec = now.tv_nsec;
 	}
-	node->tn_status &=
-	    ~(TMPFS_NODE_ACCESSED | TMPFS_NODE_MODIFIED | TMPFS_NODE_CHANGED);
+
+	node->tn_status &= ~(TMPFS_NODE_ACCESSED |
+			     TMPFS_NODE_MODIFIED |
+			     TMPFS_NODE_CHANGED);
 	TMPFS_NODE_UNLOCK(node);
 }
 
