@@ -167,9 +167,10 @@
  * 500103 - faith removal
  * 500104 - cfmakesane()
  * 500105 - _SC_LEVEL1_DCACHE_LINESIZE sysconf()
+ * 500106 - %b and %r formats removal
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500105	/* propagated to newvers */
+#define __DragonFly_version 500106	/* propagated to newvers */
 
 #include <sys/_null.h>
 
