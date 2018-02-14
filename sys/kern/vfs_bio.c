@@ -4357,7 +4357,9 @@ bkvareset(struct buf *bp)
 
 /*
  * The buffer will be used by the caller on the caller's cpu, synchronize
- * its data to the current cpu.
+ * its data to the current cpu.  Caller must control the buffer by holding
+ * its lock, but calling cpu does not necessarily have to be the owner of
+ * the lock (i.e. HAMMER2's concurrent I/O accessors).
  *
  * If B_KVABIO is not set, the buffer is already fully synchronized.
  */
