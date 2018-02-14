@@ -1077,8 +1077,11 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 	 *
 	 * Degenerate case if we raced another load.
 	 */
-	if (chain->data)
+	if (chain->data) {
+		if (chain->dio)
+			hammer2_io_bkvasync(chain->dio);
 		goto done;
+	}
 
 	/*
 	 * We must resolve to a device buffer, either by issuing I/O or
