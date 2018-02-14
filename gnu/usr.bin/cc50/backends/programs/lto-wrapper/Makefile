@@ -14,8 +14,8 @@ OBJS=		lto-wrapper.o \
 		collect-utils.o \
 		ggc-none.o
 
-GUTS=		../../guts/guts-common/libguts-common.na \
-		../../guts/guts-target/libguts-target.na
+GUTS=		../../guts/guts-common/libguts-common.a \
+		../../guts/guts-target/libguts-target.a
 LIBS=		${LIBCOMMONTARG} ${LIBCOMMON} ${LIBCPP} \
 		${LIBBACKTRACE} ${LIBIBERTY} ${LIBDECNUMBER}
 LDADD=		${LIBS}

@@ -12,13 +12,13 @@ NOMAN=		yes
 NOSHARED?=	yes
 
 C_OBJS=		c/c-lang.o c/stub-objc.o
-CXXXX_OBJS=	${C_OBJS:T} 
+CXXXX_OBJS=	${C_OBJS:T}
 OBJS=		${CXXXX_OBJS} cc1-checksum.o
-SRCS=		
+SRCS=
 
-GUTS=		../../guts/guts-cobjc/libguts-cobjc.na \
-		../../guts/guts-common/libguts-common.na \
-		../../guts/guts-target/libguts-target.na
+GUTS=		../../guts/guts-cobjc/libguts-cobjc.a \
+		../../guts/guts-common/libguts-common.a \
+		../../guts/guts-target/libguts-target.a
 BACKEND=	${LIBBACKEND} ${LIBCOMMONTARG} ${LIBCOMMON} \
 		${LIBCPP} ${LIBDECNUMBER}
 LIBS=		${LIBCOMMON} ${LIBCPP} ${LIBBACKTRACE} ${LIBIBERTY} \
@@ -27,7 +27,7 @@ LDADD=		${GUTS} ${BACKEND} ${LIBS} ${BACKENDLIBS}
 DPADD=		${GUTS} ${BACKEND} ${LIBS} ${BACKENDLIBS}
 
 checksum-options:
-	echo "${LD} ${LDFLAGS}" > ${.TARGET} 
+	echo "${LD} ${LDFLAGS}" > ${.TARGET}
 
 cc1-checksum.c: ${CXXXX_OBJS} ${GUTS} ${BACKEND} checksum-options
 	${TOOLDIR}/genchecksum.nx ${CXXXX_OBJS} ${GUTS} ${BACKEND} \

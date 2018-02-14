@@ -15,11 +15,11 @@ NOSHARED?=	yes
 CXX_OBJS=	cp/cp-lang.o cp/stub-objc.o
 CXXXX_OBJS=	${CXX_OBJS:T}
 OBJS=		${CXXXX_OBJS} cc1plus-checksum.o
-SRCS=		
+SRCS=
 
-GUTS=		../../guts/guts-cxx/libguts-cxx.na \
-		../../guts/guts-common/libguts-common.na \
-		../../guts/guts-target/libguts-target.na
+GUTS=		../../guts/guts-cxx/libguts-cxx.a \
+		../../guts/guts-common/libguts-common.a \
+		../../guts/guts-target/libguts-target.a
 BACKEND=	${LIBBACKEND} ${LIBCOMMONTARG} ${LIBCOMMON} \
 		${LIBCPP} ${LIBDECNUMBER}
 LIBS=		${LIBCOMMON} ${LIBCPP} ${LIBBACKTRACE} ${LIBIBERTY} \
@@ -28,7 +28,7 @@ LDADD=		${GUTS} ${BACKEND} ${LIBS} ${BACKENDLIBS}
 DPADD=		${GUTS} ${BACKEND} ${LIBS} ${BACKENDLIBS}
 
 checksum-options:
-	echo "${LD} ${LDFLAGS}" > ${.TARGET} 
+	echo "${LD} ${LDFLAGS}" > ${.TARGET}
 
 cc1plus-checksum.c: ${CXXXX_OBJS} ${GUTS} ${BACKEND} checksum-options
 	${TOOLDIR}/genchecksum.nx ${CXXXX_OBJS} ${GUTS} ${BACKEND} \

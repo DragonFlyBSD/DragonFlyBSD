@@ -8,14 +8,23 @@ TOP_PREFIX=	../../
 .include "../../../Makefile.langs"
 
 LIB=		guts-cxx
+INTERNALLIB=
 
 # note C_TARGET_OBJS == CXX_TARGET_OBJS
 .for object in ${CXX_AND_OBJCXX_OBJS}
 . if ! ${C_COMMON_OBJS:M${object}}
 .  if ! ${C_TARGET_OBJS:M${object}}
-SRCS+=		${object:T:.o=.c}
+GUTS_CXXO+=	${object:T}
 .  endif
 . endif
 .endfor
 
-.include "../../../Makefile.intcxx_lib"
+OBJS=		${GUTS_CXXO}
+
+# hack to force c++ compiler to compile *.c files to create library
+.for cfile in ${GUTS_CXXO}
+${cfile}: ${cfile:.o=.c}
+	${CXX} ${STATIC_CXXFLAGS} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
+.endfor
+
+.include <bsd.lib.mk>

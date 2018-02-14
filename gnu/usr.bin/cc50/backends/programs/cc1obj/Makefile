@@ -16,9 +16,9 @@ CXXXX_OBJS=	${OBJC_OBJS:T:c.=o}
 OBJS=		${CXXXX_OBJS} cc1obj-checksum.o
 SRCS=
 
-GUTS=		../../guts/guts-cobjc/libguts-cobjc.na \
-		../../guts/guts-common/libguts-common.na \
-		../../guts/guts-target/libguts-target.na
+GUTS=		../../guts/guts-cobjc/libguts-cobjc.a \
+		../../guts/guts-common/libguts-common.a \
+		../../guts/guts-target/libguts-target.a
 BACKEND=	${LIBBACKEND} ${LIBCOMMONTARG} ${LIBCOMMON} \
 		${LIBCPP} ${LIBDECNUMBER}
 LIBS=		${LIBCOMMON} ${LIBCPP} ${LIBBACKTRACE} ${LIBIBERTY} \
