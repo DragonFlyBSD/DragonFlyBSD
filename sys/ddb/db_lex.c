@@ -120,7 +120,7 @@ db_expr_t	db_radix = 16;
 
 /*
  * Convert the number to a string in the current radix.
- * This replaces the non-standard %n printf() format.
+ * This replaces the non-standard %r kprintf() format.
  */
 
 char *

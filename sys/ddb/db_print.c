@@ -57,10 +57,10 @@ db_show_regs(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 		offset != value) {
 		db_printf("\t%s", name);
 		if (offset != 0) {
-		   char tbuf[24];
+		    char tbuf[24];
 
-		   db_format_radix(tbuf, 24, offset, TRUE);
-		   db_printf("+%s", tbuf);
+		    db_format_radix(tbuf, 24, offset, TRUE);
+		    db_printf("+%s", tbuf);
 		}
 	    }
 	    db_printf("\n");

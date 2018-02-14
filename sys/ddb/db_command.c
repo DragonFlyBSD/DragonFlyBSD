@@ -455,7 +455,7 @@ db_command_loop(void)
 	db_prev = db_dot;
 	db_next = db_dot;
 
-	db_cmd_loop_done = false;
+	db_cmd_loop_done = FALSE;
 	while (!db_cmd_loop_done) {
 
 	    setjmp(db_jmpbuf);

@@ -214,11 +214,11 @@ db_print_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count, char *modif)
 		break;
 	    case 'r':
 		{
-			char tbuf[24];
+		    char tbuf[24];
 
-			db_format_radix(tbuf, 24, addr, false);
-			db_printf("%11s", tbuf);
-			break;
+		    db_format_radix(tbuf, 24, addr, FALSE);
+		    db_printf("%11s", tbuf);
+		    break;
 		}
 	    case 'x':
 		db_printf("%8lx", (unsigned long)addr);

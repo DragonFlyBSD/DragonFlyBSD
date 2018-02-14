@@ -317,7 +317,7 @@ db_single_step_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 	db_load_count = 0;
 	db_store_count = 0;
 
-	db_cmd_loop_done = true;
+	db_cmd_loop_done = TRUE;
 }
 
 /* trace and print until call/return */
@@ -337,7 +337,7 @@ db_trace_until_call_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 	db_load_count = 0;
 	db_store_count = 0;
 
-	db_cmd_loop_done = true;
+	db_cmd_loop_done = TRUE;
 }
 
 /*ARGSUSED*/
@@ -357,7 +357,7 @@ db_trace_until_matching_cmd(db_expr_t addr, boolean_t have_addr,
 	db_load_count = 0;
 	db_store_count = 0;
 
-	db_cmd_loop_done = true;
+	db_cmd_loop_done = TRUE;
 }
 
 /* continue */
@@ -374,5 +374,5 @@ db_continue_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 	db_load_count = 0;
 	db_store_count = 0;
 
-	db_cmd_loop_done = true;
+	db_cmd_loop_done = TRUE;
 }
