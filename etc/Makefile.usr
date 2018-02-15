@@ -184,7 +184,7 @@ pkg-bootstrap:
 	@echo ${ERRPKG}
 	@/usr/bin/false
 .elif exists(${.CURDIR}/local/etc/pkg.conf)
-	@echo "Error: ${.CURDIR}/local/etc/pkg.conf will be ovewritten"
+	@echo "Error: ${.CURDIR}/local/etc/pkg.conf will be overwritten"
 	@echo "Please move this file and rerun 'make pkg-bootstrap'"
 	@/usr/bin/false
 .else
