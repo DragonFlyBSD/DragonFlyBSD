@@ -296,7 +296,7 @@ int	pthread_setconcurrency(int);
 #endif
 __END_DECLS
 
-#if 0
+#if 0 /* XXX missing */
 int	pthread_mutex_consistent(pthread_mutex_t *);
 int	pthread_mutexattr_getrobust(const pthread_mutexattr_t * __restrict,
 	    int * __restrict);
