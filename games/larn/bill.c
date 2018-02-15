@@ -121,8 +121,7 @@ mailbill(void)
 		cp = mail;
 		sprintf(fname, "/tmp/#%dlarnmail", getpid());
 		for (i = 0; i < 6; i++) {
-			if ((fd = open(fname, O_WRONLY | O_TRUNC | O_CREAT),
-			    0660) == -1)
+			if ((fd = open(fname, O_WRONLY | O_TRUNC | O_CREAT, 0660) == -1)
 				exit(0);
 			while (*cp != NULL) {
 				if (*cp[0] == '1') {
