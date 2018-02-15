@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/games/fish/fish.c,v 1.9 1999/12/10 16:21:50 billf Exp $
- * $DragonFly: src/games/fish/fish.c,v 1.4 2005/07/31 20:40:26 swildner Exp $
  *
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fish.c	8.1 (Berkeley) 5/31/93
@@ -427,7 +426,7 @@ static void
 instructions(void)
 {
 	int input, status, pid;
-	char *argv[] = {PATH_PAGER, PATH_INSTR, NULL};
+	const char * const argv[] = {PATH_PAGER, PATH_INSTR, NULL};
 
 	printf("Would you like instructions (y or n)? ");
 	input = getchar();
@@ -435,7 +434,8 @@ instructions(void)
 	if (input != 'y')
 		return;
 
-	status = posix_spawnp(&pid, PATH_PAGER, NULL, NULL, argv, environ);
+	status = posix_spawnp(&pid, PATH_PAGER, NULL, NULL,
+	    __DECONST(char * const *, argv), environ);
 	if (status != 0) {
 		printf("Unable to spawn %s\n",PATH_PAGER);
 	}
