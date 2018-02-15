@@ -29,5 +29,5 @@
  *	@(#)pathnames.h	8.1 (Berkeley) 5/31/93
  */
 
-#define	_PATH_INSTR	"/usr/share/games/fish.instr"
-#define	_PATH_MORE	"/usr/bin/more"
+#define	PATH_INSTR	"/usr/share/games/fish.instr"
+#define	PATH_PAGER	"/usr/bin/less"
