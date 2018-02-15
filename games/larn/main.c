@@ -52,9 +52,6 @@ static void	readscr(void);
 static void	eatcookie(void);
 static void	quaff(void);
 static int	whatitem(const char *);
-#ifdef HIDEBYLINK
-static void	szero(char *);
-#endif
 
 /*
 	************
@@ -226,25 +223,6 @@ noone: 				write(2, "Can't find your logname.  Who Are You?\n", 39);
 		write(2, "Can't obtain playerid\n", 22);
 		exit(1);
 	}
-
-#ifdef HIDEBYLINK
-	/*
-	 *	this section of code causes the program to look like something else to ps
-	 */
-	if (strcmp(psname, argv[0])) {	/* if a different process name only */
-		if ((i = access(psname, 1)) < 0) {	/* link not there */
-			if (link(argv[0], psname) >= 0) {
-				argv[0] = psname;
-				execv(psname, argv);
-			}
-		} else
-			unlink(psname);
-	}
-
-	for (i = 1; i < argc; i++) {
-		szero(argv[i]);	/* zero the argument to avoid ps snooping */
-	}
-#endif /* HIDEBYLINK */
 
 	if (access(savefilename, 0) == 0) {	/* restore game if need to */
 		clear();
@@ -1298,15 +1276,3 @@ readnum(long mx)
 	scbr();
 	return (amt);
 }
-
-#ifdef HIDEBYLINK
-/*
- *	routine to zero every byte in a string
- */
-static void
-szero(char *str)
-{
-	while (*str)
-		*str++ = 0;
-}
-#endif /* HIDEBYLINK */

@@ -3,8 +3,6 @@
 
 # EXTRA
 #	Incorporates code to gather additional performance statistics
-# HIDEBYLINK
-#	If defined, the program attempts to hide from ps
 # DOCHECKPOINTS
 #	If not defined, checkpoint files are periodically written by the
 #	larn process (no forking) if enabled in the .larnopts description
