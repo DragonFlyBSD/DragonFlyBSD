@@ -230,7 +230,7 @@ _sem_post(sem_t *sem)
 }
 
 int
-_sem_getvalue(sem_t *sem, int *sval)
+_sem_getvalue(sem_t * __restrict sem, int * __restrict sval)
 {
 	int	retval;
 

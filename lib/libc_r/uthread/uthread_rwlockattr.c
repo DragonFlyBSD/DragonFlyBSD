@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_rwlockattr.c,v 1.5.2.1 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_rwlockattr.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 
 #include <errno.h>
@@ -52,8 +51,8 @@ _pthread_rwlockattr_destroy(pthread_rwlockattr_t *rwlockattr)
 }
 
 int
-_pthread_rwlockattr_getpshared(const pthread_rwlockattr_t *rwlockattr,
-	int *pshared)
+_pthread_rwlockattr_getpshared(const pthread_rwlockattr_t * __restrict rwlockattr,
+    int * __restrict pshared)
 {
 	*pshared = (*rwlockattr)->pshared;
 

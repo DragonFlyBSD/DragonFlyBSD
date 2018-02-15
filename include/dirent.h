@@ -73,7 +73,8 @@ struct dirent *
 void	 rewinddir(DIR *);
 int	 closedir(DIR *);
 #if __POSIX_VISIBLE >= 199506
-int	 readdir_r(DIR *, struct dirent *, struct dirent **);
+int	 readdir_r(DIR * __restrict, struct dirent * __restrict,
+	     struct dirent ** __restrict);
 #endif
 #if __POSIX_VISIBLE >= 200809
 int	 alphasort(const struct dirent **, const struct dirent **);

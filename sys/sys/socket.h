@@ -482,18 +482,19 @@ struct sf_hdtr {
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 
 __BEGIN_DECLS
-int	accept(int, struct sockaddr *, socklen_t *);
+int	accept(int, struct sockaddr * __restrict, socklen_t * __restrict);
 int	accept4(int, struct sockaddr *, socklen_t *, int);
 int	extaccept(int, int, struct sockaddr *, socklen_t *);
 int	bind(int, const struct sockaddr *, socklen_t);
 int	connect(int, const struct sockaddr *, socklen_t);
 int	extconnect(int, int, struct sockaddr *, socklen_t);
-int	getpeername(int, struct sockaddr *, socklen_t *);
-int	getsockname(int, struct sockaddr *, socklen_t *);
-int	getsockopt(int, int, int, void *, socklen_t *);
+int	getpeername(int, struct sockaddr * __restrict, socklen_t * __restrict);
+int	getsockname(int, struct sockaddr * __restrict, socklen_t * __restrict);
+int	getsockopt(int, int, int, void * __restrict, socklen_t * __restrict);
 int	listen(int, int);
 ssize_t	recv(int, void *, size_t, int);
-ssize_t	recvfrom(int, void *, size_t, int, struct sockaddr *, socklen_t *);
+ssize_t	recvfrom(int, void * __restrict, size_t, int,
+	    struct sockaddr * __restrict, socklen_t * __restrict);
 ssize_t	recvmsg(int, struct msghdr *, int);
 ssize_t	send(int, const void *, size_t, int);
 ssize_t	sendto(int, const void *,

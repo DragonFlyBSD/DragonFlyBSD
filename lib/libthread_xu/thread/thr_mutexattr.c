@@ -101,7 +101,8 @@ _pthread_mutexattr_settype(pthread_mutexattr_t *attr, int type)
 }
 
 int
-_pthread_mutexattr_gettype(pthread_mutexattr_t *attr, int *type)
+_pthread_mutexattr_gettype(pthread_mutexattr_t * __restrict attr,
+    int * __restrict type)
 {
 	int	ret;
 
@@ -130,8 +131,8 @@ _pthread_mutexattr_destroy(pthread_mutexattr_t *attr)
 }
 
 int
-_pthread_mutexattr_getpshared(const pthread_mutexattr_t *attr,
-	int *pshared)
+_pthread_mutexattr_getpshared(const pthread_mutexattr_t * __restrict attr,
+    int * __restrict pshared)
 {
 
 	if (attr == NULL || *attr == NULL)
@@ -155,7 +156,8 @@ _pthread_mutexattr_setpshared(pthread_mutexattr_t *attr, int pshared)
 }
 
 int
-_pthread_mutexattr_getprotocol(pthread_mutexattr_t *mattr, int *protocol)
+_pthread_mutexattr_getprotocol(pthread_mutexattr_t * __restrict mattr,
+    int * __restrict protocol)
 {
 	int ret = 0;
 
@@ -183,7 +185,8 @@ _pthread_mutexattr_setprotocol(pthread_mutexattr_t *mattr, int protocol)
 }
 
 int
-_pthread_mutexattr_getprioceiling(pthread_mutexattr_t *mattr, int *prioceiling)
+_pthread_mutexattr_getprioceiling(pthread_mutexattr_t * __restrict mattr,
+    int * __restrict prioceiling)
 {
 	int ret = 0;
 

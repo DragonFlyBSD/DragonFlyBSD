@@ -246,8 +246,9 @@ int	settimeofday(const struct timeval *, const struct timezone *);
 
 #if __XSI_VISIBLE
 int	getitimer(int, struct itimerval *);
-int	gettimeofday(struct timeval *, struct timezone *);
-int	setitimer(int, const struct itimerval *, struct itimerval *);
+int	gettimeofday(struct timeval * __restrict, struct timezone * __restrict);
+int	setitimer(int, const struct itimerval * __restrict,
+	    struct itimerval * __restrict);
 int	utimes(const char *, const struct timeval *);
 #endif
 

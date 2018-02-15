@@ -152,8 +152,8 @@ aio_fsync(int op, struct aiocb *ap)
 }
 
 int 
-lio_listio(int mode, struct aiocb *const apv[], int nent, 
-	   struct sigevent *sigevp)
+lio_listio(int mode, struct aiocb * __restrict const apv[__restrict_arr],
+    int nent, struct sigevent * __restrict sigevp)
 {
 	int i;
 

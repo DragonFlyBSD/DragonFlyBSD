@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_mutex_protocol.c,v 1.3.2.1 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_mutex_protocol.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 #include <string.h>
 #include <stdlib.h>
@@ -39,7 +38,8 @@
 #include "pthread_private.h"
 
 int
-_pthread_mutexattr_getprotocol(pthread_mutexattr_t *mattr, int *protocol)
+_pthread_mutexattr_getprotocol(pthread_mutexattr_t * __restrict mattr,
+    int * __restrict protocol)
 {
 	int ret = 0;
 

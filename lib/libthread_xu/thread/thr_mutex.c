@@ -243,8 +243,8 @@ init_static_private(struct pthread *thread, pthread_mutex_t *mutex)
 }
 
 int
-_pthread_mutex_init(pthread_mutex_t *mutex,
-    const pthread_mutexattr_t *mutex_attr)
+_pthread_mutex_init(pthread_mutex_t * __restrict mutex,
+    const pthread_mutexattr_t * __restrict mutex_attr)
 {
 	return mutex_init(mutex, mutex_attr, 1);
 }
@@ -491,8 +491,8 @@ _pthread_mutex_lock(pthread_mutex_t *m)
 }
 
 int
-__pthread_mutex_timedlock(pthread_mutex_t *m,
-	const struct timespec *abs_timeout)
+__pthread_mutex_timedlock(pthread_mutex_t * __restrict m,
+    const struct timespec * __restrict abs_timeout)
 {
 	struct pthread *curthread;
 	int	ret;
@@ -680,8 +680,8 @@ mutex_unlock_common(pthread_mutex_t *mutex)
 }
 
 int
-_pthread_mutex_getprioceiling(pthread_mutex_t *mutex,
-			      int *prioceiling)
+_pthread_mutex_getprioceiling(pthread_mutex_t * __restrict mutex,
+    int * __restrict prioceiling)
 {
 	if ((mutex == NULL) || (*mutex == NULL))
 		return (EINVAL);
@@ -692,8 +692,8 @@ _pthread_mutex_getprioceiling(pthread_mutex_t *mutex,
 }
 
 int
-_pthread_mutex_setprioceiling(pthread_mutex_t *mutex,
-			      int prioceiling, int *old_ceiling)
+_pthread_mutex_setprioceiling(pthread_mutex_t * __restrict mutex,
+    int prioceiling, int * __restrict old_ceiling)
 {
 	int ret = 0;
 	int tmp;

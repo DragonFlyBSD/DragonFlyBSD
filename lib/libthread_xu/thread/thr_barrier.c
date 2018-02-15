@@ -52,8 +52,8 @@ _pthread_barrier_destroy(pthread_barrier_t *barrier)
 }
 
 int
-_pthread_barrier_init(pthread_barrier_t *barrier,
-    const pthread_barrierattr_t *attr __unused, unsigned count)
+_pthread_barrier_init(pthread_barrier_t * __restrict barrier,
+    const pthread_barrierattr_t * __restrict attr __unused, unsigned count)
 {
 	pthread_barrier_t bar;
 

@@ -38,8 +38,8 @@ typedef struct	_xlocale *locale_t;
 #ifndef _XLOCALE_MONETARY_H
 #define _XLOCALE_MONETARY_H
 
-ssize_t strfmon_l(char *, size_t, locale_t, const char *, ...)
-    __strfmonlike(4, 5);
+ssize_t strfmon_l(char * __restrict, size_t, locale_t, const char * __restrict,
+	   ...) __strfmonlike(4, 5);
 
 #endif /* _XLOCALE_MONETARY_H */
 #endif /* __POSIX_VISIBLE >= 200809 || defined(_XLOCALE_H_) */

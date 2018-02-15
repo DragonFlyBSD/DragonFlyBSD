@@ -71,8 +71,9 @@ static int	getnameinfo_link(const struct sockaddr *, socklen_t, char *,
 static int	hexname(const u_int8_t *, size_t, char *, size_t);
 
 int
-getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host,
-	    size_t hostlen, char *serv, size_t servlen, int flags)
+getnameinfo(const struct sockaddr * __restrict sa, socklen_t salen,
+    char * __restrict host, size_t hostlen, char * __restrict serv,
+    size_t servlen, int flags)
 {
 
 	switch (sa->sa_family) {

@@ -1391,7 +1391,7 @@ localtime(const time_t * const timep)
 */
 
 struct tm *
-localtime_r(const time_t * const timep, struct tm *tmp)
+localtime_r(const time_t * __restrict const timep, struct tm * __restrict tmp)
 {
 	_RWLOCK_RDLOCK(&lcl_rwlock);
 	tzset_basic(1);
@@ -1471,7 +1471,7 @@ gmtime(const time_t * const timep)
  */
 
 struct tm *
-gmtime_r(const time_t * timep, struct tm * tmp)
+gmtime_r(const time_t * __restrict timep, struct tm * __restrict tmp)
 {
 	return gmtsub(timep, 0L, tmp);
 }

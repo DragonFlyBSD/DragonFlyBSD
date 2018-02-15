@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_create.c,v 1.24.2.6 2003/01/08 05:04:26 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_create.c,v 1.6 2005/05/30 20:50:53 joerg Exp $
  */
 #include <errno.h>
 #include <stdlib.h>
@@ -60,8 +59,9 @@ int _thread_PS_RUNNING_value		= PS_RUNNING;
 int _thread_PS_DEAD_value		= PS_DEAD;
 
 int
-_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
-	       void *(*start_routine) (void *), void *arg)
+_pthread_create(pthread_t * __restrict thread,
+    const pthread_attr_t * __restrict attr, void *(*start_routine) (void *),
+    void * __restrict arg)
 {
 	struct pthread	*curthread = _get_curthread();
 	struct itimerval itimer;

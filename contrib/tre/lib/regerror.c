@@ -54,7 +54,8 @@ static const char *tre_error_messages[] =
   };
 
 size_t
-tre_regerror(int errcode, const regex_t *preg, char *errbuf, size_t errbuf_size)
+tre_regerror(int errcode, const regex_t * __restrict preg,
+    char * __restrict errbuf, size_t errbuf_size)
 {
   const char *err;
   size_t err_len;

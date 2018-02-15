@@ -96,7 +96,8 @@ readdir(DIR *dirp)
 }
 
 int
-readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result)
+readdir_r(DIR * __restrict dirp, struct dirent * __restrict entry,
+    struct dirent ** __restrict result)
 {
 	struct dirent *dp;
 	int saved_errno;

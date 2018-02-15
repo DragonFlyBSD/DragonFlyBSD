@@ -225,17 +225,19 @@ do_posix_spawn(pid_t *pid, const char *path,
 }
 
 int
-posix_spawn(pid_t *pid, const char *path, const posix_spawn_file_actions_t *fa,
-	    const posix_spawnattr_t *sa, char * const argv[],
-	    char * const envp[])
+posix_spawn(pid_t * __restrict pid, const char * __restrict path,
+    const posix_spawn_file_actions_t *fa,
+    const posix_spawnattr_t * __restrict sa, char * const argv[__restrict_arr],
+    char * const envp[__restrict_arr])
 {
 	return do_posix_spawn(pid, path, fa, sa, argv, envp, 0);
 }
 
 int
-posix_spawnp(pid_t *pid, const char *path, const posix_spawn_file_actions_t *fa,
-	     const posix_spawnattr_t *sa, char * const argv[],
-	     char * const envp[])
+posix_spawnp(pid_t * __restrict pid, const char * __restrict path,
+    const posix_spawn_file_actions_t *fa,
+    const posix_spawnattr_t * __restrict sa, char * const argv[__restrict_arr],
+    char * const envp[__restrict_arr])
 {
 	return do_posix_spawn(pid, path, fa, sa, argv, envp, 1);
 }

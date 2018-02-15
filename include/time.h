@@ -180,10 +180,10 @@ int nanosleep(const struct timespec *, struct timespec *);
 #endif /* __POSIX_VISIBLE >= 199309 */
 
 #if __POSIX_VISIBLE >= 199506
-char *asctime_r(const struct tm *, char *);
+char *asctime_r(const struct tm * __restrict, char * __restrict);
 char *ctime_r(const time_t *, char *);
-struct tm *gmtime_r(const time_t *, struct tm *);
-struct tm *localtime_r(const time_t *, struct tm *);
+struct tm *gmtime_r(const time_t * __restrict, struct tm * __restrict);
+struct tm *localtime_r(const time_t * __restrict, struct tm * __restrict);
 #endif
 
 #if __POSIX_VISIBLE >= 200112

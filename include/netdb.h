@@ -261,11 +261,12 @@ void		sethostent(int);
 /* void		sethostfile(const char *); */
 void		setnetent(int);
 void		setprotoent(int);
-int		getaddrinfo(const char *, const char *,
-			    const struct addrinfo *, struct addrinfo **);
+int		getaddrinfo(const char * __restrict, const char * __restrict,
+		    const struct addrinfo * __restrict,
+		    struct addrinfo ** __restrict);
 /* XXX nodeLen and serviceLen should be socklen_t */
-int		getnameinfo(const struct sockaddr *, socklen_t, char *,
-			    size_t, char *, size_t, int);
+int		getnameinfo(const struct sockaddr * __restrict, socklen_t,
+		    char * __restrict, size_t, char * __restrict, size_t, int);
 void		freeaddrinfo(struct addrinfo *);
 const char	*gai_strerror(int);
 void		setservent(int);

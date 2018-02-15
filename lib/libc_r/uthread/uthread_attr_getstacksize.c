@@ -30,14 +30,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_attr_getstacksize.c,v 1.3.2.2 2002/10/22 14:44:02 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_attr_getstacksize.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 #include <errno.h>
 #include <pthread.h>
 #include "pthread_private.h"
 
 int
-_pthread_attr_getstacksize(const pthread_attr_t *attr, size_t *stacksize)
+_pthread_attr_getstacksize(const pthread_attr_t * __restrict attr,
+    size_t * __restrict stacksize)
 {
 	int	ret;
 

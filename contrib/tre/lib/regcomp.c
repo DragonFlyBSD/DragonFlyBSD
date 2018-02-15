@@ -122,7 +122,8 @@ tre_regcomp_l(regex_t *preg, const char *regex, int cflags, locale_t loc)
 }
 
 int
-tre_regcomp(regex_t *preg, const char *regex, int cflags)
+tre_regcomp(regex_t * __restrict preg, const char * __restrict regex,
+    int cflags)
 {
   return tre_regcomp_l(preg, regex, cflags, __get_locale());
 }

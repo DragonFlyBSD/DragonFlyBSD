@@ -105,8 +105,8 @@ _mutex_reinit(pthread_mutex_t * mutex)
 }
 
 int
-_pthread_mutex_init(pthread_mutex_t * mutex,
-		   const pthread_mutexattr_t * mutex_attr)
+_pthread_mutex_init(pthread_mutex_t * __restrict mutex,
+    const pthread_mutexattr_t * __restrict mutex_attr)
 {
 	enum pthread_mutextype	type;
 	int		protocol;

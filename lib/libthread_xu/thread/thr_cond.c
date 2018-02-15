@@ -143,7 +143,8 @@ init_static(struct pthread *thread, pthread_cond_t *cond)
 }
 
 int
-_pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *cond_attr)
+_pthread_cond_init(pthread_cond_t * __restrict cond,
+    const pthread_condattr_t * __restrict cond_attr)
 {
 	*cond = NULL;
 	return cond_init(cond, cond_attr);
@@ -327,14 +328,16 @@ _pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
 }
 
 int
-__pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
+__pthread_cond_wait(pthread_cond_t * __restrict cond,
+    pthread_mutex_t * __restrict mutex)
 {
 	return (cond_wait_common(cond, mutex, NULL, 1));
 }
 
 int
-_pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
-		       const struct timespec * abstime)
+_pthread_cond_timedwait(pthread_cond_t * __restrict cond,
+    pthread_mutex_t * __restrict mutex,
+    const struct timespec * __restrict abstime)
 {
 	if (abstime == NULL || abstime->tv_sec < 0 || abstime->tv_nsec < 0 ||
 	    abstime->tv_nsec >= 1000000000)

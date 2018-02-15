@@ -48,8 +48,9 @@ static int  create_stack(struct pthread_attr *pattr);
 static void thread_start(void *);
 
 int
-_pthread_create(pthread_t * thread, const pthread_attr_t * attr,
-    void *(*start_routine) (void *), void *arg)
+_pthread_create(pthread_t * __restrict thread,
+    const pthread_attr_t * __restrict attr, void *(*start_routine) (void *),
+    void * __restrict arg)
 {
 	struct lwp_params create_params;
 	void *stack;

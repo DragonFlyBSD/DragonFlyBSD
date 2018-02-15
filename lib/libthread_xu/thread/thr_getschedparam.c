@@ -40,8 +40,8 @@
 #include "thr_private.h"
 
 int
-_pthread_getschedparam(pthread_t pthread, int *policy,
-	struct sched_param *param)
+_pthread_getschedparam(pthread_t pthread, int * __restrict policy,
+    struct sched_param * __restrict param)
 {
 	struct pthread *curthread = tls_get_curthread();
 	int ret = 0;

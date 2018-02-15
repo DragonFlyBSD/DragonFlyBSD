@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_cond.c,v 1.22.2.8 2002/10/22 14:44:02 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_cond.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 #include <stdlib.h>
 #include <errno.h>
@@ -71,7 +70,8 @@ _cond_reinit(pthread_cond_t *cond)
 }
 
 int
-_pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *cond_attr)
+_pthread_cond_init(pthread_cond_t * __restrict cond,
+    const pthread_condattr_t * __restrict cond_attr)
 {
 	enum pthread_cond_type type;
 	pthread_cond_t	pcond;
@@ -158,7 +158,8 @@ _pthread_cond_destroy(pthread_cond_t *cond)
 }
 
 int
-_pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
+_pthread_cond_wait(pthread_cond_t * __restrict cond,
+    pthread_mutex_t * __restrict mutex)
 {
 	struct pthread	*curthread = _get_curthread();
 	int	rval = 0;
@@ -317,8 +318,9 @@ _pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
 }
 
 int
-_pthread_cond_timedwait(pthread_cond_t * cond, pthread_mutex_t * mutex,
-		       const struct timespec * abstime)
+_pthread_cond_timedwait(pthread_cond_t * __restrict cond,
+    pthread_mutex_t * __restrict mutex,
+    const struct timespec * __restrict abstime)
 {
 	struct pthread	*curthread = _get_curthread();
 	int	rval = 0;

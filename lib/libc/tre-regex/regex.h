@@ -164,15 +164,16 @@ __BEGIN_DECLS
 
 /* The POSIX.2 regexp functions */
 int
-tre_regcomp(regex_t *preg, const char *regex, int cflags);
+tre_regcomp(regex_t * __restrict preg, const char * __restrict regex,
+    int cflags);
 
 int
-tre_regexec(const regex_t *preg, const char *string, size_t nmatch,
-	regmatch_t pmatch[], int eflags);
+tre_regexec(const regex_t * __restrict preg, const char * __restrict string,
+    size_t nmatch, regmatch_t pmatch[__restrict_arr], int eflags);
 
 size_t
-tre_regerror(int errcode, const regex_t *preg, char *errbuf,
-	 size_t errbuf_size);
+tre_regerror(int errcode, const regex_t * __restrict preg,
+    char * __restrict errbuf, size_t errbuf_size);
 
 void
 tre_regfree(regex_t *preg);

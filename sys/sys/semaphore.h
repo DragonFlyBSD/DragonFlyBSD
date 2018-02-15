@@ -60,7 +60,7 @@ int	 sem_wait (sem_t *);
 int	 sem_trywait (sem_t *);
 int	 sem_timedwait (sem_t * __restrict, const struct timespec * __restrict);
 int	 sem_post (sem_t *);
-int	 sem_getvalue (sem_t *, int *);
+int	 sem_getvalue (sem_t * __restrict, int * __restrict);
 __END_DECLS
 
 #endif

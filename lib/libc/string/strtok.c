@@ -44,7 +44,8 @@
 char	*__strtok_r(char *, const char *, char **);
 
 char *
-__strtok_r(char *s, const char *delim, char **last)
+__strtok_r(char * __restrict s, const char * __restrict delim,
+    char ** __restrict last)
 {
 	char *spanp, *tok;
 	int c, sc;

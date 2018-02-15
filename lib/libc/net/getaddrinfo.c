@@ -350,8 +350,8 @@ str2number(const char *p, int *portp)
 }
 
 int
-getaddrinfo(const char *hostname, const char *servname,
-	    const struct addrinfo *hints, struct addrinfo **res)
+getaddrinfo(const char * __restrict hostname, const char * __restrict servname,
+    const struct addrinfo * __restrict hints, struct addrinfo ** __restrict res)
 {
 	struct addrinfo sentinel;
 	struct addrinfo *cur;

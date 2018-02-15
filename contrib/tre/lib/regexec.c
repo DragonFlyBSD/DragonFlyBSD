@@ -339,8 +339,8 @@ tre_regnexec(const regex_t *preg, const char *str, size_t len,
 }
 
 int
-tre_regexec(const regex_t *preg, const char *str,
-	size_t nmatch, regmatch_t pmatch[], int eflags)
+tre_regexec(const regex_t * __restrict preg, const char * __restrict str,
+	size_t nmatch, regmatch_t pmatch[__restrict_arr], int eflags)
 {
   return tre_regnexec(preg, str, (size_t)-1, nmatch, pmatch, eflags);
 }

@@ -263,7 +263,7 @@ int	utimensat(int, const char *, const struct timespec *, int);
 #endif
 int	fstat(int, struct stat *);
 #if __POSIX_VISIBLE >= 199506
-int	lstat(const char *, struct stat *);
+int	lstat(const char * __restrict, struct stat * __restrict);
 #endif
 int	mkdir(const char *, mode_t);
 int	mkfifo(const char *, mode_t);
@@ -271,10 +271,10 @@ int	mkfifo(const char *, mode_t);
 int	mknod(const char *, mode_t, dev_t);
 #define	_MKNOD_DECLARED
 #endif
-int	stat(const char *, struct stat *);
+int	stat(const char * __restrict, struct stat * __restrict);
 mode_t	umask(mode_t);
 #if __POSIX_VISIBLE >= 200809
-int	fstatat(int, const char *, struct stat *, int);
+int	fstatat(int, const char * __restrict, struct stat * __restrict, int);
 int	mkdirat(int, const char *, mode_t);
 int	mkfifoat(int, const char *, mode_t);
 #endif
