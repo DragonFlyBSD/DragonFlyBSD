@@ -39,7 +39,7 @@
 .Sh SYNOPSIS
 .In sys/select.h
 .Ft int
-.Fn select "int nfds" "fd_set *readfds" "fd_set *writefds" "fd_set *exceptfds" "struct timeval *timeout"
+.Fn select "int nfds" "fd_set * restrict readfds" "fd_set * restrict writefds" "fd_set * restrict exceptfds" "struct timeval *timeout"
 .Fn FD_SET fd &fdset
 .Fn FD_CLR fd &fdset
 .Fn FD_ISSET fd &fdset
