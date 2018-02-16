@@ -36,8 +36,10 @@
 
 #include <unistd.h>
 
+#include <sys/param.h>
+
 #define	CC "/usr/bin/cc"	/* The big kahuna doing the actual work. */
-#define	N_ARGS_PREPENDED __arysize(args_prepended)
+#define	N_ARGS_PREPENDED NELEM(args_prepended)
 
 /*
  * We do not add -D_POSIX_SOURCE here because any POSIX source is supposed to

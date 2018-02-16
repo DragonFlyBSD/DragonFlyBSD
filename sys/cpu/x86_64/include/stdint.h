@@ -145,6 +145,4 @@ typedef __int64_t	__rlim_t;
 #endif
 #endif
 
-#define __arysize(ary)         (sizeof(ary)/sizeof((ary)[0]))
-
 #endif /* _CPU_STDINT_H_ */

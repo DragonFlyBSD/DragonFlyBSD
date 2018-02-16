@@ -40,6 +40,7 @@
 #include <sys/signal.h>
 #include <sys/fcntl.h>
 #include <sys/ioctl.h>
+#include <sys/param.h>
 #include <sys/sysctl.h>
 #include <sys/vmmeter.h>
 #include <sys/interrupt.h>
@@ -245,7 +246,7 @@ main(int argc, char **argv)
 	if ((c = kvm_nlist(kd, namelist)) != 0) {
 		if (c > 0) {
 			warnx("undefined symbols:");
-			for (c = 0; c < (int)__arysize(namelist); c++)
+			for (c = 0; c < (int)NELEM(namelist); c++)
 				if (namelist[c].n_type == 0)
 					fprintf(stderr, " %s",
 					    namelist[c].n_name);

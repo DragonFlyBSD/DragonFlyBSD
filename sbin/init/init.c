@@ -37,6 +37,7 @@
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
+#include <sys/param.h>
 #include <sys/sysctl.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
@@ -526,12 +527,12 @@ get_chroot(void)
 	char *res;
 	int i;
 
-	oidlen = __arysize(real_oid);
+	oidlen = NELEM(real_oid);
 	if (sysctlnametomib("kern.environment", real_oid, &oidlen)) {
 		warning("cannot find kern.environment base sysctl OID");
 		return NULL;
 	}
-	if (oidlen + 1 >= __arysize(real_oid)) {
+	if (oidlen + 1 >= NELEM(real_oid)) {
 		warning("kern.environment OID is too large!");
 		return NULL;
 	}

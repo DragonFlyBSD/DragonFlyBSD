@@ -31,6 +31,8 @@
 #include <err.h>
 #include <stdlib.h>
 
+#include <sys/param.h>
+
 int
 main(void)
 {
@@ -47,9 +49,9 @@ main(void)
 		{ "Cyan", COLOR_CYAN },
 		{ "White", COLOR_WHITE },
 	};
-	size_t lengths[__arysize(colorInfo)];
+	size_t lengths[NELEM(colorInfo)];
 
-	static const size_t numcolors = __arysize(colorInfo);
+	static const size_t numcolors = NELEM(colorInfo);
 	size_t labelwidth;
 
 	int colorOK;
