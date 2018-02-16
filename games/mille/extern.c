@@ -46,7 +46,7 @@ bool	Debug,			/* set if debugging code on		*/
 char	Initstr[100];		/* initial string for error field	*/
 const char *C_fmt = "%-18.18s";	/* format for printing cards		*/
 const char *Fromfile = NULL;	/* startup file for game		*/
-const char *const _cn[NUM_CARDS] = {	/* Card name buffer		*/
+static const char *const _cn[NUM_CARDS] = {	/* Card name buffer		*/
 		"",
 		"25",
 		"50",

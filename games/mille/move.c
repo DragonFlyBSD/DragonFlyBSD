@@ -43,10 +43,6 @@
 #undef	CTRL
 #define	CTRL(c)		(c - 'A' + 1)
 
-const char	*Movenames[] = {
-		"M_DISCARD", "M_DRAW", "M_PLAY", "M_ORDER"
-	};
-
 static void check_go(void);
 static void getmove(void);
 static int haspicked(PLAY *);
