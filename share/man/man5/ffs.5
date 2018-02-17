@@ -29,9 +29,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man7/ffs.7,v 1.13 2005/07/23 15:09:27 markus Exp $
-.\" $DragonFly: src/share/man/man5/ffs.5,v 1.2 2008/07/27 22:21:11 thomas Exp $
 .\"
-.Dd May 10, 2008
+.Dd February 17, 2018
 .Dt FFS 5
 .Os
 .Sh NAME
@@ -61,20 +60,6 @@ and is the default
 .Dx
 file system.
 .Pp
-The following
-.Xr sysctl 8
-MIBs are defined for use with
-.Nm :
-.Bl -hang -width ".Va vfs.ffs.doreallocblk"
-.It Va vfs.ffs.doasyncfree
-Asynchronously write out modified i-node and indirect blocks
-upon reallocating file system blocks to be contiguous.
-(Default: 1.)
-.It Va vfs.ffs.doreallocblks
-Enable support for the rearrangement of blocks
-to be contiguous.
-(Default: 1.)
-.El
 .Ss Quotas
 .Bl -tag -width 2n
 .It Cd "options QUOTA"
@@ -135,6 +120,30 @@ i.e.,
 .It Cd "options UFS_DIRHASH"
 Implements a hash-based lookup scheme for directories
 in order to speed up accesses to very large directories.
+.El
+.Sh SYSCTL VARIABLES
+The following
+.Xr sysctl 8
+MIBs are defined for use with
+.Nm :
+.Bl -hang -width ".Va vfs.ufs.dirhash_docheck"
+.It Va vfs.ffs.doasyncfree
+Asynchronously write out modified i-node and indirect blocks
+upon reallocating file system blocks to be contiguous.
+(Default: 1.)
+.It Va vfs.ffs.doreallocblks
+Enable support for the rearrangement of blocks
+to be contiguous.
+(Default: 1.)
+.It Va vfs.ufs.dirhash_docheck
+Enable extra sanity tests.
+(Default: 0.)
+.It Va vfs.ufs.dirhash_mem
+Current dirhash memory usage.
+.It Va vfs.ufs.dirhash_maxmem
+Maximum allowed dirhash memory usage.
+.It Va vfs.ufs.dirhash_minsize
+Minimum directory size in bytes for which to use hashed lookup.
 .El
 .Sh SEE ALSO
 .Xr quota 1 ,
