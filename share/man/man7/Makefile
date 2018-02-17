@@ -21,6 +21,7 @@ MAN=	ascii.7 \
 	standards.7 \
 	stdint.7 \
 	tuning.7 \
+	vfs.7 \
 	vkernel.7
 
 MLINKS=	intro.7 miscellaneous.7

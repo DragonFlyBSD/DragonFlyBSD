@@ -1,0 +1,206 @@
+.\"
+.\" Copyright (c) 2018 The DragonFly Project.
+.\" All rights reserved.
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"
+.Dd February 17, 2018
+.Dt VFS 7
+.Os
+.Sh NAME
+.Nm vfs
+.Nd vfs layer under DragonFly
+.Sh DESCRIPTION
+On
+.Dx
+all filesystems are handled through the
+.Nm
+abstraction layer.
+.Sh SYSCTL VARIABLES
+.Xr sysctl 8
+variables permit system behavior to be monitored and controlled at run-time.
+Some sysctls simply report on the behavior of the system; others allow
+the
+.Nm
+behavior to be modified;
+In this document we will only cover the ones that are generic to
+.Nm
+and not specific to any of filesystems.
+.Bl -tag -width "xxxxxx"
+.It Va debug.disablecwd
+Disables the
+.Fn getcwd
+functionality.
+.It Va debug.disablefullpath
+Disables fullpath lookups.
+.It Va debug.nchash
+Size of namecache hash table.
+.It Va debug.nclockwarn
+Warn on locked namecache entries in ticks.
+.It Va debug.ncmount_cache_enable
+Prints the status if mount point cache is enabled.
+.It Va debug.ncnegfactor
+Ratio of namecache negative entries.
+.It Va debug.ncp_shared_lock_disable
+Disables shared namecache locks.
+.It Va debug.ncnegflush
+Batch flush negative entries.
+.It Va debug.ncposflush
+Batch flush positive entries.
+.It Va debug.ncposlimit
+Number of cache entries allocated.
+.It Va debug.ncvp_debug
+Controls namecache debug level (0-3).
+.It Va debug.numdefered
+Number of cache entries allocated.
+.It Va debug.numvnodes
+Prints currently allocated vnode count.
+.\" XXX CTLFLAG_RD is this a tunable?
+.It Va debug.verbose_reclaims
+Outputs filename of reclaimed vnodes.
+.It Va vfs.bufcache_bw
+Controls data cycling within the buffer cache.
+.It Va vfs.bufspace
+Amount of memory available for buffers.
+.It Va vfs.cache.numcache
+Number of namecaches entries.
+.It Va vfs.cache.numcwdcalls
+Number of current directory resolution calls.
+.It Va vfs.cache.numcwdfailnf
+Number of current directory failures due to lack of file.
+.It Va vfs.cache.numcwdfailsz
+Number of current directory failures due to large result.
+.It Va vfs.cache.numcwdfound
+Number of current directory resolution successes.
+.It Va vfs.cache.numleafs
+Number of namecaches entries.
+.It Va vfs.cache.numneg
+Number of negative namecache entries.
+.It Va vfs.check_buf_overlap
+Controls overlapping buffer checking.
+.It Va vfs.debug_bufbio , Va vfs.debug_commit Va vfs.debug_kvabio
+Enables debugging of specific sub systems.
+.It Va vfs.dirtybufcount
+Pending number of dirty buffers.
+.It Va vfs.dirtybufcounthw
+Pending number of dirty buffers (heavy weight).
+.It Va vfs.dirtybufspace
+Pending bytes of dirty buffers (all).
+.It Va vfs.dirtybufspacehw
+Pending bytes of dirty buffers (heavy weight).
+.It Va vfs.dirtykvaspace
+KVA reserved by dirty buffers (all).
+.It Va vfs.flushperqueue
+Number of buffers to flush from each per-cpu queue.
+.It Va vfs.getnewbufcalls
+New buffer header acquisition requests.
+.It Va vfs.hibufspace
+Minimum amount of memory to reserve for system buffer space.
+.It Va vfs.hidirtybufspace
+High watermark used to trigger explicit flushing of dirty buffers.
+.It Va vfs.hirunningspace
+Sysctl determines how much outstanding write I/O may be queued to
+disk controllers system wide at any given instance.
+.It Va vfs.lobufspace
+Minimum amount of memory to reserve for system buffer space.
+.It Va vfs.lodirtybufspace
+Number of dirty buffers to flush before bufdaemon becomes inactive.
+.It Va vfs.lorunningspace
+Minimum amount of buffer space required for active I/O.
+.It Va vfs.lowmempgallocs
+Page allocations done during periods of very low free memory.
+.It Va vfs.max_readahead
+Limit in bytes for desired cluster read-ahead.
+.It Va vfs.maxbufspace
+Minimum amount of memory to reserve for system buffer space.
+.It Va vfs.maxmallocbufspace
+Maximum amount of memory reserved for buffers using malloc.
+.It Va vfs.nbuf
+Total number of buffers in buffer cache.
+.It Va vfs.quota_enabled
+Enables
+.Nm
+quota.
+.It Va vfs.real_root
+Prints real root mount string.
+.It Va vfs.reassignbufcalls
+Prints a number of times buffers have been reassigned to the proper list.
+Counter can be safely reseted back to 0.
+.It Va vfs.runningbufcount
+I/O buffers currently in progress due to asynchronous writes.
+.It Va vfs.runningbufspace
+I/O bytes currently in progress due to asynchronous writes.
+.It Va vfs.timestamp_precision
+Controls granularity used on file timestamps.
+.Bl -tag -width "X"
+.It 0
+- seconds only, nanoseconds zeroed.
+.It 1
+- seconds and nanoseconds, accurate within 1/HZ.
+.It 2
+- seconds and nanoseconds, truncated to microseconds.
+.It 3
+- seconds and nanoseconds, maximum precision.
+.El
+.It Va vfs.usermount
+Allows non-root users to mount filesystems.
+.It Va vfs.varsym_enable
+Enables Variant Symlinks.
+.It Va vfs.vm_cycle_point
+Controls active or inactive pages queue transition.
+.It Va vfs.write_behind
+Sysctl defaults to 1 (on).
+This tells the filesystem to issue media writes as full clusters are collected,
+which typically occurs when writing large sequential files.
+vfs.write_behind_minfilesize
+.It Va kern.chroot_allow_open_directories
+.Bl -tag -width "X"
+.It 0 - disallowed for all processes.
+.It 1 - allowed for processes that were not already chroot(2)'ed.
+.It 2 - allowed for all processes.
+.El
+.It Va kern.maxvnodes
+Specifies how many vnodes and related file structures the kernel will cache.
+The kernel uses a very generous default for this parameter based on
+available physical memory.
+.It Va security.hardlink_check_gid
+Unprivileged processes cannot create hard links to files owned by other groups.
+.It Va security.hardlink_check_uid
+Unprivileged processes cannot create hard links to files owned by other users.
+.El
+.Sh SEE ALSO
+.Xr autofs 5 ,
+.Xr devfs 5 ,
+.Xr ffs 5 ,
+.Xr hammer 5 ,
+.Xr tuning 7 ,
+.Xr vkernel 7 ,
+.Xr swapcache 8 ,
+.Xr sysctl 8 ,
+.Xr tunefs 8
+.Sh HISTORY
+The
+.Nm
+manual first appeared in
+.Dx 5.1 .
