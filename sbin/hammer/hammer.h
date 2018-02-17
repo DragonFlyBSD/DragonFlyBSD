@@ -40,7 +40,7 @@
 /*
  * pidfile management - common definitions so code is more robust
  */
-#define PIDFILE_BUFSIZE	64
+#define PIDFILE_BUFSIZE	512
 static const char pidfile_loc[] = "/var/run";
 
 /*
