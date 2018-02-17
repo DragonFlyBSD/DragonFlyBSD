@@ -36,6 +36,7 @@ MAN=	acct.5 \
 	motd.5 \
 	msdos.5 \
 	networks.5 \
+	nfs.5 \
 	nsswitch.conf.5 \
 	null.5 \
 	passwd.5 \

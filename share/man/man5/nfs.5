@@ -1,0 +1,109 @@
+.\"
+.\" Copyright (c) 2017 The DragonFly Project.
+.\" All rights reserved.
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"
+.Dd February 17, 2018
+.Dt NFS 5
+.Os
+.Sh NAME
+.Nm nfs
+.Nd nfs network filesystem
+.Sh DESCRIPTION
+The
+.Nm
+implements the mount protocol as per in RFC 1094, Appendix A and
+.%T "NFS: Network File System Version 3 Protocol Specification" ,
+Appendix I.
+.Sh SYSCTL VARIABLES
+The following
+.Xr sysctl 8
+MIBs are defined for use with
+.Nm :
+.Bl -tag -width "xxxxxx"
+.It Va vfs.nfs.access_cache_timeout
+.Nm
+access cache timeout.
+.It Va vfs.nfs.async
+Enables unstable and fast writes.
+.It Va vfs.nfs.commit_blks
+Number of committed blocks.
+.It Va vfs.nfs.commit_miss
+Number of nfs blocks committed from dirty buffers.
+.It vfs.nfs.diskless_rootpath
+Prints the host name for mount point.
+.It Va vfs.nfs.diskless_swappath
+Prints the host name for mount point to swap.
+.It Va vfs.nfs.diskless_valid
+Prints if diskless params were obtained.
+.It Va vfs.nfs.flush_on_hlink
+Controls fvp flushing prior to hard link.
+.It Va vfs.nfs.flush_on_rename
+Controls fvp flushing prior to rename.
+.It Va vfs.nfs.gatherdelay
+Enables NFS request procrastination.
+.It Va vfs.nfs.gatherdelay_v3
+Enables NFSv3 request procrastination.
+.It Va vfs.nfs.maxasyncbio
+Controls maximum number of asynchronous bio's.
+.It Va vfs.nfs.neg_cache_timeout
+.Nm
+negative namecache timeout.
+.It Va vfs.nfs.nfs_io_size
+Controls the
+.Nm
+optimal I/O unit size.
+.It Va vfs.nfs.nfs_ip_paranoia
+Enables no-connection mode for protocols that support no-connection mode.
+.It Va vfs.nfs.nfs_privport
+Enables privileged source port checks.
+.It Va vfs.nfs.nfsv3_commit_on_close
+Sets commiting on write+commit on close or only write.
+.It Va vfs.nfs.pos_cache_timeout
+.Nm
+positive namecache timeout.
+.It Va vfs.nfs.realign_count
+Number of realignments for badly aligned mbuf data.
+.It Va vfs.nfs.realign_test
+Number of times mbufs have been tested for bad alignment.
+.It Va vfs.nfs.showrexmit
+Enables retransmits debug prints.
+vfs.nfs.showrtt
+Enables round trip time output debug printing.
+.It Va vfs.nfs.soreserve
+Controls minimum
+.Nm
+socket buffer size reservation.
+.Pp
+.El
+.Sh SEE ALSO
+.Xr vfs 7 ,
+.Xr mount_nfs 8 ,
+.Xr mountd 8
+.Sh HISTORY
+The
+.Nm
+manual first appeared in
+.Dx 5.1 .
