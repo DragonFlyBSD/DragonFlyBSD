@@ -1,8 +1,8 @@
-/*-
+/*
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
+ * Copyright (c) 2013-2016 Mellanox Technologies, Ltd.
  * Copyright (c) 2015-2017 François Tigeot
  * All rights reserved.
  *
@@ -444,11 +444,10 @@ static inline int list_is_last(const struct list_head *list,
 #define	hlist_for_each_entry_from(tp, p, field)				\
 	for (; p ? (tp = hlist_entry(p, typeof(*tp), field)): NULL; p = p->next)
 
-#define hlist_for_each_entry_safe(tpos, pos, n, head, member) 		 \
-	for (pos = (head)->first;					 \
-	     (pos) != 0 && ({ n = (pos)->next; \
-		 tpos = hlist_entry((pos), typeof(*(tpos)), member); 1;}); \
-	     pos = (n))
+#define hlist_for_each_entry_safe(pos, n, head, member)			\
+	for (pos = hlist_entry_safe((head)->first, typeof(*(pos)), member); \
+	     (pos) && ({ n = (pos)->member.next; 1; });			\
+	     pos = hlist_entry_safe(n, typeof(*(pos)), member))
 
 void drm_list_sort(void *priv, struct list_head *head, int (*cmp)(void *priv,
     struct list_head *a, struct list_head *b));
