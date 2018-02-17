@@ -34,7 +34,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/devfs.5,v 1.19 2006/09/18 15:24:19 ru Exp $
 .\"
-.Dd September 12, 2009
+.Dd February 17, 2018
 .Dt DEVFS 5
 .Os
 .Sh NAME
@@ -60,6 +60,13 @@ environment,
 can be used to create a new
 .Pa /dev
 mount point.
+.Sh SYSCTL VARIABLES
+.Bl -hang -width ".Va vfs.devfs.debug"
+.It Va vfs.devfs.debug
+Enables
+.Nm
+debugging.
+.El
 .Sh FILES
 .Bl -tag -width /dev/XXXX -compact
 .It Pa /dev
