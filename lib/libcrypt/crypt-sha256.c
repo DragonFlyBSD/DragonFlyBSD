@@ -606,7 +606,7 @@ static const struct
       "\xf3\x71\xbc\x4a\x31\x1f\x2b\x00\x9e\xef\x95\x2d\xd8\x3c\xa8\x0e"
       "\x2b\x60\x02\x6c\x8e\x93\x55\x92\xd0\xf9\xc3\x08\x45\x3c\x81\x3e" }
   };
-#define ntests (sizeof (tests) / sizeof (tests[0]))
+#define ntests (NELEM(tests))
 
 
 static const struct
@@ -639,7 +639,7 @@ static const struct
     "$5$rounds=1000$roundstoolow$yfvwcWrQ8l/K0DAWyuPMDNHpIVlTQebY9l/gL97"
     "2bIC" },
 };
-#define ntests2 (sizeof (tests2) / sizeof (tests2[0]))
+#define ntests2 (NELEM(tests2))
 
 
 int

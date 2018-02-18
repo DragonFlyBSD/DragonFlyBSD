@@ -381,7 +381,7 @@ rarp_open(char *device)
 		BPF_STMT(BPF_RET|BPF_K, 0),
 	};
 	static struct bpf_program filter = {
-		sizeof insns / sizeof(insns[0]),
+		NELEM(insns),
 		insns
 	};
 

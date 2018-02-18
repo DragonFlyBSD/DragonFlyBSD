@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/setkey/test-policy.c,v 1.1 2000/01/06 12:40:53 shin Exp $
- * $DragonFly: src/usr.sbin/setkey/test-policy.c,v 1.3 2004/03/24 18:23:47 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -79,7 +78,7 @@ main(int argc __unused, char **argv __unused)
 	int i;
 	char *buf;
 
-	for (i = 0; i < sizeof(requests)/sizeof(requests[0]); i++) {
+	for (i = 0; i < NELEM(requests); i++) {
 		printf("* requests:[%s]\n", requests[i]);
 		if ((buf = setpolicy(requests[i])) == NULL)
 			continue;

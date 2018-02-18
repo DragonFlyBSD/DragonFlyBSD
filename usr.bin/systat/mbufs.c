@@ -58,7 +58,7 @@ static struct mtnames {
 	{ MT_OOBDATA,	"oobdata"}
 };
 
-#define	NNAMES	(sizeof (mtnames) / sizeof (mtnames[0]))
+#define	NNAMES	NELEM(mtnames)
 
 WINDOW *
 openmbufs(void)

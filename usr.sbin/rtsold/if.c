@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtsold/if.c,v 1.2.2.3 2001/07/03 11:02:16 ume Exp $
- * $DragonFly: src/usr.sbin/rtsold/if.c,v 1.6 2005/12/05 00:56:37 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -308,7 +307,7 @@ getinet6sysctl(int code)
 
 	mib[3] = code;
 	size = sizeof(value);
-	if (sysctl(mib, sizeof(mib)/sizeof(mib[0]), &value, &size, NULL, 0) < 0)
+	if (sysctl(mib, NELEM(mib), &value, &size, NULL, 0) < 0)
 		return -1;
 	else
 		return value;

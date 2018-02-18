@@ -513,7 +513,7 @@ makenetvfslist(void)
 
 	mib[0] = CTL_VFS; mib[1] = VFS_GENERIC; mib[2] = VFS_MAXTYPENUM;
 	miblen=sizeof(maxvfsconf);
-	if (sysctl(mib, (unsigned int)(sizeof(mib) / sizeof(mib[0])),
+	if (sysctl(mib, (unsigned int)(NELEM(mib)),
 	    &maxvfsconf, &miblen, NULL, 0)) {
 		warnx("sysctl failed");
 		return (NULL);

@@ -142,7 +142,7 @@ static suffixes_t suffixes[] = {
 #endif /* SMALL */
 #undef SUFFIX
 };
-#define NUM_SUFFIXES (sizeof suffixes / sizeof suffixes[0])
+#define NUM_SUFFIXES NELEM(suffixes)
 
 #define SUFFIX_MAXLEN  30
 

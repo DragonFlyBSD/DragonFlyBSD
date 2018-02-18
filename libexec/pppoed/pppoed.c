@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/pppoed/pppoed.c,v 1.2.6.8 2002/06/17 02:21:25 brian Exp $
- * $DragonFly: src/libexec/pppoed/pppoed.c,v 1.4 2007/06/04 00:40:31 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -465,7 +464,7 @@ LoadModules(void)
   const char *module[] = { "netgraph", "ng_socket", "ng_ether", "ng_pppoe" };
   size_t f;
 
-  for (f = 0; f < sizeof module / sizeof *module; f++)
+  for (f = 0; f < NELEM(module); f++)
     if (modfind(module[f]) == -1 && kldload(module[f]) == -1) {
       fprintf(stderr, "kldload: %s: %s\n", module[f], strerror(errno));
       return 0;

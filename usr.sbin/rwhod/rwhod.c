@@ -508,7 +508,7 @@ send_host_information(void)
 			we->we_idle = htonl(now - stb.st_atime);
 		we++;
 	}
-	getloadavg(avenrun, sizeof(avenrun)/sizeof(avenrun[0]));
+	getloadavg(avenrun, NELEM(avenrun));
 	for (i = 0; i < 3; i++)
 		mywd.wd_loadav[i] = htonl((u_long)(avenrun[i] * 100));
 	cc = (char *)we - (char *)&mywd;

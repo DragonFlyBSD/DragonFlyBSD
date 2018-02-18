@@ -331,9 +331,9 @@ main(int argc, char *argv[])
 			    "<%s> there's no timer. waiting for inputs",
 			    __func__);
 		}
-		if ((i = poll(set, sizeof(set)/sizeof(set[0]),
-			    timeout ? (timeout->tv_sec * 1000 +
-				timeout->tv_nsec / 1000 / 1000) : INFTIM)) < 0) {
+		if ((i = poll(set, NELEM(set),
+			      timeout ? (timeout->tv_sec * 1000 +
+					 timeout->tv_nsec / 1000 / 1000) : INFTIM)) < 0) {
 
 			/* EINTR would occur if a signal was delivered */
 			if (errno != EINTR)

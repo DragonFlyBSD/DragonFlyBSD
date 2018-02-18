@@ -287,7 +287,7 @@ main(int argc, char **argv)
 		if (allowed == 0)
 			setallowsoft(1);
 	}
-	for (i = 0; i < (sizeof(tests) / sizeof(tests[0])); i++)
+	for (i = 0; i < NELEM(tests); i++)
 		fail += run(i);
 	if (geteuid() == 0 && allowed == 0)
 		setallowsoft(0);

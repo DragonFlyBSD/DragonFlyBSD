@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/lib/libipsec/test-policy.c,v 1.2.2.2 2001/07/03 11:01:15 ume Exp $	*/
-/*	$DragonFly: src/lib/libipsec/test-policy.c,v 1.3 2003/11/12 20:21:30 eirikn Exp $	*/
 /*	$KAME: test-policy.c,v 1.14 2000/12/27 11:38:11 sakane Exp $	*/
 
 /*
@@ -109,7 +108,7 @@ test1()
 	int result;
 
 	printf("TEST1\n");
-	for (i = 0; i < sizeof(reqs)/sizeof(reqs[0]); i++) {
+	for (i = 0; i < NELEM(reqs); i++) {
 		printf("#%d [%s]\n", i + 1, reqs[i].str);
 
 		result = test1sub1(&reqs[i]);

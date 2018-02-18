@@ -569,7 +569,7 @@ emu_getcard(device_t dev)
 	device = pci_read_config(dev, PCIR_DEVICE, /* bytes */ 2);
 	subdevice = pci_read_config(dev, PCIR_SUBDEV_0, /* bytes */ 2);
 
-	n_cards = sizeof(emu_cards) / sizeof(struct emu_hwinfo);
+	n_cards = NELEM(emu_cards);
 	thiscard = 0;
 	for (i = 1; i < n_cards; i++) {
 		if (device == emu_cards[i].device) {
@@ -587,7 +587,7 @@ emu_getcard(device_t dev)
 		}
 	}
 
-	n_cards = sizeof(emu_bad_cards) / sizeof(struct emu_hwinfo);
+	n_cards = NELEM(emu_bad_cards);
 	for (i = 0; i < n_cards; i++) {
 		if (device == emu_bad_cards[i].device) {
 			if (subdevice == emu_bad_cards[i].subdevice) {

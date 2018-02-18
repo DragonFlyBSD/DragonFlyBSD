@@ -1079,7 +1079,7 @@ ParseOption(const char *option, const char *parms)
 /*
  * Find option from table.
  */
-	max = sizeof(optionTable) / sizeof(struct OptionInfo);
+	max = NELEM(optionTable);
 	for (i = 0, info = optionTable; i < max; i++, info++) {
 		if (!strcmp(info->name, option))
 			break;
@@ -1316,7 +1316,7 @@ Usage(void)
 
 	fprintf(stderr, "Recognized options:\n\n");
 
-	max = sizeof(optionTable) / sizeof(struct OptionInfo);
+	max = NELEM(optionTable);
 	for (i = 0, info = optionTable; i < max; i++, info++) {
 		fprintf(stderr, "-%-20s %s\n", info->name,
 						info->parmDescription);

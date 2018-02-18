@@ -933,7 +933,7 @@ swapmode(void)
 	n = kvm_getswapinfo(
 	    kd, 
 	    kswap,
-	    sizeof(kswap)/sizeof(kswap[0]),
+	    NELEM(kswap),
 	    ((swapflag > 1) ? SWIF_DUMP_TREE : 0) | SWIF_DEV_PREFIX
 	);
 

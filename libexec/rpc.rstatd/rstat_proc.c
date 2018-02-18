@@ -199,7 +199,7 @@ updatestat(void)
 	stats_all.s1.cp_time[2] = cp_time.cp_sys;
 	stats_all.s1.cp_time[3] = cp_time.cp_idle;
 
-        (void)getloadavg(avrun, sizeof(avrun) / sizeof(avrun[0]));
+        (void)getloadavg(avrun, NELEM(avrun));
 
 	stats_all.s2.avenrun[0] = avrun[0] * FSCALE;
 	stats_all.s2.avenrun[1] = avrun[1] * FSCALE;

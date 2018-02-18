@@ -362,8 +362,8 @@ LogCommand(struct cmdargs const *arg)
     char *argv[MAXARGS];
     int argc = arg->argc - arg->argn;
 
-    if (argc >= (int)(sizeof argv / sizeof argv[0])) {
-      argc = sizeof argv / sizeof argv[0] - 1;
+    if (argc >= (int)NELEM(argv)) {
+      argc = NELEM(argv) - 1;
       log_Printf(LogWARN, "Truncating log command to %d args\n", argc);
     }
     command_Expand(argv, argc, arg->argv + arg->argn, arg->bundle, 1, getpid());
@@ -651,8 +651,8 @@ ShellCommand(struct cmdargs const *arg, int bg)
       char *argv[MAXARGS];
       int argc = arg->argc - arg->argn;
 
-      if (argc >= (int)(sizeof argv / sizeof argv[0])) {
-        argc = sizeof argv / sizeof argv[0] - 1;
+      if (argc >= (int)NELEM(argv)) {
+        argc = NELEM(argv) - 1;
         log_Printf(LogWARN, "Truncating shell command to %d args\n", argc);
       }
       command_Expand(argv, argc, arg->argv + arg->argn, arg->bundle, 0, pid);
@@ -3174,8 +3174,8 @@ SetProcTitle(struct cmdargs const *arg)
     return 0;
   }
 
-  if ((unsigned)argc >= sizeof argv / sizeof argv[0]) {
-    argc = sizeof argv / sizeof argv[0] - 1;
+  if ((unsigned)argc >= NELEM(argv)) {
+    argc = NELEM(argv) - 1;
     log_Printf(LogWARN, "Truncating proc title to %d args\n", argc);
   }
   command_Expand(argv, argc, arg->argv + arg->argn, arg->bundle, 1, getpid());

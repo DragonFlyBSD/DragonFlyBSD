@@ -64,7 +64,7 @@ static const struct {
     {"update", 1},
     {"setdrv", 0}
 };
-static const int nopt = sizeof(opttbl) / sizeof(opttbl[0]);
+static const int nopt = NELEM(opttbl);
 
 static const char fmt0[] = "#   flag     start chs   type"
     "       end chs       offset         size\n";
@@ -355,7 +355,7 @@ boot0bs(const u_int8_t *bs)
     unsigned int i;
     int count = 0;
 
-    for (i = 0; i < sizeof(ident) / sizeof(ident[0]); i++) {
+    for (i = 0; i < NELEM(ident); i++) {
         if (memcmp(bs + ident[i].off, ident[i].key, ident[i].len) == 0)
 	    ++count;
     }

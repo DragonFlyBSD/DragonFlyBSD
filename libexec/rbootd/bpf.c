@@ -180,7 +180,7 @@ BpfOpen(void)
 		};
 #undef	RMP
 		static struct bpf_program bpf_pgm = {
-		    sizeof(bpf_insn)/sizeof(bpf_insn[0]), bpf_insn
+		    NELEM(bpf_insn), bpf_insn
 		};
 
 		if (ioctl(BpfFd, BIOCSETF, (caddr_t)&bpf_pgm) < 0) {

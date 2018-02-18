@@ -690,8 +690,7 @@ ktrsyscall(struct ktr_syscall *ktr)
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_ptrace) {
-				if (*ip < (register_t)(sizeof(ptrace_ops) /
-				    sizeof(ptrace_ops[0])) && *ip >= 0)
+				if (*ip < (register_t)NELEM(ptrace_ops) && *ip >= 0)
 					printf("(%s", ptrace_ops[*ip]);
 #ifdef PT_GETREGS
 				else if (*ip == PT_GETREGS)

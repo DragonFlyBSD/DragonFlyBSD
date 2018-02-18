@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/chap.c,v 1.61.2.7 2002/09/01 02:12:23 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/chap.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -95,7 +94,7 @@
 static const char * const chapcodes[] = {
   "???", "CHALLENGE", "RESPONSE", "SUCCESS", "FAILURE"
 };
-#define MAXCHAPCODE (sizeof chapcodes / sizeof chapcodes[0] - 1)
+#define MAXCHAPCODE (NELEM(chapcodes) - 1)
 
 static void
 ChapOutput(struct physical *physical, u_int code, u_int id,

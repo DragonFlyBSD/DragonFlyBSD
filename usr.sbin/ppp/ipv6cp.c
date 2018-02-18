@@ -613,7 +613,7 @@ protoname(unsigned proto)
 {
   static const char *cftypes[] = { "IFACEID", "COMPPROTO" };
 
-  if (proto > 0 && proto <= sizeof cftypes / sizeof *cftypes)
+  if (proto > 0 && proto <= NELEM(cftypes))
     return cftypes[proto - 1];
 
   return NumStr(proto, NULL, 0);

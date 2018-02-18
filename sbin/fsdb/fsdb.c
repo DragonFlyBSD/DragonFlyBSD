@@ -612,16 +612,14 @@ CMDFUNCSTART(newtype)
     if (!checkactive())
 	return 1;
     type = curinode->di_mode & IFMT;
-    for (tp = typenamemap;
-	 tp < &typenamemap[sizeof(typenamemap)/sizeof(*typenamemap)];
-	 tp++) {
+    for (tp = typenamemap; tp < &typenamemap[NELEM(typenamemap)]; tp++) {
 	if (!strcmp(argv[1], tp->typename)) {
 	    printf("setting type to %s\n", tp->typename);
 	    type = tp->typebits;
 	    break;
 	}
     }
-    if (tp == &typenamemap[sizeof(typenamemap)/sizeof(*typenamemap)]) {
+    if (tp == &typenamemap[NELEM(typenamemap)]) {
 	warnx("type `%s' not known", argv[1]);
 	warnx("try one of `file', `dir', `socket', `fifo'");
 	return 1;

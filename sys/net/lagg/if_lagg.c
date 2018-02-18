@@ -1106,8 +1106,7 @@ lagg_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			LAGG_WUNLOCK(sc);
 			break;
 		}
-		for (int i = 0; i < (sizeof(lagg_protos) /
-		    sizeof(lagg_protos[0])); i++) {
+		for (int i = 0; i < (NELEM(lagg_protos)); i++) {
 			if (lagg_protos[i].ti_proto == ra->ra_proto) {
 				if (sc->sc_ifflags & IFF_DEBUG)
 					kprintf("%s: using proto %u\n",

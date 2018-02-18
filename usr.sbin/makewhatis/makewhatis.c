@@ -639,7 +639,7 @@ process_mdoc_macro(char *line)
 	};
 	unsigned int i;
 
-	for (i = 0; i < sizeof(list) / sizeof(list[0]); ++i) {
+	for (i = 0; i < NELEM(list); ++i) {
 		if (!strcmp(line, list[i].mdoc)) {
 			sbuf_append(whatis_proto, list[i].text,
 			    strlen(list[i].text));

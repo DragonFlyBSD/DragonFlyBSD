@@ -926,7 +926,7 @@ moused(void)
 	bstate[i].count = 0;
 	bstate[i].tv = mouse_button_state_tv;
     }
-    for (i = 0; i < sizeof(zstate)/sizeof(zstate[0]); ++i) {
+    for (i = 0; i < NELEM(zstate); ++i) {
 	zstate[i].count = 0;
 	zstate[i].tv = mouse_button_state_tv;
     }
@@ -1294,7 +1294,7 @@ r_identify(void)
     rodent.mode.level = 0;
     if (ioctl(rodent.mfd, MOUSE_GETMODE, &rodent.mode) == 0) {
 	if ((rodent.mode.protocol == MOUSE_PROTO_UNKNOWN)
-	    || (rodent.mode.protocol >= sizeof(proto)/sizeof(proto[0]))) {
+	    || (rodent.mode.protocol >= NELEM(proto))) {
 	    logwarnx("unknown mouse protocol (%d)", rodent.mode.protocol);
 	    return MOUSE_PROTO_UNKNOWN;
 	} else {
@@ -1375,7 +1375,7 @@ static char *
 r_name(int type)
 {
     return ((type == MOUSE_PROTO_UNKNOWN)
-	|| (type > sizeof(rnames)/sizeof(rnames[0]) - 1))
+	|| (type > NELEM(rnames) - 1))
 	? "unknown" : rnames[type];
 }
 

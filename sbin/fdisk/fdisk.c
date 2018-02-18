@@ -1027,7 +1027,7 @@ decimal(const char *str, int *num, int deflt)
 static const char *
 get_type(int type)
 {
-	int	numentries = (sizeof(part_types)/sizeof(struct part_type));
+	int	numentries = NELEM(part_types);
 	int	counter = 0;
 	struct	part_type *ptr = part_types;
 

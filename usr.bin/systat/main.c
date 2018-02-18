@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1980, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/main.c,v 1.11.2.1 2001/06/06 20:26:01 tmm Exp $
- * $DragonFly: src/usr.bin/systat/main.c,v 1.7 2008/11/10 04:59:45 swildner Exp $
  */
 
 #include <sys/user.h>
@@ -173,7 +172,7 @@ display(int signo __unused)
 	struct itimerval ctv;
 
 	/* Get the load average over the last minute. */
-	(void) getloadavg(avenrun, sizeof(avenrun) / sizeof(avenrun[0]));
+	(void) getloadavg(avenrun, NELEM(avenrun));
 	(*curcmd->c_fetch)();
 	if (curcmd->c_flags & CF_LOADAV) {
 		j = 5.0*avenrun[0] + 0.5;
@@ -202,7 +201,7 @@ void
 load(void)
 {
 
-	(void) getloadavg(avenrun, sizeof(avenrun)/sizeof(avenrun[0]));
+	(void) getloadavg(avenrun, NELEM(avenrun));
 	mvprintw(CMDLINE, 0, "%4.1f %4.1f %4.1f",
 	    avenrun[0], avenrun[1], avenrun[2]);
 	clrtoeol();

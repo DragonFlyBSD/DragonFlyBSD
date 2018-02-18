@@ -234,7 +234,7 @@ struct allowedpeer {
  * we move to the next interval until we reach the largest.
  */
 int	repeatinterval[] = { 30, 120, 600 };	/* # of secs before flush */
-#define	MAXREPEAT ((sizeof(repeatinterval) / sizeof(repeatinterval[0])) - 1)
+#define	MAXREPEAT (NELEM(repeatinterval) - 1)
 #define	REPEATTIME(f)	((f)->f_time + repeatinterval[(f)->f_repeatcount])
 #define	BACKOFF(f)	{ if (++(f)->f_repeatcount > MAXREPEAT) \
 				 (f)->f_repeatcount = MAXREPEAT; \

@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)uuencode.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/uuencode/uuencode.c,v 1.4.2.5 2002/10/21 11:52:15 fanf Exp $
- * $DragonFly: src/usr.bin/uuencode/uuencode.c,v 1.3 2004/12/24 15:13:56 liamfoy Exp $
  */
 
 /*
@@ -146,7 +145,7 @@ base64_encode(void)
 	fprintf(output, "begin-base64 %o %s\n", mode, *av);
 	while ((n = fread(buf, 1, sizeof(buf), stdin))) {
 		++sequence;
-		rv = b64_ntop(buf, n, buf2, (sizeof(buf2) / sizeof(buf2[0])));
+		rv = b64_ntop(buf, n, buf2, NELEM(buf2));
 		if (rv == -1)
 			errx(1, "b64_ntop: error encoding base64");
 		fprintf(output, "%s%s", buf2, (sequence % GROUPS) ? "" : "\n");

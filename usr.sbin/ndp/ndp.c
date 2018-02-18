@@ -988,7 +988,7 @@ rtrlist(void)
 	size_t l;
 	struct timeval time;
 
-	if (sysctl(mib, sizeof(mib) / sizeof(mib[0]), NULL, &l, NULL, 0) < 0) {
+	if (sysctl(mib, NELEM(mib), NULL, &l, NULL, 0) < 0) {
 		err(1, "sysctl(ICMPV6CTL_ND6_DRLIST)");
 		/*NOTREACHED*/
 	}
@@ -997,7 +997,7 @@ rtrlist(void)
 		errx(1, "not enough core");
 		/*NOTREACHED*/
 	}
-	if (sysctl(mib, sizeof(mib) / sizeof(mib[0]), buf, &l, NULL, 0) < 0) {
+	if (sysctl(mib, NELEM(mib), buf, &l, NULL, 0) < 0) {
 		err(1, "sysctl(ICMPV6CTL_ND6_DRLIST)");
 		/*NOTREACHED*/
 	}
@@ -1090,7 +1090,7 @@ plist(void)
 #endif
 	char namebuf[NI_MAXHOST];
 
-	if (sysctl(mib, sizeof(mib) / sizeof(mib[0]), NULL, &l, NULL, 0) < 0) {
+	if (sysctl(mib, NELEM(mib), NULL, &l, NULL, 0) < 0) {
 		err(1, "sysctl(ICMPV6CTL_ND6_PRLIST)");
 		/*NOTREACHED*/
 	}
@@ -1099,7 +1099,7 @@ plist(void)
 		errx(1, "not enough core");
 		/*NOTREACHED*/
 	}
-	if (sysctl(mib, sizeof(mib) / sizeof(mib[0]), buf, &l, NULL, 0) < 0) {
+	if (sysctl(mib, NELEM(mib), buf, &l, NULL, 0) < 0) {
 		err(1, "sysctl(ICMPV6CTL_ND6_PRLIST)");
 		/*NOTREACHED*/
 	}

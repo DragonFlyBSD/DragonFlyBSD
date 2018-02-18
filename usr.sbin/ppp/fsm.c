@@ -105,7 +105,7 @@ static const struct fsmcodedesc {
 static const char *
 Code2Nam(u_int code)
 {
-  if (code == 0 || code > sizeof FsmCodes / sizeof FsmCodes[0])
+  if (code == 0 || code > NELEM(FsmCodes))
     return "Unknown";
   return FsmCodes[code-1].name;
 }
@@ -118,7 +118,7 @@ State2Nam(u_int state)
     "Req-Sent", "Ack-Rcvd", "Ack-Sent", "Opened",
   };
 
-  if (state >= sizeof StateNames / sizeof StateNames[0])
+  if (state >= NELEM(StateNames))
     return "unknown";
   return StateNames[state];
 }
@@ -1063,7 +1063,7 @@ fsm_Input(struct fsm *fp, struct mbuf *bp)
   }
 
   if (lh.code < fp->min_code || lh.code > fp->max_code ||
-      lh.code > sizeof FsmCodes / sizeof *FsmCodes) {
+      lh.code > NELEM(FsmCodes)) {
     /*
      * Use a private id.  This is really a response-type packet, but we
      * MUST send a unique id for each REQ....

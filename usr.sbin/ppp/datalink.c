@@ -1268,7 +1268,7 @@ static const char * const states[] = {
 const char *
 datalink_State(struct datalink *dl)
 {
-  if (dl->state >= sizeof states / sizeof states[0])
+  if (dl->state >= NELEM(states))
     return "unknown";
   return states[dl->state];
 }
@@ -1277,7 +1277,7 @@ static void
 datalink_NewState(struct datalink *dl, unsigned state)
 {
   if (state != dl->state) {
-    if (state < sizeof states / sizeof states[0]) {
+    if (state < NELEM(states)) {
       log_Printf(LogPHASE, "%s: %s -> %s\n", dl->name, datalink_State(dl),
                  states[state]);
       dl->state = state;

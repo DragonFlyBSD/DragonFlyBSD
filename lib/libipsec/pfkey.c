@@ -92,7 +92,7 @@ findsupportedmap(int satype)
 {
 	int i;
 
-	for (i = 0; i < sizeof(supported_map)/sizeof(supported_map[0]); i++)
+	for (i = 0; i < NELEM(supported_map); i++)
 		if (supported_map[i] == satype)
 			return i;
 	return -1;
@@ -623,9 +623,7 @@ pfkey_send_register(int so, u_int satype)
 	int len, algno;
 
 	if (satype == PF_UNSPEC) {
-		for (algno = 0;
-		     algno < sizeof(supported_map)/sizeof(supported_map[0]);
-		     algno++) {
+		for (algno = 0; algno < NELEM(supported_map); algno++) {
 			if (ipsec_supported[algno]) {
 				free(ipsec_supported[algno]);
 				ipsec_supported[algno] = NULL;

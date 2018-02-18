@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/bundle.c,v 1.84.2.12 2002/09/01 02:12:22 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/bundle.c,v 1.5 2005/11/24 23:42:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1502,7 +1501,7 @@ bundle_ReceiveDatalink(struct bundle *bundle, int s)
   onfd = nfd;	/* We've got this many in our array */
   nfd -= 2;	/* Don't include p->fd and our reply descriptor */
   niov = 1;	/* Skip the version id */
-  dl = iov2datalink(bundle, iov, &niov, sizeof iov / sizeof *iov, fd[0],
+  dl = iov2datalink(bundle, iov, &niov, NELEM(iov), fd[0],
                     fd + 2, &nfd);
   if (dl) {
 

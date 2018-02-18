@@ -202,7 +202,7 @@ native_##var(void)				\
 	char **varp = &(var);			\
 						\
 	len = sizeof buf;			\
-	if (sysctl(mib, sizeof mib / sizeof mib[0],	\
+	if (sysctl(mib, NELEM(mib),		\
 	   &buf, &len, NULL, 0) == -1)		\
 		err(1, "sysctl");
 

@@ -92,7 +92,7 @@ static struct ucode_handler {
 	{ amd_probe, amd_update },
 	{ via_probe, via_update },
 };
-#define NHANDLERS (sizeof(handlers) / sizeof(*handlers))
+#define NHANDLERS (NELEM(handlers))
 
 static void	usage(void);
 static int	isdir(const char *path);

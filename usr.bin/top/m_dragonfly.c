@@ -710,8 +710,7 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 		/* fall through */
 	default:
 
-		if (state >= 0 &&
-		    (unsigned)state < sizeof(state_abbrev) / sizeof(*state_abbrev))
+		if (state >= 0 && (unsigned)state < NELEM(state_abbrev))
 			sprintf(status, "%.6s", state_abbrev[(unsigned char)state]);
 		else
 			sprintf(status, "?%5d", state);

@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/hdlc.c,v 1.46.2.2 2002/09/01 02:12:27 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/hdlc.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -283,7 +282,7 @@ static struct {
   { 0xc481, 0xc481, "Proprietary Node ID Authentication Protocol" }
 };
 
-#define NPROTOCOLS (sizeof protocols/sizeof protocols[0])
+#define NPROTOCOLS NELEM(protocols)
 
 const char *
 hdlc_Protocol2Nam(u_short proto)

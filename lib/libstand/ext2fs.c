@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libstand/ext2fs.c,v 1.1.2.2 2001/03/05 06:26:07 kris Exp $
- *	$DragonFly: src/lib/libstand/ext2fs.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
  */
 /*-
  * Copyright (c) 1993
@@ -99,8 +98,7 @@ static int	ext2fs_readdir(struct open_file *f, struct dirent *d);
 
 static int dtmap[] = { DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR,
 			 DT_BLK, DT_FIFO, DT_SOCK, DT_LNK };
-#define EXTFTODT(x)	(x) > sizeof(dtmap) / sizeof(dtmap[0]) ? \
-			DT_UNKNOWN : dtmap[x]
+#define EXTFTODT(x)	(x) > NELEM(dtmap) ? DT_UNKNOWN : dtmap[(x)]
 
 struct fs_ops ext2fs_fsops = {
 	"ext2fs",

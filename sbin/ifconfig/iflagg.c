@@ -64,7 +64,7 @@ setlaggproto(const char *val, int d, int s, const struct afswtch *afp)
 	bzero(&ra, sizeof(ra));
 	ra.ra_proto = LAGG_PROTO_MAX;
 
-	for (i = 0; i < (sizeof(lpr) / sizeof(lpr[0])); i++) {
+	for (i = 0; i < (NELEM(lpr)); i++) {
 		if (strcmp(val, lpr[i].lpr_name) == 0) {
 			ra.ra_proto = lpr[i].lpr_proto;
 			break;
@@ -165,7 +165,7 @@ lagg_status(int s)
 	if (ioctl(s, SIOCGLAGG, &ra) == 0) {
 		lp = (struct lacp_opreq *)&ra.ra_lacpreq;
 
-		for (i = 0; i < (sizeof(lpr) / sizeof(lpr[0])); i++) {
+		for (i = 0; i < (NELEM(lpr)); i++) {
 			if (ra.ra_proto == lpr[i].lpr_proto) {
 				proto = lpr[i].lpr_name;
 				break;
@@ -211,7 +211,7 @@ lagg_status(int s)
 
 		if (0 /* XXX */) {
 			printf("\tsupported aggregation protocols:\n");
-			for (i = 0; i < (sizeof(lpr) / sizeof(lpr[0])); i++)
+			for (i = 0; i < (NELEM(lpr)); i++)
 				printf("\t\tlaggproto %s\n", lpr[i].lpr_name);
 		}
 	}

@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/ccp.c,v 1.54.2.7 2002/09/01 02:12:22 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/ccp.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -134,7 +133,7 @@ protoname(int proto)
     "DEFLATE",		/* 26: Deflate (rfc1979) */
   };
 
-  if (proto < 0 || (unsigned)proto > sizeof cftypes / sizeof *cftypes ||
+  if (proto < 0 || (unsigned)proto > NELEM(cftypes) ||
       cftypes[proto] == NULL) {
     if (proto == -1)
       return "none";
@@ -154,7 +153,7 @@ static const struct ccp_algorithm * const algorithm[] = {
 #endif
 };
 
-#define NALGORITHMS (sizeof algorithm/sizeof algorithm[0])
+#define NALGORITHMS NELEM(algorithm)
 
 int
 ccp_ReportStatus(struct cmdargs const *arg)

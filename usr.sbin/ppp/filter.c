@@ -539,7 +539,7 @@ static const char * const opname[] = {"none", "eq", "gt", "lt"};
 const char *
 filter_Op2Nam(unsigned op)
 {
-  if (op >= sizeof opname / sizeof opname[0])
+  if (op >= NELEM(opname))
     return "unknown";
   return opname[op];
 
@@ -550,7 +550,7 @@ filter_Nam2Op(const char *cp)
 {
   unsigned op;
 
-  for (op = sizeof opname / sizeof opname[0] - 1; op; op--)
+  for (op = NELEM(opname) - 1; op; op--)
     if (!strcasecmp(cp, opname[op]))
       break;
 

@@ -137,7 +137,7 @@ static	const char *answers[] = {
 	"Target machine indicates protocol botch (addr)",/* BADADDR */
 	"Target machine indicates protocol botch (ctl_addr)",/* BADCTLADDR */
 };
-#define	NANSWERS	(sizeof (answers) / sizeof (answers[0]))
+#define	NANSWERS	NELEM(answers)
 
 /*
  * Transmit the invitation and process the response

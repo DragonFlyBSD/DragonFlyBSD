@@ -239,8 +239,7 @@ ipsec_stats(u_long off __unused, const char *name, int af1 __unused)
 static const char *
 pfkey_msgtype_names(int x)
 {
-	const int max =
-	    sizeof(pfkey_msgtypenames)/sizeof(pfkey_msgtypenames[0]);
+	const int max = NELEM(pfkey_msgtypenames);
 	static char buf[10];
 
 	if (x < max && pfkey_msgtypenames[x])

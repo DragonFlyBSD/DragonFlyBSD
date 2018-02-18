@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/main.c,v 1.167.2.8 2002/09/01 02:12:28 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/main.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -321,7 +320,7 @@ main(int argc, char **argv)
     fprintf(stderr, "Cannot open %s !\n", _PATH_DEVNULL);
     return 2;
   }
-  for (f = 1; f < sizeof holdfd / sizeof *holdfd; f++)
+  for (f = 1; f < NELEM(holdfd); f++)
     holdfd[f] = dup(holdfd[0]);
 
   name = strrchr(argv[0], '/');
@@ -523,7 +522,7 @@ main(int argc, char **argv)
   }
 
   /* We can get rid of these now */
-  for (f = 0; f < sizeof holdfd / sizeof *holdfd; f++)
+  for (f = 0; f < NELEM(holdfd); f++)
     close(holdfd[f]);
 
   log_Printf(LogPHASE, "PPP Started (%s mode).\n", mode2Nam(sw.mode));

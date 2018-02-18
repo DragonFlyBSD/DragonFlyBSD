@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/cbcp.c,v 1.18.2.3 2002/09/01 02:12:22 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/cbcp.c,v 1.3 2004/02/03 07:11:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -153,7 +152,7 @@ static const char * const cbcpname[] = {
 static const char *
 cbcpstate(unsigned s)
 {
-  if (s < sizeof cbcpname / sizeof cbcpname[0])
+  if (s < NELEM(cbcpname))
     return cbcpname[s];
   return HexStr(s, NULL, 0);
 }
@@ -217,7 +216,7 @@ cbcp_data_Type(unsigned type)
     "No callback", "User-spec", "Server-spec", "list"
   };
 
-  if (type < 1 || type > sizeof types / sizeof types[0])
+  if (type < 1 || type > NELEM(types))
     return HexStr(type, NULL, 0);
   return types[type-1];
 }

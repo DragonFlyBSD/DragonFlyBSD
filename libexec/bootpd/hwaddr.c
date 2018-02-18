@@ -81,7 +81,7 @@ struct hwinfo hwinfolist[] =
 	{6, "IEEE 802"},			/* Type 6:  IEEE 802 Networks		*/
 	{0, "ARCNET"}				/* Type 7:  ARCNET			*/
 };
-int hwinfocnt = sizeof(hwinfolist) / sizeof(hwinfolist[0]);
+int hwinfocnt = NELEM(hwinfolist);
 
 
 /*

@@ -133,7 +133,7 @@ struct {
   { exec_Create, exec_iov2device, exec_DeviceSize }
 };
 
-#define NDEVICES (sizeof devices / sizeof devices[0])
+#define NDEVICES NELEM(devices)
 
 static int
 physical_UpdateSet(struct fdescriptor *d, fd_set *r, fd_set *w, fd_set *e,

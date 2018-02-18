@@ -149,7 +149,7 @@ main(int argc, char *argv[])
 	while ((c = getopt(argc, argv, "xd:mt")) != -1)
 		switch (c) {
 		case 'x':
-			for (i = 0; i<sizeof ypaliases/sizeof ypaliases[0]; i++)
+			for (i = 0; i < NELEM(ypaliases); i++)
 				printf("\"%s\" is an alias for \"%s\"\n",
 					ypaliases[i].alias,
 					ypaliases[i].name);
@@ -204,7 +204,7 @@ main(int argc, char *argv[])
 
 	if (argv[optind]) {
 		map = argv[optind];
-		for (i = 0; (!notrans) && i<sizeof ypaliases/sizeof ypaliases[0]; i++)
+		for (i = 0; (!notrans) && i < NELEM(ypaliases); i++)
 			if (strcmp(map, ypaliases[i].alias) == 0)
 				map = ypaliases[i].name;
 		r = yp_master(domnam, map, &master);

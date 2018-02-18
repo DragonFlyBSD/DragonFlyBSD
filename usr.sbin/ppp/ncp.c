@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/ncp.c,v 1.5.2.1 2002/09/01 02:12:29 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/ncp.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -90,8 +89,7 @@ static u_short default_urgent_tcp_ports[] = {
   544	/* kshell */
 };
 
-#define NDEFTCPPORTS \
-  (sizeof default_urgent_tcp_ports / sizeof default_urgent_tcp_ports[0])
+#define NDEFTCPPORTS NELEM(default_urgent_tcp_ports)
 
 void
 ncp_Init(struct ncp *ncp, struct bundle *bundle)

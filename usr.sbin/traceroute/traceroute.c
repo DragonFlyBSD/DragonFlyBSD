@@ -337,7 +337,7 @@ main(int argc, char *argv[])
 	seteuid(getuid());
 	setuid(getuid());
 
-	sysctl(mib, sizeof(mib)/sizeof(mib[0]), &max_ttl, &size, NULL, 0);
+	sysctl(mib, NELEM(mib), &max_ttl, &size, NULL, 0);
 
 	while ((ch = getopt(argc, argv, "SDIdg:f:m:np:q:rs:t:w:vlP:cM")) != -1)
 		switch (ch) {

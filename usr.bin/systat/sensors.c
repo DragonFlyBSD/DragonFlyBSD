@@ -227,7 +227,7 @@ printline(void)
 		break;
 	case SENSOR_DRIVE:
 		if (0 < sensor.value &&
-		    (size_t)sensor.value < sizeof(drvstat)/sizeof(drvstat[0])) {
+		    (size_t)sensor.value < NELEM(drvstat)) {
 			mvwprintw(wnd, row, 24, "%15s", drvstat[sensor.value]);
 			break;
 		}

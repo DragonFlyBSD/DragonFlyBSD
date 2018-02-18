@@ -210,14 +210,12 @@ geticmptypebynumber(u_int8_t type, sa_family_t af)
 	unsigned int	i;
 
 	if (af != AF_INET6) {
-		for (i=0; i < (sizeof (icmp_type) / sizeof(icmp_type[0]));
-		    i++) {
+		for (i=0; i < NELEM(icmp_type); i++) {
 			if (type == icmp_type[i].type)
 				return (&icmp_type[i]);
 		}
 	} else {
-		for (i=0; i < (sizeof (icmp6_type) /
-		    sizeof(icmp6_type[0])); i++) {
+		for (i=0; i < NELEM(icmp6_type); i++) {
 			if (type == icmp6_type[i].type)
 				 return (&icmp6_type[i]);
 		}
@@ -231,14 +229,12 @@ geticmptypebyname(char *w, sa_family_t af)
 	unsigned int	i;
 
 	if (af != AF_INET6) {
-		for (i=0; i < (sizeof (icmp_type) / sizeof(icmp_type[0]));
-		    i++) {
+		for (i=0; i < NELEM(icmp_type); i++) {
 			if (!strcmp(w, icmp_type[i].name))
 				return (&icmp_type[i]);
 		}
 	} else {
-		for (i=0; i < (sizeof (icmp6_type) /
-		    sizeof(icmp6_type[0])); i++) {
+		for (i=0; i < NELEM(icmp6_type); i++) {
 			if (!strcmp(w, icmp6_type[i].name))
 				return (&icmp6_type[i]);
 		}
@@ -252,15 +248,13 @@ geticmpcodebynumber(u_int8_t type, u_int8_t code, sa_family_t af)
 	unsigned int	i;
 
 	if (af != AF_INET6) {
-		for (i=0; i < (sizeof (icmp_code) / sizeof(icmp_code[0]));
-		    i++) {
+		for (i=0; i < NELEM(icmp_code); i++) {
 			if (type == icmp_code[i].type &&
 			    code == icmp_code[i].code)
 				return (&icmp_code[i]);
 		}
 	} else {
-		for (i=0; i < (sizeof (icmp6_code) /
-		    sizeof(icmp6_code[0])); i++) {
+		for (i=0; i < NELEM(icmp6_code); i++) {
 			if (type == icmp6_code[i].type &&
 			    code == icmp6_code[i].code)
 				return (&icmp6_code[i]);
@@ -275,15 +269,13 @@ geticmpcodebyname(u_long type, char *w, sa_family_t af)
 	unsigned int	i;
 
 	if (af != AF_INET6) {
-		for (i=0; i < (sizeof (icmp_code) / sizeof(icmp_code[0]));
-		    i++) {
+		for (i=0; i < NELEM(icmp_code); i++) {
 			if (type == icmp_code[i].type &&
 			    !strcmp(w, icmp_code[i].name))
 				return (&icmp_code[i]);
 		}
 	} else {
-		for (i=0; i < (sizeof (icmp6_code) /
-		    sizeof(icmp6_code[0])); i++) {
+		for (i=0; i < NELEM(icmp6_code); i++) {
 			if (type == icmp6_code[i].type &&
 			    !strcmp(w, icmp6_code[i].name))
 				return (&icmp6_code[i]);

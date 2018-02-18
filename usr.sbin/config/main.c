@@ -214,7 +214,7 @@ main(int argc, char *argv[])
 	 * create the symlinks automatically XXX
 	 */
 #if 0
-	for (i = 0; i < sizeof(emus) / sizeof(emus[0]); ++i) {
+	for (i = 0; i < NELEM(emus); ++i) {
 		if (*srcdir == 0)  {
 			snprintf(linkdest, sizeof(linkdest),
 			    "../../emulation/%s/%s",

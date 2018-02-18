@@ -43,11 +43,11 @@
 
 static	const char *types[] =
     { "leave_invite", "look_up", "delete", "announce" };
-#define	NTYPES	(sizeof (types) / sizeof (types[0]))
+#define	NTYPES	NELEM(types)
 static	const char *answers[] =
     { "success", "not_here", "failed", "machine_unknown", "permission_denied",
       "unknown_request", "badversion", "badaddr", "badctladdr" };
-#define	NANSWERS	(sizeof (answers) / sizeof (answers[0]))
+#define	NANSWERS	NELEM(answers)
 
 void
 print_request(const char *cp, CTL_MSG *mp)

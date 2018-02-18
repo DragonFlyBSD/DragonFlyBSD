@@ -112,7 +112,7 @@ dns_Qclass2Txt(u_short qclass)
   };
   unsigned f;
 
-  for (f = 0; f < sizeof qtxt / sizeof *qtxt; f++)
+  for (f = 0; f < NELEM(qtxt); f++)
     if (qtxt[f].id == qclass)
       return qtxt[f].txt;
 
@@ -139,7 +139,7 @@ dns_Qtype2Txt(u_short qtype)
   };
   unsigned f;
 
-  for (f = 0; f < sizeof qtxt / sizeof *qtxt; f++)
+  for (f = 0; f < NELEM(qtxt); f++)
     if (qtxt[f].id == qtype)
       return qtxt[f].txt;
 

@@ -156,8 +156,7 @@ bridge_interfaces(int s, const char *prefix)
 			printf("port %u priority %u",
 			    req->ifbr_portno, req->ifbr_priority);
 			printf(" pathcost %u", req->ifbr_path_cost);
-			if (req->ifbr_state <
-			    sizeof(stpstates) / sizeof(stpstates[0]))
+			if (req->ifbr_state < NELEM(stpstates))
 				printf(" %s", stpstates[req->ifbr_state]);
 			else
 				printf(" <unknown state %d>",

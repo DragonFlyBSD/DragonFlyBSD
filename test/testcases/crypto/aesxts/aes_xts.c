@@ -1795,7 +1795,7 @@ struct aes_xts_tv aes_xts_test_vectors[] = {
 		},
 	},
 };
-#define N_VECTORS (sizeof(aes_xts_test_vectors) / sizeof(*aes_xts_test_vectors))
+#define N_VECTORS NELEM(aes_xts_test_vectors)
 
 int
 main(int argc, char **argv)

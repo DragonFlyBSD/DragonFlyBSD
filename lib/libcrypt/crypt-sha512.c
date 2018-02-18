@@ -672,7 +672,7 @@ static const struct
       "\x23\x54\xe0\x93\xd7\x6f\x30\x48\xb4\x56\x76\x43\x46\x90\x0c\xb1"
       "\x30\xd2\xa4\xfd\x5d\xd1\x6a\xbb\x5e\x30\xbc\xb8\x50\xde\xe8\x43" }
   };
-#define ntests (sizeof (tests) / sizeof (tests[0]))
+#define ntests (NELEM(tests))
 
 
 static const struct
@@ -707,7 +707,7 @@ static const struct
     "$6$rounds=1000$roundstoolow$kUMsbe306n21p9R.FRkW3IGn.S9NPN0x50YhH1x"
     "hLsPuWGsUSklZt58jaTfF4ZEQpyUNGc0dqbpBYYBaHHrsX." },
 };
-#define ntests2 (sizeof (tests2) / sizeof (tests2[0]))
+#define ntests2 (NELEM(tests2))
 
 
 int

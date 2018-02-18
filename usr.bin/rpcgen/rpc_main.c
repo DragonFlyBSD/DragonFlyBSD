@@ -78,11 +78,11 @@ static char pathbuf[MAXPATHLEN + 1];
 static const char *allv[] = {
 	"rpcgen", "-s", "udp", "-s", "tcp",
 };
-static int allc = sizeof (allv)/sizeof (allv[0]);
+static int allc = NELEM(allv);
 static const char *allnv[] = {
 	"rpcgen", "-s", "netpath",
 };
-static int allnc = sizeof (allnv)/sizeof (allnv[0]);
+static int allnc = NELEM(allnv);
 
 /*
  * machinations for handling expanding argument list

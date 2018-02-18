@@ -285,7 +285,7 @@ cam_get_device(const char *path, char *dev_name, int devnamelen, int *unit)
 	 * the user gave us is an old style device name.  If so, translate
 	 * it to the new style device name.
 	 */
-	for (i = 0;i < (sizeof(devmatchtable)/sizeof(struct cam_devequiv));i++){
+	for (i = 0; i < NELEM(devmatchtable); i++) {
 		if (strcmp(tmpstr, devmatchtable[i].given_dev) == 0) {
 			strlcpy(dev_name,devmatchtable[i].real_dev, devnamelen);
 			found = 1;

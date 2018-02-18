@@ -371,7 +371,7 @@ ex_desc(int ex)
     "redial", "reconnect"
   };
 
-  if (ex >= 0 && ex < (int)(sizeof desc / sizeof *desc))
+  if (ex >= 0 && ex < (int)NELEM(desc))
     return desc[ex];
   snprintf(num, sizeof num, "%d", ex);
   return num;
