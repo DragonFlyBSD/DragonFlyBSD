@@ -59,6 +59,20 @@ int	release_timer2 (void);
 int	sysbeep (int pitch, int period);
 void	timer_restore (void);
 
+/*
+ * Allow registering timecounter initialization code.
+ */
+typedef struct timecounter_init {
+	char *name;
+	void (*configure)(void);
+} timecounter_init_t;
+
+#define TIMECOUNTER_INIT(name, config)			\
+	static struct timecounter_init name##_timer = {	\
+		#name, config				\
+	};						\
+	DATA_SET(timecounter_init_set, name##_timer);
+
 #endif /* _KERNEL */
 
 #endif /* !_MACHINE_CLOCK_H_ */

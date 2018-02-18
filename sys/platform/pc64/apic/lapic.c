@@ -442,16 +442,26 @@ lapic_timer_calibrate(void)
 	for (lapic_timer_divisor_idx = 0;
 	     lapic_timer_divisor_idx < APIC_TIMER_NDIVISORS;
 	     lapic_timer_divisor_idx++) {
+		u_int cnt;
+
+		if (sys_cputimer->freq >= 10000000)
+			cnt = 500000;
+		else
+			cnt = 2000000;
+
 		lapic_timer_set_divisor(lapic_timer_divisor_idx);
 		lapic_timer_oneshot(APIC_TIMER_MAX_COUNT);
-		DELAY(2000000);
+		DELAY(cnt);
 		value = APIC_TIMER_MAX_COUNT - lapic->ccr_timer;
 		if (value != APIC_TIMER_MAX_COUNT)
 			break;
 	}
 	if (lapic_timer_divisor_idx >= APIC_TIMER_NDIVISORS)
 		panic("lapic: no proper timer divisor?!");
-	lapic_cputimer_intr.freq = value / 2;
+	if (sys_cputimer->freq >= 10000000)
+		lapic_cputimer_intr.freq = value * 2;
+	else
+		lapic_cputimer_intr.freq = value / 2;
 
 	kprintf("lapic: divisor index %d, frequency %u Hz\n",
 		lapic_timer_divisor_idx, lapic_cputimer_intr.freq);

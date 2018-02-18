@@ -84,6 +84,9 @@
 #include <bus/isa/rtc.h>
 #include <machine_base/isa/timerreg.h>
 
+SET_DECLARE(timecounter_init_set, const timecounter_init_t);
+TIMECOUNTER_INIT(placeholder, NULL);
+
 static void i8254_restore(void);
 static void resettodr_on_shutdown(void *arg __unused);
 
@@ -116,6 +119,8 @@ enum tstate { RELEASED, ACQUIRED };
 enum tstate timer0_state;
 enum tstate timer1_state;
 enum tstate timer2_state;
+
+int	i8254_cputimer_disable;	/* No need to initialize i8254 cputimer. */
 
 static	int	beeping = 0;
 static	const u_char daysinmonth[] = {31,28,31,30,31,30,31,31,30,31,30,31};
@@ -402,7 +407,7 @@ DODELAY(int n, int doswitch)
 	 * Guard against the timer being uninitialized if we are called
 	 * early for console i/o.
 	 */
-	if (timer0_state == RELEASED)
+	if (timer0_state == RELEASED && i8254_cputimer_disable == 0)
 		i8254_restore();
 
 	/*
@@ -459,7 +464,7 @@ CHECKTIMEOUT(TOTALDELAY *tdd)
 	int us;
 
 	if (tdd->started == 0) {
-		if (timer0_state == RELEASED)
+		if (timer0_state == RELEASED && i8254_cputimer_disable == 0)
 			i8254_restore();
 		tdd->last_clock = sys_cputimer->count();
 		tdd->started = 1;
@@ -753,7 +758,8 @@ void
 timer_restore(void)
 {
 	crit_enter();
-	i8254_restore();		/* restore timer_freq and hz */
+	if (i8254_cputimer_disable == 0)
+		i8254_restore();	/* restore timer_freq and hz */
 	rtc_restore();			/* reenable RTC interrupts */
 	crit_exit();
 }
@@ -764,7 +770,10 @@ timer_restore(void)
 void
 startrtclock(void)
 {
+	const timecounter_init_t **list;
 	u_int delta, freq;
+
+	callout_init_mp(&sysbeepstop_ch);
 
 	/* 
 	 * Can we use the TSC?
@@ -797,6 +806,18 @@ startrtclock(void)
 	writertc(RTC_STATUSA, rtc_statusa);
 	writertc(RTC_STATUSB, RTCSB_24HR);
 
+	SET_FOREACH(list, timecounter_init_set) {
+		if ((*list)->configure != NULL)
+			(*list)->configure();
+	}
+
+	/*
+	 * If tsc_frequency is already initialized now, and a flag is set
+	 * that i8254 timer is unneeded, we are done.
+	 */
+	if (tsc_frequency != 0 && i8254_cputimer_disable != 0)
+		goto done;
+
 	/*
 	 * Set the 8254 timer0 in TIMER_SWSTROBE mode and cause it to 
 	 * generate an interrupt, which we will ignore for now.
@@ -805,7 +826,10 @@ startrtclock(void)
 	 * (so it counts a full 2^16 and repeats).  We will use this timer
 	 * for our counting.
 	 */
-	i8254_restore();
+	if (i8254_cputimer_disable == 0)
+		i8254_restore();
+
+	kprintf("Using cputimer %s for TSC calibration\n", sys_cputimer->name);
 
 	/*
 	 * When booting without verbose messages, it's pointless to run the
@@ -813,8 +837,10 @@ startrtclock(void)
 	 * results in any way. With bootverbose, we are at least printing
 	 *  this information to the kernel log.
 	 */
-	if (calibrate_timers_with_rtc == 0 && !bootverbose)
+	if (i8254_cputimer_disable != 0 ||
+	    (calibrate_timers_with_rtc == 0 && !bootverbose)) {
 		goto skip_rtc_based;
+	}
 
 	freq = calibrate_clocks();
 #ifdef CLK_CALIBRATION_LOOP
@@ -866,21 +892,33 @@ startrtclock(void)
 
 skip_rtc_based:
 	if (tsc_present && tsc_frequency == 0) {
+		u_int64_t old_tsc, new_tsc;
+		u_int cnt;
+
+		if (sys_cputimer->freq >= 10000000)
+			cnt = 200000;
+		else
+			cnt = 1000000;
+
 		/*
 		 * Calibration of the i586 clock relative to the mc146818A
 		 * clock failed.  Do a less accurate calibration relative
 		 * to the i8254 clock.
 		 */
-		u_int64_t old_tsc = rdtsc();
+		old_tsc = rdtsc();
 
-		DELAY(1000000);
-		tsc_frequency = rdtsc() - old_tsc;
+		DELAY(cnt);
+		new_tsc = rdtsc();
+		tsc_frequency = new_tsc - old_tsc;
+		if (sys_cputimer->freq >= 10000000)
+			tsc_frequency *= 5;
 		if (bootverbose && calibrate_timers_with_rtc) {
 			kprintf("TSC clock: %jd Hz (Method B)\n",
 			    (intmax_t)tsc_frequency);
 		}
 	}
 
+done:
 	if (tsc_present) {
 		kprintf("TSC%s clock: %jd Hz\n",
 		    tsc_invariant ? " invariant" : "",
@@ -1082,7 +1120,6 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 	int irq = 0, mixed_mode = 0, error;
 
 	KKASSERT(mycpuid == 0);
-	callout_init_mp(&sysbeepstop_ch);
 
 	if (!selected && i8254_intr_disable)
 		goto nointr;
