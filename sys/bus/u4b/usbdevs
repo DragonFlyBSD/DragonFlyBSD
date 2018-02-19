@@ -2321,16 +2321,26 @@ product HUAWEI E1752		0x1446	3G modem
 product HUAWEI K4505		0x1464	3G modem
 product HUAWEI K3765		0x1465	3G modem
 product HUAWEI E1820		0x14ac	E1820 HSPA+ USB Slider
-product HUAWEI K3770		0x14c9  3G modem
-product HUAWEI K3770_INIT	0x14d1  K3770 Initial
+product HUAWEI K3771_INIT	0x14c4	K3771 Initial
+product HUAWEI K3770		0x14c9	3G modem
+product HUAWEI K3771		0x14ca	K3771
+product HUAWEI K3772		0x14cf	K3772
+product HUAWEI K3770_INIT	0x14d1	K3770 Initial
 product HUAWEI E3131_INIT	0x14fe	3G modem initial
 product HUAWEI E392		0x1505	LTE modem
 product HUAWEI E3131		0x1506	3G modem
 product HUAWEI K3765_INIT	0x1520	K3765 Initial
 product HUAWEI K4505_INIT	0x1521	K4505 Initial
+product HUAWEI K3772_INIT	0x1526	K3772 Initial
+product HUAWEI E3272_INIT	0x155b	LTE modem initial
+product HUAWEI ME909U		0x1573	LTE modem
+product HUAWEI R215_INIT	0x1582	LTE modem initial
+product HUAWEI R215		0x1588	LTE modem
+product HUAWEI ME909S		0x15c1	LTE modem
 product HUAWEI ETS2055		0x1803	CDMA modem
 product HUAWEI E173		0x1c05	3G modem
 product HUAWEI E173_INIT	0x1c0b	3G modem initial
+product HUAWEI E3272		0x1c1e	LTE modem
 
 /* HUAWEI 3com products */
 product HUAWEI3COM WUB320G	0x0009	Aolynk WUB320g

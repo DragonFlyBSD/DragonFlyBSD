@@ -46,10 +46,8 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
 
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -61,25 +59,29 @@ __FBSDID("$FreeBSD$");
 #include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
-#include <dev/usb/usb_cdc.h>
+#include <net/if.h>
+#include <net/if_var.h>
+#include <net/ifq_var.h>
+
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
+#include <bus/u4b/usb_cdc.h>
 #include "usbdevs.h"
 
 #define	USB_DEBUG_VAR cdce_debug
-#include <dev/usb/usb_debug.h>
-#include <dev/usb/usb_process.h>
+#include <bus/u4b/usb_debug.h>
+#include <bus/u4b/usb_process.h>
+#include <bus/u4b/usb_msctest.h>
 #include "usb_if.h"
 
-#include <dev/usb/net/usb_ethernet.h>
-#include <dev/usb/net/if_cdcereg.h>
+#include <bus/u4b/net/usb_ethernet.h>
+#include <bus/u4b/net/if_cdcereg.h>
 
 static device_probe_t cdce_probe;
 static device_attach_t cdce_attach;
@@ -112,9 +114,9 @@ static int cdce_debug = 0;
 static int cdce_tx_interval = 0;
 
 static SYSCTL_NODE(_hw_usb, OID_AUTO, cdce, CTLFLAG_RW, 0, "USB CDC-Ethernet");
-SYSCTL_INT(_hw_usb_cdce, OID_AUTO, debug, CTLFLAG_RWTUN, &cdce_debug, 0,
+SYSCTL_INT(_hw_usb_cdce, OID_AUTO, debug, CTLFLAG_RW, &cdce_debug, 0,
     "Debug level");
-SYSCTL_INT(_hw_usb_cdce, OID_AUTO, interval, CTLFLAG_RWTUN, &cdce_tx_interval, 0,
+SYSCTL_INT(_hw_usb_cdce, OID_AUTO, interval, CTLFLAG_RW, &cdce_tx_interval, 0,
     "NCM transmit interval in ms");
 #endif
 
@@ -247,8 +249,11 @@ static driver_t cdce_driver = {
 };
 
 static devclass_t cdce_devclass;
+static eventhandler_tag cdce_etag;
 
-DRIVER_MODULE(cdce, uhub, cdce_driver, cdce_devclass, NULL, NULL);
+static int cdce_driver_loaded(struct module *, int, void *);
+
+DRIVER_MODULE(cdce, uhub, cdce_driver, cdce_devclass, cdce_driver_loaded, NULL);
 MODULE_VERSION(cdce, 1);
 MODULE_DEPEND(cdce, uether, 1, 1, 1);
 MODULE_DEPEND(cdce, usb, 1, 1, 1);
@@ -261,6 +266,11 @@ static const struct usb_ether_methods cdce_ue_methods = {
 	.ue_stop = cdce_stop,
 	.ue_setmulti = cdce_setmulti,
 	.ue_setpromisc = cdce_setpromisc,
+};
+
+
+static const STRUCT_USB_HOST_ID cdce_switch_devs[] = {
+    {USB_VPI(USB_VENDOR_HUAWEI, USB_PRODUCT_HUAWEI_E3272_INIT, MSC_EJECT_HUAWEI2)},
 };
 
 static const STRUCT_USB_HOST_ID cdce_host_devs[] = {
@@ -277,6 +287,20 @@ static const STRUCT_USB_HOST_ID cdce_host_devs[] = {
 	{USB_VPI(USB_VENDOR_SHARP, USB_PRODUCT_SHARP_SLA300, CDCE_FLAG_ZAURUS | CDCE_FLAG_NO_UNION)},
 	{USB_VPI(USB_VENDOR_SHARP, USB_PRODUCT_SHARP_SLC700, CDCE_FLAG_ZAURUS | CDCE_FLAG_NO_UNION)},
 	{USB_VPI(USB_VENDOR_SHARP, USB_PRODUCT_SHARP_SLC750, CDCE_FLAG_ZAURUS | CDCE_FLAG_NO_UNION)},
+
+	{USB_VENDOR(USB_VENDOR_HUAWEI), USB_IFACE_CLASS(UICLASS_VENDOR),
+   USB_IFACE_SUBCLASS(0x02), USB_IFACE_PROTOCOL(0x16),
+   USB_DRIVER_INFO(0)},
+	{USB_VENDOR(USB_VENDOR_HUAWEI), USB_IFACE_CLASS(UICLASS_VENDOR),
+   USB_IFACE_SUBCLASS(0x02), USB_IFACE_PROTOCOL(0x46),
+   USB_DRIVER_INFO(0)},
+	{USB_VENDOR(USB_VENDOR_HUAWEI), USB_IFACE_CLASS(UICLASS_VENDOR),
+   USB_IFACE_SUBCLASS(0x02), USB_IFACE_PROTOCOL(0x76),
+   USB_DRIVER_INFO(0)},
+	{USB_VENDOR(USB_VENDOR_HUAWEI), USB_IFACE_CLASS(UICLASS_VENDOR),
+   USB_IFACE_SUBCLASS(0x03), USB_IFACE_PROTOCOL(0x16),
+   USB_DRIVER_INFO(0)},
+
 };
 
 static const STRUCT_USB_DUAL_ID cdce_dual_devs[] = {
@@ -470,6 +494,48 @@ cdce_ncm_init(struct cdce_softc *sc)
 }
 #endif
 
+static void
+cdce_test_autoinst(void *arg, struct usb_device *udev,
+    struct usb_attach_arg *uaa)
+{
+	struct usb_interface *iface;
+	struct usb_interface_descriptor *id;
+
+	if (uaa->dev_state != UAA_DEV_READY)
+		return;
+
+	iface = usbd_get_iface(udev, 0);
+	if (iface == NULL)
+		return;
+	id = iface->idesc;
+	if (id == NULL || id->bInterfaceClass != UICLASS_MASS)
+		return;
+	if (usbd_lookup_id_by_uaa(cdce_switch_devs, sizeof(cdce_switch_devs), uaa))
+		return;		/* no device match */
+
+	if (usb_msc_eject(udev, 0, USB_GET_DRIVER_INFO(uaa)) == 0) {
+		/* success, mark the udev as disappearing */
+		uaa->dev_state = UAA_DEV_EJECTING;
+	}
+}
+
+static int
+cdce_driver_loaded(struct module *mod, int what, void *arg)
+{
+	switch (what) {
+	case MOD_LOAD:
+		/* register our autoinstall handler */
+		cdce_etag = EVENTHANDLER_REGISTER(usb_dev_configured,
+		    cdce_test_autoinst, NULL, EVENTHANDLER_PRI_ANY);
+		return (0);
+	case MOD_UNLOAD:
+		EVENTHANDLER_DEREGISTER(usb_dev_configured, cdce_etag);
+		return (0);
+	default:
+		return (EOPNOTSUPP);
+	}
+}
+
 static int
 cdce_probe(device_t dev)
 {
@@ -485,8 +551,9 @@ cdce_probe(device_t dev)
 static void
 cdce_attach_post(struct usb_ether *ue)
 {
-	/* no-op */
-	return;
+	struct ifnet *ifp = uether_getifp(ue);
+	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
+	ifq_set_ready(&ifp->if_snd);
 }
 
 static int
@@ -500,6 +567,7 @@ cdce_attach(device_t dev)
 	const struct usb_interface_descriptor *id;
 	const struct usb_cdc_ethernet_descriptor *ued;
 	const struct usb_config *pcfg;
+	uint32_t seed;
 	int error;
 	uint8_t i;
 	uint8_t data_iface_no;
@@ -510,7 +578,7 @@ cdce_attach(device_t dev)
 
 	device_set_usb_desc(dev);
 
-	mtx_init(&sc->sc_mtx, device_get_nameunit(dev), NULL, MTX_DEF);
+	lockinit(&sc->sc_lock, device_get_nameunit(dev), 0, 0);
 
 	ud = usbd_find_descriptor
 	    (uaa->device, NULL, uaa->info.bIfaceIndex,
@@ -584,7 +652,7 @@ alloc_transfers:
 #endif
 		error = usbd_transfer_setup(uaa->device,
 		    sc->sc_ifaces_index, sc->sc_xfer,
-		    pcfg, CDCE_N_TRANSFER, sc, &sc->sc_mtx);
+		    pcfg, CDCE_N_TRANSFER, sc, &sc->sc_lock);
 
 		if (error == 0)
 			break;
@@ -612,8 +680,9 @@ alloc_transfers:
 		/* fake MAC address */
 
 		device_printf(dev, "faking MAC address\n");
+		seed = ticks;
 		sc->sc_ue.ue_eaddr[0] = 0x2a;
-		memcpy(&sc->sc_ue.ue_eaddr[1], &ticks, sizeof(uint32_t));
+		memcpy(&sc->sc_ue.ue_eaddr[1], &seed, sizeof(uint32_t));
 		sc->sc_ue.ue_eaddr[5] = device_get_unit(dev);
 
 	} else {
@@ -649,7 +718,7 @@ alloc_transfers:
 	ue->ue_sc = sc;
 	ue->ue_dev = dev;
 	ue->ue_udev = uaa->device;
-	ue->ue_mtx = &sc->sc_mtx;
+	ue->ue_lock = &sc->sc_lock;
 	ue->ue_methods = &cdce_ue_methods;
 
 	error = uether_ifattach(ue);
@@ -673,7 +742,7 @@ cdce_detach(device_t dev)
 	/* stop all USB transfers first */
 	usbd_transfer_unsetup(sc->sc_xfer, CDCE_N_TRANSFER);
 	uether_ifdetach(ue);
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }
@@ -721,8 +790,8 @@ cdce_bulk_write_callback(struct usb_xfer *xfer, usb_error_t error)
 	case USB_ST_TRANSFERRED:
 		DPRINTFN(11, "transfer complete: %u bytes in %u frames\n",
 		    actlen, aframes);
-
-		ifp->if_opackets++;
+		ifq_clr_oactive(&ifp->if_snd);
+		IFNET_STAT_INC(ifp, opackets, 1);
 
 		/* free all previous TX buffers */
 		cdce_free_queue(sc->sc_tx_buf, CDCE_FRAMES_MAX);
@@ -730,9 +799,13 @@ cdce_bulk_write_callback(struct usb_xfer *xfer, usb_error_t error)
 		/* FALLTHROUGH */
 	case USB_ST_SETUP:
 tr_setup:
+		DPRINTFN(11, "transfer setup\n");
+		if(ifq_is_oactive(&ifp->if_snd))
+			return;
+
 		for (x = 0; x != CDCE_FRAMES_MAX; x++) {
 
-			IFQ_DRV_DEQUEUE(&ifp->if_snd, m);
+			m = ifq_dequeue(&ifp->if_snd);
 
 			if (m == NULL)
 				break;
@@ -748,12 +821,12 @@ tr_setup:
 
 				if (!m_append(m, 4, (void *)&crc)) {
 					m_freem(m);
-					ifp->if_oerrors++;
+          IFNET_STAT_INC(ifp, oerrors, 1);
 					continue;
 				}
 			}
 			if (m->m_len != m->m_pkthdr.len) {
-				mt = m_defrag(m, M_DONTWAIT);
+				mt = m_defrag(m, M_NOWAIT);
 				if (mt == NULL) {
 					m_freem(m);
 					ifp->if_oerrors++;
@@ -775,8 +848,8 @@ tr_setup:
 		}
 		if (x != 0) {
 			usbd_xfer_set_frames(xfer, x);
-
 			usbd_transfer_submit(xfer);
+			ifq_set_oactive(&ifp->if_snd);
 		}
 		break;
 
@@ -788,8 +861,8 @@ tr_setup:
 		cdce_free_queue(sc->sc_tx_buf, CDCE_FRAMES_MAX);
 
 		/* count output errors */
-		ifp->if_oerrors++;
-
+    IFNET_STAT_INC(ifp, oerrors, 1);
+		ifq_clr_oactive(&ifp->if_snd);
 		if (error != USB_ERR_CANCELLED) {
 			if (usbd_get_mode(sc->sc_ue.ue_udev) == USB_MODE_HOST) {
 				/* try to clear stall first */
@@ -806,7 +879,8 @@ cdce_m_crc32_cb(void *arg, void *src, uint32_t count)
 {
 	uint32_t *p_crc = arg;
 
-	*p_crc = crc32_raw(src, count, *p_crc);
+	*p_crc = crc32_ext(src, count, *p_crc);
+
 	return (0);
 }
 
@@ -828,7 +902,7 @@ cdce_init(struct usb_ether *ue)
 
 	CDCE_LOCK_ASSERT(sc, MA_OWNED);
 
-	ifp->if_drv_flags |= IFF_DRV_RUNNING;
+	ifp->if_flags |= IFF_RUNNING;
 
 	/* start interrupt transfer */
 	usbd_transfer_start(sc->sc_xfer[CDCE_INTR_RX]);
@@ -855,7 +929,8 @@ cdce_stop(struct usb_ether *ue)
 
 	CDCE_LOCK_ASSERT(sc, MA_OWNED);
 
-	ifp->if_drv_flags &= ~IFF_DRV_RUNNING;
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	/*
 	 * stop all the transfers, if not already stopped:
@@ -919,7 +994,7 @@ cdce_bulk_read_callback(struct usb_xfer *xfer, usb_error_t error)
 			if ((sc->sc_flags & CDCE_FLAG_ZAURUS) && len >= 14)
 				len -= 4;
 
-			if (len < sizeof(struct ether_header)) {
+			if (len < (int)sizeof(struct ether_header)) {
 				m_freem(m);
 				continue;
 			}
@@ -998,7 +1073,8 @@ tr_setup:
 	default:			/* Error */
 		if (error != USB_ERR_CANCELLED) {
 			/* start clear stall */
-			usbd_xfer_set_stall(xfer);
+			if (usbd_get_mode(sc->sc_ue.ue_udev) == USB_MODE_HOST)
+				usbd_xfer_set_stall(xfer);
 			goto tr_setup;
 		}
 		break;
@@ -1108,10 +1184,10 @@ cdce_handle_request(device_t dev,
 	    req->bRequest == UCDC_NCM_SET_ETHERNET_PACKET_FILTER) {
 
 		if (is_complete == 1) {
-			mtx_lock(&sc->sc_mtx);
+			lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 			sc->sc_notify_state = CDCE_NOTIFY_SPEED_CHANGE;
 			usbd_transfer_start(sc->sc_xfer[CDCE_INTR_TX]);
-			mtx_unlock(&sc->sc_mtx);
+			lockmgr(&sc->sc_lock, LK_RELEASE);
 		}
 
 		return (0);
@@ -1175,7 +1251,7 @@ cdce_ncm_fill_tx_frames(struct usb_xfer *xfer, uint8_t index)
 
 		rem = sc->sc_ncm.tx_max - offset;
 
-		IFQ_DRV_DEQUEUE(&(ifp->if_snd), m);
+		m = ifq_dequeue(&ifp->if_snd);
 
 		if (m == NULL) {
 			/* buffer not full */
@@ -1183,7 +1259,7 @@ cdce_ncm_fill_tx_frames(struct usb_xfer *xfer, uint8_t index)
 			break;
 		}
 
-		if (m->m_pkthdr.len > rem) {
+		if (m->m_pkthdr.len > (int)rem) {
 			if (n == 0) {
 				/* The frame won't fit in our buffer */
 				DPRINTFN(1, "Frame too big to be transmitted!\n");
@@ -1193,7 +1269,7 @@ cdce_ncm_fill_tx_frames(struct usb_xfer *xfer, uint8_t index)
 				continue;
 			}
 			/* Wait till next buffer becomes ready */
-			IFQ_DRV_PREPEND(&(ifp->if_snd), m);
+			ifq_prepend(&ifp->if_snd, m);
 			break;
 		}
 		usbd_m_copy_in(pc, offset, m, 0, m->m_pkthdr.len);
@@ -1226,7 +1302,7 @@ cdce_ncm_fill_tx_frames(struct usb_xfer *xfer, uint8_t index)
 
 		/* Pre-increment interface counter */
 
-		ifp->if_opackets++;
+		IFNET_STAT_INC(ifp, opackets, 1);
 	}
 
 	if (n == 0)
@@ -1367,7 +1443,7 @@ cdce_ncm_bulk_read_callback(struct usb_xfer *xfer, usb_error_t error)
 		DPRINTFN(1, "received %u bytes in %u frames\n",
 		    actlen, aframes);
 
-		if (actlen < (sizeof(sc->sc_ncm.hdr) +
+		if (actlen < (int)(sizeof(sc->sc_ncm.hdr) +
 		    sizeof(sc->sc_ncm.dpt))) {
 			DPRINTFN(1, "frame too short\n");
 			goto tr_setup;
@@ -1394,7 +1470,7 @@ cdce_ncm_bulk_read_callback(struct usb_xfer *xfer, usb_error_t error)
 			goto tr_stall;
 		}
 		temp = UGETW(sc->sc_ncm.hdr.wDptIndex);
-		if ((temp + sizeof(sc->sc_ncm.dpt)) > actlen) {
+		if ((int)(temp + sizeof(sc->sc_ncm.dpt)) > actlen) {
 			DPRINTFN(1, "invalid DPT index: 0x%04x\n", temp);
 			goto tr_stall;
 		}
@@ -1443,7 +1519,7 @@ cdce_ncm_bulk_read_callback(struct usb_xfer *xfer, usb_error_t error)
 			temp = UGETW(sc->sc_ncm.dp[x].wFrameLength);
 
 			if ((offset == 0) ||
-			    (temp < sizeof(struct ether_header)) ||
+			    (temp < (int)sizeof(struct ether_header)) ||
 			    (temp > (MCLBYTES - ETHER_ALIGN))) {
 				DPRINTFN(1, "NULL frame detected at %d\n", x);
 				m = NULL;
@@ -1455,10 +1531,10 @@ cdce_ncm_bulk_read_callback(struct usb_xfer *xfer, usb_error_t error)
 				m = NULL;
 				/* silently ignore this frame */
 				continue;
-			} else if (temp > (MHLEN - ETHER_ALIGN)) {
-				m = m_getcl(M_DONTWAIT, MT_DATA, M_PKTHDR);
+			} else if (temp > (int)(MHLEN - ETHER_ALIGN)) {
+				m = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 			} else {
-				m = m_gethdr(M_DONTWAIT, MT_DATA);
+				m = m_gethdr(M_NOWAIT, MT_DATA);
 			}
 
 			DPRINTFN(16, "frame %u, offset = %u, length = %u \n",
@@ -1466,6 +1542,7 @@ cdce_ncm_bulk_read_callback(struct usb_xfer *xfer, usb_error_t error)
 
 			/* check if we have a buffer */
 			if (m) {
+				m->m_len = m->m_pkthdr.len = temp + ETHER_ALIGN;
 				m_adj(m, ETHER_ALIGN);
 
 				usbd_copy_out(pc, offset, m->m_data, temp);

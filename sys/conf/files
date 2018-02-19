@@ -2814,6 +2814,7 @@ bus/u4b/net/usb_ethernet.c		optional uether
 bus/u4b/net/if_aue.c			optional aue uether
 bus/u4b/net/if_axe.c			optional axe uether
 bus/u4b/net/if_axge.c			optional axge uether
+bus/u4b/net/if_cdce.c			optional cdce uether
 bus/u4b/net/if_cue.c			optional cue uether
 bus/u4b/net/if_ipheth.c			optional ipheth uether
 bus/u4b/net/if_kue.c			optional kue uether
