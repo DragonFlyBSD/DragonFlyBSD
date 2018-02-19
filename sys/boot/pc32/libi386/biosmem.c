@@ -130,7 +130,9 @@ bios_getmem(void)
      *
      * Hack it for now.
      */
-    memtop = 0x100000 + bios_extmem;	/* XXX ignored */
+#if 0 /* XXX ignored */
+    memtop = 0x100000 + bios_extmem;
+#endif
     memtop = 64 * 1024 * 1024;
     heapbase = memtop - LOADER_HEAP_SIZE;
 }    
