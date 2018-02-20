@@ -238,7 +238,8 @@ srcs:
 	rm -f ${ISOROOT}/usr/src-sys.tgz
 	rm -f ${ISOROOT}/usr/src-sys.tar.bz2
 	cd ${.CURDIR}/.. && tar --exclude .git -s '/^\./src/' \
-		-cf - ./Makefile ./Makefile.inc1 ./sys | \
+		-cf - ./Makefile ./Makefile.inc1 \
+		./crypto/libressl/include ./sys | \
 		bzip2 -9 > ${ISOROOT}/usr/src-sys.tar.bz2
 .endif
 .endif
