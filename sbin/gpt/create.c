@@ -2,6 +2,8 @@
  * Copyright (c) 2002 Marcel Moolenaar
  * All rights reserved.
  *
+ * 'init' directive added by Matthew Dillon.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -28,11 +30,13 @@
  */
 
 #include <sys/types.h>
+#include <sys/stat.h>
 
 #include <err.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -45,9 +49,15 @@ static int primary_only;
 static void
 usage_create(void)
 {
+	fprintf(stderr, "usage: %s [-fp] device ...\n", getprogname());
+	exit(1);
+}
 
-	fprintf(stderr,
-	    "usage: %s [-fp] device ...\n", getprogname());
+static void
+usage_init(void)
+{
+	fprintf(stderr, "usage: %s -f [-B] device ...\n", getprogname());
+	fprintf(stderr, "\tnote: -f is mandatory for this command\n");
 	exit(1);
 }
 
@@ -208,6 +218,25 @@ create(int fd)
 	}
 }
 
+static
+void
+dosys(const char *ctl, ...)
+{
+	va_list va;
+	char *scmd;
+
+	va_start(va, ctl);
+	vasprintf(&scmd, ctl, va);
+	va_end(va);
+	printf("%s\n", scmd);
+	if (system(scmd) != 0) {
+		fprintf(stderr, "Execution failed\n");
+		free(scmd);
+		exit(1);
+	}
+	free(scmd);
+}
+
 int
 cmd_create(int argc, char *argv[])
 {
@@ -239,6 +268,127 @@ cmd_create(int argc, char *argv[])
 		create(fd);
 
 		gpt_close(fd);
+	}
+
+	return (0);
+}
+
+/*
+ * init
+ *
+ * Create a fresh gpt partition table and populate it with reasonable
+ * defaults.
+ */
+int
+cmd_init(int argc, char *argv[])
+{
+	int ch, fd;
+	int with_boot = 0;
+
+	while ((ch = getopt(argc, argv, "fIB")) != -1) {
+		switch(ch) {
+		case 'f':
+			force = 1;
+			break;
+		case 'I':
+			fprintf(stderr, "Maybe you were trying to supply "
+					"fdisk options.  This is the gpt "
+					"program\n");
+			usage_init();
+			/* NOT REACHED */
+			break;
+		case 'B':
+			with_boot = 1;
+			break;
+		default:
+			usage_init();
+			/* NOT REACHED */
+			break;
+		}
+	}
+
+	if (argc == optind) {
+		usage_init();
+		/* NOT REACHED */
+	}
+
+	while (optind < argc) {
+		const char *path = argv[optind++];
+		char *slice0;
+		char *slice1;
+
+		/*
+		 * Destroy and [re]Create the gpt
+		 */
+		fd = gpt_open(path);
+		if (fd == -1) {
+			warn("unable to open device '%s'", device_name);
+			continue;
+		}
+		do_destroy(fd);
+		gpt_close(fd);
+
+		fd = gpt_open(path);
+		if (fd == -1) {
+			warn("unable to open device '%s'", device_name);
+			continue;
+		}
+		create(fd);
+		add_defaults(fd);
+		gpt_close(fd);
+
+		/*
+		 * Setup slices
+		 */
+		if (strstr(device_name, "serno"))
+			asprintf(&slice0, "%s.s0", device_name);
+		else
+			asprintf(&slice0, "%ss0", device_name);
+
+		if (strstr(device_name, "serno"))
+			asprintf(&slice1, "%s.s1", device_name);
+		else
+			asprintf(&slice1, "%ss1", device_name);
+
+		/*
+		 * Label slice1
+		 */
+		sleep(1);
+		dosys("disklabel -r -w %s %s auto",
+		      (with_boot ? "-B" : ""),
+		      slice1);
+
+		/*
+		 * newfs_msdos slice0
+		 */
+		dosys("newfs_msdos %s", slice0);
+
+		/*
+		 * If asked to setup an EFI boot, mount the dos partition
+		 * and copy a file.
+		 *
+		 * We do not setup the dragonfly disklabel with -B
+		 */
+		if (with_boot) {
+			char *mtpt;
+
+			srandomdev();
+			asprintf(&mtpt, "/tmp/gpt%08x%08x",
+				(int)random(), (int)random());
+			if (mkdir(mtpt, 0700) < 0) {
+				fprintf(stderr, "cannot mkdir %s\n", mtpt);
+				exit(1);
+			}
+
+			dosys("mount_msdos %s %s", slice0, mtpt);
+			dosys("mkdir -p %s/efi/boot", mtpt);
+			dosys("cpdup /boot/boot1.efi %s/efi/boot/bootx64.efi",
+			      mtpt);
+			dosys("umount %s", mtpt);
+		}
+
+		free(slice0);
+		free(slice1);
 	}
 
 	return (0);

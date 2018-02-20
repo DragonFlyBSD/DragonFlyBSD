@@ -152,6 +152,26 @@ add(int fd)
 	printf("%ss%u added\n", device_name, i);
 }
 
+void
+add_defaults(int fd)
+{
+	entry = 0;
+	size = 524288;
+	if (parse_uuid("EFI System", &type) != 0) {
+		fprintf(stderr, "Unable to lookup uuid 'EFI System'\n");
+		exit(1);
+	}
+	add(fd);
+
+	entry = 1;
+	size = 0;
+	if (parse_uuid("DragonFly Label64", &type) != 0) {
+		fprintf(stderr, "Unable to lookup uuid 'DragonFly Label64'\n");
+		exit(1);
+	}
+	add(fd);
+}
+
 int
 cmd_add(int argc, char *argv[])
 {

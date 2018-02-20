@@ -40,11 +40,11 @@
 #include "gpt.h"
 
 static int recoverable;
+static int quiet;
 
 static void
 usage_destroy(void)
 {
-
 	fprintf(stderr,
 	    "usage: %s [-r] device ...\n", getprogname());
 	exit(1);
@@ -59,7 +59,10 @@ destroy(int fd)
 	sec_hdr = map_find(MAP_TYPE_SEC_GPT_HDR);
 
 	if (pri_hdr == NULL && sec_hdr == NULL) {
-		warnx("%s: error: device doesn't contain a GPT", device_name);
+		if (quiet == 0) {
+			warnx("%s: error: device doesn't contain a GPT",
+			      device_name);
+		}
 		return;
 	}
 
@@ -110,4 +113,12 @@ cmd_destroy(int argc, char *argv[])
 	}
 
 	return (0);
+}
+
+void
+do_destroy(int fd)
+{
+	quiet = 1;
+	destroy(fd);
+	quiet = 0;
 }

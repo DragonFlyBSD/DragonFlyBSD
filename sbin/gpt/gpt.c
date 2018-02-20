@@ -641,6 +641,7 @@ static struct {
 	{ cmd_create, "create" },
 	{ cmd_destroy, "destroy" },
 	{ NULL, "help" },
+	{ cmd_init, "init" },
 	{ cmd_label, "label" },
 	{ cmd_migrate, "migrate" },
 	{ cmd_recover, "recover" },

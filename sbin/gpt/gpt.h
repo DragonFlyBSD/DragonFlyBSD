@@ -81,9 +81,13 @@ int	cmd_boot(int, char *[]);
 int	cmd_create(int, char *[]);
 int	cmd_destroy(int, char *[]);
 int	cmd_label(int, char *[]);
+int	cmd_init(int, char *[]);
 int	cmd_migrate(int, char *[]);
 int	cmd_recover(int, char *[]);
 int	cmd_remove(int, char *[]);
 int	cmd_show(int, char *[]);
+
+void	add_defaults(int fd);
+void	do_destroy(int fd);
 
 #endif /* _GPT_H_ */

@@ -236,6 +236,27 @@ The
 option instructs
 .Nm
 to destroy the table in a way that it can be recovered.
+.\" ==== init ====
+.It Nm Ic init Fl f Oo Fl B Oc Ar device ...
+The
+.Ic init
+command allows the user to create a new GPT similar
+to the create command, but will also populate it with
+a boot slice (s0) and a
+.Dx
+slice (s1).
+The boot slice will be dos-formatted.
+The disklabel will be left empty and ready to edit.
+.Pp
+Due to the destructive nature of this directive, the
+.Fl f
+option must also be specified.
+.Pp
+If the
+.Fl B
+option is specified, /boot/bootx64.efi will be copied into
+the msdos slice (s0), and the disklabel will be initialized
+with -B in addition to the normal -r -w.
 .\" ==== label ====
 .It Xo
 .Nm
