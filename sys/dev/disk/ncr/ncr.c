@@ -4100,7 +4100,6 @@ ncr_action (struct cam_sim *sim, union ccb *ccb)
 		*/
 		cp->sensecmd[0]			= 0x03;
 		cp->sensecmd[1]			= ccb->ccb_h.target_lun << 5;
-		cp->sensecmd[4]			= sizeof(struct scsi_sense_data);
 		cp->sensecmd[4]			= csio->sense_len;
 		/*
 		**	sense data
