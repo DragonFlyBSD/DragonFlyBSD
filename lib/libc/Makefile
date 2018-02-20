@@ -12,7 +12,7 @@ PRECIOUSLIB=	yes
 LDFLAGS+= -nodefaultlibs
 
 #
-# Include make rules that are shared with libc_r.
+# Include make rules that are shared with libc_rtld.
 #
 .include "${.CURDIR}/Makefile.inc"
 

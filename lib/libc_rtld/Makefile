@@ -16,7 +16,7 @@ PRECIOUSLIB=	yes
 
 #
 # This is a list of syscalls that are renamed as __sys_{syscall}
-# so that libc_r can provide replacement functions.
+# so that libc_rtld can provide replacement functions.
 #
 HIDDEN_SYSCALLS= aio_suspend.o accept.o bind.o close.o connect.o dup.o dup2.o \
 	execve.o fchflags.o fchmod.o fchown.o fcntl.o \
@@ -30,6 +30,9 @@ HIDDEN_SYSCALLS= aio_suspend.o accept.o bind.o close.o connect.o dup.o dup2.o \
 	sigsuspend.o sigtimedwait.o sigwaitinfo.o socket.o \
 	socketpair.o wait4.o write.o writev.o
 
+#
+# Include make rules that are shared with libc.
+#
 .include "${.CURDIR}/../libc/Makefile.inc"
 
 .PATH:  ${.CURDIR}/../libc/inet
