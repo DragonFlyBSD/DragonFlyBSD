@@ -12,6 +12,12 @@
 +         UPGRADING DRAGONFLY FROM 5.0 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+VIRTIO_PCI REMOVED FROM KERNEL CONFIG
+-------------------------------------
+
+The "device virtio_pci" line in X86_64_GENERIC has been removed. People
+with configuration files derived from it have to remove it manually.
+
 VARIOUS 'R' COMMANDS AND DAEMONS REMOVED
 ----------------------------------------
 
