@@ -1184,10 +1184,10 @@ cdce_handle_request(device_t dev,
 	    req->bRequest == UCDC_NCM_SET_ETHERNET_PACKET_FILTER) {
 
 		if (is_complete == 1) {
-			lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
+			CDCE_LOCK(sc);
 			sc->sc_notify_state = CDCE_NOTIFY_SPEED_CHANGE;
 			usbd_transfer_start(sc->sc_xfer[CDCE_INTR_TX]);
-			lockmgr(&sc->sc_lock, LK_RELEASE);
+			CDCE_UNLOCK(sc);
 		}
 
 		return (0);
