@@ -27,7 +27,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man3/pthread_attr.3,v 1.18 2007/10/22 10:08:00 ru Exp $
 .\"
-.Dd September 26, 2016
+.Dd February 22, 2018
 .Dt PTHREAD_ATTR 3
 .Os
 .Sh NAME
@@ -67,11 +67,11 @@
 .Ft int
 .Fn pthread_attr_setstacksize "pthread_attr_t *attr" "size_t stacksize"
 .Ft int
-.Fn pthread_attr_getstacksize "const pthread_attr_t *attr" "size_t *stacksize"
+.Fn pthread_attr_getstacksize "const pthread_attr_t * restrict attr" "size_t * restrict stacksize"
 .Ft int
 .Fn pthread_attr_setguardsize "pthread_attr_t *attr" "size_t guardsize"
 .Ft int
-.Fn pthread_attr_getguardsize "const pthread_attr_t *attr" "size_t *guardsize"
+.Fn pthread_attr_getguardsize "const pthread_attr_t * restrict attr" "size_t * restrict guardsize"
 .Ft int
 .Fn pthread_attr_setstackaddr "pthread_attr_t *attr" "void *stackaddr"
 .Ft int
@@ -83,19 +83,19 @@
 .Ft int
 .Fn pthread_attr_setinheritsched "pthread_attr_t *attr" "int inheritsched"
 .Ft int
-.Fn pthread_attr_getinheritsched "const pthread_attr_t *attr" "int *inheritsched"
+.Fn pthread_attr_getinheritsched "const pthread_attr_t * restrict attr" "int * restrict inheritsched"
 .Ft int
-.Fn pthread_attr_setschedparam "pthread_attr_t *attr" "const struct sched_param *param"
+.Fn pthread_attr_setschedparam "pthread_attr_t * restrict attr" "const struct sched_param * restrict param"
 .Ft int
-.Fn pthread_attr_getschedparam "const pthread_attr_t *attr" "struct sched_param *param"
+.Fn pthread_attr_getschedparam "const pthread_attr_t * restrict attr" "struct sched_param * restrict param"
 .Ft int
 .Fn pthread_attr_setschedpolicy "pthread_attr_t *attr" "int policy"
 .Ft int
-.Fn pthread_attr_getschedpolicy "const pthread_attr_t *attr" "int *policy"
+.Fn pthread_attr_getschedpolicy "const pthread_attr_t * restrict attr" "int * restrict policy"
 .Ft int
 .Fn pthread_attr_setscope "pthread_attr_t *attr" "int contentionscope"
 .Ft int
-.Fn pthread_attr_getscope "const pthread_attr_t *attr" "int *contentionscope"
+.Fn pthread_attr_getscope "const pthread_attr_t * restrict attr" "int * restrict contentionscope"
 .Sh DESCRIPTION
 Thread attributes are used to specify parameters to
 .Fn pthread_create .

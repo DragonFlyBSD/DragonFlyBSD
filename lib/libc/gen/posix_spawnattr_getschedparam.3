@@ -34,7 +34,7 @@
 .\"
 .\" $FreeBSD: src/lib/libc/gen/posix_spawnattr_getschedparam.3,v 1.1 2008/07/28 02:22:19 davidxu Exp $
 .\"
-.Dd April 7, 2009
+.Dd February 22, 2018
 .Dt POSIX_SPAWNATTR_GETSCHEDPARAM 3
 .Os
 .Sh NAME
@@ -48,7 +48,7 @@
 .Ft int
 .Fn posix_spawnattr_getschedparam "const posix_spawnattr_t *restrict attr" "struct sched_param *restrict schedparam"
 .Ft int
-.Fn posix_spawnattr_setschedparam "posix_spawnattr_t *attr" "const struct sched_param *restrict schedparam"
+.Fn posix_spawnattr_setschedparam "posix_spawnattr_t * restrict attr" "const struct sched_param *restrict schedparam"
 .Sh DESCRIPTION
 The
 .Fn posix_spawnattr_getschedparam

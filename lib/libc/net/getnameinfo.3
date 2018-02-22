@@ -18,7 +18,7 @@
 .\"
 .\" $FreeBSD: src/lib/libc/net/getnameinfo.3,v 1.25 2007/02/28 21:28:33 bms Exp $
 .\"
-.Dd October 12, 2017
+.Dd February 22, 2018
 .Dt GETNAMEINFO 3
 .Os
 .Sh NAME
@@ -32,8 +32,8 @@
 .In netdb.h
 .Ft int
 .Fo getnameinfo
-.Fa "const struct sockaddr *sa" "socklen_t salen" "char *host"
-.Fa "size_t hostlen" "char *serv" "size_t servlen" "int flags"
+.Fa "const struct sockaddr * restrict sa" "socklen_t salen" "char * restrict host"
+.Fa "size_t hostlen" "char * restrict serv" "size_t servlen" "int flags"
 .Fc
 .Sh DESCRIPTION
 The

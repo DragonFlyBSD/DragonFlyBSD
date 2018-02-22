@@ -26,9 +26,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man3/pthread_cond_wait.3,v 1.22 2007/10/22 10:08:00 ru Exp $
-.\" $DragonFly: src/lib/libc_r/man/pthread_cond_wait.3,v 1.2 2003/06/17 04:26:48 dillon Exp $
 .\"
-.Dd July 10, 2009
+.Dd February 22, 2018
 .Dt PTHREAD_COND_WAIT 3
 .Os
 .Sh NAME
@@ -39,7 +38,7 @@
 .Sh SYNOPSIS
 .In pthread.h
 .Ft int
-.Fn pthread_cond_wait "pthread_cond_t *cond" "pthread_mutex_t *mutex"
+.Fn pthread_cond_wait "pthread_cond_t * restrict cond" "pthread_mutex_t * restrict mutex"
 .Sh DESCRIPTION
 The
 .Fn pthread_cond_wait

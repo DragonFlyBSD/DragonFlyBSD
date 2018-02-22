@@ -34,7 +34,7 @@
 .\"
 .\" $FreeBSD: src/lib/libc/gen/posix_spawnattr_getsigdefault.3,v 1.1 2008/07/28 02:22:19 davidxu Exp $
 .\"
-.Dd April 7, 2009
+.Dd February 22, 2018
 .Dt POSIX_SPAWNATTR_GETSIGDEFAULT 3
 .Os
 .Sh NAME
@@ -48,7 +48,7 @@
 .Ft int
 .Fn posix_spawnattr_getsigdefault "const posix_spawnattr_t *restrict attr" "sigset_t *restrict sigdefault"
 .Ft int
-.Fn posix_spawnattr_setsigdefault "posix_spawnattr_t *attr" "const sigset_t *restrict sigdefault"
+.Fn posix_spawnattr_setsigdefault "posix_spawnattr_t * restrict attr" "const sigset_t * restrict sigdefault"
 .Sh DESCRIPTION
 The
 .Fn posix_spawnattr_getsigdefault

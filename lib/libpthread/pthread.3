@@ -30,7 +30,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man3/pthread.3,v 1.33 2009/04/01 08:08:25 trhodes Exp $
 .\"
-.Dd February 13, 2018
+.Dd February 22, 2018
 .Dt PTHREAD 3
 .Os
 .Sh NAME
@@ -76,8 +76,8 @@ Cleanup Routines
 .It Xo
 .Ft int
 .Fo pthread_create
-.Fa "pthread_t *thread" "const pthread_attr_t *attr"
-.Fa "void *(*start_routine)(void *)" "void *arg"
+.Fa "pthread_t * restrict thread" "const pthread_attr_t * restrict attr"
+.Fa "void *(*start_routine)(void *)" "void * restrict arg"
 .Fc
 .Xc
 Creates a new thread of execution.
@@ -113,7 +113,7 @@ Get the current thread's level of concurrency.
 Access a specific thread's CPU-time clock.
 .It Xo
 .Ft int
-.Fn pthread_getschedparam "pthread_t thread" "int *policy" "struct sched_param *param"
+.Fn pthread_getschedparam "pthread_t thread" "int * restrict policy" "struct sched_param * restrict param"
 .Xc
 Get the scheduling parameters of a specific thread.
 .It Xo
@@ -158,7 +158,7 @@ Set the current thread's level of concurrency.
 Set the scheduling parameters for a specific thread.
 .It Xo
 .Ft void
-.Fn pthread_sigmask "int how" "const sigset_t *set" "sigset_t *oset"
+.Fn pthread_sigmask "int how" "const sigset_t * restrict set" "sigset_t * restrict oset"
 .Xc
 Examine and/or change the calling thread's signal mask.
 .It Xo
@@ -182,42 +182,42 @@ Destroy a thread attributes object.
 .It Xo
 .Ft int
 .Fo pthread_attr_getguardsize
-.Fa "const pthread_attr_t *attr" "size_t *guardsize"
+.Fa "const pthread_attr_t * restrict attr" "size_t * restrict guardsize"
 .Fc
 .Xc
 Get the guard size attribute from a thread attributes object.
 .It Xo
 .Ft int
 .Fo pthread_attr_getinheritsched
-.Fa "const pthread_attr_t *attr" "int *inheritsched"
+.Fa "const pthread_attr_t * restrict attr" "int * restrict inheritsched"
 .Fc
 .Xc
 Get the inherit scheduling attribute from a thread attributes object.
 .It Xo
 .Ft int
 .Fo pthread_attr_getschedparam
-.Fa "const pthread_attr_t *attr" "struct sched_param *param"
+.Fa "const pthread_attr_t * restrict attr" "struct sched_param * restrict param"
 .Fc
 .Xc
 Get the scheduling parameter attribute from a thread attributes object.
 .It Xo
 .Ft int
-.Fn pthread_attr_getschedpolicy "const pthread_attr_t *attr" "int *policy"
+.Fn pthread_attr_getschedpolicy "const pthread_attr_t * restrict attr" "int * restrict policy"
 .Xc
 Get the scheduling policy attribute from a thread attributes object.
 .It Xo
 .Ft int
-.Fn pthread_attr_getscope "const pthread_attr_t *attr" "int *contentionscope"
+.Fn pthread_attr_getscope "const pthread_attr_t * restrict attr" "int * restrict contentionscope"
 .Xc
 Get the contention scope attribute from a thread attributes object.
 .It Xo
 .Ft int
-.Fn pthread_attr_getstack "const pthread_attr_t *attr" "void **stackaddr" "size_t *stacksize"
+.Fn pthread_attr_getstack "const pthread_attr_t * restrict attr" "void ** restrict stackaddr" "size_t * restrict stacksize"
 .Xc
 Get the stack attributes from a thread attributes object.
 .It Xo
 .Ft int
-.Fn pthread_attr_getstacksize "const pthread_attr_t *attr" "size_t *stacksize"
+.Fn pthread_attr_getstacksize "const pthread_attr_t * restrict attr" "size_t * restrict stacksize"
 .Xc
 Get the stack size attribute from a thread attributes object.
 .It Xo
@@ -250,7 +250,7 @@ Set the inherit scheduling attribute in a thread attributes object.
 .It Xo
 .Ft int
 .Fo pthread_attr_setschedparam
-.Fa "pthread_attr_t *attr" "const struct sched_param *param"
+.Fa "pthread_attr_t * restrict attr" "const struct sched_param * restrict param"
 .Fc
 .Xc
 Set the scheduling parameter attribute in a thread attributes object.
@@ -294,22 +294,22 @@ Set the detach state in a thread attributes object.
 Destroy a mutex attributes object.
 .It Xo
 .Ft int
-.Fn pthread_mutexattr_getprioceiling "pthread_mutexattr_t *attr" "int *ceiling"
+.Fn pthread_mutexattr_getprioceiling "pthread_mutexattr_t * restrict attr" "int * restrict ceiling"
 .Xc
 Obtain priority ceiling attribute of mutex attribute object.
 .It Xo
 .Ft int
-.Fn pthread_mutexattr_getprotocol "pthread_mutexattr_t *attr" "int *protocol"
+.Fn pthread_mutexattr_getprotocol "pthread_mutexattr_t * restrict attr" "int * restrict protocol"
 .Xc
 Obtain protocol attribute of mutex attribute object.
 .It Xo
 .Ft int
-.Fn pthread_mutexattr_getpshared "const pthread_mutexattr_t *attr" "int *pshared"
+.Fn pthread_mutexattr_getpshared "const pthread_mutexattr_t * restrict attr" "int * restrict pshared"
 .Xc
 Get the process shared setting from a mutex attributes object.
 .It Xo
 .Ft int
-.Fn pthread_mutexattr_gettype "pthread_mutexattr_t *attr" "int *type"
+.Fn pthread_mutexattr_gettype "pthread_mutexattr_t * restrict attr" "int * restrict type"
 .Xc
 Obtain the mutex type attribute in the specified mutex attributes object.
 .It Xo
@@ -344,13 +344,13 @@ Set the mutex type attribute that is used when a mutex is created.
 Destroy a mutex.
 .It Xo
 .Ft int
-.Fn pthread_mutex_getprioceiling "const pthread_mutex_t *mutex" "int *ceiling"
+.Fn pthread_mutex_getprioceiling "const pthread_mutex_t * restrict mutex" "int * restrict ceiling"
 .Xc
 Get the priority ceiling of a mutex.
 .It Xo
 .Ft int
 .Fo pthread_mutex_init
-.Fa "pthread_mutex_t *mutex" "const pthread_mutexattr_t *attr"
+.Fa "pthread_mutex_t * restrict mutex" "const pthread_mutexattr_t * restrict attr"
 .Fc
 .Xc
 Initialize a mutex with specified attributes.
@@ -361,13 +361,13 @@ Initialize a mutex with specified attributes.
 Lock a mutex and block until it becomes available.
 .It Xo
 .Ft int
-.Fn pthread_mutex_setprioceiling "pthread_mutex_t *mutex" "int ceiling" "int *old_ceiling"
+.Fn pthread_mutex_setprioceiling "pthread_mutex_t * restrict mutex" "int ceiling" "int * restrict old_ceiling"
 .Xc
 Set the priority ceiling of a mutex.
 .It Xo
 .Ft int
 .Fo pthread_mutex_timedlock
-.Fa "pthread_mutex_t *mutex" "const struct timespec *abstime"
+.Fa "pthread_mutex_t * restrict mutex" "const struct timespec * restrict abstime"
 .Fc
 .Xc
 Lock a mutex and block until it becomes available or until the timeout expires.
@@ -392,7 +392,7 @@ Unlock a mutex.
 Destroy a condition variable attributes object.
 .It Xo
 .Ft int
-.Fn pthread_condattr_getclock "const pthread_condattr_t *attr" "clockid_t *clock_id"
+.Fn pthread_condattr_getclock "const pthread_condattr_t * restrict attr" "clockid_t * restrict clock_id"
 .Xc
 Get the clock selection attribute from a condition variable attributes object.
 .It Xo
@@ -402,7 +402,7 @@ Get the clock selection attribute from a condition variable attributes object.
 Initialize a condition variable attributes object with default values.
 .It Xo
 .Ft int
-.Fn pthread_condattr_getpshared "const pthread_condattr_t *attr" "int *pshared"
+.Fn pthread_condattr_getpshared "const pthread_condattr_t * restrict attr" "int * restrict pshared"
 .Xc
 Get the process shared setting from a condition variable attributes object.
 .It Xo
@@ -427,7 +427,7 @@ Unblock all threads currently blocked on the specified condition variable.
 Destroy a condition variable.
 .It Xo
 .Ft int
-.Fn pthread_cond_init "pthread_cond_t *cond" "const pthread_condattr_t *attr"
+.Fn pthread_cond_init "pthread_cond_t * restrict cond" "const pthread_condattr_t * restrict attr"
 .Xc
 Initialize a condition variable with specified attributes.
 .It Xo
@@ -438,15 +438,15 @@ Unblock at least one of the threads blocked on the specified condition variable.
 .It Xo
 .Ft int
 .Fo pthread_cond_timedwait
-.Fa "pthread_cond_t *cond" "pthread_mutex_t *mutex"
-.Fa "const struct timespec *abstime"
+.Fa "pthread_cond_t * restrict cond" "pthread_mutex_t * restrict mutex"
+.Fa "const struct timespec * restrict abstime"
 .Fc
 .Xc
 Wait no longer than the specified time for a condition
 and lock the specified mutex.
 .It Xo
 .Ft int
-.Fn pthread_cond_wait "pthread_cond_t *" "pthread_mutex_t *mutex"
+.Fn pthread_cond_wait "pthread_cond_t * restrict cond" "pthread_mutex_t * restrict mutex"
 .Xc
 Wait for a condition and lock the specified mutex.
 .El
@@ -460,7 +460,7 @@ Destroy a read/write lock object.
 .It Xo
 .Ft int
 .Fo pthread_rwlock_init
-.Fa "pthread_rwlock_t *lock" "const pthread_rwlockattr_t *attr"
+.Fa "pthread_rwlock_t * restrict lock" "const pthread_rwlockattr_t * restrict attr"
 .Fc
 .Xc
 Initialize a read/write lock object.
@@ -472,12 +472,12 @@ Lock a read/write lock for reading, blocking until the lock can be
 acquired.
 .It Xo
 .Ft int
-.Fn pthread_rwlock_timedrdlock "pthread_rwlock_t *lock" "const struct timespec *abstime"
+.Fn pthread_rwlock_timedrdlock "pthread_rwlock_t * restrict lock" "const struct timespec * restrict abstime"
 .Xc
 Lock a read/write lock for reading with a timeout.
 .It Xo
 .Ft int
-.Fn pthread_rwlock_timedwrlock "pthread_rwlock_t *lock" "const struct timespec *abstime"
+.Fn pthread_rwlock_timedwrlock "pthread_rwlock_t * restrict lock" "const struct timespec * restrict abstime"
 .Xc
 Lock a read/write lock for writing with a timeout.
 .It Xo
@@ -511,7 +511,7 @@ Destroy a read/write lock attribute object.
 .It Xo
 .Ft int
 .Fo pthread_rwlockattr_getpshared
-.Fa "const pthread_rwlockattr_t *attr" "int *pshared"
+.Fa "const pthread_rwlockattr_t * restrict attr" "int * restrict pshared"
 .Fc
 .Xc
 Retrieve the process shared setting for the read/write lock attribute
@@ -564,7 +564,7 @@ Unlock a spin lock object.
 Delete a barrier and its resources.
 .It Xo
 .Ft int
-.Fn pthread_barrier_init "pthread_barrier_t *barrier" "const pthread_barrierattr_t *attr" "unsigned count"
+.Fn pthread_barrier_init "pthread_barrier_t * restrict barrier" "const pthread_barrierattr_t * restrict attr" "unsigned count"
 .Xc
 Initialize a barrier with the specified attribute object.
 .It Xo
@@ -579,7 +579,7 @@ Block the calling threads until the barrier count is reached.
 Destroy a barrier attribute object.
 .It Xo
 .Ft int
-.Fn pthread_barrierattr_getpshared "const pthread_barrierattr_t *attr" "int *pshared"
+.Fn pthread_barrierattr_getpshared "const pthread_barrierattr_t * restrict attr" "int * restrict pshared"
 .Xc
 Get the process-shared attribute from a barrier attribute object.
 .It Xo

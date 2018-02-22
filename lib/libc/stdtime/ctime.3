@@ -30,7 +30,7 @@
 .\"     From: @(#)ctime.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: head/contrib/tzcode/stdtime/ctime.3 165903 2007-01-09 00:28:16Z imp $
 .\"
-.Dd November 19, 2013
+.Dd February 22, 2018
 .Dt CTIME 3
 .Os
 .Sh NAME
@@ -68,11 +68,11 @@
 .Ft char *
 .Fn ctime_r "const time_t *clock" "char *buf"
 .Ft struct tm *
-.Fn localtime_r "const time_t *clock" "struct tm *result"
+.Fn localtime_r "const time_t * restrict clock" "struct tm * restrict result"
 .Ft struct tm *
-.Fn gmtime_r "const time_t *clock" "struct tm *result"
+.Fn gmtime_r "const time_t * restrict clock" "struct tm * restrict result"
 .Ft char *
-.Fn asctime_r "const struct tm *tm" "char *buf"
+.Fn asctime_r "const struct tm * restrict tm" "char * restrict buf"
 .Sh DESCRIPTION
 The functions
 .Fn ctime ,

@@ -31,7 +31,7 @@
 .\"
 .\" $FreeBSD: src/lib/libc/gen/dlopen.3 211397 2010-08-16 15:18:30Z joel $
 .\"
-.Dd October 10, 2014
+.Dd February 22, 2018
 .Dt DLVSYM 3
 .Os
 .Sh NAME
@@ -43,7 +43,7 @@ It is included in every dynamically linked program automatically.
 .Sh SYNOPSIS
 .In dlfcn.h
 .Ft "void *"
-.Fn dlvsym "void *handle" "const char *name" "const char *version"
+.Fn dlvsym "void * restrict handle" "const char * restrict name" "const char * restrict version"
 .Sh DESCRIPTION
 The
 .Fn dlvsym

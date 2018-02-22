@@ -31,9 +31,8 @@
 .\"
 .\"     @(#)fputs.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdio/fputs.3,v 1.14 2007/04/19 14:01:04 phk Exp $
-.\" $DragonFly: src/lib/libc/stdio/fputs.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
 .\"
-.Dd June 4, 1993
+.Dd February 22, 2018
 .Dt FPUTS 3
 .Os
 .Sh NAME
@@ -45,7 +44,7 @@
 .Sh SYNOPSIS
 .In stdio.h
 .Ft int
-.Fn fputs "const char *str" "FILE *stream"
+.Fn fputs "const char * restrict str" "FILE * restrict stream"
 .Ft int
 .Fn puts "const char *str"
 .Sh DESCRIPTION

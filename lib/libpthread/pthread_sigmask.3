@@ -26,8 +26,8 @@
 .\" EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man3/pthread_sigmask.3,v 1.14 2007/10/22 10:08:01 ru Exp $
-.\" $DragonFly: src/lib/libc_r/man/pthread_sigmask.3,v 1.3 2007/09/08 20:50:50 swildner Exp $
-.Dd July 10, 2009
+.\"
+.Dd February 22, 2018
 .Dt PTHREAD_SIGMASK 3
 .Os
 .Sh NAME
@@ -39,7 +39,7 @@
 .In pthread.h
 .In signal.h
 .Ft int
-.Fn pthread_sigmask "int how" "const sigset_t *set" "sigset_t *oset"
+.Fn pthread_sigmask "int how" "const sigset_t * restrict set" "sigset_t * restrict oset"
 .Sh DESCRIPTION
 The
 .Fn pthread_sigmask

@@ -34,7 +34,7 @@
 .\"
 .\" $FreeBSD: src/lib/libc/gen/posix_spawn_file_actions_addopen.3,v 1.2 2008/07/28 09:36:56 ed Exp $
 .\"
-.Dd April 7, 2009
+.Dd February 22, 2018
 .Dt POSIX_SPAWN_FILE_ACTIONS_ADDOPEN 3
 .Os
 .Sh NAME
@@ -47,7 +47,7 @@
 .Sh SYNOPSIS
 .In spawn.h
 .Ft int
-.Fn posix_spawn_file_actions_addopen "posix_spawn_file_actions_t * file_actions" "int fildes" "const char *restrict path" "int oflag" "mode_t mode"
+.Fn posix_spawn_file_actions_addopen "posix_spawn_file_actions_t * restrict file_actions" "int fildes" "const char * restrict path" "int oflag" "mode_t mode"
 .Ft int
 .Fn posix_spawn_file_actions_adddup2 "posix_spawn_file_actions_t * file_actions" "int fildes" "int newfildes"
 .Ft int

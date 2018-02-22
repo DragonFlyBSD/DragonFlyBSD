@@ -28,7 +28,7 @@
 .\"     @(#)sigaltstack.2	8.2 (Berkeley) 5/1/95
 .\" $FreeBSD: src/lib/libc/sys/sigaltstack.2,v 1.11.2.7 2002/09/15 00:32:41 archie Exp $
 .\"
-.Dd January 27, 2015
+.Dd February 22, 2018
 .Dt SIGALTSTACK 2
 .Os
 .Sh NAME
@@ -46,7 +46,7 @@ typedef struct sigaltstack {
 } stack_t;
 .Ed
 .Ft int
-.Fn sigaltstack "const stack_t *ss" "stack_t *oss"
+.Fn sigaltstack "const stack_t * restrict ss" "stack_t * restrict oss"
 .Sh DESCRIPTION
 .Fn Sigaltstack
 allows users to define an alternate stack on which signals

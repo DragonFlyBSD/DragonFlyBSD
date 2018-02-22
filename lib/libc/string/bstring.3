@@ -30,7 +30,7 @@
 .\"     @(#)bstring.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: head/lib/libc/string/bstring.3 251069 2013-05-28 20:57:40Z emaste $
 .\"
-.Dd June 4, 1993
+.Dd February 22, 2018
 .Dt BSTRING 3
 .Os
 .Sh NAME
@@ -59,9 +59,9 @@
 .Ft int
 .Fn memcmp "const void *b1" "const void *b2" "size_t len"
 .Ft void *
-.Fn memccpy "void *dst" "const void *src" "int c" "size_t len"
+.Fn memccpy "void * restrict dst" "const void * restrict src" "int c" "size_t len"
 .Ft void *
-.Fn memcpy "void *dst" "const void *src" "size_t len"
+.Fn memcpy "void * restrict dst" "const void * restrict src" "size_t len"
 .Ft void *
 .Fn memmove "void *dst" "const void *src" "size_t len"
 .Ft void *

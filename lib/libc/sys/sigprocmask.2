@@ -27,9 +27,8 @@
 .\"
 .\"	@(#)sigprocmask.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/sigprocmask.2,v 1.8.2.5 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/sigprocmask.2,v 1.4 2007/09/08 20:50:50 swildner Exp $
 .\"
-.Dd June 4, 1993
+.Dd February 22, 2018
 .Dt SIGPROCMASK 2
 .Os
 .Sh NAME
@@ -40,7 +39,7 @@
 .Sh SYNOPSIS
 .In signal.h
 .Ft int
-.Fn sigprocmask "int how" "const sigset_t *set" "sigset_t *oset"
+.Fn sigprocmask "int how" "const sigset_t * restrict set" "sigset_t * restrict oset"
 .Sh DESCRIPTION
 The
 .Fn sigprocmask

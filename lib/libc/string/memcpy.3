@@ -32,7 +32,7 @@
 .\"     @(#)memcpy.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: head/lib/libc/string/memcpy.3 251069 2013-05-28 20:57:40Z emaste $
 .\"
-.Dd June 4, 1993
+.Dd February 22, 2018
 .Dt MEMCPY 3
 .Os
 .Sh NAME
@@ -43,7 +43,7 @@
 .Sh SYNOPSIS
 .In string.h
 .Ft void *
-.Fn memcpy "void *dst" "const void *src" "size_t len"
+.Fn memcpy "void * restrict dst" "const void * restrict src" "size_t len"
 .Ft void *
 .Fn mempcpy "void *dst" "const void *src" "size_t len"
 .Sh DESCRIPTION

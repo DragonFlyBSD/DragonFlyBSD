@@ -17,9 +17,8 @@
 .\" PERFORMANCE OF THIS SOFTWARE.
 .\"
 .\" $FreeBSD: src/lib/libc/net/getaddrinfo.3,v 1.36 2009/01/06 13:10:15 danger Exp $
-.\" $DragonFly: src/lib/libc/net/getaddrinfo.3,v 1.7 2008/05/22 06:50:14 hasso Exp $
 .\"
-.Dd January 6, 2009
+.Dd February 22, 2018
 .Dt GETADDRINFO 3
 .Os
 .Sh NAME
@@ -34,8 +33,8 @@
 .In netdb.h
 .Ft int
 .Fo getaddrinfo
-.Fa "const char *hostname" "const char *servname"
-.Fa "const struct addrinfo *hints" "struct addrinfo **res"
+.Fa "const char * restrict hostname" "const char * restrict servname"
+.Fa "const struct addrinfo * restrict hints" "struct addrinfo ** restrict res"
 .Fc
 .Ft void
 .Fn freeaddrinfo "struct addrinfo *ai"

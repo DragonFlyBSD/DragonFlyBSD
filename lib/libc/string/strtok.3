@@ -44,7 +44,7 @@
 .\"     @(#)strtok.3	8.2 (Berkeley) 2/3/94
 .\" $FreeBSD: head/lib/libc/string/strtok.3 251069 2013-05-28 20:57:40Z emaste $
 .\"
-.Dd November 27, 1998
+.Dd February 22, 2018
 .Dt STRTOK 3
 .Os
 .Sh NAME
@@ -55,9 +55,9 @@
 .Sh SYNOPSIS
 .In string.h
 .Ft char *
-.Fn strtok "char *str" "const char *sep"
+.Fn strtok "char * restrict str" "const char * restrict sep"
 .Ft char *
-.Fn strtok_r "char *str" "const char *sep" "char **last"
+.Fn strtok_r "char * restrict str" "const char * restrict sep" "char ** restrict last"
 .Sh DESCRIPTION
 .Bf -symbolic
 This interface is obsoleted by
