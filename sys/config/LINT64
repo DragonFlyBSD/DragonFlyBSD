@@ -1952,6 +1952,11 @@ device		axe
 # ASIX Electronics AX88178A/AX88179 USB 2.0/3.0 gigabit ethernet driver.
 device		axge
 #
+# Devices which communicate using Ethernet over USB, particularly
+# Communication Device Class (CDC) Ethernet specification. Supports
+# Sharp Zaurus PDAs, some DOCSIS cable modems and so on.
+device		cdce
+#
 # CATC USB-EL1201A USB ethernet. Supports the CATC Netmate
 # and Netmate II, and the Belkin F5U111.
 device		cue
