@@ -160,7 +160,7 @@ typedef struct okeymap okeymap_t;
 #define META		0x84		/* meta key			*/
 #define RBT		0x85		/* boot machine			*/
 #define DBG		0x86		/* call debugger		*/
-#define SUSP		0x87		/* suspend power (APM)		*/
+#define SUSP		0x87		/* suspend power		*/
 #define SPSC		0x88		/* toggle splash/text screen	*/
 
 #define F_ACC		DGRA		/* first accent key		*/
@@ -182,7 +182,7 @@ typedef struct okeymap okeymap_t;
 #define DCAR		0x97		/* caron			*/
 #define L_ACC		DCAR		/* last accent key		*/
 
-#define STBY		0x98		/* Go into standby mode (apm)   */
+#define STBY		0x98		/* Go into standby mode		*/
 #define PREV		0x99		/* switch to previous screen 	*/
 #define PNC		0x9a		/* force system panic */
 #define LSHA		0x9b		/* left shift key / alt lock	*/

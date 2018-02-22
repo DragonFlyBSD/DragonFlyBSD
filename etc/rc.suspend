@@ -27,7 +27,7 @@
 # $FreeBSD: src/etc/rc.suspend,v 1.6 2004/01/21 03:03:40 njl Exp $
 #
 
-# sample run command file for APM Suspend Event
+# sample run command file for ACPI Suspend Event
 
 if [ $# -ne 2 ]; then
 	echo "Usage: $0 [acpi] [standby,suspend|1-5]"

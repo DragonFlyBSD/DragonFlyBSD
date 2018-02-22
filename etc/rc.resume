@@ -27,7 +27,7 @@
 # $FreeBSD: src/etc/rc.resume,v 1.9 2008/07/21 22:55:40 thompsa Exp $
 #
 
-# sample run command file for APM Resume Event
+# sample run command file for ACPI Resume Event
 
 if [ $# -ne 2 ]; then
 	echo "Usage: $0 [acpi] [standby,suspend|1-4]"
