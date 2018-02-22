@@ -50,8 +50,6 @@
 
 #ifndef SC_NO_SYSMOUSE
 
-#define SC_MOUSE 	128		/* minor number */
-
 static d_open_t		smopen;
 static d_close_t	smclose;
 static d_ioctl_t	smioctl;
@@ -83,11 +81,6 @@ smopen(struct dev_open_args *ap)
 
 	DPRINTF(5, ("smopen: dev:%d,%d, vty:%d\n",
 		major(dev), minor(dev), SC_VTY(dev)));
-
-#if 0
-	if (SC_VTY(dev) != SC_MOUSE)
-		return ENXIO;
-#endif
 
 	lwkt_gettoken(&tty_token);
 	tp = dev->si_tty = ttymalloc(dev->si_tty);
@@ -285,8 +278,7 @@ sm_attach_mouse(void *unused)
 {
 	cdev_t dev;
 
-	dev = make_dev(&sm_ops, SC_MOUSE, UID_ROOT, GID_WHEEL,
-		       0600, "sysmouse");
+	dev = make_dev(&sm_ops, 0, UID_ROOT, GID_WHEEL, 0600, "sysmouse");
 	/* sysmouse doesn't have scr_stat */
 }
 
