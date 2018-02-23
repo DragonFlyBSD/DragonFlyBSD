@@ -30,7 +30,7 @@
 .\"     @(#)string.3	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/lib/libc/string/string.3,v 1.14 2007/01/09 00:28:12 imp Exp $
 .\"
-.Dd February 22, 2018
+.Dd February 23, 2018
 .Dt STRING 3
 .Os
 .Sh NAME
@@ -69,7 +69,7 @@
 .Fn stpncpy "char * restrict dst" "const char * restrict src" "size_t count"
 .Ft char *
 .Fn strcat "char * restrict s" "const char * restrict append"
-.Ft char *
+.Ft size_t
 .Fn strlcat "char * restrict dst" "const char * restrict src" "size_t count"
 .Ft char *
 .Fn strncat "char * restrict s" "const char * restrict append" "size_t count"
@@ -87,7 +87,7 @@
 .Fn strncasecmp "const char *s1" "const char *s2" "size_t count"
 .Ft char *
 .Fn strcpy "char * restrict dst" "const char * restrict src"
-.Ft char *
+.Ft size_t
 .Fn strlcpy "char * restrict dst" "const char * restrict src" "size_t count"
 .Ft char *
 .Fn strncpy "char * restrict dst" "const char * restrict src" "size_t count"
