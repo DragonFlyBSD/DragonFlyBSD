@@ -1,6 +1,6 @@
 # $FreeBSD: src/lib/libc/Makefile.inc,v 1.5 1999/08/27 23:58:06 peter Exp $
 #
-# This file contains make rules that are shared by libc and libc_r.
+# This file contains make rules that are shared by libc and libc_rtld.
 #
 # Define (empty) variables so that make doesn't give substitution
 # errors if the included makefiles don't change these:
