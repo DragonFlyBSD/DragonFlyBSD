@@ -818,6 +818,7 @@ ng_iface_rcvdata(hook_p hook, item_p item)
 	if (harvest.point_to_point)
 		random_harvest(m, 16, 3, 0, RANDOM_NET);
 #endif
+	m->m_flags &= ~M_HASH;
 	netisr_queue(isr, m);
 	return (0);
 }

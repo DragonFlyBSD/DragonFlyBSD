@@ -121,6 +121,7 @@ ngipi_rcvdata(hook_p hook, item_p item)
 
 	NGI_GET_M(item, m);
 	NG_FREE_ITEM(item);
+	m->m_flags &= ~M_HASH;
 	netisr_queue(NETISR_IP, m);
 	return 0;
 }
