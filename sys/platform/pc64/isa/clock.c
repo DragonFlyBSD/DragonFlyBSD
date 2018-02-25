@@ -137,6 +137,12 @@ TUNABLE_INT("hw.i8254.intr_disable", &i8254_intr_disable);
 static int calibrate_timers_with_rtc = 0;
 TUNABLE_INT("hw.calibrate_timers_with_rtc", &calibrate_timers_with_rtc);
 
+static int calibrate_tsc_fast = 1;
+TUNABLE_INT("hw.calibrate_tsc_fast", &calibrate_tsc_fast);
+
+static int calibrate_test;
+TUNABLE_INT("hw.tsc_calibrate_test", &calibrate_test);
+
 static struct callout sysbeepstop_ch;
 
 static sysclock_t i8254_cputimer_count(void);
@@ -764,6 +770,91 @@ timer_restore(void)
 	crit_exit();
 }
 
+#define MAX_MEASURE_RETRIES	100
+
+static u_int64_t
+do_measure(u_int64_t timer_latency, u_int64_t *latency, sysclock_t *time,
+    int *retries)
+{
+	u_int64_t tsc1, tsc2;
+	u_int64_t threshold;
+	sysclock_t val;
+	int cnt = 0;
+
+	do {
+		if (cnt > MAX_MEASURE_RETRIES/2)
+			threshold = timer_latency << 1;
+		else
+			threshold = timer_latency + (timer_latency >> 2);
+
+		cnt++;
+		tsc1 = rdtsc_ordered();
+		val = sys_cputimer->count();
+		tsc2 = rdtsc_ordered();
+	} while (timer_latency > 0 && cnt < MAX_MEASURE_RETRIES &&
+	    tsc2 - tsc1 > threshold);
+
+	*retries = cnt - 1;
+	*latency = tsc2 - tsc1;
+	*time = val;
+	return tsc1;
+}
+
+static u_int64_t
+do_calibrate_cputimer(u_int usecs, u_int64_t timer_latency)
+{
+	if (calibrate_tsc_fast) {
+		u_int64_t old_tsc1, start_lat1, new_tsc1, end_lat1;
+		u_int64_t old_tsc2, start_lat2, new_tsc2, end_lat2;
+		u_int64_t freq1, freq2;
+		sysclock_t start1, end1, start2, end2;
+		int retries1, retries2, retries3, retries4;
+
+		DELAY(1000);
+		old_tsc1 = do_measure(timer_latency, &start_lat1, &start1,
+		    &retries1);
+		DELAY(20000);
+		old_tsc2 = do_measure(timer_latency, &start_lat2, &start2,
+		    &retries2);
+		DELAY(usecs);
+		new_tsc1 = do_measure(timer_latency, &end_lat1, &end1,
+		    &retries3);
+		DELAY(20000);
+		new_tsc2 = do_measure(timer_latency, &end_lat2, &end2,
+		    &retries4);
+
+		old_tsc1 += start_lat1;
+		old_tsc2 += start_lat2;
+		freq1 = (new_tsc1 - old_tsc1) + (start_lat1 + end_lat1) / 2;
+		freq2 = (new_tsc2 - old_tsc2) + (start_lat2 + end_lat2) / 2;
+		end1 -= start1;
+		end2 -= start2;
+		/* This should in practice be safe from overflows. */
+		freq1 = (freq1 * sys_cputimer->freq) / end1;
+		freq2 = (freq2 * sys_cputimer->freq) / end2;
+		if (calibrate_test && (retries1 > 0 || retries2 > 0)) {
+			kprintf("%s: retries: %d, %d, %d, %d\n",
+			    __func__, retries1, retries2, retries3, retries4);
+		}
+		if (calibrate_test) {
+			kprintf("%s: freq1=%ju freq2=%ju avg=%ju\n",
+			    __func__, freq1, freq2, (freq1 + freq2) / 2);
+		}
+		return (freq1 + freq2) / 2;
+	} else {
+		u_int64_t old_tsc, new_tsc;
+		u_int64_t freq;
+
+		old_tsc = rdtsc_ordered();
+		DELAY(usecs);
+		new_tsc = rdtsc();
+		freq = new_tsc - old_tsc;
+		/* This should in practice be safe from overflows. */
+		freq = (freq * 1000 * 1000) / usecs;
+		return freq;
+	}
+}
+
 /*
  * Initialize 8254 timer 0 early so that it can be used in DELAY().
  */
@@ -892,26 +983,64 @@ startrtclock(void)
 
 skip_rtc_based:
 	if (tsc_present && tsc_frequency == 0) {
-		u_int64_t old_tsc, new_tsc;
 		u_int cnt;
+		u_int64_t cputime_latency_tsc = 0, max = 0, min = 0;
+		int i;
 
-		if (sys_cputimer->freq >= 10000000)
-			cnt = 200000;
-		else
+		for (i = 0; i < 10; i++) {
+			/* Warm up */
+			(void)sys_cputimer->count();
+		}
+		for (i = 0; i < 100; i++) {
+			u_int64_t old_tsc, new_tsc;
+
+			old_tsc = rdtsc_ordered();
+			(void)sys_cputimer->count();
+			new_tsc = rdtsc_ordered();
+			cputime_latency_tsc += (new_tsc - old_tsc);
+			if (max < (new_tsc - old_tsc))
+				max = new_tsc - old_tsc;
+			if (min == 0 || min > (new_tsc - old_tsc))
+				min = new_tsc - old_tsc;
+		}
+		cputime_latency_tsc /= 100;
+		kprintf(
+		    "Timer latency (in TSC ticks): %lu min=%lu max=%lu\n",
+		    cputime_latency_tsc, min, max);
+		/* XXX Instead of this, properly filter out outliers. */
+		cputime_latency_tsc = min;
+
+		if (calibrate_test > 0) {
+			u_int64_t values[20], avg = 0;
+			for (i = 1; i <= 20; i++) {
+				u_int64_t freq;
+
+				freq = do_calibrate_cputimer(i * 100 * 1000,
+				    cputime_latency_tsc);
+				values[i - 1] = freq;
+			}
+			/* Compute an average TSC for the 1s to 2s delays. */
+			for (i = 10; i < 20; i++)
+				avg += values[i];
+			avg /= 10;
+			for (i = 0; i < 20; i++) {
+				kprintf("%ums: %lu (Diff from average: %ld)\n",
+				    (i + 1) * 100, values[i],
+				    (int64_t)(values[i] - avg));
+			}
+		}
+
+		if (calibrate_tsc_fast > 0) {
+			/* HPET would typically be >10MHz */
+			if (sys_cputimer->freq >= 10000000)
+				cnt = 200000;
+			else
+				cnt = 500000;
+		} else {
 			cnt = 1000000;
+		}
 
-		/*
-		 * Calibration of the i586 clock relative to the mc146818A
-		 * clock failed.  Do a less accurate calibration relative
-		 * to the i8254 clock.
-		 */
-		old_tsc = rdtsc();
-
-		DELAY(cnt);
-		new_tsc = rdtsc();
-		tsc_frequency = new_tsc - old_tsc;
-		if (sys_cputimer->freq >= 10000000)
-			tsc_frequency *= 5;
+		tsc_frequency = do_calibrate_cputimer(cnt, cputime_latency_tsc);
 		if (bootverbose && calibrate_timers_with_rtc) {
 			kprintf("TSC clock: %jd Hz (Method B)\n",
 			    (intmax_t)tsc_frequency);

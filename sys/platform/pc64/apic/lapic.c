@@ -65,6 +65,12 @@ TUNABLE_INT("hw.lapic_timer_enable", &lapic_timer_enable);
 static int	lapic_timer_tscdeadline = 1;
 TUNABLE_INT("hw.lapic_timer_tscdeadline", &lapic_timer_tscdeadline);
 
+static int	lapic_calibrate_test = 0;
+TUNABLE_INT("hw.lapic_calibrate_test", &lapic_calibrate_test);
+
+static int	lapic_calibrate_fast = 1;
+TUNABLE_INT("hw.lapic_calibrate_fast", &lapic_calibrate_fast);
+
 static void	lapic_timer_tscdlt_reload(struct cputimer_intr *, sysclock_t);
 static void	lapic_timer_intr_reload(struct cputimer_intr *, sysclock_t);
 static void	lapic_timer_intr_enable(struct cputimer_intr *);
@@ -420,10 +426,90 @@ lapic_scale_to_tsc(unsigned value, unsigned scale)
 	return val;
 }
 
+#define MAX_MEASURE_RETRIES	100
+
+static u_int64_t
+do_tsc_calibration(u_int us, u_int64_t apic_delay_tsc)
+{
+	u_int64_t old_tsc1, old_tsc2, new_tsc1, new_tsc2;
+	u_int64_t diff, count;
+	u_int64_t a;
+	u_int32_t start, end;
+	int retries1 = 0, retries2 = 0;
+
+retry1:
+	lapic_timer_oneshot_quick(APIC_TIMER_MAX_COUNT);
+	old_tsc1 = rdtsc_ordered();
+	start = lapic->ccr_timer;
+	old_tsc2 = rdtsc_ordered();
+	if (apic_delay_tsc > 0 && retries1 < MAX_MEASURE_RETRIES &&
+	    old_tsc2 - old_tsc1 > 2 * apic_delay_tsc) {
+		retries1++;
+		goto retry1;
+	}
+	DELAY(us);
+retry2:
+	new_tsc1 = rdtsc_ordered();
+	end = lapic->ccr_timer;
+	new_tsc2 = rdtsc_ordered();
+	if (apic_delay_tsc > 0 && retries2 < MAX_MEASURE_RETRIES &&
+	    new_tsc2 - new_tsc1 > 2 * apic_delay_tsc) {
+		retries2++;
+		goto retry2;
+	}
+	if (end == 0)
+		return 0;
+
+	count = start - end;
+
+	/* Make sure the lapic can count for up to 2s */
+	a = (unsigned)APIC_TIMER_MAX_COUNT;
+	if (us < 2000000 && (u_int64_t)count * 2000000 >= a * us)
+		return 0;
+
+	if (lapic_calibrate_test > 0 && (retries1 > 0 || retries2 > 0)) {
+		kprintf("%s: retries1=%d retries2=%d\n",
+		    __func__, retries1, retries2);
+	}
+
+	diff = (new_tsc1 - old_tsc1) + (new_tsc2 - old_tsc2);
+	/* XXX First estimate if the total TSC diff value makes sense */
+	/* This will almost overflow, but only almost :) */
+	count = (2 * count * tsc_frequency) / diff;
+
+	return count;
+}
+
+static uint64_t
+do_cputimer_calibration(u_int us)
+{
+	sysclock_t value;
+	sysclock_t start, end, beginning, finish;
+
+	lapic_timer_oneshot(APIC_TIMER_MAX_COUNT);
+	beginning = lapic->ccr_timer;
+	start = sys_cputimer->count();
+	DELAY(us);
+	end = sys_cputimer->count();
+	finish = lapic->ccr_timer;
+	if (finish == 0)
+		return 0;
+	/* value is the LAPIC timer difference. */
+	value = beginning - finish;
+	/* end is the sys_cputimer difference. */
+	end -= start;
+	if (end == 0)
+		return 0;
+	value = ((uint64_t)value * sys_cputimer->freq) / end;
+	return value;
+}
+
 static void
 lapic_timer_calibrate(void)
 {
 	sysclock_t value;
+	u_int64_t apic_delay_tsc = 0;
+	int use_tsc_calibration = 0;
 
 	/* No need to calibrate lapic_timer, if we will use TSC Deadline mode */
 	if (lapic_use_tscdeadline) {
@@ -438,33 +524,91 @@ lapic_timer_calibrate(void)
 		return;
 	}
 
+	/*
+	 * On real hardware, tsc_invariant == 0 wouldn't be an issue, but in
+	 * a virtual machine the frequency may get changed by the host.
+	 */
+	if (tsc_frequency != 0 && tsc_invariant && lapic_calibrate_fast)
+		use_tsc_calibration = 1;
+
+	if (use_tsc_calibration) {
+		u_int64_t min_apic_tsc = 0, max_apic_tsc = 0;
+		u_int64_t old_tsc, new_tsc;
+		sysclock_t val;
+		int i;
+
+		/* warm up */
+		lapic_timer_oneshot(APIC_TIMER_MAX_COUNT);
+		for (i = 0; i < 10; i++)
+			val = lapic->ccr_timer;
+
+		for (i = 0; i < 100; i++) {
+			old_tsc = rdtsc_ordered();
+			val = lapic->ccr_timer;
+			new_tsc = rdtsc_ordered();
+			new_tsc -= old_tsc;
+			apic_delay_tsc += new_tsc;
+			if (min_apic_tsc == 0 ||
+			    min_apic_tsc > new_tsc) {
+				min_apic_tsc = new_tsc;
+			}
+			if (max_apic_tsc < new_tsc)
+				max_apic_tsc = new_tsc;
+		}
+		apic_delay_tsc /= 100;
+		kprintf(
+		    "LAPIC latency (in TSC ticks): %lu min: %lu max: %lu\n",
+		    apic_delay_tsc, min_apic_tsc, max_apic_tsc);
+		apic_delay_tsc = min_apic_tsc;
+	}
+
+	if (!use_tsc_calibration) {
+		int i;
+
+		/*
+		 * Do some exercising of the lapic timer access. This improves
+		 * precision of the subsequent calibration run in at least some
+		 * virtualization cases.
+		 */
+		lapic_timer_set_divisor(0);
+		for (i = 0; i < 10; i++)
+			(void)do_cputimer_calibration(100);
+	}
 	/* Try to calibrate the local APIC timer. */
 	for (lapic_timer_divisor_idx = 0;
 	     lapic_timer_divisor_idx < APIC_TIMER_NDIVISORS;
 	     lapic_timer_divisor_idx++) {
-		u_int cnt;
-
-		if (sys_cputimer->freq >= 10000000)
-			cnt = 500000;
-		else
-			cnt = 2000000;
-
 		lapic_timer_set_divisor(lapic_timer_divisor_idx);
-		lapic_timer_oneshot(APIC_TIMER_MAX_COUNT);
-		DELAY(cnt);
-		value = APIC_TIMER_MAX_COUNT - lapic->ccr_timer;
-		if (value != APIC_TIMER_MAX_COUNT)
+		if (use_tsc_calibration) {
+			value = do_tsc_calibration(200*1000, apic_delay_tsc);
+		} else {
+			value = do_cputimer_calibration(2*1000*1000);
+		}
+		if (value != 0)
 			break;
 	}
 	if (lapic_timer_divisor_idx >= APIC_TIMER_NDIVISORS)
 		panic("lapic: no proper timer divisor?!");
-	if (sys_cputimer->freq >= 10000000)
-		lapic_cputimer_intr.freq = value * 2;
-	else
-		lapic_cputimer_intr.freq = value / 2;
+	lapic_cputimer_intr.freq = value;
 
 	kprintf("lapic: divisor index %d, frequency %u Hz\n",
 		lapic_timer_divisor_idx, lapic_cputimer_intr.freq);
+
+	if (lapic_calibrate_test > 0) {
+		uint64_t freq;
+		int i;
+
+		for (i = 1; i <= 20; i++) {
+			if (use_tsc_calibration) {
+				freq = do_tsc_calibration(i*100*1000,
+				    apic_delay_tsc);
+			} else {
+				freq = do_cputimer_calibration(i*100*1000);
+			}
+			if (freq != 0)
+				kprintf("%ums: %lu\n", i * 100, freq);
+		}
+	}
 }
 
 static void
