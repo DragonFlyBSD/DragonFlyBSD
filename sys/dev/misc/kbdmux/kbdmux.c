@@ -72,12 +72,6 @@ MALLOC_DEFINE(M_KBDMUX, KEYBOARD_NAME, "Keyboard multiplexor");
 
 #define	KBDMUX_Q_SIZE	512	/* input queue size */
 
-#define KBDMUX_CALLOUT_INIT(s) \
-	callout_init_mp(&(s)->ks_timo)
-
-#define KBDMUX_QUEUE_INTR(s) \
-	taskqueue_enqueue(taskqueue_swi, &(s)->ks_task)
-
 /*
  * kbdmux keyboard
  */
@@ -98,13 +92,10 @@ struct kbdmux_state
 	unsigned int		 ks_inq_start;
 	unsigned int		 ks_inq_length;
 	struct task		 ks_task;	/* interrupt task */
-	struct callout		 ks_timo;	/* timeout handler */
-#define TICKS			(hz)		/* rate */
 
 	int			 ks_flags;	/* flags */
 #define COMPOSE			(1 << 0)	/* compose char flag */
 #define POLLING			(1 << 1)	/* polling */
-#define TASK			(1 << 2)	/* interrupt task queued */
 
 	int			 ks_mode;	/* K_XLATE, K_RAW, K_CODE */
 	int			 ks_state;	/* state */
@@ -129,7 +120,6 @@ typedef struct kbdmux_state	kbdmux_state_t;
  *****************************************************************************/
 
 static task_fn_t		kbdmux_kbd_intr;
-static timeout_t		kbdmux_kbd_intr_timo;
 static kbd_callback_func_t	kbdmux_kbd_event;
 
 static void
@@ -167,47 +157,10 @@ static void
 kbdmux_kbd_intr(void *xkbd, int pending)
 {
 	keyboard_t	*kbd = (keyboard_t *) xkbd;
-	kbdmux_state_t	*state = (kbdmux_state_t *) kbd->kb_data;
 	KBD_LOCK_DECLARE;
 
 	KBD_LOCK(kbd);		/* recursive so ok */
 	kbd_intr(kbd, NULL);
-	state->ks_flags &= ~TASK;
-	wakeup(&state->ks_task);
-	KBD_UNLOCK(kbd);
-}
-
-/*
- * Schedule interrupt handler on timeout. Called with locked state.
- */
-static void
-kbdmux_kbd_intr_timo(void *xkbd)
-{
-	keyboard_t	*kbd = (keyboard_t *) xkbd;
-	kbdmux_state_t	*state = (kbdmux_state_t *) kbd->kb_data;
-	KBD_LOCK_DECLARE;
-
-	KBD_LOCK(kbd);
-
-	if (callout_pending(&state->ks_timo)) {
-		KBD_UNLOCK(kbd);
-		return; /* callout was reset */
-	}
-
-	if (!callout_active(&state->ks_timo)) {
-		KBD_UNLOCK(kbd);
-		return; /* callout was stopped */
-	}
-
-	callout_deactivate(&state->ks_timo);
-
-	/* queue interrupt task if needed */
-	if (state->ks_inq_length > 0 && !(state->ks_flags & TASK) &&
-	    KBDMUX_QUEUE_INTR(state) == 0)
-		state->ks_flags |= TASK;
-
-	/* re-schedule timeout */
-	callout_reset(&state->ks_timo, TICKS, kbdmux_kbd_intr_timo, kbd);
 	KBD_UNLOCK(kbd);
 }
 
@@ -246,9 +199,8 @@ kbdmux_kbd_event(keyboard_t *kbd, int event, void *arg)
 		}
 
 		/* queue interrupt task if needed */
-		if (state->ks_inq_length > 0 && !(state->ks_flags & TASK) &&
-		    KBDMUX_QUEUE_INTR(state) == 0)
-			state->ks_flags |= TASK;
+		if (state->ks_inq_length > 0)
+			taskqueue_enqueue(taskqueue_swi, &state->ks_task);
 
 		} break;
 
@@ -386,7 +338,6 @@ kbdmux_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		}
 
 		TASK_INIT(&state->ks_task, 0, kbdmux_kbd_intr, (void *) kbd);
-		KBDMUX_CALLOUT_INIT(state);
 		SLIST_INIT(&state->ks_kbds);
 	} else if (KBD_IS_INITIALIZED(*kbdp) && KBD_IS_CONFIGURED(*kbdp)) {
 		return (0);
@@ -461,8 +412,6 @@ kbdmux_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		}
 
 		KBD_CONFIG_DONE(kbd);
-
-		callout_reset(&state->ks_timo, TICKS, kbdmux_kbd_intr_timo, kbd);
 	}
 
 	return (0);
@@ -496,12 +445,9 @@ kbdmux_term(keyboard_t *kbd)
 	kbdmux_state_t	*state = (kbdmux_state_t *) kbd->kb_data;
 	kbdmux_kbd_t	*k;
 
-	/* kill callout */
-	callout_stop(&state->ks_timo);
-
 	/* wait for interrupt task */
-	while (state->ks_flags & TASK)
-		lksleep(&state->ks_task, &kbd->kb_lock, PCATCH, "kbdmuxc", 0);
+	while (taskqueue_cancel(taskqueue_swi, &state->ks_task, NULL) != 0)
+		taskqueue_drain(taskqueue_swi, &state->ks_task);
 
 	/* release all keyboards from the mux */
 	while ((k = SLIST_FIRST(&state->ks_kbds)) != NULL) {
