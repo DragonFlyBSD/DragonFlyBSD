@@ -1214,11 +1214,14 @@ TAILQ_HEAD(hammer2_pfslist, hammer2_pfs);
 /*
  * Misc
  */
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#define VTOI(vp)	((hammer2_inode_t *)(vp)->v_data)
+#endif
+
 #if defined(_KERNEL)
 
 MALLOC_DECLARE(M_HAMMER2);
 
-#define VTOI(vp)	((hammer2_inode_t *)(vp)->v_data)
 #define ITOV(ip)	((ip)->vp)
 
 /*
