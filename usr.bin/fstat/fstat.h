@@ -86,6 +86,7 @@ udev_t makeudev(int, int);
 /* Additional filesystem types */
 int ext2fs_filestat(struct vnode *, struct filestat *);
 int hammer_filestat(struct vnode *, struct filestat *);
+int hammer2_filestat(struct vnode *, struct filestat *);
 int isofs_filestat(struct vnode *, struct filestat *);
 int msdosfs_filestat(struct vnode *, struct filestat *);
 int ntfs_filestat(struct vnode *, struct filestat *);
