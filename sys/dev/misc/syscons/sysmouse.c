@@ -43,6 +43,8 @@
 #include <sys/vnode.h>
 #include <sys/kernel.h>
 #include <sys/thread2.h>
+#include <sys/signalvar.h>
+#include <sys/filio.h>
 
 #include <machine/console.h>
 #include <sys/mouse.h>
@@ -66,7 +68,9 @@ struct sysmouse_state {
 	mousestatus_t syncstatus;
 	mousestatus_t readstatus;	/* Only needed for button status */
 	int opened;
+	int asyncio;
 	struct lock sm_lock;
+	struct sigio *sm_sigio;
 	struct kqinfo rkq;
 };
 
@@ -121,6 +125,8 @@ smopen(struct dev_open_args *ap)
 		sc->fifo = kmalloc(sizeof(struct event_fifo),
 		    M_SYSCONS, M_WAITOK | M_ZERO);
 		sc->opened = 1;
+		sc->asyncio = 0;
+		sc->sm_sigio = NULL;
 		bzero(&sc->readstatus, sizeof(sc->readstatus));
 		bzero(&sc->syncstatus, sizeof(sc->syncstatus));
 		ret = 0;
@@ -138,7 +144,9 @@ smclose(struct dev_close_args *ap)
 	struct sysmouse_state *sc = &mouse_state;
 
 	lockmgr(&sc->sm_lock, LK_EXCLUSIVE);
+	funsetown(&sc->sm_sigio);
 	sc->opened = 0;
+	sc->asyncio = 0;
 	sc->level = 0;
 	kfree(sc->fifo, M_SYSCONS);
 	sc->fifo = NULL;
@@ -209,6 +217,25 @@ smioctl(struct dev_ioctl_args *ap)
 	mousemode_t *mode;
 
 	switch (ap->a_cmd) {
+	case FIOSETOWN:
+		lockmgr(&sc->sm_lock, LK_EXCLUSIVE);
+		fsetown(*(int *)ap->a_data, &sc->sm_sigio);
+		lockmgr(&sc->sm_lock, LK_RELEASE);
+		return 0;
+	case FIOGETOWN:
+		lockmgr(&sc->sm_lock, LK_EXCLUSIVE);
+		*(int *)ap->a_data = fgetown(&sc->sm_sigio);
+		lockmgr(&sc->sm_lock, LK_RELEASE);
+		return 0;
+	case FIOASYNC:
+		lockmgr(&sc->sm_lock, LK_EXCLUSIVE);
+		if (*(int *)ap->a_data) {
+			sc->asyncio = 1;
+		} else {
+			sc->asyncio = 0;
+		}
+		lockmgr(&sc->sm_lock, LK_RELEASE);
+		return 0;
 	case MOUSE_GETHWINFO:	/* get device information */
 		hw = (mousehw_t *)ap->a_data;
 		hw->buttons = 10;		/* XXX unknown */
@@ -517,6 +544,8 @@ sysmouse_event(mouse_info_t *info)
 	case MOUSE_MOTION_EVENT:
 	case MOUSE_BUTTON_EVENT:
 		smqueue(sc, info);
+		if (sc->asyncio)
+	                pgsigio(sc->sm_sigio, SIGIO, 0);
 		lockmgr(&sc->sm_lock, LK_RELEASE);
 		wakeup(sc);
 		KNOTE(&sc->rkq.ki_note, 0);
