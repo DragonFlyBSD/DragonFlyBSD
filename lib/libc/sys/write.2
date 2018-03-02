@@ -27,9 +27,8 @@
 .\"
 .\"     @(#)write.2	8.5 (Berkeley) 4/2/94
 .\" $FreeBSD: src/lib/libc/sys/write.2,v 1.12.2.8 2002/10/13 17:42:14 schweikh Exp $
-.\" $DragonFly: src/lib/libc/sys/write.2,v 1.5 2006/04/27 16:01:33 swildner Exp $
 .\"
-.Dd April 27, 2006
+.Dd March 2, 2018
 .Dt WRITE 2
 .Os
 .Sh NAME
@@ -110,25 +109,24 @@ The
 .Fn extpwrite
 and
 .Fn extpwritev
-functions are
-.Dx
-specific and
-extend the specification further by allowing a flags argument
+allow a
+.Ar flags
+argument
 to also be passed in, controlling blocking/non-blocking and other features
 on a call-by-call basis, ignoring the related default for the descriptor.
 Allowed flags are:
-.Bl -tag -width Er
-.It O_FBLOCKING
+.Bl -tag -width ".Dv O_FNONBLOCKING"
+.It Dv O_FBLOCKING
 Force the system call to operate in a blocking fashion.
-.It O_FNONBLOCKING
+.It Dv O_FNONBLOCKING
 Force the system call to operate in a non-blocking fashion.
-.It O_FAPPEND
+.It Dv O_FAPPEND
 Force append mode for the operation.
-.It O_FOFFSET
+.It Dv O_FOFFSET
 Force offset mode for the operation.
-.It O_FSYNCWRITE
+.It Dv O_FSYNCWRITE
 Force the system call to issue the write synchronously.
-.It O_FASYNCWRITE
+.It Dv O_FASYNCWRITE
 Force the system call to issue the write asynchronously.
 .El
 .Pp
@@ -173,8 +171,10 @@ is set to indicate the error.
 .Fn Write ,
 .Fn writev ,
 .Fn pwrite ,
+.Fn pwritev ,
+.Fn extpwrite
 and
-.Fn pwritev
+.Fn extpwritev
 will fail and the file pointer will remain unchanged if:
 .Bl -tag -width Er
 .It Bq Er EBADF
@@ -223,8 +223,9 @@ to enable writing on the disk label area.
 .Pp
 In addition,
 .Fn writev
+.Fn pwritev ,
 and
-.Fn pwritev
+.Fn extpwritev
 may return one of the following errors:
 .Bl -tag -width Er
 .It Bq Er EDESTADDRREQ
@@ -254,9 +255,11 @@ The mbuf pool has been completely exhausted when writing to a socket.
 .El
 .Pp
 The
-.Fn pwrite
+.Fn pwrite ,
+.Fn pwritev ,
+.Fn extpwrite
 and
-.Fn pwritev
+.Fn extpwritev
 calls may also return the following errors:
 .Bl -tag -width Er
 .It Bq Er EINVAL
@@ -281,6 +284,14 @@ and
 .Fn pwrite
 functions are expected to conform to
 .St -xpg4.2 .
+.Pp
+The
+.Fn extpwrite
+and
+.Fn extpwritev
+functions are
+.Dx
+specific extensions.
 .Sh HISTORY
 The
 .Fn pwritev

@@ -27,9 +27,8 @@
 .\"
 .\"     @(#)read.2	8.4 (Berkeley) 2/26/94
 .\" $FreeBSD: src/lib/libc/sys/read.2,v 1.9.2.6 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/read.2,v 1.5 2006/04/27 16:01:33 swildner Exp $
 .\"
-.Dd April 27, 2006
+.Dd March 2, 2018
 .Dt READ 2
 .Os
 .Sh NAME
@@ -111,26 +110,21 @@ The
 .Fn extpread
 and
 .Fn extpreadv
-functions are
-.Dx
-specific
-and extend the specification further by allowing a flags argument
+allow a
+.Ar flags
+argument
 to also be passed in, controlling blocking/non-blocking and other features
 on a call-by-call basis, ignoring the related default for the descriptor.
 Allowed flags are:
-.Bl -tag -width Er
-.It O_FBLOCKING
+.Bl -tag -width ".Dv O_FNONBLOCKING"
+.It Dv O_FBLOCKING
 Force the system call to operate in a blocking fashion.
-.It O_FNONBLOCKING
+.It Dv O_FNONBLOCKING
 Force the system call to operate in a non-blocking fashion.
-.It O_FAPPEND
+.It Dv O_FAPPEND
 Force append mode for the operation.
-.It O_FOFFSET
+.It Dv O_FOFFSET
 Force offset mode for the operation.
-.It O_FSYNCWRITE
-(ignored for reads)
-.It O_FASYNCWRITE
-(ignored for reads)
 .El
 .Pp
 On objects capable of seeking, the
@@ -170,8 +164,10 @@ is set to indicate the error.
 .Fn Read ,
 .Fn readv ,
 .Fn pread ,
+.Fn preadv ,
+.Fn extpread
 and
-.Fn preadv
+.Fn extpreadv
 will succeed unless:
 .Bl -tag -width Er
 .It Bq Er EBADF
@@ -195,9 +191,10 @@ and no data were ready to be read.
 .El
 .Pp
 In addition,
-.Fn readv
-and
+.Fn readv ,
 .Fn preadv
+and
+.Fn extpreadv
 may return one of the following errors:
 .Bl -tag -width Er
 .It Bq Er EINVAL
@@ -222,9 +219,11 @@ points outside the process's allocated address space.
 .El
 .Pp
 The
-.Fn pread
+.Fn pread ,
+.Fn preadv ,
+.Fn extpread
 and
-.Fn preadv
+.Fn extpreadv
 calls may also return the following errors:
 .Bl -tag -width Er
 .It Bq Er EINVAL
@@ -251,6 +250,14 @@ and
 .Fn pread
 functions are expected to conform to
 .St -xpg4.2 .
+.Pp
+The
+.Fn extpread
+and
+.Fn extpreadv
+functions are
+.Dx
+specific extensions.
 .Sh HISTORY
 The
 .Fn preadv
