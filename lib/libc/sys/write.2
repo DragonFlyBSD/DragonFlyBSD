@@ -36,7 +36,9 @@
 .Nm write ,
 .Nm writev ,
 .Nm pwrite ,
-.Nm pwritev
+.Nm pwritev ,
+.Nm extpwrite ,
+.Nm extpwritev
 .Nd write output
 .Sh LIBRARY
 .Lb libc
@@ -52,6 +54,10 @@
 .Fn pwrite "int d" "const void *buf" "size_t nbytes" "off_t offset"
 .Ft ssize_t
 .Fn pwritev "int d" "const struct iovec *iov" "int iovcnt" "off_t offset"
+.Ft ssize_t
+.Fn extpwrite "int d" "const void *buf" "size_t nbytes" "int flags" "off_t offset"
+.Ft ssize_t
+.Fn extpwritev "int d" "const struct iovec *iov" "int iovcnt" "int flags" "off_t offset"
 .Sh DESCRIPTION
 .Fn Write
 attempts to write
@@ -99,6 +105,32 @@ and
 .Fn pwritev
 will always write a complete area before proceeding
 to the next.
+.Pp
+The
+.Fn extpwrite
+and
+.Fn extpwritev
+functions are
+.Dx
+specific and
+extend the specification further by allowing a flags argument
+to also be passed in, controlling blocking/non-blocking and other features
+on a call-by-call basis, ignoring the related default for the descriptor.
+Allowed flags are:
+.Bl -tag -width Er
+.It O_FBLOCKING
+Force the system call to operate in a blocking fashion.
+.It O_FNONBLOCKING
+Force the system call to operate in a non-blocking fashion.
+.It O_FAPPEND
+Force append mode for the operation.
+.It O_FOFFSET
+Force offset mode for the operation.
+.It O_FSYNCWRITE
+Force the system call to issue the write synchronously.
+.It O_FASYNCWRITE
+Force the system call to issue the write asynchronously.
+.El
 .Pp
 On objects capable of seeking, the
 .Fn write

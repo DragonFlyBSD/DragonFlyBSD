@@ -36,7 +36,9 @@
 .Nm read ,
 .Nm readv ,
 .Nm pread ,
-.Nm preadv
+.Nm preadv ,
+.Nm extpread ,
+.Nm extpreadv
 .Nd read input
 .Sh LIBRARY
 .Lb libc
@@ -52,6 +54,10 @@
 .Fn pread "int d" "void *buf" "size_t nbytes" "off_t offset"
 .Ft ssize_t
 .Fn preadv "int d" "const struct iovec *iov" "int iovcnt" "off_t offset"
+.Ft ssize_t
+.Fn extpread "int d" "void *buf" "size_t nbytes" "int flags" "off_t offset"
+.Ft ssize_t
+.Fn extpreadv "int d" "const struct iovec *iov" "int iovcnt" "int flags" "off_t offset"
 .Sh DESCRIPTION
 .Fn Read
 attempts to read
@@ -68,9 +74,11 @@ buffers specified by the members of the
 .Fa iov
 array: iov[0], iov[1], ..., iov[iovcnt\|\-\|1].
 The
-.Fn pread
+.Fn pread ,
+.Fn preadv ,
+.Fn extpread ,
 and
-.Fn preadv
+.Fn extpreadv
 calls perform the same function, but read from the specified position in
 the file without modifying the file pointer.
 .Pp
@@ -98,6 +106,32 @@ and
 .Fn preadv
 will always fill an area completely before proceeding
 to the next.
+.Pp
+The
+.Fn extpread
+and
+.Fn extpreadv
+functions are
+.Dx
+specific
+and extend the specification further by allowing a flags argument
+to also be passed in, controlling blocking/non-blocking and other features
+on a call-by-call basis, ignoring the related default for the descriptor.
+Allowed flags are:
+.Bl -tag -width Er
+.It O_FBLOCKING
+Force the system call to operate in a blocking fashion.
+.It O_FNONBLOCKING
+Force the system call to operate in a non-blocking fashion.
+.It O_FAPPEND
+Force append mode for the operation.
+.It O_FOFFSET
+Force offset mode for the operation.
+.It O_FSYNCWRITE
+(ignored for reads)
+.It O_FASYNCWRITE
+(ignored for reads)
+.El
 .Pp
 On objects capable of seeking, the
 .Fn read

@@ -80,6 +80,19 @@ typedef	__uint32_t	uid_t;		/* XXX __uid_t */
 #endif
 
 /*
+ * Extended API support (DragonFly specific)
+ */
+#if __BSD_VISIBLE
+
+#define _HAVE_EXTEXIT		1
+#define _HAVE_EXTPREAD		1
+#define _HAVE_EXTPREADV		1
+#define _HAVE_EXTPWRITE		1
+#define _HAVE_EXTPWRITEV	1
+
+#endif
+
+/*
  * POSIX options and option groups we unconditionally do or don't
  * implement.  This list includes those options which are exclusively
  * implemented (or not) in user mode.  Please keep this list in
