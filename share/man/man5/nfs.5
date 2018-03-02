@@ -80,7 +80,8 @@ Enables no-connection mode for protocols that support no-connection mode.
 .It Va vfs.nfs.nfs_privport
 Enables privileged source port checks.
 .It Va vfs.nfs.nfsv3_commit_on_close
-Sets commiting on write+commit on close or only write.
+If set, write and commit on close.
+If not set, only write on close.
 .It Va vfs.nfs.pos_cache_timeout
 .Nm
 positive namecache timeout.
