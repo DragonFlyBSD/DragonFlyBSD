@@ -92,8 +92,6 @@ ASSYM(KERNBASE,	KERNBASE);
 
 ASSYM(V_TRAP, offsetof(struct vmmeter, v_trap));
 ASSYM(V_SYSCALL, offsetof(struct vmmeter, v_syscall));
-ASSYM(V_SENDSYS, offsetof(struct vmmeter, v_sendsys));
-ASSYM(V_WAITSYS, offsetof(struct vmmeter, v_waitsys));
 ASSYM(V_INTR, offsetof(struct vmmeter, v_intr));
 ASSYM(V_FORWARDED_INTS, offsetof(struct vmmeter, v_forwarded_ints));
 ASSYM(V_FORWARDED_HITS, offsetof(struct vmmeter, v_forwarded_hits));
