@@ -38,7 +38,7 @@
 #include "pthread_private.h"
 
 int
-_pthread_mutexattr_getprioceiling(pthread_mutexattr_t * __restrict mattr,
+_pthread_mutexattr_getprioceiling(const pthread_mutexattr_t * __restrict mattr,
     int * __restrict prioceiling)
 {
 	int ret = 0;
@@ -69,7 +69,7 @@ _pthread_mutexattr_setprioceiling(pthread_mutexattr_t *mattr, int prioceiling)
 }
 
 int
-_pthread_mutex_getprioceiling(pthread_mutex_t * __restrict mutex,
+_pthread_mutex_getprioceiling(const pthread_mutex_t * __restrict mutex,
     int * __restrict prioceiling)
 {
 	int ret;

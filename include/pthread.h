@@ -206,7 +206,7 @@ int	pthread_mutexattr_init(pthread_mutexattr_t *) __nonnull(1);
 int	pthread_mutexattr_destroy(pthread_mutexattr_t *);
 int	pthread_mutexattr_getpshared(const pthread_mutexattr_t * __restrict,
 	    int * __restrict) __nonnull(2);
-int	pthread_mutexattr_gettype(pthread_mutexattr_t * __restrict,
+int	pthread_mutexattr_gettype(const pthread_mutexattr_t * __restrict,
 	    int * __restrict) __nonnull(2);
 int	pthread_mutexattr_setpshared(pthread_mutexattr_t *, int);
 int	pthread_mutexattr_settype(pthread_mutexattr_t *, int);
@@ -260,15 +260,15 @@ int	pthread_setprio(pthread_t, int);
 void	pthread_yield(void);
 #endif
 
-int	pthread_mutexattr_getprioceiling(pthread_mutexattr_t * __restrict,
+int	pthread_mutexattr_getprioceiling(const pthread_mutexattr_t * __restrict,
 	    int * __restrict);
 int	pthread_mutexattr_setprioceiling(pthread_mutexattr_t *, int);
 
-int	pthread_mutexattr_getprotocol(pthread_mutexattr_t * __restrict,
+int	pthread_mutexattr_getprotocol(const pthread_mutexattr_t * __restrict,
 	    int * __restrict);
 int	pthread_mutexattr_setprotocol(pthread_mutexattr_t *, int);
 
-int	pthread_mutex_getprioceiling(pthread_mutex_t * __restrict,
+int	pthread_mutex_getprioceiling(const pthread_mutex_t * __restrict,
 	    int * __restrict);
 int	pthread_mutex_setprioceiling(pthread_mutex_t * __restrict, int,
 	    int * __restrict);

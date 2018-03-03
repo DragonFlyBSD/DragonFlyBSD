@@ -77,7 +77,7 @@ _pthread_mutexattr_settype(pthread_mutexattr_t *attr, int type)
 }
 
 int
-_pthread_mutexattr_gettype(pthread_mutexattr_t * __restrict attr,
+_pthread_mutexattr_gettype(const pthread_mutexattr_t * __restrict attr,
     int * __restrict type)
 {
 	int	ret;

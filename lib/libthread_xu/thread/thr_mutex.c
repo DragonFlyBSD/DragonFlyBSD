@@ -680,7 +680,7 @@ mutex_unlock_common(pthread_mutex_t *mutex)
 }
 
 int
-_pthread_mutex_getprioceiling(pthread_mutex_t * __restrict mutex,
+_pthread_mutex_getprioceiling(const pthread_mutex_t * __restrict mutex,
     int * __restrict prioceiling)
 {
 	if ((mutex == NULL) || (*mutex == NULL))

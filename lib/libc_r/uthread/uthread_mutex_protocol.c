@@ -38,7 +38,7 @@
 #include "pthread_private.h"
 
 int
-_pthread_mutexattr_getprotocol(pthread_mutexattr_t * __restrict mattr,
+_pthread_mutexattr_getprotocol(const pthread_mutexattr_t * __restrict mattr,
     int * __restrict protocol)
 {
 	int ret = 0;
