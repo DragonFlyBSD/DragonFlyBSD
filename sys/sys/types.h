@@ -99,8 +99,14 @@ typedef	__uint32_t	gid_t;		/* group id */
 typedef	__int64_t	id_t;		/* general id, can hold gid/pid/uid_t */
 #define	_ID_T_DECLARED
 #endif
+#ifndef _IN_ADDR_T_DECLARED
 typedef	__uint32_t	in_addr_t;	/* base type for internet address */
+#define	_IN_ADDR_T_DECLARED
+#endif
+#ifndef _IN_PORT_T_DECLARED
 typedef	__uint16_t	in_port_t;
+#define	_IN_PORT_T_DECLARED
+#endif
 typedef	__uint64_t	ino_t;		/* inode number */
 typedef	long		key_t;		/* IPC key (for Sys V IPC) */
 #ifndef _MODE_T_DECLARED
