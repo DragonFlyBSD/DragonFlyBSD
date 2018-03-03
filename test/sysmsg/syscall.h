@@ -25,15 +25,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/test/sysmsg/syscall.h,v 1.1 2004/09/02 11:21:12 eirikn Exp $
  */
-
-/* XXX: eirik */
-#define _MMAP_DECLARED
-#define _LSEEK_DECLARED
-#define _TRUNCATE_DECLARED
-#define _FTRUNCATE_DECLARED
 
 #define __syscall_args nosys_args
 

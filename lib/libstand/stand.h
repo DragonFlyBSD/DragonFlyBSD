@@ -266,6 +266,7 @@ extern int	open(const char *, int);
 #define O_RDWR		0x2
 extern int	close(int);
 extern void	closeall(void);
+extern off_t	lseek(int, off_t, int);
 extern ssize_t	read(int, void *, size_t);
 extern ssize_t	write(int, void *, size_t);
 extern struct	dirent *readdirfd(int);

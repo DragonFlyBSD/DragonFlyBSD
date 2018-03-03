@@ -249,31 +249,6 @@ typedef	__timer_t	timer_t;
 #include <sys/_timeval.h>
 
 #define	NBBY 8		/* number of bits in a byte */
-/*
- * These declarations belong elsewhere, but are repeated here and in
- * <stdio.h> to give broken programs a better chance of working with
- * 64-bit off_t's.
- */
-#ifndef _KERNEL
-__BEGIN_DECLS
-#ifndef _FTRUNCATE_DECLARED
-#define	_FTRUNCATE_DECLARED
-int	 ftruncate(int, off_t);
-#endif
-#ifndef _LSEEK_DECLARED
-#define	_LSEEK_DECLARED
-off_t	 lseek(int, off_t, int);
-#endif
-#ifndef _MMAP_DECLARED
-#define	_MMAP_DECLARED
-void *	 mmap(void *, size_t, int, int, int, off_t);
-#endif
-#ifndef _TRUNCATE_DECLARED
-#define	_TRUNCATE_DECLARED
-int	 truncate(const char *, off_t);
-#endif
-__END_DECLS
-#endif /* !_KERNEL */
 
 #endif /* __BSD_VISIBLE */
 

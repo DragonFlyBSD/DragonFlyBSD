@@ -386,10 +386,7 @@ pid_t	 getppid(void);
 uid_t	 getuid(void);
 int	 isatty(int);
 int	 link(const char *, const char *);
-#ifndef _LSEEK_DECLARED
-#define	_LSEEK_DECLARED
 off_t	 lseek(int, off_t, int);
-#endif
 long	 pathconf(const char *, int);
 int	 pause(void);
 int	 pipe(int *);
@@ -429,10 +426,7 @@ int	 fsync(int);
  * ftruncate() was in the POSIX Realtime Extension (it's used for shared
  * memory), but truncate() was not.
  */
-#ifndef _FTRUNCATE_DECLARED
-#define	_FTRUNCATE_DECLARED
 int	 ftruncate(int, off_t);
-#endif
 #endif
 
 #if __POSIX_VISIBLE >= 199506
@@ -468,10 +462,7 @@ ssize_t	 pread(int, void *, size_t, off_t);
 ssize_t	 pwrite(int, const void *, size_t, off_t);
 
 /* See comment at ftruncate() above. */
-#ifndef _TRUNCATE_DECLARED
-#define	_TRUNCATE_DECLARED
 int	 truncate(const char *, off_t);
-#endif
 #endif /* __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE */
 
 #if __POSIX_VISIBLE >= 200809

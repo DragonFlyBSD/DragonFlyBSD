@@ -188,10 +188,7 @@ int	shm_open(const char *, int, mode_t);
 int	shm_unlink(const char *);
 #endif /* __POSIX_VISIBLE >= 199309 */
 int	mlock(const void *, size_t);
-#ifndef _MMAP_DECLARED
-#define	_MMAP_DECLARED
 void *	mmap(void *, size_t, int, int, int, off_t);
-#endif
 int	mprotect(void *, size_t, int);
 int	msync(void *, size_t, int);
 int	munlock(const void *, size_t);

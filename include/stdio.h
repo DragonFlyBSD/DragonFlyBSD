@@ -348,26 +348,6 @@ FILE	*funopen(const void *, int (*)(void *, char *, int),
 		 fpos_t (*)(void *, fpos_t, int), int (*)(void *));
 #define	fropen(cookie, fn) funopen(cookie, fn, 0, 0, 0)
 #define	fwopen(cookie, fn) funopen(cookie, 0, fn, 0, 0)
-
-/*
- * Portability hacks.  See <sys/types.h>.
- */
-#ifndef _FTRUNCATE_DECLARED
-#define	_FTRUNCATE_DECLARED
-int	 ftruncate(int, __off_t);
-#endif
-#ifndef _LSEEK_DECLARED
-#define	_LSEEK_DECLARED
-__off_t	 lseek(int, __off_t, int);
-#endif
-#ifndef _MMAP_DECLARED
-#define	_MMAP_DECLARED
-void	*mmap(void *, size_t, int, int, int, __off_t);
-#endif
-#ifndef _TRUNCATE_DECLARED
-#define	_TRUNCATE_DECLARED
-int	 truncate(const char *, __off_t);
-#endif
 #endif /* __BSD_VISIBLE */
 
 /*
