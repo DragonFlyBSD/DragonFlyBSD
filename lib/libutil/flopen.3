@@ -49,7 +49,7 @@ It is essentially equivalent with calling
 with the same parameters followed by
 .Fn flock
 with an
-.Va operation
+.Fa operation
 argument of
 .Dv LOCK_EX ,
 except that
@@ -61,7 +61,7 @@ files, mailboxes and other kinds of files which are used for
 synchronization between processes.
 .Pp
 If
-.Va flags
+.Fa flags
 includes
 .Dv O_NONBLOCK
 and the file is already locked,
@@ -74,9 +74,9 @@ to
 As with
 .Fn open ,
 the additional
-.Va mode
+.Fa mode
 argument is required if
-.Va flags
+.Fa flags
 includes
 .Dv O_CREAT .
 .Sh RETURN VALUES
