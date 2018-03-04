@@ -1357,10 +1357,23 @@ tsc_mpsync_test(void)
 
 		case CPU_VENDOR_AMD:
 			/*
-			 * AMD < Ryzen probably doesn't work
+			 * For AMD 15h and 16h (i.e. The Bulldozer and Jaguar
+			 * architectures) we have to watch out for
+			 * Erratum 778:
+			 *     "Processor Core Time Stamp Counters May
+			 *      Experience Drift"
+			 * This Erratum is only listed for cpus in Family
+			 * 15h < Model 30h and for 16h < Model 30h.
+			 *
+			 * AMD < Bulldozer probably doesn't work
 			 */
-			if (CPUID_TO_FAMILY(cpu_id) < 0x17)
+			if (CPUID_TO_FAMILY(cpu_id) == 0x15 ||
+			    CPUID_TO_FAMILY(cpu_id) == 0x16) {
+				if (CPUID_TO_MODEL(cpu_id) < 0x30)
+					return;
+			} else if (CPUID_TO_FAMILY(cpu_id) < 0x17) {
 				return;
+			}
 			break;
 
 		default:
