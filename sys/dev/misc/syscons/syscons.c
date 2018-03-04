@@ -1265,7 +1265,8 @@ scioctl(struct dev_ioctl_args *ap)
 	    syscons_unlock();
 	    /* Wait for drm modesetting callback to finish. */
 	    lwkt_reltoken(&tty_token);
-	    taskqueue_drain(taskqueue_thread[0], sc->fb_set_par_task);
+	    if (sc->fb_set_par_task != NULL)
+		taskqueue_drain(taskqueue_thread[0], sc->fb_set_par_task);
 	    return error;
 	default:
 	    break;
@@ -1323,7 +1324,8 @@ scioctl(struct dev_ioctl_args *ap)
 	/* May return ERESTART */
 	lwkt_reltoken(&tty_token);
 	/* Wait for drm modesetting callback to finish. */
-	taskqueue_drain(taskqueue_thread[0], sc->fb_set_par_task);
+	if (sc->fb_set_par_task != NULL)
+	    taskqueue_drain(taskqueue_thread[0], sc->fb_set_par_task);
 	return error;
 
     case VT_GETACTIVE:		/* get active vty # */
