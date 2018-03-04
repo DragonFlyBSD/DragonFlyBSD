@@ -1262,7 +1262,11 @@ scioctl(struct dev_ioctl_args *ap)
 	case VT_ACKACQ: 	/* acquire acknowledged, switch completed */
 	    if ((error = finish_vt_acq(scp)) == 0)
 		DPRINTF(5, ("sc%d: VT_ACKACQ\n", sc->unit));
-	    break;
+	    syscons_unlock();
+	    /* Wait for drm modesetting callback to finish. */
+	    lwkt_reltoken(&tty_token);
+	    taskqueue_drain(taskqueue_thread[0], sc->fb_set_par_task);
+	    return error;
 	default:
 	    break;
 	}
@@ -1318,6 +1322,8 @@ scioctl(struct dev_ioctl_args *ap)
 	error = tsleep((caddr_t)&scp->smode, PCATCH, "waitvt", 0);
 	/* May return ERESTART */
 	lwkt_reltoken(&tty_token);
+	/* Wait for drm modesetting callback to finish. */
+	taskqueue_drain(taskqueue_thread[0], sc->fb_set_par_task);
 	return error;
 
     case VT_GETACTIVE:		/* get active vty # */
@@ -2389,10 +2395,8 @@ sc_fb_set_par(void *context, int pending)
 	scr_stat *scp = sc->cur_scp;
 
 	lwkt_gettoken(&tty_token);
-	if (ISTEXTSC(scp) &&
-	    sc->fbi != NULL && sc->fbi->fbops.fb_set_par != NULL) {
-		sc->fbi->fbops.fb_set_par(sc->fbi);
-	}
+	if (sc->fbi != NULL && sc->fbi->fbops.fb_set_par != NULL)
+	    sc->fbi->fbops.fb_set_par(sc->fbi);
 	lwkt_reltoken(&tty_token);
 }
 
@@ -3075,7 +3079,7 @@ exchange_scr(sc_softc_t *sc)
      * graphics mode, because the fb_set_par() from the taskqueue thread
      * might race with the modesetting ioctl from the userland application.
      */
-    if (ISTEXTSC(scp) && !ISTEXTSC(sc->old_scp) &&
+    if (!ISTEXTSC(sc->old_scp) &&
 	sc->fbi != NULL && sc->fbi->fbops.fb_set_par != NULL &&
 	sc->fb_set_par_task != NULL) {
 	taskqueue_enqueue(taskqueue_thread[0], sc->fb_set_par_task);
