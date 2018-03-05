@@ -2394,7 +2394,6 @@ static void
 sc_fb_set_par(void *context, int pending)
 {
 	sc_softc_t *sc = context;
-	scr_stat *scp = sc->cur_scp;
 
 	lwkt_gettoken(&tty_token);
 	if (sc->fbi != NULL && sc->fbi->fbops.fb_set_par != NULL)
