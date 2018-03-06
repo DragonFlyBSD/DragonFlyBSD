@@ -303,7 +303,6 @@ bool
 autofs_cached(struct autofs_node *anp, const char *component, int componentlen)
 {
 	struct autofs_mount *amp = anp->an_mount;
-	int error;
 
 	KKASSERT(mtx_notlocked(&amp->am_lock));
 
@@ -315,6 +314,7 @@ autofs_cached(struct autofs_node *anp, const char *component, int componentlen)
 	 * no wildcards.
 	 */
 	if (anp->an_parent == NULL && componentlen != 0 && anp->an_wildcards) {
+		int error;
 		KKASSERT(amp->am_root == anp);
 		mtx_lock_sh_quick(&amp->am_lock);
 		error = autofs_node_find(anp, component, componentlen, NULL);
@@ -393,11 +393,9 @@ autofs_trigger_one(struct autofs_node *anp,
 {
 #define _taskqueue_thread (taskqueue_thread[mycpuid])
 	struct autofs_mount *amp = anp->an_mount;
-	struct autofs_node *firstanp;
 	struct autofs_request *ar;
-	sigset_t oldset;
 	char *key, *path;
-	int error = 0, request_error, last;
+	int error = 0, request_error;
 	bool wildcards;
 
 	KKASSERT(lockstatus(&autofs_softc->sc_lock, curthread) == LK_EXCLUSIVE);
@@ -405,6 +403,7 @@ autofs_trigger_one(struct autofs_node *anp,
 	if (anp->an_parent == NULL) {
 		key = kstrndup(component, componentlen, M_AUTOFS);
 	} else {
+		struct autofs_node *firstanp;
 		for (firstanp = anp; firstanp->an_parent->an_parent != NULL;
 		    firstanp = firstanp->an_parent)
 			continue;
@@ -457,6 +456,7 @@ autofs_trigger_one(struct autofs_node *anp,
 	cv_broadcast(&autofs_softc->sc_cv);
 	while (ar->ar_done == false) {
 		if (autofs_interruptible) {
+			sigset_t oldset;
 			autofs_set_sigmask(&oldset);
 			error = cv_wait_sig(&autofs_softc->sc_cv,
 			    &autofs_softc->sc_lock);
@@ -478,8 +478,10 @@ autofs_trigger_one(struct autofs_node *anp,
 
 	wildcards = ar->ar_wildcards;
 
-	last = refcount_release(&ar->ar_refcount);
-	if (last) {
+	/*
+	 * Check if this is the last reference.
+	 */
+	if (refcount_release(&ar->ar_refcount)) {
 		TAILQ_REMOVE(&autofs_softc->sc_requests, ar, ar_next);
 		lockmgr(&autofs_softc->sc_lock, LK_RELEASE);
 		taskqueue_cancel_timeout(_taskqueue_thread, &ar->ar_task, NULL);
@@ -512,9 +514,9 @@ int
 autofs_trigger(struct autofs_node *anp,
     const char *component, int componentlen)
 {
-	int error, dummy;
-
 	for (;;) {
+		int error, dummy;
+
 		error = autofs_trigger_one(anp, component, componentlen);
 		if (error == 0) {
 			anp->an_retries = 0;
@@ -548,10 +550,10 @@ autofs_ioctl_request(struct autofs_daemon_request *adr)
 {
 	struct proc *curp = curproc;
 	struct autofs_request *ar;
-	int error;
 
 	lockmgr(&autofs_softc->sc_lock, LK_EXCLUSIVE);
 	for (;;) {
+		int error;
 		TAILQ_FOREACH(ar, &autofs_softc->sc_requests, ar_next) {
 			if (ar->ar_done)
 				continue;

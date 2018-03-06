@@ -127,10 +127,7 @@ static int
 autofs_unmount(struct mount *mp, int mntflags)
 {
 	struct autofs_mount *amp = VFSTOAUTOFS(mp);
-	struct autofs_node *anp;
-	struct autofs_request *ar;
-	int error, flags, dummy;
-	bool found;
+	int error, flags;
 
 	flags = 0;
 	if (mntflags & MNT_FORCE)
@@ -146,6 +143,10 @@ autofs_unmount(struct mount *mp, int mntflags)
 	 * no new triggerings.
 	 */
 	for (;;) {
+		struct autofs_request *ar;
+		int dummy;
+		bool found;
+
 		found = false;
 		lockmgr(&autofs_softc->sc_lock, LK_EXCLUSIVE);
 		TAILQ_FOREACH(ar, &autofs_softc->sc_requests, ar_next) {
@@ -169,6 +170,7 @@ autofs_unmount(struct mount *mp, int mntflags)
 
 	mtx_lock_ex_quick(&amp->am_lock);
 	while (!RB_EMPTY(&amp->am_root->an_children)) {
+		struct autofs_node *anp;
 		anp = RB_MIN(autofs_node_tree, &amp->am_root->an_children);
 		if (!RB_EMPTY(&anp->an_children)) {
 			AUTOFS_DEBUG("%s has children", anp->an_name);

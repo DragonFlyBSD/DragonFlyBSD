@@ -71,7 +71,6 @@ test_fs_root(struct vnode *vp)
 static int
 nlookup_fs_root(struct autofs_node *anp, struct vnode **vpp)
 {
-	struct vnode *vp;
 	struct nlookupdata nd;
 	char *path;
 	int error;
@@ -82,7 +81,7 @@ nlookup_fs_root(struct autofs_node *anp, struct vnode **vpp)
 	if (error == 0) {
 		error = nlookup(&nd);
 		if (error == 0) {
-			vp = nd.nl_nch.ncp->nc_vp;
+			struct vnode *vp = nd.nl_nch.ncp->nc_vp;
 			error = test_fs_root(vp);
 			if (error == 0)
 				*vpp = vp;
@@ -439,7 +438,7 @@ static int
 autofs_mountctl(struct vop_mountctl_args *ap)
 {
 	struct mount *mp;
-	int res;
+	int res = 0;
 
 	mp = ap->a_head.a_ops->head.vv_mount;
 	lwkt_gettoken(&mp->mnt_token);
