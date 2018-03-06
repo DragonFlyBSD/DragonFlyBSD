@@ -445,14 +445,14 @@ phashinit_ext(int elements, size_t size, struct malloc_type *type,
  * MPSAFE
  */
 int
-iovec_copyin(struct iovec *uiov, struct iovec **kiov, struct iovec *siov,
-	     size_t iov_cnt, size_t *iov_len)
+iovec_copyin(const struct iovec *uiov, struct iovec **kiov, struct iovec *siov,
+	     int iov_cnt, size_t *iov_len)
 {
 	struct iovec *iovp;
 	int error, i;
 	size_t len;
 
-	if (iov_cnt > UIO_MAXIOV)
+	if ((u_int)iov_cnt > UIO_MAXIOV)
 		return EMSGSIZE;
 	if (iov_cnt > UIO_SMALLIOV) {
 		*kiov = kmalloc(sizeof(struct iovec) * iov_cnt, M_IOV,

@@ -1183,8 +1183,8 @@ struct	extpreadv_args {
 	struct sysmsg sysmsg;
 #endif
 	int	fd;	char fd_[PAD_(int)];
-	struct iovec *	iovp;	char iovp_[PAD_(struct iovec *)];
-	u_int	iovcnt;	char iovcnt_[PAD_(u_int)];
+	const struct iovec *	iovp;	char iovp_[PAD_(const struct iovec *)];
+	int	iovcnt;	char iovcnt_[PAD_(int)];
 	int	flags;	char flags_[PAD_(int)];
 	off_t	offset;	char offset_[PAD_(off_t)];
 };
@@ -1193,8 +1193,8 @@ struct	extpwritev_args {
 	struct sysmsg sysmsg;
 #endif
 	int	fd;	char fd_[PAD_(int)];
-	struct iovec *	iovp;	char iovp_[PAD_(struct iovec *)];
-	u_int	iovcnt;	char iovcnt_[PAD_(u_int)];
+	const struct iovec *	iovp;	char iovp_[PAD_(const struct iovec *)];
+	int	iovcnt;	char iovcnt_[PAD_(int)];
 	int	flags;	char flags_[PAD_(int)];
 	off_t	offset;	char offset_[PAD_(off_t)];
 };
