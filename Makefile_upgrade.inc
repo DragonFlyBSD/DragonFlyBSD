@@ -3374,6 +3374,8 @@ TO_REMOVE+=/usr/share/man/man9/untimeout.9.gz
 TO_REMOVE+=/usr/include/machine/apm_bios.h
 TO_REMOVE+=/usr/share/man/man2/expreadv.2.gz
 TO_REMOVE+=/etc/periodic/monthly/300.statistics
+TO_REMOVE+=/etc/periodic/weekly/120.clean-kvmdb
+TO_REMOVE+=/etc/periodic/daily/470.status-named
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

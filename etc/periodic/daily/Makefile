@@ -19,7 +19,6 @@ FILES=	100.clean-disks \
 	440.status-mailq \
 	450.status-security \
 	460.status-mail-rejects \
-	470.status-named \
 	500.queuerun \
 	999.local
 
