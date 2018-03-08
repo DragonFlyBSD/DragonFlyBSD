@@ -1,35 +1,44 @@
 #!/bin/sh
 #
-# $NetBSD: accounting,v 1.7 2002/03/22 04:33:57 thorpej Exp $
-# $FreeBSD: src/etc/rc.d/accounting,v 1.4 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/accounting,v 1.5 2005/11/19 21:47:32 swildner Exp $
+# $FreeBSD: head/etc/rc.d/accounting 234927 2012-05-02 14:25:39Z jhb $
 #
 
 # PROVIDE: accounting
 # REQUIRE: mountcritremote
 # BEFORE: DAEMON
+# KEYWORD: nojail
 
 . /etc/rc.subr
 
 name="accounting"
-rcvar=`set_rcvar`
+rcvar="accounting_enable"
 accounting_command="/usr/sbin/accton"
 accounting_file="/var/account/acct"
+
+extra_commands="rotate_log"
+
 start_cmd="accounting_start"
 stop_cmd="accounting_stop"
+rotate_log_cmd="accounting_rotate_log"
 
 accounting_start()
 {
-	_dir=`dirname "$accounting_file"`
-	if [ ! -d `dirname "$_dir"` ]; then
+	local _dir
+
+	_dir="${accounting_file%/*}"
+	if [ ! -d "$_dir" ]; then
 		if ! mkdir -p "$_dir"; then
-			warn "Could not create $_dir."
-			return 1
+			err 1 "Could not create $_dir."
 		fi
 	fi
+
 	if [ ! -e "$accounting_file" ]; then
+		echo -n "Creating accounting file ${accounting_file}"
 		touch "$accounting_file"
+		echo '.'
 	fi
+	chmod 644 "$accounting_file"
+
 	echo "Turning on accounting."
 	${accounting_command} ${accounting_file}
 }
@@ -38,6 +47,26 @@ accounting_stop()
 {
 	echo "Turning off accounting."
 	${accounting_command}
+}
+
+accounting_rotate_log()
+{
+	local _dir _file
+
+	_dir="${accounting_file%/*}"
+	cd $_dir
+
+	if checkyesno accounting_enable; then
+		_file=`mktemp newacct-XXXXX`
+		chmod 644 $_file
+		${accounting_command} ${_dir}/${_file}
+	fi
+
+	mv ${accounting_file} ${accounting_file}.0
+
+	if checkyesno accounting_enable; then
+		mv $_file ${accounting_file}
+	fi
 }
 
 load_rc_config $name
