@@ -24,15 +24,22 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/etc/periodic/security/security.functions,v 1.5 2005/08/22 09:33:36 cperciva Exp $
-# $DragonFly: src/etc/periodic/security/security.functions,v 1.3 2007/12/29 21:44:44 matthias Exp $
+# $FreeBSD: head/etc/periodic/security/security.functions 322868 2017-08-25 00:28:56Z asomers $
 #
+
+# This is a library file, so we only try to do something when sourced.
+case "$0" in
+*/security.functions) exit 0 ;;
+esac
+
+security_daily_compat_var security_status_logdir
+security_daily_compat_var security_status_diff_flags
 
 #
 # Show differences in the output of an audit command
 #
 
-LOG="${daily_status_security_logdir}"
+LOG="${security_status_logdir}"
 rc=0
 
 # Usage: COMMAND | check_diff [new_only] LABEL - MSG
@@ -41,10 +48,11 @@ rc=0
 #   LABEL is the base name of the ${LOG}/${label}.{today,yesterday} files.
 
 check_diff() {
+  unset IFS
   rc=0
   if [ "$1" = "new_only" ]; then
     shift
-    filter="grep '^[>+]'"
+    filter="grep '^[>+][^+]'"
   else
     filter="cat"
   fi
@@ -68,7 +76,7 @@ check_diff() {
     [ $rc -lt 1 ] && rc=1
     echo ""
     echo "${msg}"
-    diff ${daily_status_security_diff_flags} ${LOG}/${label}.today \
+    diff ${security_status_diff_flags} ${LOG}/${label}.today \
 	${tmpf} | eval "${filter}"
     mv ${LOG}/${label}.today ${LOG}/${label}.yesterday || rc=3
     mv ${tmpf} ${LOG}/${label}.today || rc=3

@@ -15,7 +15,7 @@ FILES=	100.clean-disks \
 	330.news \
 	400.status-disks \
 	420.status-network \
-	430.status-rwho \
+	430.status-uptime \
 	440.status-mailq \
 	450.status-security \
 	460.status-mail-rejects \

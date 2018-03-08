@@ -1,7 +1,6 @@
 #!/bin/sh
 #
-# $FreeBSD: src/etc/periodic/daily/100.clean-disks,v 1.3.2.6 2001/04/25 12:13:12 ru Exp $
-# $DragonFly: src/etc/periodic/daily/100.clean-disks,v 1.2 2003/06/17 04:24:48 dillon Exp $
+# $FreeBSD: head/etc/periodic/daily/100.clean-disks 193302 2009-06-02 07:35:51Z brian $
 #
 # Remove garbage files more than $daily_clean_disks_days days old
 #
@@ -30,7 +29,7 @@ case "$daily_clean_disks_enable" in
 	    echo ""
 	    echo "Cleaning disks:"
 	    set -f noglob
-	    args="$args -name "`echo "$daily_clean_disks_files" |
+	    args="-name "`echo "$daily_clean_disks_files" |
 		sed -e 's/^[ 	]*//' \
 		    -e 's/[ 	]*$//' \
 		    -e 's/[ 	][ 	]*/ -o -name /g'`
@@ -42,9 +41,9 @@ case "$daily_clean_disks_enable" in
 		    print=;;
 	    esac
 
-	    rc=$(find / \( ! -fstype local -o -fstype rdonly \) -a -prune -o \
-		\( $args \) -atime +$daily_clean_disks_days -delete $print |
-		tee /dev/stderr | wc -l)
+	    rc=$(find / \( ! -fstype local -o -fstype rdonly \) -prune -o \
+		\( $args \) -atime +$daily_clean_disks_days \
+		-execdir rm -df {} \; $print | tee /dev/stderr | wc -l)
 	    [ -z "$print" ] && rc=0
 	    [ $rc -gt 1 ] && rc=1
 	    set -f glob

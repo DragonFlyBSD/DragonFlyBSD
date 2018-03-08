@@ -1,7 +1,6 @@
 #!/bin/sh
 #
-# $FreeBSD: src/etc/periodic/daily/140.clean-rwho,v 1.4.2.2 2000/09/20 02:46:15 jkh Exp $
-# $DragonFly: src/etc/periodic/daily/140.clean-rwho,v 1.2 2003/06/17 04:24:48 dillon Exp $
+# $FreeBSD: head/etc/periodic/daily/140.clean-rwho 65843 2000-09-14 17:19:15Z brian $
 #
 # Remove stale files in /var/rwho
 #

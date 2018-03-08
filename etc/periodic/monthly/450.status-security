@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $FreeBSD: head/etc/periodic/daily/450.status-security 316548 2017-04-06 01:37:03Z asomers $
+# $FreeBSD: head/etc/periodic/monthly/450.status-security 316548 2017-04-06 01:37:03Z asomers $
 #
 
 # If there is a global system configuration file, suck it in.
@@ -11,19 +11,19 @@ then
     source_periodic_confs
 fi
 
-case "$daily_status_security_enable" in
+case "$monthly_status_security_enable" in
     [Yy][Ee][Ss])
 	echo ""
 	echo "Security check:"
 
-	case "$daily_status_security_inline" in
+	case "$monthly_status_security_inline" in
 	    [Yy][Ee][Ss])
-		daily_status_security_output="";;
+		monthly_status_security_output="";;
 	esac
 
-	export security_output="${daily_status_security_output}"
+	export security_output="${monthly_status_security_output}"
 	rc=0
-	case "${daily_status_security_output}" in
+	case "${monthly_status_security_output}" in
 	    "")
 		if tempfile=`mktemp ${TMPDIR:-/tmp}/450.status-security.XXXXXX`
 		then

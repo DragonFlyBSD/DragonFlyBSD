@@ -1,7 +1,6 @@
 #!/bin/sh -
 #
-# $FreeBSD: src/etc/periodic/weekly/320.whatis,v 1.5.2.3 2001/03/05 13:08:37 ru Exp $
-# $DragonFly: src/etc/periodic/weekly/320.whatis,v 1.2 2003/06/17 04:24:48 dillon Exp $
+# $FreeBSD: head/etc/periodic/weekly/320.whatis 73349 2001-03-02 16:52:14Z ru $
 #
 
 # If there is a global system configuration file, suck it in.

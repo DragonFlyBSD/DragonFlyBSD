@@ -24,8 +24,7 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/etc/periodic/security/100.chksetuid,v 1.1.2.6 2002/11/07 19:38:46 thomas Exp $
-# $DragonFly: src/etc/periodic/security/100.chksetuid,v 1.3 2008/07/09 20:33:32 swildner Exp $
+# $FreeBSD: head/etc/periodic/security/100.chksetuid 322868 2017-08-25 00:28:56Z asomers $
 #
 
 # If there is a global system configuration file, suck it in.
@@ -38,28 +37,26 @@ fi
 
 . /etc/periodic/security/security.functions
 
+security_daily_compat_var security_status_chksetuid_enable
+
 rc=0
 
-case "$daily_status_security_chksetuid_enable" in
-    [Yy][Ee][Ss])
+if check_yesno_period security_status_chksetuid_enable
+then
 	echo ""
 	echo 'Checking setuid files and devices:'
-	# XXX Note that there is the possibility of overrunning the args to ls
-	MP=`mount -t hammer,ufs | grep -v " nosuid" | awk '{ print $3 }' | sort`
-	if [ -n "${MP}" ]
-	then
-	    set ${MP}
-	    while [ $# -ge 1 ]; do
-	        mount=$1
-	        shift
-	        find $mount -xdev -type f \
-			\( -perm -u+x -or -perm -g+x -or -perm -o+x \) \
-			\( -perm -u+s -or -perm -g+s \) -print0
-	    done | xargs -0 -n 20 ls -liTd | sed 's/^ *//' | sort -k 11 |
-	      check_diff setuid - "${host} setuid diffs:"
-	    rc=$?
-	fi;;
-    *)	rc=0;;
-esac
+	IFS=$'\n'	# Don't split mount points with spaces or tabs
+	MP=`mount -t ufs,hammer,hammer2 | awk '
+		$0 !~ /no(suid|exec)/ {
+			sub(/^.* on \//, "/");
+			sub(/ \(.*\)/, "");
+			print $0
+		}'`
+	find -sx $MP /dev/null \( ! -fstype local \) -prune -o -type f \
+	    \( -perm -u+x -or -perm -g+x -or -perm -o+x \) \
+	    \( -perm -u+s -or -perm -g+s \) -exec ls -liTd \{\} \+ |
+	check_diff setuid - "${host} setuid diffs:"
+	rc=$?
+fi
 
 exit $rc

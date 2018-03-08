@@ -4,6 +4,7 @@ FILES=	310.locate \
 	320.whatis \
 	330.catman \
 	340.noid \
+	450.status-security \
 	999.local
 
 .include <bsd.prog.mk>

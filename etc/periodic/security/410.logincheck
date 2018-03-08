@@ -24,8 +24,7 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/etc/periodic/security/410.logincheck,v 1.1 2006/08/25 07:34:36 trhodes Exp $
-# $DragonFly: src/etc/periodic/security/410.logincheck,v 1.2 2008/06/14 15:30:19 matthias Exp $
+# $FreeBSD: head/etc/periodic/security/410.logincheck 254974 2013-08-27 21:20:28Z jlh $
 #
 
 # If there is a global system configuration file, suck it in.
@@ -36,8 +35,12 @@ then
     source_periodic_confs
 fi
 
-case "$daily_status_security_logincheck_enable" in
-    [Yy][Ee][Ss])
+security_daily_compat_var security_status_logincheck_enable
+
+rc=0
+
+if check_yesno_period security_status_logincheck_enable
+then
 	echo ""
 	echo 'Checking login.conf permissions:'
 	if [ -G /etc/login.conf -a -O /etc/login.conf ]; then
@@ -46,8 +49,7 @@ case "$daily_status_security_logincheck_enable" in
 	    echo "Bad ownership of /etc/login.conf"
 	    n=1
 	fi
-	[ $n -gt 0 ] && rc=1 || rc=0;;
-    *)	rc=0;;
-esac
+	[ $n -gt 0 ] && rc=1 || rc=0
+fi
 
 exit "$rc"

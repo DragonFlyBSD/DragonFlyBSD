@@ -24,10 +24,7 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: head/etc/periodic/security/700.kernelmsg 254974 2013-08-27 21:20:28Z jlh $
-#
-
-# Show kernel log messages
+# $FreeBSD: head/etc/periodic/security/110.neggrpperm 322868 2017-08-25 00:28:56Z asomers $
 #
 
 # If there is a global system configuration file, suck it in.
@@ -38,17 +35,27 @@ then
     source_periodic_confs
 fi
 
-. /etc/periodic/security/security.functions
-
-security_daily_compat_var security_status_kernelmsg_enable
+security_daily_compat_var security_status_neggrpperm_enable
 
 rc=0
 
-if check_yesno_period security_status_kernelmsg_enable
+if check_yesno_period security_status_neggrpperm_enable
 then
-	dmesg 2>/dev/null |
-	    check_diff new_only dmesg - "${host} kernel log messages:"
-	rc=$?
+	echo ""
+	echo 'Checking negative group permissions:'
+	IFS=$'\n'	# Don't split mount points with spaces or tabs
+	MP=`mount -t ufs,hammer,hammer2 | awk '
+		$0 !~ /no(suid|exec)/ {
+			sub(/^.* on \//, "/");
+			sub(/ \(.*\)/, "");
+			print $0
+		}'`
+	n=$(find -sx $MP /dev/null \( ! -fstype local \) -prune -o -type f \
+	    \( \( ! -perm +010 -and -perm +001 \) -or \
+	    \( ! -perm +020 -and -perm +002 \) -or \
+	    \( ! -perm +040 -and -perm +004 \) \) \
+	    -exec ls -liTd \{\} \+ | tee /dev/stderr | wc -l)
+	[ $n -gt 0 ] && rc=1 || rc=0
 fi
 
 exit $rc

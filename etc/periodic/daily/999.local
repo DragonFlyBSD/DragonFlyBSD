@@ -1,7 +1,6 @@
 #!/bin/sh
 #
-# $FreeBSD: src/etc/periodic/daily/999.local,v 1.2.2.3 2001/08/01 20:38:03 obrien Exp $
-# $DragonFly: src/etc/periodic/daily/999.local,v 1.2 2003/06/17 04:24:48 dillon Exp $
+# $FreeBSD: head/etc/periodic/daily/999.local 313069 2017-02-01 23:22:54Z asomers $
 #
 # Run the old /etc/daily.local script.  This is really for backwards
 # compatibility more than anything else.
@@ -21,7 +20,12 @@ do
     echo ''
     case "$script" in
 	/*)
-	    if [ -f "$script" ]
+	    if [ -x "$script" ]
+	    then
+		echo "Running $script:"
+
+		$script || rc=3
+	    elif [ -f "$script" ]
 	    then
 		echo "Running $script:"
 

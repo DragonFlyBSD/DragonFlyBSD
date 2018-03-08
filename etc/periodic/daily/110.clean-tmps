@@ -1,7 +1,6 @@
 #!/bin/sh
 #
-# $FreeBSD: src/etc/periodic/daily/110.clean-tmps,v 1.13 2004/02/28 04:58:40 ache Exp $
-# $DragonFly: src/etc/periodic/daily/110.clean-tmps,v 1.3 2007/12/29 21:44:44 matthias Exp $
+# $FreeBSD: head/etc/periodic/daily/110.clean-tmps 271321 2014-09-09 17:03:58Z bdrewery $
 #
 # Perform temporary directory cleaning so that long-lived systems
 # don't end up with excessively old files there.
@@ -46,8 +45,8 @@ case "$daily_clean_tmps_enable" in
 	    rc=$(for dir in $daily_clean_tmps_dirs
 		do
 		    [ ."${dir#/}" != ."$dir" -a -d $dir ] && cd $dir && {
-			find -d . -type f $args -delete $print
-			find -d . ! -name . -type d $dargs -delete $print
+			find -x -d . -type f $args -delete $print
+			find -x -d . ! -name . -type d $dargs -delete $print
 		    } | sed "s,^\\.,  $dir,"
 		done | tee /dev/stderr | wc -l)
 	    [ -z "$print" ] && rc=0

@@ -1,7 +1,6 @@
 #!/bin/sh -
 #
-# $FreeBSD: src/etc/periodic/weekly/340.noid,v 1.2.2.4 2002/04/15 00:44:17 dougb Exp $
-# $DragonFly: src/etc/periodic/weekly/340.noid,v 1.2 2003/06/17 04:24:48 dillon Exp $
+# $FreeBSD: head/etc/periodic/weekly/340.noid 220048 2011-03-27 03:03:29Z dougb $
 #
 
 # If there is a global system configuration file, suck it in.

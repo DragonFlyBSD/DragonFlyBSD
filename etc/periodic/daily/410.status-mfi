@@ -1,0 +1,33 @@
+#!/bin/sh
+#
+# $FreeBSD: head/etc/periodic/daily/410.status-mfi 316945 2017-04-14 22:59:14Z asomers $
+#
+
+# If there is a global system configuration file, suck it in.
+#
+if [ -r /etc/defaults/periodic.conf ]
+then
+    . /etc/defaults/periodic.conf
+    source_periodic_confs
+fi
+
+case "$daily_status_mfi_enable" in
+    [Yy][Ee][Ss])
+       echo
+       echo 'Checking status of mfi(4) devices:'
+
+       if mfiutil show volumes; then
+               if mfiutil show volumes | grep -q DEGRADED; then
+                       rc=3
+               else
+                       rc=0
+               fi
+       else
+               rc=2
+       fi
+       ;;
+
+    *)  rc=0;;
+esac
+
+exit $rc

@@ -1,7 +1,6 @@
 #!/bin/sh -
 #
-# $FreeBSD: src/etc/periodic/monthly/200.accounting,v 1.4.2.5 2002/05/21 03:17:08 brian Exp $
-# $DragonFly: src/etc/periodic/monthly/200.accounting,v 1.2 2003/06/17 04:24:48 dillon Exp $
+# $FreeBSD: head/etc/periodic/monthly/200.accounting 202218 2010-01-13 19:07:48Z ed $
 #
 
 # If there is a global system configuration file, suck it in.
@@ -40,7 +39,7 @@ case "$monthly_accounting_enable" in
 	    echo ""
 	    echo "Doing login accounting:"
 
-	    rc=$(ac -p -w $W.0 | sort -nr +1 | tee /dev/stderr | wc -l)
+	    rc=$(ac -p -w $W.0 | sort -nr -k 2 | tee /dev/stderr | wc -l)
 	    [ $rc -gt 0 ] && rc=1
 	fi
 	[ $remove = YES ] && rm -f $W.0;;

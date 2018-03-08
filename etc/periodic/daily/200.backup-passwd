@@ -1,7 +1,6 @@
 #!/bin/sh
 #
-# $FreeBSD: src/etc/periodic/daily/200.backup-passwd,v 1.6.2.3 2001/11/17 22:42:46 cjc Exp $
-# $DragonFly: src/etc/periodic/daily/200.backup-passwd,v 1.2 2003/06/17 04:24:48 dillon Exp $
+# $FreeBSD: head/etc/periodic/daily/200.backup-passwd 326074 2017-11-21 20:31:54Z emaste $
 #
 
 # If there is a global system configuration file, suck it in.
@@ -42,8 +41,8 @@ case "$daily_backup_passwd_enable" in
 	    then
 		[ $rc -lt 1 ] && rc=1
 		echo "$host passwd diffs:"
-		diff -I '^#' $bak/master.passwd.bak /etc/master.passwd |\
-			sed 's/^\([<>] [^:]*\):[^:]*:/\1:(password):/'
+		diff -uI '^#' $bak/master.passwd.bak /etc/master.passwd |\
+			sed 's/^\([-+ ][^-+:]*\):[^:]*:/\1:(password):/'
 		mv $bak/master.passwd.bak $bak/master.passwd.bak2
 		cp -p /etc/master.passwd $bak/master.passwd.bak || rc=3
 	    fi
@@ -59,7 +58,7 @@ case "$daily_backup_passwd_enable" in
 	    then
 		[ $rc -lt 1 ] && rc=1
 		echo "$host group diffs:"
-		diff $bak/group.bak /etc/group
+		diff -u $bak/group.bak /etc/group
 		mv $bak/group.bak $bak/group.bak2
 		cp -p /etc/group $bak/group.bak || rc=3
 	    fi
