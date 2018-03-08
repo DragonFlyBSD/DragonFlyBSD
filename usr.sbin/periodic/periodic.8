@@ -22,9 +22,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.sbin/periodic/periodic.8,v 1.11.2.15 2003/03/12 22:08:15 trhodes Exp $
+.\" $FreeBSD: head/usr.sbin/periodic/periodic.8 300356 2016-05-21 02:14:11Z asomers $
 .\"
-.Dd September 7, 2007
+.Dd March 12, 2018
 .Dt PERIODIC 8
 .Os
 .Sh NAME
@@ -48,7 +48,7 @@ Perform the standard daily periodic executable run.
 This usually occurs early in the morning (local time).
 .It Pa weekly
 Perform the standard weekly periodic executable run.
-This usually occurs on Saturday mornings.
+This usually occurs very early on Saturday mornings.
 .It Pa monthly
 Perform the standard monthly periodic executable run.
 This usually occurs on the first day of the month.
@@ -135,6 +135,11 @@ value does not begin with a
 .Ql /
 and is not empty, it is assumed to contain a list of email addresses, and
 the output is mailed to them.
+If
+.Ao Ar basedir Ac Ns Va _show_empty_output
+is set to
+.Dq Li NO ,
+then no mail will be sent if the output was empty.
 .Pp
 If
 .Ao Ar basedir Ac Ns Va _output
@@ -161,8 +166,9 @@ table
 the top level directory containing
 .Pa daily ,
 .Pa weekly ,
+.Pa monthly ,
 and
-.Pa monthly
+.Pa security
 subdirectories which contain standard system periodic executables
 .It Pa /etc/defaults/periodic.conf
 the
@@ -170,9 +176,9 @@ the
 system registry contains variables that control the behaviour of
 .Nm
 and the standard
-.Pa daily , weekly ,
+.Pa daily , weekly , monthly ,
 and
-.Pa monthly
+.Pa security
 scripts
 .It Pa /etc/periodic.conf
 this file contains local overrides for the default
@@ -180,7 +186,7 @@ this file contains local overrides for the default
 configuration
 .El
 .Sh EXIT STATUS
-.Ex -std
+Exit status is 0 on success and 1 if the command fails.
 .Sh EXAMPLES
 The system crontab should have entries for
 .Nm
@@ -198,7 +204,7 @@ system registry will typically have a
 .Va local_periodic
 variable reading:
 .Pp
-.Dl local_periodic="/usr/local/etc/periodic /usr/pkg/etc/periodic"
+.Dl local_periodic="/usr/local/etc/periodic"
 .Pp
 To log
 .Nm
@@ -219,9 +225,7 @@ daily_show_info=NO
 daily_show_badconfig=NO
 .Ed
 .Sh DIAGNOSTICS
-The
-.Nm
-command may fail for one of the following reasons:
+The command may fail for one of the following reasons:
 .Bl -diag
 .It usage: periodic <directory of files to execute>
 No directory path argument was passed to
