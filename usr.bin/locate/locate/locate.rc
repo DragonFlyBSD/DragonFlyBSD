@@ -24,4 +24,4 @@
 # an empty database.
 #
 # be careful if you add 'nfs'
-#FILESYSTEMS="hammer ufs" 
+#FILESYSTEMS="hammer hammer2 ufs" 

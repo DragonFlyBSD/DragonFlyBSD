@@ -48,7 +48,7 @@ PATH=$LIBEXECDIR:/bin:/usr/bin:$PATH; export PATH
 : ${FCODES:=/var/db/locate.database}	 # the database
 : ${SEARCHPATHS:="/"}		# directories to be put in the database
 : ${PRUNEPATHS:="/tmp /usr/tmp /var/tmp"} # unwanted directories
-: ${FILESYSTEMS:="hammer ufs"}		 # allowed filesystems 
+: ${FILESYSTEMS:="hammer hammer2 ufs"}	 # allowed filesystems 
 : ${find:=find}
 
 case X"$SEARCHPATHS" in 
