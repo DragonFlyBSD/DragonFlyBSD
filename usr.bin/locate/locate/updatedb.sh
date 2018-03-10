@@ -52,19 +52,30 @@ PATH=$LIBEXECDIR:/bin:/usr/bin:$PATH; export PATH
 
 : ${mklocatedb:=locate.mklocatedb}	 # make locate database program
 : ${FCODES:=/var/db/locate.database}	 # the database
-: ${SEARCHPATHS:="/"}		# directories to be put in the database
 : ${PRUNEPATHS:="/tmp /usr/tmp /var/tmp"} # unwanted directories
 : ${PRUNEDIRS:=".git"}	# unwanted directories, in any parent
+# allowed filesystems
 : ${FILESYSTEMS:="$(lsvfs | tail -n +3 | \
-	egrep -vw "loopback|network|synthetic|read-only|0" | \
-	cut -d " " -f1)"}		# allowed filesystems
-: ${find:=find}
+	egrep -vw 'loopback|network|synthetic|read-only|0' | \
+	cut -d ' ' -f1)"}
+# directories to be searched to create the database
+# default to be all mount points with the above allowed filesystems, thus
+# allowing the exclusion of the root (/) filesystem while other mounted
+# and allowed filesystems can still be indexed.
+: ${SEARCHPATHS:="$(mount -t $(echo $FILESYSTEMS | tr ' ' ',') | \
+	awk '{ print $3 }')"}
+# the find program and its options
+: ${FIND:="find -x"}
 
 if [ -z "$SEARCHPATHS" ]; then
 	echo "$0: empty variable SEARCHPATHS" >&2; exit 1
 fi
 if [ -z "$FILESYSTEMS" ]; then
 	echo "$0: empty variable FILESYSTEMS" >&2; exit 1
+fi
+ROOTFS="$(df -T / | awk '$NF=="/" { print $2 }')"
+if ! echo "$FILESYSTEMS" | grep -qw "$ROOTFS"; then
+	echo "WARNING: root filesystem '$ROOTFS' was excluded" >&2
 fi
 
 # Make a list a paths to exclude in the locate run
@@ -92,14 +103,19 @@ tmp=$TMPDIR/_updatedb$$
 trap 'rm -f $tmp; rmdir $TMPDIR' 0 1 2 3 5 10 15
 
 # search locally
-# echo $find $SEARCHPATHS $excludes -or -print && exit
-if $find -s $SEARCHPATHS $excludes -or -print 2>/dev/null |
-        $mklocatedb -presort > $tmp
+echo $FIND $SEARCHPATHS $excludes -or -print
+if $FIND $SEARCHPATHS $excludes -or -print 2>/dev/null | \
+        sort | uniq | $mklocatedb -presort > $tmp
 then
-	if [ -n "$($find $tmp -size -257c -print)" ]; then
+	if [ "$(stat -f '%z' $tmp)" -lt "257" ]; then
 		echo "updatedb: locate database $tmp is empty" >&2
 		exit 1
 	else
-		cat $tmp > $FCODES		# should be cp?
+		# Use "cat" instead of "cp", since the permission of the
+		# database is set up the by caller (i.e., peridoic task)
+		# which has privilege, while this tool should be run as
+		# a non-privilege user.
+		cat $tmp > $FCODES
+		echo "updatedb: built new locate database: $FCODES"
 	fi
 fi
