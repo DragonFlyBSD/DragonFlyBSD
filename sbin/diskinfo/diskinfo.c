@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sbin/diskinfo/diskinfo.c,v 1.7 2008/05/19 10:19:49 corecode Exp $
  */
 
 #define DKTYPENAMES
@@ -98,7 +96,7 @@ void
 dumppart(const char *path, struct partinfo *dpart)
 {
 	printf("%-16s ", path);
-	printf("blksize=%-4d off=%012jx size=%012jx ",
+	printf("blksize=%-4d offset=0x%012jx size=0x%012jx ",
 		dpart->media_blksize,
 		(intmax_t)dpart->media_offset,
 		(intmax_t)dpart->media_size

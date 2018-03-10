@@ -7,8 +7,6 @@
 # 'rconfig -a ip_of_server' if the server is not on the same LAN.
 #
 # WARNING!  THIS SCRIPT WILL COMPLETELY WIPE THE DISK!
-#
-# $DragonFly: src/share/examples/rconfig/auto.sh,v 1.2 2008/09/03 02:22:25 dillon Exp $
 
 set disk = ad0
 set slice = s1
@@ -46,7 +44,7 @@ dd if=/dev/zero of=/dev/$xdisk bs=32k count=16
 echo "DISKLABEL"
 sleep 1
 
-disklabel -B -r -w $xdisk auto
+disklabel -B -r -w $xdisk
 disklabel $xdisk > /tmp/disklabel.$xdisk
 cat >> /tmp/disklabel.$xdisk << EOF
 a: 256m * 4.2BSD

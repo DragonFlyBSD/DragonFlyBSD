@@ -61,7 +61,7 @@ mount_msdos /dev/${disk}s0 /mnt
 mkdir -p /mnt/EFI/BOOT
 cp /boot/boot1.efi /mnt/EFI/BOOT/BOOTX64.EFI
 umount /mnt
-disklabel64 -r -w ${disk}s1 auto
+disklabel64 -r -w ${disk}s1
 disklabel64 -B ${disk}s1
 disklabel64 ${disk}s1 > /tmp/label
 

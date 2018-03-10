@@ -31,7 +31,7 @@
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
 .\"
-.Dd August 3, 2012
+.Dd November 10, 2017
 .Dt DISKLABEL64 8
 .Os
 .Sh NAME
@@ -45,8 +45,8 @@
 .Fl w
 .Op Fl r
 .Op Fl n
-.Ar disk Ar disktype Ns / Ns Cm auto
-.Oo Ar packid Oc
+.Ar disk
+.Op Ar disktype Ns / Ns Cm auto Op Ar packid
 .Nm
 .Fl e
 .Op Fl r
@@ -77,8 +77,8 @@
 .Fl b Ar boot1
 .Fl s Ar boot2
 .Oc
-.Ar disk Ar disktype Ns / Ns Cm auto
-.Oo Ar packid Oc
+.Ar disk
+.Op Ar disktype Ns / Ns Cm auto Op Ar packid
 .Nm
 .Fl R
 .Fl B
@@ -186,21 +186,24 @@ To write a standard label, use the form
 .Fl w
 .Op Fl r
 .Op Fl n
-.Ar disk Ar disktype Ns / Ns Cm auto
-.Oo Ar packid Oc
+.Ar disk
+.Op Ar disktype Ns / Ns Cm auto Op Ar packid
 .Pp
-The required arguments to
+The required argument to
 .Nm
-are the drive to be labeled and the drive type as described in the
+is the drive to be labeled.
+The first optional argument is the drive type as described in the
 .Xr disktab 5
-file.
-The drive parameters and partitions are taken from that file.
+file, from which the drive parameters and partitions are taken.
+If not specified, then the
+.Cm auto
+type is assumed to make a virgin label for the disk as described below.
 If
 different disks of the same physical type are to have different partitions, it
 will be necessary to have separate disktab entries describing each, or to edit
 the label after installation as described below.
 The optional argument is a
-pack identification string, up to 16 characters long.
+pack identification string, up to 63 characters long.
 The pack id must be
 quoted if it contains blanks.
 .Pp
@@ -240,10 +243,7 @@ anything from the disk at all.
 It will likely succeed for all SCSI
 disks, most IDE disks, and vnode devices.
 Writing a label to the
-disk is the only supported operation, and the
-.Ar disk
-itself must be provided as the canonical name, i.e.\& not as a full
-path name.
+disk is the only supported operation.
 .Pp
 For most harddisks, a label based on percentages for most partitions (and
 one partition with a size of
@@ -356,7 +356,8 @@ use the command
 The final three forms of
 .Nm
 are used to install bootstrap code, which allows boot from a
-.Xr HAMMER 5
+.Xr HAMMER 5 ,
+.Xr HAMMER2 5 ,
 or
 .Xr UFS 5
 file system.
@@ -405,8 +406,8 @@ slice such as
 .Fl b Ar boot1
 .Fl s Ar boot2
 .Oc
-.Ar disk Ar disktype Ns / Ns Cm auto
-.Oo Ar packid Oc
+.Ar disk
+.Op Ar disktype Ns / Ns Cm auto Op Ar packid
 .Pp
 This form corresponds to the
 .Dq write label
@@ -519,7 +520,8 @@ to define partitions on
 slices created in the previous step.
 .It
 Finally use
-.Xr newfs_hammer 8
+.Xr newfs_hammer 8 ,
+.Xr newfs_hammer2 8 ,
 or
 .Xr newfs 8
 to create file systems on new partitions.
@@ -527,34 +529,20 @@ to create file systems on new partitions.
 .Pp
 A typical partitioning scheme would be to have an
 .Ql a
-partition
-of approximately 512MB to hold the root file system, a
+partition of approximately 1 GB for
+.Pa /boot
+to hold the current, old (and backup) kernels and modules, a
 .Ql b
-partition for
-swap (usually 4GB), a
-.Ql d
-partition for
-.Pa /var
-(usually 2GB), an
-.Ql e
-partition for
-.Pa /var/tmp
-(usually 2GB), an
-.Ql f
-partition for
-.Pa /usr
-(usually around 4GB),
+partition for swap (suggested to be at least the same size as the
+physical memory),
 and finally a
-.Ql g
-partition for
-.Pa /home
-(usually all remaining space).
-If you are tight on space all sizes can be halved.
+.Ql d
+partition for the root file system (usually all remaining space).
 Your mileage may vary.
 .Pp
 .Dl "gpt create da0"
 .Dl "gpt add da0"
-.Dl "disklabel64 -B -r -w da0s0 auto"
+.Dl "disklabel64 -B -r -w da0s0"
 .Dl "disklabel64 -e da0s0"
 .Sh ALIGNMENT
 When a virgin disklabel64 is laid down a
@@ -595,46 +583,38 @@ The
 utility uses an
 .Tn ASCII
 version of the label when examining, editing, or restoring a disk label.
-The format is:
+An example shows as below:
 .Bd -literal -offset 4n
-# /dev/ad4s4:
+# /dev/ad4s1:
 #
-# Informational fields calculated from the above
-# All byte equivalent offsets must be aligned
+# Calculated informational fields for the slice:
 #
-# boot space:      32768 bytes
-# data space:  121790552 blocks	# 118936.09 MB (124713525248 bytes)
+# boot space:    1012224 bytes
+# data space:  156286976 blocks	# 152624.00 MB (160037863424 bytes)
 #
-diskid: 5e3ef4db-4e24-11dd-8318-010e0cd0bad1
+# NOTE: The partition data base and stop are physically
+#       aligned instead of slice-relative aligned.
+#
+# All byte equivalent offsets must be aligned.
+#
+diskid: 5dc53a64-c5e5-11e7-8aec-011d0988acd3
 label:
 boot2 data base:      0x000000001000
-partitions data base: 0x000000009000
-partitions data stop: 0x001d0981f000
-backup label:         0x001d0981f000
-total size:           0x001d09820000	# 118936.12 MB
+partitions data base: 0x0000000f8200
+partitions data stop: 0x0025430f8200
+backup label:         0x002543157200
+total size:           0x002543158200	# 152625.34 MB
 alignment: 4096
-display block size: 1024	# for partition display only
+display block size: 1024	# for partition display and edit only
 
 16 partitions:
 #          size     offset    fstype   fsuuid
-  a:     524288          0    4.2BSD	#     512.000MB
-  b:    4194304     524288      swap	#    4096.000MB
-  d:    2097152    4718592    4.2BSD	#    2048.000MB
-  e:    2097152    6815744    4.2BSD	#    2048.000MB
-  f:    4194304    8912896    4.2BSD	#    4096.000MB
-  g:    4194304   13107200    4.2BSD	#    4096.000MB
-  h:   94003288   17301504    HAMMER	#   91800.086MB
-  i:    5242880  111304792       ccd	#    5120.000MB
-  j:    5242880  116547672     vinum	#    5120.000MB
-  a-stor_uuid: 4370efdb-4e25-11dd-8318-010e0cd0bad1
-  b-stor_uuid: 4370eff4-4e25-11dd-8318-010e0cd0bad1
-  d-stor_uuid: 4370f00b-4e25-11dd-8318-010e0cd0bad1
-  e-stor_uuid: 4370f024-4e25-11dd-8318-010e0cd0bad1
-  f-stor_uuid: 4370f03a-4e25-11dd-8318-010e0cd0bad1
-  g-stor_uuid: 4370f053-4e25-11dd-8318-010e0cd0bad1
-  h-stor_uuid: 4370f06a-4e25-11dd-8318-010e0cd0bad1
-  i-stor_uuid: 4370f083-4e25-11dd-8318-010e0cd0bad1
-  j-stor_uuid: 4370f099-4e25-11dd-8318-010e0cd0bad1
+  a:    1048576          0    4.2BSD	#    1024.000MB
+  b:   16777216    1048576      swap	#   16384.000MB
+  d:  138461184   17825792    HAMMER	#  135216.000MB
+  a-stor_uuid: 7f1ff0ee-c5ec-11e7-8aec-011d0988acd3
+  b-stor_uuid: 7f1ff0fc-c5ec-11e7-8aec-011d0988acd3
+  d-stor_uuid: 7f1ff108-c5ec-11e7-8aec-011d0988acd3
 .Ed
 .Pp
 Lines starting with a
@@ -699,8 +679,7 @@ to have
 calculate the correct offset to use (the end of the previous partition plus
 one.
 .It Ar fstype
-Describes the purpose of the partition.
-The example shows all currently used partition types.
+The name of the filesystem type for the partition (case insensitive).
 For
 .Xr UFS 5
 file systems, use type
@@ -759,17 +738,6 @@ This file can be used with the
 .Fl R
 option to restore the label at a later date.
 .Pp
-.Dl "disklabel64 -w -r /dev/da0s1 da2212 foo"
-.Pp
-Create a label for
-.Pa da0s1
-based on information for
-.Dq da2212
-found in
-.Pa /etc/disktab .
-Any existing bootstrap code will be clobbered
-and the disk rendered unbootable.
-.Pp
 .Dl "disklabel64 -e -r da0s1"
 .Pp
 Read the on-disk label for
@@ -781,12 +749,12 @@ Existing bootstrap code is unaffected.
 .Pp
 Read the on-disk label for
 .Pa da0s1 ,
-edit it, and display what the new label would be (in sectors).
+edit it, and display what the new label would be.
 It does
 .Em not
 install the new label either in-core or on-disk.
 .Pp
-.Dl "disklabel64 -r -w da0s1 auto"
+.Dl "disklabel64 -r -w da0s1"
 .Pp
 Try to auto-detect the required information from
 .Pa da0s1 ,
@@ -826,13 +794,9 @@ and possibly
 .Pa /boot/boot2_64 .
 On-disk and in-core labels are unchanged.
 .Pp
-.Dl "disklabel64 -w -B /dev/da0s1 -b newboot1 -s newboot2 da2212"
+.Dl "disklabel64 -w -B /dev/da0s1 -b newboot1 -s newboot2"
 .Pp
-Install a new label and bootstrap.
-The label is derived from disktab information for
-.Dq da2212
-and installed both in-core and on-disk.
-The bootstrap code comes from the files
+Install a new label and bootstrap, with bootstrap code comes from the files
 .Pa newboot1
 and
 .Pa newboot2 .
@@ -840,7 +804,7 @@ and
 .Dl "dd if=/dev/zero of=/dev/da0 bs=512 count=32"
 .Dl "fdisk -BI da0"
 .Dl "dd if=/dev/zero of=/dev/da0s1 bs=512 count=32"
-.Dl "disklabel64 -w -B da0s1 auto"
+.Dl "disklabel64 -w -B da0s1"
 .Dl "disklabel64 -e da0s1"
 .Pp
 Completely wipe any prior information on the disk, creating a new bootable
@@ -856,7 +820,7 @@ recognize the disk.
 .Pp
 .Dl "disklabel64 -W da0s1"
 .Dl "dd if=/dev/zero of=/dev/da0s1 bs=512 count=32"
-.Dl "disklabel -r -w da0s1 auto"
+.Dl "disklabel -r -w da0s1"
 .Dl "disklabel -N da0s1"
 .Pp
 Completely wipe any prior information on the slice,
@@ -870,34 +834,38 @@ won't do any operations if label with other format is already installed.
 .Pp
 This is an example disklabel that uses some of the new partition size types
 such as
-.Cm % , M , G ,
+.Cm % , M , G , T ,
 and
 .Cm * ,
 which could be used as a source file for
 .Pp
 .Dl "disklabel64 -R ad0s1 new_label_file"
 .Bd -literal -offset 4n
-# /dev/ad4s4:
+# /dev/ad4s1:
 #
-# Informational fields calculated from the above
-# All byte equivalent offsets must be aligned
+# Calculated informational fields for the slice:
 #
-# boot space:      32768 bytes
-# data space:  121790552 blocks	# 118936.09 MB (124713525248 bytes)
+# boot space:    1012224 bytes
+# data space:  156286976 blocks	# 152624.00 MB (160037863424 bytes)
 #
-diskid: b1db58a3-4e26-11dd-8318-010e0cd0bad1
+# NOTE: The partition data base and stop are physically
+#       aligned instead of slice-relative aligned.
+#
+# All byte equivalent offsets must be aligned.
+#
+diskid: 5dc53a64-c5e5-11e7-8aec-011d0988acd3
 label:
 boot2 data base:      0x000000001000
-partitions data base: 0x000000009000
-partitions data stop: 0x001d0981f000
-backup label:         0x001d0981f000
-total size:           0x001d09820000	# 118936.12 MB
+partitions data base: 0x0000000f8200
+partitions data stop: 0x0025430f8200
+backup label:         0x002543157200
+total size:           0x002543158200	# 152625.34 MB
 alignment: 4096
-display block size: 1024	# for partition display only
+display block size: 1024	# for partition display and edit only
 
 16 partitions:
 #          size     offset    fstype   fsuuid
-  a:       512M          0    4.2BSD
+  a:      1024M          0    4.2BSD
   b:         4G          *      swap
   d:         2G          *    4.2BSD
   e:      2048M          *    4.2BSD
@@ -935,6 +903,7 @@ partition.
 .Xr hammer2 8 ,
 .Xr newfs 8 ,
 .Xr newfs_hammer 8 ,
+.Xr newfs_hammer2 8 ,
 .Xr vinum 8
 .Sh BUGS
 The
@@ -947,3 +916,7 @@ given if partitions
 overlap; if an absolute offset does not match the expected offset; if a
 partition runs past the end of the device; and a number of other errors; but
 no warning is given if space remains unused.
+.Pp
+The
+.Xr disktab 5
+support is not implemented.

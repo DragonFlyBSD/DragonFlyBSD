@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -98,80 +98,59 @@
 
 extern uint32_t crc32(const void *buf, size_t size);
 
-/*
- * Disklabel64: read and write 64 bit disklabels.
- * The label is usually placed on one of the first sectors of the disk.
- * Many machines also place a bootstrap in the same area,
- * in which case the label is embedded in the bootstrap.
- * The bootstrap source must leave space at the proper offset
- * for the label on such machines.
- */
-
-#define LABELSIZE	((sizeof(struct disklabel64) + 4095) & ~4095)
-#define BOOTSIZE	32768
-
-/* FIX!  These are too low, but are traditional */
-#define DEFAULT_NEWFS_BLOCK  8192U
-#define DEFAULT_NEWFS_FRAG   1024U
-#define DEFAULT_NEWFS_CPG    16U
-
-#define BIG_NEWFS_BLOCK  16384U
-#define BIG_NEWFS_FRAG   2048U
-#define BIG_NEWFS_CPG    64U
-
-void	makelabel(const char *, const char *, struct disklabel64 *);
-int	writelabel(int, struct disklabel64 *);
-void	l_perror(const char *);
-struct disklabel64 *readlabel(int);
-struct disklabel64 *makebootarea(int);
-void	display(FILE *, const struct disklabel64 *);
-int	edit(struct disklabel64 *, int);
-int	editit(void);
-char	*skip(char *);
-char	*word(char *);
-int	getasciilabel(FILE *, struct disklabel64 *);
-int	getasciipartspec(char *, struct disklabel64 *, int, int, uint32_t);
-int	getasciipartuuid(char *, struct disklabel64 *, int, int, uint32_t);
-int	checklabel(struct disklabel64 *);
-void	Warning(const char *, ...) __printflike(1, 2);
-void	usage(void) __dead2;
-struct disklabel64 *getvirginlabel(void);
+static void	makelabel(const char *, const char *, struct disklabel64 *);
+static int	writelabel(int, struct disklabel64 *);
+static void	l_perror(const char *);
+static void	display(FILE *, const struct disklabel64 *);
+static int	edit(struct disklabel64 *, int);
+static int	editit(void);
+static char	*skip(char *);
+static char	*word(char *);
+static int	parse_field_val(char **, char **, u_int64_t *, int);
+static int	getasciilabel(FILE *, struct disklabel64 *);
+static int	getasciipartspec(char *, struct disklabel64 *, int, int, uint32_t);
+static int	getasciipartuuid(char *, struct disklabel64 *, int, int, uint32_t);
+static int	checklabel(struct disklabel64 *);
+static void	Warning(const char *, ...) __printflike(1, 2);
+static void	usage(void);
+static struct disklabel64 *getvirginlabel(void);
+static struct disklabel64 *readlabel(int);
+static struct disklabel64 *makebootarea(int);
 
 #define	DEFEDITOR	_PATH_VI
 #define	streq(a,b)	(strcmp(a,b) == 0)
 
-char	*dkname;
-char	*specname;
-char	tmpfil[] = PATH_TMPFILE;
+static char	*dkname;
+static char	*specname;
+static char	tmpfil[] = PATH_TMPFILE;
 
-struct	disklabel64 lab;
+static struct	disklabel64 lab;
 
 #define MAX_PART ('z')
 #define MAX_NUM_PARTS (1 + MAX_PART - 'a')
-char    part_size_type[MAX_NUM_PARTS];
-char    part_offset_type[MAX_NUM_PARTS];
-int     part_set[MAX_NUM_PARTS];
+static char	part_size_type[MAX_NUM_PARTS];
+static char	part_offset_type[MAX_NUM_PARTS];
+static int	part_set[MAX_NUM_PARTS];
 
-int	installboot;	/* non-zero if we should install a boot program */
-int	boot1size;
-int	boot1lsize;
-int	boot2size;
-char	*boot1buf;
-char	*boot2buf;
-char	*boot1path;
-char	*boot2path;
+static int	installboot;	/* non-zero if we should install a boot program */
+static int	boot1size;
+static int	boot1lsize;
+static int	boot2size;
+static char	*boot1buf;
+static char	*boot2buf;
+static char	*boot1path;
+static char	*boot2path;
 
-enum	{
+static enum {
 	UNSPEC, EDIT, NOWRITE, READ, RESTORE, WRITE, WRITEABLE, WRITEBOOT
 } op = UNSPEC;
 
-int	rflag;
-int	Vflag;
-int	disable_write;   /* set to disable writing to disk label */
-u_int32_t slice_start_lba;
+static int	rflag;
+static int	Vflag;
+static int	disable_write;   /* set to disable writing to disk label */
 
 #ifdef DEBUG
-int	debug;
+static int	debug;
 #define OPTIONS	"BNRWb:denrs:Vw"
 #else
 #define OPTIONS	"BNRWb:enrs:Vw"
@@ -183,7 +162,8 @@ main(int argc, char *argv[])
 	struct disklabel64 *lp;
 	FILE *t;
 	int ch, f = 0, flag, error = 0;
-	char *name = NULL;
+	const char *name = NULL;
+	const char *dtype = NULL;
 
 	while ((ch = getopt(argc, argv, OPTIONS)) != -1)
 		switch (ch) {
@@ -317,9 +297,13 @@ main(int argc, char *argv[])
 			name = argv[2];
 			argc--;
 		}
-		if (argc != 2)
+		if (argc == 2)
+			dtype = argv[1];
+		else if (argc == 1)
+			dtype = "auto";
+		else
 			usage();
-		makelabel(argv[1], name, &lab);
+		makelabel(dtype, name, &lab);
 		lp = makebootarea(f);
 		bcopy(&lab.d_magic, &lp->d_magic,
 		      sizeof(lab) - offsetof(struct disklabel64, d_magic));
@@ -357,7 +341,7 @@ main(int argc, char *argv[])
  * effect, set the names of the primary and secondary boot files
  * if specified.
  */
-void
+static void
 makelabel(const char *type, const char *name, struct disklabel64 *lp)
 {
 	struct disklabel64 *dp;
@@ -365,19 +349,17 @@ makelabel(const char *type, const char *name, struct disklabel64 *lp)
 	if (strcmp(type, "auto") == 0)
 		dp = getvirginlabel();
 	else
-		dp = NULL;
-	if (dp == NULL)
-		errx(1, "%s: unknown disk type", type);
+		errx(1, "no disktab(5) support yet; only 'auto' allowed");
 	*lp = *dp;
 
 	/*
 	 * NOTE: boot control files may no longer be specified in disktab.
 	 */
 	if (name)
-		strncpy(lp->d_packname, name, sizeof(lp->d_packname));
+		strlcpy((char *)lp->d_packname, name, sizeof(lp->d_packname));
 }
 
-int
+static int
 writelabel(int f, struct disklabel64 *lp)
 {
 	struct disklabel64 *blp;
@@ -440,7 +422,7 @@ writelabel(int f, struct disklabel64 *lp)
 				      sizeof(*lp) -
 				      offsetof(struct disklabel64, d_magic));
 			}
-			
+
 			/*
 			 * write enable label sector before write
 			 * (if necessary), disable after writing.
@@ -475,7 +457,7 @@ writelabel(int f, struct disklabel64 *lp)
 	return (0);
 }
 
-void
+static void
 l_perror(const char *s)
 {
 	switch (errno) {
@@ -510,7 +492,7 @@ l_perror(const char *s)
  * Fetch disklabel for disk.
  * Use ioctl to get label unless -r flag is given.
  */
-struct disklabel64 *
+static struct disklabel64 *
 readlabel(int f)
 {
 	struct disklabel64 *lp;
@@ -564,7 +546,7 @@ readlabel(int f)
  * the label within the area.  The caller will overwrite the label so
  * we don't actually have to read it.
  */
-struct disklabel64 *
+static struct disklabel64 *
 makebootarea(int f)
 {
 	struct disklabel64 *lp;
@@ -588,8 +570,10 @@ makebootarea(int f)
 		boot1buf = malloc(rsize);
 		bzero(boot1buf, rsize);
 		r = read(f, boot1buf, rsize);
-		if (r != (int)rsize)
+		if (r != (int)rsize) {
+			free(boot1buf);
 			err(4, "%s", specname);
+		}
 	}
 	lp = (void *)boot1buf;
 
@@ -597,7 +581,7 @@ makebootarea(int f)
 		return(lp);
 
 	if (boot2buf == NULL) {
-		boot2size = 32768;
+		boot2size = BOOT2SIZE64;
 		boot2buf = malloc(boot2size);
 		bzero(boot2buf, boot2size);
 	}
@@ -638,7 +622,7 @@ makebootarea(int f)
 	return (lp);
 }
 
-void
+static void
 display(FILE *f, const struct disklabel64 *lp)
 {
 	const struct partition64 *pp;
@@ -658,8 +642,7 @@ display(FILE *f, const struct disklabel64 *lp)
 
 	fprintf(f, "# %s:\n", specname);
 	fprintf(f, "#\n");
-	fprintf(f, "# Informational fields calculated from the above\n");
-	fprintf(f, "# All byte equivalent offsets must be aligned\n");
+	fprintf(f, "# Calculated informational fields for the slice:\n");
 	fprintf(f, "#\n");
 	fprintf(f, "# boot space: %10ju bytes\n",
 		(intmax_t)(lp->d_pbase - lp->d_bbase));
@@ -668,16 +651,17 @@ display(FILE *f, const struct disklabel64 *lp)
 			(double)(lp->d_pstop - lp->d_pbase) / 1024.0 / 1024.0,
 			(intmax_t)(lp->d_pstop - lp->d_pbase));
 	fprintf(f, "#\n");
-	fprintf(f, "# NOTE: If the partition data base looks odd it may be\n");
-	fprintf(f, "#       physically aligned instead of slice-aligned\n");
+	fprintf(f, "# NOTE: The partition data base and stop are physically\n");
+	fprintf(f, "#       aligned instead of slice-relative aligned.\n");
+	fprintf(f, "#\n");
+	fprintf(f, "# All byte equivalent offsets must be aligned.\n");
 	fprintf(f, "#\n");
 
 	uuid_to_string(&lp->d_stor_uuid, &str, NULL);
 	fprintf(f, "diskid: %s\n", str ? str : "<unknown>");
 	free(str);
 
-	fprintf(f, "label: %.*s\n", (int)sizeof(lp->d_packname),
-		lp->d_packname);
+	fprintf(f, "label: %s\n", lp->d_packname);
 	fprintf(f, "boot2 data base:      0x%012jx\n", (intmax_t)lp->d_bbase);
 	fprintf(f, "partitions data base: 0x%012jx\n", (intmax_t)lp->d_pbase);
 	fprintf(f, "partitions data stop: 0x%012jx\n", (intmax_t)lp->d_pstop);
@@ -686,7 +670,7 @@ display(FILE *f, const struct disklabel64 *lp)
 		(intmax_t)lp->d_total_size,
 		(double)lp->d_total_size / 1024.0 / 1024.0);
 	fprintf(f, "alignment: %u\n", lp->d_align);
-	fprintf(f, "display block size: %u\t# for partition display only\n",
+	fprintf(f, "display block size: %u\t# for partition display and edit only\n",
 		blksize);
 
 	fprintf(f, "\n");
@@ -746,7 +730,7 @@ display(FILE *f, const struct disklabel64 *lp)
 	fflush(f);
 }
 
-int
+static int
 edit(struct disklabel64 *lp, int f)
 {
 	int c, fd;
@@ -790,7 +774,7 @@ edit(struct disklabel64 *lp, int f)
 	return (1);
 }
 
-int
+static int
 editit(void)
 {
 	int pid, xpid;
@@ -825,7 +809,7 @@ editit(void)
 	return(!status);
 }
 
-char *
+static char *
 skip(char *cp)
 {
 
@@ -836,7 +820,7 @@ skip(char *cp)
 	return (cp);
 }
 
-char *
+static char *
 word(char *cp)
 {
 	char c;
@@ -856,7 +840,7 @@ word(char *cp)
  * in the same format as that put out by display(),
  * and fill in lp.
  */
-int
+static int
 getasciilabel(FILE *f, struct disklabel64 *lp)
 {
 	char *cp;
@@ -910,7 +894,7 @@ getasciilabel(FILE *f, struct disklabel64 *lp)
 			continue;
 		}
 		if (streq(cp, "label")) {
-			strncpy(lp->d_packname, tp, sizeof (lp->d_packname));
+			strlcpy((char *)lp->d_packname, tp, sizeof(lp->d_packname));
 			continue;
 		}
 
@@ -1046,8 +1030,7 @@ getasciilabel(FILE *f, struct disklabel64 *lp)
 	return (errors == 0);
 }
 
-static
-int
+static int
 parse_field_val(char **tp, char **cp, u_int64_t *vv, int lineno)
 {
 	char *tmp;
@@ -1073,7 +1056,7 @@ parse_field_val(char **tp, char **cp, u_int64_t *vv, int lineno)
  * Read a partition line into partition `part' in the specified disklabel.
  * Return 0 on success, 1 on failure.
  */
-int
+static int
 getasciipartspec(char *tp, struct disklabel64 *lp, int part,
 		 int lineno, uint32_t blksize)
 {
@@ -1196,7 +1179,7 @@ getasciipartspec(char *tp, struct disklabel64 *lp, int part,
 	return(0);
 }
 
-int
+static int
 getasciipartuuid(char *tp, struct disklabel64 *lp, int part,
 		 int lineno, uint32_t blksize __unused)
 {
@@ -1221,7 +1204,7 @@ getasciipartuuid(char *tp, struct disklabel64 *lp, int part,
  * Check disklabel for errors and fill in
  * derived fields according to supplied values.
  */
-int
+static int
 checklabel(struct disklabel64 *lp)
 {
 	struct partition64 *pp;
@@ -1303,7 +1286,7 @@ checklabel(struct disklabel64 *lp)
 
 				size = pp->p_bsize;
 				if (part_size_type[i] == '%') {
-					/* 
+					/*
 					 * don't count %'s yet
 					 */
 					total_percent += size;
@@ -1379,7 +1362,7 @@ checklabel(struct disklabel64 *lp)
 				seen_default_offset = 1;
 			} else {
 				/* allow them to be out of order for old-style tables */
-				if (pp->p_boffset < current_offset && 
+				if (pp->p_boffset < current_offset &&
 				    seen_default_offset &&
 				    pp->p_fstype != FS_VINUM) {
 					fprintf(stderr,
@@ -1392,8 +1375,8 @@ checklabel(struct disklabel64 *lp)
 					errors++;
 				} else if (pp->p_boffset != current_offset &&
 					   seen_default_offset) {
-					/* 
-					 * this may give unneeded warnings if 
+					/*
+					 * this may give unneeded warnings if
 					 * partitions are out-of-order
 					 */
 					Warning(
@@ -1402,7 +1385,7 @@ checklabel(struct disklabel64 *lp)
 					    (intmax_t)current_offset);
 				}
 			}
-			current_offset = pp->p_boffset + pp->p_bsize; 
+			current_offset = pp->p_boffset + pp->p_bsize;
 		}
 	}
 
@@ -1478,7 +1461,7 @@ checklabel(struct disklabel64 *lp)
  */
 static struct disklabel64 dlab;
 
-struct disklabel64 *
+static struct disklabel64 *
 getvirginlabel(void)
 {
 	struct disklabel64 *dl = &dlab;
@@ -1490,8 +1473,7 @@ getvirginlabel(void)
 	}
 
 	/*
-	 * Try to use the new get-virgin-label ioctl.  If it fails,
-	 * fallback to the old get-disk-info ioctl.
+	 * Generate a virgin disklabel via ioctl
 	 */
 	if (ioctl(f, DIOCGDVIRGIN64, dl) < 0) {
 		l_perror("ioctl DIOCGDVIRGIN64");
@@ -1503,7 +1485,7 @@ getvirginlabel(void)
 }
 
 /*VARARGS1*/
-void
+static void
 Warning(const char *fmt, ...)
 {
 	va_list ap;
@@ -1515,13 +1497,13 @@ Warning(const char *fmt, ...)
 	va_end(ap);
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 		"usage: disklabel64 [-r] disk",
 		"\t\t(to read label)",
-		"       disklabel64 -w [-r] [-n] disk type [packid]",
+		"       disklabel64 -w [-r] [-n] disk [type [packid]]",
 		"\t\t(to write label with existing boot program)",
 		"       disklabel64 -e [-r] [-n] disk",
 		"\t\t(to edit label)",
@@ -1529,7 +1511,7 @@ usage(void)
 		"\t\t(to restore label with existing boot program)",
 		"       disklabel64 -B [-n] [-b boot1 -s boot2] disk [type]",
 		"\t\t(to install boot program with existing label)",
-		"       disklabel64 -w -B [-n] [-b boot1 -s boot2] disk type [packid]",
+		"       disklabel64 -w -B [-n] [-b boot1 -s boot2] disk [type [packid]]",
 		"\t\t(to write label and boot program)",
 		"       disklabel64 -R -B [-n] [-b boot1 -s boot2] disk protofile [type]",
 		"\t\t(to restore label and boot program)",

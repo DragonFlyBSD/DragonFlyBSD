@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -119,8 +119,7 @@ l64_freedisklabel(disklabel_t *lpp)
 
 /*
  * Attempt to read a disk label from a device.  64 bit disklabels are
- * sector-agnostic and begin at offset 0 on the device.  64 bit disklabels
- * may only be used with GPT partitioning schemes.
+ * sector-agnostic and begin at offset 0 on the device.
  *
  * Returns NULL on sucess, and an error string on failure.
  */
@@ -208,7 +207,7 @@ l64_setdisklabel(disklabel_t olpx, disklabel_t nlpx, struct diskslices *ssp,
 		return (EINVAL);
 	savecrc = nlp->d_crc;
 	nlp->d_crc = 0;
-	nlpcrcsize = offsetof(struct disklabel64, 
+	nlpcrcsize = offsetof(struct disklabel64,
 			      d_partitions[nlp->d_npartitions]) -
 		     offsetof(struct disklabel64, d_magic);
 	if (crc32(&nlp->d_magic, nlpcrcsize) != savecrc) {
@@ -414,7 +413,7 @@ l64_clone_label(struct disk_info *info, struct diskslice *sp)
  * Create a virgin disklabel64 suitable for writing to the media.
  *
  * disklabel64 always reserves 32KB for a boot area and leaves room
- * for up to RESPARTITIONS64 partitions.  
+ * for up to RESPARTITIONS64 partitions.
  */
 static void
 l64_makevirginlabel(disklabel_t lpx, struct diskslices *ssp,
@@ -425,7 +424,10 @@ l64_makevirginlabel(disklabel_t lpx, struct diskslices *ssp,
 	uint32_t blksize;
 	uint32_t ressize;
 	uint64_t blkmask;	/* 64 bits so we can ~ */
+	uint64_t doffset;
 	size_t lpcrcsize;
+
+	doffset = sp->ds_offset * info->d_media_blksize;
 
 	/*
 	 * Setup the initial label.  Use of a block size of at least 4KB
@@ -453,21 +455,22 @@ l64_makevirginlabel(disklabel_t lpx, struct diskslices *ssp,
 	ressize = offsetof(struct disklabel64, d_partitions[RESPARTITIONS64]);
 	ressize = (ressize + (uint32_t)blkmask) & ~blkmask;
 
-	/*
-	 * NOTE: When calculating pbase take into account the slice offset
-	 *	 so the partitions are at least 32K-aligned relative to the
-	 *	 start of the physical disk.  This will accomodate efficient
-	 *	 access to 4096 byte physical sector drives.
-	 */
+	/* Reserve space for the stage2 boot code */
 	lp->d_bbase = ressize;
-	lp->d_pbase = lp->d_bbase + ((32768 + blkmask) & ~blkmask);
-	lp->d_pbase = (lp->d_pbase + PALIGN_MASK) & ~(uint64_t)PALIGN_MASK;
+	lp->d_pbase = lp->d_bbase + ((BOOT2SIZE64 + blkmask) & ~blkmask);
 
-	/* adjust for slice offset so we are physically aligned */
-	lp->d_pbase += 32768 - (sp->ds_offset * info->d_media_blksize) % 32768;
+	/* Reserve space for the backup label at the slice end */
+	lp->d_abase = lp->d_total_size - ressize;
 
-	lp->d_pstop = (lp->d_total_size - lp->d_bbase) & ~blkmask;
-	lp->d_abase = lp->d_pstop;
+	/*
+	 * NOTE: The pbase and pstop are calculated to align to PALIGN_SIZE
+	 *	 and adjusted with the slice offset, so the partitions are
+	 *	 aligned relative to the start of the physical disk.
+	 */
+	lp->d_pbase = ((doffset + lp->d_pbase + PALIGN_MASK) &
+		       ~(uint64_t)PALIGN_MASK) - doffset;
+	lp->d_pstop = ((lp->d_abase - lp->d_pbase) &
+		       ~(uint64_t)PALIGN_MASK) + lp->d_pbase;
 
 	/*
 	 * All partitions are left empty unless DSO_COMPATPARTA is set

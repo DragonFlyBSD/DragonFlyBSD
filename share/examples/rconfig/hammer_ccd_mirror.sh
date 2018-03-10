@@ -136,7 +136,7 @@ prepdisk()
     fdisk -IB ${disk} >> ${logfile} 2>&1
     ckstatus $? "fdisk"
 
-    disklabel -r -w ${disk}s1 auto >> ${logfile} 2>&1
+    disklabel -r -w ${disk}s1 >> ${logfile} 2>&1
     ckstatus $? "disklabel"
 
     if [ ! "${bootdisk}" = "" ]; then

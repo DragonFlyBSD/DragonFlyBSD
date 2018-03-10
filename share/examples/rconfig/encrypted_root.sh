@@ -58,7 +58,7 @@ set echo
 #
 dd if=/dev/zero of=/dev/${disk} bs=32k count=16
 fdisk -IB ${disk}
-disklabel64 -r -w ${disk}s1 auto
+disklabel64 -r -w ${disk}s1
 disklabel64 -B ${disk}s1
 disklabel64 ${disk}s1 > /tmp/label
 

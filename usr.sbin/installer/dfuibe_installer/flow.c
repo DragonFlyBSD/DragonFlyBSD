@@ -1214,7 +1214,7 @@ state_create_subpartitions(struct i_fn_args *a)
 	command_add(cmds, "%s%s if=/dev/zero of=/dev/%s bs=32k count=16",
 	    a->os_root, cmd_name(a, "DD"),
 	    slice_get_device_name(storage_get_selected_slice(a->s)));
-	command_add(cmds, "%s%s -B -r -w %s auto",
+	command_add(cmds, "%s%s -B -r -w %s",
 	    a->os_root, cmd_name(a, "DISKLABEL64"),
 	    slice_get_device_name(storage_get_selected_slice(a->s)));
 	commands_execute(a, cmds);
