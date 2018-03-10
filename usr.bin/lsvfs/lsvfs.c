@@ -4,7 +4,6 @@
  * This file is in the public domain.
  *
  * $FreeBSD: src/usr.bin/lsvfs/lsvfs.c,v 1.13.2.1 2001/07/30 09:59:16 dd Exp $
- * $DragonFly: src/usr.bin/lsvfs/lsvfs.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
  */
 
 #define _NEW_VFSCONF
@@ -16,9 +15,22 @@
 #include <stdio.h>
 #include <string.h>
 
-#define FMT "%-32.32s %5d %s\n"
-#define HDRFMT "%-32.32s %5.5s %s\n"
-#define DASHES "-------------------------------- ----- ---------------\n"
+#define	FMT	"%-32.32s 0x%08x %5d  %s\n"
+#define	HDRFMT	"%-32.32s %10s %5.5s  %s\n"
+#define	DASHES	"-------------------------------- "	\
+		"---------- -----  ---------------\n"
+
+static struct flaglist {
+	int		flag;
+	const char	str[32]; /* must be longer than the longest one. */
+} fl[] = {
+	{ .flag = VFCF_STATIC, .str = "static", },
+	{ .flag = VFCF_NETWORK, .str = "network", },
+	{ .flag = VFCF_READONLY, .str = "read-only", },
+	{ .flag = VFCF_SYNTHETIC, .str = "synthetic", },
+	{ .flag = VFCF_LOOPBACK, .str = "loopback", },
+	{ .flag = VFCF_UNICODE, .str = "unicode", },
+};
 
 static const char *fmt_flags(int);
 
@@ -32,13 +44,14 @@ main(int argc, char **argv)
 
   setvfsent(1);
 
-  printf(HDRFMT, "Filesystem", "Refs", "Flags");
+  printf(HDRFMT, "Filesystem", "Num", "Refs", "Flags");
   fputs(DASHES, stdout);
 
   if(argc) {
     for(; argc; argc--, argv++) {
       if (getvfsbyname(*argv, &vfc) == 0) {
-        printf(FMT, vfc.vfc_name, vfc.vfc_refcount, fmt_flags(vfc.vfc_flags));
+        printf(FMT, vfc.vfc_name, vfc.vfc_typenum, vfc.vfc_refcount,
+	    fmt_flags(vfc.vfc_flags));
       } else {
 	warnx("VFS %s unknown or not loaded", *argv);
         rv++;
@@ -46,8 +59,13 @@ main(int argc, char **argv)
     }
   } else {
     while ((ovfcp = getvfsent()) != NULL) {
-      printf(FMT, ovfcp->vfc_name, ovfcp->vfc_refcount,
-             fmt_flags(ovfcp->vfc_flags));
+      if (getvfsbyname(ovfcp->vfc_name, &vfc) == 0) {
+        printf(FMT, vfc.vfc_name, vfc.vfc_typenum, vfc.vfc_refcount,
+	    fmt_flags(vfc.vfc_flags));
+      } else {
+	warnx("VFS %s unknown or not loaded", *argv);
+        rv++;
+      }
     }
   }
 
@@ -58,44 +76,16 @@ main(int argc, char **argv)
 static const char *
 fmt_flags(int flags)
 {
-  /*
-   * NB: if you add new flags, don't forget to add them here vvvvvv too.
-   */
-  static char buf[sizeof
-    "static, network, read-only, synthetic, loopback, unicode"];
-  int comma = 0;
+	static char buf[sizeof(struct flaglist) * sizeof(fl)];
+	int i;
 
-  buf[0] = '\0';
-
-  if(flags & VFCF_STATIC) {
-    if(comma++) strcat(buf, ", ");
-    strcat(buf, "static");
-  }
-
-  if(flags & VFCF_NETWORK) {
-    if(comma++) strcat(buf, ", ");
-    strcat(buf, "network");
-  }
-
-  if(flags & VFCF_READONLY) {
-    if(comma++) strcat(buf, ", ");
-    strcat(buf, "read-only");
-  }
-
-  if(flags & VFCF_SYNTHETIC) {
-    if(comma++) strcat(buf, ", ");
-    strcat(buf, "synthetic");
-  }
-
-  if(flags & VFCF_LOOPBACK) {
-    if(comma++) strcat(buf, ", ");
-    strcat(buf, "loopback");
-  }
-
-  if(flags & VFCF_UNICODE) {
-    if(comma++) strcat(buf, ", ");
-    strcat(buf, "unicode");
-  }
-
-  return buf;
+	buf[0] = '\0';
+	for (i = 0; i < (int)nitems(fl); i++)
+		if (flags & fl[i].flag) {
+			strlcat(buf, fl[i].str, sizeof(buf));
+			strlcat(buf, ", ", sizeof(buf));
+		}
+	if (buf[0] != '\0')
+		buf[strlen(buf) - 2] = '\0';
+	return (buf);
 }
