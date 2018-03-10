@@ -1,9 +1,8 @@
 .\" $FreeBSD: src/usr.bin/lsvfs/lsvfs.1,v 1.7.2.3 2003/02/24 22:37:42 trhodes Exp $
-.\" $DragonFly: src/usr.bin/lsvfs/lsvfs.1,v 1.2 2003/06/17 04:29:28 dillon Exp $
 .\" Garrett A. Wollman, September 1994
 .\" This file is in the public domain.
 .\"
-.Dd March 16, 1995
+.Dd March 10, 2018
 .Dt LSVFS 1
 .Os
 .Sh NAME
@@ -16,11 +15,13 @@
 The
 .Nm
 command lists information about the currently loaded virtual file system
-modules.  When
+modules.
+When
 .Ar vfsname
 arguments are given,
 .Nm
-lists information about the specified VFS modules.  Otherwise,
+lists information about the specified VFS modules.
+Otherwise,
 .Nm
 lists all currently loaded modules.
 The information is as follows:
@@ -49,3 +50,16 @@ A
 .Nm
 command appeared in
 .Fx 2.0 .
+.Sh BUGS
+In
+.Dx Ap s
+encrypted root setup,
+.Nm
+will show at least 2 references to
+.Dq ufs
+even though just
+.Pa /boot
+seems to be mounted.
+The second reference is the initial root from the
+.Pa /boot/kernel/initrd.img.gz
+image.
