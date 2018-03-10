@@ -37,40 +37,42 @@ static const char *fmt_flags(int);
 int
 main(int argc, char **argv)
 {
-  int rv = 0;
-  struct vfsconf vfc;
-  struct ovfsconf *ovfcp;
-  argc--, argv++;
+	int rv = 0;
+	struct vfsconf vfc;
+	struct ovfsconf *ovfcp;
+	argc--, argv++;
 
-  setvfsent(1);
+	setvfsent(1);
 
-  printf(HDRFMT, "Filesystem", "Num", "Refs", "Flags");
-  fputs(DASHES, stdout);
+	printf(HDRFMT, "Filesystem", "Num", "Refs", "Flags");
+	fputs(DASHES, stdout);
 
-  if(argc) {
-    for(; argc; argc--, argv++) {
-      if (getvfsbyname(*argv, &vfc) == 0) {
-        printf(FMT, vfc.vfc_name, vfc.vfc_typenum, vfc.vfc_refcount,
-	    fmt_flags(vfc.vfc_flags));
-      } else {
-	warnx("VFS %s unknown or not loaded", *argv);
-        rv++;
-      }
-    }
-  } else {
-    while ((ovfcp = getvfsent()) != NULL) {
-      if (getvfsbyname(ovfcp->vfc_name, &vfc) == 0) {
-        printf(FMT, vfc.vfc_name, vfc.vfc_typenum, vfc.vfc_refcount,
-	    fmt_flags(vfc.vfc_flags));
-      } else {
-	warnx("VFS %s unknown or not loaded", *argv);
-        rv++;
-      }
-    }
-  }
+	if(argc) {
+		for(; argc; argc--, argv++) {
+			if (getvfsbyname(*argv, &vfc) == 0) {
+				printf(FMT, vfc.vfc_name, vfc.vfc_typenum,
+				    vfc.vfc_refcount,
+				    fmt_flags(vfc.vfc_flags));
+			} else {
+				warnx("VFS %s unknown or not loaded", *argv);
+				rv++;
+			}
+		}
+	} else {
+		while ((ovfcp = getvfsent()) != NULL) {
+			if (getvfsbyname(ovfcp->vfc_name, &vfc) == 0) {
+				printf(FMT, vfc.vfc_name, vfc.vfc_typenum,
+				    vfc.vfc_refcount,
+				    fmt_flags(vfc.vfc_flags));
+			} else {
+				warnx("VFS %s unknown or not loaded", *argv);
+				rv++;
+			}
+		}
+	}
 
-  endvfsent();
-  return rv;
+	endvfsent();
+	return rv;
 }
 
 static const char *
