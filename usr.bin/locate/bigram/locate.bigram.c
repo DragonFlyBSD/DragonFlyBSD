@@ -1,4 +1,6 @@
 /*
+ * SPDX-License-Identifier: BSD-4-Clause
+ *
  * Copyright (c) 1995 Wolfram Schneider <wosch@FreeBSD.org>. Berlin.
  * Copyright (c) 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -34,7 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/locate/bigram/locate.bigram.c,v 1.11 1999/08/28 01:02:54 peter Exp $
+ * $FreeBSD: head/usr.bin/locate/bigram/locate.bigram.c 325966 2017-11-18 14:26:50Z pfg $
  *
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)locate.bigram.c	8.1 (Berkeley) 6/6/93
@@ -60,7 +62,7 @@ static u_int bigram[UCHAR_MAX + 1][UCHAR_MAX + 1];
 int
 main(void)
 {
-  	u_char *cp;
+	u_char *cp;
 	u_char *oldpath = buf1, *path = buf2;
 	u_int i, j;
 

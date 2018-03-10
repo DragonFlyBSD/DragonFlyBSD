@@ -1,5 +1,7 @@
 #!/bin/sh
 #
+# SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+#
 # Copyright (c) September 1995 Wolfram Schneider <wosch@FreeBSD.org>. Berlin.
 # All rights reserved.
 #
@@ -26,9 +28,13 @@
 #
 # updatedb - update locate database for local mounted filesystems
 #
-# $FreeBSD: src/usr.bin/locate/locate/updatedb.sh,v 1.17 2000/01/12 08:01:01 kris Exp $
-# $DragonFly: src/usr.bin/locate/locate/updatedb.sh,v 1.3 2008/07/09 19:53:27 swildner Exp $
+# $FreeBSD: head/usr.bin/locate/locate/updatedb.sh 326276 2017-11-27 15:37:16Z pfg $
 
+if [ "$(id -u)" = "0" ]; then
+	echo ">>> WARNING" 1>&2
+	echo ">>> Executing updatedb as root.  This WILL reveal all filenames" 1>&2
+	echo ">>> on your machine to all login users, which is a security risk." 1>&2
+fi
 : ${LOCATE_CONFIG="/etc/locate.rc"}
 if [ -f "$LOCATE_CONFIG" -a -r "$LOCATE_CONFIG" ]; then
        . $LOCATE_CONFIG
@@ -48,13 +54,18 @@ PATH=$LIBEXECDIR:/bin:/usr/bin:$PATH; export PATH
 : ${FCODES:=/var/db/locate.database}	 # the database
 : ${SEARCHPATHS:="/"}		# directories to be put in the database
 : ${PRUNEPATHS:="/tmp /usr/tmp /var/tmp"} # unwanted directories
-: ${FILESYSTEMS:="hammer hammer2 ufs"}	 # allowed filesystems 
+: ${PRUNEDIRS:=".git"}	# unwanted directories, in any parent
+: ${FILESYSTEMS:="$(lsvfs | tail -n +3 | \
+	egrep -vw "loopback|network|synthetic|read-only|0" | \
+	cut -d " " -f1)"}		# allowed filesystems
 : ${find:=find}
 
-case X"$SEARCHPATHS" in 
-	X) echo "$0: empty variable SEARCHPATHS"; exit 1;; esac
-case X"$FILESYSTEMS" in 
-	X) echo "$0: empty variable FILESYSTEMS"; exit 1;; esac
+if [ -z "$SEARCHPATHS" ]; then
+	echo "$0: empty variable SEARCHPATHS" >&2; exit 1
+fi
+if [ -z "$FILESYSTEMS" ]; then
+	echo "$0: empty variable FILESYSTEMS" >&2; exit 1
+fi
 
 # Make a list a paths to exclude in the locate run
 excludes="! (" or=""
@@ -65,25 +76,30 @@ do
 done
 excludes="$excludes ) -prune"
 
-case X"$PRUNEPATHS" in
-	X) ;;
-	*) for path in $PRUNEPATHS
-           do 
+if [ -n "$PRUNEPATHS" ]; then
+	for path in $PRUNEPATHS; do
 		excludes="$excludes -or -path $path -prune"
-	   done;;
-esac
+	done
+fi
+
+if [ -n "$PRUNEDIRS" ]; then
+	for dir in $PRUNEDIRS; do
+		excludes="$excludes -or -name $dir -type d -prune"
+	done
+fi
 
 tmp=$TMPDIR/_updatedb$$
 trap 'rm -f $tmp; rmdir $TMPDIR' 0 1 2 3 5 10 15
-		
+
 # search locally
 # echo $find $SEARCHPATHS $excludes -or -print && exit
 if $find -s $SEARCHPATHS $excludes -or -print 2>/dev/null |
         $mklocatedb -presort > $tmp
 then
-	case X"`$find $tmp -size -257c -print`" in
-		X) cat $tmp > $FCODES;;
-		*) echo "updatedb: locate database $tmp is empty"
-		   exit 1
-	esac
+	if [ -n "$($find $tmp -size -257c -print)" ]; then
+		echo "updatedb: locate database $tmp is empty" >&2
+		exit 1
+	else
+		cat $tmp > $FCODES		# should be cp?
+	fi
 fi

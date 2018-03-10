@@ -1,5 +1,7 @@
 #!/bin/sh
 #
+# SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+#
 # Copyright (c) September 1995 Wolfram Schneider <wosch@FreeBSD.org>. Berlin.
 # All rights reserved.
 #
@@ -28,8 +30,7 @@
 # 
 # usage: mklocatedb [-presort] < filelist > database
 #
-# $FreeBSD: src/usr.bin/locate/locate/mklocatedb.sh,v 1.13 2002/07/22 05:35:59 tjr Exp $
-# $DragonFly: src/usr.bin/locate/locate/mklocatedb.sh,v 1.3 2004/11/15 10:01:41 joerg Exp $
+# $FreeBSD: head/usr.bin/locate/locate/mklocatedb.sh 326276 2017-11-27 15:37:16Z pfg $
 
 # The directory containing locate subprograms
 : ${LIBEXECDIR:=/usr/libexec}; export LIBEXECDIR

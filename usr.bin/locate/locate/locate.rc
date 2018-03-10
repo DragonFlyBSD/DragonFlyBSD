@@ -1,8 +1,7 @@
 #
 # /etc/locate.rc -  command script for updatedb(8)
 #
-# $FreeBSD: src/usr.bin/locate/locate/locate.rc,v 1.8 1999/08/28 01:02:59 peter Exp $
-# $DragonFly: src/usr.bin/locate/locate/locate.rc,v 1.3 2008/07/09 19:53:27 swildner Exp $
+# $FreeBSD: head/usr.bin/locate/locate/locate.rc 290742 2015-11-13 06:16:12Z des $
 
 #
 # All commented values are the defaults
@@ -16,12 +15,19 @@
 # directories to be put in the database
 #SEARCHPATHS="/"
 
-# directories unwanted in output
+# paths unwanted in output
 #PRUNEPATHS="/tmp /usr/tmp /var/tmp"
+
+# directories unwanted in output
+#PRUNEDIRS=".git"
 
 # filesystems allowed. Beware: a non-listed filesystem will be pruned
 # and if the SEARCHPATHS starts in such a filesystem locate will build
 # an empty database.
 #
-# be careful if you add 'nfs'
-#FILESYSTEMS="hammer hammer2 ufs" 
+# the default list contains all local file systems that are not synthetic,
+# loopback mounts, or read-only, according to lsvfs.
+#
+# be careful if you add 'nfs' or other network file system types or file
+# systems that generally reside on slow or removable devices like cd9660
+#FILESYSTEMS="ufs hammer hammer2"
