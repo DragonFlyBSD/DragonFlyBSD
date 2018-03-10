@@ -55,7 +55,7 @@ main(int argc, char **argv)
 				    fmt_flags(vfc.vfc_flags));
 			} else {
 				warnx("VFS %s unknown or not loaded", *argv);
-				rv++;
+				rv = 1;
 			}
 		}
 	} else {
@@ -66,7 +66,7 @@ main(int argc, char **argv)
 				    fmt_flags(vfc.vfc_flags));
 			} else {
 				warnx("VFS %s unknown or not loaded", *argv);
-				rv++;
+				rv = 1;
 			}
 		}
 	}
