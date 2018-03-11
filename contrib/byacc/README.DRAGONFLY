@@ -1,0 +1,5 @@
+This is Berkeley yacc available from:
+http://invisible-island.net/byacc/
+
+Instead of using a config.h, just add the appropriate defines to
+usr.bin/yacc/Makefile.
