@@ -133,6 +133,10 @@ runcom(char **argv_orig)
 		wpid = waitpid(-1, &status, WUNTRACED);
 	} while (wpid != pid);
 
+	error = chdir("/new_root");
+	if (error)
+		goto chroot_failed;
+
 	error = chroot_kernel("/new_root");
 	if (error)
 		goto chroot_failed;
