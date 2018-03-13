@@ -42,6 +42,8 @@ case "$daily_accounting_enable" in
 	    while [ $n -ge 0 ]
 	    do
 		[ -f acct.$n.gz ] && { mv -f acct.$n.gz acct.$m.gz || rc=3; }
+		[ -f acct.$n.xz ] && { mv -f acct.$n.xz acct.$m.xz || rc=3; }
+		[ -f acct.$n.zst ] && { mv -f acct.$n.zst acct.$m.zst || rc=3; }
 		[ -f acct.$n ] &&    { mv -f acct.$n acct.$m || rc=3; }
 		m=$n
 		n=$(($n - 1))
