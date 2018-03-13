@@ -48,8 +48,7 @@ BIN2=	pccard_ether rc.firewall rc.suspend rc.resume
 DEFAULTS= compilers.conf devfs.conf make.conf mkinitrd.conf periodic.conf \
 	  pfi.conf rc.conf uuids
 
-MTREE=	BSD.include.dist BSD.local.dist BSD.root.dist BSD.usr.dist \
-	BSD.var.dist
+MTREE=	BSD.include.dist BSD.root.dist BSD.usr.dist BSD.var.dist
 
 PPPCNF=	ppp.conf
 

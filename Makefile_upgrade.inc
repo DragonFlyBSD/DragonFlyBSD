@@ -3377,6 +3377,7 @@ TO_REMOVE+=/etc/periodic/monthly/300.statistics
 TO_REMOVE+=/etc/periodic/weekly/120.clean-kvmdb
 TO_REMOVE+=/etc/periodic/daily/470.status-named
 TO_REMOVE+=/etc/periodic/daily/430.status-rwho
+TO_REMOVE+=/etc/mtree/BSD.local.dist
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

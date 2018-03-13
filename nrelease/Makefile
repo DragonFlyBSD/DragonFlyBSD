@@ -210,7 +210,6 @@ buildiso:
 	# do so from inside of it.
 	#
 	${ISOROOT}/sbin/mkinitrd -c ${ISOROOT}/usr/share/initrd -b ${ISOROOT}/boot
-	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.local.dist -p ${ISOROOT}/usr/local/
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
 
