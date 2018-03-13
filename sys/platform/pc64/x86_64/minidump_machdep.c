@@ -240,10 +240,6 @@ minidumpsys(struct dumperinfo *di)
 		i = ((va - VM_MIN_KERNEL_ADDRESS) >> PDPSHIFT) &
 		    (NPML4EPG * NPDPEPG - 1);
 		if (i != lpdp) {
-			if (lpdpttl) {
-				kprintf("pdp %04x ttl %jdMB\n",
-					lpdp, (intmax_t)lpdpttl / 1024 / 1024);
-			}
 			lpdp = i;
 			lpdpttl = 0;
 		}
@@ -302,11 +298,6 @@ minidumpsys(struct dumperinfo *di)
 		} else {
 			/* nothing, we're going to dump a null page */
 		}
-	}
-
-	if (lpdpttl) {
-		kprintf("pdp %04x ttl %jdMB\n",
-			lpdp, (intmax_t)lpdpttl / 1024 / 1024);
 	}
 
 	/* Calculate dump size. */
