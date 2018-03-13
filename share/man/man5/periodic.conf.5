@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man5/periodic.conf.5 323550 2017-09-13 16:35:16Z gordon $
 .\"
-.Dd March 12, 2018
+.Dd March 13, 2018
 .Dt PERIODIC.CONF 5
 .Os
 .Sh NAME
@@ -386,6 +386,15 @@ utility when
 .Va daily_status_disks_enable
 is set to
 .Dq Li YES .
+.It Va daily_status_mfi_enable
+.Pq Vt bool
+Set to
+.Dq Li YES
+if you want to run
+.Nm mfiutil Cm status
+on your
+.Xr mfi 4
+devices.
 .It Va daily_status_network_enable
 .Pq Vt bool
 Set to
@@ -496,6 +505,11 @@ for the previous day.
 .Pq Vt num
 Set to the number of maillog files that should be checked
 for yesterday's mail rejects.
+.It Va daily_status_mail_rejects_shorten
+.Pt Vt bool
+Set to
+.Dq Li YES
+if you want to shorten the mail rejections output.
 .It Va daily_queuerun_enable
 .Pq Vt bool
 Set to
