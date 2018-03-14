@@ -737,6 +737,7 @@ typedef struct hammer2_inode hammer2_inode_t;
 #define HAMMER2_INODE_METAGOOD		0x0080	/* inode meta-data good */
 #define HAMMER2_INODE_ONSIDEQ		0x0100	/* on side processing queue */
 #define HAMMER2_INODE_NOSIDEQ		0x0200	/* disable sideq operation */
+#define HAMMER2_INODE_DIRTYDATA		0x0400	/* interlocks inode flush */
 
 int hammer2_inode_cmp(hammer2_inode_t *ip1, hammer2_inode_t *ip2);
 RB_PROTOTYPE2(hammer2_inode_tree, hammer2_inode, rbnode, hammer2_inode_cmp,

@@ -528,6 +528,7 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 	ip = VTOI(ap->a_vp);
 	pmp = ip->pmp;
 	
+	atomic_set_int(&ip->flags, HAMMER2_INODE_DIRTYDATA);
 	hammer2_lwinprog_ref(pmp);
 	hammer2_trans_assert_strategy(pmp);
 	hammer2_trans_init(pmp, HAMMER2_TRANS_BUFCACHE);
@@ -793,6 +794,7 @@ hammer2_assign_physical(hammer2_inode_t *ip, hammer2_chain_t **parentp,
 	} else {
 		*errorp = chain->error;
 	}
+	atomic_set_int(&ip->flags, HAMMER2_INODE_DIRTYDATA);
 failed:
 	return (chain);
 }
@@ -1281,6 +1283,7 @@ zero_write(char *data, hammer2_inode_t *ip,
 					     mtid, HAMMER2_DELETE_PERMANENT);
 			++hammer2_iod_file_wzero;
 		}
+		atomic_set_int(&ip->flags, HAMMER2_INODE_DIRTYDATA);
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
 	} else {

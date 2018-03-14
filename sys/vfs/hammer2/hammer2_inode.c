@@ -1221,6 +1221,8 @@ hammer2_inode_modify(hammer2_inode_t *ip)
  * level layers are responsible for doing that).
  *
  * Called with a locked inode inside a normal transaction.
+ *
+ * inode must be locked.
  */
 int
 hammer2_inode_chain_sync(hammer2_inode_t *ip)
@@ -1267,8 +1269,12 @@ hammer2_inode_chain_sync(hammer2_inode_t *ip)
 }
 
 /*
- * Flushes the inode's chain and its sub-topology to media.  Usually called
- * after hammer2_inode_chain_sync() is called.
+ * Flushes the inode's chain and its sub-topology to media.  Interlocks
+ * HAMMER2_INODE_DIRTYDATA by clearing it prior to the flush.  Any strategy
+ * function creating or modifying a chain under this inode will re-set the
+ * flag.
+ *
+ * inode must be locked.
  */
 int
 hammer2_inode_chain_flush(hammer2_inode_t *ip)
@@ -1276,6 +1282,7 @@ hammer2_inode_chain_flush(hammer2_inode_t *ip)
 	hammer2_xop_fsync_t *xop;
 	int error;
 
+	atomic_clear_int(&ip->flags, HAMMER2_INODE_DIRTYDATA);
 	xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING |
 				    HAMMER2_XOP_INODE_STOP);
 	hammer2_xop_start(&xop->head, hammer2_inode_xop_flush);
