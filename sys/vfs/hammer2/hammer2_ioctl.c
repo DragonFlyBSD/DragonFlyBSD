@@ -57,7 +57,7 @@ static int hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data);
-static int hammer2_ioctl_debug_dump(hammer2_inode_t *ip);
+static int hammer2_ioctl_debug_dump(hammer2_inode_t *ip, u_int flags);
 //static int hammer2_ioctl_inode_comp_set(hammer2_inode_t *ip, void *data);
 //static int hammer2_ioctl_inode_comp_rec_set(hammer2_inode_t *ip, void *data);
 //static int hammer2_ioctl_inode_comp_rec_set2(hammer2_inode_t *ip, void *data);
@@ -155,7 +155,7 @@ hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
 			error = hammer2_ioctl_destroy(ip, data);
 		break;
 	case HAMMER2IOC_DEBUG_DUMP:
-		error = hammer2_ioctl_debug_dump(ip);
+		error = hammer2_ioctl_debug_dump(ip, *(u_int *)data);
 		break;
 	default:
 		error = EOPNOTSUPP;
@@ -661,6 +661,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		hammer2_inode_ref(nip);
 		hammer2_inode_unlock(nip);
 		hammer2_inode_chain_sync(nip);
+		hammer2_inode_chain_flush(nip);
 		KKASSERT(nip->refs == 1);
 		hammer2_inode_drop(nip);
 
@@ -906,6 +907,7 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 		hammer2_inode_ref(nip);
 		hammer2_inode_unlock(nip);
 		hammer2_inode_chain_sync(nip);
+		hammer2_inode_chain_flush(nip);
 		KKASSERT(nip->refs == 1);
 		hammer2_inode_drop(nip);
 
@@ -1021,17 +1023,17 @@ hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 
 static
 int
-hammer2_ioctl_debug_dump(hammer2_inode_t *ip)
+hammer2_ioctl_debug_dump(hammer2_inode_t *ip, u_int flags)
 {
 	hammer2_chain_t *chain;
-	int count = 1000;
+	int count = 100000;
 	int i;
 
 	for (i = 0; i < ip->cluster.nchains; ++i) {
 		chain = ip->cluster.array[i].chain;
 		if (chain == NULL)
 			continue;
-		hammer2_dump_chain(chain, 0, &count, 'i');
+		hammer2_dump_chain(chain, 0, &count, 'i', flags);
 	}
 	return 0;
 }

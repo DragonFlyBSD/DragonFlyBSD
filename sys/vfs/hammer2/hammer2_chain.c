@@ -2088,9 +2088,9 @@ hammer2_chain_find_callback(hammer2_chain_t *child, void *data)
 /*
  * Retrieve the specified chain from a media blockref, creating the
  * in-memory chain structure which reflects it.  The returned chain is
- * held but not locked.  The caller must lock it to crc-check and
- * dereference its data, and should check chain->error after locking
- * before assuming that the data is good.
+ * held and locked according to (how) (HAMMER2_RESOLVE_*).  The caller must
+ * handle crc-checks and so forth, and should check chain->error before
+ * assuming that the data is good.
  *
  * To handle insertion races pass the INSERT_RACE flag along with the
  * generation number of the core.  NULL will be returned if the generation
@@ -2105,7 +2105,7 @@ hammer2_chain_find_callback(hammer2_chain_t *child, void *data)
  */
 hammer2_chain_t *
 hammer2_chain_get(hammer2_chain_t *parent, int generation,
-		  hammer2_blockref_t *bref)
+		  hammer2_blockref_t *bref, int how)
 {
 	hammer2_dev_t *hmp = parent->hmp;
 	hammer2_chain_t *chain;
@@ -2128,6 +2128,11 @@ hammer2_chain_get(hammer2_chain_t *parent, int generation,
 	atomic_set_int(&chain->flags, HAMMER2_CHAIN_BMAPPED);
 
 	/*
+	 * chain must be locked to avoid unexpected ripouts
+	 */
+	hammer2_chain_lock(chain, how);
+
+	/*
 	 * Link the chain into its parent.  A spinlock is required to safely
 	 * access the RBTREE, and it is possible to collide with another
 	 * hammer2_chain_get() operation because the caller might only hold
@@ -2144,6 +2149,7 @@ hammer2_chain_get(hammer2_chain_t *parent, int generation,
 	if (error) {
 		KKASSERT((chain->flags & HAMMER2_CHAIN_ONRBTREE) == 0);
 		/*kprintf("chain %p get race\n", chain);*/
+		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
 		chain = NULL;
 	} else {
@@ -2553,39 +2559,43 @@ again:
 	/*
 	 * Selected from blockref or in-memory chain.
 	 */
+	bcopy = *bref;
 	if (chain == NULL) {
-		bcopy = *bref;
 		hammer2_spin_unex(&parent->core.spin);
-		chain = hammer2_chain_get(parent, generation,
-					  &bcopy);
-		if (chain == NULL) {
-			/*
-			kprintf("retry lookup parent %p keys %016jx:%016jx\n",
-				parent, key_beg, key_end);
-			*/
-			goto again;
+		if (bcopy.type == HAMMER2_BREF_TYPE_INDIRECT ||
+		    bcopy.type == HAMMER2_BREF_TYPE_FREEMAP_NODE) {
+			chain = hammer2_chain_get(parent, generation,
+						  &bcopy, how_maybe);
+		} else {
+			chain = hammer2_chain_get(parent, generation,
+						  &bcopy, how);
 		}
-		if (bcmp(&bcopy, bref, sizeof(bcopy))) {
-			hammer2_chain_drop(chain);
-			chain = NULL;	/* SAFETY */
+		if (chain == NULL)
 			goto again;
-		}
 	} else {
 		hammer2_chain_ref(chain);
 		hammer2_spin_unex(&parent->core.spin);
+
+		/*
+		 * chain is referenced but not locked.  We must lock the
+		 * chain to obtain definitive state.
+		 */
+		if (bcopy.type == HAMMER2_BREF_TYPE_INDIRECT ||
+		    bcopy.type == HAMMER2_BREF_TYPE_FREEMAP_NODE) {
+			hammer2_chain_lock(chain, how_maybe);
+		} else {
+			hammer2_chain_lock(chain, how);
+		}
+		KKASSERT(chain->parent == parent);
+	}
+	if (bcmp(&bcopy, &chain->bref, sizeof(bcopy)) ||
+	    chain->parent != parent) {
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+		chain = NULL;	/* SAFETY */
+		goto again;
 	}
 
-	/*
-	 * chain is referenced but not locked.  We must lock the chain
-	 * to obtain definitive state.
-	 */
-	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
-	    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE) {
-		hammer2_chain_lock(chain, how_maybe);
-	} else {
-		hammer2_chain_lock(chain, how);
-	}
-	KKASSERT(chain->parent == parent);
 
 	/*
 	 * Skip deleted chains (XXX cache 'i' end-of-block-array? XXX)
@@ -2943,17 +2953,10 @@ again:
 			 * Recursion, always get the chain
 			 */
 			hammer2_spin_unex(&parent->core.spin);
-			chain = hammer2_chain_get(parent, generation, bref);
-			if (chain == NULL) {
-				kprintf("retry scan parent %p keys %016jx\n",
-					parent, key);
+			chain = hammer2_chain_get(parent, generation,
+						  bref, how);
+			if (chain == NULL)
 				goto again;
-			}
-			if (bcmp(bref, bref_ptr, sizeof(*bref))) {
-				hammer2_chain_drop(chain);
-				chain = NULL;
-				goto again;
-			}
 			break;
 		default:
 			/*
@@ -2970,14 +2973,16 @@ again:
 		 */
 		hammer2_chain_ref(chain);
 		hammer2_spin_unex(&parent->core.spin);
-	}
-
-	/*
-	 * chain is referenced but not locked.  We must lock the chain
-	 * to obtain definitive state.
-	 */
-	if (chain)
 		hammer2_chain_lock(chain, how);
+	}
+	if (chain &&
+	    (bcmp(bref, &chain->bref, sizeof(*bref)) ||
+	     chain->parent != parent)) {
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+		chain = NULL;
+		goto again;
+	}
 
 	/*
 	 * Skip deleted chains (XXX cache 'i' end-of-block-array? XXX)
@@ -3354,10 +3359,6 @@ done:
  * FULL.  This typically means that the caller is creating the chain after
  * doing a hammer2_chain_lookup().
  *
- * A non-NULL bref is typically passed when key and keybits must be overridden.
- * Note that hammer2_cluster_duplicate() *ONLY* uses the key and keybits fields
- * from a passed-in bref and uses the old chain's bref for everything else.
- *
  * Neither (parent) or (chain) can be errored.
  *
  * If (parent) is non-NULL then the chain is inserted under the parent.
@@ -3372,10 +3373,10 @@ done:
  *	    specific chain.
  */
 void
-hammer2_chain_rename(hammer2_blockref_t *bref,
-		     hammer2_chain_t **parentp, hammer2_chain_t *chain,
+hammer2_chain_rename(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 		     hammer2_tid_t mtid, int flags)
 {
+	hammer2_blockref_t *bref;
 	hammer2_dev_t *hmp;
 	hammer2_chain_t *parent;
 	size_t bytes;
@@ -3398,8 +3399,7 @@ hammer2_chain_rename(hammer2_blockref_t *bref,
 	 *
 	 * NOTE: Handle special radix == 0 case (means 0 bytes).
 	 */
-	if (bref == NULL)
-		bref = &chain->bref;
+	bref = &chain->bref;
 	bytes = (size_t)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
 	if (bytes)
 		bytes = (hammer2_off_t)1 << bytes;
@@ -3858,6 +3858,7 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 		 * chain is referenced but not locked.  We must lock the
 		 * chain to obtain definitive state.
 		 */
+		bcopy = *bref;
 		if (chain) {
 			/*
 			 * Use chain already present in the RBTREE
@@ -3870,19 +3871,11 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 			 * Get chain for blockref element.  _get returns NULL
 			 * on insertion race.
 			 */
-			bcopy = *bref;
 			hammer2_spin_unex(&parent->core.spin);
-			chain = hammer2_chain_get(parent, generation, &bcopy);
+			chain = hammer2_chain_get(parent, generation, &bcopy,
+						  HAMMER2_RESOLVE_NEVER);
 			if (chain == NULL) {
 				reason = 1;
-				hammer2_spin_ex(&parent->core.spin);
-				continue;
-			}
-			hammer2_chain_lock(chain, HAMMER2_RESOLVE_NEVER);
-			if (bcmp(&bcopy, bref, sizeof(bcopy))) {
-				reason = 2;
-				hammer2_chain_unlock(chain);
-				hammer2_chain_drop(chain);
 				hammer2_spin_ex(&parent->core.spin);
 				continue;
 			}
@@ -3898,7 +3891,8 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 		 *
 		 *	 (note reversed logic for this one)
 		 */
-		if (chain->parent != parent ||
+		if (bcmp(&bcopy, &chain->bref, sizeof(bcopy)) ||
+		    chain->parent != parent ||
 		    (chain->flags & HAMMER2_CHAIN_DELETED)) {
 			hammer2_chain_unlock(chain);
 			hammer2_chain_drop(chain);
@@ -3925,7 +3919,7 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 		 */
 		error = hammer2_chain_delete(parent, chain, mtid, 0);
 		KKASSERT(error == 0);
-		hammer2_chain_rename(NULL, &ichain, chain, mtid, 0);
+		hammer2_chain_rename(&ichain, chain, mtid, 0);
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
 		KKASSERT(parent->refs > 0);
@@ -4120,37 +4114,33 @@ hammer2_chain_indirect_maintenance(hammer2_chain_t *parent,
 			break;
 		key_next = bref->key + ((hammer2_key_t)1 << bref->keybits);
 
+		bcopy = *bref;
 		if (sub) {
 			hammer2_chain_ref(sub);
 			hammer2_spin_unex(&chain->core.spin);
 			hammer2_chain_lock(sub, HAMMER2_RESOLVE_NEVER);
-			if (sub->parent != chain ||
-			    (sub->flags & HAMMER2_CHAIN_DELETED)) {
-				hammer2_chain_unlock(sub);
-				hammer2_chain_drop(sub);
-				hammer2_spin_ex(&chain->core.spin);
-				continue;
-			}
 		} else {
-			bcopy = *bref;
 			hammer2_spin_unex(&chain->core.spin);
-			sub = hammer2_chain_get(chain, generation, &bcopy);
+			sub = hammer2_chain_get(chain, generation, &bcopy,
+						HAMMER2_RESOLVE_NEVER);
 			if (sub == NULL) {
 				hammer2_spin_ex(&chain->core.spin);
 				continue;
 			}
-			hammer2_chain_lock(sub, HAMMER2_RESOLVE_NEVER);
-			if (bcmp(&bcopy, bref, sizeof(bcopy)) != 0) {
-				hammer2_chain_unlock(sub);
-				hammer2_chain_drop(sub);
-				hammer2_spin_ex(&chain->core.spin);
-				continue;
-			}
+		}
+		if (bcmp(&bcopy, &sub->bref, sizeof(bcopy)) ||
+		    sub->parent != chain ||
+		    (sub->flags & HAMMER2_CHAIN_DELETED)) {
+			hammer2_chain_unlock(sub);
+			hammer2_chain_drop(sub);
+			hammer2_spin_ex(&chain->core.spin);
+			sub = NULL;	/* safety */
+			continue;
 		}
 		error = hammer2_chain_delete(chain, sub,
 					     sub->bref.modify_tid, 0);
 		KKASSERT(error == 0);
-		hammer2_chain_rename(NULL, &parent, sub,
+		hammer2_chain_rename(&parent, sub,
 				     sub->bref.modify_tid,
 				     HAMMER2_INSERT_SAMEPARENT);
 		hammer2_chain_unlock(sub);
@@ -4795,11 +4785,16 @@ hammer2_chain_delete(hammer2_chain_t *parent, hammer2_chain_t *chain,
 
 	/*
 	 * Permanent deletions mark the chain as destroyed.
+	 *
+	 * NOTE: We do not setflush the chain unless the deletion is
+	 *	 permanent, since the deletion of a chain does not actually
+	 *	 require it to be flushed.
 	 */
 	if (error == 0) {
-		if (flags & HAMMER2_DELETE_PERMANENT)
+		if (flags & HAMMER2_DELETE_PERMANENT) {
 			atomic_set_int(&chain->flags, HAMMER2_CHAIN_DESTROY);
-		hammer2_chain_setflush(chain);
+			hammer2_chain_setflush(chain);
+		}
 	}
 
 	return error;
@@ -5465,7 +5460,7 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 				chain->bref.check.iscsi32.value,
 				check32);
 		}
-		hammer2_check_icrc32 += chain->bytes;
+		hammer2_process_icrc32 += chain->bytes;
 		break;
 	case HAMMER2_CHECK_XXHASH64:
 		check64 = XXH64(bdata, chain->bytes, XXH_HAMMER2_SEED);
@@ -5482,7 +5477,7 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 				chain->bref.check.xxhash64.value,
 				check64);
 		}
-		hammer2_check_xxhash64 += chain->bytes;
+		hammer2_process_xxhash64 += chain->bytes;
 		break;
 	case HAMMER2_CHECK_SHA192:
 		{

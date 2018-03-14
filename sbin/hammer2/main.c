@@ -149,11 +149,14 @@ main(int ac, char **av)
 			usage(1);
 		}
 		ecode = cmd_remote_connect(sel_path, av[1]);
-	} else if (strcmp(av[0], "chaindump") == 0) {
+	} else if (strcmp(av[0], "dumpchain") == 0) {
 		if (ac < 2)
-			ecode = cmd_chaindump(".");
+			ecode = cmd_dumpchain(".", (u_int)-1);
+		else if (ac < 3)
+			ecode = cmd_dumpchain(av[1], (u_int)-1);
 		else
-			ecode = cmd_chaindump(av[1]);
+			ecode = cmd_dumpchain(av[1],
+					      (u_int)strtoul(av[2], NULL, 0));
 	} else if (strcmp(av[0], "debugspan") == 0) {
 		/*
 		 * Debug connection to the target hammer2 service and run
@@ -474,8 +477,9 @@ usage(int code)
 			"Add cluster link\n"
 		"    debugspan <target>           "
 			"Debug spanning tree\n"
-		"    chaindump <path>             "
-			"Dump in-memory chain topo at\n"
+		"    dumpchain <path> [chnflags]  "
+			"Dump in-memory chain topo from\n"
+			"NOTE: ONFLUSH flag is 0x200\n"
 		"    destroy <path>*              "
 			"Destroy a directory entry (only use if inode bad)\n"
 		"    disconnect <target>          "

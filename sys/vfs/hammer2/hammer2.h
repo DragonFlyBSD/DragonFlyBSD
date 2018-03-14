@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2017 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -780,6 +780,7 @@ typedef struct hammer2_trans hammer2_trans_t;
 
 #define HAMMER2_FLUSH_TOP		0x0001
 #define HAMMER2_FLUSH_ALL		0x0002
+#define HAMMER2_FLUSH_INODE_STOP	0x0004	/* stop at sub-inode */
 
 
 /*
@@ -1043,9 +1044,11 @@ typedef struct hammer2_xop_group hammer2_xop_group_t;
  * flags to hammer2_xop_alloc()
  *
  * MODIFYING	- This is a modifying transaction, allocate a mtid.
+ * RECURSE	- Recurse top-level inode (for root flushes)
  */
 #define HAMMER2_XOP_MODIFYING		0x00000001
 #define HAMMER2_XOP_STRATEGY		0x00000002
+#define HAMMER2_XOP_INODE_STOP		0x00000004
 
 /*
  * Global (per partition) management structure, represents a hard block
@@ -1362,9 +1365,8 @@ extern int hammer2_dedup_enable;
 extern int hammer2_always_compress;
 extern int hammer2_inval_enable;
 extern int hammer2_flush_pipe;
-extern int hammer2_synchronous_flush;
 extern int hammer2_dio_count;
-extern int hammer2_limit_dio;
+extern int hammer2_dio_limit;
 extern int hammer2_bulkfree_tps;
 extern long hammer2_chain_allocs;
 extern long hammer2_chain_frees;
@@ -1385,8 +1387,8 @@ extern long hammer2_iod_indr_write;
 extern long hammer2_iod_fmap_write;
 extern long hammer2_iod_volu_write;
 
-extern long hammer2_check_xxhash64;
-extern long hammer2_check_icrc32;
+extern long hammer2_process_xxhash64;
+extern long hammer2_process_icrc32;
 
 extern struct objcache *cache_buffer_read;
 extern struct objcache *cache_buffer_write;
@@ -1458,7 +1460,8 @@ hammer2_inode_t *hammer2_inode_create(hammer2_inode_t *dip,
 			const uint8_t *name, size_t name_len, hammer2_key_t lhc,
 			hammer2_key_t inum, uint8_t type, uint8_t target_type,
 			int flags, int *errorp);
-void hammer2_inode_chain_sync(hammer2_inode_t *ip);
+int hammer2_inode_chain_sync(hammer2_inode_t *ip);
+int hammer2_inode_chain_flush(hammer2_inode_t *ip);
 int hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen);
 int hammer2_dirent_create(hammer2_inode_t *dip, const char *name,
 			size_t name_len, hammer2_key_t inum, uint8_t type);
@@ -1498,7 +1501,7 @@ void hammer2_chain_unlock(hammer2_chain_t *chain);
 void hammer2_chain_unlock_hold(hammer2_chain_t *chain);
 void hammer2_chain_wait(hammer2_chain_t *chain);
 hammer2_chain_t *hammer2_chain_get(hammer2_chain_t *parent, int generation,
-				hammer2_blockref_t *bref);
+				hammer2_blockref_t *bref, int how);
 hammer2_chain_t *hammer2_chain_lookup_init(hammer2_chain_t *parent, int flags);
 void hammer2_chain_lookup_done(hammer2_chain_t *parent);
 hammer2_chain_t *hammer2_chain_getparent(hammer2_chain_t *chain, int flags);
@@ -1522,8 +1525,7 @@ int hammer2_chain_create(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
 				hammer2_key_t key, int keybits,
 				int type, size_t bytes, hammer2_tid_t mtid,
 				hammer2_off_t dedup_off, int flags);
-void hammer2_chain_rename(hammer2_blockref_t *bref,
-				hammer2_chain_t **parentp,
+void hammer2_chain_rename(hammer2_chain_t **parentp,
 				hammer2_chain_t *chain,
 				hammer2_tid_t mtid, int flags);
 int hammer2_chain_delete(hammer2_chain_t *parent, hammer2_chain_t *chain,
@@ -1686,7 +1688,8 @@ int hammer2_msg_adhoc_input(kdmsg_msg_t *msg);
  * hammer2_vfsops.c
  */
 void hammer2_volconf_update(hammer2_dev_t *hmp, int index);
-void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp, char pfx);
+void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp, char pfx,
+				u_int flags);
 int hammer2_vfs_sync(struct mount *mp, int waitflags);
 int hammer2_vfs_enospace(hammer2_inode_t *ip, off_t bytes, struct ucred *cred);
 

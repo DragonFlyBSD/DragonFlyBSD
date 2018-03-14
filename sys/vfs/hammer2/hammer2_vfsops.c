@@ -69,6 +69,7 @@ MALLOC_DEFINE(M_OBJCACHE, "objcache", "Object Cache");
 struct hammer2_sync_info {
 	int error;
 	int waitfor;
+	int pass;
 };
 
 TAILQ_HEAD(hammer2_mntlist, hammer2_dev);
@@ -85,9 +86,8 @@ int hammer2_dedup_enable = 1;
 int hammer2_always_compress = 0;	/* always try to compress */
 int hammer2_inval_enable = 0;
 int hammer2_flush_pipe = 100;
-int hammer2_synchronous_flush = 1;
 int hammer2_dio_count;
-int hammer2_limit_dio = 256;
+int hammer2_dio_limit = 256;
 int hammer2_bulkfree_tps = 5000;
 long hammer2_chain_allocs;
 long hammer2_chain_frees;
@@ -134,8 +134,6 @@ SYSCTL_INT(_vfs_hammer2, OID_AUTO, inval_enable, CTLFLAG_RW,
 	   &hammer2_inval_enable, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, flush_pipe, CTLFLAG_RW,
 	   &hammer2_flush_pipe, 0, "");
-SYSCTL_INT(_vfs_hammer2, OID_AUTO, synchronous_flush, CTLFLAG_RW,
-	   &hammer2_synchronous_flush, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, bulkfree_tps, CTLFLAG_RW,
 	   &hammer2_bulkfree_tps, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, chain_allocs, CTLFLAG_RW,
@@ -148,8 +146,8 @@ SYSCTL_LONG(_vfs_hammer2, OID_AUTO, count_modified_chains, CTLFLAG_RW,
 	   &hammer2_count_modified_chains, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, dio_count, CTLFLAG_RD,
 	   &hammer2_dio_count, 0, "");
-SYSCTL_INT(_vfs_hammer2, OID_AUTO, limit_dio, CTLFLAG_RW,
-	   &hammer2_limit_dio, 0, "");
+SYSCTL_INT(_vfs_hammer2, OID_AUTO, dio_limit, CTLFLAG_RW,
+	   &hammer2_dio_limit, 0, "");
 
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_invals, CTLFLAG_RW,
 	   &hammer2_iod_invals, 0, "");
@@ -181,12 +179,12 @@ SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_fmap_write, CTLFLAG_RW,
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_volu_write, CTLFLAG_RW,
 	   &hammer2_iod_volu_write, 0, "");
 
-long hammer2_check_icrc32;
-long hammer2_check_xxhash64;
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, check_icrc32, CTLFLAG_RW,
-	   &hammer2_check_icrc32, 0, "");
-SYSCTL_LONG(_vfs_hammer2, OID_AUTO, check_xxhash64, CTLFLAG_RW,
-	   &hammer2_check_xxhash64, 0, "");
+long hammer2_process_icrc32;
+long hammer2_process_xxhash64;
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, process_icrc32, CTLFLAG_RW,
+	   &hammer2_process_icrc32, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, process_xxhash64, CTLFLAG_RW,
+	   &hammer2_process_xxhash64, 0, "");
 
 static int hammer2_vfs_init(struct vfsconf *conf);
 static int hammer2_vfs_uninit(struct vfsconf *vfsp);
@@ -259,12 +257,12 @@ hammer2_vfs_init(struct vfsconf *conf)
 	 *
 	 * NOTE: A large buffer cache can actually interfere with dedup
 	 *	 operation because we dedup based on media physical buffers
-	 *	 and not logical buffers.  Try to make the DIO chace large
+	 *	 and not logical buffers.  Try to make the DIO case large
 	 *	 enough to avoid this problem, but also cap it.
 	 */
-	hammer2_limit_dio = nbuf * 2;
-	if (hammer2_limit_dio > 100000)
-		hammer2_limit_dio = 100000;
+	hammer2_dio_limit = nbuf * 2;
+	if (hammer2_dio_limit > 100000)
+		hammer2_dio_limit = 100000;
 
 	if (HAMMER2_BLOCKREF_BYTES != sizeof(struct hammer2_blockref))
 		error = EINVAL;
@@ -1769,9 +1767,9 @@ again:
 	 * rot).
 	 */
 	dumpcnt = 50;
-	hammer2_dump_chain(&hmp->vchain, 0, &dumpcnt, 'v');
+	hammer2_dump_chain(&hmp->vchain, 0, &dumpcnt, 'v', (u_int)-1);
 	dumpcnt = 50;
-	hammer2_dump_chain(&hmp->fchain, 0, &dumpcnt, 'f');
+	hammer2_dump_chain(&hmp->fchain, 0, &dumpcnt, 'f', (u_int)-1);
 	hammer2_dev_unlock(hmp);
 	hammer2_chain_drop(&hmp->vchain);
 
@@ -2246,7 +2244,8 @@ hammer2_recovery_scan(hammer2_dev_t *hmp, hammer2_chain_t *parent,
 		if (tmp_error == 0 &&
 		    (bref.flags & HAMMER2_BREF_FLAG_PFSROOT) &&
 		    (chain->flags & HAMMER2_CHAIN_ONFLUSH)) {
-			hammer2_flush(chain, HAMMER2_FLUSH_TOP);
+			hammer2_flush(chain, HAMMER2_FLUSH_TOP |
+					     HAMMER2_FLUSH_ALL);
 		}
 		rup_error |= tmp_error;
 	}
@@ -2254,9 +2253,8 @@ hammer2_recovery_scan(hammer2_dev_t *hmp, hammer2_chain_t *parent,
 }
 
 /*
- * Sync a mount point; this is called on a per-mount basis from the
- * filesystem syncer process periodically and whenever a user issues
- * a sync.
+ * Sync a mount point; this is called periodically on a per-mount basis from
+ * the filesystem syncer, and whenever a user issues a sync.
  */
 int
 hammer2_vfs_sync(struct mount *mp, int waitfor)
@@ -2290,26 +2288,40 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		flags |= VMSC_ONEPASS;
 
 	/*
-	 * Preflush the vnodes using a normal transaction before interlocking
-	 * with a flush transaction.  We do this to try to run as much of
-	 * the compression as possible outside the flush transaction.
+	 * Flush vnodes individually using a normal transaction to avoid
+	 * stalling any concurrent operations.  This will flush the related
+	 * buffer cache buffers and inodes to the media.
 	 *
 	 * For efficiency do an async pass before making sure with a
 	 * synchronous pass on all related buffer cache buffers.
+	 *
+	 * Do a single synchronous pass to avoid double-flushing vnodes,
+	 * which can waste copy-on-write blocks.  XXX do not do two passes.
 	 */
 	hammer2_trans_init(pmp, 0);
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
+	info.pass = 1;
 	vsyncscan(mp, flags | VMSC_NOWAIT, hammer2_sync_scan2, &info);
 	info.waitfor = MNT_WAIT;
 	vsyncscan(mp, flags, hammer2_sync_scan2, &info);
+
+	info.pass = 2;
+	info.waitfor = MNT_WAIT;
+	vsyncscan(mp, flags, hammer2_sync_scan2, &info);
+
+	/*
+	 * We must also run the sideq to handle any disconnected inodes
+	 * as the vnode scan will not see these.
+	 */
+	hammer2_inode_run_sideq(pmp, 1);
 	hammer2_trans_done(pmp);
 
 	/*
-	 * Start our flush transaction.  This does not return until all
-	 * concurrent transactions have completed and will prevent any
-	 * new transactions from running concurrently, except for the
-	 * buffer cache transactions.
+	 * Start our flush transaction and flush the root topology down to
+	 * the inodes, but not the inodes themselves (which we already flushed
+	 * above).  Any concurrent activity effecting inode contents will not
+	 * be part of this flush cycle.
 	 *
 	 * (1) vfsync() all dirty vnodes via vfsyncscan().
 	 *
@@ -2326,14 +2338,6 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 */
 	hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH);
 
-	info.error = 0;
-	info.waitfor = MNT_NOWAIT;
-	vsyncscan(mp, flags | VMSC_NOWAIT, hammer2_sync_scan2, &info);
-	info.waitfor = MNT_WAIT;
-	vsyncscan(mp, flags, hammer2_sync_scan2, &info);
-	hammer2_inode_run_sideq(pmp, 1);
-	hammer2_bioq_sync(pmp);
-
 	/*
 	 * Use the XOP interface to concurrently flush all nodes to
 	 * synchronize the PFSROOT subtopology to the media.  A standard
@@ -2345,7 +2349,18 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 * XXX For now wait for all flushes to complete.
 	 */
 	if (iroot) {
-		xop = hammer2_xop_alloc(iroot, HAMMER2_XOP_MODIFYING);
+		/*
+		 * If unmounting try to flush everything including any
+		 * sub-trees under inodes, just in case there is dangling
+		 * modified data, as a safety.  Otherwise just flush up to
+		 * the inodes in this stage.
+		 */
+		if (mp->mnt_kern_flag & MNTK_UNMOUNT) {
+			xop = hammer2_xop_alloc(iroot, HAMMER2_XOP_MODIFYING);
+		} else {
+			xop = hammer2_xop_alloc(iroot, HAMMER2_XOP_MODIFYING |
+						       HAMMER2_XOP_INODE_STOP);
+		}
 		hammer2_xop_start(&xop->head, hammer2_inode_xop_flush);
 		error = hammer2_xop_collect(&xop->head,
 					    HAMMER2_XOP_COLLECT_WAITALL);
@@ -2368,6 +2383,11 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
  * Note that we ignore the tranasction mtid we got above.  Instead,
  * each vfsync below will ultimately get its own via TRANS_BUFCACHE
  * transactions.
+ *
+ * WARNING! The frontend might be waiting on chnmem (limit_dirty_chains)
+ * while holding a vnode locked.  When this situation occurs we cannot
+ * safely test whether it is ok to clear the dirty bit on the vnode.
+ * However, we can still flush the inode's topology.
  */
 static int
 hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
@@ -2391,34 +2411,39 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	}
 
 	/*
-	 * VOP_FSYNC will start a new transaction so replicate some code
-	 * here to do it inline (see hammer2_vop_fsync()).
+	 * Synchronize the buffer cche and inode meta-data to the backing
+	 * chain topology.
 	 *
-	 * WARNING: The vfsync interacts with the buffer cache and might
-	 *          block, we can't hold the inode lock at that time.
-	 *	    However, we MUST ref ip before blocking to ensure that
-	 *	    it isn't ripped out from under us (since we do not
-	 *	    hold a lock on the vnode).
+	 * vfsync is not necessarily synchronous, so it is best NOT to try
+	 * to flush the backing topology to media at this point.
 	 */
 	hammer2_inode_ref(ip);
-	if ((ip->flags & HAMMER2_INODE_MODIFIED) ||
+	if ((ip->flags & (HAMMER2_INODE_RESIZED|HAMMER2_INODE_MODIFIED)) ||
 	    !RB_EMPTY(&vp->v_rbdirty_tree)) {
-		vfsync(vp, info->waitfor, 1, NULL, NULL);
-		if (ip->flags & (HAMMER2_INODE_RESIZED |
-				 HAMMER2_INODE_MODIFIED)) {
+		if (info->pass == 1)
+			vfsync(vp, info->waitfor, 1, NULL, NULL);
+		else
+			bio_track_wait(&vp->v_track_write, 0, 0);
+	}
+	if (info->pass == 2 && (vp->v_flag & VISDIRTY)) {
+		if (vx_get_nonblock(vp) == 0) {
 			hammer2_inode_lock(ip, 0);
-			if (ip->flags & (HAMMER2_INODE_RESIZED |
-					 HAMMER2_INODE_MODIFIED)) {
-				hammer2_inode_chain_sync(ip);
+			if ((ip->flags & HAMMER2_INODE_MODIFIED) == 0 &&
+			    RB_EMPTY(&vp->v_rbdirty_tree) &&
+			    !bio_track_active(&vp->v_track_write)) {
+				vclrisdirty(vp);
 			}
+			hammer2_inode_chain_sync(ip);
+			hammer2_inode_chain_flush(ip);
+			hammer2_inode_unlock(ip);
+			vx_put(vp);
+		} else {
+			/* can't safely clear isdirty */
+			hammer2_inode_lock(ip, 0);
+			hammer2_inode_chain_flush(ip);
 			hammer2_inode_unlock(ip);
 		}
 	}
-	if ((ip->flags & HAMMER2_INODE_MODIFIED) == 0 &&
-	    RB_EMPTY(&vp->v_rbdirty_tree)) {
-		vclrisdirty(vp);
-	}
-
 	hammer2_inode_drop(ip);
 #if 1
 	error = 0;
@@ -2701,7 +2726,7 @@ hammer2_pfs_memory_wait(hammer2_pfs_t *pmp)
 		/*
 		 * Try to start an early flush before we are forced to block.
 		 */
-		if (count > limit * 7 / 10)
+		if (count > limit * 5 / 10)
 			speedup_syncer(pmp->mp);
 		break;
 	}
@@ -2794,7 +2819,8 @@ hammer2_vfs_enospace(hammer2_inode_t *ip, off_t bytes, struct ucred *cred)
  * Debugging
  */
 void
-hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp, char pfx)
+hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp, char pfx,
+		   u_int flags)
 {
 	hammer2_chain_t *scan;
 	hammer2_chain_t *parent;
@@ -2828,8 +2854,12 @@ hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp, char pfx)
 		kprintf("\n");
 	} else {
 		kprintf(" {\n");
-		RB_FOREACH(scan, hammer2_chain_tree, &chain->core.rbtree)
-			hammer2_dump_chain(scan, tab + 4, countp, 'a');
+		RB_FOREACH(scan, hammer2_chain_tree, &chain->core.rbtree) {
+			if ((scan->flags & flags) || flags == (u_int)-1) {
+				hammer2_dump_chain(scan, tab + 4, countp, 'a',
+						   flags);
+			}
+		}
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE && chain->data)
 			kprintf("%*.*s}(%s)\n", tab, tab, "",
 				chain->data->ipdata.filename);

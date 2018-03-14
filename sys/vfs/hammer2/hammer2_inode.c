@@ -1165,12 +1165,18 @@ hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen)
 		hammer2_knote(ip->vp, NOTE_DELETE);
 
 	/*
-	 * nlinks is now zero, delete the inode if not open.
+	 * nlinks is now an implied zero, delete the inode if not open.
+	 * We avoid unnecessary media updates by not bothering to actually
+	 * decrement nlinks for the 1->0 transition
+	 *
+	 * Put the inode on the sideq to ensure that any disconnected chains
+	 * get properly flushed (so they can be freed).
 	 */
 	if (isopen == 0) {
 		hammer2_xop_destroy_t *xop;
 
 killit:
+		hammer2_inode_delayed_sideq(ip);
 		atomic_set_int(&ip->flags, HAMMER2_INODE_ISDELETED);
 		xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
 		hammer2_xop_start(&xop->head, hammer2_inode_xop_destroy);
@@ -1200,29 +1206,30 @@ killit:
 void
 hammer2_inode_modify(hammer2_inode_t *ip)
 {
-	hammer2_pfs_t *pmp;
-
 	atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
 	if (ip->vp) {
 		vsetisdirty(ip->vp);
-	} else if ((pmp = ip->pmp) != NULL &&
-		   (ip->flags & HAMMER2_INODE_NOSIDEQ) == 0) {
+	} else if (ip->pmp && (ip->flags & HAMMER2_INODE_NOSIDEQ) == 0) {
 		hammer2_inode_delayed_sideq(ip);
 	}
 }
 
 /*
  * Synchronize the inode's frontend state with the chain state prior
- * to any explicit flush of the inode or any strategy write call.
+ * to any explicit flush of the inode or any strategy write call.  This
+ * does not flush the inode's chain or its sub-topology to media (higher
+ * level layers are responsible for doing that).
  *
- * Called with a locked inode inside a transaction.
+ * Called with a locked inode inside a normal transaction.
  */
-void
+int
 hammer2_inode_chain_sync(hammer2_inode_t *ip)
 {
+	int error;
+
+	error = 0;
 	if (ip->flags & (HAMMER2_INODE_RESIZED | HAMMER2_INODE_MODIFIED)) {
 		hammer2_xop_fsync_t *xop;
-		int error;
 
 		xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
 		xop->clear_directdata = 0;
@@ -1256,6 +1263,28 @@ hammer2_inode_chain_sync(hammer2_inode_t *ip)
 			/* XXX return error somehow? */
 		}
 	}
+	return error;
+}
+
+/*
+ * Flushes the inode's chain and its sub-topology to media.  Usually called
+ * after hammer2_inode_chain_sync() is called.
+ */
+int
+hammer2_inode_chain_flush(hammer2_inode_t *ip)
+{
+	hammer2_xop_fsync_t *xop;
+	int error;
+
+	xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING |
+				    HAMMER2_XOP_INODE_STOP);
+	hammer2_xop_start(&xop->head, hammer2_inode_xop_flush);
+	error = hammer2_xop_collect(&xop->head, HAMMER2_XOP_COLLECT_WAITALL);
+	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+	if (error == HAMMER2_ERROR_ENOENT)
+		error = 0;
+
+	return error;
 }
 
 /*
@@ -1286,8 +1315,10 @@ hammer2_inode_run_sideq(hammer2_pfs_t *pmp, int doall)
 		return;
 	if (doall == 0) {
 		if (pmp->sideq_count > (pmp->inum_count >> 3)) {
-			kprintf("hammer2: flush sideq %ld/%ld\n",
-				pmp->sideq_count, pmp->inum_count);
+			if (hammer2_debug & 0x0001) {
+				kprintf("hammer2: flush sideq %ld/%ld\n",
+					pmp->sideq_count, pmp->inum_count);
+			}
 		}
 	}
 
@@ -1312,6 +1343,7 @@ hammer2_inode_run_sideq(hammer2_pfs_t *pmp, int doall)
 			 * the boat and synchronize it normally.
 			 */
 			hammer2_inode_chain_sync(ip);
+			hammer2_inode_chain_flush(ip);
 		} else if (ip->flags & HAMMER2_INODE_ISUNLINKED) {
 			/*
 			 * The inode was unlinked while open.  The inode must
@@ -1330,6 +1362,7 @@ hammer2_inode_run_sideq(hammer2_pfs_t *pmp, int doall)
 			 * chains.
 			 */
 			hammer2_inode_chain_sync(ip);
+			hammer2_inode_chain_flush(ip);
 		}
 
 		hammer2_inode_unlock(ip);
@@ -1343,8 +1376,10 @@ hammer2_inode_run_sideq(hammer2_pfs_t *pmp, int doall)
 		 * don't stop flushing until sideq_count drops below 1/16.
 		 */
 		if (doall == 0 && pmp->sideq_count <= (pmp->inum_count >> 4)) {
-			kprintf("hammer2: flush sideq %ld/%ld (end)\n",
-				pmp->sideq_count, pmp->inum_count);
+			if (hammer2_debug & 0x0001) {
+				kprintf("hammer2: flush sideq %ld/%ld (end)\n",
+					pmp->sideq_count, pmp->inum_count);
+			}
 			break;
 		}
 	}
@@ -1678,7 +1713,11 @@ fail:
 }
 
 /*
- * Synchronize the in-memory inode with the chain.
+ * Synchronize the in-memory inode with the chain.  This does not flush
+ * the chain to disk.  Instead, it makes front-end inode changes visible
+ * in the chain topology, thus visible to the backend.  This is done in an
+ * ad-hoc manner outside of the filesystem vfs_sync, and in a controlled
+ * manner inside the vfs_sync.
  */
 void
 hammer2_inode_xop_chain_sync(hammer2_thread_t *thr, hammer2_xop_t *arg)

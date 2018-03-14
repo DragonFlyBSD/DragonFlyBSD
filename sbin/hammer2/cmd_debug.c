@@ -860,9 +860,9 @@ cmd_hash(int ac, const char **av)
 }
 
 int
-cmd_chaindump(const char *path)
+cmd_dumpchain(const char *path, u_int flags)
 {
-	int dummy = 0;
+	int dummy = (int)flags;
 	int fd;
 
 	fd = open(path, O_RDONLY);

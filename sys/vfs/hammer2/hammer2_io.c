@@ -392,7 +392,7 @@ hammer2_io_putblk(hammer2_io_t **diop)
 	struct buf *bp;
 	off_t pbase;
 	int psize;
-	int limit_dio;
+	int dio_limit;
 	uint64_t orefs;
 	uint64_t nrefs;
 
@@ -539,17 +539,17 @@ hammer2_io_putblk(hammer2_io_t **diop)
 	 * We cache free buffers so re-use cases can use a shared lock, but
 	 * if too many build up we have to clean them out.
 	 */
-	limit_dio = hammer2_limit_dio;
-	if (limit_dio < 256)
-		limit_dio = 256;
-	if (limit_dio > 1024*1024)
-		limit_dio = 1024*1024;
-	if (hmp->iofree_count > limit_dio) {
+	dio_limit = hammer2_dio_limit;
+	if (dio_limit < 256)
+		dio_limit = 256;
+	if (dio_limit > 1024*1024)
+		dio_limit = 1024*1024;
+	if (hmp->iofree_count > dio_limit) {
 		struct hammer2_cleanupcb_info info;
 
 		RB_INIT(&info.tmptree);
 		hammer2_spin_ex(&hmp->io_spin);
-		if (hmp->iofree_count > limit_dio) {
+		if (hmp->iofree_count > dio_limit) {
 			info.count = hmp->iofree_count / 5;
 			RB_SCAN(hammer2_io_tree, &hmp->iotree, NULL,
 				hammer2_io_cleanup_callback, &info);

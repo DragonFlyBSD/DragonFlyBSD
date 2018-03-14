@@ -163,7 +163,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 
 	/*
 	 * A modified inode may require chain synchronization.  This
-	 * synchronization is usually handled by VOP_SNYC / VOP_FSYNC
+	 * synchronization is usually handled by VOP_SYNC / VOP_FSYNC
 	 * when vfsync() is called.  However, that requires a vnode.
 	 *
 	 * When the vnode is disassociated we must keep track of any modified
@@ -207,39 +207,54 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	return (0);
 }
 
+/*
+ * Currently this function synchronizes the front-end inode state to the
+ * backend chain topology, then flushes the inode's chain and sub-topology
+ * to backend media.  This function does not flush the root topology down to
+ * the inode.
+ */
 static
 int
 hammer2_vop_fsync(struct vop_fsync_args *ap)
 {
 	hammer2_inode_t *ip;
 	struct vnode *vp;
+	int error1;
+	int error2;
 
 	vp = ap->a_vp;
 	ip = VTOI(vp);
+	error1 = 0;
 
-#if 0
-	/* XXX can't do this yet */
-	hammer2_trans_init(ip->pmp, HAMMER2_TRANS_ISFLUSH);
-	vfsync(vp, ap->a_waitfor, 1, NULL, NULL);
-#endif
 	hammer2_trans_init(ip->pmp, 0);
-	vfsync(vp, ap->a_waitfor, 1, NULL, NULL);
 
 	/*
-	 * Calling chain_flush here creates a lot of duplicative
-	 * COW operations due to non-optimal vnode ordering.
-	 *
-	 * Only do it for an actual fsync() syscall.  The other forms
-	 * which call this function will eventually call chain_flush
-	 * on the volume root as a catch-all, which is far more optimal.
+	 * Clean out buffer cache, wait for I/O's to complete.
+	 */
+	vfsync(vp, ap->a_waitfor, 1, NULL, NULL);
+	bio_track_wait(&vp->v_track_write, 0, 0);
+
+	/*
+	 * Flush any inode changes
 	 */
 	hammer2_inode_lock(ip, 0);
-	if (ip->flags & HAMMER2_INODE_MODIFIED)
-		hammer2_inode_chain_sync(ip);
+	if (ip->flags & (HAMMER2_INODE_RESIZED|HAMMER2_INODE_MODIFIED))
+		error1 = hammer2_inode_chain_sync(ip);
+
+	/*
+	 * Flush dirty chains related to the inode.
+	 *
+	 * NOTE! XXX We do not currently flush to the volume root, ultimately
+	 *	 we will want to have a shortcut for the flushed inode stored
+	 *	 in the volume root for recovery purposes.
+	 */
+	error2 = hammer2_inode_chain_flush(ip);
+	if (error2)
+		error1 = error2;
 	hammer2_inode_unlock(ip);
 	hammer2_trans_done(ip->pmp);
 
-	return (0);
+	return (error1);
 }
 
 static
@@ -461,13 +476,18 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 
 done:
 	/*
-	 * If a truncation occurred we must call inode_fsync() now in order
+	 * If a truncation occurred we must call chain_sync() now in order
 	 * to trim the related data chains, otherwise a later expansion can
 	 * cause havoc.
 	 *
 	 * If an extend occured that changed the DIRECTDATA state, we must
 	 * call inode_fsync now in order to prepare the inode's indirect
 	 * block table.
+	 *
+	 * WARNING! This means we are making an adjustment to the inode's
+	 * chain outside of sync/fsync, and not just to inode->meta, which
+	 * may result in some consistency issues if a crash were to occur
+	 * at just the wrong time.
 	 */
 	if (ip->flags & HAMMER2_INODE_RESIZED)
 		hammer2_inode_chain_sync(ip);
@@ -1104,8 +1124,19 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 			hammer2_update_time(&ip->meta.mtime);
 			vclrflags(vp, VLASTWRITETS);
 		}
-		if (ip->flags & HAMMER2_INODE_MODIFIED)
+
+#if 0
+		/*
+		 * REMOVED - handled by hammer2_extend_file().  Do not issue
+		 * a chain_sync() outside of a sync/fsync except for DIRECTDATA
+		 * state changes.
+		 *
+		 * Under normal conditions we only issue a chain_sync if
+		 * the inode's DIRECTDATA state changed.
+		 */
+		if (ip->flags & HAMMER2_INODE_RESIZED)
 			hammer2_inode_chain_sync(ip);
+#endif
 		hammer2_mtx_unlock(&ip->lock);
 		hammer2_knote(ip->vp, kflags);
 	}
@@ -1184,6 +1215,13 @@ hammer2_extend_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 	ip->osize = osize;
 	ip->meta.size = nsize;
 
+	/*
+	 * We must issue a chain_sync() when the DIRECTDATA state changes
+	 * to prevent confusion between the flush code and the in-memory
+	 * state.  This is not perfect because we are doing it outside of
+	 * a sync/fsync operation, so it might not be fully synchronized
+	 * with the meta-data topology flush.
+	 */
 	if (osize <= HAMMER2_EMBEDDED_BYTES && nsize > HAMMER2_EMBEDDED_BYTES) {
 		atomic_set_int(&ip->flags, HAMMER2_INODE_RESIZED);
 		hammer2_inode_chain_sync(ip);
