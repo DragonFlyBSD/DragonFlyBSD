@@ -369,6 +369,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_IOSIGNAL		0x00200000	/* I/O interlock */
 #define HAMMER2_CHAIN_PFSBOUNDARY	0x00400000	/* super->pfs inode */
 #define HAMMER2_CHAIN_HINT_LEAF_COUNT	0x00800000	/* redo leaf count */
+#define HAMMER2_CHAIN_LRUHINT		0x01000000	/* was reused */
 
 #define HAMMER2_CHAIN_FLUSH_MASK	(HAMMER2_CHAIN_MODIFIED |	\
 					 HAMMER2_CHAIN_UPDATE |		\
@@ -1173,7 +1174,7 @@ struct hammer2_pfs {
 	struct hammer2_inode_tree inum_tree;	/* (not applicable to spmp) */
 	long			inum_count;	/* #of inodes in inum_tree */
 	struct spinlock		lru_spin;	/* inumber lookup */
-	struct hammer2_chain_list lru_list;	/* chains on LRU */
+	struct hammer2_chain_list lru_list;	/* basis for LRU tests */
 	int			lru_count;	/* #of chains on LRU */
 	hammer2_tid_t		modify_tid;	/* modify transaction id */
 	hammer2_tid_t		inode_tid;	/* inode allocator */
@@ -1201,7 +1202,12 @@ typedef struct hammer2_pfs hammer2_pfs_t;
 
 TAILQ_HEAD(hammer2_pfslist, hammer2_pfs);
 
-#define HAMMER2_LRU_LIMIT		1024	/* per pmp lru_list */
+/*
+ * NOTE: The LRU list contains at least all the chains with refs == 0
+ *	 that can be recycled, and may contain additional chains which
+ *	 cannot.
+ */
+#define HAMMER2_LRU_LIMIT		4096
 
 #define HAMMER2_DIRTYCHAIN_WAITING	0x80000000
 #define HAMMER2_DIRTYCHAIN_MASK		0x7FFFFFFF

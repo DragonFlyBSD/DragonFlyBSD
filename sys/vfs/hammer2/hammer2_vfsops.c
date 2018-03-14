@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2017 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -668,11 +668,19 @@ hammer2_pfsfree(hammer2_pfs_t *pmp)
 	/*
 	 * Cleanup chains remaining on LRU list.
 	 */
+	hammer2_spin_ex(&pmp->lru_spin);
 	while ((chain = TAILQ_FIRST(&pmp->lru_list)) != NULL) {
+		KKASSERT(chain->flags & HAMMER2_CHAIN_ONLRU);
+		atomic_add_int(&pmp->lru_count, -1);
+		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ONLRU);
+		TAILQ_REMOVE(&pmp->lru_list, chain, lru_node);
 		hammer2_chain_ref(chain);
+		hammer2_spin_unex(&pmp->lru_spin);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_RELEASE);
 		hammer2_chain_drop(chain);
+		hammer2_spin_ex(&pmp->lru_spin);
 	}
+	hammer2_spin_unex(&pmp->lru_spin);
 
 	/*
 	 * Free remaining pmp resources
@@ -2426,23 +2434,22 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 			bio_track_wait(&vp->v_track_write, 0, 0);
 	}
 	if (info->pass == 2 && (vp->v_flag & VISDIRTY)) {
-		if (vx_get_nonblock(vp) == 0) {
-			hammer2_inode_lock(ip, 0);
-			if ((ip->flags & HAMMER2_INODE_MODIFIED) == 0 &&
-			    RB_EMPTY(&vp->v_rbdirty_tree) &&
-			    !bio_track_active(&vp->v_track_write)) {
-				vclrisdirty(vp);
-			}
-			hammer2_inode_chain_sync(ip);
-			hammer2_inode_chain_flush(ip);
-			hammer2_inode_unlock(ip);
-			vx_put(vp);
-		} else {
-			/* can't safely clear isdirty */
-			hammer2_inode_lock(ip, 0);
-			hammer2_inode_chain_flush(ip);
-			hammer2_inode_unlock(ip);
+		/*
+		 * v_token is needed to interlock v_rbdirty_tree.
+		 */
+		lwkt_gettoken(&vp->v_token);
+		hammer2_inode_lock(ip, 0);
+		hammer2_inode_chain_sync(ip);
+		hammer2_inode_chain_flush(ip);
+		if ((ip->flags & (HAMMER2_INODE_MODIFIED |
+				  HAMMER2_INODE_RESIZED |
+				  HAMMER2_INODE_DIRTYDATA)) == 0 &&
+		    RB_EMPTY(&vp->v_rbdirty_tree) &&
+		    !bio_track_active(&vp->v_track_write)) {
+			vclrisdirty(vp);
 		}
+		hammer2_inode_unlock(ip);
+		lwkt_reltoken(&vp->v_token);
 	}
 	hammer2_inode_drop(ip);
 #if 1

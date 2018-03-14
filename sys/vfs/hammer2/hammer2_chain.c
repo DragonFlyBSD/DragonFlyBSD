@@ -267,6 +267,17 @@ hammer2_chain_ref(hammer2_chain_t *chain)
 {
 	if (atomic_fetchadd_int(&chain->refs, 1) == 0) {
 		/*
+		 * Just flag that the chain was used and should be recycled
+		 * on the LRU if it encounters it later.
+		 */
+		if (chain->flags & HAMMER2_CHAIN_ONLRU)
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_LRUHINT);
+
+#if 0
+		/*
+		 * REMOVED - reduces contention, lru_list is more heuristical
+		 * now.
+		 *
 		 * 0->non-zero transition must ensure that chain is removed
 		 * from the LRU list.
 		 *
@@ -285,11 +296,8 @@ hammer2_chain_ref(hammer2_chain_t *chain)
 			}
 			hammer2_spin_unex(&pmp->lru_spin);
 		}
-	}
-#if 0
-	kprintf("REFC %p %d %08x\n", chain, chain->refs - 1, chain->flags);
-	print_backtrace(8);
 #endif
+	}
 }
 
 /*
@@ -372,7 +380,9 @@ failed:
  * unable to acquire the mutex, and refs is unlikely to be 1 unless we again
  * race against another drop.
  */
-static hammer2_chain_t *hammer2_chain_lastdrop(hammer2_chain_t *chain);
+static hammer2_chain_t *hammer2_chain_lastdrop(hammer2_chain_t *chain,
+				int depth);
+static void hammer2_chain_lru_flush(hammer2_pfs_t *pmp);
 
 void
 hammer2_chain_drop(hammer2_chain_t *chain)
@@ -381,10 +391,6 @@ hammer2_chain_drop(hammer2_chain_t *chain)
 
 	if (hammer2_debug & 0x200000)
 		Debugger("drop");
-#if 0
-	kprintf("DROP %p %d %08x\n", chain, chain->refs - 1, chain->flags);
-	print_backtrace(8);
-#endif
 
 	KKASSERT(chain->refs > 0);
 
@@ -395,8 +401,8 @@ hammer2_chain_drop(hammer2_chain_t *chain)
 
 		if (refs == 1) {
 			if (mtx_lock_ex_try(&chain->lock) == 0)
-				chain = hammer2_chain_lastdrop(chain);
-			/* retry the same chain */
+				chain = hammer2_chain_lastdrop(chain, 0);
+			/* retry the same chain, or chain from lastdrop */
 		} else {
 			if (atomic_cmpset_int(&chain->refs, refs, refs - 1))
 				break;
@@ -474,7 +480,7 @@ hammer2_chain_drop_unhold(hammer2_chain_t *chain)
  */
 static
 hammer2_chain_t *
-hammer2_chain_lastdrop(hammer2_chain_t *chain)
+hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 {
 	hammer2_pfs_t *pmp;
 	hammer2_dev_t *hmp;
@@ -678,24 +684,33 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 #endif
 		hammer2_chain_assert_no_data(chain);
 
-		KKASSERT((chain->flags & HAMMER2_CHAIN_ONLRU) == 0);
-		hammer2_spin_ex(&pmp->lru_spin);
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONLRU);
-		TAILQ_INSERT_TAIL(&pmp->lru_list, chain, lru_node);
-
 		/*
-		 * If we are over the LRU limit we need to drop something.
+		 * Make sure we are on the LRU list, clean up excessive
+		 * LRU entries.  We can only really drop one but there might
+		 * be other entries that we can remove from the lru_list
+		 * without dropping.
+		 *
+		 * NOTE: HAMMER2_CHAIN_ONLRU may only be safely set when
+		 *	 chain->core.spin AND pmp->lru_spin are held, but
+		 *	 can be safely cleared only holding pmp->lru_spin.
 		 */
-		if (pmp->lru_count > HAMMER2_LRU_LIMIT) {
-			rdrop = TAILQ_FIRST(&pmp->lru_list);
-			atomic_clear_int(&rdrop->flags, HAMMER2_CHAIN_ONLRU);
-			TAILQ_REMOVE(&pmp->lru_list, rdrop, lru_node);
-			atomic_add_int(&rdrop->refs, 1);
-			atomic_set_int(&rdrop->flags, HAMMER2_CHAIN_RELEASE);
+		if ((chain->flags & HAMMER2_CHAIN_ONLRU) == 0) {
+			hammer2_spin_ex(&pmp->lru_spin);
+			if ((chain->flags & HAMMER2_CHAIN_ONLRU) == 0) {
+				atomic_set_int(&chain->flags,
+					       HAMMER2_CHAIN_ONLRU);
+				TAILQ_INSERT_TAIL(&pmp->lru_list,
+						  chain, lru_node);
+				atomic_add_int(&pmp->lru_count, 1);
+			}
+			if (pmp->lru_count < HAMMER2_LRU_LIMIT)
+				depth = 1;	/* disable lru_list flush */
+			hammer2_spin_unex(&pmp->lru_spin);
 		} else {
-			atomic_add_int(&pmp->lru_count, 1);
+			/* disable lru flush */
+			depth = 1;
 		}
-		hammer2_spin_unex(&pmp->lru_spin);
+
 		if (parent) {
 			hammer2_spin_unex(&parent->core.spin);
 			parent = NULL;	/* safety */
@@ -707,8 +722,28 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 			hammer2_io_bqrelse(&dio);
 #endif
 
-		return rdrop;
+		/*
+		 * lru_list hysteresis (see above for depth overrides).
+		 * Note that depth also prevents excessive lastdrop recursion.
+		 */
+		if (depth == 0)
+			hammer2_chain_lru_flush(pmp);
+
+		return NULL;
 		/* NOT REACHED */
+	}
+
+	/*
+	 * Make sure we are not on the LRU list.
+	 */
+	if (chain->flags & HAMMER2_CHAIN_ONLRU) {
+		hammer2_spin_ex(&pmp->lru_spin);
+		if (chain->flags & HAMMER2_CHAIN_ONLRU) {
+			atomic_add_int(&pmp->lru_count, -1);
+			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ONLRU);
+			TAILQ_REMOVE(&pmp->lru_list, chain, lru_node);
+		}
+		hammer2_spin_unex(&pmp->lru_spin);
 	}
 
 	/*
@@ -837,6 +872,78 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	 * Possible chaining loop when parent re-drop needed.
 	 */
 	return(rdrop);
+}
+
+/*
+ * Heuristical flush of the LRU, try to reduce the number of entries
+ * on the LRU to (HAMMER2_LRU_LIMIT * 2 / 3).  This procedure is called
+ * only when lru_count exceeds HAMMER2_LRU_LIMIT.
+ */
+static
+void
+hammer2_chain_lru_flush(hammer2_pfs_t *pmp)
+{
+	hammer2_chain_t *chain;
+
+again:
+	chain = NULL;
+	hammer2_spin_ex(&pmp->lru_spin);
+	while (pmp->lru_count > HAMMER2_LRU_LIMIT * 2 / 3) {
+		/*
+		 * Pick a chain off the lru_list, just recycle it quickly
+		 * if LRUHINT is set (the chain was ref'd but left on
+		 * the lru_list, so cycle to the end).
+		 */
+		chain = TAILQ_FIRST(&pmp->lru_list);
+		TAILQ_REMOVE(&pmp->lru_list, chain, lru_node);
+
+		if (chain->flags & HAMMER2_CHAIN_LRUHINT) {
+			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_LRUHINT);
+			TAILQ_INSERT_TAIL(&pmp->lru_list, chain, lru_node);
+			chain = NULL;
+			continue;
+		}
+
+		/*
+		 * Ok, we are off the LRU.  We must adjust refs before we
+		 * can safely clear the ONLRU flag.
+		 */
+		atomic_add_int(&pmp->lru_count, -1);
+		if (atomic_cmpset_int(&chain->refs, 0, 1)) {
+			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ONLRU);
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_RELEASE);
+			break;
+		}
+		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ONLRU);
+		chain = NULL;
+	}
+	hammer2_spin_unex(&pmp->lru_spin);
+	if (chain == NULL)
+		return;
+
+	/*
+	 * If we picked a chain off the lru list we may be able to lastdrop
+	 * it.  Use a depth of 1 to prevent excessive lastdrop recursion.
+	 */
+	while (chain) {
+		u_int refs;
+
+		refs = chain->refs;
+		cpu_ccfence();
+		KKASSERT(refs > 0);
+
+		if (refs == 1) {
+			if (mtx_lock_ex_try(&chain->lock) == 0)
+				chain = hammer2_chain_lastdrop(chain, 1);
+			/* retry the same chain, or chain from lastdrop */
+		} else {
+			if (atomic_cmpset_int(&chain->refs, refs, refs - 1))
+				break;
+			/* retry the same chain */
+		}
+		cpu_pause();
+	}
+	goto again;
 }
 
 /*
