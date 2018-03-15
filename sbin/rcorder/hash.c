@@ -15,7 +15,11 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *	This product includes software developed by the University of
+ *	California, Berkeley and its contributors.
+ * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -75,6 +79,14 @@ static void RebuildTable(Hash_Table *);
  *
  *	This routine just sets up the hash table.
  *
+ * Arguments:
+ *	Hash_Table *t
+ *		Structure to use to hold table.
+ *	int numBuckets
+ *		How many buckets to create for starters.  This number is
+ *		rounded up to a power of 2.  If <= 0, a reasonable default
+ *		is chosen.  The table will grow in size later as needed.
+ *
  * Results:
  *	None.
  *
@@ -84,14 +96,6 @@ static void RebuildTable(Hash_Table *);
  *---------------------------------------------------------
  */
 
-/*
- * Hash_Table *t;	Structure to use to hold table. 
- * int numBuckets;			How many buckets to create for starters.
- * 								This number is rounded up to a power of
- * 								two.   If <= 0, a reasonable default is
- * 								chosen. The table will grow in size later
- * 								as needed.
- */
 void
 Hash_InitTable(Hash_Table *t, int numBuckets)
 {
@@ -161,6 +165,12 @@ Hash_DeleteTable(Hash_Table *t)
  *
  * 	Searches a hash table for an entry corresponding to key.
  *
+ * Arguments:
+ *	Hash_Table *t
+ *		Hash table to be searched.
+ *	char *key
+ *		A hash key.
+ *
  * Results:
  *	The return value is a pointer to the entry for key,
  *	if key was present in the table.  If key was not
@@ -195,6 +205,14 @@ Hash_FindEntry(Hash_Table *t, char *key)
  *
  *	Searches a hash table for an entry corresponding to
  *	key.  If no entry is found, then one is created.
+ *
+ * Arguments:
+ *	Hash_Table *t
+ *		Hash table to be searched.
+ *	char *key
+ *		A hash key.
+ *	Boolean *newPtr
+ *		Filled in with TRUE if new entry created, FALSE otherwise.
  *
  * Results:
  *	The return value is a pointer to the entry.  If *newPtr
@@ -258,8 +276,7 @@ Hash_CreateEntry(Hash_Table *t, char *key, Boolean *newPtr)
  *
  * Hash_DeleteEntry --
  *
- * 	Delete the given hash table entry and free memory associated with
- *	it.
+ *	Delete the given hash table entry and free memory associated with it.
  *
  * Results:
  *	None.
@@ -297,6 +314,12 @@ Hash_DeleteEntry(Hash_Table *t, Hash_Entry *e)
  *	This procedure sets things up for a complete search
  *	of all entries recorded in the hash table.
  *
+ * Arguments:
+ *	Hash_Table *t
+ *		Hash table to be searched.
+ *	Hash_Search *searchPtr
+ *		Area in which to keep state about search.
+ *
  * Results:
  *	The return value is the address of the first entry in
  *	the hash table, or NULL if the table is empty.
@@ -323,6 +346,10 @@ Hash_EnumFirst(Hash_Table *t, Hash_Search *searchPtr)
  *
  * Hash_EnumNext --
  *    This procedure returns successive entries in the hash table.
+ *
+ * Arguments:
+ *	Hash_Search *searchPtr
+ *		Area in which to keep state about search.
  *
  * Results:
  *    The return value is a pointer to the next HashEntry
@@ -385,7 +412,7 @@ RebuildTable(Hash_Table *t)
 {
 	Hash_Entry *e, *next = NULL, **hp, **xp;
 	int i, mask;
-        Hash_Entry **oldhp;
+	Hash_Entry **oldhp;
 	int oldsize;
 
 	oldhp = t->bucketPtr;

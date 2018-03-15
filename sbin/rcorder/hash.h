@@ -37,7 +37,6 @@
  *
  *	from: @(#)hash.h	8.1 (Berkeley) 6/6/93
  *	$NetBSD: hash.h,v 1.1.1.1 1999/11/19 04:30:56 mrg Exp $
- *	$DragonFly: src/sbin/rcorder/hash.h,v 1.2 2003/11/01 17:16:01 drhodus Exp $
  */
 
 /* hash.h --

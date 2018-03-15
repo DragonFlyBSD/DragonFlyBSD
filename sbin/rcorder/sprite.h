@@ -37,7 +37,6 @@
  *
  *	from: @(#)sprite.h	8.1 (Berkeley) 6/6/93
  *	$NetBSD: sprite.h,v 1.1 1999/11/23 05:28:22 mrg Exp $
- *	$DragonFly: src/sbin/rcorder/sprite.h,v 1.2 2008/06/05 18:01:49 swildner Exp $
  */
 
 /*
