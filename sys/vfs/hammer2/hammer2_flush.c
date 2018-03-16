@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2015 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -176,12 +176,24 @@ hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags)
 #endif
 		} else {
 			/*
-			 * Requesting normal modifying transaction (read-only
-			 * operations do not use transactions).  Waits for
-			 * any flush to finish before allowing.  Multiple
-			 * modifying transactions can run concurrently.
+			 * Requesting a normal modifying transaction.
+			 * Waits for any flush to finish before allowing.
+			 * Multiple modifying transactions can run
+			 * concurrently.
+			 *
+			 * If a flush is pending for more than one second
+			 * but can't run because many modifying transactions
+			 * are active, we wait for the flush to be granted.
+			 *
+			 * NOTE: Remember that non-modifying operations
+			 *	 such as read, stat, readdir, etc, do
+			 *	 not use transactions.
 			 */
-			if (oflags & HAMMER2_TRANS_ISFLUSH) {
+			if ((oflags & HAMMER2_TRANS_FPENDING) &&
+			    (u_int)(ticks - pmp->trans.fticks) >= (u_int)hz) {
+				nflags = oflags | HAMMER2_TRANS_WAITING;
+				dowait = 1;
+			} else if (oflags & HAMMER2_TRANS_ISFLUSH) {
 				nflags = oflags | HAMMER2_TRANS_WAITING;
 				dowait = 1;
 			} else {
@@ -191,6 +203,10 @@ hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags)
 		if (dowait)
 			tsleep_interlock(&pmp->trans.sync_wait, 0);
 		if (atomic_cmpset_int(&pmp->trans.flags, oflags, nflags)) {
+			if ((oflags & HAMMER2_TRANS_FPENDING) == 0 &&
+			    (nflags & HAMMER2_TRANS_FPENDING)) {
+				pmp->trans.fticks = ticks;
+			}
 			if (dowait == 0)
 				break;
 			tsleep(&pmp->trans.sync_wait, PINTERLOCKED,
@@ -449,8 +465,11 @@ hammer2_flush(hammer2_chain_t *chain, int flags)
 		 */
 		info.diddeferral = 0;
 		if (info.parent != chain->parent) {
-			kprintf("LOST CHILD4 %p->%p (actual parent %p)\n",
-				info.parent, chain, chain->parent);
+			if (hammer2_debug & 0x0040) {
+				kprintf("LOST CHILD4 %p->%p "
+					"(actual parent %p)\n",
+					info.parent, chain, chain->parent);
+			}
 			hammer2_chain_drop(info.parent);
 			info.parent = chain->parent;
 			hammer2_chain_ref(info.parent);
@@ -746,8 +765,10 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 	}
 
 	if (chain->parent != parent) {
-		kprintf("LOST CHILD3 %p->%p (actual parent %p)\n",
-			parent, chain, chain->parent);
+		if (hammer2_debug & 0x0040) {
+			kprintf("LOST CHILD3 %p->%p (actual parent %p)\n",
+				parent, chain, chain->parent);
+		}
 		KKASSERT(parent != NULL);
 		hammer2_chain_unlock(parent);
 		if ((chain->flags & HAMMER2_CHAIN_DELAYED) == 0) {

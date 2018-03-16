@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2015 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -400,7 +400,7 @@ hammer2_chain_drop(hammer2_chain_t *chain)
 		KKASSERT(refs > 0);
 
 		if (refs == 1) {
-			if (mtx_lock_ex_try(&chain->lock) == 0)
+			if (hammer2_mtx_ex_try(&chain->lock) == 0)
 				chain = hammer2_chain_lastdrop(chain, 0);
 			/* retry the same chain, or chain from lastdrop */
 		} else {
@@ -431,7 +431,7 @@ hammer2_chain_drop_unhold(hammer2_chain_t *chain)
 					      lockcnt, lockcnt - 1)) {
 				break;
 			}
-		} else if (mtx_lock_ex_try(&chain->lock) == 0) {
+		} else if (hammer2_mtx_ex_try(&chain->lock) == 0) {
 			hammer2_chain_unlock(chain);
 			break;
 		} else {
@@ -933,7 +933,7 @@ again:
 		KKASSERT(refs > 0);
 
 		if (refs == 1) {
-			if (mtx_lock_ex_try(&chain->lock) == 0)
+			if (hammer2_mtx_ex_try(&chain->lock) == 0)
 				chain = hammer2_chain_lastdrop(chain, 1);
 			/* retry the same chain, or chain from lastdrop */
 		} else {
@@ -1006,6 +1006,9 @@ hammer2_chain_drop_data(hammer2_chain_t *chain)
  * HAMMER2_RESOLVE_SHARED- (flag) The chain is locked shared, otherwise
  *			   it will be locked exclusive.
  *
+ * HAMMER2_RESOLVE_NONBLOCK- (flag) The chain is locked non-blocking.  If
+ *			   the lock fails, EAGAIN is returned.
+ *
  * NOTE: Embedded elements (volume header, inodes) are always resolved
  *	 regardless.
  *
@@ -1018,6 +1021,9 @@ hammer2_chain_drop_data(hammer2_chain_t *chain)
  *	 a logical file buffer.  However, if ALWAYS is specified the
  *	 device buffer will be instantiated anyway.
  *
+ * NOTE: The return value is always 0 unless NONBLOCK is specified, in which
+ *	 case it can be either 0 or EAGAIN.
+ *
  * WARNING! This function blocks on I/O if data needs to be fetched.  This
  *	    blocking can run concurrent with other compatible lock holders
  *	    who do not need data returning.  The lock is not upgraded to
@@ -1026,31 +1032,58 @@ hammer2_chain_drop_data(hammer2_chain_t *chain)
  *	    on being interlocked against an I/O fetch managed by a shared
  *	    lock holder.
  */
-void
+int
 hammer2_chain_lock(hammer2_chain_t *chain, int how)
 {
-	/*
-	 * Ref and lock the element.  Recursive locks are allowed.
-	 */
 	KKASSERT(chain->refs > 0);
-	atomic_add_int(&chain->lockcnt, 1);
 
-	/*
-	 * Get the appropriate lock.  If LOCKAGAIN is flagged with SHARED
-	 * the caller expects a shared lock to already be present and we
-	 * are giving it another ref.  This case must importantly not block
-	 * if there is a pending exclusive lock request.
-	 */
-	if (how & HAMMER2_RESOLVE_SHARED) {
-		if (how & HAMMER2_RESOLVE_LOCKAGAIN) {
-			hammer2_mtx_sh_again(&chain->lock);
+	if (how & HAMMER2_RESOLVE_NONBLOCK) {
+		/*
+		 * For non-blocking operation attempt to get the lock
+		 * before bumping lockcnt, just so we don't have to deal
+		 * with dropping lockcnt (and dealing with the underlying
+		 * data) if we fail.
+		 *
+		 * NOTE: LOCKAGAIN must always succeed without blocking.
+		 */
+		if (how & HAMMER2_RESOLVE_SHARED) {
+			if (how & HAMMER2_RESOLVE_LOCKAGAIN) {
+				hammer2_mtx_sh_again(&chain->lock);
+			} else {
+				if (hammer2_mtx_sh_try(&chain->lock) != 0)
+					return EAGAIN;
+			}
 		} else {
-			hammer2_mtx_sh(&chain->lock);
+			if (hammer2_mtx_ex_try(&chain->lock) != 0)
+				return EAGAIN;
 		}
+		atomic_add_int(&chain->lockcnt, 1);
+		++curthread->td_tracker;
 	} else {
-		hammer2_mtx_ex(&chain->lock);
+		/*
+		 * Lock the element.  Recursive locks are allowed.  lockcnt
+		 * ensures that data is left intact.
+		 */
+		atomic_add_int(&chain->lockcnt, 1);
+
+		/*
+		 * Get the appropriate lock.  If LOCKAGAIN is flagged with
+		 * SHARED the caller expects a shared lock to already be
+		 * present and we are giving it another ref.  This case must
+		 * importantly not block if there is a pending exclusive lock
+		 * request.
+		 */
+		if (how & HAMMER2_RESOLVE_SHARED) {
+			if (how & HAMMER2_RESOLVE_LOCKAGAIN) {
+				hammer2_mtx_sh_again(&chain->lock);
+			} else {
+				hammer2_mtx_sh(&chain->lock);
+			}
+		} else {
+			hammer2_mtx_ex(&chain->lock);
+		}
+		++curthread->td_tracker;
 	}
-	++curthread->td_tracker;
 
 	/*
 	 * If we already have a valid data pointer make sure the data is
@@ -1060,7 +1093,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	if (chain->data) {
 		if (chain->dio)
 			hammer2_io_bkvasync(chain->dio);
-		return;
+		return 0;
 	}
 
 	/*
@@ -1070,17 +1103,17 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	 */
 	switch(how & HAMMER2_RESOLVE_MASK) {
 	case HAMMER2_RESOLVE_NEVER:
-		return;
+		return 0;
 	case HAMMER2_RESOLVE_MAYBE:
 		if (chain->flags & HAMMER2_CHAIN_INITIAL)
-			return;
+			return 0;
 		if (chain->bref.type == HAMMER2_BREF_TYPE_DATA)
-			return;
+			return 0;
 #if 0
 		if (chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE)
-			return;
+			return 0;
 		if (chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_LEAF)
-			return;
+			return 0;
 #endif
 		/* fall through */
 	case HAMMER2_RESOLVE_ALWAYS:
@@ -1092,6 +1125,8 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	 * Caller requires data
 	 */
 	hammer2_chain_load_data(chain);
+
+	return 0;
 }
 
 /*
@@ -2298,7 +2333,9 @@ hammer2_chain_lookup_done(hammer2_chain_t *parent)
 /*
  * Take the locked chain and return a locked parent.  The chain remains
  * locked on return, but may have to be temporarily unlocked to acquire
- * the parent.  Can return NULL.
+ * the parent.  Because of this, (chain) must be stable and cannot be
+ * deleted while it was temporarily unlocked (typically means that (chain)
+ * is an inode).
  *
  * Pass HAMMER2_RESOLVE_* flags in flags.
  *
@@ -2314,32 +2351,33 @@ hammer2_chain_getparent(hammer2_chain_t *chain, int flags)
 
 	/*
 	 * Be careful of order, chain must be unlocked before parent
-	 * is locked below to avoid a deadlock.
-	 *
-	 * Safe access to fu->parent requires fu's core spinlock.
+	 * is locked below to avoid a deadlock.  Try it trivially first.
 	 */
-again:
-	hammer2_spin_ex(&chain->core.spin);
 	parent = chain->parent;
-	if (parent == NULL) {
-		hammer2_spin_unex(&chain->core.spin);
+	if (parent == NULL)
 		panic("hammer2_chain_getparent: no parent");
-	}
 	hammer2_chain_ref(parent);
-	hammer2_spin_unex(&chain->core.spin);
+	if (hammer2_chain_lock(parent, flags|HAMMER2_RESOLVE_NONBLOCK) == 0)
+		return parent;
 
-	hammer2_chain_unlock(chain);
-	hammer2_chain_lock(parent, flags);
-	hammer2_chain_lock(chain, flags);
+	for (;;) {
+		hammer2_chain_unlock(chain);
+		hammer2_chain_lock(parent, flags);
+		hammer2_chain_lock(chain, flags);
 
-	/*
-	 * Parent relinking races are quite common.  We have to get it right
-	 * or we will blow up the block table.
-	 */
-	if (chain->parent != parent) {
+		/*
+		 * Parent relinking races are quite common.  We have to get
+		 * it right or we will blow up the block table.
+		 */
+		if (chain->parent == parent)
+			break;
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
-		goto again;
+		cpu_ccfence();
+		parent = chain->parent;
+		if (parent == NULL)
+			panic("hammer2_chain_getparent: no parent");
+		hammer2_chain_ref(parent);
 	}
 	return parent;
 }
@@ -2352,6 +2390,9 @@ again:
  * This will work even if the chain is errored, and the caller can check
  * parent->error on return if desired since the parent will be locked.
  *
+ * The chain does NOT need to be stable.  We use a tracking structure
+ * to track the expected parent if the chain is deleted out from under us.
+ *
  * This function handles the lock order reversal.
  */
 hammer2_chain_t *
@@ -2359,41 +2400,138 @@ hammer2_chain_repparent(hammer2_chain_t **chainp, int flags)
 {
 	hammer2_chain_t *chain;
 	hammer2_chain_t *parent;
+	struct hammer2_reptrack reptrack;
+	struct hammer2_reptrack **repp;
 
 	/*
 	 * Be careful of order, chain must be unlocked before parent
-	 * is locked below to avoid a deadlock.
-	 *
-	 * Safe access to fu->parent requires fu's core spinlock.
+	 * is locked below to avoid a deadlock.  Try it trivially first.
 	 */
 	chain = *chainp;
-again:
-	hammer2_spin_ex(&chain->core.spin);
 	parent = chain->parent;
 	if (parent == NULL) {
 		hammer2_spin_unex(&chain->core.spin);
-		panic("hammer2_chain_getparent: no parent");
+		panic("hammer2_chain_repparent: no parent");
 	}
 	hammer2_chain_ref(parent);
-	hammer2_spin_unex(&chain->core.spin);
+	if (hammer2_chain_lock(parent, flags|HAMMER2_RESOLVE_NONBLOCK) == 0) {
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+		*chainp = parent;
 
-	hammer2_chain_unlock(chain);
-	hammer2_chain_lock(parent, flags);
+		return parent;
+	}
 
 	/*
-	 * Parent relinking races are quite common.  We have to get it right
-	 * or we will blow up the block table.
+	 * Ok, now it gets a bit nasty.  There are multiple situations where
+	 * the parent might be in the middle of a deletion, or where the child
+	 * (chain) might be deleted the instant we let go of its lock.
+	 * We can potentially end up in a no-win situation!
+	 *
+	 * In particular, the indirect_maintenance() case can cause these
+	 * situations.
+	 *
+	 * To deal with this we install a reptrack structure in the parent
+	 * This reptrack structure 'owns' the parent ref and will automatically
+	 * migrate to the parent's parent if the parent is deleted permanently.
 	 */
-	if (chain->parent != parent) {
-		hammer2_chain_lock(chain, flags);
+	hammer2_spin_init(&reptrack.spin, "h2reptrk");
+	reptrack.chain = parent;
+	hammer2_chain_ref(parent);		/* for the reptrack */
+
+	hammer2_spin_ex(&parent->core.spin);
+	reptrack.next = parent->core.reptrack;
+	parent->core.reptrack = &reptrack;
+	hammer2_spin_unex(&parent->core.spin);
+
+	hammer2_chain_unlock(chain);
+	hammer2_chain_drop(chain);
+	chain = NULL;	/* gone */
+
+	/*
+	 * At the top of this loop, chain is gone and parent is refd both
+	 * by us explicitly AND via our reptrack.  We are attempting to
+	 * lock parent.
+	 */
+	for (;;) {
+		hammer2_chain_lock(parent, flags);
+
+		if (reptrack.chain == parent)
+			break;
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
-		goto again;
+
+		kprintf("hammer2: debug REPTRACK %p->%p\n",
+			parent, reptrack.chain);
+		hammer2_spin_ex(&reptrack.spin);
+		parent = reptrack.chain;
+		hammer2_chain_ref(parent);
+		hammer2_spin_unex(&reptrack.spin);
 	}
-	hammer2_chain_drop(chain);
-	*chainp = parent;
+
+	/*
+	 * Once parent is locked and matches our reptrack, our reptrack
+	 * will be stable and we have our parent.  We can unlink our
+	 * reptrack.
+	 *
+	 * WARNING!  Remember that the chain lock might be shared.  Chains
+	 *	     locked shared have stable parent linkages.
+	 */
+	hammer2_spin_ex(&parent->core.spin);
+	repp = &parent->core.reptrack;
+	while (*repp != &reptrack)
+		repp = &(*repp)->next;
+	*repp = reptrack.next;
+	hammer2_spin_unex(&parent->core.spin);
+
+	hammer2_chain_drop(parent);	/* reptrack ref */
+	*chainp = parent;		/* return parent lock+ref */
 
 	return parent;
+}
+
+/*
+ * Dispose of any linked reptrack structures in (chain) by shifting them to
+ * (parent).  Both (chain) and (parent) must be exclusively locked.
+ *
+ * This is interlocked against any children of (chain) on the other side.
+ * No children so remain as-of when this is called so we can test
+ * core.reptrack without holding the spin-lock.
+ *
+ * Used whenever the caller intends to permanently delete chains related
+ * to topological recursions (BREF_TYPE_INDIRECT, BREF_TYPE_FREEMAP_NODE),
+ * where the chains underneath the node being deleted are given a new parent
+ * above the node being deleted.
+ */
+static
+void
+hammer2_chain_repchange(hammer2_chain_t *parent, hammer2_chain_t *chain)
+{
+	struct hammer2_reptrack *reptrack;
+
+	KKASSERT(chain->core.live_count == 0 && RB_EMPTY(&chain->core.rbtree));
+	while (chain->core.reptrack) {
+		hammer2_spin_ex(&parent->core.spin);
+		hammer2_spin_ex(&chain->core.spin);
+		reptrack = chain->core.reptrack;
+		if (reptrack == NULL) {
+			hammer2_spin_unex(&chain->core.spin);
+			hammer2_spin_unex(&parent->core.spin);
+			break;
+		}
+		hammer2_spin_ex(&reptrack->spin);
+		chain->core.reptrack = reptrack->next;
+		reptrack->chain = parent;
+		reptrack->next = parent->core.reptrack;
+		parent->core.reptrack = reptrack;
+		hammer2_chain_ref(parent);		/* reptrack */
+
+		hammer2_spin_unex(&chain->core.spin);
+		hammer2_spin_unex(&parent->core.spin);
+		kprintf("hammer2: debug repchange %p %p->%p\n",
+			reptrack, chain, parent);
+		hammer2_chain_drop(chain);		/* reptrack */
+	}
 }
 
 /*
@@ -2423,15 +2561,9 @@ again:
  * wishes to insert a new chain, (*parentp) will be set properly even if NULL
  * is returned, as long as no error occurred.
  *
- * The matching chain will be returned locked according to flags.  If NOLOCK
- * is requested the chain will be returned only referenced.  Note that the
- * parent chain must always be locked shared or exclusive, matching the
- * HAMMER2_LOOKUP_SHARED flag.  We can conceivably lock it SHARED temporarily
- * when NOLOCK is specified but that complicates matters if *parentp must
- * inherit the chain.
+ * The matching chain will be returned locked according to flags.
  *
- * NOLOCK also implies NODATA, since an unlocked chain usually has a NULL
- * data pointer or can otherwise be in flux.
+ * --
  *
  * NULL is returned if no match was found, but (*parentp) will still
  * potentially be adjusted.
@@ -2474,7 +2606,7 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 	if (flags & HAMMER2_LOOKUP_ALWAYS) {
 		how_maybe = how_always;
 		how = HAMMER2_RESOLVE_ALWAYS;
-	} else if (flags & (HAMMER2_LOOKUP_NODATA | HAMMER2_LOOKUP_NOLOCK)) {
+	} else if (flags & HAMMER2_LOOKUP_NODATA) {
 		how = HAMMER2_RESOLVE_NEVER;
 	} else {
 		how = HAMMER2_RESOLVE_MAYBE;
@@ -2508,7 +2640,6 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 		parent = hammer2_chain_repparent(parentp, how_maybe);
 	}
 again:
-
 	if (--maxloops == 0)
 		panic("hammer2_chain_lookup: maxloops");
 	/*
@@ -2537,10 +2668,8 @@ again:
 				goto done;
 			}
 			hammer2_chain_ref(parent);
-			if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
-				hammer2_chain_lock(parent,
-						   how_always |
-						    HAMMER2_RESOLVE_LOCKAGAIN);
+			hammer2_chain_lock(parent, how_always |
+						   HAMMER2_RESOLVE_LOCKAGAIN);
 			*key_nextp = key_end + 1;
 			return (parent);
 		}
@@ -2754,7 +2883,7 @@ again:
 	}
 done:
 	/*
-	 * All done, return the chain.
+	 * All done, return the locked chain.
 	 *
 	 * If the caller does not want a locked chain, replace the lock with
 	 * a ref.  Perhaps this can eventually be optimized to not obtain the
@@ -2765,10 +2894,6 @@ done:
 	 *	 *errorp is only set based on issues which occur while
 	 *	 trying to reach the chain.
 	 */
-	if (chain) {
-		if (flags & HAMMER2_LOOKUP_NOLOCK)
-			hammer2_chain_unlock(chain);
-	}
 	return (chain);
 }
 
@@ -2816,10 +2941,7 @@ hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 	if (chain) {
 		key_beg = chain->bref.key +
 			  ((hammer2_key_t)1 << chain->bref.keybits);
-		if ((flags & (HAMMER2_LOOKUP_NOLOCK |
-			      HAMMER2_LOOKUP_NOUNLOCK)) == 0) {
-			hammer2_chain_unlock(chain);
-		}
+		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
 
 		/*
@@ -2917,7 +3039,7 @@ hammer2_chain_scan(hammer2_chain_t *parent, hammer2_chain_t **chainp,
 	if (flags & HAMMER2_LOOKUP_ALWAYS) {
 		how_maybe = how_always;
 		how = HAMMER2_RESOLVE_ALWAYS;
-	} else if (flags & (HAMMER2_LOOKUP_NODATA | HAMMER2_LOOKUP_NOLOCK)) {
+	} else if (flags & HAMMER2_LOOKUP_NODATA) {
 		how = HAMMER2_RESOLVE_NEVER;
 	} else {
 		how = HAMMER2_RESOLVE_MAYBE;
@@ -4003,9 +4125,11 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 		    (chain->flags & HAMMER2_CHAIN_DELETED)) {
 			hammer2_chain_unlock(chain);
 			hammer2_chain_drop(chain);
-			kprintf("hammer2_chain_create_indirect "
+			if (hammer2_debug & 0x0040) {
+				kprintf("LOST PARENT RETRY "
 				"RETRY (%p,%p)->%p %08x\n",
 				parent, chain->parent, chain, chain->flags);
+			}
 			hammer2_spin_ex(&parent->core.spin);
 			continue;
 		}
@@ -4023,6 +4147,12 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 		 *
 		 * WARNING! Parent must already be marked modified, so we
 		 *	    can assume that chain_delete always suceeds.
+		 *
+		 * WARNING! hammer2_chain_repchange() does not have to be
+		 *	    called (and doesn't work anyway because we are
+		 *	    only doing a partial shift).  A recursion that is
+		 *	    in-progress can continue at the current parent
+		 *	    and will be able to properly find its next key.
 		 */
 		error = hammer2_chain_delete(parent, chain, mtid, 0);
 		KKASSERT(error == 0);
@@ -4133,6 +4263,7 @@ hammer2_chain_indirect_maintenance(hammer2_chain_t *parent,
 		hammer2_chain_delete(parent, chain,
 				     chain->bref.modify_tid,
 				     HAMMER2_DELETE_PERMANENT);
+		hammer2_chain_repchange(parent, chain);
 		return 1;
 	}
 
@@ -4259,6 +4390,8 @@ hammer2_chain_indirect_maintenance(hammer2_chain_t *parent,
 		key_beg = key_next;
 	}
 	hammer2_spin_unex(&chain->core.spin);
+
+	hammer2_chain_repchange(parent, chain);
 
 	return 1;
 }

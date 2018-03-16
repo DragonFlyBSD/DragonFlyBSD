@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2015 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -880,6 +880,8 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 		nip->meta.pfs_type = HAMMER2_PFSTYPE_MASTER;
 		nip->meta.pfs_subtype = HAMMER2_PFSSUBTYPE_SNAPSHOT;
 		nip->meta.op_flags |= HAMMER2_OPFLAG_PFSROOT;
+		nchain->bref.embed.stats = chain->bref.embed.stats;
+
 		kern_uuidgen(&nip->meta.pfs_fsid, 1);
 
 #if 0

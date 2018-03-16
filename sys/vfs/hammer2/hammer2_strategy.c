@@ -596,6 +596,7 @@ hammer2_strategy_xop_write(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	lblksize = hammer2_calc_logical(ip, bio->bio_offset, &lbase, NULL);
 	pblksize = hammer2_calc_physical(ip, lbase);
 	bkvasync(bp);
+	KKASSERT(lblksize <= MAXPHYS);
 	bcopy(bp->b_data, bio_data, lblksize);
 
 	hammer2_mtx_unlock(&xop->lock);

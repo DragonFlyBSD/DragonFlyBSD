@@ -112,7 +112,6 @@ struct hammer2_inode;
 struct hammer2_dev;
 struct hammer2_pfs;
 struct hammer2_span;
-struct hammer2_state;
 struct hammer2_msg;
 struct hammer2_thread;
 union hammer2_xop;
@@ -129,8 +128,10 @@ typedef mtx_state_t			hammer2_mtx_state_t;
 typedef struct spinlock			hammer2_spin_t;
 
 #define hammer2_mtx_ex			mtx_lock_ex_quick
+#define hammer2_mtx_ex_try		mtx_lock_ex_try
 #define hammer2_mtx_sh			mtx_lock_sh_quick
 #define hammer2_mtx_sh_again		mtx_lock_sh_again
+#define hammer2_mtx_sh_try		mtx_lock_sh_try
 #define hammer2_mtx_unlock		mtx_unlock
 #define hammer2_mtx_downgrade		mtx_downgrade
 #define hammer2_mtx_owned		mtx_owned
@@ -243,11 +244,18 @@ TAILQ_HEAD(h2_core_list, hammer2_chain);
 #define CHAIN_CORE_DELETE_BMAP_ENTRIES	\
 	(HAMMER2_PBUFSIZE / sizeof(hammer2_blockref_t) / sizeof(uint32_t))
 
+struct hammer2_reptrack {
+	hammer2_spin_t	spin;
+	struct hammer2_reptrack *next;
+	struct hammer2_chain	*chain;
+};
+
 /*
  * Core topology for chain (embedded in chain).  Protected by a spinlock.
  */
 struct hammer2_chain_core {
 	hammer2_spin_t	spin;
+	struct hammer2_reptrack *reptrack;
 	struct hammer2_chain_tree rbtree; /* sub-chains */
 	int		live_zero;	/* blockref array opt */
 	u_int		live_count;	/* live (not deleted) chains in tree */
@@ -300,7 +308,6 @@ struct hammer2_chain {
 	RB_ENTRY(hammer2_chain) rbnode;		/* live chain(s) */
 	hammer2_blockref_t	bref;
 	struct hammer2_chain	*parent;
-	struct hammer2_state	*state;		/* if active cache msg */
 	struct hammer2_dev	*hmp;
 	struct hammer2_pfs	*pmp;		/* A PFS or super-root (spmp) */
 
@@ -421,10 +428,6 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
  *
  * NOTES:
- *	NOLOCK	    - Input and output chains are referenced only and not
- *		      locked.  Output chain might be temporarily locked
- *		      internally.
- *
  *	NODATA	    - Asks that the chain->data not be resolved in order
  *		      to avoid I/O.
  *
@@ -448,21 +451,15 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  *	ALWAYS	    - Always resolve the data.  If ALWAYS and NODATA are both
  *		      missing, bulk file data is not resolved but inodes and
  *		      other meta-data will.
- *
- *	NOUNLOCK    - Used by hammer2_chain_next() to leave the lock on
- *		      the input chain intact.  The chain is still dropped.
- *		      This allows the caller to add a reference to the chain
- *		      and retain it in a locked state (used by the
- *		      XOP/feed/collect code).
  */
-#define HAMMER2_LOOKUP_NOLOCK		0x00000001	/* ref only */
+#define HAMMER2_LOOKUP_UNUSED0001	0x00000001
 #define HAMMER2_LOOKUP_NODATA		0x00000002	/* data left NULL */
 #define HAMMER2_LOOKUP_NODIRECT		0x00000004	/* no offset=0 DD */
 #define HAMMER2_LOOKUP_SHARED		0x00000100
 #define HAMMER2_LOOKUP_MATCHIND		0x00000200	/* return all chains */
 #define HAMMER2_LOOKUP_ALLNODES		0x00000400	/* allow NULL focus */
 #define HAMMER2_LOOKUP_ALWAYS		0x00000800	/* resolve data */
-#define HAMMER2_LOOKUP_NOUNLOCK		0x00001000	/* leave lock intact */
+#define HAMMER2_LOOKUP_UNUSED1000	0x00001000
 
 /*
  * Flags passed to hammer2_chain_modify() and hammer2_chain_resize()
@@ -481,6 +478,10 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  *	 will be made to either the cluster being locked or any underlying
  *	 cluster.  It allows the cluster to lock and access data for a subset
  *	 of available nodes instead of all available nodes.
+ *
+ * NOTE: NONBLOCK is only used for hammer2_chain_repparent() and getparent(),
+ *	 other functions (e.g. hammer2_chain_lookup(), etc) can't handle its
+ *	 operation.
  */
 #define HAMMER2_RESOLVE_NEVER		1
 #define HAMMER2_RESOLVE_MAYBE		2
@@ -490,6 +491,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_RESOLVE_SHARED		0x10	/* request shared lock */
 #define HAMMER2_RESOLVE_LOCKAGAIN	0x20	/* another shared lock */
 #define HAMMER2_RESOLVE_RDONLY		0x40	/* higher level op flag */
+#define HAMMER2_RESOLVE_NONBLOCK	0x80	/* non-blocking */
 
 /*
  * Flags passed to hammer2_chain_delete()
@@ -761,6 +763,7 @@ typedef struct hammer2_inode_sideq hammer2_inode_sideq_t;
 struct hammer2_trans {
 	uint32_t		flags;
 	uint32_t		sync_wait;
+	int			fticks;			/* FPENDING start */
 };
 
 typedef struct hammer2_trans hammer2_trans_t;
@@ -1487,7 +1490,7 @@ void hammer2_chain_ref(hammer2_chain_t *chain);
 void hammer2_chain_ref_hold(hammer2_chain_t *chain);
 void hammer2_chain_drop(hammer2_chain_t *chain);
 void hammer2_chain_drop_unhold(hammer2_chain_t *chain);
-void hammer2_chain_lock(hammer2_chain_t *chain, int how);
+int hammer2_chain_lock(hammer2_chain_t *chain, int how);
 void hammer2_chain_lock_unhold(hammer2_chain_t *chain, int how);
 void hammer2_chain_load_data(hammer2_chain_t *chain);
 const hammer2_media_data_t *hammer2_chain_rdata(hammer2_chain_t *chain);

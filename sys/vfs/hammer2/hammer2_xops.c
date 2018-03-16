@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2015 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -62,6 +62,8 @@
 
 /*
  * Determine if the specified directory is empty.  Returns 0 on success.
+ *
+ * Caller assumes that we do not cycle the lock on oparent and ochain.
  */
 static
 int
@@ -74,30 +76,34 @@ checkdirempty(hammer2_chain_t *oparent, hammer2_chain_t *ochain, int clindex)
 	int error;
 
 	error = 0;
-	chain = hammer2_chain_lookup_init(ochain, 0);
 
-	if (chain->bref.type == HAMMER2_BREF_TYPE_DIRENT) {
-		if (oparent)
-			hammer2_chain_unlock(oparent);
-		inum = chain->bref.embed.dirent.inum;
+	if (ochain->bref.type == HAMMER2_BREF_TYPE_DIRENT) {
+		/*
+		 * Forward the directory entry to the directory inode.
+		 * This is not strictly heirarchical so the locks kinda
+		 * violate top-down lock order.
+		 *
+		 * Define an allowance for directory-entry -> dinode
+		 * chain lock ordering, since directory entries have only
+		 * one link the directory inode is kinda topologically
+		 * underneath the directory entry, even though it isn't
+		 * really. XXX
+		 */
+		inum = ochain->bref.embed.dirent.inum;
 		parent = NULL;
-		error = hammer2_chain_inode_find(chain->pmp, inum,
+		chain = NULL;
+		error = hammer2_chain_inode_find(ochain->pmp, inum,
 						 clindex, 0,
 						 &parent, &chain);
 		if (parent) {
 			hammer2_chain_unlock(parent);
 			hammer2_chain_drop(parent);
 		}
-		if (oparent) {
-			hammer2_chain_lock(oparent, HAMMER2_RESOLVE_ALWAYS);
-			if (ochain->parent != oparent) {
-				if (chain) {
-					hammer2_chain_unlock(chain);
-					hammer2_chain_drop(chain);
-				}
-				return HAMMER2_ERROR_EAGAIN;
-			}
-		}
+	} else {
+		/*
+		 * The directory entry *is* the directory inode
+		 */
+		chain = hammer2_chain_lookup_init(ochain, 0);
 	}
 
 	/*

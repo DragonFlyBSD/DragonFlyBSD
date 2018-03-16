@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2015 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -174,7 +174,8 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	 */
 	if ((ip->flags & (HAMMER2_INODE_ISUNLINKED |
 			  HAMMER2_INODE_MODIFIED |
-			  HAMMER2_INODE_RESIZED)) &&
+			  HAMMER2_INODE_RESIZED |
+			  HAMMER2_INODE_DIRTYDATA)) &&
 	    (ip->flags & HAMMER2_INODE_ISDELETED) == 0) {
 		hammer2_inode_sideq_t *ipul;
 

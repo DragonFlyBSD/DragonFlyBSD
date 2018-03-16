@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2016-2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
