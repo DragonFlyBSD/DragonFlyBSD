@@ -32,11 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#ifndef lint
-static const char rcsid[] _U_ =
-    "@(#) $Header: /tcpdump/master/libpcap/fad-getad.c,v 1.12 2007-09-14 00:44:55 guy Exp $ (LBL)";
-#endif
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -60,9 +55,15 @@ static const char rcsid[] _U_ =
 #include "os-proto.h"
 #endif
 
-#ifdef AF_PACKET
+/*
+ * We don't do this on Solaris 11 and later, as it appears there aren't
+ * any AF_PACKET addresses on interfaces, so we don't need this, and
+ * we end up including both the OS's <net/bpf.h> and our <pcap/bpf.h>,
+ * and their definitions of some data structures collide.
+ */
+#if (defined(linux) || defined(__Lynx__)) && defined(AF_PACKET)
 # ifdef HAVE_NETPACKET_PACKET_H
-/* Solaris 11 and later, Linux distributions with newer glibc */
+/* Linux distributions with newer glibc */
 #  include <netpacket/packet.h>
 # else /* HAVE_NETPACKET_PACKET_H */
 /* LynxOS, Linux distributions with older glibc */
@@ -75,7 +76,7 @@ static const char rcsid[] _U_ =
 #  include <linux/if_packet.h>
 # endif /* __Lynx__ */
 # endif /* HAVE_NETPACKET_PACKET_H */
-#endif /* AF_PACKET */
+#endif /* (defined(linux) || defined(__Lynx__)) && defined(AF_PACKET) */
 
 /*
  * This is fun.
@@ -120,7 +121,7 @@ get_sa_len(struct sockaddr *addr)
 		return (sizeof (struct sockaddr_in6));
 #endif
 
-#ifdef AF_PACKET
+#if (defined(linux) || defined(__Lynx__)) && defined(AF_PACKET)
 	case AF_PACKET:
 		return (sizeof (struct sockaddr_ll));
 #endif
@@ -140,10 +141,11 @@ get_sa_len(struct sockaddr *addr)
  * Get a list of all interfaces that are up and that we can open.
  * Returns -1 on error, 0 otherwise.
  * The list, as returned through "alldevsp", may be null if no interfaces
- * were up and could be opened.
+ * could be opened.
  */
 int
-pcap_findalldevs_interfaces(pcap_if_t **alldevsp, char *errbuf)
+pcap_findalldevs_interfaces(pcap_if_t **alldevsp, char *errbuf,
+    int (*check_usable)(const char *))
 {
 	pcap_if_t *devlist = NULL;
 	struct ifaddrs *ifap, *ifa;
@@ -156,10 +158,10 @@ pcap_findalldevs_interfaces(pcap_if_t **alldevsp, char *errbuf)
 	 * Get the list of interface addresses.
 	 *
 	 * Note: this won't return information about interfaces
-	 * with no addresses; are there any such interfaces
-	 * that would be capable of receiving packets?
-	 * (Interfaces incapable of receiving packets aren't
-	 * very interesting from libpcap's point of view.)
+	 * with no addresses, so, if a platform has interfaces
+	 * with no interfaces on which traffic can be captured,
+	 * we must check for those interfaces as well (see, for
+	 * example, what's done on Linux).
 	 *
 	 * LAN interfaces will probably have link-layer
 	 * addresses; I don't know whether all implementations
@@ -167,67 +169,11 @@ pcap_findalldevs_interfaces(pcap_if_t **alldevsp, char *errbuf)
 	 * those.
 	 */
 	if (getifaddrs(&ifap) != 0) {
-		(void)snprintf(errbuf, PCAP_ERRBUF_SIZE,
+		(void)pcap_snprintf(errbuf, PCAP_ERRBUF_SIZE,
 		    "getifaddrs: %s", pcap_strerror(errno));
 		return (-1);
 	}
 	for (ifa = ifap; ifa != NULL; ifa = ifa->ifa_next) {
-		/*
-		 * Is this interface up?
-		 */
-		if (!(ifa->ifa_flags & IFF_UP)) {
-			/*
-			 * No, so don't add it to the list.
-			 */
-			continue;
-		}
-
-		/*
-		 * "ifa_addr" was apparently null on at least one
-		 * interface on some system.
-		 *
-		 * "ifa_broadaddr" may be non-null even on
-		 * non-broadcast interfaces, and was null on
-		 * at least one OpenBSD 3.4 system on at least
-		 * one interface with IFF_BROADCAST set.
-		 *
-		 * "ifa_dstaddr" was, on at least one FreeBSD 4.1
-		 * system, non-null on a non-point-to-point
-		 * interface.
-		 *
-		 * Therefore, we supply the address and netmask only
-		 * if "ifa_addr" is non-null (if there's no address,
-		 * there's obviously no netmask), and supply the
-		 * broadcast and destination addresses if the appropriate
-		 * flag is set *and* the appropriate "ifa_" entry doesn't
-		 * evaluate to a null pointer.
-		 */
-		if (ifa->ifa_addr != NULL) {
-			addr = ifa->ifa_addr;
-			addr_size = SA_LEN(addr);
-			netmask = ifa->ifa_netmask;
-		} else {
-			addr = NULL;
-			addr_size = 0;
-			netmask = NULL;
-		}
-		if (ifa->ifa_flags & IFF_BROADCAST &&
-		    ifa->ifa_broadaddr != NULL) {
-			broadaddr = ifa->ifa_broadaddr;
-			broadaddr_size = SA_LEN(broadaddr);
-		} else {
-			broadaddr = NULL;
-			broadaddr_size = 0;
-		}
-		if (ifa->ifa_flags & IFF_POINTOPOINT &&
-		    ifa->ifa_dstaddr != NULL) {
-			dstaddr = ifa->ifa_dstaddr;
-			dstaddr_size = SA_LEN(ifa->ifa_dstaddr);
-		} else {
-			dstaddr = NULL;
-			dstaddr_size = 0;
-		}
-
 		/*
 		 * If this entry has a colon followed by a number at
 		 * the end, we assume it's a logical interface.  Those
@@ -258,10 +204,70 @@ pcap_findalldevs_interfaces(pcap_if_t **alldevsp, char *errbuf)
 		}
 
 		/*
+		 * Can we capture on this device?
+		 */
+		if (!(*check_usable)(ifa->ifa_name)) {
+			/*
+			 * No.
+			 */
+			continue;
+		}
+
+		/*
+		 * "ifa_addr" was apparently null on at least one
+		 * interface on some system.  Therefore, we supply
+		 * the address and netmask only if "ifa_addr" is
+		 * non-null (if there's no address, there's obviously
+		 * no netmask).
+		 */
+		if (ifa->ifa_addr != NULL) {
+			addr = ifa->ifa_addr;
+			addr_size = SA_LEN(addr);
+			netmask = ifa->ifa_netmask;
+		} else {
+			addr = NULL;
+			addr_size = 0;
+			netmask = NULL;
+		}
+
+		/*
+		 * Note that, on some platforms, ifa_broadaddr and
+		 * ifa_dstaddr could be the same field (true on at
+		 * least some versions of *BSD and OS X), so we
+		 * can't just check whether the broadcast address
+		 * is null and add it if so and check whether the
+		 * destination address is null and add it if so.
+		 *
+		 * Therefore, we must also check the IFF_BROADCAST
+		 * flag, and only add a broadcast address if it's
+		 * set, and check the IFF_POINTTOPOINT flag, and
+		 * only add a destination address if it's set (as
+		 * per man page recommendations on some of those
+		 * platforms).
+		 */
+		if (ifa->ifa_flags & IFF_BROADCAST &&
+		    ifa->ifa_broadaddr != NULL) {
+			broadaddr = ifa->ifa_broadaddr;
+			broadaddr_size = SA_LEN(broadaddr);
+		} else {
+			broadaddr = NULL;
+			broadaddr_size = 0;
+		}
+		if (ifa->ifa_flags & IFF_POINTOPOINT &&
+		    ifa->ifa_dstaddr != NULL) {
+			dstaddr = ifa->ifa_dstaddr;
+			dstaddr_size = SA_LEN(ifa->ifa_dstaddr);
+		} else {
+			dstaddr = NULL;
+			dstaddr_size = 0;
+		}
+
+		/*
 		 * Add information for this address to the list.
 		 */
 		if (add_addr_to_iflist(&devlist, ifa->ifa_name,
-		    ifa->ifa_flags, addr, addr_size, netmask, addr_size,
+		    if_flags_to_pcap_flags(ifa->ifa_name, ifa->ifa_flags),
+		    addr, addr_size, netmask, addr_size,
 		    broadaddr, broadaddr_size, dstaddr, dstaddr_size,
 		    errbuf) < 0) {
 			ret = -1;
