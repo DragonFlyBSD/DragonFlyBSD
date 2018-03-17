@@ -655,6 +655,9 @@ sync_reclaim(struct vop_reclaim_args *ap)
  * operations use the VISDIRTY flag on the vnode to ensure that vnodes
  * with dirty inodes are added to the syncer in addition to vnodes
  * with dirty buffers, and can use this function instead of nmntvnodescan().
+ *
+ * This scan does not issue VOP_FSYNC()s.  The supplied callback is intended
+ * to synchronize the file in the manner intended by the VFS using it.
  * 
  * This is important when a system has millions of vnodes.
  */
