@@ -630,6 +630,7 @@ _mtx_upgrade_try(mtx_t *mtx)
 void
 _mtx_unlock(mtx_t *mtx)
 {
+	thread_t td = curthread;
 	u_int	lock;
 	u_int	nlock;
 
@@ -643,6 +644,8 @@ _mtx_unlock(mtx_t *mtx)
 			 * Last release, exclusive lock.
 			 * No exclusive or shared requests pending.
 			 */
+			KKASSERT(mtx->mtx_owner == td ||
+				 mtx->mtx_owner == NULL);
 			mtx->mtx_owner = NULL;
 			nlock = 0;
 			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock))
@@ -655,6 +658,9 @@ _mtx_unlock(mtx_t *mtx)
 			 * Exclusive requests pending.
 			 * Exclusive requests have priority over shared reqs.
 			 */
+			KKASSERT(mtx->mtx_owner == td ||
+				 mtx->mtx_owner == NULL);
+			mtx->mtx_owner = NULL;
 			if (mtx_chain_link_ex(mtx, lock))
 				goto done;
 			break;
@@ -665,6 +671,9 @@ _mtx_unlock(mtx_t *mtx)
 			 * Shared requests are pending.  Transfer our count (1)
 			 * to the first shared request, wakeup all shared reqs.
 			 */
+			KKASSERT(mtx->mtx_owner == td ||
+				 mtx->mtx_owner == NULL);
+			mtx->mtx_owner = NULL;
 			if (mtx_chain_link_sh(mtx, lock))
 				goto done;
 			break;

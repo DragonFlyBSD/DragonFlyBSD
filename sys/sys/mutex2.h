@@ -298,6 +298,10 @@ mtx_lock_sh_try(mtx_t *mtx)
 static __inline void
 mtx_downgrade(mtx_t *mtx)
 {
+	globaldata_t gd = mycpu;
+
+	KKASSERT((mtx->mtx_lock & MTX_EXCLUSIVE) &&
+		  mtx->mtx_owner == gd->gd_curthread);
 	mtx->mtx_owner = NULL;
 	if (atomic_cmpset_int(&mtx->mtx_lock, MTX_EXCLUSIVE | 1, 1) == 0)
 		_mtx_downgrade(mtx);
@@ -338,8 +342,11 @@ mtx_upgrade_try(mtx_t *mtx)
 static __inline void
 mtx_unlock(mtx_t *mtx)
 {
+	globaldata_t gd = mycpu;
 	u_int lock = mtx->mtx_lock;
 
+	KKASSERT((mtx->mtx_lock & MTX_EXCLUSIVE) == 0 ||
+		 mtx->mtx_owner == gd->gd_curthread);
 	if (lock == (MTX_EXCLUSIVE | 1)) {
 		mtx->mtx_owner = NULL;
 		if (atomic_cmpset_int(&mtx->mtx_lock, lock, 0) == 0)
@@ -355,8 +362,11 @@ mtx_unlock(mtx_t *mtx)
 static __inline void
 mtx_unlock_ex(mtx_t *mtx)
 {
+	globaldata_t gd = mycpu;
 	u_int lock = mtx->mtx_lock;
 
+	KKASSERT((mtx->mtx_lock & MTX_EXCLUSIVE) == 0 ||
+		 mtx->mtx_owner == gd->gd_curthread);
 	if (lock == (MTX_EXCLUSIVE | 1)) {
 		mtx->mtx_owner = NULL;
 		if (atomic_cmpset_int(&mtx->mtx_lock, lock, 0) == 0)
