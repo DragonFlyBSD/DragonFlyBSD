@@ -153,7 +153,7 @@ disklabel ${drive}s1 > /tmp/label.$$
 cat >> /tmp/label.$$ << EOF
 a: 1g	0	4.2BSD
 b: ${swap}	*	swap
-d: *	*	HAMMER
+d: *	*	HAMMER2
 EOF
 
 disklabel -R ${drive}s1 /tmp/label.$$
@@ -163,8 +163,8 @@ if [ $? != 0 ]; then fail "disklabel setup"; fi
 sleep 0.5
 newfs ${drive}s1a
 if [ $? != 0 ]; then fail "newfs ${drive}s1a"; fi
-newfs_hammer -f -L ROOT ${drive}s1d
-if [ $? != 0 ]; then fail "newfs_hammer ${drive}s1d"; fi
+newfs_hammer2 ${drive}s1d
+if [ $? != 0 ]; then fail "newfs_hammer2 ${drive}s1d"; fi
 
 # DragonFly mounts, setup for installation
 #
@@ -232,7 +232,7 @@ echo "Fixingup files for a ${serno}s1d root"
 
 # Add mountfrom to /efimnt/boot/loader.conf
 #
-echo "vfs.root.mountfrom=\"hammer:${mfrom}s1d\"" >> /efimnt/boot/loader.conf
+echo "vfs.root.mountfrom=\"hammer2:${mfrom}s1d\"" >> /efimnt/boot/loader.conf
 
 # Add dumpdev to /etc/rc.conf
 #
@@ -240,7 +240,7 @@ echo "dumpdev=\"/dev/${mfrom}s1b\"" >> /efimnt/etc/rc.conf
 
 # Create a fresh /etc/fstab
 #
-printf "%-20s %-15s hammer\trw\t1 1\n" "${mfrom}s1d" "/" \
+printf "%-20s %-15s hammer2\trw\t1 1\n" "${mfrom}s1d" "/" \
 			>> /efimnt/etc/fstab
 printf "%-20s %-15s ufs\trw\t1 1\n" "${mfrom}s1a" "/boot" \
 			>> /efimnt/etc/fstab
