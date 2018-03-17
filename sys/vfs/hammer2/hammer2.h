@@ -1054,6 +1054,7 @@ typedef struct hammer2_xop_group hammer2_xop_group_t;
 #define HAMMER2_XOP_MODIFYING		0x00000001
 #define HAMMER2_XOP_STRATEGY		0x00000002
 #define HAMMER2_XOP_INODE_STOP		0x00000004
+#define HAMMER2_XOP_VOLHDR		0x00000008
 
 /*
  * Global (per partition) management structure, represents a hard block
@@ -1179,6 +1180,7 @@ struct hammer2_pfs {
 	struct spinlock		lru_spin;	/* inumber lookup */
 	struct hammer2_chain_list lru_list;	/* basis for LRU tests */
 	int			lru_count;	/* #of chains on LRU */
+	int			flags;
 	hammer2_tid_t		modify_tid;	/* modify transaction id */
 	hammer2_tid_t		inode_tid;	/* inode allocator */
 	uint8_t			pfs_nmasters;	/* total masters */
@@ -1204,6 +1206,8 @@ struct hammer2_pfs {
 typedef struct hammer2_pfs hammer2_pfs_t;
 
 TAILQ_HEAD(hammer2_pfslist, hammer2_pfs);
+
+#define HAMMER2_PMPF_SPMP	0x00000001
 
 /*
  * NOTE: The LRU list contains at least all the chains with refs == 0

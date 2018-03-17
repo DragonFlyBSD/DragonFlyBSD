@@ -61,9 +61,23 @@
 #include "hammer2.h"
 
 /*
- * Determine if the specified directory is empty.  Returns 0 on success.
+ * Determine if the specified directory is empty.
  *
- * Caller assumes that we do not cycle the lock on oparent and ochain.
+ *	Returns 0 on success.
+ *
+ *	Returns HAMMER_ERROR_EAGAIN if caller must re-lookup the entry and
+ *	retry. (occurs if we race a ripup on oparent or ochain).
+ *
+ *	Or returns a permanent HAMMER2_ERROR_* error mask.
+ *
+ * The caller must pass in an exclusively locked oparent and ochain.  This
+ * function will handle the case where the chain is a directory entry or
+ * the inode itself.  The original oparent,ochain will be locked upon return.
+ *
+ * This function will unlock the underlying oparent,ochain temporarily when
+ * doing an inode lookup to avoid deadlocks.  The caller MUST handle the EAGAIN
+ * result as this means that oparent is no longer the parent of ochain, or
+ * that ochain was destroyed while it was unlocked.
  */
 static
 int
@@ -74,22 +88,20 @@ checkdirempty(hammer2_chain_t *oparent, hammer2_chain_t *ochain, int clindex)
 	hammer2_key_t key_next;
 	hammer2_key_t inum;
 	int error;
+	int didunlock;
 
 	error = 0;
+	didunlock = 0;
 
+	/*
+	 * Find the inode, set it up as a locked 'chain'.  ochain can be the
+	 * inode itself, or it can be a directory entry.
+	 */
 	if (ochain->bref.type == HAMMER2_BREF_TYPE_DIRENT) {
-		/*
-		 * Forward the directory entry to the directory inode.
-		 * This is not strictly heirarchical so the locks kinda
-		 * violate top-down lock order.
-		 *
-		 * Define an allowance for directory-entry -> dinode
-		 * chain lock ordering, since directory entries have only
-		 * one link the directory inode is kinda topologically
-		 * underneath the directory entry, even though it isn't
-		 * really. XXX
-		 */
 		inum = ochain->bref.embed.dirent.inum;
+		hammer2_chain_unlock(ochain);
+		hammer2_chain_unlock(oparent);
+
 		parent = NULL;
 		chain = NULL;
 		error = hammer2_chain_inode_find(ochain->pmp, inum,
@@ -99,6 +111,7 @@ checkdirempty(hammer2_chain_t *oparent, hammer2_chain_t *ochain, int clindex)
 			hammer2_chain_unlock(parent);
 			hammer2_chain_drop(parent);
 		}
+		didunlock = 1;
 	} else {
 		/*
 		 * The directory entry *is* the directory inode
@@ -110,21 +123,34 @@ checkdirempty(hammer2_chain_t *oparent, hammer2_chain_t *ochain, int clindex)
 	 * Determine if the directory is empty or not by checking its
 	 * visible namespace (the area which contains directory entries).
 	 */
-	parent = chain;
-	chain = NULL;
-	if (parent) {
-		chain = hammer2_chain_lookup(&parent, &key_next,
-					     HAMMER2_DIRHASH_VISIBLE,
-					     HAMMER2_KEY_MAX,
-					     &error, 0);
+	if (error == 0) {
+		parent = chain;
+		chain = NULL;
+		if (parent) {
+			chain = hammer2_chain_lookup(&parent, &key_next,
+						     HAMMER2_DIRHASH_VISIBLE,
+						     HAMMER2_KEY_MAX,
+						     &error, 0);
+		}
+		if (chain) {
+			error = HAMMER2_ERROR_ENOTEMPTY;
+			hammer2_chain_unlock(chain);
+			hammer2_chain_drop(chain);
+		}
+		hammer2_chain_lookup_done(parent);
 	}
-	if (chain) {
-		error = HAMMER2_ERROR_ENOTEMPTY;
-		hammer2_chain_unlock(chain);
-		hammer2_chain_drop(chain);
-	}
-	hammer2_chain_lookup_done(parent);
 
+	if (didunlock) {
+		hammer2_chain_lock(oparent, HAMMER2_RESOLVE_ALWAYS);
+		hammer2_chain_lock(ochain, HAMMER2_RESOLVE_ALWAYS);
+		if ((ochain->flags & HAMMER2_CHAIN_DELETED) ||
+		    (oparent->flags & HAMMER2_CHAIN_DELETED) ||
+		    ochain->parent != oparent) {
+			kprintf("hammer2: debug: CHECKDIR inum %jd RETRY\n",
+				inum);
+			error = HAMMER2_ERROR_EAGAIN;
+		}
+	}
 	return error;
 }
 

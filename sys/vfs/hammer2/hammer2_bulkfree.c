@@ -494,9 +494,9 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 			vchain->refs, vchain->core.chain_count, error);
 
 		/*
-		 * If complete scan succeeded we can synchronize our
+		 * If the complete scan succeeded we can synchronize our
 		 * in-memory freemap against live storage.  If an abort
-		 * did occur we cannot safely synchronize our partially
+		 * occured we cannot safely synchronize our partially
 		 * filled-out in-memory freemap.
 		 */
 		if (error == 0) {

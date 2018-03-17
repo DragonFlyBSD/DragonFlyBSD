@@ -76,6 +76,7 @@ TAILQ_HEAD(hammer2_mntlist, hammer2_dev);
 static struct hammer2_mntlist hammer2_mntlist;
 
 struct hammer2_pfslist hammer2_pfslist;
+struct hammer2_pfslist hammer2_spmplist;
 struct lock hammer2_mntlk;
 
 int hammer2_supported_version = HAMMER2_VOL_VERSION_DEFAULT;
@@ -312,6 +313,7 @@ hammer2_vfs_init(struct vfsconf *conf)
 	lockinit(&hammer2_mntlk, "mntlk", 0, 0);
 	TAILQ_INIT(&hammer2_mntlist);
 	TAILQ_INIT(&hammer2_pfslist);
+	TAILQ_INIT(&hammer2_spmplist);
 
 	hammer2_limit_dirty_chains = maxvnodes / 10;
 	if (hammer2_limit_dirty_chains > HAMMER2_LIMIT_DIRTY_CHAINS)
@@ -404,9 +406,13 @@ hammer2_pfsalloc(hammer2_chain_t *chain,
 		 * Save the last media transaction id for the flusher.  Set
 		 * initial 
 		 */
-		if (ripdata)
+		if (ripdata) {
 			pmp->pfs_clid = ripdata->meta.pfs_clid;
-		TAILQ_INSERT_TAIL(&hammer2_pfslist, pmp, mntentry);
+			TAILQ_INSERT_TAIL(&hammer2_pfslist, pmp, mntentry);
+		} else {
+			pmp->flags |= HAMMER2_PMPF_SPMP;
+			TAILQ_INSERT_TAIL(&hammer2_spmplist, pmp, mntentry);
+		}
 
 		/*
 		 * The synchronization thread may start too early, make
@@ -644,7 +650,10 @@ hammer2_pfsfree(hammer2_pfs_t *pmp)
 	 * Cleanup our reference on iroot.  iroot is (should) not be needed
 	 * by the flush code.
 	 */
-	TAILQ_REMOVE(&hammer2_pfslist, pmp, mntentry);
+	if (pmp->flags & HAMMER2_PMPF_SPMP)
+		TAILQ_REMOVE(&hammer2_spmplist, pmp, mntentry);
+	else
+		TAILQ_REMOVE(&hammer2_pfslist, pmp, mntentry);
 
 	iroot = pmp->iroot;
 	if (iroot) {
@@ -698,7 +707,7 @@ hammer2_pfsfree(hammer2_pfs_t *pmp)
  * XXX inefficient.
  */
 static void
-hammer2_pfsfree_scan(hammer2_dev_t *hmp)
+hammer2_pfsfree_scan(hammer2_dev_t *hmp, int which)
 {
 	hammer2_pfs_t *pmp;
 	hammer2_inode_t *iroot;
@@ -706,20 +715,20 @@ hammer2_pfsfree_scan(hammer2_dev_t *hmp)
 	int didfreeze;
 	int i;
 	int j;
+	struct hammer2_pfslist *wlist;
 
+	if (which == 0)
+		wlist = &hammer2_pfslist;
+	else
+		wlist = &hammer2_spmplist;
 again:
-	TAILQ_FOREACH(pmp, &hammer2_pfslist, mntentry) {
+	TAILQ_FOREACH(pmp, wlist, mntentry) {
 		if ((iroot = pmp->iroot) == NULL)
 			continue;
 		hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH);
 		hammer2_inode_run_sideq(pmp, 1);
 		hammer2_bioq_sync(pmp);
 		hammer2_trans_done(pmp);
-		if (hmp->spmp == pmp) {
-			hmp->spmp = NULL;
-			hmp->vchain.pmp = NULL;
-			hmp->fchain.pmp = NULL;
-		}
 
 		/*
 		 * Determine if this PFS is affected.  If it is we must
@@ -815,6 +824,19 @@ again:
 		 * (this will transition management threads from frozen->exit).
 		 */
 		if (iroot->cluster.nchains == 0) {
+			/*
+			 * If this was the hmp's spmp, we need to clean
+			 * a little more stuff out.
+			 */
+			if (hmp->spmp == pmp) {
+				hmp->spmp = NULL;
+				hmp->vchain.pmp = NULL;
+				hmp->fchain.pmp = NULL;
+			}
+
+			/*
+			 * Free the pmp and restart the loop
+			 */
 			hammer2_pfsfree(pmp);
 			goto again;
 		}
@@ -1595,8 +1617,6 @@ hammer2_mount_helper(struct mount *mp, hammer2_pfs_t *pmp)
 		if (rchain == NULL)
 			continue;
 		++rchain->hmp->mount_count;
-		kprintf("hammer2_mount hmp=%p ++mount_count=%d\n",
-			rchain->hmp, rchain->hmp->mount_count);
 	}
 
 	/*
@@ -1677,7 +1697,7 @@ again:
 	hammer2_iocom_uninit(hmp);
 
 	hammer2_bulkfree_uninit(hmp);
-	hammer2_pfsfree_scan(hmp);
+	hammer2_pfsfree_scan(hmp, 0);
 	hammer2_dev_exlock(hmp);	/* XXX order */
 
 	/*
@@ -1701,9 +1721,18 @@ again:
 	 */
 	hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
 	hammer2_chain_lock(&hmp->fchain, HAMMER2_RESOLVE_ALWAYS);
-	hammer2_flush(&hmp->fchain, HAMMER2_FLUSH_TOP | HAMMER2_FLUSH_ALL);
+
+	if (hmp->fchain.flags & HAMMER2_CHAIN_FLUSH_MASK) {
+		hammer2_voldata_modify(hmp);
+		hammer2_flush(&hmp->fchain, HAMMER2_FLUSH_TOP |
+					    HAMMER2_FLUSH_ALL);
+	}
 	hammer2_chain_unlock(&hmp->fchain);
-	hammer2_flush(&hmp->vchain, HAMMER2_FLUSH_TOP | HAMMER2_FLUSH_ALL);
+
+	if (hmp->vchain.flags & HAMMER2_CHAIN_FLUSH_MASK) {
+		hammer2_flush(&hmp->vchain, HAMMER2_FLUSH_TOP |
+					    HAMMER2_FLUSH_ALL);
+	}
 	hammer2_chain_unlock(&hmp->vchain);
 
 	if ((hmp->vchain.flags | hmp->fchain.flags) &
@@ -1716,6 +1745,8 @@ again:
 		if (hammer2_debug & 0x0010)
 			Debugger("entered debugger");
 	}
+
+	hammer2_pfsfree_scan(hmp, 1);
 
 	KKASSERT(hmp->spmp == NULL);
 
@@ -1885,10 +1916,12 @@ hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 				pmp->inode_tid = HAMMER2_INODE_START;
 			pmp->modify_tid =
 				xop->head.cluster.focus->bref.modify_tid + 1;
+#if 0
 			kprintf("PFS: Starting inode %jd\n",
 				(intmax_t)pmp->inode_tid);
 			kprintf("PMP focus good set nextino=%ld mod=%016jx\n",
 				pmp->inode_tid, pmp->modify_tid);
+#endif
 			wakeup(&pmp->iroot);
 
 			hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
@@ -2302,15 +2335,21 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 *
 	 * For efficiency do an async pass before making sure with a
 	 * synchronous pass on all related buffer cache buffers.
-	 *
-	 * Do a single synchronous pass to avoid double-flushing vnodes,
-	 * which can waste copy-on-write blocks.  XXX do not do two passes.
 	 */
 	hammer2_trans_init(pmp, 0);
+
 	info.error = 0;
+
 	info.waitfor = MNT_NOWAIT;
 	info.pass = 1;
 	vsyncscan(mp, flags | VMSC_NOWAIT, hammer2_sync_scan2, &info);
+
+	/*
+	 * Now do two passes making sure we get everything.  The first pass
+	 * vfsync()s dirty vnodes.  The second pass waits for their I/O's
+	 * to finish and cleans up the dirty flag on the vnode.
+	 */
+	info.pass = 1;
 	info.waitfor = MNT_WAIT;
 	vsyncscan(mp, flags, hammer2_sync_scan2, &info);
 
@@ -2329,22 +2368,27 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 * Start our flush transaction and flush the root topology down to
 	 * the inodes, but not the inodes themselves (which we already flushed
 	 * above).  Any concurrent activity effecting inode contents will not
-	 * be part of this flush cycle.
 	 *
-	 * (1) vfsync() all dirty vnodes via vfsyncscan().
-	 *
-	 * (2) Flush any remaining dirty inodes (the sideq), including any
-	 *     which may have been created during or raced against the
-	 *     vfsync().  To catch all cases this must be done after the
-	 *     vfsync().
-	 *
-	 * (3) Wait for any pending BIO I/O to complete (hammer2_bioq_sync()).
+	 * The flush sequence will
 	 *
 	 * NOTE! It is still possible for the paging code to push pages
 	 *	 out via a UIO_NOCOPY hammer2_vop_write() during the main
 	 *	 flush.
 	 */
 	hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH);
+
+	/*
+	 * sync dirty vnodes again while in the flush transaction.  This is
+	 * currently an expensive shim to makre sure the logical topology is
+	 * completely consistent before we flush the volume header.
+	 */
+	info.pass = 1;
+	info.waitfor = MNT_WAIT;
+	vsyncscan(mp, flags, hammer2_sync_scan2, &info);
+
+	info.pass = 2;
+	info.waitfor = MNT_WAIT;
+	vsyncscan(mp, flags, hammer2_sync_scan2, &info);
 
 	/*
 	 * Use the XOP interface to concurrently flush all nodes to
@@ -2364,10 +2408,12 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		 * the inodes in this stage.
 		 */
 		if (mp->mnt_kern_flag & MNTK_UNMOUNT) {
-			xop = hammer2_xop_alloc(iroot, HAMMER2_XOP_MODIFYING);
+			xop = hammer2_xop_alloc(iroot, HAMMER2_XOP_MODIFYING |
+						       HAMMER2_XOP_VOLHDR);
 		} else {
 			xop = hammer2_xop_alloc(iroot, HAMMER2_XOP_MODIFYING |
-						       HAMMER2_XOP_INODE_STOP);
+						       HAMMER2_XOP_INODE_STOP |
+						       HAMMER2_XOP_VOLHDR);
 		}
 		hammer2_xop_start(&xop->head, hammer2_inode_xop_flush);
 		error = hammer2_xop_collect(&xop->head,

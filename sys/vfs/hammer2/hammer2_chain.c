@@ -519,7 +519,7 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 	 */
 	hammer2_spin_ex(&chain->core.spin);
 
-	if ((parent = chain->parent) != NULL) {
+	if (chain->parent != NULL) {
 		/*
 		 * If the chain has a parent the UPDATE bit prevents scrapping
 		 * as the chain is needed to properly flush the parent.  Try
@@ -551,6 +551,14 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 			return (chain);
 		}
 		/* spinlock still held */
+	} else if (chain->bref.type == HAMMER2_BREF_TYPE_VOLUME ||
+		   chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP) {
+		/*
+		 * Retain the static vchain and fchain.  Clear bits that
+		 * are not relevant.  Do not clear the MODIFIED bit,
+		 * and certainly do not put it on the delayed-flush queue.
+		 */
+		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
 	} else {
 		/*
 		 * The chain has no parent and can be flagged for destruction.
@@ -3406,10 +3414,16 @@ hammer2_chain_create(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_DELETED);
 		KKASSERT(chain->parent == NULL);
 	}
+
+	/*
+	 * Set the appropriate bref flag if requested.
+	 *
+	 * NOTE! Callers can call this function to move chains without
+	 *	 knowing about special flags, so don't clear bref flags
+	 *	 here!
+	 */
 	if (flags & HAMMER2_INSERT_PFSROOT)
 		chain->bref.flags |= HAMMER2_BREF_FLAG_PFSROOT;
-	else
-		chain->bref.flags &= ~HAMMER2_BREF_FLAG_PFSROOT;
 
 	/*
 	 * Calculate how many entries we have in the blockref array and
@@ -5785,8 +5799,11 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
  * will be NULL.  *parentp may still be set error or not, or NULL if the
  * parent itself could not be resolved.
  *
- * Caller must pass-in a valid or NULL *parentp or *chainp.  The passed-in
- * *parentp and *chainp will be unlocked if not NULL.
+ * Caller must pass-in a valid (and locked), or NULL *parentp or *chainp.
+ * This function replaces *parentp and *chainp.  Generally speaking, if
+ * the caller found a directory entry and wants the inode, the caller should
+ * pass the parent,chain representing the directory entry so this function
+ * can dispose of it properly to avoid any possible lock order reversals.
  */
 int
 hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,

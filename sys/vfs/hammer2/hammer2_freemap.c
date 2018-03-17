@@ -225,6 +225,7 @@ hammer2_freemap_alloc(hammer2_chain_t *chain, size_t bytes)
 		return 0;
 	}
 
+	KKASSERT(hmp->spmp);
 	mtid = hammer2_trans_sub(hmp->spmp);
 
 	/*
@@ -995,6 +996,7 @@ hammer2_freemap_adjust(hammer2_dev_t *hmp, hammer2_blockref_t *bref,
 
 	KKASSERT(how == HAMMER2_FREEMAP_DORECOVER);
 
+	KKASSERT(hmp->spmp);
 	mtid = hammer2_trans_sub(hmp->spmp);
 
 	radix = (int)data_off & HAMMER2_OFF_MASK_RADIX;

@@ -363,10 +363,8 @@ hammer2_delayed_flush(hammer2_chain_t *chain)
  *
  *	HAMMER2_FLUSH_ALL	Recurse everything
  *
- *	HAMMER2_FLUSH_INODE_RECURSE
- *				Recurse one inode level, flush includes
- *				sub-inodes but do not go deeper (thus UPDATE
- *				can wind up remaining set).
+ *	HAMMER2_FLUSH_INODE_STOP
+ *				Stop at PFS inode or normal inode boundary
  */
 int
 hammer2_flush(hammer2_chain_t *chain, int flags)
@@ -1404,10 +1402,11 @@ hammer2_inode_xop_flush(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	}
 
 	/*
-	 * Don't flush from the volume root to the PFSROOT unless ip was
-	 * a PFSROOT.  If it isn't then this flush is probably related to
-	 * a VOP_FSYNC.
+	 * Only flush the volume header if asked to, plus the inode must also
+	 * be the PFS root.
 	 */
+	if ((xop->head.flags & HAMMER2_XOP_VOLHDR) == 0)
+		goto skip;
 	if (ispfsroot == 0)
 		goto skip;
 
