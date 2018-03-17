@@ -589,7 +589,7 @@ udev_dev_clone(struct dev_clone_args *ap)
 	lockmgr(&udev_lk, LK_RELEASE);
 
 	softc->dev = make_only_dev(&udev_dev_ops, unit, ap->a_cred->cr_ruid,
-				   0, 0600, "udev/%d", unit);
+				   0, 0600, "udevs/%d", unit);
 	softc->dev->si_drv1 = softc;
 	ap->a_dev = softc->dev;
 	return 0;
