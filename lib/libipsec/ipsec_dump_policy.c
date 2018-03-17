@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/lib/libipsec/ipsec_dump_policy.c,v 1.1.2.1 2000/07/15 07:24:04 kris Exp $	*/
-/*	$DragonFly: src/lib/libipsec/ipsec_dump_policy.c,v 1.4 2008/09/30 16:57:05 swildner Exp $	*/
 /*	$KAME: ipsec_dump_policy.c,v 1.11 2000/05/07 05:29:47 itojun Exp $	*/
 
 /*
@@ -160,7 +159,8 @@ ipsec_dump_policy(caddr_t policy, char *delimiter)
 			return NULL;
 		}
 		buf = newbuf;
-		snprintf(buf, buflen, "%s%s%s", buf, delimiter, isrbuf);
+		snprintf(buf + strlen(buf), buflen - strlen(buf),
+		    "%s%s", delimiter, isrbuf);
 
 		off += xisr->sadb_x_ipsecrequest_len;
 	}
