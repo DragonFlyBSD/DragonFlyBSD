@@ -39,7 +39,7 @@ LINKS+=	${BINDIR}/objformat ${BINDIR}/size
 LINKS+=	${BINDIR}/objformat ${BINDIR}/strings
 LINKS+=	${BINDIR}/objformat ${BINDIR}/strip
 
-# These will exec /usr/bin/${CCVER}/<name>
+# These will exec /usr/libexec/${CCVER}/<name>
 #
 LINKS+=	${BINDIR}/objformat ${BINDIR}/CC
 LINKS+=	${BINDIR}/objformat ${BINDIR}/cpp
