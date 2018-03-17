@@ -1,5 +1,5 @@
 /* config.h.  Generated from config.h.in by configure.  */
-/* config.h.in.  Generated from configure.in by autoheader.  */
+/* config.h.in.  Generated from configure.ac by autoheader.  */
 
 /* Enable optimizer debugging */
 /* #undef BDEBUG */
@@ -59,6 +59,15 @@
 /* if libnl exists and is version 2.x */
 /* #undef HAVE_LIBNL_2_x */
 
+/* if libnl exists and is version 3.x */
+/* #undef HAVE_LIBNL_3_x */
+
+/* libnl has NLE_FAILURE */
+/* #undef HAVE_LIBNL_NLE */
+
+/* libnl has new-style socket api */
+/* #undef HAVE_LIBNL_SOCKETS */
+
 /* Define to 1 if you have the <limits.h> header file. */
 #define HAVE_LIMITS_H 1
 
@@ -68,11 +77,17 @@
 /* Define to 1 if you have the <linux/ethtool.h> header file. */
 /* #undef HAVE_LINUX_ETHTOOL_H */
 
+/* Define to 1 if you have the <linux/if_bonding.h> header file. */
+/* #undef HAVE_LINUX_IF_BONDING_H */
+
 /* Define to 1 if you have the <linux/if_packet.h> header file. */
 /* #undef HAVE_LINUX_IF_PACKET_H */
 
 /* Define to 1 if you have the <linux/net_tstamp.h> header file. */
 /* #undef HAVE_LINUX_NET_TSTAMP_H */
+
+/* Define to 1 if you have the <linux/sockios.h> header file. */
+/* #undef HAVE_LINUX_SOCKIOS_H */
 
 /* if tp_vlan_tci exists */
 /* #undef HAVE_LINUX_TPACKET_AUXDATA_TP_VLAN_TCI */
@@ -110,16 +125,13 @@
 /* if there's an os_proto.h for this platform, to use additional prototypes */
 /* #undef HAVE_OS_PROTO_H */
 
-/* Define to 1 if you have the <paths.h> header file. */
-#define HAVE_PATHS_H 1
-
 /* define if net/pfvar.h defines PF_NAT through PF_NORDR */
 /* #undef HAVE_PF_NAT_THROUGH_PF_NORDR */
 
-/* define if you have a Septel API */
+/* define if you have the Septel API */
 /* #undef HAVE_SEPTEL_API */
 
-/* define if you have Myricom SNF API */
+/* define if you have the Myricom SNF API */
 /* #undef HAVE_SNF_API */
 
 /* Define to 1 if you have the `snprintf' function. */
@@ -155,6 +167,9 @@
 /* Define to 1 if you have the `strlcpy' function. */
 #define HAVE_STRLCPY 1
 
+/* Define to 1 if you have the `strtok_r' function. */
+#define HAVE_STRTOK_R 1
+
 /* Define to 1 if the system has the type `struct BPF_TIMEVAL'. */
 /* #undef HAVE_STRUCT_BPF_TIMEVAL */
 
@@ -173,6 +188,9 @@
 /* Define to 1 if you have the <sys/ioccom.h> header file. */
 #define HAVE_SYS_IOCCOM_H 1
 
+/* Define to 1 if you have the <sys/select.h> header file. */
+#define HAVE_SYS_SELECT_H 1
+
 /* Define to 1 if you have the <sys/sockio.h> header file. */
 #define HAVE_SYS_SOCKIO_H 1
 
@@ -182,6 +200,9 @@
 /* Define to 1 if you have the <sys/types.h> header file. */
 #define HAVE_SYS_TYPES_H 1
 
+/* define if you have the TurboCap API */
+/* #undef HAVE_TC_API */
+
 /* if if_packet.h has tpacket_stats defined */
 /* #undef HAVE_TPACKET_STATS */
 
@@ -190,9 +211,6 @@
 
 /* if struct usbdevfs_ctrltransfer has bRequestType */
 /* #undef HAVE_USBDEVFS_CTRLTRANSFER_BREQUESTTYPE */
-
-/* define if version.h is generated in the build procedure */
-#define HAVE_VERSION_H 1
 
 /* Define to 1 if you have the `vsnprintf' function. */
 #define HAVE_VSNPRINTF 1
@@ -204,7 +222,7 @@
 #define HAVE___ATTRIBUTE__ 1
 
 /* IPv6 */
-/* #undef INET6 */
+#define INET6 1
 
 /* if unaligned access fails */
 /* #undef LBL_ALIGN */
@@ -245,14 +263,17 @@
 /* target host supports Bluetooth sniffing */
 /* #undef PCAP_SUPPORT_BT */
 
-/* target host supports CAN sniffing */
-/* #undef PCAP_SUPPORT_CAN */
+/* target host supports Bluetooth Monitor */
+/* #undef PCAP_SUPPORT_BT_MONITOR */
 
-/* target host supports canusb */
-/* #undef PCAP_SUPPORT_CANUSB */
+/* support D-Bus sniffing */
+/* #undef PCAP_SUPPORT_DBUS */
 
 /* target host supports netfilter sniffing */
 /* #undef PCAP_SUPPORT_NETFILTER */
+
+/* use Linux packet ring capture if available */
+/* #undef PCAP_SUPPORT_PACKET_RING */
 
 /* target host supports USB sniffing */
 /* #undef PCAP_SUPPORT_USB */
@@ -260,17 +281,21 @@
 /* include ACN support */
 /* #undef SITA */
 
+/* if struct sockaddr_hci has hci_channel member */
+/* #undef SOCKADDR_HCI_HAS_HCI_CHANNEL */
+
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
 
 /* Enable parser debugging */
 /* #undef YYDEBUG */
 
+/* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a
+   `char[]'. */
+#define YYTEXT_POINTER 1
+
 /* Number of bits in a file offset, on hosts where this is settable. */
 /* #undef _FILE_OFFSET_BITS */
-
-/* needed on HP-UX */
-/* #undef _HPUX_SOURCE */
 
 /* Define to 1 to make fseeko visible on some hosts (e.g. glibc 2.2). */
 /* #undef _LARGEFILE_SOURCE */
@@ -280,6 +305,9 @@
 
 /* define on AIX to get certain functions */
 /* #undef _SUN */
+
+/* define if your compiler allows __attribute__((format)) without a warning */
+#define __ATTRIBUTE___FORMAT_OK 1
 
 /* to handle Ultrix compilers that don't support const in prototypes */
 /* #undef const */

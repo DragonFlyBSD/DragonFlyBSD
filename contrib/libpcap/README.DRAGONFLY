@@ -4,3 +4,8 @@ http://www.tcpdump.org/release/
 A list of files and directories removed is in README.DELETED
 
 Remember to update lib/libpcap/config.h.
+
+Configure with:
+
+./configure --disable-universal --disable-usb --disable-bluetooth \
+            --disable-dbus --disable-packet-ring

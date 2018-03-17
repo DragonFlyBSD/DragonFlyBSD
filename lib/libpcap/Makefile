@@ -7,21 +7,26 @@ SRCS=	pcap-bpf.c \
 	savefile.c sf-pcap.c sf-pcap-ng.c pcap-common.c \
 	bpf_image.c bpf_dump.c \
 	scanner.l grammar.y bpf_filter.c version.c \
-	version.h tokdefs.h
+	fad-helpers.c sockutils.c \
+	pcap_version.h tokdefs.h
 
 INCS=	pcap.h \
 	pcap-bpf.h \
 	pcap-namedb.h
 
 PCAPINCS= \
-	pcap/bpf.h \
 	pcap/bluetooth.h \
+	pcap/bpf.h \
+	pcap/can_socketcan.h \
+	pcap/dlt.h \
+	pcap/export-defs.h \
 	pcap/ipnet.h \
 	pcap/namedb.h \
+	pcap/nflog.h \
 	pcap/pcap.h \
 	pcap/sll.h \
-	pcap/vlan.h \
-	pcap/usb.h
+	pcap/usb.h \
+	pcap/vlan.h
 
 PCAPINCSDIR=	${INCLUDEDIR}/pcap
 INCSGROUPS=	INCS PCAPINCS
@@ -52,6 +57,7 @@ MAN+=	pcap_activate.3 \
 	pcap_findalldevs.3 \
 	pcap_freecode.3 \
 	pcap_get_selectable_fd.3 \
+	pcap_get_tstamp_precision.3 \
 	pcap_geterr.3 \
 	pcap_inject.3 \
 	pcap_is_swapped.3 \
@@ -65,10 +71,12 @@ MAN+=	pcap_activate.3 \
 	pcap_open_live.3 \
 	pcap_set_buffer_size.3 \
 	pcap_set_datalink.3 \
+	pcap_set_immediate_mode.3 \
 	pcap_set_promisc.3 \
 	pcap_set_rfmon.3 \
 	pcap_set_snaplen.3 \
 	pcap_set_timeout.3 \
+	pcap_set_tstamp_precision.3 \
 	pcap_setdirection.3 \
 	pcap_setfilter.3 \
 	pcap_setnonblock.3 \
@@ -95,11 +103,11 @@ MLINKS=	pcap_datalink_val_to_name.3 pcap_datalink_val_to_description.3 \
 	pcap_open_offline.3 pcap_fopen_offline.3 \
 	pcap_setnonblock.3 pcap_getnonblock.3
 
-CLEANFILES=tokdefs.h version.c version.h
+CLEANFILES=tokdefs.h version.c pcap_version.h
 CLEANFILES+=${MAN}
 WARNS?=	2
 
-LFLAGS+=-Ppcap_
+LFLAGS+=-Ppcap_ --header-file=${.OBJDIR}/scanner.h --nounput
 YFLAGS+=-p pcap_
 CFLAGS+=-DHAVE_CONFIG_H -I${.CURDIR} -I${.OBJDIR}
 CFLAGS+=-D_U_="__attribute__((unused))" -DYYBISON
@@ -119,9 +127,11 @@ CFLAGS+=-I${PCAP_DISTDIR}
 .PATH:	${PCAP_DISTDIR}/bpf/net
 
 version.c: VERSION
+	echo '#include <pcap/export-defs.h>' > ${.TARGET}
+	echo 'PCAP_API_DEF' >> ${.TARGET}
 	sed -e 's/.*/char pcap_version[] = "&";/' ${.ALLSRC} > ${.TARGET}
 
-version.h: VERSION
+pcap_version.h: VERSION
 	sed -e 's/.*/static const char pcap_version_string[] = "libpcap version &";/' \
 		${.ALLSRC} > ${.TARGET}
 
