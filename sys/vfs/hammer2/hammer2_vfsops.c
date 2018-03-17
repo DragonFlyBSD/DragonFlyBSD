@@ -1528,6 +1528,8 @@ hammer2_remount(hammer2_dev_t *hmp, struct mount *mp, char *path __unused,
 		VOP_OPEN(devvp, FREAD | FWRITE, FSCRED, NULL);
 		vn_unlock(devvp);
 		error = hammer2_recovery(hmp);
+		if (error == 0)
+			error |= hammer2_fixup_pfses(hmp);
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 		if (error == 0) {
 			VOP_CLOSE(devvp, FREAD, NULL);
