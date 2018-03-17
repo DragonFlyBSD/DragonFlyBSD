@@ -3156,10 +3156,17 @@ hammer2_chain_create(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_DELETED);
 		KKASSERT(chain->parent == NULL);
 	}
+
+
+	/*
+	 * Set the appropriate bref flag if requested.
+	 *
+	 * NOTE! Callers can call this function to move chains without
+	 *       knowing about special flags, so don't clear bref flags
+	 *       here!
+	 */
 	if (flags & HAMMER2_INSERT_PFSROOT)
 		chain->bref.flags |= HAMMER2_BREF_FLAG_PFSROOT;
-	else
-		chain->bref.flags &= ~HAMMER2_BREF_FLAG_PFSROOT;
 
 	/*
 	 * Calculate how many entries we have in the blockref array and
