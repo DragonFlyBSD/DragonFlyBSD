@@ -154,6 +154,7 @@ void
 _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 {
 	indefinite_info_t info;
+	uint32_t ovalue;
 
 	/*
 	 * WARNING! Caller has already incremented the lock.  We must
@@ -182,9 +183,12 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 	 *
 	 * The shared unlock understands that this may occur.
 	 */
-	atomic_add_int(&spin->counta, SPINLOCK_EXCLWAIT - 1);
-	if (value & SPINLOCK_SHARED)
+	ovalue = atomic_fetchadd_int(&spin->counta, SPINLOCK_EXCLWAIT - 1);
+	ovalue += SPINLOCK_EXCLWAIT - 1;
+	if (value & SPINLOCK_SHARED) {
 		atomic_clear_int(&spin->counta, SPINLOCK_SHARED);
+		ovalue &= ~SPINLOCK_SHARED;
+	}
 
 	/*
 	 * Spin until we can acquire a low-count of 1.
@@ -204,12 +208,13 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 		 *	 multi-chip systems.  And on single-chip/multi-core
 		 *	 systems it just doesn't hurt.
 		 */
-		uint32_t ovalue = spin->counta;
 		cpu_ccfence();
-		if ((ovalue & (SPINLOCK_EXCLWAIT - 1)) == 0 &&
-		    atomic_cmpset_int(&spin->counta, ovalue,
+		if ((ovalue & (SPINLOCK_EXCLWAIT - 1)) == 0) {
+			if (atomic_fcmpset_int(&spin->counta, &ovalue,
 				      (ovalue - SPINLOCK_EXCLWAIT) | 1)) {
-			break;
+				break;
+			}
+			continue;
 		}
 
 		/*
@@ -231,6 +236,10 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 
 		if (indefinite_check(&info))
 			break;
+		/*
+		 * ovalue was wrong anyway, just reload
+		 */
+		ovalue = spin->counta;
 	}
 	indefinite_done(&info);
 }
@@ -246,13 +255,16 @@ void
 _spin_lock_shared_contested(struct spinlock *spin, const char *ident)
 {
 	indefinite_info_t info;
+	uint32_t ovalue;
 
 	indefinite_init(&info, ident, 0, 's');
 
 	/*
 	 * Undo the inline's increment.
 	 */
-	atomic_add_int(&spin->counta, -1);
+	cpu_pause();
+	ovalue = atomic_fetchadd_int(&spin->counta, -1);
+	ovalue += -1;
 
 #ifdef DEBUG_LOCKS_LATENCY
 	long j;
@@ -278,20 +290,33 @@ _spin_lock_shared_contested(struct spinlock *spin, const char *ident)
 		 *	 multi-chip systems.  And on single-chip/multi-core
 		 *	 systems it just doesn't hurt.
 		 */
-		uint32_t ovalue = spin->counta;
-
 		cpu_ccfence();
 		if (ovalue == 0) {
-			if (atomic_cmpset_int(&spin->counta, 0,
-					      SPINLOCK_SHARED | 1))
+			if (atomic_fcmpset_int(&spin->counta, &ovalue,
+					      SPINLOCK_SHARED | 1)) {
 				break;
-		} else if (ovalue & SPINLOCK_SHARED) {
-			if (atomic_cmpset_int(&spin->counta, ovalue,
-					      ovalue + 1))
+			}
+			continue;
+		}
+		if (ovalue & SPINLOCK_SHARED) {
+			/*
+			 * Go for the increment, improving the exclusive
+			 * to multiple-readers transition.
+			 */
+			ovalue = atomic_fetchadd_int(&spin->counta, 1);
+			/* ovalue += 1; NOT NEEDED */
+			if (ovalue & SPINLOCK_SHARED)
 				break;
+			ovalue = atomic_fetchadd_int(&spin->counta, -1);
+			ovalue += -1;
+			continue;
 		}
 		if (indefinite_check(&info))
 			break;
+		/*
+		 * ovalue was wrong anyway, just reload
+		 */
+		ovalue = spin->counta;
 	}
 	indefinite_done(&info);
 }
