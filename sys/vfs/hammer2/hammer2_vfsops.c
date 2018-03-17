@@ -214,6 +214,7 @@ static void hammer2_update_pmps(hammer2_dev_t *hmp);
 static void hammer2_mount_helper(struct mount *mp, hammer2_pfs_t *pmp);
 static void hammer2_unmount_helper(struct mount *mp, hammer2_pfs_t *pmp,
 				hammer2_dev_t *hmp);
+static int hammer2_fixup_pfses(hammer2_dev_t *hmp);
 
 /*
  * HAMMER2 vfs operations.
@@ -1199,8 +1200,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		 * confused.
 		 */
 		hmp->spmp = hammer2_pfsalloc(NULL, NULL, 0, NULL);
-		kprintf("alloc spmp %p tid %016jx\n",
-			hmp->spmp, hmp->voldata.mirror_tid);
 		spmp = hmp->spmp;
 
 		/*
@@ -1285,6 +1284,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 
 		if ((mp->mnt_flag & MNT_RDONLY) == 0) {
 			error = hammer2_recovery(hmp);
+			if (error == 0)
+				error |= hammer2_fixup_pfses(hmp);
 			/* XXX do something with error */
 		}
 		hammer2_update_pmps(hmp);
@@ -2144,6 +2145,7 @@ hammer2_recovery(hammer2_dev_t *hmp)
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);	/* drop elm->chain ref */
 	}
+
 	hammer2_trans_done(hmp->spmp);
 
 	return error;
@@ -2291,6 +2293,75 @@ hammer2_recovery_scan(hammer2_dev_t *hmp, hammer2_chain_t *parent,
 		rup_error |= tmp_error;
 	}
 	return ((error | rup_error) & ~HAMMER2_ERROR_EOF);
+}
+
+/*
+ * This fixes up an error introduced in earlier H2 implementations where
+ * moving a PFS inode into an indirect block wound up causing the
+ * HAMMER2_BREF_FLAG_PFSROOT flag in the bref to get cleared.
+ */
+static
+int
+hammer2_fixup_pfses(hammer2_dev_t *hmp)
+{
+	const hammer2_inode_data_t *ripdata;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_key_t key_next;
+	hammer2_pfs_t *spmp;
+	int error;
+
+	error = 0;
+
+	/*
+	 * Lookup mount point under the media-localized super-root.
+	 *
+	 * cluster->pmp will incorrectly point to spmp and must be fixed
+	 * up later on.
+	 */
+	spmp = hmp->spmp;
+	hammer2_inode_lock(spmp->iroot, 0);
+	parent = hammer2_inode_chain(spmp->iroot, 0, HAMMER2_RESOLVE_ALWAYS);
+	chain = hammer2_chain_lookup(&parent, &key_next,
+					 HAMMER2_KEY_MIN, HAMMER2_KEY_MAX,
+					 &error, 0);
+	while (chain) {
+		if (chain->bref.type != HAMMER2_BREF_TYPE_INODE)
+			continue;
+		if (chain->error) {
+			kprintf("I/O error scanning PFS labels\n");
+			error |= chain->error;
+		} else if ((chain->bref.flags &
+			    HAMMER2_BREF_FLAG_PFSROOT) == 0) {
+			int error2;
+
+			ripdata = &chain->data->ipdata;
+			hammer2_trans_init(hmp->spmp, 0);
+			error2 = hammer2_chain_modify(chain,
+						      chain->bref.modify_tid,
+						      0, 0);
+			if (error2 == 0) {
+				kprintf("hammer2: Correct mis-flagged PFS %s\n",
+					ripdata->filename);
+				chain->bref.flags |= HAMMER2_BREF_FLAG_PFSROOT;
+			} else {
+				error |= error2;
+			}
+			hammer2_flush(chain, HAMMER2_FLUSH_TOP |
+					     HAMMER2_FLUSH_ALL);
+			hammer2_trans_done(hmp->spmp);
+		}
+		chain = hammer2_chain_next(&parent, chain, &key_next,
+					   key_next, HAMMER2_KEY_MAX,
+					   &error, 0);
+	}
+	if (parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+	}
+	hammer2_inode_unlock(spmp->iroot);
+
+	return error;
 }
 
 /*
