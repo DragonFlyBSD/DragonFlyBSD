@@ -38,20 +38,15 @@
  *	@(#)bpf.c	7.5 (Berkeley) 7/15/91
  */
 
-#if !(defined(lint) || defined(KERNEL) || defined(_KERNEL))
-static const char rcsid[] _U_ =
-    "@(#) $Header: /tcpdump/master/libpcap/bpf/net/bpf_filter.c,v 1.46 2008-01-02 04:16:46 guy Exp $ (LBL)";
-#endif
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
-#ifdef WIN32
+#ifdef _WIN32
 
 #include <pcap-stdinc.h>
 
-#else /* WIN32 */
+#else /* _WIN32 */
 
 #if HAVE_INTTYPES_H
 #include <inttypes.h>
@@ -78,7 +73,7 @@ static const char rcsid[] _U_ =
 # define	MLEN(m)	((m)->m_len)
 #endif /* defined(__hpux) || SOLARIS */
 
-#endif /* WIN32 */
+#endif /* _WIN32 */
 
 #include <pcap/bpf.h>
 
@@ -104,7 +99,7 @@ static const char rcsid[] _U_ =
 #endif
 
 #ifndef LBL_ALIGN
-#ifndef WIN32
+#ifndef _WIN32
 #include <netinet/in.h>
 #endif
 
@@ -200,23 +195,41 @@ m_xhalf(m, k, err)
 }
 #endif
 
+#ifdef __linux__
+#include <linux/types.h>
+#include <linux/if_packet.h>
+#include <linux/filter.h>
+#endif
+
+enum {
+        BPF_S_ANC_NONE,
+        BPF_S_ANC_VLAN_TAG,
+        BPF_S_ANC_VLAN_TAG_PRESENT,
+};
+
 /*
  * Execute the filter program starting at pc on the packet p
  * wirelen is the length of the original packet
  * buflen is the amount of data present
+ * aux_data is auxiliary data, currently used only when interpreting
+ * filters intended for the Linux kernel in cases where the kernel
+ * rejects the filter; it contains VLAN tag information
  * For the kernel, p is assumed to be a pointer to an mbuf if buflen is 0,
  * in all other cases, p is a pointer to a buffer and buflen is its size.
+ *
+ * Thanks to Ani Sinha <ani@arista.com> for providing initial implementation
  */
 u_int
-bpf_filter(pc, p, wirelen, buflen)
+bpf_filter_with_aux_data(pc, p, wirelen, buflen, aux_data)
 	register const struct bpf_insn *pc;
 	register const u_char *p;
 	u_int wirelen;
 	register u_int buflen;
+	register const struct bpf_aux_data *aux_data;
 {
 	register u_int32 A, X;
-	register int k;
-	int32 mem[BPF_MEMWORDS];
+	register bpf_u_int32 k;
+	u_int32 mem[BPF_MEMWORDS];
 #if defined(KERNEL) || defined(_KERNEL)
 	struct mbuf *m, *n;
 	int merr, len;
@@ -255,7 +268,7 @@ bpf_filter(pc, p, wirelen, buflen)
 
 		case BPF_LD|BPF_W|BPF_ABS:
 			k = pc->k;
-			if (k + sizeof(int32) > buflen) {
+			if (k > buflen || sizeof(int32_t) > buflen - k) {
 #if defined(KERNEL) || defined(_KERNEL)
 				if (m == NULL)
 					return 0;
@@ -272,7 +285,7 @@ bpf_filter(pc, p, wirelen, buflen)
 
 		case BPF_LD|BPF_H|BPF_ABS:
 			k = pc->k;
-			if (k + sizeof(short) > buflen) {
+			if (k > buflen || sizeof(int16_t) > buflen - k) {
 #if defined(KERNEL) || defined(_KERNEL)
 				if (m == NULL)
 					return 0;
@@ -288,22 +301,50 @@ bpf_filter(pc, p, wirelen, buflen)
 			continue;
 
 		case BPF_LD|BPF_B|BPF_ABS:
-			k = pc->k;
-			if (k >= buflen) {
-#if defined(KERNEL) || defined(_KERNEL)
-				if (m == NULL)
-					return 0;
-				n = m;
-				MINDEX(len, n, k);
-				A = mtod(n, u_char *)[k];
-				continue;
-#else
-				return 0;
-#endif
-			}
-			A = p[k];
-			continue;
+			{
+#if defined(SKF_AD_VLAN_TAG) && defined(SKF_AD_VLAN_TAG_PRESENT)
+				int code = BPF_S_ANC_NONE;
+#define ANCILLARY(CODE) case SKF_AD_OFF + SKF_AD_##CODE:		\
+				code = BPF_S_ANC_##CODE;		\
+                                        if (!aux_data)                  \
+                                                return 0;               \
+                                        break;
 
+				switch (pc->k) {
+					ANCILLARY(VLAN_TAG);
+					ANCILLARY(VLAN_TAG_PRESENT);
+				default :
+#endif
+					k = pc->k;
+					if (k >= buflen) {
+#if defined(KERNEL) || defined(_KERNEL)
+						if (m == NULL)
+							return 0;
+						n = m;
+						MINDEX(len, n, k);
+						A = mtod(n, u_char *)[k];
+						continue;
+#else
+						return 0;
+#endif
+					}
+					A = p[k];
+#if defined(SKF_AD_VLAN_TAG) && defined(SKF_AD_VLAN_TAG_PRESENT)
+				}
+				switch (code) {
+				case BPF_S_ANC_VLAN_TAG:
+					if (aux_data)
+						A = aux_data->vlan_tag;
+					break;
+
+				case BPF_S_ANC_VLAN_TAG_PRESENT:
+					if (aux_data)
+						A = aux_data->vlan_tag_present;
+					break;
+				}
+#endif
+				continue;
+			}
 		case BPF_LD|BPF_W|BPF_LEN:
 			A = wirelen;
 			continue;
@@ -314,7 +355,8 @@ bpf_filter(pc, p, wirelen, buflen)
 
 		case BPF_LD|BPF_W|BPF_IND:
 			k = X + pc->k;
-			if (k + sizeof(int32) > buflen) {
+			if (pc->k > buflen || X > buflen - pc->k ||
+			    sizeof(int32_t) > buflen - k) {
 #if defined(KERNEL) || defined(_KERNEL)
 				if (m == NULL)
 					return 0;
@@ -331,7 +373,8 @@ bpf_filter(pc, p, wirelen, buflen)
 
 		case BPF_LD|BPF_H|BPF_IND:
 			k = X + pc->k;
-			if (k + sizeof(short) > buflen) {
+			if (X > buflen || pc->k > buflen - X ||
+			    sizeof(int16_t) > buflen - k) {
 #if defined(KERNEL) || defined(_KERNEL)
 				if (m == NULL)
 					return 0;
@@ -348,7 +391,7 @@ bpf_filter(pc, p, wirelen, buflen)
 
 		case BPF_LD|BPF_B|BPF_IND:
 			k = X + pc->k;
-			if (k >= buflen) {
+			if (pc->k >= buflen || X >= buflen - pc->k) {
 #if defined(KERNEL) || defined(_KERNEL)
 				if (m == NULL)
 					return 0;
@@ -469,12 +512,22 @@ bpf_filter(pc, p, wirelen, buflen)
 			A /= X;
 			continue;
 
+		case BPF_ALU|BPF_MOD|BPF_X:
+			if (X == 0)
+				return 0;
+			A %= X;
+			continue;
+
 		case BPF_ALU|BPF_AND|BPF_X:
 			A &= X;
 			continue;
 
 		case BPF_ALU|BPF_OR|BPF_X:
 			A |= X;
+			continue;
+
+		case BPF_ALU|BPF_XOR|BPF_X:
+			A ^= X;
 			continue;
 
 		case BPF_ALU|BPF_LSH|BPF_X:
@@ -501,12 +554,20 @@ bpf_filter(pc, p, wirelen, buflen)
 			A /= pc->k;
 			continue;
 
+		case BPF_ALU|BPF_MOD|BPF_K:
+			A %= pc->k;
+			continue;
+
 		case BPF_ALU|BPF_AND|BPF_K:
 			A &= pc->k;
 			continue;
 
 		case BPF_ALU|BPF_OR|BPF_K:
 			A |= pc->k;
+			continue;
+
+		case BPF_ALU|BPF_XOR|BPF_K:
+			A ^= pc->k;
 			continue;
 
 		case BPF_ALU|BPF_LSH|BPF_K:
@@ -518,7 +579,12 @@ bpf_filter(pc, p, wirelen, buflen)
 			continue;
 
 		case BPF_ALU|BPF_NEG:
-			A = -A;
+			/*
+			 * Most BPF arithmetic is unsigned, but negation
+			 * can't be unsigned; throw some casts to
+			 * specify what we're trying to do.
+			 */
+			A = (u_int32)(-(int32)A);
 			continue;
 
 		case BPF_MISC|BPF_TAX:
@@ -531,6 +597,17 @@ bpf_filter(pc, p, wirelen, buflen)
 		}
 	}
 }
+
+u_int
+bpf_filter(pc, p, wirelen, buflen)
+	register const struct bpf_insn *pc;
+	register const u_char *p;
+	u_int wirelen;
+	register u_int buflen;
+{
+	return bpf_filter_with_aux_data(pc, p, wirelen, buflen, NULL);
+}
+
 
 /*
  * Return true if the 'fcode' is a valid filter program.
@@ -561,7 +638,7 @@ bpf_validate(f, len)
 		return 0;
 #endif
 
-	for (i = 0; i < len; ++i) {
+	for (i = 0; i < (u_int)len; ++i) {
 		p = &f[i];
 		switch (BPF_CLASS(p->code)) {
 		/*
@@ -611,13 +688,16 @@ bpf_validate(f, len)
 			case BPF_MUL:
 			case BPF_OR:
 			case BPF_AND:
+			case BPF_XOR:
 			case BPF_LSH:
 			case BPF_RSH:
 			case BPF_NEG:
 				break;
 			case BPF_DIV:
+			case BPF_MOD:
 				/*
-				 * Check for constant division by 0.
+				 * Check for constant division or modulus
+				 * by 0.
 				 */
 				if (BPF_SRC(p->code) == BPF_K && p->k == 0)
 					return 0;
@@ -659,7 +739,7 @@ bpf_validate(f, len)
 #if defined(KERNEL) || defined(_KERNEL)
 				if (from + p->k < from || from + p->k >= len)
 #else
-				if (from + p->k >= len)
+				if (from + p->k >= (u_int)len)
 #endif
 					return 0;
 				break;
@@ -667,7 +747,7 @@ bpf_validate(f, len)
 			case BPF_JGT:
 			case BPF_JGE:
 			case BPF_JSET:
-				if (from + p->jt >= len || from + p->jf >= len)
+				if (from + p->jt >= (u_int)len || from + p->jf >= (u_int)len)
 					return 0;
 				break;
 			default:
