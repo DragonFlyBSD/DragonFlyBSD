@@ -146,6 +146,7 @@ static int devfs_clr_related_flag_worker(cdev_t, uint32_t);
 static int devfs_destroy_related_without_flag_worker(cdev_t, uint32_t);
 
 static void *devfs_reaperp_callback(struct devfs_node *, void *);
+static void devfs_iterate_orphans_unmount(struct mount *mp);
 static void *devfs_gc_dirs_callback(struct devfs_node *, void *);
 static void *devfs_gc_links_callback(struct devfs_node *, struct devfs_node *);
 static void *
@@ -262,19 +263,28 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 	 * Associate with parent as last step, clean out namecache
 	 * reference.
 	 */
-	if ((parent != NULL) &&
-	    ((parent->node_type == Nroot) || (parent->node_type == Ndir))) {
-		parent->nchildren++;
-		node->cookie = parent->cookie_jar++;
-		node->flags |= DEVFS_NODE_LINKED;
-		TAILQ_INSERT_TAIL(DEVFS_DENODE_HEAD(parent), node, link);
+	if (parent) {
+		if (parent->node_type == Nroot ||
+		    parent->node_type == Ndir) {
+			parent->nchildren++;
+			node->cookie = parent->cookie_jar++;
+			node->flags |= DEVFS_NODE_LINKED;
+			TAILQ_INSERT_TAIL(DEVFS_DENODE_HEAD(parent), node, link);
 
-		/* This forces negative namecache lookups to clear */
-		++mp->mnt_namecache_gen;
+			/* This forces negative namecache lookups to clear */
+			++mp->mnt_namecache_gen;
+		} else {
+			kprintf("devfs: Cannot link node %p (%s) "
+				"into %p (%s)\n",
+				node, node->d_dir.d_name,
+				parent, parent->d_dir.d_name);
+			print_backtrace(-1);
+		}
 	}
 
 	/*
-	 * Apply rules (requires root node, skip if we are creating the root node)
+	 * Apply rules (requires root node, skip if we are creating the root
+	 * node)
 	 */
 	if (DEVFS_MNTDATA(mp)->root_node)
 		devfs_rule_check_apply(node, NULL);
@@ -414,8 +424,6 @@ devfs_freep(struct devfs_node *node)
 	int relock;
 
 	KKASSERT(node);
-	KKASSERT(((node->flags & DEVFS_NODE_LINKED) == 0) ||
-		 (node->node_type == Nroot));
 
 	/*
 	 * Protect against double frees
@@ -506,8 +514,9 @@ static void *devfs_alias_getvp(struct devfs_node *node)
 int
 devfs_unlinkp(struct devfs_node *node)
 {
-	struct vnode *vp;
 	struct devfs_node *parent;
+	struct devfs_node *target;
+	struct vnode *vp;
 	KKASSERT(node);
 
 	/*
@@ -517,17 +526,20 @@ devfs_unlinkp(struct devfs_node *node)
 	devfs_tracer_add_orphan(node);
 
 	parent = node->parent;
+	node->parent = NULL;
 
 	/*
 	 * If the parent is known we can unlink the node out of the topology
 	 */
-	if (parent)	{
-		TAILQ_REMOVE(DEVFS_DENODE_HEAD(parent), node, link);
-		parent->nchildren--;
+	if (node->flags & DEVFS_NODE_LINKED) {
+		if (parent) {
+			TAILQ_REMOVE(DEVFS_DENODE_HEAD(parent), node, link);
+			parent->nchildren--;
+		} else if (node == DEVFS_MNTDATA(node->mp)->root_node) {
+			DEVFS_MNTDATA(node->mp)->root_node = NULL;
+		}
 		node->flags &= ~DEVFS_NODE_LINKED;
 	}
-
-	node->parent = NULL;
 
 	/*
 	 * Namecache invalidation.
@@ -539,10 +551,18 @@ devfs_unlinkp(struct devfs_node *node)
 	 * expensive to resolve only the namecache entry of the alias node
 	 * from the information available in this function.
 	 */
-	if (node->node_type == Nlink)
-		vp = devfs_alias_getvp(node);
-	else
+	if (node->node_type == Nlink) {
+		if ((target = node->link_target) != NULL) {
+			vp = devfs_alias_getvp(node);
+			node->link_target = NULL;
+			target->nlinks--;
+		} else {
+			vp = NULL;
+		}
+	} else {
 		vp = node->v_node;
+		node->v_node = NULL;
+	}
 
 	if (vp != NULL)
 		cache_inval_vp(vp, CINV_DESTROY);
@@ -557,17 +577,17 @@ devfs_iterate_topology(struct devfs_node *node,
 	struct devfs_node *node1, *node2;
 	void *ret = NULL;
 
-	if ((node->node_type == Nroot) || (node->node_type == Ndir)) {
-		if (node->nchildren > 2) {
-			TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node),
-							link, node2) {
-				if ((ret = devfs_iterate_topology(node1, callback, arg1)))
-					return ret;
-			}
+	if (((node->node_type == Nroot) || (node->node_type == Ndir)) &&
+	    node->nchildren > 2) {
+		TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node),
+				      link, node2) {
+			ret = devfs_iterate_topology(node1, callback, arg1);
+			if (ret)
+				return ret;
 		}
 	}
-
 	ret = callback(node, arg1);
+
 	return ret;
 }
 
@@ -593,6 +613,21 @@ devfs_reaperp_callback(struct devfs_node *node, void *unused)
 	devfs_freep(node);
 
 	return NULL;
+}
+
+/*
+ * Report any orphans that we couldn't delete.  The mp and mnt_data
+ * are both disappearing, so we must also clean up the nodes a bit.
+ */
+static void
+devfs_iterate_orphans_unmount(struct mount *mp)
+{
+	struct devfs_orphan *orphan;
+
+	while ((orphan = TAILQ_FIRST(DEVFS_ORPHANLIST(mp))) != NULL) {
+		devfs_freep(orphan->node);
+		/* orphan stale */
+	}
 }
 
 static void *
@@ -1228,10 +1263,13 @@ devfs_msg_exec(devfs_msg_t msg)
 		mnt = msg->mdv_mnt;
 		TAILQ_REMOVE(&devfs_mnt_list, mnt, link);
 		/* Be sure to remove all the aliases first */
-		devfs_iterate_topology(mnt->root_node, devfs_alias_reaper_callback,
+		devfs_iterate_topology(mnt->root_node,
+				       devfs_alias_reaper_callback,
 				       NULL);
-		devfs_iterate_topology(mnt->root_node, devfs_reaperp_callback,
+		devfs_iterate_topology(mnt->root_node,
+				       devfs_reaperp_callback,
 				       NULL);
+		devfs_iterate_orphans_unmount(mnt->mp);
 		if (mnt->leak_count) {
 			devfs_debug(DEVFS_DEBUG_SHOW,
 				    "Leaked %ld devfs_node elements!\n",
