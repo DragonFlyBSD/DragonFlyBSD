@@ -417,7 +417,7 @@ devfs_allocvp(struct mount *mp, struct vnode **vpp, devfs_nodetype devfsnodetype
  * The core lock is not necessarily held on call and must be temporarily
  * released if it is to avoid a deadlock.
  */
-int
+void
 devfs_freep(struct devfs_node *node)
 {
 	struct vnode *vp;
@@ -426,14 +426,32 @@ devfs_freep(struct devfs_node *node)
 	KKASSERT(node);
 
 	/*
-	 * Protect against double frees
+	 * It is possible for devfs_freep() to race a destruction due
+	 * to having to release the lock below.  We use DEVFS_DESTROYED
+	 * to interlock the race.
 	 */
-	KKASSERT((node->flags & DEVFS_DESTROYED) == 0);
+	if (node->flags & DEVFS_DESTROYED) {
+		kprintf("devfs: race avoided node '%s'\n", node->d_dir.d_name);
+		return;
+	}
 	node->flags |= DEVFS_DESTROYED;
 
 	/*
+	 * Items we have to dispose of before potentially releasing
+	 * devfs_lock.
+	 *
+	 * Adjust leak_count.
+	 * Remove the node from the orphan list if it is still on it.
+	 */
+	atomic_subtract_long(&DEVFS_MNTDATA(node->mp)->leak_count, 1);
+	if (node->flags & DEVFS_ORPHANED)
+		devfs_tracer_del_orphan(node);
+	atomic_subtract_long(&DEVFS_MNTDATA(node->mp)->file_count, 1);
+
+	/*
 	 * Avoid deadlocks between devfs_lock and the vnode lock when
-	 * disassociating the vnode (stress2 pty vs ls -la /dev/pts).
+	 * disassociating the vnode (stress2 pty vs ls -la /dev/pts or
+	 * du -sh).
 	 *
 	 * This also prevents the vnode reclaim code from double-freeing
 	 * the node.  The vget() is required to safely modified the vp
@@ -455,32 +473,21 @@ devfs_freep(struct devfs_node *node)
 		vput(vp);
 	}
 
+	if (relock)
+		lockmgr(&devfs_lock, LK_EXCLUSIVE);
+
 	/*
 	 * Remaining cleanup
 	 */
-	atomic_subtract_long(&DEVFS_MNTDATA(node->mp)->leak_count, 1);
 	if (node->symlink_name)	{
 		kfree(node->symlink_name, M_DEVFS);
 		node->symlink_name = NULL;
 	}
-
-	/*
-	 * Remove the node from the orphan list if it is still on it.
-	 */
-	if (node->flags & DEVFS_ORPHANED)
-		devfs_tracer_del_orphan(node);
-
 	if (node->d_dir.d_name) {
 		kfree(node->d_dir.d_name, M_DEVFS);
 		node->d_dir.d_name = NULL;
 	}
-	atomic_subtract_long(&DEVFS_MNTDATA(node->mp)->file_count, 1);
 	objcache_put(devfs_node_cache, node);
-
-	if (relock)
-		lockmgr(&devfs_lock, LK_EXCLUSIVE);
-
-	return 0;
 }
 
 /*
@@ -511,7 +518,7 @@ static void *devfs_alias_getvp(struct devfs_node *node)
  * Any vnode association, including the v_rdev and v_data, remains intact
  * until the freep.
  */
-int
+void
 devfs_unlinkp(struct devfs_node *node)
 {
 	struct devfs_node *parent;
@@ -566,8 +573,6 @@ devfs_unlinkp(struct devfs_node *node)
 
 	if (vp != NULL)
 		cache_inval_vp(vp, CINV_DESTROY);
-
-	return 0;
 }
 
 void *

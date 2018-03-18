@@ -287,7 +287,7 @@ devfs_vop_reclaim(struct vop_reclaim_args *ap)
 
 	/*
 	 * Get rid of the devfs_node if it is no longer linked into the
-	 * topology.
+	 * topology.  Interlocked by devfs_lock.
 	 */
 	vp = ap->a_vp;
 	if ((node = DEVFS_NODE(vp)) != NULL) {

@@ -352,9 +352,8 @@ struct devfs_node *devfs_allocp(devfs_nodetype, char *, struct devfs_node *,
 int devfs_allocvp(struct mount *, struct vnode **, devfs_nodetype, char *,
 				struct devfs_node *, cdev_t);
 
-int devfs_freep(struct devfs_node *);
-
-int devfs_unlinkp(struct devfs_node *);
+void devfs_freep(struct devfs_node *);
+void devfs_unlinkp(struct devfs_node *);
 
 void devfs_tracer_add_orphan(struct devfs_node *);
 void devfs_tracer_del_orphan(struct devfs_node *);
