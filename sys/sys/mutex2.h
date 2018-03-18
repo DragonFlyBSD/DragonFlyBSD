@@ -298,7 +298,7 @@ mtx_lock_sh_try(mtx_t *mtx)
 static __inline void
 mtx_downgrade(mtx_t *mtx)
 {
-	globaldata_t gd = mycpu;
+	globaldata_t gd __debugvar = mycpu;
 
 	KKASSERT((mtx->mtx_lock & MTX_EXCLUSIVE) &&
 		  mtx->mtx_owner == gd->gd_curthread);
@@ -342,7 +342,7 @@ mtx_upgrade_try(mtx_t *mtx)
 static __inline void
 mtx_unlock(mtx_t *mtx)
 {
-	globaldata_t gd = mycpu;
+	globaldata_t gd __debugvar = mycpu;
 	u_int lock = mtx->mtx_lock;
 
 	KKASSERT((mtx->mtx_lock & MTX_EXCLUSIVE) == 0 ||
@@ -362,7 +362,7 @@ mtx_unlock(mtx_t *mtx)
 static __inline void
 mtx_unlock_ex(mtx_t *mtx)
 {
-	globaldata_t gd = mycpu;
+	globaldata_t gd __debugvar = mycpu;
 	u_int lock = mtx->mtx_lock;
 
 	KKASSERT((mtx->mtx_lock & MTX_EXCLUSIVE) == 0 ||
