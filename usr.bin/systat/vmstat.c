@@ -597,7 +597,7 @@ showkre(void)
 	}
 
 	put64(s.bufspace, VMSTATROW + 13, VMSTATCOL, 7, 0);
-	put64(s.dirtybufspace/1024, VMSTATROW + 14, VMSTATCOL, 7, 'k');
+	put64(s.dirtybufspace/1024, VMSTATROW + 14, VMSTATCOL, 7, 'K');
 	put64(s.activevnodes, VMSTATROW + 15, VMSTATCOL, 7, 'D');
 	put64(s.cachedvnodes, VMSTATROW + 16, VMSTATCOL, 7, 'D');
 	put64(s.inactivevnodes, VMSTATROW + 17, VMSTATCOL, 7, 'D');
