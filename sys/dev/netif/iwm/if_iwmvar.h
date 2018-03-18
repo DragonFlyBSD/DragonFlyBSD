@@ -433,6 +433,7 @@ struct iwm_softc {
 #define IWM_FLAG_BUSY		(1 << 4)
 #define IWM_FLAG_SCANNING	(1 << 5)
 #define IWM_FLAG_SCAN_RUNNING	(1 << 6)
+#define IWM_FLAG_TE_ACTIVE	(1 << 7)
 
 	struct intr_config_hook sc_preinit_hook;
 	struct callout		sc_watchdog_to;
@@ -561,6 +562,9 @@ struct iwm_softc {
 
 	/* Track firmware state for STA association. */
 	int			sc_firmware_state;
+
+	/* Unique ID (assigned by the firmware) of the current Time Event. */
+	uint32_t		sc_time_event_uid;
 };
 
 #define IWM_LOCK_INIT(_sc) \
