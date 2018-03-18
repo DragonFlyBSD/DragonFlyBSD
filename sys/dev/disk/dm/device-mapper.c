@@ -584,7 +584,12 @@ dmsetdiskinfo(struct disk *disk, dm_table_head_t *head)
 	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
 	info.d_ncylinders = dmp_size / info.d_secpercyl;
 
+	/*
+	 * The probe is asynchronous so call disk_config() to
+	 * wait for it to complete.
+	 */
 	disk_setdiskinfo(disk, &info);
+	disk_config(NULL);
 }
 
 /*
