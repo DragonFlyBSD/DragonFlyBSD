@@ -623,9 +623,9 @@ udev_dev_close(struct dev_close_args *ap)
 	KKASSERT(softc->dev == ap->a_head.a_dev);
 	KKASSERT(softc->opened == 1);
 
+	destroy_dev(ap->a_head.a_dev);
 	lockmgr(&udev_lk, LK_EXCLUSIVE);
 	TAILQ_REMOVE(&udevq, softc, entry);
-	devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(udev), softc->unit);
 
 	if (softc->initiated) {
 		TAILQ_REMOVE(&udev_evq, &softc->marker, link);
@@ -639,7 +639,12 @@ udev_dev_close(struct dev_close_args *ap)
 	--udev_open_count;
 	lockmgr(&udev_lk, LK_RELEASE);
 
-	destroy_dev(ap->a_head.a_dev);
+	/*
+	 * WARNING! devfs_clone_bitmap_put() interacts with the devfs
+	 *	    thread, avoid deadlocks by ensuring we are unlocked
+	 *	    before calling.
+	 */
+	devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(udev), softc->unit);
 	wakeup(&udev_evq);
 
 	kfree(softc, M_UDEV);
