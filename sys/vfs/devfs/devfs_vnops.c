@@ -290,8 +290,12 @@ devfs_vop_reclaim(struct vop_reclaim_args *ap)
 	 * topology.  Interlocked by devfs_lock.
 	 */
 	vp = ap->a_vp;
-	if ((node = DEVFS_NODE(vp)) != NULL) {
-		node->v_node = NULL;
+	node = DEVFS_NODE(vp);
+	vp->v_data = NULL;
+	node->v_node = NULL;
+	v_release_rdev(vp);
+
+	if (node) {
 		if ((node->flags & DEVFS_NODE_LINKED) == 0)
 			devfs_freep(node);
 	}
@@ -303,8 +307,6 @@ devfs_vop_reclaim(struct vop_reclaim_args *ap)
 	 * v_rdev needs to be properly released using v_release_rdev
 	 * Make sure v_data is NULL as well.
 	 */
-	vp->v_data = NULL;
-	v_release_rdev(vp);
 	return 0;
 }
 

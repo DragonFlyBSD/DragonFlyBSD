@@ -421,17 +421,34 @@ void
 devfs_freep(struct devfs_node *node)
 {
 	struct vnode *vp;
-	int relock;
 
 	KKASSERT(node);
 
 	/*
 	 * It is possible for devfs_freep() to race a destruction due
 	 * to having to release the lock below.  We use DEVFS_DESTROYED
-	 * to interlock the race.
+	 * to interlock the race (mediated by devfs_lock)
+	 *
+	 * We use NLINKSWAIT to indicate that the node couldn't be
+	 * freed due to having pending nlinks.  We can free
+	 * the node when nlinks drops to 0.  This should never print
+	 * a "(null)" name, if it ever does there are still unresolved
+	 * issues.
 	 */
 	if (node->flags & DEVFS_DESTROYED) {
-		kprintf("devfs: race avoided node '%s'\n", node->d_dir.d_name);
+		if ((node->flags & DEVFS_NLINKSWAIT) &&
+		    node->nlinks == 0) {
+			kprintf("devfs: final node '%s' on nlinks\n",
+				node->d_dir.d_name);
+			if (node->d_dir.d_name) {
+				kfree(node->d_dir.d_name, M_DEVFS);
+				node->d_dir.d_name = NULL;
+			}
+			objcache_put(devfs_node_cache, node);
+		} else {
+			kprintf("devfs: race avoided node '%s'\n",
+				node->d_dir.d_name);
+		}
 		return;
 	}
 	node->flags |= DEVFS_DESTROYED;
@@ -440,41 +457,50 @@ devfs_freep(struct devfs_node *node)
 	 * Items we have to dispose of before potentially releasing
 	 * devfs_lock.
 	 *
-	 * Adjust leak_count.
 	 * Remove the node from the orphan list if it is still on it.
 	 */
 	atomic_subtract_long(&DEVFS_MNTDATA(node->mp)->leak_count, 1);
+	atomic_subtract_long(&DEVFS_MNTDATA(node->mp)->file_count, 1);
 	if (node->flags & DEVFS_ORPHANED)
 		devfs_tracer_del_orphan(node);
-	atomic_subtract_long(&DEVFS_MNTDATA(node->mp)->file_count, 1);
 
 	/*
-	 * Avoid deadlocks between devfs_lock and the vnode lock when
-	 * disassociating the vnode (stress2 pty vs ls -la /dev/pts or
-	 * du -sh).
+	 * At this point only the vp points to node, and node cannot be
+	 * physically freed because we own DEVFS_DESTROYED.
+	 *
+	 * We must dispose of the vnode without deadlocking or racing
+	 * against e.g. a vnode reclaim.
 	 *
 	 * This also prevents the vnode reclaim code from double-freeing
 	 * the node.  The vget() is required to safely modified the vp
 	 * and cycle the refs to terminate an inactive vp.
 	 */
-	if (lockstatus(&devfs_lock, curthread) == LK_EXCLUSIVE) {
-		lockmgr(&devfs_lock, LK_RELEASE);
-		relock = 1;
-	} else {
-		relock = 0;
-	}
-
 	while ((vp = node->v_node) != NULL) {
-		if (vget(vp, LK_EXCLUSIVE | LK_RETRY) != 0)
-			break;
-		v_release_rdev(vp);
-		vp->v_data = NULL;
-		node->v_node = NULL;
-		vput(vp);
-	}
+		int relock;
 
-	if (relock)
-		lockmgr(&devfs_lock, LK_EXCLUSIVE);
+		vref(vp);
+		if (lockstatus(&devfs_lock, curthread) == LK_EXCLUSIVE) {
+			lockmgr(&devfs_lock, LK_RELEASE);
+			relock = 1;
+		} else {
+			relock = 0;
+		}
+		if (node->v_node == NULL) {
+			/* reclaim race, mediated by devfs_lock */
+			vrele(vp);
+		} else if (vget(vp, LK_EXCLUSIVE | LK_RETRY) == 0) {
+			vrele(vp);
+			v_release_rdev(vp);
+			vp->v_data = NULL;
+			node->v_node = NULL;
+			vput(vp);
+		} else {
+			/* reclaim race, mediated by devfs_lock */
+			vrele(vp);
+		}
+		if (relock)
+			lockmgr(&devfs_lock, LK_EXCLUSIVE);
+	}
 
 	/*
 	 * Remaining cleanup
@@ -483,11 +509,20 @@ devfs_freep(struct devfs_node *node)
 		kfree(node->symlink_name, M_DEVFS);
 		node->symlink_name = NULL;
 	}
-	if (node->d_dir.d_name) {
-		kfree(node->d_dir.d_name, M_DEVFS);
-		node->d_dir.d_name = NULL;
+
+	/*
+	 * We cannot actually free the node if it still has
+	 * nlinks.
+	 */
+	if (node->nlinks) {
+		node->flags |= DEVFS_NLINKSWAIT;
+	} else {
+		if (node->d_dir.d_name) {
+			kfree(node->d_dir.d_name, M_DEVFS);
+			node->d_dir.d_name = NULL;
+		}
+		objcache_put(devfs_node_cache, node);
 	}
-	objcache_put(devfs_node_cache, node);
 }
 
 /*
@@ -563,6 +598,10 @@ devfs_unlinkp(struct devfs_node *node)
 			vp = devfs_alias_getvp(node);
 			node->link_target = NULL;
 			target->nlinks--;
+			if (target->nlinks == 0 &&
+			    (target->flags & DEVFS_DESTROYED)) {
+				devfs_freep(target);
+			}
 		} else {
 			vp = NULL;
 		}

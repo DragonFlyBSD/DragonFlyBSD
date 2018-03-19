@@ -90,7 +90,7 @@ struct devfs_node {
 	struct devfs_node *parent;	/* parent of this node */
 	devfs_nodetype	node_type;	/* devfs node type */
 
-	u_int64_t	refs;		/* number of open references */
+	u_int64_t	refs;		/* currently unused */
 	size_t		nchildren;	/* number of children of a parent */
 	u_int64_t	cookie_jar;	/* cookie pool for children */
 	u_int64_t	cookie;		/* directory entry cookie for readdir */
@@ -308,9 +308,10 @@ typedef void* (devfs_iterate_callback_t)(struct devfs_node *, void *);
 #define DEVFS_HIDDEN			0x010	/* Makes node inaccessible */
 #define DEVFS_INVISIBLE			0x020	/* Makes node invisible */
 #define	DEVFS_PTY			0x040	/* PTY device */
-#define DEVFS_DESTROYED			0x080	/* Sanity check */
+#define DEVFS_DESTROYED			0x080	/* Destroy attempt */
 #define DEVFS_RULE_CREATED		0x100	/* Node was rule-created */
 #define DEVFS_RULE_HIDDEN		0x200	/* Node was hidden by a rule */
+#define DEVFS_NLINKSWAIT		0x400	/* NLinks final */
 
 /*
  * Clone helper stuff
