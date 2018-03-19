@@ -98,6 +98,23 @@ static driver_t atkbdc_driver = {
 
 static struct isa_pnp_id atkbdc_ids[] = {
 	{ 0x0303d041, "Keyboard controller (i8042)" },	/* PNP0303 */
+	{ 0x0703d041, "Keyboard controller (i8042)" },	/* PNP0307 */
+	{ 0x0b03d041, "Keyboard controller (i8042)" },	/* PNP030B */
+	/* Japanese */
+	{ 0x2003d041, "Keyboard controller (i8042)" },	/* PNP0320 */
+	{ 0x2103d041, "Keyboard controller (i8042)" },	/* PNP0321 */
+	{ 0x2203d041, "Keyboard controller (i8042)" },	/* PNP0322 */
+	{ 0x2303d041, "Keyboard controller (i8042)" },	/* PNP0323 */
+	{ 0x2403d041, "Keyboard controller (i8042)" },	/* PNP0324 */
+	{ 0x2503d041, "Keyboard controller (i8042)" },	/* PNP0325 */
+	{ 0x2603d041, "Keyboard controller (i8042)" },	/* PNP0326 */
+	{ 0x2703d041, "Keyboard controller (i8042)" },	/* PNP0327 */
+	/* Korean */
+	{ 0x4003d041, "Keyboard controller (i8042)" },	/* PNP0340 */
+	{ 0x4103d041, "Keyboard controller (i8042)" },	/* PNP0341 */
+	{ 0x4203d041, "Keyboard controller (i8042)" },	/* PNP0342 */
+	{ 0x4303d041, "Keyboard controller (i8042)" },	/* PNP0343 */
+	{ 0x4403d041, "Keyboard controller (i8042)" },	/* PNP0344 */
 	{ 0 }
 };
 
