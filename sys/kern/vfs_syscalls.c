@@ -643,7 +643,7 @@ out:
 	if (error == 0) {
 		mount_hold(mp);
 		nlookup_done(&nd);
-		error = dounmount(mp, uap->flags);
+		error = dounmount(mp, uap->flags, 0);
 		mount_drop(mp);
 	} else {
 		nlookup_done(&nd);
@@ -684,9 +684,15 @@ unmount_allproc_cb(struct proc *p, void *arg)
  * The guts of the unmount code.  The mount owns one ref and one hold
  * count.  If we successfully interlock the unmount, those refs are ours.
  * (The ref is from mnt_ncmountpt).
+ *
+ * When halting we shortcut certain mount types such as devfs by not actually
+ * issuing the VFS_SYNC() or VFS_UNMOUNT().  They are still disconnected
+ * from the mountlist so higher-level filesytems can unmount cleanly.
+ *
+ * The mount types that allow QUICKHALT are: devfs, tmpfs, procfs.
  */
 int
-dounmount(struct mount *mp, int flags)
+dounmount(struct mount *mp, int flags, int halting)
 {
 	struct namecache *ncp;
 	struct nchandle nch;
@@ -696,8 +702,21 @@ dounmount(struct mount *mp, int flags)
 	int lflags;
 	int freeok = 1;
 	int retry;
+	int quickhalt;
 
 	lwkt_gettoken(&mp->mnt_token);
+
+	/*
+	 * When halting, certain mount points can essentially just
+	 * be unhooked and otherwise ignored.
+	 */
+	if (halting && (mp->mnt_kern_flag & MNTK_QUICKHALT)) {
+		quickhalt = 1;
+		freeok = 0;
+	} else {
+		quickhalt = 0;
+	}
+
 
 	/*
 	 * Exclusive access for unmounting purposes.
@@ -782,8 +801,11 @@ dounmount(struct mount *mp, int flags)
 		atomic_set_int(&vp->v_refcnt, VREF_FINALIZE);
 		vrele(vp);
 	}
-	if ((mp->mnt_flag & MNT_RDONLY) == 0)
-		VFS_SYNC(mp, MNT_WAIT);
+
+	if (quickhalt == 0) {
+		if ((mp->mnt_flag & MNT_RDONLY) == 0)
+			VFS_SYNC(mp, MNT_WAIT);
+	}
 
 	/*
 	 * nchandle records ref the mount structure.  Expect a count of 1
@@ -817,7 +839,7 @@ dounmount(struct mount *mp, int flags)
 	 * So far so good, sync the filesystem once more and
 	 * call the VFS unmount code if the sync succeeds.
 	 */
-	if (error == 0) {
+	if (error == 0 && quickhalt == 0) {
 		if (mp->mnt_flag & MNT_RDONLY) {
 			error = VFS_UNMOUNT(mp, flags);
 		} else {
@@ -882,7 +904,12 @@ dounmount(struct mount *mp, int flags)
 	}
 
 	mp->mnt_vfc->vfc_refcount--;
-	if (!TAILQ_EMPTY(&mp->mnt_nvnodelist))
+
+	/*
+	 * If not quickhalting the mount, we expect there to be no
+	 * vnodes left.
+	 */
+	if (quickhalt == 0 && !TAILQ_EMPTY(&mp->mnt_nvnodelist))
 		panic("unmount: dangling vnode");
 
 	/*

@@ -1055,7 +1055,7 @@ puffs_sop_thread(void *arg)
 	 * is eventually completed.
 	 */
 	if (unmountme) {
-		(void)dounmount(mp, MNT_FORCE);
+		dounmount(mp, MNT_FORCE, 0);
 	}
 
 	kthread_exit();
@@ -1104,7 +1104,7 @@ puffs_msgif_close(void *this)
 	lockmgr(&pmp->pmp_lock, LK_RELEASE);
 
 	/* Detach from VFS. */
-	(void)dounmount(mp, MNT_FORCE);
+	dounmount(mp, MNT_FORCE, 0);
 
 	return 0;
 }

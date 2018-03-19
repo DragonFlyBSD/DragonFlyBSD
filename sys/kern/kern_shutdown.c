@@ -376,7 +376,7 @@ boot(int howto)
 			 * Unmount filesystems
 			 */
 			if (panicstr == NULL)
-				vfs_unmountall();
+				vfs_unmountall(1);
 		}
 		tsleep(boot, 0, "shutdn", hz / 10 + 1);
 	}

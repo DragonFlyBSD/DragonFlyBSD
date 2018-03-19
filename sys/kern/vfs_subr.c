@@ -1869,13 +1869,13 @@ vfs_mountedon(struct vnode *vp)
 static int vfs_umountall_callback(struct mount *mp, void *data);
 
 void
-vfs_unmountall(void)
+vfs_unmountall(int halting)
 {
 	int count;
 
 	do {
-		count = mountlist_scan(vfs_umountall_callback, 
-					NULL, MNTSCAN_REVERSE|MNTSCAN_NOBUSY);
+		count = mountlist_scan(vfs_umountall_callback, &halting,
+				       MNTSCAN_REVERSE|MNTSCAN_NOBUSY);
 	} while (count);
 }
 
@@ -1884,8 +1884,13 @@ int
 vfs_umountall_callback(struct mount *mp, void *data)
 {
 	int error;
+	int halting = *(int *)data;
 
-	error = dounmount(mp, MNT_FORCE);
+	/*
+	 * NOTE: When halting, dounmount will disconnect but leave
+	 *	 certain mount points intact.  e.g. devfs.
+	 */
+	error = dounmount(mp, MNT_FORCE, halting);
 	if (error) {
 		kprintf("unmount of filesystem mounted from %s failed (", 
 			mp->mnt_stat.f_mntfromname);

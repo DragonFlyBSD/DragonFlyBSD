@@ -126,7 +126,7 @@ nfs_clientd(struct nfsmount *nmp, struct ucred *cred, struct nfsd_cargs *ncd,
 		    error = tsleep((caddr_t)&nmp->nm_authstr, PCATCH,
 			"nqnfstimr", hz / 3);
 		    if (error == EINTR || error == ERESTART)
-			(void) dounmount(nmp->nm_mountp, 0);
+			(void) dounmount(nmp->nm_mountp, 0, 0);
 	    }
 	}
 

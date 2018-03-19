@@ -77,6 +77,7 @@ procfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 
 	mp->mnt_flag |= MNT_LOCAL;
 	mp->mnt_kern_flag |= MNTK_NOSTKMNT;
+	mp->mnt_kern_flag |= MNTK_QUICKHALT;   /* no teardown needed on halt */
 	mp->mnt_data = NULL;
 	vfs_getnewfsid(mp);
 

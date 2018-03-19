@@ -339,6 +339,7 @@ struct mount {
  * MNTK_NOSTKMNT prevents mounting another filesystem inside the flagged one.
  */
 #define MNTK_UNMOUNTF	0x00000001	/* forced unmount in progress */
+#define MNTK_QUICKHALT	0x00008000	/* quick unmount on halt */
 #define MNTK_MPSAFE	0x00010000	/* call vops without mnt_token lock */
 #define MNTK_RD_MPSAFE	0x00020000	/* vop_read is MPSAFE */
 #define MNTK_WR_MPSAFE	0x00040000	/* vop_write is MPSAFE */
@@ -714,7 +715,7 @@ struct netexport {
  */
 void	mount_hold(struct mount *);
 void	mount_drop(struct mount *);
-int	dounmount (struct mount *, int);
+int	dounmount (struct mount *, int, int);
 int	vfs_setpublicfs			    /* set publicly exported fs */
 	  (struct mount *, struct netexport *, const struct export_args *);
 int	vfs_lock (struct mount *);         /* lock a vfs */
@@ -734,7 +735,7 @@ int	vfs_modevent (module_t, int, void *);
 int	vfs_mountedon (struct vnode *);    /* is a vfs mounted on vp */
 int	vfs_rootmountalloc (char *, char *, struct mount **);
 void	vfs_unbusy (struct mount *);
-void	vfs_unmountall (void);
+void	vfs_unmountall (int halting);
 int	vfs_register (struct vfsconf *);
 int	vfs_unregister (struct vfsconf *);
 extern	struct nfs_public nfs_pub;

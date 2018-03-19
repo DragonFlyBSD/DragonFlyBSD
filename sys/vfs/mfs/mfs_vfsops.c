@@ -473,7 +473,7 @@ mfs_start(struct mount *mp, int flags)
 		 */
 		if (gotsig) {
 			gotsig = 0;
-			if (dounmount(mp, 0) != 0) {
+			if (dounmount(mp, 0, 0) != 0) {
 				KKASSERT(td->td_proc);
 				lwkt_gettoken(&td->td_proc->p_token);
 				sig = CURSIG(td->td_lwp);
