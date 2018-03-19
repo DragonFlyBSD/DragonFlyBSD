@@ -24,6 +24,7 @@ case "$daily_clean_hammer_enable" in
 		verbose=;;
 	esac
 
+	/usr/bin/lockf -k -t 0 /var/run/.daily.160.lck \
 	hammer $verbose cleanup $daily_clean_hammer_pfslist && rc=0;;
 
     *)  rc=0;;
