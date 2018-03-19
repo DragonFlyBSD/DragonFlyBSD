@@ -421,6 +421,7 @@ void
 devfs_freep(struct devfs_node *node)
 {
 	struct vnode *vp;
+	int maxloops;
 
 	KKASSERT(node);
 
@@ -446,8 +447,17 @@ devfs_freep(struct devfs_node *node)
 			}
 			objcache_put(devfs_node_cache, node);
 		} else {
-			kprintf("devfs: race avoided node '%s'\n",
-				node->d_dir.d_name);
+			kprintf("devfs: race avoided node '%s' (%p)\n",
+				node->d_dir.d_name, node);
+#if 0
+			if (lockstatus(&devfs_lock, curthread) == LK_EXCLUSIVE) {
+				lockmgr(&devfs_lock, LK_RELEASE);
+				Debugger("devfs1");
+				lockmgr(&devfs_lock, LK_EXCLUSIVE);
+			} else {
+				Debugger("devfs2");
+			}
+#endif
 		}
 		return;
 	}
@@ -475,10 +485,11 @@ devfs_freep(struct devfs_node *node)
 	 * the node.  The vget() is required to safely modified the vp
 	 * and cycle the refs to terminate an inactive vp.
 	 */
+	maxloops = 1000;
 	while ((vp = node->v_node) != NULL) {
 		int relock;
 
-		vref(vp);
+		vhold(vp);
 		if (lockstatus(&devfs_lock, curthread) == LK_EXCLUSIVE) {
 			lockmgr(&devfs_lock, LK_RELEASE);
 			relock = 1;
@@ -487,19 +498,23 @@ devfs_freep(struct devfs_node *node)
 		}
 		if (node->v_node == NULL) {
 			/* reclaim race, mediated by devfs_lock */
-			vrele(vp);
+			vdrop(vp);
 		} else if (vget(vp, LK_EXCLUSIVE | LK_RETRY) == 0) {
-			vrele(vp);
+			vdrop(vp);
 			v_release_rdev(vp);
 			vp->v_data = NULL;
 			node->v_node = NULL;
 			vput(vp);
 		} else {
 			/* reclaim race, mediated by devfs_lock */
-			vrele(vp);
+			vdrop(vp);
 		}
 		if (relock)
 			lockmgr(&devfs_lock, LK_EXCLUSIVE);
+		if (--maxloops == 0) {
+			kprintf("devfs_freep: livelock on node %p\n", node);
+			break;
+		}
 	}
 
 	/*
@@ -585,13 +600,18 @@ devfs_unlinkp(struct devfs_node *node)
 
 	/*
 	 * Namecache invalidation.
+	 *
 	 * devfs alias nodes are special: their v_node entry is always null
-	 * and they use the one from their link target.
-	 * We thus use the target node's vp to invalidate both alias and target
-	 * entries in the namecache.
+	 * and they use the one from their link target.  We thus use the
+	 * target node's vp to invalidate both alias and target entries in
+	 * the namecache.
+	 *
 	 * Doing so for the target is not necessary but it would be more
 	 * expensive to resolve only the namecache entry of the alias node
 	 * from the information available in this function.
+	 *
+	 * WARNING! We do not disassociate the vnode here.  That can only
+	 *	    be safely done in devfs_freep().
 	 */
 	if (node->node_type == Nlink) {
 		if ((target = node->link_target) != NULL) {
@@ -607,7 +627,6 @@ devfs_unlinkp(struct devfs_node *node)
 		}
 	} else {
 		vp = node->v_node;
-		node->v_node = NULL;
 	}
 
 	if (vp != NULL)

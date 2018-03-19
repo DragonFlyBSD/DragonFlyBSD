@@ -287,18 +287,25 @@ devfs_vop_reclaim(struct vop_reclaim_args *ap)
 
 	/*
 	 * Get rid of the devfs_node if it is no longer linked into the
-	 * topology.  Interlocked by devfs_lock.
+	 * topology.  Interlocked by devfs_lock.  However, be careful
+	 * interposing other operations between cleaning out v_data and
+	 * devfs_freep() as the node is only protected by devfs_lock
+	 * once the vnode is disassociated.
 	 */
 	vp = ap->a_vp;
 	node = DEVFS_NODE(vp);
-	vp->v_data = NULL;
-	node->v_node = NULL;
-	v_release_rdev(vp);
 
 	if (node) {
+		if (node->v_node != vp) {
+			kprintf("NODE->V_NODE MISMATCH VP=%p NODEVP=%p\n",
+				vp, node->v_node);
+		}
+		vp->v_data = NULL;
+		node->v_node = NULL;
 		if ((node->flags & DEVFS_NODE_LINKED) == 0)
 			devfs_freep(node);
 	}
+	v_release_rdev(vp);
 
 	if (locked)
 		lockmgr(&devfs_lock, LK_RELEASE);
