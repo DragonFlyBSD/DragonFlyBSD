@@ -83,6 +83,7 @@
 #include <sys/socketvar.h>
 #include <sys/socketops.h>
 #include <sys/protosw.h>
+#include <sys/jail.h>
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>

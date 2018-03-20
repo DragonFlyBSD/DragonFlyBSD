@@ -78,7 +78,7 @@ struct jail_ip_storage {
 
 /*
  * This structure describes a prison.  It is pointed to by all struct
- * proc's of the inmates.  pr_ref keeps track of them and is used to
+ * ucred's of the inmates.  pr_ref keeps track of them and is used to
  * delete the struture when the last inmate is dead.
  */
 
@@ -107,14 +107,20 @@ extern int	jail_sysvipc_allowed;
 extern int	jail_chflags_allowed;
 extern int	jail_allow_raw_sockets;
 
-void	prison_hold(struct prison *);
-void	prison_free(struct prison *);
+/*
+ * Kernel support functions for jail.
+ */
 int	jailed_ip(struct prison *, struct sockaddr *);
+void	prison_free(struct prison *);
+void	prison_hold(struct prison *);
+int	prison_if(struct ucred *cred, struct sockaddr *sa);
 struct sockaddr *
 	prison_get_local(struct prison *pr, sa_family_t, struct sockaddr *);
 struct sockaddr *
 	prison_get_nonlocal(struct prison *pr, sa_family_t, struct sockaddr *);
 int	prison_priv_check(struct ucred *cred, int priv);
+int	prison_remote_ip(struct thread *td, struct sockaddr *ip);
+int	prison_replace_wildcards(struct thread *td, struct sockaddr *ip);
 
 /*
  * Return 1 if the passed credential is in a jail, otherwise 0.

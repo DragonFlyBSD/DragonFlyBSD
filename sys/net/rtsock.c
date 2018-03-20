@@ -74,6 +74,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/domain.h>
+#include <sys/jail.h>
 
 #include <sys/thread2.h>
 #include <sys/socketvar2.h>

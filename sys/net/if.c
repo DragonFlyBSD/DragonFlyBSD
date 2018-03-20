@@ -54,6 +54,7 @@
 #include <sys/thread.h>
 #include <sys/serialize.h>
 #include <sys/bus.h>
+#include <sys/jail.h>
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>

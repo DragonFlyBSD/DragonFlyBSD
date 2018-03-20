@@ -77,6 +77,7 @@
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/syslog.h>
+#include <sys/jail.h>
 
 #include <net/if.h>
 #include <net/route.h>

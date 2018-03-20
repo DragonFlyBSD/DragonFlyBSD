@@ -534,9 +534,6 @@ char	*kinet_ntoa(struct in_addr, char *); /* in libkern */
 char	*inet_ntop(int, const void * __restrict, char * __restrict,
 	    socklen_t); /* in libkern */
 
-int	prison_replace_wildcards(struct thread *td, struct sockaddr *ip);
-int	prison_remote_ip(struct thread *td, struct sockaddr *ip);
-
 #define	in_hosteq(s, t)	((s).s_addr == (t).s_addr)
 #define	in_nullhost(x)	((x).s_addr == INADDR_ANY)
 

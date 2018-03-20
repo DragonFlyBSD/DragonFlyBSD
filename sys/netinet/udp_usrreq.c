@@ -80,6 +80,7 @@
 #include <sys/syslog.h>
 #include <sys/in_cksum.h>
 #include <sys/ktr.h>
+#include <sys/jail.h>
 
 #include <sys/thread2.h>
 #include <sys/socketvar2.h>

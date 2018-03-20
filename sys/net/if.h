@@ -384,11 +384,6 @@ __END_DECLS
 #endif
 
 #ifdef _KERNEL
-struct thread;
-struct ucred;
-
-int	prison_if(struct ucred *cred, struct sockaddr *sa);
-
 /* XXX - this should go away soon. */
 #include <net/if_var.h>
 #endif

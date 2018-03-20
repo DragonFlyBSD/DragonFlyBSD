@@ -77,6 +77,7 @@
 #include <sys/syslog.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
+#include <sys/jail.h>
 
 #include <sys/thread2.h>
 #include <sys/socketvar2.h>
