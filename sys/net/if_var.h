@@ -83,19 +83,12 @@
 /*
  * Forward structure declarations for function prototypes [sic].
  */
-struct	mbuf;
-struct	proc;
-struct	rtentry;
-struct	rt_addrinfo;
+struct	rtentry;		/* ifa_rtrequest */
 struct	socket;
-struct	ether_header;
 struct	ucred;
 struct	lwkt_serialize;
 struct	ifaddr_container;
 struct	ifaddr;
-struct	lwkt_port;
-struct	lwkt_msg;
-union	netmsg;
 struct	pktinfo;
 struct	ifpoll_info;
 struct	ifdata_pcpu;
@@ -107,7 +100,6 @@ struct	ifdata_pcpu;
 #ifdef _KERNEL
 #include <sys/eventhandler.h>
 #include <sys/mbuf.h>
-#include <sys/systm.h>		/* XXX */
 #include <sys/thread2.h>
 #endif /* _KERNEL */
 
