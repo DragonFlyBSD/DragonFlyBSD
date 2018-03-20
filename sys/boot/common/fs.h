@@ -27,8 +27,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)fs.h	8.13 (Berkeley) 3/21/95
- * $FreeBSD$
- * $DragonFly: src/sys/boot/common/fs.h,v 1.1 2003/11/10 06:08:31 dillon Exp $
+ * $FreeBSD: head/sys/ufs/ffs/fs.h 111238 2003-02-22 00:19:26Z mckusick $
  */
 
 #ifndef _UFS_FFS_FS_H_
@@ -348,10 +347,14 @@ struct fs {
 	int32_t	 fs_magic;		/* magic number */
 };
 
-/* Sanity checking. */
-#ifdef CTASSERT
-CTASSERT(sizeof(struct fs) == 1376);
+#ifndef CTASSERT
+#define CTASSERT(x)		_CTASSERT(x, __LINE__)
+#define _CTASSERT(x, y)		__CTASSERT(x, y)
+#define __CTASSERT(x, y)	typedef char __assert_ ## y [(x) ? 1 : -1]
 #endif
+
+/* Sanity checking. */
+CTASSERT(sizeof(struct fs) == 1376);
 
 /*
  * Filesystem identification
