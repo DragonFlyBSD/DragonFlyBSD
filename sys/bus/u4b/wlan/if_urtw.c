@@ -1092,7 +1092,6 @@ urtw_init(void *arg)
 static usb_error_t
 urtw_adapter_start_b(struct urtw_softc *sc)
 {
-#define N(a)	(sizeof(a) / sizeof((a)[0]))
 	uint8_t data8;
 	usb_error_t error;
 
@@ -1175,7 +1174,6 @@ urtw_adapter_start_b(struct urtw_softc *sc)
 	urtw_write16_m(sc, 0x1ec, 0x800);	/* RX MAX SIZE */
 fail:
 	return (error);
-#undef N
 }
 
 static usb_error_t
@@ -1941,31 +1939,27 @@ fail:
 static uint16_t
 urtw_rate2rtl(int rate)
 {
-#define N(a)	(sizeof(a) / sizeof((a)[0]))
 	int i;
 
-	for (i = 0; i < N(urtw_ratetable); i++) {
+	for (i = 0; i < nitems(urtw_ratetable); i++) {
 		if (rate == urtw_ratetable[i].reg)
 			return urtw_ratetable[i].val;
 	}
 
 	return (3);
-#undef N
 }
 
 static uint16_t
 urtw_rtl2rate(int rate)
 {
-#define N(a)	(sizeof(a) / sizeof((a)[0]))
 	int i;
 
-	for (i = 0; i < N(urtw_ratetable); i++) {
+	for (i = 0; i < nitems(urtw_ratetable); i++) {
 		if (rate == urtw_ratetable[i].val)
 			return urtw_ratetable[i].reg;
 	}
 
 	return (0);
-#undef N
 }
 
 static usb_error_t
@@ -2481,7 +2475,6 @@ fail:
 static usb_error_t
 urtw_8225_rf_init(struct urtw_softc *sc)
 {
-#define N(a)	(sizeof(a) / sizeof((a)[0]))
 	int i;
 	uint16_t data;
 	usb_error_t error;
@@ -2512,7 +2505,7 @@ urtw_8225_rf_init(struct urtw_softc *sc)
 		goto fail;
 	usb_pause_mtx(&sc->sc_mtx, 1000);
 
-	for (i = 0; i < N(urtw_8225_rf_part1); i++) {
+	for (i = 0; i < nitems(urtw_8225_rf_part1); i++) {
 		urtw_8225_write(sc, urtw_8225_rf_part1[i].reg,
 		    urtw_8225_rf_part1[i].val);
 		usb_pause_mtx(&sc->sc_mtx, 1);
@@ -2544,7 +2537,7 @@ urtw_8225_rf_init(struct urtw_softc *sc)
 		usb_pause_mtx(&sc->sc_mtx, 1);
 	}
 
-	for (i = 0; i < N(urtw_8225_rf_part2); i++) {
+	for (i = 0; i < nitems(urtw_8225_rf_part2); i++) {
 		urtw_8187_write_phy_ofdm(sc, urtw_8225_rf_part2[i].reg,
 		    urtw_8225_rf_part2[i].val);
 		usb_pause_mtx(&sc->sc_mtx, 1);
@@ -2554,7 +2547,7 @@ urtw_8225_rf_init(struct urtw_softc *sc)
 	if (error)
 		goto fail;
 
-	for (i = 0; i < N(urtw_8225_rf_part3); i++) {
+	for (i = 0; i < nitems(urtw_8225_rf_part3); i++) {
 		urtw_8187_write_phy_cck(sc, urtw_8225_rf_part3[i].reg,
 		    urtw_8225_rf_part3[i].val);
 		usb_pause_mtx(&sc->sc_mtx, 1);
@@ -2580,7 +2573,6 @@ urtw_8225_rf_init(struct urtw_softc *sc)
 	error = urtw_8225_rf_set_chan(sc, 1);
 fail:
 	return (error);
-#undef N
 }
 
 static usb_error_t
@@ -2878,7 +2870,6 @@ fail:
 static usb_error_t
 urtw_8225v2_rf_init(struct urtw_softc *sc)
 {
-#define N(a)	(sizeof(a) / sizeof((a)[0]))
 	int i;
 	uint16_t data;
 	uint32_t data32;
@@ -2911,7 +2902,7 @@ urtw_8225v2_rf_init(struct urtw_softc *sc)
 
 	usb_pause_mtx(&sc->sc_mtx, 500);
 
-	for (i = 0; i < N(urtw_8225v2_rf_part1); i++) {
+	for (i = 0; i < nitems(urtw_8225v2_rf_part1); i++) {
 		urtw_8225_write(sc, urtw_8225v2_rf_part1[i].reg,
 		    urtw_8225v2_rf_part1[i].val);
 	}
@@ -2966,7 +2957,7 @@ urtw_8225v2_rf_init(struct urtw_softc *sc)
 		urtw_8187_write_phy_ofdm(sc, 0xa, (uint8_t)i + 0x80);
 	}
 
-	for (i = 0; i < N(urtw_8225v2_rf_part2); i++) {
+	for (i = 0; i < nitems(urtw_8225v2_rf_part2); i++) {
 		urtw_8187_write_phy_ofdm(sc, urtw_8225v2_rf_part2[i].reg,
 		    urtw_8225v2_rf_part2[i].val);
 	}
@@ -2975,7 +2966,7 @@ urtw_8225v2_rf_init(struct urtw_softc *sc)
 	if (error)
 		goto fail;
 
-	for (i = 0; i < N(urtw_8225v2_rf_part3); i++) {
+	for (i = 0; i < nitems(urtw_8225v2_rf_part3); i++) {
 		urtw_8187_write_phy_cck(sc, urtw_8225v2_rf_part3[i].reg,
 		    urtw_8225v2_rf_part3[i].val);
 	}
@@ -2998,7 +2989,6 @@ urtw_8225v2_rf_init(struct urtw_softc *sc)
 	error = urtw_8225_rf_set_chan(sc, 1);
 fail:
 	return (error);
-#undef N
 }
 
 static usb_error_t
@@ -3212,7 +3202,6 @@ fail:
 static usb_error_t
 urtw_8225v2b_rf_init(struct urtw_softc *sc)
 {
-#define N(a)	(sizeof(a) / sizeof((a)[0]))
 	int i;
 	uint8_t data8;
 	usb_error_t error;
@@ -3272,7 +3261,7 @@ urtw_8225v2b_rf_init(struct urtw_softc *sc)
 	/*
 	 * MAC configuration
 	 */
-	for (i = 0; i < N(urtw_8225v2b_rf_part1); i++)
+	for (i = 0; i < nitems(urtw_8225v2b_rf_part1); i++)
 		urtw_write8_m(sc, urtw_8225v2b_rf_part1[i].reg,
 		    urtw_8225v2b_rf_part1[i].val);
 	urtw_write16_m(sc, URTW_TID_AC_MAP, 0xfa50);
@@ -3305,7 +3294,7 @@ urtw_8225v2b_rf_init(struct urtw_softc *sc)
 	urtw_write16_m(sc, URTW_RF_PINS_ENABLE, 0x1fff);
 	usb_pause_mtx(&sc->sc_mtx, 1100);
 
-	for (i = 0; i < N(urtw_8225v2b_rf_part0); i++) {
+	for (i = 0; i < nitems(urtw_8225v2b_rf_part0); i++) {
 		urtw_8225_write(sc, urtw_8225v2b_rf_part0[i].reg,
 		    urtw_8225v2b_rf_part0[i].val);
 		usb_pause_mtx(&sc->sc_mtx, 1);
@@ -3351,7 +3340,7 @@ urtw_8225v2b_rf_init(struct urtw_softc *sc)
 	}
 	urtw_8187_write_phy_ofdm(sc, 0x80, 0x10);
 
-	for (i = 0; i < N(urtw_8225v2b_rf_part2); i++)
+	for (i = 0; i < nitems(urtw_8225v2b_rf_part2); i++)
 		urtw_8187_write_phy_ofdm(sc, i, urtw_8225v2b_rf_part2[i].val);
 
 	urtw_write32_m(sc, URTW_8187B_AC_VO, (7 << 12) | (3 << 8) | 0x1c);
@@ -3366,7 +3355,6 @@ urtw_8225v2b_rf_init(struct urtw_softc *sc)
 
 fail:
 	return (error);
-#undef N
 }
 
 static usb_error_t

@@ -634,7 +634,6 @@ safe_feed(struct safe_softc *sc, struct safe_ringentry *re)
 	WRITE_REG(sc, SAFE_HI_RD_DESCR, 0);
 }
 
-#define	N(a)	(sizeof(a) / sizeof (a[0]))
 static void
 safe_setup_enckey(struct safe_session *ses, caddr_t key)
 {
@@ -643,7 +642,7 @@ safe_setup_enckey(struct safe_session *ses, caddr_t key)
 	bcopy(key, ses->ses_key, ses->ses_klen / 8);
 
 	/* PE is little-endian, insure proper byte order */
-	for (i = 0; i < N(ses->ses_key); i++)
+	for (i = 0; i < nitems(ses->ses_key); i++)
 		ses->ses_key[i] = htole32(ses->ses_key[i]);
 }
 
@@ -691,12 +690,11 @@ safe_setup_mackey(struct safe_session *ses, int algo, caddr_t key, int klen)
 		key[i] ^= HMAC_OPAD_VAL;
 
 	/* PE is little-endian, insure proper byte order */
-	for (i = 0; i < N(ses->ses_hminner); i++) {
+	for (i = 0; i < nitems(ses->ses_hminner); i++) {
 		ses->ses_hminner[i] = htole32(ses->ses_hminner[i]);
 		ses->ses_hmouter[i] = htole32(ses->ses_hmouter[i]);
 	}
 }
-#undef N
 
 /*
  * Allocate a new 'session' and return an encoded session id.  'sidp'

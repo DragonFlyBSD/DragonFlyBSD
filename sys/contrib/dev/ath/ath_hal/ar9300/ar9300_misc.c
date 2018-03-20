@@ -1036,11 +1036,9 @@ ar9300_set_capability(struct ath_hal *ah, HAL_CAPABILITY_TYPE type,
                     HAL_ANI_FIRSTEP_LEVEL,
                     HAL_ANI_SPUR_IMMUNITY_LEVEL,
             };
-#define N(a)    (sizeof(a) / sizeof(a[0]))
-            return capability < N(cmds) ?
+            return capability < nitems(cmds) ?
                     ar9300_ani_control(ah, cmds[capability], setting) :
                     AH_FALSE;
-#undef N
     }
 
     case HAL_CAP_RXBUFSIZE:         /* set MAC receive buffer size */
@@ -2253,7 +2251,6 @@ ar9300_detect_mac_hang(struct ath_hal *ah)
 HAL_BOOL
 ar9300_detect_bb_hang(struct ath_hal *ah)
 {
-#define N(a) (sizeof(a) / sizeof(a[0]))
     struct ath_hal_9300 *ahp = AH9300(ah);
     u_int32_t hang_sig = 0;
     int i = 0;
@@ -2288,7 +2285,7 @@ ar9300_detect_bb_hang(struct ath_hal *ah)
         }
     }
 
-    for (i = 0; i < N(hang_list); i++) {
+    for (i = 0; i < nitems(hang_list); i++) {
         if ((hang_sig & hang_list[i].hang_mask) == hang_list[i].hang_val) {
             ahp->ah_hang[hang_list[i].hang_offset]++;
             HALDEBUG(ah, HAL_DEBUG_DFS, "%s sig1count=%d sig2count=%d "
@@ -2304,7 +2301,6 @@ ar9300_detect_bb_hang(struct ath_hal *ah)
 
     return AH_FALSE;
 
-#undef N
 } /* end - ar9300_detect_bb_hang () */
 
 #undef NUM_STATUS_READS

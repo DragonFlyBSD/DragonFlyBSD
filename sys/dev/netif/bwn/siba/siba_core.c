@@ -93,7 +93,6 @@ enum {
 #else
 #define DPRINTF(siba, m, ...) do { (void) siba; } while (0)
 #endif
-#define	N(a)			(sizeof(a) / sizeof(a[0]))
 
 static void	siba_pci_gpio(struct siba_softc *, uint32_t, int);
 static void	siba_scan(struct siba_softc *);
@@ -963,9 +962,9 @@ siba_cc_pmu_init(struct siba_cc *scc)
 		siba_cc_pmu1_pll0_init(scc, 0 /* use default */);
 
 		updown = siba_cc_pmu_4325_updown;
-		updown_size = N(siba_cc_pmu_4325_updown);
+		updown_size = nitems(siba_cc_pmu_4325_updown);
 		depend = siba_cc_pmu_4325_depend;
-		depend_size = N(siba_cc_pmu_4325_depend);
+		depend_size = nitems(siba_cc_pmu_4325_depend);
 
 		min = (1 << SIBA_CC_PMU_4325_BURST) |
 		    (1 << SIBA_CC_PMU_4325_LN);
@@ -978,9 +977,9 @@ siba_cc_pmu_init(struct siba_cc *scc)
 		siba_cc_pmu0_pll0_init(scc, 0 /* use default */);
 
 		updown = siba_cc_pmu_4328_updown;
-		updown_size = N(siba_cc_pmu_4328_updown);
+		updown_size = nitems(siba_cc_pmu_4328_updown);
 		depend = siba_cc_pmu_4328_depend;
-		depend_size = N(siba_cc_pmu_4328_depend);
+		depend_size = nitems(siba_cc_pmu_4328_depend);
 
 		min = (1 << SIBA_CC_PMU_4328_EXT_SWITCH_PWM) |
 			  (1 << SIBA_CC_PMU_4328_BB_SWITCH_PWM) |
@@ -1331,7 +1330,7 @@ siba_cc_pmu1_plltab_find(uint32_t crystalfreq)
 	const struct siba_cc_pmu1_plltab *e;
 	unsigned int i;
 
-	for (i = 0; i < N(siba_cc_pmu1_plltab); i++) {
+	for (i = 0; i < nitems(siba_cc_pmu1_plltab); i++) {
 		e = &siba_cc_pmu1_plltab[i];
 		if (crystalfreq == e->freq)
 			return (e);
@@ -1362,7 +1361,7 @@ siba_cc_pmu0_plltab_findentry(uint32_t crystalfreq)
 	const struct siba_cc_pmu0_plltab *e;
 	unsigned int i;
 
-	for (i = 0; i < N(siba_cc_pmu0_plltab); i++) {
+	for (i = 0; i < nitems(siba_cc_pmu0_plltab); i++) {
 		e = &siba_cc_pmu0_plltab[i];
 		if (e->freq == crystalfreq)
 			return (e);

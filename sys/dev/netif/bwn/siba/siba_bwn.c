@@ -88,7 +88,6 @@ struct siba_bwn_softc {
 
 #define	BS_BAR				0x10
 #define	PCI_VENDOR_BROADCOM		0x14e4
-#define	N(a)				(sizeof(a) / sizeof(a[0]))
 
 static const struct siba_dev {
 	uint16_t	vid;
@@ -129,7 +128,7 @@ siba_bwn_probe(device_t dev)
 	did = pci_get_device(dev);
 	vid = pci_get_vendor(dev);
 
-	for (i = 0; i < N(siba_devices); i++) {
+	for (i = 0; i < nitems(siba_devices); i++) {
 		if (siba_devices[i].did == did && siba_devices[i].vid == vid) {
 			device_set_desc(dev, siba_devices[i].desc);
 			return (BUS_PROBE_DEFAULT);

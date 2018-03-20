@@ -613,7 +613,6 @@ uath_dump_cmd(const uint8_t *buf, int len, char prefix)
 static const char *
 uath_codename(int code)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	static const char *names[] = {
 	    "0x00",
 	    "HOST_AVAILABLE",
@@ -676,13 +675,12 @@ uath_codename(int code)
 	};
 	static char buf[8];
 
-	if (code < N(names))
+	if (code < nitems(names))
 		return names[code];
 	if (code == WDCMSG_SET_DEFAULT_KEY)
 		return "SET_DEFAULT_KEY";
 	snprintf(buf, sizeof(buf), "0x%02x", code);
 	return buf;
-#undef N
 }
 #endif
 

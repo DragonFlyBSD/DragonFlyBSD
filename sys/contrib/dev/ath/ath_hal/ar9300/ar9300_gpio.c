@@ -242,7 +242,6 @@ ar9300_gpio_cfg_output_led_off(
     u_int32_t gpio,
     HAL_GPIO_MUX_TYPE halSignalType)
 {
-#define N(a)    (sizeof(a) / sizeof(a[0]))
     u_int32_t    ah_signal_type;
     u_int32_t    gpio_shift;
     u_int8_t    smart_ant = 0;
@@ -334,7 +333,6 @@ ar9300_gpio_cfg_output_led_off(
                (AR_GPIO_OE_OUT_DRV << gpio_shift));
 
     return AH_TRUE;
-#undef N
 }
 
 /*
