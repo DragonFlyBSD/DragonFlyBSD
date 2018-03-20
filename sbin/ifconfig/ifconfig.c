@@ -440,7 +440,6 @@ cmd_register(struct cmd *p)
 static const struct cmd *
 cmd_lookup(const char *name, int iscreate)
 {
-#define	N(a)	(sizeof(a)/sizeof(a[0]))
 	const struct cmd *p;
 
 	for (p = cmds; p != NULL; p = p->c_next)
@@ -454,7 +453,6 @@ cmd_lookup(const char *name, int iscreate)
 			}
 		}
 	return NULL;
-#undef N
 }
 
 struct callback {
@@ -1127,10 +1125,8 @@ static struct cmd basic_cmds[] = {
 static __constructor(101) void
 ifconfig_ctor(void)
 {
-#define	N(a)	(sizeof(a) / sizeof(a[0]))
 	int i;
 
-	for (i = 0; i < N(basic_cmds);  i++)
+	for (i = 0; i < nitems(basic_cmds);  i++)
 		cmd_register(&basic_cmds[i]);
-#undef N
 }

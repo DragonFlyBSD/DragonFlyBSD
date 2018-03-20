@@ -529,12 +529,10 @@ static struct option in6_Lopt = { "L", "[-L]", in6_Lopt_cb };
 static __constructor(101) void
 inet6_ctor(void)
 {
-#define	N(a)	(sizeof(a) / sizeof(a[0]))
 	int i;
 
-	for (i = 0; i < N(inet6_cmds);  i++)
+	for (i = 0; i < nitems(inet6_cmds);  i++)
 		cmd_register(&inet6_cmds[i]);
 	af_register(&af_inet6);
 	opt_register(&in6_Lopt);
-#undef N
 }

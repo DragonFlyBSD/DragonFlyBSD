@@ -156,7 +156,7 @@ bridge_interfaces(int s, const char *prefix)
 			printf("port %u priority %u",
 			    req->ifbr_portno, req->ifbr_priority);
 			printf(" pathcost %u", req->ifbr_path_cost);
-			if (req->ifbr_state < NELEM(stpstates))
+			if (req->ifbr_state < nitems(stpstates))
 				printf(" %s", stpstates[req->ifbr_state]);
 			else
 				printf(" <unknown state %d>",
@@ -592,11 +592,9 @@ static struct afswtch af_bridge = {
 static __constructor(101) void
 bridge_ctor(void)
 {
-#define	N(a)	(sizeof(a) / sizeof(a[0]))
 	int i;
 
-	for (i = 0; i < N(bridge_cmds);  i++)
+	for (i = 0; i < nitems(bridge_cmds);  i++)
 		cmd_register(&bridge_cmds[i]);
 	af_register(&af_bridge);
-#undef N
 }

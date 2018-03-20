@@ -153,12 +153,10 @@ static struct afswtch af_vlan = {
 static __constructor(101) void
 vlan_ctor(void)
 {
-#define	N(a)	(sizeof(a) / sizeof(a[0]))
 	int i;
 
-	for (i = 0; i < N(vlan_cmds);  i++)
+	for (i = 0; i < nitems(vlan_cmds);  i++)
 		cmd_register(&vlan_cmds[i]);
 	af_register(&af_vlan);
 	callback_register(vlan_cb, NULL);
-#undef N
 }

@@ -213,7 +213,7 @@ decode_flag(struct mystate *mt, const char *p, int len)
 	};
 	int i;
 
-	for (i = 0; i < sizeof(flags)/sizeof(flags[0]); i++)
+	for (i = 0; i < nitems(flags); i++)
 		if (len == flags[i].len && iseq(p, flags[i].name))
 			return flags[i].value;
 	warnx("unknown flag \"%.*s\" at line %ld ignored",

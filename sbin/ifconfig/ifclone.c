@@ -181,11 +181,9 @@ static struct option clone_Copt = { .opt = "C", .opt_usage = "[-C]", .cb = clone
 static __constructor(101) void
 clone_ctor(void)
 {
-#define	N(a)	(sizeof(a) / sizeof(a[0]))
 	size_t i;
 
-	for (i = 0; i < N(clone_cmds);  i++)
+	for (i = 0; i < nitems(clone_cmds);  i++)
 		cmd_register(&clone_cmds[i]);
 	opt_register(&clone_Copt);
-#undef N
 }
