@@ -33,13 +33,14 @@
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
+#include <sys/eventhandler.h>
 
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/if_clone.h>
 
 static LIST_HEAD(, if_clone) if_cloners = LIST_HEAD_INITIALIZER(if_cloners);
-static int		if_cloners_count;
+static int if_cloners_count;
 
 MALLOC_DEFINE(M_CLONE, "clone", "interface cloning framework");
 
@@ -183,8 +184,10 @@ if_clone_attach(struct if_clone *ifc)
 	int unit;
 	struct if_clone *ifct;
 
-	/* Duplicate entries in if_cloners lead
-           to infinite loops in if_clone_create */
+	/*
+	 * Duplicate entries in if_cloners lead to infinite loops in
+	 * if_clone_create().
+	 */
 	LIST_FOREACH(ifct, &if_cloners, ifc_list) {
 		if (ifct == ifc) {
 			panic("%s: duplicate entry %s\n",
@@ -279,7 +282,7 @@ if_clone_lookup(const char *name, int *unitp)
 	const char *cp;
 	int i;
 
-	for (ifc = LIST_FIRST(&if_cloners); ifc != NULL;) {
+	for (ifc = LIST_FIRST(&if_cloners); ifc != NULL; ) {
 		for (cp = name, i = 0; i < ifc->ifc_namelen; i++, cp++) {
 			if (ifc->ifc_name[i] != *cp)
 				goto next_ifc;
@@ -289,7 +292,6 @@ if_clone_lookup(const char *name, int *unitp)
 		ifc = LIST_NEXT(ifc, ifc_list);
 	}
 
-	/* No match. */
 	return (NULL);
 
  found_name:
@@ -307,5 +309,6 @@ if_clone_lookup(const char *name, int *unitp)
 
 	if (unitp != NULL)
 		*unitp = i;
+
 	return (ifc);
 }

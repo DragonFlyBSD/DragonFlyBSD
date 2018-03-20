@@ -29,7 +29,6 @@
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
  * $FreeBSD: src/sys/net/if.h,v 1.58.2.9 2002/08/30 14:23:38 sobomax Exp $
- * $DragonFly: src/sys/net/if_clone.h,v 1.1 2008/01/11 11:59:40 sephe Exp $
  */
 
 #ifndef	_NET_IF_CLONE_H_
@@ -37,9 +36,8 @@
 
 #ifdef _KERNEL
 
-#ifndef _SYS_QUEUE_H_
+#include <sys/eventhandler.h>
 #include <sys/queue.h>
-#endif
 
 /*
  * Structure describing a `cloning' interface.
