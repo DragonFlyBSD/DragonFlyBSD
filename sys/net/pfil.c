@@ -40,6 +40,7 @@
 #include <sys/sysctl.h>
 
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/pfil.h>
 #include <net/netmsg2.h>
 #include <net/netisr2.h>

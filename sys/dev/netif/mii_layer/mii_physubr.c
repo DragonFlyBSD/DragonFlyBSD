@@ -53,6 +53,7 @@
 #include <sys/thread2.h>
 
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/if_media.h>
 
 #include "mii.h"

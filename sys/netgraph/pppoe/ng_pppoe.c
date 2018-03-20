@@ -57,6 +57,7 @@
 #include <sys/syslog.h>
 #include <sys/thread2.h>
 
+#include <net/if.h>
 #include <net/if_var.h>
 #include <net/ethernet.h>
 

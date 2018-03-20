@@ -39,6 +39,7 @@
 #include <sys/sysproto.h>
 #include <sys/uuid.h>
 #include <sys/gpt.h>
+#include <net/if.h>
 #include <net/if_var.h>
 
 /*

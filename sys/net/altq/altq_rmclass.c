@@ -55,6 +55,7 @@
 #include <sys/thread2.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/netmsg2.h>
 #include <net/netisr2.h>
 

@@ -47,6 +47,13 @@
 #include <sys/param.h>
 #include <sys/ucred.h>
 
+#include <net/if.h>
+#include <net/bpf.h>
+#include <net/ethernet.h>
+#include <net/netmsg2.h>
+#include <net/netisr2.h>
+#include <net/route.h>
+
 #include <netinet/in_var.h>
 #include <netinet/ip_var.h>
 #include <netinet/in.h>
@@ -63,12 +70,6 @@
 #include <netinet/udp.h>
 #include <netinet/udp_var.h>
 #include <netinet/if_ether.h>
-
-#include <net/bpf.h>
-#include <net/ethernet.h>
-#include <net/netmsg2.h>
-#include <net/netisr2.h>
-#include <net/route.h>
 
 #include <net/ipfw3/ip_fw.h>
 

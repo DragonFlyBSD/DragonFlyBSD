@@ -381,11 +381,5 @@ char		*if_indextoname(unsigned int, char *);
 struct if_nameindex *if_nameindex(void);
 void		 if_freenameindex(struct if_nameindex *);
 __END_DECLS
-#endif
-
-#ifdef _KERNEL
-/* XXX - this should go away soon. */
-#include <net/if_var.h>
-#endif
-
+#endif /* !_KERNEL */
 #endif /* !_NET_IF_H_ */

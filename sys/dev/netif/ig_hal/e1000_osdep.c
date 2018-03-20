@@ -34,7 +34,7 @@
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
-#include <net/if_var.h>
+#include <net/if.h>
 #include <net/if_media.h>
 
 #include "e1000_api.h"

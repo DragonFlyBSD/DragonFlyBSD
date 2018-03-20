@@ -66,6 +66,7 @@
 #include <net/netisr2.h>
 #include <net/route.h>
 
+#include <net/if.h>
 #include <netinet/in_var.h>
 #include <netinet/ip_var.h>
 

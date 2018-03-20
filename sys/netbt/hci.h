@@ -2365,7 +2365,8 @@ struct btreq {
 
 #ifdef _KERNEL
 
-#include <net/if.h>		/* for struct ifqueue */
+#include <net/if.h>
+#include <net/if_var.h>		/* for struct ifqueue */
 
 struct l2cap_channel;
 struct mbuf;

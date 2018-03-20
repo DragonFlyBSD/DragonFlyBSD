@@ -59,6 +59,12 @@
 #include <sys/lock.h>
 #include <sys/mplock2.h>
 
+#include <net/if.h>
+#include <net/radix.h>
+#include <net/route.h>
+#include <net/pfil.h>
+#include <net/netmsg2.h>
+
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
 #include <netinet/in_var.h>
@@ -74,12 +80,6 @@
 #include <netinet/udp_var.h>
 #include <netinet/ip_divert.h>
 #include <netinet/if_ether.h>
-
-#include <net/if.h>
-#include <net/radix.h>
-#include <net/route.h>
-#include <net/pfil.h>
-#include <net/netmsg2.h>
 
 #include <net/ipfw3/ip_fw.h>
 #include <net/ipfw3/ip_fw3_set.h>

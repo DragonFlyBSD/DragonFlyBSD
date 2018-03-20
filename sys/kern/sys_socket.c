@@ -50,6 +50,7 @@
 #include <sys/socketvar2.h>
 
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/route.h>
 
 struct	fileops socketops = {
