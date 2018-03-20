@@ -113,7 +113,7 @@ TAILQ_HEAD(namecache_list, namecache);
  * operations vector is typically obtained via nc_mount->mnt_vn_use_ops.
  */
 struct namecache {
-    LIST_ENTRY(namecache) nc_hash;	/* hash chain (nc_parent,name) */
+    TAILQ_ENTRY(namecache) nc_hash;	/* hash chain (nc_parent,name) */
     TAILQ_ENTRY(namecache) nc_entry;	/* scan via nc_parent->nc_list */
     TAILQ_ENTRY(namecache) nc_vnode;	/* scan via vnode->v_namecache */
     struct namecache_list  nc_list;	/* list of children */

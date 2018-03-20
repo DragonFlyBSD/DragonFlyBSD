@@ -124,7 +124,7 @@
 
 MALLOC_DEFINE(M_VFSCACHE, "vfscache", "VFS name cache entries");
 
-LIST_HEAD(nchash_list, namecache);
+TAILQ_HEAD(nchash_list, namecache);
 
 /*
  * Don't cachealign, but at least pad to 32 bytes so entries
@@ -909,7 +909,7 @@ _cache_link_parent(struct namecache *ncp, struct namecache *par,
 	/*
 	 * Add to hash table and parent, adjust accounting
 	 */
-	LIST_INSERT_HEAD(&nchpp->list, ncp, nc_hash);
+	TAILQ_INSERT_HEAD(&nchpp->list, ncp, nc_hash);
 	atomic_add_long(&pn->vfscache_count, 1);
 	if (TAILQ_EMPTY(&ncp->nc_list))
 		atomic_add_long(&pn->vfscache_leafs, 1);
@@ -952,7 +952,7 @@ _cache_unlink_parent(struct namecache *ncp)
 		/*
 		 * Remove from hash table and parent, adjust accounting
 		 */
-		LIST_REMOVE(ncp, nc_hash);
+		TAILQ_REMOVE(&ncp->nc_head->list, ncp, nc_hash);
 		TAILQ_REMOVE(&par->nc_list, ncp, nc_entry);
 		atomic_add_long(&pn->vfscache_count, -1);
 		if (TAILQ_EMPTY(&ncp->nc_list))
@@ -2817,7 +2817,7 @@ cache_zap(struct namecache *ncp, int nonblock)
 		struct pcpu_ncache *pn = &pcpu_ncache[mycpu->gd_cpuid];
 
 		KKASSERT(nchpp == ncp->nc_head);
-		LIST_REMOVE(ncp, nc_hash);
+		TAILQ_REMOVE(&ncp->nc_head->list, ncp, nc_hash);
 		TAILQ_REMOVE(&par->nc_list, ncp, nc_entry);
 		atomic_add_long(&pn->vfscache_count, -1);
 		if (TAILQ_EMPTY(&ncp->nc_list))
@@ -3037,7 +3037,7 @@ restart:
 	else
 		spin_lock_shared(&nchpp->spin);
 
-	LIST_FOREACH(ncp, &nchpp->list, nc_hash) {
+	TAILQ_FOREACH(ncp, &nchpp->list, nc_hash) {
 		/*
 		 * Break out if we find a matching entry.  Note that
 		 * UNRESOLVED entries may match, but DESTROYED entries
@@ -3181,7 +3181,7 @@ cache_nlookup_maybe_shared(struct nchandle *par_nch, struct nlcomponent *nlc,
 
 	spin_lock_shared(&nchpp->spin);
 
-	LIST_FOREACH(ncp, &nchpp->list, nc_hash) {
+	TAILQ_FOREACH(ncp, &nchpp->list, nc_hash) {
 		/*
 		 * Break out if we find a matching entry.  Note that
 		 * UNRESOLVED entries may match, but DESTROYED entries
@@ -3263,7 +3263,7 @@ cache_nlookup_nonblock(struct nchandle *par_nch, struct nlcomponent *nlc)
 	nchpp = NCHHASH(hash);
 restart:
 	spin_lock(&nchpp->spin);
-	LIST_FOREACH(ncp, &nchpp->list, nc_hash) {
+	TAILQ_FOREACH(ncp, &nchpp->list, nc_hash) {
 		/*
 		 * Break out if we find a matching entry.  Note that
 		 * UNRESOLVED entries may match, but DESTROYED entries
@@ -3891,13 +3891,29 @@ _cache_cleanpos(long count)
 		cpu_ccfence();
 		nchpp = NCHHASH(rover_copy);
 
-		spin_lock_shared(&nchpp->spin);
-		ncp = LIST_FIRST(&nchpp->list);
+		if (TAILQ_FIRST(&nchpp->list) == NULL) {
+			--count;
+			continue;
+		}
+
+		/*
+		 * Cycle ncp on list, ignore and do not move DESTROYED
+		 * ncps (which might be dummies).
+		 *
+		 * We must cycle the ncp to the end of the list to
+		 * ensure that all ncp's have an equal chance of
+		 * being removed.
+		 */
+		spin_lock(&nchpp->spin);
+		ncp = TAILQ_FIRST(&nchpp->list);
 		while (ncp && (ncp->nc_flag & NCF_DESTROYED))
-			ncp = LIST_NEXT(ncp, nc_hash);
-		if (ncp)
+			ncp = TAILQ_NEXT(ncp, nc_hash);
+		if (ncp) {
+			TAILQ_REMOVE(&nchpp->list, ncp, nc_hash);
+			TAILQ_INSERT_TAIL(&nchpp->list, ncp, nc_hash);
 			_cache_hold(ncp);
-		spin_unlock_shared(&nchpp->spin);
+		}
+		spin_unlock(&nchpp->spin);
 
 		if (ncp) {
 			if (_cache_lock_special(ncp) == 0) {
@@ -3937,13 +3953,13 @@ _cache_cleandefered(void)
 		nchpp = &nchashtbl[i];
 
 		spin_lock(&nchpp->spin);
-		LIST_INSERT_HEAD(&nchpp->list, &dummy, nc_hash);
+		TAILQ_INSERT_HEAD(&nchpp->list, &dummy, nc_hash);
 		ncp = &dummy;
-		while ((ncp = LIST_NEXT(ncp, nc_hash)) != NULL) {
+		while ((ncp = TAILQ_NEXT(ncp, nc_hash)) != NULL) {
 			if ((ncp->nc_flag & NCF_DEFEREDZAP) == 0)
 				continue;
-			LIST_REMOVE(&dummy, nc_hash);
-			LIST_INSERT_AFTER(ncp, &dummy, nc_hash);
+			TAILQ_REMOVE(&nchpp->list, &dummy, nc_hash);
+			TAILQ_INSERT_AFTER(&nchpp->list, ncp, &dummy, nc_hash);
 			_cache_hold(ncp);
 			spin_unlock(&nchpp->spin);
 			if (_cache_lock_nonblock(ncp) == 0) {
@@ -3954,7 +3970,7 @@ _cache_cleandefered(void)
 			spin_lock(&nchpp->spin);
 			ncp = &dummy;
 		}
-		LIST_REMOVE(&dummy, nc_hash);
+		TAILQ_REMOVE(&nchpp->list, &dummy, nc_hash);
 		spin_unlock(&nchpp->spin);
 	}
 }
@@ -3995,7 +4011,7 @@ nchinit(void)
 				 sizeof(struct nchash_head),
 				 M_VFSCACHE, &nchash);
 	for (i = 0; i <= (int)nchash; ++i) {
-		LIST_INIT(&nchashtbl[i].list);
+		TAILQ_INIT(&nchashtbl[i].list);
 		spin_init(&nchashtbl[i].spin, "nchinit_hash");
 	}
 	for (i = 0; i < NCMOUNT_NUMCACHE; ++i)
