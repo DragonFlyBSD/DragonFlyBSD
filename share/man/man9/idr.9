@@ -1,3 +1,4 @@
+.\"
 .\" Copyright (c) 2012 Vishesh Yadav
 .\" All rights reserved.
 .\"
@@ -23,8 +24,7 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\"
-.Dd October 23, 2012
+.Dd March 21, 2018
 .Dt IDR 9
 .Os
 .Sh NAME
@@ -64,6 +64,12 @@
 .Fn idr_replace "struct idr *idp" "void *ptr" "int id"
 .Sh DESCRIPTION
 The
+.Fn idr_init
+function initialize an
+.Nm
+handle that will be used by other functions of this API.
+.Pp
+The
 .Fn idr_destroy
 function frees all resources taken by the specified
 .Nm
@@ -99,32 +105,25 @@ functions allocate a new integer mapped with the specified pointer
 The new ID will be stored in
 .Fa id .
 If the tree becomes full, these functions will return
-.Er -EAGAIN .
+.Fl Ns Er EAGAIN .
 In this case,
 .Fn idr_pre_get
 should be called to grow the tree.
 .Pp
 The
-.Fn idr_init
-function initialize an
-.Nm
-handle that will be used by other functions of the API.
-The
 .Fn idr_pre_get
-function should be called prior to calling the
-.Fn idr_get_new*
-functions.
-It preallocates enough memory for subsequent calls to
-.Fn idr_get_new*
-functions.
-This function should be called without any locks held.
-It returns 0 if enough memory couldn't be allocated, otherwise 1.
+function should be called prior to calling
+.Fn idr_get_new
+and
+.Fn idr_get_new_above
+and preallocates enough memory for subsequent calls to these functions.
+It should be called without any locks held and returns 1 if enough memory
+was successfully allocated, otherwise 0.
 The
-.Sq Va gfp_mask
-parameter is only present for compatibility with the Linux implementation of
+.Fa gfp_mask
+is only present for compatibility with the Linux implementation of
 this API and is unused on
 .Dx .
-.
 .Pp
 The
 .Fn idr_remove
