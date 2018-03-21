@@ -240,9 +240,21 @@
         ..
         ipfw
         ..
+	ipfw3
+	..
+	ipfw3_basic
+	..
+	ipfw3_layer2
+	..
+	ipfw3_layer4
+	..
+	ipfw3_nat
+	..
         ip6fw
         ..
         lagg
+	..
+	libalias
         ..
         pf
         ..
@@ -251,6 +263,8 @@
         sl
         ..
         dummynet
+	..
+	dummynet3
         ..
         sppp
         ..

@@ -67,6 +67,8 @@ LSUBDIRS= \
 	net/bridge net/tap net/tun net/ppp_layer net/sl \
 	net/pf net/altq \
 	net/vlan net/ipfw net/ip6fw net/dummynet net/sppp net/ip_mroute \
+	net/ipfw3 net/ipfw3_basic net/ipfw3_layer2 net/ipfw3_layer4 \
+	net/ipfw3_nat net/dummynet3 net/libalias \
 	net/lagg \
 	netgraph/UI netgraph/async netgraph/bpf netgraph/bridge \
 	netgraph/cisco netgraph/echo netgraph/eiface netgraph/etf \
