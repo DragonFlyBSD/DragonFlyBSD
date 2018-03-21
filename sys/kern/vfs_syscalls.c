@@ -882,12 +882,18 @@ dounmount(struct mount *mp, int flags, int halting)
 	 * have to.
 	 *
 	 * mnt_refs should go to zero when we scrap mnt_ncmountpt.
+	 *
+	 * When quickhalting we have to keep these intact because the
+	 * underlying vnodes have not been destroyed, and some might be
+	 * dirty.
 	 */
-	vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_coherency_ops);
-	vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_journal_ops);
-	vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_norm_ops);
-	vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_spec_ops);
-	vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_fifo_ops);
+	if (quickhalt == 0) {
+		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_coherency_ops);
+		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_journal_ops);
+		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_norm_ops);
+		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_spec_ops);
+		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_fifo_ops);
+	}
 
 	if (mp->mnt_ncmountpt.ncp != NULL) {
 		nch = mp->mnt_ncmountpt;
@@ -943,6 +949,8 @@ dounmount(struct mount *mp, int flags, int halting)
 		lwkt_reltoken(&mp->mnt_token);
 		mount_drop(mp);
 		mp = NULL;
+	} else {
+		cache_clearmntcache();
 	}
 	error = 0;
 	KNOTE(&fs_klist, VQ_UNMOUNT);
