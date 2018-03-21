@@ -60,13 +60,13 @@
 #include <net/ethernet.h>
 
 
-#include "../../sys/net/ipfw3/ip_fw3.h"
-#include "../../sys/net/ipfw3/ip_fw3_table.h"
-#include "../../sys/net/ipfw3/ip_fw3_sync.h"
-#include "../../sys/net/dummynet3/ip_dummynet3.h"
-#include "../../sys/net/libalias/alias.h"
-#include "../../sys/net/ipfw3_basic/ip_fw3_basic.h"
-#include "../../sys/net/ipfw3_nat/ip_fw3_nat.h"
+#include <net/ipfw3/ip_fw3.h>
+#include <net/ipfw3/ip_fw3_table.h>
+#include <net/ipfw3/ip_fw3_sync.h>
+#include <net/dummynet3/ip_dummynet3.h>
+#include <net/libalias/alias.h>
+#include <net/ipfw3_basic/ip_fw3_basic.h>
+#include <net/ipfw3_nat/ip_fw3_nat.h>
 
 #include "ipfw3.h"
 #include "ipfw3sync.h"

@@ -47,7 +47,7 @@
 #include <net/pfil.h>
 #include <netinet/in.h>
 
-#include "../../../sys/net/ipfw3/ip_fw3.h"
+#include <net/ipfw3/ip_fw3.h>
 #include "../../../sbin/ipfw3/ipfw3.h"
 #include "ipfw3_layer4.h"
 
