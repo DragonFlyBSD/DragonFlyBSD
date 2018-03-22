@@ -560,7 +560,7 @@ vtblk_alloc_virtqueue(struct vtblk_softc *sc)
 	VQ_ALLOC_INFO_INIT(&vq_info, sc->vtblk_max_nsegs,
 	    &sc->vtblk_vq, "%s request", device_get_nameunit(dev));
 
-	return (virtio_alloc_virtqueues(dev, 0, 1, &vq_info));
+	return (virtio_alloc_virtqueues(dev, 1, &vq_info));
 }
 
 static void

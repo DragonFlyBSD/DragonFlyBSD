@@ -547,7 +547,7 @@ vtscsi_alloc_virtqueues(struct vtscsi_softc *sc)
 	VQ_ALLOC_INFO_INIT(&vq_info[2], sc->vtscsi_max_nsegs,
 	    &sc->vtscsi_request_vq, "%s request", device_get_nameunit(dev));
 
-	return (virtio_alloc_virtqueues(dev, 0, nvqs, vq_info));
+	return (virtio_alloc_virtqueues(dev, nvqs, vq_info));
 }
 
 static void

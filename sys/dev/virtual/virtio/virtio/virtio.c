@@ -189,10 +189,9 @@ virtio_negotiate_features(device_t dev, uint64_t child_features)
 }
 
 int
-virtio_alloc_virtqueues(device_t dev, int flags, int nvqs,
-    struct vq_alloc_info *info)
+virtio_alloc_virtqueues(device_t dev, int nvqs, struct vq_alloc_info *info)
 {
-	return (VIRTIO_BUS_ALLOC_VIRTQUEUES(device_get_parent(dev), flags,
+	return (VIRTIO_BUS_ALLOC_VIRTQUEUES(device_get_parent(dev),
 		nvqs, info));
 }
 

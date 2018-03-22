@@ -117,7 +117,7 @@ void	 virtio_describe(device_t dev, const char *msg,
  * VirtIO Bus Methods.
  */
 uint64_t virtio_negotiate_features(device_t dev, uint64_t child_features);
-int	 virtio_alloc_virtqueues(device_t dev, int flags, int nvqs,
+int	 virtio_alloc_virtqueues(device_t dev, int nvqs,
 	     struct vq_alloc_info *info);
 /* Allocate the interrupt resources. */
 /*

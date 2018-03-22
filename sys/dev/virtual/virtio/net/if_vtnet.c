@@ -651,7 +651,7 @@ vtnet_alloc_virtqueues(struct vtnet_softc *sc)
 		    "%s control", device_get_nameunit(dev));
 	}
 
-	return (virtio_alloc_virtqueues(dev, 0, nvqs, vq_info));
+	return (virtio_alloc_virtqueues(dev, nvqs, vq_info));
 }
 
 static int

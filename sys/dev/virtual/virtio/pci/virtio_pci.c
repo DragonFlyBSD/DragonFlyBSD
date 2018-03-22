@@ -125,8 +125,7 @@ static int	vtpci_intr_count(device_t dev);
 static int	vtpci_intr_alloc(device_t dev, int *cnt, int use_config,
 		    int *cpus);
 static int	vtpci_intr_release(device_t dev);
-static int	vtpci_alloc_virtqueues(device_t, int, int,
-		    struct vq_alloc_info *);
+static int	vtpci_alloc_virtqueues(device_t, int, struct vq_alloc_info *);
 static int	vtpci_setup_intr(device_t, uint irq, lwkt_serialize_t);
 static int	vtpci_teardown_intr(device_t, uint irq);
 static int	vtpci_bind_intr(device_t, uint, int, driver_intr_t, void *);
@@ -600,8 +599,7 @@ vtpci_intr_release(device_t dev)
 }
 
 static int
-vtpci_alloc_virtqueues(device_t dev, int flags, int nvqs,
-    struct vq_alloc_info *vq_info)
+vtpci_alloc_virtqueues(device_t dev, int nvqs, struct vq_alloc_info *vq_info)
 {
 	struct vtpci_softc *sc;
 	struct vtpci_virtqueue *vqx;
