@@ -104,7 +104,13 @@ devfs_clone_bitmap_fff(struct devfs_bitmap *bitmap)
 	return -1;
 }
 
-
+/*
+ * Caller wants to know if the specified unit has been allocated
+ * or not.  Return 0, indicating that it has not been allocated.
+ *
+ * (the bitmap implements 0=allocated, 1=not-allocated but the
+ * return value is inverted).
+ */
 int
 devfs_clone_bitmap_chk(struct devfs_bitmap *bitmap, int unit)
 {
@@ -114,9 +120,9 @@ devfs_clone_bitmap_chk(struct devfs_bitmap *bitmap, int unit)
 	unit -= chunk * (sizeof(u_long) * 8);
 
 	if (chunk >= bitmap->chunks)
-		return 1;
+		return 0;		/* device does not exist */
 
-	return !((bitmap->bitmap[chunk]) & (1 << unit));
+	return !((bitmap->bitmap[chunk]) & (1L << unit));
 }
 
 
@@ -150,7 +156,7 @@ devfs_clone_bitmap_put(struct devfs_bitmap *bitmap, int unit)
 
 	if (chunk >= bitmap->chunks)
 		return;
-	bitmap->bitmap[chunk] |= (1 << unit);
+	bitmap->bitmap[chunk] |= (1L << unit);
 }
 
 /*
