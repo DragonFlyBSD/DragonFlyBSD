@@ -635,7 +635,6 @@ MLINKS+=lwbuf.9 lwbuf_alloc.9 \
 MLINKS+=make_autoclone_dev.9 destroy_autoclone_dev.9 \
 	make_autoclone_dev.9 DEVFS_CLONE_BITMAP.9 \
 	make_autoclone_dev.9 devfs_clone_bitmap_chk.9 \
-	make_autoclone_dev.9 devfs_clone_bitmap_fff.9 \
 	make_autoclone_dev.9 devfs_clone_bitmap_get.9 \
 	make_autoclone_dev.9 devfs_clone_bitmap_init.9 \
 	make_autoclone_dev.9 devfs_clone_bitmap_put.9 \

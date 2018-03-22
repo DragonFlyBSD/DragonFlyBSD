@@ -336,8 +336,6 @@ struct devfs_unit_hash {
 
 void devfs_clone_bitmap_init(struct devfs_bitmap *);
 void devfs_clone_bitmap_uninit(struct devfs_bitmap *);
-void devfs_clone_bitmap_resize(struct devfs_bitmap *, int);
-int devfs_clone_bitmap_fff(struct devfs_bitmap *);
 void devfs_clone_bitmap_set(struct devfs_bitmap *, int);
 int devfs_clone_bitmap_get(struct devfs_bitmap *, int);
 int devfs_clone_bitmap_chk(struct devfs_bitmap *, int);
@@ -442,7 +440,7 @@ void devfs_clear_cdevpriv(struct file *file);
 int devfs_WildCmp(const char *w, const char *s);
 int devfs_WildCaseCmp(const char *w, const char *s);
 
-#endif /* KERNEL */
+#endif /* KERNEL || _KERNEL_STRUCTURES */
 
 #define DEVFS_MNT_RULESET	0x01
 #define DEVFS_MNT_JAIL		0x02

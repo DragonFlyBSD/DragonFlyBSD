@@ -37,7 +37,6 @@
 .Nm destroy_autoclone_dev ,
 .Nm devfs_clone_bitmap_init ,
 .Nm devfs_clone_bitmap_uninit ,
-.Nm devfs_clone_bitmap_fff ,
 .Nm devfs_clone_bitmap_chk ,
 .Nm devfs_clone_bitmap_set ,
 .Nm devfs_clone_bitmap_get ,
@@ -58,8 +57,6 @@
 .Fn devfs_clone_bitmap_init "struct devfs_bitmap *bitmap"
 .Ft void
 .Fn devfs_clone_bitmap_uninit "struct devfs_bitmap *bitmap"
-.Ft int
-.Fn devfs_clone_bitmap_fff "struct devfs_bitmap *bitmap"
 .Ft int
 .Fn devfs_clone_bitmap_chk "struct devfs_bitmap *bitmap" "int unit"
 .Ft void
@@ -176,12 +173,6 @@ frees the memory associated with the specified clone
 .Fa bitmap
 and leaves it unusable.
 .Pp
-.Fn devfs_clone_bitmap_fff
-returns the first unused unit in
-.Fa bitmap .
-To use this unit, it has to be acquired by a call to
-.Fn devfs_clone_bitmap_set .
-.Pp
 .Fn devfs_clone_bitmap_chk
 checks if
 .Fa unit
@@ -193,8 +184,6 @@ marks
 in
 .Fa bitmap
 as used, so further calls to
-.Fn devfs_clone_bitmap_fff
-or
 .Fn devfs_clone_bitmap_get
 cannot retrieve it.
 If one intends to use a clone handler along with preallocated devices, it
@@ -213,13 +202,15 @@ as unused so further calls to
 or
 .Fn devfs_clone_bitmap_get
 can retrieve it again.
+It is recommended that the associated device be destroyed prior to
+making the
+.Fa unit
+available in the bitmap again, to avoid racing against a new clone.
 .Pp
 .Fn devfs_clone_bitmap_get
-is a shortcut to
-.Fn devfs_clone_bitmap_fff
-and
-.Fn devfs_clone_bitmap_set .
-It will return the first unused unit number and also mark it as used.
+will return the first unused unit number and also mark it as used
+in the
+.Fa bitmap .
 .Pp
 The
 .Fn DEVFS_DEFINE_CLONE_BITMAP

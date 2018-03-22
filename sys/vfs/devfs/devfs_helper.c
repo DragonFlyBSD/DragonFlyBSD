@@ -59,9 +59,13 @@ devfs_clone_bitmap_uninit(struct devfs_bitmap *bitmap)
 	kfree(bitmap->bitmap, M_DEVFS);
 }
 
-
-void
-devfs_clone_bitmap_resize(struct devfs_bitmap *bitmap, int newchunks)
+/*
+ * Extend the bitmap past (not just up to) 'newchunks' chunks.  While
+ * probably not necessary, we go a little further and give ourselves
+ * one extra chunk's worth of bitmap beyond what is required.
+ */
+static void
+devfs_clone_bitmap_extend(struct devfs_bitmap *bitmap, int newchunks)
 {
 	int oldchunks = bitmap->chunks;
 
@@ -73,8 +77,11 @@ devfs_clone_bitmap_resize(struct devfs_bitmap *bitmap, int newchunks)
 	       sizeof(u_long) * (bitmap->chunks - oldchunks));
 }
 
-
-int
+/*
+ * This helper function determines the next available free unit in the
+ * bitmap, extending the bitmap if necessary.  It cannot fail.
+ */
+static int
 devfs_clone_bitmap_fff(struct devfs_bitmap *bitmap)
 {
 	u_long curbitmap;
@@ -85,7 +92,7 @@ devfs_clone_bitmap_fff(struct devfs_bitmap *bitmap)
 
 	for (i = 0; i < chunks + 1; i++) {
 		if (i == chunks)
-			devfs_clone_bitmap_resize(bitmap, i);
+			devfs_clone_bitmap_extend(bitmap, i);
 		curbitmap = bitmap->bitmap[i];
 
 		if (curbitmap) {
@@ -108,6 +115,8 @@ devfs_clone_bitmap_fff(struct devfs_bitmap *bitmap)
  * Caller wants to know if the specified unit has been allocated
  * or not.  Return 0, indicating that it has not been allocated.
  *
+ * Caller must hold a lock to prevent chk-to-set races.
+ *
  * (the bitmap implements 0=allocated, 1=not-allocated but the
  * return value is inverted).
  */
@@ -125,7 +134,14 @@ devfs_clone_bitmap_chk(struct devfs_bitmap *bitmap, int unit)
 	return !((bitmap->bitmap[chunk]) & (1L << unit));
 }
 
-
+/*
+ * Unconditionally mark the specified unit as allocated in the bitmap.
+ *
+ * Caller must hold a lock to prevent chk-to-set races.  If the unit had
+ * never been allocated in the past, a token lock might not be sufficient
+ * to avoid races (if this function must extend the bitmap it could block
+ * temporary in kmalloc()).
+ */
 void
 devfs_clone_bitmap_set(struct devfs_bitmap *bitmap, int unit)
 {
@@ -135,14 +151,14 @@ devfs_clone_bitmap_set(struct devfs_bitmap *bitmap, int unit)
 	unit -= chunk * (sizeof(u_long) * 8);
 
 	if (chunk >= bitmap->chunks)
-		devfs_clone_bitmap_resize(bitmap, chunk);
+		devfs_clone_bitmap_extend(bitmap, chunk);
 	bitmap->bitmap[chunk] &= ~(1L << unit);
 }
 
 /*
- * Deallocate a unit number.  We must synchronize any destroy_dev()'s
- * the device called before we clear the bitmap bit to avoid races
- * against a new clone.
+ * Unconditionally deallocate a unit number.  Caller must synchronize any
+ * destroy_dev()'s the device called before clearing the bitmap bit to
+ * avoid races against a new clone.
  */
 void
 devfs_clone_bitmap_put(struct devfs_bitmap *bitmap, int unit)
@@ -160,7 +176,11 @@ devfs_clone_bitmap_put(struct devfs_bitmap *bitmap, int unit)
 }
 
 /*
- * Allocate a unit number for a device
+ * Conditionally allocate a unit from the bitmap.  Returns -1 if no
+ * more units are available.
+ *
+ * Caller must hold a lock to avoid bitmap races.  Since *_fff() below
+ * pre-extends the bitmap as necessary, a token lock is sufficient.
  */
 int
 devfs_clone_bitmap_get(struct devfs_bitmap *bitmap, int limit)
@@ -174,4 +194,3 @@ devfs_clone_bitmap_get(struct devfs_bitmap *bitmap, int limit)
 
 	return unit;
 }
-

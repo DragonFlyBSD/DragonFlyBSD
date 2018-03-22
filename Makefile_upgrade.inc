@@ -3378,6 +3378,7 @@ TO_REMOVE+=/etc/periodic/weekly/120.clean-kvmdb
 TO_REMOVE+=/etc/periodic/daily/470.status-named
 TO_REMOVE+=/etc/periodic/daily/430.status-rwho
 TO_REMOVE+=/etc/mtree/BSD.local.dist
+TO_REMOVE+=/usr/share/man/man9/devfs_clone_bitmap_fff.9.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
