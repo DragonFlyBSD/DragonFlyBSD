@@ -212,7 +212,8 @@ notify(struct utmp *utp, char *file, off_t offset, int folder)
 	}
 	tcgetattr(fileno(tp), &tio);
 	cr = ((tio.c_oflag & (OPOST|ONLCR)) == (OPOST|ONLCR)) ?  "\n" : "\n\r";
-	strncpy(name, utp->ut_name, sizeof(name));
+	strncpy(name, utp->ut_name, sizeof(name) - 1);
+	name[sizeof(name) - 1] = '\0';
 	switch (stb.st_mode & (S_IXUSR | S_IXGRP)) {
 	case S_IXUSR:
 	case (S_IXUSR | S_IXGRP):
