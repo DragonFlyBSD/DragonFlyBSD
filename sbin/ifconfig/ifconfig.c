@@ -496,10 +496,12 @@ ifconfig(int argc, char *const *argv, int iscreate, const struct afswtch *uafp)
 top:
 	ifr.ifr_addr.sa_family =
 		afp->af_af == AF_LINK || afp->af_af == AF_UNSPEC ?
-		AF_INET : afp->af_af;
+		AF_LOCAL : afp->af_af;
 
-	if ((s = socket(ifr.ifr_addr.sa_family, SOCK_DGRAM, 0)) < 0)
-		err(1, "socket(family %u,SOCK_DGRAM", ifr.ifr_addr.sa_family);
+	if ((s = socket(ifr.ifr_addr.sa_family, SOCK_DGRAM, 0)) < 0 &&
+	    (uafp != NULL || errno != EAFNOSUPPORT ||
+	     (s = socket(AF_LOCAL, SOCK_DGRAM, 0)) < 0))
+		err(1, "socket(family %u,SOCK_DGRAM)", ifr.ifr_addr.sa_family);
 
 	while (argc > 0) {
 		const struct cmd *p;
@@ -880,11 +882,12 @@ status(const struct afswtch *afp, int addrcount, struct	sockaddr_dl *sdl,
 
 	if (afp == NULL) {
 		allfamilies = 1;
-		afp = af_getbyname("inet");
-	} else
+		ifr.ifr_addr.sa_family = AF_LOCAL;
+	} else {
 		allfamilies = 0;
-
-	ifr.ifr_addr.sa_family = afp->af_af == AF_LINK ? AF_INET : afp->af_af;
+		ifr.ifr_addr.sa_family =
+		    afp->af_af == AF_LINK ? AF_LOCAL : afp->af_af;
+	}
 	strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
 
 	s = socket(ifr.ifr_addr.sa_family, SOCK_DGRAM, 0);
