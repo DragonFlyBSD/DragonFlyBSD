@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 François Tigeot
+ * Copyright (c) 2014-2018 François Tigeot
  * Copyright (c) 2014 Imre Vadász
  * All rights reserved.
  *
@@ -142,6 +142,11 @@ prepare_to_wait(wait_queue_head_t *q, wait_queue_t *wait, int state)
 
 static inline void
 finish_wait(wait_queue_head_t *q, wait_queue_t *wait)
+{
+}
+
+static inline void
+add_wait_queue(wait_queue_head_t *q, wait_queue_t *wait)
 {
 }
 

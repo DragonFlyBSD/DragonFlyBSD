@@ -97,4 +97,13 @@ yield(void)
 	lwkt_yield();
 }
 
+static inline int
+wake_up_process(struct proc *tsk) {
+	/* Among other things, this function is supposed to act as
+	 * a barrier */
+	smp_wmb();
+
+	return 0;
+}
+
 #endif	/* _LINUX_SCHED_H_ */

@@ -63,4 +63,10 @@ dev_name(const struct device *dev)
 	return("dev_name");
 }
 
+static inline void *
+dev_get_drvdata(const struct device *dev)
+{
+	return device_get_softc(dev->bsddev);
+}
+
 #endif	/* _LINUX_DEVICE_H_ */
