@@ -159,6 +159,7 @@ struct nchandle {
 #define NCF_DESTROYED	0x0400	/* name association is considered destroyed */
 #define NCF_DEFEREDZAP	0x0800	/* zap defered due to lock unavailability */
 #define NCF_WXOK	0x1000	/* world-searchable (nlookup shortcut) */
+#define NCF_DUMMY	0x2000	/* dummy ncp, iterations ignore it */
 
 #define NC_EXLOCK_REQ	0x80000000	/* nc_lockstatus state flag */
 #define NC_SHLOCK_REQ	0x40000000	/* nc_lockstatus state flag */

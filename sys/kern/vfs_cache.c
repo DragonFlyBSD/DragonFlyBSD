@@ -3897,8 +3897,8 @@ _cache_cleanpos(long count)
 		}
 
 		/*
-		 * Cycle ncp on list, ignore and do not move DESTROYED
-		 * ncps (which might be dummies).
+		 * Cycle ncp on list, ignore and do not move DUMMY
+		 * ncps.  These are temporary list iterators.
 		 *
 		 * We must cycle the ncp to the end of the list to
 		 * ensure that all ncp's have an equal chance of
@@ -3906,7 +3906,7 @@ _cache_cleanpos(long count)
 		 */
 		spin_lock(&nchpp->spin);
 		ncp = TAILQ_FIRST(&nchpp->list);
-		while (ncp && (ncp->nc_flag & NCF_DESTROYED))
+		while (ncp && (ncp->nc_flag & NCF_DUMMY))
 			ncp = TAILQ_NEXT(ncp, nc_hash);
 		if (ncp) {
 			TAILQ_REMOVE(&nchpp->list, ncp, nc_hash);
@@ -3944,9 +3944,13 @@ _cache_cleandefered(void)
 	struct namecache dummy;
 	int i;
 
+	/*
+	 * Create a list iterator.  DUMMY indicates that this is a list
+	 * iterator, DESTROYED prevents matches by lookup functions.
+	 */
 	numdefered = 0;
 	bzero(&dummy, sizeof(dummy));
-	dummy.nc_flag = NCF_DESTROYED;
+	dummy.nc_flag = NCF_DESTROYED | NCF_DUMMY;
 	dummy.nc_refs = 1;
 
 	for (i = 0; i <= nchash; ++i) {
