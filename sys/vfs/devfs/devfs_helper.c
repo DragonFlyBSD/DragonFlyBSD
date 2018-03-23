@@ -131,7 +131,7 @@ devfs_clone_bitmap_chk(struct devfs_bitmap *bitmap, int unit)
 	if (chunk >= bitmap->chunks)
 		return 0;		/* device does not exist */
 
-	return !((bitmap->bitmap[chunk]) & (1L << unit));
+	return !((bitmap->bitmap[chunk]) & (1UL << unit));
 }
 
 /*
@@ -152,7 +152,7 @@ devfs_clone_bitmap_set(struct devfs_bitmap *bitmap, int unit)
 
 	if (chunk >= bitmap->chunks)
 		devfs_clone_bitmap_extend(bitmap, chunk);
-	bitmap->bitmap[chunk] &= ~(1L << unit);
+	bitmap->bitmap[chunk] &= ~(1UL << unit);
 }
 
 /*
@@ -172,7 +172,7 @@ devfs_clone_bitmap_put(struct devfs_bitmap *bitmap, int unit)
 
 	if (chunk >= bitmap->chunks)
 		return;
-	bitmap->bitmap[chunk] |= (1L << unit);
+	bitmap->bitmap[chunk] |= (1UL << unit);
 }
 
 /*
