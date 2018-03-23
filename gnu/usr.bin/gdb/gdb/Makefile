@@ -1,5 +1,5 @@
 PROG=	gdb
-MAN=	gdb.1 gdbint.7 stabs.7
+MAN=	gdb.1 gdbint.7
 
 CFLAGS+= -I${.OBJDIR}/../libgdb -I${.CURDIR}/../libgdb -I${.CURDIR}/..
 CFLAGS+= -I${BASEDIR}/include
