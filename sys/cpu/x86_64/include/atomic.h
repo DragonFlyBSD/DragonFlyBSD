@@ -462,6 +462,8 @@ extern int atomic_cmpset_long_xacquire(volatile u_long *_dst,
 extern int atomic_cmpset_long_xrelease(volatile u_long *_dst,
 			u_long _exp, u_long _src);
 
+extern int atomic_fcmpset_char(volatile u_char *_dst,
+			u_char *_old, u_char _new);
 extern int atomic_fcmpset_short(volatile u_short *_dst,
 			u_short *_old, u_short _new);
 extern int atomic_fcmpset_int(volatile u_int *_dst,
@@ -514,6 +516,19 @@ atomic_cmpset_short(volatile u_short *_dst, u_short _old, u_short _new)
 			 : "r" (_new), "m" (*_dst) \
 			 : "memory");
 	return (res == _old);
+}
+
+static __inline int
+atomic_fcmpset_char(volatile u_char *_dst, u_char *_old, u_char _new)
+{
+	u_char res = *_old;
+
+	__asm __volatile(MPLOCKED "cmpxchgb %2,%0; " \
+			 : "+m" (*_dst),		/* 0 */
+			   "+a" (*_old)			/* 1 */
+			 : "r" (_new)			/* 2 */
+			 : "memory", "cc");
+	return (res == *_old);
 }
 
 static __inline int
@@ -870,6 +885,7 @@ ATOMIC_STORE_LOAD(long, "cmpxchgq %0,%1",  "xchgq %1,%0");
 #define	atomic_subtract_rel_8	atomic_subtract_rel_char
 #define	atomic_load_acq_8	atomic_load_acq_char
 #define	atomic_store_rel_8	atomic_store_rel_char
+#define	atomic_fcmpset_8	atomic_fcmpset_char
 
 /* Operations on 16-bit words. */
 #define	atomic_set_16		atomic_set_short
@@ -886,6 +902,7 @@ ATOMIC_STORE_LOAD(long, "cmpxchgq %0,%1",  "xchgq %1,%0");
 #define	atomic_subtract_rel_16	atomic_subtract_rel_short
 #define	atomic_load_acq_16	atomic_load_acq_short
 #define	atomic_store_rel_16	atomic_store_rel_short
+#define	atomic_fcmpset_16	atomic_fcmpset_short
 
 /* Operations on 32-bit double words. */
 #define	atomic_set_32		atomic_set_int
