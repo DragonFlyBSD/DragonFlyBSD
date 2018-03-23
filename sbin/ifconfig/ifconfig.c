@@ -491,7 +491,7 @@ ifconfig(int argc, char *const *argv, int iscreate, const struct afswtch *uafp)
 	struct callback *cb;
 	int s;
 
-	strncpy(ifr.ifr_name, name, sizeof ifr.ifr_name);
+	strlcpy(ifr.ifr_name, name, sizeof ifr.ifr_name);
 	afp = uafp != NULL ? uafp : af_getbyname("inet");
 top:
 	ifr.ifr_addr.sa_family =
@@ -523,7 +523,7 @@ top:
 			 * After cloning, make sure we have an up-to-date name
 			 * in ifr_name.
 			 */
-			strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+			strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
 
                         /*
                          * Handle any address family spec that
@@ -597,7 +597,7 @@ top:
 	}
 	if (clearaddr) {
 		int ret;
-		strncpy(afp->af_ridreq, name, sizeof ifr.ifr_name);
+		strlcpy(afp->af_ridreq, name, sizeof ifr.ifr_name);
 		ret = ioctl(s, afp->af_difaddr, afp->af_ridreq);
 		if (ret < 0) {
 			if (errno == EADDRNOTAVAIL && (doalias >= 0)) {
@@ -614,7 +614,7 @@ top:
 		}
 	}
 	if (newaddr && (setaddr || setmask)) {
-		strncpy(afp->af_addreq, name, sizeof ifr.ifr_name);
+		strlcpy(afp->af_addreq, name, sizeof ifr.ifr_name);
 		if (ioctl(s, afp->af_aifaddr, afp->af_addreq) < 0)
 			Perror("ioctl (SIOCAIFADDR)");
 	}
@@ -740,7 +740,7 @@ setifflags(const char *vname, int value, int s, const struct afswtch *afp)
  		Perror("ioctl (SIOCGIFFLAGS)");
  		exit(1);
  	}
-	strncpy(my_ifr.ifr_name, name, sizeof (my_ifr.ifr_name));
+	strlcpy(my_ifr.ifr_name, name, sizeof (my_ifr.ifr_name));
 	flags = (my_ifr.ifr_flags & 0xffff) | (my_ifr.ifr_flagshigh << 16);
 
 	if (value < 0) {
@@ -777,7 +777,7 @@ static void
 setifmetric(const char *val, int dummy __unused, int s, 
     const struct afswtch *afp)
 {
-	strncpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
+	strlcpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
 	ifr.ifr_metric = atoi(val);
 	if (ioctl(s, SIOCSIFMETRIC, (caddr_t)&ifr) < 0)
 		warn("ioctl (set metric)");
@@ -787,7 +787,7 @@ static void
 setifmtu(const char *val, int dummy __unused, int s, 
     const struct afswtch *afp)
 {
-	strncpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
+	strlcpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
 	ifr.ifr_mtu = atoi(val);
 	if (ioctl(s, SIOCSIFMTU, (caddr_t)&ifr) < 0)
 		warn("ioctl (set mtu)");
@@ -797,7 +797,7 @@ static void
 setiftsolen(const char *val, int dummy __unused, int s,
     const struct afswtch *afp)
 {
-	strncpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
+	strlcpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
 	ifr.ifr_tsolen = atoi(val);
 	if (ioctl(s, SIOCSIFTSOLEN, (caddr_t)&ifr) < 0)
 		warn("ioctl (set tsolen)");
@@ -885,7 +885,7 @@ status(const struct afswtch *afp, int addrcount, struct	sockaddr_dl *sdl,
 		allfamilies = 0;
 
 	ifr.ifr_addr.sa_family = afp->af_af == AF_LINK ? AF_INET : afp->af_af;
-	strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
 
 	s = socket(ifr.ifr_addr.sa_family, SOCK_DGRAM, 0);
 	if (s < 0)
@@ -955,8 +955,8 @@ status(const struct afswtch *afp, int addrcount, struct	sockaddr_dl *sdl,
 	else if (afp->af_other_status != NULL)
 		afp->af_other_status(s);
 
-	strncpy(ifs.ifs_name, name, sizeof ifs.ifs_name);
 	if (ioctl(s, SIOCGIFSTATUS, &ifs) == 0) 
+	strlcpy(ifs.ifs_name, name, sizeof ifs.ifs_name);
 		printf("%s", ifs.ascii);
 
 	close(s);

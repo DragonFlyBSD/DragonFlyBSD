@@ -86,7 +86,7 @@ carp_status(int s)
 	}
 
 	memset(&ifd, 0, sizeof(ifd));
-	strncpy(ifd.ifd_name, ifr.ifr_name, sizeof(ifd.ifd_name));
+	strlcpy(ifd.ifd_name, ifr.ifr_name, sizeof(ifd.ifd_name));
 	ifd.ifd_cmd = CARPGDEVNAME;
 	ifd.ifd_len = sizeof(devname);
 	ifd.ifd_data = devname;
@@ -187,7 +187,7 @@ getcarp_vhaddr(const char *val, int d, int s, const struct afswtch *afp)
 	int count, i;
 
 	memset(&ifd, 0, sizeof(ifd));
-	strncpy(ifd.ifd_name, ifr.ifr_name, sizeof(ifd.ifd_name));
+	strlcpy(ifd.ifd_name, ifr.ifr_name, sizeof(ifd.ifd_name));
 	ifd.ifd_cmd = CARPGVHADDR;
 	if (ioctl(s, SIOCGDRVSPEC, &ifd) < 0)
 		return;

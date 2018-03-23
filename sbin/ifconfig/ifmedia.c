@@ -105,7 +105,7 @@ media_status(int s)
 	int *media_list, i;
 
 	memset(&ifmr, 0, sizeof(ifmr));
-	strncpy(ifmr.ifm_name, name, sizeof(ifmr.ifm_name));
+	strlcpy(ifmr.ifm_name, name, sizeof(ifmr.ifm_name));
 
 	if (ioctl(s, SIOCGIFMEDIA, &ifmr) < 0) {
 		/*
@@ -196,8 +196,7 @@ ifmedia_getstate(int s)
 			err(1, "malloc");
 
 		(void) memset(ifmr, 0, sizeof(struct ifmediareq));
-		(void) strncpy(ifmr->ifm_name, name,
-		    sizeof(ifmr->ifm_name));
+		strlcpy(ifmr->ifm_name, name, sizeof(ifmr->ifm_name));
 
 		ifmr->ifm_count = 0;
 		ifmr->ifm_ulist = NULL;
@@ -263,7 +262,7 @@ setmedia(const char *val, int d, int s, const struct afswtch *afp)
 	 */
 	subtype = get_media_subtype(IFM_TYPE(ifmr->ifm_ulist[0]), val);
 
-	strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
 	ifr.ifr_media = (ifmr->ifm_current & ~(IFM_NMASK|IFM_TMASK)) |
 	    IFM_TYPE(ifmr->ifm_ulist[0]) | subtype;
 
@@ -299,7 +298,7 @@ domediaopt(const char *val, int clear, int s)
 
 	options = get_media_options(IFM_TYPE(ifmr->ifm_ulist[0]), val);
 
-	strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
 	ifr.ifr_media = ifmr->ifm_current;
 	if (clear)
 		ifr.ifr_media &= ~options;
@@ -321,7 +320,7 @@ setmediamode(const char *val, int d, int s, const struct afswtch *afp)
 
 	mode = get_media_mode(IFM_TYPE(ifmr->ifm_ulist[0]), val);
 
-	strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
 	ifr.ifr_media = (ifmr->ifm_current & ~IFM_MMASK) | mode;
 
 	ifmr->ifm_current = ifr.ifr_media;

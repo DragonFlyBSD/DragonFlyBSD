@@ -120,7 +120,7 @@ ifclonecreate(int s, void *arg)
 	clone_callback_func *clone_cb = NULL;
 
 	memset(&ifr, 0, sizeof(ifr));
-	(void) strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
 
 	if (clone_cb == NULL) {
 		/* Try to find a default callback */
@@ -158,7 +158,7 @@ DECL_CMD_FUNC(clone_create, arg, d)
 static
 DECL_CMD_FUNC(clone_destroy, arg, d)
 {
-	(void) strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
 	if (ioctl(s, SIOCIFDESTROY, &ifr) < 0)
 		err(1, "SIOCIFDESTROY");
 }

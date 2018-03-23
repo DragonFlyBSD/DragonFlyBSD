@@ -95,7 +95,7 @@ static void
 setvlandev(const char *val, int d, int s, const struct afswtch	*afp)
 {
 
-	strncpy(__vreq.vlr_parent, val, sizeof(__vreq.vlr_parent));
+	strlcpy(__vreq.vlr_parent, val, sizeof(__vreq.vlr_parent));
 	__have_dev = 1;
 }
 
