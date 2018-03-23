@@ -22,10 +22,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" 	$FreeBSD: src/share/man/man9/vfs_unmountall.9,v 1.1.2.3 2002/08/25 07:15:56 chris Exp $
-.\" 	$DragonFly: src/share/man/man9/vfs_unmountall.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $FreeBSD: src/share/man/man9/vfs_unmountall.9,v 1.1.2.3 2002/08/25 07:15:56 chris Exp $
 .\"
-.Dd July 26, 2001
+.Dd March 23, 2018
 .Dt VFS_UNMOUNTALL 9
 .Os
 .Sh NAME
@@ -34,7 +33,7 @@
 .Sh SYNOPSIS
 .In sys/mount.h
 .Ft void
-.Fn vfs_unmountall "void"
+.Fn vfs_unmountall "int halting"
 .Sh DESCRIPTION
 The
 .Nm
@@ -43,5 +42,13 @@ run only at system shutdown,
 unmounts all mounted file systems
 from most recent to oldest
 in order to avoid handling dependencies.
+.Pp
+If
+.Fa halting
+is set to 1,
+.Nm
+will disconnect but leave certain mount points, such as
+.Xr devfs 5 ,
+intact.
 .Sh SEE ALSO
 .Xr boot 9
