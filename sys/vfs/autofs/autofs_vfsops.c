@@ -171,12 +171,14 @@ autofs_unmount(struct mount *mp, int mntflags)
 	mtx_lock_ex_quick(&amp->am_lock);
 	while (!RB_EMPTY(&amp->am_root->an_children)) {
 		struct autofs_node *anp;
+		/*
+		 * Force delete all nodes when more than one level of
+		 * directories are created via indirect map. Autofs doesn't
+		 * support rmdir(2), thus this is the only way to get out.
+		 */
 		anp = RB_MIN(autofs_node_tree, &amp->am_root->an_children);
-		if (!RB_EMPTY(&anp->an_children)) {
-			AUTOFS_DEBUG("%s has children", anp->an_name);
-			mtx_unlock_ex(&amp->am_lock);
-			return EBUSY;
-		}
+		while (!RB_EMPTY(&anp->an_children))
+			anp = RB_MIN(autofs_node_tree, &anp->an_children);
 		autofs_node_delete(anp);
 	}
 	autofs_node_delete(amp->am_root);
