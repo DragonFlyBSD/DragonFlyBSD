@@ -2,6 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
+ * Copyright (c) 2013-2017 Mellanox Technologies, Ltd.
  * Copyright (c) 2013-2017 François Tigeot
  * All rights reserved.
  *
@@ -159,5 +160,39 @@ atomic_andnot(int i, atomic_t *v)
 	/* v->counter = v->counter & ~i; */
 	atomic_clear_int(&v->counter, i);
 }
+
+#define cmpxchg(ptr, old, new) ({				\
+	__typeof(*(ptr)) __ret;					\
+								\
+	CTASSERT(sizeof(__ret) == 1 || sizeof(__ret) == 2 ||	\
+	    sizeof(__ret) == 4 || sizeof(__ret) == 8);		\
+								\
+	__ret = (old);						\
+	switch (sizeof(__ret)) {				\
+	case 1:							\
+		while (!atomic_fcmpset_8((volatile int8_t *)(ptr), \
+		    (int8_t *)&__ret, (new)) && __ret == (old))	\
+			;					\
+		break;						\
+	case 2:							\
+		while (!atomic_fcmpset_16((volatile int16_t *)(ptr), \
+		    (int16_t *)&__ret, (new)) && __ret == (old)) \
+			;					\
+		break;						\
+	case 4:							\
+		while (!atomic_fcmpset_32((volatile int32_t *)(ptr), \
+		    (int32_t *)&__ret, (new)) && __ret == (old)) \
+			;					\
+		break;						\
+	case 8:							\
+		while (!atomic_fcmpset_64((volatile int64_t *)(ptr), \
+		    (int64_t *)&__ret, (new)) && __ret == (old)) \
+			;					\
+		break;						\
+	}							\
+	__ret;							\
+})
+
+#define cmpxchg_relaxed(...)	cmpxchg(__VA_ARGS__)
 
 #endif	/* _LINUX_ATOMIC_H_ */
