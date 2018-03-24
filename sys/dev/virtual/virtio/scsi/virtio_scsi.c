@@ -407,8 +407,12 @@ static int
 vtscsi_detach(device_t dev)
 {
 	struct vtscsi_softc *sc;
+	int i;
 
 	sc = device_get_softc(dev);
+
+	for (i = 0; i < sc->vtscsi_nintr; i++)
+		virtio_teardown_intr(dev, i);
 
 	VTSCSI_LOCK(sc);
 	sc->vtscsi_flags |= VTSCSI_FLAG_DETACH;

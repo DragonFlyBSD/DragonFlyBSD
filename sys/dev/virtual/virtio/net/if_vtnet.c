@@ -408,9 +408,13 @@ vtnet_detach(device_t dev)
 {
 	struct vtnet_softc *sc;
 	struct ifnet *ifp;
+	int i;
 
 	sc = device_get_softc(dev);
 	ifp = sc->vtnet_ifp;
+
+	for (i = 0; i < sc->vtnet_nintr; i++)
+		virtio_teardown_intr(dev, i);
 
 	if (device_is_attached(dev)) {
 		lwkt_serialize_enter(&sc->vtnet_slz);

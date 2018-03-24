@@ -339,6 +339,8 @@ vtblk_detach(device_t dev)
 
 	sc = device_get_softc(dev);
 
+	virtio_teardown_intr(dev, 0);
+
 	lwkt_serialize_enter(&sc->vtblk_slz);
 	sc->vtblk_flags |= VTBLK_FLAG_DETACH;
 	if (device_is_attached(dev))
