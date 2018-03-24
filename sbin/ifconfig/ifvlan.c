@@ -37,18 +37,17 @@
 #include <sys/socket.h>
 #include <sys/sockio.h>
 
-#include <stdlib.h>
-#include <unistd.h>
-
-#include <net/ethernet.h>
 #include <net/if.h>
 #include <net/if_var.h>
-#include <net/vlan/if_vlan_var.h>
 #include <net/route.h>
+#include <net/ethernet.h>
+#include <net/vlan/if_vlan_var.h>
 
 #include <ctype.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <err.h>
 #include <errno.h>
 
@@ -153,7 +152,7 @@ static struct afswtch af_vlan = {
 static __constructor(101) void
 vlan_ctor(void)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < nitems(vlan_cmds);  i++)
 		cmd_register(&vlan_cmds[i]);

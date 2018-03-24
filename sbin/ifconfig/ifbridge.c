@@ -39,18 +39,16 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
-
-#include <stdlib.h>
-#include <unistd.h>
-
-#include <net/ethernet.h>
 #include <net/if.h>
-#include <net/bridge/if_bridgevar.h>
 #include <net/route.h>
+#include <net/ethernet.h>
+#include <net/bridge/if_bridgevar.h>
 
 #include <ctype.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <err.h>
 #include <errno.h>
 
@@ -121,7 +119,7 @@ bridge_interfaces(int s, const char *prefix)
 	struct ifbreq *req;
 	char *inbuf = NULL, *ninbuf;
 	char *p, *pad;
-	int i, len = 8192;
+	size_t i, len = 8192;
 
 	pad = strdup(prefix);
 	if (pad == NULL)
@@ -150,7 +148,7 @@ bridge_interfaces(int s, const char *prefix)
 		printf("%s%s ", prefix, req->ifbr_ifsname);
 		printb("flags", req->ifbr_ifsflags, IFBIFBITS);
 		printf("\n");
-		
+
 		if (req->ifbr_ifsflags & IFBIF_STP) {
 			printf("%s", pad);
 			printf("port %u priority %u",
@@ -193,9 +191,9 @@ bridge_addresses(int s, const char *prefix)
 {
 	struct ifbaconf ifbac;
 	struct ifbareq *ifba;
-	char *inbuf = NULL, *ninbuf;
-	int i, len = 8192;
 	struct ether_addr ea;
+	char *inbuf = NULL, *ninbuf;
+	size_t i, len = 8192;
 
 	for (;;) {
 		ninbuf = realloc(inbuf, len);
@@ -592,7 +590,7 @@ static struct afswtch af_bridge = {
 static __constructor(101) void
 bridge_ctor(void)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < nitems(bridge_cmds);  i++)
 		cmd_register(&bridge_cmds[i]);

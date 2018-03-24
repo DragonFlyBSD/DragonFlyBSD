@@ -34,6 +34,9 @@
  * $FreeBSD: src/sbin/ifconfig/ifconfig.h,v 1.16.2.1 2005/07/21 12:25:40 rwatson Exp $
  */
 
+#ifndef IFCONFIG_IFCONFIG_H
+#define IFCONFIG_IFCONFIG_H
+
 struct afswtch;
 struct cmd;
 
@@ -135,7 +138,7 @@ extern	struct ifreq ifr;
 extern	char name[IFNAMSIZ];	/* name of interface */
 extern	int supmedia;
 extern	int printkeys;
-extern	int printname;
+extern	int printifname;
 extern	int flags;
 extern	int newaddr;
 extern	int verbose;
@@ -148,10 +151,12 @@ void	printb(const char *s, unsigned value, const char *bits);
 void	ifmaybeload(const char *);
 
 typedef void clone_callback_func(int, struct ifreq *);
-void    clone_setdefcallback(const char *, clone_callback_func *);
+void	clone_setdefcallback(const char *, clone_callback_func *);
 
 /*
  * XXX expose this so modules that neeed to know of any pending
  * operations on ifmedia can avoid cmd line ordering confusion.
  */
 struct ifmediareq *ifmedia_getstate(int s);
+
+#endif  /* !IFCONFIG_IFCONFIG_H */

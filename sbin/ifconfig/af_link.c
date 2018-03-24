@@ -31,18 +31,16 @@
 
 #include <sys/types.h>
 #include <sys/ioctl.h>
-#include <sys/socket.h>
 #include <net/if.h>
 #include <net/route.h>		/* for RTX_IFA */
+#include <net/if_dl.h>
+#include <net/if_types.h>
+#include <net/ethernet.h>
 
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <net/if_dl.h>
-#include <net/if_types.h>
-#include <net/ethernet.h>
 
 #include "ifconfig.h"
 

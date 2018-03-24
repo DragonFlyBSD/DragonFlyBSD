@@ -67,20 +67,20 @@ struct country;
 
 struct regdomain {
 	enum RegdomainCode	sku;	/* regdomain code/SKU */
-	const char		*name;	/* printable name */ 
+	const char		*name;	/* printable name */
 	const struct country	*cc;	/* country code for 1-1/default map */
 
 	netband_head	 bands_11b;	/* 11b operation */
 	netband_head	 bands_11g;	/* 11g operation */
 	netband_head	 bands_11a;	/* 11a operation */
-	netband_head	 bands_11ng;/* 11ng operation */
-	netband_head	 bands_11na;/* 11na operation */
+	netband_head	 bands_11ng;	/* 11ng operation */
+	netband_head	 bands_11na;	/* 11na operation */
 
 	LIST_ENTRY(regdomain)	next;
 };
 
 struct country {
-	enum ISOCountryCode	code;	   
+	enum ISOCountryCode	code;
 #define	NO_COUNTRY	0xffff
 	const struct regdomain	*rd;
 	const char*		isoname;
@@ -89,7 +89,13 @@ struct country {
 	LIST_ENTRY(country)	next;
 };
 
-struct ident;
+enum IdentType { DOMAIN, COUNTRY, FREQBAND };
+
+struct ident {
+	const void *id;
+	void *p;
+	enum IdentType type;
+};
 
 struct regdata {
 	LIST_HEAD(, country)	countries;	/* country code table */

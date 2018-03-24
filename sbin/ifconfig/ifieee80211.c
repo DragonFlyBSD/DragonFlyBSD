@@ -146,7 +146,7 @@ static const char *modename[IEEE80211_MODE_MAX] = {
 
 static void set80211(int s, int type, int val, int len, void *data);
 static int get80211(int s, int type, void *data, int len);
-static int get80211len(int s, int type, void *data, int len, int *plen);
+static int get80211len(int s, int type, void *data, size_t len, size_t *plen);
 static int get80211val(int s, int type, int *val);
 static const char *get_string(const char *val, const char *sep,
     u_int8_t *buf, int *lenp);
@@ -169,7 +169,19 @@ static struct ieee80211_channel curchan;
 static int gotcurchan = 0;
 static struct ifmediareq *ifmr;
 static int htconf = 0;
-static	int gothtconf = 0;
+static int gothtconf = 0;
+
+static int
+iseq(const char *a, const char *b)
+{
+	return (strcasecmp(a, b) == 0);
+}
+
+static int
+ismatch(const char *a, const char *b)
+{
+	return (strncasecmp(a, b, strlen(b)) == 0);
+}
 
 static void
 gethtconf(int s)
@@ -220,10 +232,10 @@ getregdata(void)
  * 11b > 11g.
  */
 static int
-canpromote(int i, int from, int to)
+canpromote(u_int i, uint32_t from, uint32_t to)
 {
 	const struct ieee80211_channel *fc = &chaninfo->ic_chans[i];
-	int j;
+	u_int j;
 
 	if ((fc->ic_flags & from) != from)
 		return i;
@@ -300,9 +312,9 @@ promote(int i)
 }
 
 static void
-mapfreq(struct ieee80211_channel *chan, int freq, int flags)
+mapfreq(struct ieee80211_channel *chan, uint16_t freq, uint32_t flags)
 {
-	int i;
+	u_int i;
 
 	for (i = 0; i < chaninfo->ic_nchans; i++) {
 		const struct ieee80211_channel *c = &chaninfo->ic_chans[i];
@@ -320,9 +332,9 @@ mapfreq(struct ieee80211_channel *chan, int freq, int flags)
 }
 
 static void
-mapchan(struct ieee80211_channel *chan, int ieee, int flags)
+mapchan(struct ieee80211_channel *chan, uint8_t ieee, uint32_t flags)
 {
-	int i;
+	u_int i;
 
 	for (i = 0; i < chaninfo->ic_nchans; i++) {
 		const struct ieee80211_channel *c = &chaninfo->ic_chans[i];
@@ -543,8 +555,9 @@ ieee80211_mhz2ieee(int freq, int flags)
 static int
 isanyarg(const char *arg)
 {
-	return (strncmp(arg, "-", 1) == 0 ||
-	    strncasecmp(arg, "any", 3) == 0 || strncasecmp(arg, "off", 3) == 0);
+	return (ismatch(arg, "-") ||
+		ismatch(arg, "any") ||
+		ismatch(arg, "off"));
 }
 
 static void
@@ -581,7 +594,7 @@ set80211meshid(const char *val, int d, int s, const struct afswtch *rafp)
 		exit(1);
 
 	set80211(s, IEEE80211_IOC_MESH_ID, 0, len, data);
-}	
+}
 
 static void
 set80211stationname(const char *val, int d, int s, const struct afswtch *rafp)
@@ -607,7 +620,7 @@ set80211stationname(const char *val, int d, int s, const struct afswtch *rafp)
  *
  * The result is not validated here; it's assumed to be
  * checked against the channel table fetched from the kernel.
- */ 
+ */
 static int
 getchannelflags(const char *val, int freq)
 {
@@ -683,7 +696,7 @@ getchannelflags(const char *val, int freq)
 	}
 	/*
 	 * Cleanup specifications.
-	 */ 
+	 */
 	if ((flags & _CHAN_HT) == 0) {
 		/*
 		 * If user specified freq/20 or freq/40 quietly remove
@@ -769,15 +782,15 @@ set80211authmode(const char *val, int d, int s, const struct afswtch *rafp)
 {
 	int	mode;
 
-	if (strcasecmp(val, "none") == 0) {
+	if (iseq(val, "none")) {
 		mode = IEEE80211_AUTH_NONE;
-	} else if (strcasecmp(val, "open") == 0) {
+	} else if (iseq(val, "open")) {
 		mode = IEEE80211_AUTH_OPEN;
-	} else if (strcasecmp(val, "shared") == 0) {
+	} else if (iseq(val, "shared")) {
 		mode = IEEE80211_AUTH_SHARED;
-	} else if (strcasecmp(val, "8021x") == 0) {
+	} else if (iseq(val, "8021x")) {
 		mode = IEEE80211_AUTH_8021X;
-	} else if (strcasecmp(val, "wpa") == 0) {
+	} else if (iseq(val, "wpa")) {
 		mode = IEEE80211_AUTH_WPA;
 	} else {
 		errx(1, "unknown authmode");
@@ -791,15 +804,15 @@ set80211powersavemode(const char *val, int d, int s, const struct afswtch *rafp)
 {
 	int	mode;
 
-	if (strcasecmp(val, "off") == 0) {
+	if (iseq(val, "off")) {
 		mode = IEEE80211_POWERSAVE_OFF;
-	} else if (strcasecmp(val, "on") == 0) {
+	} else if (iseq(val, "on")) {
 		mode = IEEE80211_POWERSAVE_ON;
-	} else if (strcasecmp(val, "cam") == 0) {
+	} else if (iseq(val, "cam")) {
 		mode = IEEE80211_POWERSAVE_CAM;
-	} else if (strcasecmp(val, "psp") == 0) {
+	} else if (iseq(val, "psp")) {
 		mode = IEEE80211_POWERSAVE_PSP;
-	} else if (strcasecmp(val, "psp-cam") == 0) {
+	} else if (iseq(val, "psp-cam")) {
 		mode = IEEE80211_POWERSAVE_PSP_CAM;
 	} else {
 		errx(1, "unknown powersavemode");
@@ -830,11 +843,11 @@ set80211wepmode(const char *val, int d, int s, const struct afswtch *rafp)
 {
 	int	mode;
 
-	if (strcasecmp(val, "off") == 0) {
+	if (iseq(val, "off")) {
 		mode = IEEE80211_WEP_OFF;
-	} else if (strcasecmp(val, "on") == 0) {
+	} else if (iseq(val, "on")) {
 		mode = IEEE80211_WEP_ON;
-	} else if (strcasecmp(val, "mixed") == 0) {
+	} else if (iseq(val, "mixed")) {
 		mode = IEEE80211_WEP_MIXED;
 	} else {
 		errx(1, "unknown wep mode");
@@ -852,7 +865,7 @@ set80211wep(const char *val, int d, int s, const struct afswtch *rafp)
 static int
 isundefarg(const char *arg)
 {
-	return (strcmp(arg, "-") == 0 || strncasecmp(arg, "undef", 5) == 0);
+	return (strcmp(arg, "-") == 0 || ismatch(arg, "undef"));
 }
 
 static void
@@ -938,11 +951,11 @@ set80211protmode(const char *val, int d, int s, const struct afswtch *rafp)
 {
 	int	mode;
 
-	if (strcasecmp(val, "off") == 0) {
+	if (iseq(val, "off")) {
 		mode = IEEE80211_PROTMODE_OFF;
-	} else if (strcasecmp(val, "cts") == 0) {
+	} else if (iseq(val, "cts")) {
 		mode = IEEE80211_PROTMODE_CTS;
-	} else if (strncasecmp(val, "rtscts", 3) == 0) {
+	} else if (ismatch(val, "rts")) {
 		mode = IEEE80211_PROTMODE_RTSCTS;
 	} else {
 		errx(1, "unknown protection mode");
@@ -956,9 +969,9 @@ set80211htprotmode(const char *val, int d, int s, const struct afswtch *rafp)
 {
 	int	mode;
 
-	if (strcasecmp(val, "off") == 0) {
+	if (iseq(val, "off")) {
 		mode = IEEE80211_PROTMODE_OFF;
-	} else if (strncasecmp(val, "rts", 3) == 0) {
+	} else if (ismatch(val, "rts")) {
 		mode = IEEE80211_PROTMODE_RTSCTS;
 	} else {
 		errx(1, "unknown protection mode");
@@ -988,11 +1001,11 @@ set80211roaming(const char *val, int d, int s, const struct afswtch *rafp)
 {
 	int mode;
 
-	if (strcasecmp(val, "device") == 0) {
+	if (iseq(val, "device")) {
 		mode = IEEE80211_ROAMING_DEVICE;
-	} else if (strcasecmp(val, "auto") == 0) {
+	} else if (iseq(val, "auto")) {
 		mode = IEEE80211_ROAMING_AUTO;
-	} else if (strcasecmp(val, "manual") == 0) {
+	} else if (iseq(val, "manual")) {
 		mode = IEEE80211_ROAMING_MANUAL;
 	} else {
 		errx(1, "unknown roaming mode");
@@ -1111,13 +1124,13 @@ set80211bssid(const char *val, int d, int s, const struct afswtch *rafp)
 static int
 getac(const char *ac)
 {
-	if (strcasecmp(ac, "ac_be") == 0 || strcasecmp(ac, "be") == 0)
+	if (iseq(ac, "ac_be") || iseq(ac, "be"))
 		return WME_AC_BE;
-	if (strcasecmp(ac, "ac_bk") == 0 || strcasecmp(ac, "bk") == 0)
+	if (iseq(ac, "ac_bk") || iseq(ac, "bk"))
 		return WME_AC_BK;
-	if (strcasecmp(ac, "ac_vi") == 0 || strcasecmp(ac, "vi") == 0)
+	if (iseq(ac, "ac_vi") || iseq(ac, "vi"))
 		return WME_AC_VI;
-	if (strcasecmp(ac, "ac_vo") == 0 || strcasecmp(ac, "vo") == 0)
+	if (iseq(ac, "ac_vo") || iseq(ac, "vo"))
 		return WME_AC_VO;
 	errx(1, "unknown wme access class %s", ac);
 }
@@ -1312,11 +1325,11 @@ DECL_CMD_FUNC(set80211hwmprootmode, val, d)
 {
 	int mode;
 
-	if (strcasecmp(val, "normal") == 0)
+	if (iseq(val, "normal"))
 		mode = IEEE80211_HWMP_ROOTMODE_NORMAL;
-	else if (strcasecmp(val, "proactive") == 0)
+	else if (iseq(val, "proactive"))
 		mode = IEEE80211_HWMP_ROOTMODE_PROACTIVE;
-	else if (strcasecmp(val, "rann") == 0)
+	else if (iseq(val, "rann"))
 		mode = IEEE80211_HWMP_ROOTMODE_RANN;
 	else
 		mode = IEEE80211_HWMP_ROOTMODE_DISABLED;
@@ -1706,7 +1719,7 @@ DECL_CMD_FUNC(set80211ampdudensity, val, d)
 {
 	int v;
 
-	if (isanyarg(val) || strcasecmp(val, "na") == 0)
+	if (isanyarg(val) || iseq(val, "na"))
 		v = IEEE80211_HTCAP_MPDUDENSITY_NA;
 	else switch ((int)(atof(val)*4)) {
 	case 0:
@@ -1861,7 +1874,7 @@ static
 DECL_CMD_FUNC(set80211meshmetric, val, d)
 {
 	char v[12];
-	
+
 	memcpy(v, val, sizeof(v));
 	set80211(s, IEEE80211_IOC_MESH_PR_METRIC, 0, 0, v);
 }
@@ -1870,7 +1883,7 @@ static
 DECL_CMD_FUNC(set80211meshpath, val, d)
 {
 	char v[12];
-	
+
 	memcpy(v, val, sizeof(v));
 	set80211(s, IEEE80211_IOC_MESH_PR_PATH, 0, 0, v);
 }
@@ -1884,7 +1897,7 @@ regdomain_sort(const void *a, const void *b)
 	const struct ieee80211_channel *cb = b;
 
 	return ca->ic_freq == cb->ic_freq ?
-	    (ca->ic_flags & CHAN_ALL) - (cb->ic_flags & CHAN_ALL) :
+	    ((int)ca->ic_flags & CHAN_ALL) - ((int)cb->ic_flags & CHAN_ALL) :
 	    ca->ic_freq - cb->ic_freq;
 #undef CHAN_ALL
 }
@@ -1899,7 +1912,7 @@ chanlookup(const struct ieee80211_channel chans[], int nchans,
 	for (i = 0; i < nchans; i++) {
 		const struct ieee80211_channel *c = &chans[i];
 		if (c->ic_freq == freq &&
-		    (c->ic_flags & IEEE80211_CHAN_ALLTURBO) == flags)
+		    ((int)c->ic_flags & IEEE80211_CHAN_ALLTURBO) == flags)
 			return c;
 	}
 	return NULL;
@@ -1912,7 +1925,7 @@ chanfind(const struct ieee80211_channel chans[], int nchans, int flags)
 
 	for (i = 0; i < nchans; i++) {
 		const struct ieee80211_channel *c = &chans[i];
-		if ((c->ic_flags & flags) == flags)
+		if (((int)c->ic_flags & flags) == flags)
 			return 1;
 	}
 	return 0;
@@ -2075,7 +2088,7 @@ regdomain_addchans(struct ieee80211req_chaninfo *ci,
 			    prev != NULL && (freq - prev->ic_freq) < channelSep) {
 				if (verbose)
 					printf("%u: skip, only %u channel "
-					    "separation, need %d\n", freq, 
+					    "separation, need %d\n", freq,
 					    freq - prev->ic_freq, channelSep);
 				continue;
 			}
@@ -2432,7 +2445,7 @@ printie(const char* tag, const uint8_t *ie, size_t ielen, int maxlen)
 	printf("%s", tag);
 	if (verbose) {
 		maxlen -= strlen(tag)+2;
-		if (2*ielen > maxlen)
+		if (2*ielen > (size_t)maxlen)
 			maxlen--;
 		printf("<");
 		for (; ielen > 0; ie++, ielen--) {
@@ -2832,6 +2845,9 @@ static void
 printwpsie(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
 {
 	u_int8_t len = ie[1];
+	size_t n;
+	uint16_t tlv_type;
+	uint16_t tlv_len;
 
 	printf("%s", tag);
 	if (verbose) {
@@ -2843,15 +2859,14 @@ printwpsie(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
 			"P",	/* PushButton */
 			"R"	/* Registrar-specified */
 		};
-		int n;
 
 		ie +=6, len -= 4;		/* NB: len is payload only */
 
 		/* WPS IE in Beacon and Probe Resp frames have different fields */
 		printf("<");
 		while (len) {
-			uint16_t tlv_type = BE_READ_2(ie);
-			uint16_t tlv_len  = BE_READ_2(ie + 2);
+			tlv_type = BE_READ_2(ie);
+			tlv_len  = BE_READ_2(ie + 2);
 
 			ie += 4, len -= 4;
 
@@ -2876,7 +2891,7 @@ printwpsie(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
 				break;
 			case IEEE80211_WPS_UUID_E:
 				printf(" uuid-e:");
-				for (n = 0; n < (tlv_len - 1); n++)
+				for (n = 0; n < (size_t)(tlv_len - 1); n++)
 					printf("%02x-", ie[n]);
 				printf("%02x", ie[n]);
 				break;
@@ -2912,9 +2927,9 @@ printtdmaie(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
 static int
 copy_essid(char buf[], size_t bufsize, const u_int8_t *essid, size_t essid_len)
 {
-	const u_int8_t *p; 
+	const u_int8_t *p;
 	size_t maxlen;
-	int i;
+	size_t i;
 
 	if (essid_len > bufsize)
 		maxlen = bufsize;
@@ -2954,10 +2969,11 @@ printssid(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
 }
 
 static void
-printrates(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
+printrates(const char *tag, const u_int8_t *ie, size_t ielen,
+	   __unused int maxlen)
 {
 	const char *sep;
-	int i;
+	size_t i;
 
 	printf("%s", tag);
 	sep = "<";
@@ -2971,11 +2987,12 @@ printrates(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
 }
 
 static void
-printcountry(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
+printcountry(const char *tag, const u_int8_t *ie, size_t ielen,
+	     __unused int maxlen)
 {
 	const struct ieee80211_country_ie *cie =
 	   (const struct ieee80211_country_ie *) ie;
-	int i, nbands, schan, nchan;
+	size_t i, nbands, schan, nchan;
 
 	printf("%s<%c%c%c", tag, cie->cc[0], cie->cc[1], cie->cc[2]);
 	nbands = (cie->len - 3) / sizeof(cie->band[0]);
@@ -2983,15 +3000,15 @@ printcountry(const char *tag, const u_int8_t *ie, size_t ielen, int maxlen)
 		schan = cie->band[i].schan;
 		nchan = cie->band[i].nchan;
 		if (nchan != 1)
-			printf(" %u-%u,%u", schan, schan + nchan-1,
+			printf(" %zu-%zu,%u", schan, schan + nchan-1,
 			    cie->band[i].maxtxpwr);
 		else
-			printf(" %u,%u", schan, cie->band[i].maxtxpwr);
+			printf(" %zu,%u", schan, cie->band[i].maxtxpwr);
 	}
 	printf(">");
 }
 
-/* unaligned little endian access */     
+/* unaligned little endian access */
 #define LE_READ_4(p)					\
 	((u_int32_t)					\
 	 ((((const u_int8_t *)(p))[0]      ) |		\
@@ -3150,7 +3167,7 @@ list_scan(int s, int long_ssids)
 	uint8_t buf[24*1024];
 	char ssid[IEEE80211_NWID_LEN+1];
 	const uint8_t *cp;
-	int len, ssidmax, idlen;
+	size_t len, ssidmax, idlen;
 
 	if (get80211len(s, IEEE80211_IOC_SCAN_RESULTS, buf, sizeof(buf), &len) < 0)
 		errx(1, "unable to get scan results");
@@ -3161,7 +3178,7 @@ list_scan(int s, int long_ssids)
 
 	ssidmax = (verbose || long_ssids) ? IEEE80211_NWID_LEN - 1 : 14;
 	printf("%-*.*s  %-17.17s  %4s %4s  %-7s  %3s %4s\n"
-		, ssidmax, ssidmax, "SSID/MESH ID"
+		, (int)ssidmax, (int)ssidmax, "SSID/MESH ID"
 		, "BSSID"
 		, "CHAN"
 		, "RATE"
@@ -3184,9 +3201,9 @@ list_scan(int s, int long_ssids)
 			idlen = sr->isr_ssid_len;
 		}
 		printf("%-*.*s  %s  %3d  %3dM %3d:%-3d  %3d %-4.4s"
-			, ssidmax
-			  , copy_essid(ssid, ssidmax, idp, idlen)
-			  , ssid
+			, (int)ssidmax
+			, copy_essid(ssid, ssidmax, idp, idlen)
+			, ssid
 			, ether_ntoa((const struct ether_addr *) sr->isr_bssid)
 			, ieee80211_mhz2ieee(sr->isr_freq, sr->isr_flags)
 			, getmaxrate(sr->isr_rates, sr->isr_nrates)
@@ -3213,7 +3230,7 @@ scan_and_wait(int s)
 		perror("socket(PF_ROUTE,SOCK_RAW)");
 		return;
 	}
-	(void) memset(&ireq, 0, sizeof(ireq));
+	memset(&ireq, 0, sizeof(ireq));
 	strlcpy(ireq.i_name, name, sizeof(ireq.i_name));
 	ireq.i_type = IEEE80211_IOC_SCAN_REQ;
 
@@ -3295,16 +3312,16 @@ list_stations(int s)
 	} u;
 	enum ieee80211_opmode opmode = get80211opmode(s);
 	const uint8_t *cp;
-	int len;
+	size_t len;
 
 	/* broadcast address =>'s get all stations */
-	(void) memset(u.req.is_u.macaddr, 0xff, IEEE80211_ADDR_LEN);
+	memset(u.req.is_u.macaddr, 0xff, IEEE80211_ADDR_LEN);
 	if (opmode == IEEE80211_M_STA) {
 		/*
 		 * Get information about the associated AP.
 		 */
-		(void) get80211(s, IEEE80211_IOC_BSSID,
-		    u.req.is_u.macaddr, IEEE80211_ADDR_LEN);
+		get80211(s, IEEE80211_IOC_BSSID,
+			 u.req.is_u.macaddr, IEEE80211_ADDR_LEN);
 	}
 	if (get80211len(s, IEEE80211_IOC_STA_INFO, &u, sizeof(u), &len) < 0)
 		errx(1, "unable to get station information");
@@ -3313,7 +3330,7 @@ list_stations(int s)
 
 	getchaninfo(s);
 
-	if (opmode == IEEE80211_M_MBSS)
+	if (opmode == IEEE80211_M_MBSS) {
 		printf("%-17.17s %4s %5s %5s %7s %4s %4s %4s %6s %6s\n"
 			, "ADDR"
 			, "CHAN"
@@ -3326,7 +3343,7 @@ list_stations(int s)
 			, "TXSEQ"
 			, "RXSEQ"
 		);
-	else 
+	} else {
 		printf("%-17.17s %4s %4s %4s %4s %4s %6s %6s %4s %-7s\n"
 			, "ADDR"
 			, "AID"
@@ -3339,6 +3356,7 @@ list_stations(int s)
 			, "CAPS"
 			, "FLAG"
 		);
+	}
 	cp = (const uint8_t *) u.req.info;
 	do {
 		const struct ieee80211req_sta_info *si;
@@ -3346,7 +3364,7 @@ list_stations(int s)
 		si = (const struct ieee80211req_sta_info *) cp;
 		if (si->isi_len < sizeof(*si))
 			break;
-		if (opmode == IEEE80211_M_MBSS)
+		if (opmode == IEEE80211_M_MBSS) {
 			printf("%s %4d %5x %5x %7.7s %3dM %4.1f %4d %6d %6d"
 				, ether_ntoa((const struct ether_addr*)
 				    si->isi_macaddr)
@@ -3361,7 +3379,7 @@ list_stations(int s)
 				, gettxseq(si)
 				, getrxseq(si)
 			);
-		else 
+		} else {
 			printf("%s %4u %4d %3dM %4.1f %4d %6d %6d %-4.4s %-7.7s"
 				, ether_ntoa((const struct ether_addr*)
 				    si->isi_macaddr)
@@ -3376,6 +3394,7 @@ list_stations(int s)
 				, getcaps(si->isi_capinfo)
 				, getflags(si->isi_state)
 			);
+		}
 		printies(cp + si->isi_ie_off, si->isi_ie_len, 24);
 		printmimo(&si->isi_mimo);
 		printf("\n");
@@ -3399,8 +3418,9 @@ mesh_linkstate_string(uint8_t state)
 		static char buf[10];
 		snprintf(buf, sizeof(buf), "#%u", state);
 		return buf;
-	} else
+	} else {
 		return state_names[state];
+	}
 }
 
 static const char *
@@ -3478,7 +3498,7 @@ print_channels(int s, const struct ieee80211req_chaninfo *chans,
 	struct ieee80211req_chaninfo *achans;
 	uint8_t reported[IEEE80211_CHAN_BYTES];
 	const struct ieee80211_channel *c;
-	int i, half;
+	size_t i, half;
 
 	achans = malloc(IEEE80211_CHANINFO_SPACE(chans));
 	if (achans == NULL)
@@ -3572,7 +3592,7 @@ list_txpow(int s)
 	struct ieee80211req_chaninfo *achans;
 	uint8_t reported[IEEE80211_CHAN_BYTES];
 	struct ieee80211_channel *c, *prev;
-	int i, half;
+	size_t i, half;
 
 	getchaninfo(s);
 	achans = malloc(IEEE80211_CHANINFO_SPACE(chaninfo));
@@ -3663,7 +3683,7 @@ get80211wme(int s, int param, int ac, int *val)
 {
 	struct ieee80211req ireq;
 
-	(void) memset(&ireq, 0, sizeof(ireq));
+	memset(&ireq, 0, sizeof(ireq));
 	strlcpy(ireq.i_name, name, sizeof(ireq.i_name));
 	ireq.i_type = param;
 	ireq.i_len = ac;
@@ -3844,7 +3864,7 @@ list_mac(int s)
 	uint8_t *data;
 	char c;
 
-	(void) memset(&ireq, 0, sizeof(ireq));
+	memset(&ireq, 0, sizeof(ireq));
 	strlcpy(ireq.i_name, name, sizeof(ireq.i_name)); /* XXX ?? */
 	ireq.i_type = IEEE80211_IOC_MACCMD;
 	ireq.i_val = IEEE80211_MACCMD_POLICY;
@@ -3950,14 +3970,14 @@ list_mesh(int s)
 	struct ieee80211req_mesh_route routes[128];
 	struct ieee80211req_mesh_route *rt;
 
-	(void) memset(&ireq, 0, sizeof(ireq));
+	memset(&ireq, 0, sizeof(ireq));
 	strlcpy(ireq.i_name, name, sizeof(ireq.i_name));
 	ireq.i_type = IEEE80211_IOC_MESH_RTCMD;
 	ireq.i_val = IEEE80211_MESH_RTCMD_LIST;
 	ireq.i_data = &routes;
 	ireq.i_len = sizeof(routes);
 	if (ioctl(s, SIOCG80211, &ireq) < 0)
-	 	err(1, "unable to get the Mesh routing table");
+		err(1, "unable to get the Mesh routing table");
 
 	printf("%-17.17s %-17.17s %4s %4s %4s %6s %s\n"
 		, "DEST"
@@ -3968,7 +3988,9 @@ list_mesh(int s)
 		, "MSEQ"
 		, "FLAGS");
 
-	for (rt = &routes[0]; rt - &routes[0] < ireq.i_len / sizeof(*rt); rt++){
+	for (rt = &routes[0];
+	     rt - &routes[0] < (int)(ireq.i_len / sizeof(*rt));
+	     rt++) {
 		printf("%s ",
 		    ether_ntoa((const struct ether_addr *)rt->imr_dest));
 		printf("%s %4u   %4u   %6u %6u    %c%c\n",
@@ -3985,8 +4007,6 @@ list_mesh(int s)
 static
 DECL_CMD_FUNC(set80211list, arg, d)
 {
-#define	iseq(a,b)	(strncasecmp(a,b,sizeof(b)-1) == 0)
-
 	LINE_INIT('\t');
 
 	if (iseq(arg, "sta"))
@@ -4022,7 +4042,6 @@ DECL_CMD_FUNC(set80211list, arg, d)
 	else
 		errx(1, "Don't know how to list %s for %s", arg, name);
 	LINE_BREAK();
-#undef iseq
 }
 
 static enum ieee80211_opmode
@@ -4030,7 +4049,7 @@ get80211opmode(int s)
 {
 	struct ifmediareq ifmr;
 
-	(void) memset(&ifmr, 0, sizeof(ifmr));
+	memset(&ifmr, 0, sizeof(ifmr));
 	strlcpy(ifmr.ifm_name, name, sizeof(ifmr.ifm_name));
 
 	if (ioctl(s, SIOCGIFMEDIA, (caddr_t)&ifmr) >= 0) {
@@ -4058,7 +4077,7 @@ printcipher(int s, struct ieee80211req *ireq, int keylenop)
 	case IEEE80211_CIPHER_WEP:
 		ireq->i_type = keylenop;
 		if (ioctl(s, SIOCG80211, ireq) != -1)
-			printf("WEP-%s", 
+			printf("WEP-%s",
 			    ireq->i_len <= 5 ? "40" :
 			    ireq->i_len <= 13 ? "104" : "128");
 		else
@@ -4170,11 +4189,11 @@ printrate(const char *tag, int v, int defrate, int defmcs)
 }
 
 static int
-getid(int s, int ix, void *data, size_t len, int *plen, int mesh)
+getid(int s, int ix, void *data, size_t len, size_t *plen, int mesh)
 {
 	struct ieee80211req ireq;
 
-	(void) memset(&ireq, 0, sizeof(ireq));
+	memset(&ireq, 0, sizeof(ireq));
 	strlcpy(ireq.i_name, name, sizeof(ireq.i_name));
 	ireq.i_type = (!mesh) ? IEEE80211_IOC_SSID : IEEE80211_IOC_MESH_ID;
 	ireq.i_val = ix;
@@ -4191,7 +4210,8 @@ ieee80211_status(int s)
 {
 	static const uint8_t zerobssid[IEEE80211_ADDR_LEN];
 	enum ieee80211_opmode opmode = get80211opmode(s);
-	int i, num, wpa, wme, bgscan, bgscaninterval, val, len, wepmode;
+	int i, num, wpa, wme, bgscan, bgscaninterval, val, wepmode;
+	size_t len;
 	uint8_t data[32];
 	const struct ieee80211_channel *c;
 	const struct ieee80211_roamparam *rp;
@@ -4472,7 +4492,7 @@ end:
 	}
 
 	bgscaninterval = -1;
-	(void) get80211val(s, IEEE80211_IOC_BGSCAN_INTERVAL, &bgscaninterval);
+	get80211val(s, IEEE80211_IOC_BGSCAN_INTERVAL, &bgscaninterval);
 
 	if (get80211val(s, IEEE80211_IOC_SCANVALID, &val) != -1) {
 		if (val != bgscaninterval || verbose)
@@ -4835,7 +4855,7 @@ get80211(int s, int type, void *data, int len)
 {
 	struct ieee80211req ireq;
 
-	(void) memset(&ireq, 0, sizeof(ireq));
+	memset(&ireq, 0, sizeof(ireq));
 	strlcpy(ireq.i_name, name, sizeof(ireq.i_name));
 	ireq.i_type = type;
 	ireq.i_data = data;
@@ -4844,11 +4864,11 @@ get80211(int s, int type, void *data, int len)
 }
 
 static int
-get80211len(int s, int type, void *data, int len, int *plen)
+get80211len(int s, int type, void *data, size_t len, size_t *plen)
 {
 	struct ieee80211req ireq;
 
-	(void) memset(&ireq, 0, sizeof(ireq));
+	memset(&ireq, 0, sizeof(ireq));
 	strlcpy(ireq.i_name, name, sizeof(ireq.i_name));
 	ireq.i_type = type;
 	ireq.i_len = len;
@@ -4865,7 +4885,7 @@ get80211val(int s, int type, int *val)
 {
 	struct ieee80211req ireq;
 
-	(void) memset(&ireq, 0, sizeof(ireq));
+	memset(&ireq, 0, sizeof(ireq));
 	strlcpy(ireq.i_name, name, sizeof(ireq.i_name));
 	ireq.i_type = type;
 	if (ioctl(s, SIOCG80211, &ireq) < 0)
@@ -4879,7 +4899,7 @@ set80211(int s, int type, int val, int len, void *data)
 {
 	struct ieee80211req	ireq;
 
-	(void) memset(&ireq, 0, sizeof(ireq));
+	memset(&ireq, 0, sizeof(ireq));
 	strlcpy(ireq.i_name, name, sizeof(ireq.i_name));
 	ireq.i_type = type;
 	ireq.i_val = val;
@@ -4979,7 +4999,7 @@ static struct ieee80211_clone_params params = {
 	.icp_opmode	= IEEE80211_M_STA,	/* default to station mode */
 };
 
-void
+static void
 wlan_create(int s, struct ifreq *ifr)
 {
 	static const uint8_t zerobssid[IEEE80211_ADDR_LEN];
@@ -5027,7 +5047,6 @@ DECL_CMD_FUNC(set80211clone_wlanaddr, arg, d)
 static
 DECL_CMD_FUNC(set80211clone_wlanmode, arg, d)
 {
-#define	iseq(a,b)	(strncasecmp(a,b,sizeof(b)-1) == 0)
 	if (iseq(arg, "sta"))
 		params.icp_opmode = IEEE80211_M_STA;
 	else if (iseq(arg, "ahdemo") || iseq(arg, "adhoc-demo"))
@@ -5047,7 +5066,6 @@ DECL_CMD_FUNC(set80211clone_wlanmode, arg, d)
 		params.icp_opmode = IEEE80211_M_MBSS;
 	else
 		errx(1, "Don't know to create %s for %s", arg, name);
-#undef iseq
 }
 
 static void
@@ -5257,7 +5275,7 @@ static struct afswtch af_ieee80211 = {
 static __constructor(101) void
 ieee80211_ctor(void)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < nitems(ieee80211_cmds);  i++)
 		cmd_register(&ieee80211_cmds[i]);

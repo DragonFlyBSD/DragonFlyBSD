@@ -64,7 +64,7 @@
 
 /*
  * Since "struct ifreq" is composed of various union members, callers
- * should pay special attention to interprete the value.
+ * should pay special attention to interpret the value.
  * (.e.g. little/big endian difference in the structure.)
  */
 struct	ifreq ifr;
@@ -80,9 +80,10 @@ int	verbose;
 
 int	supmedia = 0;
 int	printkeys = 0;		/* Print keying material for interfaces. */
-int	printname = 0;		/* Print the name of the created interface. */
+int	printifname = 0;	/* Print the name of the created interface. */
 
-static	int ifconfig(int argc, char *const *argv, int, const struct afswtch *afp);
+static	int ifconfig(int argc, char *const *argv, int iscreate,
+		     const struct afswtch *afp);
 static	void status(const struct afswtch *afp, int addrcount,
 		    struct sockaddr_dl *sdl, struct if_msghdr *ifm,
 		    struct ifa_msghdr *ifam);
@@ -224,6 +225,7 @@ main(int argc, char *argv[])
 
 		/* check and maybe load support for this interface */
 		ifmaybeload(ifname);
+
 		ifindex = if_nametoindex(ifname);
 		if (ifindex == 0) {
 			/*
@@ -283,7 +285,7 @@ retry:
 		int name_len;
 
 		ifm = (struct if_msghdr *)next;
-		
+
 		if (ifm->ifm_type == RTM_IFINFO) {
 #ifdef notyet
 			if (ifm->ifm_data.ifi_datalen == 0)
@@ -308,7 +310,6 @@ retry:
 		ifam = NULL;
 		addrcount = 0;
 		while (next < lim) {
-
 			nextifm = (struct if_msghdr *)next;
 
 			if (nextifm->ifm_type != RTM_NEWADDR)
@@ -357,7 +358,7 @@ retry:
 
 	if (namesonly && need_nl > 0)
 		putchar('\n');
-	if (printname)
+	if (printifname)
 		printf("%s\n", name);
 
 	exit (0);
@@ -508,18 +509,18 @@ top:
 
 		p = cmd_lookup(*argv, iscreate);
 
-                if (iscreate && p == NULL) {
-                        /*
-                         * Push the clone create callback so the new
-                         * device is created and can be used for any
-                         * remaining arguments.
-                         */
-                        cb = callbacks;
-                        if (cb == NULL)
-                                errx(1, "internal error, no callback");
-                        callbacks = cb->cb_next;
-                        cb->cb_func(s, cb->cb_arg);
-                        iscreate = 0;
+		if (iscreate && p == NULL) {
+			/*
+			 * Push the clone create callback so the new
+			 * device is created and can be used for any
+			 * remaining arguments.
+			 */
+			cb = callbacks;
+			if (cb == NULL)
+				errx(1, "internal error, no callback");
+			callbacks = cb->cb_next;
+			cb->cb_func(s, cb->cb_arg);
+			iscreate = 0;
 
 			/*
 			 * After cloning, make sure we have an up-to-date name
@@ -527,24 +528,24 @@ top:
 			 */
 			strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
 
-                        /*
-                         * Handle any address family spec that
-                         * immediately follows and potentially
-                         * recreate the socket.
-                         */
-                        nafp = af_getbyname(*argv);
-                        if (nafp != NULL) {
-                                argc--, argv++;
-                                if (nafp != afp) {
-                                        close(s);
-                                        afp = nafp;
-                                        goto top;
-                                }
-                        }
-                        /*
-                         * Look for a normal parameter.
-                         */
-                        continue;
+			/*
+			 * Handle any address family spec that
+			 * immediately follows and potentially
+			 * recreate the socket.
+			 */
+			nafp = af_getbyname(*argv);
+			if (nafp != NULL) {
+				argc--, argv++;
+				if (nafp != afp) {
+					close(s);
+					afp = nafp;
+					goto top;
+				}
+			}
+			/*
+			 * Look for a normal parameter.
+			 */
+			continue;
 		}
 		if (p == NULL) {
 			/*
@@ -658,7 +659,7 @@ settunnel(const char *src, const char *dst, int s, const struct afswtch *afp)
 		errx(1, "error in parsing address string: %s",
 		    gai_strerror(ecode));
 
-	if ((ecode = getaddrinfo(dst, NULL, NULL, &dstres)) != 0)  
+	if ((ecode = getaddrinfo(dst, NULL, NULL, &dstres)) != 0)
 		errx(1, "error in parsing address string: %s",
 		    gai_strerror(ecode));
 
@@ -719,7 +720,7 @@ notealias(const char *addr, int param, int s, const struct afswtch *afp)
 
 /*ARGSUSED*/
 static void
-setifdstaddr(const char *addr, int param __unused, int s, 
+setifdstaddr(const char *addr, int param __unused, int s,
     const struct afswtch *afp)
 {
 	if (afp->af_getaddr != NULL)
@@ -738,10 +739,9 @@ setifflags(const char *vname, int value, int s, const struct afswtch *afp)
 
 	bcopy((char *)&ifr, (char *)&my_ifr, sizeof(struct ifreq));
 
- 	if (ioctl(s, SIOCGIFFLAGS, (caddr_t)&my_ifr) < 0) {
- 		Perror("ioctl (SIOCGIFFLAGS)");
- 		exit(1);
- 	}
+	if (ioctl(s, SIOCGIFFLAGS, (caddr_t)&my_ifr) < 0) {
+		Perror("ioctl (SIOCGIFFLAGS)");
+	}
 	strlcpy(my_ifr.ifr_name, name, sizeof (my_ifr.ifr_name));
 	flags = (my_ifr.ifr_flags & 0xffff) | (my_ifr.ifr_flagshigh << 16);
 
@@ -760,10 +760,9 @@ void
 setifcap(const char *vname, int value, int s, const struct afswtch *afp)
 {
 
- 	if (ioctl(s, SIOCGIFCAP, (caddr_t)&ifr) < 0) {
- 		Perror("ioctl (SIOCGIFCAP)");
- 		exit(1);
- 	}
+	if (ioctl(s, SIOCGIFCAP, (caddr_t)&ifr) < 0) {
+		Perror("ioctl (SIOCGIFCAP)");
+	}
 	flags = ifr.ifr_curcap;
 	if (value < 0) {
 		value = -value;
@@ -776,23 +775,23 @@ setifcap(const char *vname, int value, int s, const struct afswtch *afp)
 }
 
 static void
-setifmetric(const char *val, int dummy __unused, int s, 
+setifmetric(const char *val, int dummy __unused, int s,
     const struct afswtch *afp)
 {
 	strlcpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
 	ifr.ifr_metric = atoi(val);
 	if (ioctl(s, SIOCSIFMETRIC, (caddr_t)&ifr) < 0)
-		warn("ioctl (set metric)");
+		err(1, "ioctl SIOCSIFMETRIC (set metric)");
 }
 
 static void
-setifmtu(const char *val, int dummy __unused, int s, 
+setifmtu(const char *val, int dummy __unused, int s,
     const struct afswtch *afp)
 {
 	strlcpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
 	ifr.ifr_mtu = atoi(val);
 	if (ioctl(s, SIOCSIFMTU, (caddr_t)&ifr) < 0)
-		warn("ioctl (set mtu)");
+		err(1, "ioctl SIOCSIFMTU (set mtu)");
 }
 
 static void
@@ -802,38 +801,32 @@ setiftsolen(const char *val, int dummy __unused, int s,
 	strlcpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
 	ifr.ifr_tsolen = atoi(val);
 	if (ioctl(s, SIOCSIFTSOLEN, (caddr_t)&ifr) < 0)
-		warn("ioctl (set tsolen)");
+		err(1, "ioctl SIOCSIFTSOLEN (set tsolen)");
 }
 
 static void
-setifname(const char *val, int dummy __unused, int s, 
+setifname(const char *val, int dummy __unused, int s,
     const struct afswtch *afp)
 {
 	char *newname;
 
+	strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+
 	newname = strdup(val);
-	if (newname == NULL) {
-		warn("no memory to set ifname");
-		return;
-	}
+	if (newname == NULL)
+		err(1, "no memory to set ifname");
 	ifr.ifr_data = newname;
 	if (ioctl(s, SIOCSIFNAME, (caddr_t)&ifr) < 0) {
-		warn("ioctl (set name)");
 		free(newname);
-		return;
+		err(1, "ioctl SIOCSIFNAME (set name)");
 	}
+	printifname = 1;
 	strlcpy(name, newname, sizeof(name));
 	free(newname);
-
-	/*
-	 * Even if we just created the interface, we don't need to print
-	 * its name because we just nailed it down separately.
-	 */
-	printname = 0;
 }
 
 static void
-setifpollcpu(const char *val, int dummy __unused, int s, 
+setifpollcpu(const char *val, int dummy __unused, int s,
     const struct afswtch *afp)
 {
 	warnx("pollcpu is deprecated, use polling or npolling instead");
@@ -958,8 +951,8 @@ status(const struct afswtch *afp, int addrcount, struct	sockaddr_dl *sdl,
 	else if (afp->af_other_status != NULL)
 		afp->af_other_status(s);
 
-	if (ioctl(s, SIOCGIFSTATUS, &ifs) == 0) 
 	strlcpy(ifs.ifs_name, name, sizeof ifs.ifs_name);
+	if (ioctl(s, SIOCGIFSTATUS, &ifs) == 0)
 		printf("%s", ifs.ascii);
 
 	close(s);
@@ -1128,7 +1121,7 @@ static struct cmd basic_cmds[] = {
 static __constructor(101) void
 ifconfig_ctor(void)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < nitems(basic_cmds);  i++)
 		cmd_register(&basic_cmds[i]);

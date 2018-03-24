@@ -7,17 +7,17 @@
 #include <sys/socket.h>
 #include <sys/sockio.h>
 
-#include <stdlib.h>
-#include <unistd.h>
-
-#include <net/ethernet.h>
 #include <net/if.h>
-#include <net/lagg/if_lagg.h>
 #include <net/route.h>
+#include <net/ethernet.h>
+#include <net/lagg/if_lagg.h>
 
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <unistd.h>
 #include <err.h>
 #include <errno.h>
 
@@ -57,7 +57,7 @@ setlaggproto(const char *val, int d, int s, const struct afswtch *afp)
 {
 	struct lagg_protos lpr[] = LAGG_PROTOS;
 	struct lagg_reqall ra;
-	int i;
+	size_t i;
 
 	bzero(&ra, sizeof(ra));
 	ra.ra_proto = LAGG_PROTO_MAX;
@@ -141,7 +141,8 @@ lagg_status(int s)
 	struct lagg_reqflags rf;
 	struct lacp_opreq *lp;
 	const char *proto = "<unknown>";
-	int i, isport = 0;
+	bool isport = false;
+	size_t i;
 
 	bzero(&rp, sizeof(rp));
 	bzero(&ra, sizeof(ra));
@@ -150,7 +151,7 @@ lagg_status(int s)
 	strlcpy(rp.rp_portname, name, sizeof(rp.rp_portname));
 
 	if (ioctl(s, SIOCGLAGGPORT, &rp) == 0)
-		isport = 1;
+		isport = true;
 
 	strlcpy(ra.ra_ifname, name, sizeof(ra.ra_ifname));
 	ra.ra_size = sizeof(rpbuf);
@@ -164,7 +165,7 @@ lagg_status(int s)
 		lp = (struct lacp_opreq *)&ra.ra_lacpreq;
 
 		for (i = 0; i < nitems(lpr); i++) {
-			if (ra.ra_proto == lpr[i].lpr_proto) {
+			if ((int)ra.ra_proto == lpr[i].lpr_proto) {
 				proto = lpr[i].lpr_name;
 				break;
 			}
@@ -195,7 +196,7 @@ lagg_status(int s)
 			printf("\tlag id: %s\n",
 			    lacp_format_peer(lp, "\n\t\t "));
 
-		for (i = 0; i < ra.ra_ports; i++) {
+		for (i = 0; i < (size_t)ra.ra_ports; i++) {
 			lp = (struct lacp_opreq *)&rpbuf[i].rp_lacpreq;
 			printf("\tlaggport: %s ", rpbuf[i].rp_portname);
 			printb("flags", rpbuf[i].rp_flags, LAGG_PORT_BITS);
@@ -230,7 +231,7 @@ static struct afswtch af_lagg = {
 static __constructor(101) void
 lagg_ctor(void)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < nitems(lagg_cmds);  i++)
 		cmd_register(&lagg_cmds[i]);

@@ -33,7 +33,13 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <net/if.h>
+#include <net/if_var.h>		/* for struct ifaddr */
 #include <net/route.h>		/* for RTX_IFA */
+#include <netinet/in.h>
+#include <netinet/in_var.h>
+#include <netinet6/nd6.h>	/* Define ND6_INFINITE_LIFETIME */
+#include <arpa/inet.h>
+#include <netdb.h>
 
 #include <err.h>
 #include <stdio.h>
@@ -43,24 +49,15 @@
 #include <time.h>
 #include <ifaddrs.h>
 
-#include <arpa/inet.h>
-
-#include <netinet/in.h>
-#include <net/if_var.h>		/* for struct ifaddr */
-#include <netinet/in_var.h>
-#include <netdb.h>
-
-#include <netinet6/nd6.h>	/* Define ND6_INFINITE_LIFETIME */
-
 #include "ifconfig.h"
 
 static	struct in6_ifreq in6_ridreq;
-static	struct in6_aliasreq in6_addreq = 
-  { { 0 }, 
-    { 0 }, 
-    { 0 }, 
-    { 0 }, 
-    0, 
+static	struct in6_aliasreq in6_addreq =
+  { { 0 },
+    { 0 },
+    { 0 },
+    { 0 },
+    0,
     { 0, 0, ND6_INFINITE_LIFETIME, ND6_INFINITE_LIFETIME } };
 static	int ip6lifetime;
 
@@ -94,7 +91,7 @@ setip6flags(const char *dummyaddr __unused, int flag, int dummysoc __unused,
 }
 
 static void
-setip6lifetime(const char *cmd, const char *val, int s, 
+setip6lifetime(const char *cmd, const char *val, int s,
     const struct afswtch *afp)
 {
 	struct timespec now;
@@ -117,14 +114,14 @@ setip6lifetime(const char *cmd, const char *val, int s,
 }
 
 static void
-setip6pltime(const char *seconds, int dummy __unused, int s, 
+setip6pltime(const char *seconds, int dummy __unused, int s,
     const struct afswtch *afp)
 {
 	setip6lifetime("pltime", seconds, s, afp);
 }
 
 static void
-setip6vltime(const char *seconds, int dummy __unused, int s, 
+setip6vltime(const char *seconds, int dummy __unused, int s,
     const struct afswtch *afp)
 {
 	setip6lifetime("vltime", seconds, s, afp);
@@ -157,7 +154,7 @@ setip6eui64(const char *cmd, int dummy __unused, int s,
 		}
 	}
 	if (!lladdr)
-		errx(EXIT_FAILURE, "could not determine link local address"); 
+		errx(EXIT_FAILURE, "could not determine link local address");
 
 	memcpy(&in6->s6_addr[8], &lladdr->s6_addr[8], 8);
 
@@ -478,7 +475,7 @@ in6_status_tunnel(int s)
 static void
 in6_set_tunnel(int s, struct addrinfo *srcres, struct addrinfo *dstres)
 {
-	struct in6_aliasreq in6_addreq; 
+	struct in6_aliasreq in6_addreq;
 
 	memset(&in6_addreq, 0, sizeof(in6_addreq));
 	strlcpy(in6_addreq.ifra_name, name, IFNAMSIZ);
@@ -499,8 +496,8 @@ static struct cmd inet6_cmds[] = {
 	DEF_CMD("-deprecated", -IN6_IFF_DEPRECATED,	setip6flags),
 	DEF_CMD("autoconf",	IN6_IFF_AUTOCONF,	setip6flags),
 	DEF_CMD("-autoconf",	-IN6_IFF_AUTOCONF,	setip6flags),
-	DEF_CMD_ARG("pltime",        			setip6pltime),
-	DEF_CMD_ARG("vltime",        			setip6vltime),
+	DEF_CMD_ARG("pltime",				setip6pltime),
+	DEF_CMD_ARG("vltime",				setip6vltime),
 	DEF_CMD("eui64",	0,			setip6eui64),
 };
 
@@ -524,12 +521,12 @@ in6_Lopt_cb(const char *optarg __unused)
 {
 	ip6lifetime++;	/* print IPv6 address lifetime */
 }
-static struct option in6_Lopt = { "L", "[-L]", in6_Lopt_cb };
+static struct option in6_Lopt = { "L", "[-L]", in6_Lopt_cb, NULL };
 
 static __constructor(101) void
 inet6_ctor(void)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < nitems(inet6_cmds);  i++)
 		cmd_register(&inet6_cmds[i]);

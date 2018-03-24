@@ -1,4 +1,6 @@
-/*
+/*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -26,11 +28,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/sbin/ifconfig/ifclone.c 194799 2009-06-23 23:49:52Z delphij $
+ * $FreeBSD: head/sbin/ifconfig/ifclone.c 326025 2017-11-20 19:49:47Z pfg $
  */
 
+#include <sys/param.h>
 #include <sys/queue.h>
-#include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <net/if.h>
@@ -84,6 +86,7 @@ list_cloners(void)
 
 	putchar('\n');
 	free(buf);
+	close(s);
 }
 
 struct clone_defcb {
@@ -113,7 +116,7 @@ clone_setdefcallback(const char *ifprefix, clone_callback_func *p)
  * no parameters.
  */
 static void
-ifclonecreate(int s, void *arg)
+ifclonecreate(int s, __unused void *arg)
 {
 	struct ifreq ifr;
 	struct clone_defcb *dcp;
@@ -141,11 +144,12 @@ ifclonecreate(int s, void *arg)
 	}
 
 	/*
-	 * If we get a different name back than we put in, print it.
+	 * If we get a different name back than we put in, update record and
+	 * indicate it should be printed later.
 	 */
 	if (strncmp(name, ifr.ifr_name, sizeof(name)) != 0) {
 		strlcpy(name, ifr.ifr_name, sizeof(name));
-		printf("%s\n", name);
+		printifname = 1;
 	}
 }
 
@@ -176,7 +180,11 @@ clone_Copt_cb(const char *optarg __unused)
 	list_cloners();
 	exit(0);
 }
-static struct option clone_Copt = { .opt = "C", .opt_usage = "[-C]", .cb = clone_Copt_cb };
+static struct option clone_Copt = {
+	.opt = "C",
+	.opt_usage = "[-C]",
+	.cb = clone_Copt_cb,
+};
 
 static __constructor(101) void
 clone_ctor(void)

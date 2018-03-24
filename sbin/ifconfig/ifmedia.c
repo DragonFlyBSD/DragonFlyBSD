@@ -195,7 +195,7 @@ ifmedia_getstate(int s)
 		if (ifmr == NULL)
 			err(1, "malloc");
 
-		(void) memset(ifmr, 0, sizeof(struct ifmediareq));
+		memset(ifmr, 0, sizeof(struct ifmediareq));
 		strlcpy(ifmr->ifm_name, name, sizeof(ifmr->ifm_name));
 
 		ifmr->ifm_count = 0;
@@ -217,7 +217,7 @@ ifmedia_getstate(int s)
 		mwords = (int *)malloc(ifmr->ifm_count * sizeof(int));
 		if (mwords == NULL)
 			err(1, "malloc");
-  
+
 		ifmr->ifm_ulist = mwords;
 		if (ioctl(s, SIOCGIFMEDIA, (caddr_t)ifmr) < 0)
 			err(1, "SIOCGIFMEDIA");
@@ -247,7 +247,6 @@ setmedia(const char *val, int d, int s, const struct afswtch *afp)
 {
 	struct ifmediareq *ifmr;
 	int subtype;
-	
 
 	ifmr = ifmedia_getstate(s);
 
@@ -575,7 +574,7 @@ static struct ifmedia_type_to_subtype *get_toptype_ttos(int ifmw)
 	return ttos;
 }
 
-static struct ifmedia_description *get_subtype_desc(int ifmw, 
+static struct ifmedia_description *get_subtype_desc(int ifmw,
     struct ifmedia_type_to_subtype *ttos)
 {
 	int i;
@@ -594,7 +593,7 @@ static struct ifmedia_description *get_subtype_desc(int ifmw,
 	return NULL;
 }
 
-static struct ifmedia_description *get_mode_desc(int ifmw, 
+static struct ifmedia_description *get_mode_desc(int ifmw,
     struct ifmedia_type_to_subtype *ttos)
 {
 	int i;
@@ -741,7 +740,7 @@ static struct afswtch af_media = {
 static __constructor(101) void
 ifmedia_ctor(void)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < nitems(media_cmds);  i++)
 		cmd_register(&media_cmds[i]);

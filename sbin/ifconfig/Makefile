@@ -17,24 +17,24 @@ SRCS+=	af_inet.c		# IPv4 support
 SRCS+=	af_inet6.c		# IPv6 support
 
 SRCS+=	ifclone.c		# clone device support
-SRCS+=  iflagg.c
 #SRCS+=	ifmac.c			# MAC support
 SRCS+=	ifmedia.c		# SIOC[GS]IFMEDIA support
 SRCS+=	ifvlan.c		# SIOC[GS]ETVLAN support
-SRCS+=	ifieee80211.c 		# SIOC[GS]IEEE80211 support
+SRCS+=	ifieee80211.c		# SIOC[GS]IEEE80211 support
 SRCS+=	regdomain.c
 
 SRCS+=	ifcarp.c		# SIOC[GS]VH support
 #SRCS+=	ifpfsync.c		# pfsync(4) support
 
 SRCS+=	ifbridge.c		# bridge support
+SRCS+=	iflagg.c		# lagg support
 
 DPADD=	${LIBBSDXML} ${LIBSBUF}
 LDADD=	-lbsdxml -lsbuf
 
 MAN=	ifconfig.8
 
-WARNS=	2
+WARNS?=	3
 NO_STRICT_ALIASING=
 
 .include <bsd.prog.mk>

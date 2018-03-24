@@ -33,19 +33,18 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <net/if.h>
+#include <net/if_var.h>		/* for struct ifaddr */
 #include <net/route.h>		/* for RTX_IFA */
+#include <netinet/in.h>
+#include <netinet/in_var.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#include <netinet/in.h>
-#include <net/if_var.h>		/* for struct ifaddr */
-#include <netinet/in_var.h>
-#include <arpa/inet.h>
-#include <netdb.h>
 
 #include "ifconfig.h"
 
@@ -56,7 +55,7 @@ static void
 in_status(int s __unused, const struct rt_addrinfo * info)
 {
 	struct sockaddr_in *sin, null_sin;
-	
+
 	memset(&null_sin, 0, sizeof(null_sin));
 
 	sin = (struct sockaddr_in *)info->rti_info[RTAX_IFA];
@@ -119,16 +118,16 @@ in_getaddr(const char *s, int which)
 				errx(1, "%s: bad value", s);
 			}
 			min->sin_len = sizeof(*min);
-			min->sin_addr.s_addr = htonl(~((1LL << (32 - masklen)) - 1) & 
-				              0xffffffff);
+			min->sin_addr.s_addr = htonl(~((1LL << (32 - masklen)) - 1) &
+						     0xffffffff);
 		}
 	}
 
 	if (inet_aton(s, &sin->sin_addr))
 		return;
 	if ((hp = gethostbyname(s)) != NULL)
-		bcopy(hp->h_addr, (char *)&sin->sin_addr, 
-		    MIN(hp->h_length, sizeof(sin->sin_addr)));
+		bcopy(hp->h_addr, (char *)&sin->sin_addr,
+		      MIN((size_t)hp->h_length, sizeof(sin->sin_addr)));
 	else if ((np = getnetbyname(s)) != NULL)
 		sin->sin_addr = inet_makeaddr(np->n_net, INADDR_ANY);
 	else
