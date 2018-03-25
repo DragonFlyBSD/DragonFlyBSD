@@ -122,7 +122,6 @@ static struct mbuf * vtnet_tx_offload(struct vtnet_softc *, struct mbuf *,
 static int	vtnet_enqueue_txbuf(struct vtnet_softc *, struct mbuf **,
 		    struct vtnet_tx_header *);
 static int	vtnet_encap(struct vtnet_softc *, struct mbuf **);
-static void	vtnet_start_locked(struct ifnet *, struct ifaltq_subque *);
 static void	vtnet_start(struct ifnet *, struct ifaltq_subque *);
 static void	vtnet_tx_intr_task(void *);
 static void	vtnet_tx_vq_intr(void *);
@@ -131,7 +130,6 @@ static void	vtnet_config_intr(void *);
 
 static void	vtnet_stop(struct vtnet_softc *);
 static int	vtnet_virtio_reinit(struct vtnet_softc *);
-static void	vtnet_init_locked(struct vtnet_softc *);
 static void	vtnet_init(void *);
 
 static void	vtnet_exec_ctrl_cmd(struct vtnet_softc *, void *,
@@ -485,7 +483,7 @@ vtnet_resume(device_t dev)
 
 	lwkt_serialize_enter(&sc->vtnet_slz);
 	if (ifp->if_flags & IFF_UP)
-		vtnet_init_locked(sc);
+		vtnet_init(sc);
 	sc->vtnet_flags &= ~VTNET_FLAG_SUSPENDED;
 	lwkt_serialize_exit(&sc->vtnet_slz);
 
@@ -695,7 +693,7 @@ vtnet_setup_interface(struct vtnet_softc *sc)
 	ifq_set_maxlen(&ifp->if_snd, sc->vtnet_tx_size - 1);
 	ifq_set_ready(&ifp->if_snd);
 
-	ether_ifattach(ifp, sc->vtnet_hwaddr, NULL);
+	ether_ifattach(ifp, sc->vtnet_hwaddr, &sc->vtnet_slz);
 
 	/* The Tx IRQ is currently always the last allocated interrupt. */
 	ifq_set_cpuid(&ifp->if_snd, sc->vtnet_cpus[sc->vtnet_nintr - 1]);
@@ -842,7 +840,7 @@ vtnet_update_link_status(struct vtnet_softc *sc)
 		ifp->if_link_state = LINK_STATE_UP;
 		if_link_state_change(ifp);
 		if (!ifsq_is_empty(ifsq))
-			vtnet_start_locked(ifp, ifsq);
+			vtnet_start(ifp, ifsq);
 	} else if (!link && (sc->vtnet_flags & VTNET_FLAG_LINK)) {
 		sc->vtnet_flags &= ~VTNET_FLAG_LINK;
 		if (bootverbose)
@@ -874,7 +872,7 @@ vtnet_watchdog(struct vtnet_softc *sc)
 #endif
 	ifp->if_oerrors++;
 	ifp->if_flags &= ~IFF_RUNNING;
-	vtnet_init_locked(sc);
+	vtnet_init(sc);
 }
 #endif
 
@@ -894,15 +892,11 @@ vtnet_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data,struct ucred *cr)
 	case SIOCSIFMTU:
 		if (ifr->ifr_mtu < ETHERMIN || ifr->ifr_mtu > VTNET_MAX_MTU)
 			error = EINVAL;
-		else if (ifp->if_mtu != ifr->ifr_mtu) {
-			lwkt_serialize_enter(&sc->vtnet_slz);
+		else if (ifp->if_mtu != ifr->ifr_mtu)
 			error = vtnet_change_mtu(sc, ifr->ifr_mtu);
-			lwkt_serialize_exit(&sc->vtnet_slz);
-		}
 		break;
 
 	case SIOCSIFFLAGS:
-		lwkt_serialize_enter(&sc->vtnet_slz);
 		if ((ifp->if_flags & IFF_UP) == 0) {
 			if (ifp->if_flags & IFF_RUNNING)
 				vtnet_stop(sc);
@@ -914,21 +908,19 @@ vtnet_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data,struct ucred *cr)
 				else
 					error = ENOTSUP;
 			}
-		} else
-			vtnet_init_locked(sc);
+		} else {
+			vtnet_init(sc);
+		}
 
 		if (error == 0)
 			sc->vtnet_if_flags = ifp->if_flags;
-		lwkt_serialize_exit(&sc->vtnet_slz);
 		break;
 
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-		lwkt_serialize_enter(&sc->vtnet_slz);
 		if ((sc->vtnet_flags & VTNET_FLAG_CTRL_RX) &&
 		    (ifp->if_flags & IFF_RUNNING))
 			vtnet_rx_filter_mac(sc);
-		lwkt_serialize_exit(&sc->vtnet_slz);
 		break;
 
 	case SIOCSIFMEDIA:
@@ -939,7 +931,6 @@ vtnet_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data,struct ucred *cr)
 	case SIOCSIFCAP:
 		mask = ifr->ifr_reqcap ^ ifp->if_capenable;
 
-		lwkt_serialize_enter(&sc->vtnet_slz);
 
 		if (mask & IFCAP_TXCSUM) {
 			ifp->if_capenable ^= IFCAP_TXCSUM;
@@ -982,11 +973,10 @@ vtnet_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data,struct ucred *cr)
 
 		if (reinit && (ifp->if_flags & IFF_RUNNING)) {
 			ifp->if_flags &= ~IFF_RUNNING;
-			vtnet_init_locked(sc);
+			vtnet_init(sc);
 		}
 		//VLAN_CAPABILITIES(ifp);
 
-		lwkt_serialize_exit(&sc->vtnet_slz);
 		break;
 
 	default:
@@ -1035,7 +1025,7 @@ vtnet_change_mtu(struct vtnet_softc *sc, int new_mtu)
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		ifp->if_flags &= ~IFF_RUNNING;
-		vtnet_init_locked(sc);
+		vtnet_init(sc);
 	}
 
 	return (0);
@@ -1593,11 +1583,8 @@ vtnet_rx_intr_task(void *arg)
 	ifp = sc->vtnet_ifp;
 
 next:
-//	lwkt_serialize_enter(&sc->vtnet_slz);
-
 	if ((ifp->if_flags & IFF_RUNNING) == 0) {
 		vtnet_enable_rx_intr(sc);
-//		lwkt_serialize_exit(&sc->vtnet_slz);
 		return;
 	}
 
@@ -1606,8 +1593,6 @@ next:
 		vtnet_disable_rx_intr(sc);
 		more = 1;
 	}
-
-//	lwkt_serialize_exit(&sc->vtnet_slz);
 
 	if (more) {
 		sc->vtnet_stats.rx_task_rescheduled++;
@@ -1907,19 +1892,6 @@ static void
 vtnet_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct vtnet_softc *sc;
-
-	sc = ifp->if_softc;
-
-	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
-	lwkt_serialize_enter(&sc->vtnet_slz);
-	vtnet_start_locked(ifp, ifsq);
-	lwkt_serialize_exit(&sc->vtnet_slz);
-}
-
-static void
-vtnet_start_locked(struct ifnet *ifp, struct ifaltq_subque *ifsq)
-{
-	struct vtnet_softc *sc;
 	struct virtqueue *vq;
 	struct mbuf *m0;
 	int enq;
@@ -1928,6 +1900,7 @@ vtnet_start_locked(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	vq = sc->vtnet_tx_vq;
 	enq = 0;
 
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(&sc->vtnet_slz);
 
 	if ((ifp->if_flags & (IFF_RUNNING)) !=
@@ -1979,27 +1952,21 @@ vtnet_tx_intr_task(void *arg)
 	ifsq = ifq_get_subq_default(&ifp->if_snd);
 
 next:
-//	lwkt_serialize_enter(&sc->vtnet_slz);
-
 	if ((ifp->if_flags & IFF_RUNNING) == 0) {
 		vtnet_enable_tx_intr(sc);
-//		lwkt_serialize_exit(&sc->vtnet_slz);
 		return;
 	}
 
 	vtnet_txeof(sc);
 
 	if (!ifsq_is_empty(ifsq))
-		vtnet_start_locked(ifp, ifsq);
+		vtnet_start(ifp, ifsq);
 
 	if (vtnet_enable_tx_intr(sc) != 0) {
 		vtnet_disable_tx_intr(sc);
 		sc->vtnet_stats.tx_task_rescheduled++;
-//		lwkt_serialize_exit(&sc->vtnet_slz);
 		goto next;
 	}
-
-//	lwkt_serialize_exit(&sc->vtnet_slz);
 }
 
 static void
@@ -2101,12 +2068,14 @@ vtnet_virtio_reinit(struct vtnet_softc *sc)
 }
 
 static void
-vtnet_init_locked(struct vtnet_softc *sc)
+vtnet_init(void *xsc)
 {
+	struct vtnet_softc *sc;
 	device_t dev;
 	struct ifnet *ifp;
 	int error;
 
+	sc = xsc;
 	dev = sc->vtnet_dev;
 	ifp = sc->vtnet_ifp;
 
@@ -2170,18 +2139,6 @@ vtnet_init_locked(struct vtnet_softc *sc)
 	virtio_reinit_complete(dev);
 
 	vtnet_update_link_status(sc);
-}
-
-static void
-vtnet_init(void *xsc)
-{
-	struct vtnet_softc *sc;
-
-	sc = xsc;
-
-	lwkt_serialize_enter(&sc->vtnet_slz);
-	vtnet_init_locked(sc);
-	lwkt_serialize_exit(&sc->vtnet_slz);
 }
 
 static void
@@ -2577,13 +2534,11 @@ vtnet_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 	ifmr->ifm_status = IFM_AVALID;
 	ifmr->ifm_active = IFM_ETHER;
 
-	lwkt_serialize_enter(&sc->vtnet_slz);
 	if (vtnet_is_link_up(sc) != 0) {
 		ifmr->ifm_status |= IFM_ACTIVE;
 		ifmr->ifm_active |= VTNET_MEDIATYPE;
 	} else
 		ifmr->ifm_active |= IFM_NONE;
-	lwkt_serialize_exit(&sc->vtnet_slz);
 }
 
 static void
