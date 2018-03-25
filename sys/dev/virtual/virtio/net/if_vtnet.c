@@ -86,9 +86,7 @@ static void	vtnet_get_hwaddr(struct vtnet_softc *);
 static void	vtnet_set_hwaddr(struct vtnet_softc *);
 static int	vtnet_is_link_up(struct vtnet_softc *);
 static void	vtnet_update_link_status(struct vtnet_softc *);
-#if 0
-static void	vtnet_watchdog(struct vtnet_softc *);
-#endif
+static void	vtnet_watchdog(struct ifaltq_subque *);
 static int	vtnet_setup_interface(struct vtnet_softc *);
 static int	vtnet_change_mtu(struct vtnet_softc *, int);
 static int	vtnet_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
@@ -695,6 +693,8 @@ vtnet_setup_interface(struct vtnet_softc *sc)
 
 	/* The Tx IRQ is currently always the last allocated interrupt. */
 	ifq_set_cpuid(&ifp->if_snd, sc->vtnet_cpus[sc->vtnet_nintr - 1]);
+	ifsq_watchdog_init(&sc->vtnet_tx_watchdog,
+	    ifq_get_subq_default(&ifp->if_snd), vtnet_watchdog);
 
 	/* Tell the upper layer(s) we support long frames. */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
@@ -849,22 +849,23 @@ vtnet_update_link_status(struct vtnet_softc *sc)
 	}
 }
 
-#if 0
 static void
-vtnet_watchdog(struct vtnet_softc *sc)
+vtnet_watchdog(struct ifaltq_subque *ifsq)
 {
-	struct ifnet *ifp;
+	struct ifnet *ifp = ifsq_get_ifp(ifsq);
+	struct vtnet_softc *sc = ifp->if_softc;
 
 	ifp = sc->vtnet_ifp;
+	sc = ifp->if_softc;
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
-#ifdef VTNET_TX_INTR_MODERATION
-	vtnet_txeof(sc);
-#endif
-
-	if (sc->vtnet_watchdog_timer == 0 || --sc->vtnet_watchdog_timer)
+	if (virtqueue_empty(sc->vtnet_tx_vq)) {
+		if_printf(ifp, "Spurious TX watchdog timeout -- ignoring\n");
+		sc->vtnet_tx_watchdog.wd_timer = 0;
 		return;
+	}
 
-	if_printf(ifp, "watchdog timeout -- resetting\n");
+	if_printf(ifp, "TX watchdog timeout -- resetting\n");
 #ifdef VTNET_DEBUG
 	virtqueue_dump(sc->vtnet_tx_vq);
 #endif
@@ -872,7 +873,6 @@ vtnet_watchdog(struct vtnet_softc *sc)
 	ifp->if_flags &= ~IFF_RUNNING;
 	vtnet_init(sc);
 }
-#endif
 
 static int
 vtnet_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data,struct ucred *cr)
@@ -1643,8 +1643,10 @@ vtnet_txeof(struct vtnet_softc *sc)
 
 	if (deq > 0) {
 		ifq_clr_oactive(&ifp->if_snd);
-		if (virtqueue_empty(vq))
-			sc->vtnet_watchdog_timer = 0;
+                if (virtqueue_empty(vq))
+			sc->vtnet_tx_watchdog.wd_timer = 0;
+		else
+			sc->vtnet_tx_watchdog.wd_timer = VTNET_WATCHDOG_TIMEOUT;
 	}
 }
 
@@ -1939,7 +1941,7 @@ vtnet_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		 *     MULTI SERIALIZERS MODE.
 		 */
 		virtqueue_notify(vq, &sc->vtnet_slz);
-		sc->vtnet_watchdog_timer = VTNET_WATCHDOG_TIMEOUT;
+		sc->vtnet_tx_watchdog.wd_timer = VTNET_WATCHDOG_TIMEOUT;
 	}
 }
 
@@ -2007,8 +2009,8 @@ vtnet_stop(struct vtnet_softc *sc)
 
 	ASSERT_SERIALIZED(&sc->vtnet_slz);
 
-	sc->vtnet_watchdog_timer = 0;
 	ifq_clr_oactive(&ifp->if_snd);
+	ifsq_watchdog_stop(&sc->vtnet_tx_watchdog);
 	ifp->if_flags &= ~(IFF_RUNNING);
 
 	vtnet_disable_rx_intr(sc);
@@ -2138,6 +2140,7 @@ vtnet_init(void *xsc)
 
 	ifp->if_flags |= IFF_RUNNING;
 	ifq_clr_oactive(&ifp->if_snd);
+	ifsq_watchdog_start(&sc->vtnet_tx_watchdog);
 
 	virtio_reinit_complete(dev);
 

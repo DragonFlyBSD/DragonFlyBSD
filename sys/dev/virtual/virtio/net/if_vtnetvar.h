@@ -89,7 +89,7 @@ struct vtnet_softc {
 	int			vtnet_rx_mbuf_size;
 	int			vtnet_rx_mbuf_count;
 	int			vtnet_if_flags;
-	int			vtnet_watchdog_timer;
+	struct ifsubq_watchdog	vtnet_tx_watchdog;
 	uint64_t		vtnet_features;
 
 	struct vtnet_statistics	vtnet_stats;
