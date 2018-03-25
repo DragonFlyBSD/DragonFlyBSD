@@ -92,11 +92,7 @@ struct vtnet_softc {
 	int			vtnet_watchdog_timer;
 	uint64_t		vtnet_features;
 
-	struct task		vtnet_cfgchg_task;
-
 	struct vtnet_statistics	vtnet_stats;
-
-	struct callout		vtnet_tick_ch;
 
 	eventhandler_tag	vtnet_vlan_attach;
 	eventhandler_tag	vtnet_vlan_detach;

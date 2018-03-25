@@ -413,8 +413,6 @@ vtnet_detach(device_t dev)
 		vtnet_stop(sc);
 		lwkt_serialize_exit(&sc->vtnet_slz);
 
-		taskqueue_drain(taskqueue_swi, &sc->vtnet_cfgchg_task);
-
 		ether_ifdetach(ifp);
 	}
 
