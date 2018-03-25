@@ -1046,7 +1046,7 @@ vtnet_init_rx_vq(struct vtnet_softc *sc)
 	}
 
 	if (nbufs > 0) {
-		virtqueue_notify(vq, &sc->vtnet_slz);
+		virtqueue_notify(vq, NULL);
 
 		/*
 		 * EMSGSIZE signifies the virtqueue did not have enough
@@ -1562,6 +1562,7 @@ vtnet_rxeof(struct vtnet_softc *sc, int count, int *rx_npktsp)
 			break;
 	}
 
+	/* XXX Don't drop the serializer, when we use MULTI SERIALIZERS MODE. */
 	virtqueue_notify(vq, &sc->vtnet_slz);
 
 	if (rx_npktsp != NULL)
@@ -1933,6 +1934,10 @@ vtnet_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	}
 
 	if (enq > 0) {
+		/*
+		 * XXX Don't drop the serializer, when we use
+		 *     MULTI SERIALIZERS MODE.
+		 */
 		virtqueue_notify(vq, &sc->vtnet_slz);
 		sc->vtnet_watchdog_timer = VTNET_WATCHDOG_TIMEOUT;
 	}
@@ -2157,7 +2162,12 @@ vtnet_exec_ctrl_cmd(struct vtnet_softc *sc, void *cookie,
 	if (virtqueue_enqueue(vq, cookie, sg, readable, writable) != 0)
 		return;
 
-	virtqueue_notify(vq, &sc->vtnet_slz);
+	/*
+	 * XXX We can safely drop the serializer between here, and the end of
+	 *     the function, when we can correctly sleep for this command to
+	 *     be finished.
+	 */
+	virtqueue_notify(vq, NULL);
 
 	/*
 	 * Poll until the command is complete. Previously, we would
