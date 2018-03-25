@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 François Tigeot
+ * Copyright (c) 2015-2018 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -104,6 +104,19 @@ wake_up_process(struct proc *tsk) {
 	smp_wmb();
 
 	return 0;
+}
+
+static inline int
+signal_pending_state(long state, struct lwp *lp)
+{
+	sigset_t pending_set;
+
+	if (!(state & TASK_INTERRUPTIBLE))
+		return 0;
+
+	pending_set = lwp_sigpend(lp);
+
+	return SIGISMEMBER(pending_set, SIGKILL);
 }
 
 #endif	/* _LINUX_SCHED_H_ */
