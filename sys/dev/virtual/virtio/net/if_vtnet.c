@@ -124,7 +124,6 @@ static int	vtnet_enqueue_txbuf(struct vtnet_softc *, struct mbuf **,
 static int	vtnet_encap(struct vtnet_softc *, struct mbuf **);
 static void	vtnet_start_locked(struct ifnet *, struct ifaltq_subque *);
 static void	vtnet_start(struct ifnet *, struct ifaltq_subque *);
-static void	vtnet_tick(void *);
 static void	vtnet_tx_intr_task(void *);
 static void	vtnet_tx_vq_intr(void *);
 
@@ -173,9 +172,8 @@ TUNABLE_INT("hw.vtnet.lro_disable", &vtnet_lro_disable);
  * Reducing the number of transmit completed interrupts can
  * improve performance. To do so, the define below keeps the
  * Tx vq interrupt disabled and adds calls to vtnet_txeof()
- * in the start and watchdog paths. The price to pay for this
- * is the m_free'ing of transmitted mbufs may be delayed until
- * the watchdog fires.
+ * in the start path. The price to pay for this is the m_free'ing
+ * of transmitted mbufs may be delayed.
  */
 #define VTNET_TX_INTR_MODERATION
 
@@ -255,7 +253,6 @@ vtnet_attach(device_t dev)
 	sc->vtnet_dev = dev;
 
 	lwkt_serialize_init(&sc->vtnet_slz);
-	callout_init(&sc->vtnet_tick_ch);
 
 	ifmedia_init(&sc->vtnet_media, IFM_IMASK, vtnet_ifmedia_upd,
 		     vtnet_ifmedia_sts);
@@ -418,7 +415,6 @@ vtnet_detach(device_t dev)
 		vtnet_stop(sc);
 		lwkt_serialize_exit(&sc->vtnet_slz);
 
-		callout_stop(&sc->vtnet_tick_ch);
 		taskqueue_drain(taskqueue_swi, &sc->vtnet_cfgchg_task);
 
 		ether_ifdetach(ifp);
@@ -1972,25 +1968,6 @@ vtnet_start_locked(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 }
 
 static void
-vtnet_tick(void *xsc)
-{
-	struct vtnet_softc *sc;
-
-	sc = xsc;
-
-#if 0
-	ASSERT_SERIALIZED(&sc->vtnet_slz);
-#ifdef VTNET_DEBUG
-	virtqueue_dump(sc->vtnet_rx_vq);
-	virtqueue_dump(sc->vtnet_tx_vq);
-#endif
-
-	vtnet_watchdog(sc);
-	callout_reset(&sc->vtnet_tick_ch, hz, vtnet_tick, sc);
-#endif
-}
-
-static void
 vtnet_tx_intr_task(void *arg)
 {
 	struct vtnet_softc *sc;
@@ -2061,7 +2038,6 @@ vtnet_stop(struct vtnet_softc *sc)
 	ASSERT_SERIALIZED(&sc->vtnet_slz);
 
 	sc->vtnet_watchdog_timer = 0;
-	callout_stop(&sc->vtnet_tick_ch);
 	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_flags &= ~(IFF_RUNNING);
 
@@ -2194,7 +2170,6 @@ vtnet_init_locked(struct vtnet_softc *sc)
 	virtio_reinit_complete(dev);
 
 	vtnet_update_link_status(sc);
-	callout_reset(&sc->vtnet_tick_ch, hz, vtnet_tick, sc);
 }
 
 static void
