@@ -89,7 +89,6 @@ static void	vtnet_update_link_status(struct vtnet_softc *);
 #if 0
 static void	vtnet_watchdog(struct vtnet_softc *);
 #endif
-static void	vtnet_config_change_task(void *, int);
 static int	vtnet_setup_interface(struct vtnet_softc *);
 static int	vtnet_change_mtu(struct vtnet_softc *, int);
 static int	vtnet_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
@@ -362,8 +361,6 @@ vtnet_attach(device_t dev)
 		device_printf(dev, "cannot setup interface\n");
 		goto fail;
 	}
-
-	TASK_INIT(&sc->vtnet_cfgchg_task, 0, vtnet_config_change_task, sc);
 
 	for (i = 0; i < sc->vtnet_nintr; i++) {
 		error = virtio_setup_intr(dev, i, &sc->vtnet_slz);
@@ -884,18 +881,6 @@ vtnet_watchdog(struct vtnet_softc *sc)
 	vtnet_init_locked(sc);
 }
 #endif
-
-static void
-vtnet_config_change_task(void *arg, int pending)
-{
-	struct vtnet_softc *sc;
-
-	sc = arg;
-
-	lwkt_serialize_enter(&sc->vtnet_slz);
-	vtnet_update_link_status(sc);
-	lwkt_serialize_exit(&sc->vtnet_slz);
-}
 
 static int
 vtnet_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data,struct ucred *cr)
@@ -2061,7 +2046,7 @@ vtnet_config_intr(void *arg)
 
 	sc = arg;
 
-	taskqueue_enqueue(taskqueue_thread[mycpuid], &sc->vtnet_cfgchg_task);
+	vtnet_update_link_status(sc);
 }
 
 static void
