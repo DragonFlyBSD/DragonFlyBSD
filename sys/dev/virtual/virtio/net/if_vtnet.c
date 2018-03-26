@@ -109,7 +109,6 @@ static int	vtnet_rx_csum(struct vtnet_softc *, struct mbuf *,
 		    struct virtio_net_hdr *);
 static int	vtnet_rxeof_merged(struct vtnet_softc *, struct mbuf *, int);
 static int	vtnet_rxeof(struct vtnet_softc *, int, int *);
-static void	vtnet_rx_intr_task(void *);
 static void	vtnet_rx_vq_intr(void *);
 
 static void	vtnet_enqueue_txhdr(struct vtnet_softc *,
@@ -121,7 +120,6 @@ static int	vtnet_enqueue_txbuf(struct vtnet_softc *, struct mbuf **,
 		    struct vtnet_tx_header *);
 static int	vtnet_encap(struct vtnet_softc *, struct mbuf **);
 static void	vtnet_start(struct ifnet *, struct ifaltq_subque *);
-static void	vtnet_tx_intr_task(void *);
 static void	vtnet_tx_vq_intr(void *);
 
 static void	vtnet_config_intr(void *);
@@ -585,15 +583,15 @@ vtnet_alloc_intrs(struct vtnet_softc *sc)
 		sc->vtnet_cpus[i] = -1;
 
 	cnt = intrcount;
-        error = virtio_intr_alloc(sc->vtnet_dev, &cnt, use_config,
+	error = virtio_intr_alloc(sc->vtnet_dev, &cnt, use_config,
 	    sc->vtnet_cpus);
-        if (error != 0) {
+	if (error != 0) {
 		virtio_intr_release(sc->vtnet_dev);
-                return (error);
+		return (error);
 	}
 	sc->vtnet_nintr = cnt;
 
-        return (0);
+	return (0);
 }
 
 static int
@@ -620,7 +618,7 @@ vtnet_alloc_virtqueues(struct vtnet_softc *sc)
 		sc->vtnet_rx_nsegs = VTNET_MRG_RX_SEGS;
 
 	if (virtio_with_feature(dev, VIRTIO_NET_F_HOST_TSO4) ||
-            virtio_with_feature(dev, VIRTIO_NET_F_HOST_TSO6))
+	    virtio_with_feature(dev, VIRTIO_NET_F_HOST_TSO6))
 		sc->vtnet_tx_nsegs = VTNET_MAX_TX_SEGS;
 	else
 		sc->vtnet_tx_nsegs = VTNET_MIN_TX_SEGS;
@@ -1572,15 +1570,19 @@ vtnet_rxeof(struct vtnet_softc *sc, int count, int *rx_npktsp)
 }
 
 static void
-vtnet_rx_intr_task(void *arg)
+vtnet_rx_vq_intr(void *xsc)
 {
 	struct vtnet_softc *sc;
 	struct ifnet *ifp;
 	int more;
 
-	sc = arg;
+	sc = xsc;
 	ifp = sc->vtnet_ifp;
 
+	if (!virtqueue_pending(sc->vtnet_rx_vq))
+		return;
+
+	vtnet_disable_rx_intr(sc);
 next:
 	if ((ifp->if_flags & IFF_RUNNING) == 0) {
 		vtnet_enable_rx_intr(sc);
@@ -1597,20 +1599,6 @@ next:
 		sc->vtnet_stats.rx_task_rescheduled++;
 		goto next;
 	}
-}
-
-static void
-vtnet_rx_vq_intr(void *xsc)
-{
-	struct vtnet_softc *sc;
-
-	sc = xsc;
-
-	if (!virtqueue_pending(sc->vtnet_rx_vq))
-		return;
-
-	vtnet_disable_rx_intr(sc);
-	vtnet_rx_intr_task(sc);
 }
 
 static void
@@ -1643,7 +1631,7 @@ vtnet_txeof(struct vtnet_softc *sc)
 
 	if (deq > 0) {
 		ifq_clr_oactive(&ifp->if_snd);
-                if (virtqueue_empty(vq))
+		if (virtqueue_empty(vq))
 			sc->vtnet_tx_watchdog.wd_timer = 0;
 		else
 			sc->vtnet_tx_watchdog.wd_timer = VTNET_WATCHDOG_TIMEOUT;
@@ -1946,16 +1934,20 @@ vtnet_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 }
 
 static void
-vtnet_tx_intr_task(void *arg)
+vtnet_tx_vq_intr(void *xsc)
 {
 	struct vtnet_softc *sc;
 	struct ifnet *ifp;
 	struct ifaltq_subque *ifsq;
 
-	sc = arg;
+	sc = xsc;
 	ifp = sc->vtnet_ifp;
 	ifsq = ifq_get_subq_default(&ifp->if_snd);
 
+	if (!virtqueue_pending(sc->vtnet_tx_vq))
+		return;
+
+	vtnet_disable_tx_intr(sc);
 next:
 	if ((ifp->if_flags & IFF_RUNNING) == 0) {
 		vtnet_enable_tx_intr(sc);
@@ -1972,20 +1964,6 @@ next:
 		sc->vtnet_stats.tx_task_rescheduled++;
 		goto next;
 	}
-}
-
-static void
-vtnet_tx_vq_intr(void *xsc)
-{
-	struct vtnet_softc *sc;
-
-	sc = xsc;
-
-	if (!virtqueue_pending(sc->vtnet_tx_vq))
-		return;
-
-	vtnet_disable_tx_intr(sc);
-	vtnet_tx_intr_task(sc);
 }
 
 static void
@@ -2302,7 +2280,7 @@ vtnet_rx_filter_mac(struct vtnet_softc *sc)
 	struct sglist sg;
 	struct ifnet *ifp;
 	struct ifaddr *ifa;
-        struct ifaddr_container *ifac;
+	struct ifaddr_container *ifac;
 	struct ifmultiaddr *ifma;
 	int ucnt, mcnt, promisc, allmulti, error;
 	uint8_t ack;
