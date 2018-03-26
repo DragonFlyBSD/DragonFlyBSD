@@ -75,14 +75,7 @@
 MALLOC_DEFINE(M_AUTOFS, "autofs", "Automounter filesystem");
 
 struct objcache *autofs_request_objcache = NULL;
-static struct objcache_malloc_args autofs_request_args = {
-	sizeof(struct autofs_request), M_AUTOFS,
-};
-
 struct objcache *autofs_node_objcache = NULL;
-static struct objcache_malloc_args autofs_node_args = {
-	sizeof(struct autofs_node), M_AUTOFS,
-};
 
 static int	autofs_open(struct dev_open_args *ap);
 static int	autofs_close(struct dev_close_args *ap);
@@ -98,7 +91,7 @@ struct dev_ops autofs_ops = {
 /*
  * List of signals that can interrupt an autofs trigger.
  */
-int autofs_sig_set[] = {
+static int autofs_sig_set[] = {
 	SIGINT,
 	SIGTERM,
 	SIGHUP,
@@ -153,88 +146,6 @@ autofs_node_cmp(const struct autofs_node *a, const struct autofs_node *b)
 }
 
 RB_GENERATE(autofs_node_tree, autofs_node, an_link, autofs_node_cmp);
-
-static boolean_t
-autofs_request_objcache_ctor(void *obj, void *privdata, int ocflags)
-{
-	struct autofs_request *ar = obj;
-
-	memset(ar, 0, sizeof(*ar));
-	return (TRUE);
-}
-
-static boolean_t
-autofs_node_objcache_ctor(void *obj, void *privdata, int ocflags)
-{
-	struct autofs_node *an = obj;
-
-	memset(an, 0, sizeof(*an));
-	return (TRUE);
-}
-
-int
-autofs_init(struct vfsconf *vfsp)
-{
-	KASSERT(autofs_softc == NULL,
-	    ("softc %p, should be NULL", autofs_softc));
-
-	autofs_softc = kmalloc(sizeof(*autofs_softc), M_AUTOFS,
-	    M_WAITOK | M_ZERO);
-
-	autofs_request_objcache = objcache_create("autofs_request", 0, 0,
-		autofs_request_objcache_ctor, NULL, NULL,
-		objcache_malloc_alloc,
-		objcache_malloc_free,
-		&autofs_request_args);
-
-	autofs_node_objcache = objcache_create("autofs_node", 0, 0,
-		autofs_node_objcache_ctor, NULL, NULL,
-		objcache_malloc_alloc,
-		objcache_malloc_free,
-		&autofs_node_args);
-
-	TAILQ_INIT(&autofs_softc->sc_requests);
-	cv_init(&autofs_softc->sc_cv, "autofscv");
-	lockinit(&autofs_softc->sc_lock, "autofssclk", 0, 0);
-	autofs_softc->sc_dev_opened = false;
-
-	autofs_softc->sc_cdev = make_dev(&autofs_ops, 0, UID_ROOT,
-	    GID_OPERATOR, 0640, "autofs");
-	if (autofs_softc->sc_cdev == NULL) {
-		AUTOFS_WARN("failed to create device node");
-		objcache_destroy(autofs_request_objcache);
-		objcache_destroy(autofs_node_objcache);
-		kfree(autofs_softc, M_AUTOFS);
-
-		return (ENODEV);
-	}
-	autofs_softc->sc_cdev->si_drv1 = autofs_softc;
-
-	return (0);
-}
-
-int
-autofs_uninit(struct vfsconf *vfsp)
-{
-	lockmgr(&autofs_softc->sc_lock, LK_EXCLUSIVE);
-	if (autofs_softc->sc_dev_opened) {
-		lockmgr(&autofs_softc->sc_lock, LK_RELEASE);
-		return (EBUSY);
-	}
-
-	if (autofs_softc->sc_cdev != NULL)
-		destroy_dev(autofs_softc->sc_cdev);
-
-	objcache_destroy(autofs_request_objcache);
-	objcache_destroy(autofs_node_objcache);
-
-	lockmgr(&autofs_softc->sc_lock, LK_RELEASE);
-
-	kfree(autofs_softc, M_AUTOFS);	/* race with open */
-	autofs_softc = NULL;
-
-	return (0);
-}
 
 bool
 autofs_ignore_thread(void)

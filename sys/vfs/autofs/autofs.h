@@ -59,6 +59,8 @@ MALLOC_DECLARE(M_AUTOFS);
 
 extern struct objcache *autofs_request_objcache;
 extern struct objcache *autofs_node_objcache;
+extern struct autofs_softc *autofs_softc;
+extern struct dev_ops autofs_ops;
 
 extern struct vop_ops autofs_vnode_vops;
 
@@ -147,8 +149,6 @@ struct autofs_softc {
 	int				sc_last_request_id;
 };
 
-int	autofs_init(struct vfsconf *vfsp);
-int	autofs_uninit(struct vfsconf *vfsp);
 int	autofs_trigger(struct autofs_node *anp, const char *component,
 	    int componentlen);
 bool	autofs_cached(struct autofs_node *anp, const char *component,

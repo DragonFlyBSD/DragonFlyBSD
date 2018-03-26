@@ -42,8 +42,6 @@
 static int	autofs_trigger_vn(struct vnode *vp, const char *path,
 		    int pathlen, struct vnode **newvp);
 
-extern struct autofs_softc	*autofs_softc;
-
 static __inline size_t
 autofs_dirent_reclen(const char *name)
 {
