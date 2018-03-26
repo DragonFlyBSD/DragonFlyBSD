@@ -852,10 +852,10 @@ vtnet_update_link_status(struct vtnet_softc *sc)
 static void
 vtnet_watchdog(struct ifaltq_subque *ifsq)
 {
-	struct ifnet *ifp = ifsq_get_ifp(ifsq);
-	struct vtnet_softc *sc = ifp->if_softc;
+	struct ifnet *ifp;
+	struct vtnet_softc *sc;
 
-	ifp = sc->vtnet_ifp;
+	ifp = ifsq_get_ifp(ifsq);
 	sc = ifp->if_softc;
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
