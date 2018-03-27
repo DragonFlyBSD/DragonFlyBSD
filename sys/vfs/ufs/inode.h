@@ -33,7 +33,6 @@
  *
  *	@(#)inode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/inode.h,v 1.28.2.2 2001/09/29 12:52:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/inode.h,v 1.12 2006/09/10 01:26:41 dillon Exp $
  */
 
 #ifndef _UFS_UFS_INODE_H_
@@ -148,7 +147,6 @@ struct inode {
 struct indir {
 	ufs_daddr_t in_lbn;		/* Logical block number. */
 	int	in_off;			/* Offset in buffer. */
-	int	in_exists;		/* Flag if the block exists. */
 };
 
 /* Convert between inode pointers and vnode pointers. */

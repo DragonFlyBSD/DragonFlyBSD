@@ -200,7 +200,6 @@ ext2_bmaparray(struct vnode *vp, ext2_daddr_t bn, ext2_daddr_t *bnp,
 		if (bp)
 			bqrelse(bp);
 
-		xap->in_exists = 1;
 		bp = getblk(vp, lblktodoff(fs, metalbn),
 			    mp->mnt_stat.f_iosize, 0, 0);
 		if ((bp->b_flags & B_CACHE) == 0) {
@@ -315,7 +314,6 @@ ext2_getlbns(struct vnode *vp, ext2_daddr_t bn, struct indir *ap, int *nump)
 	 */
 	ap->in_lbn = metalbn;
 	ap->in_off = off = NIADDR - i;
-	ap->in_exists = 0;
 	ap++;
 	for (++numlevels; i <= NIADDR; i++) {
 		/* If searching for a meta-data block, quit when found. */
@@ -327,7 +325,6 @@ ext2_getlbns(struct vnode *vp, ext2_daddr_t bn, struct indir *ap, int *nump)
 		++numlevels;
 		ap->in_lbn = metalbn;
 		ap->in_off = off;
-		ap->in_exists = 0;
 		++ap;
 
 		metalbn -= -1 + off * blockcnt;
