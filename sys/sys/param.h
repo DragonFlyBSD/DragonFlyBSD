@@ -169,9 +169,11 @@
  * 500105 - _SC_LEVEL1_DCACHE_LINESIZE sysconf()
  * 500106 - %b and %r formats removal
  * 500107 - <machine/apm_bios.h> removal
+ * 500200 - 5.2 release
+ * 500300 - 5.3 development
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500107	/* propagated to newvers */
+#define __DragonFly_version 500300	/* propagated to newvers */
 
 #include <sys/_null.h>
 
