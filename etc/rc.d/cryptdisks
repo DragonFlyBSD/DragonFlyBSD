@@ -3,7 +3,7 @@
 # PROVIDE: cryptdisks
 # BEFORE:  mountcritlocal localswap dumpon
 
-$_rc_subr_loaded . /etc/rc.subr
+. /etc/rc.subr
 
 name="cryptdisks"
 start_cmd="cryptdisks_start"

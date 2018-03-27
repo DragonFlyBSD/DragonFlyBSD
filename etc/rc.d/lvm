@@ -7,7 +7,7 @@
 # REQUIRE: udevd_early
 # BEFORE:  mountcritlocal cryptdisks
 
-$_rc_subr_loaded . /etc/rc.subr
+. /etc/rc.subr
 
 name="lvm"
 rcvar=$name

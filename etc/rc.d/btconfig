@@ -1,13 +1,13 @@
 #!/bin/sh
 #
 # $NetBSD: btconfig,v 1.1 2006/06/19 15:44:36 gdamore Exp $
-# $DragonFly: src/etc/rc.d/btconfig,v 1.1 2008/01/06 21:51:30 hasso Exp $
+#
 
 # PROVIDE: bluetooth
 # REQUIRE: DAEMON
 # BEFORE:  LOGIN
 
-$_rc_subr_loaded . /etc/rc.subr
+. /etc/rc.subr
 
 name="btconfig"
 rcvar=${name}
