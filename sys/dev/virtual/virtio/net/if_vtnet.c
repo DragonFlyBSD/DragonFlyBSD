@@ -192,7 +192,7 @@ static struct virtio_feature_desc vtnet_feature_desc[] = {
 	{ VIRTIO_NET_F_CTRL_VLAN,	"VLanFilter"	},
 	{ VIRTIO_NET_F_CTRL_RX_EXTRA,	"RxModeExtra"	},
 	{ VIRTIO_NET_F_GUEST_ANNOUNCE,	"GuestAnnounce"	},
-	{ VIRTIO_NET_F_MQ,		"RFS"		},
+	{ VIRTIO_NET_F_MQ,		"Multiqueue"	},
 	{ VIRTIO_NET_F_CTRL_MAC_ADDR,	"SetMacAddress"	},
 	{ 0, NULL }
 };
@@ -407,6 +407,7 @@ vtnet_detach(device_t dev)
 	if (device_is_attached(dev)) {
 		lwkt_serialize_enter(&sc->vtnet_slz);
 		vtnet_stop(sc);
+		lwkt_serialize_handler_disable(&sc->vtnet_slz);
 		lwkt_serialize_exit(&sc->vtnet_slz);
 
 		ether_ifdetach(ifp);
@@ -836,7 +837,7 @@ vtnet_update_link_status(struct vtnet_softc *sc)
 		ifp->if_link_state = LINK_STATE_UP;
 		if_link_state_change(ifp);
 		if (!ifsq_is_empty(ifsq))
-			vtnet_start(ifp, ifsq);
+			ifsq_devstart_sched(ifsq);
 	} else if (!link && (sc->vtnet_flags & VTNET_FLAG_LINK)) {
 		sc->vtnet_flags &= ~VTNET_FLAG_LINK;
 		if (bootverbose)
@@ -870,6 +871,7 @@ vtnet_watchdog(struct ifaltq_subque *ifsq)
 	ifp->if_oerrors++;
 	ifp->if_flags &= ~IFF_RUNNING;
 	vtnet_init(sc);
+	ifsq_devstart_sched(ifsq);
 }
 
 static int
@@ -1903,19 +1905,19 @@ vtnet_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 	while (!ifsq_is_empty(ifsq)) {
 		if (virtqueue_full(vq)) {
-			ifq_set_oactive(&ifp->if_snd);
+			ifsq_set_oactive(ifsq);
 			break;
 		}
 
-		m0 = ifq_dequeue(&ifp->if_snd);
+		m0 = ifsq_dequeue(ifsq);
 		if (m0 == NULL)
 			break;
 
 		if (vtnet_encap(sc, &m0) != 0) {
 			if (m0 == NULL)
 				break;
-			ifq_prepend(&ifp->if_snd, m0);
-			ifq_set_oactive(&ifp->if_snd);
+			ifsq_prepend(ifsq, m0);
+			ifsq_set_oactive(ifsq);
 			break;
 		}
 
@@ -1957,7 +1959,7 @@ next:
 	vtnet_txeof(sc);
 
 	if (!ifsq_is_empty(ifsq))
-		vtnet_start(ifp, ifsq);
+		ifsq_devstart(ifsq);
 
 	if (vtnet_enable_tx_intr(sc) != 0) {
 		vtnet_disable_tx_intr(sc);
