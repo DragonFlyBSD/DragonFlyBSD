@@ -1132,6 +1132,9 @@ arp_update_msghandler(netmsg_t msg)
 	}
 }
 
+/*
+ * Reply to an arp request
+ */
 static void
 in_arpreply(struct mbuf *m, in_addr_t taddr, in_addr_t myaddr)
 {
@@ -1181,12 +1184,17 @@ in_arpreply(struct mbuf *m, in_addr_t taddr, in_addr_t myaddr)
 				return;
 			}
 			--rt->rt_refcnt;
+
 			/*
 			 * Don't send proxies for nodes on the same interface
 			 * as this one came out of, or we'll get into a fight
 			 * over who claims what Ether address.
+			 *
+			 * If the rt entry is associated with a bridge, we
+			 * count it as the 'same' interface if ifp is
+			 * associated with the bridge.
 			 */
-			if (rt->rt_ifp == ifp) {
+			if (rt->rt_ifp == ifp || rt->rt_ifp == ifp->if_bridge) {
 				m_freem(m);
 				return;
 			}
