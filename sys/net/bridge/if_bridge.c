@@ -2140,7 +2140,7 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 
 	/*
 	 * If the packet is a multicast, or we don't know a better way to
-	 * get there, send to all interfaces.
+	 * get there, send to all interfaces except the originating one.
 	 */
 	if (ETHER_IS_MULTICAST(eh->ether_dhost))
 		dst_if = NULL;
@@ -2158,7 +2158,7 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 		alt_if = NULL;
 		alt_priority = 0;
 		TAILQ_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid],
-				     bif_next, nbif) {
+				      bif_next, nbif) {
 			dst_if = bif->bif_ifp;
 
 			if ((dst_if->if_flags & IFF_RUNNING) == 0)
@@ -2280,7 +2280,7 @@ sendunicast:
  *
  * Without this the ARP code will supply bridge member interfaces
  * for the is-at which makes it difficult the bridge to fail-over
- * interfaces (amoung other things).
+ * interfaces (among other things).
  */
 static struct ifnet *
 bridge_interface(void *if_bridge)
@@ -3253,6 +3253,7 @@ bridge_rtinstall_oncpu(struct bridge_softc *sc, const uint8_t *dst,
 		      M_WAITOK | M_ZERO);
 	memcpy(brt->brt_addr, dst, ETHER_ADDR_LEN);
 	brt->brt_info = bri;
+	atomic_add_int(&bri->bri_refs, 1);
 
 	bridge_rtnode_insert(sc, brt);
 	return 0;
@@ -3809,12 +3810,22 @@ out:
 static void
 bridge_rtnode_destroy(struct bridge_softc *sc, struct bridge_rtnode *brt)
 {
+	struct bridge_rtinfo *bri;
+
 	LIST_REMOVE(brt, brt_hash);
 	LIST_REMOVE(brt, brt_list);
 
-	if (mycpuid + 1 == netisr_ncpus) {
+	bri = brt->brt_info;
+
+	/*
+	 * The bri_dead flag can be set asynchronously and catch some gc's
+	 * in the middle, don't free bri until all references have actually
+	 * gone away.
+	 */
+	if (atomic_fetchadd_int(&bri->bri_refs, -1) == 1) {
 		/* Free rtinfo associated with rtnode on the last cpu */
-		kfree(brt->brt_info, M_DEVBUF);
+		kfree(bri, M_DEVBUF);
+		brt->brt_info = NULL;	/* safety */
 	}
 	kfree(brt, M_DEVBUF);
 

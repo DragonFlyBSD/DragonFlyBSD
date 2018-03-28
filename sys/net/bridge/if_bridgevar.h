@@ -320,6 +320,7 @@ struct bridge_rtinfo {
 	uint8_t			bri_flags;	/* address flags */
 	uint8_t			bri_dead;
 	uint8_t			bri_pad[2];
+	uint32_t		bri_refs;
 };
 
 /*
