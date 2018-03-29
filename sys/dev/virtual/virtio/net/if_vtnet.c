@@ -26,6 +26,8 @@
 
 /* Driver for VirtIO network devices. */
 
+#include "opt_ifpoll.h"
+
 #include <sys/cdefs.h>
 
 #include <sys/param.h>
@@ -54,6 +56,7 @@
 #include <net/if_media.h>
 #include <net/vlan/if_vlan_var.h>
 #include <net/vlan/if_vlan_ether.h>
+#include <net/if_poll.h>
 #include <net/ifq_var.h>
 
 #include <net/bpf.h>
@@ -80,6 +83,12 @@ static int	vtnet_resume(device_t);
 static int	vtnet_shutdown(device_t);
 
 static void	vtnet_negotiate_features(struct vtnet_softc *);
+#ifdef IFPOLL_ENABLE
+static void	vtnet_npoll(struct ifnet *, struct ifpoll_info *);
+static void	vtnet_npoll_status(struct ifnet *);
+static void	vtnet_npoll_rx(struct ifnet *, void *, int);
+static void	vtnet_npoll_tx(struct ifnet *, void *, int);
+#endif
 static void	vtnet_serialize(struct ifnet *, enum ifnet_serialize);
 static void	vtnet_deserialize(struct ifnet *, enum ifnet_serialize);
 static int	vtnet_tryserialize(struct ifnet *, enum ifnet_serialize);
@@ -736,6 +745,9 @@ vtnet_setup_interface(struct vtnet_softc *sc)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_init = vtnet_init;
 	ifp->if_start = vtnet_start;
+#ifdef IFPOLL_ENABLE
+	ifp->if_npoll = vtnet_npoll;
+#endif
 	ifp->if_serialize = vtnet_serialize;
 	ifp->if_deserialize = vtnet_deserialize;
 	ifp->if_tryserialize = vtnet_tryserialize;
@@ -1412,6 +1424,115 @@ vtnet_enqueue_rxbuf(struct vtnet_softc *sc, struct mbuf *m)
 	return (virtqueue_enqueue(sc->vtnet_rx_vq, m, &sg, 0, sg.sg_nseg));
 }
 
+#ifdef IFPOLL_ENABLE
+
+static void
+vtnet_npoll_status(struct ifnet *ifp)
+{
+	struct vtnet_softc *sc = ifp->if_softc;
+
+	ASSERT_SERIALIZED(&sc->vtnet_slz);
+
+	vtnet_update_link_status(sc);
+}
+
+static void
+vtnet_npoll_rx(struct ifnet *ifp, void *arg __unused, int cycle)
+{
+	struct vtnet_softc *sc = ifp->if_softc;
+
+	vtnet_rxeof(sc, cycle, NULL);
+}
+
+static void
+vtnet_npoll_tx(struct ifnet *ifp, void *arg __unused, int cycle __unused)
+{
+	struct vtnet_softc *sc = ifp->if_softc;
+
+	ASSERT_SERIALIZED(&sc->vtnet_tx_slz);
+
+	vtnet_txeof(sc);
+	if (!ifq_is_empty(&ifp->if_snd))
+		if_devstart(ifp);
+}
+
+static void
+vtnet_npoll(struct ifnet *ifp, struct ifpoll_info *info)
+{
+	struct vtnet_softc *sc = ifp->if_softc;
+	int i;
+
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+
+	if (info) {
+		int cpu;
+
+		info->ifpi_status.status_func = vtnet_npoll_status;
+		info->ifpi_status.serializer = &sc->vtnet_slz;
+
+		/* Use the same cpu for rx and tx. */
+		cpu = device_get_unit(device_get_parent(sc->vtnet_dev));
+		/* Shuffle a bit. */
+		cpu = (cpu * 61) % netisr_ncpus;
+		KKASSERT(cpu < netisr_ncpus);
+		info->ifpi_tx[cpu].poll_func = vtnet_npoll_tx;
+		info->ifpi_tx[cpu].arg = NULL;
+		info->ifpi_tx[cpu].serializer = &sc->vtnet_tx_slz;
+		ifq_set_cpuid(&ifp->if_snd, cpu);
+
+		info->ifpi_rx[cpu].poll_func = vtnet_npoll_rx;
+		info->ifpi_rx[cpu].arg = NULL;
+		info->ifpi_rx[cpu].serializer = &sc->vtnet_rx_slz;
+
+		for (i = 0; i < 3; i++)
+			lwkt_serialize_handler_disable(sc->serializes[i]);
+		vtnet_disable_rx_intr(sc);
+		vtnet_disable_tx_intr(sc);
+		for (i = 0; i < sc->vtnet_nintr; i++)
+			virtio_teardown_intr(sc->vtnet_dev, i);
+		if (virtio_with_feature(sc->vtnet_dev, VIRTIO_NET_F_STATUS))
+			virtio_unbind_intr(sc->vtnet_dev, -1);
+		for (i = 0; i < 2; i++)
+			virtio_unbind_intr(sc->vtnet_dev, i);
+	} else {
+		int error;
+
+		ifq_set_cpuid(&ifp->if_snd,
+		    sc->vtnet_cpus[sc->vtnet_nintr - 1]);
+		for (i = 0; i < 3; i++)
+			lwkt_serialize_handler_enable(sc->serializes[i]);
+		for (i = 0; i < 2; i++) {
+			error = virtio_bind_intr(sc->vtnet_dev,
+			    sc->vtnet_irqmap[i].irq, i,
+			    sc->vtnet_irqmap[i].handler, sc);
+			if (error) {
+				device_printf(sc->vtnet_dev,
+				    "cannot re-bind virtqueue IRQs\n");
+			}
+		}
+		if (virtio_with_feature(sc->vtnet_dev, VIRTIO_NET_F_STATUS)) {
+			error = virtio_bind_intr(sc->vtnet_dev, 0, -1,
+			    vtnet_config_intr, sc);
+			if (error) {
+				device_printf(sc->vtnet_dev,
+				    "cannot re-bind config_change IRQ\n");
+			}
+		}
+		for (i = 0; i < sc->vtnet_nintr; i++) {
+			error = virtio_setup_intr(sc->vtnet_dev, i,
+			    sc->vtnet_intr_slz[i]);
+			if (error) {
+				device_printf(sc->vtnet_dev,
+				    "cannot setup virtqueue interrupts\n");
+			}
+		}
+		vtnet_enable_rx_intr(sc);
+		vtnet_enable_tx_intr(sc);
+	}
+}
+
+#endif	/* IFPOLL_ENABLE */
+
 static void
 vtnet_vlan_tag_remove(struct mbuf *m)
 {
@@ -1554,8 +1675,6 @@ vtnet_rxeof(struct vtnet_softc *sc, int count, int *rx_npktsp)
 	hdr = &lhdr;
 	deq = 0;
 	rx_npkts = 0;
-
-	ASSERT_SERIALIZED(&sc->vtnet_rx_slz);
 
 	while (--count >= 0) {
 		m = virtqueue_dequeue(vq, &len);
@@ -1712,8 +1831,6 @@ vtnet_txeof(struct vtnet_softc *sc)
 	vq = sc->vtnet_tx_vq;
 	ifp = sc->vtnet_ifp;
 	deq = 0;
-
-	ASSERT_SERIALIZED(&sc->vtnet_tx_slz);
 
 	while ((txhdr = virtqueue_dequeue(vq, NULL)) != NULL) {
 		deq++;
@@ -2210,6 +2327,9 @@ vtnet_init(void *xsc)
 			vtnet_rx_filter_vlan(sc);
 	}
 
+#ifdef IFPOLL_ENABLE
+	if (!(ifp->if_flags & IFF_NPOLLING))
+#endif
 	{
 		vtnet_enable_rx_intr(sc);
 		vtnet_enable_tx_intr(sc);
