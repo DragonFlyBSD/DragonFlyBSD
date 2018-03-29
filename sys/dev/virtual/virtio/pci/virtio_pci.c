@@ -847,10 +847,12 @@ vtpci_reinit(device_t dev, uint64_t features)
 
 	if (sc->vtpci_flags & VIRTIO_PCI_FLAG_MSIX) {
 		pci_enable_msix(dev);
-		error = vtpci_register_msix_vector(sc,
-		    VIRTIO_MSI_CONFIG_VECTOR, 0);
-		if (error)
-			return (error);
+		if (sc->vtpci_config_irq != -1) {
+			error = vtpci_register_msix_vector(sc,
+			    VIRTIO_MSI_CONFIG_VECTOR, sc->vtpci_config_irq);
+			if (error)
+				return (error);
+		}
 	}
 
 	for (queue = 0; queue < sc->vtpci_nvqs; queue++) {
@@ -865,7 +867,8 @@ vtpci_reinit(device_t dev, uint64_t features)
 		if (error)
 			return (error);
 
-		if (sc->vtpci_flags & VIRTIO_PCI_FLAG_MSIX) {
+		if (vqx->ires_idx != -1 &&
+		    (sc->vtpci_flags & VIRTIO_PCI_FLAG_MSIX)) {
 			error = vtpci_register_msix_vector(sc,
 			    VIRTIO_MSI_QUEUE_VECTOR, vqx->ires_idx);
 			if (error)
