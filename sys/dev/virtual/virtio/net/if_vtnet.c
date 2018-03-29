@@ -872,7 +872,7 @@ vtnet_is_link_up(struct vtnet_softc *sc)
 	dev = sc->vtnet_dev;
 	ifp = sc->vtnet_ifp;
 
-	ASSERT_IFNET_SERIALIZED_ALL(sc->vtnet_ifp);
+	ASSERT_SERIALIZED(&sc->vtnet_slz);
 
 	if (virtio_with_feature(dev, VIRTIO_NET_F_STATUS)) {
 		status = virtio_read_dev_config_2(dev,
