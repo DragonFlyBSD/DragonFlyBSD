@@ -89,6 +89,7 @@ static void	vtnet_serialize_assert(struct ifnet *, enum ifnet_serialize,
 #endif  /* INVARIANTS */
 static int	vtnet_alloc_intrs(struct vtnet_softc *);
 static int	vtnet_alloc_virtqueues(struct vtnet_softc *);
+static int	vtnet_bind_intrs(struct vtnet_softc *);
 static void	vtnet_get_hwaddr(struct vtnet_softc *);
 static void	vtnet_set_hwaddr(struct vtnet_softc *);
 static int	vtnet_is_link_up(struct vtnet_softc *);
@@ -241,11 +242,6 @@ vtnet_probe(device_t dev)
 	return (BUS_PROBE_DEFAULT);
 }
 
-struct irqmap {
-	int irq;
-	driver_intr_t *handler;
-};
-
 static int
 vtnet_attach(device_t dev)
 {
@@ -316,54 +312,10 @@ vtnet_attach(device_t dev)
 		goto fail;
 	}
 
-	/* XXX Separate function */
-	struct irqmap info[2];
-	lwkt_serialize_t intr_slz[3] = {
-		&sc->vtnet_slz, &sc->vtnet_slz, &sc->vtnet_slz
-	};
-
-	/* Possible "Virtqueue <-> IRQ" configurations */
-	switch (sc->vtnet_nintr) {
-	case 1:
-		info[0] = (struct irqmap){0, vtnet_rx_vq_intr};
-		info[1] = (struct irqmap){0, vtnet_tx_vq_intr};
-		break;
-	case 2:
-		if (virtio_with_feature(dev, VIRTIO_NET_F_STATUS)) {
-			info[0] = (struct irqmap){1, vtnet_rx_vq_intr};
-			info[1] = (struct irqmap){1, vtnet_tx_vq_intr};
-		} else {
-			info[0] = (struct irqmap){0, vtnet_rx_msix_intr};
-			info[1] = (struct irqmap){1, vtnet_tx_msix_intr};
-			intr_slz[0] = &sc->vtnet_rx_slz;
-			intr_slz[1] = &sc->vtnet_tx_slz;
-		}
-		break;
-	case 3:
-		info[0] = (struct irqmap){1, vtnet_rx_msix_intr};
-		info[1] = (struct irqmap){2, vtnet_tx_msix_intr};
-		intr_slz[1] = &sc->vtnet_rx_slz;
-		intr_slz[2] = &sc->vtnet_tx_slz;
-		break;
-	default:
-		device_printf(dev, "Invalid interrupt vector count: %d\n",
-		    sc->vtnet_nintr);
+	error = vtnet_bind_intrs(sc);
+	if (error) {
+		device_printf(dev, "cannot bind virtqueues to interrupts\n");
 		goto fail;
-	}
-	for (i = 0; i < 2; i++) {
-		error = virtio_bind_intr(dev, info[i].irq, i,
-		    info[i].handler, sc);
-		if (error) {
-			device_printf(dev, "cannot bind virtqueue IRQs\n");
-			goto fail;
-		}
-	}
-	if (virtio_with_feature(dev, VIRTIO_NET_F_STATUS)) {
-		error = virtio_bind_intr(dev, 0, -1, vtnet_config_intr, sc);
-		if (error) {
-			device_printf(dev, "cannot bind config_change IRQ\n");
-			goto fail;
-		}
 	}
 
 	/* Read (or generate) the MAC address for the adapter. */
@@ -376,7 +328,7 @@ vtnet_attach(device_t dev)
 	}
 
 	for (i = 0; i < sc->vtnet_nintr; i++) {
-		error = virtio_setup_intr(dev, i, intr_slz[i]);
+		error = virtio_setup_intr(dev, i, sc->vtnet_intr_slz[i]);
 		if (error) {
 			device_printf(dev, "cannot setup virtqueue "
 			    "interrupts\n");
@@ -637,10 +589,6 @@ vtnet_alloc_intrs(struct vtnet_softc *sc)
 	if (intrcount < 1)
 		return (ENXIO);
 
-	/*
-	 * XXX We should explicitly set the cpus for the rx/tx threads, to
-	 *     only use cpus, where the network stack is running.
-	 */
 	for (i = 0; i < intrcount; i++)
 		sc->vtnet_cpus[i] = -1;
 
@@ -699,6 +647,73 @@ vtnet_alloc_virtqueues(struct vtnet_softc *sc)
 	}
 
 	return (virtio_alloc_virtqueues(dev, nvqs, vq_info));
+}
+
+static int
+vtnet_bind_intrs(struct vtnet_softc *sc)
+{
+	int error = 0;
+	int i;
+
+	for (i = 0; i < 3; i++)
+		sc->vtnet_intr_slz[i] = &sc->vtnet_slz;
+
+	/* Possible "Virtqueue <-> IRQ" configurations */
+	switch (sc->vtnet_nintr) {
+	case 1:
+		sc->vtnet_irqmap[0] = (struct irqmap){0, vtnet_rx_vq_intr};
+		sc->vtnet_irqmap[1] = (struct irqmap){0, vtnet_tx_vq_intr};
+		break;
+	case 2:
+		if (virtio_with_feature(sc->vtnet_dev, VIRTIO_NET_F_STATUS)) {
+			sc->vtnet_irqmap[0] =
+			    (struct irqmap){1, vtnet_rx_vq_intr};
+			sc->vtnet_irqmap[1] =
+			    (struct irqmap){1, vtnet_tx_vq_intr};
+		} else {
+			sc->vtnet_irqmap[0] =
+			    (struct irqmap){0, vtnet_rx_msix_intr};
+			sc->vtnet_irqmap[1] =
+			    (struct irqmap){1, vtnet_tx_msix_intr};
+			sc->vtnet_intr_slz[0] = &sc->vtnet_rx_slz;
+			sc->vtnet_intr_slz[1] = &sc->vtnet_tx_slz;
+		}
+		break;
+	case 3:
+		sc->vtnet_irqmap[0] = (struct irqmap){1, vtnet_rx_msix_intr};
+		sc->vtnet_irqmap[1] = (struct irqmap){2, vtnet_tx_msix_intr};
+		sc->vtnet_intr_slz[1] = &sc->vtnet_rx_slz;
+		sc->vtnet_intr_slz[2] = &sc->vtnet_tx_slz;
+		break;
+	default:
+		device_printf(sc->vtnet_dev,
+		    "Invalid interrupt vector count: %d\n", sc->vtnet_nintr);
+		error = EINVAL;
+		goto fail;
+	}
+
+	for (i = 0; i < 2; i++) {
+		error = virtio_bind_intr(sc->vtnet_dev,
+		    sc->vtnet_irqmap[i].irq, i, sc->vtnet_irqmap[i].handler,
+		    sc);
+		if (error) {
+			device_printf(sc->vtnet_dev,
+			    "cannot bind virtqueue IRQs\n");
+			goto fail;
+		}
+	}
+	if (virtio_with_feature(sc->vtnet_dev, VIRTIO_NET_F_STATUS)) {
+		error = virtio_bind_intr(sc->vtnet_dev, 0, -1,
+		    vtnet_config_intr, sc);
+		if (error) {
+			device_printf(sc->vtnet_dev,
+			    "cannot bind config_change IRQ\n");
+			goto fail;
+		}
+	}
+
+fail:
+	return (error);
 }
 
 static int

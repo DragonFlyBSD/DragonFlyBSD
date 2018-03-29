@@ -49,6 +49,11 @@ struct vtnet_statistics {
 	uint64_t	tx_task_rescheduled;
 };
 
+struct irqmap {
+	int irq;
+	driver_intr_t *handler;
+};
+
 struct vtnet_softc {
 	device_t		vtnet_dev;
 	struct ifnet		*vtnet_ifp;
@@ -77,6 +82,9 @@ struct vtnet_softc {
 	/* controlq, rx, tx and config_change */
 	int			vtnet_cpus[4];
 	int			vtnet_nintr;
+
+	struct irqmap		vtnet_irqmap[2];
+	struct lwkt_serialize	*vtnet_intr_slz[3];
 
 	int			vtnet_txhdrcount;
 	struct vtnet_tx_header	*vtnet_txhdrarea;
