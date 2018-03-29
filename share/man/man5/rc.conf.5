@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd November 25, 2017
+.Dd March 29, 2018
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -472,6 +472,27 @@ specifies a filename.
 .Pq Vt str
 The IPv6 equivalent of
 .Va firewall_flags .
+.It Va ipfw3_enable
+.Pq Vt bool
+Set to
+.Dq Li YES
+to enable
+.Xr ipfw3 8 .
+.It Va ipfw3_program
+.Pq Vt str
+Path to
+.Xr ipfw3 8 .
+.It Va ipfw3_script
+.Pq Vt str
+The full path to the shell script to run to set up the ipfw3
+firewall rules (default
+.Pa /etc/ipfw3.rules ) .
+.It Va ipfw3_modules
+.Pq Vt str
+List of ipfw3 modules to be loaded before executing the above
+.Va ipfw3_script .
+(default
+.Dq Li ipfw3 ipfw3_basic ) .
 .It Va natd_program
 .Pq Vt str
 Path to
