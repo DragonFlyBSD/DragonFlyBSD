@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2010,2018
+# Copyright (c) 2010, 2018
 # 	The DragonFly Project.  All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -48,7 +48,7 @@ calc_size()
 	    awk '{ print $7,$1 }' | \
 	    sort -n -k 2 | \
 	    uniq -f 1 | \
-	    awk '{ sum+=$1 } END { print sum }'  # [byte]
+	    awk '{ sum+=$1 } END { print sum }'  # byte
 }
 
 calc_initrd_size()
@@ -60,7 +60,7 @@ calc_initrd_size()
 		echo "* ${dir}: ${csize} bytes" >&2
 		isize=$((${isize} + ${csize}))
 	done
-	# Round initrd size up by MiB
+	# Round initrd size up by MB
 	isize_mb=$(echo "${isize}" | awk '
 	    function ceil(x) {
 	        y = int(x);
@@ -70,7 +70,7 @@ calc_initrd_size()
 	        mb = $1/1024/1024;
 	        print ceil(mb);
 	    }')
-	# Add additional 1 MiB
+	# Add additional 1 MB
 	echo $((${isize_mb} + 1))
 }
 
@@ -156,24 +156,24 @@ test ! -d ${TMP_DIR}     && usage
 test ! -z "$1"           && usage
 
 BUILD_DIR="${TMP_DIR}/initrd"
-INITRD_SIZE=${INITRD_SIZE%[mM]}  # [MiB]
-INITRD_SIZE_MAX=${INITRD_SIZE_MAX%[mM]}  # [MiB]
+INITRD_SIZE=${INITRD_SIZE%[mM]}  # MB
+INITRD_SIZE_MAX=${INITRD_SIZE_MAX%[mM]}  # MB
 
 CSIZE=$(calc_initrd_size)
-echo "Required initrd image size: ${CSIZE} MiB"
+echo "Required initrd image size: ${CSIZE} MB"
 if [ -n "${INITRD_SIZE}" -a "${INITRD_SIZE}" != "0" ]; then
 	if [ ${CSIZE} -gt ${INITRD_SIZE} ]; then
-		echo "Specified initrd size (${INITRD_SIZE} MiB) too small"
+		echo "Specified initrd size (${INITRD_SIZE} MB) too small"
 		exit 1
 	fi
 else
 	INITRD_SIZE=${CSIZE}
 fi
-echo "Initrd size: ${INITRD_SIZE} MiB"
+echo "Initrd size: ${INITRD_SIZE} MB"
 
 if [ -n "${INITRD_SIZE_MAX}" -a "${INITRD_SIZE_MAX}" != "0" ] && \
    [ ${INITRD_SIZE} -gt ${INITRD_SIZE_MAX} ]; then
-	echo "Exceeded the specified maximum size (${INITRD_SIZE_MAX} MiB)"
+	echo "Exceeded the specified maximum size (${INITRD_SIZE_MAX} MB)"
 	exit 1
 fi
 
