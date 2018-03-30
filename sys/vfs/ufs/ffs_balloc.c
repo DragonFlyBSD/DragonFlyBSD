@@ -457,7 +457,7 @@ fail:
 		 * We shall not leave the freed blocks on the vnode
 		 * buffer object lists.
 		 */
-		bp = getblk(vp, *lbns_remfree, fs->fs_bsize, 0, 0);
+		bp = getblk(vp, lblktodoff(fs, *lbns_remfree), fs->fs_bsize, 0, 0);
 		bp->b_flags |= (B_INVAL | B_RELBUF);
 		brelse(bp);
 		deallocated += fs->fs_bsize;
