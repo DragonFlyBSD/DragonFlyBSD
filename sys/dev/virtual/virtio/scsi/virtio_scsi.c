@@ -182,7 +182,7 @@ static void	vtscsi_get_tunables(struct vtscsi_softc *);
 static void	vtscsi_add_sysctl(struct vtscsi_softc *);
 
 static void	vtscsi_printf_req(struct vtscsi_request *, const char *,
-		    const char *, ...);
+		    const char *, ...) __printflike(3, 4);
 
 /* Global tunables. */
 /*

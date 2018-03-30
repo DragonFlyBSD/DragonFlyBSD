@@ -144,7 +144,7 @@ static void init_netif(char *netifExp[], int netifFileNum);
 static void writepid(void);
 static void cleanpid(void);
 static int unix_connect(const char *path);
-static void usage_err(const char *ctl, ...);
+static void usage_err(const char *ctl, ...) __printflike(1, 2);
 static void usage_help(_Bool);
 static void init_locks(void);
 static void handle_term(int);
