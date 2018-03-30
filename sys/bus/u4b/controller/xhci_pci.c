@@ -99,7 +99,7 @@ xhci_pci_match(device_t self)
 		return ("ASMedia ASM1042 USB 3.0 controller");
 
 	case 0x0f358086:
-		return ("Intel Intel BayTrail USB 3.0 controller");
+		return ("Intel BayTrail USB 3.0 controller");
 	case 0x9c318086:
 	case 0x1e318086:
 		return ("Intel Panther Point USB 3.0 controller");
@@ -107,8 +107,11 @@ xhci_pci_match(device_t self)
 		return ("Intel Lynx Point USB 3.0 controller");
 	case 0x8cb18086:
 		return ("Intel Wildcat Point USB 3.0 controller");
+	case 0x8d318086:
+		return ("Intel Wellsburg USB 3.0 controller");
 	case 0x9cb18086:
-		return ("Intel Wildcat Point-LB USB 3.0 controller");
+		return ("Intel Wildcat Point-LP USB 3.0 controller");
+
 	default:
 		break;
 	}
@@ -199,7 +202,7 @@ xhci_pci_attach(device_t self)
 	/* check for USB 3.0 controllers which don't support 64-bit DMA */
 	switch (pci_get_devid(self)) {
 	case 0x01941033:	/* NEC uPD720200 USB 3.0 controller */
-	case 0x00141912:        /* NEC uPD720201 USB 3.0 controller */
+	case 0x00141912:	/* NEC uPD720201 USB 3.0 controller */
 	case 0x78141022:	/* AMD A10-7300, tested does not work w/64-bit DMA */
 		usedma32 = 1;
 		break;
