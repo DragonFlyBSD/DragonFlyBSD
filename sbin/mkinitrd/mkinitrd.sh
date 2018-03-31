@@ -40,6 +40,17 @@ fi
 
 VN_DEV=""
 
+check_dirs()
+{
+	for _dir; do
+		[ -d "${_dir}" ] || {
+			echo "Directory '${_dir}' does not exist"
+			return 1
+		}
+	done
+	return 0
+}
+
 # Calculate the total size of the given directory, taking care of the
 # hard links.
 calc_size()
@@ -76,18 +87,21 @@ calc_initrd_size()
 
 create_vn()
 {
+	local _vndev
+	_vndev=${TMP_DIR}/vndev.$$
+
 	if [ ! -d "$BUILD_DIR" ]; then
 		mkdir -p $BUILD_DIR
 		echo "Created build directory $BUILD_DIR"
 	fi
 	vnconfig -c -S ${INITRD_SIZE}m -Z -T vn ${TMP_DIR}/initrd.img \
-	    > ${TMP_DIR}/vndev.mkinitrd || {
+	    > ${_vndev} || {
 		echo "Failed to configure vn device"
 		exit 1
 	}
 
-	VN_DEV=`cat ${TMP_DIR}/vndev.mkinitrd | cut -f 2 -d ' '`
-	rm ${TMP_DIR}/vndev.mkinitrd
+	VN_DEV=`cat ${_vndev} | cut -f 2 -d ' '`
+	rm ${_vndev}
 
 	echo "Configured $VN_DEV"
 	newfs -i 131072 -m 0 /dev/${VN_DEV}s0
@@ -102,6 +116,7 @@ destroy_vn()
 	echo "Unmounted initrd image"
 	vnconfig -u $VN_DEV
 	echo "Unconfigured $VN_DEV"
+	rmdir ${BUILD_DIR}
 }
 
 make_hier()
@@ -109,7 +124,6 @@ make_hier()
 	for dir in ${INITRD_DIRS}; do
 		mkdir -p ${BUILD_DIR}/${dir}
 	done
-
 	echo "Created directory structure"
 }
 
@@ -143,19 +157,18 @@ set -- $args
 for i; do
 	case "$i" in
 	-b)	BOOT_DIR="$2"; shift; shift;;
-	-c)	CONTENT_DIR="$2"; shift; shift;;
+	-c)	CONTENT_DIRS="$2"; shift; shift;;
 	-s)	INITRD_SIZE="$2"; shift; shift;;
 	-S)	INITRD_SIZE_MAX="$2"; shift; shift;;
 	-t)	TMP_DIR="$2"; shift; shift;;
 	--)	shift; break;
 	esac
 done
-test ! -d ${BOOT_DIR}    && usage
-test ! -d ${CONTENT_DIR} && usage
-test ! -d ${TMP_DIR}     && usage
-test ! -z "$1"           && usage
 
-BUILD_DIR="${TMP_DIR}/initrd"
+test ! -z "$1" && usage
+check_dirs ${BOOT_DIR} ${CONTENT_DIRS} ${TMP_DIR} || usage
+
+BUILD_DIR="${TMP_DIR}/initrd.$$"
 INITRD_SIZE=${INITRD_SIZE%[mM]}  # MB
 INITRD_SIZE_MAX=${INITRD_SIZE_MAX%[mM]}  # MB
 
@@ -182,9 +195,18 @@ copy_content
 make_hier
 print_info
 destroy_vn
+
 echo -n "Compressing ${TMP_DIR}/initrd.img ..."
 gzip -9 ${TMP_DIR}/initrd.img
 echo " OK"
-echo -n "Copying ${TMP_DIR}/initrd.img.gz to ${BOOT_DIR}/kernel/initrd.img.gz ..."
-mv ${TMP_DIR}/initrd.img.gz ${BOOT_DIR}/kernel/initrd.img.gz
+
+DEST="${BOOT_DIR}/kernel/initrd.img.gz"
+if [ -f "${DEST}" ]; then
+	echo -n "Backup ${DEST} ..."
+	mv ${DEST} ${DEST}.old
+	echo " OK (${DEST}.old)"
+fi
+
+echo -n "Copying ${TMP_DIR}/initrd.img.gz to ${DEST} ..."
+mv ${TMP_DIR}/initrd.img.gz ${DEST}
 echo " OK"
