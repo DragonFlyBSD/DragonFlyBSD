@@ -107,13 +107,13 @@ set -- $args
 for i; do
 	case "$i" in
 	-b)	BOOT_DIR="$2"; shift; shift;;
-	-c)	CONTENT_DIR="$2"; shift; shift;;
+	-c)	CONTENT_DIRS="$2"; shift; shift;;
 	-t)	TMP_DIR="$2"; shift; shift;;
 	--)	shift; break;
 	esac
 done
 test ! -d ${BOOT_DIR} && usage
-test ! -d ${CONTENT_DIR} && usage
+test ! -d ${CONTENT_DIRS} && usage
 test ! -d ${TMP_DIR} && usage
 test ! -z $1 && usage
 BUILD_DIR="${TMP_DIR}/initrd"
