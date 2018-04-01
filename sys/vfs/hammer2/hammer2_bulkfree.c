@@ -390,8 +390,8 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 	       ~(size_t)(HAMMER2_FREEMAP_LEVELN_PSIZE - 1);
 	if (size < 1024 * 1024)
 		size = 1024 * 1024;
-	if (size > 64 * 1024 * 1024)
-		size = 64 * 1024 * 1024;
+	if (size > kmem_lim_size() * 1024 * 1024 / 16)
+		size = kmem_lim_size() * 1024 * 1024 / 16;
 
 	cbinfo.hmp = hmp;
 	cbinfo.bmap = kmem_alloc_swapbacked(&cbinfo.kp, size, VM_SUBSYS_HAMMER);
