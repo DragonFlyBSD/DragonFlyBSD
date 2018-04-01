@@ -39,4 +39,5 @@ MLINKS+=regex.3 regcomp.3 \
 	regex.3 regexec.3 \
 	regex.3 regerror.3 \
 	regex.3 regfree.3
+MLINKS+=re_format.7 regex.7
 .endif
