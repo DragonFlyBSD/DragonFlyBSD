@@ -77,7 +77,7 @@ static char **section_list;
 static char *roff_directive;
 static int apropos;
 static int whatis;
-static int findall;
+static int findall = 1;
 static int print_where;
 
 static char *locale, *locale_codeset;
@@ -101,7 +101,7 @@ static int troff = 0;
 
 int debug;
 
-static char args[] = "M:P:S:adfhkm:op:tw?";
+static char args[] = "1M:P:S:adfhkm:op:tw?";
 
 uid_t ruid;
 uid_t euid;
@@ -265,6 +265,9 @@ man_getopt (int argc, char **argv)
     {
       switch (c)
 	{
+	case '1':
+	  findall = 0;
+	  break;
 	case 'M':
 	  manp = strdup (optarg);
 	  break;
@@ -277,8 +280,7 @@ man_getopt (int argc, char **argv)
 	  colon_sep_section_list = strdup (optarg);
 	  break;
 	case 'a':
-	  findall++;
-	  break;
+	  break;		/* default, do nothing */
 	case 'd':
 	  debug++;
 	  break;

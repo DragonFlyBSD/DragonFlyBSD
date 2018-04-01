@@ -14,7 +14,7 @@
 .\"
 .\" $FreeBSD: src/gnu/usr.bin/man/man/man.man,v 1.10.2.8 2002/06/25 00:02:55 eric Exp $
 .\"
-.Dd August 21, 2008
+.Dd April 1, 2018
 .Dt MAN 1
 .Os
 .Sh NAME
@@ -22,7 +22,7 @@
 .Nd format and display the on-line manual pages
 .Sh SYNOPSIS
 .Nm
-.Op Fl adfhkotw
+.Op Fl 1adfhkotw
 .Op Fl m Ar machine
 .Op Fl p Ar string
 .Op Fl M Ar path
@@ -61,6 +61,17 @@ treats it as a file name.
 .Pp
 The options are as follows:
 .Bl -tag -width Fl
+.It Fl 1
+By default,
+.Nm
+will display all the manual pages
+that match
+.Ar name ,
+not just the first.
+Using this option forces
+.Nm
+to exit after displaying the first manual page it
+finds.
 .It Fl M Ar path
 Specify an alternate manpath.
 By default,
@@ -91,16 +102,11 @@ This option overrides the
 .Ev MANSECT
 environment variable.
 .It Fl a
-By default,
-.Nm
-will exit after displaying the first manual page it
-finds.
-Using this option forces
-.Nm
-to display all the manual pages
+Display all the manual pages
 that match
 .Ar name ,
 not just the first.
+This is the default behavior.
 .It Fl d
 Don't actually display the man pages, but do print gobs of debugging
 information.
