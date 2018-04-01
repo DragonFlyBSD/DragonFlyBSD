@@ -41,9 +41,17 @@ cmd_bulkfree(const char *sel_path)
 	int ecode;
 	int fd;
 	int res;
+	size_t usermem;
+	size_t usermem_size = sizeof(usermem);
 
 	bzero(&bfi, sizeof(bfi));
-	bfi.size = 8192 * 1024;
+	usermem = 0;
+	if (sysctlbyname("hw.usermem", &usermem, &usermem_size, NULL, 0) == 0)
+		bfi.size = usermem / 16;
+	else
+		bfi.size = 0;
+	if (bfi.size < 8192 * 1024)
+		bfi.size = 8192 * 1024;
 
 	if ((fd = hammer2_ioctl_handle(sel_path)) < 0)
 		return 1;
