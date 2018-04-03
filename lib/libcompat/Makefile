@@ -16,11 +16,9 @@ MLINKS+=stty.3 gtty.3
 
 # compat 4.3 sources
 SRCS+=	re_comp.c rexec.c
-SRCS+=	insque.c remque.c
 
-MAN+=	4.3/insque.3 4.3/re_comp.3 4.3/rexec.3
+MAN+=	4.3/re_comp.3 4.3/rexec.3
 
-MLINKS+=insque.3 remque.3
 MLINKS+=re_comp.3 re_exec.3
 
 # compat 4.4 sources
