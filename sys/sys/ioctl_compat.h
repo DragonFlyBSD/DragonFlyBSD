@@ -33,7 +33,6 @@
  *
  *	@(#)ioctl_compat.h	8.4 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/ioctl_compat.h,v 1.5 1999/08/28 00:51:48 peter Exp $
- * $DragonFly: src/sys/sys/ioctl_compat.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
 #ifndef _SYS_IOCTL_COMPAT_H_
@@ -162,6 +161,11 @@ struct sgttyb {
 #define	OTTYDISC	0
 #define	NETLDISC	1
 #define	NTTYDISC	2
+
+/*
+ * XXX This should really be DAIOCTRIM and be defined in
+ *     <bus/cam/scsi/scsi_daio.h>. 't' is wrong, too.
+ */
 #define IOCTLTRIM	_IOW('t', 128, off_t[2])
 
 #endif /* !_SYS_IOCTL_COMPAT_H_ */
