@@ -173,7 +173,9 @@ MLINKS+=posix_spawnattr_init.3 posix_spawnattr_destroy.3
 MLINKS+=psignal.3 psiginfo.3 \
 	psignal.3 strsignal.3 psignal.3 sys_nsig.3 psignal.3 sys_siglist.3 \
 	psignal.3 sys_signame.3
-MLINKS+=pwcache.3 group_from_gid.3 pwcache.3 user_from_uid.3
+MLINKS+=pwcache.3 gid_from_group.3 pwcache.3 group_from_gid.3 \
+	pwcache.3 pwcache_groupdb.3 pwcache.3 pwcache_userdb.3 \
+	pwcache.3 uid_from_user.3 pwcache.3 user_from_uid.3
 MLINKS+=rand48.3 drand48.3 rand48.3 erand48.3 \
 	rand48.3 jrand48.3 rand48.3 lcong48.3 rand48.3 lrand48.3 \
 	rand48.3 mrand48.3 rand48.3 nrand48.3 rand48.3 seed48.3 \

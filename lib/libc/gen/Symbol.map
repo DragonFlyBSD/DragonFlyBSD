@@ -470,6 +470,13 @@ DF502.0 {
     cfmakesane;
 };
 
+DF504.0 {
+    gid_from_group;
+    pwcache_groupdb;
+    pwcache_userdb;
+    uid_from_user;
+};
+
 DFprivate_1.0 {
 	/* pthread stubs */
     _pthread_atfork;
