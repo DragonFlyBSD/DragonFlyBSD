@@ -96,18 +96,6 @@ int buf_fill (void);
 int buf_flush (int);
 
 /*
- * cache.c
- */
-int uidtb_start (void);
-int gidtb_start (void);
-int usrtb_start (void);
-int grptb_start (void);
-char * name_uid (uid_t, int);
-char * name_gid (gid_t, int);
-int uid_name (char *, uid_t *);
-int gid_name (char *, gid_t *);
-
-/*
  * cpio.c
  */
 int cpio_strd (void);
