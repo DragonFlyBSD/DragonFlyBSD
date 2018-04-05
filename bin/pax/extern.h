@@ -164,7 +164,7 @@ int next_file (ARCHD *);
  */
 void ls_list (ARCHD *, time_t, FILE *);
 void ls_tty (ARCHD *);
-int l_strncpy (char *, char *, int);
+int l_strncpy (char *, const char *, int);
 u_long asc_ul (char *, int, int);
 int ul_asc (u_long, char *, int, int);
 u_quad_t asc_uqd (char *, int, int);

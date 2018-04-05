@@ -37,11 +37,13 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <grp.h>
 #include <langinfo.h>
+#include <pwd.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "pax.h"
 #include "extern.h"
 
@@ -74,6 +76,7 @@ ls_list(ARCHD *arcn, time_t now, FILE *fp)
 	char f_mode[MODELEN];
 	char f_date[DATELEN];
 	char *timefrmt;
+	const char *user, *group;
 
 	/*
 	 * if not verbose, just print the file name
@@ -105,9 +108,10 @@ ls_list(ARCHD *arcn, time_t now, FILE *fp)
 	 */
 	if (strftime(f_date,DATELEN,timefrmt,localtime(&(sbp->st_mtime))) == 0)
 		f_date[0] = '\0';
+	user = user_from_uid(sbp->st_uid, 0);
+	group = group_from_gid(sbp->st_gid, 0);
 	fprintf(fp, "%s%2u %-16s %-6s ", f_mode, sbp->st_nlink,
-		name_uid(sbp->st_uid, 1),
-		name_gid(sbp->st_gid, 1));
+		user ? user : "", group ? group : "");
 
 	/*
 	 * print device id's for devices, or sizes for other nodes
@@ -174,7 +178,7 @@ ls_tty(ARCHD *arcn)
  */
 
 int
-l_strncpy(char *dest, char *src, int len)
+l_strncpy(char *dest, const char *src, int len)
 {
 	char *stop;
 	char *start;

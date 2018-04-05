@@ -32,16 +32,17 @@
  *
  * @(#)tar.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/tar.c,v 1.13.2.1 2001/08/01 05:03:12 obrien Exp $
- * $DragonFly: src/bin/pax/tar.c,v 1.7 2006/09/27 21:58:08 pavalos Exp $
  */
 
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <grp.h>
+#include <pwd.h>
 #include <string.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "pax.h"
 #include "extern.h"
 #include "tar.h"
@@ -645,8 +646,6 @@ tar_wr(ARCHD *arcn)
 int
 ustar_strd(void)
 {
-	if ((usrtb_start() < 0) || (grptb_start() < 0))
-		return(-1);
 	return(0);
 }
 
@@ -660,8 +659,6 @@ ustar_strd(void)
 int
 ustar_stwr(void)
 {
-	if ((uidtb_start() < 0) || (gidtb_start() < 0))
-		return(-1);
 	return(0);
 }
 
@@ -756,10 +753,10 @@ ustar_rd(ARCHD *arcn, char *buf)
 	 * the POSIX spec wants).
 	 */
 	hd->gname[sizeof(hd->gname) - 1] = '\0';
-	if (gid_name(hd->gname, &(arcn->sb.st_gid)) < 0)
+	if (gid_from_group(hd->gname, &(arcn->sb.st_gid)) < 0)
 		arcn->sb.st_gid = (gid_t)asc_ul(hd->gid, sizeof(hd->gid), OCT);
 	hd->uname[sizeof(hd->uname) - 1] = '\0';
-	if (uid_name(hd->uname, &(arcn->sb.st_uid)) < 0)
+	if (uid_from_user(hd->uname, &(arcn->sb.st_uid)) < 0)
 		arcn->sb.st_uid = (uid_t)asc_ul(hd->uid, sizeof(hd->uid), OCT);
 
 	/*
@@ -863,6 +860,7 @@ ustar_wr(ARCHD *arcn)
 	HD_USTAR *hd;
 	char *pt;
 	char hdblk[sizeof(HD_USTAR)];
+	const char *user, *group;
 
 	/*
 	 * check for those file system types ustar cannot store
@@ -995,8 +993,10 @@ ustar_wr(ARCHD *arcn)
 	    ul_oct((u_long)arcn->sb.st_gid, hd->gid, sizeof(hd->gid), 3) ||
 	    ul_oct((u_long)arcn->sb.st_mtime,hd->mtime,sizeof(hd->mtime),3))
 		goto out;
-	l_strncpy(hd->uname,name_uid(arcn->sb.st_uid, 0),sizeof(hd->uname));
-	l_strncpy(hd->gname,name_gid(arcn->sb.st_gid, 0),sizeof(hd->gname));
+	user = user_from_uid(arcn->sb.st_uid, 1);
+	group = group_from_gid(arcn->sb.st_gid, 1);
+	l_strncpy(hd->uname, user ? user : "", sizeof(hd->uname));
+	l_strncpy(hd->gname, group ? group : "", sizeof(hd->gname));
 
 	/*
 	 * calculate and store the checksum write the header to the archive
