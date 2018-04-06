@@ -27,7 +27,7 @@
 .\" $Id: sdp.3,v 1.1 2006/06/19 15:44:36 gdamore Exp $
 .\" $FreeBSD: src/lib/libsdp/sdp.3,v 1.10 2005/06/15 19:04:04 ru Exp $
 .\"
-.Dd May 27, 2005
+.Dd April 6, 2018
 .Dt SDP 3
 .Os
 .Sh NAME
@@ -81,20 +81,20 @@
 .Fa "void *xs" "uint32_t plen" "uint16_t const *pp" "uint32_t alen"
 .Fa "uint32_t const *ap" "uint32_t vlen" "sdp_attr_t *vp"
 .Fc
-.Ft "char const * const"
+.Ft "char const *"
 .Fn sdp_attr2desc "uint16_t attr"
-.Ft "char const * const"
+.Ft "char const *"
 .Fn sdp_uuid2desc "uint16_t uuid"
 .Ft int32_t
 .Fo sdp_register_service
-.Fa "void *xss" "uint16_t uuid" "bdaddr_t const *bdaddr" "uint8_t const *data"
+.Fa "void *xss" "uint16_t uuid" "bdaddr_t *bdaddr" "uint8_t *data"
 .Fa "uint32_t datalen" "uint32_t *handle"
 .Fc
 .Ft int32_t
 .Fn sdp_unregister_service "void *xss" "uint32_t handle"
 .Ft int32_t
 .Fo sdp_change_service
-.Fa "void *xss" "uint32_t handle" "uint8_t const *data" "uint32_t datalen"
+.Fa "void *xss" "uint32_t handle" "uint8_t *data" "uint32_t datalen"
 .Fc
 .Sh DESCRIPTION
 The
