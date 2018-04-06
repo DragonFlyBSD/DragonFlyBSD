@@ -38,10 +38,7 @@
 .Nm _IOWR
 .Nd "how to implement a new ioctl call to access device drivers"
 .Sh SYNOPSIS
-.In sys/ioctl.h
 .In sys/ioccom.h
-.Ft int
-.Fn ioctl "int d" "unsigned long request" "..."
 .Fn _IO "g" "t"
 .Fn _IOR "g" "n" "t"
 .Fn _IOW "g" "n" "t"
