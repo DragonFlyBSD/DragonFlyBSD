@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/zone.9,v 1.9.2.4 2002/05/02 20:01:29 asmodai Exp $
 .\"
-.Dd March 13, 2017
+.Dd April 6, 2018
 .Dt ZONE 9
 .Os
 .Sh NAME
@@ -39,12 +39,11 @@
 .Sh SYNOPSIS
 .In sys/param.h
 .In sys/queue.h
-.In vm/vm_object.h
 .In vm/vm_zone.h
 .Ft void
 .Fn zbootinit "vm_zone_t z" "char *name" "size_t size" "void *item" "long nitems"
 .Ft int
-.Fn zinitna "vm_zone_t z" "struct vm_object *obj" "char *name" "size_t size" "long nentries" "uint32_t flags"
+.Fn zinitna "vm_zone_t z" "char *name" "size_t size" "long nentries" "uint32_t flags"
 .Ft vm_zone_t
 .Fn zinit "char *name" "size_t size" "long nentries" "uint32_t flags"
 .Ft void
@@ -147,15 +146,10 @@ The
 argument is the number of items in the array.
 .Pp
 The arguments to
-.Fa zinitna
+.Fn zinitna
 are the same as for
-.Fa zinit ,
-with the addition of a pointer to the zone to initialize, and a
-pointer to a
-.Vt "struct vm_object"
-from which to allocate pages in the
-.Dv ZONE_INTERRUPT
-case.
+.Fn zinit ,
+with the addition of a pointer to the zone to initialize.
 .Pp
 To release all the memory allocated for a zone, call
 .Fn zdestroy .
@@ -176,9 +170,6 @@ Items are released back to the zone from which they were allocated by
 calling
 .Fn zfree
 with a pointer to the zone and a pointer to the item.
-.Pp
-The zone functions are not SMP-safe.
-The MP lock must be held while calling them.
 .Sh RETURN VALUES
 The
 .Fn zinitna
