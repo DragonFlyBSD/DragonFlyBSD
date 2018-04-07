@@ -22,30 +22,19 @@
  * Modem chat module - send/expect style functions for getty
  * For semi-intelligent modem handling.
  *
- * $FreeBSD: src/libexec/getty/chat.c,v 1.6 1999/08/28 00:09:34 peter Exp $
- * $DragonFly: src/libexec/getty/chat.c,v 1.6 2007/11/25 18:10:06 swildner Exp $
+ * $FreeBSD: head/libexec/getty/chat.c 329724 2018-02-21 15:57:24Z trasz $
  */
 
-#include <sys/param.h>
-#include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/ioctl.h>
-#include <sys/resource.h>
-#include <sys/ttydefaults.h>
 #include <sys/utsname.h>
+
 #include <ctype.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <libutil.h>
-#include <locale.h>
-#include <setjmp.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
-#include <time.h>
-#include <termios.h>
 #include <unistd.h>
-#include <sys/socket.h>
 
 #include "gettytab.h"
 #include "extern.h"
@@ -67,15 +56,15 @@ static int chat_alarm = CHAT_DEFAULT_TIMEOUT; /* Default */
 static volatile int alarmed = 0;
 
 
-static void   chat_alrm (int);
-static int    chat_unalarm (void);
-static int    getdigit (unsigned char **, int, int);
-static char   **read_chat (char **);
-static char   *cleanchr (char **, unsigned char);
-static char   *cleanstr (const unsigned char *, int);
-static const char *result (int);
-static int    chat_expect (const char *);
-static int    chat_send (char const *);
+static void   chat_alrm(int);
+static int    chat_unalarm(void);
+static int    getdigit(unsigned char **, int, int);
+static char   **read_chat(char **);
+static char   *cleanchr(char **, unsigned char);
+static const char *cleanstr(const unsigned char *, int);
+static const char *result(int);
+static int    chat_expect(const char *);
+static int    chat_send(char const *);
 
 
 /*
@@ -86,7 +75,7 @@ static int    chat_send (char const *);
  */
 
 static void
-chat_alrm(int signo)
+chat_alrm(int signo __unused)
 {
 	int on = 1;
 
@@ -281,7 +270,7 @@ cleanchr(char **buf, unsigned char ch)
  * clean a string for display (ctrl/meta characters)
  */
 
-static char *
+static const char *
 cleanstr(const unsigned char *s, int l)
 {
 	static unsigned char * tmp = NULL;
@@ -292,7 +281,7 @@ cleanstr(const unsigned char *s, int l)
 
 	if (tmp == NULL) {
 		tmplen = 0;
-		return (char *)"(mem alloc error)";
+		return "(mem alloc error)";
 	} else {
 		int i = 0;
 		char * p = tmp;
@@ -307,7 +296,7 @@ cleanstr(const unsigned char *s, int l)
 
 
 /*
- * return result as an pseudo-english word
+ * return result as a pseudo-english word
  */
 
 static const char *

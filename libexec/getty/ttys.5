@@ -26,10 +26,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     from: @(#)ttys.5	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/libexec/getty/ttys.5,v 1.11.2.3 2001/08/16 10:44:15 ru Exp $
-.\" $DragonFly: src/libexec/getty/ttys.5,v 1.3 2006/02/17 19:33:31 swildner Exp $
-.\" "
-.Dd November 17, 1996
+.\" $FreeBSD: head/libexec/getty/ttys.5 330277 2018-03-02 14:16:19Z trasz $
+.\"
+.Dd April 7, 2018
 .Dt TTYS 5
 .Os
 .Sh NAME
@@ -99,13 +98,13 @@ ttys as a group.
 .Pp
 As flag values, the strings ``on'' and ``off'' specify that
 .Xr init 8
-should (should not) execute the command given in the second field,
-while ``secure'' (if ``on'' is also specified) allows users with a
-uid of 0 to login on
-this line.
+should (should not) execute the command given in the second field.
 The flag ``ifconsole'' disables the tty entry if it is not the console.
 That is, you can construct a tty entry, set to 'on', that you intend to
 only be active if that tty is the console.
+The flag ``secure'' (if the console is enabled) allows users with a
+uid of 0 to login on
+this line.
 The flag ``dialup'' indicates that a tty entry describes a dialup
 line, and ``network'' indicates that a tty entry provides a
 network connection.
@@ -150,7 +149,7 @@ ttyh0	"/usr/libexec/getty std.9600"	hp2621-nl	on group=dialup	# 457 Evans
 # John's terminal: vt100
 ttyh1	"/usr/libexec/getty std.9600"	vt100	on group=dialup		# 459 Evans
 # terminal emulate/window system
-ttyv0	"/usr/new/xterm -L :0"		vs100	on window="/usr/new/Xvs100 0"
+ttyv0	"/usr/local/bin/xterm -display :0"	xterm	on window="/usr/local/bin/X :0"
 # Network pseudo ttys -- don't enable getty
 ttyp0	none	network 	group=pty
 ttyp1	none	network	off	group=pty
@@ -163,8 +162,8 @@ ttyp1	none	network	off	group=pty
 .Xr login.conf 5 ,
 .Xr termcap 5 ,
 .Xr getty 8 ,
-.Xr init 8
-.\".Xr init 8 ,
+.Xr init 8 ,
+.Xr pstat 8
 .\".Xr ttyflags 8
 .Sh HISTORY
 A

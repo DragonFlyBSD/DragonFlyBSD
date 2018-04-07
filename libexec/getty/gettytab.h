@@ -1,4 +1,6 @@
-/*
+/*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1983, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -27,8 +29,7 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)gettytab.h	8.2 (Berkeley) 3/30/94
- * $FreeBSD: src/libexec/getty/gettytab.h,v 1.10.2.3 2003/02/06 11:45:31 sobomax Exp $
- * $DragonFly: src/libexec/getty/gettytab.h,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $FreeBSD: head/libexec/getty/gettytab.h 326025 2017-11-20 19:49:47Z pfg $
  */
 
 /*
@@ -89,6 +90,7 @@ struct gettyflags {
 #define AC	gettystrs[28].value
 #define AL	gettystrs[29].value
 #define DF	gettystrs[30].value
+#define IMP	gettystrs[31].value
 
 /*
  * Numeric definitions.
@@ -167,6 +169,7 @@ struct gettyflags {
 #define AB	gettyflags[19].value
 #define DX	gettyflags[20].value
 #define	NP	gettyflags[21].value
+#define	NPset	gettyflags[21].set
 #define	MB	gettyflags[22].value
 #define	HW	gettyflags[23].value
 #define	NC	gettyflags[24].value

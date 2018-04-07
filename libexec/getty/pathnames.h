@@ -1,4 +1,6 @@
-/*
+/*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -27,8 +29,7 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)pathnames.h	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/libexec/getty/pathnames.h,v 1.7 1999/08/28 00:09:36 peter Exp $
- * $DragonFly: src/libexec/getty/pathnames.h,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $FreeBSD: head/libexec/getty/pathnames.h 326025 2017-11-20 19:49:47Z pfg $
  */
 
 #include <paths.h>

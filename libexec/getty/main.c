@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -26,24 +28,25 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: main.c	8.1 (Berkeley) 6/20/93
- * $FreeBSD: src/libexec/getty/main.c,v 1.28.2.4 2003/02/06 11:45:31 sobomax Exp $
+ * $FreeBSD: head/libexec/getty/main.c 329992 2018-02-25 20:15:06Z trasz $
  */
 
 #include <sys/param.h>
-#include <sys/stat.h>
 #include <sys/ioctl.h>
+#include <sys/time.h>
 #include <sys/resource.h>
+#include <sys/stat.h>
 #include <sys/ttydefaults.h>
 #include <sys/utsname.h>
+
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <locale.h>
 #include <libutil.h>
-#include <signal.h>
 #include <setjmp.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
@@ -52,8 +55,8 @@
 #include <unistd.h>
 
 #include "gettytab.h"
-#include "pathnames.h"
 #include "extern.h"
+#include "pathnames.h"
 
 /*
  * Set the amount of running time that getty should accumulate
@@ -74,24 +77,28 @@
 #define PPP_LCP_HI          0xc0  /* LCP protocol - high byte */
 #define PPP_LCP_LOW         0x21  /* LCP protocol - low byte */
 
-struct termios tmode, omode;
+/* original mode; flags've been reset using values from <sys/ttydefaults.h> */
+struct termios omode;
+/* current mode */
+struct termios tmode;
 
-int crmod, digit, lower, upper;
+static int crmod, digit, lower, upper;
 
 char	hostname[MAXHOSTNAMELEN];
-char	name[MAXLOGNAME*3];
-char	dev[] = _PATH_DEV;
-char	ttyn[32];
+static char	name[MAXLOGNAME*3];
+static char	dev[] = _PATH_DEV;
+static char	ttyn[32];
 
 #define	OBUFSIZ		128
 #define	TABBUFSIZ	512
 
-char	defent[TABBUFSIZ];
-char	tabent[TABBUFSIZ];
+static char	defent[TABBUFSIZ];
+static char	tabent[TABBUFSIZ];
+static const char	*tname;
 
-char	*env[128];
+static char	*env[128];
 
-char partab[] = {
+static char partab[] = {
 	0001,0201,0201,0001,0201,0001,0001,0201,
 	0202,0004,0003,0205,0005,0206,0201,0001,
 	0201,0001,0001,0201,0001,0201,0201,0001,
@@ -116,7 +123,9 @@ char partab[] = {
 
 #define	puts	Gputs
 
+static void	defttymode(void);
 static void	dingdong(int);
+static void	dogettytab(void);
 static int	getname(void);
 static void	interrupt(int);
 static void	oflush(void);
@@ -127,23 +136,22 @@ static void	putpad(const char *);
 static void	puts(const char *);
 static void	timeoverrun(int);
 static char	*get_line(int);
-static void	setttymode(const char *, int);
-static void	setdefttymode(const char *);
+static void	setttymode(int);
 static int	opentty(const char *, int);
 
-jmp_buf timeout;
+static jmp_buf timeout;
 
 static void
-dingdong(int signo)
+dingdong(int signo __unused)
 {
 	alarm(0);
 	longjmp(timeout, 1);
 }
 
-jmp_buf	intrupt;
+static jmp_buf	intrupt;
 
 static void
-interrupt(int signo)
+interrupt(int signo __unused)
 {
 	longjmp(intrupt, 1);
 }
@@ -152,17 +160,16 @@ interrupt(int signo)
  * Action to take when getty is running too long.
  */
 static void
-timeoverrun(int signo)
+timeoverrun(int signo __unused)
 {
+
 	syslog(LOG_ERR, "getty exiting due to excessive running time");
 	exit(1);
 }
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
-	extern	char **environ;
-	const char *tname;
 	int first_sleep = 1, first_time = 1;
 	struct rlimit limit;
 	int rval;
@@ -207,14 +214,25 @@ main(int argc, char **argv)
 		chmod(ttyn, 0600);
 		revoke(ttyn);
 
-		gettable(tname, tabent);
-
-		/* Init modem sequence has been specified
+		/*
+		 * Do the first scan through gettytab.
+		 * Terminal mode parameters will be wrong until
+		 * defttymode() called, but they're irrelevant for
+		 * the initial setup of the terminal device.
 		 */
-		if (IC) {
+		dogettytab();
+
+		/*
+		 * Init or answer modem sequence has been specified.
+		 */
+		if (IC || AC) {
 			if (!opentty(ttyn, O_RDWR|O_NONBLOCK))
 				exit(1);
-			setdefttymode(tname);
+			defttymode();
+			setttymode(1);
+		}
+
+		if (IC) {
 			if (getty_chat(IC, CT, DC) > 0) {
 				syslog(LOG_ERR, "modem init problem on %s", ttyn);
 				(void)tcsetattr(STDIN_FILENO, TCSANOW, &tmode);
@@ -223,17 +241,15 @@ main(int argc, char **argv)
 		}
 
 		if (AC) {
-			int i, rfds;
-			struct timeval timeout;
+			fd_set rfds;
+			struct timeval to;
+			int i;
 
-			if (!opentty(ttyn, O_RDWR|O_NONBLOCK))
-				exit(1);
-			setdefttymode(tname);
-			rfds = 1 << 0;	/* FD_SET */
-			timeout.tv_sec = RT;
-			timeout.tv_usec = 0;
-			i = select(32, (fd_set*)&rfds, NULL,
-				       NULL, RT ? &timeout : NULL);
+			FD_ZERO(&rfds);
+			FD_SET(0, &rfds);
+			to.tv_sec = RT;
+			to.tv_usec = 0;
+			i = select(32, &rfds, NULL, NULL, RT ? &to : NULL);
 			if (i < 0) {
 				syslog(LOG_ERR, "select %s: %m", ttyn);
 			} else if (i == 0) {
@@ -254,29 +270,11 @@ main(int argc, char **argv)
 	    }
 	}
 
-	/* Start with default tty settings */
-	if (tcgetattr(STDIN_FILENO, &tmode) < 0) {
-		syslog(LOG_ERR, "tcgetattr %s: %m", ttyn);
-		exit(1);
-	}
-	/*
-	 * Don't rely on the driver too much, and initialize crucial
-	 * things according to <sys/ttydefaults.h>.  Avoid clobbering
-	 * the c_cc[] settings however, the console drivers might wish
-	 * to leave their idea of the preferred VERASE key value
-	 * there.
-	 */
-	tmode.c_iflag = TTYDEF_IFLAG;
-	tmode.c_oflag = TTYDEF_OFLAG;
-	tmode.c_lflag = TTYDEF_LFLAG;
-	tmode.c_cflag = TTYDEF_CFLAG;
-	tmode.c_cflag |= (NC ? CLOCAL : 0);
-	omode = tmode;
-
+	defttymode();
 	for (;;) {
 
 		/*
-		 * if a delay was specified then sleep for that 
+		 * if a delay was specified then sleep for that
 		 * number of seconds before writing the initial prompt
 		 */
 		if (first_sleep && DE) {
@@ -286,13 +284,15 @@ main(int argc, char **argv)
 		}
 		first_sleep = 0;
 
-		setttymode(tname, 0);
+		setttymode(0);
 		if (AB) {
 			tname = autobaud();
+			dogettytab();
 			continue;
 		}
 		if (PS) {
 			tname = portselector();
+			dogettytab();
 			continue;
 		}
 		if (CL && *CL)
@@ -315,6 +315,8 @@ main(int argc, char **argv)
 		}
 		first_time = 0;
 
+		if (IMP && *IMP && !(PL && PP))
+			system(IMP);
 		if (IM && *IM && !(PL && PP))
 			putf(IM);
 		if (setjmp(timeout)) {
@@ -327,6 +329,8 @@ main(int argc, char **argv)
 			signal(SIGALRM, dingdong);
 			alarm(TO);
 		}
+
+		rval = 0;
 		if (AL) {
 			const char *p = AL;
 			char *q = name;
@@ -337,7 +341,7 @@ main(int argc, char **argv)
 				else if (islower(*p))
 					lower = 1;
 				else if (isdigit(*p))
-					digit++;
+					digit = 1;
 				*q++ = *p++;
 			}
 		} else if (!(PL && PP))
@@ -357,12 +361,20 @@ main(int argc, char **argv)
 			oflush();
 			alarm(0);
 			signal(SIGALRM, SIG_DFL);
+			if (name[0] == '\0')
+				continue;
 			if (name[0] == '-') {
 				puts("user names may not start with '-'.");
 				continue;
 			}
-			if (!(upper || lower || digit))
-				continue;
+			if (!(upper || lower || digit)) {
+				if (AL) {
+					syslog(LOG_ERR,
+					    "invalid auto-login name: %s", AL);
+					exit(1);
+				} else
+					continue;
+			}
 			set_flags(2);
 			if (crmod) {
 				tmode.c_iflag |= ICRNL;
@@ -394,71 +406,78 @@ main(int argc, char **argv)
 		alarm(0);
 		signal(SIGALRM, SIG_DFL);
 		signal(SIGINT, SIG_IGN);
-		if (NX && *NX)
+		if (NX && *NX) {
 			tname = NX;
+			dogettytab();
+		}
 	}
 }
 
 static int
-opentty(const char *ttyn, int flags)
+opentty(const char *tty, int flags)
 {
-	int i, j = 0;
-	int failopenlogged = 0;
+	int failopenlogged = 0, i, saved_errno;
 
-	while (j < 10 && (i = open(ttyn, flags)) == -1)
+	while ((i = open(tty, flags)) == -1)
 	{
-		if (((j % 10) == 0) && (errno != ENXIO || !failopenlogged)) {
-			syslog(LOG_ERR, "open %s: %m", ttyn);
+		saved_errno = errno;
+		if (!failopenlogged) {
+			syslog(LOG_ERR, "open %s: %m", tty);
 			failopenlogged = 1;
 		}
-		j++;
+		if (saved_errno == ENOENT)
+			return 0;
 		sleep(60);
 	}
-	if (i == -1) {
-		syslog(LOG_ERR, "open %s: %m", ttyn);
-		return 0;
-	}
-	else {
-		if (login_tty(i) < 0) { 
-			if (daemon(0,0) < 0) {
-				syslog(LOG_ERR,"daemon: %m");
-				close(i);
-				return 0;
-			}
-			if (login_tty(i) < 0) {
-				syslog(LOG_ERR, "login_tty %s: %m", ttyn);
-				close(i);
-				return 0;
-			}
+	if (login_tty(i) < 0) {
+		if (daemon(0,0) < 0) {
+			syslog(LOG_ERR,"daemon: %m");
+			close(i);
+			return 0;
 		}
-		return 1;
+		if (login_tty(i) < 0) {
+			syslog(LOG_ERR, "login_tty %s: %m", tty);
+			close(i);
+			return 0;
+		}
 	}
+	return 1;
 }
 
 static void
-setdefttymode(const char *tname)
+defttymode(void)
 {
+	struct termios def;
+
+	/* Start with default tty settings. */
 	if (tcgetattr(STDIN_FILENO, &tmode) < 0) {
 		syslog(LOG_ERR, "tcgetattr %s: %m", ttyn);
 		exit(1);
 	}
-	tmode.c_iflag = TTYDEF_IFLAG;
-        tmode.c_oflag = TTYDEF_OFLAG;
-        tmode.c_lflag = TTYDEF_LFLAG;
-        tmode.c_cflag = TTYDEF_CFLAG;
-        omode = tmode;
-	setttymode(tname, 1);
+	omode = tmode; /* fill c_cc for dogettytab() */
+	dogettytab();
+	/*
+	 * Don't rely on the driver too much, and initialize crucial
+	 * things according to <sys/ttydefaults.h>.  Avoid clobbering
+	 * the c_cc[] settings however, the console drivers might wish
+	 * to leave their idea of the preferred VERASE key value
+	 * there.
+	 */
+	cfmakesane(&def);
+	tmode.c_iflag = def.c_iflag;
+	tmode.c_oflag = def.c_oflag;
+	tmode.c_lflag = def.c_lflag;
+	tmode.c_cflag = def.c_cflag;
+	if (NC)
+		tmode.c_cflag |= CLOCAL;
+	omode = tmode;
 }
 
 static void
-setttymode(const char *tname, int raw)
+setttymode(int raw)
 {
 	int off = 0;
 
-	gettable(tname, tabent);
-	if (OPset || EPset || APset)
-		APset++, OPset++, EPset++;
-	setdefaults();
 	(void)tcflush(STDIN_FILENO, TCIOFLUSH);	/* clear out the crap */
 	ioctl(STDIN_FILENO, FIONBIO, &off);	/* turn off non-blocking mode */
 	ioctl(STDIN_FILENO, FIOASYNC, &off);	/* ditto for async mode */
@@ -547,7 +566,7 @@ getname(void)
 		}
 
 		if (c == EOT || c == CTRL('d'))
-			exit(1);
+			exit(0);
 		if (c == '\r' || c == '\n' || np >= &name[sizeof name-1]) {
 			putf("\r\n");
 			break;
@@ -573,10 +592,11 @@ getname(void)
 			else if (np > name)
 				puts("                                     \r");
 			prompt();
+			digit = lower = upper = 0;
 			np = name;
 			continue;
 		} else if (isdigit(c))
-			digit++;
+			digit = 1;
 		if (IG && (c <= ' ' || c > 0176))
 			continue;
 		*np++ = c;
@@ -597,9 +617,7 @@ static void
 putpad(const char *s)
 {
 	int pad = 0;
-	speed_t ospeed;
-
-	ospeed = cfgetospeed(&tmode);
+	speed_t ospeed = cfgetospeed(&tmode);
 
 	if (isdigit(*s)) {
 		while (isdigit(*s)) {
@@ -639,8 +657,8 @@ puts(const char *s)
 		putchr(*s++);
 }
 
-char	outbuf[OBUFSIZ];
-int	obufcnt = 0;
+static char	outbuf[OBUFSIZ];
+static int	obufcnt = 0;
 
 static void
 putchr(int cc)
@@ -672,6 +690,7 @@ oflush(void)
 static void
 prompt(void)
 {
+
 	putf(LM);
 	if (CO)
 		putchr('\n');
@@ -681,7 +700,7 @@ prompt(void)
 static char *
 get_line(int fd)
 {
-	int i = 0;
+	size_t i = 0;
 	static char linebuf[512];
 
 	/*
@@ -705,7 +724,6 @@ get_line(int fd)
 static void
 putf(const char *cp)
 {
-	extern char editedhost[];
 	time_t t;
 	char *slash, db[100];
 
@@ -765,4 +783,25 @@ putf(const char *cp)
 		}
 		cp++;
 	}
+}
+
+/*
+ * Read a gettytab database entry and perform necessary quirks.
+ */
+static void
+dogettytab(void)
+{
+	/* Read the database entry. */
+	gettable(tname, tabent);
+
+	/*
+	 * Avoid inheriting the parity values from the default entry
+	 * if any of them is set in the current entry.
+	 * Mixing different parity settings is unreasonable.
+	 */
+	if (OPset || EPset || APset || NPset)
+		OPset = EPset = APset = NPset = 1;
+
+	/* Fill in default values for unset capabilities. */
+	setdefaults();
 }
