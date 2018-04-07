@@ -230,7 +230,7 @@ mkfs(char *fsys, int fi, int fo, const char *mfscopy)
 		sblock.fs_maxsymlinklen = 0;
 	} else {
 		sblock.fs_inodefmt = FS_44INODEFMT;
-		sblock.fs_maxsymlinklen = MAXSYMLINKLEN;
+		sblock.fs_maxsymlinklen = UFS1_MAXSYMLINKLEN;
 	}
 	if (Uflag)
 		sblock.fs_flags |= FS_DOSOFTDEP;
@@ -329,8 +329,8 @@ mkfs(char *fsys, int fi, int fo, const char *mfscopy)
 		sblock.fs_cgmask <<= 1;
 	if (!POWEROF2(sblock.fs_ntrak))
 		sblock.fs_cgmask <<= 1;
-	sblock.fs_maxfilesize = sblock.fs_bsize * NDADDR - 1;
-	for (sizepb = sblock.fs_bsize, i = 0; i < NIADDR; i++) {
+	sblock.fs_maxfilesize = sblock.fs_bsize * UFS_NDADDR - 1;
+	for (sizepb = sblock.fs_bsize, i = 0; i < UFS_NIADDR; i++) {
 		sizepb *= NINDIR(&sblock);
 		sblock.fs_maxfilesize += sizepb;
 	}
@@ -823,7 +823,7 @@ initcg(int cylno, time_t utime)
 	}
 	acg.cg_cs.cs_nifree += sblock.fs_ipg;
 	if (cylno == 0) {
-		for (k = 0; k < ROOTINO; k++) {
+		for (k = 0; k < UFS_ROOTINO; k++) {
 			setbit(cg_inosused(&acg), k);
 			acg.cg_cs.cs_nifree--;
 		}
@@ -932,8 +932,8 @@ struct ufs1_dinode node;
 #endif
 
 struct direct root_dir[] = {
-	{ ROOTINO, sizeof(struct direct), DT_DIR, 1, "." },
-	{ ROOTINO, sizeof(struct direct), DT_DIR, 2, ".." },
+	{ UFS_ROOTINO, sizeof(struct direct), DT_DIR, 1, "." },
+	{ UFS_ROOTINO, sizeof(struct direct), DT_DIR, 2, ".." },
 #ifdef LOSTDIR
 	{ LOSTFOUNDINO, sizeof(struct direct), DT_DIR, 10, "lost+found" },
 #endif
@@ -944,8 +944,8 @@ struct odirect {
 	u_short	d_namlen;
 	u_char	d_name[MAXNAMLEN + 1];
 } oroot_dir[] = {
-	{ ROOTINO, sizeof(struct direct), 1, "." },
-	{ ROOTINO, sizeof(struct direct), 2, ".." },
+	{ UFS_ROOTINO, sizeof(struct direct), 1, "." },
+	{ UFS_ROOTINO, sizeof(struct direct), 2, ".." },
 #ifdef LOSTDIR
 	{ LOSTFOUNDINO, sizeof(struct direct), 10, "lost+found" },
 #endif
@@ -953,12 +953,12 @@ struct odirect {
 #ifdef LOSTDIR
 struct direct lost_found_dir[] = {
 	{ LOSTFOUNDINO, sizeof(struct direct), DT_DIR, 1, "." },
-	{ ROOTINO, sizeof(struct direct), DT_DIR, 2, ".." },
+	{ UFS_ROOTINO, sizeof(struct direct), DT_DIR, 2, ".." },
 	{ 0, DIRBLKSIZ, 0, 0, 0 },
 };
 struct odirect olost_found_dir[] = {
 	{ LOSTFOUNDINO, sizeof(struct direct), 1, "." },
-	{ ROOTINO, sizeof(struct direct), 2, ".." },
+	{ UFS_ROOTINO, sizeof(struct direct), 2, ".." },
 	{ 0, DIRBLKSIZ, 0, 0 },
 };
 #endif
@@ -1015,7 +1015,7 @@ fsinit(time_t utime)
 	node.di_db[0] = alloc(sblock.fs_fsize, node.di_mode);
 	node.di_blocks = btodb(fragroundup(&sblock, node.di_size));
 	wtfs(fsbtodb(&sblock, node.di_db[0]), sblock.fs_fsize, buf);
-	iput(&node, ROOTINO);
+	iput(&node, UFS_ROOTINO);
 }
 
 /*

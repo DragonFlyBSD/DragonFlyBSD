@@ -765,7 +765,7 @@ ufs_whiteout(struct vop_old_whiteout_args *ap)
 			panic("ufs_whiteout: old format filesystem");
 #endif
 
-		newdir.d_ino = WINO;
+		newdir.d_ino = UFS_WINO;
 		newdir.d_namlen = cnp->cn_namelen;
 		bcopy(cnp->cn_nameptr, newdir.d_name, (unsigned)cnp->cn_namelen + 1);
 		newdir.d_type = DT_WHT;
@@ -1978,7 +1978,7 @@ ufs_vinit(struct mount *mntp, struct vnode **vpp)
 
 	}
 
-	if (ip->i_number == ROOTINO)
+	if (ip->i_number == UFS_ROOTINO)
 		vsetflags(vp, VROOT);
 	/*
 	 * Initialize modrev times

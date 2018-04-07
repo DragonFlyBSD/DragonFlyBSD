@@ -271,7 +271,7 @@ setup(void)
 	 * extracted.
 	 */
 	if (oldinofmt == 0)
-		SETINO(WINO, dumpmap);
+		SETINO(UFS_WINO, dumpmap);
 	/* 'r' restores don't call getvol() for tape 1, so mark it as read. */
 	if (command == 'r')
 		tapesread = 1;

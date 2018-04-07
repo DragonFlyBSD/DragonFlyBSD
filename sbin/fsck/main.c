@@ -284,7 +284,7 @@ checkfilesys(char *filesys, char *mntpt, long auxdata, int child)
 	printf("(%d frags, %d blocks, %.1f%% fragmentation)\n",
 	    n_ffree, n_bfree, n_ffree * 100.0 / sblock.fs_dsize);
 	if (debug &&
-	    (n_files -= maxino - ROOTINO - sblock.fs_cstotal.cs_nifree))
+	    (n_files -= maxino - UFS_ROOTINO - sblock.fs_cstotal.cs_nifree))
 		printf("%d files missing\n", n_files);
 	if (debug) {
 		n_blks += sblock.fs_ncg *

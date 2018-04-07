@@ -77,7 +77,7 @@ lookupino(ufs1_ino_t inum)
 {
 	struct entry *ep;
 
-	if (inum < WINO || inum >= maxino)
+	if (inum < UFS_WINO || inum >= maxino)
 		return (NULL);
 	for (ep = entry[inum % entrytblsize]; ep != NULL; ep = ep->e_next)
 		if (ep->e_ino == inum)
@@ -93,7 +93,7 @@ addino(ufs1_ino_t inum, struct entry *np)
 {
 	struct entry **epp;
 
-	if (inum < WINO || inum >= maxino)
+	if (inum < UFS_WINO || inum >= maxino)
 		panic("addino: out of range %d\n", inum);
 	epp = &entry[inum % entrytblsize];
 	np->e_ino = inum;
@@ -114,7 +114,7 @@ deleteino(ufs1_ino_t inum)
 	struct entry *next;
 	struct entry **prev;
 
-	if (inum < WINO || inum >= maxino)
+	if (inum < UFS_WINO || inum >= maxino)
 		panic("deleteino: out of range %d\n", inum);
 	prev = &entry[inum % entrytblsize];
 	for (next = *prev; next != NULL; next = next->e_next) {
@@ -140,7 +140,7 @@ lookupname(const char *name)
 	char buf[MAXPATHLEN];
 
 	cp = name;
-	for (ep = lookupino(ROOTINO); ep != NULL; ep = ep->e_entries) {
+	for (ep = lookupino(UFS_ROOTINO); ep != NULL; ep = ep->e_entries) {
 		for (np = buf; *cp != '/' && *cp != '\0' &&
 				np < &buf[sizeof(buf)]; )
 			*np++ = *cp++;
@@ -192,7 +192,7 @@ myname(struct entry *ep)
 	for (cp = &namebuf[MAXPATHLEN - 2]; cp > &namebuf[ep->e_namlen]; ) {
 		cp -= ep->e_namlen;
 		memmove(cp, ep->e_name, (long)ep->e_namlen);
-		if (ep == lookupino(ROOTINO))
+		if (ep == lookupino(UFS_ROOTINO))
 			return (cp);
 		*(--cp) = '/';
 		ep = ep->e_parent;
@@ -227,12 +227,12 @@ addentry(const char *name, ufs1_ino_t inum, int type)
 	np->e_type = type & ~LINK;
 	ep = lookupparent(name);
 	if (ep == NULL) {
-		if (inum != ROOTINO || lookupino(ROOTINO) != NULL)
+		if (inum != UFS_ROOTINO || lookupino(UFS_ROOTINO) != NULL)
 			panic("bad name to addentry %s\n", name);
 		np->e_name = savename(name);
 		np->e_namlen = strlen(name);
 		np->e_parent = np;
-		addino(ROOTINO, np);
+		addino(UFS_ROOTINO, np);
 		return (np);
 	}
 	np->e_name = savename(strrchr(name, '/') + 1);
@@ -452,7 +452,7 @@ dumpsymtable(const char *filename, long checkpt)
 	 * Assign indices to each entry
 	 * Write out the string entries
 	 */
-	for (i = WINO; i <= maxino; i++) {
+	for (i = UFS_WINO; i <= maxino; i++) {
 		for (ep = lookupino(i); ep != NULL; ep = ep->e_links) {
 			ep->e_index = mynum++;
 			fwrite(ep->e_name, sizeof(char),
@@ -464,7 +464,7 @@ dumpsymtable(const char *filename, long checkpt)
 	 */
 	tep = &temp;
 	stroff = 0;
-	for (i = WINO; i <= maxino; i++) {
+	for (i = UFS_WINO; i <= maxino; i++) {
 		for (ep = lookupino(i); ep != NULL; ep = ep->e_links) {
 			memmove(tep, ep, (long)sizeof(struct entry));
 			tep->e_name = (char *)stroff;
@@ -533,7 +533,7 @@ initsymtable(const char *filename)
 			calloc((unsigned)entrytblsize, sizeof(struct entry *));
 		if (entry == NULL)
 			panic("no memory for entry table\n");
-		ep = addentry(".", ROOTINO, NODE);
+		ep = addentry(".", UFS_ROOTINO, NODE);
 		ep->e_flags |= NEW;
 		return;
 	}

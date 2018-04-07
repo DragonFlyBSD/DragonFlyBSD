@@ -33,7 +33,6 @@
  *
  *	@(#)ufs_vfsops.c	8.8 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vfsops.c,v 1.17.2.3 2001/10/14 19:08:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.17 2008/09/17 21:44:25 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -61,7 +60,7 @@ ufs_root(struct mount *mp, struct vnode **vpp)
 	struct vnode *nvp;
 	int error;
 
-	error = VFS_VGET(mp, NULL, (ino_t)ROOTINO, &nvp);
+	error = VFS_VGET(mp, NULL, (ino_t)UFS_ROOTINO, &nvp);
 	if (error)
 		return (error);
 	*vpp = nvp;

@@ -37,9 +37,6 @@
  *
  * $TSHeader: src/sbin/growfs/debug.c,v 1.3 2000/12/12 19:31:00 tomsoft Exp $
  * $FreeBSD: src/sbin/growfs/debug.c,v 1.3.2.1 2001/07/16 15:02:13 tomsoft Exp $
- * $DragonFly: src/sbin/growfs/debug.c,v 1.5 2007/05/20 23:21:36 dillon Exp $
- *
- * $FreeBSD: src/sbin/growfs/debug.c,v 1.3.2.1 2001/07/16 15:02:13 tomsoft Exp $
  */
 
 /* ********************************************************** INCLUDES ***** */
@@ -626,11 +623,11 @@ dbg_dump_ino(struct fs *sb, const char *comment, struct ufs1_dinode *ino)
 	    ino->di_ctimensec);
 
 	remaining_blocks=howmany(ino->di_size, sb->fs_bsize); /* XXX ts - +1? */
-	for(ictr=0; ictr < MIN(NDADDR, remaining_blocks); ictr++) {
+	for(ictr=0; ictr < MIN(UFS_NDADDR, remaining_blocks); ictr++) {
 		fprintf(dbg_log, "db         ufs_daddr_t[%x] 0x%08x\n", ictr,
 		    ino->di_db[ictr]);
 	}
-	remaining_blocks-=NDADDR;
+	remaining_blocks-=UFS_NDADDR;
 	if(remaining_blocks>0) {
 		fprintf(dbg_log, "ib         ufs_daddr_t[0] 0x%08x\n",
 		    ino->di_ib[0]);

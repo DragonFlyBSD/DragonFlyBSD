@@ -410,7 +410,7 @@ initcg(int cylno, time_t utime, int fso, unsigned int Nflag)
 	}
 	acg.cg_cs.cs_nifree += sblock.fs_ipg;
 	if (cylno == 0)
-		for (i = 0; (size_t)i < ROOTINO; i++) {
+		for (i = 0; (size_t)i < UFS_ROOTINO; i++) {
 			setbit(cg_inosused(&acg), i);
 			acg.cg_cs.cs_nifree--;
 		}
@@ -2269,7 +2269,7 @@ updrefs(int cg, ino_t in, struct gfs_bpp *bp, int fsi, int fso, unsigned int
 		DBG_LEAVE;
 		return; /* only check DIR, FILE, LINK */
 	}
-	if(((ino->di_mode & IFMT)==IFLNK) && (ino->di_size<MAXSYMLINKLEN)) {
+	if(((ino->di_mode & IFMT)==IFLNK) && (ino->di_size<UFS1_MAXSYMLINKLEN)) {
 		DBG_LEAVE;
 		return;	/* skip short symlinks */
 	}
@@ -2289,7 +2289,7 @@ updrefs(int cg, ino_t in, struct gfs_bpp *bp, int fsi, int fso, unsigned int
 	 * Start checking all direct blocks.
 	 */
 	remaining_blocks=howmany(ino->di_size, sblock.fs_bsize);
-	for(ictr=0; ictr < MIN(NDADDR, (unsigned int)remaining_blocks);
+	for(ictr=0; ictr < MIN(UFS_NDADDR, (unsigned int)remaining_blocks);
 	    ictr++) {
 		iptr=&(ino->di_db[ictr]);
 		if(*iptr) {
@@ -2298,7 +2298,7 @@ updrefs(int cg, ino_t in, struct gfs_bpp *bp, int fsi, int fso, unsigned int
 	}
 	DBG_PRINT0("~~scg direct blocks checked\n");
 
-	remaining_blocks-=NDADDR;
+	remaining_blocks-=UFS_NDADDR;
 	if(remaining_blocks<0) {
 		DBG_LEAVE;
 		return;

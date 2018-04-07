@@ -28,7 +28,6 @@
  *
  *	@(#)ffs_balloc.c	8.8 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_balloc.c,v 1.26.2.1 2002/10/10 19:48:20 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.19 2008/05/21 18:49:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -73,11 +72,11 @@ ffs_balloc(struct vop_balloc_args *ap)
 	ufs_daddr_t nb;
 	struct buf *bp, *nbp, *dbp;
 	struct vnode *vp;
-	struct indir indirs[NIADDR + 2];
+	struct indir indirs[UFS_NIADDR + 2];
 	ufs_daddr_t newb, *bap, pref;
 	int deallocated, osize, nsize, num, i, error;
-	ufs_daddr_t *allocib, *blkp, *allocblk, allociblk[NIADDR + 1];
-	ufs_daddr_t *lbns_remfree, lbns[NIADDR + 1];
+	ufs_daddr_t *allocib, *blkp, *allocblk, allociblk[UFS_NIADDR + 1];
+	ufs_daddr_t *lbns_remfree, lbns[UFS_NIADDR + 1];
 	int unwindidx;
 	int seqcount;
 
@@ -108,7 +107,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 	 * this fragment has to be extended to be a full block.
 	 */
 	nb = lblkno(fs, ip->i_size);
-	if (nb < NDADDR && nb < lbn) {
+	if (nb < UFS_NDADDR && nb < lbn) {
 		/*
 		 * The filesize prior to this write can fit in direct
 		 * blocks (ex. fragmentation is possibly done)
@@ -146,9 +145,9 @@ ffs_balloc(struct vop_balloc_args *ap)
 		}
 	}
 	/*
-	 * The first NDADDR blocks are direct blocks
+	 * The first UFS_NDADDR blocks are direct blocks
 	 */
-	if (lbn < NDADDR) {
+	if (lbn < UFS_NDADDR) {
 		nb = ip->i_db[lbn];
 		if (nb != 0 && ip->i_size >= smalllblktosize(fs, lbn + 1)) {
 			error = bread(vp, lblktodoff(fs, lbn), fs->fs_bsize, &bp);
@@ -264,7 +263,8 @@ ffs_balloc(struct vop_balloc_args *ap)
 		bp->b_bio2.bio_offset = fsbtodoff(fs, nb);
 		vfs_bio_clrbuf(bp);
 		if (DOINGSOFTDEP(vp)) {
-			softdep_setup_allocdirect(ip, NDADDR + indirs[0].in_off,
+			softdep_setup_allocdirect(ip,
+			    UFS_NDADDR + indirs[0].in_off,
 			    newb, 0, fs->fs_bsize, 0, bp);
 			bdwrite(bp);
 		} else {

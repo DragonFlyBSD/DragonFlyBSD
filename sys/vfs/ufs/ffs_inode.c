@@ -139,8 +139,9 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 	struct vnode *ovp = vp;
 	ufs_daddr_t lastblock;
 	struct inode *oip;
-	ufs_daddr_t bn, lbn, lastiblock[NIADDR], indir_lbn[NIADDR];
-	ufs_daddr_t oldblks[NDADDR + NIADDR], newblks[NDADDR + NIADDR];
+	ufs_daddr_t bn, lbn, lastiblock[UFS_NIADDR], indir_lbn[UFS_NIADDR];
+	ufs_daddr_t oldblks[UFS_NDADDR + UFS_NIADDR];
+	ufs_daddr_t newblks[UFS_NDADDR + UFS_NIADDR];
 	struct fs *fs;
 	struct buf *bp;
 	int offset, size, level;
@@ -275,7 +276,7 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 		 * throw away anyway, and we will b*write() the remainder
 		 * anyway down below.
 		 */
-		if (DOINGSOFTDEP(ovp) && lbn < NDADDR &&
+		if (DOINGSOFTDEP(ovp) && lbn < UFS_NDADDR &&
 		    fragroundup(fs, blkoff(fs, length)) < fs->fs_bsize) {
 			bundirty(bp);
 			error = VOP_FSYNC(ovp, MNT_WAIT, 0);
@@ -308,7 +309,7 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 	 * the file is truncated to 0.
 	 */
 	lastblock = lblkno(fs, length + fs->fs_bsize - 1) - 1;
-	lastiblock[SINGLE] = lastblock - NDADDR;
+	lastiblock[SINGLE] = lastblock - UFS_NDADDR;
 	lastiblock[DOUBLE] = lastiblock[SINGLE] - NINDIR(fs);
 	lastiblock[TRIPLE] = lastiblock[DOUBLE] - NINDIR(fs) * NINDIR(fs);
 	nblocks = btodb(fs->fs_bsize);
@@ -320,13 +321,13 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 	 * normalized to -1 for calls to ffs_indirtrunc below.
 	 */
 	for (level = TRIPLE; level >= SINGLE; level--) {
-		oldblks[NDADDR + level] = oip->i_ib[level];
+		oldblks[UFS_NDADDR + level] = oip->i_ib[level];
 		if (lastiblock[level] < 0) {
 			oip->i_ib[level] = 0;
 			lastiblock[level] = -1;
 		}
 	}
-	for (i = 0; i < NDADDR; i++) {
+	for (i = 0; i < UFS_NDADDR; i++) {
 		oldblks[i] = oip->i_db[i];
 		if (i > lastblock)
 			oip->i_db[i] = 0;
@@ -342,13 +343,13 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 	 * Note that we save the new block configuration so we can check it
 	 * when we are done.
 	 */
-	for (i = 0; i < NDADDR; i++) {
+	for (i = 0; i < UFS_NDADDR; i++) {
 		newblks[i] = oip->i_db[i];
 		oip->i_db[i] = oldblks[i];
 	}
-	for (i = 0; i < NIADDR; i++) {
-		newblks[NDADDR + i] = oip->i_ib[i];
-		oip->i_ib[i] = oldblks[NDADDR + i];
+	for (i = 0; i < UFS_NIADDR; i++) {
+		newblks[UFS_NDADDR + i] = oip->i_ib[i];
+		oip->i_ib[i] = oldblks[UFS_NDADDR + i];
 	}
 	oip->i_size = osize;
 
@@ -358,7 +359,7 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 	/*
 	 * Indirect blocks first.
 	 */
-	indir_lbn[SINGLE] = -NDADDR;
+	indir_lbn[SINGLE] = -UFS_NDADDR;
 	indir_lbn[DOUBLE] = indir_lbn[SINGLE] - NINDIR(fs) - 1;
 	indir_lbn[TRIPLE] = indir_lbn[DOUBLE] - NINDIR(fs) * NINDIR(fs) - 1;
 	for (level = TRIPLE; level >= SINGLE; level--) {
@@ -382,7 +383,7 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 	/*
 	 * All whole direct blocks or frags.
 	 */
-	for (i = NDADDR - 1; i > lastblock; i--) {
+	for (i = UFS_NDADDR - 1; i > lastblock; i--) {
 		long bsize;
 
 		bn = oip->i_db[i];
@@ -427,9 +428,9 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 done:
 #ifdef DIAGNOSTIC
 	for (level = SINGLE; level <= TRIPLE; level++)
-		if (newblks[NDADDR + level] != oip->i_ib[level])
+		if (newblks[UFS_NDADDR + level] != oip->i_ib[level])
 			panic("ffs_truncate1");
-	for (i = 0; i < NDADDR; i++)
+	for (i = 0; i < UFS_NDADDR; i++)
 		if (newblks[i] != oip->i_db[i])
 			panic("ffs_truncate2");
 	if (length == 0 && !RB_EMPTY(&ovp->v_rbdirty_tree))

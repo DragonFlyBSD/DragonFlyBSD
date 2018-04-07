@@ -131,7 +131,7 @@ pass1(void)
 		 * Scan the allocated inodes.
 		 */
 		for (i = 0; i < inosused; i++, inumber++) {
-			if (inumber < ROOTINO) {
+			if (inumber < UFS_ROOTINO) {
 				getnextinode(inumber);
 				continue;
 			}
@@ -180,9 +180,9 @@ checkinode(ufs1_ino_t inumber, struct inodesc *idesc)
 	mode = dp->di_mode & IFMT;
 	if (mode == 0) {
 		if (memcmp(dp->di_db, zino.di_db,
-			NDADDR * sizeof(ufs_daddr_t)) ||
+			UFS_NDADDR * sizeof(ufs_daddr_t)) ||
 		    memcmp(dp->di_ib, zino.di_ib,
-			NIADDR * sizeof(ufs_daddr_t)) ||
+			UFS_NIADDR * sizeof(ufs_daddr_t)) ||
 		    dp->di_mode || dp->di_size) {
 			pfatal("PARTIALLY ALLOCATED INODE I=%u", inumber);
 			if (reply("CLEAR") == 1) {
@@ -229,7 +229,7 @@ checkinode(ufs1_ino_t inumber, struct inodesc *idesc)
 		ndb++;
 	if (mode == IFLNK) {
 		if (doinglevel2 &&
-		    dp->di_size > 0 && dp->di_size < MAXSYMLINKLEN &&
+		    dp->di_size > 0 && dp->di_size < UFS1_MAXSYMLINKLEN &&
 		    dp->di_blocks != 0) {
 			symbuf = alloca(secsize);
 			if (bread(fsreadfd, symbuf,
@@ -252,24 +252,24 @@ checkinode(ufs1_ino_t inumber, struct inodesc *idesc)
 		 */
 		if (dp->di_size < sblock.fs_maxsymlinklen) {
 			ndb = howmany(dp->di_size, sizeof(ufs_daddr_t));
-			if (ndb > NDADDR) {
-				j = ndb - NDADDR;
+			if (ndb > UFS_NDADDR) {
+				j = ndb - UFS_NDADDR;
 				for (ndb = 1; j > 1; j--)
 					ndb *= NINDIR(&sblock);
-				ndb += NDADDR;
+				ndb += UFS_NDADDR;
 			}
 		}
 	}
-	for (j = ndb; j < NDADDR; j++)
+	for (j = ndb; j < UFS_NDADDR; j++)
 		if (dp->di_db[j] != 0) {
 			if (debug)
 				printf("bad direct addr: %ld\n",
 				    (long)dp->di_db[j]);
 			goto unknown;
 		}
-	for (j = 0, ndb -= NDADDR; ndb > 0; j++)
+	for (j = 0, ndb -= UFS_NDADDR; ndb > 0; j++)
 		ndb /= NINDIR(&sblock);
-	for (; j < NIADDR; j++)
+	for (; j < UFS_NIADDR; j++)
 		if (dp->di_ib[j] != 0) {
 			if (debug)
 				printf("bad indirect addr: %ld\n",

@@ -214,8 +214,8 @@ cmdloop(void)
     HistEvent he;
     EditLine *elptr;
 
-    curinode = ginode(ROOTINO);
-    curinum = ROOTINO;
+    curinode = ginode(UFS_ROOTINO);
+    curinum = UFS_ROOTINO;
     printactive(0);
 
     hist = history_init();
@@ -276,9 +276,10 @@ struct ufs1_dinode *curinode;
 ino_t curinum, ocurrent;
 
 #define GETINUM(ac,inum)    inum = strtoul(argv[ac], &cp, 0); \
-    if (inum < ROOTINO || inum > maxino || cp == argv[ac] || *cp != '\0' ) { \
+    if (inum < UFS_ROOTINO || inum > maxino || \
+	cp == argv[ac] || *cp != '\0' ) {			       \
 	printf("inode %ju out of range; range is [%ju,%ju]\n", \
-	       (uintmax_t)inum, (uintmax_t)ROOTINO, (uintmax_t)maxino); \
+	       (uintmax_t)inum, (uintmax_t)UFS_ROOTINO, (uintmax_t)maxino); \
 	return 1; \
     }
 
@@ -441,8 +442,8 @@ CMDFUNCSTART(focusname)
     ocurrent = curinum;
     
     if (argv[1][0] == '/') {
-	curinum = ROOTINO;
-	curinode = ginode(ROOTINO);
+	curinum = UFS_ROOTINO;
+	curinode = ginode(UFS_ROOTINO);
     } else {
 	if (!checkactivedir())
 	    return 1;

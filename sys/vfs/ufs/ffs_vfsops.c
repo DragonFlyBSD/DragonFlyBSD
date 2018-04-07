@@ -808,8 +808,8 @@ ffs_oldfscompat(struct fs *fs)
 		int i;						/* XXX */
 		uint64_t sizepb = fs->fs_bsize;		/* XXX */
 								/* XXX */
-		fs->fs_maxfilesize = fs->fs_bsize * NDADDR - 1;	/* XXX */
-		for (i = 0; i < NIADDR; i++) {			/* XXX */
+		fs->fs_maxfilesize = fs->fs_bsize * UFS_NDADDR - 1; /* XXX */
+		for (i = 0; i < UFS_NIADDR; i++) {		/* XXX */
 			sizepb *= NINDIR(fs);			/* XXX */
 			fs->fs_maxfilesize += sizepb;		/* XXX */
 		}						/* XXX */
@@ -933,7 +933,7 @@ ffs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	sbp->f_bfree = fs->fs_cstotal.cs_nbfree * fs->fs_frag +
 		fs->fs_cstotal.cs_nffree;
 	sbp->f_bavail = freespace(fs, fs->fs_minfree);
-	sbp->f_files =  fs->fs_ncg * fs->fs_ipg - ROOTINO;
+	sbp->f_files =  fs->fs_ncg * fs->fs_ipg - UFS_ROOTINO;
 	sbp->f_ffree = fs->fs_cstotal.cs_nifree;
 	if (sbp != &mp->mnt_stat) {
 		sbp->f_type = mp->mnt_vfc->vfc_typenum;
@@ -1214,7 +1214,7 @@ ffs_fhtovp(struct mount *mp, struct vnode *rootvp,
 
 	ufhp = (struct ufid *)fhp;
 	fs = VFSTOUFS(mp)->um_fs;
-	if (ufhp->ufid_ino < ROOTINO ||
+	if (ufhp->ufid_ino < UFS_ROOTINO ||
 	    ufhp->ufid_ino >= fs->fs_ncg * fs->fs_ipg)
 		return (ESTALE);
 	return (ufs_fhtovp(mp, rootvp, ufhp, vpp));

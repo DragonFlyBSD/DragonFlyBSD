@@ -250,7 +250,7 @@ fsirand(char *device)
 		}
 
 		for (n = 0; n < sblock->fs_ipg; n++, inumber++) {
-			if (inumber >= ROOTINO) {
+			if (inumber >= UFS_ROOTINO) {
 				if (printonly) {
 					printf("ino %jd gen %x\n",
 					       (intmax_t)inumber,

@@ -1318,7 +1318,7 @@ softdep_setup_allocdirect(struct inode *ip, ufs_lbn_t lbn, ufs_daddr_t newblkno,
 	kfree(newblk, M_NEWBLK);
 
 	WORKLIST_INSERT_BP(bp, &adp->ad_list);
-	if (lbn >= NDADDR) {
+	if (lbn >= UFS_NDADDR) {
 		/* allocating an indirect block */
 		if (oldblkno != 0) {
 			panic("softdep_setup_allocdirect: non-zero indir");
@@ -1392,10 +1392,10 @@ allocdirect_merge(struct allocdirectlst *adphead,
 
 	if (newadp->ad_oldblkno != oldadp->ad_newblkno ||
 	    newadp->ad_oldsize != oldadp->ad_newsize ||
-	    newadp->ad_lbn >= NDADDR) {
+	    newadp->ad_lbn >= UFS_NDADDR) {
 		panic("allocdirect_check: old %d != new %d || lbn %ld >= %d",
 		    newadp->ad_oldblkno, oldadp->ad_newblkno, newadp->ad_lbn,
-		    NDADDR);
+		    UFS_NDADDR);
 	}
 	newadp->ad_oldblkno = oldadp->ad_oldblkno;
 	newadp->ad_oldsize = oldadp->ad_oldsize;
@@ -1759,11 +1759,11 @@ softdep_setup_freeblocks(struct inode *ip, off_t length)
 	freeblks->fb_oldsize = ip->i_size;
 	freeblks->fb_newsize = length;
 	freeblks->fb_chkcnt = ip->i_blocks;
-	for (i = 0; i < NDADDR; i++) {
+	for (i = 0; i < UFS_NDADDR; i++) {
 		freeblks->fb_dblks[i] = ip->i_db[i];
 		ip->i_db[i] = 0;
 	}
-	for (i = 0; i < NIADDR; i++) {
+	for (i = 0; i < UFS_NIADDR; i++) {
 		freeblks->fb_iblks[i] = ip->i_ib[i];
 		ip->i_ib[i] = 0;
 	}
@@ -2142,7 +2142,7 @@ handle_workitem_freeblocks(struct freeblks *freeblks)
 	int i, level, bsize;
 	long nblocks, blocksreleased = 0;
 	int error, allerror = 0;
-	ufs_lbn_t baselbns[NIADDR], tmpval;
+	ufs_lbn_t baselbns[UFS_NIADDR], tmpval;
 
 	tip.i_number = freeblks->fb_previousinum;
 	tip.i_devvp = freeblks->fb_devvp;
@@ -2152,8 +2152,8 @@ handle_workitem_freeblocks(struct freeblks *freeblks)
 	tip.i_uid = freeblks->fb_uid;
 	fs = freeblks->fb_fs;
 	tmpval = 1;
-	baselbns[0] = NDADDR;
-	for (i = 1; i < NIADDR; i++) {
+	baselbns[0] = UFS_NDADDR;
+	for (i = 1; i < UFS_NIADDR; i++) {
 		tmpval *= NINDIR(fs);
 		baselbns[i] = baselbns[i - 1] + tmpval;
 	}
@@ -2162,7 +2162,7 @@ handle_workitem_freeblocks(struct freeblks *freeblks)
 	/*
 	 * Indirect blocks first.
 	 */
-	for (level = (NIADDR - 1); level >= 0; level--) {
+	for (level = (UFS_NIADDR - 1); level >= 0; level--) {
 		if ((bn = freeblks->fb_iblks[level]) == 0)
 			continue;
 		if ((error = indir_trunc(&tip, fsbtodoff(fs, bn), level,
@@ -2174,7 +2174,7 @@ handle_workitem_freeblocks(struct freeblks *freeblks)
 	/*
 	 * All direct blocks or frags.
 	 */
-	for (i = (NDADDR - 1); i >= 0; i--) {
+	for (i = (UFS_NDADDR - 1); i >= 0; i--) {
 		if ((bn = freeblks->fb_dblks[i]) == 0)
 			continue;
 		bsize = blksize(fs, &tip, i);
@@ -2341,7 +2341,7 @@ softdep_setup_directory_add(struct buf *bp, struct inode *dp, off_t diroffset,
 	/*
 	 * Whiteouts have no dependencies.
 	 */
-	if (newinum == WINO) {
+	if (newinum == UFS_WINO) {
 		if (newdirbp != NULL)
 			bdwrite(newdirbp);
 		return;
@@ -2718,7 +2718,7 @@ softdep_setup_directory_change(struct buf *bp, struct inode *dp,
 	/*
 	 * Whiteouts do not need diradd dependencies.
 	 */
-	if (newinum != WINO) {
+	if (newinum != UFS_WINO) {
 		dap = kmalloc(sizeof(struct diradd), M_DIRADD,
 			      M_SOFTDEP_FLAGS | M_ZERO);
 		dap->da_list.wk_type = D_DIRADD;
@@ -2751,7 +2751,7 @@ softdep_setup_directory_change(struct buf *bp, struct inode *dp,
 	 * Whiteouts have no additional dependencies,
 	 * so just put the dirrem on the correct list.
 	 */
-	if (newinum == WINO) {
+	if (newinum == UFS_WINO) {
 		if ((dirrem->dm_state & COMPLETE) == 0) {
 			LIST_INSERT_HEAD(&pagedep->pd_dirremhd, dirrem,
 			    dm_next);
@@ -3201,17 +3201,19 @@ initiate_write_inodeblock(struct inodedep *inodedep, struct buf *bp)
 			panic("softdep_write_inodeblock: lbn order");
 		}
 		prevlbn = adp->ad_lbn;
-		if (adp->ad_lbn < NDADDR &&
+		if (adp->ad_lbn < UFS_NDADDR &&
 		    dp->di_db[adp->ad_lbn] != adp->ad_newblkno) {
 			panic("%s: direct pointer #%ld mismatch %d != %d",
 			    "softdep_write_inodeblock", adp->ad_lbn,
 			    dp->di_db[adp->ad_lbn], adp->ad_newblkno);
 		}
-		if (adp->ad_lbn >= NDADDR &&
-		    dp->di_ib[adp->ad_lbn - NDADDR] != adp->ad_newblkno) {
+		if (adp->ad_lbn >= UFS_NDADDR &&
+		    dp->di_ib[adp->ad_lbn - UFS_NDADDR] != adp->ad_newblkno) {
 			panic("%s: indirect pointer #%ld mismatch %d != %d",
-			    "softdep_write_inodeblock", adp->ad_lbn - NDADDR,
-			    dp->di_ib[adp->ad_lbn - NDADDR], adp->ad_newblkno);
+			    "softdep_write_inodeblock",
+			    adp->ad_lbn - UFS_NDADDR,
+			    dp->di_ib[adp->ad_lbn - UFS_NDADDR],
+			    adp->ad_newblkno);
 		}
 		deplist |= 1 << adp->ad_lbn;
 		if ((adp->ad_state & ATTACHED) == 0) {
@@ -3230,14 +3232,14 @@ initiate_write_inodeblock(struct inodedep *inodedep, struct buf *bp)
 	 */
 	for (lastadp = NULL, adp = TAILQ_FIRST(&inodedep->id_inoupdt); adp;
 	     lastadp = adp, adp = TAILQ_NEXT(adp, ad_next)) {
-		if (adp->ad_lbn >= NDADDR)
+		if (adp->ad_lbn >= UFS_NDADDR)
 			break;
 		dp->di_db[adp->ad_lbn] = adp->ad_oldblkno;
 		/* keep going until hitting a rollback to a frag */
 		if (adp->ad_oldsize == 0 || adp->ad_oldsize == fs->fs_bsize)
 			continue;
 		dp->di_size = fs->fs_bsize * adp->ad_lbn + adp->ad_oldsize;
-		for (i = adp->ad_lbn + 1; i < NDADDR; i++) {
+		for (i = adp->ad_lbn + 1; i < UFS_NDADDR; i++) {
 #ifdef DIAGNOSTIC
 			if (dp->di_db[i] != 0 && (deplist & (1 << i)) == 0) {
 				panic("softdep_write_inodeblock: lost dep1");
@@ -3245,10 +3247,10 @@ initiate_write_inodeblock(struct inodedep *inodedep, struct buf *bp)
 #endif /* DIAGNOSTIC */
 			dp->di_db[i] = 0;
 		}
-		for (i = 0; i < NIADDR; i++) {
+		for (i = 0; i < UFS_NIADDR; i++) {
 #ifdef DIAGNOSTIC
 			if (dp->di_ib[i] != 0 &&
-			    (deplist & ((1 << NDADDR) << i)) == 0) {
+			    (deplist & ((1 << UFS_NDADDR) << i)) == 0) {
 				panic("softdep_write_inodeblock: lost dep2");
 			}
 #endif /* DIAGNOSTIC */
@@ -3282,7 +3284,7 @@ initiate_write_inodeblock(struct inodedep *inodedep, struct buf *bp)
 	 * postpone fsck, we are stuck with this argument.
 	 */
 	for (; adp; adp = TAILQ_NEXT(adp, ad_next))
-		dp->di_ib[adp->ad_lbn - NDADDR] = 0;
+		dp->di_ib[adp->ad_lbn - UFS_NDADDR] = 0;
 	FREE_LOCK(&lk);
 }
 
@@ -3566,7 +3568,7 @@ handle_written_inodeblock(struct inodedep *inodedep, struct buf *bp)
 		if (adp->ad_state & ATTACHED) 
 			panic("handle_written_inodeblock: new entry");
 		
-		if (adp->ad_lbn < NDADDR) {
+		if (adp->ad_lbn < UFS_NDADDR) {
 			if (dp->di_db[adp->ad_lbn] != adp->ad_oldblkno) {
 				panic("%s: %s #%ld mismatch %d != %d",
 				    "handle_written_inodeblock",
@@ -3575,13 +3577,14 @@ handle_written_inodeblock(struct inodedep *inodedep, struct buf *bp)
 			}
 			dp->di_db[adp->ad_lbn] = adp->ad_newblkno;
 		} else {
-			if (dp->di_ib[adp->ad_lbn - NDADDR] != 0) {
+			if (dp->di_ib[adp->ad_lbn - UFS_NDADDR] != 0) {
 				panic("%s: %s #%ld allocated as %d",
 				    "handle_written_inodeblock",
-				    "indirect pointer", adp->ad_lbn - NDADDR,
-				    dp->di_ib[adp->ad_lbn - NDADDR]);
+				    "indirect pointer",
+				    adp->ad_lbn - UFS_NDADDR,
+				    dp->di_ib[adp->ad_lbn - UFS_NDADDR]);
 			}
-			dp->di_ib[adp->ad_lbn - NDADDR] = adp->ad_newblkno;
+			dp->di_ib[adp->ad_lbn - UFS_NDADDR] = adp->ad_newblkno;
 		}
 		adp->ad_state &= ~UNDONE;
 		adp->ad_state |= ATTACHED;

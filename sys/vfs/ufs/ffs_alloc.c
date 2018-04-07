@@ -208,7 +208,7 @@ ffs_realloccg(struct inode *ip, ufs_daddr_t lbprev, ufs_daddr_t bpref,
 	}
 
 	if(bp->b_bio2.bio_offset == NOOFFSET) {
-		if( lbprev >= NDADDR)
+		if (lbprev >= UFS_NDADDR)
 			panic("ffs_realloccg: lbprev out of range");
 		bp->b_bio2.bio_offset = fsbtodoff(fs, bprev);
 	}
@@ -357,7 +357,7 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 #ifdef DIAGNOSTIC
 	off_t boffset;
 #endif
-	struct indir start_ap[NIADDR + 1], end_ap[NIADDR + 1], *idp;
+	struct indir start_ap[UFS_NIADDR + 1], end_ap[UFS_NIADDR + 1], *idp;
 	int i, len, slen, start_lvl, end_lvl, pref, ssize;
 
 	if (doreallocblks == 0)
@@ -404,7 +404,7 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 	if (start_lvl == 0) {
 		sbap = &ip->i_db[0];
 		soff = start_lbn;
-		slen = NDADDR - soff;
+		slen = UFS_NDADDR - soff;
 	} else {
 		idp = &start_ap[start_lvl - 1];
 		if (bread(vp, lblktodoff(fs, idp->in_lbn), (int)fs->fs_bsize, &sbp)) {
@@ -802,7 +802,7 @@ ffs_blkpref(struct inode *ip, ufs_daddr_t lbn, int indx, ufs_daddr_t *bap)
 
 	fs = ip->i_fs;
 	if (indx % fs->fs_maxbpg == 0 || bap[indx - 1] == 0) {
-		if (lbn < NDADDR + NINDIR(fs)) {
+		if (lbn < UFS_NDADDR + NINDIR(fs)) {
 			cg = ino_to_cg(fs, ip->i_number);
 			return (fs->fs_fpg * cg + fs->fs_frag);
 		}

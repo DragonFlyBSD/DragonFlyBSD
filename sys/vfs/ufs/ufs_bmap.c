@@ -117,7 +117,7 @@ ufs_bmaparray(struct vnode *vp, ufs_daddr_t bn, ufs_daddr_t *bnp,
 	struct ufsmount *ump;
 	struct mount *mp;
 	struct fs *fs;
-	struct indir a[NIADDR+1], *xap;
+	struct indir a[UFS_NIADDR+1], *xap;
 	ufs_daddr_t daddr;
 	long metalbn;
 	int error, maxrun, num;
@@ -155,7 +155,7 @@ ufs_bmaparray(struct vnode *vp, ufs_daddr_t bn, ufs_daddr_t *bnp,
 			*bnp = -1;
 		else if (runp) {
 			daddr_t bnb = bn;
-			for (++bn; bn < NDADDR && *runp < maxrun &&
+			for (++bn; bn < UFS_NDADDR && *runp < maxrun &&
 			    is_sequential(ump, ip->i_db[bn - 1], ip->i_db[bn]);
 			    ++bn, ++*runp);
 			bn = bnb;
@@ -268,17 +268,17 @@ ufs_getlbns(struct vnode *vp, ufs_daddr_t bn, struct indir *ap, int *nump)
 	if ((long)bn < 0)
 		bn = -(long)bn;
 
-	/* The first NDADDR blocks are direct blocks. */
-	if (bn < NDADDR)
+	/* The first UFS_NDADDR blocks are direct blocks. */
+	if (bn < UFS_NDADDR)
 		return (0);
 
 	/*
 	 * Determine the number of levels of indirection.  After this loop
 	 * is done, blockcnt indicates the number of data blocks possible
-	 * at the previous level of indirection, and NIADDR - i is the number
+	 * at the previous level of indirection, and UFS_NIADDR-i is the number
 	 * of levels of indirection needed to locate the requested block.
 	 */
-	for (blockcnt = 1, i = NIADDR, bn -= NDADDR;; i--, bn -= blockcnt) {
+	for (blockcnt = 1, i = UFS_NIADDR, bn -= UFS_NDADDR;; i--, bn -= blockcnt) {
 		if (i == 0)
 			return (EFBIG);
 		/*
@@ -294,9 +294,9 @@ ufs_getlbns(struct vnode *vp, ufs_daddr_t bn, struct indir *ap, int *nump)
 
 	/* Calculate the address of the first meta-block. */
 	if (realbn >= 0)
-		metalbn = -(realbn - bn + NIADDR - i);
+		metalbn = -(realbn - bn + UFS_NIADDR - i);
 	else
-		metalbn = -(-realbn - bn + NIADDR - i);
+		metalbn = -(-realbn - bn + UFS_NIADDR - i);
 
 	/*
 	 * At each iteration, off is the offset into the bap array which is
@@ -305,9 +305,9 @@ ufs_getlbns(struct vnode *vp, ufs_daddr_t bn, struct indir *ap, int *nump)
 	 * into the argument array.
 	 */
 	ap->in_lbn = metalbn;
-	ap->in_off = off = NIADDR - i;
+	ap->in_off = off = UFS_NIADDR - i;
 	ap++;
-	for (++numlevels; i <= NIADDR; i++) {
+	for (++numlevels; i <= UFS_NIADDR; i++) {
 		/* If searching for a meta-data block, quit when found. */
 		if (metalbn == realbn)
 			break;

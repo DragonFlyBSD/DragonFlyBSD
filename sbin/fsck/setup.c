@@ -205,12 +205,12 @@ setup(char *dev)
 		doinglevel2++;
 		sblock.fs_inodefmt = FS_44INODEFMT;
 		sizepb = sblock.fs_bsize;
-		sblock.fs_maxfilesize = sblock.fs_bsize * NDADDR - 1;
-		for (i = 0; i < NIADDR; i++) {
+		sblock.fs_maxfilesize = sblock.fs_bsize * UFS_NDADDR - 1;
+		for (i = 0; i < UFS_NIADDR; i++) {
 			sizepb *= NINDIR(&sblock);
 			sblock.fs_maxfilesize += sizepb;
 		}
-		sblock.fs_maxsymlinklen = MAXSYMLINKLEN;
+		sblock.fs_maxsymlinklen = UFS1_MAXSYMLINKLEN;
 		sblock.fs_qbmask = ~sblock.fs_bmask;
 		sblock.fs_qfmask = ~sblock.fs_fmask;
 		sbdirty();

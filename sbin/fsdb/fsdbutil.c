@@ -107,7 +107,7 @@ printstat(const char *cp, ino_t inum, struct ufs1_dinode *dp)
 	break;
     case IFLNK:
 	fputs("symlink",stdout);
-	if (dp->di_size > 0 && dp->di_size < MAXSYMLINKLEN &&
+	if (dp->di_size > 0 && dp->di_size < UFS1_MAXSYMLINKLEN &&
 	    dp->di_blocks == 0)
 	    printf(" to `%.*s'\n", (int) dp->di_size, (char *)dp->di_shortlink);
 	else
@@ -239,7 +239,7 @@ printblocks(ino_t inum, struct ufs1_dinode *dp)
     printf("Blocks for inode %ju:\n", (uintmax_t)inum);
     printf("Direct blocks:\n");
     ndb = howmany(dp->di_size, sblock.fs_bsize);
-    for (i = 0; i < NDADDR; i++) {
+    for (i = 0; i < UFS_NDADDR; i++) {
 	if (dp->di_db[i] == 0) {
 	    putchar('\n');
 	    return;
@@ -260,7 +260,7 @@ printblocks(ino_t inum, struct ufs1_dinode *dp)
     if (bufp == NULL)
 	errx(EEXIT, "cannot allocate indirect block buffer");
     printf("Indirect blocks:\n");
-    for (i = 0; i < NIADDR; i++)
+    for (i = 0; i < UFS_NIADDR; i++)
 	if (printindir(dp->di_ib[i], i, bufp) == 0)
 	    break;
     free(bufp);

@@ -28,7 +28,6 @@
  *
  * @(#)pass1b.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass1b.c,v 1.7.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass1b.c,v 1.8 2006/10/12 04:04:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -64,7 +63,7 @@ pass1b(void)
 			got_siginfo = 0;
 		}
 		for (i = 0; i < sblock.fs_ipg; i++, inumber++) {
-			if (inumber < ROOTINO)
+			if (inumber < UFS_ROOTINO)
 				continue;
 			dp = ginode(inumber);
 			if (dp == NULL)

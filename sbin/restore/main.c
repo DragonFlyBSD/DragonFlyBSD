@@ -196,7 +196,8 @@ main(int argc, char *argv[])
 			extractdirs(1);
 			removeoldleaves();
 			vprintf(stdout, "Calculate node updates.\n");
-			treescan(__DECONST(char *, "."), ROOTINO, nodeupdates);
+			treescan(__DECONST(char *, "."), UFS_ROOTINO,
+			    nodeupdates);
 			findunreflinks();
 			removeoldnodes();
 		} else {
@@ -207,7 +208,8 @@ main(int argc, char *argv[])
 			initsymtable(NULL);
 			extractdirs(1);
 			vprintf(stdout, "Calculate extraction list.\n");
-			treescan(__DECONST(char *, "."), ROOTINO, nodeupdates);
+			treescan(__DECONST(char *, "."), UFS_ROOTINO,
+			    nodeupdates);
 		}
 		createleaves(symtbl);
 		createlinks();
@@ -215,7 +217,8 @@ main(int argc, char *argv[])
 		checkrestore();
 		if (dflag) {
 			vprintf(stdout, "Verify the directory structure\n");
-			treescan(__DECONST(char *, "."), ROOTINO, verifyfile);
+			treescan(__DECONST(char *, "."), UFS_ROOTINO,
+			    verifyfile);
 		}
 		dumpsymtable(symtbl, (long)1);
 		break;

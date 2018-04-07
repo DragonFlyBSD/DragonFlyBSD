@@ -37,7 +37,6 @@
  *
  *	@(#)softdep.h	9.7 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/softdep.h,v 1.7.2.1 2000/06/22 19:27:42 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/softdep.h,v 1.6 2007/06/26 07:47:28 hasso Exp $
  */
 
 #include <sys/queue.h>
@@ -405,8 +404,8 @@ struct freeblks {
 	off_t	fb_newsize;		/* new file size */
 	int	fb_chkcnt;		/* used to check cnt of blks released */
 	uid_t	fb_uid;			/* uid of previous owner of blocks */
-	ufs_daddr_t fb_dblks[NDADDR];	/* direct blk ptrs to deallocate */
-	ufs_daddr_t fb_iblks[NIADDR];	/* indirect blk ptrs to deallocate */
+	ufs_daddr_t fb_dblks[UFS_NDADDR]; /* direct blk ptrs to deallocate */
+	ufs_daddr_t fb_iblks[UFS_NIADDR]; /* indirect blk ptrs to deallocate */
 };
 
 /*

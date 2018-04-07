@@ -273,7 +273,7 @@ fileerror(ufs1_ino_t cwd, ufs1_ino_t ino, char *errmesg)
 	pinode(ino);
 	printf("\n");
 	getpathname(pathbuf, cwd, ino);
-	if (ino < ROOTINO || ino > maxino) {
+	if (ino < UFS_ROOTINO || ino > maxino) {
 		pfatal("NAME=%s\n", pathbuf);
 		return;
 	}
@@ -423,24 +423,25 @@ linkup(ufs1_ino_t orphan, ufs1_ino_t parentdir, char *name)
 		if (reply("RECONNECT") == 0)
 			return (0);
 	if (lfdir == 0) {
-		dp = ginode(ROOTINO);
+		dp = ginode(UFS_ROOTINO);
 		idesc.id_name = lfname;
 		idesc.id_type = DATA;
 		idesc.id_func = findino;
-		idesc.id_number = ROOTINO;
+		idesc.id_number = UFS_ROOTINO;
 		if ((ckinode(dp, &idesc) & FOUND) != 0) {
 			lfdir = idesc.id_parent;
 		} else {
 			pwarn("NO lost+found DIRECTORY");
 			if (preen || reply("CREATE")) {
-				lfdir = allocdir(ROOTINO, (ufs1_ino_t)0, lfmode);
+				lfdir = allocdir(UFS_ROOTINO, (ufs1_ino_t)0,
+				    lfmode);
 				if (lfdir != 0) {
-					if (makeentry(ROOTINO, lfdir, lfname) != 0) {
+					if (makeentry(UFS_ROOTINO, lfdir, lfname) != 0) {
 						numdirs++;
 						if (preen)
 							printf(" (CREATED)\n");
 					} else {
-						freedir(lfdir, ROOTINO);
+						freedir(lfdir, UFS_ROOTINO);
 						lfdir = 0;
 						if (preen)
 							printf("\n");
@@ -460,11 +461,11 @@ linkup(ufs1_ino_t orphan, ufs1_ino_t parentdir, char *name)
 		if (reply("REALLOCATE") == 0)
 			return (0);
 		oldlfdir = lfdir;
-		if ((lfdir = allocdir(ROOTINO, (ufs1_ino_t)0, lfmode)) == 0) {
+		if ((lfdir = allocdir(UFS_ROOTINO, (ufs1_ino_t)0, lfmode)) == 0) {
 			pfatal("SORRY. CANNOT CREATE lost+found DIRECTORY\n\n");
 			return (0);
 		}
-		if ((changeino(ROOTINO, lfname, lfdir) & ALTERED) == 0) {
+		if ((changeino(UFS_ROOTINO, lfname, lfdir) & ALTERED) == 0) {
 			pfatal("SORRY. CANNOT CREATE lost+found DIRECTORY\n\n");
 			return (0);
 		}
@@ -541,8 +542,8 @@ makeentry(ufs1_ino_t parent, ufs1_ino_t ino, char *name)
 	struct inodesc idesc;
 	char pathbuf[MAXPATHLEN + 1];
 
-	if (parent < ROOTINO || parent >= maxino ||
-	    ino < ROOTINO || ino >= maxino)
+	if (parent < UFS_ROOTINO || parent >= maxino ||
+	    ino < UFS_ROOTINO || ino >= maxino)
 		return (0);
 	memset(&idesc, 0, sizeof(struct inodesc));
 	idesc.id_type = DATA;
@@ -576,7 +577,8 @@ expanddir(struct ufs1_dinode *dp, char *name)
 	char *cp, firstblk[DIRBLKSIZ];
 
 	lastbn = lblkno(&sblock, dp->di_size);
-	if (lastbn >= NDADDR - 1 || dp->di_db[lastbn] == 0 || dp->di_size == 0)
+	if (lastbn >= UFS_NDADDR - 1 || dp->di_db[lastbn] == 0 ||
+	    dp->di_size == 0)
 		return (0);
 	if ((newblk = allocblk(sblock.fs_frag)) == 0)
 		return (0);
@@ -653,7 +655,7 @@ allocdir(ufs1_ino_t parent, ufs1_ino_t request, int mode)
 	dirty(bp);
 	dp->di_nlink = 2;
 	inodirty();
-	if (ino == ROOTINO) {
+	if (ino == UFS_ROOTINO) {
 		inoinfo(ino)->ino_linkcnt = dp->di_nlink;
 		cacheino(dp, ino);
 		return(ino);

@@ -33,7 +33,6 @@
  *
  *	@(#)dinode.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/ufs/ufs/dinode.h,v 1.7 1999/08/28 00:52:27 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/dinode.h,v 1.8 2008/08/04 18:15:47 dillon Exp $
  */
 
 #ifndef _VFS_UFS_DINODE_H_
@@ -47,15 +46,15 @@
  * the root inode is 2.  (Inode 1 is no longer used for this purpose, however
  * numerous dump tapes make this assumption, so we are stuck with it).
  */
-#define	ROOTINO	((ino_t)2)
+#define	UFS_ROOTINO	((ino_t)2)
 
 /*
  * The Whiteout inode# is a dummy non-zero inode number which will
  * never be allocated to a real file.  It is used as a place holder
  * in the directory entry which has been tagged as a DT_W entry.
- * See the comments about ROOTINO above.
+ * See the comments about UFS_ROOTINO above.
  */
-#define	WINO	((ino_t)1)
+#define	UFS_WINO	((ino_t)1)
 
 /*
  * A dinode contains all the meta-data associated with a UFS file.
@@ -64,8 +63,8 @@
  * are defined by types with precise widths.
  */
 
-#define	NDADDR	12			/* Direct addresses in inode. */
-#define	NIADDR	3			/* Indirect addresses in inode. */
+#define	UFS_NDADDR	12		/* Direct addresses in inode. */
+#define	UFS_NIADDR	3		/* Indirect addresses in inode. */
 
 struct ufs1_dinode {
 	uint16_t	di_mode;	/*   0: IFMT, permissions; see below. */
@@ -81,8 +80,8 @@ struct ufs1_dinode {
 	int32_t		di_mtimensec;	/*  28: Last modified time. */
 	int32_t		di_ctime;	/*  32: Last inode change time. */
 	int32_t		di_ctimensec;	/*  36: Last inode change time. */
-	ufs_daddr_t	di_db[NDADDR];	/*  40: Direct disk blocks. */
-	ufs_daddr_t	di_ib[NIADDR];	/*  88: Indirect disk blocks. */
+	ufs_daddr_t	di_db[UFS_NDADDR]; /*  40: Direct disk blocks. */
+	ufs_daddr_t	di_ib[UFS_NIADDR]; /*  88: Indirect disk blocks. */
 	uint32_t	di_flags;	/* 100: Status flags (chflags). */
 	int32_t		di_blocks;	/* 104: Blocks actually held. */
 	int32_t		di_gen;		/* 108: Generation number. */
@@ -106,7 +105,7 @@ struct ufs1_dinode {
 #define	di_rdev		di_db[0]
 #define	di_shortlink	di_db
 #define di_spare	di_v.spare	/* ext2fs */
-#define	MAXSYMLINKLEN	((NDADDR + NIADDR) * sizeof(ufs_daddr_t))
+#define	UFS1_MAXSYMLINKLEN ((UFS_NDADDR + UFS_NIADDR) * sizeof(ufs_daddr_t))
 
 /* File permissions. */
 #define	IEXEC		0000100		/* Executable. */

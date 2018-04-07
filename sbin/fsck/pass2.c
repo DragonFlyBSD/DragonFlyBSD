@@ -56,7 +56,7 @@ pass2(void)
 	char pathbuf[MAXPATHLEN + 1];
 	long i, n;
 
-	switch (inoinfo(ROOTINO)->ino_state) {
+	switch (inoinfo(UFS_ROOTINO)->ino_state) {
 
 	case USTATE:
 		pfatal("ROOT INODE UNALLOCATED");
@@ -64,15 +64,16 @@ pass2(void)
 			ckfini(0);
 			exit(EEXIT);
 		}
-		if (allocdir(ROOTINO, ROOTINO, 0755) != ROOTINO)
+		if (allocdir(UFS_ROOTINO, UFS_ROOTINO, 0755) != UFS_ROOTINO)
 			errx(EEXIT, "CANNOT ALLOCATE ROOT INODE");
 		break;
 
 	case DCLEAR:
 		pfatal("DUPS/BAD IN ROOT INODE");
 		if (reply("REALLOCATE")) {
-			freeino(ROOTINO);
-			if (allocdir(ROOTINO, ROOTINO, 0755) != ROOTINO)
+			freeino(UFS_ROOTINO);
+			if (allocdir(UFS_ROOTINO, UFS_ROOTINO, 0755) !=
+			    UFS_ROOTINO)
 				errx(EEXIT, "CANNOT ALLOCATE ROOT INODE");
 			break;
 		}
@@ -86,8 +87,9 @@ pass2(void)
 	case FCLEAR:
 		pfatal("ROOT INODE NOT DIRECTORY");
 		if (reply("REALLOCATE")) {
-			freeino(ROOTINO);
-			if (allocdir(ROOTINO, ROOTINO, 0755) != ROOTINO)
+			freeino(UFS_ROOTINO);
+			if (allocdir(UFS_ROOTINO, UFS_ROOTINO, 0755) !=
+			    UFS_ROOTINO)
 				errx(EEXIT, "CANNOT ALLOCATE ROOT INODE");
 			break;
 		}
@@ -95,7 +97,7 @@ pass2(void)
 			ckfini(0);
 			exit(EEXIT);
 		}
-		dp = ginode(ROOTINO);
+		dp = ginode(UFS_ROOTINO);
 		dp->di_mode &= ~IFMT;
 		dp->di_mode |= IFDIR;
 		inodirty();
@@ -106,12 +108,12 @@ pass2(void)
 
 	default:
 		errx(EEXIT, "BAD STATE %d FOR ROOT INODE",
-		    inoinfo(ROOTINO)->ino_state);
+		    inoinfo(UFS_ROOTINO)->ino_state);
 	}
-	inoinfo(ROOTINO)->ino_state = DFOUND;
+	inoinfo(UFS_ROOTINO)->ino_state = DFOUND;
 	if (newinofmt) {
-		inoinfo(WINO)->ino_state = FSTATE;
-		inoinfo(WINO)->ino_type = DT_WHT;
+		inoinfo(UFS_WINO)->ino_state = FSTATE;
+		inoinfo(UFS_WINO)->ino_type = DT_WHT;
 	}
 	/*
 	 * Sort the directory list into disk block order.  Do this in blocks
@@ -390,10 +392,10 @@ chk2:
 		fileerror(idesc->id_number, dirp->d_ino, "I OUT OF RANGE");
 		n = reply("REMOVE");
 	} else if (newinofmt &&
-		   ((dirp->d_ino == WINO && dirp->d_type != DT_WHT) ||
-		    (dirp->d_ino != WINO && dirp->d_type == DT_WHT))) {
+		   ((dirp->d_ino == UFS_WINO && dirp->d_type != DT_WHT) ||
+		    (dirp->d_ino != UFS_WINO && dirp->d_type == DT_WHT))) {
 		fileerror(idesc->id_number, dirp->d_ino, "BAD WHITEOUT ENTRY");
-		dirp->d_ino = WINO;
+		dirp->d_ino = UFS_WINO;
 		dirp->d_type = DT_WHT;
 		if (reply("FIX") == 1)
 			ret |= ALTERED;

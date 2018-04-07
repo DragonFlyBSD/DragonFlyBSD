@@ -254,7 +254,7 @@ chkquota(char *fsname, char *mntpt, struct quotaname *qnp)
 	resetinodebuf();
 	for (ino = 0, cg = 0; cg < sblock.fs_ncg; cg++) {
 		for (i = 0; i < sblock.fs_ipg; i++, ino++) {
-			if (ino < ROOTINO)
+			if (ino < UFS_ROOTINO)
 				continue;
 			if ((dp = getnextinode(ino)) == NULL)
 				continue;
@@ -560,7 +560,7 @@ resetinodebuf(void)
 	if (inodebuf == NULL &&
 	   (inodebuf = malloc((u_int)inobufsize)) == NULL)
 		errx(1, "malloc failed");
-	while (nextino < ROOTINO)
+	while (nextino < UFS_ROOTINO)
 		getnextinode(nextino);
 }
 

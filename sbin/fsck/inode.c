@@ -69,7 +69,7 @@ ckinode(struct ufs1_dinode *dp, struct inodesc *idesc)
 		return (KEEPON);
 	dino = *dp;
 	ndb = howmany(dino.di_size, sblock.fs_bsize);
-	for (ap = &dino.di_db[0]; ap < &dino.di_db[NDADDR]; ap++) {
+	for (ap = &dino.di_db[0]; ap < &dino.di_db[UFS_NDADDR]; ap++) {
 		if (--ndb == 0 && (offset = blkoff(&sblock, dino.di_size)) != 0)
 			idesc->id_numfrags =
 				numfrags(&sblock, fragroundup(&sblock, offset));
@@ -104,9 +104,9 @@ ckinode(struct ufs1_dinode *dp, struct inodesc *idesc)
 			return (ret);
 	}
 	idesc->id_numfrags = sblock.fs_frag;
-	remsize = dino.di_size - sblock.fs_bsize * NDADDR;
+	remsize = dino.di_size - sblock.fs_bsize * UFS_NDADDR;
 	sizepb = sblock.fs_bsize;
-	for (ap = &dino.di_ib[0], n = 1; n <= NIADDR; ap++, n++) {
+	for (ap = &dino.di_ib[0], n = 1; n <= UFS_NIADDR; ap++, n++) {
 		if (*ap) {
 			idesc->id_blkno = *ap;
 			ret = iblock(idesc, n, remsize);
@@ -269,7 +269,7 @@ ginode(ufs1_ino_t inumber)
 {
 	ufs_daddr_t iblk;
 
-	if (inumber < ROOTINO || inumber > maxino)
+	if (inumber < UFS_ROOTINO || inumber > maxino)
 		errx(EEXIT, "bad inode number %d to ginode", inumber);
 	if (startinum == 0 ||
 	    inumber < startinum || inumber >= startinum + INOPB(&sblock)) {
@@ -372,8 +372,8 @@ cacheino(struct ufs1_dinode *dp, ufs1_ino_t inumber)
 	int blks;
 
 	blks = howmany(dp->di_size, sblock.fs_bsize);
-	if (blks > NDADDR)
-		blks = NDADDR + NIADDR;
+	if (blks > UFS_NDADDR)
+		blks = UFS_NDADDR + UFS_NIADDR;
 	inp = mzalloc(&inoinfo_zone, 
 		      sizeof(*inp) + (blks - 1) * sizeof(ufs_daddr_t));
 	if (inp == NULL)
@@ -381,7 +381,7 @@ cacheino(struct ufs1_dinode *dp, ufs1_ino_t inumber)
 	inpp = &inphead[DIRHASH(inumber)];
 	inp->i_nexthash = *inpp;
 	*inpp = inp;
-	inp->i_parent = inumber == ROOTINO ? ROOTINO : (ufs1_ino_t)0;
+	inp->i_parent = inumber == UFS_ROOTINO ? UFS_ROOTINO : (ufs1_ino_t)0;
 	inp->i_dotdot = (ufs1_ino_t)0;
 	inp->i_number = inumber;
 	inp->i_isize = dp->di_size;
@@ -478,7 +478,7 @@ findino(struct inodesc *idesc)
 	if (dirp->d_ino == 0)
 		return (KEEPON);
 	if (strcmp(dirp->d_name, idesc->id_name) == 0 &&
-	    dirp->d_ino >= ROOTINO && dirp->d_ino <= maxino) {
+	    dirp->d_ino >= UFS_ROOTINO && dirp->d_ino <= maxino) {
 		idesc->id_parent = dirp->d_ino;
 		return (STOP|FOUND);
 	}
@@ -507,7 +507,7 @@ pinode(ufs1_ino_t ino)
 	time_t t;
 
 	printf(" I=%lu ", (u_long)ino);
-	if (ino < ROOTINO || ino > maxino)
+	if (ino < UFS_ROOTINO || ino > maxino)
 		return;
 	dp = ginode(ino);
 	printf(" OWNER=");
@@ -562,7 +562,7 @@ allocino(ufs1_ino_t request, int type)
 	int cg;
 
 	if (request == 0)
-		request = ROOTINO;
+		request = UFS_ROOTINO;
 	else if (inoinfo(request)->ino_state != USTATE)
 		return (0);
 	for (ino = request; ino < maxino; ino++)

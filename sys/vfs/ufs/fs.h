@@ -28,7 +28,6 @@
  *
  *	@(#)fs.h	8.13 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ffs/fs.h,v 1.14.2.3 2001/09/21 19:15:22 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/fs.h,v 1.6 2008/08/04 18:15:47 dillon Exp $
  */
 
 #ifndef _VFS_UFS_FS_H_
@@ -505,7 +504,7 @@ struct ocg {
 #define dbtodoff(fs, b)		((off_t)(b) * ((fs)->fs_fsize / (fs)->fs_nspf))
 #define dofftofsb(fs, b)	((ufs_daddr_t)((b) >> (fs)->fs_fshift))
 
-/* Use this only when `blk' is known to be small, e.g., < NDADDR. */
+/* Use this only when `blk' is known to be small, e.g., < UFS_NDADDR. */
 #define smalllblktosize(fs, blk)    /* calculates (blk * fs->fs_bsize) */ \
 	((blk) << (fs)->fs_bshift)
 #define lblkno(fs, loc)		/* calculates (loc / fs->fs_bsize) */ \
@@ -538,15 +537,17 @@ struct ocg {
  * Determining the size of a file block in the filesystem.
  */
 #define blksize(fs, ip, lbn) \
-	(((lbn) >= NDADDR || (ip)->i_size >= smalllblktosize(fs, (lbn) + 1)) \
+	(((lbn) >= UFS_NDADDR || \
+	  (ip)->i_size >= smalllblktosize(fs, (lbn) + 1)) \
 	    ? (fs)->fs_bsize \
 	    : (fragroundup(fs, blkoff(fs, (ip)->i_size))))
 #define dblksize(fs, dip, lbn) \
-	(((lbn) >= NDADDR || (dip)->di_size >= smalllblktosize(fs, (lbn) + 1)) \
+	(((lbn) >= UFS_NDADDR || \
+	  (dip)->di_size >= smalllblktosize(fs, (lbn) + 1)) \
 	    ? (fs)->fs_bsize \
 	    : (fragroundup(fs, blkoff(fs, (dip)->di_size))))
 #define sblksize(fs, size, lbn) \
-	(((lbn) >= NDADDR || (size) >= ((lbn) + 1) << (fs)->fs_bshift) \
+	(((lbn) >= UFS_NDADDR || (size) >= ((lbn) + 1) << (fs)->fs_bshift) \
 	  ? (fs)->fs_bsize \
 	  : (fragroundup(fs, blkoff(fs, (size)))))
 

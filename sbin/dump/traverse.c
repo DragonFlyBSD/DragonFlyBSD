@@ -89,10 +89,10 @@ blockest(struct ufs1_dinode *dp)
 	sizeest = howmany(dp->di_size, TP_BSIZE);
 	if (blkest > sizeest)
 		blkest = sizeest;
-	if (dp->di_size > (unsigned)sblock->fs_bsize * NDADDR) {
+	if (dp->di_size > (unsigned)sblock->fs_bsize * UFS_NDADDR) {
 		/* calculate the number of indirect blocks on the dump tape */
 		blkest +=
-			howmany(sizeest - NDADDR * sblock->fs_bsize / TP_BSIZE,
+			howmany(sizeest - UFS_NDADDR * sblock->fs_bsize / TP_BSIZE,
 			TP_NINDIR);
 	}
 	return (blkest + 1);
@@ -126,7 +126,7 @@ mapfiles(ufs1_ino_t maxino, long *tape_size)
 	struct ufs1_dinode *dp;
 	int anydirskipped = 0;
 
-	for (ino = ROOTINO; ino < maxino; ino++) {
+	for (ino = UFS_ROOTINO; ino < maxino; ino++) {
 		dp = getino(ino);
 		if ((mode = (dp->di_mode & IFMT)) == 0)
 			continue;
@@ -157,7 +157,7 @@ mapfiles(ufs1_ino_t maxino, long *tape_size)
 	 * Restore gets very upset if the root is not dumped,
 	 * so ensure that it always is dumped.
 	 */
-	SETINO(ROOTINO, dumpinomap);
+	SETINO(UFS_ROOTINO, dumpinomap);
 	return (anydirskipped);
 }
 
@@ -204,7 +204,7 @@ mapdirs(ufs1_ino_t maxino, long *tape_size)
 		dp = getino(ino);
 		di = *dp;	/* inode buf may change in searchdir(). */
 		filesize = di.di_size;
-		for (ret = 0, i = 0; filesize > 0 && i < NDADDR; i++) {
+		for (ret = 0, i = 0; filesize > 0 && i < UFS_NDADDR; i++) {
 			if (di.di_db[i] != 0) {
 				ret |= searchdir(ino, di.di_db[i],
 					(long)dblksize(sblock, &di, i),
@@ -215,7 +215,7 @@ mapdirs(ufs1_ino_t maxino, long *tape_size)
 			else
 				filesize -= sblock->fs_bsize;
 		}
-		for (i = 0; filesize > 0 && i < NIADDR; i++) {
+		for (i = 0; filesize > 0 && i < UFS_NIADDR; i++) {
 			if (di.di_ib[i] == 0)
 				continue;
 			ret |= dirindir(ino, di.di_ib[i], i, &filesize,
@@ -405,14 +405,14 @@ dumpino(struct ufs1_dinode *dp, ufs1_ino_t ino)
 		msg("Warning: undefined file type 0%o\n", dp->di_mode & IFMT);
 		return;
 	}
-	if (dp->di_size > NDADDR * (unsigned)sblock->fs_bsize)
-		cnt = NDADDR * sblock->fs_frag;
+	if (dp->di_size > UFS_NDADDR * (unsigned)sblock->fs_bsize)
+		cnt = UFS_NDADDR * sblock->fs_frag;
 	else
 		cnt = howmany(dp->di_size, sblock->fs_fsize);
 	blksout(&dp->di_db[0], cnt, ino);
-	if ((size = dp->di_size - NDADDR * sblock->fs_bsize) <= 0)
+	if ((size = dp->di_size - UFS_NDADDR * sblock->fs_bsize) <= 0)
 		return;
-	for (ind_level = 0; ind_level < NIADDR; ind_level++) {
+	for (ind_level = 0; ind_level < UFS_NIADDR; ind_level++) {
 		dmpindir(ino, dp->di_ib[ind_level], ind_level, &size);
 		if (size <= 0)
 			return;
