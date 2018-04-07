@@ -253,7 +253,7 @@ int main FUNCTION((argc, argv),	int argc AND char *argv[])
   for (i = sysconf(_SC_OPEN_MAX); i > 2; i--)
     close(i);
 
-  openlog("su", LOG_ODELAY, LOG_AUTH);
+  openlog("su", 0, LOG_AUTH);
   atexit(catchexit);
 
   {

@@ -275,7 +275,7 @@ invalid:
 	 * Note that this does NOT open a file...
 	 * Does 'init' deserve its own facility number?
 	 */
-	openlog("init", LOG_CONS|LOG_ODELAY, LOG_AUTH);
+	openlog("init", LOG_CONS, LOG_AUTH);
 
 	/*
 	 * If chroot has been requested by the boot loader,

@@ -102,7 +102,7 @@ main(int argc,
 	 */
 	signal(SIGHUP, SIG_IGN);
 
-	openlog("routed", LOG_PID | LOG_ODELAY, LOG_DAEMON);
+	openlog("routed", LOG_PID, LOG_DAEMON);
 	ftrace = stdout;
 
 	gettimeofday(&clk, 0);

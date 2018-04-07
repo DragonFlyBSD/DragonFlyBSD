@@ -35,7 +35,6 @@
  *
  * @(#)login.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/login/login.c,v 1.106 2007/07/04 00:00:40 scf Exp $
- * $DragonFly: src/usr.bin/login/login.c,v 1.6 2006/01/12 13:43:11 corecode Exp $
  */
 
 /*
@@ -182,7 +181,7 @@ main(int argc, char **argv)
 	alarm(timeout);
 	setpriority(PRIO_PROCESS, 0, 0);
 
-	openlog("login", LOG_ODELAY, LOG_AUTH);
+	openlog("login", 0, LOG_AUTH);
 
 	uid = getuid();
 	euid = geteuid();

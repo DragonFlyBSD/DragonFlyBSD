@@ -77,9 +77,6 @@
 #ifndef	LOG_DAEMON
 #define	LOG_DAEMON	0
 #endif
-#ifndef	LOG_ODELAY
-#define	LOG_ODELAY	0
-#endif
 #include <ctype.h>
 #ifndef NO_STRING_H
 #include <string.h>

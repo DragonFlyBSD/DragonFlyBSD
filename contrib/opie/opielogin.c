@@ -671,7 +671,7 @@ int main FUNCTION((argc, argv), int argc AND char *argv[])
   for (t = sysconf(_SC_OPEN_MAX); t > 2; t--)
     close(t);
 
-  openlog("login", LOG_ODELAY, LOG_AUTH);
+  openlog("login", 0, LOG_AUTH);
 
   /* initialisation */
   host[0] = '\0';

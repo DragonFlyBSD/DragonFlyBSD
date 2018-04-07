@@ -357,7 +357,7 @@ main(int argc, char *argv[])
 		/* NOT REACHED */
 	}
 
-	openlog("telnetd", LOG_PID | LOG_ODELAY, LOG_DAEMON);
+	openlog("telnetd", LOG_PID, LOG_DAEMON);
 	fromlen = sizeof (from);
 	if (getpeername(0, (struct sockaddr *)&from, &fromlen) < 0) {
 		warn("getpeername");
