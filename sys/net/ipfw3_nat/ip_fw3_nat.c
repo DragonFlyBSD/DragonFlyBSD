@@ -73,7 +73,6 @@
 #include <net/ipfw3/ip_fw.h>
 #include "ip_fw3_nat.h"
 
-
 struct ip_fw3_nat_context *ipfw_nat_ctx[MAXCPU];
 static struct callout ipfw3_nat_cleanup_callout;
 extern struct ipfw_context *ipfw_ctx[MAXCPU];
@@ -84,6 +83,9 @@ static int fw3_nat_cleanup_interval = 5;
 SYSCTL_NODE(_net_inet_ip, OID_AUTO, fw3_nat, CTLFLAG_RW, 0, "ipfw3 NAT");
 SYSCTL_INT(_net_inet_ip_fw3_nat, OID_AUTO, cleanup_interval, CTLFLAG_RW,
 		&fw3_nat_cleanup_interval, 0, "default life time");
+
+RB_PROTOTYPE(state_tree, nat_state, entries, nat_state_cmp);
+RB_GENERATE(state_tree, nat_state, entries, nat_state_cmp);
 
 void
 check_nat(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
@@ -99,6 +101,32 @@ ip_fw3_nat(struct ip_fw_args *args, struct cfg_nat *t, struct mbuf *m)
 {
 	/* TODO */
 	return IP_FW_NAT;
+}
+
+int
+nat_state_cmp(struct nat_state *s1, struct nat_state *s2)
+{
+	if (s1->saddr > s2->saddr)
+		return 1;
+	if (s1->saddr < s2->saddr)
+		return -1;
+
+	if (s1->daddr > s2->daddr)
+		return 1;
+	if (s1->daddr < s2->daddr)
+		return -1;
+
+	if (s1->sport > s2->sport)
+		return 1;
+	if (s1->sport < s2->sport)
+		return -1;
+
+	if (s1->dport > s2->dport)
+		return 1;
+	if (s1->dport < s2->dport)
+		return -1;
+
+	return 0;
 }
 
 int
