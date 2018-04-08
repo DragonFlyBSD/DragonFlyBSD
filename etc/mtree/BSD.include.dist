@@ -179,11 +179,11 @@
         acpica
         ..
         disk
+            dm
+            ..
             mpt
                 mpilib
                 ..
-            ..
-            dm
             ..
         ..
         misc
@@ -236,7 +236,13 @@
     net
         altq
         ..
-        vlan
+        bridge
+        ..
+        dummynet
+        ..
+        dummynet3
+        ..
+        ip6fw
         ..
         ipfw
         ..
@@ -250,7 +256,7 @@
         ..
         ipfw3_nat
         ..
-        ip6fw
+        ip_mroute
         ..
         lagg
         ..
@@ -260,19 +266,13 @@
         ..
         sl
         ..
-        dummynet
-        ..
-        dummynet3
-        ..
         sppp
-        ..
-        ip_mroute
-        ..
-        bridge
         ..
         tap
         ..
         tun
+        ..
+        vlan
         ..
     ..
     netbt
@@ -426,9 +426,17 @@
     sys
     ..
     vfs
+        autofs
+        ..
         hammer
         ..
         hammer2
+        ..
+        isofs
+            cd9660
+            ..
+        ..
+        mfs
         ..
         msdosfs
         ..
@@ -438,21 +446,13 @@
         ..
         puffs
         ..
+        smbfs
+        ..
+        tmpfs
+        ..
         udf
         ..
         ufs
-        ..
-        mfs
-        ..
-        smbfs
-        ..
-        autofs
-        ..
-        isofs
-            cd9660
-            ..
-        ..
-        tmpfs
         ..
     ..
     vm
