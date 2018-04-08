@@ -1,6 +1,9 @@
 # Build special version of ncurses for tic(1)
 LIB=	tic
 
+# keep at low warns, hostlib
+WARNS=	1
+
 ZTIC=	yes
 CFLAGS+=	-DDRAGONFLY_NATIVE
 
