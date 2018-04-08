@@ -92,15 +92,15 @@ struct char_int_map nat_params[] = {
 void
 nat_config(int ac, char **av)
 {
-	struct cfg_nat *n;	/* Nat instance configuration. */
+	struct ioc_cfg_nat *n;	/* Nat instance configuration. */
 	int i, len, off, tok;
 	char *id, buf[NAT_BUF_LEN]; 	/* Buffer for serialized data. */
 
 	len = NAT_BUF_LEN;
 	/* Offset in buf: save space for n at the beginning. */
-	off = sizeof(struct cfg_nat);
+	off = sizeof(struct ioc_cfg_nat);
 	memset(buf, 0, sizeof(buf));
-	n = (struct cfg_nat *)buf;
+	n = (struct ioc_cfg_nat *)buf;
 
 	NEXT_ARG;
 	/* Nat id. */
@@ -144,10 +144,10 @@ nat_config(int ac, char **av)
 void
 nat_show_config(char *buf)
 {
-	struct cfg_nat *n;
+	struct ioc_cfg_nat *n;
 	int flag, off;
 
-	n = (struct cfg_nat *)buf;
+	n = (struct ioc_cfg_nat *)buf;
 	flag = 1;
 	off = sizeof(*n);
 	printf("ipfw3 nat %u config", n->id);
@@ -188,109 +188,6 @@ str2addr_portrange (const char* str, struct in_addr* addr,
 
 	str2addr (str, addr);
 	return str2portrange (ptr, proto, portRange);
-}
-
-/*
- * Search for interface with name "ifn", and fill n accordingly:
- *
- * n->ip		ip address of interface "ifn"
- * n->if_name copy of interface name "ifn"
- */
-void
-set_addr_dynamic(const char *ifn, struct cfg_nat *n)
-{
-	struct if_msghdr *ifm;
-	struct ifa_msghdr *ifam;
-	struct sockaddr_dl *sdl;
-	struct sockaddr_in *sin;
-	char *buf, *lim, *next;
-	size_t needed;
-	int mib[6];
-	int ifIndex, ifMTU;
-
-	mib[0] = CTL_NET;
-	mib[1] = PF_ROUTE;
-	mib[2] = 0;
-	mib[3] = AF_INET;
-	mib[4] = NET_RT_IFLIST;
-	mib[5] = 0;
-
-	/*
-	 * Get interface data.
-	 */
-	if (sysctl(mib, 6, NULL, &needed, NULL, 0) == -1)
-		err(1, "iflist-sysctl-estimate");
-	if ((buf = malloc(needed)) == NULL)
-		errx(1, "malloc failed");
-	if (sysctl(mib, 6, buf, &needed, NULL, 0) == -1)
-		err(1, "iflist-sysctl-get");
-	lim = buf + needed;
-	/*
-	 * Loop through interfaces until one with
-	 * given name is found. This is done to
-	 * find correct interface index for routing
-	 * message processing.
-	 */
-	ifIndex	= 0;
-	next = buf;
-	while (next < lim) {
-		ifm = (struct if_msghdr *)next;
-		next += ifm->ifm_msglen;
-		if (ifm->ifm_version != RTM_VERSION) {
-			if (verbose)
-				warnx("routing message version %d "
-					"not understood", ifm->ifm_version);
-			continue;
-		}
-		if (ifm->ifm_type == RTM_IFINFO) {
-			sdl = (struct sockaddr_dl *)(ifm + 1);
-			if (strlen(ifn) == sdl->sdl_nlen &&
-				strncmp(ifn, sdl->sdl_data,
-					sdl->sdl_nlen) == 0) {
-				ifIndex = ifm->ifm_index;
-				ifMTU = ifm->ifm_data.ifi_mtu;
-				break;
-			}
-		}
-	}
-	if (!ifIndex)
-		errx(1, "unknown interface name %s", ifn);
-	/*
-	 * Get interface address.
-	 */
-	sin = NULL;
-	while (next < lim) {
-		ifam = (struct ifa_msghdr *)next;
-		next += ifam->ifam_msglen;
-		if (ifam->ifam_version != RTM_VERSION) {
-			if (verbose)
-				warnx("routing message version %d "
-					"not understood", ifam->ifam_version);
-			continue;
-		}
-		if (ifam->ifam_type != RTM_NEWADDR)
-			break;
-		if (ifam->ifam_addrs & RTA_IFA) {
-			int i;
-			char *cp = (char *)(ifam + 1);
-
-			for (i = 1; i < RTA_IFA; i <<= 1) {
-				if (ifam->ifam_addrs & i)
-					cp += SA_SIZE((struct sockaddr *)cp);
-			}
-			if (((struct sockaddr *)cp)->sa_family == AF_INET) {
-				sin = (struct sockaddr_in *)cp;
-				break;
-			}
-		}
-	}
-	if (sin == NULL)
-		errx(1, "%s: cannot get interface address", ifn);
-
-	n->ip = sin->sin_addr;
-	strncpy(n->if_name, ifn, IF_NAMESIZE);
-
-	free(buf);
 }
 
 void
