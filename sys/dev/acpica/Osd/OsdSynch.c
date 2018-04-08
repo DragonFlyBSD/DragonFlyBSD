@@ -328,8 +328,20 @@ AcpiOsSignalSemaphore(ACPI_HANDLE Handle, UINT32 Units)
     return_ACPI_STATUS (AE_OK);
 }
 
+/*
+ * This represents a bit of a problem, it looks like the ACPI contrib
+ * code holds Os locks across potentially blocking system calls.  So
+ * we can't safely use spinlocks in all situations.  But any use-cases
+ * from the idle thread have to use spinlocks.
+ *
+ * For now use the spinlock for idlethread operation and the lockmgr lock
+ * otherwise.  The only thing the idlethread can issue ACPI-wise is related
+ * to cpu low power modes, hopefully this will not interfere with ACPI
+ * operations on other cpus on other threads.
+ */
 struct acpi_spinlock {
-    struct spinlock lock;
+    struct lock lock;
+    struct spinlock slock;
 #ifdef ACPI_DEBUG_LOCKS
     thread_t	owner;
     const char *func;
@@ -345,7 +357,8 @@ AcpiOsCreateLock(ACPI_SPINLOCK *OutHandle)
     if (OutHandle == NULL)
 	return (AE_BAD_PARAMETER);
     spin = kmalloc(sizeof(*spin), M_ACPISEM, M_INTWAIT|M_ZERO);
-    spin_init(&spin->lock, "AcpiOsLock");
+    spin_init(&spin->slock, "AcpiOsLock");
+    lockinit(&spin->lock, "AcpiOsLock", 0, 0);
 #ifdef ACPI_DEBUG_LOCKS
     spin->owner = NULL;
     spin->func = "";
@@ -360,7 +373,8 @@ AcpiOsDeleteLock (ACPI_SPINLOCK Spin)
 {
     if (Spin == NULL)
 	return;
-    spin_uninit(&Spin->lock);
+    spin_uninit(&Spin->slock);
+    lockuninit(&Spin->lock);
     kfree(Spin, M_ACPISEM);
 }
 
@@ -378,7 +392,14 @@ _AcpiOsAcquireLock (ACPI_SPINLOCK Spin, const char *func, int line)
 AcpiOsAcquireLock (ACPI_SPINLOCK Spin)
 #endif
 {
-    spin_lock(&Spin->lock);
+    globaldata_t gd = mycpu;
+
+    if (gd->gd_curthread == &gd->gd_idlethread) {
+	spin_lock(&Spin->slock);
+    } else {
+	lockmgr(&Spin->lock, LK_EXCLUSIVE);
+	crit_enter();
+    }
 
 #ifdef ACPI_DEBUG_LOCKS
     if (Spin->owner) {
@@ -411,7 +432,14 @@ AcpiOsReleaseLock (ACPI_SPINLOCK Spin, ACPI_CPU_FLAGS Flags)
     Spin->func = "";
     Spin->line = 0;
 #endif
-    spin_unlock(&Spin->lock);
+    globaldata_t gd = mycpu;
+
+    if (gd->gd_curthread == &gd->gd_idlethread) {
+	spin_unlock(&Spin->slock);
+    } else {
+	crit_exit();
+	lockmgr(&Spin->lock, LK_RELEASE);
+    }
 }
 
 /* Section 5.2.9.1:  global lock acquire/release functions */
