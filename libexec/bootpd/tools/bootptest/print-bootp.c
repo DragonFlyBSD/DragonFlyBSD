@@ -305,7 +305,7 @@ rfc1048_print(u_char *bp, int length)
 		len = *bp++;
 		if (bp + len > ep) {
 			/* truncated option */
-			printf(" |(%d>%d)", len, ep - bp);
+			printf(" |(%d>%td)", len, ep - bp);
 			return;
 		}
 		/* Print the option value(s). */

@@ -113,7 +113,6 @@ PacketOpenAdapter(CHAR *iface)
 {
 	struct adapter		*a;
 	int			s;
-	int			ifflags;
 	struct ifreq		ifr;
 	struct ieee80211req	ireq;
 
@@ -244,7 +243,7 @@ PacketGetAdapterNames(CHAR *namelist, ULONG *len)
 	char			*buf, *lim, *next;
 	char			*plist;
 	int			spc;
-	int			i, ifcnt = 0;
+	int			ifcnt = 0;
 
 	plist = namelist;
 	spc = 0;
