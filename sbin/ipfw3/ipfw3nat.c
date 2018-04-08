@@ -72,7 +72,6 @@
 #include <net/ipfw3/ip_fw3_table.h>
 #include <net/ipfw3/ip_fw3_sync.h>
 #include <net/dummynet3/ip_dummynet3.h>
-#include <net/libalias/alias.h>
 #include <net/ipfw3_basic/ip_fw3_basic.h>
 #include <net/ipfw3_nat/ip_fw3_nat.h>
 
@@ -137,56 +136,7 @@ nat_config(int ac, char **av)
 				errx(EX_DATAERR, "bad ip addr `%s'", av[0]);
 			NEXT_ARG;
 			break;
-		case TOK_IF:
-			if (ac == 0)
-				errx(EX_DATAERR, "missing option");
-			set_addr_dynamic(av[0], n);
-			NEXT_ARG;
-			break;
-		case TOK_ALOG:
-			n->mode |= PKT_ALIAS_LOG;
-			break;
-		case TOK_DENY_INC:
-			n->mode |= PKT_ALIAS_DENY_INCOMING;
-			break;
-		case TOK_SAME_PORTS:
-			n->mode |= PKT_ALIAS_SAME_PORTS;
-			break;
-		case TOK_UNREG_ONLY:
-			n->mode |= PKT_ALIAS_UNREGISTERED_ONLY;
-			break;
-		case TOK_RESET_ADDR:
-			n->mode |= PKT_ALIAS_RESET_ON_ADDR_CHANGE;
-			break;
-		case TOK_ALIAS_REV:
-			n->mode |= PKT_ALIAS_REVERSE;
-			break;
-		case TOK_PROXY_ONLY:
-			n->mode |= PKT_ALIAS_PROXY_ONLY;
-			break;
-		/*
-		 * All the setup_redir_* functions work
-		 * directly in the final
-		 * buffer, see above for details.
-		 */
-		case TOK_REDIR_ADDR:
-		case TOK_REDIR_PORT:
-		case TOK_REDIR_PROTO:
-			switch (tok) {
-			case TOK_REDIR_ADDR:
-				i = setup_redir_addr(&buf[off], len, &ac, &av);
-				break;
-			case TOK_REDIR_PORT:
-				i = setup_redir_port(&buf[off], len, &ac, &av);
-				break;
-			case TOK_REDIR_PROTO:
-				i = setup_redir_proto(&buf[off], len, &ac, &av);
-				break;
-			}
-			n->redir_cnt++;
-			off += i;
-			len -= i;
-			break;
+		/* TODO */
 		default:
 			errx(EX_DATAERR, "unrecognised option ``%s''", av[-1]);
 		}
@@ -206,122 +156,14 @@ void
 nat_show_config(char *buf)
 {
 	struct cfg_nat *n;
-	struct cfg_redir *t;
-	struct cfg_spool *s;
-	struct protoent *p;
-	int i, cnt, flag, off;
+	int flag, off;
 
 	n = (struct cfg_nat *)buf;
 	flag = 1;
 	off = sizeof(*n);
 	printf("ipfw3 nat %u config", n->id);
-	if (strlen(n->if_name) != 0)
-		printf(" if %s", n->if_name);
-	else if (n->ip.s_addr != 0)
+	if (n->ip.s_addr != 0)
 		printf(" ip %s", inet_ntoa(n->ip));
-	while (n->mode != 0) {
-		if (n->mode & PKT_ALIAS_LOG) {
-			printf(" log");
-			n->mode &= ~PKT_ALIAS_LOG;
-		} else if (n->mode & PKT_ALIAS_DENY_INCOMING) {
-			printf(" deny_in");
-			n->mode &= ~PKT_ALIAS_DENY_INCOMING;
-		} else if (n->mode & PKT_ALIAS_SAME_PORTS) {
-			printf(" same_ports");
-			n->mode &= ~PKT_ALIAS_SAME_PORTS;
-		} else if (n->mode & PKT_ALIAS_UNREGISTERED_ONLY) {
-			printf(" unreg_only");
-			n->mode &= ~PKT_ALIAS_UNREGISTERED_ONLY;
-		} else if (n->mode & PKT_ALIAS_RESET_ON_ADDR_CHANGE) {
-			printf(" reset");
-			n->mode &= ~PKT_ALIAS_RESET_ON_ADDR_CHANGE;
-		} else if (n->mode & PKT_ALIAS_REVERSE) {
-			printf(" reverse");
-			n->mode &= ~PKT_ALIAS_REVERSE;
-		} else if (n->mode & PKT_ALIAS_PROXY_ONLY) {
-			printf(" proxy_only");
-			n->mode &= ~PKT_ALIAS_PROXY_ONLY;
-		}
-	}
-
-	/* Print all the redirect's data configuration. */
-	for (cnt = 0; cnt < n->redir_cnt; cnt++) {
-		t = (struct cfg_redir *)&buf[off];
-		off += SOF_REDIR;
-		switch (t->mode) {
-		case REDIR_ADDR:
-			printf(" redirect_addr");
-			if (t->spool_cnt == 0) {
-				printf(" %s", inet_ntoa(t->laddr));
-			} else {
-				for (i = 0; i < t->spool_cnt; i++) {
-					s = (struct cfg_spool *)&buf[off];
-					if (i)
-						printf(", ");
-					else
-						printf(" ");
-					printf("%s", inet_ntoa(s->addr));
-					off += SOF_SPOOL;
-				}
-			}
-			printf(" %s", inet_ntoa(t->paddr));
-			break;
-		case REDIR_PORT:
-			p = getprotobynumber(t->proto);
-			printf(" redirect_port %s ", p->p_name);
-			if (!t->spool_cnt) {
-				printf("%s:%u", inet_ntoa(t->laddr), t->lport);
-				if (t->pport_cnt > 1) {
-					printf("-%u", t->lport +
-							t->pport_cnt - 1);
-				}
-			} else
-				for (i=0; i < t->spool_cnt; i++) {
-					s = (struct cfg_spool *)&buf[off];
-					if (i) {
-						printf(", ");
-					}
-					printf("%s:%u", inet_ntoa(s->addr),
-							s->port);
-					off += SOF_SPOOL;
-				}
-
-			printf(" ");
-			if (t->paddr.s_addr) {
-				printf("%s:", inet_ntoa(t->paddr));
-			}
-			printf("%u", t->pport);
-			if (!t->spool_cnt && t->pport_cnt > 1) {
-				printf("-%u", t->pport + t->pport_cnt - 1);
-			}
-
-			if (t->raddr.s_addr) {
-				printf(" %s", inet_ntoa(t->raddr));
-				if (t->rport) {
-					printf(":%u", t->rport);
-					if (!t->spool_cnt && t->rport_cnt > 1) {
-						printf("-%u", t->rport +
-							t->rport_cnt - 1);
-					}
-				}
-			}
-			break;
-		case REDIR_PROTO:
-			p = getprotobynumber(t->proto);
-			printf(" redirect_proto %s %s", p->p_name,
-					inet_ntoa(t->laddr));
-			if (t->paddr.s_addr != 0) {
-				printf(" %s", inet_ntoa(t->paddr));
-				if (t->raddr.s_addr) {
-					printf(" %s", inet_ntoa(t->raddr));
-				}
-			}
-			break;
-		default:
-			errx(EX_DATAERR, "unknown redir mode");
-			break;
-		}
-	}
 	printf("\n");
 }
 
