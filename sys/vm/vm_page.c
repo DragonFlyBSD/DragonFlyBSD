@@ -2835,6 +2835,10 @@ vm_page_io_finish(vm_page_t m)
 /*
  * Attempt to soft-busy a page.  The page must not be PBUSY_LOCKED.
  *
+ * We can't use fetchadd here because we might race a hard-busy and the
+ * page freeing code asserts on a non-zero soft-busy count (even if only
+ * temporary).
+ *
  * Returns 0 on success, non-zero on failure.
  */
 int
@@ -2842,6 +2846,16 @@ vm_page_sbusy_try(vm_page_t m)
 {
 	uint32_t ocount;
 
+	for (;;) {
+		ocount = m->busy_count;
+		cpu_ccfence();
+		if (ocount & PBUSY_LOCKED)
+			return 1;
+		if (atomic_cmpset_int(&m->busy_count, ocount, ocount + 1))
+			break;
+	}
+	return 0;
+#if 0
 	if (m->busy_count & PBUSY_LOCKED)
 		return 1;
 	ocount = atomic_fetchadd_int(&m->busy_count, 1);
@@ -2850,6 +2864,7 @@ vm_page_sbusy_try(vm_page_t m)
 		return 1;
 	}
 	return 0;
+#endif
 }
 
 /*
