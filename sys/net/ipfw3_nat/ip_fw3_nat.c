@@ -74,7 +74,7 @@
 #include "ip_fw3_nat.h"
 
 
-struct ipfw_nat_context	*ipfw_nat_ctx[MAXCPU];
+struct ip_fw3_nat_context *ipfw_nat_ctx[MAXCPU];
 static struct callout ipfw3_nat_cleanup_callout;
 extern struct ipfw_context *ipfw_ctx[MAXCPU];
 extern ip_fw_ctl_t *ipfw_ctl_nat_ptr;
@@ -95,21 +95,21 @@ check_nat(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 }
 
 int
-ipfw_nat(struct ip_fw_args *args, struct cfg_nat *t, struct mbuf *m)
+ip_fw3_nat(struct ip_fw_args *args, struct cfg_nat *t, struct mbuf *m)
 {
 	/* TODO */
 	return IP_FW_NAT;
 }
 
 int
-ipfw_ctl_nat_get_cfg(struct sockopt *sopt)
+ip_fw3_ctl_nat_get_cfg(struct sockopt *sopt)
 {
 	/* TODO */
 	return 0;
 }
 
 int
-ipfw_ctl_nat_get_record(struct sockopt *sopt)
+ip_fw3_ctl_nat_get_record(struct sockopt *sopt)
 {
 	/* TODO */
 	return 0;
@@ -126,7 +126,7 @@ nat_add_dispatch(netmsg_t nat_add_msg)
 }
 
 int
-ipfw_ctl_nat_add(struct sockopt *sopt)
+ip_fw3_ctl_nat_add(struct sockopt *sopt)
 {
 	/* TODO */
 	return 0;
@@ -139,7 +139,7 @@ nat_del_dispatch(netmsg_t nat_del_msg)
 }
 
 int
-ipfw_ctl_nat_del(struct sockopt *sopt)
+ip_fw3_ctl_nat_del(struct sockopt *sopt)
 {
 	struct netmsg_nat_del nat_del_msg;
 	struct netmsg_nat_del *msg;
@@ -154,31 +154,31 @@ ipfw_ctl_nat_del(struct sockopt *sopt)
 }
 
 int
-ipfw_ctl_nat_flush(struct sockopt *sopt)
+ip_fw3_ctl_nat_flush(struct sockopt *sopt)
 {
 	/* TODO */
 	return 0;
 }
 
 int
-ipfw_ctl_nat_sockopt(struct sockopt *sopt)
+ip_fw3_ctl_nat_sockopt(struct sockopt *sopt)
 {
 	int error = 0;
 	switch (sopt->sopt_name) {
 	case IP_FW_NAT_ADD:
-		error = ipfw_ctl_nat_add(sopt);
+		error = ip_fw3_ctl_nat_add(sopt);
 		break;
 	case IP_FW_NAT_DEL:
-		error = ipfw_ctl_nat_del(sopt);
+		error = ip_fw3_ctl_nat_del(sopt);
 		break;
 	case IP_FW_NAT_FLUSH:
-		error = ipfw_ctl_nat_flush(sopt);
+		error = ip_fw3_ctl_nat_flush(sopt);
 		break;
 	case IP_FW_NAT_GET:
-		error = ipfw_ctl_nat_get_cfg(sopt);
+		error = ip_fw3_ctl_nat_get_cfg(sopt);
 		break;
 	case IP_FW_NAT_GET_RECORD:
-		error = ipfw_ctl_nat_get_record(sopt);
+		error = ip_fw3_ctl_nat_get_record(sopt);
 		break;
 	default:
 		kprintf("ipfw3 nat invalid socket option %d\n",
@@ -190,9 +190,9 @@ ipfw_ctl_nat_sockopt(struct sockopt *sopt)
 void
 nat_init_ctx_dispatch(netmsg_t msg)
 {
-	struct ipfw_nat_context *tmp;
-	tmp = kmalloc(sizeof(struct ipfw_nat_context),
-				M_IPFW_NAT, M_WAITOK | M_ZERO);
+	struct ip_fw3_nat_context *tmp;
+	tmp = kmalloc(sizeof(struct ip_fw3_nat_context),
+				M_IP_FW3_NAT, M_WAITOK | M_ZERO);
 	ipfw_nat_ctx[mycpuid] = tmp;
 	netisr_forwardmsg_all(&msg->base, mycpuid + 1);
 }
@@ -225,7 +225,7 @@ int ipfw_nat_init(void)
 	register_ipfw_module(MODULE_NAT_ID, MODULE_NAT_NAME);
 	register_ipfw_filter_funcs(MODULE_NAT_ID, O_NAT_NAT,
 			(filter_func)check_nat);
-	ipfw_ctl_nat_ptr = ipfw_ctl_nat_sockopt;
+	ipfw_ctl_nat_ptr = ip_fw3_ctl_nat_sockopt;
 	netmsg_init(&msg, NULL, &curthread->td_msgport,
 			0, nat_init_ctx_dispatch);
 	netisr_domsg(&msg, 0);

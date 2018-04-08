@@ -32,8 +32,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _IP_FW_NAT_H
-#define _IP_FW_NAT_H
+#ifndef _IP_FW3_NAT_H
+#define _IP_FW3_NAT_H
 
 #define MODULE_NAT_ID		4
 #define MODULE_NAT_NAME		"nat"
@@ -44,40 +44,56 @@ enum ipfw_nat_opcodes {
 };
 
 struct ipfw_ioc_nat_state {
-	struct in_addr	src_addr;
-	struct in_addr	dst_addr;
-	struct in_addr	alias_addr;
-	int		link_type;
-	int		timestamp;
-	int		expire_time;
-	int		nat_id;
-	int		cpuid;
-	int		is_outgoing;
-	u_short		src_port;
-	u_short		dst_port;
-	u_short		alias_port;
+	struct in_addr		src_addr;
+	struct in_addr		dst_addr;
+	struct in_addr		alias_addr;
+	u_short			src_port;
+	u_short			dst_port;
+	u_short			alias_port;
+
+	int			link_type;
+	int			timestamp;
+	int			expire_time;
+	int			nat_id;
+	int			cpuid;
+	int			is_outgoing;
 };
 
-struct ioc_cfg_nat {
-	int		id;
-	struct in_addr 	ip;
+struct ioc_nat {
+	int			id;
+	struct in_addr 		ip;
 };
-#define LEN_IOC_NAT sizeof(struct ioc_cfg_nat)
+#define LEN_IOC_NAT sizeof(struct ioc_nat)
+
+typedef struct	_ipfw_insn_nat {
+	ipfw_insn		o;
+	struct cfg_nat  	*nat;
+} ipfw_insn_nat;
 
 
 
 #ifdef _KERNEL
 
-
+/*
+ * Each NAT state contains the tuple (saddr,sport,daddr,dport,proto) and a pair
+ * of alias(alias_addr & alias_port).
+ * For outgoing TCP & UDP packets, the alias will be the after NAT src
+ * For incoming TCP & UDP packets, its alias will be the original src info.
+ * For ICMP packets, the icmp_id will be stored in the alias.
+ */
 struct nat_state {
 	RB_ENTRY(nat_state)	entries;
+
 	uint32_t		saddr;
 	uint32_t		daddr;
 	uint32_t		alias_addr;
+
 	uint16_t		sport;
 	uint16_t		dport;
 	uint16_t		alias_port;
+
 	uint8_t			proto;
+
 	int			timestamp;
 	int			expiry;
 };
@@ -105,23 +121,25 @@ struct cfg_nat {
 #define LEN_CFG_NAT sizeof(struct cfg_nat)
 
 
+MALLOC_DEFINE(M_IP_FW3_NAT, "IP_FW3_NAT", "IP_FW3 NAT module");
 
 
-MALLOC_DEFINE(M_IPFW_NAT, "IPFW3/NAT", "IPFW3/NAT 's");
-
-/* place to hold the nat conf */
-struct ipfw_nat_context {
-	struct cfg_nat		*nats[NAT_ID_MAX];
+/*
+ * Place to hold the NAT context
+ */
+struct ip_fw3_nat_context {
+	struct cfg_nat 		*nats[NAT_ID_MAX];
 };
+#define LEN_NAT_CTX sizeof(struct ip_fw3_nat_context)
 
 struct netmsg_nat_del {
 	struct netmsg_base 	base;
-	int 			id;
+	int id;
 };
 
 struct netmsg_nat_add {
 	struct netmsg_base 	base;
-	char 			*buf;
+	struct ioc_nat 		ioc_nat;
 };
 
 struct netmsg_alias_link_add {
@@ -131,27 +149,24 @@ struct netmsg_alias_link_add {
 	int 			is_tcp;
 };
 
-#endif
-
-typedef struct	_ipfw_insn_nat {
-	ipfw_insn	o;
-	struct cfg_nat *nat;
-} ipfw_insn_nat;
-
-
-#ifdef _KERNEL
-void check_nat(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+void 	check_nat(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void add_alias_link_dispatch(netmsg_t nat_del_msg);
-int ipfw_nat(struct ip_fw_args *args, struct cfg_nat *t, struct mbuf *m);
-void nat_add_dispatch(netmsg_t msg);
-int ipfw_ctl_nat_add(struct sockopt *sopt);
-void nat_del_dispatch(netmsg_t msg);
-int ipfw_ctl_nat_del(struct sockopt *sopt);
-int ipfw_ctl_nat_flush(struct sockopt *sopt);
-int ipfw_ctl_nat_sockopt(struct sockopt *sopt);
-void nat_init_ctx_dispatch(netmsg_t msg);
-int ipfw_ctl_nat_get_cfg(struct sockopt *sopt);
-int ipfw_ctl_nat_get_record(struct sockopt *sopt);
+
+int 	ip_fw3_nat(struct ip_fw_args *args,
+		struct cfg_nat *nat, struct mbuf *m);
+int	nat_state_get_alias(struct nat_state *s,
+		struct cfg_nat *nat, struct state_tree *tree);
+
+void 	add_alias_link_dispatch(netmsg_t nat_del_msg);
+void 	nat_add_dispatch(netmsg_t msg);
+int 	ip_fw3_ctl_nat_add(struct sockopt *sopt);
+void 	nat_del_dispatch(netmsg_t msg);
+int 	ip_fw3_ctl_nat_del(struct sockopt *sopt);
+int 	ip_fw3_ctl_nat_flush(struct sockopt *sopt);
+void 	nat_init_ctx_dispatch(netmsg_t msg);
+int 	ip_fw3_ctl_nat_sockopt(struct sockopt *sopt);
+int 	ip_fw3_ctl_nat_get_cfg(struct sockopt *sopt);
+int 	ip_fw3_ctl_nat_get_record(struct sockopt *sopt);
+
 #endif
 #endif

@@ -92,15 +92,15 @@ struct char_int_map nat_params[] = {
 void
 nat_config(int ac, char **av)
 {
-	struct ioc_cfg_nat *n;	/* Nat instance configuration. */
+	struct ioc_nat *n;	/* Nat instance configuration. */
 	int i, len, off, tok;
 	char *id, buf[NAT_BUF_LEN]; 	/* Buffer for serialized data. */
 
 	len = NAT_BUF_LEN;
 	/* Offset in buf: save space for n at the beginning. */
-	off = sizeof(struct ioc_cfg_nat);
+	off = sizeof(struct ioc_nat);
 	memset(buf, 0, sizeof(buf));
-	n = (struct ioc_cfg_nat *)buf;
+	n = (struct ioc_nat *)buf;
 
 	NEXT_ARG;
 	/* Nat id. */
@@ -144,10 +144,10 @@ nat_config(int ac, char **av)
 void
 nat_show_config(char *buf)
 {
-	struct ioc_cfg_nat *n;
+	struct ioc_nat *n;
 	int flag, off;
 
-	n = (struct ioc_cfg_nat *)buf;
+	n = (struct ioc_nat *)buf;
 	flag = 1;
 	off = sizeof(*n);
 	printf("ipfw3 nat %u config", n->id);
