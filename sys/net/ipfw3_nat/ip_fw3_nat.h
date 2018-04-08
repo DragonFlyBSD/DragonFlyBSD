@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2014 - 2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@dragonflybsd.org>
@@ -59,7 +59,6 @@ struct netmsg_nat_add {
 
 struct netmsg_alias_link_add {
 	struct netmsg_base base;
-	struct alias_link *lnk;
 	int id;
 	int is_outgoing;
 	int is_tcp;
@@ -86,38 +85,7 @@ struct ipfw_ioc_nat_state {
 	u_short		alias_port;
 };
 
-/* Redirect modes id. */
-#define REDIR_ADDR		0x01
-#define REDIR_PORT		0x02
-#define REDIR_PROTO		0x04
 
-/* Server pool support (LSNAT). */
-struct cfg_spool {
-	LIST_ENTRY(cfg_spool)	_next;	/* chain of spool instances */
-	struct in_addr		addr;
-	u_short			port;
-};
-
-struct cfg_redir {
-	LIST_ENTRY(cfg_redir)	_next;	/* chain of redir instances */
-	u_int16_t		mode;	/* type of redirect mode */
-	struct in_addr		laddr;	/* local ip address */
-	struct in_addr		paddr;	/* public ip address */
-	struct in_addr		raddr;	/* remote ip address */
-	u_short			lport;	/* local port */
-	u_short			pport;	/* public port */
-	u_short			rport;	/* remote port */
-	u_short			pport_cnt;	/* number of public ports */
-	u_short			rport_cnt;	/* number of remote ports */
-	int			proto;		/* protocol: tcp/udp */
-	struct alias_link	**alink;
-	/* num of entry in spool chain */
-	u_int16_t		spool_cnt;
-	/* chain of spool instances */
-	LIST_HEAD(spool_chain, cfg_spool) spool_chain;
-};
-
-/* Nat configuration data struct. */
 struct cfg_nat {
 	/* chain of nat instances */
 	LIST_ENTRY(cfg_nat)	_next;
@@ -132,9 +100,6 @@ struct cfg_nat {
 	LIST_HEAD(redir_chain, cfg_redir) redir_chain;
 };
 
-#define SOF_NAT			sizeof(struct cfg_nat)
-#define SOF_REDIR		sizeof(struct cfg_redir)
-#define SOF_SPOOL		sizeof(struct cfg_spool)
 
 /* Nat command. */
 typedef struct	_ipfw_insn_nat {
@@ -142,29 +107,6 @@ typedef struct	_ipfw_insn_nat {
 	struct cfg_nat *nat;
 } ipfw_insn_nat;
 
-#define LOOKUP_NAT(l, i, p) do {			\
-	LIST_FOREACH((p), &(l.nat), _next){		\
-		if((p)->id == (i)){			\
-			break;				\
-		}					\
-	}						\
-} while (0)
-
-#define HOOK_NAT(b, p) do {				\
-	LIST_INSERT_HEAD(b, p, _next);			\
-} while (0)
-
-#define UNHOOK_NAT(p) do {				\
-	LIST_REMOVE(p, _next);				\
-} while (0)
-
-#define HOOK_REDIR(b, p) do {				\
-	LIST_INSERT_HEAD(b, p, _next);			\
-} while (0)
-
-#define HOOK_SPOOL(b, p) do {				\
-	LIST_INSERT_HEAD(b, p, _next);			\
-} while (0)
 
 #ifdef _KERNEL
 void check_nat(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
