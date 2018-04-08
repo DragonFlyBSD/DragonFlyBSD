@@ -268,6 +268,5 @@ moduledata_t ipfw_nat_mod = {
 
 DECLARE_MODULE(ipfw3_nat, ipfw_nat_mod,
 		SI_SUB_PROTO_IFATTACHDOMAIN, SI_ORDER_ANY);
-MODULE_DEPEND(ipfw3_nat, libalias, 1, 1, 1);
 MODULE_DEPEND(ipfw3_nat, ipfw3_basic, 1, 1, 1);
 MODULE_VERSION(ipfw3_nat, 1);
