@@ -101,6 +101,32 @@ struct nat_state {
 
 int 	nat_state_cmp(struct nat_state *s1, struct nat_state *s2);
 
+int
+nat_state_cmp(struct nat_state *s1, struct nat_state *s2)
+{
+	if (s1->saddr > s2->saddr)
+		return 1;
+	if (s1->saddr < s2->saddr)
+		return -1;
+
+	if (s1->daddr > s2->daddr)
+		return 1;
+	if (s1->daddr < s2->daddr)
+		return -1;
+
+	if (s1->sport > s2->sport)
+		return 1;
+	if (s1->sport < s2->sport)
+		return -1;
+
+	if (s1->dport > s2->dport)
+		return 1;
+	if (s1->dport < s2->dport)
+		return -1;
+
+	return 0;
+}
+
 RB_HEAD(state_tree, nat_state);
 RB_PROTOTYPE(state_tree, nat_state, entries, nat_state_cmp);
 RB_GENERATE(state_tree, nat_state, entries, nat_state_cmp);
