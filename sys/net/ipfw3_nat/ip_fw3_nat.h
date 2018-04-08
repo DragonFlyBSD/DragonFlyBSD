@@ -37,34 +37,7 @@
 
 #define MODULE_NAT_ID		4
 #define MODULE_NAT_NAME		"nat"
-
-#ifdef _KERNEL
-
-MALLOC_DEFINE(M_IPFW_NAT, "IPFW3/NAT", "IPFW3/NAT 's");
-
-/* place to hold the nat conf */
-struct ipfw_nat_context {
-	LIST_HEAD(, cfg_nat) nat;	/* list of nat entries*/
-};
-
-struct netmsg_nat_del {
-	struct netmsg_base base;
-	int id;
-};
-
-struct netmsg_nat_add {
-	struct netmsg_base base;
-	char *buf;
-};
-
-struct netmsg_alias_link_add {
-	struct netmsg_base base;
-	int id;
-	int is_outgoing;
-	int is_tcp;
-};
-
-#endif
+#define NAT_ID_MAX		4
 
 enum ipfw_nat_opcodes {
 	O_NAT_NAT,
@@ -85,23 +58,81 @@ struct ipfw_ioc_nat_state {
 	u_short		alias_port;
 };
 
+struct ioc_cfg_nat {
+	int		id;
+	struct in_addr 	ip;
+};
+#define LEN_IOC_NAT sizeof(struct ioc_cfg_nat)
+
+
+
+#ifdef _KERNEL
+
+
+struct nat_state {
+	RB_ENTRY(nat_state)	entries;
+	uint32_t		saddr;
+	uint32_t		daddr;
+	uint32_t		alias_addr;
+	uint16_t		sport;
+	uint16_t		dport;
+	uint16_t		alias_port;
+	uint8_t			proto;
+	int			timestamp;
+	int			expiry;
+};
+#define LEN_NAT_STATE sizeof(struct nat_state)
+
+int 	nat_state_cmp(struct nat_state *s1, struct nat_state *s2);
+
+RB_HEAD(state_tree, nat_state);
+RB_PROTOTYPE(state_tree, nat_state, entries, nat_state_cmp);
+RB_GENERATE(state_tree, nat_state, entries, nat_state_cmp);
 
 struct cfg_nat {
-	/* chain of nat instances */
-	LIST_ENTRY(cfg_nat)	_next;
-	int			id;	/* nat id */
-	struct in_addr		ip;	/* nat ip address */
-	char	if_name[IF_NAMESIZE];	/* interface name */
-	int	mode;			/* aliasing mode */
-	struct libalias		*lib;	/* libalias instance */
-	/* number of entry in spool chain */
-	int	redir_cnt;
-	/* chain of redir instances */
-	LIST_HEAD(redir_chain, cfg_redir) redir_chain;
+	int			id;
+	struct in_addr		ip;
+
+	struct state_tree	tree_tcp_in;
+	struct state_tree	tree_tcp_out;
+	struct state_tree	tree_udp_in;
+	struct state_tree	tree_udp_out;
+	struct state_tree	tree_icmp_in;
+	struct state_tree	tree_icmp_out;
+
+	struct nat_state	tmp;
+};
+#define LEN_CFG_NAT sizeof(struct cfg_nat)
+
+
+
+
+MALLOC_DEFINE(M_IPFW_NAT, "IPFW3/NAT", "IPFW3/NAT 's");
+
+/* place to hold the nat conf */
+struct ipfw_nat_context {
+	struct cfg_nat		*nats[NAT_ID_MAX];
 };
 
+struct netmsg_nat_del {
+	struct netmsg_base 	base;
+	int 			id;
+};
 
-/* Nat command. */
+struct netmsg_nat_add {
+	struct netmsg_base 	base;
+	char 			*buf;
+};
+
+struct netmsg_alias_link_add {
+	struct netmsg_base 	base;
+	int 			id;
+	int 			is_outgoing;
+	int 			is_tcp;
+};
+
+#endif
+
 typedef struct	_ipfw_insn_nat {
 	ipfw_insn	o;
 	struct cfg_nat *nat;
