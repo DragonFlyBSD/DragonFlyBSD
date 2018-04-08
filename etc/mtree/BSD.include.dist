@@ -254,8 +254,6 @@
         ..
         lagg
         ..
-        libalias
-        ..
         pf
         ..
         ppp_layer
