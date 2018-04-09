@@ -39,16 +39,13 @@
 #ifndef _IP_FW3_H_
 #define _IP_FW3_H_
 
-#ifdef _KERNEL
 #include <net/bpf.h>
+
+#ifdef _KERNEL
 #include <net/netisr2.h>
 
 int     ip_fw3_sockopt(struct sockopt *);
 extern int ip_fw3_loaded;
-
-#else
-#include <pcap/bpf.h>
-#define PCAP_DONT_INCLUDE_PCAP_BPF_H
 #endif
 
 #define	IPFW3_LOADED	(ip_fw3_loaded)
