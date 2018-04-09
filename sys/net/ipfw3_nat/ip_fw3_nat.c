@@ -363,6 +363,18 @@ oops:
 }
 
 int
+nat_state_get_alias(struct nat_state *s, struct cfg_nat *nat,
+		struct state_tree *tree)
+{
+	s->alias_addr = nat->ip.s_addr;
+	do {
+		s->alias_port = htons(krandom() % 64511 + 1024);
+	}
+	while (RB_FIND(state_tree, tree, s) != NULL);
+	return 0;
+}
+
+int
 nat_state_cmp(struct nat_state *s1, struct nat_state *s2)
 {
 	if (s1->saddr > s2->saddr)
