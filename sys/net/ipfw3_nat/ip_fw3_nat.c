@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 - 2016 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2014 - 2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@dragonflybsd.org>
@@ -73,12 +73,11 @@
 #include <net/ipfw3/ip_fw.h>
 #include "ip_fw3_nat.h"
 
-struct ip_fw3_nat_context *ipfw_nat_ctx[MAXCPU];
-static struct callout ipfw3_nat_cleanup_callout;
-extern struct ipfw_context *ipfw_ctx[MAXCPU];
-extern ip_fw_ctl_t *ipfw_ctl_nat_ptr;
-
-static int fw3_nat_cleanup_interval = 5;
+struct ip_fw3_nat_context	*ip_fw3_nat_ctx[MAXCPU];
+static struct callout 		ip_fw3_nat_cleanup_callout;
+extern struct ipfw_context 	*ipfw_ctx[MAXCPU];
+extern ip_fw_ctl_t 		*ipfw_ctl_nat_ptr;
+static int 			fw3_nat_cleanup_interval = 1;
 
 SYSCTL_NODE(_net_inet_ip, OID_AUTO, fw3_nat, CTLFLAG_RW, 0, "ipfw3 NAT");
 SYSCTL_INT(_net_inet_ip_fw3_nat, OID_AUTO, cleanup_interval, CTLFLAG_RW,
@@ -221,7 +220,7 @@ nat_init_ctx_dispatch(netmsg_t msg)
 	struct ip_fw3_nat_context *tmp;
 	tmp = kmalloc(sizeof(struct ip_fw3_nat_context),
 				M_IP_FW3_NAT, M_WAITOK | M_ZERO);
-	ipfw_nat_ctx[mycpuid] = tmp;
+	ip_fw3_nat_ctx[mycpuid] = tmp;
 	netisr_forwardmsg_all(&msg->base, mycpuid + 1);
 }
 
@@ -240,14 +239,14 @@ ipfw3_nat_cleanup_func(void *dummy __unused)
 			ipfw3_nat_cleanup_func_dispatch);
 	netisr_domsg(&msg, 0);
 
-	callout_reset(&ipfw3_nat_cleanup_callout,
+	callout_reset(&ip_fw3_nat_cleanup_callout,
 			fw3_nat_cleanup_interval * hz,
 			ipfw3_nat_cleanup_func,
 			NULL);
 }
 
-static
-int ipfw_nat_init(void)
+static int
+ip_fw3_nat_init(void)
 {
 	struct netmsg_base msg;
 	register_ipfw_module(MODULE_NAT_ID, MODULE_NAT_NAME);
@@ -258,8 +257,8 @@ int ipfw_nat_init(void)
 			0, nat_init_ctx_dispatch);
 	netisr_domsg(&msg, 0);
 
-	callout_init_mp(&ipfw3_nat_cleanup_callout);
-	callout_reset(&ipfw3_nat_cleanup_callout,
+	callout_init_mp(&ip_fw3_nat_cleanup_callout);
+	callout_reset(&ip_fw3_nat_cleanup_callout,
 			fw3_nat_cleanup_interval * hz,
 			ipfw3_nat_cleanup_func,
 			NULL);
@@ -267,34 +266,34 @@ int ipfw_nat_init(void)
 }
 
 static int
-ipfw_nat_fini(void)
+ip_fw3_nat_fini(void)
 {
 	/* TODO */
-	callout_stop(&ipfw3_nat_cleanup_callout);
+	callout_stop(&ip_fw3_nat_cleanup_callout);
 	return unregister_ipfw_module(MODULE_NAT_ID);
 }
 
 static int
-ipfw_nat_modevent(module_t mod, int type, void *data)
+ip_fw3_nat_modevent(module_t mod, int type, void *data)
 {
 	switch (type) {
 	case MOD_LOAD:
-		return ipfw_nat_init();
+		return ip_fw3_nat_init();
 	case MOD_UNLOAD:
-		return ipfw_nat_fini();
+		return ip_fw3_nat_fini();
 	default:
 		break;
 	}
 	return 0;
 }
 
-moduledata_t ipfw_nat_mod = {
+moduledata_t ip_fw3_nat_mod = {
 	"ipfw3_nat",
-	ipfw_nat_modevent,
+	ip_fw3_nat_modevent,
 	NULL
 };
 
-DECLARE_MODULE(ipfw3_nat, ipfw_nat_mod,
+DECLARE_MODULE(ipfw3_nat, ip_fw3_nat_mod,
 		SI_SUB_PROTO_IFATTACHDOMAIN, SI_ORDER_ANY);
 MODULE_DEPEND(ipfw3_nat, ipfw3_basic, 1, 1, 1);
 MODULE_VERSION(ipfw3_nat, 1);
