@@ -142,20 +142,49 @@ ip_fw3_ctl_nat_get_record(struct sockopt *sopt)
 	return 0;
 }
 
+/*
+ * Init the RB trees only when the NAT is configured.
+ */
 void
 nat_add_dispatch(netmsg_t nat_add_msg)
 {
-	/* TODO */
+	struct ip_fw3_nat_context *nat_ctx;
 	struct netmsg_nat_add *msg;
+	struct ioc_nat *ioc;
+	struct cfg_nat *nat;
 
 	msg = (struct netmsg_nat_add *)nat_add_msg;
+	ioc = &msg->ioc_nat;
+	nat_ctx = ip_fw3_nat_ctx[mycpuid];
+
+	if (nat_ctx->nats[ioc->id - 1] == NULL) {
+		nat = kmalloc(LEN_CFG_NAT, M_IP_FW3_NAT, M_WAITOK | M_ZERO);
+		RB_INIT(&nat->tree_tcp_in);
+		RB_INIT(&nat->tree_tcp_out);
+		RB_INIT(&nat->tree_udp_in);
+		RB_INIT(&nat->tree_udp_out);
+		RB_INIT(&nat->tree_icmp_in);
+		RB_INIT(&nat->tree_icmp_out);
+		nat->id = ioc->id;
+		memcpy(&nat->ip, &ioc->ip, LEN_IN_ADDR);
+		nat_ctx->nats[ioc->id - 1] = nat;
+	}
 	netisr_forwardmsg_all(&msg->base, mycpuid + 1);
 }
 
 int
 ip_fw3_ctl_nat_add(struct sockopt *sopt)
 {
-	/* TODO */
+	struct netmsg_nat_add nat_add_msg, *msg;
+	struct ioc_nat *ioc;
+
+	msg = &nat_add_msg;
+	ioc = (struct ioc_nat *)(sopt->sopt_val);
+	sooptcopyin(sopt, &msg->ioc_nat, sopt->sopt_valsize,
+			sizeof(struct ioc_nat));
+	netmsg_init(&msg->base, NULL, &curthread->td_msgport, 0,
+			nat_add_dispatch);
+	netisr_domsg(&msg->base, 0);
 	return 0;
 }
 

@@ -39,6 +39,8 @@
 #define MODULE_NAT_NAME		"nat"
 #define NAT_ID_MAX		4
 
+#define LEN_IN_ADDR	sizeof(struct in_addr)
+
 enum ipfw_nat_opcodes {
 	O_NAT_NAT,
 };
