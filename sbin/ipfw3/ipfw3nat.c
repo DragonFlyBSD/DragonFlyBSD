@@ -143,25 +143,59 @@ nat_config(int ac, char **av)
 }
 
 void
-nat_show_config(char *buf)
+nat_show_config(struct ioc_nat *ioc)
 {
-	struct ioc_nat *n;
-	int flag, off;
-
-	n = (struct ioc_nat *)buf;
-	flag = 1;
-	off = sizeof(*n);
-	printf("ipfw3 nat %u config", n->id);
-	if (n->ip.s_addr != 0)
-		printf(" ip %s", inet_ntoa(n->ip));
+	printf("ipfw3 nat %u config", ioc->id);
+	if (ioc->ip.s_addr != 0)
+		printf(" ip %s", inet_ntoa(ioc->ip));
 	printf("\n");
 }
-
 
 void
 nat_show(int ac, char **av)
 {
-	/* TODO */
+	struct ioc_nat *ioc;
+	int nbytes, nalloc, size, len;
+	int id, all;
+	uint8_t *data;
+
+	nalloc = 1024;
+	size = 0;
+	data = NULL;
+	id = 0;
+	all = 0;
+
+	NEXT_ARG;
+	if (ac == 0) {
+		all = 1;
+	} else {
+		id = strtoul(*av, NULL, 10);
+	}
+
+	nbytes = nalloc;
+	while (nbytes >= nalloc) {
+		nalloc = nalloc * 2;
+		nbytes = nalloc;
+		if ((data = realloc(data, nbytes)) == NULL) {
+			err(EX_OSERR, "realloc");
+		}
+		if (do_get_x(IP_FW_NAT_GET, data, &nbytes) < 0) {
+			err(EX_OSERR, "do_get_x(IP_FW_NAT_GET)");
+		}
+	}
+	if (nbytes == 0) {
+		exit(EX_OK);
+	}
+
+	len = 0;
+	ioc = (struct ioc_nat *)data;
+	while (len < nbytes) {
+		if (all == 1 || ioc->id == id) {
+			nat_show_config(ioc);
+		}
+		len += LEN_IOC_NAT;
+		ioc++;
+	}
 }
 
 int

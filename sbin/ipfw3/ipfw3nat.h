@@ -38,10 +38,8 @@
 #define NAT_BUF_LEN	1024
 
 void	nat_config(int ac, char **av);
-void	nat_show_config(char *buf);
+void 	nat_show_config(struct ioc_nat *ioc);
 void	nat_show(int ac, char **av);
-int 	setup_redir_port(char *spool_buf, int len, int *_ac, char ***_av);
-int 	setup_redir_proto(char *spool_buf, int len, int *_ac, char ***_av);
 int 	str2proto(const char* str);
 void 	str2addr(const char* str, struct in_addr* addr);
 void 	nat_delete_config(int ac, char *av[]);
