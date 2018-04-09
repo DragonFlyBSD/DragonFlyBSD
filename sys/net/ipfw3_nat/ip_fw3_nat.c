@@ -403,7 +403,37 @@ nat_state_cmp(struct nat_state *s1, struct nat_state *s2)
 int
 ip_fw3_ctl_nat_get_cfg(struct sockopt *sopt)
 {
-	/* TODO */
+	struct ip_fw3_nat_context *nat_ctx;
+	struct ioc_nat *ioc;
+	struct cfg_nat *nat;
+	size_t valsize;
+	uint8_t *val;
+	int i, len;
+
+	len = 0;
+	nat_ctx = ip_fw3_nat_ctx[mycpuid];
+	valsize = sopt->sopt_valsize;
+	val = sopt->sopt_val;
+
+	ioc = (struct ioc_nat *)val;
+	for (i = 0; i < NAT_ID_MAX; i++) {
+		nat = nat_ctx->nats[i];
+		if (nat != NULL) {
+			len += LEN_IOC_NAT;
+			if (len <= valsize) {
+				ioc->id = nat->id;
+				bcopy(&nat->ip, &ioc->ip, LEN_IN_ADDR);
+				ioc++;
+			} else {
+				goto nospace;
+			}
+		}
+	}
+	sopt->sopt_valsize = len;
+	return 0;
+nospace:
+	bzero(sopt->sopt_val, sopt->sopt_valsize);
+	sopt->sopt_valsize = 0;
 	return 0;
 }
 
