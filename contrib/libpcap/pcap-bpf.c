@@ -65,12 +65,6 @@ static const char usbus_prefix[] = "usbus";
 
 #ifdef _AIX
 
-/*
- * Make "pcap.h" not include "pcap/bpf.h"; we are going to include the
- * native OS version, as we need "struct bpf_config" from it.
- */
-#define PCAP_DONT_INCLUDE_PCAP_BPF_H
-
 #include <sys/types.h>
 
 /*
