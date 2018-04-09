@@ -90,8 +90,30 @@ void
 check_nat(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
-	/* TODO */
-	*cmd_val = IP_FW_DENY;
+	if ((*args)->eh != NULL) {
+		*cmd_ctl = IP_FW_CTL_NO;
+		*cmd_val = IP_FW_NOT_MATCH;
+		return;
+	}
+
+	struct ip_fw3_nat_context *nat_ctx;
+	struct cfg_nat *nat;
+	int nat_id;
+
+	nat_ctx = ip_fw3_nat_ctx[mycpuid];
+	(*args)->rule = *f;
+	nat = ((ipfw_insn_nat *)cmd)->nat;
+	if (nat == NULL) {
+		nat_id = cmd->arg1;
+		nat = nat_ctx->nats[nat_id - 1];
+		if (nat == NULL) {
+			*cmd_val = IP_FW_DENY;
+			*cmd_ctl = IP_FW_CTL_DONE;
+			return;
+		}
+		((ipfw_insn_nat *)cmd)->nat = nat;
+	}
+	*cmd_val = ip_fw3_nat(*args, nat, (*args)->m);
 	*cmd_ctl = IP_FW_CTL_NAT;
 }
 
