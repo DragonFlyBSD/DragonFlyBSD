@@ -205,8 +205,8 @@ main(int argc, char **argv)
 	if (rpcs & DOPARSABLEEXPORTS) {
 		exp = exports;
 		while (exp) {
-			nbytes = strnvis(strvised, exp->ex_dirp,
-			    sizeof(strvised), VIS_GLOB | VIS_NL);
+			nbytes = strsnvis(strvised, sizeof(strvised),
+			    exp->ex_dirp, VIS_GLOB | VIS_NL, "\"'$");
 			if (nbytes == -1)
 				err(1, "strsnvis");
 			printf("%s\n", strvised);

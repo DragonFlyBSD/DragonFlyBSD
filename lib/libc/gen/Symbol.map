@@ -472,8 +472,21 @@ DF502.0 {
 
 DF504.0 {
     gid_from_group;
+    nvis;
     pwcache_groupdb;
     pwcache_userdb;
+    snvis;
+    stravis;
+    strenvisx;
+    strnunvis;
+    strnunvisx;
+    strnvisx;
+    strsenvisx;
+    strsnvis;
+    strsnvisx;
+    strsvis;
+    strsvisx;
+    svis;
     uid_from_user;
 };
 

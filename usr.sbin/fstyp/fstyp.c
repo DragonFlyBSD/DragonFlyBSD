@@ -240,10 +240,9 @@ done:
 		/*
 		 * XXX: I'd prefer VIS_HTTPSTYLE, but it unconditionally
 		 *      encodes spaces.
-		 * XXX: DragonFly doesn't have strsnvis().
 		 */
-		nbytes = strnvis(strvised, label, sizeof(strvised),
-		    VIS_GLOB | VIS_NL);
+		nbytes = strsnvis(strvised, sizeof(strvised), label,
+		    VIS_GLOB | VIS_NL, "\"'$");
 		if (nbytes == -1)
 			err(1, "strnvis");
 
