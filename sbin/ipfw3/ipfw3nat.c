@@ -92,25 +92,27 @@ struct char_int_map nat_params[] = {
 void
 nat_config(int ac, char **av)
 {
-	struct ioc_nat *n;	/* Nat instance configuration. */
-	int i, len, off, tok;
-	char *id, buf[NAT_BUF_LEN]; 	/* Buffer for serialized data. */
+	struct ioc_nat *ioc;
+	int i, len, tok;
+	char *id, buf[NAT_BUF_LEN];
 
 	len = NAT_BUF_LEN;
-	/* Offset in buf: save space for n at the beginning. */
-	off = sizeof(struct ioc_nat);
-	memset(buf, 0, sizeof(buf));
-	n = (struct ioc_nat *)buf;
+	memset(buf, 0, NAT_BUF_LEN);
+	ioc = (struct ioc_nat *)buf;
 
 	NEXT_ARG;
 	/* Nat id. */
 	if (ac && isdigit(**av)) {
 		id = *av;
-		i = atoi(*av);
+		ioc->id = atoi(*av);
+		if (ioc->id <= 0 || ioc->id > NAT_ID_MAX) {
+			errx(EX_DATAERR, "invalid nat id");
+		}
 		NEXT_ARG;
-		n->id = i;
-	} else
+	} else {
 		errx(EX_DATAERR, "missing nat id");
+	}
+
 	if (ac == 0)
 		errx(EX_DATAERR, "missing option");
 
@@ -121,16 +123,15 @@ nat_config(int ac, char **av)
 		case TOK_IP:
 			if (ac == 0)
 				errx(EX_DATAERR, "missing option");
-			if (!inet_aton(av[0], &(n->ip)))
+			if (!inet_aton(av[0], &(ioc->ip)))
 				errx(EX_DATAERR, "bad ip addr `%s'", av[0]);
 			NEXT_ARG;
 			break;
-		/* TODO */
 		default:
 			errx(EX_DATAERR, "unrecognised option ``%s''", av[-1]);
 		}
 	}
-	i = do_set_x(IP_FW_NAT_ADD, buf, off);
+	i = do_set_x(IP_FW_NAT_ADD, buf, LEN_IOC_NAT);
 	if (i) {
 		err(1, "do_set_x(%s)", "IP_FW_NAT_ADD");
 	}
@@ -173,23 +174,6 @@ str2proto(const char* str)
 	errx (EX_DATAERR, "unknown protocol %s. Expected tcp or udp", str);
 }
 
-int
-str2addr_portrange (const char* str, struct in_addr* addr,
-	char* proto, port_range *portRange)
-{
-	char*	ptr;
-
-	ptr = strchr (str, ':');
-	if (!ptr)
-		errx (EX_DATAERR, "%s is missing port number", str);
-
-	*ptr = '\0';
-	++ptr;
-
-	str2addr (str, addr);
-	return str2portrange (ptr, proto, portRange);
-}
-
 void
 str2addr(const char* str, struct in_addr* addr)
 {
@@ -203,49 +187,6 @@ str2addr(const char* str, struct in_addr* addr)
 		errx (1, "unknown host %s", str);
 
 	memcpy (addr, hp->h_addr, sizeof (struct in_addr));
-}
-
-int
-str2portrange(const char* str, const char* proto, port_range *portRange)
-{
-	struct servent*	sp;
-	char*	sep;
-	char*	end;
-	u_short	loPort, hiPort;
-
-	/* First see if this is a service, return corresponding port if so. */
-	sp = getservbyname (str, proto);
-	if (sp) {
-		SETLOPORT(*portRange, ntohs(sp->s_port));
-		SETNUMPORTS(*portRange, 1);
-		return 0;
-	}
-
-	/* Not a service, see if it's a single port or port range. */
-	sep = strchr (str, '-');
-	if (sep == NULL) {
-		SETLOPORT(*portRange, strtol(str, &end, 10));
-		if (end != str) {
-			/* Single port. */
-			SETNUMPORTS(*portRange, 1);
-			return 0;
-		}
-
-		/* Error in port range field. */
-		errx (EX_DATAERR, "%s/%s: unknown service", str, proto);
-	}
-
-	/* Port range, get the values and sanity check. */
-	sscanf (str, "%hu-%hu", &loPort, &hiPort);
-	SETLOPORT(*portRange, loPort);
-	SETNUMPORTS(*portRange, 0); 	/* Error by default */
-	if (loPort <= hiPort)
-		SETNUMPORTS(*portRange, hiPort - loPort + 1);
-
-	if (GETNUMPORTS(*portRange) == 0)
-		errx (EX_DATAERR, "invalid port range %s", str);
-
-	return 0;
 }
 
 void

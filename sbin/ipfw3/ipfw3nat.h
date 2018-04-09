@@ -36,24 +36,18 @@
 #define _IPFW3NAT_H_
 
 #define NAT_BUF_LEN	1024
-#define port_range u_long
 
-void nat_config(int ac, char **av);
-void nat_show_config(char *buf);
-void nat_show(int ac, char **av);
-int setup_redir_port(char *spool_buf, int len, int *_ac, char ***_av);
-int setup_redir_proto(char *spool_buf, int len, int *_ac, char ***_av);
-int str2proto(const char* str);
-int str2addr_portrange (const char* str, struct in_addr* addr,
-		char* proto, port_range *portRange);
-void set_addr_dynamic(const char *ifn, struct cfg_nat *n);
-int setup_redir_addr(char *spool_buf, int len, int *_ac, char ***_av);
-int str2portrange(const char* str, const char* proto, port_range *portRange);
-void str2addr(const char* str, struct in_addr* addr);
-void nat_delete_config(int ac, char *av[]);
-void nat_show_state(int ac, char **av);
-int get_kern_boottime(void);
+void	nat_config(int ac, char **av);
+void	nat_show_config(char *buf);
+void	nat_show(int ac, char **av);
+int 	setup_redir_port(char *spool_buf, int len, int *_ac, char ***_av);
+int 	setup_redir_proto(char *spool_buf, int len, int *_ac, char ***_av);
+int 	str2proto(const char* str);
+void 	str2addr(const char* str, struct in_addr* addr);
+void 	nat_delete_config(int ac, char *av[]);
+void 	nat_show_state(int ac, char **av);
+int 	get_kern_boottime(void);
 
-void nat_flush(void);
-void nat_main(int ac, char **av);
+void 	nat_flush(void);
+void 	nat_main(int ac, char **av);
 #endif
