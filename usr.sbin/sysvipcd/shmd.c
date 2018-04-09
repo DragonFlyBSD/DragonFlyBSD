@@ -31,7 +31,6 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <sys/param.h>
 #include <sys/vmmeter.h>
 #include <sys/wait.h>

@@ -40,7 +40,6 @@
 #include <sys/stat.h>
 #include <sys/fcntl.h>
 #include <sys/time.h>
-#include <sys/user.h>
 
 #include <assert.h>
 #include <stdio.h>

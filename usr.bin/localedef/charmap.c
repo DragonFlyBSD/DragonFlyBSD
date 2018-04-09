@@ -41,7 +41,6 @@
 #include <limits.h>
 #include <unistd.h>
 #include <stddef.h>
-#include <unistd.h>
 #include "localedef.h"
 #include "parser.h"
 

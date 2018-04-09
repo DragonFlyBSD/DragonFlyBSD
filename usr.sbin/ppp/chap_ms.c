@@ -30,14 +30,12 @@
  */
 
 #include <ctype.h>
-#ifdef __DragonFly__
 #include <sys/types.h>
+#include <stdlib.h>
+#ifdef __DragonFly__
 #include <openssl/des.h>
 #include <sha.h>
-#include <stdlib.h>
 #else
-#include <sys/types.h>
-#include <stdlib.h>
 #ifdef __NetBSD__
 #include <openssl/des.h>
 #else
