@@ -12,19 +12,20 @@ CMAPS+=	${.CURDIR}/uuid/Symbol.map
 
 .if ${LIB} == "c"
 MAN+=	uuid.3
-MLINKS+=uuid.3 uuid_addr_lookup.3
-MLINKS+=uuid.3 uuid_compare.3
-MLINKS+=uuid.3 uuid_create.3
-MLINKS+=uuid.3 uuid_create_nil.3
-MLINKS+=uuid.3 uuid_dec_be.3
-MLINKS+=uuid.3 uuid_dec_le.3
-MLINKS+=uuid.3 uuid_enc_be.3
-MLINKS+=uuid.3 uuid_enc_le.3
-MLINKS+=uuid.3 uuid_equal.3
-MLINKS+=uuid.3 uuid_from_string.3
-MLINKS+=uuid.3 uuid_hash.3
-MLINKS+=uuid.3 uuid_is_nil.3
-MLINKS+=uuid.3 uuid_name_lookup.3
-MLINKS+=uuid.3 uuid_reset_lookup.3
-MLINKS+=uuid.3 uuid_to_string.3
+
+MLINKS+=uuid.3 uuid_addr_lookup.3 \
+	uuid.3 uuid_compare.3 \
+	uuid.3 uuid_create.3 \
+	uuid.3 uuid_create_nil.3 \
+	uuid.3 uuid_dec_be.3 \
+	uuid.3 uuid_dec_le.3 \
+	uuid.3 uuid_enc_be.3 \
+	uuid.3 uuid_enc_le.3 \
+	uuid.3 uuid_equal.3 \
+	uuid.3 uuid_from_string.3 \
+	uuid.3 uuid_hash.3 \
+	uuid.3 uuid_is_nil.3 \
+	uuid.3 uuid_name_lookup.3 \
+	uuid.3 uuid_reset_lookup.3 \
+	uuid.3 uuid_to_string.3
 .endif

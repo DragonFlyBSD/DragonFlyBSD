@@ -108,17 +108,26 @@ MLINKS+=access.2 eaccess.2 \
 	access.2 faccessat.2
 MLINKS+=brk.2 sbrk.2
 MLINKS+=chdir.2 fchdir.2
-MLINKS+=chflags.2 fchflags.2 chflags.2 lchflags.2 chflags.2 chflagsat.2
-MLINKS+=chmod.2 fchmod.2 chmod.2 lchmod.2 chmod.2 fchmodat.2
-MLINKS+=chown.2 fchown.2 chown.2 lchown.2 chown.2 fchownat.2
+MLINKS+=chflags.2 chflagsat.2 \
+	chflags.2 fchflags.2 \
+	chflags.2 lchflags.2
+MLINKS+=chmod.2 fchmod.2 \
+	chmod.2 fchmodat.2 \
+	chmod.2 lchmod.2
+MLINKS+=chown.2 fchown.2 \
+	chown.2 fchownat.2 \
+	chown.2 lchown.2
 MLINKS+=chroot.2 chroot_kernel.2
-MLINKS+=clock_gettime.2 clock_getres.2 clock_gettime.2 clock_settime.2
+MLINKS+=clock_gettime.2 clock_getres.2 \
+	clock_gettime.2 clock_settime.2
 MLINKS+=dup.2 dup2.2
 MLINKS+=exec_sys_register.2 exec_sys_unregister.2
 MLINKS+=extattr.2 extattr_delete_file.2 \
 	extattr.2 extattr_get_file.2 \
 	extattr.2 extattr_set_file.2
-MLINKS+=fhopen.2 fhstat.2 fhopen.2 fhstatfs.2 fhopen.2 fhstatvfs.2
+MLINKS+=fhopen.2 fhstat.2 \
+	fhopen.2 fhstatfs.2 \
+	fhopen.2 fhstatvfs.2
 MLINKS+=getdirentries.2 _DIRENT_DIRSIZ.2 \
 	getdirentries.2 _DIRENT_NEXT.2 \
 	getdirentries.2 getdents.2
@@ -156,13 +165,18 @@ MLINKS+=msgget.2 msgget.3
 MLINKS+=msgrcv.2 msgrcv.3
 MLINKS+=msgsnd.2 msgsnd.3
 MLINKS+=open.2 openat.2
-MLINKS+=pathconf.2 fpathconf.2 pathconf.2 lpathconf.2
+MLINKS+=pathconf.2 fpathconf.2 \
+	pathconf.2 lpathconf.2
 MLINKS+=pipe.2 pipe2.2
 MLINKS+=poll.2 ppoll.2
-MLINKS+=read.2 extpread.2 read.2 extpreadv.2 \
-	read.2 pread.2 read.2 preadv.2 read.2 readv.2
+MLINKS+=read.2 extpread.2 \
+	read.2 extpreadv.2 \
+	read.2 pread.2 \
+	read.2 preadv.2 \
+	read.2 readv.2
 MLINKS+=readlink.2 readlinkat.2
-MLINKS+=recv.2 recvfrom.2 recv.2 recvmsg.2
+MLINKS+=recv.2 recvfrom.2 \
+	recv.2 recvmsg.2
 MLINKS+=rename.2 renameat.2
 MLINKS+=rtprio.2 lwp_rtprio.2
 MLINKS+=sched_get_priority_max.2 sched_get_priority_min.2 \
@@ -186,32 +200,47 @@ MLINKS+=select.2 FD_CLR.2 \
 MLINKS+=semctl.2 semctl.3
 MLINKS+=semget.2 semget.3
 MLINKS+=semop.2 semop.3
-MLINKS+=send.2 sendmsg.2 send.2 sendto.2
+MLINKS+=send.2 sendmsg.2 \
+	send.2 sendto.2
 MLINKS+=setpgid.2 setpgrp.3
-MLINKS+=setresuid.2 getresgid.2 setresuid.2 getresuid.2 setresuid.2 setresgid.2
-MLINKS+=setuid.2 setegid.2 setuid.2 seteuid.2 setuid.2 setgid.2
+MLINKS+=setresuid.2 getresgid.2 \
+	setresuid.2 getresuid.2 \
+	setresuid.2 setresgid.2
+MLINKS+=setuid.2 setegid.2 \
+	setuid.2 seteuid.2 \
+	setuid.2 setgid.2
 MLINKS+=shmat.2 shmat.3 \
 	shmat.2 shmdt.2
 MLINKS+=shmctl.2 shmctl.3
 MLINKS+=shmget.2 shmget.3
 MLINKS+=sigwaitinfo.2 sigtimedwait.2
-MLINKS+=stat.2 fstat.2 stat.2 fstatat.2 stat.2 lstat.2
+MLINKS+=stat.2 fstat.2 \
+	stat.2 fstatat.2 \
+	stat.2 lstat.2
 MLINKS+=statfs.2 fstatfs.2
 MLINKS+=statvfs.2 fstatvfs.2
 MLINKS+=symlink.2 symlinkat.2
 MLINKS+=syscall.2 __syscall.2
 MLINKS+=swapon.2 swapoff.2
-MLINKS+=tls.2 set_tls_area.2 tls.2 get_tls_area.2
+MLINKS+=tls.2 get_tls_area.2 \
+	tls.2 set_tls_area.2
 MLINKS+=truncate.2 ftruncate.2
-MLINKS+=umtx.2 umtx_sleep.2 umtx.2 umtx_wakeup.2
+MLINKS+=umtx.2 umtx_sleep.2 \
+	umtx.2 umtx_wakeup.2
 MLINKS+=utimensat.2 futimens.2
-MLINKS+=utimes.2 futimes.2 utimes.2 lutimes.2
+MLINKS+=utimes.2 futimes.2 \
+	utimes.2 lutimes.2
 MLINKS+=varsym.2 varsym_get.2 \
 	varsym.2 varsym_list.2 \
 	varsym.2 varsym_set.2
 MLINKS+=vmm.2 vmm_guest_ctl.2 \
 	vmm.2 vmm_guest_sync_addr.2
-MLINKS+=wait.2 wait3.2 wait.2 wait4.2 wait.2 waitpid.2
-MLINKS+=write.2 extpwrite.2 write.2 extpwritev.2 \
-	write.2 pwrite.2 write.2 pwritev.2 write.2 writev.2
+MLINKS+=wait.2 wait3.2 \
+	wait.2 wait4.2 \
+	wait.2 waitpid.2
+MLINKS+=write.2 extpwrite.2 \
+	write.2 extpwritev.2 \
+	write.2 pwrite.2 \
+	write.2 pwritev.2 \
+	write.2 writev.2
 .endif

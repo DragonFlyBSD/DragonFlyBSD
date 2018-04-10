@@ -83,69 +83,131 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	ucontext.3 ulimit.3 uname.3 unvis.3 usleep.3 utime.3 \
 	valloc.3 vis.3 wordexp.3
 
-MLINKS+=arc4random.3 arc4random_addrandom.3 arc4random.3 arc4random_buf.3 \
-	arc4random.3 arc4random_stir.3 arc4random.3 arc4random_uniform.3
+MLINKS+=arc4random.3 arc4random_addrandom.3 \
+	arc4random.3 arc4random_buf.3 \
+	arc4random.3 arc4random_stir.3 \
+	arc4random.3 arc4random_uniform.3
 MLINKS+=ctermid.3 ctermid_r.3
-MLINKS+=directory.3 closedir.3 directory.3 dirfd.3 directory.3 opendir.3 \
-	directory.3 readdir.3 directory.3 readdir_r.3 directory.3 rewinddir.3 \
-	directory.3 seekdir.3 directory.3 telldir.3 directory.3 fdopendir.3
-MLINKS+=dlsym.3 dlfunc.3
+MLINKS+=devname.3 devname_r.3 \
+	devname.3 fdevname.3 \
+	devname.3 fdevname_r.3
+MLINKS+=directory.3 closedir.3 \
+	directory.3 dirfd.3 \
+	directory.3 fdopendir.3 \
+	directory.3 opendir.3 \
+	directory.3 readdir.3 \
+	directory.3 readdir_r.3 \
+	directory.3 rewinddir.3 \
+	directory.3 seekdir.3 \
+	directory.3 telldir.3
 MLINKS+=dlopen.3 fdlopen.3
-MLINKS+=devname.3 devname_r.3 devname.3 fdevname.3 devname.3 fdevname_r.3
-MLINKS+=endutxent.3 getutxent.3 endutxent.3 getutxid.3 \
-	endutxent.3 getutxline.3 endutxent.3 pututxline.3 \
-	endutxent.3 setutxent.3 endutxent.3 setutxdb.3
-MLINKS+=err.3 err_set_exit.3 err.3 err_set_file.3 err.3 errc.3 err.3 errx.3 \
-	err.3 verr.3 err.3 verrc.3 err.3 verrx.3 err.3 vwarn.3 err.3 vwarnc.3 \
-	err.3 vwarnx.3 err.3 warnc.3 err.3 warn.3 err.3 warnx.3
-MLINKS+=exec.3 execl.3 exec.3 execle.3 exec.3 execlp.3 exec.3 exect.3 \
-	exec.3 execv.3 exec.3 execvP.3 exec.3 execvp.3
+MLINKS+=dlsym.3 dlfunc.3
+MLINKS+=endutxent.3 getutxent.3 \
+	endutxent.3 getutxid.3 \
+	endutxent.3 getutxline.3 \
+	endutxent.3 pututxline.3 \
+	endutxent.3 setutxdb.3 \
+	endutxent.3 setutxent.3
+MLINKS+=err.3 errc.3 \
+	err.3 err_set_exit.3 \
+	err.3 err_set_file.3 \
+	err.3 errx.3 \
+	err.3 verr.3 \
+	err.3 verrc.3 \
+	err.3 verrx.3 \
+	err.3 vwarn.3 \
+	err.3 vwarnc.3 \
+	err.3 vwarnx.3 \
+	err.3 warn.3 \
+	err.3 warnc.3 \
+	err.3 warnx.3
+MLINKS+=exec.3 execl.3 \
+	exec.3 execle.3 \
+	exec.3 execlp.3 \
+	exec.3 exect.3 \
+	exec.3 execv.3 \
+	exec.3 execvp.3 \
+	exec.3 execvP.3
 MLINKS+=fpclassify.3 finite.3 \
 	fpclassify.3 finitef.3 \
 	fpclassify.3 isfinite.3 \
 	fpclassify.3 isinf.3 \
 	fpclassify.3 isnan.3 \
 	fpclassify.3 isnormal.3
-MLINKS+=frexp.3 frexpf.3 frexp.3 frexpl.3
-MLINKS+=fts.3 fts_children.3 fts.3 fts_close.3 fts.3 fts_get_clientptr.3 \
-	fts.3 fts_get_stream.3 fts.3 fts_open.3 fts.3 fts_read.3 \
-	fts.3 fts_set.3 fts.3 fts_set_clientptr.3
+MLINKS+=frexp.3 frexpf.3 \
+	frexp.3 frexpl.3
+MLINKS+=fts.3 fts_children.3 \
+	fts.3 fts_close.3 \
+	fts.3 fts_get_clientptr.3 \
+	fts.3 fts_get_stream.3 \
+	fts.3 fts_open.3 \
+	fts.3 fts_read.3 \
+	fts.3 fts_set.3 \
+	fts.3 fts_set_clientptr.3
 MLINKS+=ftw.3 nftw.3
-MLINKS+=getcap.3 cgetcap.3 getcap.3 cgetclose.3 getcap.3 cgetent.3 \
-	getcap.3 cgetfirst.3 getcap.3 cgetmatch.3 getcap.3 cgetnext.3 \
-	getcap.3 cgetnum.3 getcap.3 cgetset.3 getcap.3 cgetstr.3 \
+MLINKS+=getcap.3 cgetcap.3 \
+	getcap.3 cgetclose.3 \
+	getcap.3 cgetent.3 \
+	getcap.3 cgetfirst.3 \
+	getcap.3 cgetmatch.3 \
+	getcap.3 cgetnext.3 \
+	getcap.3 cgetnum.3 \
+	getcap.3 cgetset.3 \
+	getcap.3 cgetstr.3 \
 	getcap.3 cgetustr.3
+MLINKS+=getcontext.3 setcontext.3
 MLINKS+=getcwd.3 getwd.3
 MLINKS+=getdomainname.3 setdomainname.3
-MLINKS+=getfsent.3 endfsent.3 getfsent.3 getfsfile.3 getfsent.3 getfsspec.3 \
-	getfsent.3 getfstab.3 getfsent.3 getfstype.3 getfsent.3 setfsent.3 \
+MLINKS+=getfsent.3 endfsent.3 \
+	getfsent.3 getfsfile.3 \
+	getfsent.3 getfsspec.3 \
+	getfsent.3 getfstab.3 \
+	getfsent.3 getfstype.3 \
+	getfsent.3 setfsent.3 \
 	getfsent.3 setfstab.3
-MLINKS+=getgrent.3 endgrent.3 getgrent.3 getgrent_r.3 getgrent.3 getgrgid.3 \
-	getgrent.3 getgrgid_r.3 getgrent.3 getgrnam.3 getgrent.3 getgrnam_r.3 \
-	getgrent.3 setgrent.3 getgrent.3 setgroupent.3
+MLINKS+=getgrent.3 endgrent.3 \
+	getgrent.3 getgrent_r.3 \
+	getgrent.3 getgrgid.3 \
+	getgrent.3 getgrgid_r.3 \
+	getgrent.3 getgrnam.3 \
+	getgrent.3 getgrnam_r.3 \
+	getgrent.3 setgrent.3 \
+	getgrent.3 setgroupent.3
 MLINKS+=gethostid.3 sethostid.3
 MLINKS+=gethostname.3 sethostname.3
-MLINKS+=getlastlogx.3 updlastlogx.3 getlastlogx.3 getutmp.3 \
-	getlastlogx.3 getutmpx.3 getlastlogx.3 updwtmpx.3 \
+MLINKS+=getlastlogx.3 getutmp.3 \
+	getlastlogx.3 getutmpx.3 \
+	getlastlogx.3 updlastlogx.3 \
 	getlastlogx.3 _updwtmpx.3 \
+	getlastlogx.3 updwtmpx.3 \
 	getlastlogx.3 utmpxname.3
 MLINKS+=getmntinfo.3 getmntvinfo.3
-MLINKS+=getnetgrent.3 endnetgrent.3 getnetgrent.3 innetgr.3 \
+MLINKS+=getnetgrent.3 endnetgrent.3 \
+	getnetgrent.3 innetgr.3 \
 	getnetgrent.3 setnetgrent.3
 MLINKS+=getprogname.3 setprogname.3
-MLINKS+=getpwent.3 endpwent.3 getpwent.3 getpwnam.3 getpwent.3 getpwuid.3 \
-	getpwent.3 setpassent.3 getpwent.3 setpwent.3 getpwent.3 setpwfile.3 \
-	getpwent.3 getpwent_r.3 getpwent.3 getpwnam_r.3 \
-	getpwent.3 getpwuid_r.3
-MLINKS+=getttyent.3 endttyent.3 getttyent.3 getttynam.3 \
-	getttyent.3 isdialuptty.3 getttyent.3 isnettty.3 \
+MLINKS+=getpwent.3 endpwent.3 \
+	getpwent.3 getpwent_r.3 \
+	getpwent.3 getpwnam.3 \
+	getpwent.3 getpwnam_r.3 \
+	getpwent.3 getpwuid.3 \
+	getpwent.3 getpwuid_r.3 \
+	getpwent.3 setpassent.3 \
+	getpwent.3 setpwent.3 \
+	getpwent.3 setpwfile.3
+MLINKS+=getttyent.3 endttyent.3 \
+	getttyent.3 getttynam.3 \
+	getttyent.3 isdialuptty.3 \
+	getttyent.3 isnettty.3 \
 	getttyent.3 setttyent.3
-MLINKS+=getusershell.3 endusershell.3 getusershell.3 setusershell.3
-MLINKS+=getvfsent.3 endvfsent.3 getvfsent.3 getvfsbytype.3 \
-	getvfsent.3 setvfsent.3 getvfsent.3 vfsisloadable.3 \
+MLINKS+=getusershell.3 endusershell.3 \
+	getusershell.3 setusershell.3
+MLINKS+=getvfsent.3 endvfsent.3 \
+	getvfsent.3 getvfsbytype.3 \
+	getvfsent.3 setvfsent.3 \
+	getvfsent.3 vfsisloadable.3 \
 	getvfsent.3 vfsload.3
 MLINKS+=glob.3 globfree.3
-MLINKS+=getcontext.3 setcontext.3
 MLINKS+=isgreater.3 isgreaterequal.3 \
 	isgreater.3 isless.3 \
 	isgreater.3 islessequal.3 \
@@ -171,43 +233,83 @@ MLINKS+=posix_spawnattr_getsigdefault.3 posix_spawnattr_setsigdefault.3
 MLINKS+=posix_spawnattr_getsigmask.3 posix_spawnattr_setsigmask.3
 MLINKS+=posix_spawnattr_init.3 posix_spawnattr_destroy.3
 MLINKS+=psignal.3 psiginfo.3 \
-	psignal.3 strsignal.3 psignal.3 sys_nsig.3 psignal.3 sys_siglist.3 \
+	psignal.3 strsignal.3 \
+	psignal.3 sys_nsig.3 \
+	psignal.3 sys_siglist.3 \
 	psignal.3 sys_signame.3
-MLINKS+=pwcache.3 gid_from_group.3 pwcache.3 group_from_gid.3 \
-	pwcache.3 pwcache_groupdb.3 pwcache.3 pwcache_userdb.3 \
-	pwcache.3 uid_from_user.3 pwcache.3 user_from_uid.3
-MLINKS+=rand48.3 drand48.3 rand48.3 erand48.3 \
-	rand48.3 jrand48.3 rand48.3 lcong48.3 rand48.3 lrand48.3 \
-	rand48.3 mrand48.3 rand48.3 nrand48.3 rand48.3 seed48.3 \
+MLINKS+=pwcache.3 gid_from_group.3 \
+	pwcache.3 group_from_gid.3 \
+	pwcache.3 pwcache_groupdb.3 \
+	pwcache.3 pwcache_userdb.3 \
+	pwcache.3 uid_from_user.3 \
+	pwcache.3 user_from_uid.3
+MLINKS+=rand48.3 drand48.3 \
+	rand48.3 erand48.3 \
+	rand48.3 jrand48.3 \
+	rand48.3 lcong48.3 \
+	rand48.3 lrand48.3 \
+	rand48.3 mrand48.3 \
+	rand48.3 nrand48.3 \
+	rand48.3 seed48.3 \
 	rand48.3 srand48.3
 MLINKS+=scandir.3 alphasort.3
-MLINKS+=strtofflags.3 fflagstostr.3
-MLINKS+=setjmp.3 _longjmp.3 setjmp.3 _setjmp.3 setjmp.3 longjmp.3 \
-	setjmp.3 longjmperr.3 setjmp.3 longjmperror.3 \
-	setjmp.3 siglongjmp.3 setjmp.3 sigsetjmp.3
+MLINKS+=setjmp.3 _longjmp.3 \
+	setjmp.3 longjmp.3 \
+	setjmp.3 longjmperr.3 \
+	setjmp.3 longjmperror.3 \
+	setjmp.3 _setjmp.3 \
+	setjmp.3 siglongjmp.3 \
+	setjmp.3 sigsetjmp.3
 MLINKS+=setmode.3 getmode.3
 MLINKS+=shm_open.3 shm_unlink.3
-MLINKS+=sigsetops.3 sigaddset.3 sigsetops.3 sigdelset.3 \
-	sigsetops.3 sigemptyset.3 sigsetops.3 sigfillset.3 \
+MLINKS+=sigsetops.3 sigaddset.3 \
+	sigsetops.3 sigdelset.3 \
+	sigsetops.3 sigemptyset.3 \
+	sigsetops.3 sigfillset.3 \
 	sigsetops.3 sigismember.3
-MLINKS+=stringlist.3 sl_add.3 stringlist.3 sl_find.3 \
-	stringlist.3 sl_free.3 stringlist.3 sl_init.3
-MLINKS+=sysctl.3 sysctlbyname.3 sysctl.3 sysctlnametomib.3
-MLINKS+=syslog.3 closelog.3 syslog.3 openlog.3 syslog.3 setlogmask.3 \
+MLINKS+=stringlist.3 sl_add.3 \
+	stringlist.3 sl_find.3 \
+	stringlist.3 sl_free.3 \
+	stringlist.3 sl_init.3
+MLINKS+=strtofflags.3 fflagstostr.3
+MLINKS+=sysctl.3 sysctlbyname.3 \
+	sysctl.3 sysctlnametomib.3
+MLINKS+=syslog.3 closelog.3 \
+	syslog.3 openlog.3 \
+	syslog.3 setlogmask.3 \
 	syslog.3 vsyslog.3
-MLINKS+=tcsendbreak.3 tcdrain.3 tcsendbreak.3 tcflow.3 tcsendbreak.3 tcflush.3
-MLINKS+=tcsetattr.3 cfgetispeed.3 tcsetattr.3 cfgetospeed.3 \
-	tcsetattr.3 cfmakeraw.3 tcsetattr.3 cfmakesane.3 \
+MLINKS+=tcsendbreak.3 tcdrain.3 \
+	tcsendbreak.3 tcflow.3 \
+	tcsendbreak.3 tcflush.3
+MLINKS+=tcsetattr.3 cfgetispeed.3 \
+	tcsetattr.3 cfgetospeed.3 \
+	tcsetattr.3 cfmakeraw.3 \
+	tcsetattr.3 cfmakesane.3 \
 	tcsetattr.3 cfsetispeed.3 \
-	tcsetattr.3 cfsetospeed.3 tcsetattr.3 cfsetspeed.3 \
+	tcsetattr.3 cfsetospeed.3 \
+	tcsetattr.3 cfsetspeed.3 \
 	tcsetattr.3 tcgetattr.3
-MLINKS+=ttyname.3 isatty.3 ttyname.3 ttyslot.3 ttyname.3 ttyname_r.3
+MLINKS+=ttyname.3 isatty.3 \
+	ttyname.3 ttyname_r.3 \
+	ttyname.3 ttyslot.3
 MLINKS+=tzset.3 tzsetwall.3
-MLINKS+=unvis.3 strnunvis.3 unvis.3 strnunvisx.3 unvis.3 strunvis.3 \
+MLINKS+=unvis.3 strnunvis.3 \
+	unvis.3 strnunvisx.3 \
+	unvis.3 strunvis.3 \
 	unvis.3 strunvisx.3
-MLINKS+=vis.3 nvis.3 vis.3 snvis.3 vis.3 stravis.3 vis.3 strenvisx.3 \
-	vis.3 strnvis.3 vis.3 strnvisx.3 vis.3 strsenvisx.3 vis.3 strsnvis.3 \
-	vis.3 strsnvisx.3 vis.3 strsvis.3 vis.3 strsvisx.3 vis.3 strvis.3 \
-	vis.3 strvisx.3 vis.3 svis.3
+MLINKS+=vis.3 nvis.3 \
+	vis.3 snvis.3 \
+	vis.3 stravis.3 \
+	vis.3 strenvisx.3 \
+	vis.3 strnvis.3 \
+	vis.3 strnvisx.3 \
+	vis.3 strsenvisx.3 \
+	vis.3 strsnvis.3 \
+	vis.3 strsnvisx.3 \
+	vis.3 strsvis.3 \
+	vis.3 strsvisx.3 \
+	vis.3 strvis.3 \
+	vis.3 strvisx.3 \
+	vis.3 svis.3
 MLINKS+=wordexp.3 wordfree.3
 .endif
