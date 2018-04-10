@@ -477,11 +477,16 @@ nat_add_dispatch(netmsg_t nat_add_msg)
 int
 ip_fw3_ctl_nat_add(struct sockopt *sopt)
 {
+	struct ip_fw3_nat_context *nat_ctx;
 	struct netmsg_nat_add nat_add_msg, *msg;
 	struct ioc_nat *ioc;
 
 	msg = &nat_add_msg;
 	ioc = (struct ioc_nat *)(sopt->sopt_val);
+	nat_ctx = ip_fw3_nat_ctx[mycpuid];
+	if (nat_ctx->nats[ioc->id - 1] != NULL) {
+		return 1;
+	}
 	sooptcopyin(sopt, &msg->ioc_nat, sopt->sopt_valsize,
 			sizeof(struct ioc_nat));
 	netmsg_init(&msg->base, NULL, &curthread->td_msgport, 0,

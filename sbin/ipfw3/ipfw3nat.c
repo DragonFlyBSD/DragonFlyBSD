@@ -93,10 +93,9 @@ void
 nat_config(int ac, char **av)
 {
 	struct ioc_nat *ioc;
-	int i, len, tok;
+	int error, tok;
 	char *id, buf[NAT_BUF_LEN];
 
-	len = NAT_BUF_LEN;
 	memset(buf, 0, NAT_BUF_LEN);
 	ioc = (struct ioc_nat *)buf;
 
@@ -131,9 +130,13 @@ nat_config(int ac, char **av)
 			errx(EX_DATAERR, "unrecognised option ``%s''", av[-1]);
 		}
 	}
-	i = do_set_x(IP_FW_NAT_ADD, buf, LEN_IOC_NAT);
-	if (i) {
-		err(1, "do_set_x(%s)", "IP_FW_NAT_ADD");
+	error = do_set_x(IP_FW_NAT_ADD, buf, LEN_IOC_NAT);
+	if (error) {
+		if (errno == 1) {
+			errx(EX_DATAERR, "nat %s is exists", id);
+		} else {
+			err(1, "do_set_x(%s)", "IP_FW_NAT_ADD");
+		}
 	}
 
 	/* After every modification, we show the resultant rule. */
