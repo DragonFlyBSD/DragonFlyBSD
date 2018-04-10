@@ -33,6 +33,7 @@
 #define _CAM_SCSI_SCSI_DAIO_H_
 
 #include <sys/ioccom.h>
+#include <sys/types.h>
 
 #define DAIOCTRIM	_IOW('C', 128, off_t[2])
 
