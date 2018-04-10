@@ -244,7 +244,7 @@ done:
 		nbytes = strsnvis(strvised, sizeof(strvised), label,
 		    VIS_GLOB | VIS_NL, "\"'$");
 		if (nbytes == -1)
-			err(1, "strnvis");
+			err(1, "strsnvis");
 
 		printf("%s %s\n", name, strvised);
 	} else {
