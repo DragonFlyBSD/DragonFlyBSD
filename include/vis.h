@@ -34,7 +34,12 @@
 #ifndef _VIS_H_
 #define	_VIS_H_
 
-#include <sys/types.h>
+#include <machine/stdint.h>
+
+#ifndef _SIZE_T_DECLARED
+#define	_SIZE_T_DECLARED
+typedef	__size_t	size_t;
+#endif
 
 /*
  * to select alternate encoding format
