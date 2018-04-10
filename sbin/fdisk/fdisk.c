@@ -29,7 +29,6 @@
 #include <sys/param.h>
 #include <sys/diskslice.h>
 #include <sys/diskmbr.h>
-#include <sys/ioctl_compat.h>
 #include <sys/sysctl.h>
 #include <sys/stat.h>
 #include <ctype.h>
@@ -41,6 +40,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#include <bus/cam/scsi/scsi_daio.h>
 
 #define LBUF 100
 static char lbuf[LBUF];
@@ -804,7 +805,7 @@ erase_partition(int i)
 	ioarg[1] = partp->dp_size;
 	ioarg[1] *=secsize;
 	
-	if (ioctl(fd, IOCTLTRIM, ioarg) < 0) {
+	if (ioctl(fd, DAIOCTRIM, ioarg) < 0) {
 		printf("Device trim failed\n");
 		usage ();
 	}

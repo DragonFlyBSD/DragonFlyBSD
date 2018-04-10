@@ -35,7 +35,8 @@
 #include "hammer_util.h"
 
 #include <sys/sysctl.h>
-#include <sys/ioctl_compat.h>
+
+#include <bus/cam/scsi/scsi_daio.h>
 
 static int64_t getsize(const char *str, int pw);
 static int trim_volume(volume_info_t volume);
@@ -531,7 +532,7 @@ trim_volume(volume_info_t volume)
 		(unsigned long long)ioarg[0] / 512,
 		(unsigned long long)ioarg[1] / 512);
 
-	if (ioctl(volume->fd, IOCTLTRIM, ioarg) == -1) {
+	if (ioctl(volume->fd, DAIOCTRIM, ioarg) == -1) {
 		err(1, "Trimming %s failed", volume->name);
 		/* not reached */
 	}

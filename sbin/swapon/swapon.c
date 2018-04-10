@@ -36,7 +36,6 @@
 #include <sys/sysctl.h>
 #include <sys/linker.h>
 #include <sys/diskslice.h>
-#include <sys/ioctl_compat.h>
 #include <vm/vm_param.h>
 
 #include <err.h>
@@ -48,6 +47,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <libutil.h>
+
+#include <bus/cam/scsi/scsi_daio.h>
 
 static void usage(void);
 static int swap_on_off(char *name, int doingall, int trim, int ask);
@@ -342,7 +343,7 @@ trim_volume(char * name)
 	printf("Trimming Device:%s, sectors (%llu -%llu)\n",name,
 	     (unsigned long long)ioarg[0]/512,
 	     (unsigned long long)ioarg[1]/512);
-	if (ioctl(fd, IOCTLTRIM, ioarg) < 0) {
+	if (ioctl(fd, DAIOCTRIM, ioarg) < 0) {
 		printf("Device trim failed\n");
 		usage ();
 	}

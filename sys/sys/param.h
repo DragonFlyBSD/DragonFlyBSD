@@ -172,9 +172,10 @@
  * 500200 - 5.2 release
  * 500300 - 5.3 development
  * 500301 - rename some public UFS constants
+ * 500302 - move IOCTLTRIM to a better header and rename it to DAIOCTRIM
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500301	/* propagated to newvers */
+#define __DragonFly_version 500302	/* propagated to newvers */
 
 #include <sys/_null.h>
 

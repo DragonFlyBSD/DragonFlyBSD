@@ -34,7 +34,8 @@
 
 #include <inttypes.h>
 #include <stdlib.h>
-#include <sys/ioctl_compat.h>
+
+#include <bus/cam/scsi/scsi_daio.h>
 
 /*
  * make file system for cylinder-group style file systems
@@ -1263,7 +1264,7 @@ erfs(off_t byte_start, off_t size)
 	off_t ioarg[2];
 	ioarg[0] = byte_start;
 	ioarg[1] = size;
-	if (ioctl(fsi, IOCTLTRIM, ioarg) < 0) {
+	if (ioctl(fsi, DAIOCTRIM, ioarg) < 0) {
 		err(37, "Device trim failed\n");
 	}
 }

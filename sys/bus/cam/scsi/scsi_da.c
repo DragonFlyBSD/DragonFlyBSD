@@ -70,6 +70,7 @@
 #include "../cam_xpt_periph.h"
 #include "../cam_sim.h"
 
+#include "scsi_daio.h"
 #include "scsi_message.h"
 
 #ifndef _KERNEL 
@@ -420,6 +421,7 @@ daioctl(struct dev_ioctl_args *ap)
 	
 	switch (ap->a_cmd) {
 	case IOCTLTRIM:
+	case DAIOCTRIM:
 	{
 
 		bytes_left = del_num[1];
