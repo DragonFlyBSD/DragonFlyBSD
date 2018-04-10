@@ -77,9 +77,9 @@ MALLOC_DEFINE(M_AUTOFS, "autofs", "Automounter filesystem");
 struct objcache *autofs_request_objcache = NULL;
 struct objcache *autofs_node_objcache = NULL;
 
-static int	autofs_open(struct dev_open_args *ap);
-static int	autofs_close(struct dev_close_args *ap);
-static int	autofs_ioctl(struct dev_ioctl_args *ap);
+static d_open_t		autofs_open;
+static d_close_t	autofs_close;
+static d_ioctl_t	autofs_ioctl;
 
 struct dev_ops autofs_ops = {
 	{ "autofs", 0, 0 },
