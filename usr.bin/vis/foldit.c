@@ -27,15 +27,15 @@
  * SUCH DAMAGE.
  *
  * @(#)foldit.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/vis/foldit.c,v 1.4 1999/08/28 01:07:25 peter Exp $
+ * $NetBSD: foldit.c,v 1.7 2009/02/10 23:06:31 christos Exp $
  */
 
 #include <stdio.h>
-
+#include <vis.h>
 #include "extern.h"
 
 int
-foldit(const char *chunk, int col, int max)
+foldit(const char *chunk, int col, int max, int flags)
 {
 	const char *cp;
 
@@ -61,7 +61,7 @@ again:
 			col++;
 		}
 		if (col > (max - 2)) {
-			printf("\\\n");
+			printf(flags & VIS_MIMESTYLE ? "=\n" : "\\\n");
 			col = 0;
 			goto again;
 		}

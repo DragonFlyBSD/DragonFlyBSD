@@ -28,8 +28,7 @@
  *
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)unvis.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/unvis/unvis.c,v 1.5.2.1 2001/07/30 10:16:49 dd Exp $
- * $DragonFly: src/usr.bin/unvis/unvis.c,v 1.5 2005/02/19 00:32:01 liamfoy Exp $
+ * $NetBSD: unvis.c,v 1.13 2010/11/27 19:46:25 christos Exp $
  */
 
 #include <err.h>
@@ -38,46 +37,63 @@
 #include <unistd.h>
 #include <vis.h>
 
-static void process(FILE *, const char *);
-static void usage(void);
+static void process(FILE *, const char *, int);
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
 	FILE *fp;
-	int ch;
+	int ch, eflags = 0;
 
-	while ((ch = getopt(argc, argv, "")) != -1)
-		switch(ch) {
+	setprogname(argv[0]);
+	while ((ch = getopt(argc, argv, "eHhm")) != -1)
+		switch((char)ch) {
+		case 'e':
+			eflags |= VIS_NOESCAPE;
+			break;
+		case 'H':
+			eflags |= VIS_HTTP1866;
+			break;
+		case 'h':
+			eflags |= VIS_HTTP1808;
+			break;
+		case 'm':
+			eflags |= VIS_MIMESTYLE;
+			break;
 		case '?':
 		default:
-			usage();
+			fprintf(stderr,
+			    "usage: %s [-e] [-Hh | -m] [file...]\n",
+			    getprogname());
+			return EXIT_FAILURE;
 		}
 	argc -= optind;
 	argv += optind;
 
+	switch (eflags & (VIS_HTTP1808|VIS_HTTP1866|VIS_MIMESTYLE)) {
+	case VIS_HTTP1808|VIS_MIMESTYLE:
+	case VIS_HTTP1866|VIS_MIMESTYLE:
+	case VIS_HTTP1808|VIS_HTTP1866|VIS_MIMESTYLE:
+		errx(EXIT_FAILURE, "Can't mix -m with -h and/or -H");
+	default:
+		break;
+	}
+
 	if (*argv)
 		while (*argv) {
 			if ((fp = fopen(*argv, "r")) != NULL)
-				process(fp, *argv);
+				process(fp, *argv, eflags);
 			else
 				warn("%s", *argv);
 			argv++;
 		}
 	else
-		process(stdin, "<stdin>");
-	exit(0);
+		process(stdin, "<stdin>", eflags);
+	return EXIT_SUCCESS;
 }
 
 static void
-usage(void)
-{
-	fprintf(stderr, "usage: unvis [file ...]\n");
-	exit(1);
-}
-
-static void
-process(FILE *fp, const char *filename)
+process(FILE *fp, const char *filename, int eflags)
 {
 	int offset = 0, c, ret;
 	int state = 0;
@@ -86,7 +102,7 @@ process(FILE *fp, const char *filename)
 	while ((c = getc(fp)) != EOF) {
 		offset++;
 	again:
-		switch(ret = unvis(&outc, c, &state, 0)) {
+		switch(ret = unvis(&outc, (char)c, &state, eflags)) {
 		case UNVIS_VALID:
 			putchar(outc);
 			break;
@@ -104,6 +120,6 @@ process(FILE *fp, const char *filename)
 			errx(1, "bad return value (%d), can't happen", ret);
 		}
 	}
-	if (unvis(&outc, (char)0, &state, UNVIS_END) == UNVIS_VALID)
+	if (unvis(&outc, (char)0, &state, eflags | UNVIS_END) == UNVIS_VALID)
 		putchar(outc);
 }

@@ -29,4 +29,4 @@
  * SUCH DAMAGE.
  */
 
-int foldit(const char *, int, int);
+int foldit(const char *, int, int, int);
