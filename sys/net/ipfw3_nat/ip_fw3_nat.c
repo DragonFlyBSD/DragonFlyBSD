@@ -90,11 +90,20 @@ struct ip_fw3_nat_context	*ip_fw3_nat_ctx[MAXCPU];
 static struct callout 		ip_fw3_nat_cleanup_callout;
 extern struct ipfw_context 	*ipfw_ctx[MAXCPU];
 extern ip_fw_ctl_t 		*ipfw_ctl_nat_ptr;
-static int 			fw3_nat_cleanup_interval = 1;
+static int 			sysctl_var_cleanup_interval = 1;
+static int 			sysctl_var_icmp_timeout = 10;
+static int 			sysctl_var_tcp_timeout = 60;
+static int 			sysctl_var_udp_timeout = 30;
 
 SYSCTL_NODE(_net_inet_ip, OID_AUTO, fw3_nat, CTLFLAG_RW, 0, "ipfw3 NAT");
 SYSCTL_INT(_net_inet_ip_fw3_nat, OID_AUTO, cleanup_interval, CTLFLAG_RW,
-		&fw3_nat_cleanup_interval, 0, "default life time");
+		&sysctl_var_cleanup_interval, 0, "default life time");
+SYSCTL_INT(_net_inet_ip_fw3_nat, OID_AUTO, icmp_timeout, CTLFLAG_RW,
+		&sysctl_var_icmp_timeout, 0, "default icmp state life time");
+SYSCTL_INT(_net_inet_ip_fw3_nat, OID_AUTO, tcp_timeout, CTLFLAG_RW,
+		&sysctl_var_tcp_timeout, 0, "default tcp state life time");
+SYSCTL_INT(_net_inet_ip_fw3_nat, OID_AUTO, udp_timeout, CTLFLAG_RW,
+		&sysctl_var_udp_timeout, 0, "default udp state life time");
 
 RB_PROTOTYPE(state_tree, nat_state, entries, nat_state_cmp);
 RB_GENERATE(state_tree, nat_state, entries, nat_state_cmp);
@@ -576,7 +585,7 @@ ipfw3_nat_cleanup_func(void *dummy __unused)
 	netisr_domsg(&msg, 0);
 
 	callout_reset(&ip_fw3_nat_cleanup_callout,
-			fw3_nat_cleanup_interval * hz,
+			sysctl_var_cleanup_interval * hz,
 			ipfw3_nat_cleanup_func,
 			NULL);
 }
@@ -595,7 +604,7 @@ ip_fw3_nat_init(void)
 
 	callout_init_mp(&ip_fw3_nat_cleanup_callout);
 	callout_reset(&ip_fw3_nat_cleanup_callout,
-			fw3_nat_cleanup_interval * hz,
+			sysctl_var_cleanup_interval * hz,
 			ipfw3_nat_cleanup_func,
 			NULL);
 	return 0;
