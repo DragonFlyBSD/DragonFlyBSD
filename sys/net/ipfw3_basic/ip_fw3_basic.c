@@ -73,22 +73,22 @@
 
 #define TIME_LEQ(a, b)	((int)((a) - (b)) <= 0)
 
-extern struct ipfw_context	*ipfw_ctx[MAXCPU];
-extern struct ipfw_sync_context sync_ctx;
-extern int fw_verbose;
-extern ipfw_basic_delete_state_t *ipfw_basic_flush_state_prt;
-extern ipfw_basic_append_state_t *ipfw_basic_append_state_prt;
-extern ipfw_sync_send_state_t *ipfw_sync_send_state_prt;
-extern ipfw_sync_install_state_t *ipfw_sync_install_state_prt;
+extern struct ipfw_context		*ipfw_ctx[MAXCPU];
+extern struct ipfw_sync_context 	sync_ctx;
+extern int 				fw_verbose;
+extern ipfw_basic_delete_state_t 	*ipfw_basic_flush_state_prt;
+extern ipfw_basic_append_state_t 	*ipfw_basic_append_state_prt;
+extern ipfw_sync_send_state_t 		*ipfw_sync_send_state_prt;
+extern ipfw_sync_install_state_t 	*ipfw_sync_install_state_prt;
 
-static int ip_fw_basic_loaded;
-static struct netmsg_base ipfw_timeout_netmsg;	/* schedule ipfw timeout */
-static struct callout ipfw_tick_callout;
-static int state_lifetime = 20;
-static int state_expiry_check_interval = 10;
-static int state_count_max = 4096;
-static int state_hash_size_old = 0;
-static int state_hash_size = 4096;
+static struct netmsg_base 	ipfw_timeout_netmsg; /* schedule ipfw timeout */
+static struct callout 		ipfw_tick_callout;
+static int 	ip_fw_basic_loaded;
+static int 	state_lifetime = 20;
+static int	state_expiry_check_interval = 10;
+static int 	state_count_max = 4096;
+static int 	state_hash_size_old = 0;
+static int 	state_hash_size = 4096;
 
 
 static int ipfw_sysctl_adjust_hash_size(SYSCTL_HANDLER_ARGS);
@@ -108,6 +108,10 @@ SYSCTL_INT(_net_inet_ip_fw_basic, OID_AUTO,
 		"default state expiry check interval");
 SYSCTL_INT(_net_inet_ip_fw_basic, OID_AUTO, state_count_max, CTLFLAG_RW,
 		&state_count_max, 0, "maximum of state");
+
+static struct ip_fw *lookup_next_rule(struct ip_fw *me);
+static int iface_match(struct ifnet *ifp, ipfw_insn_if *cmd);
+static __inline int hash_packet(struct ipfw_flow_id *id);
 
 static int
 ipfw_sysctl_adjust_hash_size(SYSCTL_HANDLER_ARGS)
@@ -175,70 +179,6 @@ adjust_hash_size_dispatch(netmsg_t nmsg)
 	ctx->state_hash_size = state_hash_size;
 	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
-
-
-/*	prototype of the checker functions	*/
-void check_count(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_skipto(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_forward(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_check_state(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-
-void check_in(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_out(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_via(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_proto(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_prob(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_from(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_from_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_from_me(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_from_mask(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_to(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_to_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_to_me(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_to_mask(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_keep_state(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_tag(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_untag(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_tagged(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_src_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_dst_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_src_n_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_dst_n_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-
-/*	prototype of the utility functions	*/
-int match_state(ipfw_insn *cmd, struct ipfw_flow_id *fid,
-	struct ip_fw_state *state);
-int count_match_state(ipfw_insn *cmd, struct ipfw_flow_id *fid,
-	struct ip_fw_state *state, int *count);
-
-static struct ip_fw *lookup_next_rule(struct ip_fw *me);
-static int iface_match(struct ifnet *ifp, ipfw_insn_if *cmd);
-static __inline int hash_packet(struct ipfw_flow_id *id);
 
 static __inline int
 hash_packet(struct ipfw_flow_id *id)
@@ -610,11 +550,11 @@ void
 check_from(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
-	struct in_addr src_ip;
 	u_int hlen = 0;
 	struct mbuf *m = (*args)->m;
 	struct ip *ip = mtod(m, struct ip *);
-	src_ip = ip->ip_src;
+	struct in_addr src_ip = ip->ip_src;
+
 	if ((*args)->eh == NULL ||
 		(m->m_pkthdr.len >= sizeof(struct ip) &&
 		ntohs((*args)->eh->ether_type) == ETHERTYPE_IP)) {
@@ -657,11 +597,11 @@ void
 check_from_me(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
-	struct in_addr src_ip;
 	u_int hlen = 0;
 	struct mbuf *m = (*args)->m;
 	struct ip *ip = mtod(m, struct ip *);
-	src_ip = ip->ip_src;
+	struct in_addr src_ip = ip->ip_src;
+
 	if ((*args)->eh == NULL ||
 		(m->m_pkthdr.len >= sizeof(struct ip) &&
 		ntohs((*args)->eh->ether_type) == ETHERTYPE_IP)) {
@@ -681,11 +621,11 @@ void
 check_from_mask(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
-	struct in_addr src_ip;
 	u_int hlen = 0;
 	struct mbuf *m = (*args)->m;
 	struct ip *ip = mtod(m, struct ip *);
-	src_ip = ip->ip_src;
+	struct in_addr src_ip = ip->ip_src;
+
 	if ((*args)->eh == NULL ||
 		(m->m_pkthdr.len >= sizeof(struct ip) &&
 		ntohs((*args)->eh->ether_type) == ETHERTYPE_IP)) {
@@ -703,11 +643,11 @@ void
 check_to(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
-	struct in_addr dst_ip;
 	u_int hlen = 0;
 	struct mbuf *m = (*args)->m;
 	struct ip *ip = mtod(m, struct ip *);
-	dst_ip = ip->ip_dst;
+	struct in_addr dst_ip = ip->ip_dst;
+
 	if ((*args)->eh == NULL ||
 		(m->m_pkthdr.len >= sizeof(struct ip) &&
 		 ntohs((*args)->eh->ether_type) == ETHERTYPE_IP)) {
@@ -750,11 +690,11 @@ void
 check_to_me(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
-	struct in_addr dst_ip;
 	u_int hlen = 0;
 	struct mbuf *m = (*args)->m;
 	struct ip *ip = mtod(m, struct ip *);
-	dst_ip = ip->ip_dst;
+	struct in_addr dst_ip = ip->ip_dst;
+
 	if ((*args)->eh == NULL ||
 		(m->m_pkthdr.len >= sizeof(struct ip) &&
 		ntohs((*args)->eh->ether_type) == ETHERTYPE_IP)) {
@@ -774,11 +714,11 @@ void
 check_to_mask(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
-	struct in_addr dst_ip;
 	u_int hlen = 0;
 	struct mbuf *m = (*args)->m;
 	struct ip *ip = mtod(m, struct ip *);
-	dst_ip = ip->ip_src;
+	struct in_addr dst_ip = ip->ip_dst;
+
 	if ((*args)->eh == NULL ||
 		(m->m_pkthdr.len >= sizeof(struct ip) &&
 		ntohs((*args)->eh->ether_type) == ETHERTYPE_IP)) {
