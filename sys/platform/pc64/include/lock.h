@@ -63,11 +63,19 @@
 	popq	%rcx ;		/* flags */			\
 	cli ;							\
 	orq	$PSL_C,%rcx ;	/* make sure non-zero */	\
-7: ;								\
-	movq	$0,%rax ;	/* expected contents of lock */	\
+906: ;								\
+	movq	mem, %rax ;					\
+907: ;								\
+	cmpq	$0,%rax ;					\
+	jnz	908f ;						\
 	lock cmpxchgq %rcx,mem ; /* Z=1 (jz) on success */	\
+	jz	909f ; 						\
 	pause ;							\
-	jnz	7b ; 						\
+	jmp	907b ;						\
+908: ;								\
+	pause ;							\
+	jmp	906b ;						\
+909: ;								\
 
 #define SPIN_LOCK_PUSH_REGS					\
 	subq	$16,%rsp ;					\

@@ -54,7 +54,6 @@ ACPI_MODULE_NAME("TIMER")
 
 static device_t			acpi_timer_dev;
 static UINT32			acpi_timer_resolution;
-static sysclock_t		acpi_last_counter;
 
 static sysclock_t acpi_timer_get_timecount(void);
 static sysclock_t acpi_timer_get_timecount24(void);
@@ -203,22 +202,56 @@ acpi_timer_construct(struct cputimer *timer, sysclock_t oldclock)
  * is only 24 bits then we have to keep track of the upper 8 bits on our
  * own.
  *
- * XXX we could probably get away with using a per-cpu field for this and
- * just use interrupt disablement instead of clock_lock.
+ * per-cpu tracking fields can cause problems on VMs if one or more cpus
+ * stalls long-enough for the timer to turn-over twice, so instead optimize
+ * the locking case by not updating acpi_cputimer.base until the timer
+ * has gone more than 1/16 its full range.
+ *
+ * These are horrible hacks, but at least the SMP interference is minimal
+ * with them.  Note that just reading the ACPI timer itself represents a
+ * bottleneck due to the slow I/O.
  */
 static sysclock_t
 acpi_timer_get_timecount24(void)
 {
     sysclock_t counter;
+    sysclock_t last_counter;
+    ssysclock_t delta;
+    ssysclock_t admit;
 
-    clock_lock();
+    /*
+     * Range beyond which we force clock_lock.  Make it occur more
+     * often on one cpu than on the others to avoid nearly all races.
+     */
+    if (mycpu->gd_cpuid == 1)
+	    admit = (ssysclock_t)(0x01000000 / 32);
+    else
+	    admit = (ssysclock_t)(0x01000000 / 16);
+
+    /*
+     * 24-bit timer, shortcut
+     */
+    last_counter = acpi_cputimer.base;
+    cpu_ccfence();
     AcpiGetTimer(&counter);
-    if (counter < acpi_last_counter)
-	acpi_cputimer.base += 0x01000000;
-    acpi_last_counter = counter;
-    counter += acpi_cputimer.base;
+    delta = (ssysclock_t)(counter - (last_counter & 0x00FFFFFF));
+    if (delta > -admit && delta < admit)
+	return ((last_counter & 0xFF000000) + counter);
+
+    /*
+     * 24-bit timer, the hard way
+     */
+    clock_lock();
+    last_counter = acpi_cputimer.base;
+    AcpiGetTimer(&counter);
+    if (counter < (last_counter & 0x00FFFFFF))
+	last_counter += 0x01000000;
+    last_counter = (last_counter & 0xFF000000) + counter;
+    cpu_ccfence();
+    acpi_cputimer.base = last_counter;
     clock_unlock();
-    return (counter);
+
+    return (last_counter);
 }
 
 static sysclock_t
@@ -237,13 +270,10 @@ acpi_timer_get_timecount(void)
  * against the fact that the bits can be wrong in two directions.  If
  * we only cared about monosity, two reads would be enough.
  */
-static sysclock_t
-acpi_timer_get_timecount_safe(void)
+static __inline sysclock_t
+_acpi_timer_get_timecount_safe(void)
 {
     u_int u1, u2, u3;
-
-    if (acpi_timer_resolution != 32)
-	clock_lock();
 
     AcpiGetTimer(&u2);
     AcpiGetTimer(&u3);
@@ -253,13 +283,56 @@ acpi_timer_get_timecount_safe(void)
 	AcpiGetTimer(&u3);
     } while (u1 > u2 || u2 > u3);
 
-    if (acpi_timer_resolution != 32) {
-	if (u2 < acpi_last_counter)
-	    acpi_cputimer.base += 0x01000000;
-	acpi_last_counter = u2;
-	clock_unlock();
-    }
-    return (u2 + acpi_cputimer.base);
+    return (u2);
+}
+
+static sysclock_t
+acpi_timer_get_timecount_safe(void)
+{
+    sysclock_t counter;
+    sysclock_t last_counter;
+    ssysclock_t delta;
+    ssysclock_t admit;
+
+    /*
+     * Range beyond which we force clock_lock.  Make it occur more
+     * often on one cpu than on the others to avoid nearly all races.
+     */
+    if (mycpu->gd_cpuid == 1)
+	    admit = (ssysclock_t)(0x01000000 / 32);
+    else
+	    admit = (ssysclock_t)(0x01000000 / 16);
+
+    /*
+     * 32-bit timer is easy
+     */
+    if (acpi_timer_resolution == 32)
+	return _acpi_timer_get_timecount_safe();
+
+    /*
+     * 24-bit timer, shortcut
+     */
+    last_counter = acpi_cputimer.base;
+    cpu_ccfence();
+    counter = _acpi_timer_get_timecount_safe();
+    delta = (ssysclock_t)(counter - (last_counter & 0x00FFFFFF));
+    if (delta > -admit && delta < admit)
+	return ((last_counter & 0xFF000000) + counter);
+
+    /*
+     * 24-bit timer, the hard way
+     */
+    clock_lock();
+    last_counter = acpi_cputimer.base;
+    counter = _acpi_timer_get_timecount_safe();
+    if (counter < (last_counter & 0x00FFFFFF))
+	last_counter += 0x01000000;
+    last_counter = (last_counter & 0xFF000000) + counter;
+    cpu_ccfence();
+    acpi_cputimer.base = last_counter;
+    clock_unlock();
+
+    return (last_counter);
 }
 
 /*
