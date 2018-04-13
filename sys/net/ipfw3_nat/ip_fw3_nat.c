@@ -507,17 +507,67 @@ ip_fw3_ctl_nat_add(struct sockopt *sopt)
 void
 nat_del_dispatch(netmsg_t nat_del_msg)
 {
-	/* TODO */
+	struct ip_fw3_nat_context *nat_ctx;
+	struct netmsg_nat_del *msg;
+	struct cfg_nat *nat;
+	struct nat_state *s, *tmp;
+
+	msg = (struct netmsg_nat_del *)nat_del_msg;
+
+	nat_ctx = ip_fw3_nat_ctx[mycpuid];
+	nat = nat_ctx->nats[msg->id - 1];
+	if (nat != NULL) {
+		if (mycpuid == 0) {
+			RB_FOREACH_SAFE(s, state_tree, &nat->tree_icmp_in, tmp) {
+				RB_REMOVE(state_tree, &nat->tree_icmp_in, s);
+				if (s != NULL) {
+					kfree(s, M_IP_FW3_NAT);
+				}
+			}
+			RB_FOREACH_SAFE(s, state_tree, &nat->tree_icmp_out, tmp) {
+				RB_REMOVE(state_tree, &nat->tree_icmp_out, s);
+				if (s != NULL) {
+					kfree(s, M_IP_FW3_NAT);
+				}
+			}
+		}
+		RB_FOREACH_SAFE(s, state_tree, &nat->tree_tcp_in, tmp) {
+			RB_REMOVE(state_tree, &nat->tree_tcp_in, s);
+			if (s != NULL) {
+				kfree(s, M_IP_FW3_NAT);
+			}
+		}
+		RB_FOREACH_SAFE(s, state_tree, &nat->tree_tcp_out, tmp) {
+			RB_REMOVE(state_tree, &nat->tree_tcp_out, s);
+			if (s != NULL) {
+				kfree(s, M_IP_FW3_NAT);
+			}
+		}
+		RB_FOREACH_SAFE(s, state_tree, &nat->tree_udp_in, tmp) {
+			RB_REMOVE(state_tree, &nat->tree_udp_in, s);
+			if (s != NULL) {
+				kfree(s, M_IP_FW3_NAT);
+			}
+		}
+		RB_FOREACH_SAFE(s, state_tree, &nat->tree_udp_out, tmp) {
+			RB_REMOVE(state_tree, &nat->tree_icmp_in, s);
+			if (s != NULL) {
+				kfree(s, M_IP_FW3_NAT);
+			}
+		}
+		kfree(nat, M_IP_FW3_NAT);
+		nat_ctx->nats[msg->id - 1] = NULL;
+	}
+	netisr_forwardmsg_all(&nat_del_msg->base, mycpuid + 1);
 }
 
 int
 ip_fw3_ctl_nat_del(struct sockopt *sopt)
 {
-	struct netmsg_nat_del nat_del_msg;
-	struct netmsg_nat_del *msg;
+	struct netmsg_nat_del nat_del_msg, *msg;
 
-	/* TODO */
 	msg = &nat_del_msg;
+	msg->id = *((int *)sopt->sopt_val);
 	netmsg_init(&msg->base, NULL, &curthread->td_msgport,
 			0, nat_del_dispatch);
 
