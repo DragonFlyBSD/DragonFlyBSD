@@ -193,7 +193,7 @@ list_modules(int ac, char *av[])
 		err(EX_OSERR, "realloc");
 
 	get_modules(module_str, len);
-	printf("%s", (char *)module_str);
+	printf("%s\n", (char *)module_str);
 }
 void
 parse_accept(ipfw_insn **cmd, int *ac, char **av[])
@@ -2515,8 +2515,7 @@ ipfw_main(int ac, char **av)
 		sets_handler(ac, av);
 	} else if (!strncmp(*av, "module", strlen(*av))) {
 		NEXT_ARG;
-		if (!strncmp(*av, "show", strlen(*av)) ||
-			!strncmp(*av, "show", strlen(*av))) {
+		if (!strncmp(*av, "list", strlen(*av))) {
 			list_modules(ac, av);
 		} else {
 			errx(EX_USAGE, "bad ipfw module command `%s'", *av);
