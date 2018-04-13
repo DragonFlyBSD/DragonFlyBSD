@@ -288,12 +288,12 @@ load_modules(void)
 void
 prepare_default_funcs(void)
 {
-	/* register allow*/
+	/* register allow */
 	register_ipfw_keyword(MODULE_BASIC_ID, O_BASIC_ACCEPT, "allow", ACTION);
 	register_ipfw_keyword(MODULE_BASIC_ID, O_BASIC_ACCEPT, "accept", ACTION);
 	register_ipfw_func(MODULE_BASIC_ID, O_BASIC_ACCEPT,
 			(parser_func)parse_accept, (shower_func)show_accept);
-	/* register deny*/
+	/* register deny */
 	register_ipfw_keyword(MODULE_BASIC_ID, O_BASIC_DENY, "deny", ACTION);
 	register_ipfw_keyword(MODULE_BASIC_ID, O_BASIC_DENY, "reject", ACTION);
 	register_ipfw_func(MODULE_BASIC_ID, O_BASIC_DENY,
@@ -306,7 +306,7 @@ register_ipfw_keyword(int module, int opcode, char *word, int type)
 	struct ipfw_keyword *tmp;
 
 	tmp=keywords;
-	for(;;) {
+	for (;;) {
 		if (tmp->type == NONE) {
 			strcpy(tmp->word, word);
 			tmp->module = module;

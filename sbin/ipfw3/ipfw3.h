@@ -115,17 +115,16 @@ struct char_int_map {
 	int val;
 };
 
-typedef void (*parser_func)(ipfw_insn **cmd,int *ac, char **av[]);
-typedef void (*shower_func)(ipfw_insn *cmd, int show_or);
-typedef void (*register_func)(int module, int opcode,
-		parser_func parser, shower_func shower);
-typedef void (*register_keyword)(int module, int opcode, char *word, int type);
-void register_ipfw_keyword(int module, int opcode, char *word, int type);
-void register_ipfw_func(int module, int opcode,
-		parser_func parser, shower_func shower);
-typedef void (*init_module)(register_func func, register_keyword keyword);
-int do_get_x(int optname, void *rule, int *optlen);
-int do_set_x(int optname, void *rule, int optlen);
+typedef void (*parser_func)(ipfw_insn **,int *, char ***);
+typedef void (*shower_func)(ipfw_insn *, int);
+typedef void (*register_func)(int, int, parser_func, shower_func);
+typedef void (*register_keyword)(int, int, char *, int);
+typedef void (*init_module)(register_func, register_keyword);
 
-int match_token(struct char_int_map *table, char *string);
+void 	register_ipfw_keyword(int module, int opcode, char *word, int type);
+void 	register_ipfw_func(int, int, parser_func, shower_func);
+int	do_get_x(int optname, void *rule, int *optlen);
+int	do_set_x(int optname, void *rule, int optlen);
+
+int	match_token(struct char_int_map *table, char *string);
 #endif
