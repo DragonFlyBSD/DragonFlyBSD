@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2016-2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -121,6 +121,7 @@ typedef struct nvme_subqueue {
 	 */
 	struct lock	lk;		/* queue lock controls access */
 	struct nvme_softc *sc;
+	nvme_request_t	*dump_req;	/* one request is set aside */
 	nvme_request_t	*first_avail;
 	nvme_request_t	*reqary;
 	uint32_t	nqe;		/* #of queue entries */
@@ -290,9 +291,13 @@ void nvme_free_comqueue(nvme_softc_t *sc, uint16_t qid);
 nvme_request_t *nvme_get_admin_request(nvme_softc_t *sc, uint8_t opcode);
 nvme_request_t *nvme_get_request(nvme_subqueue_t *queue, uint8_t opcode,
 			char *kva, size_t bytes);
+nvme_request_t *nvme_get_dump_request(nvme_subqueue_t *queue, uint8_t opcode,
+			char *kva, size_t bytes);
 void nvme_submit_request(nvme_request_t *req);
-int nvme_wait_request(nvme_request_t *req, int ticks);
+int nvme_wait_request(nvme_request_t *req);
+int nvme_poll_request(nvme_request_t *req);
 void nvme_put_request(nvme_request_t *req);
+void nvme_put_dump_request(nvme_request_t *req);
 void nvme_poll_completions(nvme_comqueue_t *queue, struct lock *lk);
 
 int nvme_start_admin_thread(nvme_softc_t *sc);
@@ -302,7 +307,7 @@ int nvme_create_subqueue(nvme_softc_t *sc, uint16_t qid);
 int nvme_create_comqueue(nvme_softc_t *sc, uint16_t qid);
 int nvme_delete_subqueue(nvme_softc_t *sc, uint16_t qid);
 int nvme_delete_comqueue(nvme_softc_t *sc, uint16_t qid);
-int nvme_issue_shutdown(nvme_softc_t *sc);
+int nvme_issue_shutdown(nvme_softc_t *sc, int dopoll);
 
 void nvme_disk_attach(nvme_softns_t *nsc);
 void nvme_disk_detach(nvme_softns_t *nsc);

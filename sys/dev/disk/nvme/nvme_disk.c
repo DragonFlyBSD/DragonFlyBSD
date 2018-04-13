@@ -436,6 +436,7 @@ nvme_dump(struct dev_dump_args *ap)
 	nvme_subqueue_t *subq;
 	nvme_comqueue_t *comq;
 	nvme_request_t *req;
+	int didlock;
 
 	/*
 	 * Calculate sector/extent
@@ -451,7 +452,7 @@ nvme_dump(struct dev_dump_args *ap)
 		 *
 		 * get_request does not need the subq lock.
 		 */
-		req = nvme_get_request(subq, NVME_IOCMD_WRITE,
+		req = nvme_get_dump_request(subq, NVME_IOCMD_WRITE,
 				       ap->a_virtual, nlba * nsc->blksize);
 		req->cmd.write.head.nsid = nsc->nsid;
 		req->cmd.write.start_lba = secno;
@@ -462,7 +463,7 @@ nvme_dump(struct dev_dump_args *ap)
 		 *
 		 * get_request does not need the subq lock.
 		 */
-		req = nvme_get_request(subq, NVME_IOCMD_FLUSH, NULL, 0);
+		req = nvme_get_dump_request(subq, NVME_IOCMD_FLUSH, NULL, 0);
 		req->cmd.flush.head.nsid = nsc->nsid;
 	}
 
@@ -472,20 +473,33 @@ nvme_dump(struct dev_dump_args *ap)
 	 */
 	req->callback = NULL;
 	req->nsc = nsc;
-	lockmgr(&subq->lk, LK_EXCLUSIVE);
+
+	/*
+	 * 500 x 1uS poll wait on lock.  We might be the idle thread, so
+	 * we can't safely block during a dump.
+	 */
+	didlock = 500;
+	while (lockmgr(&subq->lk, LK_EXCLUSIVE | LK_NOWAIT) != 0) {
+		if (--didlock == 0)
+			break;
+		tsc_delay(1000);	/* 1uS */
+		lwkt_switch();
+	}
 	nvme_submit_request(req);	/* needs subq lock */
-	lockmgr(&subq->lk, LK_RELEASE);
+	if (didlock)
+		lockmgr(&subq->lk, LK_RELEASE);
 
 	comq = req->comq;
-	nvme_wait_request(req, 1);
-	nvme_put_request(req);			/* does not need subq lock */
+	nvme_poll_request(req);
+	nvme_put_dump_request(req);		/* does not need subq lock */
 
 	/*
 	 * Shut the nvme controller down nicely when we finish the dump.
+	 * We should to do this whether we are in a panic or not because
+	 * frankly the dump is overwriting swap space, thus the system is
+	 * probably not stable.
 	 */
 	if (nlba == 0)
-		nvme_issue_shutdown(sc);
-
-
+		nvme_issue_shutdown(sc, 1);
 	return 0;
 }

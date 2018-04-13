@@ -231,7 +231,7 @@ nvme_admin_state_identify_ctlr(nvme_softc_t *sc)
 	req->cmd.identify.cntid = 0;
 	bzero(req->info, sizeof(*req->info));
 	nvme_submit_request(req);
-	status = nvme_wait_request(req, hz);
+	status = nvme_wait_request(req);
 	/* XXX handle status */
 
 	sc->idctlr = req->info->idctlr;
@@ -324,7 +324,7 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 	 * return more than the requested number of queues while others
 	 * will not).
 	 */
-	status = nvme_wait_request(req, hz);
+	status = nvme_wait_request(req);
 	/* XXX handle status */
 
 	if (status == 0) {
@@ -489,7 +489,7 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 	req->cmd.setfeat.intcoal.time = 0;
 
 	nvme_submit_request(req);
-	status = nvme_wait_request(req, hz);
+	status = nvme_wait_request(req);
 	if (status) {
 		device_printf(sc->dev,
 			      "Interrupt coalesce failed status=%d\n",
@@ -531,7 +531,7 @@ nvme_admin_state_identify_ns(nvme_softc_t *sc)
 		req->cmd.identify.cntid = 0;
 		bzero(req->info, sizeof(*req->info));
 		nvme_submit_request(req);
-		status = nvme_wait_request(req, hz);
+		status = nvme_wait_request(req);
 		kprintf("nsquery status %08x\n", status);
 
 #if 0
@@ -553,7 +553,7 @@ nvme_admin_state_identify_ns(nvme_softc_t *sc)
 		req->cmd.identify.cntid = 0;
 		bzero(req->info, sizeof(*req->info));
 		nvme_submit_request(req);
-		status = nvme_wait_request(req, hz);
+		status = nvme_wait_request(req);
 		kprintf("nsquery status %08x\n", status);
 		/* XXX handle status */
 
@@ -584,7 +584,7 @@ nvme_admin_state_identify_ns(nvme_softc_t *sc)
 		req->cmd.identify.head.nsid = rp->nsids[i];
 		bzero(req->info, sizeof(*req->info));
 		nvme_submit_request(req);
-		status = nvme_wait_request(req, hz);
+		status = nvme_wait_request(req);
 		if (status != 0) {
 			kprintf("NS FAILED %08x\n", status);
 			continue;

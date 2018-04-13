@@ -488,7 +488,7 @@ nvme_pci_detach(device_t dev)
 	/*
 	 * Issue a normal shutdown and wait for completion
 	 */
-	nvme_issue_shutdown(sc);
+	nvme_issue_shutdown(sc, 0);
 
 	/*
 	 * Disable the chip

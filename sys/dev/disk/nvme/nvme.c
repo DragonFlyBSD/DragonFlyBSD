@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2016-2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -198,8 +198,18 @@ nvme_alloc_subqueue(nvme_softc_t *sc, uint16_t qid)
 					M_NVME, M_WAITOK | M_ZERO);
 		for (i = 0; i < queue->nqe; ++i) {
 			req = &queue->reqary[i];
-			req->next_avail = queue->first_avail;
-			queue->first_avail = req;
+			if (i == 0) {
+				/*
+				 * Set aside one request for dump operation
+				 */
+				queue->dump_req = req;
+			} else {
+				/*
+				 * The rest go through the normal list
+				 */
+				req->next_avail = queue->first_avail;
+				queue->first_avail = req;
+			}
 			req->subq = queue;
 			req->comq = &sc->comqueues[queue->comqid];
 			req->cmd_id = i;
@@ -333,6 +343,74 @@ nvme_get_admin_request(nvme_softc_t *sc, uint8_t opcode)
  * ADMIN AND I/O REQUEST HANDLING
  */
 
+static __inline
+void
+_nvme_fill_request(nvme_subqueue_t *queue, uint8_t opcode,
+		   char *kva, size_t bytes,
+		   nvme_request_t *req)
+{
+	/*
+	 * Fill-in basic fields and do the DMA mapping.
+	 */
+	req->next_avail = NULL;
+	KKASSERT(req->state == NVME_REQ_AVAIL);
+	req->state = NVME_REQ_ALLOCATED;
+	req->callback = NULL;
+	req->waiting = 0;
+
+	req->cmd.head.opcode = opcode;
+	req->cmd.head.flags = NVME_SUBQFLG_PRP | NVME_SUBQFLG_NORM;
+	req->cmd.head.cid = req->cmd_id;
+	req->cmd.head.nsid = 0;
+	req->cmd.head.mptr = 0;
+	req->cmd.head.prp1 = 0;
+	req->cmd.head.prp2 = 0;
+	req->cmd.dw10 = 0;
+	req->cmd.dw11 = 0;
+	req->cmd.dw12 = 0;
+	req->cmd.dw13 = 0;
+	req->cmd.dw14 = 0;
+	req->cmd.dw15 = 0;
+
+	if (kva) {
+		size_t count = 0;
+		size_t idx = 0;
+		vm_paddr_t paddr;
+		vm_paddr_t pprptab;
+		uint64_t *kprptab;
+		KKASSERT(bytes >= 0 && bytes <= MAXPHYS);
+
+		kprptab = queue->kprps +
+			  (MAXPHYS / PAGE_SIZE) * req->cmd_id;
+		pprptab = queue->pprps +
+			  (MAXPHYS / PAGE_SIZE) * req->cmd_id *
+			  sizeof(uint64_t);
+
+		while (count < bytes) {
+			paddr = vtophys(kva + count);
+			if (idx == 0) {
+				KKASSERT((paddr & 3) == 0);
+				req->cmd.head.prp1 = paddr;
+				count += (((intptr_t)kva + PAGE_SIZE) &
+					  ~(intptr_t)PAGE_MASK) -
+					 (intptr_t)kva;
+			} else if (idx == 1 && count + PAGE_SIZE >= bytes) {
+				KKASSERT((paddr & PAGE_MASK) == 0);
+				req->cmd.head.prp2 = paddr;
+				count += PAGE_SIZE;
+			} else {
+				KKASSERT((paddr & PAGE_MASK) == 0);
+				/* if (idx == 1) -- not needed, just repeat */
+				req->cmd.head.prp2 = pprptab; /* repeat */
+				kprptab[idx - 1] = paddr;
+				count += PAGE_SIZE;
+			}
+			++idx;
+		}
+	}
+}
+
+
 /*
  * Obtain a request and handle DMA mapping the supplied kernel buffer.
  * Fields in cmd.head will be initialized and remaining fields will be zero'd.
@@ -402,65 +480,29 @@ nvme_get_request(nvme_subqueue_t *queue, uint8_t opcode,
 	++queue->unsubmitted;
 	lockmgr(&queue->lk, LK_RELEASE);
 
-	/*
-	 * Fill-in basic fields and do the DMA mapping.
-	 */
-	req->next_avail = NULL;
-	KKASSERT(req->state == NVME_REQ_AVAIL);
-	req->state = NVME_REQ_ALLOCATED;
-	req->callback = NULL;
-	req->waiting = 0;
+	_nvme_fill_request(queue, opcode, kva, bytes, req);
 
-	req->cmd.head.opcode = opcode;
-	req->cmd.head.flags = NVME_SUBQFLG_PRP | NVME_SUBQFLG_NORM;
-	req->cmd.head.cid = req->cmd_id;
-	req->cmd.head.nsid = 0;
-	req->cmd.head.mptr = 0;
-	req->cmd.head.prp1 = 0;
-	req->cmd.head.prp2 = 0;
-	req->cmd.dw10 = 0;
-	req->cmd.dw11 = 0;
-	req->cmd.dw12 = 0;
-	req->cmd.dw13 = 0;
-	req->cmd.dw14 = 0;
-	req->cmd.dw15 = 0;
+	return req;
+}
 
-	if (kva) {
-		size_t count = 0;
-		size_t idx = 0;
-		vm_paddr_t paddr;
-		vm_paddr_t pprptab;
-		uint64_t *kprptab;
-		KKASSERT(bytes >= 0 && bytes <= MAXPHYS);
+/*
+ * dump path only, cannot block.  Allow the lock to fail and bump
+ * queue->unsubmitted anyway.
+ */
+nvme_request_t *
+nvme_get_dump_request(nvme_subqueue_t *queue, uint8_t opcode,
+		 char *kva, size_t bytes)
+{
+	nvme_request_t *req;
+	int error;
 
-		kprptab = queue->kprps +
-			  (MAXPHYS / PAGE_SIZE) * req->cmd_id;
-		pprptab = queue->pprps +
-			  (MAXPHYS / PAGE_SIZE) * req->cmd_id *
-			  sizeof(uint64_t);
+	error = lockmgr(&queue->lk, LK_EXCLUSIVE | LK_NOWAIT);
+	req = queue->dump_req;
+	++queue->unsubmitted;
+	if (error == 0)
+		lockmgr(&queue->lk, LK_RELEASE);
+	_nvme_fill_request(queue, opcode, kva, bytes, req);
 
-		while (count < bytes) {
-			paddr = vtophys(kva + count);
-			if (idx == 0) {
-				KKASSERT((paddr & 3) == 0);
-				req->cmd.head.prp1 = paddr;
-				count += (((intptr_t)kva + PAGE_SIZE) &
-					  ~(intptr_t)PAGE_MASK) -
-					 (intptr_t)kva;
-			} else if (idx == 1 && count + PAGE_SIZE >= bytes) {
-				KKASSERT((paddr & PAGE_MASK) == 0);
-				req->cmd.head.prp2 = paddr;
-				count += PAGE_SIZE;
-			} else {
-				KKASSERT((paddr & PAGE_MASK) == 0);
-				/* if (idx == 1) -- not needed, just repeat */
-				req->cmd.head.prp2 = pprptab; /* repeat */
-				kprptab[idx - 1] = paddr;
-				count += PAGE_SIZE;
-			}
-			++idx;
-		}
-	}
 	return req;
 }
 
@@ -494,7 +536,7 @@ nvme_submit_request(nvme_request_t *req)
  * sleeps, else pass NULL.
  */
 int
-nvme_wait_request(nvme_request_t *req, int ticks)
+nvme_wait_request(nvme_request_t *req)
 {
 	struct lock *lk;
 	int code;
@@ -511,6 +553,42 @@ nvme_wait_request(nvme_request_t *req, int ticks)
 			lksleep(req, lk, 0, "nvwait", hz);
 		}
 		lockmgr(lk, LK_RELEASE);
+		KKASSERT(req->state == NVME_REQ_COMPLETED);
+	}
+	cpu_lfence();
+	code = NVME_COMQ_STATUS_CODE_GET(req->res.tail.status);
+
+	return code;
+}
+
+/*
+ * dump path only, we cannot block, and the lock is allowed
+ * to fail.  But still try to play nice with interrupt threads.
+ */
+int
+nvme_poll_request(nvme_request_t *req)
+{
+	struct lock *lk;
+	int code;
+	int didlock = 500;	/* 500uS max */
+
+	req->waiting = 1;
+	if (req->state != NVME_REQ_COMPLETED) {
+		lk = &req->comq->lk;
+		cpu_lfence();
+		while (lockmgr(lk, LK_EXCLUSIVE | LK_NOWAIT) != 0) {
+			if (--didlock == 0)
+				break;
+			tsc_delay(1000);	/* 1uS */
+		}
+		while (req->state == NVME_REQ_SUBMITTED) {
+			nvme_poll_completions(req->comq, lk);
+			if (req->state != NVME_REQ_SUBMITTED)
+				break;
+			lwkt_switch();
+		}
+		if (didlock)
+			lockmgr(lk, LK_RELEASE);
 		KKASSERT(req->state == NVME_REQ_COMPLETED);
 	}
 	cpu_lfence();
@@ -554,6 +632,16 @@ nvme_put_request(nvme_request_t *req)
 		atomic_set_int(&queue->sc->admin_signal, ADMIN_SIG_REQUEUE);
 		wakeup(&queue->sc->admin_signal);
 	}
+}
+
+/*
+ * dump path only.
+ */
+void
+nvme_put_dump_request(nvme_request_t *req)
+{
+	KKASSERT(req->state == NVME_REQ_COMPLETED);
+	req->state = NVME_REQ_AVAIL;
 }
 
 /*
@@ -710,7 +798,7 @@ nvme_create_subqueue(nvme_softc_t *sc, uint16_t qid)
 	req->cmd.crsub.comq_id = subq->comqid;
 
 	nvme_submit_request(req);
-	status = nvme_wait_request(req, hz);
+	status = nvme_wait_request(req);
 	nvme_put_request(req);
 
 	return status;
@@ -753,7 +841,7 @@ nvme_create_comqueue(nvme_softc_t *sc, uint16_t qid)
 	req->cmd.crcom.flags = NVME_CREATECOM_PC | NVME_CREATECOM_IEN;
 
 	nvme_submit_request(req);
-	status = nvme_wait_request(req, hz);
+	status = nvme_wait_request(req);
 	nvme_put_request(req);
 
 	return status;
@@ -774,7 +862,7 @@ nvme_delete_subqueue(nvme_softc_t *sc, uint16_t qid)
 	req->cmd.delete.qid = qid;
 
 	nvme_submit_request(req);
-	status = nvme_wait_request(req, hz);
+	status = nvme_wait_request(req);
 	nvme_put_request(req);
 
 	return status;
@@ -796,7 +884,7 @@ nvme_delete_comqueue(nvme_softc_t *sc, uint16_t qid)
 	req->cmd.delete.qid = qid;
 
 	nvme_submit_request(req);
-	status = nvme_wait_request(req, hz);
+	status = nvme_wait_request(req);
 	nvme_put_request(req);
 
 	if (qid && sc->nirqs > 1) {
@@ -815,7 +903,7 @@ nvme_delete_comqueue(nvme_softc_t *sc, uint16_t qid)
  * Issue friendly shutdown to controller.
  */
 int
-nvme_issue_shutdown(nvme_softc_t *sc)
+nvme_issue_shutdown(nvme_softc_t *sc, int dopoll)
 {
 	uint32_t reg;
 	int base_ticks;
@@ -840,7 +928,8 @@ nvme_issue_shutdown(nvme_softc_t *sc)
 			error = 0;
 			break;
 		}
-		nvme_os_sleep(50);	/* 50ms poll */
+		if (dopoll == 0)
+			nvme_os_sleep(50);	/* 50ms poll */
 	}
 	if (error)
 		device_printf(sc->dev, "Unable to shutdown chip nicely\n");
