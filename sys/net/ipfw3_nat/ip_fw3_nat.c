@@ -793,10 +793,70 @@ nat_fnit_ctx_dispatch(netmsg_t msg)
 static void
 ipfw3_nat_cleanup_func_dispatch(netmsg_t nmsg)
 {
-	/* TODO */
+	struct nat_state *s, *tmp;
+	struct ip_fw3_nat_context *nat_ctx;
+	struct cfg_nat *nat;
+	int i;
+
+	nat_ctx = ip_fw3_nat_ctx[mycpuid];
+	for (i = 0; i < NAT_ID_MAX; i++) {
+		nat = nat_ctx->nats[i];
+		if (nat == NULL)
+			continue;
+		/* check the nat_states, remove the expired state */
+		if (mycpuid == 0) {
+			RB_FOREACH_SAFE(s, state_tree, &nat->tree_icmp_in, tmp) {
+				if (time_uptime - s->timestamp > sysctl_var_icmp_timeout) {
+					RB_REMOVE(state_tree, &nat->tree_icmp_in, s);
+					if (s != NULL) {
+						kfree(s, M_IP_FW3_NAT);
+					}
+				}
+			}
+			RB_FOREACH_SAFE(s, state_tree, &nat->tree_icmp_out, tmp) {
+				if (time_uptime - s->timestamp > sysctl_var_icmp_timeout) {
+					RB_REMOVE(state_tree, &nat->tree_icmp_out, s);
+					if (s != NULL) {
+						kfree(s, M_IP_FW3_NAT);
+					}
+				}
+			}
+		}
+		RB_FOREACH_SAFE(s, state_tree, &nat->tree_tcp_in, tmp) {
+			if (time_uptime - s->timestamp > sysctl_var_tcp_timeout) {
+				RB_REMOVE(state_tree, &nat->tree_tcp_in, s);
+				if (s != NULL) {
+					kfree(s, M_IP_FW3_NAT);
+				}
+			}
+		}
+		RB_FOREACH_SAFE(s, state_tree, &nat->tree_tcp_out, tmp) {
+			if (time_uptime - s->timestamp > sysctl_var_tcp_timeout) {
+				RB_REMOVE(state_tree, &nat->tree_tcp_out, s);
+				if (s != NULL) {
+					kfree(s, M_IP_FW3_NAT);
+				}
+			}
+		}
+		RB_FOREACH_SAFE(s, state_tree, &nat->tree_udp_in, tmp) {
+			if (time_uptime - s->timestamp > sysctl_var_udp_timeout) {
+				RB_REMOVE(state_tree, &nat->tree_udp_in, s);
+				if (s != NULL) {
+					kfree(s, M_IP_FW3_NAT);
+				}
+			}
+		}
+		RB_FOREACH_SAFE(s, state_tree, &nat->tree_udp_out, tmp) {
+			if (time_uptime - s->timestamp > sysctl_var_udp_timeout) {
+				RB_REMOVE(state_tree, &nat->tree_icmp_in, s);
+				if (s != NULL) {
+					kfree(s, M_IP_FW3_NAT);
+				}
+			}
+		}
+	}
 	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
-
 static void
 ipfw3_nat_cleanup_func(void *dummy __unused)
 {
