@@ -37,9 +37,12 @@
 
 #define MODULE_NAT_ID		4
 #define MODULE_NAT_NAME		"nat"
-#define NAT_ID_MAX		4
+#define NAT_ID_MAX		16
 
-#define LEN_IN_ADDR	sizeof(struct in_addr)
+#define ALIAS_RANGE		64511
+#define ALIAS_BEGIN		1024
+
+#define LEN_IN_ADDR		sizeof(struct in_addr)
 
 enum ipfw_nat_opcodes {
 	O_NAT_NAT,
@@ -62,6 +65,7 @@ struct ioc_nat_state {
 
 struct ioc_nat {
 	int			id;
+	int			count;
 	struct in_addr 		ip;
 };
 #define LEN_IOC_NAT sizeof(struct ioc_nat)
@@ -70,7 +74,6 @@ typedef struct	_ipfw_insn_nat {
 	ipfw_insn		o;
 	struct cfg_nat  	*nat;
 } ipfw_insn_nat;
-
 
 
 #ifdef _KERNEL
@@ -84,56 +87,54 @@ typedef struct	_ipfw_insn_nat {
  */
 struct nat_state {
 	RB_ENTRY(nat_state)	entries;
-
-	uint32_t		saddr;
-	uint32_t		daddr;
+	uint32_t		src_addr;
+	uint32_t		dst_addr;
 	uint32_t		alias_addr;
-
-	uint16_t		sport;
-	uint16_t		dport;
+	uint16_t		src_port;
+	uint16_t		dst_port;
 	uint16_t		alias_port;
-
-	uint8_t			proto;
-
-	int			timestamp;
-	int			expiry;
+	time_t			timestamp;
 };
 #define LEN_NAT_STATE sizeof(struct nat_state)
 
 int 	nat_state_cmp(struct nat_state *s1, struct nat_state *s2);
 
 RB_HEAD(state_tree, nat_state);
+RB_PROTOTYPE(state_tree, nat_state, entries, nat_state_cmp);
+RB_GENERATE(state_tree, nat_state, entries, nat_state_cmp);
 
 struct cfg_nat {
-	int			id;
-	struct in_addr		ip;
+	int				id;
+	int				count;
+	LIST_HEAD(, cfg_alias)		alias;	/* list of the alias IP */
 
-	struct state_tree	tree_tcp_in;
-	struct state_tree	tree_tcp_out;
-	struct state_tree	tree_udp_in;
-	struct state_tree	tree_udp_out;
-	struct state_tree	tree_icmp_in;
-	struct state_tree	tree_icmp_out;
-
-	struct nat_state	tmp;
+	struct state_tree	rb_tcp_in;
+	struct state_tree	rb_tcp_out;
+	struct state_tree	rb_udp_in;
+	struct state_tree	rb_udp_out;
+	struct state_tree	rb_icmp_in;
+	struct state_tree	rb_icmp_out;
 };
+
 #define LEN_CFG_NAT sizeof(struct cfg_nat)
+
+struct cfg_alias {
+	LIST_ENTRY(cfg_alias)	next;
+	struct in_addr 		ip;
+};
+#define LEN_CFG_ALIAS sizeof(struct cfg_alias)
 
 
 MALLOC_DEFINE(M_IP_FW3_NAT, "IP_FW3_NAT", "IP_FW3 NAT module");
 
-
-/*
- * Place to hold the NAT context
- */
+/* place to hold the nat conf */
 struct ip_fw3_nat_context {
 	struct cfg_nat 		*nats[NAT_ID_MAX];
 };
-#define LEN_NAT_CTX sizeof(struct ip_fw3_nat_context)
 
 struct netmsg_nat_del {
 	struct netmsg_base 	base;
-	int id;
+	int 			id;
 };
 
 struct netmsg_nat_add {
@@ -141,22 +142,22 @@ struct netmsg_nat_add {
 	struct ioc_nat 		ioc_nat;
 };
 
-struct netmsg_alias_link_add {
+struct netmsg_nat_state_add {
 	struct netmsg_base 	base;
-	int 			id;
-	int 			is_outgoing;
-	int 			is_tcp;
+	struct nat_state 	*state;
+	int			proto;
+	int			nat_id;
 };
+#define LEN_NMSG_NAT_STATE_ADD sizeof(struct netmsg_nat_state_add)
 
 void 	check_nat(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
 
-int 	ip_fw3_nat(struct ip_fw_args *args,
-		struct cfg_nat *nat, struct mbuf *m);
-int	nat_state_get_alias(struct nat_state *s,
-		struct cfg_nat *nat, struct state_tree *tree);
+int 	ip_fw3_nat(struct ip_fw_args *, struct cfg_nat *, struct mbuf *);
 
-void 	add_alias_link_dispatch(netmsg_t nat_del_msg);
+void	pick_alias_port(struct nat_state *s, struct state_tree *tree);
+
+void 	nat_state_add_dispatch(netmsg_t msg);
 void 	nat_add_dispatch(netmsg_t msg);
 int 	ip_fw3_ctl_nat_add(struct sockopt *sopt);
 void 	nat_del_dispatch(netmsg_t msg);

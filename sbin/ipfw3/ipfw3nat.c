@@ -83,96 +83,98 @@ extern int do_time;
 extern int do_quiet;
 extern int do_force;
 
-struct char_int_map nat_params[] = {
-	{ "ip", 		TOK_IP },
-	{ NULL, 0 },
-};
-
 
 void
-nat_config(int ac, char **av)
+nat_config_add(int ac, char **av)
 {
 	struct ioc_nat *ioc;
-	int error, tok;
-	char *id, buf[NAT_BUF_LEN];
+	struct in_addr *ip;
+	int error, len = 0;
+	char *id, buf[LEN_NAT_CMD_BUF];
 
-	memset(buf, 0, NAT_BUF_LEN);
+	memset(buf, 0, LEN_NAT_CMD_BUF);
 	ioc = (struct ioc_nat *)buf;
 
 	NEXT_ARG;
-	/* Nat id. */
 	if (ac && isdigit(**av)) {
 		id = *av;
 		ioc->id = atoi(*av);
 		if (ioc->id <= 0 || ioc->id > NAT_ID_MAX) {
 			errx(EX_DATAERR, "invalid nat id");
 		}
-		NEXT_ARG;
 	} else {
 		errx(EX_DATAERR, "missing nat id");
 	}
+	len += LEN_IOC_NAT;
 
-	if (ac == 0)
-		errx(EX_DATAERR, "missing option");
-
-	while (ac > 0) {
-		tok = match_token(nat_params, *av);
+	NEXT_ARG;
+	if (strncmp(*av, "ip", strlen(*av))) {
+		errx(EX_DATAERR, "missing `ip'");
+	}
+	NEXT_ARG;
+	ip = &ioc->ip;
+	while (ac > 0){
+		if (!inet_aton(*av, ip)) {
+			errx(EX_DATAERR, "bad ip addr `%s'", *av);
+		}
+		ioc->count++;
+		len += LEN_IN_ADDR;
+		ip++;
 		NEXT_ARG;
-		switch (tok) {
-		case TOK_IP:
-			if (ac == 0)
-				errx(EX_DATAERR, "missing option");
-			if (!inet_aton(av[0], &(ioc->ip)))
-				errx(EX_DATAERR, "bad ip addr `%s'", av[0]);
-			NEXT_ARG;
-			break;
-		default:
-			errx(EX_DATAERR, "unrecognised option ``%s''", av[-1]);
-		}
-	}
-	error = do_set_x(IP_FW_NAT_ADD, buf, LEN_IOC_NAT);
-	if (error) {
-		if (errno == 1) {
-			errx(EX_DATAERR, "nat %s is exists", id);
-		} else {
-			err(1, "do_set_x(%s)", "IP_FW_NAT_ADD");
-		}
 	}
 
-	/* After every modification, we show the resultant rule. */
+	error = do_set_x(IP_FW_NAT_ADD, ioc, len);
+	if (error) {
+		err(1, "do_set_x(%s)", "IP_FW_NAT_ADD");
+	}
+
+	/* show the rule after configured */
 	int _ac = 2;
 	char *_av[] = {"config", id};
-	nat_show(_ac, _av);
+	nat_config_get(_ac, _av);
 }
 
 void
-nat_show_config(struct ioc_nat *ioc)
-{
-	printf("ipfw3 nat %u config", ioc->id);
-	if (ioc->ip.s_addr != 0)
-		printf(" ip %s", inet_ntoa(ioc->ip));
-	printf("\n");
-}
-
-void
-nat_show(int ac, char **av)
+nat_config_show(char *buf, int nbytes, int nat_id)
 {
 	struct ioc_nat *ioc;
-	int nbytes, nalloc, size, len;
-	int id, all;
+	struct in_addr *ip;
+	int n, len = 0;
+
+	while (len < nbytes) {
+		ioc = (struct ioc_nat *)(buf + len);
+		if (nat_id == 0 || ioc->id == nat_id) {
+			printf("ipfw3 nat %u config ip", ioc->id);
+		}
+		ip = &ioc->ip;
+		len += LEN_IOC_NAT;
+		for (n = 0; n < ioc->count; n++) {
+			if (nat_id == 0 || ioc->id == nat_id) {
+				printf(" %s", inet_ntoa(*ip));
+			}
+			ip++;
+			len += LEN_IN_ADDR;
+		}
+		if (nat_id == 0 || ioc->id == nat_id) {
+			printf("\n");
+		}
+	}
+}
+
+void
+nat_config_get(int ac, char **av)
+{
+	int nbytes, nalloc;
+	int nat_id;
 	uint8_t *data;
 
 	nalloc = 1024;
-	size = 0;
 	data = NULL;
-	id = 0;
-	all = 0;
+	nat_id = 0;
 
 	NEXT_ARG;
-	if (ac == 0) {
-		all = 1;
-	} else {
-		id = strtoul(*av, NULL, 10);
+	if (ac == 1) {
+		nat_id = strtoul(*av, NULL, 10);
 	}
 
 	nbytes = nalloc;
@@ -189,45 +191,11 @@ nat_show(int ac, char **av)
 	if (nbytes == 0) {
 		exit(EX_OK);
 	}
-
-	len = 0;
-	ioc = (struct ioc_nat *)data;
-	while (len < nbytes) {
-		if (all == 1 || ioc->id == id) {
-			nat_show_config(ioc);
-		}
-		len += LEN_IOC_NAT;
-		ioc++;
-	}
-}
-
-int
-str2proto(const char* str)
-{
-	if (!strcmp (str, "tcp"))
-		return IPPROTO_TCP;
-	if (!strcmp (str, "udp"))
-		return IPPROTO_UDP;
-	errx (EX_DATAERR, "unknown protocol %s. Expected tcp or udp", str);
+	nat_config_show(data, nbytes, nat_id);
 }
 
 void
-str2addr(const char* str, struct in_addr* addr)
-{
-	struct hostent* hp;
-
-	if (inet_aton (str, addr))
-		return;
-
-	hp = gethostbyname (str);
-	if (!hp)
-		errx (1, "unknown host %s", str);
-
-	memcpy (addr, hp->h_addr, sizeof (struct in_addr));
-}
-
-void
-nat_delete_config(int ac, char *av[])
+nat_config_delete(int ac, char *av[])
 {
 	NEXT_ARG;
 	int i = 0;
@@ -239,7 +207,7 @@ nat_delete_config(int ac, char *av[])
 }
 
 void
-nat_show_state(int ac, char **av)
+nat_state_show(int ac, char **av)
 {
 	int nbytes, nalloc;
 	int nat_id;
@@ -272,8 +240,7 @@ nat_show_state(int ac, char **av)
 	struct ioc_nat_state *ioc;
 	ioc =(struct ioc_nat_state *)data;
 	int count = nbytes / LEN_IOC_NAT_STATE;
-	int i, uptime_sec;
-	uptime_sec = get_kern_boottime();
+	int i;
 	for (i = 0; i < count; i ++) {
 		printf("%d %d", ioc->nat_id, ioc->cpu_id);
 		if (ioc->proto == IPPROTO_ICMP) {
@@ -295,24 +262,9 @@ nat_show_state(int ac, char **av)
 		ioc++;
 	}
 }
-int
-get_kern_boottime(void)
-{
-	struct timeval boottime;
-	size_t size;
-	int mib[2];
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_BOOTTIME;
-	size = sizeof(boottime);
-	if (sysctl(mib, 2, &boottime, &size, NULL, 0) != -1 &&
-			boottime.tv_sec != 0) {
-		return boottime.tv_sec;
-	}
-	return -1;
-}
 
 void
-nat_flush(void)
+nat_config_flush(void)
 {
 	int cmd = IP_FW_NAT_FLUSH;
 	if (!do_force) {
@@ -341,11 +293,10 @@ void
 nat_main(int ac, char **av)
 {
 	if (!strncmp(*av, "config", strlen(*av))) {
-		nat_config(ac, av);
+		nat_config_add(ac, av);
 	} else if (!strncmp(*av, "flush", strlen(*av))) {
-		nat_flush();
-	} else if (!strncmp(*av, "show", strlen(*av)) ||
-			!strncmp(*av, "list", strlen(*av))) {
+		nat_config_flush();
+	} else if (!strncmp(*av, "show", strlen(*av))) {
 		if (ac > 2 && isdigit(*(av[1]))) {
 			char *p = av[1];
 			av[1] = av[2];
@@ -353,15 +304,14 @@ nat_main(int ac, char **av)
 		}
 		NEXT_ARG;
 		if (!strncmp(*av, "config", strlen(*av))) {
-			nat_show(ac, av);
+			nat_config_get(ac, av);
 		} else if (!strncmp(*av, "state", strlen(*av))) {
-			nat_show_state(ac,av);
+			nat_state_show(ac,av);
 		} else {
-			errx(EX_USAGE,
-					"bad nat show command `%s'", *av);
+			errx(EX_USAGE, "bad nat show command `%s'", *av);
 		}
 	} else if (!strncmp(*av, "delete", strlen(*av))) {
-		nat_delete_config(ac, av);
+		nat_config_delete(ac, av);
 	} else {
 		errx(EX_USAGE, "bad ipfw nat command `%s'", *av);
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2014 - 2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@dragonflybsd.org>
@@ -35,17 +35,13 @@
 #ifndef _IPFW3NAT_H_
 #define _IPFW3NAT_H_
 
-#define NAT_BUF_LEN	1024
+#define LEN_NAT_CMD_BUF	4096
 
-void	nat_config(int ac, char **av);
-void 	nat_show_config(struct ioc_nat *ioc);
-void	nat_show(int ac, char **av);
-int 	str2proto(const char* str);
-void 	str2addr(const char* str, struct in_addr* addr);
-void 	nat_delete_config(int ac, char *av[]);
-void 	nat_show_state(int ac, char **av);
-int 	get_kern_boottime(void);
-
-void 	nat_flush(void);
+void 	nat_config_add(int ac, char **av);
+void 	nat_config_show(char *buf, int nbytes, int nat_id);
+void 	nat_config_get(int ac, char **av);
+void 	nat_config_delete(int ac, char *av[]);
+void 	nat_state_show(int ac, char **av);
+void 	nat_config_flush(void);
 void 	nat_main(int ac, char **av);
 #endif
