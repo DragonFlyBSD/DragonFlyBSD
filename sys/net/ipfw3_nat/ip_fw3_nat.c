@@ -578,7 +578,16 @@ ip_fw3_ctl_nat_del(struct sockopt *sopt)
 int
 ip_fw3_ctl_nat_flush(struct sockopt *sopt)
 {
-	/* TODO */
+	struct netmsg_nat_del nat_del_msg, *msg;
+	int i;
+	msg = &nat_del_msg;
+	for (i = 0; i < NAT_ID_MAX; i++) {
+		msg->id = i + 1;
+		netmsg_init(&msg->base, NULL, &curthread->td_msgport,
+				0, nat_del_dispatch);
+
+		netisr_domsg(&msg->base, 0);
+	}
 	return 0;
 }
 
