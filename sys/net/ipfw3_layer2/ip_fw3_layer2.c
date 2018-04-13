@@ -56,23 +56,6 @@
 
 extern struct ipfw_context      *ipfw_ctx[MAXCPU];
 
-void check_layer2(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void check_mac(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void
-check_mac_from(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void
-check_mac_from_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void
-check_mac_to(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void
-check_mac_to_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-
 void
 check_layer2(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)

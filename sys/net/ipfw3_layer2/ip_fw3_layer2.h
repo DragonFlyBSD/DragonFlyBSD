@@ -31,14 +31,27 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#ifndef _IP_FW_LAYER2_H
-#define _IP_FW_LAYER2_H
+#ifndef _IP_FW3_LAYER2_H
+#define _IP_FW3_LAYER2_H
 
 #define MODULE_LAYER2_ID	1
 #define MODULE_LAYER2_NAME	"layer2"
 
 #ifdef _KERNEL
-//placeholder for kernel
+
+void	check_layer2(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void 	check_mac(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_mac_from(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_mac_from_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_mac_to(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_mac_to_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+
 #endif
 
 enum ipfw_layer2_opcodes {
