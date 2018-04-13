@@ -164,6 +164,7 @@ void 	nat_del_dispatch(netmsg_t msg);
 int 	ip_fw3_ctl_nat_del(struct sockopt *sopt);
 int 	ip_fw3_ctl_nat_flush(struct sockopt *sopt);
 void 	nat_init_ctx_dispatch(netmsg_t msg);
+void 	nat_fnit_ctx_dispatch(netmsg_t msg);
 int 	ip_fw3_ctl_nat_sockopt(struct sockopt *sopt);
 int 	ip_fw3_ctl_nat_get_cfg(struct sockopt *sopt);
 int 	ip_fw3_ctl_nat_get_record(struct sockopt *sopt);

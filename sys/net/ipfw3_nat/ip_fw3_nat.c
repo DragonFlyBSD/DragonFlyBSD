@@ -624,7 +624,15 @@ nat_init_ctx_dispatch(netmsg_t msg)
 	struct ip_fw3_nat_context *tmp;
 	tmp = kmalloc(sizeof(struct ip_fw3_nat_context),
 				M_IP_FW3_NAT, M_WAITOK | M_ZERO);
+
 	ip_fw3_nat_ctx[mycpuid] = tmp;
+	netisr_forwardmsg_all(&msg->base, mycpuid + 1);
+}
+
+void
+nat_fnit_ctx_dispatch(netmsg_t msg)
+{
+	kfree(ip_fw3_nat_ctx[mycpuid], M_IP_FW3_NAT);
 	netisr_forwardmsg_all(&msg->base, mycpuid + 1);
 }
 
@@ -672,8 +680,25 @@ ip_fw3_nat_init(void)
 static int
 ip_fw3_nat_fini(void)
 {
-	/* TODO */
+	struct netmsg_base msg;
+	struct netmsg_nat_del nat_del_msg, *msg1;
+	int i;
+
 	callout_stop(&ip_fw3_nat_cleanup_callout);
+
+	msg1 = &nat_del_msg;
+	for (i = 0; i < NAT_ID_MAX; i++) {
+		msg1->id = i + 1;
+		netmsg_init(&msg1->base, NULL, &curthread->td_msgport,
+				0, nat_del_dispatch);
+
+		netisr_domsg(&msg1->base, 0);
+	}
+
+	netmsg_init(&msg, NULL, &curthread->td_msgport,
+			0, nat_fnit_ctx_dispatch);
+	netisr_domsg(&msg, 0);
+
 	return unregister_ipfw_module(MODULE_NAT_ID);
 }
 
