@@ -1,7 +1,7 @@
 .\"
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
 .\"
-.Dd Apr 17, 2018
+.Dd April 17, 2018
 .Dt IPFW3 8
 .Os
 .Sh NAME
@@ -1519,12 +1519,10 @@ wasn't compiled with divert socket support, the packets are
 dropped.
 .Sh NETWORK ADDRESS TRANSLATION (NAT)
 .Nm
-comes with a
-.Cm ipfw3_nat
+comes with an
+.Nm ipfw3_nat
 module which supports the in-kernel NAT.
-The kernel module
-.Cm ipfw3_nat
-should be loaded before you start the configuration.
+This kernel module should be loaded before you start the configuration.
 .Pp
 The nat configuration command is the following:
 .Bd -ragged -offset indent
@@ -1533,21 +1531,29 @@ The nat configuration command is the following:
 .Ek
 .Ed
 .Pp
-More than one address can be configured, and the packet will be translated to these addresses randomly.
+More than one address can be configured, and the packet will be
+randomly translated to these addresses.
 .Bd -ragged -offset indent
 .Bk -words
 .Cm nat Oo Ar nat_number Oc Cm show state
 .Ek
 .Ed
 .Pp
-All the translation records (NAT states) will be displayed in below format.
+All the translation records (NAT states) will be displayed in the format
+below.
 .Bd -ragged -offset indent
 .Bk -words
 .Cm nat cpu proto src:port alias:port dst:port direction ttl
 .Ek
 .Ed
 .Pp
-In DragonflyBSD, the sample packets will be always handled by the same CPU. Due to the nature of the network address translation (NAT), the outgoing and returning packets will be handled by another CPU. To ensure the return traffic can be translated back to the original address, the
+In
+.Dx ,
+the sample packets will be always handled by the same CPU.
+Due to the nature of the network address translation (NAT), the outgoing
+and returning packets will be handled by another CPU.
+To ensure the returned traffic can be translated back to the original
+address,
 .Nm
 will automatically prepare the translation records into the correct CPU.
 .Sh SYSCTL VARIABLES
@@ -1941,8 +1947,8 @@ was introduced in Summer 2002.
 .An Poul-Henning Kamp ,
 .An Alex Nash ,
 .An Archie Cobbs ,
-.An Luigi Rizzo .
-.An Bill Yuan ,
+.An Luigi Rizzo ,
+.An Bill Yuan .
 .Pp
 .An -nosplit
 API based upon code written by
