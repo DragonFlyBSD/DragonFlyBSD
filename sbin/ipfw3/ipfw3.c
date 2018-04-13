@@ -79,34 +79,6 @@
 #define MAX_ARGS	32
 #define WHITESP		" \t\f\v\n\r"
 #define IPFW_LIB_PATH	"/usr/lib/libipfw3%s.so"
-#define	IP_MASK_ALL	0xffffffff
-/*
- * we use IPPROTO_ETHERTYPE as a fake protocol id to call the print routines
- * This is only used in this code.
- */
-#define IPPROTO_ETHERTYPE	0x1000
-
-/*
- * show_rules() prints the body of an ipfw rule.
- * Because the standard rule has at least proto src_ip dst_ip, we use
- * a helper function to produce these entries if not provided explicitly.
- * The first argument is the list of fields we have, the second is
- * the list of fields we want to be printed.
- *
- * Special cases if we have provided a MAC header:
- * + if the rule does not contain IP addresses/ports, do not print them;
- * + if the rule does not contain an IP proto, print "all" instead of "ip";
- *
- */
-#define	HAVE_PROTO	0x0001
-#define	HAVE_SRCIP	0x0002
-#define	HAVE_DSTIP	0x0004
-#define	HAVE_MAC	0x0008
-#define	HAVE_MACTYPE	0x0010
-#define	HAVE_OPTIONS	0x8000
-
-#define	HAVE_IP		(HAVE_PROTO | HAVE_SRCIP | HAVE_DSTIP)
-
 
 int		ipfw_socket = -1;	/* main RAW socket */
 int		do_resolv, 		/* Would try to resolve all */

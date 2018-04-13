@@ -71,8 +71,6 @@
 
 #include "ip_fw3_basic.h"
 
-#define TIME_LEQ(a, b)	((int)((a) - (b)) <= 0)
-
 extern struct ipfw_context		*ipfw_ctx[MAXCPU];
 extern struct ipfw_sync_context 	sync_ctx;
 extern int 				fw_verbose;

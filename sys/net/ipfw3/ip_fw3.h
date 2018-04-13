@@ -503,10 +503,6 @@ struct ipfw_module{
 #define MATCH_NONE	2
 #define MATCH_UNKNOWN	3
 
-#define BOTH_SYN	(TH_SYN | (TH_SYN << 8))
-#define BOTH_FIN	(TH_FIN | (TH_FIN << 8))
-
-#define TIME_LEQ(a, b)  ((int)((a) - (b)) <= 0)
 #define L3HDR(T, ip) ((T *)((uint32_t *)(ip) + (ip)->ip_hl))
 
 /* IP_FW_X header/opcodes */
