@@ -100,8 +100,6 @@ struct nat_state {
 int 	nat_state_cmp(struct nat_state *s1, struct nat_state *s2);
 
 RB_HEAD(state_tree, nat_state);
-RB_PROTOTYPE(state_tree, nat_state, entries, nat_state_cmp);
-RB_GENERATE(state_tree, nat_state, entries, nat_state_cmp);
 
 struct cfg_nat {
 	int				id;

@@ -106,6 +106,9 @@ SYSCTL_INT(_net_inet_ip_fw3_nat, OID_AUTO, tcp_timeout, CTLFLAG_RW,
 SYSCTL_INT(_net_inet_ip_fw3_nat, OID_AUTO, udp_timeout, CTLFLAG_RW,
 		&sysctl_var_udp_timeout, 0, "default udp state life time");
 
+RB_PROTOTYPE(state_tree, nat_state, entries, nat_state_cmp);
+RB_GENERATE(state_tree, nat_state, entries, nat_state_cmp);
+
 static __inline uint16_t
 fix_cksum(uint16_t cksum, uint16_t old_info, uint16_t new_info, uint8_t is_udp)
 {
