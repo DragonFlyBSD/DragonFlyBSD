@@ -449,7 +449,161 @@ nospace:
 int
 ip_fw3_ctl_nat_get_record(struct sockopt *sopt)
 {
-	/* TODO */
+	struct ip_fw3_nat_context *nat_ctx;
+	struct cfg_nat *the;
+	size_t sopt_size, total_len = 0;
+	struct ioc_nat_state *ioc;
+	int ioc_nat_id, n, cpu;
+	struct nat_state *s, *tmp;
+
+	ioc_nat_id = *((int *)(sopt->sopt_val));
+	sopt_size = sopt->sopt_valsize;
+	ioc = (struct ioc_nat_state *)sopt->sopt_val;
+	/* icmp states only in CPU 0 */
+	cpu = 0;
+	nat_ctx = ip_fw3_nat_ctx[cpu];
+	for (n = 0; n < NAT_ID_MAX; n++) {
+		if (ioc_nat_id == 0 || ioc_nat_id == n + 1) {
+			if (nat_ctx->nats[n] == NULL)
+				break;
+			the = nat_ctx->nats[n];
+			RB_FOREACH_SAFE(s, state_tree, &the->tree_icmp_out, tmp) {
+				total_len += LEN_IOC_NAT_STATE;
+				if (total_len > sopt_size)
+					goto nospace;
+				ioc->src_addr.s_addr = ntohl(s->saddr);
+				ioc->dst_addr.s_addr = s->daddr;
+				ioc->alias_addr.s_addr = s->alias_addr;
+				ioc->src_port = s->sport;
+				ioc->dst_port = s->dport;
+				ioc->alias_port = s->alias_port;
+				ioc->nat_id = n + 1;
+				ioc->cpu_id = cpu;
+				ioc->proto = IPPROTO_ICMP;
+				ioc->direction = 1;
+				ioc->life = s->timestamp +
+					sysctl_var_icmp_timeout - time_uptime;
+				ioc++;
+			}
+			RB_FOREACH_SAFE(s, state_tree, &the->tree_icmp_in, tmp) {
+				total_len += LEN_IOC_NAT_STATE;
+				if (total_len > sopt_size)
+					goto nospace;
+				ioc->src_addr.s_addr = ntohl(s->saddr);
+				ioc->dst_addr.s_addr = s->daddr;
+				ioc->alias_addr.s_addr = s->alias_addr;
+				ioc->src_port = s->sport;
+				ioc->dst_port = s->dport;
+				ioc->alias_port = s->alias_port;
+				ioc->nat_id = n + 1;
+				ioc->cpu_id = cpu;
+				ioc->proto = IPPROTO_ICMP;
+				ioc->direction = 0;
+				ioc->life = s->timestamp +
+					sysctl_var_icmp_timeout - time_uptime;
+				ioc++;
+			}
+		}
+	}
+
+	/* tcp states */
+	for (cpu = 0; cpu < ncpus; cpu++) {
+		nat_ctx = ip_fw3_nat_ctx[cpu];
+		for (n = 0; n < NAT_ID_MAX; n++) {
+			if (ioc_nat_id == 0 || ioc_nat_id == n + 1) {
+				if (nat_ctx->nats[n] == NULL)
+					break;
+				the = nat_ctx->nats[n];
+				RB_FOREACH_SAFE(s, state_tree, &the->tree_tcp_out, tmp) {
+					total_len += LEN_IOC_NAT_STATE;
+					if (total_len > sopt_size)
+						goto nospace;
+					ioc->src_addr.s_addr = ntohl(s->saddr);
+					ioc->dst_addr.s_addr = ntohl(s->daddr);
+					ioc->alias_addr.s_addr = s->alias_addr;
+					ioc->src_port = ntohs(s->sport);
+					ioc->dst_port = ntohs(s->dport);
+					ioc->alias_port = s->alias_port;
+					ioc->nat_id = n + 1;
+					ioc->cpu_id = cpu;
+					ioc->proto = IPPROTO_TCP;
+					ioc->direction = 1;
+					ioc->life = s->timestamp +
+						sysctl_var_tcp_timeout - time_uptime;
+					ioc++;
+				}
+				RB_FOREACH_SAFE(s, state_tree, &the->tree_tcp_in, tmp) {
+					total_len += LEN_IOC_NAT_STATE;
+					if (total_len > sopt_size)
+						goto nospace;
+					ioc->src_addr.s_addr = ntohl(s->saddr);
+					ioc->dst_addr.s_addr = s->daddr;
+					ioc->alias_addr.s_addr = s->alias_addr;
+					ioc->src_port = ntohs(s->sport);
+					ioc->dst_port = s->dport;
+					ioc->alias_port = s->alias_port;
+					ioc->nat_id = n + 1;
+					ioc->cpu_id = cpu;
+					ioc->proto = IPPROTO_TCP;
+					ioc->direction = 0;
+					ioc->life = s->timestamp +
+						sysctl_var_tcp_timeout - time_uptime;
+					ioc++;
+				}
+			}
+		}
+	}
+
+	/* udp states */
+	for (cpu = 0; cpu < ncpus; cpu++) {
+		nat_ctx = ip_fw3_nat_ctx[cpu];
+		for (n = 0; n < NAT_ID_MAX; n++) {
+			if (ioc_nat_id == 0 || ioc_nat_id == n + 1) {
+				if (nat_ctx->nats[n] == NULL)
+					break;
+				the = nat_ctx->nats[n];
+				RB_FOREACH_SAFE(s, state_tree, &the->tree_udp_out, tmp) {
+					total_len += LEN_IOC_NAT_STATE;
+					if (total_len > sopt_size)
+						goto nospace;
+					ioc->src_addr.s_addr = ntohl(s->saddr);
+					ioc->dst_addr.s_addr = s->daddr;
+					ioc->alias_addr.s_addr = s->alias_addr;
+					ioc->src_port = s->sport;
+					ioc->dst_port = s->dport;
+					ioc->alias_port = s->alias_port;
+					ioc->nat_id = n + 1;
+					ioc->cpu_id = cpu;
+					ioc->proto = IPPROTO_UDP;
+					ioc->direction = 1;
+					ioc->life = s->timestamp +
+						sysctl_var_udp_timeout - time_uptime;
+					ioc++;
+				}
+				RB_FOREACH_SAFE(s, state_tree, &the->tree_udp_in, tmp) {
+					total_len += LEN_IOC_NAT_STATE;
+					if (total_len > sopt_size)
+						goto nospace;
+					ioc->src_addr.s_addr = ntohl(s->saddr);
+					ioc->dst_addr.s_addr = s->daddr;
+					ioc->alias_addr.s_addr = s->alias_addr;
+					ioc->src_port = s->sport;
+					ioc->dst_port = s->dport;
+					ioc->alias_port = s->alias_port;
+					ioc->nat_id = n + 1;
+					ioc->cpu_id = cpu;
+					ioc->proto = IPPROTO_UDP;
+					ioc->direction = 0;
+					ioc->life = s->timestamp +
+						sysctl_var_udp_timeout - time_uptime;
+					ioc++;
+				}
+			}
+		}
+	}
+	sopt->sopt_valsize = total_len;
+	return 0;
+nospace:
 	return 0;
 }
 

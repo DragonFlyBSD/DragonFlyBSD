@@ -45,21 +45,20 @@ enum ipfw_nat_opcodes {
 	O_NAT_NAT,
 };
 
-struct ipfw_ioc_nat_state {
+struct ioc_nat_state {
 	struct in_addr		src_addr;
 	struct in_addr		dst_addr;
 	struct in_addr		alias_addr;
 	u_short			src_port;
 	u_short			dst_port;
 	u_short			alias_port;
-
-	int			link_type;
-	int			timestamp;
-	int			expire_time;
 	int			nat_id;
-	int			cpuid;
-	int			is_outgoing;
+	int			cpu_id;
+	int			proto;
+	int			direction;
+	time_t			life;
 };
+#define LEN_IOC_NAT_STATE sizeof(struct ioc_nat_state)
 
 struct ioc_nat {
 	int			id;

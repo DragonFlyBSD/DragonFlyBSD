@@ -268,37 +268,33 @@ nat_show_state(int ac, char **av)
 	}
 	if (nbytes == 0)
 		exit(EX_OK);
-	struct ipfw_ioc_nat_state *nat_state;
-	nat_state =(struct ipfw_ioc_nat_state *)data;
-	int count = nbytes / sizeof( struct ipfw_ioc_nat_state);
+
+	struct ioc_nat_state *ioc;
+	ioc =(struct ioc_nat_state *)data;
+	int count = nbytes / LEN_IOC_NAT_STATE;
 	int i, uptime_sec;
 	uptime_sec = get_kern_boottime();
 	for (i = 0; i < count; i ++) {
-		printf("#%d ", nat_state->cpuid);
-		printf("%s:%hu => ",inet_ntoa(nat_state->src_addr),
-				htons(nat_state->src_port));
-		printf("%s:%hu",inet_ntoa(nat_state->alias_addr),
-				htons(nat_state->alias_port));
-		printf(" -> %s:%hu ",inet_ntoa(nat_state->dst_addr),
-				htons(nat_state->dst_port));
-		if (do_time == 1) {
-			char timestr[30];
-			time_t t = _long_to_time(uptime_sec +
-					nat_state->timestamp);
-			strcpy(timestr, ctime(&t));
-			*strchr(timestr, '\n') = '\0';
-			printf("%s ", timestr);
-		} else if (do_time == 2) {
-			printf( "%10u ", uptime_sec + nat_state->timestamp);
+		printf("%d %d", ioc->nat_id, ioc->cpu_id);
+		if (ioc->proto == IPPROTO_ICMP) {
+			printf(" icmp");
+		} else if (ioc->proto == IPPROTO_TCP) {
+			printf(" tcp");
+		} else if (ioc->proto == IPPROTO_UDP) {
+			printf(" udp");
 		}
-		struct protoent *pe = getprotobynumber(nat_state->link_type);
-		printf("%s ", pe->p_name);
-		printf(" %s", nat_state->is_outgoing? "out": "in");
+		printf(" %s:%hu",inet_ntoa(ioc->src_addr),
+			htons(ioc->src_port));
+		printf(" %s:%hu",inet_ntoa(ioc->alias_addr),
+			htons(ioc->alias_port));
+		printf(" %s:%hu",inet_ntoa(ioc->dst_addr),
+			htons(ioc->dst_port));
+		printf(" %c", ioc->direction? 'o' : 'i');
+		printf(" %lld", (long long)ioc->life);
 		printf("\n");
-		nat_state++;
+		ioc++;
 	}
 }
-
 int
 get_kern_boottime(void)
 {
