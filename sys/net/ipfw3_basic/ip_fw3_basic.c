@@ -754,7 +754,7 @@ check_to_me(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	u_int hlen = 0;
 	struct mbuf *m = (*args)->m;
 	struct ip *ip = mtod(m, struct ip *);
-	dst_ip = ip->ip_src;
+	dst_ip = ip->ip_dst;
 	if ((*args)->eh == NULL ||
 		(m->m_pkthdr.len >= sizeof(struct ip) &&
 		ntohs((*args)->eh->ether_type) == ETHERTYPE_IP)) {
