@@ -49,6 +49,7 @@ typedef struct {
 	u_int32_t	n_descsz;	/* Length of descriptor. */
 	u_int32_t	n_type;		/* Type of this note. */
 } Elf_Note;
+typedef Elf_Note Elf_Nhdr;
 
 /* Indexes into the e_ident array.  Keep synced with
    http://www.sco.com/developers/gabi/latest/ch4.eheader.html */
