@@ -10,14 +10,14 @@ CFLAGS+=	-I${CONTRIBDIR} -I${.CURDIR} -I${.OBJDIR}
 CFLAGS+=	-DHAVE_CONFIG_H
 
 SRCS=	allocator.c \
-	areadlink.o \
-	binary-io.o \
-	bitrotate.o \
+	areadlink.c \
+	binary-io.c \
+	bitrotate.c \
 	c-ctype.c \
 	c-stack.c \
 	c-strcasecmp.c \
 	c-strncasecmp.c \
-	careadlinkat.o \
+	careadlinkat.c \
 	dirname.c \
 	basename.c \
 	dirname-lgpl.c \
