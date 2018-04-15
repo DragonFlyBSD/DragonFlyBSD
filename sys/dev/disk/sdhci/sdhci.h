@@ -67,6 +67,8 @@
 #define	SDHCI_QUIRK_BCM577XX_400KHZ_CLKSRC		(1<<16)
 /* Allow ADMA2 to be used. */
 #define	SDHCI_QUIRK_WHITELIST_ADMA2			(1<<17)
+/* Controller where ADMA2 only works for multiples of full 512 byte blocks. */
+#define	SDHCI_QUIRK_ADMA2_ONLY_BLOCKS			(1<<18)
 /* Controller waits for busy responses. */
 #define	SDHCI_QUIRK_WAIT_WHILE_BUSY			(1<<22)
 /* Controller supports eMMC DDR52 mode. */

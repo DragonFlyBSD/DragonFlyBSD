@@ -96,6 +96,12 @@ static const struct sdhci_device {
 	    SDHCI_QUIRK_RESET_AFTER_REQUEST },
 	{ 0x16bc14e4,	0xffff,	"Broadcom BCM577xx SDXC/MMC Card Reader",
 	    SDHCI_QUIRK_BCM577XX_400KHZ_CLKSRC },
+	{ 0x85201217,	0xffff,	"O2 Micro Inc. OZ777 SD/MMC Card Reader",
+	    SDHCI_QUIRK_WHITELIST_ADMA2 |
+	    SDHCI_QUIRK_ADMA2_ONLY_BLOCKS},
+	{ 0x86211217,	0xffff,	"O2 Micro Inc. OZ620 SD/MMC Card Reader",
+	    SDHCI_QUIRK_WHITELIST_ADMA2 |
+	    SDHCI_QUIRK_ADMA2_ONLY_BLOCKS},
 	{ 0x0f148086,	0xffff, "Intel Bay Trail eMMC 4.5 Controller",
 	    SDHCI_QUIRK_WHITELIST_ADMA2 |
 	    SDHCI_QUIRK_WAIT_WHILE_BUSY |
