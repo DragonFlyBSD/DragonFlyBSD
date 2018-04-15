@@ -630,7 +630,7 @@ _mtx_upgrade_try(mtx_t *mtx)
 void
 _mtx_unlock(mtx_t *mtx)
 {
-	thread_t td = curthread;
+	thread_t td __debugvar = curthread;
 	u_int	lock;
 	u_int	nlock;
 
