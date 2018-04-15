@@ -195,12 +195,20 @@ WORLDDEST=	${DESTDIRBASE}/world_${TARGET_ARCH}
 # versions of certain utilities such as 'patch' that the cross-tools stage
 # might expect.
 #
-BTOOLSPATH= ${BTOOLSDEST}/usr/sbin:${BTOOLSDEST}/usr/bin:${BTOOLSDEST}/bin:${BTOOLSDEST}/usr/games
+BTOOLSPATH= ${BTOOLSDEST}/usr/sbin:${BTOOLSDEST}/usr/bin:${BTOOLSDEST}/sbin:${BTOOLSDEST}/bin
+
+# The cross-tools path containing the cross-tools to cross build the
+# ultimate world.
+#
+CTOOLSPATH= ${CTOOLSDEST}/usr/sbin:${CTOOLSDEST}/usr/bin:${CTOOLSDEST}/sbin:${CTOOLSDEST}/bin
 
 # The strict temporary command path contains all binaries required
 # by the buildworld system after the cross-tools stage.
 #
-STRICTTMPPATH=	${CTOOLSDEST}/usr/sbin:${CTOOLSDEST}/usr/bin:${CTOOLSDEST}/bin:${CTOOLSDEST}/usr/games:${BTOOLSDEST}/usr/sbin:${BTOOLSDEST}/usr/bin:${BTOOLSDEST}/bin:${BTOOLSDEST}/usr/games:/usr/local/bin:/usr/pkg/bin
+# NOTE: Append '/usr/local/bin:/usr/pkg/bin' to support external compilers.
+#       See compilers.conf(5) man page for more info.
+#
+STRICTTMPPATH= ${CTOOLSPATH}:${BTOOLSPATH}:/usr/local/bin:/usr/pkg/bin
 
 TMPDIR?=	/tmp
 TMPPID!=	echo $$$$
