@@ -1,11 +1,12 @@
 #	$NetBSD: Makefile,v 1.7 2009/12/01 23:12:51 haad Exp $
 
 LVM2_DIR=	${.CURDIR}/../../../contrib/lvm2
-LVM2_DISTDIR=       ${LVM2_DIR}/dist
-LIBDM_DISTDIR=        ${LVM2_DIR}/dist/libdm
-LIBDM_SRCDIR= ${LVM2_DIR}/lib/libdevmapper
+LVM2_DISTDIR=	${LVM2_DIR}/dist
+LIBDM_DISTDIR=	${LVM2_DIR}/dist/libdm
+LIBDM_SRCDIR=	${LVM2_DIR}/lib/libdevmapper
 
-.PATH:	${LVM2_DISTDIR}/man
+.PATH:		${LVM2_DISTDIR}/man
+.PATH:		${LVM2_DISTDIR}/tools
 
 PROG=		lvm
 
@@ -31,7 +32,7 @@ CFLAGS+=	-DREADLINE_SUPPORT -I${_SHLIBDIRPREFIX}/usr/include/priv
 # alloca() usage.
 #
 .if defined(USE_SSP) && (${USE_SSP} != "no")
-CFLAGS+=      -Wno-stack-protector
+CFLAGS+=	-Wno-stack-protector
 .endif
 
 MAN= 		lvchange.8 lvconvert.8 lvcreate.8 lvdisplay.8 lvextend.8 \
@@ -44,97 +45,51 @@ MAN= 		lvchange.8 lvconvert.8 lvcreate.8 lvdisplay.8 lvextend.8 \
 		vgmerge.8 vgmknodes.8 vgreduce.8 vgremove.8 vgrename.8 \
 		vgs.8 vgscan.8 vgsplit.8
 
-SYMLINKS+=	${BINDIR}/lvm ${BINDIR}/lvchange \
-		${BINDIR}/lvm ${BINDIR}/lvconvert \
-		${BINDIR}/lvm ${BINDIR}/lvcreate \
-		${BINDIR}/lvm ${BINDIR}/lvdisplay \
-		${BINDIR}/lvm ${BINDIR}/lvextend \
-		${BINDIR}/lvm ${BINDIR}/lvmchange \
-		${BINDIR}/lvm ${BINDIR}/lvmdiskscan \
-		${BINDIR}/lvm ${BINDIR}/lvmdump \
-		${BINDIR}/lvm ${BINDIR}/lvreduce \
-		${BINDIR}/lvm ${BINDIR}/lvremove \
-		${BINDIR}/lvm ${BINDIR}/lvrename \
-		${BINDIR}/lvm ${BINDIR}/lvresize \
-		${BINDIR}/lvm ${BINDIR}/lvs \
-		${BINDIR}/lvm ${BINDIR}/lvscan \
-		${BINDIR}/lvm ${BINDIR}/pvchange \
-		${BINDIR}/lvm ${BINDIR}/pvck \
-		${BINDIR}/lvm ${BINDIR}/pvcreate \
-		${BINDIR}/lvm ${BINDIR}/pvdisplay \
-		${BINDIR}/lvm ${BINDIR}/pvmove \
-		${BINDIR}/lvm ${BINDIR}/pvremove \
-		${BINDIR}/lvm ${BINDIR}/pvresize \
-		${BINDIR}/lvm ${BINDIR}/pvs \
-		${BINDIR}/lvm ${BINDIR}/pvscan \
-		${BINDIR}/lvm ${BINDIR}/vgcfgbackup \
-		${BINDIR}/lvm ${BINDIR}/vgcfgrestore \
-		${BINDIR}/lvm ${BINDIR}/vgchange \
-		${BINDIR}/lvm ${BINDIR}/vgck \
-		${BINDIR}/lvm ${BINDIR}/vgconvert \
-		${BINDIR}/lvm ${BINDIR}/vgcreate \
-		${BINDIR}/lvm ${BINDIR}/vgdisplay \
-		${BINDIR}/lvm ${BINDIR}/vgexport \
-		${BINDIR}/lvm ${BINDIR}/vgextend \
-		${BINDIR}/lvm ${BINDIR}/vgimport \
-		${BINDIR}/lvm ${BINDIR}/vgmerge \
-		${BINDIR}/lvm ${BINDIR}/vgmknodes \
-		${BINDIR}/lvm ${BINDIR}/vgreduce \
-		${BINDIR}/lvm ${BINDIR}/vgremove \
-		${BINDIR}/lvm ${BINDIR}/vgrename \
-		${BINDIR}/lvm ${BINDIR}/vgs \
-		${BINDIR}/lvm ${BINDIR}/vgscan \
-		${BINDIR}/lvm ${BINDIR}/vgsplit
-
-MKLINKS+=	lvchange.8 lvchange.1 \
-                lvconvert.8 lvconvert.1 \
-                lvcreate.8 lvcreate.1 \
-                lvdisplay.8 lvdisplay.1 \
-                lvextend.8 lvextend.1 \
-                lvm.8 lvm.1 \
-                lvm.conf lvm.1 \
-                lvmchange.8 lvmchange.1 \
-                lvmdiskscan.8 lvmdiskscan.1 \
-                lvmdump.8 lvmdump.1 \
-                lvreduce.8 lvreduce.1 \
-                lvremove.8 lvremove.1 \
-                lvrename.8 lvrename.1 \
-                lvresize.8 lvresize.1 \
-                lvs.8 lvs.1 \
-                lvscan.8 lvscan.1 \
-                pvchange.8 pvchange.1 \
-                pvck.8 pvck.1 \
-                pvcreate.8 pvcreate.1 \
-                pvdisplay.8 pvdisplay.1 \
-                pvmove.8 pvmove.1 \
-                pvremove.8 pvremove.1 \
-                pvresize.8 pvresize.1 \
-                pvs.8 pvs.1 \
-                pvscan.8 pvscan.1 \
-                vgcfgbackup.8 vgcfgbackup.1 \
-                vgcfgrestore.8 vgcfgrestore.1 \
-                vgchange.8 vgchange.1 \
-                vgck.8 vgck.1 \
-                vgconvert.8 vgconvert.1 \
-                vgcreate.8 vgcreate.1 \
-                vgdisplay.8 vgdisplay.1 \
-                vgexport.8 vgexport.1 \
-                vgextend.8 vgextend.1 \
-                vgimport.8 vgimport.1 \
-                vgmerge.8 vgmerge.1 \
-                vgmknodes.8 vgmknodes.1 \
-                vgreduce.8 vgreduce.1 \
-                vgremove.8 vgremove.1 \
-                vgrename.8 vgrename.1 \
-                vgs.8 vgs.1 \
-                vgscan.8 vgscan.1 \
-                vgsplit.8 vgsplit.1
+SYMLINKS+=	lvm ${BINDIR}/lvchange \
+		lvm ${BINDIR}/lvconvert \
+		lvm ${BINDIR}/lvcreate \
+		lvm ${BINDIR}/lvdisplay \
+		lvm ${BINDIR}/lvextend \
+		lvm ${BINDIR}/lvmchange \
+		lvm ${BINDIR}/lvmdiskscan \
+		lvm ${BINDIR}/lvmdump \
+		lvm ${BINDIR}/lvreduce \
+		lvm ${BINDIR}/lvremove \
+		lvm ${BINDIR}/lvrename \
+		lvm ${BINDIR}/lvresize \
+		lvm ${BINDIR}/lvs \
+		lvm ${BINDIR}/lvscan \
+		lvm ${BINDIR}/pvchange \
+		lvm ${BINDIR}/pvck \
+		lvm ${BINDIR}/pvcreate \
+		lvm ${BINDIR}/pvdisplay \
+		lvm ${BINDIR}/pvmove \
+		lvm ${BINDIR}/pvremove \
+		lvm ${BINDIR}/pvresize \
+		lvm ${BINDIR}/pvs \
+		lvm ${BINDIR}/pvscan \
+		lvm ${BINDIR}/vgcfgbackup \
+		lvm ${BINDIR}/vgcfgrestore \
+		lvm ${BINDIR}/vgchange \
+		lvm ${BINDIR}/vgck \
+		lvm ${BINDIR}/vgconvert \
+		lvm ${BINDIR}/vgcreate \
+		lvm ${BINDIR}/vgdisplay \
+		lvm ${BINDIR}/vgexport \
+		lvm ${BINDIR}/vgextend \
+		lvm ${BINDIR}/vgimport \
+		lvm ${BINDIR}/vgmerge \
+		lvm ${BINDIR}/vgmknodes \
+		lvm ${BINDIR}/vgreduce \
+		lvm ${BINDIR}/vgremove \
+		lvm ${BINDIR}/vgrename \
+		lvm ${BINDIR}/vgs \
+		lvm ${BINDIR}/vgscan \
+		lvm ${BINDIR}/vgsplit
 
 LDADD+=		-llvm -ldevmapper -lprop -lprivate_edit -lprivate_ncurses -ldevattr
 DPADD+=		${LIBLVM} ${LIBDEVMAPPER} ${LIBPROP} ${LIBEDIT} ${LIBNCURSES}
 DPADD+=		${LIBDEVATTR}
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
-
-.PATH:	${LVM2_DISTDIR}/tools
 
 .include <bsd.prog.mk>
