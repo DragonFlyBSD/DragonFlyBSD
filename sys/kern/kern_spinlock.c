@@ -169,7 +169,6 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 		if (atomic_cmpset_int(&spin->counta, SPINLOCK_SHARED | 1, 1))
 			return;
 	}
-	indefinite_init(&info, ident, 0, 'S');
 
 	/*
 	 * Transfer our exclusive request to the high bits and clear the
@@ -185,10 +184,12 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 	 */
 	ovalue = atomic_fetchadd_int(&spin->counta, SPINLOCK_EXCLWAIT - 1);
 	ovalue += SPINLOCK_EXCLWAIT - 1;
-	if (value & SPINLOCK_SHARED) {
+	if (ovalue & SPINLOCK_SHARED) {
 		atomic_clear_int(&spin->counta, SPINLOCK_SHARED);
 		ovalue &= ~SPINLOCK_SHARED;
 	}
+
+	indefinite_init(&info, ident, 0, 'S');
 
 	/*
 	 * Spin until we can acquire a low-count of 1.
@@ -257,14 +258,14 @@ _spin_lock_shared_contested(struct spinlock *spin, const char *ident)
 	indefinite_info_t info;
 	uint32_t ovalue;
 
-	indefinite_init(&info, ident, 0, 's');
-
 	/*
 	 * Undo the inline's increment.
 	 */
-	cpu_pause();
 	ovalue = atomic_fetchadd_int(&spin->counta, -1);
 	ovalue += -1;
+
+	indefinite_init(&info, ident, 0, 's');
+	cpu_pause();
 
 #ifdef DEBUG_LOCKS_LATENCY
 	long j;
