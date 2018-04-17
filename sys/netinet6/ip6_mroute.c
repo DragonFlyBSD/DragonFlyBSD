@@ -1790,7 +1790,7 @@ pim6_input(struct mbuf **mp, int *offp, int proto)
 			    (eip6->ip6_vfc & IPV6_VERSION));
 #endif
 			m_freem(m);
-			return (IPPROTO_NONE);
+			return (IPPROTO_DONE);
 		}
 
 		/* verify the inner packet is destined to a mcast group */
