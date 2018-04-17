@@ -423,7 +423,11 @@ options                ACCEPT_FILTER_HTTP
 # socket option.
 # This requires the use of 'device crypto', 'options IPSEC'
 # or 'device cryptodev'.
-options   TCP_SIGNATURE   #include support for RFC 2385
+#
+# XXX disabled for now until building with it (which broke after removing
+#     IPSEC) is fixed
+#
+#options   TCP_SIGNATURE   #include support for RFC 2385
 
 #
 # TCP_DROP_SYNFIN adds support for ignoring TCP packets with SYN+FIN. This
