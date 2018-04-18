@@ -562,6 +562,8 @@ void	vn_syncer_add(struct vnode *, int);
 void	vn_syncer_remove(struct vnode *, int);
 void	vn_syncer_thr_create(struct mount *);
 void	vn_syncer_thr_stop(struct mount *);
+void	vn_syncer_one(struct mount *);
+long	vn_syncer_count(struct mount *);
 
 extern	struct vop_ops default_vnode_vops;
 extern	struct vop_ops dead_vnode_vops;

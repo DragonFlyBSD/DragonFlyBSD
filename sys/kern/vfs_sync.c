@@ -94,6 +94,9 @@ SYSCTL_INT(_kern, OID_AUTO, dirdelay, CTLFLAG_RW,
 time_t metadelay = 28;		/* time to delay syncing metadata */
 SYSCTL_INT(_kern, OID_AUTO, metadelay, CTLFLAG_RW,
 		&metadelay, 0, "VFS metadata synchronization delay");
+time_t retrydelay = 1;		/* retry delay after failure */
+SYSCTL_INT(_kern, OID_AUTO, retrydelay, CTLFLAG_RW,
+		&retrydelay, 0, "VFS retry synchronization delay");
 static int rushjob;			/* number of slots to run ASAP */
 static int stat_rush_requests;	/* number of times I/O speeded up */
 SYSCTL_INT(_debug, OID_AUTO, rush_requests, CTLFLAG_RW,
@@ -114,6 +117,8 @@ struct syncer_ctx {
 	int 			syncer_delayno;
 	int			syncer_forced;
 	int			syncer_rushjob;
+	int			syncer_unused01;
+	long			syncer_count;
 };
 
 static void syncer_thread(void *);
@@ -163,6 +168,22 @@ sysctl_kern_syncdelay(SYSCTL_HANDLER_ARGS)
  */
 
 /*
+ * Return the number of vnodes on the syncer's timed list.  This will
+ * include the syncer vnode (mp->mnt_syncer) so if used, a minimum
+ * value of 1 will be returned.
+ */
+long
+vn_syncer_count(struct mount *mp)
+{
+	struct syncer_ctx *ctx;
+
+	ctx = mp->mnt_syncer_ctx;
+	if (ctx)
+		return (ctx->syncer_count);
+	return 0;
+}
+
+/*
  * Add an item to the syncer work queue.
  *
  * WARNING: Cannot get vp->v_token here if not already held, we must
@@ -180,8 +201,10 @@ vn_syncer_add(struct vnode *vp, int delay)
 	ctx = vp->v_mount->mnt_syncer_ctx;
 	lwkt_gettoken(&ctx->sc_token);
 
-	if (vp->v_flag & VONWORKLST)
+	if (vp->v_flag & VONWORKLST) {
 		LIST_REMOVE(vp, v_synclist);
+		--ctx->syncer_count;
+	}
 	if (delay <= 0) {
 		slot = -delay & ctx->syncer_mask;
 	} else {
@@ -192,6 +215,7 @@ vn_syncer_add(struct vnode *vp, int delay)
 
 	LIST_INSERT_HEAD(&ctx->syncer_workitem_pending[slot], vp, v_synclist);
 	vsetflags(vp, VONWORKLST);
+	++ctx->syncer_count;
 
 	lwkt_reltoken(&ctx->sc_token);
 }
@@ -217,9 +241,11 @@ vn_syncer_remove(struct vnode *vp, int force)
 	    RB_EMPTY(&vp->v_rbdirty_tree)) {
 		vclrflags(vp, VONWORKLST);
 		LIST_REMOVE(vp, v_synclist);
+		--ctx->syncer_count;
 	} else if (force && (vp->v_flag & VONWORKLST)) {
 		vclrflags(vp, VONWORKLST);
 		LIST_REMOVE(vp, v_synclist);
+		--ctx->syncer_count;
 	}
 
 	lwkt_reltoken(&ctx->sc_token);
@@ -354,12 +380,15 @@ syncer_thread(void *_ctx)
 		/*
 		 * Push files whose dirty time has expired.  Be careful
 		 * of interrupt race on slp queue.
+		 *
+		 * Note that vsyncscan() and vn_syncer_one() can pull items
+		 * off the same list, so we shift vp's position in the
+		 * list immediately.
 		 */
 		slp = &ctx->syncer_workitem_pending[ctx->syncer_delayno];
-		ctx->syncer_delayno = (ctx->syncer_delayno + 1) &
-				      ctx->syncer_mask;
 
 		while ((vp = LIST_FIRST(slp)) != NULL) {
+			vn_syncer_add(vp, retrydelay);
 			if (ctx->syncer_forced) {
 				if (vget(vp, LK_EXCLUSIVE) == 0) {
 					VOP_FSYNC(vp, MNT_NOWAIT, 0);
@@ -373,31 +402,13 @@ syncer_thread(void *_ctx)
 					vnodes_synced++;
 				}
 			}
-
-			/*
-			 * vp is stale but can still be used if we can
-			 * verify that it remains at the head of the list.
-			 * Be careful not to try to get vp->v_token as
-			 * vp can become stale if this blocks.
-			 *
-			 * If the vp is still at the head of the list were
-			 * unable to completely flush it and move it to
-			 * a later slot to give other vnodes a fair shot.
-			 *
-			 * Note that v_tag VT_VFS vnodes can remain on the
-			 * worklist with no dirty blocks, but sync_fsync()
-			 * moves it to a later slot so we will never see it
-			 * here.
-			 *
-			 * It is possible to race a vnode with no dirty
-			 * buffers being removed from the list.  If this
-			 * occurs we will move the vnode in the synclist
-			 * and then the other thread will remove it.  Do
-			 * not try to remove it here.
-			 */
-			if (LIST_FIRST(slp) == vp)
-				vn_syncer_add(vp, syncdelay);
 		}
+
+		/*
+		 * Increment the slot upon completion.
+		 */
+		ctx->syncer_delayno = (ctx->syncer_delayno + 1) &
+				      ctx->syncer_mask;
 
 		sc_flags = ctx->sc_flags;
 
@@ -456,6 +467,55 @@ syncer_thread(void *_ctx)
 	wakeup(sc_flagsp);
 
 	kthread_exit();
+}
+
+/*
+ * This allows a filesystem to pro-actively request that a dirty
+ * vnode be fsync()d.  This routine does not guarantee that one
+ * will actually be fsynced.
+ */
+void
+vn_syncer_one(struct mount *mp)
+{
+	struct syncer_ctx *ctx;
+	struct synclist *slp;
+	struct vnode *vp;
+	int i;
+	int n = syncdelay;
+
+	ctx = mp->mnt_syncer_ctx;
+	i = ctx->syncer_delayno & ctx->syncer_mask;
+	cpu_ccfence();
+
+	if (lwkt_trytoken(&ctx->sc_token) == 0)
+		return;
+
+	/*
+	 * Look ahead on our syncer time array.
+	 */
+	do {
+		slp = &ctx->syncer_workitem_pending[i];
+		vp = LIST_FIRST(slp);
+		if (vp && vp->v_type == VNON)
+			vp = LIST_NEXT(vp, v_synclist);
+		if (vp)
+			break;
+		i = (i + 1) & ctx->syncer_mask;
+		/* i will be wrong if we stop here but vp is NULL so ok */
+	} while(--n);
+
+	/*
+	 * Process one vnode, skip the syncer vnode but also stop
+	 * if the syncer vnode is the only thing on this list.
+	 */
+	if (vp) {
+		vn_syncer_add(vp, retrydelay);
+		if (vget(vp, LK_EXCLUSIVE | LK_NOWAIT) == 0) {
+			VOP_FSYNC(vp, MNT_LAZY, 0);
+			vput(vp);
+		}
+	}
+	lwkt_reltoken(&ctx->sc_token);
 }
 
 /*
@@ -640,6 +700,7 @@ sync_reclaim(struct vop_reclaim_args *ap)
 		if (vp->v_flag & VONWORKLST) {
 			LIST_REMOVE(vp, v_synclist);
 			vclrflags(vp, VONWORKLST);
+			--ctx->syncer_count;
 		}
 		lwkt_reltoken(&ctx->sc_token);
 	} else {
