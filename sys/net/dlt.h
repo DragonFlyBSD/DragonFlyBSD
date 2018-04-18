@@ -184,8 +184,6 @@
 #define DLT_USER14		161
 #define DLT_USER15		162
 
-/* 147 - 162 unused */
-
 #define DLT_IEEE802_11_RADIO_AVS 163	/* 802.11 plus AVS radio header */
 #define DLT_JUNIPER_MONITOR	164	/* Juniper private */
 #define DLT_BACNET_MS_TP	165	/* BACnet MS/TP */
