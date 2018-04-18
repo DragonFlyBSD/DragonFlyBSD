@@ -18,9 +18,8 @@ INCS=	a.out.h ar.h assert.h bitstring.h cpio.h ctype.h db.h \
 	netdb.h nl_types.h nlist.h nss.h nsswitch.h objformat.h \
 	paths.h printf.h pthread.h pthread_np.h pwd.h \
 	ranlib.h readpassphrase.h \
-	res_update.h resolv.h re_comp.h rmd160.h \
-	runetype.h search.h setjmp.h sgtty.h \
-	signal.h spawn.h stdalign.h stdarg.h stdbool.h \
+	re_comp.h resolv.h res_update.h rmd160.h runetype.h \
+	search.h setjmp.h signal.h spawn.h stdalign.h stdarg.h stdbool.h \
 	stddef.h stdint.h stdio.h stdlib.h stdnoreturn.h \
 	string.h stringlist.h strings.h sysexits.h \
 	tar.h time.h \

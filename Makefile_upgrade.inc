@@ -3382,6 +3382,11 @@ TO_REMOVE+=/usr/share/man/man9/devfs_clone_bitmap_fff.9.gz
 TO_REMOVE+=/usr/share/man/man7/stabs.7.gz
 TO_REMOVE+=/boot/kernel/libalias.ko
 TO_REMOVE+=/usr/include/net/libalias
+TO_REMOVE+=/usr/include/sgtty.h
+TO_REMOVE+=/usr/include/sys/ttychars.h
+TO_REMOVE+=/usr/include/sys/ttydev.h
+TO_REMOVE+=/usr/share/man/man3/gtty.3.gz
+TO_REMOVE+=/usr/share/man/man3/stty.3.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
