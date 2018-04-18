@@ -142,6 +142,48 @@
 #define DLT_IBM_SP		145	/* IBM SP switch */
 #define DLT_IBM_SN		146	/* IBM Next Federation switch */
 
+/*
+ * Reserved for private use.  If you have some link-layer header type
+ * that you want to use within your organization, with the capture files
+ * using that link-layer header type not ever be sent outside your
+ * organization, you can use these values.
+ *
+ * No libpcap release will use these for any purpose, nor will any
+ * tcpdump release use them, either.
+ *
+ * Do *NOT* use these in capture files that you expect anybody not using
+ * your private versions of capture-file-reading tools to read; in
+ * particular, do *NOT* use them in products, otherwise you may find that
+ * people won't be able to use tcpdump, or snort, or Ethereal, or... to
+ * read capture files from your firewall/intrusion detection/traffic
+ * monitoring/etc. appliance, or whatever product uses that DLT_ value,
+ * and you may also find that the developers of those applications will
+ * not accept patches to let them read those files.
+ *
+ * Also, do not use them if somebody might send you a capture using them
+ * for *their* private type and tools using them for *your* private type
+ * would have to read them.
+ *
+ * Instead, ask "tcpdump-workers@lists.tcpdump.org" for a new DLT_ value,
+ * as per the comment above, and use the type you're given.
+ */
+#define DLT_USER0		147
+#define DLT_USER1		148
+#define DLT_USER2		149
+#define DLT_USER3		150
+#define DLT_USER4		151
+#define DLT_USER5		152
+#define DLT_USER6		153
+#define DLT_USER7		154
+#define DLT_USER8		155
+#define DLT_USER9		156
+#define DLT_USER10		157
+#define DLT_USER11		158
+#define DLT_USER12		159
+#define DLT_USER13		160
+#define DLT_USER14		161
+#define DLT_USER15		162
+
 /* 147 - 162 unused */
 
 #define DLT_IEEE802_11_RADIO_AVS 163	/* 802.11 plus AVS radio header */
