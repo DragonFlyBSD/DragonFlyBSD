@@ -1,5 +1,5 @@
 #
-# X86_64_LINT -- config file for checking all the sources, tries to pull in
+# LINT64 -- config file for checking all the sources, tries to pull in
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
