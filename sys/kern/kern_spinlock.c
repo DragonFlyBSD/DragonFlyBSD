@@ -261,8 +261,7 @@ _spin_lock_shared_contested(struct spinlock *spin, const char *ident)
 	/*
 	 * Undo the inline's increment.
 	 */
-	ovalue = atomic_fetchadd_int(&spin->counta, -1);
-	ovalue += -1;
+	ovalue = atomic_fetchadd_int(&spin->counta, -1) - 1;
 
 	indefinite_init(&info, ident, 0, 's');
 	cpu_pause();
@@ -299,11 +298,28 @@ _spin_lock_shared_contested(struct spinlock *spin, const char *ident)
 			}
 			continue;
 		}
+
+		/*
+		 * Ignore the EXCLWAIT bits if we have waited too long.
+		 * This would be a situation where most of the cpu cores
+		 * are concurrently cycling both shared and exclusive use
+		 * of the same spinlock, which can cause one or more cores
+		 * to wait indefinitely on a shared spinlock.  This can
+		 * only occur in the most extreme testing environments.
+		 */
+		if (info.secs > 1 && (ovalue & (SPINLOCK_EXCLWAIT - 1)) == 0) {
+			if (atomic_fcmpset_int(&spin->counta, &ovalue,
+					       ovalue | SPINLOCK_SHARED | 1)) {
+				break;
+			}
+			continue;
+		}
+
+		/*
+		 * If SHARED is already set, go for the increment, improving
+		 * the exclusive to multiple-readers transition.
+		 */
 		if (ovalue & SPINLOCK_SHARED) {
-			/*
-			 * Go for the increment, improving the exclusive
-			 * to multiple-readers transition.
-			 */
 			ovalue = atomic_fetchadd_int(&spin->counta, 1);
 			/* ovalue += 1; NOT NEEDED */
 			if (ovalue & SPINLOCK_SHARED)
