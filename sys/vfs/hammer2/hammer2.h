@@ -175,6 +175,7 @@ typedef uint32_t hammer2_xid_t;
 #define HAMMER2_XID_MAX			0x7FFFFFFFU
 
 #define HAMMER2_LIMIT_DIRTY_CHAINS	(65536)
+#define HAMMER2_LIMIT_DIRTY_INODES	(16384)
 
 /*
  * The chain structure tracks a portion of the media topology from the
@@ -1170,6 +1171,7 @@ struct hammer2_pfs {
 	struct lock		lock;		/* PFS lock for certain ops */
 	struct lock		lock_nlink;	/* rename and nlink lock */
 	struct netexport	export;		/* nfs export */
+	int			speedup_ticks;	/* speedup_syncer() helper */
 	int			ronly;		/* read-only mount */
 	int			hflags;		/* pfs-specific mount flags */
 	struct malloc_type	*minode;
@@ -1557,7 +1559,7 @@ int hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata);
 int hammer2_chain_dirent_test(hammer2_chain_t *chain, const char *name,
 				size_t name_len);
 
-void hammer2_pfs_memory_wait(hammer2_pfs_t *pmp);
+void hammer2_pfs_memory_wait(hammer2_inode_t *ip, int always_moderate);
 void hammer2_pfs_memory_inc(hammer2_pfs_t *pmp);
 void hammer2_pfs_memory_wakeup(hammer2_pfs_t *pmp);
 

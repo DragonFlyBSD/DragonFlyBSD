@@ -1165,7 +1165,7 @@ hammer2_ioctl_destroy(hammer2_inode_t *ip, void *data)
 			error = EINVAL;
 			break;
 		}
-		hammer2_pfs_memory_wait(pmp);
+		hammer2_pfs_memory_wait(ip, 0);
 		hammer2_trans_init(pmp, 0);
 		hammer2_inode_lock(ip, 0);
 
@@ -1195,7 +1195,7 @@ hammer2_ioctl_destroy(hammer2_inode_t *ip, void *data)
 			error = EINVAL;
 			break;
 		}
-		hammer2_pfs_memory_wait(pmp);
+		hammer2_pfs_memory_wait(ip, 0);
 		hammer2_trans_init(pmp, 0);
 
 		xop = hammer2_xop_alloc(pmp->iroot, 0);

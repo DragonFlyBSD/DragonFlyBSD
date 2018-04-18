@@ -230,7 +230,15 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	hammer2_trans_init(ip->pmp, 0);
 
 	/*
-	 * Clean out buffer cache, wait for I/O's to complete.
+	 * Flush dirty buffers in the file's logical buffer cache.
+	 * It is best to wait for the strategy code to commit the
+	 * buffers to the device's backing buffer cache before
+	 * then trying to flush the inode.
+	 *
+	 * This should be quick, but certain inode modifications cached
+	 * entirely in the hammer2_inode structure may not trigger a
+	 * buffer read until the flush so the fsync can wind up also
+	 * doing scattered reads.
 	 */
 	vfsync(vp, ap->a_waitfor, 1, NULL, NULL);
 	bio_track_wait(&vp->v_track_write, 0, 0);
@@ -252,6 +260,18 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	error2 = hammer2_inode_chain_flush(ip);
 	if (error2)
 		error1 = error2;
+
+	/*
+	 * We may be able to clear the vnode dirty flag.  The
+	 * hammer2_pfs_moderate() code depends on this usually working.
+	 */
+	if ((ip->flags & (HAMMER2_INODE_MODIFIED |
+			  HAMMER2_INODE_RESIZED |
+			  HAMMER2_INODE_DIRTYDATA)) == 0 &&
+	    RB_EMPTY(&vp->v_rbdirty_tree) &&
+	    !bio_track_active(&vp->v_track_write)) {
+		vclrisdirty(vp);
+	}
 	hammer2_inode_unlock(ip);
 	hammer2_trans_done(ip->pmp);
 
@@ -362,7 +382,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 	if (hammer2_vfs_enospace(ip, 0, ap->a_cred) > 1)
 		return (ENOSPC);
 
-	hammer2_pfs_memory_wait(ip->pmp);
+	hammer2_pfs_memory_wait(ip, 0);
 	hammer2_trans_init(ip->pmp, 0);
 	hammer2_inode_lock(ip, 0);
 	error = 0;
@@ -801,10 +821,12 @@ hammer2_vop_write(struct vop_write_args *ap)
 	 * transaction related to the buffer cache or other direct
 	 * VM page manipulation.
 	 */
-	if (uio->uio_segflg == UIO_NOCOPY)
+	if (uio->uio_segflg == UIO_NOCOPY) {
 		hammer2_trans_init(ip->pmp, HAMMER2_TRANS_BUFCACHE);
-	else
+	} else {
+		hammer2_pfs_memory_wait(ip, 0);
 		hammer2_trans_init(ip->pmp, 0);
+	}
 	error = hammer2_write_file(ip, uio, ioflag, seqcount);
 	hammer2_trans_done(ip->pmp);
 
@@ -1360,7 +1382,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 
-	hammer2_pfs_memory_wait(dip->pmp);
+	hammer2_pfs_memory_wait(dip, 1);
 	hammer2_trans_init(dip->pmp, 0);
 
 	inum = hammer2_trans_newinum(dip->pmp);
@@ -1489,7 +1511,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 */
 	ip = VTOI(ap->a_vp);
 	KASSERT(ip->pmp, ("ip->pmp is NULL %p %p", ip, ip->pmp));
-	hammer2_pfs_memory_wait(ip->pmp);
+	hammer2_pfs_memory_wait(ip, 0);
 	hammer2_trans_init(ip->pmp, 0);
 
 	/*
@@ -1566,7 +1588,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
-	hammer2_pfs_memory_wait(dip->pmp);
+	hammer2_pfs_memory_wait(dip, 1);
 	hammer2_trans_init(dip->pmp, 0);
 
 	inum = hammer2_trans_newinum(dip->pmp);
@@ -1646,7 +1668,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
-	hammer2_pfs_memory_wait(dip->pmp);
+	hammer2_pfs_memory_wait(dip, 1);
 	hammer2_trans_init(dip->pmp, 0);
 
 	/*
@@ -1720,7 +1742,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
-	hammer2_pfs_memory_wait(dip->pmp);
+	hammer2_pfs_memory_wait(dip, 1);
 	hammer2_trans_init(dip->pmp, 0);
 
 	ap->a_vap->va_type = VLNK;	/* enforce type */
@@ -1830,7 +1852,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 
 	ncp = ap->a_nch->ncp;
 
-	hammer2_pfs_memory_wait(dip->pmp);
+	hammer2_pfs_memory_wait(dip, 1);
 	hammer2_trans_init(dip->pmp, 0);
 	hammer2_inode_lock(dip, 0);
 
@@ -1920,7 +1942,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 		return (ENOSPC);
 #endif
 
-	hammer2_pfs_memory_wait(dip->pmp);
+	hammer2_pfs_memory_wait(dip, 1);
 	hammer2_trans_init(dip->pmp, 0);
 	hammer2_inode_lock(dip, 0);
 
@@ -2018,7 +2040,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	tname = tncp->nc_name;
 	tname_len = tncp->nc_nlen;
 
-	hammer2_pfs_memory_wait(tdip->pmp);
+	hammer2_pfs_memory_wait(tdip, 0);
 	hammer2_trans_init(tdip->pmp, 0);
 
 	update_tdip = 0;
