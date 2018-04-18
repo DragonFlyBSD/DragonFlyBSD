@@ -130,6 +130,9 @@ struct bpf_version {
 #define	BIOCGDLTLIST	_IOWR('B',121, struct bpf_dltlist)
 #define	BIOCLOCK	_IO('B', 122)
 #define	BIOCSETWF	_IOW('B',123, struct bpf_program)
+#define BIOCGFEEDBACK	 _IOR('B',124, u_int)
+#define BIOCSFEEDBACK	 _IOW('B',125, u_int)
+#define BIOCFEEDBACK     BIOCSFEEDBACK		/* FreeBSD name */
 
 /*
  * Structure prepended to each packet.

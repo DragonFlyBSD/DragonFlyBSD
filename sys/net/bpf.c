@@ -79,6 +79,7 @@ struct netmsg_bpf_output {
 	struct mbuf	*nm_mbuf;
 	struct ifnet	*nm_ifp;
 	struct sockaddr	*nm_dst;
+	boolean_t 	nm_feedback;
 };
 
 MALLOC_DEFINE(M_BPF, "BPF", "BPF data");
@@ -382,6 +383,7 @@ bpfopen(struct dev_open_args *ap)
 	d->bd_bufsize = bpf_bufsize;
 	d->bd_sig = SIGIO;
 	d->bd_seesent = 1;
+	d->bd_feedback = 0;
 	callout_init(&d->bd_callout);
 	lwkt_reltoken(&bpf_token);
 
@@ -581,13 +583,29 @@ bpf_output_dispatch(netmsg_t msg)
 {
 	struct netmsg_bpf_output *bmsg = (struct netmsg_bpf_output *)msg;
 	struct ifnet *ifp = bmsg->nm_ifp;
+	struct mbuf *mc = NULL;
 	int error;
+
+	if (bmsg->nm_feedback) {
+		mc = m_dup(bmsg->nm_mbuf, M_NOWAIT);
+		if (mc != NULL)
+			mc->m_pkthdr.rcvif = ifp;
+	}
 
 	/*
 	 * The driver frees the mbuf.
 	 */
 	error = ifp->if_output(ifp, bmsg->nm_mbuf, bmsg->nm_dst, NULL);
 	lwkt_replymsg(&msg->lmsg, error);
+
+	if (mc != NULL) {
+		if (error == 0) {
+			mc->m_flags &= ~M_HASH;
+			(*ifp->if_input)(ifp, mc, NULL, -1);
+		} else {
+			m_freem(mc);
+		}
+	}
 }
 
 static int
@@ -637,7 +655,13 @@ bpfwrite(struct dev_write_args *ap)
 	bmsg.nm_ifp = ifp;
 	bmsg.nm_dst = &dst;
 
+	if (d->bd_feedback)
+		bmsg.nm_feedback = TRUE;
+	else
+		bmsg.nm_feedback = FALSE;
+
 	ret = lwkt_domsg(netisr_cpuport(0), &bmsg.base.lmsg, 0);
+
 	lwkt_reltoken(&bpf_token);
 
 	return ret;
@@ -679,6 +703,8 @@ bpf_resetd(struct bpf_d *d)
  *  BIOCVERSION		Get filter language version.
  *  BIOCGHDRCMPLT	Get "header already complete" flag
  *  BIOCSHDRCMPLT	Set "header already complete" flag
+ *  BIOCSFEEDBACK	Set packet feedback mode.
+ *  BIOCGFEEDBACK	Get packet feedback mode.
  *  BIOCGSEESENT	Get "see packets sent" flag
  *  BIOCSSEESENT	Set "see packets sent" flag
  *  BIOCLOCK		Set "locked" flag
@@ -953,6 +979,20 @@ bpfioctl(struct dev_ioctl_args *ap)
 
 	case FIOASYNC:		/* Send signal on receive packets */
 		d->bd_async = *(int *)ap->a_data;
+		break;
+
+	/*
+	 * Set "feed packets from bpf back to input" mode
+	 */
+	case BIOCSFEEDBACK:
+		d->bd_feedback = *(int *)ap->a_data;
+		break;
+
+	/*
+	 * Get "feed packets from bpf back to input" mode
+	 */
+	case BIOCGFEEDBACK:
+		*(u_int *)ap->a_data = d->bd_feedback;
 		break;
 
 	case FIOSETOWN:
