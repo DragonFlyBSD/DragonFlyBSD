@@ -776,7 +776,7 @@ nat_del_dispatch(netmsg_t nat_del_msg)
 			}
 		}
 		RB_FOREACH_SAFE(s, state_tree, &nat->rb_udp_out, tmp) {
-			RB_REMOVE(state_tree, &nat->rb_icmp_in, s);
+			RB_REMOVE(state_tree, &nat->rb_udp_out, s);
 			if (s != NULL) {
 				kfree(s, M_IP_FW3_NAT);
 			}
