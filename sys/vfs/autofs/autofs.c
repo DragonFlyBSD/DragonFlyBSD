@@ -169,24 +169,21 @@ char *
 autofs_path(struct autofs_node *anp)
 {
 	struct autofs_mount *amp = anp->an_mount;
+	size_t len;
 	char *path, *tmp;
 
 	path = kstrdup("", M_AUTOFS);
 	for (; anp->an_parent != NULL; anp = anp->an_parent) {
-		tmp = kmalloc(strlen(anp->an_name) + strlen(path) + 2,
-		    M_AUTOFS, M_WAITOK);
-		strcpy(tmp, anp->an_name);
-		strcat(tmp, "/");
-		strcat(tmp, path);
+		len = strlen(anp->an_name) + strlen(path) + 2;
+		tmp = kmalloc(len, M_AUTOFS, M_WAITOK);
+		ksnprintf(tmp, len, "%s/%s", anp->an_name, path);
 		kfree(path, M_AUTOFS);
 		path = tmp;
 	}
 
-	tmp = kmalloc(strlen(amp->am_on) + strlen(path) + 2,
-	    M_AUTOFS, M_WAITOK);
-	strcpy(tmp, amp->am_on);
-	strcat(tmp, "/");
-	strcat(tmp, path);
+	len = strlen(amp->am_on) + strlen(path) + 2;
+	tmp = kmalloc(len, M_AUTOFS, M_WAITOK);
+	ksnprintf(tmp, len, "%s/%s", amp->am_on, path);
 	kfree(path, M_AUTOFS);
 	path = tmp;
 
