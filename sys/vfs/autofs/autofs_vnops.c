@@ -329,7 +329,6 @@ autofs_readdir(struct vop_readdir_args *ap)
 			vrele(newvp);
 			return (error);
 		}
-		/* FALLTHROUGH */
 	}
 
 	if (uio->uio_offset < 0)
