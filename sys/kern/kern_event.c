@@ -1027,7 +1027,6 @@ int
 sys_kevent(struct kevent_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct timespec ts, *tsp;
 	struct kqueue *kq;
 	struct file *fp = NULL;
@@ -1042,7 +1041,7 @@ sys_kevent(struct kevent_args *uap)
 	} else {
 		tsp = NULL;
 	}
-	fp = holdfp(p->p_fd, uap->fd, -1);
+	fp = holdfp(td, uap->fd, -1);
 	if (fp == NULL)
 		return (EBADF);
 	if (fp->f_type != DTYPE_KQUEUE) {
@@ -1059,7 +1058,7 @@ sys_kevent(struct kevent_args *uap)
 	error = kern_kevent(kq, uap->nevents, &uap->sysmsg_result, kap,
 			    kevent_copyin, kevent_copyout, tsp, 0);
 
-	fdrop(fp);
+	dropfp(td, uap->fd, fp);
 
 	return (error);
 }
@@ -1091,7 +1090,7 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 
 	if (fops->f_flags & FILTEROP_ISFD) {
 		/* validate descriptor */
-		fp = holdfp(fdp, kev->ident, -1);
+		fp = holdfp_fdp(fdp, kev->ident, -1);
 		if (fp == NULL)
 			return (EBADF);
 	}

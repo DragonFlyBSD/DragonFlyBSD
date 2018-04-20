@@ -410,7 +410,7 @@ i_ping(struct cdev *dev)
  | low level I/O
  */
 static int
-i_setsoc(isc_session_t *sp, int fd, struct thread *td)
+i_setsoc(isc_session_t *sp, int fd, thread_t td)
 {
      int error = 0;
      struct file *fp;
@@ -424,7 +424,7 @@ i_setsoc(isc_session_t *sp, int fd, struct thread *td)
 
      debug_called(8);
 
-     if ((error = holdsock(td->td_proc->p_fd, fd, &fp)) == 0) {
+     if ((error = holdsock(td, fd, &fp)) == 0) {
 	  sp->soc = fp->f_data;
 	  sp->fp = fp;
 	  isc_start_receiver(sp);

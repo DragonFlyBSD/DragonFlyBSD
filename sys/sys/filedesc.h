@@ -61,17 +61,20 @@
  * the resource limit is reached.
  */
 #define NDFILE		15		/* must be of the form 2^n - 1 */
+#define NTDCACHEFD	4		/* max td's caching same fd */
 
 struct file;
 struct klist;
+struct fdcache;
 
 struct fdnode {
 	struct file *fp;
 	char	fileflags;
-	char	unused01;
-	char	unused02;
+	char	isfull;
+	char	iterator;
 	char	reserved;		/* descriptor has been reserved */
 	int	allocated;		/* subtree allocation count */
+	struct fdcache *tdcache[NTDCACHEFD];
 };
 
 struct filedesc {
@@ -148,7 +151,7 @@ struct lwp;
 /*
  * Kernel global variables and routines.
  */
-int	dupfdopen (struct filedesc *, int, int, int, int);
+int	dupfdopen (struct thread *, int, int, int, int);
 int	fdalloc (struct proc *p, int want, int *result);
 int	fdavail (struct proc *p, int n);
 int	falloc (struct lwp *lp, struct file **resultfp, int *resultfd);
@@ -166,9 +169,11 @@ int	fdrevoke(void *f_data, short f_type, struct ucred *cred);
 int	closef (struct file *fp, struct proc *p);
 void	fdcloseexec (struct proc *p);
 int	fdcheckstd (struct lwp *lp);
-struct	file *holdfp (struct filedesc *fdp, int fd, int flag);
-int	holdsock (struct filedesc *fdp, int fdes, struct file **fpp);
-int	holdvnode (struct filedesc *fdp, int fd, struct file **fpp);
+struct	file *holdfp (struct thread *td, int fd, int flag);
+struct	file *holdfp_fdp (struct filedesc *fdp, int fd, int flag);
+int	holdsock (struct thread *td, int fdes, struct file **fpp);
+int	holdvnode (struct thread *td, int fd, struct file **fpp);
+void	dropfp(struct thread *td, int fd, struct file *fp);
 int	fdissequential (struct file *);
 void	fdsequential (struct file *, int);
 pid_t	fgetown (struct sigio **);
@@ -177,6 +182,7 @@ void	funsetown (struct sigio **);
 void	funsetownlst (struct sigiolst *);
 void	setugidsafety (struct proc *p);
 void	allfiles_scan_exclusive(int (*callback)(struct file *, void *), void *data);
+void	fexitcache(struct thread *td);
 
 struct filedesc_to_leader *
 filedesc_to_leader_alloc(struct filedesc_to_leader *old,

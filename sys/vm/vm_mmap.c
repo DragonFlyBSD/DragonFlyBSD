@@ -246,7 +246,7 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 		 * Mapping file, get fp for validation. Obtain vnode and make
 		 * sure it is of appropriate type.
 		 */
-		fp = holdfp(p->p_fd, fd, -1);
+		fp = holdfp(td, fd, -1);
 		if (fp == NULL)
 			return (EBADF);
 		if (fp->f_type != DTYPE_VNODE) {
@@ -397,7 +397,7 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 	lwkt_reltoken(&vms->vm_map.token);
 done:
 	if (fp)
-		fdrop(fp);
+		dropfp(td, fd, fp);
 
 	return (error);
 }

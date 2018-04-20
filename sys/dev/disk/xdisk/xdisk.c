@@ -295,7 +295,7 @@ xdisk_attach(struct xdisk_attach_ioctl *xaioc)
 	/*
 	 * Normalize ioctl params
 	 */
-	fp = holdfp(curproc->p_fd, xaioc->fd, -1);
+	fp = holdfp(curthread, xaioc->fd, -1);
 	if (fp == NULL)
 		return EINVAL;
 	xa_printf(1, "xdisk_attach fp=%p\n", fp);

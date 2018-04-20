@@ -180,7 +180,7 @@ mqueue_get(struct lwp *l, mqd_t mqd, file_t **fpr)
 	struct mqueue *mq;
 	file_t *fp;
 
-	fp = holdfp(curproc->p_fd, (int)mqd, -1);	/* XXX: Why -1 ? */
+	fp = holdfp(curthread, (int)mqd, -1);	/* XXX: Why -1 ? */
 	if (__predict_false(fp == NULL))
 		return EBADF;
 

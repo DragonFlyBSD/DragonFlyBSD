@@ -699,6 +699,12 @@ lwp_exit(int masterexit, void *waddr)
         }
 
 	/*
+	 * Cleanup any cached descriptors for this thread
+	 */
+	if (p->p_fd)
+		fexitcache(td);
+
+	/*
 	 * Nobody actually wakes us when the lock
 	 * count reaches zero, so just wait one tick.
 	 */

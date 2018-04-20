@@ -48,6 +48,7 @@ struct lwkt_ipiq;
 struct lwkt_cpu_msg;
 struct lwkt_cpu_port;
 struct lwkt_cpusync;
+struct fdnode;
 union sysunion;
 
 typedef struct lwkt_queue	*lwkt_queue_t;
@@ -217,6 +218,19 @@ typedef struct lwkt_cpu_msg {
 } lwkt_cpu_msg;
 
 /*
+ * per-thread file descriptor cache
+ */
+struct fdcache {
+	int     fd;			/* descriptor being cached */
+	int     locked;
+	struct file *fp;		/* cached referenced fp */
+	int	lru;
+	int	unused[3];
+} __cachealign;
+
+#define NFDCACHE	4		/* max fd's cached by a thread */
+
+/*
  * Thread structure.  Note that ownership of a thread structure is special
  * cased and there is no 'token'.  A thread is always owned by the cpu
  * represented by td_gd, any manipulation of the thread by some other cpu
@@ -265,7 +279,8 @@ struct thread {
     int		td_upri;	/* user priority (sub-priority under td_pri) */
     int		td_type;	/* thread type, TD_TYPE_ */
     int		td_tracker;	/* for callers to debug lock counts */
-    int		td_unused03[4];	/* for future fields */
+    int		td_fdcache_lru;
+    int		td_unused03[3];	/* for future fields */
     struct iosched_data td_iosdata;	/* Dynamic I/O scheduling data */
     struct timeval td_start;	/* start time for a thread/process */
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
@@ -278,6 +293,7 @@ struct thread {
     int		td_fairq_load;		/* fairq */
     int		td_fairq_count;		/* fairq */
     struct globaldata *td_migrate_gd;	/* target gd for thread migration */
+    struct fdcache    td_fdcache[NFDCACHE];
 #ifdef DEBUG_CRIT_SECTIONS
 #define CRIT_DEBUG_ARRAY_SIZE   32
 #define CRIT_DEBUG_ARRAY_MASK   (CRIT_DEBUG_ARRAY_SIZE - 1)

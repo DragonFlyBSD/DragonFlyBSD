@@ -116,7 +116,7 @@ disk_iocom_ioctl(struct disk *dp, u_long cmd, void *data)
 	switch(cmd) {
 	case DIOCRECLUSTER:
 		recl = data;
-		fp = holdfp(curproc->p_fd, recl->fd, -1);
+		fp = holdfp(curthread, recl->fd, -1);
 		if (fp) {
 			error = disk_iocom_reconnect(dp, fp);
 		} else {

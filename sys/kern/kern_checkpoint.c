@@ -719,7 +719,6 @@ sys_sys_checkpoint(struct sys_checkpoint_args *uap)
         int error = 0;
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-	struct filedesc *fdp = p->p_fd;
 	struct file *fp;
 
 	/*
@@ -742,25 +741,25 @@ sys_sys_checkpoint(struct sys_checkpoint_args *uap)
 		fp = NULL;
 		if (uap->fd == -1 && uap->pid == (pid_t)-1)
 			error = checkpoint_signal_handler(td->td_lwp);
-		else if ((fp = holdfp(fdp, uap->fd, FWRITE)) == NULL)
+		else if ((fp = holdfp(td, uap->fd, FWRITE)) == NULL)
 			error = EBADF;
 		else
 			error = ckpt_freeze_proc(td->td_lwp, fp);
 		if (fp)
-			fdrop(fp);
+			dropfp(td, uap->fd, fp);
 		break;
 	case CKPT_THAW:
 		if (uap->pid != -1) {
 			error = EINVAL;
 			break;
 		}
-		if ((fp = holdfp(fdp, uap->fd, FREAD)) == NULL) {
+		if ((fp = holdfp(td, uap->fd, FREAD)) == NULL) {
 			error = EBADF;
 			break;
 		}
 		uap->sysmsg_result = uap->retval;
 	        error = ckpt_thaw_proc(td->td_lwp, fp);
-		fdrop(fp);
+		dropfp(td, uap->fd, fp);
 		break;
 	default:
 	        error = EOPNOTSUPP;

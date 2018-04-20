@@ -1308,7 +1308,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		 * Root mounts typically do not supply one.
 		 */
 		if (info.cluster_fd >= 0) {
-			fp = holdfp(curproc->p_fd, info.cluster_fd, -1);
+			fp = holdfp(curthread, info.cluster_fd, -1);
 			if (fp) {
 				hammer2_cluster_reconnect(hmp, fp);
 			} else {

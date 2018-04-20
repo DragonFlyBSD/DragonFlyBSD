@@ -168,6 +168,394 @@ fdfixup_locked(struct filedesc *fdp, int fd)
 	}
 }
 
+/*
+ * Clear the fd thread caches for this fdnode.
+ *
+ * If match_fdc is NULL, all thread caches of fdn will be cleared.
+ * The caller must hold fdp->fd_spin exclusively.  The threads caching
+ * the descriptor do not have to be the current thread.  The (status)
+ * argument is ignored.
+ *
+ * If match_fdc is not NULL, only the match_fdc's cache will be cleared.
+ * The caller must hold fdp->fd_spin shared and match_fdc must match a
+ * fdcache entry in curthread.  match_fdc has been locked by the caller
+ * and had the specified (status).
+ *
+ * Since we are matching against a fp in the fdp (which must still be present
+ * at this time), fp will have at least two refs on any match and we can
+ * decrement the count trivially.
+ */
+static
+void
+fclearcache(struct fdnode *fdn, struct fdcache *match_fdc, int status)
+{
+	struct fdcache *fdc;
+	struct file *fp;
+	int i;
+
+	/*
+	 * match_fdc == NULL	We are cleaning out all tdcache entries
+	 *			for the fdn and hold fdp->fd_spin exclusively.
+	 *			This can race against the target threads
+	 *			cleaning out specific entries.
+	 *
+	 * match_fdc != NULL	We are cleaning out a specific tdcache
+	 *			entry on behalf of the owning thread
+	 *			and hold fdp->fd_spin shared.  The thread
+	 *			has already locked the entry.  This cannot
+	 *			race.
+	 */
+	fp = fdn->fp;
+	for (i = 0; i < NTDCACHEFD; ++i) {
+		if ((fdc = fdn->tdcache[i]) == NULL)
+			continue;
+
+		/*
+		 * If match_fdc is non-NULL we are being asked to
+		 * clear a specific fdc owned by curthread.  There must
+		 * be exactly one match.  The caller has already locked
+		 * the cache entry and will dispose of the lock after
+		 * we return.
+		 *
+		 * Since we also have a shared lock on fdp, we
+		 * can do this without atomic ops.
+		 */
+		if (match_fdc) {
+			if (fdc != match_fdc)
+				continue;
+			fdn->tdcache[i] = NULL;
+			KASSERT(fp == fdc->fp,
+				("fclearcache(1): fp mismatch %p/%p\n",
+				fp, fdc->fp));
+			fdc->fp = NULL;
+			fdc->fd = -1;
+
+			/*
+			 * status can be 0 or 2.  If 2 the ref is borrowed,
+			 * if 0 the ref is not borrowed and we have to drop
+			 * it.
+			 */
+			if (status == 0)
+				atomic_add_int(&fp->f_count, -1);
+			fdn->isfull = 0;	/* heuristic */
+			return;
+		}
+
+		/*
+		 * Otherwise we hold an exclusive spin-lock and can only
+		 * race thread consumers borrowing cache entries.
+		 *
+		 * Acquire the lock and dispose of the entry.  We have to
+		 * spin until we get the lock.
+		 */
+		for (;;) {
+			status = atomic_swap_int(&fdc->locked, 1);
+			if (status == 1) {	/* foreign lock, retry */
+				cpu_pause();
+				continue;
+			}
+			fdn->tdcache[i] = NULL;
+			KASSERT(fp == fdc->fp,
+				("fclearcache(2): fp mismatch %p/%p\n",
+				fp, fdc->fp));
+			fdc->fp = NULL;
+			fdc->fd = -1;
+			if (status == 0)
+				atomic_add_int(&fp->f_count, -1);
+			fdn->isfull = 0;	/* heuristic */
+			atomic_swap_int(&fdc->locked, 0);
+			break;
+		}
+	}
+	KKASSERT(match_fdc == NULL);
+}
+
+/*
+ * Retrieve the fp for the specified fd given the specified file descriptor
+ * table.  The fdp does not have to be owned by the current process.
+ * If flags != -1, fp->f_flag must contain at least one of the flags.
+ *
+ * This function is not able to cache the fp.
+ */
+struct file *
+holdfp_fdp(struct filedesc *fdp, int fd, int flag)
+{
+	struct file *fp;
+
+	spin_lock_shared(&fdp->fd_spin);
+	if (((u_int)fd) < fdp->fd_nfiles) {
+		fp = fdp->fd_files[fd].fp;	/* can be NULL */
+		if (fp) {
+			if ((fp->f_flag & flag) == 0 && flag != -1) {
+				fp = NULL;
+			} else {
+				fhold(fp);
+			}
+		}
+	} else {
+		fp = NULL;
+	}
+	spin_unlock_shared(&fdp->fd_spin);
+
+	return fp;
+}
+
+/*
+ * Acquire the fp for the specified file descriptor, using the thread
+ * cache if possible and caching it if possible.
+ *
+ * td must be the curren thread.
+ */
+static
+struct file *
+_holdfp_cache(thread_t td, int fd)
+{
+	struct filedesc *fdp;
+	struct fdcache *fdc;
+	struct fdcache *best;
+	struct fdnode *fdn;
+	struct file *fp;
+	int status;
+	int delta;
+	int i;
+
+	/*
+	 * Fast
+	 */
+	for (fdc = &td->td_fdcache[0]; fdc < &td->td_fdcache[NFDCACHE]; ++fdc) {
+		if (fdc->fd != fd || fdc->fp == NULL)
+			continue;
+		status = atomic_swap_int(&fdc->locked, 1);
+
+		/*
+		 * If someone else has locked our cache entry they are in
+		 * the middle of clearing it, skip the entry.
+		 */
+		if (status == 1)
+			continue;
+
+		/*
+		 * We have locked the entry, but if it no longer matches
+		 * restore the previous state (0 or 2) and skip the entry.
+		 */
+		if (fdc->fd != fd || fdc->fp == NULL) {
+			atomic_swap_int(&fdc->locked, status);
+			continue;
+		}
+
+		/*
+		 * We have locked a valid entry.  We can borrow the ref
+		 * for a mode 0 entry.  We can get a valid fp for a mode
+		 * 2 entry but not borrow the ref.
+		 */
+		if (status == 0) {
+			fp = fdc->fp;
+			fdc->lru = ++td->td_fdcache_lru;
+			atomic_swap_int(&fdc->locked, 2);
+
+			return fp;
+		}
+		if (status == 2) {
+			fp = fdc->fp;
+			fhold(fp);
+			fdc->lru = ++td->td_fdcache_lru;
+			atomic_swap_int(&fdc->locked, 2);
+
+			return fp;
+		}
+		KKASSERT(0);
+	}
+
+	/*
+	 * Lookup the descriptor the slow way.  This can contend against
+	 * modifying operations in a multi-threaded environment and cause
+	 * cache line ping ponging otherwise.
+	 */
+	fdp = td->td_proc->p_fd;
+	spin_lock_shared(&fdp->fd_spin);
+
+	if (((u_int)fd) < fdp->fd_nfiles) {
+		fp = fdp->fd_files[fd].fp;	/* can be NULL */
+		if (fp) {
+			fhold(fp);
+			if (fdp->fd_files[fd].isfull == 0)
+				goto enter;
+		}
+	} else {
+		fp = NULL;
+	}
+	spin_unlock_shared(&fdp->fd_spin);
+
+	return fp;
+
+	/*
+	 * We found a valid fp and held it, fdp is still shared locked.
+	 * Enter the fp into the per-thread cache.  Find the oldest entry
+	 * via lru, or an empty entry.
+	 *
+	 * Because fdp's spinlock is held (shared is fine), no other
+	 * thread should be in the middle of clearing our selected entry.
+	 */
+enter:
+	best = &td->td_fdcache[0];
+	for (fdc = &td->td_fdcache[0]; fdc < &td->td_fdcache[NFDCACHE]; ++fdc) {
+		if (fdc->fp == NULL) {
+			best = fdc;
+			break;
+		}
+		delta = fdc->lru - best->lru;
+		if (delta < 0)
+			best = fdc;
+	}
+
+	/*
+	 * Replace best
+	 *
+	 * Don't enter into the cache if we cannot get the lock.
+	 */
+	status = atomic_swap_int(&best->locked, 1);
+	if (status == 1)
+		goto done;
+
+	/*
+	 * Clear the previous cache entry if present
+	 */
+	if (best->fp) {
+		KKASSERT(best->fd >= 0);
+		fclearcache(&fdp->fd_files[best->fd], best, status);
+	}
+
+	/*
+	 * Create our new cache entry.  This entry is 'safe' until we tie
+	 * into the fdnode.  If we cannot tie in, we will clear the entry.
+	 */
+	best->fd = fd;
+	best->fp = fp;
+	best->lru = ++td->td_fdcache_lru;
+	best->locked = 2;			/* borrowed ref */
+
+	fdn = &fdp->fd_files[fd];
+	for (i = 0; i < NTDCACHEFD; ++i) {
+		if (fdn->tdcache[i] == NULL &&
+		    atomic_cmpset_ptr((void **)&fdn->tdcache[i], NULL, best)) {
+			goto done;
+		}
+	}
+	fdn->isfull = 1;			/* no space */
+	best->fd = -1;
+	best->fp = NULL;
+	best->locked = 0;
+done:
+	spin_unlock_shared(&fdp->fd_spin);
+
+	return fp;
+}
+
+/*
+ * Drop the file pointer and return to the thread cache if possible.
+ *
+ * Caller must not hold fdp's spin lock.
+ * td must be the current thread.
+ */
+void
+dropfp(thread_t td, int fd, struct file *fp)
+{
+	struct filedesc *fdp;
+	struct fdcache *fdc;
+	int status;
+
+	fdp = td->td_proc->p_fd;
+
+	/*
+	 * If our placeholder is still present we can re-cache the ref.
+	 *
+	 * Note that we can race an fclearcache().
+	 */
+	for (fdc = &td->td_fdcache[0]; fdc < &td->td_fdcache[NFDCACHE]; ++fdc) {
+		if (fdc->fp != fp || fdc->fd != fd)
+			continue;
+		status = atomic_swap_int(&fdc->locked, 1);
+		switch(status) {
+		case 0:
+			/*
+			 * Not in mode 2, fdrop fp without caching.
+			 */
+			atomic_swap_int(&fdc->locked, 0);
+			break;
+		case 1:
+			/*
+			 * Not in mode 2, locked by someone else.
+			 * fdrop fp without caching.
+			 */
+			break;
+		case 2:
+			/*
+			 * Intact borrowed ref, return to mode 0
+			 * indicating that we have returned the ref.
+			 *
+			 * Return the borrowed ref (2->1->0)
+			 */
+			if (fdc->fp == fp && fdc->fd == fd) {
+				atomic_swap_int(&fdc->locked, 0);
+				return;
+			}
+			atomic_swap_int(&fdc->locked, 2);
+			break;
+		}
+	}
+
+	/*
+	 * Failed to re-cache, drop the fp without caching.
+	 */
+	fdrop(fp);
+}
+
+/*
+ * Clear all descriptors cached in the per-thread fd cache for
+ * the specified thread.
+ *
+ * Caller must not hold p_fd->spin.  This function will temporarily
+ * obtain a shared spin lock.
+ */
+void
+fexitcache(thread_t td)
+{
+	struct filedesc *fdp;
+	struct fdcache *fdc;
+	int status;
+	int i;
+
+	if (td->td_proc == NULL)
+		return;
+	fdp = td->td_proc->p_fd;
+	if (fdp == NULL)
+		return;
+
+	/*
+	 * A shared lock is sufficient as the caller controls td and we
+	 * are only clearing td's cache.
+	 */
+	spin_lock_shared(&fdp->fd_spin);
+	for (i = 0; i < NFDCACHE; ++i) {
+		fdc = &td->td_fdcache[i];
+		if (fdc->fp) {
+			status = atomic_swap_int(&fdc->locked, 1);
+			if (status == 1) {
+				cpu_pause();
+				--i;
+				continue;
+			}
+			if (fdc->fp) {
+				KKASSERT(fdc->fd >= 0);
+				fclearcache(&fdp->fd_files[fdc->fd], fdc,
+					    status);
+			}
+			atomic_swap_int(&fdc->locked, 0);
+		}
+	}
+	spin_unlock_shared(&fdp->fd_spin);
+}
+
 static __inline struct filelist_head *
 fp2filelist(const struct file *fp)
 {
@@ -314,7 +702,7 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 	/*
 	 * Operations on file pointers
 	 */
-	if ((fp = holdfp(p->p_fd, fd, -1)) == NULL)
+	if ((fp = holdfp(td, fd, -1)) == NULL)
 		return (EBADF);
 
 	switch (cmd) {
@@ -653,6 +1041,7 @@ retry:
 		 * old descriptor.  delfp inherits the ref from the 
 		 * descriptor table.
 		 */
+		fclearcache(&fdp->fd_files[new], NULL, 0);
 		delfp = fdp->fd_files[new].fp;
 		fdp->fd_files[new].fp = NULL;
 		fdp->fd_files[new].reserved = 1;
@@ -959,6 +1348,9 @@ kern_close(int fd)
 	KKASSERT(p);
 	fdp = p->p_fd;
 
+	/*
+	 * funsetfd*() also clears the fd cache
+	 */
 	spin_lock(&fdp->fd_spin);
 	if ((fp = funsetfd_locked(fdp, fd)) == NULL) {
 		spin_unlock(&fdp->fd_spin);
@@ -1004,13 +1396,10 @@ int
 kern_shutdown(int fd, int how)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct file *fp;
 	int error;
 
-	KKASSERT(p);
-
-	if ((fp = holdfp(p->p_fd, fd, -1)) == NULL)
+	if ((fp = holdfp(td, fd, -1)) == NULL)
 		return (EBADF);
 	error = fo_shutdown(fp, how);
 	fdrop(fp);
@@ -1038,13 +1427,10 @@ int
 kern_fstat(int fd, struct stat *ub)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct file *fp;
 	int error;
 
-	KKASSERT(p);
-
-	if ((fp = holdfp(p->p_fd, fd, -1)) == NULL)
+	if ((fp = holdfp(td, fd, -1)) == NULL)
 		return (EBADF);
 	error = fo_stat(fp, ub, td->td_ucred);
 	fdrop(fp);
@@ -1077,12 +1463,11 @@ int
 sys_fpathconf(struct fpathconf_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct file *fp;
 	struct vnode *vp;
 	int error = 0;
 
-	if ((fp = holdfp(p->p_fd, uap->fd, -1)) == NULL)
+	if ((fp = holdfp(td, uap->fd, -1)) == NULL)
 		return (EBADF);
 
 	switch (fp->f_type) {
@@ -1107,10 +1492,6 @@ sys_fpathconf(struct fpathconf_args *uap)
 	fdrop(fp);
 	return(error);
 }
-
-static int fdexpand;
-SYSCTL_INT(_debug, OID_AUTO, fdexpand, CTLFLAG_RD, &fdexpand, 0,
-    "Number of times a file table has been expanded");
 
 /*
  * Grow the file table so it can hold through descriptor (want).
@@ -1162,7 +1543,6 @@ fdgrow_locked(struct filedesc *fdp, int want)
 		kfree(oldfiles, M_FILEDESC);
 		spin_lock(&fdp->fd_spin);
 	}
-	fdexpand++;
 }
 
 /*
@@ -1512,13 +1892,15 @@ fdrevoke_proc_callback(struct proc *p, void *vinfo)
 	spin_unlock(&p->p_spin);
 
 	/*
-	 * Locate and close any matching file descriptors.
+	 * Locate and close any matching file descriptors, replacing
+	 * them with info->nfp.
 	 */
 	spin_lock(&fdp->fd_spin);
 	for (n = 0; n < fdp->fd_nfiles; ++n) {
 		if ((fp = fdp->fd_files[n].fp) == NULL)
 			continue;
 		if (fp->f_flag & FREVOKED) {
+			fclearcache(&fdp->fd_files[n], NULL, 0);
 			fhold(info->nfp);
 			fdp->fd_files[n].fp = info->nfp;
 			spin_unlock(&fdp->fd_spin);
@@ -1628,10 +2010,8 @@ checkfdclosed(struct filedesc *fdp, int fd, struct file *fp)
  * This function always succeeds.
  *
  * If fp is NULL, the file descriptor is returned to the pool.
- */
-
-/*
- * (exclusive spinlock must be held on call)
+ *
+ * Caller must hold an exclusive spinlock on fdp->fd_spin.
  */
 static void
 fsetfd_locked(struct filedesc *fdp, struct file *fp, int fd)
@@ -1640,6 +2020,7 @@ fsetfd_locked(struct filedesc *fdp, struct file *fp, int fd)
 	KKASSERT(fdp->fd_files[fd].reserved != 0);
 	if (fp) {
 		fhold(fp);
+		fclearcache(&fdp->fd_files[fd], NULL, 0);
 		fdp->fd_files[fd].fp = fp;
 		fdp->fd_files[fd].reserved = 0;
 	} else {
@@ -1649,6 +2030,9 @@ fsetfd_locked(struct filedesc *fdp, struct file *fp, int fd)
 	}
 }
 
+/*
+ * Caller must hold an exclusive spinlock on fdp->fd_spin.
+ */
 void
 fsetfd(struct filedesc *fdp, struct file *fp, int fd)
 {
@@ -1658,7 +2042,7 @@ fsetfd(struct filedesc *fdp, struct file *fp, int fd)
 }
 
 /*
- * (exclusive spinlock must be held on call)
+ * Caller must hold an exclusive spinlock on fdp->fd_spin.
  */
 static 
 struct file *
@@ -1670,11 +2054,13 @@ funsetfd_locked(struct filedesc *fdp, int fd)
 		return (NULL);
 	if ((fp = fdp->fd_files[fd].fp) == NULL)
 		return (NULL);
+	fclearcache(&fdp->fd_files[fd], NULL, 0);
 	fdp->fd_files[fd].fp = NULL;
 	fdp->fd_files[fd].fileflags = 0;
 
 	fdreserve_locked(fdp, fd, -1);
 	fdfixup_locked(fdp, fd);
+
 	return(fp);
 }
 
@@ -1960,6 +2346,9 @@ again:
 	 * copied files yet we can ignore the return value from funsetfd().
 	 *
 	 * The read spinlock on fdp is still being held.
+	 *
+	 * Be sure to clean out fdnode->tdcache, otherwise bad things will
+	 * happen.
 	 */
 	bcopy(fdp->fd_files, newfdp->fd_files, i * sizeof(struct fdnode));
 	for (i = 0 ; i < newfdp->fd_nfiles; ++i) {
@@ -1969,6 +2358,7 @@ again:
 			fdnode->reserved = 0;
 			fdfixup_locked(newfdp, i);
 		} else if (fdnode->fp) {
+			bzero(&fdnode->tdcache, sizeof(fdnode->tdcache));
 			if (fdnode->fp->f_type == DTYPE_KQUEUE) {
 				(void)funsetfd_locked(newfdp, i);
 			} else {
@@ -1996,6 +2386,13 @@ fdfree(struct proc *p, struct filedesc *repl)
 	struct file *fp;
 	struct vnode *vp;
 	struct flock lf;
+
+	/*
+	 * Before destroying or replacing p->p_fd we must be sure to
+	 * clean out the cache of the last thread, which should be
+	 * curthread.
+	 */
+	fexitcache(curthread);
 
 	/*
 	 * Certain daemons might not have file descriptors.
@@ -2152,91 +2549,82 @@ fdfree(struct proc *p, struct filedesc *repl)
 
 /*
  * Retrieve and reference the file pointer associated with a descriptor.
+ *
+ * td must be the current thread.
  */
 struct file *
-holdfp(struct filedesc *fdp, int fd, int flag)
+holdfp(thread_t td, int fd, int flag)
 {
-	struct file* fp;
+	struct file *fp;
 
-	spin_lock_shared(&fdp->fd_spin);
-	if (((u_int)fd) >= fdp->fd_nfiles) {
-		fp = NULL;
-		goto done;
+	fp = _holdfp_cache(td, fd);
+	if (fp) {
+		if ((fp->f_flag & flag) == 0 && flag != -1) {
+			fdrop(fp);
+			fp = NULL;
+		}
 	}
-	if ((fp = fdp->fd_files[fd].fp) == NULL)
-		goto done;
-	if ((fp->f_flag & flag) == 0 && flag != -1) {
-		fp = NULL;
-		goto done;
-	}
-	fhold(fp);
-done:
-	spin_unlock_shared(&fdp->fd_spin);
-	return (fp);
+	return fp;
 }
 
 /*
  * holdsock() - load the struct file pointer associated
  * with a socket into *fpp.  If an error occurs, non-zero
  * will be returned and *fpp will be set to NULL.
+ *
+ * td must be the current thread.
  */
 int
-holdsock(struct filedesc *fdp, int fd, struct file **fpp)
+holdsock(thread_t td, int fd, struct file **fpp)
 {
 	struct file *fp;
 	int error;
 
-	spin_lock_shared(&fdp->fd_spin);
-	if ((unsigned)fd >= fdp->fd_nfiles) {
+	/*
+	 * Lockless shortcut
+	 */
+	fp = _holdfp_cache(td, fd);
+	if (fp) {
+		if (fp->f_type != DTYPE_SOCKET) {
+			fdrop(fp);
+			fp = NULL;
+			error = ENOTSOCK;
+		} else {
+			error = 0;
+		}
+	} else {
 		error = EBADF;
-		fp = NULL;
-		goto done;
 	}
-	if ((fp = fdp->fd_files[fd].fp) == NULL) {
-		error = EBADF;
-		goto done;
-	}
-	if (fp->f_type != DTYPE_SOCKET) {
-		error = ENOTSOCK;
-		goto done;
-	}
-	fhold(fp);
-	error = 0;
-done:
-	spin_unlock_shared(&fdp->fd_spin);
 	*fpp = fp;
+
 	return (error);
 }
 
 /*
  * Convert a user file descriptor to a held file pointer.
+ *
+ * td must be the current thread.
  */
 int
-holdvnode(struct filedesc *fdp, int fd, struct file **fpp)
+holdvnode(thread_t td, int fd, struct file **fpp)
 {
 	struct file *fp;
 	int error;
 
-	spin_lock_shared(&fdp->fd_spin);
-	if ((unsigned)fd >= fdp->fd_nfiles) {
+	fp = _holdfp_cache(td, fd);
+	if (fp) {
+		if (fp->f_type != DTYPE_VNODE && fp->f_type != DTYPE_FIFO) {
+			fdrop(fp);
+			fp = NULL;
+			error = EINVAL;
+		} else {
+			error = 0;
+		}
+	} else {
 		error = EBADF;
-		fp = NULL;
-		goto done;
 	}
-	if ((fp = fdp->fd_files[fd].fp) == NULL) {
-		error = EBADF;
-		goto done;
-	}
-	if (fp->f_type != DTYPE_VNODE && fp->f_type != DTYPE_FIFO) {
-		fp = NULL;
-		error = EINVAL;
-		goto done;
-	}
-	fhold(fp);
-	error = 0;
-done:
-	spin_unlock_shared(&fdp->fd_spin);
 	*fpp = fp;
+
 	return (error);
 }
 
@@ -2299,7 +2687,9 @@ setugidsafety(struct proc *p)
 }
 
 /*
- * Close any files on exec?
+ * Close all CLOEXEC files on exec.
+ *
+ * Only a single thread remains for the current process.
  *
  * NOT MPSAFE - scans fdp without spinlocks, calls knote_fdclose()
  */
@@ -2325,6 +2715,8 @@ fdcloseexec(struct proc *p)
 			/*
 			 * NULL-out descriptor prior to close to avoid
 			 * a race while close blocks.
+			 *
+			 * (funsetfd*() also clears the fd cache)
 			 */
 			if ((fp = funsetfd_locked(fdp, i)) != NULL) {
 				knote_fdclose(fp, fdp, i);
@@ -2562,13 +2954,13 @@ fdrop(struct file *fp)
 int
 sys_flock(struct flock_args *uap)
 {
-	struct proc *p = curproc;
+	thread_t td = curthread;
 	struct file *fp;
 	struct vnode *vp;
 	struct flock lf;
 	int error;
 
-	if ((fp = holdfp(p->p_fd, uap->fd, -1)) == NULL)
+	if ((fp = holdfp(td, uap->fd, -1)) == NULL)
 		return (EBADF);
 	if (fp->f_type != DTYPE_VNODE) {
 		error = EOPNOTSUPP;
@@ -2634,13 +3026,14 @@ fdopen(struct dev_open_args *ap)
  * must fsetfd() it.  On failure the caller will clean it up.
  */
 int
-dupfdopen(struct filedesc *fdp, int dfd, int sfd, int mode, int error)
+dupfdopen(thread_t td, int dfd, int sfd, int mode, int error)
 {
+	struct filedesc *fdp;
 	struct file *wfp;
 	struct file *xfp;
 	int werror;
 
-	if ((wfp = holdfp(fdp, sfd, -1)) == NULL)
+	if ((wfp = holdfp(td, sfd, -1)) == NULL)
 		return (EBADF);
 
 	/*
@@ -2655,6 +3048,8 @@ dupfdopen(struct filedesc *fdp, int dfd, int sfd, int mode, int error)
 		if (werror)
 			return (werror);
 	}
+
+	fdp = td->td_proc->p_fd;
 
 	/*
 	 * There are two cases of interest here.

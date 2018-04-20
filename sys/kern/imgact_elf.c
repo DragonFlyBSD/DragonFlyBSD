@@ -1576,12 +1576,14 @@ elf_putsigs(struct lwp *lp, elf_buf_t target)
 static int
 elf_putfiles(struct proc *p, elf_buf_t target, struct file *ckfp)
 {
+	thread_t td = curthread;
 	int error = 0;
 	int i;
 	struct ckpt_filehdr *cfh = NULL;
 	struct ckpt_fileinfo *cfi;
 	struct file *fp;	
 	struct vnode *vp;
+
 	/*
 	 * the duplicated loop is gross, but it was the only way
 	 * to eliminate uninitialized variable warnings 
@@ -1594,8 +1596,9 @@ elf_putfiles(struct proc *p, elf_buf_t target, struct file *ckfp)
 	/*
 	 * ignore STDIN/STDERR/STDOUT.
 	 */
+	KKASSERT(td->td_proc == p);
 	for (i = 3; error == 0 && i < p->p_fd->fd_nfiles; i++) {
-		fp = holdfp(p->p_fd, i, -1);
+		fp = holdfp(td, i, -1);
 		if (fp == NULL)
 			continue;
 		/* 

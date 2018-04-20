@@ -388,7 +388,7 @@ smb_dev2share(int fd, int mode, struct smb_cred *scred,
 
 	KKASSERT(scred->scr_td->td_proc);
 
-	fp = holdfp(scred->scr_td->td_proc->p_fd, fd, FREAD|FWRITE);
+	fp = holdfp_fdp(scred->scr_td->td_proc->p_fd, fd, FREAD|FWRITE);
 	if (fp == NULL)
 		return EBADF;
 

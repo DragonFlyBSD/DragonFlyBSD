@@ -149,16 +149,15 @@ int
 kern_bind(int s, struct sockaddr *sa)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct file *fp;
 	int error;
 
-	KKASSERT(p);
-	error = holdsock(p->p_fd, s, &fp);
+	error = holdsock(td, s, &fp);
 	if (error)
 		return (error);
 	error = sobind((struct socket *)fp->f_data, sa, td);
-	fdrop(fp);
+	dropfp(td, s, fp);
+
 	return (error);
 }
 
@@ -186,17 +185,16 @@ int
 kern_listen(int s, int backlog)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct file *fp;
 	int error;
 
-	KKASSERT(p);
-	error = holdsock(p->p_fd, s, &fp);
+	error = holdsock(td, s, &fp);
 	if (error)
 		return (error);
 	error = solisten((struct socket *)fp->f_data, backlog, td);
-	fdrop(fp);
-	return(error);
+	dropfp(td, s, fp);
+
+	return (error);
 }
 
 /*
@@ -290,7 +288,7 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res,
 	if (name && namelen && *namelen < 0)
 		return (EINVAL);
 
-	error = holdsock(td->td_proc->p_fd, s, &lfp);
+	error = holdsock(td, s, &lfp);
 	if (error)
 		return (error);
 
@@ -417,7 +415,8 @@ done:
 		fsetfd(fdp, nfp, fd);
 	}
 	fdrop(nfp);
-	fdrop(lfp);
+	dropfp(td, s, lfp);
+
 	return (error);
 }
 
@@ -553,12 +552,11 @@ int
 kern_connect(int s, int fflags, struct sockaddr *sa)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct file *fp;
 	struct socket *so;
 	int error, interrupted = 0;
 
-	error = holdsock(p->p_fd, s, &fp);
+	error = holdsock(td, s, &fp);
 	if (error)
 		return (error);
 	so = (struct socket *)fp->f_data;
@@ -605,7 +603,8 @@ bad:
 	if (error == ERESTART)
 		error = EINTR;
 done:
-	fdrop(fp);
+	dropfp(td, s, fp);
+
 	return (error);
 }
 
@@ -761,7 +760,7 @@ kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 	struct uio ktruio;
 #endif
 
-	error = holdsock(p->p_fd, s, &fp);
+	error = holdsock(td, s, &fp);
 	if (error)
 		return (error);
 #ifdef KTRACE
@@ -800,7 +799,8 @@ kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 #endif
 	if (error == 0)
 		*res  = len - auio->uio_resid;
-	fdrop(fp);
+	dropfp(td, s, fp);
+
 	return (error);
 }
 
@@ -928,7 +928,6 @@ kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
 	     struct mbuf **control, int *flags, size_t *res)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct file *fp;
 	size_t len;
 	int error;
@@ -939,7 +938,7 @@ kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
 	struct uio ktruio;
 #endif
 
-	error = holdsock(p->p_fd, s, &fp);
+	error = holdsock(td, s, &fp);
 	if (error)
 		return (error);
 #ifdef KTRACE
@@ -983,7 +982,8 @@ kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
 #endif
 	if (error == 0)
 		*res = len - auio->uio_resid;
-	fdrop(fp);
+	dropfp(td, s, fp);
+
 	return (error);
 }
 
@@ -1169,7 +1169,6 @@ int
 kern_setsockopt(int s, struct sockopt *sopt)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct file *fp;
 	int error;
 
@@ -1180,12 +1179,13 @@ kern_setsockopt(int s, struct sockopt *sopt)
 	if (sopt->sopt_valsize > SOMAXOPT_SIZE)	/* unsigned */
 		return (EINVAL);
 
-	error = holdsock(p->p_fd, s, &fp);
+	error = holdsock(td, s, &fp);
 	if (error)
 		return (error);
 
 	error = sosetopt((struct socket *)fp->f_data, sopt);
-	fdrop(fp);
+	dropfp(td, s, fp);
+
 	return (error);
 }
 
@@ -1232,7 +1232,6 @@ int
 kern_getsockopt(int s, struct sockopt *sopt)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct file *fp;
 	int error;
 
@@ -1241,12 +1240,13 @@ kern_getsockopt(int s, struct sockopt *sopt)
 	if (sopt->sopt_val != NULL && sopt->sopt_valsize == 0)
 		return (EINVAL);
 
-	error = holdsock(p->p_fd, s, &fp);
+	error = holdsock(td, s, &fp);
 	if (error)
 		return (error);
 
 	error = sogetopt((struct socket *)fp->f_data, sopt);
-	fdrop(fp);
+	dropfp(td, s, fp);
+
 	return (error);
 }
 
@@ -1319,13 +1319,12 @@ int
 kern_getsockname(int s, struct sockaddr **name, int *namelen)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct file *fp;
 	struct socket *so;
 	struct sockaddr *sa = NULL;
 	int error;
 
-	error = holdsock(p->p_fd, s, &fp);
+	error = holdsock(td, s, &fp);
 	if (error)
 		return (error);
 	if (*namelen < 0) {
@@ -1342,8 +1341,8 @@ kern_getsockname(int s, struct sockaddr **name, int *namelen)
 			*name = sa;
 		}
 	}
+	dropfp(td, s, fp);
 
-	fdrop(fp);
 	return (error);
 }
 
@@ -1385,13 +1384,12 @@ int
 kern_getpeername(int s, struct sockaddr **name, int *namelen)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct file *fp;
 	struct socket *so;
 	struct sockaddr *sa = NULL;
 	int error;
 
-	error = holdsock(p->p_fd, s, &fp);
+	error = holdsock(td, s, &fp);
 	if (error)
 		return (error);
 	if (*namelen < 0) {
@@ -1412,8 +1410,8 @@ kern_getpeername(int s, struct sockaddr **name, int *namelen)
 			*name = sa;
 		}
 	}
+	dropfp(td, s, fp);
 
-	fdrop(fp);
 	return (error);
 }
 
@@ -1526,7 +1524,6 @@ int
 sys_sendfile(struct sendfile_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct file *fp;
 	struct vnode *vp = NULL;
 	struct sf_hdtr hdtr;
@@ -1539,13 +1536,11 @@ sys_sendfile(struct sendfile_args *uap)
 	off_t sbytes;
 	int error;
 
-	KKASSERT(p);
-
 	/*
 	 * Do argument checking. Must be a regular file in, stream
 	 * type and connected socket out, positive offset.
 	 */
-	fp = holdfp(p->p_fd, uap->fd, FREAD);
+	fp = holdfp(td, uap->fd, FREAD);
 	if (fp == NULL) {
 		return (EBADF);
 	}
@@ -1555,7 +1550,7 @@ sys_sendfile(struct sendfile_args *uap)
 	}
 	vp = (struct vnode *)fp->f_data;
 	vref(vp);
-	fdrop(fp);
+	dropfp(td, uap->fd, fp);
 
 	/*
 	 * If specified, get the pointer to the sf_hdtr struct for
@@ -1633,7 +1628,6 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 	      struct mbuf *mheader, off_t *sbytes, int flags)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct vm_object *obj;
 	struct socket *so;
 	struct file *fp;
@@ -1652,7 +1646,7 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 		error = EINVAL;
 		goto done0;
 	}
-	error = holdsock(p->p_fd, sfd, &fp);
+	error = holdsock(td, sfd, &fp);
 	if (error)
 		goto done0;
 	so = (struct socket *)fp->f_data;
@@ -1921,7 +1915,7 @@ done:
 	vm_object_drop(obj);
 	ssb_unlock(&so->so_snd);
 done1:
-	fdrop(fp);
+	dropfp(td, sfd, fp);
 done0:
 	if (mheader != NULL)
 		m_freem(mheader);

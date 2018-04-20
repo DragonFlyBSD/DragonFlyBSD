@@ -80,7 +80,7 @@ static void mount_warning(struct mount *mp, const char *ctl, ...)
 static int mount_path(struct proc *p, struct mount *mp, char **rb, char **fb);
 static int checkvp_chdir (struct vnode *vn, struct thread *td);
 static void checkdirs (struct nchandle *old_nch, struct nchandle *new_nch);
-static int chroot_refuse_vdir_fds (struct filedesc *fdp);
+static int chroot_refuse_vdir_fds (thread_t td, struct filedesc *fdp);
 static int chroot_visible_mnt(struct mount *mp, struct proc *p);
 static int getutimes (struct timeval *, struct timespec *);
 static int getutimens (const struct timespec *, struct timespec *, int *);
@@ -1100,7 +1100,6 @@ int
 sys_mountctl(struct mountctl_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct file *fp;
 	void *ctl = NULL;
 	void *buf = NULL;
@@ -1110,7 +1109,6 @@ sys_mountctl(struct mountctl_args *uap)
 	/*
 	 * Sanity and permissions checks.  We must be root.
 	 */
-	KKASSERT(p);
 	if (td->td_ucred->cr_prison != NULL)
 		return (EPERM);
 	if ((uap->op != MOUNTCTL_MOUNTFLAGS) &&
@@ -1148,7 +1146,7 @@ sys_mountctl(struct mountctl_args *uap)
 	 * Validate the descriptor
 	 */
 	if (uap->fd >= 0) {
-		fp = holdfp(p->p_fd, uap->fd, -1);
+		fp = holdfp(td, uap->fd, -1);
 		if (fp == NULL) {
 			error = EBADF;
 			goto done;
@@ -1160,9 +1158,10 @@ sys_mountctl(struct mountctl_args *uap)
 	/*
 	 * Execute the internal kernel function and clean up.
 	 */
-	error = kern_mountctl(path, uap->op, fp, ctl, uap->ctllen, buf, uap->buflen, &uap->sysmsg_result);
+	error = kern_mountctl(path, uap->op, fp, ctl, uap->ctllen,
+			      buf, uap->buflen, &uap->sysmsg_result);
 	if (fp)
-		fdrop(fp);
+		dropfp(td, uap->fd, fp);
 	if (error == 0 && uap->sysmsg_result > 0)
 		error = copyout(buf, uap->buf, uap->sysmsg_result);
 done:
@@ -1310,7 +1309,7 @@ kern_fstatfs(int fd, struct statfs *buf)
 	int error;
 
 	KKASSERT(p);
-	if ((error = holdvnode(p->p_fd, fd, &fp)) != 0)
+	if ((error = holdvnode(td, fd, &fp)) != 0)
 		return (error);
 
 	/*
@@ -1416,14 +1415,12 @@ int
 kern_fstatvfs(int fd, struct statvfs *buf)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct file *fp;
 	struct mount *mp;
 	struct statvfs *sp;
 	int error;
 
-	KKASSERT(p);
-	if ((error = holdvnode(p->p_fd, fd, &fp)) != 0)
+	if ((error = holdvnode(td, fd, &fp)) != 0)
 		return (error);
 	if ((mp = fp->f_nchandle.mount) == NULL)
 		mp = ((struct vnode *)fp->f_data)->v_mount;
@@ -1681,7 +1678,7 @@ sys_fchdir(struct fchdir_args *uap)
 	struct nchandle nch, onch, tnch;
 	int error;
 
-	if ((error = holdvnode(fdp, uap->fd, &fp)) != 0)
+	if ((error = holdvnode(td, uap->fd, &fp)) != 0)
 		return (error);
 	lwkt_gettoken(&p->p_token);
 	vp = (struct vnode *)fp->f_data;
@@ -1799,7 +1796,7 @@ sys_chdir(struct chdir_args *uap)
  * any filedescriptors are open directories.
  */
 static int
-chroot_refuse_vdir_fds(struct filedesc *fdp)
+chroot_refuse_vdir_fds(thread_t td, struct filedesc *fdp)
 {
 	struct vnode *vp;
 	struct file *fp;
@@ -1807,7 +1804,7 @@ chroot_refuse_vdir_fds(struct filedesc *fdp)
 	int fd;
 
 	for (fd = 0; fd < fdp->fd_nfiles ; fd++) {
-		if ((error = holdvnode(fdp, fd, &fp)) != 0)
+		if ((error = holdvnode(td, fd, &fp)) != 0)
 			continue;
 		vp = (struct vnode *)fp->f_data;
 		if (vp->v_type != VDIR) {
@@ -1859,7 +1856,7 @@ kern_chroot(struct nchandle *nch)
 	 */
 	if (chroot_allow_open_directories == 0 ||
 	   (chroot_allow_open_directories == 1 && fdp->fd_rdir != rootvnode)) {
-		if ((error = chroot_refuse_vdir_fds(fdp)) != 0)
+		if ((error = chroot_refuse_vdir_fds(td, fdp)) != 0)
 			return (error);
 	}
 	if ((vp = nch->ncp->nc_vp) == NULL)
@@ -2042,7 +2039,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 		 */
 		if ((error == ENODEV || error == ENXIO) && lp->lwp_dupfd >= 0) {
 			if (fdalloc(p, 0, &indx) == 0) {
-				error = dupfdopen(fdp, indx, lp->lwp_dupfd, flags, error);
+				error = dupfdopen(td, indx, lp->lwp_dupfd, flags, error);
 				if (error == 0) {
 					*res = indx;
 					fdrop(fp);	/* our ref */
@@ -2123,6 +2120,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	fsetfd(fdp, fp, indx);
 	fdrop(fp);
 	*res = indx;
+
 	return (error);
 }
 
@@ -2682,14 +2680,13 @@ int
 kern_lseek(int fd, off_t offset, int whence, off_t *res)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct file *fp;
 	struct vnode *vp;
 	struct vattr vattr;
 	off_t new_offset;
 	int error;
 
-	fp = holdfp(p->p_fd, fd, -1);
+	fp = holdfp(td, fd, -1);
 	if (fp == NULL)
 		return (EBADF);
 	if (fp->f_type != DTYPE_VNODE) {
@@ -2741,7 +2738,8 @@ kern_lseek(int fd, off_t offset, int whence, off_t *res)
 	*res = fp->f_offset;
 	spin_unlock(&fp->f_spin);
 done:
-	fdrop(fp);
+	dropfp(td, fd, fp);
+
 	return (error);
 }
 
@@ -3204,11 +3202,10 @@ int
 sys_fchflags(struct fchflags_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct file *fp;
 	int error;
 
-	if ((error = holdvnode(p->p_fd, uap->fd, &fp)) != 0)
+	if ((error = holdvnode(td, uap->fd, &fp)) != 0)
 		return (error);
 	if (fp->f_nchandle.ncp)
 		error = ncp_writechk(&fp->f_nchandle);
@@ -3334,11 +3331,10 @@ int
 sys_fchmod(struct fchmod_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct file *fp;
 	int error;
 
-	if ((error = holdvnode(p->p_fd, uap->fd, &fp)) != 0)
+	if ((error = holdvnode(td, uap->fd, &fp)) != 0)
 		return (error);
 	if (fp->f_nchandle.ncp)
 		error = ncp_writechk(&fp->f_nchandle);
@@ -3478,7 +3474,7 @@ sys_fchown(struct fchown_args *uap)
 	struct file *fp;
 	int error;
 
-	if ((error = holdvnode(p->p_fd, uap->fd, &fp)) != 0)
+	if ((error = holdvnode(td, uap->fd, &fp)) != 0)
 		return (error);
 	if (fp->f_nchandle.ncp)
 		error = ncp_writechk(&fp->f_nchandle);
@@ -3661,7 +3657,6 @@ int
 kern_futimens(int fd, struct timespec *ts)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct timespec newts[2];
 	struct file *fp;
 	struct vnode *vp;
@@ -3672,7 +3667,7 @@ kern_futimens(int fd, struct timespec *ts)
 	error = getutimens(ts, newts, &nullflag);
 	if (error)
 		return (error);
-	if ((error = holdvnode(p->p_fd, fd, &fp)) != 0)
+	if ((error = holdvnode(td, fd, &fp)) != 0)
 		return (error);
 	if (fp->f_nchandle.ncp)
 		error = ncp_writechk(&fp->f_nchandle);
@@ -3881,7 +3876,6 @@ int
 kern_ftruncate(int fd, off_t length)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct vattr vattr;
 	struct vnode *vp;
 	struct file *fp;
@@ -3893,7 +3887,7 @@ kern_ftruncate(int fd, off_t length)
 
 	if (length < 0)
 		return(EINVAL);
-	if ((error = holdvnode(p->p_fd, fd, &fp)) != 0)
+	if ((error = holdvnode(td, fd, &fp)) != 0)
 		return (error);
 	if (fp->f_nchandle.ncp) {
 		error = ncp_writechk(&fp->f_nchandle);
@@ -3961,13 +3955,12 @@ int
 sys_fsync(struct fsync_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	struct file *fp;
 	vm_object_t obj;
 	int error;
 
-	if ((error = holdvnode(p->p_fd, uap->fd, &fp)) != 0)
+	if ((error = holdvnode(td, uap->fd, &fp)) != 0)
 		return (error);
 	vp = (struct vnode *)fp->f_data;
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
@@ -4365,7 +4358,6 @@ kern_getdirentries(int fd, char *buf, u_int count, long *basep, int *res,
 		   enum uio_seg direction)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	struct file *fp;
 	struct uio auio;
@@ -4373,7 +4365,7 @@ kern_getdirentries(int fd, char *buf, u_int count, long *basep, int *res,
 	off_t loff;
 	int error, eofflag;
 
-	if ((error = holdvnode(p->p_fd, fd, &fp)) != 0)
+	if ((error = holdvnode(td, fd, &fp)) != 0)
 		return (error);
 	if ((fp->f_flag & FREAD) == 0) {
 		error = EBADF;

@@ -190,7 +190,7 @@ hammer2_ioctl_recluster(hammer2_inode_t *ip, void *data)
 	hammer2_cluster_t *cluster;
 	int error;
 
-	fp = holdfp(curproc->p_fd, recl->fd, -1);
+	fp = holdfp(curthread, recl->fd, -1);
 	if (fp) {
 		error = VFS_ROOT(ip->pmp->mp, &vproot);
 		if (error == 0) {

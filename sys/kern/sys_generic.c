@@ -249,13 +249,10 @@ int
 kern_preadv(int fd, struct uio *auio, int flags, size_t *res)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct file *fp;
 	int error;
 
-	KKASSERT(p);
-
-	fp = holdfp(p->p_fd, fd, FREAD);
+	fp = holdfp(td, fd, FREAD);
 	if (fp == NULL)
 		return (EBADF);
 	if (flags & O_FOFFSET && fp->f_type != DTYPE_VNODE) {
@@ -263,7 +260,8 @@ kern_preadv(int fd, struct uio *auio, int flags, size_t *res)
 	} else {
 		error = dofileread(fd, fp, auio, flags, res);
 	}
-	fdrop(fp);
+	dropfp(td, fd, fp);
+
 	return(error);
 }
 
@@ -455,13 +453,10 @@ int
 kern_pwritev(int fd, struct uio *auio, int flags, size_t *res)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct file *fp;
 	int error;
 
-	KKASSERT(p);
-
-	fp = holdfp(p->p_fd, fd, FWRITE);
+	fp = holdfp(td, fd, FWRITE);
 	if (fp == NULL)
 		return (EBADF);
 	else if ((flags & O_FOFFSET) && fp->f_type != DTYPE_VNODE) {
@@ -469,9 +464,9 @@ kern_pwritev(int fd, struct uio *auio, int flags, size_t *res)
 	} else {
 		error = dofilewrite(fd, fp, auio, flags, res);
 	}
-	
-	fdrop(fp);
-	return (error);
+	dropfp(td, fd, fp);
+
+	return(error);
 }
 
 /*
@@ -581,7 +576,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map,
 	cred = td->td_ucred;
 	memp = NULL;
 
-	fp = holdfp(p->p_fd, fd, FREAD|FWRITE);
+	fp = holdfp(td, fd, FREAD|FWRITE);
 	if (fp == NULL)
 		return(EBADF);
 
@@ -731,7 +726,8 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map,
 done:
 	if (memp != NULL)
 		kfree(memp, M_IOCTLOPS);
-	fdrop(fp);
+	dropfp(td, fd, fp);
+
 	return(error);
 }
 

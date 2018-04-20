@@ -190,7 +190,7 @@ sys_nfssvc(struct nfssvc_args *uap)
 		error = copyin(uap->argp, (caddr_t)&nfsdarg, sizeof(nfsdarg));
 		if (error)
 			goto done;
-		error = holdsock(td->td_proc->p_fd, nfsdarg.sock, &fp);
+		error = holdsock(td, nfsdarg.sock, &fp);
 		if (error)
 			goto done;
 		/*
