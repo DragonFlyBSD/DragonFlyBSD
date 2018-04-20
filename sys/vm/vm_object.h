@@ -239,9 +239,8 @@ struct vm_object {
 #define IDX_TO_OFF(idx) (((vm_ooffset_t)(idx)) << PAGE_SHIFT)
 #define OFF_TO_IDX(off) ((vm_pindex_t)(((vm_ooffset_t)(off)) >> PAGE_SHIFT))
 
-#define VMOBJ_HSIZE	64
+#define VMOBJ_HSIZE	256
 #define VMOBJ_HMASK	(VMOBJ_HSIZE - 1)
-#define VMOBJ_HASH(obj)	(&vm_object_hash[((intptr_t)(obj) >> 8) & VMOBJ_HMASK])
 
 #ifdef	_KERNEL
 

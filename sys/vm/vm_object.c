@@ -101,7 +101,6 @@ static void	vm_object_page_collect_flush(vm_object_t object, vm_page_t p,
 					     int pagerflags);
 static void	vm_object_lock_init(vm_object_t);
 
-
 /*
  *	Virtual memory objects maintain the actual data
  *	associated with allocated virtual memory.  A given
@@ -136,6 +135,23 @@ static long object_bypasses;
 struct vm_object_hash vm_object_hash[VMOBJ_HSIZE];
 
 MALLOC_DEFINE(M_VM_OBJECT, "vm_object", "vm_object structures");
+
+#define VMOBJ_HASH_PRIME1	66555444443333333ULL
+#define VMOBJ_HASH_PRIME2	989042931893ULL
+
+static __inline
+struct vm_object_hash *
+vmobj_hash(vm_object_t obj)
+{
+	uintptr_t hash1;
+	uintptr_t hash2;
+
+	hash1 = (uintptr_t)obj + ((uintptr_t)obj >> 18);
+	hash1 %= VMOBJ_HASH_PRIME1;
+	hash2 = ((uintptr_t)obj >> 8) + ((uintptr_t)obj >> 24);
+	hash2 %= VMOBJ_HASH_PRIME2;
+	return (&vm_object_hash[(hash1 ^ hash2) & VMOBJ_HMASK]);
+}
 
 #if defined(DEBUG_LOCKS)
 
@@ -397,7 +413,7 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 
 	vm_object_hold(object);
 
-	hash = VMOBJ_HASH(object);
+	hash = vmobj_hash(object);
 	lwkt_gettoken(&hash->token);
 	TAILQ_INSERT_TAIL(&hash->list, object, object_list);
 	lwkt_reltoken(&hash->token);
@@ -1250,7 +1266,7 @@ vm_object_terminate(vm_object_t object)
 	/*
 	 * Remove the object from the global object list.
 	 */
-	hash = VMOBJ_HASH(object);
+	hash = vmobj_hash(object);
 	lwkt_gettoken(&hash->token);
 	TAILQ_REMOVE(&hash->list, object, object_list);
 	lwkt_reltoken(&hash->token);
@@ -2041,7 +2057,7 @@ vm_object_backing_scan(vm_object_t object, vm_object_t backing_object, int op)
 		KKASSERT((backing_object->flags & OBJ_DEAD) == 0);
 		vm_object_set_flag(backing_object, OBJ_DEAD);
 
-		hash = VMOBJ_HASH(backing_object);
+		hash = vmobj_hash(backing_object);
 		lwkt_gettoken(&hash->token);
 		TAILQ_REMOVE(&hash->list, backing_object, object_list);
 		lwkt_reltoken(&hash->token);
