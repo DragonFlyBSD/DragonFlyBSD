@@ -78,12 +78,13 @@ struct krate {
  * is moderately large but changes infrequently, it is normally
  * shared copy-on-write after forks.
  *
- * Threaded programs force PLIMITF_EXCLUSIVE to prevent the proc->p_limit
- * pointer from changing out from under threaded access.
+ * Threaded programs cache p_limit in the thread structure, allowing
+ * lockless read access.
  *
  * p_refcnt can change often, don't force cache mastership changes for
  * the rest of the (usually read only) data structure.  Place p_refcnt
- * in its own cache line.
+ * in its own cache line.  The rest of the structure is stable as long
+ * as the caller has a ref.
  */
 struct plimit {
 	struct	rlimit pl_rlimit[RLIM_NLIMITS];
@@ -144,7 +145,7 @@ void plimit_init0(struct plimit *);
 struct plimit *plimit_fork(struct proc *);
 u_int64_t plimit_getadjvalue(int i);
 void plimit_lwp_fork(struct proc *);
-int plimit_testcpulimit(struct plimit *, u_int64_t);
+int plimit_testcpulimit(struct proc *, u_int64_t);
 void plimit_modify(struct proc *, int, struct rlimit *);
 void plimit_free(struct plimit *);
 

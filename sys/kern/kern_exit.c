@@ -684,12 +684,19 @@ lwp_exit(int masterexit, void *waddr)
 	kqueue_terminate(&lp->lwp_kqueue);
 
 	/*
-	 * Clean up any syscall-cached ucred
+	 * Clean up any syscall-cached ucred or rlimit.
 	 */
 	if (td->td_ucred) {
 		crfree(td->td_ucred);
 		td->td_ucred = NULL;
 	}
+	if (td->td_limit) {
+		struct plimit *rlimit;
+
+		rlimit = td->td_limit;
+		td->td_limit = NULL;
+		plimit_free(rlimit);
+        }
 
 	/*
 	 * Nobody actually wakes us when the lock

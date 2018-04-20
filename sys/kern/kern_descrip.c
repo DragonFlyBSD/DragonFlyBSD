@@ -1,8 +1,8 @@
 /*
- * Copyright (c) 2005 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2005-2018 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
- * by Jeffrey Hsu.
+ * by Jeffrey Hsu and Matthew Dillon.
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -177,6 +177,26 @@ fp2filelist(const struct file *fp)
 	return &filelist_heads[i];
 }
 
+static __inline
+struct plimit *
+readplimits(struct proc *p)
+{
+	thread_t td = curthread;
+	struct plimit *limit;
+
+	limit = td->td_limit;
+	if (limit != p->p_limit) {
+		spin_lock_shared(&p->p_spin);
+		limit = p->p_limit;
+		atomic_add_int(&limit->p_refcnt, 1);
+		spin_unlock_shared(&p->p_spin);
+		if (td->td_limit)
+			plimit_free(td->td_limit);
+		td->td_limit = limit;
+	}
+	return limit;
+}
+
 /*
  * System calls on descriptors.
  */
@@ -184,15 +204,13 @@ int
 sys_getdtablesize(struct getdtablesize_args *uap) 
 {
 	struct proc *p = curproc;
-	struct plimit *limit = p->p_limit;
+	struct plimit *limit = readplimits(p);
 	int dtsize;
 
-	spin_lock(&limit->p_spin);
 	if (limit->pl_rlimit[RLIMIT_NOFILE].rlim_cur > INT_MAX)
 		dtsize = INT_MAX;
 	else
 		dtsize = (int)limit->pl_rlimit[RLIMIT_NOFILE].rlim_cur;
-	spin_unlock(&limit->p_spin);
 
 	if (dtsize > maxfilesperproc)
 		dtsize = maxfilesperproc;
@@ -523,6 +541,7 @@ kern_dup(int flags, int old, int new, int *res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
+	struct plimit *limit = readplimits(p);
 	struct filedesc *fdp = p->p_fd;
 	struct file *fp;
 	struct file *delfp;
@@ -541,10 +560,10 @@ kern_dup(int flags, int old, int new, int *res)
 	 * NOTE: maxfilesperuser is not applicable to dup()
 	 */
 retry:
-	if (p->p_rlimit[RLIMIT_NOFILE].rlim_cur > INT_MAX)
+	if (limit->pl_rlimit[RLIMIT_NOFILE].rlim_cur > INT_MAX)
 		dtsize = INT_MAX;
 	else
-		dtsize = (int)p->p_rlimit[RLIMIT_NOFILE].rlim_cur;
+		dtsize = (int)limit->pl_rlimit[RLIMIT_NOFILE].rlim_cur;
 	if (dtsize > maxfilesperproc)
 		dtsize = maxfilesperproc;
 	if (dtsize < minfilesperproc)
@@ -1198,6 +1217,7 @@ fdreserve_locked(struct filedesc *fdp, int fd, int incr)
 int
 fdalloc(struct proc *p, int want, int *result)
 {
+	struct plimit *limit = readplimits(p);
 	struct filedesc *fdp = p->p_fd;
 	struct uidinfo *uip;
 	int fd, rsize, rsum, node, lim;
@@ -1206,12 +1226,10 @@ fdalloc(struct proc *p, int want, int *result)
 	 * Check dtable size limit
 	 */
 	*result = -1;	/* avoid gcc warnings */
-	spin_lock(&p->p_limit->p_spin);
-	if (p->p_rlimit[RLIMIT_NOFILE].rlim_cur > INT_MAX)
+	if (limit->pl_rlimit[RLIMIT_NOFILE].rlim_cur > INT_MAX)
 		lim = INT_MAX;
 	else
-		lim = (int)p->p_rlimit[RLIMIT_NOFILE].rlim_cur;
-	spin_unlock(&p->p_limit->p_spin);
+		lim = (int)limit->pl_rlimit[RLIMIT_NOFILE].rlim_cur;
 
 	if (lim > maxfilesperproc)
 		lim = maxfilesperproc;
@@ -1321,16 +1339,15 @@ found:
 int
 fdavail(struct proc *p, int n)
 {
+	struct plimit *limit = readplimits(p);
 	struct filedesc *fdp = p->p_fd;
 	struct fdnode *fdnode;
 	int i, lim, last;
 
-	spin_lock(&p->p_limit->p_spin);
-	if (p->p_rlimit[RLIMIT_NOFILE].rlim_cur > INT_MAX)
+	if (limit->pl_rlimit[RLIMIT_NOFILE].rlim_cur > INT_MAX)
 		lim = INT_MAX;
 	else
-		lim = (int)p->p_rlimit[RLIMIT_NOFILE].rlim_cur;
-	spin_unlock(&p->p_limit->p_spin);
+		lim = (int)limit->pl_rlimit[RLIMIT_NOFILE].rlim_cur;
 
 	if (lim > maxfilesperproc)
 		lim = maxfilesperproc;

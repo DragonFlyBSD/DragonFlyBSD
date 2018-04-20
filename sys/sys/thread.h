@@ -255,7 +255,7 @@ struct thread {
     __uint64_t	td_sticks;      /* Statclock hits in system mode (uS) */
     __uint64_t	td_iticks;	/* Statclock hits processing intr (uS) */
     int		td_locks;	/* lockmgr lock debugging */
-    void	*td_unused01;	/* (future I/O scheduler heuristic) */
+    struct plimit *td_limit;	/* synchronized from proc->p_limit */
     int		td_refs;	/* hold position in gd_tdallq / hold free */
     int		td_nest_count;	/* prevent splz nesting */
     u_int	td_contended;	/* token contention count */
@@ -270,7 +270,7 @@ struct thread {
     struct timeval td_start;	/* start time for a thread/process */
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
     struct thread *td_preempted; /* we preempted this thread */
-    struct ucred *td_ucred;		/* synchronized from p_ucred */
+    struct ucred *td_ucred;	/* synchronized from proc->p_ucred */
     void	 *td_vmm;	/* vmm private data */
     lwkt_tokref_t td_toks_have;		/* tokens we own */
     lwkt_tokref_t td_toks_stop;		/* tokens we want */

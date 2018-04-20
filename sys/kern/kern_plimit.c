@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006,2017 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2006,2017,2018 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -85,6 +85,26 @@
 static MALLOC_DEFINE(M_PLIMIT, "plimit", "resource limits");
 
 static void plimit_copy(struct plimit *olimit, struct plimit *nlimit);
+
+static __inline
+struct plimit *
+readplimits(struct proc *p)
+{
+	thread_t td = curthread;
+	struct plimit *limit;
+
+	limit = td->td_limit;
+	if (limit != p->p_limit) {
+		spin_lock_shared(&p->p_spin);
+		limit = p->p_limit;
+		atomic_add_int(&limit->p_refcnt, 1);
+		spin_unlock_shared(&p->p_spin);
+		if (td->td_limit)
+			plimit_free(td->td_limit);
+		td->td_limit = limit;
+	}
+	return limit;
+}
 
 /*
  * Initialize proc0's plimit structure.  All later plimit structures
@@ -381,8 +401,8 @@ kern_getrlimit(u_int which, struct rlimit *limp)
         if (which >= RLIM_NLIMITS)
                 return (EINVAL);
 
-	limit = p->p_limit;
-        *limp = p->p_rlimit[which];
+	limit = readplimits(p);
+        *limp = limit->pl_rlimit[which];
 
         return (0);
 }
@@ -392,10 +412,13 @@ kern_getrlimit(u_int which, struct rlimit *limp)
  * code for the caller to perform.
  */
 int
-plimit_testcpulimit(struct plimit *limit, u_int64_t ttime)
+plimit_testcpulimit(struct proc *p, u_int64_t ttime)
 {
+	struct plimit *limit;
 	struct rlimit *rlim;
 	int mode;
+
+	limit = readplimits(p);
 
 	/*
 	 * Initial tests without the spinlock.  This is the fast path.

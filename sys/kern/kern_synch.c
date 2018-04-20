@@ -300,7 +300,7 @@ schedcpu_resource(struct proc *p, void *data __unused)
 		}
 	}
 
-	switch(plimit_testcpulimit(p->p_limit, ttime)) {
+	switch(plimit_testcpulimit(p, ttime)) {
 	case PLIMIT_TESTCPU_KILL:
 		killproc(p, "exceeded maximum CPU limit");
 		break;
