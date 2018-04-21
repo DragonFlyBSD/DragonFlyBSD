@@ -81,26 +81,17 @@ static int num_bad_elm = 0;
 static int num_bad_rec = 0;
 static int depth;
 
-#define _X	"\t"
 static const char* _indents[] = {
 	"",
-	_X,
-	_X _X,
-	_X _X _X,
-	_X _X _X _X,
-	_X _X _X _X _X,
-	_X _X _X _X _X _X,
-	_X _X _X _X _X _X _X,
-	_X _X _X _X _X _X _X _X,
-	_X _X _X _X _X _X _X _X _X,
-	_X _X _X _X _X _X _X _X _X _X,
-	_X _X _X _X _X _X _X _X _X _X _X,
-	_X _X _X _X _X _X _X _X _X _X _X _X,
-	_X _X _X _X _X _X _X _X _X _X _X _X _X,
-	_X _X _X _X _X _X _X _X _X _X _X _X _X _X,
-	_X _X _X _X _X _X _X _X _X _X _X _X _X _X _X,
-	_X _X _X _X _X _X _X _X _X _X _X _X _X _X _X _X,
-	/* deep enough */
+	"\t",
+	"\t\t",
+	"\t\t\t",
+	"\t\t\t\t",
+	"\t\t\t\t\t",
+	"\t\t\t\t\t\t",
+	"\t\t\t\t\t\t\t",
+	"\t\t\t\t\t\t\t\t",
+	"\t\t\t\t\t\t\t\t\t", /* deep enough */
 };
 #define INDENT _indents[opt.indent ? depth : 0]
 
