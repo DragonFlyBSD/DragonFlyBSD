@@ -1670,6 +1670,7 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 		struct	disk_info info;
 		char	announce_buf[120];
 		struct	cd_params *cdp;
+		int doinfo = 0;
 
 		cdp = &softc->params;
 		bzero(&info, sizeof(info));
@@ -1689,7 +1690,7 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 				  cdp->disksize, (u_long)cdp->blksize);
 			info.d_media_blksize = cdp->blksize;
 			info.d_media_blocks = cdp->disksize;
-			disk_setdiskinfo(&softc->disk, &info);
+			doinfo = 1;
 		} else {
 			int	error;
 
@@ -1763,7 +1764,7 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 						sense_key_desc,
 						asc_desc);
 					info.d_media_blksize = 2048;
-					disk_setdiskinfo(&softc->disk, &info);
+					doinfo = 1;
 				} else if (SID_TYPE(&cgd.inq_data) == T_CDROM) {
 					/*
 					 * We only print out an error for
@@ -1831,6 +1832,9 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 		 */
 		xpt_release_ccb(done_ccb);
 		cam_periph_unhold(periph, 0);
+		if (doinfo) {
+			disk_setdiskinfo(&softc->disk, &info);
+		}
 		return;
 	}
 	case CD_CCB_WAITING:

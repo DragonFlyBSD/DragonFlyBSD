@@ -1741,6 +1741,7 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 		struct	   scsi_read_capacity_data *rdcap;
 		struct     scsi_read_capacity_data_16 *rcaplong;
 		char	   announce_buf[80];
+		int	   doinfo = 0;
 
 		rdcap = NULL;
 		rcaplong = NULL;
@@ -1792,7 +1793,6 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 				dp->secsize, dp->heads, dp->secs_per_track,
 				dp->cylinders);
 			
-			CAM_SIM_UNLOCK(periph->sim);
 			info.d_media_blksize = softc->params.secsize;
 			info.d_media_blocks = softc->params.sectors;
 			info.d_media_size = 0;
@@ -1802,8 +1802,7 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 			info.d_secpercyl = softc->params.heads *
 						softc->params.secs_per_track;
 			info.d_serialno = xpt_path_serialno(periph->path);
-			disk_setdiskinfo(&softc->disk, &info);
-			CAM_SIM_LOCK(periph->sim);
+			doinfo = 1;
 		} else {
 			int	error;
 
@@ -1880,7 +1879,7 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 						sense_key_desc,
 						asc_desc);
 					info.d_media_blksize = 512;
-					disk_setdiskinfo(&softc->disk, &info);
+					doinfo = 1;
 				} else {
 					if (have_sense)
 						scsi_sense_print(
@@ -1929,6 +1928,11 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 		 */
 		xpt_release_ccb(done_ccb);
 		cam_periph_unhold(periph, 0);
+		if (doinfo) {
+			CAM_SIM_UNLOCK(periph->sim);
+			disk_setdiskinfo(&softc->disk, &info);
+			CAM_SIM_LOCK(periph->sim);
+		}
 		return;
 	}
 	case DA_CCB_WAITING:
