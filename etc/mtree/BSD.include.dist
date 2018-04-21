@@ -396,10 +396,6 @@
     netproto
         802_11
         ..
-        ipsec
-        ..
-        key
-        ..
         mpls
         ..
         smb

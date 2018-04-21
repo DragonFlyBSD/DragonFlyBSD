@@ -85,7 +85,6 @@
 .ds doc-str-Lb-libfetch    Biblioth\[`e]que de transfert de fichier (libfetch, \-lfetch)
 .\" XXX ds doc-str-Lb-libgeom     Userland API Library for kernel GEOM subsystem (libgeom, \-lgeom)
 .ds doc-str-Lb-libi386     Biblioth\[`e]que de l'architecture i386 (libi386, \-li386)
-.ds doc-str-Lb-libipsec    Biblioth\[`e]que de contr\[^o]le de politique IPsec (libipsec, \-lipsec)
 .ds doc-str-Lb-libkvm      Biblioth\[`e]que d'acc\[`e]s aux donn\['e]es du noyau (libkvm, \-lkvm)
 .ds doc-str-Lb-libm        Biblioth\[`e]que math\['e]matique (libm, \-lm)
 .ds doc-str-Lb-libmd       Biblioth\[`e]que de support des signatures (MD4, MD5, etc.) (libmd, \-lmd)

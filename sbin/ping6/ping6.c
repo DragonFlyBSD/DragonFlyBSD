@@ -119,11 +119,6 @@
 #include <poll.h>
 #endif
 
-#ifdef IPSEC
-#include <netinet6/ah.h>
-#include <netinet6/ipsec.h>
-#endif
-
 #include <md5.h>
 
 struct tv32 {
@@ -157,14 +152,6 @@ struct tv32 {
 #define	F_RROUTE	0x0020
 #define	F_SO_DEBUG	0x0040
 #define	F_VERBOSE	0x0100
-#ifdef IPSEC
-#ifdef IPSEC_POLICY_IPSEC
-#define	F_POLICY	0x0400
-#else
-#define F_AUTHHDR	0x0200
-#define F_ENCRYPT	0x0400
-#endif /*IPSEC_POLICY_IPSEC*/
-#endif /*IPSEC*/
 #define F_NODEADDR	0x0800
 #define F_FQDN		0x1000
 #define F_INTERFACE	0x2000
@@ -305,10 +292,6 @@ main(int argc, char **argv)
 #ifdef USE_RFC3542
 	struct ip6_rthdr *rthdr = NULL;
 #endif
-#ifdef IPSEC_POLICY_IPSEC
-	char *policy_in = NULL;
-	char *policy_out = NULL;
-#endif
 #ifdef IPV6_USE_MIN_MTU
 	int mflag = 0;
 #endif
@@ -320,18 +303,7 @@ main(int argc, char **argv)
 
 	preload = 0;
 	datap = &outpack[ICMP6ECHOLEN + ICMP6ECHOTMLEN];
-#ifndef IPSEC
-#define ADDOPTS
-#else
-#ifdef IPSEC_POLICY_IPSEC
-#define ADDOPTS	"P:"
-#else
-#define ADDOPTS	"AE"
-#endif /*IPSEC_POLICY_IPSEC*/
-#endif
-	while ((ch = getopt(argc, argv,
-	    "a:b:c:dfHg:h:I:i:l:mnNp:qS:s:tvwW" ADDOPTS)) != -1) {
-#undef ADDOPTS
+	while ((ch = getopt(argc, argv, "a:b:c:dfHg:h:I:i:l:mnNp:qS:s:tvwW")) != -1) {
 		switch (ch) {
 		case 'a':
 		{
@@ -524,28 +496,6 @@ main(int argc, char **argv)
 			options &= ~F_NOUSERDATA;
 			options |= F_FQDNOLD;
 			break;
-#ifdef IPSEC
-#ifdef IPSEC_POLICY_IPSEC
-		case 'P':
-			options |= F_POLICY;
-			if (!strncmp("in", optarg, 2)) {
-				if ((policy_in = strdup(optarg)) == NULL)
-					errx(1, "strdup");
-			} else if (!strncmp("out", optarg, 3)) {
-				if ((policy_out = strdup(optarg)) == NULL)
-					errx(1, "strdup");
-			} else
-				errx(1, "invalid security policy");
-			break;
-#else
-		case 'A':
-			options |= F_AUTHHDR;
-			break;
-		case 'E':
-			options |= F_ENCRYPT;
-			break;
-#endif /*IPSEC_POLICY_IPSEC*/
-#endif /*IPSEC*/
 		default:
 			usage();
 			/*NOTREACHED*/
@@ -731,36 +681,6 @@ main(int argc, char **argv)
 	}
 #endif /* IPV6_RECVPATHMTU */
 #endif /* IPV6_USE_MIN_MTU */
-
-#ifdef IPSEC
-#ifdef IPSEC_POLICY_IPSEC
-	if (options & F_POLICY) {
-		if (setpolicy(s, policy_in) < 0)
-			errx(1, "%s", ipsec_strerror());
-		if (setpolicy(s, policy_out) < 0)
-			errx(1, "%s", ipsec_strerror());
-	}
-#else
-	if (options & F_AUTHHDR) {
-		optval = IPSEC_LEVEL_REQUIRE;
-#ifdef IPV6_AUTH_TRANS_LEVEL
-		if (setsockopt(s, IPPROTO_IPV6, IPV6_AUTH_TRANS_LEVEL,
-		    &optval, sizeof(optval)) == -1)
-			err(1, "setsockopt(IPV6_AUTH_TRANS_LEVEL)");
-#else /* old def */
-		if (setsockopt(s, IPPROTO_IPV6, IPV6_AUTH_LEVEL,
-		    &optval, sizeof(optval)) == -1)
-			err(1, "setsockopt(IPV6_AUTH_LEVEL)");
-#endif
-	}
-	if (options & F_ENCRYPT) {
-		optval = IPSEC_LEVEL_REQUIRE;
-		if (setsockopt(s, IPPROTO_IPV6, IPV6_ESP_TRANS_LEVEL,
-		    &optval, sizeof(optval)) == -1)
-			err(1, "setsockopt(IPV6_ESP_TRANS_LEVEL)");
-	}
-#endif /*IPSEC_POLICY_IPSEC*/
-#endif
 
 #ifdef ICMP6_FILTER
     {
@@ -2448,13 +2368,6 @@ pr_retip(struct ip6_hdr *ip6, u_char *end)
 			hlen = (((struct ip6_rthdr *)cp)->ip6r_len+1) << 3;
 			nh = ((struct ip6_rthdr *)cp)->ip6r_nxt;
 			break;
-#ifdef IPSEC
-		case IPPROTO_AH:
-			printf("AH ");
-			hlen = (((struct ah *)cp)->ah_len+2) << 2;
-			nh = ((struct ah *)cp)->ah_nxt;
-			break;
-#endif
 		case IPPROTO_ICMPV6:
 			printf("ICMP6: type = %d, code = %d\n",
 			    *cp, *(cp + 1));
@@ -2522,29 +2435,6 @@ fill(char *bp, char *patp)
 	}
 }
 
-#ifdef IPSEC
-#ifdef IPSEC_POLICY_IPSEC
-int
-setpolicy(int so __unused, char *policy)
-{
-	char *buf;
-
-	if (policy == NULL)
-		return 0;	/* ignore */
-
-	buf = ipsec_set_policy(policy, strlen(policy));
-	if (buf == NULL)
-		errx(1, "%s", ipsec_strerror());
-	if (setsockopt(s, IPPROTO_IPV6, IPV6_IPSEC_POLICY, buf,
-	    ipsec_get_policylen(buf)) < 0)
-		warnx("Unable to set IPsec policy");
-	free(buf);
-
-	return 0;
-}
-#endif
-#endif
-
 char *
 nigroup(char *name)
 {
@@ -2593,14 +2483,8 @@ void
 usage(void)
 {
 	fprintf(stderr,
-#if defined(IPSEC) && !defined(IPSEC_POLICY_IPSEC)
-	    "A"
-#endif
 	    "usage: ping6 [-"
 	    "d"
-#if defined(IPSEC) && !defined(IPSEC_POLICY_IPSEC)
-	    "E"
-#endif
 	    "fH"
 #ifdef IPV6_USE_MIN_MTU
 	    "m"
@@ -2608,9 +2492,6 @@ usage(void)
 	    "nNqtvwW] "
 	    "[-a addrtype] [-b bufsiz] [-c count] [-g gateway]\n"
 	    "             [-h hoplimit] [-I interface] [-i wait] [-l preload]"
-#if defined(IPSEC) && defined(IPSEC_POLICY_IPSEC)
-	    " [-P policy]"
-#endif
 	    "\n"
 	    "             [-p pattern] [-S sourceaddr] [-s packetsize] "
 	    "[hops ...] host\n");

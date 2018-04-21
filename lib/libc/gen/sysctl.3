@@ -28,7 +28,7 @@
 .\"	@(#)sysctl.3	8.4 (Berkeley) 5/9/95
 .\" $FreeBSD: src/lib/libc/gen/sysctl.3,v 1.33.2.13 2002/04/07 04:57:14 dd Exp $
 .\"
-.Dd June 22, 2015
+.Dd April 21, 2018
 .Dt SYSCTL 3
 .Os
 .Sh NAME
@@ -625,9 +625,6 @@ This value applies to normal transport protocols, not to ICMP.
 .It Li udp.checksum
 Returns 1 when UDP checksums are being computed and checked.
 Disabling UDP checksums is strongly discouraged.
-.Pp
-For variables net.inet.*.ipsec, please refer to
-.Xr ipsec 4 .
 .El
 .It Dv PF_INET6
 Get or set various global information about IPv6
@@ -639,10 +636,6 @@ For variables
 .Li net.inet6.* ,
 please refer to
 .Xr inet6 4 .
-For variables
-.Li net.inet6.*.ipsec6 ,
-please refer to
-.Xr ipsec 4 .
 .El
 .Ss CTL_USER
 The string and integer information available for the

@@ -84,9 +84,6 @@ struct	servtab {
 	char	*se_server_name;	/* server program without path */
 #define	MAXARGV 20
 	char	*se_argv[MAXARGV+1];	/* program arguments */
-#ifdef IPSEC
-	char	*se_policy;		/* IPsec policy string */
-#endif
 	int	se_fd;			/* open descriptor */
 	union {				/* bound address */
 		struct	sockaddr se_un_ctrladdr;

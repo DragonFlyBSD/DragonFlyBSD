@@ -93,7 +93,6 @@ MAN=	aac.4 \
 	em.4 \
 	et.4 \
 	exca.4 \
-	fast_ipsec.4 \
 	fd.4 \
 	fdc.4 \
 	firewire.4 \
@@ -136,7 +135,6 @@ MAN=	aac.4 \
 	ipheth.4 \
 	ipmi.4 \
 	ips.4 \
-	ipsec.4 \
 	isa.4 \
 	iscsi_initiator.4 \
 	isp.4 \

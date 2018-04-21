@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd March 29, 2018
+.Dd April 21, 2018
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -2477,19 +2477,6 @@ should be large enough to fill as many of the entropy pools in the kernel
 CSPRNG as possible.
 By default, it is set to 16384, which should be able to seed all 32 entropy
 pools in the Fortuna CSPRNG.
-.It Va ipsec_enable
-.Pq Vt bool
-Set to
-.Dq Li YES
-to run
-.Xr setkey 8
-on
-.Va ipsec_file
-at boot time.
-.It Va ipsec_file
-.Pq Vt str
-Configuration file for
-.Xr setkey 8 .
 .It Va dmesg_enable
 .Pq Vt bool
 Set to

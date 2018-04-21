@@ -37,7 +37,6 @@ LIBFL?=		"don't use LIBFL, use LIBL"
 LIBFSID?=	${DESTDIR}${LIBDIR}/libfsid.a
 LIBFTPIO?=	${DESTDIR}${LIBDIR}/libftpio.a
 LIBHAMMER?=	${DESTDIR}${LIBDIR}/libhammer.a
-LIBIPSEC?=	${DESTDIR}${LIBDIR}/libipsec.a
 LIBKCORE?=	${DESTDIR}${LIBDIR}/libkcore.a
 LIBKICONV?=	${DESTDIR}${LIBDIR}/libkiconv.a
 LIBKINFO?=	${DESTDIR}${LIBDIR}/libkinfo.a

@@ -63,7 +63,6 @@
 
 #include "opt_inet.h"
 #include "opt_inet6.h"
-#include "opt_ipsec.h"
 #include "opt_carp.h"
 
 #include <sys/param.h>
@@ -100,36 +99,6 @@
 #include <netinet6/udp6_var.h>
 #include <netinet6/pim6_var.h>
 #include <netinet6/nd6.h>
-
-#ifdef IPSEC
-#include <netinet6/ipsec.h>
-#ifdef INET6
-#include <netinet6/ipsec6.h>
-#endif
-#include <netinet6/ah.h>
-#ifdef INET6
-#include <netinet6/ah6.h>
-#endif
-#ifdef IPSEC_ESP
-#include <netinet6/esp.h>
-#ifdef INET6
-#include <netinet6/esp6.h>
-#endif
-#endif
-#include <netinet6/ipcomp.h>
-#ifdef INET6
-#include <netinet6/ipcomp6.h>
-#endif
-#endif /* IPSEC */
-
-#ifdef FAST_IPSEC
-#include <netproto/ipsec/ipsec6.h>
-#define	IPSEC
-#define	IPSEC_ESP
-#define	ah6_input	ipsec6_common_input
-#define	esp6_input	ipsec6_common_input
-#define	ipcomp6_input	ipsec6_common_input
-#endif /* FAST_IPSEC */
 
 #include <netinet6/ip6protosw.h>
 
@@ -262,49 +231,6 @@ struct protosw inet6sw[] = {
 
 	.pr_usrreqs = &nousrreqs
     },
-#ifdef IPSEC
-    {
-	.pr_type = SOCK_RAW,
-	.pr_domain = &inet6domain,
-	.pr_protocol = IPPROTO_AH,
-	.pr_flags = PR_ATOMIC|PR_ADDR,
-
-	.pr_input = ah6_input,
-	.pr_output = NULL,
-	.pr_ctlinput = NULL,
-	.pr_ctloutput = NULL,
-
-	.pr_usrreqs = &nousrreqs
-    },
-#ifdef IPSEC_ESP
-    {
-	.pr_type = SOCK_RAW,
-	.pr_domain = &inet6domain,
-	.pr_protocol = IPPROTO_ESP,
-	.pr_flags = PR_ATOMIC|PR_ADDR,
-
-	.pr_input = esp6_input,
-	.pr_output = NULL,
-	.pr_ctlinput = esp6_ctlinput,
-	.pr_ctloutput = NULL,
-
-	.pr_usrreqs = &nousrreqs
-    },
-#endif
-    {
-	.pr_type = SOCK_RAW,
-	.pr_domain = &inet6domain,
-	.pr_protocol = IPPROTO_IPCOMP,
-	.pr_flags = PR_ATOMIC|PR_ADDR,
-
-	.pr_input = ipcomp6_input,
-	.pr_output = NULL,
-	.pr_ctlinput = NULL,
-	.pr_ctloutput = NULL,
-
-	.pr_usrreqs = &nousrreqs
-    },
-#endif /* IPSEC */
 #ifdef INET
     {
 	.pr_type = SOCK_RAW,
@@ -479,9 +405,6 @@ SYSCTL_NODE(_net_inet6,	IPPROTO_IPV6,	ip6,	CTLFLAG_RW, 0,	"IP6");
 SYSCTL_NODE(_net_inet6,	IPPROTO_ICMPV6,	icmp6,	CTLFLAG_RW, 0,	"ICMP6");
 SYSCTL_NODE(_net_inet6,	IPPROTO_UDP,	udp6,	CTLFLAG_RW, 0,	"UDP6");
 SYSCTL_NODE(_net_inet6,	IPPROTO_TCP,	tcp6,	CTLFLAG_RW, 0,	"TCP6");
-#ifdef IPSEC
-SYSCTL_NODE(_net_inet6,	IPPROTO_ESP,	ipsec6,	CTLFLAG_RW, 0,	"IPSEC6");
-#endif /* IPSEC */
 
 /* net.inet6.ip6 */
 static int

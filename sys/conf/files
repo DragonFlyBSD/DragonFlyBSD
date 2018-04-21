@@ -66,16 +66,7 @@ dev/disk/iscsi/initiator/isc_subr.c	optional iscsi_initiator scbus
 dev/disk/iscsi/initiator/iscsi.c	optional iscsi_initiator scbus
 dev/disk/iscsi/initiator/iscsi_subr.c	optional iscsi_initiator scbus
 
-crypto/blowfish/bf_skey.c		optional ipsec ipsec_esp
-crypto/des/des_ecb.c			optional ipsec ipsec_esp
-crypto/des/des_setkey.c			optional ipsec ipsec_esp
-crypto/rijndael/rijndael-alg-fst.c	optional ipsec ipsec_esp
-crypto/rijndael/rijndael-api-fst.c	optional ipsec ipsec_esp
-crypto/camellia/camellia.c		optional ipsec ipsec_esp
-crypto/camellia/camellia-api.c		optional ipsec ipsec_esp
-crypto/sha1.c				optional ipsec
 crypto/sha1.c				optional carp
-opencrypto/cast.c			optional ipsec ipsec_esp
 ddb/db_access.c				optional ddb
 ddb/db_kld.c				optional ddb
 ddb/db_break.c				optional ddb
@@ -1562,7 +1553,6 @@ net/raw_cb.c		standard
 net/raw_usrreq.c	standard
 net/route.c		standard
 net/rtsock.c		standard
-net/zlib.c		optional ipsec
 netbt/bt_input.c	optional bluetooth
 netbt/bt_proto.c	optional bluetooth
 netbt/hci_event.c	optional bluetooth
@@ -1797,16 +1787,6 @@ netinet/tcp_syncache.c		optional inet
 netinet/tcp_timer.c		optional inet
 netinet/tcp_usrreq.c		optional inet
 netinet/udp_usrreq.c		optional inet
-netinet6/ah_core.c		optional ipsec
-netinet6/ah_input.c		optional ipsec
-netinet6/ah_output.c		optional ipsec
-netinet6/esp_core.c		optional ipsec ipsec_esp
-netinet6/esp_input.c		optional ipsec ipsec_esp
-netinet6/esp_output.c		optional ipsec ipsec_esp
-netinet6/esp_rijndael.c		optional ipsec ipsec_esp
-netinet6/esp_camellia.c		optional ipsec ipsec_esp
-netinet6/esp_aesctr.c		optional ipsec ipsec_esp
-netinet6/ipsec.c		optional ipsec
 netinet6/dest6.c		optional inet6
 netinet6/frag6.c		optional inet6
 netinet6/icmp6.c		optional inet6
@@ -1821,9 +1801,6 @@ netinet6/ip6_input.c		optional inet6
 netinet6/ip6_mroute.c		optional inet6
 netinet6/ip6_output.c		optional inet6
 netinet6/in6_src.c		optional inet6
-netinet6/ipcomp_core.c		optional ipsec
-netinet6/ipcomp_input.c		optional ipsec
-netinet6/ipcomp_output.c	optional ipsec
 netinet6/in6_pcb.c		optional inet6
 netinet6/in6_proto.c		optional inet6
 netinet6/in6_rmx.c		optional inet6
@@ -1836,21 +1813,6 @@ netinet6/route6.c		optional inet6
 netinet6/scope6.c		optional inet6
 netinet6/udp6_output.c		optional inet6
 netinet6/udp6_usrreq.c		optional inet6
-netproto/ipsec/ipsec.c		optional fast_ipsec
-netproto/ipsec/ipsec_input.c	optional fast_ipsec
-netproto/ipsec/ipsec_mbuf.c	optional fast_ipsec
-netproto/ipsec/ipsec_output.c	optional fast_ipsec
-netproto/ipsec/key.c		optional fast_ipsec
-netproto/ipsec/key_debug.c	optional fast_ipsec
-netproto/ipsec/keysock.c	optional fast_ipsec
-netproto/ipsec/xform_ah.c	optional fast_ipsec
-netproto/ipsec/xform_esp.c	optional fast_ipsec
-netproto/ipsec/xform_ipcomp.c	optional fast_ipsec
-netproto/ipsec/xform_ipip.c	optional fast_ipsec
-netproto/key/key.c		optional ipsec
-netproto/key/key_debug.c	optional ipsec
-netproto/key/keydb.c		optional ipsec
-netproto/key/keysock.c		optional ipsec
 netproto/mpls/mpls_demux.c	optional mpls
 netproto/mpls/mpls_input.c	optional mpls
 netproto/mpls/mpls_output.c	optional mpls
@@ -2239,7 +2201,6 @@ libprop/prop_object.c			standard
 libprop/prop_stack.c			standard
 libprop/prop_string.c			standard
 libprop/prop_rb.c			standard
-crypto/blowfish/bf_ecb.c		optional ipsec ipsec_esp
 crypto/blowfish/bf_skey.c		optional crypto
 crypto/camellia/camellia.c		optional crypto
 crypto/camellia/camellia-api.c		optional crypto

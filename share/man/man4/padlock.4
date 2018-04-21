@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/padlock.4,v 1.8 2007/08/02 08:04:48 bz Exp $
 .\"
-.Dd October 3, 2009
+.Dd April 21, 2018
 .Dt PADLOCK 4
 .Os
 .Sh NAME
@@ -58,10 +58,8 @@ and HMAC/SHA256 for
 .Xr crypto 4 .
 It also registers itself to accelerate other HMAC algorithms, although
 there is no hardware acceleration for those algorithms.
-This is only needed so
-.Nm
-can work with
-.Xr ipsec 4 .
+This is due to historical reasons, so that padlock could work with
+.Em IPsec .
 .Pp
 The hardware random number generator supplies data for the kernel
 .Xr random 4
@@ -70,7 +68,6 @@ subsystem.
 .Xr crypt 3 ,
 .Xr crypto 4 ,
 .Xr intro 4 ,
-.Xr ipsec 4 ,
 .Xr random 4 ,
 .Xr crypto 9
 .Sh HISTORY

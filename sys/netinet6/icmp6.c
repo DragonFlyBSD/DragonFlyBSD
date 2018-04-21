@@ -63,7 +63,6 @@
 
 #include "opt_inet.h"
 #include "opt_inet6.h"
-#include "opt_ipsec.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -100,17 +99,6 @@
 #include <netinet6/in6_ifattach.h>
 #include <netinet6/ip6protosw.h>
 
-#ifdef IPSEC
-#include <netinet6/ipsec.h>
-#include <netproto/key/key.h>
-#endif
-
-#ifdef FAST_IPSEC
-#include <netproto/ipsec/ipsec.h>
-#include <netproto/ipsec/key.h>
-#define	IPSEC
-#endif
-
 #include <net/net_osdep.h>
 
 #ifdef HAVE_NRL_INPCB
@@ -126,7 +114,6 @@
 #define in6p_outputopts	inp_outputopts6
 #define in6p_ip6	inp_ipv6
 #define in6p_flowinfo	inp_flowinfo
-#define in6p_sp		inp_sp
 #define in6p_next	inp_next
 #define in6p_prev	inp_prev
 /* function names */
@@ -2348,9 +2335,6 @@ icmp6_redirect_input(struct mbuf *m, int off)
 	sdst.sin6_len = sizeof(struct sockaddr_in6);
 	bcopy(&reddst6, &sdst.sin6_addr, sizeof(struct in6_addr));
 	kpfctlinput(PRC_REDIRECT_HOST, (struct sockaddr *)&sdst);
-#ifdef IPSEC
-	key_sa_routechange((struct sockaddr *)&sdst);
-#endif
     }
 
 freeit:

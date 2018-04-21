@@ -56,11 +56,6 @@
 #define FORWARD
 #endif
 
-#if defined(IPSEC) && defined(IPSEC_POLICY_IPSEC)
-char *ipsec_policy_in = NULL;
-char *ipsec_policy_out = NULL;
-#endif
-
 int family = AF_UNSPEC;
 
 /*
@@ -91,9 +86,6 @@ usage(void)
 	    "\n\t[-e char] [-l user] [-n tracefile] ",
 #endif
 	    "[-r] [-s src_addr] [-u] ",
-#if defined(IPSEC) && defined(IPSEC_POLICY_IPSEC)
-	    "[-P policy] "
-#endif
 #ifdef	ENCRYPTION
 	    "[-y] [host-name [port]]"
 #else	/* ENCRYPTION */
@@ -140,15 +132,7 @@ main(int argc, char *argv[])
 	decrypt_auto(1);
 #endif
 
-#if defined(IPSEC) && defined(IPSEC_POLICY_IPSEC)
-#define IPSECOPT	"P:"
-#else
-#define IPSECOPT
-#endif
-	while ((ch = getopt(argc, argv,
-			    "468EKLNS:X:acde:fFk:l:n:rs:t:uxy" IPSECOPT)) != -1)
-#undef IPSECOPT
-	{
+	while ((ch = getopt(argc, argv, "468EKLNS:X:acde:fFk:l:n:rs:t:uxy")) != -1) {
 		switch(ch) {
 		case '4':
 			family = AF_INET;
@@ -308,16 +292,6 @@ main(int argc, char *argv[])
 								prompt);
 #endif	/* ENCRYPTION */
 			break;
-#if defined(IPSEC) && defined(IPSEC_POLICY_IPSEC)
-		case 'P':
-			if (!strncmp("in", optarg, 2))
-				ipsec_policy_in = strdup(optarg);
-			else if (!strncmp("out", optarg, 3))
-				ipsec_policy_out = strdup(optarg);
-			else
-				usage();
-			break;
-#endif
 		case '?':
 		default:
 			usage();

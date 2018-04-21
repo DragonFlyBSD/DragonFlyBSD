@@ -60,7 +60,6 @@
  *	@(#)raw_ip.c	8.2 (Berkeley) 1/4/94
  */
 
-#include "opt_ipsec.h"
 #include "opt_inet6.h"
 
 #include <sys/param.h>
@@ -98,16 +97,6 @@
 #include <netinet6/scope6_var.h>
 #endif
 #include <netinet6/raw_ip6.h>
-
-#ifdef IPSEC
-#include <netinet6/ipsec.h>
-#include <netinet6/ipsec6.h>
-#endif /*IPSEC*/
-
-#ifdef FAST_IPSEC
-#include <netproto/ipsec/ipsec.h>
-#include <netproto/ipsec/ipsec6.h>
-#endif /* FAST_IPSEC */
 
 #include <machine/stdarg.h>
 
@@ -168,25 +157,6 @@ rip6_input(struct mbuf **mp, int *offp, int proto)
 		if (last) {
 			struct mbuf *n = m_copy(m, 0, (int)M_COPYALL);
 
-#ifdef IPSEC
-			/*
-			 * Check AH/ESP integrity.
-			 */
-			if (n && ipsec6_in_reject_so(n, last->inp_socket)) {
-				m_freem(n);
-				ipsec6stat.in_polvio++;
-				/* do not inject data into pcb */
-			} else
-#endif /*IPSEC*/
-#ifdef FAST_IPSEC
-			/*
-			 * Check AH/ESP integrity.
-			 */
-			if (n && ipsec6_in_reject(n, last)) {
-				m_freem(n);
-				/* do not inject data into pcb */
-			} else
-#endif /*FAST_IPSEC*/
 			if (n) {
 				struct socket *so;
 
@@ -214,27 +184,6 @@ rip6_input(struct mbuf **mp, int *offp, int proto)
 		}
 		last = in6p;
 	}
-#ifdef IPSEC
-	/*
-	 * Check AH/ESP integrity.
-	 */
-	if (last && ipsec6_in_reject_so(m, last->inp_socket)) {
-		m_freem(m);
-		ipsec6stat.in_polvio++;
-		ip6stat.ip6s_delivered--;
-		/* do not inject data into pcb */
-	} else
-#endif /*IPSEC*/
-#ifdef FAST_IPSEC
-	/*
-	 * Check AH/ESP integrity.
-	 */
-	if (last && ipsec6_in_reject(m, last)) {
-		m_freem(m);
-		ip6stat.ip6s_delivered--;
-		/* do not inject data into pcb */
-	} else
-#endif /*FAST_IPSEC*/
 	if (last) {
 		struct socket *so;
 

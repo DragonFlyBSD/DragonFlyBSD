@@ -65,7 +65,6 @@
 
 #include "opt_inet.h"
 #include "opt_inet6.h"
-#include "opt_ipsec.h"
 #include "opt_tcpdebug.h"
 #include "opt_tcp_input.h"
 
@@ -117,17 +116,6 @@
 
 u_char tcp_saveipgen[40];    /* the size must be of max ip header, now IPv6 */
 struct tcphdr tcp_savetcp;
-#endif
-
-#ifdef FAST_IPSEC
-#include <netproto/ipsec/ipsec.h>
-#include <netproto/ipsec/ipsec6.h>
-#endif
-
-#ifdef IPSEC
-#include <netinet6/ipsec.h>
-#include <netinet6/ipsec6.h>
-#include <netproto/key/key.h>
 #endif
 
 /*
@@ -933,28 +921,6 @@ findpcb:
 		goto dropwithreset;
 	}
 
-#ifdef IPSEC
-	if (isipv6) {
-		if (ipsec6_in_reject_so(m, inp->inp_socket)) {
-			ipsec6stat.in_polvio++;
-			goto drop;
-		}
-	} else {
-		if (ipsec4_in_reject_so(m, inp->inp_socket)) {
-			ipsecstat.in_polvio++;
-			goto drop;
-		}
-	}
-#endif
-#ifdef FAST_IPSEC
-	if (isipv6) {
-		if (ipsec6_in_reject(m, inp))
-			goto drop;
-	} else {
-		if (ipsec4_in_reject(m, inp))
-			goto drop;
-	}
-#endif
 	/* Check the minimum TTL for socket. */
 #ifdef INET6
 	if ((isipv6 ? ip6->ip6_hlim : ip->ip_ttl) < inp->inp_ip_minttl)

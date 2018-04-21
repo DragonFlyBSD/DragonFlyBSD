@@ -346,8 +346,6 @@ struct sockaddr_in {
 #define	IP_RSVP_VIF_OFF		18   /* unset RSVP per-vif socket */
 #define	IP_PORTRANGE		19   /* int; range to choose for unspec port */
 #define	IP_RECVIF		20   /* bool; receive reception if w/dgram */
-/* for IPSEC */
-#define	IP_IPSEC_POLICY		21   /* int; set/get security policy */
 
 #define	IP_FW_TBL_CREATE	40   /* create ipfw table */
 #define	IP_FW_TBL_DESTROY	41   /* destroy ipfw table */
@@ -457,7 +455,7 @@ struct ip_mreq {
 	{ 0, 0 }, \
 	{ 0, 0 }, \
 	{ 0, 0 }, \
-	{ "ipsec", CTLTYPE_NODE }, \
+	{ 0, 0 }, \
 	{ 0, 0 }, \
 	{ 0, 0 }, \
 	{ 0, 0 }, \

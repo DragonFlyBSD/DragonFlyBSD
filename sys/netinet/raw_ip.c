@@ -31,7 +31,6 @@
  */
 
 #include "opt_inet6.h"
-#include "opt_ipsec.h"
 #include "opt_carp.h"
 
 #include <sys/param.h>
@@ -72,14 +71,6 @@
 #include <net/ipfw3/ip_fw.h>
 #include <net/dummynet/ip_dummynet.h>
 #include <net/dummynet3/ip_dummynet3.h>
-
-#ifdef FAST_IPSEC
-#include <netproto/ipsec/ipsec.h>
-#endif /*FAST_IPSEC*/
-
-#ifdef IPSEC
-#include <netinet6/ipsec.h>
-#endif /*IPSEC*/
 
 struct	inpcbinfo ripcbinfo;
 struct	inpcbportinfo ripcbportinfo;
@@ -174,21 +165,6 @@ rip_input(struct mbuf **mp, int *offp, int proto)
 		if (last) {
 			struct mbuf *n = m_copypacket(m, M_NOWAIT);
 
-#ifdef IPSEC
-			/* check AH/ESP integrity. */
-			if (n && ipsec4_in_reject_so(n, last->inp_socket)) {
-				m_freem(n);
-				ipsecstat.in_polvio++;
-				/* do not inject data to pcb */
-			} else
-#endif /*IPSEC*/
-#ifdef FAST_IPSEC
-			/* check AH/ESP integrity. */
-			if (ipsec4_in_reject(n, last)) {
-				m_freem(n);
-				/* do not inject data to pcb */
-			} else
-#endif /*FAST_IPSEC*/
 			if (n) {
 				lwkt_gettoken(&last->inp_socket->so_rcv.ssb_token);
 				if (last->inp_flags & INP_CONTROLOPTS ||
@@ -210,23 +186,6 @@ rip_input(struct mbuf **mp, int *offp, int proto)
 		}
 		last = inp;
 	}
-#ifdef IPSEC
-	/* check AH/ESP integrity. */
-	if (last && ipsec4_in_reject_so(m, last->inp_socket)) {
-		m_freem(m);
-		ipsecstat.in_polvio++;
-		ipstat.ips_delivered--;
-		/* do not inject data to pcb */
-	} else
-#endif /*IPSEC*/
-#ifdef FAST_IPSEC
-	/* check AH/ESP integrity. */
-	if (last && ipsec4_in_reject(m, last)) {
-		m_freem(m);
-		ipstat.ips_delivered--;
-		/* do not inject data to pcb */
-	} else
-#endif /*FAST_IPSEC*/
 	/* Check the minimum TTL for socket. */
 	if (last && ip->ip_ttl < last->inp_ip_minttl) {
 		m_freem(opts);

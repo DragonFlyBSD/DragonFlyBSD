@@ -89,13 +89,6 @@
  *	server program arguments	maximum of MAXARGS
  *
  * Comment lines are indicated by a `#' in column 1.
- *
- * #ifdef IPSEC
- * Comment lines that start with "#@" denote IPsec policy string, as described
- * in ipsec_set_policy(3).  This will affect all the following items in
- * inetd.conf(8).  To reset the policy, just use "#@" line.  By default,
- * there's no IPsec policy.
- * #endif
  */
 #include <sys/param.h>
 #include <sys/ioctl.h>
@@ -131,13 +124,6 @@
 
 #include "inetd.h"
 #include "pathnames.h"
-
-#ifdef IPSEC
-#include <netinet6/ipsec.h>
-#ifndef IPSEC_POLICY_IPSEC	/* no ipsec support on old ipsec */
-#undef IPSEC
-#endif
-#endif
 
 /* wrapper for KAME-special getnameinfo() */
 #ifndef NI_WITHSCOPEID
@@ -217,9 +203,6 @@ void		flag_retry(int);
 void		retry(void);
 int		setconfig(void);
 void		setup(struct servtab *);
-#ifdef IPSEC
-void		ipsecsetup(struct servtab *);
-#endif
 void		unregisterrpc(struct servtab *sep);
 static struct conninfo *search_conn(struct servtab *sep, int ctrl);
 static int	room_conn(struct servtab *sep, struct conninfo *conn);
@@ -1026,10 +1009,6 @@ config(void)
 			SWAP(sep->se_server_name, new->se_server_name);
 			for (i = 0; i < MAXARGV; i++)
 				SWAP(sep->se_argv[i], new->se_argv[i]);
-#ifdef IPSEC
-			SWAP(sep->se_policy, new->se_policy);
-			ipsecsetup(sep);
-#endif
 			sigsetmask(omask);
 			freeconfig(new);
 			if (debug)
@@ -1230,9 +1209,6 @@ setsockopt(fd, SOL_SOCKET, opt, (char *)&on, sizeof (on))
 		if (setsockopt(sep->se_fd, IPPROTO_TCP, TCP_NOPUSH,
 		    (char *)&on, sizeof (on)) < 0)
 			syslog(LOG_ERR, "setsockopt (TCP_NOPUSH): %m");
-#ifdef IPSEC
-	ipsecsetup(sep);
-#endif
 	if (sep->se_family == AF_UNIX) {
 		unlink(sep->se_ctrladdr_un.sun_path);
 		umask(0777); /* Make socket with conservative permissions */
@@ -1300,78 +1276,6 @@ setsockopt(fd, SOL_SOCKET, opt, (char *)&on, sizeof (on))
 			sep->se_server, sep->se_fd);
 	}
 }
-
-#ifdef IPSEC
-void
-ipsecsetup(struct servtab *sep)
-{
-	char *buf;
-	char *policy_in = NULL;
-	char *policy_out = NULL;
-	int level;
-	int opt;
-
-	switch (sep->se_family) {
-	case AF_INET:
-		level = IPPROTO_IP;
-		opt = IP_IPSEC_POLICY;
-		break;
-#ifdef INET6
-	case AF_INET6:
-		level = IPPROTO_IPV6;
-		opt = IPV6_IPSEC_POLICY;
-		break;
-#endif
-	default:
-		return;
-	}
-
-	if (!sep->se_policy || sep->se_policy[0] == '\0') {
-		static char def_in[] = "in entrust", def_out[] = "out entrust";
-		policy_in = def_in;
-		policy_out = def_out;
-	} else {
-		if (!strncmp("in", sep->se_policy, 2))
-			policy_in = sep->se_policy;
-		else if (!strncmp("out", sep->se_policy, 3))
-			policy_out = sep->se_policy;
-		else {
-			syslog(LOG_ERR, "invalid security policy \"%s\"",
-				sep->se_policy);
-			return;
-		}
-	}
-
-	if (policy_in != NULL) {
-		buf = ipsec_set_policy(policy_in, strlen(policy_in));
-		if (buf != NULL) {
-			if (setsockopt(sep->se_fd, level, opt,
-					buf, ipsec_get_policylen(buf)) < 0 &&
-			    debug != 0)
-				warnx("%s/%s: ipsec initialization failed; %s",
-				      sep->se_service, sep->se_proto,
-				      policy_in);
-			free(buf);
-		} else
-			syslog(LOG_ERR, "invalid security policy \"%s\"",
-				policy_in);
-	}
-	if (policy_out != NULL) {
-		buf = ipsec_set_policy(policy_out, strlen(policy_out));
-		if (buf != NULL) {
-			if (setsockopt(sep->se_fd, level, opt,
-					buf, ipsec_get_policylen(buf)) < 0 &&
-			    debug != 0)
-				warnx("%s/%s: ipsec initialization failed; %s",
-				      sep->se_service, sep->se_proto,
-				      policy_out);
-			free(buf);
-		} else
-			syslog(LOG_ERR, "invalid security policy \"%s\"",
-				policy_out);
-	}
-}
-#endif
 
 /*
  * Finish with a service and its socket.
@@ -1529,9 +1433,6 @@ getconfigent(void)
 	char *versp;
 	static char TCPMUX_TOKEN[] = "tcpmux/";
 #define MUX_LEN		(sizeof(TCPMUX_TOKEN)-1)
-#ifdef IPSEC
-	char *policy = NULL;
-#endif
 	int v4bind = 0;
 #ifdef INET6
 	int v6bind = 0;
@@ -1540,28 +1441,6 @@ getconfigent(void)
 
 more:
 	while ((cp = nextline(fconfig)) != NULL) {
-#ifdef IPSEC
-		/* lines starting with #@ is not a comment, but the policy */
-		if (cp[0] == '#' && cp[1] == '@') {
-			char *p;
-			for (p = cp + 2; p && *p && isspace(*p); p++)
-				;
-			if (*p == '\0') {
-				if (policy)
-					free(policy);
-				policy = NULL;
-			} else if (ipsec_get_policylen(p) >= 0) {
-				if (policy)
-					free(policy);
-				policy = newstr(p);
-			} else {
-				syslog(LOG_ERR,
-					"%s: invalid ipsec policy \"%s\"",
-					CONFIG, p);
-				exit(EX_CONFIG);
-			}
-		}
-#endif
 		if (*cp == '#' || *cp == '\0')
 			continue;
 		break;
@@ -1883,9 +1762,6 @@ more:
 		sep->se_argv[argc++] = NULL;
 	for (i = 0; i < PERIPSIZE; ++i)
 		LIST_INIT(&sep->se_conn[i]);
-#ifdef IPSEC
-	sep->se_policy = policy ? newstr(policy) : NULL;
-#endif
 	return (sep);
 }
 
@@ -1914,10 +1790,6 @@ freeconfig(struct servtab *cp)
 		if (cp->se_argv[i])
 			free(cp->se_argv[i]);
 	free_connlist(cp);
-#ifdef IPSEC
-	if (cp->se_policy)
-		free(cp->se_policy);
-#endif
 }
 
 
@@ -2066,9 +1938,6 @@ print_service(const char *action, const struct servtab *sep)
 	    "class=%s"
 #endif
 	    " builtin=%p server=%s"
-#ifdef IPSEC
-	    " policy=\"%s\""
-#endif
 	    "\n",
 	    action, sep->se_service, sep->se_proto,
 	    sep->se_accept, sep->se_maxchild, sep->se_user, sep->se_group,
@@ -2076,9 +1945,6 @@ print_service(const char *action, const struct servtab *sep)
 	    sep->se_class,
 #endif
 	    (void *) sep->se_bi, sep->se_server
-#ifdef IPSEC
-	    , (sep->se_policy ? sep->se_policy : "")
-#endif
 	    );
 }
 

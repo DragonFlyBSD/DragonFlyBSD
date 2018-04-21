@@ -21,10 +21,6 @@ LDADD=		-lprivate_ncurses ${LIBTELNET}
 CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
-CFLAGS+=	-DIPSEC
-DPADD+=		${LIBIPSEC}
-LDADD+=		-lipsec
-
 CFLAGS+=	-DENCRYPTION -DAUTHENTICATION
 DPADD+=		${LIBCRYPTO} ${LIBCRYPT} ${LIBPAM}
 LDADD+=		-lprivate_crypto -lcrypt ${MINUSLPAM}

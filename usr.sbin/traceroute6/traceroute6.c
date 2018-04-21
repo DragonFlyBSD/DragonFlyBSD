@@ -264,11 +264,6 @@
 #include <netinet/icmp6.h>
 #include <netinet/udp.h>
 
-#ifdef IPSEC
-#include <net/route.h>
-#include <netinet6/ipsec.h>
-#endif
-
 #define DUMMY_PORT 10010
 
 #define	MAXPACKET	65535	/* max ip packet size */
@@ -297,11 +292,6 @@ static u_char	packet[512];		/* last inbound (icmp) packet */
 static struct opacket	*outpacket;	/* last output (udp) packet */
 
 static int	wait_for_reply(int, struct msghdr *);
-#ifdef IPSEC
-#ifdef IPSEC_POLICY_IPSEC
-static int	setpolicy(int so, char *policy);
-#endif
-#endif
 static void	send_probe(int, u_long);
 static void	*get_uphdr(struct ip6_hdr *, u_char *);
 static double	deltaT(struct timeval *, struct timeval *);
@@ -642,39 +632,6 @@ main(int argc, char **argv)
 	if (options & SO_DONTROUTE)
 		(void) setsockopt(rcvsock, SOL_SOCKET, SO_DONTROUTE,
 		    (char *)&on, sizeof(on));
-#ifdef IPSEC
-#ifdef IPSEC_POLICY_IPSEC
-	/*
-	 * do not raise error even if setsockopt fails, kernel may have ipsec
-	 * turned off.
-	 */
-	if (setpolicy(rcvsock, "in bypass") < 0)
-		errx(1, "%s", ipsec_strerror());
-	if (setpolicy(rcvsock, "out bypass") < 0)
-		errx(1, "%s", ipsec_strerror());
-#else
-    {
-	int level = IPSEC_LEVEL_NONE;
-
-	(void)setsockopt(rcvsock, IPPROTO_IPV6, IPV6_ESP_TRANS_LEVEL, &level,
-	    sizeof(level));
-	(void)setsockopt(rcvsock, IPPROTO_IPV6, IPV6_ESP_NETWORK_LEVEL, &level,
-	    sizeof(level));
-#ifdef IP_AUTH_TRANS_LEVEL
-	(void)setsockopt(rcvsock, IPPROTO_IPV6, IPV6_AUTH_TRANS_LEVEL, &level,
-	    sizeof(level));
-#else
-	(void)setsockopt(rcvsock, IPPROTO_IPV6, IPV6_AUTH_LEVEL, &level,
-	    sizeof(level));
-#endif
-#ifdef IP_AUTH_NETWORK_LEVEL
-	(void)setsockopt(rcvsock, IPPROTO_IPV6, IPV6_AUTH_NETWORK_LEVEL, &level,
-	    sizeof(level));
-#endif
-    }
-#endif /*IPSEC_POLICY_IPSEC*/
-#endif /*IPSEC*/
-
 #ifdef SO_SNDBUF
 	i = datalen;
 	if (setsockopt(sndsock, SOL_SOCKET, SO_SNDBUF, (char *)&i,
@@ -689,39 +646,6 @@ main(int argc, char **argv)
 	if (options & SO_DONTROUTE)
 		(void) setsockopt(sndsock, SOL_SOCKET, SO_DONTROUTE,
 		    (char *)&on, sizeof(on));
-#ifdef IPSEC
-#ifdef IPSEC_POLICY_IPSEC
-	/*
-	 * do not raise error even if setsockopt fails, kernel may have ipsec
-	 * turned off.
-	 */
-	if (setpolicy(sndsock, "in bypass") < 0)
-		errx(1, "%s", ipsec_strerror());
-	if (setpolicy(sndsock, "out bypass") < 0)
-		errx(1, "%s", ipsec_strerror());
-#else
-    {
-	int level = IPSEC_LEVEL_BYPASS;
-
-	(void)setsockopt(sndsock, IPPROTO_IPV6, IPV6_ESP_TRANS_LEVEL, &level,
-	    sizeof(level));
-	(void)setsockopt(sndsock, IPPROTO_IPV6, IPV6_ESP_NETWORK_LEVEL, &level,
-	    sizeof(level));
-#ifdef IP_AUTH_TRANS_LEVEL
-	(void)setsockopt(sndsock, IPPROTO_IPV6, IPV6_AUTH_TRANS_LEVEL, &level,
-	    sizeof(level));
-#else
-	(void)setsockopt(sndsock, IPPROTO_IPV6, IPV6_AUTH_LEVEL, &level,
-	    sizeof(level));
-#endif
-#ifdef IP_AUTH_NETWORK_LEVEL
-	(void)setsockopt(sndsock, IPPROTO_IPV6, IPV6_AUTH_NETWORK_LEVEL, &level,
-	    sizeof(level));
-#endif
-    }
-#endif /*IPSEC_POLICY_IPSEC*/
-#endif /*IPSEC*/
-
 	/*
 	 * Source selection
 	 */
@@ -912,28 +836,6 @@ wait_for_reply(int sock, struct msghdr *mhdr)
 	return(cc);
 #endif
 }
-
-#ifdef IPSEC
-#ifdef IPSEC_POLICY_IPSEC
-static int
-setpolicy(int so, char *policy)
-{
-	char *buf;
-
-	buf = ipsec_set_policy(policy, strlen(policy));
-	if (buf == NULL) {
-		warnx("%s", ipsec_strerror());
-		return -1;
-	}
-	(void)setsockopt(so, IPPROTO_IPV6, IPV6_IPSEC_POLICY,
-	    buf, ipsec_get_policylen(buf));
-
-	free(buf);
-
-	return 0;
-}
-#endif
-#endif
 
 static void
 send_probe(int seq, u_long hops)

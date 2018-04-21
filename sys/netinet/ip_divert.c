@@ -33,7 +33,6 @@
 
 #include "opt_inet.h"
 #include "opt_ipdivert.h"
-#include "opt_ipsec.h"
 
 #ifndef INET
 #error "IPDIVERT requires INET."

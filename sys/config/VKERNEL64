@@ -32,10 +32,6 @@ options		ALTQ_FAIRQ	#fair queue
 #options        ALTQ_NOPCC      #don't use processor cycle counter
 options         ALTQ_DEBUG      #for debugging
 
-options		IPSEC			#IP security
-options		IPSEC_ESP		#IP security (crypto; define w/ IPSEC)
-options		IPSEC_DEBUG		#debug for IP security
-
 options		HAMMER
 options		HAMMER2			#HAMMER2 filesystem
 options		NULLFS			#NULL filesystem

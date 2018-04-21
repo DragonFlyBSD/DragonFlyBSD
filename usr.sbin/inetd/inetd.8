@@ -28,7 +28,7 @@
 .\"     from: @(#)inetd.8	8.3 (Berkeley) 4/13/94
 .\" $FreeBSD: src/usr.sbin/inetd/inetd.8,v 1.46.2.13 2003/03/12 22:08:14 trhodes Exp $
 .\"
-.Dd December 31, 2017
+.Dd April 21, 2018
 .Dt INETD 8
 .Os
 .Sh NAME
@@ -672,29 +672,6 @@ causes
 .Nm
 to list TCPMUX services in
 .Pa inetd.conf .
-.Ss IPsec
-The implementation includes a tiny hack
-to support IPsec policy settings for each socket.
-A special form of comment line, starting with
-.Dq Li #@ ,
-is interpreted as a policy specifier.
-Everything after the
-.Dq Li #@
-will be used as an IPsec policy string,
-as described in
-.Xr ipsec_set_policy 3 .
-Each
-policy specifier is applied to all the following lines in
-.Pa inetd.conf
-until the next policy specifier.
-An empty policy specifier resets the IPsec policy.
-.Pp
-If an invalid IPsec policy specifier appears in
-.Pa inetd.conf ,
-.Nm
-will provide an error message via the
-.Xr syslog 3
-interface and abort execution.
 .Ss Ux Domain Sockets
 In addition to running services on IP sockets,
 .Nm
@@ -785,9 +762,6 @@ tcpmux/+date stream  tcp   nowait guest /bin/date                date
 tcpmux/phonebook stream tcp nowait guest /usr/local/bin/phonebook phonebook
 rstatd/1-3   dgram   rpc/udp wait root  /usr/libexec/rpc.rstatd  rpc.rstatd
 /var/run/echo stream unix  nowait root	internal
-#@ ipsec ah/require
-chargen      stream  tcp   nowait root  internal
-#@
 .Ed
 .Sh ERROR MESSAGES
 The
@@ -872,7 +846,6 @@ utility attempted to renounce the privileged state associated with a
 socket but was unable to.
 .El
 .Sh SEE ALSO
-.Xr ipsec_set_policy 3 ,
 .Xr hosts_access 5 ,
 .Xr hosts_options 5 ,
 .Xr login.conf 5 ,
@@ -904,7 +877,6 @@ based services is modeled after that
 provided by
 .Tn SunOS
 4.1.
-The IPsec hack was contributed by the KAME project in 1999.
 The
 .Fx
 TCP Wrappers support first appeared in

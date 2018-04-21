@@ -48,10 +48,6 @@
 
 #include <arpa/inet.h>
 
-#ifdef IPSEC
-#include <netinet6/ipsec.h>
-#endif
-
 #include <stdio.h>
 #include <err.h>
 #include <errno.h>
@@ -75,14 +71,6 @@
 struct flags {
 	u_long debug : 1;
 	u_long fg : 1;
-#ifdef IPSEC
-#ifdef IPSEC_POLICY_IPSEC
-	u_long policy : 1;
-#else /* IPSEC_POLICY_IPSEC */
-	u_long auth : 1;
-	u_long encrypt : 1;
-#endif /* IPSEC_POLICY_IPSEC */
-#endif /*IPSEC*/
 };
 
 struct msghdr sndmhdr;
@@ -104,13 +92,8 @@ static void join_multi(const char *);
 #endif
 static void init_globals(void);
 static void config(FILE **);
-#ifdef IPSEC_POLICY_IPSEC
-static void sock6_open(struct flags *, char *);
-static void sock4_open(struct flags *, char *);
-#else
 static void sock6_open(struct flags *);
 static void sock4_open(struct flags *);
-#endif
 static void rrenum_output(struct payload_list *, struct dst_list *);
 static void rrenum_snd_eachdst(struct payload_list *);
 #if 0
@@ -123,15 +106,7 @@ static void rrenum_input(int);
 static void
 show_usage(void)
 {
-	fprintf(stderr, "usage: rrenumd [-c conf_file|-s] [-df"
-#ifdef IPSEC
-#ifdef IPSEC_POLICY_IPSEC
-		"] [-P policy"
-#else /* IPSEC_POLICY_IPSEC */
-		"AE"
-#endif /* IPSEC_POLICY_IPSEC */
-#endif /* IPSEC */
-		"]\n");
+	fprintf(stderr, "usage: rrenumd [-c conf_file|-s] [-df]\n");
 	exit(1);
 }
 
@@ -261,19 +236,10 @@ config(FILE **fpp)
 }
 
 static void
-sock6_open(struct flags *flags
-#ifdef IPSEC_POLICY_IPSEC
-	   , char *policy
-#endif /* IPSEC_POLICY_IPSEC */
-	   )
+sock6_open(struct flags *flags)
 {
 	struct icmp6_filter filt;
 	int on;
-#ifdef IPSEC
-#ifndef IPSEC_POLICY_IPSEC
-	int optval;
-#endif
-#endif
 
 	if (with_v6dest == 0)
 		return;
@@ -311,57 +277,12 @@ sock6_open(struct flags *flags
 		exit(1);
 	}
 
-#ifdef IPSEC
-#ifdef IPSEC_POLICY_IPSEC
-	if (flags->policy) {
-		char *buf;
-		buf = ipsec_set_policy(policy, strlen(policy));
-		if (buf == NULL)
-			errx(1, "%s", ipsec_strerror());
-		/* XXX should handle in/out bound policy. */
-		if (setsockopt(s6, IPPROTO_IPV6, IPV6_IPSEC_POLICY,
-				buf, ipsec_get_policylen(buf)) < 0)
-			err(1, "setsockopt(IPV6_IPSEC_POLICY)");
-		free(buf);
-	}
-#else /* IPSEC_POLICY_IPSEC */
-	if (flags->auth) {
-		optval = IPSEC_LEVEL_REQUIRE;
-		if (setsockopt(s6, IPPROTO_IPV6, IPV6_AUTH_TRANS_LEVEL,
-			       &optval, sizeof(optval)) == -1) {
-			syslog(LOG_ERR, "<%s> IPV6_AUTH_TRANS_LEVEL: %s",
-			       __func__, strerror(errno));
-			exit(1);
-		}
-	}
-	if (flags->encrypt) {
-		optval = IPSEC_LEVEL_REQUIRE;
-		if (setsockopt(s6, IPPROTO_IPV6, IPV6_ESP_TRANS_LEVEL,
-				&optval, sizeof(optval)) == -1) {
-			syslog(LOG_ERR, "<%s> IPV6_ESP_TRANS_LEVEL: %s",
-			       __func__, strerror(errno));
-			exit(1);
-		}
-	}
-#endif /* IPSEC_POLICY_IPSEC */
-#endif /* IPSEC */
-
 	return;
 }
 
 static void
-sock4_open(struct flags *flags
-#ifdef IPSEC_POLICY_IPSEC
-	   , char *policy
-#endif /* IPSEC_POLICY_IPSEC */
-	   )
+sock4_open(struct flags *flags)
 {
-#ifdef IPSEC
-#ifndef IPSEC_POLICY_IPSEC
-	int optval;
-#endif
-#endif
-
 	if (with_v4dest == 0)
 		return;
 	if ((s4 = socket(AF_INET, SOCK_RAW, IPPROTO_ICMPV6)) < 0) {
@@ -376,41 +297,6 @@ sock4_open(struct flags *flags
 	 */
 	some_join_function();
 #endif
-
-#ifdef IPSEC
-#ifdef IPSEC_POLICY_IPSEC
-	if (flags->policy) {
-		char *buf;
-		buf = ipsec_set_policy(policy, strlen(policy));
-		if (buf == NULL)
-			errx(1, "%s", ipsec_strerror());
-		/* XXX should handle in/out bound policy. */
-		if (setsockopt(s4, IPPROTO_IP, IP_IPSEC_POLICY,
-				buf, ipsec_get_policylen(buf)) < 0)
-			err(1, "setsockopt(IP_IPSEC_POLICY)");
-		free(buf);
-	}
-#else /* IPSEC_POLICY_IPSEC */
-	if (flags->auth) {
-		optval = IPSEC_LEVEL_REQUIRE;
-		if (setsockopt(s4, IPPROTO_IP, IP_AUTH_TRANS_LEVEL,
-			       &optval, sizeof(optval)) == -1) {
-			syslog(LOG_ERR, "<%s> IP_AUTH_TRANS_LEVEL: %s",
-			       __func__, strerror(errno));
-			exit(1);
-		}
-	}
-	if (flags->encrypt) {
-		optval = IPSEC_LEVEL_REQUIRE;
-		if (setsockopt(s4, IPPROTO_IP, IP_ESP_TRANS_LEVEL,
-				&optval, sizeof(optval)) == -1) {
-			syslog(LOG_ERR, "<%s> IP_ESP_TRANS_LEVEL: %s",
-			       __func__, strerror(errno));
-			exit(1);
-		}
-	}
-#endif /* IPSEC_POLICY_IPSEC */
-#endif /* IPSEC */
 
 	return;
 }
@@ -533,23 +419,12 @@ main(int argc, char *argv[])
 	int ch, i, maxfd = 0, send_counter = 0;
 	struct flags flags;
 	struct payload_list *pl;
-#ifdef IPSEC_POLICY_IPSEC
-	char *policy = NULL;
-#endif
 
 	memset(&flags, 0, sizeof(flags));
 	openlog("rrenumd", LOG_PID, LOG_DAEMON);
 
 	/* get options */
-	while ((ch = getopt(argc, argv, "c:sdf"
-#ifdef IPSEC
-#ifdef IPSEC_POLICY_IPSEC
-			    "P:"
-#else /* IPSEC_POLICY_IPSEC */
-			    "AE"
-#endif /* IPSEC_POLICY_IPSEC */
-#endif /* IPSEC */
-			    )) != -1){
+	while ((ch = getopt(argc, argv, "c:sdf")) != -1) {
 		switch (ch) {
 		case 'c':
 			if((fp = fopen(optarg, "r")) == NULL) {
@@ -568,21 +443,6 @@ main(int argc, char *argv[])
 		case 'f':
 			flags.fg = 1;
 			break;
-#ifdef IPSEC
-#ifdef IPSEC_POLICY_IPSEC
-		case 'P':
-			flags.policy = 1;
-			policy = strdup(optarg);
-			break;
-#else /* IPSEC_POLICY_IPSEC */
-		case 'A':
-			flags.auth = 1;
-			break;
-		case 'E':
-			flags.encrypt = 1;
-			break;
-#endif /* IPSEC_POLICY_IPSEC */
-#endif /*IPSEC*/
 		default:
 			show_usage();
 		}
@@ -601,16 +461,8 @@ main(int argc, char *argv[])
 
 	config(&fp);
 
-	sock6_open(&flags
-#ifdef IPSEC_POLICY_IPSEC
-		   , policy
-#endif /* IPSEC_POLICY_IPSEC */
-		   );
-	sock4_open(&flags
-#ifdef IPSEC_POLICY_IPSEC
-		   , policy
-#endif /* IPSEC_POLICY_IPSEC */
-		   );
+	sock6_open(&flags);
+	sock4_open(&flags);
 
 	if (!flags.fg)
 		daemon(0, 0);

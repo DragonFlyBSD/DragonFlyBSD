@@ -18,9 +18,9 @@ SRCS=	rrenumd.c  parser.y lexer.l
 YFLAGS+=	-d
 WARNS?=	2
 
-CFLAGS+= -DINET6 -DIPSEC -I. -I${.CURDIR}
-LDADD=	-lipsec -ll
-DPADD=	${LIBIPSEC} ${LIBL}
+CFLAGS+=-DINET6 -I. -I${.CURDIR}
+LDADD=	-ll
+DPADD=	${LIBL}
 
 MAN=	rrenumd.conf.5 rrenumd.8
 

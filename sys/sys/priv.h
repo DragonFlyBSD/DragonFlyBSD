@@ -380,7 +380,12 @@
 #define	PRIV_NETINET_ND6	500	/* Administer IPv6 neighbor disc. */
 #define	PRIV_NETINET_SCOPE6	501	/* Administer IPv6 address scopes. */
 #define	PRIV_NETINET_ALIFETIME6	502	/* Administer IPv6 address lifetimes. */
-#define	PRIV_NETINET_IPSEC	503	/* Administer IPSEC. */
+
+/*
+ * Placeholder for IPSec privilege, not supported any more.
+ */
+#define	_PRIV_NETINET_IPSEC	503	/* Administer IPSEC. */
+
 #define	PRIV_NETINET_REUSEPORT	504	/* Allow [rapid] port/address reuse. */
 #define	PRIV_NETINET_SETHDROPTS	505	/* Set certain IPv4/6 header options. */
 

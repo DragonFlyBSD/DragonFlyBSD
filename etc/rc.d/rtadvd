@@ -31,12 +31,6 @@ rtadvd_precmd()
 	# router renumbering messages, specify your Router Renumbering
 	# security policy by -R option.
 	#
-	# See `man 3 ipsec_set_policy` for IPsec policy specification
-	# details.
-	# (CAUTION: This enables your routers prefix renumbering
-	# from another machine, so if you enable this, do it with
-	# enough care.)
-	#
 	# If specific interfaces haven't been specified,
 	# get a list of interfaces and enable it on them
 	#
@@ -55,9 +49,6 @@ rtadvd_precmd()
 		;;
 	esac
 	command_args="${rtadvd_interfaces}"
-	# Enable Router Renumbering, unicast case
-	# (use correct src/dst addr)
-	# rtadvd -R "in ipsec ah/transport/fec0:0:0:1::1-fec0:0:0:10::1/require" ${ipv6_network_interf
 	return 0
 }
 

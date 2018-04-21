@@ -63,7 +63,6 @@
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
  */
 
-#include "opt_ipsec.h"
 #include "opt_inet6.h"
 
 #include <sys/param.h>
@@ -100,22 +99,6 @@
 #include <netinet/ip6.h>
 #include <netinet6/ip6_var.h>
 #endif /* INET6 */
-
-#ifdef IPSEC
-#include <netinet6/ipsec.h>
-#include <netproto/key/key.h>
-#include <netproto/ipsec/esp_var.h>
-#endif
-
-#ifdef FAST_IPSEC
-#if defined(IPSEC) || defined(IPSEC_ESP)
-#error "Bad idea: don't compile with both IPSEC and FAST_IPSEC!"
-#endif
-
-#include <netproto/ipsec/ipsec.h>
-#include <netproto/ipsec/key.h>
-#define	IPSEC
-#endif /* FAST_IPSEC */
 
 #define INP_LOCALGROUP_SIZMIN	8
 #define INP_LOCALGROUP_SIZMAX	256
@@ -247,11 +230,6 @@ in_baddynamic(u_int16_t port, u_int16_t proto)
 	case IPPROTO_TCP:
 		return (DP_ISSET(baddynamicports.tcp, port));
 	case IPPROTO_UDP:
-#ifdef IPSEC
-		/* Cannot preset this as it is a sysctl */
-		if (port == udpencap_port)
-			return (1);
-#endif
 		return (DP_ISSET(baddynamicports.udp, port));
 	default:
 		return (0);
@@ -299,9 +277,6 @@ int
 in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
 {
 	struct inpcb *inp;
-#ifdef IPSEC
-	int error;
-#endif
 
 	inp = kmalloc(pcbinfo->ipi_size, M_PCB, M_WAITOK|M_ZERO|M_NULLOK);
 	if (inp == NULL)
@@ -310,13 +285,6 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
 	inp->inp_gencnt = ++pcbinfo->ipi_gencnt;
 	inp->inp_pcbinfo = pcbinfo;
 	inp->inp_socket = so;
-#ifdef IPSEC
-	error = ipsec_init_policy(so, &inp->inp_sp);
-	if (error != 0) {
-		kfree(inp, M_PCB);
-		return (error);
-	}
-#endif
 #ifdef INET6
 	if (INP_CHECK_SOCKAF(so, AF_INET6)) {
 		if (ip6_auto_flowlabel)
@@ -1063,9 +1031,6 @@ in_pcbdetach(struct inpcb *inp)
 	struct socket *so = inp->inp_socket;
 	struct inpcbinfo *ipi = inp->inp_pcbinfo;
 
-#ifdef IPSEC
-	ipsec4_delete_pcbpolicy(inp);
-#endif /*IPSEC*/
 	inp->inp_gencnt = ++ipi->ipi_gencnt;
 	KKASSERT((so->so_state & SS_ASSERTINPROG) == 0);
 	in_pcbremlists(inp);

@@ -80,8 +80,6 @@
 #endif
 
 #define	in6pcb		inpcb	/* for KAME src sync over BSD*'s */
-#define	in6p_sp		inp_sp	/* for KAME src sync over BSD*'s */
-struct inpcbpolicy;
 
 /*
  * Common structure pcb for internet protocol implementation.
@@ -200,7 +198,7 @@ struct inpcb {
 	uint16_t	inp_hashval;	/* valid iff INP_HASH */
 	uint16_t	inp_pad;	/* explicit padding */
 
-	struct	inpcbpolicy *inp_sp; /* for IPSEC */
+	void	*inp_unused1;		/* was: for IPSEC */
 	u_char	inp_af;			/* AF_INET or AF_INET6 */
 	u_char	inp_ip_ttl;		/* time to live proto */
 	u_char	inp_ip_p;		/* protocol proto */

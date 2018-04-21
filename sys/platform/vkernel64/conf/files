@@ -1,8 +1,6 @@
 # This file tells config what files go into building a kernel,
 # files marked standard are always included.
 #
-crypto/blowfish/bf_enc.c		optional	ipsec ipsec_esp
-crypto/des/des_enc.c			optional	ipsec ipsec_esp
 crypto/blowfish/bf_enc.c		optional	crypto
 crypto/des/des_enc.c			optional	crypto
 crypto/des/des_ecb.c			optional	crypto

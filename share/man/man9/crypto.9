@@ -17,7 +17,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/crypto.9,v 1.14 2007/09/19 16:28:46 brueffer Exp $
 .\"
-.Dd August 21, 2010
+.Dd April 21, 2018
 .Dt CRYPTO 9
 .Os
 .Sh NAME
@@ -166,9 +166,8 @@ For session initialization and teardown there is no callback mechanism used.
 .Pp
 The
 .Fn crypto_newsession
-routine is called by consumers of cryptographic services (such as the
-.Xr ipsec 4
-stack) that wish to establish a new session with the framework.
+routine is called by consumers of cryptographic services
+that wish to establish a new session with the framework.
 On success, the first argument will contain the Session Identifier (SID).
 The second argument contains all the necessary information for
 the driver to establish the session.
@@ -233,9 +232,7 @@ by the device driver processing the request.
 Contains a pointer to another
 .Vt cryptoini
 structure.
-Multiple such structures may be linked to establish multi-algorithm sessions
-.Xr ( ipsec 4
-is an example consumer of such a feature).
+Multiple such structures may be linked to establish multi-algorithm sessions.
 .El
 .Pp
 The
@@ -391,9 +388,7 @@ at the location pointed to by
 The IV length is assumed to be equal to the blocksize of the
 encryption algorithm.
 Some applications that do special
-.Dq "IV cooking" ,
-such as the half-IV mode in
-.Xr ipsec 4 ,
+.Dq "IV cooking"
 can use this flag to indicate that the IV should not be written on the packet.
 This flag is typically used in conjunction with the
 .Dv CRD_F_IV_EXPLICIT
@@ -410,9 +405,8 @@ operations it is pointed to by the
 field.
 This flag is typically used when the IV is calculated
 .Dq "on the fly"
-by the consumer, and does not precede the data (some
-.Xr ipsec 4
-configurations, and the encrypted swap are two such examples).
+by the consumer, and does not precede the data
+(encrypted swap being an example).
 .It Dv CRD_F_KEY_EXPLICIT
 For encryption and authentication (MAC) algorithms, this bit is set when the key
 is explicitly provided by the consumer in the
@@ -437,8 +431,7 @@ framework may re-route requests as a result of full queues or hardware
 failure, as described above.
 .It Va crd_next
 Point to the next descriptor.
-Linked operations are useful in protocols such as
-.Xr ipsec 4 ,
+Linked operations are useful in protocols
 where multiple cryptographic transforms may be applied on the same
 block of data.
 .El
@@ -658,7 +651,6 @@ field.
 most of the framework code
 .El
 .Sh SEE ALSO
-.Xr ipsec 4 ,
 .Xr kmalloc 9 ,
 .Xr sleep 9
 .Sh HISTORY

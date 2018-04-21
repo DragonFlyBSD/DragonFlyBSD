@@ -29,7 +29,7 @@
 .\"
 .\"	$FreeBSD: src/sbin/ping6/ping6.8,v 1.3.2.12 2003/02/24 00:56:42 trhodes Exp $
 .\"
-.Dd May 17, 1998
+.Dd April 21, 2018
 .Dt PING6 8
 .Os
 .Sh NAME
@@ -39,10 +39,7 @@
 packets to network hosts
 .Sh SYNOPSIS
 .Nm
-.\" without ipsec, or new ipsec
 .Op Fl dfHnNqRtvwW
-.\" old ipsec
-.\" .Op Fl AdEfnNqRtvwW
 .Bk -words
 .Op Fl a Ar addrtype
 .Ek
@@ -66,10 +63,6 @@ packets to network hosts
 .Ek
 .Bk -words
 .Op Fl p Ar pattern
-.Ek
-.Bk -words
-.\" new ipsec
-.Op Fl P Ar policy
 .Ek
 .Bk -words
 .Op Fl S Ar sourceaddr
@@ -100,10 +93,6 @@ and
 header formatted as documented in RFC 2463.
 The options are as follows:
 .Bl -tag -width Ds
-.\" old ipsec
-.\" .It Fl A
-.\" Enables transport-mode IPsec authentication header
-.\" (experimental).
 .It Fl a Ar addrtype
 Generate ICMPv6 Node Information Node Addresses query, rather than echo-request.
 .Ar addrtype
@@ -142,9 +131,6 @@ packets.
 Set the
 .Dv SO_DEBUG
 option on the socket being used.
-.\" .It Fl E
-.\" Enables transport-mode IPsec encapsulated security payload
-.\" (experimental).
 .It Fl f
 Flood ping.
 Outputs packets as fast as they come back or one hundred times per second,
@@ -214,10 +200,6 @@ For example,
 .Dq Li \-p ff
 will cause the sent packet to be filled with all
 ones.
-.\" new ipsec
-.It Fl P Ar policy
-.Ar policy
-specifies IPsec policy to be used for the probe.
 .It Fl q
 Quiet output.
 Nothing is displayed except the summary lines at startup time and
@@ -465,7 +447,7 @@ The
 utility with IPv6 support first appeared in WIDE Hydrangea IPv6 protocol stack
 kit.
 .Pp
-IPv6 and IPsec support based on the KAME Project
+IPv6 support based on the KAME Project
 .Pa ( http://www.kame.net/ )
 stack was initially integrated into
 .Fx 4.0

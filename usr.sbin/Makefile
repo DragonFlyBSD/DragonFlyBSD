@@ -111,7 +111,6 @@ SUBDIR= 802_11 \
 	sdpd \
 	sensorsd \
 	service \
-	setkey \
 	sshd \
 	sshlockout \
 	sliplogin \

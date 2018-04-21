@@ -64,7 +64,6 @@
 #include "opt_ip6fw.h"
 #include "opt_inet.h"
 #include "opt_inet6.h"
-#include "opt_ipsec.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -107,19 +106,6 @@
 #include <netinet6/scope6_var.h>
 #include <netinet6/in6_ifattach.h>
 #include <netinet6/nd6.h>
-
-#ifdef IPSEC
-#include <netinet6/ipsec.h>
-#ifdef INET6
-#include <netinet6/ipsec6.h>
-#endif
-#endif
-
-#ifdef FAST_IPSEC
-#include <netproto/ipsec/ipsec.h>
-#include <netproto/ipsec/ipsec6.h>
-#define	IPSEC
-#endif /* FAST_IPSEC */
 
 #include <net/ip6fw/ip6_fw.h>
 
@@ -226,17 +212,6 @@ ip6_input(netmsg_t msg)
 	struct ifnet *deliverifp = NULL;
 	struct in6_addr odst;
 	int srcrt = 0;
-
-#ifdef IPSEC
-	/*
-	 * should the inner packet be considered authentic?
-	 * see comment in ah4_input().
-	 */
-	if (m) {
-		m->m_flags &= ~M_AUTHIPHDR;
-		m->m_flags &= ~M_AUTHIPDGM;
-	}
-#endif
 
 	/*
 	 * make sure we don't have onion peering information into m_aux.
@@ -758,17 +733,6 @@ hbhcheck:
 		}
 
 		sw6 = &inet6sw[ip6_protox[nxt]];
-#ifdef IPSEC
-		/*
-		 * enforce IPsec policy checking if we are seeing last header.
-		 * note that we do not visit this with protocols with pcb layer
-		 * code - like udp/tcp/raw ip.
-		 */
-		if ((sw6->pr_flags & PR_LASTHDR) && ipsec6_in_reject(m, NULL)) {
-			ipsec6stat.in_polvio++;
-			goto bad;
-		}
-#endif
 		/*
 		 * If this is a terminal header forward to the port, otherwise
 		 * process synchronously for more headers.

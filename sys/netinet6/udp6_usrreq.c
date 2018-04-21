@@ -63,7 +63,6 @@
 
 #include "opt_inet.h"
 #include "opt_inet6.h"
-#include "opt_ipsec.h"
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -102,16 +101,6 @@
 #include <netinet/icmp6.h>
 #include <netinet6/udp6_var.h>
 #include <netinet6/ip6protosw.h>
-
-#ifdef IPSEC
-#include <netinet6/ipsec.h>
-#include <netinet6/ipsec6.h>
-#endif /* IPSEC */
-
-#ifdef FAST_IPSEC
-#include <netproto/ipsec/ipsec.h>
-#include <netproto/ipsec/ipsec6.h>
-#endif /* FAST_IPSEC */
 
 /*
  * UDP protocol inplementation.
@@ -216,7 +205,6 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 		udp_in6.sin6_port = uh->uh_sport;
 		/*
 		 * KAME note: traditionally we dropped udpiphdr from mbuf here.
-		 * We need udphdr for IPsec processing so we do that later.
 		 */
 
 		/*
@@ -257,23 +245,6 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 			if (last != NULL) {
 				struct mbuf *n;
 
-#ifdef IPSEC
-				/*
-				 * Check AH/ESP integrity.
-				 */
-				if (ipsec6_in_reject_so(m, last->inp_socket))
-					ipsec6stat.in_polvio++;
-					/* do not inject data into pcb */
-				else
-#endif /* IPSEC */
-#ifdef FAST_IPSEC
-				/*
-				 * Check AH/ESP integrity.
-				 */
-				if (ipsec6_in_reject(m, last))
-					;
-				else
-#endif /* FAST_IPSEC */
 				if ((n = m_copy(m, 0, M_COPYALL)) != NULL) {
 					/*
 					 * KAME NOTE: do not
@@ -331,23 +302,6 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 			udp_stat.udps_noportmcast++;
 			goto bad;
 		}
-#ifdef IPSEC
-		/*
-		 * Check AH/ESP integrity.
-		 */
-		if (ipsec6_in_reject_so(m, last->inp_socket)) {
-			ipsec6stat.in_polvio++;
-			goto bad;
-		}
-#endif /* IPSEC */
-#ifdef FAST_IPSEC
-		/*
-		 * Check AH/ESP integrity.
-		 */
-		if (ipsec6_in_reject(m, last)) {
-			goto bad;
-		}
-#endif /* FAST_IPSEC */
 		if (last->in6p_flags & IN6P_CONTROLOPTS
 		    || last->in6p_socket->so_options & SO_TIMESTAMP)
 			ip6_savecontrol(last, &opts, ip6, m);
@@ -390,23 +344,6 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 		icmp6_error(m, ICMP6_DST_UNREACH, ICMP6_DST_UNREACH_NOPORT, 0);
 		return IPPROTO_DONE;
 	}
-#ifdef IPSEC
-	/*
-	 * Check AH/ESP integrity.
-	 */
-	if (ipsec6_in_reject_so(m, in6p->in6p_socket)) {
-		ipsec6stat.in_polvio++;
-		goto bad;
-	}
-#endif /* IPSEC */
-#ifdef FAST_IPSEC
-	/*
-	 * Check AH/ESP integrity.
-	 */
-	if (ipsec6_in_reject(m, in6p)) {
-		goto bad;
-	}
-#endif /* FAST_IPSEC */
 
 	/*
 	 * Construct sockaddr format source address.

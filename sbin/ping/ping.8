@@ -28,7 +28,7 @@
 .\"     @(#)ping.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/sbin/ping/ping.8,v 1.54 2006/04/05 12:30:42 glebius Exp $
 .\"
-.Dd April 4, 2006
+.Dd April 21, 2018
 .Dt PING 8
 .Os
 .Sh NAME
@@ -47,7 +47,6 @@ packets to network hosts
 .Op Fl l Ar preload
 .Op Fl M Cm mask | time
 .Op Fl m Ar ttl
-.Op Fl P Ar policy
 .Op Fl p Ar pattern
 .Op Fl S Ar src_addr
 .Op Fl s Ar packetsize
@@ -63,7 +62,6 @@ packets to network hosts
 .Op Fl l Ar preload
 .Op Fl M Cm mask | time
 .Op Fl m Ar ttl
-.Op Fl P Ar policy
 .Op Fl p Ar pattern
 .Op Fl S Ar src_addr
 .Op Fl s Ar packetsize
@@ -215,13 +213,6 @@ Numeric output only.
 No attempt will be made to lookup symbolic names for host addresses.
 .It Fl o
 Exit successfully after receiving one reply packet.
-.It Fl P Ar policy
-.Ar policy
-specifies IPsec policy for the ping session.
-For details please refer to
-.Xr ipsec 4
-and
-.Xr ipsec_set_policy 3 .
 .It Fl p Ar pattern
 You may specify up to 16
 .Dq pad

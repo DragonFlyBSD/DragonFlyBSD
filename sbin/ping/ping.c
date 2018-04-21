@@ -32,7 +32,6 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ping.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/ping/ping.c,v 1.111 2007/05/21 14:38:45 cognet Exp $
- * $DragonFly: src/sbin/ping/ping.c,v 1.8 2008/09/04 21:00:28 swildner Exp $
  */
 
 /*
@@ -65,10 +64,6 @@
 #include <netinet/ip_icmp.h>
 #include <netinet/ip_var.h>
 #include <arpa/inet.h>
-
-#ifdef IPSEC
-#include <netinet6/ipsec.h>
-#endif /*IPSEC*/
 
 #include <ctype.h>
 #include <err.h>
@@ -122,11 +117,6 @@ int options;
 #define	F_MTTL		0x0800
 #define	F_MIF		0x1000
 #define	F_AUDIBLE	0x2000
-#ifdef IPSEC
-#ifdef IPSEC_POLICY_IPSEC
-#define F_POLICY	0x4000
-#endif /*IPSEC_POLICY_IPSEC*/
-#endif /*IPSEC*/
 #define	F_TTL		0x8000
 #define	F_MISSED	0x10000
 #define	F_ONCE		0x20000
@@ -218,9 +208,6 @@ main(int argc, char **argv)
 	u_char *datap, packet[IP_MAXPACKET] __aligned(4);
 	char *ep, *source, *target, *payload;
 	struct hostent *hp;
-#ifdef IPSEC_POLICY_IPSEC
-	char *policy_in, *policy_out;
-#endif
 	struct sockaddr_in *to;
 	double t;
 	u_long alarmtimeout, ultmp;
@@ -234,9 +221,6 @@ main(int argc, char **argv)
 	unsigned char loop, mttl;
 
 	payload = source = NULL;
-#ifdef IPSEC_POLICY_IPSEC
-	policy_in = policy_out = NULL;
-#endif
 
 	/*
 	 * Do the stuff that we need root priv's for *first*, and
@@ -252,15 +236,7 @@ main(int argc, char **argv)
 	alarmtimeout = df = preload = tos = 0;
 
 	outpack = outpackhdr + sizeof(struct ip);
-	while ((ch = getopt(argc, argv,
-		"Aac:DdfG:g:h:I:i:Ll:M:m:nop:QqRrS:s:T:t:vW:z:"
-#ifdef IPSEC
-#ifdef IPSEC_POLICY_IPSEC
-		"P:"
-#endif /*IPSEC_POLICY_IPSEC*/
-#endif /*IPSEC*/
-		)) != -1)
-	{
+	while ((ch = getopt(argc, argv, "Aac:DdfG:g:h:I:i:Ll:M:m:nop:QqRrS:s:T:t:vW:z:")) != -1) {
 		switch(ch) {
 		case 'A':
 			options |= F_MISSED;
@@ -395,19 +371,6 @@ main(int argc, char **argv)
 		case 'o':
 			options |= F_ONCE;
 			break;
-#ifdef IPSEC
-#ifdef IPSEC_POLICY_IPSEC
-		case 'P':
-			options |= F_POLICY;
-			if (!strncmp("in", optarg, 2))
-				policy_in = strdup(optarg);
-			else if (!strncmp("out", optarg, 3))
-				policy_out = strdup(optarg);
-			else
-				errx(1, "invalid security policy");
-			break;
-#endif /*IPSEC_POLICY_IPSEC*/
-#endif /*IPSEC*/
 		case 'p':		/* fill buffer with user pattern */
 			options |= F_PINGFILLED;
 			payload = optarg;
@@ -594,35 +557,6 @@ main(int argc, char **argv)
 	if (options & F_SO_DONTROUTE)
 		setsockopt(s, SOL_SOCKET, SO_DONTROUTE, (char *)&hold,
 		    sizeof(hold));
-#ifdef IPSEC
-#ifdef IPSEC_POLICY_IPSEC
-	if (options & F_POLICY) {
-		char *buf;
-		if (policy_in != NULL) {
-			buf = ipsec_set_policy(policy_in, strlen(policy_in));
-			if (buf == NULL)
-				errx(EX_CONFIG, "%s", ipsec_strerror());
-			if (setsockopt(s, IPPROTO_IP, IP_IPSEC_POLICY,
-					buf, ipsec_get_policylen(buf)) < 0)
-				err(EX_CONFIG,
-				    "ipsec policy cannot be configured");
-			free(buf);
-		}
-
-		if (policy_out != NULL) {
-			buf = ipsec_set_policy(policy_out, strlen(policy_out));
-			if (buf == NULL)
-				errx(EX_CONFIG, "%s", ipsec_strerror());
-			if (setsockopt(s, IPPROTO_IP, IP_IPSEC_POLICY,
-					buf, ipsec_get_policylen(buf)) < 0)
-				err(EX_CONFIG,
-				    "ipsec policy cannot be configured");
-			free(buf);
-		}
-	}
-#endif /*IPSEC_POLICY_IPSEC*/
-#endif /*IPSEC*/
-
 	if (options & F_HDRINCL) {
 		ip = (struct ip*)outpackhdr;
 		if (!(options & (F_TTL | F_MTTL))) {
@@ -1669,11 +1603,6 @@ fill(char *bp, char *patp)
 	}
 }
 
-#if defined(IPSEC) && defined(IPSEC_POLICY_IPSEC)
-#define	SECOPT		" [-P policy]"
-#else
-#define	SECOPT		""
-#endif
 static void
 usage(void)
 {
@@ -1681,10 +1610,10 @@ usage(void)
 	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 "usage: ping [-AaDdfnoQqRrv] [-c count] [-G sweepmaxsize] [-g sweepminsize]",
 "            [-h sweepincrsize] [-i wait] [-l preload] [-M mask | time] [-m ttl]",
-"           " SECOPT " [-p pattern] [-S src_addr] [-s packetsize] [-t timeout]",
+"            [-p pattern] [-S src_addr] [-s packetsize] [-t timeout]",
 "            [-W waittime] [-z tos] host",
 "       ping [-AaDdfLnoQqRrv] [-c count] [-I iface] [-i wait] [-l preload]",
-"            [-M mask | time] [-m ttl]" SECOPT " [-p pattern] [-S src_addr]",
+"            [-M mask | time] [-m ttl] [-p pattern] [-S src_addr]",
 "            [-s packetsize] [-T ttl] [-t timeout] [-W waittime]",
 "            [-z tos] mcast-group");
 	exit(EX_USAGE);

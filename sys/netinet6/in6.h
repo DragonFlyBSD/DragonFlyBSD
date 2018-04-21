@@ -426,10 +426,6 @@ struct route_in6 {
 #define IPV6_BINDV6ONLY		IPV6_V6ONLY
 #endif
 
-#if 1 /* IPSEC */
-#define IPV6_IPSEC_POLICY	28 /* struct; get/set security policy */
-#endif
-
 #if 1 /* IPV6FIREWALL */
 #define IPV6_FW_ADD		30 /* add a firewall rule to chain */
 #define IPV6_FW_DEL		31 /* delete a firewall rule from chain */

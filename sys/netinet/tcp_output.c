@@ -65,7 +65,6 @@
 
 #include "opt_inet.h"
 #include "opt_inet6.h"
-#include "opt_ipsec.h"
 #include "opt_tcpdebug.h"
 
 #include <sys/param.h>
@@ -105,15 +104,6 @@
 #ifdef TCPDEBUG
 #include <netinet/tcp_debug.h>
 #endif
-
-#ifdef IPSEC
-#include <netinet6/ipsec.h>
-#endif /*IPSEC*/
-
-#ifdef FAST_IPSEC
-#include <netproto/ipsec/ipsec.h>
-#define	IPSEC
-#endif /*FAST_IPSEC*/
 
 #ifdef notyet
 extern struct mbuf *m_copypack();
@@ -253,7 +243,6 @@ tcp_output(struct tcpcb *tp)
 	 *   PUSH on the last segment that it creates from the large TCP
 	 *   segment.
 	 */
-#if !defined(IPSEC) && !defined(FAST_IPSEC)
 	if (tcp_do_tso
 #ifdef TCP_SIGNATURE
 	    && (tp->t_flags & TF_SIGNATURE) == 0
@@ -269,7 +258,6 @@ tcp_output(struct tcpcb *tp)
 			}
 		}
 	}
-#endif	/* !IPSEC && !FAST_IPSEC */
 
 again:
 	m = NULL;
@@ -821,9 +809,6 @@ send:
 			ipoptlen = 0;
 		}
 	}
-#ifdef IPSEC
-	ipoptlen += ipsec_hdrsiz_tcp(tp);
-#endif
 
 	if (use_tso) {
 		/* TSO segment length must be multiple of segment size */
@@ -1440,9 +1425,6 @@ tcp_tso_getsize(struct tcpcb *tp, u_int *segsz, u_int *hlen0)
 			ipoptlen = 0;
 		}
 	}
-#ifdef IPSEC
-	ipoptlen += ipsec_hdrsiz_tcp(tp);
-#endif
 	hlen += ipoptlen;
 
 	optlen = 0;

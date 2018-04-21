@@ -668,21 +668,8 @@ m_getb(int len, int how, int type, int flags)
 
 #define	PACKET_TAG_NONE				0  /* Nadda */
 
-/* Packet tag for use with PACKET_ABI_COMPAT */
-#define	PACKET_TAG_IPSEC_IN_DONE		1  /* IPsec applied, in */
-/* struct tdb_indent */
-#define	PACKET_TAG_IPSEC_OUT_DONE		2  /* IPsec applied, out */
-/* struct tdb_indent */
-#define	PACKET_TAG_IPSEC_IN_CRYPTO_DONE		3  /* NIC IPsec crypto done */
-/* struct tdb_indent, never added */
-#define	PACKET_TAG_IPSEC_OUT_CRYPTO_NEEDED	4  /* NIC IPsec crypto req'ed */
-/* struct tdb_indent, never added */
-#define	PACKET_TAG_IPSEC_PENDING_TDB		5  /* Reminder to do IPsec */
-/* struct tdb_indent, never added */
 #define	PACKET_TAG_ENCAP			6 /* Encap.  processing */
 /* struct ifnet *, the GIF interface */
-#define	PACKET_TAG_IPSEC_HISTORY		7 /* IPSEC history */
-/* struct ipsec_history */
 #define	PACKET_TAG_IPV6_INPUT			8 /* IPV6 input processing */
 /* struct ip6aux */
 #define	PACKET_TAG_IPFW_DIVERT			9 /* divert info */

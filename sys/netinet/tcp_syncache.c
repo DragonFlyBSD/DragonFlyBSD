@@ -73,7 +73,6 @@
 
 #include "opt_inet.h"
 #include "opt_inet6.h"
-#include "opt_ipsec.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -115,23 +114,6 @@
 #include <netinet/tcp_timer2.h>
 #include <netinet/tcp_var.h>
 #include <netinet6/tcp6_var.h>
-
-#ifdef IPSEC
-#include <netinet6/ipsec.h>
-#ifdef INET6
-#include <netinet6/ipsec6.h>
-#endif
-#include <netproto/key/key.h>
-#endif /*IPSEC*/
-
-#ifdef FAST_IPSEC
-#include <netproto/ipsec/ipsec.h>
-#ifdef INET6
-#include <netproto/ipsec/ipsec6.h>
-#endif
-#include <netproto/ipsec/key.h>
-#define	IPSEC
-#endif /*FAST_IPSEC*/
 
 static int tcp_syncookies = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, syncookies, CTLFLAG_RW,
@@ -785,11 +767,6 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 
 	tcp_pcbport_insert(ltp, inp);
 
-#ifdef IPSEC
-	/* copy old policy into new socket's */
-	if (ipsec_copy_policy(linp->inp_sp, inp->inp_sp))
-		kprintf("syncache_expand: could not copy policy\n");
-#endif
 	if (isipv6) {
 		struct in6_addr laddr6;
 		/*

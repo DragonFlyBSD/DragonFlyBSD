@@ -1,5 +1,4 @@
 .\" $OpenBSD: authpf.8,v 1.31 2003/12/10 04:10:37 beck Exp $
-.\" $DragonFly: src/usr.sbin/authpf/authpf.8,v 1.3 2007/07/29 17:27:45 swildner Exp $
 .\"
 .\" Copyright (c) 2002 Bob Beck (beck@openbsd.org>.  All rights reserved.
 .\"
@@ -25,7 +24,7 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd January 10, 2002
+.Dd April 21, 2018
 .Dt AUTHPF 8
 .Os
 .Sh NAME
@@ -384,10 +383,9 @@ an email to remove@bulkmailerz.net.
 wireless network (a hub with several hundred ports), the default rule set as
 well as the per-user rules should probably allow very few things beyond
 encrypted protocols like
-.Xr ssh 1 ,
-.Xr ssl 8 ,
+.Xr ssh 1
 or
-.Xr ipsec 4 .
+.Xr ssl 8 .
 On a securely switched network, with plug-in jacks for visitors who are
 given authentication accounts, you might want to allow out everything.
 In this context, a secure switch is one that tries to prevent address table
@@ -424,30 +422,30 @@ pass in log quick on $internal_if proto tcp from $user_ip to any \e
       keep state
 pass in quick on $internal_if from $user_ip to any
 .Ed
-.Pp
-.Sy For a wireless or shared net
-\- This example
-.Pa /etc/authpf/authpf.rules
-could be used for an insecure network (such as a public wireless network) where
-we might need to be a bit more restrictive.
-.Bd -literal
-internal_if="fxp1"
-ipsec_gw="10.2.3.4"
-
-# rdr ftp for proxying by ftp-proxy(8)
-rdr on $internal_if proto tcp from $user_ip to any port 21 \e
-      -> 127.0.0.1 port 8081
-
-# allow out ftp, ssh, www and https only, and allow user to negotiate
-# ipsec with the ipsec server.
-pass in log quick on $internal_if proto tcp from $user_ip to any \e
-      port { 21, 22, 80, 443 } flags S/SA
-pass in quick on $internal_if proto tcp from $user_ip to any \e
-      port { 21, 22, 80, 443 }
-pass in quick proto udp from $user_ip to $ipsec_gw port = isakmp \e
-      keep state
-pass in quick proto esp from $user_ip to $ipsec_gw
-.Ed
+.\".Pp
+.\".Sy For a wireless or shared net
+.\"\- This example
+.\".Pa /etc/authpf/authpf.rules
+.\"could be used for an insecure network (such as a public wireless network) where
+.\"we might need to be a bit more restrictive.
+.\".Bd -literal
+.\"internal_if="fxp1"
+.\"ipsec_gw="10.2.3.4"
+.\"
+.\"# rdr ftp for proxying by ftp-proxy(8)
+.\"rdr on $internal_if proto tcp from $user_ip to any port 21 \e
+.\"      -> 127.0.0.1 port 8081
+.\"
+.\"# allow out ftp, ssh, www and https only, and allow user to negotiate
+.\"# ipsec with the ipsec server.
+.\"pass in log quick on $internal_if proto tcp from $user_ip to any \e
+.\"      port { 21, 22, 80, 443 } flags S/SA
+.\"pass in quick on $internal_if proto tcp from $user_ip to any \e
+.\"      port { 21, 22, 80, 443 }
+.\"pass in quick proto udp from $user_ip to $ipsec_gw port = isakmp \e
+.\"      keep state
+.\"pass in quick proto esp from $user_ip to $ipsec_gw
+.\".Ed
 .Pp
 .Sy Dealing with NAT
 \- The following

@@ -470,9 +470,6 @@ pfsync_input(struct mbuf *m, ...)
 	struct pfsync_state_clr *cp;
 	struct pfsync_state_upd_req *rup;
 	struct pfsync_state_bus *bus;
-#ifdef IPSEC
-	struct pfsync_tdb *pt;
-#endif
 	struct in_addr src;
 	struct mbuf *mp;
 	int iplen, action, error, i, count, offp, sfail, stale = 0;
@@ -997,20 +994,6 @@ pfsync_input(struct mbuf *m, ...)
 			break;
 		}
 		break;
-#ifdef IPSEC
-	case PFSYNC_ACT_TDB_UPD:
-		if ((mp = m_pulldown(m, iplen + sizeof(*ph),
-		    count * sizeof(*pt), &offp)) == NULL) {
-			pfsyncstats.pfsyncs_badlen++;
-			return;
-		}
-		crit_enter();
-		for (i = 0, pt = (struct pfsync_tdb *)(mp->m_data + offp);
-		    i < count; i++, pt++)
-			pfsync_update_net_tdb(pt);
-		crit_exit();
-		break;
-#endif
 	}
 
 done:

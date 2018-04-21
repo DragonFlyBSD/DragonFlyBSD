@@ -71,7 +71,6 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libftpio \
 	libhammer \
 	libipfw3 \
-	libipsec \
 	libkcore \
 	libkiconv \
 	libkinfo \

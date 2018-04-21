@@ -32,7 +32,6 @@
 
 #include "opt_ipdivert.h"
 #include "opt_mrouting.h"
-#include "opt_ipsec.h"
 #include "opt_inet6.h"
 #include "opt_carp.h"
 
@@ -70,19 +69,6 @@
 /*
  * TCP/IP protocol family: IP, ICMP, UDP, TCP.
  */
-
-#ifdef IPSEC
-#include <netinet6/ipsec.h>
-#include <netinet6/ah.h>
-#ifdef IPSEC_ESP
-#include <netinet6/esp.h>
-#endif
-#include <netinet6/ipcomp.h>
-#endif /* IPSEC */
-
-#ifdef FAST_IPSEC
-#include <netproto/ipsec/ipsec.h>
-#endif /* FAST_IPSEC */
 
 #include <net/netisr.h>		/* for cpu0_soport */
 
@@ -197,96 +183,6 @@ struct protosw inetsw[] = {
 
 	.pr_usrreqs = &rip_usrreqs
     },
-#ifdef IPSEC
-    {
-	.pr_type = SOCK_RAW,
-	.pr_domain = &inetdomain,
-	.pr_protocol = IPPROTO_AH,
-	.pr_flags = PR_ATOMIC|PR_ADDR,
-
-	.pr_input = ah4_input,
-	.pr_output = NULL,
-	.pr_ctlinput = NULL,
-	.pr_ctloutput = NULL,
-
-	.pr_ctlport = NULL,
-	.pr_usrreqs = &nousrreqs
-    },
-#ifdef IPSEC_ESP
-    {
-	.pr_type = SOCK_RAW,
-	.pr_domain = &inetdomain,
-	.pr_protocol = IPPROTO_ESP,
-	.pr_flags = PR_ATOMIC|PR_ADDR,
-
-	.pr_input = esp4_input,
-	.pr_output = NULL,
-	.pr_ctlinput = NULL,
-	.pr_ctloutput = NULL,
-
-	.pr_ctlport = NULL,
-	.pr_usrreqs = &nousrreqs
-    },
-#endif
-    {
-	.pr_type = SOCK_RAW,
-	.pr_domain = &inetdomain,
-	.pr_protocol = IPPROTO_IPCOMP,
-	.pr_flags = PR_ATOMIC|PR_ADDR,
-
-	.pr_input = ipcomp4_input,
-	.pr_output = 0,
-	.pr_ctlinput = NULL,
-	.pr_ctloutput = NULL,
-
-	.pr_ctlport = NULL,
-	.pr_usrreqs = &nousrreqs
-    },
-#endif /* IPSEC */
-#ifdef FAST_IPSEC
-    {
-	.pr_type = SOCK_RAW,
-	.pr_domain = &inetdomain,
-	.pr_protocol = IPPROTO_AH,
-	.pr_flags = PR_ATOMIC|PR_ADDR,
-
-	.pr_input = ipsec4_common_input,
-	.pr_output = NULL,
-	.pr_ctlinput = NULL,
-	.pr_ctloutput = NULL,
-
-	.pr_ctlport = NULL,
-	.pr_usrreqs = &nousrreqs
-    },
-    {
-	.pr_type = SOCK_RAW,
-	.pr_domain = &inetdomain,
-	.pr_protocol = IPPROTO_ESP,
-	.pr_flags = PR_ATOMIC|PR_ADDR,
-
-	.pr_input = ipsec4_common_input,
-	.pr_output = NULL,
-	.pr_ctlinput = NULL,
-	.pr_ctloutput = NULL,
-
-	.pr_ctlport = NULL,
-	.pr_usrreqs = &nousrreqs
-    },
-    {
-	.pr_type = SOCK_RAW,
-	.pr_domain = &inetdomain,
-	.pr_protocol = IPPROTO_IPCOMP,
-	.pr_flags = PR_ATOMIC|PR_ADDR,
-
-	.pr_input = ipsec4_common_input,
-	.pr_output = NULL,
-	.pr_ctlinput = NULL,
-	.pr_ctloutput = NULL,
-
-	.pr_ctlport = NULL,
-	.pr_usrreqs = &nousrreqs
-    },
-#endif /* FAST_IPSEC */
     {
 	.pr_type = SOCK_RAW,
 	.pr_domain = &inetdomain,
@@ -463,18 +359,6 @@ SYSCTL_NODE(_net_inet, IPPROTO_ICMP,	icmp,	CTLFLAG_RW, 0,	"ICMP");
 SYSCTL_NODE(_net_inet, IPPROTO_UDP,	udp,	CTLFLAG_RW, 0,	"UDP");
 SYSCTL_NODE(_net_inet, IPPROTO_TCP,	tcp,	CTLFLAG_RW, 0,	"TCP");
 SYSCTL_NODE(_net_inet, IPPROTO_IGMP,	igmp,	CTLFLAG_RW, 0,	"IGMP");
-#ifdef FAST_IPSEC
-/* XXX no protocol # to use, pick something "reserved" */
-SYSCTL_NODE(_net_inet, 253,		ipsec,	CTLFLAG_RW, 0,	"IPSEC");
-SYSCTL_NODE(_net_inet, IPPROTO_AH,	ah,	CTLFLAG_RW, 0,	"AH");
-SYSCTL_NODE(_net_inet, IPPROTO_ESP,	esp,	CTLFLAG_RW, 0,	"ESP");
-SYSCTL_NODE(_net_inet, IPPROTO_IPCOMP,	ipcomp,	CTLFLAG_RW, 0,	"IPCOMP");
-SYSCTL_NODE(_net_inet, IPPROTO_IPIP,	ipip,	CTLFLAG_RW, 0,	"IPIP");
-#else
-#ifdef IPSEC
-SYSCTL_NODE(_net_inet, IPPROTO_AH,	ipsec,	CTLFLAG_RW, 0,	"IPSEC");
-#endif /* IPSEC */
-#endif /* !FAST_IPSEC */
 SYSCTL_NODE(_net_inet, IPPROTO_RAW,	raw,	CTLFLAG_RW, 0,	"RAW");
 #ifdef IPDIVERT
 SYSCTL_NODE(_net_inet, IPPROTO_DIVERT,	divert,	CTLFLAG_RW, 0,	"DIVERT");

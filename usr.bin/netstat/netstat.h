@@ -70,9 +70,6 @@ void	icmp_stats (u_long, const char *, int);
 void	igmp_stats (u_long, const char *, int);
 void	pim_stats (u_long, const char *, int);
 void   carp_stats (u_long, const char *, int);
-#ifdef IPSEC
-void	ipsec_stats (u_long, const char *, int);
-#endif
 
 #ifdef INET6
 void	ip6_stats (u_long, const char *, int);
@@ -89,10 +86,6 @@ struct in6_addr;
 char *routename6 (struct sockaddr_in6 *);
 const char *netname6 (struct sockaddr_in6 *, struct in6_addr *);
 #endif /*INET6*/
-
-#ifdef IPSEC
-void	pfkey_stats (u_long, const char *, int);
-#endif
 
 void	mbpr (u_long, u_long, u_long, u_long, u_long, u_long);
 

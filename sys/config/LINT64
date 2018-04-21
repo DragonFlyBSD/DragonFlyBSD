@@ -218,36 +218,9 @@ options 	UCONSOLE
 #
 # Protocol families:
 #  Only the INET (Internet) family is officially supported in DragonFly.
-#  Source code for the NS (Xerox Network Service) is provided for amusement
-#  value.
 #
 options 	INET			#Internet communications protocols
 options 	INET6			#IPv6 communications protocols
-options 	IPSEC			#IP security
-options 	IPSEC_ESP		#IP security (crypto; define w/ IPSEC)
-options 	IPSEC_DEBUG		#debug for IP security
-#
-# Set IPSEC_FILTERGIF to force packets coming through a gif tunnel
-# to be processed by any configured packet filtering (ipfw).
-# The default is that packets coming from a tunnel are _not_ processed;
-# they are assumed trusted.
-#
-# Note that enabling this can be problematic as there are no mechanisms
-# in place for distinguishing packets coming out of a tunnel (e.g. no
-# encX devices as found on openbsd).
-#
-#options 	IPSEC_FILTERGIF		#filter ipsec packets from a tunnel
-
-#
-# Experimental IPsec implementation that uses the kernel crypto
-# framework.  This cannot be configured together with IPSEC and
-# (currently) supports only IPv4.  To use this you must also
-# configure the crypto device (see below).  Note that with this
-# you get all the IPsec protocols (e.g. there is no FAST_IPSEC_ESP).
-# IPSEC_DEBUG is used, as above, to configure debugging support
-# within the IPsec protocols.
-#
-#options 	FAST_IPSEC		#new IPsec
 
 options 	MPLS			#Multi-Protocol Label Switching
 
@@ -417,15 +390,13 @@ options                ACCEPT_FILTER_DATA
 options                ACCEPT_FILTER_HTTP
 
 # TCP_SIGNATURE adds support for RFC 2385 (TCP-MD5) digests. These are
-# carried in TCP option 19. This option is commonly used to protect
-# TCP sessions (e.g. BGP) where IPSEC is not available nor desirable.
+# carried in TCP option 19.
 # This is enabled on a per-socket basis using the TCP_SIGNATURE_ENABLE
 # socket option.
-# This requires the use of 'device crypto', 'options IPSEC'
-# or 'device cryptodev'.
+# This requires the use of 'device crypto' or 'device cryptodev'.
 #
-# XXX disabled for now until building with it (which broke after removing
-#     IPSEC) is fixed
+# XXX disabled for now until building with it is fixed, which broke
+* after removing IPsec.
 #
 #options   TCP_SIGNATURE   #include support for RFC 2385
 
@@ -2031,8 +2002,8 @@ options		DCONS_FORCE_GDB=1	# force to be the gdb device
 # crypto subsystem
 #
 # This is a port of the openbsd crypto framework.  Include this when
-# configuring IPsec and when you have a h/w crypto device to accelerate
-# user applications that link to openssl.
+# you have a h/w crypto device to accelerate user applications that
+# link to openssl.
 #
 # Drivers are ports from openbsd with some simple enhancements that have
 # been fed back to openbsd (and hopefully will be included).

@@ -69,7 +69,6 @@
 #include "opt_ipdn.h"
 #include "opt_ipdivert.h"
 #include "opt_ipstealth.h"
-#include "opt_ipsec.h"
 #include "opt_rss.h"
 
 #include <sys/param.h>
@@ -119,16 +118,6 @@
 
 #include <net/ipfw/ip_fw.h>
 #include <net/dummynet/ip_dummynet.h>
-
-#ifdef IPSEC
-#include <netinet6/ipsec.h>
-#include <netproto/key/key.h>
-#endif
-
-#ifdef FAST_IPSEC
-#include <netproto/ipsec/ipsec.h>
-#include <netproto/ipsec/key.h>
-#endif
 
 int rsvp_on = 0;
 static int ip_rsvp_on;
@@ -468,11 +457,6 @@ ip_input(struct mbuf *m)
 	struct m_tag *mtag;
 	struct sockaddr_in *next_hop = NULL;
 	lwkt_port_t port;
-#ifdef FAST_IPSEC
-	struct tdb_ident *tdbi;
-	struct secpolicy *sp;
-	int error;
-#endif
 
 	ASSERT_NETISR_NCPUS(mycpuid);
 	M_ASSERTPKTHDR(m);
@@ -597,13 +581,6 @@ ip_input(struct mbuf *m)
 			m_adj(m, ip->ip_len - m->m_pkthdr.len);
 		}
 	}
-#if defined(IPSEC) && !defined(IPSEC_FILTERGIF)
-	/*
-	 * Bypass packet filtering for packets from a tunnel (gif).
-	 */
-	if (ipsec_gethist(m, NULL))
-		goto pass;
-#endif
 
 	/*
 	 * IpHack's section.
@@ -831,43 +808,6 @@ pass:
 		ipstat.ips_cantforward++;
 		m_freem(m);
 	} else {
-#ifdef IPSEC
-		/*
-		 * Enforce inbound IPsec SPD.
-		 */
-		if (ipsec4_in_reject(m, NULL)) {
-			ipsecstat.in_polvio++;
-			goto bad;
-		}
-#endif
-#ifdef FAST_IPSEC
-		mtag = m_tag_find(m, PACKET_TAG_IPSEC_IN_DONE, NULL);
-		crit_enter();
-		if (mtag != NULL) {
-			tdbi = (struct tdb_ident *)m_tag_data(mtag);
-			sp = ipsec_getpolicy(tdbi, IPSEC_DIR_INBOUND);
-		} else {
-			sp = ipsec_getpolicybyaddr(m, IPSEC_DIR_INBOUND,
-						   IP_FORWARDING, &error);
-		}
-		if (sp == NULL) {	/* NB: can happen if error */
-			crit_exit();
-			/*XXX error stat???*/
-			DPRINTF(("ip_input: no SP for forwarding\n"));	/*XXX*/
-			goto bad;
-		}
-
-		/*
-		 * Check security policy against packet attributes.
-		 */
-		error = ipsec_in_reject(sp, m);
-		KEY_FREESP(&sp);
-		crit_exit();
-		if (error) {
-			ipstat.ips_cantforward++;
-			goto bad;
-		}
-#endif
 		ip_forward(m, using_srcrt, next_hop);
 	}
 	return;
@@ -915,58 +855,6 @@ ours:
 		ip->ip_len -= hlen;
 	}
 
-#ifdef IPSEC
-	/*
-	 * enforce IPsec policy checking if we are seeing last header.
-	 * note that we do not visit this with protocols with pcb layer
-	 * code - like udp/tcp/raw ip.
-	 */
-	if ((inetsw[ip_protox[ip->ip_p]].pr_flags & PR_LASTHDR) &&
-	    ipsec4_in_reject(m, NULL)) {
-		ipsecstat.in_polvio++;
-		goto bad;
-	}
-#endif
-#ifdef FAST_IPSEC
-	/*
-	 * enforce IPsec policy checking if we are seeing last header.
-	 * note that we do not visit this with protocols with pcb layer
-	 * code - like udp/tcp/raw ip.
-	 */
-	if (inetsw[ip_protox[ip->ip_p]].pr_flags & PR_LASTHDR) {
-		/*
-		 * Check if the packet has already had IPsec processing
-		 * done.  If so, then just pass it along.  This tag gets
-		 * set during AH, ESP, etc. input handling, before the
-		 * packet is returned to the ip input queue for delivery.
-		 */
-		mtag = m_tag_find(m, PACKET_TAG_IPSEC_IN_DONE, NULL);
-		crit_enter();
-		if (mtag != NULL) {
-			tdbi = (struct tdb_ident *)m_tag_data(mtag);
-			sp = ipsec_getpolicy(tdbi, IPSEC_DIR_INBOUND);
-		} else {
-			sp = ipsec_getpolicybyaddr(m, IPSEC_DIR_INBOUND,
-						   IP_FORWARDING, &error);
-		}
-		if (sp != NULL) {
-			/*
-			 * Check security policy against packet attributes.
-			 */
-			error = ipsec_in_reject(sp, m);
-			KEY_FREESP(&sp);
-		} else {
-			/* XXX error stat??? */
-			error = EINVAL;
-DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
-			crit_exit();
-			goto bad;
-		}
-		crit_exit();
-		if (error)
-			goto bad;
-	}
-#endif /* FAST_IPSEC */
 
 	/*
 	 * We must forward the packet to the correct protocol thread if
@@ -2133,101 +2021,8 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 	case EMSGSIZE:
 		type = ICMP_UNREACH;
 		code = ICMP_UNREACH_NEEDFRAG;
-#ifdef IPSEC
-		/*
-		 * If the packet is routed over IPsec tunnel, tell the
-		 * originator the tunnel MTU.
-		 *	tunnel MTU = if MTU - sizeof(IP) - ESP/AH hdrsiz
-		 * XXX quickhack!!!
-		 */
-		if (fwd_ro.ro_rt != NULL) {
-			struct secpolicy *sp = NULL;
-			int ipsecerror;
-			int ipsechdr;
-			struct route *ro;
-
-			sp = ipsec4_getpolicybyaddr(mcopy,
-						    IPSEC_DIR_OUTBOUND,
-						    IP_FORWARDING,
-						    &ipsecerror);
-
-			if (sp == NULL)
-				destmtu = fwd_ro.ro_rt->rt_ifp->if_mtu;
-			else {
-				/* count IPsec header size */
-				ipsechdr = ipsec4_hdrsiz(mcopy,
-							 IPSEC_DIR_OUTBOUND,
-							 NULL);
-
-				/*
-				 * find the correct route for outer IPv4
-				 * header, compute tunnel MTU.
-				 *
-				 */
-				if (sp->req != NULL && sp->req->sav != NULL &&
-				    sp->req->sav->sah != NULL) {
-					ro = &sp->req->sav->sah->sa_route;
-					if (ro->ro_rt != NULL &&
-					    ro->ro_rt->rt_ifp != NULL) {
-						destmtu =
-						    ro->ro_rt->rt_ifp->if_mtu;
-						destmtu -= ipsechdr;
-					}
-				}
-
-				key_freesp(sp);
-			}
-		}
-#elif defined(FAST_IPSEC)
-		/*
-		 * If the packet is routed over IPsec tunnel, tell the
-		 * originator the tunnel MTU.
-		 *	tunnel MTU = if MTU - sizeof(IP) - ESP/AH hdrsiz
-		 * XXX quickhack!!!
-		 */
-		if (fwd_ro.ro_rt != NULL) {
-			struct secpolicy *sp = NULL;
-			int ipsecerror;
-			int ipsechdr;
-			struct route *ro;
-
-			sp = ipsec_getpolicybyaddr(mcopy,
-						   IPSEC_DIR_OUTBOUND,
-						   IP_FORWARDING,
-						   &ipsecerror);
-
-			if (sp == NULL)
-				destmtu = fwd_ro.ro_rt->rt_ifp->if_mtu;
-			else {
-				/* count IPsec header size */
-				ipsechdr = ipsec4_hdrsiz(mcopy,
-							 IPSEC_DIR_OUTBOUND,
-							 NULL);
-
-				/*
-				 * find the correct route for outer IPv4
-				 * header, compute tunnel MTU.
-				 */
-
-				if (sp->req != NULL &&
-				    sp->req->sav != NULL &&
-				    sp->req->sav->sah != NULL) {
-					ro = &sp->req->sav->sah->sa_route;
-					if (ro->ro_rt != NULL &&
-					    ro->ro_rt->rt_ifp != NULL) {
-						destmtu =
-						    ro->ro_rt->rt_ifp->if_mtu;
-						destmtu -= ipsechdr;
-					}
-				}
-
-				KEY_FREESP(&sp);
-			}
-		}
-#else /* !IPSEC && !FAST_IPSEC */
 		if (fwd_ro.ro_rt != NULL)
 			destmtu = fwd_ro.ro_rt->rt_ifp->if_mtu;
-#endif /*IPSEC*/
 		ipstat.ips_cantfrag++;
 		break;
 

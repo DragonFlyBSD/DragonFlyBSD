@@ -63,7 +63,6 @@
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
  */
 
-#include "opt_ipsec.h"
 #include "opt_inet6.h"
 
 #include <sys/param.h>
@@ -109,14 +108,6 @@
 #include <netinet/icmp_var.h>
 #include <netinet/udp.h>
 #include <netinet/udp_var.h>
-
-#ifdef FAST_IPSEC
-#include <netproto/ipsec/ipsec.h>
-#endif
-
-#ifdef IPSEC
-#include <netinet6/ipsec.h>
-#endif
 
 #define MSGF_UDP_SEND		MSGF_PROTO1
 
@@ -356,19 +347,6 @@ udp_mcast_input(struct udp_mcast_arg *arg)
 	if (last != NULL) {
 		struct mbuf *n;
 
-#ifdef IPSEC
-		/* check AH/ESP integrity. */
-		if (ipsec4_in_reject_so(m, last->inp_socket))
-			ipsecstat.in_polvio++;
-			/* do not inject data to pcb */
-		else
-#endif /*IPSEC*/
-#ifdef FAST_IPSEC
-		/* check AH/ESP integrity. */
-		if (ipsec4_in_reject(m, last))
-			;
-		else
-#endif /*FAST_IPSEC*/
 		if ((n = m_copypacket(m, M_NOWAIT)) != NULL)
 			udp_append(last, ip, n,
 			    arg->iphlen + sizeof(struct udphdr),
@@ -599,18 +577,6 @@ done:
 			udp_stat.udps_noportbcast++;
 			goto bad;
 		}
-#ifdef IPSEC
-		/* check AH/ESP integrity. */
-		if (ipsec4_in_reject_so(m, last->inp_socket)) {
-			ipsecstat.in_polvio++;
-			goto bad;
-		}
-#endif /*IPSEC*/
-#ifdef FAST_IPSEC
-		/* check AH/ESP integrity. */
-		if (ipsec4_in_reject(m, last))
-			goto bad;
-#endif /*FAST_IPSEC*/
 		udp_append(last, ip, m, iphlen + sizeof(struct udphdr),
 		    &udp_in);
 		return(IPPROTO_DONE);
@@ -647,16 +613,6 @@ done:
 		return(IPPROTO_DONE);
 	}
 	KASSERT(INP_ISIPV4(inp), ("not inet inpcb"));
-#ifdef IPSEC
-	if (ipsec4_in_reject_so(m, inp->inp_socket)) {
-		ipsecstat.in_polvio++;
-		goto bad;
-	}
-#endif /*IPSEC*/
-#ifdef FAST_IPSEC
-	if (ipsec4_in_reject(m, inp))
-		goto bad;
-#endif /*FAST_IPSEC*/
 	/*
 	 * Check the minimum TTL for socket.
 	 */

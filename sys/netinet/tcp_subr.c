@@ -65,7 +65,6 @@
 
 #include "opt_inet.h"
 #include "opt_inet6.h"
-#include "opt_ipsec.h"
 #include "opt_tcpdebug.h"
 
 #include <sys/param.h>
@@ -119,22 +118,6 @@
 #include <netinet/tcp_debug.h>
 #endif
 #include <netinet6/ip6protosw.h>
-
-#ifdef IPSEC
-#include <netinet6/ipsec.h>
-#include <netproto/key/key.h>
-#ifdef INET6
-#include <netinet6/ipsec6.h>
-#endif
-#endif
-
-#ifdef FAST_IPSEC
-#include <netproto/ipsec/ipsec.h>
-#ifdef INET6
-#include <netproto/ipsec/ipsec6.h>
-#endif
-#define	IPSEC
-#endif
 
 #include <sys/md5.h>
 #include <machine/smp.h>
@@ -1896,47 +1879,6 @@ tcp_rtlookup6(struct in_conninfo *inc)
 		}
 	}
 	return (ro6->ro_rt);
-}
-#endif
-
-#ifdef IPSEC
-/* compute ESP/AH header size for TCP, including outer IP header. */
-size_t
-ipsec_hdrsiz_tcp(struct tcpcb *tp)
-{
-	struct inpcb *inp;
-	struct mbuf *m;
-	size_t hdrsiz;
-	struct ip *ip;
-	struct tcphdr *th;
-
-	if ((tp == NULL) || ((inp = tp->t_inpcb) == NULL))
-		return (0);
-	MGETHDR(m, M_NOWAIT, MT_DATA);
-	if (!m)
-		return (0);
-
-#ifdef INET6
-	if (INP_ISIPV6(inp)) {
-		struct ip6_hdr *ip6 = mtod(m, struct ip6_hdr *);
-
-		th = (struct tcphdr *)(ip6 + 1);
-		m->m_pkthdr.len = m->m_len =
-		    sizeof(struct ip6_hdr) + sizeof(struct tcphdr);
-		tcp_fillheaders(tp, ip6, th, FALSE);
-		hdrsiz = ipsec6_hdrsiz(m, IPSEC_DIR_OUTBOUND, inp);
-	} else
-#endif
-	{
-		ip = mtod(m, struct ip *);
-		th = (struct tcphdr *)(ip + 1);
-		m->m_pkthdr.len = m->m_len = sizeof(struct tcpiphdr);
-		tcp_fillheaders(tp, ip, th, FALSE);
-		hdrsiz = ipsec4_hdrsiz(m, IPSEC_DIR_OUTBOUND, inp);
-	}
-
-	m_free(m);
-	return (hdrsiz);
 }
 #endif
 

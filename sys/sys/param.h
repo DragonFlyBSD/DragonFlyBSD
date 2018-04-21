@@ -174,9 +174,10 @@
  * 500301 - rename some public UFS constants
  * 500302 - move IOCTLTRIM to a better header and rename it to DAIOCTRIM
  * 500303 - get rid of sgtty (superseded by termios)
+ * 500304 - remove IPSEC/FAST_IPSEC
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500303	/* propagated to newvers */
+#define __DragonFly_version 500304	/* propagated to newvers */
 
 #include <sys/_null.h>
 

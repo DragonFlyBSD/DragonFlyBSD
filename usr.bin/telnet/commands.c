@@ -2104,34 +2104,6 @@ sockaddr_ntop(struct sockaddr *sa)
     return addrbuf;
 }
 
-#if defined(IPSEC) && defined(IPSEC_POLICY_IPSEC)
-static int
-setpolicy(int lnet, struct addrinfo *res, char *policy)
-{
-	char *buf;
-	int level;
-	int optname;
-
-	if (policy == NULL)
-		return 0;
-
-	buf = ipsec_set_policy(policy, strlen(policy));
-	if (buf == NULL) {
-		printf("%s\n", ipsec_strerror());
-		return -1;
-	}
-	level = res->ai_family == AF_INET ? IPPROTO_IP : IPPROTO_IPV6;
-	optname = res->ai_family == AF_INET ? IP_IPSEC_POLICY : IPV6_IPSEC_POLICY;
-	if (setsockopt(lnet, level, optname, buf, ipsec_get_policylen(buf)) < 0){
-		perror("setsockopt");
-		return -1;
-	}
-
-	free(buf);
-	return 0;
-}
-#endif
-
 #ifdef INET6
 /*
  * When an Address Family related error happend, check if retry with
@@ -2419,16 +2391,6 @@ tn(int argc, char *argv[])
 		goto fail;
 	    }
 	}
-#if defined(IPSEC) && defined(IPSEC_POLICY_IPSEC)
-	if (setpolicy(net, res, ipsec_policy_in) < 0) {
-		(void) NetClose(net);
-		goto fail;
-	}
-	if (setpolicy(net, res, ipsec_policy_out) < 0) {
-		(void) NetClose(net);
-		goto fail;
-	}
-#endif
 
 	if (connect(net, res->ai_addr, res->ai_addrlen) < 0) {
 	    struct addrinfo *next;

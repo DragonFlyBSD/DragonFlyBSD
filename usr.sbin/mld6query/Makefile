@@ -17,6 +17,6 @@
 PROG=	mld6query
 MAN=	mld6query.8
 
-CFLAGS+= -DINET6 -DIPSEC
+CFLAGS+=-DINET6
 
 .include <bsd.prog.mk>

@@ -30,8 +30,6 @@
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
  */
 
-#include "opt_ipsec.h"
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/mbuf.h>
@@ -59,17 +57,6 @@
 #include <netinet/ip_icmp.h>
 #include <netinet/ip_var.h>
 #include <netinet/icmp_var.h>
-
-#ifdef IPSEC
-#include <netinet6/ipsec.h>
-#include <netproto/key/key.h>
-#endif
-
-#ifdef FAST_IPSEC
-#include <netproto/ipsec/ipsec.h>
-#include <netproto/ipsec/key.h>
-#define	IPSEC
-#endif
 
 /*
  * ICMP routines: error generation, receive packet processing, and
@@ -508,13 +495,7 @@ icmp_redirect_done_handler(netmsg_t nmsg)
 	struct netmsg_ctlinput *msg = (struct netmsg_ctlinput *)nmsg;
 	struct mbuf *m = msg->m;
 	int hlen = msg->hlen;
-#ifdef IPSEC
-	struct sockaddr_in icmpsrc = { sizeof(struct sockaddr_in), AF_INET };
-	struct icmp *icp = mtodoff(m, struct icmp *, hlen);;
 
-	icmpsrc.sin_addr = icp->icmp_ip.ip_dst;
-	key_sa_routechange((struct sockaddr *)&icmpsrc);
-#endif
 	rip_input(&m, &hlen, msg->proto);
 }
 
@@ -912,9 +893,6 @@ reflect:
 			return IPPROTO_DONE;
 		}
 		/* Move on; run rip_input() directly */
-#ifdef IPSEC
-		key_sa_routechange((struct sockaddr *)&icmpsrc);
-#endif
 		break;
 
 	/*

@@ -410,7 +410,6 @@ getnameinfo_link(const struct sockaddr *sa, socklen_t salen __unused,
 	/*
 	 * The following use IPv4 addresses as link-layer addresses:
 	 * IFT_OTHER	(net/gre/if_gre.c)
-	 * IFT_OTHER	(netproto/ipsec/xform_ipip.c)
 	 */
 	/* default below is believed correct for all these. */
 	case IFT_ARCNET:

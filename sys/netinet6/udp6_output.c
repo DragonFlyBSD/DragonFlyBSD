@@ -61,7 +61,6 @@
  *	@(#)udp_var.h	8.1 (Berkeley) 6/10/93
  */
 
-#include "opt_ipsec.h"
 #include "opt_inet.h"
 #include "opt_inet6.h"
 
@@ -97,13 +96,6 @@
 #include <netinet6/udp6_var.h>
 #include <netinet/icmp6.h>
 #include <netinet6/ip6protosw.h>
-
-#ifdef IPSEC
-#include <netinet6/ipsec.h>
-#ifdef INET6
-#include <netinet6/ipsec6.h>
-#endif
-#endif /* IPSEC */
 
 #include <net/net_osdep.h>
 
