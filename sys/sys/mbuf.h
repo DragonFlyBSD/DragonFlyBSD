@@ -694,8 +694,9 @@ m_getb(int len, int how, int type, int flags)
 #define PACKET_TAG_IPSRCRT			27 /* IP srcrt opts */
 /* struct ip_srcrt_opt */
 #define	PACKET_TAG_CARP                         28 /* CARP info */
-/* struct pf_mtag */
+/* struct ifnet */
 #define PACKET_TAG_PF				29 /* PF info */
+/* struct pf_mtag */
 
 #define PACKET_TAG_PF_DIVERT			0x0200 /* pf(4) diverted packet */
 	
