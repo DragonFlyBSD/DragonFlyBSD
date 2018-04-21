@@ -9,7 +9,7 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
-+         UPGRADING DRAGONFLY FROM 5.0 TO LATER VERSIONS                +
++         UPGRADING DRAGONFLY FROM 5.2 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
 IPSEC, IPSEC_ESP AND IPSEC_DEBUG REMOVED FROM VKERNEL64 CONFIG
@@ -19,6 +19,10 @@ IPsec has been removed from the system. Of our standard kernel
 configurations, only the virtual kernel one had it. People running
 vkernels with configuration files derived from our VKERNEL64 will
 have to remove these options manually.
+
++-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 5.0 TO LATER VERSIONS                +
++-----------------------------------------------------------------------+
 
 VIRTIO_PCI REMOVED FROM KERNEL CONFIG
 -------------------------------------
