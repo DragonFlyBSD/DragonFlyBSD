@@ -1393,8 +1393,11 @@ again:
 		goto done;
 	}
 	++kev;
-	if (count < climit)
+	if (count < climit) {
+		if (fp[count-1])		/* drop unprocessed fp */
+			fdrop(fp[count-1]);
 		goto loop;
+	}
 
 	/*
 	 * Cleanup
@@ -1409,7 +1412,12 @@ done:
 	}
 	lwkt_relpooltoken(kq);
 
+	/*
+	 * Drop unprocessed file pointers
+	 */
 	*countp = count;
+	if (count && fp[count-1])
+		fdrop(fp[count-1]);
 	while (count < climit) {
 		if (fp[count])
 			fdrop(fp[count]);
