@@ -1651,11 +1651,12 @@ fdalloc(struct proc *p, int want, int *result)
 			int n;
 			int count;
 
+			count = 0;
 			for (n = 0; n < ncpus; ++n) {
-				count = atomic_swap_int(
+				count += atomic_swap_int(
 					    &uip->ui_pcpu[n].pu_openfiles, 0);
-				atomic_add_int(&uip->ui_openfiles, count);
 			}
+			atomic_add_int(&uip->ui_openfiles, count);
 			if (uip->ui_openfiles > maxfilesperuser) {
 				krateprintf(&krate_uidinfo,
 					    "Warning: user %d pid %d (%s) "
