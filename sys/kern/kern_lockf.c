@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2004 Joerg Sonnenberger <joerg@bec.de>.  All rights reserved.
- * Copyright (c) 2006 Matthew Dillon <dillon@backplane.com>.  All rights reserved.
+ * Copyright (c) 2006-2018 Matthew Dillon <dillon@backplane.com>.  All rights reserved.
  *
  * Copyright (c) 1982, 1986, 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -127,18 +127,27 @@ void
 lf_count_adjust(struct proc *p, int increase)
 {
 	struct uidinfo *uip;
+	struct uidcount *pup;
+	int n;
 
 	KKASSERT(p != NULL);
 
 	uip = p->p_ucred->cr_uidinfo;
-	if (increase)
-		atomic_add_int(&uip->ui_posixlocks, p->p_numposixlocks);
-	else
-		atomic_add_int(&uip->ui_posixlocks, -p->p_numposixlocks);
+	pup = &uip->ui_pcpu[mycpuid];
 
-	KASSERT(uip->ui_posixlocks >= 0,
-		("Negative number of POSIX locks held by %s user: %d.",
-		 increase ? "new" : "old", uip->ui_posixlocks));
+	if (increase) {
+		for (n = 0; n < ncpus; ++n)
+			pup->pu_posixlocks += p->p_uidpcpu[n].pu_posixlocks;
+	} else {
+		for (n = 0; n < ncpus; ++n)
+			pup->pu_posixlocks -= p->p_uidpcpu[n].pu_posixlocks;
+	}
+
+	if (pup->pu_posixlocks < -PUP_LIMIT ||
+	    pup->pu_posixlocks > PUP_LIMIT) {
+		atomic_add_int(&uip->ui_posixlocks, pup->pu_posixlocks);
+		pup->pu_posixlocks = 0;
+	}
 }
 
 static int
@@ -160,14 +169,17 @@ lf_count_change(struct proc *owner, int diff)
 	    uip->ui_posixlocks >= max ) {
 		ret = 1;
 	} else {
-		atomic_add_int(&uip->ui_posixlocks, diff);
-		atomic_add_int(&owner->p_numposixlocks, diff);
-		KASSERT(uip->ui_posixlocks >= 0,
-			("Negative number of POSIX locks held by user: %d.",
-			 uip->ui_posixlocks));
-		KASSERT(owner->p_numposixlocks >= 0,
-			("Negative number of POSIX locks held by proc: %d.",
-			 uip->ui_posixlocks));
+		struct uidcount *pup;
+		int cpu = mycpuid;
+
+		pup = &uip->ui_pcpu[cpu];
+		pup->pu_posixlocks += diff;
+		if (pup->pu_posixlocks < -PUP_LIMIT ||
+		    pup->pu_posixlocks > PUP_LIMIT) {
+			atomic_add_int(&uip->ui_posixlocks, pup->pu_posixlocks);
+			pup->pu_posixlocks = 0;
+		}
+		owner->p_uidpcpu[cpu].pu_posixlocks += diff;
 		ret = 0;
 	}
 	return ret;

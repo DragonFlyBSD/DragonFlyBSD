@@ -466,6 +466,8 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	spin_init(&p2->p_spin, "procfork1");
 	lwkt_token_init(&p2->p_token, "proc");
 	lwkt_gettoken(&p2->p_token);
+	p2->p_uidpcpu = kmalloc(sizeof(*p2->p_uidpcpu) * ncpus,
+				M_SUBPROC, M_WAITOK | M_ZERO);
 
 	/*
 	 * Setup linkage for kernel based threading XXX lwp.  Also add the

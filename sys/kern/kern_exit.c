@@ -390,8 +390,6 @@ exit1(int rv)
 	 */
 	semexit(p);
 
-	KKASSERT(p->p_numposixlocks == 0);
-
 	/* The next two chunks should probably be moved to vmspace_exit. */
 	vm = p->p_vmspace;
 
@@ -1140,6 +1138,7 @@ loop:
 			 */
 			PHOLD(p);
 			PRELEZOMB(p);
+			kfree(p->p_uidpcpu, M_SUBPROC);
 			kfree(p, M_PROC);
 			atomic_add_int(&nprocs, -1);
 			error = 0;

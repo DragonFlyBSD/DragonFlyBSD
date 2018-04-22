@@ -73,6 +73,7 @@ struct proc;
 struct pgrp;
 struct session;
 struct lwp;
+struct uidcount;
 
 LIST_HEAD(proclist, proc);
 LIST_HEAD(pgrplist, pgrp);
@@ -250,7 +251,8 @@ struct	proc {
 
 	int		p_flags;	/* P_* flags. */
 	enum procstat	p_stat;		/* S* process status. */
-	char		p_pad1[3];
+	char		p_advlock_flag;	/* replaces P_ADVLOCK */
+	char		p_pad1[2];
 
 	pid_t		p_pid;		/* Process identifier. */
 	pid_t		p_ppid;		/* Current parent pid */
@@ -331,7 +333,7 @@ struct	proc {
 	void		*p_emuldata;	/* process-specific emulator state */
 	struct usched	*p_usched;	/* Userland scheduling control */
 	struct vkernel_proc *p_vkernel; /* VKernel support, proc part */
-	int		p_numposixlocks; /* number of POSIX locks */
+	struct uidcount *p_uidpcpu;
 	void		(*p_userret)(void);/* p: return-to-user hook */
 
 	struct spinlock p_spin;		/* Spinlock for LWP access to proc */
@@ -353,7 +355,7 @@ struct	proc {
 #define	p_pgid		p_pgrp->pg_id
 
 /* These flags are kept in p_flags. */
-#define	P_ADVLOCK	0x00001	/* Process may hold a POSIX advisory lock */
+#define	P_UNUSED01	0x00001
 #define	P_CONTROLT	0x00002	/* Has a controlling terminal */
 #define	P_SWAPPEDOUT	0x00004	/* Swapped out of memory */
 #define P_SYSVSEM	0x00008	/* Might have SysV semaphores */

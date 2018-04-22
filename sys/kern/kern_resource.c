@@ -948,7 +948,7 @@ uicreate(uid_t uid)
 	/*
 	 * Allocate space and check for a race
 	 */
-	uip = kmalloc(sizeof(*uip), M_UIDINFO, M_WAITOK|M_ZERO);
+	uip = kmalloc(sizeof(*uip), M_UIDINFO, M_WAITOK | M_ZERO);
 
 	/*
 	 * Initialize structure and enter it into the hash table
@@ -957,6 +957,8 @@ uicreate(uid_t uid)
 	uip->ui_uid = uid;
 	uip->ui_ref = 1;	/* we're returning a ref */
 	varsymset_init(&uip->ui_varsymset, NULL);
+	uip->ui_pcpu = kmalloc(sizeof(*uip->ui_pcpu) * ncpus,
+			       M_UIDINFO, M_WAITOK | M_ZERO);
 
 	/*
 	 * Somebody may have already created the uidinfo for this
@@ -970,6 +972,7 @@ uicreate(uid_t uid)
 
 		spin_uninit(&uip->ui_lock);
 		varsymset_clean(&uip->ui_varsymset);
+		kfree(uip->ui_pcpu, M_UIDINFO);
 		kfree(uip, M_UIDINFO);
 		uip = tmp;
 	} else {
@@ -1048,6 +1051,7 @@ uifree(uid_t uid)
 		varsymset_clean(&uip->ui_varsymset);
 		lockuninit(&uip->ui_varsymset.vx_lock);
 		spin_uninit(&uip->ui_lock);
+		kfree(uip->ui_pcpu, M_UIDINFO);
 		kfree(uip, M_UIDINFO);
 	} else {
 		spin_unlock(&uihash_lock);

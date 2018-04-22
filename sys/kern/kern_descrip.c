@@ -300,6 +300,26 @@ holdfp_fdp(struct filedesc *fdp, int fd, int flag)
 	return fp;
 }
 
+struct file *
+holdfp_fdp_locked(struct filedesc *fdp, int fd, int flag)
+{
+	struct file *fp;
+
+	if (((u_int)fd) < fdp->fd_nfiles) {
+		fp = fdp->fd_files[fd].fp;	/* can be NULL */
+		if (fp) {
+			if ((fp->f_flag & flag) == 0 && flag != -1) {
+				fp = NULL;
+			} else {
+				fhold(fp);
+			}
+		}
+	} else {
+		fp = NULL;
+	}
+	return fp;
+}
+
 /*
  * Acquire the fp for the specified file descriptor, using the thread
  * cache if possible and caching it if possible.
@@ -656,6 +676,7 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 	u_int newmin;
 	u_int oflags;
 	u_int nflags;
+	int closedcounter;
 	int tmp, error, flg = F_POSIX;
 
 	KKASSERT(p);
@@ -702,6 +723,7 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 	/*
 	 * Operations on file pointers
 	 */
+	closedcounter = p->p_fd->fd_closedcounter;
 	if ((fp = holdfp(td, fd, -1)) == NULL)
 		return (EBADF);
 
@@ -771,30 +793,24 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 				error = EBADF;
 				break;
 			}
-			if ((p->p_leader->p_flags & P_ADVLOCK) == 0) {
-				lwkt_gettoken(&p->p_leader->p_token);
-				p->p_leader->p_flags |= P_ADVLOCK;
-				lwkt_reltoken(&p->p_leader->p_token);
-			}
+			if (p->p_leader->p_advlock_flag == 0)
+				p->p_leader->p_advlock_flag = 1;
 			error = VOP_ADVLOCK(vp, (caddr_t)p->p_leader, F_SETLK,
-			    &dat->fc_flock, flg);
+					    &dat->fc_flock, flg);
 			break;
 		case F_WRLCK:
 			if ((fp->f_flag & FWRITE) == 0) {
 				error = EBADF;
 				break;
 			}
-			if ((p->p_leader->p_flags & P_ADVLOCK) == 0) {
-				lwkt_gettoken(&p->p_leader->p_token);
-				p->p_leader->p_flags |= P_ADVLOCK;
-				lwkt_reltoken(&p->p_leader->p_token);
-			}
+			if (p->p_leader->p_advlock_flag == 0)
+				p->p_leader->p_advlock_flag = 1;
 			error = VOP_ADVLOCK(vp, (caddr_t)p->p_leader, F_SETLK,
-			    &dat->fc_flock, flg);
+					    &dat->fc_flock, flg);
 			break;
 		case F_UNLCK:
 			error = VOP_ADVLOCK(vp, (caddr_t)p->p_leader, F_UNLCK,
-				&dat->fc_flock, F_POSIX);
+					    &dat->fc_flock, F_POSIX);
 			break;
 		default:
 			error = EINVAL;
@@ -806,13 +822,13 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 		 * we were blocked getting the lock.  If this occurs the
 		 * close might not have caught the lock.
 		 */
-		if (checkfdclosed(p->p_fd, fd, fp)) {
+		if (checkfdclosed(td, p->p_fd, fd, fp, closedcounter)) {
 			dat->fc_flock.l_whence = SEEK_SET;
 			dat->fc_flock.l_start = 0;
 			dat->fc_flock.l_len = 0;
 			dat->fc_flock.l_type = F_UNLCK;
-			(void) VOP_ADVLOCK(vp, (caddr_t)p->p_leader,
-					   F_UNLCK, &dat->fc_flock, F_POSIX);
+			VOP_ADVLOCK(vp, (caddr_t)p->p_leader,
+				    F_UNLCK, &dat->fc_flock, F_POSIX);
 		}
 		break;
 
@@ -834,7 +850,7 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 		if (dat->fc_flock.l_whence == SEEK_CUR)
 			dat->fc_flock.l_start += fp->f_offset;
 		error = VOP_ADVLOCK(vp, (caddr_t)p->p_leader, F_GETLK,
-			    &dat->fc_flock, F_POSIX);
+				    &dat->fc_flock, F_POSIX);
 		break;
 	default:
 		error = EINVAL;
@@ -1041,7 +1057,9 @@ retry:
 		 * old descriptor.  delfp inherits the ref from the 
 		 * descriptor table.
 		 */
+		++fdp->fd_closedcounter;
 		fclearcache(&fdp->fd_files[new], NULL, 0);
+		++fdp->fd_closedcounter;
 		delfp = fdp->fd_files[new].fp;
 		fdp->fd_files[new].fp = NULL;
 		fdp->fd_files[new].reserved = 1;
@@ -1622,17 +1640,32 @@ fdalloc(struct proc *p, int want, int *result)
 	 * Check that the user has not run out of descriptors (non-root only).
 	 * As a safety measure the dtable is allowed to have at least
 	 * minfilesperproc open fds regardless of the maxfilesperuser limit.
+	 *
+	 * This isn't as loose a spec as ui_posixlocks, so we use atomic
+	 * ops to force synchronize and recheck if we would otherwise
+	 * error.
 	 */
 	if (p->p_ucred->cr_uid && fdp->fd_nfiles >= minfilesperproc) {
 		uip = p->p_ucred->cr_uidinfo;
 		if (uip->ui_openfiles > maxfilesperuser) {
-			krateprintf(&krate_uidinfo,
-				    "Warning: user %d pid %d (%s) ran out of "
-				    "file descriptors (%d/%d)\n",
-				    p->p_ucred->cr_uid, (int)p->p_pid,
-				    p->p_comm,
-				    uip->ui_openfiles, maxfilesperuser);
-			return(ENFILE);
+			int n;
+			int count;
+
+			for (n = 0; n < ncpus; ++n) {
+				count = atomic_swap_int(
+					    &uip->ui_pcpu[n].pu_openfiles, 0);
+				atomic_add_int(&uip->ui_openfiles, count);
+			}
+			if (uip->ui_openfiles > maxfilesperuser) {
+				krateprintf(&krate_uidinfo,
+					    "Warning: user %d pid %d (%s) "
+					    "ran out of file descriptors "
+					    "(%d/%d)\n",
+					    p->p_ucred->cr_uid, (int)p->p_pid,
+					    p->p_comm,
+					    uip->ui_openfiles, maxfilesperuser);
+				return(ENFILE);
+			}
 		}
 	}
 
@@ -1900,7 +1933,9 @@ fdrevoke_proc_callback(struct proc *p, void *vinfo)
 		if ((fp = fdp->fd_files[n].fp) == NULL)
 			continue;
 		if (fp->f_flag & FREVOKED) {
+			++fdp->fd_closedcounter;
 			fclearcache(&fdp->fd_files[n], NULL, 0);
+			++fdp->fd_closedcounter;
 			fhold(info->nfp);
 			fdp->fd_files[n].fp = info->nfp;
 			spin_unlock(&fdp->fd_spin);
@@ -1992,9 +2027,23 @@ done:
  * and a close is not currently in progress.
  */
 int
-checkfdclosed(struct filedesc *fdp, int fd, struct file *fp)
+checkfdclosed(thread_t td, struct filedesc *fdp, int fd, struct file *fp,
+	      int closedcounter)
 {
+	struct fdcache *fdc;
 	int error;
+
+	cpu_lfence();
+	if (fdp->fd_closedcounter == closedcounter)
+		return 0;
+
+	if (td->td_proc && td->td_proc->p_fd == fdp) {
+		for (fdc = &td->td_fdcache[0];
+		     fdc < &td->td_fdcache[NFDCACHE]; ++fdc) {
+			if (fdc->fd == fd && fdc->fp == fp)
+				return 0;
+		}
+	}
 
 	spin_lock_shared(&fdp->fd_spin);
 	if ((unsigned)fd >= fdp->fd_nfiles || fp != fdp->fd_files[fd].fp)
@@ -2054,9 +2103,11 @@ funsetfd_locked(struct filedesc *fdp, int fd)
 		return (NULL);
 	if ((fp = fdp->fd_files[fd].fp) == NULL)
 		return (NULL);
+	++fdp->fd_closedcounter;
 	fclearcache(&fdp->fd_files[fd], NULL, 0);
 	fdp->fd_files[fd].fp = NULL;
 	fdp->fd_files[fd].fileflags = 0;
+	++fdp->fd_closedcounter;
 
 	fdreserve_locked(fdp, fd, -1);
 	fdfixup_locked(fdp, fd);
@@ -2135,16 +2186,31 @@ fsetcred(struct file *fp, struct ucred *ncr)
 {
 	struct ucred *ocr;
 	struct uidinfo *uip;
+	struct uidcount *pup;
+	int cpu = mycpuid;
+	int count;
 
 	ocr = fp->f_cred;
 	if (ocr == NULL || ncr == NULL || ocr->cr_uidinfo != ncr->cr_uidinfo) {
 		if (ocr) {
 			uip = ocr->cr_uidinfo;
-			atomic_add_int(&uip->ui_openfiles, -1);
+			pup = &uip->ui_pcpu[cpu];
+			atomic_add_int(&pup->pu_openfiles, -1);
+			if (pup->pu_openfiles < -PUP_LIMIT ||
+			    pup->pu_openfiles > PUP_LIMIT) {
+				count = atomic_swap_int(&pup->pu_openfiles, 0);
+				atomic_add_int(&uip->ui_openfiles, count);
+			}
 		}
 		if (ncr) {
 			uip = ncr->cr_uidinfo;
-			atomic_add_int(&uip->ui_openfiles, 1);
+			pup = &uip->ui_pcpu[cpu];
+			atomic_add_int(&pup->pu_openfiles, 1);
+			if (pup->pu_openfiles < -PUP_LIMIT ||
+			    pup->pu_openfiles > PUP_LIMIT) {
+				count = atomic_swap_int(&pup->pu_openfiles, 0);
+				atomic_add_int(&uip->ui_openfiles, count);
+			}
 		}
 	}
 	if (ncr)
@@ -2414,8 +2480,7 @@ fdfree(struct proc *p, struct filedesc *repl)
 		KASSERT(fdtol->fdl_refcount > 0,
 			("filedesc_to_refcount botch: fdl_refcount=%d",
 			 fdtol->fdl_refcount));
-		if (fdtol->fdl_refcount == 1 &&
-		    (p->p_leader->p_flags & P_ADVLOCK) != 0) {
+		if (fdtol->fdl_refcount == 1 && p->p_leader->p_advlock_flag) {
 			for (i = 0; i <= fdp->fd_lastfile; ++i) {
 				fdnode = &fdp->fd_files[i];
 				if (fdnode->fp == NULL ||
@@ -2431,11 +2496,8 @@ fdfree(struct proc *p, struct filedesc *repl)
 				lf.l_len = 0;
 				lf.l_type = F_UNLCK;
 				vp = (struct vnode *)fp->f_data;
-				(void) VOP_ADVLOCK(vp,
-						   (caddr_t)p->p_leader,
-						   F_UNLCK,
-						   &lf,
-						   F_POSIX);
+				VOP_ADVLOCK(vp, (caddr_t)p->p_leader,
+					    F_UNLCK, &lf, F_POSIX);
 				fdrop(fp);
 				spin_lock(&fdp->fd_spin);
 			}
@@ -2443,7 +2505,7 @@ fdfree(struct proc *p, struct filedesc *repl)
 	retry:
 		if (fdtol->fdl_refcount == 1) {
 			if (fdp->fd_holdleaderscount > 0 &&
-			    (p->p_leader->p_flags & P_ADVLOCK) != 0) {
+			    p->p_leader->p_advlock_flag) {
 				/*
 				 * close() or do_dup() has cleared a reference
 				 * in a shared file descriptor table.
@@ -2808,18 +2870,19 @@ closef(struct file *fp, struct proc *p)
 	if (p != NULL && fp->f_type == DTYPE_VNODE &&
 	    (((struct vnode *)fp->f_data)->v_flag & VMAYHAVELOCKS)
 	) {
-		if ((p->p_leader->p_flags & P_ADVLOCK) != 0) {
+		if (p->p_leader->p_advlock_flag) {
 			lf.l_whence = SEEK_SET;
 			lf.l_start = 0;
 			lf.l_len = 0;
 			lf.l_type = F_UNLCK;
 			vp = (struct vnode *)fp->f_data;
-			(void) VOP_ADVLOCK(vp, (caddr_t)p->p_leader, F_UNLCK,
-					   &lf, F_POSIX);
+			VOP_ADVLOCK(vp, (caddr_t)p->p_leader, F_UNLCK,
+				    &lf, F_POSIX);
 		}
 		fdtol = p->p_fdtol;
 		if (fdtol != NULL) {
 			lwkt_gettoken(&p->p_token);
+
 			/*
 			 * Handle special case where file descriptor table
 			 * is shared between multiple process leaders.
@@ -2827,8 +2890,7 @@ closef(struct file *fp, struct proc *p)
 			for (fdtol = fdtol->fdl_next;
 			     fdtol != p->p_fdtol;
 			     fdtol = fdtol->fdl_next) {
-				if ((fdtol->fdl_leader->p_flags &
-				     P_ADVLOCK) == 0)
+				if (fdtol->fdl_leader->p_advlock_flag == 0)
 					continue;
 				fdtol->fdl_holdcount++;
 				lf.l_whence = SEEK_SET;
@@ -2836,9 +2898,8 @@ closef(struct file *fp, struct proc *p)
 				lf.l_len = 0;
 				lf.l_type = F_UNLCK;
 				vp = (struct vnode *)fp->f_data;
-				(void) VOP_ADVLOCK(vp,
-						   (caddr_t)fdtol->fdl_leader,
-						   F_UNLCK, &lf, F_POSIX);
+				VOP_ADVLOCK(vp, (caddr_t)fdtol->fdl_leader,
+					    F_UNLCK, &lf, F_POSIX);
 				fdtol->fdl_holdcount--;
 				if (fdtol->fdl_holdcount == 0 &&
 				    fdtol->fdl_wakeup != 0) {
@@ -2933,7 +2994,7 @@ fdrop(struct file *fp)
 		lf.l_len = 0;
 		lf.l_type = F_UNLCK;
 		vp = (struct vnode *)fp->f_data;
-		(void) VOP_ADVLOCK(vp, (caddr_t)fp, F_UNLCK, &lf, 0);
+		VOP_ADVLOCK(vp, (caddr_t)fp, F_UNLCK, &lf, 0);
 	}
 	if (fp->f_ops != &badfileops)
 		error = fo_close(fp);

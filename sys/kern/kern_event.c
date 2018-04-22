@@ -49,10 +49,12 @@
 #include <sys/signalvar.h>
 #include <sys/filio.h>
 #include <sys/ktr.h>
+#include <sys/spinlock.h>
 
 #include <sys/thread2.h>
 #include <sys/file2.h>
 #include <sys/mplock2.h>
+#include <sys/spinlock2.h>
 
 #define EVENT_REGISTER	1
 #define EVENT_PROCESS	2
@@ -72,7 +74,7 @@ struct knote_cache_list {
 } __cachealign;
 
 static int	kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
-		    struct knote *marker);
+		    struct knote *marker, int closedcounter);
 static int 	kqueue_read(struct file *fp, struct uio *uio,
 		    struct ucred *cred, int flags);
 static int	kqueue_write(struct file *fp, struct uio *uio,
@@ -395,6 +397,7 @@ filt_proc(struct knote *kn, long hint)
 	if ((event == NOTE_FORK) && (kn->kn_sfflags & NOTE_TRACK)) {
 		struct kevent kev;
 		int error;
+		int n;
 
 		/*
 		 * register knote with new process.
@@ -405,7 +408,8 @@ filt_proc(struct knote *kn, long hint)
 		kev.fflags = kn->kn_sfflags;
 		kev.data = kn->kn_id;			/* parent */
 		kev.udata = kn->kn_kevent.udata;	/* preserve udata */
-		error = kqueue_register(kn->kn_kq, &kev);
+		n = 1;
+		error = kqueue_register(kn->kn_kq, &kev, &n);
 		if (error)
 			kn->kn_fflags |= NOTE_TRACKERR;
 	}
@@ -797,8 +801,10 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	struct kevent *kevp;
 	struct timespec *tsp, ats;
 	int i, n, total, error, nerrors = 0;
+	int gobbled;
 	int lres;
 	int limit = kq_checkloop;
+	int closedcounter;
 	struct kevent kev[KQ_NEVENTS];
 	struct knote marker;
 	struct lwkt_token *tok;
@@ -809,6 +815,8 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 	tsp = tsp_in;
 	*res = 0;
 
+	closedcounter = kq->kq_fdp->fd_closedcounter;
+
 	for (;;) {
 		n = 0;
 		error = kevent_copyinfn(uap, kev, KQ_NEVENTS, &n);
@@ -816,10 +824,13 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 			return error;
 		if (n == 0)
 			break;
-		for (i = 0; i < n; i++) {
+		for (i = 0; i < n; ++i)
+			kev[i].flags &= ~EV_SYSFLAGS;
+		for (i = 0; i < n; ++i) {
+			gobbled = n - i;
+			error = kqueue_register(kq, &kev[i], &gobbled);
+			i += gobbled - 1;
 			kevp = &kev[i];
-			kevp->flags &= ~EV_SYSFLAGS;
-			error = kqueue_register(kq, kevp);
 
 			/*
 			 * If a registration returns an error we
@@ -970,7 +981,7 @@ kern_kevent(struct kqueue *kq, int nevents, int *res, void *uap,
 		 * Process all received events
 		 * Account for all non-spurious events in our total
 		 */
-		i = kqueue_scan(kq, kev, n, &marker);
+		i = kqueue_scan(kq, kev, n, &marker, closedcounter);
 		if (i) {
 			lres = *res;
 			error = kevent_copyoutfn(uap, kev, i, res);
@@ -1063,57 +1074,85 @@ sys_kevent(struct kevent_args *uap)
 	return (error);
 }
 
+/*
+ * Efficiently load multiple file pointers.  This significantly reduces
+ * threaded overhead.  When doing simple polling we can depend on the
+ * per-thread (fd,fp) cache.  With more descriptors, we batch.
+ */
+static
+void
+floadkevfps(thread_t td, struct filedesc *fdp, struct kevent *kev,
+	    struct file **fp, int climit)
+{
+	struct filterops *fops;
+	int tdcache;
+
+	if (climit <= 2 && td->td_proc && td->td_proc->p_fd == fdp) {
+		tdcache = 1;
+	} else {
+		tdcache = 0;
+		spin_lock_shared(&fdp->fd_spin);
+	}
+
+	while (climit) {
+		*fp = NULL;
+		if (kev->filter < 0 &&
+		    kev->filter + EVFILT_SYSCOUNT >= 0) {
+			fops = sysfilt_ops[~kev->filter];
+			if (fops->f_flags & FILTEROP_ISFD) {
+				if (tdcache) {
+					*fp = holdfp(td, kev->ident, -1);
+				} else {
+					*fp = holdfp_fdp_locked(fdp,
+								kev->ident, -1);
+				}
+			}
+		}
+		--climit;
+		++fp;
+		++kev;
+	}
+	if (tdcache == 0)
+		spin_unlock_shared(&fdp->fd_spin);
+}
+
+/*
+ * Register up to *countp kev's.  Always registers at least 1.
+ *
+ * The number registered is returned in *countp.
+ *
+ * If an error occurs or a kev is flagged EV_RECEIPT, it is
+ * processed and included in *countp, and processing then
+ * stops.
+ */
 int
-kqueue_register(struct kqueue *kq, struct kevent *kev)
+kqueue_register(struct kqueue *kq, struct kevent *kev, int *countp)
 {
 	struct filedesc *fdp = kq->kq_fdp;
 	struct klist *list = NULL;
 	struct filterops *fops;
-	struct file *fp = NULL;
+	struct file *fp[KQ_NEVENTS];
 	struct knote *kn = NULL;
 	struct thread *td;
-	int error = 0;
+	int error;
+	int count;
+	int climit;
+	int closedcounter;
 	struct knote_cache_list *cache_list;
 
-	if (kev->filter < 0) {
-		if (kev->filter + EVFILT_SYSCOUNT < 0)
-			return (EINVAL);
-		fops = sysfilt_ops[~kev->filter];	/* to 0-base index */
-	} else {
-		/*
-		 * XXX
-		 * filter attach routine is responsible for insuring that
-		 * the identifier can be attached to it.
-		 */
-		return (EINVAL);
-	}
-
-	if (fops->f_flags & FILTEROP_ISFD) {
-		/* validate descriptor */
-		fp = holdfp_fdp(fdp, kev->ident, -1);
-		if (fp == NULL)
-			return (EBADF);
-	}
-
-	cache_list = &knote_cache_lists[mycpuid];
-	if (SLIST_EMPTY(&cache_list->knote_cache)) {
-		struct knote *new_kn;
-
-		new_kn = knote_alloc();
-		crit_enter();
-		SLIST_INSERT_HEAD(&cache_list->knote_cache, new_kn, kn_link);
-		cache_list->knote_cache_cnt++;
-		crit_exit();
-	}
-
 	td = curthread;
+	climit = *countp;
+	if (climit > KQ_NEVENTS)
+		climit = KQ_NEVENTS;
+	closedcounter = fdp->fd_closedcounter;
+	floadkevfps(td, fdp, kev, fp, climit);
+
 	lwkt_getpooltoken(kq);
+	count = 0;
 
 	/*
-	 * Make sure that only one thread can register event on this kqueue,
-	 * so that we would not suffer any race, even if the registration
-	 * blocked, i.e. kq token was released, and the kqueue was shared
-	 * between threads (this should be rare though).
+	 * To avoid races, only one thread can register events on this
+	 * kqueue at a time.
 	 */
 	while (__predict_false(kq->kq_regtd != NULL && kq->kq_regtd != td)) {
 		kq->kq_state |= KQ_REGWAIT;
@@ -1127,11 +1166,50 @@ kqueue_register(struct kqueue *kq, struct kevent *kev)
 		kq->kq_regtd = td;
 	}
 
-	if (fp != NULL) {
-		list = &fp->f_klist;
+loop:
+	if (kev->filter < 0) {
+		if (kev->filter + EVFILT_SYSCOUNT < 0) {
+			error = EINVAL;
+			++count;
+			goto done;
+		}
+		fops = sysfilt_ops[~kev->filter];	/* to 0-base index */
+	} else {
+		/*
+		 * XXX
+		 * filter attach routine is responsible for insuring that
+		 * the identifier can be attached to it.
+		 */
+		error = EINVAL;
+		++count;
+		goto done;
+	}
+
+	if (fops->f_flags & FILTEROP_ISFD) {
+		/* validate descriptor */
+		if (fp[count] == NULL) {
+			error = EBADF;
+			++count;
+			goto done;
+		}
+	}
+
+	cache_list = &knote_cache_lists[mycpuid];
+	if (SLIST_EMPTY(&cache_list->knote_cache)) {
+		struct knote *new_kn;
+
+		new_kn = knote_alloc();
+		crit_enter();
+		SLIST_INSERT_HEAD(&cache_list->knote_cache, new_kn, kn_link);
+		cache_list->knote_cache_cnt++;
+		crit_exit();
+	}
+
+	if (fp[count] != NULL) {
+		list = &fp[count]->f_klist;
 	} else if (kq->kq_knhashmask) {
 		list = &kq->kq_knhash[
-		    KN_HASH((u_long)kev->ident, kq->kq_knhashmask)];
+			    KN_HASH((u_long)kev->ident, kq->kq_knhashmask)];
 	}
 	if (list != NULL) {
 		lwkt_getpooltoken(list);
@@ -1154,6 +1232,7 @@ again:
 	 */
 	if (kn == NULL && ((kev->flags & EV_ADD) == 0)) {
 		error = ENOENT;
+		++count;
 		goto done;
 	}
 
@@ -1173,7 +1252,7 @@ again:
 				cache_list->knote_cache_cnt--;
 				crit_exit();
 			}
-			kn->kn_fp = fp;
+			kn->kn_fp = fp[count];
 			kn->kn_kq = kq;
 			kn->kn_fop = fops;
 
@@ -1181,7 +1260,7 @@ again:
 			 * apply reference count to knote structure, and
 			 * do not release it at the end of this routine.
 			 */
-			fp = NULL;
+			fp[count] = NULL;	/* safety */
 
 			kn->kn_sfflags = kev->fflags;
 			kn->kn_sdata = kev->data;
@@ -1199,6 +1278,7 @@ again:
 			if ((error = filter_attach(kn)) != 0) {
 				kn->kn_status |= KN_DELETING | KN_REPROCESS;
 				knote_drop(kn);
+				++count;
 				goto done;
 			}
 
@@ -1209,7 +1289,8 @@ again:
 			 * want to end up with a knote on a closed descriptor.
 			 */
 			if ((fops->f_flags & FILTEROP_ISFD) &&
-			    checkfdclosed(fdp, kev->ident, kn->kn_fp)) {
+			    checkfdclosed(curthread, fdp, kev->ident, kn->kn_fp,
+					  closedcounter)) {
 				kn->kn_status |= KN_DELETING | KN_REPROCESS;
 			}
 		} else {
@@ -1244,6 +1325,8 @@ again:
 		 * Delete the existing knote
 		 */
 		knote_detach_and_drop(kn);
+		error = 0;
+		++count;
 		goto done;
 	} else {
 		/*
@@ -1300,6 +1383,22 @@ again:
 	knote_release(kn);
 	/* kn may be invalid now */
 
+	/*
+	 * Loop control.  We stop on errors (above), and also stop after
+	 * processing EV_RECEIPT, so the caller can process it.
+	 */
+	++count;
+	if (kev->flags & EV_RECEIPT) {
+		error = 0;
+		goto done;
+	}
+	++kev;
+	if (count < climit)
+		goto loop;
+
+	/*
+	 * Cleanup
+	 */
 done:
 	if (td != NULL) { /* Owner of the kq_regtd */
 		kq->kq_regtd = NULL;
@@ -1309,8 +1408,13 @@ done:
 		}
 	}
 	lwkt_relpooltoken(kq);
-	if (fp != NULL)
-		fdrop(fp);
+
+	*countp = count;
+	while (count < climit) {
+		if (fp[count])
+			fdrop(fp[count]);
+		++count;
+	}
 	return (error);
 }
 
@@ -1323,9 +1427,10 @@ done:
  */
 static int
 kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
-            struct knote *marker)
+            struct knote *marker, int closedcounter)
 {
         struct knote *kn, local_marker;
+	thread_t td = curthread;
         int total;
 
 	total = 0;
@@ -1382,7 +1487,8 @@ kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
 		 * to match up the event against a knote and will go haywire.
 		 */
 		if ((kn->kn_fop->f_flags & FILTEROP_ISFD) &&
-		    checkfdclosed(kq->kq_fdp, kn->kn_kevent.ident, kn->kn_fp)) {
+		    checkfdclosed(td, kq->kq_fdp, kn->kn_kevent.ident,
+				  kn->kn_fp, closedcounter)) {
 			kn->kn_status |= KN_DELETING | KN_REPROCESS;
 		}
 

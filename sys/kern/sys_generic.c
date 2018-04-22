@@ -984,7 +984,8 @@ select_copyout(void *arg, struct kevent *kevp, int count, int *res)
 {
 	struct select_kevent_copyin_args *skap;
 	struct kevent kev;
-	int i = 0;
+	int i;
+	int n;
 
 	skap = (struct select_kevent_copyin_args *)arg;
 
@@ -996,7 +997,8 @@ select_copyout(void *arg, struct kevent *kevp, int count, int *res)
 		    skap->lwp->lwp_kqueue_serial) {
 			kev = kevp[i];
 			kev.flags = EV_DISABLE|EV_DELETE;
-			kqueue_register(&skap->lwp->lwp_kqueue, &kev);
+			n = 1;
+			kqueue_register(&skap->lwp->lwp_kqueue, &kev, &n);
 			if (nseldebug) {
 				kprintf("select fd %ju mismatched serial %ju\n",
 				    (uintmax_t)kevp[i].ident,
@@ -1376,6 +1378,7 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 	struct kevent kev;
 	int count_res;
 	int i;
+	int n;
 	uint64_t pi;
 
 	pkap = (struct poll_kevent_copyin_args *)arg;
@@ -1392,7 +1395,8 @@ poll_copyout(void *arg, struct kevent *kevp, int count, int *res)
 		if (pi >= pkap->nfds) {
 			kev = kevp[i];
 			kev.flags = EV_DISABLE|EV_DELETE;
-			kqueue_register(&pkap->lwp->lwp_kqueue, &kev);
+			n = 1;
+			kqueue_register(&pkap->lwp->lwp_kqueue, &kev, &n);
 			if (nseldebug) {
 				kprintf("poll index %ju out of range against "
 				    "serial %ju\n", (uintmax_t)pi,
@@ -1602,6 +1606,7 @@ socket_wait(struct socket *so, struct timespec *ts, int *res)
 	struct kqueue kq;
 	struct kevent kev;
 	int error, fd;
+	int n;
 
 	if ((error = falloc(td->td_lwp, &fp, &fd)) != 0)
 		return (error);
@@ -1616,7 +1621,8 @@ socket_wait(struct socket *so, struct timespec *ts, int *res)
 	bzero(&kq, sizeof(kq));
 	kqueue_init(&kq, td->td_lwp->lwp_proc->p_fd);
 	EV_SET(&kev, fd, EVFILT_READ, EV_ADD|EV_ENABLE, 0, 0, NULL);
-	if ((error = kqueue_register(&kq, &kev)) != 0) {
+	n = 1;
+	if ((error = kqueue_register(&kq, &kev, &n)) != 0) {
 		fdrop(fp);
 		return (error);
 	}
@@ -1625,7 +1631,8 @@ socket_wait(struct socket *so, struct timespec *ts, int *res)
 			    socket_wait_copyout, ts, 0);
 
 	EV_SET(&kev, fd, EVFILT_READ, EV_DELETE|EV_DISABLE, 0, 0, NULL);
-	kqueue_register(&kq, &kev);
+	n = 1;
+	kqueue_register(&kq, &kev, &n);
 	fp->f_ops = &badfileops;
 	fdrop(fp);
 

@@ -93,6 +93,7 @@ struct filedesc {
 	int	fd_softrefs;		/* softrefs to prevent destruction */
 	int	fd_holdleaderscount;	/* block fdfree() for shared close() */
 	int	fd_holdleaderswakeup;	/* fdfree() needs wakeup */
+	int	fd_closedcounter;	/* detect close() */
 	struct spinlock fd_spin;
 	struct	fdnode	fd_builtin_files[NDFILE];
 };
@@ -171,6 +172,7 @@ void	fdcloseexec (struct proc *p);
 int	fdcheckstd (struct lwp *lp);
 struct	file *holdfp (struct thread *td, int fd, int flag);
 struct	file *holdfp_fdp (struct filedesc *fdp, int fd, int flag);
+struct	file *holdfp_fdp_locked (struct filedesc *fdp, int fd, int flag);
 int	holdsock (struct thread *td, int fdes, struct file **fpp);
 int	holdvnode (struct thread *td, int fd, struct file **fpp);
 void	dropfp(struct thread *td, int fd, struct file *fp);

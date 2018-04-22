@@ -50,7 +50,7 @@
 #endif
 
 
-#define KQ_NEVENTS	8		/* minimize copy{in,out} calls */
+#define KQ_NEVENTS	32		/* limit stack use */
 #define KQEXTENT	256		/* linear growth by this amount */
 
 TAILQ_HEAD(kqlist, knote);

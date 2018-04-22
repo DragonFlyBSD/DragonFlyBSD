@@ -103,6 +103,20 @@ struct plimit {
 #define PLIMIT_TESTCPU_KILL	2
 
 /*
+ * Per-cpu tracking structure attached to uidinfo.  These counts are only
+ * synchronized with the uidinfo rollup fields at +/-32.  Resource limits
+ * only check against the ui_posixlocks and ui_openfiles so some slop
+ * is possible (checking against the pcpu structures would be cause cache
+ * line ping-ponging)
+ */
+struct uidcount {
+	int	pu_posixlocks;
+	int	pu_openfiles;
+} __cachealign;
+
+#define PUP_LIMIT	32	/* +/-32 rollup */
+
+/*
  * Per uid resource consumption
  */
 struct uidinfo {
@@ -115,9 +129,10 @@ struct uidinfo {
 	long	ui_proccnt;		/* number of processes */
 	uid_t	ui_uid;			/* uid */
 	int	ui_ref;			/* reference count */
-	int	ui_posixlocks;		/* number of POSIX locks */
-	int	ui_openfiles;		/* number of open files */
+	int	ui_posixlocks;		/* (rollup) number of POSIX locks */
+	int	ui_openfiles;		/* (rollup) number of open files */
 	struct varsymset ui_varsymset;	/* variant symlinks */
+	struct uidcount *ui_pcpu;
 };
 
 #endif
