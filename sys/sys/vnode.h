@@ -556,7 +556,9 @@ void	vfs_subr_init(void);
 void	vfs_mount_init(void);
 void	vfs_lock_init(void);
 void	mount_init(struct mount *mp);
-int	countcachedvnodes(int gupdate);
+void	synchronizevnodecount(void);
+int	countcachedvnodes(void);
+int	countcachedandinactivevnodes(void);
 
 void	vn_syncer_add(struct vnode *, int);
 void	vn_syncer_remove(struct vnode *, int);

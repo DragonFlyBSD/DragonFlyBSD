@@ -199,7 +199,7 @@ _vactivate(struct vnode *vp)
 		return;
 	case VS_INACTIVE:
 		TAILQ_REMOVE(&vi->inactive_list, vp, v_list);
-		atomic_add_int(&inactivevnodes, -1);
+		atomic_add_int(&mycpu->gd_inactivevnodes, -1);
 		break;
 	case VS_CACHED:
 	case VS_DYING:
@@ -208,7 +208,7 @@ _vactivate(struct vnode *vp)
 	TAILQ_INSERT_TAIL(&vi->active_list, vp, v_list);
 	vp->v_state = VS_ACTIVE;
 	spin_unlock(&vi->spin);
-	atomic_add_int(&activevnodes, 1);
+	atomic_add_int(&mycpu->gd_activevnodes, 1);
 }
 
 /*
@@ -236,7 +236,7 @@ _vinactive(struct vnode *vp)
 	switch(vp->v_state) {
 	case VS_ACTIVE:
 		TAILQ_REMOVE(&vi->active_list, vp, v_list);
-		atomic_add_int(&activevnodes, -1);
+		atomic_add_int(&mycpu->gd_activevnodes, -1);
 		break;
 	case VS_INACTIVE:
 		spin_unlock(&vi->spin);
@@ -260,7 +260,7 @@ _vinactive(struct vnode *vp)
 	}
 	vp->v_state = VS_INACTIVE;
 	spin_unlock(&vi->spin);
-	atomic_add_int(&inactivevnodes, 1);
+	atomic_add_int(&mycpu->gd_inactivevnodes, 1);
 }
 
 static __inline
@@ -277,7 +277,7 @@ _vinactive_tail(struct vnode *vp)
 	switch(vp->v_state) {
 	case VS_ACTIVE:
 		TAILQ_REMOVE(&vi->active_list, vp, v_list);
-		atomic_add_int(&activevnodes, -1);
+		atomic_add_int(&mycpu->gd_activevnodes, -1);
 		break;
 	case VS_INACTIVE:
 		spin_unlock(&vi->spin);
@@ -292,7 +292,7 @@ _vinactive_tail(struct vnode *vp)
 	TAILQ_INSERT_TAIL(&vi->inactive_list, vp, v_list);
 	vp->v_state = VS_INACTIVE;
 	spin_unlock(&vi->spin);
-	atomic_add_int(&inactivevnodes, 1);
+	atomic_add_int(&mycpu->gd_inactivevnodes, 1);
 }
 
 /*
@@ -308,15 +308,33 @@ vref(struct vnode *vp)
 	atomic_add_int(&vp->v_refcnt, 1);
 }
 
+void
+synchronizevnodecount(void)
+{
+	int nca = 0;
+	int act = 0;
+	int ina = 0;
+	int i;
+
+	for (i = 0; i < ncpus; ++i) {
+		globaldata_t gd = globaldata_find(i);
+		nca += gd->gd_cachedvnodes;
+		act += gd->gd_activevnodes;
+		ina += gd->gd_inactivevnodes;
+	}
+	cachedvnodes = nca;
+	activevnodes = act;
+	inactivevnodes = ina;
+}
+
 /*
  * Count number of cached vnodes.  This is middling expensive so be
- * careful not to make this call in the critical path, particularly
- * not updating the global.  Each cpu tracks its own accumulator.
- * The individual accumulators are not accurate and must be summed
- * together.
+ * careful not to make this call in the critical path.  Each cpu tracks
+ * its own accumulator.  The individual accumulators must be summed
+ * together to get an accurate value.
  */
 int
-countcachedvnodes(int gupdate)
+countcachedvnodes(void)
 {
 	int i;
 	int n = 0;
@@ -325,8 +343,19 @@ countcachedvnodes(int gupdate)
 		globaldata_t gd = globaldata_find(i);
 		n += gd->gd_cachedvnodes;
 	}
-	if (gupdate)
-		cachedvnodes = n;
+	return n;
+}
+
+int
+countcachedandinactivevnodes(void)
+{
+	int i;
+	int n = 0;
+
+	for (i = 0; i < ncpus; ++i) {
+		globaldata_t gd = globaldata_find(i);
+		n += gd->gd_cachedvnodes + gd->gd_inactivevnodes;
+	}
 	return n;
 }
 
@@ -452,7 +481,6 @@ vnode_terminate(struct vnode *vp)
 		_vsetflags(vp, VINACTIVE);
 		if (vp->v_mount)
 			VOP_INACTIVE(vp);
-		/* might deactivate page */
 	}
 	spin_lock(&vp->v_spin);
 	_vinactive(vp);
@@ -703,7 +731,7 @@ cleanfreevnode(int maxcount)
 	/*
 	 * Try to deactivate some vnodes cached on the active list.
 	 */
-	if (countcachedvnodes(0) < inactivevnodes)
+	if (countcachedvnodes() < inactivevnodes)
 		goto skip;
 
 	ri = vnode_list_hash[mycpu->gd_cpuid].deac_rover + 1;
@@ -879,7 +907,7 @@ failed:
 		}
 		KKASSERT(vp->v_state == VS_INACTIVE);
 		TAILQ_REMOVE(&vi->inactive_list, vp, v_list);
-		atomic_add_int(&inactivevnodes, -1);
+		atomic_add_int(&mycpu->gd_inactivevnodes, -1);
 		vp->v_state = VS_DYING;
 		spin_unlock(&vi->spin);
 
@@ -908,13 +936,24 @@ failed:
  * decrement the (2-bit) flags.  Vnodes which are opened several times
  * are thus retained in the cache over vnodes which are merely stat()d.
  *
- * We always allocate the vnode.  Attempting to recycle existing vnodes
- * here can lead to numerous deadlocks, particularly with softupdates.
+ * We attempt to reuse an already-recycled vnode from our pcpu inactive
+ * queue first, and allocate otherwise.  Attempting to recycle inactive
+ * vnodes here can lead to numerous deadlocks, particularly with
+ * softupdates.
  */
 struct vnode *
 allocvnode(int lktimeout, int lkflags)
 {
 	struct vnode *vp;
+	struct vnode_index *vi;
+
+	/*
+	 * lktimeout only applies when LK_TIMELOCK is used, and only
+	 * the pageout daemon uses it.  The timeout may not be zero
+	 * or the pageout daemon can deadlock in low-VM situations.
+	 */
+	if (lktimeout == 0)
+		lktimeout = hz / 10;
 
 	/*
 	 * Do not flag for synchronous recyclement unless there are enough
@@ -931,14 +970,118 @@ allocvnode(int lktimeout, int lkflags)
 	}
 
 	/*
-	 * lktimeout only applies when LK_TIMELOCK is used, and only
-	 * the pageout daemon uses it.  The timeout may not be zero
-	 * or the pageout daemon can deadlock in low-VM situations.
+	 * Try to trivially reuse a reclaimed vnode from the head of the
+	 * inactive list for this cpu.  Any vnode cycling which occurs
+	 * which terminates the vnode will cause it to be returned to the
+	 * same pcpu structure (e.g. unlink calls).
 	 */
-	if (lktimeout == 0)
-		lktimeout = hz / 10;
+	vi = &vnode_list_hash[mycpuid];
+	spin_lock(&vi->spin);
 
-	vp = kmalloc(sizeof(*vp), M_VNODE, M_ZERO | M_WAITOK);
+	vp = TAILQ_FIRST(&vi->inactive_list);
+	if (vp && (vp->v_flag & VRECLAIMED)) {
+		/*
+		 * non-blocking vx_get will also ref the vnode on success.
+		 */
+		if (vx_get_nonblock(vp)) {
+			KKASSERT(vp->v_state == VS_INACTIVE);
+			TAILQ_REMOVE(&vi->inactive_list, vp, v_list);
+			TAILQ_INSERT_TAIL(&vi->inactive_list, vp, v_list);
+			spin_unlock(&vi->spin);
+			goto slower;
+		}
+
+		/*
+		 * Because we are holding vfs_spin the vnode should currently
+		 * be inactive and VREF_TERMINATE should still be set.
+		 *
+		 * Once vfs_spin is released the vnode's state should remain
+		 * unmodified due to both the lock and ref on it.
+		 */
+		KKASSERT(vp->v_state == VS_INACTIVE);
+#ifdef TRACKVNODE
+		if ((u_long)vp == trackvnode)
+			kprintf("allocvnode %p %08x\n", vp, vp->v_flag);
+#endif
+
+		/*
+		 * Do not reclaim/reuse a vnode while auxillary refs exists.
+		 * This includes namecache refs due to a related ncp being
+		 * locked or having children, a VM object association, or
+		 * other hold users.
+		 *
+		 * Do not reclaim/reuse a vnode if someone else has a real
+		 * ref on it.  This can occur if a filesystem temporarily
+		 * releases the vnode lock during VOP_RECLAIM.
+		 */
+		if (vp->v_auxrefs ||
+		    (vp->v_refcnt & ~VREF_FINALIZE) != VREF_TERMINATE + 1) {
+			if (vp->v_state == VS_INACTIVE) {
+				if (vp->v_state == VS_INACTIVE) {
+					TAILQ_REMOVE(&vi->inactive_list,
+						     vp, v_list);
+					TAILQ_INSERT_TAIL(&vi->inactive_list,
+							  vp, v_list);
+				}
+			}
+			spin_unlock(&vi->spin);
+			vx_put(vp);
+			goto slower;
+		}
+
+		/*
+		 * VINACTIVE and VREF_TERMINATE are expected to both be set
+		 * for vnodes pulled from the inactive list, and cannot be
+		 * changed while we hold the vx lock.
+		 *
+		 * Try to reclaim the vnode.
+		 */
+		KKASSERT(vp->v_flag & VINACTIVE);
+		KKASSERT(vp->v_refcnt & VREF_TERMINATE);
+
+		if ((vp->v_flag & VRECLAIMED) == 0) {
+			spin_unlock(&vi->spin);
+			vx_put(vp);
+			goto slower;
+		}
+
+		/*
+		 * At this point if there are no other refs or auxrefs on
+		 * the vnode with the inactive list locked, and we remove
+		 * the vnode from the inactive list, it should not be
+		 * possible for anyone else to access the vnode any more.
+		 *
+		 * Since the vnode is in a VRECLAIMED state, no new
+		 * namecache associations could have been made and the
+		 * vnode should have already been removed from its mountlist.
+		 *
+		 * Since we hold a VX lock on the vnode it cannot have been
+		 * reactivated (moved out of the inactive list).
+		 */
+		KKASSERT(TAILQ_EMPTY(&vp->v_namecache));
+		KKASSERT(vp->v_state == VS_INACTIVE);
+		TAILQ_REMOVE(&vi->inactive_list, vp, v_list);
+		atomic_add_int(&mycpu->gd_inactivevnodes, -1);
+		vp->v_state = VS_DYING;
+		spin_unlock(&vi->spin);
+
+		/*
+		 * Nothing should have been able to access this vp.  Only
+		 * our ref should remain now.
+		 *
+		 * At this point we can kfree() the vnode if we want to.
+		 * Instead, we reuse it for the allocation.
+		 */
+		atomic_clear_int(&vp->v_refcnt, VREF_TERMINATE|VREF_FINALIZE);
+		KASSERT(vp->v_refcnt == 1,
+			("vp %p badrefs %08x", vp, vp->v_refcnt));
+		bzero(vp, sizeof(*vp));
+	} else {
+		spin_unlock(&vi->spin);
+slower:
+		vp = kmalloc(sizeof(*vp), M_VNODE, M_ZERO | M_WAITOK);
+		atomic_add_int(&numvnodes, 1);
+	}
 
 	lwkt_token_init(&vp->v_token, "vnode");
 	lockinit(&vp->v_lock, "vnode", lktimeout, lkflags);
@@ -949,7 +1092,6 @@ allocvnode(int lktimeout, int lkflags)
 	spin_init(&vp->v_spin, "allocvnode");
 
 	lockmgr(&vp->v_lock, LK_EXCLUSIVE);
-	atomic_add_int(&numvnodes, 1);
 	vp->v_refcnt = 1;
 	vp->v_flag = VAGE0 | VAGE1;
 	vp->v_pbuf_count = nswbuf_kva / NSWBUF_SPLIT;
@@ -990,7 +1132,7 @@ void
 allocvnode_gc(void)
 {
 	if (numvnodes >= maxvnodes &&
-	    countcachedvnodes(0) + inactivevnodes >= maxvnodes * 5 / 10) {
+	    countcachedandinactivevnodes() >= maxvnodes * 5 / 10) {
 		freesomevnodes(batchfreevnodes);
 	}
 }
