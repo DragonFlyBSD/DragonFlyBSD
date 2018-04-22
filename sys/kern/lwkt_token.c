@@ -82,8 +82,10 @@
 
 extern int lwkt_sched_debug;
 
+#define TOKEN_PRIME		66555444443333333ULL
+
 #ifndef LWKT_NUM_POOL_TOKENS
-#define LWKT_NUM_POOL_TOKENS	4001	/* prime number */
+#define LWKT_NUM_POOL_TOKENS	4096	/* power of 2 */
 #endif
 
 struct lwkt_pool_token {
@@ -91,7 +93,8 @@ struct lwkt_pool_token {
 } __cachealign;
 
 static struct lwkt_pool_token	pool_tokens[LWKT_NUM_POOL_TOKENS];
-struct spinlock		tok_debug_spin = SPINLOCK_INITIALIZER(&tok_debug_spin, "tok_debug_spin");
+struct spinlock tok_debug_spin = SPINLOCK_INITIALIZER(&tok_debug_spin,
+						      "tok_debug_spin");
 
 #define TOKEN_STRING	"REF=%p TOK=%p TD=%p"
 #define TOKEN_ARGS	lwkt_tokref_t ref, lwkt_token_t tok, struct thread *td
@@ -196,10 +199,12 @@ static __inline
 lwkt_token_t
 _lwkt_token_pool_lookup(void *ptr)
 {
-	u_int i;
+	uintptr_t n;
 
-	i = (u_int)(uintptr_t)ptr % LWKT_NUM_POOL_TOKENS;
-	return (&pool_tokens[i].token);
+	n = (uintptr_t)ptr + ((uintptr_t)ptr >> 18);
+	n = (n % TOKEN_PRIME);
+	n = (n ^ (n >> 16)) & (LWKT_NUM_POOL_TOKENS - 1);
+	return (&pool_tokens[n].token);
 }
 
 /*
