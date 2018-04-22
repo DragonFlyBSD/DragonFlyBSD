@@ -396,7 +396,7 @@ options                ACCEPT_FILTER_HTTP
 # This requires the use of 'device crypto' or 'device cryptodev'.
 #
 # XXX disabled for now until building with it is fixed, which broke
-* after removing IPsec.
+# after removing IPsec.
 #
 #options   TCP_SIGNATURE   #include support for RFC 2385
 
