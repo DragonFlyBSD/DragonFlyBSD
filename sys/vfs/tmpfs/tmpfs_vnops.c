@@ -977,6 +977,7 @@ tmpfs_nremove(struct vop_nremove_args *ap)
 	de = tmpfs_dir_lookup(dnode, node, ncp);
 	if (de == NULL) {
 		error = ENOENT;
+		TMPFS_NODE_UNLOCK(dnode);
 		goto out;
 	}
 
@@ -984,12 +985,14 @@ tmpfs_nremove(struct vop_nremove_args *ap)
 	if ((node->tn_flags & (IMMUTABLE | APPEND | NOUNLINK)) ||
 	    (dnode->tn_flags & APPEND)) {
 		error = EPERM;
+		TMPFS_NODE_UNLOCK(dnode);
 		goto out;
 	}
 
 	/* Remove the entry from the directory; as it is a file, we do not
 	 * have to change the number of hard links of the directory. */
 	tmpfs_dir_detach(dnode, de);
+	TMPFS_NODE_UNLOCK(dnode);
 
 	/* Free the directory entry we just deleted.  Note that the node
 	 * referred by it will not be removed until the vnode is really
@@ -1007,7 +1010,6 @@ tmpfs_nremove(struct vop_nremove_args *ap)
 	error = 0;
 
 out:
-	TMPFS_NODE_UNLOCK(dnode);
 	if (error == 0)
 		tmpfs_knote(dvp, NOTE_WRITE);
 out2:
