@@ -1046,7 +1046,9 @@ retry:
 		if (fdp->fd_files[new].reserved) {
 			spin_unlock(&fdp->fd_spin);
 			fdrop(fp);
-			kprintf("Warning: dup(): target descriptor %d is reserved, waiting for it to be resolved\n", new);
+			kprintf("Warning: dup(): target descriptor %d is "
+				"reserved, waiting for it to be resolved\n",
+				new);
 			tsleep(fdp, 0, "fdres", hz);
 			goto retry;
 		}
@@ -2070,7 +2072,7 @@ fsetfd_locked(struct filedesc *fdp, struct file *fp, int fd)
 	KKASSERT(fdp->fd_files[fd].reserved != 0);
 	if (fp) {
 		fhold(fp);
-		fclearcache(&fdp->fd_files[fd], NULL, 0);
+		/* fclearcache(&fdp->fd_files[fd], NULL, 0); */
 		fdp->fd_files[fd].fp = fp;
 		fdp->fd_files[fd].reserved = 0;
 	} else {
@@ -2124,7 +2126,7 @@ fgetfdflags(struct filedesc *fdp, int fd, int *flagsp)
 {
 	int error;
 
-	spin_lock(&fdp->fd_spin);
+	spin_lock_shared(&fdp->fd_spin);
 	if (((u_int)fd) >= fdp->fd_nfiles) {
 		error = EBADF;
 	} else if (fdp->fd_files[fd].fp == NULL) {
@@ -2133,7 +2135,8 @@ fgetfdflags(struct filedesc *fdp, int fd, int *flagsp)
 		*flagsp = fdp->fd_files[fd].fileflags;
 		error = 0;
 	}
-	spin_unlock(&fdp->fd_spin);
+	spin_unlock_shared(&fdp->fd_spin);
+
 	return (error);
 }
 
@@ -2155,6 +2158,7 @@ fsetfdflags(struct filedesc *fdp, int fd, int add_flags)
 		error = 0;
 	}
 	spin_unlock(&fdp->fd_spin);
+
 	return (error);
 }
 
@@ -2176,6 +2180,7 @@ fclrfdflags(struct filedesc *fdp, int fd, int rem_flags)
 		error = 0;
 	}
 	spin_unlock(&fdp->fd_spin);
+
 	return (error);
 }
 
