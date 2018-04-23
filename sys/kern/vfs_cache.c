@@ -3008,6 +3008,7 @@ cache_nlookup(struct nchandle *par_nch, struct nlcomponent *nlc)
 	struct nchandle nch;
 	struct namecache *ncp;
 	struct namecache *new_ncp;
+	struct namecache *rep_ncp;	/* reuse a destroyed ncp */
 	struct nchash_head *nchpp;
 	struct mount *mp;
 	u_int32_t hash;
@@ -3032,6 +3033,7 @@ cache_nlookup(struct nchandle *par_nch, struct nlcomponent *nlc)
 	new_ncp = NULL;
 	nchpp = NCHHASH(hash);
 restart:
+	rep_ncp = NULL;
 	if (new_ncp)
 		spin_lock(&nchpp->spin);
 	else
@@ -3042,12 +3044,20 @@ restart:
 		 * Break out if we find a matching entry.  Note that
 		 * UNRESOLVED entries may match, but DESTROYED entries
 		 * do not.
+		 *
+		 * We may be able to reuse DESTROYED entries that we come
+		 * across, even if the name does not match, as long as
+		 * nc_nlen is correct.
 		 */
 		if (ncp->nc_parent == par_nch->ncp &&
-		    ncp->nc_nlen == nlc->nlc_namelen &&
-		    bcmp(ncp->nc_name, nlc->nlc_nameptr, ncp->nc_nlen) == 0 &&
-		    (ncp->nc_flag & NCF_DESTROYED) == 0
-		) {
+		    ncp->nc_nlen == nlc->nlc_namelen) {
+			if (ncp->nc_flag & NCF_DESTROYED) {
+				if (ncp->nc_refs == 0 && rep_ncp == NULL)
+					rep_ncp = ncp;
+				continue;
+			}
+			if (bcmp(ncp->nc_name, nlc->nlc_nameptr, ncp->nc_nlen))
+				continue;
 			_cache_hold(ncp);
 			if (new_ncp)
 				spin_unlock(&nchpp->spin);
@@ -3084,9 +3094,40 @@ restart:
 	}
 
 	/*
-	 * We failed to locate an entry, create a new entry and add it to
-	 * the cache.  The parent ncp must also be locked so we
-	 * can link into it.
+	 * We failed to locate the entry, try to resurrect a destroyed
+	 * entry that we did find that is already correctly linked into
+	 * nchpp and the parent.  We must re-test conditions after
+	 * successfully locking rep_ncp.
+	 *
+	 * This case can occur under heavy loads due to not being able
+	 * to safely lock the parent in cache_zap().  Nominally a repeated
+	 * create/unlink load, but only the namelen needs to match.
+	 */
+	if (rep_ncp && new_ncp == NULL) {
+		if (_cache_lock_nonblock(rep_ncp) == 0) {
+			_cache_hold(rep_ncp);
+			if (rep_ncp->nc_parent == par_nch->ncp &&
+			    rep_ncp->nc_nlen == nlc->nlc_namelen &&
+			    (rep_ncp->nc_flag & NCF_DESTROYED)) {
+				/*
+				 * Update nc_name as reuse as new.
+				 */
+				ncp = rep_ncp;
+				bcopy(nlc->nlc_nameptr, ncp->nc_name,
+				      nlc->nlc_namelen);
+				spin_unlock_shared(&nchpp->spin);
+				_cache_setunresolved(ncp);
+				ncp->nc_flag = NCF_UNRESOLVED;
+				ncp->nc_error = ENOTCONN;
+				goto found;
+			}
+			_cache_put(rep_ncp);
+		}
+	}
+
+	/*
+	 * Otherwise create a new entry and add it to the cache.  The parent
+	 * ncp must also be locked so we can link into it.
 	 *
 	 * We have to relookup after possibly blocking in kmalloc or
 	 * when locking par_nch.
@@ -3390,8 +3431,6 @@ struct findmount_info {
 	struct namecache *nch_ncp;
 };
 
-#define MNTCACHE_PRIME	66555444443333333ULL
-
 static
 struct ncmount_cache *
 ncmount_cache_lookup(struct mount *mp, struct namecache *ncp)
@@ -3399,10 +3438,8 @@ ncmount_cache_lookup(struct mount *mp, struct namecache *ncp)
 	uintptr_t hash;
 
 	hash = (uintptr_t)mp + ((uintptr_t)mp >> 18);
-	hash %= MNTCACHE_PRIME;
-	hash ^= (uintptr_t)ncp + ((uintptr_t)ncp >> 18);
-	hash %= MNTCACHE_PRIME;
-	hash = hash % NCMOUNT_NUMCACHE;
+	hash += (uintptr_t)ncp + ((uintptr_t)ncp >> 16);
+	hash = (hash >> 1) % NCMOUNT_NUMCACHE;
 
 	return (&ncmount_cache[hash]);
 }
