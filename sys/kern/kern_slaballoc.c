@@ -1400,8 +1400,8 @@ kfree(void *ptr, struct malloc_type *type)
 	    TAILQ_INSERT_HEAD(&slgd->ZoneAry[z->z_ZoneIndex], z, z_Entry);
     }
 
-    --type->ks_use[z->z_Cpu].inuse;
-    type->ks_use[z->z_Cpu].memuse -= z->z_ChunkSize;
+    --type->ks_use[gd->gd_cpuid].inuse;
+    type->ks_use[gd->gd_cpuid].memuse -= z->z_ChunkSize;
 
     check_zone_free(slgd, z);
     logmemory_quick(free_end);
