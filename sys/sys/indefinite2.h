@@ -174,11 +174,18 @@ static __inline void
 indefinite_done(indefinite_info_t *info)
 {
 	tsc_uclock_t delta;
+	globaldata_t gd;
 
 	if (info->type && info->count > INDEF_INFO_START) {
+		gd = mycpu;
 		delta = rdtsc() - info->base;
 		delta = delta * 1000000U / tsc_frequency;
-		mycpu->gd_cnt.v_lock_colls += delta;
+		if (delta && info->ident) {
+			gd->gd_cnt.v_lock_name[0] = info->type;
+			strncpy(gd->gd_cnt.v_lock_name + 1, info->ident,
+				sizeof(gd->gd_cnt.v_lock_name) - 2);
+		}
+		gd->gd_cnt.v_lock_colls += delta;
 	}
 	info->type = 0;
 }
