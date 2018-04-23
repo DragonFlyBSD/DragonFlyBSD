@@ -100,6 +100,8 @@
 #include <sys/file2.h>
 #include <sys/spinlock2.h>
 
+static int fdalloc_locked(struct proc *p, struct filedesc *fdp,
+			int want, int *result);
 static void fsetfd_locked(struct filedesc *fdp, struct file *fp, int fd);
 static void fdreserve_locked (struct filedesc *fdp, int fd0, int incr);
 static struct file *funsetfd_locked (struct filedesc *fdp, int fd);
@@ -1004,9 +1006,7 @@ retry:
 	 * setup for the next code block.
 	 */
 	if ((flags & DUP_VARIABLE) || new >= fdp->fd_nfiles) {
-		spin_unlock(&fdp->fd_spin);
-		error = fdalloc(p, new, &newfd);
-		spin_lock(&fdp->fd_spin);
+		error = fdalloc_locked(p, fdp, new, &newfd);
 		if (error) {
 			spin_unlock(&fdp->fd_spin);
 			fdrop(fp);
@@ -1614,11 +1614,11 @@ fdreserve_locked(struct filedesc *fdp, int fd, int incr)
  * caller MUST at some point call fsetfd() or assign a file pointer
  * or dispose of the reservation.
  */
+static
 int
-fdalloc(struct proc *p, int want, int *result)
+fdalloc_locked(struct proc *p, struct filedesc *fdp, int want, int *result)
 {
 	struct plimit *limit = readplimits(p);
-	struct filedesc *fdp = p->p_fd;
 	struct uidinfo *uip;
 	int fd, rsize, rsum, node, lim;
 
@@ -1675,7 +1675,6 @@ fdalloc(struct proc *p, int want, int *result)
 	/*
 	 * Grow the dtable if necessary
 	 */
-	spin_lock(&fdp->fd_spin);
 	if (want >= fdp->fd_nfiles)
 		fdgrow_locked(fdp, want);
 
@@ -1726,7 +1725,6 @@ retry:
 	 * No space in current array.  Expand?
 	 */
 	if (fdp->fd_nfiles >= lim) {
-		spin_unlock(&fdp->fd_spin);
 		return (EMFILE);
 	}
 	fdgrow_locked(fdp, want);
@@ -1744,8 +1742,21 @@ found:
 	fdp->fd_files[fd].fileflags = 0;
 	fdp->fd_files[fd].reserved = 1;
 	fdreserve_locked(fdp, fd, 1);
-	spin_unlock(&fdp->fd_spin);
+
 	return (0);
+}
+
+int
+fdalloc(struct proc *p, int want, int *result)
+{
+	struct filedesc *fdp = p->p_fd;
+	int error;
+
+	spin_lock(&fdp->fd_spin);
+	error = fdalloc_locked(p, fdp, want, result);
+	spin_unlock(&fdp->fd_spin);
+
+	return error;
 }
 
 /*
