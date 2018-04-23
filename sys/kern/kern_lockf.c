@@ -55,10 +55,6 @@
 
 #include <sys/spinlock2.h>
 
-#ifdef INVARIANTS
-int lf_global_counter = 0;
-#endif
-
 #ifdef LOCKF_DEBUG
 int lf_print_ranges = 0;
 
@@ -815,9 +811,6 @@ lf_alloc_range(void)
 {
 	struct lockf_range *range;
 
-#ifdef INVARIANTS
-	atomic_add_int(&lf_global_counter, 1);
-#endif
 	range = kmalloc(sizeof(struct lockf_range), M_LOCKF, M_WAITOK);
 	range->lf_owner = NULL;
 	return(range);
@@ -856,10 +849,6 @@ lf_destroy_range(struct lockf_range *range)
 	lf_printf("lf_destroy_range: %ju..%ju\n",
 	    (uintmax_t)range->lf_start, (uintmax_t)range->lf_end);
 	kfree(range, M_LOCKF);
-#ifdef INVARIANTS
-	atomic_add_int(&lf_global_counter, -1);
-	KKASSERT(lf_global_counter >= 0);
-#endif
 }
 
 #ifdef LOCKF_DEBUG
