@@ -55,6 +55,13 @@
 
 #include <sys/spinlock2.h>
 
+struct lf_pcpu {
+	struct lockf_range *free1;
+	struct lockf_range *free2;
+} __cachealign;
+
+static struct lf_pcpu	*lf_pcpu_array;
+
 #ifdef LOCKF_DEBUG
 int lf_print_ranges = 0;
 
@@ -256,15 +263,22 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 		 * then before.
 		 */
 		error = lf_setlock(lock, owner, type, flags, start, end);
-		vsetflags(ap->a_vp, VMAYHAVELOCKS);
+		if ((ap->a_vp->v_flag & VMAYHAVELOCKS) == 0)
+			vsetflags(ap->a_vp, VMAYHAVELOCKS);
 		break;
 
 	case F_UNLCK:
 		error = lf_setlock(lock, owner, type, flags, start, end);
+#if 0
+		/*
+		 * XXX REMOVED. don't bother doing this in the critical path.
+		 * close() overhead is minimal.
+		 */
 		if (TAILQ_EMPTY(&lock->lf_range) &&
 		    TAILQ_EMPTY(&lock->lf_blocked)) {
 			vclrflags(ap->a_vp, VMAYHAVELOCKS);
 		}
+#endif
 		break;
 
 	case F_GETLK:
@@ -805,14 +819,28 @@ lf_wakeup(struct lockf *lock, off_t start, off_t end)
 /*
  * Allocate a range structure and initialize it sufficiently such that
  * lf_destroy_range() does not barf.
+ *
+ * Most use cases are temporary, implement a small 2-entry-per-cpu
+ * cache.
  */
 static struct lockf_range *
 lf_alloc_range(void)
 {
 	struct lockf_range *range;
+	struct lf_pcpu *lfpc;
 
+	lfpc = &lf_pcpu_array[mycpuid];
+	if ((range = lfpc->free1) != NULL) {
+		lfpc->free1 = NULL;
+		return range;
+	}
+	if ((range = lfpc->free2) != NULL) {
+		lfpc->free2 = NULL;
+		return range;
+	}
 	range = kmalloc(sizeof(struct lockf_range), M_LOCKF, M_WAITOK);
 	range->lf_owner = NULL;
+
 	return(range);
 }
 
@@ -846,8 +874,22 @@ lf_create_range(struct lockf_range *range, struct proc *owner, int type,
 static void
 lf_destroy_range(struct lockf_range *range)
 {
+	struct lf_pcpu *lfpc;
+
 	lf_printf("lf_destroy_range: %ju..%ju\n",
-	    (uintmax_t)range->lf_start, (uintmax_t)range->lf_end);
+		  (uintmax_t)range->lf_start, (uintmax_t)range->lf_end);
+
+	lfpc = &lf_pcpu_array[mycpuid];
+	if (lfpc->free1 == NULL) {
+		range->lf_owner = NULL;
+		lfpc->free1 = range;
+		return;
+	}
+	if (lfpc->free2 == NULL) {
+		range->lf_owner = NULL;
+		lfpc->free2 = range;
+		return;
+	}
 	kfree(range, M_LOCKF);
 }
 
@@ -897,3 +939,12 @@ _lf_print_lock(const struct lockf *lock)
 		       range);
 }
 #endif /* LOCKF_DEBUG */
+
+static void
+lf_init(void *dummy __unused)
+{
+	lf_pcpu_array = kmalloc(sizeof(*lf_pcpu_array) * ncpus,
+				M_LOCKF, M_WAITOK | M_ZERO);
+}
+
+SYSINIT(lockf, SI_BOOT2_MACHDEP, SI_ORDER_ANY, lf_init, NULL);
