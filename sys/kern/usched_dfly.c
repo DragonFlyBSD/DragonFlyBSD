@@ -115,7 +115,7 @@ struct usched_dfly_pcpu {
 	short		upri;
 	long		uload;		/* 64-bits to avoid overflow (1) */
 	int		ucount;
-	int		unused01;
+	int		flags;
 	struct lwp	*uschedcp;
 	struct rq	queues[NQS];
 	struct rq	rtqueues[NQS];
@@ -127,7 +127,14 @@ struct usched_dfly_pcpu {
 	int		cpuid;
 	cpumask_t	cpumask;
 	cpu_node_t	*cpunode;
-};
+} __cachealign;
+
+/*
+ * Reflecting bits in the global atomic masks allows us to avoid
+ * a certain degree of global ping-ponging.
+ */
+#define DFLY_PCPU_RDYMASK	0x0001	/* reflect rdyprocmask */
+#define DFLY_PCPU_CURMASK	0x0002	/* reflect curprocmask */
 
 typedef struct usched_dfly_pcpu	*dfly_pcpu_t;
 
@@ -186,6 +193,11 @@ struct usched usched_dfly = {
  * set in the queuebits variable, allowing a single read to determine
  * the state of all 32 queues and then a ffs() to find the first busy
  * queue.
+ *
+ * curprocmask is used to publish cpus with assigned curprocs to the rest
+ * of the cpus.  In certain situations curprocmask may leave a bit set
+ * (e.g. a yield or a token-based yield) even though dd->uschedcp is
+ * NULL'd out temporarily).
  */
 					/* currently running a user process */
 static cpumask_t dfly_curprocmask = CPUMASK_INITIALIZER_ALLONES;
@@ -424,7 +436,11 @@ dfly_acquire_curproc(struct lwp *lp)
 		if (dd->uschedcp == NULL) {
 			atomic_clear_int(&lp->lwp_thread->td_mpflags,
 					 TDF_MP_DIDYIELD);
-			ATOMIC_CPUMASK_ORBIT(dfly_curprocmask, gd->gd_cpuid);
+			if ((dd->flags & DFLY_PCPU_CURMASK) == 0) {
+				ATOMIC_CPUMASK_ORBIT(dfly_curprocmask,
+						     gd->gd_cpuid);
+				dd->flags |= DFLY_PCPU_CURMASK;
+			}
 			dd->uschedcp = lp;
 			dd->upri = lp->lwp_priority;
 			KKASSERT(lp->lwp_qcpu == dd->cpuid);
@@ -576,7 +592,18 @@ dfly_release_curproc(struct lwp *lp)
 		if (dd->uschedcp == lp) {
 			dd->uschedcp = NULL;	/* don't let lp be selected */
 			dd->upri = PRIBASE_NULL;
-			ATOMIC_CPUMASK_NANDBIT(dfly_curprocmask, gd->gd_cpuid);
+
+			/*
+			 * We're just going to set it again, avoid the global
+			 * cache line ping-pong.
+			 */
+			if ((lp->lwp_thread->td_mpflags & TDF_MP_DIDYIELD) == 0) {
+				if (dd->flags & DFLY_PCPU_CURMASK) {
+					ATOMIC_CPUMASK_NANDBIT(dfly_curprocmask,
+							       gd->gd_cpuid);
+					dd->flags &= ~DFLY_PCPU_CURMASK;
+				}
+			}
 			spin_unlock(&dd->spin);
 			dfly_select_curproc(gd);
 		} else {
@@ -612,7 +639,10 @@ dfly_select_curproc(globaldata_t gd)
 	nlp = dfly_chooseproc_locked(dd, dd, dd->uschedcp, 0);
 
 	if (nlp) {
-		ATOMIC_CPUMASK_ORBIT(dfly_curprocmask, cpuid);
+		if ((dd->flags & DFLY_PCPU_CURMASK) == 0) {
+			ATOMIC_CPUMASK_ORBIT(dfly_curprocmask, cpuid);
+			dd->flags |= DFLY_PCPU_CURMASK;
+		}
 		dd->upri = nlp->lwp_priority;
 		dd->uschedcp = nlp;
 #if 0
@@ -904,7 +934,11 @@ dfly_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 		 */
 		if (nlp &&
 		    (nlp->lwp_priority & ~PPQMASK) < (dd->upri & ~PPQMASK)) {
-			ATOMIC_CPUMASK_ORMASK(dfly_curprocmask, dd->cpumask);
+			if ((dd->flags & DFLY_PCPU_CURMASK) == 0) {
+				ATOMIC_CPUMASK_ORMASK(dfly_curprocmask,
+						      dd->cpumask);
+				dd->flags |= DFLY_PCPU_CURMASK;
+			}
 			dd->upri = nlp->lwp_priority;
 			dd->uschedcp = nlp;
 #if 0
@@ -2006,9 +2040,9 @@ dfly_need_user_resched_remote(void *dummy)
 	 *
 	 * Call wakeup_mycpu to avoid sending IPIs to other CPUs
 	 */
-	if (dd->uschedcp == NULL &&
-	    CPUMASK_TESTBIT(dfly_rdyprocmask, gd->gd_cpuid)) {
+	if (dd->uschedcp == NULL && (dd->flags & DFLY_PCPU_RDYMASK)) {
 		ATOMIC_CPUMASK_NANDBIT(dfly_rdyprocmask, gd->gd_cpuid);
+		dd->flags &= ~DFLY_PCPU_RDYMASK;
 		wakeup_mycpu(dd->helper_thread);
 	}
 }
@@ -2196,8 +2230,10 @@ dfly_helper_thread(void *dummy)
 	tsleep_interlock(dd->helper_thread, 0);
 
 	spin_lock(&dd->spin);
-
-	ATOMIC_CPUMASK_ORMASK(dfly_rdyprocmask, mask);
+	if ((dd->flags & DFLY_PCPU_RDYMASK) == 0) {
+		ATOMIC_CPUMASK_ORMASK(dfly_rdyprocmask, mask);
+		dd->flags |= DFLY_PCPU_RDYMASK;
+	}
 	clear_user_resched();	/* This satisfied the reschedule request */
 #if 0
 	dd->rrcount = 0;	/* Reset the round-robin counter */
@@ -2211,7 +2247,10 @@ dfly_helper_thread(void *dummy)
 		 */
 		nlp = dfly_chooseproc_locked(dd, dd, dd->uschedcp, 0);
 		if (nlp) {
-			ATOMIC_CPUMASK_ORMASK(dfly_curprocmask, mask);
+			if ((dd->flags & DFLY_PCPU_CURMASK) == 0) {
+				ATOMIC_CPUMASK_ORMASK(dfly_curprocmask, mask);
+				dd->flags |= DFLY_PCPU_CURMASK;
+			}
 			dd->upri = nlp->lwp_priority;
 			dd->uschedcp = nlp;
 #if 0
@@ -2251,7 +2290,10 @@ dfly_helper_thread(void *dummy)
 			nlp = NULL;
 		}
 		if (nlp) {
-			ATOMIC_CPUMASK_ORMASK(dfly_curprocmask, mask);
+			if ((dd->flags & DFLY_PCPU_CURMASK) == 0) {
+				ATOMIC_CPUMASK_ORMASK(dfly_curprocmask, mask);
+				dd->flags |= DFLY_PCPU_CURMASK;
+			}
 			dd->upri = nlp->lwp_priority;
 			dd->uschedcp = nlp;
 #if 0
@@ -2343,6 +2385,8 @@ usched_dfly_cpu_init(void)
 			TAILQ_INIT(&dd->idqueues[j]);
 		}
 		ATOMIC_CPUMASK_NANDBIT(dfly_curprocmask, 0);
+		if (i == 0)
+			dd->flags &= ~DFLY_PCPU_CURMASK;
 
 		if (dd->cpunode == NULL) {
 			smt_not_supported = 1;
@@ -2406,9 +2450,14 @@ usched_dfly_cpu_init(void)
 		 * Allow user scheduling on the target cpu.  cpu #0 has already
 		 * been enabled in rqinit().
 		 */
-		if (i)
+		if (i) {
 			ATOMIC_CPUMASK_NANDMASK(dfly_curprocmask, mask);
-		ATOMIC_CPUMASK_ORMASK(dfly_rdyprocmask, mask);
+			dd->flags &= ~DFLY_PCPU_CURMASK;
+		}
+		if ((dd->flags & DFLY_PCPU_RDYMASK) == 0) {
+			ATOMIC_CPUMASK_ORMASK(dfly_rdyprocmask, mask);
+			dd->flags |= DFLY_PCPU_RDYMASK;
+		}
 		dd->upri = PRIBASE_NULL;
 
 	}

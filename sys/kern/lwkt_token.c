@@ -83,7 +83,7 @@
 extern int lwkt_sched_debug;
 
 #ifndef LWKT_NUM_POOL_TOKENS
-#define LWKT_NUM_POOL_TOKENS	4001
+#define LWKT_NUM_POOL_TOKENS	16661
 #endif
 
 struct lwkt_pool_token {
@@ -699,6 +699,7 @@ good:
 		spin_unlock(&tok_debug_spin);
 	}
 
+	atomic_set_int(&td->td_mpflags, TDF_MP_DIDYIELD);
 	lwkt_switch();
 	logtoken(succ, ref);
 	KKASSERT(tok->t_ref == ref);
@@ -762,6 +763,7 @@ lwkt_gettoken_shared(lwkt_token_t tok)
 		spin_unlock(&tok_debug_spin);
 	}
 
+	atomic_set_int(&td->td_mpflags, TDF_MP_DIDYIELD);
 	lwkt_switch();
 	logtoken(succ, ref);
 }

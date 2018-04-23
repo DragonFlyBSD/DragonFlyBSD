@@ -1136,7 +1136,8 @@ lwkt_yield(void)
      * Caller allows switching
      */
     if (lwkt_resched_wanted()) {
-	lwkt_schedule_self(curthread);
+	atomic_set_int(&td->td_mpflags, TDF_MP_DIDYIELD);
+	lwkt_schedule_self(td);
 	lwkt_switch();
     }
 }
@@ -1162,6 +1163,7 @@ lwkt_yield_quick(void)
 	if (TAILQ_FIRST(&gd->gd_tdrunq) == td) {
 	    clear_lwkt_resched();
 	} else {
+	    atomic_set_int(&td->td_mpflags, TDF_MP_DIDYIELD);
 	    lwkt_schedule_self(curthread);
 	    lwkt_switch();
 	}
