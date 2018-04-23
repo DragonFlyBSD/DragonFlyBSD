@@ -144,10 +144,10 @@ struct lwkt_token vnode_token = LWKT_TOKEN_INITIALIZER(vnode_token);
 
 /*
  * Exponential backoff (exclusive tokens) and TSC windowing (shared tokens)
- * parameters.  We generally want a smaller backoff than we use for spinlocks
- * because we can fall-back to the scheduler.
+ * parameters.  Remember that tokens backoff to the scheduler, large values
+ * not recommended.
  */
-static int token_backoff_max __cachealign = 1024;
+static int token_backoff_max __cachealign = 4096;
 SYSCTL_INT(_lwkt, OID_AUTO, token_backoff_max, CTLFLAG_RW,
     &token_backoff_max, 0, "Tokens exponential backoff");
 static int token_window_shift __cachealign = 8;

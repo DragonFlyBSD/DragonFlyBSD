@@ -54,6 +54,8 @@ struct spinlock {
 
 #define SPINLOCK_SHARED			0x80000000
 #define SPINLOCK_EXCLWAIT		0x00100000 /* high bits counter */
+#define SPINLOCK_EXCLWAIT_MASK		0x7FF00000
+#define SPINLOCK_EXCLWAIT_SHIFT		20
 
 #endif
 
