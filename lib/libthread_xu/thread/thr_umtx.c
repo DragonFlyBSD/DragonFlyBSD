@@ -45,20 +45,35 @@
 int
 __thr_umtx_lock(volatile umtx_t *mtx, int id, int timo)
 {
-	int v, errval, ret = 0;
+	int v;
+	int errval;
+	int ret = 0;
+	int retry = 4;
 
 	v = *mtx;
 	cpu_ccfence();
 	id &= 0x3FFFFFFF;
 
 	for (;;) {
+		cpu_pause();
 		if (v == 0) {
-			if (atomic_cmpset_acq_int(mtx, 0, id)) {
+			if (atomic_fcmpset_int(mtx, &v, id))
 				break;
-			}
 			continue;
 		}
-		if (atomic_fcmpset_int(mtx, &v, v|0x40000000)) {
+		if (--retry) {
+			sched_yield();
+			v = *mtx;
+			continue;
+		}
+
+		/*
+		 * Set the waiting bit.  If the fcmpset fails v is loaded
+		 * with the current content of the mutex, and if the waiting
+		 * bit is already set, we can also sleep.
+		 */
+		if (atomic_fcmpset_int(mtx, &v, v|0x40000000) ||
+		    (v & 0x40000000)) {
 			if (timo == 0) {
 				_umtx_sleep_err(mtx, v|0x40000000, timo);
 			} else if ((errval = _umtx_sleep_err(mtx, v|0x40000000, timo)) > 0) {
@@ -71,32 +86,23 @@ __thr_umtx_lock(volatile umtx_t *mtx, int id, int timo)
 				}
 			}
 		}
+		retry = 4;
 	}
 	return (ret);
 }
 
 /*
- * Release a mutex.  A contested mutex has a value
- * of 2, an uncontested mutex has a value of 1.
+ * Inline followup when releasing a mutex.  The mutex has been released
+ * but 'v' either doesn't match id or needs a wakeup.
  */
 void
-__thr_umtx_unlock(volatile umtx_t *mtx, int id)
+__thr_umtx_unlock(volatile umtx_t *mtx, int v, int id)
 {
-	int v;
-
-	v = *mtx;
-	cpu_ccfence();
-	id &= 0x3FFFFFFF;
-
-	for (;;) {
-		if (atomic_fcmpset_int(mtx, &v, 0)) {
-			if (v & 0x40000000)
-				_umtx_wakeup_err(mtx, 0);
-			THR_ASSERT((v & 0x3FFFFFFF) == id,
-				   "thr_umtx_unlock: wrong owner");
-			break;
-		}
+	if (v & 0x40000000) {
+		_umtx_wakeup_err(mtx, 0);
+		v &= 0x3FFFFFFF;
 	}
+	THR_ASSERT(v == id, "thr_umtx_unlock: wrong owner");
 }
 
 /*
