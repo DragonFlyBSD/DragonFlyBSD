@@ -104,6 +104,15 @@ SYSCTL_LONG(_debug, OID_AUTO, spinlocks_add_latency, CTLFLAG_RW,
 
 #endif
 
+static long spin_backoff_max = 4096;
+SYSCTL_LONG(_debug, OID_AUTO, spin_backoff_max, CTLFLAG_RW,
+    &spin_backoff_max, 0,
+    "Spinlock exponential backoff limit");
+static long spin_window_shift = 8;	/* 1 << n clock cycles, approx */
+SYSCTL_LONG(_debug, OID_AUTO, spin_window_shift, CTLFLAG_RW,
+    &spin_window_shift, 0,
+    "Spinlock TSC windowing");
+
 /*
  * We contested due to another exclusive lock holder.  We lose.
  *
@@ -143,18 +152,21 @@ spin_trylock_contested(struct spinlock *spin)
  * use atomic_fetchadd_int() for both spinlock types in the critical
  * path.
  *
- * Backoff algorithms can create even worse starvation problems, particularly
- * on multi-socket cpus, and don't really improve performance when a lot
- * of cores are contending.  However, if we are contested on an exclusive
- * lock due to a large number of shared locks being present, we throw in
- * extra cpu_pause()'s to account for the necessary time it will take other
- * cores to contend among themselves and release their shared locks.
+ * The exponential (n^1.5) backoff algorithm is designed to both reduce
+ * cache bus contention between cpu cores and sockets, and to allow some
+ * bursting of exclusive locks in heavily contended situations to improve
+ * performance.
+ *
+ * The exclusive lock priority mechanism prevents even heavily contended
+ * exclusive locks from being starved by shared locks
  */
 void
 _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 {
 	indefinite_info_t info;
 	uint32_t ovalue;
+	long expbackoff;
+	long loop;
 
 	/*
 	 * WARNING! Caller has already incremented the lock.  We must
@@ -164,11 +176,14 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 	 * Handle the degenerate case where the spinlock is flagged SHARED
 	 * with only our reference.  We can convert it to EXCLUSIVE.
 	 */
-	++value;
-	if (value == (SPINLOCK_SHARED | 1)) {
+	if (value == (SPINLOCK_SHARED | 1) - 1) {
 		if (atomic_cmpset_int(&spin->counta, SPINLOCK_SHARED | 1, 1))
 			return;
 	}
+	/* ++value; value not used after this */
+	info.type = 0;		/* avoid improper gcc warning */
+	info.ident = NULL;	/* avoid improper gcc warning */
+	expbackoff = 0;
 
 	/*
 	 * Transfer our exclusive request to the high bits and clear the
@@ -189,26 +204,24 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 		ovalue &= ~SPINLOCK_SHARED;
 	}
 
-	indefinite_init(&info, ident, 0, 'S');
-
-	/*
-	 * Spin until we can acquire a low-count of 1.
-	 */
 	for (;;) {
+		expbackoff = (expbackoff + 1) * 3 / 2;
+		if (expbackoff == 6)		/* 1, 3, 6, 10, ... */
+			indefinite_init(&info, ident, 0, 'S');
+		if ((rdtsc() >> spin_window_shift) % ncpus != mycpuid)  {
+			for (loop = expbackoff; loop; --loop)
+				cpu_pause();
+		}
+		/*cpu_lfence();*/
+
 		/*
 		 * If the low bits are zero, try to acquire the exclusive lock
 		 * by transfering our high bit reservation to the low bits.
 		 *
-		 * NOTE: Reading spin->counta prior to the swap is extremely
-		 *	 important on multi-chip/many-core boxes.  On 48-core
-		 *	 this one change improves fully concurrent all-cores
-		 *	 compiles by 100% or better.
-		 *
-		 *	 I can't emphasize enough how important the pre-read
-		 *	 is in preventing hw cache bus armageddon on
-		 *	 multi-chip systems.  And on single-chip/multi-core
-		 *	 systems it just doesn't hurt.
+		 * NOTE: Avoid unconditional atomic op by testing ovalue,
+		 *	 otherwise we get cache bus armageddon.
 		 */
+		ovalue = spin->counta;
 		cpu_ccfence();
 		if ((ovalue & (SPINLOCK_EXCLWAIT - 1)) == 0) {
 			if (atomic_fcmpset_int(&spin->counta, &ovalue,
@@ -217,32 +230,15 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 			}
 			continue;
 		}
-
-		/*
-		 * Throw in extra cpu_pause()'s when we are waiting on
-		 * multiple other shared lock holders to release (the
-		 * indefinite_check() also throws one in).
-		 *
-		 * We know these are shared lock holders when the count
-		 * is larger than 1, because an exclusive lock holder can
-		 * only have one count.  Do this optimization only when
-		 * the number of shared lock holders is 3 or greater.
-		 */
-		ovalue &= SPINLOCK_EXCLWAIT - 1;
-		while (ovalue > 2) {
-			cpu_pause();
-			cpu_pause();
-			--ovalue;
+		if (expbackoff > 6 + spin_backoff_max)
+			expbackoff = 6 + spin_backoff_max;
+		if (expbackoff >= 6) {
+			if (indefinite_check(&info))
+				break;
 		}
-
-		if (indefinite_check(&info))
-			break;
-		/*
-		 * ovalue was wrong anyway, just reload
-		 */
-		ovalue = spin->counta;
 	}
-	indefinite_done(&info);
+	if (expbackoff >= 6)
+		indefinite_done(&info);
 }
 
 /*
@@ -251,6 +247,17 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
  *
  * This is not in the critical path unless there is contention between
  * shared and exclusive holders.
+ *
+ * Exclusive locks have priority over shared locks.  However, this can
+ * cause shared locks to be starved when large numbers of threads are
+ * competing for exclusive locks so the shared lock code uses TSC-windowing
+ * to selectively ignore the exclusive priority mechanism.  This has the
+ * effect of allowing a limited number of shared locks to compete against
+ * exclusive waiters at any given moment.
+ *
+ * Note that shared locks do not implement exponential backoff.  Instead,
+ * the shared lock simply polls the lock value.  One cpu_pause() is built
+ * into indefinite_check().
  */
 void
 _spin_lock_shared_contested(struct spinlock *spin, const char *ident)
@@ -291,25 +298,28 @@ _spin_lock_shared_contested(struct spinlock *spin, const char *ident)
 		 *	 systems it just doesn't hurt.
 		 */
 		cpu_ccfence();
-		if (ovalue == 0) {
+
+		/*
+		 * Ignore the EXCLWAIT bits if we are inside our window.
+		 */
+		if ((ovalue & (SPINLOCK_EXCLWAIT - 1)) == 0 &&
+		    (rdtsc() >> spin_window_shift) % ncpus == mycpuid)  {
 			if (atomic_fcmpset_int(&spin->counta, &ovalue,
-					      SPINLOCK_SHARED | 1)) {
+					       ovalue | SPINLOCK_SHARED | 1)) {
 				break;
 			}
 			continue;
 		}
 
 		/*
-		 * Ignore the EXCLWAIT bits if we have waited too long.
-		 * This would be a situation where most of the cpu cores
-		 * are concurrently cycling both shared and exclusive use
-		 * of the same spinlock, which can cause one or more cores
-		 * to wait indefinitely on a shared spinlock.  This can
-		 * only occur in the most extreme testing environments.
+		 * Check ovalue tightly (no exponential backoff for shared
+		 * locks, that would result in horrible performance.  Instead,
+		 * shared locks depend on the exclusive priority mechanism
+		 * to avoid starving exclusive locks).
 		 */
-		if (info.secs > 1 && (ovalue & (SPINLOCK_EXCLWAIT - 1)) == 0) {
+		if (ovalue == 0) {
 			if (atomic_fcmpset_int(&spin->counta, &ovalue,
-					       ovalue | SPINLOCK_SHARED | 1)) {
+					      SPINLOCK_SHARED | 1)) {
 				break;
 			}
 			continue;

@@ -82,10 +82,8 @@
 
 extern int lwkt_sched_debug;
 
-#define TOKEN_PRIME		66555444443333333ULL
-
 #ifndef LWKT_NUM_POOL_TOKENS
-#define LWKT_NUM_POOL_TOKENS	4096	/* power of 2 */
+#define LWKT_NUM_POOL_TOKENS	4001
 #endif
 
 struct lwkt_pool_token {
@@ -144,9 +142,17 @@ struct lwkt_token sigio_token = LWKT_TOKEN_INITIALIZER(sigio_token);
 struct lwkt_token tty_token = LWKT_TOKEN_INITIALIZER(tty_token);
 struct lwkt_token vnode_token = LWKT_TOKEN_INITIALIZER(vnode_token);
 
-static int lwkt_token_spin = 5;
-SYSCTL_INT(_lwkt, OID_AUTO, token_spin, CTLFLAG_RW,
-    &lwkt_token_spin, 0, "Decontention spin loops");
+/*
+ * Exponential backoff (exclusive tokens) and TSC windowing (shared tokens)
+ * parameters.  We generally want a smaller backoff than we use for spinlocks
+ * because we can fall-back to the scheduler.
+ */
+static int token_backoff_max __cachealign = 1024;
+SYSCTL_INT(_lwkt, OID_AUTO, token_backoff_max, CTLFLAG_RW,
+    &token_backoff_max, 0, "Tokens exponential backoff");
+static int token_window_shift __cachealign = 8;
+SYSCTL_INT(_lwkt, OID_AUTO, token_window_shift, CTLFLAG_RW,
+    &token_window_shift, 0, "Tokens TSC windowing shift");
 
 /*
  * The collision count is bumped every time the LWKT scheduler fails
@@ -199,12 +205,10 @@ static __inline
 lwkt_token_t
 _lwkt_token_pool_lookup(void *ptr)
 {
-	uintptr_t n;
+	uint32_t i;
 
-	n = (uintptr_t)ptr + ((uintptr_t)ptr >> 18);
-	n = (n % TOKEN_PRIME);
-	n = (n ^ (n >> 16)) & (LWKT_NUM_POOL_TOKENS - 1);
-	return (&pool_tokens[n].token);
+	i = (uint32_t)(uintptr_t)ptr % LWKT_NUM_POOL_TOKENS;
+	return (&pool_tokens[i].token);
 }
 
 /*
@@ -330,7 +334,7 @@ _lwkt_trytokref(lwkt_tokref_t ref, thread_t td, long mode)
 		for (;;) {
 			oref = tok->t_ref;	/* can be NULL */
 			cpu_ccfence();
-			if ((count & (TOK_EXCLUSIVE|TOK_EXCLREQ)) == 0 ||
+			if ((count & (TOK_EXCLUSIVE|mode)) == 0 ||
 			    ((count & TOK_EXCLUSIVE) == 0 &&
 			    td->td_toks_stop != &td->td_toks_base + 1)
 			) {
@@ -368,16 +372,44 @@ static __inline
 int
 _lwkt_trytokref_spin(lwkt_tokref_t ref, thread_t td, long mode)
 {
-	int spin;
-
 	if (_lwkt_trytokref(ref, td, mode))
 		return TRUE;
-	for (spin = lwkt_token_spin; spin > 0; --spin) {
-		cpu_pause();
-		cpu_pause();
-		if (_lwkt_trytokref(ref, td, mode))
-			return TRUE;
+
+	if (mode & TOK_EXCLUSIVE) {
+		/*
+		 * Contested exclusive token, use exponential backoff
+		 * algorithm.
+		 */
+		long expbackoff;
+		long loop;
+
+		expbackoff = 0;
+		while (expbackoff < 6 + token_backoff_max) {
+			expbackoff = (expbackoff + 1) * 3 / 2;
+			if ((rdtsc() >> token_window_shift) % ncpus != mycpuid)  {
+				for (loop = expbackoff; loop; --loop)
+					cpu_pause();
+			}
+			if (_lwkt_trytokref(ref, td, mode))
+				return TRUE;
+		}
+	} else {
+		/*
+		 * Contested shared token, use TSC windowing.  Note that
+		 * exclusive tokens have priority over shared tokens only
+		 * for the first token.
+		 */
+		if ((rdtsc() >> token_window_shift) % ncpus == mycpuid) {
+			if (_lwkt_trytokref(ref, td, mode & ~TOK_EXCLREQ))
+				return TRUE;
+		} else {
+			if (_lwkt_trytokref(ref, td, mode))
+				return TRUE;
+		}
+
 	}
+	++mycpu->gd_cnt.v_lock_colls;
+
 	return FALSE;
 }
 
