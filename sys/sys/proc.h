@@ -355,7 +355,7 @@ struct	proc {
 #define	p_pgid		p_pgrp->pg_id
 
 /* These flags are kept in p_flags. */
-#define	P_UNUSED01	0x00001
+#define	P_UNUSED00	0x00001 /* was: Process may hold a POSIX advisory lock */
 #define	P_CONTROLT	0x00002	/* Has a controlling terminal */
 #define	P_SWAPPEDOUT	0x00004	/* Swapped out of memory */
 #define P_SYSVSEM	0x00008	/* Might have SysV semaphores */
