@@ -88,8 +88,9 @@ options 	ATA_STATIC_ID		# Static device numbering
 device		amd		# AMD 53C974 (Tekram DC-390(T))
 device		isp		# Qlogic family
 #device		ispfw		# Firmware for QLogic HBAs- normally a module
-device		mpt		# LSI-Logic MPT/Fusion
+device		mpr			# LSI-Logic MPT-Fusion 3
 device		mps		# LSI-Logic MPT-Fusion 2
+device		mpt		# LSI-Logic MPT/Fusion
 device		ncr		# NCR/Symbios Logic
 device		sym		# NCR/Symbios Logic (newer chipsets)
 options 	SYM_SETUP_LP_PROBE_MAP=0x40

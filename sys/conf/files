@@ -1072,6 +1072,14 @@ bus/mmc/mmc.c			optional mmc
 bus/mmc/mmcbr_if.m		standard
 bus/mmc/mmcbus_if.m		standard
 dev/disk/mmcsd/mmcsd.c		optional mmcsd
+dev/raid/mpr/mpr.c		optional mpr
+dev/raid/mpr/mpr_config.c	optional mpr
+dev/raid/mpr/mpr_mapping.c	optional mpr
+dev/raid/mpr/mpr_pci.c		optional mpr pci
+dev/raid/mpr/mpr_sas.c		optional mpr
+dev/raid/mpr/mpr_sas_lsi.c	optional mpr
+dev/raid/mpr/mpr_table.c	optional mpr
+dev/raid/mpr/mpr_user.c		optional mpr
 dev/raid/mps/mps.c		optional mps
 dev/raid/mps/mps_config.c	optional mps
 dev/raid/mps/mps_mapping.c	optional mps

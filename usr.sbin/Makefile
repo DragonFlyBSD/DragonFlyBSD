@@ -63,6 +63,7 @@ SUBDIR= 802_11 \
 	mld6query \
 	mlxcontrol \
 	moused \
+	mpsutil \
 	mptutil \
 	mrouted \
 	mtest \

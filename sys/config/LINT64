@@ -1435,8 +1435,9 @@ options                AGP_DEBUG
 device		amd		# AMD 53C974 (Tekram DC-390(T))
 device		isp		# Qlogic family
 device		ispfw		# Firmware for QLogic HBAs
-device		mpt		# LSI '909 FC adapters
+device		mpr		# LSI-Logic MPT-Fusion 3
 device		mps		# LSI-Logic MPT-Fusion 2
+device		mpt		# LSI '909 FC adapters
 device		ncr		# NCR/Symbios Logic
 device		sym		# NCR/Symbios Logic (newer chipsets)
 device		trm		# Tekram DC395U/UW/F and DC315U
