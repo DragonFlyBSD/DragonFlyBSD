@@ -3411,6 +3411,7 @@ TO_REMOVE+=/usr/share/man/man3/ipsec_strerror.3.gz
 TO_REMOVE+=/usr/share/man/man4/fast_ipsec.4.gz
 TO_REMOVE+=/usr/share/man/man4/ipsec.4.gz
 TO_REMOVE+=/usr/share/man/man8/setkey.8.gz
+TO_REMOVE+=/usr/include/sys/ioctl_compat.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

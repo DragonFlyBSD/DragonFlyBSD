@@ -46,7 +46,6 @@
 #include <sys/malloc.h>
 #include <sys/cons.h>
 #include <sys/proc.h>
-#include <sys/ioctl_compat.h>
 
 #include <sys/buf2.h>
 #include <sys/thread2.h>
@@ -420,7 +419,6 @@ daioctl(struct dev_ioctl_args *ap)
 		return(ENXIO);
 	
 	switch (ap->a_cmd) {
-	case IOCTLTRIM:
 	case DAIOCTRIM:
 	{
 

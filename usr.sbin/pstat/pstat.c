@@ -49,7 +49,6 @@
 #include <nfs/nfs.h>
 #include <nfs/nfsnode.h>
 #include <sys/ioctl.h>
-#include <sys/ioctl_compat.h>	/* XXX NTTYDISC is too well hidden */
 #include <sys/tty.h>
 #include <sys/conf.h>
 #include <sys/blist.h>
@@ -845,9 +844,6 @@ ttyprt(struct tty *tp, int line)
 	switch (tp->t_line) {
 	case TTYDISC:
 		printf("term\n");
-		break;
-	case NTTYDISC:
-		printf("ntty\n");
 		break;
 	case SLIPDISC:
 		printf("slip\n");

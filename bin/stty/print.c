@@ -28,7 +28,6 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/stty/print.c,v 1.12.2.2 2001/07/04 22:40:00 kris Exp $
- * $DragonFly: src/bin/stty/print.c,v 1.5 2004/11/07 20:54:52 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -39,8 +38,6 @@
 
 #include "stty.h"
 #include "extern.h"
-
-#include <sys/ioctl_compat.h>	/* XXX NTTYDISC is too well hidden */
 
 static void  binit (const char *);
 static void  bput (const char *);
@@ -60,9 +57,6 @@ print(struct termios *tp, struct winsize *wp, int ldisc, enum FMT fmt)
 	/* Line discipline. */
 	if (ldisc != TTYDISC) {
 		switch(ldisc) {
-		case NTTYDISC:
-			cnt += printf("new tty disc; ");
-			break;
 		case SLIPDISC:
 			cnt += printf("slip disc; ");
 			break;
