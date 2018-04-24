@@ -109,8 +109,6 @@ struct mprsas_softc {
 	TAILQ_HEAD(, mpr_fw_event_work)	ev_queue;
 };
 
-MALLOC_DECLARE(M_MPRSAS);
-
 /*
  * Abstracted so that the driver can be backwards and forwards compatible
  * with future versions of CAM that will provide this functionality.

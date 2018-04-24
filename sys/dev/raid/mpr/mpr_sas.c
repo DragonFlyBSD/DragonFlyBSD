@@ -113,8 +113,6 @@ static uint8_t op_code_prot[256] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-MALLOC_DEFINE(M_MPRSAS, "MPRSAS", "MPR SAS memory");
-
 static void mprsas_remove_device(struct mpr_softc *, struct mpr_command *);
 static void mprsas_remove_complete(struct mpr_softc *, struct mpr_command *);
 static void mprsas_action(struct cam_sim *sim, union ccb *ccb);
