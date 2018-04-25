@@ -1,6 +1,7 @@
-# $DragonFly: src/share/mk/bsd.hostlib.mk,v 1.2 2007/08/25 15:22:30 corecode Exp $
-
 .include <bsd.init.mk>
+
+# Hint HOST_CCVER handling.
+__USE_HOST_CCVER=
 
 # prefer .s to a .c, add .po, remove stuff not used in the BSD libraries
 # .So used for PIC object files

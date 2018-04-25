@@ -1,6 +1,7 @@
-# $DragonFly: src/share/mk/bsd.hostprog.mk,v 1.8 2008/05/19 10:26:02 corecode Exp $
-
 .include <bsd.init.mk>
+
+# Hint HOST_CCVER handling.
+__USE_HOST_CCVER=
 
 .SUFFIXES: .out .nx .no .c .cc .cpp .cxx .C .m .y .l .s .S
 

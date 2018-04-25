@@ -3,6 +3,13 @@
 # This file contains common settings used for building DragonFly
 # sources.
 
+# Support handling -W flags for both host cc and target cc.
+.if defined(__USE_HOST_CCVER)
+_WCCVER=	${HOST_CCVER}
+.else
+_WCCVER=	${CCVER}
+.endif
+
 CSTD?=	gnu99
 
 .if ${CSTD} == "k&r"
@@ -27,7 +34,7 @@ _cnowarnflags=
 . if defined(WARNS)
 .  if ${WARNS} >= 1
 CWARNFLAGS	+=	-Wmissing-include-dirs -Wsystem-headers
-.   if !defined(NO_WERROR) && (${CCVER} == "gcc47" || ${CCVER} == "gcc50")
+.   if !defined(NO_WERROR) && (${_WCCVER} == "gcc47" || ${_WCCVER} == "gcc50")
 CWARNFLAGS	+=	-Werror
 .   endif
 .  endif
@@ -52,7 +59,7 @@ CWARNFLAGS	+=	-Wchar-subscripts -Winline -Wnested-externs\
 .  if ${WARNS} >= 2 && ${WARNS} <= 4
 # XXX Delete -Wmaybe-uninitialized by default for now -- the compiler doesn't
 # XXX always get it right.
-.   if ${CCVER:Mgcc*}
+.   if ${_WCCVER:Mgcc*}
 _cnowarnflags	+=	-Wno-maybe-uninitialized
 .   else
 _cnowarnflags	+=	-Wno-uninitialized
@@ -61,16 +68,16 @@ _cnowarnflags	+=	-Wno-uninitialized
 # Activate gcc47's -Wunused-but-set-variable (which is in -Wall) and
 # -Wunused-but-set-parameter (which is in -Wextra) only at WARNS >= 4
 # (which is the level when also -Wunused-parameter comes into play).
-.  if ${WARNS} >= 2 && ${WARNS} <= 3 && ${CCVER:Mgcc*}
+.  if ${WARNS} >= 2 && ${WARNS} <= 3 && ${_WCCVER:Mgcc*}
 _cnowarnflags	+=	-Wno-unused-but-set-variable
 .  endif
-.  if ${WARNS} == 3 && ${CCVER:Mgcc*}
+.  if ${WARNS} == 3 && ${_WCCVER:Mgcc*}
 _cnowarnflags	+=	-Wno-unused-but-set-parameter
 .  endif
-.  if ${WARNS} == 3 && (${CCVER:Mgcc49} || ${CCVER:Mgcc[5-]*})
+.  if ${WARNS} == 3 && (${_WCCVER:Mgcc49} || ${_WCCVER:Mgcc[5-]*})
 _cnowarnflags	+=	-Wno-unused-value
 .  endif
-.  if ${WARNS} >= 2 && ${CCVER:Mgcc4[789]}
+.  if ${WARNS} >= 2 && ${_WCCVER:Mgcc4[789]}
 _cnowarnflags	+=	-Wno-error=maybe-uninitialized\
 			-Wno-error=uninitialized\
 			-Wno-error=shadow
@@ -82,7 +89,7 @@ _cnowarnflags	+=	-Wno-error=maybe-uninitialized\
 .   if ${WARNS} >= 6
 CWARNFLAGS	+=	-Wno-error=inline
 .   endif
-.   if ${WARNS} >= 5 && ${CCVER:Mgcc*}
+.   if ${WARNS} >= 5 && ${_WCCVER:Mgcc*}
 CWARNFLAGS	+=	-Wno-error=maybe-uninitialized
 .   endif
 .  endif
@@ -94,14 +101,14 @@ WFORMAT		=	1
 . if defined(WFORMAT)
 .  if ${WFORMAT} > 0
 CWARNFLAGS	+=	-Wformat=2
-.   if !defined(NO_WERROR) && (${CCVER} == "gcc47" || ${CCVER} == "gcc50")
+.   if !defined(NO_WERROR) && (${_WCCVER} == "gcc47" || ${_WCCVER} == "gcc50")
 CWARNFLAGS	+=	-Werror
 .   endif
 .  endif
 . endif
 .endif
 
-.if defined(NO_WCAST_FUNCTION_TYPE) && ${WARNS} >= 3 && ${CCVER:Mgcc8*}
+.if defined(NO_WCAST_FUNCTION_TYPE) && ${WARNS} >= 3 && ${_WCCVER:Mgcc8*}
 _cnowarnflags	+=      -Wno-cast-function-type
 .endif
 .if defined(NO_WARRAY_BOUNDS)
