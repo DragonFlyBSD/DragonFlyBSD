@@ -6,6 +6,8 @@
 PROG=	vidump
 SRCS=	dump.c
 
+build-tools: vidump.nx
+
 # vi dump is used in place, it is not installed anywhere
 install:
 

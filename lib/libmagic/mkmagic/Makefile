@@ -13,6 +13,8 @@ CFLAGS+=	-I${.CURDIR}/../libmagic
 # XXX -Wunused-function in apprentice.c
 WARNS= 1
 
+build-tools: mkmagic.nx
+
 # this mkmagic is used in place, it is not installed anywhere
 install:
 

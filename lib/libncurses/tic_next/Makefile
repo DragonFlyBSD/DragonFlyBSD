@@ -34,6 +34,8 @@ CLEANFILES=	ncurses_def.h parametrized.h termsort.c
 
 SRCS=	ncurses_def.h parametrized.h tic.c dump_entry.c tparm_type.c transform.c
 
+build-tools: tic_next.nx
+
 # this tic_next is used in place, it is not installed anywhere
 install:
 

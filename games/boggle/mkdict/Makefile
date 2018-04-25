@@ -5,6 +5,8 @@
 PROG=	mkdict
 CFLAGS+=-I${.CURDIR}/../boggle
 
+build-tools: mkdict.nx
+
 # this mkdict is used in place, it is not installed anywhere
 install:
 

@@ -5,6 +5,8 @@
 PROG=	mkindex
 CFLAGS+=-I${.CURDIR}/../boggle
 
+build-tools: mkindex.nx
+
 # this mkindex is used in place, it is not installed anywhere
 install:
 

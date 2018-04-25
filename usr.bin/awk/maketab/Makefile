@@ -15,6 +15,8 @@ WARNS= 2
 
 CLEANFILES+=	ytab.h y.tab.h awkgram.c
 
+build-tools: maketab.nx
+
 # this setup is used in place, it is not installed anywhere
 install:
 

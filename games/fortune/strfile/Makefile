@@ -3,6 +3,8 @@
 PROG=	strfile
 CFLAGS+=-I${.CURDIR}/../../../usr.bin/strfile
 
+build-tools: strfile.nx
+
 # this strfile is used in place, it is not installed anywhere
 install:
 

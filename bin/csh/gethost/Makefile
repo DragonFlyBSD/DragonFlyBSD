@@ -27,6 +27,8 @@ tc.const.h: tc.const.c sh.char.h config.h config_f.h sh.types.h sh.err.h
 
 CLEANFILES+=	sh.err.h tc.const.h
 
+build-tools: gethost.nx
+
 # this gethost is used in place, it is not installed anywhere
 install:
 
