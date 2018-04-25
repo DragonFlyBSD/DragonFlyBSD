@@ -1,9 +1,7 @@
-# $DragonFly: src/usr.bin/file/Makefile,v 1.9 2007/08/27 16:50:53 pavalos Exp $
-
 CONTRIBDIR=	${.CURDIR}/../../contrib/file
 .PATH: ${CONTRIBDIR}/src
 
-LIBMAGICDIR=	${.CURDIR}/../../lib/libmagic
+LIBMAGICDIR=	${.CURDIR}/../../lib/libmagic/libmagic
 CS=	1
 FS=	5
 VER!=	grep -w VERSION ${LIBMAGICDIR}/config.h | awk -F\" '{print $$2}'
