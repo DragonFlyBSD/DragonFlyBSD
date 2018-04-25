@@ -48,20 +48,18 @@
  * radeon_irq_process is a macro that points to the per-asic
  * irq handler callback.
  */
-irqreturn_t radeon_driver_irq_handler_kms(void *arg)
+irqreturn_t radeon_driver_irq_handler_kms(int irq, void *arg)
 {
 	struct drm_device *dev = (struct drm_device *) arg;
 	struct radeon_device *rdev = dev->dev_private;
-#ifdef PM_TODO
 	irqreturn_t ret;
 
 	ret = radeon_irq_process(rdev);
+#ifdef PM_TODO
 	if (ret == IRQ_HANDLED)
 		pm_runtime_mark_last_busy(dev->dev);
-	return ret;
-#else
-	return radeon_irq_process(rdev);
 #endif
+	return ret;
 }
 
 /*
@@ -264,7 +262,7 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 	}
 
 	/* enable msi */
-	rdev->msi_enabled = (rdev->ddev->irq_type == PCI_INTR_TYPE_MSI);
+	rdev->msi_enabled = (rdev->ddev->pdev->_irq_type == PCI_INTR_TYPE_MSI);
 
 #ifndef __DragonFly__
 	if (radeon_msi_ok(rdev)) {
@@ -283,7 +281,7 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 	TASK_INIT(&rdev->audio_work, 0, r600_audio_update_hdmi, rdev);
 
 	rdev->irq.installed = true;
-	r = drm_irq_install(rdev->ddev, rdev->ddev->irq);
+	r = drm_irq_install(rdev->ddev, rdev->ddev->pdev->irq);
 	if (r) {
 		rdev->irq.installed = false;
 		taskqueue_drain(rdev->tq, &rdev->hotplug_work);

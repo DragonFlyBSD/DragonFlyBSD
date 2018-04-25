@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 François Tigeot
+ * Copyright (c) 2017-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -36,6 +36,8 @@
 #include <linux/kref.h>
 
 #include <linux/atomic.h>
+
+#define IRQF_SHARED	0x00000080
 
 struct tasklet_struct {
 	unsigned long state;
@@ -95,5 +97,12 @@ tasklet_init(struct tasklet_struct *t, void (*func)(unsigned long), unsigned lon
 	t->func = func;
 	t->data = data;
 }
+
+typedef irqreturn_t (*irq_handler_t)(int, void *);
+
+int request_irq(unsigned int irq, irq_handler_t handler,
+		unsigned long flags, const char *name, void *dev);
+
+void free_irq(unsigned int irq, void *dev_id);
 
 #endif	/* _LINUX_INTERRUPT_H_ */

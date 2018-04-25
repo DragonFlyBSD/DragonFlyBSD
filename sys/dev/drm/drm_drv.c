@@ -1009,8 +1009,6 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 	struct drm_device *dev;
 	drm_pci_id_list_t *id_entry;
 	int unit, error;
-	u_int irq_flags;
-	int msi_enable;
 
 	unit = device_get_unit(kdev);
 	dev = device_get_softc(kdev);
@@ -1033,23 +1031,6 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 	    dev->pdev->device, idlist);
 	dev->id_entry = id_entry;
 
-	if (drm_core_check_feature(dev, DRIVER_HAVE_IRQ)) {
-		msi_enable = 1;
-
-		dev->irq_type = pci_alloc_1intr(dev->dev->bsddev, msi_enable,
-		    &dev->irqrid, &irq_flags);
-
-		dev->irqr = bus_alloc_resource_any(dev->dev->bsddev, SYS_RES_IRQ,
-		    &dev->irqrid, irq_flags);
-
-		if (!dev->irqr) {
-			return (ENOENT);
-		}
-
-		dev->irq = (int) rman_get_start(dev->irqr);
-		dev->pdev->irq = dev->irq; /* for i915 */
-	}
-
 	/* Print the contents of pdev struct. */
 	drm_print_pdev(dev->pdev);
 
@@ -1063,18 +1044,8 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 		goto error;
 
 	error = drm_create_cdevs(kdev);
-	if (error)
-		goto error;
 
-	return (error);
 error:
-	if (dev->irqr) {
-		bus_release_resource(dev->dev->bsddev, SYS_RES_IRQ,
-		    dev->irqrid, dev->irqr);
-	}
-	if (dev->irq_type == PCI_INTR_TYPE_MSI) {
-		pci_release_msi(dev->dev->bsddev);
-	}
 	return (error);
 }
 

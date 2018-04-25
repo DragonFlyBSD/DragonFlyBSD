@@ -403,15 +403,6 @@ int drm_release(device_t kdev)
 	 * End inline drm_release
 	 */
 
-	if (dev->irqr) {
-		bus_release_resource(dev->dev->bsddev, SYS_RES_IRQ, dev->irqrid,
-		    dev->irqr);
-		if (dev->irq_type == PCI_INTR_TYPE_MSI) {
-			pci_release_msi(dev->dev->bsddev);
-			DRM_INFO("MSI released\n");
-		}
-	}
-
 	mutex_unlock(&drm_global_mutex);
 
 	return (0);

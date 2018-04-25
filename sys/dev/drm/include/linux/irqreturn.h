@@ -27,9 +27,11 @@
 #ifndef _LINUX_IRQRETURN_H_
 #define _LINUX_IRQRETURN_H_
 
-typedef void	irqreturn_t;
+enum irqreturn {
+	IRQ_NONE	= 0,
+	IRQ_HANDLED	= 1,
+};
 
-#define IRQ_NONE	/* nothing, should be 0 */
-#define IRQ_HANDLED	/* nothing, should be 1 */
+typedef enum irqreturn irqreturn_t;
 
 #endif	/* _LINUX_IRQRETURN_H_ */

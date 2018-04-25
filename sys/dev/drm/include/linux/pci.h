@@ -72,6 +72,11 @@ struct pci_dev {
 
 	unsigned int irq;		/* handle with care */
 	void *pci_dev_data;
+
+	/* DragonFly-specific data */
+	int		_irq_type;
+	struct resource	*_irqr;
+	int		_irqrid;
 };
 
 struct pci_bus {

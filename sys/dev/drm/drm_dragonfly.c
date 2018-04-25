@@ -104,6 +104,9 @@ char *drm_asprintf(int flags, const char *format, ...)
 
 static void drm_fill_pdev(device_t dev, struct pci_dev *pdev)
 {
+	int msi_enable = 1;
+	u_int irq_flags;
+
 	pdev->dev.bsddev = dev;
 	pdev->vendor = pci_get_vendor(dev);
 	pdev->device = pci_get_device(dev);
@@ -111,6 +114,16 @@ static void drm_fill_pdev(device_t dev, struct pci_dev *pdev)
 	pdev->subsystem_device = pci_get_subdevice(dev);
 
 	pdev->revision = pci_get_revid(dev) & 0xff;
+
+	pdev->_irq_type = pci_alloc_1intr(dev, msi_enable,
+	    &pdev->_irqrid, &irq_flags);
+
+	pdev->_irqr = bus_alloc_resource_any(dev, SYS_RES_IRQ,
+	    &pdev->_irqrid, irq_flags);
+	if (!pdev->_irqr)
+		return;
+
+	pdev->irq = rman_get_start(pdev->_irqr);
 }
 
 void drm_init_pdev(device_t dev, struct pci_dev **pdev)

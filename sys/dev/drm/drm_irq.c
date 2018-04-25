@@ -36,8 +36,10 @@
 #include "drm_trace.h"
 #include "drm_internal.h"
 
+#include <linux/interrupt.h>	/* For task queue support */
 #include <linux/slab.h>
 
+#include <linux/vgaarb.h>
 #include <linux/export.h>
 
 /* Access macro for slots in vblank timestamp ringbuffer. */
@@ -485,6 +487,7 @@ static void drm_irq_vgaarb_nokms(void *cookie, bool state)
 int drm_irq_install(struct drm_device *dev, int irq)
 {
 	int ret;
+	unsigned long sh_flags = 0;
 
 	if (!drm_core_check_feature(dev, DRIVER_HAVE_IRQ))
 		return -EINVAL;
@@ -507,10 +510,13 @@ int drm_irq_install(struct drm_device *dev, int irq)
 		dev->driver->irq_preinstall(dev);
 
 	/* Install handler */
-	ret = -bus_setup_intr(dev->dev->bsddev, dev->irqr, INTR_MPSAFE,
-	    dev->driver->irq_handler, dev, &dev->irqh, &dev->irq_lock);
+	if (drm_core_check_feature(dev, DRIVER_IRQ_SHARED))
+		sh_flags = IRQF_SHARED;
 
-	if (ret != 0) {
+	ret = request_irq(irq, dev->driver->irq_handler,
+			  sh_flags, dev->driver->name, dev);
+
+	if (ret < 0) {
 		dev->irq_enabled = false;
 		return ret;
 	}
@@ -521,7 +527,7 @@ int drm_irq_install(struct drm_device *dev, int irq)
 
 	if (ret < 0) {
 		dev->irq_enabled = false;
-		bus_teardown_intr(dev->dev->bsddev, dev->irqr, dev->irqh);
+		free_irq(irq, dev);
 	} else {
 		dev->irq = irq;
 	}
@@ -588,7 +594,7 @@ int drm_irq_uninstall(struct drm_device *dev)
 	if (dev->driver->irq_uninstall)
 		dev->driver->irq_uninstall(dev);
 
-	bus_teardown_intr(dev->dev->bsddev, dev->irqr, dev->irqh);
+	free_irq(dev->irq, dev);
 
 	return 0;
 }

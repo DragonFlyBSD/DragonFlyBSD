@@ -26,6 +26,11 @@
  *
  */
 
+#define KBUILD_MODNAME	"i915"
+
+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+
+#include <linux/sysrq.h>
 #include <linux/circ_buf.h>
 #include <drm/drmP.h>
 #include <drm/i915_drm.h>
@@ -1324,11 +1329,13 @@ static irqreturn_t gen8_gt_irq_ack(struct drm_i915_private *dev_priv,
 				   u32 master_ctl,
 				   u32 gt_iir[4])
 {
+	irqreturn_t ret = IRQ_NONE;
 
 	if (master_ctl & (GEN8_GT_RCS_IRQ | GEN8_GT_BCS_IRQ)) {
 		gt_iir[0] = I915_READ_FW(GEN8_GT_IIR(0));
 		if (gt_iir[0]) {
 			I915_WRITE_FW(GEN8_GT_IIR(0), gt_iir[0]);
+			ret = IRQ_HANDLED;
 		} else
 			DRM_ERROR("The master control interrupt lied (GT0)!\n");
 	}
@@ -1337,6 +1344,7 @@ static irqreturn_t gen8_gt_irq_ack(struct drm_i915_private *dev_priv,
 		gt_iir[1] = I915_READ_FW(GEN8_GT_IIR(1));
 		if (gt_iir[1]) {
 			I915_WRITE_FW(GEN8_GT_IIR(1), gt_iir[1]);
+			ret = IRQ_HANDLED;
 		} else
 			DRM_ERROR("The master control interrupt lied (GT1)!\n");
 	}
@@ -1345,6 +1353,7 @@ static irqreturn_t gen8_gt_irq_ack(struct drm_i915_private *dev_priv,
 		gt_iir[3] = I915_READ_FW(GEN8_GT_IIR(3));
 		if (gt_iir[3]) {
 			I915_WRITE_FW(GEN8_GT_IIR(3), gt_iir[3]);
+			ret = IRQ_HANDLED;
 		} else
 			DRM_ERROR("The master control interrupt lied (GT3)!\n");
 	}
@@ -1354,10 +1363,12 @@ static irqreturn_t gen8_gt_irq_ack(struct drm_i915_private *dev_priv,
 		if (gt_iir[2] & dev_priv->pm_rps_events) {
 			I915_WRITE_FW(GEN8_GT_IIR(2),
 				      gt_iir[2] & dev_priv->pm_rps_events);
+			ret = IRQ_HANDLED;
 		} else
 			DRM_ERROR("The master control interrupt lied (PM)!\n");
 	}
 
+	return ret;
 }
 
 static void gen8_gt_irq_handler(struct drm_i915_private *dev_priv,
@@ -1767,10 +1778,11 @@ static void i9xx_hpd_irq_handler(struct drm_device *dev,
 	}
 }
 
-static irqreturn_t valleyview_irq_handler(void *arg)
+static irqreturn_t valleyview_irq_handler(int irq, void *arg)
 {
 	struct drm_device *dev = arg;
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	irqreturn_t ret = IRQ_NONE;
 
 	if (!intel_irqs_enabled(dev_priv))
 		return IRQ_NONE;
@@ -1791,6 +1803,7 @@ static irqreturn_t valleyview_irq_handler(void *arg)
 		if (gt_iir == 0 && pm_iir == 0 && iir == 0)
 			break;
 
+		ret = IRQ_HANDLED;
 
 		/*
 		 * Theory on interrupt generation, based on empirical evidence:
@@ -1845,12 +1858,14 @@ static irqreturn_t valleyview_irq_handler(void *arg)
 
 	enable_rpm_wakeref_asserts(dev_priv);
 
+	return ret;
 }
 
-static irqreturn_t cherryview_irq_handler(void *arg)
+static irqreturn_t cherryview_irq_handler(int irq, void *arg)
 {
 	struct drm_device *dev = arg;
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	irqreturn_t ret = IRQ_NONE;
 
 	if (!intel_irqs_enabled(dev_priv))
 		return IRQ_NONE;
@@ -1871,6 +1886,7 @@ static irqreturn_t cherryview_irq_handler(void *arg)
 		if (master_ctl == 0 && iir == 0)
 			break;
 
+		ret = IRQ_HANDLED;
 
 		/*
 		 * Theory on interrupt generation, based on empirical evidence:
@@ -1919,6 +1935,7 @@ static irqreturn_t cherryview_irq_handler(void *arg)
 
 	enable_rpm_wakeref_asserts(dev_priv);
 
+	return ret;
 }
 
 static void ibx_hpd_irq_handler(struct drm_device *dev, u32 hotplug_trigger,
@@ -2238,11 +2255,12 @@ static void ivb_display_irq_handler(struct drm_device *dev, u32 de_iir)
  * 4 - Process the interrupt(s) that had bits set in the IIRs.
  * 5 - Re-enable Master Interrupt Control.
  */
-static irqreturn_t ironlake_irq_handler(void *arg)
+static irqreturn_t ironlake_irq_handler(int irq, void *arg)
 {
 	struct drm_device *dev = arg;
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	u32 de_iir, gt_iir, de_ier, sde_ier = 0;
+	irqreturn_t ret = IRQ_NONE;
 
 	if (!intel_irqs_enabled(dev_priv))
 		return IRQ_NONE;
@@ -2271,6 +2289,7 @@ static irqreturn_t ironlake_irq_handler(void *arg)
 	gt_iir = I915_READ(GTIIR);
 	if (gt_iir) {
 		I915_WRITE(GTIIR, gt_iir);
+		ret = IRQ_HANDLED;
 		if (INTEL_INFO(dev)->gen >= 6)
 			snb_gt_irq_handler(dev_priv, gt_iir);
 		else
@@ -2280,6 +2299,7 @@ static irqreturn_t ironlake_irq_handler(void *arg)
 	de_iir = I915_READ(DEIIR);
 	if (de_iir) {
 		I915_WRITE(DEIIR, de_iir);
+		ret = IRQ_HANDLED;
 		if (INTEL_INFO(dev)->gen >= 7)
 			ivb_display_irq_handler(dev, de_iir);
 		else
@@ -2290,6 +2310,7 @@ static irqreturn_t ironlake_irq_handler(void *arg)
 		u32 pm_iir = I915_READ(GEN6_PMIIR);
 		if (pm_iir) {
 			I915_WRITE(GEN6_PMIIR, pm_iir);
+			ret = IRQ_HANDLED;
 			gen6_rps_irq_handler(dev_priv, pm_iir);
 		}
 	}
@@ -2304,6 +2325,7 @@ static irqreturn_t ironlake_irq_handler(void *arg)
 	/* IRQs are synced during runtime_suspend, we don't require a wakeref */
 	enable_rpm_wakeref_asserts(dev_priv);
 
+	return ret;
 }
 
 static void bxt_hpd_irq_handler(struct drm_device *dev, u32 hotplug_trigger,
@@ -2326,6 +2348,7 @@ static irqreturn_t
 gen8_de_irq_handler(struct drm_i915_private *dev_priv, u32 master_ctl)
 {
 	struct drm_device *dev = dev_priv->dev;
+	irqreturn_t ret = IRQ_NONE;
 	u32 iir;
 	enum i915_pipe pipe;
 
@@ -2333,6 +2356,7 @@ gen8_de_irq_handler(struct drm_i915_private *dev_priv, u32 master_ctl)
 		iir = I915_READ(GEN8_DE_MISC_IIR);
 		if (iir) {
 			I915_WRITE(GEN8_DE_MISC_IIR, iir);
+			ret = IRQ_HANDLED;
 			if (iir & GEN8_DE_MISC_GSE)
 				intel_opregion_asle_intr(dev);
 			else
@@ -2349,6 +2373,7 @@ gen8_de_irq_handler(struct drm_i915_private *dev_priv, u32 master_ctl)
 			bool found = false;
 
 			I915_WRITE(GEN8_DE_PORT_IIR, iir);
+			ret = IRQ_HANDLED;
 
 			tmp_mask = GEN8_AUX_CHANNEL_A;
 			if (INTEL_INFO(dev_priv)->gen >= 9)
@@ -2399,6 +2424,7 @@ gen8_de_irq_handler(struct drm_i915_private *dev_priv, u32 master_ctl)
 			continue;
 		}
 
+		ret = IRQ_HANDLED;
 		I915_WRITE(GEN8_DE_PIPE_IIR(pipe), iir);
 
 		if (iir & GEN8_PIPE_VBLANK &&
@@ -2444,6 +2470,7 @@ gen8_de_irq_handler(struct drm_i915_private *dev_priv, u32 master_ctl)
 		iir = I915_READ(SDEIIR);
 		if (iir) {
 			I915_WRITE(SDEIIR, iir);
+			ret = IRQ_HANDLED;
 
 			if (HAS_PCH_SPT(dev_priv) || HAS_PCH_KBP(dev_priv))
 				spt_irq_handler(dev, iir);
@@ -2458,14 +2485,16 @@ gen8_de_irq_handler(struct drm_i915_private *dev_priv, u32 master_ctl)
 		}
 	}
 
+	return ret;
 }
 
-static irqreturn_t gen8_irq_handler(void *arg)
+static irqreturn_t gen8_irq_handler(int irq, void *arg)
 {
 	struct drm_device *dev = arg;
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	u32 master_ctl;
 	u32 gt_iir[4] = {};
+	irqreturn_t ret;
 
 	if (!intel_irqs_enabled(dev_priv))
 		return IRQ_NONE;
@@ -2481,15 +2510,16 @@ static irqreturn_t gen8_irq_handler(void *arg)
 	disable_rpm_wakeref_asserts(dev_priv);
 
 	/* Find, clear, then process each source of interrupt */
-	gen8_gt_irq_ack(dev_priv, master_ctl, gt_iir);
+	ret = gen8_gt_irq_ack(dev_priv, master_ctl, gt_iir);
 	gen8_gt_irq_handler(dev_priv, gt_iir);
-	gen8_de_irq_handler(dev_priv, master_ctl);
+	ret |= gen8_de_irq_handler(dev_priv, master_ctl);
 
 	I915_WRITE_FW(GEN8_MASTER_IRQ, GEN8_MASTER_IRQ_CONTROL);
 	POSTING_READ_FW(GEN8_MASTER_IRQ);
 
 	enable_rpm_wakeref_asserts(dev_priv);
 
+	return ret;
 }
 
 static void i915_error_wake_up(struct drm_i915_private *dev_priv,
@@ -4009,7 +4039,7 @@ check_page_flip:
 	return false;
 }
 
-static irqreturn_t i8xx_irq_handler(void *arg)
+static irqreturn_t i8xx_irq_handler(int irq, void *arg)
 {
 	struct drm_device *dev = arg;
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -4019,6 +4049,7 @@ static irqreturn_t i8xx_irq_handler(void *arg)
 	u16 flip_mask =
 		I915_DISPLAY_PLANE_A_FLIP_PENDING_INTERRUPT |
 		I915_DISPLAY_PLANE_B_FLIP_PENDING_INTERRUPT;
+	irqreturn_t ret;
 
 	if (!intel_irqs_enabled(dev_priv))
 		return IRQ_NONE;
@@ -4026,6 +4057,7 @@ static irqreturn_t i8xx_irq_handler(void *arg)
 	/* IRQs are synced during runtime_suspend, we don't require a wakeref */
 	disable_rpm_wakeref_asserts(dev_priv);
 
+	ret = IRQ_NONE;
 	iir = I915_READ16(IIR);
 	if (iir == 0)
 		goto out;
@@ -4077,10 +4109,12 @@ static irqreturn_t i8xx_irq_handler(void *arg)
 
 		iir = new_iir;
 	}
+	ret = IRQ_HANDLED;
 
 out:
 	enable_rpm_wakeref_asserts(dev_priv);
 
+	return ret;
 }
 
 static void i8xx_irq_uninstall(struct drm_device * dev)
@@ -4196,7 +4230,7 @@ check_page_flip:
 	return false;
 }
 
-static irqreturn_t i915_irq_handler(void *arg)
+static irqreturn_t i915_irq_handler(int irq, void *arg)
 {
 	struct drm_device *dev = arg;
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -4204,7 +4238,7 @@ static irqreturn_t i915_irq_handler(void *arg)
 	u32 flip_mask =
 		I915_DISPLAY_PLANE_A_FLIP_PENDING_INTERRUPT |
 		I915_DISPLAY_PLANE_B_FLIP_PENDING_INTERRUPT;
-	int pipe;
+	int pipe, ret = IRQ_NONE;
 
 	if (!intel_irqs_enabled(dev_priv))
 		return IRQ_NONE;
@@ -4293,11 +4327,13 @@ static irqreturn_t i915_irq_handler(void *arg)
 		 * trigger the 99% of 100,000 interrupts test for disabling
 		 * stray interrupts.
 		 */
+		ret = IRQ_HANDLED;
 		iir = new_iir;
 	} while (iir & ~flip_mask);
 
 	enable_rpm_wakeref_asserts(dev_priv);
 
+	return ret;
 }
 
 static void i915_irq_uninstall(struct drm_device * dev)
@@ -4422,13 +4458,13 @@ static void i915_hpd_irq_setup(struct drm_device *dev)
 					     hotplug_en);
 }
 
-static irqreturn_t i965_irq_handler(void *arg)
+static irqreturn_t i965_irq_handler(int irq, void *arg)
 {
 	struct drm_device *dev = arg;
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	u32 iir, new_iir;
 	u32 pipe_stats[I915_MAX_PIPES];
-	int pipe;
+	int ret = IRQ_NONE, pipe;
 	u32 flip_mask =
 		I915_DISPLAY_PLANE_A_FLIP_PENDING_INTERRUPT |
 		I915_DISPLAY_PLANE_B_FLIP_PENDING_INTERRUPT;
@@ -4471,6 +4507,7 @@ static irqreturn_t i965_irq_handler(void *arg)
 		if (!irq_received)
 			break;
 
+		ret = IRQ_HANDLED;
 
 		/* Consume port.  Then clear IIR or we'll miss events */
 		if (iir & I915_DISPLAY_PORT_INTERRUPT) {
@@ -4528,6 +4565,7 @@ static irqreturn_t i965_irq_handler(void *arg)
 
 	enable_rpm_wakeref_asserts(dev_priv);
 
+	return ret;
 }
 
 static void i965_irq_uninstall(struct drm_device * dev)
