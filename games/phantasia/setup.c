@@ -3,10 +3,20 @@
  *
  * $FreeBSD: src/games/phantasia/setup.c,v 1.11 1999/11/16 02:57:34 billf Exp $
  */
-#include "include.h"
+/*#include "include.h"*/
+#include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <math.h>
+#include <setjmp.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
+
+#include "include.h"
 
 void Error(const char *, const char *) __dead2;
 
