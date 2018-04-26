@@ -239,6 +239,8 @@ again:
 			s = script->s;
 			state = ST_STRING;
 			goto again;
+		default:
+			errx(1, "illegal script type: %d", script->type);
 		}
 	case ST_FILE:
 		if ((p = fgets(buf, n, f)) != NULL) {
