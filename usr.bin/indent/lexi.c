@@ -304,6 +304,7 @@ lexi(void)
 
 	    case 7:
 		ps.sizeof_keyword = true;
+		/* FALLTHROUGH */
 	    default:		/* all others are treated like any other
 				 * identifier */
 		return (ident);

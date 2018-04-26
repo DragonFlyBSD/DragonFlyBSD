@@ -322,6 +322,7 @@ main(int argc, char **argv)
 		    goto sw_buffer;	/* go to common code to get out of
 					 * this loop */
 		}
+		/* FALLTHROUGH */
 	    case comment:	/* we have a comment, so we must copy it into
 				 * the buffer */
 		if (!flushed_nl || sc_end != NULL) {
@@ -359,6 +360,7 @@ main(int argc, char **argv)
 			fill_buffer();
 		    break;
 		}
+		/* FALLTHROUGH */
 	    default:		/* it is the start of a normal statement */
 		if (flushed_nl)	/* if we flushed a newline, make sure it is
 				 * put back */
