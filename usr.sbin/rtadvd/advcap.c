@@ -271,6 +271,7 @@ tskip(char *bp)
 					;
 			} else
 				bp++;
+			/* FALLTHROUGH */
 		case '"':
 			dquote = (dquote ? 1 : 0);
 			bp++;

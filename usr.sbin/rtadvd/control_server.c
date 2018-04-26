@@ -704,6 +704,7 @@ cm_handler_server(int fd)
 			switch (cm->cm_type) {
 			case CM_TYPE_EOM:
 				state = CM_STATE_EOM;
+				/* FALLTHROUGH */
 			case CM_TYPE_NUL:
 				cm->cm_type = CM_TYPE_ACK;
 				cm->cm_len = sizeof(*cm);
