@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/qdivrem.c,v 1.2 1999/08/28 00:05:33 peter Exp $
- * $DragonFly: src/lib/libstand/qdivrem.c,v 1.4 2005/12/11 02:27:26 swildner Exp $
  * 	From: Id: qdivrem.c,v 1.7 1997/11/07 09:20:40 phk Exp
  */
 
@@ -69,7 +68,7 @@ shl(digit *p, int len, int sh)
 }
 
 /*
- * __qdivrem(u, v, rem) returns u/v and, optionally, sets *rem to u%v.
+ * __udivmoddi4(u, v, rem) returns u/v and, optionally, sets *rem to u%v.
  *
  * We do this in base 2-sup-HALF_BITS, so that all intermediate products
  * fit within u_int.  As a consequence, the maximum length dividend and
@@ -77,7 +76,7 @@ shl(digit *p, int len, int sh)
  * leading zeros).
  */
 u_quad_t
-__qdivrem(u_quad_t uq, u_quad_t vq, u_quad_t *arq)
+__udivmoddi4(u_quad_t uq, u_quad_t vq, u_quad_t *arq)
 {
 	union uu tmp;
 	digit *u, *v, *q;
@@ -280,7 +279,7 @@ u_quad_t
 __udivdi3(u_quad_t a, u_quad_t b)
 {
 
-	return (__qdivrem(a, b, (u_quad_t *)0));
+	return (__udivmoddi4(a, b, (u_quad_t *)0));
 }
 
 /*
@@ -291,6 +290,6 @@ __umoddi3(u_quad_t a, u_quad_t b)
 {
 	u_quad_t r;
 
-	(void)__qdivrem(a, b, &r);
+	(void)__udivmoddi4(a, b, &r);
 	return (r);
 }

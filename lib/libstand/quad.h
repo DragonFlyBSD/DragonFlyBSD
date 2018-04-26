@@ -63,6 +63,6 @@ union uu {
 #define	HHALF(x)	((x) >> HALF_BITS)
 #define	LHALF(x)	((x) & ((1 << HALF_BITS) - 1))
 
-u_quad_t	__qdivrem (u_quad_t, u_quad_t, u_quad_t *);
+u_quad_t	__udivmoddi4 (u_quad_t, u_quad_t, u_quad_t *);
 u_quad_t	__udivdi3 (u_quad_t, u_quad_t);
 u_quad_t	__umoddi3 (u_quad_t, u_quad_t);
