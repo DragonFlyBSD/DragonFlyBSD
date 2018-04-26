@@ -375,6 +375,7 @@ main(int ac, char **av)
 					set_dev(dev_name);
 					break;
 				}
+				/* FALLTHROUGH */
 			default:
 				if (opt_write) {
 					rv = write(snp_io, chb, nread);
