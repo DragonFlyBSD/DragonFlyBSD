@@ -198,6 +198,7 @@ again:
 				goto newaddr;
 			return (0);
 		}
+		/* FALLTHROUGH */
 
 	case QUIT:
 		return (0);
