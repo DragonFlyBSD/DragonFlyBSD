@@ -236,7 +236,7 @@ state(const KINFO *k, const struct varent *vent)
 				*cp = 'D';	/* uninterruptable wait */
 			else
 				*cp = 'B';	/* uninterruptable lwkt wait */
-			/*break;*/
+			/* FALLTHROUGH */
 
 		case LSRUN:
 			if (KI_LWP(k, stat) == LSRUN) {
