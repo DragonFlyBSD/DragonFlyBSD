@@ -587,6 +587,7 @@ resource_num(int which, int ch, const char *str)
 		switch (*e++) {
 		case 0:	/* end of string */
 		    e--;
+		    /* FALLTHROUGH */
 		default:
 		    mult = 1;
 		    break;
