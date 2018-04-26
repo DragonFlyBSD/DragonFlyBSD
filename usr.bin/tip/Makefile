@@ -18,6 +18,8 @@ SRCS=	acu.c acucommon.c cmds.c cmdtab.c cu.c hunt.c log.c partab.c \
 	remote.c tip.c tipout.c tod.c unidialer.c value.c vars.c
 
 WARNS?=	2
+# tip.h (zzhack *) casts
+NO_STRICT_ALIASING=
 
 BINDIR?=	/usr/bin
 BINOWN=		uucp
