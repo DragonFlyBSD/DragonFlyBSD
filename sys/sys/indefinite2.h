@@ -51,11 +51,12 @@
  * Initialize the indefinite state (only if the TSC is supported)
  */
 static __inline void
-indefinite_init(indefinite_info_t *info, const char *ident, int now, char type)
+indefinite_init(indefinite_info_t *info, const char *ident, char now, char type)
 {
 	info->ident = ident;
 	info->secs = 0;
 	info->count = 0;
+	info->reported = now;
 
 	if (tsc_frequency) {
 		info->type = type;
@@ -87,8 +88,15 @@ indefinite_check(indefinite_info_t *info)
 #endif
 	if (info->type == 0)
 		return FALSE;
-	if (info->count == INDEF_INFO_START)	/* start recording time */
+	if (info->count == INDEF_INFO_START) {	/* start recording time */
 		info->base = rdtsc();
+		if (info->reported == 0 && info->ident) {
+			mycpu->gd_cnt.v_lock_name[0] = info->type;
+			strncpy(mycpu->gd_cnt.v_lock_name + 1, info->ident,
+				sizeof(mycpu->gd_cnt.v_lock_name) - 2);
+			info->reported = 1;
+		}
+	}
 	if ((++info->count & 127) != 127)
 		return FALSE;
 	info->count = 128;
@@ -105,11 +113,6 @@ indefinite_check(indefinite_info_t *info)
 	 * Ignore minor one-second interval error accumulation in
 	 * favor of ensuring that info->base is fully synchronized.
 	 */
-	if (info->secs == 0 && delta > tsc_oneus_approx && info->ident) {
-		mycpu->gd_cnt.v_lock_name[0] = info->type;
-		strncpy(mycpu->gd_cnt.v_lock_name + 1, info->ident,
-			sizeof(mycpu->gd_cnt.v_lock_name) - 2);
-	}
 	if (delta >= tsc_frequency) {
 		info->secs += delta / tsc_frequency;
 		info->base += delta;
@@ -180,11 +183,6 @@ indefinite_done(indefinite_info_t *info)
 		gd = mycpu;
 		delta = rdtsc() - info->base;
 		delta = delta * 1000000U / tsc_frequency;
-		if (delta && info->ident) {
-			gd->gd_cnt.v_lock_name[0] = info->type;
-			strncpy(gd->gd_cnt.v_lock_name + 1, info->ident,
-				sizeof(gd->gd_cnt.v_lock_name) - 2);
-		}
 		gd->gd_cnt.v_lock_colls += delta;
 	}
 	info->type = 0;

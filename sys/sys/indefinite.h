@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2017-2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -49,13 +49,14 @@ struct indefinite_info {
 	int		secs;
 	int		count;
 	char		type;
-};
+	char		reported;
+} __cachealign;
 
 typedef struct indefinite_info	indefinite_info_t;
 
 /*
  * Loops before we start recording the TSC (valid range is 1-127)
  */
-#define INDEF_INFO_START	15
+#define INDEF_INFO_START	5
 
 #endif
