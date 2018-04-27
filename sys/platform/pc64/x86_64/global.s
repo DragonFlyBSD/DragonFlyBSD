@@ -49,9 +49,11 @@
 	 * Define layout of the global data.  On SMP this lives in
 	 * the per-cpu address space, otherwise it's in the data segment.
 	 */
-	.globl	gd_trampoline
+	.globl	gd_trampoline, gd_debug1, gd_debug2
 	.globl	gd_curthread, gd_npxthread, gd_reqflags, gd_common_tss
 	.set	gd_trampoline,globaldata + GD_TRAMPOLINE
+	.set	gd_debug1,globaldata + GD_DEBUG1
+	.set	gd_debug2,globaldata + GD_DEBUG2
 	.set	gd_curthread,globaldata + GD_CURTHREAD
 	.set	gd_npxthread,globaldata + GD_NPXTHREAD
 	.set	gd_reqflags,globaldata + GD_REQFLAGS

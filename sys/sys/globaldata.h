@@ -199,7 +199,9 @@ struct globaldata {
 	uint32_t	gd_loadav_nrunnable;	/* pcpu lwps nrunnable */
 	uint32_t	gd_reserved32[1];
 	struct lock	gd_sysctllock;		/* sysctl topology lock */
-	void		*gd_preserved[4];	/* future fields */
+	uintptr_t	gd_debug1;
+	uintptr_t	gd_debug2;
+	void		*gd_preserved[2];	/* future fields */
 	/* extended by <machine/globaldata.h> */
 };
 

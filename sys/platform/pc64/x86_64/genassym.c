@@ -207,6 +207,8 @@ ASSYM(MDGLOBALDATA_BASEALLOC_PAGES, MDGLOBALDATA_BASEALLOC_PAGES);
 ASSYM(GD_PRIVATE_TSS, offsetof(struct mdglobaldata, gd_private_tss));
 ASSYM(GD_COMMON_TSS, offsetof(struct privatespace, common_tss));
 ASSYM(GD_TRAMPOLINE, offsetof(struct privatespace, trampoline));
+ASSYM(GD_DEBUG1, offsetof(struct mdglobaldata, mi.gd_debug1));
+ASSYM(GD_DEBUG2, offsetof(struct mdglobaldata, mi.gd_debug2));
 ASSYM(GD_USER_FS, offsetof(struct mdglobaldata, gd_user_fs));
 ASSYM(GD_USER_GS, offsetof(struct mdglobaldata, gd_user_gs));
 ASSYM(GD_INTR_NESTING_LEVEL, offsetof(struct mdglobaldata, mi.gd_intr_nesting_level));
