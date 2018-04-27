@@ -449,28 +449,19 @@ dfly_acquire_curproc(struct lwp *lp)
 		}
 
 		/*
-		 * Put us back on the same run queue unconditionally.
+		 * Requeue us at lwp_priority, which recalculate_estcpu
+		 * set for us.  Reset the rrcount to force placement
+		 * at the end of the queue.
 		 *
-		 * Set rrinterval to force placement at end of queue.
-		 * Select the worst queue to ensure we round-robin,
-		 * but do not change estcpu.
+		 * We used to move ourselves to the worst queue, but
+		 * this creates a fairly serious priority inversion
+		 * problem.
 		 */
 		if (lp->lwp_thread->td_mpflags & TDF_MP_DIDYIELD) {
-			u_int32_t tsqbits;
+			spin_unlock(&dd->spin);
+			lp->lwp_rrcount = usched_dfly_rrinterval;
+			lp->lwp_rqindex = (lp->lwp_priority & PRIMASK) / PPQ;
 
-			switch(lp->lwp_rqtype) {
-			case RTP_PRIO_NORMAL:
-				tsqbits = dd->queuebits;
-				spin_unlock(&dd->spin);
-
-				lp->lwp_rrcount = usched_dfly_rrinterval;
-				if (tsqbits)
-					lp->lwp_rqindex = bsrl(tsqbits);
-				break;
-			default:
-				spin_unlock(&dd->spin);
-				break;
-			}
 			lwkt_deschedule(lp->lwp_thread);
 			dfly_setrunqueue_dd(dd, lp);
 			atomic_clear_int(&lp->lwp_thread->td_mpflags,
@@ -513,6 +504,7 @@ dfly_acquire_curproc(struct lwp *lp)
 			spin_unlock(&dd->spin);
 			break;
 		}
+
 		/*
 		 * We are not the current lwp, figure out the best cpu
 		 * to run on (our current cpu will be given significant
@@ -1490,21 +1482,30 @@ dfly_chooseproc_locked(dfly_pcpu_t rdd, dfly_pcpu_t dd,
 	u_int32_t tsqbits;
 	u_int32_t idqbits;
 
+	/*
+	 * Select best or worst process.  Once selected, clear the bit
+	 * in our local variable (idqbits, tsqbits, or rtqbits) just
+	 * in case we have to loop.
+	 */
 	rtqbits = rdd->rtqueuebits;
 	tsqbits = rdd->queuebits;
 	idqbits = rdd->idqueuebits;
 
+loopfar:
 	if (worst) {
 		if (idqbits) {
 			pri = bsrl(idqbits);
+			idqbits &= ~(1U << pri);
 			q = &rdd->idqueues[pri];
 			which = &rdd->idqueuebits;
 		} else if (tsqbits) {
 			pri = bsrl(tsqbits);
+			tsqbits &= ~(1U << pri);
 			q = &rdd->queues[pri];
 			which = &rdd->queuebits;
 		} else if (rtqbits) {
 			pri = bsrl(rtqbits);
+			rtqbits &= ~(1U << pri);
 			q = &rdd->rtqueues[pri];
 			which = &rdd->rtqueuebits;
 		} else {
@@ -1514,14 +1515,17 @@ dfly_chooseproc_locked(dfly_pcpu_t rdd, dfly_pcpu_t dd,
 	} else {
 		if (rtqbits) {
 			pri = bsfl(rtqbits);
+			rtqbits &= ~(1U << pri);
 			q = &rdd->rtqueues[pri];
 			which = &rdd->rtqueuebits;
 		} else if (tsqbits) {
 			pri = bsfl(tsqbits);
+			tsqbits &= ~(1U << pri);
 			q = &rdd->queues[pri];
 			which = &rdd->queuebits;
 		} else if (idqbits) {
 			pri = bsfl(idqbits);
+			idqbits &= ~(1U << pri);
 			q = &rdd->idqueues[pri];
 			which = &rdd->idqueuebits;
 		} else {
@@ -1531,6 +1535,7 @@ dfly_chooseproc_locked(dfly_pcpu_t rdd, dfly_pcpu_t dd,
 	}
 	KASSERT(lp, ("chooseproc: no lwp on busy queue"));
 
+loopnear:
 	/*
 	 * If the passed lwp <chklp> is reasonably close to the selected
 	 * lwp <lp>, return NULL (indicating that <chklp> should be kept).
@@ -1541,6 +1546,22 @@ dfly_chooseproc_locked(dfly_pcpu_t rdd, dfly_pcpu_t dd,
 	if (chklp) {
 		if (chklp->lwp_priority < lp->lwp_priority + PPQ)
 			return(NULL);
+	}
+
+	/*
+	 * When rdd != dd, we have to make sure that the process we
+	 * are pulling is allow to run on our cpu.  This alternative
+	 * path is a bit more expensive but its not considered to be
+	 * in the critical path.
+	 */
+	if (rdd != dd && CPUMASK_TESTBIT(lp->lwp_cpumask, dd->cpuid) == 0) {
+		if (worst)
+			lp = TAILQ_PREV(lp, rq, lwp_procq);
+		else
+			lp = TAILQ_NEXT(lp, lwp_procq);
+		if (lp)
+			goto loopnear;
+		goto loopfar;
 	}
 
 	KTR_COND_LOG(usched_chooseproc,
