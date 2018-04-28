@@ -83,7 +83,7 @@ int dfly_rebalanced;
  * Remember that NICE runs over the whole -20 to +20 range.
  */
 #define NICE_QS		24	/* -20 to +20 shift in whole queues */
-#define EST_QS		12	/* 0-MAX shift in whole queues */
+#define EST_QS		20	/* 0-MAX shift in whole queues */
 #define ESTCPUPPQ	512
 #define ESTCPUMAX	(ESTCPUPPQ * EST_QS)
 #define PRIO_RANGE	(PRIO_MAX - PRIO_MIN + 1)
@@ -308,7 +308,7 @@ static int usched_dfly_weight2 = 180;	/* synchronous peer's current cpu */
 static int usched_dfly_weight3 = 40;	/* number of threads on queue */
 static int usched_dfly_weight4 = 160;	/* availability of idle cores */
 static int usched_dfly_features = 0x8F;	/* allow pulls */
-static int usched_dfly_fast_resched = 0;/* delta priority / resched */
+static int usched_dfly_fast_resched = PPQ / 2; /* delta priority / resched */
 static int usched_dfly_swmask = ~PPQMASK; /* allow pulls */
 static int usched_dfly_rrinterval = (ESTCPUFREQ + 9) / 10;
 static int usched_dfly_decay = 8;
@@ -449,34 +449,11 @@ dfly_acquire_curproc(struct lwp *lp)
 		}
 
 		/*
-		 * Requeue us at lwp_priority, which recalculate_estcpu
-		 * set for us.  Reset the rrcount to force placement
-		 * at the end of the queue.
-		 *
-		 * We used to move ourselves to the worst queue, but
-		 * this creates a fairly serious priority inversion
-		 * problem.
-		 */
-		if (lp->lwp_thread->td_mpflags & TDF_MP_DIDYIELD) {
-			spin_unlock(&dd->spin);
-			lp->lwp_rrcount = usched_dfly_rrinterval;
-			lp->lwp_rqindex = (lp->lwp_priority & PRIMASK) / PPQ;
-
-			lwkt_deschedule(lp->lwp_thread);
-			dfly_setrunqueue_dd(dd, lp);
-			atomic_clear_int(&lp->lwp_thread->td_mpflags,
-					 TDF_MP_DIDYIELD);
-			lwkt_switch();
-			gd = mycpu;
-			dd = &dfly_pcpu[gd->gd_cpuid];
-			continue;
-		}
-
-		/*
 		 * Can we steal the current designated user thread?
 		 *
 		 * If we do the other thread will stall when it tries to
 		 * return to userland, possibly rescheduling elsewhere.
+		 * Set need_user_resched() to get the thread to cycle soonest.
 		 *
 		 * It is important to do a masked test to avoid the edge
 		 * case where two near-equal-priority threads are constantly
@@ -501,8 +478,33 @@ dfly_acquire_curproc(struct lwp *lp)
 			dd->uschedcp = lp;
 			dd->upri = lp->lwp_priority;
 			KKASSERT(lp->lwp_qcpu == dd->cpuid);
+			need_user_resched();
 			spin_unlock(&dd->spin);
 			break;
+		}
+
+		/*
+		 * Requeue us at lwp_priority, which recalculate_estcpu()
+		 * set for us.  Reset the rrcount to force placement
+		 * at the end of the queue.
+		 *
+		 * We used to move ourselves to the worst queue, but
+		 * this creates a fairly serious priority inversion
+		 * problem.
+		 */
+		if (lp->lwp_thread->td_mpflags & TDF_MP_DIDYIELD) {
+			spin_unlock(&dd->spin);
+			lp->lwp_rrcount = usched_dfly_rrinterval;
+			lp->lwp_rqindex = (lp->lwp_priority & PRIMASK) / PPQ;
+
+			lwkt_deschedule(lp->lwp_thread);
+			dfly_setrunqueue_dd(dd, lp);
+			atomic_clear_int(&lp->lwp_thread->td_mpflags,
+					 TDF_MP_DIDYIELD);
+			lwkt_switch();
+			gd = mycpu;
+			dd = &dfly_pcpu[gd->gd_cpuid];
+			continue;
 		}
 
 		/*
@@ -1040,73 +1042,6 @@ dfly_recalculate_estcpu(struct lwp *lp)
 		if (usched_dfly_debug == lp->lwp_proc->p_pid)
 			kprintf(" finalestcpu %d %d\n", estcpu, lp->lwp_estcpu);
 
-#if 0
-		/*
-		 * Calculate the percentage of one cpu being used then
-		 * compensate for any system load in excess of ncpus.
-		 *
-		 * For example, if we have 8 cores and 16 running cpu-bound
-		 * processes then all things being equal each process will
-		 * get 50% of one cpu.  We need to pump this value back
-		 * up to 100% so the estcpu calculation properly adjusts
-		 * the process's dynamic priority.
-		 *
-		 * estcpu is scaled by ESTCPUMAX, pctcpu is scaled by FSCALE.
-		 */
-
-		estcpu = (lp->lwp_pctcpu * ESTCPUMAX) >> FSHIFT;
-		ucount = dfly_ucount;
-		if (ucount > ncpus) {
-			estcpu += estcpu * (ucount - ncpus) / ncpus;
-		}
-
-		if (usched_dfly_debug == lp->lwp_proc->p_pid) {
-			kprintf("pid %d lwp %p estcpu %3d %3d cp %d/%d",
-				lp->lwp_proc->p_pid, lp,
-				estcpu, lp->lwp_estcpu,
-				lp->lwp_cpticks, ttlticks);
-		}
-
-		/*
-		 * Adjust lp->lwp_esetcpu.  The decay factor determines how
-		 * quickly lwp_estcpu collapses to its realtime calculation.
-		 * A slower collapse gives us a more accurate number over
-		 * the long term but can create problems with bursty threads
-		 * or threads which become cpu hogs.
-		 *
-		 * To solve this problem, newly started lwps and lwps which
-		 * are restarting after having been asleep for a while are
-		 * given a much, much faster decay in order to quickly
-		 * detect whether they become cpu-bound.
-		 *
-		 * NOTE: p_nice is accounted for in dfly_resetpriority(),
-		 *	 and not here, but we must still ensure that a
-		 *	 cpu-bound nice -20 process does not completely
-		 *	 override a cpu-bound nice +20 process.
-		 *
-		 * NOTE: We must use ESTCPULIM() here to deal with any
-		 *	 overshoot.
-		 */
-		decay_factor = usched_dfly_decay;
-		if (decay_factor < 1)
-			decay_factor = 1;
-		if (decay_factor > 1024)
-			decay_factor = 1024;
-
-		if (lp->lwp_estfast < usched_dfly_decay) {
-			++lp->lwp_estfast;
-			lp->lwp_estcpu = ESTCPULIM(
-				(lp->lwp_estcpu * lp->lwp_estfast + estcpu) /
-				(lp->lwp_estfast + 1));
-		} else {
-			lp->lwp_estcpu = ESTCPULIM(
-				(lp->lwp_estcpu * decay_factor + estcpu) /
-				(decay_factor + 1));
-		}
-
-		if (usched_dfly_debug == lp->lwp_proc->p_pid)
-			kprintf(" finalestcpu %d\n", lp->lwp_estcpu);
-#endif
 		dfly_resetpriority(lp);
 		lp->lwp_cpbase += ttlticks * gd->gd_schedclock.periodic;
 		lp->lwp_cpticks = 0;
@@ -1168,7 +1103,7 @@ dfly_resetpriority(struct lwp *lp)
 		 * Calculate the new priority.
 		 *
 		 * nice contributes up to NICE_QS queues (typ 32 - full range)
-		 * estcpu contributes up to EST_QS queues (typ 16)
+		 * estcpu contributes up to EST_QS queues (typ 24)
 		 *
 		 * A nice +20 process receives 1/10 cpu vs nice+0.  Niced
 		 * process more than 20 apart may receive no cpu, so cpu
