@@ -59,6 +59,12 @@ LDADD=		-L${.OBJDIR}/../../lib/libc_rtld -lc_rtld_pic
 CFLAGS+=	-DDEBUG
 .endif
 
+# The gcc80 -O2 tends to wrap malloc() + bzero() back to local calloc() by
+# emitting calloc: imul %rsi,%rdi; mov $0x1,%esi; jmpq 0xfoo <calloc>
+FLAGS_GROUPS=	calloc
+calloc_FLAGS=	-fno-builtin-malloc
+calloc_FLAGS_FILES= malloc.c
+
 # Since moving rtld-elf to /libexec, we need to create a symlink.
 # Fixup the existing binary that's there so we can symlink over it.
 beforeinstall:
