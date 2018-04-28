@@ -17,20 +17,26 @@
 
 #define X_START		1
 #define TOT_START	1
-#define CPU_START	2
-#define CPU_STARTX	(3 + vmm_ncpus)
+#define CPU_START	3
+#define CPU_STARTX	(CPU_START + 1 + vmm_ncpus)
 #define CPU_LABEL_W	7
 
-#define DRAW_ROW(n, y, w, fmt, args...) \
-do { \
-	mvprintw(y, n, fmt, w - 1, args); \
+#define DRAW_ROW(n, y, w, fmt, args...)		\
+do {						\
+	mvprintw(y, n, fmt, w - 1, args);	\
+	n += w;					\
+} while (0)
+
+#define DRAW_ROW2(n, y, w, fmt, args...)	\
+do {						\
+	mvprintw(y, n, fmt, w - 1, w - 1, args);\
 	n += w; \
 } while (0)
 
-#define DRAW_ROW2(n, y, w, fmt, args...) \
-do { \
-	mvprintw(y, n, fmt, w - 1, w - 1, args); \
-	n += w; \
+#define DRAW_ROWX(n, y, w, fmt, args...)	\
+do {						\
+	mvprintw(y, n, fmt, args);		\
+	n += w;					\
 } while (0)
 
 static int vmm_ncpus;
@@ -47,6 +53,7 @@ getvmm(void)
 	size_t sz;
 	int i;
 
+	vmm_totcur.v_timer = 0;
 	vmm_totcur.v_ipi = 0;
 	vmm_totcur.v_intr = 0;
 	vmm_totcur.v_lock_colls = 0;
@@ -62,6 +69,7 @@ getvmm(void)
 
 		vmm->v_intr -= (vmm->v_timer + vmm->v_ipi);
 
+		vmm_totcur.v_timer += vmm->v_timer;
 		vmm_totcur.v_ipi += vmm->v_ipi;
 		vmm_totcur.v_intr += vmm->v_intr;
 		vmm_totcur.v_lock_colls += vmm->v_lock_colls;
@@ -78,41 +86,42 @@ initvmm(void)
 	return 1;
 }
 
+#define D(idx, field)						\
+	(u_int)((vmm_cur[idx].field - vmm_prev[idx].field) / naptime)
+
+#define CPUD(dif, idx, field)					\
+do {								\
+	dif.cp_##field = vmm_cptime_cur[idx].cp_##field -	\
+			 vmm_cptime_prev[idx].cp_##field;	\
+	dtot.cp_##field += vmm_cptime_cur[idx].cp_##field -	\
+			 vmm_cptime_prev[idx].cp_##field;	\
+	cp_total += dif.cp_##field;				\
+	cp_total_all += dif.cp_##field;				\
+} while (0)
+
+#define CPUV(dif, field)					\
+	(dif.cp_##field * 100.0) / cp_total
+
+#define CPUC(idx, field) vmm_cptime_cur[idx].cp_##field
+
+#define CPUVTOT(field)						\
+	(dtot.cp_##field * 100.0) / cp_total_all
+
+#define DTOT(field)						\
+	(u_int)((vmm_totcur.field - vmm_totprev.field) / naptime)
+
+
 void
 showvmm(void)
 {
+	struct kinfo_cputime dtot;
+	uint64_t cp_total_all = 0;
 	int i, n;
 
 	if (!vmm_fetched)
 		return;
 
-	n = X_START + CPU_LABEL_W;
-
-#define DTOT(field) \
-	(u_int)((vmm_totcur.field - vmm_totprev.field) / naptime)
-
-	DRAW_ROW(n, TOT_START, 6, "%*s", "");	/* timer */
-	DRAW_ROW(n, TOT_START, 8, "%*u", DTOT(v_ipi));
-	DRAW_ROW(n, TOT_START, 8, "%*u", DTOT(v_intr));
-
-	DRAW_ROW(n, TOT_START, 6, "%*s", "");	/* user */
-/*	DRAW_ROW(n, TOT_START, 6, "%*s", "");	   nice */
-	DRAW_ROW(n, TOT_START, 6, "%*s", "");	/* sys */
-	DRAW_ROW(n, TOT_START, 6, "%*s", "");	/* intr */
-	DRAW_ROW(n, TOT_START, 6, "%*s", "");	/* idle */
-	if (DTOT(v_lock_colls) > 9999999)
-		DRAW_ROW(n, TOT_START, 8, "%*u", 9999999);
-	else
-		DRAW_ROW(n, TOT_START, 8, "%*u", DTOT( v_lock_colls));
-	DRAW_ROW2(n, TOT_START, 18, "%*.*s", ""); /* label */
-	if (getuid() == 0) {
-		DRAW_ROW2(n, TOT_START, 30, "%*.*s", ""); /* sample_pc */
-#if 0
-		DRAW_ROW2(n, TOT_START, 20, "%*.*s", ""); /* sample_sp */
-#endif
-	}
-
-#undef DTOT
+	bzero(&dtot, sizeof(dtot));
 
 	for (i = 0; i < vmm_ncpus; ++i) {
 		struct kinfo_cputime d;
@@ -120,22 +129,9 @@ showvmm(void)
 
 		n = X_START + CPU_LABEL_W;
 
-#define D(idx, field) \
-	(u_int)((vmm_cur[idx].field - vmm_prev[idx].field) / naptime)
-
 		DRAW_ROW(n, CPU_START + i, 6, "%*u", D(i, v_timer));
 		DRAW_ROW(n, CPU_START + i, 8, "%*u", D(i, v_ipi));
 		DRAW_ROW(n, CPU_START + i, 8, "%*u", D(i, v_intr));
-
-#define CPUD(dif, idx, field) \
-do { \
-	dif.cp_##field = vmm_cptime_cur[idx].cp_##field - \
-			 vmm_cptime_prev[idx].cp_##field; \
-	cp_total += dif.cp_##field; \
-} while (0)
-
-#define CPUV(dif, field) \
-	(dif.cp_##field * 100.0) / cp_total
 
 		CPUD(d, i, user);
 		CPUD(d, i, idle);
@@ -148,7 +144,6 @@ do { \
 
 		DRAW_ROW(n, CPU_START + i, 6, "%*.1f",
 			 CPUV(d, user) + CPUV(d, nice));
-/*		DRAW_ROW(n, CPU_START + i, 6, "%*.1f", CPUV(d, nice));*/
 		DRAW_ROW(n, CPU_START + i, 6, "%*.1f", CPUV(d, sys));
 		DRAW_ROW(n, CPU_START + i, 6, "%*.1f", CPUV(d, intr));
 		DRAW_ROW(n, CPU_START + i, 6, "%*.1f", CPUV(d, idle));
@@ -170,25 +165,35 @@ do { \
 				  vmm_cur[i].v_lock_name);
 		}
 
-#undef D
-#undef CPUV
-#undef CPUD
-
-#define CPUC(idx, field) vmm_cptime_cur[idx].cp_##field
-
 		if (vmm_cptime_cur[i].cp_sample_pc) {
 			void *rip;
 
 			rip = (void *)(intptr_t)CPUC(i, sample_pc);
 			DRAW_ROW2(n, CPU_START + i, 30, "%*.*s",
 				  address_to_symbol(rip, &symctx));
-#if 0
-			DRAW_ROW(n, CPU_START + i, 19, " %016jx",
-				 CPUC(i, sample_sp));
-#endif
 		}
-#undef CPUC
 	}
+
+	/*
+	 * Top row totals and averages
+	 */
+	if (cp_total_all == 0)
+		cp_total_all = 1;
+
+	n = X_START + CPU_LABEL_W;
+	DRAW_ROW(n, TOT_START, 6, "%*u", DTOT(v_timer));	/* timer */
+	DRAW_ROW(n, TOT_START, 8, "%*u", DTOT(v_ipi));		/* ipi	*/
+	DRAW_ROW(n, TOT_START, 8, "%*u", DTOT(v_intr));		/* extint */
+
+	DRAW_ROW(n, TOT_START, 6, "%*.1f", CPUVTOT(user) +	/* user */
+					   CPUVTOT(nice));
+	DRAW_ROW(n, TOT_START, 6, "%*.1f", CPUVTOT(sys));	/* sys */
+	DRAW_ROW(n, TOT_START, 6, "%*.1f", CPUVTOT(intr));	/* intr */
+	DRAW_ROW(n, TOT_START, 6, "%*.1f", CPUVTOT(idle));	/* idle */
+
+	DRAW_ROWX(n, TOT_START, 8, "%7u", DTOT(v_lock_colls));
+	DRAW_ROWX(n, TOT_START, 0, " (%5.2f%% coltot)",
+		(double)DTOT(v_lock_colls) / 1000000.0);
 }
 
 void
@@ -216,7 +221,6 @@ labelvmm(void)
 	DRAW_ROW(n, TOT_START - 1, 8, "%*s", "ipi");
 	DRAW_ROW(n, TOT_START - 1, 8, "%*s", "extint");
 	DRAW_ROW(n, TOT_START - 1, 6, "%*s", "user%");
-/*	DRAW_ROW(n, TOT_START - 1, 6, "%*s", "nice%");*/
 	DRAW_ROW(n, TOT_START - 1, 6, "%*s", "sys%");
 	DRAW_ROW(n, TOT_START - 1, 6, "%*s", "intr%");
 	DRAW_ROW(n, TOT_START - 1, 6, "%*s", "idle%");
@@ -224,9 +228,20 @@ labelvmm(void)
 	DRAW_ROW(n, TOT_START - 1, 18, "%*s", "label");
 	if (getuid() == 0) {
 		DRAW_ROW(n, TOT_START - 1, 30, "%*s", "sample_pc");
-#if 0
-		DRAW_ROW(n, TOT_START - 1, 18, "%*s", "sample_sp");
-#endif
+	}
+
+	n = X_START + CPU_LABEL_W;
+	DRAW_ROW(n, TOT_START + 1, 6, "%*s", "-----");
+	DRAW_ROW(n, TOT_START + 1, 8, "%*s", "-------");
+	DRAW_ROW(n, TOT_START + 1, 8, "%*s", "-------");
+	DRAW_ROW(n, TOT_START + 1, 6, "%*s", "-----");
+	DRAW_ROW(n, TOT_START + 1, 6, "%*s", "-----");
+	DRAW_ROW(n, TOT_START + 1, 6, "%*s", "-----");
+	DRAW_ROW(n, TOT_START + 1, 6, "%*s", "-----");
+	DRAW_ROW(n, TOT_START + 1, 8, "%*s", "-------");
+	DRAW_ROW(n, TOT_START + 1, 18, "%*s", "-----------------");
+	if (getuid() == 0) {
+		DRAW_ROW(n, TOT_START - 1, 30, "%*s", "---------");
 	}
 
 	mvprintw(TOT_START, X_START, "total");
