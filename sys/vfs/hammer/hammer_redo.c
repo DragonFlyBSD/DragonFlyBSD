@@ -354,6 +354,7 @@ hammer_redo_fifo_end_flush(hammer_inode_t ip)
 {
 	hammer_mount_t hmp = ip->hmp;
 
+	hammer_lock_ex(&hmp->undo_lock);
 	if (ip->flags & HAMMER_INODE_RDIRTY) {
 		RB_REMOVE(hammer_redo_rb_tree, &hmp->rb_redo_root, ip);
 		ip->flags &= ~HAMMER_INODE_RDIRTY;
@@ -367,4 +368,5 @@ hammer_redo_fifo_end_flush(hammer_inode_t ip)
 		}
 		ip->flags |= HAMMER_INODE_RDIRTY;
 	}
+	hammer_unlock(&hmp->undo_lock);
 }
