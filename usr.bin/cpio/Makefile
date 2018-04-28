@@ -13,7 +13,7 @@ CFLAGS+=	-I${.CURDIR}/../../lib/libarchive -I${CONTRIBDIR} -I${CONTRIBDIR}/../li
 CFLAGS+=	-DPLATFORM_CONFIG_H=\"config.h\"
 CFLAGS+=	-DBSDCPIO_VERSION_STRING=\"${VERSION}\"
 
-SYMLINKS=	${BINDIR}/bsdcpio ${BINDIR}/cpio
+SYMLINKS=	bsdcpio ${BINDIR}/cpio
 MLINKS=	bsdcpio.1 cpio.1
 
 .include <bsd.prog.mk>

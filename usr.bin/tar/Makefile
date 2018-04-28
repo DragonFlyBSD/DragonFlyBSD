@@ -13,7 +13,7 @@ CFLAGS+=	-I${.CURDIR}/../../lib/libarchive -I${CONTRIBDIR} -I${CONTRIBDIR}/../li
 CFLAGS+=	-DPLATFORM_CONFIG_H=\"config.h\"
 CFLAGS+=	-DBSDTAR_VERSION_STRING=\"${VERSION}\"
 
-SYMLINKS=	${BINDIR}/bsdtar ${BINDIR}/tar
+SYMLINKS=	bsdtar ${BINDIR}/tar
 MLINKS=	bsdtar.1 tar.1
 
 .include <bsd.prog.mk>

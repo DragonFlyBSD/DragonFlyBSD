@@ -6,11 +6,11 @@ MAN=	mailwrapper.8
 DPADD=	${LIBUTIL}
 LDADD=	-lutil
 
-SYMLINKS= 	${BINDIR}/mailwrapper /usr/sbin/sendmail  \
-		${BINDIR}/mailwrapper /usr/sbin/hoststat  \
-		${BINDIR}/mailwrapper /usr/sbin/purgestat \
-		${BINDIR}/mailwrapper /usr/bin/newaliases \
-		${BINDIR}/mailwrapper /usr/bin/mailq
+SYMLINKS= 	mailwrapper ${BINDIR}/sendmail  \
+		mailwrapper ${BINDIR}/hoststat  \
+		mailwrapper ${BINDIR}/purgestat \
+		../sbin/mailwrapper /usr/bin/newaliases \
+		../sbin/mailwrapper /usr/bin/mailq
 
 afterinstall:
 .if !exists(${DESTDIR}/etc/mail/mailer.conf)
