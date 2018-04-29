@@ -1278,11 +1278,7 @@ acpi_cst_global_lowest_use_sysctl(SYSCTL_HANDLER_ARGS)
 static void
 acpi_cst_c1_halt(void)
 {
-    splz();
-    if ((mycpu->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0)
-        __asm __volatile("sti; hlt");
-    else
-        __asm __volatile("sti; pause");
+    cpu_idle_halt();
 }
 
 static void

@@ -1142,7 +1142,6 @@ cpu_idle(void)
 	struct cpu_idle_stat *stat = &cpu_idle_stats[gd->gd_cpuid];
 	struct thread *td __debugvar = gd->gd_curthread;
 	int reqflags;
-	int quick;
 
 	stat->repeat = stat->repeat_last = cpu_idle_repeat_max;
 
@@ -1192,7 +1191,7 @@ cpu_idle(void)
 		 *
 		 * NOTE: Preemptions do not reset gd_idle_repeat.   Also we
 		 *	 don't bother capping gd_idle_repeat, it is ok if
-		 *	 it overflows.
+		 *	 it overflows (we do make it unsigned, however).
 		 *
 		 * Implement optimized invltlb operations when halted
 		 * in idle.  By setting the bit in smp_idleinvl_mask
@@ -1221,91 +1220,187 @@ cpu_idle(void)
 		 *		idle, IBRS
 		 */
 		++gd->gd_idle_repeat;
-		reqflags = gd->gd_reqflags;
-		quick = (cpu_idle_hlt == 1) ||
-			(cpu_idle_hlt == 2 &&
-			 gd->gd_idle_repeat < cpu_idle_repeat);
 
-
-		if (quick && (cpu_mi_feature & CPU_MI_MONITOR) &&
-		    (reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
+		switch(cpu_idle_hlt) {
+		default:
+		case 0:
 			/*
-			 * MWAIT halt
+			 * Always spin
 			 */
-			splz(); /* XXX */
-			crit_enter_gd(gd);
-			ATOMIC_CPUMASK_ORBIT(smp_idleinvl_mask, gd->gd_cpuid);
-			if (pscpu->trampoline.tr_pcb_gflags &
-			    (PCB_IBRS1 | PCB_IBRS2)) {
-				wrmsr(0x48, 0);	/* IBRS (spectre) */
-			}
-			cpu_mmw_pause_int(&gd->gd_reqflags, reqflags,
-					  cpu_mwait_cx_hint(stat), 0);
-			if (pscpu->trampoline.tr_pcb_gflags &
-			    (PCB_IBRS1 | PCB_IBRS2)) {
-				wrmsr(0x48, 1);	/* IBRS (spectre) */
-			}
-			stat->halt++;
-			ATOMIC_CPUMASK_NANDBIT(smp_idleinvl_mask, gd->gd_cpuid);
-			if (ATOMIC_CPUMASK_TESTANDCLR(smp_idleinvl_reqs,
-						      gd->gd_cpuid)) {
-				cpu_invltlb();
-				cpu_mfence();
-			}
-			crit_exit_gd(gd);
-		} else if (cpu_idle_hlt) {
-			/*
-			 * Idle halt
-			 */
-			__asm __volatile("cli");
-			splz();
-			crit_enter_gd(gd);
-			ATOMIC_CPUMASK_ORBIT(smp_idleinvl_mask, gd->gd_cpuid);
-			if ((gd->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
-				if (cpu_idle_hlt == 5) {
-					__asm __volatile("sti");
-				} else if (quick || cpu_idle_hlt == 4) {
-					if (pscpu->trampoline.tr_pcb_gflags &
-					    (PCB_IBRS1 | PCB_IBRS2)) {
-						/* IBRS (spectre) */
-						wrmsr(0x48, 0);
-					}
-					cpu_idle_default_hook();
-					if (pscpu->trampoline.tr_pcb_gflags &
-					    (PCB_IBRS1 | PCB_IBRS2)) {
-						/* IBRS (spectre) */
-						wrmsr(0x48, 1);
-					}
-				} else {
-					if (pscpu->trampoline.tr_pcb_gflags &
-					    (PCB_IBRS1 | PCB_IBRS2)) {
-						wrmsr(0x48, 0);
-					}
-					cpu_idle_hook();
-					if (pscpu->trampoline.tr_pcb_gflags &
-					    (PCB_IBRS1 | PCB_IBRS2)) {
-						wrmsr(0x48, 1);
-					}
-				}
-			}
-			__asm __volatile("sti");
-			stat->halt++;
-			ATOMIC_CPUMASK_NANDBIT(smp_idleinvl_mask, gd->gd_cpuid);
-			if (ATOMIC_CPUMASK_TESTANDCLR(smp_idleinvl_reqs,
-						      gd->gd_cpuid)) {
-				cpu_invltlb();
-				cpu_mfence();
-			}
-			crit_exit_gd(gd);
-		} else {
+			;
+do_spin:
 			splz();
 			__asm __volatile("sti");
 			stat->spin++;
 			crit_enter_gd(gd);
 			crit_exit_gd(gd);
+			break;
+		case 2:
+			/*
+			 * Use MONITOR/MWAIT (or HLT) for a few cycles,
+			 * then start using the ACPI halt code if we
+			 * continue to be idle.
+			 */
+			if (gd->gd_idle_repeat >= cpu_idle_repeat)
+				goto do_acpi;
+			/* FALL THROUGH */
+		case 1:
+			/*
+			 * Always use MONITOR/MWAIT (will use HLT if
+			 * MONITOR/MWAIT not available).
+			 */
+			if (cpu_mi_feature & CPU_MI_MONITOR) {
+				splz(); /* XXX */
+				reqflags = gd->gd_reqflags;
+				if (reqflags & RQF_IDLECHECK_WK_MASK)
+					goto do_spin;
+				crit_enter_gd(gd);
+				ATOMIC_CPUMASK_ORBIT(smp_idleinvl_mask, gd->gd_cpuid);
+				if (pscpu->trampoline.tr_pcb_gflags &
+				    (PCB_IBRS1 | PCB_IBRS2)) {
+					wrmsr(0x48, 0);	/* IBRS (spectre) */
+				}
+				cpu_mmw_pause_int(&gd->gd_reqflags, reqflags,
+						  cpu_mwait_cx_hint(stat), 0);
+				if (pscpu->trampoline.tr_pcb_gflags &
+				    (PCB_IBRS1 | PCB_IBRS2)) {
+					wrmsr(0x48, 1);	/* IBRS (spectre) */
+				}
+				stat->halt++;
+				ATOMIC_CPUMASK_NANDBIT(smp_idleinvl_mask, gd->gd_cpuid);
+				if (ATOMIC_CPUMASK_TESTANDCLR(smp_idleinvl_reqs,
+							      gd->gd_cpuid)) {
+					cpu_invltlb();
+					cpu_mfence();
+				}
+				crit_exit_gd(gd);
+				break;
+			}
+			/* FALLTHROUGH */
+		case 4:
+			/*
+			 * Use HLT
+			 */
+			__asm __volatile("cli");
+			splz();
+			crit_enter_gd(gd);
+			if ((gd->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
+				ATOMIC_CPUMASK_ORBIT(smp_idleinvl_mask,
+						     gd->gd_cpuid);
+				if (pscpu->trampoline.tr_pcb_gflags &
+				    (PCB_IBRS1 | PCB_IBRS2)) {
+					/* IBRS (spectre) */
+					wrmsr(0x48, 0);
+				}
+				cpu_idle_default_hook();
+				if (pscpu->trampoline.tr_pcb_gflags &
+				    (PCB_IBRS1 | PCB_IBRS2)) {
+					/* IBRS (spectre) */
+					wrmsr(0x48, 1);
+				}
+				ATOMIC_CPUMASK_NANDBIT(smp_idleinvl_mask,
+						       gd->gd_cpuid);
+				if (ATOMIC_CPUMASK_TESTANDCLR(smp_idleinvl_reqs,
+							      gd->gd_cpuid)) {
+					cpu_invltlb();
+					cpu_mfence();
+				}
+			}
+			__asm __volatile("sti");
+			stat->halt++;
+			crit_exit_gd(gd);
+			break;
+		case 3:
+			/*
+			 * Use ACPI halt
+			 */
+			;
+do_acpi:
+			__asm __volatile("cli");
+			splz();
+			crit_enter_gd(gd);
+			if ((gd->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
+				ATOMIC_CPUMASK_ORBIT(smp_idleinvl_mask,
+						     gd->gd_cpuid);
+				if (pscpu->trampoline.tr_pcb_gflags &
+				    (PCB_IBRS1 | PCB_IBRS2)) {
+					wrmsr(0x48, 0);
+				}
+				cpu_idle_hook();
+				if (pscpu->trampoline.tr_pcb_gflags &
+				    (PCB_IBRS1 | PCB_IBRS2)) {
+					wrmsr(0x48, 1);
+				}
+				ATOMIC_CPUMASK_NANDBIT(smp_idleinvl_mask,
+						       gd->gd_cpuid);
+				if (ATOMIC_CPUMASK_TESTANDCLR(smp_idleinvl_reqs,
+							      gd->gd_cpuid)) {
+					cpu_invltlb();
+					cpu_mfence();
+				}
+			}
+			__asm __volatile("sti");
+			stat->halt++;
+			crit_exit_gd(gd);
+			break;
 		}
 	}
 }
+
+/*
+ * Called from deep ACPI via cpu_idle_hook() (see above) to actually halt
+ * the cpu in C1.  ACPI might use other halt methods for deeper states
+ * and not reach here.
+ *
+ * For now we always use HLT as we are not sure what ACPI may have actually
+ * done.  MONITOR/MWAIT might not be appropriate.
+ *
+ * NOTE: MONITOR/MWAIT does not appear to throttle AMD cpus, while HLT
+ *	 does.  On Intel, MONITOR/MWAIT does appear to throttle the cpu.
+ */
+void
+cpu_idle_halt(void)
+{
+	globaldata_t gd;
+
+	gd = mycpu;
+#if 0
+	/* DISABLED FOR NOW */
+	struct cpu_idle_stat *stat;
+	int reqflags;
+
+
+	if ((cpu_idle_hlt == 1 || cpu_idle_hlt == 2) &&
+	    (cpu_mi_feature & CPU_MI_MONITOR) &&
+	    cpu_vendor_id != CPU_VENDOR_AMD) {
+		/*
+		 * Use MONITOR/MWAIT
+		 *
+		 * (NOTE: On ryzen, MWAIT does not throttle clocks, so we
+		 *	  have to use HLT)
+		 */
+		stat = &cpu_idle_stats[gd->gd_cpuid];
+		reqflags = gd->gd_reqflags;
+		if ((reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
+			__asm __volatile("sti");
+			cpu_mmw_pause_int(&gd->gd_reqflags, reqflags,
+					  cpu_mwait_cx_hint(stat), 0);
+		} else {
+			__asm __volatile("sti; pause");
+		}
+	} else
+#endif
+	{
+		/*
+		 * Use HLT
+		 */
+		if ((gd->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0)
+			__asm __volatile("sti; hlt");
+		else
+			__asm __volatile("sti; pause");
+	}
+}
+
 
 /*
  * Called in a loop indirectly via Xcpustop
@@ -1324,7 +1419,8 @@ cpu_smp_stopped(void)
 			if (cpu_mwait_hints) {
 				cpu_mmw_pause_long(__DEVOLATILE(void *, ptr),
 					   ovalue,
-					   cpu_mwait_hints[CPU_MWAIT_C1], 0);
+					   cpu_mwait_hints[
+						cpu_mwait_hints_cnt - 1], 0);
 			} else {
 				cpu_mmw_pause_long(__DEVOLATILE(void *, ptr),
 					   ovalue, 0, 0);
@@ -2515,12 +2611,13 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	 * because the cpu does significant power management in MWAIT
 	 * (also suggested is to set sysctl machdep.mwait.CX.idle=AUTODEEP).
 	 *
-	 * On modern AMD cpus cpu_idle_hlt=3 is better, because the cpu does
+	 * On many AMD cpus cpu_idle_hlt=3 is better, because the cpu does
 	 * significant power management only when using ACPI halt mode.
+	 * (However, on Ryzen, mode 4 (HLT) also does power management).
 	 *
 	 * On older AMD or Intel cpus, cpu_idle_hlt=2 is better because ACPI
 	 * is needed to reduce power consumption, but wakeup times are often
-	 * too long longer.
+	 * too long.
 	 */
 	if (cpu_vendor_id == CPU_VENDOR_INTEL &&
 	    CPUID_TO_MODEL(cpu_id) >= 0x3C) {	/* Haswell or later */
