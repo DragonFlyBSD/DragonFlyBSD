@@ -1,3 +1,4 @@
+/*	@(#)unvis.c	8.1 (Berkeley) 6/4/93	*/
 /*	$NetBSD: unvis.c,v 1.44 2014/09/26 15:43:36 roy Exp $	*/
 
 /*-
@@ -28,15 +29,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
-#if defined(LIBC_SCCS) && !defined(lint)
-#if 0
-static char sccsid[] = "@(#)unvis.c	8.1 (Berkeley) 6/4/93";
-#else
-__RCSID("$NetBSD: unvis.c,v 1.44 2014/09/26 15:43:36 roy Exp $");
-#endif
-#endif /* LIBC_SCCS and not lint */
 
 #include "namespace.h"
 #include <sys/types.h>
