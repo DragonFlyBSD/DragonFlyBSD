@@ -195,9 +195,10 @@
  *		    XXX If IBPB is not supported, try to clear the
  *		    call return hw cache w/ many x chained call sequence?
  *
- *	IBRS2 note - We are leaving IBRS on full-time.  However, Intel
- *	believes it is not safe unless the MSR is poked on each user->kernel
- *	transition, so poke the MSR for both IBRS1 and IBRS2.
+ * NOTE - IBRS2 - We are leaving IBRS on full-time.  However, Intel
+ *		  believes it is not safe unless the MSR is poked on each
+ *		  user->kernel transition, so poke the MSR for both IBRS1
+ *		  and IBRS2.
  */
 #define KMMUENTER_CORE							\
 	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
@@ -404,6 +405,11 @@
 /*
  * PUSH_FRAME is the first thing executed upon interrupt entry.  We are
  * responsible for swapgs execution and the KMMUENTER dispatch.
+ *
+ * NOTE - PUSH_FRAME code doesn't mess with %gs or the stack, or assume it can
+ *	  use PCPU(trampoline), if the trap/exception is from supevisor mode.
+ *	  It only messes with that stuff when the trap/exception is from user
+ *	  mode.  Our DBG and NMI code depend on this behavior.
  */
 #define PUSH_FRAME_TFRIP						\
 	testb	$SEL_RPL_MASK,TF_CS-TF_RIP(%rsp) ; /* from userland? */	\

@@ -1,7 +1,7 @@
 /*-
  * Copyright (c) 2003 Peter Wemm.
  * Copyright (c) 1990 The Regents of the University of California.
- * Copyright (c) 2008 The DragonFly Project.
+ * Copyright (c) 2008-2018 The DragonFly Project.
  * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -145,7 +145,9 @@ struct trampframe {
 	register_t	tr_pcb_cr3_iso;	/* copy of isolated pml4e */
 	register_t	tr_pcb_cr3;	/* copy of primary pml4e */
 	register_t	tr_pcb_gflags;	/* global flags (IBRS support) */
-	register_t	tr_pcb_unused01;
+	register_t	tr_pcb_gs_kernel; /* (used by nmi, dbg) */
+	register_t	tr_pcb_gs_saved;  /* (used by nmi) */
+	register_t	tr_pcb_cr3_saved; /* (used by nmi) */
 };
 
 int	kdb_trap(int, int, struct trapframe *);

@@ -1405,6 +1405,10 @@ pmap_init2_iso_pmap(void)
 		ps = CPU_prvspace[n];
 		pmap_init_iso_range((vm_offset_t)&ps->trampoline,
 				    sizeof(ps->trampoline));
+		pmap_init_iso_range((vm_offset_t)&ps->dblstack,
+				    sizeof(ps->dblstack));
+		pmap_init_iso_range((vm_offset_t)&ps->dbgstack,
+				    sizeof(ps->dbgstack));
 		pmap_init_iso_range((vm_offset_t)&ps->common_tss,
 				    sizeof(ps->common_tss));
 		pmap_init_iso_range(r_idt_arr[n].rd_base,

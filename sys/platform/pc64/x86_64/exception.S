@@ -102,8 +102,153 @@ MCOUNT_LABEL(btrap)
 	movq $0,TF_XFLAGS(%rsp) ;		\
 	jmp alltraps
 
+/*
+ * Due to a historical artifact, it is possible for a #DB exception
+ * to occur in certain bad places that would normlally be protected by
+ * the interrupt gate's interrupt disablement.
+ *
+ * Due to this possibly occuring in the system call entry code, we also
+ * run #DB on an ist2 stack to force the cpu to load a new %rsp, otherwise
+ * it might push the cpu exception frame onto the user stack.  To make things
+ * easier we just point ist2 at our trampoline area.
+ */
 IDTVEC(dbg)
+#ifdef DIRECT_DISALLOW_SS_CPUBUG
+	/*
+	 * Directly disallow #DB faults which can occur at critical points
+	 * in the code due to a historical artifact of how the cpu operates.
+	 * %gs state might not match RPL.  Test the %rip and iretq immediately
+	 * (valid %gs and %cr3 state not needed).  If we don't need kernel
+	 * reporting we can enable this and its a bit safer from unintended
+	 * consequences.
+	 *
+	 * If this is not enabled the kernel still catches the problem.  It
+	 * will report the problem and continue properly.
+	 */
+	cmpq	$Xbpt,0(%rsp)
+	je	200f
+	cmpq	$Xfast_syscall,0(%rsp)
+	je	200f
+#endif
+
+	/*
+	 * Ok, regardless of the RPL mask in the trap frame, we took
+	 * the trap on a separate stack via ist2.  This means we
+	 * must copy it appropriately.
+	 *
+	 * If coming from userland we can skip directly to the normal
+	 * TRAP code because it will handle the fact that we are on an
+	 * alternative stack (dbgstack set by ist2), even though it isn't
+	 * the trampoline stack).  The frame will be moved to the correct
+	 * kernel stack.
+	 */
+	testb   $SEL_RPL_MASK,TF_CS-TF_RIP(%rsp)
+	jnz	210f				/* jnz from userland */
+
+	/*
+	 * From kernel - %gs and %cr3 may be inconsistent.  Save original
+	 * values and load consistent values, restore after return.
+	 *
+	 * The trap handler is NOT allowed to block for this case.
+	 */
+	subq	$TR_RIP, %rsp
+	movq	%rax, TR_RAX(%rsp)
+	movq	%rcx, TR_RCX(%rsp)
+	movq	%rdx, TR_RDX(%rsp)
+
+	cld
+	movq	%cr3,%rax			/* save CR3 */
+	movq	%rax, TR_PCB_CR3_SAVED(%rsp)
+	movl	$MSR_GSBASE,%ecx		/* save %gs */
+	rdmsr
+	shlq	$32,%rdx
+	orq	%rdx,%rax
+	movq	%rax, TR_PCB_GS_SAVED(%rsp)
+	movq	TR_PCB_GS_KERNEL(%rsp),%rdx	/* retrieve kernel %gs */
+	movl	%edx,%eax
+	shrq	$32,%rdx
+	wrmsr
+	movq	PCPU(trampoline)+TR_PCB_CR3,%rax
+	movq	%rax,%cr3
+
+	movq	TR_RDX(%rsp), %rdx
+	movq	TR_RCX(%rsp), %rcx
+	movq	TR_RAX(%rsp), %rax
+	addq	$TR_RIP, %rsp
+
+	/*
+	 * We are coming from the kernel.
+	 *
+	 * We are on the IST2 stack and, in fact, we have to *STAY* on this
+	 * stack so no longer try to shift our frame to the kernel %rsp
+	 * in the trap frame, since this %rsp might actually be a user %rsp
+	 * in the mov mem,%ss + syscall DBG trap case.
+	 *
+	 * Run the normal trap.  Because TF_CS is at a kernel RPL, the
+	 * normal code will skip the usual swapgs and KMMU (trampoline)
+	 * code.  We've handled the rest.
+	 *
+	 * NOTE: at this point the trampframe is above the normal stack
+	 *	 frame.  The trap code will be ignorant of the special
+	 *	 TR_* registers above the cpu hardware frame portion,
+	 *	 and the TR_* registers below it will be overwritten.
+	 */
+	PUSH_FRAME_TFRIP
+	movq	$0,TF_XFLAGS(%rsp)
+	movq	$T_TRCTRAP,TF_TRAPNO(%rsp)
+	movq	$0,TF_ADDR(%rsp)
+	movq	$0,TF_ERR(%rsp)
+
+	FAKE_MCOUNT(TF_RIP(%rsp))
+	cld
+	movq	%rsp, %rdi
+	call	trap
+	MEXITCOUNT
+
+	/*
+	 * Pop the frame (since we're coming from kernel mode, this will
+	 * not mess with %cr3 or %gs), then restore %cr3 and %gs for our
+	 * iretq.  Not optimal but more readable and this is not a
+	 * critical path.
+	 */
+	POP_FRAME(nop)
+
+	subq	$TR_RIP, %rsp
+	movq	%rax, TR_RAX(%rsp)
+	movq	%rcx, TR_RCX(%rsp)
+	movq	%rdx, TR_RDX(%rsp)
+
+	movl	$MSR_GSBASE,%ecx		/* restore %gs */
+	movq	TR_PCB_GS_SAVED(%rsp),%rdx
+	movl	%edx,%eax
+	shrq	$32,%rdx
+	wrmsr
+
+	movq	TR_PCB_CR3_SAVED(%rsp),%rax	/* restore %cr3 */
+	movq	%rax,%cr3
+
+	movq	TR_RAX(%rsp),%rax
+	movq	TR_RCX(%rsp),%rcx
+	movq	TR_RDX(%rsp),%rdx
+	addq	$TR_RIP, %rsp
+
+	/*
+	 * Direct iretq. No point jumping to doreti because the
+	 * exception code that deals with iretq faults can't handle
+	 * non-deterministic %gs/%cr3 state.
+	 */
+#ifdef DIRECT_DISALLOW_SS_CPUBUG
+200:
+#endif
+	iretq
+
+	/*
+	 * From userland (normal trap path)
+	 */
+210:
 	TRAP(T_TRCTRAP)
+	/* NOT REACHED */
+
 IDTVEC(bpt)
 	TRAP(T_BPTFLT)
 IDTVEC(div)
@@ -326,26 +471,117 @@ IDTVEC(fast_syscall32)
 /*
  * NMI handling is special.
  *
- * First, NMIs do not respect the state of the processor's RFLAGS.IF
- * bit and the NMI handler may be invoked at any time, including when
- * the processor is in a critical section with RFLAGS.IF == 0.  In
- * particular, this means that the processor's GS.base values could be
- * inconsistent on entry to the handler, and so we need to read
- * MSR_GSBASE to determine if a 'swapgs' is needed.  We use '%ebx', a
- * C-preserved register, to remember whether to swap GS back on the
- * exit path.
+ * First, an NMI is taken on its own pcpu stack.  RFLAGS.IF, %gs, and %cr3
+ * will be inconsistent when interrupt supervisor mode.
  *
  * Second, the processor treats NMIs specially, blocking further NMIs
  * until an 'iretq' instruction is executed.  We therefore need to
  * execute the NMI handler with interrupts disabled to prevent a
  * nested interrupt from executing an 'iretq' instruction and
  * inadvertently taking the processor out of NMI mode.
- *
- * Third, the NMI handler runs on its own stack (tss_ist1), shared
- * with the double fault handler.
  */
-
 IDTVEC(nmi)
+	/*
+	 * We don't need to special-case entry from userland, %gs will
+	 * be consistent with expectations.
+	 */
+	testb   $SEL_RPL_MASK,TF_CS-TF_RIP(%rsp) ; /* from userland? */ \
+	jnz	200f
+
+	/*
+	 * From kernel - %gs and %cr3 may be inconsistent.  Save original
+	 * values and load consistent values, restore on return.
+	 *
+	 * The trap handler is NOT allowed to block for this case.
+	 */
+	subq	$TR_RIP, %rsp
+	movq	%rax, TR_RAX(%rsp)
+	movq	%rcx, TR_RCX(%rsp)
+	movq	%rdx, TR_RDX(%rsp)
+
+	cld
+	movq	%cr3,%rax			/* save CR3 */
+	movq	%rax, TR_PCB_CR3_SAVED(%rsp)
+	movl	$MSR_GSBASE,%ecx		/* save %gs */
+	rdmsr
+	shlq	$32,%rdx
+	orq	%rdx,%rax
+	movq	%rax, TR_PCB_GS_SAVED(%rsp)
+	movq	TR_PCB_GS_KERNEL(%rsp),%rdx	/* retrieve kernel %gs */
+	movl	%edx,%eax
+	shrq	$32,%rdx
+	wrmsr
+#if 0
+	movq	TR_PCB_CR3(%rsp),%rax		/* retrieve kernel %cr3 */
+#endif
+	movq	PCPU(trampoline)+TR_PCB_CR3,%rax
+	movq	%rax,%cr3
+
+	movq	TR_RDX(%rsp), %rdx
+	movq	TR_RCX(%rsp), %rcx
+	movq	TR_RAX(%rsp), %rax
+	addq	$TR_RIP, %rsp
+
+	/*
+	 * Ok, run the normal trap.  Because TF_CS is at a kernel RPL,
+	 * the normal code will skip the usual swapgs and KMMU (trampoline)
+	 * code.  We've handled the rest.
+	 *
+	 * NOTE: at this point the trampframe is above the normal stack
+	 *	 frame.  The trap code will be ignorant of the special
+	 *	 TR_* registers above the cpu hardware frame portion,
+	 *	 and the TR_* registers below it will be overwritten.
+	 */
+	PUSH_FRAME_TFRIP
+	movq	$0,TF_XFLAGS(%rsp)
+	movq	$T_NMI,TF_TRAPNO(%rsp)
+	movq	$0,TF_ADDR(%rsp)
+	movq	$0,TF_ERR(%rsp)
+
+	FAKE_MCOUNT(TF_RIP(%rsp))
+	cld
+	movq	%rsp, %rdi
+	call	trap
+	MEXITCOUNT
+
+	/*
+	 * Pop the frame (since we're coming from kernel mode, this will
+	 * not mess with %cr3 or %gs), then restore %cr3 and %gs for our
+	 * iretq.  Not optimal but more readable and this is not a
+	 * critical path.
+	 */
+	POP_FRAME(nop)
+
+	subq	$TR_RIP, %rsp
+	movq	%rax, TR_RAX(%rsp)
+	movq	%rcx, TR_RCX(%rsp)
+	movq	%rdx, TR_RDX(%rsp)
+
+	movl	$MSR_GSBASE,%ecx		/* restore %gs */
+	movq	TR_PCB_GS_SAVED(%rsp),%rdx
+	movl	%edx,%eax
+	shrq	$32,%rdx
+	wrmsr
+
+	movq	TR_PCB_CR3_SAVED(%rsp),%rax	/* restore %cr3 */
+	movq	%rax,%cr3
+
+	movq	TR_RAX(%rsp),%rax
+	movq	TR_RCX(%rsp),%rcx
+	movq	TR_RDX(%rsp),%rdx
+	addq	$TR_RIP, %rsp
+
+	/*
+	 * Direct iretq. No point jumping to doreti because the
+	 * exception code that deals with iretq faults can't handle
+	 * non-deterministic %gs/%cr3 state.
+	 */
+	iretq
+
+	/*
+	 * From userland (normal trap path)
+	 */
+200:
 	PUSH_FRAME_TFRIP
 	movq	$0,TF_XFLAGS(%rsp)
 	movq	$T_NMI,TF_TRAPNO(%rsp)
@@ -435,6 +671,7 @@ ENTRY(fork_trampoline)
 
 	.data
 	.p2align 4
+
 	.text
 	SUPERALIGN_TEXT
 MCOUNT_LABEL(bintr)

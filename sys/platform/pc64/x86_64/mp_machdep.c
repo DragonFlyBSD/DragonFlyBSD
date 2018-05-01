@@ -297,6 +297,12 @@ init_secondary(void)
 	 */
 	ps->common_tss.tss_rsp0 = (register_t)&ps->trampoline.tr_pcb_rsp;
 	ps->trampoline.tr_pcb_rsp = ps->common_tss.tss_rsp0;
+	ps->trampoline.tr_pcb_gs_kernel = (register_t)md;
+	ps->trampoline.tr_pcb_cr3 = KPML4phys;	/* adj to user cr3 live */
+	ps->dbltramp.tr_pcb_gs_kernel = (register_t)md;
+	ps->dbltramp.tr_pcb_cr3 = KPML4phys;
+	ps->dbgtramp.tr_pcb_gs_kernel = (register_t)md;
+	ps->dbgtramp.tr_pcb_cr3 = KPML4phys;
 
 #if 0 /* JG XXX */
 	ps->common_tss.tss_ioopt = (sizeof ps->common_tss) << 16;
@@ -305,8 +311,8 @@ init_secondary(void)
 	md->gd_common_tssd = *md->gd_tss_gdt;
 
 	/* double fault stack */
-	ps->common_tss.tss_ist1 = (register_t)ps->dblstack +
-				  sizeof(ps->dblstack);
+	ps->common_tss.tss_ist1 = (register_t)&ps->dbltramp.tr_pcb_rsp;
+	ps->common_tss.tss_ist2 = (register_t)&ps->dbgtramp.tr_pcb_rsp;
 
 	ltr(gsel_tss);
 
