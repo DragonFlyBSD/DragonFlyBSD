@@ -2,7 +2,7 @@
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  * Copyright (C) 1994, David Greenman
- * Copyright (c) 2008 The DragonFly Project.
+ * Copyright (c) 2008-2018 The DragonFly Project.
  * Copyright (c) 2008 Jordan Gordeev.
  *
  * This code is derived from software contributed to Berkeley by
@@ -88,6 +88,15 @@
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
+
+/*
+ * These %rip's are used to detect a historical CPU artifact on syscall or
+ * int $3 entry, if not shortcutted in exception.S via
+ * DIRECT_DISALLOW_SS_CPUBUG.
+ */
+extern void Xbpt(void);
+extern void Xfast_syscall(void);
+#define IDTVEC(vec)	X##vec
 
 extern void trap(struct trapframe *frame);
 
@@ -375,12 +384,17 @@ KTR_INFO(KTR_KERNENTRY, kernentry, fork_ret, 0, "FORKRET(pid %d, tid %d)",
  * NOTE!  We have to retrieve the fault address prior to potentially
  *	  blocking, including blocking on any token.
  *
+ * NOTE!  NMI and kernel DBG traps remain on their respective pcpu IST
+ *	  stacks if taken from a kernel RPL. trap() cannot block in this
+ *	  situation.  DDB entry or a direct report-and-return is ok.
+ *
  * XXX gd_trap_nesting_level currently prevents lwkt_switch() from panicing
  * if an attempt is made to switch from a fast interrupt or IPI.
  */
 void
 trap(struct trapframe *frame)
 {
+	static struct krate sscpubugrate = { 1 };
 	struct globaldata *gd = mycpu;
 	struct thread *td = gd->gd_curthread;
 	struct lwp *lp = td->td_lwp;
@@ -686,25 +700,21 @@ trap(struct trapframe *frame)
 			break;
 
 		case T_TRCTRAP:	 /* trace trap */
-#if 0
-			if (frame->tf_rip == (int)IDTVEC(syscall)) {
-				/*
-				 * We've just entered system mode via the
-				 * syscall lcall.  Continue single stepping
-				 * silently until the syscall handler has
-				 * saved the flags.
-				 */
+			/*
+			 * Detect historical CPU artifact on syscall or int $3
+			 * entry (if not shortcutted in exception.s via
+			 * DIRECT_DISALLOW_SS_CPUBUG).
+			 */
+			if (frame->tf_rip == (register_t)IDTVEC(fast_syscall)) {
+				krateprintf(&sscpubugrate,
+					"Caught #DB at syscall cpu artifact\n");
 				goto out2;
 			}
-			if (frame->tf_rip == (int)IDTVEC(syscall) + 1) {
-				/*
-				 * The syscall handler has now saved the
-				 * flags.  Stop single stepping it.
-				 */
-				frame->tf_rflags &= ~PSL_T;
+			if (frame->tf_rip == (register_t)IDTVEC(bpt)) {
+				krateprintf(&sscpubugrate,
+					"Caught #DB at int $N cpu artifact\n");
 				goto out2;
 			}
-#endif
 
 			/*
 			 * Ignore debug register trace traps due to
@@ -716,17 +726,14 @@ trap(struct trapframe *frame)
 			 * in kernel space because that is useful when
 			 * debugging the kernel.
 			 */
-#if 0 /* JG */
 			if (user_dbreg_trap()) {
 				/*
 				 * Reset breakpoint bits because the
 				 * processor doesn't
 				 */
-				/* XXX check upper bits here */
-				load_dr6(rdr6() & 0xfffffff0);
+				load_dr6(rdr6() & ~0xf);
 				goto out2;
 			}
-#endif
 			/*
 			 * FALLTHROUGH (TRCTRAP kernel mode, kernel address)
 			 */

@@ -228,6 +228,9 @@ ASSYM(TR_PCB_FLAGS, offsetof(struct trampframe, tr_pcb_flags));
 ASSYM(TR_PCB_CR3_ISO, offsetof(struct trampframe, tr_pcb_cr3_iso));
 ASSYM(TR_PCB_CR3, offsetof(struct trampframe, tr_pcb_cr3));
 ASSYM(TR_PCB_GFLAGS, offsetof(struct trampframe, tr_pcb_gflags));
+ASSYM(TR_PCB_GS_KERNEL, offsetof(struct trampframe, tr_pcb_gs_kernel));
+ASSYM(TR_PCB_GS_SAVED, offsetof(struct trampframe, tr_pcb_gs_saved));
+ASSYM(TR_PCB_CR3_SAVED, offsetof(struct trampframe, tr_pcb_cr3_saved));
 
 ASSYM(GD_IPENDING, offsetof(struct mdglobaldata, gd_ipending));
 ASSYM(GD_SPENDING, offsetof(struct mdglobaldata, gd_spending));

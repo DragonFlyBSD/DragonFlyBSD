@@ -2546,7 +2546,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	for (x = 0; x < NIDT; x++)
 		setidt_global(x, &IDTVEC(rsvd), SDT_SYSIGT, SEL_KPL, 0);
 	setidt_global(IDT_DE, &IDTVEC(div),  SDT_SYSIGT, SEL_KPL, 0);
-	setidt_global(IDT_DB, &IDTVEC(dbg),  SDT_SYSIGT, SEL_KPL, 0);
+	setidt_global(IDT_DB, &IDTVEC(dbg),  SDT_SYSIGT, SEL_KPL, 2);
 	setidt_global(IDT_NMI, &IDTVEC(nmi),  SDT_SYSIGT, SEL_KPL, 1);
 	setidt_global(IDT_BP, &IDTVEC(bpt),  SDT_SYSIGT, SEL_UPL, 0);
 	setidt_global(IDT_OF, &IDTVEC(ofl),  SDT_SYSIGT, SEL_KPL, 0);
@@ -2669,10 +2669,17 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	 */
 	ps->common_tss.tss_rsp0 = (register_t)&ps->trampoline.tr_pcb_rsp;
 	ps->trampoline.tr_pcb_rsp = ps->common_tss.tss_rsp0;
+	ps->trampoline.tr_pcb_gs_kernel = (register_t)gd;
+	ps->trampoline.tr_pcb_cr3 = KPML4phys;	/* adj to user cr3 live */
+	ps->dbltramp.tr_pcb_gs_kernel = (register_t)gd;
+	ps->dbltramp.tr_pcb_cr3 = KPML4phys;
+	ps->dbgtramp.tr_pcb_gs_kernel = (register_t)gd;
+	ps->dbgtramp.tr_pcb_cr3 = KPML4phys;
 
 	/* double fault stack */
-	ps->common_tss.tss_ist1 = (register_t)ps->dblstack +
-				  sizeof(ps->dblstack);
+	ps->common_tss.tss_ist1 = (register_t)&ps->dbltramp.tr_pcb_rsp;
+	/* #DB debugger needs its own stack */
+	ps->common_tss.tss_ist2 = (register_t)&ps->dbgtramp.tr_pcb_rsp;
 
 	/* Set the IO permission bitmap (empty due to tss seg limit) */
 	ps->common_tss.tss_iobase = sizeof(struct x86_64tss);
@@ -3074,9 +3081,8 @@ user_dbreg_trap(void)
                 addr[nbp++] = (caddr_t)rdr3();
         }
 
-        for (i=0; i<nbp; i++) {
-                if (addr[i] <
-                    (caddr_t)VM_MAX_USER_ADDRESS) {
+        for (i = 0; i < nbp; i++) {
+                if (addr[i] < (caddr_t)VM_MAX_USER_ADDRESS) {
                         /*
                          * addr[i] is in user space
                          */

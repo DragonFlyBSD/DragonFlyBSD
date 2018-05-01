@@ -139,14 +139,20 @@ struct privatespace {
 				  sizeof(struct x86_64tss)];
 	struct trampframe trampoline;
 	uint64_t	reserved1b;	/* 16-byte-align trampoline */
-	struct x86_64tss common_tss;
+	struct x86_64tss common_tss;	/* (misaligned by 8 bytes) */
 
 	/*
-	 * page 3, 4 - Double fault stack
+	 * page 3, 4 - NMI, Double fault stack
+	 * page 5, 6 - Debug fault stack
 	 */
-	char		dblstack[PAGE_SIZE * 2];
+	char		dblstack[PAGE_SIZE * 2 -
+				 sizeof(struct trampframe)];
+	struct trampframe dbltramp;
+	char		dbgstack[PAGE_SIZE * 2 -
+				 sizeof(struct trampframe)];
+	struct trampframe dbgtramp;
 
-	/* page 5..4+UPAGES - idle stack (UPAGES pages) */
+	/* page 7+   - idle stack (UPAGES pages) */
 	char		idlestack[UPAGES * PAGE_SIZE];
 } __packed;
 
