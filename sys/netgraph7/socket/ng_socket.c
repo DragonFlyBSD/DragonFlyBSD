@@ -954,11 +954,14 @@ ngs_rcvmsg(node_p node, item_p item, hook_p lasthook)
 	}
 
 	/* Send it up to the socket. */
+	lwkt_gettoken(&so->so_rcv.ssb_token);
 	if (sbappendaddr((struct sockbuf *)&so->so_rcv, (struct sockaddr *)&addr, m, NULL) == 0) {
+		lwkt_reltoken(&so->so_rcv.ssb_token);
 		TRAP_ERROR;
 		m_freem(m);
 		return (ENOBUFS);
 	}
+	lwkt_reltoken(&so->so_rcv.ssb_token);
 	sorwakeup(so);
 	
 	return (error);
@@ -997,11 +1000,14 @@ ngs_rcvdata(hook_p hook, item_p item)
 	addr->sg_data[addrlen] = '\0';
 
 	/* Try to tell the socket which hook it came in on. */
+	lwkt_gettoken(&so->so_rcv.ssb_token);
 	if (sbappendaddr((struct sockbuf *)&so->so_rcv, (struct sockaddr *)addr, m, NULL) == 0) {
+		lwkt_reltoken(&so->so_rcv.ssb_token);
 		m_freem(m);
 		TRAP_ERROR;
 		return (ENOBUFS);
 	}
+	lwkt_reltoken(&so->so_rcv.ssb_token);
 	sorwakeup(so);
 	return (0);
 }
