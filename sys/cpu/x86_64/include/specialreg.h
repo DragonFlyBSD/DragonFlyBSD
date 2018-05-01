@@ -394,20 +394,44 @@
 /*
  * IBRS and IBPB Spectre mitigation
  *
- * NOTE: Either CPUID_80000008_I1_IBPB_SUPPORT or CPUID_7_0_I3_SPEC_CTRL
- *	 indicates IBPB support.  However, note that MSR_PRED_CMD is
- *	 a command register that may only be written, not read.
+ * Intel: Either CPUID_80000008_I1_IBPB_SUPPORT or CPUID_7_0_I3_SPEC_CTRL
+ *	  indicates IBPB support.  However, note that MSR_PRED_CMD is
+ *	  a command register that may only be written, not read.
  *
- *	 MSR_IBPB_BARRIER is written to MSR_PRED_CMD unconditionally.
- *	 Writing 0 has no effect.
+ * IBPB: (barrier)
+ *	  $1 is written to MSR_PRED_CMD unconditionally, writing 0
+ *	  has no effect.
+ *
+ * IBRS and STIBP
+ *	  Serves as barrier and mode, set on entry to kernel and clear
+ *	  on exit.  Be sure to clear before going idle (else hyperthread
+ *	  performance will drop).
  */
-#define MSR_IBRS_DISABLE		0	/* MSR_SPEC_CTRL (bit 0) */
-#define MSR_IBRS_ENABLE			1
-#define MSR_IBPB_BARRIER		1	/* MSR_PRED_CMD */
 
 #define CPUID_7_0_I3_SPEC_CTRL		0x04000000	/* in EDX (index 3) */
 #define CPUID_7_0_I3_STIBP		0x08000000	/* in EDX (index 3) */
-#define CPUID_80000008_I1_IBPB_SUPPORT	0x00001000	/* in EBX (index 1) */
+
+#define SPEC_CTRL_IBRS			0x00000001
+#define SPEC_CTRL_STIBP			0x00000002
+#define SPEC_CTRL_DUMMY1		0x00010000	/* ficticious */
+#define SPEC_CTRL_DUMMY2		0x00020000	/* ficticious */
+#define SPEC_CTRL_DUMMY3		0x00040000	/* ficticious */
+#define SPEC_CTRL_DUMMY4		0x00080000	/* ficticious */
+#define SPEC_CTRL_DUMMY5		0x00100000	/* ficticious */
+#define SPEC_CTRL_DUMMY6		0x00200000	/* ficticious */
+
+/*
+ * In EBX (index 1)
+ */
+#define CPUID_INTEL_80000008_I1_IBPB_SUPPORT	0x00001000
+
+#define CPUID_AMD_80000008_I1_IBPB_SUPPORT	0x00001000
+#define CPUID_AMD_80000008_I1_IBRS_SUPPORT	0x00004000
+#define CPUID_AMD_80000008_I1_STIBP_SUPPORT	0x00008000
+
+#define CPUID_AMD_80000008_I1_IBRS_AUTO		0x00010000
+#define CPUID_AMD_80000008_I1_STIBP_AUTO	0x00020000
+#define CPUID_AMD_80000008_I1_IBRS_REQUESTED	0x00040000
 
 /*
  * PAT modes.

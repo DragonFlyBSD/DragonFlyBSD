@@ -144,7 +144,7 @@ struct trampframe {
 	register_t	tr_pcb_flags;	/* copy of pcb control flags */
 	register_t	tr_pcb_cr3_iso;	/* copy of isolated pml4e */
 	register_t	tr_pcb_cr3;	/* copy of primary pml4e */
-	register_t	tr_pcb_gflags;	/* global flags (IBRS support) */
+	uint32_t	tr_pcb_spec_ctrl[2];/* SPEC_CTRL + ficticious flags */
 	register_t	tr_pcb_gs_kernel; /* (used by nmi, dbg) */
 	register_t	tr_pcb_gs_saved;  /* (used by nmi) */
 	register_t	tr_pcb_cr3_saved; /* (used by nmi) */

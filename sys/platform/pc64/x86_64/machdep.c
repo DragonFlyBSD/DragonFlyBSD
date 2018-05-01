@@ -1217,7 +1217,8 @@ cpu_idle(void)
 		 * General idle thread halt code
 		 *
 		 * IBRS NOTES - IBRS is a SPECTRE mitigation.  When going
-		 *		idle, IBRS
+		 *		idle, disable IBRS to reduce hyperthread
+		 *		overhead.
 		 */
 		++gd->gd_idle_repeat;
 
@@ -1256,15 +1257,18 @@ do_spin:
 					goto do_spin;
 				crit_enter_gd(gd);
 				ATOMIC_CPUMASK_ORBIT(smp_idleinvl_mask, gd->gd_cpuid);
-				if (pscpu->trampoline.tr_pcb_gflags &
-				    (PCB_IBRS1 | PCB_IBRS2)) {
-					wrmsr(0x48, 0);	/* IBRS (spectre) */
+				/*
+				 * IBRS/STIBP
+				 */
+				if (pscpu->trampoline.tr_pcb_spec_ctrl[1] &
+				    SPEC_CTRL_DUMMY_ENABLE) {
+					wrmsr(MSR_SPEC_CTRL, pscpu->trampoline.tr_pcb_spec_ctrl[1] & (SPEC_CTRL_IBRS|SPEC_CTRL_STIBP));
 				}
 				cpu_mmw_pause_int(&gd->gd_reqflags, reqflags,
 						  cpu_mwait_cx_hint(stat), 0);
-				if (pscpu->trampoline.tr_pcb_gflags &
-				    (PCB_IBRS1 | PCB_IBRS2)) {
-					wrmsr(0x48, 1);	/* IBRS (spectre) */
+				if (pscpu->trampoline.tr_pcb_spec_ctrl[0] &
+				    SPEC_CTRL_DUMMY_ENABLE) {
+					wrmsr(MSR_SPEC_CTRL, pscpu->trampoline.tr_pcb_spec_ctrl[0] & (SPEC_CTRL_IBRS|SPEC_CTRL_STIBP));
 				}
 				stat->halt++;
 				ATOMIC_CPUMASK_NANDBIT(smp_idleinvl_mask, gd->gd_cpuid);
@@ -1287,16 +1291,14 @@ do_spin:
 			if ((gd->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
 				ATOMIC_CPUMASK_ORBIT(smp_idleinvl_mask,
 						     gd->gd_cpuid);
-				if (pscpu->trampoline.tr_pcb_gflags &
-				    (PCB_IBRS1 | PCB_IBRS2)) {
-					/* IBRS (spectre) */
-					wrmsr(0x48, 0);
+				if (pscpu->trampoline.tr_pcb_spec_ctrl[1] &
+				    SPEC_CTRL_DUMMY_ENABLE) {
+					wrmsr(MSR_SPEC_CTRL, pscpu->trampoline.tr_pcb_spec_ctrl[1] & (SPEC_CTRL_IBRS|SPEC_CTRL_STIBP));
 				}
 				cpu_idle_default_hook();
-				if (pscpu->trampoline.tr_pcb_gflags &
-				    (PCB_IBRS1 | PCB_IBRS2)) {
-					/* IBRS (spectre) */
-					wrmsr(0x48, 1);
+				if (pscpu->trampoline.tr_pcb_spec_ctrl[0] &
+				    SPEC_CTRL_DUMMY_ENABLE) {
+					wrmsr(MSR_SPEC_CTRL, pscpu->trampoline.tr_pcb_spec_ctrl[0] & (SPEC_CTRL_IBRS|SPEC_CTRL_STIBP));
 				}
 				ATOMIC_CPUMASK_NANDBIT(smp_idleinvl_mask,
 						       gd->gd_cpuid);
@@ -1322,14 +1324,14 @@ do_acpi:
 			if ((gd->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
 				ATOMIC_CPUMASK_ORBIT(smp_idleinvl_mask,
 						     gd->gd_cpuid);
-				if (pscpu->trampoline.tr_pcb_gflags &
-				    (PCB_IBRS1 | PCB_IBRS2)) {
-					wrmsr(0x48, 0);
+				if (pscpu->trampoline.tr_pcb_spec_ctrl[1] &
+				    SPEC_CTRL_DUMMY_ENABLE) {
+					wrmsr(MSR_SPEC_CTRL, pscpu->trampoline.tr_pcb_spec_ctrl[1] & (SPEC_CTRL_IBRS|SPEC_CTRL_STIBP));
 				}
 				cpu_idle_hook();
-				if (pscpu->trampoline.tr_pcb_gflags &
-				    (PCB_IBRS1 | PCB_IBRS2)) {
-					wrmsr(0x48, 1);
+				if (pscpu->trampoline.tr_pcb_spec_ctrl[0] &
+				    SPEC_CTRL_DUMMY_ENABLE) {
+					wrmsr(MSR_SPEC_CTRL, pscpu->trampoline.tr_pcb_spec_ctrl[0] & (SPEC_CTRL_IBRS|SPEC_CTRL_STIBP));
 				}
 				ATOMIC_CPUMASK_NANDBIT(smp_idleinvl_mask,
 						       gd->gd_cpuid);

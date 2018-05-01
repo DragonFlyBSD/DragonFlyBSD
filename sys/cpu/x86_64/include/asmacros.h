@@ -201,28 +201,30 @@
  *		  and IBRS2.
  */
 #define KMMUENTER_CORE							\
-	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
+	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ; 		\
 	je	40f ;							\
 	movq	PCPU(trampoline)+TR_PCB_CR3,%rcx ;			\
 	movq	%rcx,%cr3 ;						\
-40:	testq	$PCB_IBRS1|PCB_IBRS2|PCB_IBPB,PCPU(trampoline)+TR_PCB_GFLAGS ;\
+40:	movl	PCPU(trampoline)+TR_PCB_SPEC_CTRL,%edx ;		\
+	testq	%rdx, %rdx ;						\
 	je	43f ;							\
 	movq	%rax, PCPU(trampoline)+TR_RAX ;				\
-	testq	$PCB_IBRS1|PCB_IBRS2,PCPU(trampoline)+TR_PCB_GFLAGS ;	\
+	testq	$SPEC_CTRL_DUMMY_ENABLE,%rdx ;				\
 	je	41f ;							\
-	movl	$MSR_SPEC_CTRL,%ecx ;					\
-	movl	$MSR_IBRS_ENABLE,%eax ;					\
+	movq	%rdx, %rax ;						\
+	andq	$SPEC_CTRL_IBRS|SPEC_CTRL_STIBP, %rax ;			\
+	movq	$MSR_SPEC_CTRL,%rcx ;					\
 	xorl	%edx,%edx ;						\
 	wrmsr ;								\
-41:	testq	$PCB_IBPB,PCPU(trampoline)+TR_PCB_GFLAGS ;		\
+	movl	PCPU(trampoline)+TR_PCB_SPEC_CTRL,%edx ;		\
+41:	testq	$SPEC_CTRL_DUMMY_IBPB,%rdx ;				\
 	je	42f ;							\
 	movl	$MSR_PRED_CMD,%ecx ;					\
-	movl	$MSR_IBPB_BARRIER,%eax ;				\
+	movl	$1,%eax ;						\
 	xorl	%edx,%edx ;						\
 	wrmsr ;								\
 42:	movq	PCPU(trampoline)+TR_RAX, %rax ;				\
 43:									\
-
 
 /*
  * Enter with trampoline, hardware pushed up to %rip
@@ -314,18 +316,19 @@
 	movq	PCPU(trampoline)+TR_RCX, %rcx 				\
 
 /*
- * KMMUEXIT_CORE handles IBRS and IBPB, but not ISOMMU
+ * KMMUEXIT_CORE handles IBRS and STIBP, but not ISOMMU
  *
  * We don't re-execute the IBPB barrier on exit atm.
  */
 #define KMMUEXIT_CORE							\
-	testq	$PCB_IBRS1,PCPU(trampoline)+TR_PCB_GFLAGS ;		\
+	testq	$SPEC_CTRL_DUMMY_ENABLE,PCPU(trampoline)+TR_PCB_SPEC_CTRL+4 ; \
 	je	41f ;							\
 	movq	%rax, PCPU(trampoline)+TR_RAX ;				\
 	movq	%rcx, PCPU(trampoline)+TR_RCX ;				\
 	movq	%rdx, PCPU(trampoline)+TR_RDX ;				\
-	movl	$MSR_SPEC_CTRL,%ecx ;					\
-	movl	$MSR_IBRS_DISABLE,%eax ;				\
+	movl	PCPU(trampoline)+TR_PCB_SPEC_CTRL+4, %eax ;		\
+	andq	$SPEC_CTRL_IBRS|SPEC_CTRL_STIBP, %rax ;			\
+	movq	$MSR_SPEC_CTRL,%rcx ;					\
 	xorl	%edx,%edx ;						\
 	wrmsr ;								\
 	movq	PCPU(trampoline)+TR_RDX, %rdx ;				\
@@ -343,7 +346,7 @@
 #define KMMUEXIT							\
 	addq	$TF_RIP,%rsp ;						\
 	KMMUEXIT_CORE ;							\
-	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
+	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ; 		\
 	je	40f ;							\
 	movq	%rcx, PCPU(trampoline)+TR_ERR ;	/* save in TR_ERR */	\
 	popq	%rcx ;				/* copy %rip */		\
@@ -373,7 +376,7 @@
  */
 #define KMMUEXIT_SYSCALL						\
 	KMMUEXIT_CORE ;							\
-	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ;		\
+	testq	$PCB_ISOMMU,PCPU(trampoline)+TR_PCB_FLAGS ; 		\
 	je	40f ;							\
 	movq	%rcx, PCPU(trampoline)+TR_RCX ;				\
 	movq	PCPU(trampoline)+TR_PCB_CR3_ISO,%rcx ;			\

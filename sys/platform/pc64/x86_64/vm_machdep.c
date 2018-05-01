@@ -81,20 +81,12 @@
 
 static void	cpu_reset_real (void);
 
-int spectre_mitigation = -1;
+static int spectre_mitigation = -1;
+static int spectre_support = 0;
 
-static int spectre_ibrs_mode = 0;
-SYSCTL_INT(_machdep, OID_AUTO, spectre_ibrs_mode, CTLFLAG_RD,
-	&spectre_ibrs_mode, 0, "current IBRS mode");
-static int spectre_ibpb_mode = 0;
-SYSCTL_INT(_machdep, OID_AUTO, spectre_ibpb_mode, CTLFLAG_RD,
-	&spectre_ibpb_mode, 0, "current IBPB mode");
-static int spectre_ibrs_supported = 0;
-SYSCTL_INT(_machdep, OID_AUTO, spectre_ibrs_supported, CTLFLAG_RD,
-	&spectre_ibrs_supported, 0, "IBRS mode supported");
-static int spectre_ibpb_supported = 0;
-SYSCTL_INT(_machdep, OID_AUTO, spectre_ibpb_supported, CTLFLAG_RD,
-	&spectre_ibpb_supported, 0, "IBPB mode supported");
+static int spectre_mode = 0;
+SYSCTL_INT(_machdep, OID_AUTO, spectre_mode, CTLFLAG_RD,
+	&spectre_mode, 0, "current Spectre enablements");
 
 /*
  * Finish a fork operation, with lwp lp2 nearly set up.
@@ -425,9 +417,15 @@ void spectre_vm_setup(void *arg);
 /*
  * Check for IBPB and IBRS support
  *
- * Returns a mask: 	0x1	IBRS supported
- *			0x2	IBPB supported
+ * This bits also specify desired modes in the spectre_mitigation sysctl.
  */
+#define IBRS_SUPPORTED		0x0001
+#define STIBP_SUPPORTED		0x0002
+#define IBPB_SUPPORTED		0x0004
+#define IBRS_AUTO_SUPPORTED	0x0008
+#define STIBP_AUTO_SUPPORTED	0x0010
+#define IBRS_PREFERRED_REQUEST	0x0020
+
 static
 int
 spectre_check_support(void)
@@ -436,33 +434,72 @@ spectre_check_support(void)
 	int rv = 0;
 
 	/*
-	 * SPEC_CTRL (bit 26) and STIBP support (bit 27)
+	 * Spectre mitigation hw bits
 	 *
-	 * XXX Not sure what the STIBP flag is meant to be used for.
+	 * IBRS		Indirect Branch Restricted Speculation   (isolation)
+	 * STIBP	Single Thread Indirect Branch Prediction (isolation)
+	 * IBPB		Branch Prediction Barrier		 (barrier)
 	 *
-	 * SPEC_CTRL indicates IBRS and IBPB support.
-	 */
-	p[0] = 0;
-	p[1] = 0;
-	p[2] = 0;
-	p[3] = 0;
-	cpuid_count(7, 0, p);
-	if (p[3] & CPUID_7_0_I3_SPEC_CTRL)
-		rv |= 3;
-
-	/*
-	 * 0x80000008 p[1] bit 12 indicates IBPB support
+	 * IBRS and STIBP must be toggled (enabled on entry to kernel,
+	 * disabled on exit, as well as disabled during any MWAIT/HLT).
+	 * When *_AUTO bits are available, IBRS and STIBP may be left
+	 * turned on and do not have to be toggled on kernel entry/exit.
 	 *
-	 * This bit might be set even though SPEC_CTRL is not set.
+	 * All this shit has enormous overhead.  IBPB in particular, and
+	 * non-auto modes are disabled by default.
 	 */
 	if (cpu_vendor_id == CPU_VENDOR_INTEL) {
 		p[0] = 0;
 		p[1] = 0;
 		p[2] = 0;
 		p[3] = 0;
+		cpuid_count(7, 0, p);
+		if (p[3] & CPUID_7_0_I3_SPEC_CTRL)
+			rv |= IBRS_SUPPORTED | IBPB_SUPPORTED;
+		if (p[3] & CPUID_7_0_I3_STIBP)
+			rv |= STIBP_SUPPORTED;
+
+		/*
+		 * 0x80000008 p[1] bit 12 indicates IBPB support
+		 *
+		 * This bit might be set even though SPEC_CTRL is not set.
+		 */
+		p[0] = 0;
+		p[1] = 0;
+		p[2] = 0;
+		p[3] = 0;
 		do_cpuid(0x80000008U, p);
-		if (p[1] & CPUID_80000008_I1_IBPB_SUPPORT)
-			rv |= 2;
+		if (p[1] & CPUID_INTEL_80000008_I1_IBPB_SUPPORT)
+			rv |= IBPB_SUPPORTED;
+	} else if (cpu_vendor_id == CPU_VENDOR_AMD) {
+		/*
+		 * 0x80000008 p[1] bit 12 indicates IBPB support
+		 *	      p[1] bit 14 indicates IBRS support
+		 *	      p[1] bit 15 indicates STIBP support
+		 *
+		 *	      p[1] bit 16 indicates IBRS auto support
+		 *	      p[1] bit 17 indicates STIBP auto support
+		 *	      p[1] bit 18 indicates processor prefers using
+		 *		IBRS instead of retpoline.
+		 */
+		p[0] = 0;
+		p[1] = 0;
+		p[2] = 0;
+		p[3] = 0;
+		do_cpuid(0x80000008U, p);
+		if (p[1] & CPUID_AMD_80000008_I1_IBPB_SUPPORT)
+			rv |= IBPB_SUPPORTED;
+		if (p[1] & CPUID_AMD_80000008_I1_IBRS_SUPPORT)
+			rv |= IBRS_SUPPORTED;
+		if (p[1] & CPUID_AMD_80000008_I1_STIBP_SUPPORT)
+			rv |= STIBP_SUPPORTED;
+
+		if (p[1] & CPUID_AMD_80000008_I1_IBRS_AUTO)
+			rv |= IBRS_AUTO_SUPPORTED;
+		if (p[1] & CPUID_AMD_80000008_I1_STIBP_AUTO)
+			rv |= STIBP_AUTO_SUPPORTED;
+		if (p[1] & CPUID_AMD_80000008_I1_IBRS_REQUESTED)
+			rv |= IBRS_PREFERRED_REQUEST;
 	}
 
 	return rv;
@@ -472,54 +509,22 @@ spectre_check_support(void)
  * Iterate CPUs and adjust MSR for global operations, since
  * the KMMU* code won't do it if spectre_mitigation is 0 or 2.
  */
+#define CHECK(flag)	(spectre_mitigation & spectre_support & (flag))
+
 static
 void
 spectre_sysctl_changed(void)
 {
 	globaldata_t save_gd;
 	struct trampframe *tr;
+	int spec_ctrl;
+	int mode;
 	int n;
-
-	/*
-	 * Console message on mitigation mode change
-	 */
-	kprintf("machdep.spectre_mitigation=%d: ", spectre_mitigation);
-
-	if (spectre_ibrs_supported == 0) {
-		kprintf("IBRS=NOSUPPORT, ");
-	} else {
-		switch(spectre_mitigation & 3) {
-		case 0:
-			kprintf("IBRS=0 (disabled), ");
-			break;
-		case 1:
-			kprintf("IBRS=1 (kern-only), ");
-			break;
-		case 2:
-			kprintf("IBRS=2 (always-on), ");
-			break;
-		case 3:
-			kprintf("IBRS=?, ");
-			break;
-		}
-	}
-
-	if (spectre_ibpb_supported == 0) {
-		kprintf("IBPB=NOSUPPORT\n");
-	} else {
-		switch(spectre_mitigation & 4) {
-		case 0:
-			kprintf("IBPB=0 (disabled)\n");
-			break;
-		case 4:
-			kprintf("IBPB=1 (enabled)\n");
-			break;
-		}
-	}
 
 	/*
 	 * Fixup state
 	 */
+	mode = 0;
 	save_gd = mycpu;
 	for (n = 0; n < ncpus; ++n) {
 		lwkt_setcpu_self(globaldata_find(n));
@@ -532,9 +537,8 @@ spectre_sysctl_changed(void)
 		 * XXX cleanup, reusing globals inside the loop (they get
 		 * set to the same thing each loop)
 		 */
-		tr->tr_pcb_gflags &= ~(PCB_IBRS1 | PCB_IBRS2 | PCB_IBPB);
-		spectre_ibrs_mode = 0;
-		spectre_ibpb_mode = 0;
+		tr->tr_pcb_spec_ctrl[0] = 0;	/* kernel entry (idle exit) */
+		tr->tr_pcb_spec_ctrl[1] = 0;	/* kernel exit  (idle entry) */
 
 		/*
 		 * Don't try to parse if not available
@@ -543,53 +547,108 @@ spectre_sysctl_changed(void)
 			continue;
 
 		/*
-		 * IBRS mode
+		 * IBRS mode.  Auto overrides toggling.
+		 *
+		 * Only set the ENABLE flag if we have to toggle something
+		 * on entry and exit.
 		 */
-		switch(spectre_mitigation & 3) {
-		case 0:
-			/*
-			 * Disable IBRS
-			 *
-			 * Make sure IBRS is turned off in case we were in
-			 * a global mode before.
-			 */
-			if (spectre_ibrs_supported)
-				wrmsr(MSR_SPEC_CTRL, 0);
-			break;
-		case 1:
-			/*
-			 * IBRS in kernel
-			 */
-			if (spectre_ibrs_supported) {
-				tr->tr_pcb_gflags |= PCB_IBRS1;
-				wrmsr(MSR_SPEC_CTRL, 1);
-				spectre_ibrs_mode = 1;
-			}
-			break;
-		case 2:
-			/*
-			 * IBRS at all times
-			 */
-			if (spectre_ibrs_supported) {
-				tr->tr_pcb_gflags |= PCB_IBRS2;
-				wrmsr(MSR_SPEC_CTRL, 1);
-				spectre_ibrs_mode = 2;
-			}
-			break;
+		spec_ctrl = 0;
+		if (CHECK(IBRS_AUTO_SUPPORTED)) {
+			spec_ctrl |= SPEC_CTRL_IBRS;
+			mode |= IBRS_AUTO_SUPPORTED;
+		} else if (CHECK(IBRS_SUPPORTED)) {
+			spec_ctrl |= SPEC_CTRL_IBRS | SPEC_CTRL_DUMMY_ENABLE;
+			mode |= IBRS_SUPPORTED;
+		}
+		if (CHECK(STIBP_AUTO_SUPPORTED)) {
+			spec_ctrl |= SPEC_CTRL_STIBP;
+			mode |= STIBP_AUTO_SUPPORTED;
+		} else if (CHECK(STIBP_SUPPORTED)) {
+			spec_ctrl |= SPEC_CTRL_STIBP | SPEC_CTRL_DUMMY_ENABLE;
+			mode |= STIBP_SUPPORTED;
 		}
 
 		/*
-		 * IBPB mode
+		 * IBPB requested and supported.
 		 */
-		if (spectre_mitigation & 4) {
-			if (spectre_ibpb_supported) {
-				tr->tr_pcb_gflags |= PCB_IBPB;
-				spectre_ibpb_mode = 1;
-			}
+		if (CHECK(IBPB_SUPPORTED)) {
+			spec_ctrl |= SPEC_CTRL_DUMMY_IBPB;
+			mode |= IBPB_SUPPORTED;
 		}
+
+		/*
+		 * Update the MSR if the cpu supports the modes to ensure
+		 * proper disablement if the user disabled the mode.
+		 */
+		if (spectre_support & (IBRS_SUPPORTED | IBRS_AUTO_SUPPORTED |
+				    STIBP_SUPPORTED | STIBP_AUTO_SUPPORTED)) {
+			wrmsr(MSR_SPEC_CTRL,
+			      spec_ctrl & (SPEC_CTRL_IBRS|SPEC_CTRL_STIBP));
+		}
+
+		/*
+		 * Update spec_ctrl fields in the trampoline.
+		 *
+		 * [0] on-kernel-entry (on-idle-exit)
+		 * [1] on-kernel-exit  (on-idle-entry)
+		 *
+		 * When auto mode is supported we leave the bit set, otherwise
+		 * we clear the bits.
+		 */
+		tr->tr_pcb_spec_ctrl[0] = spec_ctrl;
+		if (CHECK(IBRS_AUTO_SUPPORTED) == 0)
+			spec_ctrl &= ~SPEC_CTRL_IBRS;
+		if (CHECK(STIBP_AUTO_SUPPORTED) == 0)
+			spec_ctrl &= ~SPEC_CTRL_STIBP;
+		tr->tr_pcb_spec_ctrl[1] = spec_ctrl;
+
+		/*
+		 * Make sure we set this on the first loop.  It will be
+		 * the same value on remaining loops.
+		 */
+		spectre_mode = mode;
 	}
 	lwkt_setcpu_self(save_gd);
 	cpu_ccfence();
+
+	/*
+	 * Console message on mitigation mode change
+	 */
+	kprintf("Spectre: support=(");
+	if (spectre_support == 0) {
+		kprintf(" none");
+	} else {
+		if (spectre_support & IBRS_SUPPORTED)
+			kprintf(" IBRS");
+		if (spectre_support & STIBP_SUPPORTED)
+			kprintf(" STIBP");
+		if (spectre_support & IBPB_SUPPORTED)
+			kprintf(" IBPB");
+		if (spectre_support & IBRS_AUTO_SUPPORTED)
+			kprintf(" IBRS_AUTO");
+		if (spectre_support & STIBP_AUTO_SUPPORTED)
+			kprintf(" STIBP_AUTO");
+		if (spectre_support & IBRS_PREFERRED_REQUEST)
+			kprintf(" IBRS_REQUESTED");
+	}
+	kprintf(" ) req=%04x operating=(", (uint16_t)spectre_mitigation);
+	if (spectre_mode == 0) {
+		kprintf(" none");
+	} else {
+		if (spectre_mode & IBRS_SUPPORTED)
+			kprintf(" IBRS");
+		if (spectre_mode & STIBP_SUPPORTED)
+			kprintf(" STIBP");
+		if (spectre_mode & IBPB_SUPPORTED)
+			kprintf(" IBPB");
+		if (spectre_mode & IBRS_AUTO_SUPPORTED)
+			kprintf(" IBRS_AUTO");
+		if (spectre_mode & STIBP_AUTO_SUPPORTED)
+			kprintf(" STIBP_AUTO");
+		if (spectre_mode & IBRS_PREFERRED_REQUEST)
+			kprintf(" IBRS_REQUESTED");
+	}
+	kprintf(" )\n");
 }
 
 /*
@@ -598,21 +657,109 @@ spectre_sysctl_changed(void)
 static int
 sysctl_spectre_mitigation(SYSCTL_HANDLER_ARGS)
 {
+	char buf[128];
+	char *ptr;
+	char *iter;
+	size_t len;
 	int spectre;
-	int error;
+	int error = 0;
+	int loop = 0;
 
-	spectre = spectre_mitigation;
-	error = sysctl_handle_int(oidp, &spectre, 0, req);
+	/*
+	 * Return current operating mode or support.
+	 */
+	if (oidp->oid_kind & CTLFLAG_WR)
+		spectre = spectre_mode;
+	else
+		spectre = spectre_support;
+
+	spectre &= (IBRS_SUPPORTED | IBRS_AUTO_SUPPORTED |
+		    STIBP_SUPPORTED | STIBP_AUTO_SUPPORTED |
+		    IBPB_SUPPORTED);
+	while (spectre) {
+		if (error)
+			break;
+		if (loop++) {
+			error = SYSCTL_OUT(req, " ", 1);
+			if (error)
+				break;
+		}
+		if (spectre & IBRS_SUPPORTED) {
+			spectre &= ~IBRS_SUPPORTED;
+			error = SYSCTL_OUT(req, "IBRS", 4);
+		} else
+		if (spectre & IBRS_AUTO_SUPPORTED) {
+			spectre &= ~IBRS_AUTO_SUPPORTED;
+			error = SYSCTL_OUT(req, "IBRS_AUTO", 9);
+		} else
+		if (spectre & STIBP_SUPPORTED) {
+			spectre &= ~STIBP_SUPPORTED;
+			error = SYSCTL_OUT(req, "STIBP", 5);
+		} else
+		if (spectre & STIBP_AUTO_SUPPORTED) {
+			spectre &= ~STIBP_AUTO_SUPPORTED;
+			error = SYSCTL_OUT(req, "STIBP_AUTO", 10);
+		} else
+		if (spectre & IBPB_SUPPORTED) {
+			spectre &= ~IBPB_SUPPORTED;
+			error = SYSCTL_OUT(req, "IBPB", 4);
+		}
+	}
+	if (loop == 0) {
+		error = SYSCTL_OUT(req, "NONE", 4);
+	}
+
 	if (error || req->newptr == NULL)
 		return error;
-	spectre_mitigation = spectre;
-	spectre_sysctl_changed();
+	if ((oidp->oid_kind & CTLFLAG_WR) == 0)
+		return error;
 
-	return 0;
+	/*
+	 * Change current operating mode
+	 */
+	len = req->newlen - req->newidx;
+	if (len >= sizeof(buf)) {
+		error = EINVAL;
+		len = 0;
+	} else {
+		error = SYSCTL_IN(req, buf, len);
+	}
+	buf[len] = 0;
+	iter = &buf[0];
+	spectre = 0;
+
+	while (error == 0 && iter) {
+		ptr = strsep(&iter, " ,\t\r\n");
+		if (*ptr == 0)
+			continue;
+		if (strcasecmp(ptr, "NONE") == 0)
+			spectre |= 0;
+		else if (strcasecmp(ptr, "IBRS") == 0)
+			spectre |= IBRS_SUPPORTED;
+		else if (strcasecmp(ptr, "IBRS_AUTO") == 0)
+			spectre |= IBRS_AUTO_SUPPORTED;
+		else if (strcasecmp(ptr, "STIBP") == 0)
+			spectre |= STIBP_SUPPORTED;
+		else if (strcasecmp(ptr, "STIBP_AUTO") == 0)
+			spectre |= STIBP_AUTO_SUPPORTED;
+		else if (strcasecmp(ptr, "IBPB") == 0)
+			spectre |= IBPB_SUPPORTED;
+		else
+			error = ENOENT;
+	}
+	if (error == 0) {
+		spectre_mitigation = spectre;
+		spectre_sysctl_changed();
+	}
+	return error;
 }
 
-SYSCTL_PROC(_machdep, OID_AUTO, spectre_mitigation, CTLTYPE_INT | CTLFLAG_RW,
-	0, 0, sysctl_spectre_mitigation, "I", "Spectre exploit mitigation");
+SYSCTL_PROC(_machdep, OID_AUTO, spectre_mitigation,
+	CTLTYPE_STRING | CTLFLAG_RW,
+	0, 0, sysctl_spectre_mitigation, "A", "Spectre exploit mitigation");
+SYSCTL_PROC(_machdep, OID_AUTO, spectre_support,
+	CTLTYPE_STRING | CTLFLAG_RD,
+	0, 0, sysctl_spectre_mitigation, "A", "Spectre supported features");
 
 /*
  * NOTE: Called at SI_BOOT2_MACHDEP and also when the microcode is
@@ -668,26 +815,14 @@ spectre_vm_setup(void *arg)
 	 */
 	if (inconsistent) {
 		spectre_mitigation = -1;
-		spectre_ibrs_supported = 0;
-		spectre_ibpb_supported = 0;
+		spectre_support = 0;
 		return;
 	}
 
 	/*
 	 * IBRS support
 	 */
-	if (supmask & 1)
-		spectre_ibrs_supported = 1;
-	else
-		spectre_ibrs_supported = 0;
-
-	/*
-	 * IBPB support.
-	 */
-	if (supmask & 2)
-		spectre_ibpb_supported = 1;
-	else
-		spectre_ibpb_supported = 0;
+	spectre_support = supmask;
 
 	/*
 	 * Enable spectre_mitigation, set defaults if -1, adjust
@@ -696,20 +831,35 @@ spectre_vm_setup(void *arg)
 	 * NOTE!  We do not enable IBPB for user->kernel transitions
 	 *	  by default, so this code is commented out for now.
 	 */
-	if (spectre_ibrs_supported || spectre_ibpb_supported) {
+	if (spectre_support) {
 		if (spectre_mitigation < 0) {
 			spectre_mitigation = 0;
-			if (spectre_ibrs_supported)
-				spectre_mitigation |= 1;
-#if 0
-			if (spectre_ibpb_supported)
-				spectre_mitigation |= 4;
-#endif
+
+			/*
+			 * IBRS toggling not currently recommended as a
+			 * default.
+			 */
+			if (spectre_support & IBRS_AUTO_SUPPORTED)
+				spectre_mitigation |= IBRS_AUTO_SUPPORTED;
+			else if (spectre_support & IBRS_SUPPORTED)
+				spectre_mitigation |= 0;
+
+			/*
+			 * STIBP toggling not currently recommended as a
+			 * default.
+			 */
+			if (spectre_support & STIBP_AUTO_SUPPORTED)
+				spectre_mitigation |= STIBP_AUTO_SUPPORTED;
+			else if (spectre_support & STIBP_SUPPORTED)
+				spectre_mitigation |= 0;
+
+			/*
+			 * IBPB adds enormous (~2uS) overhead to system
+			 * calls etc, we do not enable it by default.
+			 */
+			if (spectre_support & IBPB_SUPPORTED)
+				spectre_mitigation |= 0;
 		}
-		if (spectre_ibrs_supported == 0)
-			spectre_mitigation &= ~3;
-		if (spectre_ibpb_supported == 0)
-			spectre_mitigation &= ~4;
 	} else {
 		spectre_mitigation = -1;
 	}

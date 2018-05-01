@@ -135,9 +135,13 @@ ASSYM(PCB_DR7, offsetof(struct pcb, pcb_dr7));
 
 ASSYM(PCB_DBREGS, PCB_DBREGS);
 ASSYM(PCB_ISOMMU, PCB_ISOMMU);
-ASSYM(PCB_IBRS1, PCB_IBRS1);
-ASSYM(PCB_IBRS2, PCB_IBRS2);
-ASSYM(PCB_IBPB, PCB_IBPB);
+
+#if 0 /* we get this from specialreg.h */
+ASSYM(SPEC_CTRL_IBRS, SPEC_CTRL_IBRS);
+ASSYM(SPEC_CTRL_STIBP, SPEC_CTRL_STIBP);
+#endif
+ASSYM(SPEC_CTRL_DUMMY_IBPB, SPEC_CTRL_DUMMY_IBPB);
+ASSYM(SPEC_CTRL_DUMMY_ENABLE, SPEC_CTRL_DUMMY_ENABLE);
 
 ASSYM(PCB_EXT, offsetof(struct pcb, pcb_ext));
 ASSYM(PCB_FLAGS, offsetof(struct pcb, pcb_flags));
@@ -227,7 +231,7 @@ ASSYM(TR_PCB_RSP, offsetof(struct trampframe, tr_pcb_rsp));
 ASSYM(TR_PCB_FLAGS, offsetof(struct trampframe, tr_pcb_flags));
 ASSYM(TR_PCB_CR3_ISO, offsetof(struct trampframe, tr_pcb_cr3_iso));
 ASSYM(TR_PCB_CR3, offsetof(struct trampframe, tr_pcb_cr3));
-ASSYM(TR_PCB_GFLAGS, offsetof(struct trampframe, tr_pcb_gflags));
+ASSYM(TR_PCB_SPEC_CTRL, offsetof(struct trampframe, tr_pcb_spec_ctrl[0]));
 ASSYM(TR_PCB_GS_KERNEL, offsetof(struct trampframe, tr_pcb_gs_kernel));
 ASSYM(TR_PCB_GS_SAVED, offsetof(struct trampframe, tr_pcb_gs_saved));
 ASSYM(TR_PCB_CR3_SAVED, offsetof(struct trampframe, tr_pcb_cr3_saved));
