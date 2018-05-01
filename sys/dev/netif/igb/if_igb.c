@@ -246,7 +246,8 @@ static void	igb_get_mgmt(struct igb_softc *);
 static void	igb_rel_mgmt(struct igb_softc *);
 static void	igb_get_hw_control(struct igb_softc *);
 static void	igb_rel_hw_control(struct igb_softc *);
-static void	igb_enable_wol(device_t);
+static void	igb_enable_wol(struct igb_softc *);
+static int	igb_enable_phy_wol(struct igb_softc *);
 
 static device_method_t igb_methods[] = {
 	/* Device interface */
@@ -699,10 +700,11 @@ igb_attach(device_t dev)
 	 */
 	/* APME bit in EEPROM is mapped to WUC.APME */
 	eeprom_data = E1000_READ_REG(&sc->hw, E1000_WUC) & E1000_WUC_APME;
-	if (eeprom_data)
-		sc->wol = E1000_WUFC_MAG;
-	/* XXX disable WOL */
-	sc->wol = 0; 
+	if (eeprom_data) {
+		/* XXX E1000_WUFC_MC always be cleared from E1000_WUC. */
+		sc->wol = E1000_WUFC_MAG | E1000_WUFC_MC;
+		device_printf(dev, "has WOL\n");
+	}
 
 #ifdef notyet
 	/* Register for VLAN events */
@@ -752,12 +754,7 @@ igb_detach(device_t dev)
 		/* Give control back to firmware */
 		igb_rel_mgmt(sc);
 		igb_rel_hw_control(sc);
-
-		if (sc->wol) {
-			E1000_WRITE_REG(&sc->hw, E1000_WUC, E1000_WUC_PME_EN);
-			E1000_WRITE_REG(&sc->hw, E1000_WUFC, sc->wol);
-			igb_enable_wol(dev);
-		}
+		igb_enable_wol(sc);
 
 		igb_teardown_intr(sc, sc->intr_cnt);
 
@@ -820,12 +817,7 @@ igb_suspend(device_t dev)
 
 	igb_rel_mgmt(sc);
 	igb_rel_hw_control(sc);
-
-	if (sc->wol) {
-		E1000_WRITE_REG(&sc->hw, E1000_WUC, E1000_WUC_PME_EN);
-		E1000_WRITE_REG(&sc->hw, E1000_WUFC, sc->wol);
-		igb_enable_wol(dev);
-	}
+	igb_enable_wol(sc);
 
 	ifnet_deserialize_all(ifp);
 
@@ -3027,27 +3019,134 @@ igb_is_valid_ether_addr(const uint8_t *addr)
  * Enable PCI Wake On Lan capability
  */
 static void
-igb_enable_wol(device_t dev)
+igb_enable_wol(struct igb_softc *sc)
 {
-	uint16_t cap, status;
-	uint8_t id;
+	device_t dev = sc->dev;
+	int error = 0;
+	uint32_t pmc, ctrl;
+	uint16_t status;
 
-	/* First find the capabilities pointer*/
-	cap = pci_read_config(dev, PCIR_CAP_PTR, 2);
-
-	/* Read the PM Capabilities */
-	id = pci_read_config(dev, cap, 1);
-	if (id != PCIY_PMG)     /* Something wrong */
+	if (pci_find_extcap(dev, PCIY_PMG, &pmc) != 0) {
+		device_printf(dev, "no PMG\n");
 		return;
+	}
 
 	/*
-	 * OK, we have the power capabilities,
-	 * so now get the status register
+	 * Set the type of wakeup.
 	 */
-	cap += PCIR_POWER_STATUS;
-	status = pci_read_config(dev, cap, 2);
-	status |= PCIM_PSTAT_PME | PCIM_PSTAT_PMEENABLE;
-	pci_write_config(dev, cap, status, 2);
+	sc->wol &= ~(E1000_WUFC_EX | E1000_WUFC_MC);
+	if ((sc->wol & (E1000_WUFC_EX | E1000_WUFC_MAG | E1000_WUFC_MC)) == 0)
+		goto pme;
+
+	/*
+	 * Advertise the wakeup capabilities.
+	 */
+	ctrl = E1000_READ_REG(&sc->hw, E1000_CTRL);
+	ctrl |= (E1000_CTRL_SWDPIN2 | E1000_CTRL_SWDPIN3);
+	E1000_WRITE_REG(&sc->hw, E1000_CTRL, ctrl);
+
+	/*
+	 * Keep the laser running on Fiber adapters.
+	 */
+	if (sc->hw.phy.media_type == e1000_media_type_fiber ||
+	    sc->hw.phy.media_type == e1000_media_type_internal_serdes) {
+		uint32_t ctrl_ext;
+
+		ctrl_ext = E1000_READ_REG(&sc->hw, E1000_CTRL_EXT);
+		ctrl_ext |= E1000_CTRL_EXT_SDP3_DATA;
+		E1000_WRITE_REG(&sc->hw, E1000_CTRL_EXT, ctrl_ext);
+	}
+
+	error = igb_enable_phy_wol(sc);
+	if (error)
+		goto pme;
+
+	/* XXX will this happen? ich/pch specific. */
+	if (sc->hw.phy.type == e1000_phy_igp_3)
+		e1000_igp3_phy_powerdown_workaround_ich8lan(&sc->hw);
+
+pme:
+	status = pci_read_config(dev, pmc + PCIR_POWER_STATUS, 2);
+	status &= ~(PCIM_PSTAT_PME | PCIM_PSTAT_PMEENABLE);
+	if (!error)
+		status |= PCIM_PSTAT_PME | PCIM_PSTAT_PMEENABLE;
+	pci_write_config(dev, pmc + PCIR_POWER_STATUS, status, 2);
+}
+
+/*
+ * WOL in the newer chipset interfaces (pchlan)
+ * require thing to be copied into the phy
+ */
+static int
+igb_enable_phy_wol(struct igb_softc *sc)
+{
+	struct e1000_hw *hw = &sc->hw;
+	uint32_t mreg;
+	uint16_t preg;
+	int ret = 0, i;
+
+	/* Copy MAC RARs to PHY RARs */
+	e1000_copy_rx_addrs_to_phy_ich8lan(hw);
+
+	/* Copy MAC MTA to PHY MTA */
+	for (i = 0; i < hw->mac.mta_reg_count; i++) {
+		mreg = E1000_READ_REG_ARRAY(hw, E1000_MTA, i);
+		e1000_write_phy_reg(hw, BM_MTA(i), (uint16_t)(mreg & 0xFFFF));
+		e1000_write_phy_reg(hw, BM_MTA(i) + 1,
+		    (uint16_t)((mreg >> 16) & 0xFFFF));
+	}
+
+	/* Configure PHY Rx Control register */
+	e1000_read_phy_reg(hw, BM_RCTL, &preg);
+	mreg = E1000_READ_REG(hw, E1000_RCTL);
+	if (mreg & E1000_RCTL_UPE)
+		preg |= BM_RCTL_UPE;
+	if (mreg & E1000_RCTL_MPE)
+		preg |= BM_RCTL_MPE;
+	preg &= ~(BM_RCTL_MO_MASK);
+	if (mreg & E1000_RCTL_MO_3) {
+		preg |= (((mreg & E1000_RCTL_MO_3) >> E1000_RCTL_MO_SHIFT)
+				<< BM_RCTL_MO_SHIFT);
+	}
+	if (mreg & E1000_RCTL_BAM)
+		preg |= BM_RCTL_BAM;
+	if (mreg & E1000_RCTL_PMCF)
+		preg |= BM_RCTL_PMCF;
+	mreg = E1000_READ_REG(hw, E1000_CTRL);
+	if (mreg & E1000_CTRL_RFCE)
+		preg |= BM_RCTL_RFCE;
+	e1000_write_phy_reg(&sc->hw, BM_RCTL, preg);
+
+	/* Enable PHY wakeup in MAC register. */
+	E1000_WRITE_REG(hw, E1000_WUC,
+	    E1000_WUC_PHY_WAKE | E1000_WUC_PME_EN | E1000_WUC_APME);
+	E1000_WRITE_REG(hw, E1000_WUFC, sc->wol);
+
+	/* Configure and enable PHY wakeup in PHY registers */
+	e1000_write_phy_reg(hw, BM_WUFC, sc->wol);
+	e1000_write_phy_reg(hw, BM_WUC, E1000_WUC_PME_EN);
+	/* Activate PHY wakeup */
+	ret = hw->phy.ops.acquire(hw);
+	if (ret) {
+		if_printf(&sc->arpcom.ac_if, "Could not acquire PHY\n");
+		return ret;
+	}
+	e1000_write_phy_reg_mdic(hw, IGP01E1000_PHY_PAGE_SELECT,
+	                         (BM_WUC_ENABLE_PAGE << IGP_PAGE_SHIFT));
+	ret = e1000_read_phy_reg_mdic(hw, BM_WUC_ENABLE_REG, &preg);
+	if (ret) {
+		if_printf(&sc->arpcom.ac_if, "Could not read PHY page 769\n");
+		goto out;
+	}
+	preg |= BM_WUC_ENABLE_BIT | BM_WUC_HOST_WU_BIT;
+	ret = e1000_write_phy_reg_mdic(hw, BM_WUC_ENABLE_REG, preg);
+	if (ret) {
+		if_printf(&sc->arpcom.ac_if,
+		    "Could not set PHY Host Wakeup bit\n");
+	}
+out:
+	hw->phy.ops.release(hw);
+	return ret;
 }
 
 static void
