@@ -220,12 +220,17 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 		 *
 		 * NOTE: Avoid unconditional atomic op by testing ovalue,
 		 *	 otherwise we get cache bus armageddon.
+		 *
+		 * NOTE: We must also ensure that the SHARED bit is cleared.
+		 *	 It is possible for it to wind up being set on a
+		 *	 shared lock override of the EXCLWAIT bits.
 		 */
 		ovalue = spin->counta;
 		cpu_ccfence();
 		if ((ovalue & (SPINLOCK_EXCLWAIT - 1)) == 0) {
 			if (atomic_fcmpset_int(&spin->counta, &ovalue,
-				      (ovalue - SPINLOCK_EXCLWAIT) | 1)) {
+				      ((ovalue - SPINLOCK_EXCLWAIT) | 1)) &
+				      ~SPINLOCK_SHARED) {
 				break;
 			}
 			continue;
