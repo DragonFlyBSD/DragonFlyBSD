@@ -50,6 +50,28 @@
             profile
             ..
         ..
+        gcc80
+            plugin
+                include
+                    ada
+                        gcc-interface
+                        ..
+                    ..
+                    objc
+                    ..
+                    c-family
+                    ..
+                    config
+                        i386
+                        ..
+                    ..
+                    cp
+                    ..
+                ..
+            ..
+            profile
+            ..
+        ..
         i18n
         ..
         priv
@@ -77,6 +99,10 @@
         gcc50
             objc
             ..
+            ssp
+            ..
+        ..
+        gcc80
             ssp
             ..
         ..
@@ -109,6 +135,8 @@
         gcc47
         ..
         gcc50
+        ..
+        gcc80
         ..
         lpr
             ru

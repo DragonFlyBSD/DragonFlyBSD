@@ -27,6 +27,10 @@ SUBDIR+= cc50
 SUBDIR+= cc47
 _altcompiler_dirs+= cc47
 . endif
+. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc80})
+SUBDIR+= cc80
+_altcompiler_dirs+= cc80
+. endif
 .endif
 
 .ORDER: ${BU_PRIMARY} gmp mpfr mpc cc50 ${_altcompiler_dirs}

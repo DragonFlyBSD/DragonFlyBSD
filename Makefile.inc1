@@ -937,6 +937,12 @@ _gcc47_tools= gnu/usr.bin/cc47/cc_prep gnu/usr.bin/cc47/cc_tools
 _altcompiler_cross+= ${_gcc47_cross}
 _altcompiler_tools+= _gcc47_tools
 . endif
+. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc80})
+_gcc80_cross= gnu/usr.bin/cc80
+_gcc80_tools= gnu/usr.bin/cc80/cc_prep gnu/usr.bin/cc80/cc_tools
+_altcompiler_cross+= ${_gcc80_cross}
+_altcompiler_tools+= _gcc80_tools
+. endif
 .endif
 _custom_cross= libexec/customcc
 _binutils= gnu/usr.bin/${WORLD_BINUTILSVER}
@@ -1021,6 +1027,11 @@ libraries:
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc47 \
 		make -f Makefile.inc1 _startup_libs47 -DSYSBUILD;
 . endif
+. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc80})
+	cd ${.CURDIR}; \
+	    HOST_CCVER=${HOST_CCVER} CCVER=gcc80 \
+		make -f Makefile.inc1 _startup_libs80 -DSYSBUILD;
+. endif
 .endif
 	cd ${.CURDIR}; \
 	    make -f Makefile.inc1 _startup_libs -DSYSBUILD; \
@@ -1051,6 +1062,18 @@ _startup_libs50=	gnu/usr.bin/cc50/cc_prep \
 			gnu/lib/gcc50/libgcc \
 			gnu/lib/gcc50/libgcc_eh \
 			gnu/lib/gcc50/libgcc_pic
+_startup_libs80=	gnu/usr.bin/cc80/cc_prep \
+			gnu/usr.bin/cc80/cc_tools \
+			gnu/lib/gcc80/csu \
+			gnu/lib/gcc80/libgcc \
+			gnu/lib/gcc80/libgcc_eh \
+			gnu/lib/gcc80/libgcc_pic
+.if !defined(NO_ALTCOMPILER)
+. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc80})
+_startup_libs_alt+=     _startup_libs80
+. endif
+.endif
+
 _startup_libs=		lib/csu lib/libc lib/libc_rtld
 
 _prebuild_libs=		lib/libbz2 lib/libz
