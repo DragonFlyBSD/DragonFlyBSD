@@ -65,6 +65,14 @@ _cnowarnflags	+=	-Wno-maybe-uninitialized
 _cnowarnflags	+=	-Wno-uninitialized
 .   endif
 .  endif
+# Delete -Wformat-* family that give little benefits, same for stringop.
+.  if ${WARNS} >= 2 && ${WARNS} <= 6 && ${_WCCVER:Mgcc8*}
+_cnowarnflags	+=	-Wno-format-overflow -Wno-format-truncation
+_cnowarnflags	+=	-Wno-stringop-truncation
+.  endif
+.  if ${WARNS} >= 1 && ${WARNS} <= 6 && ${_WCCVER:Mgcc8*}
+_cnowarnflags	+=	-Wno-stringop-overflow
+.  endif
 # Activate gcc47's -Wunused-but-set-variable (which is in -Wall) and
 # -Wunused-but-set-parameter (which is in -Wextra) only at WARNS >= 4
 # (which is the level when also -Wunused-parameter comes into play).
@@ -76,6 +84,9 @@ _cnowarnflags	+=	-Wno-unused-but-set-parameter
 .  endif
 .  if ${WARNS} == 3 && (${_WCCVER:Mgcc49} || ${_WCCVER:Mgcc[5-]*})
 _cnowarnflags	+=	-Wno-unused-value
+.  endif
+.  if ${WARNS} == 3 && ${_WCCVER:Mgcc8*}
+_cnowarnflags	+=	-Wno-implicit-fallthrough
 .  endif
 .  if ${WARNS} >= 2 && ${_WCCVER:Mgcc4[789]}
 _cnowarnflags	+=	-Wno-error=maybe-uninitialized\
