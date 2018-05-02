@@ -1,0 +1,29 @@
+GCC-8 Release
+==================
+
+Original source of man pages can be downloaded from:
+http://ftp.gnu.org/gnu/gcc
+
+file = gcc-8.0.1.tar.xz
+date = 2 May 2018
+size = 63372320
+sha1 = b34031ba9ff3e248b2c62de0825e49a1e0e01998
+
+The source files are pulled directly from GCC's Subversion repository.
+See LAST_UPDATED for SVN revision
+
+The file README.DELETED contains a list of deleted files and directories.
+
+Configured with
+===============
+  --with-bugurl=http://bugs.dragonflybsd.org
+  --enable-languages=c,c++,lto --enable-threads=posix --enable-__cxa_atexit
+  --disable-libunwind-exceptions --disable-libstdcxx-pch
+  --disable-libquadmath --disable-libitm --enable-libstdcxx-dual-abi=yes
+  --enable-lto --enable-plugin --enable-gnu-indirect-function
+  --enable-checking=release --with-pkgversion="[DragonFly]"
+  --disable-nls --disable-multilib --disable-bootstrap
+  ac_cv_lib_dl_dlsym=no (dlsym explictly disabled in libgomp.so)
+
+The following files have been patched (* planned)
+=================================================
