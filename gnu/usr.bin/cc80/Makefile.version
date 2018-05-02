@@ -1,0 +1,10 @@
+# GCC version scheme change burned us a bit.
+
+GCCCOMPLETEVER=	8.1
+GCCMAJORVER=	8
+GCCRELEASE=	Release # choices are "Snapshot" or "Release"
+GCCDATESTAMP=	2018-05-02
+GCCSHORTDATE=	${GCCDATESTAMP:S/-//g}
+GCCPOINTVER=	8.0
+GCCSHORTVER=	80
+MANPAGEVER=	80
