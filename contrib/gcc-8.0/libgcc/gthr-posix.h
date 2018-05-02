@@ -209,6 +209,30 @@ __gthread_active_p (void)
   return __gthread_active_latest_value != 0;
 }
 
+#elif defined(__DragonFly__) && defined(_AVOID_WEAKREF)
+
+/*
+ * On DragonFly libpthread always brings libc so __isthreaded is available.
+ * __isthreaded is a special variable that is set by libpthread lib.
+ * Mainly for libgcc_pic.a usage case, ld.gold is not ready to handle such
+ * static relocatable lib in pthread+cxx shared lib linkages.
+ * Everything else should use weakref on pthread_cancel below.
+ */
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
+extern int __isthreaded; /* from libc */
+#if defined(__cplusplus)
+}
+#endif
+
+static inline int
+__gthread_active_p (void)
+{
+  return (__isthreaded != 0);
+}
+
 #else /* neither FreeBSD nor Solaris */
 
 /* For a program to be multi-threaded the only thing that it certainly must
