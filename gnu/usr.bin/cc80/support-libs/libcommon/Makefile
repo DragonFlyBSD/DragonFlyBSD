@@ -13,6 +13,11 @@ SRCS+=		memory-block.cc
 OBJS+=		${OBJS-libcommon}
 CFLAGS+=	-I${GCCDIR}/libbacktrace
 
+# for pretty-print.c
+.if ${CCVER:Mgcc80}
+CXXFLAGS+=	-Wno-narrowing
+.endif
+
 .for ofile in ${OBJS-libcommon}
 ${ofile}: ${ofile:.o=.c}
 	${CXX} ${STATIC_CXXFLAGS} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}

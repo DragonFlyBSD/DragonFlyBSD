@@ -423,6 +423,16 @@ OBJS=	${BACKEND_OBJS}
 SRCS=	gimple-loop-interchange.cc unique-ptr-tests.cc \
 	wide-int.cc wide-int-print.cc
 
+# for gimple-ssa-sprintf.c
+.if ${CCVER:Mgcc47}
+CXXFLAGS+=	-Wno-pragmas
+.endif
+
+# for tree-ssa-structalias.c, tree-vect-stmts.c
+.if ${CCVER:Mgcc80}
+CXXFLAGS+=	-Wno-narrowing
+.endif
+
 # hack to force c++ compiler to compile *.c files to create library
 .for cfile in ${BACKEND_OBJS}
 ${cfile}: ${cfile:.o=.c}
