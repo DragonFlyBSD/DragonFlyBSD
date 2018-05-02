@@ -56,6 +56,11 @@ COPTS.job.c=	-Wno-format-nonliteral
 COPTS.parse.c=	-Wno-format-nonliteral
 COPTS.var.c=	-Wno-format-nonliteral
 
+# XXX pending bmake update
+.if !defined(WARNS_AUDIT)
+WARNS=	1
+.endif
+
 DPADD=		${LIBUTIL}
 LDADD=		-lutil
 

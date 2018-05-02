@@ -53,6 +53,12 @@ LDFLAGS+=	-Wl,--allow-multiple-definition
 . endif
 .endif
 
+# XXX pending tcsh update
+.if !defined(WARNS_AUDIT)
+WARNS= 1
+CFLAGS+=	-w
+.endif
+
 LINKS=	${BINDIR}/csh ${BINDIR}/tcsh
 
 CLEANFILES= ${GENHDRS} csh.1
