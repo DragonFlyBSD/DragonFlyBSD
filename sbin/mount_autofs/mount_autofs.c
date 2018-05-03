@@ -29,6 +29,7 @@
 
 #include <sys/param.h>
 #include <sys/mount.h>
+#include <sys/cdefs.h>
 
 #include <err.h>
 #include <mntopts.h>
@@ -41,12 +42,6 @@
 #include <vfs/autofs/autofs_mount.h>
 
 #include "mount_autofs.h"
-
-/*
- * Copied from NetBSD.
- * There is a reason to have const char*, so keep them const.
- */
-#define __UNCONST(a)    ((void *)(unsigned long)(const void *)(a))
 
 static const struct mntopt mopts[] = {
 	MOPT_STDOPTS,
@@ -72,17 +67,17 @@ mount_autofs_parseargs(int argc, char *argv[], void *v, int *mntflags,
 	while ((ch = getopt(argc, argv, "f:o:O:p:")) != -1)
 		switch (ch) {
 		case 'f':
-			strlcpy(__UNCONST(am->from), optarg, MAXPATHLEN);
+			strlcpy(__DECONST(char*, am->from), optarg, MAXPATHLEN);
 			break;
 		case 'o':
 			getmntopts(optarg, mopts, mntflags, 0);
 			break;
 		case 'O':
-			strlcpy(__UNCONST(am->master_options), optarg,
+			strlcpy(__DECONST(char*, am->master_options), optarg,
 			    MAXPATHLEN);
 			break;
 		case 'p':
-			strlcpy(__UNCONST(am->master_prefix), optarg,
+			strlcpy(__DECONST(char*, am->master_prefix), optarg,
 			    MAXPATHLEN);
 			break;
 		case '?':
