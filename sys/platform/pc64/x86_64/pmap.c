@@ -514,6 +514,31 @@ pmap_pdp_index(vm_offset_t va)
 }
 
 /*
+ * Of all the layers (PTE, PT, PD, PDP, PML4) the best one to cache is
+ * the PT layer.  This will speed up core pmap operations considerably.
+ * We also cache the PTE layer to (hopefully) improve relative lookup
+ * speeds.
+ *
+ * NOTE: The pmap spinlock does not need to be held but the passed-in pv
+ *	 must be in a known associated state (typically by being locked when
+ *	 the pmap spinlock isn't held).  We allow the race for that case.
+ *
+ * NOTE: pm_pvhint* is only accessed (read) with the spin-lock held, using
+ *	 cpu_ccfence() to prevent compiler optimizations from reloading the
+ *	 field.
+ */
+static __inline
+void
+pv_cache(pmap_t pmap, pv_entry_t pv, vm_pindex_t pindex)
+{
+	if (pindex < pmap_pt_pindex(0)) {
+		pmap->pm_pvhint_pte = pv;
+	} else if (pindex < pmap_pd_pindex(0)) {
+		pmap->pm_pvhint_pt = pv;
+	}
+}
+
+/*
  * Locate the requested pt_entry
  */
 static __inline
@@ -522,6 +547,7 @@ pv_entry_lookup(pmap_t pmap, vm_pindex_t pindex)
 {
 	pv_entry_t pv;
 
+#if 1
 	if (pindex < pmap_pt_pindex(0))
 		pv = pmap->pm_pvhint_pte;
 	else if (pindex < pmap_pd_pindex(0))
@@ -530,12 +556,18 @@ pv_entry_lookup(pmap_t pmap, vm_pindex_t pindex)
 		pv = NULL;
 	cpu_ccfence();
 	if (pv == NULL || pv->pv_pmap != pmap) {
-		pv = pv_entry_rb_tree_RB_LOOKUP(&pmap->pm_pvroot,
-						pindex);
+		pv = pv_entry_rb_tree_RB_LOOKUP(&pmap->pm_pvroot, pindex);
+		if (pv)
+			pv_cache(pmap, pv, pindex);
 	} else if (pv->pv_pindex != pindex) {
 		pv = pv_entry_rb_tree_RB_LOOKUP_REL(&pmap->pm_pvroot,
 						    pindex, pv);
+		if (pv)
+			pv_cache(pmap, pv, pindex);
 	}
+#else
+	pv = pv_entry_rb_tree_RB_LOOKUP(&pmap->pm_pvroot, pindex);
+#endif
 	return pv;
 }
 
@@ -717,32 +749,6 @@ pmap_pte(pmap_t pmap, vm_offset_t va)
 		return ((pt_entry_t *)pt);
 	return (pmap_pt_to_pte(*pt, va));
 }
-
-/*
- * Of all the layers (PTE, PT, PD, PDP, PML4) the best one to cache is
- * the PT layer.  This will speed up core pmap operations considerably.
- *
- * NOTE: The pmap spinlock does not need to be held but the passed-in pv
- *	 must be in a known associated state (typically by being locked when
- *	 the pmap spinlock isn't held).  We allow the race for that case.
- *
- * NOTE: pm_pvhint* is only accessed (read) with the spin-lock held, using
- *	 cpu_ccfence() to prevent compiler optimizations from reloading the
- *	 field.
- */
-static __inline
-void
-pv_cache(pv_entry_t pv, vm_pindex_t pindex)
-{
-	if (pindex < pmap_pt_pindex(0)) {
-		if (pv->pv_pmap)
-			pv->pv_pmap->pm_pvhint_pte = pv;
-	} else if (pindex < pmap_pd_pindex(0)) {
-		if (pv->pv_pmap)
-			pv->pv_pmap->pm_pvhint_pt = pv;
-	}
-}
-
 
 /*
  * Return address of PT slot in PD (KVM only)
@@ -3642,19 +3648,11 @@ _pv_hold_try(pv_entry_t pv PMAP_DEBUG_DECL)
 	 * Critical path shortcut expects pv to already have one ref
 	 * (for the pv->pv_pmap).
 	 */
-	if (atomic_cmpset_int(&pv->pv_hold, 1, PV_HOLD_LOCKED | 2)) {
-#ifdef PMAP_DEBUG
-		pv->pv_func = func;
-		pv->pv_line = lineno;
-#endif
-		return TRUE;
-	}
-
+	count = pv->pv_hold;
+	cpu_ccfence();
 	for (;;) {
-		count = pv->pv_hold;
-		cpu_ccfence();
 		if ((count & PV_HOLD_LOCKED) == 0) {
-			if (atomic_cmpset_int(&pv->pv_hold, count,
+			if (atomic_fcmpset_int(&pv->pv_hold, &count,
 					      (count + 1) | PV_HOLD_LOCKED)) {
 #ifdef PMAP_DEBUG
 				pv->pv_func = func;
@@ -3663,7 +3661,7 @@ _pv_hold_try(pv_entry_t pv PMAP_DEBUG_DECL)
 				return TRUE;
 			}
 		} else {
-			if (atomic_cmpset_int(&pv->pv_hold, count, count + 1))
+			if (atomic_fcmpset_int(&pv->pv_hold, &count, count + 1))
 				return FALSE;
 		}
 		/* retry */
@@ -3803,7 +3801,7 @@ _pv_alloc(pmap_t pmap, vm_pindex_t pindex, int *isnew PMAP_DEBUG_DECL)
 			spin_unlock(&pmap->pm_spin);
 			*isnew = 1;
 
-			KKASSERT(pv == NULL);
+			KASSERT(pv == NULL, ("pv insert failed %p->%p", pnew, pv));
 			return(pnew);
 		}
 
@@ -3916,7 +3914,6 @@ _pv_get(pmap_t pmap, vm_pindex_t pindex, vm_pindex_t **pmarkp PMAP_DEBUG_DECL)
 			return NULL;
 		}
 		if (_pv_hold_try(pv PMAP_DEBUG_COPY)) {
-			pv_cache(pv, pindex);
 			if (pmap_excl)
 				spin_unlock(&pmap->pm_spin);
 			else
@@ -3991,7 +3988,6 @@ pv_get_try(pmap_t pmap, vm_pindex_t pindex, vm_pindex_t **pmarkp, int *errorp)
 	 * XXX This has problems if the lock is shared, why?
 	 */
 	if (pv_hold_try(pv)) {
-		pv_cache(pv, pindex);	/* overwrite ok (shared lock) */
 		spin_unlock_shared(&pmap->pm_spin);
 		*errorp = 0;
 		KKASSERT(pv->pv_pmap == pmap && pv->pv_pindex == pindex);
