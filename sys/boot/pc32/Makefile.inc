@@ -5,7 +5,7 @@ __pc32__:
 
 LOADER_ADDRESS?= 0x200000
 WORLD_CCOPTLEVEL=	1 # Force -O1, -O2 implodes
-CFLAGS+=	-ffreestanding
+CFLAGS+=	-ffreestanding -fno-omit-frame-pointer
 CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3 -msoft-float
 
 # override CPU type, so that gcc doesn't insert mmx/sse instructions
