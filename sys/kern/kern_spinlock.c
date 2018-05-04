@@ -228,11 +228,12 @@ _spin_lock_contested(struct spinlock *spin, const char *ident, int value)
 		ovalue = spin->counta;
 		cpu_ccfence();
 		if ((ovalue & (SPINLOCK_EXCLWAIT - 1)) == 0) {
-			if (atomic_fcmpset_int(&spin->counta, &ovalue,
-				      ((ovalue - SPINLOCK_EXCLWAIT) | 1)) &
-				      ~SPINLOCK_SHARED) {
+			uint32_t nvalue;
+
+			nvalue= ((ovalue - SPINLOCK_EXCLWAIT) | 1) &
+				~SPINLOCK_SHARED;
+			if (atomic_fcmpset_int(&spin->counta, &ovalue, nvalue))
 				break;
-			}
 			continue;
 		}
 		if (expbackoff > 6 + spin_backoff_max)
