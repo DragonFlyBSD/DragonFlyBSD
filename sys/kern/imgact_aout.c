@@ -59,7 +59,6 @@ static int	exec_aout_imgact (struct image_params *imgp);
 struct sysentvec aout_sysvec = {
 	SYS_MAXSYSCALL,
 	sysent,
-	-1,
 	0,
 	0,
 	0,
@@ -69,7 +68,6 @@ struct sysentvec aout_sysvec = {
 	sendsig,
 	sigcode,
 	&szsigcode,
-	0,
 	"FreeBSD a.out",
 	NULL,
 	NULL,

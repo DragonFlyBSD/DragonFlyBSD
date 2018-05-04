@@ -40,7 +40,6 @@
 static struct sysentvec elf64_dragonfly_sysvec = {
         .sv_size	= SYS_MAXSYSCALL,
         .sv_table	= sysent,
-        .sv_mask	= -1,
         .sv_sigsize	= 0,
         .sv_sigtbl	= NULL,
         .sv_errsize	= 0,
@@ -50,7 +49,6 @@ static struct sysentvec elf64_dragonfly_sysvec = {
         .sv_sendsig	= sendsig,
         .sv_sigcode	= sigcode,
         .sv_szsigcode	= &szsigcode,
-        .sv_prepsyscall	= NULL,
 	.sv_name	= "DragonFly ELF64",
 	.sv_coredump	= __elfN(coredump),
 	.sv_imgact_try	= NULL,

@@ -60,7 +60,6 @@ struct vnode;
 struct sysentvec {
 	int		sv_size;	/* number of entries */
 	struct sysent	*sv_table;	/* pointer to sysent */
-	u_int		sv_mask;	/* optional mask to index, else -1 */
 	int		sv_sigsize;	/* size of signal translation table */
 	int		*sv_sigtbl;	/* signal translation table */
 	int		sv_errsize;	/* size of errno translation table */
@@ -75,8 +74,6 @@ struct sysentvec {
 	char 		*sv_sigcode;	/* start of sigtramp code */
 	int 		*sv_szsigcode;	/* size of sigtramp code */
 					/* prep syscall (must be MPSAFE) */
-	void		(*sv_prepsyscall) (struct trapframe *, int *,
-					       u_int *, caddr_t *);
 	char		*sv_name;	/* name of binary type */
 	int		(*sv_coredump) (struct lwp *, int, struct vnode *,
 					    off_t);

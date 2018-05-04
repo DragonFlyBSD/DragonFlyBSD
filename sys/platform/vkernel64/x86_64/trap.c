@@ -1095,20 +1095,11 @@ syscall2(struct trapframe *frame)
 	params = (caddr_t)frame->tf_rsp + sizeof(register_t);
 	code = frame->tf_rax;
 
-	if (p->p_sysent->sv_prepsyscall) {
-		(*p->p_sysent->sv_prepsyscall)(
-			frame, (int *)(&args.nosys.sysmsg + 1),
-			&code, &params);
-	} else {
-		if (code == SYS_syscall || code == SYS___syscall) {
-			code = frame->tf_rdi;
-			reg++;
-			regcnt--;
-		}
+	if (code == SYS_syscall || code == SYS___syscall) {
+		code = frame->tf_rdi;
+		reg++;
+		regcnt--;
 	}
-
-	if (p->p_sysent->sv_mask)
-		code &= p->p_sysent->sv_mask;
 
 	if (code >= p->p_sysent->sv_size)
 		callp = &p->p_sysent->sv_table[0];

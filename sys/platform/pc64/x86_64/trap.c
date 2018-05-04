@@ -1111,7 +1111,6 @@ syscall2(struct trapframe *frame)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct lwp *lp = td->td_lwp;
-	caddr_t params;
 	struct sysent *callp;
 	register_t orig_tf_rflags;
 	int sticks;
@@ -1122,7 +1121,7 @@ syscall2(struct trapframe *frame)
 #endif
 	register_t *argp;
 	u_int code;
-	int reg, regcnt;
+	int regcnt, optimized_regcnt;
 	union sysunion args;
 	register_t *argsdst;
 
@@ -1140,8 +1139,9 @@ syscall2(struct trapframe *frame)
 
 	userenter(td, p);	/* lazy raise our priority */
 
-	reg = 0;
 	regcnt = 6;
+	optimized_regcnt = 6;
+
 	/*
 	 * Misc
 	 */
@@ -1158,6 +1158,7 @@ syscall2(struct trapframe *frame)
 		vkernel_trap(lp, frame);
 		error = EJUSTRETURN;
 		callp = NULL;
+		code = 0;
 		goto out;
 	}
 
@@ -1166,23 +1167,15 @@ syscall2(struct trapframe *frame)
 	 */
 	KASSERT(lp->lwp_md.md_regs == frame,
 		("Frame mismatch %p %p", lp->lwp_md.md_regs, frame));
-	params = (caddr_t)frame->tf_rsp + sizeof(register_t);
-	code = frame->tf_rax;
+	code = (u_int)frame->tf_rax;
 
-	if (p->p_sysent->sv_prepsyscall) {
-		(*p->p_sysent->sv_prepsyscall)(
-			frame, (int *)(&args.nosys.sysmsg + 1),
-			&code, &params);
+	if (code == SYS_syscall || code == SYS___syscall) {
+		code = frame->tf_rdi;
+		regcnt--;
+		argp = &frame->tf_rdi + 1;
 	} else {
-		if (code == SYS_syscall || code == SYS___syscall) {
-			code = frame->tf_rdi;
-			reg++;
-			regcnt--;
-		}
+		argp = &frame->tf_rdi;
 	}
-
-	if (p->p_sysent->sv_mask)
-		code &= p->p_sysent->sv_mask;
 
 	if (code >= p->p_sysent->sv_size)
 		callp = &p->p_sysent->sv_table[0];
@@ -1197,21 +1190,24 @@ syscall2(struct trapframe *frame)
 	 * to be the registers used to pass arguments, in exactly the right
 	 * order.
 	 */
-	argp = &frame->tf_rdi;
-	argp += reg;
 	argsdst = (register_t *)(&args.nosys.sysmsg + 1);
+
 	/*
-	 * JG can we overflow the space pointed to by 'argsdst'
-	 * either with 'bcopy' or with 'copyin'?
+	 * Its easier to copy up to the highest number of syscall arguments
+	 * passed in registers, which is 6, than to conditionalize it.
 	 */
-	bcopy(argp, argsdst, sizeof(register_t) * regcnt);
+	__builtin_memcpy(argsdst, argp, sizeof(register_t) * optimized_regcnt);
+
 	/*
-	 * copyin is MP aware, but the tracing code is not
+	 * Any arguments beyond available argument-passing registers must
+	 * be copyin()'d from the user stack.
 	 */
 	if (narg > regcnt) {
-		KASSERT(params != NULL, ("copyin args with no params!"));
+		caddr_t params;
+
+		params = (caddr_t)frame->tf_rsp + sizeof(register_t);
 		error = copyin(params, &argsdst[regcnt],
-			(narg - regcnt) * sizeof(register_t));
+			       (narg - regcnt) * sizeof(register_t));
 		if (error) {
 #ifdef KTRACE
 			if (KTRPOINT(td, KTR_SYSCALL)) {
