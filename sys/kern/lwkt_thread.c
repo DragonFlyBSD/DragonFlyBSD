@@ -1659,8 +1659,6 @@ lwkt_exit(void)
     /*
      * Do any cleanup that might block here
      */
-    if (td->td_flags & TDF_VERBOSE)
-	kprintf("kthread %p %s has exited\n", td, td->td_comm);
     biosched_done(td);
     dsched_exit_thread(td);
 

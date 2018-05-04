@@ -352,7 +352,7 @@ struct thread {
 #define TDF_SYSTHREAD		0x00000100	/* reserve memory may be used */
 #define TDF_ALLOCATED_THREAD	0x00000200	/* objcache allocated thread */
 #define TDF_ALLOCATED_STACK	0x00000400	/* objcache allocated stack */
-#define TDF_VERBOSE		0x00000800	/* verbose on exit */
+#define TDF_UNUSED0800		0x00000800
 #define TDF_DEADLKTREAT		0x00001000	/* special lockmgr treatment */
 #define TDF_MARKER		0x00002000	/* tdallq list scan marker */
 #define TDF_TIMEOUT_RUNNING	0x00004000	/* tsleep timeout race */

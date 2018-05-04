@@ -51,9 +51,6 @@ _kthread_create(void (*func)(void *), void *arg,
     thread_t td;
     int flags = 0;
 
-    if (bootverbose)
-        atomic_set_int(&flags, TDF_VERBOSE);
-
     td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, cpu, flags);
     if (tdp)
 	*tdp = td;
@@ -120,7 +117,7 @@ kthread_create_stk(void (*func)(void *), void *arg,
     thread_t td;
     __va_list ap;
 
-    td = lwkt_alloc_thread(NULL, stksize, -1, TDF_VERBOSE);
+    td = lwkt_alloc_thread(NULL, stksize, -1, 0);
     if (tdp)
 	*tdp = td;
     cpu_set_thread_handler(td, kthread_exit, func, arg);
