@@ -176,9 +176,10 @@
  * 500303 - get rid of sgtty (superseded by termios)
  * 500304 - remove IPSEC/FAST_IPSEC
  * 500305 - remove <sys/ioctl_compat.h> for good
+ * 500306 - strsuftoll(), strsuftollx()
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500305	/* propagated to newvers */
+#define __DragonFly_version 500306	/* propagated to newvers */
 
 #include <sys/_null.h>
 

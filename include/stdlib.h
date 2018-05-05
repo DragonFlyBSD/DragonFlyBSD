@@ -305,6 +305,11 @@ int	 sradixsort(const unsigned char **, int, const unsigned char *,
 void	 sranddev(void);
 void	 srandomdev(void);
 long long
+	 strsuftoll(const char *, const char *, long long, long long);
+long long
+	 strsuftollx(const char *, const char *, long long, long long, char *,
+	    size_t);
+long long
 	 strtonum(const char *, long long, long long, const char **);
 
 /* Deprecated interfaces. */

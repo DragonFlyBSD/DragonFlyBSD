@@ -111,6 +111,11 @@ DF410.0 {
     __realloc;
 };
 
+DF504.0 {
+    strsuftoll;
+    strsuftollx;
+};
+
 /*
  * ignore WEAK:  __pthread_cxa_finalize;
  */

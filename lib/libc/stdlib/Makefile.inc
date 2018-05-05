@@ -12,8 +12,8 @@ MISRCS+=a64l.c abort.c abs.c atexit.c aligned_alloc.c \
 	getsubopt.c hcreate.c heapsort.c imaxabs.c imaxdiv.c \
 	insque.c l64a.c labs.c ldiv.c llabs.c lldiv.c lsearch.c \
 	merge.c ptsname.c qsort.c qsort_r.c quick_exit.c \
-	radixsort.c rand.c random.c \
-	reallocf.c realpath.c remque.c strfmon.c strtoimax.c \
+	radixsort.c rand.c random.c reallocf.c realpath.c remque.c \
+	strfmon.c strsuftoll.c strtoimax.c \
 	strtol.c strtoll.c strtonum.c strtoq.c strtoul.c strtoull.c \
 	strtoumax.c strtouq.c system.c tdelete.c tfind.c tsearch.c twalk.c
 
@@ -40,8 +40,8 @@ MAN+=	a64l.3 abort.3 abs.3 alloca.3 atexit.3 atof.3 atoi.3 atol.3 \
 	hcreate.3 imaxabs.3 imaxdiv.3 insque.3 labs.3 ldiv.3 llabs.3 lldiv.3 \
 	lsearch.3 malloc.3 memory.3 posix_memalign.3 posix_openpt.3 \
 	ptsname.3 qsort.3 quick_exit.3 \
-	radixsort.3 rand.3 random.3 \
-	realpath.3 strfmon.3 strtod.3 strtol.3 strtonum.3 strtoul.3 system.3 \
+	radixsort.3 rand.3 random.3 realpath.3 \
+	strfmon.3 strsuftoll.3 strtod.3 strtol.3 strtonum.3 strtoul.3 system.3 \
 	tsearch.3
 
 MLINKS+=a64l.3 l64a.3 \
@@ -79,6 +79,7 @@ MLINKS+=random.3 initstate.3 \
 	random.3 srandom.3 \
 	random.3 srandomdev.3
 MLINKS+=strfmon.3 strfmon_l.3
+MLINKS+=strsuftoll.3 strsuftollx.3
 MLINKS+=strtod.3 strtod_l.3 \
 	strtod.3 strtof.3 \
 	strtod.3 strtof_l.3 \
