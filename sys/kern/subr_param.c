@@ -254,7 +254,7 @@ init_param2(int physpages)
 
 	/*
 	 * The following can be overridden after boot via sysctl.  Note:
-	 * unless overriden, these macros are ultimately based on maxusers.
+	 * unless overridden, these macros are ultimately based on maxusers.
 	 *
 	 * Limit maxproc so that kmap entries cannot be exhausted by
 	 * processes.  This limitation can be a bit problematic because
@@ -306,7 +306,7 @@ init_param2(int physpages)
 	TUNABLE_INT_FETCH("kern.maxposixlocksperuid", &maxposixlocksperuid);
 
 	/*
-	 * Unless overriden, NBUF is typically 0 (auto-sized later).
+	 * Unless overridden, NBUF is typically 0 (auto-sized later).
 	 */
 	nbuf = NBUF;
 	TUNABLE_LONG_FETCH("kern.nbuf", &nbuf);

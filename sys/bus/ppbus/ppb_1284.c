@@ -181,18 +181,18 @@ ppb_request_mode(int mode, int options)
 }
 
 /*
- * ppb_peripheral_negociate()
+ * ppb_peripheral_negotiate()
  *
- * Negociate the peripheral side
+ * Negotiate the peripheral side
  */
 int
-ppb_peripheral_negociate(device_t bus, int mode, int options)
+ppb_peripheral_negotiate(device_t bus, int mode, int options)
 {
 	int spin, request_mode, error = 0;
 	char r;
 
 	ppb_set_mode(bus, PPB_COMPATIBLE);
-	ppb_1284_set_state(bus, PPB_PERIPHERAL_NEGOCIATION);
+	ppb_1284_set_state(bus, PPB_PERIPHERAL_NEGOTIATION);
 
 	/* compute ext. value */
 	request_mode = ppb_request_mode(mode, options);
@@ -241,7 +241,7 @@ ppb_peripheral_negociate(device_t bus, int mode, int options)
 #ifdef DEBUG_1284
 			kprintf("A");
 #endif
-			/* negociation succeeds */
+			/* negotiation succeeds */
 		}
 	} else {
 		/* Event 5 - mode not supported */
@@ -529,7 +529,7 @@ spp_1284_read(device_t bus, int mode, char *buffer, int max, int *read)
 
 	switch (state) {
 	case PPB_FORWARD_IDLE:
-		if ((error = ppb_1284_negociate(bus, mode, 0)))
+		if ((error = ppb_1284_negotiate(bus, mode, 0)))
 			return (error);
 		break;
 
@@ -539,7 +539,7 @@ spp_1284_read(device_t bus, int mode, char *buffer, int max, int *read)
 		
 	default:
 		ppb_1284_terminate(bus);
-		if ((error = ppb_1284_negociate(bus, mode, 0)))
+		if ((error = ppb_1284_negotiate(bus, mode, 0)))
 			return (error);
 		break;
 	}
@@ -597,12 +597,12 @@ ppb_1284_read_id(device_t bus, int mode, char *buffer,
 	switch (mode) {
 	case PPB_NIBBLE:
 	case PPB_ECP:
-		if ((error = ppb_1284_negociate(bus, PPB_NIBBLE, PPB_REQUEST_ID)))
+		if ((error = ppb_1284_negotiate(bus, PPB_NIBBLE, PPB_REQUEST_ID)))
 			return (error);
 		error = spp_1284_read(bus, PPB_NIBBLE, buffer, max, read);
 		break;
 	case PPB_BYTE:
-		if ((error = ppb_1284_negociate(bus, PPB_BYTE, PPB_REQUEST_ID)))
+		if ((error = ppb_1284_negotiate(bus, PPB_BYTE, PPB_REQUEST_ID)))
 			return (error);
 		error = spp_1284_read(bus, PPB_BYTE, buffer, max, read);
 		break;
@@ -638,16 +638,16 @@ ppb_1284_read(device_t bus, int mode, char *buffer,
 }
 
 /*
- * ppb_1284_negociate()
+ * ppb_1284_negotiate()
  *
- * IEEE1284 negociation phase
+ * IEEE1284 negotiation phase
  *
  * Normal nibble mode or request device id mode (see ppb_1284.h)
  *
- * After negociation, nFAULT is low if data is available
+ * After negotiation, nFAULT is low if data is available
  */
 int
-ppb_1284_negociate(device_t bus, int mode, int options)
+ppb_1284_negotiate(device_t bus, int mode, int options)
 {
 	int error;
 	int request_mode;
@@ -656,7 +656,7 @@ ppb_1284_negociate(device_t bus, int mode, int options)
 	kprintf("n");
 #endif
 
-	if (ppb_1284_get_state(bus) >= PPB_PERIPHERAL_NEGOCIATION)
+	if (ppb_1284_get_state(bus) >= PPB_PERIPHERAL_NEGOTIATION)
 		ppb_peripheral_terminate(bus, PPB_WAIT);
 
 	if (ppb_1284_get_state(bus) != PPB_FORWARD_IDLE)
@@ -669,7 +669,7 @@ ppb_1284_negociate(device_t bus, int mode, int options)
 	/* ensure the host is in compatible mode */
 	ppb_set_mode(bus, PPB_COMPATIBLE);
 
-	/* reset error to catch the actual negociation error */
+	/* reset error to catch the actual negotiation error */
 	ppb_1284_reset_error(bus, PPB_FORWARD_IDLE);
 
 	/* calculate ext. value */
@@ -679,8 +679,8 @@ ppb_1284_negociate(device_t bus, int mode, int options)
 	ppb_wctr(bus, (nINIT | SELECTIN) & ~(STROBE | AUTOFEED));
 	DELAY(1);
 
-	/* enter negociation phase */
-	ppb_1284_set_state(bus, PPB_NEGOCIATION);
+	/* enter negotiation phase */
+	ppb_1284_set_state(bus, PPB_NEGOTIATION);
 
 	/* Event 0 - put the exten. value on the data lines */
 	ppb_wdtr(bus, request_mode);
@@ -761,7 +761,7 @@ ppb_1284_negociate(device_t bus, int mode, int options)
 		ppb_1284_set_state(bus, PPB_REVERSE_IDLE);
 		break;
 	case PPB_ECP:
-		/* negociation ok, now setup the communication */
+		/* negotiation ok, now setup the communication */
 		ppb_1284_set_state(bus, PPB_SETUP);
 		ppb_wctr(bus, (nINIT | AUTOFEED) & ~(SELECTIN | STROBE));
 

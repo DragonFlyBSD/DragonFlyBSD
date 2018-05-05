@@ -692,7 +692,7 @@ lptread(struct dev_read_args *ap)
 		return (EPERM);
 	}
 
-	if ((error = ppb_1284_negociate(ppbus, PPB_NIBBLE, 0)))
+	if ((error = ppb_1284_negotiate(ppbus, PPB_NIBBLE, 0)))
 		return (error);
 
 	/* read data in an other buffer, read/write may be simultaneous */

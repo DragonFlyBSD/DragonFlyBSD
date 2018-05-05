@@ -216,7 +216,7 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 
 		/*
 		 * Get the interface stats.  These may get
-		 * overriden below on a per-interface basis.
+		 * overridden below on a per-interface basis.
 		 */
 		ifdataaddr = (u_long)ifnet.if_data_pcpu;
 		if (kread(ifdataaddr, (char *)&ifdata, sizeof(ifdata)))

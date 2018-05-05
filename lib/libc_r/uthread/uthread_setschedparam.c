@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_setschedparam.c,v 1.5.2.3 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_setschedparam.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 #include <errno.h>
 #include <sys/param.h>
@@ -89,7 +88,7 @@ _pthread_setschedparam(pthread_t pthread, int policy,
 					 * being lowered, the thread must be
 					 * inserted at the head of the queue for
 					 * its priority if it owns any priority
-					 * protection or inheritence mutexes.
+					 * protection or inheritance mutexes.
 					 */
 					PTHREAD_PRIOQ_INSERT_HEAD(pthread);
 				}

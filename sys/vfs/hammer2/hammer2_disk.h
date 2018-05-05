@@ -980,7 +980,7 @@ struct hammer2_inode_meta {
 	/*
 	 * Quotas and aggregate sub-tree inode and data counters.  Note that
 	 * quotas are not replicated downward, they are explicitly set by
-	 * the sysop and in-memory structures keep track of inheritence.
+	 * the sysop and in-memory structures keep track of inheritance.
 	 */
 	hammer2_key_t	data_quota;	/* 00B0 subtree quota in bytes */
 	hammer2_key_t	unusedB8;	/* 00B8 subtree byte count */

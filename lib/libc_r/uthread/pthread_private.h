@@ -255,9 +255,9 @@ struct pthread_mutex {
 	int				m_refcount;
 
 	/*
-	 * Used for priority inheritence and protection.
+	 * Used for priority inheritance and protection.
 	 *
-	 *   m_prio       - For priority inheritence, the highest active
+	 *   m_prio       - For priority inheritance, the highest active
 	 *                  priority (threads locking the mutex inherit
 	 *                  this priority).  For priority protection, the
 	 *                  ceiling priority of this mutex.
@@ -789,7 +789,7 @@ struct pthread {
 
 	/*
 	 * Inherited priority is the priority a thread inherits by
-	 * taking a priority inheritence or protection mutex.  It
+	 * taking a priority inheritance or protection mutex.  It
 	 * is not affected by base priority changes.  Inherited
 	 * priority defaults to and remains 0 until a mutex is taken
 	 * that is being waited on by any other thread whose priority

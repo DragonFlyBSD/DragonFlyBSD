@@ -1080,7 +1080,7 @@ void isp_prt_endcmd(ispsoftc_t *, XS_T *);
  *	DEFAULT_PORTWWN(ispsoftc_t *, chan)	Default FC Port WWN to use
  *
  *		These defines are hooks to allow the setting of node and
- *		port WWNs when NVRAM cannot be read or is to be overriden.
+ *		port WWNs when NVRAM cannot be read or is to be overridden.
  *
  *	ACTIVE_NODEWWN(ispsoftc_t *, chan)	FC Node WWN to use
  *	ACTIVE_PORTWWN(ispsoftc_t *, chan)	FC Port WWN to use

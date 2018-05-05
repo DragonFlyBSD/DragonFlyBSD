@@ -311,7 +311,7 @@ _pthread_mutex_trylock(pthread_mutex_t * mutex)
 				ret = EBUSY;
 			break;
 
-		/* POSIX priority inheritence mutex: */
+		/* POSIX priority inheritance mutex: */
 		case PTHREAD_PRIO_INHERIT:
 			/* Check if this mutex is not locked: */
 			if ((*mutex)->m_owner == NULL) {
@@ -488,7 +488,7 @@ _pthread_mutex_lock(pthread_mutex_t * mutex)
 			}
 			break;
 
-		/* POSIX priority inheritence mutex: */
+		/* POSIX priority inheritance mutex: */
 		case PTHREAD_PRIO_INHERIT:
 			/* Check if this mutex is not locked: */
 			if ((*mutex)->m_owner == NULL) {
@@ -812,7 +812,7 @@ mutex_unlock_common(pthread_mutex_t * mutex, int add_reference)
 			}
 			break;
 
-		/* POSIX priority inheritence mutex: */
+		/* POSIX priority inheritance mutex: */
 		case PTHREAD_PRIO_INHERIT:
 			/*
 			 * Check if the running thread is not the owner of the
@@ -1071,7 +1071,7 @@ mutex_unlock_common(pthread_mutex_t * mutex, int add_reference)
 /*
  * This function is called when a change in base priority occurs for
  * a thread that is holding or waiting for a priority protection or
- * inheritence mutex.  A change in a threads base priority can effect
+ * inheritance mutex.  A change in a threads base priority can effect
  * changes to active priorities of other threads and to the ordering
  * of mutex locking by waiting threads.
  *
@@ -1092,7 +1092,7 @@ _mutex_notify_priochange(pthread_t pthread)
 	}
 
 	/*
-	 * If this thread is waiting on a priority inheritence mutex,
+	 * If this thread is waiting on a priority inheritance mutex,
 	 * check for priority adjustments.  A change in priority can
 	 * also effect a ceiling violation(*) for a thread waiting on
 	 * a priority protection mutex; we don't perform the check here
@@ -1255,7 +1255,7 @@ mutex_rescan_owned(pthread_t pthread, pthread_mutex_t mutex)
 	else {
 		/*
 		 * The caller wants to start after a specific mutex.  It
-		 * is assumed that this mutex is a priority inheritence
+		 * is assumed that this mutex is a priority inheritance
 		 * mutex and that its priority has been correctly
 		 * calculated.
 		 */
@@ -1268,9 +1268,9 @@ mutex_rescan_owned(pthread_t pthread, pthread_mutex_t mutex)
 
 	while (m != NULL) {
 		/*
-		 * We only want to deal with priority inheritence
+		 * We only want to deal with priority inheritance
 		 * mutexes.  This might be optimized by only placing
-		 * priority inheritence mutexes into the owned mutex
+		 * priority inheritance mutexes into the owned mutex
 		 * list, but it may prove to be useful having all
 		 * owned mutexes in this list.  Consider a thread
 		 * exiting while holding mutexes...
@@ -1321,7 +1321,7 @@ mutex_rescan_owned(pthread_t pthread, pthread_mutex_t mutex)
 			 * POSIX states that if the priority is being
 			 * lowered, the thread must be inserted at the
 			 * head of the queue for its priority if it owns
-			 * any priority protection or inheritence mutexes.
+			 * any priority protection or inheritance mutexes.
 			 */
 			if ((active_prio < pthread->active_priority) &&
 			    (pthread->priority_mutex_count > 0)) {

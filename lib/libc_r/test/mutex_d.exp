@@ -226,23 +226,23 @@ Testing queueing order
   Queueing order on a mutex - PASS
   Queueing order on a condition variable - PASS
 
-Testing priority inheritence
+Testing priority inheritance
 ----------------------------
   Protype PTHREAD_PRIO_INHERIT, Type POSIX (type not specified)
-    Simple inheritence test - PASS
-    Inheritence test with change of priority - PASS
+    Simple inheritance test - PASS
+    Inheritance test with change of priority - PASS
   Protype PTHREAD_PRIO_INHERIT, Type SS2 PTHREAD_MUTEX_DEFAULT
-    Simple inheritence test - PASS
-    Inheritence test with change of priority - PASS
+    Simple inheritance test - PASS
+    Inheritance test with change of priority - PASS
   Protype PTHREAD_PRIO_INHERIT, Type SS2 PTHREAD_MUTEX_ERRORCHECK
-    Simple inheritence test - PASS
-    Inheritence test with change of priority - PASS
+    Simple inheritance test - PASS
+    Inheritance test with change of priority - PASS
   Protype PTHREAD_PRIO_INHERIT, Type SS2 PTHREAD_MUTEX_NORMAL
-    Simple inheritence test - PASS
-    Inheritence test with change of priority - PASS
+    Simple inheritance test - PASS
+    Inheritance test with change of priority - PASS
   Protype PTHREAD_PRIO_INHERIT, Type SS2 PTHREAD_MUTEX_RECURSIVE
-    Simple inheritence test - PASS
-    Inheritence test with change of priority - PASS
+    Simple inheritance test - PASS
+    Inheritance test with change of priority - PASS
 
 Testing priority ceilings
 -------------------------

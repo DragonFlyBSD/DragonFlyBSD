@@ -192,13 +192,13 @@ ppiintr(void *arg)
 
 	switch (ppb_1284_get_state(ppbus)) {
 
-	/* accept IEEE1284 negociation then wakeup an waiting process to
-	 * continue negociation at process level */
+	/* accept IEEE1284 negotiation then wakeup an waiting process to
+	 * continue negotiation at process level */
 	case PPB_FORWARD_IDLE:
 		/* Event 1 */
 		if ((ppb_rstr(ppbus) & (SELECT | nBUSY)) ==
 							(SELECT | nBUSY)) {
-			/* IEEE1284 negociation */
+			/* IEEE1284 negotiation */
 #ifdef DEBUG_1284
 			kprintf("N");
 #endif
@@ -206,7 +206,7 @@ ppiintr(void *arg)
 			/* Event 2 - prepare for reading the ext. value */
 			ppb_wctr(ppbus, (PCD | STROBE | nINIT) & ~SELECTIN);
 
-			ppb_1284_set_state(ppbus, PPB_NEGOCIATION);
+			ppb_1284_set_state(ppbus, PPB_NEGOTIATION);
 
 		} else {
 #ifdef DEBUG_1284
@@ -216,7 +216,7 @@ ppiintr(void *arg)
 			break;
 		}
 
-		/* wake up any process waiting for negociation from
+		/* wake up any process waiting for negotiation from
 		 * remote master host */
 
 		/* XXX should set a variable to warn the process about
@@ -315,7 +315,7 @@ ppiclose(struct dev_close_args *ap)
  *
  * IEEE1284 compliant read.
  *
- * First, try negociation to BYTE then NIBBLE mode
+ * First, try negotiation to BYTE then NIBBLE mode
  * If no data is available, wait for it otherwise transfer as much as possible
  */
 static int
@@ -336,10 +336,10 @@ ppiread(struct dev_read_args *ap)
 		/* fall throught */
 
 	case PPB_FORWARD_IDLE:
-		/* if can't negociate NIBBLE mode then try BYTE mode,
+		/* if can't negotiate NIBBLE mode then try BYTE mode,
 		 * the peripheral may be a computer
 		 */
-		if ((ppb_1284_negociate(ppbus,
+		if ((ppb_1284_negotiate(ppbus,
 			ppi->ppi_mode = PPB_NIBBLE, 0))) {
 
 			/* XXX Wait 2 seconds to let the remote host some
@@ -347,7 +347,7 @@ ppiread(struct dev_read_args *ap)
 			 */
 			tsleep(ppi, 0, "ppiread", 2*hz);
 			
-			if ((error = ppb_1284_negociate(ppbus,
+			if ((error = ppb_1284_negotiate(ppbus,
 				ppi->ppi_mode = PPB_BYTE, 0)))
 				return (error);
 		}
@@ -398,11 +398,11 @@ error:
  *
  * Actually, this is the peripheral side of a remote IEEE1284 read
  *
- * The first part of the negociation (IEEE1284 device detection) is
+ * The first part of the negotiation (IEEE1284 device detection) is
  * done at interrupt level, then the remaining is done by the writing
  * process
  *
- * Once negociation done, transfer data
+ * Once negotiation done, transfer data
  */
 static int
 ppiwrite(struct dev_write_args *ap)
@@ -427,8 +427,8 @@ ppiwrite(struct dev_write_args *ap)
 		  MS_RET(0)
 	};
 
-	/* negociate ECP mode */
-	if (ppb_1284_negociate(ppbus, PPB_ECP, 0)) {
+	/* negotiate ECP mode */
+	if (ppb_1284_negotiate(ppbus, PPB_ECP, 0)) {
 		kprintf("ppiwrite: ECP negotiation failed\n");
 	}
 
@@ -444,7 +444,7 @@ ppiwrite(struct dev_write_args *ap)
 	/* we have to be peripheral to be able to send data, so
 	 * wait for the appropriate state
 	 */
- 	if (ppb_1284_get_state(ppbus) < PPB_PERIPHERAL_NEGOCIATION)
+ 	if (ppb_1284_get_state(ppbus) < PPB_PERIPHERAL_NEGOTIATION)
 		ppb_1284_terminate(ppbus);
 
 	while (ppb_1284_get_state(ppbus) != PPB_PERIPHERAL_IDLE) {
@@ -455,13 +455,13 @@ ppiwrite(struct dev_write_args *ap)
 
 		ppi_enable_intr(ppidev);
 
-		/* sleep until IEEE1284 negociation starts */
+		/* sleep until IEEE1284 negotiation starts */
 		error = tsleep(ppi, PCATCH, "ppiwrite", 0);
 
 		switch (error) {
 		case 0:
-			/* negociate peripheral side with BYTE mode */
-			ppb_peripheral_negociate(ppbus, PPB_BYTE, 0);
+			/* negotiate peripheral side with BYTE mode */
+			ppb_peripheral_negotiate(ppbus, PPB_BYTE, 0);
 			break;
 		case EWOULDBLOCK:
 			break;
@@ -473,7 +473,7 @@ ppiwrite(struct dev_write_args *ap)
 	kprintf("N");
 #endif
 
-	/* negociation done, write bytes to master host */
+	/* negotiation done, write bytes to master host */
 	while ((len = (int)szmin(uio->uio_resid, BUFSIZE)) != 0) {
 		uiomove(ppi->ppi_buffer, (size_t)len, uio);
 		if ((error = byte_peripheral_write(ppbus,

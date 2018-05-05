@@ -200,7 +200,7 @@ ar5416Reset(struct ath_hal *ah, HAL_OPMODE opmode,
 		    AR_MAC_PCU_ASYNC_FIFO_REG3_SOFT_RESET);
 	}
 
-	/* Override ini values (that can be overriden in this fashion) */
+	/* Override ini values (that can be overridden in this fashion) */
 	ar5416OverrideIni(ah, chan);
 
 	/* Setup 11n MAC/Phy mode registers */

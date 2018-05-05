@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/test/mutex_d.c,v 1.1.2.2 2003/01/05 19:59:39 semenu Exp $
- * $DragonFly: src/lib/libc_r/test/mutex_d.c,v 1.3 2007/06/26 23:30:05 josepht Exp $
  */
 #include <stdlib.h>
 #include <unistd.h>
@@ -1244,7 +1243,7 @@ mutex_prioinherit_test (void)
 	log_trace ("Current scheduling policy %d, priority %d\n",
 	    policy, my_prio);
 
-	log ("Testing priority inheritence\n");
+	log ("Testing priority inheritance\n");
 	log ("----------------------------\n");
 	for (mkind = M_POSIX; mkind <= M_SS2_RECURSIVE; mkind++) {
 
@@ -1257,7 +1256,7 @@ mutex_prioinherit_test (void)
 		assert (pthread_mutexattr_init (&mattr) == 0);
 
 		/*
-		 * Initialize and create 3 priority inheritence mutexes with
+		 * Initialize and create 3 priority inheritance mutexes with
 		 * default (max priority) ceilings.
 		 */
 		assert (pthread_mutexattr_setprotocol(&mattr,
@@ -1288,7 +1287,7 @@ mutex_prioinherit_test (void)
 		 * Expected results:
 		 *   Threads complete in order 4, 6, 5, 3, 2
 		 */
-		log ("    Simple inheritence test - ");
+		log ("    Simple inheritance test - ");
 
 		/*
 		 * Command thread 4 to take mutexes 0 and 1.
@@ -1364,7 +1363,7 @@ mutex_prioinherit_test (void)
 		 *   policy is SCHED_FIFO).
 		 *   
 		 */
-		log ("    Inheritence test with change of priority - ");
+		log ("    Inheritance test with change of priority - ");
 
 		/*
 		 * Change threads 2 and 4 scheduling policies to be

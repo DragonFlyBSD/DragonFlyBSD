@@ -24,9 +24,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/vpoio.h,v 1.4.2.2 2001/10/02 05:27:20 nsouch Exp $
- * $DragonFly: src/sys/dev/disk/vpo/vpoio.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
- *
  */
+
 #ifndef __VP0IO_H
 #define __VP0IO_H
 
@@ -42,7 +41,7 @@
 #define VP0_EDATA_OVERFLOW	5	
 #define VP0_EDISCONNECT		6
 #define VP0_EPPDATA_TIMEOUT	7
-#define VP0_ENEGOCIATE		8
+#define VP0_ENEGOTIATE		8
 #define VP0_ENOPORT		9
 #define VP0_EINITFAILED		10
 #define VP0_EINTR		12

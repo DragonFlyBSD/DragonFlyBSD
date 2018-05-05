@@ -155,7 +155,7 @@ makenode(struct puffs_usermount *pu, struct puffs_newinfo *pni,
 	return 0;
 }
 
-/* This should be called first and overriden from the file system */
+/* This should be called first and overridden from the file system */
 void
 puffs_null_setops(struct puffs_ops *pops)
 {

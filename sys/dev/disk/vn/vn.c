@@ -226,7 +226,7 @@ vnopen(struct dev_open_args *ap)
 	KKASSERT(vn != NULL);
 
 	/*
-	 * Update si_bsize fields for device.  This data will be overriden by
+	 * Update si_bsize fields for device.  This data will be overridden by
 	 * the slice/parition code for vn accesses through partitions, and
 	 * used directly if you open the 'whole disk' device.
 	 *

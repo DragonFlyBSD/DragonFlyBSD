@@ -305,7 +305,7 @@ ppb_scan_bus(device_t bus)
 	 * daisy chained devices
 	 */
 
-	error = ppb_1284_negociate(bus, PPB_NIBBLE, PPB_REQUEST_ID);
+	error = ppb_1284_negotiate(bus, PPB_NIBBLE, PPB_REQUEST_ID);
 
 	if ((ppb->state == PPB_ERROR) && (ppb->error == PPB_NOT_IEEE1284))
 		goto end_scan;
@@ -314,58 +314,58 @@ ppb_scan_bus(device_t bus)
 
 	kprintf("ppbus%d: IEEE1284 device found ", unit);
 
-	if (!(error = ppb_1284_negociate(bus, PPB_NIBBLE, 0))) {
+	if (!(error = ppb_1284_negotiate(bus, PPB_NIBBLE, 0))) {
 		kprintf("/NIBBLE");
 		ppb_1284_terminate(bus);
 	}
 
-	if (!(error = ppb_1284_negociate(bus, PPB_PS2, 0))) {
+	if (!(error = ppb_1284_negotiate(bus, PPB_PS2, 0))) {
 		kprintf("/PS2");
 		ppb_1284_terminate(bus);
 	}
 
-	if (!(error = ppb_1284_negociate(bus, PPB_ECP, 0))) {
+	if (!(error = ppb_1284_negotiate(bus, PPB_ECP, 0))) {
 		kprintf("/ECP");
 		ppb_1284_terminate(bus);
 	}
 
-	if (!(error = ppb_1284_negociate(bus, PPB_ECP, PPB_USE_RLE))) {
+	if (!(error = ppb_1284_negotiate(bus, PPB_ECP, PPB_USE_RLE))) {
 		kprintf("/ECP_RLE");
 		ppb_1284_terminate(bus);
 	}
 
-	if (!(error = ppb_1284_negociate(bus, PPB_EPP, 0))) {
+	if (!(error = ppb_1284_negotiate(bus, PPB_EPP, 0))) {
 		kprintf("/EPP");
 		ppb_1284_terminate(bus);
 	}
 
 	/* try more IEEE1284 modes */
 	if (bootverbose) {
-		if (!(error = ppb_1284_negociate(bus, PPB_NIBBLE,
+		if (!(error = ppb_1284_negotiate(bus, PPB_NIBBLE,
 				PPB_REQUEST_ID))) {
 			kprintf("/NIBBLE_ID");
 			ppb_1284_terminate(bus);
 		}
 
-		if (!(error = ppb_1284_negociate(bus, PPB_PS2,
+		if (!(error = ppb_1284_negotiate(bus, PPB_PS2,
 				PPB_REQUEST_ID))) {
 			kprintf("/PS2_ID");
 			ppb_1284_terminate(bus);
 		}
 
-		if (!(error = ppb_1284_negociate(bus, PPB_ECP,
+		if (!(error = ppb_1284_negotiate(bus, PPB_ECP,
 				PPB_REQUEST_ID))) {
 			kprintf("/ECP_ID");
 			ppb_1284_terminate(bus);
 		}
 
-		if (!(error = ppb_1284_negociate(bus, PPB_ECP,
+		if (!(error = ppb_1284_negotiate(bus, PPB_ECP,
 				PPB_REQUEST_ID | PPB_USE_RLE))) {
 			kprintf("/ECP_RLE_ID");
 			ppb_1284_terminate(bus);
 		}
 
-		if (!(error = ppb_1284_negociate(bus, PPB_COMPATIBLE,
+		if (!(error = ppb_1284_negotiate(bus, PPB_COMPATIBLE,
 				PPB_EXTENSIBILITY_LINK))) {
 			kprintf("/Extensibility Link");
 			ppb_1284_terminate(bus);

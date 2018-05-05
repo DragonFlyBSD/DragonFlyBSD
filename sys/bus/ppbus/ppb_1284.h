@@ -24,9 +24,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppb_1284.h,v 1.7 2000/01/14 08:03:14 nsouch Exp $
- * $DragonFly: src/sys/bus/ppbus/ppb_1284.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
- *
  */
+
 #ifndef __1284_H
 #define __1284_H
 
@@ -93,7 +92,7 @@
 /* ieee1284 host side states */
 #define PPB_ERROR			0
 #define PPB_FORWARD_IDLE		1
-#define PPB_NEGOCIATION			2
+#define PPB_NEGOTIATION			2
 #define PPB_SETUP			3
 #define PPB_ECP_FORWARD_IDLE		4
 #define PPB_FWD_TO_REVERSE		5
@@ -104,7 +103,7 @@
 #define PPB_TERMINATION			10
 
 /* peripheral side states */
-#define PPB_PERIPHERAL_NEGOCIATION	11
+#define PPB_PERIPHERAL_NEGOTIATION	11
 #define PPB_PERIPHERAL_IDLE		12
 #define PPB_PERIPHERAL_TRANSFER		13
 #define PPB_PERIPHERAL_TERMINATION	14
@@ -113,7 +112,7 @@ extern int nibble_1284_inbyte(device_t, char *);
 extern int byte_1284_inbyte(device_t, char *);
 extern int spp_1284_read(device_t, int, char *, int, int *);
 
-extern int ppb_1284_negociate(device_t, int, int);
+extern int ppb_1284_negotiate(device_t, int, int);
 extern int ppb_1284_terminate(device_t);
 extern int ppb_1284_read_id(device_t, int, char *, int, int *);
 extern int ppb_1284_read(device_t, int, char *, int, int *);
@@ -121,7 +120,7 @@ extern int ppb_1284_get_state(device_t bus);
 extern int ppb_1284_set_state(device_t bus, int state);
 
 extern int ppb_peripheral_terminate(device_t, int);
-extern int ppb_peripheral_negociate(device_t, int, int);
+extern int ppb_peripheral_negotiate(device_t, int, int);
 extern int byte_peripheral_write(device_t, char *, int, int *);
 
 #endif

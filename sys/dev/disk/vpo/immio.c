@@ -144,10 +144,10 @@ struct ppb_microseq cpp_microseq[] = {					\
 	MS_RET(0)							\
 }
 
-#define NEGOCIATED_MODE		MS_PARAM(2, 1, MS_TYP_CHA)
+#define NEGOTIATED_MODE		MS_PARAM(2, 1, MS_TYP_CHA)
 
-#define DECLARE_NEGOCIATE_MICROSEQ \
-struct ppb_microseq negociate_microseq[] = {				\
+#define DECLARE_NEGOTIATE_MICROSEQ \
+struct ppb_microseq negotiate_microseq[] = {				\
 	MS_CASS(0x4),							\
 	MS_DELAY(5),							\
 	MS_DASS(MS_UNKNOWN /* mode */),					\
@@ -159,7 +159,7 @@ struct ppb_microseq negociate_microseq[] = {				\
 	MS_CASS(0x7),							\
 	MS_DELAY(5),							\
 	MS_CASS(0x6),							\
-	MS_RET(VP0_ENEGOCIATE),						\
+	MS_RET(VP0_ENEGOTIATE),						\
 /* continue: */								\
 	MS_DELAY(5),							\
 	MS_CASS(0x7),							\
@@ -520,31 +520,31 @@ imm_wait(struct vpoio_data *vpo, int tmo)
 }
 
 static int
-imm_negociate(struct vpoio_data *vpo)
+imm_negotiate(struct vpoio_data *vpo)
 {
-	DECLARE_NEGOCIATE_MICROSEQ;
+	DECLARE_NEGOTIATE_MICROSEQ;
 	device_t ppbus = device_get_parent(vpo->vpo_dev);
-	int negociate_mode;
+	int negotiate_mode;
 	int ret;
 
 	if (PPB_IN_NIBBLE_MODE(ppbus))
-		negociate_mode = 0;
+		negotiate_mode = 0;
 	else if (PPB_IN_PS2_MODE(ppbus))
-		negociate_mode = 1;
+		negotiate_mode = 1;
 	else
 		return (0);
 
 #if 0 /* XXX use standalone code not to depend on ppb_1284 code yet */
-	ret = ppb_1284_negociate(ppbus, negociate_mode);
+	ret = ppb_1284_negotiate(ppbus, negotiate_mode);
 
 	if (ret)
-		return (VP0_ENEGOCIATE);
+		return (VP0_ENEGOTIATE);
 #endif
 	
-	ppb_MS_init_msq(negociate_microseq, 1,
-			NEGOCIATED_MODE, negociate_mode);
+	ppb_MS_init_msq(negotiate_microseq, 1,
+			NEGOTIATED_MODE, negotiate_mode);
 
-	ppb_MS_microseq(ppbus, vpo->vpo_dev, negociate_microseq, &ret);
+	ppb_MS_microseq(ppbus, vpo->vpo_dev, negotiate_microseq, &ret);
 
 	return (ret);
 }
@@ -673,7 +673,7 @@ imm_do_scsi(struct vpoio_data *vpo, int host, int target, char *command,
 	char l, h = 0;
 	int len, error = 0, not_connected = 0;
 	int k;
-	int negociated = 0;
+	int negotiated = 0;
 
 	/*
 	 * enter disk state, allocate the ppbus
@@ -715,11 +715,11 @@ imm_do_scsi(struct vpoio_data *vpo, int host, int target, char *command,
 	}
 
 	if ((r & 0x30) == 0x10) {
-		if (imm_negociate(vpo)) {
-			*ret = VP0_ENEGOCIATE;
+		if (imm_negotiate(vpo)) {
+			*ret = VP0_ENEGOTIATE;
 			goto error;
 		} else
-			negociated = 1;
+			negotiated = 1;
 	}
 
 	/* 
@@ -766,17 +766,17 @@ imm_do_scsi(struct vpoio_data *vpo, int host, int target, char *command,
 	}
 
 	if ((PPB_IN_NIBBLE_MODE(ppbus) ||
-			PPB_IN_PS2_MODE(ppbus)) && negociated)
+			PPB_IN_PS2_MODE(ppbus)) && negotiated)
 		ppb_MS_microseq(ppbus, vpo->vpo_dev, transfer_epilog, NULL);
 
 	/*
 	 * Retrieve status ...
 	 */
-	if (imm_negociate(vpo)) {
-		*ret = VP0_ENEGOCIATE;
+	if (imm_negotiate(vpo)) {
+		*ret = VP0_ENEGOTIATE;
 		goto error;
 	} else
-		negociated = 1;
+		negotiated = 1;
 
 	if (imm_instr(vpo, &l, 1)) {
 		*ret = VP0_EOTHER; goto error;
@@ -796,7 +796,7 @@ imm_do_scsi(struct vpoio_data *vpo, int host, int target, char *command,
 
 error:
 	if ((PPB_IN_NIBBLE_MODE(ppbus) ||
-			PPB_IN_PS2_MODE(ppbus)) && negociated)
+			PPB_IN_PS2_MODE(ppbus)) && negotiated)
 		ppb_MS_microseq(ppbus, vpo->vpo_dev, transfer_epilog, NULL);
 
 	/* return to printer state, release the ppbus */
