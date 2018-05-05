@@ -177,9 +177,10 @@
  * 500304 - remove IPSEC/FAST_IPSEC
  * 500305 - remove <sys/ioctl_compat.h> for good
  * 500306 - strsuftoll(), strsuftollx()
+ * 500307 - tcsetsid()
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500306	/* propagated to newvers */
+#define __DragonFly_version 500307	/* propagated to newvers */
 
 #include <sys/_null.h>
 

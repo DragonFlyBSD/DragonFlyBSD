@@ -487,6 +487,7 @@ DF504.0 {
     strsvis;
     strsvisx;
     svis;
+    tcsetsid;
     uid_from_user;
 };
 

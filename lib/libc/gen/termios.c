@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -26,9 +28,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/gen/termios.c,v 1.9.2.1 2000/03/18 23:13:25 jasone Exp $
- *
  * @(#)termios.c	8.2 (Berkeley) 2/21/94
+ * $FreeBSD: head/lib/libc/gen/termios.c 326025 2017-11-20 19:49:47Z pfg $
  */
 
 #include "namespace.h"
@@ -103,6 +104,18 @@ tcgetsid(int fd)
 		return ((pid_t)-1);
 
 	return ((pid_t)s);
+}
+
+int
+tcsetsid(int fd, pid_t pid)
+{
+
+	if (pid != getsid(0)) {
+		errno = EINVAL;
+		return (-1);
+	}
+
+	return (_ioctl(fd, TIOCSCTTY, NULL));
 }
 
 speed_t
