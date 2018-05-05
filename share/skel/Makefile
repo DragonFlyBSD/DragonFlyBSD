@@ -3,7 +3,7 @@
 # $DragonFly: src/share/skel/Makefile,v 1.2 2003/06/17 04:37:02 dillon Exp $
 
 FILES1= dot.cshrc dot.login dot.login_conf dot.mailrc dot.profile dot.shrc
-FILES2=	dot.mail_aliases dot.rhosts 
+FILES2=	dot.mail_aliases
 MODE1=	0644
 MODE2=	0600
 
