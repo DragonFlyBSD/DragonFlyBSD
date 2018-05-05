@@ -15,6 +15,7 @@ MAN=	ascii.7 \
 	intro.7 \
 	nls.7 \
 	operator.7 \
+	orders.7 \
 	release.7 \
 	script.7 \
 	security.7 \
