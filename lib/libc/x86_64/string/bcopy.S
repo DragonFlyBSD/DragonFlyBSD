@@ -1,8 +1,8 @@
 /*-
- * Copyright (c) 1990 The Regents of the University of California.
+ * Copyright (c) 1993 The Regents of the University of California.
+ * Copyright (c) 2003 Peter Wemm.
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
- *
- * This code is derived from locore.s.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,18 +27,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $NetBSD: bcopy.S,v 1.2 2003/08/07 16:42:36 agc Exp $
- * $FreeBSD: src/lib/libc/amd64/string/bcopy.S,v 1.3 2008/11/02 01:10:54 peter Exp $
  */
-
 #include <machine/asm.h>
 
-	/*
-	 * (ov)bcopy (src,dst,cnt)
-	 *  ws@tools.de     (Wolfgang Solfrank, TooLs GmbH) +49-228-985800
-	 */
-
+/*
+ * bcopy(src:%rdi, dst:%rsi, cnt:%rdx)
+ */
 #ifdef MEMCOPY
 ENTRY(memcpy)
 #else
@@ -53,37 +47,44 @@ ENTRY(bcopy)
 #else
 	xchgq	%rdi,%rsi
 #endif
-	movq	%rdx,%rcx
-	movq	%rdi,%r8
-	subq	%rsi,%r8
-	cmpq	%rcx,%r8	/* overlapping? */
-	jb	1f
-	cld			/* nope, copy forwards. */
-	shrq	$3,%rcx		/* copy by words */
-	rep
-	movsq
-	movq	%rdx,%rcx
-	andq	$7,%rcx		/* any bytes left? */
-	rep
-	movsb
-	ret
-1:
-	addq	%rcx,%rdi	/* copy backwards. */
-	addq	%rcx,%rsi
-	std
-	andq	$7,%rcx		/* any fractional bytes? */
-	decq	%rdi
-	decq	%rsi
-	rep
-	movsb
-	movq	%rdx,%rcx	/* copy remainder by words */
-	shrq	$3,%rcx
-	subq	$7,%rsi
-	subq	$7,%rdi
-	rep
-	movsq
-	cld
-	ret
+        movq    %rdx,%rcx
+
+        movq    %rdi,%r11
+        subq    %rsi,%r11
+        cmpq    %rcx,%r11                       /* overlapping && src < dst? */
+        jb      2f
+
+        cld                                     /* nope, copy forwards */
+        shrq    $3,%rcx                         /* copy by 64-bit words */
+        rep
+        movsq
+        movq    %rdx,%rcx
+        andq    $7,%rcx                         /* any bytes left? */
+        jnz     1f
+        ret
+1:      rep
+        movsb
+        ret
+
+	.align	4
+2:
+        addq    %rcx,%rdi                       /* copy backwards */
+        addq    %rcx,%rsi
+        std
+        decq    %rdi
+        decq    %rsi
+        andq    $7,%rcx                         /* any fractional bytes? */
+        jz      3f
+        rep
+        movsb
+3:      movq    %rdx,%rcx                       /* copy by 32-bit words */
+        shrq    $3,%rcx
+        subq    $7,%rsi
+        subq    $7,%rdi
+        rep
+        movsq
+        cld
+        ret
 #ifdef MEMCOPY
 END(memcpy)
 #else

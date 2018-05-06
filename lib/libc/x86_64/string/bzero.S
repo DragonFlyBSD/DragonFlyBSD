@@ -1,43 +1,48 @@
-/*
- * Written by J.T. Conklin <jtc@NetBSD.org>.
- * Public domain.
- * Adapted for NetBSD/x86_64 by Frank van der Linden <fvdl@wasabisystems.com>
+/*-
+ * Copyright (c) 1993 The Regents of the University of California.
+ * Copyright (c) 2003 Peter Wemm.
+ * Copyright (c) 2008 The DragonFly Project.
+ * All rights reserved.
  *
- * $NetBSD: bzero.S,v 1.2 2003/07/26 19:24:38 salo Exp $
- * $FreeBSD: src/lib/libc/amd64/string/bzero.S,v 1.3 2008/11/02 01:10:54 peter Exp $
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
  */
-
 #include <machine/asm.h>
 
 ENTRY(bzero)
-	cld				/* set fill direction forward */
-	xorq	%rax,%rax		/* set fill data to 0 */
-
-	/*
-	 * if the string is too short, it's really not worth the overhead
-	 * of aligning to word boundries, etc.  So we jump to a plain
-	 * unaligned set.
-	 */
-	cmpq	$16,%rsi
-	jb	L1
-
-	movq	%rdi,%rcx		/* compute misalignment */
-	negq	%rcx
-	andq	$7,%rcx
-	subq	%rcx,%rsi
-	rep				/* zero until word aligned */
-	stosb
-
-	movq	%rsi,%rcx		/* zero by words */
-	shrq	$3,%rcx
-	andq	$7,%rsi
+	movq    %rsi,%rcx
+	xorl    %eax,%eax
+	shrq    $3,%rcx
+	cld
 	rep
 	stosq
-
-L1:	movq	%rsi,%rcx		/* zero remainder by bytes */
-	rep
+	movq    %rsi,%rcx
+	andq    $7,%rcx
+	jnz     1f
+	ret
+1:      rep
 	stosb
-
 	ret
 END(bzero)
 

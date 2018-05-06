@@ -58,7 +58,9 @@ ENTRY(bzero)
 	stosq
 	movq	%rsi,%rcx
 	andq	$7,%rcx
-	rep
+	jnz	1f
+	ret
+1:	rep
 	stosb
 	ret
 END(bzero)
@@ -72,12 +74,27 @@ END(bzero)
  * Do not use non-termportal instructions here as we do not know the caller's
  * intent.
  */
+#if 0
+
 ENTRY(pagezero)
 	movq	$PAGE_SIZE>>3,%rcx
 	xorl	%eax,%eax
 	cld
 	rep
 	stosq
+	ret
+END(pagezero)
+
+#endif
+
+ENTRY(pagezero)
+	addq	$4096,%rdi
+	movq	$-4096,%rax
+	ALIGN_TEXT
+1:
+	movq	$0,(%rdi,%rax,1)
+	addq	$8,%rax
+	jne	1b
 	ret
 END(pagezero)
 
@@ -94,6 +111,7 @@ ENTRY(bcmp)
 
 	movq	%rdx,%rcx
 	andq	$7,%rcx
+	je	1f
 	repe
 	cmpsb
 1:
@@ -114,29 +132,32 @@ ENTRY(bcopy)
 	movq	%rdi,%rax
 	subq	%rsi,%rax
 	cmpq	%rcx,%rax			/* overlapping && src < dst? */
-	jb	1f
+	jb	2f
 
-	shrq	$3,%rcx				/* copy by 64-bit words */
 	cld					/* nope, copy forwards */
+	shrq	$3,%rcx				/* copy by 64-bit words */
 	rep
 	movsq
 	movq	%rdx,%rcx
 	andq	$7,%rcx				/* any bytes left? */
-	rep
+	jnz	1f
+	ret
+1:	rep
 	movsb
 	ret
 
 	ALIGN_TEXT
-1:
+2:
 	addq	%rcx,%rdi			/* copy backwards */
 	addq	%rcx,%rsi
+	std
 	decq	%rdi
 	decq	%rsi
 	andq	$7,%rcx				/* any fractional bytes? */
-	std
+	jz	3f
 	rep
 	movsb
-	movq	%rdx,%rcx			/* copy by 32-bit words */
+3:	movq	%rdx,%rcx			/* copy by 32-bit words */
 	shrq	$3,%rcx
 	subq	$7,%rsi
 	subq	$7,%rdi
@@ -172,7 +193,10 @@ ENTRY(memcpy)
 	movsq
 	movq	%rdx,%rcx
 	andq	$7,%rcx				/* any bytes left? */
-	rep
+	jnz	1f
+	movq	%r8,%rax
+	ret
+1:	rep
 	movsb
 	movq	%r8,%rax
 	ret
