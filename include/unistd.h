@@ -483,7 +483,7 @@ int	unlinkat(int, const char *, int);
  * course has been in BSD since 4.2.
  */
 #if __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE >= 402
-int	 symlink(const char * __restrict, const char * __restrict);
+int	 symlink(const char *, const char *);
 #endif
 
 /* X/Open System Interfaces */
