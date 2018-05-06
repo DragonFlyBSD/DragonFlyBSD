@@ -34,8 +34,8 @@
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-char	*basename(const char *);
-char	*dirname(const char *);
+char	*basename(const char *);	/* XXX POSIX takes just "char *" */
+char	*dirname(const char *);		/* XXX POSIX takes just "char *" */
 __END_DECLS
 
 #endif /* _LIBGEN_H_ */
