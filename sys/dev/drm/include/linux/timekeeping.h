@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 François Tigeot
+ * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -60,6 +60,12 @@ static inline s64
 ktime_ms_delta(const ktime_t later, const ktime_t earlier)
 {
 	return (later.tv64 - earlier.tv64) / NSEC_PER_MSEC;
+}
+
+static inline void
+do_gettimeofday(struct timeval *tv)
+{
+	microtime(tv);
 }
 
 #endif	/* _LINUX_TIMEKEEPING_H_ */
