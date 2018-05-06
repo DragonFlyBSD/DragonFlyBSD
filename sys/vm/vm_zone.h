@@ -45,8 +45,8 @@ struct vm_zpcpu {
 typedef struct vm_zpcpu vm_zpcpu_t;
 
 typedef struct vm_zone {
-	struct spinlock zspin;		/* lock for global portion */
 	vm_zpcpu_t	zpcpu[SMP_MAXCPU];
+	struct spinlock zspin;		/* lock for global portion */
 	void		*zitems;	/* linked list of items */
 	long		zfreecnt;	/* free entries */
 	long		zfreemin;	/* minimum number of free entries */
