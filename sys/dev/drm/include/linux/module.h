@@ -33,6 +33,7 @@
 #include <linux/list.h>
 #include <linux/compiler.h>
 #include <linux/cache.h>
+#include <linux/kmod.h>
 #include <linux/kobject.h>
 #include <linux/moduleparam.h>
 #include <linux/jump_label.h>

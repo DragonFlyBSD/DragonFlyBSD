@@ -43,3 +43,17 @@ panic_cmp(struct rb_node *one, struct rb_node *two)
 }
 
 RB_GENERATE(linux_root, rb_node, __entry, panic_cmp);
+
+#include <linux/string.h>
+#include <linux/slab.h>
+
+void *
+kmemdup(const void *src, size_t len, gfp_t gfp)
+{
+	void *dst;
+
+	dst = kmalloc(len, M_DRM, gfp);
+	if (dst)
+		memcpy(dst, src, len);
+	return (dst);
+}

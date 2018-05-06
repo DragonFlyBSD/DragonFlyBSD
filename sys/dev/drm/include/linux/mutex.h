@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 François Tigeot
+ * Copyright (c) 2014-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,8 +27,10 @@
 #ifndef _LINUX_MUTEX_H_
 #define _LINUX_MUTEX_H_
 
-#include <sys/lock.h>
+#include <asm/current.h>
+#include <linux/list.h>
 #include <linux/lockdep.h>
+#include <linux/atomic.h>
 
 #define mutex_is_locked(lock)	(lockinuse(lock))
 

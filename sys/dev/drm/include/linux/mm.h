@@ -4,7 +4,7 @@
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
  * Copyright (c) 2015 Matthew Dillon <dillon@backplane.com>
- * Copyright (c) 2015-2017 François Tigeot
+ * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,9 +32,14 @@
 #define	_LINUX_MM_H_
 
 #include <linux/errno.h>
+
 #include <linux/gfp.h>
 #include <linux/bug.h>
-#include <linux/kernel.h>
+#include <linux/list.h>
+#include <linux/rbtree.h>
+#include <linux/atomic.h>
+#include <linux/mm_types.h>
+#include <linux/err.h>
 
 #include <asm/page.h>
 #include <asm/pgtable.h>

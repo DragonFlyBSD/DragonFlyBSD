@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 François Tigeot
+ * Copyright (c) 2017-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,5 +28,6 @@
 #define _LINUX_KTHREAD_H_
 
 #include <linux/err.h>
+#include <linux/sched.h>
 
 #endif	/* _LINUX_KTHREAD_H_ */

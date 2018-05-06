@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 François Tigeot
+ * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,8 @@
 #ifndef _LINUX_PRINTK_H_
 #define _LINUX_PRINTK_H_
 
+#include <stdarg.h>
+#include <linux/init.h>
 #include <linux/cache.h>
 
 #include <sys/types.h>

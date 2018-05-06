@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 François Tigeot
+ * Copyright (c) 2016-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,5 +28,6 @@
 #define _ASM_MEMORY_MODEL_H_
 
 #define page_to_pfn(page)	OFF_TO_IDX(VM_PAGE_TO_PHYS(page))
+#define pfn_to_page(pfn)	(PHYS_TO_VM_PAGE((pfn) << PAGE_SHIFT))
 
 #endif	/* _ASM_MEMORY_MODEL_H_ */

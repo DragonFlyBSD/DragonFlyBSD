@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 François Tigeot
+ * Copyright (c) 2016-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,7 @@
 #ifndef _LINUX_CACHE_H_
 #define _LINUX_CACHE_H_
 
+#include <linux/types.h>
 #include <sys/cdefs.h>
 
 #define cache_line_size()	__VM_CACHELINE_SIZE

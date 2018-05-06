@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -50,6 +50,27 @@ static int destroy_workqueues(void *arg)
 	destroy_workqueue(system_unbound_wq);
 
 	return 0;
+}
+
+struct workqueue_struct *
+_create_workqueue_common(char *name, int cpus)
+{
+	struct workqueue_struct *wq;
+
+	wq = kmalloc(sizeof(*wq), M_DRM, M_WAITOK);
+	wq->taskqueue = taskqueue_create((name), M_WAITOK,
+	    taskqueue_thread_enqueue,  &wq->taskqueue);
+	taskqueue_start_threads(&wq->taskqueue, cpus,
+				TDPRI_KERN_DAEMON, -1, "%s", name);
+
+	return (wq);
+}
+
+void
+destroy_workqueue(struct workqueue_struct *wq)
+{
+	taskqueue_free(wq->taskqueue);
+	kfree(wq);
 }
 
 SYSINIT(linux_workqueue_init, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, init_workqueues, NULL);

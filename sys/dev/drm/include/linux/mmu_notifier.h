@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 François Tigeot
+ * Copyright (c) 2017-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,5 +29,6 @@
 
 #include <linux/list.h>
 #include <linux/spinlock.h>
+#include <linux/mm_types.h>
 
 #endif	/* _LINUX_MMU_NOTIFIER_H_ */

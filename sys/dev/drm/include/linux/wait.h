@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2014-2018 François Tigeot
  * Copyright (c) 2014 Imre Vadász
+ * Copyright (c) 2014-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,6 +30,7 @@
 
 #include <linux/list.h>
 #include <linux/spinlock.h>
+#include <asm/current.h>
 
 typedef struct {
 } wait_queue_t;

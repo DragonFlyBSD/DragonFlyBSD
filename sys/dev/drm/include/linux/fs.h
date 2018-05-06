@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,8 +27,16 @@
 #ifndef _LINUX_FS_H_
 #define _LINUX_FS_H_
 
+#include <linux/wait.h>
 #include <linux/cache.h>
-#include <linux/rculist.h>
+#include <linux/list.h>
+#include <linux/rbtree.h>
+#include <linux/init.h>
+#include <linux/pid.h>
+#include <linux/bug.h>
+#include <linux/mutex.h>
+#include <linux/capability.h>
+#include <linux/atomic.h>
 #include <linux/lockdep.h>
 
 #endif	/* _LINUX_FS_H_ */

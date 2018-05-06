@@ -3,7 +3,7 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
- * Copyright (c) 2014-2017 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2014-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,13 +30,11 @@
 #ifndef	_LINUX_WORKQUEUE_H_
 #define	_LINUX_WORKQUEUE_H_
 
-#include <sys/types.h>
-#include <sys/malloc.h>
-#include <sys/proc.h>
-#include <linux/types.h>
-#include <linux/kernel.h>
 #include <linux/timer.h>
+#include <linux/bitops.h>
 #include <linux/lockdep.h>
+#include <linux/atomic.h>
+#include <linux/cpumask.h>
 
 #include <sys/taskqueue.h>
 
@@ -142,20 +140,7 @@ static inline bool schedule_delayed_work(struct delayed_work *dwork,
         return queue_delayed_work(&wq, dwork, delay);
 }
 
-static inline struct workqueue_struct *
-_create_workqueue_common(char *name, int cpus)
-{
-	struct workqueue_struct *wq;
-
-	wq = kmalloc(sizeof(*wq), M_DRM, M_WAITOK);
-	wq->taskqueue = taskqueue_create((name), M_WAITOK,
-	    taskqueue_thread_enqueue,  &wq->taskqueue);
-	taskqueue_start_threads(&wq->taskqueue, cpus,
-				TDPRI_KERN_DAEMON, -1, "%s", name);
-
-	return (wq);
-}
-
+struct workqueue_struct * _create_workqueue_common(char *name, int cpus);
 
 #define	create_singlethread_workqueue(name)				\
 	_create_workqueue_common(name, 1)
@@ -169,12 +154,7 @@ _create_workqueue_common(char *name, int cpus)
 #define alloc_workqueue(name, flags, max_active)			\
 	_create_workqueue_common(name, max_active)
 
-static inline void
-destroy_workqueue(struct workqueue_struct *wq)
-{
-	taskqueue_free(wq->taskqueue);
-	kfree(wq);
-}
+void destroy_workqueue(struct workqueue_struct *wq);
 
 #define	flush_workqueue(wq)	flush_taskqueue((wq)->taskqueue)
 

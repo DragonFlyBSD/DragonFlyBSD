@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 François Tigeot
+ * Copyright (c) 2017-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,6 +26,8 @@
 
 #ifndef _LINUX_HARDIRQ_H_
 #define _LINUX_HARDIRQ_H_
+
+#include <linux/lockdep.h>
 
 static inline void
 synchronize_irq(unsigned int irq)

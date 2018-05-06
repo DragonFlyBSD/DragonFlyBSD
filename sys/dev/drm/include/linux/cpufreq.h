@@ -24,33 +24,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LINUX_RCUPDATE_H
-#define LINUX_RCUPDATE_H
+#ifndef _LINUX_CPUFREQ_H_
+#define _LINUX_CPUFREQ_H_
 
-#include <linux/types.h>
-#include <linux/cache.h>
-#include <linux/spinlock.h>
-#include <linux/threads.h>
 #include <linux/cpumask.h>
-#include <linux/seqlock.h>
-#include <linux/lockdep.h>
 #include <linux/completion.h>
-#include <linux/bug.h>
-#include <linux/compiler.h>
-#include <linux/ktime.h>
+#include <linux/kobject.h>
+#include <linux/notifier.h>
+#include <linux/spinlock.h>
 
-#include <asm/barrier.h>
-
-static inline void
-rcu_read_lock(void)
-{
-}
-
-static inline void
-rcu_read_unlock(void)
-{
-}
-
-#define rcu_dereference(p) (p)
-
-#endif /* LINUX_RCUPDATE_H */
+#endif	/* _LINUX_CPUFREQ_H_ */

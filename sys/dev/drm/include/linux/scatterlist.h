@@ -33,7 +33,6 @@
 #ifndef	_LINUX_SCATTERLIST_H_
 #define	_LINUX_SCATTERLIST_H_
 
-#include <linux/highmem.h>
 #include <linux/string.h>
 #include <linux/types.h>
 #include <linux/bug.h>
@@ -183,41 +182,7 @@ static inline void sg_mark_end(struct scatterlist *sg)
  *    that previously used with __sg_alloc_table().
  *
  **/
-static inline void
-__sg_free_table(struct sg_table *table, unsigned int max_ents)
-{
-	struct scatterlist *sgl, *next;
-
-	if (unlikely(!table->sgl))
-		return;
-
-	sgl = table->sgl;
-	while (table->orig_nents) {
-		unsigned int alloc_size = table->orig_nents;
-		unsigned int sg_size;
-
-		/*
-		 * If we have more than max_ents segments left,
-		 * then assign 'next' to the sg table after the current one.
-		 * sg_size is then one less than alloc size, since the last
-		 * element is the chain pointer.
-		 */
-		if (alloc_size > max_ents) {
-			next = sgl[max_ents - 1].sl_un.sg;
-			alloc_size = max_ents;
-			sg_size = alloc_size - 1;
-		} else {
-			sg_size = alloc_size;
-			next = NULL;
-		}
-
-		table->orig_nents -= sg_size;
-		kfree(sgl);
-		sgl = next;
-	}
-
-	table->sgl = NULL;
-}
+void __sg_free_table(struct sg_table *table, unsigned int max_ents);
 
 /**
  * sg_free_table - Free a previously allocated sg table
@@ -230,85 +195,8 @@ sg_free_table(struct sg_table *table)
 	__sg_free_table(table, SG_MAX_SINGLE_ALLOC);
 }
 
-/**
- * __sg_alloc_table - Allocate and initialize an sg table with given allocator
- * @table:      The sg table header to use
- * @nents:      Number of entries in sg list
- * @max_ents:   The maximum number of entries the allocator returns per call
- * @gfp_mask:   GFP allocation mask
- *
- * Description:
- *   This function returns a @table @nents long. The allocator is
- *   defined to return scatterlist chunks of maximum size @max_ents.
- *   Thus if @nents is bigger than @max_ents, the scatterlists will be
- *   chained in units of @max_ents.
- *
- * Notes:
- *   If this function returns non-0 (eg failure), the caller must call
- *   __sg_free_table() to cleanup any leftover allocations.
- *
- **/
-static inline int
-__sg_alloc_table(struct sg_table *table, unsigned int nents,
-		unsigned int max_ents, gfp_t gfp_mask)
-{
-	struct scatterlist *sg, *prv;
-	unsigned int left;
-
-	memset(table, 0, sizeof(*table));
-
-	if (nents == 0)
-		return -EINVAL;
-	left = nents;
-	prv = NULL;
-	do {
-		unsigned int sg_size, alloc_size = left;
-
-		if (alloc_size > max_ents) {
-			alloc_size = max_ents;
-			sg_size = alloc_size - 1;
-		} else
-			sg_size = alloc_size;
-
-		left -= sg_size;
-
-		sg = kmalloc(alloc_size * sizeof(struct scatterlist), M_DRM, gfp_mask);
-		if (unlikely(!sg)) {
-		/*
-		 * Adjust entry count to reflect that the last
-		 * entry of the previous table won't be used for
-		 * linkage.  Without this, sg_kfree() may get
-		 * confused.
-		 */
-			if (prv)
-				table->nents = ++table->orig_nents;
-
-			return -ENOMEM;
-		}
-
-		sg_init_table(sg, alloc_size);
-		table->nents = table->orig_nents += sg_size;
-
-		/*
-		 * If this is the first mapping, assign the sg table header.
-		 * If this is not the first mapping, chain previous part.
-		 */
-		if (prv)
-			sg_chain(prv, max_ents, sg);
-		else
-			table->sgl = sg;
-
-		/*
-		* If no more entries after this one, mark the end
-		*/
-		if (!left)
-			sg_mark_end(&sg[sg_size - 1]);
-
-		prv = sg;
-	} while (left);
-
-	return 0;
-}
+int __sg_alloc_table(struct sg_table *table, unsigned int nents,
+		unsigned int max_ents, gfp_t gfp_mask);
 
 /**
  * sg_alloc_table - Allocate and initialize an sg table
@@ -457,42 +345,8 @@ sg_page_iter_dma_address(struct sg_page_iter *spi)
  *
  * XXX please review these
  */
-static inline size_t
-sg_pcopy_from_buffer(struct scatterlist *sgl, unsigned int nents,
-		      const void *buf, size_t buflen, off_t skip)
-{
-	off_t off;
-	int len, curlen, curoff;
-	struct sg_page_iter iter;
-	struct scatterlist *sg;
-	struct vm_page *page;
-	char *vaddr;
-
-	off = 0;
-	for_each_sg_page(sgl, &iter, nents, 0) {
-		sg = iter.sg;
-		curlen = sg->length;
-		curoff = sg->offset;
-		if (skip && curlen >= skip) {
-			skip -= curlen;
-			continue;
-		}
-		if (skip) {
-			curlen -= skip;
-			curoff += skip;
-			skip = 0;
-		}
-		len = min(curlen, buflen - off);
-		page = sg_page_iter_page(&iter);
-		vaddr = (char *)kmap(page) + sg->offset;
-		memcpy(vaddr, (const char *)buf + off, len);
-		off += len;
-		kunmap(page);
-	}
-
-	return (off);
-}
-
+size_t sg_pcopy_from_buffer(struct scatterlist *sgl, unsigned int nents,
+		      const void *buf, size_t buflen, off_t skip);
 
 static inline size_t
 sg_copy_from_buffer(struct scatterlist *sgl, unsigned int nents,
@@ -501,41 +355,8 @@ sg_copy_from_buffer(struct scatterlist *sgl, unsigned int nents,
 	return (sg_pcopy_from_buffer(sgl, nents, buf, buflen, 0));
 }
 
-static inline size_t
-sg_pcopy_to_buffer(struct scatterlist *sgl, unsigned int nents,
-		   void *buf, size_t buflen, off_t skip)
-{
-	off_t off;
-	int len, curlen, curoff;
-	struct sg_page_iter iter;
-	struct scatterlist *sg;
-	struct vm_page *page;
-	char *vaddr;
-
-	off = 0;
-	for_each_sg_page(sgl, &iter, nents, 0) {
-		sg = iter.sg;
-		curlen = sg->length;
-		curoff = sg->offset;
-		if (skip && curlen >= skip) {
-			skip -= curlen;
-			continue;
-		}
-		if (skip) {
-			curlen -= skip;
-			curoff += skip;
-			skip = 0;
-		}
-		len = min(curlen, buflen - off);
-		page = sg_page_iter_page(&iter);
-		vaddr = (char *)kmap(page) + sg->offset;
-		memcpy((char *)buf + off, vaddr, len);
-		off += len;
-		kunmap(page);
-	}
-
-	return (off);
-}
+size_t sg_pcopy_to_buffer(struct scatterlist *sgl, unsigned int nents,
+		   void *buf, size_t buflen, off_t skip);
 
 static inline size_t
 sg_copy_to_buffer(struct scatterlist *sgl, unsigned int nents,

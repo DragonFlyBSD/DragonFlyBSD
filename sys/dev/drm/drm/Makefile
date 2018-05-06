@@ -55,6 +55,7 @@ SRCS	= \
 	linux_iomapping.c \
 	linux_irq.c \
 	linux_list_sort.c \
+	linux_scatterlist.c \
 	linux_shmem.c \
 	linux_sort.c \
 	linux_vmalloc.c \

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,33 +24,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LINUX_RCUPDATE_H
-#define LINUX_RCUPDATE_H
+#ifndef _LINUX_PID_H_
+#define _LINUX_PID_H_
 
-#include <linux/types.h>
-#include <linux/cache.h>
-#include <linux/spinlock.h>
-#include <linux/threads.h>
-#include <linux/cpumask.h>
-#include <linux/seqlock.h>
-#include <linux/lockdep.h>
-#include <linux/completion.h>
-#include <linux/bug.h>
-#include <linux/compiler.h>
-#include <linux/ktime.h>
+#include <linux/rcupdate.h>
 
-#include <asm/barrier.h>
-
-static inline void
-rcu_read_lock(void)
+enum pid_type
 {
-}
+	PIDTYPE_PID,
+};
 
-static inline void
-rcu_read_unlock(void)
-{
-}
-
-#define rcu_dereference(p) (p)
-
-#endif /* LINUX_RCUPDATE_H */
+#endif	/* _LINUX_PID_H_ */

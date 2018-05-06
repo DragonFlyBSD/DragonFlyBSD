@@ -27,6 +27,8 @@
 #ifndef _LINUX_WW_MUTEX_H_
 #define _LINUX_WW_MUTEX_H_
 
+#include <linux/mutex.h>
+
 /*
  * A basic, unoptimized implementation of wound/wait mutexes for DragonFly
  * modelled after the Linux API [1].

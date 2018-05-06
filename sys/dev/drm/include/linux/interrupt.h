@@ -29,6 +29,7 @@
 
 #include <linux/kernel.h>
 #include <linux/bitops.h>
+#include <linux/cpumask.h>
 #include <linux/irqreturn.h>
 #include <linux/hardirq.h>
 #include <linux/irqflags.h>

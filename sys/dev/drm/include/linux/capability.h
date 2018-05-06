@@ -35,8 +35,11 @@
 #ifndef _LINUX_CAPABILITY_H
 #define _LINUX_CAPABILITY_H
 
+#include <sys/globaldata.h>
 #include <sys/thread.h>
 #include <sys/priv.h>
+
+struct task_struct;
 
 #define CAP_SYS_ADMIN		PRIV_DRIVER
 

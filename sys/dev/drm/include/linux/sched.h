@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018 François Tigeot
+ * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,15 +28,20 @@
 #define	_LINUX_SCHED_H_
 
 #include <linux/capability.h>
+#include <linux/threads.h>
 #include <linux/kernel.h>
 #include <linux/types.h>
 #include <linux/jiffies.h>
+#include <linux/cpumask.h>
 #include <linux/errno.h>
+#include <linux/mm_types.h>
 
 #include <asm/page.h>
 
 #include <linux/compiler.h>
 #include <linux/completion.h>
+#include <linux/pid.h>
+#include <linux/rcupdate.h>
 #include <linux/rculist.h>
 
 #include <linux/time.h>
