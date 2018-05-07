@@ -91,8 +91,7 @@ MRSAS_REQUEST_DESCRIPTOR_UNION *mrsas_get_request_desc(struct mrsas_softc *sc,
                     u_int16_t index);
 
 extern u_int16_t MR_TargetIdToLdGet(u_int32_t ldTgtId, MR_FW_RAID_MAP_ALL *map);
-extern u_int32_t MR_LdBlockSizeGet(u_int32_t ldTgtId, MR_FW_RAID_MAP_ALL *map,
-    struct mrsas_softc *sc);
+extern u_int32_t MR_LdBlockSizeGet(u_int32_t ldTgtId, MR_FW_RAID_MAP_ALL *map);
 extern void mrsas_isr(void *arg);
 extern void mrsas_aen_handler(struct mrsas_softc *sc);
 extern u_int8_t MR_BuildRaidContext(struct mrsas_softc *sc, 
@@ -779,7 +778,7 @@ int mrsas_setup_io(struct mrsas_softc *sc, struct mrsas_mpt_cmd *cmd,
     }
 
     map_ptr = sc->raidmap_mem[(sc->map_id & 1)];
-    ld_block_size = MR_LdBlockSizeGet(device_id, map_ptr, sc);
+    ld_block_size = MR_LdBlockSizeGet(device_id, map_ptr);
 
     if ((MR_TargetIdToLdGet(device_id, map_ptr) >= MAX_LOGICAL_DRIVES) || 
             (!sc->fast_path_io)) {
