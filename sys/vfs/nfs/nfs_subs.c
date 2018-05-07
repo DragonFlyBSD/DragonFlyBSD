@@ -53,6 +53,7 @@
 #include <sys/malloc.h>
 #include <sys/sysent.h>
 #include <sys/syscall.h>
+#include <sys/sysproto.h>
 #include <sys/conf.h>
 #include <sys/objcache.h>
 
@@ -543,9 +544,6 @@ static short *nfsrv_v3errmap[] = {
 
 #endif /* NFS_NOSERVER */
 
-struct nfssvc_args;
-extern int sys_nfssvc(struct proc *, struct nfssvc_args *, int *);
-
 /*
  * This needs to return a monotonically increasing or close to monotonically
  * increasing result, otherwise the write gathering queues won't work 
@@ -606,8 +604,10 @@ nfs_init(struct vfsconf *vfsp)
 	 */
 	nfs_timer_callout(0);
 
+#if 1 /* XXX this isn't really needed */
 	nfs_prev_nfssvc_sy_narg = sysent[SYS_nfssvc].sy_narg;
 	sysent[SYS_nfssvc].sy_narg = 2;
+#endif
 	nfs_prev_nfssvc_sy_call = sysent[SYS_nfssvc].sy_call;
 	sysent[SYS_nfssvc].sy_call = (sy_call_t *)sys_nfssvc;
 
