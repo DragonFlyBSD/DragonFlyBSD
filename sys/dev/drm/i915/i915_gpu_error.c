@@ -29,7 +29,6 @@
 
 #include "i915_drv.h"
 
-#if 0
 static const char *ring_str(int ring)
 {
 	switch (ring) {
@@ -346,7 +345,7 @@ int i915_error_state_to_str(struct drm_i915_error_state_buf *m,
 	err_printf(m, "%s\n", error->error_msg);
 	err_printf(m, "Time: %ld s %ld us\n", error->time.tv_sec,
 		   error->time.tv_usec);
-	err_printf(m, "Kernel: " UTS_RELEASE "\n");
+	err_printf(m, "Kernel:  UTS_RELEASE \n");
 	max_hangcheck_score = 0;
 	for (i = 0; i < ARRAY_SIZE(error->ring); i++) {
 		if (error->ring[i].hangcheck_score > max_hangcheck_score)
@@ -559,17 +558,16 @@ int i915_error_state_buf_init(struct drm_i915_error_state_buf *ebuf,
 	 * so that we can move it to start position.
 	 */
 	ebuf->size = count + 1 > PAGE_SIZE ? count + 1 : PAGE_SIZE;
-	ebuf->buf = kmalloc(ebuf->size,
-				GFP_TEMPORARY | __GFP_NORETRY | __GFP_NOWARN);
+	ebuf->buf = kmalloc(ebuf->size, M_DRM, M_WAITOK);
 
 	if (ebuf->buf == NULL) {
 		ebuf->size = PAGE_SIZE;
-		ebuf->buf = kmalloc(ebuf->size, GFP_TEMPORARY);
+		ebuf->buf = kmalloc(ebuf->size, M_DRM, M_WAITOK);
 	}
 
 	if (ebuf->buf == NULL) {
 		ebuf->size = 128;
-		ebuf->buf = kmalloc(ebuf->size, GFP_TEMPORARY);
+		ebuf->buf = kmalloc(ebuf->size, M_DRM, M_WAITOK);
 	}
 
 	if (ebuf->buf == NULL)
@@ -641,7 +639,7 @@ i915_error_object_create(struct drm_i915_private *dev_priv,
 
 	num_pages = src->base.size >> PAGE_SHIFT;
 
-	dst = kmalloc(sizeof(*dst) + num_pages * sizeof(u32 *), GFP_ATOMIC);
+	dst = kmalloc(sizeof(*dst) + num_pages * sizeof(u32 *), M_DRM, M_NOWAIT);
 	if (dst == NULL)
 		return NULL;
 
@@ -676,14 +674,18 @@ i915_error_object_create(struct drm_i915_private *dev_priv,
 
 	dst->page_count = num_pages;
 	while (num_pages--) {
+#if 0
 		unsigned long flags;
+#endif
 		void *d;
 
-		d = kmalloc(PAGE_SIZE, GFP_ATOMIC);
+		d = kmalloc(PAGE_SIZE, M_DRM, M_NOWAIT);
 		if (d == NULL)
 			goto unwind;
 
+#if 0
 		local_irq_save(flags);
+#endif
 		if (use_ggtt) {
 			void __iomem *s;
 
@@ -710,7 +712,9 @@ i915_error_object_create(struct drm_i915_private *dev_priv,
 
 			drm_clflush_pages(&page, 1);
 		}
+#if 0
 		local_irq_restore(flags);
+#endif
 
 		dst->pages[i++] = d;
 		reloc_offset += PAGE_SIZE;
@@ -1060,6 +1064,7 @@ static void i915_gem_record_rings(struct drm_device *dev,
 							     engine->scratch.obj);
 
 			if (request->pid) {
+#if 0
 				struct task_struct *task;
 
 				rcu_read_lock();
@@ -1069,6 +1074,7 @@ static void i915_gem_record_rings(struct drm_device *dev,
 					error->ring[i].pid = task->pid;
 				}
 				rcu_read_unlock();
+#endif
 			}
 		}
 
@@ -1448,7 +1454,6 @@ const char *i915_cache_level_str(struct drm_i915_private *i915, int type)
 	default: return "";
 	}
 }
-#endif
 
 /* NB: please notice the memset */
 void i915_get_extra_instdone(struct drm_device *dev, uint32_t *instdone)

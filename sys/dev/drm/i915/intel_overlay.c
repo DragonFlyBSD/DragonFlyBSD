@@ -1479,7 +1479,6 @@ struct intel_overlay_error_state {
 	u32 isr;
 };
 
-#if 0
 static struct overlay_registers __iomem *
 intel_overlay_map_regs_atomic(struct intel_overlay *overlay)
 {
@@ -1518,7 +1517,7 @@ intel_overlay_capture_error_state(struct drm_device *dev)
 	if (!overlay || !overlay->active)
 		return NULL;
 
-	error = kmalloc(sizeof(*error), GFP_ATOMIC);
+	error = kmalloc(sizeof(*error), M_DRM, M_NOWAIT);
 	if (error == NULL)
 		return NULL;
 
@@ -1596,4 +1595,3 @@ intel_overlay_print_error_state(struct drm_i915_error_state_buf *m,
 	P(UVSCALEV);
 #undef P
 }
-#endif
