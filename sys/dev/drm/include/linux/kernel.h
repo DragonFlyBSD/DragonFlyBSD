@@ -164,13 +164,29 @@ might_sleep(void)
 {
 }
 
-static inline int
-vscnprintf(char *buf, size_t size, const char *fmt, __va_list args)
-{
-	/* XXX: The Linux implementation does some real things here */
-	*buf = '\0';
+#define snprintf	ksnprintf
 
-	return 0;
+#define scnprintf	kscnprintf
+
+static inline int
+vsnprintf(char *buf, size_t size, const char *fmt, __va_list args)
+{
+	return kvsnprintf(buf, size, fmt, args);
+}
+
+static inline int
+vscnprintf(char *buf, size_t size, const char *fmt, va_list args)
+{
+	int ret;
+
+	if (size == 0)
+		return 0;
+
+	ret = vsnprintf(buf, size, fmt, args);
+	if (ret < size)
+		return ret;
+
+	return size - 1;
 }
 
 #endif	/* _LINUX_KERNEL_H_ */
