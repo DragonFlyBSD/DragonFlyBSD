@@ -166,8 +166,6 @@ might_sleep(void)
 
 #define snprintf	ksnprintf
 
-#define scnprintf	kscnprintf
-
 static inline int
 vsnprintf(char *buf, size_t size, const char *fmt, __va_list args)
 {
@@ -187,6 +185,19 @@ vscnprintf(char *buf, size_t size, const char *fmt, va_list args)
 		return ret;
 
 	return size - 1;
+}
+
+static inline int
+scnprintf(char *buf, size_t size, const char *fmt, ...)
+{
+	va_list args;
+	int i;
+
+	va_start(args, fmt);
+	i = vscnprintf(buf, size, fmt, args);
+	va_end(args);
+
+	return (i);
 }
 
 #endif	/* _LINUX_KERNEL_H_ */
