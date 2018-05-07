@@ -27,9 +27,7 @@
 #ifndef _LINUX_STOP_MACHINE_H_
 #define _LINUX_STOP_MACHINE_H_
 
-#include <linux/cpu.h>
 #include <linux/cpumask.h>
-#include <linux/smp.h>
 #include <linux/list.h>
 
 #endif	/* _LINUX_STOP_MACHINE_H_ */
