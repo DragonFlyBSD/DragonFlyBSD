@@ -1,4 +1,6 @@
-/*
+/*-
+ * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+ *
  * Copyright (c) 1997 Robert Nordier
  * All rights reserved.
  *
@@ -24,23 +26,24 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/ckdist/ckdist.c,v 1.3.2.1 2000/07/01 10:37:21 ps Exp $
- * $DragonFly: src/usr.sbin/ckdist/ckdist.c,v 1.3 2004/12/18 22:48:02 swildner Exp $
+ * $FreeBSD: head/usr.sbin/ckdist/ckdist.c 326276 2017-11-27 15:37:16Z pfg $
  */
 
 #include <sys/types.h>
 #include <sys/stat.h>
+
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <fts.h>
 #include <md5.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-extern int crc(int fd, u_long * cval, u_long * clen);
+extern int crc(int fd, uint32_t *cval, off_t *clen);
 
 #define DISTMD5     1		/* MD5 format */
 #define DISTINF     2		/* .inf format */
@@ -76,7 +79,7 @@ static int chkinf(FILE * fp, const char *path);
 static int report(const char *path, const char *name, int error);
 static const char *distname(const char *path, const char *name,
 	                    const char *ext);
-static char *stripath(const char *path);
+static const char *stripath(const char *path);
 static int distfile(const char *path);
 static int disttype(const char *name);
 static int fail(const char *path, const char *msg);
@@ -243,7 +246,7 @@ chkmd5(FILE * fp, const char *path)
 		    error = E_ERRNO;
 		else if (close(fd))
 		    err(2, "%s", dname);
-	    } else if (!MD5File((char *)dname, chk))
+	    } else if (!MD5File(dname, chk))
 		error = E_ERRNO;
 	    else if (strcmp(chk, sum))
 		error = E_CHKSUM;
@@ -265,7 +268,10 @@ chkinf(FILE * fp, const char *path)
     char ext[3];
     struct stat sb;
     const char *dname;
-    u_long sum, len, chk;
+    off_t len;
+    u_long sum;
+    intmax_t sumlen;
+    uint32_t chk;
     int rval, error, c, pieces, cnt, fd;
     char ch;
 
@@ -278,8 +284,8 @@ chkinf(FILE * fp, const char *path)
 	    if ((c = sscanf(buf, "Pieces =  %d%c", &pieces, &ch)) != 2 ||
 		ch != '\n' || pieces < 1)
 		error = E_BADINF;
-	} else if (((c = sscanf(buf, "cksum.%2s = %lu %lu%c", ext, &sum,
-			        &len, &ch)) != 4 &&
+	} else if (((c = sscanf(buf, "cksum.%2s = %lu %jd%c", ext, &sum,
+			        &sumlen, &ch)) != 4 &&
 		    (!feof(fp) || c != 3)) || (c == 4 && ch != '\n') ||
 		   ext[0] != 'a' + cnt / 26 || ext[1] != 'a' + cnt % 26)
 	    error = E_BADINF;
@@ -290,7 +296,7 @@ chkinf(FILE * fp, const char *path)
 	    error = E_ERRNO;
 	else if (fstat(fd, &sb))
 	    error = E_ERRNO;
-	else if (sb.st_size != (off_t)len)
+	else if (sb.st_size != (off_t)sumlen)
 	    error = E_LENGTH;
 	else if (!opt_exist) {
 	    if (crc(fd, &chk, &len))
@@ -386,12 +392,12 @@ distname(const char *path, const char *name, const char *ext)
     return buf;
 }
 
-static char *
+static const char *
 stripath(const char *path)
 {
     const char *s;
 
-    return (char *)((s = strrchr(path, '/')) != NULL && s[1] ? 
+    return ((s = strrchr(path, '/')) != NULL && s[1] ? 
 		    s + 1 : path);
 }
 

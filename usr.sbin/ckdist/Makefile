@@ -1,10 +1,9 @@
-# $FreeBSD: src/usr.sbin/ckdist/Makefile,v 1.2 1999/08/28 01:15:46 peter Exp $
+# $FreeBSD: head/usr.sbin/ckdist/Makefile 314659 2017-03-04 11:38:03Z ngie $
 
 .PATH: ${.CURDIR}/../../usr.bin/cksum
 
 PROG=	ckdist
 SRCS=   ckdist.c crc.c
-WARNS?=	3
 
 DPADD=	${LIBMD}
 LDADD=	-lmd
