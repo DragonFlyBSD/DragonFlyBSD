@@ -28,7 +28,7 @@
 .\"     @(#)config.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/usr.sbin/config/config.8,v 1.21.2.7 2003/04/23 07:32:39 brueffer Exp $
 .\"
-.Dd June 20, 2015
+.Dd May 8, 2018
 .Dt CONFIG 8
 .Os
 .Sh NAME
@@ -180,7 +180,11 @@ be left with debug info intact.
 .Pp
 Backup copies of the kernel and modules are automatically stripped of
 their debug information by
-.Xr objcopy 1 .
+.Xr objcopy 1 ,
+unless
+.Va NO_KERNEL_OLD_STRIP
+is set in
+.Xr make.conf 5 .
 .Sh FILES
 .Bl -tag -width ".It Pa /sys/platform/ Ns Va PLATFORM Ns Pa /conf/Makefile" -compact
 .It Pa /sys/conf/files
