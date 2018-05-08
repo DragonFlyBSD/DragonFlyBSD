@@ -8,6 +8,8 @@ CVSVERSION=	1.12.13
 
 CFLAGS+= -I${.OBJDIR}/../lib -I${CVSDIR}/lib
 
+WARNS?=	 1
+
 .if exists(${.OBJDIR}/../lib)
 LIBCVSDIR=	${.OBJDIR}/../lib
 .else
