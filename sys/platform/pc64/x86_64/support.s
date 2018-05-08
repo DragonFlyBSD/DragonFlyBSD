@@ -286,15 +286,17 @@ ENTRY(std_copyout)
 	ja	copyout_fault
 
 	xchgq	%rdi,%rsi
+	cld
 	/* bcopy(%rsi, %rdi, %rdx) */
 	movq	%rdx,%rcx
 
 	shrq	$3,%rcx
-	cld
+	jz	1f
 	rep
 	movsq
-	movb	%dl,%cl
-	andb	$7,%cl
+1:	movq	%rdx,%rcx
+	andq	$7,%rcx
+	jz	done_copyout
 	rep
 	movsb
 
@@ -337,14 +339,15 @@ ENTRY(std_copyin)
 	ja	copyin_fault
 
 	xchgq	%rdi,%rsi
-	movq	%rdx,%rcx
-	movb	%cl,%al
-	shrq	$3,%rcx				/* copy longword-wise */
 	cld
+	movq	%rdx,%rcx
+	shrq	$3,%rcx				/* copy longword-wise */
+	jz	1f
 	rep
 	movsq
-	movb	%al,%cl
-	andb	$7,%cl				/* copy remaining bytes */
+1:	movq	%rdx,%rcx
+	andq	$7,%rcx				/* copy remaining bytes */
+	jz	done_copyin
 	rep
 	movsb
 
