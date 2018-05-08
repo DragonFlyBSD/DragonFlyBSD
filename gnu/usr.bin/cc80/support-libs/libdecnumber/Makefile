@@ -8,6 +8,11 @@ LOCAL_CONFIG=	yes
 LIB=		decnumber
 INTERNALLIB=	YES
 
+# for now do not let the use of -flto (check -Wlto-type-mismatch !)
+.if ${CFLAGS:M-flto}
+CFLAGS+=	-fno-lto
+.endif
+
 SRCS=	decContext.c \
 	decNumber.c \
 	decimal32.c \
