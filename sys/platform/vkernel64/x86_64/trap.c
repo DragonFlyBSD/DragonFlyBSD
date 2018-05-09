@@ -1085,6 +1085,8 @@ syscall2(struct trapframe *frame)
 	if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
 		vkernel_trap(lp, frame);
 		error = EJUSTRETURN;
+		callp = NULL;
+		code = 0;
 		goto out;
 	}
 
@@ -1117,11 +1119,13 @@ syscall2(struct trapframe *frame)
 	argp = &frame->tf_rdi;
 	argp += reg;
 	argsdst = (register_t *)(&args.nosys.sysmsg + 1);
+
 	/*
 	 * JG can we overflow the space pointed to by 'argsdst'
 	 * either with 'bcopy' or with 'copyin'?
 	 */
 	bcopy(argp, argsdst, sizeof(register_t) * regcnt);
+
 	/*
 	 * copyin is MP aware, but the tracing code is not
 	 */
