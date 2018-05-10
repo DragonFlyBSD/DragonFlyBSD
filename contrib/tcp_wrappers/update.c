@@ -17,6 +17,7 @@
 
 /* System libraries */
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <syslog.h>
 #include <string.h>
@@ -24,7 +25,6 @@
 
 /* Local stuff. */
 
-#include "mystdarg.h"
 #include "tcpd.h"
 
 /* request_fill - request update engine */
@@ -89,7 +89,7 @@ va_list ap;
 
 /* request_init - initialize request structure */
 
-struct request_info *VARARGS(request_init, struct request_info *, request)
+struct request_info *request_init(struct request_info *request, ...)
 {
     static struct request_info default_info;
     struct request_info *r;
@@ -100,7 +100,7 @@ struct request_info *VARARGS(request_init, struct request_info *, request)
      * members, to avoid pulling in the whole socket module when it is not
      * really needed.
      */
-    VASTART(ap, struct request_info *, request);
+    va_start(ap, request);
     *request = default_info;
     request->fd = -1;
     strcpy(request->daemon, unknown);
@@ -108,19 +108,19 @@ struct request_info *VARARGS(request_init, struct request_info *, request)
     request->client->request = request;
     request->server->request = request;
     r = request_fill(request, ap);
-    VAEND(ap);
+    va_end(ap);
     return (r);
 }
 
 /* request_set - update request structure */
 
-struct request_info *VARARGS(request_set, struct request_info *, request)
+struct request_info *request_set(struct request_info *request, ...)
 {
     struct request_info *r;
     va_list ap;
 
-    VASTART(ap, struct request_info *, request);
+    va_start(ap, request);
     r = request_fill(request, ap);
-    VAEND(ap);
+    va_end(ap);
     return (r);
 }

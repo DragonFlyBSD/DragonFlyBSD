@@ -5,9 +5,10 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   */
 
+#include <stdarg.h>
 #include <stdio.h>
 
-#include "mystdarg.h"
+extern char *percent_m();
 
 /* openlog - dummy */
 
@@ -42,15 +43,13 @@ va_list ap;
 /* VARARGS */
 
 void
-VARARGS(syslog, int, severity)
+syslog(int severity, const char *fmt, ...)
 {
     va_list ap;
-    char   *fmt;
 
-    VASTART(ap, int, severity);
-    fmt = va_arg(ap, char *);
+    va_start(ap, fmt);
     vsyslog(severity, fmt, ap);
-    VAEND(ap);
+    va_end(ap);
 }
 
 /* closelog - dummy */
