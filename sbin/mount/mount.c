@@ -388,11 +388,6 @@ mountfs(const char *vfstype, const char *spec, const char *name, int flags,
 	char execname[MAXPATHLEN + 1];
 	char mntpath[MAXPATHLEN];
 
-#if __GNUC__
-	(void)&optbuf;
-	(void)&name;
-#endif
-
 	/* resolve the mountpoint with realpath(3) */
 	checkpath(name, mntpath);
 	name = mntpath;
