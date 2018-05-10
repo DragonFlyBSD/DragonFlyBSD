@@ -13,10 +13,12 @@ static char sccsid[] = "@(#) myvsyslog.c 1.1 94/12/28 17:42:33";
 
 #ifdef vsyslog
 
+#include <stdarg.h>
 #include <stdio.h>
 
 #include "tcpd.h"
-#include "mystdarg.h"
+
+extern char *percent_m();
 
 myvsyslog(severity, format, ap)
 int     severity;

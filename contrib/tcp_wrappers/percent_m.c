@@ -6,14 +6,13 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <stdarg.h>
 #include <string.h>
 
 #ifndef SYS_ERRLIST_DEFINED
 extern char *sys_errlist[];
 extern int sys_nerr;
 #endif
-
-#include "mystdarg.h"
 
 char   *percent_m(obuf, ibuf)
 char   *obuf;
