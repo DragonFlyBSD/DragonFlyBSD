@@ -40,7 +40,7 @@ extern uint32_t crc_total;
 extern u_int keys;
 
 int	 compare(NODE *, FTSENT *);
-int	 crc(int, u_long *, u_long *);
+int	 crc(int, uint32_t *, off_t *);
 void	 cwalk(void);
 char	*flags_to_string(u_long);
 

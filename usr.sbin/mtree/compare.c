@@ -28,7 +28,6 @@
  *
  * @(#)compare.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/compare.c,v 1.15.2.4 2003/05/07 17:55:17 tobez Exp $
- * $DragonFly: src/usr.sbin/mtree/compare.c,v 1.5 2004/03/15 16:24:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -65,7 +64,8 @@ static const char *ftype(u_int);
 int
 compare(NODE *s, FTSENT *p)
 {
-	u_long len, val;
+	uint32_t val;
+	off_t len;
 	int fd, label;
 	char *cp, *fflags;
 	const char *tab = "";
@@ -194,7 +194,7 @@ typeerr:		LABEL;
 			close(fd);
 			if (s->cksum != val) {
 				LABEL;
-				printf("%scksum expected %lu found %lu\n",
+				printf("%scksum expected %lu found %u\n",
 				    tab, s->cksum, val);
 				tab = "\t";
 			}
