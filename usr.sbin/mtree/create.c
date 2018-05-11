@@ -134,7 +134,8 @@ statf(int indent, FTSENT *p)
 {
 	struct group *gr;
 	struct passwd *pw;
-	u_long len, val;
+	uint32_t val;
+	off_t len;
 	int fd, offset;
 	char *fflags;
 	char *escaped_name;
@@ -200,7 +201,7 @@ statf(int indent, FTSENT *p)
 		    crc(fd, &val, &len))
 			err(1, "line %d: %s", lineno, p->fts_accpath);
 		close(fd);
-		output(indent, &offset, "cksum=%lu", val);
+		output(indent, &offset, "cksum=%u", val);
 	}
 #ifdef MD5
 	if (keys & F_MD5 && S_ISREG(p->fts_statp->st_mode)) {
