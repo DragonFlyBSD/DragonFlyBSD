@@ -51,7 +51,7 @@ extern char	*progname;
 extern void	yppasswdprog_1(struct svc_req *, SVCXPRT *);
 extern void	master_yppasswdprog_1(struct svc_req *, SVCXPRT *);
 extern void	reaper(int);
-extern char	*ok_shell(char *);
+extern int	ok_shell(char *);
 extern char	*passfile;
 extern char	*passfile_default;
 extern char	*yppasswd_domain;
