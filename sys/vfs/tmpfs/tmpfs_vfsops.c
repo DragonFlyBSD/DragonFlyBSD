@@ -492,9 +492,6 @@ tmpfs_fhtovp(struct mount *mp, struct vnode *rootvp, struct fid *fhp,
 	if (tfhp->tf_len != sizeof(struct tmpfs_fid))
 		return EINVAL;
 
-	if (tfhp->tf_id >= tmp->tm_nodes_max)
-		return EINVAL;
-
 	rc = EINVAL;
 	found = FALSE;
 
