@@ -383,7 +383,7 @@ struct tmpfs_fid {
 	uint16_t		tf_pad;
 	ino_t			tf_id;
 	unsigned long		tf_gen;
-};
+} __packed;
 
 /* --------------------------------------------------------------------- */
 
