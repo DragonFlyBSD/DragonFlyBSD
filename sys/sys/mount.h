@@ -79,7 +79,7 @@ struct fid {
 	u_short		fid_len;		/* length of data in bytes */
 	u_short		fid_ext;		/* extended data 	   */
 	char		fid_data[MAXFIDSZ];	/* data (variable length) */
-};
+} __packed;
 
 /*
  * file system statistics
