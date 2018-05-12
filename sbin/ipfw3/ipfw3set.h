@@ -1,7 +1,5 @@
 /*
- * Copyright (c) 2002-2009 Luigi Rizzo, Universita` di Pisa
- *
- * Copyright (c) 2015 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2016 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@dragonflybsd.org>
@@ -33,14 +31,17 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#ifndef _IP_FW3_LOG_H_
-#define _IP_FW3_LOG_H_
 
-#define LOG_IF_MAX	10
+#ifndef _IPFW3SET_H_
+#define _IPFW3SET_H_
 
-void ipfw3_log_modevent(int type);
-
-void
-ipfw_log(struct mbuf *m, struct ether_header *eh, uint16_t id);
+void	set_enable(int ac, char **av);
+void	set_disable(int ac, char **av);
+void	set_show(int ac, char **av);
+void	set_swap(int ac, char **av);
+void	set_flush(int ac, char **av);
+void	set_move_rule(int ac, char **av);
+void	set_move_set(int ac, char **av);
+void	set_main(int ac, char **av);
 
 #endif

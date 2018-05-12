@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2014 - 2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@dragonflybsd.org>
@@ -32,8 +32,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _IPFW_LAYER4_H
-#define _IPFW_LAYER4_H
+#ifndef _IPFW3_LAYER4_H
+#define _IPFW3_LAYER4_H
 
 #include <net/ipfw3_layer4/ip_fw3_layer4.h>
 

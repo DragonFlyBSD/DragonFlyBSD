@@ -2,7 +2,7 @@
  * Copyright (c) 1993 Daniel Boulet
  * Copyright (c) 1994 Ugen J.S.Antsilevich
  * Copyright (c) 2002 Luigi Rizzo, Universita` di Pisa
- * Copyright (c) 2015 - 2016 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2014 - 2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@dragonflybsd.org>
@@ -43,19 +43,20 @@
 #endif /* INET */
 
 #include <sys/param.h>
-#include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <sys/kernel.h>
-#include <sys/proc.h>
-#include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
+#include <sys/systimer.h>
+#include <sys/thread2.h>
+#include <sys/in_cksum.h>
+#include <sys/systm.h>
+#include <sys/proc.h>
+#include <sys/socket.h>
 #include <sys/syslog.h>
 #include <sys/ucred.h>
-#include <sys/in_cksum.h>
 #include <sys/lock.h>
-#include <sys/thread2.h>
 #include <sys/mplock2.h>
 
 #include <netinet/in.h>
@@ -81,24 +82,16 @@
 #include <net/netmsg2.h>
 
 #include <net/ipfw3/ip_fw.h>
-#include <net/ipfw3/ip_fw3_log.h>
-#include <net/ipfw3/ip_fw3_table.h>
-#include <net/ipfw3/ip_fw3_sync.h>
+#include <net/ipfw3/ip_fw3_set.h>
+#include <net/ipfw3_basic/ip_fw3_log.h>
+#include <net/ipfw3_basic/ip_fw3_table.h>
+#include <net/ipfw3_basic/ip_fw3_sync.h>
 #include <net/ipfw3_basic/ip_fw3_basic.h>
+#include <net/ipfw3_basic/ip_fw3_state.h>
 #include <net/ipfw3_nat/ip_fw3_nat.h>
 #include <net/dummynet3/ip_dummynet3.h>
 
-MALLOC_DEFINE(M_IPFW3, "IPFW3", "ip_fw3 default module");
-
-#ifdef IPFIREWALL_DEBUG
-#define DPRINTF(fmt, ...)			\
-do { 						\
-	if (fw_debug > 0) 			\
-		kprintf(fmt, __VA_ARGS__); 	\
-} while (0)
-#else
-#define DPRINTF(fmt, ...)	((void)0)
-#endif
+MALLOC_DEFINE(M_IPFW3, "IPFW3", "ipfw3 module");
 
 #define MAX_MODULE		10
 #define MAX_OPCODE_PER_MODULE	100
@@ -124,8 +117,9 @@ struct netmsg_del {
 	struct ip_fw	*prev_rule;
 	struct ipfw_ioc_state *ioc_state;
 	uint16_t	rulenum;
-	uint8_t		from_set;
-	uint8_t		to_set;
+	uint8_t		set_from;
+	uint8_t		set_to;
+	int		kill_default;
 };
 
 struct netmsg_zent {
@@ -135,62 +129,52 @@ struct netmsg_zent {
 	uint16_t	log_only;
 };
 
-ip_fw_ctl_t *ipfw_ctl_nat_ptr = NULL;
-
-/* handlers which implemented in ipfw_basic module */
-ipfw_basic_delete_state_t *ipfw_basic_flush_state_prt = NULL;
-ipfw_basic_append_state_t *ipfw_basic_append_state_prt = NULL;
+ip_fw_ctl_t	*ip_fw3_ctl_nat_ptr = NULL;
+ip_fw_ctl_t	*ip_fw3_ctl_state_ptr = NULL;
+ip_fw_ctl_t	*ip_fw3_ctl_table_ptr = NULL;
+ip_fw_ctl_t	*ip_fw3_ctl_sync_ptr = NULL;
+ip_fw_log_t	*ip_fw3_log_ptr = NULL;
 
 extern int ip_fw_loaded;
-static uint32_t static_count;	/* # of static rules */
-static uint32_t static_ioc_len;	/* bytes of static rules */
-static int ipfw_flushing;
-int fw_verbose = 0;
-static int fw_debug;
-static int autoinc_step = IPFW_AUTOINC_STEP_DEF;
+extern struct ipfw3_state_context 	*fw3_state_ctx[MAXCPU];
+int 			sysctl_var_fw3_enable = 1;
+int 			sysctl_var_fw3_one_pass = 1;
+int 			sysctl_var_fw3_verbose = 0;
+static int 		sysctl_var_fw3_flushing;
+static int 		sysctl_var_fw3_debug;
+static int 		sysctl_var_autoinc_step = IPFW_AUTOINC_STEP_DEF;
 
-static int	ipfw_sysctl_enable(SYSCTL_HANDLER_ARGS);
-static int	ipfw_sysctl_autoinc_step(SYSCTL_HANDLER_ARGS);
+int	ip_fw3_sysctl_enable(SYSCTL_HANDLER_ARGS);
+int	ip_fw3_sysctl_autoinc_step(SYSCTL_HANDLER_ARGS);
 
 SYSCTL_NODE(_net_inet_ip, OID_AUTO, fw3, CTLFLAG_RW, 0, "Firewall");
 SYSCTL_PROC(_net_inet_ip_fw3, OID_AUTO, enable, CTLTYPE_INT | CTLFLAG_RW,
-	&fw3_enable, 0, ipfw_sysctl_enable, "I", "Enable ipfw");
-SYSCTL_PROC(_net_inet_ip_fw3, OID_AUTO, autoinc_step, CTLTYPE_INT | CTLFLAG_RW,
-	&autoinc_step, 0, ipfw_sysctl_autoinc_step, "I",
-	"Rule number autincrement step");
+	&sysctl_var_fw3_enable, 0, ip_fw3_sysctl_enable, "I", "Enable ipfw");
+SYSCTL_PROC(_net_inet_ip_fw3, OID_AUTO, sysctl_var_autoinc_step,
+	CTLTYPE_INT | CTLFLAG_RW, &sysctl_var_autoinc_step, 0,
+	ip_fw3_sysctl_autoinc_step, "I", "Rule number autincrement step");
 SYSCTL_INT(_net_inet_ip_fw3, OID_AUTO,one_pass,CTLFLAG_RW,
-	&fw3_one_pass, 0,
-	"Only do a single pass through ipfw when using dummynet(4)");
+	&sysctl_var_fw3_one_pass, 0,
+	"Only do a single pass through ipfw3 when using dummynet(4)");
 SYSCTL_INT(_net_inet_ip_fw3, OID_AUTO, debug, CTLFLAG_RW,
-	&fw_debug, 0, "Enable printing of debug ip_fw statements");
+	&sysctl_var_fw3_debug, 0, "Enable printing of debug ip_fw statements");
 SYSCTL_INT(_net_inet_ip_fw3, OID_AUTO, verbose, CTLFLAG_RW,
-	&fw_verbose, 0, "Log matches to ipfw rules");
-SYSCTL_INT(_net_inet_ip_fw3, OID_AUTO, static_count, CTLFLAG_RD,
-	&static_count, 0, "Number of static rules");
+	&sysctl_var_fw3_verbose, 0, "Log matches to ipfw3 rules");
 
-filter_func filter_funcs[MAX_MODULE][MAX_OPCODE_PER_MODULE];
-struct ipfw_module ipfw_modules[MAX_MODULE];
-struct ipfw_context *ipfw_ctx[MAXCPU];
-struct ipfw_sync_context sync_ctx;
-static int ipfw_ctl(struct sockopt *sopt);
+
+filter_func 			filter_funcs[MAX_MODULE][MAX_OPCODE_PER_MODULE];
+struct ipfw3_module 		fw3_modules[MAX_MODULE];
+struct ipfw3_context 		*fw3_ctx[MAXCPU];
+struct ipfw3_sync_context 	fw3_sync_ctx;
 
 
 void
-check_accept(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void
-check_deny(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void init_module(void);
-
-
-void
-register_ipfw_module(int module_id,char *module_name)
+ip_fw3_register_module(int module_id,char *module_name)
 {
-	struct ipfw_module *tmp;
+	struct ipfw3_module *tmp;
 	int i;
 
-	tmp = ipfw_modules;
+	tmp = fw3_modules;
 	for (i=0; i < MAX_MODULE; i++) {
 		if (tmp->type == 0) {
 			tmp->type = 1;
@@ -204,17 +188,17 @@ register_ipfw_module(int module_id,char *module_name)
 }
 
 int
-unregister_ipfw_module(int module_id)
+ip_fw3_unregister_module(int module_id)
 {
-	struct ipfw_module *tmp;
+	struct ipfw3_module *tmp;
 	struct ip_fw *fw;
 	ipfw_insn *cmd;
 	int i, len, cmdlen, found;
 
 	found = 0;
-	tmp = ipfw_modules;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-	fw = ctx->ipfw_rule_chain;
+	tmp = fw3_modules;
+	struct ipfw3_context *ctx = fw3_ctx[mycpuid];
+	fw = ctx->rules;
 	for (; fw; fw = fw->next) {
 		for (len = fw->cmd_len, cmd = fw->cmd; len > 0;
 			len -= cmdlen,
@@ -256,7 +240,7 @@ decide:
 }
 
 void
-register_ipfw_filter_funcs(int module, int opcode, filter_func func)
+ip_fw3_register_filter_funcs(int module, int opcode, filter_func func)
 {
 	filter_funcs[module][opcode] = func;
 }
@@ -267,8 +251,8 @@ check_accept(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 {
 	*cmd_val = IP_FW_PASS;
 	*cmd_ctl = IP_FW_CTL_DONE;
-	if (cmd->arg3) {
-		ipfw_log((*args)->m, (*args)->eh, cmd->arg1);
+	if (cmd->arg3 && ip_fw3_log_ptr != NULL) {
+		ip_fw3_log_ptr((*args)->m, (*args)->eh, cmd->arg1);
 	}
 }
 
@@ -278,24 +262,24 @@ check_deny(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 {
 	*cmd_val = IP_FW_DENY;
 	*cmd_ctl = IP_FW_CTL_DONE;
-	if (cmd->arg3) {
-		ipfw_log((*args)->m, (*args)->eh, cmd->arg1);
+	if (cmd->arg3 && ip_fw3_log_ptr != NULL) {
+		ip_fw3_log_ptr((*args)->m, (*args)->eh, cmd->arg1);
 	}
 }
 
 void
 init_module(void)
 {
-	memset(ipfw_modules, 0, sizeof(struct ipfw_module) * MAX_MODULE);
+	memset(fw3_modules, 0, sizeof(struct ipfw3_module) * MAX_MODULE);
 	memset(filter_funcs, 0, sizeof(filter_func) *
 			MAX_OPCODE_PER_MODULE * MAX_MODULE);
-	register_ipfw_filter_funcs(0, O_BASIC_ACCEPT,
+	ip_fw3_register_filter_funcs(0, O_BASIC_ACCEPT,
 			(filter_func)check_accept);
-	register_ipfw_filter_funcs(0, O_BASIC_DENY, (filter_func)check_deny);
+	ip_fw3_register_filter_funcs(0, O_BASIC_DENY, (filter_func)check_deny);
 }
 
-static __inline int
-ipfw_free_rule(struct ip_fw *rule)
+int
+ip_fw3_free_rule(struct ip_fw *rule)
 {
 	kfree(rule, M_IPFW3);
 	rule = NULL;
@@ -332,9 +316,13 @@ lookup_next_rule(struct ip_fw *me)
  * it will invoke the cmds relatived function according to the cmd's
  * module id and opcode id. and process according to return value.
  */
-static int
-ipfw_chk(struct ip_fw_args *args)
+int
+ip_fw3_chk(struct ip_fw_args *args)
 {
+	struct tcphdr *tcp;
+	struct udphdr *udp;
+	struct icmp *icmp;
+
 	struct mbuf *m = args->m;
 	struct ip *ip = mtod(m, struct ip *);
 	struct ip_fw *f = NULL;		/* matching rule */
@@ -361,7 +349,7 @@ ipfw_chk(struct ip_fw_args *args)
 	struct in_addr src_ip, dst_ip;		/* NOTE: network format	*/
 	uint16_t ip_len = 0;
 	uint8_t prev_module = -1, prev_opcode = -1; /* previous module & opcode */
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct ipfw3_context *ctx = fw3_ctx[mycpuid];
 
 	if (m->m_pkthdr.fw_flags & IPFW_MBUF_GENERATED)
 		return IP_FW_PASS;	/* accept */
@@ -403,34 +391,25 @@ do {							\
 	if (offset == 0) {
 		switch (proto) {
 			case IPPROTO_TCP:
-				{
-					struct tcphdr *tcp;
-
-					PULLUP_TO(hlen + sizeof(struct tcphdr));
-					tcp = L3HDR(struct tcphdr, ip);
-					dst_port = tcp->th_dport;
-					src_port = tcp->th_sport;
-					args->f_id.flags = tcp->th_flags;
-				}
+				PULLUP_TO(hlen + sizeof(struct tcphdr));
+				tcp = L3HDR(struct tcphdr, ip);
+				dst_port = tcp->th_dport;
+				src_port = tcp->th_sport;
+				args->f_id.flags = tcp->th_flags;
 				break;
-
 			case IPPROTO_UDP:
-				{
-					struct udphdr *udp;
-
-					PULLUP_TO(hlen + sizeof(struct udphdr));
-					udp = L3HDR(struct udphdr, ip);
-					dst_port = udp->uh_dport;
-					src_port = udp->uh_sport;
-				}
+				PULLUP_TO(hlen + sizeof(struct udphdr));
+				udp = L3HDR(struct udphdr, ip);
+				dst_port = udp->uh_dport;
+				src_port = udp->uh_sport;
 				break;
-
 			case IPPROTO_ICMP:
 				PULLUP_TO(hlen + 4);
-				args->f_id.flags =
-					L3HDR(struct icmp, ip)->icmp_type;
+				icmp = L3HDR(struct icmp, ip);
+  				args->f_id.flags = icmp->icmp_type;
+				dst_port = icmp->icmp_id;
+				src_port = dst_port;
 				break;
-
 			default:
 				break;
 		}
@@ -449,15 +428,15 @@ after_ip_checks:
 		 * Packet has already been tagged. Look for the next rule
 		 * to restart processing.
 		 *
-		 * If fw3_one_pass != 0 then just accept it.
+		 * If sysctl_var_fw3_one_pass != 0 then just accept it.
 		 * XXX should not happen here, but optimized out in
 		 * the caller.
 		 */
-		if (fw3_one_pass)
+		if (sysctl_var_fw3_one_pass)
 			return IP_FW_PASS;
 
 		/* This rule is being/has been flushed */
-		if (ipfw_flushing)
+		if (sysctl_var_fw3_flushing)
 			return IP_FW_DENY;
 
 		f = args->rule->next_rule;
@@ -478,10 +457,10 @@ after_ip_checks:
 			skipto = 0;
 		}
 
-		f = ctx->ipfw_rule_chain;
+		f = ctx->rules;
 		if (args->eh == NULL && skipto != 0) {
 			/* No skipto during rule flushing */
-			if (ipfw_flushing) {
+			if (sysctl_var_fw3_flushing) {
 				return IP_FW_DENY;
 			}
 			if (skipto >= IPFW_DEFAULT_RULE) {
@@ -493,9 +472,9 @@ after_ip_checks:
 			if (f == NULL) {	/* drop packet */
 				return IP_FW_DENY;
 			}
-		} else if (ipfw_flushing) {
+		} else if (sysctl_var_fw3_flushing) {
 			/* Rules are being flushed; skip to default rule */
-			f = ctx->ipfw_default_rule;
+			f = ctx->default_rule;
 		}
 	}
 	if ((mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL)) != NULL) {
@@ -512,7 +491,7 @@ after_ip_checks:
 	/* foreach rule in chain */
 	for (; f; f = f->next) {
 again:  /* check the rule again*/
-		if (ctx->ipfw_set_disable & (1 << f->set)) {
+		if (ctx->sets & (1 << f->set)) {
 			continue;
 		}
 
@@ -606,13 +585,13 @@ done:
 	return cmd_val;
 
 pullup_failed:
-	if (fw_verbose)
+	if (sysctl_var_fw3_verbose)
 		kprintf("pullup failed\n");
 	return IP_FW_DENY;
 }
 
-static struct mbuf *
-ipfw_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
+struct mbuf *
+ip_fw3_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 {
 	struct m_tag *mtag;
 	struct dn_pkt *pkt;
@@ -664,37 +643,12 @@ ipfw_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 	return (m);
 }
 
-static __inline void
-ipfw_inc_static_count(struct ip_fw *rule)
-{
-	/* Static rule's counts are updated only on CPU0 */
-	KKASSERT(mycpuid == 0);
 
-	static_count++;
-	static_ioc_len += IOC_RULESIZE(rule);
-}
-
-static __inline void
-ipfw_dec_static_count(struct ip_fw *rule)
-{
-	int l = IOC_RULESIZE(rule);
-
-	/* Static rule's counts are updated only on CPU0 */
-	KKASSERT(mycpuid == 0);
-
-	KASSERT(static_count > 0, ("invalid static count %u", static_count));
-	static_count--;
-
-	KASSERT(static_ioc_len >= l,
-			("invalid static len %u", static_ioc_len));
-	static_ioc_len -= l;
-}
-
-static void
-ipfw_add_rule_dispatch(netmsg_t nmsg)
+void
+add_rule_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_ipfw *fwmsg = (struct netmsg_ipfw *)nmsg;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct ipfw3_context *ctx = fw3_ctx[mycpuid];
 	struct ip_fw *rule, *prev,*next;
 	const struct ipfw_ioc_rule *ioc_rule;
 
@@ -707,7 +661,7 @@ ipfw_add_rule_dispatch(netmsg_t nmsg)
 	rule->set = ioc_rule->set;
 	bcopy(ioc_rule->cmd, rule->cmd, rule->cmd_len * 4);
 
-	for (prev = NULL, next = ctx->ipfw_rule_chain;
+	for (prev = NULL, next = ctx->rules;
 		next; prev = next, next = next->next) {
 		if (next->rulenum > ioc_rule->rulenum) {
 			break;
@@ -722,8 +676,8 @@ ipfw_add_rule_dispatch(netmsg_t nmsg)
 		rule->next = next;
 		prev->next = rule;
 	} else {
-		rule->next = ctx->ipfw_rule_chain;
-		ctx->ipfw_rule_chain = rule;
+		rule->next = ctx->rules;
+		ctx->rules = rule;
 	}
 
 	/*
@@ -736,10 +690,6 @@ ipfw_add_rule_dispatch(netmsg_t nmsg)
 	/* prepare for next CPU */
 	fwmsg->sibling = rule;
 
-	if (mycpuid == 0) {
-		/* Statistics only need to be updated once */
-		ipfw_inc_static_count(rule);
-	}
 	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
@@ -748,10 +698,10 @@ ipfw_add_rule_dispatch(netmsg_t nmsg)
  * call dispatch function to add rule into the list
  * Update the statistic
  */
-static void
-ipfw_add_rule(struct ipfw_ioc_rule *ioc_rule)
+void
+ip_fw3_add_rule(struct ipfw_ioc_rule *ioc_rule)
 {
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct ipfw3_context *ctx = fw3_ctx[mycpuid];
 	struct netmsg_ipfw fwmsg;
 	struct netmsg_base *nmsg;
 	struct ip_fw *f;
@@ -763,7 +713,7 @@ ipfw_add_rule(struct ipfw_ioc_rule *ioc_rule)
 	 * default rule, and add rule number incremental step.
 	 */
 	if (ioc_rule->rulenum == 0) {
-		int step = autoinc_step;
+		int step = sysctl_var_autoinc_step;
 
 		KKASSERT(step >= IPFW_AUTOINC_STEP_MIN &&
 				step <= IPFW_AUTOINC_STEP_MAX);
@@ -771,7 +721,7 @@ ipfw_add_rule(struct ipfw_ioc_rule *ioc_rule)
 		/*
 		 * Locate the highest numbered rule before default
 		 */
-		for (f = ctx->ipfw_rule_chain; f; f = f->next) {
+		for (f = ctx->rules; f; f = f->next) {
 			if (f->rulenum == IPFW_DEFAULT_RULE)
 				break;
 			ioc_rule->rulenum = f->rulenum;
@@ -786,12 +736,12 @@ ipfw_add_rule(struct ipfw_ioc_rule *ioc_rule)
 	bzero(&fwmsg, sizeof(fwmsg));
 	nmsg = &fwmsg.base;
 	netmsg_init(nmsg, NULL, &curthread->td_msgport,
-			0, ipfw_add_rule_dispatch);
+			0, add_rule_dispatch);
 	fwmsg.ioc_rule = ioc_rule;
 
 	netisr_domsg(nmsg, 0);
 
-	DPRINTF("++ installed rule %d, static count now %d\n",
+	DEBUG("++ installed rule %d, static count now %d\n",
 			ioc_rule->rulenum, static_count);
 }
 
@@ -804,41 +754,36 @@ ipfw_add_rule(struct ipfw_ioc_rule *ioc_rule)
  * Arguments are not checked, so they better be correct.
  * Must be called at splimp().
  */
-static struct ip_fw *
-ipfw_delete_rule(struct ipfw_context *ctx,
+struct ip_fw *
+ip_fw3_delete_rule(struct ipfw3_context *ctx,
 		 struct ip_fw *prev, struct ip_fw *rule)
 {
 	if (prev == NULL)
-		ctx->ipfw_rule_chain = rule->next;
+		ctx->rules = rule->next;
 	else
 		prev->next = rule->next;
-
-	if (mycpuid == IPFW_CFGCPUID)
-		ipfw_dec_static_count(rule);
 
 	kfree(rule, M_IPFW3);
 	rule = NULL;
 	return NULL;
 }
 
-static void
-ipfw_flush_rule_dispatch(netmsg_t nmsg)
+void
+flush_rule_dispatch(netmsg_t nmsg)
 {
-	struct lwkt_msg *lmsg = &nmsg->lmsg;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct netmsg_del *dmsg = (struct netmsg_del *)nmsg;
+	struct ipfw3_context *ctx = fw3_ctx[mycpuid];
 	struct ip_fw *rule, *the_rule;
-	int kill_default = lmsg->u.ms_result;
+	int kill_default = dmsg->kill_default;
 
-	rule = ctx->ipfw_rule_chain;
+	rule = ctx->rules;
 	while (rule != NULL) {
 		if (rule->rulenum == IPFW_DEFAULT_RULE && kill_default == 0) {
-			ctx->ipfw_rule_chain = rule;
+			ctx->rules = rule;
 			break;
 		}
 		the_rule = rule;
 		rule = rule->next;
-		if (mycpuid == IPFW_CFGCPUID)
-			ipfw_dec_static_count(the_rule);
 
 		kfree(the_rule, M_IPFW3);
 	}
@@ -846,102 +791,47 @@ ipfw_flush_rule_dispatch(netmsg_t nmsg)
 	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
-static void
-ipfw_append_state_dispatch(netmsg_t nmsg)
-{
-	struct netmsg_del *dmsg = (struct netmsg_del *)nmsg;
-	struct ipfw_ioc_state *ioc_state = dmsg->ioc_state;
-	(*ipfw_basic_append_state_prt)(ioc_state);
-	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
-}
-
-static void
-ipfw_delete_state_dispatch(netmsg_t nmsg)
-{
-	struct netmsg_del *dmsg = (struct netmsg_del *)nmsg;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-	struct ip_fw *rule = ctx->ipfw_rule_chain;
-	while (rule != NULL) {
-		if (rule->rulenum == dmsg->rulenum) {
-			break;
-		}
-		rule = rule->next;
-	}
-
-	(*ipfw_basic_flush_state_prt)(rule);
-	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
-}
 
 /*
  * Deletes all rules from a chain (including the default rule
  * if the second argument is set).
  * Must be called at splimp().
  */
-static void
-ipfw_ctl_flush_rule(int kill_default)
+void
+ip_fw3_ctl_flush_rule(int kill_default)
 {
 	struct netmsg_del dmsg;
-	struct netmsg_base nmsg;
-	struct lwkt_msg *lmsg;
 
 	IPFW_ASSERT_CFGPORT(&curthread->td_msgport);
 
-	/*
-	 * If 'kill_default' then caller has done the necessary
-	 * msgport syncing; unnecessary to do it again.
-	 */
 	if (!kill_default) {
-		/*
-		 * Let ipfw_chk() know the rules are going to
-		 * be flushed, so it could jump directly to
-		 * the default rule.
-		 */
-		ipfw_flushing = 1;
+		sysctl_var_fw3_flushing = 1;
 		netmsg_service_sync();
-	}
-
-	/*
-	 * if ipfw_basic_flush_state_prt
-	 * flush all states in all CPU
-	 */
-	if (ipfw_basic_flush_state_prt != NULL) {
-		bzero(&dmsg, sizeof(dmsg));
-		netmsg_init(&dmsg.base, NULL, &curthread->td_msgport,
-				0, ipfw_delete_state_dispatch);
-		netisr_domsg(&dmsg.base, 0);
 	}
 	/*
 	 * Press the 'flush' button
 	 */
-	bzero(&nmsg, sizeof(nmsg));
-	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
-			0, ipfw_flush_rule_dispatch);
-	lmsg = &nmsg.lmsg;
-	lmsg->u.ms_result = kill_default;
-	netisr_domsg(&nmsg, 0);
-
-	if (kill_default) {
-		KASSERT(static_count == 0,
-				("%u static rules remain", static_count));
-		KASSERT(static_ioc_len == 0,
-				("%u bytes of static rules remain", static_ioc_len));
-	}
+	bzero(&dmsg, sizeof(dmsg));
+	netmsg_init(&dmsg.base, NULL, &curthread->td_msgport,
+			0, flush_rule_dispatch);
+	dmsg.kill_default = kill_default;
+	netisr_domsg(&dmsg.base, 0);
 
 	/* Flush is done */
-	ipfw_flushing = 0;
+	sysctl_var_fw3_flushing = 0;
 }
 
-static void
-ipfw_delete_rule_dispatch(netmsg_t nmsg)
+void
+delete_rule_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_del *dmsg = (struct netmsg_del *)nmsg;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct ipfw3_context *ctx = fw3_ctx[mycpuid];
 	struct ip_fw *rule, *prev = NULL;
 
-	rule = ctx->ipfw_rule_chain;
+	rule = ctx->rules;
 	while (rule!=NULL) {
 		if (rule->rulenum == dmsg->rulenum) {
-			ipfw_delete_rule(ctx, prev, rule);
+			ip_fw3_delete_rule(ctx, prev, rule);
 			break;
 		}
 		prev = rule;
@@ -951,22 +841,15 @@ ipfw_delete_rule_dispatch(netmsg_t nmsg)
 	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
-static int
-ipfw_alt_delete_rule(uint16_t rulenum)
+int
+ip_fw3_ctl_delete_rule(struct sockopt *sopt)
 {
 	struct netmsg_del dmsg;
 	struct netmsg_base *nmsg;
+	int *rulenum;
 
-	/*
-	 * delete the state which stub is the rule
-	 * which belongs to the CPU and the rulenum
-	 */
-	bzero(&dmsg, sizeof(dmsg));
-	nmsg = &dmsg.base;
-	netmsg_init(nmsg, NULL, &curthread->td_msgport,
-			0, ipfw_delete_state_dispatch);
-	dmsg.rulenum = rulenum;
-	netisr_domsg(nmsg, 0);
+	rulenum = (int *) sopt->sopt_val;
+
 
 	/*
 	 * Get rid of the rule duplications on all CPUs
@@ -974,306 +857,41 @@ ipfw_alt_delete_rule(uint16_t rulenum)
 	bzero(&dmsg, sizeof(dmsg));
 	nmsg = &dmsg.base;
 	netmsg_init(nmsg, NULL, &curthread->td_msgport,
-			0, ipfw_delete_rule_dispatch);
-	dmsg.rulenum = rulenum;
+			0, delete_rule_dispatch);
+	dmsg.rulenum = *rulenum;
 	netisr_domsg(nmsg, 0);
 	return 0;
-}
-
-static void
-ipfw_alt_delete_ruleset_dispatch(netmsg_t nmsg)
-{
-	struct netmsg_del *dmsg = (struct netmsg_del *)nmsg;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-	struct ip_fw *prev, *rule;
-#ifdef INVARIANTS
-	int del = 0;
-#endif
-
-	prev = NULL;
-	rule = ctx->ipfw_rule_chain;
-	while (rule != NULL) {
-		if (rule->set == dmsg->from_set) {
-			rule = ipfw_delete_rule(ctx, prev, rule);
-#ifdef INVARIANTS
-			del = 1;
-#endif
-		} else {
-			prev = rule;
-			rule = rule->next;
-		}
-	}
-	KASSERT(del, ("no match set?!"));
-
-	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
-}
-
-static void
-ipfw_disable_ruleset_state_dispatch(netmsg_t nmsg)
-{
-	struct netmsg_del *dmsg = (struct netmsg_del *)nmsg;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-	struct ip_fw *rule;
-#ifdef INVARIANTS
-	int cleared = 0;
-#endif
-
-	for (rule = ctx->ipfw_rule_chain; rule; rule = rule->next) {
-		if (rule->set == dmsg->from_set) {
-#ifdef INVARIANTS
-			cleared = 1;
-#endif
-		}
-	}
-	KASSERT(cleared, ("no match set?!"));
-
-	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
-}
-
-static int
-ipfw_alt_delete_ruleset(uint8_t set)
-{
-	struct netmsg_del dmsg;
-	struct netmsg_base *nmsg;
-	int state, del;
-	struct ip_fw *rule;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-
-	/*
-	 * Check whether the 'set' exists.  If it exists,
-	 * then check whether any rules within the set will
-	 * try to create states.
-	 */
-	state = 0;
-	del = 0;
-	for (rule = ctx->ipfw_rule_chain; rule; rule = rule->next) {
-		if (rule->set == set) {
-			del = 1;
-		}
-	}
-	if (!del)
-		return 0; /* XXX EINVAL? */
-
-	if (state) {
-		/*
-		 * Clear the STATE flag, so no more states will be
-		 * created based the rules in this set.
-		 */
-		bzero(&dmsg, sizeof(dmsg));
-		nmsg = &dmsg.base;
-		netmsg_init(nmsg, NULL, &curthread->td_msgport,
-				0, ipfw_disable_ruleset_state_dispatch);
-		dmsg.from_set = set;
-
-		netisr_domsg(nmsg, 0);
-	}
-
-	/*
-	 * Delete this set
-	 */
-	bzero(&dmsg, sizeof(dmsg));
-	nmsg = &dmsg.base;
-	netmsg_init(nmsg, NULL, &curthread->td_msgport,
-			0, ipfw_alt_delete_ruleset_dispatch);
-	dmsg.from_set = set;
-
-	netisr_domsg(nmsg, 0);
-	return 0;
-}
-
-static void
-ipfw_alt_move_rule_dispatch(netmsg_t nmsg)
-{
-	struct netmsg_del *dmsg = (struct netmsg_del *)nmsg;
-	struct ip_fw *rule;
-
-	rule = dmsg->start_rule;
-
-	/*
-	 * Move to the position on the next CPU
-	 * before the msg is forwarded.
-	 */
-
-	while (rule && rule->rulenum <= dmsg->rulenum) {
-		if (rule->rulenum == dmsg->rulenum)
-			rule->set = dmsg->to_set;
-		rule = rule->next;
-	}
-	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
-}
-
-static int
-ipfw_alt_move_rule(uint16_t rulenum, uint8_t set)
-{
-	struct netmsg_del dmsg;
-	struct netmsg_base *nmsg;
-	struct ip_fw *rule;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-
-	/*
-	 * Locate first rule to move
-	 */
-	for (rule = ctx->ipfw_rule_chain;
-		rule && rule->rulenum <= rulenum; rule = rule->next) {
-		if (rule->rulenum == rulenum && rule->set != set)
-			break;
-	}
-	if (rule == NULL || rule->rulenum > rulenum)
-		return 0; /* XXX error? */
-
-	bzero(&dmsg, sizeof(dmsg));
-	nmsg = &dmsg.base;
-	netmsg_init(nmsg, NULL, &curthread->td_msgport,
-			0, ipfw_alt_move_rule_dispatch);
-	dmsg.start_rule = rule;
-	dmsg.rulenum = rulenum;
-	dmsg.to_set = set;
-
-	netisr_domsg(nmsg, 0);
-	KKASSERT(dmsg.start_rule == NULL);
-	return 0;
-}
-
-static void
-ipfw_alt_move_ruleset_dispatch(netmsg_t nmsg)
-{
-	struct netmsg_del *dmsg = (struct netmsg_del *)nmsg;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-	struct ip_fw *rule;
-
-	for (rule = ctx->ipfw_rule_chain; rule; rule = rule->next) {
-		if (rule->set == dmsg->from_set)
-			rule->set = dmsg->to_set;
-	}
-	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
-}
-
-static int
-ipfw_alt_move_ruleset(uint8_t from_set, uint8_t to_set)
-{
-	struct netmsg_del dmsg;
-	struct netmsg_base *nmsg;
-
-	bzero(&dmsg, sizeof(dmsg));
-	nmsg = &dmsg.base;
-	netmsg_init(nmsg, NULL, &curthread->td_msgport,
-			0, ipfw_alt_move_ruleset_dispatch);
-	dmsg.from_set = from_set;
-	dmsg.to_set = to_set;
-
-	netisr_domsg(nmsg, 0);
-	return 0;
-}
-
-static void
-ipfw_alt_swap_ruleset_dispatch(netmsg_t nmsg)
-{
-	struct netmsg_del *dmsg = (struct netmsg_del *)nmsg;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-	struct ip_fw *rule;
-
-	for (rule = ctx->ipfw_rule_chain; rule; rule = rule->next) {
-		if (rule->set == dmsg->from_set)
-			rule->set = dmsg->to_set;
-		else if (rule->set == dmsg->to_set)
-			rule->set = dmsg->from_set;
-	}
-	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
-}
-
-static int
-ipfw_alt_swap_ruleset(uint8_t set1, uint8_t set2)
-{
-	struct netmsg_del dmsg;
-	struct netmsg_base *nmsg;
-
-	bzero(&dmsg, sizeof(dmsg));
-	nmsg = &dmsg.base;
-	netmsg_init(nmsg, NULL, &curthread->td_msgport,
-			0, ipfw_alt_swap_ruleset_dispatch);
-	dmsg.from_set = set1;
-	dmsg.to_set = set2;
-
-	netisr_domsg(nmsg, 0);
-	return 0;
-}
-
-
-static int
-ipfw_ctl_alter(uint32_t arg)
-{
-	uint16_t rulenum;
-	uint8_t cmd, new_set;
-	int error = 0;
-
-	rulenum = arg & 0xffff;
-	cmd = (arg >> 24) & 0xff;
-	new_set = (arg >> 16) & 0xff;
-
-	if (cmd > 4)
-		return EINVAL;
-	if (new_set >= IPFW_DEFAULT_SET)
-		return EINVAL;
-	if (cmd == 0 || cmd == 2) {
-		if (rulenum == IPFW_DEFAULT_RULE)
-			return EINVAL;
-	} else {
-		if (rulenum >= IPFW_DEFAULT_SET)
-			return EINVAL;
-	}
-
-	switch (cmd) {
-	case 0:	/* delete rules with given number */
-		error = ipfw_alt_delete_rule(rulenum);
-		break;
-
-	case 1:	/* delete all rules with given set number */
-		error = ipfw_alt_delete_ruleset(rulenum);
-		break;
-
-	case 2:	/* move rules with given number to new set */
-		error = ipfw_alt_move_rule(rulenum, new_set);
-		break;
-
-	case 3: /* move rules with given set number to new set */
-		error = ipfw_alt_move_ruleset(rulenum, new_set);
-		break;
-
-	case 4: /* swap two sets */
-		error = ipfw_alt_swap_ruleset(rulenum, new_set);
-		break;
-	}
-	return error;
 }
 
 /*
  * Clear counters for a specific rule.
  */
-static void
-clear_counters(struct ip_fw *rule)
+void
+ip_fw3_clear_counters(struct ip_fw *rule)
 {
 	rule->bcnt = rule->pcnt = 0;
 	rule->timestamp = 0;
 }
 
-static void
-ipfw_zero_entry_dispatch(netmsg_t nmsg)
+void
+ip_fw3_zero_entry_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_zent *zmsg = (struct netmsg_zent *)nmsg;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct ipfw3_context *ctx = fw3_ctx[mycpuid];
 	struct ip_fw *rule;
 
 	if (zmsg->rulenum == 0) {
-		for (rule = ctx->ipfw_rule_chain; rule; rule = rule->next) {
-			clear_counters(rule);
+		for (rule = ctx->rules; rule; rule = rule->next) {
+			ip_fw3_clear_counters(rule);
 		}
 	} else {
-		for (rule = ctx->ipfw_rule_chain; rule; rule = rule->next) {
+		for (rule = ctx->rules; rule; rule = rule->next) {
 			if (rule->rulenum == zmsg->rulenum) {
-				clear_counters(rule);
+				ip_fw3_clear_counters(rule);
 			}
 		}
 	}
+	ip_fw3_clear_counters(ctx->default_rule);
 	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
@@ -1283,18 +901,18 @@ ipfw_zero_entry_dispatch(netmsg_t nmsg)
  * rule number.
  * @arg log_only is 1 if we only want to reset logs, zero otherwise.
  */
-static int
-ipfw_ctl_zero_entry(int rulenum, int log_only)
+int
+ip_fw3_ctl_zero_entry(int rulenum, int log_only)
 {
 	struct netmsg_zent zmsg;
 	struct netmsg_base *nmsg;
 	const char *msg;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	struct ipfw3_context *ctx = fw3_ctx[mycpuid];
 
 	bzero(&zmsg, sizeof(zmsg));
 	nmsg = &zmsg.base;
 	netmsg_init(nmsg, NULL, &curthread->td_msgport,
-			0, ipfw_zero_entry_dispatch);
+			0, ip_fw3_zero_entry_dispatch);
 	zmsg.log_only = log_only;
 
 	if (rulenum == 0) {
@@ -1306,7 +924,7 @@ ipfw_ctl_zero_entry(int rulenum, int log_only)
 		/*
 		 * Locate the first rule with 'rulenum'
 		 */
-		for (rule = ctx->ipfw_rule_chain; rule; rule = rule->next) {
+		for (rule = ctx->rules; rule; rule = rule->next) {
 			if (rule->rulenum == rulenum)
 				break;
 		}
@@ -1321,89 +939,17 @@ ipfw_ctl_zero_entry(int rulenum, int log_only)
 	netisr_domsg(nmsg, 0);
 	KKASSERT(zmsg.start_rule == NULL);
 
-	if (fw_verbose)
+	if (sysctl_var_fw3_verbose)
 		log(LOG_SECURITY | LOG_NOTICE, msg, rulenum);
 	return (0);
 }
 
-static int
-ipfw_ctl_add_state(struct sockopt *sopt)
-{
-	struct ipfw_ioc_state *ioc_state;
-	ioc_state = sopt->sopt_val;
-	if (ipfw_basic_append_state_prt != NULL) {
-		struct netmsg_del dmsg;
-		bzero(&dmsg, sizeof(dmsg));
-		netmsg_init(&dmsg.base, NULL, &curthread->td_msgport,
-			0, ipfw_append_state_dispatch);
-		(&dmsg)->ioc_state = ioc_state;
-		netisr_domsg(&dmsg.base, 0);
-	}
-	return 0;
-}
-
-static int
-ipfw_ctl_delete_state(struct sockopt *sopt)
-{
-	int rulenum = 0, error;
-	if (sopt->sopt_valsize != 0) {
-		error = soopt_to_kbuf(sopt, &rulenum, sizeof(int), sizeof(int));
-		if (error) {
-			return -1;
-		}
-	}
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-	struct ip_fw *rule = ctx->ipfw_rule_chain;
-
-	while (rule!=NULL) {
-		if (rule->rulenum == rulenum) {
-			break;
-		}
-		rule = rule->next;
-	}
-	if (rule == NULL) {
-		return -1;
-	}
-
-	struct netmsg_del dmsg;
-	struct netmsg_base *nmsg;
-	/*
-	 * delete the state which stub is the rule
-	 * which belongs to the CPU and the rulenum
-	 */
-	bzero(&dmsg, sizeof(dmsg));
-	nmsg = &dmsg.base;
-	netmsg_init(nmsg, NULL, &curthread->td_msgport,
-			0, ipfw_delete_state_dispatch);
-	dmsg.rulenum = rulenum;
-	netisr_domsg(nmsg, 0);
-	return 0;
-}
-
-static int
-ipfw_ctl_flush_state(struct sockopt *sopt)
-{
-	struct netmsg_del dmsg;
-	struct netmsg_base *nmsg;
-	/*
-	 * delete the state which stub is the rule
-	 * which belongs to the CPU and the rulenum
-	 */
-	bzero(&dmsg, sizeof(dmsg));
-	nmsg = &dmsg.base;
-	netmsg_init(nmsg, NULL, &curthread->td_msgport,
-			0, ipfw_delete_state_dispatch);
-	dmsg.rulenum = 0;
-	netisr_domsg(nmsg, 0);
-	return 0;
-}
-
 /*
  * Get the ioc_rule from the sopt
- * call ipfw_add_rule to add the rule
+ * call ip_fw3_add_rule to add the rule
  */
-static int
-ipfw_ctl_add_rule(struct sockopt *sopt)
+int
+ip_fw3_ctl_add_rule(struct sockopt *sopt)
 {
 	struct ipfw_ioc_rule *ioc_rule;
 	size_t size;
@@ -1419,77 +965,18 @@ ipfw_ctl_add_rule(struct sockopt *sopt)
 	}
 	ioc_rule = sopt->sopt_val;
 
-	ipfw_add_rule(ioc_rule);
+	ip_fw3_add_rule(ioc_rule);
 	return 0;
 }
 
-static void *
-ipfw_copy_state(struct ip_fw_state *state, struct ipfw_ioc_state *ioc_state, int cpuid)
-{
-	ioc_state->pcnt = state->pcnt;
-	ioc_state->bcnt = state->bcnt;
-	ioc_state->lifetime = state->lifetime;
-	ioc_state->timestamp = state->timestamp;
-	ioc_state->cpuid = cpuid;
-	ioc_state->expiry = state->expiry;
-	ioc_state->rulenum = state->stub->rulenum;
-
-	bcopy(&state->flow_id, &ioc_state->flow_id, sizeof(struct ipfw_flow_id));
-	return ioc_state + 1;
-}
-
-static void *
-ipfw_copy_rule(const struct ip_fw *rule, struct ipfw_ioc_rule *ioc_rule)
-{
-	const struct ip_fw *sibling;
-#ifdef INVARIANTS
-	int i;
-#endif
-
-	ioc_rule->act_ofs = rule->act_ofs;
-	ioc_rule->cmd_len = rule->cmd_len;
-	ioc_rule->rulenum = rule->rulenum;
-	ioc_rule->set = rule->set;
-
-	ioc_rule->set_disable = ipfw_ctx[mycpuid]->ipfw_set_disable;
-	ioc_rule->static_count = static_count;
-	ioc_rule->static_len = static_ioc_len;
-
-	ioc_rule->pcnt = 1;
-	ioc_rule->bcnt = 0;
-	ioc_rule->timestamp = 0;
-
-#ifdef INVARIANTS
-	i = 0;
-#endif
-	ioc_rule->pcnt = 0;
-	ioc_rule->bcnt = 0;
-	ioc_rule->timestamp = 0;
-	for (sibling = rule; sibling != NULL; sibling = sibling->sibling) {
-		ioc_rule->pcnt += sibling->pcnt;
-		ioc_rule->bcnt += sibling->bcnt;
-		if (sibling->timestamp > ioc_rule->timestamp)
-			ioc_rule->timestamp = sibling->timestamp;
-#ifdef INVARIANTS
-		++i;
-#endif
-	}
-
-	KASSERT(i == ncpus, ("static rule is not duplicated on every cpu"));
-
-	bcopy(rule->cmd, ioc_rule->cmd, ioc_rule->cmd_len * 4 /* XXX */);
-
-	return ((uint8_t *)ioc_rule + IOC_RULESIZE(ioc_rule));
-}
-
-static int
-ipfw_ctl_get_modules(struct sockopt *sopt)
+int
+ip_fw3_ctl_get_modules(struct sockopt *sopt)
 {
 	int i;
-	struct ipfw_module *mod;
+	struct ipfw3_module *mod;
 	char module_str[1024];
 	memset(module_str,0,1024);
-	for (i = 0, mod = ipfw_modules; i < MAX_MODULE; i++, mod++) {
+	for (i = 0, mod = fw3_modules; i < MAX_MODULE; i++, mod++) {
 		if (mod->type != 0) {
 			if (i > 0)
 				strcat(module_str,",");
@@ -1505,182 +992,96 @@ ipfw_ctl_get_modules(struct sockopt *sopt)
 /*
  * Copy all static rules and states on all CPU
  */
-static int
-ipfw_ctl_get_rules(struct sockopt *sopt)
+int
+ip_fw3_ctl_get_rules(struct sockopt *sopt)
 {
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-	struct ipfw_state_context *state_ctx;
+	struct ipfw3_context *ctx = fw3_ctx[mycpuid];
 	struct ip_fw *rule;
-	struct ip_fw_state *state;
-	void *bp;
-	size_t size;
-	int i, j, state_count = 0;
+	struct ipfw_ioc_rule *ioc;
+	const struct ip_fw *sibling;
+	int total_len = 0;
 
-	size = static_ioc_len;
-	for (i = 0; i < ncpus; i++) {
-		for (j = 0; j < ctx->state_hash_size; j++) {
-			state_ctx = &ipfw_ctx[i]->state_ctx[j];
-			state_count += state_ctx->count;
+	ioc = (struct ipfw_ioc_rule *)sopt->sopt_val;
+
+	for (rule = ctx->rules; rule; rule = rule->next) {
+		total_len += IOC_RULESIZE(rule);
+		if (total_len > sopt->sopt_valsize) {
+			bzero(sopt->sopt_val, sopt->sopt_valsize);
+			return 0;
 		}
-	}
-	if (state_count > 0) {
-		size += state_count * sizeof(struct ipfw_ioc_state);
-	}
+		ioc->act_ofs = rule->act_ofs;
+		ioc->cmd_len = rule->cmd_len;
+		ioc->rulenum = rule->rulenum;
+		ioc->set = rule->set;
 
-	if (sopt->sopt_valsize < size) {
-		/* XXX TODO sopt_val is not big enough */
-		bzero(sopt->sopt_val, sopt->sopt_valsize);
-		return 0;
-	}
-
-	sopt->sopt_valsize = size;
-	bp = sopt->sopt_val;
-
-	for (rule = ctx->ipfw_rule_chain; rule; rule = rule->next) {
-		bp = ipfw_copy_rule(rule, bp);
-	}
-	if (state_count > 0 ) {
-		for (i = 0; i < ncpus; i++) {
-			for (j = 0; j < ctx->state_hash_size; j++) {
-				state_ctx = &ipfw_ctx[i]->state_ctx[j];
-				state = state_ctx->state;
-				while (state != NULL) {
-					bp = ipfw_copy_state(state, bp, i);
-					state = state->next;
-				}
-			}
+		ioc->sets = fw3_ctx[mycpuid]->sets;
+		ioc->pcnt = 0;
+		ioc->bcnt = 0;
+		ioc->timestamp = 0;
+		for (sibling = rule; sibling != NULL; sibling = sibling->sibling) {
+			ioc->pcnt += sibling->pcnt;
+			ioc->bcnt += sibling->bcnt;
+			if (sibling->timestamp > ioc->timestamp)
+				ioc->timestamp = sibling->timestamp;
 		}
+		bcopy(rule->cmd, ioc->cmd, ioc->cmd_len * 4);
+		ioc = (struct ipfw_ioc_rule *)((uint8_t *)ioc + IOC_RULESIZE(ioc));
 	}
+	sopt->sopt_valsize = total_len;
 	return 0;
-}
-
-static void
-ipfw_set_disable_dispatch(netmsg_t nmsg)
-{
-	struct lwkt_msg *lmsg = &nmsg->lmsg;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-
-	ctx->ipfw_set_disable = lmsg->u.ms_result32;
-
-	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
-}
-
-static void
-ipfw_ctl_set_disable(uint32_t disable, uint32_t enable)
-{
-	struct netmsg_base nmsg;
-	struct lwkt_msg *lmsg;
-	uint32_t set_disable;
-
-	/* IPFW_DEFAULT_SET is always enabled */
-	enable |= (1 << IPFW_DEFAULT_SET);
-	set_disable = (ipfw_ctx[mycpuid]->ipfw_set_disable | disable) & ~enable;
-
-	bzero(&nmsg, sizeof(nmsg));
-	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
-			0, ipfw_set_disable_dispatch);
-	lmsg = &nmsg.lmsg;
-	lmsg->u.ms_result32 = set_disable;
-
-	netisr_domsg(&nmsg, 0);
 }
 
 
 /*
- * ipfw_ctl_x - extended version of ipfw_ctl
+ * ip_fw3_ctl_x - extended version of ip_fw3_ctl
  * remove the x_header, and adjust the sopt_name,sopt_val and sopt_valsize.
  */
 int
-ipfw_ctl_x(struct sockopt *sopt)
+ip_fw3_ctl_x(struct sockopt *sopt)
 {
 	ip_fw_x_header *x_header;
 	x_header = (ip_fw_x_header *)(sopt->sopt_val);
 	sopt->sopt_name = x_header->opcode;
 	sopt->sopt_valsize -= sizeof(ip_fw_x_header);
 	bcopy(++x_header, sopt->sopt_val, sopt->sopt_valsize);
-	return ipfw_ctl(sopt);
+	return ip_fw3_ctl(sopt);
 }
 
 
 /**
  * {set|get}sockopt parser.
  */
-static int
-ipfw_ctl(struct sockopt *sopt)
+int
+ip_fw3_ctl(struct sockopt *sopt)
 {
-	int error, rulenum;
-	uint32_t *masks;
-	size_t size;
-
-	error = 0;
+	int error = 0;
 	switch (sopt->sopt_name) {
 		case IP_FW_X:
-			ipfw_ctl_x(sopt);
+			ip_fw3_ctl_x(sopt);
 			break;
 		case IP_FW_GET:
-			error = ipfw_ctl_get_rules(sopt);
-			break;
 		case IP_FW_MODULE:
-			error = ipfw_ctl_get_modules(sopt);
-			break;
-
 		case IP_FW_FLUSH:
-			ipfw_ctl_flush_rule(0);
-			break;
-
 		case IP_FW_ADD:
-			error = ipfw_ctl_add_rule(sopt);
-			break;
-
 		case IP_FW_DEL:
-			/*
-			 * IP_FW_DEL is used for deleting single rules or sets,
-			 * and (ab)used to atomically manipulate sets.
-			 * Argument size is used to distinguish between the two:
-			 *	sizeof(uint32_t)
-			 *	delete single rule or set of rules,
-			 *	or reassign rules (or sets) to a different set.
-			 *	2 * sizeof(uint32_t)
-			 *	atomic disable/enable sets.
-			 *	first uint32_t contains sets to be disabled,
-			 *	second uint32_t contains sets to be enabled.
-			 */
-			masks = sopt->sopt_val;
-			size = sopt->sopt_valsize;
-			if (size == sizeof(*masks)) {
-				/*
-				 * Delete or reassign static rule
-				 */
-				error = ipfw_ctl_alter(masks[0]);
-			} else if (size == (2 * sizeof(*masks))) {
-				/*
-				 * Set enable/disable
-				 */
-				ipfw_ctl_set_disable(masks[0], masks[1]);
-			} else {
-				error = EINVAL;
-			}
-			break;
 		case IP_FW_ZERO:
-		case IP_FW_RESETLOG: /* argument is an int, the rule number */
-			rulenum = 0;
-			if (sopt->sopt_valsize != 0) {
-				error = soopt_to_kbuf(sopt, &rulenum,
-						sizeof(int), sizeof(int));
-				if (error) {
-					break;
-				}
-			}
-			error = ipfw_ctl_zero_entry(rulenum,
-					sopt->sopt_name == IP_FW_RESETLOG);
+		case IP_FW_RESETLOG:
+			error = ip_fw3_ctl_sockopt(sopt);
+			break;
+		case IP_FW_SET_GET:
+		case IP_FW_SET_MOVE_RULE:
+		case IP_FW_SET_MOVE_SET:
+		case IP_FW_SET_SWAP:
+		case IP_FW_SET_TOGGLE:
+			error = ip_fw3_ctl_set_sockopt(sopt);
 			break;
 		case IP_FW_NAT_ADD:
 		case IP_FW_NAT_DEL:
 		case IP_FW_NAT_FLUSH:
 		case IP_FW_NAT_GET:
 		case IP_FW_NAT_GET_RECORD:
-			if (ipfw_ctl_nat_ptr != NULL) {
-				error = ipfw_ctl_nat_ptr(sopt);
+			if (ip_fw3_ctl_nat_ptr != NULL) {
+				error = ip_fw3_ctl_nat_ptr(sopt);
 			}
 			break;
 		case IP_DUMMYNET_GET:
@@ -1690,13 +1091,12 @@ ipfw_ctl(struct sockopt *sopt)
 			error = ip_dn_sockopt(sopt);
 			break;
 		case IP_FW_STATE_ADD:
-			error = ipfw_ctl_add_state(sopt);
-			break;
 		case IP_FW_STATE_DEL:
-			error = ipfw_ctl_delete_state(sopt);
-			break;
 		case IP_FW_STATE_FLUSH:
-			error = ipfw_ctl_flush_state(sopt);
+		case IP_FW_STATE_GET:
+			if (ip_fw3_ctl_state_ptr != NULL) {
+				error = ip_fw3_ctl_state_ptr(sopt);
+			}
 			break;
 		case IP_FW_TABLE_CREATE:
 		case IP_FW_TABLE_DELETE:
@@ -1707,7 +1107,9 @@ ipfw_ctl(struct sockopt *sopt)
 		case IP_FW_TABLE_SHOW:
 		case IP_FW_TABLE_TEST:
 		case IP_FW_TABLE_RENAME:
-			error = ipfw_ctl_table_sockopt(sopt);
+			if (ip_fw3_ctl_table_ptr != NULL) {
+				error = ip_fw3_ctl_table_ptr(sopt);
+			}
 			break;
 		case IP_FW_SYNC_SHOW_CONF:
 		case IP_FW_SYNC_SHOW_STATUS:
@@ -1721,18 +1123,62 @@ ipfw_ctl(struct sockopt *sopt)
 		case IP_FW_SYNC_CENTRE_STOP:
 		case IP_FW_SYNC_CENTRE_TEST:
 		case IP_FW_SYNC_CENTRE_CLEAR:
-			error = ipfw_ctl_sync_sockopt(sopt);
+			if (ip_fw3_ctl_sync_ptr != NULL) {
+				error = ip_fw3_ctl_sync_ptr(sopt);
+			}
 			break;
 		default:
-			kprintf("ipfw_ctl invalid option %d\n",
+			kprintf("ip_fw3_ctl invalid option %d\n",
 				sopt->sopt_name);
 			error = EINVAL;
 	}
 	return error;
 }
 
-static int
-ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
+int
+ip_fw3_ctl_sockopt(struct sockopt *sopt)
+{
+	int error = 0, rulenum;
+
+	switch (sopt->sopt_name) {
+		case IP_FW_GET:
+			error = ip_fw3_ctl_get_rules(sopt);
+			break;
+		case IP_FW_MODULE:
+			error = ip_fw3_ctl_get_modules(sopt);
+			break;
+		case IP_FW_FLUSH:
+			ip_fw3_ctl_flush_rule(0);
+			break;
+		case IP_FW_ADD:
+			error = ip_fw3_ctl_add_rule(sopt);
+			break;
+		case IP_FW_DEL:
+			error = ip_fw3_ctl_delete_rule(sopt);
+			break;
+		case IP_FW_ZERO:
+		case IP_FW_RESETLOG: /* argument is an int, the rule number */
+			rulenum = 0;
+			if (sopt->sopt_valsize != 0) {
+				error = soopt_to_kbuf(sopt, &rulenum,
+						sizeof(int), sizeof(int));
+				if (error) {
+					break;
+				}
+			}
+			error = ip_fw3_ctl_zero_entry(rulenum,
+					sopt->sopt_name == IP_FW_RESETLOG);
+			break;
+		default:
+			kprintf("ip_fw3_ctl invalid option %d\n",
+				sopt->sopt_name);
+			error = EINVAL;
+	}
+	return error;
+}
+
+int
+ip_fw3_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 {
 	struct ip_fw_args args;
 	struct mbuf *m = *m0;
@@ -1755,7 +1201,7 @@ ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 	args.eh = NULL;
 	args.oif = NULL;
 	args.m = m;
-	ret = ipfw_chk(&args);
+	ret = ip_fw3_chk(&args);
 	m = args.m;
 
 	if (m == NULL) {
@@ -1774,14 +1220,12 @@ ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 
 		case IP_FW_DUMMYNET:
 			/* Send packet to the appropriate pipe */
-			m = ipfw_dummynet_io(m, args.cookie, DN_TO_IP_IN,
+			m = ip_fw3_dummynet_io(m, args.cookie, DN_TO_IP_IN,
 			    &args);
 			break;
-
 		case IP_FW_TEE:
 			tee = 1;
 			/* FALL THROUGH */
-
 		case IP_FW_DIVERT:
 			/*
 			 * Must clear bridge tag when changing
@@ -1796,21 +1240,20 @@ ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 				error = EACCES;
 			}
 			break;
-
 		case IP_FW_NAT:
 			break;
 		case IP_FW_ROUTE:
 			break;
 		default:
-			panic("unknown ipfw return value: %d", ret);
+			panic("unknown ipfw3 return value: %d", ret);
 	}
 back:
 	*m0 = m;
 	return error;
 }
 
-static int
-ipfw_check_out(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
+int
+ip_fw3_check_out(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 {
 	struct ip_fw_args args;
 	struct mbuf *m = *m0;
@@ -1833,7 +1276,7 @@ ipfw_check_out(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 	args.eh = NULL;
 	args.m = m;
 	args.oif = ifp;
-	ret = ipfw_chk(&args);
+	ret = ip_fw3_chk(&args);
 	m = args.m;
 
 	if (m == NULL) {
@@ -1852,7 +1295,7 @@ ipfw_check_out(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 			break;
 
 		case IP_FW_DUMMYNET:
-			m = ipfw_dummynet_io(m, args.cookie, DN_TO_IP_OUT,
+			m = ip_fw3_dummynet_io(m, args.cookie, DN_TO_IP_OUT,
 			    &args);
 			break;
 
@@ -1876,15 +1319,15 @@ ipfw_check_out(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 		case IP_FW_ROUTE:
 			break;
 		default:
-			panic("unknown ipfw return value: %d", ret);
+			panic("unknown ipfw3 return value: %d", ret);
 	}
 back:
 	*m0 = m;
 	return error;
 }
 
-static void
-ipfw_hook(void)
+void
+ip_fw3_hook(void)
 {
 	struct pfil_head *pfh;
 	IPFW_ASSERT_CFGPORT(&curthread->td_msgport);
@@ -1893,12 +1336,12 @@ ipfw_hook(void)
 	if (pfh == NULL)
 		return;
 
-	pfil_add_hook(ipfw_check_in, NULL, PFIL_IN, pfh);
-	pfil_add_hook(ipfw_check_out, NULL, PFIL_OUT, pfh);
+	pfil_add_hook(ip_fw3_check_in, NULL, PFIL_IN, pfh);
+	pfil_add_hook(ip_fw3_check_out, NULL, PFIL_OUT, pfh);
 }
 
-static void
-ipfw_dehook(void)
+void
+ip_fw3_dehook(void)
 {
 	struct pfil_head *pfh;
 
@@ -1908,68 +1351,68 @@ ipfw_dehook(void)
 	if (pfh == NULL)
 		return;
 
-	pfil_remove_hook(ipfw_check_in, NULL, PFIL_IN, pfh);
-	pfil_remove_hook(ipfw_check_out, NULL, PFIL_OUT, pfh);
+	pfil_remove_hook(ip_fw3_check_in, NULL, PFIL_IN, pfh);
+	pfil_remove_hook(ip_fw3_check_out, NULL, PFIL_OUT, pfh);
 }
 
-static void
-ipfw_sysctl_enable_dispatch(netmsg_t nmsg)
+void
+ip_fw3_sysctl_enable_dispatch(netmsg_t nmsg)
 {
 	struct lwkt_msg *lmsg = &nmsg->lmsg;
 	int enable = lmsg->u.ms_result;
 
-	if (fw3_enable == enable)
+	if (sysctl_var_fw3_enable == enable)
 		goto reply;
 
-	fw3_enable = enable;
-	if (fw3_enable)
-		ipfw_hook();
+	sysctl_var_fw3_enable = enable;
+	if (sysctl_var_fw3_enable)
+		ip_fw3_hook();
 	else
-		ipfw_dehook();
+		ip_fw3_dehook();
 
 reply:
 	lwkt_replymsg(lmsg, 0);
 }
 
-static int
-ipfw_sysctl_enable(SYSCTL_HANDLER_ARGS)
+int
+ip_fw3_sysctl_enable(SYSCTL_HANDLER_ARGS)
 {
 	struct netmsg_base nmsg;
 	struct lwkt_msg *lmsg;
 	int enable, error;
 
-	enable = fw3_enable;
+	enable = sysctl_var_fw3_enable;
 	error = sysctl_handle_int(oidp, &enable, 0, req);
 	if (error || req->newptr == NULL)
 		return error;
 
 	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
-			0, ipfw_sysctl_enable_dispatch);
+			0, ip_fw3_sysctl_enable_dispatch);
 	lmsg = &nmsg.lmsg;
 	lmsg->u.ms_result = enable;
 
 	return lwkt_domsg(IPFW_CFGPORT, lmsg, 0);
 }
 
-static int
-ipfw_sysctl_autoinc_step(SYSCTL_HANDLER_ARGS)
+int
+ip_fw3_sysctl_autoinc_step(SYSCTL_HANDLER_ARGS)
 {
 	return sysctl_int_range(oidp, arg1, arg2, req,
 			IPFW_AUTOINC_STEP_MIN, IPFW_AUTOINC_STEP_MAX);
 }
 
-
-static void
-ipfw_ctx_init_dispatch(netmsg_t nmsg)
+void
+ctx_init_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_ipfw *fwmsg = (struct netmsg_ipfw *)nmsg;
-	struct ipfw_context *ctx;
+	struct ipfw3_context *ctx;
 	struct ip_fw *def_rule;
 
-	ctx = kmalloc(sizeof(struct ipfw_context), M_IPFW3, M_WAITOK | M_ZERO);
-	ipfw_ctx[mycpuid] = ctx;
+	ctx = kmalloc(LEN_FW3_CTX, M_IPFW3, M_WAITOK | M_ZERO);
+	fw3_ctx[mycpuid] = ctx;
+	ctx->sets = IPFW_ALL_SETS;
 
-	def_rule = kmalloc(sizeof(struct ip_fw), M_IPFW3, M_WAITOK | M_ZERO);
+	def_rule = kmalloc(LEN_FW3, M_IPFW3, M_WAITOK | M_ZERO);
 	def_rule->act_ofs = 0;
 	def_rule->rulenum = IPFW_DEFAULT_RULE;
 	def_rule->cmd_len = 2;
@@ -1987,8 +1430,8 @@ ipfw_ctx_init_dispatch(netmsg_t nmsg)
 #endif
 
 	/* Install the default rule */
-	ctx->ipfw_default_rule = def_rule;
-	ctx->ipfw_rule_chain = def_rule;
+	ctx->default_rule = def_rule;
+	ctx->rules = def_rule;
 
 	/*
 	 * if sibiling in last CPU is exists,
@@ -2000,15 +1443,11 @@ ipfw_ctx_init_dispatch(netmsg_t nmsg)
 	/* prepare for next CPU */
 	fwmsg->sibling = def_rule;
 
-	/* Statistics only need to be updated once */
-	if (mycpuid == 0)
-		ipfw_inc_static_count(def_rule);
-
 	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
 }
 
-static void
-ipfw_init_dispatch(netmsg_t nmsg)
+void
+init_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_ipfw fwmsg;
 	int error = 0;
@@ -2020,63 +1459,56 @@ ipfw_init_dispatch(netmsg_t nmsg)
 
 	bzero(&fwmsg, sizeof(fwmsg));
 	netmsg_init(&fwmsg.base, NULL, &curthread->td_msgport,
-			0, ipfw_ctx_init_dispatch);
+			0, ctx_init_dispatch);
 	netisr_domsg(&fwmsg.base, 0);
 
-	ip_fw_chk_ptr = ipfw_chk;
-	ip_fw_ctl_x_ptr = ipfw_ctl_x;
-	ip_fw_dn_io_ptr = ipfw_dummynet_io;
+	ip_fw_chk_ptr = ip_fw3_chk;
+	ip_fw_ctl_x_ptr = ip_fw3_ctl_x;
+	ip_fw_dn_io_ptr = ip_fw3_dummynet_io;
 
 	kprintf("ipfw3 initialized, default to %s\n",
 			filters_default_to_accept ? "accept" : "deny");
 
 	ip_fw3_loaded = 1;
-	if (fw3_enable)
-		ipfw_hook();
+	if (sysctl_var_fw3_enable)
+		ip_fw3_hook();
 reply:
 	lwkt_replymsg(&nmsg->lmsg, error);
 }
 
-static int
-ipfw3_init(void)
+int
+ip_fw3_init(void)
 {
 	struct netmsg_base smsg;
 	int error;
 
-	ipfw3_log_modevent(MOD_LOAD);
-	ipfw3_sync_modevent(MOD_LOAD);
-
 	init_module();
 	netmsg_init(&smsg, NULL, &curthread->td_msgport,
-			0, ipfw_init_dispatch);
-	error = lwkt_domsg(IPFW_CFGPORT, &smsg.lmsg, 0);
-	netmsg_init(&smsg, NULL, &curthread->td_msgport,
-			0, table_init_dispatch);
+			0, init_dispatch);
 	error = lwkt_domsg(IPFW_CFGPORT, &smsg.lmsg, 0);
 	return error;
 }
 
 #ifdef KLD_MODULE
 
-static void
-ipfw_fini_dispatch(netmsg_t nmsg)
+void
+fini_dispatch(netmsg_t nmsg)
 {
 	int error = 0, cpu;
 
 	ip_fw3_loaded = 0;
 
-	ipfw_dehook();
+	ip_fw3_dehook();
 	netmsg_service_sync();
 	ip_fw_chk_ptr = NULL;
 	ip_fw_ctl_x_ptr = NULL;
 	ip_fw_dn_io_ptr = NULL;
-	ipfw_ctl_flush_rule(1 /* kill default rule */);
-	table_fini();
+	ip_fw3_ctl_flush_rule(1);
 	/* Free pre-cpu context */
 	for (cpu = 0; cpu < ncpus; ++cpu) {
-		if (ipfw_ctx[cpu] != NULL) {
-			kfree(ipfw_ctx[cpu], M_IPFW3);
-			ipfw_ctx[cpu] = NULL;
+		if (fw3_ctx[cpu] != NULL) {
+			kfree(fw3_ctx[cpu], M_IPFW3);
+			fw3_ctx[cpu] = NULL;
 		}
 	}
 	kprintf("ipfw3 unloaded\n");
@@ -2084,38 +1516,35 @@ ipfw_fini_dispatch(netmsg_t nmsg)
 	lwkt_replymsg(&nmsg->lmsg, error);
 }
 
-static int
-ipfw3_fini(void)
+int
+ip_fw3_fini(void)
 {
 	struct netmsg_base smsg;
 
-	ipfw3_log_modevent(MOD_UNLOAD);
-	ipfw3_sync_modevent(MOD_UNLOAD);
-
 	netmsg_init(&smsg, NULL, &curthread->td_msgport,
-			0, ipfw_fini_dispatch);
+			0, fini_dispatch);
 	return lwkt_domsg(IPFW_CFGPORT, &smsg.lmsg, 0);
 }
 
 #endif	/* KLD_MODULE */
 
 static int
-ipfw3_modevent(module_t mod, int type, void *unused)
+ip_fw3_modevent(module_t mod, int type, void *unused)
 {
 	int err = 0;
 
 	switch (type) {
 		case MOD_LOAD:
-			err = ipfw3_init();
+			err = ip_fw3_init();
 			break;
 
 		case MOD_UNLOAD:
 
 #ifndef KLD_MODULE
-			kprintf("ipfw statically compiled, cannot unload\n");
+			kprintf("ipfw3 statically compiled, cannot unload\n");
 			err = EBUSY;
 #else
-			err = ipfw3_fini();
+			err = ip_fw3_fini();
 #endif
 			break;
 		default:
@@ -2126,7 +1555,7 @@ ipfw3_modevent(module_t mod, int type, void *unused)
 
 static moduledata_t ipfw3mod = {
 	"ipfw3",
-	ipfw3_modevent,
+	ip_fw3_modevent,
 	0
 };
 /* ipfw3 must init before ipfw3_basic */

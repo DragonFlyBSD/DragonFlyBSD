@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 - 2017 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2014 - 2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@dragonflybsd.org>
@@ -32,16 +32,29 @@
  * SUCH DAMAGE.
  */
 
+#include "opt_ipfw.h"
+#include "opt_inet.h"
+#ifndef INET
+#error IPFIREWALL3 requires INET.
+#endif /* INET */
+
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
-#include <sys/syslog.h>
 #include <sys/systimer.h>
 #include <sys/thread2.h>
 #include <sys/in_cksum.h>
+#include <sys/systm.h>
+#include <sys/proc.h>
+#include <sys/socket.h>
+#include <sys/syslog.h>
+#include <sys/ucred.h>
+#include <sys/lock.h>
+#include <sys/mplock2.h>
+#include <sys/tree.h>
 
 #include <net/if.h>
 #include <net/ethernet.h>
@@ -66,127 +79,32 @@
 #include <netinet/if_ether.h>
 
 #include <net/ipfw3/ip_fw.h>
-#include <net/ipfw3/ip_fw3_table.h>
-#include <net/ipfw3/ip_fw3_sync.h>
+#include <net/ipfw3_basic/ip_fw3_table.h>
+#include <net/ipfw3_basic/ip_fw3_sync.h>
+#include <net/ipfw3_basic/ip_fw3_basic.h>
+#include <net/ipfw3_basic/ip_fw3_state.h>
 
-#include "ip_fw3_basic.h"
-
-extern struct ipfw_context		*ipfw_ctx[MAXCPU];
-extern struct ipfw_sync_context 	sync_ctx;
-extern int 				fw_verbose;
-extern ipfw_basic_delete_state_t 	*ipfw_basic_flush_state_prt;
-extern ipfw_basic_append_state_t 	*ipfw_basic_append_state_prt;
-extern ipfw_sync_send_state_t 		*ipfw_sync_send_state_prt;
-extern ipfw_sync_install_state_t 	*ipfw_sync_install_state_prt;
-
-static struct netmsg_base 	ipfw_timeout_netmsg; /* schedule ipfw timeout */
-static struct callout 		ipfw_tick_callout;
-static int 	ip_fw_basic_loaded;
-static int 	state_lifetime = 20;
-static int	state_expiry_check_interval = 10;
-static int 	state_count_max = 4096;
-static int 	state_hash_size_old = 0;
-static int 	state_hash_size = 4096;
+MALLOC_DEFINE(M_IPFW3_BASIC, "IPFW3_BASIC", "ipfw3_basic module");
 
 
-static int ipfw_sysctl_adjust_hash_size(SYSCTL_HANDLER_ARGS);
-void adjust_hash_size_dispatch(netmsg_t nmsg);
+extern struct ipfw3_context		*fw3_ctx[MAXCPU];
+extern struct ipfw3_sync_context 	fw3_sync_ctx;
+extern struct ipfw3_state_context 	*fw3_state_ctx[MAXCPU];
+extern ip_fw_ctl_t 			*ipfw_ctl_basic_ptr;
 
-SYSCTL_NODE(_net_inet_ip, OID_AUTO, fw_basic,
-		CTLFLAG_RW, 0, "Firewall Basic");
-SYSCTL_PROC(_net_inet_ip_fw_basic, OID_AUTO, state_hash_size,
-		CTLTYPE_INT | CTLFLAG_RW, &state_hash_size, 0,
-		ipfw_sysctl_adjust_hash_size, "I", "Adjust hash size");
+extern int 				sysctl_var_fw3_verbose;
 
-SYSCTL_INT(_net_inet_ip_fw_basic, OID_AUTO, state_lifetime, CTLFLAG_RW,
-		&state_lifetime, 0, "default life time");
-SYSCTL_INT(_net_inet_ip_fw_basic, OID_AUTO,
-		state_expiry_check_interval, CTLFLAG_RW,
-		&state_expiry_check_interval, 0,
-		"default state expiry check interval");
-SYSCTL_INT(_net_inet_ip_fw_basic, OID_AUTO, state_count_max, CTLFLAG_RW,
-		&state_count_max, 0, "maximum of state");
+extern int 			sysctl_var_state_max_tcp_in;
+extern int 			sysctl_var_state_max_udp_in;
+extern int 			sysctl_var_state_max_icmp_in;
 
-static struct ip_fw *lookup_next_rule(struct ip_fw *me);
-static int iface_match(struct ifnet *ifp, ipfw_insn_if *cmd);
-static __inline int hash_packet(struct ipfw_flow_id *id);
+extern int 			sysctl_var_state_max_tcp_out;
+extern int 			sysctl_var_state_max_udp_out;
+extern int 			sysctl_var_state_max_icmp_out;
 
-static int
-ipfw_sysctl_adjust_hash_size(SYSCTL_HANDLER_ARGS)
-{
-	int error, value = 0;
-
-	state_hash_size_old = state_hash_size;
-	value = state_hash_size;
-	error = sysctl_handle_int(oidp, &value, 0, req);
-	if (error || !req->newptr) {
-		goto back;
-	}
-	/*
-	 * Make sure we have a power of 2 and
-	 * do not allow more than 64k entries.
-	 */
-	error = EINVAL;
-	if (value <= 1 || value > 65536) {
-		goto back;
-	}
-	if ((value & (value - 1)) != 0) {
-		goto back;
-	}
-
-	error = 0;
-	if (state_hash_size != value) {
-		state_hash_size = value;
-
-		struct netmsg_base *msg, the_msg;
-		msg = &the_msg;
-		bzero(msg,sizeof(struct netmsg_base));
-
-		netmsg_init(msg, NULL, &curthread->td_msgport,
-				0, adjust_hash_size_dispatch);
-		netisr_domsg(msg, 0);
-	}
-back:
-	return error;
-}
-
-void
-adjust_hash_size_dispatch(netmsg_t nmsg)
-{
-	struct ipfw_state_context *state_ctx;
-	struct ip_fw_state *the_state, *state;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-	int i;
-
-	for (i = 0; i < state_hash_size_old; i++) {
-		state_ctx = &ctx->state_ctx[i];
-		if (state_ctx != NULL) {
-			state = state_ctx->state;
-			while (state != NULL) {
-				the_state = state;
-				state = state->next;
-				kfree(the_state, M_IPFW3_BASIC);
-				the_state = NULL;
-			}
-		}
-	}
-	kfree(ctx->state_ctx,M_IPFW3_BASIC);
-	ctx->state_ctx = kmalloc(state_hash_size *
-				sizeof(struct ipfw_state_context),
-				M_IPFW3_BASIC, M_WAITOK | M_ZERO);
-	ctx->state_hash_size = state_hash_size;
-	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
-}
-
-static __inline int
-hash_packet(struct ipfw_flow_id *id)
-{
-	uint32_t i;
-	i = (id->proto) ^ (id->dst_ip) ^ (id->src_ip) ^
-		(id->dst_port) ^ (id->src_port);
-	i &= state_hash_size - 1;
-	return i;
-}
+extern int 			sysctl_var_icmp_timeout;
+extern int 			sysctl_var_tcp_timeout;
+extern int 			sysctl_var_udp_timeout;
 
 static struct ip_fw *
 lookup_next_rule(struct ip_fw *me)
@@ -210,168 +128,6 @@ lookup_next_rule(struct ip_fw *me)
 	return rule;
 }
 
-/*
- * return value
- * 0 : not match  1: same direction 2: reverse direction
- */
-int
-match_state(ipfw_insn *cmd, struct ipfw_flow_id *fid, struct ip_fw_state *state)
-{
-	 if (fid->src_ip == state->flow_id.src_ip &&
-		 fid->dst_ip == state->flow_id.dst_ip &&
-		 (fid->src_port == state->flow_id.src_port ||
-				 state->flow_id.src_port == 0) &&
-		 (fid->dst_port == state->flow_id.dst_port ||
-				 state->flow_id.dst_port == 0)) {
-		 return 1;
-	 }
-	 if (fid->src_ip == state->flow_id.dst_ip &&
-		 fid->dst_ip == state->flow_id.src_ip &&
-		 (fid->src_port == state->flow_id.dst_port ||
-				 state->flow_id.dst_port == 0) &&
-		 (fid->dst_port == state->flow_id.src_port ||
-				 state->flow_id.src_port == 0)) {
-		 return 2;
-	 }
-	 return 0;
-}
-
-/*
- * return 1 when more states than limit
- * arg3: limit type (1=src ip, 2=src port, 3=dst ip, 4=dst port)
- * arg1: limit
- */
-int
-count_match_state(ipfw_insn *cmd, struct ipfw_flow_id *fid,
-	struct ip_fw_state *state, int *count)
-{
-	 if ((cmd->arg3 == 1 && fid->src_ip == state->flow_id.src_ip) ||
-		 (cmd->arg3 == 2 && fid->src_port == state->flow_id.src_port) ||
-		 (cmd->arg3 == 3 && fid->dst_ip == state->flow_id.dst_ip) ||
-		 (cmd->arg3 == 4 && fid->dst_port == state->flow_id.dst_port)) {
-		 *count = *count + 1;
-		 if (*count >= cmd->arg1)
-			 return 1;
-	 }
-	  return 0;
-}
-
-/*
- * when all = 1, it will check all the state_ctx
- * all = 1 during keep-state
- * all = 0 during check-state
- *
- * in the cmd of keep_state
- * arg3=type arg1=limit
- */
-static struct ip_fw_state *
-lookup_state(struct ip_fw_args *args, ipfw_insn *cmd, int *limited, int all)
-{
-	struct ip_fw_state *state = NULL;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-	struct ipfw_state_context *state_ctx;
-	int start, end, i, count = 0;
-
-	if (all && cmd->arg1) {
-		start = 0;
-		end = state_hash_size - 1;
-	} else {
-		start = hash_packet(&args->f_id);
-		end = hash_packet(&args->f_id);
-	}
-
-	for (i = start; i <= end; i++) {
-		state_ctx = &ctx->state_ctx[i];
-		if (state_ctx != NULL) {
-			state = state_ctx->state;
-			struct ipfw_flow_id	*fid = &args->f_id;
-			while (state != NULL) {
-				/* has limit and already exceed the limit */
-				if (cmd->arg1 &&
-					count_match_state(cmd, fid,
-							state, &count) != 0) {
-					*limited = 1;
-					 goto done;
-				 }
-
-				if (fid->proto == state->flow_id.proto &&
-						 match_state(cmd, fid, state) != 0)
-					 goto done;
-
-				state = state->next;
-			}
-		}
-	}
-done:
-	return state;
-}
-
-static struct ip_fw_state *
-install_state(struct ip_fw *rule, ipfw_insn *cmd, struct ip_fw_args *args)
-{
-	struct ip_fw_state *state;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-	struct ipfw_state_context *state_ctx;
-	int hash = hash_packet(&args->f_id);
-	state_ctx = &ctx->state_ctx[hash];
-	state = kmalloc(sizeof(struct ip_fw_state),
-			M_IPFW3_BASIC, M_NOWAIT | M_ZERO);
-	if (state == NULL) {
-		return NULL;
-	}
-	state->stub = rule;
-	state->lifetime = cmd->arg2 == 0 ? state_lifetime : cmd->arg2 ;
-	state->timestamp = time_second;
-	state->expiry = 0;
-	bcopy(&args->f_id,&state->flow_id,sizeof(struct ipfw_flow_id));
-	//append the state into the state chian
-	if (state_ctx->last != NULL)
-		state_ctx->last->next = state;
-	else
-		state_ctx->state = state;
-	state_ctx->last = state;
-	state_ctx->count++;
-
-	if (sync_ctx.running & 2) {
-		ipfw_sync_send_state_prt(state, mycpuid, hash);
-	}
-	return state;
-}
-
-void
-ipfw_sync_install_state(struct cmd_send_state *cmd)
-{
-        struct ip_fw_state *state;
-        struct ipfw_context *ctx = ipfw_ctx[cmd->cpu];
-        struct ipfw_state_context *state_ctx;
-        struct ip_fw *rule;
-
-        state_ctx = &ctx->state_ctx[cmd->hash];
-        state = kmalloc(sizeof(struct ip_fw_state),
-                        M_IPFW3_BASIC, M_NOWAIT | M_ZERO);
-        if (state == NULL) {
-                return;
-        }
-        for (rule = ctx->ipfw_rule_chain; rule; rule = rule->next) {
-                if (rule->rulenum == cmd->rulenum) {
-                        goto found;
-                }
-        }
-        return;
-found:
-        state->stub = rule;
-        state->lifetime = cmd->lifetime;
-        state->timestamp = time_second;
-        state->expiry = 0;
-        bcopy(&cmd->flow, &state->flow_id, sizeof(struct ipfw_flow_id));
-        //append the state into the state chian
-        if (state_ctx->last != NULL)
-                state_ctx->last->next = state;
-        else
-                state_ctx->state = state;
-        state_ctx->last = state;
-        state_ctx->count++;
-}
 
 static int
 iface_match(struct ifnet *ifp, ipfw_insn_if *cmd)
@@ -482,27 +238,6 @@ check_forward(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 }
 
 void
-check_check_state(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
-{
-	struct ip_fw_state *state=NULL;
-	int limited = 0 ;
-	state = lookup_state(*args, cmd, &limited, 0);
-	if (state != NULL) {
-		state->pcnt++;
-		state->bcnt += ip_len;
-		state->timestamp = time_second;
-		(*f)->pcnt++;
-		(*f)->bcnt += ip_len;
-		(*f)->timestamp = time_second;
-		*f = state->stub;
-		*cmd_ctl = IP_FW_CTL_CHK_STATE;
-	} else {
-		*cmd_ctl = IP_FW_CTL_NEXT;
-	}
-}
-
-void
 check_in(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
@@ -567,8 +302,8 @@ void
 check_from_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-	struct ipfw_table_context *table_ctx;
+	struct ipfw3_context *ctx = fw3_ctx[mycpuid];
+	struct ipfw3_table_context *table_ctx;
 	struct radix_node_head *rnh;
 	struct sockaddr_in sa;
 
@@ -660,8 +395,8 @@ void
 check_to_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-	struct ipfw_table_context *table_ctx;
+	struct ipfw3_context *ctx = fw3_ctx[mycpuid];
+	struct ipfw3_table_context *table_ctx;
 	struct radix_node_head *rnh;
 	struct sockaddr_in sa;
 
@@ -728,28 +463,6 @@ check_to_mask(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 			((ipfw_insn_ip *)cmd)->addr.s_addr ==
 			(dst_ip.s_addr &
 			((ipfw_insn_ip *)cmd)->mask.s_addr));
-}
-
-void
-check_keep_state(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-	struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
-{
-	struct ip_fw_state *state;
-	int limited = 0;
-
-	*cmd_ctl = IP_FW_CTL_NO;
-	*cmd_val = IP_FW_MATCH;
-	state = lookup_state(*args, cmd, &limited, 1);
-	if (limited != 1) {
-		if (state == NULL)
-			state = install_state(*f, cmd, *args);
-
-		if (state != NULL) {
-			state->pcnt++;
-			state->bcnt += ip_len;
-			state->timestamp = time_second;
-		}
-	}
 }
 
 void
@@ -862,324 +575,75 @@ check_dst_n_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		*cmd_val = IP_FW_NOT_MATCH;
 }
 
-
-
-static void
-ipfw_basic_add_state(struct ipfw_ioc_state *ioc_state)
+int
+ip_fw3_basic_init(void)
 {
-	struct ip_fw_state *state;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-	struct ipfw_state_context *state_ctx;
-	state_ctx = &ctx->state_ctx[hash_packet(&(ioc_state->flow_id))];
-	state = kmalloc(sizeof(struct ip_fw_state),
-			M_IPFW3_BASIC, M_WAITOK | M_ZERO);
-	struct ip_fw *rule = ctx->ipfw_rule_chain;
-	while (rule != NULL) {
-		if (rule->rulenum == ioc_state->rulenum) {
-			break;
-		}
-		rule = rule->next;
-	}
-	if (rule == NULL)
-		return;
-
-	state->stub = rule;
-
-	state->lifetime = ioc_state->lifetime == 0 ?
-		state_lifetime : ioc_state->lifetime ;
-	state->timestamp = time_second;
-	state->expiry = ioc_state->expiry;
-	bcopy(&ioc_state->flow_id, &state->flow_id,
-			sizeof(struct ipfw_flow_id));
-	//append the state into the state chian
-	if (state_ctx->last != NULL)
-		state_ctx->last->next = state;
-	else
-		state_ctx->state = state;
-
-	state_ctx->last = state;
-	state_ctx->count++;
-}
-
-/*
- * if rule is NULL
- * 		flush all states
- * else
- * 		flush states which stub is the rule
- */
-static void
-ipfw_basic_flush_state(struct ip_fw *rule)
-{
-	struct ipfw_state_context *state_ctx;
-	struct ip_fw_state *state,*the_state, *prev_state;
-	struct ipfw_context *ctx;
-	int i;
-
-	ctx = ipfw_ctx[mycpuid];
-	for (i = 0; i < state_hash_size; i++) {
-		state_ctx = &ctx->state_ctx[i];
-		if (state_ctx != NULL) {
-			state = state_ctx->state;
-			prev_state = NULL;
-			while (state != NULL) {
-				if (rule != NULL && state->stub != rule) {
-					prev_state = state;
-					state = state->next;
-				} else {
-					if (prev_state == NULL)
-						state_ctx->state = state->next;
-					else
-						prev_state->next = state->next;
-
-					the_state = state;
-					state = state->next;
-					kfree(the_state, M_IPFW3_BASIC);
-					state_ctx->count--;
-					if (state == NULL)
-						state_ctx->last = prev_state;
-
-				}
-			}
-		}
-	}
-}
-
-/*
- * clean up expired state in every tick
- */
-static void
-ipfw_cleanup_expired_state(netmsg_t nmsg)
-{
-	struct ip_fw_state *state,*the_state,*prev_state;
-	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-	struct ipfw_state_context *state_ctx;
-	int i;
-
-	for (i = 0; i < state_hash_size; i++) {
-		prev_state = NULL;
-		state_ctx = &(ctx->state_ctx[i]);
-		if (ctx->state_ctx != NULL) {
-			state = state_ctx->state;
-			while (state != NULL) {
-				if (IS_EXPIRED(state)) {
-					if (prev_state == NULL)
-						state_ctx->state = state->next;
-					else
-						prev_state->next = state->next;
-
-					the_state =state;
-					state = state->next;
-
-					if (the_state == state_ctx->last)
-						state_ctx->last = NULL;
-
-
-					kfree(the_state, M_IPFW3_BASIC);
-					state_ctx->count--;
-				} else {
-					prev_state = state;
-					state = state->next;
-				}
-			}
-		}
-	}
-	netisr_forwardmsg_all(&nmsg->base, mycpuid + 1);
-}
-
-static void
-ipfw_tick(void *dummy __unused)
-{
-	struct lwkt_msg *lmsg = &ipfw_timeout_netmsg.lmsg;
-	KKASSERT(mycpuid == IPFW_CFGCPUID);
-
-	crit_enter();
-	KKASSERT(lmsg->ms_flags & MSGF_DONE);
-	if (IPFW_BASIC_LOADED) {
-		lwkt_sendmsg_oncpu(IPFW_CFGPORT, lmsg);
-		/* ipfw_timeout_netmsg's handler reset this callout */
-	}
-	crit_exit();
-}
-
-static void
-ipfw_tick_dispatch(netmsg_t nmsg)
-{
-	IPFW_ASSERT_CFGPORT(&curthread->td_msgport);
-	KKASSERT(IPFW_BASIC_LOADED);
-
-	/* Reply ASAP */
-	crit_enter();
-	lwkt_replymsg(&nmsg->lmsg, 0);
-	crit_exit();
-
-	callout_reset(&ipfw_tick_callout,
-			state_expiry_check_interval * hz, ipfw_tick, NULL);
-
-	struct netmsg_base msg;
-	netmsg_init(&msg, NULL, &curthread->td_msgport, 0,
-			ipfw_cleanup_expired_state);
-	netisr_domsg(&msg, 0);
-}
-
-static void
-ipfw_basic_init_dispatch(netmsg_t nmsg)
-{
-	IPFW_ASSERT_CFGPORT(&curthread->td_msgport);
-	KKASSERT(IPFW3_LOADED);
-
-	int error = 0;
-	callout_init_mp(&ipfw_tick_callout);
-	netmsg_init(&ipfw_timeout_netmsg, NULL, &netisr_adone_rport,
-			MSGF_DROPABLE | MSGF_PRIORITY, ipfw_tick_dispatch);
-	callout_reset(&ipfw_tick_callout,
-			state_expiry_check_interval * hz, ipfw_tick, NULL);
-	lwkt_replymsg(&nmsg->lmsg, error);
-	ip_fw_basic_loaded=1;
-}
-
-static int
-ipfw_basic_init(void)
-{
-	ipfw_basic_flush_state_prt = ipfw_basic_flush_state;
-	ipfw_basic_append_state_prt = ipfw_basic_add_state;
-	ipfw_sync_install_state_prt = ipfw_sync_install_state;
-
-	register_ipfw_module(MODULE_BASIC_ID, MODULE_BASIC_NAME);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID, O_BASIC_COUNT,
+	ip_fw3_register_module(MODULE_BASIC_ID, MODULE_BASIC_NAME);
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID, O_BASIC_COUNT,
 			(filter_func)check_count);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID, O_BASIC_SKIPTO,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID, O_BASIC_SKIPTO,
 			(filter_func)check_skipto);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID, O_BASIC_FORWARD,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID, O_BASIC_FORWARD,
 			(filter_func)check_forward);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID, O_BASIC_KEEP_STATE,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID, O_BASIC_KEEP_STATE,
 			(filter_func)check_keep_state);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID, O_BASIC_CHECK_STATE,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID, O_BASIC_CHECK_STATE,
 			(filter_func)check_check_state);
 
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_IN, (filter_func)check_in);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_OUT, (filter_func)check_out);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_VIA, (filter_func)check_via);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_XMIT, (filter_func)check_via);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_RECV, (filter_func)check_via);
 
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_PROTO, (filter_func)check_proto);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_PROB, (filter_func)check_prob);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_IP_SRC, (filter_func)check_from);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_IP_SRC_LOOKUP, (filter_func)check_from_lookup);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_IP_SRC_ME, (filter_func)check_from_me);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_IP_SRC_MASK, (filter_func)check_from_mask);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_IP_DST, (filter_func)check_to);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_IP_DST_LOOKUP, (filter_func)check_to_lookup);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_IP_DST_ME, (filter_func)check_to_me);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_IP_DST_MASK, (filter_func)check_to_mask);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_TAG, (filter_func)check_tag);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_UNTAG, (filter_func)check_untag);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_TAGGED, (filter_func)check_tagged);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_IP_SRCPORT, (filter_func)check_src_port);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_IP_DSTPORT, (filter_func)check_dst_port);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_IP_SRC_N_PORT, (filter_func)check_src_n_port);
-	register_ipfw_filter_funcs(MODULE_BASIC_ID,
+	ip_fw3_register_filter_funcs(MODULE_BASIC_ID,
 			O_BASIC_IP_DST_N_PORT, (filter_func)check_dst_n_port);
 
-	int cpu;
-	struct ipfw_context *ctx;
-
-	for (cpu = 0; cpu < ncpus; cpu++) {
-		ctx = ipfw_ctx[cpu];
-		if (ctx != NULL) {
-			ctx->state_ctx = kmalloc(state_hash_size *
-					sizeof(struct ipfw_state_context),
-					M_IPFW3_BASIC, M_WAITOK | M_ZERO);
-			ctx->state_hash_size = state_hash_size;
-		}
-	}
-
-	struct netmsg_base smsg;
-	netmsg_init(&smsg, NULL, &curthread->td_msgport,
-			0, ipfw_basic_init_dispatch);
-	lwkt_domsg(IPFW_CFGPORT, &smsg.lmsg, 0);
 	return 0;
 }
 
-static void
-ipfw_basic_stop_dispatch(netmsg_t nmsg)
+int
+ip_fw3_basic_fini(void)
 {
-	IPFW_ASSERT_CFGPORT(&curthread->td_msgport);
-	KKASSERT(IPFW3_LOADED);
-	int error = 0;
-	callout_stop(&ipfw_tick_callout);
-	netmsg_service_sync();
-	crit_enter();
-	lwkt_dropmsg(&ipfw_timeout_netmsg.lmsg);
-	crit_exit();
-	lwkt_replymsg(&nmsg->lmsg, error);
-	ip_fw_basic_loaded=0;
+	return ip_fw3_unregister_module(MODULE_BASIC_ID);
 }
-
-static int
-ipfw_basic_stop(void)
-{
-	int cpu,i;
-	struct ipfw_state_context *state_ctx;
-	struct ip_fw_state *state,*the_state;
-	struct ipfw_context *ctx;
-	if (unregister_ipfw_module(MODULE_BASIC_ID) ==0 ) {
-		ipfw_basic_flush_state_prt = NULL;
-		ipfw_basic_append_state_prt = NULL;
-
-		for (cpu = 0; cpu < ncpus; cpu++) {
-			ctx = ipfw_ctx[cpu];
-			if (ctx != NULL) {
-				for (i = 0; i < state_hash_size; i++) {
-					state_ctx = &ctx->state_ctx[i];
-					if (state_ctx != NULL) {
-						state = state_ctx->state;
-						while (state != NULL) {
-							the_state = state;
-							state = state->next;
-							if (the_state ==
-								state_ctx->last)
-							state_ctx->last = NULL;
-
-							kfree(the_state,
-								M_IPFW3_BASIC);
-						}
-					}
-				}
-				ctx->state_hash_size = 0;
-				kfree(ctx->state_ctx, M_IPFW3_BASIC);
-				ctx->state_ctx = NULL;
-			}
-		}
-		struct netmsg_base smsg;
-		netmsg_init(&smsg, NULL, &curthread->td_msgport,
-				0, ipfw_basic_stop_dispatch);
-		return lwkt_domsg(IPFW_CFGPORT, &smsg.lmsg, 0);
-	}
-	return 1;
-}
-
 
 static int
 ipfw3_basic_modevent(module_t mod, int type, void *data)
@@ -1187,14 +651,15 @@ ipfw3_basic_modevent(module_t mod, int type, void *data)
 	int err;
 	switch (type) {
 		case MOD_LOAD:
-			err = ipfw_basic_init();
+			err = ip_fw3_basic_init();
 			break;
 		case MOD_UNLOAD:
-			err = ipfw_basic_stop();
+			err = ip_fw3_basic_fini();
 			break;
 		default:
 			err = 1;
 	}
+	ip_fw3_state_modevent(type);
 	return err;
 }
 

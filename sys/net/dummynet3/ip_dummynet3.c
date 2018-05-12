@@ -27,7 +27,11 @@
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
  */
 
-#include "opt_ipdn.h"
+#include "opt_ipfw.h"
+#include "opt_inet.h"
+#ifndef INET
+#error IPFIREWALL3 requires INET.
+#endif /* INET */
 
 /*
  * This module implements IP dummynet, a bandwidth limiter/delay emulator.
@@ -876,7 +880,7 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
 	int64_t p_b = 0;
 	u_int q_size = (fs->flags_fs & DN_QSIZE_IS_BYTES) ? q->len_bytes : q->len;
 
-	DPRINTF("\n%d q: %2u ", (int)curr_time, q_size);
+	DEBUG("\n%d q: %2u ", (int)curr_time, q_size);
 
 	/* Average queue size estimation */
 	if (q_size != 0) {
@@ -902,7 +906,7 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
 				SCALE_MUL(q->avg, fs->w_q_lookup[t]) : 0;
 		}
 	}
-	DPRINTF("avg: %u ", SCALE_VAL(q->avg));
+	DEBUG("avg: %u ", SCALE_VAL(q->avg));
 
 	/* Should i drop? */
 
@@ -946,7 +950,7 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
 		 */
 		if (SCALE_MUL(p_b, SCALE((int64_t)q->count)) > q->random) {
 			q->count = 0;
-			DPRINTF("%s", "- red drop");
+			DEBUG("%s", "- red drop");
 			/* After a drop we calculate a new random value */
 			q->random = krandom() & 0xffff;
 			return 1;	/* Drop */
@@ -1177,7 +1181,7 @@ dummynet_io(struct mbuf *m)
 			if (pipe->numbytes >= 0) {	/* Pipe is idle */
 				if (pipe->scheduler_heap.elements != 1)
 					kprintf("*** OUCH! pipe should have been idle!\n");
-				DPRINTF("Waking up pipe %d at %d\n",
+				DEBUG("Waking up pipe %d at %d\n",
 						pipe->pipe_nr, (int)(q->F >> MY_M));
 				pipe->sched_time = curr_time;
 				ready_event_wfq(pipe);
@@ -1987,10 +1991,10 @@ ip_dn_init(void)
 		ip_dn_cpu = 0;
 	}
 
-	register_ipfw_module(MODULE_DUMMYNET_ID, MODULE_DUMMYNET_NAME);
-	register_ipfw_filter_funcs(MODULE_DUMMYNET_ID, O_DUMMYNET_PIPE,
+	ip_fw3_register_module(MODULE_DUMMYNET_ID, MODULE_DUMMYNET_NAME);
+	ip_fw3_register_filter_funcs(MODULE_DUMMYNET_ID, O_DUMMYNET_PIPE,
 			(filter_func)check_pipe);
-	register_ipfw_filter_funcs(MODULE_DUMMYNET_ID, O_DUMMYNET_QUEUE,
+	ip_fw3_register_filter_funcs(MODULE_DUMMYNET_ID, O_DUMMYNET_QUEUE,
 			(filter_func)check_pipe);
 
 	netmsg_init(&smsg, NULL, &curthread->td_msgport,

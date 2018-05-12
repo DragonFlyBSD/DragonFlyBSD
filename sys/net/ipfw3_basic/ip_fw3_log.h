@@ -1,5 +1,7 @@
 /*
- * Copyright (c) 2014 - 2018 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2002-2009 Luigi Rizzo, Universita` di Pisa
+ *
+ * Copyright (c) 2015 - 2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@dragonflybsd.org>
@@ -31,10 +33,13 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#ifndef _IP_FW3_LOG_H_
+#define _IP_FW3_LOG_H_
 
-#ifndef _IPFW3_NAT_H
-#define _IPFW3_NAT_H
+#define LOG_IF_MAX	10
 
-#include <net/ipfw3_nat/ip_fw3_nat.h>
+void ip_fw3_log_modevent(int type);
+
+void ip_fw3_log(struct mbuf *m, struct ether_header *eh, uint16_t id);
 
 #endif

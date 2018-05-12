@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2014 - 2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@dragonflybsd.org>
@@ -32,6 +32,12 @@
  * SUCH DAMAGE.
  */
 
+#include "opt_ipfw.h"
+#include "opt_inet.h"
+#ifndef INET
+#error IPFIREWALL3 requires INET.
+#endif /* INET */
+
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
@@ -50,11 +56,11 @@
 #include <netinet/ip_var.h>
 
 #include <net/ipfw3/ip_fw.h>
-#include <net/ipfw3/ip_fw3_table.h>
+#include <net/ipfw3_basic/ip_fw3_table.h>
 
 #include "ip_fw3_layer2.h"
 
-extern struct ipfw_context      *ipfw_ctx[MAXCPU];
+extern struct ipfw3_context      *fw3_ctx[MAXCPU];
 
 void
 check_layer2(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
@@ -104,8 +110,8 @@ void
 check_mac_from_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
-        struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-        struct ipfw_table_context *table_ctx;
+        struct ipfw3_context *ctx = fw3_ctx[mycpuid];
+        struct ipfw3_table_context *table_ctx;
         struct radix_node_head *rnh;
         struct table_mac_entry *ent = NULL;
 
@@ -148,8 +154,8 @@ void
 check_mac_to_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
-        struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-        struct ipfw_table_context *table_ctx;
+        struct ipfw3_context *ctx = fw3_ctx[mycpuid];
+        struct ipfw3_table_context *table_ctx;
         struct radix_node_head *rnh;
         struct table_mac_entry *ent = NULL;
 
@@ -171,30 +177,30 @@ check_mac_to_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 }
 
 static int
-ipfw3_layer2_init(void)
+ip_fw3_layer2_init(void)
 {
-	register_ipfw_module(MODULE_LAYER2_ID, MODULE_LAYER2_NAME);
-	register_ipfw_filter_funcs(MODULE_LAYER2_ID,
+	ip_fw3_register_module(MODULE_LAYER2_ID, MODULE_LAYER2_NAME);
+	ip_fw3_register_filter_funcs(MODULE_LAYER2_ID,
 			O_LAYER2_LAYER2, (filter_func)check_layer2);
-	register_ipfw_filter_funcs(MODULE_LAYER2_ID,
+	ip_fw3_register_filter_funcs(MODULE_LAYER2_ID,
 			O_LAYER2_MAC, (filter_func)check_mac);
-        register_ipfw_filter_funcs(MODULE_LAYER2_ID,
+        ip_fw3_register_filter_funcs(MODULE_LAYER2_ID,
 			O_LAYER2_MAC_SRC, (filter_func)check_mac_from);
-        register_ipfw_filter_funcs(MODULE_LAYER2_ID,
+        ip_fw3_register_filter_funcs(MODULE_LAYER2_ID,
 			O_LAYER2_MAC_DST, (filter_func)check_mac_to);
-        register_ipfw_filter_funcs(MODULE_LAYER2_ID,
+        ip_fw3_register_filter_funcs(MODULE_LAYER2_ID,
 			O_LAYER2_MAC_SRC_LOOKUP,
 			(filter_func)check_mac_from_lookup);
-        register_ipfw_filter_funcs(MODULE_LAYER2_ID,
+        ip_fw3_register_filter_funcs(MODULE_LAYER2_ID,
 			O_LAYER2_MAC_DST_LOOKUP,
 			(filter_func)check_mac_to_lookup);
 	return 0;
 }
 
 static int
-ipfw3_layer2_stop(void)
+ip_fw3_layer2_stop(void)
 {
-	return unregister_ipfw_module(MODULE_LAYER2_ID);
+	return ip_fw3_unregister_module(MODULE_LAYER2_ID);
 }
 
 static int
@@ -202,9 +208,9 @@ ipfw3_layer2_modevent(module_t mod, int type, void *data)
 {
 	switch (type) {
 		case MOD_LOAD:
-			return ipfw3_layer2_init();
+			return ip_fw3_layer2_init();
 		case MOD_UNLOAD:
-			return ipfw3_layer2_stop();
+			return ip_fw3_layer2_stop();
 		default:
 			break;
 	}

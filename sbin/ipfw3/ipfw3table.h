@@ -32,9 +32,20 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _IPFW3_NAT_H
-#define _IPFW3_NAT_H
+#ifndef _IPFW3TABLE_H_
+#define _IPFW3TABLE_H_
 
-#include <net/ipfw3_nat/ip_fw3_nat.h>
+int	lookup_host (char *host, struct in_addr *ipaddr);
 
+void	table_append(int ac, char **av);
+void	table_remove(int ac, char **av);
+void	table_flush(int ac, char **av);
+void	table_list(int ac, char **av);
+void	table_print(struct ipfw_ioc_table * tbl);
+void	table_show(int ac, char **av);
+void	table_create(int ac, char **av);
+void	table_delete(int ac, char **av);
+void	table_test(int ac, char **av);
+
+void	table_main(int ac, char **av);
 #endif

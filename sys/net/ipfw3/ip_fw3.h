@@ -2,7 +2,7 @@
  * Copyright (c) 1993 Daniel Boulet
  * Copyright (c) 1994 Ugen J.S.Antsilevich
  * Copyright (c) 2002 Luigi Rizzo, Universita` di Pisa
- * Copyright (c) 2015 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2015 - 2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@dragonflybsd.org>
@@ -39,29 +39,54 @@
 #ifndef _IP_FW3_H_
 #define _IP_FW3_H_
 
-#include <net/bpf.h>
-
-#ifdef _KERNEL
-#include <net/netisr2.h>
-
-int     ip_fw3_sockopt(struct sockopt *);
-extern int ip_fw3_loaded;
-#endif
-
-#define	IPFW3_LOADED	(ip_fw3_loaded)
-
 /*
  * _IPFW2_H is from ipfw/ip_fw2.h, both cannot be included past this
  * point but we need both the IPFW2_LOADED and IPFW3_LOADED macros
  */
 #ifndef _IPFW2_H
-#define _IPFW2_H
 
-#define		RESERVED_SIZE		12
-#define		SIZE_OF_IPFWINSN	8
-#define		LEN_OF_IPFWINSN		2
-#define		IPFW_DEFAULT_RULE	65535	/* rulenum for the default rule */
-#define		IPFW_DEFAULT_SET	31	/* set number for the default rule  */
+
+#include <net/bpf.h>
+
+
+#define NEED1(msg)  {if (ac < 1) errx(EX_USAGE, msg);}
+#define NEED2(msg)  {if (ac < 2) errx(EX_USAGE, msg);}
+#define NEED(c, n, msg) {if (c < n) errx(EX_USAGE, msg);}
+
+#define NEXT_ARG	ac--; if(ac > 0){av++;}
+#define NEXT_ARG1 	(*ac)--; if(*ac > 0){(*av)++;}
+#define SWAP_ARG				\
+do { 						\
+	if (ac > 2 && isdigit(*(av[1]))) {	\
+		char *p = av[1];		\
+		av[1] = av[2];			\
+		av[2] = p;			\
+	}					\
+} while (0)
+
+#define IPFW_RULE_SIZE_MAX	255	/* unit: uint32_t */
+
+/*
+ * type of the keyword, it indecates the position of the keyword in the rule
+ *      BEFORE ACTION FROM TO FILTER OTHER
+ */
+#define NONE            0
+#define BEFORE          1
+#define ACTION          2
+#define PROTO           3
+#define FROM            4
+#define TO              5
+#define FILTER          6
+#define AFTER           7
+
+#define NOT_IN_USE      0
+#define IN_USE          1
+
+#define	SIZE_OF_IPFWINSN	8
+#define	LEN_OF_IPFWINSN		2
+#define	IPFW_DEFAULT_RULE	65535
+#define	IPFW_DEFAULT_SET	0
+#define	IPFW_ALL_SETS		0
 
 /*
  * Template for instructions.
@@ -105,6 +130,9 @@ typedef struct	_ipfw_insn {	/* template for instructions */
 	uint8_t		arg3;
 	uint16_t	arg2;
 } ipfw_insn;
+
+#define ACTION_PTR(rule)	\
+	(ipfw_insn *)((uint32_t *)((rule)->cmd) + ((rule)->act_ofs))
 
 /*
  * The F_INSN_SIZE(type) computes the size, in 4-byte words, of
@@ -247,7 +275,7 @@ struct ip_fw {
 
 	ipfw_insn	cmd[1];		/* storage for commands		*/
 };
-
+#define LEN_FW3 sizeof(struct ip_fw)
 
 #define IPFW_RULE_F_INVALID	0x1
 #define IPFW_RULE_F_STATE	0x2
@@ -267,21 +295,8 @@ struct ipfw_flow_id {
 	uint8_t		flags;	/* protocol-specific flags */
 };
 
-struct ip_fw_state {
-	struct ip_fw_state	*next;
-	struct ipfw_flow_id	flow_id;
-	struct ip_fw	*stub;
 
-	uint64_t	pcnt;	   /* packet match counter	 */
-	uint64_t	bcnt;	   /* byte match counter	   */
-
-	uint16_t	lifetime;
-	uint32_t	timestamp;
-	uint32_t	expiry;
-};
-
-
-/* ipfw_chk/ip_fw_chk_ptr return values */
+/* ip_fw3_chk/ip_fw_chk_ptr return values */
 #define IP_FW_PASS	0
 #define IP_FW_DENY	1
 #define IP_FW_DIVERT	2
@@ -290,7 +305,7 @@ struct ip_fw_state {
 #define IP_FW_NAT	5
 #define IP_FW_ROUTE	6
 
-/* ipfw_chk controller values */
+/* ip_fw3_chk controller values */
 #define IP_FW_CTL_NO		0
 #define IP_FW_CTL_DONE		1
 #define IP_FW_CTL_AGAIN		2
@@ -303,7 +318,7 @@ struct ip_fw_state {
 #define IP_FW_MATCH		1
 
 /*
- * arguments for calling ipfw_chk() and dummynet_io(). We put them
+ * arguments for calling ip_fw3_chk() and dummynet_io(). We put them
  * all into a structure because this way it is easier and more
  * efficient to pass variables around and extend the interface.
  */
@@ -316,11 +331,8 @@ struct ip_fw_args {
 	struct ipfw_flow_id f_id;	/* grabbed from IP header	*/
 
 	/*
-	 * Depend on the return value of ipfw_chk/ip_fw_chk_ptr
+	 * Depend on the return value of ip_fw3_chk/ip_fw_chk_ptr
 	 * 'cookie' field may save following information:
-	 *
-	 * IP_FW_TEE or IP_FW_DIVERT
-	 *   The divert port number
 	 *
 	 * IP_FW_DUMMYNET
 	 *   The pipe or queue number
@@ -328,182 +340,26 @@ struct ip_fw_args {
 	uint32_t	cookie;
 };
 
-#ifdef _KERNEL
-/*
- * Function definitions.
- */
-int	ip_fw_sockopt(struct sockopt *);
-int	ipfw_ctl_x(struct sockopt *sopt);
-
-/* Firewall hooks */
-struct sockopt;
-struct dn_flow_set;
-
-typedef int	ip_fw_chk_t(struct ip_fw_args *);
-typedef int	ip_fw_ctl_t(struct sockopt *);
-typedef struct mbuf
-		*ip_fw_dn_io_t(struct mbuf *, int, int, struct ip_fw_args *);
-
-
-extern ip_fw_chk_t	*ip_fw_chk_ptr;
-extern ip_fw_ctl_t	*ip_fw_ctl_x_ptr;
-extern ip_fw_dn_io_t	*ip_fw_dn_io_ptr;
-
-extern int fw3_one_pass;
-extern int fw3_enable;
-
-
-#define IPFW_CFGCPUID	0
-#define IPFW_CFGPORT	netisr_cpuport(IPFW_CFGCPUID)
-#define IPFW_ASSERT_CFGPORT(msgport)				\
-	KASSERT((msgport) == IPFW_CFGPORT, ("not IPFW CFGPORT"))
-
-#define	IPFW_TABLES_MAX		32
-
-/* root of place holding all information, per-cpu */
-struct ipfw_context {
-	struct ip_fw	*ipfw_rule_chain;		/* list of rules*/
-	struct ip_fw	*ipfw_default_rule;	 /* default rule */
-	struct ipfw_state_context *state_ctx;
-	struct ipfw_table_context *table_ctx;
-	uint16_t		state_hash_size;
-	uint32_t		ipfw_set_disable;
-};
-
-/* place to hold the states */
-struct ipfw_state_context {
-	struct ip_fw_state *state;
-	struct ip_fw_state *last;
-	int	count;
-};
-
-
-typedef void (*filter_func)(int *cmd_ctl,int *cmd_val,struct ip_fw_args **args,
-struct ip_fw **f,ipfw_insn *cmd,uint16_t ip_len);
-void register_ipfw_filter_funcs(int module,int opcode,filter_func func);
-void unregister_ipfw_filter_funcs(int module,filter_func func);
-void register_ipfw_module(int module_id,char *module_name);
-int unregister_ipfw_module(int module_id);
-
-#endif
-
-#define ACTION_PTR(rule)	\
-	(ipfw_insn *)((uint32_t *)((rule)->cmd) + ((rule)->act_ofs))
-
-
-
 struct ipfw_ioc_rule {
 	uint16_t	act_ofs;	/* offset of action in 32-bit units */
 	uint16_t	cmd_len;	/* # of 32-bit words in cmd	*/
 	uint16_t	rulenum;	/* rule number			*/
 	uint8_t		set;		/* rule set (0..31)		*/
-	uint8_t		usr_flags;	/* IPFW_USR_F_ 			*/
 
 	/* Rule set information */
-	uint32_t	set_disable;	/* disabled rule sets		*/
-	uint32_t	static_count;	/* # of static rules		*/
-	uint32_t	static_len;	/* total length of static rules	*/
+	uint32_t	sets;	/* disabled rule sets		*/
 
 	/* Statistics */
 	uint64_t	pcnt;		/* Packet counter		*/
 	uint64_t	bcnt;		/* Byte counter			*/
 	uint32_t	timestamp;	/* tv_sec of last match		*/
 
-	uint8_t		reserved[RESERVED_SIZE];
-
 	ipfw_insn	cmd[1];		/* storage for commands		*/
 };
-
-#define IPFW_USR_F_NORULE	0x01
-
-#define IPFW_RULE_SIZE_MAX	255	/* unit: uint32_t */
 
 #define IOC_RULESIZE(rule)	\
 	(sizeof(struct ipfw_ioc_rule) + (rule)->cmd_len * 4 - SIZE_OF_IPFWINSN)
 
-struct ipfw_ioc_flowid {
-	uint16_t	type;	/* ETHERTYPE_ */
-	uint16_t	pad;
-	union {
-		struct {
-			uint32_t dst_ip;
-			uint32_t src_ip;
-			uint16_t dst_port;
-			uint16_t src_port;
-			uint8_t proto;
-		} ip;
-		uint8_t pad[64];
-	} u;
-};
-
-struct ipfw_ioc_state {
-	uint64_t	pcnt;		/* packet match counter		*/
-	uint64_t	bcnt;		/* byte match counter		*/
-	uint16_t 	lifetime;
-	uint32_t	timestamp;	/* alive time				*/
-	uint32_t	expiry;		/* expire time				*/
-
-	uint16_t	rulenum;
-	uint16_t	cpuid;
-	struct ipfw_flow_id 	flow_id;	/* proto +src/dst ip/port */
-	uint8_t		reserved[16];
-};
-
-/*
- * Definitions for IP option names.
- */
-#define	IP_FW_IPOPT_LSRR	0x01
-#define	IP_FW_IPOPT_SSRR	0x02
-#define	IP_FW_IPOPT_RR		0x04
-#define	IP_FW_IPOPT_TS		0x08
-
-/*
- * Definitions for TCP option names.
- */
-#define	IP_FW_TCPOPT_MSS	0x01
-#define	IP_FW_TCPOPT_WINDOW	0x02
-#define	IP_FW_TCPOPT_SACK	0x04
-#define	IP_FW_TCPOPT_TS		0x08
-#define	IP_FW_TCPOPT_CC		0x10
-
-#define	ICMP_REJECT_RST		0x100	/* fake ICMP code (send a TCP RST) */
-
-struct ipfw_module{
-	int type;
-	int id;
-	char name[20];
-};
-
-/*
- * type of the keyword, it indecates the position of the keyword in the rule
- *      BEFORE ACTION FROM TO FILTER OTHER
- */
-#define NONE            0
-#define BEFORE          1
-#define ACTION          2
-#define PROTO           3
-#define FROM            4
-#define TO              5
-#define FILTER          6
-#define AFTER           7
-
-#define NOT_IN_USE      0
-#define IN_USE          1
-
-
-#define NEED1(msg)  {if (ac < 1) errx(EX_USAGE, msg);}
-#define NEED2(msg)  {if (ac < 2) errx(EX_USAGE, msg);}
-#define NEED(c, n, msg) {if (c < n) errx(EX_USAGE, msg);}
-
-#define NEXT_ARG	ac--; if(ac > 0){av++;}
-#define NEXT_ARG1 	(*ac)--; if(*ac > 0){(*av)++;}
-
-#define MATCH_REVERSE	0
-#define MATCH_FORWARD	1
-#define MATCH_NONE	2
-#define MATCH_UNKNOWN	3
-
-#define L3HDR(T, ip) ((T *)((uint32_t *)(ip) + (ip)->ip_hl))
 
 /* IP_FW_X header/opcodes */
 typedef struct _ip_fw_x_header {
@@ -511,18 +367,18 @@ typedef struct _ip_fw_x_header {
 	uint16_t _pad;   	/* Opcode version */
 } ip_fw_x_header;
 
-typedef void ipfw_basic_delete_state_t(struct ip_fw *);
-typedef void ipfw_basic_append_state_t(struct ipfw_ioc_state *);
-typedef void ipfw_sync_send_state_t(struct ip_fw_state *, int cpu, int hash);
-
 /* IP_FW3 opcodes */
-
 #define IP_FW_ADD		50   /* add a firewall rule to chain */
 #define IP_FW_DEL		51   /* delete a firewall rule from chain */
 #define IP_FW_FLUSH		52   /* flush firewall rule chain */
 #define IP_FW_ZERO		53   /* clear single/all firewall counter(s) */
 #define IP_FW_GET		54   /* get entire firewall rule chain */
 #define IP_FW_RESETLOG		55   /* reset logging counters */
+
+#define IP_FW_STATE_ADD		56   /* add one state */
+#define IP_FW_STATE_DEL		57   /* delete states of one rulenum */
+#define IP_FW_STATE_FLUSH	58   /* flush all states */
+#define IP_FW_STATE_GET		59   /* get all states */
 
 #define IP_DUMMYNET_CONFIGURE	60   /* add/configure a dummynet pipe */
 #define IP_DUMMYNET_DEL		61   /* delete a dummynet pipe from chain */
@@ -536,10 +392,6 @@ typedef void ipfw_sync_send_state_t(struct ip_fw_state *, int cpu, int hash);
 #define IP_FW_NAT_FLUSH		70   /* get configuration of a nat rule */
 #define IP_FW_NAT_GET		71   /* get config of a nat rule */
 #define IP_FW_NAT_GET_RECORD	72   /* get nat record of a nat rule */
-
-#define IP_FW_STATE_ADD		56   /* add one state */
-#define IP_FW_STATE_DEL		57   /* delete states of one rulenum */
-#define IP_FW_STATE_FLUSH	58   /* flush all states */
 
 #define IP_FW_TABLE_CREATE	73	/* table_create 	*/
 #define IP_FW_TABLE_DELETE	74	/* table_delete 	*/
@@ -566,6 +418,156 @@ typedef void ipfw_sync_send_state_t(struct ip_fw_state *, int cpu, int hash);
 #define IP_FW_SYNC_CENTRE_STOP	91	/* stop the centre */
 #define IP_FW_SYNC_CENTRE_TEST	92	/* test sync centre */
 #define IP_FW_SYNC_CENTRE_CLEAR	93	/* stop and clear the centre */
+
+#define IP_FW_SET_GET		95	/* get the set config */
+#define IP_FW_SET_MOVE_RULE	96	/* move a rule to set */
+#define IP_FW_SET_MOVE_SET	97	/* move all rules from set a to b */
+#define IP_FW_SET_SWAP		98	/* swap 2 sets	*/
+#define IP_FW_SET_TOGGLE	99	/* enable/disable a set	*/
+#define IP_FW_SET_FLUSH		100	/* flush the rule of the set */
+
+#endif /* _IPFW2_H */
+#ifdef _KERNEL
+
+#include <net/netisr2.h>
+
+int     ip_fw3_sockopt(struct sockopt *);
+
+extern int ip_fw3_loaded;
+
+#define	IPFW3_LOADED	(ip_fw3_loaded)
+
+#ifdef IPFIREWALL3_DEBUG
+#define DEBUG1(str)			\
+do { 					\
+	kprintf(str); 			\
+} while (0)
+#define DEBUG(fmt, ...)			\
+do { 					\
+	kprintf(fmt, __VA_ARGS__); 	\
+} while (0)
+#else
+#define DEBUG1(str)		((void)0)
+#define DEBUG(fmt, ...)	((void)0)
 #endif
 
+typedef int	ip_fw_ctl_t(struct sockopt *);
+typedef int	ip_fw_chk_t(struct ip_fw_args *);
+typedef struct mbuf *ip_fw_dn_io_t(struct mbuf *, int, int, struct ip_fw_args *);
+typedef void *ip_fw_log_t(struct mbuf *m, struct ether_header *eh, uint16_t id);
+
+#ifndef _IPFW2_H
+
+int	ip_fw_sockopt(struct sockopt *);
+
+struct sockopt;
+struct dn_flow_set;
+
+
+extern ip_fw_chk_t	*ip_fw_chk_ptr;
+extern ip_fw_ctl_t	*ip_fw_ctl_x_ptr;
+extern ip_fw_dn_io_t	*ip_fw_dn_io_ptr;
+
+
+#define	IPFW_TABLES_MAX		32
+#define	IPFW_USR_F_NORULE	0x01
+#define	IPFW_CFGCPUID		0
+#define	IPFW_CFGPORT		netisr_cpuport(IPFW_CFGCPUID)
+#define	IPFW_ASSERT_CFGPORT(msgport)				\
+	KASSERT((msgport) == IPFW_CFGPORT, ("not IPFW CFGPORT"))
+
+
+/* root of place holding all information, per-cpu */
+struct ipfw3_context {
+	struct ip_fw			*rules;    /* rules*/
+	struct ip_fw			*default_rule;  /* default rule*/
+	struct ipfw3_state_context	*state_ctx;
+	struct ipfw3_table_context	*table_ctx;
+
+	/* each bit represents a disabled set, 0 is the default set */
+	uint32_t			sets;
+};
+#define LEN_FW3_CTX sizeof(struct ipfw3_context)
+
+struct ipfw3_module{
+	int 	type;
+	int 	id;
+	char 	name[20];
+};
+
+
+/*
+ * Definitions for IP option names.
+ */
+#define	IP_FW_IPOPT_LSRR	0x01
+#define	IP_FW_IPOPT_SSRR	0x02
+#define	IP_FW_IPOPT_RR		0x04
+#define	IP_FW_IPOPT_TS		0x08
+
+/*
+ * Definitions for TCP option names.
+ */
+#define	IP_FW_TCPOPT_MSS	0x01
+#define	IP_FW_TCPOPT_WINDOW	0x02
+#define	IP_FW_TCPOPT_SACK	0x04
+#define	IP_FW_TCPOPT_TS		0x08
+#define	IP_FW_TCPOPT_CC		0x10
+
+#define	ICMP_REJECT_RST		0x100	/* fake ICMP code (send a TCP RST) */
+
+#define MATCH_REVERSE	0
+#define MATCH_FORWARD	1
+#define MATCH_NONE	2
+#define MATCH_UNKNOWN	3
+
+#define L3HDR(T, ip) ((T *)((uint32_t *)(ip) + (ip)->ip_hl))
+
+
+typedef void (*filter_func)(int *cmd_ctl,int *cmd_val,struct ip_fw_args **args,
+			struct ip_fw **f,ipfw_insn *cmd, uint16_t ip_len);
+
+void	check_accept(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_deny(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+
+void    ip_fw3_register_module(int module_id,char *module_name);
+int     ip_fw3_unregister_module(int module_id);
+void    ip_fw3_register_filter_funcs(int module, int opcode, filter_func func);
+void 	ip_fw3_unregister_filter_funcs(int module,filter_func func);
+
+void	init_module(void);
+int	ip_fw3_free_rule(struct ip_fw *rule);
+int	ip_fw3_chk(struct ip_fw_args *args);
+struct mbuf *ip_fw3_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa);
+void	add_rule_dispatch(netmsg_t nmsg);
+void	ip_fw3_add_rule(struct ipfw_ioc_rule *ioc_rule);
+struct ip_fw *ip_fw3_delete_rule(struct ipfw3_context *ctx,
+		 struct ip_fw *prev, struct ip_fw *rule);
+void	flush_rule_dispatch(netmsg_t nmsg);
+void	ip_fw3_ctl_flush_rule(int);
+void	delete_rule_dispatch(netmsg_t nmsg);
+int	ip_fw3_ctl_delete_rule(struct sockopt *sopt);
+void	ip_fw3_clear_counters(struct ip_fw *rule);
+void	ip_fw3_zero_entry_dispatch(netmsg_t nmsg);
+int	ip_fw3_ctl_zero_entry(int rulenum, int log_only);
+int	ip_fw3_ctl_add_rule(struct sockopt *sopt);
+int	ip_fw3_ctl_get_modules(struct sockopt *sopt);
+int	ip_fw3_ctl_get_rules(struct sockopt *sopt);
+int	ip_fw3_ctl_x(struct sockopt *sopt);
+int	ip_fw3_ctl(struct sockopt *sopt);
+int	ip_fw3_ctl_sockopt(struct sockopt *sopt);
+int	ip_fw3_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir);
+int	ip_fw3_check_out(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir);
+void	ip_fw3_hook(void);
+void	ip_fw3_dehook(void);
+void	ip_fw3_sysctl_enable_dispatch(netmsg_t nmsg);
+void	ctx_init_dispatch(netmsg_t nmsg);
+void	init_dispatch(netmsg_t nmsg);
+int	ip_fw3_init(void);
+void	fini_dispatch(netmsg_t nmsg);
+int	ip_fw3_fini(void);
+
+#endif /* _KERNEL */
+#endif /* _IPFW2_H */
 #endif /* _IP_FW3_H_ */

@@ -32,9 +32,12 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _IPFW3_NAT_H
-#define _IPFW3_NAT_H
-
-#include <net/ipfw3_nat/ip_fw3_nat.h>
-
+#ifndef _IPFW3STATE_H_
+#define _IPFW3STATE_H_
+void	state_add(int ac, char **av);
+void	state_delete(int ac, char **av);
+void	state_flush(int ac, char **av);
+void	state_show(struct ipfw3_ioc_state *d, int pcwidth, int bcwidth);
+void	state_list(int ac, char **av);
+void 	state_main(int ac, char **av);
 #endif

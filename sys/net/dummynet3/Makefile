@@ -1,15 +1,21 @@
-# $FreeBSD: src/sys/modules/dummynet/Makefile,v 1.1.2.2 2003/04/08 10:18:00 maxim Exp $
-# $DragonFly: src/sys/net/dummynet/Makefile,v 1.7 2008/09/16 12:30:57 sephe Exp $
-
 KMOD=	dummynet3
 SRCS=	ip_dummynet3.c
-SRCS+=	opt_ipdn.h
+SRCS+=	opt_ipfw.h opt_inet.h
 
 .ifndef BUILDING_WITH_KERNEL
-opt_ipdn.h:
-	echo '#define DUMMYNET 1' > ${.OBJDIR}/${.TARGET}
+opt_inet.h:
+	echo '#define INET 1' > ${.OBJDIR}/${.TARGET}
+
+opt_ipfw.h:
+	echo '#define IPFIREWALL3 1' > ${.OBJDIR}/${.TARGET}
 	# Debug prints
-	#echo '#define DUMMYNET_DEBUG 1' >> ${.OBJDIR}/${.TARGET}
+	#echo '#define IPFIREWALL_DEBUG 1' >> ${.OBJDIR}/${.TARGET}
+	#
+	# If you want it verbose
+	#echo '#define IPFIREWALL_VERBOSE 1' >> ${.OBJDIR}/${.TARGET}
+	#
+	# If you want it to pass all packets by default
+	#echo '#define IPFIREWALL_DEFAULT_TO_ACCEPT 1' >> ${.OBJDIR}/${.TARGET}
 .endif
 
 .include <bsd.kmod.mk>

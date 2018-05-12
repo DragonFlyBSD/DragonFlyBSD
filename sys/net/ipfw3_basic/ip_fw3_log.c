@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2002-2009 Luigi Rizzo, Universita` di Pisa
  *
- * Copyright (c) 2015 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2015 - 2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@dragonflybsd.org>
@@ -34,11 +34,6 @@
  * SUCH DAMAGE.
  */
 
-#include "opt_inet.h"
-#ifndef INET
-#error IPFIREWALL3 requires INET.
-#endif
-
 #include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -65,19 +60,13 @@
 #include <netinet/tcp_var.h>
 #include <netinet/udp.h>
 
-#ifdef INET6
-#include <netinet/ip6.h>
-#include <netinet/icmp6.h>
-#include <netinet6/in6_var.h>	/* ip6_sprintf() */
-#endif
-
 #include <net/ipfw3/ip_fw.h>
-#include <net/ipfw3/ip_fw3_log.h>
+#include <net/ipfw3_basic/ip_fw3_log.h>
 
-extern int fw_verbose;
+extern int sysctl_var_fw3_verbose;
 extern struct if_clone *if_clone_lookup(const char *, int *);
 
-static const char ipfw_log_ifname[] = "ipfw";
+static const char ipfw3_log_ifname[] = "ipfw";
 static int log_if_count;
 struct ifnet *log_if_table[LOG_IF_MAX];
 struct lock log_if_lock;
@@ -98,13 +87,13 @@ static const u_char ipfwbroadcastaddr[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
 /* we use this dummy function for all ifnet callbacks */
 static int
-log_dummy(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *uc)
+ip_fw3_log_dummy(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *uc)
 {
 	return EINVAL;
 }
 
 static int
-ipfw_log_output(struct ifnet *ifp, struct mbuf *m,
+ip_fw3_log_output(struct ifnet *ifp, struct mbuf *m,
 		struct sockaddr *dst, struct rtentry *rtent)
 {
 	if (m != NULL) {
@@ -114,7 +103,7 @@ ipfw_log_output(struct ifnet *ifp, struct mbuf *m,
 }
 
 static void
-ipfw_log_start(struct ifnet* ifp, struct ifaltq_subque *subque)
+ip_fw3_log_start(struct ifnet* ifp, struct ifaltq_subque *subque)
 {
 }
 
@@ -124,11 +113,11 @@ ipfw_log_start(struct ifnet* ifp, struct ifaltq_subque *subque)
  * the ip_len need to be twisted before and after bpf copy.
  */
 void
-ipfw_log(struct mbuf *m, struct ether_header *eh, uint16_t id)
+ip_fw3_log(struct mbuf *m, struct ether_header *eh, uint16_t id)
 {
 	struct ifnet *the_if = NULL;
 
-	if (fw_verbose) {
+	if (sysctl_var_fw3_verbose) {
 #ifndef WITHOUT_BPF
 		LOGIF_RLOCK();
 		the_if = log_if_table[id];
@@ -161,7 +150,7 @@ ipfw_log(struct mbuf *m, struct ether_header *eh, uint16_t id)
 }
 
 static int
-ipfw_log_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
+ip_fw3_log_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 {
 	struct ifnet *ifp;
 
@@ -173,16 +162,16 @@ ipfw_log_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	}
 
 	ifp = if_alloc(IFT_PFLOG);
-	if_initname(ifp, ipfw_log_ifname, unit);
+	if_initname(ifp, ipfw3_log_ifname, unit);
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 	ifq_set_ready(&ifp->if_snd);
 
 	ifp->if_mtu = 65536;
 	ifp->if_flags = IFF_UP | IFF_SIMPLEX | IFF_MULTICAST;
-	ifp->if_init = (void *)log_dummy;
-	ifp->if_ioctl = log_dummy;
-	ifp->if_start = ipfw_log_start;
-	ifp->if_output = ipfw_log_output;
+	ifp->if_init = (void *)ip_fw3_log_dummy;
+	ifp->if_ioctl = ip_fw3_log_dummy;
+	ifp->if_start = ip_fw3_log_start;
+	ifp->if_output = ip_fw3_log_output;
 	ifp->if_addrlen = 6;
 	ifp->if_hdrlen = 14;
 	ifp->if_broadcastaddr = ipfwbroadcastaddr;
@@ -199,7 +188,7 @@ ipfw_log_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 }
 
 static int
-ipfw_log_clone_destroy(struct ifnet *ifp)
+ip_fw3_log_clone_destroy(struct ifnet *ifp)
 {
 	int unit;
 
@@ -224,12 +213,12 @@ ipfw_log_clone_destroy(struct ifnet *ifp)
 	return (0);
 }
 
-static eventhandler_tag ipfw_log_ifdetach_cookie;
-static struct if_clone ipfw_log_cloner = IF_CLONE_INITIALIZER(ipfw_log_ifname,
-		ipfw_log_clone_create, ipfw_log_clone_destroy, 0, 9);
+static eventhandler_tag ip_fw3_log_ifdetach_cookie;
+static struct if_clone ipfw3_log_cloner = IF_CLONE_INITIALIZER(ipfw3_log_ifname,
+		ip_fw3_log_clone_create, ip_fw3_log_clone_destroy, 0, 9);
 
 
-void ipfw3_log_modevent(int type){
+void ip_fw3_log_modevent(int type){
 	struct ifnet *tmpif;
 	int i;
 
@@ -237,20 +226,20 @@ void ipfw3_log_modevent(int type){
 	case MOD_LOAD:
 		LOGIF_LOCK_INIT();
 		log_if_count = 0;
-		if_clone_attach(&ipfw_log_cloner);
-		ipfw_log_ifdetach_cookie =
+		if_clone_attach(&ipfw3_log_cloner);
+		ip_fw3_log_ifdetach_cookie =
 			EVENTHANDLER_REGISTER(ifnet_detach_event,
-				ipfw_log_clone_destroy, &ipfw_log_cloner,
+				ip_fw3_log_clone_destroy, &ipfw3_log_cloner,
 				EVENTHANDLER_PRI_ANY);
 		break;
 	case MOD_UNLOAD:
 		EVENTHANDLER_DEREGISTER(ifnet_detach_event,
-					ipfw_log_ifdetach_cookie);
-		if_clone_detach(&ipfw_log_cloner);
+					ip_fw3_log_ifdetach_cookie);
+		if_clone_detach(&ipfw3_log_cloner);
 		for(i = 0; log_if_count > 0 && i < LOG_IF_MAX; i++){
 			tmpif = log_if_table[i];
 			if (tmpif != NULL) {
-				ipfw_log_clone_destroy(tmpif);
+				ip_fw3_log_clone_destroy(tmpif);
 			}
 		}
 		LOGIF_LOCK_DESTROY();

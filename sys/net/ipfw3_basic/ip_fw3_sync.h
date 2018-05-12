@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2016 - 2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@dragonflybsd.org>
@@ -38,48 +38,52 @@
 
 #define MAX_EDGES 10
 
-#define SYNC_TYPE_SEND_TEST 0  /* testing sync status */
-#define SYNC_TYPE_SEND_STATE 1  /* syncing state */
-#define SYNC_TYPE_SEND_NAT 2  /* syncing nat */
+#define SYNC_TYPE_SEND_TEST	0  /* testing sync status */
+#define SYNC_TYPE_SEND_STATE	1  /* syncing state */
+#define SYNC_TYPE_SEND_NAT	2  /* syncing nat */
 
 
-struct ipfw_sync_edge {
+struct ipfw3_sync_edge {
 	in_addr_t addr;
 	u_short port;
 };
+#define LEN_SYNC_EDGE sizeof(struct ipfw3_sync_edge)
 
-struct ipfw_ioc_sync_context {
+struct ipfw3_ioc_sync_context {
 	int edge_port; /* edge listening port */
 	int hw_same; /* duplicate to all CPU when hardware different */
 	int count; /* count of edge */
-	struct ipfw_sync_edge edges[0]; /* edge */
+	struct ipfw3_sync_edge edges[0]; /* edge */
 };
 
-struct ipfw_ioc_sync_centre {
+struct ipfw3_ioc_sync_centre {
 	int count; /* count of edge */
-	struct ipfw_sync_edge edges[0]; /* edge */
+	struct ipfw3_sync_edge edges[0]; /* edge */
 };
 
-struct ipfw_ioc_sync_edge {
+struct ipfw3_ioc_sync_edge {
 	int port;
 	int hw_same;
 };
 
-struct ipfw_sync_context{
+struct ipfw3_sync_context{
 	int edge_port; /* edge listening port */
 	int hw_same; /* duplicate to all CPU when hardware different */
 	int count; /* count of edge */
 	int running; /* edge 01, centre 10 */
-	struct ipfw_sync_edge *edges; /* edge */
+	struct ipfw3_sync_edge *edges; /* edge */
 	struct thread *edge_td; /* edge handler thread */
 	struct socket *edge_sock; /* edge sock */
 	struct socket *centre_socks[MAX_EDGES]; /* centre socks */
 };
 
+
+
 #ifdef _KERNEL
 
+#include <net/ipfw3_basic/ip_fw3_basic.h>
 
-void ipfw3_sync_modevent(int type);
+void ip_fw3_sync_modevent(int type);
 
 struct cmd_send_test {
 	int type;
@@ -102,29 +106,31 @@ struct cmd_send_nat {
 
 struct netmsg_sync {
 	struct netmsg_base base;
-	struct ipfw_ioc_sync_centre *centre;
+	struct ipfw3_ioc_sync_centre *centre;
 	int retval;
 };
 
-
+typedef void ipfw_sync_send_state_t(struct ipfw3_state *, int cpu, int hash);
 typedef void ipfw_sync_install_state_t(struct cmd_send_state *cmd);
 
-void sync_centre_conf_dispath(netmsg_t nmsg);
-int ipfw_ctl_sync_centre_conf(struct sockopt *sopt);
-int ipfw_ctl_sync_show_conf(struct sockopt *sopt);
-int ipfw_ctl_sync_show_status(struct sockopt *sopt);
-int ipfw_ctl_sync_edge_conf(struct sockopt *sopt);
-void sync_edge_socket_handler(void *dummy);
-int ipfw_ctl_sync_edge_start(struct sockopt *sopt);
-int ipfw_ctl_sync_edge_test(struct sockopt *sopt);
-int ipfw_ctl_sync_centre_start(struct sockopt *sopt);
-int ipfw_ctl_sync_centre_test(struct sockopt *sopt);
-int ipfw_ctl_sync_edge_stop(struct sockopt *sopt);
-int ipfw_ctl_sync_centre_stop(struct sockopt *sopt);
-int ipfw_ctl_sync_edge_clear(struct sockopt *sopt);
-int ipfw_ctl_sync_centre_clear(struct sockopt *sopt);
-int ipfw_ctl_sync_sockopt(struct sockopt *sopt);
-void ipfw_sync_send_state(struct ip_fw_state *state, int cpu, int hash);
+void	ip_fw3_sync_install_state(struct cmd_send_state *cmd);
+
+void 	ip_fw3_sync_centre_conf_dispath(netmsg_t nmsg);
+int 	ip_fw3_ctl_sync_centre_conf(struct sockopt *sopt);
+int 	ip_fw3_ctl_sync_show_conf(struct sockopt *sopt);
+int 	ip_fw3_ctl_sync_show_status(struct sockopt *sopt);
+int 	ip_fw3_ctl_sync_edge_conf(struct sockopt *sopt);
+void 	ip_fw3_sync_edge_socket_handler(void *dummy);
+int 	ip_fw3_ctl_sync_edge_start(struct sockopt *sopt);
+int 	ip_fw3_ctl_sync_edge_test(struct sockopt *sopt);
+int 	ip_fw3_ctl_sync_centre_start(struct sockopt *sopt);
+int 	ip_fw3_ctl_sync_centre_test(struct sockopt *sopt);
+int 	ip_fw3_ctl_sync_edge_stop(struct sockopt *sopt);
+int 	ip_fw3_ctl_sync_centre_stop(struct sockopt *sopt);
+int 	ip_fw3_ctl_sync_edge_clear(struct sockopt *sopt);
+int 	ip_fw3_ctl_sync_centre_clear(struct sockopt *sopt);
+int 	ip_fw3_ctl_sync_sockopt(struct sockopt *sopt);
+void 	ip_fw3_sync_send_state(struct ipfw3_state *state, int cpu, int hash);
 
 #endif /* _KERNEL */
 #endif /* _IP_FW3_SYNC_H_ */

@@ -69,204 +69,44 @@
 #include <net/ethernet.h>
 
 #include <net/ipfw3/ip_fw3.h>
-#include <net/ipfw3_basic/ip_fw3_table.h>
-#include <net/ipfw3_basic/ip_fw3_sync.h>
 #include <net/ipfw3_basic/ip_fw3_basic.h>
+#include <net/ipfw3_basic/ip_fw3_table.h>
+#include <net/ipfw3_basic/ip_fw3_state.h>
+#include <net/ipfw3_basic/ip_fw3_sync.h>
 #include <net/ipfw3_nat/ip_fw3_nat.h>
 #include <net/dummynet3/ip_dummynet3.h>
 
 #include "ipfw3.h"
-#include "ipfw3nat.h"
+#include "ipfw3basic.h"
 
 extern int verbose;
 extern int do_time;
 extern int do_quiet;
 extern int do_force;
+extern int do_acct;
+extern int do_compact;
 
 
 void
-nat_config_add(int ac, char **av)
+state_add(int ac, char *av[])
 {
-	struct ioc_nat *ioc;
-	struct in_addr *ip;
-	int error, len = 0;
-	char *id, buf[LEN_NAT_CMD_BUF];
-
-	memset(buf, 0, LEN_NAT_CMD_BUF);
-	ioc = (struct ioc_nat *)buf;
-
-	NEXT_ARG;
-	if (ac && isdigit(**av)) {
-		id = *av;
-		ioc->id = atoi(*av);
-		if (ioc->id <= 0 || ioc->id > NAT_ID_MAX) {
-			errx(EX_DATAERR, "invalid nat id");
-		}
-	} else {
-		errx(EX_DATAERR, "missing nat id");
-	}
-	len += LEN_IOC_NAT;
-
-	NEXT_ARG;
-	if (strncmp(*av, "ip", strlen(*av))) {
-		errx(EX_DATAERR, "missing `ip'");
-	}
-	NEXT_ARG;
-	ip = &ioc->ip;
-	while (ac > 0){
-		if (!inet_aton(*av, ip)) {
-			errx(EX_DATAERR, "bad ip addr `%s'", *av);
-		}
-		ioc->count++;
-		len += LEN_IN_ADDR;
-		ip++;
-		NEXT_ARG;
-	}
-
-	error = do_set_x(IP_FW_NAT_ADD, ioc, len);
-	if (error) {
-		err(1, "do_set_x(%s)", "IP_FW_NAT_ADD");
-	}
-
-	/* show the rule after configured */
-	int _ac = 2;
-	char *_av[] = {"config", id};
-	nat_config_get(_ac, _av);
+	/* TODO */
 }
 
 void
-nat_config_show(char *buf, int nbytes, int nat_id)
+state_delete(int ac, char *av[])
 {
-	struct ioc_nat *ioc;
-	struct in_addr *ip;
-	int n, len = 0;
-
-	while (len < nbytes) {
-		ioc = (struct ioc_nat *)(buf + len);
-		if (nat_id == 0 || ioc->id == nat_id) {
-			printf("ipfw3 nat %u config ip", ioc->id);
-		}
-		ip = &ioc->ip;
-		len += LEN_IOC_NAT;
-		for (n = 0; n < ioc->count; n++) {
-			if (nat_id == 0 || ioc->id == nat_id) {
-				printf(" %s", inet_ntoa(*ip));
-			}
-			ip++;
-			len += LEN_IN_ADDR;
-		}
-		if (nat_id == 0 || ioc->id == nat_id) {
-			printf("\n");
-		}
-	}
-}
-
-void
-nat_config_get(int ac, char **av)
-{
-	int nbytes, nalloc;
-	int nat_id;
-	uint8_t *data;
-
-	nalloc = 1024;
-	data = NULL;
-	nat_id = 0;
-
+	int rulenum;
 	NEXT_ARG;
-	if (ac == 1) {
-		nat_id = strtoul(*av, NULL, 10);
-	}
-
-	nbytes = nalloc;
-	while (nbytes >= nalloc) {
-		nalloc = nalloc * 2;
-		nbytes = nalloc;
-		if ((data = realloc(data, nbytes)) == NULL) {
-			err(EX_OSERR, "realloc");
-		}
-		if (do_get_x(IP_FW_NAT_GET, data, &nbytes) < 0) {
-			err(EX_OSERR, "do_get_x(IP_FW_NAT_GET)");
-		}
-	}
-	if (nbytes == 0) {
-		exit(EX_OK);
-	}
-	nat_config_show(data, nbytes, nat_id);
+	if (ac == 1 && isdigit(**av))
+		rulenum = atoi(*av);
+	if (do_set_x(IP_FW_STATE_DEL, &rulenum, sizeof(int)) < 0 )
+		err(EX_UNAVAILABLE, "do_set_x(IP_FW_STATE_DEL)");
 }
 
 void
-nat_config_delete(int ac, char *av[])
+state_flush(int ac, char *av[])
 {
-	NEXT_ARG;
-	int i = 0;
-	if (ac > 0) {
-		i = atoi(*av);
-	}
-	if (do_set_x(IP_FW_NAT_DEL, &i, sizeof(i)) == -1)
-		errx(EX_USAGE, "NAT %d in use or not exists", i);
-}
-
-void
-nat_state_show(int ac, char **av)
-{
-	int nbytes, nalloc;
-	int nat_id;
-	uint8_t *data;
-
-	nalloc = 1024;
-	data = NULL;
-
-	NEXT_ARG;
-	if (ac == 0)
-		nat_id = 0;
-	else
-		nat_id = strtoul(*av, NULL, 10);
-
-	nbytes = nalloc;
-	while (nbytes >= nalloc) {
-		nalloc = nalloc * 2;
-		nbytes = nalloc;
-		if ((data = realloc(data, nbytes)) == NULL) {
-			err(EX_OSERR, "realloc");
-		}
-		memcpy(data, &nat_id, sizeof(int));
-		if (do_get_x(IP_FW_NAT_GET_RECORD, data, &nbytes) < 0) {
-			err(EX_OSERR, "do_get_x(IP_FW_NAT_GET_RECORD)");
-		}
-	}
-	if (nbytes == 0)
-		exit(EX_OK);
-
-	struct ioc_nat_state *ioc;
-	ioc =(struct ioc_nat_state *)data;
-	int count = nbytes / LEN_IOC_NAT_STATE;
-	int i;
-	for (i = 0; i < count; i ++) {
-		printf("%d %d", ioc->nat_id, ioc->cpu_id);
-		if (ioc->proto == IPPROTO_ICMP) {
-			printf(" icmp");
-		} else if (ioc->proto == IPPROTO_TCP) {
-			printf(" tcp");
-		} else if (ioc->proto == IPPROTO_UDP) {
-			printf(" udp");
-		}
-		printf(" %s:%hu",inet_ntoa(ioc->src_addr),
-			htons(ioc->src_port));
-		printf(" %s:%hu",inet_ntoa(ioc->alias_addr),
-			htons(ioc->alias_port));
-		printf(" %s:%hu",inet_ntoa(ioc->dst_addr),
-			htons(ioc->dst_port));
-		printf(" %c", ioc->direction? 'o' : 'i');
-		printf(" %lld", (long long)ioc->life);
-		printf("\n");
-		ioc++;
-	}
-}
-
-void
-nat_config_flush(void)
-{
-	int cmd = IP_FW_NAT_FLUSH;
 	if (!do_force) {
 		int c;
 
@@ -281,38 +121,85 @@ nat_config_flush(void)
 		if (c == 'N')	/* user said no */
 			return;
 	}
-	if (do_set_x(cmd, NULL, 0) < 0 ) {
-		errx(EX_USAGE, "NAT configuration in use");
+	if (do_set_x(IP_FW_STATE_FLUSH, NULL, 0) < 0 )
+		err(EX_UNAVAILABLE, "do_set_x(IP_FW_STATE_FLUSH)");
+	if (!do_quiet)
+		printf("Flushed all states.\n");
+}
+
+void
+state_list(int ac, char *av[])
+{
+	int nbytes, nalloc;
+	int rule_id;
+	uint8_t *data;
+
+	nalloc = 1024;
+	data = NULL;
+
+	NEXT_ARG;
+	if (ac == 0)
+		rule_id = 0;
+	else
+		rule_id = strtoul(*av, NULL, 10);
+
+	nbytes = nalloc;
+	while (nbytes >= nalloc) {
+		nalloc = nalloc * 2;
+		nbytes = nalloc;
+		if ((data = realloc(data, nbytes)) == NULL) {
+			err(EX_OSERR, "realloc");
+		}
+		memcpy(data, &rule_id, sizeof(int));
+		if (do_get_x(IP_FW_STATE_GET, data, &nbytes) < 0) {
+			err(EX_OSERR, "do_get_x(IP_FW_NAT_GET_RECORD)");
+		}
 	}
-	if (!do_quiet) {
-		printf("Flushed all nat configurations");
+
+	if (nbytes == 0)
+		exit(EX_OK);
+
+	struct ipfw3_ioc_state *ioc;
+	ioc =(struct ipfw3_ioc_state *)data;
+	int count = nbytes / LEN_IOC_FW3_STATE;
+	int i;
+	for (i = 0; i < count; i ++) {
+		printf("%05u %d", ioc->rule_id, ioc->cpu_id);
+		if (ioc->proto == IPPROTO_ICMP) {
+			printf(" icmp");
+		} else if (ioc->proto == IPPROTO_TCP) {
+			printf(" tcp");
+		} else if (ioc->proto == IPPROTO_UDP) {
+			printf(" udp");
+		}
+		printf(" %s:%hu",inet_ntoa(ioc->src_addr),
+			htons(ioc->src_port));
+		printf(" %s:%hu",inet_ntoa(ioc->dst_addr),
+			htons(ioc->dst_port));
+		printf(" %c", ioc->direction? 'o' : 'i');
+		printf(" %lld", (long long)ioc->life);
+		printf("\n");
+		ioc++;
 	}
 }
 
 void
-nat_main(int ac, char **av)
+state_main(int ac, char **av)
 {
-	if (!strncmp(*av, "config", strlen(*av))) {
-		nat_config_add(ac, av);
-	} else if (!strncmp(*av, "flush", strlen(*av))) {
-		nat_config_flush();
-	} else if (!strncmp(*av, "show", strlen(*av))) {
-		if (ac > 2 && isdigit(*(av[1]))) {
-			char *p = av[1];
-			av[1] = av[2];
-			av[2] = p;
-		}
-		NEXT_ARG;
-		if (!strncmp(*av, "config", strlen(*av))) {
-			nat_config_get(ac, av);
-		} else if (!strncmp(*av, "state", strlen(*av))) {
-			nat_state_show(ac,av);
-		} else {
-			errx(EX_USAGE, "bad nat show command `%s'", *av);
-		}
+	if (!strncmp(*av, "add", strlen(*av))) {
+		state_add(ac, av);
 	} else if (!strncmp(*av, "delete", strlen(*av))) {
-		nat_config_delete(ac, av);
+		state_delete(ac, av);
+	} else if (!strncmp(*av, "flush", strlen(*av))) {
+		state_flush(ac, av);
+	} else if (!strncmp(*av, "list", strlen(*av))) {
+		state_list(ac, av);
+	} else if (!strncmp(*av, "show", strlen(*av))) {
+		do_acct = 1;
+		state_list(ac, av);
 	} else {
-		errx(EX_USAGE, "bad ipfw nat command `%s'", *av);
+		errx(EX_USAGE, "bad ipfw3 state command `%s'", *av);
 	}
 }
+
+

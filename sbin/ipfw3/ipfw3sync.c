@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2016 - 2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@dragonflybsd.org>
@@ -69,11 +69,11 @@
 #include <net/ethernet.h>
 
 #include <net/ipfw3/ip_fw3.h>
-#include <net/ipfw3/ip_fw3_table.h>
-#include <net/ipfw3/ip_fw3_sync.h>
-#include <net/dummynet3/ip_dummynet3.h>
+#include <net/ipfw3_basic/ip_fw3_table.h>
+#include <net/ipfw3_basic/ip_fw3_sync.h>
 #include <net/ipfw3_basic/ip_fw3_basic.h>
 #include <net/ipfw3_nat/ip_fw3_nat.h>
+#include <net/dummynet3/ip_dummynet3.h>
 
 #include "ipfw3.h"
 #include "ipfw3sync.h"
@@ -81,7 +81,7 @@
 void
 sync_config_edge(int ac, char *av[])
 {
-	struct ipfw_ioc_sync_edge ioc_edge;
+	struct ipfw3_ioc_sync_edge ioc_edge;
 	NEXT_ARG;
 	if (isdigit(**av)) {
 		ioc_edge.port = atoi(*av);
@@ -106,8 +106,8 @@ sync_config_edge(int ac, char *av[])
 void
 sync_config_centre(int ac, char *av[])
 {
-	struct ipfw_ioc_sync_centre *centre;
-	struct ipfw_sync_edge *edge;
+	struct ipfw3_ioc_sync_centre *centre;
+	struct ipfw3_sync_edge *edge;
 	struct in_addr addr;
 	char *tok;
 	char *str;
@@ -119,9 +119,9 @@ sync_config_centre(int ac, char *av[])
 	tok = strtok(*av, ",");
 	len = sizeof(int);
 
-	data_len = len + step * sizeof(struct ipfw_sync_edge);
+	data_len = len + step * LEN_SYNC_EDGE;
 	data = malloc(data_len);
-	centre = (struct ipfw_ioc_sync_centre *)data;
+	centre = (struct ipfw3_ioc_sync_centre *)data;
 	edge = centre->edges;
 	while (tok != NULL) {
 		str = strchr(tok,':');
@@ -139,7 +139,7 @@ sync_config_centre(int ac, char *av[])
 		edge->addr = addr.s_addr;
 		if (count >= step) {
 			step += 10;
-			data_len = len + step * sizeof(struct ipfw_sync_edge);
+			data_len = len + step * LEN_SYNC_EDGE;
 			if ((data = realloc(data, data_len)) == NULL) {
 				err(EX_OSERR, "realloc in config sync centre");
 			}
@@ -153,7 +153,7 @@ sync_config_centre(int ac, char *av[])
 		err(EX_OSERR,"too much edges");
 	}
 	centre->count = count;
-	len += count * sizeof(struct ipfw_sync_edge);
+	len += count * LEN_SYNC_EDGE;
 	if(do_set_x(IP_FW_SYNC_CENTRE_CONF, data, len) < 0) {
 		err(EX_UNAVAILABLE, "do_set_x(IP_FW_SYNC_CENTRE_CONF)");
 	}
@@ -181,14 +181,14 @@ sync_show_config(int ac, char *av[])
 			err(EX_OSERR, "getsockopt(IP_FW_SYNC_SHOW_CONF)");
 		}
 	}
-	struct ipfw_ioc_sync_context *sync_ctx;
-	sync_ctx = (struct ipfw_ioc_sync_context *)data;
+	struct ipfw3_ioc_sync_context *sync_ctx;
+	sync_ctx = (struct ipfw3_ioc_sync_context *)data;
 	if (sync_ctx->edge_port != 0) {
 		printf("ipfw3sync edge on %d %s\n", sync_ctx->edge_port,
 				sync_ctx->hw_same == 1 ? "all" : "");
 	}
 	if (sync_ctx->count > 0) {
-		struct ipfw_sync_edge *edge;
+		struct ipfw3_sync_edge *edge;
 		int i;
 
 		edge = sync_ctx->edges;
@@ -200,7 +200,6 @@ sync_show_config(int ac, char *av[])
 			edge++;
 		}
 	}
-
 }
 
 void
@@ -296,3 +295,54 @@ sync_centre_test(int ac, char *av[])
 	}
 	printf("centre test %d sent\n", n);
 }
+
+
+void
+sync_main(int ac, char **av)
+{
+	if (!strncmp(*av, "edge", strlen(*av))) {
+		sync_config_edge(ac, av);
+	} else if (!strncmp(*av, "centre", strlen(*av))) {
+		sync_config_centre(ac, av);
+	} else if (!strncmp(*av, "show", strlen(*av))) {
+		NEXT_ARG;
+		if (!strncmp(*av, "config", strlen(*av))) {
+			sync_show_config(ac, av);
+		} else if (!strncmp(*av, "status", strlen(*av))) {
+			sync_show_status(ac, av);
+		} else {
+			errx(EX_USAGE, "bad show command `%s'", *av);
+		}
+	} else if (!strncmp(*av, "start", strlen(*av))) {
+		NEXT_ARG;
+		if (!strncmp(*av, "edge", strlen(*av))) {
+			sync_edge_start(ac, av);
+		} else if (!strncmp(*av, "centre", strlen(*av))) {
+			sync_centre_start(ac, av);
+		}
+	} else if (!strncmp(*av, "stop", strlen(*av))) {
+		NEXT_ARG;
+		if (!strncmp(*av, "edge", strlen(*av))) {
+			sync_edge_stop(ac, av);
+		} else if (!strncmp(*av, "centre", strlen(*av))) {
+			sync_centre_stop(ac, av);
+		}
+	} else if (!strncmp(*av, "clear", strlen(*av))) {
+		NEXT_ARG;
+		if (!strncmp(*av, "edge", strlen(*av))) {
+			sync_edge_clear(ac, av);
+		} else if (!strncmp(*av, "centre", strlen(*av))) {
+			sync_centre_clear(ac, av);
+		}
+	} else if (!strncmp(*av, "test", strlen(*av))) {
+		NEXT_ARG;
+		if (!strncmp(*av, "edge", strlen(*av))) {
+			sync_edge_test(ac, av);
+		} else if (!strncmp(*av, "centre", strlen(*av))) {
+			sync_centre_test(ac, av);
+		}
+	} else {
+		errx(EX_USAGE, "bad ipfw sync command `%s'", *av);
+	}
+}
+

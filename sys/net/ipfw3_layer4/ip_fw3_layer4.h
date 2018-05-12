@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2014 - 2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@dragonflybsd.org>
@@ -32,8 +32,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _IP_FW_LAYER4_H
-#define _IP_FW_LAYER4_H
+#ifndef _IP_FW3_LAYER4_H
+#define _IP_FW3_LAYER4_H
 
 #define MODULE_LAYER4_ID	3
 #define MODULE_LAYER4_NAME	"layer4"
@@ -42,7 +42,7 @@
 //placeholder for kernel
 #endif
 
-enum ipfw_layer4_opcodes {
+enum ipfw3_layer4_opcodes {
 	O_LAYER4_TCPFLAG,
 	O_LAYER4_UID,
 	O_LAYER4_GID,

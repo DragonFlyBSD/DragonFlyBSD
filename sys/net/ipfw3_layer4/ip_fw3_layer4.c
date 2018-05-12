@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2014 - 2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@dragonflybsd.org>
@@ -31,6 +31,12 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
+#include "opt_ipfw.h"
+#include "opt_inet.h"
+#ifndef INET
+#error IPFIREWALL3 requires INET.
+#endif /* INET */
 
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -85,10 +91,10 @@ check_bpf(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
 
 /*
- * ipfw_match_guid can match the gui and uid
+ * ip_fw3_match_guid can match the gui and uid
  */
 static int
-ipfw_match_guid(const struct ipfw_flow_id *fid, struct ifnet *oif,
+ip_fw3_match_guid(const struct ipfw_flow_id *fid, struct ifnet *oif,
 		int opcode, uid_t uid)
 {
 	struct in_addr src_ip, dst_ip;
@@ -148,7 +154,7 @@ void
 check_uid(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
-	*cmd_val = ipfw_match_guid(&(*args)->f_id, (*args)->oif, cmd->opcode,
+	*cmd_val = ip_fw3_match_guid(&(*args)->f_id, (*args)->oif, cmd->opcode,
 				(uid_t)((ipfw_insn_u32 *)cmd)->d[0]);
 	*cmd_ctl = IP_FW_CTL_NO;
 }
@@ -157,7 +163,7 @@ void
 check_gid(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len)
 {
-	*cmd_val = ipfw_match_guid(&(*args)->f_id, (*args)->oif, cmd->opcode,
+	*cmd_val = ip_fw3_match_guid(&(*args)->f_id, (*args)->oif, cmd->opcode,
 				(gid_t)((ipfw_insn_u32 *)cmd)->d[0]);
 	*cmd_ctl = IP_FW_CTL_NO;
 }
@@ -202,26 +208,26 @@ check_bpf(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 
 
 static int
-ipfw3_layer4_init(void)
+ip_fw3_layer4_init(void)
 {
-	register_ipfw_module(MODULE_LAYER4_ID, MODULE_LAYER4_NAME);
-	register_ipfw_filter_funcs(MODULE_LAYER4_ID, O_LAYER4_TCPFLAG,
+	ip_fw3_register_module(MODULE_LAYER4_ID, MODULE_LAYER4_NAME);
+	ip_fw3_register_filter_funcs(MODULE_LAYER4_ID, O_LAYER4_TCPFLAG,
 			(filter_func)check_tcpflag);
-	register_ipfw_filter_funcs(MODULE_LAYER4_ID, O_LAYER4_UID,
+	ip_fw3_register_filter_funcs(MODULE_LAYER4_ID, O_LAYER4_UID,
 			(filter_func)check_uid);
-	register_ipfw_filter_funcs(MODULE_LAYER4_ID, O_LAYER4_GID,
+	ip_fw3_register_filter_funcs(MODULE_LAYER4_ID, O_LAYER4_GID,
 			(filter_func)check_gid);
-	register_ipfw_filter_funcs(MODULE_LAYER4_ID, O_LAYER4_ESTABLISHED,
+	ip_fw3_register_filter_funcs(MODULE_LAYER4_ID, O_LAYER4_ESTABLISHED,
 			(filter_func)check_established);
-	register_ipfw_filter_funcs(MODULE_LAYER4_ID, O_LAYER4_BPF,
+	ip_fw3_register_filter_funcs(MODULE_LAYER4_ID, O_LAYER4_BPF,
 			(filter_func)check_bpf);
 	return 0;
 }
 
 static int
-ipfw3_layer4_stop(void)
+ip_fw3_layer4_stop(void)
 {
-	return unregister_ipfw_module(MODULE_LAYER4_ID);
+	return ip_fw3_unregister_module(MODULE_LAYER4_ID);
 }
 
 static int
@@ -229,9 +235,9 @@ ipfw3_layer4_modevent(module_t mod, int type, void *data)
 {
 	switch (type) {
 	case MOD_LOAD:
-		return ipfw3_layer4_init();
+		return ip_fw3_layer4_init();
 	case MOD_UNLOAD:
-		return ipfw3_layer4_stop();
+		return ip_fw3_layer4_stop();
 	default:
 		break;
 	}

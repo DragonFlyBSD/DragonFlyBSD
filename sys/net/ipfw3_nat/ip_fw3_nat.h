@@ -97,20 +97,29 @@ struct nat_state {
 };
 #define LEN_NAT_STATE sizeof(struct nat_state)
 
-int 	nat_state_cmp(struct nat_state *s1, struct nat_state *s2);
+/* nat_state for the incoming packets */
+struct nat_state2 {
+	uint32_t		src_addr;
+	uint32_t		dst_addr;
+	uint32_t		alias_addr;
+	uint16_t		src_port;
+	uint16_t		dst_port;
+	uint16_t		alias_port;
+	time_t			timestamp;
+};
+#define LEN_NAT_STATE2 sizeof(struct nat_state2)
+
+int 	ip_fw3_nat_state_cmp(struct nat_state *s1, struct nat_state *s2);
 
 RB_HEAD(state_tree, nat_state);
 
 struct cfg_nat {
-	int				id;
-	int				count;
-	LIST_HEAD(, cfg_alias)		alias;	/* list of the alias IP */
+	int			id;
+	int			count;
+	LIST_HEAD(, cfg_alias)	alias;	/* list of the alias IP */
 
-	struct state_tree	rb_tcp_in;
 	struct state_tree	rb_tcp_out;
-	struct state_tree	rb_udp_in;
 	struct state_tree	rb_udp_out;
-	struct state_tree	rb_icmp_in;
 	struct state_tree	rb_icmp_out;
 };
 
@@ -119,11 +128,11 @@ struct cfg_nat {
 struct cfg_alias {
 	LIST_ENTRY(cfg_alias)	next;
 	struct in_addr 		ip;
+	struct nat_state2	*tcp_in[ALIAS_RANGE];
+	struct nat_state2	*udp_in[ALIAS_RANGE];
+	struct nat_state2	*icmp_in[ALIAS_RANGE];
 };
 #define LEN_CFG_ALIAS sizeof(struct cfg_alias)
-
-
-MALLOC_DEFINE(M_IP_FW3_NAT, "IP_FW3_NAT", "IP_FW3 NAT module");
 
 /* place to hold the nat conf */
 struct ip_fw3_nat_context {
@@ -142,7 +151,9 @@ struct netmsg_nat_add {
 
 struct netmsg_nat_state_add {
 	struct netmsg_base 	base;
-	struct nat_state 	*state;
+	struct nat_state2 	*state;
+	struct in_addr		alias_addr;
+	uint16_t		alias_port;
 	int			proto;
 	int			nat_id;
 };

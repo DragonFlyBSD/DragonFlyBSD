@@ -1,5 +1,5 @@
  /*
- * Copyright (c) 2014 - 2016 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2014 - 2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@dragonflybsd.org>
@@ -37,72 +37,7 @@
 #define MODULE_BASIC_ID		0
 #define MODULE_BASIC_NAME 	"basic"
 
-#ifdef _KERNEL
-
-MALLOC_DEFINE(M_IPFW3_BASIC, "IPFW3_BASIC", "ipfw3_basic module");
-void	ipfw_sync_install_state(struct cmd_send_state *cmd);
-
-/* prototype of the checker functions */
-void	check_count(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_skipto(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_forward(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_check_state(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_in(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_out(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_via(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_proto(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_prob(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_from(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_from_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_from_me(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_from_mask(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_to(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_to_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_to_me(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_to_mask(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_keep_state(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_tag(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_untag(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_tagged(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_src_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_dst_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_src_n_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-void	check_dst_n_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
-		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
-
-/* prototype of the utility functions */
-int 	match_state(ipfw_insn *cmd, struct ipfw_flow_id *fid,
-		struct ip_fw_state *state);
-int 	count_match_state(ipfw_insn *cmd, struct ipfw_flow_id *fid,
-		struct ip_fw_state *state, int *count);
-
-#endif
-
-enum ipfw_basic_opcodes {
+enum ipfw3_basic_opcodes {
 	O_BASIC_ACCEPT,		/* accept */
 	O_BASIC_DENY,		/* deny */
 	O_BASIC_COUNT,		/* count */
@@ -145,6 +80,69 @@ enum ipfw_basic_opcodes {
 		(state->timestamp + state->lifetime) < time_second) ||	\
 		((state->expiry != 0) && (state->expiry < time_second))
 
-#define IPFW_BASIC_LOADED   (ip_fw_basic_loaded)
 
+#ifdef _KERNEL
+
+
+
+#include <net/ipfw3_basic/ip_fw3_state.h>
+
+
+/* prototype of the checker functions */
+void	check_count(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_skipto(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_forward(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_in(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_out(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_via(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_proto(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_prob(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_from(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_from_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_from_me(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_from_mask(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_to(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_to_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_to_me(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_to_mask(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_tag(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_untag(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_tagged(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_src_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_dst_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_src_n_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+void	check_dst_n_port(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
+		struct ip_fw **f, ipfw_insn *cmd, uint16_t ip_len);
+
+/* prototype of the utility functions */
+int 	match_state(ipfw_insn *cmd, struct ipfw_flow_id *fid,
+		struct ipfw3_state *state);
+int 	count_match_state(ipfw_insn *cmd, struct ipfw_flow_id *fid,
+		struct ipfw3_state *state, int *count);
+
+int	ip_fw3_basic_init(void);
+int	ip_fw3_basic_fini(void);
+#endif	/* _KERNEL */
 #endif

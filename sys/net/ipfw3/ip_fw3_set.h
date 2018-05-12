@@ -32,9 +32,29 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _IPFW3_NAT_H
-#define _IPFW3_NAT_H
+#ifndef _IP_FW3_SET_H
+#define _IP_FW3_SET_H
 
-#include <net/ipfw3_nat/ip_fw3_nat.h>
+#ifdef _KERNEL
 
+struct netmsg_sets {
+	struct netmsg_base	base;
+	int			rule_num;
+	int			set_from;
+	int			set_to;
+};
+
+void	move_set_dispatch(netmsg_t smsg);
+int	ip_fw3_ctl_set_move_set(struct sockopt *sopt);
+void	move_rule_dispatch(netmsg_t smsg);
+int	ip_fw3_ctl_set_move_rule(struct sockopt *sopt);
+void	set_swap_dispatch(netmsg_t msg);
+int	ip_fw3_ctl_set_swap(struct sockopt *sopt);
+int	ip_fw3_ctl_set_toggle(struct sockopt *sopt);
+int	ip_fw3_ctl_set_get(struct sockopt *sopt);
+void	set_flush_dispatch(netmsg_t smsg);
+int	ip_fw3_ctl_set_flush(struct sockopt *sopt);
+int 	ip_fw3_ctl_set_sockopt(struct sockopt *sopt);
+
+#endif
 #endif

@@ -46,8 +46,6 @@
 ip_fw_ctl_t *ip_fw_ctl_x_ptr;
 
 int ip_fw3_loaded;
-int fw3_enable = 1;
-int fw3_one_pass = 1;
 
 int
 ip_fw3_sockopt(struct sockopt *sopt)

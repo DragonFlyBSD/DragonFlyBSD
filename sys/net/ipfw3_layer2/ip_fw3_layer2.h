@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2014 - 2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@dragonflybsd.org>
@@ -54,7 +54,7 @@ void	check_mac_to_lookup(int *cmd_ctl, int *cmd_val, struct ip_fw_args **args,
 
 #endif
 
-enum ipfw_layer2_opcodes {
+enum ipfw3_layer2_opcodes {
 	O_LAYER2_LAYER2,
 	O_LAYER2_MAC,
 	O_LAYER2_MAC_TYPE,

@@ -32,9 +32,10 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _IPFW3_NAT_H
-#define _IPFW3_NAT_H
+#ifndef _IPFW3LOG_H_
+#define _IPFW3LOG_H_
 
-#include <net/ipfw3_nat/ip_fw3_nat.h>
+void	resetlog(int ac, char **av);
 
+void	log_main(int ac, char **av);
 #endif

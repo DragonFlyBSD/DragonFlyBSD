@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 - 2016 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2014 - 2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Bill Yuan <bycn82@dragonflybsd.org>
@@ -121,10 +121,52 @@ typedef void (*register_func)(int, int, parser_func, shower_func);
 typedef void (*register_keyword)(int, int, char *, int);
 typedef void (*init_module)(register_func, register_keyword);
 
+#define MAX_KEYWORD_LEN	20
+#define KEYWORD_SIZE	256
+#define MAPPING_SIZE	256
+
+struct ipfw3_keyword {
+	int type;
+	char word[MAX_KEYWORD_LEN];
+	int module;
+	int opcode;
+};
+#define LEN_FW3_KEYWORD sizeof(struct ipfw3_keyword)
+
+struct ipfw3_mapping {
+	int type;
+	int module;
+	int opcode;
+	parser_func parser;
+	shower_func shower;
+};
+#define LEN_FW3_MAPPING sizeof(struct ipfw3_mapping)
+
+ipfw_insn*	next_cmd(ipfw_insn *cmd);
 void 	register_ipfw_keyword(int module, int opcode, char *word, int type);
 void 	register_ipfw_func(int, int, parser_func, shower_func);
 int	do_get_x(int optname, void *rule, int *optlen);
 int	do_set_x(int optname, void *rule, int optlen);
 
 int	match_token(struct char_int_map *table, char *string);
+void	module_get(char *modules_str, int len);
+void	module_list(int ac, char **av);
+void	module_load(void);
+void	register_ipfw_keyword(int module, int opcode, char *word, int type);
+void	register_ipfw_func(int module, int opcode,
+			parser_func parser, shower_func shower);
+void	prev_show_chk(ipfw_insn *cmd, uint8_t *prev_module,
+			uint8_t *prev_opcode, int *show_or);
+int	show_filter(ipfw_insn *cmd, char *word, int type);
+void	help(void);
+void	rule_delete(int ac, char **av);
+void	rule_list(int ac, char **av);
+void	rule_add(int ac, char **av);
+void	rule_zero(int ac, char **av);
+void	rule_flush(void);
+void	rule_show(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth);
+int	do_set_x(int optname, void *rule, int optlen);
+int	do_get_x(int optname, void *rule, int *optlen);
+int	ipfw3_main(int ac, char **av);
+void	ipfw3_readfile(int ac, char **av);
 #endif
