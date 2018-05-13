@@ -430,7 +430,7 @@ ip_fw3_nat(struct ip_fw_args *args, struct cfg_nat *nat, struct mbuf *m)
 	}
 	return IP_FW_NAT;
 oops:
-	DEBUG1("oops\n");
+	IPFW3_DEBUG1("oops\n");
 	return IP_FW_DENY;
 }
 

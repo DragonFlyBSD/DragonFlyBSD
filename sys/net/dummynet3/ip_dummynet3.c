@@ -880,7 +880,7 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
 	int64_t p_b = 0;
 	u_int q_size = (fs->flags_fs & DN_QSIZE_IS_BYTES) ? q->len_bytes : q->len;
 
-	DEBUG("\n%d q: %2u ", (int)curr_time, q_size);
+	IPFW3_DEBUG("\n%d q: %2u ", (int)curr_time, q_size);
 
 	/* Average queue size estimation */
 	if (q_size != 0) {
@@ -906,7 +906,7 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
 				SCALE_MUL(q->avg, fs->w_q_lookup[t]) : 0;
 		}
 	}
-	DEBUG("avg: %u ", SCALE_VAL(q->avg));
+	IPFW3_DEBUG("avg: %u ", SCALE_VAL(q->avg));
 
 	/* Should i drop? */
 
@@ -950,7 +950,7 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
 		 */
 		if (SCALE_MUL(p_b, SCALE((int64_t)q->count)) > q->random) {
 			q->count = 0;
-			DEBUG("%s", "- red drop");
+			IPFW3_DEBUG("%s", "- red drop");
 			/* After a drop we calculate a new random value */
 			q->random = krandom() & 0xffff;
 			return 1;	/* Drop */
@@ -1181,7 +1181,7 @@ dummynet_io(struct mbuf *m)
 			if (pipe->numbytes >= 0) {	/* Pipe is idle */
 				if (pipe->scheduler_heap.elements != 1)
 					kprintf("*** OUCH! pipe should have been idle!\n");
-				DEBUG("Waking up pipe %d at %d\n",
+				IPFW3_DEBUG("Waking up pipe %d at %d\n",
 						pipe->pipe_nr, (int)(q->F >> MY_M));
 				pipe->sched_time = curr_time;
 				ready_event_wfq(pipe);
