@@ -438,17 +438,17 @@ extern int ip_fw3_loaded;
 #define	IPFW3_LOADED	(ip_fw3_loaded)
 
 #ifdef IPFIREWALL3_DEBUG
-#define DEBUG1(str)			\
+#define IPFW3_DEBUG1(str)		\
 do { 					\
 	kprintf(str); 			\
 } while (0)
-#define DEBUG(fmt, ...)			\
+#define IPFW3_DEBUG(fmt, ...)		\
 do { 					\
 	kprintf(fmt, __VA_ARGS__); 	\
 } while (0)
 #else
-#define DEBUG1(str)		((void)0)
-#define DEBUG(fmt, ...)	((void)0)
+#define IPFW3_DEBUG1(str)		((void)0)
+#define IPFW3_DEBUG(fmt, ...)		((void)0)
 #endif
 
 typedef int	ip_fw_ctl_t(struct sockopt *);

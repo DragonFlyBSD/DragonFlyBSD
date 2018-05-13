@@ -741,7 +741,7 @@ ip_fw3_add_rule(struct ipfw_ioc_rule *ioc_rule)
 
 	netisr_domsg(nmsg, 0);
 
-	DEBUG("++ installed rule %d, static count now %d\n",
+	IPFW3_DEBUG("++ installed rule %d, static count now %d\n",
 			ioc_rule->rulenum, static_count);
 }
 
