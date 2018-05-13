@@ -25,6 +25,8 @@
 #include "intel_drv.h"
 #include "i915_vgpu.h"
 
+#include <linux/pm_runtime.h>
+
 #define FORCEWAKE_ACK_TIMEOUT_MS 50
 
 #define __raw_posting_read(dev_priv__, reg__) (void)__raw_i915_read32((dev_priv__), (reg__))
@@ -284,9 +286,7 @@ void intel_uncore_forcewake_reset(struct drm_device *dev, bool restore)
 		}
 
 		spin_unlock_irqrestore(&dev_priv->uncore.lock, irqflags);
-#if 0
 		cond_resched();
-#endif
 	}
 
 	WARN_ON(active_domains);

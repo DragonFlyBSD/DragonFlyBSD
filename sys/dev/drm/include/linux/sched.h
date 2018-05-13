@@ -124,4 +124,12 @@ signal_pending_state(long state, struct lwp *lp)
 	return SIGISMEMBER(pending_set, SIGKILL);
 }
 
+/* Explicit rescheduling in order to reduce latency */
+static inline int
+cond_resched(void)
+{
+	lwkt_yield();
+	return 0;
+}
+
 #endif	/* _LINUX_SCHED_H_ */
