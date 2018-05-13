@@ -2045,7 +2045,6 @@ vm/vm_swap.c			standard
 vm/vm_unix.c			standard
 vm/vm_vmspace.c			standard
 vm/vnode_pager.c		standard
-vm/vm_zeroidle.c		standard
 vm/vm_zone.c			standard
 #
 # USB support
