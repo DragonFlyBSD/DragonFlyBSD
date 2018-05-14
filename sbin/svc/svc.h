@@ -41,7 +41,7 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <sys/un.h>
-#include <sys/tty.h>
+#include <sys/ttycom.h>
 #include <sys/devfs.h>
 #include <sys/mount.h>
 #include <sys/jail.h>
