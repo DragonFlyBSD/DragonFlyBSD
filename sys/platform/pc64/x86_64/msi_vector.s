@@ -48,8 +48,8 @@
 IDTVEC(msi_intr##irq_num) ;						\
 	MSI_PUSH_FRAME ;						\
 	FAKE_MCOUNT(TF_RIP(%rsp)) ;					\
-	movq	lapic, %rax ;						\
-	movl	$0, LA_EOI(%rax) ;					\
+	movq	lapic_eoi, %rax ;					\
+	callq	*%rax ;							\
 	movq	PCPU(curthread),%rbx ;					\
 	testl	$-1,TD_NEST_COUNT(%rbx) ;				\
 	jne	1f ;							\

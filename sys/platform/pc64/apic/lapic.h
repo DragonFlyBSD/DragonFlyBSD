@@ -55,6 +55,7 @@ extern volatile lapic_t		*lapic;
 extern int			cpu_id_to_apic_id[];
 extern int			apic_id_to_cpu_id[];
 extern int			lapic_enable;
+extern void			(*lapic_eoi)(void);
 
 void	apic_dump(char*);
 void	lapic_init(boolean_t);

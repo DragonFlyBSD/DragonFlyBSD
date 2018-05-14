@@ -28,6 +28,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/ktr.h>
 #include <sys/bus.h>
 #include <sys/machintr.h>
 #include <machine/globaldata.h>
@@ -48,6 +49,13 @@
 
 #include <machine/cputypes.h>
 #include <machine/intr_machdep.h>
+
+#if !defined(KTR_LAPIC)
+#define KTR_LAPIC	KTR_ALL
+#endif
+KTR_INFO_MASTER(lapic);
+KTR_INFO(KTR_LAPIC, lapic, eoi, 0, "eoi");
+#define log_lapic(name)     KTR_LOG(lapic_ ## name)
 
 extern int naps;
 
@@ -119,6 +127,10 @@ struct deadlines {
 	uint64_t padding[6];
 };
 struct deadlines *tsc_deadlines = NULL;
+
+static void	lapic_eoi_func(void);
+
+void		(*lapic_eoi)(void);
 
 /*
  * Enable LAPIC, configure interrupts.
@@ -1118,10 +1130,19 @@ lapic_fixup_noioapic(void)
 }
 
 static void
+lapic_eoi_func(void)
+{
+	log_lapic(eoi);
+	lapic->eoi = 0;
+}
+
+static void
 lapic_sysinit(void *dummy __unused)
 {
 	if (lapic_enable) {
 		int error;
+
+		lapic_eoi = lapic_eoi_func;
 
 		error = lapic_config();
 		if (error)

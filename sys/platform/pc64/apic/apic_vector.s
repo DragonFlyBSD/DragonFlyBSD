@@ -121,8 +121,8 @@ IDTVEC(ioapic_intr##irq_num) ;						\
 	APIC_PUSH_FRAME_TFRIP ;						\
 	FAKE_MCOUNT(TF_RIP(%rsp)) ;					\
 	MASK_LEVEL_IRQ(irq_num) ;					\
-	movq	lapic, %rax ;						\
-	movl	$0, LA_EOI(%rax) ;					\
+	movq	lapic_eoi, %rax ;					\
+	callq	*%rax ;							\
 	movq	PCPU(curthread),%rbx ;					\
 	testl	$-1,TD_NEST_COUNT(%rbx) ;				\
 	jne	1f ;							\
@@ -188,8 +188,8 @@ Xspuriousint:
 	.globl	Xinvltlb
 Xinvltlb:
 	APIC_PUSH_FRAME_TFRIP
-	movq	lapic, %rax
-	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
+	movq	lapic_eoi, %rax
+	callq	*%rax			/* End Of Interrupt to APIC */
 	FAKE_MCOUNT(TF_RIP(%rsp))
 	incl    PCPU(cnt) + V_IPI
 	movq	PCPU(curthread),%rbx
@@ -213,8 +213,8 @@ Xinvltlb:
 	.globl	Xsniff
 Xsniff:
 	APIC_PUSH_FRAME_TFRIP
-	movq	lapic, %rax
-	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
+	movq	lapic_eoi, %rax
+	callq	*%rax			/* End Of Interrupt to APIC */
 	FAKE_MCOUNT(TF_RIP(%rsp))
 	incl    PCPU(cnt) + V_IPI
 	movq	TF_RIP(%rsp),%rax
@@ -239,8 +239,8 @@ Xsniff:
 	.globl Xcpustop
 Xcpustop:
 	APIC_PUSH_FRAME_TFRIP
-	movq	lapic, %rax
-	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
+	movq	lapic_eoi, %rax
+	callq	*%rax			/* End Of Interrupt to APIC */
 
 	movl	PCPU(cpuid), %eax
 	imull	$PCB_SIZE, %eax
@@ -337,8 +337,8 @@ Xcpustop:
 	.globl Xipiq
 Xipiq:
 	APIC_PUSH_FRAME_TFRIP
-	movq	lapic, %rax
-	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
+	movq	lapic_eoi, %rax
+	callq	*%rax			/* End Of Interrupt to APIC */
 	FAKE_MCOUNT(TF_RIP(%rsp))
 
 	incl    PCPU(cnt) + V_IPI
@@ -369,8 +369,8 @@ Xipiq:
 	.globl Xtimer
 Xtimer:
 	APIC_PUSH_FRAME_TFRIP
-	movq	lapic, %rax
-	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
+	movq	lapic_eoi, %rax
+	callq	*%rax			/* End Of Interrupt to APIC */
 	FAKE_MCOUNT(TF_RIP(%rsp))
 
 	subq	$8,%rsp			/* make same as interrupt frame */
