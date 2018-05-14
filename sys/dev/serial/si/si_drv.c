@@ -40,6 +40,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/tty.h>
+#include <sys/ttydefaults.h>	/* for TTYDEF_* */
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/conf.h>

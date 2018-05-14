@@ -61,6 +61,7 @@
 #define	_USB_SERIAL_H_
 
 #include <sys/tty.h>
+#include <sys/ttydefaults.h>	/* for TTYDEF_* */
 #include <sys/fcntl.h>
 #include <sys/sysctl.h>
 #include <sys/timepps.h>

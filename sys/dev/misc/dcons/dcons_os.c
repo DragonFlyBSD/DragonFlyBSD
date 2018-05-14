@@ -49,6 +49,7 @@
 #include <sys/cons.h>
 #include <sys/consio.h>
 #include <sys/tty.h>
+#include <sys/ttydefaults.h>	/* for TTYDEF_* */
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/priv.h>

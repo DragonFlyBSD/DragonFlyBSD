@@ -48,6 +48,7 @@
 #include <sys/sysctl.h>
 #include <sys/taskqueue.h>
 #include <sys/tty.h>
+#include <sys/ttydefaults.h>	/* for TTYDEF_* */
 #include <sys/kernel.h>
 #include <sys/cons.h>
 #include <sys/random.h>

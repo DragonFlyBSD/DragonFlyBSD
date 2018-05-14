@@ -47,6 +47,7 @@
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
 #include <sys/tty.h>
+#include <sys/ttydefaults.h>	/* for TTYDEF_* */
 #include <sys/syslog.h>
 #include <sys/fcntl.h>
 #include <sys/bus.h>

@@ -53,6 +53,7 @@
 #include <sys/reboot.h>
 #include <sys/malloc.h>
 #include <sys/tty.h>
+#include <sys/ttydefaults.h>	/* for TTYDEF_* */
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/module.h>

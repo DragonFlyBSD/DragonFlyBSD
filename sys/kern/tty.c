@@ -78,10 +78,11 @@
 #include <sys/filio.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
-#define	TTYDEFCHARS
 #include <sys/tty.h>
-#include <sys/clist.h>
+#define	TTYDEFCHARS
+#include <sys/ttydefaults.h>	/* for ttydefchars, CEOT */
 #undef	TTYDEFCHARS
+#include <sys/clist.h>
 #include <sys/fcntl.h>
 #include <sys/conf.h>
 #include <sys/dkstat.h>
