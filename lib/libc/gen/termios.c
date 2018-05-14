@@ -42,6 +42,7 @@
 #include <string.h>
 #define	TTYDEFCHARS
 #include <termios.h>
+#undef TTYDEFCHARS
 #include <unistd.h>
 #include "un-namespace.h"
 
