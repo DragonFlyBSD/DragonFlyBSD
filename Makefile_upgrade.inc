@@ -3413,6 +3413,9 @@ TO_REMOVE+=/usr/share/man/man4/ipsec.4.gz
 TO_REMOVE+=/usr/share/man/man8/setkey.8.gz
 TO_REMOVE+=/usr/include/sys/ioctl_compat.h
 TO_REMOVE+=/usr/share/skel/dot.rhosts
+TO_REMOVE+=/usr/include/net/ipfw3/ip_fw3_log.h
+TO_REMOVE+=/usr/include/net/ipfw3/ip_fw3_sync.h
+TO_REMOVE+=/usr/include/net/ipfw3/ip_fw3_table.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
