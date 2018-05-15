@@ -84,9 +84,6 @@
 #include <net/ipfw3_basic/ip_fw3_basic.h>
 #include <net/ipfw3_basic/ip_fw3_state.h>
 
-MALLOC_DEFINE(M_IPFW3_BASIC, "IPFW3_BASIC", "ipfw3_basic module");
-
-
 extern struct ipfw3_context		*fw3_ctx[MAXCPU];
 extern struct ipfw3_sync_context 	fw3_sync_ctx;
 extern struct ipfw3_state_context 	*fw3_state_ctx[MAXCPU];
