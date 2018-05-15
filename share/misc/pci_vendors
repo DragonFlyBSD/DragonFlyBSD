@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2018.04.06
-#	Date:    2018-04-06 03:15:02
+#	Version: 2018.04.28
+#	Date:    2018-04-28 03:15:02
 #
 #	Maintained by Albert Pool, Martin Mares, and other volunteers from
 #	the PCI ID Project at http://pci-ids.ucw.cz/.
@@ -767,7 +767,7 @@
 	15dd  Raven Ridge [Radeon Vega Series / Radeon Vega Mobile Series]
 		103c 83c6  Radeon Vega 8 Mobile
 		1458 d000  Radeon RX Vega 11
-	15ff  Vega [Radeon Vega 28 Mobile]
+	15ff  Vega 11 [Radeon Vega 28 Mobile]
 	1714  BeaverCreek HDMI Audio [Radeon HD 6500D and 6400G-6600G series]
 		103c 168b  ProBook 4535s
 	3150  RV380/M24 [Mobility Radeon X600]
@@ -1199,7 +1199,7 @@
 		13bd 1019  PC-AR10
 	4c50  Rage 3 LT [3D Rage LT PRO PCI]
 		1002 4c50  Rage LT Pro
-	4c52  Rage Mobility-M1 PCI
+	4c52  M1 [Rage Mobility-M1 PCI]
 		1033 8112  Versa Note VXi
 	4c54  264LT [Mach64 LT]
 	4c57  RV200/M7 [Mobility Radeon 7500]
@@ -1615,6 +1615,7 @@
 	6602  Mars
 	6603  Mars
 	6604  Opal XT [Radeon R7 M265/M365X/M465]
+		1025 0776  Aspire V5 Radeon R7 M265
 		103c 8006  FirePro M4170
 		103c 814f  Litho XT [Radeon R7 M365X]
 		103c 82aa  Litho XT [Radeon R7 M465]
@@ -2313,8 +2314,10 @@
 	67cc  Ellesmere [Polaris10]
 	67cf  Ellesmere [Polaris10]
 	67d0  Ellesmere [Radeon Pro V7300X / V7350x2]
-	67df  Ellesmere [Radeon RX 470/480/570/580]
+	67df  Ellesmere [Radeon RX 470/480/570/570X/580/580X]
 		1002 0b37  Radeon RX 480
+		1028 1722  Radeon RX 570X
+		1028 1723  Radeon RX 580X
 		1043 04a8  Radeon RX 480
 		1043 04b0  Radeon RX 470
 		1043 04fb  Radeon RX 480
@@ -2359,8 +2362,11 @@
 		106b 0179  Radeon Pro 560
 		1642 1727  Polaris 21 XL [Radeon RX 560D]
 		1682 956d  Polaris 21 XL [Radeon RX 560D]
-	67ff  Baffin [Radeon RX 550 640SP / RX 560]
+	67ff  Baffin [Radeon RX 550 640SP / RX 560/560X]
 		1002 0b04  Radeon RX 560
+		1028 1721  Radeon RX 560X
+		1028 1726  Radeon RX 560DX
+		103c 8479  Radeon RX 560X Mobile
 		1043 04bc  Radeon RX 560
 		1458 22ed  Radeon RX 560
 		148c 2381  Radeon RX 560
@@ -3103,7 +3109,8 @@
 	6986  Polaris12
 	6987  Lexa [Radeon E9171 MCM]
 	6995  Lexa XT [Radeon PRO WX 2100]
-	699f  Lexa PRO [Radeon RX 550]
+	699f  Lexa PRO [Radeon RX 550/550X]
+		1028 1720  Radeon RX 550X
 		148c 2380  Lexa XL [Radeon RX 550]
 		1da2 e367  Lexa PRO [Radeon RX 550]
 	700f  RS100 AGP Bridge
@@ -3540,7 +3547,7 @@
 		17aa 5113  Radeon R6 Graphics
 		17aa 5116  Radeon R6 Graphics
 		17aa 5118  Radeon R5 Graphics
-	98e4  Radeon R2 Graphics
+	98e4  Stoney [Radeon R2/R3/R4/R5 Graphics]
 	9900  Trinity [Radeon HD 7660G]
 		103c 1985  Pavilion 17-e163sg Notebook PC
 # AMD A10-5800K CPU
@@ -5352,6 +5359,7 @@
 	4030  zx2 System Bus Adapter
 	4031  zx2 I/O Controller
 	4037  PCIe Local Bus Adapter
+	9602  AMD RS780/RS880 PCI to PCI bridge (int gfx)
 103e  Solliday Engineering
 103f  Synopsys/Logic Modeling Group
 1040  Accelgraphics Inc.
@@ -11102,6 +11110,7 @@
 	1bb7  GP104GLM [Quadro P4000 Mobile]
 		1462 11e9  Quadro P4000 Max-Q
 	1bb8  GP104GLM [Quadro P3000 Mobile]
+	1bb9  GP104GLM [Quadro P4200 Mobile]
 	1bbb  GP104GLM [Quadro P3200 Mobile]
 	1bc7  GP104 [P104-101]
 	1be0  GP104M [GeForce GTX 1080 Mobile]
@@ -11140,6 +11149,9 @@
 	1cb2  GP107GL [Quadro P600]
 	1cb3  GP107GL [Quadro P400]
 	1cb6  GP107GL [Quadro P620]
+	1cba  GP107GLM [Quadro P2000 Mobile]
+	1cbb  GP107GLM [Quadro P1000 Mobile]
+	1cbc  GP107GLM [Quadro P600 Mobile]
 	1d01  GP108 [GeForce GT 1030]
 	1d10  GP108M [GeForce MX150]
 	1d12  GP108M [GeForce MX150]
@@ -12539,7 +12551,7 @@
 	0003  IDT77222/77252 155Mbps ATM MICRO ABR SAR Controller
 	0004  IDT77V252 155Mbps ATM MICRO ABR SAR Controller
 	0005  IDT77V222 155Mbps ATM MICRO ABR SAR Controller
-	8018  PES12N3A PCI Express Switch
+	8018  PES12N3A 12-lane 3-Port PCI Express Switch
 	801c  PES24N3A PCI Express Switch
 	8028  PES4T4 PCI Express Switch
 	802b  PES8T5A PCI Express Switch
@@ -12588,9 +12600,15 @@
 		1093 75ff  PXIe-8383mc DMA
 		1093 7600  PXIe-8383mc DMA
 		1093 7602  PXIe-8384
+# 32-lanes 24-ports Gen.2
+	808a  89HPES32NT24BG2 PCI Express Switch
+# 32-lanes 24-ports Gen.2
+	808c  89HPES32NT24AG2 PCI Express Switch
 	808e  PES24NT24G2 PCI Express Switch
 # 32 port / 8 lane PCIe Gen 2 packet switch
 	808f  PES32NT8AG2
+	8090  89HPES16NT16G2 16-Lane 16-Port PCIe Gen2 System Interconnect Switch
+	8092  89HPES12NT12G2 12-Lane 12-Port PCIe Gen2 System Interconnect Switch
 	80cf  F32P08xG3 [PCIe boot mode]
 	80d2  F32P08xG3 NVMe controller
 111e  Eldec
@@ -14418,7 +14436,6 @@
 	0001  Roadrunner serial HIPPI
 1210  Hyperparallel Technologies
 1211  Braintech Inc
-1212  Kingston Technology Corp.
 1213  Applied Intelligent Systems, Inc.
 1214  Performance Technologies, Inc.
 1215  Interware Co., Ltd
@@ -15056,6 +15073,7 @@
 	8872  IT887xF PCI to ISA I/O chip with SMB, GPIO, Serial or Parallel Port
 	8888  IT8888F/G PCI to ISA Bridge with SMB [Golden Gate]
 	8889  IT8889F PCI to ISA Bridge
+	8892  IT8892E PCIe to PCI Bridge
 	8893  IT8893E PCIe to PCI Bridge
 	e886  IT8330G
 1284  Sahara Networks, Inc.
@@ -17074,6 +17092,7 @@
 	a800  XP941 PCIe SSD
 	a802  NVMe SSD Controller SM951/PM951
 	a804  NVMe SSD Controller SM961/PM961
+	a808  NVMe SSD Controller SM981/PM981
 	a820  NVMe SSD Controller 171X
 		1028 1f95  Express Flash NVMe XS1715 SSD 400GB
 		1028 1f96  Express Flash NVMe XS1715 SSD 800GB
@@ -17780,6 +17799,7 @@
 	16d6  BCM57412 NetXtreme-E 10Gb RDMA Ethernet Controller
 	16d7  BCM57414 NetXtreme-E 10Gb/25Gb RDMA Ethernet Controller
 		14e4 1202  BCM957412M4122 OCP 1x25G Type1 wRoCE
+		14e4 1402  BCM957414A4142 10Gb/25Gb Ethernet PCIe
 		14e4 1404  BCM957414M4142 OCP 2x25G Type1 wRoCE
 		1590 020e  Ethernet 25Gb 2-port 631SFP28 Adapter
 		1590 0211  Ethernet 25Gb 2-port 631FLR-SFP28 Adapter
@@ -20451,6 +20471,7 @@
 	0b03  SFC9250 10/25/40/50/100G Ethernet Controller
 		1924 801d  x2522-R1 2000 Series 10/25G Adapter
 		1924 801e  x2542-R1 2000 Series 40/100G Adapter
+		1924 8022  x2522-R2 2000 Series 10/25G Adapter
 	1803  SFC9020 10G Ethernet Controller (Virtual Function)
 	1813  SFL9021 10GBASE-T Ethernet Controller (Virtual Function)
 	1903  SFC9120 10G Ethernet Controller (Virtual Function)
@@ -21474,7 +21495,7 @@
 2304  Colorgraphic Communications Corp.
 2348  Racore
 	2010  8142 100VG/AnyLAN
-2646  Kingston Technologies
+2646  Kingston Technology Company, Inc.
 270b  Xantel Corporation
 270f  Chaintech Computer Co. Ltd
 2711  AVID Technology Inc.
@@ -23236,7 +23257,7 @@
 	1057  PRO/100 VE Network Connection
 	1059  82551QM Ethernet Controller
 	105b  82546GB Gigabit Ethernet Controller (Copper)
-	105e  82571EB Gigabit Ethernet Controller
+	105e  82571EB/82571GB Gigabit Ethernet Controller D0/D1 (copper applications)
 		103c 7044  NC360T PCI Express Dual Port Gigabit Server Adapter
 		103c 704e  Dual Port 1000Base-T (PCIe) [AD337A]
 		1775 1100  CR11/VR11 Single Board Computer
@@ -23386,12 +23407,12 @@
 		8086 1093  PRO/1000 PT Desktop Adapter
 	10ba  80003ES2LAN Gigabit Ethernet Controller (Copper)
 	10bb  80003ES2LAN Gigabit Ethernet Controller (Serdes)
-	10bc  82571EB Gigabit Ethernet Controller (Copper)
+	10bc  82571EB/82571GB Gigabit Ethernet Controller (Copper)
 		1014 0368  4-Port 10/100/1000 Base-TX PCI Express Adapter for POWER
 		103c 704b  NC364T PCI Express Quad Port Gigabit Server Adapter
 		108e 11bc  x4 PCI-Express Quad Gigabit Ethernet UTP Low Profile Adapter
 		8086 10bc  PRO/1000 PT Quad Port LP Server Adapter
-		8086 11bc  PRO/1000 PT Quad Port LP Server Adapter
+		8086 11bc  PRO/1000 PT Quad Port LP Server Adapter (Kirkwood Low Profile)
 	10bd  82566DM-2 Gigabit Network Connection
 		1028 0211  OptiPlex 755
 	10bf  82567LF Gigabit Network Connection
@@ -29172,7 +29193,20 @@
 	a2ed  200 Series PCH PCI Express Root Port #23
 	a2ee  200 Series PCH PCI Express Root Port #24
 	a2f0  200 Series PCH HD Audio
+	a304  H370 Chipset LPC/eSPI Controller
+	a323  Cannon Lake PCH SMBus Controller
+	a324  Cannon Lake PCH SPI Controller
+	a32c  Cannon Lake PCH PCI Express Root Port 21
+	a330  Cannon Lake PCH PCI Express Root Port 9
+	a342  Cannon Lake PCH PCI Express Root Port 19
+	a343  Cannon Lake PCH PCI Express Root Port 20
+	a348  Cannon Lake PCH cAVS
+	a352  Cannon Lake PCH SATA AHCI Controller
+	a360  Cannon Lake PCH HECI Controller
+	a36d  Cannon Lake PCH USB 3.1 xHCI Host Controller
+	a36f  Cannon Lake PCH Shared SRAM
 	a370  Wireless-AC 9560 [Jefferson Peak]
+	a379  Cannon Lake PCH Thermal Controller
 	a620  6400/6402 Advanced Memory Buffer (AMB)
 	abc0  Omni-Path Fabric Switch Silicon 100 Series
 	b152  21152 PCI-to-PCI Bridge
@@ -29210,6 +29244,7 @@
 	d156  Core Processor Semaphore and Scratchpad Registers
 	d157  Core Processor System Control and Status Registers
 	d158  Core Processor Miscellaneous Registers
+	f1a6  SSD Pro 7600p/760p/E 6100p Series
 80ee  InnoTek Systemberatung GmbH
 	beef  VirtualBox Graphics Adapter
 	cafe  VirtualBox Guest Service
