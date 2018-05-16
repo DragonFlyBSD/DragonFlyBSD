@@ -93,6 +93,7 @@ SRCS+=	\
 	utmath.c \
 	utmisc.c \
 	utmutex.c \
+	utnonansi.c \
 	utobject.c \
 	utosi.c \
 	utownerid.c \

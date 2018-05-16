@@ -16,9 +16,11 @@ SRCS=	\
 	aeexception.c \
 	aehandlers.c \
 	aeinitfile.c \
+	aeinstall.c \
 	aemain.c \
 	aeregion.c \
-	aetables.c
+	aetables.c \
+	aetests.c
 
 SRCS+=	\
 	acfileio.c \
@@ -115,6 +117,7 @@ SRCS+=	\
 	hwpci.c \
 	hwregs.c \
 	hwsleep.c \
+	hwtimer.c \
 	hwvalid.c \
 	hwxface.c \
 	hwxfsleep.c \

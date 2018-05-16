@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2017, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -1257,6 +1257,15 @@ AcpiRemoveGpeHandler (
         Handler->OriginallyEnabled)
     {
         (void) AcpiEvAddGpeReference (GpeEventInfo);
+        if (ACPI_GPE_IS_POLLING_NEEDED (GpeEventInfo))
+        {
+            /* Poll edge triggered GPEs to handle existing events */
+
+            AcpiOsReleaseLock (AcpiGbl_GpeLock, Flags);
+            (void) AcpiEvDetectGpe (
+                GpeDevice, GpeEventInfo, GpeNumber);
+            Flags = AcpiOsAcquireLock (AcpiGbl_GpeLock);
+        }
     }
 
     AcpiOsReleaseLock (AcpiGbl_GpeLock, Flags);

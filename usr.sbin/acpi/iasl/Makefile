@@ -29,9 +29,11 @@ SRCS=	\
 	ahpredef.c \
 	ahtable.c \
 	ahuuids.c \
+	aslallocate.c \
 	aslanalyze.c \
 	aslascii.c \
 	aslbtypes.c \
+	aslcache.c \
 	aslcodegen.c \
 	aslcompile.c \
 	asldebug.c \
@@ -103,7 +105,13 @@ SRCS=	\
 	dmtable.c \
 	dmtables.c \
 	dmtbdump.c \
+	dmtbdump1.c \
+	dmtbdump2.c \
+	dmtbdump3.c \
 	dmtbinfo.c \
+	dmtbinfo1.c \
+	dmtbinfo2.c \
+	dmtbinfo3.c \
 	dmutils.c \
 	dmwalk.c \
 	dsargs.c \

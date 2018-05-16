@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2017, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -658,7 +658,6 @@ AcpiHwDisableAllGpes (
 
 
     Status = AcpiEvWalkGpeList (AcpiHwDisableGpeBlock, NULL);
-    Status = AcpiEvWalkGpeList (AcpiHwClearGpeBlock, NULL);
     return_ACPI_STATUS (Status);
 }
 

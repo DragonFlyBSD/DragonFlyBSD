@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2017, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -284,7 +284,7 @@ typedef enum
  * DescriptorType is used to differentiate between internal descriptors.
  *
  * The node is optimized for both 32-bit and 64-bit platforms:
- * 20 bytes for the 32-bit case, 32 bytes for the 64-bit case.
+ * 28 bytes for the 32-bit case, 48 bytes for the 64-bit case.
  *
  * Note: The DescriptorType and Type fields must appear in the identical
  * position in both the ACPI_NAMESPACE_NODE and ACPI_OPERAND_OBJECT
@@ -301,10 +301,12 @@ typedef struct acpi_namespace_node
     struct acpi_namespace_node      *Parent;        /* Parent node */
     struct acpi_namespace_node      *Child;         /* First child */
     struct acpi_namespace_node      *Peer;          /* First peer */
+    struct acpi_namespace_node      *OwnerList;     /* All nodes owned by a table or method */
 
-    /*
-     * The following fields are used by the ASL compiler and disassembler only
-     */
+/*
+ * The following fields are appended to the namespace node and
+ * are used by the ASL compiler and AML disassembler only
+ */
 #ifdef ACPI_LARGE_NAMESPACE_NODE
     union acpi_parse_object         *Op;
     void                            *MethodLocals;
@@ -312,7 +314,6 @@ typedef struct acpi_namespace_node
     UINT32                          Value;
     UINT32                          Length;
     UINT8                           ArgCount;
-
 #endif
 
 } ACPI_NAMESPACE_NODE;
@@ -834,7 +835,7 @@ typedef struct acpi_control_state
     union acpi_parse_object         *PredicateOp;
     UINT8                           *AmlPredicateStart;     /* Start of if/while predicate */
     UINT8                           *PackageEnd;            /* End of if/while block */
-    UINT32                          LoopCount;              /* While() loop counter */
+    UINT64                          LoopTimeout;            /* While() loop timeout */
 
 } ACPI_CONTROL_STATE;
 
@@ -1533,16 +1534,17 @@ typedef struct acpi_db_method_info
     ACPI_OBJECT_TYPE                *Types;
 
     /*
-     * Arguments to be passed to method for the command
-     * Threads -
-     *   the Number of threads, ID of current thread and
-     *   Index of current thread inside all them created.
+     * Arguments to be passed to method for the commands Threads and
+     * Background. Note, ACPI specifies a maximum of 7 arguments (0 - 6).
+     *
+     * For the Threads command, the Number of threads, ID of current
+     * thread and Index of current thread inside all them created.
      */
     char                            InitArgs;
 #ifdef ACPI_DEBUGGER
-    ACPI_OBJECT_TYPE                ArgTypes[4];
+    ACPI_OBJECT_TYPE                ArgTypes[ACPI_METHOD_NUM_ARGS];
 #endif
-    char                            *Arguments[4];
+    char                            *Arguments[ACPI_METHOD_NUM_ARGS];
     char                            NumThreadsStr[11];
     char                            IdOfThreadStr[11];
     char                            IndexOfThreadStr[11];

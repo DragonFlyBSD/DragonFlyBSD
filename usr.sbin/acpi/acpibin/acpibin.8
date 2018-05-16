@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd November 23, 2016
+.Dd May 11, 2018
 .Dt ACPIBIN 8
 .Os
 .Sh NAME
@@ -46,10 +46,6 @@ Compare two binary AML files, dump all mismatches.
 Compare two binary AML files, dump first 100 mismatches.
 .It Fl d Ar in Ar out
 Dump AML binary to text file.
-.It Fl e Ar sig Ar in ar out
-Extract binary AML table from
-.Xr acpidump 8
-file.
 .It Fl h Ar file
 Display table header for binary AML file.
 .It Fl o Ar value
@@ -60,6 +56,8 @@ Update checksum for binary AML file.
 Terse mode.
 .It Fl v
 Display version information.
+.It Fl vd
+Display build date and time.
 .El
 .Sh SEE ALSO
 .Xr acpi 4 ,

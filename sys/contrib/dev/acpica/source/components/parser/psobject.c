@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2017, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -182,7 +182,7 @@ static ACPI_STATUS
 AcpiPsGetAmlOpcode (
     ACPI_WALK_STATE         *WalkState)
 {
-    UINT32                  AmlOffset;
+    ACPI_ERROR_ONLY (UINT32 AmlOffset);
 
 
     ACPI_FUNCTION_TRACE_PTR (PsGetAmlOpcode, WalkState);
@@ -217,8 +217,8 @@ AcpiPsGetAmlOpcode (
 
         if (WalkState->PassNumber == 2)
         {
-            AmlOffset = (UINT32) ACPI_PTR_DIFF (WalkState->Aml,
-                WalkState->ParserState.AmlStart);
+            ACPI_ERROR_ONLY(AmlOffset = (UINT32) ACPI_PTR_DIFF (WalkState->Aml,
+                WalkState->ParserState.AmlStart));
 
             ACPI_ERROR ((AE_INFO,
                 "Unknown opcode 0x%.2X at table offset 0x%.4X, ignoring",
@@ -500,15 +500,10 @@ AcpiPsCreateOp (
              * external declaration opcode. Setting WalkState->Aml to
              * WalkState->ParserState.Aml + 2 moves increments the
              * WalkState->Aml past the object type and the paramcount of the
-             * external opcode. For the error message, only print the AML
-             * offset. We could attempt to print the name but this may cause
-             * a segmentation fault when printing the namepath because the
-             * AML may be incorrect.
+             * external opcode.
              */
-            AcpiOsPrintf (
-                "// Invalid external declaration at AML offset 0x%x.\n",
-                WalkState->Aml - WalkState->ParserState.AmlStart);
             WalkState->Aml = WalkState->ParserState.Aml + 2;
+            WalkState->ParserState.Aml = WalkState->Aml;
             return_ACPI_STATUS (AE_CTRL_PARSE_CONTINUE);
         }
 #endif

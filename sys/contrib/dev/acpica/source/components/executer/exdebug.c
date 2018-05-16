@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2017, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -204,15 +204,14 @@ AcpiExDoDebugObject (
         return_VOID;
     }
 
-    /* Null string or newline -- don't emit the line header */
+    /* Newline -- don't emit the line header */
 
     if (SourceDesc &&
         (ACPI_GET_DESCRIPTOR_TYPE (SourceDesc) == ACPI_DESC_TYPE_OPERAND) &&
         (SourceDesc->Common.Type == ACPI_TYPE_STRING))
     {
-        if ((SourceDesc->String.Length == 0) ||
-                ((SourceDesc->String.Length == 1) &&
-                (*SourceDesc->String.Pointer == '\n')))
+        if ((SourceDesc->String.Length == 1) &&
+            (*SourceDesc->String.Pointer == '\n'))
         {
             AcpiOsPrintf ("\n");
             return_VOID;

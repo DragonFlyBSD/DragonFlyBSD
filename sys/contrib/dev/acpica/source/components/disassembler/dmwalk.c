@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2017, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -529,7 +529,7 @@ AcpiDmDescendingOp (
 
     /* Determine which file this parse node is contained in. */
 
-    if (Gbl_CaptureComments)
+    if (AcpiGbl_CaptureComments)
     {
         ASL_CV_LABEL_FILENODE (Op);
 
@@ -1048,7 +1048,7 @@ AcpiDmAscendingOp (
 
     /* Point the Op's filename pointer to the proper file */
 
-    if (Gbl_CaptureComments)
+    if (AcpiGbl_CaptureComments)
     {
         ASL_CV_LABEL_FILENODE (Op);
 
@@ -1076,7 +1076,7 @@ AcpiDmAscendingOp (
 
         /* Print any comments that are at the end of the file here */
 
-        if (Gbl_CaptureComments && AcpiGbl_LastListHead)
+        if (AcpiGbl_CaptureComments && AcpiGbl_LastListHead)
         {
             AcpiOsPrintf ("\n");
             ASL_CV_PRINT_ONE_COMMENT_LIST (AcpiGbl_LastListHead, 0);

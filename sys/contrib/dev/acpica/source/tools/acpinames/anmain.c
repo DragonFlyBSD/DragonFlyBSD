@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2017, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -179,7 +179,7 @@ BOOLEAN                     AcpiGbl_NsLoadOnly = FALSE;
 
 
 #define AN_UTILITY_NAME             "ACPI Namespace Dump Utility"
-#define AN_SUPPORTED_OPTIONS        "?hlvx:"
+#define AN_SUPPORTED_OPTIONS        "?hlv^x:"
 
 
 /******************************************************************************
@@ -203,6 +203,7 @@ usage (
     ACPI_OPTION ("-?",                  "Display this message");
     ACPI_OPTION ("-l",                  "Load namespace only, no display");
     ACPI_OPTION ("-v",                  "Display version information");
+    ACPI_OPTION ("-vd",                 "Display build date and time");
     ACPI_OPTION ("-x <DebugLevel>",     "Debug output level");
 }
 
@@ -236,6 +237,11 @@ main (
     AcpiDbgLevel = ACPI_NORMAL_DEFAULT | ACPI_LV_TABLES;
     AcpiDbgLayer = 0xFFFFFFFF;
 
+    /* Set flags so that the interpreter is not used */
+
+    AcpiGbl_ExecuteTablesAsMethods = FALSE;
+    AcpiGbl_GroupModuleLevelCode = TRUE;
+
     Status = AcpiInitializeSubsystem ();
     ACPI_CHECK_OK (AcpiInitializeSubsystem, Status);
     if (ACPI_FAILURE (Status))
@@ -259,9 +265,25 @@ main (
         AcpiGbl_NsLoadOnly = TRUE;
         break;
 
-    case 'v': /* -v: (Version): signon already emitted, just exit */
+    case 'v':
 
-        return (0);
+        switch (AcpiGbl_Optarg[0])
+        {
+        case '^':  /* -v: (Version): signon already emitted, just exit */
+
+            exit (0);
+
+        case 'd':
+
+            printf (ACPI_COMMON_BUILD_TIME);
+            return (0);
+
+        default:
+
+            printf ("Unknown option: -v%s\n", AcpiGbl_Optarg);
+            return (-1);
+        }
+        break;
 
     case 'x':
 
@@ -344,9 +366,9 @@ AnDumpEntireNamespace (
         return (-1);
     }
 
-    /* Load the ACPI namespace */
+    /* Build the namespace from the tables */
 
-    Status = AcpiTbLoadNamespace ();
+    Status = AcpiLoadTables ();
     if (Status == AE_CTRL_TERMINATE)
     {
         /* At least one table load failed -- terminate with error */
@@ -368,32 +390,15 @@ AnDumpEntireNamespace (
     }
 
     /*
-     * Enable ACPICA. These calls don't do much for this
-     * utility, since we only dump the namespace. There is no
-     * hardware or event manager code underneath.
+     * NOTE:
+     * We don't need to do any further ACPICA initialization, since we don't
+     * have any hardware, nor is the interpreter configured.
+     *
+     * Namely, we don't need these calls:
+     *  AcpiEnableSubsystem
+     *  AcpiInitializeObjects
      */
-    Status = AcpiEnableSubsystem (
-        ACPI_NO_ACPI_ENABLE |
-        ACPI_NO_ADDRESS_SPACE_INIT |
-        ACPI_NO_EVENT_INIT |
-        ACPI_NO_HANDLER_INIT);
-    if (ACPI_FAILURE (Status))
-    {
-        printf ("**** Could not EnableSubsystem, %s\n",
-            AcpiFormatException (Status));
-        return (-1);
-    }
 
-    Status = AcpiInitializeObjects (
-        ACPI_NO_ADDRESS_SPACE_INIT |
-        ACPI_NO_DEVICE_INIT |
-        ACPI_NO_EVENT_INIT);
-    if (ACPI_FAILURE (Status))
-    {
-        printf ("**** Could not InitializeObjects, %s\n",
-            AcpiFormatException (Status));
-        return (-1);
-    }
 
     /*
      * Perform a namespace walk to dump the contents

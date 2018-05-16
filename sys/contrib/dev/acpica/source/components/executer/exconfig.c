@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2017, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -342,6 +342,11 @@ AcpiExLoadTableOp (
         return_ACPI_STATUS (Status);
     }
 
+    /* Complete the initialization/resolution of package objects */
+
+    Status = AcpiNsWalkNamespace (ACPI_TYPE_PACKAGE, ACPI_ROOT_OBJECT,
+        ACPI_UINT32_MAX, 0, AcpiNsInitOnePackage, NULL, NULL, NULL);
+
     /* Parameter Data (optional) */
 
     if (ParameterNode)
@@ -614,6 +619,11 @@ AcpiExLoadOp (
 
         return_ACPI_STATUS (Status);
     }
+
+    /* Complete the initialization/resolution of package objects */
+
+    Status = AcpiNsWalkNamespace (ACPI_TYPE_PACKAGE, ACPI_ROOT_OBJECT,
+        ACPI_UINT32_MAX, 0, AcpiNsInitOnePackage, NULL, NULL, NULL);
 
     /* Store the DdbHandle into the Target operand */
 

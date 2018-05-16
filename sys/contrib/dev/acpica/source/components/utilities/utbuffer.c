@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2017, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -205,7 +205,7 @@ AcpiUtDumpBuffer (
     {
         /* Print current offset */
 
-        AcpiOsPrintf ("%6.4X: ", (BaseOffset + i));
+        AcpiOsPrintf ("%8.4X: ", (BaseOffset + i));
 
         /* Print 16 hex chars */
 
@@ -387,7 +387,7 @@ AcpiUtDumpBufferToFile (
     {
         /* Print current offset */
 
-        fprintf (File, "%6.4X: ", (BaseOffset + i));
+        fprintf (File, "%8.4X: ", (BaseOffset + i));
 
         /* Print 16 hex chars */
 

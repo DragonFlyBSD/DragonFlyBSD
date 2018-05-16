@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2017, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -160,7 +160,7 @@ AbDisplayUsage (
 
 
 #define AB_UTILITY_NAME             "ACPI Binary Table Dump Utility"
-#define AB_SUPPORTED_OPTIONS        "a:c:d:h:o:s:tv"
+#define AB_SUPPORTED_OPTIONS        "a:c:d:h:o:s:tv^"
 
 
 /******************************************************************************
@@ -186,12 +186,12 @@ AbDisplayUsage (
     ACPI_OPTION ("-a <File1> <File2>",      "Compare two binary AML files, dump all mismatches");
     ACPI_OPTION ("-c <File1> <File2>",      "Compare two binary AML files, dump first 100 mismatches");
     ACPI_OPTION ("-d <In> <Out>",           "Dump AML binary to text file");
-    ACPI_OPTION ("-e <Sig> <In> <Out>",     "Extract binary AML table from acpidump file");
     ACPI_OPTION ("-o <Value>",              "Start comparison at this offset into second file");
     ACPI_OPTION ("-h <File>",               "Display table header for binary AML file");
     ACPI_OPTION ("-s <File>",               "Update checksum for binary AML file");
     ACPI_OPTION ("-t",                      "Terse mode");
     ACPI_OPTION ("-v",                      "Display version information");
+    ACPI_OPTION ("-vd",                     "Display build date and time");
 }
 
 
@@ -292,7 +292,23 @@ main (
 
     case 'v': /* -v: (Version): signon already emitted, just exit */
 
-        return (0);
+        switch (AcpiGbl_Optarg[0])
+        {
+        case '^':  /* -v: (Version): signon already emitted, just exit */
+
+            return (1);
+
+        case 'd':
+
+            printf (ACPI_COMMON_BUILD_TIME);
+            return (1);
+
+        default:
+
+            printf ("Unknown option: -v%s\n", AcpiGbl_Optarg);
+            return (-1);
+        }
+        break;
 
     default:
 

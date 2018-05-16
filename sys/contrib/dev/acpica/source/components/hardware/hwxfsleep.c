@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2017, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -337,7 +337,7 @@ AcpiEnterSleepStateS4bios (
     }
 
     /*
-     * 1) Disable/Clear all GPEs
+     * 1) Disable all GPEs
      * 2) Enable all wakeup GPEs
      */
     Status = AcpiHwDisableAllGpes ();

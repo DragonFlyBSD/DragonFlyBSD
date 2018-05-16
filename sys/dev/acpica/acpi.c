@@ -1971,25 +1971,20 @@ acpi_enable_fixed_events(struct acpi_softc *sc)
 BOOLEAN
 acpi_DeviceIsPresent(device_t dev)
 {
-    ACPI_DEVICE_INFO	*devinfo;
     ACPI_HANDLE		h;
-    int			ret;
+    UINT32		s;
+    ACPI_STATUS		status;
 
-    ret = FALSE;
-    if ((h = acpi_get_handle(dev)) == NULL ||
-	ACPI_FAILURE(AcpiGetObjectInfo(h, &devinfo)))
+    h = acpi_get_handle(dev);
+    if (h == NULL)
 	return (FALSE);
+    status = acpi_GetInteger(h, "_STA", &s);
 
     /* If no _STA method, must be present */
-    if ((devinfo->Valid & ACPI_VALID_STA) == 0)
-	ret = TRUE;
+    if (ACPI_FAILURE(status))
+	return (status == AE_NOT_FOUND ? TRUE : FALSE);
 
-    /* Return true for 'present' and 'functioning' */
-    if (ACPI_DEVICE_PRESENT(devinfo->CurrentStatus))
-	ret = TRUE;
-
-    AcpiOsFree(devinfo);
-    return (ret);
+    return (ACPI_DEVICE_PRESENT(s) ? TRUE : FALSE);
 }
 
 /*
@@ -1998,25 +1993,20 @@ acpi_DeviceIsPresent(device_t dev)
 BOOLEAN
 acpi_BatteryIsPresent(device_t dev)
 {
-    ACPI_DEVICE_INFO	*devinfo;
     ACPI_HANDLE		h;
-    int			ret;
+    UINT32		s;
+    ACPI_STATUS		status;
 
-    ret = FALSE;
-    if ((h = acpi_get_handle(dev)) == NULL ||
-	ACPI_FAILURE(AcpiGetObjectInfo(h, &devinfo)))
+    h = acpi_get_handle(dev);
+    if (h == NULL)
 	return (FALSE);
+    status = acpi_GetInteger(h, "_STA", &s);
 
     /* If no _STA method, must be present */
-    if ((devinfo->Valid & ACPI_VALID_STA) == 0)
-	ret = TRUE;
+    if (ACPI_FAILURE(status))
+	return (status == AE_NOT_FOUND ? TRUE : FALSE);
 
-    /* Return true for 'present', 'battery present', and 'functioning' */
-    if (ACPI_BATTERY_PRESENT(devinfo->CurrentStatus))
-	ret = TRUE;
-
-    AcpiOsFree(devinfo);
-    return (ret);
+    return (ACPI_BATTERY_PRESENT(s) ? TRUE : FALSE);
 }
 
 /*

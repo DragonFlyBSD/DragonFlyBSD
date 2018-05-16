@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2017, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -194,9 +194,10 @@ ACPI_STRING_TABLE           StandardDataTypes[] = {
  *
  ******************************************************************************/
 
+char                        EmptyHeader[] = "";
 char                        DualLicenseHeader[] =
 "/*\n"
-" * Copyright (C) 2000 - 2017, Intel Corp.\n"
+" * Copyright (C) 2000 - 2018, Intel Corp.\n"
 " * All rights reserved.\n"
 " *\n"
 " * Redistribution and use in source and binary forms, with or without\n"
@@ -663,12 +664,14 @@ ACPI_TYPED_IDENTIFIER_TABLE           AcpiIdentifiers[] = {
     {"ACPI_TABLE_MSDM",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_NFIT",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_PCCT",                     SRC_TYPE_STRUCT},
+    {"ACPI_TABLE_PDTT",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_PPTT",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_RSDP",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_RSDT",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_MCHI",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_S3PT",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_SBST",                     SRC_TYPE_STRUCT},
+    {"ACPI_TABLE_SDEV",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_SLIC",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_SLIT",                     SRC_TYPE_STRUCT},
     {"ACPI_TABLE_SPCR",                     SRC_TYPE_STRUCT},
@@ -791,6 +794,8 @@ ACPI_TYPED_IDENTIFIER_TABLE           AcpiIdentifiers[] = {
     {"ACPI_MPST_POWER_STATE",               SRC_TYPE_STRUCT},
     {"ACPI_MCFG_ALLOCATION",                SRC_TYPE_STRUCT},
     {"ACPI_MSCT_PROXIMITY",                 SRC_TYPE_STRUCT},
+    {"ACPI_NFIT_CAPABILITIES",              SRC_TYPE_STRUCT},
+    {"ACPI_NFIT_DEVICE_HANDLE",             SRC_TYPE_STRUCT},
     {"ACPI_NFIT_HEADER",                    SRC_TYPE_STRUCT},
     {"ACPI_NFIT_SYSTEM_ADDRESS",            SRC_TYPE_STRUCT},
     {"ACPI_NFIT_MEMORY_MAP",                SRC_TYPE_STRUCT},
@@ -806,13 +811,18 @@ ACPI_TYPED_IDENTIFIER_TABLE           AcpiIdentifiers[] = {
     {"ACPI_PCCT_EXT_PCC_SLAVE",             SRC_TYPE_STRUCT},
     {"ACPI_PCCT_SHARED_MEMORY",             SRC_TYPE_STRUCT},
     {"ACPI_PCCT_SUBSPACE",                  SRC_TYPE_STRUCT},
-    {"ACPI_PPTT_PROCESSOR",                 SRC_TYPE_STRUCT},
+    {"ACPI_PDTT_CHANNEL",                   SRC_TYPE_STRUCT},
     {"ACPI_PPTT_CACHE",                     SRC_TYPE_STRUCT},
     {"ACPI_PPTT_ID",                        SRC_TYPE_STRUCT},
+    {"ACPI_PPTT_PROCESSOR",                 SRC_TYPE_STRUCT},
     {"ACPI_RSDP_COMMON",                    SRC_TYPE_STRUCT},
     {"ACPI_RSDP_EXTENSION",                 SRC_TYPE_STRUCT},
     {"ACPI_S3PT_RESUME",                    SRC_TYPE_STRUCT},
     {"ACPI_S3PT_SUSPEND",                   SRC_TYPE_STRUCT},
+    {"ACPI_SDEV_HEADER",                    SRC_TYPE_STRUCT},
+    {"ACPI_SDEV_NAMESPACE",                 SRC_TYPE_STRUCT},
+    {"ACPI_SDEV_PCIE",                      SRC_TYPE_STRUCT},
+    {"ACPI_SDEV_PCIE_PATH",                 SRC_TYPE_STRUCT},
     {"ACPI_SRAT_CPU_AFFINITY",              SRC_TYPE_STRUCT},
     {"ACPI_SRAT_HEADER",                    SRC_TYPE_STRUCT},
     {"ACPI_SRAT_GIC_ITS_AFFINITY",          SRC_TYPE_STRUCT},
@@ -947,13 +957,14 @@ ACPI_IDENTIFIER_TABLE       LinuxSpecialMacros[] = {
 
 ACPI_CONVERSION_TABLE       LinuxConversionTable =
 {
-    DualLicenseHeader,
+    EmptyHeader,
     FLG_NO_CARRIAGE_RETURNS | FLG_LOWERCASE_DIRNAMES,
 
     AcpiIdentifiers,
 
     /* C source files */
 
+    "// SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0\n",
     LinuxDataTypes,
     LinuxEliminateLines_C,
     NULL,
@@ -968,6 +979,7 @@ ACPI_CONVERSION_TABLE       LinuxConversionTable =
 
     /* C header files */
 
+    "/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0 */\n",
     LinuxDataTypes,
     LinuxEliminateLines_H,
     LinuxConditionalIdentifiers,
@@ -1011,11 +1023,13 @@ ACPI_CONVERSION_TABLE       CleanupConversionTable =
     NULL,
     NULL,
     NULL,
+    NULL,
     (CVT_COUNT_TABS | CVT_COUNT_NON_ANSI_COMMENTS | CVT_COUNT_LINES |
      CVT_CHECK_BRACES | CVT_TRIM_LINES | CVT_TRIM_WHITESPACE),
 
     /* C header files */
 
+    NULL,
     NULL,
     NULL,
     NULL,
@@ -1051,11 +1065,13 @@ ACPI_CONVERSION_TABLE       StatsConversionTable =
     NULL,
     NULL,
     NULL,
+    NULL,
     (CVT_COUNT_TABS | CVT_COUNT_NON_ANSI_COMMENTS | CVT_COUNT_LINES |
      CVT_COUNT_SHORTMULTILINE_COMMENTS),
 
     /* C header files */
 
+    NULL,
     NULL,
     NULL,
     NULL,
@@ -1098,11 +1114,13 @@ ACPI_CONVERSION_TABLE       LicenseConversionTable =
     NULL,
     NULL,
     NULL,
+    NULL,
     (CVT_COUNT_TABS | CVT_COUNT_NON_ANSI_COMMENTS | CVT_COUNT_LINES |
      CVT_COUNT_SHORTMULTILINE_COMMENTS),
 
     /* C header files */
 
+    NULL,
     NULL,
     NULL,
     NULL,
@@ -1133,8 +1151,8 @@ ACPI_CONVERSION_TABLE       LicenseConversionTable =
 
 ACPI_STRING_TABLE           CustomReplacements[] =
 {
-    {"(c) 1999 - 2017",     "(c) 1999 - 2017",         REPLACE_WHOLE_WORD}, /* Main ACPICA source */
-    {"(c) 2006 - 2017",     "(c) 2006 - 2017",         REPLACE_WHOLE_WORD}, /* Test suites */
+    {"(c) 1999 - 2017",     "(c) 1999 - 2018",         REPLACE_WHOLE_WORD}, /* Main ACPICA source */
+    {"(c) 2006 - 2017",     "(c) 2006 - 2018",         REPLACE_WHOLE_WORD}, /* Test suites */
 
 #if 0
     {"SUPPORT, ASSISTANCE", "SUPPORT, ASSISTANCE",     REPLACE_WHOLE_WORD}, /* Fix intel header */
@@ -1193,6 +1211,7 @@ ACPI_CONVERSION_TABLE       CustomConversionTable =
 
     /* C source files */
 
+    NULL,
     CustomReplacements,
     LinuxEliminateLines_H,
     NULL,
@@ -1204,6 +1223,7 @@ ACPI_CONVERSION_TABLE       CustomConversionTable =
 
     /* C header files */
 
+    NULL,
     CustomReplacements,
     LinuxEliminateLines_H,
     NULL,
@@ -1240,6 +1260,7 @@ ACPI_CONVERSION_TABLE       IndentConversionTable =
 
     /* C source files */
 
+    NULL,
     LinuxSpecialStrings,
     NULL,
     NULL,
@@ -1251,6 +1272,7 @@ ACPI_CONVERSION_TABLE       IndentConversionTable =
 
     /* C header files */
 
+    NULL,
     LinuxSpecialStrings,
     NULL,
     NULL,

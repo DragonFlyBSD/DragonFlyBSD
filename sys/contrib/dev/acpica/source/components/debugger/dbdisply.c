@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2017, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -822,9 +822,8 @@ AcpiDbDisplayObjectType (
         return;
     }
 
-    AcpiOsPrintf ("ADR: %8.8X%8.8X, STA: %8.8X, Flags: %X\n",
-        ACPI_FORMAT_UINT64 (Info->Address),
-        Info->CurrentStatus, Info->Flags);
+    AcpiOsPrintf ("ADR: %8.8X%8.8X, Flags: %X\n",
+        ACPI_FORMAT_UINT64 (Info->Address), Info->Flags);
 
     AcpiOsPrintf ("S1D-%2.2X S2D-%2.2X S3D-%2.2X S4D-%2.2X\n",
         Info->HighestDstates[0], Info->HighestDstates[1],

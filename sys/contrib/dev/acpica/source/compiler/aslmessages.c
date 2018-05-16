@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2017, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -342,15 +342,21 @@ const char                      *AslCompilerMsgs [] =
 /*    ASL_MSG_RANGE */                      "Constant out of range",
 /*    ASL_MSG_BUFFER_ALLOCATION */          "Could not allocate line buffer",
 /*    ASL_MSG_MISSING_DEPENDENCY */         "Missing dependency",
-/*    ASL_MSG_ILLEGAL_FORWARD_REF */        "Illegal forward reference within a method",
-/*    ASL_MSG_ILLEGAL_METHOD_REF */         "Illegal reference across two methods",
+/*    ASL_MSG_ILLEGAL_FORWARD_REF */        "Illegal forward reference",
+/*    ASL_MSG_ILLEGAL_METHOD_REF */         "Object is declared in a different method",
 /*    ASL_MSG_LOCAL_NOT_USED */             "Method Local is set but never used",
 /*    ASL_MSG_ARG_AS_LOCAL_NOT_USED */      "Method Argument (as a local) is set but never used",
 /*    ASL_MSG_ARG_NOT_USED */               "Method Argument is never used",
 /*    ASL_MSG_CONSTANT_REQUIRED */          "Non-reducible expression",
 /*    ASL_MSG_CROSS_TABLE_SCOPE */          "Illegal open scope on external object from within DSDT",
 /*    ASL_MSG_EXCEPTION_NOT_RECEIVED */     "Expected remark, warning, or error did not occur. Message ID:",
-/*    ASL_MSG_NULL_RESOURCE_TEMPLATE */     "Empty Resource Template (END_TAG only)"
+/*    ASL_MSG_NULL_RESOURCE_TEMPLATE */     "Empty Resource Template (END_TAG only)",
+/*    ASL_MSG_FOUND_HERE */                 "Original name creation/declaration below: ",
+/*    ASL_MSG_ILLEGAL_RECURSION */          "Illegal recursive call to method that creates named objects",
+/*    ASL_MSG_EXTERN_COLLISION */           "A name cannot be defined and declared external in the same table",
+/*    ASL_MSG_FOUND_HERE_EXTERN */          "Remove one of the declarations indicated above or below:",
+/*    ASL_MSG_OEM_TABLE_ID */               "Invalid OEM Table ID",
+/*    ASL_MSG_OEM_ID */                     "Invalid OEM ID"
 };
 
 /* Table compiler */

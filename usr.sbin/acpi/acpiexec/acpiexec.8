@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd September 4, 2016
+.Dd May 11, 2018
 .Dt ACPIEXEC 8
 .Os
 .Sh NAME
@@ -45,10 +45,14 @@ The following options are supported:
 Batch mode command line execution (cmd1;cmd2;...).
 .It Fl da
 Disable method abort on error.
+.It Fl df
+Disable Local fault handler.
 .It Fl di
 Disable execution of STA/INI methods during init.
 .It Fl do
 Disable Operation Region address simulation.
+.It Fl dp
+Disable TermList parsing for scope objects.
 .It Fl dr
 Disable repair of method return values.
 .It Fl ds
@@ -64,9 +68,7 @@ Enable additional tests for ACPICA interfaces.
 .It Fl el
 Enable loading of additional test tables.
 .It Fl em
-Enable grouping of module-level code.
-.It Fl ep
-Enable TermList parsing for scope objects.
+Enable (legacy) grouping of module-level code.
 .It Fl es
 Enable Interpreter Slack Mode.
 .It Fl et
@@ -80,8 +82,6 @@ Display the help message.
 .It Fl \&?
 Alias for
 .Fl h .
-.It Fl i Ar count
-Set maximum iterations for AML while loops.
 .It Fl l
 Load tables and namespace only.
 .It Fl m Op Ar method
@@ -90,6 +90,10 @@ The default method is
 .Sy MAIN .
 .It Fl r
 Use hardware-reduced FADT V5.
+.It Fl te
+Exit loop on timeout instead of aborting method.
+.It Fl to Ar seconds
+Set timeout period for AML while loops.
 .It Fl v
 Display version information.
 .It Fl vd

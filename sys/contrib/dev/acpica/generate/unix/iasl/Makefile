@@ -51,9 +51,11 @@ OBJECTS = \
 	$(OBJDIR)/ahpredef.o\
 	$(OBJDIR)/ahtable.o\
 	$(OBJDIR)/ahuuids.o\
+	$(OBJDIR)/aslallocate.o\
 	$(OBJDIR)/aslanalyze.o\
 	$(OBJDIR)/aslascii.o\
 	$(OBJDIR)/aslbtypes.o\
+	$(OBJDIR)/aslcache.o\
 	$(OBJDIR)/aslcodegen.o\
 	$(OBJDIR)/aslcompile.o\
 	$(OBJDIR)/asldebug.o\
@@ -126,7 +128,13 @@ OBJECTS = \
 	$(OBJDIR)/dmtable.o\
 	$(OBJDIR)/dmtables.o\
 	$(OBJDIR)/dmtbdump.o\
+	$(OBJDIR)/dmtbdump1.o\
+	$(OBJDIR)/dmtbdump2.o\
+	$(OBJDIR)/dmtbdump3.o\
 	$(OBJDIR)/dmtbinfo.o\
+	$(OBJDIR)/dmtbinfo1.o\
+	$(OBJDIR)/dmtbinfo2.o\
+	$(OBJDIR)/dmtbinfo3.o\
 	$(OBJDIR)/dmutils.o\
 	$(OBJDIR)/dmwalk.o\
 	$(OBJDIR)/dsargs.o\

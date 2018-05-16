@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2017, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -567,21 +567,23 @@
  * the plist contains a set of parens to allow variable-length lists.
  * These macros are used for both the debug and non-debug versions of the code.
  */
-#define ACPI_ERROR_NAMESPACE(s, e)          AcpiUtNamespaceError (AE_INFO, s, e);
+#define ACPI_ERROR_NAMESPACE(s, p, e)       AcpiUtPrefixedNamespaceError (AE_INFO, s, p, e);
 #define ACPI_ERROR_METHOD(s, n, p, e)       AcpiUtMethodError (AE_INFO, s, n, p, e);
 #define ACPI_WARN_PREDEFINED(plist)         AcpiUtPredefinedWarning plist
 #define ACPI_INFO_PREDEFINED(plist)         AcpiUtPredefinedInfo plist
 #define ACPI_BIOS_ERROR_PREDEFINED(plist)   AcpiUtPredefinedBiosError plist
+#define ACPI_ERROR_ONLY(s)                  s
 
 #else
 
 /* No error messages */
 
-#define ACPI_ERROR_NAMESPACE(s, e)
+#define ACPI_ERROR_NAMESPACE(s, p, e)
 #define ACPI_ERROR_METHOD(s, n, p, e)
 #define ACPI_WARN_PREDEFINED(plist)
 #define ACPI_INFO_PREDEFINED(plist)
 #define ACPI_BIOS_ERROR_PREDEFINED(plist)
+#define ACPI_ERROR_ONLY(s)
 
 #endif /* ACPI_NO_ERROR_MESSAGES */
 

@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2017, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -176,10 +176,12 @@ DisplayUsage (
     ACPI_USAGE_HEADER ("acpixtract [option] <InputFile>");
 
     ACPI_OPTION ("-a",                  "Extract all tables, not just DSDT/SSDT");
+    ACPI_OPTION ("-f",                  "Force extraction, even if there are errors");
     ACPI_OPTION ("-l",                  "List table summaries, do not extract");
     ACPI_OPTION ("-m",                  "Extract multiple DSDT/SSDTs to a single file");
     ACPI_OPTION ("-s <signature>",      "Extract all tables with <signature>");
     ACPI_OPTION ("-v",                  "Display version information");
+    ACPI_OPTION ("-vd",                 "Display build date and time");
 
     ACPI_USAGE_TEXT ("\nExtract binary ACPI tables from text acpidump output\n");
     ACPI_USAGE_TEXT ("Default invocation extracts the DSDT and all SSDTs\n");
@@ -207,6 +209,7 @@ main (
 
     Gbl_TableCount = 0;
     Gbl_TableListHead = NULL;
+    Gbl_ForceExtraction = FALSE;
     AxAction = AX_EXTRACT_AML_TABLES; /* Default: DSDT & SSDTs */
 
     ACPI_DEBUG_INITIALIZE (); /* For debug version only */
@@ -228,6 +231,11 @@ main (
         AxAction = AX_EXTRACT_ALL;          /* Extract all tables found */
         break;
 
+    case 'f':
+
+        Gbl_ForceExtraction = TRUE;           /* Ignore errors */
+        break;
+
     case 'l':
 
         AxAction = AX_LIST_ALL;             /* List tables only, do not extract */
@@ -243,9 +251,25 @@ main (
         AxAction = AX_EXTRACT_SIGNATURE;    /* Extract only tables with this sig */
         break;
 
-    case 'v': /* -v: (Version): signon already emitted, just exit */
+    case 'v':
 
-        return (0);
+        switch (AcpiGbl_Optarg[0])
+        {
+        case '^':  /* -v: (Version): signon already emitted, just exit */
+
+            exit (0);
+
+        case 'd':
+
+            printf (ACPI_COMMON_BUILD_TIME);
+            return (0);
+
+        default:
+
+            printf ("Unknown option: -v%s\n", AcpiGbl_Optarg);
+            return (-1);
+        }
+        break;
 
     case 'h':
     default:
@@ -279,7 +303,7 @@ main (
 
     case AX_LIST_ALL:
 
-        Status = AxListTables (Filename);
+        Status = AxListAllTables (Filename);
         break;
 
     case AX_EXTRACT_SIGNATURE:

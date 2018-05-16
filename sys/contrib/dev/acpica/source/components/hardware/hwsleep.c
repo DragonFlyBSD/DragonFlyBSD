@@ -9,7 +9,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2017, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -198,16 +198,8 @@ AcpiHwLegacySleep (
         return_ACPI_STATUS (Status);
     }
 
-    /* Clear all fixed and general purpose status bits */
-
-    Status = AcpiHwClearAcpiStatus ();
-    if (ACPI_FAILURE (Status))
-    {
-        return_ACPI_STATUS (Status);
-    }
-
     /*
-     * 1) Disable/Clear all GPEs
+     * 1) Disable all GPEs
      * 2) Enable all wakeup GPEs
      */
     Status = AcpiHwDisableAllGpes ();
@@ -427,7 +419,7 @@ AcpiHwLegacyWake (
      * might get fired there
      *
      * Restore the GPEs:
-     * 1) Disable/Clear all GPEs
+     * 1) Disable all GPEs
      * 2) Enable all runtime GPEs
      */
     Status = AcpiHwDisableAllGpes ();

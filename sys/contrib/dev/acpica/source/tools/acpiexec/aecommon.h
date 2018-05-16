@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2017, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -189,7 +189,9 @@ typedef struct ae_debug_regions
 } AE_DEBUG_REGIONS;
 
 
+extern BOOLEAN              AcpiGbl_UseLocalFaultHandler;
 extern BOOLEAN              AcpiGbl_IgnoreErrors;
+extern BOOLEAN              AcpiGbl_AbortLoopOnTimeout;
 extern UINT8                AcpiGbl_RegionFillValue;
 extern UINT8                AcpiGbl_UseHwReducedFadt;
 extern BOOLEAN              AcpiGbl_DisplayRegionAccess;
@@ -197,6 +199,10 @@ extern BOOLEAN              AcpiGbl_DoInterfaceTests;
 extern BOOLEAN              AcpiGbl_LoadTestTables;
 extern FILE                 *AcpiGbl_NamespaceInitFile;
 extern ACPI_CONNECTION_INFO AeMyContext;
+
+extern UINT8                Ssdt2Code[];
+extern UINT8                Ssdt3Code[];
+extern UINT8                Ssdt4Code[];
 
 
 #define TEST_OUTPUT_LEVEL(lvl)          if ((lvl) & OutputLevel)
@@ -263,17 +269,13 @@ ACPI_STATUS
 AeDisplayAllMethods (
     UINT32                  DisplayCount);
 
-ACPI_STATUS
-AeInstallEarlyHandlers (
-    void);
-
-ACPI_STATUS
-AeInstallLateHandlers (
-    void);
+/* aetests */
 
 void
 AeMiscellaneousTests (
     void);
+
+/* aeregion */
 
 ACPI_STATUS
 AeRegionHandler (
@@ -283,6 +285,30 @@ AeRegionHandler (
     UINT64                  *Value,
     void                    *HandlerContext,
     void                    *RegionContext);
+
+/* aeinstall */
+
+ACPI_STATUS
+AeInstallDeviceHandlers (
+    void);
+
+void
+AeInstallRegionHandlers (
+    void);
+
+void
+AeOverrideRegionHandlers (
+    void);
+
+/* aehandlers */
+
+ACPI_STATUS
+AeInstallEarlyHandlers (
+    void);
+
+ACPI_STATUS
+AeInstallLateHandlers (
+    void);
 
 UINT32
 AeGpeHandler (
@@ -297,21 +323,6 @@ AeGlobalEventHandler (
     UINT32                  EventNumber,
     void                    *Context);
 
-/* aeregion */
-
-ACPI_STATUS
-AeInstallDeviceHandlers (
-    void);
-
-void
-AeInstallRegionHandlers (
-    void);
-
-void
-AeOverrideRegionHandlers (
-    void);
-
-
 /* aeinitfile */
 
 int
@@ -321,5 +332,41 @@ AeOpenInitializationFile (
 void
 AeDoObjectOverrides (
     void);
+
+ACPI_STATUS
+AeSetupConfiguration (
+    void                    *RegionAddr);
+
+/* aeexec */
+
+void
+AeTestBufferArgument (
+    void);
+
+void
+AeTestPackageArgument (
+    void);
+
+ACPI_STATUS
+AeGetDevices (
+    ACPI_HANDLE             ObjHandle,
+    UINT32                  NestingLevel,
+    void                    *Context,
+    void                    **ReturnValue);
+
+ACPI_STATUS
+ExecuteOSI (
+    char                    *OsiString,
+    UINT64                  ExpectedResult);
+
+void
+AeGenericRegisters (
+    void);
+
+#if (!ACPI_REDUCED_HARDWARE)
+void
+AfInstallGpeBlock (
+    void);
+#endif /* !ACPI_REDUCED_HARDWARE */
 
 #endif /* _AECOMMON */

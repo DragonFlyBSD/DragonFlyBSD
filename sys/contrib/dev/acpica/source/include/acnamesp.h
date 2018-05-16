@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2017, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -204,6 +204,12 @@ ACPI_STATUS
 AcpiNsInitializeDevices (
     UINT32                  Flags);
 
+ACPI_STATUS
+AcpiNsInitOnePackage (
+    ACPI_HANDLE             ObjHandle,
+    UINT32                  Level,
+    void                    *Context,
+    void                    **ReturnValue);
 
 /*
  * nsload -  Namespace loading
@@ -487,6 +493,11 @@ char *
 AcpiNsGetNormalizedPathname (
     ACPI_NAMESPACE_NODE     *Node,
     BOOLEAN                 NoTrailing);
+
+char *
+AcpiNsBuildPrefixedPathname (
+    ACPI_GENERIC_STATE      *PrefixScope,
+    const char              *InternalPath);
 
 char *
 AcpiNsNameOfCurrentScope (

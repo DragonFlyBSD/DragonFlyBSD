@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2017, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2018, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -314,7 +314,7 @@ FlGenerateFilename (
      * Copy the original filename to a new buffer. Leave room for the worst
      * case where we append the suffix, an added dot and the null terminator.
      */
-    NewFilename = UtStringCacheCalloc ((ACPI_SIZE)
+    NewFilename = UtLocalCacheCalloc ((ACPI_SIZE)
         strlen (InputFilename) + strlen (Suffix) + 2);
     strcpy (NewFilename, InputFilename);
 
@@ -358,7 +358,7 @@ FlStrdup (
     char                *NewString;
 
 
-    NewString = UtStringCacheCalloc ((ACPI_SIZE) strlen (String) + 1);
+    NewString = UtLocalCacheCalloc ((ACPI_SIZE) strlen (String) + 1);
     strcpy (NewString, String);
     return (NewString);
 }
@@ -453,4 +453,60 @@ FlSplitInputPathname (
     }
 
     return (AE_OK);
+}
+
+
+/*******************************************************************************
+ *
+ * FUNCTION:    FlGetFileBasename
+ *
+ * PARAMETERS:  FilePathname            - File path to be split
+ *
+ * RETURN:      The extracted base name of the file, in upper case
+ *
+ * DESCRIPTION: Extract the file base name (the file name with no extension)
+ *              from the input pathname.
+ *
+ *              Note: Any backslashes in the pathname should be previously
+ *              converted to forward slashes before calling this function.
+ *
+ ******************************************************************************/
+
+char *
+FlGetFileBasename (
+    char                    *FilePathname)
+{
+    char                    *FileBasename;
+    char                    *Substring;
+
+
+    /* Backup to last slash or colon */
+
+    Substring = strrchr (FilePathname, '/');
+    if (!Substring)
+    {
+        Substring = strrchr (FilePathname, ':');
+    }
+
+    /* Extract the full filename (base + extension) */
+
+    if (Substring)
+    {
+        FileBasename = FlStrdup (Substring + 1);
+    }
+    else
+    {
+        FileBasename = FlStrdup (FilePathname);
+    }
+
+    /* Remove the filename extension if present */
+
+    Substring = strchr (FileBasename, '.');
+    if (Substring)
+    {
+        *Substring = 0;
+    }
+
+    AcpiUtStrupr (FileBasename);
+    return (FileBasename);
 }
