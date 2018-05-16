@@ -79,6 +79,7 @@ MAN=	accept_filter.9 \
 	devtoname.9 \
 	driver.9 \
 	DRIVER_MODULE.9 \
+	errno.9 \
 	EVENTHANDLER.9 \
 	extattr.9 \
 	fetch.9 \
