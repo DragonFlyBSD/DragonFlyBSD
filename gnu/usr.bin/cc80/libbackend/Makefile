@@ -98,14 +98,12 @@ BACKEND_OBJS= \
 	explow.o \
 	expmed.o \
 	expr.o \
-	fibonacci_heap.o \
 	file-prefix-map.o \
 	final.o \
 	fixed-value.o \
 	fold-const.o \
 	fold-const-call.o \
 	function.o \
-	function-tests.o \
 	fwprop.o \
 	gcc-rich-location.o \
 	gcse.o \
@@ -143,8 +141,6 @@ BACKEND_OBJS= \
 	graphite.o \
 	gtype-desc.o \
 	haifa-sched.o \
-	hash-map-tests.o \
-	hash-set-tests.o \
 	hsa-common.o \
 	hsa-gen.o \
 	hsa-regalloc.o \
@@ -257,7 +253,6 @@ BACKEND_OBJS= \
 	resource.o \
 	rtl-chkp.o \
 	rtl-error.o \
-	rtl-tests.o \
 	rtl.o \
 	rtlhash.o \
 	rtlanal.o \
@@ -270,8 +265,6 @@ BACKEND_OBJS= \
 	sel-sched-ir.o \
 	sel-sched-dump.o \
 	sel-sched.o \
-	selftest-rtl.o \
-	selftest-run-tests.o \
 	sese.o \
 	shrink-wrap.o \
 	simplify-rtx.o \
@@ -388,7 +381,6 @@ BACKEND_OBJS= \
 	tree-vector-builder.o \
 	tree-vrp.o \
 	tree.o \
-	typed-splay-tree.o \
 	valtrack.o \
 	value-prof.o \
 	var-tracking.o \
@@ -401,6 +393,13 @@ BACKEND_OBJS= \
 	$(out_object_file) \
 	$(EXTRA_OBJS) \
 	$(host_hook_obj)
+
+.if ${CFLAGS:M-DTOOLCHAIN_CHECKING}
+BACKEND_OBJS+=	fibonacci_heap.o function-tests.o \
+		hash-map-tests.o hash-set-tests.o \
+		rtl-tests.o selftest-rtl.o \
+		selftest-run-tests.o typed-splay-tree.o
+.endif
 
 # only whwn HAVE_isl
 #BACKEND_OBJS+= \
@@ -420,8 +419,11 @@ BACKEND_OBJS= \
 	xcoffout.o
 
 OBJS=	${BACKEND_OBJS}
-SRCS=	gimple-loop-interchange.cc unique-ptr-tests.cc \
-	wide-int.cc wide-int-print.cc
+SRCS=	gimple-loop-interchange.cc wide-int.cc wide-int-print.cc
+
+.if ${CFLAGS:M-DTOOLCHAIN_CHECKING}
+SRCS+=	unique-ptr-tests.cc
+.endif
 
 # for gimple-ssa-sprintf.c
 .if ${CCVER:Mgcc47}

@@ -6,8 +6,11 @@ INTERNALLIB=	YES
 # verbatim from Makefile
 OBJS-libcommon= diagnostic.o diagnostic-color.o diagnostic-show-locus.o \
 	edit-context.o pretty-print.o intl.o sbitmap.o \
-	vec.o input.o version.o hash-table.o ggc-none.o \
-	selftest.o selftest-diagnostic.o
+	vec.o input.o version.o hash-table.o ggc-none.o
+
+.if ${CFLAGS:M-DTOOLCHAIN_CHECKING}
+OBJS-libcommon+=	selftest.o selftest-diagnostic.o
+.endif
 
 SRCS+=		memory-block.cc
 OBJS+=		${OBJS-libcommon}

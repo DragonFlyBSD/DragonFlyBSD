@@ -9,9 +9,13 @@ INTERNALLIB=	YES
 # Almost verbatim from Makefile
 OBJS-libcommon-target = $(common_out_object_file) prefix.o params.o \
 	opts.o opts-common.o options.o vec.o hooks.o common-targhooks.o \
-	hash-table.o file-find.o spellcheck.o selftest.o
+	hash-table.o file-find.o spellcheck.o
 
 common_out_object_file=	i386-common.o
+
+.if ${CFLAGS:M-DTOOLCHAIN_CHECKING}
+OBJS-libcommon-target+=	selftest.o
+.endif
 
 OBJS=		${OBJS-libcommon-target}
 CFLAGS+=	-DPREFIX=\"${TOOLS_PREFIX}/usr\"
