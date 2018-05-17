@@ -14,11 +14,13 @@ NOMAN=		yes
 ###CFLAGS+=	-static-libstdc++
 
 # verbatim from gcc/lto/Make-lang.in
-COLLECT_OBJS=	collect2.o collect2-aix.o tlink.o vec.o ggc-none.o \
+COLLECT_OBJS=	collect2.o tlink.o vec.o ggc-none.o \
 		collect-utils.o file-find.o hash-table.o
+# only when CROSS_AIX_SUPPORT
+#COLLECT_OBJS+=	collect2-aix.o
+
 OBJS=		${COLLECT_OBJS:T}
 SRCS=
-
 LIBS=		${LIBCOMMON} ${LIBCPP} ${LIBBACKTRACE} ${LIBIBERTY} \
 		${LIBDECNUMBER}
 LDADD=		${LIBS}
