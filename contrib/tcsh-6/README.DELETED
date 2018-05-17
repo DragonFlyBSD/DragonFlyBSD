@@ -121,6 +121,7 @@ imake.config
 install-sh
 m4/
 ma.setp.c
+mi.termios.c
 mi.varargs.h
 mi.wait.h
 nls/C/
