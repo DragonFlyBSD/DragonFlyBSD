@@ -7,14 +7,11 @@ TOPDIR=	${.CURDIR}/../../contrib/top
 CFLAGS+= -DHAVE_GETOPT -DHAVE_STRERROR -I${.CURDIR} -I${.OBJDIR} \
 		 -I${TOPDIR} -I. -DORDER
 
-.if ${MACHINE_ARCH} == "i386"
-CFLAGS+=-D_ENABLEX32
-.endif
 .if ${MACHINE_ARCH} == "x86_64"
 CFLAGS+=-D_ENABLEX64
 .endif
 
-SRCS=	commands.c getopt.c screen.c username.c version.c \
+SRCS=	commands.c screen.c username.c version.c \
 	color.c display.c hash.c m_dragonfly.c top.c utils.c
 
 DPADD=  ${LIBNCURSES} ${LIBM} ${LIBKVM} ${LIBKINFO}
