@@ -26,7 +26,6 @@ SRCS+=	app.c \
 	input-file.c \
 	input-scrub.c \
 	listing.c \
-	literal.c \
 	macro.c \
 	messages.c \
 	output-file.c \
@@ -37,6 +36,10 @@ SRCS+=	app.c \
 	subsegs.c \
 	symbols.c \
 	write.c
+
+# only when NEED_LITERAL_POOL
+#SRCS+=	literal.c
+
 LDADD=	${STD_LDADD} ${LDADD_OPCODE} -lz
 
 # We need to change CFLAGS, so that not to pick up bulibs's config.h first.
