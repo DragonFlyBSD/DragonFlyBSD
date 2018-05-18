@@ -24,7 +24,7 @@ LDFLAGS+=	-flto
 CFLAGS+=	-DIN_RTLD
 CFLAGS+=	-I${.CURDIR}/${MACHINE_ARCH} -I${.CURDIR} -D__thread=
 CFLAGS+=	-I${.CURDIR}/../../lib/csu/common
-LDFLAGS+=	-nostdlib -e .rtld_start -Wl,--no-undefined
+LDFLAGS+=	-nostdlib -Wl,-e.rtld_start,--no-undefined
 INSTALLFLAGS=	-C -b
 .ifndef NOFSCHG
 INSTALLFLAGS+=	-fschg
