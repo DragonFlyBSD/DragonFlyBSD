@@ -17,6 +17,8 @@
 #
 # MKDEP		Options for ${MKDEPCMD} [not set]
 #
+# MKDEPCC	CC to be used in ${MKDEPCMD} script [cc]
+#
 # MKDEPCMD	Makefile dependency list program [mkdep]
 #
 # MKDEPINTDEPS	Extra internal dependencies for intermediates [not set]
@@ -49,7 +51,15 @@ GTAGSFLAGS?=	-o
 HTAGSFLAGS?=
 
 MKDEPCMD?=	mkdep
+MKDEPCC?=	${CC}
 DEPENDFILE?=	.depend
+
+# Support better dependencies tracking for both host cc and target cc.
+.if defined(__USE_HOST_CCVER)
+_MKDEPENV=	${NXENV:NPATH=*}
+.else
+_MKDEPENV=	CCVER=${CCVER}
+.endif
 
 # Keep `tags' here, before SRCS are mangled below for `depend'.
 .if !target(tags) && defined(SRCS) && !defined(NOTAGS)
@@ -145,7 +155,7 @@ _ALL_DEPENDS=${__FLAGS_FILES:N*.[sS]:N*.c:N*.cc:N*.C:N*.cpp:N*.cpp:N*.cxx:N*.m}
 	-rm -f ${.TARGET}
 	-> ${.TARGET}
 .if ${${_FG}_FLAGS_FILES:M*.[csS]} != ""
-	${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
+	${_MKDEPENV} CC=${MKDEPCC} ${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
 	    ${${_FG}_FLAGS} \
 	    ${CFLAGS:M-nostdinc*} ${CFLAGS:M-[BID]*} \
 	    ${CFLAGS:M-std=*} \
@@ -155,7 +165,7 @@ _ALL_DEPENDS=${__FLAGS_FILES:N*.[sS]:N*.c:N*.cc:N*.C:N*.cpp:N*.cpp:N*.cxx:N*.m}
     ${${_FG}_FLAGS_FILES:M*.C} != "" || \
     ${${_FG}_FLAGS_FILES:M*.cpp} != "" || \
     ${${_FG}_FLAGS_FILES:M*.cxx} != ""
-	${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
+	${_MKDEPENV} CC=${CXX} ${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
 	    ${${_FG}_FLAGS} \
 	    ${CXXFLAGS:M-nostdinc*} ${CXXFLAGS:M-[BID]*} \
 	    ${CXXFLAGS:M-std=*} \
