@@ -28,6 +28,8 @@ SRCS=			 \
 
 backtrace.o:	unwind.h
 
+beforedepend:	unwind.h
+
 unwind.h: unwind-generic.h
 	cp ${.ALLSRC} ${.TARGET}
 
