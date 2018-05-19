@@ -3416,6 +3416,9 @@ TO_REMOVE+=/usr/share/skel/dot.rhosts
 TO_REMOVE+=/usr/include/net/ipfw3/ip_fw3_log.h
 TO_REMOVE+=/usr/include/net/ipfw3/ip_fw3_sync.h
 TO_REMOVE+=/usr/include/net/ipfw3/ip_fw3_table.h
+TO_REMOVE+=/usr/include/netinet6/esp_aesctr.h
+TO_REMOVE+=/usr/include/netinet6/esp_camellia.h
+TO_REMOVE+=/usr/include/netinet6/esp_rijndael.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
