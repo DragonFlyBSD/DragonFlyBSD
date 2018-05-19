@@ -344,7 +344,7 @@ echo "* Performing LVM operations"
 lvmops
 
 # Format the volumes
-echo "* Formating ${bootdisk} and LVs lv_root"
+echo "* Formatting ${bootdisk} and LVs lv_root"
 newfs /dev/${bootdisk}s1a >> ${logfile} 2>&1
 lvmexit $?
 

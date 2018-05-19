@@ -276,7 +276,7 @@ sleep 1
 mklabel ccd0 root
 
 # Format the volumes
-echo "* Formating ccd0"
+echo "* Formatting ccd0"
 newfs /dev/${bootdisk}s1a >> ${logfile} 2>&1
 ccdexit $?
 
