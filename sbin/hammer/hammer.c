@@ -36,7 +36,7 @@
 
 #include <fstab.h>
 
-static void hammer_parse_blkdevs(const char *blkdevs, int oflags);
+static __inline void hammer_parse_blkdevs(const char *blkdevs, int oflags);
 static void __hammer_parse_blkdevs(const char *blkdevs, int oflags,
 		int verify_volume, int verify_count);
 static void sigalrm(int signo);

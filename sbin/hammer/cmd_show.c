@@ -72,7 +72,7 @@ static hammer_crc_t get_buf_crc(hammer_btree_leaf_elm_t leaf,
 static void print_record(hammer_btree_elm_t elm);
 static int init_btree_search(const char *arg);
 static int test_btree_search(hammer_btree_elm_t elm);
-static int test_btree_match(hammer_btree_elm_t elm);
+static __inline int test_btree_match(hammer_btree_elm_t elm);
 static int test_btree_out_of_range(hammer_btree_elm_t elm);
 static void hexdump_record(const void *ptr, int length, const char *hdr);
 
