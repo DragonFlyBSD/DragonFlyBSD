@@ -4,6 +4,9 @@
 .if !target(__<cctools.Makefile.inc>__)
 __<cctools.Makefile.inc>__:
 
+# Hint HOST_CCVER handling.
+__USE_HOST_CCVER=
+
 TOP_PREFIX=	../
 
 GCC_NO_LIBS=	# yes

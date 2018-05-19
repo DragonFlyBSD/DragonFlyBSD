@@ -199,3 +199,4 @@ depend all: genfiles
 
 .include <bsd.obj.mk>
 .include <bsd.dep.mk>
+.include <bsd.sys.mk>
