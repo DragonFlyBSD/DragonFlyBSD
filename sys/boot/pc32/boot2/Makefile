@@ -106,7 +106,7 @@ boot1$s: boot1$s.out
 	objcopy -S -O binary boot1$s.out ${.TARGET}
 
 boot1$s.out: boot1$s.o bootasmdef.nx
-	${LD} ${LDFLAGS} -e start -Ttext ${ORG1} -o ${.TARGET} ${.ALLSRC:M*.o}
+	${LD} ${LDFLAGS:N-Wl,*} -e start -Ttext ${ORG1} -o ${.TARGET} ${.ALLSRC:M*.o}
 
 boot1$s.o: boot1.S
 	${CC} ${CFLAGS} ${_ADDCFLAGS$s} -DFLAGS=${B1FLAGS} \
@@ -143,7 +143,7 @@ boot2$s.bin: boot2$s.out
 	objcopy -S -O binary boot2$s.out ${.TARGET}
 
 boot2$s.out: boot2$s.o sio.o ${_ADDOBJS$s}
-	${LD} ${LDFLAGS} -Ttext ${ORG2} ${LINKSCRIPT} -o ${.TARGET} \
+	${LD} ${LDFLAGS:N-Wl,*} -Ttext ${ORG2} ${LINKSCRIPT} -o ${.TARGET} \
 		${BTX}/lib/crt0.o ${.ALLSRC}
 
 CLEANFILES+=	boot1$s boot1$s.out boot1$s.o \

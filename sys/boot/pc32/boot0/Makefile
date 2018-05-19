@@ -1,5 +1,4 @@
 # $FreeBSD: src/sys/boot/i386/boot0/Makefile,v 1.17 2002/09/17 01:48:54 peter Exp $
-# $DragonFly: src/sys/boot/pc32/boot0/Makefile,v 1.6 2008/07/06 17:17:01 mneumann Exp $
 
 PROG?=		boot0
 NOMAN=
@@ -61,7 +60,7 @@ CFLAGS+=-DFLAGS=${BOOT_BOOT0_FLAGS} \
 #
 ${PROG}: boot0.o bootasmdef.nx
 	@echo "boot0 origin set to `${.OBJDIR}/bootasmdef.nx BOOT0_ORIGIN`"
-	${LD} ${LDFLAGS} -N -e start -Ttext `${.OBJDIR}/bootasmdef.nx BOOT0_ORIGIN` -o boot0.out boot0.o
+	${LD} ${LDFLAGS:N-Wl,*} -N -e start -Ttext `${.OBJDIR}/bootasmdef.nx BOOT0_ORIGIN` -o boot0.out boot0.o
 	objcopy -S -O binary boot0.out ${.TARGET}
 
 boot0.o: boot0.S

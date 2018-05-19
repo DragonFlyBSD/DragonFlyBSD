@@ -20,7 +20,7 @@ CFLAGS+=	-DBTX_SERIAL -DSIOPRT=${BOOT_COMCONSOLE_PORT} \
 all: btx
 
 btx: btx.o
-	${LD} ${LDFLAGS} -N -e start \
+	${LD} ${LDFLAGS:N-Wl,*} -N -e start \
 	--script ${.CURDIR}/btx.ldscript -o btx.out btx.o
 	objcopy -S -O binary btx.out ${.TARGET}
 

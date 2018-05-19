@@ -10,7 +10,7 @@ CFLAGS+= -DBTXLDR_VERBOSE
 all: btxldr
 
 btxldr: btxldr.o
-	${LD} ${LDFLAGS} -N -e start -Ttext ${LOADER_ADDRESS} \
+	${LD} ${LDFLAGS:N-Wl,*} -N -e start -Ttext ${LOADER_ADDRESS} \
 	--script ${.CURDIR}/btxldr.ldscript -o btxldr.out btxldr.o
 	objcopy -S -O binary btxldr.out ${.TARGET}
 
