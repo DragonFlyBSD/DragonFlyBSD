@@ -241,7 +241,7 @@ load_kld (char *path, CORE_ADDR base_addr, int from_tty)
 	cleanup = make_cleanup_bfd_unref(bfd);
 
 	if (!bfd_check_format(bfd, bfd_object))
-		error("\%s\": not an object file", path);
+		error("\"%s\": not an object file", path);
 
 	/* Make sure we have a .text section. */
 	if (bfd_get_section_by_name (bfd, ".text") == NULL)
