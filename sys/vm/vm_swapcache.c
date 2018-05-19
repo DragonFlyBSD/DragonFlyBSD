@@ -696,6 +696,7 @@ vm_swapcache_cleaning(vm_object_t marker, struct vm_object_hash **swindexp)
 	int count;
 	int scount;
 	int n;
+	int didmove;
 
 	count = vm_swapcache_maxlaunder;
 	scount = vm_swapcache_maxscan;
@@ -705,6 +706,7 @@ vm_swapcache_cleaning(vm_object_t marker, struct vm_object_hash **swindexp)
 	 */
 	lwkt_gettoken(&(*swindexp)->token);
 
+	didmove = 0;
 outerloop:
 	while ((object = TAILQ_NEXT(marker, object_list)) != NULL) {
 		/*
@@ -713,6 +715,7 @@ outerloop:
 		 */
 		if (object->type == OBJT_MARKER) {
 			vm_swapcache_movemarker(marker, *swindexp, object);
+			didmove = 1;
 			continue;
 		}
 
@@ -741,6 +744,7 @@ outerloop:
 			vm_object_drop(object);
 			/* object may be invalid now */
 			vm_swapcache_movemarker(marker, *swindexp, object);
+			didmove = 1;
 			continue;
 		}
 
@@ -748,10 +752,11 @@ outerloop:
 		 * Reset the object pindex stored in the marker if the
 		 * working object has changed.
 		 */
-		if (marker->backing_object != object) {
+		if (marker->backing_object != object || didmove) {
 			marker->size = 0;
 			marker->backing_object_offset = 0;
 			marker->backing_object = object;
+			didmove = 0;
 		}
 
 		/*
@@ -788,6 +793,7 @@ outerloop:
 		if (n <= 0 ||
 		    marker->backing_object_offset > vm_swapcache_cleanperobj) {
 			vm_swapcache_movemarker(marker, *swindexp, object);
+			didmove = 1;
 		}
 
 		/*
