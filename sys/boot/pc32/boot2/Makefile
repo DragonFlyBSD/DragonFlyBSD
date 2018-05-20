@@ -124,7 +124,7 @@ boot2$s.o: boot2$s.s
 
 boot2$s.h: boot1$s.out bootasmdef.nx
 	@echo "NOTE: boot2 using xread from boot1 at ${REL1}"
-	${NM} -t d ${.ALLSRC} | awk '/([0-9])+ T xread/ \
+	${NM} -t d ${.ALLSRC:M*.out} | awk '/([0-9])+ T xread/ \
 	 	{ x = $$1 - ORG1; \
 		printf("#define XREADORG %#x\n", REL1 + x) }' \
 	 	ORG1=${ORG1D} REL1=${REL1D} > boot2$s.h
