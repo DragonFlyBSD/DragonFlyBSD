@@ -31,16 +31,16 @@ BTX=	${.CURDIR}/../btx
 
 # These origins are taken from bootasm.h.
 #
-REL1 = `${.OBJDIR}/bootasmdef.nx BOOT1_ORIGIN`
-REL1D = `${.OBJDIR}/bootasmdef.nx -d BOOT1_ORIGIN`
-ORG1 = `${.OBJDIR}/bootasmdef.nx MEM_BIOS_LADDR`
-ORG1D = `${.OBJDIR}/bootasmdef.nx -d MEM_BIOS_LADDR`
+REL1 = `${.OBJDIR}/../asmdef/bootasmdef.nx BOOT1_ORIGIN`
+REL1D = `${.OBJDIR}/../asmdef/bootasmdef.nx -d BOOT1_ORIGIN`
+ORG1 = `${.OBJDIR}/../asmdef/bootasmdef.nx MEM_BIOS_LADDR`
+ORG1D = `${.OBJDIR}/../asmdef/bootasmdef.nx -d MEM_BIOS_LADDR`
 
 # WARNING!  The ORG2 calculation is the origin of boot2.bin relative to
 # the start of the BTX *USER* address space, not the start of physical
 # memory.
 #
-ORG2=	`${.OBJDIR}/bootasmdef.nx BOOT2_VORIGIN`
+ORG2=	`${.OBJDIR}/../asmdef/bootasmdef.nx BOOT2_VORIGIN`
 
 WORLD_CCOPTLEVEL=	s	# -Os for size constraints in boot2_32
 CFLAGS=	-Os \
@@ -105,7 +105,7 @@ all: boot1$s boot2$s
 boot1$s: boot1$s.out
 	objcopy -S -O binary boot1$s.out ${.TARGET}
 
-boot1$s.out: boot1$s.o bootasmdef.nx
+boot1$s.out: boot1$s.o bootasm.h
 	${LD} ${LDFLAGS:N-Wl,*} -e start -Ttext ${ORG1} -o ${.TARGET} ${.ALLSRC:M*.o}
 
 boot1$s.o: boot1.S
@@ -122,7 +122,7 @@ boot2$s.s: boot2.c boot2$s.h ufsread.c hammer2.c scrc32.c
 boot2$s.o: boot2$s.s
 	${AS} ${AFLAGS} -o ${.TARGET} boot2$s.s
 
-boot2$s.h: boot1$s.out bootasmdef.nx
+boot2$s.h: boot1$s.out bootasm.h
 	@echo "NOTE: boot2 using xread from boot1 at ${REL1}"
 	${NM} -t d ${.ALLSRC:M*.out} | awk '/([0-9])+ T xread/ \
 	 	{ x = $$1 - ORG1; \
@@ -149,7 +149,6 @@ boot2$s.out: boot2$s.o sio.o ${_ADDOBJS$s}
 CLEANFILES+=	boot1$s boot1$s.out boot1$s.o \
 		boot2$s boot2$s.ldr boot2$s.bin \
 		boot2$s.ld boot2$s.out boot2$s.o boot2$s.h boot2$s.s \
-		bootasmdef.nx \
 		${_ADDOBJS$s}
 
 hammer2$s.o: hammer2.c

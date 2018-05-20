@@ -57,15 +57,16 @@ CFLAGS+=-DFLAGS=${BOOT_BOOT0_FLAGS} \
 
 # pull BOOT0_ORIGIN out of bootasm.h
 #
-#
-${PROG}: boot0.o bootasmdef.nx
-	@echo "boot0 origin set to `${.OBJDIR}/bootasmdef.nx BOOT0_ORIGIN`"
-	${LD} ${LDFLAGS:N-Wl,*} -N -e start -Ttext `${.OBJDIR}/bootasmdef.nx BOOT0_ORIGIN` -o boot0.out boot0.o
+REL0 = `${.OBJDIR}/../asmdef/bootasmdef.nx BOOT0_ORIGIN`
+
+${PROG}: boot0.o bootasm.h
+	@echo "NOTE: boot0 origin set to ${REL0}"
+	${LD} ${LDFLAGS:N-Wl,*} -N -e start -Ttext ${REL0} -o boot0.out boot0.o
 	objcopy -S -O binary boot0.out ${.TARGET}
 
 boot0.o: boot0.S
 	${CC} -c ${CFLAGS} ${ASSEMBLER_FLAGS} ${.IMPSRC} -o ${.TARGET}
 
-CLEANFILES+= boot0.out boot0.o bootasmdef.nx
+CLEANFILES+= boot0.out boot0.o
 
 .include <bsd.prog.mk>

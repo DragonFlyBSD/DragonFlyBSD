@@ -1,6 +1,6 @@
 # Common defines for all of /sys/boot/i386/
 
-.if !target(__pc32__)
+.if !target(__pc32__) && !defined(__no_pc32_defines)
 __pc32__:
 
 LOADER_ADDRESS?= 0x200000

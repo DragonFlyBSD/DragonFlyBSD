@@ -5,7 +5,7 @@
 .endif
 
 # must come before boot2
-SUBDIR=	btx
+SUBDIR=	asmdef btx
 
 SUBDIR+=boot0 boot0sio boot2 cdboot libi386 loader loader_tftp mbr
 
