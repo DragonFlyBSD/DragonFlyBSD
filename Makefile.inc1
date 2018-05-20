@@ -915,10 +915,6 @@ bstrap-${_tool}!
 # XXX we may be able to remove or consolidate this into bootstrap-tools
 # now that we have the native helper (.nx/.no) infrastructure.
 #
-.if exists(${.CURDIR}/share) && !defined(NO_SHARE)
-_share=	share/syscons/scrnmaps
-.endif
-
 # XXX we should separate this into new Makefile.inc2.
 # Just to prepare for reduction of ORDER: that slows down parallel crossworld.
 
@@ -951,7 +947,6 @@ _binutils= gnu/usr.bin/${WORLD_BINUTILSVER}
 BTOOLSDIRS+=	${${_atools}}
 .endfor
 BTOOLSDIRS+=	${_gcc50_tools}
-BTOOLSDIRS+=	${_share}
 
 build-tools: build-tools-targets
 	touch ${BTOOLSDEST}/.build_done
