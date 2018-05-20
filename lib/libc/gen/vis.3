@@ -103,7 +103,9 @@ thus, when
 encoding a set of characters into a buffer, the size of the buffer should
 be four times the number of bytes encoded, plus one for the trailing
 .Dv NUL .
-The flag parameter is used for altering the default range of
+The
+.Fa flag
+parameter is used for altering the default range of
 characters considered for encoding and for altering the visual
 representation.
 The additional character,
@@ -241,7 +243,7 @@ except space, tab, and newline are encoded (see
 .Xr isgraph 3 ) .
 The following flags
 alter this:
-.Bl -tag -width VIS_WHITEX
+.Bl -tag -width ".Dv VIS_HTTPSTYLE"
 .It Dv VIS_DQ
 Also encode double quotes
 .It Dv VIS_GLOB
@@ -325,7 +327,7 @@ or
 that uses
 .Ql = .
 These are the visual formats:
-.Bl -tag -width VIS_CSTYLE
+.Bl -tag -width ".Dv VIS_HTTPSTYLE"
 .It (default)
 Use an
 .Ql M
@@ -378,17 +380,25 @@ Represents Meta-space.
 Use C-style backslash sequences to represent standard non-printable
 characters.
 The following sequences are used to represent the indicated characters:
-.Bd -unfilled -offset indent
-.Li \ea Tn  \(em BEL No (007)
-.Li \eb Tn  \(em BS No (010)
-.Li \ef Tn  \(em NP No (014)
-.Li \en Tn  \(em NL No (012)
-.Li \er Tn  \(em CR No (015)
-.Li \es Tn  \(em SP No (040)
-.Li \et Tn  \(em HT No (011)
-.Li \ev Tn  \(em VT No (013)
-.Li \e0 Tn  \(em NUL No (000)
-.Ed
+.Pp
+.Bl -tag -width ".Li \e0" -offset indent -compact
+.It Li \ea
+.Dv BEL No (007)
+.It Li \eb
+.Dv BS No (010)
+.It Li \ef
+.Dv NP No (014)
+.It Li \en
+.Dv NL No (012)
+.It Li \er
+.Dv CR No (015)
+.It Li \et
+.Dv HT No (011)
+.It Li \ev
+.Dv VT No (013)
+.It Li \e0
+.Dv NUL No (000)
+.El
 .Pp
 When using this format, the
 .Fa nextc
