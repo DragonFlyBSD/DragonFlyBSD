@@ -1316,6 +1316,8 @@ kern_closefrom(int fd)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct filedesc *fdp;
+	int error;
+	int e2;
 
 	KKASSERT(p);
 	fdp = p->p_fd;
@@ -1325,22 +1327,29 @@ kern_closefrom(int fd)
 
 	/*
 	 * NOTE: This function will skip unassociated descriptors and
-	 * reserved descriptors that have not yet been assigned.  
-	 * fd_lastfile can change as a side effect of kern_close().
+	 *	 reserved descriptors that have not yet been assigned.
+	 *	 fd_lastfile can change as a side effect of kern_close().
+	 *
+	 * NOTE: We accumulate EINTR errors and return EINTR if any
+	 *	 close() returned EINTR.  However, the descriptor is
+	 *	 still closed and we do not break out of the loop.
 	 */
+	error = 0;
 	spin_lock(&fdp->fd_spin);
 	while (fd <= fdp->fd_lastfile) {
 		if (fdp->fd_files[fd].fp != NULL) {
 			spin_unlock(&fdp->fd_spin);
 			/* ok if this races another close */
-			if (kern_close(fd) == EINTR)
-				return (EINTR);
+			e2 = kern_close(fd);
+			if (e2 == EINTR)
+				error = EINTR;
 			spin_lock(&fdp->fd_spin);
 		}
 		++fd;
 	}
 	spin_unlock(&fdp->fd_spin);
-	return (0);
+
+	return error;
 }
 
 /*
