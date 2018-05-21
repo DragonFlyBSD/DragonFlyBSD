@@ -41,6 +41,7 @@ int QuietOpt;
 int NormalExit = 1;	/* if set to 0 main() has to pthread_exit() */
 int RecurseOpt;
 int ForceOpt;
+size_t MemOpt;
 
 static void usage(int code);
 
@@ -50,6 +51,7 @@ main(int ac, char **av)
 	const char *sel_path = NULL;
 	const char *uuid_str = NULL;
 	const char *arg;
+	char *opt;
 	int pfs_type = HAMMER2_PFSTYPE_NONE;
 	int all_opt = 0;
 	int ecode = 0;
@@ -62,7 +64,7 @@ main(int ac, char **av)
 	/*
 	 * Core options
 	 */
-	while ((ch = getopt(ac, av, "adfrqs:t:u:v")) != -1) {
+	while ((ch = getopt(ac, av, "adfm:rqs:t:u:v")) != -1) {
 		switch(ch) {
 		case 'a':
 			all_opt = 1;
@@ -74,6 +76,29 @@ main(int ac, char **av)
 			break;
 		case 'f':
 			ForceOpt = 1;
+			break;
+		case 'm':
+			MemOpt = strtoul(optarg, &opt, 0);
+			switch(*opt) {
+			case 'g':
+			case 'G':
+				MemOpt *= 1024;
+				/* FALLTHROUGH */
+			case 'm':
+			case 'M':
+				MemOpt *= 1024;
+				/* FALLTHROUGH */
+			case 'k':
+			case 'K':
+				MemOpt *= 1024;
+				break;
+			case 0:
+				break;
+			default:
+				fprintf(stderr, "-m: unrecognized suffix\n");
+				usage(1);
+				break;
+			}
 			break;
 		case 'r':
 			RecurseOpt = 1;
@@ -470,6 +495,7 @@ usage(int code)
 		"    -s path            Select filesystem\n"
 		"    -t type            PFS type for pfs-create\n"
 		"    -u uuid            uuid for pfs-create\n"
+		"    -m mem[k,m,g]	buffer memory (bulkfree)\n"
 		"\n"
 		"    cleanup [<path>...]          "
 			"Run cleanup passes\n"

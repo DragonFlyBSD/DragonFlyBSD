@@ -53,6 +53,9 @@ cmd_bulkfree(const char *sel_path)
 	if (bfi.size < 8192 * 1024)
 		bfi.size = 8192 * 1024;
 
+	if (MemOpt)
+		bfi.size = (MemOpt + 8192 * 1024 - 1) & ~(8192 * 1024 - 1L);
+
 	if ((fd = hammer2_ioctl_handle(sel_path)) < 0)
 		return 1;
 	res = ioctl(fd, HAMMER2IOC_BULKFREE_SCAN, &bfi);

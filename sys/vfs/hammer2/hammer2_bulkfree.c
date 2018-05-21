@@ -188,14 +188,18 @@ hammer2_bulk_scan(hammer2_chain_t *parent,
 			++info->count_chains_scanned;
 
 			if (info->count_chains_scanned >=
-			    info->count_chains_reported + 50000) {
+			    info->count_chains_reported + 1000000 ||
+			    (info->count_chains_scanned < 1000000 &&
+			     info->count_chains_scanned >=
+			     info->count_chains_reported + 100000)) {
 				kprintf(" chains %-7ld inodes %-7ld "
 					"dirents %-7ld bytes %5ldMB\n",
 					info->count_chains_scanned,
 					info->count_inodes_scanned,
 					info->count_dirents_scanned,
 					info->count_bytes_scanned / 1000000);
-				info->count_chains_reported += 50000;
+				info->count_chains_reported =
+					info->count_chains_scanned;
 			}
 		}
 
@@ -383,15 +387,19 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 	hammer2_dedup_clear(hmp);
 
 	/*
-	 * Setup for free pass
+	 * Setup for free pass.  Maximum buffer memory is 1/4 physical
+	 * memory.
 	 */
 	bzero(&cbinfo, sizeof(cbinfo));
 	size = (bfi->size + HAMMER2_FREEMAP_LEVELN_PSIZE - 1) &
 	       ~(size_t)(HAMMER2_FREEMAP_LEVELN_PSIZE - 1);
 	if (size < 1024 * 1024)
 		size = 1024 * 1024;
-	if (size > kmem_lim_size() * 1024 * 1024 / 16)
-		size = kmem_lim_size() * 1024 * 1024 / 16;
+	if (size > kmem_lim_size() * 1024 * 1024 / 4) {
+		size = kmem_lim_size() * 1024 * 1024 / 4;
+		kprintf("hammer2: Warning: capping bulkfree buffer at %jdM\n",
+			(intmax_t)size / (1024 * 1024));
+	}
 
 	cbinfo.hmp = hmp;
 	cbinfo.bmap = kmem_alloc_swapbacked(&cbinfo.kp, size, VM_SUBSYS_HAMMER);
@@ -444,11 +452,12 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 			cbinfo.sstop = hmp->voldata.volu_size;
 		else
 			cbinfo.sstop = cbinfo.sbase + incr;
-		if (hammer2_debug & 1) {
-			kprintf("bulkfree pass %016jx/%jdGB\n",
-				(intmax_t)cbinfo.sbase,
-				(intmax_t)incr / HAMMER2_FREEMAP_LEVEL1_SIZE);
-		}
+		kprintf("hammer2: bulkfree buf=%5jdM "
+			"pass %016jx-%016jx (%jdGB of media)\n",
+			(intmax_t)size / (1024 * 1024),
+			(intmax_t)cbinfo.sbase,
+			(intmax_t)cbinfo.sstop,
+			(intmax_t)incr / (1024L*1024*1024));
 
 		/*
 		 * Scan topology for stuff inside this range.

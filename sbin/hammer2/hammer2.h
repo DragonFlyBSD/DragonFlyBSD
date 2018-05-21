@@ -116,6 +116,7 @@ extern int RecurseOpt;
 extern int VerboseOpt;
 extern int QuietOpt;
 extern int NormalExit;
+extern size_t MemOpt;
 
 /*
  * Hammer2 command APIs

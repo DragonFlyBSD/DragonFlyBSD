@@ -386,6 +386,8 @@ hammer2_volconf_thread(void *info)
 {
 	hammer2_media_config_t *conf = info;
 
+	setproctitle("hammer2 volconf");
+
 	pthread_mutex_lock(&confmtx);
 	while ((conf->ctl & H2CONFCTL_STOP) == 0) {
 		if (conf->ctl & H2CONFCTL_UPDATE) {
@@ -500,6 +502,7 @@ udev_thread(void *data __unused)
 	int	seq = 0;
 
 	pthread_detach(pthread_self());
+	setproctitle("hammer2 udev_thread");
 
 	if ((fd = open(UDEV_DEVICE_PATH, O_RDWR)) < 0) {
 		fprintf(stderr, "udev_thread: unable to open \"%s\"\n",
@@ -537,6 +540,7 @@ autoconn_thread(void *data __unused)
 	lmod = 0;
 
 	pthread_detach(pthread_self());
+	setproctitle("hammer2 autoconn_thread");
 	for (;;) {
 		/*
 		 * Polling interval
@@ -699,6 +703,7 @@ autoconn_connect_thread(void *data)
 
 	ac = data;
 	pthread_detach(pthread_self());
+	setproctitle("hammer2 dmsg");
 
 	while (ac->stopme == 0) {
 		fd = dmsg_connect(ac->host);

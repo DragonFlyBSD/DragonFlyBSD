@@ -43,6 +43,7 @@
 .Op Fl s Ar path
 .Op Fl t Ar type
 .Op Fl u Ar uuid
+.Op Fl m Ar mem
 .Ar command
 .Op Ar argument ...
 .Sh DESCRIPTION
@@ -69,6 +70,13 @@ random uuid will be generated.
 Note that every PFS also has a unique pfs_id which is always generated
 and cannot be overridden with an option.
 The { pfs_clid, pfs_fsid } tuple uniquely identifies a component of a cluster.
+.It Fl m Ar mem
+Specify how much tracking memory to use for certain directives.
+At the moment, this option is only applicable to the
+.Cm bulkfree
+directive, allowing it to operate in fewer passes when given more memory.
+A nominal value for a 4TB drive with a ton of stuff on it would be around
+a gigabyte '-m 1g'.
 .El
 .Pp
 .Nm
@@ -343,6 +351,10 @@ Run a bulkfree pass on a HAMMER2 mount.
 You can specify any PFS for the mount, the bulkfree pass is run on the
 entire partition.
 Note that it takes two passes to actually free space.
+By default this directive will use up to 1/16 physical memory to track
+the freemap.  The amount of memory used may be overridden with the
+.Op Fl m Ar mem
+option.
 .El
 .Sh SYSCTLS
 .Bl -tag -width indent
