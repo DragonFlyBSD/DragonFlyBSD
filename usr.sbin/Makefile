@@ -155,7 +155,7 @@ SUBDIR+=nscd
 .endif
 
 .if ${MACHINE_ARCH} == "x86_64"
-SUBDIR+=btxld \
+SUBDIR+= \
 	kgmon \
 	lptcontrol \
 	mptable \

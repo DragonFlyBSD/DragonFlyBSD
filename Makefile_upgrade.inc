@@ -3419,6 +3419,8 @@ TO_REMOVE+=/usr/include/net/ipfw3/ip_fw3_table.h
 TO_REMOVE+=/usr/include/netinet6/esp_aesctr.h
 TO_REMOVE+=/usr/include/netinet6/esp_camellia.h
 TO_REMOVE+=/usr/include/netinet6/esp_rijndael.h
+TO_REMOVE+=/usr/sbin/btxld
+TO_REMOVE+=/usr/share/man/man8/btxld.8.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

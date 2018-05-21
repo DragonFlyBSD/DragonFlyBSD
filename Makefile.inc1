@@ -882,7 +882,7 @@ BSTRAPDIRS2= \
 	usr.bin/cmp usr.bin/xargs usr.bin/id usr.bin/env usr.bin/dirname \
 	usr.bin/tail usr.bin/unifdef \
 	usr.sbin/chown usr.sbin/mtree usr.sbin/config \
-	usr.sbin/btxld usr.sbin/zic usr.sbin/makewhatis \
+	usr.sbin/zic usr.sbin/makewhatis \
 	gnu/usr.bin/grep usr.bin/sort usr.bin/gzip \
 	usr.bin/mkcsmapper usr.bin/mkesdb usr.bin/crunch
 
@@ -976,12 +976,10 @@ btools-${_tool}!
 #
 # cross-tools: Build cross-building tools
 #
-.if ${TARGET_ARCH} == "i386" && ${MACHINE_ARCH} != "i386"
-_btxld=	usr.sbin/btxld
-.endif
 
-CTOOLSDIRS= ${_btxld} ${_binutils} \
-		usr.bin/objformat usr.bin/crunch/crunchide \
+CTOOLSDIRS= usr.bin/objformat usr.bin/crunch/crunchide
+
+CTOOLSDIRS+=	${_binutils} \
 		${_gcc_common_cross} \
 		${_altcompiler_cross} \
 		${_gcc50_cross} ${_custom_cross}

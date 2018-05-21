@@ -130,8 +130,8 @@ boot2$s.h: boot1$s.out bootasm.h
 	 	ORG1=${ORG1D} REL1=${REL1D} > boot2$s.h
 
 boot2$s: boot2$s.ldr boot2$s.bin ${BTX}/btx/btx
-	btxld -v -E ${ORG2} -f bin -b ${BTX}/btx/btx -l boot2$s.ldr \
-		-o boot2$s.ld -P 1 boot2$s.bin
+	${.OBJDIR}/../btxld/btxld.nx -v -E ${ORG2} -f bin -b ${BTX}/btx/btx \
+		-l boot2$s.ldr -o boot2$s.ld -P 1 boot2$s.bin
 	stat boot2$s.ld | awk '{ x = (${NSECT$s} - 1) * 512 - $$8; \
 		print x " bytes available"; if (x < 0) exit 1 }'
 	dd if=boot2$s.ld of=${.TARGET} obs=$$(( (${NSECT$s} - 1) * 512)) conv=osync 2>/dev/null

@@ -41,8 +41,8 @@ ${BOOT}: ${LDR} ${LOADER}
 	rm ${.TARGET}.tmp
 
 ${LOADER}: ${LOADERBIN} ${BTXLDR} ${BTXKERN} ${BTXCRT}
-	btxld -v -f aout -e ${LOADER_ADDRESS} -o ${.TARGET} -l ${BTXLDR} \
-	    -b ${BTXKERN} ${LOADERBIN}
+	${.OBJDIR}/../btxld/btxld.nx -v -f aout -e ${LOADER_ADDRESS} \
+	    -o ${.TARGET} -l ${BTXLDR} -b ${BTXKERN} ${LOADERBIN}
 
 ${LDR}: ${LDR}.o
 	${LD} ${LDFLAGS:N-Wl,*} -N -e start -Ttext ${ORG} -o ${LDR}.out ${LDR}.o

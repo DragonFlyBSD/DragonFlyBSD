@@ -85,8 +85,8 @@ vers.o: vers.c
 	${CC} ${CFLAGS} -c vers.c
 
 ${PROG}: ${PROG}.bin ${BTXLDR} ${BTXKERN} ${BTXCRT}
-	btxld -v -f aout -e ${LOADER_ADDRESS} -o ${.TARGET} -l ${BTXLDR} \
-		-b ${BTXKERN} ${PROG}.bin
+	${.OBJDIR}/../btxld/btxld.nx -v -f aout -e ${LOADER_ADDRESS} \
+	    -o ${.TARGET} -l ${BTXLDR} -b ${BTXKERN} ${PROG}.bin
 
 ${PROG}.bin: ${PROG}.sym
 	cp ${.ALLSRC} ${.TARGET}
