@@ -943,16 +943,20 @@ _altcompiler_tools+= _gcc80_tools
 _custom_cross= libexec/customcc
 _binutils= gnu/usr.bin/${WORLD_BINUTILSVER}
 
+# XXX obsolete
+.if 0
 .for _atools in ${_altcompiler_tools}
 BTOOLSDIRS+=	${${_atools}}
 .endfor
 BTOOLSDIRS+=	${_gcc50_tools}
+.endif
 
 build-tools: build-tools-targets
 	touch ${BTOOLSDEST}/.build_done
 
 build-tools-targets: ${BTOOLSDIRS:S/^/btools-/}
 
+.if 0
 .for _atools in ${_altcompiler_tools}
 .ORDER: ${${_atools}:C/^/btools-/}
 .endfor
@@ -967,6 +971,7 @@ btools-${_tool}!
 		make DIRPRFX=${_tool}/ all; \
 		make DIRPRFX=${_tool}/ DESTDIR=${BTOOLSDEST} install
 .endfor
+.endif
 
 #
 # cross-tools: Build cross-building tools
