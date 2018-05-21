@@ -6,8 +6,6 @@ SRCS+=	cmd_rsa.c cmd_stat.c cmd_setcomp.c cmd_setcheck.c
 SRCS+=	cmd_bulkfree.c cmd_cleanup.c cmd_info.c cmd_destroy.c
 SRCS+=	print_inode.c
 MAN=	hammer2.8
-#NOMAN=	TRUE
-DEBUG_FLAGS=-g
 
 CFLAGS+= -DXXH_NAMESPACE=h2_
 CFLAGS+= -I${.CURDIR}/../../sys
