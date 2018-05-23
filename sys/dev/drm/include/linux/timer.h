@@ -1,8 +1,8 @@
-/*-
+/*
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
- * Copyright (c) 2014,2015 François Tigeot
+ * Copyright (c) 2014-2018 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,21 +29,18 @@
 #ifndef _LINUX_TIMER_H_
 #define _LINUX_TIMER_H_
 
-#include <linux/types.h>
-
-#include <sys/param.h>
-#include <sys/kernel.h>
-#include <sys/callout.h>
-#include <sys/thread.h>
-
+#include <linux/list.h>
 #include <linux/ktime.h>
+#include <linux/stddef.h>
+#include <linux/stringify.h>
+
+#include <sys/callout.h>
 
 struct timer_list {
 	struct callout	timer_callout;
 	void		(*function)(unsigned long);
 	unsigned long	data;
 	unsigned long	expires;
-	struct lwkt_token timer_token;
 };
 
 static inline void
@@ -59,7 +56,6 @@ _timer_fn(void *context)
 do {									\
 	(timer)->function = (func);					\
 	(timer)->data = (dat);						\
-	lwkt_token_init(&(timer)->timer_token, "timer token");	\
 	callout_init_mp(&(timer)->timer_callout);			\
 } while (0)
 
@@ -69,35 +65,26 @@ do {									\
 do {									\
 	(timer)->function = NULL;					\
 	(timer)->data = 0;						\
-	lwkt_token_init(&(timer)->timer_token, "timer token");	\
 	callout_init_mp(&(timer)->timer_callout);			\
 } while (0)
 
 #define	mod_timer(timer, exp)						\
 do {									\
 	(timer)->expires = (exp);					\
-	lwkt_gettoken(&(timer)->timer_token);				\
 	callout_reset(&(timer)->timer_callout, (exp) - jiffies,		\
 	    _timer_fn, (timer));					\
-	lwkt_reltoken(&(timer)->timer_token);				\
 } while (0)
 
 #define mod_timer_pinned(timer, exp)	mod_timer(timer, exp)
 
 #define	add_timer(timer)						\
-	lwkt_gettoken(&(timer)->timer_token);				\
 	callout_reset(&(timer)->timer_callout,				\
 	    (timer)->expires - jiffies, _timer_fn, (timer));		\
-	lwkt_reltoken(&(timer)->timer_token);
 
 static inline void
 del_timer(struct timer_list *timer)
 {
-	lwkt_gettoken(&(timer)->timer_token);
 	callout_stop(&(timer)->timer_callout);
-	lwkt_reltoken(&(timer)->timer_token);
-
-	lwkt_token_uninit(&(timer)->timer_token);
 }
 
 static inline int
