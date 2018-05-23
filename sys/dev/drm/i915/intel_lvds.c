@@ -403,6 +403,7 @@ static int intel_lvds_get_modes(struct drm_connector *connector)
 	return 1;
 }
 
+#if 0 /* unused */
 static int intel_no_modeset_on_lid_dmi_callback(const struct dmi_system_id *id)
 {
 	DRM_INFO("Skipping forced modeset for %s\n", id->ident);
@@ -422,6 +423,7 @@ static const struct dmi_system_id intel_no_modeset_on_lid[] = {
 
 	{ }	/* terminating entry */
 };
+#endif
 
 #if 0
 /*

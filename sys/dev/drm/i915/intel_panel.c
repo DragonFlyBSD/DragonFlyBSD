@@ -1107,6 +1107,7 @@ void intel_panel_enable_backlight(struct intel_connector *connector)
 }
 
 #if IS_ENABLED(CONFIG_BACKLIGHT_CLASS_DEVICE)
+#if 0 /* unused */
 static int intel_backlight_device_update_status(struct backlight_device *bd)
 {
 #if 0
@@ -1168,6 +1169,7 @@ static const struct backlight_ops intel_backlight_device_ops = {
 	.update_status = intel_backlight_device_update_status,
 	.get_brightness = intel_backlight_device_get_brightness,
 };
+#endif
 
 static int intel_backlight_device_register(struct intel_connector *connector)
 {

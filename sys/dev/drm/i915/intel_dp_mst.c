@@ -417,6 +417,7 @@ static const struct drm_connector_helper_funcs intel_dp_mst_connector_helper_fun
 };
 #endif
 
+#if 0 /* unused */
 static void intel_dp_mst_encoder_destroy(struct drm_encoder *encoder)
 {
 	struct intel_dp_mst_encoder *intel_mst = enc_to_mst(encoder);
@@ -428,6 +429,7 @@ static void intel_dp_mst_encoder_destroy(struct drm_encoder *encoder)
 static const struct drm_encoder_funcs intel_dp_mst_enc_funcs = {
 	.destroy = intel_dp_mst_encoder_destroy,
 };
+#endif
 
 #if 0
 static bool intel_dp_mst_get_hw_state(struct intel_connector *connector)

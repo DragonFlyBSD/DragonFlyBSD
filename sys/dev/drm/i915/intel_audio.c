@@ -580,6 +580,7 @@ void intel_init_audio_hooks(struct drm_i915_private *dev_priv)
 	}
 }
 
+#if 0 /* unused */
 static void i915_audio_component_get_power(struct device *dev)
 {
 	intel_display_power_get(dev_to_i915(dev), POWER_DOMAIN_AUDIO);
@@ -739,7 +740,9 @@ static int i915_audio_component_get_eld(struct device *dev, int port,
 	mutex_unlock(&dev_priv->av_mutex);
 	return ret;
 }
+#endif
 
+#if 0 /* unused */
 static const struct i915_audio_component_ops i915_audio_component_ops = {
 	.owner		= THIS_MODULE,
 	.get_power	= i915_audio_component_get_power,
@@ -750,7 +753,6 @@ static const struct i915_audio_component_ops i915_audio_component_ops = {
 	.get_eld	= i915_audio_component_get_eld,
 };
 
-#if 0
 static int i915_audio_component_bind(struct device *i915_dev,
 				     struct device *hda_dev, void *data)
 {
