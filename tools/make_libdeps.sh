@@ -26,7 +26,7 @@
 #
 # $FreeBSD: src/tools/make_libdeps.sh,v 1.2.2.1 2002/07/23 12:12:30 ru Exp $
 
-export PATH=/sbin:/bin:/usr/bin
+export PATH=/sbin:/usr/bin
 
 set -e
 
@@ -71,7 +71,7 @@ genlibdepends()
 			libdir=$(dirname ${makefile})
 			deps=$(
 				cd ${libdir}
-				make -V LDADD
+				make -m ${USRSRC}/share/mk -V LDADD
 			)
 			if [ "${deps}" ]; then
 				echo ${libdir}"${FS}"$(
