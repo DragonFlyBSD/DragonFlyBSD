@@ -25,7 +25,6 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/tools/make_libdeps.sh,v 1.2.2.1 2002/07/23 12:12:30 ru Exp $
-# $DragonFly: src/tools/make_libdeps.sh,v 1.4 2005/05/07 17:38:34 swildner Exp $
 
 export PATH=/usr/bin
 
@@ -35,9 +34,7 @@ USRSRC=${1:-/usr/src}		# source root
 LIBS="
 	lib
 	gnu/lib
-	gnu/usr.bin/perl/libperl
-	kerberos5/lib
-	usr.bin/lex/lib
+	usr.bin/flex/lib
 "				# where to scan for libraries
 
 # This sed(1) filter is used to convert -lfoo to path/to/libfoo.
@@ -46,8 +43,6 @@ SED_FILTER="
 sed -E
     -e's; ;! ;g'
     -e's;$;!;'
-    -e's;-lm!;lib/msun;g'
-    -e's;-l(asn1|gssapi|krb5|roken)!;kerberos5/lib/lib\1;g'
     -e's;-l([^!]+)!;lib/lib\1;g'
 "
 
