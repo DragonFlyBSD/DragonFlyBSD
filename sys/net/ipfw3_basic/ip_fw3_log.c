@@ -44,7 +44,6 @@
 #include <sys/syslog.h>
 #include <sys/ucred.h>
 #include <sys/lock.h>
-#include <sys/lock.h>
 #include <net/ethernet.h>	/* for ETHERTYPE_IP */
 #include <net/if.h>
 #include <net/if_var.h>
