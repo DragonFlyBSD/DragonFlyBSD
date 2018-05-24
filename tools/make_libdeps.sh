@@ -44,6 +44,16 @@ LIBS="
 #
 SED_FILTER="
 sed -E
+    -e's;-Wl,[^ ]+[ ]?;;g'
+    -e's;-lprivate_crypto;-lrecrypto;g'
+    -e's;-lprivate_ncurses;-lncurses;g'
+    -e's;-lprivate_ssh;-lssh;g'
+    -e's;-lprivate_ssl;-lressl;g'
+    -e's;-pthread;-lthread_xu;g'
+    -e's;/[^ ]+/libpthread\.so;-lpthread;g'
+    -e's;/[^ ]+/libelf_pic.a;-lelf;g'
+    -e's;\.\./components/[^ ]+/lib[a-z0-9]+_pic\.a[ ]?;;g'
+    -e's;[ ]$;;g'
     -e's; ;! ;g'
     -e's;$;!;'
     -e's;-l([^!]+)!;lib/lib\1;g'
