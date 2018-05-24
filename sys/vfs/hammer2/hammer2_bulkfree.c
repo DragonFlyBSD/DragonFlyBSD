@@ -512,7 +512,7 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 		 * Cleanup for next loop.
 		 */
 #ifdef HAMMER2_BULKFREE_TRANS
-		hammer2_trans_done(hmp->spmp);
+		hammer2_trans_done(hmp->spmp, 0);
 #endif
 		if (error)
 			break;

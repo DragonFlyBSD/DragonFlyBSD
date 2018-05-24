@@ -253,7 +253,7 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	if (error2)
 		error1 = error2;
 	hammer2_inode_unlock(ip);
-	hammer2_trans_done(ip->pmp);
+	hammer2_trans_done(ip->pmp, 0);
 
 	return (error1);
 }
@@ -497,7 +497,7 @@ done:
 	 * Cleanup.
 	 */
 	hammer2_inode_unlock(ip);
-	hammer2_trans_done(ip->pmp);
+	hammer2_trans_done(ip->pmp, 1);
 	hammer2_knote(ip->vp, kflags);
 
 	return (error);
@@ -806,7 +806,7 @@ hammer2_vop_write(struct vop_write_args *ap)
 	else
 		hammer2_trans_init(ip->pmp, 0);
 	error = hammer2_write_file(ip, uio, ioflag, seqcount);
-	hammer2_trans_done(ip->pmp);
+	hammer2_trans_done(ip->pmp, 1);
 
 	return (error);
 }
@@ -1409,7 +1409,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 		hammer2_inode_unlock(dip);
 	}
 
-	hammer2_trans_done(dip->pmp);
+	hammer2_trans_done(dip->pmp, 1);
 
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
@@ -1532,7 +1532,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	hammer2_inode_unlock(ip);
 	hammer2_inode_unlock(tdip);
 
-	hammer2_trans_done(ip->pmp);
+	hammer2_trans_done(ip->pmp, 1);
 	hammer2_knote(ap->a_vp, NOTE_LINK);
 	hammer2_knote(ap->a_dvp, NOTE_WRITE);
 
@@ -1612,7 +1612,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 		hammer2_inode_unlock(dip);
 	}
 
-	hammer2_trans_done(dip->pmp);
+	hammer2_trans_done(dip->pmp, 1);
 
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
@@ -1686,7 +1686,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 		hammer2_inode_unlock(dip);
 	}
 
-	hammer2_trans_done(dip->pmp);
+	hammer2_trans_done(dip->pmp, 1);
 
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
@@ -1746,7 +1746,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 			nip = NULL;
 		}
 		*ap->a_vpp = NULL;
-		hammer2_trans_done(dip->pmp);
+		hammer2_trans_done(dip->pmp, 1);
 		return error;
 	}
 	*ap->a_vpp = hammer2_igetv(nip, &error);
@@ -1792,7 +1792,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 		hammer2_inode_unlock(dip);
 	}
 
-	hammer2_trans_done(dip->pmp);
+	hammer2_trans_done(dip->pmp, 1);
 
 	/*
 	 * Finalize namecache
@@ -1888,8 +1888,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 		hammer2_inode_unlock(dip);
 	}
 
-	hammer2_inode_run_sideq(dip->pmp, 0);
-	hammer2_trans_done(dip->pmp);
+	hammer2_trans_done(dip->pmp, 1);
 	if (error == 0) {
 		cache_unlink(ap->a_nch);
 		hammer2_knote(ap->a_dvp, NOTE_WRITE);
@@ -1966,8 +1965,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 		hammer2_inode_unlock(dip);
 	}
 
-	hammer2_inode_run_sideq(dip->pmp, 0);
-	hammer2_trans_done(dip->pmp);
+	hammer2_trans_done(dip->pmp, 1);
 	if (error == 0) {
 		cache_unlink(ap->a_nch);
 		hammer2_knote(ap->a_dvp, NOTE_WRITE | NOTE_LINK);
@@ -2235,9 +2233,7 @@ done2:
 	hammer2_inode_unlock(tdip);
 	hammer2_inode_unlock(fdip);
 	hammer2_inode_drop(ip);
-	hammer2_inode_run_sideq(fdip->pmp, 0);
-
-	hammer2_trans_done(tdip->pmp);
+	hammer2_trans_done(tdip->pmp, 1);
 
 	/*
 	 * Issue the namecache update after unlocking all the internal

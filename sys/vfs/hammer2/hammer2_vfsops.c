@@ -729,7 +729,7 @@ again:
 		hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH);
 		hammer2_inode_run_sideq(pmp, 1);
 		hammer2_bioq_sync(pmp);
-		hammer2_trans_done(pmp);
+		hammer2_trans_done(pmp, 0);
 
 		/*
 		 * Determine if this PFS is affected.  If it is we must
@@ -2148,7 +2148,7 @@ hammer2_recovery(hammer2_dev_t *hmp)
 		hammer2_chain_drop(parent);	/* drop elm->chain ref */
 	}
 
-	hammer2_trans_done(hmp->spmp);
+	hammer2_trans_done(hmp->spmp, 0);
 
 	return error;
 }
@@ -2351,7 +2351,7 @@ hammer2_fixup_pfses(hammer2_dev_t *hmp)
 			}
 			hammer2_flush(chain, HAMMER2_FLUSH_TOP |
 					     HAMMER2_FLUSH_ALL);
-			hammer2_trans_done(hmp->spmp);
+			hammer2_trans_done(hmp->spmp, 0);
 		}
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next, HAMMER2_KEY_MAX,
@@ -2435,7 +2435,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 * as the vnode scan will not see these.
 	 */
 	hammer2_inode_run_sideq(pmp, 1);
-	hammer2_trans_done(pmp);
+	hammer2_trans_done(pmp, 0);
 
 	/*
 	 * Start our flush transaction and flush the root topology down to
@@ -2499,7 +2499,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	} else {
 		error = 0;
 	}
-	hammer2_trans_done(pmp);
+	hammer2_trans_done(pmp, 0);
 
 	return (error);
 }
