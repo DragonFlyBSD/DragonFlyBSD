@@ -1733,7 +1733,6 @@ void hammer2_freemap_adjust(hammer2_dev_t *hmp,
  */
 uint8_t hammer2_cluster_type(hammer2_cluster_t *cluster);
 const hammer2_media_data_t *hammer2_cluster_rdata(hammer2_cluster_t *cluster);
-hammer2_media_data_t *hammer2_cluster_wdata(hammer2_cluster_t *cluster);
 hammer2_cluster_t *hammer2_cluster_from_chain(hammer2_chain_t *chain);
 void hammer2_cluster_bref(hammer2_cluster_t *cluster, hammer2_blockref_t *bref);
 hammer2_cluster_t *hammer2_cluster_alloc(hammer2_pfs_t *pmp,

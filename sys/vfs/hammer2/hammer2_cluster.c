@@ -125,24 +125,6 @@ hammer2_cluster_type(hammer2_cluster_t *cluster)
 	return 0;
 }
 
-#ifdef INVARIANTS
-/*
- * Returns non-zero if the cluster's focus is flagged as being modified.
- *
- * If the cluster is errored, returns 0.
- */
-static
-int
-hammer2_cluster_modified(hammer2_cluster_t *cluster)
-{
-	if (cluster->error == 0) {
-		KKASSERT(cluster->focus != NULL);
-		return((cluster->focus->flags & HAMMER2_CHAIN_MODIFIED) != 0);
-	}
-	return 0;
-}
-#endif
-
 /*
  * Returns the bref of the cluster's focus, sans any data-offset information
  * (since offset information is per-node and wouldn't be useful).
@@ -1165,17 +1147,4 @@ hammer2_cluster_rdata(hammer2_cluster_t *cluster)
 	if (chain->dio)
 		hammer2_io_bkvasync(chain->dio);
 	return (chain->data);
-}
-
-hammer2_media_data_t *
-hammer2_cluster_wdata(hammer2_cluster_t *cluster)
-{
-	hammer2_chain_t *chain;
-
-	chain = cluster->focus;
-	KKASSERT(chain != NULL && chain->lockcnt &&
-		 hammer2_cluster_modified(cluster));
-	if (chain->dio)
-		hammer2_io_bkvasync(chain->dio);
-	return(chain->data);
 }
