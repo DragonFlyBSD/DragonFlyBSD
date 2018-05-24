@@ -26,8 +26,11 @@
 #
 # $FreeBSD: src/tools/make_libdeps.sh,v 1.2.2.1 2002/07/23 12:12:30 ru Exp $
 
-export PATH=/usr/bin
+export PATH=/sbin:/bin:/usr/bin
 
+set -e
+
+LC_ALL=C			# make sort deterministic
 FS=': '				# internal field separator
 LIBDEPENDS=./_libdeps		# intermediate output file
 USRSRC=${1:-/usr/src}		# source root
@@ -52,7 +55,7 @@ genlibdepends()
 {
 	(
 		cd ${USRSRC}
-		find ${LIBS} -mindepth 1 -name Makefile |
+		find ${LIBS} -mindepth 1 -name Makefile | sort |
 		xargs grep -l 'bsd\.lib\.mk' |
 		while read makefile; do
 			libdir=$(dirname ${makefile})
@@ -77,12 +80,12 @@ main()
 	fi
 
 	prebuild_libs=$(
-		awk -F"${FS}" '{ print $2 }' ${LIBDEPENDS} |rs 0 1 |sort -u
+		awk -F"${FS}" '{ print $2 }' ${LIBDEPENDS} | tr ' ' '\n' |
+		    sort -u
 	)
 	echo "Libraries with dependents:"
 	echo
-	echo ${prebuild_libs} |
-	rs 0 1
+	echo ${prebuild_libs} | tr ' ' '\n'
 	echo
 
 	echo "List of interdependencies:"
