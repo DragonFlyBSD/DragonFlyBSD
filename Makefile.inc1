@@ -1077,6 +1077,7 @@ _startup_libs=		lib/csu lib/libc lib/libc_rtld
 _prebuild_libs=		lib/libbz2 lib/libz
 _prebuild_libs+=	lib/libutil
 
+_prebuild_libs+=	lib/libelf
 _prebuild_libs+=	lib/libpcap
 
 _generic_libs=	gnu/lib
@@ -1098,6 +1099,7 @@ _prebuild_libs+= lib/libopie
 _prebuild_libs+= lib/libradius lib/libsbuf lib/libtacplus lib/libm \
 		lib/libpam/libpam lib/libypclnt lib/lib${THREAD_LIB} \
 		lib/libpthread lib/liblzma lib/libprop lib/libdevattr
+lib/liblzma__L: lib/libpthread__L
 
 _generic_libs+=	usr.bin/flex/lib
 
