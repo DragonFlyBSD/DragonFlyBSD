@@ -239,7 +239,7 @@ hammer2_primary_sync_thread(void *arg)
 		}
 
 		hammer2_inode_drop(pmp->iroot);
-		hammer2_trans_done(pmp);
+		hammer2_trans_done(pmp, 0);
 
 		if (error && error != HAMMER2_ERROR_EINPROGRESS)
 			kprintf("hammer2_sync_slaves: error %d\n", error);

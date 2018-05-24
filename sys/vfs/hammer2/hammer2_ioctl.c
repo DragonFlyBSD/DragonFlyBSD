@@ -681,7 +681,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		hammer2_chain_drop(nchain);
 
 	}
-	hammer2_trans_done(hmp->spmp);
+	hammer2_trans_done(hmp->spmp, 1);
 
 	return (error);
 }
@@ -778,7 +778,7 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 #endif
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 
-	hammer2_trans_done(spmp);
+	hammer2_trans_done(spmp, 1);
 
 	return (hammer2_error_to_errno(error));
 }
@@ -930,7 +930,7 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 	hammer2_chain_drop(chain);
 
 	hammer2_inode_unlock(ip);
-	hammer2_trans_done(pmp);
+	hammer2_trans_done(pmp, 1);
 
 	lockmgr(&hmp->bulklk, LK_RELEASE);
 
@@ -1018,7 +1018,7 @@ hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 		ip->meta.ncopies = ino->ip_data.meta.ncopies;
 	}
 	hammer2_inode_unlock(ip);
-	hammer2_trans_done(ip->pmp);
+	hammer2_trans_done(ip->pmp, 1);
 
 	return (hammer2_error_to_errno(error));
 }
@@ -1123,7 +1123,7 @@ hammer2_ioctl_bulkfree_scan(hammer2_inode_t *ip, void *data)
 		hammer2_chain_bulkdrop(vchain);
 	} else {
 		hammer2_chain_drop(vchain);
-		hammer2_trans_done(pmp);
+		hammer2_trans_done(pmp, 1);
 	}
 	error = hammer2_error_to_errno(error);
 
@@ -1181,7 +1181,7 @@ hammer2_ioctl_destroy(hammer2_inode_t *ip, void *data)
 		error = hammer2_error_to_errno(error);
 		hammer2_inode_unlock(ip);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
-		hammer2_trans_done(pmp);
+		hammer2_trans_done(pmp, 1);
 		}
 		break;
 	case HAMMER2_DELETE_INUM:

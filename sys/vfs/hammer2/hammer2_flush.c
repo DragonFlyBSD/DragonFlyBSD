@@ -240,11 +240,23 @@ hammer2_trans_sub(hammer2_pfs_t *pmp)
 }
 
 void
-hammer2_trans_done(hammer2_pfs_t *pmp)
+hammer2_trans_done(hammer2_pfs_t *pmp, int quicksideq)
 {
 	uint32_t oflags;
 	uint32_t nflags;
 
+	/*
+	 * Modifying ops on the front-end can cause dirty inodes to
+	 * build up in the sideq.  We don't flush these on inactive/reclaim
+	 * due to potential deadlocks, so we have to deal with them from
+	 * inside other nominal modifying front-end transactions.
+	 */
+	if (quicksideq && pmp->sideq_count > (pmp->inum_count >> 3))
+		hammer2_inode_run_sideq(pmp, 0);
+
+	/*
+	 * Clean-up the transaction
+	 */
 	for (;;) {
 		oflags = pmp->trans.flags;
 		cpu_ccfence();
@@ -1546,7 +1558,7 @@ hammer2_inode_xop_flush(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	if (fsync_error)
 		total_error = hammer2_errno_to_error(fsync_error);
 
-	hammer2_trans_done(hmp->spmp);  /* spmp trans */
+	hammer2_trans_done(hmp->spmp, 0);  /* spmp trans */
 skip:
 	hammer2_xop_feed(&xop->head, NULL, thr->clindex, total_error);
 }

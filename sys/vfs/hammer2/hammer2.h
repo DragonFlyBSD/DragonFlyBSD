@@ -1582,7 +1582,7 @@ void hammer2_delayed_flush(hammer2_chain_t *chain);
  */
 void hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags);
 hammer2_tid_t hammer2_trans_sub(hammer2_pfs_t *pmp);
-void hammer2_trans_done(hammer2_pfs_t *pmp);
+void hammer2_trans_done(hammer2_pfs_t *pmp, int quicksideq);
 hammer2_tid_t hammer2_trans_newinum(hammer2_pfs_t *pmp);
 void hammer2_trans_assert_strategy(hammer2_pfs_t *pmp);
 void hammer2_dedup_record(hammer2_chain_t *chain, hammer2_io_t *dio,

@@ -668,7 +668,7 @@ hammer2_strategy_xop_write(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 	hammer2_trans_assert_strategy(ip->pmp);
 	hammer2_lwinprog_drop(ip->pmp);
-	hammer2_trans_done(ip->pmp);
+	hammer2_trans_done(ip->pmp, 0);
 }
 
 /*
