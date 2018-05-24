@@ -1018,17 +1018,17 @@ hierarchy:
 libraries:
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc50 \
-		make -f Makefile.inc1 _startup_libs50 -DSYSBUILD;
+		make -f Makefile.inc1 _startup_libs50 -DSYSBUILD -DLIBGCC_ONLY;
 .if !defined(NO_ALTCOMPILER)
 . if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47})
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc47 \
-		make -f Makefile.inc1 _startup_libs47 -DSYSBUILD;
+		make -f Makefile.inc1 _startup_libs47 -DSYSBUILD -DLIBGCC_ONLY;
 . endif
 . if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc80})
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc80 \
-		make -f Makefile.inc1 _startup_libs80 -DSYSBUILD;
+		make -f Makefile.inc1 _startup_libs80 -DSYSBUILD -DLIBGCC_ONLY;
 . endif
 .endif
 	cd ${.CURDIR}; \

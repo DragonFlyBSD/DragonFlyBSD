@@ -86,4 +86,6 @@ ${LIBGCOV_DRIVER:S/$/.So/}: ${GCCDIR}/libgcc/libgcov-driver.c
 	${CC} ${PICFLAG} -DPIC ${SHARED_CFLAGS} ${CFLAGS} -DL${.TARGET:R} -c ${.ALLSRC} \
 		-o ${.TARGET}
 
+CLEANFILES+=	gthr-default.h
+
 .include <bsd.lib.mk>

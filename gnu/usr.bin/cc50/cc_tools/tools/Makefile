@@ -194,7 +194,15 @@ CLEANDIRS+=	common c-family
 dossier:
 	mkdir -p common c-family
 
+.if defined(LIBGCC_ONLY)
+GENLIBGCC=	${GENTOOLS:Mgenconstants*} ${GENTOOLS:Mgenmodes*} \
+		${GENTOOLS:Mgcov-iov*} \
+		${GENFILES:Minsn-constants.h} ${GENFILES:Minsn-modes.h} \
+		${GENFILES:Mgcov-iov.h}
+genfiles: dossier ${GENLIBGCC}
+.else
 genfiles: dossier ${GENTOOLS} ${GENFILES}
+.endif
 depend all: genfiles
 
 .include <bsd.obj.mk>
