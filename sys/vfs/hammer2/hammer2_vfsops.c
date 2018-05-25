@@ -909,7 +909,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	struct nlookupdata nd;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
-	hammer2_cluster_t *cluster;
 	const hammer2_inode_data_t *ripdata;
 	hammer2_blockref_t bref;
 	struct file *fp;
@@ -1002,6 +1001,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		 * XXX HAMMER2 needs to implement NFS export via
 		 *     mountctl.
 		 */
+		hammer2_cluster_t *cluster;
+
 		pmp = MPTOPMP(mp);
 		pmp->hflags = info.hflags;
 		cluster = &pmp->iroot->cluster;
@@ -1109,6 +1110,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	if (hmp == NULL) {
 		hammer2_chain_t *schain;
 		hammer2_xid_t xid;
+		hammer2_xop_head_t xop;
 
 		if (error == 0 && vcount(devvp) > 0) {
 			kprintf("Primary device already has references\n");
@@ -1277,18 +1279,19 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		 *
 		 * The returned inode is locked with the supplied cluster.
 		 */
-		cluster = hammer2_cluster_from_chain(schain);
+		hammer2_dummy_xop_from_chain(&xop, schain);
 		hammer2_inode_drop(spmp->iroot);
 		spmp->iroot = NULL;
-		spmp->iroot = hammer2_inode_get(spmp, NULL, cluster, -1);
+		spmp->iroot = hammer2_inode_get(spmp, NULL, &xop, -1);
 		spmp->spmp_hmp = hmp;
 		spmp->pfs_types[0] = ripdata->meta.pfs_type;
 		spmp->pfs_hmps[0] = hmp;
 		hammer2_inode_ref(spmp->iroot);
 		hammer2_inode_unlock(spmp->iroot);
-		hammer2_cluster_unlock(cluster);
-		hammer2_cluster_drop(cluster);
-		schain = NULL;
+		hammer2_cluster_unlock(&xop.cluster);
+		hammer2_chain_drop(schain);
+		/* do not call hammer2_cluster_drop() on an embedded cluster */
+		schain = NULL;	/* now invalid */
 		/* leave spmp->iroot with one ref */
 
 		if ((mp->mnt_flag & MNT_RDONLY) == 0) {
@@ -1871,18 +1874,8 @@ hammer2_vfs_vget(struct mount *mp, struct vnode *dvp,
 	hammer2_xop_start(&xop->head, hammer2_xop_lookup);
 	error = hammer2_xop_collect(&xop->head, 0);
 
-	if (error == 0) {
-		if (hammer2_cluster_rdata(&xop->head.cluster) == NULL) {
-			kprintf("vget: no collect error but also no rdata\n");
-			kprintf("xop %p\n", xop);
-			while ((hammer2_debug & 0x80000) == 0) {
-				tsleep(xop, PCATCH, "wait", hz * 10);
-			}
-			ip = NULL;
-		} else {
-			ip = hammer2_inode_get(pmp, NULL, &xop->head.cluster, -1);
-		}
-	}
+	if (error == 0)
+		ip = hammer2_inode_get(pmp, NULL, &xop->head, -1);
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 
 	if (ip) {
@@ -1914,16 +1907,19 @@ hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 
 	while (pmp->inode_tid == 0) {
 		hammer2_xop_ipcluster_t *xop;
-		hammer2_inode_meta_t *meta;
+		const hammer2_inode_meta_t *meta;
 
 		xop = hammer2_xop_alloc(pmp->iroot, HAMMER2_XOP_MODIFYING);
 		hammer2_xop_start(&xop->head, hammer2_xop_ipcluster);
 		error = hammer2_xop_collect(&xop->head, 0);
 
 		if (error == 0) {
-			meta = &xop->head.cluster.focus->data->ipdata.meta;
+			meta = &hammer2_xop_gdata(&xop->head)->ipdata.meta;
 			pmp->iroot->meta = *meta;
 			pmp->inode_tid = meta->pfs_inum + 1;
+			hammer2_xop_pdata(&xop->head);
+			/* meta invalid */
+
 			if (pmp->inode_tid < HAMMER2_INODE_START)
 				pmp->inode_tid = HAMMER2_INODE_START;
 			pmp->modify_tid =

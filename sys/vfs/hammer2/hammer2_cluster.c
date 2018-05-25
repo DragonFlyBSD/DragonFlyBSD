@@ -157,12 +157,14 @@ hammer2_cluster_bref(hammer2_cluster_t *cluster, hammer2_blockref_t *bref)
  *
  * We fake the flags.
  */
-hammer2_cluster_t *
-hammer2_cluster_from_chain(hammer2_chain_t *chain)
+void
+hammer2_dummy_xop_from_chain(hammer2_xop_head_t *xop, hammer2_chain_t *chain)
 {
 	hammer2_cluster_t *cluster;
 
-	cluster = kmalloc(sizeof(*cluster), M_HAMMER2, M_WAITOK | M_ZERO);
+	bzero(xop, sizeof(*xop));
+
+	cluster = &xop->cluster;
 	cluster->array[0].chain = chain;
 	cluster->array[0].flags = HAMMER2_CITEM_FEMOD;
 	cluster->nchains = 1;
@@ -176,8 +178,6 @@ hammer2_cluster_from_chain(hammer2_chain_t *chain)
 			 HAMMER2_CLUSTER_RDHARD |
 			 HAMMER2_CLUSTER_MSYNCED |
 			 HAMMER2_CLUSTER_SSYNCED;
-
-	return cluster;
 }
 
 /*
@@ -994,14 +994,14 @@ hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t key, int flags)
 	 * is bad or if we are at the PFS root (the bref won't match at
 	 * the PFS root, obviously).
 	 *
-	 * Also make sure the chain's data is synchronized to the cpu.
+	 * focus is probably not locked and it isn't safe to test its
+	 * content (e.g. focus->data, focus->dio, other content).  We
+	 * do not synchronize the dio to the cpu here.  In fact, in numerous
+	 * situations the frontend doesn't even need to access its dio/data,
+	 * so synchronizing it here would be wasteful.
 	 */
 	focus = cluster->focus;
 	if (focus) {
-		if (focus->data) {
-			if (focus->dio)
-				hammer2_io_bkvasync(focus->dio);
-		}
 		cluster->ddflag =
 			(cluster->focus->bref.type == HAMMER2_BREF_TYPE_INODE);
 	} else {
@@ -1120,31 +1120,4 @@ hammer2_cluster_unlock(hammer2_cluster_t *cluster)
 		if (chain)
 			hammer2_chain_unlock(chain);
 	}
-}
-
-/************************************************************************
- *			        CLUSTER I/O 				*
- ************************************************************************
- *
- *
- * WARNING! blockref[] array data is not universal.  These functions should
- *	    only be used to access universal data.
- *
- * NOTE!    The rdata call will wait for at least one of the chain I/Os to
- *	    complete if necessary.  The I/O's should have already been
- *	    initiated by the cluster_lock/chain_lock operation.
- *
- *	    The cluster must already be in a modified state before wdata
- *	    is called.  The data will already be available for this case.
- */
-const hammer2_media_data_t *
-hammer2_cluster_rdata(hammer2_cluster_t *cluster)
-{
-	hammer2_chain_t *chain;
-
-	chain = cluster->focus;
-	KKASSERT(chain != NULL && chain->lockcnt);
-	if (chain->dio)
-		hammer2_io_bkvasync(chain->dio);
-	return (chain->data);
 }

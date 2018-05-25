@@ -561,14 +561,15 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
  */
 hammer2_inode_t *
 hammer2_inode_get(hammer2_pfs_t *pmp, hammer2_inode_t *dip,
-		  hammer2_cluster_t *cluster, int idx)
+		  hammer2_xop_head_t *xop, int idx)
 {
 	hammer2_inode_t *nip;
 	const hammer2_inode_data_t *iptmp;
 	const hammer2_inode_data_t *nipdata;
 
-	KKASSERT(cluster == NULL ||
-		 hammer2_cluster_type(cluster) == HAMMER2_BREF_TYPE_INODE);
+	KKASSERT(xop == NULL ||
+		 hammer2_cluster_type(&xop->cluster) ==
+		 HAMMER2_BREF_TYPE_INODE);
 	KKASSERT(pmp);
 
 	/*
@@ -579,9 +580,10 @@ hammer2_inode_get(hammer2_pfs_t *pmp, hammer2_inode_t *dip,
 	 * Cluster can be NULL during the initial pfs allocation.
 	 */
 again:
-	while (cluster) {
-		iptmp = &hammer2_cluster_rdata(cluster)->ipdata;
+	while (xop) {
+		iptmp = &hammer2_xop_gdata(xop)->ipdata;
 		nip = hammer2_inode_lookup(pmp, iptmp->meta.inum);
+		hammer2_xop_pdata(xop);
 		if (nip == NULL)
 			break;
 
@@ -598,9 +600,9 @@ again:
 			continue;
 		}
 		if (idx >= 0)
-			hammer2_inode_repoint_one(nip, cluster, idx);
+			hammer2_inode_repoint_one(nip, &xop->cluster, idx);
 		else
-			hammer2_inode_repoint(nip, NULL, cluster);
+			hammer2_inode_repoint(nip, NULL, &xop->cluster);
 
 		return nip;
 	}
@@ -623,11 +625,12 @@ again:
 	nip->cluster.refs = 1;
 	nip->cluster.pmp = pmp;
 	nip->cluster.flags |= HAMMER2_CLUSTER_INODE;
-	if (cluster) {
-		nipdata = &hammer2_cluster_rdata(cluster)->ipdata;
+	if (xop) {
+		nipdata = &hammer2_xop_gdata(xop)->ipdata;
 		nip->meta = nipdata->meta;
+		hammer2_xop_pdata(xop);
 		atomic_set_int(&nip->flags, HAMMER2_INODE_METAGOOD);
-		hammer2_inode_repoint(nip, NULL, cluster);
+		hammer2_inode_repoint(nip, NULL, &xop->cluster);
 	} else {
 		nip->meta.inum = 1;		/* PFS inum is always 1 XXX */
 		/* mtime will be updated when a cluster is available */
@@ -873,7 +876,7 @@ hammer2_inode_create(hammer2_inode_t *dip, hammer2_inode_t *pip,
 	 *
 	 * NOTE: nipdata will have chain's blockset data.
 	 */
-	nip = hammer2_inode_get(dip->pmp, dip, &xop->head.cluster, -1);
+	nip = hammer2_inode_get(dip->pmp, dip, &xop->head, -1);
 	nip->comp_heuristic = 0;
 done:
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);

@@ -766,7 +766,7 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 
 #if 0
         if (error == 0) {
-                ip = hammer2_inode_get(dip->pmp, dip, &xop->head.cluster, -1);
+                ip = hammer2_inode_get(dip->pmp, dip, &xop->head, -1);
                 hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
                 if (ip) {
                         hammer2_inode_unlink_finisher(ip, 0);
@@ -1203,8 +1203,7 @@ hammer2_ioctl_destroy(hammer2_inode_t *ip, void *data)
 		hammer2_xop_start(&xop->head, hammer2_xop_lookup);
 		error = hammer2_xop_collect(&xop->head, 0);
 		if (error == 0) {
-			ip = hammer2_inode_get(pmp, NULL,
-					       &xop->head.cluster, -1);
+			ip = hammer2_inode_get(pmp, NULL, &xop->head, -1);
 			hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 			if (ip) {
 				ip->meta.nlinks = 1;

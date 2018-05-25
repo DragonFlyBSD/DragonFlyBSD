@@ -74,14 +74,15 @@ static void hammer2_update_pfs_status(hammer2_thread_t *thr, uint32_t flags);
 static int hammer2_sync_insert(hammer2_thread_t *thr,
 			hammer2_chain_t **parentp, hammer2_chain_t **chainp,
 			hammer2_tid_t modify_tid, int idx,
-			hammer2_chain_t *focus);
+			hammer2_xop_head_t *xop, hammer2_chain_t *focus);
 static int hammer2_sync_destroy(hammer2_thread_t *thr,
 			hammer2_chain_t **parentp, hammer2_chain_t **chainp,
 			hammer2_tid_t mtid, int idx);
 static int hammer2_sync_replace(hammer2_thread_t *thr,
 			hammer2_chain_t *parent, hammer2_chain_t *chain,
 			hammer2_tid_t mtid, int idx,
-			hammer2_chain_t *focus, int isroot);
+			hammer2_xop_head_t *xop, hammer2_chain_t *focus,
+			int isroot);
 
 /****************************************************************************
  *			    HAMMER2 SYNC THREADS 			    *
@@ -534,13 +535,13 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 				nerror = hammer2_sync_replace(
 						thr, parent, chain,
 						0,
-						idx, focus, 0);
+						idx, &xop->head, focus, 0);
 				dodefer = 1;
 			} else {
 				nerror = hammer2_sync_replace(
 						thr, parent, chain,
 						focus->bref.modify_tid,
-						idx, focus, 0);
+						idx, &xop->head, focus, 0);
 			}
 			advance_local = 1;
 			advance_xop = 1;
@@ -564,13 +565,13 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 				nerror = hammer2_sync_insert(
 						thr, &parent, &chain,
 						0,
-						idx, focus);
+						idx, &xop->head, focus);
 				dodefer = 2;
 			} else {
 				nerror = hammer2_sync_insert(
 						thr, &parent, &chain,
 						focus->bref.modify_tid,
-						idx, focus);
+						idx, &xop->head, focus);
 			}
 			advance_local = 1;
 			advance_xop = 1;
@@ -600,8 +601,7 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 			xop->head.cluster.array[idx].flags =
 							HAMMER2_CITEM_INVALID;
 			xop->head.cluster.array[idx].chain = chain;
-			nip = hammer2_inode_get(pmp, ip,
-						&xop->head.cluster, idx);
+			nip = hammer2_inode_get(pmp, ip, &xop->head, idx);
 			xop->head.cluster.array[idx].chain = NULL;
 
 			hammer2_inode_ref(nip);
@@ -675,12 +675,14 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 		merror = hammer2_xop_collect(&xop2->head, 0);
 		if (merror == 0) {
 			focus = xop2->head.cluster.focus;
-			if (hammer2_debug & 0x8000) {
+			if ((hammer2_debug & 0x8000) && focus) {
+				const char *filename;
+
+				filename = hammer2_xop_gdata(&xop2->head)->
+						ipdata.filename;
 				kprintf("syncthr: update inode %p (%s)\n",
-					focus,
-					(focus ? (char *)focus->data->
-							 ipdata.filename :
-						 "?"));
+					focus, filename);
+				hammer2_xop_pdata(&xop2->head);
 			}
 			chain = hammer2_inode_chain_and_parent(ip, idx,
 						    &parent,
@@ -691,7 +693,7 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 			nerror = hammer2_sync_replace(
 					thr, parent, chain,
 					sync_tid,
-					idx, focus, isroot);
+					idx, &xop2->head, focus, isroot);
 			hammer2_chain_unlock(chain);
 			hammer2_chain_drop(chain);
 			hammer2_chain_unlock(parent);
@@ -714,7 +716,8 @@ static
 int
 hammer2_sync_insert(hammer2_thread_t *thr,
 		    hammer2_chain_t **parentp, hammer2_chain_t **chainp,
-		    hammer2_tid_t mtid, int idx, hammer2_chain_t *focus)
+		    hammer2_tid_t mtid, int idx, hammer2_xop_head_t *xop,
+		    hammer2_chain_t *focus)
 {
 	hammer2_chain_t *chain;
 	hammer2_key_t dummy;
@@ -761,6 +764,8 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 				     focus->bref.type, focus->bytes,
 				     mtid, 0, 0);
 	if (error == 0) {
+		const hammer2_media_data_t *data;
+
 		error = hammer2_chain_modify(chain, mtid, 0, 0);
 		if (error)
 			goto failed;
@@ -784,25 +789,33 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 		 */
 		switch(chain->bref.type) {
 		case HAMMER2_BREF_TYPE_INODE:
-			if ((focus->data->ipdata.meta.op_flags &
+			data = hammer2_xop_gdata(xop);
+
+			if ((data->ipdata.meta.op_flags &
 			     HAMMER2_OPFLAG_DIRECTDATA) == 0) {
 				/* do not copy block table */
-				bcopy(focus->data, chain->data,
+				bcopy(data, chain->data,
 				      offsetof(hammer2_inode_data_t, u));
+				hammer2_xop_pdata(xop);
 				break;
 			}
+			hammer2_xop_pdata(xop);
 			/* fall through copy whole thing */
 		case HAMMER2_BREF_TYPE_DATA:
-			bcopy(focus->data, chain->data, chain->bytes);
+			data = hammer2_xop_gdata(xop);
+			bcopy(data, chain->data, chain->bytes);
 			hammer2_chain_setcheck(chain, chain->data);
+			hammer2_xop_pdata(xop);
 			break;
 		case HAMMER2_BREF_TYPE_DIRENT:
 			/*
 			 * Directory entries embed data in the blockref.
 			 */
 			if (chain->bytes) {
-				bcopy(focus->data, chain->data, chain->bytes);
+				data = hammer2_xop_gdata(xop);
+				bcopy(data, chain->data, chain->bytes);
 				hammer2_chain_setcheck(chain, chain->data);
+				hammer2_xop_pdata(xop);
 			} else {
 				chain->bref.check = focus->bref.check;
 			}
@@ -903,7 +916,8 @@ int
 hammer2_sync_replace(hammer2_thread_t *thr,
 		     hammer2_chain_t *parent, hammer2_chain_t *chain,
 		     hammer2_tid_t mtid, int idx,
-		     hammer2_chain_t *focus, int isroot)
+		     hammer2_xop_head_t *xop, hammer2_chain_t *focus,
+		     int isroot)
 {
 	uint8_t otype;
 	int nradix;
@@ -920,6 +934,8 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
 	error = chain->error;
 	if (error == 0) {
+		const hammer2_media_data_t *data;
+
 		if (chain->bytes != focus->bytes) {
 			/* XXX what if compressed? */
 			nradix = hammer2_getradix(chain->bytes);
@@ -931,6 +947,7 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 		if (error)
 			goto failed;
 		otype = chain->bref.type;
+		data = hammer2_xop_gdata(xop);
 		chain->bref.type = focus->bref.type;
 		chain->bref.methods = focus->bref.methods;
 		chain->bref.keybits = focus->bref.keybits;
@@ -953,42 +970,42 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 			 */
 			if (isroot) {
 				chain->data->ipdata.meta.uflags =
-					focus->data->ipdata.meta.uflags;
+					data->ipdata.meta.uflags;
 				chain->data->ipdata.meta.rmajor =
-					focus->data->ipdata.meta.rmajor;
+					data->ipdata.meta.rmajor;
 				chain->data->ipdata.meta.rminor =
-					focus->data->ipdata.meta.rminor;
+					data->ipdata.meta.rminor;
 				chain->data->ipdata.meta.ctime =
-					focus->data->ipdata.meta.ctime;
+					data->ipdata.meta.ctime;
 				chain->data->ipdata.meta.mtime =
-					focus->data->ipdata.meta.mtime;
+					data->ipdata.meta.mtime;
 				chain->data->ipdata.meta.atime =
-					focus->data->ipdata.meta.atime;
+					data->ipdata.meta.atime;
 				/* not btime */
 				chain->data->ipdata.meta.uid =
-					focus->data->ipdata.meta.uid;
+					data->ipdata.meta.uid;
 				chain->data->ipdata.meta.gid =
-					focus->data->ipdata.meta.gid;
+					data->ipdata.meta.gid;
 				chain->data->ipdata.meta.mode =
-					focus->data->ipdata.meta.mode;
+					data->ipdata.meta.mode;
 				chain->data->ipdata.meta.ncopies =
-					focus->data->ipdata.meta.ncopies;
+					data->ipdata.meta.ncopies;
 				chain->data->ipdata.meta.comp_algo =
-					focus->data->ipdata.meta.comp_algo;
+					data->ipdata.meta.comp_algo;
 				chain->data->ipdata.meta.check_algo =
-					focus->data->ipdata.meta.check_algo;
+					data->ipdata.meta.check_algo;
 				chain->data->ipdata.meta.data_quota =
-					focus->data->ipdata.meta.data_quota;
+					data->ipdata.meta.data_quota;
 				chain->data->ipdata.meta.inode_quota =
-					focus->data->ipdata.meta.inode_quota;
+					data->ipdata.meta.inode_quota;
 
 				/*
 				 * last snapshot tid controls overwrite
 				 */
 				if (chain->data->ipdata.meta.pfs_lsnap_tid <
-				    focus->data->ipdata.meta.pfs_lsnap_tid) {
+				    data->ipdata.meta.pfs_lsnap_tid) {
 					chain->data->ipdata.meta.pfs_lsnap_tid =
-					focus->data->ipdata.meta.pfs_lsnap_tid;
+					data->ipdata.meta.pfs_lsnap_tid;
 				}
 
 				hammer2_chain_setcheck(chain, chain->data);
@@ -998,7 +1015,7 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 			/*
 			 * Normal replacement.
 			 */
-			if ((focus->data->ipdata.meta.op_flags &
+			if ((data->ipdata.meta.op_flags &
 			     HAMMER2_OPFLAG_DIRECTDATA) == 0) {
 				/*
 				 * If DIRECTDATA is transitioning to 0 or the
@@ -1013,7 +1030,7 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 					bzero(&chain->data->ipdata.u,
 					      sizeof(chain->data->ipdata.u));
 				}
-				bcopy(focus->data, chain->data,
+				bcopy(data, chain->data,
 				      offsetof(hammer2_inode_data_t, u));
 				/* XXX setcheck on inode should not be needed */
 				hammer2_chain_setcheck(chain, chain->data);
@@ -1021,7 +1038,7 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 			}
 			/* fall through */
 		case HAMMER2_BREF_TYPE_DATA:
-			bcopy(focus->data, chain->data, chain->bytes);
+			bcopy(data, chain->data, chain->bytes);
 			hammer2_chain_setcheck(chain, chain->data);
 			break;
 		case HAMMER2_BREF_TYPE_DIRENT:
@@ -1029,7 +1046,7 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 			 * Directory entries embed data in the blockref.
 			 */
 			if (chain->bytes) {
-				bcopy(focus->data, chain->data, chain->bytes);
+				bcopy(data, chain->data, chain->bytes);
 				hammer2_chain_setcheck(chain, chain->data);
 			} else {
 				chain->bref.check = focus->bref.check;
@@ -1040,6 +1057,7 @@ hammer2_sync_replace(hammer2_thread_t *thr,
 			KKASSERT(0);
 			break;
 		}
+		hammer2_xop_pdata(xop);
 	}
 
 failed:

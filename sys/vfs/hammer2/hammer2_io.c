@@ -844,3 +844,12 @@ hammer2_io_bkvasync(hammer2_io_t *dio)
 	KKASSERT(dio->bp != NULL);
 	bkvasync(dio->bp);
 }
+
+/*
+ * Ref a dio that is already owned
+ */
+void
+hammer2_io_ref(hammer2_io_t *dio)
+{
+	atomic_add_64(&dio->refs, 1);
+}

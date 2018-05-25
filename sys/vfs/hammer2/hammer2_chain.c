@@ -223,11 +223,13 @@ hammer2_chain_alloc(hammer2_dev_t *hmp, hammer2_pfs_t *pmp,
 		chain->pmp = NULL;
 	else
 		chain->pmp = pmp;
+
 	chain->hmp = hmp;
 	chain->bref = *bref;
 	chain->bytes = bytes;
 	chain->refs = 1;
 	chain->flags = HAMMER2_CHAIN_ALLOCATED;
+	lockinit(&chain->diolk, "chdio", 0, 0);
 
 	/*
 	 * Set the PFS boundary flag if this chain represents a PFS root.
@@ -1814,6 +1816,20 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 	}
 
 	/*
+	 * The XOP code returns held but unlocked focus chains.  This
+	 * prevents the chain from being destroyed but does not prevent
+	 * it from being modified.  diolk is used to interlock modifications
+	 * against XOP frontend accesses to the focus.
+	 *
+	 * This allows us to theoretically avoid deadlocking the frontend
+	 * if one of the backends lock up by not formally locking the
+	 * focused chain in the frontend.  In addition, the synchronization
+	 * code relies on this mechanism to avoid deadlocking concurrent
+	 * synchronization threads.
+	 */
+	lockmgr(&chain->diolk, LK_EXCLUSIVE);
+
+	/*
 	 * The modification or re-modification requires an allocation and
 	 * possible COW.  If an error occurs, the previous content and data
 	 * reference is retained and the modification fails.
@@ -1881,6 +1897,8 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 		if (setupdate) {
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
 		}
+		lockmgr(&chain->diolk, LK_RELEASE);
+
 		return error;
 	}
 
@@ -2033,13 +2051,21 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 		 *	    If dedup_off was supplied, the caller is not
 		 *	    expected to make any further modification to the
 		 *	    buffer.
+		 *
+		 * WARNING! hammer2_get_gdata() assumes dio never transitions
+		 *	    through NULL in order to optimize away unnecessary
+		 *	    diolk operations.
 		 */
-		if (chain->dio)
-			hammer2_io_bqrelse(&chain->dio);
-		chain->data = (void *)bdata;
-		chain->dio = dio;
-		if (dedup_off == 0)
-			hammer2_io_setdirty(dio);
+		{
+			hammer2_io_t *tio;
+
+			if ((tio = chain->dio) != NULL)
+				hammer2_io_bqrelse(&tio);
+			chain->data = (void *)bdata;
+			chain->dio = dio;
+			if (dedup_off == 0)
+				hammer2_io_setdirty(dio);
+		}
 		break;
 	default:
 		panic("hammer2_chain_modify: illegal non-embedded type %d",
@@ -2055,6 +2081,8 @@ skip2:
 	 */
 	if (chain->parent)
 		hammer2_chain_setflush(chain->parent);
+	lockmgr(&chain->diolk, LK_RELEASE);
+
 	return (chain->error);
 }
 

@@ -312,7 +312,9 @@ struct hammer2_chain {
 	struct hammer2_dev	*hmp;
 	struct hammer2_pfs	*pmp;		/* A PFS or super-root (spmp) */
 
+	struct lock	diolk;			/* xop focus interlock */
 	hammer2_io_t	*dio;			/* physical data buffer */
+	hammer2_media_data_t *data;		/* data pointer shortcut */
 	u_int		bytes;			/* physical data size */
 	u_int		flags;
 	u_int		refs;
@@ -320,7 +322,6 @@ struct hammer2_chain {
 	int		error;			/* on-lock data error state */
 	int		cache_index;		/* heur speeds up lookup */
 
-	hammer2_media_data_t *data;		/* data pointer shortcut */
 	TAILQ_ENTRY(hammer2_chain) flush_node;	/* flush list */
 	TAILQ_ENTRY(hammer2_chain) lru_node;	/* 0-refs LRU */
 };
@@ -892,6 +893,7 @@ struct hammer2_xop_head {
 	size_t			name2_len;
 	hammer2_xop_fifo_t	collect[HAMMER2_MAXCLUSTER];
 	hammer2_cluster_t	cluster;	/* help collections */
+	hammer2_io_t		*focus_dio;
 };
 
 typedef struct hammer2_xop_head hammer2_xop_head_t;
@@ -1367,6 +1369,7 @@ hammer2_errno_to_error(int error)
 	}
 }
 
+
 extern struct vop_ops hammer2_vnode_vops;
 extern struct vop_ops hammer2_spec_vops;
 extern struct vop_ops hammer2_fifo_vops;
@@ -1459,7 +1462,7 @@ struct vnode *hammer2_igetv(hammer2_inode_t *ip, int *errorp);
 hammer2_inode_t *hammer2_inode_lookup(hammer2_pfs_t *pmp,
 			hammer2_tid_t inum);
 hammer2_inode_t *hammer2_inode_get(hammer2_pfs_t *pmp, hammer2_inode_t *dip,
-			hammer2_cluster_t *cluster, int idx);
+			hammer2_xop_head_t *xop, int idx);
 void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
@@ -1586,7 +1589,7 @@ void hammer2_trans_done(hammer2_pfs_t *pmp, int quicksideq);
 hammer2_tid_t hammer2_trans_newinum(hammer2_pfs_t *pmp);
 void hammer2_trans_assert_strategy(hammer2_pfs_t *pmp);
 void hammer2_dedup_record(hammer2_chain_t *chain, hammer2_io_t *dio,
-				char *data);
+				const char *data);
 
 /*
  * hammer2_ioctl.c
@@ -1623,6 +1626,7 @@ int hammer2_io_bwrite(hammer2_io_t **diop);
 void hammer2_io_setdirty(hammer2_io_t *dio);
 void hammer2_io_brelse(hammer2_io_t **diop);
 void hammer2_io_bqrelse(hammer2_io_t **diop);
+void hammer2_io_ref(hammer2_io_t *dio);
 
 /*
  * hammer2_thread.c
@@ -1732,8 +1736,6 @@ void hammer2_freemap_adjust(hammer2_dev_t *hmp,
  * hammer2_cluster.c
  */
 uint8_t hammer2_cluster_type(hammer2_cluster_t *cluster);
-const hammer2_media_data_t *hammer2_cluster_rdata(hammer2_cluster_t *cluster);
-hammer2_cluster_t *hammer2_cluster_from_chain(hammer2_chain_t *chain);
 void hammer2_cluster_bref(hammer2_cluster_t *cluster, hammer2_blockref_t *bref);
 hammer2_cluster_t *hammer2_cluster_alloc(hammer2_pfs_t *pmp,
 				hammer2_blockref_t *bref);
@@ -1750,6 +1752,8 @@ void hammer2_bulkfree_init(hammer2_dev_t *hmp);
 void hammer2_bulkfree_uninit(hammer2_dev_t *hmp);
 int hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 			struct hammer2_ioc_bulkfree *bfi);
+void hammer2_dummy_xop_from_chain(hammer2_xop_head_t *xop,
+			hammer2_chain_t *chain);
 
 /*
  * hammer2_iocom.c
@@ -1766,6 +1770,40 @@ int hammer2_vop_bmap(struct vop_bmap_args *ap);
 void hammer2_write_thread(void *arg);
 void hammer2_bioq_sync(hammer2_pfs_t *pmp);
 void hammer2_dedup_clear(hammer2_dev_t *hmp);
+
+/*
+ * More complex inlines
+ */
+static __inline
+const hammer2_media_data_t *
+hammer2_xop_gdata(hammer2_xop_head_t *xop)
+{
+	hammer2_chain_t *focus;
+	const void *data;
+
+	focus = xop->cluster.focus;
+	if (focus->dio) {
+		lockmgr(&focus->diolk, LK_SHARED);
+		if ((xop->focus_dio = focus->dio) != NULL) {
+			hammer2_io_ref(xop->focus_dio);
+			hammer2_io_bkvasync(xop->focus_dio);
+		}
+		data = focus->data;
+		lockmgr(&focus->diolk, LK_RELEASE);
+	} else {
+		data = focus->data;
+	}
+
+	return data;
+}
+
+static __inline
+void
+hammer2_xop_pdata(hammer2_xop_head_t *xop)
+{
+	if (xop->focus_dio)
+		hammer2_io_putblk(&xop->focus_dio);
+}
 
 #endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */

@@ -315,6 +315,8 @@ hammer2_xop_alloc(hammer2_inode_t *ip, int flags)
 	xop->head.state = 0;
 	xop->head.error = 0;
 	xop->head.collect_key = 0;
+	xop->head.focus_dio = NULL;
+
 	if (flags & HAMMER2_XOP_MODIFYING)
 		xop->head.mtid = hammer2_trans_sub(ip->pmp);
 	else
@@ -758,6 +760,16 @@ done:
  * Returns 0 on success plus a filled out xop->cluster structure.
  * Return ENOENT on normal termination.
  * Otherwise return an error.
+ *
+ * WARNING! If the xop returns a cluster with a non-NULL focus, note that
+ *	    none of the chains in the cluster (or the focus) are either
+ *	    locked or I/O synchronized with the cpu.  hammer2_xop_gdata()
+ *	    and hammer2_xop_pdata() must be used to safely access the focus
+ *	    chain's content.
+ *
+ *	    The frontend can make certain assumptions based on higher-level
+ *	    locking done by the frontend, but data integrity absolutely
+ *	    requires using the gdata/pdata API.
  */
 int
 hammer2_xop_collect(hammer2_xop_head_t *xop, int flags)

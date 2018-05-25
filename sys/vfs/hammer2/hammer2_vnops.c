@@ -641,8 +641,7 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 		hammer2_cluster_bref(&xop->head.cluster, &bref);
 
 		if (bref.type == HAMMER2_BREF_TYPE_INODE) {
-			ripdata =
-			    &hammer2_cluster_rdata(&xop->head.cluster)->ipdata;
+			ripdata = &hammer2_xop_gdata(&xop->head)->ipdata;
 			dtype = hammer2_get_dtype(ripdata->meta.type);
 			saveoff = bref.key & HAMMER2_DIRHASH_USERMSK;
 			r = vop_write_dirent(&error, uio,
@@ -651,26 +650,28 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 					     dtype,
 					     ripdata->meta.name_len,
 					     ripdata->filename);
+			hammer2_xop_pdata(&xop->head);
 			if (r)
 				break;
 			if (cookies)
 				cookies[cookie_index] = saveoff;
 			++cookie_index;
 		} else if (bref.type == HAMMER2_BREF_TYPE_DIRENT) {
+			uint16_t namlen;
+
 			dtype = hammer2_get_dtype(bref.embed.dirent.type);
 			saveoff = bref.key & HAMMER2_DIRHASH_USERMSK;
-			if (bref.embed.dirent.namlen <=
-			    sizeof(bref.check.buf)) {
+			namlen = bref.embed.dirent.namlen;
+			if (namlen <= sizeof(bref.check.buf)) {
 				dname = bref.check.buf;
 			} else {
-				dname =
-				 hammer2_cluster_rdata(&xop->head.cluster)->buf;
+				dname = hammer2_xop_gdata(&xop->head)->buf;
 			}
 			r = vop_write_dirent(&error, uio,
-					     bref.embed.dirent.inum,
-					     dtype,
-					     bref.embed.dirent.namlen,
-					     dname);
+					     bref.embed.dirent.inum, dtype,
+					     namlen, dname);
+			if (namlen > sizeof(bref.check.buf))
+				hammer2_xop_pdata(&xop->head);
 			if (r)
 				break;
 			if (cookies)
@@ -1290,7 +1291,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	if (error) {
 		ip = NULL;
 	} else {
-		ip = hammer2_inode_get(dip->pmp, dip, &xop->head.cluster, -1);
+		ip = hammer2_inode_get(dip->pmp, dip, &xop->head, -1);
 	}
 	hammer2_inode_unlock(dip);
 
@@ -1887,7 +1888,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	hammer2_inode_unlock(dip);
 
 	if (error == 0) {
-		ip = hammer2_inode_get(dip->pmp, dip, &xop->head.cluster, -1);
+		ip = hammer2_inode_get(dip->pmp, dip, &xop->head, -1);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		if (ip) {
 			hammer2_inode_unlink_finisher(ip, isopen);
@@ -1964,7 +1965,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	hammer2_inode_unlock(dip);
 
 	if (error == 0) {
-		ip = hammer2_inode_get(dip->pmp, dip, &xop->head.cluster, -1);
+		ip = hammer2_inode_get(dip->pmp, dip, &xop->head, -1);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		if (ip) {
 			hammer2_inode_unlink_finisher(ip, isopen);
@@ -2118,7 +2119,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 
 		if (tnch_error == 0) {
 			tip = hammer2_inode_get(tdip->pmp, NULL,
-						&xop2->head.cluster, -1);
+						&xop2->head, -1);
 			hammer2_xop_retire(&xop2->head, HAMMER2_XOPMASK_VOP);
 			if (tip) {
 				hammer2_inode_unlink_finisher(tip, isopen);

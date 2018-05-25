@@ -92,8 +92,8 @@ static void hammer2_strategy_xop_write(hammer2_thread_t *thr,
 				hammer2_xop_t *arg);
 static int hammer2_strategy_read(struct vop_strategy_args *ap);
 static int hammer2_strategy_write(struct vop_strategy_args *ap);
-static void hammer2_strategy_read_completion(hammer2_chain_t *chain,
-				char *data, struct bio *bio);
+static void hammer2_strategy_read_completion(hammer2_chain_t *focus,
+				const char *data, struct bio *bio);
 
 static hammer2_off_t hammer2_dedup_lookup(hammer2_dev_t *hmp,
 			char **datap, int pblksize);
@@ -291,10 +291,12 @@ hammer2_strategy_xop_read(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	hammer2_xop_strategy_t *xop = &arg->xop_strategy;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
+	hammer2_chain_t *focus;
 	hammer2_key_t key_dummy;
 	hammer2_key_t lbase;
 	struct bio *bio;
 	struct buf *bp;
+	const char *data;
 	int error;
 
 	/*
@@ -384,9 +386,10 @@ hammer2_strategy_xop_read(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		xop->finished = 1;
 		hammer2_mtx_unlock(&xop->lock);
 		bp->b_flags |= B_NOTMETA;
-		chain = xop->head.cluster.focus;
-		hammer2_strategy_read_completion(chain, (char *)chain->data,
-						 xop->bio);
+		focus = xop->head.cluster.focus;
+		data = hammer2_xop_gdata(&xop->head)->buf;
+		hammer2_strategy_read_completion(focus, data, xop->bio);
+		hammer2_xop_pdata(&xop->head);
 		biodone(bio);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		break;
@@ -418,22 +421,22 @@ hammer2_strategy_xop_read(hammer2_thread_t *thr, hammer2_xop_t *arg)
 
 static
 void
-hammer2_strategy_read_completion(hammer2_chain_t *chain, char *data,
+hammer2_strategy_read_completion(hammer2_chain_t *focus, const char *data,
 				 struct bio *bio)
 {
 	struct buf *bp = bio->bio_buf;
 
-	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
+	if (focus->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		/*
 		 * Copy from in-memory inode structure.
 		 */
-		bcopy(((hammer2_inode_data_t *)data)->u.data,
+		bcopy(((const hammer2_inode_data_t *)data)->u.data,
 		      bp->b_data, HAMMER2_EMBEDDED_BYTES);
 		bzero(bp->b_data + HAMMER2_EMBEDDED_BYTES,
 		      bp->b_bcount - HAMMER2_EMBEDDED_BYTES);
 		bp->b_resid = 0;
 		bp->b_error = 0;
-	} else if (chain->bref.type == HAMMER2_BREF_TYPE_DATA) {
+	} else if (focus->bref.type == HAMMER2_BREF_TYPE_DATA) {
 		/*
 		 * Data is on-media, record for live dedup.  Release the
 		 * chain (try to free it) when done.  The data is still
@@ -445,29 +448,29 @@ hammer2_strategy_read_completion(hammer2_chain_t *chain, char *data,
 		 * NOTE: Deduplication cannot be safely recorded for
 		 *	 records without a check code.
 		 */
-		hammer2_dedup_record(chain, NULL, data);
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_RELEASE);
+		hammer2_dedup_record(focus, NULL, data);
+		atomic_set_int(&focus->flags, HAMMER2_CHAIN_RELEASE);
 
 		/*
 		 * Decompression and copy.
 		 */
-		switch (HAMMER2_DEC_COMP(chain->bref.methods)) {
+		switch (HAMMER2_DEC_COMP(focus->bref.methods)) {
 		case HAMMER2_COMP_LZ4:
-			hammer2_decompress_LZ4_callback(data, chain->bytes,
+			hammer2_decompress_LZ4_callback(data, focus->bytes,
 							bio);
 			/* b_resid set by call */
 			break;
 		case HAMMER2_COMP_ZLIB:
-			hammer2_decompress_ZLIB_callback(data, chain->bytes,
+			hammer2_decompress_ZLIB_callback(data, focus->bytes,
 							 bio);
 			/* b_resid set by call */
 			break;
 		case HAMMER2_COMP_NONE:
-			KKASSERT(chain->bytes <= bp->b_bcount);
-			bcopy(data, bp->b_data, chain->bytes);
-			if (chain->bytes < bp->b_bcount) {
-				bzero(bp->b_data + chain->bytes,
-				      bp->b_bcount - chain->bytes);
+			KKASSERT(focus->bytes <= bp->b_bcount);
+			bcopy(data, bp->b_data, focus->bytes);
+			if (focus->bytes < bp->b_bcount) {
+				bzero(bp->b_data + focus->bytes,
+				      bp->b_bcount - focus->bytes);
 			}
 			bp->b_resid = 0;
 			bp->b_error = 0;
@@ -1398,7 +1401,8 @@ hammer2_write_bp(hammer2_chain_t *chain, char *data, int ioflag,
  *	    modification after the fact!).
  */
 void
-hammer2_dedup_record(hammer2_chain_t *chain, hammer2_io_t *dio, char *data)
+hammer2_dedup_record(hammer2_chain_t *chain, hammer2_io_t *dio,
+		     const char *data)
 {
 	hammer2_dev_t *hmp;
 	hammer2_dedup_t *dedup;
