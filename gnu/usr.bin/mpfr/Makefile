@@ -1,3 +1,10 @@
+# if wrapper mode
+.if (defined(NO_CROSSTOOLS) && defined(BOOTSTRAPPING)) || \
+    (!defined(BOOTSTRAPPING) && defined(NO_TOOLCHAIN))
+.include "Makefile.zhack"
+.else
+
+# normal mode
 CONTRIBDIR=	${.CURDIR}/../../../contrib/mpfr/src
 .PATH:	${CONTRIBDIR}
 
@@ -69,3 +76,4 @@ SRCS = mpfr.h mpf2mpfr.h mpfr-gmp.h mpfr-impl.h mpfr-intmax.h \
 #SRCS+= set_d64.c get_d64.c
 
 .include <bsd.lib.mk>
+.endif

@@ -1,3 +1,10 @@
+# if wrapper mode
+.if (defined(NO_CROSSTOOLS) && defined(BOOTSTRAPPING)) || \
+    (!defined(BOOTSTRAPPING) && defined(NO_TOOLCHAIN))
+.include "Makefile.zhack"
+.else
+
+# normal mode
 # This build order provides more parallelism that gcc47, and is almost as
 # efficient as possible.  Most of the support libraries could be built
 # without cc_tools and the backend could be built at the same time as the
@@ -18,3 +25,4 @@ SUBDIR+=	libbackend
 SUBDIR+=	backends
 
 .include <bsd.subdir.mk>
+.endif

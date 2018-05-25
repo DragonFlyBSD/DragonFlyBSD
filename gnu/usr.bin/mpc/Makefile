@@ -1,3 +1,10 @@
+# if wrapper mode
+.if (defined(NO_CROSSTOOLS) && defined(BOOTSTRAPPING)) || \
+    (!defined(BOOTSTRAPPING) && defined(NO_TOOLCHAIN))
+.include "Makefile.zhack"
+.else
+
+# normal mode
 CONTRIBDIR=	${.CURDIR}/../../../contrib/mpc/src
 .PATH:		${CONTRIBDIR}
 
@@ -25,3 +32,4 @@ SRCS= mpc-impl.h abs.c acos.c acosh.c add.c add_fr.c                       \
   ui_div.c ui_ui_sub.c
 
 .include <bsd.lib.mk>
+.endif
