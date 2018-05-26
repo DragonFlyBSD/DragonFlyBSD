@@ -87,7 +87,7 @@ expanded.c: MKexpanded.sh ${GENHDRS_NWP}
 fallback.c: MKfallback.sh
 	sh ${NCURSESTINFODIR}/MKfallback.sh /usr/share/terminfo ${NCURSESDIR}/misc/terminfo.src > ${.TARGET}
 
-lib_gen.c: MKlib_gen.sh curses.h
+lib_gen.c: MKlib_gen.sh curses.h ncurses_def.h term.h
 	${NXENV} sh ${NCURSESBASEDIR}/MKlib_gen.sh "${CC} -E ${NXCFLAGS:N-W*}" awk generated <curses.h > ${.TARGET}
 
 lib_keyname.c: MKkeyname.awk keys.list
