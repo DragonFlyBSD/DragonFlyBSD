@@ -8,6 +8,8 @@ SRCS=	objcopy.c is-strip.c rename.c ${WRITE_DEBUG_SRCS}
 MFILE=	strip${MANPAGEVER}.1
 MAN=	${MFILE}
 LDADD=	${STD_LDADD} -lz
+# install(1) might call strip(1) on itself
+INSTALLFLAGS= -S
 
 DEBUG_SRCS=		rddbg.c debug.c stabs.c ieee.c rdcoff.c
 WRITE_DEBUG_SRCS=	${DEBUG_SRCS} wrstabs.c
