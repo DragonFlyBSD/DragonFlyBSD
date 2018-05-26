@@ -1073,6 +1073,7 @@ _startup_libs_alt+=     _startup_libs80
 .endif
 
 _startup_libs=		lib/csu lib/libc lib/libc_rtld
+lib/libc__L: lib/csu__L
 
 _prebuild_libs=		lib/libbz2 lib/libz
 _prebuild_libs+=	lib/libutil
@@ -1140,7 +1141,7 @@ _generic_libs: ${_generic_libs:S/$/__L/}
 .ORDER: ${${_alib}:C/$/__L/}
 .endfor
 .ORDER: ${_startup_libs50:S/$/__L/}
-.ORDER: ${_startup_libs:S/$/__L/}
+#.ORDER: ${_startup_libs:S/$/__L/}
 .ORDER: ${_prebuild_libs:S/$/__L/}
 .ORDER: ${_generic_libs:S/$/__L/}
 
