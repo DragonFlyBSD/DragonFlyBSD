@@ -4970,7 +4970,7 @@ static const struct drm_encoder_funcs intel_dp_enc_funcs = {
 	.destroy = intel_dp_encoder_destroy,
 };
 
-bool
+enum irqreturn
 intel_dp_hpd_pulse(struct intel_digital_port *intel_dig_port, bool long_hpd)
 {
 	struct intel_dp *intel_dp = &intel_dig_port->dp;
@@ -4978,7 +4978,7 @@ intel_dp_hpd_pulse(struct intel_digital_port *intel_dig_port, bool long_hpd)
 	struct drm_device *dev = intel_dig_port->base.base.dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	enum intel_display_power_domain power_domain;
-	bool ret = true;
+	enum irqreturn ret = IRQ_NONE;
 
 	if (intel_dig_port->base.type != INTEL_OUTPUT_EDP &&
 	    intel_dig_port->base.type != INTEL_OUTPUT_HDMI)
@@ -4993,7 +4993,7 @@ intel_dp_hpd_pulse(struct intel_digital_port *intel_dig_port, bool long_hpd)
 		 */
 		DRM_DEBUG_KMS("ignoring long hpd on eDP port %c\n",
 			      port_name(intel_dig_port->port));
-		return false;
+		return IRQ_HANDLED;
 	}
 
 	DRM_DEBUG_KMS("got hpd irq on port %c - %s\n",
@@ -5006,7 +5006,7 @@ intel_dp_hpd_pulse(struct intel_digital_port *intel_dig_port, bool long_hpd)
 	if (long_hpd) {
 		intel_dp_long_pulse(intel_dp->attached_connector);
 		if (intel_dp->is_mst)
-			ret = false;
+			ret = IRQ_HANDLED;
 		goto put_power;
 
 	} else {
@@ -5033,7 +5033,7 @@ intel_dp_hpd_pulse(struct intel_digital_port *intel_dig_port, bool long_hpd)
 		}
 	}
 
-	ret = false;
+	ret = IRQ_HANDLED;
 
 put_power:
 	intel_display_power_put(dev_priv, power_domain);

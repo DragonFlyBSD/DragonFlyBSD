@@ -277,10 +277,10 @@ static void i915_digport_work_func(struct work_struct *work)
 			valid = true;
 
 		if (valid) {
-			int ret;
+			enum irqreturn ret;
 
 			ret = intel_dig_port->hpd_pulse(intel_dig_port, long_hpd);
-			if (ret == true) {
+			if (ret == IRQ_NONE) {
 				/* fall back to old school hpd */
 				old_bits |= (1 << intel_dig_port->base.hpd_pin);
 			}
