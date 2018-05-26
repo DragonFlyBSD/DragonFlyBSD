@@ -522,7 +522,7 @@ installworld-force:
 	rm -rf /usr/obj/temp > /dev/null 2>& 1 || chflags -R noschg /usr/obj/temp
 	rm -rf /usr/obj/temp
 	mkdir -p /usr/obj/temp/cpdup/bin
-	(cd ${.CURDIR}/bin/cpdup; make clean; make obj; make clean; make CFLAGS=-static all install DESTDIR=/usr/obj/temp/cpdup NOMAN=TRUE)
+	(cd ${.CURDIR}/bin/cpdup; make clean && make obj && make clean && make CFLAGS=-static all install DESTDIR=/usr/obj/temp/cpdup NOMAN=TRUE)
 	@echo "XXXXXXXXX Installing to temporary XXXXXXXXX"
 	@sleep 1
 	(cd ${.CURDIR}; ${MAKE} installworld DESTDIR=/usr/obj/temp > /dev/null 2>&1)
@@ -904,9 +904,9 @@ bootstrap-tools-targets2: ${BSTRAPDIRS2:S/^/bstrap-/}
 bstrap-${_tool}!
 	${ECHODIR} "===> ${_tool} (bootstrap-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
-		make DIRPRFX=${_tool}/ obj; \
-		make DIRPRFX=${_tool}/ depend; \
-		make DIRPRFX=${_tool}/ all; \
+		make DIRPRFX=${_tool}/ obj && \
+		make DIRPRFX=${_tool}/ depend && \
+		make DIRPRFX=${_tool}/ all && \
 		make DIRPRFX=${_tool}/ DESTDIR=${BTOOLSDEST} install
 .endfor
 
@@ -966,9 +966,9 @@ build-tools-targets: ${BTOOLSDIRS:S/^/btools-/}
 btools-${_tool}!
 	${ECHODIR} "===> ${_tool} (build-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
-		make DIRPRFX=${_tool}/ obj; \
-		make DIRPRFX=${_tool}/ depend; \
-		make DIRPRFX=${_tool}/ all; \
+		make DIRPRFX=${_tool}/ obj && \
+		make DIRPRFX=${_tool}/ depend && \
+		make DIRPRFX=${_tool}/ all && \
 		make DIRPRFX=${_tool}/ DESTDIR=${BTOOLSDEST} install
 .endfor
 .endif
@@ -993,9 +993,9 @@ cross-tools-targets: ${CTOOLSDIRS:S/^/ctools-/}
 ctools-${_tool}!
 	${ECHODIR} "===> ${_tool} (cross-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
-		make DIRPRFX=${_tool}/ obj; \
-		make DIRPRFX=${_tool}/ depend; \
-		make DIRPRFX=${_tool}/ all; \
+		make DIRPRFX=${_tool}/ obj && \
+		make DIRPRFX=${_tool}/ depend && \
+		make DIRPRFX=${_tool}/ all && \
 		make DIRPRFX=${_tool}/ DESTDIR=${CTOOLSDEST} install
 .endfor
 
@@ -1032,10 +1032,10 @@ libraries:
 . endif
 .endif
 	cd ${.CURDIR}; \
-	    make -f Makefile.inc1 _startup_libs -DSYSBUILD; \
-	    make -f Makefile.inc1 _prebuild_libs -DSYSBUILD; \
-	    make -f Makefile.inc1 _generic_libs -DSYSBUILD;
-	touch ${WORLDDEST}/.libraries_done
+	    make -f Makefile.inc1 _startup_libs -DSYSBUILD && \
+	    make -f Makefile.inc1 _prebuild_libs -DSYSBUILD && \
+	    make -f Makefile.inc1 _generic_libs -DSYSBUILD && \
+	    touch ${WORLDDEST}/.libraries_done
 
 # These dependencies are not automatically generated:
 #
@@ -1118,12 +1118,12 @@ ${_lib}__L: .PHONY
 .if exists(${.CURDIR}/${_lib})
 	@${ECHODIR} "===> ${_lib}"; \
 		cd ${.CURDIR}/${_lib}; \
-		echo "STEP DEP ${_lib}"; \
-		make DIRPRFX=${_lib}/ depend; \
-		echo "STEP ALL ${_lib}"; \
-		make DIRPRFX=${_lib}/ all; \
-		echo "STEP INSTALL ${_lib}"; \
-		make DIRPRFX=${_lib}/ install; \
+		echo "STEP DEP ${_lib}" && \
+		make DIRPRFX=${_lib}/ depend && \
+		echo "STEP ALL ${_lib}" && \
+		make DIRPRFX=${_lib}/ all && \
+		echo "STEP INSTALL ${_lib}" && \
+		make DIRPRFX=${_lib}/ install && \
 		echo "STEP DONE ${_lib}";
 .else
 .warning missing ${.CURDIR}/${_lib} directory.
