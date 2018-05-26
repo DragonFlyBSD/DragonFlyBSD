@@ -1146,8 +1146,13 @@ _generic_libs: ${_generic_libs:S/$/__L/}
 .endfor
 .ORDER: ${_startup_libs50:S/$/__L/}
 #.ORDER: ${_startup_libs:S/$/__L/}
+
+# uncomment if there are missing dependencies
+.if 0
 .ORDER: ${_prebuild_libs:S/$/__L/}
+# we can disable this one, no lib/* depend on libstdc++
 .ORDER: ${_generic_libs:S/$/__L/}
+.endif
 
 .for __target in clean cleandepend cleandir obj depend includes
 .for entry in ${SUBDIR}
