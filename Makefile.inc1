@@ -1086,21 +1086,25 @@ _generic_libs=	gnu/lib
 _prebuild_libs+= lib/libcrypt lib/libmd \
 		lib/libncurses/libncurses
 
-lib/libopie__L lib/libradius__L lib/libtacplus__L: lib/libmd__L
+lib/libopie__L lib/libtacplus__L: lib/libmd__L
 
 _generic_libs+=	lib
 
 _prebuild_libs+=	lib/librecrypto lib/libressl
+lib/libressl__L: lib/librecrypto__L
+
 _prebuild_libs+=	lib/libssh
 lib/libssh__L: lib/librecrypto__L lib/libz__L
+
+_prebuild_libs+=	lib/libradius lib/libopie
+lib/libradius__L: lib/librecrypto__L
 lib/libopie__L: lib/librecrypto__L
 
-_prebuild_libs+= lib/libopie
-
-_prebuild_libs+= lib/libradius lib/libsbuf lib/libtacplus lib/libm \
+_prebuild_libs+= lib/libsbuf lib/libtacplus lib/libm \
 		lib/libpam/libpam lib/libypclnt lib/lib${THREAD_LIB} \
 		lib/libpthread lib/liblzma lib/libprop lib/libdevattr
 lib/liblzma__L: lib/libpthread__L
+lib/libdevattr__L: lib/libprop__L
 
 _generic_libs+=	usr.bin/flex/lib
 
