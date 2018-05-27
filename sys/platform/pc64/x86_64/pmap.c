@@ -4668,8 +4668,10 @@ kernel_skip:
 			pte_pv = pv_get_try(pmap, pmap_pte_pindex(sva),
 					    &pte_placemark, &error);
 			if (error) {
-				pv_put(pd_pv);		/* lock order */
-				pd_pv = NULL;
+				if (pd_pv) {
+					pv_put(pd_pv);	/* lock order */
+					pd_pv = NULL;
+				}
 				if (pt_pv) {
 					pv_put(pt_pv);	/* lock order */
 					pt_pv = NULL;
