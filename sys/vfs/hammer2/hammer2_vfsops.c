@@ -927,8 +927,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	label = NULL;
 	devvp = NULL;
 
-	kprintf("hammer2_mount\n");
-
 	if (path == NULL) {
 		/*
 		 * Root mount
@@ -949,6 +947,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		error = copyinstr(info.volume, devstr, MNAMELEN - 1, &done);
 		if (error)
 			return (error);
+		kprintf("hammer2_mount: '%s'\n", devstr);
 	}
 
 	/*
@@ -965,13 +964,19 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 */
 	dev = devstr;
 	label = strchr(devstr, '@');
-	if (label && ((label + 1) - dev) > done)
+	if (label && ((label + 1) - dev) > done) {
+		kprintf("hammer2: mount: bad label %s/%zd\n",
+			devstr, done);
 		return (EINVAL);
+	}
 	if (label == NULL || label[1] == 0) {
 		char slice;
 
 		if (label == NULL)
 			label = devstr + strlen(devstr);
+		else
+			*label = '\0';		/* clean up trailing @ */
+
 		slice = label[-1];
 		switch(slice) {
 		case 'a':
@@ -1898,6 +1903,8 @@ hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 
 	pmp = MPTOPMP(mp);
 	if (pmp->iroot == NULL) {
+		kprintf("hammer2 (%s): no root inode\n",
+			mp->mnt_stat.f_mntfromname);
 		*vpp = NULL;
 		return EINVAL;
 	}
