@@ -936,6 +936,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		ksnprintf(devstr, sizeof(devstr), "%s",
 			  mp->mnt_stat.f_mntfromname);
 		kprintf("hammer2_mount: root '%s'\n", devstr);
+		done = strlen(devstr) + 1;
 	} else {
 		/*
 		 * Non-root mount or updating a mount
