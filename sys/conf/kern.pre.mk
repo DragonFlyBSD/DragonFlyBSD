@@ -71,7 +71,6 @@ DEFINED_PROF=	${PROF}
 CFLAGS+=	-falign-functions=16
 .if ${PROFLEVEL} >= 2
 IDENT+=	-DGPROF4 -DGUPROF
-PROF+=	-mprofiler-epilogue
 .endif
 .endif
 
