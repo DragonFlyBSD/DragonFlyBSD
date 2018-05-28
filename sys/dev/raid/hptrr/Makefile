@@ -4,10 +4,12 @@
 KMOD = hptrr
 SRCS = opt_scsi.h opt_cam.h bus_if.h device_if.h pci_if.h os_bsd.h
 SRCS+= hptrr_os_bsd.c hptrr_osm_bsd.c hptrr_config.c
-OBJS = hptrr_lib.o
+OBJS = hptrr_lib.bo
 
-hptrr_lib.o:
-	uudecode -p < ${.CURDIR}/$(MACHINE_ARCH)-elf.hptrr_lib.o.uu > ${.TARGET}
+hptrr_lib.bo:	$(MACHINE_ARCH)-elf.hptrr_lib.o.uu
+	uudecode -o ${.TARGET} < ${.ALLSRC}
 	elfedit --output-osabi none ${.TARGET}
+
+CLEANFILES+= hptrr_lib.bo
 
 .include <bsd.kmod.mk>
