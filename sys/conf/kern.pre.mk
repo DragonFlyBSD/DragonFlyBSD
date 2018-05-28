@@ -78,6 +78,11 @@ IDENT+=	-DGPROF4 -DGUPROF
 # can override the others.
 CFLAGS+=	${CONF_CFLAGS}
 
+# XXX handle this explicitly, fw wrappers use implicit .c.o: rule (LINT64)
+.if defined(FASTER_DEPEND)
+CFLAGS+= -MD
+.endif
+
 NORMAL_C= ${CC} -c ${CFLAGS} ${PROF} ${.IMPSRC}
 NORMAL_C_C= ${CC} -c ${CFLAGS} ${PROF} ${.IMPSRC}
 NORMAL_S= ${CC} -c ${ASM_CFLAGS} ${.IMPSRC}

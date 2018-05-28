@@ -85,6 +85,12 @@ ${SYSTEM_OBJS} genassym.o vers.o: opt_global.h
 kernel-depend: assym.s ${BEFORE_DEPEND} \
 	    ${CFILES} ${SYSTEM_CFILES} ${GEN_CFILES} ${SFILES} \
 	    ${SYSTEM_SFILES} ${MFILES:T:S/.m$/.h/}
+.if defined(FASTER_DEPEND)
+.if exists(hack.So)
+	@cat ${SYSTEM_OBJS:M*\.o$:S/.o$/.d/} genassym.d > .depend || \
+	    echo "There were missing deps"
+.endif
+.else
 	rm -f .newdep
 	${MAKE} -V CFILES -V SYSTEM_CFILES -V GEN_CFILES | xargs \
 		mkdep -a -f .newdep ${CFLAGS}
@@ -92,8 +98,12 @@ kernel-depend: assym.s ${BEFORE_DEPEND} \
 	    env MKDEP_CPP="${CC} -E" mkdep -a -f .newdep ${ASM_CFLAGS}
 	rm -f .depend
 	mv -f .newdep .depend
+.endif
 
 kernel-cleandepend:
+.if defined(FASTER_DEPEND)
+	rm -f *.d
+.endif
 	rm -f .depend
 
 kernel-tags:
