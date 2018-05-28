@@ -761,7 +761,7 @@ quickkernel realquickkernel:	maybe_bk_tools bk_build_list bk_kernwarn
 		    config ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
 			${KERNCONFDIR}/${_kernel}
 .endif
-.if !defined(NO_KERNELDEPEND) && !target(realquickkernel)
+.if !defined(NO_KERNELDEPEND) && !make(realquickkernel)
 	cd ${KRNLOBJDIR}/${_kernel}; \
 	    ${KMAKEENV} make KERNEL=${INSTKERNNAME} depend
 .endif
@@ -773,7 +773,7 @@ quickkernel realquickkernel:	maybe_bk_tools bk_build_list bk_kernwarn
 	    config ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
 		${KERNCONFDIR}/${_kernel}
 .endif
-.if !defined(NO_KERNELDEPEND) && !target(realquickkernel)
+.if !defined(NO_KERNELDEPEND) && !make(realquickkernel)
 	cd ${KRNLOBJDIR}/${_kernel}; \
 	    make KERNEL=${INSTKERNNAME} depend
 .endif
