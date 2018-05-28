@@ -13,10 +13,10 @@ vfs/smbfs/smbfs_subr.c		optional	smbfs
 vfs/smbfs/smbfs_vfsops.c	optional	smbfs
 vfs/smbfs/smbfs_vnops.c		optional	smbfs
 cpu/x86_64/misc/atomic.c	standard				\
-	compile-with	"${CC} -c ${CFLAGS} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
+	compile-with	"${NORMAL_C} ${empty(DEFINED_PROF):?-fomit-frame-pointer:} ${WERROR}"
 platform/vkernel64/x86_64/autoconf.c	standard
 platform/vkernel64/x86_64/mp.c		standard			\
-	compile-with	"${CC} -c -pthread ${CFLAGS} -I/usr/include ${.IMPSRC}"
+	compile-with	"${NORMAL_C} -pthread -I/usr/include ${WERROR}"
 #
 # DDB XXX
 cpu/x86_64/misc/elf_machdep.c		standard

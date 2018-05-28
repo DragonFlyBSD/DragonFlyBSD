@@ -115,7 +115,7 @@ vfs/smbfs/smbfs_vfsops.c	optional	smbfs
 vfs/smbfs/smbfs_vnops.c		optional	smbfs
 
 cpu/x86_64/misc/atomic.c		standard			\
-	compile-with    "${CC} -c ${CFLAGS} ${WERROR} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
+	compile-with    "${NORMAL_C} ${empty(DEFINED_PROF):?-fomit-frame-pointer:} ${WERROR}"
 platform/pc64/x86_64/autoconf.c	standard
 platform/pc64/x86_64/mpboot.S	standard
 
