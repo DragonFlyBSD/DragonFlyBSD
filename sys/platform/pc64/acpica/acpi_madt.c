@@ -77,6 +77,8 @@ static int			madt_ioapic_probe(struct ioapic_enumerator *);
 
 static vm_paddr_t		madt_phyaddr;
 
+static boolean_t		madt_use_x2apic = FALSE;
+
 u_int				cpu_id_to_acpi_id[NAPICID];
 
 static void
@@ -174,6 +176,14 @@ madt_iterate_entries(ACPI_TABLE_MADT *madt, madt_iter_t func, void *arg)
 			if (ent->Length < sizeof(ACPI_MADT_LOCAL_APIC)) {
 				kprintf("madt_iterate_entries: invalid MADT "
 					"lapic entry len %d\n", ent->Length);
+				error = EINVAL;
+			}
+			break;
+
+		case ACPI_MADT_TYPE_LOCAL_X2APIC:
+			if (ent->Length < sizeof(ACPI_MADT_LOCAL_X2APIC)) {
+				kprintf("madt_iterate_entries: invalid MADT "
+					"x2apic entry len %d\n", ent->Length);
 				error = EINVAL;
 			}
 			break;
@@ -295,10 +305,39 @@ madt_lapic_pass2_callback(void *xarg, const ACPI_SUBTABLE_HEADER *ent)
 }
 
 static int
+madt_x2apic_pass2_callback(void *xarg, const ACPI_SUBTABLE_HEADER *ent)
+{
+	const ACPI_MADT_LOCAL_X2APIC *x2apic_ent;
+	struct madt_lapic_pass2_cbarg *arg = xarg;
+
+	if (ent->Type != ACPI_MADT_TYPE_LOCAL_X2APIC)
+		return 0;
+
+	x2apic_ent = (const ACPI_MADT_LOCAL_X2APIC *)ent;
+	if (x2apic_ent->LapicFlags & ACPI_MADT_ENABLED) {
+		int cpu;
+
+		if (x2apic_ent->LocalApicId == arg->bsp_apic_id) {
+			cpu = 0;
+			arg->bsp_found = 1;
+		} else {
+			cpu = arg->cpu;
+			arg->cpu++;
+		}
+		MADT_VPRINTF("cpu id %d, acpi uid %u, apic id %d\n",
+		    cpu, x2apic_ent->Uid, x2apic_ent->LocalApicId);
+		lapic_set_cpuid(cpu, x2apic_ent->LocalApicId);
+		CPUID_TO_ACPIID(cpu) = x2apic_ent->Uid;
+	}
+	return 0;
+}
+
+static int
 madt_lapic_pass2(int bsp_apic_id)
 {
 	ACPI_TABLE_MADT *madt;
 	struct madt_lapic_pass2_cbarg arg;
+	madt_iter_t func;
 	int error;
 
 	MADT_VPRINTF("BSP apic id %d\n", bsp_apic_id);
@@ -312,7 +351,11 @@ madt_lapic_pass2(int bsp_apic_id)
 	arg.cpu = 1;
 	arg.bsp_apic_id = bsp_apic_id;
 
-	error = madt_iterate_entries(madt, madt_lapic_pass2_callback, &arg);
+	if (madt_use_x2apic)
+		func = madt_x2apic_pass2_callback;
+	else
+		func = madt_lapic_pass2_callback;
+	error = madt_iterate_entries(madt, func, &arg);
 	if (error)
 		panic("madt_iterate_entries(pass2) failed");
 
@@ -325,7 +368,8 @@ madt_lapic_pass2(int bsp_apic_id)
 }
 
 struct madt_lapic_probe_cbarg {
-	int		cpu_count;
+	int		x2apic_count;
+	int		lapic_count;
 	vm_paddr_t	lapic_addr;
 };
 
@@ -339,12 +383,25 @@ madt_lapic_probe_callback(void *xarg, const ACPI_SUBTABLE_HEADER *ent)
 
 		lapic_ent = (const ACPI_MADT_LOCAL_APIC *)ent;
 		if (lapic_ent->LapicFlags & ACPI_MADT_ENABLED) {
-			arg->cpu_count++;
+			arg->lapic_count++;
 			if (lapic_ent->Id == APICID_MAX) {
 				kprintf("madt_lapic_probe: "
 				    "invalid LAPIC apic id %d\n",
 				    lapic_ent->Id);
 				return EINVAL;
+			}
+		}
+	} else if (ent->Type == ACPI_MADT_TYPE_LOCAL_X2APIC) {
+		const ACPI_MADT_LOCAL_X2APIC *x2apic_ent;
+
+		x2apic_ent = (const ACPI_MADT_LOCAL_X2APIC *)ent;
+		if (x2apic_ent->LapicFlags & ACPI_MADT_ENABLED) {
+			if (x2apic_ent->LocalApicId < APICID_MAX) {
+				/*
+				 * XXX we only support APIC ID 0~254 at
+				 * the moment.
+				 */
+				arg->x2apic_count++;
 			}
 		}
 	} else if (ent->Type == ACPI_MADT_TYPE_LOCAL_APIC_OVERRIDE) {
@@ -381,11 +438,32 @@ madt_lapic_probe(struct lapic_enumerator *e)
 
 	error = madt_iterate_entries(madt, madt_lapic_probe_callback, &arg);
 	if (!error) {
-		if (arg.cpu_count == 0) {
+		if (arg.lapic_count == 0 && arg.x2apic_count == 0) {
 			kprintf("madt_lapic_probe: no CPU is found\n");
 			error = EOPNOTSUPP;
+		} else if (arg.lapic_count == 0) {
+			/*
+			 * ACPI 5.1 says that LOCAL_X2APIC entry should
+			 * be used only if APIC ID > 255.  While ACPI 6.2
+			 * removes that constraint, which means that
+			 * LOCAL_X2APIC entry could be used for any APIC
+			 * ID.
+			 *
+			 * XXX
+			 * In DragonFlyBSD, we don't support APIC ID >=
+			 * 255, so LOCAL_X2APIC entries should be ignored,
+			 * if LOCAL_X2APIC entries are mixed with
+			 * LOCAL_APIC entries.  LOCAL_X2APIC entries are
+			 * used, iff only LOCAL_X2APIC entries exist.
+			 */
+			madt_use_x2apic = TRUE;
+			kprintf("MADT: use X2APIC entries\n");
 		}
+
 		if (arg.lapic_addr == 0) {
+			/*
+			 * XXX x2apic mode.
+			 */
 			kprintf("madt_lapic_probe: zero LAPIC address\n");
 			error = EOPNOTSUPP;
 		}
