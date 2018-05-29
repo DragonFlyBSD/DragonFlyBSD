@@ -2285,7 +2285,6 @@ comparam(struct tty *tp, struct termios *t)
 		if (t->c_ispeed != t->c_ospeed)
 			return (EINVAL);
 		divisor = siodivisor(com->rclk, t->c_ispeed);
-			com->rclk, t->c_ispeed);
 		if (divisor == 0)
 			return (EINVAL);
 	}
