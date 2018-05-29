@@ -172,7 +172,9 @@ static kbd_callback_func_t sckbdevent;
 static int scparam(struct tty *tp, struct termios *t);
 static void scstart(struct tty *tp);
 static void scinit(int unit, int flags);
+#if 0
 static void scterm(int unit, int flags);
+#endif
 static void scshutdown(void *arg, int howto);
 static void sc_puts(scr_stat *scp, u_char *buf, int len);
 static u_int scgetc(sc_softc_t *sc, u_int flags);
@@ -1811,9 +1813,21 @@ sccninit_fini(struct consdev *cp)
 	cp->cn_dev = cctl_dev;
 }
 
+/*
+ * This is called when the console is switched away from syscons to
+ * a late-configuring device (such as a PCIe serial port).  Since
+ * late-configuring devices basically didn't exist until now, this
+ * routine was never called, and SURPRISE!  It doesn't work... causes
+ * syscons to implode due to all the funny console-not-console structure
+ * selection syscons does.
+ *
+ * Make it a NOP.  Just leave the console designation intact, even
+ * though it is no longer a console.
+ */
 static void
 sccnterm(struct consdev *cp)
 {
+#if 0
     /* we are not the kernel console any more, release everything */
 
     if (sc_console_unit < 0)
@@ -1828,6 +1842,7 @@ sccnterm(struct consdev *cp)
     scterm(sc_console_unit, SC_KERNEL_CONSOLE);
     sc_console_unit = -1;
     sc_console = NULL;
+#endif
 }
 
 /*
@@ -3405,6 +3420,7 @@ scinit(int unit, int flags)
     sc->flags |= SC_INIT_DONE;
 }
 
+#if 0
 static void
 scterm(int unit, int flags)
 {
@@ -3468,6 +3484,7 @@ scterm(int unit, int flags)
     sc->adapter = -1;
     lwkt_reltoken(&tty_token);
 }
+#endif
 
 static void
 scshutdown(void *arg, int howto)

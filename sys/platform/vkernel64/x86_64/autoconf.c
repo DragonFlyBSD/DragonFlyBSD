@@ -235,9 +235,14 @@ configure(void *dummy)
 	safepri = TDPRI_KERN_USER;
 }
 
+/*
+ * Finalize configure.  Reprobe for the console, in case it was one
+ * of the devices which attached, then finish console initialization.
+ */
 static void
 configure_final(void *dummy)
 {
+	cninit();
 	cninit_finish();
 
 	if (bootverbose)

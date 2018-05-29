@@ -170,6 +170,7 @@ static	void	comstop		(struct tty *tp, int rw);
 static	timeout_t comwakeup;
 static	void	disc_optim	(struct tty	*tp, struct termios *t,
 				     struct com_s *com);
+static void siocntxwait	(Port_t iobase);
 
 #if NPCI > 0
 static	int	sio_pci_attach (device_t dev);
@@ -358,6 +359,7 @@ static struct pci_ids pci_ids[] = {
 	{ 0x7101135e, "SeaLevel Ultra 530.PCI Single Port Serial", 0x18 },
 	{ 0x0000151f, "SmartLink 5634PCV SurfRider", 0x10 },
 	{ 0x98459710, "Netmos Nm9845 PCI Bridge with Dual UART", 0x10 },
+	{ 0x99229710, "MCS9922 PCIe Multi-I/O Controller", 0x10 },
 	{ 0x8c3d8086, "Intel Lynx Point KT Controller", 0x10 },
 	{ 0x9c3d8086, "Intel Lynx Point-LP HECI KT", 0x10 },
 	{ 0x8cbd8086, "Intel Wildcat Point KT Controller", 0x10 },
@@ -724,10 +726,21 @@ sioprobe(device_t dev, int xrid, u_long rclk)
 		(void)sio_getreg(com, com_data);
 	}
 	if (fn == 256) {
+		/*
+		 * Serial port might be probed but not exist, disable
+		 * if so.  Clear console flags if the serial port does
+		 * not exist.  This is very common for sio0 and sio1
+		 * now and avoids unnecessary user confusion (user does
+		 * not have to clear the sio0 console flag if sio0 does
+		 * not exist and the user wants the console on another
+		 * sio).
+		 */
 		com_unlock();
 		lwkt_reltoken(&tty_token);
 		kprintf("sio%d: can't drain, serial port might "
 			"not exist, disabling\n", device_get_unit(dev));
+		com->flags &= ~0x30;
+
 		return (ENXIO);
 	}
 
@@ -2266,12 +2279,13 @@ comparam(struct tty *tp, struct termios *t)
 		t->c_ispeed = t->c_ospeed;
 
 	/* check requested parameters */
-	if (t->c_ospeed == 0)
+	if (t->c_ospeed == 0) {
 		divisor = 0;
-	else {
+	} else {
 		if (t->c_ispeed != t->c_ospeed)
 			return (EINVAL);
 		divisor = siodivisor(com->rclk, t->c_ispeed);
+			com->rclk, t->c_ispeed);
 		if (divisor == 0)
 			return (EINVAL);
 	}
@@ -2340,6 +2354,7 @@ comparam(struct tty *tp, struct termios *t)
 	 * the speed change atomically.  Keeping interrupts disabled is
 	 * especially important while com_data is hidden.
 	 */
+	siocntxwait(com->bsh);
 	(void) siosetwater(com, t->c_ispeed);
 
 	if (divisor != 0) {
@@ -2357,7 +2372,6 @@ comparam(struct tty *tp, struct termios *t)
 		if (sio_getreg(com, com_dlbh) != dlbh)
 			sio_setreg(com, com_dlbh, dlbh);
 	}
-
 	sio_setreg(com, com_cfcr, com->cfcr_image = cfcr);
 
 	if (!(tp->t_state & TS_TTSTOP))
@@ -2389,7 +2403,6 @@ comparam(struct tty *tp, struct termios *t)
 				   sio_getreg(com, com_fifo) & ~0x40);
 		}
 	}
-
 
 	/*
 	 * Set up state to handle output flow control.
@@ -2834,7 +2847,6 @@ static speed_t siocngetspeed (Port_t, u_long rclk);
 static void siocnclose	(struct siocnstate *sp, Port_t iobase);
 #endif
 static void siocnopen	(struct siocnstate *sp, Port_t iobase, int speed);
-static void siocntxwait	(Port_t iobase);
 
 static cn_probe_t siocnprobe;
 static cn_init_t siocninit;
@@ -2995,7 +3007,8 @@ siocnprobe(struct consdev *cp)
 	for (unit = 0; unit < 16; unit++) { /* XXX need to know how many */
 		int flags;
 		int disabled;
-		if (resource_int_value("sio", unit, "disabled", &disabled) == 0) {
+
+		if (!resource_int_value("sio", unit, "disabled", &disabled)) {
 			if (disabled)
 				continue;
 		}
@@ -3006,9 +3019,24 @@ siocnprobe(struct consdev *cp)
 			int baud;
 			Port_t iobase;
 			speed_t boot_speed;
+			struct com_s *com;
 
-			if (resource_int_value("sio", unit, "port", &port))
-				continue;
+			/*
+			 * We need the port.  For built-in serial ports
+			 * (e.g. sio0/sio1) the resources exist.  For
+			 * add-on serial ports they resources might not
+			 * but the port may have been configured late
+			 * and we can find it when we re-probe.
+			 *
+			 * If the port is not specified check to see if
+			 * the device configured after the fact.
+			 */
+			com = com_addr(unit);
+			if (resource_int_value("sio", unit, "port", &port)) {
+				if (com == NULL || com->ioportres == NULL)
+					continue;
+				port = rman_get_bushandle(com->ioportres);
+			}
 			if (resource_int_value("sio", unit, "baud", &baud) == 0)
 				boot_speed = baud;
 			else
@@ -3023,6 +3051,8 @@ siocnprobe(struct consdev *cp)
 				if (boot_speed)
 					comdefaultrate = boot_speed;
 			}
+			if (boot_speed == 0)
+				boot_speed = comdefaultrate;
 
 			/*
 			 * Initialize the divisor latch.  We can't rely on
@@ -3036,21 +3066,36 @@ siocnprobe(struct consdev *cp)
 			com_lock();
 			cfcr = inb(iobase + com_cfcr);
 			outb(iobase + com_cfcr, CFCR_DLAB | cfcr);
-			divisor = siodivisor(comdefaultrclk, comdefaultrate);
+			divisor = siodivisor(comdefaultrclk, boot_speed);
 			outb(iobase + com_dlbl, divisor & 0xff);
 			outb(iobase + com_dlbh, divisor >> 8);
 			outb(iobase + com_cfcr, cfcr);
 
-			siocnopen(&sp, iobase, comdefaultrate);
+			/*
+			 * We want ttyopen
+			 */
+			if (com) {
+				com->it_in.c_iflag = TTYDEF_IFLAG;
+				com->it_in.c_oflag = TTYDEF_OFLAG;
+				com->it_in.c_cflag = TTYDEF_CFLAG | CLOCAL;
+				com->it_in.c_lflag = TTYDEF_LFLAG;
+				com->lt_out.c_cflag = com->lt_in.c_cflag = CLOCAL;
+				com->lt_out.c_ispeed = com->lt_out.c_ospeed =
+				com->lt_in.c_ispeed = com->lt_in.c_ospeed =
+				com->it_in.c_ispeed = com->it_in.c_ospeed =
+					boot_speed;
+			}
+
+			siocnopen(&sp, iobase, boot_speed);
 			com_unlock();
 
 			crit_exit();
 			if (COM_CONSOLE(flags) && !COM_LLCONSOLE(flags)) {
 				cp->cn_probegood = 1;
 				cp->cn_private = (void *)(intptr_t)unit;
-				cp->cn_pri = COM_FORCECONSOLE(flags)
-					     || boothowto & RB_SERIAL
-					     ? CN_REMOTE : CN_NORMAL;
+				cp->cn_pri = (COM_FORCECONSOLE(flags)
+					     || ((boothowto & RB_SERIAL)) ?
+						 CN_REMOTE : CN_NORMAL);
 				siocniobase = iobase;
 				siocnunit = unit;
 			}
@@ -3101,12 +3146,14 @@ siocninit_fini(struct consdev *cp)
 
 	if (cp->cn_probegood) {
 		unit = (int)(intptr_t)cp->cn_private;
+
 		/*
-		 * Call devfs_find_device_by_name on ttydX to find the correct device,
-		 * as it should have been created already at this point by the
-		 * attach routine.
-		 * If it isn't found, the serial port was not attached at all and we
-		 * shouldn't be here, so assert this case.
+		 * Call devfs_find_device_by_name on ttydX to find the correct
+		 * device, as it should have been created already at this
+		 * point by the attach routine.
+		 *
+		 * If it isn't found, the serial port was not attached at all
+		 * and we shouldn't be here, so assert this case.
 		 */
 		dev = devfs_find_device_by_name("ttyd%s",
 						makedev_unit_b32(tbuf, unit));

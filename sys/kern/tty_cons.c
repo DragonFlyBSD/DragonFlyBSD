@@ -94,7 +94,7 @@ SYSCTL_OPAQUE(_machdep, CPU_CONSDEV, consdev, CTLFLAG_RD,
 static int cn_mute;
 
 #ifdef BREAK_TO_DEBUGGER
-int	break_to_debugger = 1;
+int	break_to_debugger = 1;		/* CTL-ALT-ESC on system keyboard */
 #else
 int	break_to_debugger = 0;
 #endif
@@ -103,7 +103,7 @@ SYSCTL_INT(_kern, OID_AUTO, break_to_debugger, CTLFLAG_RW,
 	&break_to_debugger, 0, "");
 
 #ifdef ALT_BREAK_TO_DEBUGGER
-int	alt_break_to_debugger = 1;
+int	alt_break_to_debugger = 1;	/* CR ~ ^B on serial port */
 #else
 int	alt_break_to_debugger = 0;
 #endif
@@ -174,7 +174,6 @@ cninit(void)
 		    (best_cp == NULL || cp->cn_pri > best_cp->cn_pri))
 			best_cp = cp;
 	}
-
 	
 	/*
 	 * If no console, give up.

@@ -172,47 +172,15 @@ configure(void *dummy)
 	safepri = TDPRI_KERN_USER;
 }
 
+/*
+ * Finalize configure.  Reprobe for the console, in case it was one
+ * of the devices which attached, then finish console initialization.
+ */
 static void
 configure_final(void *dummy)
 {
+	cninit();
 	cninit_finish();
-
-	if (bootverbose) {
-#if 0 /* JG */
-		/*
-		 * Print out the BIOS's idea of the disk geometries.
-		 */
-		int i;
-		kprintf("BIOS Geometries:\n");
-		for (i = 0; i < N_BIOS_GEOM; i++) {
-			unsigned long bios_geom;
-			int max_cylinder, max_head, max_sector;
-
-			bios_geom = bootinfo.bi_bios_geom[i];
-
-			/*
-			 * XXX the bootstrap punts a 1200K floppy geometry
-			 * when the get-disk-geometry interrupt fails.  Skip
-			 * drives that have this geometry.
-			 */
-			if (bios_geom == 0x4f010f)
-				continue;
-
-			kprintf(" %x:%08lx ", i, bios_geom);
-			max_cylinder = bios_geom >> 16;
-			max_head = (bios_geom >> 8) & 0xff;
-			max_sector = bios_geom & 0xff;
-			kprintf(
-		"0..%d=%d cylinders, 0..%d=%d heads, 1..%d=%d sectors\n",
-			       max_cylinder, max_cylinder + 1,
-			       max_head, max_head + 1,
-			       max_sector, max_sector);
-		}
-		kprintf(" %d accounted for\n", bootinfo.bi_n_bios_used);
-
-		kprintf("Device configuration finished.\n");
-#endif
-	}
 }
 
 #ifdef BOOTP
