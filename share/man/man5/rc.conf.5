@@ -2521,7 +2521,8 @@ vfs quota rc.d scripts will be run on boot.
 .It Va vfs_quota_sync
 .Pq Vt str
 List of mount points whose counters are to be synchronized with on-disk
-usage during system startup. See also
+usage during system startup.
+See also
 .Xr vquota 8 .
 .It Va vknetd_enable
 .Pq Vt bool
@@ -2545,7 +2546,8 @@ any configured vkernels will not be started.
 .It Va vkernel_kill_timeout
 .Pq Vt int
 This defines the default number of seconds that we will wait for the
-vkernel to shut down on it's own. If after this time it's still alive,
+vkernel to shut down on its own.
+If after this time it's still alive,
 it will be killed with SIGKILL.
 .It Va vkernel_bin
 .Pq Vt str

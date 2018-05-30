@@ -174,7 +174,7 @@ On return from
 .Fn ieee80211_ifattach
 the driver is expected to override default callback functions in the
 .Vt ieee80211com
-structure to register it's private routines.
+structure to register its private routines.
 Methods marked with a
 .Dq *
 must be provided by the driver.
@@ -241,7 +241,7 @@ Drivers are expected to
 their own method to cleanup private state but must call through
 this method to allow
 .Nm
-to reclaim it's private state.
+to reclaim its private state.
 .It Dv ic_node_cleanup
 Cleanup state in a
 .Vt ieee80211_node

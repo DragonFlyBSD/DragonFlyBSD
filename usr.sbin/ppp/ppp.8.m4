@@ -5337,14 +5337,14 @@ encryption.
 .It RAD_MICROSOFT_MS_MPPE_RECV_KEY
 If this
 .Dv RAD_VENDOR_MICROSOFT
-vendor specific attribute is supplied, it's value is used as the master
+vendor specific attribute is supplied, its value is used as the master
 key for decryption of incoming data.  When clients are authenticated using
 MSCHAPv2, the RADIUS server MUST provide this attribute if inbound MPPE is
 to function.
 .It RAD_MICROSOFT_MS_MPPE_SEND_KEY
 If this
 .Dv RAD_VENDOR_MICROSOFT
-vendor specific attribute is supplied, it's value is used as the master
+vendor specific attribute is supplied, its value is used as the master
 key for encryption of outgoing data.  When clients are authenticated using
 MSCHAPv2, the RADIUS server MUST provide this attribute if outbound MPPE is
 to function.
