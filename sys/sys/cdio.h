@@ -2,7 +2,6 @@
  * 16 Feb 93	Julian Elischer	(julian@dialix.oz.au)
  *
  * $FreeBSD: src/sys/sys/cdio.h,v 1.21 1999/12/29 04:24:38 peter Exp $
- * $DragonFly: src/sys/sys/cdio.h,v 1.3 2006/05/20 02:42:13 dillon Exp $
  */
 
 /*
@@ -186,8 +185,8 @@ struct	ioc_vol
 
 #define	CDIOCSETMONO	_IO('c',12)
 
-#define	CDIOCSETSTERIO	_IO('c',13)
 #define	CDIOCSETSTEREO	_IO('c',13)
+#define	CDIOCSETSTERIO	CDIOCSETSTEREO
 
 #define	CDIOCSETMUTE	_IO('c',14)
 

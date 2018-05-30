@@ -419,7 +419,7 @@ run(int cmd, char *arg)
 			return ioctl (fd, CDIOCSETMONO);
 
 		if (! strncasecmp (arg, "stereo", strlen(arg)))
-			return ioctl (fd, CDIOCSETSTERIO);
+			return ioctl (fd, CDIOCSETSTEREO);
 
 		if (! strncasecmp (arg, "mute", strlen(arg)))
 			return ioctl (fd, CDIOCSETMUTE);
