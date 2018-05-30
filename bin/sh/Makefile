@@ -6,7 +6,7 @@ INSTALLFLAGS= -S
 SHSRCS=	alias.c arith_yacc.c arith_yylex.c cd.c echo.c error.c eval.c \
 	exec.c expand.c \
 	histedit.c input.c jobs.c kill.c mail.c main.c memalloc.c miscbltin.c \
-	mystring.c options.c output.c parser.c printf.c redir.c show.c \
+	mystring.c options.c output.c parser.c printf.c redir.c \
 	test.c trap.c var.c
 GENSRCS= builtins.c nodes.c syntax.c
 GENHDRS= builtins.h nodes.h syntax.h token.h
@@ -25,6 +25,7 @@ WARNS?= 2
 CFLAGS+=-DSHELL -I. -I${.CURDIR}
 # for debug:
 # DEBUG_FLAGS+= -g -DDEBUG=2 -fno-inline
+# SHSRCS+=show.c
 
 .if defined(BOOTSTRAPPING)
 CFLAGS+= -DNO_HISTORY
