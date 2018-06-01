@@ -1,5 +1,16 @@
-use ifconfig to list available interfaces
 
- wifi example - dowpa ath0 ssid password
- ethernet     - dhclient em0
+*** RESCUE SHELL ***
+
+Fix problems and mount the real root partition at `/new_root', then exit
+this shell to continue the normal boot.
+
+* Text editor:
+  # mined  (F1: help, Ctrl-W: write file, Ctrl-X: exit)
+* List available interfaces:
+  # ifconfig
+* Wired connection and DHCP:
+  # dhclient <ifname>
+* Connect to WiFi:
+  # dowpa <ifname> <ssid> <password>
+  (Onced connected, use `dhclient' to do DHCP)
 
