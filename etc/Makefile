@@ -8,7 +8,7 @@ SUBDIR=	sendmail
 BINUPDATE= devd.conf fbtab gettytab network.subr \
 	pf.os \
 	protocols \
-	rc rc.firewall6 \
+	rc rc.firewall rc.firewall6 \
 	rc.sendmail rc.shutdown \
 	rc.subr rpc \
 	etc.${MACHINE_ARCH}/disktab
@@ -43,7 +43,7 @@ DIRS+=	lib/libssh usr.bin/openssl usr.bin/ssh usr.sbin/sshd
 
 # Files that should be installed read-only-executable (555) root:wheel
 #
-BIN2=	pccard_ether rc.firewall rc.suspend rc.resume
+BIN2=	pccard_ether rc.suspend rc.resume
 
 DEFAULTS= compilers.conf devfs.conf make.conf mkinitrd.conf periodic.conf \
 	  pfi.conf rc.conf uuids
