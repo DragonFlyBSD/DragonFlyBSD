@@ -121,8 +121,13 @@ destroy_vn()
 
 make_hier()
 {
-	for dir in ${INITRD_DIRS}; do
-		mkdir -p ${BUILD_DIR}/${dir}
+	mkdir -p ${BUILD_DIR}/new_root
+	# symlink 'tmp' to 'var/tmp', as '/var' will be mounted with
+	# tmpfs, saving a second tmpfs been mounted on '/tmp'.
+	ln -sf var/tmp ${BUILD_DIR}/tmp
+	for _dir in ${INITRD_DIRS}; do
+	    [ ! -d "${BUILD_DIR}/${_dir}" ] &&
+		mkdir -p ${BUILD_DIR}/${_dir}
 	done
 	echo "Created directory structure"
 }
