@@ -155,23 +155,46 @@ usage()
 	exit 2
 }
 
-args=`getopt b:c:s:S:t: $*`
-test $? -ne 0 && usage
 
-set -- $args
-for i; do
-	case "$i" in
-	-b)	BOOT_DIR="$2"; shift; shift;;
-	-c)	CONTENT_DIRS="$2"; shift; shift;;
-	-s)	INITRD_SIZE="$2"; shift; shift;;
-	-S)	INITRD_SIZE_MAX="$2"; shift; shift;;
-	-t)	TMP_DIR="$2"; shift; shift;;
-	--)	shift; break;
+#
+# Main
+#
+
+while getopts :b:c:hs:S:t: opt; do
+	case ${opt} in
+	b)
+		BOOT_DIR="${OPTARG}"
+		;;
+	c)
+		CONTENT_DIRS="${OPTARG}"
+		;;
+	h)
+		usage
+		;;
+	s)
+		INITRD_SIZE="${OPTARG}"
+		;;
+	S)
+		INITRD_SIZE_MAX="${OPTARG}"
+		;;
+	t)
+		TMP_DIR="${OPTARG}"
+		;;
+	\?)
+		log "Invalid option -${OPTARG}"
+		usage
+		;;
+	:)
+		log "Option -${OPTARG} requires an argument"
+		usage
+		;;
 	esac
 done
 
-test ! -z "$1" && usage
-check_dirs ${BOOT_DIR} ${CONTENT_DIRS} ${TMP_DIR} || usage
+shift $((OPTIND - 1))
+[ $# -ne 0 ] && usage
+[ -z "${BOOT_DIR}" -o -z "${CONTENT_DIRS}"  -o -z "${TMP_DIR}" ] && usage
+check_dirs ${BOOT_DIR} ${CONTENT_DIRS} ${TMP_DIR}
 
 BUILD_DIR="${TMP_DIR}/initrd.$$"
 INITRD_SIZE=${INITRD_SIZE%[mM]}  # MB
