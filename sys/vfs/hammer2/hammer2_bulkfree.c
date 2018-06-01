@@ -51,9 +51,9 @@
  *     which is on a 1GB demark.  This will eat a little more space but for
  *     now we retain compatibility and make FMZONEBASE every 1GB
  */
-#define H2FMZONEBASE(key)         ((key) & ~HAMMER2_FREEMAP_LEVEL1_MASK)
-#define H2FMBASE(key, radix)    ((key) & ~(((hammer2_off_t)1 << (radix)) - 1))
-#define H2FMSHIFT(radix)        ((hammer2_off_t)1 << (radix))
+#define H2FMZONEBASE(key)	((key) & ~HAMMER2_FREEMAP_LEVEL1_MASK)
+#define H2FMBASE(key, radix)	((key) & ~(((hammer2_off_t)1 << (radix)) - 1))
+#define H2FMSHIFT(radix)	((hammer2_off_t)1 << (radix))
 
 /*
  * breadth-first search
@@ -487,8 +487,8 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 			TAILQ_REMOVE(&cbinfo.list, save, entry);
 			cbinfo.pri = 0;
 			error |= hammer2_bulk_scan(save->chain,
-						     h2_bulkfree_callback,
-						     &cbinfo);
+						   h2_bulkfree_callback,
+						   &cbinfo);
 			hammer2_chain_drop(save->chain);
 			kfree(save, M_HAMMER2);
 		}
@@ -499,16 +499,19 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 			save = TAILQ_FIRST(&cbinfo.list);
 		}
 
-		kprintf("bulkfree lastdrop %d %d error=0x%04x\n",
-			vchain->refs, vchain->core.chain_count, error);
-
 		/*
 		 * If the complete scan succeeded we can synchronize our
 		 * in-memory freemap against live storage.  If an abort
 		 * occured we cannot safely synchronize our partially
 		 * filled-out in-memory freemap.
 		 */
-		if (error == 0) {
+		if (error) {
+			kprintf("bulkfree lastdrop %d %d error=0x%04x\n",
+				vchain->refs, vchain->core.chain_count, error);
+		} else {
+			kprintf("bulkfree lastdrop %d %d\n",
+				vchain->refs, vchain->core.chain_count);
+
 			error = h2_bulkfree_sync(&cbinfo);
 
 			hammer2_voldata_lock(hmp);
@@ -580,10 +583,10 @@ cbinfo_bmap_init(hammer2_bulkfree_info_t *cbinfo, size_t size)
 		if (lokey < H2FMZONEBASE(key) + HAMMER2_ZONE_SEG64)
 			lokey = H2FMZONEBASE(key) + HAMMER2_ZONE_SEG64;
 		if (key < lokey || key >= hikey) {
-                        memset(bmap->bitmapq, -1,
-                               sizeof(bmap->bitmapq));
-                        bmap->avail = 0;
-                        bmap->linear = HAMMER2_SEGSIZE;
+			memset(bmap->bitmapq, -1,
+			       sizeof(bmap->bitmapq));
+			bmap->avail = 0;
+			bmap->linear = HAMMER2_SEGSIZE;
 		} else {
 			bmap->avail = H2FMSHIFT(HAMMER2_FREEMAP_LEVEL0_RADIX);
 		}
