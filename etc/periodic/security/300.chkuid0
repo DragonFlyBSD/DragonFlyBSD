@@ -51,4 +51,4 @@ then
 	[ $n -gt 0 ] && rc=1 || rc=0
 fi
 
-exit "$rc"
+exit $rc

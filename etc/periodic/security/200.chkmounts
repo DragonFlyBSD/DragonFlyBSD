@@ -50,7 +50,7 @@ rc=0
 if check_yesno_period security_status_chkmounts_enable
 then
 	case "$security_status_nomfs" in
-	    [Yy][Ee][Ss])
+	[Yy][Ee][Ss])
 		ignore="${ignore}|^mfs:"
 	esac
 	[ -n "$ignore" ] && cmd="egrep -v ${ignore#|}" || cmd=cat
@@ -62,4 +62,4 @@ then
 	rc=$?
 fi
 
-exit "$rc"
+exit $rc
