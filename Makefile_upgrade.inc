@@ -3421,6 +3421,7 @@ TO_REMOVE+=/usr/include/netinet6/esp_camellia.h
 TO_REMOVE+=/usr/include/netinet6/esp_rijndael.h
 TO_REMOVE+=/usr/sbin/btxld
 TO_REMOVE+=/usr/share/man/man8/btxld.8.gz
+TO_REMOVE+=/usr/share/examples/meteor
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
