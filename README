@@ -24,13 +24,13 @@ Note: If you want to build and install the kernel with the
 ``buildkernel'' and ``installkernel'' targets, you might need to build
 world before.  More information is available in the DragonFly handbook.
 
-The sample kernel configuration files reside in the sys/config
-sub-directory (assuming that you've installed the kernel sources), the
-file named GENERIC being the one used to build your initial installation
-kernel.  The file LINT contains entries for all possible devices, not
-just those commonly used, and is meant more as a general reference
-than an actual kernel configuration file (a kernel built from it
-wouldn't even run).
+The kernel configuration files reside in the sys/config sub-directory.
+The X86_64_GENERIC is the default x86_64 kernel configuration used in
+release builds.  The VKERNEL64 is the default 64 bit vkernel(7) kernel
+configuration file.  The file LINT64 contains entries for all possible
+devices, not just those commonly used, and is meant more as a general
+reference than an actual kernel configuration file (a kernel built
+from it wouldn't even run).  Also see the config(8) man page.
 
 
 Source Roadmap:
