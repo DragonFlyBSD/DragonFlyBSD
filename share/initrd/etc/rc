@@ -1,46 +1,49 @@
 #!/bin/sh
 
-# echo "Starting shell from md boot"
-# exec sh
+export PATH=/bin:/sbin
+export HOME=/var/home
 
-export HOME=/root
-
-/sbin/mount_tmpfs tmpfs /tmp
-/sbin/mount_tmpfs tmpfs /var
-mkdir /var/tmp
-mkdir /var/run
-mkdir /var/db
-mkdir /var/empty
-# / is mounted ro by default
-/sbin/mount_ufs -w /dev/md0s0 /
+# Where to mount the real root partition
+export NEW_ROOT=/new_root
 
 rescue_shell() {
+	echo "Starting the recovery shell ..."
 	cat /etc/motd
-	echo "Starting recovery shell!"
 	exec sh
 	exit 0
 }
 
-# Start udevd
-/sbin/udevd
+if [ ! -d "$NEW_ROOT" ]; then
+	echo "WARNING: trying to remount / RW and create $NEW_ROOT ..."
+	mount -u -w / &&
+	    mkdir $NEW_ROOT ||
+	    rescue_shell
+fi
 
+echo "Setting up /var directories ..."
+mount_tmpfs tmpfs /var
+mkdir /var/db /var/empty /var/home /var/run /var/tmp
+
+echo "Starting udevd for LVM ..."
+udevd
+
+echo "Executing additional rc scripts ..."
 for rcs in /etc/rc.*; do
-	if [ -x $rcs ]; then
+	if [ -x "$rcs" ]; then
 		. $rcs
 	fi
 done
 
-echo "Mounting new root"
+echo "Mounting real root partition at $NEW_ROOT ..."
 
 IFS=':'
-REAL_ROOT=`sysctl -n vfs.real_root`
-if [ "$?" -ne "0" ]; then
-	echo "Kernel does not have vfs.real_root sysctl. Please update your" \
-		"kernel if you intend to use initrd"
+REAL_ROOT=$(sysctl -n vfs.real_root)
+if [ $? -ne 0 ]; then
+	echo "ERROR: vfs.real_root sysctl no exist. The kernel is too old."
 	rescue_shell
 fi
 if [ -z "${REAL_ROOT}" ]; then
-	echo "vfs.real_root sysctl not set. Dropping to a rescue shell."
+	echo "ERROR: vfs.real_root sysctl not set."
 	rescue_shell
 fi
 set -- $REAL_ROOT
@@ -73,16 +76,13 @@ else
 	fi
 fi
 
-# Stop udevd
-read UDEVD_PID < /var/run/udevd.pid
-kill $UDEVD_PID
+echo "Stopping udevd ..."
+kill $(cat /var/run/udevd.pid)
 
-# Clean up
+echo "Cleaning up and umounting /var ..."
 rm -rf /var/*
-rm -rf /tmp/*
-/sbin/umount /var
-/sbin/umount /tmp
+umount /var
 
-echo "Mounting devfs on new root"
-#/sbin/mount_devfs /new_root/dev
-/sbin/mount_null /dev /new_root/dev
+echo "Mounting devfs on real root ..."
+#mount_devfs $NEW_ROOT/dev
+mount_null /dev $NEW_ROOT/dev

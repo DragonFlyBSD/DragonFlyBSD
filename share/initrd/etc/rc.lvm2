@@ -1,16 +1,14 @@
 #!/bin/sh
 
 if [ ! -x /sbin/lvm ]; then
-	return 1;
+	echo "ERROR: /sbin/lvm not exists or executable"
+	return 1
 fi
 
-echo "Configuring LVM volumes"
+echo "Configuring LVM volumes ..."
 
-if [ ! -d /tmp/lvm2 ]; then
-	mkdir -p /tmp/lvm2
-fi
-
-export LVM_SYSTEM_DIR=/tmp/lvm2
+export LVM_SYSTEM_DIR=/var/tmp/lvm2
+[ -d "$LVM_SYSTEM_DIR" ] || mkdir $LVM_SYSTEM_DIR
 
 # Scan for volume groups
 /sbin/lvm vgscan --mknodes --ignorelockingfailure &> /dev/null
