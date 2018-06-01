@@ -47,33 +47,21 @@ if [ -z "${REAL_ROOT}" ]; then
 	rescue_shell
 fi
 set -- $REAL_ROOT
-TYPE=$1
 unset IFS
 
+TYPE=$1
 if [ "$TYPE" = "local" ]; then
 	FSTYPE=$2
-	MOUNTFROM=$3
-
-	# Make sure MOUNTFROM begins with /dev/
-	substr="${MOUNTFROM##/dev/}"
-	if [ "$substr" = "$MOUNTFROM" ]; then
-		MOUNTFROM="/dev/$MOUNTFROM"
-	fi
-
-	echo "executing /sbin/mount -t $FSTYPE $4 $MOUNTFROM /new_root"
-	/sbin/mount -o ro -t $FSTYPE $4 $MOUNTFROM /new_root
-	if [ "$?" -ne "0" ]; then
-		rescue_shell
-	fi
+	MOUNTFROM="/dev/${3#/dev/}"
+	echo "Executing: mount -t $FSTYPE $4 $MOUNTFROM $NEW_ROOT"
+	mount -o ro -t $FSTYPE $4 $MOUNTFROM $NEW_ROOT ||
+	    rescue_shell
+elif [ -x "/etc/rcmount_${TYPE}" ]; then
+	. /etc/rcmount_${TYPE} "$@" ||
+	    rescue_shell
 else
-	if [ -x "/etc/rcmount_${TYPE}" ]; then
-		. /etc/rcmount_${TYPE} $@
-		if [ "$?" -ne "0" ]; then
-			rescue_shell
-		fi
-	else
-		rescue_shell
-	fi
+	echo "ERROR: Unsupported root filesystem type: $TYPE."
+	rescue_shell
 fi
 
 echo "Stopping udevd ..."
