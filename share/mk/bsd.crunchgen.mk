@@ -1,37 +1,32 @@
-#################################################################
 #
 # Generate crunched binaries using crunchgen(1).
 #
-# General notes:
+# Make variables used to generate the crunchgen(1) config file:
 #
-# A number of Make variables are used to generate the crunchgen config file.
+# CRUNCH_SRCDIRS	Directories to search for included programs
+# CRUNCH_PROGS		Programs to be included
+# CRUNCH_LIBS		Libraries to be statically linked with
+# CRUNCH_SHLIBS		Libraries to be dynamically linked with
+# CRUNCH_BUILDOPTS	Build options to be added for every program
+# CRUNCH_BUILDTOOLS	Programs that need build tools built in the
+#			local architecture.
 #
-#  CRUNCH_SRCDIRS: lists directories to search for included programs
-#  CRUNCH_PROGS:  lists programs to be included
-#  CRUNCH_LIBS:  libraries to statically link with
-#  CRUNCH_SHLIBS:  libraries to dynamically link with
-#  CRUNCH_BUILDOPTS: generic build options to be added to every program
-#  CRUNCH_BUILDTOOLS: lists programs that need build tools built in the
-#       local architecture.
+# Special options can be specified for individual programs:
 #
-# Special options can be specified for individual programs
-#  CRUNCH_SRCDIR_${P}: base source directory for program ${P}
-#  CRUNCH_BUILDOPTS_${P}: additional build options for ${P}
-#  CRUNCH_ALIAS_${P}: additional names to be used for ${P}
+# CRUNCH_SRCDIR_${P}	Base source directory for program ${P}
+# CRUNCH_BUILDOPTS_${P}	Additional build options for ${P}
+# CRUNCH_ALIAS_${P}	Additional names to be used for ${P}
 #
 # By default, any name appearing in CRUNCH_PROGS or CRUNCH_ALIAS_${P}
 # will be used to generate a hard link to the resulting binary.
 # Specific links can be suppressed by setting
 # CRUNCH_SUPPRESS_LINK_${NAME} to 1.
 #
-# If CRUNCH_GENERATE_LINKS is set to no, no links will be generated.
+# If CRUNCH_GENERATE_LINKS is set to 'no', then no links will be generated.
 #
 
 # $FreeBSD: head/share/mk/bsd.crunchgen.mk 305257 2016-09-01 23:52:20Z bdrewery $
 
-##################################################################
-#  The following is pretty nearly a generic crunchgen-handling makefile
-#
 
 CONF=	${PROG}.conf
 OUTMK=	${PROG}.mk
@@ -73,31 +68,30 @@ all: ${PROG}
 exe: ${PROG}
 
 ${CONF}: Makefile
-	echo \# Auto-generated, do not edit >${.TARGET}
+	echo "# Auto-generated, do not edit" >${.TARGET}
 .ifdef CRUNCH_BUILDOPTS
-	echo buildopts ${CRUNCH_BUILDOPTS} >>${.TARGET}
+	echo "buildopts ${CRUNCH_BUILDOPTS}" >>${.TARGET}
 .endif
 .ifdef CRUNCH_LIBS
-	echo libs ${CRUNCH_LIBS} >>${.TARGET}
+	echo "libs ${CRUNCH_LIBS}" >>${.TARGET}
 .endif
 .ifdef CRUNCH_SHLIBS
-	echo libs_so ${CRUNCH_SHLIBS} >>${.TARGET}
+	echo "libs_so ${CRUNCH_SHLIBS}" >>${.TARGET}
 .endif
 .for D in ${CRUNCH_SRCDIRS}
 .for P in ${CRUNCH_PROGS_${D}}
-	echo progs ${P} >>${.TARGET}
-	echo special ${P} srcdir ${CRUNCH_SRCDIR_${P}} >>${.TARGET}
+	echo "progs ${P}" >>${.TARGET}
+	echo "special ${P} srcdir ${CRUNCH_SRCDIR_${P}}" >>${.TARGET}
 .ifdef CRUNCH_BUILDOPTS_${P}
-	echo special ${P} buildopts DIRPRFX=${DIRPRFX}${P}/ \
-	    ${CRUNCH_BUILDOPTS_${P}} >>${.TARGET}
+	echo "special ${P} buildopts DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS_${P}}" >>${.TARGET}
 .else
-	echo special ${P} buildopts DIRPRFX=${DIRPRFX}${P}/ >>${.TARGET}
+	echo "special ${P} buildopts DIRPRFX=${DIRPRFX}${P}/" >>${.TARGET}
 .endif
 .ifdef CRUNCH_KEEP_${P}
-	echo special ${P} keep ${CRUNCH_KEEP_${P}} >>${.TARGET}
+	echo "special ${P} keep ${CRUNCH_KEEP_${P}}" >>${.TARGET}
 .endif
 .for A in ${CRUNCH_ALIAS_${P}}
-	echo ln ${P} ${A} >>${.TARGET}
+	echo "ln ${P} ${A}" >>${.TARGET}
 .endfor
 .endfor
 .endfor
@@ -108,7 +102,7 @@ CRUNCHENV?=	# empty
 ${OUTPUTS:[1]}: .META
 ${OUTPUTS:[2..-1]}: .NOMETA
 ${OUTPUTS}: ${CONF}
-	MAKE=${MAKE} ${CRUNCHENV} MAKEOBJDIRPREFIX=${CRUNCHOBJS} \
+	MAKE="${MAKE}" ${CRUNCHENV} MAKEOBJDIRPREFIX=${CRUNCHOBJS} \
 	    ${CRUNCHGEN} -fq -m ${OUTMK} -c ${OUTC} ${CONF}
 	# Avoid redundantly calling 'make objs' which we've done by our
 	# own dependencies.
