@@ -166,6 +166,7 @@
 #define COMPILER_DEPENDENT_INT64        int64_t
 #define COMPILER_DEPENDENT_UINT64       uint64_t
 
+#define ACPI_STRUCT_INIT(field, value)  .field = value
 #define ACPI_USE_DO_WHILE_0
 #define ACPI_USE_SYSTEM_CLIBRARY
 
@@ -227,7 +228,7 @@ struct acpi_spinlock;
 #define ACPI_CACHE_T    struct acpicache
 struct acpicache;
 
-#else /* _KERNEL */
+#else /* !_KERNEL */
 
 #define ACPI_USE_STANDARD_HEADERS
 
