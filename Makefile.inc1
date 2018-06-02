@@ -1,28 +1,13 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
 #
+# This file defines the user-driven targets.
+#
+# Standard targets are documented in the makefiles in /usr/share/mk and include:
+#	obj depend all install clean cleandepend cleanobj
+#
 # Build-time options are documented in make.conf(5).
 #
-# The intended user-driven targets are:
-#
-# buildworld  - rebuild *everything*, including glue to help do upgrades
-# quickworld  - skip the glue and do a depend+build on the meat
-# realquickworld - skip the glue and depend stages and just build the meat
-# crossworld  - only build the glue (particularly the cross-build environment)
-# installworld- install everything built by "buildworld"
-# backupworld - copies /bin /sbin /usr/bin /usr/sbin /usr/lib /usr/libexec
-#               to manual backup dir
-# rescue      - create rescue image
-# restoreworld- installs binaries from manual backup dir to world
-# restoreworld-auto - installs binaries from auto-backup dir to world
-# most        - build user commands, no libraries or include files
-# installmost - install user commands, no libraries or include files
-# backup-clean - delete backup from manual backup dir
-# backup-auto-clean - delete backup from auto-backup dir
-#
-# Standard targets (not defined here) are documented in the makefiles in
-# /usr/share/mk.  These include:
-#		obj depend all install clean cleandepend cleanobj
 
 # Put initial settings here.
 SUBDIR=
@@ -178,13 +163,13 @@ THREAD_LIB?=	thread_xu
 # WORLD		(Cross built) Our ultimate buildworld, using only BTOOLS and
 #		CTOOLS.
 #
-# MACHINE_PLATFORM Platform Architecture we are building on
-# MACHINE	Machine Architecture (usually the same as MACHINE_ARCH)
-# MACHINE_ARCH	Cpu Architecture we are building on
+# MACHINE_PLATFORM	Platform Architecture we are building on
+# MACHINE		Machine Architecture (usually the same as MACHINE_ARCH)
+# MACHINE_ARCH		CPU Architecture we are building on
 #
-# TARGET_PLATFORM Platform Architecture we are building for
-# TARGET	Machine Architecture we are building for
-# TARGET_ARCH	Cpu Architecture we are building for
+# TARGET_PLATFORM 	Platform Architecture we are building for
+# TARGET		Machine Architecture we are building for
+# TARGET_ARCH		CPU Architecture we are building for
 #
 BTOOLSDEST=	${DESTDIRBASE}/btools_${MACHINE_ARCH}
 CTOOLSDEST=	${DESTDIRBASE}/ctools_${MACHINE_ARCH}_${TARGET_ARCH}
@@ -495,8 +480,6 @@ installcheck: _iwinit
 # Backs up the current world if ${AUTO_BACKUP} is writable.
 # Installs everything compiled by a 'buildworld'.
 #
-# Includes sleep/sync safety before running mkinitrd.
-
 installworld: installcheck
 	-@mkdir -p ${AUTO_BACKUP} > /dev/null 2>&1
 	@cd ${.CURDIR}; \
