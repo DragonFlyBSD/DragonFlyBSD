@@ -58,6 +58,9 @@ libexec		System daemons.
 
 nrelease	Framework for building the ``live'' CD image.
 
+initrd		Build system for statically linked /rescue utilities and
+		initial ramdisk creation.
+
 sbin		System commands.
 
 share		Shared resources.

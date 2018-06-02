@@ -3,8 +3,8 @@
 #
 # The user-driven targets are:
 #
-# buildworld          - Rebuild *everything*, including glue to help do
-#                       upgrades.
+# buildworld          - Rebuild *everything* but the kernel, including glue to
+#                       help do upgrades.
 # quickworld          - Skip bootstrap, build and cross-build tool steps.
 # realquickworld      - Skip above steps, plus depend.
 # crossworld          - Just do the bootstrap, build, and cross-build steps.
@@ -23,11 +23,13 @@
 # installkernel       - Install the kernel and the kernel-modules.
 # reinstallkernel     - Reinstall the kernel and the kernel-modules.
 # kernel              - buildkernel + installkernel.
-# preupgrade          - Do certain upgrades in /etc (typically the addition of
-#                       new users and groups used by installed utilities) before
+# preupgrade          - Do certain upgrades (typically the addition of new
+#                       users and groups used by installed utilities) before
 #                       the installworld.
 # upgrade             - Upgrade the files in /etc and also setup the rest
 #                       of the system for DragonFly. ex. two compilers.
+# rescue              - Build and install the statically linked rescue tools.
+# initrd              - Build the rescue tools and create the initrd image.
 # most                - Build user commands, no libraries or include files.
 # installmost         - Install user commands, no libraries or include files.
 # backupworld         - Copy /bin /sbin /usr/bin /usr/sbin /usr/lib
@@ -46,7 +48,7 @@
 # the mk files from the source tree which are supposed to DTRT.
 #
 # Most of the user-driven targets (as listed above) are implemented in
-# Makefile.inc1.  The exceptions are preupgrade and upgrade.
+# Makefile.inc1.
 #
 # For individuals wanting to build from the sources currently on their
 # system, the simple instructions are:
@@ -64,6 +66,7 @@
 # 5.  `make installworld'
 # 6.  `make upgrade'
 # 7.  `reboot'
+# 8.  `make initrd'       (after making sure that the new world works well).
 #
 # If TARGET_ARCH=arch (e.g. x86_64) is specified you can
 # cross build world for other architectures using the buildworld target,
@@ -80,7 +83,7 @@ TGTS=	all all-man buildkernel quickkernel realquickkernel nativekernel \
 	reinstallkernel installmost installworld installworld-force \
 	libraries lint maninstall \
 	manlint mk most obj objlink regress rerelease tags \
-	rescue backupworld restoreworld restoreworld-auto \
+	backupworld restoreworld restoreworld-auto \
 	backup-clean backup-auto-clean \
 	_obj _includes _libraries _depend _worldtmp \
 	_bootstrap-tools _build-tools _cross-tools
@@ -200,5 +203,21 @@ preupgrade:
 upgrade:
 	@cd ${.CURDIR}/etc; make -m ${.CURDIR}/share/mk upgrade_etc
 .if !defined(NOMAN) && !defined(NO_MAKEDB_RUN)
-	cd ${.CURDIR}/share/man; make makedb
+	@cd ${.CURDIR}/share/man; make makedb
 .endif
+	@echo "--------------------------------------------------------------"
+	@echo "Now you can reboot into the new system!  If the new system works as"
+	@echo "expected, consider updating the rescue tools and initrd image with:"
+	@echo "    # cd ${.CURDIR}; make initrd"
+	@echo "NOTE: Do this only after verifying the new system works as expected!"
+	@echo ""
+	@echo "You also need to upgrade the 3rd-party packages with:"
+	@echo "    # pkg update; pkg [-f] upgrade"
+	@echo "--------------------------------------------------------------"
+
+#
+# Build and install the statically linked rescue tools, and create the
+# initrd image.
+#
+rescue initrd: .PHONY
+	(cd ${.CURDIR}/initrd; make ${.TARGET})

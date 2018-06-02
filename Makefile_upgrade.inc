@@ -3422,6 +3422,11 @@ TO_REMOVE+=/usr/include/netinet6/esp_rijndael.h
 TO_REMOVE+=/usr/sbin/btxld
 TO_REMOVE+=/usr/share/man/man8/btxld.8.gz
 TO_REMOVE+=/usr/share/examples/meteor
+TO_REMOVE+=/etc/defaults/mkinitrd.conf
+TO_REMOVE+=/usr/share/man/man8/mkinitrd.8.gz
+TO_REMOVE+=/usr/share/man/man5/mkinitrd.conf.5.gz
+TO_REMOVE+=/sbin/mkinitrd
+TO_REMOVE+=/usr/share/initrd/
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

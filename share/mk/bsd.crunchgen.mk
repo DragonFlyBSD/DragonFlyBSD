@@ -40,7 +40,7 @@ CLEANFILES+= ${CONF} *.o *.lo *.c *.mk *.cache *.a *.h
 # Set a default SRCDIR for each for simpler handling below.
 .for D in ${CRUNCH_SRCDIRS}
 .for P in ${CRUNCH_PROGS_${D}}
-CRUNCH_SRCDIR_${P}?=	${.CURDIR}/../../../${D}/${P}
+CRUNCH_SRCDIR_${P}?=	${.CURDIR}/../../${D}/${P}
 .endfor
 .endfor
 

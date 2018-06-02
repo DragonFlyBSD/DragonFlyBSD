@@ -12,6 +12,14 @@
 +         UPGRADING DRAGONFLY FROM 5.2 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+MKINITRD COMMAND REMOVED
+------------------------
+
+The mkinitrd(8) command is removed and its functionality is replaced by
+the new "initrd" make target.  After rebooting into the new world and
+verifying everything works, execute "make initrd" to upgrade the rescue
+tools and initrd image.
+
 IPSEC, IPSEC_ESP AND IPSEC_DEBUG REMOVED FROM VKERNEL64 CONFIG
 --------------------------------------------------------------
 

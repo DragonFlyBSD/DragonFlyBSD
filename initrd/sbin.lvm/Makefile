@@ -1,15 +1,12 @@
 #	$NetBSD: Makefile,v 1.7 2009/12/01 23:12:51 haad Exp $
 
-BINDIR=		/usr/share/initrd/sbin
-NOSHARED=	yes
-NOMAN=
+PROG=		lvm
+WARNS?=		1
 
-LVM2_DIR=	${.CURDIR}/../../../contrib/lvm2
+LVM2_DIR=	${.CURDIR}/../../contrib/lvm2
 LVM2_DISTDIR=       ${LVM2_DIR}/dist
 LIBDM_DISTDIR=        ${LVM2_DIR}/dist/libdm
 LIBDM_SRCDIR= ${LVM2_DIR}/lib/libdevmapper
-
-PROG=		lvm
 
 SRCS=		dumpconfig.c formats.c lvchange.c lvconvert.c lvcreate.c \
 		lvdisplay.c lvextend.c lvmchange.c lvmcmdline.c \

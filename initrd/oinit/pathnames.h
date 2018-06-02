@@ -35,4 +35,5 @@
 #include <paths.h>
 
 #define	_PATH_RUNCOM	"/etc/rc"
-#define	_PATH_RUNDOWN   "/etc/rc.shutdown"
+#define	_PATH_RUNDOWN	"/etc/rc.shutdown"
+#define	_PATH_NEWROOT	"/new_root"

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 if [ $# != 3 ]; then
-    echo "dowpa ath0 ssid password"
+    echo "dowpa <interface> <ssid> <password>"
     exit 1
 fi
 

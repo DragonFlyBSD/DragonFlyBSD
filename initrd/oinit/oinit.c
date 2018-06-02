@@ -103,11 +103,9 @@ static void
 runcom(char **argv_orig)
 {
 	pid_t pid, wpid;
-	int status, fd, error;
+	int status, error;
 	const char *argv[4];
 	struct sigaction sa;
-
-	fd = -1;
 
 	if ((pid = fork()) == 0) {
 		sigemptyset(&sa.sa_mask);
@@ -133,15 +131,15 @@ runcom(char **argv_orig)
 		wpid = waitpid(-1, &status, WUNTRACED);
 	} while (wpid != pid);
 
-	error = chdir("/new_root");
+	error = chdir(_PATH_NEWROOT);
 	if (error)
 		goto chroot_failed;
 
-	error = chroot_kernel("/new_root");
+	error = chroot_kernel(_PATH_NEWROOT);
 	if (error)
 		goto chroot_failed;
 
-	error = chroot("/new_root");
+	error = chroot(_PATH_NEWROOT);
 	if (error)
 		goto chroot_failed;
 

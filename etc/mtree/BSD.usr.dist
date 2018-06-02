@@ -406,14 +406,6 @@
             iconv
             ..
         ..
-        initrd
-            bin
-            ..
-            etc
-            ..
-            sbin
-            ..
-        ..
         installer
         ..
         locale

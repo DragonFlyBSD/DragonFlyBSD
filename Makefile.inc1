@@ -493,8 +493,6 @@ installworld: installcheck
 	@echo "--------------------------------------------------------------"
 	@echo ">>> installworld target complete"
 	@echo "--------------------------------------------------------------"
-	@echo "If things work as expected after a full reboot, consider updating the rescue"
-	@echo "image with 'make rescue'.  Do not do it until after rebooting."
 
 installworld-force:
 	@echo "Doing a forced installworld.  This will install to a temporary directory,"
@@ -523,15 +521,6 @@ installworld-force:
 	sleep 5
 	(cd ${.CURDIR}; ${MAKE} installworld OVERRIDE_CHECKS=TRUE)
 	(cd ${.CURDIR}; ${MAKE} upgrade OVERRIDE_CHECKS=TRUE)
-
-# Create a rescue image.  We no longer do this automatically for several
-# reasons, primarily that users have had serious issue with mismatched 'vn'
-# vs the kldload image that can crash the system.  But also, the rescue image
-# is intended to be a rescue image, it is a bad idea to update it at the
-# same time the world is installed.
-#
-rescue:
-	mkinitrd -b ${DESTDIR}/boot
 
 #
 # reinstall

@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man7/build.7,v 1.19.2.1 2002/03/18 08:33:02 murray Exp $
 .\"
-.Dd July 23, 2016
+.Dd June 2, 2018
 .Dt BUILD 7
 .Os
 .Sh NAME
@@ -143,7 +143,8 @@ Reinstall the kernel and the kernel-modules.
 .Cm installkernel .
 .It Cm preupgrade
 Perform certain upgrades that have to be done before
-.Cm installworld .
+.Cm installworld ,
+such as adding new users and groups.
 .Cm installworld
 will complain if they have not been done.
 .It Cm upgrade
@@ -152,7 +153,9 @@ the version of
 .Dx
 just installed.
 .It Cm rescue
-Create a rescue initrd.
+Build and install the statically linked rescue tools.
+.It Cm initrd
+Create the initial ramdisk based on the above rescue tools and install.
 .It Cm most
 Build user commands, no libraries or include files.
 .It Cm installmost
@@ -287,7 +290,7 @@ existence and present a menu option 'b' to allow you to boot from it.
 .Pp
 The second mechanism is related to the two-stage root mount.
 When using an encrypted root, the system will actually boot from a
-small UFS image stored as
+small initial ramdisk (a.k.a. initrd) image stored as
 .Pa /boot/kernel/initrd.img.gz .
 This image will handle the encrypted configuration, mount, and chroot
 to the real root.
@@ -298,12 +301,12 @@ or
 .Cm installkernel .
 Instead, updating this image has to be done by running the manual command:
 .Bd -literal -offset indent
-mkinitrd
+make initrd
 .Ed
 .Pp
-It is usually a good idea to run this command after rebooting into a new
+It is usually a good idea to run this command after rebooting into the new
 world that you installed (so you know the world you installed is good).
-This command will update the rescue ramdisk image in
+This command will update the initrd image in
 .Pa /boot/kernel .
 .Sh FILES
 .Bl -tag -width ".Pa /usr/src/Makefile_upgrade.inc" -compact
