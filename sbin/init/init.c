@@ -412,7 +412,6 @@ delset(sigset_t *maskp, ...)
 /*
  * Log a message and sleep for a while (to give someone an opportunity
  * to read it and to save log or hardcopy output if the problem is chronic).
- * NB: should send a message to the session logger to avoid blocking.
  */
 static void
 stall(const char *message, ...)
@@ -429,7 +428,6 @@ stall(const char *message, ...)
 /*
  * Like stall(), but doesn't sleep.
  * If cpp had variadic macros, the two functions could be #defines for another.
- * NB: should send a message to the session logger to avoid blocking.
  */
 static void
 warning(const char *message, ...)
@@ -444,7 +442,6 @@ warning(const char *message, ...)
 
 /*
  * Log an emergency message.
- * NB: should send a message to the session logger to avoid blocking.
  */
 static void
 emergency(const char *message, ...)
@@ -609,7 +606,6 @@ transition(state_t s)
 
 /*
  * Close out the accounting files for a login session.
- * NB: should send a message to the session logger to avoid blocking.
  */
 static void
 clear_session_logs(session_t *sp)
@@ -882,7 +878,6 @@ f_runcom(void)
 		return single_user;
 
 	runcom_mode = AUTOBOOT;		/* the default */
-	/* NB: should send a message to the session logger to avoid blocking. */
 #ifdef SUPPORT_UTMPX
 	logwtmpx("~", "reboot", "", 0, INIT_PROCESS);
 #endif
@@ -1548,7 +1543,6 @@ f_death(void)
 	pid_t pid;
 	static const int death_sigs[2] = { SIGTERM, SIGKILL };
 
-	/* NB: should send a message to the session logger to avoid blocking. */
 #ifdef SUPPORT_UTMPX
 	logwtmpx("~", "shutdown", "", 0, INIT_PROCESS);
 #endif
