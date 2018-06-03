@@ -727,7 +727,7 @@ mptable_lapic_default(void)
 	/* Map local apic before the id field is accessed */
 	lapic_map(DEFAULT_APIC_BASE);
 
-	bsp_apicid = APIC_ID(lapic->id);
+	bsp_apicid = LAPIC_READID;
 	ap_apicid = (bsp_apicid == 0) ? 1 : 0;
 
 	/* BSP */

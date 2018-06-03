@@ -54,12 +54,12 @@
 #define KTR_LAPIC	KTR_ALL
 #endif
 KTR_INFO_MASTER(lapic);
-KTR_INFO(KTR_LAPIC, lapic, eoi, 0, "eoi");
+KTR_INFO(KTR_LAPIC, lapic, mem_eoi, 0, "mem_eoi");
 #define log_lapic(name)     KTR_LOG(lapic_ ## name)
 
 extern int naps;
 
-volatile lapic_t *lapic;
+volatile lapic_t *lapic_mem;
 
 static void	lapic_timer_calibrate(void);
 static void	lapic_timer_set_divisor(int);
@@ -80,14 +80,14 @@ static int	lapic_calibrate_fast = 1;
 TUNABLE_INT("hw.lapic_calibrate_fast", &lapic_calibrate_fast);
 
 static void	lapic_timer_tscdlt_reload(struct cputimer_intr *, sysclock_t);
-static void	lapic_timer_intr_reload(struct cputimer_intr *, sysclock_t);
+static void	lapic_mem_timer_intr_reload(struct cputimer_intr *, sysclock_t);
 static void	lapic_timer_intr_enable(struct cputimer_intr *);
 static void	lapic_timer_intr_restart(struct cputimer_intr *);
 static void	lapic_timer_intr_pmfixup(struct cputimer_intr *);
 
 static struct cputimer_intr lapic_cputimer_intr = {
 	.freq = 0,
-	.reload = lapic_timer_intr_reload,
+	.reload = lapic_mem_timer_intr_reload,
 	.enable = lapic_timer_intr_enable,
 	.config = cputimer_intr_default_config,
 	.restart = lapic_timer_intr_restart,
@@ -119,6 +119,7 @@ static int	lapic_timer_tscfreq_shift;
 int	cpu_id_to_apic_id[NAPICID];
 int	apic_id_to_cpu_id[NAPICID];
 int	lapic_enable = 1;
+int	lapic_usable = 0;
 
 /* Separate cachelines for each cpu's info. */
 struct deadlines {
@@ -128,9 +129,26 @@ struct deadlines {
 };
 struct deadlines *tsc_deadlines = NULL;
 
-static void	lapic_eoi_func(void);
+static void	lapic_mem_eoi(void);
+static int	lapic_mem_ipi(int dest_type, int vector, int delivery_mode);
+static void	lapic_mem_single_ipi(int cpu, int vector, int delivery_mode);
 
 void		(*lapic_eoi)(void);
+int		(*apic_ipi)(int dest_type, int vector, int delivery_mode);
+void		(*single_apic_ipi)(int cpu, int vector, int delivery_mode);
+
+static __inline void
+lapic_mem_icr_set(uint32_t apic_id, uint32_t icr_lo_val)
+{
+	uint32_t icr_lo, icr_hi;
+
+	icr_hi = (LAPIC_MEM_READ(icr_hi) & ~APIC_ID_MASK) |
+	    (apic_id << APIC_ID_SHIFT);
+	icr_lo = (LAPIC_MEM_READ(icr_lo) & APIC_ICRLO_RESV_MASK) | icr_lo_val;
+
+	LAPIC_MEM_WRITE(icr_hi, icr_hi);
+	LAPIC_MEM_WRITE(icr_lo, icr_lo);
+}
 
 /*
  * Enable LAPIC, configure interrupts.
@@ -233,7 +251,7 @@ lapic_init(boolean_t bsp)
 	 * Disable LINT0 on the APs.  It doesn't matter what delivery
 	 * mode we use because we leave it masked.
 	 */
-	temp = lapic->lvt_lint0;
+	temp = LAPIC_READ(lvt_lint0);
 	temp &= ~(APIC_LVT_MASKED | APIC_LVT_TRIG_MASK | 
 		  APIC_LVT_POLARITY_MASK | APIC_LVT_DM_MASK);
 	if (bsp) {
@@ -243,7 +261,7 @@ lapic_init(boolean_t bsp)
 	} else {
 		temp |= APIC_LVT_DM_FIXED | APIC_LVT_MASKED;
 	}
-	lapic->lvt_lint0 = temp;
+	LAPIC_WRITE(lvt_lint0, temp);
 
 	/*
 	 * Setup LINT1 as NMI.
@@ -254,57 +272,58 @@ lapic_init(boolean_t bsp)
 	 *
 	 * Disable LINT1 on the APs.
 	 */
-	temp = lapic->lvt_lint1;
+	temp = LAPIC_READ(lvt_lint1);
 	temp &= ~(APIC_LVT_MASKED | APIC_LVT_TRIG_MASK | 
 		  APIC_LVT_POLARITY_MASK | APIC_LVT_DM_MASK);
 	temp |= APIC_LVT_MASKED | APIC_LVT_DM_NMI;
 	if (bsp && ioapic_enable)
 		temp &= ~APIC_LVT_MASKED;
-	lapic->lvt_lint1 = temp;
+	LAPIC_WRITE(lvt_lint1, temp);
 
 	/*
 	 * Mask the LAPIC error interrupt, LAPIC performance counter
 	 * interrupt.
 	 */
-	lapic->lvt_error = lapic->lvt_error | APIC_LVT_MASKED;
-	lapic->lvt_pcint = lapic->lvt_pcint | APIC_LVT_MASKED;
+	LAPIC_WRITE(lvt_error, LAPIC_READ(lvt_error) | APIC_LVT_MASKED);
+	LAPIC_WRITE(lvt_pcint, LAPIC_READ(lvt_pcint) | APIC_LVT_MASKED);
 
 	/*
 	 * Set LAPIC timer vector and mask the LAPIC timer interrupt.
 	 */
-	timer = lapic->lvt_timer;
+	timer = LAPIC_READ(lvt_timer);
 	timer &= ~APIC_LVTT_VECTOR;
 	timer |= XTIMER_OFFSET;
 	timer |= APIC_LVTT_MASKED;
-	lapic->lvt_timer = timer;
+	LAPIC_WRITE(lvt_timer, timer);
 
 	/*
 	 * Set the Task Priority Register as needed.   At the moment allow
 	 * interrupts on all cpus (the APs will remain CLId until they are
 	 * ready to deal).
 	 */
-	temp = lapic->tpr;
+	temp = LAPIC_READ(tpr);
 	temp &= ~APIC_TPR_PRIO;		/* clear priority field */
-	lapic->tpr = temp;
+	LAPIC_WRITE(tpr, temp);
 
 	/*
 	 * AMD specific setup
 	 */
-	if (cpu_vendor_id == CPU_VENDOR_AMD &&
-	    (lapic->version & APIC_VER_AMD_EXT_SPACE)) {
+	if (cpu_vendor_id == CPU_VENDOR_AMD && lapic_mem != NULL &&
+	    (LAPIC_MEM_READ(version) & APIC_VER_AMD_EXT_SPACE)) {
 		uint32_t ext_feat;
 		uint32_t count;
 		uint32_t max_count;
 		uint32_t lvt;
 		uint32_t i;
 
-		ext_feat = lapic->ext_feat;
+		ext_feat = LAPIC_MEM_READ(ext_feat);
 		count = (ext_feat & APIC_EXTFEAT_MASK) >> APIC_EXTFEAT_SHIFT;
-		max_count = sizeof(lapic->ext_lvt) / sizeof(lapic->ext_lvt[0]);
+		max_count = sizeof(lapic_mem->ext_lvt) /
+		    sizeof(lapic_mem->ext_lvt[0]);
 		if (count > max_count)
 			count = max_count;
 		for (i = 0; i < count; ++i) {
-			lvt = lapic->ext_lvt[i].lvt;
+			lvt = LAPIC_MEM_READ(ext_lvt[i].lvt);
 
 			lvt &= ~(APIC_LVT_POLARITY_MASK | APIC_LVT_TRIG_MASK |
 				 APIC_LVT_DM_MASK | APIC_LVT_MASKED);
@@ -324,23 +343,23 @@ lapic_init(boolean_t bsp)
 			}
 			if (bsp) {
 				kprintf("   LAPIC AMD elvt%d: 0x%08x",
-					i, lapic->ext_lvt[i].lvt);
-				if (lapic->ext_lvt[i].lvt != lvt)
+					i, LAPIC_MEM_READ(ext_lvt[i].lvt));
+				if (LAPIC_MEM_READ(ext_lvt[i].lvt) != lvt)
 					kprintf(" -> 0x%08x", lvt);
 				kprintf("\n");
 			}
-			lapic->ext_lvt[i].lvt = lvt;
+			LAPIC_MEM_WRITE(ext_lvt[i].lvt, lvt);
 		}
 	}
 
 	/* 
 	 * Enable the LAPIC 
 	 */
-	temp = lapic->svr;
+	temp = LAPIC_READ(svr);
 	temp |= APIC_SVR_ENABLE;	/* enable the LAPIC */
 	temp &= ~APIC_SVR_FOCUS_DISABLE; /* enable lopri focus processor */
 
-	if (lapic->version & APIC_VER_EOI_SUPP) {
+	if (LAPIC_READ(version) & APIC_VER_EOI_SUPP) {
 		if (temp & APIC_SVR_EOI_SUPP) {
 			temp &= ~APIC_SVR_EOI_SUPP;
 			if (bsp)
@@ -357,15 +376,15 @@ lapic_init(boolean_t bsp)
 	temp &= ~APIC_SVR_VECTOR;
 	temp |= XSPURIOUSINT_OFFSET;
 
-	lapic->svr = temp;
+	LAPIC_WRITE(svr, temp);
 
 	/*
 	 * Pump out a few EOIs to clean out interrupts that got through
 	 * before we were able to set the TPR.
 	 */
-	lapic->eoi = 0;
-	lapic->eoi = 0;
-	lapic->eoi = 0;
+	LAPIC_WRITE(eoi, 0);
+	LAPIC_WRITE(eoi, 0);
+	LAPIC_WRITE(eoi, 0);
 
 	if (bsp) {
 		lapic_timer_calibrate();
@@ -397,7 +416,7 @@ static void
 lapic_timer_set_divisor(int divisor_idx)
 {
 	KKASSERT(divisor_idx >= 0 && divisor_idx < APIC_TIMER_NDIVISORS);
-	lapic->dcr_timer = lapic_timer_divisors[divisor_idx];
+	LAPIC_WRITE(dcr_timer, lapic_timer_divisors[divisor_idx]);
 }
 
 static void
@@ -405,16 +424,16 @@ lapic_timer_oneshot(u_int count)
 {
 	uint32_t value;
 
-	value = lapic->lvt_timer;
+	value = LAPIC_READ(lvt_timer);
 	value &= ~(APIC_LVTT_PERIODIC | APIC_LVTT_TSCDLT);
-	lapic->lvt_timer = value;
-	lapic->icr_timer = count;
+	LAPIC_WRITE(lvt_timer, value);
+	LAPIC_WRITE(icr_timer, count);
 }
 
 static void
 lapic_timer_oneshot_quick(u_int count)
 {
-	lapic->icr_timer = count;
+	LAPIC_WRITE(icr_timer, count);
 }
 
 static void
@@ -452,7 +471,7 @@ do_tsc_calibration(u_int us, u_int64_t apic_delay_tsc)
 retry1:
 	lapic_timer_oneshot_quick(APIC_TIMER_MAX_COUNT);
 	old_tsc1 = rdtsc_ordered();
-	start = lapic->ccr_timer;
+	start = LAPIC_READ(ccr_timer);
 	old_tsc2 = rdtsc_ordered();
 	if (apic_delay_tsc > 0 && retries1 < MAX_MEASURE_RETRIES &&
 	    old_tsc2 - old_tsc1 > 2 * apic_delay_tsc) {
@@ -462,7 +481,7 @@ retry1:
 	DELAY(us);
 retry2:
 	new_tsc1 = rdtsc_ordered();
-	end = lapic->ccr_timer;
+	end = LAPIC_READ(ccr_timer);
 	new_tsc2 = rdtsc_ordered();
 	if (apic_delay_tsc > 0 && retries2 < MAX_MEASURE_RETRIES &&
 	    new_tsc2 - new_tsc1 > 2 * apic_delay_tsc) {
@@ -499,11 +518,11 @@ do_cputimer_calibration(u_int us)
 	sysclock_t start, end, beginning, finish;
 
 	lapic_timer_oneshot(APIC_TIMER_MAX_COUNT);
-	beginning = lapic->ccr_timer;
+	beginning = LAPIC_READ(ccr_timer);
 	start = sys_cputimer->count();
 	DELAY(us);
 	end = sys_cputimer->count();
-	finish = lapic->ccr_timer;
+	finish = LAPIC_READ(ccr_timer);
 	if (finish == 0)
 		return 0;
 	/* value is the LAPIC timer difference. */
@@ -552,11 +571,11 @@ lapic_timer_calibrate(void)
 		/* warm up */
 		lapic_timer_oneshot(APIC_TIMER_MAX_COUNT);
 		for (i = 0; i < 10; i++)
-			val = lapic->ccr_timer;
+			val = LAPIC_READ(ccr_timer);
 
 		for (i = 0; i < 100; i++) {
 			old_tsc = rdtsc_ordered();
-			val = lapic->ccr_timer;
+			val = LAPIC_READ(ccr_timer);
 			new_tsc = rdtsc_ordered();
 			new_tsc -= old_tsc;
 			apic_delay_tsc += new_tsc;
@@ -654,7 +673,7 @@ lapic_timer_tscdlt_reload(struct cputimer_intr *cti, sysclock_t reload)
 }
 
 static void
-lapic_timer_intr_reload(struct cputimer_intr *cti, sysclock_t reload)
+lapic_mem_timer_intr_reload(struct cputimer_intr *cti, sysclock_t reload)
 {
 	struct globaldata *gd = mycpu;
 
@@ -663,11 +682,11 @@ lapic_timer_intr_reload(struct cputimer_intr *cti, sysclock_t reload)
 		reload = 2;
 
 	if (gd->gd_timer_running) {
-		if (reload < lapic->ccr_timer)
-			lapic_timer_oneshot_quick(reload);
+		if (reload < LAPIC_MEM_READ(ccr_timer))
+			LAPIC_MEM_WRITE(icr_timer, reload);
 	} else {
 		gd->gd_timer_running = 1;
-		lapic_timer_oneshot_quick(reload);
+		LAPIC_MEM_WRITE(icr_timer, reload);
 	}
 }
 
@@ -676,11 +695,11 @@ lapic_timer_intr_enable(struct cputimer_intr *cti __unused)
 {
 	uint32_t timer;
 
-	timer = lapic->lvt_timer;
+	timer = LAPIC_READ(lvt_timer);
 	timer &= ~(APIC_LVTT_MASKED | APIC_LVTT_PERIODIC | APIC_LVTT_TSCDLT);
 	if (lapic_use_tscdeadline)
 		timer |= APIC_LVTT_TSCDLT;
-	lapic->lvt_timer = timer;
+	LAPIC_WRITE(lvt_timer, timer);
 	if (lapic_use_tscdeadline)
 		cpu_mfence();
 
@@ -786,12 +805,38 @@ apic_dump(char* str)
 {
 	kprintf("SMP: CPU%d %s:\n", mycpu->gd_cpuid, str);
 	kprintf("     lint0: 0x%08x lint1: 0x%08x TPR: 0x%08x SVR: 0x%08x\n",
-		lapic->lvt_lint0, lapic->lvt_lint1, lapic->tpr, lapic->svr);
+		LAPIC_READ(lvt_lint0), LAPIC_READ(lvt_lint1), LAPIC_READ(tpr),
+		LAPIC_READ(svr));
 }
 
 /*
  * Inter Processor Interrupt functions.
  */
+
+static __inline void
+lapic_mem_icr_unpend(const char *func)
+{
+	if (LAPIC_MEM_READ(icr_lo) & APIC_DELSTAT_PEND) {
+		int64_t tsc;
+		int loops = 1;
+
+		tsc = rdtsc();
+		while (LAPIC_MEM_READ(icr_lo) & APIC_DELSTAT_PEND) {
+			cpu_pause();
+			if ((tsc_sclock_t)(rdtsc() -
+					   (tsc + tsc_frequency)) > 0) {
+				tsc = rdtsc();
+				if (++loops > 30) {
+					panic("%s: cpu%d apic stalled",
+					    func, mycpuid);
+				} else {
+					kprintf("%s: cpu%d apic stalled\n",
+					    func, mycpuid);
+				}
+			}
+		}
+	}
+}
 
 /*
  * Send APIC IPI 'vector' to 'destType' via 'deliveryMode'.
@@ -819,111 +864,25 @@ apic_dump(char* str)
  * it was always an issue, but is only now rearing its ugly head.  This
  * is conjecture.
  */
-int
-apic_ipi(int dest_type, int vector, int delivery_mode)
+static int
+lapic_mem_ipi(int dest_type, int vector, int delivery_mode)
 {
-	uint32_t icr_hi;
-	uint32_t icr_lo;
-	int64_t tsc;
-	int loops = 1;
-
-	if ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
-		tsc = rdtsc();
-		while ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
-			cpu_pause();
-			if ((tsc_sclock_t)(rdtsc() -
-					   (tsc + tsc_frequency)) > 0) {
-				kprintf("apic_ipi stall cpu %d (sing)\n",
-					mycpuid);
-				tsc = rdtsc();
-				if (++loops > 30)
-					panic("apic stall");
-			}
-		}
-	}
-	icr_hi = lapic->icr_hi & ~APIC_ID_MASK;
-	icr_lo = (lapic->icr_lo & APIC_ICRLO_RESV_MASK) | dest_type | 
-		 APIC_LEVEL_ASSERT | delivery_mode | vector;
-	lapic->icr_hi = icr_hi;
-	lapic->icr_lo = icr_lo;
-
+	lapic_mem_icr_unpend(__func__);
+	lapic_mem_icr_set(0,
+	    dest_type | APIC_LEVEL_ASSERT | delivery_mode | vector);
 	return 0;
 }
 
 /*
  * Interrupts must be hard-disabled by caller
  */
-void
-single_apic_ipi(int cpu, int vector, int delivery_mode)
+static void
+lapic_mem_single_ipi(int cpu, int vector, int delivery_mode)
 {
-	uint32_t  icr_lo;
-	uint32_t  icr_hi;
-	int64_t tsc;
-	int loops = 1;
-
-	if ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
-		tsc = rdtsc();
-		while ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
-			cpu_pause();
-			if ((tsc_sclock_t)(rdtsc() -
-					   (tsc + tsc_frequency)) > 0) {
-				kprintf("single_apic_ipi stall cpu %d (sing)\n",
-					mycpuid);
-				tsc = rdtsc();
-				if (++loops > 30)
-					panic("apic stall");
-			}
-		}
-	}
-	icr_hi = lapic->icr_hi & ~APIC_ID_MASK;
-	icr_hi |= (CPUID_TO_APICID(cpu) << 24);
-
-	/* build ICR_LOW */
-	icr_lo = (lapic->icr_lo & APIC_ICRLO_RESV_MASK) |
-		 APIC_LEVEL_ASSERT | APIC_DEST_DESTFLD | delivery_mode | vector;
-
-	/* write APIC ICR */
-	lapic->icr_hi = icr_hi;
-	lapic->icr_lo = icr_lo;
+	lapic_mem_icr_unpend(__func__);
+	lapic_mem_icr_set(CPUID_TO_APICID(cpu),
+	    APIC_DEST_DESTFLD | APIC_LEVEL_ASSERT | delivery_mode | vector);
 }
-
-#if 0	
-
-/*
- * Returns 0 if the apic is busy, 1 if we were able to queue the request.
- *
- * NOT WORKING YET!  The code as-is may end up not queueing an IPI at all
- * to the target, and the scheduler does not 'poll' for IPI messages.
- */
-int
-single_apic_ipi_passive(int cpu, int vector, int delivery_mode)
-{
-	u_long  icr_lo;
-	u_long  icr_hi;
-	unsigned long rflags;
-
-	rflags = read_rflags();
-	cpu_disable_intr();
-	if ((lapic->icr_lo & APIC_DELSTAT_MASK) != 0) {
-		write_rflags(rflags);
-		return(0);
-	}
-	icr_hi = lapic->icr_hi & ~APIC_ID_MASK;
-	icr_hi |= (CPUID_TO_APICID(cpu) << 24);
-	lapic->icr_hi = icr_hi;
-
-	/* build IRC_LOW */
-	icr_lo = (lapic->icr_lo & APIC_RESV2_MASK) |
-		 APIC_DEST_DESTFLD | delivery_mode | vector;
-
-	/* write APIC ICR */
-	lapic->icr_lo = icr_lo;
-	write_rflags(rflags);
-
-	return(1);
-}
-
-#endif
 
 /*
  * Send APIC IPI 'vector' to 'target's via 'delivery_mode'.
@@ -1002,7 +961,7 @@ read_apic_timer(void)
 		}
 	}
 
-	val = lapic->ccr_timer;
+	val = LAPIC_READ(ccr_timer);
 	if (val == 0)
 		return 0;
 
@@ -1042,7 +1001,7 @@ lapic_unused_apic_id(int start)
 void
 lapic_map(vm_paddr_t lapic_addr)
 {
-	lapic = pmap_mapdev_uncacheable(lapic_addr, sizeof(struct LAPIC));
+	lapic_mem = pmap_mapdev_uncacheable(lapic_addr, sizeof(struct LAPIC));
 }
 
 static TAILQ_HEAD(, lapic_enumerator) lapic_enumerators =
@@ -1074,6 +1033,9 @@ lapic_config(void)
 		kprintf("LAPIC: enumeration failed\n");
 		return ENXIO;
 	}
+
+	/* LAPIC is usable now. */
+	lapic_usable = 1;
 
 	ap_max = MAXCPU - 1;
 	TUNABLE_INT_FETCH("hw.ap_max", &ap_max);
@@ -1120,20 +1082,35 @@ lapic_fixup_noioapic(void)
 	KKASSERT(mycpuid == 0);
 	KKASSERT(!ioapic_enable);
 
-	temp = lapic->lvt_lint0;
+	temp = LAPIC_READ(lvt_lint0);
 	temp &= ~APIC_LVT_MASKED;
-	lapic->lvt_lint0 = temp;
+	LAPIC_WRITE(lvt_lint0, temp);
 
-	temp = lapic->lvt_lint1;
+	temp = LAPIC_READ(lvt_lint1);
 	temp |= APIC_LVT_MASKED;
-	lapic->lvt_lint1 = temp;
+	LAPIC_WRITE(lvt_lint1, temp);
 }
 
 static void
-lapic_eoi_func(void)
+lapic_mem_eoi(void)
 {
-	log_lapic(eoi);
-	lapic->eoi = 0;
+	log_lapic(mem_eoi);
+	LAPIC_MEM_WRITE(eoi, 0);
+}
+
+static void
+lapic_mem_seticr_sync(uint32_t apic_id, uint32_t icr_lo_val)
+{
+	lapic_mem_icr_set(apic_id, icr_lo_val);
+	while (LAPIC_MEM_READ(icr_lo) & APIC_DELSTAT_PEND)
+		/* spin */;
+}
+
+void
+lapic_seticr_sync(uint32_t apic_id, uint32_t icr_lo_val)
+{
+	/* TODO: x2apic */
+	lapic_mem_seticr_sync(apic_id, icr_lo_val);
 }
 
 static void
@@ -1142,7 +1119,9 @@ lapic_sysinit(void *dummy __unused)
 	if (lapic_enable) {
 		int error;
 
-		lapic_eoi = lapic_eoi_func;
+		lapic_eoi = lapic_mem_eoi;
+		apic_ipi = lapic_mem_ipi;
+		single_apic_ipi = lapic_mem_single_ipi;
 
 		error = lapic_config();
 		if (error)

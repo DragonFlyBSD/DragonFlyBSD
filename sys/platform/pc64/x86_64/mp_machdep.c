@@ -348,7 +348,7 @@ init_secondary(void)
 	npxinit();
 
 	/* disable the APIC, just to be SURE */
-	lapic->svr &= ~APIC_SVR_ENABLE;
+	LAPIC_WRITE(svr, (LAPIC_READ(svr) & ~APIC_SVR_ENABLE));
 }
 
 /*******************************************************************
@@ -657,7 +657,6 @@ start_ap(struct mdglobaldata *gd, u_int boot_addr, int smibest)
 {
 	int     physical_cpu;
 	int     vector;
-	u_long  icr_lo, icr_hi;
 
 	POSTCODE(START_AP_POST);
 
@@ -707,23 +706,16 @@ start_ap(struct mdglobaldata *gd, u_int boot_addr, int smibest)
 	 */
 
 	/*
-	 * Setup the address for the target AP.  We can setup
-	 * icr_hi once and then just trigger operations with
-	 * icr_lo.
-	 */
-	icr_hi = lapic->icr_hi & ~APIC_ID_MASK;
-	icr_hi |= (physical_cpu << 24);
-	icr_lo = lapic->icr_lo & 0xfff00000;
-	lapic->icr_hi = icr_hi;
-
-	/*
 	 * Do an INIT IPI: assert RESET
 	 *
 	 * Use edge triggered mode to assert INIT
 	 */
-	lapic->icr_lo = icr_lo | 0x00004500;
-	while (lapic->icr_lo & APIC_DELSTAT_MASK)
-		 /* spin */ ;
+	lapic_seticr_sync(physical_cpu,
+	    APIC_DESTMODE_PHY |
+	    APIC_DEST_DESTFLD |
+	    APIC_TRIGMOD_EDGE |
+	    APIC_LEVEL_ASSERT |
+	    APIC_DELMODE_INIT);
 
 	/*
 	 * The spec calls for a 10ms delay but we may have to use a
@@ -750,9 +742,12 @@ start_ap(struct mdglobaldata *gd, u_int boot_addr, int smibest)
 	 * Use level triggered mode to deassert.  It is unclear
 	 * why we need to do this.
 	 */
-	lapic->icr_lo = icr_lo | 0x00008500;
-	while (lapic->icr_lo & APIC_DELSTAT_MASK)
-		 /* spin */ ;
+	lapic_seticr_sync(physical_cpu,
+	    APIC_DESTMODE_PHY |
+	    APIC_DEST_DESTFLD |
+	    APIC_TRIGMOD_LEVEL |
+	    APIC_LEVEL_DEASSERT |
+	    APIC_DELMODE_INIT);
 	u_sleep(150);				/* wait 150us */
 
 	/*
@@ -762,10 +757,14 @@ start_ap(struct mdglobaldata *gd, u_int boot_addr, int smibest)
 	 * the previous INIT IPI has already run. and this STARTUP IPI will
 	 * run. OR the previous INIT IPI was ignored. and this STARTUP IPI
 	 * will run.
+	 *
+	 * XXX set APIC_LEVEL_ASSERT
 	 */
-	lapic->icr_lo = icr_lo | 0x00000600 | vector;
-	while (lapic->icr_lo & APIC_DELSTAT_MASK)
-		 /* spin */ ;
+	lapic_seticr_sync(physical_cpu,
+	    APIC_DESTMODE_PHY |
+	    APIC_DEST_DESTFLD |
+	    APIC_DELMODE_STARTUP |
+	    vector);
 	u_sleep(200);		/* wait ~200uS */
 
 	/*
@@ -773,10 +772,14 @@ start_ap(struct mdglobaldata *gd, u_int boot_addr, int smibest)
 	 * the previous STARTUP IPI was cancelled by a latched INIT IPI. OR
 	 * this STARTUP IPI will be ignored, as only ONE STARTUP IPI is
 	 * recognized after hardware RESET or INIT IPI.
+	 *
+	 * XXX set APIC_LEVEL_ASSERT
 	 */
-	lapic->icr_lo = icr_lo | 0x00000600 | vector;
-	while (lapic->icr_lo & APIC_DELSTAT_MASK)
-		 /* spin */ ;
+	lapic_seticr_sync(physical_cpu,
+	    APIC_DESTMODE_PHY |
+	    APIC_DEST_DESTFLD |
+	    APIC_DELMODE_STARTUP |
+	    vector);
 
 	/* Resume normal operation */
 	cpu_enable_intr();
@@ -1431,11 +1434,11 @@ ap_init(void)
 	ATOMIC_CPUMASK_NANDBIT(mycpu->gd_other_cpus, mycpu->gd_cpuid);
 
 	/* A quick check from sanity claus */
-	cpu_id = APICID_TO_CPUID((lapic->id & 0xff000000) >> 24);
+	cpu_id = APICID_TO_CPUID(LAPIC_READID);
 	if (mycpu->gd_cpuid != cpu_id) {
 		kprintf("SMP: assigned cpuid = %d\n", mycpu->gd_cpuid);
 		kprintf("SMP: actual cpuid = %d lapicid %d\n",
-			cpu_id, (lapic->id & 0xff000000) >> 24);
+			cpu_id, LAPIC_READID);
 #if 0 /* JGXXX */
 		kprintf("PTD[MPPTDI] = %p\n", (void *)PTD[MPPTDI]);
 #endif

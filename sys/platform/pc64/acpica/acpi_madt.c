@@ -487,7 +487,7 @@ madt_lapic_enumerate(struct lapic_enumerator *e)
 
 	lapic_map(lapic_addr);
 
-	bsp_apic_id = APIC_ID(lapic->id);
+	bsp_apic_id = LAPIC_READID;
 	if (bsp_apic_id == APICID_MAX) {
 		/*
 		 * XXX
