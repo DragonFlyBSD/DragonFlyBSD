@@ -675,10 +675,8 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 #endif /* SC_NO_FONT_LOADING */
 #endif
 
-#ifndef SC_NO_PALETTE_LOADING
 	    if (scp->sc->fbi == NULL)
 		load_palette(adp, scp->sc->palette);
-#endif
 
 	    /* move hardware cursor out of the way */
 	    if (scp->sc->fbi == NULL)
@@ -735,9 +733,7 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 	    crit_exit();
 	    if (scp == scp->sc->cur_scp) {
 		set_mode(scp);
-#ifndef SC_NO_PALETTE_LOADING
 		load_palette(adp, scp->sc->palette);
-#endif
 	    }
 	    sc_clear_screen(scp);
 	    scp->status &= ~UNKNOWN_MODE;

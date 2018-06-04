@@ -2617,10 +2617,8 @@ set_scrn_saver_mode(scr_stat *scp, int mode, u_char *pal, int border)
 	    scp->sc->adp->va_info.vi_flags & V_INFO_GRAPHICS) {
 	    scp->status |= GRAPHICS_MODE;
 	}
-#ifndef SC_NO_PALETTE_LOADING
 	if (scp->sc->fbi == NULL && pal != NULL)
 	    load_palette(scp->sc->adp, pal);
-#endif
 	sc_set_border(scp, border);
 	return 0;
     } else {
@@ -2656,10 +2654,8 @@ restore_scrn_saver_mode(scr_stat *scp, int changemode)
 	return 0;
     }
     if (set_mode(scp) == 0) {
-#ifndef SC_NO_PALETTE_LOADING
 	if (scp->sc->fbi == NULL)
 	    load_palette(scp->sc->adp, scp->sc->palette);
-#endif
 	--scrn_blanked;
 	crit_exit();
 	return 0;
@@ -3076,10 +3072,8 @@ exchange_scr(sc_softc_t *sc)
     sc_move_cursor(scp, scp->xpos, scp->ypos);
     if (!ISGRAPHSC(scp))
 	sc_set_cursor_image(scp);
-#ifndef SC_NO_PALETTE_LOADING
     if (sc->fbi == NULL && ISGRAPHSC(sc->old_scp))
 	load_palette(sc->adp, sc->palette);
-#endif
     if (!ISGRAPHSC(scp) || sc->fbi == NULL)
 	sc_set_border(scp, scp->border);
 
@@ -3394,10 +3388,8 @@ scinit(int unit, int flags)
 	}
 #endif /* !SC_NO_FONT_LOADING */
 
-#ifndef SC_NO_PALETTE_LOADING
 	if (!(flags & SC_EFI_FB))
 	    save_palette(sc->adp, sc->palette);
-#endif
 
 #if NSPLASH > 0
 	if (!(sc->flags & SC_SPLASH_SCRN) && (flags & SC_KERNEL_CONSOLE)) {
