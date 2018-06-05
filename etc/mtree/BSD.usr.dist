@@ -231,8 +231,6 @@
             ..
             mdoc
             ..
-            meteor
-            ..
             netgraph
             ..
             pf
