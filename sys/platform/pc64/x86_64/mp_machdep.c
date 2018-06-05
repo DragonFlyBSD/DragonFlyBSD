@@ -347,6 +347,10 @@ init_secondary(void)
 	/* set up FPU state on the AP */
 	npxinit();
 
+	/* If BSP is in the X2APIC mode, put the AP into the X2APIC mode. */
+	if (x2apic_enable)
+		lapic_x2apic_enter(FALSE);
+
 	/* disable the APIC, just to be SURE */
 	LAPIC_WRITE(svr, (LAPIC_READ(svr) & ~APIC_SVR_ENABLE));
 }

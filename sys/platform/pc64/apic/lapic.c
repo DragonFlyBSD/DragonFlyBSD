@@ -31,6 +31,7 @@
 #include <sys/ktr.h>
 #include <sys/bus.h>
 #include <sys/machintr.h>
+#include <sys/sysctl.h>
 #include <machine/globaldata.h>
 #include <machine/clock.h>
 #include <machine/limits.h>
@@ -55,6 +56,7 @@
 #endif
 KTR_INFO_MASTER(lapic);
 KTR_INFO(KTR_LAPIC, lapic, mem_eoi, 0, "mem_eoi");
+KTR_INFO(KTR_LAPIC, lapic, msr_eoi, 0, "msr_eoi");
 #define log_lapic(name)     KTR_LOG(lapic_ ## name)
 
 extern int naps;
@@ -81,6 +83,7 @@ TUNABLE_INT("hw.lapic_calibrate_fast", &lapic_calibrate_fast);
 
 static void	lapic_timer_tscdlt_reload(struct cputimer_intr *, sysclock_t);
 static void	lapic_mem_timer_intr_reload(struct cputimer_intr *, sysclock_t);
+static void	lapic_msr_timer_intr_reload(struct cputimer_intr *, sysclock_t);
 static void	lapic_timer_intr_enable(struct cputimer_intr *);
 static void	lapic_timer_intr_restart(struct cputimer_intr *);
 static void	lapic_timer_intr_pmfixup(struct cputimer_intr *);
@@ -120,6 +123,9 @@ int	cpu_id_to_apic_id[NAPICID];
 int	apic_id_to_cpu_id[NAPICID];
 int	lapic_enable = 1;
 int	lapic_usable = 0;
+int	x2apic_enable = 0;
+
+SYSCTL_INT(_hw, OID_AUTO, x2apic_enable, CTLFLAG_RD, &x2apic_enable, 0, "");
 
 /* Separate cachelines for each cpu's info. */
 struct deadlines {
@@ -132,6 +138,10 @@ struct deadlines *tsc_deadlines = NULL;
 static void	lapic_mem_eoi(void);
 static int	lapic_mem_ipi(int dest_type, int vector, int delivery_mode);
 static void	lapic_mem_single_ipi(int cpu, int vector, int delivery_mode);
+
+static void	lapic_msr_eoi(void);
+static int	lapic_msr_ipi(int dest_type, int vector, int delivery_mode);
+static void	lapic_msr_single_ipi(int cpu, int vector, int delivery_mode);
 
 void		(*lapic_eoi)(void);
 int		(*apic_ipi)(int dest_type, int vector, int delivery_mode);
@@ -148,6 +158,13 @@ lapic_mem_icr_set(uint32_t apic_id, uint32_t icr_lo_val)
 
 	LAPIC_MEM_WRITE(icr_hi, icr_hi);
 	LAPIC_MEM_WRITE(icr_lo, icr_lo);
+}
+
+static __inline void
+lapic_msr_icr_set(uint32_t apic_id, uint32_t icr_lo_val)
+{
+	LAPIC_MSR_WRITE(MSR_X2APIC_ICR,
+	    ((uint64_t)apic_id << 32) | ((uint64_t)icr_lo_val));
 }
 
 /*
@@ -691,6 +708,24 @@ lapic_mem_timer_intr_reload(struct cputimer_intr *cti, sysclock_t reload)
 }
 
 static void
+lapic_msr_timer_intr_reload(struct cputimer_intr *cti, sysclock_t reload)
+{
+	struct globaldata *gd = mycpu;
+
+	reload = (int64_t)reload * cti->freq / sys_cputimer->freq;
+	if (reload < 2)
+		reload = 2;
+
+	if (gd->gd_timer_running) {
+		if (reload < LAPIC_MSR_READ(MSR_X2APIC_CCR_TIMER))
+			LAPIC_MSR_WRITE(MSR_X2APIC_ICR_TIMER, reload);
+	} else {
+		gd->gd_timer_running = 1;
+		LAPIC_MSR_WRITE(MSR_X2APIC_ICR_TIMER, reload);
+	}
+}
+
+static void
 lapic_timer_intr_enable(struct cputimer_intr *cti __unused)
 {
 	uint32_t timer;
@@ -873,6 +908,14 @@ lapic_mem_ipi(int dest_type, int vector, int delivery_mode)
 	return 0;
 }
 
+static int
+lapic_msr_ipi(int dest_type, int vector, int delivery_mode)
+{
+	lapic_msr_icr_set(0,
+	    dest_type | APIC_LEVEL_ASSERT | delivery_mode | vector);
+	return 0;
+}
+
 /*
  * Interrupts must be hard-disabled by caller
  */
@@ -881,6 +924,13 @@ lapic_mem_single_ipi(int cpu, int vector, int delivery_mode)
 {
 	lapic_mem_icr_unpend(__func__);
 	lapic_mem_icr_set(CPUID_TO_APICID(cpu),
+	    APIC_DEST_DESTFLD | APIC_LEVEL_ASSERT | delivery_mode | vector);
+}
+
+static void
+lapic_msr_single_ipi(int cpu, int vector, int delivery_mode)
+{
+	lapic_msr_icr_set(CPUID_TO_APICID(cpu),
 	    APIC_DEST_DESTFLD | APIC_LEVEL_ASSERT | delivery_mode | vector);
 }
 
@@ -1004,6 +1054,30 @@ lapic_map(vm_paddr_t lapic_addr)
 	lapic_mem = pmap_mapdev_uncacheable(lapic_addr, sizeof(struct LAPIC));
 }
 
+void
+lapic_x2apic_enter(boolean_t bsp)
+{
+	uint64_t apic_base;
+
+	KASSERT(x2apic_enable, ("X2APIC mode is not enabled"));
+
+	/*
+	 * X2APIC mode is requested, if it has not been enabled by the BIOS,
+	 * enable it now.
+	 */
+	apic_base = rdmsr(MSR_APICBASE);
+	if ((apic_base & APICBASE_X2APIC) == 0) {
+		wrmsr(MSR_APICBASE,
+		    apic_base | APICBASE_X2APIC | APICBASE_ENABLED);
+	}
+	if (bsp) {
+		lapic_eoi = lapic_msr_eoi;
+		apic_ipi = lapic_msr_ipi;
+		single_apic_ipi = lapic_msr_single_ipi;
+		lapic_cputimer_intr.reload = lapic_msr_timer_intr_reload;
+	}
+}
+
 static TAILQ_HEAD(, lapic_enumerator) lapic_enumerators =
 	TAILQ_HEAD_INITIALIZER(lapic_enumerators);
 
@@ -1011,9 +1085,41 @@ int
 lapic_config(void)
 {
 	struct lapic_enumerator *e;
+	uint64_t apic_base;
 	int error, i, ap_max;
 
 	KKASSERT(lapic_enable);
+
+	lapic_eoi = lapic_mem_eoi;
+	apic_ipi = lapic_mem_ipi;
+	single_apic_ipi = lapic_mem_single_ipi;
+
+	TUNABLE_INT_FETCH("hw.x2apic_enable", &x2apic_enable);
+	if (x2apic_enable < 0)
+		x2apic_enable = 1;
+
+	if ((cpu_feature2 & CPUID2_X2APIC) == 0) {
+		/* X2APIC is not supported. */
+		x2apic_enable = 0;
+	} else if (!x2apic_enable) {
+		/*
+		 * If the BIOS enabled the X2APIC mode, then we would stick
+		 * with the X2APIC mode.
+		 */
+		apic_base = rdmsr(MSR_APICBASE);
+		if (apic_base & APICBASE_X2APIC) {
+			kprintf("LAPIC: BIOS enabled X2APIC mode\n");
+			x2apic_enable = 1;
+		}
+	}
+
+	if (x2apic_enable) {
+		/*
+		 * Enter X2APIC mode.
+		 */
+		kprintf("LAPIC: enter X2APIC mode\n");
+		lapic_x2apic_enter(TRUE);
+	}
 
 	for (i = 0; i < NAPICID; ++i)
 		APICID_TO_CPUID(i) = -1;
@@ -1099,6 +1205,13 @@ lapic_mem_eoi(void)
 }
 
 static void
+lapic_msr_eoi(void)
+{
+	log_lapic(msr_eoi);
+	LAPIC_MSR_WRITE(MSR_X2APIC_EOI, 0);
+}
+
+static void
 lapic_mem_seticr_sync(uint32_t apic_id, uint32_t icr_lo_val)
 {
 	lapic_mem_icr_set(apic_id, icr_lo_val);
@@ -1109,8 +1222,10 @@ lapic_mem_seticr_sync(uint32_t apic_id, uint32_t icr_lo_val)
 void
 lapic_seticr_sync(uint32_t apic_id, uint32_t icr_lo_val)
 {
-	/* TODO: x2apic */
-	lapic_mem_seticr_sync(apic_id, icr_lo_val);
+	if (x2apic_enable)
+		lapic_msr_icr_set(apic_id, icr_lo_val);
+	else
+		lapic_mem_seticr_sync(apic_id, icr_lo_val);
 }
 
 static void
@@ -1119,14 +1234,12 @@ lapic_sysinit(void *dummy __unused)
 	if (lapic_enable) {
 		int error;
 
-		lapic_eoi = lapic_mem_eoi;
-		apic_ipi = lapic_mem_ipi;
-		single_apic_ipi = lapic_mem_single_ipi;
-
 		error = lapic_config();
 		if (error)
 			lapic_enable = 0;
 	}
+	if (!lapic_enable)
+		x2apic_enable = 0;
 
 	if (lapic_enable) {
 		/* Initialize BSP's local APIC */

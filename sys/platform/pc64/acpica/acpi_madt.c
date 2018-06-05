@@ -42,6 +42,7 @@
 #include <machine_base/apic/ioapic.h>
 #include <machine_base/apic/apicvar.h>
 #include <machine_base/acpica/acpi_md_cpu.h>
+#include <machine/specialreg.h>
 
 #include <contrib/dev/acpica/source/include/acpi.h>
 
@@ -462,10 +463,12 @@ madt_lapic_probe(struct lapic_enumerator *e)
 
 		if (arg.lapic_addr == 0) {
 			/*
-			 * XXX x2apic mode.
+			 * The LAPIC address does not matter in X2APIC mode.
 			 */
-			kprintf("madt_lapic_probe: zero LAPIC address\n");
-			error = EOPNOTSUPP;
+			if ((cpu_feature2 & CPUID2_X2APIC) == 0) {
+				kprintf("madt_lapic_probe: zero LAPIC address\n");
+				error = EOPNOTSUPP;
+			}
 		}
 	}
 
@@ -476,16 +479,41 @@ madt_lapic_probe(struct lapic_enumerator *e)
 static int
 madt_lapic_enumerate(struct lapic_enumerator *e)
 {
-	vm_paddr_t lapic_addr;
+	vm_paddr_t lapic_addr = 0;
 	int bsp_apic_id;
 
 	KKASSERT(madt_phyaddr != 0);
 
-	lapic_addr = madt_lapic_pass1();
-	if (lapic_addr == 0)
-		panic("madt_lapic_enumerate: no local apic");
+	if (!x2apic_enable) {
+		lapic_addr = madt_lapic_pass1();
+		if (lapic_addr == 0) {
+			/*
+			 * No LAPIC address.
+			 */
+			if (cpu_feature2 & CPUID2_X2APIC) {
+				/*
+				 * X2APIC mode is not enabled, but the CPU supports
+				 * it.  Forcefully enable X2APIC mode, which nullifies
+				 * the requirement of the LAPIC address.
+				 */
+				kprintf("MADT: no LAPIC address, force X2APIC mode\n");
+				KKASSERT(!x2apic_enable);
+				x2apic_enable = 1;
+				lapic_x2apic_enter(TRUE);
+			} else {
+				/*
+				 * We should not reach here, madt_lapic_probe() must
+				 * have failed.
+				 */
+				panic("madt_lapic_enumerate: no local apic");
+			}
+		}
+	}
 
-	lapic_map(lapic_addr);
+	if (!x2apic_enable) {
+		KASSERT(lapic_addr != 0, ("madt_lapic_enumerate: zero LAPIC address"));
+		lapic_map(lapic_addr);
+	}
 
 	bsp_apic_id = LAPIC_READID;
 	if (bsp_apic_id == APICID_MAX) {

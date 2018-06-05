@@ -456,6 +456,34 @@ typedef struct IOAPIC ioapic_t;
 #undef PAD4
 #undef PAD3
 
+/* X2APIC */
+#define MSR_X2APIC_BASE		0x00000800
+#define MSR_X2APIC_ID		0x00000802
+#define MSR_X2APIC_EOI		0x0000080b
+#define MSR_X2APIC_DFR_RSVD	0x0000080e
+#define MSR_X2APIC_ICR		0x00000830
+#define MSR_X2APIC_ICR_RSVD	0x00000831
+#define MSR_X2APIC_ICR_TIMER	0x00000838
+#define MSR_X2APIC_CCR_TIMER	0x00000839
+#define MSR_X2APIC_SELFIPI	0x0000083f
+
+#define MSR_X2APIC_MIN		MSR_X2APIC_ID
+#define MSR_X2APIC_MAX		MSR_X2APIC_SELFIPI
+
+#define LAPIC2MSR(field) __extension__ ({		\
+	uint32_t __msr;					\
+							\
+	__msr = MSR_X2APIC_BASE +			\
+		(__offsetof(struct LAPIC, field) >> 4);	\
+	KASSERT(__msr >= MSR_X2APIC_MIN &&		\
+		__msr <= MSR_X2APIC_MAX &&		\
+	        __msr != MSR_X2APIC_DFR_RSVD &&		\
+		__msr != MSR_X2APIC_ICR &&		\
+		__msr != MSR_X2APIC_ICR_RSVD,		\
+		("invalid MSR 0x%08x", __msr));		\
+	__msr;						\
+})
+
 #endif  /* !LOCORE */
 
 
