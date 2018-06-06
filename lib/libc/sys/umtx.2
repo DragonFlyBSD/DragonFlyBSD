@@ -68,6 +68,10 @@ has no specific limitation other than what fits in the signed integer.
 A negative timeout will return
 .Er EINVAL .
 .Pp
+WARNING! In order to properly interlock against fork(), this function will
+do an atomic read-modify-write on the underlying memory by atomically
+adding the value 0 to it.
+.Pp
 The
 .Fn umtx_wakeup
 system call will wakeup the specified number of processes sleeping
@@ -194,7 +198,8 @@ possibly did not match
 .Fa value
 .It Bq Er EWOULDBLOCK
 The specified timeout occurred,
-or a kernel-defined failsafe timeout occurred.
+or a kernel-defined failsafe timeout occurred,
+or the kernel requires a retry due to a copy-on-write / fork operation.
 Callers should not assume that the precise requested timeout occurred
 when this error is returned, and this error can be returned even
 when no timeout is specified.

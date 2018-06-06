@@ -119,13 +119,15 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
     int error;
     int value;
     int fail_counter;
+    thread_t td;
 
     if (uap->timeout < 0)
 	return (EINVAL);
+    td = curthread;
 
-    if (curthread->td_vmm) {
+    if (td->td_vmm) {
 	register_t gpa;
-	vmm_vm_get_gpa(curproc, &gpa, (register_t)uap->ptr);
+	vmm_vm_get_gpa(td->td_proc, &gpa, (register_t)uap->ptr);
 	uap->ptr = (const int *)gpa;
     }
 
@@ -144,20 +146,20 @@ retry_on_discontinuity:
     do {
 	if (--fail_counter == 0) {
 		kprintf("umtx_sleep() (X): ERROR Discontinuity %p (%s %d/%d)\n",
-			uptr, curthread->td_comm,
-			(int)curthread->td_proc->p_pid,
-			(int)curthread->td_lwp->lwp_tid);
+			uptr, td->td_comm,
+			(int)td->td_proc->p_pid,
+			(int)td->td_lwp->lwp_tid);
 		return EINVAL;
 	}
-	value = fuword32(uptr);
+	value = fuwordadd32(uptr, 0);
 	waddr = (void *)(intptr_t)uservtophys((intptr_t)uptr);
     } while (waddr == (void *)(intptr_t)-1 && value != -1);
 
     if (value == -1 && waddr == (void *)(intptr_t)-1) {
 	kprintf("umtx_sleep() (A): WARNING can't translate %p (%s %d/%d)\n",
-		uptr, curthread->td_comm,
-		(int)curthread->td_proc->p_pid,
-		(int)curthread->td_lwp->lwp_tid);
+		uptr, td->td_comm,
+		(int)td->td_proc->p_pid,
+		(int)td->td_lwp->lwp_tid);
 	return EINVAL;
     }
 
@@ -175,7 +177,7 @@ retry_on_discontinuity:
 		tsc_target = tsc_get_target(umtx_delay);
 		while (tsc_test_target(tsc_target) == 0) {
 			cpu_lfence();
-			if (fuword32(uptr) != uap->value) {
+			if (fuwordadd32(uptr, 0) != uap->value) {
 				good = 1;
 				break;
 			}
@@ -214,12 +216,21 @@ retry_on_discontinuity:
 	 * counts.
 	 */
 	tsleep_interlock(waddr, PCATCH | PDOMAIN_UMTX);
+
+	/*
+	 * Check physical address changed
+	 */
 	cpu_lfence();
 	if ((void *)(intptr_t)uservtophys((intptr_t)uptr) != waddr) {
 		crit_exit();
 		goto retry_on_discontinuity;
 	}
-	value = fuword32(uptr);
+
+	/*
+	 * Re-read value
+	 */
+	value = fuwordadd32(uptr, 0);
+
 	if (value == uap->value) {
 		error = tsleep(waddr, PCATCH | PINTERLOCKED | PDOMAIN_UMTX,
 			       "umtxsl", timeout);
@@ -252,10 +263,13 @@ sys_umtx_wakeup(struct umtx_wakeup_args *uap)
     int32_t value;
     void *waddr;
     void *uptr;
+    thread_t td;
 
-    if (curthread->td_vmm) {
+    td = curthread;
+
+    if (td->td_vmm) {
 	register_t gpa;
-	vmm_vm_get_gpa(curproc, &gpa, (register_t)uap->ptr);
+	vmm_vm_get_gpa(td->td_proc, &gpa, (register_t)uap->ptr);
 	uap->ptr = (const int *)gpa;
     }
 
@@ -276,20 +290,20 @@ sys_umtx_wakeup(struct umtx_wakeup_args *uap)
 	if (--fail_counter == 0) {
 		kprintf("umtx_wakeup() (X): ERROR Discontinuity "
 			"%p (%s %d/%d)\n",
-			uptr, curthread->td_comm,
-			(int)curthread->td_proc->p_pid,
-			(int)curthread->td_lwp->lwp_tid);
+			uptr, td->td_comm,
+			(int)td->td_proc->p_pid,
+			(int)td->td_lwp->lwp_tid);
 		return EINVAL;
 	}
-	value = fuword32(uptr);
+	value = fuwordadd32(uptr, 0);
 	waddr = (void *)(intptr_t)uservtophys((intptr_t)uptr);
     } while (waddr == (void *)(intptr_t)-1 && value != -1);
 
     if (value == -1 && waddr == (void *)(intptr_t)-1) {
 	kprintf("umtx_wakeup() (A): WARNING can't translate %p (%s %d/%d)\n",
-		uptr, curthread->td_comm,
-		(int)curthread->td_proc->p_pid,
-		(int)curthread->td_lwp->lwp_tid);
+		uptr, td->td_comm,
+		(int)td->td_proc->p_pid,
+		(int)td->td_lwp->lwp_tid);
 	return EINVAL;
     }
 
