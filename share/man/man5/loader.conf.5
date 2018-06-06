@@ -205,6 +205,16 @@ above and also add
 to cause the kernel to use the serial port without also forcing the
 boot loader to use the serial port.
 .Pp
+In contrast to the above, if you wish to place your serial console
+on a late-configuring serial port (such as one from a PCIe card),
+that serial port will not be available to the loader or for half
+the boot and it is probably best to leave
+.Va boot_serial unset .
+In
+this situation, syscons may have already taken the console, so
+you need to override it using (for example)
+.Va sio4.flags=0x30 instead of 0x10.
+.Pp
 The boot1/boot2 code uses BIOS calls to read and write the screen but also
 mirrors output to and monitors COM1 @ 9600.
 In an IPMI environment you do not usually have to adjust the boot code

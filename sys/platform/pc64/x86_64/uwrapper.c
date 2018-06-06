@@ -71,3 +71,15 @@ swapu64(volatile uint64_t *base, uint64_t v)
 {
 	return curthread->td_proc->p_vmspace->vm_pmap.swapu64(base, v);
 }
+
+uint32_t
+fuwordadd32(volatile uint32_t *base, uint32_t v)
+{
+	return curthread->td_proc->p_vmspace->vm_pmap.fuwordadd32(base, v);
+}
+
+uint64_t
+fuwordadd64(volatile uint64_t *base, uint64_t v)
+{
+	return curthread->td_proc->p_vmspace->vm_pmap.fuwordadd64(base, v);
+}

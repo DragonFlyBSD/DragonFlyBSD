@@ -469,6 +469,116 @@ done:
 	return v;
 }
 
+static uint32_t
+ept_fuwordadd32(volatile uint32_t *uaddr, uint32_t v)
+{
+	struct lwbuf *lwb;
+	struct lwbuf lwb_cache;
+	vm_page_t m;
+	register_t gpa;
+	size_t n;
+	int error;
+	struct vmspace *vm = curproc->p_vmspace;
+	struct vmx_thread_info *vti = curthread->td_vmm;
+	register_t guest_cr3 = vti->guest_cr3;
+	volatile void *ptr;
+	int busy;
+
+	/* Get the GPA by manually walking the-GUEST page table*/
+	error = guest_phys_addr(vm, &gpa, guest_cr3, (vm_offset_t)uaddr);
+	if (error) {
+		kprintf("%s: could not get guest_phys_addr\n", __func__);
+		return EFAULT;
+	}
+	m = vm_fault_page(&vm->vm_map, trunc_page(gpa),
+			  VM_PROT_READ | VM_PROT_WRITE,
+			  VM_FAULT_NORMAL,
+			  &error, &busy);
+	if (error) {
+		if (vmm_debug) {
+			kprintf("%s: could not fault in vm map, gpa: %llx\n",
+				__func__, (unsigned long long) gpa);
+		}
+		return EFAULT;
+	}
+
+	n = PAGE_SIZE - ((vm_offset_t)uaddr & PAGE_MASK);
+	if (n < sizeof(uint32_t)) {
+		error = EFAULT;
+		v = (uint32_t)-error;
+		goto done;
+	}
+
+	lwb = lwbuf_alloc(m, &lwb_cache);
+	ptr = (void *)(lwbuf_kva(lwb) + ((vm_offset_t)uaddr & PAGE_MASK));
+	v = atomic_fetchadd_int(ptr, v);
+
+	vm_page_dirty(m);
+	lwbuf_free(lwb);
+	error = 0;
+done:
+	if (busy)
+		vm_page_wakeup(m);
+	else
+		vm_page_unhold(m);
+	return v;
+}
+
+static uint64_t
+ept_fuwordadd64(volatile uint64_t *uaddr, uint64_t v)
+{
+	struct lwbuf *lwb;
+	struct lwbuf lwb_cache;
+	vm_page_t m;
+	register_t gpa;
+	size_t n;
+	int error;
+	struct vmspace *vm = curproc->p_vmspace;
+	struct vmx_thread_info *vti = curthread->td_vmm;
+	register_t guest_cr3 = vti->guest_cr3;
+	volatile void *ptr;
+	int busy;
+
+	/* Get the GPA by manually walking the-GUEST page table*/
+	error = guest_phys_addr(vm, &gpa, guest_cr3, (vm_offset_t)uaddr);
+	if (error) {
+		kprintf("%s: could not get guest_phys_addr\n", __func__);
+		return EFAULT;
+	}
+	m = vm_fault_page(&vm->vm_map, trunc_page(gpa),
+			  VM_PROT_READ | VM_PROT_WRITE,
+			  VM_FAULT_NORMAL,
+			  &error, &busy);
+	if (error) {
+		if (vmm_debug) {
+			kprintf("%s: could not fault in vm map, gpa: %llx\n",
+				__func__, (unsigned long long) gpa);
+		}
+		return EFAULT;
+	}
+
+	n = PAGE_SIZE - ((vm_offset_t)uaddr & PAGE_MASK);
+	if (n < sizeof(uint64_t)) {
+		error = EFAULT;
+		v = (uint64_t)-error;
+		goto done;
+	}
+
+	lwb = lwbuf_alloc(m, &lwb_cache);
+	ptr = (void *)(lwbuf_kva(lwb) + ((vm_offset_t)uaddr & PAGE_MASK));
+	v = atomic_fetchadd_long(ptr, v);
+
+	vm_page_dirty(m);
+	lwbuf_free(lwb);
+	error = 0;
+done:
+	if (busy)
+		vm_page_wakeup(m);
+	else
+		vm_page_unhold(m);
+	return v;
+}
+
 void
 vmx_ept_pmap_pinit(pmap_t pmap)
 {
@@ -491,4 +601,6 @@ vmx_ept_pmap_pinit(pmap_t pmap)
 	pmap->suword64 = ept_suword64;
 	pmap->swapu32 = ept_swapu32;
 	pmap->swapu64 = ept_swapu64;
+	pmap->fuwordadd32 = ept_fuwordadd32;
+	pmap->fuwordadd64 = ept_fuwordadd64;
 }

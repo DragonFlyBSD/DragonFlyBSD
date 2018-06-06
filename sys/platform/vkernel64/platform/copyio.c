@@ -182,6 +182,70 @@ swapu32(volatile uint32_t *p, uint32_t val)
 	return res;
 }
 
+uint64_t
+fuwordadd64(volatile uint64_t *p, uint64_t val)
+{
+	struct vmspace *vm = curproc->p_vmspace;
+	vm_offset_t kva;
+	vm_page_t m;
+	uint64_t res;
+	int error;
+	int busy;
+
+	/* XXX No idea how to handle this case in a simple way, just abort */
+	if (PAGE_SIZE - ((vm_offset_t)p & PAGE_MASK) < sizeof(uint64_t))
+		return -1;
+
+	m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)p),
+			  VM_PROT_READ|VM_PROT_WRITE,
+			  VM_FAULT_NORMAL,
+			  &error, &busy);
+	if (error)
+		return -1;
+
+	kva = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m));
+	res = atomic_fetchadd_long((uint64_t *)(kva + ((vm_offset_t)p & PAGE_MASK)),
+			       val);
+	if (busy)
+		vm_page_wakeup(m);
+	else
+		vm_page_unhold(m);
+
+	return res;
+}
+
+uint32_t
+fuwordadd32(volatile uint32_t *p, uint32_t val)
+{
+	struct vmspace *vm = curproc->p_vmspace;
+	vm_offset_t kva;
+	vm_page_t m;
+	u_int res;
+	int error;
+	int busy;
+
+	/* XXX No idea how to handle this case in a simple way, just abort */
+	if (PAGE_SIZE - ((vm_offset_t)p & PAGE_MASK) < sizeof(uint64_t))
+		return -1;
+
+	m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)p),
+			  VM_PROT_READ|VM_PROT_WRITE,
+			  VM_FAULT_NORMAL,
+			  &error, &busy);
+	if (error)
+		return -1;
+
+	kva = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m));
+	res = atomic_fetchadd_int((u_int *)(kva + ((vm_offset_t)p & PAGE_MASK)),
+			       val);
+	if (busy)
+		vm_page_wakeup(m);
+	else
+		vm_page_unhold(m);
+
+	return res;
+}
+
 int
 copystr(const void *kfaddr, void *kdaddr, size_t len, size_t *lencopied)
 {

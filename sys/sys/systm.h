@@ -265,6 +265,8 @@ uint32_t casu32(volatile uint32_t *p, uint32_t oldval, uint32_t newval);
 uint64_t casu64(volatile uint64_t *p, uint64_t oldval, uint64_t newval);
 uint32_t swapu32(volatile uint32_t *p, uint32_t val);
 uint64_t swapu64(volatile uint64_t *p, uint64_t val);
+uint32_t fuwordadd32(volatile uint32_t *p, uint32_t val);
+uint64_t fuwordadd64(volatile uint64_t *p, uint64_t val);
 
 void	DELAY(int usec);
 void	DRIVERSLEEP(int usec);

@@ -425,6 +425,31 @@ ENTRY(std_swapu32)
 	ret
 END(std_swapu32)
 
+ENTRY(std_fuwordadd32)
+	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
+	movq	$fusufault,PCB_ONFAULT(%rcx)
+	movq	%rsp,PCB_ONFAULT_SP(%rcx)
+
+	movq	$VM_MAX_USER_ADDRESS-4,%rax
+	cmpq	%rax,%rdi			/* verify address is valid */
+	ja	fusufault
+
+	movq	%rsi,%rax			/* qty to add */
+	lock xaddl	%eax,(%rdi)
+
+	/*
+	 * The old value is in %rax.  If the store succeeded it will be the
+	 * value we expected (old) from before the store, otherwise it will
+	 * be the current value.
+	 */
+
+	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
+	movq	$0,PCB_ONFAULT(%rcx)
+	ret
+END(std_fuwordadd32)
+
 /*
  * casu64 - Compare and set user word.  Returns -1 or the current value.
  *          dst = %rdi, old = %rsi, new = %rdx
@@ -482,6 +507,31 @@ ENTRY(std_swapu64)
 	movq	$0,PCB_ONFAULT(%rcx)
 	ret
 END(std_swapu64)
+
+ENTRY(std_fuwordadd64)
+	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
+	movq	$fusufault,PCB_ONFAULT(%rcx)
+	movq	%rsp,PCB_ONFAULT_SP(%rcx)
+
+	movq	$VM_MAX_USER_ADDRESS-8,%rax
+	cmpq	%rax,%rdi			/* verify address is valid */
+	ja	fusufault
+
+	movq	%rsi,%rax			/* value to add */
+	lock xaddq	%rax,(%rdi)
+
+	/*
+	 * The old value is in %rax.  If the store succeeded it will be the
+	 * value we expected (old) from before the store, otherwise it will
+	 * be the current value.
+	 */
+
+	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
+	movq	$0,PCB_ONFAULT(%rcx)
+	ret
+END(std_fuwordadd64)
 
 /*
  * Fetch (load) a 64-bit word, a 32-bit word, a 16-bit word, or an 8-bit
