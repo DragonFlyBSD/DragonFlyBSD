@@ -26,7 +26,7 @@ typedef struct HCTransaction {
     uint16_t	id;		/* assigned transaction id */
     int		swap;		/* have to swap byte order */
     int		windex;		/* output buffer index */
-    enum { HCT_IDLE, HCT_SENT, HCT_REPLIED, HCT_DONE } state;
+    enum { HCT_IDLE, HCT_SENT, HCT_REPLIED, HCT_DONE, HCT_FAIL } state;
 } *hctransaction_t;
 
 struct HostConf {

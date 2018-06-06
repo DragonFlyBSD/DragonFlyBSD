@@ -151,12 +151,14 @@ hcc_slave(int fdin, int fdout, struct HCDesc *descs, int count)
 struct HCHead *
 hcc_read_command(struct HostConf *hc, hctransaction_t trans)
 {
-    hctransaction_t fill;
     struct HCHead tmp;
     int aligned_bytes;
     int need_swap;
     int n;
     int r;
+
+    if (trans == NULL)
+	fatal("cpdup hlink protocol error with %s", hc->host);
 
     n = 0;
     while (n < (int)sizeof(struct HCHead)) {
@@ -166,9 +168,9 @@ hcc_read_command(struct HostConf *hc, hctransaction_t trans)
 	n += r;
     }
 
-    if (tmp.magic == HCMAGIC)
+    if (tmp.magic == HCMAGIC) {
 	need_swap = 0;
-    else {
+    } else {
 	tmp.magic = hc_bswap32(tmp.magic);
 	if (tmp.magic != HCMAGIC)
 	    fatal("magic mismatch with %s (%04x)", hc->host, tmp.id);
@@ -181,15 +183,12 @@ hcc_read_command(struct HostConf *hc, hctransaction_t trans)
 
     assert(tmp.bytes >= (int)sizeof(tmp) && tmp.bytes < HC_BUFSIZE);
 
-    if (!(fill = trans))
-	fatal("cpdup hlink protocol error with %s (%04x)", hc->host, tmp.id);
-
-    fill->swap = need_swap;
-    bcopy(&tmp, fill->rbuf, n);
+    trans->swap = need_swap;
+    bcopy(&tmp, trans->rbuf, n);
     aligned_bytes = HCC_ALIGN(tmp.bytes);
 
     while (n < aligned_bytes) {
-	r = read(hc->fdin, fill->rbuf + n, aligned_bytes - n);
+	r = read(hc->fdin, trans->rbuf + n, aligned_bytes - n);
 	if (r <= 0)
 	    goto fail;
 	n += r;
@@ -197,9 +196,10 @@ hcc_read_command(struct HostConf *hc, hctransaction_t trans)
 #ifdef DEBUG
     hcc_debug_dump(trans, head);
 #endif
-    fill->state = HCT_REPLIED;
-    return((void *)fill->rbuf);
+    trans->state = HCT_REPLIED;
+    return((void *)trans->rbuf);
 fail:
+    trans->state = HCT_FAIL;
     return(NULL);
 }
 
@@ -270,7 +270,7 @@ hcc_finish_command(hctransaction_t trans)
 	errno = EIO;
 #endif
 	if (whead->cmd < 0x0010)
-		return(NULL);
+	    return(NULL);
 	fatal("cpdup lost connection to %s", hc->host);
     }
 

@@ -510,6 +510,8 @@ hc_readdir(struct HostConf *hc, DIR *dir, struct stat **statpp)
 	free(*statpp);
 	*statpp = NULL;
     }
+    if (hc->trans.state == HCT_FAIL)
+	return NULL;
     return (denbuf.d_name[0] ? &denbuf : NULL);
 }
 
@@ -569,7 +571,7 @@ hc_closedir(struct HostConf *hc, DIR *dir)
     /* skip any remaining items if the directory is closed prematurely */
     while (hcc_nextchaineditem(hc, head) != NULL)
 	/*nothing*/ ;
-    if (head->error)
+    if (hc->trans.state == HCT_FAIL || head->error)
 	return (-1);
     return (0);
 }
@@ -782,7 +784,7 @@ hc_close(struct HostConf *hc, int fd)
 	/* skip any remaining items if the file is closed prematurely */
 	while (hcc_nextchaineditem(hc, head) != NULL)
 	    /*nothing*/ ;
-	if (head->error)
+	if (hc->trans.state == HCT_FAIL || head->error)
 	    return (-1);
 	return (0);
     }
@@ -852,12 +854,16 @@ hc_read(struct HostConf *hc, int fd, void *buf, size_t bytes)
     if (fd == 1 && hc->version >= 4) {	/* using HC_READFILE */
 	head = (void *)hc->trans.rbuf;
 	while (bytes) {
-	    if ((offset = head->magic) != 0)
+	    if ((offset = head->magic) != 0) {
 		item = hcc_currentchaineditem(hc, head);
-	    else
+	    } else {
 		item = hcc_nextchaineditem(hc, head);
-	    if (item == NULL)
+	    }
+	    if (item == NULL) {
+		if (hc->trans.state == HCT_FAIL)
+			r = -1;
 		return (r);
+	    }
 	    if (item->leafid != LC_DATA)
 		return (-1);
 	    x = item->bytes - sizeof(*item) - offset;
