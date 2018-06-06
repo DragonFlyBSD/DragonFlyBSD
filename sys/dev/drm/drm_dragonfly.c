@@ -123,7 +123,7 @@ static void drm_fill_pdev(device_t dev, struct pci_dev *pdev)
 	if (!pdev->_irqr)
 		return;
 
-	pdev->irq = rman_get_start(pdev->_irqr);
+	pdev->irq = (int)rman_get_start(pdev->_irqr);
 }
 
 void drm_init_pdev(device_t dev, struct pci_dev **pdev)
