@@ -18,9 +18,8 @@ DPORTS_PATH?=	/usr/dports
 ISODIR?=	/usr/obj/release
 ISOROOT?=	${ISODIR}/root
 OBJSYS=		${.OBJDIR}/../sys
-GITHOST?=	git.dragonflybsd.org
-GITHOST_DPORTS?=mirror-master.dragonflybsd.org
-
+GITURL_SRC?=	git://git.dragonflybsd.org/dragonfly.git
+GITURL_DPORTS?=	git://mirror-master.dragonflybsd.org/dports.git
 MAKE_JOBS?=	$$(sysctl -n hw.ncpu)
 
 # XXX makeshift fix to build the right kernel for the (target) architecture
@@ -37,8 +36,6 @@ CHROOT_CMD?=		/usr/sbin/chroot ${ISOROOT} sh -c
 DPORTS_EXTRA_PACKAGES?=
 
 # dports packages to be built and installed on the release ISO
-#
-# MISSING: csup
 #
 DPORTS_PACKAGES?=	devel/git \
 			dns/bind-tools \
@@ -225,13 +222,13 @@ srcs:
 	rm -f ${ISOROOT}/usr/src-sys.tgz
 	rm -f ${ISOROOT}/usr/src-sys.tar.bz2
 .if !empty(DPORTS_PACKAGES)
-	cd ${ISOROOT}/usr && make dports-create GITHOST_DPORTS=${GITHOST_DPORTS}
+	cd ${ISOROOT}/usr && make dports-create GITURL_DPORTS=${GITURL_DPORTS}
 	# NOTE: Adding the git gc --aggressive helps by significantly
 	#	reducing the disk space required.
 	#
 	cd ${ISOROOT}/usr/dports && git gc --aggressive
 .endif
-	cd ${ISOROOT}/usr && make src-create-repo GITHOST=${GITHOST}
+	cd ${ISOROOT}/usr && make src-create-repo GITURL_SRC=${GITURL_SRC}
 	# XXX: git gc --aggressive
 .else
 	rm -f ${ISOROOT}/usr/src-sys.tgz
@@ -433,16 +430,19 @@ realclean:	clean
 	rm -rf ${ISODIR}/distfiles
 
 help all:
-	@echo "make [gui] release   - complete build from scratch"
-	@echo "make [gui] quick     - attempt to do an incremental rebuild"
-	@echo "make [gui] realquick - attempt to restart after world & kernel"
-	@echo "make [gui] restartpkgs - attempt to restart at the pkg building stage"
+	@echo "Targets:"
+	@echo "  release     - full build from scratch"
+	@echo "  quick       - attempt to do an incremental rebuild"
+	@echo "  realquick   - attempt to restart after world & kernel"
+	@echo "  restartpkgs - attempt to restart at the pkg building stage"
+	@echo "NOTE: Add the optional 'gui' target to do a GUI release"
 	@echo ""
-	@echo "DPORTS_EXTRA_PACKAGES may be used to add additional pkgs"
-	@echo "GITHOST may be used to override git.dragonflybsd.org"
-	@echo "GITHOST_DPORTS may be used to override mirror-master.dragonflybsd.org"
-	@echo "IMGSIZE may be used to override the .img (in 512-byte sectors)"
-	@echo "MAKE_JOBS may be used to override the default value (sysctl hw.ncpu)"
+	@echo "Variables:"
+	@echo "  DPORTS_EXTRA_PACKAGES: add additional packages"
+	@echo "  GITURL_SRC: override the Git URL to source repository"
+	@echo "  GITURL_DPORTS: override the Git URL to dports repository"
+	@echo "  IMGSIZE: override the size of .img (in 512-byte sectors)"
+	@echo "  MAKE_JOBS: override the default value (sysctl hw.ncpu)"
 
 .PHONY: release quickrel realquickrel
 .PHONY: installer
