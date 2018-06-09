@@ -1,15 +1,11 @@
 #	$NetBSD: Makefile,v 1.7 2009/12/01 23:12:51 haad Exp $
 
-LVM2_DIR=	${.CURDIR}/../../../contrib/lvm2
-LVM2_DISTDIR=	${LVM2_DIR}/dist
-LIBDM_DISTDIR=	${LVM2_DIR}/dist/libdm
-LIBDM_SRCDIR=	${LVM2_DIR}/lib/libdevmapper
-
-.PATH:		${LVM2_DISTDIR}/man
-.PATH:		${LVM2_DISTDIR}/tools
-
 PROG=		lvm
 
+LVM2_DIR=	${.CURDIR}/../../../contrib/lvm2/dist
+LIBDM_DIR=	${LVM2_DIR}/libdm
+
+.PATH:		${LVM2_DIR}/tools
 SRCS=		dumpconfig.c formats.c lvchange.c lvconvert.c lvcreate.c \
 		lvdisplay.c lvextend.c lvmchange.c lvmcmdline.c \
 		lvmdiskscan.c lvreduce.c lvremove.c lvrename.c lvresize.c \
@@ -21,20 +17,30 @@ SRCS=		dumpconfig.c formats.c lvchange.c lvconvert.c lvcreate.c \
 		vgmknodes.c vgreduce.c vgremove.c vgrename.c vgscan.c \
 		vgsplit.c lvm.c
 
-CFLAGS+=	-I${LVM2_DISTDIR}/lib -I${LVM2_DISTDIR}/include \
-		-I. -I${LVM2_DISTDIR}/tools \
-		-I${LIBDM_DISTDIR}
+CFLAGS+=	-I${LVM2_DIR}/lib -I${LVM2_DIR}/include \
+		-I. -I${LVM2_DIR}/tools -I${LIBDM_DIR}
+CFLAGS+=	-DLVM_SHARED_PATH=\"${BINDIR}/lvm\"
 
-CFLAGS+=	-DLVM_SHARED_PATH=\"$(BINDIR)/lvm\"
-CFLAGS+=	-DREADLINE_SUPPORT -I${_SHLIBDIRPREFIX}/usr/include/priv
+LDADD+=		-llvm -ldevmapper -lprop -ldevattr
+DPADD+=		${LIBLVM} ${LIBDEVMAPPER} ${LIBPROP} ${LIBDEVATTR}
 
 # Some parts of the code can't be protected because if its
 # alloca() usage.
 #
-.if defined(USE_SSP) && (${USE_SSP} != "no")
+.if defined(USE_SSP)
 CFLAGS+=	-Wno-stack-protector
 .endif
 
+# Do not build readline support for the rescue version.
+#
+.if !defined(RESCUE)
+CFLAGS+=	-DREADLINE_SUPPORT -I${_SHLIBDIRPREFIX}/usr/include/priv
+LDADD+=		-lprivate_edit -lprivate_ncurses
+DPADD+=		${LIBEDIT} ${LIBNCURSES}
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+.endif
+
+.PATH:		${LVM2_DIR}/man
 MAN= 		lvchange.8 lvconvert.8 lvcreate.8 lvdisplay.8 lvextend.8 \
 		lvm.8 lvm.conf.5 lvmchange.8 lvmdiskscan.8 lvmdump.8 \
 		lvreduce.8 lvremove.8 lvrename.8 lvresize.8 lvs.8 \
@@ -86,10 +92,5 @@ SYMLINKS+=	lvm ${BINDIR}/lvchange \
 		lvm ${BINDIR}/vgs \
 		lvm ${BINDIR}/vgscan \
 		lvm ${BINDIR}/vgsplit
-
-LDADD+=		-llvm -ldevmapper -lprop -lprivate_edit -lprivate_ncurses -ldevattr
-DPADD+=		${LIBLVM} ${LIBDEVMAPPER} ${LIBPROP} ${LIBEDIT} ${LIBNCURSES}
-DPADD+=		${LIBDEVATTR}
-LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>
