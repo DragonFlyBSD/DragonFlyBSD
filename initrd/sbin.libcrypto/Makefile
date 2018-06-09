@@ -1,6 +1,9 @@
 #$FreeBSD: head/rescue/rescue/Makefile 252356 2013-06-28 21:00:08Z davide $
 #	@(#)Makefile	8.1 (Berkeley) 6/2/93
 
+# To include '../Makefine.inc' for use in <bsd.crunchgen.mk>
+.include <bsd.init.mk>
+
 PROG=	rescue.libcrypto
 
 CRUNCH_SRCDIRS+= sbin

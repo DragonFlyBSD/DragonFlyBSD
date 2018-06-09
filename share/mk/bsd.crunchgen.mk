@@ -19,11 +19,13 @@
 # CRUNCH_ALIAS_${P}	Additional names to be used for ${P}
 #
 # By default, any name appearing in CRUNCH_PROGS or CRUNCH_ALIAS_${P}
-# will be used to generate a hard link to the resulting binary.
+# will be used to generate a hard/soft link to the resulting binary.
 # Specific links can be suppressed by setting
 # CRUNCH_SUPPRESS_LINK_${NAME} to 1.
 #
 # If CRUNCH_GENERATE_LINKS is set to 'no', then no links will be generated.
+# If CRUNCH_USE_SYMLINKS is defined, then soft links will be used instead
+# of hard links.
 #
 
 # $FreeBSD: head/share/mk/bsd.crunchgen.mk 305257 2016-09-01 23:52:20Z bdrewery $
@@ -34,7 +36,11 @@ OUTMK=	${PROG}.mk
 OUTC=	${PROG}.c
 OUTPUTS=${OUTMK} ${OUTC} ${PROG}.cache
 CRUNCHOBJS= ${.OBJDIR}
-CRUNCH_GENERATE_LINKS?=	yes
+CRUNCH_GENERATE_LINKS?= yes
+CRUNCH_LINKTYPE?= hard
+.if defined(CRUNCH_USE_SYMLINKS)
+CRUNCH_LINKTYPE= soft
+.endif
 
 CLEANFILES+= ${CONF} *.o *.lo *.c *.mk *.cache *.a *.h
 
@@ -45,23 +51,31 @@ CRUNCH_SRCDIR_${P}?=	${CRUNCH_PATH_${D}}/${D}/${P}
 .endfor
 .endfor
 
-# Program names and their aliases contribute hardlinks to 'rescue' executable,
-# except for those that get suppressed.
+# Program names and their aliases that contribute links to crunched
+# executable, except for the suppressed ones.
 .for D in ${CRUNCH_SRCDIRS}
 .for P in ${CRUNCH_PROGS_${D}}
 ${OUTPUTS}: ${CRUNCH_SRCDIR_${P}}/Makefile
 .if ${CRUNCH_GENERATE_LINKS} == "yes"
 .ifndef CRUNCH_SUPPRESS_LINK_${P}
+.if ${CRUNCH_LINKTYPE} == "soft"
+SYMLINKS+= ${PROG} ${BINDIR}/${P}
+.else
 LINKS+= ${BINDIR}/${PROG} ${BINDIR}/${P}
 .endif
+.endif   # !CRUNCH_SUPPRESS_LINK_${P}
 .for A in ${CRUNCH_ALIAS_${P}}
 .ifndef CRUNCH_SUPPRESS_LINK_${A}
+.if ${CRUNCH_LINKTYPE} == "soft"
+SYMLINKS+= ${PROG} ${BINDIR}/${A}
+.else
 LINKS+= ${BINDIR}/${PROG} ${BINDIR}/${A}
 .endif
-.endfor
-.endif
-.endfor
-.endfor
+.endif   # !CRUNCH_SUPPRESS_LINK_${A}
+.endfor  # CRUNCH_ALIAS_${P}
+.endif   # CRUNCH_GENERATE_LINKS
+.endfor  # CRUNCH_PROGS_${D}
+.endfor  # CRUNCH_SRCDIRS
 
 .if !defined(_SKIP_BUILD)
 all: ${PROG}
