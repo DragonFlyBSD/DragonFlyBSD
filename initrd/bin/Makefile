@@ -39,8 +39,6 @@ CRUNCH_PROGS_bin=	\
 	test
 
 CRUNCH_LIBS+= -lcrypt -lprivate_edit -lkvm -ll -lmd -lprivate_ncurses -lutil
-# No longer needed if bin/sh uses pregenerated/ headers.
-#CRUNCH_BUILDTOOLS+= bin/sh bin/sh/mknodes bin/sh/mksyntax
 
 # Additional options for specific programs
 CRUNCH_ALIAS_test= [
