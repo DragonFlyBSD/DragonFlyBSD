@@ -7,6 +7,10 @@
 
 CFLAGS+=${COPTS} ${DEBUG_FLAGS}
 
+.if defined(CRUNCH_CFLAGS)
+CFLAGS+=${CRUNCH_CFLAGS}
+.endif
+
 PRIVATELIB_BLDFLAGS?=	-rpath /lib/priv -L /usr/lib/priv
 PRIVATELIB_LDFLAGS?=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
