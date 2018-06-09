@@ -173,6 +173,7 @@ struct re_softc {
 	u_int8_t		RequireAdjustUpsTxLinkPulseTiming;
 	u_int8_t		re_hw_enable_msi_msix;
 	u_int8_t		re_coalesce_tx_pkt;
+	u_int8_t		re_pad_runt;
 	u_int8_t		re_8169_MacVersion;
 	u_int8_t		re_8169_PhyVersion;
 	int 			re_tx_cstag;
