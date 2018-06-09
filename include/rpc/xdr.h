@@ -255,13 +255,13 @@ struct xdr_discrim {
  * N.B. and frozen for all time: each data type here uses 4 bytes
  * of external representation.
  */
-#define IXDR_GET_INT32(buf)		((int32_t)__ntohl((u_int32_t)*(buf)++))
-#define IXDR_PUT_INT32(buf, v)		(*(buf)++ =(int32_t)__htonl((u_int32_t)v))
-#define IXDR_GET_U_INT32(buf)		((u_int32_t)IXDR_GET_INT32(buf))
+#define IXDR_GET_INT32(buf)		((int32_t)__ntohl((uint32_t)*(buf)++))
+#define IXDR_PUT_INT32(buf, v)		(*(buf)++ =(int32_t)__htonl((uint32_t)v))
+#define IXDR_GET_U_INT32(buf)		((uint32_t)IXDR_GET_INT32(buf))
 #define IXDR_PUT_U_INT32(buf, v)	IXDR_PUT_INT32((buf), ((int32_t)(v)))
 
-#define IXDR_GET_LONG(buf)		((long)__ntohl((u_int32_t)*(buf)++))
-#define IXDR_PUT_LONG(buf, v)		(*(buf)++ =(int32_t)__htonl((u_int32_t)v))
+#define IXDR_GET_LONG(buf)		((long)__ntohl((uint32_t)*(buf)++))
+#define IXDR_PUT_LONG(buf, v)		(*(buf)++ =(int32_t)__htonl((uint32_t)v))
 
 #define IXDR_GET_BOOL(buf)		((bool_t)IXDR_GET_LONG(buf))
 #define IXDR_GET_ENUM(buf, t)		((t)IXDR_GET_LONG(buf))
@@ -287,13 +287,13 @@ extern bool_t	xdr_u_long(XDR *, u_long *);
 extern bool_t	xdr_short(XDR *, short *);
 extern bool_t	xdr_u_short(XDR *, u_short *);
 extern bool_t	xdr_int16_t(XDR *, int16_t *);
-extern bool_t	xdr_u_int16_t(XDR *, u_int16_t *);
+extern bool_t	xdr_u_int16_t(XDR *, uint16_t *);
 extern bool_t	xdr_int32_t(XDR *, int32_t *);
-extern bool_t	xdr_u_int32_t(XDR *, u_int32_t *);
-extern bool_t	xdr_uint32_t(XDR *, u_int32_t *);
+extern bool_t	xdr_u_int32_t(XDR *, uint32_t *);
+extern bool_t	xdr_uint32_t(XDR *, uint32_t *);
 extern bool_t	xdr_int64_t(XDR *, int64_t *);
-extern bool_t	xdr_u_int64_t(XDR *, u_int64_t *);
-extern bool_t	xdr_uint64_t(XDR *, u_int64_t *);
+extern bool_t	xdr_u_int64_t(XDR *, uint64_t *);
+extern bool_t	xdr_uint64_t(XDR *, uint64_t *);
 extern bool_t	xdr_bool(XDR *, bool_t *);
 extern bool_t	xdr_enum(XDR *, enum_t *);
 extern bool_t	xdr_array(XDR *, char **, u_int *, u_int, u_int, xdrproc_t);
