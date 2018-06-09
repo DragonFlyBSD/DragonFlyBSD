@@ -154,7 +154,8 @@ destroy_vn() {
 }
 
 make_hier() {
-	mkdir -p ${BUILD_DIR}/new_root
+	mkdir -p ${BUILD_DIR}/new_root ||
+	    error 1 "Failed to mkdir ${BUILD_DIR}/new_root"
 	# Symlink 'sbin' to 'bin'
 	ln -sf bin ${BUILD_DIR}/sbin
 	# Symlink 'tmp' to 'var/tmp', as '/var' will be mounted with
@@ -194,9 +195,11 @@ print_info() {
 #
 check_initrd()
 {
-	[ -x "${BUILD_DIR}/sbin/oinit" ] || {
+	[ -x "${BUILD_DIR}/sbin/oinit" ] &&
+	[ -x "${BUILD_DIR}/bin/sh" ] &&
+	[ -x "${BUILD_DIR}/etc/rc" ] || {
 		destroy_vn
-		error 1 "Created initrd image is invalid!"
+		error 1 "Ivalid initrd image!"
 	}
 }
 
@@ -291,6 +294,6 @@ if [ -f "${INITRD_DEST}" ]; then
 fi
 
 echo -n "Copying ${INITRD_FILE}.gz to ${INITRD_DEST} ..."
-mv ${INITRD_FILE}.gz ${INITRD_DEST}
+install -o root -g wheel -m 444 ${INITRD_FILE}.gz ${INITRD_DEST}
 echo " OK"
 rm -f ${INITRD_FILE}.gz
