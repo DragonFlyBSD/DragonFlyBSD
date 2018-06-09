@@ -1,25 +1,25 @@
-CRYPTSETUP_DIR=	${.CURDIR}/../../../contrib/cryptsetup
-
-CRYPTSETUP_SRCDIR=	${CRYPTSETUP_DIR}/src
-CRYPTSETUP_LUKSDIR=	${CRYPTSETUP_DIR}/luks
-CRYPTSETUP_LIBDIR=	${CRYPTSETUP_DIR}/lib
-.PATH:  ${CRYPTSETUP_DIR}/man
+CRYPTSETUP_DIR=		${.CURDIR}/../../../contrib/cryptsetup
 
 PROG=		cryptsetup
 
-# Add a backend...
+.PATH:		${CRYPTSETUP_DIR}/src
+CFLAGS+=	-I${CRYPTSETUP_DIR}/src
+SRCS=		cryptsetup.c
+
+.PATH:		${CRYPTSETUP_DIR}/luks
+CFLAGS+=	-I${CRYPTSETUP_DIR}/luks
+SRCS+=		af.c hexprint.c keyencryption.c keymanage.c \
+		pbkdf.c random.c
+
+.PATH:		${CRYPTSETUP_DIR}/lib
+CFLAGS+=	-I${CRYPTSETUP_DIR}/lib
 SRCS+=		backends.c libdevmapper.c setup.c utils.c \
 		utils_debug.c
 
-SRCS+=		af.c hexprint.c  keyencryption.c keymanage.c \
-		pbkdf.c random.c
-
-SRCS+=		cryptsetup.c
-
+.PATH:		${CRYPTSETUP_DIR}/man
 MAN=		cryptsetup.8
 
-CFLAGS+=	-I${CRYPTSETUP_SRCDIR} -I${CRYPTSETUP_LIBDIR} \
-		-I${CRYPTSETUP_LUKSDIR} -I. -I${CRYPTSETUP_DIR} -D_BSD_SOURCE
+CFLAGS+=	-I. -I${CRYPTSETUP_DIR} -D_BSD_SOURCE
 
 DPADD+=		${LIBDM} ${LIBPROP}
 LDADD+=		-ldm -lprop
@@ -28,9 +28,5 @@ DPADD+=		${LIBCRYPTO}
 LDADD+=		-lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../../crypto/libressl/include
-
-.PATH:	${CRYPTSETUP_SRCDIR}
-.PATH:	${CRYPTSETUP_LUKSDIR}
-.PATH:	${CRYPTSETUP_LIBDIR}
 
 .include <bsd.prog.mk>
