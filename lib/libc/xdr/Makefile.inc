@@ -31,6 +31,8 @@ MLINKS+=xdr.3 xdr_array.3 \
 	xdr.3 xdr_hyper.3 \
 	xdr.3 xdr_inline.3 \
 	xdr.3 xdr_int.3 \
+	xdr.3 xdr_int16_t.3 \
+	xdr.3 xdr_int32_t.3 \
 	xdr.3 xdr_int64_t.3 \
 	xdr.3 xdr_long.3 \
 	xdr.3 xdr_longlong_t.3 \
@@ -50,6 +52,11 @@ MLINKS+=xdr.3 xdr_array.3 \
 	xdr.3 xdr_u_char.3 \
 	xdr.3 xdr_u_hyper.3 \
 	xdr.3 xdr_u_int.3 \
+	xdr.3 xdr_uint16_t.3 \
+	xdr.3 xdr_u_int16_t.3 \
+	xdr.3 xdr_uint32_t.3 \
+	xdr.3 xdr_u_int32_t.3 \
+	xdr.3 xdr_uint64_t.3 \
 	xdr.3 xdr_u_int64_t.3 \
 	xdr.3 xdr_u_long.3 \
 	xdr.3 xdr_u_longlong_t.3 \

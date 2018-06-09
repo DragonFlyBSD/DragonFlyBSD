@@ -178,9 +178,10 @@
  * 500305 - remove <sys/ioctl_compat.h> for good
  * 500306 - strsuftoll(), strsuftollx()
  * 500307 - tcsetsid()
+ * 500308 - xdr_uint16_t()
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500307	/* propagated to newvers */
+#define __DragonFly_version 500308	/* propagated to newvers */
 
 #include <sys/_null.h>
 

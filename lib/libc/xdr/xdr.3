@@ -1,7 +1,7 @@
 .\" @(#)xdr.3n	2.2 88/08/03 4.0 RPCSRC; from 1.16 88/03/14 SMI
-.\" $FreeBSD: src/lib/libc/xdr/xdr.3,v 1.17 2005/11/24 07:12:01 ru Exp $
+.\" $FreeBSD: head/lib/libc/xdr/xdr.3 318712 2017-05-23 07:17:52Z ngie $
 .\"
-.Dd July 30, 2015
+.Dd June 9, 2018
 .Dt XDR 3
 .Os
 .Sh NAME
@@ -19,9 +19,11 @@
 .Nm xdr_hyper ,
 .Nm xdr_inline ,
 .Nm xdr_int ,
+.Nm xdr_int16_t ,
+.Nm xdr_int32_t ,
+.Nm xdr_int64_t ,
 .Nm xdr_long ,
 .Nm xdr_longlong_t ,
-.Nm xdr_int64_t ,
 .Nm xdrmem_create ,
 .Nm xdr_opaque ,
 .Nm xdr_pointer ,
@@ -40,9 +42,14 @@
 .Nm xdr_u_int ,
 .Nm xdr_u_long ,
 .Nm xdr_u_longlong_t ,
+.Nm xdr_uint16_t ,
+.Nm xdr_u_int16_t ,
+.Nm xdr_uint32_t ,
+.Nm xdr_u_int32_t ,
+.Nm xdr_uint64_t ,
 .Nm xdr_u_int64_t ,
-.Nm xdr_u_short ,
 .Nm xdr_union ,
+.Nm xdr_u_short ,
 .Nm xdr_vector ,
 .Nm xdr_void ,
 .Nm xdr_wrapstring
@@ -306,6 +313,39 @@ This routine returns one if it succeeds, zero otherwise.
 .Ft int
 .Xc
 .It Xo
+.Fn xdr_int16_t "XDR *xdrs" "int16_t *llp"
+.Xc
+A filter primitive that translates between ANSI C
+.Vt int16_t
+integers and their external representations.
+This routine returns one if it succeeds, zero otherwise.
+.Pp
+.It Xo
+.Ft int
+.Xc
+.It Xo
+.Fn xdr_int32_t "XDR *xdrs" "int32_t *llp"
+.Xc
+A filter primitive that translates between ANSI C
+.Vt int32_t
+integers and their external representations.
+This routine returns one if it succeeds, zero otherwise.
+.Pp
+.It Xo
+.Ft int
+.Xc
+.It Xo
+.Fn xdr_int64_t "XDR *xdrs" "int64_t *llp"
+.Xc
+A filter primitive that translates between ANSI C
+.Vt int64_t
+integers and their external representations.
+This routine returns one if it succeeds, zero otherwise.
+.Pp
+.It Xo
+.Ft int
+.Xc
+.It Xo
 .Fn xdr_long "XDR *xdrs" "long *lp"
 .Xc
 .Pp
@@ -322,17 +362,6 @@ This routine returns one if it succeeds, zero otherwise.
 .Xc
 A filter primitive that translates between ANSI C
 .Vt "long long"
-integers and their external representations.
-This routine returns one if it succeeds, zero otherwise.
-.Pp
-.It Xo
-.Ft int
-.Xc
-.It Xo
-.Fn xdr_int64_t "XDR *xdrs" "int64_t *llp"
-.Xc
-A filter primitive that translates between ANSI C
-.Vt int64_t
 integers and their external representations.
 This routine returns one if it succeeds, zero otherwise.
 .Pp
@@ -412,8 +441,8 @@ linked lists.
 .Fa "u_int sendsize"
 .Fa "u_int recvsize"
 .Fa "void *handle"
-.Fa "int (*readit)(void)"
-.Fa "int (*writeit)(void)"
+.Fa "int \*(lp*readit\*(rp\*(lp\*(rp"
+.Fa "int \*(lp*writeit\*(rp\*(lp\*(rp"
 .Fc
 .Xc
 .Pp
@@ -685,6 +714,57 @@ This routine returns one if it succeeds, zero otherwise.
 .Ft int
 .Xc
 .It Xo
+.Fn xdr_uint16_t "XDR *xdrs" "uint16_t *llp"
+.Xc
+.It Xo
+.Ft int
+.Xc
+.It Xo
+.Fn xdr_u_int16_t "XDR *xdrs" "uint16_t *llp"
+.Xc
+Filter primitives that translate between C
+.Vt uint16_t
+integers and their external representations.
+These routines return one if they succeed, zero otherwise.
+.Pp
+.It Xo
+.Ft int
+.Xc
+.It Xo
+.Fn xdr_uint32_t "XDR *xdrs" "uint32_t *llp"
+.Xc
+.It Xo
+.Ft int
+.Xc
+.It Xo
+.Fn xdr_u_int32_t "XDR *xdrs" "uint32_t *llp"
+.Xc
+Filter primitives that translate between C
+.Vt uint32_t
+integers and their external representations.
+These routines return one if they succeed, zero otherwise.
+.Pp
+.It Xo
+.Ft int
+.Xc
+.It Xo
+.Fn xdr_uint64_t "XDR *xdrs" "uint64_t *llp"
+.Xc
+.It Xo
+.Ft int
+.Xc
+.It Xo
+.Fn xdr_u_int64_t "XDR *xdrs" "uint64_t *llp"
+.Xc
+Filter primitives that translate between C
+.Vt uint64_t
+integers and their external representations.
+These routines return one if they succeed, zero otherwise.
+.Pp
+.It Xo
+.Ft int
+.Xc
+.It Xo
 .Fn xdr_u_long "XDR *xdrs" "unsigned long *ulp"
 .Xc
 .Pp
@@ -864,3 +944,8 @@ Returns one if it succeeds, zero otherwise.
 .%O RFC 1014
 .%Q "Sun Microsystems, Inc., USC\-ISI"
 .Re
+.Sh HISTORY
+The
+.Nm xdr_sizeof
+function first appeared in
+.Fx 9.0 .

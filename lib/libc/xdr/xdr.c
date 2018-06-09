@@ -1,41 +1,44 @@
-/*
- * Sun RPC is a product of Sun Microsystems, Inc. and is provided for
- * unrestricted use provided that this legend is included on all tape
- * media and as a part of the software program in whole or part.  Users
- * may copy or modify Sun RPC without charge, but are not authorized
- * to license or distribute it to anyone else except as part of a product or
- * program developed by the user.
+/*	$NetBSD: xdr.c,v 1.22 2000/07/06 03:10:35 christos Exp $	*/
+
+/*-
+ * SPDX-License-Identifier: BSD-3-Clause
  *
- * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
- * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
+ * Copyright (c) 2010, Oracle America, Inc.
  *
- * Sun RPC is provided with no support and without any obligation on the
- * part of Sun Microsystems, Inc. to assist in its use, correction,
- * modification or enhancement.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
  *
- * SUN MICROSYSTEMS, INC. SHALL HAVE NO LIABILITY WITH RESPECT TO THE
- * INFRINGEMENT OF COPYRIGHTS, TRADE SECRETS OR ANY PATENTS BY SUN RPC
- * OR ANY PART THEREOF.
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above
+ *       copyright notice, this list of conditions and the following
+ *       disclaimer in the documentation and/or other materials
+ *       provided with the distribution.
+ *     * Neither the name of the "Oracle America, Inc." nor the names of its
+ *       contributors may be used to endorse or promote products derived
+ *       from this software without specific prior written permission.
  *
- * In no event will Sun Microsystems, Inc. be liable for any lost revenue
- * or profits or other special, indirect and consequential damages, even if
- * Sun has been advised of the possibility of such damages.
- *
- * Sun Microsystems, Inc.
- * 2550 Garcia Avenue
- * Mountain View, California  94043
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *   FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ *   COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+ *   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ *   DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ *   GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ *   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ *   WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ *   NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * @(#)xdr.c 1.35 87/08/12
  * @(#)xdr.c	2.1 88/07/29 4.0 RPCSRC
- * $NetBSD: xdr.c,v 1.22 2000/07/06 03:10:35 christos Exp $
- * $FreeBSD: src/lib/libc/xdr/xdr.c,v 1.14 2004/10/16 06:32:43 obrien Exp $
+ * $FreeBSD: head/lib/libc/xdr/xdr.c 326025 2017-11-20 19:49:47Z pfg $
  */
 
 /*
  * xdr.c, Generic XDR routines implementation.
- *
- * Copyright (C) 1986, Sun Microsystems, Inc.
  *
  * These are the "generic" xdr routines used to serialize and de-serialize
  * most common data items.  See xdr.h for more info on the interface to
@@ -48,6 +51,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <rpc/rpc.h>
+#include <rpc/rpc_com.h>
 #include <rpc/types.h>
 #include <rpc/xdr.h>
 #include "un-namespace.h"
@@ -60,7 +65,6 @@ typedef u_quad_t        u_longlong_t;   /* ANSI unsigned long long type */
  */
 #define XDR_FALSE	((long) 0)
 #define XDR_TRUE	((long) 1)
-#define LASTUNSIGNED	((u_int) 0-1)
 
 /*
  * for unit alignment
@@ -387,6 +391,34 @@ xdr_u_int16_t(XDR *xdrs, uint16_t *uint16_p)
 	return (FALSE);
 }
 
+/*
+ * XDR unsigned 16-bit integers
+ */
+bool_t
+xdr_uint16_t(XDR *xdrs, uint16_t *uint16_p)
+{
+	u_long l;
+
+	switch (xdrs->x_op) {
+
+	case XDR_ENCODE:
+		l = (u_long) *uint16_p;
+		return (XDR_PUTLONG(xdrs, (long *)&l));
+
+	case XDR_DECODE:
+		if (!XDR_GETLONG(xdrs, (long *)&l)) {
+			return (FALSE);
+		}
+		*uint16_p = (uint16_t) l;
+		return (TRUE);
+
+	case XDR_FREE:
+		return (TRUE);
+	}
+	/* NOTREACHED */
+	return (FALSE);
+}
+
 
 /*
  * XDR a char
@@ -529,6 +561,7 @@ xdr_bytes(XDR *xdrs, char **cpp, u_int *sizep, u_int maxsize)
 {
 	char *sp = *cpp;  /* sp is the actual string pointer */
 	u_int nodesize;
+	bool_t ret, allocated = FALSE;
 
 	/*
 	 * first deal with the length since xdr bytes are counted
@@ -552,6 +585,7 @@ xdr_bytes(XDR *xdrs, char **cpp, u_int *sizep, u_int maxsize)
 		}
 		if (sp == NULL) {
 			*cpp = sp = mem_alloc(nodesize);
+			allocated = TRUE;
 		}
 		if (sp == NULL) {
 			warnx("xdr_bytes: out of memory");
@@ -560,7 +594,14 @@ xdr_bytes(XDR *xdrs, char **cpp, u_int *sizep, u_int maxsize)
 		/* FALLTHROUGH */
 
 	case XDR_ENCODE:
-		return (xdr_opaque(xdrs, sp, nodesize));
+		ret = xdr_opaque(xdrs, sp, nodesize);
+		if ((xdrs->x_op == XDR_DECODE) && (ret == FALSE)) {
+			if (allocated == TRUE) {
+				free(sp);
+				*cpp = NULL;
+			}
+		}
+		return (ret);
 
 	case XDR_FREE:
 		if (sp != NULL) {
@@ -650,6 +691,7 @@ xdr_string(XDR *xdrs, char **cpp, u_int maxsize)
 	char *sp = *cpp;  /* sp is the actual string pointer */
 	u_int size;
 	u_int nodesize;
+	bool_t ret, allocated = FALSE;
 
 	/*
 	 * first deal with the length since xdr strings are counted-strings
@@ -683,8 +725,10 @@ xdr_string(XDR *xdrs, char **cpp, u_int maxsize)
 		if (nodesize == 0) {
 			return (TRUE);
 		}
-		if (sp == NULL)
+		if (sp == NULL) {
 			*cpp = sp = mem_alloc(nodesize);
+			allocated = TRUE;
+		}
 		if (sp == NULL) {
 			warnx("xdr_string: out of memory");
 			return (FALSE);
@@ -693,7 +737,14 @@ xdr_string(XDR *xdrs, char **cpp, u_int maxsize)
 		/* FALLTHROUGH */
 
 	case XDR_ENCODE:
-		return (xdr_opaque(xdrs, sp, size));
+		ret = xdr_opaque(xdrs, sp, size);
+		if ((xdrs->x_op == XDR_DECODE) && (ret == FALSE)) {
+			if (allocated == TRUE) {
+				free(sp);
+				*cpp = NULL;
+			}
+		}
+		return (ret);
 
 	case XDR_FREE:
 		mem_free(sp, nodesize);
@@ -711,7 +762,7 @@ xdr_string(XDR *xdrs, char **cpp, u_int maxsize)
 bool_t
 xdr_wrapstring(XDR *xdrs, char **cpp)
 {
-	return xdr_string(xdrs, cpp, LASTUNSIGNED);
+	return xdr_string(xdrs, cpp, RPC_MAXDATASIZE);
 }
 
 /*

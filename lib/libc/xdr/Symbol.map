@@ -44,6 +44,10 @@ DF404.0 {
     xdrstdio_create;
 };
 
+DF504.0 {
+    xdr_uint16_t;
+};
+
 DFprivate_1.0 {
     __xdrrec_getrec;
     __xdrrec_setnonblock;
