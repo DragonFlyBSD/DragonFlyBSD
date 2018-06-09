@@ -6,6 +6,7 @@ PROG=	rescue.sbin
 SCRIPTS= ${.CURDIR}/../../sbin/dhclient/dhclient-script
 
 CRUNCH_SRCDIRS+= sbin
+CRUNCH_PATH_sbin= ${.CURDIR}/../..
 CRUNCH_PROGS_sbin=	\
 	camcontrol	\
 	ccdconfig	\
@@ -65,6 +66,7 @@ CRUNCH_LIBS+= -lbsdxml
 CRUNCH_LIBS+= ${PRIVATELIB_LDFLAGS}
 
 CRUNCH_SRCDIRS+= usr.sbin
+CRUNCH_PATH_usr.sbin= ${.CURDIR}/../..
 CRUNCH_PROGS_usr.sbin= boot0cfg chroot
 
 .include <bsd.crunchgen.mk>

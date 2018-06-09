@@ -4,7 +4,8 @@
 # Make variables used to generate the crunchgen(1) config file:
 #
 # CRUNCH_SRCDIRS	Directories to search for included programs
-# CRUNCH_PROGS		Programs to be included
+# CRUNCH_PATH_${D}	Path to the source directory ${D}
+# CRUNCH_PROGS_${D}	Programs to be included inside directory ${D}
 # CRUNCH_LIBS		Libraries to be statically linked with
 # CRUNCH_SHLIBS		Libraries to be dynamically linked with
 # CRUNCH_BUILDOPTS	Build options to be added for every program
@@ -40,7 +41,7 @@ CLEANFILES+= ${CONF} *.o *.lo *.c *.mk *.cache *.a *.h
 # Set a default SRCDIR for each for simpler handling below.
 .for D in ${CRUNCH_SRCDIRS}
 .for P in ${CRUNCH_PROGS_${D}}
-CRUNCH_SRCDIR_${P}?=	${.CURDIR}/../../${D}/${P}
+CRUNCH_SRCDIR_${P}?=	${CRUNCH_PATH_${D}}/${D}/${P}
 .endfor
 .endfor
 

@@ -11,6 +11,7 @@ SCRIPTS=dowpa
 # /usr/include/paths.h as well!  You were warned!
 #
 CRUNCH_SRCDIRS+= bin
+CRUNCH_PATH_bin= ${.CURDIR}/../..
 CRUNCH_PROGS_bin=	\
 	cat		\
 	chmod		\
@@ -50,6 +51,7 @@ CRUNCH_ALIAS_rm= unlink
 
 
 CRUNCH_SRCDIRS+= usr.bin
+CRUNCH_PATH_usr.bin= ${.CURDIR}/../..
 CRUNCH_PROGS_usr.bin= du less undo ssh fetch
 CRUNCH_ALIAS_less= more
 CRUNCH_ALIAS_ssh= scp
