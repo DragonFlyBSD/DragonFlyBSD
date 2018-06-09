@@ -293,3 +293,4 @@ fi
 echo -n "Copying ${INITRD_FILE}.gz to ${INITRD_DEST} ..."
 mv ${INITRD_FILE}.gz ${INITRD_DEST}
 echo " OK"
+rm -f ${INITRD_FILE}.gz
