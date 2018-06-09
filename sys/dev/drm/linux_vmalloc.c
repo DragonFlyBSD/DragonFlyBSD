@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2017-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,7 +42,7 @@ SLIST_HEAD(vmap_list_head, vmap) vmap_list = SLIST_HEAD_INITIALIZER(vmap_list);
 
 /* vmap: map an array of pages into virtually contiguous space */
 void *
-vmap(struct vm_page **pages, unsigned int count,
+vmap(struct page **pages, unsigned int count,
 	unsigned long flags, unsigned long prot)
 {
 	struct vmap *vmp;
@@ -59,7 +59,7 @@ vmap(struct vm_page **pages, unsigned int count,
 
 	vmp->addr = (void *)off;
 	vmp->npages = count;
-	pmap_qenter(off, pages, count);
+	pmap_qenter(off, (struct vm_page **)pages, count);
 	SLIST_INSERT_HEAD(&vmap_list, vmp, vm_vmaps);
 
 	return (void *)off;

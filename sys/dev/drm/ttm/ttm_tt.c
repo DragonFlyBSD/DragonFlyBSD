@@ -63,7 +63,7 @@ static void ttm_dma_tt_alloc_page_directory(struct ttm_dma_tt *ttm)
 					    sizeof(*ttm->dma_address));
 }
 
-static inline int ttm_tt_set_page_caching(vm_page_t p,
+static inline int ttm_tt_set_page_caching(struct page *p,
 					  enum ttm_caching_state c_old,
 					  enum ttm_caching_state c_new)
 {
@@ -78,9 +78,9 @@ static inline int ttm_tt_set_page_caching(vm_page_t p,
 #endif
 
 	if (c_new == tt_wc)
-		pmap_page_set_memattr(p, VM_MEMATTR_WRITE_COMBINING);
+		pmap_page_set_memattr((struct vm_page *)p, VM_MEMATTR_WRITE_COMBINING);
 	else if (c_new == tt_uncached)
-		pmap_page_set_memattr(p, VM_MEMATTR_UNCACHEABLE);
+		pmap_page_set_memattr((struct vm_page *)p, VM_MEMATTR_UNCACHEABLE);
 
 	return (0);
 }
@@ -94,7 +94,7 @@ static int ttm_tt_set_caching(struct ttm_tt *ttm,
 			      enum ttm_caching_state c_state)
 {
 	int i, j;
-	vm_page_t cur_page;
+	struct page *cur_page;
 	int ret;
 
 	if (ttm->caching_state == c_state)
@@ -174,7 +174,7 @@ void ttm_tt_destroy(struct ttm_tt *ttm)
 
 int ttm_tt_init(struct ttm_tt *ttm, struct ttm_bo_device *bdev,
 		unsigned long size, uint32_t page_flags,
-		vm_page_t dummy_read_page)
+		struct page *dummy_read_page)
 {
 	ttm->bdev = bdev;
 	ttm->glob = bdev->glob;
@@ -204,7 +204,7 @@ EXPORT_SYMBOL(ttm_tt_fini);
 
 int ttm_dma_tt_init(struct ttm_dma_tt *ttm_dma, struct ttm_bo_device *bdev,
 		unsigned long size, uint32_t page_flags,
-		vm_page_t dummy_read_page)
+		struct page *dummy_read_page)
 {
 	struct ttm_tt *ttm = &ttm_dma->ttm;
 
@@ -299,7 +299,7 @@ int ttm_tt_swapin(struct ttm_tt *ttm)
 				vm_page_zero_invalid(from_page, TRUE);
 			}
 		}
-		to_page = ttm->pages[i];
+		to_page = (struct vm_page *)ttm->pages[i];
 		if (unlikely(to_page == NULL)) {
 			ret = -ENOMEM;
 			vm_page_wakeup(from_page);
@@ -346,7 +346,7 @@ int ttm_tt_swapout(struct ttm_tt *ttm, vm_object_t persistent_swap_storage)
 	VM_OBJECT_LOCK(obj);
 	vm_object_pip_add(obj, 1);
 	for (i = 0; i < ttm->num_pages; ++i) {
-		from_page = ttm->pages[i];
+		from_page = (struct vm_page *)ttm->pages[i];
 		if (unlikely(from_page == NULL))
 			continue;
 		to_page = vm_page_grab(obj, i, VM_ALLOC_NORMAL |

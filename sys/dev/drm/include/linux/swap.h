@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 François Tigeot
+ * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,14 +27,19 @@
 #ifndef _LINUX_SWAP_H_
 #define _LINUX_SWAP_H_
 
-#include <vm/vm_page2.h>
-
+#include <linux/spinlock.h>
+#include <linux/mmzone.h>
 #include <linux/list.h>
+#include <linux/sched.h>
+#include <linux/fs.h>
+#include <linux/atomic.h>
 #include <asm/page.h>
 
-static inline void mark_page_accessed(struct vm_page *m)
+#include <vm/vm_page2.h>
+
+static inline void mark_page_accessed(struct page *m)
 {
-	vm_page_flag_set(m, PG_REFERENCED);
+	vm_page_flag_set((struct vm_page *)m, PG_REFERENCED);
 }
 
 /* from vm/swap_pager.h */

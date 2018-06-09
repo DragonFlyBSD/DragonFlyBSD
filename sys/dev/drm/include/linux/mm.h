@@ -33,9 +33,11 @@
 
 #include <linux/errno.h>
 
+#include <linux/mmdebug.h>
 #include <linux/gfp.h>
 #include <linux/bug.h>
 #include <linux/list.h>
+#include <linux/mmzone.h>
 #include <linux/rbtree.h>
 #include <linux/atomic.h>
 #include <linux/mm_types.h>
@@ -44,8 +46,8 @@
 #include <asm/page.h>
 #include <asm/pgtable.h>
 
-static inline struct vm_page *
-nth_page(struct vm_page *page, int n)
+static inline struct page *
+nth_page(struct page *page, int n)
 {
 	return page + n;
 }
@@ -105,9 +107,9 @@ vma_pages(struct vm_area_struct *vma)
 #define offset_in_page(off)	((off) & PAGE_MASK)
 
 static inline void
-set_page_dirty(struct vm_page *page)
+set_page_dirty(struct page *page)
 {
-	vm_page_dirty(page);
+	vm_page_dirty((struct vm_page *)page);
 }
 
 /*

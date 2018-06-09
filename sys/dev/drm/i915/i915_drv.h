@@ -3003,10 +3003,10 @@ static inline int __sg_page_count(struct scatterlist *sg)
 	return sg->length >> PAGE_SHIFT;
 }
 
-struct vm_page *
+struct page *
 i915_gem_object_get_dirty_page(struct drm_i915_gem_object *obj, int n);
 
-static inline struct vm_page *
+static inline struct page *
 i915_gem_object_get_page(struct drm_i915_gem_object *obj, int n)
 {
 	if (WARN_ON(n >= obj->base.size >> PAGE_SHIFT))

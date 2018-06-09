@@ -518,7 +518,7 @@ int i915_gem_obj_prepare_shmem_read(struct drm_i915_gem_object *obj,
  * Flushes invalid cachelines before reading the target if
  * needs_clflush is set. */
 static int
-shmem_pread_fast(struct vm_page *page, int shmem_page_offset, int page_length,
+shmem_pread_fast(struct page *page, int shmem_page_offset, int page_length,
 		 char __user *user_data,
 		 bool page_do_bit17_swizzling, bool needs_clflush)
 {
@@ -565,7 +565,7 @@ shmem_clflush_swizzled_range(char *addr, unsigned long length,
 /* Only difference to the fast-path function is that this can handle bit17
  * and uses non-atomic copy and kmap functions. */
 static int
-shmem_pread_slow(struct vm_page *page, int shmem_page_offset, int page_length,
+shmem_pread_slow(struct page *page, int shmem_page_offset, int page_length,
 		 char __user *user_data,
 		 bool page_do_bit17_swizzling, bool needs_clflush)
 {
@@ -619,7 +619,7 @@ i915_gem_shmem_pread(struct drm_device *dev,
 
 	for_each_sg_page(obj->pages->sgl, &sg_iter, obj->pages->nents,
 			 offset >> PAGE_SHIFT) {
-		struct vm_page *page = sg_page_iter_page(&sg_iter);
+		struct page *page = sg_page_iter_page(&sg_iter);
 
 		if (remain <= 0)
 			break;
@@ -831,7 +831,7 @@ out:
  * needs_clflush_before is set and flushes out any written cachelines after
  * writing if needs_clflush is set. */
 static int
-shmem_pwrite_fast(struct vm_page *page, int shmem_page_offset, int page_length,
+shmem_pwrite_fast(struct page *page, int shmem_page_offset, int page_length,
 		  char __user *user_data,
 		  bool page_do_bit17_swizzling,
 		  bool needs_clflush_before,
@@ -860,7 +860,7 @@ shmem_pwrite_fast(struct vm_page *page, int shmem_page_offset, int page_length,
 /* Only difference to the fast-path function is that this can handle bit17
  * and uses non-atomic copy and kmap functions. */
 static int
-shmem_pwrite_slow(struct vm_page *page, int shmem_page_offset, int page_length,
+shmem_pwrite_slow(struct page *page, int shmem_page_offset, int page_length,
 		  char __user *user_data,
 		  bool page_do_bit17_swizzling,
 		  bool needs_clflush_before,
@@ -944,7 +944,7 @@ i915_gem_shmem_pwrite(struct drm_device *dev,
 
 	for_each_sg_page(obj->pages->sgl, &sg_iter, obj->pages->nents,
 			 offset >> PAGE_SHIFT) {
-		struct vm_page *page = sg_page_iter_page(&sg_iter);
+		struct page *page = sg_page_iter_page(&sg_iter);
 		int partial_cacheline_write;
 
 		if (remain <= 0)
@@ -2325,7 +2325,7 @@ i915_gem_object_put_pages_gtt(struct drm_i915_gem_object *obj)
 		obj->dirty = 0;
 
 	for_each_sg_page(obj->pages->sgl, &sg_iter, obj->pages->nents, 0) {
-		struct vm_page *page = sg_page_iter_page(&sg_iter);
+		struct page *page = sg_page_iter_page(&sg_iter);
 
 		if (obj->dirty)
 			set_page_dirty(page);
@@ -2333,9 +2333,9 @@ i915_gem_object_put_pages_gtt(struct drm_i915_gem_object *obj)
 		if (obj->madv == I915_MADV_WILLNEED)
 			mark_page_accessed(page);
 
-		vm_page_busy_wait(page, FALSE, "i915gem");
-		vm_page_unwire(page, 1);
-		vm_page_wakeup(page);
+		vm_page_busy_wait((struct vm_page *)page, FALSE, "i915gem");
+		vm_page_unwire((struct vm_page *)page, 1);
+		vm_page_wakeup((struct vm_page *)page);
 	}
 	obj->dirty = 0;
 
@@ -2386,7 +2386,7 @@ i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj)
 	struct sg_table *st;
 	struct scatterlist *sg;
 	struct sg_page_iter sg_iter;
-	struct vm_page *page;
+	struct page *page;
 	unsigned long last_pfn = 0;	/* suppress gcc warning */
 	int ret;
 
@@ -2481,10 +2481,10 @@ i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj)
 err_pages:
 	sg_mark_end(sg);
 	for_each_sg_page(st->sgl, &sg_iter, st->nents, 0) {
-		page = sg_page_iter_page(&sg_iter);
-		vm_page_busy_wait(page, FALSE, "i915gem");
-		vm_page_unwire(page, 0);
-		vm_page_wakeup(page);
+		struct vm_page *vmp = (struct vm_page *)sg_page_iter_page(&sg_iter);
+		vm_page_busy_wait(vmp, FALSE, "i915gem");
+		vm_page_unwire(vmp, 0);
+		vm_page_wakeup(vmp);
 	}
 	VM_OBJECT_UNLOCK(vm_obj);
 	sg_free_table(st);
@@ -2553,7 +2553,7 @@ void *i915_gem_object_pin_map(struct drm_i915_gem_object *obj)
 	i915_gem_object_pin_pages(obj);
 
 	if (obj->mapping == NULL) {
-		struct vm_page **pages;
+		struct page **pages;
 
 		pages = NULL;
 		if (obj->base.size == PAGE_SIZE)
@@ -5509,10 +5509,10 @@ bool i915_gem_obj_is_pinned(struct drm_i915_gem_object *obj)
 }
 
 /* Like i915_gem_object_get_page(), but mark the returned page dirty */
-struct vm_page *
+struct page *
 i915_gem_object_get_dirty_page(struct drm_i915_gem_object *obj, int n)
 {
-	struct vm_page *page;
+	struct page *page;
 
 	/* Only default objects have per-page dirty tracking */
 	if (WARN_ON((obj->ops->flags & I915_GEM_OBJECT_HAS_STRUCT_PAGE) == 0))

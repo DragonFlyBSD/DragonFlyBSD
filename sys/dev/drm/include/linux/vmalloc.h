@@ -33,7 +33,7 @@
 #include <asm/page.h>		/* pgprot_t */
 #include <linux/rbtree.h>
 
-void *vmap(struct vm_page **pages, unsigned int count,
+void *vmap(struct page **pages, unsigned int count,
 	   unsigned long flags, unsigned long prot);
 
 void vunmap(const void *addr);

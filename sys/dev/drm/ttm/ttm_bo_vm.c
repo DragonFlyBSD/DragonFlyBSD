@@ -219,7 +219,7 @@ reserve:
 		pmap_page_set_memattr(m, ttm_io_prot(bo->mem.placement));
 	} else {
 		ttm = bo->ttm;
-		m = ttm->pages[OFF_TO_IDX(offset)];
+		m = (struct vm_page *)ttm->pages[OFF_TO_IDX(offset)];
 		if (unlikely(!m)) {
 			retval = VM_PAGER_ERROR;
 			goto out_io_unlock;

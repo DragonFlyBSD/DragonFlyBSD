@@ -2608,7 +2608,7 @@ void intel_ring_init_seqno(struct intel_engine_cs *engine, u32 seqno)
 	}
 	if (dev_priv->semaphore_obj) {
 		struct drm_i915_gem_object *obj = dev_priv->semaphore_obj;
-		struct vm_page *page = i915_gem_object_get_dirty_page(obj, 0);
+		struct page *page = i915_gem_object_get_dirty_page(obj, 0);
 		char *semaphores = kmap(page);
 		memset(semaphores + GEN8_SEMAPHORE_OFFSET(engine->id, 0),
 		       0, I915_NUM_ENGINES * gen8_semaphore_seqno_size);

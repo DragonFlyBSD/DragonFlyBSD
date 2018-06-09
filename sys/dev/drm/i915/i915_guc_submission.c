@@ -821,7 +821,7 @@ static void guc_create_ads(struct intel_guc *guc)
 	struct guc_policies *policies;
 	struct guc_mmio_reg_state *reg_state;
 	struct intel_engine_cs *engine;
-	struct vm_page *page;
+	struct page *page;
 	u32 size;
 
 	/* The ads obj includes the struct itself and buffers passed to GuC */

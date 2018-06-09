@@ -301,7 +301,7 @@ struct ttm_buffer_object {
 #define TTM_BO_MAP_IOMEM_MASK 0x80
 struct ttm_bo_kmap_obj {
 	void *virtual;
-	struct vm_page *page;
+	struct page *page;
 	struct sf_buf *sf;
 	int num_pages;
 	unsigned long size;

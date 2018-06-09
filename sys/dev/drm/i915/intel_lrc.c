@@ -1395,7 +1395,7 @@ static int intel_init_workaround_bb(struct intel_engine_cs *engine)
 	int ret;
 	uint32_t *batch;
 	uint32_t offset;
-	struct vm_page *page;
+	struct page *page;
 	struct i915_ctx_workarounds *wa_ctx = &engine->wa_ctx;
 
 	WARN_ON(engine->id != RCS);

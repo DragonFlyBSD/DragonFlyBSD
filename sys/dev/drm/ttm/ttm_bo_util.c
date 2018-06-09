@@ -252,7 +252,7 @@ static int ttm_copy_io_ttm_page(struct ttm_tt *ttm, void *src,
 				unsigned long page,
 				vm_memattr_t prot)
 {
-	vm_page_t d = ttm->pages[page];
+	struct page *d = ttm->pages[page];
 	void *dst;
 
 	if (!d)
@@ -261,7 +261,7 @@ static int ttm_copy_io_ttm_page(struct ttm_tt *ttm, void *src,
 	src = (void *)((unsigned long)src + (page << PAGE_SHIFT));
 
 	/* XXXKIB can't sleep ? */
-	dst = pmap_mapdev_attr(VM_PAGE_TO_PHYS(d), PAGE_SIZE, prot);
+	dst = pmap_mapdev_attr(VM_PAGE_TO_PHYS((struct vm_page *)d), PAGE_SIZE, prot);
 	if (!dst)
 		return -ENOMEM;
 
@@ -276,14 +276,14 @@ static int ttm_copy_ttm_io_page(struct ttm_tt *ttm, void *dst,
 				unsigned long page,
 				vm_memattr_t prot)
 {
-	vm_page_t s = ttm->pages[page];
+	struct page *s = ttm->pages[page];
 	void *src;
 
 	if (!s)
 		return -ENOMEM;
 
 	dst = (void *)((unsigned long)dst + (page << PAGE_SHIFT));
-	src = pmap_mapdev_attr(VM_PAGE_TO_PHYS(s), PAGE_SIZE, prot);
+	src = pmap_mapdev_attr(VM_PAGE_TO_PHYS((struct vm_page *)s), PAGE_SIZE, prot);
 	if (!src)
 		return -ENOMEM;
 
@@ -524,7 +524,7 @@ static int ttm_bo_kmap_ttm(struct ttm_buffer_object *bo,
 
 		map->bo_kmap_type = ttm_bo_map_kmap;
 		map->page = ttm->pages[start_page];
-		map->sf = sf_buf_alloc(map->page);
+		map->sf = sf_buf_alloc((struct vm_page *)map->page);
 		map->virtual = (void *)sf_buf_kva(map->sf);
 	} else {
 		/*
@@ -544,11 +544,11 @@ static int ttm_bo_kmap_ttm(struct ttm_buffer_object *bo,
 		if (map->virtual != NULL) {
 			for (i = 0; i < num_pages; i++) {
 				/* XXXKIB hack */
-				pmap_page_set_memattr(ttm->pages[start_page +
+				pmap_page_set_memattr((struct vm_page *)ttm->pages[start_page +
 				    i], prot);
 			}
 			pmap_qenter((vm_offset_t)map->virtual,
-			    &ttm->pages[start_page], num_pages);
+			    (struct vm_page **)&ttm->pages[start_page], num_pages);
 		}
 	}
 	return (!map->virtual) ? -ENOMEM : 0;

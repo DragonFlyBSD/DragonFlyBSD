@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2016 François Tigeot
+ * Copyright (c) 2014-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,25 +37,25 @@
 
 #include <asm/cacheflush.h>
 
-static inline struct vm_page *
+static inline struct page *
 kmap_to_page(void *addr)
 {
-	return PHYS_TO_VM_PAGE(vtophys(addr));
+	return (struct page *)PHYS_TO_VM_PAGE(vtophys(addr));
 }
 
-static inline void *kmap(struct vm_page *pg)
+static inline void *kmap(struct page *pg)
 {
-	return (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(pg));
+	return (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS( (struct vm_page *)pg ));
 }
 
-static inline void kunmap(struct vm_page *pg)
+static inline void kunmap(struct page *pg)
 {
 	/* Nothing to do on systems with a direct memory map */
 }
 
-static inline void *kmap_atomic(struct vm_page *pg)
+static inline void *kmap_atomic(struct page *pg)
 {
-	return (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(pg));
+	return (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS( (struct vm_page *)pg ));
 }
 
 static inline void kunmap_atomic(void *vaddr)

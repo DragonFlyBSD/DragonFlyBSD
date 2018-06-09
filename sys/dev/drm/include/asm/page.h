@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 François Tigeot
+ * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,15 @@
 #ifndef _ASM_PAGE_H_
 #define _ASM_PAGE_H_
 
-#define page_to_phys(page)	VM_PAGE_TO_PHYS(page)
+struct page;
+
+static inline vm_paddr_t
+page_to_phys(struct page *page)
+{
+	struct vm_page *p = (struct vm_page *)page;
+
+	return VM_PAGE_TO_PHYS(p);
+}
 
 #include <asm/memory_model.h>
 

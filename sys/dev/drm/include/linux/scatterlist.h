@@ -55,7 +55,7 @@
 
 struct scatterlist {
 	union {
-		struct vm_page		*page;
+		struct page		*page;
 		struct scatterlist	*sg;
 	} sl_un;
 	unsigned long	offset;
@@ -94,7 +94,7 @@ struct sg_page_iter {
 #define	SG_CHAIN	0x02
 
 static inline void
-sg_set_page(struct scatterlist *sg, struct vm_page *page, unsigned int len,
+sg_set_page(struct scatterlist *sg, struct page *page, unsigned int len,
     unsigned int offset)
 {
 	sg_page(sg) = page;
@@ -125,7 +125,7 @@ sg_next(struct scatterlist *sg)
 static inline vm_paddr_t
 sg_phys(struct scatterlist *sg)
 {
-	return sg_page(sg)->phys_addr + sg->offset;
+	return ((struct vm_page *)sg_page(sg))->phys_addr + sg->offset;
 }
 
 /**
@@ -322,7 +322,7 @@ _sg_iter_init(struct scatterlist *sgl, struct sg_page_iter *iter,
 	}
 }
 
-static inline struct vm_page *
+static inline struct page *
 sg_page_iter_page(struct sg_page_iter *piter)
 {
 	return nth_page(sg_page(piter->sg), piter->sg_pgoffset);

@@ -1098,7 +1098,7 @@ int drm_invalid_op(struct drm_device *dev, void *data,
 		   struct drm_file *file_priv);
 
 /* Cache management (drm_cache.c) */
-void drm_clflush_pages(struct vm_page *pages[], unsigned long num_pages);
+void drm_clflush_pages(struct page *pages[], unsigned long num_pages);
 void drm_clflush_sg(struct sg_table *st);
 void drm_clflush_virt_range(void *addr, unsigned long length);
 

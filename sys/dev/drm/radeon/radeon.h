@@ -626,7 +626,7 @@ struct radeon_gart {
 	unsigned			num_gpu_pages;
 	unsigned			num_cpu_pages;
 	unsigned			table_size;
-	vm_page_t			*pages;
+	struct page			**pages;
 	dma_addr_t			*pages_addr;
 	bool				ready;
 };
@@ -642,7 +642,7 @@ void radeon_gart_fini(struct radeon_device *rdev);
 void radeon_gart_unbind(struct radeon_device *rdev, unsigned offset,
 			int pages);
 int radeon_gart_bind(struct radeon_device *rdev, unsigned offset,
-		     int pages, vm_page_t *pagelist,
+		     int pages, struct page **pagelist,
 		     dma_addr_t *dma_addr, uint32_t flags);
 
 

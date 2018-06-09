@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,6 +26,8 @@
 
 #ifndef _ASM_PGTABLE_H_
 #define _ASM_PGTABLE_H_
+
+#include <asm/page.h>
 
 #include <asm/pgtable_types.h>
 

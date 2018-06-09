@@ -24,21 +24,20 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_MM_TYPES_H_
-#define _LINUX_MM_TYPES_H_
+#ifndef _LINUX_MMZONE_H_
+#define _LINUX_MMZONE_H_
 
-#include <linux/types.h>
-#include <linux/threads.h>
-#include <linux/list.h>
 #include <linux/spinlock.h>
-#include <linux/rbtree.h>
-#include <linux/completion.h>
-#include <linux/cpumask.h>
-#include <linux/workqueue.h>
+#include <linux/list.h>
+#include <linux/wait.h>
+#include <linux/bitops.h>
+#include <linux/cache.h>
+#include <linux/threads.h>
+#include <linux/init.h>
+#include <linux/seqlock.h>
+#include <linux/atomic.h>
 #include <asm/page.h>
 
-struct page {
-	struct vm_page pa_vmpage;
-};
+struct page;
 
-#endif	/* _LINUX_MM_TYPES_H_ */
+#endif	/* _LINUX_MMZONE_H_ */

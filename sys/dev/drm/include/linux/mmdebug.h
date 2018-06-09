@@ -24,21 +24,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_MM_TYPES_H_
-#define _LINUX_MM_TYPES_H_
+#ifndef _LINUX_MMDEBUG_H_
+#define _LINUX_MMDEBUG_H_
 
-#include <linux/types.h>
-#include <linux/threads.h>
-#include <linux/list.h>
-#include <linux/spinlock.h>
-#include <linux/rbtree.h>
-#include <linux/completion.h>
-#include <linux/cpumask.h>
-#include <linux/workqueue.h>
-#include <asm/page.h>
+#include <linux/bug.h>
+#include <linux/stringify.h>
 
-struct page {
-	struct vm_page pa_vmpage;
-};
+struct page;
 
-#endif	/* _LINUX_MM_TYPES_H_ */
+#endif	/* _LINUX_MMDEBUG_H_ */

@@ -37,7 +37,7 @@
 #include <linux/err.h>
 #include <linux/shmem_fs.h>
 
-vm_page_t
+struct page *
 shmem_read_mapping_page(vm_object_t object, vm_pindex_t pindex)
 {
 	vm_page_t m;
@@ -63,5 +63,5 @@ shmem_read_mapping_page(vm_object_t object, vm_pindex_t pindex)
 	}
 	vm_page_wire(m);
 	vm_page_wakeup(m);
-	return (m);
+	return (struct page *)m;
 }

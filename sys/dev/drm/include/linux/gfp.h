@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,10 @@
 #ifndef _LINUX_GFP_H_
 #define _LINUX_GFP_H_
 
+#include <linux/mmdebug.h>
+#include <linux/mmzone.h>
+#include <linux/stddef.h>
+
 #include <vm/vm_page.h>
 #include <machine/bus_dma.h>
 
@@ -38,19 +42,19 @@
 
 #define GFP_DMA32	0x10000	/* XXX: MUST NOT collide with the M_XXX definitions */
 
-static inline void __free_page(struct vm_page *page)
+static inline void __free_page(struct page *page)
 {
-	vm_page_free_contig(page, PAGE_SIZE);
+	vm_page_free_contig((struct vm_page *)page, PAGE_SIZE);
 }
 
-static inline struct vm_page * alloc_page(int flags)
+static inline struct page * alloc_page(int flags)
 {
 	vm_paddr_t high = ~0LLU;
 
 	if (flags & GFP_DMA32)
 		high = BUS_SPACE_MAXADDR_32BIT;
 
-	return vm_page_alloc_contig(0LLU, ~0LLU,
+	return (struct page *)vm_page_alloc_contig(0LLU, ~0LLU,
 			PAGE_SIZE, PAGE_SIZE, PAGE_SIZE,
 			VM_MEMATTR_DEFAULT);
 }

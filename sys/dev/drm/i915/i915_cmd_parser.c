@@ -944,7 +944,7 @@ static u32 *vmap_batch(struct drm_i915_gem_object *obj,
 	int first_page = start >> PAGE_SHIFT;
 	int last_page = (len + start + 4095) >> PAGE_SHIFT;
 	int npages = last_page - first_page;
-	struct vm_page **pages;
+	struct page **pages;
 
 	pages = drm_malloc_ab(npages, sizeof(*pages));
 	if (pages == NULL) {

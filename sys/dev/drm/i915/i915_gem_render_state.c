@@ -95,7 +95,7 @@ static int render_state_setup(struct render_state *so)
 {
 	const struct intel_renderstate_rodata *rodata = so->rodata;
 	unsigned int i = 0, reloc_index = 0;
-	struct vm_page *page;
+	struct page *page;
 	u32 *d;
 	int ret;
 

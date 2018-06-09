@@ -38,7 +38,7 @@
  * in the caller.
  */
 static void
-drm_clflush_page(struct vm_page *page)
+drm_clflush_page(struct page *page)
 {
 	uint8_t *page_virtual;
 	unsigned int i;
@@ -53,7 +53,7 @@ drm_clflush_page(struct vm_page *page)
 	kunmap_atomic(page_virtual);
 }
 
-static void drm_cache_flush_clflush(struct vm_page *pages[],
+static void drm_cache_flush_clflush(struct page *pages[],
 				    unsigned long num_pages)
 {
 	unsigned long i;
@@ -65,9 +65,9 @@ static void drm_cache_flush_clflush(struct vm_page *pages[],
 }
 
 void
-drm_clflush_pages(vm_page_t *pages, unsigned long num_pages)
+drm_clflush_pages(struct page *pages[], unsigned long num_pages)
 {
-	pmap_invalidate_cache_pages(pages, num_pages);
+	pmap_invalidate_cache_pages((struct vm_page **)pages, num_pages);
 
 	if (static_cpu_has(X86_FEATURE_CLFLUSH)) {
 		drm_cache_flush_clflush(pages, num_pages);

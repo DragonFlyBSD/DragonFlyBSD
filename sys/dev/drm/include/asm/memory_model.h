@@ -27,7 +27,16 @@
 #ifndef _ASM_MEMORY_MODEL_H_
 #define _ASM_MEMORY_MODEL_H_
 
-#define page_to_pfn(page)	OFF_TO_IDX(VM_PAGE_TO_PHYS(page))
+#include <vm/vm_object.h>
+
+static inline unsigned long
+page_to_pfn(struct page *page)
+{
+	struct vm_page *p = (struct vm_page *)page;
+
+	return OFF_TO_IDX(VM_PAGE_TO_PHYS(p));
+}
+
 #define pfn_to_page(pfn)	(PHYS_TO_VM_PAGE((pfn) << PAGE_SHIFT))
 
 #endif	/* _ASM_MEMORY_MODEL_H_ */

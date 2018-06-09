@@ -568,7 +568,7 @@ static struct ttm_backend_func radeon_backend_func = {
 
 static struct ttm_tt *radeon_ttm_tt_create(struct ttm_bo_device *bdev,
 				    unsigned long size, uint32_t page_flags,
-				    vm_page_t dummy_read_page)
+				    struct page *dummy_read_page)
 {
 	struct radeon_device *rdev;
 	struct radeon_ttm_tt *gtt;
@@ -643,7 +643,7 @@ static int radeon_ttm_tt_populate(struct ttm_tt *ttm)
 	}
 
 	for (i = 0; i < ttm->num_pages; i++) {
-		gtt->ttm.dma_address[i] = VM_PAGE_TO_PHYS(ttm->pages[i]);
+		gtt->ttm.dma_address[i] = VM_PAGE_TO_PHYS((struct vm_page *)ttm->pages[i]);
 #ifdef DUMBBELL_WIP
 		gtt->ttm.dma_address[i] = pci_map_page(rdev->pdev, ttm->pages[i],
 						       0, PAGE_SIZE,

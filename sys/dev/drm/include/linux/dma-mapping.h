@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 François Tigeot
+ * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,14 +32,15 @@
 #include <linux/err.h>
 #include <linux/dma-direction.h>
 #include <linux/scatterlist.h>
+#include <linux/bug.h>
 
 #define DMA_BIT_MASK(n) (((n) == 64) ? ~0ULL : (1ULL<<(n)) - 1)
 
 static inline dma_addr_t
-dma_map_page(struct device *dev, struct vm_page *page,
+dma_map_page(struct device *dev, struct page *page,
     unsigned long offset, size_t size, enum dma_data_direction direction)
 {
-	return VM_PAGE_TO_PHYS(page) + offset;
+	return VM_PAGE_TO_PHYS((struct vm_page *)page) + offset;
 }
 
 static inline void dma_unmap_page(struct device *dev, dma_addr_t addr,

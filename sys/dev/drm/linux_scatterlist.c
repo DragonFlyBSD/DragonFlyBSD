@@ -158,7 +158,7 @@ sg_pcopy_from_buffer(struct scatterlist *sgl, unsigned int nents,
 	int len, curlen, curoff;
 	struct sg_page_iter iter;
 	struct scatterlist *sg;
-	struct vm_page *page;
+	struct page *page;
 	char *vaddr;
 
 	off = 0;
@@ -194,7 +194,7 @@ sg_pcopy_to_buffer(struct scatterlist *sgl, unsigned int nents,
 	int len, curlen, curoff;
 	struct sg_page_iter iter;
 	struct scatterlist *sg;
-	struct vm_page *page;
+	struct page *page;
 	char *vaddr;
 
 	off = 0;

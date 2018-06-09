@@ -220,7 +220,7 @@ struct i915_vma {
 };
 
 struct i915_page_dma {
-	struct vm_page *page;
+	struct page *page;
 	union {
 		dma_addr_t daddr;
 
