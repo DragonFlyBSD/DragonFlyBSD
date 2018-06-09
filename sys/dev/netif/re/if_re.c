@@ -699,9 +699,10 @@ re_attach(device_t dev)
 		sc->re_if_flags |= RL_FLAG_PCIE;
 	else
 		sc->re_if_flags &= ~RL_FLAG_PCIE;
-	device_printf(dev, "MAC version 0x%08x, MACFG %u%s%s\n",
+	device_printf(dev, "MAC version 0x%08x, MACFG %u%s%s%s\n",
 	    (CSR_READ_4(sc, RE_TXCFG) & 0xFCF00000), sc->re_type,
 	    sc->re_coalesce_tx_pkt ? ", software TX defrag" : "",
+	    sc->re_pad_runt ? ", pad runt" : "",
 	    sc->re_hw_enable_msi_msix ? ", support MSI" : "");
 
 	/*
@@ -1527,7 +1528,7 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 	else
 		ctl_csum = 0;
 
-	if (sc->re_coalesce_tx_pkt) {
+	if (sc->re_pad_runt) {
 		/*
 		 * With some of the RealTek chips, using the checksum offload
 		 * support in conjunction with the autopadding feature results

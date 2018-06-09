@@ -4078,9 +4078,16 @@ static void re_init_software_variable(struct re_softc *sc)
         case MACFG_41:
         case MACFG_42:
         case MACFG_43:
+#ifdef __DragonFly__
+	case MACFG_50:
+#endif
         case MACFG_54:
         case MACFG_55:
                 sc->re_coalesce_tx_pkt = TRUE;
+#ifdef __DragonFly__
+		if (sc->re_type != MACFG_50)
+			sc->re_pad_runt = TRUE;
+#endif
                 break;
         }
 
