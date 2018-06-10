@@ -5,6 +5,7 @@ Fix problems and mount the real root partition at `/new_root', then exit
 this shell to continue the normal boot.
 
 * Text editor:
+  # vi
   # mined  (F1: help, Ctrl-W: write file, Ctrl-X: exit)
 * List available interfaces:
   # ifconfig

@@ -3428,6 +3428,7 @@ TO_REMOVE+=/usr/share/examples/etc/defaults/mkinitrd.conf
 TO_REMOVE+=/usr/share/initrd
 TO_REMOVE+=/usr/share/man/man5/mkinitrd.conf.5.gz
 TO_REMOVE+=/usr/share/man/man8/mkinitrd.8.gz
+TO_REMOVE+=/rescue/rescue.sbin
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

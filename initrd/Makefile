@@ -10,9 +10,9 @@ INITRD_STAGEDIR!=	mktemp -d -t initrd-stage
 .END:
 	@rm -rf ${INITRD_STAGEDIR}
 
-rescue:
+rescue: .PHONY
 	@${ECHO} ">>> Building and installing rescue tools ..."
-.for _dir in bin oinit sbin sbin.libcrypto
+.for _dir in oinit rescue rescue.libcrypto
 .if !defined(NO_CLEAN)
 	(cd ${.CURDIR}/${_dir}; \
 	    ${INITRD_MAKE} BINDIR=${RESCUE_DIR} clean cleandepend)
@@ -37,7 +37,7 @@ initrd: rescue
 
 clean:
 	@${ECHO} ">>> Cleaning ..."
-.for _dir in etc bin oinit sbin sbin.libcrypto
+.for _dir in etc oinit rescue rescue.libcrypto
 	(cd ${.CURDIR}/${_dir}; \
 	    ${ECHO} "=> ${_dir}"; \
 	    ${INITRD_MAKE} BINDIR=${RESCUE_DIR} clean cleandepend)
