@@ -319,5 +319,5 @@ static struct vfsops autofs_vfsops = {
 	.vfs_uninit =		autofs_uninit,
 };
 
-VFS_SET(autofs_vfsops, autofs, VFCF_SYNTHETIC);
+VFS_SET(autofs_vfsops, autofs, VFCF_SYNTHETIC | VFCF_MPSAFE);
 MODULE_VERSION(autofs, 1);
