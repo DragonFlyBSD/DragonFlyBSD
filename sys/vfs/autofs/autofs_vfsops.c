@@ -46,24 +46,6 @@ static struct objcache_malloc_args autofs_node_args = {
 	sizeof(struct autofs_node), M_AUTOFS,
 };
 
-static boolean_t
-autofs_request_objcache_ctor(void *obj, void *privdata, int ocflags)
-{
-	struct autofs_request *ar = obj;
-
-	memset(ar, 0, sizeof(*ar));
-	return (TRUE);
-}
-
-static boolean_t
-autofs_node_objcache_ctor(void *obj, void *privdata, int ocflags)
-{
-	struct autofs_node *an = obj;
-
-	memset(an, 0, sizeof(*an));
-	return (TRUE);
-}
-
 static int
 autofs_init(struct vfsconf *vfsp)
 {
@@ -74,14 +56,14 @@ autofs_init(struct vfsconf *vfsp)
 	    M_WAITOK | M_ZERO);
 
 	autofs_request_objcache = objcache_create("autofs_request", 0, 0,
-		autofs_request_objcache_ctor, NULL, NULL,
-		objcache_malloc_alloc,
+		NULL, NULL, NULL,
+		objcache_malloc_alloc_zero,
 		objcache_malloc_free,
 		&autofs_request_args);
 
 	autofs_node_objcache = objcache_create("autofs_node", 0, 0,
-		autofs_node_objcache_ctor, NULL, NULL,
-		objcache_malloc_alloc,
+		NULL, NULL, NULL,
+		objcache_malloc_alloc_zero,
 		objcache_malloc_free,
 		&autofs_node_args);
 

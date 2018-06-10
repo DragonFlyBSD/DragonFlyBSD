@@ -492,6 +492,9 @@ autofs_node_new(struct autofs_node *parent, struct autofs_mount *amp,
 		    ("node \"%s\" already exists", name));
 	}
 
+	/*
+	 * All struct fields must be initialized.
+	 */
 	anp = objcache_get(autofs_node_objcache, M_WAITOK);
 	if (namelen >= 0)
 		anp->an_name = kstrndup(name, namelen, M_AUTOFS);

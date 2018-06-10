@@ -340,6 +340,9 @@ autofs_trigger_one(struct autofs_node *anp,
 	if (ar != NULL) {
 		refcount_acquire(&ar->ar_refcount);
 	} else {
+		/*
+		 * All struct fields must be initialized.
+		 */
 		ar = objcache_get(autofs_request_objcache, M_WAITOK);
 		ar->ar_mount = amp;
 		ar->ar_id = autofs_softc->sc_last_request_id++;
