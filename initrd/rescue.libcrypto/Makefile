@@ -22,11 +22,11 @@ CRUNCH_PROGS_usr.bin=	\
 	cpio		\
 	fetch		\
 	nc		\
+	scp		\
 	ssh		\
 	tar
 
-CRUNCH_ALIAS_ssh= scp
-CRUNCH_KEEP_ssh= roaming_write roaming_read add_recv_bytes
+CRUNCH_ALIAS_ssh= slogin
 
 # Programs from 'sbin'
 #
