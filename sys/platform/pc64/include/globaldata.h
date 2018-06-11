@@ -69,6 +69,7 @@ struct mdglobaldata {
 	struct user_segment_descriptor *gd_tss_gdt;
 	struct thread   *gd_npxthread;
 	union savefpu	gd_savefpu;	/* fast bcopy/zero temp fpu save area */
+	union savefpu	gd_zerofpu;	/* xrstor/fxrstor/frstor zero regs */
 	int		gd_fpu_lock;	/* fast bcopy/zero cpu lock */
 	int		gd_xinvaltlb;	/* reentrancy check invaltlb routine */
 	int		gd_unused001;

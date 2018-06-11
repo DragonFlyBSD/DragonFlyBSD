@@ -265,7 +265,9 @@ struct thread {
     int		td_upri;	/* user priority (sub-priority under td_pri) */
     int		td_type;	/* thread type, TD_TYPE_ */
     int		td_tracker;	/* for callers to debug lock counts */
-    int		td_unused03[4];	/* for future fields */
+    int		td_fdcache_lru;
+    int		td_fpu_heur;	/* active restore on switch heuristic */
+    int		td_unused03[2];	/* for future fields */
     struct iosched_data td_iosdata;	/* Dynamic I/O scheduling data */
     struct timeval td_start;	/* start time for a thread/process */
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
@@ -354,6 +356,7 @@ struct thread {
 #define TDF_FIXEDCPU		0x04000000	/* running cpu is fixed */
 #define TDF_USERMODE		0x08000000	/* in or entering user mode */
 #define TDF_NOFAULT		0x10000000	/* force onfault on fault */
+#define TDF_FPU_HEUR		0x20000000	/* active restore on switch */
 
 #define TDF_MP_STOPREQ		0x00000001	/* suspend_kproc */
 #define TDF_MP_WAKEREQ		0x00000002	/* resume_kproc */

@@ -537,8 +537,10 @@ user_trap(struct trapframe *frame)
 		 * when it tries to use the FP unit.  Restore the
 		 * state here
 		 */
-		if (npxdna(frame))
+		if (npxdna(frame)) {
+			gd->gd_cnt.v_trap++;
 			goto out;
+		}
 		if (!pmath_emulate) {
 			i = SIGFPE;
 			ucode = FPE_FPU_NP_TRAP;
@@ -778,6 +780,7 @@ kernel_trap:
 	if (*p->p_sysent->sv_transtrap)
 		i = (*p->p_sysent->sv_transtrap)(i, type);
 
+	gd->gd_cnt.v_trap++;
 	trapsignal(lp, i, ucode);
 
 #ifdef DEBUG
