@@ -428,6 +428,23 @@ IDTVEC(fast_syscall)
 	movq	%r13,TF_R13(%rsp)	/* C preserved */
 	movq	%r14,TF_R14(%rsp)	/* C preserved */
 	movq	%r15,TF_R15(%rsp)	/* C preserved */
+
+	xorq	%rax,%rax		/* SECURITY CLEAR REGS */
+	movq	%rax,%rbx
+	movq	%rax,%rcx
+	movq	%rax,%rdx
+	movq	%rax,%rsi
+	movq	%rax,%rdi
+	movq	%rax,%rbp
+	movq	%rax,%r8
+	movq	%rax,%r9
+	movq	%rax,%r10
+	movq	%rax,%r11
+	movq	%rax,%r12
+	movq	%rax,%r13
+	movq	%rax,%r14
+	movq	%rax,%r15
+
 	sti
 	FAKE_MCOUNT(TF_RIP(%rsp))
 	movq	%rsp, %rdi
@@ -442,7 +459,20 @@ IDTVEC(fast_syscall)
 	testl	$RQF_QUICKRET,PCPU(reqflags)
 	jz	1f
 	MEXITCOUNT
-	movq	TF_RDI(%rsp),%rdi
+
+	movq	TF_RBX(%rsp),%rbx	/* SECURITY RESTORE */
+	movq	TF_RCX(%rsp),%rcx
+	movq	TF_RBP(%rsp),%rbp
+	movq	TF_R8(%rsp),%r8
+	movq	TF_R9(%rsp),%r9
+	xorq	%r10,%r10		/* (security - clear scratch) */
+	movq	%r10,%r11
+	movq	TF_R12(%rsp),%r12
+	movq	TF_R13(%rsp),%r13
+	movq	TF_R14(%rsp),%r14
+	movq	TF_R15(%rsp),%r15
+
+	movq	TF_RDI(%rsp),%rdi	/* NORMAL RESTORE */
 	movq	TF_RSI(%rsp),%rsi
 	movq	TF_RDX(%rsp),%rdx
 	movq	TF_RAX(%rsp),%rax
