@@ -77,7 +77,7 @@
 /* #undef BROKEN_SNPRINTF */
 
 /* missing VIS_ALL */
-#define BROKEN_STRNVIS 1
+/* #undef BROKEN_STRNVIS */
 
 /* tcgetattr with ICANON may hang */
 /* #undef BROKEN_TCGETATTR_ICANON */
