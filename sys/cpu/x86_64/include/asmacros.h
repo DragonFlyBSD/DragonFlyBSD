@@ -400,7 +400,24 @@
 	movq	%r12,TF_R12(%rsp) ;					\
 	movq	%r13,TF_R13(%rsp) ;					\
 	movq	%r14,TF_R14(%rsp) ;					\
-	movq	%r15,TF_R15(%rsp)
+	movq	%r15,TF_R15(%rsp) ;					\
+					/* SECURITY CLEAR REGS */	\
+	xorq	%rax,%rax ;						\
+	movq	%rax,%rbx ;						\
+	movq	%rax,%rcx ;						\
+	movq	%rax,%rdx ;						\
+	movq	%rax,%rdi ;						\
+	movq	%rax,%rsi ;						\
+	movq	%rax,%rbp ;						\
+	movq	%rax,%r8 ;						\
+	movq	%rax,%r9 ;						\
+	movq	%rax,%r10 ;						\
+	movq	%rax,%r11 ;						\
+	movq	%rax,%r12 ;						\
+	movq	%rax,%r13 ;						\
+	movq	%rax,%r14 ;						\
+	movq	%rax,%r15 						\
+
 
 /*
  * PUSH_FRAME is the first thing executed upon interrupt entry.  We are
