@@ -107,7 +107,6 @@ autofs_getattr(struct vop_getattr_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct vattr *vap = ap->a_vap;
 	struct autofs_node *anp = VTOI(vp);
-	static bool warned = false;
 
 	KASSERT(vp->v_type == VDIR, ("!VDIR"));
 
@@ -121,13 +120,10 @@ autofs_getattr(struct vop_getattr_args *ap)
 	 * With the current trigger mechanism on DragonFly, the process
 	 * will hang while in nlookup() in nlookup_fs_root().
 	 */
-	if (autofs_mount_on_stat) {
-		if (!warned) {
-			AUTOFS_WARN("vfs.autofs.mount_on_stat not supported");
-			warned = true;
-		}
+#if 0
+	if (autofs_mount_on_stat && ...) {
 	}
-
+#endif
 	vap->va_type = VDIR;
 	vap->va_mode = 0755;
 	vap->va_nlink = 3; /* XXX: FreeBSD had it like this */

@@ -65,7 +65,7 @@ extern struct dev_ops autofs_ops;
 extern struct vop_ops autofs_vnode_vops;
 
 extern int autofs_debug;
-extern int autofs_mount_on_stat;
+//extern int autofs_mount_on_stat;
 
 #define	AUTOFS_DEBUG(X, ...)				\
 	do {						\

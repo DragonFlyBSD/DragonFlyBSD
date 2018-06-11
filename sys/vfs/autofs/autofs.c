@@ -106,11 +106,12 @@ int autofs_debug = 1;
 TUNABLE_INT("vfs.autofs.debug", &autofs_debug);
 SYSCTL_INT(_vfs_autofs, OID_AUTO, debug, CTLFLAG_RW,
     &autofs_debug, 1, "Enable debug messages");
-int autofs_mount_on_stat = 0;	/* XXX: Not supported on DragonFly */
+#if 0
+int autofs_mount_on_stat = 0;
 TUNABLE_INT("vfs.autofs.mount_on_stat", &autofs_mount_on_stat);
 SYSCTL_INT(_vfs_autofs, OID_AUTO, mount_on_stat, CTLFLAG_RW,
-    &autofs_mount_on_stat, 0, "Trigger mount on stat(2) on mountpoint "
-    "(not supported on DragonFly)");
+    &autofs_mount_on_stat, 0, "Trigger mount on stat(2) on mountpoint");
+#endif
 static int autofs_timeout = 30;
 TUNABLE_INT("vfs.autofs.timeout", &autofs_timeout);
 SYSCTL_INT(_vfs_autofs, OID_AUTO, timeout, CTLFLAG_RW,
