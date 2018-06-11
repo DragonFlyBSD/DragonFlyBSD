@@ -58,8 +58,11 @@ main(int argc, char *argv[])
 	int ch;
 	int rval;
 
-	while ((ch = getopt(argc, argv, "bcde:F:fhlMmNnoSstw")) != -1)
+	while ((ch = getopt(argc, argv, "abcde:F:fhlMmNnoSstw")) != -1)
 		switch((char)ch) {
+		case 'a':
+			eflags |= VIS_ALL;
+			break;
 		case 'b':
 			eflags |= VIS_NOSLASH;
 			break;
@@ -120,8 +123,8 @@ main(int argc, char *argv[])
 			break;
 		case '?':
 		default:
-			fprintf(stderr, 
-			    "usage: %s [-bcfhlMmNnoSstw] [-e extra]" 
+			fprintf(stderr,
+			    "usage: %s [-abcfhlMmNnoSstw] [-e extra]"
 			    " [-F foldwidth] [file ...]\n", getprogname());
 			return 1;
 		}
@@ -150,7 +153,7 @@ main(int argc, char *argv[])
 		process(stdin);
 	return rval;
 }
-	
+
 static void
 process(FILE *fp)
 {
@@ -161,18 +164,18 @@ process(FILE *fp)
 	char mbibuff[2 * MB_LEN_MAX + 1]; /* max space for 2 wchars */
 	char buff[4 * MB_LEN_MAX + 1]; /* max encoding length for one char */
 	int mbilen, cerr = 0, raerr = 0;
-	
-        /*
-         * The input stream is considered to be multibyte characters.
-         * The input loop will read this data inputing one character,
+
+	/*
+	 * The input stream is considered to be multibyte characters.
+	 * The input loop will read this data inputing one character,
 	 * possibly multiple bytes, at a time and converting each to
 	 * a wide character wchar_t.
-         *
+	 *
 	 * The vis(3) functions, however, require single either bytes
 	 * or a multibyte string as their arguments.  So we convert
 	 * our input wchar_t and the following look-ahead wchar_t to
 	 * a multibyte string for processing by vis(3).
-         */
+	 */
 
 	/* Read one multibyte character, store as wchar_t */
 	c = getwc(fp);

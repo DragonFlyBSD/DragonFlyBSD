@@ -29,7 +29,7 @@
 .\"
 .\"     @(#)vis.1	8.4 (Berkeley) 4/19/94
 .\"
-.Dd April 11, 2018
+.Dd June 10, 2018
 .Dt VIS 1
 .Os
 .Sh NAME
@@ -37,7 +37,7 @@
 .Nd display non-printable characters in a visual format
 .Sh SYNOPSIS
 .Nm
-.Op Fl bcfhlMmNnoSstw
+.Op Fl abcfhlMmNnoSstw
 .Op Fl e Ar extra
 .Op Fl F Ar foldwidth
 .Op Ar file ...
@@ -57,6 +57,9 @@ various visual formats is given in
 .Pp
 The options are as follows:
 .Bl -tag -width Ds
+.It Fl a
+Encode all characters, whether originally visible or not.
+.Pq Dv VIS_ALL
 .It Fl b
 Turns off prepending of backslash before up-arrow control sequences
 and meta characters, and disables the doubling of backslashes.
