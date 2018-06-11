@@ -38,11 +38,15 @@ CFLAGS+=-I${.CURDIR} -I${SRCDIR} -I${SRCDIR}/regex -I${SRCDIR}/vi
 DPADD=		${LIBUTIL}
 LDADD=		-lutil
 
+CFLAGS+=	-DUSE_WIDECHAR \
+		-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 DPADD+=		${LIBNCURSESW}
 LDADD+=		-lprivate_ncursesw
-
-CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+
+.if !defined(RESCUE)
+CFLAGS+=	-DUSE_ICONV
+.endif
 
 CLEANFILES+=${EX}
 

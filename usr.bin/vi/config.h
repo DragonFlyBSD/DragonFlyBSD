@@ -5,10 +5,10 @@
 /* #undef DEBUG */
 
 /* Define when using wide characters */
-#define USE_WIDECHAR
+/* #define USE_WIDECHAR set by Makefile */
 
 /* Define when iconv can be used */
-#define USE_ICONV
+/* #define USE_ICONV set by Makefile */
 
 /* Define when the 2nd argument of iconv(3) is not const */
 #define ICONV_TRADITIONAL
