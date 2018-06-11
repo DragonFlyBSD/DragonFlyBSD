@@ -527,6 +527,8 @@ acpi_res_set_iorange(device_t dev, void *context, uint64_t low,
 
     if (cp == NULL)
 	return;
+    if (align == 0)	/* broken acpi resources might pass align == 0 */
+	align = 1;
 
     base = roundup(low, align);
     if (base + length - 1 <= high) {
