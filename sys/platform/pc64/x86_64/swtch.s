@@ -238,7 +238,6 @@ ENTRY(cpu_heavy_switch)
 	movq	%rax,PCB_DR0(%rdx)
 1:
 
-#if 1
 	/*
 	 * Save the FP state if we have used the FP.  Note that calling
 	 * npxsave will NULL out PCPU(npxthread).
@@ -250,7 +249,6 @@ ENTRY(cpu_heavy_switch)
 	call	npxsave			/* do it in a big C function */
 	movq	%r12,%rdi		/* restore %rdi */
 1:
-#endif
 
 	/*
 	 * Switch to the next thread, which was passed as an argument
@@ -338,6 +336,10 @@ END(cpu_exit_switch)
 /*
  * cpu_heavy_restore()	(current thread in %rax on entry, old thread in %rbx)
  *
+ *	We immediately move %rax to %r12.  %rbx is retained throughout, and
+ *	we nominally use %r14 for TD_PCB(%r12) until near the end where we
+ *	switch to %rdx for that.
+ *
  *	Restore the thread after an LWKT switch.  This entry is normally
  *	called via the LWKT switch restore function, which was pulled
  *	off the thread stack and jumped to.
@@ -361,13 +363,14 @@ END(cpu_exit_switch)
  */
 
 ENTRY(cpu_heavy_restore)
-	movq	TD_PCB(%rax),%rdx		/* RDX = PCB */
-	movq	%rdx, PCPU(trampoline)+TR_PCB_RSP
-	movq	PCB_FLAGS(%rdx), %rcx
+	movq	%rax,%r12			/* R12 = newtd */
+	movq	TD_PCB(%rax),%r14		/* R14 = PCB */
+	movq	%r14, PCPU(trampoline)+TR_PCB_RSP
+	movq	PCB_FLAGS(%r14), %rcx
 	movq	%rcx, PCPU(trampoline)+TR_PCB_FLAGS
-	movq	PCB_CR3_ISO(%rdx), %rcx
+	movq	PCB_CR3_ISO(%r14), %rcx
 	movq	%rcx, PCPU(trampoline)+TR_PCB_CR3_ISO
-	movq	PCB_CR3(%rdx), %rcx
+	movq	PCB_CR3(%r14), %rcx
 	movq	%rcx, PCPU(trampoline)+TR_PCB_CR3
 	popfq
 
@@ -380,7 +383,7 @@ ENTRY(cpu_heavy_restore)
 	 * us, our %cr3 and pmap were borrowed and are being returned to
 	 * us and no further action on those items need be taken.
 	 */
-	testl	$TDF_PREEMPT_DONE, TD_FLAGS(%rax)
+	testl	$TDF_PREEMPT_DONE, TD_FLAGS(%r12)
 	jne	4f
 #endif
 
@@ -399,27 +402,24 @@ ENTRY(cpu_heavy_restore)
 	 *     avoid checking for the interlock via CPULOCK_EXCL.  We currently
 	 *     do not perform this optimization.
 	 */
-	movq	TD_LWP(%rax),%rcx
+	movq	TD_LWP(%r12),%rcx
 	movq	LWP_VMSPACE(%rcx),%rcx		/* RCX = vmspace */
 
 	movq	PCPU(cpumask_simple),%rsi
-	movq	PCPU(cpumask_offset),%r12
-	MPLOCKED orq %rsi, VM_PMAP+PM_ACTIVE(%rcx, %r12, 1)
+	movq	PCPU(cpumask_offset),%r13
+	MPLOCKED orq %rsi, VM_PMAP+PM_ACTIVE(%rcx, %r13, 1)
 
 	movl	VM_PMAP+PM_ACTIVE_LOCK(%rcx),%esi
 	testl	$CPULOCK_EXCL,%esi
 	jz	1f
 
-	movq	%rax,%r12		/* save newthread ptr */
 	movq	%rcx,%rdi		/* (found to be set) */
 	call	pmap_interlock_wait	/* pmap_interlock_wait(%rdi:vm) */
-	movq	%r12,%rax
 
 	/*
 	 * Need unconditional load cr3
 	 */
-	movq	TD_PCB(%rax),%rdx	/* RDX = PCB */
-	movq	PCB_CR3(%rdx),%rcx	/* RCX = desired CR3 */
+	movq	PCB_CR3(%r14),%rcx	/* RCX = desired CR3 */
 	jmp	2f			/* unconditional reload */
 1:
 	/*
@@ -435,9 +435,8 @@ ENTRY(cpu_heavy_restore)
 	 *     When that happens, and we don't invltlb (by loading %cr3), we
 	 *     wind up with a stale TLB.
 	 */
-	movq	TD_PCB(%rax),%rdx		/* RDX = PCB */
 	movq	%cr3,%rsi			/* RSI = current CR3 */
-	movq	PCB_CR3(%rdx),%rcx		/* RCX = desired CR3 */
+	movq	PCB_CR3(%r14),%rcx		/* RCX = desired CR3 */
 	cmpq	%rsi,%rcx
 	/*je	4f*/
 2:
@@ -449,7 +448,7 @@ ENTRY(cpu_heavy_restore)
 4:
 
 	/*
-	 * NOTE: %rbx is the previous thread and %rax is the new thread.
+	 * NOTE: %rbx is the previous thread and %r12 is the new thread.
 	 *	 %rbx is retained throughout so we can return it.
 	 *
 	 *	 lwkt_switch[_return] is responsible for handling TDF_RUNNING.
@@ -458,7 +457,7 @@ ENTRY(cpu_heavy_restore)
 	/*
 	 * Deal with the PCB extension, restore the private tss
 	 */
-	movq	PCB_EXT(%rdx),%rdi	/* check for a PCB extension */
+	movq	PCB_EXT(%r14),%rdi	/* check for a PCB extension */
 	movq	$1,%rcx			/* maybe mark use of a private tss */
 	testq	%rdi,%rdi
 #if 0 /* JG */
@@ -473,12 +472,12 @@ ENTRY(cpu_heavy_restore)
 	 * Set the top of the supervisor stack for the new thread
 	 * in gd_thread_pcb so the trampoline code can load it into %rsp.
 	 */
-	movq	%rdx, PCPU(trampoline)+TR_PCB_RSP
-	movq	PCB_FLAGS(%rdx), %rcx
+	movq	%r14, PCPU(trampoline)+TR_PCB_RSP
+	movq	PCB_FLAGS(%r14), %rcx
 	movq	%rcx, PCPU(trampoline)+TR_PCB_FLAGS
-	movq	PCB_CR3_ISO(%rdx), %rcx
+	movq	PCB_CR3_ISO(%r14), %rcx
 	movq	%rcx, PCPU(trampoline)+TR_PCB_CR3_ISO
-	movq	PCB_CR3(%rdx), %rcx
+	movq	PCB_CR3(%r14), %rcx
 	movq	%rcx, PCPU(trampoline)+TR_PCB_CR3
 #endif
 
@@ -518,32 +517,45 @@ ENTRY(cpu_heavy_restore)
 	/*
 	 * Restore the user %gs and %fs
 	 */
-	movq	PCB_FSBASE(%rdx),%r9
+	movq	PCB_FSBASE(%r14),%r9
 	cmpq	PCPU(user_fs),%r9
 	je	4f
-	movq	%rdx,%r10
 	movq	%r9,PCPU(user_fs)
 	movl	$MSR_FSBASE,%ecx
-	movl	PCB_FSBASE(%r10),%eax
-	movl	PCB_FSBASE+4(%r10),%edx
+	movl	PCB_FSBASE(%r14),%eax
+	movl	PCB_FSBASE+4(%r14),%edx
 	wrmsr
-	movq	%r10,%rdx
 4:
-	movq	PCB_GSBASE(%rdx),%r9
+	movq	PCB_GSBASE(%r14),%r9
 	cmpq	PCPU(user_gs),%r9
 	je	5f
-	movq	%rdx,%r10
 	movq	%r9,PCPU(user_gs)
 	movl	$MSR_KGSBASE,%ecx	/* later swapgs moves it to GSBASE */
-	movl	PCB_GSBASE(%r10),%eax
-	movl	PCB_GSBASE+4(%r10),%edx
+	movl	PCB_GSBASE(%r14),%eax
+	movl	PCB_GSBASE+4(%r14),%edx
 	wrmsr
-	movq	%r10,%rdx
 5:
+	/*
+	 * Actively restore FP state
+	 */
+	movq	PCPU(npxthread),%r13
+	testq	%r13,%r13
+	jnz	6f
+	movl	TD_FLAGS(%r12),%r13d
+	andq	$TDF_FPU_HEUR|TDF_USINGFP,%r13
+	cmpq	$TDF_FPU_HEUR|TDF_USINGFP,%r13
+	jne	6f
+	movq	%r12,%rdi		/* npxdna_quick(newtd) */
+	call	npxdna_quick
+6:
 
 	/*
 	 * Restore general registers.  %rbx is restored later.
+	 *
+	 * Switch our PCB register from %r14 to %rdx so we can restore
+	 * %r14.
 	 */
+	movq	%r14,%rdx
 	movq	PCB_RSP(%rdx), %rsp
 	movq	PCB_RBP(%rdx), %rbp
 	movq	PCB_R12(%rdx), %r12

@@ -603,8 +603,10 @@ trap(struct trapframe *frame)
 			 * when it tries to use the FP unit.  Restore the
 			 * state here
 			 */
-			if (npxdna())
+			if (npxdna()) {
+				gd->gd_cnt.v_trap++;
 				goto out;
+			}
 			i = SIGFPE;
 			ucode = FPE_FPU_NP_TRAP;
 			break;
@@ -633,8 +635,10 @@ trap(struct trapframe *frame)
 			 * XXX this should be fatal unless the kernel has
 			 * registered such use.
 			 */
-			if (npxdna())
+			if (npxdna()) {
+				gd->gd_cnt.v_trap++;
 				goto out2;
+			}
 			break;
 
 		case T_STKFLT:		/* stack fault */
@@ -705,6 +709,7 @@ trap(struct trapframe *frame)
 			 * entry (if not shortcutted in exception.s via
 			 * DIRECT_DISALLOW_SS_CPUBUG).
 			 */
+			gd->gd_cnt.v_trap++;
 			if (frame->tf_rip == (register_t)IDTVEC(fast_syscall)) {
 				krateprintf(&sscpubugrate,
 					"Caught #DB at syscall cpu artifact\n");
@@ -788,6 +793,7 @@ trap(struct trapframe *frame)
 	if (*p->p_sysent->sv_transtrap)
 		i = (*p->p_sysent->sv_transtrap)(i, type);
 
+	gd->gd_cnt.v_trap++;
 	trapsignal(lp, i, ucode);
 
 #ifdef DEBUG

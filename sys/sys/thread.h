@@ -280,7 +280,8 @@ struct thread {
     int		td_type;	/* thread type, TD_TYPE_ */
     int		td_tracker;	/* for callers to debug lock counts */
     int		td_fdcache_lru;
-    int		td_unused03[3];	/* for future fields */
+    int		td_fpu_heur;	/* active restore on switch heuristic */
+    int		td_unused03[2];	/* for future fields */
     struct iosched_data td_iosdata;	/* Dynamic I/O scheduling data */
     struct timeval td_start;	/* start time for a thread/process */
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
@@ -352,7 +353,7 @@ struct thread {
 #define TDF_SYSTHREAD		0x00000100	/* reserve memory may be used */
 #define TDF_ALLOCATED_THREAD	0x00000200	/* objcache allocated thread */
 #define TDF_ALLOCATED_STACK	0x00000400	/* objcache allocated stack */
-#define TDF_UNUSED0800		0x00000800
+#define TDF_FPU_HEUR		0x00000800	/* active restore on switch */
 #define TDF_DEADLKTREAT		0x00001000	/* special lockmgr treatment */
 #define TDF_MARKER		0x00002000	/* tdallq list scan marker */
 #define TDF_TIMEOUT_RUNNING	0x00004000	/* tsleep timeout race */
