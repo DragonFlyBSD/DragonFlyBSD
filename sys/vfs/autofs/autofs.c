@@ -1,4 +1,5 @@
 /*-
+ * Copyright (c) 2016 Tomohiro Kusumi <kusumi.tomohiro@gmail.com>
  * Copyright (c) 2016 The DragonFly Project
  * Copyright (c) 2014 The FreeBSD Foundation
  * All rights reserved.
