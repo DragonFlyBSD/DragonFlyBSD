@@ -181,9 +181,10 @@
  * 500308 - xdr_uint16_t()
  * 500309 - drop support for some ancient ioctls (OSIOCGIF*)
  * 500310 - remove more unimplemented ioctls
+ * 500311 - add VIS_ALL to vis(3)
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500310	/* propagated to newvers */
+#define __DragonFly_version 500311	/* propagated to newvers */
 
 #include <sys/_null.h>
 

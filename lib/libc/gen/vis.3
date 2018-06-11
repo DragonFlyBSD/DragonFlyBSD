@@ -29,7 +29,7 @@
 .\"
 .\"     @(#)vis.3	8.1 (Berkeley) 6/9/93
 .\"
-.Dd April 9, 2018
+.Dd June 10, 2018
 .Dt VIS 3
 .Os
 .Sh NAME
@@ -244,8 +244,10 @@ except space, tab, and newline are encoded (see
 The following flags
 alter this:
 .Bl -tag -width ".Dv VIS_HTTPSTYLE"
+.It Dv VIS_ALL
+Encode all characters, whether visible or not.
 .It Dv VIS_DQ
-Also encode double quotes
+Also encode double quotes.
 .It Dv VIS_GLOB
 Also encode the magic characters
 .Ql ( * ,
@@ -564,3 +566,7 @@ Multibyte character support was added in
 .Nx 7.0
 and
 .Fx 9.2 .
+The
+.Dv VIS_ALL
+flag first appeared in
+.Ox 4.9 .

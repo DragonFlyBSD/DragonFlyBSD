@@ -57,6 +57,7 @@ typedef	__size_t	size_t;
 #define	VIS_WHITE	(VIS_SP | VIS_TAB | VIS_NL)
 #define	VIS_SAFE	0x0020	/* only encode "unsafe" characters */
 #define	VIS_DQ		0x8000	/* also encode double quotes */
+#define	VIS_ALL		0x00010000	/* encode all characters */
 
 /*
  * other
@@ -105,7 +106,7 @@ int	strsnvis(char *, size_t, const char *, int, const char *);
 
 int	strvisx(char *, const char *, size_t, int);
 int	strnvisx(char *, size_t, const char *, size_t, int);
-int 	strenvisx(char *, size_t, const char *, size_t, int, int *);
+int	strenvisx(char *, size_t, const char *, size_t, int, int *);
 
 int	strsvisx(char *, const char *, size_t, int, const char *);
 int	strsnvisx(char *, size_t, const char *, size_t, int, const char *);

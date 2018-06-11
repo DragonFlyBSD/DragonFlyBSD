@@ -244,6 +244,10 @@ unvis(char *cp, int c, int *astate, int flag)
 
 	case S_START:
 		switch(c) {
+		case '-':
+			*cp = 0;
+			*astate = SS(0, S_GROUND);
+			return UNVIS_NOCHAR;
 		case '\\':
 			*cp = c;
 			*astate = SS(0, S_GROUND);

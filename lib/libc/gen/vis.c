@@ -88,7 +88,7 @@ static wchar_t *do_svis(wchar_t *, wint_t, int, wint_t, const wchar_t *);
 
 #undef BELL
 #define BELL L'\a'
- 
+
 #if defined(LC_C_LOCALE)
 #define iscgraph(c)      isgraph_l(c, LC_C_LOCALE)
 #else
@@ -241,8 +241,12 @@ do_mbyte(wchar_t *dst, wint_t c, int flags, wint_t nextc, int iswextra)
 		case L't':
 		case L'f':
 		case L's':
+		case L'x':
 		case L'0':
+		case L'E':
+		case L'F':
 		case L'M':
+		case L'-':
 		case L'^':
 		case L'$': /* vis(1) -l */
 			break;
@@ -299,8 +303,10 @@ do_svis(wchar_t *dst, wint_t c, int flags, wint_t nextc, const wchar_t *extra)
 	uint64_t bmsk, wmsk;
 
 	iswextra = wcschr(extra, c) != NULL;
-	if (!iswextra && (ISGRAPH(flags, c) || iswwhite(c) ||
-	    ((flags & VIS_SAFE) && iswsafe(c)))) {
+	if (((flags & VIS_ALL) == 0) &&
+	    !iswextra &&
+	    (ISGRAPH(flags, c) || iswwhite(c) ||
+	     ((flags & VIS_SAFE) && iswsafe(c)))) {
 		*dst++ = c;
 		return dst;
 	}
@@ -377,7 +383,7 @@ makeextralist(int flags, const char *src)
 
 /*
  * istrsenvisx()
- * 	The main internal function.
+ *	The main internal function.
  *	All user-visible functions call this one.
  */
 static int
