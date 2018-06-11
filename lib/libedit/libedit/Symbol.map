@@ -289,13 +289,7 @@ EDIT_121213 {
     sig_end;
     sig_init;
     sig_set;
-    snvis;
     stifle_history;
-    strsnvis;
-    strsnvisx;
-    strsvis;
-    strsvisx;
-    svis;
     terminal__flush;
     terminal__putc;
     terminal_beep;
@@ -401,8 +395,6 @@ EDITprivate_1.0 {
     _rl_abort_internal;
     _rl_print_completions_horizontally;
     _rl_qsort_string_compare;
-    fgetln;
     func__get;
     help__get;
-    wcsdup;
 };

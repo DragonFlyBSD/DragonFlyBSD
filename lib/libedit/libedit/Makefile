@@ -38,22 +38,14 @@ SRCS+=		chared.c \
 		terminal.c \
 		tty.c \
 		vi.c \
-		fgetln.c \
-		vis.c \
-		wcsdup.c \
 		tokenizer.c \
 		history.c \
 		filecomplete.c \
 		readline.c \
 		eln.c
 
-# only when 1) !HAVE_STRLCAT  2) !HAVE_STRLCPY  3) !HAVE_VIS
-#SRCS+=		strlcat.c \
-		strlcpy.c \
-		unvis.c
-
 SRCS+=		common.h emacs.h fcns.h help.h vi.h
-SRCS+=  	fcns.c help.c tokenizern.c historyn.c
+SRCS+=		fcns.c help.c tokenizern.c historyn.c
 
 INCS=		histedit.h
 
