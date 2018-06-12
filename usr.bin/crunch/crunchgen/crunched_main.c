@@ -35,93 +35,94 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <err.h>
 
 struct stub {
-    char *name;
-    int (*f)();
+	const char *name;
+	int (*f)(int, char **, char **);
 };
 
-extern char *__progname;
-extern struct stub entry_points[];
-static int crunched_usage(void);
+static const struct stub entry_points[];
+
+static int crunched_main(int argc, char **, char **);
+static int cmpstringp(const void *, const void *);
+static void crunched_usage(void) __dead2;
+
 
 int
 main(int argc, char **argv, char **envp)
 {
-    char *slash, *basename;
-    struct stub *ep;
+	const char *slash, *basename;
+	const struct stub *ep;
 
-    if(argv[0] == NULL || *argv[0] == '\0')
-	crunched_usage();
+	if (argv[0] == NULL || *argv[0] == '\0')
+		crunched_usage();
 
-    slash = strrchr(argv[0], '/');
-    basename = slash? slash+1 : argv[0];
+	slash = strrchr(argv[0], '/');
+	basename = slash ? slash+1 : argv[0];
 
-    for(ep=entry_points; ep->name != NULL; ep++)
-	if(!strcmp(basename, ep->name)) break;
+	for (ep = entry_points; ep->name != NULL; ep++)
+		if (strcmp(basename, ep->name) == 0)
+			return ep->f(argc, argv, envp);
 
-    if(ep->name)
-	return ep->f(argc, argv, envp);
-    else {
 	fprintf(stderr, "%s: %s not compiled in\n", EXECNAME, basename);
 	crunched_usage();
-    }
 }
 
 
-int
-crunched_here(char *path)
-{
-    char *slash, *basename;
-    struct stub *ep;
-
-    slash = strrchr(path, '/');
-    basename = slash? slash+1 : path;
-
-    for(ep=entry_points; ep->name != NULL; ep++)
-	if(!strcmp(basename, ep->name))
-	    return 1;
-    return 0;
-}
-
-
-int
+static int
 crunched_main(int argc, char **argv, char **envp)
 {
-    char *slash;
-    int len;
+	if (argc <= 1)
+		crunched_usage();
 
-    if(argc <= 1)
-	crunched_usage();
-
-    slash = strrchr(argv[1], '/');
-    __progname = slash? slash+1 : argv[1];
-
-    return main(--argc, ++argv, envp);
+	return main(--argc, ++argv, envp);
 }
 
 
-int
+static int
+cmpstringp(const void *p1, const void *p2)
+{
+	const char *s1 = *(const char **)p1;
+	const char *s2 = *(const char **)p2;
+	return strcmp(s1, s2);
+}
+
+
+static void
 crunched_usage()
 {
-    int columns, len;
-    struct stub *ep;
+	int nprog = 0, columns = 0;
+	int i, len;
+	const struct stub *ep;
+	const char **prognames;
 
-    fprintf(stderr, "usage: %s <prog> <args> ..., where <prog> is one of:\n",
-	    EXECNAME);
-    columns = 0;
-    for(ep=entry_points; ep->name != NULL; ep++) {
-	len = strlen(ep->name) + 1;
-	if(columns+len < 80)
-	    columns += len;
-	else {
-	    fprintf(stderr, "\n");
-	    columns = len;
+	for (ep = entry_points; ep->name != NULL; ep++)
+		nprog++;
+	if ((prognames = malloc(nprog * sizeof(char *))) == NULL)
+		err(EXIT_FAILURE, "malloc");
+	for (i = 0; i < nprog; i++)
+		prognames[i] = entry_points[i].name;
+	qsort(prognames, nprog, sizeof(char *), cmpstringp);
+
+	fprintf(stderr,
+		"usage: %s <prog> <args> ..., where <prog> is one of:\n",
+		EXECNAME);
+	for (i = 0; i < nprog; i++) {
+		if (strcmp(EXECNAME, prognames[i]) == 0)
+			continue;
+		len = strlen(prognames[i]) + 1;
+		if (columns+len < 80)
+			columns += len;
+		else {
+			fprintf(stderr, "\n");
+			columns = len;
+		}
+		fprintf(stderr, " %s", prognames[i]);
 	}
-	fprintf(stderr, " %s", ep->name);
-    }
-    fprintf(stderr, "\n");
-    exit(1);
+	fprintf(stderr, "\n");
+	free(prognames);
+	exit(1);
 }
 
 /* end of crunched_main.c */
