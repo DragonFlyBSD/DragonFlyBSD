@@ -169,9 +169,9 @@ autofs_trigger_vn(struct vnode *vp, const char *path, int pathlen,
 	if (nlookup_fs_root(anp, &nvp) == 0)
 		goto mounted;
 
-	lockmgr(&autofs_softc->sc_lock, LK_EXCLUSIVE);
+	mtx_lock_ex_quick(&autofs_softc->sc_lock);
 	error = autofs_trigger(anp, path, pathlen);
-	lockmgr(&autofs_softc->sc_lock, LK_RELEASE);
+	mtx_unlock_ex(&autofs_softc->sc_lock);
 
 	if (error)
 		return (error);

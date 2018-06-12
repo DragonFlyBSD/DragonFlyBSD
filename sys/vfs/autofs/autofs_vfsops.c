@@ -70,7 +70,7 @@ autofs_init(struct vfsconf *vfsp)
 
 	TAILQ_INIT(&autofs_softc->sc_requests);
 	cv_init(&autofs_softc->sc_cv, "autofscv");
-	lockinit(&autofs_softc->sc_lock, "autofssclk", 0, 0);
+	mtx_init(&autofs_softc->sc_lock, "autofssclk");
 	autofs_softc->sc_dev_opened = false;
 
 	autofs_softc->sc_cdev = make_dev(&autofs_ops, 0, UID_ROOT,
@@ -91,9 +91,9 @@ autofs_init(struct vfsconf *vfsp)
 static int
 autofs_uninit(struct vfsconf *vfsp)
 {
-	lockmgr(&autofs_softc->sc_lock, LK_EXCLUSIVE);
+	mtx_lock_ex_quick(&autofs_softc->sc_lock);
 	if (autofs_softc->sc_dev_opened) {
-		lockmgr(&autofs_softc->sc_lock, LK_RELEASE);
+		mtx_unlock_ex(&autofs_softc->sc_lock);
 		return (EBUSY);
 	}
 
@@ -103,7 +103,7 @@ autofs_uninit(struct vfsconf *vfsp)
 	objcache_destroy(autofs_request_objcache);
 	objcache_destroy(autofs_node_objcache);
 
-	lockmgr(&autofs_softc->sc_lock, LK_RELEASE);
+	mtx_unlock_ex(&autofs_softc->sc_lock);
 
 	kfree(autofs_softc, M_AUTOFS);	/* race with open */
 	autofs_softc = NULL;
@@ -218,7 +218,7 @@ autofs_unmount(struct mount *mp, int mntflags)
 		bool found;
 
 		found = false;
-		lockmgr(&autofs_softc->sc_lock, LK_EXCLUSIVE);
+		mtx_lock_ex_quick(&autofs_softc->sc_lock);
 		TAILQ_FOREACH(ar, &autofs_softc->sc_requests, ar_next) {
 			if (ar->ar_mount != amp)
 				continue;
@@ -228,12 +228,12 @@ autofs_unmount(struct mount *mp, int mntflags)
 			found = true;
 		}
 		if (found == false) {
-			lockmgr(&autofs_softc->sc_lock, LK_RELEASE);
+			mtx_unlock_ex(&autofs_softc->sc_lock);
 			break;
 		}
 
 		cv_broadcast(&autofs_softc->sc_cv);
-		lockmgr(&autofs_softc->sc_lock, LK_RELEASE);
+		mtx_unlock_ex(&autofs_softc->sc_lock);
 
 		tsleep(&dummy, 0, "autofs_umount", hz);
 	}

@@ -41,7 +41,6 @@
 #include <sys/malloc.h>
 #include <sys/objcache.h>
 #include <sys/tree.h>
-#include <sys/lock.h>
 #include <sys/mutex2.h>
 #include <sys/condvar.h>
 #include <sys/mount.h>
@@ -143,7 +142,7 @@ struct autofs_softc {
 	device_t			sc_dev;
 	struct cdev			*sc_cdev;
 	struct cv			sc_cv;
-	struct lock			sc_lock;
+	struct mtx			sc_lock;
 	TAILQ_HEAD(, autofs_request)	sc_requests;
 	bool				sc_dev_opened;
 	pid_t				sc_dev_sid;
@@ -164,6 +163,7 @@ int	autofs_node_find(struct autofs_node *parent,
 void	autofs_node_delete(struct autofs_node *anp);
 int	autofs_node_vn(struct autofs_node *anp, struct mount *mp,
 	    int flags, struct vnode **vpp);
+int	_cv_mtx_timedwait(struct cv *c, struct mtx *mtx, int timo, int wakesig);
 
 static __inline void
 autofs_node_cache(struct autofs_node *anp)
@@ -178,5 +178,8 @@ autofs_node_uncache(struct autofs_node *anp)
 }
 
 RB_PROTOTYPE(autofs_node_tree, autofs_node, an_link, autofs_node_cmp);
+
+#define cv_mtx_wait(cv, mtx)		_cv_mtx_timedwait((cv), (mtx), 0, 0)
+#define cv_mtx_wait_sig(cv, mtx)	_cv_mtx_timedwait((cv), (mtx), 0, 1)
 
 #endif /* !AUTOFS_H */

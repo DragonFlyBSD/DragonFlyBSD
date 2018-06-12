@@ -68,6 +68,7 @@
 #include <sys/queue.h>
 #include <sys/signalvar.h>
 #include <sys/refcount.h>
+#include <sys/spinlock2.h>
 #include <sys/kern_syscall.h>
 
 #include "autofs.h"
@@ -197,7 +198,7 @@ autofs_task(void *context, int pending)
 {
 	struct autofs_request *ar = context;
 
-	lockmgr(&autofs_softc->sc_lock, LK_EXCLUSIVE);
+	mtx_lock_ex_quick(&autofs_softc->sc_lock);
 	AUTOFS_WARN("request %d for %s timed out after %d seconds",
 	    ar->ar_id, ar->ar_path, autofs_timeout);
 
@@ -206,7 +207,7 @@ autofs_task(void *context, int pending)
 	ar->ar_done = true;
 	ar->ar_in_progress = false;
 	cv_broadcast(&autofs_softc->sc_cv);
-	lockmgr(&autofs_softc->sc_lock, LK_RELEASE);
+	mtx_unlock_ex(&autofs_softc->sc_lock);
 }
 
 bool
@@ -308,7 +309,7 @@ autofs_trigger_one(struct autofs_node *anp,
 	int error = 0, request_error;
 	bool wildcards;
 
-	KKASSERT(lockstatus(&autofs_softc->sc_lock, curthread) == LK_EXCLUSIVE);
+	KKASSERT(mtx_islocked_ex(&autofs_softc->sc_lock));
 
 	if (anp->an_parent == NULL) {
 		key = kstrndup(component, componentlen, M_AUTOFS);
@@ -371,16 +372,17 @@ autofs_trigger_one(struct autofs_node *anp,
 		if (autofs_interruptible) {
 			sigset_t oldset;
 			autofs_set_sigmask(&oldset);
-			error = cv_wait_sig(&autofs_softc->sc_cv,
+			error = cv_mtx_wait_sig(&autofs_softc->sc_cv,
 			    &autofs_softc->sc_lock);
 			autofs_restore_sigmask(&oldset);
 			if (error) {
-				AUTOFS_WARN("cv_wait_sig for %s failed "
+				AUTOFS_WARN("cv_mtx_wait_sig for %s failed "
 				    "with error %d", ar->ar_path, error);
 				break;
 			}
 		} else {
-			cv_wait(&autofs_softc->sc_cv, &autofs_softc->sc_lock);
+			cv_mtx_wait(&autofs_softc->sc_cv,
+			    &autofs_softc->sc_lock);
 		}
 	}
 
@@ -396,11 +398,11 @@ autofs_trigger_one(struct autofs_node *anp,
 	 */
 	if (refcount_release(&ar->ar_refcount)) {
 		TAILQ_REMOVE(&autofs_softc->sc_requests, ar, ar_next);
-		lockmgr(&autofs_softc->sc_lock, LK_RELEASE);
+		mtx_unlock_ex(&autofs_softc->sc_lock);
 		taskqueue_cancel_timeout(_taskqueue_thread, &ar->ar_task, NULL);
 		taskqueue_drain_timeout(_taskqueue_thread, &ar->ar_task);
 		objcache_put(autofs_request_objcache, ar);
-		lockmgr(&autofs_softc->sc_lock, LK_EXCLUSIVE);
+		mtx_lock_ex_quick(&autofs_softc->sc_lock);
 	}
 
 	/*
@@ -452,9 +454,9 @@ autofs_trigger(struct autofs_node *anp,
 		AUTOFS_DEBUG("trigger failed with error %d; will retry in "
 		    "%d seconds, %d attempts left", error, autofs_retry_delay,
 		    autofs_retry_attempts - anp->an_retries);
-		lockmgr(&autofs_softc->sc_lock, LK_RELEASE);
+		mtx_unlock_ex(&autofs_softc->sc_lock);
 		tsleep(&dummy, 0, "autofs_retry", autofs_retry_delay * hz);
-		lockmgr(&autofs_softc->sc_lock, LK_EXCLUSIVE);
+		mtx_lock_ex_quick(&autofs_softc->sc_lock);
 	}
 }
 
@@ -464,7 +466,7 @@ autofs_ioctl_request(struct autofs_daemon_request *adr)
 	struct proc *curp = curproc;
 	struct autofs_request *ar;
 
-	lockmgr(&autofs_softc->sc_lock, LK_EXCLUSIVE);
+	mtx_lock_ex_quick(&autofs_softc->sc_lock);
 	for (;;) {
 		int error;
 		TAILQ_FOREACH(ar, &autofs_softc->sc_requests, ar_next) {
@@ -478,10 +480,10 @@ autofs_ioctl_request(struct autofs_daemon_request *adr)
 		if (ar != NULL)
 			break;
 
-		error = cv_wait_sig(&autofs_softc->sc_cv,
+		error = cv_mtx_wait_sig(&autofs_softc->sc_cv,
 		    &autofs_softc->sc_lock);
 		if (error) {
-			lockmgr(&autofs_softc->sc_lock, LK_RELEASE);
+			mtx_unlock_ex(&autofs_softc->sc_lock);
 			return (error);
 		}
 	}
@@ -495,7 +497,7 @@ autofs_ioctl_request(struct autofs_daemon_request *adr)
 	strlcpy(adr->adr_key, ar->ar_key, sizeof(adr->adr_key));
 	strlcpy(adr->adr_options, ar->ar_options, sizeof(adr->adr_options));
 
-	lockmgr(&autofs_softc->sc_lock, LK_RELEASE);
+	mtx_unlock_ex(&autofs_softc->sc_lock);
 
 	lwkt_gettoken(&curp->p_token);
 	autofs_softc->sc_dev_sid = proc_pgid(curp);
@@ -509,14 +511,14 @@ autofs_ioctl_done(struct autofs_daemon_done *add)
 {
 	struct autofs_request *ar;
 
-	lockmgr(&autofs_softc->sc_lock, LK_EXCLUSIVE);
+	mtx_lock_ex_quick(&autofs_softc->sc_lock);
 	TAILQ_FOREACH(ar, &autofs_softc->sc_requests, ar_next) {
 		if (ar->ar_id == add->add_id)
 			break;
 	}
 
 	if (ar == NULL) {
-		lockmgr(&autofs_softc->sc_lock, LK_RELEASE);
+		mtx_unlock_ex(&autofs_softc->sc_lock);
 		AUTOFS_DEBUG("id %d not found", add->add_id);
 		return (ESRCH);
 	}
@@ -527,7 +529,7 @@ autofs_ioctl_done(struct autofs_daemon_done *add)
 	ar->ar_in_progress = false;
 	cv_broadcast(&autofs_softc->sc_cv);
 
-	lockmgr(&autofs_softc->sc_lock, LK_RELEASE);
+	mtx_unlock_ex(&autofs_softc->sc_lock);
 
 	return (0);
 }
@@ -535,7 +537,7 @@ autofs_ioctl_done(struct autofs_daemon_done *add)
 static int
 autofs_open(struct dev_open_args *ap)
 {
-	lockmgr(&autofs_softc->sc_lock, LK_EXCLUSIVE);
+	mtx_lock_ex_quick(&autofs_softc->sc_lock);
 	/*
 	 * We must never block automountd(8) and its descendants, and we use
 	 * session ID to determine that: we store session id of the process
@@ -545,12 +547,12 @@ autofs_open(struct dev_open_args *ap)
 	 * it from happening.
 	 */
 	if (autofs_softc->sc_dev_opened) {
-		lockmgr(&autofs_softc->sc_lock, LK_RELEASE);
+		mtx_unlock_ex(&autofs_softc->sc_lock);
 		return (EBUSY);
 	}
 
 	autofs_softc->sc_dev_opened = true;
-	lockmgr(&autofs_softc->sc_lock, LK_RELEASE);
+	mtx_unlock_ex(&autofs_softc->sc_lock);
 
 	return (0);
 }
@@ -558,10 +560,10 @@ autofs_open(struct dev_open_args *ap)
 static int
 autofs_close(struct dev_close_args *ap)
 {
-	lockmgr(&autofs_softc->sc_lock, LK_EXCLUSIVE);
+	mtx_lock_ex_quick(&autofs_softc->sc_lock);
 	KASSERT(autofs_softc->sc_dev_opened, ("not opened?"));
 	autofs_softc->sc_dev_opened = false;
-	lockmgr(&autofs_softc->sc_lock, LK_RELEASE);
+	mtx_unlock_ex(&autofs_softc->sc_lock);
 
 	return (0);
 }
@@ -586,4 +588,31 @@ autofs_ioctl(struct dev_ioctl_args *ap)
 		return (EINVAL);
 	}
 	return (EINVAL);
+}
+
+int
+_cv_mtx_timedwait(struct cv *c, struct mtx *mtx, int timo, int wakesig)
+{
+	int flags = wakesig ? PCATCH : 0;
+	int error;
+
+	/*
+	 * Can interlock without critical section/spinlock as long
+	 * as we don't block before calling *sleep().  PINTERLOCKED
+	 * must be passed to the *sleep() to use the manual interlock
+	 * (else a new one is created which opens a timing race).
+	 */
+	tsleep_interlock(c, flags);
+
+	spin_lock(&c->cv_lock);
+	c->cv_waiters++;
+	spin_unlock(&c->cv_lock);
+
+	if (mtx)
+		error = mtxsleep(c, mtx, flags | PINTERLOCKED, c->cv_desc,
+		    timo);
+	else
+		error = tsleep(c, flags | PINTERLOCKED, c->cv_desc, timo);
+
+	return (error);
 }
