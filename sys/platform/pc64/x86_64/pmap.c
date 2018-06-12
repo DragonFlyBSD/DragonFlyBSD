@@ -265,8 +265,11 @@ TUNABLE_INT("machdep.meltdown_mitigation", &meltdown_mitigation);
 SYSCTL_INT(_machdep, OID_AUTO, meltdown_mitigation, CTLFLAG_RW,
     &meltdown_mitigation, 0, "Userland pmap isolation");
 
-static int pmap_nx_enable = 0;
+static int pmap_nx_enable = -1;		/* -1 = auto */
 /* needs manual TUNABLE in early probe, see below */
+SYSCTL_INT(_machdep, OID_AUTO, pmap_nx_enable, CTLFLAG_RD,
+    &pmap_nx_enable, 0,
+    "no-execute support (0=disabled, 1=w/READ, 2=w/READ & WRITE)");
 
 /* Standard user access funtions */
 extern int std_copyinstr (const void *udaddr, void *kaddr, size_t len,
@@ -6224,10 +6227,19 @@ x86_64_protection_init(void)
 
 	/*
 	 * NX supported? (boot time loader.conf override only)
+	 *
+	 * -1	Automatic (sets mode 1)
+	 *  0	Disabled
+	 *  1	NX implemented, differentiates PROT_READ vs PROT_READ|PROT_EXEC
+	 *  2	NX implemented for all cases
 	 */
 	TUNABLE_INT_FETCH("machdep.pmap_nx_enable", &pmap_nx_enable);
-	if (pmap_nx_enable == 0 || (amd_feature & AMDID_NX) == 0)
+	if ((amd_feature & AMDID_NX) == 0) {
 		pmap_bits_default[PG_NX_IDX] = 0;
+		pmap_nx_enable = 0;
+	} else if (pmap_nx_enable < 0) {
+		pmap_nx_enable = 1;		/* default to mode 1 (READ) */
+	}
 
 	/*
 	 * 0 is basically read-only access, but also set the NX (no-execute)
@@ -6240,37 +6252,41 @@ x86_64_protection_init(void)
 			/*
 			 * This case handled elsewhere
 			 */
-			*kp++ = 0;
+			*kp = 0;
 			break;
 		case VM_PROT_READ | VM_PROT_NONE | VM_PROT_NONE:
 			/*
-			 * Read-only is 0|NX
+			 * Read-only is 0|NX	(pmap_nx_enable mode >= 1)
 			 */
-			*kp++ = pmap_bits_default[PG_NX_IDX];
+			if (pmap_nx_enable >= 1)
+				*kp = pmap_bits_default[PG_NX_IDX];
 			break;
 		case VM_PROT_READ | VM_PROT_NONE | VM_PROT_EXECUTE:
 		case VM_PROT_NONE | VM_PROT_NONE | VM_PROT_EXECUTE:
 			/*
 			 * Execute requires read access
 			 */
-			*kp++ = 0;
+			*kp = 0;
 			break;
 		case VM_PROT_NONE | VM_PROT_WRITE | VM_PROT_NONE:
 		case VM_PROT_READ | VM_PROT_WRITE | VM_PROT_NONE:
 			/*
 			 * Write without execute is RW|NX
+			 *			(pmap_nx_enable mode >= 2)
 			 */
-			*kp++ = pmap_bits_default[PG_RW_IDX] |
-				pmap_bits_default[PG_NX_IDX];
+			*kp = pmap_bits_default[PG_RW_IDX];
+			if (pmap_nx_enable >= 2)
+				*kp |= pmap_bits_default[PG_NX_IDX];
 			break;
 		case VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE:
 		case VM_PROT_NONE | VM_PROT_WRITE | VM_PROT_EXECUTE:
 			/*
 			 * Write with execute is RW
 			 */
-			*kp++ = pmap_bits_default[PG_RW_IDX];
+			*kp = pmap_bits_default[PG_RW_IDX];
 			break;
 		}
+		++kp;
 	}
 }
 
