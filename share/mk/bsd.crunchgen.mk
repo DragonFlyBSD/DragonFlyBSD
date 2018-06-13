@@ -9,6 +9,7 @@
 # CRUNCH_LIBS		Libraries to be statically linked with
 # CRUNCH_SHLIBS		Libraries to be dynamically linked with
 # CRUNCH_BUILDOPTS	Build options to be added for every program
+# CRUNCH_LINKOPTS	Options to be added for linking the final binary
 #
 # Special options can be specified for individual programs:
 #
@@ -85,6 +86,9 @@ ${CONF}: Makefile
 .ifdef CRUNCH_BUILDOPTS
 	echo "buildopts ${CRUNCH_BUILDOPTS}" >>${.TARGET}
 .endif
+.ifdef CRUNCH_LINKOPTS
+	echo "linkopts ${CRUNCH_LINKOPTS}" >>${.TARGET}
+.endif
 .ifdef CRUNCH_LIBS
 	echo "libs ${CRUNCH_LIBS}" >>${.TARGET}
 .endif
@@ -119,7 +123,7 @@ ${OUTPUTS}: ${CONF}
 	    ${CRUNCHGEN} -fq -m ${OUTMK} -c ${OUTC} ${CONF}
 	# Avoid redundantly calling 'make objs' which we've done by our
 	# own dependencies.
-	sed -i '' -e "s/^\(${PROG}:.*\) \$$(SUBMAKE_TARGETS)/\1/" ${OUTMK}
+	sed -i '' -e "/^${PROG}:/s/\$$[({]SUBMAKE_TARGETS[})]//" ${OUTMK}
 
 # These 2 targets cannot use .MAKE since they depend on the generated
 # ${OUTMK} above.

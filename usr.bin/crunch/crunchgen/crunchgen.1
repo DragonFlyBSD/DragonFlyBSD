@@ -24,7 +24,7 @@
 .\"			   University of Maryland at College Park
 .\" $FreeBSD: head/usr.sbin/crunch/crunchgen/crunchgen.1 213573 2010-10-08 12:40:16Z uqs $
 .\"
-.Dd December 23, 2005
+.Dd June 12, 2018
 .Dt CRUNCHGEN 1
 .Os
 .Sh NAME
@@ -196,20 +196,11 @@ These dirs are searched using the
 .Bx
 .Dq Pa <source-dir>/<progname>/
 convention.
-Multiple
-.Ic srcdirs
-lines can be specified.
 The directories are searched in the order they are given.
 .It Ic progs Ar progname ...
 A list of programs that make up the crunched binary.
-Multiple
-.Ic progs
-lines can be specified.
 .It Ic libs Ar libspec ...
 A list of library specifications to be included in the crunched binary link.
-Multiple
-.Ic libs
-lines can be specified.
 .It Ic libs_so Ar libspec ...
 A list of library specifications to be dynamically linked in the
 crunched binary.
@@ -217,9 +208,6 @@ These libraries will need to be made available via the run-time link-editor
 .Xr rtld 1
 when the component program that requires them is executed from
 the crunched binary.
-Multiple
-.Ic libs_so
-lines can be specified.
 The
 .Ic libs_so
 directive overrides a library specified gratuitously on a
@@ -227,6 +215,8 @@ directive overrides a library specified gratuitously on a
 line.
 .It Ic buildopts Ar buildopts ...
 A list of build options to be added to every make target.
+.It Ic linkopts Ar linkopts ...
+A list of linker options for linking the final crunched  binary.
 .It Ic ln Ar progname linkname
 Causes the crunched binary to invoke
 .Ar progname
@@ -237,6 +227,10 @@ appears in
 This allows programs that change their behavior when
 run under different names to operate correctly.
 .El
+.Pp
+All the above commands can be used for multiple times, and
+.Nm
+will combine them in the generated makefile.
 .Pp
 To handle specialized situations, such as when the source is not
 available or not built via a conventional
@@ -392,7 +386,7 @@ ln sh -sh       # init invokes the shell with "-sh" in argv[0]
 
 special myprog objpaths /homes/leroy/src/myinstall.o # no sources
 
-special anotherprog -DNO_FOO WITHOUT_BAR=YES
+special anotherprog buildopts -DNO_FOO WITHOUT_BAR=YES
 
 libs -lutil -lcrypt
 .Ed
@@ -420,7 +414,7 @@ can be built as follows:
 % crunchgen -m Makefile kcopy.conf    # gen Makefile and kcopy.c
 % make objs             # build the component programs' .o files
 % make                  # build the crunched binary kcopy
-% kcopy sh              # test that this invokes a sh shell
+% ./kcopy sh            # test that this invokes the sh shell
 $			# it works!
 .Ed
 .Pp

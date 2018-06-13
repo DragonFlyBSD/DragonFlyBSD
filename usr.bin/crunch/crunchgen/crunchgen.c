@@ -67,12 +67,12 @@ typedef struct prog {
 	char *realsrcdir;
 	char *objdir;
 	char *objvar;		/* Makefile variable to replace OBJS */
-	strlst_t *objs, *objpaths;
+	strlst_t *objs;
+	strlst_t *objpaths;
 	strlst_t *buildopts;
 	strlst_t *keeplist;
 	strlst_t *links;
 	strlst_t *libs;
-	strlst_t *libs_so;
 	int goterror;
 } prog_t;
 
@@ -80,6 +80,7 @@ typedef struct prog {
 /* global state */
 
 static strlst_t *buildopts = NULL;
+static strlst_t *linkopts  = NULL;
 static strlst_t *srcdirs   = NULL;
 static strlst_t *libs      = NULL;
 static strlst_t *libs_so   = NULL;
@@ -104,7 +105,7 @@ static int list_mode;
 
 static void status(const char *str);
 static void out_of_memory(void) __dead2;
-static void add_string(strlst_t **listp, char *str);
+static void add_string(strlst_t **listp, char *str, int nodup);
 static int is_dir(const char *pathname);
 static int is_nonempty_file(const char *pathname);
 static int subtract_strlst(strlst_t **lista, strlst_t **listb);
@@ -251,6 +252,7 @@ static void add_link(int argc, char **argv);
 static void add_libs(int argc, char **argv);
 static void add_libs_so(int argc, char **argv);
 static void add_buildopts(int argc, char **argv);
+static void add_linkopts(int argc, char **argv);
 static void add_special(int argc, char **argv);
 
 static prog_t *find_prog(char *str);
@@ -310,6 +312,8 @@ parse_one_file(char *filename)
 			f = add_libs_so;
 		else if(!strcmp(fieldv[0], "buildopts"))
 			f = add_buildopts;
+		else if(!strcmp(fieldv[0], "linkopts"))
+			f = add_linkopts;
 		else if(!strcmp(fieldv[0], "special"))
 			f = add_special;
 		else {
@@ -377,7 +381,7 @@ add_srcdirs(int argc, char **argv)
 
 	for (i = 1; i < argc; i++) {
 		if (is_dir(argv[i]))
-			add_string(&srcdirs, argv[i]);
+			add_string(&srcdirs, argv[i], 1);
 		else {
 			warnx("%s:%d: `%s' is not a directory, skipping it",
 			    curfilename, linenum, argv[i]);
@@ -428,7 +432,6 @@ add_prog(char *progname)
 	p2->objdir = NULL;
 	p2->links = NULL;
 	p2->libs = NULL;
-	p2->libs_so = NULL;
 	p2->objs = NULL;
 	p2->keeplist = NULL;
 	p2->buildopts = NULL;
@@ -456,7 +459,7 @@ add_link(int argc, char **argv)
 		if (list_mode)
 			printf("%s\n",argv[i]);
 
-		add_string(&p->links, argv[i]);
+		add_string(&p->links, argv[i], 1);
 	}
 }
 
@@ -467,7 +470,7 @@ add_libs(int argc, char **argv)
 	int i;
 
 	for(i = 1; i < argc; i++) {
-		add_string(&libs, argv[i]);
+		add_string(&libs, argv[i], 1);
 		if ( in_list(&libs_so, argv[i]) )
 			warnx("%s:%d: "
 				"library `%s' specified as dynamic earlier",
@@ -482,7 +485,7 @@ add_libs_so(int argc, char **argv)
 	int i;
 
 	for(i = 1; i < argc; i++) {
-		add_string(&libs_so, argv[i]);
+		add_string(&libs_so, argv[i], 1);
 		if ( in_list(&libs, argv[i]) )
 			warnx("%s:%d: "
 				"library `%s' specified as static earlier",
@@ -497,7 +500,17 @@ add_buildopts(int argc, char **argv)
 	int i;
 
 	for (i = 1; i < argc; i++)
-		add_string(&buildopts, argv[i]);
+		add_string(&buildopts, argv[i], 0);  /* allow duplicates */
+}
+
+
+static void
+add_linkopts(int argc, char **argv)
+{
+	int i;
+
+	for (i = 1; i < argc; i++)
+		add_string(&linkopts, argv[i], 0);  /* allow duplicates */
 }
 
 
@@ -535,15 +548,15 @@ add_special(int argc, char **argv)
 	} else if (!strcmp(argv[2], "objs")) {
 		p->objs = NULL;
 		for (i = 3; i < argc; i++)
-			add_string(&p->objs, argv[i]);
+			add_string(&p->objs, argv[i], 1);
 	} else if (!strcmp(argv[2], "objpaths")) {
 		p->objpaths = NULL;
 		for (i = 3; i < argc; i++)
-			add_string(&p->objpaths, argv[i]);
+			add_string(&p->objpaths, argv[i], 1);
 	} else if (!strcmp(argv[2], "keep")) {
 		p->keeplist = NULL;
 		for(i = 3; i < argc; i++)
-			add_string(&p->keeplist, argv[i]);
+			add_string(&p->keeplist, argv[i], 1);
 	} else if (!strcmp(argv[2], "objvar")) {
 		if(argc != 4)
 			goto argcount;
@@ -552,10 +565,10 @@ add_special(int argc, char **argv)
 	} else if (!strcmp(argv[2], "buildopts")) {
 		p->buildopts = NULL;
 		for (i = 3; i < argc; i++)
-			add_string(&p->buildopts, argv[i]);
+			add_string(&p->buildopts, argv[i], 0);
 	} else if (!strcmp(argv[2], "lib")) {
 		for (i = 3; i < argc; i++)
-			add_string(&p->libs, argv[i]);
+			add_string(&p->libs, argv[i], 1);
 	} else {
 		warnx("%s:%d: bad parameter name `%s', skipping line",
 		    curfilename, linenum, argv[2]);
@@ -775,7 +788,7 @@ fillin_program_objs(prog_t *p, char *path)
 				cp++;
 			if (*cp)
 				*cp++ = '\0';
-			add_string(&p->objs, obj);
+			add_string(&p->objs, obj, 1);
 			while (isspace((unsigned char)*cp))
 				cp++;
 		}
@@ -976,7 +989,6 @@ top_makefile_rules(FILE *outmk)
 {
 	prog_t *p;
 
-	fprintf(outmk, "LD?= ld\n");
 	if ( subtract_strlst(&libs, &libs_so) )
 		fprintf(outmk, "# NOTE: Some LIBS declarations below overridden by LIBS_SO\n");
 
@@ -998,6 +1010,10 @@ top_makefile_rules(FILE *outmk)
 		fprintf(outmk, "BUILDOPTS+=");
 		output_strlst(outmk, buildopts);
 	}
+	if (linkopts) {
+		fprintf(outmk, "LINKOPTS+=");
+		output_strlst(outmk, linkopts);
+	}
 
 	fprintf(outmk, "CRUNCHED_OBJS=");
 	for (p = progs; p != NULL; p = p->next)
@@ -1016,13 +1032,15 @@ top_makefile_rules(FILE *outmk)
 	fprintf(outmk, "exe: %s\n", execfname);
 	fprintf(outmk, "%s: %s.o $(CRUNCHED_OBJS) $(SUBMAKE_TARGETS)\n", execfname, execfname);
 	fprintf(outmk, ".if defined(LIBS_SO) && !empty(LIBS_SO)\n");
-	fprintf(outmk, "\t$(CC) -o %s %s.o $(CRUNCHED_OBJS) \\\n",
+	fprintf(outmk, "\t$(CC) $(LINKOPTS) -o %s %s.o \\\n",
 	    execfname, execfname);
+	fprintf(outmk, "\t\t$(CRUNCHED_OBJS) \\\n");
 	fprintf(outmk, "\t\t-Xlinker -Bstatic $(LIBS) \\\n");
 	fprintf(outmk, "\t\t-Xlinker -Bdynamic $(LIBS_SO)\n");
 	fprintf(outmk, ".else\n");
-	fprintf(outmk, "\t$(CC) -static -o %s %s.o $(CRUNCHED_OBJS) $(LIBS)\n",
+	fprintf(outmk, "\t$(CC) $(LINKOPTS) -static -o %s %s.o \\\n",
 	    execfname, execfname);
+	fprintf(outmk, "\t\t$(CRUNCHED_OBJS) $(LIBS)\n");
 	fprintf(outmk, ".endif\n");
 	fprintf(outmk, "\tstrip %s\n", execfname);
 	fprintf(outmk, "realclean: clean subclean\n");
@@ -1163,14 +1181,14 @@ out_of_memory(void)
 
 
 static void
-add_string(strlst_t **listp, char *str)
+add_string(strlst_t **listp, char *str, int nodup)
 {
 	strlst_t *p1, *p2;
 
-	/* add to end, but be smart about dups */
+	/* add to end, and avoid duplicate if nodup != 0 */
 
 	for (p1 = NULL, p2 = *listp; p2 != NULL; p1 = p2, p2 = p2->next)
-		if (!strcmp(p2->str, str))
+		if (nodup && (strcmp(p2->str, str) == 0))
 			return;
 
 	p2 = malloc(sizeof(strlst_t));
