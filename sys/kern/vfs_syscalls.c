@@ -1515,11 +1515,10 @@ getfsstat_callback(struct mount *mp, void *data)
 	char *fullpath;
 	int error;
 
+	if (info->td->td_proc && !chroot_visible_mnt(mp, info->td->td_proc))
+		return(0);
+
 	if (info->sfsp && info->count < info->maxcount) {
-		if (info->td->td_proc &&
-		    !chroot_visible_mnt(mp, info->td->td_proc)) {
-			return(0);
-		}
 		sp = &mp->mnt_stat;
 
 		/*
@@ -1606,11 +1605,10 @@ getvfsstat_callback(struct mount *mp, void *data)
 	char *fullpath;
 	int error;
 
+	if (info->td->td_proc && !chroot_visible_mnt(mp, info->td->td_proc))
+		return(0);
+
 	if (info->vsfsp && info->count < info->maxcount) {
-		if (info->td->td_proc &&
-		    !chroot_visible_mnt(mp, info->td->td_proc)) {
-			return(0);
-		}
 		sp = &mp->mnt_stat;
 		vsp = &mp->mnt_vstat;
 
