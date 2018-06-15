@@ -839,7 +839,7 @@ BSTRAPDIRS2= \
 	usr.sbin/chown usr.sbin/mtree usr.sbin/config \
 	usr.sbin/zic usr.sbin/makewhatis \
 	gnu/usr.bin/grep usr.bin/sort usr.bin/gzip \
-	usr.bin/mkcsmapper usr.bin/mkesdb usr.bin/crunch
+	usr.bin/mkcsmapper usr.bin/mkesdb
 
 bootstrap-tools: bootstrap-tools-before bootstrap-tools-targets1 bootstrap-tools-targets2
 	touch ${BTOOLSDEST}/.bootstrap_done
@@ -932,7 +932,7 @@ btools-${_tool}!
 # cross-tools: Build cross-building tools
 #
 
-CTOOLSDIRS= usr.bin/objformat usr.bin/crunch/crunchide
+CTOOLSDIRS= usr.bin/objformat
 
 CTOOLSDIRS+=	${_binutils} \
 		${_gcc_common_cross} \
