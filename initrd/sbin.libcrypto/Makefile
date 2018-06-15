@@ -7,13 +7,14 @@ CRUNCH_SRCDIRS+= sbin
 CRUNCH_PROGS_sbin= tcplay	\
 		    md5		\
 		    hammer	\
+		    hammer2	\
 		    ping	\
 		    ping6
 
 CRUNCH_SRCDIRS+= gnu/sbin
 CRUNCH_PROGS_gnu/sbin= cryptsetup
 
-CRUNCH_LIBS+= -ldm -lprop -lutil -lhammer -lm
+CRUNCH_LIBS+= -ldm -lprop -ldmsg -lutil -lhammer -lpthread -lm
 CRUNCH_ALIAS_md5= rmd160
 
 CRUNCH_SRCDIRS+= usr.sbin/802_11

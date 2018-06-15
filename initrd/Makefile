@@ -12,7 +12,9 @@ rescue:
 	@${ECHO} ">>> Building and installing rescue tools ..."
 .for _dir in bin oinit sbin sbin.libcrypto sbin.lvm
 	(cd ${.CURDIR}/${_dir}; \
-	    @${ECHO} "=> ${_dir}"; \
+	    ${ECHO} "=> ${_dir}"; \
+	    make BINDIR=${RESCUE_DIR} clean cleandepend ; \
+	    make BINDIR=${RESCUE_DIR} obj ; \
 	    make BINDIR=${RESCUE_DIR} depend all install clean cleandepend)
 .endfor
 
@@ -28,3 +30,11 @@ initrd: rescue
 	    -r ${DESTDIR}${RESCUE_DIR} \
 	    -c ${INITRD_STAGEDIR}
 	(cd ${.CURDIR}/etc; make clean cleandepend)
+
+clean:
+	@${ECHO} ">>> Cleaning ..."
+.for _dir in bin oinit sbin sbin.libcrypto sbin.lvm
+	(cd ${.CURDIR}/${_dir}; \
+	    ${ECHO} "=> ${_dir}"; \
+	    make BINDIR=${RESCUE_DIR} clean cleandepend)
+.endfor
