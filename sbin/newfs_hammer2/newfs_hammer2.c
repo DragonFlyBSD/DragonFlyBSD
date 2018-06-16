@@ -38,6 +38,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/sysctl.h>
+#include <sys/ioctl.h>
 #include <vfs/hammer2/hammer2_xxhash.h>
 #include <vfs/hammer2/hammer2_disk.h>
 
