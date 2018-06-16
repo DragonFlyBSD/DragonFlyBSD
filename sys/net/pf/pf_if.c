@@ -866,12 +866,22 @@ static void
 pfi_attach_ifnet_event(void *arg __unused, struct ifnet *ifp)
 {
 	pfi_attach_ifnet(ifp);
+#ifdef ALTQ
+	crit_enter();
+	pf_altq_ifnet_event(ifp, 0);
+	crit_exit();
+#endif
 }
 
 static void
 pfi_detach_ifnet_event(void *arg __unused, struct ifnet *ifp)
 {
 	pfi_detach_ifnet(ifp);
+#ifdef ALTQ
+	crit_enter();
+	pf_altq_ifnet_event(ifp, 1);
+	crit_exit();
+#endif
 }
 
 static void

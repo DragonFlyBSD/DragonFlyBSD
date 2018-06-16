@@ -565,7 +565,8 @@ pf_begin_altq(u_int32_t *ticket)
 	/* Purge the old altq list */
 	while ((altq = TAILQ_FIRST(pf_altqs_inactive)) != NULL) {
 		TAILQ_REMOVE(pf_altqs_inactive, altq, entries);
-		if (altq->qname[0] == 0) {
+		if (altq->qname[0] == 0 &&
+		    (altq->local_flags & PFALTQ_FLAG_IF_REMOVED) == 0) {
 			/* detach and destroy the discipline */
 			error = altq_remove(altq);
 		} else
@@ -590,7 +591,8 @@ pf_rollback_altq(u_int32_t ticket)
 	/* Purge the old altq list */
 	while ((altq = TAILQ_FIRST(pf_altqs_inactive)) != NULL) {
 		TAILQ_REMOVE(pf_altqs_inactive, altq, entries);
-		if (altq->qname[0] == 0) {
+		if (altq->qname[0] == 0 &&
+		    (altq->local_flags & PFALTQ_FLAG_IF_REMOVED) == 0) {
 			/* detach and destroy the discipline */
 			error = altq_remove(altq);
 		} else
@@ -620,7 +622,8 @@ pf_commit_altq(u_int32_t ticket)
 
 	/* Attach new disciplines */
 	TAILQ_FOREACH(altq, pf_altqs_active, entries) {
-		if (altq->qname[0] == 0) {
+		if (altq->qname[0] == 0 &&
+		    (altq->local_flags & PFALTQ_FLAG_IF_REMOVED) == 0) {
 			/* attach the discipline */
 			error = altq_pfattach(altq);
 			if (error) {
@@ -633,7 +636,8 @@ pf_commit_altq(u_int32_t ticket)
 	/* Purge the old altq list */
 	while ((altq = TAILQ_FIRST(pf_altqs_inactive)) != NULL) {
 		TAILQ_REMOVE(pf_altqs_inactive, altq, entries);
-		if (altq->qname[0] == 0) {
+		if (altq->qname[0] == 0 &&
+		    (altq->local_flags & PFALTQ_FLAG_IF_REMOVED) == 0) {
 			/* detach and destroy the discipline */
 			if (pf_altq_running)
 				error = pf_disable_altq(altq);
@@ -661,11 +665,11 @@ pf_enable_altq(struct pf_altq *altq)
 	int			 error = 0;
 
 	ifnet_lock();
+	ifp = ifunit(altq->ifname);
+	ifnet_unlock();
 
-	if ((ifp = ifunit(altq->ifname)) == NULL) {
-		ifnet_unlock();
+	if (ifp == NULL)
 		return (EINVAL);
-	}
 
 	if (ifp->if_snd.altq_type != ALTQT_NONE)
 		error = altq_enable(&ifp->if_snd);
@@ -679,7 +683,6 @@ pf_enable_altq(struct pf_altq *altq)
 		crit_exit();
 	}
 
-	ifnet_unlock();
 	return (error);
 }
 
@@ -691,20 +694,18 @@ pf_disable_altq(struct pf_altq *altq)
 	int			 error;
 
 	ifnet_lock();
+	ifp = ifunit(altq->ifname);
+	ifnet_unlock();
 
-	if ((ifp = ifunit(altq->ifname)) == NULL) {
-		ifnet_unlock();
+	if (ifp == NULL)
 		return (EINVAL);
-	}
 
 	/*
 	 * when the discipline is no longer referenced, it was overridden
 	 * by a new one.  if so, just return.
 	 */
-	if (altq->altq_disc != ifp->if_snd.altq_disc) {
-		ifnet_unlock();
+	if (altq->altq_disc != ifp->if_snd.altq_disc)
 		return (0);
-	}
 
 	error = altq_disable(&ifp->if_snd);
 
@@ -716,8 +717,75 @@ pf_disable_altq(struct pf_altq *altq)
 		crit_exit();
 	}
 
-	ifnet_unlock();
 	return (error);
+}
+
+void
+pf_altq_ifnet_event(struct ifnet *ifp, int remove)
+{
+	struct ifnet	*ifp1;
+	struct pf_altq	*a1, *a2, *a3;
+	u_int32_t	 ticket;
+	int		 error = 0;
+
+	/* Interrupt userland queue modifications */
+	if (altqs_inactive_open)
+		pf_rollback_altq(ticket_altqs_inactive);
+
+	/* Start new altq ruleset */
+	if (pf_begin_altq(&ticket))
+		return;
+
+	/* Copy the current active set */
+	TAILQ_FOREACH(a1, pf_altqs_active, entries) {
+		a2 = kmalloc(sizeof(*a2), M_PFALTQPL, M_INTWAIT);
+		if (a2 == NULL) {
+			error = ENOMEM;
+			break;
+		}
+		bcopy(a1, a2, sizeof(struct pf_altq));
+
+		if (a2->qname[0] != 0) {
+			if ((a2->qid = pf_qname2qid(a2->qname)) == 0) {
+				error = EBUSY;
+				kfree(a2, M_PFALTQPL);
+				break;
+			}
+			a2->altq_disc = NULL;
+			TAILQ_FOREACH(a3, pf_altqs_inactive, entries) {
+				if (strncmp(a3->ifname, a2->ifname,
+				    IFNAMSIZ) == 0 && a3->qname[0] == 0) {
+					a2->altq_disc = a3->altq_disc;
+					break;
+				}
+			}
+		}
+		/* Deactivate the interface in question */
+		a2->local_flags &= ~PFALTQ_FLAG_IF_REMOVED;
+		ifnet_lock();
+		ifp1 = ifunit(a2->ifname);
+		ifnet_unlock();
+		if ((ifp1 == NULL) || (remove && ifp1 == ifp)) {
+			a2->local_flags |= PFALTQ_FLAG_IF_REMOVED;
+		} else {
+			error = altq_add(a2);
+
+			if (ticket != ticket_altqs_inactive)
+				error = EBUSY;
+
+			if (error) {
+				kfree(a2, M_PFALTQPL);
+				break;
+			}
+		}
+
+		TAILQ_INSERT_TAIL(pf_altqs_inactive, a2, entries);
+	}
+
+	if (error != 0)
+		pf_rollback_altq(ticket);
+	else
+		pf_commit_altq(ticket);
 }
 #endif /* ALTQ */
 
@@ -1918,11 +1986,11 @@ pfioctl(struct dev_ioctl_args *ap)
 			strlcpy(ps.ifname, psp->ifname, IFNAMSIZ);
 			ifnet_lock();
 			ifp = ifunit(ps.ifname);
-			if (ifp )
+			ifnet_unlock();
+			if (ifp)
 				psp->baudrate = ifp->if_baudrate;
 			else
 				error = EINVAL;
-			ifnet_unlock();
 		} else
 			error = EINVAL;
 		break;
@@ -1932,8 +2000,10 @@ pfioctl(struct dev_ioctl_args *ap)
 		struct pf_altq		*altq;
 
 		/* enable all altq interfaces on active list */
+		/* XXX: locking? */
 		TAILQ_FOREACH(altq, pf_altqs_active, entries) {
-			if (altq->qname[0] == 0) {
+			if (altq->qname[0] == 0 && (altq->local_flags &
+			    PFALTQ_FLAG_IF_REMOVED) == 0) {
 				error = pf_enable_altq(altq);
 				if (error != 0)
 					break;
@@ -1950,7 +2020,8 @@ pfioctl(struct dev_ioctl_args *ap)
 
 		/* disable all altq interfaces on active list */
 		TAILQ_FOREACH(altq, pf_altqs_active, entries) {
-			if (altq->qname[0] == 0) {
+			if (altq->qname[0] == 0 && (altq->local_flags &
+			    PFALTQ_FLAG_IF_REMOVED) == 0) {
 				error = pf_disable_altq(altq);
 				if (error != 0)
 					break;
@@ -1965,6 +2036,7 @@ pfioctl(struct dev_ioctl_args *ap)
 	case DIOCADDALTQ: {
 		struct pfioc_altq	*pa = (struct pfioc_altq *)addr;
 		struct pf_altq		*altq, *a;
+		struct ifnet		*ifp;
 
 		if (pa->ticket != ticket_altqs_inactive) {
 			error = EBUSY;
@@ -1997,7 +2069,14 @@ pfioctl(struct dev_ioctl_args *ap)
 			}
 		}
 
-		error = altq_add(altq);
+		ifnet_lock();
+		ifp = ifunit(altq->ifname);
+		ifnet_unlock();
+		if (ifp == NULL)
+			altq->local_flags |= PFALTQ_FLAG_IF_REMOVED;
+		else
+			error = altq_add(altq);
+
 		if (error) {
 			kfree(altq, M_PFALTQPL);
 			break;
@@ -2066,6 +2145,10 @@ pfioctl(struct dev_ioctl_args *ap)
 		}
 		if (altq == NULL) {
 			error = EBUSY;
+			break;
+		}
+		if ((altq->local_flags & PFALTQ_FLAG_IF_REMOVED) != 0) {
+			error = ENXIO;
 			break;
 		}
 		error = altq_getqstats(altq, pq->buf, &nbytes);
