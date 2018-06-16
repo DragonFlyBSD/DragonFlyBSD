@@ -41,6 +41,7 @@
 #include <sys/queue.h>
 #include <sys/mount.h>
 #include <sys/wait.h>
+#include <sys/ioctl.h>
 
 #include <stdio.h>
 #include <stdlib.h>
