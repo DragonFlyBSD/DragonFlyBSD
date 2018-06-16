@@ -260,8 +260,8 @@ pfattach(void)
 	my_timeout[PFTM_OTHER_MULTIPLE] = 60;		/* Bidirectional */
 	my_timeout[PFTM_FRAG] = 30;			/* Fragment expire */
 	my_timeout[PFTM_INTERVAL] = 10;			/* Expire interval */
-	my_timeout[PFTM_SRC_NODE] = 0;		/* Source Tracking */
-	my_timeout[PFTM_TS_DIFF] = 30;		/* Allowed TS diff */
+	my_timeout[PFTM_SRC_NODE] = 0;			/* Source Tracking */
+	my_timeout[PFTM_TS_DIFF] = 30;			/* Allowed TS diff */
 	my_timeout[PFTM_ADAPTIVE_START] = PFSTATE_ADAPT_START;
 	my_timeout[PFTM_ADAPTIVE_END] = PFSTATE_ADAPT_END;
 	
@@ -3319,7 +3319,7 @@ pf_load(void)
 {
 	lwkt_gettoken(&pf_token);
 
-	pf_dev = make_dev(&pf_ops, 0, 0, 0, 0600, PF_NAME);
+	pf_dev = make_dev(&pf_ops, 0, UID_ROOT, GID_WHEEL, 0600, PF_NAME);
 	pfattach();
 	lockinit(&pf_consistency_lock, "pfconslck", 0, LK_CANRECURSE);
 	lockinit(&pf_global_statetbl_lock, "pfglstlk", 0, 0);
@@ -3381,7 +3381,7 @@ pf_unload(void)
 }
 
 static int
-pf_modevent(module_t mod, int type, void *data)
+pf_modevent(module_t mod, int type, void *data __unused)
 {
 	int error = 0;
 
@@ -3408,5 +3408,6 @@ static moduledata_t pf_mod = {
 	pf_modevent,
 	0
 };
+
 DECLARE_MODULE(pf, pf_mod, SI_SUB_PSEUDO, SI_ORDER_FIRST);
 MODULE_VERSION(pf, PF_MODVER);

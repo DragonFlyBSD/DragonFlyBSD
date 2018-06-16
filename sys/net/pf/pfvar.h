@@ -70,7 +70,6 @@ extern struct lwkt_token pf_gtoken;
 
 
 #define RTLABEL_LEN 32
-#define	IFG_ALL		"all"		/* group contains all interfaces */
 #define BPF_DIRECTION_OUT	(1<<1)
 #define	PWAIT 0
 #define RT_NUMFIBS 1
@@ -1900,6 +1899,7 @@ void		 pfi_cleanup(void);
 void		 pfi_attach_clone(struct if_clone *);
 void		 pfi_kif_ref(struct pfi_kif *, enum pfi_kif_refs);
 void		 pfi_kif_unref(struct pfi_kif *, enum pfi_kif_refs);
+struct pfi_kif	*pfi_kif_find(const char *);
 int		 pfi_kif_match(struct pfi_kif *, struct pfi_kif *);
 void		 pfi_attach_ifnet(struct ifnet *);
 void		 pfi_detach_ifnet(struct ifnet *);
