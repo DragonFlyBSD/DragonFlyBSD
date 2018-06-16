@@ -325,8 +325,8 @@ struct	ifconf {
 
 struct ifg_req {
 	union {
-		char			 ifgrqu_group[IFNAMSIZ];
-		char			 ifgrqu_member[IFNAMSIZ];
+		char	ifgrqu_group[IFNAMSIZ];
+		char	ifgrqu_member[IFNAMSIZ];
 	} ifgrq_ifgrqu;
 #define	ifgrq_group	ifgrq_ifgrqu.ifgrqu_group
 #define	ifgrq_member	ifgrq_ifgrqu.ifgrqu_member

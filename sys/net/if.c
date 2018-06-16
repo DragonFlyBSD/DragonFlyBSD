@@ -47,6 +47,7 @@
 #include <sys/kernel.h>
 #include <sys/ktr.h>
 #include <sys/mutex.h>
+#include <sys/lock.h>
 #include <sys/sockio.h>
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
@@ -78,15 +79,14 @@
 #include <machine/smp.h>
 
 #if defined(INET) || defined(INET6)
-/*XXX*/
 #include <netinet/in.h>
 #include <netinet/in_var.h>
 #include <netinet/if_ether.h>
 #ifdef INET6
 #include <netinet6/in6_var.h>
 #include <netinet6/in6_ifattach.h>
-#endif
-#endif
+#endif /* INET6 */
+#endif /* INET || INET6 */
 
 struct netmsg_ifaddr {
 	struct netmsg_base base;
@@ -130,6 +130,11 @@ static struct ifnet_array *ifnet_array_add(struct ifnet *,
 		    const struct ifnet_array *);
 static struct ifnet_array *ifnet_array_del(struct ifnet *,
 		    const struct ifnet_array *);
+static struct ifg_group *if_creategroup(const char *);
+static int	if_destroygroup(struct ifg_group *);
+static int	if_delgroup_locked(struct ifnet *, const char *);
+static int	if_getgroups(struct ifgroupreq *, struct ifnet *);
+static int	if_getgroupmembers(struct ifgroupreq *);
 
 #ifdef INET6
 /*
@@ -168,6 +173,8 @@ MALLOC_DEFINE(M_IFNET, "ifnet", "interface structure");
 
 int			ifqmaxlen = IFQ_MAXLEN;
 struct ifnethead	ifnet = TAILQ_HEAD_INITIALIZER(ifnet);
+struct ifgrouphead	ifg_head = TAILQ_HEAD_INITIALIZER(ifg_head);
+static struct lock	ifgroup_lock;
 
 static struct ifnet_array	ifnet_array0;
 static struct ifnet_array	*ifnet_array = &ifnet_array0;
@@ -209,9 +216,7 @@ KTR_INFO(KTR_IF_START, if_start, contend_sched, 3,
 KTR_INFO(KTR_IF_START, if_start, chase_sched, 4,
 	 IF_START_KTR_STRING, IF_START_KTR_ARGS);
 #define logifstart(name, arg)	KTR_LOG(if_start_ ## name, arg)
-#endif
-
-TAILQ_HEAD(, ifg_group) ifg_head = TAILQ_HEAD_INITIALIZER(ifg_head);
+#endif /* notyet */
 
 /*
  * Network interface utility routines.
@@ -223,6 +228,7 @@ TAILQ_HEAD(, ifg_group) ifg_head = TAILQ_HEAD_INITIALIZER(ifg_head);
 static void
 ifinit(void *dummy)
 {
+	lockinit(&ifgroup_lock, "ifgroup", 0, 0);
 
 	callout_init_mp(&if_slowtimo_timer);
 	netmsg_init(&if_slowtimo_netmsg, NULL, &netisr_adone_rport,
@@ -528,6 +534,7 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	TAILQ_INIT(&ifp->if_multiaddrs);
 	TAILQ_INIT(&ifp->if_groups);
 	getmicrotime(&ifp->if_lastchange);
+	if_addgroup(ifp, IFG_ALL);
 
 	/*
 	 * create a Link Level name for this device
@@ -919,6 +926,7 @@ void
 if_detach(struct ifnet *ifp)
 {
 	struct ifnet_array *old_ifnet_array;
+	struct ifg_list *ifgl;
 	struct netmsg_if_rtdel msg;
 	struct domain *dp;
 	int q;
@@ -958,6 +966,11 @@ if_detach(struct ifnet *ifp)
 	ifnet_array = ifnet_array_del(ifp, old_ifnet_array);
 
 	ifnet_unlock();
+
+	ifgroup_lockmgr(LK_EXCLUSIVE);
+	while ((ifgl = TAILQ_FIRST(&ifp->if_groups)) != NULL)
+		if_delgroup_locked(ifp, ifgl->ifgl_group->ifg_group);
+	ifgroup_lockmgr(LK_RELEASE);
 
 	/*
 	 * Sync all netisrs so that the old ifnet array is no longer
@@ -1056,197 +1069,280 @@ if_detach(struct ifnet *ifp)
 	crit_exit();
 }
 
-/*
- * Create interface group without members
- */
-struct ifg_group *
-if_creategroup(const char *groupname)
+int
+ifgroup_lockmgr(u_int flags)
 {
-        struct ifg_group        *ifg = NULL;
-
-        if ((ifg = (struct ifg_group *)kmalloc(sizeof(struct ifg_group),
-            M_TEMP, M_NOWAIT)) == NULL)
-                return (NULL);
-
-        strlcpy(ifg->ifg_group, groupname, sizeof(ifg->ifg_group));
-        ifg->ifg_refcnt = 0;
-        ifg->ifg_carp_demoted = 0;
-        TAILQ_INIT(&ifg->ifg_members);
-#if NPF > 0
-        pfi_attach_ifgroup(ifg);
-#endif
-        TAILQ_INSERT_TAIL(&ifg_head, ifg, ifg_next);
-
-        return (ifg);
+	return lockmgr(&ifgroup_lock, flags);
 }
 
 /*
- * Add a group to an interface
+ * Create an empty interface group.
  */
-int
-if_addgroup(struct ifnet *ifp, const char *groupname)
+static struct ifg_group *
+if_creategroup(const char *groupname)
 {
-	struct ifg_list		*ifgl;
-	struct ifg_group	*ifg = NULL;
-	struct ifg_member	*ifgm;
+	struct ifg_group *ifg;
 
-	if (groupname[0] && groupname[strlen(groupname) - 1] >= '0' &&
-	    groupname[strlen(groupname) - 1] <= '9')
-		return (EINVAL);
+	ifg = kmalloc(sizeof(*ifg), M_IFNET, M_WAITOK);
+	strlcpy(ifg->ifg_group, groupname, sizeof(ifg->ifg_group));
+	ifg->ifg_refcnt = 0;
+	ifg->ifg_carp_demoted = 0;
+	TAILQ_INIT(&ifg->ifg_members);
 
-	TAILQ_FOREACH(ifgl, &ifp->if_groups, ifgl_next)
-		if (!strcmp(ifgl->ifgl_group->ifg_group, groupname))
-			return (EEXIST);
+	ifgroup_lockmgr(LK_EXCLUSIVE);
+	TAILQ_INSERT_TAIL(&ifg_head, ifg, ifg_next);
+	ifgroup_lockmgr(LK_RELEASE);
 
-	if ((ifgl = kmalloc(sizeof(*ifgl), M_TEMP, M_NOWAIT)) == NULL)
-		return (ENOMEM);
+	EVENTHANDLER_INVOKE(group_attach_event, ifg);
 
-	if ((ifgm = kmalloc(sizeof(*ifgm), M_TEMP, M_NOWAIT)) == NULL) {
-		kfree(ifgl, M_TEMP);
-		return (ENOMEM);
-	}
+	return (ifg);
+}
 
-	TAILQ_FOREACH(ifg, &ifg_head, ifg_next)
-		if (!strcmp(ifg->ifg_group, groupname))
-			break;
+/*
+ * Destroy an empty interface group.
+ */
+static int
+if_destroygroup(struct ifg_group *ifg)
+{
+	KASSERT(ifg->ifg_refcnt == 0,
+		("trying to delete a non-empty interface group"));
 
-	if (ifg == NULL && (ifg = if_creategroup(groupname)) == NULL) {
-		kfree(ifgl, M_TEMP);
-		kfree(ifgm, M_TEMP);
-		return (ENOMEM);
-	}
+	ifgroup_lockmgr(LK_EXCLUSIVE);
+	TAILQ_REMOVE(&ifg_head, ifg, ifg_next);
+	ifgroup_lockmgr(LK_RELEASE);
 
-	ifg->ifg_refcnt++;
-	ifgl->ifgl_group = ifg;
-	ifgm->ifgm_ifp = ifp;
-
-	TAILQ_INSERT_TAIL(&ifg->ifg_members, ifgm, ifgm_next);
-	TAILQ_INSERT_TAIL(&ifp->if_groups, ifgl, ifgl_next);
-
-#if NPF > 0
-	pfi_group_change(groupname);
-#endif
+	EVENTHANDLER_INVOKE(group_detach_event, ifg);
+	kfree(ifg, M_IFNET);
 
 	return (0);
 }
 
 /*
- * Remove a group from an interface
+ * Add the interface to a group.
+ * The target group will be created if it doesn't exist.
  */
 int
-if_delgroup(struct ifnet *ifp, const char *groupname)
+if_addgroup(struct ifnet *ifp, const char *groupname)
 {
-	struct ifg_list		*ifgl;
-	struct ifg_member	*ifgm;
+	struct ifg_list *ifgl;
+	struct ifg_group *ifg;
+	struct ifg_member *ifgm;
 
-	TAILQ_FOREACH(ifgl, &ifp->if_groups, ifgl_next)
-		if (!strcmp(ifgl->ifgl_group->ifg_group, groupname))
+	if (groupname[0] &&
+	    groupname[strlen(groupname) - 1] >= '0' &&
+	    groupname[strlen(groupname) - 1] <= '9')
+		return (EINVAL);
+
+	ifgroup_lockmgr(LK_SHARED);
+
+	TAILQ_FOREACH(ifgl, &ifp->if_groups, ifgl_next) {
+		if (strcmp(ifgl->ifgl_group->ifg_group, groupname) == 0) {
+			ifgroup_lockmgr(LK_RELEASE);
+			return (EEXIST);
+		}
+	}
+
+	TAILQ_FOREACH(ifg, &ifg_head, ifg_next) {
+		if (strcmp(ifg->ifg_group, groupname) == 0)
 			break;
+	}
+
+	ifgroup_lockmgr(LK_RELEASE);
+
+	if (ifg == NULL)
+		ifg = if_creategroup(groupname);
+
+	ifgl = kmalloc(sizeof(*ifgl), M_IFNET, M_WAITOK);
+	ifgm = kmalloc(sizeof(*ifgm), M_IFNET, M_WAITOK);
+	ifgl->ifgl_group = ifg;
+	ifgm->ifgm_ifp = ifp;
+	ifg->ifg_refcnt++;
+
+	ifgroup_lockmgr(LK_EXCLUSIVE);
+	TAILQ_INSERT_TAIL(&ifg->ifg_members, ifgm, ifgm_next);
+	TAILQ_INSERT_TAIL(&ifp->if_groups, ifgl, ifgl_next);
+	ifgroup_lockmgr(LK_RELEASE);
+
+	EVENTHANDLER_INVOKE(group_change_event, groupname);
+
+	return (0);
+}
+
+/*
+ * Remove the interface from a group.
+ * The group will be destroyed if it becomes empty.
+ *
+ * The 'ifgroup_lock' must be hold exclusively when calling this.
+ */
+static int
+if_delgroup_locked(struct ifnet *ifp, const char *groupname)
+{
+	struct ifg_list *ifgl;
+	struct ifg_member *ifgm;
+
+	KKASSERT(lockstatus(&ifgroup_lock, curthread) == LK_EXCLUSIVE);
+
+	TAILQ_FOREACH(ifgl, &ifp->if_groups, ifgl_next) {
+		if (strcmp(ifgl->ifgl_group->ifg_group, groupname) == 0)
+			break;
+	}
 	if (ifgl == NULL)
 		return (ENOENT);
 
 	TAILQ_REMOVE(&ifp->if_groups, ifgl, ifgl_next);
 
-	TAILQ_FOREACH(ifgm, &ifgl->ifgl_group->ifg_members, ifgm_next)
+	TAILQ_FOREACH(ifgm, &ifgl->ifgl_group->ifg_members, ifgm_next) {
 		if (ifgm->ifgm_ifp == ifp)
 			break;
+	}
 
 	if (ifgm != NULL) {
 		TAILQ_REMOVE(&ifgl->ifgl_group->ifg_members, ifgm, ifgm_next);
-		kfree(ifgm, M_TEMP);
+
+		ifgroup_lockmgr(LK_RELEASE);
+		EVENTHANDLER_INVOKE(group_change_event, groupname);
+		ifgroup_lockmgr(LK_EXCLUSIVE);
+
+		kfree(ifgm, M_IFNET);
+		ifgl->ifgl_group->ifg_refcnt--;
 	}
 
-	if (--ifgl->ifgl_group->ifg_refcnt == 0) {
-		TAILQ_REMOVE(&ifg_head, ifgl->ifgl_group, ifg_next);
-#if NPF > 0
-		pfi_detach_ifgroup(ifgl->ifgl_group);
-#endif
-		kfree(ifgl->ifgl_group, M_TEMP);
+	if (ifgl->ifgl_group->ifg_refcnt == 0) {
+		ifgroup_lockmgr(LK_RELEASE);
+		if_destroygroup(ifgl->ifgl_group);
+		ifgroup_lockmgr(LK_EXCLUSIVE);
 	}
 
-	kfree(ifgl, M_TEMP);
-
-#if NPF > 0
-	pfi_group_change(groupname);
-#endif
+	kfree(ifgl, M_IFNET);
 
 	return (0);
 }
 
-/*
- * Stores all groups from an interface in memory pointed
- * to by data
- */
 int
-if_getgroup(caddr_t data, struct ifnet *ifp)
+if_delgroup(struct ifnet *ifp, const char *groupname)
 {
-	int			 len, error;
-	struct ifg_list		*ifgl;
-	struct ifg_req		 ifgrq, *ifgp;
-	struct ifgroupreq	*ifgr = (struct ifgroupreq *)data;
+	int error;
+
+	ifgroup_lockmgr(LK_EXCLUSIVE);
+	error = if_delgroup_locked(ifp, groupname);
+	ifgroup_lockmgr(LK_RELEASE);
+
+	return (error);
+}
+
+/*
+ * Store all the groups that the interface belongs to in memory
+ * pointed to by data.
+ */
+static int
+if_getgroups(struct ifgroupreq *ifgr, struct ifnet *ifp)
+{
+	struct ifg_list *ifgl;
+	struct ifg_req *ifgrq, *p;
+	int len, error;
+
+	len = 0;
+	ifgroup_lockmgr(LK_SHARED);
+	TAILQ_FOREACH(ifgl, &ifp->if_groups, ifgl_next)
+		len += sizeof(struct ifg_req);
+	ifgroup_lockmgr(LK_RELEASE);
 
 	if (ifgr->ifgr_len == 0) {
-		TAILQ_FOREACH(ifgl, &ifp->if_groups, ifgl_next)
-			ifgr->ifgr_len += sizeof(struct ifg_req);
+		/*
+		 * Caller is asking how much memory should be allocated in
+		 * the next request in order to hold all the groups.
+		 */
+		ifgr->ifgr_len = len;
 		return (0);
+	} else if (ifgr->ifgr_len != len) {
+		return (EINVAL);
 	}
 
-	len = ifgr->ifgr_len;
-	ifgp = ifgr->ifgr_groups;
+	ifgrq = kmalloc(len, M_TEMP, M_INTWAIT | M_NULLOK | M_ZERO);
+	if (ifgrq == NULL)
+		return (ENOMEM);
+
+	ifgroup_lockmgr(LK_SHARED);
+	p = ifgrq;
 	TAILQ_FOREACH(ifgl, &ifp->if_groups, ifgl_next) {
-		if (len < sizeof(ifgrq))
+		if (len < sizeof(struct ifg_req)) {
+			ifgroup_lockmgr(LK_RELEASE);
 			return (EINVAL);
-		bzero(&ifgrq, sizeof ifgrq);
-		strlcpy(ifgrq.ifgrq_group, ifgl->ifgl_group->ifg_group,
-		    sizeof(ifgrq.ifgrq_group));
-		if ((error = copyout((caddr_t)&ifgrq, (caddr_t)ifgp,
-		    sizeof(struct ifg_req))))
-			return (error);
-		len -= sizeof(ifgrq);
-		ifgp++;
+		}
+
+		strlcpy(p->ifgrq_group, ifgl->ifgl_group->ifg_group,
+			sizeof(ifgrq->ifgrq_group));
+		len -= sizeof(struct ifg_req);
+		p++;
 	}
+	ifgroup_lockmgr(LK_RELEASE);
+
+	error = copyout(ifgrq, ifgr->ifgr_groups, ifgr->ifgr_len);
+	kfree(ifgrq, M_TEMP);
+	if (error)
+		return (error);
 
 	return (0);
 }
 
 /*
- * Stores all members of a group in memory pointed to by data
+ * Store all the members of a group in memory pointed to by data.
  */
-int
-if_getgroupmembers(caddr_t data)
+static int
+if_getgroupmembers(struct ifgroupreq *ifgr)
 {
-	struct ifgroupreq	*ifgr = (struct ifgroupreq *)data;
-	struct ifg_group	*ifg;
-	struct ifg_member	*ifgm;
-	struct ifg_req		 ifgrq, *ifgp;
-	int			 len, error;
+	struct ifg_group *ifg;
+	struct ifg_member *ifgm;
+	struct ifg_req *ifgrq, *p;
+	int len, error;
 
-	TAILQ_FOREACH(ifg, &ifg_head, ifg_next)
-		if (!strcmp(ifg->ifg_group, ifgr->ifgr_name))
+	ifgroup_lockmgr(LK_SHARED);
+
+	TAILQ_FOREACH(ifg, &ifg_head, ifg_next) {
+		if (strcmp(ifg->ifg_group, ifgr->ifgr_name) == 0)
 			break;
-	if (ifg == NULL)
+	}
+	if (ifg == NULL) {
+		ifgroup_lockmgr(LK_RELEASE);
 		return (ENOENT);
+	}
+
+	len = 0;
+	TAILQ_FOREACH(ifgm, &ifg->ifg_members, ifgm_next)
+		len += sizeof(struct ifg_req);
+
+	ifgroup_lockmgr(LK_RELEASE);
 
 	if (ifgr->ifgr_len == 0) {
-		TAILQ_FOREACH(ifgm, &ifg->ifg_members, ifgm_next)
-			ifgr->ifgr_len += sizeof(ifgrq);
+		ifgr->ifgr_len = len;
 		return (0);
+	} else if (ifgr->ifgr_len != len) {
+		return (EINVAL);
 	}
 
-	len = ifgr->ifgr_len;
-	ifgp = ifgr->ifgr_groups;
+	ifgrq = kmalloc(len, M_TEMP, M_INTWAIT | M_NULLOK | M_ZERO);
+	if (ifgrq == NULL)
+		return (ENOMEM);
+
+	ifgroup_lockmgr(LK_SHARED);
+	p = ifgrq;
 	TAILQ_FOREACH(ifgm, &ifg->ifg_members, ifgm_next) {
-		if (len < sizeof(ifgrq))
+		if (len < sizeof(struct ifg_req)) {
+			ifgroup_lockmgr(LK_RELEASE);
 			return (EINVAL);
-		bzero(&ifgrq, sizeof ifgrq);
-		strlcpy(ifgrq.ifgrq_member, ifgm->ifgm_ifp->if_xname,
-		    sizeof(ifgrq.ifgrq_member));
-		if ((error = copyout((caddr_t)&ifgrq, (caddr_t)ifgp,
-		    sizeof(struct ifg_req))))
-			return (error);
-		len -= sizeof(ifgrq);
-		ifgp++;
+		}
+
+		strlcpy(p->ifgrq_member, ifgm->ifgm_ifp->if_xname,
+			sizeof(p->ifgrq_member));
+		len -= sizeof(struct ifg_req);
+		p++;
 	}
+	ifgroup_lockmgr(LK_RELEASE);
+
+	error = copyout(ifgrq, ifgr->ifgr_groups, ifgr->ifgr_len);
+	kfree(ifgrq, M_TEMP);
+	if (error)
+		return (error);
 
 	return (0);
 }
@@ -1815,6 +1911,7 @@ int
 ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 {
 	struct ifnet *ifp;
+	struct ifgroupreq *ifgr;
 	struct ifreq *ifr;
 	struct ifstat *ifs;
 	int error, do_ifup = 0;
@@ -1840,13 +1937,15 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		if ((error = priv_check_cred(cred, PRIV_ROOT, 0)) != 0)
 			return (error);
 		return (if_clone_create(ifr->ifr_name, sizeof(ifr->ifr_name),
-		    	cmd == SIOCIFCREATE2 ? ifr->ifr_data : NULL));
+			cmd == SIOCIFCREATE2 ? ifr->ifr_data : NULL));
 	case SIOCIFDESTROY:
 		if ((error = priv_check_cred(cred, PRIV_ROOT, 0)) != 0)
 			return (error);
 		return (if_clone_destroy(ifr->ifr_name));
 	case SIOCIFGCLONERS:
 		return (if_clone_list((struct if_clonereq *)data));
+	case SIOCGIFGMEMB:
+		return (if_getgroupmembers((struct ifgroupreq *)data));
 	default:
 		break;
 	}
@@ -2114,7 +2213,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	case SIOCSIFPHYADDR_IN6:
 #endif
 	case SIOCSLIFPHYADDR:
-        case SIOCSIFMEDIA:
+	case SIOCSIFMEDIA:
 	case SIOCSIFGENERIC:
 		error = priv_check_cred(cred, PRIV_ROOT, 0);
 		if (error)
@@ -2155,6 +2254,28 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		error = if_setlladdr(ifp, ifr->ifr_addr.sa_data,
 				     ifr->ifr_addr.sa_len);
 		EVENTHANDLER_INVOKE(iflladdr_event, ifp);
+		break;
+
+	case SIOCAIFGROUP:
+		ifgr = (struct ifgroupreq *)ifr;
+		if ((error = priv_check_cred(cred, PRIV_NET_ADDIFGROUP, 0)))
+			return (error);
+		if ((error = if_addgroup(ifp, ifgr->ifgr_group)))
+			return (error);
+		break;
+
+	case SIOCDIFGROUP:
+		ifgr = (struct ifgroupreq *)ifr;
+		if ((error = priv_check_cred(cred, PRIV_NET_DELIFGROUP, 0)))
+			return (error);
+		if ((error = if_delgroup(ifp, ifgr->ifgr_group)))
+			return (error);
+		break;
+
+	case SIOCGIFGROUP:
+		ifgr = (struct ifgroupreq *)ifr;
+		if ((error = if_getgroups(ifgr, ifp)))
+			return (error);
 		break;
 
 	default:

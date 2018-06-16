@@ -75,7 +75,7 @@
 /* 36 SIOCGIFCONF */
 /* 37 SIOCGIFNETMASK */
 #define	SIOCGIFDATA	_IOWR('i', 38, struct ifreq)	/* get if_data */
-#define	SIOCSIFNAME	_IOW('i', 40, struct ifreq)	/* set IF name */
+#define	SIOCSIFNAME	 _IOW('i', 40, struct ifreq)	/* set IF name */
 
 #define	SIOCADDMULTI	 _IOW('i', 49, struct ifreq)	/* add m'cast addr */
 #define	SIOCDELMULTI	 _IOW('i', 50, struct ifreq)	/* del m'cast addr */
@@ -119,6 +119,9 @@
 #define SIOCSIFTSOLEN	 _IOW('i', 127, struct ifreq)	/* set max TSO len */
 #define SIOCGIFTSOLEN	_IOWR('i', 128, struct ifreq)	/* get max TSO len */
 
+#define	SIOCAIFGROUP	 _IOW('i', 135, struct ifgroupreq) /* add an ifgroup */
+#define	SIOCGIFGROUP	_IOWR('i', 136, struct ifgroupreq) /* get ifgroups */
+#define	SIOCDIFGROUP	 _IOW('i', 137, struct ifgroupreq) /* delete ifgroup */
 #define	SIOCGIFGMEMB	_IOWR('i', 138, struct ifgroupreq) /* get members */
 
 #endif /* !_SYS_SOCKIO_H_ */

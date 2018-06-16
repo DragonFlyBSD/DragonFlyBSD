@@ -105,9 +105,14 @@ struct	ifdata_pcpu;
 
 #define IF_DUNIT_NONE   -1
 
-TAILQ_HEAD(ifnethead, ifnet);	/* we use TAILQs so that the order of */
-TAILQ_HEAD(ifaddrhead, ifaddr_container); /* instantiation is preserved in the list */
+/*
+ * we use TAILQs so that the order of instantiation is preserved in
+ * the list.
+ */
+TAILQ_HEAD(ifnethead, ifnet);
+TAILQ_HEAD(ifaddrhead, ifaddr_container);
 TAILQ_HEAD(ifmultihead, ifmultiaddr);
+TAILQ_HEAD(ifgrouphead, ifg_group);
 
 /*
  * Structure defining a mbuf queue.
@@ -330,7 +335,12 @@ struct ifnet {
 	struct	if_data if_data;	/* NOTE: stats are in if_data_pcpu */
 	struct	ifmultihead if_multiaddrs; /* multicast addresses configured */
 	int	if_amcount;		/* number of all-multicast requests */
-/* procedure handles */
+	TAILQ_HEAD(, ifg_list) if_groups; /* linked list of groups per if;
+					   * protected by 'ifgroup_lock' */
+
+	/*
+	 * procedure handlers
+	 */
 	int	(*if_output)		/* output routine (enqueue) */
 		(struct ifnet *, struct mbuf *, struct sockaddr *,
 		     struct rtentry *);
@@ -348,7 +358,6 @@ struct ifnet {
 	int	(*if_resolvemulti)	/* validate/resolve multicast */
 		(struct ifnet *, struct sockaddr **, struct sockaddr *);
 	void	*if_unused5;
-	TAILQ_HEAD(, ifg_list) if_groups; /* linked list of groups per if */
 	int	(*if_mapsubq)		/* cpuid to if_snd subqueue map */
 		(struct ifaltq *, int);
 	int	if_unused2;
@@ -723,12 +732,12 @@ struct ifnet_array {
  * interface groups
  */
 struct ifg_group {
-	char				 ifg_group[IFNAMSIZ];
-	u_int				 ifg_refcnt;
-	void				*ifg_pf_kif;
-	int				 ifg_carp_demoted;
-	TAILQ_HEAD(, ifg_member)	 ifg_members;
-	TAILQ_ENTRY(ifg_group)		 ifg_next;
+	char			 ifg_group[IFNAMSIZ];
+	u_int			 ifg_refcnt;
+	void			*ifg_pf_kif;
+	int			 ifg_carp_demoted;
+	TAILQ_HEAD(, ifg_member) ifg_members;
+	TAILQ_ENTRY(ifg_group)	 ifg_next;
 };
 
 struct ifg_member {
@@ -889,6 +898,7 @@ int			ifnet_array_isempty(void);
 
 extern	int ifqmaxlen;
 extern	struct ifnet *loif;
+extern struct ifgrouphead ifg_head;
 
 struct ip;
 struct tcphdr;
@@ -935,11 +945,9 @@ void	if_up(struct ifnet *);
 int	ifioctl(struct socket *, u_long, caddr_t, struct ucred *);
 int	ifpromisc(struct ifnet *, int);
 
-struct	ifg_group *if_creategroup(const char *);
-int     if_addgroup(struct ifnet *, const char *);
-int     if_delgroup(struct ifnet *, const char *);
-int     if_getgroup(caddr_t, struct ifnet *);
-int     if_getgroupmembers(caddr_t);
+int	ifgroup_lockmgr(u_int flags);
+int	if_addgroup(struct ifnet *, const char *);
+int	if_delgroup(struct ifnet *, const char *);
 
 struct	ifaddr *ifa_ifwithaddr(struct sockaddr *);
 struct	ifaddr *ifa_ifwithdstaddr(struct sockaddr *);

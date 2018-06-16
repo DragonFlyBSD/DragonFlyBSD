@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/EVENTHANDLER.9,v 1.4 2005/10/11 16:05:35 keramida Exp $
 .\"
-.Dd June 21, 2018
+.Dd June 22, 2018
 .Dt EVENTHANDLER 9
 .Os
 .Sh NAME
@@ -190,6 +190,12 @@ Callbacks invoked when the system is being woken up.
 .It Vt dev_clone
 Callbacks invoked when a new entry is created under
 .Pa /dev .
+.It Vt group_attach_event
+Callbacks invoked when a new interface group has been created.
+.It Vt group_change_event
+Callbacks invoked when the members of an interface group have changed.
+.It Vt group_detach_event
+Callbacks invoked when an interface group has been removed due to no members.
 .It Vt if_clone_event
 Callbacks invoked when a new interface cloner is attached.
 .It Vt ifaddr_event
