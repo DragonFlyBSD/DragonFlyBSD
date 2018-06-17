@@ -3,7 +3,6 @@
 
 LIB=		y
 SHLIB_MAJOR=	3
-WARNS?=		1
 
 SRCS=	main.c yyerror.c
 
