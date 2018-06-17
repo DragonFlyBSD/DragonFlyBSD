@@ -1898,9 +1898,6 @@ static void __exit i915_exit(void)
 
 DRIVER_MODULE_ORDERED(i915, vgapci, i915_driver, drm_devclass, NULL, NULL, SI_ORDER_ANY);
 MODULE_DEPEND(i915, drm, 1, 1, 1);
-MODULE_DEPEND(i915, iicbus, 1, 1, 1);
-MODULE_DEPEND(i915, iic, 1, 1, 1);
-MODULE_DEPEND(i915, iicbb, 1, 1, 1);
 #ifdef CONFIG_ACPI
 MODULE_DEPEND(i915, acpi, 1, 1, 1);
 #endif

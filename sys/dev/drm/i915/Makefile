@@ -92,7 +92,7 @@ SRCS += i915_vgpu.c
 # legacy horrors
 SRCS += i915_dma.c
 
-SRCS   += acpi_if.h device_if.h bus_if.h pci_if.h iicbus_if.h iicbb_if.h \
+SRCS   += acpi_if.h device_if.h bus_if.h pci_if.h \
 	  opt_acpi.h opt_drm.h opt_ktr.h
 
 KCFLAGS+= -I${SYSDIR}/dev/drm/include
