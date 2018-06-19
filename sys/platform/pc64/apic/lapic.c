@@ -123,7 +123,7 @@ int	cpu_id_to_apic_id[NAPICID];
 int	apic_id_to_cpu_id[NAPICID];
 int	lapic_enable = 1;
 int	lapic_usable = 0;
-int	x2apic_enable = 0;
+int	x2apic_enable = 1;
 
 SYSCTL_INT(_hw, OID_AUTO, x2apic_enable, CTLFLAG_RD, &x2apic_enable, 0, "");
 
