@@ -80,9 +80,7 @@ SRCS=	allocator.c \
 	cmpbuf.c \
 	prepargs.c \
 	asnprintf.c \
-	dup2.c \
 	error.c \
-	fcntl.c \
 	fnmatch.c \
 	getopt.c \
 	getopt1.c \
@@ -92,8 +90,7 @@ SRCS=	allocator.c \
 	secure_getenv.c \
 	strerror.c \
 	strerror-override.c \
-	vasnprintf.c \
-	wcwidth.c
+	vasnprintf.c
 
 # sources that produces empty objects
 #SRCS+=	\

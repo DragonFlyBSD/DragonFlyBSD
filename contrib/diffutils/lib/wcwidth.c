@@ -18,7 +18,6 @@
 
 /* Specification.  */
 #include <wchar.h>
-#include <gnuwidechar.h>
 
 /* Get iswprint.  */
 #include <wctype.h>
@@ -28,7 +27,8 @@
 #include "uniwidth.h"
 
 int
-special_wcwidth (wchar_t wc)
+wcwidth (wchar_t wc)
+#undef wcwidth
 {
   /* In UTF-8 locales, use a Unicode aware width function.  */
   const char *encoding = locale_charset ();

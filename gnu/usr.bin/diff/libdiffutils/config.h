@@ -609,7 +609,7 @@
 /* #undef HAVE_NDIR_H */
 
 /* Define to 1 if you have the `newlocale' function. */
-/* #undef HAVE_NEWLOCALE */
+#define HAVE_NEWLOCALE 1
 
 /* Define to 1 if you have the `nl_langinfo' function. */
 #define HAVE_NL_LANGINFO 1
@@ -649,7 +649,7 @@
 /* #undef HAVE_RAW_DECL_DUP3 */
 
 /* Define to 1 if duplocale is declared even after undefining macros. */
-/* #undef HAVE_RAW_DECL_DUPLOCALE */
+#define HAVE_RAW_DECL_DUPLOCALE 1
 
 /* Define to 1 if endusershell is declared even after undefining macros. */
 #define HAVE_RAW_DECL_ENDUSERSHELL 1
@@ -709,7 +709,7 @@
 #define HAVE_RAW_DECL_FTRUNCATE 1
 
 /* Define to 1 if futimens is declared even after undefining macros. */
-/* #undef HAVE_RAW_DECL_FUTIMENS */
+#define HAVE_RAW_DECL_FUTIMENS 1
 
 /* Define to 1 if getcwd is declared even after undefining macros. */
 #define HAVE_RAW_DECL_GETCWD 1
@@ -808,7 +808,7 @@
 #define HAVE_RAW_DECL_MBSINIT 1
 
 /* Define to 1 if mbsnrtowcs is declared even after undefining macros. */
-/* #undef HAVE_RAW_DECL_MBSNRTOWCS */
+#define HAVE_RAW_DECL_MBSNRTOWCS 1
 
 /* Define to 1 if mbsrtowcs is declared even after undefining macros. */
 #define HAVE_RAW_DECL_MBSRTOWCS 1
@@ -841,10 +841,10 @@
 #define HAVE_RAW_DECL_MKNODAT 1
 
 /* Define to 1 if mkostemp is declared even after undefining macros. */
-/* #undef HAVE_RAW_DECL_MKOSTEMP */
+#define HAVE_RAW_DECL_MKOSTEMP 1
 
 /* Define to 1 if mkostemps is declared even after undefining macros. */
-/* #undef HAVE_RAW_DECL_MKOSTEMPS */
+#define HAVE_RAW_DECL_MKOSTEMPS 1
 
 /* Define to 1 if mkstemp is declared even after undefining macros. */
 #define HAVE_RAW_DECL_MKSTEMP 1
@@ -865,7 +865,7 @@
 #define HAVE_RAW_DECL_PIPE 1
 
 /* Define to 1 if pipe2 is declared even after undefining macros. */
-/* #undef HAVE_RAW_DECL_PIPE2 */
+#define HAVE_RAW_DECL_PIPE2 1
 
 /* Define to 1 if popen is declared even after undefining macros. */
 #define HAVE_RAW_DECL_POPEN 1
@@ -1069,7 +1069,7 @@
 #define HAVE_RAW_DECL_USLEEP 1
 
 /* Define to 1 if utimensat is declared even after undefining macros. */
-/* #undef HAVE_RAW_DECL_UTIMENSAT */
+#define HAVE_RAW_DECL_UTIMENSAT 1
 
 /* Define to 1 if vdprintf is declared even after undefining macros. */
 #define HAVE_RAW_DECL_VDPRINTF 1
@@ -1081,10 +1081,10 @@
 #define HAVE_RAW_DECL_WAITPID 1
 
 /* Define to 1 if wcpcpy is declared even after undefining macros. */
-/* #undef HAVE_RAW_DECL_WCPCPY */
+#define HAVE_RAW_DECL_WCPCPY 1
 
 /* Define to 1 if wcpncpy is declared even after undefining macros. */
-/* #undef HAVE_RAW_DECL_WCPNCPY */
+#define HAVE_RAW_DECL_WCPNCPY 1
 
 /* Define to 1 if wcrtomb is declared even after undefining macros. */
 #define HAVE_RAW_DECL_WCRTOMB 1
@@ -1132,7 +1132,7 @@
 #define HAVE_RAW_DECL_WCSNLEN 1
 
 /* Define to 1 if wcsnrtombs is declared even after undefining macros. */
-/* #undef HAVE_RAW_DECL_WCSNRTOMBS */
+#define HAVE_RAW_DECL_WCSNRTOMBS 1
 
 /* Define to 1 if wcspbrk is declared even after undefining macros. */
 #define HAVE_RAW_DECL_WCSPBRK 1
@@ -1479,7 +1479,7 @@
 #define HAVE_WORKING_VFORK 1
 
 /* Define to 1 if you have the <xlocale.h> header file. */
-/* #undef HAVE_XLOCALE_H */
+#define HAVE_XLOCALE_H 1
 
 /* Define to 1 if extending the stack slightly past the limit causes a
    SIGSEGV, and an alternate stack can be established with sigaltstack, and
@@ -1502,7 +1502,7 @@
 /* #undef HAVE___SECURE_GETENV */
 
 /* Define as const if the declaration of iconv() needs const. */
-#define ICONV_CONST
+#define ICONV_CONST 
 
 /* Define to a symbolic name denoting the flavor of iconv_open()
    implementation. */
@@ -1516,7 +1516,7 @@
 #define MALLOC_0_IS_NONNULL 1
 
 /* Define to a substitute value for mmap()'s MAP_ANONYMOUS flag. */
-#define MAP_ANONYMOUS MAP_ANON
+/* #undef MAP_ANONYMOUS */
 
 /* Define if the mbrtowc function has the NULL pwc argument bug. */
 /* #undef MBRTOWC_NULL_ARG1_BUG */
@@ -1732,7 +1732,6 @@
 /* #undef _NETBSD_SOURCE */
 
 /* The _Noreturn keyword of C11.  */
-#if 0 /* _Noreturn defined in <sys/cdef> later */
 #if ! (defined _Noreturn \
        || (defined __STDC_VERSION__ && 201112 <= __STDC_VERSION__))
 # if (3 <= __GNUC__ || (__GNUC__ == 2 && 8 <= __GNUC_MINOR__) \
@@ -1743,7 +1742,6 @@
 # else
 #  define _Noreturn
 # endif
-#endif
 #endif
 
 

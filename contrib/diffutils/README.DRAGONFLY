@@ -15,5 +15,3 @@ Local modifications applied to following files:
 	src/diff.c
 	src/diff3.c
 	src/sdiff.c
-	src/side.c
-	lib/wcwidth.c
