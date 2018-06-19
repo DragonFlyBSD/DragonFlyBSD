@@ -1824,8 +1824,6 @@ i915_attach(device_t kdev)
 	int error;
 	int dummy;
 
-	i915_init();
-
 	dev->driver = &driver;
 	error = drm_attach(kdev, i915_attach_list);
 
@@ -1895,6 +1893,8 @@ static void __exit i915_exit(void)
 	drm_pci_exit(&driver, &i915_pci_driver);
 }
 #endif
+
+module_init(i915_init);
 
 DRIVER_MODULE_ORDERED(i915, vgapci, i915_driver, drm_devclass, NULL, NULL, SI_ORDER_ANY);
 MODULE_DEPEND(i915, drm, 1, 1, 1);
