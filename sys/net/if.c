@@ -1826,7 +1826,6 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 
 	switch (cmd) {
 	case SIOCGIFCONF:
-	case OSIOCGIFCONF:
 		return (ifconf(cmd, data, cred));
 	default:
 		break;

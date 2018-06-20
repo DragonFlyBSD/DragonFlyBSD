@@ -797,8 +797,7 @@ tapioctl(struct dev_ioctl_args *ap)
 		ifp->if_flags = f | (ifp->if_flags & IFF_CANTCHANGE);
 		break;
 
-	case OSIOCGIFADDR:	/* get MAC address of the remote side */
-	case SIOCGIFADDR:
+	case SIOCGIFADDR:	/* get MAC address of the remote side */
 		bcopy(tp->ether_addr, data, sizeof(tp->ether_addr));
 		break;
 

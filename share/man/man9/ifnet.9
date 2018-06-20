@@ -28,7 +28,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/ifnet.9,v 1.9.2.10 2003/06/15 02:22:30 hmp Exp $
 .\"
-.Dd July 19, 2016
+.Dd June 20, 2018
 .Dt IFNET 9
 .Os
 .Sh NAME
@@ -838,9 +838,8 @@ further interpretation.
 The following commands are handled by
 .Fn ifioctl :
 .Pp
-.Bl -tag -width ".Dv OSIOCGIFNETMASK" -offset indent -compact
+.Bl -tag -width ".Dv SIOCSIFDSTADDR" -offset indent -compact
 .It Dv SIOCGIFCONF
-.It Dv OSIOCGIFCONF
 Get interface configuration.
 (No call-down to driver.)
 .Pp
@@ -900,18 +899,6 @@ function is called to perform the operation; qq.v.
 .It Dv SIOCSIFNETMASK
 The socket's protocol control routine is called to implement the
 requested action.
-.Pp
-.It Dv OSIOCGIFADDR
-.It Dv OSIOCGIFDSTADDR
-.It Dv OSIOCGIFBRDADDR
-.It Dv OSIOCGIFNETMASK
-The socket's protocol control routine is called to implement the
-requested action.
-On return,
-.Vt sockaddr
-structures are converted into old-style (no
-.Va sa_len
-member).
 .El
 .El
 .Pp
