@@ -1166,34 +1166,22 @@ extern struct pf_state_tree	 pf_statetbl[MAXCPU+1];
 
 /* keep synced with pfi_kif, used in RB_FIND */
 struct pfi_kif_cmp {
-	char				 pfik_ifname[IFNAMSIZ];
+	char				 pfik_name[IFNAMSIZ];
 };
 
 struct pfi_kif {
-	struct pfi_if			 pfik_if;
+	char				 pfik_name[IFNAMSIZ];
 	RB_ENTRY(pfi_kif)		 pfik_tree;
 	u_int64_t			 pfik_packets[2][2][2];
 	u_int64_t			 pfik_bytes[2][2][2];
 	u_int32_t			 pfik_tzero;
 	int				 pfik_flags;
-	struct hook_desc_head		*pfik_ah_head;
-	void				*pfik_ah_cookie;
-	struct pfi_kif			*pfik_parent;
 	struct ifnet			*pfik_ifp;
 	struct ifg_group		*pfik_group;
 	int				 pfik_states;
 	int				 pfik_rules;
 	TAILQ_HEAD(, pfi_dynaddr)	 pfik_dynaddrs;
 };
-#define pfik_name	pfik_if.pfif_name
-#define pfik_packets	pfik_if.pfif_packets
-#define pfik_bytes	pfik_if.pfif_bytes
-#define pfik_tzero	pfik_if.pfif_tzero
-#define pfik_flags	pfik_if.pfif_flags
-#define pfik_addcnt	pfik_if.pfif_addcnt
-#define pfik_delcnt	pfik_if.pfif_delcnt
-#define pfik_states	pfik_if.pfif_states
-#define pfik_rules	pfik_if.pfif_rules
 
 enum pfi_kif_refs {
 	PFI_KIF_REF_NONE,
