@@ -78,28 +78,28 @@
 #define PFLOGMTU	(32768 + MHLEN + MLEN)
 
 #ifdef PFLOGDEBUG
-#define DPRINTF(x)    do { if (pflogdebug) kprintf x ; } while (0)
+#define DPRINTF(x)	do { if (pflogdebug) kprintf x ; } while (0)
 #else
 #define DPRINTF(x)
 #endif
 
-void	pflogattach(int);
-int	pflogoutput(struct ifnet *, struct mbuf *, struct sockaddr *,
-	    	       struct rtentry *);
-int	pflogioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-void	pflogrtrequest(int, struct rtentry *, struct sockaddr *);
-void	pflogstart(struct ifnet *, struct ifaltq_subque *);
-int	pflog_clone_create(struct if_clone *, int, caddr_t);
-int	pflog_clone_destroy(struct ifnet *);
+static void	pflogattach(void);
+static int	pflogoutput(struct ifnet *, struct mbuf *,
+		    struct sockaddr *, struct rtentry *);
+static int	pflogioctl(struct ifnet *, u_long, caddr_t __unused,
+		    struct ucred * __unused);
+static void	pflogstart(struct ifnet *, struct ifaltq_subque *);
+static int	pflog_clone_create(struct if_clone *, int, caddr_t __unused);
+static int	pflog_clone_destroy(struct ifnet *);
 
-LIST_HEAD(, pflog_softc)	pflogif_list;
-struct if_clone	pflog_cloner =
-    IF_CLONE_INITIALIZER("pflog", pflog_clone_create, pflog_clone_destroy, 1, 1);
+static struct if_clone pflog_cloner = IF_CLONE_INITIALIZER(
+    PFLOGNAME, pflog_clone_create, pflog_clone_destroy, 1, 1);
 
-struct ifnet	*pflogifs[PFLOGIFS_MAX];	/* for fast access */
+static LIST_HEAD(, pflog_softc) pflogif_list;
+static struct ifnet *pflogifs[PFLOGIFS_MAX]; /* for fast access */
 
-void
-pflogattach(int npflog)
+static void
+pflogattach(void)
 {
 	int	i;
 	LIST_INIT(&pflogif_list);
@@ -108,7 +108,7 @@ pflogattach(int npflog)
 	if_clone_attach(&pflog_cloner);
 }
 
-int
+static int
 pflog_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 {
 	struct ifnet *ifp;
@@ -121,16 +121,12 @@ pflog_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 		return (EINVAL);
 	}
 
-	if ((pflogif = kmalloc(sizeof(*pflogif),
-		M_DEVBUF, M_WAITOK|M_ZERO)) == NULL) {
-		lwkt_reltoken(&pf_token);
-		return (ENOMEM);
-	}
-
+	pflogif = kmalloc(sizeof(*pflogif), M_DEVBUF, M_WAITOK | M_ZERO);
 	pflogif->sc_unit = unit;
 	lwkt_reltoken(&pf_token);
+
 	ifp = &pflogif->sc_if;
-	ksnprintf(ifp->if_xname, sizeof ifp->if_xname, "pflog%d", unit);
+	if_initname(ifp, ifc->ifc_name, unit);
 	ifp->if_softc = pflogif;
 	ifp->if_mtu = PFLOGMTU;
 	ifp->if_ioctl = pflogioctl;
@@ -139,21 +135,23 @@ pflog_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	ifp->if_type = IFT_PFLOG;
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 	ifp->if_hdrlen = PFLOG_HDRLEN;
+
 	if_attach(ifp, NULL);
-
+#if NBPFILTER > 0
 	bpfattach(&pflogif->sc_if, DLT_PFLOG, PFLOG_HDRLEN);
-	lwkt_gettoken(&pf_token);
+#endif
 
+	lwkt_gettoken(&pf_token);
 	crit_enter();
 	LIST_INSERT_HEAD(&pflogif_list, pflogif, sc_list);
 	pflogifs[unit] = ifp;
 	crit_exit();
-
 	lwkt_reltoken(&pf_token);
+
 	return (0);
 }
 
-int
+static int
 pflog_clone_destroy(struct ifnet *ifp)
 {
 	struct pflog_softc	*pflogif = ifp->if_softc;
@@ -180,7 +178,7 @@ pflog_clone_destroy(struct ifnet *ifp)
 /*
  * Start output on the pflog interface.
  */
-void
+static void
 pflogstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	struct mbuf *m;
@@ -197,25 +195,17 @@ pflogstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	}
 }
 
-int
+static int
 pflogoutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
-	struct rtentry *rt)
+	    struct rtentry *rt)
 {
 	m_freem(m);
 	return (0);
 }
 
-/* ARGSUSED */
-void
-pflogrtrequest(int cmd, struct rtentry *rt, struct sockaddr *sa)
-{
-	if (rt)
-		rt->rt_rmx.rmx_mtu = PFLOGMTU;
-}
-
-/* ARGSUSED */
-int
-pflogioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
+static int
+pflogioctl(struct ifnet *ifp, u_long cmd, caddr_t data __unused,
+	   struct ucred *cr __unused)
 {
 
 	lwkt_gettoken(&pf_token);
@@ -240,8 +230,8 @@ pflogioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 int
 pflog_packet(struct pfi_kif *kif, struct mbuf *m, sa_family_t af, u_int8_t dir,
-    u_int8_t reason, struct pf_rule *rm, struct pf_rule *am,
-    struct pf_ruleset *ruleset, struct pf_pdesc *pd)
+	     u_int8_t reason, struct pf_rule *rm, struct pf_rule *am,
+	     struct pf_ruleset *ruleset, struct pf_pdesc *pd)
 {
 	struct ifnet *ifn = NULL;
 	struct pfloghdr hdr;
@@ -332,18 +322,16 @@ pflog_modevent(module_t mod, int type, void *data)
 
 	switch (type) {
 	case MOD_LOAD:
-		LIST_INIT(&pflogif_list);
 		lwkt_reltoken(&pf_token);
-		if_clone_attach(&pflog_cloner);
+		pflogattach();
 		lwkt_gettoken(&pf_token);
 		break;
 
 	case MOD_UNLOAD:
 		lwkt_reltoken(&pf_token);
 		if_clone_detach(&pflog_cloner);
-		LIST_FOREACH_MUTABLE(pflogif, &pflogif_list, sc_list, tmp) {
+		LIST_FOREACH_MUTABLE(pflogif, &pflogif_list, sc_list, tmp)
 			pflog_clone_destroy(&pflogif->sc_if);
-		}
 		lwkt_gettoken(&pf_token);
 		break;
 
@@ -363,3 +351,5 @@ static moduledata_t pflog_mod = {
 
 DECLARE_MODULE(pflog, pflog_mod, SI_SUB_PSEUDO, SI_ORDER_ANY);
 MODULE_VERSION(pflog, PFLOG_MODVER);
+/* Do not run before pf is initialized. */
+MODULE_DEPEND(pflog, pf, PF_MODVER, PF_MODVER, PF_MODVER);
