@@ -37,102 +37,65 @@
 static int
 getnumber(void)
 {
-  int i;
-  char b[80];
+	int i;
+	char b[80];
 
-  fgets(b, 80, stdin);
-  if(b[0] == '\n') return -1;
+	fgets(b, 80, stdin);
+	if (b[0] == '\n')
+		return -1;
 
-  sscanf(b, " %i", &i);
-  return i;
+	sscanf(b, " %i", &i);
+	return i;
 }
 
 __dead2 static void
 usage(void)
 {
-  fprintf(stderr, "usage: fdcontrol [-d 0|1] | [-s] device-node\n");
-  exit(2);
+	fprintf(stderr, "usage: fdcontrol device-node\n");
+	exit(2);
 }
 
 
-#define ask(name, fmt) \
-printf(#name "? [" fmt "]: ", ft.name); fflush(stdout);   \
-if((i = getnumber()) != -1) ft.name = i
+#define	ask(name, fmt)	do {				  	\
+	printf(#name "? [" fmt "]: ", ft.name); fflush(stdout);	\
+	if((i = getnumber()) != -1)				\
+		ft.name = i;					\
+} while (0)
 
 int
 main(int argc, char **argv)
 {
-  struct fd_type ft;
-  int fd, i;
-  int debug = -1, settype = 1;
+	struct fd_type ft;
+	int fd, i;
 
-  while((i = getopt(argc, argv, "d:s")) != -1)
-    switch(i)
-      {
-      case 'd':
-	debug = atoi(optarg);
-	settype = 0;
-	break;
+	if (argc != 2)
+		usage();
 
-      case 's':
-	debug = -1;
-	settype = 1;
-	break;
-
-      case '?':
-      default:
-	usage();
-      }
-
-  argc -= optind;
-  argv += optind;
-
-  if(argc != 1)
-    usage();
-
-  if((fd = open(argv[0], 0)) < 0)
-    {
-      warn("open(floppy)");
-      return 1;
-    }
-
-  if(debug != -1)
-    {
-      if(ioctl(fd, FD_DEBUG, &debug) < 0)
-	{
-	  warn("ioctl(FD_DEBUG)");
-	  return 1;
-	}
-      return 0;
-    }
-
-  if(settype)
-    {
-      if(ioctl(fd, FD_GTYPE, &ft) < 0)
-	{
-	  warn("ioctl(FD_GTYPE)");
-	  return 1;
+	if ((fd = open(argv[1], 0)) < 0) {
+		warn("open(floppy)");
+		return 1;
 	}
 
-      ask(sectrac, "%d");
-      ask(secsize, "%d");
-      ask(datalen, "0x%x");
-      ask(gap, "0x%x");
-      ask(tracks, "%d");
-      ask(size, "%d");
-      ask(steptrac, "%d");
-      ask(trans, "%d");
-      ask(heads, "%d");
-      ask(f_gap, "0x%x");
-      ask(f_inter, "%d");
-
-      if(ioctl(fd, FD_STYPE, &ft) < 0)
-	{
-	  warn("ioctl(FD_STYPE)");
-	  return 1;
+	if (ioctl(fd, FD_GTYPE, &ft) < 0) {
+		warn("ioctl(FD_GTYPE)");
+		return 1;
 	}
-      return 0;
-    }
 
-  return 0;
+	ask(sectrac, "%d");
+	ask(secsize, "%d");
+	ask(datalen, "0x%x");
+	ask(gap, "0x%x");
+	ask(tracks, "%d");
+	ask(size, "%d");
+	ask(steptrac, "%d");
+	ask(trans, "%d");
+	ask(heads, "%d");
+	ask(f_gap, "0x%x");
+	ask(f_inter, "%d");
+
+	if(ioctl(fd, FD_STYPE, &ft) < 0) {
+		warn("ioctl(FD_STYPE)");
+		return 1;
+	}
+	return 0;
 }

@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: src/usr.sbin/fdcontrol/fdcontrol.8,v 1.9.2.4 2002/06/21 16:40:24 charnier Exp $
 .\"
-.Dd May 22, 1994
+.Dd June 21, 2018
 .Dt FDCONTROL 8
 .Os
 .Sh NAME
@@ -34,10 +34,6 @@
 .Nd modify floppy disk parameters
 .Sh SYNOPSIS
 .Nm
-.Op Fl d Ar 0|1
-.Ar device
-.Nm
-.Op Fl s
 .Ar device
 .Sh DESCRIPTION
 The
@@ -47,18 +43,8 @@ disk device specified by
 .Ar device .
 .Ar Device
 should be a character device.
-.Pp
-The
-.Nm
-utility currently supports the specification of device parameters for the
-floppy disk drive
-.Fl ( s ,
-also default mode),
-or it allows the modification of the driver debug level, in case the
-floppy driver has been compiled into the kernel with the
-.Em DEBUG
-option set
-.Pq Fl d .
+It currently supports the specification of device parameters for the
+floppy disk drive.
 .Pp
 Since the implications of such actions are considered harmful, the
 underlying
@@ -78,26 +64,7 @@ facility.
 .Xr ioctl 2 ,
 .Xr warn 3 ,
 .Xr fdc 4
-.Sh HISTORY
-The
-.Nm
-utility is currently under development.
-Its user interface and overall
-functionality are subjects to future improvements and changes.
 .Sh AUTHORS
 The program has been contributed by
 .An J\(:org Wunsch ,
 Dresden.
-.Sh BUGS
-The
-.Nm
-utility is currently under development.
-Its user interface is rather
-silly and likely to change in future, options should be provided to
-allow anything being modified from the command line.
-.Pp
-The driver does actually support only two debug levels
-(0 and 1),
-where debug level 1 will generate huge amounts of output.
-It is likely
-to overflow the syslog if not used with extreme care.

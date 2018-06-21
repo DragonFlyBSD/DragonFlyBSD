@@ -110,8 +110,6 @@ struct fdc_status {
 #define FD_GOPTS  _IOR('F', 64, int) /* drive options, see below */
 #define FD_SOPTS  _IOW('F', 65, int)
 
-#define FD_DEBUG  _IOW('F', 66, int)
-
 /*
  * Obtain NE765 status registers.  Only successful if there is
  * a valid status stored in fdc->status[].
