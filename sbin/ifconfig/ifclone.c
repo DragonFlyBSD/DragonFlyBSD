@@ -36,6 +36,7 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <net/if.h>
+#include <net/if_clone.h>
 
 #include <err.h>
 #include <stdio.h>

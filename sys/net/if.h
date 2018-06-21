@@ -43,8 +43,8 @@
 #include <sys/socket.h>
 #ifndef _KERNEL
 #include <sys/time.h>
-#endif
-#endif
+#endif /* !_KERNEL */
+#endif /* __BSD_VISIBLE */
 
 /*
  * Length of interface external name, including terminating '\0'.
@@ -54,16 +54,6 @@
 #if __BSD_VISIBLE
 #define		IFNAMSIZ	IF_NAMESIZE
 #define		IF_MAXUNIT	0x7fff		/* if_unit is 15bits */
-
-/*
- * Structure used to query names of interface cloners.
- * XXX should be moved to net/if_clone.h
- */
-struct if_clonereq {
-	int	ifcr_total;		/* total cloners (out) */
-	int	ifcr_count;		/* room for this many in user buffer */
-	char	*ifcr_buffer;		/* buffer for cloner names */
-};
 
 /*
  * Structure describing information about an interface

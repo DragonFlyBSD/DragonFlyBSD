@@ -34,6 +34,17 @@
 #ifndef	_NET_IF_CLONE_H_
 #define	_NET_IF_CLONE_H_
 
+#if __BSD_VISIBLE
+/*
+ * Structure used to query names of interface cloners.
+ */
+struct if_clonereq {
+	int	ifcr_total;		/* total cloners (out) */
+	int	ifcr_count;		/* room for this many in user buffer */
+	char	*ifcr_buffer;		/* buffer for cloner names */
+};
+#endif /* __BSD_VISIBLE */
+
 #ifdef _KERNEL
 
 #include <sys/eventhandler.h>
@@ -61,8 +72,6 @@ struct if_clone {
 /* interface clone event */
 typedef void (*if_clone_event_handler_t)(void *, struct if_clone *);
 EVENTHANDLER_DECLARE(if_clone_event, if_clone_event_handler_t);
-
-struct if_clonereq;	/* XXX, should move definition from net/if.h */
 
 void	if_clone_attach(struct if_clone *);
 void	if_clone_detach(struct if_clone *);
