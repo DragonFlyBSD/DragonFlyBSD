@@ -373,5 +373,15 @@ if_clone_createif(struct if_clone *ifc, int unit, caddr_t params)
 	if (err != 0)
 		return (err);
 
+	ifnet_lock();
+	ifp = ifunit(ifname);
+	ifnet_unlock();
+	if (ifp == NULL)
+		return (ENXIO);
+
+	err = if_addgroup(ifp, ifc->ifc_name);
+	if (err != 0)
+		return (err);
+
 	return (0);
 }
