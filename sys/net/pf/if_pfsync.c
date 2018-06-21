@@ -133,8 +133,9 @@ pfsync_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 
 	lwkt_gettoken(&pf_token);
 
-	sc = kmalloc(sizeof(*sc), M_PFSYNC, M_WAITOK | M_ZERO);
 	pfsync_sync_ok = 1;
+
+	sc = kmalloc(sizeof(*sc), M_PFSYNC, M_WAITOK | M_ZERO);
 	sc->sc_mbuf = NULL;
 	sc->sc_mbuf_net = NULL;
 	sc->sc_mbuf_tdb = NULL;
@@ -152,8 +153,8 @@ pfsync_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	sc->sc_bulk_terminator_cpu = 0;
 	sc->sc_imo.imo_max_memberships = IP_MAX_MEMBERSHIPS;
 	lwkt_reltoken(&pf_token);
+
 	ifp = &sc->sc_if;
-	ksnprintf(ifp->if_xname, sizeof ifp->if_xname, "pfsync%d", unit);
 	if_initname(ifp, ifc->ifc_name, unit);
 	ifp->if_ioctl = pfsyncioctl;
 	ifp->if_output = pfsyncoutput;
@@ -163,26 +164,26 @@ pfsync_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	ifp->if_hdrlen = PFSYNC_HDRLEN;
 	ifp->if_baudrate = IF_Mbps(100);
 	ifp->if_softc = sc;
+
 	pfsync_setmtu(sc, MCLBYTES);
 	callout_init(&sc->sc_tmo);
 	/* callout_init(&sc->sc_tdb_tmo); XXX we don't support tdb (yet) */
 	callout_init(&sc->sc_bulk_tmo);
 	callout_init(&sc->sc_bulkfail_tmo);
+
 	if_attach(ifp, NULL);
-
-	LIST_INSERT_HEAD(&pfsync_list, sc, sc_next);
-
+#if NBPFILTER > 0
+	bpfattach(&sc->sc_if, DLT_PFSYNC, PFSYNC_HDRLEN);
+#endif
 
 #if NCARP > 0
 	if_addgroup(ifp, "carp");
 #endif
 
-#if NBPFILTER > 0
-	bpfattach(&sc->sc_if, DLT_PFSYNC, PFSYNC_HDRLEN);
-#endif
 	lwkt_gettoken(&pf_token);
-
+	LIST_INSERT_HEAD(&pfsync_list, sc, sc_next);
 	lwkt_reltoken(&pf_token);
+
 	return (0);
 }
 
@@ -216,7 +217,6 @@ pfsync_clone_destroy(struct ifnet *ifp)
 	LIST_REMOVE(sc, sc_next);
 	kfree(sc, M_PFSYNC);
 	lwkt_reltoken(&pf_token);
-
 
 	return 0;
 }
@@ -1799,6 +1799,7 @@ static moduledata_t pfsync_mod = {
 
 DECLARE_MODULE(pfsync, pfsync_mod, SI_SUB_PSEUDO, SI_ORDER_ANY);
 MODULE_VERSION(pfsync, PFSYNC_MODVER);
+MODULE_DEPEND(pfsync, pf, PF_MODVER, PF_MODVER, PF_MODVER);
 
 static void
 pfsync_in_addmulti_dispatch(netmsg_t nmsg)
