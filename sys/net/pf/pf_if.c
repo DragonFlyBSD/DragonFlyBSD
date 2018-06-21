@@ -83,7 +83,7 @@ static eventhandler_tag	 pfi_change_group_cookie;
 static eventhandler_tag	 pfi_ifaddr_event_cookie;
 
 static void	 pfi_kif_update(struct pfi_kif *);
-static void	 pfi_dynaddr_update(struct pfi_dynaddr *dyn);
+static void	 pfi_dynaddr_update(struct pfi_dynaddr *);
 static void	 pfi_table_update(struct pfr_ktable *, struct pfi_kif *,
 		    int, int);
 static void	 pfi_instance_add(struct ifnet *, int, int);

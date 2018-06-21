@@ -65,18 +65,18 @@ struct pf_state;
 extern struct lwkt_token pf_token;
 extern struct lwkt_token pf_gtoken;
 
-#define	PF_TCPS_PROXY_SRC	((TCP_NSTATES)+0)
-#define	PF_TCPS_PROXY_DST	((TCP_NSTATES)+1)
+#define PF_TCPS_PROXY_SRC	((TCP_NSTATES)+0)
+#define PF_TCPS_PROXY_DST	((TCP_NSTATES)+1)
 
 
-#define RTLABEL_LEN 32
+#define RTLABEL_LEN		32
 #define BPF_DIRECTION_OUT	(1<<1)
-#define	PWAIT 0
-#define RT_NUMFIBS 1
-#define	ALTQ_IS_ENABLED(ifq)		((ifq)->altq_flags & ALTQF_ENABLED)
+#define PWAIT			0
+#define RT_NUMFIBS		1
+#define ALTQ_IS_ENABLED(ifq)	((ifq)->altq_flags & ALTQF_ENABLED)
 
 
-#define	PF_MD5_DIGEST_LENGTH	16
+#define PF_MD5_DIGEST_LENGTH	16
 #ifdef MD5_DIGEST_LENGTH
 #if PF_MD5_DIGEST_LENGTH != MD5_DIGEST_LENGTH
 #error
@@ -142,12 +142,12 @@ enum	{ PF_ADDR_ADDRMASK, PF_ADDR_NOROUTE, PF_ADDR_DYNIFTL,
 	  PF_ADDR_RANGE };
 #define PF_POOL_TYPEMASK	0x0f
 #define PF_POOL_STICKYADDR	0x20
-#define	PF_WSCALE_FLAG		0x80
-#define	PF_WSCALE_MASK		0x0f
+#define PF_WSCALE_FLAG		0x80
+#define PF_WSCALE_MASK		0x0f
 
-#define	PF_LOG			0x01
-#define	PF_LOG_ALL		0x02
-#define	PF_LOG_SOCKET_LOOKUP	0x04
+#define PF_LOG			0x01
+#define PF_LOG_ALL		0x02
+#define PF_LOG_SOCKET_LOOKUP	0x04
 
 #define PR_WAITOK	0x0001 /* M_WAITOK */
 #define PR_NOWAIT	0x0002 /* M_NOWAIT */
@@ -170,7 +170,7 @@ struct pf_addr {
 #define addr32	pfa.addr32
 };
 
-#define	PF_TABLE_NAME_SIZE	 32
+#define PF_TABLE_NAME_SIZE	 32
 
 #define PFI_AFLAG_NETWORK	0x01
 #define PFI_AFLAG_BROADCAST	0x02
@@ -222,7 +222,7 @@ struct pfi_dynaddr {
  */
 
 #define	NTOHS(x)	(x) = ntohs((__uint16_t)(x))
-#define HTONS(x)	(x) = htons((__uint16_t)(x))
+#define	HTONS(x)	(x) = htons((__uint16_t)(x))
 
 #define	PF_NAME		"pf"
 

@@ -164,8 +164,8 @@ SYSCTL_INT(_net_link_ringmap, OID_AUTO, dump_rdr, CTLFLAG_RW,
 SYSINIT(interfaces, SI_SUB_PROTO_IF, SI_ORDER_FIRST, ifinit, NULL);
 SYSINIT(ifnet, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, ifnetinit, NULL);
 
-static  if_com_alloc_t *if_com_alloc[256];
-static  if_com_free_t *if_com_free[256];
+static if_com_alloc_t *if_com_alloc[256];
+static if_com_free_t *if_com_free[256];
 
 MALLOC_DEFINE(M_IFADDR, "ifaddr", "interface address");
 MALLOC_DEFINE(M_IFMADDR, "ether_multi", "link-level multicast address");
@@ -190,7 +190,7 @@ static struct ifsubq_stage_head	ifsubq_stage_heads[MAXCPU];
 
 #ifdef notyet
 #define IFQ_KTR_STRING		"ifq=%p"
-#define IFQ_KTR_ARGS	struct ifaltq *ifq
+#define IFQ_KTR_ARGS		struct ifaltq *ifq
 #ifndef KTR_IFQ
 #define KTR_IFQ			KTR_ALL
 #endif
@@ -224,7 +224,7 @@ KTR_INFO(KTR_IF_START, if_start, chase_sched, 4,
  * Routines with ifa_ifwith* names take sockaddr *'s as
  * parameters.
  */
-/* ARGSUSED*/
+/* ARGSUSED */
 static void
 ifinit(void *dummy)
 {
@@ -1046,10 +1046,11 @@ if_detach(struct ifnet *ifp)
 	msg.ifp = ifp;
 	netisr_domsg_global(&msg.base);
 
-	SLIST_FOREACH(dp, &domains, dom_next)
+	SLIST_FOREACH(dp, &domains, dom_next) {
 		if (dp->dom_ifdetach && ifp->if_afdata[dp->dom_family])
 			(*dp->dom_ifdetach)(ifp,
 				ifp->if_afdata[dp->dom_family]);
+	}
 
 	kfree(ifp->if_addrheads, M_IFADDR);
 
@@ -2863,7 +2864,7 @@ if_printf(struct ifnet *ifp, const char *fmt, ...)
 struct ifnet *
 if_alloc(uint8_t type)
 {
-        struct ifnet *ifp;
+	struct ifnet *ifp;
 	size_t size;
 
 	/*

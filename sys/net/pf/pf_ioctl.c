@@ -3106,7 +3106,7 @@ pf_clear_states(void)
 			s->sync_flags = PFSTATE_NOSYNC;
 			pf_unlink_state(s);
 		}
-                        
+
 	}
 	lwkt_setcpu_self(save_gd);
 
@@ -3225,8 +3225,9 @@ shutdown_pf(void)
 
 		/* status does not use malloced mem so no need to cleanup */
 		/* fingerprints and interfaces have their own cleanup code */
-	} while(0);
-        return (error);
+	} while (0);
+
+	return (error);
 }
 
 static int

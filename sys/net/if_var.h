@@ -184,11 +184,11 @@ enum ifnet_serialize {
  * Caller of if_output MUST NOT serialize ifnet or if_snd by calling
  * the related serialize functions.
  *
- * For better tranmission performance, driver should setup if_snd subqueue
- * owner cpuid properly using ifsq_set_cpuid() (or ifq_set_cpuid(), if not
- * multiple transmit queue capable).  Normally, the if_snd subqueue owner
- * cpu is the one that processing the transmission interrupt.  And in driver,
- * direct call of if_start should be avoided, use ifsq_devstart() or
+ * For better transmission performance, driver should setup if_snd subqueue
+ * owner's cpuid properly using ifsq_set_cpuid() (or ifq_set_cpuid(), if not
+ * multiple transmit queue capable).  Normally, the if_snd subqueue owner's
+ * cpu is the one that processing the transmission interruption.  And in
+ * driver, direct call of if_start should be avoided, use ifsq_devstart() or
  * ifsq_devstart_sched() instead (or if_devstart()/if_devstart_sched(), if
  * not multiple transmit queue capable).
  *
@@ -317,7 +317,8 @@ struct ifnet {
 	void	*if_softc;		/* pointer to driver state */
 	void	*if_l2com;		/* pointer to protocol bits */
 	TAILQ_ENTRY(ifnet) if_link;	/* all struct ifnets are chained */
-	char	if_xname[IFNAMSIZ];	/* external name (name + unit) */
+	char	if_xname[IFNAMSIZ];	/* external name (name + unit);
+					 * can be renamed (SIOCSIFNAME) */
 	const char *if_dname;		/* driver name */
 	int	if_dunit;		/* unit or IF_DUNIT_NONE */
 	void	*if_vlantrunks;		/* vlan trunks */
@@ -516,10 +517,6 @@ struct ifdata_pcpu {
 
 #ifdef _KERNEL
 
-/* interface link layer address change event */
-typedef void (*iflladdr_event_handler_t)(void *, struct ifnet *);
-EVENTHANDLER_DECLARE(iflladdr_event, iflladdr_event_handler_t);
-
 #ifdef INVARIANTS
 #define ASSERT_IFNET_SERIALIZED_ALL(ifp) \
 	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_ALL, TRUE)
@@ -700,9 +697,6 @@ do { \
 		(v) += (ifp)->if_data_pcpu[_cpu].ifd_##name; \
 } while (0)
 
-#ifndef _SYS_SERIALIZE2_H_
-#include <sys/serialize2.h>
-#endif
 
 enum ifaddr_event {
 	IFADDR_EVENT_ADD,
@@ -714,6 +708,9 @@ enum ifaddr_event {
 typedef void (*ifaddr_event_handler_t)(void *, struct ifnet *,
 	enum ifaddr_event, struct ifaddr *);
 EVENTHANDLER_DECLARE(ifaddr_event, ifaddr_event_handler_t);
+/* interface link layer address change event */
+typedef void (*iflladdr_event_handler_t)(void *, struct ifnet *);
+EVENTHANDLER_DECLARE(iflladdr_event, iflladdr_event_handler_t);
 /* new interface attach event */
 typedef void (*ifnet_attach_event_handler_t)(void *, struct ifnet *);
 EVENTHANDLER_DECLARE(ifnet_attach_event, ifnet_attach_event_handler_t);
@@ -788,6 +785,7 @@ IFAREF(struct ifaddr *_ifa)
 }
 
 #include <sys/malloc.h>
+#include <sys/serialize2.h>
 
 MALLOC_DECLARE(M_IFADDR);
 MALLOC_DECLARE(M_IFMADDR);
@@ -896,8 +894,8 @@ struct ifnet		*ifunit_netisr(const char *);
 const struct ifnet_array *ifnet_array_get(void);
 int			ifnet_array_isempty(void);
 
-extern	int ifqmaxlen;
-extern	struct ifnet *loif;
+extern int ifqmaxlen;
+extern struct ifnet *loif;  /* first loopback interface */
 extern struct ifgrouphead ifg_head;
 
 struct ip;
@@ -957,8 +955,8 @@ struct	ifaddr *ifaof_ifpforaddr(struct sockaddr *, struct ifnet *);
 
 typedef void *if_com_alloc_t(u_char type, struct ifnet *ifp);
 typedef void if_com_free_t(void *com, u_char type);
-void    if_register_com_alloc(u_char, if_com_alloc_t *a, if_com_free_t *);
-void    if_deregister_com_alloc(u_char);
+void	if_register_com_alloc(u_char, if_com_alloc_t *a, if_com_free_t *);
+void	if_deregister_com_alloc(u_char);
 
 void	*ifa_create(int);
 void	ifa_destroy(struct ifaddr *);

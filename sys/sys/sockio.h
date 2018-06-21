@@ -92,7 +92,7 @@
 #define	SIOCGIFSTATUS	_IOWR('i', 59, struct ifstat)	/* get IF status */
 #define	SIOCSIFLLADDR	 _IOW('i', 60, struct ifreq)	/* set linklevel addr */
 
-#define	SIOCSIFPHYADDR   _IOW('i', 70, struct ifaliasreq) /* set gif addres */
+#define	SIOCSIFPHYADDR	 _IOW('i', 70, struct ifaliasreq) /* set gif addres */
 #define	SIOCGIFPSRCADDR	_IOWR('i', 71, struct ifreq)	/* get gif psrc addr */
 #define	SIOCGIFPDSTADDR	_IOWR('i', 72, struct ifreq)	/* get gif pdst addr */
 #define	SIOCDIFPHYADDR	 _IOW('i', 73, struct ifreq)	/* delete gif addrs */
@@ -102,22 +102,22 @@
 #define	SIOCGPRIVATE_0	_IOWR('i', 80, struct ifreq)	/* Linux Private + 0 */
 #define	SIOCGPRIVATE_1	_IOWR('i', 81, struct ifreq)	/* Linux Private + 1 */
 
-#define	SIOCSDRVSPEC     _IOW('i', 123, struct ifdrv)   /* set driver-specific
+#define	SIOCSDRVSPEC	 _IOW('i', 123, struct ifdrv)   /* set driver-specific
 							   parameters */
-#define	SIOCGDRVSPEC    _IOWR('i', 123, struct ifdrv)   /* get driver-specific
+#define	SIOCGDRVSPEC	_IOWR('i', 123, struct ifdrv)   /* get driver-specific
 							   parameters */
 
-#define SIOCIFGCLONERS	_IOWR('i', 120, struct if_clonereq) /* get cloners */
-#define SIOCIFDESTROY	 _IOW('i', 121, struct ifreq)	/* destroy clone if */
-#define SIOCIFCREATE	_IOWR('i', 122, struct ifreq)	/* create clone if */
+#define	SIOCIFGCLONERS	_IOWR('i', 120, struct if_clonereq) /* get cloners */
+#define	SIOCIFDESTROY	 _IOW('i', 121, struct ifreq)	/* destroy clone if */
+#define	SIOCIFCREATE	_IOWR('i', 122, struct ifreq)	/* create clone if */
 /* 123 SIOC[SG]DRVSPEC */
-#define SIOCIFCREATE2	_IOWR('i', 124, struct ifreq)	/* create clone if */
+#define	SIOCIFCREATE2	_IOWR('i', 124, struct ifreq)	/* create clone if */
 
-#define SIOCSIFPOLLCPU	 _IOW('i', 125, struct ifreq)	/* deprecated */
-#define SIOCGIFPOLLCPU	_IOWR('i', 126, struct ifreq)	/* deprecated */
+#define	SIOCSIFPOLLCPU	 _IOW('i', 125, struct ifreq)	/* deprecated */
+#define	SIOCGIFPOLLCPU	_IOWR('i', 126, struct ifreq)	/* deprecated */
 
-#define SIOCSIFTSOLEN	 _IOW('i', 127, struct ifreq)	/* set max TSO len */
-#define SIOCGIFTSOLEN	_IOWR('i', 128, struct ifreq)	/* get max TSO len */
+#define	SIOCSIFTSOLEN	 _IOW('i', 127, struct ifreq)	/* set max TSO len */
+#define	SIOCGIFTSOLEN	_IOWR('i', 128, struct ifreq)	/* get max TSO len */
 
 #define	SIOCAIFGROUP	 _IOW('i', 135, struct ifgroupreq) /* add an ifgroup */
 #define	SIOCGIFGROUP	_IOWR('i', 136, struct ifgroupreq) /* get ifgroups */

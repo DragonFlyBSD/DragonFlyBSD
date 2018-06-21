@@ -60,7 +60,6 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.24 2008/09/11 11:23:29 sephe Exp $
  */
 
 #ifndef _NET_ROUTE_H_
@@ -382,7 +381,7 @@ rtlookup(struct sockaddr *dst)
 }
 
 typedef void (*rtrequest1_callback_func_t)(int, int, struct rt_addrinfo *,
-				      struct rtentry *, void *);
+					   struct rtentry *, void *);
 typedef int (*rtsearch_callback_func_t)(int, struct rt_addrinfo *,
 					struct rtentry *, void *, int);
 

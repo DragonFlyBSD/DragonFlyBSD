@@ -116,7 +116,7 @@ SYSCTL_NODE(_net, OID_AUTO, route, CTLFLAG_RW, 0, "Routing");
 #ifdef ROUTE_DEBUG
 static int route_debug = 1;
 SYSCTL_INT(_net_route, OID_AUTO, route_debug, CTLFLAG_RW,
-           &route_debug, 0, "");
+	   &route_debug, 0, "");
 #endif
 
 u_long route_kmalloc_limit = 0;
@@ -153,7 +153,7 @@ rtable_init_oncpu(netmsg_t msg)
 		if (dom->dom_rtattach) {
 			dom->dom_rtattach(
 				(void **)&rt_tables[cpu][dom->dom_family],
-			        dom->dom_rtoffset);
+				dom->dom_rtoffset);
 		}
 	}
 	netisr_forwardmsg(&msg->base, cpu + 1);
