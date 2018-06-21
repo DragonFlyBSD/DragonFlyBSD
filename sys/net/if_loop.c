@@ -57,7 +57,7 @@
 #include <net/bpf.h>
 #include <net/bpfdesc.h>
 
-#ifdef	INET
+#ifdef INET
 #include <netinet/in.h>
 #include <netinet/in_var.h>
 #endif
@@ -81,7 +81,7 @@ static void	lo_rtrequest(int, struct rtentry *);
 static void	lo_altqstart(struct ifnet *, struct ifaltq_subque *);
 #endif
 
-#ifdef TINY_LOMTU
+#if defined(TINY_LOMTU)
 #define	LOMTU	(1024+512)
 #elif defined(LARGE_LOMTU)
 #define LOMTU	131072
@@ -99,19 +99,17 @@ static struct if_clone lo_cloner = IF_CLONE_INITIALIZER("lo",
 static void
 lo_sysinit(void *dummy __unused)
 {
-
 	if_clone_attach(&lo_cloner);
 }
 SYSINIT(lo_sysinit, SI_SUB_PSEUDO, SI_ORDER_ANY, lo_sysinit, NULL);
 
 static int
-lo_clone_create(struct if_clone *ifc __unused, int unit, caddr_t param __unused)
+lo_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 {
 	struct ifnet *ifp;
 
 	ifp = kmalloc(sizeof(*ifp), M_IFNET, M_WAITOK | M_ZERO);
-
-	if_initname(ifp, "lo", unit);
+	if_initname(ifp, ifc->ifc_name, unit);
 	ifp->if_mtu = LOMTU;
 	ifp->if_flags = IFF_LOOPBACK | IFF_MULTICAST;
 	ifp->if_capabilities = IFCAP_HWCSUM | IFCAP_RSS;
@@ -138,7 +136,6 @@ lo_clone_create(struct if_clone *ifc __unused, int unit, caddr_t param __unused)
 static int
 lo_clone_destroy(struct ifnet *ifp)
 {
-
 	if (loif == ifp)
 		return (EPERM);
 
@@ -157,7 +154,7 @@ lo_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	if (rt && rt->rt_flags & (RTF_REJECT|RTF_BLACKHOLE)) {
 		m_freem(m);
 		return (rt->rt_flags & RTF_BLACKHOLE ? 0 :
-		        rt->rt_flags & RTF_HOST ? EHOSTUNREACH : ENETUNREACH);
+			rt->rt_flags & RTF_HOST ? EHOSTUNREACH : ENETUNREACH);
 	}
 
 	IFNET_STAT_INC(ifp, opackets, 1);
