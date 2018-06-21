@@ -28,7 +28,6 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if_clone.c,v 1.1 2008/01/11 11:59:40 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -118,8 +117,6 @@ if_clone_create(char *name, int len, caddr_t params)
 		}
 
 	}
-
-	EVENTHANDLER_INVOKE(if_clone_event, ifc);
 
 	return (0);
 }
@@ -223,6 +220,8 @@ if_clone_attach(struct if_clone *ifc)
 		bitoff = unit - (bytoff << 3);
 		ifc->ifc_units[bytoff] |= (1 << bitoff);
 	}
+
+	EVENTHANDLER_INVOKE(if_clone_event, ifc);
 }
 
 /*
