@@ -93,6 +93,7 @@ static	void usage(void) __dead2;
 static struct afswtch *af_getbyname(const char *name);
 static struct afswtch *af_getbyfamily(int af);
 static void af_other_status(int);
+static void printifnamemaybe(void);
 
 static struct option *opts = NULL;
 
@@ -127,6 +128,12 @@ usage(void)
 	exit(1);
 }
 
+static void printifnamemaybe(void)
+{
+	if (printifname)
+		printf("%s\n", name);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -143,9 +150,15 @@ main(int argc, char *argv[])
 	char options[1024];
 	const char *ifname;
 	struct option *p;
-        size_t iflen;
+	size_t iflen;
 
 	all = downonly = uponly = namesonly = verbose = 0;
+
+	/*
+	 * Ensure we print interface name when expected to,
+	 * even if we terminate early due to error.
+	 */
+	atexit(printifnamemaybe);
 
 	/* Parse leading line options */
 	strlcpy(options, "adklmuv", sizeof(options));
@@ -240,7 +253,7 @@ main(int argc, char *argv[])
 					errx(1, "%s: cloning name too long",
 					    ifname);
 				ifconfig(argc, argv, 1, NULL);
-				exit(0);
+				return (0);
 			}
 			errx(1, "interface %s does not exist", ifname);
 		}
@@ -303,7 +316,7 @@ retry:
 			fprintf(stderr, "msglen = %d\n", ifm->ifm_msglen);
 			fprintf(stderr, "buf:%p, next:%p, lim:%p\n", buf, next,
 				lim);
-			exit (1);
+			exit(1);
 		}
 
 		next += ifm->ifm_msglen;
@@ -358,10 +371,8 @@ retry:
 
 	if (namesonly && need_nl > 0)
 		putchar('\n');
-	if (printifname)
-		printf("%s\n", name);
 
-	exit (0);
+	return (0);
 }
 
 static struct afswtch *afs = NULL;
@@ -486,7 +497,8 @@ static const struct cmd setifdstaddr_cmd =
 	DEF_CMD("ifdstaddr", 0, setifdstaddr);
 
 static int
-ifconfig(int argc, char *const *argv, int iscreate, const struct afswtch *uafp)
+ifconfig(int argc, char *const *argv, int iscreate,
+	 const struct afswtch *uafp)
 {
 	const struct afswtch *afp, *nafp;
 	struct callback *cb;
@@ -623,7 +635,7 @@ top:
 	}
 
 	close(s);
-	return(0);
+	return (0);
 }
 
 /*ARGSUSED*/
