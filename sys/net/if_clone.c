@@ -53,7 +53,8 @@ int
 if_clone_create(char *name, int len, caddr_t params)
 {
 	struct if_clone *ifc;
-	char *dp;
+	struct ifnet *ifp;
+	char ifname[IFNAMSIZ];
 	int wildcard, bytoff, bitoff;
 	int unit;
 	int err;
@@ -63,11 +64,10 @@ if_clone_create(char *name, int len, caddr_t params)
 		return (EINVAL);
 
 	ifnet_lock();
-	if (ifunit(name) != NULL) {
-		ifnet_unlock();
-		return (EEXIST);
-	}
+	ifp = ifunit(name);
 	ifnet_unlock();
+	if (ifp != NULL)
+		return (EEXIST);
 
 	bytoff = bitoff = 0;
 	wildcard = (unit < 0);
@@ -88,9 +88,24 @@ if_clone_create(char *name, int len, caddr_t params)
 	if (unit > ifc->ifc_maxunit)
 		return (ENXIO);
 
+	ksnprintf(ifname, IFNAMSIZ, "%s%d", ifc->ifc_name, unit);
+
+	/*
+	 * Update the name with the allocated unit for the caller,
+	 * who must preserve enough space.
+	 */
+	if (wildcard && strlcpy(name, ifname, len) >= len)
+		return (ENOSPC);
+
 	err = (*ifc->ifc_create)(ifc, unit, params);
 	if (err != 0)
 		return (err);
+
+	ifnet_lock();
+	ifp = ifunit(ifname);
+	ifnet_unlock();
+	if (ifp == NULL)
+		return (ENXIO);
 
 	if (!wildcard) {
 		bytoff = unit >> 3;
@@ -103,21 +118,6 @@ if_clone_create(char *name, int len, caddr_t params)
 	KASSERT((ifc->ifc_units[bytoff] & (1 << bitoff)) == 0,
 	    ("%s: bit is already set", __func__));
 	ifc->ifc_units[bytoff] |= (1 << bitoff);
-
-	/* In the wildcard case, we need to update the name. */
-	if (wildcard) {
-		for (dp = name; *dp != '\0'; dp++);
-		if (ksnprintf(dp, len - (dp-name), "%d", unit) >
-		    len - (dp-name) - 1) {
-			/*
-			 * This can only be a programmer error and
-			 * there's no straightforward way to recover if
-			 * it happens.
-			 */
-			panic("if_clone_create(): interface name too long");
-		}
-
-	}
 
 	return (0);
 }
