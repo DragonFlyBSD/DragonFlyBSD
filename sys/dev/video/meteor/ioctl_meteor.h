@@ -29,7 +29,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/ioctl_meteor.h,v 1.15 2003/12/20 17:12:25 obrien Exp $
- * $DragonFly: src/sys/dev/video/meteor/ioctl_meteor.h,v 1.1 2004/05/15 17:54:13 joerg Exp $
  */
 
 /*
@@ -43,12 +42,6 @@
 #include <sys/types.h>
 #endif
 #include <sys/ioccom.h>
-
-struct meteor_capframe {
-	short	command;	/* see below for valid METEORCAPFRM commands */
-	short	lowat;		/* start transfer if < this number */
-	short	hiwat;		/* stop transfer if > this number */
-} ;
 
 /* structure for METEOR[GS]ETGEO - get/set geometry  */
 struct meteor_geomet {
@@ -76,9 +69,7 @@ struct meteor_video {
 };
 
 #define METEORCAPTUR _IOW('x', 1, int)			 /* capture a frame */
-#define METEORCAPFRM _IOW('x', 2, struct meteor_capframe)  /* sync capture */
 #define METEORSETGEO _IOW('x', 3, struct meteor_geomet)  /* set geometry */
-#define METEORGETGEO _IOR('x', 4, struct meteor_geomet)  /* get geometry */
 #define METEORSTATUS _IOR('x', 5, unsigned short)	/* get status */
 #define METEORSHUE   _IOW('x', 6, signed char)		/* set hue */
 #define METEORGHUE   _IOR('x', 6, signed char)		/* get hue */
@@ -86,8 +77,6 @@ struct meteor_video {
 #define METEORGFMT   _IOR('x', 7, unsigned long)	/* get format */
 #define METEORSINPUT _IOW('x', 8, unsigned long)	/* set input dev */
 #define METEORGINPUT _IOR('x', 8, unsigned long)	/* get input dev */
-#define	METEORSCHCV  _IOW('x', 9, unsigned char)	/* set uv gain */
-#define	METEORGCHCV  _IOR('x', 9, unsigned char)	/* get uv gain */
 #define	METEORSCOUNT _IOW('x',10, struct meteor_counts)
 #define	METEORGCOUNT _IOR('x',10, struct meteor_counts)
 #define METEORSFPS   _IOW('x',11, unsigned short)	/* set fps */
@@ -102,14 +91,6 @@ struct meteor_video {
 #define METEORGCSAT  _IOR('x', 15, unsigned char)	/* get uv saturation */
 #define	METEORSCONT  _IOW('x', 16, unsigned char)	/* set contrast */
 #define	METEORGCONT  _IOR('x', 16, unsigned char)	/* get contrast */
-#define METEORSBT254 _IOW('x', 17, unsigned short)	/* set Bt254 reg */
-#define METEORGBT254 _IOR('x', 17, unsigned short)	/* get Bt254 reg */
-#define METEORSHWS   _IOW('x', 18, unsigned char)	/* set hor start reg */
-#define METEORGHWS   _IOR('x', 18, unsigned char)	/* get hor start reg */
-#define METEORSVWS   _IOW('x', 19, unsigned char)	/* set vert start reg */
-#define METEORGVWS   _IOR('x', 19, unsigned char)	/* get vert start reg */
-#define	METEORSTS    _IOW('x', 20, unsigned char)	/* set time stamp */
-#define	METEORGTS    _IOR('x', 20, unsigned char)	/* get time stamp */
 
 #define	METEOR_STATUS_ID_MASK	0xf000	/* ID of 7196 */
 #define	METEOR_STATUS_DIR	0x0800	/* Direction of Expansion port YUV */

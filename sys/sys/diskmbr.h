@@ -32,12 +32,7 @@
 #ifndef _SYS_DISKMBR_H_
 #define	_SYS_DISKMBR_H_
 
-#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
-#endif
-#ifndef _SYS_IOCCOM_H_
-#include <sys/ioccom.h>
-#endif
 
 #define	DOSBBSECTOR	0	/* DOS boot block relative sector number */
 #define	DOSPARTOFF	446
@@ -76,16 +71,19 @@ struct dos_partition {
 	unsigned char	dp_ehd;		/* end head */
 	unsigned char	dp_esect;	/* end sector */
 	unsigned char	dp_ecyl;	/* end cylinder */
-	u_int32_t	dp_start;	/* absolute starting sector number */
-	u_int32_t	dp_size;	/* partition size in sectors */
+	uint32_t	dp_start;	/* absolute starting sector number */
+	uint32_t	dp_size;	/* partition size in sectors */
 };
-#ifdef CTASSERT
-CTASSERT(sizeof (struct dos_partition) == DOSPARTSIZE);
+
+#ifndef CTASSERT
+#define CTASSERT(x)		_CTASSERT(x, __LINE__)
+#define _CTASSERT(x, y)		__CTASSERT(x, y)
+#define __CTASSERT(x, y)	typedef char __assert_ ## y [(x) ? 1 : -1]
 #endif
+
+CTASSERT(sizeof (struct dos_partition) == DOSPARTSIZE);
 
 #define	DPSECT(s) ((s) & 0x3f)		/* isolate relevant bits of sector */
 #define	DPCYL(c, s) ((c) + (((s) & 0xc0)<<2)) /* and those that are cylinder */
-
-#define DIOCSMBR 	_IOW('M', 129, u_char[512])
 
 #endif /* !_SYS_DISKMBR_H_ */

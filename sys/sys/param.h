@@ -180,9 +180,10 @@
  * 500307 - tcsetsid()
  * 500308 - xdr_uint16_t()
  * 500309 - drop support for some ancient ioctls (OSIOCGIF*)
+ * 500310 - remove more unimplemented ioctls
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500309	/* propagated to newvers */
+#define __DragonFly_version 500310	/* propagated to newvers */
 
 #include <sys/_null.h>
 

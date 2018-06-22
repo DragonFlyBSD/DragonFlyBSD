@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/consio.h,v 1.5.2.7 2002/09/15 22:30:46 dd Exp $
- * $DragonFly: src/sys/sys/consio.h,v 1.6 2007/08/19 11:39:11 swildner Exp $
  */
 
 #ifndef	_SYS_CONSIO_H_
@@ -93,18 +92,6 @@ typedef struct _scrmap	scrmap_t;
 
 /* set blank time interval */
 #define CONS_BLANKTIME	_IOW('c', 4, int)
-
-/* set/get the screen saver (these ioctls are current noop) */
-struct ssaver	{
-#define MAXSSAVER	16
-	char		name[MAXSSAVER];
-	int		num;
-	long		time;
-};
-typedef struct ssaver	ssaver_t;
-
-#define CONS_SSAVER	_IOW('c', 5, ssaver_t)
-#define CONS_GSAVER	_IOWR('c', 6, ssaver_t)
 
 /* set the text cursor shape */
 #define CONS_BLINK_CURSOR (1 << 0)

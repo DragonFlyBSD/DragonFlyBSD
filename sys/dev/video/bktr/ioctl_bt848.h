@@ -2,7 +2,6 @@
  * extensions to ioctl_meteor.h for the bt848 cards
  *
  * $FreeBSD: src/sys/dev/bktr/ioctl_bt848.h,v 1.30 2003/12/20 17:12:25 obrien Exp $
- * $DragonFly: src/sys/dev/video/bktr/ioctl_bt848.h,v 1.1 2004/05/15 17:54:13 joerg Exp $
  */
 
 #ifndef  _DEV_BKTR_IOCTL_BT848_H_
@@ -226,8 +225,6 @@ struct _bktr_clip {
 
 /* set clip list */
 #define BT848SCLIP     _IOW('x', 66, struct _bktr_clip )
-#define BT848GCLIP     _IOR('x', 66, struct _bktr_clip )
-
 
 /* set input format */
 #define BT848SFMT		_IOW('x', 67, unsigned long )
