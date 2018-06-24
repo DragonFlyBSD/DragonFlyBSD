@@ -271,8 +271,11 @@ autofs_root(struct mount *mp, struct vnode **vpp)
 	KASSERT(amp->am_root, ("no root node"));
 
 	error = autofs_node_vn(amp->am_root, mp, LK_EXCLUSIVE, vpp);
-	(*vpp)->v_flag |= VROOT;
-	KKASSERT((*vpp)->v_type == VDIR);
+	if (error == 0) {
+		struct vnode *vp = *vpp;
+		vp->v_flag |= VROOT;
+		KKASSERT(vp->v_type == VDIR);
+	}
 
 	return (error);
 }
