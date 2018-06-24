@@ -82,9 +82,6 @@ extern int autofs_debug;
 		}					\
 	} while (0)
 
-#define	AUTOFS_FATAL(X, ...)				\
-	kprintf("FATAL: %s: " X "\n", __func__, ## __VA_ARGS__)
-
 /*
  * APRINTF is only for debugging.
  */

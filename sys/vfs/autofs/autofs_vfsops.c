@@ -268,16 +268,11 @@ autofs_root(struct mount *mp, struct vnode **vpp)
 	struct autofs_mount *amp = VFSTOAUTOFS(mp);
 	int error;
 
-	if (amp->am_root == NULL) {
-		AUTOFS_FATAL("called without root node %p", mp);
-		print_backtrace(-1);
-		*vpp = NULL;
-		error = EINVAL;
-	} else {
-		error = autofs_node_vn(amp->am_root, mp, LK_EXCLUSIVE, vpp);
-		(*vpp)->v_flag |= VROOT;
-		KKASSERT((*vpp)->v_type == VDIR);
-	}
+	KASSERT(amp->am_root, ("no root node"));
+
+	error = autofs_node_vn(amp->am_root, mp, LK_EXCLUSIVE, vpp);
+	(*vpp)->v_flag |= VROOT;
+	KKASSERT((*vpp)->v_type == VDIR);
 
 	return (error);
 }
