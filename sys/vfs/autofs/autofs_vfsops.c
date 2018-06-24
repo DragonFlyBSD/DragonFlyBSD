@@ -175,14 +175,14 @@ autofs_mount(struct mount *mp, char *mntpt, caddr_t data, struct ucred *cred)
 	mtx_init(&amp->am_lock, "autofsmnlk");
 	amp->am_last_ino = AUTOFS_ROOTINO;
 
-	vfs_getnewfsid(mp);
-	vfs_add_vnodeops(mp, &autofs_vnode_vops, &mp->mnt_vn_norm_ops);
-
 	mtx_lock_ex_quick(&amp->am_lock);
 	error = autofs_node_new(NULL, amp, ".", -1, &amp->am_root);
 	mtx_unlock_ex(&amp->am_lock);
 	KKASSERT(error == 0);
 	KKASSERT(amp->am_root->an_ino == AUTOFS_ROOTINO);
+
+	vfs_getnewfsid(mp);
+	vfs_add_vnodeops(mp, &autofs_vnode_vops, &mp->mnt_vn_norm_ops);
 
 	autofs_statfs(mp, sbp, cred);
 
