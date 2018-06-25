@@ -1793,6 +1793,8 @@ if_link_state_change(struct ifnet *ifp)
 	rt_ifmsg(ifp);
 	devctl_notify("IFNET", ifp->if_xname,
 	    (link_state == LINK_STATE_UP) ? "LINK_UP" : "LINK_DOWN", NULL);
+
+	EVENTHANDLER_INVOKE(ifnet_link_event, ifp, link_state);
 }
 
 /*

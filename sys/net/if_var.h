@@ -717,6 +717,9 @@ EVENTHANDLER_DECLARE(ifnet_attach_event, ifnet_attach_event_handler_t);
 /* interface detach event */
 typedef void (*ifnet_detach_event_handler_t)(void *, struct ifnet *);
 EVENTHANDLER_DECLARE(ifnet_detach_event, ifnet_detach_event_handler_t);
+/* Interface link state change event */
+typedef void (*ifnet_link_event_handler_t)(void *, struct ifnet *, int);
+EVENTHANDLER_DECLARE(ifnet_link_event, ifnet_link_event_handler_t);
 /* Interface up/down event */
 #define IFNET_EVENT_UP		0
 #define IFNET_EVENT_DOWN	1
