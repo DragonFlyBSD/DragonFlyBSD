@@ -190,6 +190,9 @@ Callbacks invoked when the system is being woken up.
 .It Vt dev_clone
 Callbacks invoked when a new entry is created under
 .Pa /dev .
+.It Vt bpf_track
+Callbacks invoked when a BPF listener attaches to/detaches from network
+interface.
 .It Vt group_attach_event
 Callbacks invoked when a new interface group has been created.
 .It Vt group_change_event

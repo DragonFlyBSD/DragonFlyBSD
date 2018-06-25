@@ -40,15 +40,9 @@
 #ifndef _NET_BPF_H_
 #define _NET_BPF_H_
 
-#ifndef _SYS_PARAM_H_
 #include <sys/param.h>
-#endif
-#ifndef _SYS_TIME_H_
 #include <sys/time.h>
-#endif
-#ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
-#endif
 
 __BEGIN_DECLS
 
@@ -154,9 +148,8 @@ struct bpf_hdr {
     sizeof(struct bpf_hdr))
 #endif
 
-#ifndef _NET_DLT_H
+/* Pull in data-link level type codes. */
 #include <net/dlt.h>
-#endif
 
 /*
  * The instruction encodings.
@@ -277,6 +270,17 @@ u_int	 bpf_filter(const struct bpf_insn *, u_char *, u_int, u_int);
 		bpf_reltoken();						\
 	}								\
 } while (0)
+
+/*
+ * BPF attach/detach events
+ */
+
+#include <sys/eventhandler.h>
+struct ifnet;
+
+typedef void (*bpf_track_fn)(void *, struct ifnet *, int /* dlt */,
+    int /* 1 =>'s attach */);
+EVENTHANDLER_DECLARE(bpf_track, bpf_track_fn);
 
 #endif	/* _KERNEL */
 
