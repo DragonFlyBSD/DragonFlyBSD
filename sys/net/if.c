@@ -1764,6 +1764,7 @@ if_route(struct ifnet *ifp, int flag, int fam)
 void
 if_down(struct ifnet *ifp)
 {
+	EVENTHANDLER_INVOKE(ifnet_event, ifp, IFNET_EVENT_DOWN);
 	if_unroute(ifp, IFF_UP, AF_UNSPEC);
 	netmsg_service_sync();
 }
@@ -1777,6 +1778,7 @@ void
 if_up(struct ifnet *ifp)
 {
 	if_route(ifp, IFF_UP, AF_UNSPEC);
+	EVENTHANDLER_INVOKE(ifnet_event, ifp, IFNET_EVENT_UP);
 }
 
 /*

@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/EVENTHANDLER.9,v 1.4 2005/10/11 16:05:35 keramida Exp $
 .\"
-.Dd June 22, 2018
+.Dd June 25, 2018
 .Dt EVENTHANDLER 9
 .Os
 .Sh NAME
@@ -204,6 +204,8 @@ Callbacks invoked when an address is set up on a network interface.
 Callbacks invoked when a new network interface appears.
 .It Vt ifnet_detach_event
 Callbacks invoked when a network interface is removed.
+.It Vt ifnet_event
+Callbacks invoked when a network interface is brought up or down.
 .It Vt power_profile_change
 Callbacks invoked when the power profile of the system changes.
 .It Vt shutdown_pre_sync

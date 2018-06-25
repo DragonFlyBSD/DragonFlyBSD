@@ -717,6 +717,11 @@ EVENTHANDLER_DECLARE(ifnet_attach_event, ifnet_attach_event_handler_t);
 /* interface detach event */
 typedef void (*ifnet_detach_event_handler_t)(void *, struct ifnet *);
 EVENTHANDLER_DECLARE(ifnet_detach_event, ifnet_detach_event_handler_t);
+/* Interface up/down event */
+#define IFNET_EVENT_UP		0
+#define IFNET_EVENT_DOWN	1
+typedef void (*ifnet_event_fn)(void *, struct ifnet *ifp, int event);
+EVENTHANDLER_DECLARE(ifnet_event, ifnet_event_fn);
 
 /* Array of all ifnets in the system */
 struct ifnet_array {
