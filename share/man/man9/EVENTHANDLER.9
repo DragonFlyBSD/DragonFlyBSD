@@ -187,9 +187,6 @@ The following event handlers are present in the kernel:
 Callbacks invoked when the system is being sent to sleep.
 .It Vt acpi_wakeup_event
 Callbacks invoked when the system is being woken up.
-.It Vt dev_clone
-Callbacks invoked when a new entry is created under
-.Pa /dev .
 .It Vt bpf_track
 Callbacks invoked when a BPF listener attaches to/detaches from network
 interface.
@@ -203,6 +200,8 @@ Callbacks invoked when an interface group has been removed due to no members.
 Callbacks invoked when a new interface cloner is attached.
 .It Vt ifaddr_event
 Callbacks invoked when an address is set up on a network interface.
+.It Vt iflladdr_event
+Callbacks invoked when an if link layer address event has happened.
 .It Vt ifnet_attach_event
 Callbacks invoked when a new network interface appears.
 .It Vt ifnet_detach_event
@@ -211,6 +210,8 @@ Callbacks invoked when a network interface is removed.
 Callbacks invoked when a network interface is brought up or down.
 .It Vt ifnet_link_event
 Callbacks invoked when the link state of an interface has changed.
+.It Vt mountroot
+Callbacks invoked when root has been mounted.
 .It Vt power_profile_change
 Callbacks invoked when the power profile of the system changes.
 .It Vt shutdown_pre_sync
@@ -219,6 +220,8 @@ Callbacks invoked at shutdown time, before file systems are synchronized.
 Callbacks invoked at shutdown time, after all file systems are synchronized.
 .It Vt shutdown_final
 Callbacks invoked just before halting the system.
+.It Vt usb_dev_configured
+Callbacks invoked when a USB device is configured.
 .El
 .Sh RETURN VALUES
 The macro
