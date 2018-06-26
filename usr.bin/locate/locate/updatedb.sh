@@ -37,7 +37,7 @@ if [ "$(id -u)" = "0" ]; then
 fi
 : ${LOCATE_CONFIG="/etc/locate.rc"}
 if [ -f "$LOCATE_CONFIG" -a -r "$LOCATE_CONFIG" ]; then
-       . $LOCATE_CONFIG
+	. $LOCATE_CONFIG
 fi
 
 # The directory containing locate subprograms
@@ -59,13 +59,9 @@ PATH=$LIBEXECDIR:/bin:/usr/bin:$PATH; export PATH
 	egrep -vw 'loopback|network|synthetic|read-only|0' | \
 	cut -d ' ' -f1)"}
 # directories to be searched to create the database
-# default to be all mount points with the above allowed filesystems, thus
-# allowing the exclusion of the root (/) filesystem while other mounted
-# and allowed filesystems can still be indexed.
-: ${SEARCHPATHS:="$(mount -t $(echo $FILESYSTEMS | tr ' ' ',') | \
-	awk '{ print $3 }')"}
+: ${SEARCHPATHS:="/"}
 # the find program and its options
-: ${FIND:="find -x"}
+: ${FIND:="find"}
 
 if [ -z "$SEARCHPATHS" ]; then
 	echo "$0: empty variable SEARCHPATHS" >&2; exit 1
@@ -79,11 +75,11 @@ if ! echo "$FILESYSTEMS" | grep -qw "$ROOTFS"; then
 fi
 
 # Make a list a paths to exclude in the locate run
-excludes="! (" or=""
-for fstype in $FILESYSTEMS
-do
-       excludes="$excludes $or -fstype $fstype"
-       or="-or"
+excludes="! ("
+or=""
+for fstype in $FILESYSTEMS; do
+	excludes="$excludes $or -fstype $fstype"
+	or="-or"
 done
 excludes="$excludes ) -prune"
 
@@ -105,7 +101,7 @@ trap 'rm -f $tmp; rmdir $TMPDIR' 0 1 2 3 5 10 15
 # search locally
 echo $FIND $SEARCHPATHS $excludes -or -print
 if $FIND $SEARCHPATHS $excludes -or -print 2>/dev/null | \
-        sort | uniq | $mklocatedb -presort > $tmp
+	sort | uniq | $mklocatedb -presort > $tmp
 then
 	if [ "$(stat -f '%z' $tmp)" -lt "257" ]; then
 		echo "updatedb: locate database $tmp is empty" >&2
