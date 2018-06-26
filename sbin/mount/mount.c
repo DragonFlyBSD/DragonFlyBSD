@@ -699,13 +699,13 @@ usage(void)
 static void
 printdefvals(const struct statfs *ent)
 {
-        if (strcmp(ent->f_fstypename, "ufs") == 0) {
-                if (strcmp(ent->f_mntonname, "/") == 0)
-                        printf("\t1 1\n");
-                else
-                        printf("\t2 2\n");
-        } else {
-                printf("\t0 0\n");
+	if (strcmp(ent->f_fstypename, "ufs") == 0) {
+		if (strcmp(ent->f_mntonname, "/") == 0)
+			printf("\t1 1\n");
+		else
+			printf("\t2 2\n");
+	} else {
+		printf("\t0 0\n");
 	}
 }
 
