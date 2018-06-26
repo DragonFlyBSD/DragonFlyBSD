@@ -6,8 +6,6 @@
  * $FreeBSD: src/usr.bin/lsvfs/lsvfs.c,v 1.13.2.1 2001/07/30 09:59:16 dd Exp $
  */
 
-#define _NEW_VFSCONF
-
 #include <sys/param.h>
 #include <sys/mount.h>
 
@@ -47,7 +45,7 @@ main(int argc, char **argv)
 	printf(HDRFMT, "Filesystem", "Num", "Refs", "Flags");
 	fputs(DASHES, stdout);
 
-	if(argc) {
+	if (argc) {
 		for(; argc; argc--, argv++) {
 			if (getvfsbyname(*argv, &vfc) == 0) {
 				printf(FMT, vfc.vfc_name, vfc.vfc_typenum,
@@ -79,10 +77,10 @@ static const char *
 fmt_flags(int flags)
 {
 	static char buf[sizeof(struct flaglist) * sizeof(fl)];
-	int i;
+	size_t i;
 
 	buf[0] = '\0';
-	for (i = 0; i < (int)nitems(fl); i++)
+	for (i = 0; i < nitems(fl); i++)
 		if (flags & fl[i].flag) {
 			strlcat(buf, fl[i].str, sizeof(buf));
 			strlcat(buf, ", ", sizeof(buf));
