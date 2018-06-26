@@ -1,7 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 #	$FreeBSD: src/share/man/man5/Makefile 211725 2010-08-23 22:24:11Z imp $
 
-#MISSING: dump.5 plot.5
 MAN=	acct.5 \
 	a.out.5 \
 	compilers.conf.5 \
@@ -41,6 +40,8 @@ MAN=	acct.5 \
 	null.5 \
 	passwd.5 \
 	periodic.conf.5 \
+	pf.conf.5 \
+	pf.os.5 \
 	phones.5 \
 	procfs.5 \
 	protocols.5 \
