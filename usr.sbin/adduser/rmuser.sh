@@ -192,19 +192,19 @@ prompt_yesno() {
 	# The argument is required
 	[ -n "$1" ] && msg="$1" || return
 
-        while : ; do
-                echo -n "$msg"
-                read _ans
-                case $_ans in
-                [Nn][Oo]|[Nn])
+	while : ; do
+		echo -n "$msg"
+		read _ans
+		case $_ans in
+		[Nn][Oo]|[Nn])
 			return 1
-                        ;;
-                [Yy][Ee][Ss]|[Yy][Ee]|[Yy])
-                        return 0
-                        ;;
-                *)
-                        ;;
-                esac
+			;;
+		[Yy][Ee][Ss]|[Yy][Ee]|[Yy])
+			return 0
+			;;
+		*)
+			;;
+		esac
 	done
 }
 
@@ -220,13 +220,12 @@ show_usage() {
 
 #### END SUBROUTINE DEFENITION ####
 
-ffile=
-fflag=
 procowner=
 pw_rswitch=
-userlist=
-yflag=
+ffile=
+fflag=
 vflag=
+yflag=
 
 procowner=`/usr/bin/id -u`
 if [ "$procowner" != "0" ]; then
@@ -234,39 +233,42 @@ if [ "$procowner" != "0" ]; then
 	exit 1
 fi
 
-args=`getopt 2>/dev/null yvf: $*`
-if [ "$?" != "0" ]; then
-	show_usage
-	exit 1
-fi
-set -- $args
-for _switch ; do
-	case $_switch in
-	-y)
-		yflag=1
-		shift
-		;;
-	-v)
-		vflag=1
-		shift
-		;;
-	-f)
+while getopts :f:hvy opt; do
+	case $opt in
+	f)
 		fflag=1
-		ffile="$2"
-		shift; shift
+		ffile="$OPTARG"
 		;;
-	--)
-		shift
-		break
+	h)
+		show_usage
+		exit 1
+		;;
+	v)
+		vflag=1
+		;;
+	y)
+		yflag=1
+		;;
+	\?)
+		err "Invalid option -${OPTARG}"
+		show_usage
+		exit 1
+		;;
+	:)
+		err "Option -${OPTARG} requires an argument"
+		show_usage
+		exit 1
 		;;
 	esac
 done
+
+shift $((OPTIND - 1))
 
 # Get user names from a file if the -f switch was used. Otherwise,
 # get them from the commandline arguments. If we're getting it
 # from a file, the file must be owned by and writable only by root.
 #
-if [ $fflag ]; then
+if [ -n "$fflag" ]; then
 	_insecure=`find $ffile ! -user 0 -or -perm +0022`
 	if [ -n "$_insecure" ]; then
 		err "file ($ffile) must be owned by and writeable only by root."
@@ -278,27 +280,25 @@ if [ $fflag ]; then
 			\#*|'')
 				;;
 			*)
-				echo -n "$userlist $_user"
+				echo -n "$_user "
 				;;
 			esac
 		done`
+	else
+		err "($ffile) does not exist or does not contain any user names."
+		exit 1
 	fi
 else
-	while [ $1 ] ; do
-		userlist="$userlist $1"
-		shift
-	done
+	userlist="$@"
 fi
 
-# If the -y or -f switch has been used and the list of users to remove
+# If the -y switch has been used and the list of users to remove
 # is empty it is a fatal error. Otherwise, prompt the user for a list
 # of one or more user names.
 #
-if [ ! "$userlist" ]; then
-	if [ $fflag ]; then
-		err "($ffile) does not exist or does not contain any user names."
-		exit 1
-	elif [ $yflag ]; then
+userlist=`echo "$userlist" | sed -e 's/[[:space:]]*$//'`
+if [ -z "$userlist" ]; then
+	if [ -n "$yflag" ]; then
 		show_usage
 		exit 1
 	else
