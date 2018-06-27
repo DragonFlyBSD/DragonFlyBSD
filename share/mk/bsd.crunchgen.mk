@@ -9,12 +9,14 @@
 # CRUNCH_LIBS		Libraries to be statically linked with
 # CRUNCH_SHLIBS		Libraries to be dynamically linked with
 # CRUNCH_BUILDOPTS	Build options to be added for every program
+# CRUNCH_CFLAGS		Compiler flags to be added for every program
 # CRUNCH_LINKOPTS	Options to be added for linking the final binary
 #
 # Special options can be specified for individual programs:
 #
 # CRUNCH_SRCDIR_${P}	Base source directory for program ${P}
 # CRUNCH_BUILDOPTS_${P}	Additional build options for ${P}
+# CRUNCH_CFLAGS_${P}	Additional compiler flags for ${P}
 # CRUNCH_ALIAS_${P}	Additional names to be used for ${P}
 #
 # By default, any name appearing in CRUNCH_PROGS or CRUNCH_ALIAS_${P}
@@ -86,6 +88,9 @@ ${CONF}: Makefile
 .ifdef CRUNCH_BUILDOPTS
 	echo "buildopts ${CRUNCH_BUILDOPTS}" >>${.TARGET}
 .endif
+.ifdef CRUNCH_CFLAGS
+	echo "buildopts CRUNCH_CFLAGS=\"${CRUNCH_CFLAGS}\"" >>${.TARGET}
+.endif
 .ifdef CRUNCH_LINKOPTS
 	echo "linkopts ${CRUNCH_LINKOPTS}" >>${.TARGET}
 .endif
@@ -99,10 +104,15 @@ ${CONF}: Makefile
 .for P in ${CRUNCH_PROGS_${D}}
 	echo "progs ${P}" >>${.TARGET}
 	echo "special ${P} srcdir ${CRUNCH_SRCDIR_${P}}" >>${.TARGET}
-.ifdef CRUNCH_BUILDOPTS_${P}
-	echo "special ${P} buildopts DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS_${P}}" >>${.TARGET}
+.ifdef CRUNCH_CFLAGS_${P}
+	echo "special ${P} buildopts \
+	    DIRPRFX=${DIRPRFX}${P}/ \
+	    ${CRUNCH_BUILDOPTS_${P}} \
+	    CRUNCH_CFLAGS=\"${CRUNCH_CFLAGS_${P}}\"" >>${.TARGET}
 .else
-	echo "special ${P} buildopts DIRPRFX=${DIRPRFX}${P}/" >>${.TARGET}
+	echo "special ${P} buildopts \
+	    DIRPRFX=${DIRPRFX}${P}/ \
+	    ${CRUNCH_BUILDOPTS_${P}}" >>${.TARGET}
 .endif
 .ifdef CRUNCH_KEEP_${P}
 	echo "special ${P} keep ${CRUNCH_KEEP_${P}}" >>${.TARGET}

@@ -231,7 +231,7 @@ CRUNCH_LIBS+= -lutil
 CRUNCH_LIBS+= -lz  # savecore
 CRUNCH_LIBS+= -lm  # awk, ps, ping
 CRUNCH_LIBS+= -lpthread
-CRUNCH_LIBS+= ${PRIVATELIB_LDFLAGS}
+CRUNCH_LINKOPTS+= ${PRIVATELIB_LDFLAGS}
 
 .include <bsd.crunchgen.mk>
 .include <bsd.prog.mk>

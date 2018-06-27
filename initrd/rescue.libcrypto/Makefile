@@ -69,7 +69,7 @@ CRUNCH_LIBS+= -lutil
 CRUNCH_LIBS+= -lz  # cpio, ssh, tar
 CRUNCH_LIBS+= -lm  # hammer, hammer2, ping6
 CRUNCH_LIBS+= -lpthread
-CRUNCH_LIBS+= ${PRIVATELIB_LDFLAGS}
+CRUNCH_LINKOPTS+= ${PRIVATELIB_LDFLAGS}
 
 .include <bsd.crunchgen.mk>
 .include <bsd.prog.mk>

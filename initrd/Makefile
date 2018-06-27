@@ -1,4 +1,5 @@
-INITRD_MAKE= make -m ${.CURDIR}/../share/mk
+INITRD_MAKE=	LC_ALL=C \
+		make -m ${.CURDIR}/../share/mk
 
 # Target directory to install the rescue tools
 RESCUE_DIR?=		/rescue
@@ -14,20 +15,19 @@ rescue: .PHONY
 	@${ECHO} ">>> Building and installing rescue tools ..."
 .for _dir in oinit rescue rescue.libcrypto
 .if !defined(NO_CLEAN)
-	(cd ${.CURDIR}/${_dir}; \
+	(cd ${.CURDIR}/${_dir} && \
 	    ${INITRD_MAKE} BINDIR=${RESCUE_DIR} clean cleandepend)
 .endif
-	(cd ${.CURDIR}/${_dir}; \
-	    ${ECHO} "=> ${_dir}"; \
-	    ${INITRD_MAKE} BINDIR=${RESCUE_DIR} obj; \
+	(cd ${.CURDIR}/${_dir} && \
+	    ${INITRD_MAKE} BINDIR=${RESCUE_DIR} obj && \
 	    ${INITRD_MAKE} BINDIR=${RESCUE_DIR} depend all install)
 .endfor
 
 initrd: rescue
 	@${ECHO} ">>> Preparing initrd contents ..."
-	(cd ${.CURDIR}/etc; \
-	    mkdir ${INITRD_STAGEDIR}/etc; \
-	    ${INITRD_MAKE} BINDIR=${INITRD_STAGEDIR}/etc depend all; \
+	(cd ${.CURDIR}/etc && \
+	    mkdir ${INITRD_STAGEDIR}/etc && \
+	    ${INITRD_MAKE} BINDIR=${INITRD_STAGEDIR}/etc depend all && \
 	    ${INITRD_MAKE} BINDIR=${INITRD_STAGEDIR}/etc DESTDIR="" install)
 	@${ECHO} ">>> Creating initrd.img.gz ..."
 	sh ${.CURDIR}/mkinitrd.sh \
@@ -38,7 +38,6 @@ initrd: rescue
 clean:
 	@${ECHO} ">>> Cleaning ..."
 .for _dir in etc oinit rescue rescue.libcrypto
-	(cd ${.CURDIR}/${_dir}; \
-	    ${ECHO} "=> ${_dir}"; \
+	(cd ${.CURDIR}/${_dir} && \
 	    ${INITRD_MAKE} BINDIR=${RESCUE_DIR} clean cleandepend)
 .endfor
