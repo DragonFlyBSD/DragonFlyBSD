@@ -30,8 +30,6 @@
 #                       of the system for DragonFly. ex. two compilers.
 # rescue              - Build and install the statically linked rescue tools.
 # initrd              - Build the rescue tools and create the initrd image.
-# most                - Build user commands, no libraries or include files.
-# installmost         - Install user commands, no libraries or include files.
 # backupworld         - Copy /bin /sbin /usr/bin /usr/sbin /usr/lib
 #                       /usr/libexec to manual backup dir.
 # restoreworld        - Install binaries from manual backup dir to world.
@@ -80,9 +78,9 @@ TGTS=	all all-man buildkernel quickkernel realquickkernel nativekernel \
 	buildworld crossworld quickworld realquickworld checkdpadd clean \
 	cleandepend cleandir depend everything \
 	hierarchy install installcheck installkernel \
-	reinstallkernel installmost installworld installworld-force \
+	reinstallkernel installworld installworld-force \
 	libraries lint maninstall \
-	manlint mk most obj objlink regress rerelease tags \
+	manlint mk obj objlink regress rerelease tags \
 	backupworld restoreworld restoreworld-auto \
 	backup-clean backup-auto-clean \
 	_obj _includes _libraries _depend _worldtmp \

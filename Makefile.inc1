@@ -788,33 +788,6 @@ installkernel reinstallkernel:
 	@echo "--------------------------------------------------------------"
 
 #
-# most
-#
-# Build most of the user binaries on the existing system libs and includes.
-#
-most:
-	@echo "--------------------------------------------------------------"
-	@echo ">>> Building programs only"
-	@echo "--------------------------------------------------------------"
-.for _dir in bin sbin libexec usr.bin usr.sbin gnu/libexec gnu/usr.bin gnu/usr.sbin
-	cd ${.CURDIR}/${_dir};		make DIRPRFX=${_dir}/ all
-.endfor
-
-#
-# installmost
-#
-# Install the binaries built by the 'most' target.  This does not include
-# libraries or include files.
-#
-installmost:
-	@echo "--------------------------------------------------------------"
-	@echo ">>> Installing programs only"
-	@echo "--------------------------------------------------------------"
-.for _dir in bin sbin libexec usr.bin usr.sbin gnu/libexec gnu/usr.bin gnu/usr.sbin
-	cd ${.CURDIR}/${_dir};		make DIRPRFX=${_dir}/ install
-.endfor
-
-#
 # ------------------------------------------------------------------------
 #
 # From here onwards are utility targets used by the 'make world' and
