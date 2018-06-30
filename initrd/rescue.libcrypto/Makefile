@@ -24,9 +24,13 @@ CRUNCH_PROGS_usr.bin=	\
 	nc		\
 	scp		\
 	ssh		\
-	tar
+	tar		\
+	telnet
 
 CRUNCH_ALIAS_ssh= slogin
+
+# telnet requires the 'libtelnet.a' internal library
+CRUNCH_INTLIB_telnet= ${.CURDIR}/../../lib/libtelnet/libtelnet.a
 
 # Programs from 'sbin'
 #
@@ -61,10 +65,12 @@ CRUNCH_LIBS+= -lfetch  # fetch
 CRUNCH_LIBS+= -larchive  # cpio, tar
 CRUNCH_LIBS+= -llzma  # cpio, tar
 CRUNCH_LIBS+= -lbz2  # cpio, tar
-CRUNCH_LIBS+= -lmd  # cpio, md5, ping6, tar
+CRUNCH_LIBS+= -lpam -lcrypt -lradius -ltacplus -lopie -lypclnt  # telnet
+CRUNCH_LIBS+= -lprivate_ncurses  # telnet
 CRUNCH_LIBS+= -lprivate_ssl  # fetch, wpa_supplicant
 CRUNCH_LIBS+= -lprivate_ssh  # ssh
 CRUNCH_LIBS+= -lprivate_crypto
+CRUNCH_LIBS+= -lmd  # cpio, md5, ping6, tar
 CRUNCH_LIBS+= -lutil
 CRUNCH_LIBS+= -lz  # cpio, ssh, tar
 CRUNCH_LIBS+= -lm  # hammer, hammer2, ping6

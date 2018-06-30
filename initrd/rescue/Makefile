@@ -213,6 +213,23 @@ CRUNCH_ALIAS_lvm= \
 	vgmerge vgmknodes vgreduce vgremove vgrename \
 	vgs vgscan vgsplit
 
+CRUNCH_SRCDIRS+= grep
+CRUNCH_PATH_grep= ${.CURDIR}/../../gnu/usr.bin
+CRUNCH_PROGS_grep= grep
+CRUNCH_INTLIB_grep= ${CRUNCH_PATH_grep}/grep/libgreputils/libgreputils.a
+SCRIPTS+= \
+	${CRUNCH_PATH_grep}/grep/egrep/egrep \
+	${CRUNCH_PATH_grep}/grep/fgrep/fgrep
+
+CRUNCH_SRCDIRS+= diff
+CRUNCH_PATH_diff= ${.CURDIR}/../../gnu/usr.bin
+CRUNCH_PROGS_diff= diff diff3 sdiff
+CRUNCH_INTLIB_diff= \
+	${CRUNCH_PATH_diff}/diff/libdiffutils/libdiffutils.a \
+	${CRUNCH_PATH_diff}/diff/libver/libver.a
+CRUNCH_INTLIB_diff3= ${CRUNCH_INTLIB_diff}
+CRUNCH_INTLIB_sdiff= ${CRUNCH_INTLIB_diff}
+
 CRUNCH_LIBS+= -llvm -ldevmapper -ldevattr -ldm -lprop  # lvm
 CRUNCH_LIBS+= -ldevstat  # vinum
 CRUNCH_LIBS+= -lbsdxml  # ifconfig
