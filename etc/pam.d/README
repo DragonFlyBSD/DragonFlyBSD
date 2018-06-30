@@ -8,7 +8,7 @@ particular service, the /etc/pam.d/other is used instead.  If that
 file does not exist, /etc/pam.conf is searched for entries matching
 the specified service or, failing that, the "other" service.
 
-See the pam(8) manual page for an explanation of the workings of the
+See the pam(3) manual page for an explanation of the workings of the
 PAM library and descriptions of the various files and modules.  Below
 is a summary of the format for the pam.conf and /etc/pam.d/* files.
 
@@ -58,5 +58,3 @@ Note that having a "sufficient" module as the last entry for a
 particular service and module type may result in surprising behaviour.
 To get the intended semantics, add a "required" entry listing the
 pam_deny module at the end of the chain.
-
-$DragonFly: src/etc/pam.d/README,v 1.1 2005/07/13 16:30:23 joerg Exp $
