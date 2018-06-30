@@ -27,7 +27,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/condvar.9,v 1.11 2004/11/08 18:15:11 jhb Exp $
 .\"
-.Dd August 11, 2011
+.Dd June 29, 2018
 .Dt CONDVAR 9
 .Os
 .Sh NAME
@@ -38,6 +38,10 @@
 .Nm cv_wait_sig ,
 .Nm cv_timedwait ,
 .Nm cv_timedwait_sig ,
+.Nm cv_mtx_wait ,
+.Nm cv_mtx_wait_sig ,
+.Nm cv_mtx_timedwait ,
+.Nm cv_mtx_timedwait_sig ,
 .Nm cv_signal ,
 .Nm cv_broadcast ,
 .Nm cv_broadcastpri
@@ -58,6 +62,14 @@
 .Fn cv_timedwait "struct cv *cvp" "struct lock *l" "int timo"
 .Ft int
 .Fn cv_timedwait_sig "struct cv *cvp" "struct lock *l" "int timo"
+.Ft void
+.Fn cv_mtx_wait "struct cv *cvp" "struct mtx *m"
+.Ft int
+.Fn cv_mtx_wait_sig "struct cv *cvp" "struct mtx *m"
+.Ft int
+.Fn cv_mtx_timedwait "struct cv *cvp" "struct mtx *m" "int timo"
+.Ft int
+.Fn cv_mtx_timedwait_sig "struct cv *cvp" "struct mtx *m" "int timo"
 .Ft void
 .Fn cv_signal "struct cv *cvp"
 .Ft void
@@ -144,6 +156,22 @@ if a signal is caught, or 0 if signaled via
 .Fn cv_signal
 or
 .Fn cv_broadcast .
+.Pp
+.Fn cv_mtx_wait ,
+.Fn cv_mtx_wait_sig ,
+.Fn cv_mtx_timedwait ,
+and
+.Fn cv_mtx_timedwait_sig
+work the same as
+.Fn cv_wait ,
+.Fn cv_wait_sig ,
+.Fn cv_timedwait ,
+and
+.Fn cv_timedwait_sig
+except that they take
+.Vt struct mtx
+argument
+.Fa m .
 .Sh IMPLEMENTATION NOTES
 Condition variables exist primarily for code imported from other systems; for
 .Dx
@@ -152,16 +180,15 @@ code, the
 /
 .Fn wakeup
 family of functions should be used instead.
-.Pp
-Condition variables can currently only release
-.Xr lockmgr 9
-locks.
 .Sh RETURN VALUES
 If successful,
 .Fn cv_wait_sig ,
 .Fn cv_timedwait ,
-and
 .Fn cv_timedwait_sig
+.Fn cv_mtx_wait_sig ,
+.Fn cv_mtx_timedwait ,
+and
+.Fn cv_mtx_timedwait_sig
 return 0.
 Otherwise, a non-zero error code is returned.
 .Sh FILES
@@ -172,6 +199,7 @@ The public interface and structure is found in
 .Sh SEE ALSO
 .Xr locking 9 ,
 .Xr lockmgr 9 ,
+.Xr mutex 9 ,
 .Xr tsleep 9
 .Sh HISTORY
 Condition variables appeared in

@@ -2,6 +2,7 @@
 #define	_SYS_CONDVAR_H_
 
 #include <sys/spinlock.h>
+#include <sys/mutex.h>
 
 struct lock;
 
@@ -15,6 +16,7 @@ void	cv_init(struct cv *, const char *desc);
 void	cv_destroy(struct cv *);
 
 int	_cv_timedwait(struct cv *, struct lock *, int timo, int wakesig);
+int	_cv_mtx_timedwait(struct cv *, struct mtx *, int timo, int wakesig);
 void	_cv_signal(struct cv *, int broadcast);
 
 int	cv_has_waiters(const struct cv *);
@@ -27,6 +29,15 @@ int	cv_has_waiters(const struct cv *);
 		_cv_timedwait((cv), (lock), (timeo), 0)
 #define	cv_timedwait_sig(cv, lock, timeo)	\
 		_cv_timedwait((cv), (lock), (timeo), 1)
+
+#define	cv_mtx_wait(cv, mtx)			\
+		_cv_mtx_timedwait((cv), (mtx), 0, 0)
+#define	cv_mtx_wait_sig(cv, mtx)		\
+		_cv_mtx_timedwait((cv), (mtx), 0, 1)
+#define	cv_mtx_timedwait(cv, mtx, timeo)	\
+		_cv_mtx_timedwait((cv), (mtx), (timeo), 0)
+#define	cv_mtx_timedwait_sig(cv, mtx, timeo)	\
+		_cv_mtx_timedwait((cv), (mtx), (timeo), 1)
 
 #define	cv_signal(cv)				\
 		_cv_signal((cv), 0)

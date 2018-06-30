@@ -160,7 +160,6 @@ int	autofs_node_find(struct autofs_node *parent,
 void	autofs_node_delete(struct autofs_node *anp);
 int	autofs_node_vn(struct autofs_node *anp, struct mount *mp,
 	    int flags, struct vnode **vpp);
-int	_cv_mtx_timedwait(struct cv *c, struct mtx *mtx, int timo, int wakesig);
 
 static __inline void
 autofs_node_cache(struct autofs_node *anp)
@@ -175,8 +174,5 @@ autofs_node_uncache(struct autofs_node *anp)
 }
 
 RB_PROTOTYPE(autofs_node_tree, autofs_node, an_link, autofs_node_cmp);
-
-#define cv_mtx_wait(cv, mtx)		_cv_mtx_timedwait((cv), (mtx), 0, 0)
-#define cv_mtx_wait_sig(cv, mtx)	_cv_mtx_timedwait((cv), (mtx), 0, 1)
 
 #endif /* !AUTOFS_H */
