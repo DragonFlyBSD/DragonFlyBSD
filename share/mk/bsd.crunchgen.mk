@@ -8,6 +8,7 @@
 # CRUNCH_PROGS_${D}	Programs to be included inside directory ${D}
 # CRUNCH_LIBS		Libraries to be statically linked with
 # CRUNCH_SHLIBS		Libraries to be dynamically linked with
+# CRUNCH_INTLIBS	Internal libraries to be built and linked with
 # CRUNCH_BUILDOPTS	Build options to be added for every program
 # CRUNCH_CFLAGS		Compiler flags to be added for every program
 # CRUNCH_LINKOPTS	Options to be added for linking the final binary
@@ -18,6 +19,10 @@
 # CRUNCH_BUILDOPTS_${P}	Additional build options for ${P}
 # CRUNCH_CFLAGS_${P}	Additional compiler flags for ${P}
 # CRUNCH_ALIAS_${P}	Additional names to be used for ${P}
+# CRUNCH_LIB_${P}	Additional libraries to be statically linked for ${P}
+# CRUNCH_INTLIB_${P}	Additional internal libraries to be built
+#			and statically linked for ${P}
+# CRUNCH_KEEP_${P}	Additional symbols to be kept for ${P}
 #
 # By default, any name appearing in CRUNCH_PROGS or CRUNCH_ALIAS_${P}
 # will be used to generate a hard/soft link to the resulting binary.
@@ -100,6 +105,9 @@ ${CONF}: Makefile
 .ifdef CRUNCH_SHLIBS
 	echo "libs_so ${CRUNCH_SHLIBS}" >>${.TARGET}
 .endif
+.ifdef CRUNCH_INTLIBS
+	echo "libs_int ${CRUNCH_INTLIBS}" >>${.TARGET}
+.endif
 .for D in ${CRUNCH_SRCDIRS}
 .for P in ${CRUNCH_PROGS_${D}}
 	echo "progs ${P}" >>${.TARGET}
@@ -114,14 +122,20 @@ ${CONF}: Makefile
 	    DIRPRFX=${DIRPRFX}${P}/ \
 	    ${CRUNCH_BUILDOPTS_${P}}" >>${.TARGET}
 .endif
+.ifdef CRUNCH_LIB_${P}
+	echo "special ${P} lib ${CRUNCH_LIB_${P}}" >>${.TARGET}
+.endif
+.ifdef CRUNCH_INTLIB_${P}
+	echo "special ${P} lib_int ${CRUNCH_INTLIB_${P}}" >>${.TARGET}
+.endif
 .ifdef CRUNCH_KEEP_${P}
 	echo "special ${P} keep ${CRUNCH_KEEP_${P}}" >>${.TARGET}
 .endif
 .for A in ${CRUNCH_ALIAS_${P}}
 	echo "ln ${P} ${A}" >>${.TARGET}
 .endfor
-.endfor
-.endfor
+.endfor  # CRUNCH_PROGS_${D}
+.endfor  # CRUNCH_SRCDIRS
 
 CRUNCHGEN?= crunchgen
 CRUNCHENV?=	# empty
@@ -161,6 +175,25 @@ ${__target}_crunchdir_${P}: .PHONY .MAKE
 		DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS} ${__target})
 ${__target}: ${__target}_crunchdir_${P}
 .endfor
+.endfor
+.endfor
+
+# Internal libraires
+_CRUNCH_INTLIBS= ${CRUNCH_INTLIBS}
+.for D in ${CRUNCH_SRCDIRS}
+.for P in ${CRUNCH_PROGS_${D}}
+_CRUNCH_INTLIBS+= ${CRUNCH_INTLIB_${P}}
+.endfor
+.endfor
+_CRUNCH_INTLIBS:= ${_CRUNCH_INTLIBS:O:u}  # remove duplicates
+
+.for __target in ${__targets}
+.for L in ${_CRUNCH_INTLIBS}
+${__target}_crunchdir_${L:T}: .PHONY .MAKE
+	(cd ${L:H} && \
+	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
+		DIRPRFX=${DIRPRFX}${L:T}/ ${CRUNCH_BUILDOPTS} ${__target})
+${__target}: ${__target}_crunchdir_${L:T}
 .endfor
 .endfor
 
