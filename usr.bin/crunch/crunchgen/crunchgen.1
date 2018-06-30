@@ -24,7 +24,7 @@
 .\"			   University of Maryland at College Park
 .\" $FreeBSD: head/usr.sbin/crunch/crunchgen/crunchgen.1 213573 2010-10-08 12:40:16Z uqs $
 .\"
-.Dd June 12, 2018
+.Dd June 30, 2018
 .Dt CRUNCHGEN 1
 .Os
 .Sh NAME
@@ -213,6 +213,11 @@ The
 directive overrides a library specified gratuitously on a
 .Ic libs
 line.
+.It Ic libs_int Ar library-fullpath ...
+A list of full paths to the internal libraries that will be built and
+statically linked for the crunched binary.
+The library paths are specified like
+.Dq Pa <source-dir>/lib<name>.a .
 .It Ic buildopts Ar buildopts ...
 A list of build options to be added to every make target.
 .It Ic linkopts Ar linkopts ...
@@ -310,6 +315,10 @@ Specifies libraries to be linked with object files to produce
 This can be useful with libraries which redefine routines in
 the standard libraries, or poorly written libraries which
 reference symbols in the object files.
+.It Ic special Ar progname Ic lib_int Ar library-fullpath ...
+A list of full paths to the internal libraries to be built and
+statically linked to create
+.Ar progname Ns Pa .lo .
 .It Ic special Ar progname Ic keep Ar symbol-name ...
 Add specified list of symbols to the keep list for program
 .Ar progname .
@@ -447,6 +456,17 @@ keyword was added in 2005 by
 .An Adrian Steinmann Aq Mt ast@marabu.ch
 and
 .An Ceri Davies Aq Mt ceri@FreeBSD.org .
+.Pp
+The
+.Ic linkopts ,
+.Ic libs_int
+and
+.Ic lib_int
+(for the
+.Ic special
+command)
+keywords were added in 2018 by
+.An Aaron LI Aq Mt aly@aaronly.me .
 .Sh CAVEATS
 While
 .Nm
