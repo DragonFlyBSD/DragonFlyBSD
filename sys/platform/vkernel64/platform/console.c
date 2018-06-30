@@ -53,6 +53,7 @@
 static int console_stolen_by_kernel;
 static struct kqueue_info *kqueue_console_info;
 static struct tty *kqueue_console_tty;
+static int vcons_started;
 
 /************************************************************************
  *			    CONSOLE DEVICE				*
@@ -341,6 +342,9 @@ vconsinit(struct consdev *cp)
 {
 	struct sigaction sa;
 
+	if (vcons_started)
+		return;
+	vcons_started = 1;
 	vconsole = cp;
 
 	tcgetattr(0, &init_tio);
