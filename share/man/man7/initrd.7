@@ -1,0 +1,170 @@
+.\"
+.\" Copyright (c) 2018
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd June 2, 2018
+.Dt INITRD 7
+.Os
+.Sh NAME
+.Nm initrd
+.Nd initial ramdisk image as early userland
+.Sh DESCRIPTION
+The
+.Nm
+is a small initial ramdisk image that packs a minimal
+.Xr init 8 ,
+basic
+.Xr rc 8
+scripts, and many other statically linked tools, such as various
+.Xr mount 8
+utilities,
+.Xr lvm 8 ,
+.Xr cryptsetup 8 ,
+.Xr tcplay 8 ,
+as well as some networking tools.
+The
+.Nm
+is a nice early userland and is required to help mount the root
+partition residing on an encrypted device or LVM.
+.Pp
+The statically linked tools are known as the
+.Dq rescue tools
+and shipped at
+.Pa /rescue .
+The inclusion of such rescue tools makes
+.Nm
+can provide with a powerful rescue environment to fix severe problems,
+e.g., the root partition cannot be mounted.
+Users can also choose to boot into the rescue mode from the bootloader
+menu.
+.Pp
+The
+.Nm
+is a
+.Xr md 4
+image formatted with the
+.Xr UFS 5
+filesystem.
+It is created by the
+.Dq initrd
+target of the
+.Xr build 7
+framework, and is compressed and installed at
+.Pa /boot/kernel/initrd.img.gz .
+The following configurations should be added to
+.Pa /boot/loader.conf
+to make use of the
+.Nm
+image:
+.Bd -literal -offset indent
+initrd.img_load="YES"
+initrd.img_type="md_image"
+vfs.root.mountfrom="ufs:md0s0"
+.Ed
+.Pp
+Then, the
+.Dq vfs.root.realroot
+kernel environment variable can be configured to specify how to
+mount the real root partition.
+Its general syntax is:
+.Bd -literal -offset indent
+vfs.root.realroot="<type>:[arg1[:arg2[:...]]]"
+.Ed
+.Pp
+Currently, the supported types of real root partition are:
+.Pa local ,
+.Pa crypt ,
+and
+.Pa tcplay .
+The
+.Pa local
+type allows to mount any local filesystem that does not require any
+special setup apart from the initial discovery and calling the
+.Xr mount 8
+program.
+The general format is as follows:
+.Bd -literal -offset indent
+vfs.root.realroot="local:<FS-TYPE>:<DEVICE-PATH>[:<OPTIONS>]"
+.Ed
+.Pp
+The
+.Pa crypt
+and
+.Pa tcplay
+types allow to mount volumes supported by
+.Xr cryptsetup 8
+and
+.Xr tcplay 8 ,
+respectively.
+The device will be set up after asking the user for the key,
+and this volume will then be mounted as the root.
+The general formats are as follows:
+.Bd -literal -offset indent
+vfs.root.realroot="crypt:<FS-TYPE>:<DEVICE-PATH>:<MAPPING-NAME>[:<OPTIONS>]"
+
+vfs.root.realroot="tcplay:<FS-TYPE>:<DEVICE-PATH>:<MAPPING-NAME>[:<OPTIONS>]"
+.Ed
+.Sh FILES
+.Bl -tag -width "/boot/kernel/initrd.img.gz"
+.It Pa /boot/kernel/initrd.img.gz
+Location of the compressed
+.Nm
+image.
+.El
+.Sh EXAMPLES
+.Bd -literal -offset indent
+vfs.root.realroot="local:ufs:/dev/vg00/lv0[:OPTIONS]"
+
+vfs.root.realroot="crypt:ufs:/dev/ad0s0a:secvolume[:OPTIONS]"
+
+vfs.root.realroot="crypt:hammer2:/dev/serno/XXXXXX.s1d:root[:OPTIONS]"
+.Ed
+.Sh SEE ALSO
+.Xr md 4 ,
+.Xr loader.conf 5 ,
+.Xr build 7 ,
+.Xr cryptsetup 8 ,
+.Xr lvm 8 ,
+.Xr tcplay 8
+.Sh HISTORY
+The
+.Nm
+manual page first appeared in
+.Dx 5.3 .
+.Sh AUTHORS
+The
+.Nm
+manual page was written by
+.An Aaron LI Aq Mt aly@aaronly.me .
+.Sh BUGS
+The
+.Nm
+image occupies about 10-15 MB wired memory and cannot be freed after
+chrooting to the real root partition.
