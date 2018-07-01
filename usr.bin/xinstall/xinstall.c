@@ -111,7 +111,7 @@ main(int argc, char *argv[])
 	owner = NULL;
 	etcdir = NULL;
 
-	while ((ch = getopt(argc, argv, "L:B:bCcD:df:g:lMm:o:pSsUv")) != -1)
+	while ((ch = getopt(argc, argv, "L:B:bCcD:df:g:lMm:N:o:pSsUv")) != -1)
 		switch((char)ch) {
 		case 'B':
 			suffix = optarg;
@@ -137,9 +137,6 @@ main(int argc, char *argv[])
 		case 'g':
 			group = optarg;
 			break;
-		case 'L':
-			etcdir = optarg;
-			break;
 		case 'l':
 			trysys = 1;
 			break;
@@ -152,6 +149,13 @@ main(int argc, char *argv[])
 				     optarg);
 			mode = getmode(set, 0);
 			free(set);
+			break;
+		case 'L':
+			/* -L option kept for compatibility with pre-5.4 */
+			warnx("Option -L is deprecated, use -N instead");
+			/* FALLTHROUGH */
+		case 'N':
+			etcdir = optarg;
 			break;
 		case 'o':
 			owner = optarg;
@@ -901,10 +905,10 @@ usage(void)
 {
 	fprintf(stderr,
 "usage: install [-bCcpSsUv] [-B suffix] [-D dest] [-f flags] [-g group]\n"
-"               [-m mode] [-o owner] file1 file2\n"
+"               [-N dbdir] [-m mode] [-o owner] file1 file2\n"
 "       install [-bCcpSsUv] [-B suffix] [-D dest] [-f flags] [-g group]\n"
-"               [-m mode] [-o owner] file1 ... fileN directory\n"
-"       install -d [-lUv] [-D dest] [-g group] [-m mode] [-o owner]\n"
+"               [-N dbdir] [-m mode] [-o owner] file1 ... fileN directory\n"
+"       install -d [-lUv] [-D dest] [-g group] [-m mode] [-N dbdir] [-o owner]\n"
 "               directory ...\n");
 	exit(EX_USAGE);
 	/* NOTREACHED */
