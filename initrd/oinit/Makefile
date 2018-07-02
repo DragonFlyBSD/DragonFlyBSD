@@ -6,3 +6,5 @@ DPADD=	${LIBUTIL}
 LDADD=	-lutil
 
 .include <bsd.prog.mk>
+
+.ORDER: clean cleandepend cleandir obj depend all install
