@@ -120,7 +120,7 @@ struct percpu_objcache {
  * individual objects.
  */
 struct objcache {
-	char			*name;
+	const char		*name;
 
 	/* object constructor and destructor from blank storage */
 	objcache_ctor_fn	*ctor;
@@ -902,7 +902,7 @@ objcache_destroy(struct objcache *oc)
 		/* don't bother adjusting depot->unallocated_objects */
 	}
 
-	kfree(oc->name, M_TEMP);
+	kfree(__DECONST(void *, oc->name), M_TEMP);
 	kfree(oc, M_OBJCACHE);
 }
 
