@@ -44,6 +44,7 @@ CRUNCH_LIBS+= -lmd  # md5, ping6
 CRUNCH_LIBS+= -lpcap  # wpa_supplicant
 CRUNCH_LIBS+= -lprivate_ssl  # wpa_supplicant
 CRUNCH_LIBS+= -lprivate_crypto
+CRUNCH_LIBS+= -lpthread
 CRUNCH_LIBS+= ${PRIVATELIB_LDFLAGS}
 
 .include <bsd.crunchgen.mk>
