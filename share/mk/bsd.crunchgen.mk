@@ -141,9 +141,9 @@ objs: ${OUTMK} .META
 .for D in ${CRUNCH_SRCDIRS}
 .for P in ${CRUNCH_PROGS_${D}}
 ${__target}_crunchdir_${P}: .PHONY .MAKE
-	${_+_}cd ${CRUNCH_SRCDIR_${P}} && \
+	(cd ${CRUNCH_SRCDIR_${P}} && \
 	    ${CRUNCHENV} MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
-	    DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS} ${__target}
+		DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS} ${__target})
 ${__target}: ${__target}_crunchdir_${P}
 .endfor
 .endfor
@@ -151,7 +151,7 @@ ${__target}: ${__target}_crunchdir_${P}
 
 clean:
 	rm -f ${CLEANFILES}
-	${_+_}if [ -e ${.OBJDIR}/${OUTMK} ]; then		\
+	if [ -e ${.OBJDIR}/${OUTMK} ]; then			\
 		${CRUNCHENV} MAKEOBJDIRPREFIX=${CRUNCHOBJS}	\
 		    ${MAKE} -f ${OUTMK} clean;			\
 	fi
