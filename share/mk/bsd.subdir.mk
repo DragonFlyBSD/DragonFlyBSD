@@ -69,13 +69,13 @@ _SUBDIR_${__target}_${entry}:
 
 .endfor
 
-.else
+.else  # defined(SUBDIR)
 
 _SUBDIR_${__target}: .USE
 
-.endif
+.endif  # defined(SUBDIR)
 
-.endfor
+.endfor  # ${__targets}
 
 ${SUBDIR}: .PHONY
 	@if test -d ${.TARGET}.${MACHINE_ARCH}; then \

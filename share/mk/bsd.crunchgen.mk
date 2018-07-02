@@ -134,10 +134,11 @@ objs: ${OUTMK} .META
 	    ${MAKE} -f ${OUTMK} objs
 
 # Use a separate build tree to hold files compiled for this crunchgen binary
-# Yes, this does seem to partly duplicate bsd.subdir.mk, but I can't
-# get that to cooperate with bsd.prog.mk.  Besides, many of the standard
+# Yes, this does seem to partly duplicate <bsd.subdir.mk>, but I can't
+# get that to cooperate with <bsd.prog.mk>.  Besides, many of the standard
 # targets should NOT be propagated into the components.
-.for __target in clean cleandepend cleandir obj objlink
+__targets= clean cleandepend cleandir obj objlink depend
+.for __target in ${__targets}
 .for D in ${CRUNCH_SRCDIRS}
 .for P in ${CRUNCH_PROGS_${D}}
 ${__target}_crunchdir_${P}: .PHONY .MAKE
@@ -155,3 +156,5 @@ clean:
 		${CRUNCHENV} MAKEOBJDIRPREFIX=${CRUNCHOBJS}	\
 		    ${MAKE} -f ${OUTMK} clean;			\
 	fi
+
+.ORDER: ${__targets} all install
