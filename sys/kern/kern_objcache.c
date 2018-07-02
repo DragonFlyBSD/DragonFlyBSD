@@ -105,8 +105,9 @@ struct percpu_objcache {
 	int		puts_othercluster;	/* returned to other cluster */
 
 	/* infrequently used fields */
-	int		waiting;	/* waiting for a thread on this cpu to
-					 * return an obj to the per-cpu cache */
+	int		waiting;		/* waiting for a thread on this
+						 * cpu to return an obj to the
+						 * per-cpu cache */
 } __cachealign;
 
 /* only until we have NUMA cluster topology information XXX */
