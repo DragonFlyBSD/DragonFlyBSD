@@ -139,7 +139,7 @@ struct objcache {
 	/* NUMA-cluster level caches */
 	struct magazinedepot	depot[MAXCLUSTERS];
 
-	struct percpu_objcache	cache_percpu[];		/* per-cpu caches */
+	struct percpu_objcache	cache_percpu[];	/* per-cpu caches */
 };
 
 static struct spinlock objcachelist_spin;
