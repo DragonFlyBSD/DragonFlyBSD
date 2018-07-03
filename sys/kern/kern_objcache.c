@@ -472,7 +472,7 @@ retry:
 	 * NOTE: unallocated_objects can wind up being negative due to
 	 *	 objcache_set_cluster_limit() calls.
 	 */
-	if (depot->unallocated_objects > 0) {
+	if (__predict_true(depot->unallocated_objects > 0)) {
 		--depot->unallocated_objects;
 		spin_unlock(&depot->spin);
 		crit_exit();
@@ -502,7 +502,7 @@ retry:
 		}
 		return(obj);
 	}
-	if (oc->exhausted == 0) {
+	if (__predict_false(oc->exhausted == 0)) {
 		kprintf("Warning, objcache(%s): Exhausted!\n", oc->name);
 		oc->exhausted = 1;
 	}
