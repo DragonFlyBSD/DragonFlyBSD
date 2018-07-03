@@ -488,16 +488,18 @@ installworld: installcheck
 	    echo "Cannot write to ${AUTO_BACKUP} - world not backed up"
 
 	cd ${.CURDIR}; ${IMAKE} re${.TARGET:S/world$//}
-	${INSTALL} -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc ${DESTDIR}/etc/upgrade/
+	${INSTALL} -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc \
+	    ${DESTDIR}/etc/upgrade/
 
-	# Do not leave an empty /rescue directory when switching the rescue
-	# tools from /usr/share/initrd to /rescue.
-	@(if ! test -x ${DESTDIR}/rescue/rescue; then \
-	    echo "--------------------------------------------------------------"; \
-	    echo ">>> build and install rescue tools"; \
-	    echo "--------------------------------------------------------------"; \
-	    cd ${.CURDIR}; make rescue; \
-	fi)
+.if !exists(/rescue/rescue) && \
+    (!defined(DESTDIR) || ${DESTDIR} == "" || ${DESTDIR} == "/")
+	# Do not leave an empty '/rescue' directory when switching the rescue
+	# tools from '/usr/share/initrd' to '/rescue'.
+	@echo "--------------------------------------------------------------"
+	@echo ">>> build and install rescue tools"
+	@echo "--------------------------------------------------------------"
+	(cd ${.CURDIR} && make rescue)
+.endif
 
 	sync
 	@echo "--------------------------------------------------------------"
