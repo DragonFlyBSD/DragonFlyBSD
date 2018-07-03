@@ -122,7 +122,7 @@ struct gpt_ent {
 
 /*
  * Foreign partition types that we're likely to encounter. Note that Linux
- * apparently choose to share data partitions with MS. I don't what the
+ * apparently choose to share data partitions with MS. I don't see what the
  * advantage might be. I can see how sharing swap partitions is advantageous
  * though.
  */
