@@ -99,10 +99,13 @@ struct percpu_objcache {
 	struct magazine	*previous_magazine;	/* backup magazine */
 
 	/* statistics */
-	int		gets_cumulative;	/* total calls to get */
-	int		gets_null;		/* objcache_get returned NULL */
-	int		puts_cumulative;	/* total calls to put */
-	int		puts_othercluster;	/* returned to other cluster */
+	u_long		gets_cumulative;	/* total calls to get */
+	u_long		gets_null;		/* objcache_get returned NULL */
+	u_long		allocs_cumulative;	/* total calls to alloc */
+	u_long		puts_cumulative;	/* total calls to put */
+#ifdef notyet
+	u_long		puts_othercluster;	/* returned to other cluster */
+#endif
 
 	/* infrequently used fields */
 	int		waiting;		/* waiting for a thread on this
@@ -475,6 +478,7 @@ retry:
 	if (__predict_true(depot->unallocated_objects > 0)) {
 		--depot->unallocated_objects;
 		spin_unlock(&depot->spin);
+		++cpucache->allocs_cumulative;
 		crit_exit();
 
 		obj = oc->alloc(oc->allocator_args, ocflags);
