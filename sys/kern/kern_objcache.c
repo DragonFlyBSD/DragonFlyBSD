@@ -119,13 +119,22 @@ struct percpu_objcache {
 #define CLUSTER_OF(obj) 0
 
 /*
+ * Rarely accessed but useful bits of objcache.
+ */
+struct objcache_desc {
+	LIST_ENTRY(objcache_desc)	next;
+	struct objcache			*objcache;
+	int				total_objects;
+#define OBJCACHE_NAMELEN		36
+	char				name[OBJCACHE_NAMELEN];
+};
+
+/*
  * Two-level object cache consisting of NUMA cluster-level depots of
  * fully loaded or completely empty magazines and cpu-level caches of
  * individual objects.
  */
 struct objcache {
-	const char		*name;
-
 	/* object constructor and destructor from blank storage */
 	objcache_ctor_fn	*ctor;
 	objcache_dtor_fn	*dtor;
@@ -136,7 +145,7 @@ struct objcache {
 	objcache_free_fn	*free;
 	void			*allocator_args;
 
-	LIST_ENTRY(objcache)	oc_next;
+	struct objcache_desc	*desc;
 	int			exhausted;	/* oops */
 
 	/* NUMA-cluster level caches */
@@ -146,7 +155,7 @@ struct objcache {
 };
 
 static struct spinlock objcachelist_spin;
-static LIST_HEAD(objcachelist, objcache) allobjcaches;
+static LIST_HEAD(objcachelist, objcache_desc) allobjcaches;
 static int magazine_capmin;
 static int magazine_capmax;
 
@@ -203,6 +212,7 @@ objcache_create(const char *name, int cluster_limit, int nom_cache,
 		objcache_alloc_fn *alloc, objcache_free_fn *free,
 		void *allocator_args)
 {
+	struct objcache_desc *desc;
 	struct objcache *oc;
 	struct magazinedepot *depot;
 	int cpuid;
@@ -211,18 +221,29 @@ objcache_create(const char *name, int cluster_limit, int nom_cache,
 	int i;
 
 	/*
+	 * Allocate objcache descriptor.
+	 */
+	desc = kmalloc(sizeof(*desc), M_OBJCACHE, M_WAITOK | M_ZERO);
+
+	/*
 	 * Allocate object cache structure
 	 */
 	oc = kmalloc_cachealign(
 	    __offsetof(struct objcache, cache_percpu[ncpus]),
 	    M_OBJCACHE, M_WAITOK | M_ZERO);
-	oc->name = kstrdup(name, M_TEMP);
 	oc->ctor = ctor ? ctor : null_ctor;
 	oc->dtor = dtor ? dtor : null_dtor;
 	oc->privdata = privdata;
 	oc->alloc = alloc;
 	oc->free = free;
 	oc->allocator_args = allocator_args;
+
+	/*
+	 * Link objcache and its descriptor.
+	 */
+	oc->desc = desc;
+	desc->objcache = oc;
+	strlcpy(desc->name, name, sizeof(desc->name));
 
 	/*
 	 * Initialize depot list(s).
@@ -276,6 +297,9 @@ objcache_create(const char *name, int cluster_limit, int nom_cache,
 					     cluster_limit;
 	}
 
+	/* Save # of total objects. */
+	desc->total_objects = depot->unallocated_objects;
+
 	/*
 	 * This is a dynamic adjustment aid initialized to the callers
 	 * expectations of the current limit.
@@ -315,7 +339,7 @@ objcache_create(const char *name, int cluster_limit, int nom_cache,
 	}
 
 	spin_lock(&objcachelist_spin);
-	LIST_INSERT_HEAD(&allobjcaches, oc, oc_next);
+	LIST_INSERT_HEAD(&allobjcaches, desc, next);
 	spin_unlock(&objcachelist_spin);
 
 	return (oc);
@@ -331,16 +355,19 @@ void
 objcache_set_cluster_limit(struct objcache *oc, int cluster_limit)
 {
 	struct magazinedepot *depot;
-	int delta;
 
 	depot = &oc->depot[myclusterid];
 	if (depot->cluster_limit != cluster_limit) {
+		int delta;
+
 		spin_lock(&depot->spin);
 		delta = cluster_limit - depot->cluster_limit;
 		depot->unallocated_objects += delta;
 		depot->cluster_limit = cluster_limit;
 		spin_unlock(&depot->spin);
 		wakeup(depot);
+
+		oc->desc->total_objects += delta;
 	}
 }
 
@@ -507,7 +534,7 @@ retry:
 		return(obj);
 	}
 	if (__predict_false(oc->exhausted == 0)) {
-		kprintf("Warning, objcache(%s): Exhausted!\n", oc->name);
+		kprintf("Warning, objcache(%s): Exhausted!\n", oc->desc->name);
 		oc->exhausted = 1;
 	}
 
@@ -877,13 +904,14 @@ objcache_reclaimlist(struct objcache *oclist[], int nlist, int ocflags)
 void
 objcache_destroy(struct objcache *oc)
 {
+	struct objcache_desc *desc = oc->desc;
 	struct percpu_objcache *cache_percpu;
 	struct magazinedepot *depot;
 	int clusterid, cpuid;
 	struct magazinelist tmplist;
 
 	spin_lock(&objcachelist_spin);
-	LIST_REMOVE(oc, oc_next);
+	LIST_REMOVE(desc, next);
 	spin_unlock(&objcachelist_spin);
 
 	SLIST_INIT(&tmplist);
@@ -907,7 +935,7 @@ objcache_destroy(struct objcache *oc)
 		/* don't bother adjusting depot->unallocated_objects */
 	}
 
-	kfree(__DECONST(void *, oc->name), M_TEMP);
+	kfree(desc, M_OBJCACHE);
 	kfree(oc, M_OBJCACHE);
 }
 
