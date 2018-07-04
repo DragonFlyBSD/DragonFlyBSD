@@ -103,6 +103,7 @@ struct percpu_objcache {
 	u_long		gets_null;		/* objcache_get returned NULL */
 	u_long		allocs_cumulative;	/* total calls to alloc */
 	u_long		puts_cumulative;	/* total calls to put */
+	u_long		gets_exhausted;		/* # of gets hit exhaustion */
 #ifdef notyet
 	u_long		puts_othercluster;	/* returned to other cluster */
 #endif
@@ -146,7 +147,6 @@ struct objcache {
 	void			*allocator_args;
 
 	struct objcache_desc	*desc;
-	int			exhausted;	/* oops */
 
 	/* NUMA-cluster level caches */
 	struct magazinedepot	depot[MAXCLUSTERS];
@@ -533,9 +533,9 @@ retry:
 		}
 		return(obj);
 	}
-	if (__predict_false(oc->exhausted == 0)) {
-		kprintf("Warning, objcache(%s): Exhausted!\n", oc->desc->name);
-		oc->exhausted = 1;
+	if (__predict_false(cpucache->gets_exhausted++ == 0)) {
+		kprintf("Warning: objcache(%s) exhausted on cpu%d!\n",
+		    oc->desc->name, mycpuid);
 	}
 
 	/*
