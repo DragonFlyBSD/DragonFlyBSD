@@ -217,5 +217,5 @@ upgrade:
 # Build and install the statically linked rescue tools, and create the
 # initrd image.
 #
-rescue initrd: .PHONY
+rescue initrd quickrescue quickinitrd: .PHONY
 	(cd ${.CURDIR}/initrd; make ${.TARGET})

@@ -11,33 +11,57 @@ INITRD_STAGEDIR!=	mktemp -d -t initrd-stage
 .END:
 	@rm -rf ${INITRD_STAGEDIR}
 
-rescue: .PHONY
-	@${ECHO} ">>> Building and installing rescue tools ..."
+_build_rescue:
+	@echo ">>> Building rescue tools ..."
 .for _dir in oinit rescue rescue.libcrypto
-.if !defined(NO_CLEAN)
 	(cd ${.CURDIR}/${_dir} && \
-	    ${INITRD_MAKE} BINDIR=${RESCUE_DIR} clean cleandepend)
-.endif
-	(cd ${.CURDIR}/${_dir} && \
-	    ${INITRD_MAKE} BINDIR=${RESCUE_DIR} obj && \
-	    ${INITRD_MAKE} BINDIR=${RESCUE_DIR} depend all install)
+	    ${INITRD_MAKE} obj && \
+	    ${INITRD_MAKE} depend all)
 .endfor
 
-initrd: rescue
-	@${ECHO} ">>> Preparing initrd contents ..."
+_install_rescue:
+	@echo ">>> Installing rescue tools ..."
+.for _dir in oinit rescue rescue.libcrypto
+	(cd ${.CURDIR}/${_dir} && \
+	    ${INITRD_MAKE} BINDIR=${RESCUE_DIR} install)
+.endfor
+
+_stage_initrd:
+	@echo ">>> Staging initrd contents ..."
 	(cd ${.CURDIR}/etc && \
 	    mkdir ${INITRD_STAGEDIR}/etc && \
-	    ${INITRD_MAKE} BINDIR=${INITRD_STAGEDIR}/etc depend all && \
+	    ${INITRD_MAKE} obj && \
+	    ${INITRD_MAKE} depend all && \
 	    ${INITRD_MAKE} BINDIR=${INITRD_STAGEDIR}/etc DESTDIR="" install)
-	@${ECHO} ">>> Creating initrd.img.gz ..."
+
+_make_initrd:
+	@echo ">>> Creating initrd.img.gz ..."
 	sh ${.CURDIR}/mkinitrd.sh \
 	    -b ${DESTDIR}/boot \
 	    -r ${DESTDIR}${RESCUE_DIR} \
 	    -c ${INITRD_STAGEDIR}
 
-clean:
-	@${ECHO} ">>> Cleaning ..."
-.for _dir in etc oinit rescue rescue.libcrypto
-	(cd ${.CURDIR}/${_dir} && \
-	    ${INITRD_MAKE} BINDIR=${RESCUE_DIR} clean cleandepend)
+_clean_rescue:
+	@echo ">>> Cleaning rescue ..."
+.for _dir in oinit rescue rescue.libcrypto
+	(cd ${.CURDIR}/${_dir} && ${INITRD_MAKE} clean cleandepend)
 .endfor
+
+_clean_initrd:
+	@echo ">>> Cleaning initrd ..."
+	(cd ${.CURDIR}/etc && ${INITRD_MAKE} clean cleandepend)
+
+clean: _clean_rescue _clean_initrd
+
+quickrescue: _build_rescue _install_rescue
+rescue: _clean_rescue quickrescue .PHONY
+.ORDER: _clean_rescue _build_rescue _install_rescue
+
+_quickinitrd: _stage_initrd _make_initrd
+_initrd: _clean_initrd _quickinitrd
+.ORDER: _clean_initrd _stage_initrd _make_initrd
+
+quickinitrd: quickrescue _quickinitrd
+initrd: rescue _initrd
+.ORDER: quickrescue _quickinitrd
+.ORDER: rescue _initrd
