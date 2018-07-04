@@ -625,17 +625,19 @@ keyxchgfail:
 	 * Use separate session keys and session fixed IVs for receive and
 	 * transmit.
 	 */
-	error = crypto_algos[DMSG_CRYPTO_ALGO].init(&iocom->ioq_rx, handrx.sess,
+	error = crypto_algos[DMSG_CRYPTO_ALGO].init(&iocom->ioq_rx,
+	    (char*)handrx.sess,
 	    crypto_algos[DMSG_CRYPTO_ALGO].keylen,
-	    handrx.sess + crypto_algos[DMSG_CRYPTO_ALGO].keylen,
+	    (char*)handrx.sess + crypto_algos[DMSG_CRYPTO_ALGO].keylen,
 	    sizeof(handrx.sess) - crypto_algos[DMSG_CRYPTO_ALGO].keylen,
 	    0 /* decryption */);
 	if (error)
 		goto keyxchgfail;
 
-	error = crypto_algos[DMSG_CRYPTO_ALGO].init(&iocom->ioq_tx, handtx.sess,
+	error = crypto_algos[DMSG_CRYPTO_ALGO].init(&iocom->ioq_tx,
+	    (char*)handtx.sess,
 	    crypto_algos[DMSG_CRYPTO_ALGO].keylen,
-	    handtx.sess + crypto_algos[DMSG_CRYPTO_ALGO].keylen,
+	    (char*)handtx.sess + crypto_algos[DMSG_CRYPTO_ALGO].keylen,
 	    sizeof(handtx.sess) - crypto_algos[DMSG_CRYPTO_ALGO].keylen,
 	    1 /* encryption */);
 	if (error)
