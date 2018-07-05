@@ -12,4 +12,8 @@ WARNS?=		2
 CFLAGS+=	-DENCRYPTION -DAUTHENTICATION -DSRA
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 
+.if defined(RESCUE)
+CFLAGS+=	-DNOPAM
+.endif
+
 .include <bsd.lib.mk>

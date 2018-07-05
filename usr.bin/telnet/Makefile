@@ -22,8 +22,14 @@ CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 CFLAGS+=	-DENCRYPTION -DAUTHENTICATION
-DPADD+=		${LIBCRYPTO} ${LIBCRYPT} ${LIBPAM}
-LDADD+=		-lprivate_crypto -lcrypt ${MINUSLPAM}
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
+DPADD+=		${LIBCRYPTO} ${LIBCRYPT}
+LDADD+=		-lprivate_crypto -lcrypt
+
+.if !defined(RESCUE)
+# libtelnet requires PAM by default
+DPADD+=		${LIBPAM}
+LDADD+=		${MINUSLPAM}
+.endif
 
 .include <bsd.prog.mk>
