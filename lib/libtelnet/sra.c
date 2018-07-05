@@ -56,8 +56,6 @@ char *user, *pass, *xuser, *xpass;
 DesData ck;
 IdeaData ik;
 
-#define PASS_SIZE	256
-
 extern int auth_debug_mode;
 extern char line[16];
 
@@ -66,6 +64,9 @@ static int passwd_sent = 0;
 
 static unsigned char str_data[1024] = { IAC, SB, TELOPT_AUTHENTICATION, 0,
 			  		AUTHTYPE_SRA, };
+
+#define SMALL_LEN	256
+#define XSMALL_LEN	513
 
 #define SRA_KEY	0
 #define SRA_USER 1
@@ -116,13 +117,12 @@ sra_init(Authenticator *ap __unused, int server)
 	else
 		str_data[3] = TELQUAL_IS;
 
-	user = (char *)malloc(256);
-	xuser = (char *)malloc(513);
-	pass = (char *)malloc(PASS_SIZE);
-	xpass = (char *)malloc(513);
+	user = malloc(SMALL_LEN);
+	xuser = malloc(XSMALL_LEN);
+	pass = malloc(SMALL_LEN);
+	xpass = malloc(XSMALL_LEN);
 
-	if (user == NULL || xuser == NULL || pass == NULL || xpass ==
-	NULL)
+	if (user == NULL || xuser == NULL || pass == NULL || xpass == NULL)
 		return 0; /* malloc failed */
 
 	passwd_sent = 0;
@@ -183,7 +183,7 @@ sra_is(Authenticator *ap, unsigned char *data, int cnt)
 
 	case SRA_USER:
 		/* decode KAB(u) */
-		if (cnt > 512) /* Attempted buffer overflow */
+		if (cnt > XSMALL_LEN - 1) /* Attempted buffer overflow */
 			break;
 		memcpy(xuser,data,cnt);
 		xuser[cnt] = '\0';
@@ -194,7 +194,7 @@ sra_is(Authenticator *ap, unsigned char *data, int cnt)
 		return;
 
 	case SRA_PASS:
-		if (cnt > 512) /* Attempted buffer overflow */
+		if (cnt > XSMALL_LEN - 1) /* Attempted buffer overflow */
 			break;
 		/* decode KAB(P) */
 		memcpy(xpass,data,cnt);
@@ -244,7 +244,7 @@ bad:
 void
 sra_reply(Authenticator *ap, unsigned char *data, int cnt)
 {
-	char uprompt[256],tuser[256];
+	char uprompt[SMALL_LEN], tuser[SMALL_LEN];
 	Session_Key skey;
 	size_t i;
 
@@ -270,18 +270,21 @@ sra_reply(Authenticator *ap, unsigned char *data, int cnt)
 		/* encode user */
 		memset(tuser,0,sizeof(tuser));
 		sprintf(uprompt,"User (%s): ",UserNameRequested);
-		telnet_gets(uprompt,tuser,255,1);
+		if (telnet_gets(uprompt, tuser, SMALL_LEN - 1, 1) == NULL) {
+			printf("\n");
+			exit(1);
+		}
 		if (tuser[0] == '\n' || tuser[0] == '\r' )
-			strcpy(user,UserNameRequested);
+			strlcpy(user, UserNameRequested, SMALL_LEN);
 		else {
 			/* telnet_gets leaves the newline on */
-			for(i=0;i<sizeof(tuser);i++) {
+			for(i = 0; i < sizeof(tuser); i++) {
 				if (tuser[i] == '\n') {
 					tuser[i] = '\0';
 					break;
 				}
 			}
-			strcpy(user,tuser);
+			strlcpy(user, tuser, SMALL_LEN);
 		}
 		pk_encode(user,xuser,&ck);
 
@@ -302,9 +305,12 @@ sra_reply(Authenticator *ap, unsigned char *data, int cnt)
 			goto enc_user;
 		}
 		/* encode password */
-		memset(pass,0,PASS_SIZE);
-		telnet_gets("Password: ",pass,PASS_SIZE-1,0);
-		pk_encode(pass,xpass,&ck);
+		memset(pass, 0, SMALL_LEN);
+		if (telnet_gets("Password: ", pass, SMALL_LEN-1, 0) == NULL) {
+			printf("\n");
+			exit(1);
+		}
+		pk_encode(pass, xpass, &ck);
 		/* send it off */
 		if (auth_debug_mode)
 			printf("Sent KAB(P)\r\n");
@@ -354,9 +360,9 @@ sra_status(Authenticator *ap __unused, char *name, int level)
 #define	ADDC(buf, len, c)	if ((len) > 0) {*(buf)++ = (c); --(len);}
 
 void
-sra_printsub(unsigned char *data, int cnt, unsigned char *buf, int buflen)
+sra_printsub(unsigned char *data, int cnt, unsigned char *ubuf, int buflen)
 {
-	char lbuf[32];
+	char lbuf[32], *buf = (char *)ubuf;
 	int i;
 
 	buf[buflen-1] = '\0';		/* make sure its NULL terminated */
@@ -365,15 +371,15 @@ sra_printsub(unsigned char *data, int cnt, unsigned char *buf, int buflen)
 	switch(data[3]) {
 
 	case SRA_CONTINUE:
-		strncpy((char *)buf, " CONTINUE ", buflen);
+		strncpy(buf, " CONTINUE ", buflen);
 		goto common;
 
 	case SRA_REJECT:		/* Rejected (reason might follow) */
-		strncpy((char *)buf, " REJECT ", buflen);
+		strncpy(buf, " REJECT ", buflen);
 		goto common;
 
 	case SRA_ACCEPT:		/* Accepted (name might follow) */
-		strncpy((char *)buf, " ACCEPT ", buflen);
+		strncpy(buf, " ACCEPT ", buflen);
 
 	common:
 		BUMP(buf, buflen);
@@ -387,25 +393,25 @@ sra_printsub(unsigned char *data, int cnt, unsigned char *buf, int buflen)
 		break;
 
 	case SRA_KEY:			/* Authentication data follows */
-		strncpy((char *)buf, " KEY ", buflen);
+		strncpy(buf, " KEY ", buflen);
 		goto common2;
 
 	case SRA_USER:
-		strncpy((char *)buf, " USER ", buflen);
+		strncpy(buf, " USER ", buflen);
 		goto common2;
 
 	case SRA_PASS:
-		strncpy((char *)buf, " PASS ", buflen);
+		strncpy(buf, " PASS ", buflen);
 		goto common2;
 
 	default:
-		sprintf(lbuf, " %d (unknown)", data[3]);
-		strncpy((char *)buf, lbuf, buflen);
+		snprintf(lbuf, sizeof(lbuf), " %d (unknown)", data[3]);
+		strncpy(buf, lbuf, buflen);
 	common2:
 		BUMP(buf, buflen);
 		for (i = 4; i < cnt; i++) {
-			sprintf(lbuf, " %d", data[i]);
-			strncpy((char *)buf, lbuf, buflen);
+			snprintf(lbuf, sizeof(lbuf), " %d", data[i]);
+			strncpy(buf, lbuf, buflen);
 			BUMP(buf, buflen);
 		}
 		break;
@@ -469,7 +475,7 @@ check_user(char *name, char *cred)
  * getting their username and password through an encrypted channel.
  */
 
-#define COPY_STRING(s) (s ? strdup(s):NULL)
+#define COPY_STRING(s) (s ? strdup(s) : NULL)
 
 struct cred_t {
 	const char *uname;
@@ -478,12 +484,12 @@ struct cred_t {
 typedef struct cred_t cred_t;
 
 static int
-auth_conv(int num_msg, const struct pam_message **msg, struct pam_response **resp, void *appdata)
+auth_conv(int num_msg, const struct pam_message **msg,
+    struct pam_response **resp, void *appdata)
 {
 	int i;
-	cred_t *cred = (cred_t *) appdata;
-	struct pam_response *reply =
-		malloc(sizeof(struct pam_response) * num_msg);
+	cred_t *cred = appdata;
+	struct pam_response *reply = malloc(sizeof(*reply) * num_msg);
 
 	if (reply == NULL)
 		return PAM_BUF_ERR;
@@ -565,7 +571,7 @@ check_user(char *name, char *cred)
 		 */
 		if ((e = pam_get_item(pamh, PAM_USER, &item)) ==
 		    PAM_SUCCESS) {
-			strcpy(name, item);
+			strlcpy(name, item, SMALL_LEN);
 		} else
 			syslog(LOG_ERR, "Couldn't get PAM_USER: %s",
 			pam_strerror(pamh, e));
