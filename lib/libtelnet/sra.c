@@ -75,7 +75,7 @@ static unsigned char str_data[1024] = { IAC, SB, TELOPT_AUTHENTICATION, 0,
 #define SRA_ACCEPT 4
 #define SRA_REJECT 5
 
-static int check_user(char *, char *);
+static int check_user(char *, const char *);
 
 /* support routine to send out authentication message */
 static int
@@ -418,55 +418,57 @@ sra_printsub(unsigned char *data, int cnt, unsigned char *ubuf, int buflen)
 	}
 }
 
+#ifdef NOPAM
+
 static int
 isroot(const char *usr)
 {
-	struct passwd *pwd;
+	struct passwd pws, *pwd;
+	char pwbuf[1024];
 
-	if ((pwd=getpwnam(usr))==NULL)
+	if (getpwnam_r(usr, &pws, pwbuf, sizeof(pwbuf), &pwd) != 0 ||
+	    pwd == NULL)
 		return 0;
 	return (!pwd->pw_uid);
 }
 
 static int
-rootterm(char *ttyn)
+rootterm(const char *ttyn)
 {
 	struct ttyent *t;
 
 	return ((t = getttynam(ttyn)) && t->ty_status & TTY_SECURE);
 }
 
-#ifdef NOPAM
 static int
-check_user(char *name, char *cred)
+check_user(char *name, const char *cred)
 {
+	struct passwd pws, *pw;
+	char pwbuf[1024];
 	char *xpasswd, *salt;
 
-	if (isroot(name) && !rootterm(line))
-	{
-		crypt("AA","*"); /* Waste some time to simulate success */
+	if (isroot(name) && !rootterm(line)) {
+		crypt("AA", "*"); /* Waste some time to simulate success */
 		return(0);
 	}
 
-	if (pw = sgetpwnam(name)) {
-		if (pw->pw_shell == NULL) {
-			pw = NULL;
+	if (getpwnam_r(name, &pws, pwbuf, sizeof(pwbuf), &pw) == 0 &&
+	    pw != NULL) {
+		if (pw->pw_shell == NULL)
 			return(0);
-		}
 
 		salt = pw->pw_passwd;
 		xpasswd = crypt(cred, salt);
 		/* The strcmp does not catch null passwords! */
-		if (pw == NULL || *pw->pw_passwd == '\0' ||
-			strcmp(xpasswd, pw->pw_passwd)) {
-			pw = NULL;
+		if (*pw->pw_passwd == '\0' || strcmp(xpasswd, pw->pw_passwd))
 			return(0);
-		}
+
 		return(1);
 	}
 	return(0);
 }
-#else
+
+#else /* !NOPAM */
 
 /*
  * The following is stolen from ftpd, which stole it from the imap-uw
@@ -525,7 +527,7 @@ auth_conv(int num_msg, const struct pam_message **msg,
  * The PAM version as a side effect may put a new username in *name.
  */
 static int
-check_user(char *name, char *cred)
+check_user(char *name, const char *cred)
 {
 	pam_handle_t *pamh = NULL;
 	const void *item;
@@ -575,9 +577,11 @@ check_user(char *name, char *cred)
 		} else
 			syslog(LOG_ERR, "Couldn't get PAM_USER: %s",
 			pam_strerror(pamh, e));
+#if 0	/* pam_securetty(8) should be used to enforce this */
 		if (isroot(name) && !rootterm(line))
 			rval = 0;
 		else
+#endif
 			rval = 1;
 		break;
 
@@ -600,7 +604,7 @@ check_user(char *name, char *cred)
 	return rval;
 }
 
-#endif
+#endif /* !NOPAM */
 
 #endif /* ENCRYPTION */
 #endif /* SRA */
