@@ -566,7 +566,7 @@
 
 			"crypt:ufs:/dev/ad0s0a:secvolume"
 
-		See mkinitrd.8 man page (on booted system) for full description.
+		See initrd.7 man page (on booted system) for full description.
 
 ################################################################################
 # Tshow DShow values of kernel environment variable
