@@ -12,10 +12,8 @@ SRCDIR=	${.CURDIR}/../../../contrib/openpam
 MODULE_DIR=	${LIBDIR}/security
 
 CFLAGS+= -DHAVE_CONFIG_H
-CFLAGS+= -DOPENPAM_MODULES_DIR='"${MODULE_DIR}/"'
-CFLAGS+= -I${SRCDIR}/lib -I${SRCDIR}/include -I${.CURDIR}/../libpam
-
-WARNS=	3
+CFLAGS+= -DOPENPAM_MODULES_DIRECTORY='"${MODULE_DIR}/"'
+CFLAGS+= -I${SRCDIR}/lib/libpam -I${SRCDIR}/include -I${.CURDIR}/../libpam
 
 # Dist files
 SRCS=	\
@@ -41,6 +39,7 @@ SRCS=	\
 	openpam_set_feature.c \
 	openpam_set_option.c \
 	openpam_straddch.c \
+	openpam_strlset.c \
 	openpam_subst.c \
 	openpam_ttyconv.c \
 	pam_acct_mgmt.c \
@@ -133,6 +132,6 @@ MAN?=	openpam.3 \
 	pam_vprompt.3 \
 	pam.conf.5
 
-.PATH: ${SRCDIR}/lib ${SRCDIR}/doc/man
+.PATH: ${SRCDIR}/lib/libpam ${SRCDIR}/doc/man
 
 .include <bsd.lib.mk>

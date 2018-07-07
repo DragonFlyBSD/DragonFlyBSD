@@ -4,11 +4,17 @@
 /* Whether loading unversioned modules support is disabled */
 /* #undef DISABLE_UNVERSIONED_MODULES */
 
+/* Define to 1 if you have the `asprintf' function. */
+#define HAVE_ASPRINTF 1
+
 /* Define to 1 if you have the <crypt.h> header file. */
 /* #undef HAVE_CRYPT_H */
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #define HAVE_DLFCN_H 1
+
+/* Define to 1 if you have the `dlfunc' function. */
+#define HAVE_DLFUNC 1
 
 /* Define to 1 if you have the `fdlopen' function. */
 #define HAVE_FDLOPEN 1
@@ -22,11 +28,20 @@
 /* Define to 1 if you have the `crypt' library (-lcrypt). */
 #define HAVE_LIBCRYPT 1
 
+/* Define to 1 if you have the `crypto' library (-lcrypto). */
+#define HAVE_LIBCRYPTO 1
+
 /* Define to 1 if you have the `dl' library (-ldl). */
 #define HAVE_LIBDL 1
 
+/* Define to 1 if you have the `pam' library (-lpam). */
+#define HAVE_LIBPAM 1
+
 /* Define to 1 if you have the <memory.h> header file. */
 #define HAVE_MEMORY_H 1
+
+/* Define to 1 if you have the `setlogmask' function. */
+#define HAVE_SETLOGMASK 1
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
@@ -49,6 +64,9 @@
 /* Define to 1 if you have the `strlcpy' function. */
 #define HAVE_STRLCPY 1
 
+/* Define to 1 if you have the `strlset' function. */
+/* #undef HAVE_STRLSET */
+
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #define HAVE_SYS_STAT_H 1
 
@@ -58,14 +76,16 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #define HAVE_UNISTD_H 1
 
+/* Define to 1 if you have the `vasprintf' function. */
+#define HAVE_VASPRINTF 1
+
 /* OpenPAM library major number */
 #define LIB_MAJ 2
 
-/* Define to the sub-directory in which libtool stores uninstalled libraries.
-   */
+/* Define to the sub-directory where libtool stores uninstalled libraries. */
 #define LT_OBJDIR ".libs/"
 
-/* Turn debugging on by default */
+/* Turn debugging macros on */
 /* #undef OPENPAM_DEBUG */
 
 /* OpenPAM modules directory */
@@ -82,16 +102,16 @@
 #define PACKAGE_NAME "OpenPAM"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "OpenPAM 20120526"
+#define PACKAGE_STRING "OpenPAM 20170430"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "openpam"
 
 /* Define to the home page for this package. */
-#define PACKAGE_URL ""
+#define PACKAGE_URL "http://www.openpam.org/"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "20120526"
+#define PACKAGE_VERSION "20170430"
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
@@ -119,7 +139,7 @@
 
 
 /* Version number of package */
-#define VERSION "20120526"
+#define VERSION "20170430"
 
 /* Define to 1 if on MINIX. */
 /* #undef _MINIX */

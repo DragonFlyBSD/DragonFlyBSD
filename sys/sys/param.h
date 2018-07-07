@@ -182,9 +182,10 @@
  * 500309 - drop support for some ancient ioctls (OSIOCGIF*)
  * 500310 - remove more unimplemented ioctls
  * 500311 - add VIS_ALL to vis(3)
+ * 500312 - OpenPAM Resedacea upgrade
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500311	/* propagated to newvers */
+#define __DragonFly_version 500312	/* propagated to newvers */
 
 #include <sys/_null.h>
 

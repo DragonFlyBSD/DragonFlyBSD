@@ -1,0 +1,4 @@
+* env CFLAGS='-I/usr/include/priv' LDFLAGS='-rpath /lib/priv -L/usr/lib/priv' ./configure --with-modules-dir=/usr/lib/security --with-pam-unix --with-su
+
+* Change back the OPENPAM_MODULES_DIR definition in config.h and move it
+  to lib/libpam/libpam/config.h
