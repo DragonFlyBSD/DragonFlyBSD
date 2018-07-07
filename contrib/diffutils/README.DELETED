@@ -84,6 +84,7 @@ lib/memchr.c
 lib/memchr.valgrind
 lib/mkstemp.c
 lib/mktime.c
+lib/mktime-internal.h
 lib/msvc-inval.c
 lib/msvc-nothrow.c
 lib/nl_langinfo.c
