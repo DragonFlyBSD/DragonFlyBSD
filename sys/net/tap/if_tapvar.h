@@ -35,7 +35,6 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tapvar.h,v 1.3.2.1 2000/07/27 13:57:05 nsayer Exp $
- * $DragonFly: src/sys/net/tap/if_tapvar.h,v 1.6 2008/09/05 17:03:15 dillon Exp $
  * $Id: if_tapvar.h,v 0.6 2000/07/11 02:16:08 max Exp $
  */
 
@@ -43,30 +42,30 @@
 #define _NET_IF_TAPVAR_H_
 
 struct tap_softc {
-	struct arpcom	arpcom;			/* ethernet common data      */
+	struct arpcom	arpcom;		/* ethernet common data */
 #define tap_if		arpcom.ac_if
-	cdev_t		tap_dev;		/* device                    */
+	cdev_t		tap_dev;	/* device */
 
-	u_short		tap_flags;		/* misc flags                */
+	u_short		tap_flags;	/* misc flags */
 #define	TAP_OPEN	(1 << 0)
 #define	TAP_INITED	(1 << 1)
 #define	TAP_RWAIT	(1 << 2)
 #define	TAP_ASYNC	(1 << 3)
-#define TAP_READY       (TAP_OPEN|TAP_INITED)
 #define	TAP_VMNET	(1 << 4)
 #define	TAP_CLONE	(1 << 5)
-#define TAP_CLOSEDOWN	(1 << 6)
-#define TAP_MANUALMAKE	(1 << 7)
+#define	TAP_CLOSEDOWN	(1 << 6)
+#define	TAP_MANUALMAKE	(1 << 7)
+#define	TAP_READY	(TAP_OPEN | TAP_INITED)
 
-	u_int8_t 	ether_addr[ETHER_ADDR_LEN]; /* ether addr of the remote side */
-
-	struct sigio	*tap_sigtd;		/* track process owning tap */
-	struct sigio	*tap_sigio;		/* information for async I/O */
-	struct kqinfo	 tap_rkq;		/* read select/poll/kq       */
+	uint8_t 	 ether_addr[ETHER_ADDR_LEN];
+				/* ether addr of the remote side */
+	struct sigio	*tap_sigtd;	/* track process owning tap */
+	struct sigio	*tap_sigio;	/* information for async I/O */
+	struct kqinfo	 tap_rkq;	/* read select/poll/kq */
 	struct ifqueue	 tap_devq;
 	int		 tap_unit;
 
-	SLIST_ENTRY(tap_softc)	tap_link;	/* Local tap list */
+	SLIST_ENTRY(tap_softc)	tap_link;	/* local tap list */
 };
 
 #endif /* !_NET_IF_TAPVAR_H_ */

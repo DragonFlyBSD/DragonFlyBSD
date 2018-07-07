@@ -32,7 +32,6 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.h,v 1.1.2.1 2000/07/27 13:57:05 nsayer Exp $
- * $DragonFly: src/sys/net/tap/if_tap.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
  * $Id: if_tap.h,v 0.7 2000/07/12 04:12:51 max Exp $
  */
 
@@ -40,8 +39,6 @@
 #define _NET_IF_TAP_H_
 
 #include <sys/ioccom.h>
-
-/* refer to if_tapvar.h for the softc stuff */
 
 /* maximum receive packet size (hard limit) */
 #define	TAPMRU		16384
@@ -53,9 +50,10 @@ struct tapinfo {
 	u_char	dummy;		/* place holder              */
 };
 
-/* ioctl's for get/set debug */
-#define	TAPSDEBUG		_IOW('t', 90, int)
+/* get/set internal debug variable */
 #define	TAPGDEBUG		_IOR('t', 89, int)
+#define	TAPSDEBUG		_IOW('t', 90, int)
+/* get/set network interface information */
 #define	TAPSIFINFO		_IOW('t', 91, struct tapinfo)
 #define	TAPGIFINFO		_IOR('t', 92, struct tapinfo)
 
