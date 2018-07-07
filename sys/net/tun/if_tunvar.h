@@ -43,7 +43,7 @@ struct tun_softc {
 #define	TUN_READY	(TUN_OPEN | TUN_INITED)
 
 	pid_t		 tun_pid;	/* PID of process to open */
-	struct ifnet	 tun_if;	/* the interface */
+	struct ifnet	*tun_ifp;	/* the interface */
 	struct sigio	*tun_sigio;	/* information for async I/O */
 	struct kqinfo	 tun_rkq;	/* read select/poll/kq */
 	struct kqinfo	 tun_wkq;	/* write select/poll/kq (not used) */

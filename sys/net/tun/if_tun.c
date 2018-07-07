@@ -164,7 +164,11 @@ tuncreate(cdev_t dev)
 	dev->si_drv1 = sc;
 	sc->tun_flags = TUN_INITED;
 
-	ifp = &sc->tun_if;
+	ifp = sc->tun_ifp = if_alloc(IFT_PPP);
+	if (ifp == NULL)
+		/* XXX: should return an error */
+		panic("%s%d: failed to if_alloc() interface", TUN, minor(dev));
+
 	if_initname(ifp, TUN, minor(dev));
 	ifp->if_mtu = TUNMTU;
 	ifp->if_ioctl = tunifioctl;
@@ -204,7 +208,7 @@ tunopen(struct dev_open_args *ap)
 		return (EBUSY);
 	sc->tun_pid = curproc->p_pid;
 	sc->tun_flags |= TUN_OPEN;
-	ifp = &sc->tun_if;
+	ifp = sc->tun_ifp;
 	TUNDEBUG(ifp, "open\n");
 	return (0);
 }
@@ -221,7 +225,7 @@ tunclose(struct dev_close_args *ap)
 	struct ifnet *ifp;
 
 	sc = dev->si_drv1;
-	ifp = &sc->tun_if;
+	ifp = sc->tun_ifp;
 
 	sc->tun_flags &= ~TUN_OPEN;
 	sc->tun_pid = 0;
@@ -443,7 +447,7 @@ tunioctl(struct dev_ioctl_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct tun_softc *sc = dev->si_drv1;
-	struct ifnet *ifp = &sc->tun_if;
+	struct ifnet *ifp = sc->tun_ifp;
 	struct tuninfo *tunp;
 
 	switch (ap->a_cmd) {
@@ -558,7 +562,7 @@ tunread(struct dev_read_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	struct tun_softc *sc = dev->si_drv1;
-	struct ifnet *ifp = &sc->tun_if;
+	struct ifnet *ifp = sc->tun_ifp;
 	struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
 	struct mbuf *m0;
 	int error=0, len;
@@ -610,7 +614,7 @@ tunwrite(struct dev_write_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	struct tun_softc *sc = dev->si_drv1;
-	struct ifnet *ifp = &sc->tun_if;
+	struct ifnet *ifp = sc->tun_ifp;
 	struct mbuf *top, **mp, *m;
 	size_t tlen;
 	uint32_t family;
@@ -734,7 +738,7 @@ tunkqfilter(struct dev_kqfilter_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct tun_softc *sc = dev->si_drv1;
-	struct ifnet *ifp = &sc->tun_if;
+	struct ifnet *ifp = sc->tun_ifp;
 	struct knote *kn = ap->a_kn;
 	struct klist *klist;
 
@@ -783,7 +787,7 @@ static int
 tun_filter_read(struct knote *kn, long hint)
 {
 	struct tun_softc *sc = (struct tun_softc *)kn->kn_hook;
-	struct ifnet *ifp = &sc->tun_if;
+	struct ifnet *ifp = sc->tun_ifp;
 	int ready = 0;
 
 	ifnet_serialize_all(ifp);
