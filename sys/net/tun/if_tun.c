@@ -39,55 +39,22 @@
 #include <sys/uio.h>
 #include <sys/vnode.h>
 #include <sys/malloc.h>
-
 #include <sys/mplock2.h>
+#include <sys/devfs.h>
 
+#include <net/bpf.h>
 #include <net/if.h>
 #include <net/if_types.h>
 #include <net/ifq_var.h>
 #include <net/netisr.h>
 #include <net/route.h>
-#include <sys/devfs.h>
 
 #ifdef INET
 #include <netinet/in.h>
 #endif
 
-#include <net/bpf.h>
-
 #include "if_tunvar.h"
 #include "if_tun.h"
-
-static MALLOC_DEFINE(M_TUN, "tun", "Tunnel Interface");
-
-static void tunattach (void *);
-PSEUDO_SET(tunattach, if_tun);
-
-static void tuncreate (cdev_t dev);
-
-#define TUNDEBUG	if (tundebug) if_printf
-static int tundebug = 0;
-SYSCTL_INT(_debug, OID_AUTO, if_tun_debug, CTLFLAG_RW, &tundebug, 0,
-    "Enable debug output");
-
-static int tunoutput (struct ifnet *, struct mbuf *, struct sockaddr *,
-	    struct rtentry *rt);
-static int tunifioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
-static int tuninit (struct ifnet *);
-static void tunstart(struct ifnet *, struct ifaltq_subque *);
-static void tun_filter_detach(struct knote *);
-static int tun_filter_read(struct knote *, long);
-static int tun_filter_write(struct knote *, long);
-
-static	d_open_t	tunopen;
-static	d_close_t	tunclose;
-static	d_read_t	tunread;
-static	d_write_t	tunwrite;
-static	d_ioctl_t	tunioctl;
-static	d_kqfilter_t	tunkqfilter;
-
-static d_clone_t tunclone;
-DEVFS_DEFINE_CLONE_BITMAP(tun);
 
 #if NTUN <= 1
 #define TUN_PREALLOCATED_UNITS	4
@@ -95,8 +62,34 @@ DEVFS_DEFINE_CLONE_BITMAP(tun);
 #define TUN_PREALLOCATED_UNITS	NTUN
 #endif
 
-static struct dev_ops tun_ops = {
-	{ "tun", 0, 0 },
+#define TUN		"tun"
+#define TUNDEBUG	if (tundebug) if_printf
+
+/* module */
+static void		tunattach(void *);
+
+/* device */
+static void		tuncreate(cdev_t dev);
+
+/* network interface */
+static int		tuninit(struct ifnet *);
+static void		tunstart(struct ifnet *, struct ifaltq_subque *);
+static int		tunoutput(struct ifnet *, struct mbuf *,
+				  struct sockaddr *, struct rtentry *rt);
+static int		tunifioctl(struct ifnet *, u_long,
+				   caddr_t, struct ucred *);
+
+/* character device */
+static d_open_t		tunopen;
+static d_close_t	tunclose;
+static d_read_t		tunread;
+static d_write_t	tunwrite;
+static d_ioctl_t	tunioctl;
+static d_kqfilter_t	tunkqfilter;
+static d_clone_t	tunclone;
+
+static struct dev_ops	tun_ops = {
+	{ TUN, 0, 0 },
 	.d_open =	tunopen,
 	.d_close =	tunclose,
 	.d_read =	tunread,
@@ -105,14 +98,45 @@ static struct dev_ops tun_ops = {
 	.d_kqfilter =	tunkqfilter
 };
 
+/* kqueue support */
+static void		tun_filter_detach(struct knote *);
+static int		tun_filter_read(struct knote *, long);
+static int		tun_filter_write(struct knote *, long);
+
+static struct filterops tun_read_filtops = {
+	FILTEROP_ISFD,
+	NULL,
+	tun_filter_detach,
+	tun_filter_read
+};
+static struct filterops tun_write_filtops = {
+	FILTEROP_ISFD,
+	NULL,
+	tun_filter_detach,
+	tun_filter_write
+};
+
+static int		tundebug = 0;	/* debug flag */
+
+static MALLOC_DEFINE(M_TUN, TUN, "Tunnel Interface");
+
+static DEVFS_DEFINE_CLONE_BITMAP(tun);
+
+SYSCTL_INT(_debug, OID_AUTO, if_tun_debug, CTLFLAG_RW, &tundebug, 0,
+	   "Enable debug output");
+
+PSEUDO_SET(tunattach, if_tun);
+
+
 static void
 tunattach(void *dummy)
 {
 	int i;
 	make_autoclone_dev(&tun_ops, &DEVFS_CLONE_BITMAP(tun),
-		tunclone, UID_UUCP, GID_DIALER, 0600, "tun");
+		tunclone, UID_UUCP, GID_DIALER, 0600, TUN);
 	for (i = 0; i < TUN_PREALLOCATED_UNITS; i++) {
-		make_dev(&tun_ops, i, UID_UUCP, GID_DIALER, 0600, "tun%d", i);
+		make_dev(&tun_ops, i, UID_UUCP, GID_DIALER,
+			 0600, "%s%d", TUN, i);
 		devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tun), i);
 	}
 	/* Doesn't need uninit because unloading is not possible, see PSEUDO_SET */
@@ -125,7 +149,7 @@ tunclone(struct dev_clone_args *ap)
 
 	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(tun), 0);
 	ap->a_dev = make_only_dev(&tun_ops, unit, UID_UUCP, GID_DIALER, 0600,
-								"tun%d", unit);
+				  "%s%d", TUN, unit);
 
 	return 0;
 }
@@ -136,55 +160,51 @@ tuncreate(cdev_t dev)
 	struct tun_softc *sc;
 	struct ifnet *ifp;
 
-#if 0
-	dev = make_dev(&tun_ops, minor(dev),
-	    UID_UUCP, GID_DIALER, 0600, "tun%d", lminor(dev));
-#endif
-
 	sc = kmalloc(sizeof(*sc), M_TUN, M_WAITOK | M_ZERO);
+	dev->si_drv1 = sc;
 	sc->tun_flags = TUN_INITED;
 
 	ifp = &sc->tun_if;
-	if_initname(ifp, "tun", lminor(dev));
+	if_initname(ifp, TUN, minor(dev));
 	ifp->if_mtu = TUNMTU;
 	ifp->if_ioctl = tunifioctl;
 	ifp->if_output = tunoutput;
 	ifp->if_start = tunstart;
 	ifp->if_flags = IFF_POINTOPOINT | IFF_MULTICAST;
 	ifp->if_type = IFT_PPP;
+	ifp->if_softc = sc;
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 	ifq_set_ready(&ifp->if_snd);
-	ifp->if_softc = sc;
+
 	if_attach(ifp, NULL);
 	bpfattach(ifp, DLT_NULL, sizeof(u_int));
-	dev->si_drv1 = sc;
 }
 
 /*
  * tunnel open - must be superuser & the device must be
  * configured in
  */
-static	int
+static int
 tunopen(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	struct ifnet	*ifp;
-	struct tun_softc *tp;
-	int	error;
+	struct ifnet *ifp;
+	struct tun_softc *sc;
+	int error;
 
 	if ((error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) != 0)
 		return (error);
 
-	tp = dev->si_drv1;
-	if (!tp) {
+	sc = dev->si_drv1;
+	if (!sc) {
 		tuncreate(dev);
-		tp = dev->si_drv1;
+		sc = dev->si_drv1;
 	}
-	if (tp->tun_flags & TUN_OPEN)
-		return EBUSY;
-	tp->tun_pid = curproc->p_pid;
-	ifp = &tp->tun_if;
-	tp->tun_flags |= TUN_OPEN;
+	if (sc->tun_flags & TUN_OPEN)
+		return (EBUSY);
+	sc->tun_pid = curproc->p_pid;
+	sc->tun_flags |= TUN_OPEN;
+	ifp = &sc->tun_if;
 	TUNDEBUG(ifp, "open\n");
 	return (0);
 }
@@ -193,18 +213,18 @@ tunopen(struct dev_open_args *ap)
  * tunclose - close the device - mark i/f down & delete
  * routing info
  */
-static	int
+static int
 tunclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	struct tun_softc *tp;
-	struct ifnet	*ifp;
+	struct tun_softc *sc;
+	struct ifnet *ifp;
 
-	tp = dev->si_drv1;
-	ifp = &tp->tun_if;
+	sc = dev->si_drv1;
+	ifp = &sc->tun_if;
 
-	tp->tun_flags &= ~TUN_OPEN;
-	tp->tun_pid = 0;
+	sc->tun_flags &= ~TUN_OPEN;
+	sc->tun_pid = 0;
 
 	/* Junk all pending output. */
 	ifq_purge_all(&ifp->if_snd);
@@ -214,15 +234,10 @@ tunclose(struct dev_close_args *ap)
 	ifp->if_flags &= ~IFF_RUNNING;
 	if_purgeaddrs_nolink(ifp);
 
-	funsetown(&tp->tun_sigio);
-	KNOTE(&tp->tun_rkq.ki_note, 0);
+	funsetown(&sc->tun_sigio);
+	KNOTE(&sc->tun_rkq.ki_note, 0);
 
 	TUNDEBUG(ifp, "closed\n");
-#if 0
-	if (dev->si_uminor >= TUN_PREALLOCATED_UNITS) {
-		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(tun), dev->si_uminor);
-	}
-#endif
 	return (0);
 }
 
@@ -230,7 +245,7 @@ static int
 tuninit(struct ifnet *ifp)
 {
 #ifdef INET
-	struct tun_softc *tp = ifp->if_softc;
+	struct tun_softc *sc = ifp->if_softc;
 #endif
 	struct ifaddr_container *ifac;
 	int error = 0;
@@ -249,11 +264,11 @@ tuninit(struct ifnet *ifp)
 		} else {
 #ifdef INET
 			if (ifa->ifa_addr->sa_family == AF_INET) {
-			    struct sockaddr_in *si;
+				struct sockaddr_in *si;
 
-			    si = (struct sockaddr_in *)ifa->ifa_addr;
-			    if (si->sin_addr.s_addr)
-				    tp->tun_flags |= TUN_IASET;
+				si = (struct sockaddr_in *)ifa->ifa_addr;
+				if (si->sin_addr.s_addr)
+					sc->tun_flags |= TUN_IASET;
 			}
 #endif
 		}
@@ -270,16 +285,16 @@ static int
 tunifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct ifreq *ifr = (struct ifreq *)data;
-	struct tun_softc *tp = ifp->if_softc;
+	struct tun_softc *sc = ifp->if_softc;
 	struct ifstat *ifs;
 	int error = 0;
 
-	switch(cmd) {
+	switch (cmd) {
 	case SIOCGIFSTATUS:
 		ifs = (struct ifstat *)data;
-		if (tp->tun_pid)
+		if (sc->tun_pid)
 			ksprintf(ifs->ascii + strlen(ifs->ascii),
-			    "\tOpened by PID %d\n", tp->tun_pid);
+			    "\tOpened by PID %d\n", sc->tun_pid);
 		break;
 	case SIOCSIFADDR:
 		error = tuninit(ifp);
@@ -312,16 +327,16 @@ static int
 tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 		     struct rtentry *rt)
 {
-	struct tun_softc *tp = ifp->if_softc;
+	struct tun_softc *sc = ifp->if_softc;
 	int error;
 	struct altq_pktattr pktattr;
 
 	TUNDEBUG(ifp, "tunoutput\n");
 
-	if ((tp->tun_flags & TUN_READY) != TUN_READY) {
-		TUNDEBUG(ifp, "not ready 0%o\n", tp->tun_flags);
+	if ((sc->tun_flags & TUN_READY) != TUN_READY) {
+		TUNDEBUG(ifp, "not ready 0%o\n", sc->tun_flags);
 		m_freem (m0);
-		return EHOSTDOWN;
+		return (EHOSTDOWN);
 	}
 
 	/*
@@ -353,7 +368,7 @@ tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	}
 
 	/* prepend sockaddr? this may abort if the mbuf allocation fails */
-	if (tp->tun_flags & TUN_LMODE) {
+	if (sc->tun_flags & TUN_LMODE) {
 		/* allocate space for sockaddr */
 		M_PREPEND(m0, dst->sa_len, M_NOWAIT);
 
@@ -366,23 +381,24 @@ tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 		}
 	}
 
-	if (tp->tun_flags & TUN_IFHEAD) {
+	if (sc->tun_flags & TUN_IFHEAD) {
 		/* Prepend the address family */
 		M_PREPEND(m0, 4, M_NOWAIT);
 
 		/* if allocation failed drop packet */
 		if (m0 == NULL){
 			IFNET_STAT_INC(ifp, oerrors, 1);
-			return ENOBUFS;
-		} else
+			return (ENOBUFS);
+		} else {
 			*(u_int32_t *)m0->m_data = htonl(dst->sa_family);
+		}
 	} else {
 #ifdef INET
 		if (dst->sa_family != AF_INET)
 #endif
 		{
 			m_freem(m0);
-			return EAFNOSUPPORT;
+			return (EAFNOSUPPORT);
 		}
 	}
 
@@ -391,16 +407,16 @@ tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 		IFNET_STAT_INC(ifp, collisions, 1);
 	} else {
 		IFNET_STAT_INC(ifp, opackets, 1);
-		if (tp->tun_flags & TUN_RWAIT) {
-			tp->tun_flags &= ~TUN_RWAIT;
-			wakeup((caddr_t)tp);
+		if (sc->tun_flags & TUN_RWAIT) {
+			sc->tun_flags &= ~TUN_RWAIT;
+			wakeup((caddr_t)sc);
 		}
 		get_mplock();
-		if (tp->tun_flags & TUN_ASYNC && tp->tun_sigio)
-			pgsigio(tp->tun_sigio, SIGIO, 0);
+		if (sc->tun_flags & TUN_ASYNC && sc->tun_sigio)
+			pgsigio(sc->tun_sigio, SIGIO, 0);
 		rel_mplock();
 		ifnet_deserialize_all(ifp);
-		KNOTE(&tp->tun_rkq.ki_note, 0);
+		KNOTE(&sc->tun_rkq.ki_note, 0);
 		ifnet_serialize_all(ifp);
 	}
 	return (error);
@@ -416,104 +432,119 @@ tunoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	error = tunoutput_serialized(ifp, m0, dst, rt);
 	ifnet_deserialize_all(ifp);
 
-	return error;
+	return (error);
 }
 
 /*
  * the ops interface is now pretty minimal.
  */
-static	int
+static int
 tunioctl(struct dev_ioctl_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	struct tun_softc *tp = dev->si_drv1;
- 	struct tuninfo *tunp;
+	struct tun_softc *sc = dev->si_drv1;
+	struct ifnet *ifp = &sc->tun_if;
+	struct tuninfo *tunp;
 
 	switch (ap->a_cmd) {
 	case TUNSIFINFO:
 		tunp = (struct tuninfo *)ap->a_data;
 		if (tunp->mtu < IF_MINMTU)
 			return (EINVAL);
-		tp->tun_if.if_mtu = tunp->mtu;
-		tp->tun_if.if_type = tunp->type;
-		tp->tun_if.if_baudrate = tunp->baudrate;
+		ifp->if_mtu = tunp->mtu;
+		ifp->if_type = tunp->type;
+		ifp->if_baudrate = tunp->baudrate;
 		break;
+
 	case TUNGIFINFO:
 		tunp = (struct tuninfo *)ap->a_data;
-		tunp->mtu = tp->tun_if.if_mtu;
-		tunp->type = tp->tun_if.if_type;
-		tunp->baudrate = tp->tun_if.if_baudrate;
+		tunp->mtu = ifp->if_mtu;
+		tunp->type = ifp->if_type;
+		tunp->baudrate = ifp->if_baudrate;
 		break;
+
 	case TUNSDEBUG:
 		tundebug = *(int *)ap->a_data;
 		break;
+
 	case TUNGDEBUG:
 		*(int *)ap->a_data = tundebug;
 		break;
+
 	case TUNSLMODE:
 		if (*(int *)ap->a_data) {
-			tp->tun_flags |= TUN_LMODE;
-			tp->tun_flags &= ~TUN_IFHEAD;
-		} else
-			tp->tun_flags &= ~TUN_LMODE;
+			sc->tun_flags |= TUN_LMODE;
+			sc->tun_flags &= ~TUN_IFHEAD;
+		} else {
+			sc->tun_flags &= ~TUN_LMODE;
+		}
 		break;
+
 	case TUNSIFHEAD:
 		if (*(int *)ap->a_data) {
-			tp->tun_flags |= TUN_IFHEAD;
-			tp->tun_flags &= ~TUN_LMODE;
-		} else 
-			tp->tun_flags &= ~TUN_IFHEAD;
+			sc->tun_flags |= TUN_IFHEAD;
+			sc->tun_flags &= ~TUN_LMODE;
+		} else {
+			sc->tun_flags &= ~TUN_IFHEAD;
+		}
 		break;
+
 	case TUNGIFHEAD:
-		*(int *)ap->a_data = (tp->tun_flags & TUN_IFHEAD) ? 1 : 0;
+		*(int *)ap->a_data = (sc->tun_flags & TUN_IFHEAD) ? 1 : 0;
 		break;
+
 	case TUNSIFMODE:
 		/* deny this if UP */
-		if (tp->tun_if.if_flags & IFF_UP)
-			return(EBUSY);
+		if (ifp->if_flags & IFF_UP)
+			return (EBUSY);
 
 		switch (*(int *)ap->a_data & ~IFF_MULTICAST) {
 		case IFF_POINTOPOINT:
 		case IFF_BROADCAST:
-			tp->tun_if.if_flags &= ~(IFF_BROADCAST|IFF_POINTOPOINT);
-			tp->tun_if.if_flags |= *(int *)ap->a_data;
+			ifp->if_flags &= ~(IFF_BROADCAST|IFF_POINTOPOINT);
+			ifp->if_flags |= *(int *)ap->a_data;
 			break;
 		default:
-			return(EINVAL);
+			return (EINVAL);
 		}
 		break;
+
 	case TUNSIFPID:
-		tp->tun_pid = curproc->p_pid;
+		sc->tun_pid = curproc->p_pid;
 		break;
+
 	case FIOASYNC:
 		if (*(int *)ap->a_data)
-			tp->tun_flags |= TUN_ASYNC;
+			sc->tun_flags |= TUN_ASYNC;
 		else
-			tp->tun_flags &= ~TUN_ASYNC;
+			sc->tun_flags &= ~TUN_ASYNC;
 		break;
+
 	case FIONREAD:
 		*(int *)ap->a_data = ifsq_poll_pktlen(
-		    ifq_get_subq_default(&tp->tun_if.if_snd));
+		    ifq_get_subq_default(&ifp->if_snd));
 		break;
+
 	case FIOSETOWN:
-		return (fsetown(*(int *)ap->a_data, &tp->tun_sigio));
+		return (fsetown(*(int *)ap->a_data, &sc->tun_sigio));
 
 	case FIOGETOWN:
-		*(int *)ap->a_data = fgetown(&tp->tun_sigio);
+		*(int *)ap->a_data = fgetown(&sc->tun_sigio);
 		return (0);
 
 	/* This is deprecated, FIOSETOWN should be used instead. */
 	case TIOCSPGRP:
-		return (fsetown(-(*(int *)ap->a_data), &tp->tun_sigio));
+		return (fsetown(-(*(int *)ap->a_data), &sc->tun_sigio));
 
 	/* This is deprecated, FIOGETOWN should be used instead. */
 	case TIOCGPGRP:
-		*(int *)ap->a_data = -fgetown(&tp->tun_sigio);
+		*(int *)ap->a_data = -fgetown(&sc->tun_sigio);
 		return (0);
 
 	default:
 		return (ENOTTY);
 	}
+
 	return (0);
 }
 
@@ -526,31 +557,31 @@ tunread(struct dev_read_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
-	struct tun_softc *tp = dev->si_drv1;
-	struct ifnet	*ifp = &tp->tun_if;
+	struct tun_softc *sc = dev->si_drv1;
+	struct ifnet *ifp = &sc->tun_if;
 	struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
-	struct mbuf	*m0;
-	int		error=0, len;
+	struct mbuf *m0;
+	int error=0, len;
 
 	TUNDEBUG(ifp, "read\n");
-	if ((tp->tun_flags & TUN_READY) != TUN_READY) {
-		TUNDEBUG(ifp, "not ready 0%o\n", tp->tun_flags);
-		return EHOSTDOWN;
+	if ((sc->tun_flags & TUN_READY) != TUN_READY) {
+		TUNDEBUG(ifp, "not ready 0%o\n", sc->tun_flags);
+		return (EHOSTDOWN);
 	}
 
-	tp->tun_flags &= ~TUN_RWAIT;
+	sc->tun_flags &= ~TUN_RWAIT;
 
 	ifnet_serialize_all(ifp);
 
 	while ((m0 = ifsq_dequeue(ifsq)) == NULL) {
 		if (ap->a_ioflag & IO_NDELAY) {
 			ifnet_deserialize_all(ifp);
-			return EWOULDBLOCK;
+			return (EWOULDBLOCK);
 		}
-		tp->tun_flags |= TUN_RWAIT;
+		sc->tun_flags |= TUN_RWAIT;
 		ifnet_deserialize_all(ifp);
-		if ((error = tsleep(tp, PCATCH, "tunread", 0)) != 0)
-			return error;
+		if ((error = tsleep(sc, PCATCH, "tunread", 0)) != 0)
+			return (error);
 		ifnet_serialize_all(ifp);
 	}
 
@@ -564,10 +595,10 @@ tunread(struct dev_read_args *ap)
 	}
 
 	if (m0) {
-		TUNDEBUG(ifp, "Dropping mbuf\n");
+		TUNDEBUG(ifp, "dropping mbuf\n");
 		m_freem(m0);
 	}
-	return error;
+	return (error);
 }
 
 /*
@@ -578,52 +609,50 @@ tunwrite(struct dev_write_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
-	struct tun_softc *tp = dev->si_drv1;
-	struct ifnet	*ifp = &tp->tun_if;
-	struct mbuf	*top, **mp, *m;
-	int		error=0;
-	size_t		tlen, mlen;
-	uint32_t	family;
-	int		isr;
+	struct tun_softc *sc = dev->si_drv1;
+	struct ifnet *ifp = &sc->tun_if;
+	struct mbuf *top, **mp, *m;
+	size_t tlen;
+	uint32_t family;
+	int error = 0;
+	int isr;
 
 	TUNDEBUG(ifp, "tunwrite\n");
 
 	if (uio->uio_resid == 0)
-		return 0;
+		return (0);
 
 	if (uio->uio_resid > TUNMRU) {
-		TUNDEBUG(ifp, "len=%zd!\n", uio->uio_resid);
-		return EIO;
+		TUNDEBUG(ifp, "len = %zd!\n", uio->uio_resid);
+		return (EIO);
 	}
-	tlen = uio->uio_resid;
 
 	/* get a header mbuf */
 	MGETHDR(m, M_WAITOK, MT_DATA);
 	if (m == NULL)
-		return ENOBUFS;
-	mlen = MHLEN;
+		return (ENOBUFS);
 
+	tlen = uio->uio_resid;
 	top = NULL;
 	mp = &top;
 	while (error == 0 && uio->uio_resid > 0) {
-		m->m_len = (int)szmin(mlen, uio->uio_resid);
-		error = uiomove(mtod (m, caddr_t), (size_t)m->m_len, uio);
+		m->m_len = (int)szmin(MHLEN, uio->uio_resid);
+		error = uiomove(mtod(m, caddr_t), (size_t)m->m_len, uio);
 		*mp = m;
 		mp = &m->m_next;
 		if (uio->uio_resid > 0) {
-			MGET (m, M_WAITOK, MT_DATA);
+			MGET(m, M_WAITOK, MT_DATA);
 			if (m == NULL) {
 				error = ENOBUFS;
 				break;
 			}
-			mlen = MLEN;
 		}
 	}
 	if (error) {
 		if (top)
-			m_freem (top);
+			m_freem(top);
 		IFNET_STAT_INC(ifp, ierrors, 1);
-		return error;
+		return (error);
 	}
 
 	top->m_pkthdr.len = (int)tlen;
@@ -633,7 +662,7 @@ tunwrite(struct dev_write_args *ap)
 		bpf_gettoken();
 
 		if (ifp->if_bpf) {
-			if (tp->tun_flags & TUN_IFHEAD) {
+			if (sc->tun_flags & TUN_IFHEAD) {
 				/*
 				 * Conveniently, we already have a 4-byte
 				 * address family prepended to our packet !
@@ -643,7 +672,7 @@ tunwrite(struct dev_write_args *ap)
 				if ((top = m_pullup(top, sizeof(family)))
 				    == NULL) {
 					bpf_reltoken();
-					return ENOBUFS;
+					return (ENOBUFS);
 				}
 				*mtod(top, u_int32_t *) =
 				    ntohl(*mtod(top, u_int32_t *));
@@ -664,14 +693,15 @@ tunwrite(struct dev_write_args *ap)
 		bpf_reltoken();
 	}
 
-	if (tp->tun_flags & TUN_IFHEAD) {
+	if (sc->tun_flags & TUN_IFHEAD) {
 		if (top->m_len < sizeof(family) &&
 		    (top = m_pullup(top, sizeof(family))) == NULL)
-				return ENOBUFS;
+				return (ENOBUFS);
 		family = ntohl(*mtod(top, u_int32_t *));
 		m_adj(top, sizeof(family));
-	} else
+	} else {
 		family = AF_INET;
+	}
 
 	IFNET_STAT_INC(ifp, ibytes, top->m_pkthdr.len);
 	IFNET_STAT_INC(ifp, ipackets, 1);
@@ -696,40 +726,39 @@ tunwrite(struct dev_write_args *ap)
 	return (0);
 }
 
-static struct filterops tun_read_filtops =
-	{ FILTEROP_ISFD, NULL, tun_filter_detach, tun_filter_read };
-static struct filterops tun_write_filtops =
-	{ FILTEROP_ISFD, NULL, tun_filter_detach, tun_filter_write };
-
+/*
+ * tunkqfilter - support for the kevent() system call.
+ */
 static int
 tunkqfilter(struct dev_kqfilter_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	struct tun_softc *tp = dev->si_drv1;
+	struct tun_softc *sc = dev->si_drv1;
+	struct ifnet *ifp = &sc->tun_if;
 	struct knote *kn = ap->a_kn;
 	struct klist *klist;
 
 	ap->a_result = 0;
-	ifnet_serialize_all(&tp->tun_if);
+	ifnet_serialize_all(ifp);
 
 	switch (kn->kn_filter) {
 	case EVFILT_READ:
 		kn->kn_fop = &tun_read_filtops;
-		kn->kn_hook = (caddr_t)tp;
+		kn->kn_hook = (caddr_t)sc;
 		break;
 	case EVFILT_WRITE:
 		kn->kn_fop = &tun_write_filtops;
-		kn->kn_hook = (caddr_t)tp;
+		kn->kn_hook = (caddr_t)sc;
 		break;
 	default:
-		ifnet_deserialize_all(&tp->tun_if);
+		ifnet_deserialize_all(ifp);
 		ap->a_result = EOPNOTSUPP;
 		return (0);
 	}
 
-	klist = &tp->tun_rkq.ki_note;
+	klist = &sc->tun_rkq.ki_note;
 	knote_insert(klist, kn);
-	ifnet_deserialize_all(&tp->tun_if);
+	ifnet_deserialize_all(ifp);
 
 	return (0);
 }
@@ -737,8 +766,8 @@ tunkqfilter(struct dev_kqfilter_args *ap)
 static void
 tun_filter_detach(struct knote *kn)
 {
-	struct tun_softc *tp = (struct tun_softc *)kn->kn_hook;
-	struct klist *klist = &tp->tun_rkq.ki_note;
+	struct tun_softc *sc = (struct tun_softc *)kn->kn_hook;
+	struct klist *klist = &sc->tun_rkq.ki_note;
 
 	knote_remove(klist, kn);
 }
@@ -753,13 +782,14 @@ tun_filter_write(struct knote *kn, long hint)
 static int
 tun_filter_read(struct knote *kn, long hint)
 {
-	struct tun_softc *tp = (struct tun_softc *)kn->kn_hook;
+	struct tun_softc *sc = (struct tun_softc *)kn->kn_hook;
+	struct ifnet *ifp = &sc->tun_if;
 	int ready = 0;
 
-	ifnet_serialize_all(&tp->tun_if);
-	if (!ifsq_is_empty(ifq_get_subq_default(&tp->tun_if.if_snd)))
+	ifnet_serialize_all(ifp);
+	if (!ifsq_is_empty(ifq_get_subq_default(&ifp->if_snd)))
 		ready = 1;
-	ifnet_deserialize_all(&tp->tun_if);
+	ifnet_deserialize_all(ifp);
 
 	return (ready);
 }
@@ -773,7 +803,7 @@ tun_filter_read(struct knote *kn, long hint)
 static void
 tunstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
-	struct tun_softc *tp = ifp->if_softc;
+	struct tun_softc *sc = ifp->if_softc;
 	struct mbuf *m;
 
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
@@ -783,14 +813,14 @@ tunstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 	m = ifsq_poll(ifsq);
 	if (m != NULL) {
-		if (tp->tun_flags & TUN_RWAIT) {
-			tp->tun_flags &= ~TUN_RWAIT;
-			wakeup((caddr_t)tp);
+		if (sc->tun_flags & TUN_RWAIT) {
+			sc->tun_flags &= ~TUN_RWAIT;
+			wakeup((caddr_t)sc);
 		}
-		if (tp->tun_flags & TUN_ASYNC && tp->tun_sigio)
-			pgsigio(tp->tun_sigio, SIGIO, 0);
+		if (sc->tun_flags & TUN_ASYNC && sc->tun_sigio)
+			pgsigio(sc->tun_sigio, SIGIO, 0);
 		ifsq_deserialize_hw(ifsq);
-		KNOTE(&tp->tun_rkq.ki_note, 0);
+		KNOTE(&sc->tun_rkq.ki_note, 0);
 		ifsq_serialize_hw(ifsq);
 	}
 }

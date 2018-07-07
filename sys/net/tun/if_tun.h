@@ -14,15 +14,12 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.h,v 1.17 2000/01/23 01:47:12 brian Exp $
- * $DragonFly: src/sys/net/tun/if_tun.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
  */
 
 #ifndef _NET_IF_TUN_H_
 #define _NET_IF_TUN_H_
 
 #include <sys/ioccom.h>
-
-/* Refer to if_tunvar.h for the softc stuff */
 
 /* Maximum transmit packet size (default) */
 #define	TUNMTU		1500
@@ -31,17 +28,19 @@
 #define	TUNMRU		16384
 
 struct tuninfo {
-	int	baudrate;		/* linespeed */
-	short	mtu;			/* maximum transmission unit */
-	u_char	type;			/* ethernet, tokenring, etc. */
-	u_char	dummy;			/* place holder */
+	int	baudrate;	/* linespeed */
+	u_short	mtu;		/* maximum transmission unit */
+	u_char	type;		/* ethernet, tokenring, etc. */
+	u_char	dummy;		/* place holder */
 };
 
-/* ioctl's for get/set debug */
-#define	TUNSDEBUG	_IOW('t', 90, int)
+/* get/set internal debug variable */
 #define	TUNGDEBUG	_IOR('t', 89, int)
+#define	TUNSDEBUG	_IOW('t', 90, int)
+/* get/set network interface information */
 #define	TUNSIFINFO	_IOW('t', 91, struct tuninfo)
 #define	TUNGIFINFO	_IOR('t', 92, struct tuninfo)
+
 #define	TUNSLMODE	_IOW('t', 93, int)
 #define	TUNSIFMODE	_IOW('t', 94, int)
 #define	TUNSIFPID	_IO('t', 95)

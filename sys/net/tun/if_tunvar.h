@@ -24,14 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_tunvar.h,v 1.7 2000/01/23 01:47:12 brian Exp $
- * $DragonFly: src/sys/net/tun/if_tunvar.h,v 1.3 2007/12/31 04:58:54 sephe Exp $
  */
 
 #ifndef _NET_IF_TUNVAR_H_
 #define _NET_IF_TUNVAR_H_
 
 struct tun_softc {
-	u_short	tun_flags;		/* misc flags */
+	u_short		tun_flags;	/* misc flags */
 #define	TUN_OPEN	0x0001
 #define	TUN_INITED	0x0002
 #define	TUN_RCOLL	0x0004
@@ -41,14 +40,13 @@ struct tun_softc {
 #define	TUN_RWAIT	0x0040
 #define	TUN_ASYNC	0x0080
 #define	TUN_IFHEAD	0x0100
+#define	TUN_READY	(TUN_OPEN | TUN_INITED)
 
-#define TUN_READY       (TUN_OPEN | TUN_INITED)
-
-	pid_t	tun_pid;		/* PID of process to open */
-	struct	ifnet tun_if;		/* the interface */
-	struct  sigio *tun_sigio;	/* information for async I/O */
-	struct	kqinfo	tun_rkq;	/* read select/poll/kq */
-	struct	kqinfo	tun_wkq;	/* write select/poll/kq (not used) */
+	pid_t		 tun_pid;	/* PID of process to open */
+	struct ifnet	 tun_if;	/* the interface */
+	struct sigio	*tun_sigio;	/* information for async I/O */
+	struct kqinfo	 tun_rkq;	/* read select/poll/kq */
+	struct kqinfo	 tun_wkq;	/* write select/poll/kq (not used) */
 };
 
 #endif /* !_NET_IF_TUNVAR_H_ */
