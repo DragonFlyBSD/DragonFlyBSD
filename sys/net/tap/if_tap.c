@@ -148,7 +148,6 @@ static struct filterops tapwrite_filtops = {
 
 static int		tapdebug = 0;		/* debug flag */
 static int		taprefcnt = 0;		/* module ref. counter */
-static int		taplastunit = -1;	/* max. open unit number */
 static int		tapuopen = 0;		/* allow user open() */
 static int		tapuponopen = 0;	/* IFF_UP when opened */
 
@@ -258,9 +257,6 @@ tapcreate(int unit, cdev_t dev, int flags)
 	ifp->if_softc = sc;
 
 	if_initname(ifp, TAP, unit);
-	if (unit > taplastunit)
-		taplastunit = unit;
-
 	ifp->if_init = tapifinit;
 	ifp->if_start = tapifstart;
 	ifp->if_ioctl = tapifioctl;
@@ -381,8 +377,8 @@ tapopen(struct dev_open_args *ap)
 		sc->tap_flags |= TAP_CLOSEDOWN;
 	}
 
-	TAPDEBUG(ifp, "opened, minor = %#x, refcnt = %d, taplastunit = %d\n",
-		 minor(dev), taprefcnt, taplastunit);
+	TAPDEBUG(ifp, "opened, minor = %#x, refcnt = %d\n",
+		 minor(dev), taprefcnt);
 
 	rel_mplock();
 	return (0);
@@ -463,8 +459,8 @@ tapclose(struct dev_close_args *ap)
 			"set refcnt to 0\n", unit, taprefcnt);
 	}
 
-	TAPDEBUG(ifp, "closed, minor = %#x, refcnt = %d, taplastunit = %d\n",
-		 unit, taprefcnt, taplastunit);
+	TAPDEBUG(ifp, "closed, minor = %#x, refcnt = %d\n",
+		 unit, taprefcnt);
 
 	/* Only auto-destroy if the interface was not manually created. */
 	if ((sc->tap_flags & TAP_MANUALMAKE) == 0 &&
@@ -489,8 +485,8 @@ tapdestroy(struct tap_softc *sc)
 	cdev_t dev = sc->tap_dev;
 	int unit = minor(dev);
 
-	TAPDEBUG(ifp, "destroyed, minor = %#x, refcnt = %d, taplastunit = %d\n",
-		 unit, taprefcnt, taplastunit);
+	TAPDEBUG(ifp, "destroyed, minor = %#x, refcnt = %d\n",
+		 unit, taprefcnt);
 
 	ifnet_serialize_all(ifp);
 	tapifstop(sc, 1);
@@ -511,8 +507,6 @@ tapdestroy(struct tap_softc *sc)
 	}
 
 	kfree(sc, M_TAP);
-
-	taplastunit--;
 }
 
 
