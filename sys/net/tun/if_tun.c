@@ -162,7 +162,10 @@ tuncreate(cdev_t dev)
 
 	sc = kmalloc(sizeof(*sc), M_TUN, M_WAITOK | M_ZERO);
 	dev->si_drv1 = sc;
+	sc->tun_dev = dev;
 	sc->tun_flags = TUN_INITED;
+
+	reference_dev(dev);  /* device association */
 
 	ifp = sc->tun_ifp = if_alloc(IFT_PPP);
 	if (ifp == NULL)

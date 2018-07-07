@@ -30,6 +30,8 @@
 #define _NET_IF_TUNVAR_H_
 
 struct tun_softc {
+	cdev_t		tun_dev;	/* device */
+
 	u_short		tun_flags;	/* misc flags */
 #define	TUN_OPEN	0x0001
 #define	TUN_INITED	0x0002
