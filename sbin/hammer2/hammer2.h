@@ -47,6 +47,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <sys/ttycom.h>
 #include <sys/endian.h>
 #include <sys/sysctl.h>
