@@ -30,10 +30,6 @@
  */
 
 #include <sys/types.h>
-#include <sys/uuid.h>
-#include <sys/dmsg.h>
-
-#include <vfs/hammer2/hammer2_disk.h>
 
 #include "hammer2.h"
 
