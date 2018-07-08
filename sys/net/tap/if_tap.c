@@ -252,9 +252,11 @@ tapcreate(cdev_t dev, int flags)
 
 	/* fill the rest and attach interface */
 	ifp = sc->tap_ifp = if_alloc(IFT_ETHER);
-	if (ifp == NULL)
-		/* XXX: should return an error */
-		panic("%s%d: failed to if_alloc() interface", TAP, unit);
+	if (ifp == NULL) {
+		kprintf("%s: failed to if_alloc() interface for %s%d",
+			__func__, TAP, unit);
+		return (NULL);
+	}
 
 	if_initname(ifp, TAP, unit);
 	ifp->if_init = tapifinit;
@@ -310,12 +312,13 @@ tap_clone_create(struct if_clone *ifc __unused, int unit,
 			dev = make_dev(&tap_ops, unit, UID_ROOT, GID_WHEEL,
 				       0600, "%s%d", TAP, unit);
 		} else {
-			/* pre-created tun devices */
 			dev = devfs_find_device_by_name("%s%d", TAP, unit);
 		}
 
-		KKASSERT(dev != NULL);
-		sc = tapcreate(dev, TAP_MANUALMAKE);
+		if (dev == NULL)
+			return (ENODEV);
+		if ((sc = tapcreate(dev, TAP_MANUALMAKE)) == NULL)
+			return (ENOMEM);
 	} else {
 		dev = sc->tap_dev;
 	}
@@ -347,8 +350,10 @@ tapopen(struct dev_open_args *ap)
 	get_mplock();
 	dev = ap->a_head.a_dev;
 	sc = dev->si_drv1;
-	if (sc == NULL)
-		sc = tapcreate(dev, TAP_MANUALMAKE);
+	if (sc == NULL && (sc = tapcreate(dev, TAP_MANUALMAKE)) == NULL) {
+		rel_mplock();
+		return (ENOMEM);
+	}
 	if (sc->tap_flags & TAP_OPEN) {
 		rel_mplock();
 		return (EBUSY);
@@ -396,8 +401,10 @@ tapclone(struct dev_clone_args *ap)
 	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(tap), 0);
 	ap->a_dev = make_only_dev(&tap_ops, unit, UID_ROOT, GID_WHEEL,
 				  0600, "%s%d", TAP, unit);
-	tapcreate(ap->a_dev, 0);
-	return (0);
+	if (tapcreate(ap->a_dev, 0) == NULL)
+		return (ENOMEM);
+	else
+		return (0);
 }
 
 /*
@@ -470,6 +477,7 @@ tapclose(struct dev_close_args *ap)
 	if ((sc->tap_flags & TAP_MANUALMAKE) == 0 &&
 	    unit >= TAP_PREALLOCATED_UNITS) {
 		tapdestroy(sc);
+		dev->si_drv1 = NULL;
 	}
 
 	rel_mplock();
