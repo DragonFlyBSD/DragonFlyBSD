@@ -74,10 +74,10 @@ static void		tuncreate(cdev_t dev);
 static void		tundestroy(struct tun_softc *sc);
 
 /* network interface */
-static int		tuninit(struct ifnet *);
-static void		tunstart(struct ifnet *, struct ifaltq_subque *);
-static int		tunoutput(struct ifnet *, struct mbuf *,
-				  struct sockaddr *, struct rtentry *rt);
+static int		tunifinit(struct ifnet *);
+static void		tunifstart(struct ifnet *, struct ifaltq_subque *);
+static int		tunifoutput(struct ifnet *, struct mbuf *,
+				    struct sockaddr *, struct rtentry *rt);
 static int		tunifioctl(struct ifnet *, u_long,
 				   caddr_t, struct ucred *);
 
@@ -189,8 +189,8 @@ tunclone(struct dev_clone_args *ap)
 	int unit;
 
 	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(tun), 0);
-	ap->a_dev = make_only_dev(&tun_ops, unit, UID_UUCP, GID_DIALER, 0600,
-				  "%s%d", TUN, unit);
+	ap->a_dev = make_only_dev(&tun_ops, unit, UID_UUCP, GID_DIALER,
+				  0600, "%s%d", TUN, unit);
 
 	return 0;
 }
@@ -216,8 +216,8 @@ tuncreate(cdev_t dev)
 	if_initname(ifp, TUN, minor(dev));
 	ifp->if_mtu = TUNMTU;
 	ifp->if_ioctl = tunifioctl;
-	ifp->if_output = tunoutput;
-	ifp->if_start = tunstart;
+	ifp->if_output = tunifoutput;
+	ifp->if_start = tunifstart;
 	ifp->if_flags = IFF_POINTOPOINT | IFF_MULTICAST;
 	ifp->if_type = IFT_PPP;
 	ifp->if_softc = sc;
@@ -250,8 +250,7 @@ tundestroy(struct tun_softc *sc)
 }
 
 /*
- * tunnel open - must be superuser & the device must be
- * configured in
+ * tunnel open - must be superuser & the device must be configured in
  */
 static int
 tunopen(struct dev_open_args *ap)
@@ -277,14 +276,13 @@ tunopen(struct dev_open_args *ap)
 	sc->tun_flags |= TUN_OPEN;
 	tunrefcnt++;
 
-	TUNDEBUG(ifp, "opened (minor = %#x). Module refcnt = %d\n",
+	TUNDEBUG(ifp, "opened, minor = %#x. Module refcnt = %d\n",
 		 minor(dev), tunrefcnt);
 	return (0);
 }
 
 /*
- * tunclose - close the device - mark i/f down & delete
- * routing info
+ * close the device - mark interface down & delete routing info
  */
 static int
 tunclose(struct dev_close_args *ap)
@@ -292,6 +290,7 @@ tunclose(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct tun_softc *sc;
 	struct ifnet *ifp;
+	int unit = minor(dev);
 
 	sc = dev->si_drv1;
 	ifp = sc->tun_ifp;
@@ -317,13 +316,18 @@ tunclose(struct dev_close_args *ap)
 			  "Force refcnt to be 0.\n", tunrefcnt);
 	}
 
-	TUNDEBUG(ifp, "closed (minor = %#x). Module refcnt = %d\n",
-		 minor(dev), tunrefcnt);
+	TUNDEBUG(ifp, "closed, minor = %#x. Module refcnt = %d\n",
+		 unit, tunrefcnt);
 	return (0);
 }
 
+
+/*
+ * Network interface functions
+ */
+
 static int
-tuninit(struct ifnet *ifp)
+tunifinit(struct ifnet *ifp)
 {
 #ifdef INET
 	struct tun_softc *sc = ifp->if_softc;
@@ -331,7 +335,7 @@ tuninit(struct ifnet *ifp)
 	struct ifaddr_container *ifac;
 	int error = 0;
 
-	TUNDEBUG(ifp, "tuninit\n");
+	TUNDEBUG(ifp, "initialize\n");
 
 	ifp->if_flags |= IFF_UP | IFF_RUNNING;
 	getmicrotime(&ifp->if_lastchange);
@@ -378,11 +382,11 @@ tunifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			    "\tOpened by PID %d\n", sc->tun_pid);
 		break;
 	case SIOCSIFADDR:
-		error = tuninit(ifp);
+		error = tunifinit(ifp);
 		TUNDEBUG(ifp, "address set, error=%d\n", error);
 		break;
 	case SIOCSIFDSTADDR:
-		error = tuninit(ifp);
+		error = tunifinit(ifp);
 		TUNDEBUG(ifp, "destination address set, error=%d\n", error);
 		break;
 	case SIOCSIFMTU:
@@ -400,22 +404,53 @@ tunifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 }
 
 /*
- * tunoutput - queue packets from higher level ready to put out.
+ * Start packet transmission on the interface.
+ * when the interface queue is rate-limited by ALTQ,
+ * if_start is needed to drain packets from the queue in order
+ * to notify readers when outgoing packets become ready.
+ */
+static void
+tunifstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
+{
+	struct tun_softc *sc = ifp->if_softc;
+	struct mbuf *m;
+
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
+
+	if (!ifq_is_enabled(&ifp->if_snd))
+		return;
+
+	m = ifsq_poll(ifsq);
+	if (m != NULL) {
+		if (sc->tun_flags & TUN_RWAIT) {
+			sc->tun_flags &= ~TUN_RWAIT;
+			wakeup((caddr_t)sc);
+		}
+		if (sc->tun_flags & TUN_ASYNC && sc->tun_sigio)
+			pgsigio(sc->tun_sigio, SIGIO, 0);
+		ifsq_deserialize_hw(ifsq);
+		KNOTE(&sc->tun_rkq.ki_note, 0);
+		ifsq_serialize_hw(ifsq);
+	}
+}
+
+/*
+ * tunifoutput - queue packets from higher level ready to put out.
  *
  * MPSAFE
  */
 static int
-tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
-		     struct rtentry *rt)
+tunifoutput_serialized(struct ifnet *ifp, struct mbuf *m0,
+		       struct sockaddr *dst, struct rtentry *rt)
 {
 	struct tun_softc *sc = ifp->if_softc;
 	int error;
 	struct altq_pktattr pktattr;
 
-	TUNDEBUG(ifp, "tunoutput\n");
+	TUNDEBUG(ifp, "output\n");
 
 	if ((sc->tun_flags & TUN_READY) != TUN_READY) {
-		TUNDEBUG(ifp, "not ready 0%o\n", sc->tun_flags);
+		TUNDEBUG(ifp, "not ready, flags = 0x%x\n", sc->tun_flags);
 		m_freem (m0);
 		return (EHOSTDOWN);
 	}
@@ -504,17 +539,18 @@ tunoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 }
 
 static int
-tunoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
-	  struct rtentry *rt)
+tunifoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
+	    struct rtentry *rt)
 {
 	int error;
 
 	ifnet_serialize_all(ifp);
-	error = tunoutput_serialized(ifp, m0, dst, rt);
+	error = tunifoutput_serialized(ifp, m0, dst, rt);
 	ifnet_deserialize_all(ifp);
 
 	return (error);
 }
+
 
 /*
  * the ops interface is now pretty minimal.
@@ -646,7 +682,7 @@ tunread(struct dev_read_args *ap)
 
 	TUNDEBUG(ifp, "read\n");
 	if ((sc->tun_flags & TUN_READY) != TUN_READY) {
-		TUNDEBUG(ifp, "not ready 0%o\n", sc->tun_flags);
+		TUNDEBUG(ifp, "not ready, flags = 0x%x\n", sc->tun_flags);
 		return (EHOSTDOWN);
 	}
 
@@ -807,6 +843,7 @@ tunwrite(struct dev_write_args *ap)
 	return (0);
 }
 
+
 /*
  * tunkqfilter - support for the kevent() system call.
  */
@@ -873,35 +910,4 @@ tun_filter_read(struct knote *kn, long hint)
 	ifnet_deserialize_all(ifp);
 
 	return (ready);
-}
-
-/*
- * Start packet transmission on the interface.
- * when the interface queue is rate-limited by ALTQ,
- * if_start is needed to drain packets from the queue in order
- * to notify readers when outgoing packets become ready.
- */
-static void
-tunstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
-{
-	struct tun_softc *sc = ifp->if_softc;
-	struct mbuf *m;
-
-	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
-
-	if (!ifq_is_enabled(&ifp->if_snd))
-		return;
-
-	m = ifsq_poll(ifsq);
-	if (m != NULL) {
-		if (sc->tun_flags & TUN_RWAIT) {
-			sc->tun_flags &= ~TUN_RWAIT;
-			wakeup((caddr_t)sc);
-		}
-		if (sc->tun_flags & TUN_ASYNC && sc->tun_sigio)
-			pgsigio(sc->tun_sigio, SIGIO, 0);
-		ifsq_deserialize_hw(ifsq);
-		KNOTE(&sc->tun_rkq.ki_note, 0);
-		ifsq_serialize_hw(ifsq);
-	}
 }
