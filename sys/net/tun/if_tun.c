@@ -130,6 +130,13 @@ static SLIST_HEAD(,tun_softc) tun_listhead =
 
 SYSCTL_INT(_debug, OID_AUTO, if_tun_debug, CTLFLAG_RW, &tundebug, 0,
 	   "Enable debug output");
+SYSCTL_DECL(_net_link);
+SYSCTL_NODE(_net_link, OID_AUTO, tun, CTLFLAG_RW, 0,
+	    "IP tunnel software network interface");
+SYSCTL_INT(_net_link_tun, OID_AUTO, debug, CTLFLAG_RW, &tundebug, 0,
+	   "Enable debug output");
+SYSCTL_INT(_net_link_tun, OID_AUTO, refcnt, CTLFLAG_RD, &tunrefcnt, 0,
+	   "Number of opened devices");
 
 DEV_MODULE(if_tun, tunmodevent, NULL);
 
