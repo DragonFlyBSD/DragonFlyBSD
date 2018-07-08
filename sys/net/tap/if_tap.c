@@ -97,7 +97,7 @@
 static int		tapmodevent(module_t, int, void *);
 
 /* device */
-static struct tap_softc *tapcreate(int, cdev_t, int);
+static struct tap_softc *tapcreate(cdev_t, int);
 static void		tapdestroy(struct tap_softc *);
 
 /* clone */
@@ -230,16 +230,16 @@ tapmodevent(module_t mod, int type, void *data)
  * tapcreate - create or clone an interface
  */
 static struct tap_softc *
-tapcreate(int unit, cdev_t dev, int flags)
+tapcreate(cdev_t dev, int flags)
 {
 	struct tap_softc *sc;
 	struct ifnet *ifp;
 	uint8_t ether_addr[ETHER_ADDR_LEN];
+	int unit = minor(dev);
 
 	sc = kmalloc(sizeof(*sc), M_TAP, M_WAITOK | M_ZERO);
 	dev->si_drv1 = sc;
 	sc->tap_dev = dev;
-	sc->tap_unit = unit;
 	sc->tap_flags |= flags;
 
 	reference_dev(dev); /* device association */
@@ -273,7 +273,8 @@ tapcreate(int unit, cdev_t dev, int flags)
 
 	SLIST_INSERT_HEAD(&tap_listhead, sc, tap_link);
 
-	TAPDEBUG(ifp, "created. minor = %#x\n", minor(dev));
+	TAPDEBUG(ifp, "created, minor = %#x, flags = 0x%x\n",
+		 unit, sc->tap_flags);
 	return (sc);
 }
 
@@ -284,7 +285,7 @@ tapfind(int unit)
 	struct tap_softc *sc;
 
 	SLIST_FOREACH(sc, &tap_listhead, tap_link) {
-		if (sc->tap_unit == unit)
+		if (minor(sc->tap_dev) == unit)
 			return (sc);
 	}
 	return (NULL);
@@ -309,11 +310,12 @@ tap_clone_create(struct if_clone *ifc __unused, int unit,
 			dev = make_dev(&tap_ops, unit, UID_ROOT, GID_WHEEL,
 				       0600, "%s%d", TAP, unit);
 		} else {
+			/* pre-created tun devices */
 			dev = devfs_find_device_by_name("%s%d", TAP, unit);
 		}
 
 		KKASSERT(dev != NULL);
-		sc = tapcreate(unit, dev, TAP_MANUALMAKE);
+		sc = tapcreate(dev, TAP_MANUALMAKE);
 	} else {
 		dev = sc->tap_dev;
 	}
@@ -346,7 +348,7 @@ tapopen(struct dev_open_args *ap)
 	dev = ap->a_head.a_dev;
 	sc = dev->si_drv1;
 	if (sc == NULL)
-		sc = tapcreate(minor(dev), dev, TAP_MANUALMAKE);
+		sc = tapcreate(dev, TAP_MANUALMAKE);
 	if (sc->tap_flags & TAP_OPEN) {
 		rel_mplock();
 		return (EBUSY);
@@ -394,7 +396,7 @@ tapclone(struct dev_clone_args *ap)
 	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(tap), 0);
 	ap->a_dev = make_only_dev(&tap_ops, unit, UID_ROOT, GID_WHEEL,
 				  0600, "%s%d", TAP, unit);
-	tapcreate(unit, ap->a_dev, 0);
+	tapcreate(ap->a_dev, 0);
 	return (0);
 }
 
@@ -504,8 +506,7 @@ tapdestroy(struct tap_softc *sc)
 	/* Also destroy the cloned device */
 	if (unit >= TAP_PREALLOCATED_UNITS) {
 		destroy_dev(dev);
-		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(tap),
-				       sc->tap_unit);
+		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(tap), unit);
 	}
 
 	SLIST_REMOVE(&tap_listhead, sc, tap_softc, tap_link);
