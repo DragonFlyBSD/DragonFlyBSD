@@ -170,6 +170,8 @@ SYSCTL_INT(_net_link_tap, OID_AUTO, user_open, CTLFLAG_RW, &tapuopen, 0,
 SYSCTL_INT(_net_link_tap, OID_AUTO, up_on_open, CTLFLAG_RW, &tapuponopen, 0,
 	   "Bring interface up when /dev/tap is opened");
 SYSCTL_INT(_net_link_tap, OID_AUTO, debug, CTLFLAG_RW, &tapdebug, 0, "");
+SYSCTL_INT(_net_link_tap, OID_AUTO, refcnt, CTLFLAG_RD, &taprefcnt, 0,
+	   "Number of opened devices");
 
 DEV_MODULE(if_tap, tapmodevent, NULL);
 
@@ -377,7 +379,7 @@ tapopen(struct dev_open_args *ap)
 		sc->tap_flags |= TAP_CLOSEDOWN;
 	}
 
-	TAPDEBUG(ifp, "opened, minor = %#x, refcnt = %d\n",
+	TAPDEBUG(ifp, "opened, minor = %#x. Module refcnt = %d\n",
 		 minor(dev), taprefcnt);
 
 	rel_mplock();
@@ -455,11 +457,11 @@ tapclose(struct dev_close_args *ap)
 	taprefcnt--;
 	if (taprefcnt < 0) {
 		taprefcnt = 0;
-		if_printf(ifp, "minor = %#x, refcnt = %d is out of sync. "
-			"set refcnt to 0\n", unit, taprefcnt);
+		if_printf(ifp, ". Module refcnt = %d is out of sync! "
+			  "Force refcnt to be 0.\n", taprefcnt);
 	}
 
-	TAPDEBUG(ifp, "closed, minor = %#x, refcnt = %d\n",
+	TAPDEBUG(ifp, "closed, minor = %#x. Module refcnt = %d\n",
 		 unit, taprefcnt);
 
 	/* Only auto-destroy if the interface was not manually created. */
@@ -485,7 +487,7 @@ tapdestroy(struct tap_softc *sc)
 	cdev_t dev = sc->tap_dev;
 	int unit = minor(dev);
 
-	TAPDEBUG(ifp, "destroyed, minor = %#x, refcnt = %d\n",
+	TAPDEBUG(ifp, "destroyed, minor = %#x. Module refcnt = %d\n",
 		 unit, taprefcnt);
 
 	ifnet_serialize_all(ifp);
