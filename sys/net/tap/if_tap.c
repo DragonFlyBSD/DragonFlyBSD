@@ -183,17 +183,15 @@ DEV_MODULE(if_tap, tapmodevent, NULL);
 static int
 tapmodevent(module_t mod, int type, void *data)
 {
-	static int attached = 0;
+	static cdev_t dev = NULL;
 	struct tap_softc *sc, *sc_tmp;
 	int i;
 
 	switch (type) {
 	case MOD_LOAD:
-		if (attached)
-			return (EEXIST);
-
-		make_autoclone_dev(&tap_ops, &DEVFS_CLONE_BITMAP(tap),
-				   tapclone, UID_ROOT, GID_WHEEL, 0600, TAP);
+		dev = make_autoclone_dev(&tap_ops, &DEVFS_CLONE_BITMAP(tap),
+					 tapclone, UID_ROOT, GID_WHEEL,
+					 0600, TAP);
 		SLIST_INIT(&tap_listhead);
 		if_clone_attach(&tap_cloner);
 
@@ -202,8 +200,6 @@ tapmodevent(module_t mod, int type, void *data)
 				 0600, "%s%d", TAP, i);
 			devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tap), i);
 		}
-
-		attached = 1;
 		break;
 
 	case MOD_UNLOAD:
@@ -215,11 +211,8 @@ tapmodevent(module_t mod, int type, void *data)
 		SLIST_FOREACH_MUTABLE(sc, &tap_listhead, tap_link, sc_tmp)
 			tapdestroy(sc);
 
-		devfs_clone_handler_del(TAP);
 		dev_ops_remove_all(&tap_ops);
-		devfs_clone_bitmap_uninit(&DEVFS_CLONE_BITMAP(tap));
-
-		attached = 0;
+		destroy_autoclone_dev(dev, &DEVFS_CLONE_BITMAP(tap));
 		break;
 
 	default:
