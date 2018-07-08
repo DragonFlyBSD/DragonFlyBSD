@@ -51,6 +51,9 @@ The network interfaces are named
 .Dq Li tun0 ,
 .Dq Li tun1 ,
 etc., one for each control device that has been opened.
+These network interfaces persist until the
+.Pa if_tun.ko
+module is unloaded.
 .Pp
 The
 .Nm
@@ -63,6 +66,10 @@ will return a handle for the lowest unused
 device (use
 .Xr devname 3
 to determine which).
+.Pp
+Control devices (once successfully opened) persist until the
+.Pa if_tun.ko
+module is unloaded in the same way that network interfaces persist.
 .Pp
 Each interface supports the usual network-interface
 .Xr ioctl 2 Ns s

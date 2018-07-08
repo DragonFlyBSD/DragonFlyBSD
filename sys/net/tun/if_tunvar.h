@@ -49,6 +49,8 @@ struct tun_softc {
 	struct sigio	*tun_sigio;	/* information for async I/O */
 	struct kqinfo	 tun_rkq;	/* read select/poll/kq */
 	struct kqinfo	 tun_wkq;	/* write select/poll/kq (not used) */
+
+	SLIST_ENTRY(tun_softc)	tun_link;	/* local tun list */
 };
 
 #endif /* !_NET_IF_TUNVAR_H_ */

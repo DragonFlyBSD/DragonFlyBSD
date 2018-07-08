@@ -41,6 +41,7 @@
 #include <sys/malloc.h>
 #include <sys/mplock2.h>
 #include <sys/devfs.h>
+#include <sys/queue.h>
 
 #include <net/bpf.h>
 #include <net/if.h>
@@ -66,10 +67,11 @@
 #define TUNDEBUG	if (tundebug) if_printf
 
 /* module */
-static void		tunattach(void *);
+static int		tunmodevent(module_t, int, void *);
 
 /* device */
 static void		tuncreate(cdev_t dev);
+static void		tundestroy(struct tun_softc *sc);
 
 /* network interface */
 static int		tuninit(struct ifnet *);
@@ -117,29 +119,61 @@ static struct filterops tun_write_filtops = {
 };
 
 static int		tundebug = 0;	/* debug flag */
+static int		tunrefcnt = 0;	/* module reference counter */
 
 static MALLOC_DEFINE(M_TUN, TUN, "Tunnel Interface");
 
 static DEVFS_DEFINE_CLONE_BITMAP(tun);
 
+static SLIST_HEAD(,tun_softc) tun_listhead =
+	SLIST_HEAD_INITIALIZER(&tun_listhead);
+
 SYSCTL_INT(_debug, OID_AUTO, if_tun_debug, CTLFLAG_RW, &tundebug, 0,
 	   "Enable debug output");
 
-PSEUDO_SET(tunattach, if_tun);
+DEV_MODULE(if_tun, tunmodevent, NULL);
 
-
-static void
-tunattach(void *dummy)
+/*
+ * tunmodevent - module event handler
+ */
+static int
+tunmodevent(module_t mod, int type, void *data)
 {
+	static cdev_t dev = NULL;
+	struct tun_softc *sc, *sc_tmp;
 	int i;
-	make_autoclone_dev(&tun_ops, &DEVFS_CLONE_BITMAP(tun),
-		tunclone, UID_UUCP, GID_DIALER, 0600, TUN);
-	for (i = 0; i < TUN_PREALLOCATED_UNITS; i++) {
-		make_dev(&tun_ops, i, UID_UUCP, GID_DIALER,
-			 0600, "%s%d", TUN, i);
-		devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tun), i);
+
+	switch (type) {
+	case MOD_LOAD:
+		dev = make_autoclone_dev(&tun_ops, &DEVFS_CLONE_BITMAP(tun),
+					 tunclone, UID_UUCP, GID_DIALER,
+					 0600, TUN);
+
+		SLIST_INIT(&tun_listhead);
+
+		for (i = 0; i < TUN_PREALLOCATED_UNITS; ++i) {
+			make_dev(&tun_ops, i, UID_UUCP, GID_DIALER,
+				 0600, "%s%d", TUN, i);
+			devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tun), i);
+		}
+		break;
+
+	case MOD_UNLOAD:
+		if (tunrefcnt > 0)
+			return (EBUSY);
+
+		SLIST_FOREACH_MUTABLE(sc, &tun_listhead, tun_link, sc_tmp)
+			tundestroy(sc);
+
+		dev_ops_remove_all(&tun_ops);
+		destroy_autoclone_dev(dev, &DEVFS_CLONE_BITMAP(tun));
+		break;
+
+	default:
+		return (EOPNOTSUPP);
 	}
-	/* Doesn't need uninit because unloading is not possible, see PSEUDO_SET */
+
+	return (0);
 }
 
 static int
@@ -185,6 +219,27 @@ tuncreate(cdev_t dev)
 
 	if_attach(ifp, NULL);
 	bpfattach(ifp, DLT_NULL, sizeof(u_int));
+
+	SLIST_INSERT_HEAD(&tun_listhead, sc, tun_link);
+	TUNDEBUG(ifp, "interface %s is created, minor = %#x\n",
+		 ifp->if_xname, minor(dev));
+}
+
+static void
+tundestroy(struct tun_softc *sc)
+{
+	cdev_t dev = sc->tun_dev;
+	struct ifnet *ifp = sc->tun_ifp;
+
+	bpfdetach(ifp);
+	if_detach(ifp);
+	if_free(ifp);
+
+	release_dev(dev);  /* device disassociation */
+	destroy_dev(dev);
+
+	SLIST_REMOVE(&tun_listhead, sc, tun_softc, tun_link);
+	kfree(sc, M_TUN);
 }
 
 /*
@@ -203,16 +258,20 @@ tunopen(struct dev_open_args *ap)
 		return (error);
 
 	sc = dev->si_drv1;
-	if (!sc) {
+	if (sc == NULL) {
 		tuncreate(dev);
 		sc = dev->si_drv1;
 	}
 	if (sc->tun_flags & TUN_OPEN)
 		return (EBUSY);
+
+	ifp = sc->tun_ifp;
 	sc->tun_pid = curproc->p_pid;
 	sc->tun_flags |= TUN_OPEN;
-	ifp = sc->tun_ifp;
-	TUNDEBUG(ifp, "open\n");
+	tunrefcnt++;
+
+	TUNDEBUG(ifp, "opened (minor = %#x). Module refcnt = %d\n",
+		 minor(dev), tunrefcnt);
 	return (0);
 }
 
@@ -244,7 +303,15 @@ tunclose(struct dev_close_args *ap)
 	funsetown(&sc->tun_sigio);
 	KNOTE(&sc->tun_rkq.ki_note, 0);
 
-	TUNDEBUG(ifp, "closed\n");
+	tunrefcnt--;
+	if (tunrefcnt < 0) {
+		tunrefcnt = 0;
+		if_printf(ifp, ". Module refcnt = %d is out of sync! "
+			  "Force refcnt to be 0.\n", tunrefcnt);
+	}
+
+	TUNDEBUG(ifp, "closed (minor = %#x). Module refcnt = %d\n",
+		 minor(dev), tunrefcnt);
 	return (0);
 }
 
