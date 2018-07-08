@@ -53,7 +53,22 @@ The network interfaces are named
 etc., one for each control device that has been opened.
 These network interfaces persist until the
 .Pa if_tun.ko
-module is unloaded.
+module is unloaded, or until removed with the
+.Xr ifconfig 8
+command (see below).
+.Pp
+The
+.Nm
+devices are created using interface cloning.
+This is done using the
+.Dq ifconfig tun Ns Sy N No create
+command.
+This is the preferred method of creating
+.Nm
+devices.
+The same method allows removal of interfaces by using the
+.Dq ifconfig tun Ns Sy N No destroy
+command.
 .Pp
 The
 .Nm
@@ -69,7 +84,7 @@ to determine which).
 .Pp
 Control devices (once successfully opened) persist until the
 .Pa if_tun.ko
-module is unloaded in the same way that network interfaces persist.
+module is unloaded or the interface is destroyed.
 .Pp
 Each interface supports the usual network-interface
 .Xr ioctl 2 Ns s

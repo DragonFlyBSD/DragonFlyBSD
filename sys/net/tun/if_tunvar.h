@@ -42,6 +42,8 @@ struct tun_softc {
 #define	TUN_RWAIT	0x0040
 #define	TUN_ASYNC	0x0080
 #define	TUN_IFHEAD	0x0100
+#define	TUN_CLONE	0x0200
+#define	TUN_MANUALMAKE	0x0400
 #define	TUN_READY	(TUN_OPEN | TUN_INITED)
 
 	pid_t		 tun_pid;	/* PID of process to open */

@@ -46,6 +46,7 @@
 #include <net/bpf.h>
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/if_clone.h>
 #include <net/ifq_var.h>
 #include <net/netisr.h>
 #include <net/route.h>
@@ -70,8 +71,12 @@
 static int		tunmodevent(module_t, int, void *);
 
 /* device */
-static void		tuncreate(cdev_t dev);
+static struct tun_softc *tuncreate(cdev_t, int);
 static void		tundestroy(struct tun_softc *sc);
+
+/* clone */
+static int		tun_clone_create(struct if_clone *, int, caddr_t);
+static int		tun_clone_destroy(struct ifnet *);
 
 /* network interface */
 static int		tunifinit(struct ifnet *);
@@ -125,6 +130,9 @@ static MALLOC_DEFINE(M_TUN, TUN, "Tunnel Interface");
 
 static DEVFS_DEFINE_CLONE_BITMAP(tun);
 
+struct if_clone tun_cloner = IF_CLONE_INITIALIZER(
+	TUN, tun_clone_create, tun_clone_destroy, 0, IF_MAXUNIT);
+
 static SLIST_HEAD(,tun_softc) tun_listhead =
 	SLIST_HEAD_INITIALIZER(&tun_listhead);
 
@@ -157,6 +165,7 @@ tunmodevent(module_t mod, int type, void *data)
 					 0600, TUN);
 
 		SLIST_INIT(&tun_listhead);
+		if_clone_attach(&tun_cloner);
 
 		for (i = 0; i < TUN_PREALLOCATED_UNITS; ++i) {
 			make_dev(&tun_ops, i, UID_UUCP, GID_DIALER,
@@ -168,6 +177,8 @@ tunmodevent(module_t mod, int type, void *data)
 	case MOD_UNLOAD:
 		if (tunrefcnt > 0)
 			return (EBUSY);
+
+		if_clone_detach(&tun_cloner);
 
 		SLIST_FOREACH_MUTABLE(sc, &tun_listhead, tun_link, sc_tmp)
 			tundestroy(sc);
@@ -192,28 +203,35 @@ tunclone(struct dev_clone_args *ap)
 	ap->a_dev = make_only_dev(&tun_ops, unit, UID_UUCP, GID_DIALER,
 				  0600, "%s%d", TUN, unit);
 
-	return 0;
+	if (tuncreate(ap->a_dev, 0) == NULL)
+		return (ENOMEM);
+	else
+		return (0);
 }
 
-static void
-tuncreate(cdev_t dev)
+static struct tun_softc *
+tuncreate(cdev_t dev, int flags)
 {
 	struct tun_softc *sc;
 	struct ifnet *ifp;
+	int unit = minor(dev);
 
 	sc = kmalloc(sizeof(*sc), M_TUN, M_WAITOK | M_ZERO);
 	dev->si_drv1 = sc;
 	sc->tun_dev = dev;
 	sc->tun_flags = TUN_INITED;
+	sc->tun_flags |= flags;
 
 	reference_dev(dev);  /* device association */
 
 	ifp = sc->tun_ifp = if_alloc(IFT_PPP);
-	if (ifp == NULL)
-		/* XXX: should return an error */
-		panic("%s%d: failed to if_alloc() interface", TUN, minor(dev));
+	if (ifp == NULL) {
+		kprintf("%s: failed to if_alloc() interface for %s%d",
+			__func__, TUN, unit);
+		return (NULL);
+	}
 
-	if_initname(ifp, TUN, minor(dev));
+	if_initname(ifp, TUN, unit);
 	ifp->if_mtu = TUNMTU;
 	ifp->if_ioctl = tunifioctl;
 	ifp->if_output = tunifoutput;
@@ -228,8 +246,9 @@ tuncreate(cdev_t dev)
 	bpfattach(ifp, DLT_NULL, sizeof(u_int));
 
 	SLIST_INSERT_HEAD(&tun_listhead, sc, tun_link);
-	TUNDEBUG(ifp, "interface %s is created, minor = %#x\n",
-		 ifp->if_xname, minor(dev));
+	TUNDEBUG(ifp, "created, minor = %#x, flags = 0x%x\n",
+		 unit, sc->tun_flags);
+	return (sc);
 }
 
 static void
@@ -237,13 +256,24 @@ tundestroy(struct tun_softc *sc)
 {
 	cdev_t dev = sc->tun_dev;
 	struct ifnet *ifp = sc->tun_ifp;
+	int unit = minor(dev);
+
+	TUNDEBUG(ifp, "destroyed, minor = %#x. Module refcnt = %d\n",
+		 unit, tunrefcnt);
 
 	bpfdetach(ifp);
 	if_detach(ifp);
 	if_free(ifp);
 
+	sc->tun_dev = NULL;
+	dev->si_drv1 = NULL;
 	release_dev(dev);  /* device disassociation */
-	destroy_dev(dev);
+
+	/* Also destroy the cloned device */
+	if (unit >= TUN_PREALLOCATED_UNITS) {
+		destroy_dev(dev);
+		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(tun), unit);
+	}
 
 	SLIST_REMOVE(&tun_listhead, sc, tun_softc, tun_link);
 	kfree(sc, M_TUN);
@@ -264,14 +294,19 @@ tunopen(struct dev_open_args *ap)
 		return (error);
 
 	sc = dev->si_drv1;
-	if (sc == NULL) {
-		tuncreate(dev);
-		sc = dev->si_drv1;
-	}
+	if (sc == NULL && (sc = tuncreate(dev, TUN_MANUALMAKE)) == NULL)
+		return (ENOMEM);
 	if (sc->tun_flags & TUN_OPEN)
 		return (EBUSY);
 
 	ifp = sc->tun_ifp;
+	if ((sc->tun_flags & TUN_CLONE) == 0) {
+		EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
+
+		/* Announce the return of the interface. */
+		rt_ifannouncemsg(ifp, IFAN_ARRIVAL);
+	}
+
 	sc->tun_pid = curproc->p_pid;
 	sc->tun_flags |= TUN_OPEN;
 	tunrefcnt++;
@@ -288,12 +323,9 @@ static int
 tunclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	struct tun_softc *sc;
-	struct ifnet *ifp;
+	struct tun_softc *sc = dev->si_drv1;
+	struct ifnet *ifp = sc->tun_ifp;
 	int unit = minor(dev);
-
-	sc = dev->si_drv1;
-	ifp = sc->tun_ifp;
 
 	sc->tun_flags &= ~TUN_OPEN;
 	sc->tun_pid = 0;
@@ -304,7 +336,15 @@ tunclose(struct dev_close_args *ap)
 	if (ifp->if_flags & IFF_UP)
 		if_down(ifp);
 	ifp->if_flags &= ~IFF_RUNNING;
-	if_purgeaddrs_nolink(ifp);
+
+	if ((sc->tun_flags & TUN_CLONE) == 0) {
+		if_purgeaddrs_nolink(ifp);
+
+		EVENTHANDLER_INVOKE(ifnet_detach_event, ifp);
+
+		/* Announce the departure of the interface. */
+		rt_ifannouncemsg(ifp, IFAN_DEPARTURE);
+	}
 
 	funsetown(&sc->tun_sigio);
 	KNOTE(&sc->tun_rkq.ki_note, 0);
@@ -318,6 +358,78 @@ tunclose(struct dev_close_args *ap)
 
 	TUNDEBUG(ifp, "closed, minor = %#x. Module refcnt = %d\n",
 		 unit, tunrefcnt);
+
+	/* Only auto-destroy if the interface was not manually created. */
+	if ((sc->tun_flags & TUN_MANUALMAKE) == 0 &&
+	    unit >= TUN_PREALLOCATED_UNITS) {
+		tundestroy(sc);
+		dev->si_drv1 = NULL;
+	}
+
+	return (0);
+}
+
+
+/*
+ * Interface clone support
+ *
+ * Create and destroy tun device/interface via ifconfig(8).
+ */
+
+static struct tun_softc *
+tunfind(int unit)
+{
+	struct tun_softc *sc;
+
+	SLIST_FOREACH(sc, &tun_listhead, tun_link) {
+		if (minor(sc->tun_dev) == unit)
+			return (sc);
+	}
+	return (NULL);
+}
+
+static int
+tun_clone_create(struct if_clone *ifc __unused, int unit,
+		 caddr_t param __unused)
+{
+	struct tun_softc *sc;
+	cdev_t dev;
+
+	sc = tunfind(unit);
+	if (sc == NULL) {
+		if (!devfs_clone_bitmap_chk(&DEVFS_CLONE_BITMAP(tun), unit)) {
+			devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tun), unit);
+			dev = make_dev(&tun_ops, unit, UID_UUCP, GID_DIALER,
+				       0600, "%s%d", TUN, unit);
+		} else {
+			dev = devfs_find_device_by_name("%s%d", TUN, unit);
+		}
+
+		if (dev == NULL)
+			return (ENODEV);
+		if ((sc = tuncreate(dev, TUN_MANUALMAKE)) == NULL)
+			return (ENOMEM);
+	}
+
+	sc->tun_flags |= TUN_CLONE;
+	TUNDEBUG(sc->tun_ifp, "clone created, minor = %#x, flags = 0x%x\n",
+		 minor(sc->tun_dev), sc->tun_flags);
+
+	return (0);
+}
+
+static int
+tun_clone_destroy(struct ifnet * ifp)
+{
+	struct tun_softc *sc = ifp->if_softc;
+
+	if ((sc->tun_flags & TUN_CLONE) == 0)
+		return (ENXIO);
+
+	TUNDEBUG(ifp, "clone destroyed, minor = %#x, flags = 0x%x\n",
+		 minor(sc->tun_dev), sc->tun_flags);
+	tundestroy(sc);
+
 	return (0);
 }
 
