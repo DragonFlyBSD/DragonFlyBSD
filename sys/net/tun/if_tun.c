@@ -678,10 +678,11 @@ tunioctl(struct dev_ioctl_args *ap)
 	switch (ap->a_cmd) {
 	case TUNSIFINFO:
 		tunp = (struct tuninfo *)ap->a_data;
+		if (ifp->if_type != tunp->type)
+			return (EPROTOTYPE);
 		if (tunp->mtu < IF_MINMTU)
 			return (EINVAL);
 		ifp->if_mtu = tunp->mtu;
-		ifp->if_type = tunp->type;
 		ifp->if_baudrate = tunp->baudrate;
 		break;
 

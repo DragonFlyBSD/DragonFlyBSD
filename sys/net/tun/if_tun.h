@@ -30,7 +30,7 @@
 struct tuninfo {
 	int	baudrate;	/* linespeed */
 	u_short	mtu;		/* maximum transmission unit */
-	u_char	type;		/* ethernet, tokenring, etc. */
+	u_char	type;		/* IFT_PPP only */
 	u_char	dummy;		/* place holder */
 };
 

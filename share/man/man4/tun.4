@@ -206,9 +206,14 @@ this stores the internal debugging variable's value into it.
 .It Dv TUNSIFINFO
 The argument should be a pointer to an
 .Vt struct tuninfo
-and allows setting the MTU, the type, and the baudrate of the tunnel
-device.
-The
+and allows setting the MTU and the baudrate of the tunnel device.
+The type must be the same as returned by
+.Dv TUNGIFINFO
+or set to
+.Dv IFT_PPP ,
+otherwise the
+.Xr ioctl 2
+call will fail.
 .Vt struct tuninfo
 is declared in
 .In net/tun/if_tun.h .
