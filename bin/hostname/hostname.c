@@ -124,13 +124,16 @@ main(int argc, char **argv)
 	flag6 = 0;
 	hst = NULL;
 
-	while ((ch = getopt(argc, argv, "46i:r:s")) != -1) {
+	while ((ch = getopt(argc, argv, "46fi:r:s")) != -1) {
 		switch (ch) {
 		case '4':
 			iflag |= HST_IF_V4;
 			break;
 		case '6':
 			iflag |= HST_IF_V6;
+			break;
+		case 'f':
+			/* Printing the FQDN is default. */
 			break;
 		case 'i':
 			siflag = optarg;

@@ -27,9 +27,8 @@
 .\"
 .\"	@(#)hostname.1	8.2 (Berkeley) 4/28/95
 .\" $FreeBSD: src/bin/hostname/hostname.1,v 1.10.2.4 2002/04/22 22:20:29 keramida Exp $
-.\" $DragonFly: src/bin/hostname/hostname.1,v 1.5 2007/12/16 02:55:37 thomas Exp $
 .\"
-.Dd April 28, 1995
+.Dd July 10, 2018
 .Dt HOSTNAME 1
 .Os
 .Sh NAME
@@ -37,7 +36,7 @@
 .Nd set or print name of current host system
 .Sh SYNOPSIS
 .Nm
-.Op Fl s
+.Op Fl fs
 .Op Ar name-of-host | Fl r Ar ip-address | Fl i Ar interface Op Fl 6 | Fl 4
 .Sh DESCRIPTION
 The
@@ -51,6 +50,9 @@ variable in
 .Pp
 Options:
 .Bl -tag -width flag
+.It Fl f
+Include domain information in the printed name.
+This is the default behavior.
 .It Fl s
 Trim off any domain information from the printed
 name.
