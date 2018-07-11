@@ -844,6 +844,19 @@ nvme_create_comqueue(nvme_softc_t *sc, uint16_t qid)
 	status = nvme_wait_request(req);
 	nvme_put_request(req);
 
+	/*
+	 * Ooops, create failed, undo the irq setup
+	 */
+	if (sc->nirqs > 1 && status) {
+		ivect = 1 + (qid - 1) % (sc->nirqs - 1);
+		if (qid && ivect == qid) {
+			bus_teardown_intr(sc->dev,
+					  sc->irq[ivect],
+					  sc->irq_handle[ivect]);
+			sc->irq_handle[ivect] = NULL;
+		}
+	}
+
 	return status;
 }
 
@@ -875,9 +888,12 @@ int
 nvme_delete_comqueue(nvme_softc_t *sc, uint16_t qid)
 {
 	nvme_request_t *req;
-	/*nvme_comqueue_t *comq = &sc->comqueues[qid];*/
+	nvme_comqueue_t *comq = &sc->comqueues[qid];
 	int status;
 	uint16_t ivect;
+
+	if (comq->sc == NULL)
+		return 0;
 
 	req = nvme_get_admin_request(sc, NVME_OP_DELETE_COMQ);
 	req->cmd.head.prp1 = 0;
@@ -889,10 +905,11 @@ nvme_delete_comqueue(nvme_softc_t *sc, uint16_t qid)
 
 	if (qid && sc->nirqs > 1) {
 		ivect = 1 + (qid - 1) % (sc->nirqs - 1);
-		if (ivect == qid) {
+		if (ivect == qid && sc->irq_handle[ivect]) {
 			bus_teardown_intr(sc->dev,
 					  sc->irq[ivect],
 					  sc->irq_handle[ivect]);
+			sc->irq_handle[ivect] = NULL;
 		}
 	}
 

@@ -457,6 +457,11 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 			break;
 		}
 		error += nvme_create_comqueue(sc, i);
+		if (error) {
+			nvme_delete_comqueue(sc, i);
+			nvme_free_comqueue(sc, i);
+			break;
+		}
 	}
 	for (i = 1; i <= sc->niosubqs; ++i) {
 		error += nvme_alloc_subqueue(sc, i);
@@ -465,6 +470,11 @@ nvme_admin_state_make_queues(nvme_softc_t *sc)
 			break;
 		}
 		error += nvme_create_subqueue(sc, i);
+		if (error) {
+			nvme_delete_subqueue(sc, i);
+			nvme_free_subqueue(sc, i);
+			break;
+		}
 	}
 
 	if (error) {
