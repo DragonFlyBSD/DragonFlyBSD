@@ -140,6 +140,9 @@ dports-download: dports-download-check
 	@echo ${WSTARS}
 .endif
 
+# NOTE: Ignore error from rm -rf because /usr/dports might be
+#	a null-mount.  Be safe, do not wildcard /usr/dports/*.
+#
 dports-replace:
 .if exists(${.CURDIR}/dports/.git)
 	@echo "Error: ${.CURDIR}/dports is a git repository currently."
@@ -149,7 +152,7 @@ dports-replace:
 .else
 	rm -f ${DPTBALL}
 	fetch -o ${DPTBALL} ${DPDLURL}
-	rm -rf ${.CURDIR}/dports
+	-rm -rf ${.CURDIR}/dports
 	tar -xf ${DPTBALL} -C ${.CURDIR}
 	mv /usr/DragonFlyBSD-DPorts-* ${.CURDIR}/dports
 	rm -f ${DPTBALL}
