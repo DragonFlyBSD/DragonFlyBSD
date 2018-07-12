@@ -158,18 +158,23 @@ dports-replace:
 	rm -f ${DPTBALL}
 .endif
 
-# NOTE: In force mode we also have to remove any old pkg.conf
-#	which might interfere with the newer pkg bootstrap.
-#
-pkg-bootstrap-force:
-	@rm -f /usr/local/etc/pkg.conf
-	@fetch -o ${PKGBALL} ${PKGBOOT}
-	@tar -xJf ${PKGBALL} -C ${.CURDIR}/local
-	@rm -f ${PKGBALL}
-.if defined(ABIVERS)
-	ABI=${ABIVERS} ${.CURDIR}/local/sbin/pkg-static install -y -f pkg
+pkg-bootstrap-fetch:
+.if exists(/etc/ssl/cert.pem) || exists(/usr/local/etc/ssl/cert.pem)
+	fetch -o ${PKGBALL} ${PKGBOOT}
 .else
-	${.CURDIR}/local/sbin/pkg-static install -y -f pkg
+	@echo "Warning: /etc/ssl/cert.pem and /usr/local/etc/ssl/cert.pem do not exist."
+	@echo "Disable certificate verification for fetch(1)."
+	fetch --no-verify-peer -o ${PKGBALL} ${PKGBOOT}
+.endif
+	tar -xJf ${PKGBALL} -C ${.CURDIR}/local
+	@rm -f ${PKGBALL}
+
+pkg-bootstrap-install:
+.if defined(ABIVERS)
+	ABI=${ABIVERS} ${.CURDIR}/local/sbin/pkg-static \
+	    install -y ${PKG_FLAGS} pkg
+.else
+	${.CURDIR}/local/sbin/pkg-static install -y ${PKG_FLAGS} pkg
 .endif
 
 pkg-bootstrap:
@@ -181,12 +186,14 @@ pkg-bootstrap:
 	@echo "Please move this file and rerun 'make pkg-bootstrap'"
 	@/usr/bin/false
 .else
-	@fetch -o ${PKGBALL} ${PKGBOOT}
-	@tar -xJf ${PKGBALL} -C ${.CURDIR}/local
-	@rm -f ${PKGBALL}
-.if defined(ABIVERS)
-	ABI=${ABIVERS} ${.CURDIR}/local/sbin/pkg-static install -y pkg
-.else
-	${.CURDIR}/local/sbin/pkg-static install -y pkg
+	@(cd ${.CURDIR} && make pkg-bootstrap-fetch)
+	@(cd ${.CURDIR} && make pkg-bootstrap-install)
 .endif
-.endif
+
+# NOTE: In force mode we also have to remove any old pkg.conf
+#	which might interfere with the newer pkg bootstrap.
+#
+pkg-bootstrap-force:
+	rm -f ${.CURDIR}/local/etc/pkg.conf
+	@(cd ${.CURDIR} && make pkg-bootstrap-fetch)
+	@(cd ${.CURDIR} && make pkg-bootstrap-install PKG_FLAGS="-f")
