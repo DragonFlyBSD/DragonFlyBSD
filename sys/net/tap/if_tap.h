@@ -50,11 +50,15 @@ struct tapinfo {
 	u_char	dummy;		/* place holder              */
 };
 
+struct ifreq;
+
 /* get/set internal debug variable */
 #define	TAPGDEBUG		_IOR('t', 89, int)
 #define	TAPSDEBUG		_IOW('t', 90, int)
 /* get/set network interface information */
 #define	TAPSIFINFO		_IOW('t', 91, struct tapinfo)
 #define	TAPGIFINFO		_IOR('t', 92, struct tapinfo)
+/* get the network interface name */
+#define	TAPGIFNAME		_IOR('t', 93, struct ifreq)
 
 #endif /* !_NET_IF_TAP_H_ */

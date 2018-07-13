@@ -743,6 +743,7 @@ tapioctl(struct dev_ioctl_args *ap)
 	caddr_t data = ap->a_data;
 	struct tap_softc *sc = dev->si_drv1;
 	struct ifnet *ifp = sc->tap_ifp;
+	struct ifreq *ifr;
 	struct tapinfo *tapp = NULL;
 	struct mbuf *mb;
 	int error;
@@ -763,6 +764,11 @@ tapioctl(struct dev_ioctl_args *ap)
 		tapp->mtu = ifp->if_mtu;
 		tapp->type = ifp->if_type;
 		tapp->baudrate = ifp->if_baudrate;
+		break;
+
+	case TAPGIFNAME:
+		ifr = (struct ifreq *)data;
+		strlcpy(ifr->ifr_name, ifp->if_xname, IFNAMSIZ);
 		break;
 
 	case TAPSDEBUG:
