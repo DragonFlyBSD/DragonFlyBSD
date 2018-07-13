@@ -183,9 +183,10 @@
  * 500310 - remove more unimplemented ioctls
  * 500311 - add VIS_ALL to vis(3)
  * 500312 - OpenPAM Resedacea upgrade
+ * 500313 - remove vmnet support from tap(4) (VMIO_* ioctls)
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500312	/* propagated to newvers */
+#define __DragonFly_version 500313	/* propagated to newvers */
 
 #include <sys/_null.h>
 

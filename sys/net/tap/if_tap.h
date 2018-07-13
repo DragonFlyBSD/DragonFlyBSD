@@ -57,18 +57,4 @@ struct tapinfo {
 #define	TAPSIFINFO		_IOW('t', 91, struct tapinfo)
 #define	TAPGIFINFO		_IOR('t', 92, struct tapinfo)
 
-/* VMware ioctl's */
-#define VMIO_SIOCSIFFLAGS	_IO('V', 0)
-#define VMIO_SIOCSKEEP		_IO('V', 1)
-#define VMIO_SIOCSIFBR		_IO('V', 2)
-#define VMIO_SIOCSLADRF		_IO('V', 3)
-
-/* XXX -- unimplemented */
-#define VMIO_SIOCSETMACADDR	_IO('V', 4)
-
-/* XXX -- not used? */
-#define VMIO_SIOCPORT		_IO('V', 5)
-#define VMIO_SIOCBRIDGE		_IO('V', 6)
-#define VMIO_SIOCNETIF		_IO('V', 7)
-
 #endif /* !_NET_IF_TAP_H_ */

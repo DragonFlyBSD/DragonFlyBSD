@@ -90,9 +90,6 @@
 #define TAP		"tap"
 #define TAPDEBUG	if (tapdebug) if_printf
 
-#define VMNET		"vmnet"
-#define VMNET_DEV_MASK	0x00010000
-
 /* module */
 static int		tapmodevent(module_t, int, void *);
 
@@ -427,17 +424,13 @@ tapclose(struct dev_close_args *ap)
 	ifq_purge_all(&ifp->if_snd);
 
 	/*
-	 * Do not bring the interface down, and do not anything with
-	 * interface, if we are in VMnet mode. just close the device.
-	 *
 	 * If the interface is not cloned, we always bring it down.
 	 *
 	 * If the interface is cloned, then we bring it down during
 	 * closing only if it was brought up during opening.
 	 */
-	if ((sc->tap_flags & TAP_VMNET) == 0 &&
-	    ((sc->tap_flags & TAP_CLONE) == 0 ||
-	     (sc->tap_flags & TAP_CLOSEDOWN))) {
+	if ((sc->tap_flags & TAP_CLONE) == 0 ||
+	    (sc->tap_flags & TAP_CLOSEDOWN)) {
 		if (ifp->if_flags & IFF_UP)
 			if_down(ifp);
 		clear_flags = 1;
@@ -577,18 +570,12 @@ tapifflags(struct tap_softc *sc)
 	struct ifnet *ifp = sc->tap_ifp;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
-	if ((sc->tap_flags & TAP_VMNET) == 0) {
-		/*
-		 * Only for non-vmnet tap(4)
-		 */
-		if (ifp->if_flags & IFF_UP) {
-			if ((ifp->if_flags & IFF_RUNNING) == 0)
-				tapifinit(sc);
-		} else {
-			tapifstop(sc, 1);
-		}
+
+	if (ifp->if_flags & IFF_UP) {
+		if ((ifp->if_flags & IFF_RUNNING) == 0)
+			tapifinit(sc);
 	} else {
-		/* XXX */
+		tapifstop(sc, 1);
 	}
 }
 
@@ -610,7 +597,7 @@ tapifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	int dummy;
 
 	switch (cmd) {
-	case SIOCADDMULTI: /* XXX - just like vmnet does */
+	case SIOCADDMULTI:
 	case SIOCDELMULTI:
 		break;
 
@@ -687,13 +674,7 @@ tapifstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	TAPDEBUG(ifp, "starting, minor = %#x\n", minor(sc->tap_dev));
 
-	/*
-	 * do not junk pending output if we are in VMnet mode.
-	 * XXX: can this do any harm because of queue overflow?
-	 */
-
-	if (((sc->tap_flags & TAP_VMNET) == 0) &&
-	    ((sc->tap_flags & TAP_READY) != TAP_READY)) {
+	if ((sc->tap_flags & TAP_READY) != TAP_READY) {
 		TAPDEBUG(ifp, "not ready, minor = %#x, flags = 0x%x\n",
 			 minor(sc->tap_dev), sc->tap_flags);
 		ifsq_purge(ifsq);
@@ -764,7 +745,6 @@ tapioctl(struct dev_ioctl_args *ap)
 	struct ifnet *ifp = sc->tap_ifp;
 	struct tapinfo *tapp = NULL;
 	struct mbuf *mb;
-	short f;
 	int error;
 
 	ifnet_serialize_all(ifp);
@@ -829,28 +809,6 @@ tapioctl(struct dev_ioctl_args *ap)
 	/* this is deprecated, FIOGETOWN should be used instead */
 	case TIOCGPGRP:
 		*(int *)data = -fgetown(&sc->tap_sigio);
-		break;
-
-	/* VMware/VMnet port ioctl's */
-
-	case SIOCGIFFLAGS:	/* get ifnet flags */
-		bcopy(&ifp->if_flags, data, sizeof(ifp->if_flags));
-		break;
-
-	case VMIO_SIOCSIFFLAGS: /* VMware/VMnet SIOCSIFFLAGS */
-		f = *(short *)data;
-		f &= 0x0fff;
-		f &= ~IFF_CANTCHANGE;
-		f |= IFF_UP;
-		ifp->if_flags = f | (ifp->if_flags & IFF_CANTCHANGE);
-		break;
-
-	case SIOCGIFADDR:	/* get MAC address of the remote side */
-		bcopy(sc->ether_addr, data, sizeof(sc->ether_addr));
-		break;
-
-	case SIOCSIFADDR:	/* set MAC address of the remote side */
-		bcopy(data, sc->ether_addr, sizeof(sc->ether_addr));
 		break;
 
 	default:

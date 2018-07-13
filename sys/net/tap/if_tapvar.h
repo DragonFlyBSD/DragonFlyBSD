@@ -49,10 +49,9 @@ struct tap_softc {
 #define	TAP_INITED	(1 << 1)
 #define	TAP_RWAIT	(1 << 2)
 #define	TAP_ASYNC	(1 << 3)
-#define	TAP_VMNET	(1 << 4)
-#define	TAP_CLONE	(1 << 5)
-#define	TAP_CLOSEDOWN	(1 << 6)
-#define	TAP_MANUALMAKE	(1 << 7)
+#define	TAP_CLONE	(1 << 4)
+#define	TAP_CLOSEDOWN	(1 << 5)
+#define	TAP_MANUALMAKE	(1 << 6)
 #define	TAP_READY	(TAP_OPEN | TAP_INITED)
 
 	uint8_t 	 ether_addr[ETHER_ADDR_LEN];

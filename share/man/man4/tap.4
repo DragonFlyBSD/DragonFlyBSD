@@ -1,7 +1,7 @@
 .\" $FreeBSD: src/share/man/man4/tap.4,v 1.1.2.7 2002/04/16 23:59:28 trhodes Exp $
 .\" Based on PR#2411
 .\"
-.Dd July 9, 2018
+.Dd July 12, 2018
 .Dt TAP 4
 .Os
 .Sh NAME
@@ -155,7 +155,7 @@ The following
 calls are supported
 (defined in
 .In net/tap/if_tap.h ) :
-.Bl -tag -width ".Dv VMIO_SIOCSETMACADDR"
+.Bl -tag -width ".Dv TAPSIFINFO"
 .It Dv TAPSDEBUG
 The argument should be a pointer to an
 .Va int ;
@@ -198,43 +198,6 @@ Retrieve the process group value for
 signals into the argument
 .Va int
 value.
-.It Dv SIOCGIFADDR
-Retrieve the Media Access Control
-.Pq Dv MAC
-address of the
-.Dq remote
-side.
-This command is used by the VMware port and expected to be executed on
-descriptor, associated with control device
-(usually
-.Pa /dev/vmnet Ns Sy N
-or
-.Pa /dev/tap Ns Sy N ) .
-The
-.Va buffer ,
-which is passed as the argument, is expected to have enough space to store
-the
-.Dv MAC
-address.
-At the open time both
-.Dq local
-and
-.Dq remote
-.Dv MAC
-addresses are the same, so this command could be used to retrieve the
-.Dq local
-.Dv MAC
-address.
-.It Dv SIOCSIFADDR
-Set the Media Access Control
-.Pq Dv MAC
-address of the
-.Dq remote
-side.
-This command is used by VMware port and expected to be executed on
-a descriptor, associated with control device
-(usually
-.Pa /dev/vmnet Ns Sy N ) .
 .El
 .Pp
 The control device also supports
@@ -245,57 +208,11 @@ writes are always non-blocking.
 On the last close of the data device, the interface is
 brought down
 (as if with
-.Dq ifconfig tap Ns Sy N No down )
-unless the device is a
-.Em VMnet
-device.
+.Dq ifconfig tap Ns Sy N No down ) .
 All queued frames are thrown away.
 If the interface is up when the data
 device is not open, output frames are thrown away rather than
 letting them pile up.
-.Pp
-The
-.Nm
-device can also be used with the VMware port as a replacement
-for the old
-.Em VMnet
-device driver.
-The driver uses the minor number
-to select between
-.Nm
-and
-.Nm vmnet
-devices.
-.Em VMnet
-minor numbers begin at
-.Va 0x10000
-+
-.Va N ;
-where
-.Va N
-is a
-.Em VMnet
-unit number.
-In this case the control device is expected to be
-.Pa /dev/vmnet Ns Sy N ,
-and the network interface will be
-.Sy vmnet Ns Ar N .
-Additionally,
-.Em VMnet
-devices do not
-.Xr ifconfig 8
-themselves down when the
-control device is closed.
-Everything else is the same.
-.Pp
-In addition to the above mentioned
-.Xr ioctl 2
-calls, there is an additional one for the VMware port:
-.Bl -tag -width ".Dv VMIO_SIOCSETMACADDR"
-.It Dv VMIO_SIOCSIFFLAGS
-VMware
-.Dv SIOCSIFFLAGS .
-.El
 .Sh SEE ALSO
 .Xr inet 4 ,
 .Xr tun 4 ,
