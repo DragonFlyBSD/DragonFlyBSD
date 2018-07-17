@@ -42,6 +42,8 @@
 #define _NET_IF_TAPVAR_H_
 
 struct tap_softc {
+	struct arpcom	arpcom;		/* ethernet common data */
+#define tap_if		arpcom.ac_if
 	cdev_t		tap_dev;	/* device */
 
 	u_short		tap_flags;	/* misc flags */
@@ -56,7 +58,6 @@ struct tap_softc {
 
 	uint8_t 	 ether_addr[ETHER_ADDR_LEN];
 				/* ether addr of the remote side */
-	struct ifnet	*tap_ifp;	/* the interface */
 	struct sigio	*tap_sigtd;	/* track process owning tap */
 	struct sigio	*tap_sigio;	/* information for async I/O */
 	struct kqinfo	 tap_rkq;	/* read select/poll/kq */

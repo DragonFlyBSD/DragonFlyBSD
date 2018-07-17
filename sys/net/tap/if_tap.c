@@ -65,13 +65,10 @@
 #include <net/bpf.h>
 #include <net/ethernet.h>
 #include <net/if.h>
-#include <net/if_var.h>  /* for IF_LLADDR */
-#include <net/if_dl.h>  /* for LLADDR used by IF_LLADDR */
-#include <net/if_types.h>  /* for IFT_ETHER */
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/if_clone.h>
 #include <net/if_media.h>
-#include <net/ifq_var.h>
 #include <net/route.h>
 
 #include <netinet/in.h>
@@ -248,13 +245,7 @@ tapcreate(cdev_t dev, int flags)
 	ether_addr[5] = (u_char)unit;
 
 	/* fill the rest and attach interface */
-	ifp = sc->tap_ifp = if_alloc(IFT_ETHER);
-	if (ifp == NULL) {
-		kprintf("%s: failed to if_alloc() interface for %s%d",
-			__func__, TAP, unit);
-		return (NULL);
-	}
-
+	ifp = &sc->tap_if;
 	if_initname(ifp, TAP, unit);
 	ifp->if_init = tapifinit;
 	ifp->if_start = tapifstart;
@@ -321,7 +312,7 @@ tap_clone_create(struct if_clone *ifc __unused, int unit,
 	}
 
 	sc->tap_flags |= TAP_CLONE;
-	TAPDEBUG(sc->tap_ifp, "clone created, minor = %#x, flags = 0x%x\n",
+	TAPDEBUG(&sc->tap_if, "clone created, minor = %#x, flags = 0x%x\n",
 		 minor(dev), sc->tap_flags);
 
 	return (0);
@@ -355,7 +346,7 @@ tapopen(struct dev_open_args *ap)
 		rel_mplock();
 		return (EBUSY);
 	}
-	ifp = sc->tap_ifp;
+	ifp = &sc->tap_if;
 
 	if ((sc->tap_flags & TAP_CLONE) == 0) {
 		EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
@@ -364,7 +355,7 @@ tapopen(struct dev_open_args *ap)
 		rt_ifannouncemsg(ifp, IFAN_ARRIVAL);
 	}
 
-	bcopy(IF_LLADDR(ifp), sc->ether_addr, sizeof(sc->ether_addr));
+	bcopy(sc->arpcom.ac_enaddr, sc->ether_addr, sizeof(sc->ether_addr));
 
 	if (curthread->td_proc)
 		fsetown(curthread->td_proc->p_pid, &sc->tap_sigtd);
@@ -414,7 +405,7 @@ tapclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct tap_softc *sc = dev->si_drv1;
-	struct ifnet *ifp = sc->tap_ifp;
+	struct ifnet *ifp = &sc->tap_if;
 	int unit = minor(dev);
 	int clear_flags = 0;
 
@@ -486,7 +477,7 @@ tapclose(struct dev_close_args *ap)
 static void
 tapdestroy(struct tap_softc *sc)
 {
-	struct ifnet *ifp = sc->tap_ifp;
+	struct ifnet *ifp = &sc->tap_if;
 	cdev_t dev = sc->tap_dev;
 	int unit = minor(dev);
 
@@ -498,7 +489,6 @@ tapdestroy(struct tap_softc *sc)
 	ifnet_deserialize_all(ifp);
 
 	ether_ifdetach(ifp);
-	if_free(ifp);
 
 	sc->tap_dev = NULL;
 	dev->si_drv1 = NULL;
@@ -547,7 +537,7 @@ static void
 tapifinit(void *xtp)
 {
 	struct tap_softc *sc = xtp;
-	struct ifnet *ifp = sc->tap_ifp;
+	struct ifnet *ifp = &sc->tap_if;
 	struct ifaltq_subque *ifsq = ifq_get_subq_default(&ifp->if_snd);
 
 	TAPDEBUG(ifp, "initializing, minor = %#x, flags = 0x%x\n",
@@ -567,7 +557,7 @@ tapifinit(void *xtp)
 static void
 tapifflags(struct tap_softc *sc)
 {
-	struct ifnet *ifp = sc->tap_ifp;
+	struct ifnet *ifp = &sc->tap_if;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
@@ -717,7 +707,7 @@ tapifstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 static void
 tapifstop(struct tap_softc *sc, int clear_flags)
 {
-	struct ifnet *ifp = sc->tap_ifp;
+	struct ifnet *ifp = &sc->tap_if;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 	IF_DRAIN(&sc->tap_devq);
@@ -742,7 +732,7 @@ tapioctl(struct dev_ioctl_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	caddr_t data = ap->a_data;
 	struct tap_softc *sc = dev->si_drv1;
-	struct ifnet *ifp = sc->tap_ifp;
+	struct ifnet *ifp = &sc->tap_if;
 	struct ifreq *ifr;
 	struct tapinfo *tapp = NULL;
 	struct mbuf *mb;
@@ -844,7 +834,7 @@ tapread(struct dev_read_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	struct tap_softc *sc = dev->si_drv1;
-	struct ifnet *ifp = sc->tap_ifp;
+	struct ifnet *ifp = &sc->tap_if;
 	struct mbuf *m0 = NULL;
 	int error = 0, len;
 
@@ -914,7 +904,7 @@ tapwrite(struct dev_write_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	struct tap_softc *sc = dev->si_drv1;
-	struct ifnet *ifp = sc->tap_ifp;
+	struct ifnet *ifp = &sc->tap_if;
 	struct mbuf *top = NULL, **mp = NULL, *m = NULL;
 	int error;
 	size_t tlen, mlen;
