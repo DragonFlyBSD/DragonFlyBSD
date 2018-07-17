@@ -843,7 +843,7 @@ tunwrite(struct dev_write_args *ap)
 	struct ifnet *ifp = sc->tun_ifp;
 	struct mbuf *top, **mp, *m;
 	size_t tlen;
-	uint32_t family;
+	uint32_t family, mru;
 	int error = 0;
 	int isr;
 
@@ -852,7 +852,10 @@ tunwrite(struct dev_write_args *ap)
 	if (uio->uio_resid == 0)
 		return (0);
 
-	if (uio->uio_resid > TUNMRU) {
+	mru = TUNMRU;
+	if (sc->tun_flags & TUN_IFHEAD)
+		mru += sizeof(family);
+	if (uio->uio_resid > mru) {
 		TUNDEBUG(ifp, "len = %zd!\n", uio->uio_resid);
 		return (EIO);
 	}
