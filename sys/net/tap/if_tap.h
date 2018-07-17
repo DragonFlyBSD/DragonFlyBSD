@@ -44,10 +44,10 @@
 #define	TAPMRU		16384
 
 struct tapinfo {
-	int	baudrate;	/* linespeed                 */
+	int	baudrate;	/* linespeed */
 	short	mtu;		/* maximum transmission unit */
-	u_char	type;		/* ethernet, tokenring, etc. */
-	u_char	dummy;		/* place holder              */
+	u_char	type;		/* IFT_ETHER only */
+	u_char	dummy;		/* place holder */
 };
 
 struct ifreq;

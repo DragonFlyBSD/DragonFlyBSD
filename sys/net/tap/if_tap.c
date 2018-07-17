@@ -754,8 +754,9 @@ tapioctl(struct dev_ioctl_args *ap)
 	switch (ap->a_cmd) {
 	case TAPSIFINFO:
 		tapp = (struct tapinfo *)data;
+		if (ifp->if_type != tapp->type)
+			return (EPROTOTYPE);
 		ifp->if_mtu = tapp->mtu;
-		ifp->if_type = tapp->type;
 		ifp->if_baudrate = tapp->baudrate;
 		break;
 

@@ -1,7 +1,7 @@
 .\" $FreeBSD: src/share/man/man4/tap.4,v 1.1.2.7 2002/04/16 23:59:28 trhodes Exp $
 .\" Based on PR#2411
 .\"
-.Dd July 13, 2018
+.Dd July 17, 2018
 .Dt TAP 4
 .Os
 .Sh NAME
@@ -167,7 +167,14 @@ The argument should be a pointer to an
 .Va int ;
 this stores the internal debugging variable's value into it.
 .It Dv TAPSIFINFO
-Set network interface information (line speed, MTU and type).
+Set network interface information (line speed and MTU).
+The type must be the same as returned by
+.Dv TAPGIFINFO
+or set to
+.Dv IFT_ETHER ,
+otherwise the
+.Xr ioctl 2
+call will fail.
 The argument should be a pointer to a
 .Va struct tapinfo .
 .It Dv TAPGIFINFO
