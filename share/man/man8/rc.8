@@ -31,7 +31,7 @@
 .\"     @(#)rc.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/share/man/man8/rc.8,v 1.22 2002/12/12 17:25:58 ru Exp $
 .\"
-.Dd October 17, 2017
+.Dd July 20, 2018
 .Dt RC 8
 .Os
 .Sh NAME
@@ -113,6 +113,13 @@ speedup will not occur when
 .Nm
 is started up after exiting the single-user shell.
 .It
+If the file
+.Pa /firstboot
+does not exist, add
+.Dq Li firstboot
+to the list of KEYWORDS to skip in
+.Xr rcorder 8 .
+.It
 Invoke
 .Xr rcorder 8
 to order the files in
@@ -137,6 +144,10 @@ and sources the script in a subshell.
 If the script has a
 .Pa .sh
 suffix then it is sourced directly into the current shell.
+.It
+If the file
+.Pa /firstboot
+exists, delete it.
 .El
 .Ss Operation of Nm rc.shutdown
 .Bl -enum

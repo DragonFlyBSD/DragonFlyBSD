@@ -26,7 +26,6 @@
 #
 #	@(#)rc	5.27 (Berkeley) 6/5/91
 # $FreeBSD: src/etc/rc,v 1.329 2003/05/02 05:27:33 dougb Exp $
-# $DragonFly: src/etc/rc,v 1.4 2005/11/19 18:34:02 joerg Exp $
 #
 
 # System startup script run by init on autoboot or after single-user.
@@ -63,11 +62,21 @@ else
 	_boot="start"
 fi
 
-files=`rcorder -s nostart /etc/rc.d/* 2>/dev/null`
+# If the /firstboot sentinel doesn't exist, we want to skip firstboot scripts.
+if ! [ -e /firstboot ]; then
+	skip_firstboot="-s firstboot"
+fi
+
+files=`rcorder -s nostart ${skip_firstboot} /etc/rc.d/* 2>/dev/null`
 
 for _rc_elem in ${files}; do
 	run_rc_script ${_rc_elem} ${_boot}
 done
+
+# Assume we are R/W here.
+if [ -e /firstboot ]; then
+	rm -rf /firstboot
+fi
 
 echo ''
 date
