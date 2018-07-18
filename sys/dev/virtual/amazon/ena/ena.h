@@ -35,6 +35,7 @@
 #define ENA_H
 
 #include <sys/types.h>
+#include <sys/_timeval.h>
 
 #include "ena-com/ena_com.h"
 #include "ena-com/ena_eth_com.h"
@@ -53,6 +54,11 @@
 #endif
 #define DEVICE_NAME	"Elastic Network Adapter (ENA)"
 #define DEVICE_DESC	"ENA adapter"
+
+#ifdef __DragonFly__
+#define SBT_1S	((__int64_t)1 << 32)	/* XXX this should not be needed */
+typedef struct ifnet * if_t;
+#endif
 
 /* Calculate DMA mask - width for ena cannot exceed 48, so it is safe */
 #define ENA_DMA_BIT_MASK(x)		((1ULL << (x)) - 1ULL)
@@ -186,18 +192,19 @@ struct ena_tx_buffer {
 	bus_dmamap_t map;
 
 	/* Used to detect missing tx packets */
-	struct bintime timestamp;
+	struct timeval timestamp;
 	bool print_once;
 
 	struct ena_com_buf bufs[ENA_PKT_MAX_BUFS];
-} __aligned(CACHE_LINE_SIZE);
+} __cachealign;
 
 struct ena_rx_buffer {
 	struct mbuf *mbuf;
 	bus_dmamap_t map;
 	struct ena_com_buf ena_buf;
-} __aligned(CACHE_LINE_SIZE);
+} __cachealign;
 
+#if 0 /* XXX swildner counters */
 struct ena_stats_tx {
 	counter_u64_t cnt;
 	counter_u64_t bytes;
@@ -222,6 +229,7 @@ struct ena_stats_rx {
 	counter_u64_t bad_req_id;
 	counter_u64_t empty_rx_ring;
 };
+#endif
 
 struct ena_ring {
 	/* Holds the empty requests for TX/RX out of order completions */
@@ -251,7 +259,9 @@ struct ena_ring {
 	enum ena_intr_moder_level moder_tbl_idx;
 
 	struct ena_que *que;
+#if 0 /* XXX LRO */
 	struct lro_ctrl lro;
+#endif
 
 	uint16_t next_to_use;
 	uint16_t next_to_clean;
@@ -262,30 +272,27 @@ struct ena_ring {
 	};
 	int ring_size; /* number of tx/rx_buffer_info's entries */
 
-	struct buf_ring *br; /* only for TX */
-
-	struct mtx ring_mtx;
-	char mtx_name[16];
+	struct lock ring_lock;
+	char lock_name[16];
 
 	union {
-		struct {
-			struct task enqueue_task;
-			struct taskqueue *enqueue_tq;
-		};
 		struct {
 			struct task cmpl_task;
 			struct taskqueue *cmpl_tq;
 		};
 	};
 
+#if 0 /* XXX swildner counters */
 	union {
 		struct ena_stats_tx tx_stats;
 		struct ena_stats_rx rx_stats;
 	};
+#endif
 
 	int empty_rx_queue;
-} __aligned(CACHE_LINE_SIZE);
+} __cachealign;
 
+#if 0 /* XXX swildner counters */
 struct ena_stats_dev {
 	counter_u64_t wd_expired;
 	counter_u64_t interface_up;
@@ -302,6 +309,7 @@ struct ena_hw_stats {
 
 	counter_u64_t rx_drops;
 };
+#endif
 
 /* Board specific private data structure */
 struct ena_adapter {
@@ -316,8 +324,8 @@ struct ena_adapter {
 	struct resource *memory;
 	struct resource *registers;
 
-	struct mtx global_mtx;
-	struct sx ioctl_sx;
+	struct lock global_lock;
+	struct lock ioctl_lock;
 
 	/* MSI-X */
 	uint32_t msix_enabled;
@@ -356,40 +364,42 @@ struct ena_adapter {
 
 	/* Queue will represent one TX and one RX ring */
 	struct ena_que que[ENA_MAX_NUM_IO_QUEUES]
-	    __aligned(CACHE_LINE_SIZE);
+	    __cachealign;
 
 	/* TX */
 	struct ena_ring tx_ring[ENA_MAX_NUM_IO_QUEUES]
-	    __aligned(CACHE_LINE_SIZE);
+	    __cachealign;
 
 	/* RX */
 	struct ena_ring rx_ring[ENA_MAX_NUM_IO_QUEUES]
-	    __aligned(CACHE_LINE_SIZE);
+	    __cachealign;
 
 	struct ena_irq irq_tbl[ENA_MAX_MSIX_VEC(ENA_MAX_NUM_IO_QUEUES)];
 
 	/* Timer service */
 	struct callout timer_service;
-	sbintime_t keep_alive_timestamp;
+	struct timeval keep_alive_timestamp;
 	uint32_t next_monitored_tx_qid;
 	struct task reset_task;
 	struct taskqueue *reset_tq;
 	int wd_active;
-	sbintime_t keep_alive_timeout;
-	sbintime_t missing_tx_timeout;
+	time_t keep_alive_timeout;
+	time_t missing_tx_timeout;
 	uint32_t missing_tx_max_queues;
 	uint32_t missing_tx_threshold;
 
+#if 0 /* XXX swildner counters */
 	/* Statistics */
 	struct ena_stats_dev dev_stats;
 	struct ena_hw_stats hw_stats;
+#endif
 
 	enum ena_regs_reset_reason_types reset_reason;
 };
 
-#define	ENA_RING_MTX_LOCK(_ring)		mtx_lock(&(_ring)->ring_mtx)
-#define	ENA_RING_MTX_TRYLOCK(_ring)		mtx_trylock(&(_ring)->ring_mtx)
-#define	ENA_RING_MTX_UNLOCK(_ring)		mtx_unlock(&(_ring)->ring_mtx)
+#define	ENA_RING_MTX_LOCK(_ring)		lockmgr(&(_ring)->ring_lock, LK_EXCLUSIVE)
+#define	ENA_RING_MTX_TRYLOCK(_ring)		lockmgr_try(&(_ring)->ring_lock, LK_EXCLUSIVE)
+#define	ENA_RING_MTX_UNLOCK(_ring)		lockmgr(&(_ring)->ring_lock, LK_RELEASE)
 
 static inline int ena_mbuf_count(struct mbuf *mbuf)
 {

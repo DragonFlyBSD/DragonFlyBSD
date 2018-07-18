@@ -27,12 +27,12 @@
 .\"
 .\" $FreeBSD: head/share/man/man4/ena.4 322683 2017-08-19 00:51:45Z emaste $
 .\"
-.Dd May 04, 2017
+.Dd July 22, 2018
 .Dt ENA 4
 .Os
 .Sh NAME
 .Nm ena
-.Nd "FreeBSD kernel driver for Elastic Network Adapter (ENA) family"
+.Nd "DragonFly kernel driver for the Elastic Network Adapter (ENA) family"
 .Sh SYNOPSIS
 To compile this driver into the kernel,
 place the following line in your
@@ -239,6 +239,7 @@ for more details.
 .Pp
 Packet with unsupported number of segments was queued for sending to the
 device; packet will be dropped.
+.El
 .Sh SUPPORT
 If an issue is identified with the released source code with a supported adapter
 email the specific information related to the issue to

@@ -29,13 +29,12 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: head/sys/contrib/ena-com/ena_plat.h 325589 2017-11-09 13:30:39Z mw $
  */
 
 #ifndef ENA_PLAT_H_
 #define ENA_PLAT_H_
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/contrib/ena-com/ena_plat.h 325589 2017-11-09 13:30:39Z mw $");
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -50,21 +49,17 @@ __FBSDID("$FreeBSD: head/sys/contrib/ena-com/ena_plat.h 325589 2017-11-09 13:30:
 #include <sys/module.h>
 #include <sys/rman.h>
 #include <sys/proc.h>
-#include <sys/smp.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
+#include <sys/spinlock.h>
+#include <sys/spinlock2.h>
 #include <sys/sysctl.h>
 #include <sys/taskqueue.h>
 #include <sys/eventhandler.h>
 #include <sys/types.h>
-#include <sys/timetc.h>
 #include <sys/cdefs.h>
 
 #include <machine/atomic.h>
-#include <machine/bus.h>
-#include <machine/in_cksum.h>
-#include <machine/pcpu.h>
-#include <machine/resource.h>
 
 #include <net/bpf.h>
 #include <net/ethernet.h>
@@ -75,7 +70,6 @@ __FBSDID("$FreeBSD: head/sys/contrib/ena-com/ena_plat.h 325589 2017-11-09 13:30:
 #include <net/if_media.h>
 
 #include <net/if_types.h>
-#include <net/if_vlan_var.h>
 
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
@@ -83,12 +77,11 @@ __FBSDID("$FreeBSD: head/sys/contrib/ena-com/ena_plat.h 325589 2017-11-09 13:30:
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
 #include <netinet/tcp.h>
-#include <netinet/tcp_lro.h>
 #include <netinet/udp.h>
 
-#include <dev/led/led.h>
-#include <dev/pci/pcivar.h>
-#include <dev/pci/pcireg.h>
+#include <dev/misc/led/led.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
 extern struct ena_bus_space ebs;
 
@@ -110,12 +103,12 @@ extern int ena_log_level;
 	do {							\
 		if (((level) & ena_log_level) != (level))	\
 			break;					\
-		printf(fmt, ##args);				\
+		kprintf(fmt, ##args);				\
 	} while (0)
 
 #define ena_trace(level, fmt, args...)				\
-	ena_trace_raw(level, "%s() [TID:%d]: "			\
-	    fmt " \n", __func__, curthread->td_tid, ##args)
+	ena_trace_raw(level, "%s() [TID:%p]: "			\
+	    fmt " \n", __func__, curthread, ##args)
 
 
 #define ena_trc_dbg(format, arg...) 	ena_trace(ENA_DBG, format, ##arg)
@@ -127,7 +120,7 @@ extern int ena_log_level;
 #define likely(x)  	__predict_true(x)
 
 #define __iomem
-#define ____cacheline_aligned __aligned(CACHE_LINE_SIZE)
+#define ____cacheline_aligned __cachealign
 
 #define MAX_ERRNO 4095
 #define IS_ERR_VALUE(x) unlikely((x) <= (unsigned long)MAX_ERRNO)
@@ -184,11 +177,17 @@ static inline long PTR_ERR(const void *ptr)
 #define	ENA_COM_PERMISSION	EPERM
 #define ENA_COM_TIMER_EXPIRED	ETIMEDOUT
 
-#define ENA_MSLEEP(x) 		pause_sbt("ena", SBT_1MS * (x), SBT_1MS, 0)
+#define cputick2usec(t)		(1000000*(t) / hz)
+#define ENA_MSLEEP(x) 		do {					\
+					int dummy;			\
+					int wait_ticks = 1;		\
+									\
+					tsleep(&dummy, 0, "ena", wait_ticks); \
+				} while (0)
 #define ENA_UDELAY(x) 		DELAY(x)
 #define ENA_GET_SYSTEM_TIMEOUT(timeout_us) \
-    ((long)cputick2usec(cpu_ticks()) + (timeout_us))
-#define ENA_TIME_EXPIRE(timeout)  ((timeout) < (long)cputick2usec(cpu_ticks()))
+    ((long)cputick2usec(ticks) + (timeout_us))
+#define ENA_TIME_EXPIRE(timeout)  ((timeout) < (long)cputick2usec(ticks))
 #define ENA_MIGHT_SLEEP()
 
 #define min_t(type, _x, _y) ((type)(_x) < (type)(_y) ? (type)(_x) : (type)(_y))
@@ -203,46 +202,45 @@ static inline long PTR_ERR(const void *ptr)
 #define ENA_MAX8(x,y) 	MAX(x, y)
 
 /* Spinlock related methods */
-#define ena_spinlock_t 	struct mtx
+#define ena_spinlock_t 	struct spinlock
 #define ENA_SPINLOCK_INIT(spinlock)				\
-	mtx_init(&(spinlock), "ena_spin", NULL, MTX_SPIN)
+	spin_init(&(spinlock), "ena_spin")
 #define ENA_SPINLOCK_DESTROY(spinlock)				\
 	do {							\
-		if (mtx_initialized(&(spinlock)))		\
-		    mtx_destroy(&(spinlock));			\
+		spin_uninit(&(spinlock));			\
 	} while (0)
 #define ENA_SPINLOCK_LOCK(spinlock, flags)			\
 	do {							\
 		(void)(flags);					\
-		mtx_lock_spin(&(spinlock));			\
+		spin_lock(&(spinlock));				\
 	} while (0)
 #define ENA_SPINLOCK_UNLOCK(spinlock, flags)			\
 	do {							\
 		(void)(flags);					\
-		mtx_unlock_spin(&(spinlock));			\
+		spin_unlock(&(spinlock));			\
 	} while (0)
 
 
 /* Wait queue related methods */
-#define ena_wait_event_t struct { struct cv wq; struct mtx mtx; }
+#define ena_wait_event_t struct { struct cv wq; struct lock lock; }
 #define ENA_WAIT_EVENT_INIT(waitqueue)					\
 	do {								\
 		cv_init(&((waitqueue).wq), "cv");			\
-		mtx_init(&((waitqueue).mtx), "wq", NULL, MTX_DEF);	\
+		lockinit(&((waitqueue).lock), "wq", 0, LK_CANRECURSE);	\
 	} while (0)
 #define ENA_WAIT_EVENT_DESTROY(waitqueue)				\
 	do {								\
 		cv_destroy(&((waitqueue).wq));				\
-		mtx_destroy(&((waitqueue).mtx));			\
+		lockuninit(&((waitqueue).lock));			\
 	} while (0)
 #define ENA_WAIT_EVENT_CLEAR(waitqueue)					\
-	cv_init(&((waitqueue).wq), (waitqueue).wq.cv_description)
+	cv_init(&((waitqueue).wq), (waitqueue).wq.cv_desc)
 #define ENA_WAIT_EVENT_WAIT(waitqueue, timeout_us)			\
 	do {								\
-		mtx_lock(&((waitqueue).mtx));				\
-		cv_timedwait(&((waitqueue).wq), &((waitqueue).mtx),	\
+		lockmgr(&((waitqueue).lock), LK_EXCLUSIVE);		\
+		cv_timedwait(&((waitqueue).wq), &((waitqueue).lock),	\
 		    timeout_us * hz / 1000 / 1000 );			\
-		mtx_unlock(&((waitqueue).mtx));				\
+		lockuninit(&((waitqueue).lock));			\
 	} while (0)
 #define ENA_WAIT_EVENT_SIGNAL(waitqueue) cv_broadcast(&((waitqueue).wq))
 
@@ -251,6 +249,16 @@ static inline long PTR_ERR(const void *ptr)
 #define u16 		uint16_t
 #define u32 		uint32_t
 #define u64 		uint64_t
+
+#ifdef __x86_64__
+#define mb()	__asm volatile("mfence" ::: "memory")
+#define wmb()	__asm volatile("sfence" ::: "memory")
+#define rmb()	__asm volatile("lfence" ::: "memory")
+#else
+#define mb()
+#define rmb()
+#define wmb()
+#endif
 
 typedef struct {
 	bus_addr_t              paddr;
@@ -286,9 +294,9 @@ int	ena_dma_alloc(device_t dmadev, bus_size_t size, ena_mem_handle_t *dma,
 			*to = *from;					\
 	} while (0)
 
-#define ENA_MEM_ALLOC(dmadev, size) malloc(size, M_DEVBUF, M_NOWAIT | M_ZERO)
+#define ENA_MEM_ALLOC(dmadev, size) kmalloc(size, M_DEVBUF, M_NOWAIT | M_ZERO)
 #define ENA_MEM_ALLOC_NODE(dmadev, size, virt, node, dev_node) (virt = NULL)
-#define ENA_MEM_FREE(dmadev, ptr) free(ptr, M_DEVBUF)
+#define ENA_MEM_FREE(dmadev, ptr) kfree(ptr, M_DEVBUF)
 #define ENA_MEM_ALLOC_COHERENT_NODE(dmadev, size, virt, phys, handle, node, \
     dev_node)								\
 	do {								\

@@ -30,12 +30,10 @@
 # $FreeBSD: head/sys/modules/ena/Makefile 318647 2017-05-22 14:46:13Z zbb $
 #
 
-.PATH:	${SRCTOP}/sys/dev/ena \
-	${SRCTOP}/sys/contrib/ena-com
+.PATH:	${.CURDIR}/ena-com
 
 KMOD	= if_ena
 SRCS	= ena.c ena_com.c ena_eth_com.c ena_sysctl.c
 SRCS	+= device_if.h bus_if.h pci_if.h
-CFLAGS  += -I${SRCTOP}/sys/contrib
 
 .include <bsd.kmod.mk>

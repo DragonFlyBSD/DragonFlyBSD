@@ -26,20 +26,24 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: head/sys/dev/ena/ena_sysctl.c 325592 2017-11-09 13:36:42Z mw $
  */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/dev/ena/ena_sysctl.c 325592 2017-11-09 13:36:42Z mw $");
 
 #include "ena_sysctl.h"
 
 static void	ena_sysctl_add_wd(struct ena_adapter *);
+#if 0 /* XXX swildner counters */
 static void	ena_sysctl_add_stats(struct ena_adapter *);
+#endif
 
 void
 ena_sysctl_add_nodes(struct ena_adapter *adapter)
 {
 	ena_sysctl_add_wd(adapter);
+#if 0 /* XXX swildner counters */
 	ena_sysctl_add_stats(adapter);
+#endif
 }
 
 static void
@@ -59,26 +63,27 @@ ena_sysctl_add_wd(struct ena_adapter *adapter)
 
 	/* Sysctl calls for Watchdog service */
 	SYSCTL_ADD_INT(ctx, child, OID_AUTO, "wd_active",
-	    CTLFLAG_RWTUN, &adapter->wd_active, 0,
+	    CTLFLAG_RW, &adapter->wd_active, 0,
 	    "Watchdog is active");
 
 	SYSCTL_ADD_QUAD(ctx, child, OID_AUTO, "keep_alive_timeout",
-	    CTLFLAG_RWTUN, &adapter->keep_alive_timeout,
+	    CTLFLAG_RW, &adapter->keep_alive_timeout, 0,
 	    "Timeout for Keep Alive messages");
 
 	SYSCTL_ADD_QUAD(ctx, child, OID_AUTO, "missing_tx_timeout",
-	    CTLFLAG_RWTUN, &adapter->missing_tx_timeout,
+	    CTLFLAG_RW, &adapter->missing_tx_timeout, 0,
 	    "Timeout for TX completion");
 
 	SYSCTL_ADD_U32(ctx, child, OID_AUTO, "missing_tx_max_queues",
-	    CTLFLAG_RWTUN, &adapter->missing_tx_max_queues, 0,
+	    CTLFLAG_RW, &adapter->missing_tx_max_queues,
 	    "Number of TX queues to check per run");
 
 	SYSCTL_ADD_U32(ctx, child, OID_AUTO, "missing_tx_threshold",
-	    CTLFLAG_RWTUN, &adapter->missing_tx_threshold, 0,
+	    CTLFLAG_RW, &adapter->missing_tx_threshold,
 	    "Max number of timeouted packets");
 }
 
+#if 0 /* XXX swildner counters */
 static void
 ena_sysctl_add_stats(struct ena_adapter *adapter)
 {
@@ -133,7 +138,7 @@ ena_sysctl_add_stats(struct ena_adapter *adapter)
 	    "Admin queue pauses");
 
 	for (i = 0; i < adapter->num_queues; ++i, ++tx_ring, ++rx_ring) {
-		snprintf(namebuf, QUEUE_NAME_LEN, "queue%d", i);
+		ksnprintf(namebuf, QUEUE_NAME_LEN, "queue%d", i);
 
 		queue_node = SYSCTL_ADD_NODE(ctx, child, OID_AUTO,
 		    namebuf, CTLFLAG_RD, NULL, "Queue Name");
@@ -238,13 +243,14 @@ ena_sysctl_add_stats(struct ena_adapter *adapter)
 	admin_list = SYSCTL_CHILDREN(admin_node);
 
 	SYSCTL_ADD_U32(ctx, admin_list, OID_AUTO, "aborted_cmd", CTLFLAG_RD,
-	    &admin_stats->aborted_cmd, 0, "Aborted commands");
+	    &admin_stats->aborted_cmd, "Aborted commands");
 	SYSCTL_ADD_U32(ctx, admin_list, OID_AUTO, "sumbitted_cmd", CTLFLAG_RD,
-	    &admin_stats->submitted_cmd, 0, "Submitted commands");
+	    &admin_stats->submitted_cmd, "Submitted commands");
 	SYSCTL_ADD_U32(ctx, admin_list, OID_AUTO, "completed_cmd", CTLFLAG_RD,
-	    &admin_stats->completed_cmd, 0, "Completed commands");
+	    &admin_stats->completed_cmd, "Completed commands");
 	SYSCTL_ADD_U32(ctx, admin_list, OID_AUTO, "out_of_space", CTLFLAG_RD,
-	    &admin_stats->out_of_space, 0, "Queue out of space");
+	    &admin_stats->out_of_space, "Queue out of space");
 	SYSCTL_ADD_U32(ctx, admin_list, OID_AUTO, "no_completion", CTLFLAG_RD,
-	    &admin_stats->no_completion, 0, "Commands not completed");
+	    &admin_stats->no_completion, "Commands not completed");
 }
+#endif
