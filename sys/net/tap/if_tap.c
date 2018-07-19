@@ -808,6 +808,23 @@ tapioctl(struct dev_ioctl_args *ap)
 		*(int *)data = -fgetown(&sc->tap_sigio);
 		break;
 
+	/*
+	 * Support basic control of the network interface via the device file.
+	 * e.g., vke(4) currently uses the 'SIOCGIFADDR' ioctl.
+	 */
+
+	case SIOCGIFFLAGS:
+		bcopy(&ifp->if_flags, data, sizeof(ifp->if_flags));
+		break;
+
+	case SIOCGIFADDR:
+		bcopy(sc->ether_addr, data, sizeof(sc->ether_addr));
+		break;
+
+	case SIOCSIFADDR:
+		bcopy(data, sc->ether_addr, sizeof(sc->ether_addr));
+		break;
+
 	default:
 		error = ENOTTY;
 		break;

@@ -1,7 +1,7 @@
 .\" $FreeBSD: src/share/man/man4/tap.4,v 1.1.2.7 2002/04/16 23:59:28 trhodes Exp $
 .\" Based on PR#2411
 .\"
-.Dd July 17, 2018
+.Dd July 19, 2018
 .Dt TAP 4
 .Os
 .Sh NAME
@@ -212,6 +212,26 @@ Retrieve the process group value for
 signals into the argument
 .Va int
 value.
+.It Dv SIOCGIFFLAGS
+Retrieve the flags of the network interface associated with the control
+device into the argument
+.Va int
+value.
+.It Dv SIOCGIFADDR
+Retrieve the MAC address of the associated network interface.
+The argument should be a pointer to a
+.Va uint8_t
+array of length
+.Dv ETHER_ADDR_LEN .
+This command is used by the
+.Xr vke 4
+device.
+.It Dv SIOCSIFADDR
+Set the MAC address of the associated network interface.
+The argument should be a pointer to a
+.Va uint8_t
+array of length
+.Dv ETHER_ADDR_LEN .
 .El
 .Pp
 The control device also supports
@@ -230,4 +250,5 @@ letting them pile up.
 .Sh SEE ALSO
 .Xr inet 4 ,
 .Xr tun 4 ,
+.Xr vke 4 ,
 .Xr ifconfig 8
