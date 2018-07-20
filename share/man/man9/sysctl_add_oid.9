@@ -27,7 +27,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/sysctl_add_oid.9,v 1.21 2006/04/28 10:45:27 rwatson Exp $
 .\"
-.Dd May 16, 2015
+.Dd July 20, 2018
 .Dt SYSCTL_ADD_OID 9
 .Os
 .Sh NAME
@@ -105,6 +105,17 @@
 .Fa "const char *name"
 .Fa "int access"
 .Fa "int *arg"
+.Fa "int len"
+.Fa "const char *descr"
+.Fc
+.Ft struct sysctl_oid *
+.Fo SYSCTL_ADD_U32
+.Fa "struct sysctl_ctx_list *ctx"
+.Fa "struct sysctl_oid_list *parent"
+.Fa "int number"
+.Fa "const char *name"
+.Fa "int access"
+.Fa "uint32_t *arg"
 .Fa "int len"
 .Fa "const char *descr"
 .Fc
@@ -427,6 +438,10 @@ creates an oid that handles a zero-terminated character string.
 .It Fn SYSCTL_ADD_INT
 creates an oid that handles an
 .Li int
+variable.
+.It Fn SYSCTL_ADD_U32
+creates an oid that handles a
+.Li uint32_t
 variable.
 .It Fn SYSCTL_ADD_UINT
 creates an oid that handles an

@@ -573,6 +573,7 @@ sysctl_sysctl_debug_dump_node(struct sysctl_oid_list *l, int i)
 			case CTLTYPE_INT:    kprintf(" Int\n"); break;
 			case CTLTYPE_STRING: kprintf(" String\n"); break;
 			case CTLTYPE_QUAD:   kprintf(" Quad\n"); break;
+			case CTLTYPE_U32:    kprintf(" uint32_t\n"); break;
 			case CTLTYPE_OPAQUE: kprintf(" Opaque/struct\n"); break;
 			default:	     kprintf("\n");
 		}
@@ -854,6 +855,26 @@ SYSCTL_NODE(_sysctl, 5, oiddescr, CTLFLAG_RD | CTLFLAG_NOLOCK,
 /*
  * Default "handler" functions.
  */
+
+/*
+ * Handle a 32-bit number, signed or unsigned.  arg1 points to it.
+ */
+
+int
+sysctl_handle_32(SYSCTL_HANDLER_ARGS)
+{
+	int error = 0;
+
+	if (!arg1)
+		return (EINVAL);
+	error = SYSCTL_OUT(req, arg1, sizeof(int32_t));
+
+	if (error || !req->newptr)
+		return (error);
+
+	error = SYSCTL_IN(req, arg1, sizeof(int32_t));
+	return (error);
+}
 
 /*
  * Handle an int, signed or unsigned.

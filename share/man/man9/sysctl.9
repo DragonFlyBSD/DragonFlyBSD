@@ -24,9 +24,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/sysctl.9,v 1.3 2006/04/28 23:21:36 keramida Exp $
-.\" $DragonFly: src/share/man/man9/sysctl.9,v 1.6 2008/09/02 11:50:46 matthias Exp $
 .\"
-.Dd September 2, 2008
+.Dd July 20, 2018
 .Dt SYSCTL 9
 .Os
 .Sh NAME
@@ -39,6 +38,7 @@
 .Nm SYSCTL_PROC ,
 .Nm SYSCTL_STRING ,
 .Nm SYSCTL_STRUCT ,
+.Nm SYSCTL_U32 ,
 .Nm SYSCTL_UINT ,
 .Nm SYSCTL_ULONG ,
 .Nm SYSCTL_UQUAD
@@ -123,6 +123,15 @@
 .Fa "type"
 .Fa "descr"
 .Fc
+.Fo SYSCTL_U32
+.Fa "parent"
+.Fa "number"
+.Fa "name"
+.Fa "access"
+.Fa "ptr"
+.Fa "val"
+.Fa "descr"
+.Fc
 .Fo SYSCTL_UINT
 .Fa "parent"
 .Fa "nbr"
@@ -174,6 +183,7 @@ New nodes are declared using one of
 .Nm SYSCTL_PROC ,
 .Nm SYSCTL_STRING ,
 .Nm SYSCTL_STRUCT ,
+.Nm SYSCTL_U32 ,
 .Nm SYSCTL_UINT ,
 .Nm SYSCTL_ULONG ,
 and
@@ -204,6 +214,8 @@ This is an opaque data structure.
 .It Dv CTLTYPE_STRUCT
 Alias for
 .Dv CTLTYPE_OPAQUE .
+.It Dv CTLTYPE_U32
+This is a 32-bit unsigned integer.
 .It Dv CTLTYPE_UINT
 This is an unsigned integer.
 .It Dv CTLTYPE_LONG

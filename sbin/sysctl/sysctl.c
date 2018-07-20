@@ -157,6 +157,7 @@ parse(const char *string)
 	size_t len;
 	int i, j;
 	void *newval = NULL;
+	uint32_t u32val;
 	int intval;
 	unsigned int uintval;
 	long longval;
@@ -257,6 +258,11 @@ parse(const char *string)
 				uquadval = strtouq(newval, NULL, 0);
 				newval = &uquadval;
 				newsize = sizeof(uquadval);
+				break;
+			case CTLTYPE_U32:
+				u32val = (uint32_t)strtoul(newval, NULL, 0);
+				newval = &u32val;
+				newsize = sizeof(u32val);
 				break;
 			case CTLTYPE_OPAQUE:
 				if (strcmp(fmt, "T,dev_t") == 0 ||
