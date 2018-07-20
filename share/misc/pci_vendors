@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2018.06.25
-#	Date:    2018-06-25 03:15:01
+#	Version: 2018.06.29
+#	Date:    2018-06-29 03:15:02
 #
 #	Maintained by Albert Pool, Martin Mares, and other volunteers from
 #	the PCI ID Project at http://pci-ids.ucw.cz/.
@@ -21009,7 +21009,6 @@
 	0009  RAIDCore Controller
 	000a  RAIDCore Controller
 1aae  Global Velocity, Inc.
-1ab4  FFEI Ltd
 1ab6  CalDigit, Inc.
 	6201  RAID Card
 # Parallels VM virtual devices
@@ -27607,6 +27606,24 @@
 	3432  5520/5500/X58 Chipset QuickData Technology Device
 	3433  5520/5500/X58 Chipset QuickData Technology Device
 	3438  7500/5520/5500/X58 I/O Hub Throttle Registers
+	3482  Ice Lake-LP LPC Controller
+	34a3  Ice Lake-LP SMBus Controller
+	34a4  Ice Lake-LP SPI Controller
+	34a8  Ice Lake-LP Serial IO UART Controller #0
+	34a9  Ice Lake-LP Serial IO UART Controller #1
+	34aa  Ice Lake-LP Serial IO SPI Controller #0
+	34ab  Ice Lake-LP Serial IO SPI Controller #1
+	34b0  Ice Lake-LP PCI Express Root Port #9
+	34bc  Ice Lake-LP PCI Express Root Port #5
+	34c5  Ice Lake-LP Serial IO I2c Controller #4
+	34c6  Ice Lake-LP Serial IO I2c Controller #5
+	34d3  Ice Lake-LP SATA Controller [AHCI mode]
+	34e8  Ice Lake-LP Serial IO I2C Controller #0
+	34e9  Ice Lake-LP Serial IO I2C Controller #1
+	34ea  Ice Lake-LP Serial IO I2C Controller #2
+	34eb  Ice Lake-LP Serial IO I2C Controller #3
+	34ed  Ice Lake-LP USB 3.1 xHCI Host Controller
+	34f8  Ice Lake-LP SD Controller
 	3500  6311ESB/6321ESB PCI Express Upstream Port
 		103c 31fe  ProLiant DL140 G3
 		15d9 9680  X7DBN Motherboard
