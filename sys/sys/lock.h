@@ -299,6 +299,17 @@ lockinuse(struct lock *lkp)
 	return ((lkp->lk_count & (LKC_SMASK | LKC_XMASK)) != 0);
 }
 
+/*
+ * Returns true if the lock was acquired. Can be used to port
+ * FreeBSD's mtx_trylock() and similar functions.
+ */
+static __inline
+boolean_t
+lockmgr_try(struct lock *lkp, u_int flags)
+{
+	return (lockmgr(lkp, flags | LK_NOWAIT) == 0);
+}
+
 #endif /* _KERNEL */
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
 #endif /* _SYS_LOCK_H_ */

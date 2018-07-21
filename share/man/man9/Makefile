@@ -629,6 +629,7 @@ MLINKS+=kether_ntoa.9 kether_aton.9
 MLINKS+=lock.9 lockinit.9 \
 	lock.9 lockmgr.9 \
 	lock.9 lockmgr_printinfo.9 \
+	lock.9 lockmgr_try.9 \
 	lock.9 lockowned.9 \
 	lock.9 lockstatus.9 \
 	lock.9 lockuninit.9

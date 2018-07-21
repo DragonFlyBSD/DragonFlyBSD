@@ -82,7 +82,7 @@
   An
 	mtx_trylock(&my_mtx);
   call is replaced with
-	lockmgr(&my_lock, LK_EXCLUSIVE|LK_NOWAIT);
+	lockmgr_try(&my_lock, LK_EXCLUSIVE);
 
   As for mtx_assert() calls, translate them like this:
 

@@ -26,12 +26,13 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/lock.9,v 1.11 2003/09/08 19:57:21 ru Exp $
 .\"
-.Dd November 25, 2017
+.Dd July 21, 2018
 .Dt LOCK 9
 .Os
 .Sh NAME
 .Nm lockinit ,
 .Nm lockmgr ,
+.Nm lockmgr_try ,
 .Nm lockstatus ,
 .Nm lockmgr_printinfo ,
 .Nm lockowned
@@ -45,6 +46,8 @@
 .Fn lockuninit "struct lock *lkp"
 .Ft int
 .Fn lockmgr "struct lock *lkp" "u_int flags"
+.Ft boolean_t
+.Fn lockmgr_try "struct lock *lkp" "u_int flags"
 .Ft int
 .Fn lockstatus "struct lock *lkp" "struct thread *td"
 .Ft void
@@ -152,6 +155,16 @@ Allow recursion on an exclusive lock.
 For every lock there must be a release.
 .El
 .El
+.Pp
+The
+.Fn lockmgr_try
+function is similar to
+.Fn lockmgr
+but it will not sleep and returns
+.Dv TRUE
+if the lock was successfully obtained and
+.Dv FALSE
+if it was not.
 .Pp
 The
 .Fn lockstatus
