@@ -434,7 +434,7 @@ int	sound_oss_card_info(oss_card_info *);
 #define PCM_LOCKOWNED(d)	(lockstatus((d)->lock, curthread) == LK_EXCLUSIVE)
 #define PCM_LOCK(d)		lockmgr((d)->lock, LK_EXCLUSIVE)
 #define PCM_UNLOCK(d)		lockmgr((d)->lock, LK_RELEASE)
-#define PCM_TRYLOCK(d)		lockmgr((d)->lock, LK_EXCLUSIVE|LK_NOWAIT)
+#define PCM_TRYLOCK(d)		lockmgr_try((d)->lock, LK_EXCLUSIVE)
 #define PCM_LOCKASSERT(d)	KKASSERT(lockstatus((d)->lock, curthread) == LK_EXCLUSIVE)
 #define PCM_UNLOCKASSERT(d)	KKASSERT(lockstatus((d)->lock, curthread) != LK_EXCLUSIVE)
 

@@ -312,7 +312,7 @@ int chn_getpeaks(struct pcm_channel *c, int *lpeak, int *rpeak);
 #define CHN_LOCKOWNED(c)	(lockstatus((c)->lock, curthread) == LK_EXCLUSIVE)
 #define CHN_LOCK(c)		lockmgr((c)->lock, LK_EXCLUSIVE)
 #define CHN_UNLOCK(c)		lockmgr((c)->lock, LK_RELEASE)
-#define CHN_TRYLOCK(c)		lockmgr((c)->lock, LK_EXCLUSIVE|LK_NOWAIT)
+#define CHN_TRYLOCK(c)		lockmgr_try((c)->lock, LK_EXCLUSIVE)
 #define CHN_LOCKASSERT(c)	KKASSERT(lockstatus((c)->lock, curthread) == LK_EXCLUSIVE)
 #define CHN_UNLOCKASSERT(c)	KKASSERT(lockstatus((c)->lock, curthread) != LK_EXCLUSIVE)
 

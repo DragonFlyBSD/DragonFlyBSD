@@ -74,7 +74,7 @@
 #define ARCMSR_LOCK_DESTROY(l)	lockuninit(l)
 #define ARCMSR_LOCK_ACQUIRE(l)	lockmgr(l, LK_EXCLUSIVE)
 #define ARCMSR_LOCK_RELEASE(l)	lockmgr(l, LK_RELEASE)
-#define ARCMSR_LOCK_TRY(l)	lockmgr(&l, LK_EXCLUSIVE|LK_NOWAIT)
+#define ARCMSR_LOCK_TRY(l)	lockmgr_try(l, LK_EXCLUSIVE)
 #define arcmsr_htole32(x)	htole32(x)
 typedef struct lock		arcmsr_lock_t;
 
