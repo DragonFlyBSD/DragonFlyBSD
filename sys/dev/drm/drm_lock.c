@@ -39,8 +39,6 @@
 #include "drm_internal.h"
 
 #if 0
-static int drm_notifier(void *priv);
-
 static int drm_lock_take(struct drm_lock_data *lock_data, unsigned int context);
 #endif
 
@@ -290,40 +288,6 @@ int drm_legacy_lock_free(struct drm_lock_data *lock_data, unsigned int context)
 #endif
 	return 0;
 }
-
-#if 0
-/**
- * If we get here, it means that the process has called DRM_IOCTL_LOCK
- * without calling DRM_IOCTL_UNLOCK.
- *
- * If the lock is not held, then let the signal proceed as usual.  If the lock
- * is held, then set the contended flag and keep the signal blocked.
- *
- * \param priv pointer to a drm_device structure.
- * \return one if the signal should be delivered normally, or zero if the
- * signal should be blocked.
- */
-static int drm_notifier(void *priv)
-{
-	struct drm_device *dev = priv;
-	struct drm_hw_lock *lock = dev->sigdata.lock;
-	unsigned int old, new, prev;
-
-	/* Allow signal delivery if lock isn't held */
-	if (!lock || !_DRM_LOCK_IS_HELD(lock->lock)
-	    || _DRM_LOCKING_CONTEXT(lock->lock) != dev->sigdata.context)
-		return 1;
-
-	/* Otherwise, set flag to force call to
-	   drmUnlock */
-	do {
-		old = lock->lock;
-		new = old | _DRM_LOCK_CONT;
-		prev = cmpxchg(&lock->lock, old, new);
-	} while (prev != old);
-	return 0;
-}
-#endif
 
 /**
  * This function returns immediately and takes the hw lock

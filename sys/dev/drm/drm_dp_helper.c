@@ -23,6 +23,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/delay.h>
+#include <linux/init.h>
 #include <linux/errno.h>
 #include <linux/sched.h>
 #include <linux/i2c.h>
@@ -202,7 +203,7 @@ static int drm_dp_dpcd_access(struct drm_dp_aux *aux, u8 request,
 
 		ret = aux->transfer(aux, &msg);
 
-		if (ret > 0) {
+		if (ret >= 0) {
 			native_reply = msg.reply & DP_AUX_NATIVE_REPLY_MASK;
 			if (native_reply == DP_AUX_NATIVE_REPLY_ACK) {
 				if (ret == size)

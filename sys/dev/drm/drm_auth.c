@@ -89,22 +89,19 @@ static int drm_add_magic(struct drm_device *dev, struct drm_file *priv,
  * Removes the given magic number from the hash table of used magic number
  * lists.
  */
-int drm_remove_magic(struct drm_device *dev, drm_magic_t magic)
+static int drm_remove_magic(struct drm_device *dev, drm_magic_t magic)
 {
 	struct drm_magic_entry *pt;
 	struct drm_hash_item *hash;
 
 	DRM_DEBUG("%d\n", magic);
 
-	mutex_lock(&dev->struct_mutex);
 	if (drm_ht_find_item(&dev->magiclist, (unsigned long)magic, &hash)) {
-		mutex_unlock(&dev->struct_mutex);
 		return -EINVAL;
 	}
 	pt = drm_hash_entry(hash, struct drm_magic_entry, hash_item);
 	drm_ht_remove_item(&dev->magiclist, hash);
 	list_del(&pt->head);
-	mutex_unlock(&dev->struct_mutex);
 
 	kfree(pt);
 
@@ -153,17 +150,14 @@ int drm_getmagic(struct drm_device *dev, void *data, struct drm_file *file_priv)
 }
 
 /**
- * Authenticate with a magic.
+ * drm_authmagic - Authenticate client with a magic
+ * @dev: DRM device to operate on
+ * @data: ioctl data containing the drm_auth object
+ * @file_priv: DRM file that performs the operation
  *
- * \param inode device inode.
- * \param file_priv DRM file private.
- * \param cmd command.
- * \param arg pointer to a drm_auth structure.
- * \return zero if authentication successed, or a negative number otherwise.
+ * This looks up a DRM client by the passed magic and authenticates it.
  *
- * Checks if \p file_priv is associated with the magic number passed in \arg.
- * This ioctl needs protection by the drm_global_mutex, which protects
- * struct drm_file::magic and struct drm_magic_entry::priv.
+ * Returns: 0 on success, negative error code on failure.
  */
 int drm_authmagic(struct drm_device *dev, void *data,
 		  struct drm_file *file_priv)
@@ -172,10 +166,14 @@ int drm_authmagic(struct drm_device *dev, void *data,
 	struct drm_file *file;
 
 	DRM_DEBUG("%u\n", auth->magic);
-	if ((file = drm_find_file(dev, auth->magic))) {
+
+	mutex_lock(&dev->struct_mutex);
+	file = drm_find_file(dev, auth->magic);
+	if (file) {
 		file->authenticated = 1;
 		drm_remove_magic(dev, auth->magic);
-		return 0;
 	}
-	return -EINVAL;
+	mutex_unlock(&dev->struct_mutex);
+
+	return file ? 0 : -EINVAL;
 }
