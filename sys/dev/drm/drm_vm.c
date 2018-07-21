@@ -67,18 +67,14 @@ int drm_mmap(struct dev_mmap_args *ap)
 	if (dev->dma && offset < ptoa(dev->dma->page_count)) {
 		struct drm_device_dma *dma = dev->dma;
 
-		spin_lock(&dev->dma_lock);
-
 		if (dma->pagelist != NULL) {
 			unsigned long page = offset >> PAGE_SHIFT;
 			unsigned long phys = dma->pagelist[page];
 
-			spin_unlock(&dev->dma_lock);
 			// XXX *paddr = phys;
 			ap->a_result = phys;
 			return 0;
 		} else {
-			spin_unlock(&dev->dma_lock);
 			return -1;
 		}
 	}

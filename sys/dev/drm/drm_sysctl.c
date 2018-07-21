@@ -219,14 +219,12 @@ static int drm_bufs_info DRM_SYSCTL_HANDLER_ARGS
 		DRM_UNLOCK(dev);
 		return 0;
 	}
-	spin_lock(&dev->dma_lock);
 	tempdma = *dma;
 	templists = kmalloc(sizeof(int) * dma->buf_count, M_DRM,
 			    M_WAITOK | M_NULLOK);
 	for (i = 0; i < dma->buf_count; i++)
 		templists[i] = dma->buflist[i]->list;
 	dma = &tempdma;
-	spin_unlock(&dev->dma_lock);
 	DRM_UNLOCK(dev);
 
 	DRM_SYSCTL_PRINT("\n o     size count  free	 segs pages    kB\n");

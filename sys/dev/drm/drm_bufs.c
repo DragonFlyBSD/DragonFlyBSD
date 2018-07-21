@@ -661,9 +661,7 @@ static int drm_do_addbufs_pci(struct drm_device *dev, struct drm_buf_desc *reque
 	page_count = 0;
 
 	while (entry->buf_count < count) {
-		spin_unlock(&dev->dma_lock);
 		dmah = drm_pci_alloc(dev, PAGE_SIZE << page_order, 0x1000);
-		spin_lock(&dev->dma_lock);
 
 		if (!dmah) {
 			/* Set count correctly so we free the proper amount. */
@@ -882,22 +880,17 @@ int drm_legacy_addbufs_agp(struct drm_device * dev, struct drm_buf_desc * reques
 	if (order < DRM_MIN_ORDER || order > DRM_MAX_ORDER)
 		return -EINVAL;
 
-	spin_lock(&dev->dma_lock);
 
 	/* No more allocations after first buffer-using ioctl. */
 	if (dev->buf_use != 0) {
-		spin_unlock(&dev->dma_lock);
 		return -EBUSY;
 	}
 	/* No more than one allocation per order */
 	if (dev->dma->bufs[order].buf_count != 0) {
-		spin_unlock(&dev->dma_lock);
 		return -ENOMEM;
 	}
 
 	ret = drm_do_addbufs_agp(dev, request);
-
-	spin_unlock(&dev->dma_lock);
 
 	return ret;
 }
@@ -916,22 +909,20 @@ static int drm_legacy_addbufs_sg(struct drm_device * dev, struct drm_buf_desc * 
 	if (order < DRM_MIN_ORDER || order > DRM_MAX_ORDER)
 		return -EINVAL;
 
-	spin_lock(&dev->dma_lock);
-
-	/* No more allocations after first buffer-using ioctl. */
-	if (dev->buf_use != 0) {
-		spin_unlock(&dev->dma_lock);
+	spin_lock(&dev->buf_lock);
+	if (dev->buf_use) {
+		spin_unlock(&dev->buf_lock);
 		return -EBUSY;
 	}
+	atomic_inc(&dev->buf_alloc);
+	spin_unlock(&dev->buf_lock);
+
 	/* No more than one allocation per order */
 	if (dev->dma->bufs[order].buf_count != 0) {
-		spin_unlock(&dev->dma_lock);
 		return -ENOMEM;
 	}
 
 	ret = drm_do_addbufs_sg(dev, request);
-
-	spin_unlock(&dev->dma_lock);
 
 	return ret;
 }
@@ -950,22 +941,24 @@ int drm_legacy_addbufs_pci(struct drm_device * dev, struct drm_buf_desc * reques
 	if (order < DRM_MIN_ORDER || order > DRM_MAX_ORDER)
 		return -EINVAL;
 
-	spin_lock(&dev->dma_lock);
+	spin_lock(&dev->buf_lock);
+	if (dev->buf_use) {
+		spin_unlock(&dev->buf_lock);
+		return -EBUSY;
+	}
+	atomic_inc(&dev->buf_alloc);
+	spin_unlock(&dev->buf_lock);
 
 	/* No more allocations after first buffer-using ioctl. */
 	if (dev->buf_use != 0) {
-		spin_unlock(&dev->dma_lock);
 		return -EBUSY;
 	}
 	/* No more than one allocation per order */
 	if (dev->dma->bufs[order].buf_count != 0) {
-		spin_unlock(&dev->dma_lock);
 		return -ENOMEM;
 	}
 
 	ret = drm_do_addbufs_pci(dev, request);
-
-	spin_unlock(&dev->dma_lock);
 
 	return ret;
 }
@@ -1157,7 +1150,6 @@ int drm_legacy_freebufs(struct drm_device *dev, void *data,
 
 	DRM_DEBUG("%d\n", request->count);
 	
-	spin_lock(&dev->dma_lock);
 	for (i = 0; i < request->count; i++) {
 		if (copy_from_user(&idx, &request->list[i], sizeof(idx))) {
 			retcode = -EFAULT;
@@ -1178,7 +1170,6 @@ int drm_legacy_freebufs(struct drm_device *dev, void *data,
 		}
 		drm_legacy_free_buffer(dev, buf);
 	}
-	spin_unlock(&dev->dma_lock);
 
 	return retcode;
 }
@@ -1213,9 +1204,16 @@ int drm_legacy_mapbufs(struct drm_device *dev, void *data,
 
 	vms = DRM_CURPROC->td_proc->p_vmspace;
 
-	spin_lock(&dev->dma_lock);
+	if (!dma)
+		return -EINVAL;
+
+	spin_lock(&dev->buf_lock);
+	if (atomic_read(&dev->buf_alloc)) {
+		spin_unlock(&dev->buf_lock);
+		return -EBUSY;
+	}
 	dev->buf_use++;		/* Can't allocate more after this call */
-	spin_unlock(&dev->dma_lock);
+	spin_unlock(&dev->buf_lock);
 
 	if (request->count < dma->buf_count)
 		goto done;

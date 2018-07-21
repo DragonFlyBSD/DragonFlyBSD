@@ -839,7 +839,6 @@ struct drm_device {
 	int		  flags;	/* Flags to open(2)		   */
 
 				/* Locks */
-	struct spinlock	  dma_lock;	/* protects dev->dma */
 	struct lwkt_serialize irq_lock;	/* protects irq condition checks */
 	struct lock	  dev_lock;	/* protects everything else */
 
