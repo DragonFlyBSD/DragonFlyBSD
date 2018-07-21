@@ -81,6 +81,7 @@
 #include <sys/memrange.h>
 #include <sys/mutex.h>
 
+#include <linux/agp_backend.h>
 #include <linux/atomic.h>
 #include <linux/bug.h>
 #include <linux/dma-mapping.h>
