@@ -31,7 +31,7 @@
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
 .\"
-.Dd November 10, 2017
+.Dd July 21, 2018
 .Dt DISKLABEL64 8
 .Os
 .Sh NAME
@@ -585,7 +585,7 @@ utility uses an
 version of the label when examining, editing, or restoring a disk label.
 An example shows as below:
 .Bd -literal -offset 4n
-# /dev/ad4s1:
+# /dev/ad0s1:
 #
 # Calculated informational fields for the slice:
 #
@@ -820,13 +820,13 @@ recognize the disk.
 .Pp
 .Dl "disklabel64 -W da0s1"
 .Dl "dd if=/dev/zero of=/dev/da0s1 bs=512 count=32"
-.Dl "disklabel -r -w da0s1"
-.Dl "disklabel -N da0s1"
+.Dl "disklabel32 -r -w da0s1"
+.Dl "disklabel32 -N da0s1"
 .Pp
 Completely wipe any prior information on the slice,
-changing label format to 32 bit.
-The wiping is needed as
-.Nm disklabel
+and install the old 32-bit label.
+The wiping is needed because both
+.Nm disklabel32
 and
 .Nm ,
 as a safety measure,
@@ -837,11 +837,11 @@ such as
 .Cm % , M , G , T ,
 and
 .Cm * ,
-which could be used as a source file for
+which could be used as a source file for:
 .Pp
 .Dl "disklabel64 -R ad0s1 new_label_file"
 .Bd -literal -offset 4n
-# /dev/ad4s1:
+# /dev/ad0s1:
 #
 # Calculated informational fields for the slice:
 #
