@@ -810,49 +810,49 @@ mbinit(void *dummy)
 	mb_limit += limit;
 
 	limit = nmbufs;
-	mbufphdr_cache = objcache_create("mbuf pkt hdr",
+	mbufphdr_cache = objcache_create("mbuf pkthdr",
 	    limit, nmbufs / BASE_CACHEFRAC,
 	    mbufphdr_ctor, NULL, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
 
 	ncl_limit = nmbclusters;
-	mclmeta_cache = objcache_create("cluster mbuf",
+	mclmeta_cache = objcache_create("mbuf cluster",
 	    ncl_limit, nmbclusters / BASE_CACHEFRAC,
 	    mclmeta_ctor, mclmeta_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mclmeta_malloc_args);
 	cl_limit += ncl_limit;
 
 	jcl_limit = nmbjclusters;
-	mjclmeta_cache = objcache_create("jcluster mbuf",
+	mjclmeta_cache = objcache_create("mbuf jcluster",
 	    jcl_limit, nmbjclusters / BASE_CACHEFRAC,
 	    mjclmeta_ctor, mclmeta_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mclmeta_malloc_args);
 	cl_limit += jcl_limit;
 
 	limit = nmbclusters;
-	mbufcluster_cache = objcache_create("mbuf + cluster",
+	mbufcluster_cache = objcache_create("mbuf+cl",
 	    limit, nmbclusters / mcl_cachefrac,
 	    mbufcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
 
 	limit = nmbclusters;
-	mbufphdrcluster_cache = objcache_create("mbuf pkt hdr + cluster",
+	mbufphdrcluster_cache = objcache_create("mbuf pkthdr+cl",
 	    limit, nmbclusters / mclph_cachefrac,
 	    mbufphdrcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
 
 	limit = nmbjclusters;
-	mbufjcluster_cache = objcache_create("mbuf + jcluster",
+	mbufjcluster_cache = objcache_create("mbuf+jcl",
 	    limit, nmbjclusters / mjcl_cachefrac,
 	    mbufjcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
 
 	limit = nmbjclusters;
-	mbufphdrjcluster_cache = objcache_create("mbuf pkt hdr + jcluster",
+	mbufphdrjcluster_cache = objcache_create("mbuf pkthdr+jcl",
 	    limit, nmbjclusters / mjclph_cachefrac,
 	    mbufphdrjcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
