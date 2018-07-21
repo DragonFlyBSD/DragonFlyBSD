@@ -42,6 +42,7 @@
 #include <sys/thread.h>
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
+#include <sys/sysctl.h>
 
 static MALLOC_DEFINE(M_OBJCACHE, "objcache", "Object Cache");
 static MALLOC_DEFINE(M_OBJMAG, "objcache mag", "Object Cache Magazine");
@@ -126,7 +127,7 @@ struct objcache_desc {
 	LIST_ENTRY(objcache_desc)	next;
 	struct objcache			*objcache;
 	int				total_objects;
-#define OBJCACHE_NAMELEN		36
+	int				reserved;
 	char				name[OBJCACHE_NAMELEN];
 };
 
@@ -153,6 +154,8 @@ struct objcache {
 
 	struct percpu_objcache	cache_percpu[];	/* per-cpu caches */
 };
+
+SYSCTL_NODE(_kern, OID_AUTO, objcache, CTLFLAG_RW, 0, "objcache");
 
 static struct spinlock objcachelist_spin;
 static LIST_HEAD(objcachelist, objcache_desc) allobjcaches;
@@ -291,7 +294,7 @@ objcache_create(const char *name, int cluster_limit, int nom_cache,
 	 * capacity too due to the preallocated mags.
 	 */
 	if (cluster_limit == 0) {
-		depot->unallocated_objects = 0x40000000;
+		depot->unallocated_objects = OBJCACHE_UNLIMITED;
 	} else {
 		depot->unallocated_objects = ncpus * mag_capacity * 2 +
 					     cluster_limit;
@@ -938,6 +941,79 @@ objcache_destroy(struct objcache *oc)
 	kfree(desc, M_OBJCACHE);
 	kfree(oc, M_OBJCACHE);
 }
+
+static int
+sysctl_ocstats(SYSCTL_HANDLER_ARGS)
+{
+	struct objcache_stats stat;
+	struct objcache_desc marker, *desc;
+	int error;
+
+	memset(&marker, 0, sizeof(marker));
+
+	spin_lock(&objcachelist_spin);
+
+	LIST_INSERT_HEAD(&allobjcaches, &marker, next);
+	while ((desc = LIST_NEXT(&marker, next)) != NULL) {
+		u_long puts, unalloc;
+		int cpu;
+
+		LIST_REMOVE(&marker, next);
+		LIST_INSERT_AFTER(desc, &marker, next);
+
+		if (desc->total_objects == 0) {
+			/* Marker inserted by another thread. */
+			continue;
+		}
+
+		memset(&stat, 0, sizeof(stat));
+		strlcpy(stat.oc_name, desc->name, sizeof(stat.oc_name));
+		stat.oc_limit = desc->total_objects;
+		/* XXX domain aware */
+		unalloc = desc->objcache->depot[0].unallocated_objects;
+
+		puts = 0;
+		for (cpu = 0; cpu < ncpus; ++cpu) {
+			const struct percpu_objcache *cache;
+
+			cache = &desc->objcache->cache_percpu[cpu];
+			puts += cache->puts_cumulative;
+
+			stat.oc_requested += cache->gets_cumulative;
+			stat.oc_exhausted += cache->gets_exhausted;
+			stat.oc_failed += cache->gets_null;
+			stat.oc_allocated += cache->allocs_cumulative;
+		}
+		spin_unlock(&objcachelist_spin);
+
+		/*
+		 * Apply fixup.
+		 */
+		if (stat.oc_requested > puts)
+			stat.oc_used = stat.oc_requested - puts;
+		if (stat.oc_limit > unalloc + stat.oc_used) {
+			stat.oc_cached = stat.oc_limit -
+			    (unalloc + stat.oc_used);
+		}
+		stat.oc_requested += stat.oc_failed;
+
+		/* Send out. */
+		error = SYSCTL_OUT(req, &stat, sizeof(stat));
+
+		/* Hold the lock before we return. */
+		spin_lock(&objcachelist_spin);
+
+		if (error)
+			break;
+	}
+	LIST_REMOVE(&marker, next);
+
+	spin_unlock(&objcachelist_spin);
+
+	return error;
+}
+SYSCTL_PROC(_kern_objcache, OID_AUTO, stats, (CTLTYPE_OPAQUE | CTLFLAG_RD),
+    0, 0, sysctl_ocstats, "S,objcache_stats", "objcache statistics");
 
 static void
 objcache_init(void)

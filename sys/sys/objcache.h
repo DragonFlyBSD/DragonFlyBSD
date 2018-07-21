@@ -79,7 +79,7 @@ void	 objcache_populate_linear(struct objcache *oc, void *elts, int nelts,
 __boolean_t objcache_reclaimlist(struct objcache *oc[], int nlist, int ocflags);
 void	 objcache_destroy(struct objcache *oc);
 
-#endif
+#endif	/* !_KERNEL */
 
 /*
  * Common underlying allocators.
@@ -101,4 +101,25 @@ void	 objcache_nop_free(void *obj, void *allocator_args);
 #endif	/* _KERNEL */
 
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */
+
+#define OBJCACHE_UNLIMITED	0x40000000
+#define OBJCACHE_NAMELEN	32
+
+struct objcache_stats {
+	char		oc_name[OBJCACHE_NAMELEN];	/* \0 term. */
+
+	/*
+	 * >= OBJCACHE_UNLIMITED, if unlimited.
+	 */
+	u_long		oc_limit;
+
+	u_long		oc_requested;
+	u_long		oc_used;
+	u_long		oc_cached;
+	u_long		oc_exhausted;
+	u_long		oc_failed;
+	u_long		oc_allocated;
+	u_long		oc_reserved[5];			/* reserved 0. */
+};
+
 #endif	/* !_SYS_OBJCACHE_H_ */
