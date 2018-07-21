@@ -37,8 +37,7 @@
 #define mutex_lock(lock)	lockmgr(lock, LK_EXCLUSIVE)
 #define mutex_unlock(lock)	lockmgr(lock, LK_RELEASE)
 
-/* NOTE: mutex_trylock() returns non-zero on success */
-#define mutex_trylock(lock)	(!lockmgr(lock, LK_EXCLUSIVE|LK_NOWAIT))
+#define mutex_trylock(lock)	lockmgr_try(lock, LK_EXCLUSIVE)
 
 static inline int
 mutex_lock_interruptible(struct lock *lock)
