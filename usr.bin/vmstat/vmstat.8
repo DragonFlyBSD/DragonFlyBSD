@@ -38,7 +38,7 @@
 .Sh SYNOPSIS
 .Nm
 .\" .Op Fl bfimst
-.Op Fl imsuvz
+.Op Fl imosuvz
 .Op Fl c Ar count
 .Op Fl M Ar core
 .Op Fl N Ar system
@@ -97,6 +97,9 @@ Report on the usage of kernel dynamic memory listed first by size of
 allocation and then by type of usage.
 .It Fl n
 Change the maximum number of disks to display from the default of 2.
+.It Fl o
+Report the usage of kernel object cache.
+It only works on the running system.
 .It Fl p
 Specify which types of devices to display.  There are three different
 categories of devices:

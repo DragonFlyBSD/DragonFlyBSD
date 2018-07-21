@@ -37,6 +37,7 @@
 #include <sys/uio.h>
 #include <sys/namei.h>
 #include <sys/malloc.h>
+#include <sys/objcache.h>
 #include <sys/signal.h>
 #include <sys/fcntl.h>
 #include <sys/ioctl.h>
@@ -127,10 +128,12 @@ struct kinfo_cputime cp_time, old_cp_time, diff_cp_time;
 #define	TIMESTAT	0x10
 #define	VMSTAT		0x20
 #define ZMEMSTAT	0x40
+#define OCSTAT		0x80
 
 static void cpustats(void);
 static void dointr(void);
 static void domem(void);
+static void dooc(void);
 static void dosum(void);
 static void dozmem(u_int interval, int reps);
 static void dovmstat(u_int, int);
@@ -161,7 +164,7 @@ main(int argc, char **argv)
 	memf = nlistf = NULL;
 	interval = reps = todo = 0;
 	maxshowdevs = 2;
-	while ((c = getopt(argc, argv, "bc:fiM:mN:n:p:stuvw:z")) != -1) {
+	while ((c = getopt(argc, argv, "bc:fiM:mN:n:op:stuvw:z")) != -1) {
 		switch (c) {
 		case 'b':
 			brief_opt = 1;
@@ -194,6 +197,9 @@ main(int argc, char **argv)
 			if (maxshowdevs < 0)
 				errx(1, "number of devices %d is < 0",
 				     maxshowdevs);
+			break;
+		case 'o':
+			todo |= OCSTAT;
 			break;
 		case 'p':
 			if (buildmatch(optarg, &matches, &num_matches) != 0)
@@ -235,8 +241,13 @@ main(int argc, char **argv)
 	 * Discard setgid privileges if not the running kernel so that bad
 	 * guys can't print interesting stuff from kernel memory.
 	 */
-	if (nlistf != NULL || memf != NULL)
+	if (nlistf != NULL || memf != NULL) {
 		setgid(getgid());
+		if (todo & OCSTAT) {
+			errx(1, "objcache stats can only be gathered on "
+			    "the running system");
+		}
+	}
 
 	kd = kvm_openfiles(nlistf, memf, NULL, O_RDONLY, errbuf);
 	if (kd == NULL)
@@ -309,6 +320,8 @@ main(int argc, char **argv)
 		dointr();
 	if (todo & VMSTAT)
 		dovmstat(interval, reps);
+	if (todo & OCSTAT)
+		dooc();
 	exit(0);
 }
 
@@ -1007,6 +1020,40 @@ domem(void)
 	printf("                 %s  %s\n",
 		formatnum(totuse, 5, 1),
 		formatnum(totreq, 5, 1));
+}
+
+static void
+dooc(void)
+{
+	struct objcache_stats *stat, *s;
+	size_t len, count;
+
+	if (sysctlbyname("kern.objcache.stats", NULL, &len, NULL, 0) < 0)
+		errx(1, "objcache stats sysctl failed\n");
+
+	/* Add some extra space. */
+	stat = malloc(len + (8 * sizeof(*stat)));
+	if (sysctlbyname("kern.objcache.stats", stat, &len, NULL, 0) < 0)
+		errx(1, "objcache stats sysctl failed\n");
+
+	printf(
+	    "\nObjcache statistics by name\n");
+	printf("                 Name    Used  Cached   Limit Requests  Allocs Fails  Exhausts\n");
+	for (s = stat, count = 0; count < len; ++s) {
+		printf("%21s   %s   %s   %s    %s   %s  %s  %s\n",
+		    s->oc_name,
+		    formatnum(s->oc_used, 5, 1),
+		    formatnum(s->oc_cached, 5, 1),
+		    s->oc_limit < OBJCACHE_UNLIMITED ?
+		    formatnum(s->oc_limit, 5, 1) : "unlim",
+		    formatnum(s->oc_requested, 5, 1),
+		    formatnum(s->oc_allocated, 5, 1),
+		    formatnum(s->oc_failed, 4, 1),
+		    formatnum(s->oc_exhausted, 4, 1));
+
+		count += sizeof(*s);
+	}
+	free(stat);
 }
 
 #define MAXSAVE	16
