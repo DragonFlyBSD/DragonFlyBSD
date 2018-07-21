@@ -149,7 +149,7 @@ struct vmxnet3_txqueue {
 } __cachealign;
 
 #define VMXNET3_TXQ_LOCK(_txq)		lockmgr(&(_txq)->vxtxq_lock, LK_EXCLUSIVE)
-#define VMXNET3_TXQ_TRYLOCK(_txq)	mtx_trylock(&(_txq)->vxtxq_mtx)
+#define VMXNET3_TXQ_TRYLOCK(_txq)	lockmgr_try(&(_txq)->vxtxq_lock, LK_EXCLUSIVE)
 #define VMXNET3_TXQ_UNLOCK(_txq)	lockmgr(&(_txq)->vxtxq_lock, LK_RELEASE)
 #define VMXNET3_TXQ_LOCK_ASSERT(_txq)		\
     KKASSERT(lockowned(&(_txq)->vxtxq_lock) != 0)

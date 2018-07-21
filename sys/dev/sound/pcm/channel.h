@@ -54,7 +54,7 @@ extern struct lock snd_pcm_syncgroups_mtx;
 extern SLIST_HEAD(pcm_synclist, pcmchan_syncgroup) snd_pcm_syncgroups;
 
 #define PCM_SG_LOCK()	    lockmgr(&snd_pcm_syncgroups_mtx, LK_EXCLUSIVE)
-#define PCM_SG_TRYLOCK()    mtx_trylock(&snd_pcm_syncgroups_mtx)
+#define PCM_SG_TRYLOCK()    lockmgr_try(&snd_pcm_syncgroups_mtx, LK_EXCLUSIVE)
 #define PCM_SG_UNLOCK()	    lockmgr(&snd_pcm_syncgroups_mtx, LK_RELEASE)
 #define PCM_SG_ASSERTOWNED     KKASSERT(lockstatus(&snd_pcm_syncgroups_mtx, curthread) == LK_EXCLUSIVE)
 #define PCM_SG_ASSERTNOTOWNED  KKASSERT(lockstatus(&snd_pcm_syncgroups_mtx, curthread) != LK_EXCLUSIVE)
