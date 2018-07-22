@@ -28,40 +28,91 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <sys/conf.h>
-#include <bus/pci/pcireg.h>
-#include <linux/types.h>
+#include <linux/vmalloc.h>
+#include <linux/log2.h>
 #include <linux/export.h>
+#include <asm/shmparam.h>
 #include <drm/drmP.h>
 #include "drm_legacy.h"
 
-int drm_legacy_addmap(struct drm_device * dev, resource_size_t offset,
-		      unsigned int size, enum drm_map_type type,
-		      enum drm_map_flags flags, struct drm_local_map **map_ptr)
+#if 0
+static struct drm_map_list *drm_find_matching_map(struct drm_device *dev,
+						  struct drm_local_map *map)
+{
+	struct drm_map_list *entry;
+	list_for_each_entry(entry, &dev->maplist, head) {
+		/*
+		 * Because the kernel-userspace ABI is fixed at a 32-bit offset
+		 * while PCI resources may live above that, we only compare the
+		 * lower 32 bits of the map offset for maps of type
+		 * _DRM_FRAMEBUFFER or _DRM_REGISTERS.
+		 * It is assumed that if a driver have more than one resource
+		 * of each type, the lower 32 bits are different.
+		 */
+		if (!entry->map ||
+		    map->type != entry->map->type ||
+		    entry->master != dev->primary->master)
+			continue;
+		switch (map->type) {
+		case _DRM_SHM:
+			if (map->flags != _DRM_CONTAINS_LOCK)
+				break;
+			return entry;
+		case _DRM_REGISTERS:
+		case _DRM_FRAME_BUFFER:
+			if ((entry->map->offset & 0xffffffff) ==
+			    (map->offset & 0xffffffff))
+				return entry;
+		default: /* Make gcc happy */
+			;
+		}
+		if (entry->map->offset == map->offset)
+			return entry;
+	}
+
+	return NULL;
+}
+
+static int drm_map_handle(struct drm_device *dev, struct drm_hash_item *hash,
+			  unsigned long user_token, int hashed_handle, int shm)
+{
+}
+#endif
+
+/**
+ * Core function to create a range of memory available for mapping by a
+ * non-root process.
+ *
+ * Adjusts the memory offset to its absolute value according to the mapping
+ * type.  Adds the map to the map list drm_device::maplist. Adds MTRR's where
+ * applicable and if supported by the kernel.
+ */
+static int drm_addmap_core(struct drm_device * dev, resource_size_t offset,
+			   unsigned int size, enum drm_map_type type,
+			   enum drm_map_flags flags,
+			   struct drm_map_list ** maplist)
 {
 	struct drm_local_map *map;
-	struct drm_map_list *entry = NULL;
+	struct drm_map_list *list = NULL;
 	drm_dma_handle_t *dmah;
 
 	/* Allocate a new map structure, fill it in, and do any type-specific
 	 * initialization necessary.
 	 */
 	map = kmalloc(sizeof(*map), M_DRM, M_ZERO | M_WAITOK | M_NULLOK);
-	if (!map) {
+	if (!map)
 		return -ENOMEM;
-	}
 
 	map->offset = offset;
 	map->size = size;
-	map->type = type;
 	map->flags = flags;
+	map->type = type;
 
 	/* Only allow shared memory to be removable since we only keep enough
 	 * book keeping information about shared memory to allow for removal
 	 * when processes fork.
 	 */
-	if ((flags & _DRM_REMOVABLE) && type != _DRM_SHM) {
-		DRM_ERROR("Requested removable map for non-DRM_SHM\n");
+	if ((map->flags & _DRM_REMOVABLE) && map->type != _DRM_SHM) {
 		kfree(map);
 		return -EINVAL;
 	}
@@ -86,16 +137,18 @@ int drm_legacy_addmap(struct drm_device * dev, resource_size_t offset,
 	 */
 	if (type == _DRM_REGISTERS || type == _DRM_FRAME_BUFFER ||
 	    type == _DRM_SHM) {
-		list_for_each_entry(entry, &dev->maplist, head) {
-			if (entry->map->type == type && (entry->map->offset == offset ||
-			    (entry->map->type == _DRM_SHM &&
-			    entry->map->flags == _DRM_CONTAINS_LOCK))) {
-				entry->map->size = size;
+		list_for_each_entry(list, &dev->maplist, head) {
+			if (list->map->type == type && (list->map->offset == offset ||
+			    (list->map->type == _DRM_SHM &&
+			    list->map->flags == _DRM_CONTAINS_LOCK))) {
+				list->map->size = size;
 				DRM_DEBUG("Found kernel map %d\n", type);
 				goto done;
 			}
 		}
 	}
+	map->mtrr = -1;
+	map->handle = NULL;
 
 	switch (map->type) {
 	case _DRM_REGISTERS:
@@ -120,7 +173,7 @@ int drm_legacy_addmap(struct drm_device * dev, resource_size_t offset,
 
 		break;
 	case _DRM_SHM:
-		map->handle = kmalloc(map->size, M_DRM, M_WAITOK | M_NULLOK);
+		map->handle = vmalloc_user(map->size);
 		DRM_DEBUG("%lu %d %p\n",
 			  map->size, order_base_2(map->size), map->handle);
 		if (!map->handle) {
@@ -130,18 +183,15 @@ int drm_legacy_addmap(struct drm_device * dev, resource_size_t offset,
 		map->offset = (unsigned long)map->handle;
 		if (map->flags & _DRM_CONTAINS_LOCK) {
 			/* Prevent a 2nd X Server from creating a 2nd lock */
-			DRM_LOCK(dev);
 			if (dev->lock.hw_lock != NULL) {
-				DRM_UNLOCK(dev);
-				kfree(map->handle);
+				vfree(map->handle);
 				kfree(map);
 				return -EBUSY;
 			}
 			dev->lock.hw_lock = map->handle; /* Pointer to lock */
-			DRM_UNLOCK(dev);
 		}
 		break;
-	case _DRM_AGP:
+	case _DRM_AGP: {
 
 		if (!dev->agp) {
 			kfree(map);
@@ -173,6 +223,7 @@ int drm_legacy_addmap(struct drm_device * dev, resource_size_t offset,
 			return -EACCES;
 		}*/
 		break;
+	}
 	case _DRM_SCATTER_GATHER:
 		if (!dev->sg) {
 			kfree(map);
@@ -192,7 +243,8 @@ int drm_legacy_addmap(struct drm_device * dev, resource_size_t offset,
 			return -ENOMEM;
 		}
 		map->handle = dmah->vaddr;
-		map->offset = dmah->busaddr;
+		map->offset = (unsigned long)dmah->busaddr;
+		kfree(dmah);
 		break;
 	default:
 		DRM_ERROR("Bad map type %d\n", map->type);
@@ -200,7 +252,18 @@ int drm_legacy_addmap(struct drm_device * dev, resource_size_t offset,
 		return -EINVAL;
 	}
 
-	list_add(&entry->head, &dev->maplist);
+	list = kzalloc(sizeof(*list), GFP_KERNEL);
+	if (!list) {
+		if (map->type == _DRM_REGISTERS)
+			iounmap(map->handle);
+		kfree(map);
+		return -EINVAL;
+	}
+	list->map = map;
+
+	mutex_lock(&dev->struct_mutex);
+	list_add(&list->head, &dev->maplist);
+	mutex_unlock(&dev->struct_mutex);
 
 done:
 	/* Jumped to, with lock held, when a kernel map is found. */
@@ -208,10 +271,24 @@ done:
 	DRM_DEBUG("Added map %d 0x%lx/0x%lx\n", map->type, map->offset,
 	    map->size);
 
-	*map_ptr = map;
+	*maplist = list;
 
 	return 0;
 }
+
+int drm_legacy_addmap(struct drm_device * dev, resource_size_t offset,
+		      unsigned int size, enum drm_map_type type,
+		      enum drm_map_flags flags, struct drm_local_map **map_ptr)
+{
+	struct drm_map_list *list;
+	int rc;
+
+	rc = drm_addmap_core(dev, offset, size, type, flags, &list);
+	if (!rc)
+		*map_ptr = list->map;
+	return rc;
+}
+EXPORT_SYMBOL(drm_legacy_addmap);
 
 /**
  * Ioctl to specify a range of memory that is available for mapping by a
@@ -401,8 +478,13 @@ int drm_legacy_rmmap_ioctl(struct drm_device *dev, void *data,
 	struct drm_map *request = data;
 	struct drm_local_map *map = NULL;
 	struct drm_map_list *r_list;
+	int ret;
 
-	DRM_LOCK(dev);
+	if (!drm_core_check_feature(dev, DRIVER_KMS_LEGACY_CONTEXT) &&
+	    drm_core_check_feature(dev, DRIVER_MODESET))
+		return -EINVAL;
+
+	mutex_lock(&dev->struct_mutex);
 	list_for_each_entry(r_list, &dev->maplist, head) {
 		if (r_list->map &&
 		    r_list->user_token == (unsigned long)request->handle &&
@@ -416,21 +498,21 @@ int drm_legacy_rmmap_ioctl(struct drm_device *dev, void *data,
 	 * find anything.
 	 */
 	if (list_empty(&dev->maplist) || !map) {
-		DRM_UNLOCK(dev);
+		mutex_unlock(&dev->struct_mutex);
 		return -EINVAL;
 	}
 
 	/* Register and framebuffer maps are permanent */
 	if ((map->type == _DRM_REGISTERS) || (map->type == _DRM_FRAME_BUFFER)) {
-		DRM_UNLOCK(dev);
+		mutex_unlock(&dev->struct_mutex);
 		return 0;
 	}
 
-	drm_legacy_rmmap(dev, map);
+	ret = drm_legacy_rmmap_locked(dev, map);
 
-	DRM_UNLOCK(dev);
+	mutex_unlock(&dev->struct_mutex);
 
-	return 0;
+	return ret;
 }
 
 /**
@@ -1203,6 +1285,12 @@ int drm_legacy_mapbufs(struct drm_device *dev, void *data,
 	int i;
 
 	vms = DRM_CURPROC->td_proc->p_vmspace;
+
+	if (drm_core_check_feature(dev, DRIVER_MODESET))
+		return -EINVAL;
+
+	if (!drm_core_check_feature(dev, DRIVER_HAVE_DMA))
+		return -EINVAL;
 
 	if (!dma)
 		return -EINVAL;
