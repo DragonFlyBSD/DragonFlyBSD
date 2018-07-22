@@ -91,6 +91,7 @@ MAN=	aac.4 \
 	ecc.4 \
 	ehci.4 \
 	em.4 \
+	ena.4 \
 	et.4 \
 	exca.4 \
 	fd.4 \
@@ -437,6 +438,7 @@ MLINKS+=dm.4 dm_target_linear.4
 MLINKS+=em.4 emx.4 \
 	em.4 if_em.4 \
 	em.4 if_emx.4
+MLINKS+=ena.4 if_ena.4
 MLINKS+=et.4 if_et.4
 MLINKS+=fd.4 stderr.4 \
 	fd.4 stdin.4 \

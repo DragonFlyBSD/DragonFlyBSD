@@ -2112,6 +2112,11 @@ device		ichwd		# Intel ICH watchdog interrupt timer
 device		tbridge		# regression testing
 
 #
+# Amazon EC2 support
+#
+device		ena
+
+#
 # Hyper-V support
 #
 device		vmbus
