@@ -40,15 +40,6 @@
 
 #include "autofs.h"
 
-static int	autofs_trigger_vn(struct vnode *vp, const char *path,
-		    int pathlen, struct vnode **newvp);
-
-static __inline size_t
-autofs_dirent_reclen(const char *name)
-{
-	return (_DIRENT_RECLEN(strlen(name)));
-}
-
 static int
 test_fs_root(struct vnode *vp)
 {
@@ -162,9 +153,10 @@ autofs_trigger_vn(struct vnode *vp, const char *path, int pathlen,
 		goto mounted;
 
 	/*
-	 * Don't remove this.  Without having this extra nlookup,
-	 * automountd tries to mount the target filesystem twice
-	 * and the second attempt to mount returns an error.
+	 * Don't remove this lookup.  Without this, the process
+	 * may trigger automountd(8) to mount the filesystem for the
+	 * second time after successful mount, and the second attempt
+	 * will fail.
 	 */
 	if (nlookup_fs_root(anp, &nvp) == 0)
 		goto mounted;
@@ -211,11 +203,10 @@ autofs_nresolve(struct vop_nresolve_args *ap)
 
 		cache_hold(nch);
 		cache_unlock(nch);
-		error = autofs_trigger_vn(dvp,
-		    ncp->nc_name, ncp->nc_nlen, &newvp);
+		error = autofs_trigger_vn(dvp, ncp->nc_name, ncp->nc_nlen,
+		    &newvp);
 		cache_lock(nch);
 		cache_drop(nch);
-
 		if (error)
 			return (error);
 		if (newvp != NULL) {
@@ -281,6 +272,12 @@ autofs_nmkdir(struct vop_nmkdir_args *ap)
 	}
 
 	return (error);
+}
+
+static __inline size_t
+autofs_dirent_reclen(const char *name)
+{
+	return (_DIRENT_RECLEN(strlen(name)));
 }
 
 static int
@@ -380,8 +377,8 @@ autofs_readdir(struct vop_readdir_args *ap)
 			return (EINVAL);
 		}
 
-		error = autofs_readdir_one(uio, child->an_name,
-		    child->an_ino, &reclen);
+		error = autofs_readdir_one(uio, child->an_name, child->an_ino,
+		    &reclen);
 		reclens += reclen;
 		if (error) {
 			mtx_unlock_sh(&amp->am_lock);
@@ -517,8 +514,8 @@ autofs_node_new(struct autofs_node *parent, struct autofs_mount *amp,
 }
 
 int
-autofs_node_find(struct autofs_node *parent, const char *name,
-    int namelen, struct autofs_node **anpp)
+autofs_node_find(struct autofs_node *parent, const char *name, int namelen,
+    struct autofs_node **anpp)
 {
 	struct autofs_node *anp, find;
 	int error;

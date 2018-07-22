@@ -58,14 +58,12 @@ autofs_init(struct vfsconf *vfsp)
 
 	autofs_request_objcache = objcache_create("autofs_request", 0, 0,
 		NULL, NULL, NULL,
-		objcache_malloc_alloc_zero,
-		objcache_malloc_free,
+		objcache_malloc_alloc_zero, objcache_malloc_free,
 		&autofs_request_args);
 
 	autofs_node_objcache = objcache_create("autofs_node", 0, 0,
 		NULL, NULL, NULL,
-		objcache_malloc_alloc_zero,
-		objcache_malloc_free,
+		objcache_malloc_alloc_zero, objcache_malloc_free,
 		&autofs_node_args);
 
 	TAILQ_INIT(&autofs_softc->sc_requests);
@@ -73,14 +71,13 @@ autofs_init(struct vfsconf *vfsp)
 	mtx_init(&autofs_softc->sc_lock, "autofssclk");
 	autofs_softc->sc_dev_opened = false;
 
-	autofs_softc->sc_cdev = make_dev(&autofs_ops, 0, UID_ROOT,
-	    GID_OPERATOR, 0640, "autofs");
+	autofs_softc->sc_cdev = make_dev(&autofs_ops, 0, UID_ROOT, GID_OPERATOR,
+	    0640, "autofs");
 	if (autofs_softc->sc_cdev == NULL) {
 		AUTOFS_WARN("failed to create device node");
 		objcache_destroy(autofs_request_objcache);
 		objcache_destroy(autofs_node_objcache);
 		kfree(autofs_softc, M_AUTOFS);
-
 		return (ENODEV);
 	}
 	autofs_softc->sc_cdev->si_drv1 = autofs_softc;
@@ -140,8 +137,8 @@ autofs_mount(struct mount *mp, char *mntpt, caddr_t data, struct ucred *cred)
 	 * Copy-in ->f_mntonname string.
 	 */
 	memset(sbp->f_mntonname, 0, sizeof(sbp->f_mntonname));
-	error = copyinstr(mntpt, sbp->f_mntonname,
-	    sizeof(sbp->f_mntonname), NULL);
+	error = copyinstr(mntpt, sbp->f_mntonname, sizeof(sbp->f_mntonname),
+	    NULL);
 	if (error)
 		return (error);
 
