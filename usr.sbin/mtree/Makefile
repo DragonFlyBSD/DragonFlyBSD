@@ -1,20 +1,24 @@
-#	From: @(#)Makefile	8.1 (Berkeley) 6/6/93
-# $FreeBSD: src/usr.sbin/mtree/Makefile,v 1.15.2.5 2001/09/24 15:44:22 ru Exp $
+#	$NetBSD: Makefile,v 1.34 2013/02/03 19:15:16 christos Exp $
+#	from: @(#)Makefile	8.2 (Berkeley) 4/27/95
 
-.PATH: ${.CURDIR}/../../usr.bin/cksum
 .PATH: ${.CURDIR}/../../sbin/md5
+.PATH: ${.CURDIR}/../../usr.bin/cksum
 
 PROG=	mtree
 MAN=	mtree.8
-SRCS=	compare.c crc.c create.c excludes.c misc.c mtree.c spec.c verify.c
+SRCS=	compare.c crc.c create.c excludes.c misc.c mtree.c spec.c specspec.c \
+	verify.c getid.c only.c
 
-.if !defined(BOOTSTRAPPING)
+SRCS+=	pack_dev.c stat_flags.c
 SRCS+=	sha1hl.c
-CFLAGS+= -DUSE_MD5 -DUSE_SHA1 -DUSE_RMD160
-DPADD=  ${LIBMD} ${LIBCRYPTO}
-LDADD=  -lmd -lprivate_crypto
+
+DPADD=  ${LIBMD} ${LIBCRYPTO} ${LIBUTIL}
+LDADD=  -lmd -lprivate_crypto -lutil
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+= 	-I${.CURDIR}/../../crypto/libressl/include
-.endif
+
+CFLAGS+=-I${_SHLIBDIRPREFIX}/usr/include/priv -I${.CURDIR}/../../sbin/md5
+
+#CFLAGS+=-DDEBUG
 
 .include <bsd.prog.mk>
