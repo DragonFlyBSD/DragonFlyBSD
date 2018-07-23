@@ -1,5 +1,3 @@
-/*	$NetBSD: excludes.c,v 1.13 2004/06/20 22:20:18 jmc Exp $	*/
-
 /*
  * Copyright 2000 Massachusetts Institute of Technology
  *
@@ -14,7 +12,7 @@
  * no representations about the suitability of this software for any
  * purpose.  It is provided "as is" without express or implied
  * warranty.
- *
+ * 
  * THIS SOFTWARE IS PROVIDED BY M.I.T. ``AS IS''.  M.I.T. DISCLAIMS
  * ALL EXPRESS OR IMPLIED WARRANTIES WITH REGARD TO THIS SOFTWARE,
  * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -27,27 +25,25 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/usr.sbin/mtree/excludes.c,v 1.1.2.4 2001/01/12 19:17:18 phk Exp $
  */
 
-#if HAVE_NBTOOL_CONFIG_H
-#include "nbtool_config.h"
-#endif
-
 #include <sys/types.h>
+#include <sys/time.h>		/* XXX for mtree.h */
 #include <sys/queue.h>
 
+#include <err.h>
 #include <fnmatch.h>
+#include <fts.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <util.h>
 
+#include "mtree.h"		/* XXX for extern.h */
 #include "extern.h"
 
-
 /*
- * We're assuming that there won't be a whole lot of excludes,
+ * We're assuming that there won't be a whole lot of excludes, 
  * so it's OK to use a stupid algorithm.
  */
 struct exclude {
@@ -56,7 +52,6 @@ struct exclude {
 	int pathname;
 };
 static LIST_HEAD(, exclude) excludes;
-
 
 void
 init_excludes(void)
@@ -69,24 +64,28 @@ void
 read_excludes_file(const char *name)
 {
 	FILE *fp;
-	char *line;
+	char *line, *str;
 	struct exclude *e;
+	size_t len;
 
 	fp = fopen(name, "r");
-	if (fp == 0)
+	if (fp == NULL)
 		err(1, "%s", name);
 
-	while ((line = fparseln(fp, NULL, NULL, NULL,
-	    FPARSELN_UNESCCOMM | FPARSELN_UNESCCONT | FPARSELN_UNESCESC))
-	    != NULL) {
-		if (line[0] == '\0')
+	while ((line = fgetln(fp, &len)) != NULL) {
+		if (line[len - 1] == '\n')
+			len--;
+		if (len == 0)
 			continue;
 
-		if ((e = malloc(sizeof *e)) == NULL)
-			mtree_err("memory allocation error");
-
-		e->glob = line;
-		if (strchr(e->glob, '/') != NULL)
+		str = malloc(len + 1);
+		e = malloc(sizeof *e);
+		if (str == NULL || e == NULL)
+			errx(1, "memory allocation error");
+		e->glob = str;
+		memcpy(str, line, len);
+		str[len] = '\0';
+		if (strchr(str, '/'))
 			e->pathname = 1;
 		else
 			e->pathname = 0;
@@ -103,13 +102,10 @@ check_excludes(const char *fname, const char *path)
 	/* fnmatch(3) has a funny return value convention... */
 #define MATCH(g, n) (fnmatch((g), (n), FNM_PATHNAME) == 0)
 
-	e = LIST_FIRST(&excludes);
-	while (e) {
-		if ((e->pathname && MATCH(e->glob, path))
-		    || MATCH(e->glob, fname)) {
-			return (1);
-		}
-		e = LIST_NEXT(e, link);
+	LIST_FOREACH(e, &excludes, link) {
+		if ((e->pathname && MATCH(e->glob, path)) ||
+		    MATCH(e->glob, fname))
+			return 1;
 	}
-	return (0);
+	return 0;
 }
