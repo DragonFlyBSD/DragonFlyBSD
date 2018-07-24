@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+ *
  * Copyright 2001 Mark R V Murray
  * All rights reserved.
  *
@@ -23,8 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_permit/pam_permit.c,v 1.8 2002/04/12 22:27:22 des Exp $
- * $DragonFly: src/lib/pam_module/pam_permit/pam_permit.c,v 1.1 2005/08/01 16:15:19 joerg Exp $
+ * $FreeBSD: head/lib/libpam/modules/pam_permit/pam_permit.c 326219 2017-11-26 02:00:33Z pfg $
  */
 
 #include <stddef.h>

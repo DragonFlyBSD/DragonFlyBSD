@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright 2001 Mark R V Murray
  * All rights reserved.
  * Copyright (c) 2001 Networks Associates Technology, Inc.
@@ -33,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_nologin/pam_nologin.c,v 1.13 2007/06/14 13:07:06 yar Exp $
+ * $FreeBSD: head/lib/libpam/modules/pam_nologin/pam_nologin.c 326219 2017-11-26 02:00:33Z pfg $
  */
 
 #include <sys/types.h>

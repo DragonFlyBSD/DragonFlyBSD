@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 2002 Networks Associates Technology, Inc.
  * All rights reserved.
  *
@@ -31,8 +33,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_opieaccess/pam_opieaccess.c,v 1.16 2004/02/10 20:42:33 cperciva Exp $
- * $DragonFly: src/lib/pam_module/pam_opieaccess/pam_opieaccess.c,v 1.1 2005/07/12 23:08:53 joerg Exp $
+ * $FreeBSD: head/lib/libpam/modules/pam_opieaccess/pam_opieaccess.c 326219 2017-11-26 02:00:33Z pfg $
  */
 
 #define _BSD_SOURCE

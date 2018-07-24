@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 2003 Networks Associates Technology, Inc.
  * All rights reserved.
  *
@@ -31,7 +33,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_chroot/pam_chroot.c,v 1.3 2003/04/30 00:40:24 des Exp $
+ * $FreeBSD: head/lib/libpam/modules/pam_chroot/pam_chroot.c 326219 2017-11-26 02:00:33Z pfg $
  */
 
 #include <sys/param.h>
@@ -49,7 +51,7 @@
 
 PAM_EXTERN int
 pam_sm_open_session(pam_handle_t *pamh, int flags __unused,
-		    int argc __unused, const char *argv[] __unused)
+    int argc __unused, const char *argv[] __unused)
 {
 	const char *dir, *end, *cwd, *user;
 	struct passwd *pwd;
@@ -99,7 +101,7 @@ pam_sm_open_session(pam_handle_t *pamh, int flags __unused,
 
 PAM_EXTERN int
 pam_sm_close_session(pam_handle_t *pamh __unused, int flags __unused,
-		     int argc __unused, const char *argv[] __unused)
+    int argc __unused, const char *argv[] __unused)
 {
 
 	return (PAM_SUCCESS);

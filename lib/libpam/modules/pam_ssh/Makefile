@@ -1,3 +1,6 @@
+# PAM module for SSH
+# $FreeBSD: head/lib/libpam/modules/pam_ssh/Makefile 312452 2017-01-20 03:27:47Z ngie $
+
 LIB=	pam_ssh
 SRCS=	pam_ssh.c
 MAN=	pam_ssh.8

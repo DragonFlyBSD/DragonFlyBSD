@@ -1,3 +1,4 @@
+# $FreeBSD: head/lib/libpam/modules/pam_opieaccess/Makefile 275024 2014-11-25 11:07:26Z bapt $
 
 LIB=	pam_opieaccess
 SRCS=	pam_opieaccess.c

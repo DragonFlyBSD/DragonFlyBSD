@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 2003 Networks Associates Technology, Inc.
  * Copyright (c) 2004-2011 Dag-Erling Smørgrav
  * All rights reserved.
@@ -32,7 +34,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/lib/libpam/modules/pam_ssh/pam_ssh.c 296651 2016-03-11 11:38:31Z des $
+ * $FreeBSD: head/lib/libpam/modules/pam_ssh/pam_ssh.c 333490 2018-05-11 13:22:43Z des $
  */
 
 #include <sys/param.h>
@@ -80,6 +82,7 @@ static const char *pam_ssh_keyfiles[] = {
 	".ssh/id_rsa",		/* SSH2 RSA key */
 	".ssh/id_dsa",		/* SSH2 DSA key */
 	".ssh/id_ecdsa",	/* SSH2 ECDSA key */
+	".ssh/id_ed25519",	/* SSH2 Ed25519 key */
 	NULL
 };
 

@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright 2001 Mark R V Murray
  * All rights reserved.
  *
@@ -23,8 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_deny/pam_deny.c,v 1.10 2005/06/10 06:16:13 des Exp $
- * $DragonFly: src/lib/pam_module/pam_deny/pam_deny.c,v 1.1 2005/08/01 16:15:19 joerg Exp $
+ * $FreeBSD: head/lib/libpam/modules/pam_deny/pam_deny.c 326219 2017-11-26 02:00:33Z pfg $
  */
 
 #include <stddef.h>

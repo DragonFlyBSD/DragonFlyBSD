@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 2003 Networks Associates Technology, Inc.
  * All rights reserved.
  *
@@ -31,7 +33,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_guest/pam_guest.c,v 1.1 2003/05/31 16:52:58 des Exp $
+ * $FreeBSD: head/lib/libpam/modules/pam_guest/pam_guest.c 326219 2017-11-26 02:00:33Z pfg $
  */
 
 #include <string.h>
@@ -66,7 +68,7 @@ lookup(const char *str, const char *list)
 
 PAM_EXTERN int
 pam_sm_authenticate(pam_handle_t *pamh, int flags __unused,
-		    int argc __unused, const char *argv[] __unused)
+    int argc __unused, const char *argv[] __unused)
 {
 	const char *authtok, *guests, *user;
 	int err, is_guest;
@@ -104,7 +106,7 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags __unused,
 
 PAM_EXTERN int
 pam_sm_setcred(pam_handle_t * pamh __unused, int flags __unused,
-	       int argc __unused, const char *argv[] __unused)
+    int argc __unused, const char *argv[] __unused)
 {
 
 	return (PAM_SUCCESS);

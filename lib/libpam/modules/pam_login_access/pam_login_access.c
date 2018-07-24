@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 2001 Mark R V Murray
  * All rights reserved.
  * Copyright (c) 2001 Networks Associates Technology, Inc.
@@ -33,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_login_access/pam_login_access.c,v 1.11 2004/02/10 10:13:21 des Exp $
+ * $FreeBSD: head/lib/libpam/modules/pam_login_access/pam_login_access.c 326219 2017-11-26 02:00:33Z pfg $
  */
 
 #define _BSD_SOURCE
@@ -53,7 +55,7 @@
 
 PAM_EXTERN int
 pam_sm_acct_mgmt(pam_handle_t *pamh, int flags __unused,
-		 int argc __unused, const char *argv[] __unused)
+    int argc __unused, const char *argv[] __unused)
 {
 	const void *rhost, *tty, *user;
 	char hostname[MAXHOSTNAMELEN];
@@ -78,7 +80,14 @@ pam_sm_acct_mgmt(pam_handle_t *pamh, int flags __unused,
 
 	gethostname(hostname, sizeof hostname);
 
-	if (rhost == NULL || *(const char *)rhost == '\0') {
+	if (rhost != NULL && *(const char *)rhost != '\0') {
+		PAM_LOG("Checking login.access for user %s from host %s",
+		    (const char *)user, (const char *)rhost);
+		if (login_access(user, rhost) != 0)
+			return (PAM_SUCCESS);
+		PAM_VERBOSE_ERROR("%s is not allowed to log in from %s",
+		    (const char *)user, (const char *)rhost);
+	} else if (tty != NULL && *(const char *)tty != '\0') {
 		PAM_LOG("Checking login.access for user %s on tty %s",
 		    (const char *)user, (const char *)tty);
 		if (login_access(user, tty) != 0)
@@ -86,12 +95,12 @@ pam_sm_acct_mgmt(pam_handle_t *pamh, int flags __unused,
 		PAM_VERBOSE_ERROR("%s is not allowed to log in on %s",
 		    (const char *)user, (const char *)tty);
 	} else {
-		PAM_LOG("Checking login.access for user %s from host %s",
-		    (const char *)user, (const char *)rhost);
-		if (login_access(user, rhost) != 0)
+		PAM_LOG("Checking login.access for user %s",
+		    (const char *)user);
+		if (login_access(user, "***unknown***") != 0)
 			return (PAM_SUCCESS);
-		PAM_VERBOSE_ERROR("%s is not allowed to log in from %s",
-		    (const char *)user, (const char *)rhost);
+		PAM_VERBOSE_ERROR("%s is not allowed to log in",
+		    (const char *)user);
 	}
 
 	return (PAM_AUTH_ERR);

@@ -6,7 +6,7 @@
  *
  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_login_access/login_access.c,v 1.13 2007/05/25 07:50:18 des Exp $
+ * $FreeBSD: head/lib/libpam/modules/pam_login_access/login_access.c 297755 2016-04-09 18:09:10Z pfg $
  */
 
 #include <sys/types.h>
@@ -36,7 +36,7 @@ static char sep[] = ", \t";		/* list-element separator */
 
 static int	from_match(const char *, const char *);
 static int	list_match(char *, const char *,
-			   int (*)(const char *, const char *));
+				int (*)(const char *, const char *));
 static int	netgroup_match(const char *, const char *, const char *);
 static int	string_match(const char *, const char *);
 static int	user_match(const char *, const char *);
@@ -105,7 +105,7 @@ login_access(const char *user, const char *from)
 
 static int
 list_match(char *list, const char *item,
-	   int (*match_fn)(const char *, const char *))
+    int (*match_fn)(const char *, const char *))
 {
     char   *tok;
     int     match = NO;

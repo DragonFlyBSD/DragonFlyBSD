@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 2001 Mark R V Murray
  * All rights reserved.
  * Copyright (c) 2001 Networks Associates Technology, Inc.
@@ -33,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_securetty/pam_securetty.c,v 1.13 2004/02/10 10:13:21 des Exp $
+ * $FreeBSD: head/lib/libpam/modules/pam_securetty/pam_securetty.c 326219 2017-11-26 02:00:33Z pfg $
  */
 
 #include <sys/types.h>
@@ -52,7 +54,7 @@
 
 PAM_EXTERN int
 pam_sm_acct_mgmt(pam_handle_t *pamh __unused, int flags __unused,
-		 int argc __unused, const char *argv[] __unused)
+    int argc __unused, const char *argv[] __unused)
 {
 	struct passwd *pwd;
 	struct ttyent *ty;

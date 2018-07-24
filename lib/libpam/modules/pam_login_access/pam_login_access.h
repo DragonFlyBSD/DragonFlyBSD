@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 2001 Mark R V Murray
  * All rights reserved.
  * Copyright (c) 2001 Networks Associates Technology, Inc.
@@ -33,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_login_access/pam_login_access.h,v 1.2 2002/03/14 23:27:57 des Exp $
+ * $FreeBSD: head/lib/libpam/modules/pam_login_access/pam_login_access.h 326219 2017-11-26 02:00:33Z pfg $
  */
 
 extern int login_access(const char *, const char *);

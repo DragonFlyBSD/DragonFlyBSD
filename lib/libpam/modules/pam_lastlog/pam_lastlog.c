@@ -140,6 +140,7 @@ pam_sm_open_session(pam_handle_t *pamh, int flags,
 	tty = (const char *)vtty;
 
 	if (tty == NULL) {
+		PAM_LOG("No PAM_TTY");
 		pam_err = PAM_SERVICE_ERR;
 		goto err;
 	}

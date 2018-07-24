@@ -1,4 +1,4 @@
-# $FreeBSD: src/lib/libpam/modules/pam_rhosts/Makefile,v 1.2 2003/03/09 20:06:37 obrien Exp $
+# $FreeBSD: head/lib/libpam/modules/pam_rhosts/Makefile 112044 2003-03-09 20:06:38Z obrien $
 
 LIB=	pam_rhosts
 SRCS=	pam_rhosts.c

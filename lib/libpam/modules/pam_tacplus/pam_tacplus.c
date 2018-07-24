@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright 1998 Juniper Networks, Inc.
  * All rights reserved.
  * Copyright (c) 2001-2003 Networks Associates Technology, Inc.
@@ -33,8 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_tacplus/pam_tacplus.c,v 1.14 2003/05/31 17:19:03 des Exp $
- * $DragonFly: src/lib/pam_module/pam_tacplus/pam_tacplus.c,v 1.1 2005/07/12 22:34:55 joerg Exp $
+ * $FreeBSD: head/lib/libpam/modules/pam_tacplus/pam_tacplus.c 326219 2017-11-26 02:00:33Z pfg $
  */
 
 #include <sys/param.h>

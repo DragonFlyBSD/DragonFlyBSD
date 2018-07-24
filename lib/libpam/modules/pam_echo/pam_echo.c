@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 2001,2003 Networks Associates Technology, Inc.
  * All rights reserved.
  *
@@ -31,7 +33,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_echo/pam_echo.c,v 1.4 2003/12/11 13:55:15 des Exp $
+ * $FreeBSD: head/lib/libpam/modules/pam_echo/pam_echo.c 326219 2017-11-26 02:00:33Z pfg $
  */
 
 #include <stdio.h>
@@ -43,7 +45,8 @@
 #include <security/openpam.h>
 
 static int
-_pam_echo(pam_handle_t *pamh, int flags, int argc, const char *argv[])
+_pam_echo(pam_handle_t *pamh, int flags,
+    int argc, const char *argv[])
 {
 	char msg[PAM_MAX_MSG_SIZE];
 	const void *str;
@@ -102,7 +105,8 @@ _pam_echo(pam_handle_t *pamh, int flags, int argc, const char *argv[])
 }
 
 PAM_EXTERN int
-pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char *argv[])
+pam_sm_authenticate(pam_handle_t *pamh, int flags,
+    int argc, const char *argv[])
 {
 
 	return (_pam_echo(pamh, flags, argc, argv));
@@ -110,21 +114,23 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char *argv[])
 
 PAM_EXTERN int
 pam_sm_setcred(pam_handle_t *pamh __unused, int flags __unused,
-	       int argc __unused, const char *argv[] __unused)
+    int argc __unused, const char *argv[] __unused)
 {
 
 	return (PAM_SUCCESS);
 }
 
 PAM_EXTERN int
-pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const char *argv[])
+pam_sm_acct_mgmt(pam_handle_t *pamh, int flags,
+    int argc, const char *argv[])
 {
 
 	return (_pam_echo(pamh, flags, argc, argv));
 }
 
 PAM_EXTERN int
-pam_sm_open_session(pam_handle_t *pamh, int flags, int argc, const char *argv[])
+pam_sm_open_session(pam_handle_t *pamh, int flags,
+    int argc, const char *argv[])
 {
 
 	return (_pam_echo(pamh, flags, argc, argv));
@@ -132,14 +138,15 @@ pam_sm_open_session(pam_handle_t *pamh, int flags, int argc, const char *argv[])
 
 PAM_EXTERN int
 pam_sm_close_session(pam_handle_t *pamh, int flags,
-		     int argc, const char *argv[])
+    int argc, const char *argv[])
 {
 
 	return (_pam_echo(pamh, flags, argc, argv));
 }
 
 PAM_EXTERN int
-pam_sm_chauthtok(pam_handle_t *pamh, int flags, int argc, const char *argv[])
+pam_sm_chauthtok(pam_handle_t *pamh, int flags,
+    int argc, const char *argv[])
 {
 
 	if (flags & PAM_PRELIM_CHECK)

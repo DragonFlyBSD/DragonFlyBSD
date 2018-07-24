@@ -31,9 +31,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libpam/modules/pam_group/pam_group.8,v 1.4 2011/03/12 11:12:30 des Exp $
+.\" $FreeBSD: head/lib/libpam/modules/pam_group/pam_group.8 268890 2014-07-19 21:04:21Z des $
 .\"
-.Dd December 24, 2011
+.Dd July 24, 2018
 .Dt PAM_GROUP 8
 .Os
 .Sh NAME
@@ -48,6 +48,14 @@
 .Sh DESCRIPTION
 The group service module for PAM accepts or rejects users based on
 their membership in a particular file group.
+.Nm
+provides functionality for two PAM categories: authentication and
+account management.
+In terms of the module-type parameter, they are the
+.Dq auth
+and
+.Dq account
+features.
 .Pp
 The following options may be passed to the
 .Nm

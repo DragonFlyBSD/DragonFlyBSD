@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 2002 Danny Braniss
  * All rights reserved.
  * Copyright (c) 2001,2002 Networks Associates Technology, Inc.
@@ -33,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_rhosts/pam_rhosts.c,v 1.3 2003/12/11 13:55:16 des Exp $
+ * $FreeBSD: head/lib/libpam/modules/pam_rhosts/pam_rhosts.c 326219 2017-11-26 02:00:33Z pfg $
  */
 
 #include <pwd.h>
@@ -50,7 +52,7 @@
 
 PAM_EXTERN int
 pam_sm_authenticate(pam_handle_t *pamh, int flags __unused,
-		    int argc __unused, const char *argv[] __unused)
+    int argc __unused, const char *argv[] __unused)
 {
 	struct passwd *pw;
 	const char *user;
@@ -85,7 +87,7 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags __unused,
 
 PAM_EXTERN int
 pam_sm_setcred(pam_handle_t *pamh __unused, int flags __unused,
-	       int argc __unused, const char *argv[] __unused)
+    int argc __unused, const char *argv[] __unused)
 {
 
 	return (PAM_SUCCESS);

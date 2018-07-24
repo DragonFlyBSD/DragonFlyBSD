@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 2001 Networks Associates Technology, Inc.
  * All rights reserved.
  *
@@ -31,7 +33,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_ftpusers/pam_ftpusers.c,v 1.1 2002/05/08 00:30:10 des Exp $
+ * $FreeBSD: head/lib/libpam/modules/pam_ftpusers/pam_ftpusers.c 326219 2017-11-26 02:00:33Z pfg $
  */
 
 #include <ctype.h>
@@ -51,7 +53,7 @@
 
 PAM_EXTERN int
 pam_sm_acct_mgmt(pam_handle_t *pamh, int flags __unused,
-		 int argc __unused, const char *argv[] __unused)
+    int argc __unused, const char *argv[] __unused)
 {
 	struct passwd *pwd;
 	struct group *grp;

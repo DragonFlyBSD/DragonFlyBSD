@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright 2000 James Bloom
  * All rights reserved.
  * Based upon code Copyright 1998 Juniper Networks, Inc.
@@ -34,8 +36,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_opie/pam_opie.c,v 1.26 2006/09/15 13:42:38 des Exp $
- * $DragonFly: src/lib/pam_module/pam_opie/pam_opie.c,v 1.1 2005/07/12 22:53:20 joerg Exp $
+ * $FreeBSD: head/lib/libpam/modules/pam_opie/pam_opie.c 326219 2017-11-26 02:00:33Z pfg $
  */
 
 #include <sys/types.h>
@@ -62,7 +63,7 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags __unused,
 	struct passwd *pwd;
 	int retval, i;
 	const char *(promptstr[]) = { "%s\nPassword: ", "%s\nPassword [echo on]: "};
-	char challenge[OPIE_CHALLENGE_MAX];
+	char challenge[OPIE_CHALLENGE_MAX + 1];
 	char principal[OPIE_PRINCIPAL_MAX];
 	const char *user;
 	char *response;

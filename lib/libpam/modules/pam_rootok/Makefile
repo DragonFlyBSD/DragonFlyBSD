@@ -22,7 +22,7 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/lib/libpam/modules/pam_rootok/Makefile,v 1.6 2003/03/09 20:06:37 obrien Exp $
+# $FreeBSD: head/lib/libpam/modules/pam_rootok/Makefile 112044 2003-03-09 20:06:38Z obrien $
 
 LIB=	pam_rootok
 SRCS=	pam_rootok.c

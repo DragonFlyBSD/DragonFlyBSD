@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 2001,2003 Networks Associates Technology, Inc.
  * All rights reserved.
  *
@@ -31,7 +33,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_exec/pam_exec.c,v 1.9 2012/04/12 14:02:59 dumbbell Exp $
+ * $FreeBSD: head/lib/libpam/modules/pam_exec/pam_exec.c 315164 2017-03-12 17:41:51Z pfg $
  */
 
 #include <sys/types.h>
@@ -259,7 +261,8 @@ _pam_exec(pam_handle_t *pamh __unused,
 }
 
 PAM_EXTERN int
-pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char *argv[])
+pam_sm_authenticate(pam_handle_t *pamh, int flags,
+    int argc, const char *argv[])
 {
 	int ret;
 	struct pe_opts options;
@@ -299,7 +302,8 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char *argv[])
 }
 
 PAM_EXTERN int
-pam_sm_setcred(pam_handle_t *pamh, int flags, int argc, const char *argv[])
+pam_sm_setcred(pam_handle_t *pamh, int flags,
+    int argc, const char *argv[])
 {
 	int ret;
 	struct pe_opts options;
@@ -338,7 +342,8 @@ pam_sm_setcred(pam_handle_t *pamh, int flags, int argc, const char *argv[])
 }
 
 PAM_EXTERN int
-pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const char *argv[])
+pam_sm_acct_mgmt(pam_handle_t *pamh, int flags,
+    int argc, const char *argv[])
 {
 	int ret;
 	struct pe_opts options;
@@ -377,7 +382,8 @@ pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const char *argv[])
 }
 
 PAM_EXTERN int
-pam_sm_open_session(pam_handle_t *pamh, int flags, int argc, const char *argv[])
+pam_sm_open_session(pam_handle_t *pamh, int flags,
+    int argc, const char *argv[])
 {
 	int ret;
 	struct pe_opts options;
@@ -414,7 +420,7 @@ pam_sm_open_session(pam_handle_t *pamh, int flags, int argc, const char *argv[])
 
 PAM_EXTERN int
 pam_sm_close_session(pam_handle_t *pamh, int flags,
-		     int argc, const char *argv[])
+    int argc, const char *argv[])
 {
 	int ret;
 	struct pe_opts options;
@@ -450,7 +456,8 @@ pam_sm_close_session(pam_handle_t *pamh, int flags,
 }
 
 PAM_EXTERN int
-pam_sm_chauthtok(pam_handle_t *pamh, int flags, int argc, const char *argv[])
+pam_sm_chauthtok(pam_handle_t *pamh, int flags,
+    int argc, const char *argv[])
 {
 	int ret;
 	struct pe_opts options;

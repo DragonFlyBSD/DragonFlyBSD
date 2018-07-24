@@ -1,3 +1,5 @@
+# $FreeBSD: head/lib/libpam/modules/pam_passwdqc/Makefile 312452 2017-01-20 03:27:47Z ngie $
+
 CONTRIBDIR= ${.CURDIR}/../../../../contrib/pam_passwdqc
 .PATH: ${CONTRIBDIR}
 
