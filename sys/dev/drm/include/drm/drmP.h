@@ -437,12 +437,12 @@ struct drm_prime_file_private {
 
 /** File private data */
 struct drm_file {
-	int authenticated;
-	struct drm_device *dev;
-	int		  master;
+	unsigned authenticated :1;
+	/* Whether we're master for a minor. Protected by master_mutex */
+	unsigned is_master :1;
 
 	/* true when the client has asked us to expose stereo 3D mode flags */
-	bool stereo_allowed;
+	unsigned stereo_allowed :1;
 	/*
 	 * true if client understands CRTC primary planes and cursor planes
 	 * in the plane list
@@ -454,8 +454,9 @@ struct drm_file {
 	pid_t		  pid;
 	uid_t		  uid;
 	drm_magic_t	  magic;
-	unsigned long	  ioctl_count;
 	struct list_head lhead;
+	unsigned long lock_count;
+
 	struct kqinfo	  dkq;
 
 	/** Mapping of mm object handles to object pointers. */
@@ -463,9 +464,9 @@ struct drm_file {
 	/** Lock for synchronization of access to object_idr. */
 	struct lock table_lock;
 
+	struct file *filp;
 	void *driver_priv;
 
-	int		  is_master;
 	struct drm_master *masterp;
 
 	/**
@@ -489,6 +490,12 @@ struct drm_file {
 	struct lock event_read_lock;
 
 	struct drm_prime_file_private prime;
+
+#ifdef __DragonFly__
+	struct drm_device *dev;
+	int		  master;
+	unsigned long ioctl_count;
+#endif
 };
 
 /**
@@ -868,6 +875,7 @@ struct drm_device {
 	struct drm_open_hash magiclist;	/**< magic hash table */
 	struct list_head magicfree;
 
+	struct lock filelist_mutex;
 	struct list_head filelist;
 
 	/** \name Memory management */

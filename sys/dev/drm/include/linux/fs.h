@@ -39,4 +39,6 @@
 #include <linux/atomic.h>
 #include <linux/lockdep.h>
 
+#include <sys/file.h>	/* for struct file */
+
 #endif	/* _LINUX_FS_H_ */

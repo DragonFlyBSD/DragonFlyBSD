@@ -28,14 +28,13 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <sys/devfs.h>
-
 #include <drm/drmP.h>
 #include <drm/drm_core.h>
 #include "drm_legacy.h"
 #include "drm_internal.h"
 #include "drm_crtc_internal.h"
 
+#include <linux/pci.h>
 #include <linux/export.h>
 
 static int drm_version(struct drm_device *dev, void *data,
@@ -647,6 +646,8 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
  */
 int drm_ioctl(struct dev_ioctl_args *ap)
 {
+	struct file *filp = ap->a_fp;
+	struct drm_file *file_priv = filp->private_data;
 	struct cdev *kdev = ap->a_head.a_dev;
 	struct drm_device *dev;
 	const struct drm_ioctl_desc *ioctl = NULL;
@@ -655,16 +656,9 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	int retcode = 0;
 	caddr_t data = ap->a_data;
 	int (*func)(struct drm_device *dev, void *data, struct drm_file *file_priv);
-	struct drm_file *file_priv;
 	bool is_driver_ioctl;
 
 	dev = drm_get_device_from_kdev(kdev);
-
-	retcode = devfs_get_cdevpriv(ap->a_fp, (void **)&file_priv);
-	if (retcode !=0) {
-		DRM_ERROR("can't find authenticator\n");
-		return EINVAL;
-	}
 
 	atomic_inc(&dev->counts[_DRM_STAT_IOCTLS]);
 

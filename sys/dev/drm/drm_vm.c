@@ -27,41 +27,34 @@
  * Support code for mmaping of DRM maps.
  */
 
-#include <sys/conf.h>
-#include <sys/devfs.h>
-#include <sys/mutex2.h>
-#include <vm/vm_page.h>
-#include <vm/vm_pager.h>
-
 #include <drm/drmP.h>
+#include <linux/export.h>
+#include <linux/seq_file.h>
+#if defined(__ia64__)
+#include <linux/efi.h>
+#include <linux/slab.h>
+#endif
 #include <asm/pgtable.h>
+#include "drm_internal.h"
 #include "drm_legacy.h"
+
+#include <sys/mutex2.h>
 
 int drm_mmap(struct dev_mmap_args *ap)
 {
+	struct file *filp = ap->a_fp;
+	struct drm_file *priv = filp->private_data;
 	struct cdev *kdev = ap->a_head.a_dev;
 	vm_offset_t offset = ap->a_offset;
 	struct drm_device *dev = drm_get_device_from_kdev(kdev);
-	struct drm_file *file_priv = NULL;
 	struct drm_local_map *map = NULL;
-	int error;
 	struct drm_hash_item *hash;
 
 	enum drm_map_type type;
 	vm_paddr_t phys;
 
-	/* d_mmap gets called twice, we can only reference file_priv during
-	 * the first call.  We need to assume that if error is EBADF the
-	 * call was succesful and the client is authenticated.
-	 */
-	error = devfs_get_cdevpriv(ap->a_fp, (void **)&file_priv);
-	if (error == ENOENT) {
-		DRM_ERROR("Could not find authenticator!\n");
-		return EINVAL;
-	}
-
-	if (file_priv && !file_priv->authenticated)
-		return EACCES;
+	if (!priv->authenticated)
+		return -EACCES;
 
 	DRM_DEBUG("called with offset %016jx\n", (uintmax_t)offset);
 	if (dev->dma && offset < ptoa(dev->dma->page_count)) {

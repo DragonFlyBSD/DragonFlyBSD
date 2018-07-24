@@ -34,14 +34,14 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <sys/types.h>
-#include <sys/conf.h>
-#include <sys/devfs.h>
-
 #include <drm/drmP.h>
+#include <linux/poll.h>
+#include <linux/slab.h>
 #include <linux/module.h>
 #include "drm_legacy.h"
 #include "drm_internal.h"
+
+#include <sys/devfs.h>
 
 /* from BKL pushdown */
 DEFINE_MUTEX(drm_global_mutex);
@@ -207,7 +207,7 @@ EXPORT_SYMBOL(drm_open);
  * filp and add it into the double linked list in \p dev.
  */
 int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
-		    struct drm_device *dev, struct file *fp)
+		    struct drm_device *dev, struct file *filp)
 {
 	struct drm_file *priv;
 	int retcode;
@@ -218,18 +218,19 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 
 	DRM_DEBUG("pid = %d, device = %s\n", DRM_CURRENTPID, devtoname(kdev));
 
-	priv = kmalloc(sizeof(*priv), M_DRM, M_WAITOK | M_NULLOK | M_ZERO);
-	if (priv == NULL) {
-		return ENOMEM;
-	}
-	
-	DRM_LOCK(dev);
-	priv->dev		= dev;
+	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
+	if (!priv)
+		return -ENOMEM;
+
+	filp->private_data = priv;
+	priv->filp = filp;
 	priv->uid               = p->td_proc->p_ucred->cr_svuid;
 	priv->pid		= p->td_proc->p_pid;
+	priv->dev		= dev;
 
 	/* for compatibility root is always authenticated */
 	priv->authenticated = capable(CAP_SYS_ADMIN);
+	priv->lock_count = 0;
 
 	INIT_LIST_HEAD(&priv->lhead);
 	INIT_LIST_HEAD(&priv->fbs);
@@ -248,19 +249,21 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 		retcode = -dev->driver->open(dev, priv);
 		if (retcode != 0) {
 			kfree(priv);
-			DRM_UNLOCK(dev);
 			return retcode;
 		}
 	}
 
 	/* first opener automatically becomes master */
+	mutex_lock(&dev->master_mutex);
 	priv->master = list_empty(&dev->filelist);
+	mutex_unlock(&dev->master_mutex);
 
+	mutex_lock(&dev->filelist_mutex);
 	list_add(&priv->lhead, &dev->filelist);
-	DRM_UNLOCK(dev);
-	kdev->si_drv1 = dev;
+	mutex_unlock(&dev->filelist_mutex);
 
-	retcode = devfs_set_cdevpriv(fp, priv, &drm_cdevpriv_dtor);
+	kdev->si_drv1 = dev;
+	retcode = devfs_set_cdevpriv(filp, priv, &drm_cdevpriv_dtor);
 	if (retcode != 0)
 		drm_cdevpriv_dtor(priv);
 
@@ -462,28 +465,29 @@ out:
  * Number of bytes read (always aligned to full events, and can be 0) or a
  * negative error code on failure.
  */
+/*
+ssize_t drm_read(struct file *filp, char __user *buffer,
+		 size_t count, loff_t *offset)
+*/
 int drm_read(struct dev_read_args *ap)
 {
+	struct file *filp = ap->a_fp;
 	struct cdev *kdev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
-	struct drm_file *file_priv;
+	struct drm_file *file_priv = filp->private_data;
 	struct drm_device *dev = drm_get_device_from_kdev(kdev);
 	struct drm_pending_event *e;
 	int error;
 	int ret;
 
-	error = devfs_get_cdevpriv(ap->a_fp, (void **)&file_priv);
-	if (error != 0) {
-		DRM_ERROR("can't find authenticator\n");
-		return (EINVAL);
+	if ((filp->f_flag & O_NONBLOCK) == 0) {
+		ret = wait_event_interruptible(file_priv->event_wait,
+					       !list_empty(&file_priv->event_list));
+		if (ret == -ERESTARTSYS)
+			ret = -EINTR;
+		if (ret < 0)
+			return -ret;
 	}
-
-	ret = wait_event_interruptible(file_priv->event_wait,
-				       !list_empty(&file_priv->event_list));
-	if (ret == -ERESTARTSYS)
-		ret = -EINTR;
-	if (ret < 0)
-		return -ret;
 
 	while (drm_dequeue_event(dev, file_priv, uio, &e)) {
 		error = uiomove((caddr_t)e->event, e->event->length, uio);
@@ -494,6 +498,7 @@ int drm_read(struct dev_read_args *ap)
 
 	return (error);
 }
+EXPORT_SYMBOL(drm_read);
 
 /**
  * drm_poll - poll method for DRM file
@@ -549,19 +554,10 @@ static struct filterops drmfiltops =
 int
 drm_kqfilter(struct dev_kqfilter_args *ap)
 {
-	struct cdev *kdev = ap->a_head.a_dev;
-	struct drm_file *file_priv;
-	struct drm_device *dev;
+	struct file *filp = ap->a_fp;
+	struct drm_file *file_priv = filp->private_data;
 	struct knote *kn = ap->a_kn;
 	struct klist *klist;
-	int error;
-
-	error = devfs_get_cdevpriv(ap->a_fp, (void **)&file_priv);
-	if (error != 0) {
-		DRM_ERROR("can't find authenticator\n");
-		return (EINVAL);
-	}
-	dev = drm_get_device_from_kdev(kdev);
 
 	ap->a_result = 0;
 
