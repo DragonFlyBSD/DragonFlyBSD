@@ -346,15 +346,12 @@ makelabel(const char *type, const char *name, struct disklabel64 *lp)
 {
 	struct disklabel64 *dp;
 
-	if (strcmp(type, "auto") == 0)
+	if (streq(type, "auto"))
 		dp = getvirginlabel();
 	else
 		errx(1, "no disktab(5) support yet; only 'auto' allowed");
 	*lp = *dp;
 
-	/*
-	 * NOTE: boot control files may no longer be specified in disktab.
-	 */
 	if (name)
 		strlcpy((char *)lp->d_packname, name, sizeof(lp->d_packname));
 }
