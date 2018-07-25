@@ -1,3 +1,5 @@
+/*	$NetBSD: extern.h,v 1.39 2014/04/24 17:22:41 christos Exp $	*/
+
 /*-
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -27,29 +29,65 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.sbin/mtree/extern.h,v 1.3.2.2 2000/06/28 02:33:17 joe Exp $
  */
 
-#ifdef MAXPATHLEN
-extern char fullpath[MAXPATHLEN];
+#include "mtree.h"
+
+#if HAVE_NBTOOL_CONFIG_H
+#include "nbtool_config.h"
+#else 
+#define HAVE_STRUCT_STAT_ST_FLAGS 1
 #endif
-extern int dflag, eflag, iflag, nflag, qflag, rflag, sflag, uflag;
-extern int ftsoptions;
-extern int lineno;
-extern uint32_t crc_total;
-extern u_int keys;
+ 
+#include <err.h> 
+#include <fts.h>
+#include <libutil.h>
+#include <stdbool.h>
 
-int	 compare(NODE *, FTSENT *);
-int	 crc(int, uint32_t *, off_t *);
-void	 cwalk(void);
-char	*flags_to_string(u_long);
+#if HAVE_NETDB_H
+/* For MAXHOSTNAMELEN on some platforms. */
+#include <netdb.h>
+#endif
 
-const char *inotype(u_int);
-u_int	 parsekey(char *, int *);
-char	*rlink(char *);
-NODE	*spec(void);
-int	 verify(void);
+#ifndef MAXHOSTNAMELEN
+#define MAXHOSTNAMELEN 256
+#endif
 
+enum flavor {
+	F_MTREE,
+	F_FREEBSD9,
+	F_NETBSD6
+};
+
+void	 addtag(slist_t *, char *);
 int	 check_excludes(const char *, const char *);
+int	 compare(NODE *, FTSENT *);
+int	 crc(int, u_int32_t *, u_int32_t *);
+void	 cwalk(FILE *);
+void	 dump_nodes(FILE *, const char *, NODE *, int);
 void	 init_excludes(void);
+int	 matchtags(NODE *);
+__dead2 __printflike(1,2) void	 mtree_err(const char *, ...);
+const char *nodetype(u_int);
+u_int	 parsekey(const char *, int *);
+void	 parsetags(slist_t *, char *);
+u_int	 parsetype(const char *);
 void	 read_excludes_file(const char *);
+const char *rlink(const char *);
+int	 verify(FILE *);
+void	 load_only(const char *fname);
+bool	 find_only(const char *path);
+
+char	*flags_to_string(unsigned long, const char *);
+int	 string_to_flags(char **, unsigned long *, unsigned long *);
+
+extern int	bflag, dflag, eflag, iflag, jflag, lflag, mflag,
+		nflag, qflag, rflag, sflag, tflag, uflag;
+extern int	mtree_Mflag, mtree_Sflag, mtree_Wflag;
+extern size_t	mtree_lineno;
+extern enum flavor	flavor;
+extern u_int32_t crc_total;
+extern int	ftsoptions, keys;
+extern char	fullpath[];
+extern slist_t	includetags, excludetags;
+
