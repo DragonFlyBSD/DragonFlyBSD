@@ -322,11 +322,8 @@ autofs_trigger_one(struct autofs_node *anp, const char *component,
 	path = autofs_path(anp);
 
 	TAILQ_FOREACH(ar, &autofs_softc->sc_requests, ar_next) {
-		if (strcmp(ar->ar_path, path))
+		if (strcmp(ar->ar_path, path) || strcmp(ar->ar_key, key))
 			continue;
-		if (strcmp(ar->ar_key, key))
-			continue;
-
 		KASSERT(strcmp(ar->ar_from, amp->am_from) == 0,
 		    ("from changed; %s != %s", ar->ar_from, amp->am_from));
 		KASSERT(strcmp(ar->ar_prefix, amp->am_prefix) == 0,
@@ -355,8 +352,8 @@ autofs_trigger_one(struct autofs_node *anp, const char *component,
 		strlcpy(ar->ar_path, path, sizeof(ar->ar_path));
 		strlcpy(ar->ar_prefix, amp->am_prefix, sizeof(ar->ar_prefix));
 		strlcpy(ar->ar_key, key, sizeof(ar->ar_key));
-		strlcpy(ar->ar_options,
-		    amp->am_options, sizeof(ar->ar_options));
+		strlcpy(ar->ar_options, amp->am_options,
+		    sizeof(ar->ar_options));
 		TIMEOUT_TASK_INIT(_taskqueue_thread, &ar->ar_task, 0,
 		    autofs_task, ar);
 		taskqueue_enqueue_timeout(_taskqueue_thread, &ar->ar_task,

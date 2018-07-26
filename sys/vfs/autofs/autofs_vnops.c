@@ -117,16 +117,16 @@ autofs_getattr(struct vop_getattr_args *ap)
 	}
 #endif
 	vap->va_type = VDIR;
-	vap->va_mode = 0755;
 	vap->va_nlink = 3; /* XXX: FreeBSD had it like this */
+	vap->va_mode = 0755;
 	vap->va_uid = 0;
 	vap->va_gid = 0;
 	vap->va_fsid = vp->v_mount->mnt_stat.f_fsid.val[0];
 	vap->va_fileid = anp->an_ino;
 	vap->va_size = S_BLKSIZE;
 	vap->va_blocksize = S_BLKSIZE;
-	vap->va_mtime = anp->an_ctime;
 	vap->va_atime = anp->an_ctime;
+	vap->va_mtime = anp->an_ctime;
 	vap->va_ctime = anp->an_ctime;
 	vap->va_gen = 0;
 	vap->va_flags = 0;
@@ -134,6 +134,7 @@ autofs_getattr(struct vop_getattr_args *ap)
 	vap->va_rminor = 0;
 	vap->va_bytes = S_BLKSIZE;
 	vap->va_filerev = 0;
+	vap->va_vaflags = 0;
 	vap->va_spare = 0;
 
 	return (0);
