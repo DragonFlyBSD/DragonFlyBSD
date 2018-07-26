@@ -40,25 +40,25 @@
 
 #include "autofs.h"
 
-static int
+static bool
 test_fs_root(struct vnode *vp)
 {
 	int error;
 
 	if ((error = vget(vp, LK_SHARED)) != 0) {
 		AUTOFS_WARN("vget failed with error %d", error);
-		return (1);
+		return (false);
 	}
 
 	if (((vp->v_flag & VROOT) == 0) || (vp->v_tag == VT_AUTOFS)) {
 		vput(vp);
-		return (1);
+		return (false);
 	}
 
-	return (0);
+	return (true);
 }
 
-static int
+static bool
 nlookup_fs_root(struct autofs_node *anp, struct vnode **vpp)
 {
 	struct nlookupdata nd;
@@ -72,15 +72,16 @@ nlookup_fs_root(struct autofs_node *anp, struct vnode **vpp)
 		error = nlookup(&nd);
 		if (error == 0) {
 			struct vnode *vp = nd.nl_nch.ncp->nc_vp;
-			error = test_fs_root(vp);
-			if (error == 0)
+			if (test_fs_root(vp) == true)
 				*vpp = vp;
+			else
+				error = 1;
 		}
 	}
 	nlookup_done(&nd);
 	kfree(path, M_AUTOFS);
 
-	return (error);
+	return (error ? false : true);
 }
 
 static int
@@ -150,7 +151,7 @@ autofs_trigger_vn(struct vnode *vp, const char *path, int pathlen,
 
 	KKASSERT(!vn_islocked(vp));
 
-	if (test_fs_root(vp) == 0)
+	if (test_fs_root(vp) == true)
 		goto mounted;
 
 	/*
@@ -159,7 +160,7 @@ autofs_trigger_vn(struct vnode *vp, const char *path, int pathlen,
 	 * second time after successful mount, and the second attempt
 	 * will fail.
 	 */
-	if (nlookup_fs_root(anp, &nvp) == 0)
+	if (nlookup_fs_root(anp, &nvp) == true)
 		goto mounted;
 
 	mtx_lock_ex_quick(&autofs_softc->sc_lock);
@@ -169,7 +170,7 @@ autofs_trigger_vn(struct vnode *vp, const char *path, int pathlen,
 	if (error)
 		return (error);
 
-	if (nlookup_fs_root(anp, &nvp))
+	if (nlookup_fs_root(anp, &nvp) == false)
 		return (0);
 
 	/*
