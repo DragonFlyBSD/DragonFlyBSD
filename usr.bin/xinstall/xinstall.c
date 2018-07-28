@@ -28,7 +28,6 @@
  *
  * @(#) Copyright (c) 1987, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)xinstall.c	8.1 (Berkeley) 7/21/93
- * $FreeBSD: src/usr.bin/xinstall/xinstall.c,v 1.38.2.8 2002/08/07 16:29:48 ru Exp $
  */
 
 #include <sys/param.h>
@@ -42,6 +41,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
+#include <libgen.h>
 #include <paths.h>
 #include <pwd.h>
 #include <stdio.h>
@@ -50,6 +50,9 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <utime.h>
+#include <vis.h>
+
+#include "mtree.h"
 
 /* Bootstrap aid - this doesn't exist in most older releases */
 #ifndef MAP_FAILED
@@ -61,31 +64,37 @@
 
 #define MAX_CMP_SIZE	(16 * 1024 * 1024)
 
+#define	LN_ABSOLUTE	0x01
+#define	LN_RELATIVE	0x02
+#define	LN_HARD		0x04
+#define	LN_SYMBOLIC	0x08
+#define	LN_MIXED	0x10
+
 #define	DIRECTORY	0x01		/* Tell install it's a directory. */
 #define	SETFLAGS	0x02		/* Tell install to set flags. */
 #define	NOCHANGEBITS	(UF_IMMUTABLE | UF_APPEND | SF_IMMUTABLE | SF_APPEND)
 #define	BACKUP_SUFFIX	".old"
 
-static struct passwd *pp;
-static struct group *gp;
 static gid_t gid;
 static uid_t uid;
-static int dobackup, docompare, dodir, dopreserve, dostrip, dounpriv, nommap,
-    safecopy, verbose;
+static int dobackup, docompare, dodir, dolink, dopreserve, dostrip, dounpriv,
+    nommap, safecopy, verbose;
+static int haveopt_f, haveopt_g, haveopt_m, haveopt_o;
 static mode_t mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
+static const char *group, *owner;
 static const char *suffix = BACKUP_SUFFIX;
 static char *destdir, *fflags;
-
-static int file_getgroup(const char *etcdir, const char *group, gid_t *gidret);
-static int file_getowner(const char *etcdir, const char *owner, uid_t *uidret);
 
 static int	compare(int, const char *, size_t, int, const char *, size_t);
 static void	copy(int, const char *, int, const char *, off_t);
 static int	create_newfile(const char *, int, struct stat *);
 static int	create_tempfile(const char *, char *, size_t);
+static int	do_link(const char *, const char *, const struct stat *);
+static void	do_symlink(const char *, const char *, const struct stat *);
+static void	makelink(const char *, const char *, const struct stat *);
 static void	install(const char *, const char *, u_long, u_long, u_int);
 static void	install_dir(char *);
-u_long	numeric_id(const char *, const char *);
+static int	parseid(const char *, id_t *);
 static void	strip(const char *);
 static int	trymmap(int);
 static void	usage(void);
@@ -98,20 +107,17 @@ main(int argc, char *argv[])
 	u_long fset;
 	u_long fclr;
 	int ch, no_target;
-	int trysys;
 	u_int iflags;
-	const char *group, *owner, *to_name;
-	const char *etcdir;
+	char *p;
+	const char *to_name;
 
 	fclr = 0;
 	fset = 0;
 	iflags = 0;
-	trysys = 0;
 	group = NULL;
 	owner = NULL;
-	etcdir = NULL;
 
-	while ((ch = getopt(argc, argv, "L:B:bCcD:df:g:lMm:N:o:pSsUv")) != -1)
+	while ((ch = getopt(argc, argv, "B:bCcD:df:g:L:l:M:m:N:o:pSsUv")) != -1)
 		switch((char)ch) {
 		case 'B':
 			suffix = optarg;
@@ -132,18 +138,46 @@ main(int argc, char *argv[])
 			dodir = 1;
 			break;
 		case 'f':
+			haveopt_f = 1;
 			fflags = optarg;
 			break;
 		case 'g':
+			haveopt_g = 1;
 			group = optarg;
 			break;
 		case 'l':
-			trysys = 1;
+			for (p = optarg; *p; p++)
+				switch (*p) {
+				case 's':
+					dolink &= ~(LN_HARD|LN_MIXED);
+					dolink |= LN_SYMBOLIC;
+					break;
+				case 'h':
+					dolink &= ~(LN_SYMBOLIC|LN_MIXED);
+					dolink |= LN_HARD;
+					break;
+				case 'm':
+					dolink &= ~(LN_SYMBOLIC|LN_HARD);
+					dolink |= LN_MIXED;
+					break;
+				case 'a':
+					dolink &= ~LN_RELATIVE;
+					dolink |= LN_ABSOLUTE;
+					break;
+				case 'r':
+					dolink &= ~LN_ABSOLUTE;
+					dolink |= LN_RELATIVE;
+					break;
+				default:
+					errx(EXIT_FAILURE, "%c: invalid link type", *p);
+					/* NOTREACHED */
+				}
 			break;
 		case 'M':
 			nommap = 1;
 			break;
 		case 'm':
+			haveopt_m = 1;
 			if (!(set = setmode(optarg)))
 				errx(EX_USAGE, "invalid file mode: %s",
 				     optarg);
@@ -151,13 +185,16 @@ main(int argc, char *argv[])
 			free(set);
 			break;
 		case 'L':
-			/* -L option kept for compatibility with pre-5.4 */
+			/* -L kept for compatibility with pre-5.4 DragonFly */
 			warnx("Option -L is deprecated, use -N instead");
 			/* FALLTHROUGH */
 		case 'N':
-			etcdir = optarg;
+			if (!setup_getid(optarg))
+				err(EX_OSERR, "Unable to use user and group "
+				    "databases in `%s'", optarg);
 			break;
 		case 'o':
+			haveopt_o = 1;
 			owner = optarg;
 			break;
 		case 'p':
@@ -194,39 +231,33 @@ main(int argc, char *argv[])
 	}
 
 	/* must have at least two arguments, except when creating directories */
-	if (argc < 2 && !dodir)
+	if (argc == 0 || (argc == 1 && !dodir))
 		usage();
 
 	/* need to make a temp copy so we can compare stripped version */
 	if (docompare && dostrip)
 		safecopy = 1;
 
-	/* no etcdir specified, always try the system */
-	if (etcdir == NULL)
-		trysys = 1;
-	uid = (uid_t)-1;
-	gid = (gid_t)-1;
-
 	/* get group and owner id's */
 	if (group != NULL && !dounpriv) {
-		if (etcdir && file_getgroup(etcdir, group, &gid)) {
-			;
-		} else if (trysys && (gp = getgrnam(group)) != NULL) {
-			gid = gp->gr_gid;
-		} else {
-			gid = (gid_t)numeric_id(group, "group");
+		if (gid_from_group(group, &gid) == -1) {
+			id_t id;
+			if (!parseid(group, &id))
+				errx(1, "unknown group %s", group);
+			gid = id;
 		}
-	}
+	} else
+		gid = (gid_t)-1;
 
 	if (owner != NULL && !dounpriv) {
-		if (etcdir && file_getowner(etcdir, owner, &uid)) {
-			;
-		} else if (trysys && (pp = getpwnam(owner)) != NULL) {
-			uid = pp->pw_uid;
-		} else {
-			uid = (uid_t)numeric_id(owner, "user");
+		if (uid_from_user(owner, &uid) == -1) {
+			id_t id;
+			if (!parseid(owner, &id))
+				errx(1, "unknown user %s", owner);
+			uid = id;
 		}
-	}
+	} else
+		uid = (uid_t)-1;
 
 	if (fflags != NULL && !dounpriv) {
 		if (strtofflags(&fflags, &fset, &fclr))
@@ -244,6 +275,18 @@ main(int argc, char *argv[])
 	to_name = argv[argc - 1];
 	no_target = stat(to_name, &to_sb);
 	if (!no_target && S_ISDIR(to_sb.st_mode)) {
+		if (dolink & LN_SYMBOLIC) {
+			if (lstat(to_name, &to_sb) != 0)
+				err(EX_OSERR, "%s vanished", to_name);
+			if (S_ISLNK(to_sb.st_mode)) {
+				if (argc != 2) {
+					errno = ENOTDIR;
+					err(EX_USAGE, "%s", to_name);
+				}
+				install(*argv, to_name, fset, fclr, iflags);
+				exit(EX_OK);
+			}
+		}
 		for (; *argv != to_name; ++argv)
 			install(*argv, to_name, fset, fclr, iflags | DIRECTORY);
 		exit(EX_OK);
@@ -261,7 +304,7 @@ main(int argc, char *argv[])
 		usage();
 	}
 
-	if (!no_target) {
+	if (!no_target && !dolink) {
 		if (stat(*argv, &from_sb))
 			err(EX_OSERR, "%s", *argv);
 		if (!S_ISREG(to_sb.st_mode)) {
@@ -278,93 +321,251 @@ main(int argc, char *argv[])
 	/* NOTREACHED */
 }
 
-u_long
-numeric_id(const char *name, const char *type)
+/*
+ * parseid --
+ *	parse uid or gid from arg into id, returning non-zero if successful
+ */
+static int
+parseid(const char *name, id_t *id)
 {
-	u_long val;
-	char *ep;
+	char	*ep;
+	errno = 0;
+	*id = (id_t)strtoul(name, &ep, 10);
+	if (errno || *ep != '\0')
+		return (0);
+	return (1);
+}
+
+/*
+ * quiet_mktemp --
+ *	mktemp implementation used mkstemp to avoid mktemp warnings.  We
+ *	really do need mktemp semantics here as we will be creating a link.
+ */
+static char *
+quiet_mktemp(char *template)
+{
+	int fd;
+
+	if ((fd = mkstemp(template)) == -1)
+		return (NULL);
+	close (fd);
+	if (unlink(template) == -1)
+		err(EX_OSERR, "unlink %s", template);
+	return (template);
+}
+
+/*
+ * do_link --
+ *	make a hard link, obeying dorename if set
+ *	return -1 on failure
+ */
+static int
+do_link(const char *from_name, const char *to_name,
+    const struct stat *target_sb)
+{
+	char tmpl[MAXPATHLEN];
+	int ret;
+
+	if (safecopy && target_sb != NULL) {
+		(void)snprintf(tmpl, sizeof(tmpl), "%s.inst.XXXXXX", to_name);
+		/* This usage is safe. */
+		if (quiet_mktemp(tmpl) == NULL)
+			err(EX_OSERR, "%s: mktemp", tmpl);
+		ret = link(from_name, tmpl);
+		if (ret == 0) {
+			if (target_sb->st_mode & S_IFDIR && rmdir(to_name) ==
+			    -1) {
+				unlink(tmpl);
+				err(EX_OSERR, "%s", to_name);
+			}
+			if (target_sb->st_flags & NOCHANGEBITS)
+				(void)chflags(to_name, target_sb->st_flags &
+				     ~NOCHANGEBITS);
+			if (verbose)
+				printf("install: link %s -> %s\n",
+				    from_name, to_name);
+			ret = rename(tmpl, to_name);
+			/*
+			 * If rename has posix semantics, then the temporary
+			 * file may still exist when from_name and to_name point
+			 * to the same file, so unlink it unconditionally.
+			 */
+			(void)unlink(tmpl);
+		}
+		return (ret);
+	} else {
+		if (verbose)
+			printf("install: link %s -> %s\n",
+			    from_name, to_name);
+		return (link(from_name, to_name));
+	}
+}
+
+/*
+ * do_symlink --
+ *	Make a symbolic link, obeying dorename if set. Exit on failure.
+ */
+static void
+do_symlink(const char *from_name, const char *to_name,
+    const struct stat *target_sb)
+{
+	char tmpl[MAXPATHLEN];
+
+	if (safecopy && target_sb != NULL) {
+		(void)snprintf(tmpl, sizeof(tmpl), "%s.inst.XXXXXX", to_name);
+		/* This usage is safe. */
+		if (quiet_mktemp(tmpl) == NULL)
+			err(EX_OSERR, "%s: mktemp", tmpl);
+
+		if (symlink(from_name, tmpl) == -1)
+			err(EX_OSERR, "symlink %s -> %s", from_name, tmpl);
+
+		if (target_sb->st_mode & S_IFDIR && rmdir(to_name) == -1) {
+			(void)unlink(tmpl);
+			err(EX_OSERR, "%s", to_name);
+		}
+		if (target_sb->st_flags & NOCHANGEBITS)
+			(void)chflags(to_name, target_sb->st_flags &
+			     ~NOCHANGEBITS);
+		if (verbose)
+			printf("install: symlink %s -> %s\n",
+			    from_name, to_name);
+		if (rename(tmpl, to_name) == -1) {
+			/* Remove temporary link before exiting. */
+			(void)unlink(tmpl);
+			err(EX_OSERR, "%s: rename", to_name);
+		}
+	} else {
+		if (verbose)
+			printf("install: symlink %s -> %s\n",
+			    from_name, to_name);
+		if (symlink(from_name, to_name) == -1)
+			err(EX_OSERR, "symlink %s -> %s", from_name, to_name);
+	}
+}
+
+/*
+ * makelink --
+ *	make a link from source to destination
+ */
+static void
+makelink(const char *from_name, const char *to_name,
+    const struct stat *target_sb)
+{
+	char	src[MAXPATHLEN], dst[MAXPATHLEN], lnk[MAXPATHLEN];
+	struct stat	to_sb;
+
+	/* Try hard links first. */
+	if (dolink & (LN_HARD|LN_MIXED)) {
+		if (do_link(from_name, to_name, target_sb) == -1) {
+			if ((dolink & LN_HARD) || errno != EXDEV)
+				err(EX_OSERR, "link %s -> %s", from_name, to_name);
+		} else {
+			if (stat(to_name, &to_sb))
+				err(EX_OSERR, "%s: stat", to_name);
+			if (S_ISREG(to_sb.st_mode)) {
+				/*
+				 * XXX: hard links to anything other than
+				 * plain files are not metalogged
+				 */
+				int omode;
+				const char *oowner, *ogroup;
+				char *offlags;
+
+				/*
+				 * XXX: use underlying perms, unless
+				 * overridden on command line.
+				 */
+				omode = mode;
+				if (!haveopt_m)
+					mode = (to_sb.st_mode & 0777);
+				oowner = owner;
+				if (!haveopt_o)
+					owner = NULL;
+				ogroup = group;
+				if (!haveopt_g)
+					group = NULL;
+				offlags = fflags;
+				if (!haveopt_f)
+					fflags = NULL;
+				mode = omode;
+				owner = oowner;
+				group = ogroup;
+				fflags = offlags;
+			}
+			return;
+		}
+	}
+
+	/* Symbolic links. */
+	if (dolink & LN_ABSOLUTE) {
+		/* Convert source path to absolute. */
+		if (realpath(from_name, src) == NULL)
+			err(EX_OSERR, "%s: realpath", from_name);
+		do_symlink(src, to_name, target_sb);
+		/* XXX: src may point outside of destdir */
+		return;
+	}
+
+	if (dolink & LN_RELATIVE) {
+		char *to_name_copy, *cp, *d, *s;
+
+		if (*from_name != '/') {
+			/* this is already a relative link */
+			do_symlink(from_name, to_name, target_sb);
+			/* XXX: from_name may point outside of destdir. */
+			return;
+		}
+
+		/* Resolve pathnames. */
+		if (realpath(from_name, src) == NULL)
+			err(EX_OSERR, "%s: realpath", from_name);
+
+		/*
+		 * The last component of to_name may be a symlink,
+		 * so use realpath to resolve only the directory.
+		 */
+		to_name_copy = strdup(to_name);
+		if (to_name_copy == NULL)
+			err(EX_OSERR, "%s: strdup", to_name);
+		cp = dirname(to_name_copy);
+		if (realpath(cp, dst) == NULL)
+			err(EX_OSERR, "%s: realpath", cp);
+		/* .. and add the last component. */
+		if (strcmp(dst, "/") != 0) {
+			if (strlcat(dst, "/", sizeof(dst)) > sizeof(dst))
+				errx(1, "resolved pathname too long");
+		}
+		strcpy(to_name_copy, to_name);
+		cp = basename(to_name_copy);
+		if (strlcat(dst, cp, sizeof(dst)) > sizeof(dst))
+			errx(1, "resolved pathname too long");
+		free(to_name_copy);
+
+		/* Trim common path components. */
+		for (s = src, d = dst; *s == *d; s++, d++)
+			continue;
+		while (*s != '/')
+			s--, d--;
+
+		/* Count the number of directories we need to backtrack. */
+		for (++d, lnk[0] = '\0'; *d; d++)
+			if (*d == '/')
+				(void)strlcat(lnk, "../", sizeof(lnk));
+
+		(void)strlcat(lnk, ++s, sizeof(lnk));
+
+		do_symlink(lnk, to_name, target_sb);
+		/* XXX: Link may point outside of destdir. */
+		return;
+	}
 
 	/*
-	 * XXX
-	 * We know that uid_t's and gid_t's are unsigned longs.
+	 * If absolute or relative was not specified, try the names the
+	 * user provided.
 	 */
-	errno = 0;
-	val = strtoul(name, &ep, 10);
-	if (errno)
-		err(EX_NOUSER, "%s", name);
-	if (*ep != '\0')
-		errx(EX_NOUSER, "unknown %s %s", type, name);
-	return (val);
-}
-
-static
-int
-file_getgroup(const char *etcdir, const char *group, gid_t *gidret)
-{
-	FILE *fp;
-	size_t len;
-	size_t grlen;
-	char *path;
-	char *ptr;
-	char *scan;
-
-	grlen = strlen(group);
-
-	if (asprintf(&path, "%s/group", etcdir) < 0)
-		errx(EX_OSERR, "asprintf()");
-	if ((fp = fopen(path, "r")) != NULL) {
-		while ((ptr = fgetln(fp, &len)) != NULL && len) {
-			ptr[len - 1] = 0;
-			if ((scan = strchr(ptr, ':')) == NULL)
-				continue;
-			if ((size_t)(scan - ptr) != grlen)
-				continue;
-			if (strncmp(ptr, group, grlen) != 0)
-				continue;
-			if ((scan = strchr(scan + 1, ':')) == NULL)
-				continue;
-			*gidret = strtoul(scan + 1, NULL, 10);
-			break;
-		}
-		fclose(fp);
-	}
-	free(path);
-	return((*gidret == (gid_t)-1) ? 0 : 1);
-}
-
-static
-int
-file_getowner(const char *etcdir, const char *owner, uid_t *uidret)
-{
-	FILE *fp;
-	size_t len;
-	size_t owner_len;
-	char *path;
-	char *ptr;
-	char *scan;
-
-	owner_len = strlen(owner);
-
-	if (asprintf(&path, "%s/master.passwd", etcdir) < 0)
-		errx(EX_OSERR, "asprintf()");
-	if ((fp = fopen(path, "r")) != NULL) {
-		while ((ptr = fgetln(fp, &len)) != NULL && len) {
-			ptr[len - 1] = 0;
-			if ((scan = strchr(ptr, ':')) == NULL)
-				continue;
-			if ((size_t)(scan - ptr) != owner_len)
-				continue;
-			if (strncmp(ptr, owner, owner_len) != 0)
-				continue;
-			if ((scan = strchr(scan + 1, ':')) == NULL)
-				continue;
-			*uidret = strtoul(scan + 1, NULL, 10);
-			break;
-		}
-		fclose(fp);
-	}
-	free(path);
-	return((*uidret == (uid_t)-1) ? 0 : 1);
+	do_symlink(from_name, to_name, target_sb);
+	/* XXX: from_name may point outside of destdir. */
 }
 
 /*
@@ -384,19 +585,23 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 
 	files_match = 0;
 	from_fd = -1;
+	to_fd = -1;
 
 	/* If try to install NULL file to a directory, fails. */
 	if (flags & DIRECTORY || strcmp(from_name, _PATH_DEVNULL)) {
-		if (stat(from_name, &from_sb))
-			err(EX_OSERR, "%s", from_name);
-		if (!S_ISREG(from_sb.st_mode)) {
-			errno = EFTYPE;
-			err(EX_OSERR, "%s", from_name);
+		if (!dolink) {
+			if (stat(from_name, &from_sb))
+				err(EX_OSERR, "%s", from_name);
+			if (!S_ISREG(from_sb.st_mode)) {
+				errno = EFTYPE;
+				err(EX_OSERR, "%s", from_name);
+			}
 		}
 		/* Build the target path. */
 		if (flags & DIRECTORY) {
-			(void)snprintf(pathbuf, sizeof(pathbuf), "%s/%s",
+			(void)snprintf(pathbuf, sizeof(pathbuf), "%s%s%s",
 			    to_name,
+			    to_name[strlen(to_name) - 1] == '/' ? "" : "/",
 			    (p = strrchr(from_name, '/')) ? ++p : from_name);
 			to_name = pathbuf;
 		}
@@ -405,10 +610,22 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 		devnull = 1;
 	}
 
-	target = stat(to_name, &to_sb) == 0;
+	target = (lstat(to_name, &to_sb) == 0);
 
-	/* Only install to regular files. */
-	if (target && !S_ISREG(to_sb.st_mode)) {
+	if (dolink) {
+		if (target && !safecopy) {
+			if (to_sb.st_mode & S_IFDIR && rmdir(to_name) == -1)
+				err(EX_OSERR, "%s", to_name);
+			if (to_sb.st_flags & NOCHANGEBITS)
+				(void)chflags(to_name,
+				    to_sb.st_flags & ~NOCHANGEBITS);
+			unlink(to_name);
+		}
+		makelink(from_name, to_name, target ? &to_sb : NULL);
+		return;
+	}
+
+	if (target && !S_ISREG(to_sb.st_mode) && !S_ISLNK(to_sb.st_mode)) {
 		errno = EFTYPE;
 		warn("%s", to_name);
 		return;
@@ -421,7 +638,7 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 		err(EX_OSERR, "%s", from_name);
 
 	/* If we don't strip, we can compare first. */
-	if (docompare && !dostrip && target) {
+	if (docompare && !dostrip && target && S_ISREG(to_sb.st_mode)) {
 		if ((to_fd = open(to_name, O_RDONLY, 0)) < 0)
 			err(EX_OSERR, "%s", to_name);
 		if (devnull)
@@ -471,7 +688,7 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 	/*
 	 * Compare the stripped temp file with the target.
 	 */
-	if (docompare && dostrip && target) {
+	if (docompare && dostrip && target && S_ISREG(to_sb.st_mode)) {
 		temp_fd = to_fd;
 
 		/* Re-open to_fd using the real target name. */
@@ -649,10 +866,12 @@ compare(int from_fd, const char *from_name __unused, size_t from_len,
 	if (from_len <= MAX_CMP_SIZE) {
 		done_compare = 0;
 		if (trymmap(from_fd) && trymmap(to_fd)) {
-			p = mmap(NULL, from_len, PROT_READ, MAP_SHARED, from_fd, (off_t)0);
+			p = mmap(NULL, from_len, PROT_READ, MAP_SHARED,
+			    from_fd, (off_t)0);
 			if (p == (char *)MAP_FAILED)
 				goto out;
-			q = mmap(NULL, from_len, PROT_READ, MAP_SHARED, to_fd, (off_t)0);
+			q = mmap(NULL, from_len, PROT_READ, MAP_SHARED,
+			    to_fd, (off_t)0);
 			if (q == (char *)MAP_FAILED) {
 				munmap(p, from_len);
 				goto out;
@@ -780,7 +999,8 @@ copy(int from_fd, const char *from_name, int to_fd,
 	if (size <= 8 * 1048576 && trymmap(from_fd) &&
 	    (p = mmap(NULL, (size_t)size, PROT_READ, MAP_SHARED,
 		    from_fd, (off_t)0)) != (char *)MAP_FAILED) {
-		if ((nw = write(to_fd, p, size)) != size) {
+		nw = write(to_fd, p, size);
+		if (nw != size) {
 			serrno = errno;
 			(void)unlink(to_name);
 			errno = nw > 0 ? EIO : serrno;
@@ -904,8 +1124,10 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-"usage: install [-bCcpSsUv] [-B suffix] [-D dest] [-f flags] [-g group]\n"
-"               [-N dbdir] [-m mode] [-o owner] file1 file2\n"
+"usage: install [-bCcpSsUv] [-f flags] [-g group] [-m mode] [-o owner]\n"
+"               [-D dest] [-h hash] [-T tags]\n"
+"               [-B suffix] [-l linkflags] [-N dbdir]\n"
+"               file1 file2\n"
 "       install [-bCcpSsUv] [-B suffix] [-D dest] [-f flags] [-g group]\n"
 "               [-N dbdir] [-m mode] [-o owner] file1 ... fileN directory\n"
 "       install -d [-lUv] [-D dest] [-g group] [-m mode] [-N dbdir] [-o owner]\n"

@@ -3,6 +3,10 @@
 
 PROG=		xinstall
 PROGNAME=	install
+SRCS=		xinstall.c getid.c
 MAN=		install.1
+
+.PATH:          ${.CURDIR}/../../usr.sbin/mtree
+CFLAGS+=        -I${.CURDIR}/../../usr.sbin/mtree
 
 .include <bsd.prog.mk>
