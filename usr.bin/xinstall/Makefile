@@ -9,4 +9,14 @@ MAN=		install.1
 .PATH:          ${.CURDIR}/../../usr.sbin/mtree
 CFLAGS+=        -I${.CURDIR}/../../usr.sbin/mtree
 
+.if defined(BOOTSTRAPPING)
+.if ${WORLD_VERSION} < 500302 # pwcache(3) upgrades came in about here
+.PATH: ${.CURDIR}/../../lib/libc/gen
+SRCS+=	pwcache.c
+CFLAGS+=-I${.CURDIR}/../../lib/libc/include
+CFLAGS+=-include ${.CURDIR}/../../include/grp.h
+CFLAGS+=-include ${.CURDIR}/../../include/pwd.h
+.endif
+.endif
+
 .include <bsd.prog.mk>

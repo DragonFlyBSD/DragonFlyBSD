@@ -23,7 +23,7 @@ CFLAGS+= 	-I${.CURDIR}/../../crypto/libressl/include
 CFLAGS+=	-I${.CURDIR}/../../sbin/md5
 .else
 CFLAGS+=-DNO_MD5 -DNO_SHA1 -DNO_SHA2 -DNO_RMD160
-.if ${WORLD_VERSION} < 500302
+.if ${WORLD_VERSION} < 500302 # pwcache(3)/vis(3) upgrades came in about here
 .PATH: ${.CURDIR}/../../lib/libc/gen
 SRCS+=	pwcache.c vis.c
 CFLAGS+=-I${.CURDIR}/../../lib/libc/include
