@@ -619,7 +619,7 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	 */
 	xop = hammer2_xop_alloc(ip, 0);
 	xop->lkey = lkey;
-	hammer2_xop_start(&xop->head, hammer2_xop_readdir);
+	hammer2_xop_start(&xop->head, &hammer2_readdir_desc);
 
 	for (;;) {
 		const hammer2_inode_data_t *ripdata;
@@ -1284,7 +1284,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	 * Note: In DragonFly the kernel handles '.' and '..'.
 	 */
 	hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);
-	hammer2_xop_start(&xop->head, hammer2_xop_nresolve);
+	hammer2_xop_start(&xop->head, &hammer2_nresolve_desc);
 
 	error = hammer2_xop_collect(&xop->head, 0);
 	error = hammer2_error_to_errno(error);
@@ -1876,7 +1876,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	isopen = cache_isopen(ap->a_nch);
 	xop->isdir = 0;
 	xop->dopermanent = 0;
-	hammer2_xop_start(&xop->head, hammer2_xop_unlink);
+	hammer2_xop_start(&xop->head, &hammer2_unlink_desc);
 
 	/*
 	 * Collect the real inode and adjust nlinks, destroy the real
@@ -1953,7 +1953,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	isopen = cache_isopen(ap->a_nch);
 	xop->isdir = 1;
 	xop->dopermanent = 0;
-	hammer2_xop_start(&xop->head, hammer2_xop_unlink);
+	hammer2_xop_start(&xop->head, &hammer2_unlink_desc);
 
 	/*
 	 * Collect the real inode and adjust nlinks, destroy the real
@@ -2085,59 +2085,6 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 		hammer2_inode_lock(ip, 0);
 	}
 
-#if 0
-	/*
-	 * Delete the target namespace.
-	 *
-	 * REMOVED - NOW FOLDED INTO XOP_NRENAME OPERATION
-	 */
-	{
-		hammer2_xop_unlink_t *xop2;
-		hammer2_inode_t *tip;
-		int isopen;
-
-		/*
-		 * The unlink XOP unlinks the path from the directory and
-		 * locates and returns the cluster associated with the real
-		 * inode.  We have to handle nlinks here on the frontend.
-		 */
-		xop2 = hammer2_xop_alloc(tdip, HAMMER2_XOP_MODIFYING);
-		hammer2_xop_setname(&xop2->head, tname, tname_len);
-		isopen = cache_isopen(ap->a_tnch);
-		xop2->isdir = -1;
-		xop2->dopermanent = 0;
-		hammer2_xop_start(&xop2->head, hammer2_xop_unlink);
-
-		/*
-		 * Collect the real inode and adjust nlinks, destroy the real
-		 * inode if nlinks transitions to 0 and it was the real inode
-		 * (else it has already been removed).
-		 */
-		tnch_error = hammer2_xop_collect(&xop2->head, 0);
-		tnch_error = hammer2_error_to_errno(tnch_error);
-		/* hammer2_inode_unlock(tdip); */
-
-		if (tnch_error == 0) {
-			tip = hammer2_inode_get(tdip->pmp, NULL,
-						&xop2->head, -1);
-			hammer2_xop_retire(&xop2->head, HAMMER2_XOPMASK_VOP);
-			if (tip) {
-				hammer2_inode_unlink_finisher(tip, isopen);
-				hammer2_inode_unlock(tip);
-			}
-		} else {
-			hammer2_xop_retire(&xop2->head, HAMMER2_XOPMASK_VOP);
-		}
-		/* hammer2_inode_lock(tdip, 0); */
-
-		if (tnch_error && tnch_error != ENOENT) {
-			error = tnch_error;
-			goto done2;
-		}
-		update_tdip = 1;
-	}
-#endif
-
 	/*
 	 * Resolve the collision space for (tdip, tname, tname_len)
 	 *
@@ -2152,7 +2099,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 		lhcbase = tlhc;
 		sxop = hammer2_xop_alloc(tdip, HAMMER2_XOP_MODIFYING);
 		sxop->lhc = tlhc;
-		hammer2_xop_start(&sxop->head, hammer2_xop_scanlhc);
+		hammer2_xop_start(&sxop->head, &hammer2_scanlhc_desc);
 		while ((error = hammer2_xop_collect(&sxop->head, 0)) == 0) {
 			if (tlhc != sxop->head.cluster.focus->bref.key)
 				break;
@@ -2191,7 +2138,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 		hammer2_xop_setip3(&xop4->head, tdip);
 		hammer2_xop_setname(&xop4->head, fname, fname_len);
 		hammer2_xop_setname2(&xop4->head, tname, tname_len);
-		hammer2_xop_start(&xop4->head, hammer2_xop_nrename);
+		hammer2_xop_start(&xop4->head, &hammer2_nrename_desc);
 
 		error = hammer2_xop_collect(&xop4->head, 0);
 		error = hammer2_error_to_errno(error);

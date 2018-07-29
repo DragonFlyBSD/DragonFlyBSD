@@ -363,7 +363,7 @@ hammer2_delayed_flush(hammer2_chain_t *chain)
  * function.
  *
  * This routine can be called from several places but the most important
- * is from VFS_SYNC (frontend) via hammer2_inode_xop_flush (backend).
+ * is from VFS_SYNC (frontend) via hammer2_xop_inode_flush (backend).
  *
  * chain is locked on call and will remain locked on return.  The chain's
  * UPDATE flag indicates that its parent's block table (which is not yet
@@ -1373,7 +1373,7 @@ done:
  * Primarily called from vfs_sync().
  */
 void
-hammer2_inode_xop_flush(hammer2_thread_t *thr, hammer2_xop_t *arg)
+hammer2_xop_inode_flush(hammer2_xop_t *arg, void *scratch __unused, int clindex)
 {
 	hammer2_xop_flush_t *xop = &arg->xop_flush;
 	hammer2_chain_t *chain;
@@ -1393,7 +1393,7 @@ hammer2_inode_xop_flush(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	/*
 	 * Flush core chains
 	 */
-	chain = hammer2_inode_chain(xop->head.ip1, thr->clindex,
+	chain = hammer2_inode_chain(xop->head.ip1, clindex,
 				    HAMMER2_RESOLVE_ALWAYS);
 	if (chain) {
 		hmp = chain->hmp;
@@ -1426,7 +1426,7 @@ hammer2_inode_xop_flush(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	 * Flush volume roots.  Avoid replication, we only want to
 	 * flush each hammer2_dev (hmp) once.
 	 */
-	for (j = thr->clindex - 1; j >= 0; --j) {
+	for (j = clindex - 1; j >= 0; --j) {
 		if ((chain = xop->head.ip1->cluster.array[j].chain) != NULL) {
 			if (chain->hmp == hmp) {
 				chain = NULL;	/* safety */
@@ -1560,5 +1560,5 @@ hammer2_inode_xop_flush(hammer2_thread_t *thr, hammer2_xop_t *arg)
 
 	hammer2_trans_done(hmp->spmp, 0);  /* spmp trans */
 skip:
-	hammer2_xop_feed(&xop->head, NULL, thr->clindex, total_error);
+	hammer2_xop_feed(&xop->head, NULL, clindex, total_error);
 }

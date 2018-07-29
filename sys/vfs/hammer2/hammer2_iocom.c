@@ -189,10 +189,23 @@ hammer2_rcvdmsg(kdmsg_msg_t *msg)
  * This function is called after KDMSG has automatically handled processing
  * of a LNK layer message (typically CONN or SPAN).
  *
- * We tag off the LNK_CONN to trigger our LNK_VOLCONF messages which
- * advertises all available hammer2 super-root volumes.
+ * We trampoline off LNK_CONN (link level connection advertising the presence
+ * of H2 partitions) to generate LNK_HAMMER2_VOLCONF's from the vol->copyinfo[]
+ * array in the volume header, and to generate LNK_SPANs advertising all PFSs
+ * available from that volume.  Currently the VOLCONFs go through the motions
+ * but are otherwise ignored.
  *
- * We collect span state
+ * We collect LNK_SPAN state for hammer2 peers and turn those into 'remote'
+ * PFSs which look similar to local (direct storage) PFSs.  These PFSs are
+ * merged with local PFSs and may be mounted locally or merged with other
+ * elements that might or might not include local cluster components (local
+ * PFSs).  If you wish to ensure that a mandatory PFS rendezvous is present
+ * even without network connectivity you would normally just create a dummy
+ * local PFS configured as PFSTYPE_CACHE (that can be small and ram-backed).
+ *
+ * Remote PFSs are object-based and operate using an (inode,key) DMSG API
+ * instead of hammer2_chain's + direct I/O.  A high level XOP API is employed
+ * to retain integrity across operations such as rename()s.
  */
 static void hammer2_update_spans(hammer2_dev_t *hmp, kdmsg_state_t *state);
 

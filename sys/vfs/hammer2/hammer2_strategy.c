@@ -86,10 +86,6 @@ struct objcache *cache_buffer_write;
  *     until running transactions complete separately from the normal
  *     transaction sequencing.  FIXME TODO.
  */
-static void hammer2_strategy_xop_read(hammer2_thread_t *thr,
-				hammer2_xop_t *arg);
-static void hammer2_strategy_xop_write(hammer2_thread_t *thr,
-				hammer2_xop_t *arg);
 static int hammer2_strategy_read(struct vop_strategy_args *ap);
 static int hammer2_strategy_write(struct vop_strategy_args *ap);
 static void hammer2_strategy_read_completion(hammer2_chain_t *focus,
@@ -273,7 +269,7 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 	xop->bio = bio;
 	xop->lbase = lbase;
 	hammer2_mtx_init(&xop->lock, "h2bior");
-	hammer2_xop_start(&xop->head, hammer2_strategy_xop_read);
+	hammer2_xop_start(&xop->head, &hammer2_strategy_read_desc);
 	/* asynchronous completion */
 
 	return(0);
@@ -284,9 +280,8 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
  * its data.  The frontend is asynchronous, so we are also responsible
  * for racing to terminate the frontend.
  */
-static
 void
-hammer2_strategy_xop_read(hammer2_thread_t *thr, hammer2_xop_t *arg)
+hammer2_xop_strategy_read(hammer2_xop_t *arg, void *scratch, int clindex)
 {
 	hammer2_xop_strategy_t *xop = &arg->xop_strategy;
 	hammer2_chain_t *parent;
@@ -318,7 +313,7 @@ hammer2_strategy_xop_read(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	 * (3) !hammer2_double_buffer, and issue a direct read into the
 	 * logical buffer.
 	 */
-	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS |
 				     HAMMER2_RESOLVE_SHARED);
 	if (parent) {
@@ -333,7 +328,7 @@ hammer2_strategy_xop_read(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		error = HAMMER2_ERROR_EIO;
 		chain = NULL;
 	}
-	error = hammer2_xop_feed(&xop->head, chain, thr->clindex, error);
+	error = hammer2_xop_feed(&xop->head, chain, clindex, error);
 	if (chain) {
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
@@ -407,7 +402,7 @@ hammer2_strategy_xop_read(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		hammer2_mtx_unlock(&xop->lock);
 		break;
 	default:
-		kprintf("strategy_xop_read: error %08x loff=%016jx\n",
+		kprintf("xop_strategy_read: error %08x loff=%016jx\n",
 			error, bp->b_loffset);
 		xop->finished = 1;
 		hammer2_mtx_unlock(&xop->lock);
@@ -516,7 +511,6 @@ static void hammer2_write_bp(hammer2_chain_t *chain, char *data,
 				hammer2_tid_t mtid, int *errorp,
 				int check_algo);
 
-static
 int
 hammer2_strategy_write(struct vop_strategy_args *ap)
 {	
@@ -542,7 +536,7 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 	xop->bio = bio;
 	xop->lbase = bio->bio_offset;
 	hammer2_mtx_init(&xop->lock, "h2biow");
-	hammer2_xop_start(&xop->head, hammer2_strategy_xop_write);
+	hammer2_xop_start(&xop->head, &hammer2_strategy_write_desc);
 	/* asynchronous completion */
 
 	hammer2_lwinprog_wait(pmp, hammer2_flush_pipe);
@@ -559,9 +553,8 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
  * the frontend).  To accomplish this we copy the data to the per-thr
  * scratch buffer.
  */
-static
 void
-hammer2_strategy_xop_write(hammer2_thread_t *thr, hammer2_xop_t *arg)
+hammer2_xop_strategy_write(hammer2_xop_t *arg, void *scratch, int clindex)
 {
 	hammer2_xop_strategy_t *xop = &arg->xop_strategy;
 	hammer2_chain_t *parent;
@@ -592,7 +585,7 @@ hammer2_strategy_xop_write(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	bp = bio->bio_buf;		/* ephermal */
 	ip = xop->head.ip1;		/* retained by ref */
 	bio_offset = bio->bio_offset;
-	bio_data = thr->scratch;
+	bio_data = scratch;
 
 	/* hammer2_trans_init(parent->hmp->spmp, HAMMER2_TRANS_BUFCACHE); */
 
@@ -609,7 +602,7 @@ hammer2_strategy_xop_write(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	/*
 	 * Actual operation
 	 */
-	parent = hammer2_inode_chain(ip, thr->clindex, HAMMER2_RESOLVE_ALWAYS);
+	parent = hammer2_inode_chain(ip, clindex, HAMMER2_RESOLVE_ALWAYS);
 	hammer2_write_file_core(bio_data, ip, &parent,
 				lbase, IO_ASYNC, pblksize,
 				xop->head.mtid, &error);
@@ -618,7 +611,7 @@ hammer2_strategy_xop_write(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		hammer2_chain_drop(parent);
 		parent = NULL;	/* safety */
 	}
-	hammer2_xop_feed(&xop->head, NULL, thr->clindex, error);
+	hammer2_xop_feed(&xop->head, NULL, clindex, error);
 
 	/*
 	 * Try to complete the operation on behalf of the front-end.
@@ -662,7 +655,7 @@ hammer2_strategy_xop_write(hammer2_thread_t *thr, hammer2_xop_t *arg)
 		bp->b_error = 0;
 		biodone(bio);
 	} else {
-		kprintf("strategy_xop_write: error %d loff=%016jx\n",
+		kprintf("xop_strategy_write: error %d loff=%016jx\n",
 			error, bp->b_loffset);
 		bp->b_flags |= B_ERROR;
 		bp->b_error = EIO;

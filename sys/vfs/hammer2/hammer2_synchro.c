@@ -408,7 +408,7 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 
 		hammer2_inode_lock(ip, HAMMER2_RESOLVE_SHARED);
 		xop2 = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
-		hammer2_xop_start_except(&xop2->head, hammer2_xop_ipcluster,
+		hammer2_xop_start_except(&xop2->head, &hammer2_ipcluster_desc,
 					 idx);
 		hammer2_inode_unlock(ip);
 		merror = hammer2_xop_collect(&xop2->head, 0);
@@ -451,7 +451,7 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 	xop->lookup_flags = HAMMER2_LOOKUP_SHARED |
 			    HAMMER2_LOOKUP_NODIRECT |
 			    HAMMER2_LOOKUP_ALWAYS;
-	hammer2_xop_start_except(&xop->head, hammer2_xop_scanall, idx);
+	hammer2_xop_start_except(&xop->head, &hammer2_scanall_desc, idx);
 	parent = hammer2_inode_chain(ip, idx,
 				     HAMMER2_RESOLVE_ALWAYS |
 				     HAMMER2_RESOLVE_SHARED);
@@ -669,7 +669,7 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 
 		hammer2_inode_lock(ip, HAMMER2_RESOLVE_SHARED);
 		xop2 = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
-		hammer2_xop_start_except(&xop2->head, hammer2_xop_ipcluster,
+		hammer2_xop_start_except(&xop2->head, &hammer2_ipcluster_desc,
 					 idx);
 		hammer2_inode_unlock(ip);
 		merror = hammer2_xop_collect(&xop2->head, 0);

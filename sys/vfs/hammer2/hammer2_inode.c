@@ -749,7 +749,7 @@ hammer2_inode_create(hammer2_inode_t *dip, hammer2_inode_t *pip,
 		lhcbase = lhc;
 		sxop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
 		sxop->lhc = lhc;
-		hammer2_xop_start(&sxop->head, hammer2_xop_scanlhc);
+		hammer2_xop_start(&sxop->head, &hammer2_scanlhc_desc);
 		while ((error = hammer2_xop_collect(&sxop->head, 0)) == 0) {
 			if (lhc != sxop->head.cluster.focus->bref.key)
 				break;
@@ -852,7 +852,7 @@ hammer2_inode_create(hammer2_inode_t *dip, hammer2_inode_t *pip,
 	xop->meta.name_key = lhc;
 	KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
 
-	hammer2_xop_start(&xop->head, hammer2_inode_xop_create);
+	hammer2_xop_start(&xop->head, &hammer2_inode_create_desc);
 
 	error = hammer2_xop_collect(&xop->head, 0);
 #if INODE_DEBUG
@@ -929,7 +929,7 @@ hammer2_dirent_create(hammer2_inode_t *dip, const char *name, size_t name_len,
 		lhcbase = lhc;
 		sxop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
 		sxop->lhc = lhc;
-		hammer2_xop_start(&sxop->head, hammer2_xop_scanlhc);
+		hammer2_xop_start(&sxop->head, &hammer2_scanlhc_desc);
 		while ((error = hammer2_xop_collect(&sxop->head, 0)) == 0) {
 			if (lhc != sxop->head.cluster.focus->bref.key)
 				break;
@@ -962,7 +962,7 @@ hammer2_dirent_create(hammer2_inode_t *dip, const char *name, size_t name_len,
 	KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
 	hammer2_xop_setname(&xop->head, name, name_len);
 
-	hammer2_xop_start(&xop->head, hammer2_inode_xop_mkdirent);
+	hammer2_xop_start(&xop->head, &hammer2_inode_mkdirent_desc);
 
 	error = hammer2_xop_collect(&xop->head, 0);
 
@@ -1182,7 +1182,7 @@ killit:
 		hammer2_inode_delayed_sideq(ip);
 		atomic_set_int(&ip->flags, HAMMER2_INODE_ISDELETED);
 		xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
-		hammer2_xop_start(&xop->head, hammer2_inode_xop_destroy);
+		hammer2_xop_start(&xop->head, &hammer2_inode_destroy_desc);
 		error = hammer2_xop_collect(&xop->head, 0);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 	}
@@ -1253,7 +1253,7 @@ hammer2_inode_chain_sync(hammer2_inode_t *ip)
 
 		atomic_clear_int(&ip->flags, HAMMER2_INODE_RESIZED |
 					     HAMMER2_INODE_MODIFIED);
-		hammer2_xop_start(&xop->head, hammer2_inode_xop_chain_sync);
+		hammer2_xop_start(&xop->head, &hammer2_inode_chain_sync_desc);
 		error = hammer2_xop_collect(&xop->head, 0);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		if (error == HAMMER2_ERROR_ENOENT)
@@ -1288,7 +1288,7 @@ hammer2_inode_chain_flush(hammer2_inode_t *ip)
 	atomic_clear_int(&ip->flags, HAMMER2_INODE_DIRTYDATA);
 	xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING |
 				    HAMMER2_XOP_INODE_STOP);
-	hammer2_xop_start(&xop->head, hammer2_inode_xop_flush);
+	hammer2_xop_start(&xop->head, &hammer2_inode_flush_desc);
 	error = hammer2_xop_collect(&xop->head, HAMMER2_XOP_COLLECT_WAITALL);
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 	if (error == HAMMER2_ERROR_ENOENT)
@@ -1361,7 +1361,7 @@ hammer2_inode_run_sideq(hammer2_pfs_t *pmp, int doall)
 			 */
 			xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
 			hammer2_xop_start(&xop->head,
-					  hammer2_inode_xop_destroy);
+					  &hammer2_inode_destroy_desc);
 			error = hammer2_xop_collect(&xop->head, 0);
 			/* XXX error handling */
 			hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
@@ -1400,7 +1400,7 @@ hammer2_inode_run_sideq(hammer2_pfs_t *pmp, int doall)
  * Helper to create a directory entry.
  */
 void
-hammer2_inode_xop_mkdirent(hammer2_thread_t *thr, hammer2_xop_t *arg)
+hammer2_xop_inode_mkdirent(hammer2_xop_t *arg, void *scratch, int clindex)
 {
 	hammer2_xop_mkdirent_t *xop = &arg->xop_mkdirent;
 	hammer2_chain_t *parent;
@@ -1411,9 +1411,9 @@ hammer2_inode_xop_mkdirent(hammer2_thread_t *thr, hammer2_xop_t *arg)
 
 	if (hammer2_debug & 0x0001)
 		kprintf("dirent_create lhc %016jx clindex %d\n",
-			xop->lhc, thr->clindex);
+			xop->lhc, clindex);
 
-	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	if (parent == NULL) {
 		error = HAMMER2_ERROR_EIO;
@@ -1465,7 +1465,7 @@ fail:
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
 	}
-	hammer2_xop_feed(&xop->head, chain, thr->clindex, error);
+	hammer2_xop_feed(&xop->head, chain, clindex, error);
 	if (chain) {
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
@@ -1483,7 +1483,7 @@ fail:
  * frontend.
  */
 void
-hammer2_inode_xop_create(hammer2_thread_t *thr, hammer2_xop_t *arg)
+hammer2_xop_inode_create(hammer2_xop_t *arg, void *scratch, int clindex)
 {
 	hammer2_xop_create_t *xop = &arg->xop_create;
 	hammer2_chain_t *parent;
@@ -1493,9 +1493,9 @@ hammer2_inode_xop_create(hammer2_thread_t *thr, hammer2_xop_t *arg)
 
 	if (hammer2_debug & 0x0001)
 		kprintf("inode_create lhc %016jx clindex %d\n",
-			xop->lhc, thr->clindex);
+			xop->lhc, clindex);
 
-	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	if (parent == NULL) {
 		error = HAMMER2_ERROR_EIO;
@@ -1535,7 +1535,7 @@ fail:
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
 	}
-	hammer2_xop_feed(&xop->head, chain, thr->clindex, error);
+	hammer2_xop_feed(&xop->head, chain, clindex, error);
 	if (chain) {
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
@@ -1548,7 +1548,7 @@ fail:
  * Generally used by hammer2_run_sideq()
  */
 void
-hammer2_inode_xop_destroy(hammer2_thread_t *thr, hammer2_xop_t *arg)
+hammer2_xop_inode_destroy(hammer2_xop_t *arg, void *scratch, int clindex)
 {
 	hammer2_xop_destroy_t *xop = &arg->xop_destroy;
 	hammer2_pfs_t *pmp;
@@ -1563,7 +1563,7 @@ hammer2_inode_xop_destroy(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	ip = xop->head.ip1;
 	pmp = ip->pmp;
 
-	chain = hammer2_inode_chain(ip, thr->clindex, HAMMER2_RESOLVE_ALWAYS);
+	chain = hammer2_inode_chain(ip, clindex, HAMMER2_RESOLVE_ALWAYS);
 	if (chain == NULL) {
 		parent = NULL;
 		error = HAMMER2_ERROR_EIO;
@@ -1582,7 +1582,7 @@ hammer2_inode_xop_destroy(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	hammer2_chain_delete(parent, chain, xop->head.mtid, 0);
 	error = 0;
 done:
-	hammer2_xop_feed(&xop->head, NULL, thr->clindex, error);
+	hammer2_xop_feed(&xop->head, NULL, clindex, error);
 	if (parent) {
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
@@ -1594,7 +1594,7 @@ done:
 }
 
 void
-hammer2_inode_xop_unlinkall(hammer2_thread_t *thr, hammer2_xop_t *arg)
+hammer2_xop_inode_unlinkall(hammer2_xop_t *arg, void *scratch, int clindex)
 {
 	hammer2_xop_unlinkall_t *xop = &arg->xop_unlinkall;
 	hammer2_chain_t *parent;
@@ -1605,7 +1605,7 @@ hammer2_inode_xop_unlinkall(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	/*
 	 * We need the precise parent chain to issue the deletion.
 	 */
-	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	chain = NULL;
 	if (parent == NULL) {
@@ -1618,7 +1618,7 @@ hammer2_inode_xop_unlinkall(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	while (chain) {
 		hammer2_chain_delete(parent, chain,
 				     xop->head.mtid, HAMMER2_DELETE_PERMANENT);
-		hammer2_xop_feed(&xop->head, chain, thr->clindex, chain->error);
+		hammer2_xop_feed(&xop->head, chain, clindex, chain->error);
 		/* depend on function to unlock the shared lock */
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next, xop->key_end,
@@ -1628,7 +1628,7 @@ hammer2_inode_xop_unlinkall(hammer2_thread_t *thr, hammer2_xop_t *arg)
 done:
 	if (error == 0)
 		error = HAMMER2_ERROR_ENOENT;
-	hammer2_xop_feed(&xop->head, NULL, thr->clindex, error);
+	hammer2_xop_feed(&xop->head, NULL, clindex, error);
 	if (parent) {
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
@@ -1640,7 +1640,7 @@ done:
 }
 
 void
-hammer2_inode_xop_connect(hammer2_thread_t *thr, hammer2_xop_t *arg)
+hammer2_xop_inode_connect(hammer2_xop_t *arg, void *scratch, int clindex)
 {
 	hammer2_xop_connect_t *xop = &arg->xop_connect;
 	hammer2_inode_data_t *wipdata;
@@ -1655,7 +1655,7 @@ hammer2_inode_xop_connect(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	 * for the create.  The lookup is expected to fail.
 	 */
 	pmp = xop->head.ip1->pmp;
-	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	if (parent == NULL) {
 		chain = NULL;
@@ -1681,7 +1681,7 @@ hammer2_inode_xop_connect(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	 * NOTE: Frontend must also adjust ip2->meta on success, we can't
 	 *	 do it here.
 	 */
-	chain = hammer2_inode_chain(xop->head.ip2, thr->clindex,
+	chain = hammer2_inode_chain(xop->head.ip2, clindex,
 				    HAMMER2_RESOLVE_ALWAYS);
 	error = hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
 	if (error)
@@ -1711,7 +1711,7 @@ hammer2_inode_xop_connect(hammer2_thread_t *thr, hammer2_xop_t *arg)
 	 * Feed result back.
 	 */
 fail:
-	hammer2_xop_feed(&xop->head, NULL, thr->clindex, error);
+	hammer2_xop_feed(&xop->head, NULL, clindex, error);
 	if (parent) {
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
@@ -1730,14 +1730,14 @@ fail:
  * manner inside the vfs_sync.
  */
 void
-hammer2_inode_xop_chain_sync(hammer2_thread_t *thr, hammer2_xop_t *arg)
+hammer2_xop_inode_chain_sync(hammer2_xop_t *arg, void *scratch, int clindex)
 {
 	hammer2_xop_fsync_t *xop = &arg->xop_fsync;
 	hammer2_chain_t	*parent;
 	hammer2_chain_t	*chain;
 	int error;
 
-	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
 				     HAMMER2_RESOLVE_ALWAYS);
 	chain = NULL;
 	if (parent == NULL) {
@@ -1797,7 +1797,7 @@ hammer2_inode_xop_chain_sync(hammer2_thread_t *thr, hammer2_xop_t *arg)
 			hammer2_chain_unlock(parent);
 			hammer2_chain_drop(parent);
 			parent = hammer2_inode_chain(xop->head.ip1,
-						     thr->clindex,
+						     clindex,
 						     HAMMER2_RESOLVE_ALWAYS);
 			kprintf("hammer2: TRUNCATE RESET on '%s'\n",
 				parent->data->ipdata.filename);
@@ -1827,6 +1827,6 @@ done:
 		hammer2_chain_unlock(parent);
 		hammer2_chain_drop(parent);
 	}
-	hammer2_xop_feed(&xop->head, NULL, thr->clindex, error);
+	hammer2_xop_feed(&xop->head, NULL, clindex, error);
 }
 

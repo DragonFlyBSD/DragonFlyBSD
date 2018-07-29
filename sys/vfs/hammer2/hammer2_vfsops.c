@@ -1877,7 +1877,7 @@ hammer2_vfs_vget(struct mount *mp, struct vnode *dvp,
 	 */
 	xop = hammer2_xop_alloc(pmp->iroot, 0);
 	xop->lhc = inum;
-	hammer2_xop_start(&xop->head, hammer2_xop_lookup);
+	hammer2_xop_start(&xop->head, &hammer2_lookup_desc);
 	error = hammer2_xop_collect(&xop->head, 0);
 
 	if (error == 0)
@@ -1918,7 +1918,7 @@ hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 		const hammer2_inode_meta_t *meta;
 
 		xop = hammer2_xop_alloc(pmp->iroot, HAMMER2_XOP_MODIFYING);
-		hammer2_xop_start(&xop->head, hammer2_xop_ipcluster);
+		hammer2_xop_start(&xop->head, &hammer2_ipcluster_desc);
 		error = hammer2_xop_collect(&xop->head, 0);
 
 		if (error == 0) {
@@ -2501,7 +2501,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 						       HAMMER2_XOP_INODE_STOP |
 						       HAMMER2_XOP_VOLHDR);
 		}
-		hammer2_xop_start(&xop->head, hammer2_inode_xop_flush);
+		hammer2_xop_start(&xop->head, &hammer2_inode_flush_desc);
 		error = hammer2_xop_collect(&xop->head,
 					    HAMMER2_XOP_COLLECT_WAITALL);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);

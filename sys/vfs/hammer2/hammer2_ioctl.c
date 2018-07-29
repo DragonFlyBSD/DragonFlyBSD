@@ -758,7 +758,7 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 	hammer2_xop_setname(&xop->head, pfs->name, strlen(pfs->name));
 	xop->isdir = 2;
 	xop->dopermanent = H2DOPERM_PERMANENT | H2DOPERM_FORCE;
-	hammer2_xop_start(&xop->head, hammer2_xop_unlink);
+	hammer2_xop_start(&xop->head, &hammer2_unlink_desc);
 
 	error = hammer2_xop_collect(&xop->head, 0);
 
@@ -1175,7 +1175,7 @@ hammer2_ioctl_destroy(hammer2_inode_t *ip, void *data)
 		xop->dopermanent = H2DOPERM_PERMANENT |
 				   H2DOPERM_FORCE |
 				   H2DOPERM_IGNINO;
-		hammer2_xop_start(&xop->head, hammer2_xop_unlink);
+		hammer2_xop_start(&xop->head, &hammer2_unlink_desc);
 
 		error = hammer2_xop_collect(&xop->head, 0);
 		error = hammer2_error_to_errno(error);
@@ -1200,7 +1200,7 @@ hammer2_ioctl_destroy(hammer2_inode_t *ip, void *data)
 
 		xop = hammer2_xop_alloc(pmp->iroot, HAMMER2_XOP_MODIFYING);
 		xop->lhc = iocd->inum;
-		hammer2_xop_start(&xop->head, hammer2_xop_delete);
+		hammer2_xop_start(&xop->head, &hammer2_delete_desc);
 		error = hammer2_xop_collect(&xop->head, 0);
 		error = hammer2_error_to_errno(error);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);

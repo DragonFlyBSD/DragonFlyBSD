@@ -37,6 +37,31 @@
  */
 #include "hammer2.h"
 
+#define H2XOPDESCRIPTOR(label)					\
+	hammer2_xop_desc_t hammer2_##label##desc = {		\
+		.storage_func = hammer2_xop_##label,		\
+		.id = #label					\
+	};							\
+
+H2XOPDESCRIPTOR(ipcluster);
+H2XOPDESCRIPTOR(readdir);
+H2XOPDESCRIPTOR(nresolve);
+H2XOPDESCRIPTOR(unlink);
+H2XOPDESCRIPTOR(nrename);
+H2XOPDESCRIPTOR(scanlhc);
+H2XOPDESCRIPTOR(scanall);
+H2XOPDESCRIPTOR(lookup);
+H2XOPDESCRIPTOR(delete);
+H2XOPDESCRIPTOR(inode_mkdirent);
+H2XOPDESCRIPTOR(inode_create);
+H2XOPDESCRIPTOR(inode_destroy);
+H2XOPDESCRIPTOR(inode_chain_sync);
+H2XOPDESCRIPTOR(inode_unlinkall);
+H2XOPDESCRIPTOR(inode_connect);
+H2XOPDESCRIPTOR(inode_flush);
+H2XOPDESCRIPTOR(strategy_read);
+H2XOPDESCRIPTOR(strategy_write);
+
 /*
  * Set flags and wakeup any waiters.
  *
@@ -310,7 +335,7 @@ hammer2_xop_alloc(hammer2_inode_t *ip, int flags)
 	KKASSERT(xop->head.cluster.array[0].chain == NULL);
 
 	xop->head.ip1 = ip;
-	xop->head.func = NULL;
+	xop->head.desc = NULL;
 	xop->head.flags = flags;
 	xop->head.state = 0;
 	xop->head.error = 0;
@@ -435,7 +460,7 @@ hammer2_xop_helper_cleanup(hammer2_pfs_t *pmp)
  * XXX optimize single-target case.
  */
 void
-hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
+hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_desc_t *desc,
 			 int notidx)
 {
 	hammer2_inode_t *ip1;
@@ -477,7 +502,7 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 		ng = (int)(hammer2_icrc32(&xop->ip1, sizeof(xop->ip1)));
 		ng = ng & (HAMMER2_XOPGROUPS_MASK >> 1);
 	}
-	xop->func = func;
+	xop->desc = desc;
 
 	/*
 	 * The instant xop is queued another thread can pick it off.  In the
@@ -517,9 +542,9 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
 }
 
 void
-hammer2_xop_start(hammer2_xop_head_t *xop, hammer2_xop_func_t func)
+hammer2_xop_start(hammer2_xop_head_t *xop, hammer2_xop_desc_t *desc)
 {
-	hammer2_xop_start_except(xop, func, -1);
+	hammer2_xop_start_except(xop, desc, -1);
 }
 
 /*
@@ -1034,7 +1059,7 @@ hammer2_primary_xops_thread(void *arg)
 	uint64_t mask;
 	uint32_t flags;
 	uint32_t nflags;
-	hammer2_xop_func_t last_func = NULL;
+	hammer2_xop_desc_t *last_desc = NULL;
 
 	pmp = thr->pmp;
 	/*xgrp = &pmp->xop_groups[thr->repidx]; not needed */
@@ -1102,12 +1127,14 @@ hammer2_primary_xops_thread(void *arg)
 		}
 		while ((xop = hammer2_xop_next(thr)) != NULL) {
 			if (hammer2_xop_active(xop)) {
-				last_func = xop->func;
-				xop->func(thr, (hammer2_xop_t *)xop);
+				last_desc = xop->desc;
+				xop->desc->storage_func((hammer2_xop_t *)xop,
+							thr->scratch,
+							thr->clindex);
 				hammer2_xop_dequeue(thr, xop);
 				hammer2_xop_retire(xop, mask);
 			} else {
-				last_func = xop->func;
+				last_desc = xop->desc;
 				hammer2_xop_feed(xop, NULL, thr->clindex,
 						 ECONNABORTED);
 				hammer2_xop_dequeue(thr, xop);
@@ -1135,7 +1162,7 @@ hammer2_primary_xops_thread(void *arg)
 	 * Cleanup / termination
 	 */
 	while ((xop = TAILQ_FIRST(&thr->xopq)) != NULL) {
-		kprintf("hammer2_thread: aborting xop %p\n", xop->func);
+		kprintf("hammer2_thread: aborting xop %s\n", xop->desc->id);
 		TAILQ_REMOVE(&thr->xopq, xop,
 			     collect[thr->clindex].entry);
 		hammer2_xop_retire(xop, mask);

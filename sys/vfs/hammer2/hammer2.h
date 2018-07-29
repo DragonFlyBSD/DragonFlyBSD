@@ -857,8 +857,17 @@ typedef struct hammer2_dedup hammer2_dedup_t;
  *
  * This structure also sequences operations on up to three inodes.
  */
-typedef void (*hammer2_xop_func_t)(hammer2_thread_t *thr,
-				   union hammer2_xop *xop);
+typedef void (*hammer2_xop_func_t)(union hammer2_xop *xop, void *scratch,
+				   int clindex);
+
+struct hammer2_xop_desc {
+	hammer2_xop_func_t	storage_func;	/* local storage function */
+	hammer2_xop_func_t	dmsg_dispatch;	/* dmsg dispatch function */
+	hammer2_xop_func_t	dmsg_process;	/* dmsg processing function */
+	const char		*id;
+};
+
+typedef struct hammer2_xop_desc hammer2_xop_desc_t;
 
 struct hammer2_xop_fifo {
 	TAILQ_ENTRY(hammer2_xop_head) entry;
@@ -876,7 +885,7 @@ typedef struct hammer2_xop_fifo hammer2_xop_fifo_t;
 #define HAMMER2_XOP_FIFO_STALL	0x0002
 
 struct hammer2_xop_head {
-	hammer2_xop_func_t	func;
+	hammer2_xop_desc_t	*desc;
 	hammer2_tid_t		mtid;
 	struct hammer2_inode	*ip1;
 	struct hammer2_inode	*ip2;
@@ -1664,8 +1673,8 @@ void hammer2_xop_setip3(hammer2_xop_head_t *xop, hammer2_inode_t *ip3);
 void hammer2_xop_reinit(hammer2_xop_head_t *xop);
 void hammer2_xop_helper_create(hammer2_pfs_t *pmp);
 void hammer2_xop_helper_cleanup(hammer2_pfs_t *pmp);
-void hammer2_xop_start(hammer2_xop_head_t *xop, hammer2_xop_func_t func);
-void hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_func_t func,
+void hammer2_xop_start(hammer2_xop_head_t *xop, hammer2_xop_desc_t *desc);
+void hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_desc_t *desc,
 				int notidx);
 int hammer2_xop_collect(hammer2_xop_head_t *xop, int flags);
 void hammer2_xop_retire(hammer2_xop_head_t *xop, uint64_t mask);
@@ -1682,22 +1691,89 @@ void hammer2_primary_sync_thread(void *arg);
  * XOP backends in hammer2_xops.c, primarily for VNOPS.  Other XOP backends
  * may be integrated into other source files.
  */
-void hammer2_xop_ipcluster(hammer2_thread_t *thr, hammer2_xop_t *xop);
-void hammer2_xop_readdir(hammer2_thread_t *thr, hammer2_xop_t *xop);
-void hammer2_xop_nresolve(hammer2_thread_t *thr, hammer2_xop_t *xop);
-void hammer2_xop_unlink(hammer2_thread_t *thr, hammer2_xop_t *xop);
-void hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *xop);
-void hammer2_xop_scanlhc(hammer2_thread_t *thr, hammer2_xop_t *xop);
-void hammer2_xop_scanall(hammer2_thread_t *thr, hammer2_xop_t *xop);
-void hammer2_xop_lookup(hammer2_thread_t *thr, hammer2_xop_t *xop);
-void hammer2_xop_delete(hammer2_thread_t *thr, hammer2_xop_t *xop);
-void hammer2_inode_xop_mkdirent(hammer2_thread_t *thr, hammer2_xop_t *xop);
-void hammer2_inode_xop_create(hammer2_thread_t *thr, hammer2_xop_t *xop);
-void hammer2_inode_xop_destroy(hammer2_thread_t *thr, hammer2_xop_t *xop);
-void hammer2_inode_xop_chain_sync(hammer2_thread_t *thr, hammer2_xop_t *xop);
-void hammer2_inode_xop_unlinkall(hammer2_thread_t *thr, hammer2_xop_t *xop);
-void hammer2_inode_xop_connect(hammer2_thread_t *thr, hammer2_xop_t *xop);
-void hammer2_inode_xop_flush(hammer2_thread_t *thr, hammer2_xop_t *xop);
+void hammer2_xop_ipcluster(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_xop_readdir(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_xop_nresolve(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_xop_unlink(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_xop_nrename(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_xop_scanlhc(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_xop_scanall(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_xop_lookup(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_xop_delete(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_xop_inode_mkdirent(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_xop_inode_create(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_xop_inode_destroy(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_xop_inode_chain_sync(hammer2_xop_t *xop, void *scratch,
+				int clindex);
+void hammer2_xop_inode_unlinkall(hammer2_xop_t *xop, void *scratch,
+				int clindex);
+void hammer2_xop_inode_connect(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_xop_inode_flush(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_xop_strategy_read(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_xop_strategy_write(hammer2_xop_t *xop, void *scratch, int clindex);
+
+void hammer2_dmsg_ipcluster(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_dmsg_readdir(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_dmsg_nresolve(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_dmsg_unlink(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_dmsg_nrename(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_dmsg_scanlhc(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_dmsg_scanall(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_dmsg_lookup(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_dmsg_inode_mkdirent(hammer2_xop_t *xop, void *scratch,
+				int clindex);
+void hammer2_dmsg_inode_create(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_dmsg_inode_destroy(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_dmsg_inode_chain_sync(hammer2_xop_t *xop, void *scratch,
+				int clindex);
+void hammer2_dmsg_inode_unlinkall(hammer2_xop_t *xop, void *scratch,
+				int clindex);
+void hammer2_dmsg_inode_connect(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_dmsg_inode_flush(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_dmsg_strategy_read(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_dmsg_strategy_write(hammer2_xop_t *xop, void *scratch,
+				int clindex);
+
+void hammer2_rmsg_ipcluster(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_rmsg_readdir(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_rmsg_nresolve(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_rmsg_unlink(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_rmsg_nrename(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_rmsg_scanlhc(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_rmsg_scanall(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_rmsg_lookup(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_rmsg_inode_mkdirent(hammer2_xop_t *xop, void *scratch,
+				int clindex);
+void hammer2_rmsg_inode_create(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_rmsg_inode_destroy(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_rmsg_inode_chain_sync(hammer2_xop_t *xop, void *scratch,
+				int clindex);
+void hammer2_rmsg_inode_unlinkall(hammer2_xop_t *xop, void *scratch,
+				int clindex);
+void hammer2_rmsg_inode_connect(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_rmsg_inode_flush(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_rmsg_strategy_read(hammer2_xop_t *xop, void *scratch, int clindex);
+void hammer2_rmsg_strategy_write(hammer2_xop_t *xop, void *scratch,
+				int clindex);
+
+extern hammer2_xop_desc_t hammer2_ipcluster_desc;
+extern hammer2_xop_desc_t hammer2_readdir_desc;
+extern hammer2_xop_desc_t hammer2_nresolve_desc;
+extern hammer2_xop_desc_t hammer2_unlink_desc;
+extern hammer2_xop_desc_t hammer2_nrename_desc;
+extern hammer2_xop_desc_t hammer2_scanlhc_desc;
+extern hammer2_xop_desc_t hammer2_scanall_desc;
+extern hammer2_xop_desc_t hammer2_lookup_desc;
+extern hammer2_xop_desc_t hammer2_delete_desc;
+extern hammer2_xop_desc_t hammer2_inode_mkdirent_desc;
+extern hammer2_xop_desc_t hammer2_inode_create_desc;
+extern hammer2_xop_desc_t hammer2_inode_destroy_desc;
+extern hammer2_xop_desc_t hammer2_inode_chain_sync_desc;
+extern hammer2_xop_desc_t hammer2_inode_unlinkall_desc;
+extern hammer2_xop_desc_t hammer2_inode_connect_desc;
+extern hammer2_xop_desc_t hammer2_inode_flush_desc;
+extern hammer2_xop_desc_t hammer2_strategy_read_desc;
+extern hammer2_xop_desc_t hammer2_strategy_write_desc;
 
 /*
  * hammer2_msgops.c
