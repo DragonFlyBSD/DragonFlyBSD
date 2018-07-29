@@ -997,6 +997,7 @@ bwrite(struct buf *bp)
 	bp->b_flags &= ~(B_ERROR | B_EINTR);
 	bp->b_flags |= B_CACHE;
 	bp->b_cmd = BUF_CMD_WRITE;
+	bp->b_error = 0;
 	bp->b_bio1.bio_done = biodone_sync;
 	bp->b_bio1.bio_flags |= BIO_SYNC;
 	vfs_busy_pages(bp->b_vp, bp);
@@ -1044,6 +1045,7 @@ bawrite(struct buf *bp)
 	bp->b_flags &= ~(B_ERROR | B_EINTR);
 	bp->b_flags |= B_CACHE;
 	bp->b_cmd = BUF_CMD_WRITE;
+	bp->b_error = 0;
 	KKASSERT(bp->b_bio1.bio_done == NULL);
 	vfs_busy_pages(bp->b_vp, bp);
 
