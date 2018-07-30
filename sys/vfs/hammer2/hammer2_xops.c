@@ -988,3 +988,442 @@ break2:
 done:
 	hammer2_xop_feed(&xop->head, NULL, clindex, error);
 }
+
+/************************************************************************
+ *			    INODE LAYER XOPS				*
+ ************************************************************************
+ *
+ */
+/*
+ * Helper to create a directory entry.
+ */
+void
+hammer2_xop_inode_mkdirent(hammer2_xop_t *arg, void *scratch, int clindex)
+{
+	hammer2_xop_mkdirent_t *xop = &arg->xop_mkdirent;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_key_t key_next;
+	size_t data_len;
+	int error;
+
+	if (hammer2_debug & 0x0001)
+		kprintf("dirent_create lhc %016jx clindex %d\n",
+			xop->lhc, clindex);
+
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
+				     HAMMER2_RESOLVE_ALWAYS);
+	if (parent == NULL) {
+		error = HAMMER2_ERROR_EIO;
+		chain = NULL;
+		goto fail;
+	}
+	chain = hammer2_chain_lookup(&parent, &key_next,
+				     xop->lhc, xop->lhc,
+				     &error, 0);
+	if (chain) {
+		error = HAMMER2_ERROR_EEXIST;
+		goto fail;
+	}
+
+	/*
+	 * We may be able to embed the directory entry directly in the
+	 * blockref.
+	 */
+	if (xop->dirent.namlen <= sizeof(chain->bref.check.buf))
+		data_len = 0;
+	else
+		data_len = HAMMER2_ALLOC_MIN;
+
+	error = hammer2_chain_create(&parent, &chain,
+				     xop->head.ip1->pmp, HAMMER2_METH_DEFAULT,
+				     xop->lhc, 0,
+				     HAMMER2_BREF_TYPE_DIRENT,
+				     data_len,
+				     xop->head.mtid, 0, 0);
+	if (error == 0) {
+		/*
+		 * WARNING: chain->data->buf is sized to chain->bytes,
+		 *	    do not use sizeof(chain->data->buf), which
+		 *	    will be much larger.
+		 */
+		error = hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
+		if (error == 0) {
+			chain->bref.embed.dirent = xop->dirent;
+			if (xop->dirent.namlen <= sizeof(chain->bref.check.buf))
+				bcopy(xop->head.name1, chain->bref.check.buf,
+				      xop->dirent.namlen);
+			else
+				bcopy(xop->head.name1, chain->data->buf,
+				      xop->dirent.namlen);
+		}
+	}
+fail:
+	if (parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+	}
+	hammer2_xop_feed(&xop->head, chain, clindex, error);
+	if (chain) {
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+	}
+}
+
+/*
+ * Inode create helper (threaded, backend)
+ *
+ * Used by ncreate, nmknod, nsymlink, nmkdir.
+ * Used by nlink and rename to create HARDLINK pointers.
+ *
+ * Frontend holds the parent directory ip locked exclusively.  We
+ * create the inode and feed the exclusively locked chain to the
+ * frontend.
+ */
+void
+hammer2_xop_inode_create(hammer2_xop_t *arg, void *scratch, int clindex)
+{
+	hammer2_xop_create_t *xop = &arg->xop_create;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_key_t key_next;
+	int error;
+
+	if (hammer2_debug & 0x0001)
+		kprintf("inode_create lhc %016jx clindex %d\n",
+			xop->lhc, clindex);
+
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
+				     HAMMER2_RESOLVE_ALWAYS);
+	if (parent == NULL) {
+		error = HAMMER2_ERROR_EIO;
+		chain = NULL;
+		goto fail;
+	}
+	chain = hammer2_chain_lookup(&parent, &key_next,
+				     xop->lhc, xop->lhc,
+				     &error, 0);
+	if (chain) {
+		error = HAMMER2_ERROR_EEXIST;
+		goto fail;
+	}
+
+	error = hammer2_chain_create(&parent, &chain,
+				     xop->head.ip1->pmp, HAMMER2_METH_DEFAULT,
+				     xop->lhc, 0,
+				     HAMMER2_BREF_TYPE_INODE,
+				     HAMMER2_INODE_BYTES,
+				     xop->head.mtid, 0, xop->flags);
+	if (error == 0) {
+		error = hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
+		if (error == 0) {
+			chain->data->ipdata.meta = xop->meta;
+			if (xop->head.name1) {
+				bcopy(xop->head.name1,
+				      chain->data->ipdata.filename,
+				      xop->head.name1_len);
+				chain->data->ipdata.meta.name_len =
+					xop->head.name1_len;
+			}
+			chain->data->ipdata.meta.name_key = xop->lhc;
+		}
+	}
+fail:
+	if (parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+	}
+	hammer2_xop_feed(&xop->head, chain, clindex, error);
+	if (chain) {
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+	}
+}
+
+/*
+ * Inode delete helper (backend, threaded)
+ *
+ * Generally used by hammer2_run_sideq()
+ */
+void
+hammer2_xop_inode_destroy(hammer2_xop_t *arg, void *scratch, int clindex)
+{
+	hammer2_xop_destroy_t *xop = &arg->xop_destroy;
+	hammer2_pfs_t *pmp;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_inode_t *ip;
+	int error;
+
+	/*
+	 * We need the precise parent chain to issue the deletion.
+	 */
+	ip = xop->head.ip1;
+	pmp = ip->pmp;
+
+	chain = hammer2_inode_chain(ip, clindex, HAMMER2_RESOLVE_ALWAYS);
+	if (chain == NULL) {
+		parent = NULL;
+		error = HAMMER2_ERROR_EIO;
+		goto done;
+	}
+	parent = hammer2_chain_getparent(chain, HAMMER2_RESOLVE_ALWAYS);
+	if (parent == NULL) {
+		error = HAMMER2_ERROR_EIO;
+		goto done;
+	}
+	KKASSERT(chain->parent == parent);
+
+	/*
+	 * We have the correct parent, we can issue the deletion.
+	 */
+	hammer2_chain_delete(parent, chain, xop->head.mtid, 0);
+	error = 0;
+done:
+	hammer2_xop_feed(&xop->head, NULL, clindex, error);
+	if (parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+	}
+	if (chain) {
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+	}
+}
+
+void
+hammer2_xop_inode_unlinkall(hammer2_xop_t *arg, void *scratch, int clindex)
+{
+	hammer2_xop_unlinkall_t *xop = &arg->xop_unlinkall;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_key_t key_next;
+	int error;
+
+	/*
+	 * We need the precise parent chain to issue the deletion.
+	 */
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
+				     HAMMER2_RESOLVE_ALWAYS);
+	chain = NULL;
+	if (parent == NULL) {
+		error = 0;
+		goto done;
+	}
+	chain = hammer2_chain_lookup(&parent, &key_next,
+				     xop->key_beg, xop->key_end,
+				     &error, HAMMER2_LOOKUP_ALWAYS);
+	while (chain) {
+		hammer2_chain_delete(parent, chain,
+				     xop->head.mtid, HAMMER2_DELETE_PERMANENT);
+		hammer2_xop_feed(&xop->head, chain, clindex, chain->error);
+		/* depend on function to unlock the shared lock */
+		chain = hammer2_chain_next(&parent, chain, &key_next,
+					   key_next, xop->key_end,
+					   &error,
+					   HAMMER2_LOOKUP_ALWAYS);
+	}
+done:
+	if (error == 0)
+		error = HAMMER2_ERROR_ENOENT;
+	hammer2_xop_feed(&xop->head, NULL, clindex, error);
+	if (parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+	}
+	if (chain) {
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+	}
+}
+
+void
+hammer2_xop_inode_connect(hammer2_xop_t *arg, void *scratch, int clindex)
+{
+	hammer2_xop_connect_t *xop = &arg->xop_connect;
+	hammer2_inode_data_t *wipdata;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_pfs_t *pmp;
+	hammer2_key_t key_dummy;
+	int error;
+
+	/*
+	 * Get directory, then issue a lookup to prime the parent chain
+	 * for the create.  The lookup is expected to fail.
+	 */
+	pmp = xop->head.ip1->pmp;
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
+				     HAMMER2_RESOLVE_ALWAYS);
+	if (parent == NULL) {
+		chain = NULL;
+		error = HAMMER2_ERROR_EIO;
+		goto fail;
+	}
+	chain = hammer2_chain_lookup(&parent, &key_dummy,
+				     xop->lhc, xop->lhc,
+				     &error, 0);
+	if (chain) {
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+		chain = NULL;
+		error = HAMMER2_ERROR_EEXIST;
+		goto fail;
+	}
+	if (error)
+		goto fail;
+
+	/*
+	 * Adjust the filename in the inode, set the name key.
+	 *
+	 * NOTE: Frontend must also adjust ip2->meta on success, we can't
+	 *	 do it here.
+	 */
+	chain = hammer2_inode_chain(xop->head.ip2, clindex,
+				    HAMMER2_RESOLVE_ALWAYS);
+	error = hammer2_chain_modify(chain, xop->head.mtid, 0, 0);
+	if (error)
+		goto fail;
+
+	wipdata = &chain->data->ipdata;
+
+	hammer2_inode_modify(xop->head.ip2);
+	if (xop->head.name1) {
+		bzero(wipdata->filename, sizeof(wipdata->filename));
+		bcopy(xop->head.name1, wipdata->filename, xop->head.name1_len);
+		wipdata->meta.name_len = xop->head.name1_len;
+	}
+	wipdata->meta.name_key = xop->lhc;
+
+	/*
+	 * Reconnect the chain to the new parent directory
+	 */
+	error = hammer2_chain_create(&parent, &chain,
+				     pmp, HAMMER2_METH_DEFAULT,
+				     xop->lhc, 0,
+				     HAMMER2_BREF_TYPE_INODE,
+				     HAMMER2_INODE_BYTES,
+				     xop->head.mtid, 0, 0);
+
+	/*
+	 * Feed result back.
+	 */
+fail:
+	hammer2_xop_feed(&xop->head, NULL, clindex, error);
+	if (parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+	}
+	if (chain) {
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+	}
+}
+
+/*
+ * Synchronize the in-memory inode with the chain.  This does not flush
+ * the chain to disk.  Instead, it makes front-end inode changes visible
+ * in the chain topology, thus visible to the backend.  This is done in an
+ * ad-hoc manner outside of the filesystem vfs_sync, and in a controlled
+ * manner inside the vfs_sync.
+ */
+void
+hammer2_xop_inode_chain_sync(hammer2_xop_t *arg, void *scratch, int clindex)
+{
+	hammer2_xop_fsync_t *xop = &arg->xop_fsync;
+	hammer2_chain_t	*parent;
+	hammer2_chain_t	*chain;
+	int error;
+
+	parent = hammer2_inode_chain(xop->head.ip1, clindex,
+				     HAMMER2_RESOLVE_ALWAYS);
+	chain = NULL;
+	if (parent == NULL) {
+		error = HAMMER2_ERROR_EIO;
+		goto done;
+	}
+	if (parent->error) {
+		error = parent->error;
+		goto done;
+	}
+
+	error = 0;
+
+	if ((xop->ipflags & HAMMER2_INODE_RESIZED) == 0) {
+		/* osize must be ignored */
+	} else if (xop->meta.size < xop->osize) {
+		/*
+		 * We must delete any chains beyond the EOF.  The chain
+		 * straddling the EOF will be pending in the bioq.
+		 */
+		hammer2_key_t lbase;
+		hammer2_key_t key_next;
+
+		lbase = (xop->meta.size + HAMMER2_PBUFMASK64) &
+			~HAMMER2_PBUFMASK64;
+		chain = hammer2_chain_lookup(&parent, &key_next,
+					     lbase, HAMMER2_KEY_MAX,
+					     &error,
+					     HAMMER2_LOOKUP_NODATA |
+					     HAMMER2_LOOKUP_NODIRECT);
+		while (chain) {
+			/*
+			 * Degenerate embedded case, nothing to loop on
+			 */
+			switch (chain->bref.type) {
+			case HAMMER2_BREF_TYPE_DIRENT:
+			case HAMMER2_BREF_TYPE_INODE:
+				KKASSERT(0);
+				break;
+			case HAMMER2_BREF_TYPE_DATA:
+				hammer2_chain_delete(parent, chain,
+						     xop->head.mtid,
+						     HAMMER2_DELETE_PERMANENT);
+				break;
+			}
+			chain = hammer2_chain_next(&parent, chain, &key_next,
+						   key_next, HAMMER2_KEY_MAX,
+						   &error,
+						   HAMMER2_LOOKUP_NODATA |
+						   HAMMER2_LOOKUP_NODIRECT);
+		}
+
+		/*
+		 * Reset to point at inode for following code, if necessary.
+		 */
+		if (parent->bref.type != HAMMER2_BREF_TYPE_INODE) {
+			hammer2_chain_unlock(parent);
+			hammer2_chain_drop(parent);
+			parent = hammer2_inode_chain(xop->head.ip1,
+						     clindex,
+						     HAMMER2_RESOLVE_ALWAYS);
+			kprintf("hammer2: TRUNCATE RESET on '%s'\n",
+				parent->data->ipdata.filename);
+		}
+	}
+
+	/*
+	 * Sync the inode meta-data, potentially clear the blockset area
+	 * of direct data so it can be used for blockrefs.
+	 */
+	if (error == 0) {
+		error = hammer2_chain_modify(parent, xop->head.mtid, 0, 0);
+		if (error == 0) {
+			parent->data->ipdata.meta = xop->meta;
+			if (xop->clear_directdata) {
+				bzero(&parent->data->ipdata.u.blockset,
+				      sizeof(parent->data->ipdata.u.blockset));
+			}
+		}
+	}
+done:
+	if (chain) {
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+	}
+	if (parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+	}
+	hammer2_xop_feed(&xop->head, NULL, clindex, error);
+}

@@ -38,7 +38,7 @@
 #include "hammer2.h"
 
 #define H2XOPDESCRIPTOR(label)					\
-	hammer2_xop_desc_t hammer2_##label##desc = {		\
+	hammer2_xop_desc_t hammer2_##label##_desc = {		\
 		.storage_func = hammer2_xop_##label,		\
 		.id = #label					\
 	};							\
