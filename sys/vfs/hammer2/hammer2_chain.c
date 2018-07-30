@@ -3658,10 +3658,14 @@ hammer2_chain_rename(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 	 *	     we currently do not have the logical buffer cache
 	 *	     buffer in-hand to fix its cached physical offset
 	 *	     we also force the modify code to not COW it. XXX
+	 *
+	 * NOTE!     We allow error'd chains to be renamed.  The bref itself
+	 *	     is good and can be renamed.  The content, however, may
+	 *	     be inaccessible.
 	 */
 	hmp = chain->hmp;
 	KKASSERT(chain->parent == NULL);
-	KKASSERT(chain->error == 0);
+	/*KKASSERT(chain->error == 0); allow */
 
 	/*
 	 * Now create a duplicate of the chain structure, associating
