@@ -1,4 +1,4 @@
-/**
+/*
  * \file drm_fops.c
  * File operations for DRM
  *
@@ -90,29 +90,22 @@ extern drm_pci_id_list_t *drm_find_description(int vendor, int device,
     drm_pci_id_list_t *idlist);
 extern devclass_t drm_devclass;
 
-static int drm_setup(struct drm_device *dev)
+static int drm_setup(struct drm_device * dev)
 {
-	drm_local_map_t *map;
-	int i;
+	int ret;
 
-	DRM_LOCK_ASSERT(dev);
-
-	/* prebuild the SAREA */
-	i = drm_legacy_addmap(dev, 0, SAREA_MAX, _DRM_SHM,
-	    _DRM_CONTAINS_LOCK, &map);
-	if (i != 0)
-		return i;
-
-	if (dev->driver->firstopen)
-		dev->driver->firstopen(dev);
+	if (dev->driver->firstopen &&
+	    !drm_core_check_feature(dev, DRIVER_MODESET)) {
+		ret = dev->driver->firstopen(dev);
+		if (ret != 0)
+			return ret;
+	}
 
 	dev->buf_use = 0;
 
-	if (drm_core_check_feature(dev, DRIVER_HAVE_DMA)) {
-		i = drm_legacy_dma_setup(dev);
-		if (i != 0)
-			return i;
-	}
+	ret = drm_legacy_dma_setup(dev);
+	if (ret < 0)
+		return ret;
 
 	drm_ht_create(&dev->magiclist, DRM_MAGIC_HASH_ORDER);
 	INIT_LIST_HEAD(&dev->magicfree);
@@ -126,8 +119,8 @@ static int drm_setup(struct drm_device *dev)
 
 	dev->buf_sigio = NULL;
 
-	DRM_DEBUG("\n");
 
+	DRM_DEBUG("\n");
 	return 0;
 }
 
@@ -241,6 +234,8 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 	init_waitqueue_head(&priv->event_wait);
 	priv->event_space = 4096; /* set aside 4k for event buffer */
 
+	lockinit(&priv->event_read_lock, "dperl", 0, LK_CANRECURSE);
+
 	if (drm_core_check_feature(dev, DRIVER_GEM))
 		drm_gem_open(dev, priv);
 
@@ -275,6 +270,31 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
  *
  * Reinitializes a legacy/ums drm device in it's lastclose function.
  */
+static void drm_legacy_dev_reinit(struct drm_device *dev)
+{
+	if (dev->irq_enabled)
+		drm_irq_uninstall(dev);
+
+	mutex_lock(&dev->struct_mutex);
+
+	drm_legacy_agp_clear(dev);
+
+	drm_legacy_sg_cleanup(dev);
+#if 0
+	drm_legacy_vma_flush(dev);
+#endif
+	drm_legacy_dma_takedown(dev);
+
+	mutex_unlock(&dev->struct_mutex);
+
+	dev->sigdata.lock = NULL;
+
+	dev->context_flag = 0;
+	dev->last_context = 0;
+	dev->if_version = 0;
+
+	DRM_DEBUG("lastclose completed\n");
+}
 
 /*
  * Take down the DRM device.
@@ -318,6 +338,9 @@ void drm_lastclose(struct drm_device * dev)
 	mutex_unlock(&dev->struct_mutex);
 
 	DRM_DEBUG("lastclose completed\n");
+
+	if (!drm_core_check_feature(dev, DRIVER_MODESET))
+		drm_legacy_dev_reinit(dev);
 }
 
 /**
@@ -520,16 +543,13 @@ EXPORT_SYMBOL(drm_read);
 static int
 drmfilt(struct knote *kn, long hint)
 {
-	struct drm_file *file_priv;
-	struct drm_device *dev;
+	struct drm_file *file_priv = (struct drm_file *)kn->kn_hook;
 	int ready = 0;
 
-	file_priv = (struct drm_file *)kn->kn_hook;
-	dev = file_priv->dev;
-	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+//	poll_wait(filp, &file_priv->event_wait, wait);
+
 	if (!list_empty(&file_priv->event_list))
 		ready = 1;
-	lockmgr(&dev->event_lock, LK_RELEASE);
 
 	return (ready);
 }
@@ -625,6 +645,7 @@ int drm_event_reserve_init_locked(struct drm_device *dev,
 	file_priv->event_space -= e->length;
 
 	p->event = e;
+	list_add(&p->pending_link, &file_priv->pending_event_list);
 	p->file_priv = file_priv;
 
 	/* we *could* pass this in as arg, but everyone uses kfree: */
@@ -691,7 +712,10 @@ void drm_event_cancel_free(struct drm_device *dev,
 {
 	unsigned long flags;
 	spin_lock_irqsave(&dev->event_lock, flags);
-	p->file_priv->event_space += p->event->length;
+	if (p->file_priv) {
+		p->file_priv->event_space += p->event->length;
+		list_del(&p->pending_link);
+	}
 	spin_unlock_irqrestore(&dev->event_lock, flags);
 	p->destroy(p);
 }
@@ -710,6 +734,12 @@ void drm_send_event_locked(struct drm_device *dev, struct drm_pending_event *e)
 {
 	assert_spin_locked(&dev->event_lock);
 
+	if (!e->file_priv) {
+		e->destroy(e);
+		return;
+	}
+
+	list_del(&e->pending_link);
 	list_add_tail(&e->link,
 		      &e->file_priv->event_list);
 	wake_up_interruptible(&e->file_priv->event_wait);
@@ -728,6 +758,11 @@ EXPORT_SYMBOL(drm_send_event_locked);
  * This function sends the event @e, initialized with drm_event_reserve_init(),
  * to its associated userspace DRM file. This function acquires dev->event_lock,
  * see drm_send_event_locked() for callers which already hold this lock.
+ *
+ * Note that the core will take care of unlinking and disarming events when the
+ * corresponding DRM file is closed. Drivers need not worry about whether the
+ * DRM file for this event still exists and can call this function upon
+ * completion of the asynchronous work unconditionally.
  */
 void drm_send_event(struct drm_device *dev, struct drm_pending_event *e)
 {

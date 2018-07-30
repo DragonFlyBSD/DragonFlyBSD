@@ -421,6 +421,7 @@ typedef struct drm_magic_entry {
 struct drm_pending_event {
 	struct drm_event *event;
 	struct list_head link;
+	struct list_head pending_link;
 	struct drm_file *file_priv;
 	pid_t pid; /* pid of requester, no guarantee it's valid by the time
 		      we deliver the event, for tracing only */
@@ -430,9 +431,7 @@ struct drm_pending_event {
 /* initial implementaton using a linked list - todo hashtab */
 struct drm_prime_file_private {
 	struct list_head head;
-#ifdef DUMBBELL_WIP
-	struct mutex lock;
-#endif /* DUMBBELL_WIP */
+	struct lock lock;
 };
 
 /** File private data */
