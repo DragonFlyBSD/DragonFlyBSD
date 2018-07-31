@@ -185,9 +185,10 @@
  * 500312 - OpenPAM Resedacea upgrade
  * 500313 - remove vmnet support from tap(4) (VMIO_* ioctls)
  * 500314 - add TAPGIFNAME to tap(4)
+ * 500315 - add TUNGIFNAME to tun(4)
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500314	/* propagated to newvers */
+#define __DragonFly_version 500315	/* propagated to newvers */
 
 #include <sys/_null.h>
 

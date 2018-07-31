@@ -674,6 +674,7 @@ tunioctl(struct dev_ioctl_args *ap)
 	caddr_t data = ap->a_data;
 	struct tun_softc *sc = dev->si_drv1;
 	struct ifnet *ifp = sc->tun_ifp;
+	struct ifreq *ifr;
 	struct tuninfo *tunp;
 	int error = 0;
 
@@ -693,6 +694,11 @@ tunioctl(struct dev_ioctl_args *ap)
 		tunp->mtu = ifp->if_mtu;
 		tunp->type = ifp->if_type;
 		tunp->baudrate = ifp->if_baudrate;
+		break;
+
+	case TUNGIFNAME:
+		ifr = (struct ifreq *)data;
+		strlcpy(ifr->ifr_name, ifp->if_xname, IFNAMSIZ);
 		break;
 
 	case TUNSDEBUG:

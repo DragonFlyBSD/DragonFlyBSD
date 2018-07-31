@@ -43,8 +43,11 @@ struct tuninfo {
 
 #define	TUNSLMODE	_IOW('t', 93, int)
 #define	TUNSIFMODE	_IOW('t', 94, int)
-#define	TUNSIFPID	_IO('t', 95)
+#define	TUNSIFPID	 _IO('t', 95)
 #define	TUNSIFHEAD	_IOW('t', 96, int)
 #define	TUNGIFHEAD	_IOR('t', 97, int)
+
+/* get the network interface name */
+#define	TUNGIFNAME	_IOR('t', 98, struct ifreq)
 
 #endif /* !_NET_IF_TUN_H_ */

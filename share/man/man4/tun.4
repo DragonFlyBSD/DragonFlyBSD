@@ -2,7 +2,7 @@
 .\" $FreeBSD: src/share/man/man4/tun.4,v 1.9.2.4 2001/08/17 13:08:39 ru Exp $
 .\" Based on PR#2411
 .\"
-.Dd July 17, 2018
+.Dd July 31, 2018
 .Dt TUN 4
 .Os
 .Sh NAME
@@ -221,6 +221,14 @@ is declared in
 The argument should be a pointer to an
 .Vt struct tuninfo ,
 where the current MTU, type, and baudrate will be stored.
+.It Dv TUNGIFNAME
+Retrieve the name of the network interface that is associated with the
+control device.
+The argument should be a pointer to a
+.Va struct ifreq .
+The interface name will be returned in the
+.Va ifr_name
+field.
 .It Dv TUNSIFMODE
 The argument should be a pointer to an
 .Vt int ;
