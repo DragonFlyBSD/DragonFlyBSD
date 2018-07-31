@@ -671,13 +671,15 @@ static int
 tunioctl(struct dev_ioctl_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
+	caddr_t data = ap->a_data;
 	struct tun_softc *sc = dev->si_drv1;
 	struct ifnet *ifp = sc->tun_ifp;
 	struct tuninfo *tunp;
+	int error = 0;
 
 	switch (ap->a_cmd) {
 	case TUNSIFINFO:
-		tunp = (struct tuninfo *)ap->a_data;
+		tunp = (struct tuninfo *)data;
 		if (ifp->if_type != tunp->type)
 			return (EPROTOTYPE);
 		if (tunp->mtu < IF_MINMTU)
@@ -687,22 +689,22 @@ tunioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case TUNGIFINFO:
-		tunp = (struct tuninfo *)ap->a_data;
+		tunp = (struct tuninfo *)data;
 		tunp->mtu = ifp->if_mtu;
 		tunp->type = ifp->if_type;
 		tunp->baudrate = ifp->if_baudrate;
 		break;
 
 	case TUNSDEBUG:
-		tundebug = *(int *)ap->a_data;
+		tundebug = *(int *)data;
 		break;
 
 	case TUNGDEBUG:
-		*(int *)ap->a_data = tundebug;
+		*(int *)data = tundebug;
 		break;
 
 	case TUNSLMODE:
-		if (*(int *)ap->a_data) {
+		if (*(int *)data) {
 			sc->tun_flags |= TUN_LMODE;
 			sc->tun_flags &= ~TUN_IFHEAD;
 		} else {
@@ -711,7 +713,7 @@ tunioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case TUNSIFHEAD:
-		if (*(int *)ap->a_data) {
+		if (*(int *)data) {
 			sc->tun_flags |= TUN_IFHEAD;
 			sc->tun_flags &= ~TUN_LMODE;
 		} else {
@@ -720,7 +722,7 @@ tunioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case TUNGIFHEAD:
-		*(int *)ap->a_data = (sc->tun_flags & TUN_IFHEAD) ? 1 : 0;
+		*(int *)data = (sc->tun_flags & TUN_IFHEAD) ? 1 : 0;
 		break;
 
 	case TUNSIFMODE:
@@ -728,11 +730,11 @@ tunioctl(struct dev_ioctl_args *ap)
 		if (ifp->if_flags & IFF_UP)
 			return (EBUSY);
 
-		switch (*(int *)ap->a_data & ~IFF_MULTICAST) {
+		switch (*(int *)data & ~IFF_MULTICAST) {
 		case IFF_POINTOPOINT:
 		case IFF_BROADCAST:
-			ifp->if_flags &= ~(IFF_BROADCAST|IFF_POINTOPOINT);
-			ifp->if_flags |= *(int *)ap->a_data;
+			ifp->if_flags &= ~(IFF_BROADCAST | IFF_POINTOPOINT);
+			ifp->if_flags |= *(int *)data;
 			break;
 		default:
 			return (EINVAL);
@@ -744,38 +746,41 @@ tunioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case FIOASYNC:
-		if (*(int *)ap->a_data)
+		if (*(int *)data)
 			sc->tun_flags |= TUN_ASYNC;
 		else
 			sc->tun_flags &= ~TUN_ASYNC;
 		break;
 
 	case FIONREAD:
-		*(int *)ap->a_data = ifsq_poll_pktlen(
+		*(int *)data = ifsq_poll_pktlen(
 		    ifq_get_subq_default(&ifp->if_snd));
 		break;
 
 	case FIOSETOWN:
-		return (fsetown(*(int *)ap->a_data, &sc->tun_sigio));
+		error = fsetown(*(int *)data, &sc->tun_sigio);
+		break;
 
 	case FIOGETOWN:
-		*(int *)ap->a_data = fgetown(&sc->tun_sigio);
-		return (0);
+		*(int *)data = fgetown(&sc->tun_sigio);
+		break;
 
 	/* This is deprecated, FIOSETOWN should be used instead. */
 	case TIOCSPGRP:
-		return (fsetown(-(*(int *)ap->a_data), &sc->tun_sigio));
+		error = fsetown(-(*(int *)data), &sc->tun_sigio);
+		break;
 
 	/* This is deprecated, FIOGETOWN should be used instead. */
 	case TIOCGPGRP:
-		*(int *)ap->a_data = -fgetown(&sc->tun_sigio);
-		return (0);
+		*(int *)data = -fgetown(&sc->tun_sigio);
+		break;
 
 	default:
-		return (ENOTTY);
+		error = ENOTTY;
+		break;
 	}
 
-	return (0);
+	return (error);
 }
 
 /*
