@@ -50,8 +50,6 @@ struct tapinfo {
 	u_char	dummy;		/* place holder */
 };
 
-struct ifreq;
-
 /* get/set internal debug variable */
 #define	TAPGDEBUG		_IOR('t', 89, int)
 #define	TAPSDEBUG		_IOW('t', 90, int)
