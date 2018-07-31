@@ -107,9 +107,6 @@ static int drm_setup(struct drm_device * dev)
 	if (ret < 0)
 		return ret;
 
-	drm_ht_create(&dev->magiclist, DRM_MAGIC_HASH_ORDER);
-	INIT_LIST_HEAD(&dev->magicfree);
-
 	init_waitqueue_head(&dev->lock.lock_queue);
 	if (!drm_core_check_feature(dev, DRIVER_MODESET))
 		dev->irq_enabled = 0;
@@ -356,15 +353,19 @@ void drm_lastclose(struct drm_device * dev)
  *
  * Always succeeds and returns 0.
  */
+//int drm_release(struct inode *inode, struct file *filp)
 int drm_release(device_t kdev)
 {
+//	XXX: filp is needed in this function
+#if 0
+	struct drm_file *file_priv = filp->private_data;
+#endif
 	struct drm_device *dev = device_get_softc(kdev);
-	struct drm_magic_entry *pt, *next;
 	int i;
 
 	mutex_lock(&drm_global_mutex);
 
-	/* Clear pid list */
+#if 0
 	if (dev->magicfree.next) {
 		list_for_each_entry_safe(pt, next, &dev->magicfree, head) {
 			list_del(&pt->head);
@@ -373,6 +374,7 @@ int drm_release(device_t kdev)
 		}
 		drm_ht_remove(&dev->magiclist);
 	}
+#endif
 
 	/* ========================================================
 	 * Begin inline drm_release

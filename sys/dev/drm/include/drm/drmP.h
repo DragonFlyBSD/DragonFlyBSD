@@ -525,9 +525,7 @@ struct drm_gem_mm {
  * @minor: Link back to minor char device we are master for. Immutable.
  * @unique: Unique identifier: e.g. busid. Protected by drm_global_mutex.
  * @unique_len: Length of unique field. Protected by drm_global_mutex.
- * @unique_size: Amount allocated. Protected by drm_global_mutex.
- * @magiclist: Hash of used authentication tokens. Protected by struct_mutex.
- * @magicfree: List of used authentication tokens. Protected by struct_mutex.
+ * @magic_map: Map of used authentication tokens. Protected by struct_mutex.
  * @lock: DRI lock information.
  * @driver_priv: Pointer to driver-private information.
  */
@@ -539,8 +537,7 @@ struct drm_master {
 	int unique_len;			/**< Length of unique field */
 	int unique_size;		/**< amount allocated */
 	int blocked;			/**< Blocked due to VC switch? */
-	struct drm_open_hash magiclist;
-	struct list_head magicfree;
+	struct idr magic_map;
 	struct drm_lock_data lock;
 	void *driver_priv;
 };
@@ -871,8 +868,7 @@ struct drm_device {
 	/*@} */
 
 				/* Authentication */
-	struct drm_open_hash magiclist;	/**< magic hash table */
-	struct list_head magicfree;
+	struct idr magic_map;
 
 	struct lock filelist_mutex;
 	struct list_head filelist;
