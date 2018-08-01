@@ -778,12 +778,14 @@ erase_partition(int i)
 	struct	  dos_partition *partp;
 	off_t ioarg[2];
 
-	char sysctl_name[64];
-	int trim_enabled = 0;
-	size_t olen = sizeof(trim_enabled);
 	char *dev_name = strdup(disk);
 
 	dev_name = strtok(dev_name + strlen("/dev/da"),"s");
+#if 0
+	int trim_enabled = 0;
+	char sysctl_name[64];
+	size_t olen = sizeof(trim_enabled);
+
 	sprintf(sysctl_name, "kern.cam.da.%s.trim_enabled", dev_name);
 	if (sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0) < 0) {
 		printf("Device:%s does not support the TRIM command\n", disk);
@@ -794,6 +796,7 @@ erase_partition(int i)
 		    "is not enabled\n",sysctl_name);
 		usage();
 	}
+#endif
 	partp = ((struct dos_partition *) &mboot.parts) + i;
 	printf("erase sectors:%u %u\n",
 	    partp->dp_start,

@@ -1309,11 +1309,6 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 				count = bp->b_bcount / softc->params.secsize;
 				lba = bio1->bio_offset/softc->params.secsize;
 
-				kprintf("trim lba:%llu boff:%llu count:%d\n",
-				    (unsigned long long) lba,
-				    (unsigned long long) bio1->bio_offset,
-				    count);
-
 				bioq_remove(&softc->bio_queue_trim, bio1);
 				while (count > 0) {
 					int c = min(count, 0xffff);

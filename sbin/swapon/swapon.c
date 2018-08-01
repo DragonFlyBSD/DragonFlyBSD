@@ -77,7 +77,7 @@ main(int argc, char **argv)
 	orig_prog = which_prog;
 
 	sflag = lflag = hflag = doall = eflag = cflag = iflag = 0;
-	while ((ch = getopt(argc, argv, "AacdeghiklmqsU")) != -1) {
+	while ((ch = getopt(argc, argv, "acdeghiklmqsAEU")) != -1) {
 		switch((char)ch) {
 		case 'A':
 			if (which_prog == SWAPCTL) {
@@ -102,6 +102,7 @@ main(int argc, char **argv)
 		case 'c':
 			cflag = 1;
 			break;
+		case 'E':
 		case 'e':
 			eflag = 1;
 			break;
@@ -340,9 +341,8 @@ trim_volume(char * name)
 	/*Trim the Device*/	
 	ioarg[0] = pinfo.media_offset;
 	ioarg[1] = pinfo.media_size;
-	printf("Trimming Device:%s, sectors (%llu -%llu)\n",name,
-	     (unsigned long long)ioarg[0]/512,
-	     (unsigned long long)ioarg[1]/512);
+	printf("Trimming Device:%s, start=%jd bytes=%jd)\n",
+	     name, (intmax_t)ioarg[0], (intmax_t)ioarg[1]);
 	if (ioctl(fd, DAIOCTRIM, ioarg) < 0) {
 		printf("Device trim failed\n");
 		usage ();
@@ -365,28 +365,7 @@ swap_on_off(char *name, int doingall, int trim, int ask)
 
 	}
 	if (which_prog == SWAPON && trim) {
-		char sysctl_name[64];
-		int trim_enabled = 0;
-		size_t olen = sizeof(trim_enabled);
-		char *dev_name = strdup(name);
-		dev_name = strtok(dev_name + strlen("/dev/da"),"s");
-		sprintf(sysctl_name, "kern.cam.da.%s.trim_enabled", dev_name);
-		if (sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0) < 0) {
-			if (qflag == 0) {
-				printf("TRIM not supported on %s, "
-				       "ignoring\n",
-				       name);
-			}
-			errno = 0;
-		} else if (!trim_enabled) {
-			if (qflag == 0) {
-				printf("TRIM not enabled on %s (%s), "
-				       "ignoring\n",
-				       name, sysctl_name);
-			}
-		} else {
-			trim_volume(name);
-		}
+		trim_volume(name);
 	}
 	if ((which_prog == SWAPOFF ? swapoff(name) : swapon(name)) == -1) {
 		switch(errno) {

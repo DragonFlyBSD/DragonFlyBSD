@@ -35,7 +35,7 @@
 .Nm swapon , swapoff , swapctl
 .Nd "specify devices for paging and swapping"
 .Sh SYNOPSIS
-.Nm swapon Fl aceiq | Ar
+.Nm swapon Fl acEiq | Ar
 .Nm swapoff Fl aq | Ar
 .Nm swapctl
 .Op Fl AeghklmsU
@@ -90,7 +90,7 @@ If the
 option is used, the device will be encrypted with a random
 key.
 If the
-.Fl e
+.Fl E
 option is used, the device will be trimmed if
 it supports trim and the trim_enabled sysctl is on.
 The
@@ -183,7 +183,9 @@ Print a summary line for system swap.
 .If Fl c
 The swap is or should be crypted.
 .It Fl e
-Attempts to Trim the device if -[Aa] is used.
+.It Fl E
+Attempts to Trim the device if -[Aa] is used.  The lower-case version
+of this option is deprecated.
 .It Fl i
 Asks user confirmation when -a is used.
 .It Fl q

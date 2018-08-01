@@ -237,7 +237,7 @@ option instructs
 .Nm
 to destroy the table in a way that it can be recovered.
 .\" ==== init ====
-.It Nm Ic init Fl f Oo Fl B Oc Ar device ...
+.It Nm Ic init Fl f Oo Fl B Oc Oo Fl E Oc Ar device ...
 The
 .Ic init
 command allows the user to create a new GPT similar
@@ -257,6 +257,13 @@ If the
 option is specified, /boot/bootx64.efi will be copied into
 the msdos slice (s0), and the disklabel will be initialized
 with -B in addition to the normal -r -w.
+.Pp
+If the
+.Fl E
+option is specified, the drive is TRIMed prior to the installation
+of the new label, if supported.  The operation will continue if not
+supported.  Note that this will complete destroy the contents of the
+drive.
 .\" ==== label ====
 .It Xo
 .Nm

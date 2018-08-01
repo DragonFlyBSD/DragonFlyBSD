@@ -31,6 +31,9 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/errno.h>
+#include <sys/param.h>
+#include <bus/cam/scsi/scsi_daio.h>
 
 #include <err.h>
 #include <stddef.h>
@@ -46,6 +49,8 @@
 static int force;
 static int primary_only;
 
+static void do_erase(int fd);
+
 static void
 usage_create(void)
 {
@@ -56,7 +61,7 @@ usage_create(void)
 static void
 usage_init(void)
 {
-	fprintf(stderr, "usage: %s -f [-B] device ...\n", getprogname());
+	fprintf(stderr, "usage: %s -f [-B] [-E] device ...\n", getprogname());
 	fprintf(stderr, "\tnote: -f is mandatory for this command\n");
 	exit(1);
 }
@@ -284,8 +289,9 @@ cmd_init(int argc, char *argv[])
 {
 	int ch, fd;
 	int with_boot = 0;
+	int with_trim = 0;
 
-	while ((ch = getopt(argc, argv, "fIB")) != -1) {
+	while ((ch = getopt(argc, argv, "fBEI")) != -1) {
 		switch(ch) {
 		case 'f':
 			force = 1;
@@ -296,6 +302,9 @@ cmd_init(int argc, char *argv[])
 					"program\n");
 			usage_init();
 			/* NOT REACHED */
+			break;
+		case 'E':
+			with_trim = 1;
 			break;
 		case 'B':
 			with_boot = 1;
@@ -322,11 +331,22 @@ cmd_init(int argc, char *argv[])
 		 */
 		fd = gpt_open(path);
 		if (fd == -1) {
-			warn("unable to open device '%s'", device_name);
+			warn("unable to open device '%s'", path);
 			continue;
+		}
+		if (with_trim) {
+			do_erase(fd);
+			gpt_close(fd);
+			sleep(1);
+			fd = gpt_open(path);
+			if (fd == -1) {
+				warn("unable to reopen device '%s'", path);
+				continue;
+			}
 		}
 		do_destroy(fd);
 		gpt_close(fd);
+		sleep(1);
 
 		fd = gpt_open(path);
 		if (fd == -1) {
@@ -336,6 +356,7 @@ cmd_init(int argc, char *argv[])
 		create(fd);
 		add_defaults(fd);
 		gpt_close(fd);
+		sleep(1);
 
 		/*
 		 * Setup slices
@@ -353,10 +374,10 @@ cmd_init(int argc, char *argv[])
 		/*
 		 * Label slice1
 		 */
-		sleep(1);
 		dosys("disklabel -r -w %s %s auto",
 		      (with_boot ? "-B" : ""),
 		      slice1);
+		sleep(1);
 
 		/*
 		 * newfs_msdos slice0
@@ -392,4 +413,20 @@ cmd_init(int argc, char *argv[])
 	}
 
 	return (0);
+}
+
+static void
+do_erase(int fd)
+{
+	off_t ioarg[2];
+
+	ioarg[0] = 0;
+	ioarg[1] = mediasz;
+
+	if (ioctl(fd, DAIOCTRIM, ioarg) < 0) {
+		printf("Trim error %s\n", strerror(errno));
+		printf("Continuing\n");
+	} else {
+		printf("Trim completed ok\n");
+	}
 }
