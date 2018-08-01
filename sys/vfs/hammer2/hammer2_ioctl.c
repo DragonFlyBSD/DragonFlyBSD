@@ -1198,21 +1198,13 @@ hammer2_ioctl_destroy(hammer2_inode_t *ip, void *data)
 		hammer2_pfs_memory_wait(ip, 0);
 		hammer2_trans_init(pmp, 0);
 
-		xop = hammer2_xop_alloc(pmp->iroot, 0);
+		xop = hammer2_xop_alloc(pmp->iroot, HAMMER2_XOP_MODIFYING);
 		xop->lhc = iocd->inum;
-		hammer2_xop_start(&xop->head, hammer2_xop_lookup);
+		hammer2_xop_start(&xop->head, hammer2_xop_delete);
 		error = hammer2_xop_collect(&xop->head, 0);
-		if (error == 0) {
-			ip = hammer2_inode_get(pmp, NULL, &xop->head, -1);
-			hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
-			if (ip) {
-				ip->meta.nlinks = 1;
-				hammer2_inode_unlink_finisher(ip, 0);
-				hammer2_inode_unlock(ip);
-			}
-		} else {
-			hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
-		}
+		error = hammer2_error_to_errno(error);
+		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+		hammer2_trans_done(pmp, 1);
 		}
 		break;
 	default:

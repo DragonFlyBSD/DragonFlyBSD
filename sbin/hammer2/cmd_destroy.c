@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2017-2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -85,4 +85,31 @@ pathdir(const char *path, const char **lastp)
 	}
 
 	return fd;
+}
+
+int
+cmd_destroy_inum(const char *sel_path, int ac, const char **av)
+{
+	hammer2_ioc_destroy_t destroy;
+	int i;
+	int fd;
+
+	fd = hammer2_ioctl_handle(sel_path);
+	if (fd < 0)
+		return 1;
+
+	printf("deleting inodes on %s\n", sel_path);
+	for (i = 0; i < ac; ++i) {
+		bzero(&destroy, sizeof(destroy));
+		destroy.cmd = HAMMER2_DELETE_INUM;
+		destroy.inum = strtoul(av[i], NULL, 0);
+		printf("%16jd ", (intmax_t)destroy.inum);
+		if (ioctl(fd, HAMMER2IOC_DESTROY, &destroy) < 0)
+			printf("%s\n", strerror(errno));
+		else
+			printf("ok\n");
+	}
+	close(fd);
+
+	return 0;
 }

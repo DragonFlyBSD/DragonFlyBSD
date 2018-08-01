@@ -1690,6 +1690,7 @@ void hammer2_xop_nrename(hammer2_thread_t *thr, hammer2_xop_t *xop);
 void hammer2_xop_scanlhc(hammer2_thread_t *thr, hammer2_xop_t *xop);
 void hammer2_xop_scanall(hammer2_thread_t *thr, hammer2_xop_t *xop);
 void hammer2_xop_lookup(hammer2_thread_t *thr, hammer2_xop_t *xop);
+void hammer2_xop_delete(hammer2_thread_t *thr, hammer2_xop_t *xop);
 void hammer2_inode_xop_mkdirent(hammer2_thread_t *thr, hammer2_xop_t *xop);
 void hammer2_inode_xop_create(hammer2_thread_t *thr, hammer2_xop_t *xop);
 void hammer2_inode_xop_destroy(hammer2_thread_t *thr, hammer2_xop_t *xop);

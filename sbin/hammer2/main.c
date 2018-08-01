@@ -207,6 +207,12 @@ main(int ac, char **av)
 				"Specify one or more paths to destroy\n");
 		}
 		ecode = cmd_destroy_path(ac - 1, (const char **)(void *)&av[1]);
+	} else if (strcmp(av[0], "destroy-inum") == 0) {
+		if (ac < 2) {
+			fprintf(stderr,
+				"Specify one or more inode numbers to destroy\n");
+		}
+		ecode = cmd_destroy_inum(sel_path, ac - 1, (const char **)(void *)&av[1]);
 	} else if (strcmp(av[0], "hash") == 0) {
 		ecode = cmd_hash(ac - 1, (const char **)(void *)&av[1]);
 	} else if (strcmp(av[0], "info") == 0) {
@@ -507,7 +513,9 @@ usage(int code)
 			"Dump in-memory chain topo from\n"
 			"NOTE: ONFLUSH flag is 0x200\n"
 		"    destroy <path>*              "
-			"Destroy a directory entry (only use if inode bad)\n"
+			"Destroy directory entries (only use if inode bad)\n"
+		"    destroy-inum <inum>*              "
+			"Destroy inodes (only use if inode bad)\n"
 		"    disconnect <target>          "
 			"Del cluster link\n"
 		"    hash filename*               "

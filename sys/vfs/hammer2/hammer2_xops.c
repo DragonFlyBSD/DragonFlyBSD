@@ -834,8 +834,6 @@ done:
 
 /*
  * Generic lookup of a specific key.
- *
- * Used by the inode hidden directory code to find the hidden directory.
  */
 void
 hammer2_xop_lookup(hammer2_thread_t *thr, hammer2_xop_t *arg)
@@ -871,6 +869,54 @@ hammer2_xop_lookup(hammer2_thread_t *thr, hammer2_xop_t *arg)
 			error = HAMMER2_ERROR_ENOENT;
 	}
 	hammer2_xop_feed(&xop->head, chain, thr->clindex, error);
+
+done:
+	if (chain) {
+		hammer2_chain_unlock(chain);
+		hammer2_chain_drop(chain);
+	}
+	if (parent) {
+		hammer2_chain_unlock(parent);
+		hammer2_chain_drop(parent);
+	}
+}
+
+void
+hammer2_xop_delete(hammer2_thread_t *thr, hammer2_xop_t *arg)
+{
+	hammer2_xop_scanlhc_t *xop = &arg->xop_scanlhc;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_key_t key_next;
+	int error = 0;
+
+	parent = hammer2_inode_chain(xop->head.ip1, thr->clindex,
+				     HAMMER2_RESOLVE_ALWAYS);
+	chain = NULL;
+	if (parent == NULL) {
+		error = HAMMER2_ERROR_EIO;
+		goto done;
+	}
+
+	/*
+	 * Lookup all possibly conflicting directory entries, the feed
+	 * inherits the chain's lock so do not unlock it on the iteration.
+	 */
+	chain = hammer2_chain_lookup(&parent, &key_next,
+				     xop->lhc, xop->lhc,
+				     &error,
+				     HAMMER2_LOOKUP_NODATA);
+	if (error == 0) {
+		if (chain)
+			error = chain->error;
+		else
+			error = HAMMER2_ERROR_ENOENT;
+	}
+	if (chain) {
+		error = hammer2_chain_delete(parent, chain, xop->head.mtid,
+					     HAMMER2_DELETE_PERMANENT);
+	}
+	hammer2_xop_feed(&xop->head, NULL, thr->clindex, error);
 
 done:
 	if (chain) {
