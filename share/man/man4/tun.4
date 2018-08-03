@@ -2,7 +2,7 @@
 .\" $FreeBSD: src/share/man/man4/tun.4,v 1.9.2.4 2001/08/17 13:08:39 ru Exp $
 .\" Based on PR#2411
 .\"
-.Dd July 31, 2018
+.Dd August 3, 2018
 .Dt TUN 4
 .Os
 .Sh NAME
@@ -133,8 +133,7 @@ ioctl has been set (i.e.,
 .Dq link-layer
 mode), packets read from the control device will be prepended
 with the destination address as presented to the network interface output
-routine,
-.Fn tunoutput .
+routine.
 The destination address is in
 .Vt struct sockaddr
 format.
