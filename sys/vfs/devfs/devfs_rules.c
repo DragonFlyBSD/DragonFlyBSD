@@ -198,8 +198,8 @@ devfs_rule_clear(struct devfs_rule_ioctl *templ)
 	lockmgr(&devfs_rule_lock, LK_EXCLUSIVE);
 	TAILQ_FOREACH_MUTABLE(rule1, &devfs_rule_list, link, rule2) {
 		if ((templ->mntpoint[0] == '*') ||
-			( (mntpointlen == rule1->mntpointlen) &&
-			  (!memcmp(templ->mntpoint, rule1->mntpoint, mntpointlen)) )) {
+		    ((mntpointlen == rule1->mntpointlen) &&
+		     (!memcmp(templ->mntpoint, rule1->mntpoint, mntpointlen)))) {
 			devfs_rule_remove(rule1);
 		}
 	}
@@ -461,18 +461,14 @@ devfs_dev_init(void *unused)
 {
 	lockinit(&devfs_rule_lock, "devfs_rule lock", 0, 0);
 
-    devfs_rule_cache = objcache_create("devfs-rule-cache", 0, 0,
-			NULL, NULL, NULL,
-			objcache_malloc_alloc,
-			objcache_malloc_free,
-			&devfs_rule_malloc_args );
+	devfs_rule_cache = objcache_create("devfs-rule-cache", 0, 0,
+					   NULL, NULL, NULL,
+					   objcache_malloc_alloc,
+					   objcache_malloc_free,
+					   &devfs_rule_malloc_args);
 
-    devfs_dev = make_dev(&devfs_dev_ops,
-            0,
-            UID_ROOT,
-            GID_WHEEL,
-            0600,
-            "devfs");
+	devfs_dev = make_dev(&devfs_dev_ops, 0, UID_ROOT, GID_WHEEL,
+			     0600, "devfs");
 }
 
 
@@ -480,11 +476,11 @@ static void
 devfs_dev_uninit(void *unused)
 {
 	/* XXX: destroy all rules first */
-    destroy_dev(devfs_dev);
+	destroy_dev(devfs_dev);
 	objcache_destroy(devfs_rule_cache);
 }
 
 
-SYSINIT(devfsdev,SI_SUB_DRIVERS,SI_ORDER_FIRST,devfs_dev_init,NULL);
-SYSUNINIT(devfsdev, SI_SUB_DRIVERS,SI_ORDER_FIRST,devfs_dev_uninit, NULL);
+SYSINIT(devfsdev, SI_SUB_DRIVERS, SI_ORDER_FIRST, devfs_dev_init, NULL);
+SYSUNINIT(devfsdev, SI_SUB_DRIVERS, SI_ORDER_FIRST, devfs_dev_uninit, NULL);
 
