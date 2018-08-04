@@ -121,7 +121,7 @@ if_clone_create(char *name, int len, caddr_t params)
 	 * Allocate the unit in the bitmap.
 	 */
 	KASSERT((ifc->ifc_units[bytoff] & (1 << bitoff)) == 0,
-	    ("%s: bit is already set", __func__));
+		("%s: bit is already set", __func__));
 	ifc->ifc_units[bytoff] |= (1 << bitoff);
 
 	return (0);
@@ -138,34 +138,27 @@ if_clone_destroy(const char *name)
 	int bytoff, bitoff;
 	int unit, error;
 
-	if ((ifc = if_clone_lookup(name)) == NULL)
+	ifnet_lock();
+	ifp = ifunit(name);
+	ifnet_unlock();
+	if (ifp == NULL)
+		return (ENXIO);
+
+	if ((ifc = if_clone_lookup(ifp->if_dname)) == NULL)
 		return (EINVAL);
 
-	if ((err = if_name2unit(name, &unit)) != 0)
-		return (err);
+	unit = ifp->if_dunit;
 	if (unit < ifc->ifc_minifs)
 		return (EINVAL);
 
-	ifnet_lock();
-
-	ifp = ifunit(name);
-	if (ifp == NULL) {
-		ifnet_unlock();
-		return (ENXIO);
-	}
-
-	if (ifc->ifc_destroy == NULL) {
-		ifnet_unlock();
+	if (ifc->ifc_destroy == NULL)
 		return (EOPNOTSUPP);
-	}
 
+	ifnet_lock();
 	error = ifc->ifc_destroy(ifp);
-	if (error) {
-		ifnet_unlock();
-		return error;
-	}
-
 	ifnet_unlock();
+	if (error)
+		return (error);
 
 	/*
 	 * Compute offset in the bitmap and deallocate the unit.
@@ -173,8 +166,9 @@ if_clone_destroy(const char *name)
 	bytoff = unit >> 3;
 	bitoff = unit - (bytoff << 3);
 	KASSERT((ifc->ifc_units[bytoff] & (1 << bitoff)) != 0,
-	    ("%s: bit is already cleared", __func__));
+		("%s: bit is already cleared", __func__));
 	ifc->ifc_units[bytoff] &= ~(1 << bitoff);
+
 	return (0);
 }
 
