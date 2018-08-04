@@ -34,6 +34,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/eventhandler.h>
+#include <sys/limits.h>
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -44,7 +45,9 @@ static int if_cloners_count;
 
 MALLOC_DEFINE(M_CLONE, "clone", "interface cloning framework");
 
-static struct if_clone	*if_clone_lookup(const char *, int *);
+static int	if_name2unit(const char *, int *);
+static bool	if_clone_match(struct if_clone *, const char *);
+static struct if_clone *if_clone_lookup(const char *);
 
 /*
  * Create a clone network interface.
@@ -55,12 +58,14 @@ if_clone_create(char *name, int len, caddr_t params)
 	struct if_clone *ifc;
 	struct ifnet *ifp;
 	char ifname[IFNAMSIZ];
-	int wildcard, bytoff, bitoff;
+	bool wildcard;
+	int bytoff, bitoff;
 	int unit;
 	int err;
 
-	ifc = if_clone_lookup(name, &unit);
-	if (ifc == NULL)
+	if ((err = if_name2unit(name, &unit)) != 0)
+		return (err);
+	if ((ifc = if_clone_lookup(name)) == NULL)
 		return (EINVAL);
 
 	ifnet_lock();
@@ -76,7 +81,7 @@ if_clone_create(char *name, int len, caddr_t params)
 	 */
 	if (wildcard) {
 		while (bytoff < ifc->ifc_bmlen &&
-		    ifc->ifc_units[bytoff] == 0xff)
+		       ifc->ifc_units[bytoff] == 0xff)
 			bytoff++;
 		if (bytoff >= ifc->ifc_bmlen)
 			return (ENOSPC);
@@ -133,10 +138,11 @@ if_clone_destroy(const char *name)
 	int bytoff, bitoff;
 	int unit, error;
 
-	ifc = if_clone_lookup(name, &unit);
-	if (ifc == NULL)
+	if ((ifc = if_clone_lookup(name)) == NULL)
 		return (EINVAL);
 
+	if ((err = if_name2unit(name, &unit)) != 0)
+		return (err);
 	if (unit < ifc->ifc_minifs)
 		return (EINVAL);
 
@@ -273,42 +279,77 @@ if_clone_list(struct if_clonereq *ifcr)
 }
 
 /*
- * Look up a network interface cloner.
+ * Extract the unit number from interface name of the form "name###".
+ * A unit of -1 is stored if the given name doesn't have a unit.
+ *
+ * Returns 0 on success and an error on failure.
  */
-static struct if_clone *
-if_clone_lookup(const char *name, int *unitp)
+static int
+if_name2unit(const char *name, int *unit)
 {
-	struct if_clone *ifc;
+	const char *cp;
+	int cutoff = INT_MAX / 10;
+	int cutlim = INT_MAX % 10;
+
+	for (cp = name; *cp != '\0' && (*cp < '0' || *cp > '9'); cp++)
+		;
+	if (*cp == '\0') {
+		*unit = -1;
+	} else if (cp[0] == '0' && cp[1] != '\0') {
+		/* Disallow leading zeroes. */
+		return (EINVAL);
+	} else {
+		for (*unit = 0; *cp != '\0'; cp++) {
+			if (*cp < '0' || *cp > '9') {
+				/* Bogus unit number. */
+				return (EINVAL);
+			}
+			if (*unit > cutoff ||
+			    (*unit == cutoff && *cp - '0' > cutlim))
+				return (EINVAL);
+			*unit = (*unit * 10) + (*cp - '0');
+		}
+	}
+
+	return (0);
+}
+
+/*
+ * Check whether the interface cloner matches the name.
+ */
+static bool
+if_clone_match(struct if_clone *ifc, const char *name)
+{
 	const char *cp;
 	int i;
 
-	for (ifc = LIST_FIRST(&if_cloners); ifc != NULL; ) {
-		for (cp = name, i = 0; i < strlen(ifc->ifc_name); i++, cp++) {
-			if (ifc->ifc_name[i] != *cp)
-				goto next_ifc;
-		}
-		goto found_name;
- next_ifc:
-		ifc = LIST_NEXT(ifc, ifc_list);
+	/* Match the name */
+	for (cp = name, i = 0; i < strlen(ifc->ifc_name); i++, cp++) {
+		if (ifc->ifc_name[i] != *cp)
+			return (false);
+	}
+
+	/* Make sure there's a unit number or nothing after the name */
+	for ( ; *cp != '\0'; cp++) {
+		if (*cp < '0' || *cp > '9')
+			return (false);
+	}
+
+	return (true);
+}
+
+/*
+ * Look up a network interface cloner.
+ */
+static struct if_clone *
+if_clone_lookup(const char *name)
+{
+	struct if_clone *ifc;
+
+	LIST_FOREACH(ifc, &if_cloners, ifc_list) {
+		if (if_clone_match(ifc, name))
+			return ifc;
 	}
 
 	return (NULL);
-
- found_name:
-	if (*cp == '\0') {
-		i = -1;
-	} else {
-		for (i = 0; *cp != '\0'; cp++) {
-			if (*cp < '0' || *cp > '9') {
-				/* Bogus unit number. */
-				return (NULL);
-			}
-			i = (i * 10) + (*cp - '0');
-		}
-	}
-
-	if (unitp != NULL)
-		*unitp = i;
-
-	return (ifc);
 }
