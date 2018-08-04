@@ -247,6 +247,7 @@ tapcreate(cdev_t dev, int flags)
 	/* fill the rest and attach interface */
 	ifp = &sc->tap_if;
 	if_initname(ifp, TAP, unit);
+	ifp->if_type = IFT_ETHER;
 	ifp->if_init = tapifinit;
 	ifp->if_start = tapifstart;
 	ifp->if_ioctl = tapifioctl;
