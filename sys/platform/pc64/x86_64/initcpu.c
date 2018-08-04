@@ -43,6 +43,11 @@
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
+extern int i8254_cputimer_disable;
+
+static int tsc_ignore_cpuid = 0;
+TUNABLE_INT("hw.tsc_ignore_cpuid", &tsc_ignore_cpuid);
+
 static int	hw_instruction_sse;
 SYSCTL_INT(_hw, OID_AUTO, instruction_sse, CTLFLAG_RD,
     &hw_instruction_sse, 0, "SIMD/MMX2 instructions available in CPU");
@@ -326,3 +331,67 @@ initializecpu(int cpu)
 	if ((amd_feature & AMDID_RDTSCP) != 0)
 		wrmsr(MSR_TSCAUX, cpu);
 }
+
+/*
+ * This method should be at least as good as calibrating the TSC based on the
+ * HPET timer, since the HPET runs with the core crystal clock apparently.
+ */
+static void
+detect_tsc_frequency(void)
+{
+	int cpu_family, cpu_model;
+	u_int regs[4];
+	uint64_t crystal = 0;
+
+	cpu_model = CPUID_TO_MODEL(cpu_id);
+	cpu_family = CPUID_TO_FAMILY(cpu_id);
+
+	if (cpu_vendor_id != CPU_VENDOR_INTEL)
+		return;
+
+	if (cpu_high < 0x15)
+		return;
+
+	do_cpuid(0x15, regs);
+	if (regs[0] == 0 || regs[1] == 0)
+		return;
+
+	if (regs[2] == 0) {
+		/* For some families the SDM contains the core crystal clock. */
+		if (cpu_family == 0x6) {
+			switch (cpu_model) {
+			case 0x55:	/* Xeon Scalable */
+				crystal = 25000000;	/* 25 MHz */
+				break;
+			/* Skylake */
+			case 0x4e:
+			case 0x5e:
+			/* Kabylake/Coffeelake */
+			case 0x8e:
+			case 0x9e:
+				crystal = 24000000;	/* 24 MHz */
+				break;
+			case 0x5c:	/* Goldmont Atom */
+				crystal = 19200000;	/* 19.2 MHz */
+				break;
+			default:
+				break;
+			}
+		}
+	} else {
+		crystal = regs[2];
+	}
+
+	if (crystal == 0)
+		return;
+
+	kprintf("TSC crystal clock: %ju Hz, TSC/crystal ratio: %u/%u\n",
+	    crystal, regs[1], regs[0]);
+
+	if (tsc_ignore_cpuid == 0) {
+		tsc_frequency = (crystal * regs[1]) / regs[0];
+		i8254_cputimer_disable = 1;
+	}
+}
+
+TIMECOUNTER_INIT(cpuid_tsc_frequency, detect_tsc_frequency);
