@@ -382,6 +382,7 @@
 #define	MSR_DRAM_ENERGY_STATUS	0x619
 #define	MSR_PP0_ENERGY_STATUS	0x639
 #define	MSR_PP1_ENERGY_STATUS	0x641
+#define	MSR_PLATFORM_ENERGY_COUNTER 0x64d /* Skylake and later */
 
 /*
  * Constants related to MSR's.

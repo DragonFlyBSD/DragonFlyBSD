@@ -71,6 +71,7 @@ struct corepower_softc {
 	struct corepower_sensor	sc_dram_sens;
 	struct corepower_sensor	sc_pp0_sens;
 	struct corepower_sensor	sc_pp1_sens;
+	struct corepower_sensor	sc_platform_sens;
 
 	struct ksensordev	sc_sensordev;
 	struct sensor_task	*sc_senstask;
@@ -236,17 +237,20 @@ corepower_attach(device_t dev)
 		case 0x56:
 			sc->sc_have_sens = 0x7;
 			break;
-		/* Haswell, Broadwell, Skylake, Kabylake */
+		/* Haswell, Broadwell */
 		case 0x3c:
 		case 0x3d:
 		case 0x45:
 		case 0x46:
 		case 0x47:
+			/* Check if Core or Xeon (Xeon CPUs might be 0x7) */
+			sc->sc_have_sens = 0xf;
+			break;
+		/* Skylake, Kabylake, Coffeelake */
 		case 0x4e:
 		case 0x5e:
 		case 0x8e:	/* Kabylake */
-			/* Check if Core or Xeon (Xeon CPUs might be 0x7) */
-			sc->sc_have_sens = 0xf;
+			sc->sc_have_sens = 0x1f;
 			break;
 		/* Atom CPUs */
 		case 0x37:
@@ -312,6 +316,15 @@ corepower_attach(device_t dev)
 	} else {
 		sc->sc_have_sens &= ~8;
 	}
+	if ((sc->sc_have_sens & 0x10) &&
+	    corepower_try(MSR_PLATFORM_ENERGY_COUNTER, "MSR_PLATFORM_ENERGY_COUNTER") &&
+	    (rdmsr(MSR_PLATFORM_ENERGY_COUNTER) & 0xffffffffU) != 0) {
+		corepower_sens_init(&sc->sc_platform_sens, "Platform Power",
+		    MSR_PLATFORM_ENERGY_COUNTER, cpu);
+		sensor_attach(&sc->sc_sensordev, &sc->sc_platform_sens.sensor);
+	} else {
+		sc->sc_have_sens &= ~0x10;
+	}
 
 	if (sc->sc_have_sens == 0)
 		return (ENXIO);
@@ -363,6 +376,8 @@ corepower_refresh(void *arg)
 		corepower_sens_update(sc, &sc->sc_pp0_sens);
 	if (sc->sc_have_sens & 8)
 		corepower_sens_update(sc, &sc->sc_pp1_sens);
+	if (sc->sc_have_sens & 0x10)
+		corepower_sens_update(sc, &sc->sc_platform_sens);
 }
 
 static void
