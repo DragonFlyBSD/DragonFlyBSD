@@ -65,10 +65,11 @@
 #include <net/bpf.h>
 #include <net/ethernet.h>
 #include <net/if.h>
-#include <net/ifq_var.h>
+#include <net/if_types.h>
 #include <net/if_arp.h>
 #include <net/if_clone.h>
 #include <net/if_media.h>
+#include <net/ifq_var.h>
 #include <net/route.h>
 
 #include <netinet/in.h>
