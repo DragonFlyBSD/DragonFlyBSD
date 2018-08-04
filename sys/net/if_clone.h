@@ -56,7 +56,6 @@ struct if_clonereq {
 struct if_clone {
 	LIST_ENTRY(if_clone) ifc_list;	/* on list of cloners */
 	const char	*ifc_name;	/* name of device, e.g. `gif' */
-	size_t		ifc_namelen;	/* length of name */
 	int		ifc_minifs;	/* minimum number of interfaces */
 	int 		ifc_maxunit;	/* maximum unit number */
 	unsigned char	*ifc_units;	/* bitmap to handle units */
@@ -67,7 +66,7 @@ struct if_clone {
 };
 
 #define IF_CLONE_INITIALIZER(name, create, destroy, minifs, maxunit)	\
-{ { 0 }, name, sizeof(name) - 1, minifs, maxunit, NULL, 0, create, destroy }
+{ { 0 }, name, minifs, maxunit, NULL, 0, create, destroy }
 
 /* interface clone event */
 typedef void (*if_clone_event_handler_t)(void *, struct if_clone *);

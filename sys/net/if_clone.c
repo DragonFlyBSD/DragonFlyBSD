@@ -283,7 +283,7 @@ if_clone_lookup(const char *name, int *unitp)
 	int i;
 
 	for (ifc = LIST_FIRST(&if_cloners); ifc != NULL; ) {
-		for (cp = name, i = 0; i < ifc->ifc_namelen; i++, cp++) {
+		for (cp = name, i = 0; i < strlen(ifc->ifc_name); i++, cp++) {
 			if (ifc->ifc_name[i] != *cp)
 				goto next_ifc;
 		}
