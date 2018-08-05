@@ -437,33 +437,6 @@ int drm_release(device_t kdev)
 }
 EXPORT_SYMBOL(drm_release);
 
-static bool
-drm_dequeue_event(struct drm_device *dev, struct drm_file *file_priv,
-    struct uio *uio, struct drm_pending_event **out)
-{
-	struct drm_pending_event *e;
-	bool ret = false;
-
-	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
-
-	*out = NULL;
-	if (list_empty(&file_priv->event_list))
-		goto out;
-	e = list_first_entry(&file_priv->event_list,
-	    struct drm_pending_event, link);
-	if (e->event->length > uio->uio_resid)
-		goto out;
-
-	file_priv->event_space += e->event->length;
-	list_del(&e->link);
-	*out = e;
-	ret = true;
-
-out:
-	lockmgr(&dev->event_lock, LK_RELEASE);
-	return ret;
-}
-
 /**
  * drm_read - read method for DRM file
  * @filp: file pointer
@@ -499,29 +472,70 @@ int drm_read(struct dev_read_args *ap)
 	struct file *filp = ap->a_fp;
 	struct cdev *kdev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
+	size_t count = uio->uio_resid;
 	struct drm_file *file_priv = filp->private_data;
 	struct drm_device *dev = drm_get_device_from_kdev(kdev);
-	struct drm_pending_event *e;
-	int error;
-	int ret;
+	int ret = 0;	/* drm_read() returns int in DragonFly */
 
-	if ((filp->f_flag & O_NONBLOCK) == 0) {
-		ret = wait_event_interruptible(file_priv->event_wait,
-					       !list_empty(&file_priv->event_list));
-		if (ret == -ERESTARTSYS)
-			ret = -EINTR;
-		if (ret < 0)
-			return -ret;
+	ret = mutex_lock_interruptible(&file_priv->event_read_lock);
+	if (ret)
+		return ret;
+
+	for (;;) {
+		struct drm_pending_event *e = NULL;
+
+		spin_lock_irq(&dev->event_lock);
+		if (!list_empty(&file_priv->event_list)) {
+			e = list_first_entry(&file_priv->event_list,
+					struct drm_pending_event, link);
+			file_priv->event_space += e->event->length;
+			list_del(&e->link);
+		}
+		spin_unlock_irq(&dev->event_lock);
+
+		if (e == NULL) {
+			if (ret) {
+				ret = 0;	/* DragonFly expects a zero return value on success */
+				break;
+			}
+
+			if (filp->f_flag & O_NONBLOCK) {
+				ret = -EAGAIN;
+				break;
+			}
+
+			mutex_unlock(&file_priv->event_read_lock);
+			ret = wait_event_interruptible(file_priv->event_wait,
+						       !list_empty(&file_priv->event_list));
+			if (ret >= 0)
+				ret = mutex_lock_interruptible(&file_priv->event_read_lock);
+			if (ret)
+				return ret;
+		} else {
+			unsigned length = e->event->length;
+
+			if (length > count - ret) {
+put_back_event:
+				spin_lock_irq(&dev->event_lock);
+				file_priv->event_space -= length;
+				list_add(&e->link, &file_priv->event_list);
+				spin_unlock_irq(&dev->event_lock);
+				break;
+			}
+
+			if (uiomove((caddr_t)e->event, length, uio)) {
+				if (ret == 0)
+					ret = -EFAULT;
+				goto put_back_event;
+			}
+
+			ret += length;
+			e->destroy(e);
+		}
 	}
+	mutex_unlock(&file_priv->event_read_lock);
 
-	while (drm_dequeue_event(dev, file_priv, uio, &e)) {
-		error = uiomove((caddr_t)e->event, e->event->length, uio);
-		e->destroy(e);
-		if (error != 0)
-			return (error);
-	}
-
-	return (error);
+	return ret;
 }
 EXPORT_SYMBOL(drm_read);
 
