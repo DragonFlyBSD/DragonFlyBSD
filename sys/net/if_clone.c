@@ -48,6 +48,8 @@ MALLOC_DEFINE(M_CLONE, "clone", "interface cloning framework");
 static int	if_name2unit(const char *, int *);
 static bool	if_clone_match(struct if_clone *, const char *);
 static struct if_clone *if_clone_lookup(const char *);
+static int	if_clone_alloc_unit(struct if_clone *, int *);
+static void	if_clone_free_unit(struct if_clone *, int);
 
 /*
  * Create a clone network interface.
@@ -59,14 +61,8 @@ if_clone_create(char *name, int len, caddr_t params)
 	struct ifnet *ifp;
 	char ifname[IFNAMSIZ];
 	bool wildcard;
-	int bytoff, bitoff;
 	int unit;
 	int err;
-
-	if ((err = if_name2unit(name, &unit)) != 0)
-		return (err);
-	if ((ifc = if_clone_lookup(name)) == NULL)
-		return (EINVAL);
 
 	ifnet_lock();
 	ifp = ifunit(name);
@@ -74,24 +70,15 @@ if_clone_create(char *name, int len, caddr_t params)
 	if (ifp != NULL)
 		return (EEXIST);
 
-	bytoff = bitoff = 0;
-	wildcard = (unit < 0);
-	/*
-	 * Find a free unit if none was given.
-	 */
-	if (wildcard) {
-		while (bytoff < ifc->ifc_bmlen &&
-		       ifc->ifc_units[bytoff] == 0xff)
-			bytoff++;
-		if (bytoff >= ifc->ifc_bmlen)
-			return (ENOSPC);
-		while ((ifc->ifc_units[bytoff] & (1 << bitoff)) != 0)
-			bitoff++;
-		unit = (bytoff << 3) + bitoff;
-	}
+	if ((ifc = if_clone_lookup(name)) == NULL)
+		return (EINVAL);
+	if ((err = if_name2unit(name, &unit)) != 0)
+		return (err);
 
-	if (unit > ifc->ifc_maxunit)
-		return (ENXIO);
+	wildcard = (unit < 0);
+
+	if ((err = if_clone_alloc_unit(ifc, &unit)) != 0)
+		return (err);
 
 	ksnprintf(ifname, IFNAMSIZ, "%s%d", ifc->ifc_name, unit);
 
@@ -103,20 +90,10 @@ if_clone_create(char *name, int len, caddr_t params)
 		return (ENOSPC);
 
 	err = (*ifc->ifc_create)(ifc, unit, params);
-	if (err != 0)
+	if (err != 0) {
+		if_clone_free_unit(ifc, unit);
 		return (err);
-
-	if (!wildcard) {
-		bytoff = unit >> 3;
-		bitoff = unit - (bytoff << 3);
 	}
-
-	/*
-	 * Allocate the unit in the bitmap.
-	 */
-	KASSERT((ifc->ifc_units[bytoff] & (1 << bitoff)) == 0,
-		("%s: bit is already set", __func__));
-	ifc->ifc_units[bytoff] |= (1 << bitoff);
 
 	return (0);
 }
@@ -129,7 +106,6 @@ if_clone_destroy(const char *name)
 {
 	struct if_clone *ifc;
 	struct ifnet *ifp;
-	int bytoff, bitoff;
 	int unit, error;
 
 	ifnet_lock();
@@ -154,14 +130,7 @@ if_clone_destroy(const char *name)
 	if (error)
 		return (error);
 
-	/*
-	 * Compute offset in the bitmap and deallocate the unit.
-	 */
-	bytoff = unit >> 3;
-	bitoff = unit - (bytoff << 3);
-	KASSERT((ifc->ifc_units[bytoff] & (1 << bitoff)) != 0,
-		("%s: bit is already cleared", __func__));
-	ifc->ifc_units[bytoff] &= ~(1 << bitoff);
+	if_clone_free_unit(ifc, unit);
 
 	return (0);
 }
@@ -172,11 +141,10 @@ if_clone_destroy(const char *name)
 void
 if_clone_attach(struct if_clone *ifc)
 {
-	int bytoff, bitoff;
+	struct if_clone *ifct;
 	int err;
 	int len, maxclone;
 	int unit;
-	struct if_clone *ifct;
 
 	/*
 	 * Duplicate entries in if_cloners lead to infinite loops in
@@ -207,15 +175,11 @@ if_clone_attach(struct if_clone *ifc)
 	if_cloners_count++;
 
 	for (unit = 0; unit < ifc->ifc_minifs; unit++) {
+		if_clone_alloc_unit(ifc, &unit);
 		err = (*ifc->ifc_create)(ifc, unit, NULL);
 		KASSERT(err == 0,
 		    ("%s: failed to create required interface %s%d",
 		    __func__, ifc->ifc_name, unit));
-
-		/* Allocate the unit in the bitmap. */
-		bytoff = unit >> 3;
-		bitoff = unit - (bytoff << 3);
-		ifc->ifc_units[bytoff] |= (1 << bitoff);
 	}
 
 	EVENTHANDLER_INVOKE(if_clone_event, ifc);
@@ -340,4 +304,60 @@ if_clone_lookup(const char *name)
 	}
 
 	return (NULL);
+}
+
+/*
+ * Allocate a unit number.
+ *
+ * Returns 0 on success and an error on failure.
+ */
+static int
+if_clone_alloc_unit(struct if_clone *ifc, int *unit)
+{
+	int bytoff, bitoff;
+
+	if (*unit < 0) {
+		/*
+		 * Wildcard mode: find a free unit.
+		 */
+		bytoff = bitoff = 0;
+		while (bytoff < ifc->ifc_bmlen &&
+		       ifc->ifc_units[bytoff] == 0xff)
+			bytoff++;
+		if (bytoff >= ifc->ifc_bmlen)
+			return (ENOSPC);
+		while ((ifc->ifc_units[bytoff] & (1 << bitoff)) != 0)
+			bitoff++;
+		*unit = (bytoff << 3) + bitoff;
+	} else {
+		bytoff = *unit >> 3;
+		bitoff = *unit - (bytoff << 3);
+	}
+
+	if (*unit > ifc->ifc_maxunit)
+		return (ENXIO);
+
+	/*
+	 * Allocate the unit in the bitmap.
+	 */
+	KASSERT((ifc->ifc_units[bytoff] & (1 << bitoff)) == 0,
+		("%s: bit is already set", __func__));
+	ifc->ifc_units[bytoff] |= (1 << bitoff);
+
+	return (0);
+}
+
+/*
+ * Free an allocated unit number.
+ */
+static void
+if_clone_free_unit(struct if_clone *ifc, int unit)
+{
+	int bytoff, bitoff;
+
+	bytoff = unit >> 3;
+	bitoff = unit - (bytoff << 3);
+	KASSERT((ifc->ifc_units[bytoff] & (1 << bitoff)) != 0,
+		("%s: bit is already cleared", __func__));
+	ifc->ifc_units[bytoff] &= ~(1 << bitoff);
 }
