@@ -106,12 +106,6 @@ if_clone_create(char *name, int len, caddr_t params)
 	if (err != 0)
 		return (err);
 
-	ifnet_lock();
-	ifp = ifunit(ifname);
-	ifnet_unlock();
-	if (ifp == NULL)
-		return (ENXIO);
-
 	if (!wildcard) {
 		bytoff = unit >> 3;
 		bitoff = unit - (bytoff << 3);
