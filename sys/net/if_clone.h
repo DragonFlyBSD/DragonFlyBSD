@@ -72,7 +72,7 @@ struct if_clone {
 typedef void (*if_clone_event_handler_t)(void *, struct if_clone *);
 EVENTHANDLER_DECLARE(if_clone_event, if_clone_event_handler_t);
 
-void	if_clone_attach(struct if_clone *);
+int	if_clone_attach(struct if_clone *);
 void	if_clone_detach(struct if_clone *);
 int	if_clone_create(char *, int, caddr_t);
 int	if_clone_destroy(const char *);

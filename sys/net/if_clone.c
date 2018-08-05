@@ -138,7 +138,7 @@ if_clone_destroy(const char *name)
 /*
  * Register a network interface cloner.
  */
-void
+int
 if_clone_attach(struct if_clone *ifc)
 {
 	struct if_clone *ifct;
@@ -146,15 +146,9 @@ if_clone_attach(struct if_clone *ifc)
 	int len, maxclone;
 	int unit;
 
-	/*
-	 * Duplicate entries in if_cloners lead to infinite loops in
-	 * if_clone_create().
-	 */
 	LIST_FOREACH(ifct, &if_cloners, ifc_list) {
-		if (ifct == ifc) {
-			panic("%s: duplicate entry %s\n",
-			      __func__, ifc->ifc_name);
-		}
+		if (strcmp(ifct->ifc_name, ifc->ifc_name) == 0)
+			return (EEXIST);
 	}
 
 	KASSERT(ifc->ifc_minifs - 1 <= ifc->ifc_maxunit,
@@ -183,6 +177,8 @@ if_clone_attach(struct if_clone *ifc)
 	}
 
 	EVENTHANDLER_INVOKE(if_clone_event, ifc);
+
+	return (0);
 }
 
 /*
