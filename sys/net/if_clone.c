@@ -50,25 +50,19 @@ static bool	if_clone_match(struct if_clone *, const char *);
 static struct if_clone *if_clone_lookup(const char *);
 static int	if_clone_alloc_unit(struct if_clone *, int *);
 static void	if_clone_free_unit(struct if_clone *, int);
+static int	if_clone_createif(struct if_clone *, int, caddr_t);
 
 /*
- * Create a clone network interface.
+ * Lookup the cloner and create a clone network interface.
  */
 int
 if_clone_create(char *name, int len, caddr_t params)
 {
 	struct if_clone *ifc;
-	struct ifnet *ifp;
 	char ifname[IFNAMSIZ];
 	bool wildcard;
 	int unit;
 	int err;
-
-	ifnet_lock();
-	ifp = ifunit(name);
-	ifnet_unlock();
-	if (ifp != NULL)
-		return (EEXIST);
 
 	if ((ifc = if_clone_lookup(name)) == NULL)
 		return (EINVAL);
@@ -89,8 +83,7 @@ if_clone_create(char *name, int len, caddr_t params)
 	if (wildcard && strlcpy(name, ifname, len) >= len)
 		return (ENOSPC);
 
-	err = (*ifc->ifc_create)(ifc, unit, params);
-	if (err != 0) {
+	if ((err = if_clone_createif(ifc, unit, params)) != 0) {
 		if_clone_free_unit(ifc, unit);
 		return (err);
 	}
@@ -99,7 +92,7 @@ if_clone_create(char *name, int len, caddr_t params)
 }
 
 /*
- * Destroy a clone network interface.
+ * Lookup the cloner and destroy a clone network interface.
  */
 int
 if_clone_destroy(const char *name)
@@ -142,7 +135,6 @@ int
 if_clone_attach(struct if_clone *ifc)
 {
 	struct if_clone *ifct;
-	int err;
 	int len, maxclone;
 	int unit;
 
@@ -170,10 +162,10 @@ if_clone_attach(struct if_clone *ifc)
 
 	for (unit = 0; unit < ifc->ifc_minifs; unit++) {
 		if_clone_alloc_unit(ifc, &unit);
-		err = (*ifc->ifc_create)(ifc, unit, NULL);
-		KASSERT(err == 0,
-		    ("%s: failed to create required interface %s%d",
-		    __func__, ifc->ifc_name, unit));
+		if (if_clone_createif(ifc, unit, NULL) != 0) {
+			panic("%s: failed to create required interface %s%d",
+			      __func__, ifc->ifc_name, unit);
+		}
 	}
 
 	EVENTHANDLER_INVOKE(if_clone_event, ifc);
@@ -215,7 +207,8 @@ if_clone_list(struct if_clonereq *ifcr)
 	count = (if_cloners_count < ifcr->ifcr_count) ?
 	    if_cloners_count : ifcr->ifcr_count;
 
-	for (ifc = LIST_FIRST(&if_cloners); ifc != NULL && count != 0;
+	for (ifc = LIST_FIRST(&if_cloners);
+	     ifc != NULL && count != 0;
 	     ifc = LIST_NEXT(ifc, ifc_list), count--, dst += IFNAMSIZ) {
 		strlcpy(outbuf, ifc->ifc_name, IFNAMSIZ);
 		error = copyout(outbuf, dst, IFNAMSIZ);
@@ -356,4 +349,29 @@ if_clone_free_unit(struct if_clone *ifc, int unit)
 	KASSERT((ifc->ifc_units[bytoff] & (1 << bitoff)) != 0,
 		("%s: bit is already cleared", __func__));
 	ifc->ifc_units[bytoff] &= ~(1 << bitoff);
+}
+
+/*
+ * Create a clone network interface.
+ */
+static int
+if_clone_createif(struct if_clone *ifc, int unit, caddr_t params)
+{
+	struct ifnet *ifp;
+	char ifname[IFNAMSIZ];
+	int err;
+
+	ksnprintf(ifname, IFNAMSIZ, "%s%d", ifc->ifc_name, unit);
+
+	ifnet_lock();
+	ifp = ifunit(ifname);
+	ifnet_unlock();
+	if (ifp != NULL)
+		return (EEXIST);
+
+	err = (*ifc->ifc_create)(ifc, unit, params);
+	if (err != 0)
+		return (err);
+
+	return (0);
 }
