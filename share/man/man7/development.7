@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd April 2, 2013
+.Dd August 7, 2018
 .Dt DEVELOPMENT 7
 .Os
 .Sh NAME
@@ -88,13 +88,12 @@ it is recommended that one of the
 .Dx
 mirrors be used instead.
 .Pp
-Simple setup and updating of local repository is done using
+Simple setup of the local repository is done using
 .Pa /usr/Makefile :
 .Bd -literal -offset 4n
 cd /usr
-make help		# get help
-make src-checkout	# initial setup
-make src-update
+make help		# get brief help
+make src-create		# create the source repository
 .Ed
 .Pp
 Somewhat finer control can be achieved using
