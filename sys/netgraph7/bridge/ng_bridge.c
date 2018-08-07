@@ -69,6 +69,7 @@
 #include <sys/ctype.h>
 
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/ethernet.h>
 
 #include <netinet/in.h>
