@@ -3429,6 +3429,7 @@ TO_REMOVE+=/usr/share/initrd
 TO_REMOVE+=/usr/share/man/man5/mkinitrd.conf.5.gz
 TO_REMOVE+=/usr/share/man/man8/mkinitrd.8.gz
 TO_REMOVE+=/rescue/rescue.sbin
+TO_REMOVE+=/usr/share/man/man3/fpresetsticky.3.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

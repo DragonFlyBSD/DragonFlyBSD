@@ -38,8 +38,7 @@
 .Nm fpgetprec ,
 .Nm fpgetmask ,
 .Nm fpsetmask ,
-.Nm fpgetsticky ,
-.Nm fpresetsticky
+.Nm fpgetsticky
 .Nd IEEE floating point interface
 .Sh LIBRARY
 .Lb libc
@@ -85,8 +84,6 @@ typedef enum {
 .Fn fpsetmask "fp_except_t mask"
 .Ft fp_except_t
 .Fn fpgetsticky void
-.Ft fp_except_t
-.Fn fpresetsticky "fp_except_t sticky"
 .Sh DESCRIPTION
 The routines described herein are deprecated.
 New code should use the functionality provided by
@@ -138,22 +135,6 @@ The
 .Fn fpgetsticky
 function
 returns the current floating point sticky flags.
-.Pp
-The
-.Fn fpresetsticky
-function
-clears the floating point sticky flags and returns
-the previous flags.
-.Pp
-Sample code which prevents a trap on divide-by-zero:
-.Bd -literal -offset indent
-fpsetmask(~FP_X_DZ);
-a = 1.0;
-b = 0;
-c = a / b;
-fpresetsticky(FP_X_DZ);
-fpsetmask(FP_X_DZ);
-.Ed
 .Sh IMPLEMENTATION NOTES
 The
 .Fn fpgetprec

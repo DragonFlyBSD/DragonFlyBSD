@@ -11,7 +11,6 @@ MLINKS+=bitstring.3 bit_alloc.3 bitstring.3 bit_clear.3 \
 MLINKS+=end.3 edata.3 end.3 etext.3
 MLINKS+=fpgetround.3 fpsetround.3 fpgetround.3 fpgetmask.3
 MLINKS+=fpgetround.3 fpsetmask.3 fpgetround.3 fpgetsticky.3
-MLINKS+=fpgetround.3 fpresetsticky.3
 MLINKS+=fpgetround.3 fpsetprec.3 fpgetround.3 fpgetprec.3
 
 MLINKS+=queue.3 LIST_EMPTY.3
