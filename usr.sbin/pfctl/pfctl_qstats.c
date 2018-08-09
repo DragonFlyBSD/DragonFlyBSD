@@ -96,8 +96,6 @@ pfctl_show_altq(int dev, const char *iface, int opts, int verbose2)
 	for (node = root; node != NULL; node = node->next) {
 		if (iface != NULL && strcmp(node->altq.ifname, iface))
 			continue;
-		if (node->altq.local_flags & PFALTQ_FLAG_IF_REMOVED)
-			continue;
 		if (dotitle) {
 			pfctl_print_title("ALTQ:");
 			dotitle = 0;
@@ -153,8 +151,7 @@ pfctl_update_qstats(int dev, struct pf_altq_node **root)
 			warn("DIOCGETALTQ");
 			return (-1);
 		}
-		if ((pa.altq.qid > 0) &&
-		    !(pa.altq.local_flags & PFALTQ_FLAG_IF_REMOVED)) {
+		if (pa.altq.qid > 0) {
 			pq.nr = nr;
 			pq.ticket = pa.ticket;
 			pq.buf = &qstats.data;
@@ -165,16 +162,6 @@ pfctl_update_qstats(int dev, struct pf_altq_node **root)
 			}
 			if ((node = pfctl_find_altq_node(*root, pa.altq.qname,
 			    pa.altq.ifname)) != NULL) {
-				memcpy(&node->qstats.data, &qstats.data,
-				    sizeof(qstats.data));
-				update_avg(node);
-			} else {
-				pfctl_insert_altq_node(root, pa.altq, qstats);
-			}
-		} else if (pa.altq.local_flags & PFALTQ_FLAG_IF_REMOVED) {
-			memset(&qstats.data, 0, sizeof(qstats.data));
-			if ((node = pfctl_find_altq_node(*root, pa.altq.qname,
-			     pa.altq.ifname)) != NULL) {
 				memcpy(&node->qstats.data, &qstats.data,
 				    sizeof(qstats.data));
 				update_avg(node);
@@ -286,8 +273,6 @@ void
 pfctl_print_altq_nodestat(int dev __unused, const struct pf_altq_node *a)
 {
 	if (a->altq.qid == 0)
-		return;
-	if (a->altq.local_flags & PFALTQ_FLAG_IF_REMOVED)
 		return;
 
 	switch (a->altq.scheduler) {

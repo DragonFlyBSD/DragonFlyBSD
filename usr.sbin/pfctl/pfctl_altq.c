@@ -156,8 +156,6 @@ print_altq(const struct pf_altq *a, unsigned int level,
 		return;
 	}
 
-	if (a->local_flags & PFALTQ_FLAG_IF_REMOVED)
-		printf("INACTIVE ");
 	printf("altq on %s ", a->ifname);
 
 	switch (a->scheduler) {
@@ -197,8 +195,6 @@ print_queue(const struct pf_altq *a, unsigned int level,
 {
 	unsigned int	i;
 
-	if (a->local_flags & PFALTQ_FLAG_IF_REMOVED)
-		printf("INACTIVE ");
 	printf("queue ");
 	for (i = 0; i < level; ++i)
 		printf(" ");

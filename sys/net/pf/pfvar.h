@@ -1434,9 +1434,6 @@ struct pf_altq {
 	u_int32_t		 parent_qid;	/* parent queue id */
 	u_int32_t		 bandwidth;	/* queue bandwidth */
 	u_int8_t		 priority;	/* priority */
-	uint8_t			 local_flags;	/* dynamic interface */
-#define	PFALTQ_FLAG_IF_REMOVED		0x01
-
 	u_int16_t		 qlimit;	/* queue size limit */
 	u_int16_t		 flags;		/* misc flags */
 	union {
@@ -1772,9 +1769,6 @@ extern int			 pf_tbladdr_setup(struct pf_ruleset *,
 extern void			 pf_tbladdr_remove(struct pf_addr_wrap *);
 extern void			 pf_tbladdr_copyout(struct pf_addr_wrap *);
 extern void			 pf_calc_skip_steps(struct pf_rulequeue *);
-#ifdef ALTQ
-extern void			 pf_altq_ifnet_event(struct ifnet *, int);
-#endif
 extern struct malloc_type	*pf_src_tree_pl, *pf_rule_pl;
 extern struct malloc_type	*pf_state_pl, *pf_state_key_pl, *pf_state_item_pl,
 					*pf_altq_pl, *pf_pooladdr_pl;
