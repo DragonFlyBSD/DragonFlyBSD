@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2015 Imre Vadász <imre@vdsz.com>
  * Copyright (c) 2015 Rimvydas Jasinskas
+ * Copyright (c) 2018 François Tigeot <ftigeot@wolfpond.org>
  *
  * DRM Dragonfly-specific helper functions
  *
@@ -108,6 +109,7 @@ static void drm_fill_pdev(device_t dev, struct pci_dev *pdev)
 	u_int irq_flags;
 
 	pdev->dev.bsddev = dev;
+	pdev->devfn = PCI_DEVFN(pci_get_slot(dev), pci_get_function(dev));
 	pdev->vendor = pci_get_vendor(dev);
 	pdev->device = pci_get_device(dev);
 	pdev->subsystem_vendor = pci_get_subvendor(dev);

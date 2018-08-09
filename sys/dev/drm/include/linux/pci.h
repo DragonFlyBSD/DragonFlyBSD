@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2017 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2014-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -63,6 +63,7 @@ struct pci_dev {
 	struct pci_bus *bus;		/* bus device is nailed to */
 	struct device dev;
 
+	uint32_t devfn;
 	uint16_t vendor;		/* vendor ID */
 	uint16_t device;		/* device ID */
 	uint16_t subsystem_vendor;
@@ -89,7 +90,10 @@ struct pci_bus {
 struct pci_driver {
 };
 
-#define PCI_DEVFN(slot, func)   ((((slot) & 0x1f) << 3) | ((func) & 0x07))
+/* XXX: should be in uapi_linux/pci.h */
+#define PCI_DEVFN(slot, func)	((((slot) & 0x1f) << 3) | ((func) & 0x07))
+#define PCI_SLOT(devfn)		(((devfn) >> 3) & 0x1f)
+#define PCI_FUNC(devfn)		((devfn) & 0x07)
 
 #define PCI_DMA_BIDIRECTIONAL	0
 
