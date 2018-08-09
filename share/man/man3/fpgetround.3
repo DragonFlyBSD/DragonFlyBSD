@@ -28,7 +28,7 @@
 .\"     @(#)fpgetround.3	1.0 (Berkeley) 9/23/93
 .\" $FreeBSD: src/share/man/man3/fpgetround.3,v 1.20 2013/04/12 00:37:30 svnexp Exp $
 .\"
-.Dd July 14, 2013
+.Dd August 9, 2018
 .Dt FPGETROUND 3
 .Os
 .Sh NAME
@@ -87,7 +87,9 @@ typedef enum {
 .Sh DESCRIPTION
 The routines described herein are deprecated.
 New code should use the functionality provided by
-.Xr fenv 3 .
+.Fn fe*
+functions in the
+.Lb libm .
 .Pp
 When a floating point exception is detected, the exception sticky flag is
 set and the exception mask is tested.
@@ -147,7 +149,10 @@ it may be ineffective when code is compiled to take advantage of SSE,
 and many library functions and compiler optimizations depend upon the
 default precision for correct behavior.
 .Sh SEE ALSO
-.Xr fenv 3 ,
+.Xr feclearexcept 3 ,
+.Xr feenableexcept 3 ,
+.Xr fegetenv 3 ,
+.Xr fegetround 3 ,
 .Xr isnan 3
 .Sh HISTORY
 These routines are based on SysV/386 routines of the same name.
