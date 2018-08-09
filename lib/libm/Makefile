@@ -28,6 +28,7 @@ MACHINCSDIR=	${INCLUDEDIR}/machine
 
 .PATH:	${OPENSRC}/include
 .PATH:	${OPENSRC}/man
+.PATH:	${.CURDIR}/man
 .PATH:	${OPENSRC}/src
 .PATH:	${.CURDIR}/src
 
@@ -347,5 +348,9 @@ MLINKS+=tanh.3 tanhf.3 \
 	tanh.3 tanhl.3
 MLINKS+=trunc.3 truncf.3 \
 	trunc.3 truncl.3
+
+# additional manual pages that are not part of OpenBSD's libm
+#
+MAN+=	signbit.3
 
 .include <bsd.lib.mk>
