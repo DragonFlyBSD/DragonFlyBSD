@@ -351,6 +351,13 @@ MLINKS+=trunc.3 truncf.3 \
 
 # additional manual pages that are not part of OpenBSD's libm
 #
-MAN+=	signbit.3
+MAN+=	fpclassify.3 signbit.3
+
+MLINKS+=fpclassify.3 finite.3 \
+	fpclassify.3 finitef.3 \
+	fpclassify.3 isfinite.3 \
+	fpclassify.3 isinf.3 \
+	fpclassify.3 isnan.3 \
+	fpclassify.3 isnormal.3
 
 .include <bsd.lib.mk>
