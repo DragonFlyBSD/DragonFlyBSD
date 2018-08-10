@@ -564,19 +564,18 @@ struct drm_master {
  */
 struct drm_driver {
 	int (*load) (struct drm_device *, unsigned long flags);
-	int (*use_msi) (struct drm_device *, unsigned long flags);
 	int (*firstopen) (struct drm_device *);
 	int (*open) (struct drm_device *, struct drm_file *);
 	void (*preclose) (struct drm_device *, struct drm_file *file_priv);
 	void (*postclose) (struct drm_device *, struct drm_file *);
 	void (*lastclose) (struct drm_device *);
 	int (*unload) (struct drm_device *);
-	void (*reclaim_buffers_locked) (struct drm_device *,
-					struct drm_file *file_priv);
+	int (*suspend) (struct drm_device *, pm_message_t state);
+	int (*resume) (struct drm_device *);
 	int (*dma_ioctl) (struct drm_device *dev, void *data, struct drm_file *file_priv);
 	int (*dma_quiescent) (struct drm_device *);
-	int (*context_ctor) (struct drm_device *dev, int context);
 	int (*context_dtor) (struct drm_device *dev, int context);
+	int (*set_busid)(struct drm_device *dev, struct drm_master *master);
 
 	/**
 	 * get_vblank_counter - get raw hardware vblank counter
@@ -651,6 +650,7 @@ struct drm_driver {
 	 *               scanout position query. Can be NULL to skip timestamp.
 	 * \param *etime Target location for timestamp taken immediately after
 	 *               scanout position query. Can be NULL to skip timestamp.
+	 * \param mode Current display timings.
 	 *
 	 * Returns vpos as a positive number while in active scanout area.
 	 * Returns vpos as a negative number inside vblank, counting the number
@@ -713,21 +713,78 @@ struct drm_driver {
 	int (*irq_postinstall) (struct drm_device *dev);
 	void (*irq_uninstall) (struct drm_device *dev);
 
+	/* Master routines */
+	int (*master_create)(struct drm_device *dev, struct drm_master *master);
+	void (*master_destroy)(struct drm_device *dev, struct drm_master *master);
 	/**
-	 * Driver-specific constructor for drm_gem_objects, to set up
-	 * obj->driver_private.
+	 * master_set is called whenever the minor master is set.
+	 * master_drop is called whenever the minor master is dropped.
+	 */
+
+	int (*master_set)(struct drm_device *dev, struct drm_file *file_priv,
+			  bool from_open);
+	void (*master_drop)(struct drm_device *dev, struct drm_file *file_priv,
+			    bool from_release);
+
+	int (*debugfs_init)(struct drm_minor *minor);
+	void (*debugfs_cleanup)(struct drm_minor *minor);
+
+	/**
+	 * @gem_free_object: deconstructor for drm_gem_objects
 	 *
-	 * Returns 0 on success.
+	 * This is deprecated and should not be used by new drivers. Use
+	 * @gem_free_object_unlocked instead.
 	 */
 	void (*gem_free_object) (struct drm_gem_object *obj);
+
+	/**
+	 * @gem_free_object_unlocked: deconstructor for drm_gem_objects
+	 *
+	 * This is for drivers which are not encumbered with dev->struct_mutex
+	 * legacy locking schemes. Use this hook instead of @gem_free_object.
+	 */
+	void (*gem_free_object_unlocked) (struct drm_gem_object *obj);
+
 	int (*gem_open_object) (struct drm_gem_object *, struct drm_file *);
 	void (*gem_close_object) (struct drm_gem_object *, struct drm_file *);
 
-	int (*sysctl_init) (struct drm_device *dev,
-		    struct sysctl_ctx_list *ctx, struct sysctl_oid *top);
-	void (*sysctl_cleanup) (struct drm_device *dev);
+	/**
+	 * Hook for allocating the GEM object struct, for use by core
+	 * helpers.
+	 */
+	struct drm_gem_object *(*gem_create_object)(struct drm_device *dev,
+						    size_t size);
 
-	drm_pci_id_list_t *id_entry;	/* PCI ID, name, and chipset private */
+	/* prime: */
+	/* export handle -> fd (see drm_gem_prime_handle_to_fd() helper) */
+	int (*prime_handle_to_fd)(struct drm_device *dev, struct drm_file *file_priv,
+				uint32_t handle, uint32_t flags, int *prime_fd);
+	/* import fd -> handle (see drm_gem_prime_fd_to_handle() helper) */
+	int (*prime_fd_to_handle)(struct drm_device *dev, struct drm_file *file_priv,
+				int prime_fd, uint32_t *handle);
+	/* export GEM -> dmabuf */
+	struct dma_buf * (*gem_prime_export)(struct drm_device *dev,
+				struct drm_gem_object *obj, int flags);
+	/* import dmabuf -> GEM */
+	struct drm_gem_object * (*gem_prime_import)(struct drm_device *dev,
+				struct dma_buf *dma_buf);
+	/* low-level interface used by drm_gem_prime_{import,export} */
+	int (*gem_prime_pin)(struct drm_gem_object *obj);
+	void (*gem_prime_unpin)(struct drm_gem_object *obj);
+	struct reservation_object * (*gem_prime_res_obj)(
+				struct drm_gem_object *obj);
+	struct sg_table *(*gem_prime_get_sg_table)(struct drm_gem_object *obj);
+	struct drm_gem_object *(*gem_prime_import_sg_table)(
+				struct drm_device *dev,
+				struct dma_buf_attachment *attach,
+				struct sg_table *sgt);
+	void *(*gem_prime_vmap)(struct drm_gem_object *obj);
+	void (*gem_prime_vunmap)(struct drm_gem_object *obj, void *vaddr);
+	int (*gem_prime_mmap)(struct drm_gem_object *obj,
+				struct vm_area_struct *vma);
+
+	/* vga arb irq handler */
+	void (*vgaarb_irq)(struct drm_device *dev, bool state);
 
 	/* dumb alloc support */
 	int (*dumb_create)(struct drm_file *file_priv,
@@ -741,19 +798,35 @@ struct drm_driver {
 			    uint32_t handle);
 
 	/* Driver private ops for this object */
-	struct cdev_pager_ops *gem_pager_ops;
+	struct cdev_pager_ops *gem_vm_ops;
 
 	int major;
 	int minor;
 	int patchlevel;
-	const char *name;		/* Simple driver name		   */
-	const char *desc;		/* Longer driver name		   */
-	const char *date;		/* Date of last major changes.	   */
+	char *name;
+	char *desc;
+	char *date;
 
 	u32 driver_features;
 	int dev_priv_size;
 	const struct drm_ioctl_desc *ioctls;
 	int num_ioctls;
+	const struct file_operations *fops;
+
+	/* List of devices hanging off this driver with stealth attach. */
+	struct list_head legacy_dev_list;
+#ifdef __DragonFly__
+	int (*sysctl_init) (struct drm_device *dev,
+		    struct sysctl_ctx_list *ctx, struct sysctl_oid *top);
+	void (*sysctl_cleanup) (struct drm_device *dev);
+#endif	/* __DragonFly__ */
+};
+
+enum drm_minor_type {
+	DRM_MINOR_LEGACY,
+	DRM_MINOR_CONTROL,
+	DRM_MINOR_RENDER,
+	DRM_MINOR_CNT,
 };
 
 /**
@@ -1247,6 +1320,29 @@ static __inline__ int drm_pci_device_is_agp(struct drm_device *dev)
 
 	return (pci_find_extcap(dev->pdev->dev.bsddev, PCIY_AGP, NULL) == 0);
 }
+void drm_pci_agp_destroy(struct drm_device *dev);
+
+extern int drm_pci_init(struct drm_driver *driver, struct pci_driver *pdriver);
+extern void drm_pci_exit(struct drm_driver *driver, struct pci_driver *pdriver);
+#ifdef CONFIG_PCI
+extern int drm_get_pci_dev(struct pci_dev *pdev,
+			   const struct pci_device_id *ent,
+			   struct drm_driver *driver);
+extern int drm_pci_set_busid(struct drm_device *dev, struct drm_master *master);
+#else
+static inline int drm_get_pci_dev(struct pci_dev *pdev,
+				  const struct pci_device_id *ent,
+				  struct drm_driver *driver)
+{
+	return -ENOSYS;
+}
+
+static inline int drm_pci_set_busid(struct drm_device *dev,
+				    struct drm_master *master)
+{
+	return -ENOSYS;
+}
+#endif
 
 #define DRM_PCIE_SPEED_25 1
 #define DRM_PCIE_SPEED_50 2

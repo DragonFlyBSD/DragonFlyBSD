@@ -804,7 +804,7 @@ drm_gem_mmap_single(struct drm_device *dev, vm_ooffset_t *offset, vm_size_t size
 	drm_gem_object_reference(gem_obj);
 	DRM_UNLOCK(dev);
 	vm_obj = cdev_pager_allocate(gem_obj, OBJT_MGTDEVICE,
-	    dev->driver->gem_pager_ops, size, nprot,
+	    dev->driver->gem_vm_ops, size, nprot,
 	    DRM_GEM_MAPPING_MAPOFF(*offset), curthread->td_ucred);
 	if (vm_obj == NULL) {
 		drm_gem_object_unreference_unlocked(gem_obj);

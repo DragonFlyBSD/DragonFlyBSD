@@ -1800,7 +1800,7 @@ static struct drm_driver driver = {
 	.debugfs_cleanup = i915_debugfs_cleanup,
 #endif
 	.gem_free_object = i915_gem_free_object,
-	.gem_pager_ops = &i915_gem_vm_ops,
+	.gem_vm_ops = &i915_gem_vm_ops,
 
 	.dumb_create = i915_gem_dumb_create,
 	.dumb_map_offset = i915_gem_mmap_gtt,

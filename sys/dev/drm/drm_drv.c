@@ -1171,6 +1171,7 @@ int drm_close(struct dev_close_args *ap)
 	return 0;
 }
 
+/* XXX: this is supposed to be drm_release() */
 void drm_cdevpriv_dtor(void *cd)
 {
 	struct drm_file *file_priv = cd;
@@ -1193,8 +1194,7 @@ void drm_cdevpriv_dtor(void *cd)
 	if (dev->driver->driver_features & DRIVER_GEM)
 		drm_gem_release(dev, file_priv);
 
-	if (drm_core_check_feature(dev, DRIVER_HAVE_DMA) &&
-	    !dev->driver->reclaim_buffers_locked)
+	if (drm_core_check_feature(dev, DRIVER_HAVE_DMA))
 		drm_legacy_reclaim_buffers(dev, file_priv);
 
 	funsetown(&dev->buf_sigio);

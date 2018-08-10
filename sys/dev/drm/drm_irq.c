@@ -631,7 +631,7 @@ int drm_control(struct drm_device *dev, void *data,
 
 	switch (ctl->func) {
 	case DRM_INST_HANDLER:
-		irq = dev->irq;
+		irq = dev->pdev->irq;
 
 		if (dev->if_version < DRM_IF_VERSION(1, 2) &&
 		    ctl->irq != irq)
