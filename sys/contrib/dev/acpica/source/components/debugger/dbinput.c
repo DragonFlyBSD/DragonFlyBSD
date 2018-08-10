@@ -971,7 +971,11 @@ AcpiDbCommandDispatch (
     case CMD_DISASSEMBLE:
     case CMD_DISASM:
 
+#ifdef ACPI_DISASSEMBLER
         (void) AcpiDbDisassembleMethod (AcpiGbl_DbArgs[1]);
+#else
+        AcpiOsPrintf ("The AML Disassembler is not configured/present\n");
+#endif
         break;
 
     case CMD_DUMP:
@@ -1085,7 +1089,11 @@ AcpiDbCommandDispatch (
 
     case CMD_LIST:
 
-        AcpiDbDisassembleAml (AcpiGbl_DbArgs[1], Op);
+#ifdef ACPI_DISASSEMBLER
+        AcpiDbDisassembleAml (AcpiGbl_DbArgs[1], Op);;
+#else
+        AcpiOsPrintf ("The AML Disassembler is not configured/present\n");
+#endif
         break;
 
     case CMD_LOCKS:

@@ -395,6 +395,7 @@ Cleanup:
 }
 
 
+#ifdef ACPI_DISASSEMBLER
 /*******************************************************************************
  *
  * FUNCTION:    AcpiDbDisassembleAml
@@ -428,9 +429,7 @@ AcpiDbDisassembleAml (
         NumStatements = strtoul (Statements, NULL, 0);
     }
 
-#ifdef ACPI_DISASSEMBLER
     AcpiDmDisassemble (NULL, Op, NumStatements);
-#endif
 }
 
 
@@ -513,8 +512,6 @@ AcpiDbDisassembleMethod (
     WalkState->ParseFlags |= ACPI_PARSE_DISASSEMBLE;
 
     Status = AcpiPsParseAml (WalkState);
-
-#ifdef ACPI_DISASSEMBLER
     (void) AcpiDmParseDeferredOps (Op);
 
     /* Now we can disassemble the method */
@@ -522,7 +519,6 @@ AcpiDbDisassembleMethod (
     AcpiGbl_DmOpt_Verbose = FALSE;
     AcpiDmDisassemble (NULL, Op, 0);
     AcpiGbl_DmOpt_Verbose = TRUE;
-#endif
 
     AcpiPsDeleteParseTree (Op);
 
@@ -533,6 +529,7 @@ AcpiDbDisassembleMethod (
     AcpiUtReleaseOwnerId (&ObjDesc->Method.OwnerId);
     return (AE_OK);
 }
+#endif
 
 
 /*******************************************************************************

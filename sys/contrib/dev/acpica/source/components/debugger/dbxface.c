@@ -154,6 +154,7 @@
 #include "amlcode.h"
 #include "acdebug.h"
 #include "acinterp.h"
+#include "acparser.h"
 
 #ifdef ACPI_DEBUGGER
 
@@ -436,10 +437,17 @@ AcpiDbSingleStep (
             }
         }
 
-        /* Now we can display it */
+        /* Now we can disassemble and display it */
 
 #ifdef ACPI_DISASSEMBLER
         AcpiDmDisassemble (WalkState, DisplayOp, ACPI_UINT32_MAX);
+#else
+        /*
+         * The AML Disassembler is not configured - at least we can
+         * display the opcode value and name
+         */
+        AcpiOsPrintf ("AML Opcode: %4.4X  %s\n", Op->Common.AmlOpcode,
+            AcpiPsGetOpcodeName (Op->Common.AmlOpcode));
 #endif
 
         if ((Op->Common.AmlOpcode == AML_IF_OP) ||
