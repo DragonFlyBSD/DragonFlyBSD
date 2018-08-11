@@ -335,6 +335,3 @@ device		gpio_intel	# GPIO support for Intel SoCs
 #device		ichiic
 device		smbus		# Bus support, required for smb below.
 device		smbacpi
-
-# Linux / drm subsystem configuration options
-options		CONFIG_PCI
