@@ -132,7 +132,7 @@ struct autofs_request {
 	char				ar_key[MAXPATHLEN];
 	char				ar_options[MAXPATHLEN];
 	struct timeout_task		ar_task;
-	volatile u_int			ar_refcount;
+	volatile unsigned int		ar_refcount;
 };
 
 struct autofs_softc {

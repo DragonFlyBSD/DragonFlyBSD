@@ -561,7 +561,7 @@ autofs_close(struct dev_close_args *ap)
 static int
 autofs_ioctl(struct dev_ioctl_args *ap)
 {
-	u_long cmd = ap->a_cmd;
+	unsigned long cmd = ap->a_cmd;
 	void *arg = ap->a_data;
 
 	KASSERT(autofs_softc->sc_dev_opened, ("not opened?"));
