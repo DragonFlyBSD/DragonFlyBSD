@@ -496,6 +496,10 @@ installworld: installcheck
 	# Do not leave an empty '/rescue' directory when switching the rescue
 	# tools from '/usr/share/initrd' to '/rescue'.
 	@echo "--------------------------------------------------------------"
+	@echo ">>> we have to run make upgrade to transition rescue tools"
+	@echo "--------------------------------------------------------------"
+	(cd ${.CURDIR} && make upgrade)
+	@echo "--------------------------------------------------------------"
 	@echo ">>> build and install rescue tools"
 	@echo "--------------------------------------------------------------"
 	(cd ${.CURDIR} && make rescue)

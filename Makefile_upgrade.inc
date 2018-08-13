@@ -3431,6 +3431,12 @@ TO_REMOVE+=/usr/share/man/man8/mkinitrd.8.gz
 TO_REMOVE+=/rescue/rescue.sbin
 TO_REMOVE+=/usr/share/man/man3/fpresetsticky.3.gz
 
+# Obsolete /usr/include files that blow up the kdump build
+# during a make rescue
+#
+TO_REMOVE+=/usr/include/bus/pccard/cardinfo.h
+TO_REMOVE+=/usr/include/linux/linux_input.h
+
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
 TO_REMOVE+=/usr/sbin/dfuife_curses
