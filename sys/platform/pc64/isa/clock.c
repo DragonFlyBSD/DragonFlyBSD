@@ -209,6 +209,20 @@ static struct cputimer_intr i8254_cputimer_intr = {
 };
 
 /*
+ * Use this to lwkt_switch() when the scheduler clock is not
+ * yet running, otherwise lwkt_switch() won't do anything.
+ * XXX needs cleaning up in lwkt_thread.c
+ */
+static void
+lwkt_force_switch(void)
+{
+	crit_enter();
+	lwkt_schedulerclock(curthread);
+	crit_exit();
+	lwkt_switch();
+}
+
+/*
  * timer0 clock interrupt.  Timer0 is in one-shot mode and has stopped
  * counting as of this interrupt.  We use timer1 in free-running mode (not
  * generating any interrupts) as our main counter.  Each cpu has timeouts
@@ -1393,29 +1407,20 @@ hw_i8254_timestamp(SYSCTL_HANDLER_ARGS)
     return(SYSCTL_OUT(req, buf, strlen(buf) + 1));
 }
 
-struct tsc_mpsync_arg {
-	volatile uint64_t	tsc_target;
-	volatile int		tsc_mpsync;
-};
-
-struct tsc_mpsync_thr {
+struct tsc_mpsync_info {
+	volatile int		tsc_ready_cnt;
 	volatile int		tsc_done_cnt;
-	volatile int		tsc_mpsync_cnt;
-};
+	volatile int		tsc_command;
+	volatile int		unused01[5];
+	struct {
+		uint64_t	v;
+		uint64_t	unused02;
+	} tsc_saved[MAXCPU];
+} __cachealign;
 
+#if 0
 static void
-tsc_mpsync_test_remote(void *xarg)
-{
-	struct tsc_mpsync_arg *arg = xarg;
-	uint64_t tsc;
-
-	tsc = rdtsc_ordered();
-	if (tsc < arg->tsc_target)
-		arg->tsc_mpsync = 0;
-}
-
-static void
-tsc_mpsync_test_loop(struct tsc_mpsync_arg *arg)
+tsc_mpsync_test_loop(struct tsc_mpsync_thr *info)
 {
 	struct globaldata *gd = mycpu;
 	tsc_uclock_t test_end, test_begin;
@@ -1476,18 +1481,35 @@ tsc_mpsync_test_loop(struct tsc_mpsync_arg *arg)
 	}
 }
 
-static void
-tsc_mpsync_ap_thread(void *xthr)
-{
-	struct tsc_mpsync_thr *thr = xthr;
-	struct tsc_mpsync_arg arg;
+#endif
 
-	tsc_mpsync_test_loop(&arg);
-	if (arg.tsc_mpsync) {
-		atomic_add_int(&thr->tsc_mpsync_cnt, 1);
-		cpu_sfence();
+#define TSC_TEST_COUNT		50000
+
+static void
+tsc_mpsync_ap_thread(void *xinfo)
+{
+	struct tsc_mpsync_info *info = xinfo;
+	int cpu = mycpuid;
+	int i;
+
+	/*
+	 * Tell main loop that we are ready and wait for initiation
+	 */
+	atomic_add_int(&info->tsc_ready_cnt, 1);
+	while (info->tsc_command == 0) {
+		lwkt_force_switch();
 	}
-	atomic_add_int(&thr->tsc_done_cnt, 1);
+
+	/*
+	 * Run test for 10000 loops or until tsc_done_cnt != 0 (another
+	 * cpu has finished its test), then increment done.
+	 */
+	crit_enter();
+	for (i = 0; i < TSC_TEST_COUNT && info->tsc_done_cnt == 0; ++i) {
+		info->tsc_saved[cpu].v = rdtsc_ordered();
+	}
+	crit_exit();
+	atomic_add_int(&info->tsc_done_cnt, 1);
 
 	lwkt_exit();
 }
@@ -1495,7 +1517,8 @@ tsc_mpsync_ap_thread(void *xthr)
 static void
 tsc_mpsync_test(void)
 {
-	struct tsc_mpsync_arg arg;
+	int cpu;
+	int try;
 
 	if (!tsc_invariant) {
 		/* Not even invariant TSC */
@@ -1553,37 +1576,68 @@ tsc_mpsync_test(void)
 	}
 
 	/*
-	 * Test even if forced above.  If forced, we will use the TSC
-	 * even if the test fails.
+	 * Test even if forced to 1 above.  If forced, we will use the TSC
+	 * even if the test fails.  (set forced to -1 to disable entirely).
 	 */
 	kprintf("TSC testing MP synchronization ...\n");
 
-	tsc_mpsync_test_loop(&arg);
-	if (arg.tsc_mpsync) {
-		struct tsc_mpsync_thr thr;
-		int cpu;
+	/*
+	 * Test TSC MP synchronization on APs.  Try up to 4 times.
+	 */
+	for (try = 0; try < 4; ++try) {
+		struct tsc_mpsync_info info;
+		uint64_t last;
+		int64_t xdelta;
+		int64_t delta;
 
-		/*
-		 * Test TSC MP synchronization on APs.
-		 */
-
-		thr.tsc_done_cnt = 1;
-		thr.tsc_mpsync_cnt = 1;
+		bzero(&info, sizeof(info));
 
 		for (cpu = 0; cpu < ncpus; ++cpu) {
-			if (cpu == mycpuid)
-				continue;
+			thread_t td;
+			lwkt_create(tsc_mpsync_ap_thread, &info, &td,
+				    NULL, TDF_NOSTART, cpu,
+				    "tsc mpsync %d", cpu);
+			lwkt_setpri_initial(td, curthread->td_pri);
+			lwkt_schedule(td);
+		}
+		while (info.tsc_ready_cnt != ncpus)
+			lwkt_force_switch();
 
-			lwkt_create(tsc_mpsync_ap_thread, &thr, NULL,
-			    NULL, 0, cpu, "tsc mpsync %d", cpu);
+		/*
+		 * All threads are ready, start the test and wait for
+		 * completion.
+		 */
+		info.tsc_command = 1;
+		while (info.tsc_done_cnt != ncpus)
+			lwkt_force_switch();
+
+		/*
+		 * Process results
+		 */
+		last = info.tsc_saved[0].v;
+		delta = 0;
+		for (cpu = 0; cpu < ncpus; ++cpu) {
+			xdelta = (int64_t)(info.tsc_saved[cpu].v - last);
+			last = info.tsc_saved[cpu].v;
+			if (xdelta < 0)
+				xdelta = -xdelta;
+			delta += xdelta;
+
 		}
 
-		while (thr.tsc_done_cnt != ncpus) {
-			cpu_pause();
-			cpu_lfence();
-		}
-		if (thr.tsc_mpsync_cnt == ncpus)
+		/*
+		 * Result from attempt.  If its too wild just stop now.
+		 * Also break out if we succeed, no need to try further.
+		 */
+		kprintf("TSC MPSYNC TEST %jd %d -> %jd (10uS=%jd)\n",
+			delta, ncpus, delta / ncpus,
+			tsc_frequency / 100000);
+		if (delta / ncpus > tsc_frequency / 100)
+			break;
+		if (delta / ncpus < tsc_frequency / 100000) {
 			tsc_mpsync = 1;
+			break;
+		}
 	}
 
 	if (tsc_mpsync)
