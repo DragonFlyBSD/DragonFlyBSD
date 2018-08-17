@@ -8,9 +8,8 @@ LEAPFILE=	-L leapseconds
 LEAPFILE=
 .endif
 
-TZFILES=	africa antarctica asia australasia backzone \
-		etcetera factory europe northamerica \
-		pacificnew southamerica systemv
+TZFILES=	africa antarctica asia australasia etcetera europe \
+		northamerica southamerica systemv
 TZFILES+=	dragonfly
 POSIXRULES=	America/New_York
 
