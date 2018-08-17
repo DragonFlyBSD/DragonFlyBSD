@@ -165,7 +165,7 @@ struct lwkt_tokref {
     struct thread	*tr_owner;	/* me */
 };
 
-#define MAXCPUFIFO      32	/* power of 2 */
+#define MAXCPUFIFO      256	/* power of 2 */
 #define MAXCPUFIFO_MASK	(MAXCPUFIFO - 1)
 #define LWKT_MAXTOKENS	32	/* max tokens beneficially held by thread */
 
