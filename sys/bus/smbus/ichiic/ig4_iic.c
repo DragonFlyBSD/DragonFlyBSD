@@ -93,6 +93,16 @@ reg_read(ig4iic_softc_t *sc, uint32_t reg)
 	return value;
 }
 
+static
+void
+set_intr_mask(ig4iic_softc_t *sc, uint32_t val)
+{
+	if (sc->intr_mask != val) {
+		reg_write(sc, IG4_REG_INTR_MASK, val);
+		sc->intr_mask = val;
+	}
+}
+
 /*
  * Enable or disable the controller and wait for the controller to acknowledge
  * the state change.
@@ -105,13 +115,10 @@ set_controller(ig4iic_softc_t *sc, uint32_t ctl)
 	int error;
 	uint32_t v;
 
-	if (ctl & IG4_I2C_ENABLE) {
-		reg_write(sc, IG4_REG_INTR_MASK, IG4_INTR_STOP_DET |
-						 IG4_INTR_RX_FULL);
+	set_intr_mask(sc, 0);
+	if (ctl & IG4_I2C_ENABLE)
 		reg_read(sc, IG4_REG_CLR_INTR);
-	} else {
-		reg_write(sc, IG4_REG_INTR_MASK, 0);
-	}
+
 	reg_write(sc, IG4_REG_I2C_EN, ctl);
 	error = SMB_ETIMEOUT;
 
@@ -188,7 +195,9 @@ wait_status(ig4iic_softc_t *sc, uint32_t status)
 		 * work, otherwise poll with the serializer held.
 		 */
 		if (status & IG4_STATUS_RX_NOTEMPTY) {
+			set_intr_mask(sc, IG4_INTR_STOP_DET | IG4_INTR_RX_FULL);
 			zsleep(sc, &sc->slz, 0, "i2cwait", (hz + 99) / 100);
+			set_intr_mask(sc, 0);
 		} else {
 			DELAY(25);
 		}
@@ -469,6 +478,7 @@ smb_transaction(ig4iic_softc_t *sc, char cmd, int op,
 	}
 	error = 0;
 done:
+	set_intr_mask(sc, 0);
 	/* XXX wait for xmit buffer to become empty */
 	last = reg_read(sc, IG4_REG_TX_ABRT_SOURCE);
 
@@ -545,6 +555,11 @@ ig4iic_attach(ig4iic_softc_t *sc)
 	v = reg_read(sc, IG4_REG_SS_SCL_LCNT);
 	reg_write(sc, IG4_REG_FS_SCL_LCNT, v);
 #endif
+
+	reg_read(sc, IG4_REG_CLR_INTR);
+	reg_write(sc, IG4_REG_INTR_MASK, 0);
+	sc->intr_mask = 0;
+
 	/*
 	 * Program based on a 25000 Hz clock.  This is a bit of a
 	 * hack (obviously).  The defaults are 400 and 470 for standard
@@ -961,6 +976,7 @@ ig4iic_intr(void *cookie)
 	ig4iic_softc_t *sc = cookie;
 	uint32_t status;
 
+	set_intr_mask(sc, 0);
 	reg_read(sc, IG4_REG_CLR_INTR);
 	status = reg_read(sc, IG4_REG_I2C_STA);
 	while (status & IG4_STATUS_RX_NOTEMPTY) {
