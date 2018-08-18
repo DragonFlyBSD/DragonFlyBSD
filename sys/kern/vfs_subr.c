@@ -811,10 +811,19 @@ vfsync_bp(struct buf *bp, void *data)
 		 * Ignore buffers that we cannot immediately lock.
 		 */
 		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
-			if (BUF_TIMELOCK(bp, LK_EXCLUSIVE, "bflst1", 1)) {
-				++info->skippedbufs;
-				return(0);
-			}
+			/*
+			 * Removed BUF_TIMELOCK(..., 1), even a 1-tick
+			 * delay can mess up performance
+			 *
+			 * Another reason is that during a dirty-buffer
+			 * scan a clustered write can start I/O on buffers
+			 * ahead of the scan, causing the scan to not
+			 * get a lock here.  Usually this means the write
+			 * is already in progress so, in fact, we *want*
+			 * to skip the buffer.
+			 */
+			++info->skippedbufs;
+			return(0);
 		}
 	} else if (info->synchronous == 0) {
 		/*
