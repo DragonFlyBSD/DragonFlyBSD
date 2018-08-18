@@ -78,7 +78,7 @@ struct ig4iic_softc {
 	int		slave_valid : 1;
 	int		read_started : 1;
 	int		write_started : 1;
-	struct lock	lk;
+	struct lwkt_serialize slz;
 };
 
 typedef struct ig4iic_softc ig4iic_softc_t;

@@ -42,8 +42,7 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/errno.h>
-#include <sys/lock.h>
-#include <sys/mutex.h>
+#include <sys/serialize.h>
 #include <sys/syslog.h>
 #include <sys/bus.h>
 
@@ -117,7 +116,7 @@ ig4iic_pci_attach(device_t dev)
 
 	bzero(sc, sizeof(*sc));
 
-	lockinit(&sc->lk, "ig4iic", 0, LK_CANRECURSE);
+	lwkt_serialize_init(&sc->slz);
 
 	device_id = pci_get_device(dev);
 	for (i = 0; i < NELEM(intel_i2c_ids); i++) {
@@ -184,7 +183,6 @@ ig4iic_pci_detach(device_t dev)
 	}
 	sc->regs_t = 0;
 	sc->regs_h = 0;
-	lockuninit(&sc->lk);
 
 	return 0;
 }

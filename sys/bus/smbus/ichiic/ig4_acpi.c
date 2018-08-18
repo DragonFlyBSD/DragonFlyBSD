@@ -42,7 +42,7 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/errno.h>
-#include <sys/lock.h>
+#include <sys/serialize.h>
 #include <sys/syslog.h>
 #include <sys/bus.h>
 
@@ -98,9 +98,7 @@ ig4iic_acpi_attach(device_t dev)
 	ig4iic_softc_t *sc = device_get_softc(dev);
 	int error;
 
-	bzero(sc, sizeof(*sc));
-
-	lockinit(&sc->lk, "ig4iic", 0, LK_CANRECURSE);
+	lwkt_serialize_init(&sc->slz);
 
 	sc->dev = dev;
 	/* All the HIDs matched are Atom SOCs. */
@@ -161,7 +159,6 @@ ig4iic_acpi_detach(device_t dev)
 	}
 	sc->regs_t = 0;
 	sc->regs_h = 0;
-	lockuninit(&sc->lk);
 
 	pci_set_powerstate(dev, PCI_POWERSTATE_D3);
 
