@@ -83,6 +83,7 @@ int hammer2_supported_version = HAMMER2_VOL_VERSION_DEFAULT;
 int hammer2_debug;
 int hammer2_cluster_meta_read = 1;	/* physical read-ahead */
 int hammer2_cluster_data_read = 4;	/* physical read-ahead */
+int hammer2_cluster_write = 0;		/* physical write clustering */
 int hammer2_dedup_enable = 1;
 int hammer2_always_compress = 0;	/* always try to compress */
 int hammer2_inval_enable = 0;
@@ -128,6 +129,8 @@ SYSCTL_INT(_vfs_hammer2, OID_AUTO, cluster_meta_read, CTLFLAG_RW,
 	   &hammer2_cluster_meta_read, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, cluster_data_read, CTLFLAG_RW,
 	   &hammer2_cluster_data_read, 0, "");
+SYSCTL_INT(_vfs_hammer2, OID_AUTO, cluster_write, CTLFLAG_RW,
+	   &hammer2_cluster_write, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, dedup_enable, CTLFLAG_RW,
 	   &hammer2_dedup_enable, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, always_compress, CTLFLAG_RW,

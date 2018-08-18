@@ -471,8 +471,11 @@ hammer2_io_putblk(hammer2_io_t **diop)
 			/*
 			 * Allows dirty buffers to accumulate and
 			 * possibly be canceled (e.g. by a 'rm'),
-			 * will burst-write later.  Allow the kernel
-			 * to cluster the dirty buffers.
+			 * will burst-write later.
+			 *
+			 * We normally do not allow the kernel to
+			 * cluster dirty buffers because H2 already
+			 * uses a large block size.
 			 *
 			 * NOTE: Do not use cluster_write() here.  The
 			 *	 problem is that due to the way chains
@@ -497,10 +500,11 @@ hammer2_io_putblk(hammer2_io_t **diop)
 				cluster_write(bp, peof, psize, hce);
 			} else
 #endif
-			{
+			if (hammer2_cluster_write)
 				bp->b_flags |= B_CLUSTEROK;
-				bdwrite(bp);
-			}
+			else
+				bp->b_flags &= ~B_CLUSTEROK;
+			bdwrite(bp);
 		} else if (bp->b_flags & (B_ERROR | B_INVAL | B_RELBUF)) {
 			brelse(bp);
 		} else {
