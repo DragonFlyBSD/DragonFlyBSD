@@ -102,6 +102,17 @@ TAILQ_HEAD(rq, lwp);
 #define lwp_qcpu	lwp_usdata.dfly.qcpu
 #define lwp_rrcount	lwp_usdata.dfly.rrcount
 
+static __inline int
+lptouload(struct lwp *lp)
+{
+	int uload;
+
+	uload = lp->lwp_estcpu / NQS;
+	uload -= uload * lp->lwp_proc->p_nice / (PRIO_MAX + 1);
+
+	return uload;
+}
+
 /*
  * DFly scheduler pcpu structure.  Note that the pcpu uload field must
  * be 64-bits to avoid overflowing in the situation where more than 32768
@@ -111,6 +122,7 @@ TAILQ_HEAD(rq, lwp);
 struct usched_dfly_pcpu {
 	struct spinlock spin;
 	struct thread	*helper_thread;
+	struct globaldata *gd;
 	u_short		scancpu;
 	short		upri;
 	long		uload;		/* 64-bits to avoid overflow (1) */
@@ -154,7 +166,7 @@ static void dfly_yield(struct lwp *lp);
 static void dfly_changeqcpu_locked(struct lwp *lp,
 				dfly_pcpu_t dd, dfly_pcpu_t rdd);
 static dfly_pcpu_t dfly_choose_best_queue(struct lwp *lp);
-static dfly_pcpu_t dfly_choose_worst_queue(dfly_pcpu_t dd);
+static dfly_pcpu_t dfly_choose_worst_queue(dfly_pcpu_t dd, int forceit);
 static dfly_pcpu_t dfly_choose_queue_simple(dfly_pcpu_t dd, struct lwp *lp);
 static void dfly_need_user_resched_remote(void *dummy);
 static struct lwp *dfly_chooseproc_locked(dfly_pcpu_t rdd, dfly_pcpu_t dd,
@@ -265,21 +277,27 @@ SYSCTL_INT(_debug, OID_AUTO, dfly_forkbias, CTLFLAG_RW,
  *	     make this value too large the scheduler will not be
  *	     able to load-balance large loads.
  *
+ *	     Generally set to a fairly low value, but high enough
+ *	     such that estcpu jitter doesn't move threads around.
+ *
  * weight2 - If non-zero, detects thread pairs undergoing synchronous
  *	     communications and tries to move them closer together.
  *	     Behavior is adjusted by bit 4 of features (0x10).
  *
  *	     WARNING!  Weight2 is a ridiculously sensitive parameter,
- *	     a small value is recommended.
+ *	     change the default at your peril.
  *
  * weight3 - Weighting based on the number of recently runnable threads
  *	     on the userland scheduling queue (ignoring their loads).
+ *
  *	     A nominal value here prevents high-priority (low-load)
  *	     threads from accumulating on one cpu core when other
  *	     cores are available.
  *
- *	     This value should be left fairly small relative to weight1
- *	     and weight4.
+ *	     This value should be left fairly small because low-load
+ *	     high priority threads can still be mostly idle and too
+ *	     high a value will kick cpu-bound processes off the cpu
+ *	     unnecessarily.
  *
  * weight4 - Weighting based on other cpu queues being available
  *	     or running processes with higher lwp_priority's.
@@ -288,6 +306,26 @@ SYSCTL_INT(_debug, OID_AUTO, dfly_forkbias, CTLFLAG_RW,
  *	     is unable to run on the current cpu based on the other cpu
  *	     being idle or running a lower priority (higher lwp_priority)
  *	     thread.  This value should be large enough to override weight1
+ *
+ * weight5 - Weighting based on the relative amount of ram connected
+ *	     to the node a cpu resides on.
+ *
+ *	     This value should remain fairly low to allow assymetric
+ *	     NUMA nodes to get threads scheduled to them.  Setting a very
+ *	     high level will prevent scheduling on assymetric NUMA nodes
+ *	     with low amounts of directly-attached memory.
+ *
+ *	     Note that when testing e.g. N threads on a machine with N
+ *	     cpu cores with assymtric NUMA nodes, a non-zero value will
+ *	     cause some cpu threads on the low-priority NUMA nodes to remain
+ *	     idle even when a few process threads are doubled-up on other
+ *	     cpus.  But this is typically more ideal because it deschedules
+ *	     low-priority NUMA nodes at lighter nodes.
+ *
+ *	     Values between 50 and 200 are recommended.  Default is 50.
+ *
+ * weight6 - rdd transfer weight hysteresis.  Defaults to 0, can be increased
+ *	     to improve stabillity at the cost of more mis-schedules.
  *
  * features - These flags can be set or cleared to enable or disable various
  *	      features.
@@ -303,15 +341,18 @@ SYSCTL_INT(_debug, OID_AUTO, dfly_forkbias, CTLFLAG_RW,
  */
 static int usched_dfly_smt = 0;
 static int usched_dfly_cache_coherent = 0;
-static int usched_dfly_weight1 = 200;	/* keep thread on current cpu */
+static int usched_dfly_weight1 = 10;	/* keep thread on current cpu */
 static int usched_dfly_weight2 = 180;	/* synchronous peer's current cpu */
-static int usched_dfly_weight3 = 40;	/* number of threads on queue */
+static int usched_dfly_weight3 = 10;	/* number of threads on queue */
 static int usched_dfly_weight4 = 160;	/* availability of idle cores */
+static int usched_dfly_weight5 = 50;	/* node attached memory */
+static int usched_dfly_weight6 = 0;	/* rdd trasnfer weight */
 static int usched_dfly_features = 0x8F;	/* allow pulls */
 static int usched_dfly_fast_resched = PPQ / 2; /* delta priority / resched */
 static int usched_dfly_swmask = ~PPQMASK; /* allow pulls */
 static int usched_dfly_rrinterval = (ESTCPUFREQ + 9) / 10;
 static int usched_dfly_decay = 8;
+static long usched_dfly_node_mem;
 
 /* KTR debug printings */
 
@@ -388,7 +429,13 @@ dfly_acquire_curproc(struct lwp *lp)
 		lwkt_yield_quick();
 
 	while (dd->uschedcp != lp) {
-		lwkt_yield_quick();
+		/*
+		 * Do not do a lwkt_yield_quick() here as it will prevent
+		 * the lwp from being placed on the dfly_bsd runqueue for
+		 * one cycle (possibly an entire round-robin), preventing
+		 * it from being scheduled to another cpu.
+		 */
+		/* lwkt_yield_quick(); */
 
 		spin_lock(&dd->spin);
 
@@ -406,18 +453,21 @@ dfly_acquire_curproc(struct lwp *lp)
 			continue;
 		}
 
+		/*
+		 * We are not or are no longer the current lwp and a forced
+		 * reschedule was requested.  Figure out the best cpu to
+		 * run on (our current cpu will be given significant weight).
+		 *
+		 * Doing this on many cpus simultaneously leads to
+		 * instability so pace the operation.
+		 *
+		 * (if a reschedule was not requested we want to move this
+		 * step after the uschedcp tests).
+		 */
 		if (force_resched &&
 		   (usched_dfly_features & 0x08) &&
+		   (u_int)sched_ticks / 8 % ncpus == gd->gd_cpuid &&
 		   (rdd = dfly_choose_best_queue(lp)) != dd) {
-			/*
-			 * We are not or are no longer the current lwp and a
-			 * forced reschedule was requested.  Figure out the
-			 * best cpu to run on (our current cpu will be given
-			 * significant weight).
-			 *
-			 * (if a reschedule was not requested we want to
-			 *  move this step after the uschedcp tests).
-			 */
 			dfly_changeqcpu_locked(lp, dd, rdd);
 			spin_unlock(&dd->spin);
 			lwkt_deschedule(lp->lwp_thread);
@@ -764,7 +814,7 @@ dfly_setrunqueue_dd(dfly_pcpu_t rdd, struct lwp *lp)
 	if ((lp->lwp_thread->td_flags & TDF_MIGRATING) == 0)
 		lwkt_giveaway(lp->lwp_thread);
 
-	rgd = globaldata_find(rdd->cpuid);
+	rgd = rdd->gd;
 
 	/*
 	 * We lose control of the lp the moment we release the spinlock
@@ -878,6 +928,8 @@ dfly_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 	/*
 	 * Rebalance two cpus every 8 ticks, pulling the worst thread
 	 * from the worst cpu's queue into a rotating cpu number.
+	 * Also require that the moving of the highest-load thread
+	 * from rdd to dd does not cause the uload to cross over.
 	 *
 	 * This mechanic is needed because the push algorithms can
 	 * steady-state in an non-optimal configuration.  We need to mix it
@@ -906,8 +958,8 @@ dfly_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 		struct lwp *nlp;
 		dfly_pcpu_t rdd;
 
-		rdd = dfly_choose_worst_queue(dd);
-		if (rdd) {
+		rdd = dfly_choose_worst_queue(dd, 1);
+		if (rdd && dd->uload + usched_dfly_weight6 / 2 < rdd->uload) {
 			spin_lock(&dd->spin);
 			if (spin_trylock(&rdd->spin)) {
 				nlp = dfly_chooseproc_locked(rdd, dd, NULL, 1);
@@ -1191,8 +1243,7 @@ dfly_resetpriority(struct lwp *lp)
 	 * the more important the thread.
 	 */
 	/* 0-511, 0-100% cpu */
-	delta_uload = lp->lwp_estcpu / NQS;
-	delta_uload -= delta_uload * lp->lwp_proc->p_nice / (PRIO_MAX + 1);
+	delta_uload = lptouload(lp);
 	delta_uload -= lp->lwp_uload;
 	if (lp->lwp_uload + delta_uload < -32767) {
 		delta_uload = -32768 - lp->lwp_uload;
@@ -1568,7 +1619,6 @@ dfly_choose_best_queue(struct lwp *lp)
 	int wakecpu;
 	int cpuid;
 	int n;
-	int count;
 	long load;
 	long lowest_load;
 
@@ -1612,13 +1662,15 @@ dfly_choose_best_queue(struct lwp *lp)
 		}
 
 		cpub = NULL;
-		lowest_load = 0x7FFFFFFFFFFFFFFFLLU;
+		lowest_load = 0x7FFFFFFFFFFFFFFFLL;
 
 		for (n = 0; n < cpup->child_no; ++n) {
 			/*
 			 * Accumulate load information for all cpus
 			 * which are members of this node.
 			 */
+			int count;
+
 			cpun = cpup->child_node[n];
 			mask = cpun->members;
 			CPUMASK_ANDMASK(mask, usched_global_cpumask);
@@ -1627,26 +1679,25 @@ dfly_choose_best_queue(struct lwp *lp)
 			if (CPUMASK_TESTZERO(mask))
 				continue;
 
-			count = 0;
 			load = 0;
+			count = 0;
 
 			while (CPUMASK_TESTNZERO(mask)) {
 				cpuid = BSFCPUMASK(mask);
 				rdd = &dfly_pcpu[cpuid];
-				load += rdd->uload;
-				load += rdd->ucount * usched_dfly_weight3;
 
 				if (rdd->uschedcp == NULL &&
 				    rdd->runqcount == 0 &&
-				    globaldata_find(cpuid)->gd_tdrunqcount == 0
+				    rdd->gd->gd_tdrunqcount == 0
 				) {
-					load -= usched_dfly_weight4;
+					load += rdd->uload / 2;
+					load += rdd->ucount *
+						usched_dfly_weight3 / 2;
+				} else {
+					load += rdd->uload;
+					load += rdd->ucount *
+						usched_dfly_weight3;
 				}
-#if 0
-				else if (rdd->upri > lp->lwp_priority + PPQ) {
-					load -= usched_dfly_weight4 / 2;
-				}
-#endif
 				CPUMASK_NANDBIT(mask, cpuid);
 				++count;
 			}
@@ -1660,7 +1711,7 @@ dfly_choose_best_queue(struct lwp *lp)
 			if ((lp->lwp_mpflags & LWP_MP_ULOAD) &&
 			    CPUMASK_TESTMASK(dd->cpumask, cpun->members)) {
 				load -= lp->lwp_uload;
-				load -= usched_dfly_weight3;
+				load -= usched_dfly_weight3;	/* ucount */
 			}
 
 			load /= count;
@@ -1670,6 +1721,14 @@ dfly_choose_best_queue(struct lwp *lp)
 			 */
 			if (CPUMASK_TESTMASK(cpun->members, dd->cpumask))
 				load -= usched_dfly_weight1;
+
+			/*
+			 * Advantage nodes with more memory
+			 */
+			if (usched_dfly_node_mem) {
+				load -= cpun->phys_mem * usched_dfly_weight5 /
+					usched_dfly_node_mem;
+			}
 
 			/*
 			 * Advantage the cpu group we want to pair (lp) to,
@@ -1728,16 +1787,19 @@ dfly_choose_best_queue(struct lwp *lp)
  * USED TO PULL RUNNABLE LWPS FROM THE MOST LOADED CPU.
  *
  * Choose the worst queue close to dd's cpu node with a non-empty runq
- * that is NOT dd.  Also require that the moving of the highest-load thread
- * from rdd to dd does not cause the uload's to cross each other.
+ * that is NOT dd.
  *
  * This is used by the thread chooser when the current cpu's queues are
  * empty to steal a thread from another cpu's queue.  We want to offload
  * the most heavily-loaded queue.
+ *
+ * However, we do not want to steal from far-away nodes who themselves
+ * have idle cpu's that are more suitable to distribute the far-away
+ * thread to.
  */
 static
 dfly_pcpu_t
-dfly_choose_worst_queue(dfly_pcpu_t dd)
+dfly_choose_worst_queue(dfly_pcpu_t dd, int forceit)
 {
 	cpumask_t mask;
 	cpu_node_t *cpup;
@@ -1746,7 +1808,6 @@ dfly_choose_worst_queue(dfly_pcpu_t dd)
 	dfly_pcpu_t rdd;
 	int cpuid;
 	int n;
-	int count;
 	long load;
 	long highest_load;
 #if 0
@@ -1786,13 +1847,15 @@ dfly_choose_worst_queue(dfly_pcpu_t dd)
 		}
 
 		cpub = NULL;
-		highest_load = 0;
+		highest_load = -0x7FFFFFFFFFFFFFFFLL;
 
 		for (n = 0; n < cpup->child_no; ++n) {
 			/*
 			 * Accumulate load information for all cpus
 			 * which are members of this node.
 			 */
+			int count;
+
 			cpun = cpup->child_node[n];
 			mask = cpun->members;
 			CPUMASK_ANDMASK(mask, usched_global_cpumask);
@@ -1800,37 +1863,54 @@ dfly_choose_worst_queue(dfly_pcpu_t dd)
 			if (CPUMASK_TESTZERO(mask))
 				continue;
 
-			count = 0;
 			load = 0;
+			count = 0;
 
 			while (CPUMASK_TESTNZERO(mask)) {
 				cpuid = BSFCPUMASK(mask);
 				rdd = &dfly_pcpu[cpuid];
-				load += rdd->uload;
-				load += (long)rdd->ucount * usched_dfly_weight3;
 
 				if (rdd->uschedcp == NULL &&
 				    rdd->runqcount == 0 &&
-				    globaldata_find(cpuid)->gd_tdrunqcount == 0
+				    rdd->gd->gd_tdrunqcount == 0
 				) {
-					load -= usched_dfly_weight4;
+					load += rdd->uload / 2;
+					load += rdd->ucount *
+						usched_dfly_weight3 / 2;
+				} else {
+					load += rdd->uload;
+					load += rdd->ucount *
+						usched_dfly_weight3;
 				}
-#if 0
-				else if (rdd->upri > dd->upri + PPQ) {
-					load -= usched_dfly_weight4 / 2;
-				}
-#endif
 				CPUMASK_NANDBIT(mask, cpuid);
 				++count;
 			}
 			load /= count;
 
 			/*
-			 * Prefer candidates which are somewhat closer to
-			 * our cpu.
+			 * Advantage the cpu group (dd) is already on.
+			 *
+			 * When choosing the worst queue we reverse the
+			 * sign, but only count half the weight.
+			 *
+			 * weight1 needs to be high enough to be stable,
+			 * but this can also cause it to be too sticky,
+			 * so the iterator which rebalances the load sets
+			 * forceit to ignore it.
 			 */
-			if (CPUMASK_TESTMASK(dd->cpumask, cpun->members))
-				load += usched_dfly_weight1;
+			if (forceit == 0 &&
+			    CPUMASK_TESTMASK(dd->cpumask, cpun->members)) {
+				load += usched_dfly_weight1 / 2;
+			}
+
+			/*
+			 * Disadvantage nodes with more memory (same sign).
+			 */
+			if (usched_dfly_node_mem) {
+				load -= cpun->phys_mem * usched_dfly_weight5 /
+					usched_dfly_node_mem;
+			}
+
 
 			/*
 			 * The best candidate is the one with the worst
@@ -2082,8 +2162,8 @@ dfly_setrunqueue_locked(dfly_pcpu_t rdd, struct lwp *lp)
 
 	if ((lp->lwp_mpflags & LWP_MP_ULOAD) == 0) {
 		atomic_set_int(&lp->lwp_mpflags, LWP_MP_ULOAD);
-		atomic_add_long(&dfly_pcpu[lp->lwp_qcpu].uload, lp->lwp_uload);
-		atomic_add_int(&dfly_pcpu[lp->lwp_qcpu].ucount, 1);
+		atomic_add_long(&rdd->uload, lp->lwp_uload);
+		atomic_add_int(&rdd->ucount, 1);
 	}
 
 	pri = lp->lwp_rqindex;
@@ -2238,8 +2318,9 @@ dfly_helper_thread(void *dummy)
 		 *	 partially unbalanced (e.g. 6 runnables and only
 		 *	 4 cores).
 		 */
-		rdd = dfly_choose_worst_queue(dd);
-		if (rdd && spin_trylock(&rdd->spin)) {
+		rdd = dfly_choose_worst_queue(dd, 0);
+		if (rdd && dd->uload + usched_dfly_weight6 < rdd->uload &&
+		    spin_trylock(&rdd->spin)) {
 			nlp = dfly_chooseproc_locked(rdd, dd, NULL, 1);
 			spin_unlock(&rdd->spin);
 		} else {
@@ -2323,6 +2404,8 @@ usched_dfly_cpu_init(void)
 				SYSCTL_STATIC_CHILDREN(_kern), OID_AUTO,
 				"usched_dfly", CTLFLAG_RD, 0, "");
 
+	usched_dfly_node_mem = get_highest_node_memory();
+
 	for (i = 0; i < ncpus; ++i) {
 		dfly_pcpu_t dd = &dfly_pcpu[i];
 		cpumask_t mask;
@@ -2334,6 +2417,7 @@ usched_dfly_cpu_init(void)
 		spin_init(&dd->spin, "uschedcpuinit");
 		dd->cpunode = get_cpu_node_by_cpuid(i);
 		dd->cpuid = i;
+		dd->gd = globaldata_find(i);
 		CPUMASK_ASSBIT(dd->cpumask, i);
 		for (j = 0; j < NQS; j++) {
 			TAILQ_INIT(&dd->queues[j]);
@@ -2486,6 +2570,18 @@ usched_dfly_cpu_init(void)
 			       OID_AUTO, "weight4", CTLFLAG_RW,
 			       &usched_dfly_weight4, 160,
 			       "Availability of other idle cpus");
+
+		SYSCTL_ADD_INT(&usched_dfly_sysctl_ctx,
+			       SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
+			       OID_AUTO, "weight5", CTLFLAG_RW,
+			       &usched_dfly_weight5, 50,
+			       "Memory attached to node");
+
+		SYSCTL_ADD_INT(&usched_dfly_sysctl_ctx,
+			       SYSCTL_CHILDREN(usched_dfly_sysctl_tree),
+			       OID_AUTO, "weight6", CTLFLAG_RW,
+			       &usched_dfly_weight6, 150,
+			       "Transfer weight");
 
 		SYSCTL_ADD_INT(&usched_dfly_sysctl_ctx,
 			       SYSCTL_CHILDREN(usched_dfly_sysctl_tree),

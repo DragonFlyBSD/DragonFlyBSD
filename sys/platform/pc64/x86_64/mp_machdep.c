@@ -1745,13 +1745,73 @@ detect_amd_topology(int count_htt_cores)
 				;
 			core_bits = shift;
 		}
+		logical_CPU_bits = count_htt_cores >> core_bits;
+		for (shift = 0; (1 << shift) < logical_CPU_bits; ++shift)
+			;
+		logical_CPU_bits = shift;
 
+		kprintf("core_bits %d logical_CPU_bits %d\n",
+			core_bits - logical_CPU_bits, logical_CPU_bits);
+
+		if (amd_feature2 & AMDID2_TOPOEXT) {
+			u_int p[4];	/* eax,ebx,ecx,edx */
+			int nodes;
+
+			cpuid_count(0x8000001e, 0, p);
+
+			switch(((p[1] >> 8) & 3) + 1) {
+			case 1:
+				logical_CPU_bits = 0;
+				break;
+			case 2:
+				logical_CPU_bits = 1;
+				break;
+			case 3:
+			case 4:
+				logical_CPU_bits = 2;
+				break;
+			}
+
+			/*
+			 * Nodes are kind of a stand-in for packages*sockets,
+			 * but can be thought of in terms of Numa domains.
+			 */
+			nodes = ((p[2] >> 8) & 7) + 1;
+			switch(nodes) {
+			case 8:
+			case 7:
+			case 6:
+			case 5:
+				--core_bits;
+				/* fallthrough */
+			case 4:
+			case 3:
+				--core_bits;
+				/* fallthrough */
+			case 2:
+				--core_bits;
+				/* fallthrough */
+			case 1:
+				break;
+			}
+			core_bits -= logical_CPU_bits;
+			kprintf("%d-way htt, %d Nodes, %d cores/node\n",
+				(int)(((p[1] >> 8) & 3) + 1),
+				nodes,
+				1 << core_bits);
+
+		}
+#if 0
 		if (amd_feature2 & AMDID2_TOPOEXT) {
 			u_int p[4];
 			int i;
 			int type;
 			int level;
 			int share_count;
+
+			logical_CPU_bits = 0;
+			core_bits = 0;
+
 			for (i = 0; i < 256; ++i)  {
 				cpuid_count(0x8000001d, i, p);
 				type = p[0] & 0x1f;
@@ -1760,22 +1820,50 @@ detect_amd_topology(int count_htt_cores)
 
 				if (type == 0)
 					break;
-				if (bootverbose)
-					kprintf("Topology probe i=%2d type=%d level=%d share_count=%d\n",
-						i, type, level, share_count);
-				if (type == 1 && share_count) {	/* CPUID_TYPE_SMT */
-					for (shift = 0; (1 << shift) < count_htt_cores / share_count; ++shift)
-						;
-					core_bits = shift;
+				kprintf("Topology probe i=%2d type=%d "
+					"level=%d share_count=%d\n",
+					i, type, level, share_count);
+				shift = 0;
+				while ((1 << shift) < share_count)
+					++shift;
+
+				switch(type) {
+				case 1:
+					/*
+					 * CPUID_TYPE_SMT
+					 *
+					 * Logical CPU (SMT)
+					 */
+					logical_CPU_bits = shift;
+					break;
+				case 2:
+					/*
+					 * CPUID_TYPE_CORE
+					 *
+					 * Physical subdivision of a package
+					 */
+					core_bits = logical_CPU_bits +
+						    shift;
+					break;
+				case 3:
+					/*
+					 * CPUID_TYPE_CACHE
+					 *
+					 * CPU L1/L2/L3 cache
+					 */
+					break;
+				case 4:
+					/*
+					 * CPUID_TYPE_PKG
+					 *
+					 * Package aka chip, equivalent to
+					 * socket
+					 */
 					break;
 				}
 			}
 		}
-
-		logical_CPU_bits = count_htt_cores >> core_bits;
-		for (shift = 0; (1 << shift) < logical_CPU_bits; ++shift)
-			;
-		logical_CPU_bits = shift;
+#endif
 	} else {
 		for (shift = 0; (1 << shift) < count_htt_cores; ++shift)
 			;

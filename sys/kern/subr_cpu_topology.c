@@ -196,22 +196,22 @@ build_cpu_topology(int assumed_ncpus)
 			continue;
 #endif
 
-		if (get_chip_ID(BSPID) == get_chip_ID(i))
-			cores_per_chip++;
-		else
+		if (get_chip_ID(BSPID) != get_chip_ID(i))
 			continue;
+		++cores_per_chip;
 
 		if (get_core_number_within_chip(BSPID) ==
-		    get_core_number_within_chip(i))
-			threads_per_core++;
+		    get_core_number_within_chip(i)) {
+			++threads_per_core;
+		}
 	}
 
 	cores_per_chip /= threads_per_core;
 	chips_per_package = assumed_ncpus / (cores_per_chip * threads_per_core);
 	
-	if (bootverbose)
-		kprintf("CPU Topology: cores_per_chip: %d; threads_per_core: %d; chips_per_package: %d;\n",
-		    cores_per_chip, threads_per_core, chips_per_package);
+	kprintf("CPU Topology: cores_per_chip: %d; threads_per_core: %d; "
+		"chips_per_package: %d;\n",
+		cores_per_chip, threads_per_core, chips_per_package);
 
 	if (threads_per_core > 1) { /* HT available - 4 levels */
 
@@ -374,7 +374,7 @@ print_cpu_topology_tree_sysctl_helper(cpu_node_t *node,
 		}
 	} else if (node->type == THREAD_LEVEL) {
 		if (node->compute_unit_id != (uint8_t)-1) {
-			sbuf_printf(sb,"CORE ID %d: ",
+			sbuf_printf(sb,"THREAD ID %d: ",
 				get_core_number_within_chip(bsr_member));
 		} else {
 			sbuf_printf(sb,"THREAD ID %d: ",
@@ -761,6 +761,31 @@ get_cpu_phys_id(int cpuid)
 	if (pcpu_sysctl)
 		return(pcpu_sysctl[cpuid].physical_id);
 	return(0);
+}
+
+/*
+ * Returns the highest amount of memory attached to any single node.
+ * Returns 0 if the system is not NUMA or only has one node.
+ *
+ * This function is used by the scheduler.
+ */
+long
+get_highest_node_memory(void)
+{
+	long highest = 0;
+
+        if (cpu_root_node && cpu_root_node->type == PACKAGE_LEVEL &&
+	    cpu_root_node->child_node[1]) {
+                cpu_node_t *cpup;
+                int i;
+
+                for (i = 0 ; i < MAXCPU && cpu_root_node->child_node[i]; ++i) {
+                        cpup = cpu_root_node->child_node[i];
+                        if (highest < cpup->phys_mem)
+                                highest = cpup->phys_mem;
+                }
+        }
+	return highest;
 }
 
 extern int naps;

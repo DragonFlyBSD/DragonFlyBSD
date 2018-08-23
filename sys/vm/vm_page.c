@@ -119,6 +119,7 @@ static void vm_page_free_wakeup(void);
 static vm_page_t vm_page_select_cache(u_short pg_color);
 static vm_page_t _vm_page_list_find2(int basequeue, int index);
 static void _vm_page_deactivate_locked(vm_page_t m, int athead);
+static void vm_numa_add_topology_mem(cpu_node_t *cpup, int physid, long bytes);
 
 /*
  * Array of tailq lists
@@ -493,6 +494,12 @@ vm_numa_organize(vm_paddr_t ran_beg, vm_paddr_t bytes, int physid)
 	crit_enter();
 
 	/*
+	 * Adjust cpu_topology's phys_mem parameter
+	 */
+	if (root_cpu_node)
+		vm_numa_add_topology_mem(root_cpu_node, physid, (long)bytes);
+
+	/*
 	 * Adjust vm_page->pc and requeue all affected pages.  The
 	 * allocator will then be able to localize memory allocations
 	 * to some degree.
@@ -538,6 +545,42 @@ vm_numa_organize(vm_paddr_t ran_beg, vm_paddr_t bytes, int physid)
 		}
 	}
 	crit_exit();
+}
+
+static
+void
+vm_numa_add_topology_mem(cpu_node_t *cpup, int physid, long bytes)
+{
+	int cpuid;
+	int i;
+
+	switch(cpup->type) {
+	case PACKAGE_LEVEL:
+		cpup->phys_mem += bytes;
+		break;
+	case CHIP_LEVEL:
+		/*
+		 * All members should have the same chipid, so we only need
+		 * to pull out one member.
+		 */
+		if (CPUMASK_TESTNZERO(cpup->members)) {
+			cpuid = BSFCPUMASK(cpup->members);
+			if (physid ==
+			    get_chip_ID_from_APICID(CPUID_TO_APICID(cpuid))) {
+				cpup->phys_mem += bytes;
+			}
+		}
+		break;
+	case CORE_LEVEL:
+	case THREAD_LEVEL:
+		/*
+		 * Just inherit from the parent node
+		 */
+		cpup->phys_mem = cpup->parent_node->phys_mem;
+		break;
+	}
+	for (i = 0; i < MAXCPU && cpup->child_node[i]; ++i)
+		vm_numa_add_topology_mem(cpup->child_node[i], physid, bytes);
 }
 
 /*
