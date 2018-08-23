@@ -485,10 +485,9 @@ vm_numa_organize(vm_paddr_t ran_beg, vm_paddr_t bytes, int physid)
 	 * cpu_topology code mod's it against the socket count.
 	 */
 	ran_end = ran_beg + bytes;
-	physid %= cpu_topology_phys_ids;
 
 	socket_mod = PQ_L2_SIZE / cpu_topology_phys_ids;
-	socket_value = physid * socket_mod;
+	socket_value = (physid % cpu_topology_phys_ids) * socket_mod;
 	mend = &vm_page_array[vm_page_array_size];
 
 	crit_enter();
