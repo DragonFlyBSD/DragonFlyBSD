@@ -26,6 +26,7 @@ if ($?prompt) then
 	set filec
 	set history = 100
 	set savehist = 100
+	set autorehash
 	set mail = (/var/mail/$USER)
 	if ( $?tcsh ) then
 		bindkey "^W" backward-delete-word
