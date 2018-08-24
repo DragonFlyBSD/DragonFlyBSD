@@ -1142,10 +1142,14 @@ undo_exreq(struct lock *lkp)
 			 * No UPREQ, lock not held exclusively or shared.
 			 * Grant the EXREQ and wakeup anyone waiting on
 			 * EXREQ2.
+			 *
+			 * We must also issue a wakeup if SHARED is set,
+			 * even without an SCOUNT, due to pre-shared blocking
+			 * that can occur on EXREQ in lockmgr_shared().
 			 */
 			ncount = (count + 1) & ~(LKC_EXREQ | LKC_EXREQ2);
 			if (atomic_fcmpset_64(&lkp->lk_count, &count, ncount)) {
-				if (count & LKC_EXREQ2)
+				if (count & (LKC_EXREQ2 | LKC_SHARED))
 					wakeup(lkp);
 				/* count = ncount; NOT USED */
 				/* we are granting, error == 0 */
@@ -1214,13 +1218,17 @@ undo_upreq(struct lock *lkp)
 			/*
 			 * Clear the UPREQ we still own.  Wakeup any shared
 			 * waiters.
+			 *
+			 * We must also issue a wakeup if SHARED was set
+			 * even if no shared waiters due to pre-shared blocking
+			 * that can occur on UPREQ.
 			 */
 			ncount = count & ~LKC_UPREQ;
 			if (count & LKC_SMASK)
 				ncount |= LKC_SHARED;
 
 			if (atomic_fcmpset_64(&lkp->lk_count, &count, ncount)) {
-				if ((count & LKC_SHARED) == 0 &&
+				if ((count & LKC_SHARED) ||
 				    (ncount & LKC_SHARED)) {
 					wakeup(lkp);
 				}
