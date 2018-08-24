@@ -2,7 +2,7 @@
 .\" the BSD Copyright as specified in the file "/usr/src/COPYRIGHT" in
 .\" the source tree.
 .\"
-.Dd August 13, 2017
+.Dd August 24, 2018
 .Dt TUNING 7
 .Os
 .Sh NAME
@@ -15,12 +15,12 @@ systems typically have just three partitions on the main drive.
 In order, a UFS
 .Pa /boot ,
 .Pa swap ,
-and a HAMMER
+and a HAMMER or HAMMER2
 .Pa root .
-The installer used to create separate PFSs for half a dozen directories,
-but now it just puts (almost) everything in the root.
-It will separate stuff that doesn't need to be backed up into a /build
-subdirectory and create null-mounts for things like /usr/obj, but it
+In prior years the installer created separate PFSs for half a dozen
+directories, but now we just put (almost) everything in the root.
+The installer will separate stuff that doesn't need to be backed up into
+a /build subdirectory and create null-mounts for things like /usr/obj, but it
 no longer creates separate PFSs for these.
 If desired, you can make /build its own mount to separate-out the
 components of the filesystem which do not need to be persistent.
@@ -46,18 +46,16 @@ a large dedicated swap partition on the SSD.  For example, if
 you have a 128GB SSD and 2TB or more of HDD storage, dedicating
 upwards of 64GB of the SSD to swap and using
 .Xr swapcache 8
-and
-.Xr tmpfs 5
 will significantly improve your HDD's performance.
 .Pp
 In an all-SSD or mostly-SSD system,
 .Xr swapcache 8
-is not normally used but you may still want to have a large swap
-partition to support
+is not normally used and should be left disabled (the default), but you
+may still want to have a large swap partition to support
 .Xr tmpfs 5
 use.
-Our synth/poudriere build machines run with a 200GB
-swap partition and use tmpfs for all the builder jails.  50-100 GB
+Our synth/poudriere build machines run with at least 200GB of
+swap and use tmpfs for all the builder jails.  50-100 GB
 is swapped out at the peak of the build.  As a result, actual
 system storage bandwidth is minimized and performance increased.
 .Pp
@@ -95,18 +93,19 @@ stripe swap space across the N disks.
 Do not worry about overdoing it a
 little, swap space is the saving grace of
 .Ux
-and even if you do not normally use much swap, it can give you more time to
-recover from a runaway program before being forced to reboot.
+and even if you do not normally use much swap, having some allows the system
+to move idle program data out of ram and allows the machine to more easily
+handle abnormal runaway programs.
 However, keep in mind that any sort of swap space failure can lock the
 system up.
-Most machines are setup with only one or two swap partitions.
+Most machines are configured with only one or two swap partitions.
 .Pp
 Most
 .Dx
-systems have a single HAMMER root.
+systems have a single HAMMER or HAMMER2 root.
 PFSs can be used to administratively separate domains for backup purposes
 but tend to be a hassle otherwise so if you don't need the administrative
-separation you don't really need to use multiple HAMMER PFSs.
+separation you don't really need to use multiple PFSs.
 All the PFSs share the same allocation layer so there is no longer a need
 to size each individual mount.
 Instead you should review the
@@ -114,17 +113,16 @@ Instead you should review the
 manual page and use the 'hammer viconfig' facility to adjust snapshot
 retention and other parameters.
 By default
-HAMMER keeps 60 days worth of snapshots.
-Usually snapshots are not desired on PFSs such as
-.Pa /usr/obj
-or
-.Pa /tmp
-since data on these partitions cycles a lot.
+HAMMER1 keeps 60 days worth of snapshots, and HAMMER2 keeps none.
+By convention
+.Pa /build
+is not backed up and contained only directory trees that do not need
+to be backed-up or snapshotted.
 .Pp
 If a very large work area is desired it is often beneficial to
-configure it as a separate HAMMER mount.  If it is integrated into
-the root mount it should at least be its own HAMMER PFS.
-We recommend naming the large work area
+configure it as its own filesystem in a completely independent partition
+so allocation blowouts (if they occur) do not affect the main system.
+By convention a large work area is named
 .Pa /build .
 Similarly if a machine is going to have a large number of users
 you might want to separate your
@@ -145,22 +143,15 @@ option is called
 .Ux
 filesystems normally update the last-accessed time of a file or
 directory whenever it is accessed.
-However, this creates a massive burden on copy-on-write filesystems like
-HAMMER, particularly when scanning the filesystem.
-.Dx
-currently defaults to disabling atime updates on HAMMER mounts.
-It can be enabled by setting the
-.Va vfs.hammer.noatime
-tunable to 0 in
-.Xr loader.conf 5
-but we recommend leaving it disabled.
+However, neither HAMMER nor HAMMER2 implement atime so there is usually
+no need to mess with this option.
 The lack of atime updates can create issues with certain programs
 such as when detecting whether unread mail is present, but
 applications for the most part no longer depend on it.
 .Sh SSD SWAP
-The single most important thing you can do is have at least one
-solid-state drive in your system, and configure your swap space
-on that drive.
+The single most important thing you can do to improve performance is to`
+have at least one solid-state drive in your system, and to configure your
+swap space on that drive.
 If you are using a combination of a smaller SSD and a very larger HDD,
 you can use
 .Xr swapcache 8
@@ -209,13 +200,14 @@ this may stall processes and under certain circumstances you may wish to turn
 it off.
 .Pp
 The
+.Va vfs.lorunningspace
+and
 .Va vfs.hirunningspace
-sysctl determines how much outstanding write I/O may be queued to
-disk controllers system wide at any given instance.  The default is
-usually sufficient but on machines with lots of disks you may want to bump
-it up to four or five megabytes.  Note that setting too high a value
-(exceeding the buffer cache's write threshold) can lead to extremely
-bad clustering performance.  Do not set this value arbitrarily high!  Also,
+sysctls determines how much outstanding write I/O may be queued to
+disk controllers system wide at any given moment.  The default is
+usually sufficient, particularly when SSDs are part of the mix.
+Note that setting too high a value can lead to extremely poor
+clustering performance.  Do not set this value arbitrarily high!  Also,
 higher write queueing values may add latency to reads occurring at the same
 time.
 The
@@ -224,13 +216,15 @@ controls data cycling within the buffer cache.  I/O bandwidth less than
 this specification (per second) will cycle into the much larger general
 VM page cache while I/O bandwidth in excess of this specification will
 be recycled within the buffer cache, reducing the load on the rest of
-the VM system.
-The default value is 200 megabytes (209715200), which means that the
+the VM system at the cost of bypassing normal VM caching mechanisms.
+The default value is 200 megabytes/s (209715200), which means that the
 system will try harder to cache data coming off a slower hard drive
 and less hard trying to cache data coming off a fast SSD.
+.Pp
 This parameter is particularly important if you have NVMe drives in
 your system as these storage devices are capable of transferring
-well over 2GBytes/sec into the system.
+well over 2GBytes/sec into the system and can blow normal VM paging
+and caching algorithms to bits.
 .Pp
 There are various other buffer-cache and VM page cache related sysctls.
 We do not recommend modifying their values.
@@ -404,29 +398,25 @@ The
 .Va kern.maxvnodes
 specifies how many vnodes and related file structures the kernel will
 cache.
-The kernel uses a very generous default for this parameter based on
+The kernel uses a modestly generous default for this parameter based on
 available physical memory.
 You generally do not want to mess with this parameter as it directly
 effects how well the kernel can cache not only file structures but also
 the underlying file data.
 .Pp
-However, situations may crop up where caching too many vnodes can wind
-up eating too much kernel memory due to filesystem resources that are
-also associated with the vnodes.
-You can lower this value if kernel memory use is higher than you would like.
+However, situations may crop up where you wish to cache less filesystem
+data in order to make more memory available for programs.  Not only will
+this reduce kernel memory use for vnodes and inodes, it will also have a
+tendancy to reduce the impact of the buffer cache on main memory because
+recycling a vnode also frees any underlying data that has been cached for
+that vnode.
+.Pp
 It is, in fact, possible for the system to have more files open than the
 value of this tunable, but as files are closed the system will try to
 reduce the actual number of cached vnodes to match this value.
-.Pp
-The
-.Va kern.maxfiles
-sysctl determines how many open files the system supports.
-The default is
-typically based on available physical memory but you may need to bump
-it up if you are running databases or large descriptor-heavy daemons.
 The read-only
 .Va kern.openfiles
-sysctl may be interrogated to determine the current number of open files
+sysctl may be interrogated to determine how many files are currently open
 on the system.
 .Pp
 The
@@ -507,9 +497,9 @@ couldn't have that many processes.
 .Va kern.nbuf
 sets how many filesystem buffers the kernel should cache.
 Filesystem buffers can be up to 128KB each.
-UFS typically uses an 8KB blocksize while HAMMER typically uses 64KB.
-The defaults usually suffice.
-The cached buffers represent wired physical memory so specifying a value
+UFS typically uses an 8KB blocksize while HAMMER and HAMMER2 typically
+uses 64KB.  The system defaults usually suffice for this parameter.
+Cached buffers represent wired physical memory so specifying a value
 that is too large can result in excessive kernel memory use, and is also
 not entirely necessary since the pages backing the buffers are also
 cached by the VM page cache (which does not use wired memory).
@@ -518,6 +508,12 @@ accesses and dirty data.
 .Pp
 The kernel reserves (128KB * nbuf) bytes of KVM.  The actual physical
 memory use depends on the filesystem buffer size.
+It is generally more flexible to manage the filesytem cache via
+.Va kern.maxfiles
+than via
+.Va kern.nbuf ,
+but situations do arise where you might want to increase or decrease
+the latter.
 .Pp
 The
 .Va kern.dfldsiz
@@ -613,6 +609,18 @@ firewall (also see
 .Dx
 has a very good fair-share queueing algorithm for QOS in
 .Xr pf 4 .
+.Sh BULK BUILDING MACHINE SETUP
+Generally speaking memory is at a premium when doing bulk compiles.
+Machines dedicated to bulk building usually reduce
+.Va kern.maxvnodes
+to 1000000 (1 million) vnodes or lower.  Don't get too cocky here, this
+parameter should never be reduced below around 100000 on reasonably well
+endowed machines.
+.Pp
+Bulk build setups also often benefit from a relatively large amount
+of SSD swap, allowing the system to 'burst' high-memory-usage situations
+while still maintaining optimal concurrency for other periods during the
+build which do not use as much run-time memory and prefer more parallelism.
 .Sh SOURCE OF KERNEL MEMORY USAGE
 The primary sources of kernel memory usage are:
 .Bl -tag -width ".Va kern.maxvnodes"
