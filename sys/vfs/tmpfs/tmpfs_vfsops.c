@@ -467,7 +467,8 @@ tmpfs_root(struct mount *mp, struct vnode **vpp)
 		*vpp = NULL;
 		error = EINVAL;
 	} else {
-		error = tmpfs_alloc_vp(mp, tmp->tm_root, LK_EXCLUSIVE, vpp);
+		error = tmpfs_alloc_vp(mp, NULL, tmp->tm_root,
+				       LK_EXCLUSIVE, vpp);
 		(*vpp)->v_flag |= VROOT;
 		(*vpp)->v_type = VDIR;
 	}
@@ -505,7 +506,7 @@ tmpfs_fhtovp(struct mount *mp, struct vnode *rootvp, struct fid *fhp,
 	}
 
 	if (found)
-		rc = tmpfs_alloc_vp(mp, node, LK_EXCLUSIVE, vpp);
+		rc = tmpfs_alloc_vp(mp, NULL, node, LK_EXCLUSIVE, vpp);
 
 	TMPFS_UNLOCK(tmp);
 

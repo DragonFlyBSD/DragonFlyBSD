@@ -360,9 +360,18 @@ tmpfs_free_dirent(struct tmpfs_mount *tmp, struct tmpfs_dirent *de)
  * resulting locked vnode is returned in *vpp.
  *
  * Returns zero on success or an appropriate error code on failure.
+ *
+ * The caller must ensure that node cannot go away (usually by holding
+ * the related directory entry).
+ *
+ * If dnode is non-NULL this routine avoids deadlocking against it but
+ * can return EAGAIN.  Caller must try again.  The dnode lock will cycle
+ * in this case, it remains locked on return in all cases.  dnode must
+ * be shared-locked.
  */
 int
-tmpfs_alloc_vp(struct mount *mp, struct tmpfs_node *node, int lkflag,
+tmpfs_alloc_vp(struct mount *mp,
+	       struct tmpfs_node *dnode, struct tmpfs_node *node, int lkflag,
 	       struct vnode **vpp)
 {
 	int error = 0;
@@ -380,9 +389,33 @@ loop:
 		vhold(vp);
 		TMPFS_NODE_UNLOCK(node);
 
-		if (vget(vp, lkflag | LK_EXCLUSIVE) != 0) {
-			vdrop(vp);
-			goto loop;
+		if (dnode) {
+			/*
+			 * Special-case handling to avoid deadlocking against
+			 * dnode.
+			 */
+			if (vget(vp, (lkflag & ~LK_RETRY) |
+				     LK_NOWAIT |
+				     LK_EXCLUSIVE) != 0) {
+				TMPFS_NODE_UNLOCK(dnode);
+				if (vget(vp, (lkflag & ~LK_RETRY) |
+					     LK_SLEEPFAIL |
+					     LK_EXCLUSIVE) == 0) {
+					vn_unlock(vp);
+				}
+				vdrop(vp);
+				TMPFS_NODE_LOCK_SH(dnode);
+				kprintf("tmpfs: deadlock avoided\n");
+				return EAGAIN;
+			}
+		} else {
+			/*
+			 * Normal path
+			 */
+			if (vget(vp, lkflag | LK_EXCLUSIVE) != 0) {
+				vdrop(vp);
+				goto loop;
+			}
 		}
 		if (node->tn_vnode != vp) {
 			vput(vp);
@@ -478,13 +511,7 @@ unlock:
 
 out:
 	*vpp = vp;
-
 	KKASSERT(IFF(error == 0, *vpp != NULL && vn_islocked(*vpp)));
-#ifdef INVARIANTS
-	TMPFS_NODE_LOCK(node);
-	KKASSERT(*vpp == node->tn_vnode);
-	TMPFS_NODE_UNLOCK(node);
-#endif
 
 	return error;
 }
@@ -567,7 +594,7 @@ tmpfs_alloc_file(struct vnode *dvp, struct vnode **vpp, struct vattr *vap,
 	}
 
 	/* Allocate a vnode for the new file. */
-	error = tmpfs_alloc_vp(dvp->v_mount, node, LK_EXCLUSIVE, vpp);
+	error = tmpfs_alloc_vp(dvp->v_mount, NULL, node, LK_EXCLUSIVE, vpp);
 	if (error != 0) {
 		tmpfs_free_dirent(tmp, de);
 		tmpfs_free_node(tmp, node);

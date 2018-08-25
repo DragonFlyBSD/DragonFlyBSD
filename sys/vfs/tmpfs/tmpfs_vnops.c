@@ -99,16 +99,20 @@ tmpfs_nresolve(struct vop_nresolve_args *ap)
 	dnode = VP_TO_TMPFS_DIR(dvp);
 
 	TMPFS_NODE_LOCK_SH(dnode);
+loop:
 	de = tmpfs_dir_lookup(dnode, NULL, ncp);
 	if (de == NULL) {
 		error = ENOENT;
 	} else {
 		/*
-		 * Allocate a vnode for the node we found.
+		 * Allocate a vnode for the node we found.  Use
+		 * tmpfs_alloc_vp()'s deadlock handling mode.
 		 */
 		tnode = de->td_node;
-		error = tmpfs_alloc_vp(dvp->v_mount, tnode,
+		error = tmpfs_alloc_vp(dvp->v_mount, dnode, tnode,
 				       LK_EXCLUSIVE | LK_RETRY, &vp);
+		if (error == EAGAIN)
+			goto loop;
 		if (error)
 			goto out;
 		KKASSERT(vp);
@@ -156,7 +160,8 @@ tmpfs_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 
 	if (dnode->tn_dir.tn_parent != NULL) {
 		/* Allocate a new vnode on the matching entry. */
-		error = tmpfs_alloc_vp(dvp->v_mount, dnode->tn_dir.tn_parent,
+		error = tmpfs_alloc_vp(dvp->v_mount,
+				       NULL, dnode->tn_dir.tn_parent,
 				       LK_EXCLUSIVE | LK_RETRY, vpp);
 
 		if (*vpp)

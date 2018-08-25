@@ -398,8 +398,8 @@ void	tmpfs_free_node(struct tmpfs_mount *, struct tmpfs_node *);
 int	tmpfs_alloc_dirent(struct tmpfs_mount *, struct tmpfs_node *,
 	    const char *, uint16_t, struct tmpfs_dirent **);
 void	tmpfs_free_dirent(struct tmpfs_mount *, struct tmpfs_dirent *);
-int	tmpfs_alloc_vp(struct mount *, struct tmpfs_node *, int,
-	    struct vnode **);
+int	tmpfs_alloc_vp(struct mount *, struct tmpfs_node *,
+	    struct tmpfs_node *, int, struct vnode **);
 void	tmpfs_free_vp(struct vnode *);
 int	tmpfs_alloc_file(struct vnode *, struct vnode **, struct vattr *,
 	    struct namecache *, struct ucred *, char *);
