@@ -217,6 +217,7 @@ static cpumask_t dfly_rdyprocmask;	/* ready to accept a user process */
 static struct usched_dfly_pcpu dfly_pcpu[MAXCPU];
 static struct sysctl_ctx_list usched_dfly_sysctl_ctx;
 static struct sysctl_oid *usched_dfly_sysctl_tree;
+static struct lock usched_dfly_config_lk = LOCK_INITIALIZER("usdfs", 0, 0);
 
 /* Debug info exposed through debug.* sysctl */
 
@@ -2249,12 +2250,17 @@ dfly_helper_thread(void *dummy)
     dd = &dfly_pcpu[cpuid];
 
     /*
+     * Initial interlock, make sure all dfly_pcpu[] structures have
+     * been initialized before proceeding.
+     */
+    lockmgr(&usched_dfly_config_lk, LK_SHARED);
+    lockmgr(&usched_dfly_config_lk, LK_RELEASE);
+
+    /*
      * Since we only want to be woken up only when no user processes
      * are scheduled on a cpu, run at an ultra low priority.
      */
     lwkt_setpri_self(TDPRI_USER_SCHEDULER);
-
-    tsleep(dd->helper_thread, 0, "schslp", 0);
 
     for (;;) {
 	/*
@@ -2405,6 +2411,8 @@ usched_dfly_cpu_init(void)
 				"usched_dfly", CTLFLAG_RD, 0, "");
 
 	usched_dfly_node_mem = get_highest_node_memory();
+
+	lockmgr(&usched_dfly_config_lk, LK_EXCLUSIVE);
 
 	for (i = 0; i < ncpus; ++i) {
 		dfly_pcpu_t dd = &dfly_pcpu[i];
@@ -2612,6 +2620,8 @@ usched_dfly_cpu_init(void)
 				"paremter hw.cpu_topology.level_description");
 #endif
 	}
+	lockmgr(&usched_dfly_config_lk, LK_RELEASE);
 }
+
 SYSINIT(uschedtd, SI_BOOT2_USCHED, SI_ORDER_SECOND,
 	usched_dfly_cpu_init, NULL);
