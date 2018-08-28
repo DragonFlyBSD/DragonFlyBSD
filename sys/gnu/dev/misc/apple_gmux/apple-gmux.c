@@ -788,7 +788,10 @@ apple_gmux_attach(device_t dev)
 		pr_err("Cannot find PCI device\n");
 		goto err_release;
 	}
+
+#if 0  /* collides with 915 */
 	drm_init_pdev(pch_dev, &sc->pdev);
+#endif
 
 #if 0  /* no backlight infrastructure */
 	memset(&props, 0, sizeof(props));
@@ -898,7 +901,9 @@ err_enable_gpe:
 err_notify:
 	/* backlight_device_unregister(bdev); */
 err_release:
+#if 0  /* collides with i915 */
 	drm_fini_pdev(&sc->pdev);
+#endif
 	bus_release_resource(dev, SYS_RES_IOPORT, sc->io_rid, sc->io_res);
 
 	return(ret);
@@ -918,7 +923,9 @@ apple_gmux_detach(device_t dev)
 	}
 
 	apple_gmux_softc_data = NULL;
+#if 0  /* collides with i915*/
 	drm_fini_pdev(&sc->pdev);
+#endif
 	return(bus_release_resource(dev, SYS_RES_IOPORT,
 	    sc->io_rid, sc->io_res));
 }
