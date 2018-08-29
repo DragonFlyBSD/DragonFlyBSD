@@ -45,6 +45,7 @@ int get_logical_CPU_number_within_core(int cpuid);
 /* Assume that APICID = CPUID for virtual processors */
 #define get_cpuid_from_apicid(apicid) apicid
 #define get_apicid_from_cpuid(cpuid) cpuid
+#define CPUID_TO_APICID(cpuid) get_apicid_from_cpuid(cpuid)
 
 #endif /* !LOCORE */
 
