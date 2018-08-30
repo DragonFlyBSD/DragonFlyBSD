@@ -22,6 +22,7 @@
 #include <net/if_types.h>
 #include <net/if_dl.h>
 #include <net/bpf.h>
+#include <net/tap/if_tap.h>
 #include <net/ethernet.h>
 #include <netproto/802_11/ieee80211.h>
 #include <netproto/802_11/ieee80211_ioctl.h>
@@ -181,8 +182,8 @@ struct timeval real_start;
 unsigned char inet_clear[8+20+8+PRGA_LEN+4];
 
 #define DICT_PATH "dict"
-#define TAP_DEV "/dev/tap3"
-unsigned char tapdev[16];
+#define TAP_DEV "/dev/tap"
+unsigned char tapifname[IFNAMSIZ];
 unsigned char taptx[4096];
 unsigned int taptx_len = 0;
 int tapfd = -1;
@@ -2163,7 +2164,6 @@ void try_crack() {
 }
 
 void open_tap() {
-	struct stat st;
 	int s;
 	struct ifreq ifr;
 	unsigned int flags;
@@ -2173,13 +2173,14 @@ void open_tap() {
 		printf("Can't open tap: %s\n", strerror(errno));
 		exit(1);
 	}
-	if(fstat(tapfd, &st) == -1) {
-		perror("fstat()");
+
+	// Get TAP interface name
+	memset(&ifr, 0, sizeof(ifr));
+	if (ioctl(tapfd, TAPGIFNAME, &ifr) == -1) {
+		perror("ioctl(TAPGIFNAME)");
 		exit(1);
 	}
-
-	// feer
-	strcpy(tapdev, devname(st.st_rdev, S_IFCHR));
+	strlcpy(tapifname, ifr.ifr_name, IFNAMSIZ);
 
 	s = socket(PF_INET, SOCK_DGRAM, 0);
 	if (s == -1) {
@@ -2189,7 +2190,7 @@ void open_tap() {
 
 	// MTU
 	memset(&ifr, 0, sizeof(ifr));
-	strcpy(ifr.ifr_name, tapdev);
+	strlcpy(ifr.ifr_name, tapifname, IFNAMSIZ);
 	ifr.ifr_mtu = 1500;
 	if (ioctl(s, SIOCSIFMTU, &ifr) == -1) {
 		perror("ioctl(SIOCSIFMTU)");
@@ -2198,7 +2199,7 @@ void open_tap() {
 
 	// set iface up
 	memset(&ifr, 0, sizeof(ifr));
-	strcpy(ifr.ifr_name, tapdev);
+	strlcpy(ifr.ifr_name, tapifname, IFNAMSIZ);
 	if (ioctl(s, SIOCGIFFLAGS, &ifr) == -1) {
 		perror("ioctl(SIOCGIFFLAGS)");
 		exit(1);
@@ -2208,7 +2209,7 @@ void open_tap() {
 	flags |= IFF_UP;
 
 	memset(&ifr, 0, sizeof(ifr));
-	strcpy(ifr.ifr_name, tapdev);
+	strlcpy(ifr.ifr_name, tapifname, IFNAMSIZ);
 	ifr.ifr_flags = flags & 0xffff;
 	ifr.ifr_flagshigh = flags >> 16;
 	if (ioctl(s, SIOCSIFFLAGS, &ifr) == -1) {
@@ -2217,7 +2218,7 @@ void open_tap() {
 	}
 
 	close(s);
-	time_print("Opened tap device: %s\n", tapdev);
+	time_print("Opened tap device: %s\n", tapifname);
 }
 
 void read_tap() {
@@ -2692,6 +2693,7 @@ void start(char *dev) {
 #endif
 
 	close(fd);
+	close(tapfd);
 }
 
 void usage(char* pname) {
