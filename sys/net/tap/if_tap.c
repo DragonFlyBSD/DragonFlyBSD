@@ -396,8 +396,12 @@ tapclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct tap_softc *tp = dev->si_drv1;
-	struct ifnet *ifp = &tp->tap_if;
+	struct ifnet *ifp;
 	int clear_flags = 0;
+
+	KASSERT(tp != NULL,
+		("try closing the already destroyed %s%d", TAP, minor(dev)));
+	ifp = &tp->tap_if;
 
 	get_mplock();
 
@@ -513,9 +517,11 @@ static int
 tap_clone_destroy(struct ifnet *ifp)
 {
 	struct tap_softc *tp = ifp->if_softc;
-	
+
+	if (tp->tap_flags & TAP_OPEN)
+		return (EBUSY);
 	if ((tp->tap_flags & TAP_CLONE) == 0)
-		return ENXIO;
+		return (EINVAL);
 
 	TAPDEBUG(&tp->tap_if, "clone destroyed. minor = %#x tap_flags = 0x%x\n",
 		 minor(tp->tap_dev), tp->tap_flags);
