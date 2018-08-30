@@ -8,7 +8,7 @@
 .\"
 .\" $FreeBSD: src/sbin/nos-tun/nos-tun.8,v 1.6.2.6 2003/02/23 20:53:46 trhodes Exp $
 .\"
-.Dd September 29, 2016
+.Dd August 23, 2018
 .Dt NOS-TUN 8
 .Os
 .Sh NAME
@@ -16,8 +16,6 @@
 .Nd implement ``nos'' or ``ka9q'' style IP over IP tunnel
 .Sh SYNOPSIS
 .Nm
-.Fl t
-.Ar tunnel
 .Fl s
 .Ar source
 .Fl d
@@ -30,18 +28,13 @@ The
 .Nm
 utility is used to establish an
 .Em nos
-style tunnel, (also known as
+style tunnel (also known as
 .Em ka9q
 or
 .Em IP-IP
 tunnel) using a
 .Xr tun 4
 kernel interface.
-.Pp
-.Ar Tunnel
-is the name of the tunnel device
-.Pa /dev/tun0
-for example.
 .Pp
 .Ar Source
 and
@@ -67,7 +60,7 @@ This end, a
 .Dx
 box on address 192.168.59.34:
 .Bd -literal -offset indent
-nos-tun -t /dev/tun0 -s 192.168.61.1 -d 192.168.61.2 192.168.56.45
+nos-tun -s 192.168.61.1 -d 192.168.61.2 192.168.56.45
 .Ed
 .Pp
 Remote cisco on address 192.168.56.45:

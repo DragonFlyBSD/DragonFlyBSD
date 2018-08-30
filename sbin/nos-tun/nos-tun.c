@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/nos-tun/nos-tun.c,v 1.6.2.2 2001/08/01 23:14:00 obrien Exp $
- * $DragonFly: src/sbin/nos-tun/nos-tun.c,v 1.6 2005/04/18 20:17:58 joerg Exp $
  */
 
 /*
@@ -54,7 +53,6 @@
  * Mar. 23 1999 by Isao SEKI <iseki@gongon.com>
  * I added a new flag for ip protocol number.
  * We are using 4 as protocol number in ampr.org.
- *
  */
 
 #include <fcntl.h>
@@ -70,12 +68,16 @@
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #include <net/if.h>
+#include <net/tun/if_tun.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 
 /* Tunnel interface configuration stuff */
 static struct ifaliasreq ifra;
 static struct ifreq ifrq;
+
+/* Tun(4) device autocloner */
+static const char *tun_dev = "/dev/tun";
 
 /* Global descriptors */
 int net;                          /* socket descriptor */
@@ -103,15 +105,15 @@ Set_address(char *addr, struct sockaddr_in *my_sin)
 }
 
 static int
-tun_open(char *dev_name, struct sockaddr *ouraddr, char *theiraddr)
+tun_open(struct sockaddr *ouraddr, char *theiraddr)
 {
   int s;
   struct sockaddr_in *my_sin;
 
   /* Open tun device */
-  tun = open (dev_name, O_RDWR);
+  tun = open(tun_dev, O_RDWR);
   if (tun < 0) {
-    syslog(LOG_ERR,"can't open %s - %m",dev_name);
+    syslog(LOG_ERR,"can't open %s - %m",tun_dev);
     return(1);
   }
 
@@ -121,8 +123,11 @@ tun_open(char *dev_name, struct sockaddr *ouraddr, char *theiraddr)
   bzero((char *)&ifra, sizeof(ifra));
   bzero((char *)&ifrq, sizeof(ifrq));
 
-  strncpy(ifrq.ifr_name, dev_name + 5, IFNAMSIZ);
-  strncpy(ifra.ifra_name, dev_name + 5, IFNAMSIZ);
+  if (ioctl(tun, TUNGIFNAME, &ifrq) < 0) {
+    syslog(LOG_ERR,"can't get tun interface name - %m");
+    goto tunc_return;
+  }
+  strlcpy(ifra.ifra_name, ifrq.ifr_name, IFNAMSIZ);
 
   s = socket(AF_INET, SOCK_DGRAM, 0);
   if (s < 0) {
@@ -136,7 +141,6 @@ tun_open(char *dev_name, struct sockaddr *ouraddr, char *theiraddr)
    *  !!!!
    *  On FreeBSD this ioctl returns error
    *  when tunN have no addresses, so - log and ignore it.
-   *
    */
   if (ioctl(s, SIOCDIFADDR, &ifra) < 0) {
     syslog(LOG_ERR,"SIOCDIFADDR - %m");
@@ -178,6 +182,7 @@ tun_open(char *dev_name, struct sockaddr *ouraddr, char *theiraddr)
     return(0);
   }
   syslog(LOG_ERR,"can't set interface UP - %m");
+
 stunc_return:
   close(s);
 tunc_return:
@@ -223,6 +228,7 @@ Finish(int signum)
   if (ioctl(s, SIOCDIFADDR, &ifra) < 0) {
     syslog(LOG_ERR,"can't delete interface's addresses - %m");
   }
+
 closing_fds:
   close(s);
 closing_tun:
@@ -231,11 +237,11 @@ closing_tun:
   exit(signum);
 }
 
-int main (int argc, char **argv)
+int
+main(int argc, char **argv)
 {
   int  c, len, ipoff;
 
-  char *dev_name = NULL;
   char *point_to = NULL;
   char *to_point = NULL;
   char *target;
@@ -252,17 +258,13 @@ int main (int argc, char **argv)
   fd_set rfds, wfds, efds;          /* File descriptors for select() */
   int nfds;                         /* Return from select() */
 
-
-  while ((c = getopt(argc, argv, "d:s:t:p:")) != -1) {
+  while ((c = getopt(argc, argv, "d:s:p:")) != -1) {
     switch (c) {
     case 'd':
       to_point = optarg;
       break;
     case 's':
       point_to = optarg;
-      break;
-    case 't':
-      dev_name = optarg;
       break;
     case 'p':
       protocol = optarg;
@@ -272,10 +274,8 @@ int main (int argc, char **argv)
   argc -= optind;
   argv += optind;
 
-  if (argc != 1 || (dev_name == NULL) ||
-      (point_to == NULL) || (to_point == NULL)) {
+  if (argc != 1 || (point_to == NULL) || (to_point == NULL))
     usage();
-  }
 
   if(protocol == NULL)
       protnum = 94;
@@ -292,7 +292,7 @@ int main (int argc, char **argv)
     exit(2);
   }
 
-  if(tun_open(dev_name, &t_laddr, to_point)) {
+  if(tun_open(&t_laddr, to_point)) {
     closelog();
     exit(3);
   }
@@ -364,8 +364,8 @@ int main (int argc, char **argv)
 static void
 usage(void)
 {
-	fprintf(stderr,
-"usage: nos-tun -t <tun_name> -s <source_addr> -d <dest_addr> -p <protocol_number> <target_addr>\n");
+	fprintf(stderr, "usage: nos-tun -s <source_addr> -d <dest_addr> "
+		"-p <protocol_number> <target_addr>\n");
 	exit(1);
 }
 
