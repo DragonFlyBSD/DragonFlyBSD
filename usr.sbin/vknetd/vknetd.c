@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -31,6 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
 /*
  * vknet [-cdU] [-b bridgeN] [-p socket_path] [-t tapN] [address/cidrbits]
  *
@@ -39,6 +40,7 @@
  * are bridged together and the local network can also be bridged onto
  * a TAP interface by specifying the -t option.
  */
+
 #include "vknetd.h"
 
 static ioinfo_t vknet_tap(const char *tapName, const char *bridgeName);
@@ -47,17 +49,17 @@ static void vknet_acceptor(int net_fd);
 static void *vknet_io(void *arg);
 static int vknet_connect(const char *pathName);
 static void vknet_monitor(int net_fd);
-static void usage(void);
+static void usage(void) __dead2;
 static void writepid(void);
 static void cleanup(int);
 
 pthread_mutex_t BridgeMutex;
 
-int SecureOpt = 1;
-int DebugOpt = 0;
-int SetAddrOpt = 0;
-const char *pidfile = "/var/run/vknetd.pid";
+static int DebugOpt = 0;
+static int SetAddrOpt = 0;
+static const char *pidfile = "/var/run/vknetd.pid";
 
+int SecureOpt = 1;
 struct in_addr NetAddress;
 struct in_addr NetMask;
 
@@ -290,7 +292,6 @@ vknet_tap(const char *tapName, const char *bridgeName)
 			}
 		}
 
-
 		/*
 		 * Add the tap interface to the bridge
 		 */
@@ -373,8 +374,7 @@ vknet_listener(const char *pathName)
 	return(net_fd);
 }
 
-static
-void
+static void
 vknet_acceptor(int net_fd)
 {
 	struct sockaddr_un sunx;
@@ -399,8 +399,7 @@ vknet_acceptor(int net_fd)
 /*
  * This I/O thread implements the core of the bridging code.
  */
-static
-void *
+static void *
 vknet_io(void *arg)
 {
 	ioinfo_t info = arg;
@@ -443,7 +442,7 @@ vknet_io(void *arg)
  * Debugging
  */
 static int
-vknet_connect(const char *pathName) 
+vknet_connect(const char *pathName)
 {
 	struct sockaddr_un sunx;
 	int len;
@@ -456,7 +455,7 @@ vknet_connect(const char *pathName)
 	sunx.sun_len = len;
 
 	net_fd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
-	if (net_fd < 0)	
+	if (net_fd < 0)
 		return(-1);
 	if (connect(net_fd, (void *)&sunx, len) < 0) {
 		close(net_fd);
@@ -513,12 +512,14 @@ cleanup(int __unused sig)
 		unlink(pidfile);
 }
 
-static
-void
+static void
 usage(void)
 {
-	fprintf(stderr, "usage: vknet [-cdU] [-b bridgeN] [-p socket_path] [-i pidfile] [-t tapN] [address/cidrbits]\n");
-	fprintf(stderr, "address/cidrbits must be specified in default secure mode.\n");
+	fprintf(stderr,
+		"usage: vknet [-cdU] [-b bridgeN] [-p socket_path]\n"
+		"             [-i pidfile] [-t tapN] [address/cidrbits]\n"
+		"\n"
+		"address/cidrbits must be specified in default secure mode.\n");
 	exit(1);
 }
 
