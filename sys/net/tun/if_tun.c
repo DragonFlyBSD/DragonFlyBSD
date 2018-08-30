@@ -324,8 +324,12 @@ tunclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct tun_softc *sc = dev->si_drv1;
-	struct ifnet *ifp = sc->tun_ifp;
+	struct ifnet *ifp;
 	int unit = minor(dev);
+
+	KASSERT(sc != NULL,
+		("try closing the already destroyed %s%d", TUN, unit));
+	ifp = sc->tun_ifp;
 
 	sc->tun_flags &= ~TUN_OPEN;
 	sc->tun_pid = 0;
@@ -423,8 +427,10 @@ tun_clone_destroy(struct ifnet * ifp)
 {
 	struct tun_softc *sc = ifp->if_softc;
 
+	if (sc->tun_flags & TUN_OPEN)
+		return (EBUSY);
 	if ((sc->tun_flags & TUN_CLONE) == 0)
-		return (ENXIO);
+		return (EINVAL);
 
 	TUNDEBUG(ifp, "clone destroyed, minor = %#x, flags = 0x%x\n",
 		 minor(sc->tun_dev), sc->tun_flags);
