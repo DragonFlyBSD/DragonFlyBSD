@@ -1127,11 +1127,15 @@ undo_exreq(struct lock *lkp)
 			 * is held shared.  Clear EXREQ, wakeup anyone trying
 			 * to get the EXREQ bit (they have to set it
 			 * themselves, EXREQ2 is an aggregation).
+			 *
+			 * We must also wakeup any shared locks blocked
+			 * by the EXREQ, so just issue the wakeup
+			 * unconditionally.  See lockmgr_shared() + 76 lines
+			 * or so.
 			 */
 			ncount = count & ~(LKC_EXREQ | LKC_EXREQ2);
 			if (atomic_fcmpset_64(&lkp->lk_count, &count, ncount)) {
-				if (count & LKC_EXREQ2)
-					wakeup(lkp);
+				wakeup(lkp);
 				error = EBUSY;
 				/* count = ncount; NOT USED */
 				break;
