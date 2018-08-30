@@ -222,7 +222,7 @@ tapmodevent(module_t mod, int type, void *data)
 
 
 /*
- * tapcreate - create or clone an interface
+ * Create or clone an interface
  */
 static struct tap_softc *
 tapcreate(cdev_t dev, int flags)
@@ -270,8 +270,7 @@ tapcreate(cdev_t dev, int flags)
 	return (sc);
 }
 
-static
-struct tap_softc *
+static struct tap_softc *
 tapfind(int unit)
 {
 	struct tap_softc *sc;
@@ -284,8 +283,6 @@ tapfind(int unit)
 }
 
 /*
- * tap_clone_create:
- *
  * Create a new tap instance via ifconfig.
  */
 static int
@@ -321,9 +318,7 @@ tap_clone_create(struct if_clone *ifc __unused, int unit,
 }
 
 /*
- * tapopen
- *
- * to open tunnel. must be superuser
+ * Open the tap device.
  */
 static int
 tapopen(struct dev_open_args *ap)
@@ -398,18 +393,20 @@ tapclone(struct dev_clone_args *ap)
 }
 
 /*
- * tapclose
- *
- * close the device - mark i/f down & delete routing info
+ * Close the tap device: bring the interface down & delete routing info.
  */
 static int
 tapclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct tap_softc *sc = dev->si_drv1;
-	struct ifnet *ifp = &sc->tap_if;
+	struct ifnet *ifp;
 	int unit = minor(dev);
 	int clear_flags = 0;
+
+	KASSERT(sc != NULL,
+		("try closing the already destroyed %s%d", TAP, unit));
+	ifp = &sc->tap_if;
 
 	get_mplock();
 
@@ -472,9 +469,7 @@ tapclose(struct dev_close_args *ap)
 
 
 /*
- * tapdestroy:
- *
- *	Destroy a tap instance.
+ * Destroy a tap instance: the interface and the associated device.
  */
 static void
 tapdestroy(struct tap_softc *sc)
@@ -508,17 +503,17 @@ tapdestroy(struct tap_softc *sc)
 
 
 /*
- * tap_clone_destroy:
- *
- *	Destroy a tap instance.
+ * Destroy a tap instance that is created via ifconfig.
  */
 static int
 tap_clone_destroy(struct ifnet *ifp)
 {
 	struct tap_softc *sc = ifp->if_softc;
 
+	if (sc->tap_flags & TAP_OPEN)
+		return (EBUSY);
 	if ((sc->tap_flags & TAP_CLONE) == 0)
-		return (ENXIO);
+		return (EINVAL);
 
 	TAPDEBUG(ifp, "clone destroyed, minor = %#x, flags = 0x%x\n",
 		 minor(sc->tap_dev), sc->tap_flags);
