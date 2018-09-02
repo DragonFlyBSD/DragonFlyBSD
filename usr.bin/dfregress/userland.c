@@ -76,7 +76,6 @@ run_userland(const char *binary, const char **argv, int need_setuid, uid_t uid,
 	size_t sz_stdout, sz_stderr;
 	char stdout_file[256];
 	char stderr_file[256];
-	char *str;
 
 	/* Set sane defaults */
 	bzero(tr, sizeof(*tr));
@@ -84,39 +83,21 @@ run_userland(const char *binary, const char **argv, int need_setuid, uid_t uid,
 
 	strcpy(stdout_file, "/tmp/dfregress.XXXXXXXXXXXX");
 	strcpy(stderr_file, "/tmp/dfregress.XXXXXXXXXXXX");
-	str = mktemp(stdout_file);
-	if (str == NULL) {
+	fd_stdout = mkostemp(stdout_file, O_SYNC);
+	if (fd_stdout == -1) {
 		if (errbuf)
-			snprintf(errbuf, errbuf_sz, "Could not mktemp(): "
+			snprintf(errbuf, errbuf_sz, "Could not mkostemp(): "
 			    "%s\n", strerror(errno));
 		return -1;
 	}
 
 	if (!unify_output) {
-		str = mktemp(stderr_file);
-		if (str == NULL) {
+		fd_stderr = mkostemp(stderr_file, O_SYNC);
+		if (fd_stderr == -1) {
 			if (errbuf)
-				snprintf(errbuf, errbuf_sz, "Could not mktemp(): "
+				snprintf(errbuf, errbuf_sz, "Could not mkostemp(): "
 				"%s\n", strerror(errno));
 			return -1;
-		}
-	}
-
-	fd_stdout = open(stdout_file, O_RDWR | O_CREAT | O_FSYNC);
-	if (fd_stdout < 0) {
-		if (errbuf)
-			snprintf(errbuf, errbuf_sz, "Could not open() temp file "
-			    "for stdout: %s\n", strerror(errno));
-		goto err_out;
-	}
-
-	if (!unify_output) {
-		fd_stderr = open(stderr_file, O_RDWR | O_CREAT | O_FSYNC);
-		if (fd_stderr < 0) {
-			if (errbuf)
-				snprintf(errbuf, errbuf_sz, "Could not open() "
-				"temp file for stderr: %s\n", strerror(errno));
-			goto err_out;
 		}
 	}
 
