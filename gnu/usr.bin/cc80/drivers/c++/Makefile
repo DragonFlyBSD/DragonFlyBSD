@@ -6,7 +6,7 @@ GCC_LANG_DIR=	gcc/cp
 PROG_CXX=	c++
 LINKS=		${BINDIR}/c++ ${BINDIR}/g++
 # Enable this SGI compat once gcc80 becomes default (DPorts anchor)
-#LINKS+=		${BINDIR}/c++ ${BINDIR}/CC
+LINKS+=		${BINDIR}/c++ ${BINDIR}/CC
 MAN=		# man pages installed by cc (MLINK)
 
 SRCS=		${GCC_SRCS} g++spec.c ${EXTRA_GCC_SRCS}
