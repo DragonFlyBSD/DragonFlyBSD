@@ -70,6 +70,8 @@ SRCS=	\
 # Local files
 SRCS+=	pam_debug_log.c
 
+WARNS?=	2
+
 PAMINCS=openpam.h \
 	openpam_attr.h \
 	openpam_version.h \
