@@ -191,6 +191,11 @@ nvtruncbuf(struct vnode *vp, off_t length, int blksize, int boff, int trivial)
 			}
 			bp->b_bio2.bio_offset = NOOFFSET;
 			bdwrite(bp);
+		} else {
+			kprintf("nvtruncbuf: bread error %d @0x%016jx\n"
+				error, truncboffset);
+			bp->b_flags |= B_INVAL | B_RELBUF;
+			brelse(bp);
 		}
 	} else {
 		error = 0;
