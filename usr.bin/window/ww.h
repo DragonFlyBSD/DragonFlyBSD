@@ -128,7 +128,7 @@ struct ww {
 	int ww_pty;		/* file descriptor of pty or socket pair */
 	int ww_socket;		/* other end of socket pair */
 	int ww_pid;		/* pid of process, if WWS_HASPROC true */
-	char ww_ttyname[11];	/* "/dev/ttyp?" */
+	char ww_ttyname[11];	/* "/dev/pts/[0-9]+ ?" */
 	char *ww_ob;		/* output buffer */
 	char *ww_obe;		/* end of ww_ob */
 	char *ww_obp;		/* current read position in ww_ob */

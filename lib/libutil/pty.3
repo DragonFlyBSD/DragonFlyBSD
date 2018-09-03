@@ -46,16 +46,14 @@
 .Sh DESCRIPTION
 The function
 .Fn openpty
-attempts to obtain the next available pseudo-terminal from the system (see
-.Xr pty 4 ) .
-If it successfully finds one, it subsequently changes the
+attempts to obtain a new psuedo-terminal from the system (see
+.Xr posix_openpt 3 ) .
+If it successfully acquires one, it subsequently changes the
 ownership of the slave device to the real UID of the current process,
 the group membership to the group
 .Dq tty
 (if such a group exists in the system), the access permissions for
-reading and writing by the owner, and for writing by the group, and
-invalidates any current use of the line by calling
-.Xr revoke 2 .
+reading and writing by the owner, and for writing by the group.
 .Pp
 If the argument
 .Fa name
@@ -87,7 +85,7 @@ The
 .Fn forkpty
 function first calls
 .Fn openpty
-to obtain the next available pseudo-terminal from the system.
+to obtain a new pseudo-terminal from the system.
 Upon success,
 it forks off a new process.
 In the child process, it closes the descriptor
@@ -124,9 +122,7 @@ for any of the errors specified for the
 .Xr ptsname 3 ,
 and
 .Xr unlockpt 3
-functions and the
-.Xr revoke 2
-system call.
+functions.
 .Pp
 In addition to this,
 .Fn forkpty
@@ -138,8 +134,8 @@ may set it to any value as described for
 .Xr fork 2 ,
 .Xr getuid 2 ,
 .Xr open 2 ,
-.Xr revoke 2 ,
 .Xr login_tty 3 ,
 .Xr pty 4 ,
+.Xr posix_openpt 3 ,
 .Xr termios 4 ,
 .Xr group 5

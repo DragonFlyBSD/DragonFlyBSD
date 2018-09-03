@@ -187,16 +187,19 @@ editing in a window manager, or whenever flow controlled input
 is required.
 .El
 .Sh FILES
-.Bl -tag -width /dev/tty[p-sP-S][0-9a-v]x -compact
-.It Pa /dev/pty[p-sP-S][0-9a-v]
-master pseudo terminals
-.It Pa /dev/tty[p-sP-S][0-9a-v]
+.Bl -tag -width /dev/pts/[0-9]+x -compact
+.It Pa /dev/pts/[0-9]+
 slave pseudo terminals
+.It Pa /dev/ptmx
+master pseudo terminal clone device
 .El
 .Sh DIAGNOSTICS
 None.
 .Sh SEE ALSO
 .Xr tty 4
+.Xr posix_openpt 3
+.Xr openpty 3
+.Xr pty 3
 .Sh HISTORY
 The
 .Nm

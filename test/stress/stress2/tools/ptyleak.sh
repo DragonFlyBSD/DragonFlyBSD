@@ -33,7 +33,7 @@
 max=0
 while true; do
    n=`find /dev -mtime +15m 2>/dev/null | \
-      egrep "/dev/pty[p-sP-S][0-9a-v]|/dev/tty[p-sP-S][0-9a-v]" | wc -l`
+      egrep "/dev/pts[0-9]+" | wc -l`
    if [ $n -gt $max ]; then
       max=$n
       echo "`date '+%T'` $n"
