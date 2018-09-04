@@ -39,7 +39,7 @@ DPORTS_EXTRA_PACKAGES?=
 #
 DPORTS_PACKAGES?=	devel/git \
 			dns/bind-tools \
-			net/isc-dhcp43-server \
+			net/isc-dhcp44-server \
 			sysutils/cdrtools \
 			${DPORTS_EXTRA_PACKAGES}
 
