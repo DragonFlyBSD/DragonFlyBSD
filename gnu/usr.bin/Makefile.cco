@@ -4,7 +4,7 @@
 # hardlink a generic man pages for the selected primary compiler.
 # The same approach is used for the two sets of binutils
 
-CC_PRIMARY=	gcc50
+CC_PRIMARY=	gcc80
 CC_BACKUP=	gcc47
 
 .if defined(COMPVERSION)
