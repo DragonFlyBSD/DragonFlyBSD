@@ -428,9 +428,6 @@ initclocks_other(void *dummy)
 					  SYSTF_MSSYNC | SYSTF_FIRST);
 		systimer_init_periodic_flags(&gd->gd_hardclock, hardclock,
 					  NULL, hz, SYSTF_MSSYNC);
-		/* XXX correct the frequency for scheduler / estcpu tests */
-		systimer_init_periodic_flags(&gd->gd_schedclock, schedclock,
-					  NULL, ESTCPUFREQ, SYSTF_MSSYNC);
 	}
 	lwkt_setcpu_self(ogd);
 
@@ -445,6 +442,31 @@ initclocks_other(void *dummy)
 			  KCOLLECT_SCALE(KCOLLECT_IDLEPCT_FORMAT, 0));
 }
 SYSINIT(clocks2, SI_BOOT2_POST_SMP, SI_ORDER_ANY, initclocks_other, NULL);
+
+/*
+ * This method is called on just the BSP, after all the usched implementations
+ * are initialized. This avoids races between usched initialization functions
+ * and usched_schedulerclock().
+ */
+static
+void
+initclocks_usched(void *dummy)
+{
+	struct globaldata *ogd = mycpu;
+	struct globaldata *gd;
+	int n;
+
+	for (n = 0; n < ncpus; ++n) {
+		lwkt_setcpu_self(globaldata_find(n));
+		gd = mycpu;
+
+		/* XXX correct the frequency for scheduler / estcpu tests */
+		systimer_init_periodic_flags(&gd->gd_schedclock, schedclock,
+					  NULL, ESTCPUFREQ, SYSTF_MSSYNC);
+	}
+	lwkt_setcpu_self(ogd);
+}
+SYSINIT(clocks3, SI_BOOT2_USCHED, SI_ORDER_ANY, initclocks_usched, NULL);
 
 /*
  * This sets the current real time of day.  Timespecs are in seconds and
