@@ -24,26 +24,19 @@ SUBDIR+= mpc
 # gcc80 is now the default, see sys.mk for WORLD_ALTCOMPILER default
 #
 #
+SUBDIR+= cc80
+_compiler_dir= cc80
+
 .if !defined(NO_ALTCOMPILER)
 . if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47})
 SUBDIR+= cc47
 _altcompiler_dirs+= cc47
 . endif
-.endif
-
-.if !defined(NO_ALTCOMPILER)
 . if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc50})
 SUBDIR+= cc50
 _altcompiler_dirs+= cc50
 . endif
 .endif
-
-#.if !defined(NO_ALTCOMPILER)
-#. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc80})
-SUBDIR+= cc80
-_compiler_dir= cc80
-#. endif
-#.endif
 
 .ORDER: ${BU_PRIMARY} gmp mpfr mpc ${_compiler_dir} ${_altcompiler_dirs}
 
