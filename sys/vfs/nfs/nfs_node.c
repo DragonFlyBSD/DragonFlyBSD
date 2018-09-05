@@ -79,6 +79,13 @@ nfs_nhinit(void)
 	lockinit(&nfsnhash_lock, "nfsnht", 0, 0);
 }
 
+void
+nfs_nhdestroy(void)
+{
+	hashdestroy(nfsnodehashtbl, M_NFSHASH, nfsnodehash);
+	objcache_destroy(nfsnode_objcache);
+}
+
 /*
  * Look up a vnode/nfsnode by file handle.
  * Callers must check for mount points!!

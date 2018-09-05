@@ -623,6 +623,11 @@ nfs_uninit(struct vfsconf *vfsp)
 	nfs_mount_type = -1;
 	sysent[SYS_nfssvc].sy_narg = nfs_prev_nfssvc_sy_narg;
 	sysent[SYS_nfssvc].sy_call = nfs_prev_nfssvc_sy_call;
+	nfs_nhdestroy();			/* Destroy the nfsnode table */
+#ifndef NFS_NOSERVER
+	nfsrv_destroycache();		/* Destroy the server request cache */
+#endif
+	objcache_destroy(nfsmount_objcache);
 	return (0);
 }
 

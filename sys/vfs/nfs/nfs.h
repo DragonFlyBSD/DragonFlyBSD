@@ -689,6 +689,7 @@ int	nfs_namei (struct nlookupdata *, struct ucred *, int,
 		    struct nfssvc_sock *, struct sockaddr *, struct mbuf **,
 		    caddr_t *, struct vnode **, struct thread *, int, int);
 void	nfsrv_initcache (void);
+void	nfsrv_destroycache (void);
 int	nfs_getauth (struct nfsmount *, struct nfsreq *, struct ucred *, 
 			 char **, int *, char *, int *, NFSKERBKEY_T);
 int	nfs_getnickauth (struct nfsmount *, struct ucred *, char **, 
@@ -698,6 +699,7 @@ int	nfs_savenickauth (struct nfsmount *, struct ucred *, int,
 			      struct mbuf *);
 int	nfs_adv (struct mbuf **, caddr_t *, int, int);
 void	nfs_nhinit (void);
+void	nfs_nhdestroy (void);
 int	nfs_nmcancelreqs (struct nfsmount *);
 void	nfs_timer_callout (void*);
 int	nfsrv_dorec (struct nfssvc_sock *, struct nfsd *, 

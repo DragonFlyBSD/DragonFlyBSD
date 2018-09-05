@@ -146,6 +146,16 @@ nfsrv_initcache(void)
 }
 
 /*
+ * Destroy the server request cache list
+ */
+void
+nfsrv_destroycache(void)
+{
+	KKASSERT(TAILQ_EMPTY(&nfsrvlruhead));
+	hashdestroy(nfsrvhashtbl, M_NFSD, nfsrvhash);
+}
+
+/*
  * Look for the request in the cache
  * If found then
  *    return action and optionally reply
