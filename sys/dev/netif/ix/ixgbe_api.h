@@ -199,7 +199,9 @@ s32 ixgbe_get_fcoe_boot_status(struct ixgbe_hw *hw, u16 *bs);
 s32 ixgbe_bypass_rw(struct ixgbe_hw *hw, u32 cmd, u32 *status);
 s32 ixgbe_bypass_set(struct ixgbe_hw *hw, u32 cmd, u32 event, u32 action);
 s32 ixgbe_bypass_rd_eep(struct ixgbe_hw *hw, u32 addr, u8 *value);
+#if 0
 bool ixgbe_bypass_valid_rd(struct ixgbe_hw *hw, u32 in_reg, u32 out_reg);
+#endif
 s32 ixgbe_dmac_config(struct ixgbe_hw *hw);
 s32 ixgbe_dmac_update_tcs(struct ixgbe_hw *hw);
 s32 ixgbe_dmac_config_tcs(struct ixgbe_hw *hw);

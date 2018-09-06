@@ -1335,6 +1335,7 @@ s32 ixgbe_bypass_rw(struct ixgbe_hw *hw, u32 cmd, u32 *status)
 				IXGBE_NOT_IMPLEMENTED);
 }
 
+#if 0
 /**
  * ixgbe_bypass_valid_rd - Verify valid return from bit-bang.
  *
@@ -1352,6 +1353,7 @@ bool ixgbe_bypass_valid_rd(struct ixgbe_hw *hw, u32 in_reg, u32 out_reg)
 	return ixgbe_call_func(hw, hw->mac.ops.bypass_valid_rd,
 			       (in_reg, out_reg), IXGBE_NOT_IMPLEMENTED);
 }
+#endif
 
 /**
  *  ixgbe_bypass_set - Set a bypass field in the FW CTRL Regiter.

@@ -1072,8 +1072,8 @@ fail:
 }
 
 #define rtinitflags(x) \
-	(((x)->ia_ifp->if_flags & (IFF_LOOPBACK | IFF_POINTOPOINT)) \
-	 ? RTF_HOST : 0)
+	((((x)->ia_ifp->if_flags & (IFF_LOOPBACK | IFF_POINTOPOINT)) != 0) \
+	    ? RTF_HOST : 0)
 
 /*
  * Add a route to prefix ("connected route" in cisco terminology).
