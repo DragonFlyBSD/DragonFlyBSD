@@ -34,8 +34,6 @@
 
 #if defined(_KERNEL) || defined(__KERNEL__)
 
-#define	CONFIG_PCI	1
-
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/malloc.h>

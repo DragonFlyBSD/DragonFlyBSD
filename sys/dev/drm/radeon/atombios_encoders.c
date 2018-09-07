@@ -132,6 +132,7 @@ atombios_set_backlight_level(struct radeon_encoder *radeon_encoder, u8 level)
 
 #if defined(CONFIG_BACKLIGHT_CLASS_DEVICE) || defined(CONFIG_BACKLIGHT_CLASS_DEVICE_MODULE)
 
+#if 0
 static u8 radeon_atom_bl_level(struct backlight_device *bd)
 {
 	u8 level;
@@ -171,110 +172,7 @@ static const struct backlight_ops radeon_atom_backlight_ops = {
 	.get_brightness = radeon_atom_backlight_get_brightness,
 	.update_status	= radeon_atom_backlight_update_status,
 };
-
-void radeon_atom_backlight_init(struct radeon_encoder *radeon_encoder,
-				struct drm_connector *drm_connector)
-{
-	struct drm_device *dev = radeon_encoder->base.dev;
-	struct radeon_device *rdev = dev->dev_private;
-	struct backlight_device *bd;
-	struct backlight_properties props;
-	struct radeon_backlight_privdata *pdata;
-	struct radeon_encoder_atom_dig *dig;
-	char bl_name[16];
-
-	/* Mac laptops with multiple GPUs use the gmux driver for backlight
-	 * so don't register a backlight device
-	 */
-	if ((rdev->pdev->subsystem_vendor == PCI_VENDOR_ID_APPLE) &&
-	    (rdev->pdev->device == 0x6741))
-		return;
-
-	if (!radeon_encoder->enc_priv)
-		return;
-
-	if (!rdev->is_atom_bios)
-		return;
-
-	if (!(rdev->mode_info.firmware_flags & ATOM_BIOS_INFO_BL_CONTROLLED_BY_GPU))
-		return;
-
-	pdata = kmalloc(sizeof(struct radeon_backlight_privdata),
-			M_DRM, M_WAITOK);
-	if (!pdata) {
-		DRM_ERROR("Memory allocation failed\n");
-		goto error;
-	}
-
-	memset(&props, 0, sizeof(props));
-	props.max_brightness = RADEON_MAX_BL_LEVEL;
-	props.type = BACKLIGHT_RAW;
-	snprintf(bl_name, sizeof(bl_name),
-		 "radeon_bl%d", dev->primary->index);
-	bd = backlight_device_register(bl_name, drm_connector->kdev,
-				       pdata, &radeon_atom_backlight_ops, &props);
-	if (IS_ERR(bd)) {
-		DRM_ERROR("Backlight registration failed\n");
-		goto error;
-	}
-
-	pdata->encoder = radeon_encoder;
-
-	dig = radeon_encoder->enc_priv;
-	dig->bl_dev = bd;
-
-	bd->props.brightness = radeon_atom_backlight_get_brightness(bd);
-	/* Set a reasonable default here if the level is 0 otherwise
-	 * fbdev will attempt to turn the backlight on after console
-	 * unblanking and it will try and restore 0 which turns the backlight
-	 * off again.
-	 */
-	if (bd->props.brightness == 0)
-		bd->props.brightness = RADEON_MAX_BL_LEVEL;
-	bd->props.power = FB_BLANK_UNBLANK;
-	backlight_update_status(bd);
-
-	DRM_INFO("radeon atom DIG backlight initialized\n");
-
-	return;
-
-error:
-	kfree(pdata);
-	return;
-}
-
-static void radeon_atom_backlight_exit(struct radeon_encoder *radeon_encoder)
-{
-	struct drm_device *dev = radeon_encoder->base.dev;
-	struct radeon_device *rdev = dev->dev_private;
-	struct backlight_device *bd = NULL;
-	struct radeon_encoder_atom_dig *dig;
-
-	if (!radeon_encoder->enc_priv)
-		return;
-
-	if (!rdev->is_atom_bios)
-		return;
-
-	if (!(rdev->mode_info.firmware_flags & ATOM_BIOS_INFO_BL_CONTROLLED_BY_GPU))
-		return;
-
-	dig = radeon_encoder->enc_priv;
-	bd = dig->bl_dev;
-	dig->bl_dev = NULL;
-
-	if (bd) {
-		struct radeon_legacy_backlight_privdata *pdata;
-
-		pdata = bl_get_data(bd);
-		backlight_device_unregister(bd);
-		kfree(pdata);
-
-		DRM_INFO("radeon atom LVDS backlight unloaded\n");
-	}
-}
-
-#else /* !CONFIG_BACKLIGHT_CLASS_DEVICE */
+#endif
 
 /*
  * Read max backlight level
@@ -349,6 +247,46 @@ void radeon_atom_backlight_init(struct radeon_encoder *radeon_encoder,
 			sysctl_backlight_handler,
 			"I", "Backlight level");
 	return;
+}
+
+static void radeon_atom_backlight_exit(struct radeon_encoder *radeon_encoder)
+{
+#if 0
+	struct drm_device *dev = radeon_encoder->base.dev;
+	struct radeon_device *rdev = dev->dev_private;
+	struct backlight_device *bd = NULL;
+	struct radeon_encoder_atom_dig *dig;
+
+	if (!radeon_encoder->enc_priv)
+		return;
+
+	if (!rdev->is_atom_bios)
+		return;
+
+	if (!(rdev->mode_info.firmware_flags & ATOM_BIOS_INFO_BL_CONTROLLED_BY_GPU))
+		return;
+
+	dig = radeon_encoder->enc_priv;
+	bd = dig->bl_dev;
+	dig->bl_dev = NULL;
+
+	if (bd) {
+		struct radeon_legacy_backlight_privdata *pdata;
+
+		pdata = bl_get_data(bd);
+		backlight_device_unregister(bd);
+		kfree(pdata);
+
+		DRM_INFO("radeon atom LVDS backlight unloaded\n");
+	}
+#endif
+}
+
+#else /* !CONFIG_BACKLIGHT_CLASS_DEVICE */
+
+void radeon_atom_backlight_init(struct radeon_encoder *radeon_encoder,
+				struct drm_connector *drm_connector)
+{
 }
 
 static void radeon_atom_backlight_exit(struct radeon_encoder *encoder)

@@ -310,6 +310,7 @@ radeon_legacy_set_backlight_level(struct radeon_encoder *radeon_encoder, u8 leve
 
 #if defined(CONFIG_BACKLIGHT_CLASS_DEVICE) || defined(CONFIG_BACKLIGHT_CLASS_DEVICE_MODULE)
 
+#if 0
 static uint8_t radeon_legacy_lvds_level(struct backlight_device *bd)
 {
 	struct radeon_backlight_privdata *pdata = bl_get_data(bd);
@@ -358,10 +359,12 @@ static const struct backlight_ops radeon_backlight_ops = {
 	.get_brightness = radeon_legacy_backlight_get_brightness,
 	.update_status	= radeon_legacy_backlight_update_status,
 };
+#endif
 
 void radeon_legacy_backlight_init(struct radeon_encoder *radeon_encoder,
 				  struct drm_connector *drm_connector)
 {
+#if 0
 	struct drm_device *dev = radeon_encoder->base.dev;
 	struct radeon_device *rdev = dev->dev_private;
 	struct backlight_device *bd;
@@ -446,10 +449,12 @@ void radeon_legacy_backlight_init(struct radeon_encoder *radeon_encoder,
 error:
 	kfree(pdata);
 	return;
+#endif
 }
 
 static void radeon_legacy_backlight_exit(struct radeon_encoder *radeon_encoder)
 {
+#if 0
 	struct drm_device *dev = radeon_encoder->base.dev;
 	struct radeon_device *rdev = dev->dev_private;
 	struct backlight_device *bd = NULL;
@@ -476,6 +481,7 @@ static void radeon_legacy_backlight_exit(struct radeon_encoder *radeon_encoder)
 
 		DRM_INFO("radeon legacy LVDS backlight unloaded\n");
 	}
+#endif
 }
 
 #else /* !CONFIG_BACKLIGHT_CLASS_DEVICE */

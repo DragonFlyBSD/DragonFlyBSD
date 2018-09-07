@@ -224,7 +224,6 @@ struct drm_fb_helper {
 	bool atomic;
 };
 
-#define CONFIG_DRM_FBDEV_EMULATION 1
 #ifdef CONFIG_DRM_FBDEV_EMULATION
 int drm_fb_helper_modinit(void);
 void drm_fb_helper_prepare(struct drm_device *dev, struct drm_fb_helper *helper,

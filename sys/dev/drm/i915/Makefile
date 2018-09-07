@@ -97,6 +97,6 @@ SRCS   += acpi_if.h device_if.h bus_if.h pci_if.h \
 
 KCFLAGS+= -I${SYSDIR}/dev/drm/include
 KCFLAGS+= -I${SYSDIR}/contrib/dev/acpica/source/include
-KCFLAGS+= -DCONFIG_BACKLIGHT_CLASS_DEVICE
+KCFLAGS+= -include ${SYSDIR}/dev/drm/kconfig.h
 
 .include <bsd.kmod.mk>

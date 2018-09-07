@@ -145,5 +145,6 @@ SRCS	+=								\
 
 KCFLAGS+= -I${SYSDIR}/dev/drm/include
 KCFLAGS+= -I${SYSDIR}/contrib/dev/acpica/source/include
+KCFLAGS+= -include ${SYSDIR}/dev/drm/kconfig.h
 
 .include <bsd.kmod.mk>
