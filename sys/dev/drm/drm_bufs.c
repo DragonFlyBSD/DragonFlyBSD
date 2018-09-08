@@ -35,6 +35,9 @@
 #include <drm/drmP.h>
 #include "drm_legacy.h"
 
+#include <sys/mman.h>
+#include <vm/vm_map.h>
+
 static struct drm_map_list *drm_find_matching_map(struct drm_device *dev,
 						  struct drm_local_map *map)
 {

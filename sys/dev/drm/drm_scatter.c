@@ -33,6 +33,8 @@
 #include <drm/drmP.h>
 #include "drm_legacy.h"
 
+#include <vm/vm_kern.h>
+
 static void drm_sg_cleanup(struct drm_sg_mem * entry)
 {
 	if (entry == NULL)

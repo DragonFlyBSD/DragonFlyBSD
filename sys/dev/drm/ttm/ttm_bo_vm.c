@@ -49,6 +49,8 @@
 #include <linux/errno.h>
 #include <linux/export.h>
 
+#include <vm/vm_page2.h>
+
 RB_GENERATE(ttm_bo_device_buffer_objects, ttm_buffer_object, vm_rb,
     ttm_bo_cmp_rb_tree_items);
 

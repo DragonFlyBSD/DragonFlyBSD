@@ -38,6 +38,10 @@
 #include <linux/swap.h>
 #include <linux/pci.h>
 
+#include <sys/mman.h>
+#include <vm/vm_map.h>
+#include <vm/vm_param.h>
+
 static void i915_gem_object_flush_gtt_write_domain(struct drm_i915_gem_object *obj);
 static void i915_gem_object_flush_cpu_write_domain(struct drm_i915_gem_object *obj);
 static void
