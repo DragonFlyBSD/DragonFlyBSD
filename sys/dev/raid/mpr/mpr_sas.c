@@ -322,7 +322,7 @@ mprsas_rescan_target(struct mpr_softc *sc, struct mprsas_target *targ)
 	xpt_action(ccb);
 }
 
-static void
+static void __printflike(3, 4)
 mprsas_log_command(struct mpr_command *cm, u_int level, const char *fmt, ...)
 {
 	struct sbuf sb;

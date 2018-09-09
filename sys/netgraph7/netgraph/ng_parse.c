@@ -121,7 +121,7 @@ static int	ng_parse_get_elem_pad(const struct ng_parse_type *type,
 /* Parsing helper functions */
 static int	ng_parse_skip_value(const char *s, int off, int *lenp);
 static int	ng_parse_append(char **cbufp, int *cbuflenp,
-			const char *fmt, ...);
+			const char *fmt, ...) __printflike(3, 4);
 
 /* Poor man's virtual method calls */
 #define METHOD(t,m)	(ng_get_ ## m ## _method(t))
