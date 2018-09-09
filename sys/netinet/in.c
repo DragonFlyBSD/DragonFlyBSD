@@ -1119,7 +1119,7 @@ in_addprefix(struct in_ifaddr *target, int flags)
 			continue;
 
 		/* Prefix test */
-		if (rtinitflags(ia)) {
+		if (rtinitflags(ia) != 0) {
 			p = ia->ia_dstaddr.sin_addr;
 		} else {
 			p = ia->ia_addr.sin_addr;
@@ -1129,11 +1129,11 @@ in_addprefix(struct in_ifaddr *target, int flags)
 			continue;
 
 		/*
-		 * If the to-be-added address and the curretly being
+		 * If the to-be-added address and the currently being
 		 * tested address are not host addresses, we need to
 		 * take subnetmask into consideration.
 		 */
-		if (!(flags & RTF_HOST) && !rtinitflags(ia) &&
+		if (!(flags & RTF_HOST) && rtinitflags(ia) == 0 &&
 		    mask.s_addr != ia->ia_sockmask.sin_addr.s_addr)
 			continue;
 
@@ -1179,7 +1179,7 @@ in_scrubprefix(struct in_ifaddr *target)
 		return;
 
 	mask = target->ia_sockmask.sin_addr;
-	if (rtinitflags(target)) {
+	if (rtinitflags(target) != 0) {
 		prefix = target->ia_dstaddr.sin_addr;
 	} else {
 		prefix = target->ia_addr.sin_addr;
@@ -1217,7 +1217,7 @@ in_scrubprefix(struct in_ifaddr *target)
 #endif
 
 		/* Prefix test */
-		if (rtinitflags(ia)) {
+		if (rtinitflags(ia) != 0) {
 			p = ia->ia_dstaddr.sin_addr;
 		} else {
 			p = ia->ia_addr.sin_addr;
