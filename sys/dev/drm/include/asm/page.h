@@ -39,4 +39,6 @@ page_to_phys(struct page *page)
 
 #include <asm/memory_model.h>
 
+typedef unsigned long pgprot_t;
+
 #endif	/* _ASM_PAGE_H_ */

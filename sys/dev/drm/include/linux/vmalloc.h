@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,7 +34,7 @@
 #include <linux/rbtree.h>
 
 void *vmap(struct page **pages, unsigned int count,
-	   unsigned long flags, unsigned long prot);
+	   unsigned long flags, pgprot_t prot);
 
 void vunmap(const void *addr);
 

@@ -43,7 +43,7 @@ SLIST_HEAD(vmap_list_head, vmap) vmap_list = SLIST_HEAD_INITIALIZER(vmap_list);
 /* vmap: map an array of pages into virtually contiguous space */
 void *
 vmap(struct page **pages, unsigned int count,
-	unsigned long flags, unsigned long prot)
+	unsigned long flags, pgprot_t prot)
 {
 	struct vmap *vmp;
 	vm_offset_t off;

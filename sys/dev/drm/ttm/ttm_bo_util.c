@@ -355,11 +355,11 @@ int ttm_bo_move_memcpy(struct ttm_buffer_object *bo,
 	for (i = 0; i < new_mem->num_pages; ++i) {
 		page = i * dir + add;
 		if (old_iomap == NULL) {
-			vm_memattr_t prot = ttm_io_prot(old_mem->placement);
+			pgprot_t prot = ttm_io_prot(old_mem->placement);
 			ret = ttm_copy_ttm_io_page(ttm, new_iomap, page,
 						   prot);
 		} else if (new_iomap == NULL) {
-			vm_memattr_t prot = ttm_io_prot(new_mem->placement);
+			pgprot_t prot = ttm_io_prot(new_mem->placement);
 			ret = ttm_copy_io_ttm_page(ttm, old_iomap, page,
 						   prot);
 		} else
