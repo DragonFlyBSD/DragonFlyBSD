@@ -58,6 +58,12 @@ static inline void *kmap_atomic(struct page *pg)
 	return (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS( (struct vm_page *)pg ));
 }
 
+static inline void *
+kmap_atomic_prot(struct page *pg, pgprot_t prot)
+{
+	return kmap_atomic(pg);
+}
+
 static inline void kunmap_atomic(void *vaddr)
 {
 	/* Nothing to do on systems with a direct memory map */

@@ -31,4 +31,9 @@
 
 #include <asm/pgtable_types.h>
 
+static inline pgprot_t pgprot_noncached(pgprot_t prot)
+{
+	return (prot | _PAGE_CACHE_UC_MINUS);
+}
+
 #endif	/* _ASM_PGTABLE_H_ */
