@@ -1,8 +1,3 @@
-#ifndef _SEMAPHORE_H_
-#define _SEMAPHORE_H_
-
-/* semaphore.h: POSIX 1003.1b semaphores */
-
 /*-
  * Copyright (c) 1996, 1997
  *	HD Associates, Inc.  All rights reserved.
@@ -36,6 +31,11 @@
  *
  * $FreeBSD: src/sys/posix4/semaphore.h,v 1.6 2000/01/20 07:55:42 jasone Exp $
  */
+
+#ifndef _SEMAPHORE_H_
+#define _SEMAPHORE_H_
+
+/* semaphore.h: POSIX 1003.1b semaphores */
 
 #include <sys/_timespec.h>
 #include <machine/limits.h>
