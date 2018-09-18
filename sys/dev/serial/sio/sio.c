@@ -3176,8 +3176,8 @@ siocncheckc(void *private)
 		iobase = siogdbiobase;
 	else
 		iobase = siocniobase;
-	com_lock();
 	crit_enter();
+	com_lock();
 #if 0
 	siocnopen(&sp, iobase, comdefaultrate);
 #endif
@@ -3188,8 +3188,9 @@ siocncheckc(void *private)
 #if 0
 	siocnclose(&sp, iobase);
 #endif
-	crit_exit();
 	com_unlock();
+	crit_exit();
+
 	return (c);
 }
 
@@ -3208,8 +3209,8 @@ siocngetc(void *private)
 		iobase = siogdbiobase;
 	else
 		iobase = siocniobase;
-	com_lock();
 	crit_enter();
+	com_lock();
 #if 0
 	siocnopen(&sp, iobase, comdefaultrate);
 #endif
@@ -3219,8 +3220,8 @@ siocngetc(void *private)
 #if 0
 	siocnclose(&sp, iobase);
 #endif
-	crit_exit();
 	com_unlock();
+	crit_exit();
 	return (c);
 }
 
@@ -3237,8 +3238,8 @@ siocnputc(void *private, int c)
 		iobase = siogdbiobase;
 	else
 		iobase = siocniobase;
-	com_lock();
 	crit_enter();
+	com_lock();
 #if 0
 	siocnopen(&sp, iobase, comdefaultrate);
 #endif
@@ -3247,8 +3248,8 @@ siocnputc(void *private, int c)
 #if 0
 	siocnclose(&sp, iobase);
 #endif
-	crit_exit();
 	com_unlock();
+	crit_exit();
 }
 
 DRIVER_MODULE(sio, isa, sio_isa_driver, sio_devclass, NULL, NULL);
