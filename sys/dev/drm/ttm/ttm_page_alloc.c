@@ -130,28 +130,6 @@ struct ttm_pool_manager {
 #define	wc_pool_dma32 _u._ut.u_wc_pool_dma32
 #define	uc_pool_dma32 _u._ut.u_uc_pool_dma32
 
-static void
-ttm_vm_page_free(struct page *p)
-{
-	struct vm_page *m = (struct vm_page *)p;
-
-	KASSERT(m->object == NULL, ("ttm page %p is owned", m));
-	KASSERT(m->wire_count == 1, ("ttm lost wire %p", m));
-	KASSERT((m->flags & PG_FICTITIOUS) != 0, ("ttm lost fictitious %p", m));
-#if 0
-	KASSERT((m->oflags & VPO_UNMANAGED) == 0, ("ttm got unmanaged %p", m));
-	m->oflags |= VPO_UNMANAGED;
-#endif
-	m->flags &= ~PG_FICTITIOUS;
-	vm_page_busy_wait(m, FALSE, "ttmvpf");
-	vm_page_wakeup(m);
-	vm_page_free_contig(m, PAGE_SIZE);
-	/*
-	vm_page_unwire(m, 0);
-	vm_page_free(m);
-	*/
-}
-
 static vm_memattr_t
 ttm_caching_state_to_vm(enum ttm_caching_state cstate)
 {
@@ -296,12 +274,10 @@ static struct ttm_page_pool *ttm_get_pool(int flags,
 static void ttm_pages_put(struct page *pages[], unsigned npages)
 {
 	unsigned i;
-
-	/* Our VM handles vm memattr automatically on the page free. */
 	if (set_pages_array_wb(pages, npages))
 		pr_err("Failed to set %d pages to wb!\n", npages);
 	for (i = 0; i < npages; ++i)
-		ttm_vm_page_free(pages[i]);
+		__free_page(pages[i]);
 }
 
 static void ttm_pool_update_free_locked(struct ttm_page_pool *pool,
@@ -480,7 +456,7 @@ static void ttm_handle_caching_state_failure(struct pglist *pages,
 	/* Failed pages have to be freed */
 	for (i = 0; i < cpages; ++i) {
 		TAILQ_REMOVE(pages, (struct vm_page *)failed_pages[i], pageq);
-		ttm_vm_page_free(failed_pages[i]);
+		__free_page(failed_pages[i]);
 	}
 }
 
@@ -676,7 +652,11 @@ static void ttm_put_pages(struct page **pages, unsigned npages, int flags,
 		/* No pool for this memory type so free the pages */
 		for (i = 0; i < npages; i++) {
 			if (pages[i]) {
-				ttm_vm_page_free(pages[i]);
+#if 0
+				if (page_count(pages[i]) != 1)
+					pr_err("Erroneous page count. Leaking pages.\n");
+#endif
+				__free_page(pages[i]);
 				pages[i] = NULL;
 			}
 		}

@@ -250,7 +250,7 @@ static int ttm_copy_io_page(void *dst, void *src, unsigned long page)
 
 static int ttm_copy_io_ttm_page(struct ttm_tt *ttm, void *src,
 				unsigned long page,
-				vm_memattr_t prot)
+				pgprot_t prot)
 {
 	struct page *d = ttm->pages[page];
 	void *dst;
@@ -260,21 +260,34 @@ static int ttm_copy_io_ttm_page(struct ttm_tt *ttm, void *src,
 
 	src = (void *)((unsigned long)src + (page << PAGE_SHIFT));
 
-	/* XXXKIB can't sleep ? */
-	dst = pmap_mapdev_attr(VM_PAGE_TO_PHYS((struct vm_page *)d), PAGE_SIZE, prot);
+#ifdef CONFIG_X86
+	dst = kmap_atomic_prot(d, prot);
+#else
+	if (pgprot_val(prot) != pgprot_val(PAGE_KERNEL))
+		dst = vmap(&d, 1, 0, prot);
+	else
+		dst = kmap(d);
+#endif
 	if (!dst)
 		return -ENOMEM;
 
 	memcpy_fromio(dst, src, PAGE_SIZE);
 
-	pmap_unmapdev((vm_offset_t)dst, PAGE_SIZE);
+#ifdef CONFIG_X86
+	kunmap_atomic(dst);
+#else
+	if (pgprot_val(prot) != pgprot_val(PAGE_KERNEL))
+		vunmap(dst);
+	else
+		kunmap(d);
+#endif
 
 	return 0;
 }
 
 static int ttm_copy_ttm_io_page(struct ttm_tt *ttm, void *dst,
 				unsigned long page,
-				vm_memattr_t prot)
+				pgprot_t prot)
 {
 	struct page *s = ttm->pages[page];
 	void *src;
@@ -283,13 +296,27 @@ static int ttm_copy_ttm_io_page(struct ttm_tt *ttm, void *dst,
 		return -ENOMEM;
 
 	dst = (void *)((unsigned long)dst + (page << PAGE_SHIFT));
-	src = pmap_mapdev_attr(VM_PAGE_TO_PHYS((struct vm_page *)s), PAGE_SIZE, prot);
+#ifdef CONFIG_X86
+	src = kmap_atomic_prot(s, prot);
+#else
+	if (pgprot_val(prot) != pgprot_val(PAGE_KERNEL))
+		src = vmap(&s, 1, 0, prot);
+	else
+		src = kmap(s);
+#endif
 	if (!src)
 		return -ENOMEM;
 
 	memcpy_toio(dst, src, PAGE_SIZE);
 
-	pmap_unmapdev((vm_offset_t)src, PAGE_SIZE);
+#ifdef CONFIG_X86
+	kunmap_atomic(src);
+#else
+	if (pgprot_val(prot) != pgprot_val(PAGE_KERNEL))
+		vunmap(src);
+	else
+		kunmap(s);
+#endif
 
 	return 0;
 }
@@ -532,7 +559,7 @@ static int ttm_bo_kmap_ttm(struct ttm_buffer_object *bo,
 		 * or to make the buffer object look contiguous.
 		 */
 		prot = (mem->placement & TTM_PL_FLAG_CACHED) ?
-			VM_MEMATTR_WRITE_COMBINING :
+			PAGE_KERNEL :
 			ttm_io_prot(mem->placement);
 		map->bo_kmap_type = ttm_bo_map_vmap;
 		map->num_pages = num_pages;

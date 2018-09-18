@@ -1525,11 +1525,8 @@ EXPORT_SYMBOL(ttm_bo_init_mm);
 static void ttm_bo_global_kobj_release(struct ttm_bo_global *glob)
 {
 	ttm_mem_unregister_shrink(glob->mem_glob, &glob->shrink);
-	vm_page_free_contig((struct vm_page *)glob->dummy_read_page, PAGE_SIZE);
+	__free_page(glob->dummy_read_page);
 	glob->dummy_read_page = NULL;
-	/*
-	vm_page_free(glob->dummy_read_page);
-	*/
 }
 
 void ttm_bo_global_release(struct drm_global_reference *ref)
@@ -1575,11 +1572,7 @@ int ttm_bo_global_init(struct drm_global_reference *ref)
 	return (0);
 
 out_no_shrink:
-	vm_page_free_contig((struct vm_page *)glob->dummy_read_page, PAGE_SIZE);
-	glob->dummy_read_page = NULL;
-	/*
-	vm_page_free(glob->dummy_read_page);
-	*/
+	__free_page(glob->dummy_read_page);
 out_no_drp:
 	kfree(glob);
 	return ret;
