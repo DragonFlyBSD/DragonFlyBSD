@@ -976,19 +976,28 @@ static u_long	unpst_sendspace = PIPSIZ;
 static u_long	unpst_recvspace = PIPSIZ;
 static u_long	unpdg_sendspace = 2*1024;	/* really max datagram size */
 static u_long	unpdg_recvspace = 4*1024;
+static u_long	unpsp_sendspace = PIPSIZ;	/* really max datagram size */
+static u_long	unpsp_recvspace = PIPSIZ;
 
-SYSCTL_DECL(_net_local_seqpacket);
 SYSCTL_DECL(_net_local_stream);
-SYSCTL_INT(_net_local_stream, OID_AUTO, sendspace, CTLFLAG_RW, 
+SYSCTL_DECL(_net_local_dgram);
+SYSCTL_DECL(_net_local_seqpacket);
+
+SYSCTL_ULONG(_net_local_stream, OID_AUTO, sendspace, CTLFLAG_RW,
     &unpst_sendspace, 0, "Size of stream socket send buffer");
-SYSCTL_INT(_net_local_stream, OID_AUTO, recvspace, CTLFLAG_RW,
+SYSCTL_ULONG(_net_local_stream, OID_AUTO, recvspace, CTLFLAG_RW,
     &unpst_recvspace, 0, "Size of stream socket receive buffer");
 
-SYSCTL_DECL(_net_local_dgram);
-SYSCTL_INT(_net_local_dgram, OID_AUTO, maxdgram, CTLFLAG_RW,
+SYSCTL_ULONG(_net_local_dgram, OID_AUTO, maxdgram, CTLFLAG_RW,
     &unpdg_sendspace, 0, "Max datagram socket size");
-SYSCTL_INT(_net_local_dgram, OID_AUTO, recvspace, CTLFLAG_RW,
+SYSCTL_ULONG(_net_local_dgram, OID_AUTO, recvspace, CTLFLAG_RW,
     &unpdg_recvspace, 0, "Size of datagram socket receive buffer");
+
+SYSCTL_ULONG(_net_local_seqpacket, OID_AUTO, maxseqpacket, CTLFLAG_RW,
+    &unpsp_sendspace, 0, "Default seqpacket send space.");
+SYSCTL_ULONG(_net_local_seqpacket, OID_AUTO, recvspace, CTLFLAG_RW,
+    &unpsp_recvspace, 0, "Default seqpacket receive space.");
+
 
 static int
 unp_attach(struct socket *so, struct pru_attach_info *ai)
@@ -1002,16 +1011,17 @@ unp_attach(struct socket *so, struct pru_attach_info *ai)
 	if (so->so_snd.ssb_hiwat == 0 || so->so_rcv.ssb_hiwat == 0) {
 		switch (so->so_type) {
 		case SOCK_STREAM:
-		case SOCK_SEQPACKET:
 			error = soreserve(so, unpst_sendspace, unpst_recvspace,
 					  ai->sb_rlimit);
 			break;
-
 		case SOCK_DGRAM:
 			error = soreserve(so, unpdg_sendspace, unpdg_recvspace,
 					  ai->sb_rlimit);
 			break;
-
+		case SOCK_SEQPACKET:
+			error = soreserve(so, unpsp_sendspace, unpsp_recvspace,
+					  ai->sb_rlimit);
+			break;
 		default:
 			panic("unp_attach");
 		}
