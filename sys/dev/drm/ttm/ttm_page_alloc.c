@@ -109,7 +109,7 @@ struct ttm_pool_opts {
  * @pools: All pool objects in use.
  **/
 struct ttm_pool_manager {
-	unsigned int kobj_ref;
+	struct kobject		kobj;
 	eventhandler_tag lowmem_handler;
 	struct ttm_pool_opts	options;
 
@@ -145,19 +145,41 @@ ttm_caching_state_to_vm(enum ttm_caching_state cstate)
 	panic("caching state %d\n", cstate);
 }
 
-static void ttm_pool_kobj_release(struct ttm_pool_manager *m)
+static struct attribute ttm_page_pool_max = {
+	.name = "pool_max_size",
+	.mode = S_IRUGO | S_IWUSR
+};
+static struct attribute ttm_page_pool_small = {
+	.name = "pool_small_allocation",
+	.mode = S_IRUGO | S_IWUSR
+};
+static struct attribute ttm_page_pool_alloc_size = {
+	.name = "pool_allocation_size",
+	.mode = S_IRUGO | S_IWUSR
+};
+
+static struct attribute *ttm_pool_attrs[] = {
+	&ttm_page_pool_max,
+	&ttm_page_pool_small,
+	&ttm_page_pool_alloc_size,
+	NULL
+};
+
+static void ttm_pool_kobj_release(struct kobject *kobj)
 {
+	struct ttm_pool_manager *m =
+		container_of(kobj, struct ttm_pool_manager, kobj);
 	kfree(m);
 }
 
-#if 0
-/* XXXKIB sysctl */
-static ssize_t ttm_pool_store(struct ttm_pool_manager *m,
+static ssize_t ttm_pool_store(struct kobject *kobj,
 		struct attribute *attr, const char *buffer, size_t size)
 {
+	struct ttm_pool_manager *m =
+		container_of(kobj, struct ttm_pool_manager, kobj);
 	int chars;
 	unsigned val;
-	chars = sscanf(buffer, "%u", &val);
+	chars = ksscanf(buffer, "%u", &val);
 	if (chars == 0)
 		return size;
 
@@ -184,9 +206,11 @@ static ssize_t ttm_pool_store(struct ttm_pool_manager *m,
 	return size;
 }
 
-static ssize_t ttm_pool_show(struct ttm_pool_manager *m,
+static ssize_t ttm_pool_show(struct kobject *kobj,
 		struct attribute *attr, char *buffer)
 {
+	struct ttm_pool_manager *m =
+		container_of(kobj, struct ttm_pool_manager, kobj);
 	unsigned val = 0;
 
 	if (attr == &ttm_page_pool_max)
@@ -198,9 +222,19 @@ static ssize_t ttm_pool_show(struct ttm_pool_manager *m,
 
 	val = val * (PAGE_SIZE >> 10);
 
-	return snprintf(buffer, PAGE_SIZE, "%u\n", val);
+	return ksnprintf(buffer, PAGE_SIZE, "%u\n", val);
 }
-#endif
+
+static const struct sysfs_ops ttm_pool_sysfs_ops = {
+	.show = &ttm_pool_show,
+	.store = &ttm_pool_store,
+};
+
+static struct kobj_type ttm_pool_kobj_type = {
+	.release = &ttm_pool_kobj_release,
+	.sysfs_ops = &ttm_pool_sysfs_ops,
+	.default_attrs = ttm_pool_attrs,
+};
 
 static struct ttm_pool_manager *_manager;
 
@@ -777,6 +811,8 @@ static void ttm_page_pool_init_locked(struct ttm_page_pool *pool, gfp_t flags,
 
 int ttm_page_alloc_init(struct ttm_mem_global *glob, unsigned max_pages)
 {
+	int ret;
+
 	WARN_ON(_manager);
 
 	pr_info("Initializing pool allocator\n");
@@ -794,7 +830,13 @@ int ttm_page_alloc_init(struct ttm_mem_global *glob, unsigned max_pages)
 	_manager->options.small = SMALL_ALLOCATION;
 	_manager->options.alloc_size = NUM_PAGES_TO_ALLOC;
 
-	refcount_init(&_manager->kobj_ref, 1);
+	ret = kobject_init_and_add(&_manager->kobj, &ttm_pool_kobj_type,
+				   &glob->kobj, "pool");
+	if (unlikely(ret != 0)) {
+		kobject_put(&_manager->kobj);
+		_manager = NULL;
+		return ret;
+	}
 	ttm_pool_mm_shrink_init(_manager);
 
 	return 0;
@@ -810,8 +852,7 @@ void ttm_page_alloc_fini(void)
 	for (i = 0; i < NUM_POOLS; ++i)
 		ttm_page_pool_free(&_manager->pools[i], FREE_ALL_PAGES);
 
-	if (refcount_release(&_manager->kobj_ref))
-		ttm_pool_kobj_release(_manager);
+	kobject_put(&_manager->kobj);
 	_manager = NULL;
 }
 
@@ -852,6 +893,7 @@ int ttm_pool_populate(struct ttm_tt *ttm)
 	ttm->state = tt_unbound;
 	return 0;
 }
+EXPORT_SYMBOL(ttm_pool_populate);
 
 void ttm_pool_unpopulate(struct ttm_tt *ttm)
 {
@@ -892,3 +934,4 @@ int ttm_page_alloc_debugfs(struct seq_file *m, void *data)
 	return 0;
 }
 #endif
+EXPORT_SYMBOL(ttm_page_alloc_debugfs);

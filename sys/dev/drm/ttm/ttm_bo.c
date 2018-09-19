@@ -33,10 +33,13 @@
 #include <drm/ttm/ttm_module.h>
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_placement.h>
+#include <linux/jiffies.h>
+#include <linux/slab.h>
+#include <linux/sched.h>
+#include <linux/mm.h>
+#include <linux/file.h>
+#include <linux/module.h>
 #include <linux/atomic.h>
-#include <linux/errno.h>
-#include <linux/export.h>
-#include <linux/wait.h>
 
 #define TTM_ASSERT_LOCKED(param)	do { } while (0)
 #define TTM_DEBUG(fmt, arg...)		do { } while (0)
@@ -44,7 +47,12 @@
 
 static int ttm_bo_setup_vm(struct ttm_buffer_object *bo);
 static int ttm_bo_swapout(struct ttm_mem_shrink *shrink);
-static void ttm_bo_global_kobj_release(struct ttm_bo_global *glob);
+static void ttm_bo_global_kobj_release(struct kobject *kobj);
+
+static struct attribute ttm_bo_count = {
+	.name = "bo_count",
+	.mode = S_IRUGO
+};
 
 static inline int ttm_mem_type_from_place(const struct ttm_place *place,
 					  uint32_t *mem_type)
@@ -93,15 +101,31 @@ static void ttm_bo_mem_space_debug(struct ttm_buffer_object *bo,
 	}
 }
 
-#if 0
-static ssize_t ttm_bo_global_show(struct ttm_bo_global *glob,
-    char *buffer)
+static ssize_t ttm_bo_global_show(struct kobject *kobj,
+				  struct attribute *attr,
+				  char *buffer)
 {
+	struct ttm_bo_global *glob =
+		container_of(kobj, struct ttm_bo_global, kobj);
 
-	return snprintf(buffer, PAGE_SIZE, "%lu\n",
+	return ksnprintf(buffer, PAGE_SIZE, "%lu\n",
 			(unsigned long) atomic_read(&glob->bo_count));
 }
-#endif
+
+static struct attribute *ttm_bo_global_attrs[] = {
+	&ttm_bo_count,
+	NULL
+};
+
+static const struct sysfs_ops ttm_bo_global_ops = {
+	.show = &ttm_bo_global_show
+};
+
+static struct kobj_type ttm_bo_glob_kobj_type  = {
+	.release = &ttm_bo_global_kobj_release,
+	.sysfs_ops = &ttm_bo_global_ops,
+	.default_attrs = ttm_bo_global_attrs
+};
 
 static inline uint32_t ttm_bo_type_flags(unsigned type)
 {
@@ -1522,19 +1546,22 @@ int ttm_bo_init_mm(struct ttm_bo_device *bdev, unsigned type,
 }
 EXPORT_SYMBOL(ttm_bo_init_mm);
 
-static void ttm_bo_global_kobj_release(struct ttm_bo_global *glob)
+static void ttm_bo_global_kobj_release(struct kobject *kobj)
 {
+	struct ttm_bo_global *glob =
+		container_of(kobj, struct ttm_bo_global, kobj);
+
 	ttm_mem_unregister_shrink(glob->mem_glob, &glob->shrink);
 	__free_page(glob->dummy_read_page);
-	glob->dummy_read_page = NULL;
+	kfree(glob);
 }
 
 void ttm_bo_global_release(struct drm_global_reference *ref)
 {
 	struct ttm_bo_global *glob = ref->object;
 
-	if (refcount_release(&glob->kobj_ref))
-		ttm_bo_global_kobj_release(glob);
+	kobject_del(&glob->kobj);
+	kobject_put(&glob->kobj);
 }
 EXPORT_SYMBOL(ttm_bo_global_release);
 
@@ -1568,9 +1595,11 @@ int ttm_bo_global_init(struct drm_global_reference *ref)
 
 	atomic_set(&glob->bo_count, 0);
 
-	refcount_init(&glob->kobj_ref, 1);
-	return (0);
-
+	ret = kobject_init_and_add(
+		&glob->kobj, &ttm_bo_glob_kobj_type, ttm_get_kobj(), "buffer_objects");
+	if (unlikely(ret != 0))
+		kobject_put(&glob->kobj);
+	return ret;
 out_no_shrink:
 	__free_page(glob->dummy_read_page);
 out_no_drp:

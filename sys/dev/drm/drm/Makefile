@@ -70,7 +70,8 @@ SRCS	= \
 	ttm_execbuf_util.c \
 	ttm_memory.c \
 	ttm_page_alloc.c \
-	ttm_bo_vm.c
+	ttm_bo_vm.c \
+	ttm_module.c
 
 SRCS   += device_if.h bus_if.h pci_if.h device_if.h iicbus_if.h opt_drm.h \
 	  opt_ktr.h opt_vm.h

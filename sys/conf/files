@@ -2307,6 +2307,7 @@ dev/drm/ttm/ttm_execbuf_util.c		optional drm compile-with "${NORMAL_C} -include 
 dev/drm/ttm/ttm_memory.c		optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h"
 dev/drm/ttm/ttm_page_alloc.c		optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h"
 dev/drm/ttm/ttm_bo_vm.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h"
+dev/drm/ttm/ttm_module.c		optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h"
 dev/drm/i915/dvo_ch7017.c		optional i915 drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h"
 dev/drm/i915/dvo_ch7xxx.c		optional i915 drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h"
 dev/drm/i915/dvo_ivch.c			optional i915 drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h"

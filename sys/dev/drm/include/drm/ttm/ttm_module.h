@@ -27,11 +27,14 @@
 /*
  * Authors: Thomas Hellstrom <thellstrom-at-vmware-dot-com>
  */
-/* $FreeBSD: head/sys/dev/drm2/ttm/ttm_module.h 247835 2013-03-05 09:49:34Z kib $ */
 
 #ifndef _TTM_MODULE_H_
 #define _TTM_MODULE_H_
 
+#include <linux/kernel.h>
+struct kobject;
+
 #define TTM_PFX "[TTM] "
+extern struct kobject *ttm_get_kobj(void);
 
 #endif /* _TTM_MODULE_H_ */

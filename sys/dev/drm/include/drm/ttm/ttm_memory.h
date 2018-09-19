@@ -24,10 +24,17 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  **************************************************************************/
-/* $FreeBSD: head/sys/dev/drm2/ttm/ttm_memory.h 247835 2013-03-05 09:49:34Z kib $ */
 
 #ifndef TTM_MEMORY_H
 #define TTM_MEMORY_H
+
+#include <linux/workqueue.h>
+#include <linux/spinlock.h>
+#include <linux/bug.h>
+#include <linux/wait.h>
+#include <linux/errno.h>
+#include <linux/kobject.h>
+#include <linux/mm.h>
 
 /**
  * struct ttm_mem_shrink - callback to shrink TTM memory usage.
@@ -68,7 +75,7 @@ struct ttm_mem_shrink {
 #define TTM_MEM_MAX_ZONES 2
 struct ttm_mem_zone;
 struct ttm_mem_global {
-	u_int kobj_ref;
+	struct kobject kobj;
 	struct ttm_mem_shrink *shrink;
 	struct taskqueue *swap_queue;
 	struct task work;
@@ -76,7 +83,11 @@ struct ttm_mem_global {
 	struct ttm_mem_zone *zones[TTM_MEM_MAX_ZONES];
 	unsigned int num_zones;
 	struct ttm_mem_zone *zone_kernel;
+#ifdef CONFIG_HIGHMEM
+	struct ttm_mem_zone *zone_highmem;
+#else
 	struct ttm_mem_zone *zone_dma32;
+#endif
 };
 
 /**
@@ -127,7 +138,7 @@ static inline void ttm_mem_unregister_shrink(struct ttm_mem_global *glob,
 					     struct ttm_mem_shrink *shrink)
 {
 	spin_lock(&glob->spin);
-	KKASSERT(glob->shrink == shrink);
+	BUG_ON(glob->shrink != shrink);
 	glob->shrink = NULL;
 	spin_unlock(&glob->spin);
 }

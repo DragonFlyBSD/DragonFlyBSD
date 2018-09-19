@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 François Tigeot
+ * Copyright 2015-2018 François Tigeot <ftigeot@wolfpond.org>
  * All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -22,6 +22,9 @@
  * IN THE SOFTWARE.
  */
 
+#include <linux/device.h>
+
+#include <drm/drm_sysfs.h>
 #include <drm/drmP.h>
 #include "drm_internal.h"
 
@@ -35,5 +38,14 @@ void drm_sysfs_connector_remove(struct drm_connector *connector)
 }
 
 void drm_sysfs_hotplug_event(struct drm_device *dev)
+{
+}
+
+int drm_class_device_register(struct device *dev)
+{
+	return 0;
+}
+
+void drm_class_device_unregister(struct device *dev)
 {
 }
