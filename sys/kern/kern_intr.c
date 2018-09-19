@@ -725,6 +725,10 @@ ithread_fast_handler(struct intrframe *frame)
     /* We must be in critical section. */
     KKASSERT(td->td_critcount);
 
+    /* Race condition during early boot */
+    if (intr_block == NULL)
+	return 0;
+
     info = &intr_block->ary[mycpuid][intr];
 
     /*
@@ -1164,10 +1168,10 @@ intr_init(void *dummy __unused)
 {
 	int cpuid;
 
-	kprintf("Initialize MI interrupts\n");
+	kprintf("Initialize MI interrupts for %d cpus\n", ncpus);
 
-	intr_block = kmalloc(sizeof(*intr_block), M_INTRMNG,
-			     M_INTWAIT | M_ZERO);
+	intr_block = kmalloc(offsetof(struct intr_info_block, ary[ncpus][0]),
+			     M_INTRMNG, M_INTWAIT | M_ZERO);
 
 	for (cpuid = 0; cpuid < ncpus; ++cpuid) {
 		int intr;
