@@ -968,14 +968,17 @@ done:
  *
  * We want the local send/recv space to be significant larger then lo0's
  * mtu of 16384.
+ *
+ * We no longer need to worry about avoiding the windows scaling option.
+ * Programs which use unix domain sockets expect larger defaults these days.
  */
 #ifndef PIPSIZ
-#define	PIPSIZ	57344
+#define	PIPSIZ	65536
 #endif
 static u_long	unpst_sendspace = PIPSIZ;
 static u_long	unpst_recvspace = PIPSIZ;
-static u_long	unpdg_sendspace = 2*1024;	/* really max datagram size */
-static u_long	unpdg_recvspace = 4*1024;
+static u_long	unpdg_sendspace = PIPSIZ;	/* really max datagram size */
+static u_long	unpdg_recvspace = PIPSIZ;
 static u_long	unpsp_sendspace = PIPSIZ;	/* really max datagram size */
 static u_long	unpsp_recvspace = PIPSIZ;
 
