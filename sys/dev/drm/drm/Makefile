@@ -54,6 +54,7 @@ SRCS	= \
 	linux_hrtimer.c \
 	linux_iomapping.c \
 	linux_irq.c \
+	linux_kobject.c \
 	linux_list_sort.c \
 	linux_scatterlist.c \
 	linux_shmem.c \

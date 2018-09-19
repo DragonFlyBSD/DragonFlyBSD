@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2017 François Tigeot
+ * Copyright (c) 2014-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -67,6 +67,12 @@ static inline void *
 dev_get_drvdata(const struct device *dev)
 {
 	return device_get_softc(dev->bsddev);
+}
+
+static inline int
+dev_set_name(struct device *dev, const char *name, ...)
+{
+	return 0;
 }
 
 #endif	/* _LINUX_DEVICE_H_ */

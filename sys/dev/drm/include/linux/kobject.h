@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2016-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,6 +29,7 @@
 
 #include <linux/types.h>
 #include <linux/list.h>
+#include <linux/sysfs.h>
 #include <linux/compiler.h>
 #include <linux/spinlock.h>
 #include <linux/kref.h>
@@ -48,12 +49,44 @@ enum kobject_action {
 
 struct kobject {
 	const char *name;
+	struct kref kref;
+	struct kobj_type *ktype;
+};
+
+struct kobj_type {
+	void (*release)(struct kobject *kobj);
+	const struct sysfs_ops *sysfs_ops;
+	struct attribute **default_attrs;
 };
 
 static inline int
 kobject_uevent_env(struct kobject *kobj, enum kobject_action action, char *envp[])
 {
 	return 0;
+}
+
+extern __printf(4, 5) __must_check
+int kobject_init_and_add(struct kobject *kobj,
+			 struct kobj_type *ktype, struct kobject *parent,
+			 const char *fmt, ...);
+
+extern void kobject_release(struct kref *kref);
+
+static inline void
+kobject_put(struct kobject *kobj)
+{
+	if (kobj != NULL)
+		kref_put(&kobj->kref, kobject_release);
+}
+
+static inline void
+kobject_del(struct kobject *kobj)
+{
+	/*
+	   This function is supposed to unlink the object from a hierarchy.
+	   There is no such hierarchy in the DragonFly implementation, doing
+	   nothing is fine.
+	*/
 }
 
 #endif	/* _LINUX_KOBJECT_H_ */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 François Tigeot
+ * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,5 +42,7 @@ typedef uint64_t loff_t;
 #ifndef bool
 typedef _Bool	bool;
 #endif
+
+typedef unsigned short umode_t;
 
 #endif	/* _LINUX_TYPES_H_ */

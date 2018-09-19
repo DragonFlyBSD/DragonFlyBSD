@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,14 +24,29 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_CPUFREQ_H_
-#define _LINUX_CPUFREQ_H_
-
-#include <linux/cpumask.h>
-#include <linux/completion.h>
 #include <linux/kobject.h>
-#include <linux/sysfs.h>
-#include <linux/notifier.h>
-#include <linux/spinlock.h>
 
-#endif	/* _LINUX_CPUFREQ_H_ */
+extern char *drm_vasprintf(int flags, const char *format, __va_list ap);
+
+int kobject_init_and_add(struct kobject *kobj, struct kobj_type *ktype,
+			 struct kobject *parent, const char *fmt, ...)
+{
+	va_list ap;
+
+	kobj->ktype = ktype;
+	kref_init(&kobj->kref);
+
+	__va_start(ap, fmt);
+	kobj->name = drm_vasprintf(M_WAITOK, fmt, ap);
+	__va_end(ap);
+
+	return 0;
+}
+
+void kobject_release(struct kref *kref)
+{
+	struct kobject *kobj = container_of(kref, struct kobject, kref);
+
+	if (kobj->ktype && kobj->ktype->release)
+		kobj->ktype->release(kobj);
+}

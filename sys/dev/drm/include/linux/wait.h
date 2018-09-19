@@ -151,4 +151,9 @@ add_wait_queue(wait_queue_head_t *q, wait_queue_t *wait)
 {
 }
 
+#define DECLARE_WAIT_QUEUE_HEAD(name)					\
+	wait_queue_head_t name = {					\
+		.lock = LOCK_INITIALIZER("name", 0, LK_CANRECURSE)	\
+	}
+
 #endif	/* _LINUX_WAIT_H_ */

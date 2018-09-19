@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,14 +24,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_CPUFREQ_H_
-#define _LINUX_CPUFREQ_H_
+#ifndef _LINUX_STAT_H_
+#define _LINUX_STAT_H_
 
-#include <linux/cpumask.h>
-#include <linux/completion.h>
-#include <linux/kobject.h>
-#include <linux/sysfs.h>
-#include <linux/notifier.h>
-#include <linux/spinlock.h>
+#define S_IRUGO		(S_IRUSR|S_IRGRP|S_IROTH)
 
-#endif	/* _LINUX_CPUFREQ_H_ */
+#include <linux/types.h>
+#include <linux/time.h>
+
+#endif	/* _LINUX_STAT_H_ */
