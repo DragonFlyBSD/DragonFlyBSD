@@ -80,8 +80,11 @@ typedef struct {
 #define	GLOB_NOSPACE	(-1)	/* Malloc call failed. */
 #define	GLOB_ABORTED	(-2)	/* Unignored error. */
 #define	GLOB_NOMATCH	(-3)	/* No match and GLOB_NOCHECK was not set. */
-#define	GLOB_NOSYS	(-4)	/* Obsolete: source compatibility only. */
 #endif /* __POSIX_VISIBLE >= 199209 */
+
+#if __BSD_VISIBLE || (__POSIX_VISIBLE && __POSIX_VISIBLE < 200809)
+#define	GLOB_NOSYS	(-4)	/* Obsolete: source compatibility only. */
+#endif
 
 #if __BSD_VISIBLE
 #define	GLOB_ALTDIRFUNC	0x0040	/* Use alternately specified directory funcs. */
