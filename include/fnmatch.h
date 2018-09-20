@@ -41,7 +41,7 @@
 #define	FNM_PATHNAME	0x02	/* Slash must be matched by slash. */
 #define	FNM_PERIOD	0x04	/* Period must be matched by period. */
 
-#if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE <= 600)
+#if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE < 700)
 #define	FNM_NOSYS	(-1)	/* Reserved. */
 #endif
 

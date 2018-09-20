@@ -106,7 +106,7 @@
 #define	_POSIX_RE_DUP_MAX	_POSIX2_RE_DUP_MAX
 #endif
 
-#if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE <= 600)
+#if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE < 700)
 #define	NL_NMAX			1
 #endif
 

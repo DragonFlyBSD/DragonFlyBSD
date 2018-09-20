@@ -52,7 +52,7 @@
 #define tre_regwnexec regwnexec
 
 typedef enum {
-#if __BSD_VISIBLE || __POSIX_VISIBLE <= 200112
+#if __BSD_VISIBLE || (__POSIX_VISIBLE && __POSIX_VISIBLE < 200809)
   REG_ENOSYS = -1,	/* Reserved */
 #endif
   REG_OK = 0,		/* No error. */

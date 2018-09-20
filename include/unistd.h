@@ -506,7 +506,7 @@ void	 sync(void);
 
 #endif /* __XSI_VISIBLE */
 
-#if (__XSI_VISIBLE && __XSI_VISIBLE <= 500) || __BSD_VISIBLE
+#if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE < 600)
 int	 brk(const void *);
 int	 chroot(const char *);
 int	 chroot_kernel(const char *);
@@ -516,7 +516,7 @@ char	*getpass(const char *);
 void	*sbrk(intptr_t);
 #endif
 
-#if (__XSI_VISIBLE && __XSI_VISIBLE <= 600) || __BSD_VISIBLE
+#if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE < 700)
 char	*getwd(char *);			/* LEGACY (obsoleted by getcwd()) */
 unsigned int
 	 ualarm(unsigned int, unsigned int);

@@ -385,7 +385,7 @@ struct	sigstack {
 };
 #endif
 	
-#if __BSD_VISIBLE || __POSIX_VISIBLE > 0 && __POSIX_VISIBLE <= 200112
+#if __BSD_VISIBLE || (__POSIX_VISIBLE && __POSIX_VISIBLE < 200809)
 /*
  * Macro for converting signal number to a mask suitable for
  * sigblock().

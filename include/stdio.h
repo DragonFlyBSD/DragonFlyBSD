@@ -253,7 +253,7 @@ int	 vsscanf(const char * __restrict, const char * __restrict, __va_list)
 /*
  * Functions defined in all versions of POSIX 1003.1.
  */
-#if __BSD_VISIBLE || __POSIX_VISIBLE <= 199506
+#if __BSD_VISIBLE || (__POSIX_VISIBLE && __POSIX_VISIBLE < 200112)
 #define	L_cuserid	17	/* size for cuserid(3); MAXLOGNAME, legacy */
 #endif
 
@@ -296,7 +296,7 @@ int	 fseeko(FILE *, __off_t, int);
 __off_t	 ftello(FILE *);
 #endif
 
-#if __BSD_VISIBLE || __XSI_VISIBLE > 0 && __XSI_VISIBLE < 600
+#if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE < 600)
 int	 getw(FILE *);
 int	 putw(int, FILE *);
 #endif /* BSD or X/Open before issue 6 */

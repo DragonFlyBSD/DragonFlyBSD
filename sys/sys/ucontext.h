@@ -62,7 +62,7 @@ typedef struct __ucontext {
  
 __BEGIN_DECLS
   
-#if __BSD_VISIBLE || __POSIX_VISIBLE < 200809
+#if __BSD_VISIBLE || (__POSIX_VISIBLE && __POSIX_VISIBLE < 200809)
 int	getcontext(ucontext_t *) __returns_twice;
 int	setcontext(const ucontext_t *) __dead2;
 void	makecontext(ucontext_t *, void (*)(void), int, ...);

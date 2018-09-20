@@ -57,7 +57,7 @@ struct timeb {
 #endif
 
 __BEGIN_DECLS
-#if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE <= 600)
+#if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE < 700)
 int ftime (struct timeb *);					/* LEGACY */
 #endif
 __END_DECLS

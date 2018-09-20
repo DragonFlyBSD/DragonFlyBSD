@@ -205,7 +205,7 @@ long	 a64l(const char *);
 double	 drand48(void);
 double	 erand48(unsigned short[3]);
 #if 0
-#if __BSD_VISIBLE || __XSI_VISIBLE <= 600
+#if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE < 700)
 char	*ecvt(double, int, int * __restrict, int * __restrict);	/* LEGACY */
 char	*fcvt(double, int, int * __restrict, int * __restrict);	/* LEGACY */
 char	*gcvt(double, int, int * __restrict, int * __restrict);	/* LEGACY */
@@ -217,9 +217,11 @@ long	 jrand48(unsigned short[3]);
 char	*l64a(long);
 void	 lcong48(unsigned short[7]);
 long	 lrand48(void);
-#if !defined(_MKTEMP_DECLARED) && (__BSD_VISIBLE || __XSI_VISIBLE <= 600)
+#if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE < 700)
+#if !defined(_MKTEMP_DECLARED)
 char	*mktemp(char *);					/* LEGACY */
 #define	_MKTEMP_DECLARED
+#endif
 #endif
 long	 mrand48(void);
 long	 nrand48(unsigned short[3]);

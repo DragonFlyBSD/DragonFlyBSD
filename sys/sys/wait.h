@@ -99,8 +99,10 @@ typedef	__pid_t		pid_t;		/* process id */
 __BEGIN_DECLS
 pid_t	wait(int *);
 pid_t	waitpid(pid_t, int *, int);
-#if __XSI_VISIBLE < 600 || __BSD_VISIBLE
+#if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE < 700)
 struct rusage;
+#endif
+#if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE < 600)
 pid_t	wait3(int *, int, struct rusage *);
 #endif
 #if __BSD_VISIBLE

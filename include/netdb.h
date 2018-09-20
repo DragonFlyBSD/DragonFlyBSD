@@ -88,7 +88,7 @@ typedef	__socklen_t	socklen_t;
 #define	_PATH_PROTOCOLS	"/etc/protocols"
 #define	_PATH_SERVICES	"/etc/services"
 
-#if __BSD_VISIBLE || (__POSIX_VISIBLE && __POSIX_VISIBLE <= 200112)
+#if __BSD_VISIBLE || (__POSIX_VISIBLE && __POSIX_VISIBLE < 200809)
 #define	h_errno (*__h_errno())
 #endif
 
@@ -148,7 +148,7 @@ struct addrinfo {
 #define	NETDB_INTERNAL	-1	/* see errno */
 #define	NETDB_SUCCESS	0	/* no problem */
 #endif
-#if __BSD_VISIBLE || (__POSIX_VISIBLE && __POSIX_VISIBLE <= 200112)
+#if __BSD_VISIBLE || (__POSIX_VISIBLE && __POSIX_VISIBLE < 200809)
 #define	HOST_NOT_FOUND	1 /* Authoritative Answer Host not found */
 #define	TRY_AGAIN	2 /* Non-Authoritative Host not found, or SERVERFAIL */
 #define	NO_RECOVERY	3 /* Non recoverable errors, FORMERR, REFUSED, NOTIMP */
@@ -243,7 +243,7 @@ void		endhostent(void);
 void		endnetent(void);
 void		endprotoent(void);
 void		endservent(void);
-#if __BSD_VISIBLE || (__POSIX_VISIBLE && __POSIX_VISIBLE <= 200112)
+#if __BSD_VISIBLE || (__POSIX_VISIBLE && __POSIX_VISIBLE < 200809)
 struct hostent	*gethostbyaddr(const void *, socklen_t, int);
 struct hostent	*gethostbyname(const char *);
 #endif
