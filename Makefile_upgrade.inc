@@ -473,6 +473,10 @@ TO_REMOVE+=/etc/rc.d/archdep
 TO_REMOVE+=/usr/share/man/man4/sata.4.gz
 TO_REMOVE+=/usr/share/man/man9/cpu_switch.9.gz
 TO_REMOVE+=/usr/share/man/man9/mi_switch.9.gz
+TO_REMOVE+=/usr/include/pccard/cardinfo.h
+TO_REMOVE+=/usr/include/pccard/cis.h
+TO_REMOVE+=/usr/include/pccard/driver.h
+TO_REMOVE+=/usr/include/pccard/slot.h
 TO_REMOVE+=/usr/libexec/getNAME
 TO_REMOVE+=/usr/share/man/man1/getNAME.1.gz
 TO_REMOVE+=/modules/daemon_saver.ko
@@ -3430,12 +3434,6 @@ TO_REMOVE+=/usr/share/man/man5/mkinitrd.conf.5.gz
 TO_REMOVE+=/usr/share/man/man8/mkinitrd.8.gz
 TO_REMOVE+=/rescue/rescue.sbin
 TO_REMOVE+=/usr/share/man/man3/fpresetsticky.3.gz
-
-# Obsolete /usr/include files that blow up the kdump build
-# during a make rescue
-#
-TO_REMOVE+=/usr/include/bus/pccard/cardinfo.h
-TO_REMOVE+=/usr/include/linux/linux_input.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
