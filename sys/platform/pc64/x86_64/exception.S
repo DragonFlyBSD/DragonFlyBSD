@@ -36,7 +36,6 @@
 
 #if 0 /* JG */
 #include "opt_atpic.h"
-#include "opt_compat.h"
 #endif
 
 #include <machine/asmacros.h>
@@ -689,15 +688,6 @@ ENTRY(fork_trampoline)
  * environment so that the included files doen't need to know that they are
  * included.
  */
-
-#if 0 /* COMPAT_IA32 */
-	.data
-	.p2align 4
-	.text
-	SUPERALIGN_TEXT
-
-#include <x86_64/ia32/ia32_exception.S>
-#endif
 
 	.data
 	.p2align 4
