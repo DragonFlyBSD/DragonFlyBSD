@@ -28,11 +28,11 @@
 .\"     From: @(#)swapon.8	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/sbin/dumpon/dumpon.8,v 1.11.2.12 2003/01/26 03:12:04 keramida Exp $
 .\"
-.Dd September 29, 2016
+.Dd September 22, 2018
 .Dt DUMPON 8
 .Os
 .Sh NAME
-.Nm dumpon
+.Nm dumpon , dumpoff
 .Nd "specify a device for crash dumps"
 .Sh SYNOPSIS
 .Nm
@@ -41,6 +41,8 @@
 .Nm
 .Op Fl v
 .Cm off
+.Nm dumpoff
+.Op Fl v
 .Sh DESCRIPTION
 The
 .Nm
@@ -90,7 +92,9 @@ to the device number of the designated
 .Ar special_file
 or to
 .Dv NODEV
-(meaning that no dumps are to be taken) if
+(meaning that no dumps are to be taken) if the utility is invoked as
+.Nm dumpoff
+or if
 .Ar special_file
 is the text string:
 .Dq Li off .
@@ -126,6 +130,10 @@ The
 .Nm
 utility appeared in
 .Fx 2.0.5 .
+The
+.Nm dumpoff
+utility first appeared in
+.Dx 5.3 .
 .Sh BUGS
 Because the file system layer is already dead by the time a crash dump
 is taken, it is not possible to send crash dumps directly to a file.

@@ -26,15 +26,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)swapon.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/dumpon/dumpon.c,v 1.10.2.2 2001/07/30 10:30:05 dd Exp $
- * $DragonFly: src/sbin/dumpon/dumpon.c,v 1.5 2006/03/25 07:44:14 dillon Exp $
  */
 
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
 #include <fstab.h>
@@ -43,7 +42,7 @@
 #include <sys/stat.h>
 #include <sysexits.h>
 
-void	usage(void) __dead2;
+static void	usage(void) __dead2;
 
 int
 main(int argc, char **argv)
@@ -51,11 +50,19 @@ main(int argc, char **argv)
 	int ch, verbose, rv;
 	struct stat stab;
 	int mib[2];
-	char *path;
+	char *path, *p;
+	bool is_dumpoff;
+
+	if (strstr((p = strrchr(argv[0], '/')) ? p+1 : argv[0],
+		   "dumpoff") != 0) {
+		is_dumpoff = true;
+	} else {
+		is_dumpoff = false;
+	}
 
 	verbose = rv = 0;
 	while ((ch = getopt(argc, argv, "v")) != -1) {
-		switch((char)ch) {
+		switch (ch) {
 		case 'v':
 			verbose = 1;
 			break;
@@ -64,13 +71,14 @@ main(int argc, char **argv)
 			usage();
 		}
 	}
+	argc -= optind;
 	argv += optind;
 
-	if (argv[0] == NULL || argv[1])
+	if ((is_dumpoff && argc != 0) || (!is_dumpoff && argc != 1))
 		usage();
 
 	path = argv[0];
-	if (strcmp(path, "off") == 0) {
+	if (is_dumpoff || strcmp(path, "off") == 0) {
 		stab.st_rdev = NODEV;
 	} else {
 		path = getdevpath(path, 0);
@@ -107,11 +115,12 @@ main(int argc, char **argv)
 	return 0;
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr,
 		"usage: dumpon [-v] special_file\n"
-		"       dumpon [-v] off\n");
+		"       dumpon [-v] off\n"
+		"       dumpoff [-v]\n");
 	exit(EX_USAGE);
 }
