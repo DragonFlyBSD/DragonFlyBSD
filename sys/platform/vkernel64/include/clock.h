@@ -24,8 +24,6 @@ typedef int64_t tsc_sclock_t;
  */
 extern int	adjkerntz;
 extern int	disable_rtc_set;
-extern u_int	timer_freq;
-extern int	timer0_max_count;
 extern int	tsc_present;
 extern int	tsc_invariant;
 extern int	tsc_mpsync;
