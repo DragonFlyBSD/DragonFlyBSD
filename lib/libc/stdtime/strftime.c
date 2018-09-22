@@ -463,11 +463,9 @@ label:
 					pt, ptlim);
 				continue;
 			case 'Z':
-#ifdef TM_ZONE
 				if (t->TM_ZONE != NULL)
 					pt = _add(t->TM_ZONE, pt, ptlim);
 				else
-#endif /* defined TM_ZONE */
 				if (t->tm_isdst >= 0)
 					pt = _add(tzname[t->tm_isdst != 0],
 						pt, ptlim);
@@ -484,33 +482,7 @@ label:
 
 				if (t->tm_isdst < 0)
 					continue;
-#ifdef TM_GMTOFF
 				diff = t->TM_GMTOFF;
-#else /* !defined TM_GMTOFF */
-				/*
-				 * C99 says that the UTC offset must
-				 * be computed by looking only at
-				 * tm_isdst. This requirement is
-				 * incorrect, since it means the code
-				 * must rely on magic (in this case
-				 * altzone and timezone), and the
-				 * magic might not have the correct
-				 * offset. Doing things correctly is
-				 * tricky and requires disobeying C99;
-				 * see GNU C strftime for details.
-				 * For now, punt and conform to the
-				 * standard, even though it's incorrect.
-				 *
-				 * C99 says that %z must be replaced by the
-				 * empty string if the time zone is not
-				 * determinable, so output nothing if the
-				 * appropriate variables are not available.
-				 */
-				if (t->tm_isdst == 0)
-					diff = -timezone;
-				else
-					continue;
-#endif /* !defined TM_GMTOFF */
 				if (diff < 0) {
 					sign = "-";
 					diff = -diff;

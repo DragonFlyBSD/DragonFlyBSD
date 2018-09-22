@@ -1343,9 +1343,7 @@ localsub(const time_t * const timep, const int_fast32_t offset __unused,
 	result = timesub(&t, ttisp->tt_gmtoff, sp, tmp);
 	tmp->tm_isdst = ttisp->tt_isdst;
 	tzname[tmp->tm_isdst] = &sp->chars[ttisp->tt_abbrind];
-#ifdef TM_ZONE
 	tmp->TM_ZONE = &sp->chars[ttisp->tt_abbrind];
-#endif /* defined TM_ZONE */
 	return result;
 }
 
@@ -1418,7 +1416,6 @@ gmtsub(const time_t * const timep, const int_fast32_t offset,
 
 	_once(&gmt_once, gmt_init);
 	result = timesub(timep, offset, gmtptr, tmp);
-#ifdef TM_ZONE
 	/*
 	** Could get fancy here and deliver something such as
 	** "UT+xxxx" or "UT-xxxx" if offset is non-zero,
@@ -1428,7 +1425,6 @@ gmtsub(const time_t * const timep, const int_fast32_t offset,
 		tmp->TM_ZONE = wildabbr;
 	else
 		tmp->TM_ZONE = gmtptr->chars;
-#endif /* defined TM_ZONE */
 	return result;
 }
 
@@ -1616,9 +1612,7 @@ timesub(const time_t * const timep, const int_fast32_t offset,
 		idays -= ip[tmp->tm_mon];
 	tmp->tm_mday = (int) (idays + 1);
 	tmp->tm_isdst = 0;
-#ifdef TM_GMTOFF
 	tmp->TM_GMTOFF = offset;
-#endif /* defined TM_GMTOFF */
 	return tmp;
 }
 

@@ -522,9 +522,7 @@ show(char *zone, time_t t, int v)
 			printf(" %s", abbr(tmp));
 		if (v) {
 			printf(" isdst=%d", tmp->tm_isdst);
-#ifdef TM_GMTOFF
 			printf(" gmtoff=%ld", tmp->TM_GMTOFF);
-#endif /* defined TM_GMTOFF */
 		}
 	}
 	printf("\n");
