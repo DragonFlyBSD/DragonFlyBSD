@@ -86,7 +86,7 @@ int ttm_mem_io_lock(struct ttm_mem_type_manager *man, bool interruptible)
 			return (0);
 	}
 
-	lockmgr(&man->io_reserve_mutex, LK_EXCLUSIVE);
+	mutex_lock(&man->io_reserve_mutex);
 	return 0;
 }
 EXPORT_SYMBOL(ttm_mem_io_lock);
@@ -96,7 +96,7 @@ void ttm_mem_io_unlock(struct ttm_mem_type_manager *man)
 	if (likely(man->io_reserve_fastpath))
 		return;
 
-	lockmgr(&man->io_reserve_mutex, LK_RELEASE);
+	mutex_unlock(&man->io_reserve_mutex);
 }
 EXPORT_SYMBOL(ttm_mem_io_unlock);
 

@@ -1629,9 +1629,9 @@ int ttm_bo_device_release(struct ttm_bo_device *bdev)
 		}
 	}
 
-	lockmgr(&glob->device_list_mutex, LK_EXCLUSIVE);
+	mutex_lock(&glob->device_list_mutex);
 	list_del(&bdev->device_list);
-	lockmgr(&glob->device_list_mutex, LK_RELEASE);
+	mutex_unlock(&glob->device_list_mutex);
 
 	cancel_delayed_work_sync(&bdev->wq);
 
@@ -1686,9 +1686,9 @@ int ttm_bo_device_init(struct ttm_bo_device *bdev,
 	bdev->need_dma32 = need_dma32;
 	bdev->val_seq = 0;
 	lockinit(&bdev->fence_lock, "ttmfence", 0, LK_CANRECURSE);
-	lockmgr(&glob->device_list_mutex, LK_EXCLUSIVE);
+	mutex_lock(&glob->device_list_mutex);
 	list_add_tail(&bdev->device_list, &glob->device_list);
-	lockmgr(&glob->device_list_mutex, LK_RELEASE);
+	mutex_unlock(&glob->device_list_mutex);
 
 	return 0;
 out_no_sys:
