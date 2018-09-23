@@ -53,7 +53,6 @@ ENTRY(bzero)
 	movq	%rsi,%rcx
 	xorl	%eax,%eax
 	shrq	$3,%rcx
-	cld
 	rep
 	stosq
 	movq	%rsi,%rcx
@@ -79,7 +78,6 @@ END(bzero)
 ENTRY(pagezero)
 	movq	$PAGE_SIZE>>3,%rcx
 	xorl	%eax,%eax
-	cld
 	rep
 	stosq
 	ret
@@ -104,7 +102,6 @@ END(pagezero)
 ENTRY(bcmp)
 	movq	%rdx,%rcx
 	shrq	$3,%rcx
-	cld					/* compare forwards */
 	repe
 	cmpsq
 	jne	1f
@@ -134,7 +131,6 @@ ENTRY(bcopy)
 	cmpq	%rcx,%rax			/* overlapping && src < dst? */
 	jb	2f
 
-	cld					/* nope, copy forwards */
 	shrq	$3,%rcx				/* copy by 64-bit words */
 	rep
 	movsq
@@ -188,7 +184,6 @@ ENTRY(memcpy)
 	movq	%rdi,%r8
 	movq	%rdx,%rcx
 	shrq	$3,%rcx				/* copy by 64-bit words */
-	cld					/* copy forwards */
 	rep
 	movsq
 	movq	%rdx,%rcx
@@ -208,7 +203,6 @@ ENTRY(fillw)
 	movq	%rdi,%rax
 	movq	%rsi,%rdi
 	movq	%rdx,%rcx
-	cld
 	rep
 	stosw
 	ret
@@ -286,7 +280,6 @@ ENTRY(std_copyout)
 	ja	copyout_fault
 
 	xchgq	%rdi,%rsi
-	cld
 	/* bcopy(%rsi, %rdi, %rdx) */
 	movq	%rdx,%rcx
 
@@ -339,7 +332,6 @@ ENTRY(std_copyin)
 	ja	copyin_fault
 
 	xchgq	%rdi,%rsi
-	cld
 	movq	%rdx,%rcx
 	shrq	$3,%rcx				/* copy longword-wise */
 	jz	1f
