@@ -232,12 +232,33 @@ quad_t	strtoq(const char *, char **, int) __nonnull(1);
 u_quad_t strtouq(const char *, char **, int) __nonnull(1);
 
 /*
- * note: some functions commonly used by device drivers may be passed
- * pointers to volatile storage, volatile set to avoid warnings.
+ * NOTE: some functions commonly used by device drivers may be passed
+ *       pointers to volatile storage, volatile set to avoid warnings.
+ *
+ * NOTE: When using builtin's, GCC does enormous optimizations and makes
+ *       a number of assumptions that can cause later unrelated conditionals
+ *       to be optimized out.  In the case of memset and memmove, GCC
+ *       assumes that (to) and (from) cannot be NULL (even when (len) might
+ *       be 0), and will optimize-out later NULL tests on (to) or (from).
  */
+#if 1
+#define bcopy(from, to, len)				\
+	__builtin_memmove(__DEQUALIFY(void *, (to)),	\
+			  __DEQUALIFY(void *, (from)),	\
+			  (len))
+#else
 void	bcopy(volatile const void *from, volatile void *to, size_t len)
 	    __nonnull(1, 2);
+#endif
+#if 1
+#define bzero(buf, len)					\
+	__builtin_memset(__DEQUALIFY(void *, (buf)), 0, (len))
+#else
 void	bzero(volatile void *buf, size_t len) __nonnull(1);
+#endif
+void	_bcopy(volatile const void *from, volatile void *to, size_t len)
+	    __nonnull(1, 2);
+void	_bzero(volatile void *buf, size_t len) __nonnull(1);
 void	bzeront(volatile void *buf, size_t len) __nonnull(1);
 void	*memcpy(void *to, const void *from, size_t len)
 	    __nonnull(1, 2);

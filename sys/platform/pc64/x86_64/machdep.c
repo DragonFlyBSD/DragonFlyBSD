@@ -744,7 +744,8 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	sf.sf_uc.uc_stack = lp->lwp_sigstk;
 	sf.sf_uc.uc_mcontext.mc_onstack = oonstack;
 	KKASSERT(__offsetof(struct trapframe, tf_rdi) == 0);
-	bcopy(regs, &sf.sf_uc.uc_mcontext.mc_rdi, sizeof(struct trapframe));
+	/* gcc errors out on optimized bcopy */
+	_bcopy(regs, &sf.sf_uc.uc_mcontext.mc_rdi, sizeof(struct trapframe));
 
 	/* Make the size of the saved context visible to userland */
 	sf.sf_uc.uc_mcontext.mc_len = sizeof(sf.sf_uc.uc_mcontext);
@@ -1017,7 +1018,9 @@ sys_sigreturn(struct sigreturn_args *uap)
 			trapsignal(lp, SIGBUS, T_PROTFLT);
 			return(EINVAL);
 		}
-		bcopy(&ucp->uc_mcontext.mc_rdi, regs, sizeof(struct trapframe));
+		/* gcc errors out on optimized bcopy */
+		_bcopy(&ucp->uc_mcontext.mc_rdi, regs,
+		       sizeof(struct trapframe));
 	}
 
 	/*

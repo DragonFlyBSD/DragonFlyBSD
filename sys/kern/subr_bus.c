@@ -1094,9 +1094,21 @@ devclass_alloc_unit(devclass_t dc, int *unitp)
 				 M_INTWAIT | M_ZERO);
 		if (newlist == NULL)
 			return(ENOMEM);
-		bcopy(dc->devices, newlist, sizeof(device_t) * dc->maxunit);
-		if (dc->devices)
+		/*
+		 * WARNING: Due to gcc builtin optimization,
+		 *	    calling bcopy causes gcc to assume
+		 *	    that the source and destination args
+		 *	    cannot be NULL and optimize-away later
+		 *	    conditional tests to determine if dc->devices
+		 *	    is NULL.  In this situation, in fact,
+		 *	    dc->devices CAN be NULL w/ maxunit == 0.
+		 */
+		if (dc->devices) {
+			bcopy(dc->devices,
+			      newlist,
+			      sizeof(device_t) * dc->maxunit);
 			kfree(dc->devices, M_BUS);
+		}
 		dc->devices = newlist;
 		dc->maxunit = newsize;
 	}

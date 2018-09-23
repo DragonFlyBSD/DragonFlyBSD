@@ -28,6 +28,8 @@
 
 #include <sys/libkern.h>
 
+#if 0
+/* moved to support.s.  interferes with bcopy macro */
 void *
 memmove(void *dest, const void *src, size_t n)
 {
@@ -35,3 +37,4 @@ memmove(void *dest, const void *src, size_t n)
 	bcopy(src, dest, n);
 	return (dest);
 }
+#endif

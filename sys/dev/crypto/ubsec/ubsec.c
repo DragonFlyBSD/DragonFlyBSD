@@ -851,7 +851,8 @@ ubsec_setup_mackey(struct ubsec_session *ses, int algo, caddr_t key, int klen)
 		MD5Init(&md5ctx);
 		MD5Update(&md5ctx, key, klen);
 		MD5Update(&md5ctx, hmac_ipad_buffer, MD5_HMAC_BLOCK_LEN - klen);
-		bcopy(&md5ctx.A, ses->ses_hminner, sizeof(md5ctx.A) * 4);
+		/* gcc8 craps out on -Warray-bounds w/ optimized bcopy */
+		_bcopy(&md5ctx.A, ses->ses_hminner, sizeof(md5ctx.A) * 4);
 	} else {
 		SHA1Init(&sha1ctx);
 		SHA1Update(&sha1ctx, key, klen);
@@ -867,7 +868,8 @@ ubsec_setup_mackey(struct ubsec_session *ses, int algo, caddr_t key, int klen)
 		MD5Init(&md5ctx);
 		MD5Update(&md5ctx, key, klen);
 		MD5Update(&md5ctx, hmac_opad_buffer, MD5_HMAC_BLOCK_LEN - klen);
-		bcopy(&md5ctx.A, ses->ses_hmouter, sizeof(md5ctx.A) * 4);
+		/* gcc8 craps out on -Warray-bounds w/ optimized bcopy */
+		_bcopy(&md5ctx.A, ses->ses_hmouter, sizeof(md5ctx.A) * 4);
 	} else {
 		SHA1Init(&sha1ctx);
 		SHA1Update(&sha1ctx, key, klen);

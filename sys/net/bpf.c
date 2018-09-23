@@ -1260,7 +1260,7 @@ bpf_tap(struct bpf_if *bp, u_char *pkt, u_int pktlen)
 				microtime(&tv);
 				gottime = 1;
 			}
-			catchpacket(d, pkt, pktlen, slen, bcopy, &tv);
+			catchpacket(d, pkt, pktlen, slen, _bcopy, &tv);
 		}
 	}
 	lwkt_reltoken(&bpf_token);

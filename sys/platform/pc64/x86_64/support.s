@@ -64,6 +64,39 @@ ENTRY(bzero)
 	ret
 END(bzero)
 
+	.weak	_bzero
+	.equ	_bzero, bzero
+
+/*
+ * void *memset(ptr:%rdi, char:%rsi, bytes:%rdx)
+ *
+ * Same as bzero except we load the char into all byte
+ * positions of %rax.  Returns original (ptr).
+ */
+ENTRY(memset)
+	movzbq	%sil,%r8
+	movabs  $0x0101010101010101,%rax
+	imulq   %r8,%rax
+
+	movq	%rdi,%r9
+	movq	%rdx,%rcx
+	shrq	$3,%rcx
+	rep
+	stosq
+	movq	%rdx,%rcx
+	andq	$7,%rcx
+	jnz	1f
+	movq	%r9,%rax
+	ret
+1:	rep
+	stosb
+	movq	%r9,%rax
+	ret
+END(memset)
+
+	.weak	_memset
+	.equ	_memset, memset
+
 /*
  * pagezero(ptr:%rdi)
  *
@@ -163,6 +196,60 @@ ENTRY(bcopy)
 	ret
 END(bcopy)
 
+	/*
+	 * Use in situations where a bcopy function pointer is needed.
+	 */
+	.weak	_bcopy
+	.equ	_bcopy, bcopy
+
+	/*
+	 * memmove(dst:%rdi, src:%rsi, cnt:%rdx)
+	 * (same as bcopy but without the xchgq, and must return (dst)).
+	 *
+	 * NOTE: gcc builtin backs-off to memmove() call
+	 *
+	 * NOTE: We leave %rdi in %rax for the return value.
+	 */
+ENTRY(memmove)
+	movq	%rdx,%rcx
+	movq	%rdi,%rax			/* return value */
+	movq	%rdi,%r8
+	subq	%rsi,%r8
+	cmpq	%rcx,%r8			/* overlapping && src < dst? */
+	jb	2f
+
+	shrq	$3,%rcx				/* copy by 64-bit words */
+	rep
+	movsq
+	movq	%rdx,%rcx
+	andq	$7,%rcx				/* any bytes left? */
+	jnz	1f
+	ret
+1:	rep
+	movsb
+	ret
+
+	ALIGN_TEXT
+2:
+	addq	%rcx,%rdi			/* copy backwards */
+	addq	%rcx,%rsi
+	std
+	decq	%rdi
+	decq	%rsi
+	andq	$7,%rcx				/* any fractional bytes? */
+	jz	3f
+	rep
+	movsb
+3:	movq	%rdx,%rcx			/* copy by 32-bit words */
+	shrq	$3,%rcx
+	subq	$7,%rsi
+	subq	$7,%rdi
+	rep
+	movsq
+	cld
+	ret
+END(memmove)
+
 ENTRY(reset_dbregs)
 	movq	$0x200,%rax	/* the manual says that bit 10 must be set to 1 */
 	movq	%rax,%dr7	/* disable all breapoints first */
@@ -178,7 +265,8 @@ END(reset_dbregs)
 /*
  * memcpy(dst:%rdi, src:%rsi, bytes:%rdx)
  *
- * Note: memcpy does not support overlapping copies
+ * NOTE: memcpy does not support overlapping copies
+ * NOTE: returns dst
  */
 ENTRY(memcpy)
 	movq	%rdi,%r8

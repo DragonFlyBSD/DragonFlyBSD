@@ -1203,7 +1203,7 @@ syscall2(struct trapframe *frame)
 	 * Its easier to copy up to the highest number of syscall arguments
 	 * passed in registers, which is 6, than to conditionalize it.
 	 */
-	__builtin_memcpy(argsdst, argp, sizeof(register_t) * optimized_regcnt);
+	bcopy(argp, argsdst, sizeof(register_t) * optimized_regcnt);
 
 	/*
 	 * Any arguments beyond available argument-passing registers must
