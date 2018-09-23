@@ -28,7 +28,7 @@
 .\"     From: @(#)swapon.8	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/sbin/dumpon/dumpon.8,v 1.11.2.12 2003/01/26 03:12:04 keramida Exp $
 .\"
-.Dd September 22, 2018
+.Dd September 23, 2018
 .Dt DUMPON 8
 .Os
 .Sh NAME
@@ -36,13 +36,10 @@
 .Nd "specify a device for crash dumps"
 .Sh SYNOPSIS
 .Nm
-.Op Fl v
 .Ar special_file
 .Nm
-.Op Fl v
 .Cm off
 .Nm dumpoff
-.Op Fl v
 .Sh DESCRIPTION
 The
 .Nm
@@ -58,18 +55,19 @@ controlled by the
 variable in the boot time configuration file
 .Pa /etc/rc.conf .
 .Pp
+The default type of kernel crash dump is the mini crash dump.
+Mini crash dumps hold only memory pages in use by the kernel.
+Alternatively, full memory dumps can be enabled by setting the
+.Va debug.minidump
+.Xr sysctl 8
+variable to 0.
+.Pp
 For most systems the size of the specified dump device must be at least
 the size of physical memory.
 Even though an additional header is added to the dump,
 the BIOS for a platform typically holds back some memory, so it is not usually
 necessary to size the dump device larger than the actual amount of RAM
 available in the machine.
-.Pp
-The
-.Fl v
-flag causes
-.Nm
-to be verbose about its activity.
 .Sh NOTES
 Since a
 .Xr panic 9
@@ -98,6 +96,10 @@ or if
 .Ar special_file
 is the text string:
 .Dq Li off .
+.Pp
+In order to change the device for crash dumps, one needs to run the
+.Nm dumpoff
+utility to disable the current dump device before configuring the new one.
 .Pp
 Since
 .Nm
