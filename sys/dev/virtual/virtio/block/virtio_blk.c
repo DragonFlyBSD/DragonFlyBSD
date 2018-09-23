@@ -917,7 +917,7 @@ vtblk_write_dump(struct vtblk_softc *sc, void *virtual, off_t offset,
 
 	req->vbr_bio = &bio;
 	bzero(&bio, sizeof(struct bio));
-	bzero(&buf, sizeof(struct buf));
+	bzero(&bp, sizeof(struct buf));
 
 	bio.bio_buf = &bp;
 	bp.b_cmd = BUF_CMD_WRITE;
