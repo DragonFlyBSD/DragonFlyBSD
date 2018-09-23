@@ -42,4 +42,6 @@
 
 #include <sys/file.h>	/* for struct file */
 
+struct address_space;
+
 #endif	/* _LINUX_FS_H_ */

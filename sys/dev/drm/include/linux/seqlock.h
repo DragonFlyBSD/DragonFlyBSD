@@ -36,7 +36,6 @@ typedef struct {
 	struct spinlock lock;
 } seqlock_t;
 
-
 static inline void
 seqlock_init(seqlock_t *sl)
 {
@@ -81,6 +80,16 @@ read_seqretry(const seqlock_t *sl, unsigned start)
 {
 	cpu_lfence();
 	return (sl->sequence != start);
+}
+
+typedef struct seqcount {
+	unsigned sequence;
+} seqcount_t;
+
+static inline void
+__seqcount_init(seqcount_t *s, const char *name, struct lock_class_key *key)
+{
+	s->sequence = 0;
 }
 
 #endif	/* _LINUX_SEQLOCK_H_ */

@@ -37,6 +37,8 @@
 #include <linux/workqueue.h>
 #include <asm/page.h>
 
+struct address_space;
+
 struct page {
 	struct vm_page pa_vmpage;
 };

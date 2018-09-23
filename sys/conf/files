@@ -2292,6 +2292,7 @@ dev/drm/linux_iomapping.c		optional drm compile-with "${NORMAL_C} -include $S/de
 dev/drm/linux_irq.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/linux_kobject.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/linux_list_sort.c		optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
+dev/drm/linux_reservation.c		optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/linux_scatterlist.c		optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/linux_shmem.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/linux_sort.c			optional drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"

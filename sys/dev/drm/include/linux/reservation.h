@@ -41,13 +41,45 @@
 
 #include <linux/ww_mutex.h>
 #include <linux/fence.h>
+#include <linux/slab.h>
+#include <linux/seqlock.h>
 #include <linux/rcupdate.h>
 
 extern struct ww_class reservation_ww_class;
+extern struct lock_class_key reservation_seqcount_class;
+extern const char reservation_seqcount_string[];
 
 struct reservation_object {
 	struct ww_mutex lock;
+	seqcount_t seq;
+
 	struct fence *fence_excl;
 };
+
+#define reservation_object_held(obj) lockdep_is_held(&(obj)->lock.base)
+#define reservation_object_assert_held(obj) \
+	lockdep_assert_held(&(obj)->lock.base)
+
+/**
+ * reservation_object_init - initialize a reservation object
+ * @obj: the reservation object
+ */
+static inline void
+reservation_object_init(struct reservation_object *obj)
+{
+	ww_mutex_init(&obj->lock, &reservation_ww_class);
+
+	__seqcount_init(&obj->seq, reservation_seqcount_string, &reservation_seqcount_class);
+}
+
+/**
+ * reservation_object_fini - destroys a reservation object
+ * @obj: the reservation object
+ */
+static inline void
+reservation_object_fini(struct reservation_object *obj)
+{
+	ww_mutex_destroy(&obj->lock);
+}
 
 #endif /* _LINUX_RESERVATION_H */

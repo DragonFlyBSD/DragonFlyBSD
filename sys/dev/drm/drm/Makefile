@@ -56,6 +56,7 @@ SRCS	= \
 	linux_irq.c \
 	linux_kobject.c \
 	linux_list_sort.c \
+	linux_reservation.c \
 	linux_scatterlist.c \
 	linux_shmem.c \
 	linux_sort.c \

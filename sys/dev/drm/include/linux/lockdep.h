@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,5 +34,8 @@ lockdep_assert_held(struct lock *l)
 }
 
 #define might_lock(lock) do { } while (0)
+
+struct lock_class_key {
+};
 
 #endif	/* _LINUX_LOCKDEP_H_ */

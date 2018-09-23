@@ -31,9 +31,6 @@
 #include <linux/export.h>
 #include <linux/wait.h>
 
-/* XXX this should go to dma-buf driver, for now just to avoid undef */
-DEFINE_WW_CLASS(reservation_ww_class);
-
 static void ttm_eu_backoff_reservation_locked(struct list_head *list,
 					      struct ww_acquire_ctx *ticket)
 {

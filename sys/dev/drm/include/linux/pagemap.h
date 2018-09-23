@@ -28,6 +28,7 @@
 #define _LINUX_PAGEMAP_H_
 
 #include <linux/mm.h>
+#include <linux/fs.h>
 #include <linux/list.h>
 #include <linux/highmem.h>
 #include <linux/compiler.h>
