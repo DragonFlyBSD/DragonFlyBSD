@@ -671,7 +671,6 @@ END(std_subyte)
 ENTRY(std_copyinstr)
 	movq	%rdx,%r8			/* %r8 = maxlen */
 	movq	%rcx,%r9			/* %r9 = *len */
-	xchgq	%rdi,%rsi			/* %rdi = from, %rsi = to */
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$cpystrflt,PCB_ONFAULT(%rcx)
@@ -680,7 +679,7 @@ ENTRY(std_copyinstr)
 	movq	$VM_MAX_USER_ADDRESS,%rax
 
 	/* make sure 'from' is within bounds */
-	subq	%rsi,%rax
+	subq	%rdi,%rax
 	jbe	cpystrflt
 
 	/* restrict maxlen to <= VM_MAX_USER_ADDRESS-from */
@@ -690,15 +689,16 @@ ENTRY(std_copyinstr)
 	movq	%rax,%r8
 1:
 	incq	%rdx
-	cld
 
 2:
 	decq	%rdx
 	jz	3f
 
-	lodsb
-	stosb
-	orb	%al,%al
+	movb	(%rdi),%al			/* faster than lodsb+stosb */
+	movb	%al,(%rsi)
+	leaq	1(%rdi),%rdi
+	leaq	1(%rsi),%rsi
+	testb	%al,%al
 	jnz	2b
 
 	/* Success -- 0 byte reached */
@@ -738,15 +738,16 @@ END(std_copyinstr)
 ENTRY(copystr)
 	movq	%rdx,%r8			/* %r8 = maxlen */
 
-	xchgq	%rdi,%rsi
 	incq	%rdx
-	cld
 1:
 	decq	%rdx
 	jz	4f
-	lodsb
-	stosb
-	orb	%al,%al
+
+	movb	(%rdi),%al			/* faster than lodsb+stosb */
+	movb	%al,(%rsi)
+	leaq	1(%rdi),%rdi
+	leaq	1(%rsi),%rsi
+	testb	%al,%al
 	jnz	1b
 
 	/* Success -- 0 byte reached */
