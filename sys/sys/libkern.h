@@ -142,8 +142,8 @@ char	*hexncpy(const u_char *, int, char *, int, const char *);
 /*
  * memset can't be an inline, it is used by gcc-4.x directly.
  */
-void	*memset(void *, int, size_t);
-void	*memmove(void *, const void *, size_t);
+/*void	*memset(void *, int, size_t);*/
+/*void	*memmove(void *, const void *, size_t);*/
 
 
 static __inline int

@@ -250,6 +250,9 @@ ENTRY(memmove)
 	ret
 END(memmove)
 
+	.weak	_memmove
+	.equ	_memmove, memmove
+
 ENTRY(reset_dbregs)
 	movq	$0x200,%rax	/* the manual says that bit 10 must be set to 1 */
 	movq	%rax,%dr7	/* disable all breapoints first */

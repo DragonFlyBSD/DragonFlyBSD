@@ -246,22 +246,35 @@ u_quad_t strtouq(const char *, char **, int) __nonnull(1);
 	__builtin_memmove(__DEQUALIFY(void *, (to)),	\
 			  __DEQUALIFY(void *, (from)),	\
 			  (len))
-#else
-void	bcopy(volatile const void *from, volatile void *to, size_t len)
-	    __nonnull(1, 2);
-#endif
-#if 1
+#define memcpy(to, from, len)				\
+	__builtin_memcpy(__DEQUALIFY(void *, (to)),	\
+			  __DEQUALIFY(void *, (from)),	\
+			  (len))
+#define memset(ptr, c, len)				\
+	__builtin_memset(__DEQUALIFY(void *, (ptr)), (c), (len))
+#define memmove(to, from, len)				\
+	__builtin_memmove(__DEQUALIFY(void *, (to)),	\
+			  __DEQUALIFY(void *, (from)),	\
+			  (len))
 #define bzero(buf, len)					\
 	__builtin_memset(__DEQUALIFY(void *, (buf)), 0, (len))
 #else
+void	bcopy(volatile const void *from, volatile void *to, size_t len)
+	    __nonnull(1, 2);
+void	*memcpy(void *to, const void *from, size_t len)
+	    __nonnull(1, 2);
+void	*memmove(void *, const void *, size_t);
+void	*memset(void *, int, size_t);
 void	bzero(volatile void *buf, size_t len) __nonnull(1);
 #endif
 void	_bcopy(volatile const void *from, volatile void *to, size_t len)
 	    __nonnull(1, 2);
+void	*_memcpy(void *to, const void *from, size_t len)
+	    __nonnull(1, 2);
+void	*_memmove(void *, const void *, size_t);
+void	*_memset(void *, int, size_t);
 void	_bzero(volatile void *buf, size_t len) __nonnull(1);
 void	bzeront(volatile void *buf, size_t len) __nonnull(1);
-void	*memcpy(void *to, const void *from, size_t len)
-	    __nonnull(1, 2);
 
 long	kreadmem64(const void *addr);
 

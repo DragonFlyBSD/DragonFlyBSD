@@ -60,8 +60,6 @@
 #include <sys/systm.h>
 #include <sys/module.h>
 #  define HAVE_MEMCPY
-#  define memcpy(d, s, n)	bcopy((s), (d), (n))
-#  define memset(d, v, n)	bzero((d), (n))
 #  define memcmp		bcmp
 
 #else
