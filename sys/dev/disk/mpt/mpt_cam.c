@@ -4789,7 +4789,7 @@ mpt_scsi_tgt_status(struct mpt_softc *mpt, union ccb *ccb, request_t *cmd_req,
 			} else {
 				mpt_prt(mpt, "mpt_scsi_tgt_status: CHECK CONDI"
 				    "TION but no sense data?\n");
-				memset(&rsp, 0, MPT_SENSE_SIZE);
+				memset(&rsp[8], 0, MPT_SENSE_SIZE);
 			}
 			for (i = 8; i < (8 + (MPT_SENSE_SIZE >> 2)); i++) {
 				rsp[i] = htobe32(rsp[i]);
