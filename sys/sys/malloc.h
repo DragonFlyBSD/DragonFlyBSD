@@ -181,6 +181,14 @@ void	kmalloc_set_unlimited(struct malloc_type *type);
 void	kmalloc_create(struct malloc_type **typep, const char *descr);
 void	kmalloc_destroy(struct malloc_type **typep);
 
+/*
+ * Debug and non-debug kmalloc() prototypes.
+ *
+ * The kmalloc() macro allows M_ZERO to be optimized external to
+ * the kmalloc() function.  When combined with the use a builtin
+ * for bzero() this can get rid of a considerable amount of overhead
+ * for M_ZERO based kmalloc() calls.
+ */
 #ifdef SLAB_DEBUG
 void	*kmalloc_debug(unsigned long size, struct malloc_type *type, int flags,
 			const char *file, int line) __malloclike __heedresult
@@ -192,17 +200,58 @@ char	*kstrdup_debug(const char *, struct malloc_type *,
 			const char *file, int line) __malloclike __heedresult;
 char	*kstrndup_debug(const char *, size_t maxlen, struct malloc_type *,
 			const char *file, int line) __malloclike __heedresult;
-#define kmalloc(size, type, flags)		\
-	kmalloc_debug(size, type, flags, __FILE__, __LINE__)
+#if 1
+#define kmalloc(size, type, flags) ({					\
+	void *_malloc_item;						\
+	size_t _size = (size);						\
+									\
+	if (__builtin_constant_p(size) &&				\
+	    __builtin_constant_p(flags) &&				\
+	    ((flags) & M_ZERO)) {					\
+		_malloc_item = kmalloc_debug(_size, type,		\
+					    (flags) & ~M_ZERO,		\
+					    __FILE__, __LINE__);	\
+		if (((flags) & (M_WAITOK|M_NULLOK)) == M_WAITOK ||	\
+		    __predict_true(_malloc_item != NULL)) {		\
+			bzero(_malloc_item, _size);			\
+		}							\
+	} else {							\
+	    _malloc_item = kmalloc_debug(_size, type, flags,		\
+				   __FILE__, __LINE__);			\
+	}								\
+	_malloc_item;							\
+})
+#endif
 #define krealloc(addr, size, type, flags)	\
 	krealloc_debug(addr, size, type, flags, __FILE__, __LINE__)
 #define kstrdup(str, type)			\
 	kstrdup_debug(str, type, __FILE__, __LINE__)
 #define kstrndup(str, maxlen, type)			\
 	kstrndup_debug(str, maxlen, type, __FILE__, __LINE__)
-#else
+
+#else	/* !SLAB_DEBUG */
+
 void	*kmalloc(unsigned long size, struct malloc_type *type, int flags)
 		 __malloclike __heedresult __alloc_size(1);
+#if 1
+#define kmalloc(size, type, flags) ({					\
+	void *_malloc_item;						\
+	size_t _size = (size);						\
+									\
+	if (__builtin_constant_p(size) &&				\
+	    __builtin_constant_p(flags) &&				\
+	    ((flags) & M_ZERO)) {					\
+		_malloc_item = kmalloc(_size, type, (flags) & ~M_ZERO);	\
+		if (((flags) & (M_WAITOK|M_NULLOK)) == M_WAITOK ||	\
+		    __predict_true(_malloc_item != NULL)) {		\
+			bzero(_malloc_item, _size);			\
+		}							\
+	} else {							\
+	    _malloc_item = kmalloc(_size, type, flags);			\
+	}								\
+	_malloc_item;							\
+})
+#endif
 void	*krealloc(void *addr, unsigned long size, struct malloc_type *type,
 		  int flags) __heedresult __alloc_size(2);
 char	*kstrdup(const char *, struct malloc_type *)

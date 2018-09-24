@@ -634,6 +634,9 @@ powerof2_size(unsigned long size)
  * MPSAFE
  */
 
+/* don't let kmalloc macro mess up function declaration */
+#undef kmalloc
+
 #ifdef SLAB_DEBUG
 void *
 kmalloc_debug(unsigned long size, struct malloc_type *type, int flags,
