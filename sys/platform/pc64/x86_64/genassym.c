@@ -93,9 +93,6 @@ ASSYM(KERNBASE,	KERNBASE);
 ASSYM(V_TRAP, offsetof(struct vmmeter, v_trap));
 ASSYM(V_SYSCALL, offsetof(struct vmmeter, v_syscall));
 ASSYM(V_INTR, offsetof(struct vmmeter, v_intr));
-ASSYM(V_FORWARDED_INTS, offsetof(struct vmmeter, v_forwarded_ints));
-ASSYM(V_FORWARDED_HITS, offsetof(struct vmmeter, v_forwarded_hits));
-ASSYM(V_FORWARDED_MISSES, offsetof(struct vmmeter, v_forwarded_misses));
 
 ASSYM(MAXCOMLEN, MAXCOMLEN);
 ASSYM(EFAULT, EFAULT);
