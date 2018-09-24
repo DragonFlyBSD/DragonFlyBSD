@@ -296,9 +296,6 @@ NETGRAPH_INIT(l2tp, &ng_l2tp_typestruct);
 #define L2TP_SEQ_CHECK(x)	do { } while (0)
 #endif
 
-/* memmove macro */
-#define memmove(d, s, l)	bcopy(s, d, l)
-
 /* Whether to use m_copypacket() or m_dup() */
 #define L2TP_COPY_MBUF		m_copypacket
 
@@ -795,6 +792,9 @@ ng_l2tp_recv_lower(node_p node, struct mbuf *m, meta_p meta)
 		memcpy(&nr, &mtod(m, u_int16_t *)[1], 2);
 		nr = ntohs(nr);
 		m_adj(m, 4);
+	} else {
+		nr = 0;	/* avoid gcc complaint */
+		ns = 0;	/* avoid gcc complaint */
 	}
 
 	/* Strip offset padding if present */

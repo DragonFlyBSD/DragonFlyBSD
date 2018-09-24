@@ -1471,6 +1471,9 @@ pf_normalize_tcp_stateful(struct mbuf *m, int off, struct pf_pdesc *pd,
 	KASSERT((src->scrub || dst->scrub), 
 	    ("pf_normalize_tcp_statefull: src->scrub && dst->scrub!"));
 
+	tsval = 0;	/* avoid gcc complaint */
+	tsecr = 0;	/* avoid gcc complaint */
+
 	/*
 	 * Enforce the minimum TTL seen for this connection.  Negate a common
 	 * technique to evade an intrusion detection system and confuse
