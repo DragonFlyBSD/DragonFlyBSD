@@ -38,7 +38,7 @@ struct sysmsg {
 	} sm_result;
 	struct trapframe *sm_frame;	 /* trapframe - saved user context */
 	void *sm_unused;
-};
+} __packed;
 
 struct lwp;
 union sysunion;

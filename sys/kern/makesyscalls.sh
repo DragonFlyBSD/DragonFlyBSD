@@ -115,7 +115,7 @@ s/\$//g
 		printf " */\n\n" > sysun
 		printf "union sysunion {\n" > sysun
 		printf "#ifdef _KERNEL /* header only applies in kernel */\n" > sysun
-		printf "\tstruct\tlwkt_msg lmsg;\n" > sysun
+		#printf "\tstruct\tlwkt_msg lmsg;\n" > sysun
 		printf "\tstruct\tsysmsg sysmsg;\n" > sysun
 		printf "#endif\n" > sysun
 

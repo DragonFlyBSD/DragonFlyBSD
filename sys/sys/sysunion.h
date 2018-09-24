@@ -7,7 +7,6 @@
 
 union sysunion {
 #ifdef _KERNEL /* header only applies in kernel */
-	struct	lwkt_msg lmsg;
 	struct	sysmsg sysmsg;
 #endif
 	struct	nosys_args nosys;

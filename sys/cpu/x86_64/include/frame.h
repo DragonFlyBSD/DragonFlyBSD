@@ -81,7 +81,7 @@ struct trapframe {
 #define tf_sp tf_rsp
 	register_t	tf_rsp;
 	register_t	tf_ss;
-};
+} __packed;
 
 /* Interrupt stack frame */
 
@@ -116,7 +116,7 @@ struct intrframe {
 	register_t	if_rflags;
 	register_t	if_rsp;
 	register_t	if_ss;
-};
+} __packed;
 
 /*
  * The trampframe is placed at the top of the trampoline page and
@@ -148,7 +148,7 @@ struct trampframe {
 	register_t	tr_pcb_gs_kernel; /* (used by nmi, dbg) */
 	register_t	tr_pcb_gs_saved;  /* (used by nmi) */
 	register_t	tr_pcb_cr3_saved; /* (used by nmi) */
-};
+} __packed;
 
 int	kdb_trap(int, int, struct trapframe *);
 
