@@ -113,14 +113,16 @@ done:
 int
 sys_getdomainname(struct getdomainname_args *uap)
 {
-	int domainnamelen;
+	size_t domainnamelen;
+	size_t len;
 	int error;
 
 	lwkt_gettoken_shared(&domain_token);
 	domainnamelen = strlen(domainname) + 1;
-	if ((u_int)uap->len > domainnamelen + 1)
-		uap->len = domainnamelen + 1;
-	error = copyout(domainname, uap->domainname, uap->len);
+	len = uap->len;
+	if (len > domainnamelen + 1)
+		len = domainnamelen + 1;
+	error = copyout(domainname, uap->domainname, len);
 	lwkt_reltoken(&domain_token);
 	return (error);
 }
