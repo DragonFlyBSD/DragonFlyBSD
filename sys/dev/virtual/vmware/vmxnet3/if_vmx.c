@@ -2002,18 +2002,7 @@ vmxnet3_newbuf(struct vmxnet3_softc *sc, struct vmxnet3_rxring *rxr)
 		clsize = MCLBYTES;
 		btype = VMXNET3_BTYPE_HEAD;
 	} else {
-#if __FreeBSD_version < 902001
-		/*
-		 * These mbufs will never be used for the start of a frame.
-		 * Roughly prior to branching releng/9.2, the load_mbuf_sg()
-		 * required the mbuf to always be a packet header. Avoid
-		 * unnecessary mbuf initialization in newer versions where
-		 * that is not the case.
-		 */
 		flags = M_PKTHDR;
-#else
-		flags = 0;
-#endif
 		clsize = MJUMPAGESIZE;
 		btype = VMXNET3_BTYPE_BODY;
 	}
@@ -2039,10 +2028,8 @@ vmxnet3_newbuf(struct vmxnet3_softc *sc, struct vmxnet3_rxring *rxr)
 	}
 	KASSERT(nsegs == 1,
 	    ("%s: mbuf %p with too many segments %d", __func__, m, nsegs));
-#if __FreeBSD_version < 902001
 	if (btype == VMXNET3_BTYPE_BODY)
 		m->m_flags &= ~M_PKTHDR;
-#endif
 
 	if (rxb->vrxb_m != NULL) {
 		bus_dmamap_sync(tag, rxb->vrxb_dmamap, BUS_DMASYNC_POSTREAD);
