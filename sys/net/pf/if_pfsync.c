@@ -29,6 +29,7 @@
 #include "opt_inet.h"
 #include "opt_inet6.h"
 #include "opt_carp.h"
+#include "use_bpf.h"
 
 #include <sys/param.h>
 #include <sys/endian.h>
@@ -172,11 +173,11 @@ pfsync_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	callout_init(&sc->sc_bulkfail_tmo);
 
 	if_attach(ifp, NULL);
-#if NBPFILTER > 0
+#if NBPF > 0
 	bpfattach(&sc->sc_if, DLT_PFSYNC, PFSYNC_HDRLEN);
 #endif
 
-#if NCARP > 0
+#ifdef CARP
 	if_addgroup(ifp, "carp");
 #endif
 
@@ -200,7 +201,7 @@ pfsync_clone_destroy(struct ifnet *ifp)
 	/* callout_stop(&sc->sc_tdb_tmo); XXX we don't support tdb (yet) */
 	callout_stop(&sc->sc_bulk_tmo);
 	callout_stop(&sc->sc_bulkfail_tmo);
-#if NCARP > 0
+#ifdef CARP
 	if (!pfsync_sync_ok)
 		carp_group_demote_adj(&sc->sc_if, -1);
 #endif
@@ -209,7 +210,7 @@ pfsync_clone_destroy(struct ifnet *ifp)
 	netmsg_init(&msg, NULL, &curthread->td_msgport, 0, netmsg_sync_handler);
 	netisr_domsg(&msg, 0);
 
-#if NBPFILTER > 0
+#if NBPF > 0
 	bpfdetach(ifp);
 #endif
 	if_detach(ifp);
@@ -975,7 +976,7 @@ pfsync_input(struct mbuf *m, ...)
 				lwkt_reltoken(&pf_token);
 				callout_stop(&sc->sc_bulkfail_tmo);
 				lwkt_gettoken(&pf_token);
-#if NCARP > 0
+#ifdef CARP
 				if (!pfsync_sync_ok) {
 					lwkt_reltoken(&pf_token);
 					carp_group_demote_adj(&sc->sc_if, -1);
@@ -1151,7 +1152,7 @@ pfsyncioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		    sc->sc_sendaddr.s_addr != INADDR_PFSYNC_GROUP) {
 			/* Request a full state table update. */
 			sc->sc_ureq_sent = mycpu->gd_time_seconds;
-#if NCARP > 0
+#ifdef CARP
 			if (pfsync_sync_ok)
 				carp_group_demote_adj(&sc->sc_if, 1);
 #endif
@@ -1642,7 +1643,7 @@ pfsync_bulkfail(void *v)
 		/* Pretend like the transfer was ok */
 		sc->sc_ureq_sent = 0;
 		sc->sc_bulk_tries = 0;
-#if NCARP > 0
+#ifdef CARP
 		if (!pfsync_sync_ok)
 			carp_group_demote_adj(&sc->sc_if, -1);
 #endif
@@ -1667,7 +1668,7 @@ pfsync_sendout_handler(netmsg_t nmsg)
 int
 pfsync_sendout(struct pfsync_softc *sc)
 {
-#if NBPFILTER > 0
+#if NBPF > 0
 	struct ifnet *ifp = &sc->sc_if;
 #endif
 	struct mbuf *m;
@@ -1685,11 +1686,11 @@ pfsync_sendout(struct pfsync_softc *sc)
 	sc->sc_mbuf = NULL;
 	sc->sc_statep.s = NULL;
 
-#if NBPFILTER > 0
+#if NBPF > 0
 	if (ifp->if_bpf) {
 		bpf_gettoken();
 		if (ifp->if_bpf)
-			bpf_mtap(ifp->if_bpf, m, BPF_DIRECTION_OUT);
+			bpf_mtap(ifp->if_bpf, m);
 		bpf_reltoken();
 	}
 #endif
