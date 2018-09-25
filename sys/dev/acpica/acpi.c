@@ -1299,15 +1299,15 @@ acpi_eval_osc(device_t dev, ACPI_HANDLE handle, const char *uuidstr,
     if (ACPI_FAILURE(status))
 	goto done;
     retobj = retbuf.Pointer;
-    error = ((uint32_t *)retobj->Buffer.Pointer)[0] & ACPI_OSCERR_MASK;
+    error = ((uint32_t *)retobj->Buffer.Pointer)[0] & ACPI_OSC_ERRMASK;
     if (error == 0)
 	goto done;
     status = AE_ERROR;
-    if (error & ACPI_OSCERR_OSCFAIL)
+    if (error & ACPI_OSCERR_FAILURE)
 	device_printf(dev, "_OSC unable to process request\n");
-    if (error & ACPI_OSCERR_UUID)
+    if (error & ACPI_OSCERR_BADUUID)
 	device_printf(dev, "_OSC unrecognized UUID (%s)\n", uuidstr);
-    if (error & ACPI_OSCERR_REVISION)
+    if (error & ACPI_OSCERR_BADREV)
 	device_printf(dev, "_OSC unrecognized revision ID (%d)\n", revision);
     if (error & ACPI_OSCERR_CAPSMASKED) {
 	if ((buf[0] & ACPI_OSC_QUERY_SUPPORT) == 0) {
@@ -1320,6 +1320,10 @@ acpi_eval_osc(device_t dev, ACPI_HANDLE handle, const char *uuidstr,
 	} else {
 	    status = AE_OK;
 	}
+    }
+    if (buf[0] & ACPI_OSC_QUERY_SUPPORT) {
+	for (i = 0; i < count; i++)
+	    buf[i] = ((uint32_t *)retobj->Buffer.Pointer)[i];
     }
 
 done:

@@ -195,10 +195,19 @@ extern struct lwkt_token acpi_token;
 #define	ACPI_INTR_SAPIC		2
 
 /*
- * Various features and capabilities for the acpi_get_features() method.
- * In particular, these are used for the ACPI 3.0 _PDC and _OSC methods.
- * See the Intel document titled "Intel Processor Vendor-Specific ACPI",
- * number 302223-005.
+ * Various features and capabilities for the acpi_eval_osc() method.
+ */
+#define	ACPI_OSC_QUERY_SUPPORT	(1 << 0) /* Query Support Flag */
+
+#define	ACPI_OSC_ERRMASK	0x0000001e
+#define	ACPI_OSCERR_FAILURE	(1 << 1) /* _OSC failure */
+#define	ACPI_OSCERR_BADUUID	(1 << 2) /* Unrecognized UUID */
+#define	ACPI_OSCERR_BADREV	(1 << 3) /* Unrecognized revision ID */
+#define	ACPI_OSCERR_CAPSMASKED	(1 << 4) /* Capabilities have been cleared */
+
+/*
+ * Intel CPU _OSC capabilities, see "Intel Processor Vendor-Specific ACPI",
+ * number 302223-007.
  */
 #define ACPI_PDC_PX_MSR		(1 << 0) /* Intel SpeedStep PERF_CTL MSRs */
 #define ACPI_PDC_MP_C1_IO_HALT	(1 << 1) /* Intel C1 "IO then halt" sequence */
@@ -211,14 +220,6 @@ extern struct lwkt_token acpi_token;
 #define ACPI_PDC_MP_C1_NATIVE	(1 << 8) /* MP C1 support other than halt */
 #define ACPI_PDC_MP_C2C3_NATIVE	(1 << 9) /* MP C2 and C3 support */
 #define ACPI_PDC_PX_HWCOORD	(1 << 11)/* Hardware coordination of Px */
-
-#define ACPI_OSC_QUERY_SUPPORT	(1 << 0) /* Query Support Flag */
-
-#define ACPI_OSCERR_OSCFAIL	(1 << 1) /* _OSC failure */
-#define ACPI_OSCERR_UUID	(1 << 2) /* Unrecognized UUID */
-#define ACPI_OSCERR_REVISION	(1 << 3) /* Unrecognized revision ID */
-#define ACPI_OSCERR_CAPSMASKED	(1 << 4) /* Capabilities have been cleared */
-#define ACPI_OSCERR_MASK	0x0000001e
 
 /*
  * Quirk flags.
