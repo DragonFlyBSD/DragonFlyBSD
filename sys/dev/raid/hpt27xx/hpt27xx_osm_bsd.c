@@ -1141,7 +1141,7 @@ static void hpt_final_init(void *dummy)
 	    S_IRUSR | S_IWUSR, driver_name);
 }
 
-#if defined(KLD_MODULE) && (__FreeBSD_version >= 503000)
+#if defined(KLD_MODULE)
 
 typedef struct driverlink *driverlink_t;
 struct driverlink {
