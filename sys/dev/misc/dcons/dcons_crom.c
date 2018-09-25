@@ -62,7 +62,7 @@
 
 static bus_addr_t dcons_paddr;
 
-#if __FreeBSD_version >= 500000
+#if 0 /* XXX __FreeBSD_version >= 500000 */
 static int force_console = 1;
 TUNABLE_INT("hw.firewire.dcons_crom.force_console", &force_console);
 #endif
@@ -145,7 +145,7 @@ dmamap_cb(void *arg, bus_dma_segment_t *segments, int seg, int error)
 	dcons_conf->dma_map = sc->dma_map;
 	dcons_paddr = sc->bus_addr;
 
-#if __FreeBSD_version >= 500000
+#if 0 /* XXX __FreeBSD_version >= 500000 */
 	/* Force to be the high-level console */
 	if (force_console)
 		cnselect(dcons_conf->cdev);
@@ -179,10 +179,6 @@ dcons_crom_attach(device_t dev)
 		/*nsegments*/ 1,
 		/*maxsegsz*/ BUS_SPACE_MAXSIZE_32BIT,
 		/*flags*/ BUS_DMA_ALLOCNOW,
-#if __FreeBSD_version >= 501102
-		/*lockfunc*/busdma_lock_mutex,
-		/*lockarg*/&Giant,
-#endif
 		&sc->dma_tag);
 	bus_dmamap_create(sc->dma_tag, 0, &sc->dma_map);
 	bus_dmamap_load(sc->dma_tag, sc->dma_map,
