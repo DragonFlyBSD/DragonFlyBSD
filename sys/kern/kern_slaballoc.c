@@ -1696,7 +1696,11 @@ kmalloc_cachealign(unsigned long size_alloc, struct malloc_type *type,
 	else if (!CAN_CACHEALIGN(size_alloc))
 		flags |= M_POWEROF2;
 
+#ifdef SLAB_DEBUG
+	ret = kmalloc_debug(size_alloc, type, flags, __FILE__, __LINE__);
+#else
 	ret = kmalloc(size_alloc, type, flags);
+#endif
 	KASSERT(((uintptr_t)ret & (__VM_CACHELINE_SIZE - 1)) == 0,
 	    ("%p(%lu) not cacheline %d aligned",
 	     ret, size_alloc, __VM_CACHELINE_SIZE));
