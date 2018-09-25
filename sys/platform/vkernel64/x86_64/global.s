@@ -95,3 +95,35 @@
 	.set	gd_ipending,globaldata + GD_IPENDING
 	.set	gd_spending,globaldata + GD_SPENDING
 	.set	gd_cnt,globaldata + GD_CNT
+
+	/*
+	 * This is a hack to allow us to use builtins for
+	 * these functions.  We need the underscore version
+	 * in situations where a function pointer is required.
+	 */
+	.text
+	.globl	_bzero
+	.globl	_bcopy
+	.globl	_memcmp
+	.globl	_memmove
+	.globl	_memcpy
+
+	ALIGN_TEXT
+_bzero:
+	jmp	bzero
+
+	ALIGN_TEXT
+_bcopy:
+	jmp	bcopy
+
+	ALIGN_TEXT
+_memcmp:
+	jmp	memcmp
+
+	ALIGN_TEXT
+_memmove:
+	jmp	memmove
+
+	ALIGN_TEXT
+_memcpy:
+	jmp	memcpy
