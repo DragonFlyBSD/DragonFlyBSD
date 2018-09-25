@@ -288,6 +288,9 @@ ENTRY(memcpy)
 	ret
 END(memcpy)
 
+	.weak	_memcpy
+	.equ	_memcpy, memcpy
+
 /* fillw(pat, base, cnt) */
 /*       %rdi,%rsi, %rdx */
 ENTRY(fillw)
