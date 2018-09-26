@@ -411,7 +411,7 @@ complete_raid5_write(struct rqelement *rqe)
 		    vinum_conf.active++;
 		    if (vinum_conf.active >= vinum_conf.maxactive)
 			vinum_conf.maxactive = vinum_conf.active;
-#if VINUMDEBUG
+#ifdef VINUMDEBUG
 		    if (debug & DEBUG_ADDRESSES)
 			log(LOG_DEBUG,
 			    "  %s dev %s, sd %d, offset 0x%jx, devoffset 0x%jx, length %d\n",
@@ -448,7 +448,7 @@ complete_raid5_write(struct rqelement *rqe)
     if (vinum_conf.active >= vinum_conf.maxactive)
 	vinum_conf.maxactive = vinum_conf.active;
 
-#if VINUMDEBUG
+#ifdef VINUMDEBUG
     if (debug & DEBUG_ADDRESSES)
 	log(LOG_DEBUG,
 	    "  %s dev %s, sd %d, offset 0x%jx, devoffset 0x%jx, length %d\n",

@@ -80,7 +80,7 @@ expand_table(void **table, int oldsize, int newsize)
     }
 }
 
-#if VINUMDEBUG						    /* XXX debug */
+#ifdef VINUMDEBUG					    /* XXX debug */
 #define MALLOCENTRIES 16384
 int malloccount = 0;
 int highwater = 0;					    /* highest index ever allocated */

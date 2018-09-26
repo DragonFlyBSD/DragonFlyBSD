@@ -123,7 +123,7 @@ set_drive_parms(struct drive *drive)
     bcopy(hostname, drive->label.sysname, VINUMHOSTNAMELEN); /* put in host name */
     getmicrotime(&drive->label.date_of_birth);		    /* and current time */
     drive->label.drive_size = drive->partinfo.media_size;
-#if VINUMDEBUG
+#ifdef VINUMDEBUG
     if (debug & DEBUG_BIGDRIVE)				    /* pretend we're 100 times as big */
 	drive->label.drive_size *= 100;
 #endif

@@ -45,7 +45,7 @@
 #include "request.h"
 
 /* Lock a drive, wait if it's in use */
-#if VINUMDEBUG
+#ifdef VINUMDEBUG
 int
 lockdrive(struct drive *drive, char *file, int line)
 #else

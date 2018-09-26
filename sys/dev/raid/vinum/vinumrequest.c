@@ -198,7 +198,7 @@ vinumstart(cdev_t dev, struct bio *bio, int reviveok)
 
     bio->bio_driver_info = dev;
 
-#if VINUMDEBUG
+#ifdef VINUMDEBUG
     if (debug & DEBUG_LASTREQS)
 	logrq(loginfo_user_bp, (union rqinfou) bio, bio);
 #endif
@@ -338,7 +338,7 @@ launch_requests(struct request *rq, int reviveok)
 	} else
 	    sd->waitlist = rq;				    /* hook our request at the front */
 
-#if VINUMDEBUG
+#ifdef VINUMDEBUG
 	if (debug & DEBUG_REVIVECONFLICT) {
 	    log(LOG_DEBUG,
 		"Revive conflict sd %d: %p\n%s dev %d.%d, offset 0x%jx, length %d\n",
@@ -354,7 +354,7 @@ launch_requests(struct request *rq, int reviveok)
 	return 0;					    /* and get out of here */
     }
     rq->active = 0;					    /* nothing yet */
-#if VINUMDEBUG
+#ifdef VINUMDEBUG
     if (debug & DEBUG_ADDRESSES)
 	log(LOG_DEBUG,
 	    "Request: %p\n%s dev %d.%d, offset 0x%jx, length %d\n",
@@ -624,7 +624,7 @@ bre(struct request *rq,
 		 */
 		if (rqe->sdoffset + rqe->datalen > sd->sectors) { /* ends beyond the end of the subdisk? */
 		    rqe->datalen = sd->sectors - rqe->sdoffset;	/* truncate */
-#if VINUMDEBUG
+#ifdef VINUMDEBUG
 		    if (debug & DEBUG_EOFINFO) {	    /* tell on the request */
 			log(LOG_DEBUG,
 			    "vinum: EOF on plex %s, sd %s offset %jx (user offset %jx)\n",
@@ -898,7 +898,7 @@ sdio(struct bio *bio)
 
     dev = bio->bio_driver_info;
 
-#if VINUMDEBUG
+#ifdef VINUMDEBUG
     if (debug & DEBUG_LASTREQS)
 	logrq(loginfo_sdio, (union rqinfou) bio, bio);
 #endif
@@ -961,7 +961,7 @@ sdio(struct bio *bio)
 	    return;
 	}
     }
-#if VINUMDEBUG
+#ifdef VINUMDEBUG
     if (debug & DEBUG_ADDRESSES)
 	log(LOG_DEBUG,
 	    "  %s dev %s, sd %d, offset 0x%jx, devoffset 0x%jx, length %d\n",
@@ -973,7 +973,7 @@ sdio(struct bio *bio)
 	    sbp->b.b_bcount);
 #endif
     crit_enter();
-#if VINUMDEBUG
+#ifdef VINUMDEBUG
     if (debug & DEBUG_LASTREQS)
 	logrq(loginfo_sdiol, (union rqinfou) &sbp->b.b_bio1, &sbp->b.b_bio1);
 #endif

@@ -196,7 +196,7 @@ revive_block(int sdno)
 	if (lock)					    /* we took a lock, */
 	    unlockrange(sd->plexno, lock);		    /* give it back */
 	while (sd->waitlist) {				    /* we have waiting requests */
-#if VINUMDEBUG
+#ifdef VINUMDEBUG
 	    struct request *rq = sd->waitlist;
 	    cdev_t dev;
 

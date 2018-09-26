@@ -250,7 +250,7 @@ struct devcode {
  * These definitions help catch
  * userland/kernel mismatches.
  */
-#if VINUMDEBUG
+#ifdef VINUMDEBUG
 
 /* normal super device */
 #define VINUM_WRONGSUPERDEV_NAME	VINUM_DIR "/control"
@@ -337,7 +337,7 @@ struct _vinum_conf {
 #define VINUM_MAXACTIVE  30000	/* max number of active requests */
 	int active;		/* current number of requests outstanding */
 	int maxactive;		/* max number of requests ever outstanding */
-#if VINUMDEBUG
+#ifdef VINUMDEBUG
 	struct request *lastrq;
 	struct bio *lastbio;
 #endif

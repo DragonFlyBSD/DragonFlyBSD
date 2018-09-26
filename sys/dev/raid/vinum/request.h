@@ -47,7 +47,7 @@ enum xferinfo {
 	XFR_PARITY_BLOCK = 0x80,	/* parity block in request */
 	XFR_BAD_SUBDISK = 0x100,	/* this subdisk is dead */
 	XFR_MALLOCED = 0x200,		/* this buffer is malloced */
-#if VINUMDEBUG
+#ifdef VINUMDEBUG
 	XFR_PHASE2 = 0x800,		/* debug only: 2nd phase write */
 #endif
 	XFR_REVIVECONFLICT = 0x1000,	/* possible conflict with a revive */
