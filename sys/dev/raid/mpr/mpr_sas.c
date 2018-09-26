@@ -64,7 +64,7 @@
 #include <bus/cam/cam_periph.h>
 #include <bus/cam/scsi/scsi_all.h>
 #include <bus/cam/scsi/scsi_message.h>
-#if __FreeBSD_version >= 900026
+#if 0 /* __FreeBSD_version >= 900026 */
 #include <bus/cam/scsi/smp_all.h>
 #endif
 
@@ -128,8 +128,8 @@ static int mprsas_send_abort(struct mpr_softc *sc, struct mpr_command *tm,
 void mprsas_rescan_callback(struct cam_periph *, union ccb *);
 static void mprsas_async(void *callback_arg, uint32_t code,
     struct cam_path *path, void *arg);
-#if (__FreeBSD_version < 901503) || \
-    ((__FreeBSD_version >= 1000000) && (__FreeBSD_version < 1000006))
+#if 1 /* (__FreeBSD_version < 901503) || \
+    ((__FreeBSD_version >= 1000000) && (__FreeBSD_version < 1000006)) */
 static void mprsas_check_eedp(struct mpr_softc *sc, struct cam_path *path,
     struct ccb_getdev *cgd);
 static void mprsas_read_cap_done(struct cam_periph *periph,
@@ -139,7 +139,7 @@ static int mprsas_send_portenable(struct mpr_softc *sc);
 static void mprsas_portenable_complete(struct mpr_softc *sc,
     struct mpr_command *cm);
 
-#if __FreeBSD_version >= 900026
+#if 0 /* __FreeBSD_version >= 900026 */
 static void mprsas_smpio_complete(struct mpr_softc *sc, struct mpr_command *cm);
 static void mprsas_send_smpcmd(struct mprsas_softc *sassc, union ccb *ccb,
     uint64_t sasaddr);
@@ -179,8 +179,8 @@ mprsas_startup_increment(struct mprsas_softc *sassc)
 			/* just starting, freeze the simq */
 			mpr_dprint(sassc->sc, MPR_INIT,
 			    "%s freezing simq\n", __func__);
-#if (__FreeBSD_version >= 1000039) || \
-    ((__FreeBSD_version < 1000000) && (__FreeBSD_version >= 902502))
+#if 0 /* (__FreeBSD_version >= 1000039) || \
+    ((__FreeBSD_version < 1000000) && (__FreeBSD_version >= 902502)) */
 			xpt_hold_boot();
 #endif
 			xpt_freeze_simq(sassc->sim, 1);
@@ -214,8 +214,8 @@ mprsas_startup_decrement(struct mprsas_softc *sassc)
 			    "%s releasing simq\n", __func__);
 			sassc->flags &= ~MPRSAS_IN_STARTUP;
 			xpt_release_simq(sassc->sim, 1);
-#if (__FreeBSD_version >= 1000039) || \
-    ((__FreeBSD_version < 1000000) && (__FreeBSD_version >= 902502))
+#if 0 /* (__FreeBSD_version >= 1000039) || \
+    ((__FreeBSD_version < 1000000) && (__FreeBSD_version >= 902502)) */
 			xpt_release_boot();
 #else
 			mprsas_rescan_target(sassc->sc, NULL);
@@ -835,8 +835,8 @@ mpr_attach_sas(struct mpr_softc *sc)
 	} else {
 		int event;
 
-#if (__FreeBSD_version >= 1000006) || \
-    ((__FreeBSD_version >= 901503) && (__FreeBSD_version < 1000000))
+#if 0 /* (__FreeBSD_version >= 1000006) || \
+    ((__FreeBSD_version >= 901503) && (__FreeBSD_version < 1000000)) */
 		event = AC_ADVINFO_CHANGED | AC_FOUND_DEVICE;
 #else
 		event = AC_FOUND_DEVICE;
@@ -873,8 +873,8 @@ mpr_attach_sas(struct mpr_softc *sc)
 		 * change.
 		 */
 
-#if (__FreeBSD_version < 1000703) || \
-    ((__FreeBSD_version >= 1100000) && (__FreeBSD_version < 1100002))
+#if 1 /* (__FreeBSD_version < 1000703) || \
+    ((__FreeBSD_version >= 1100000) && (__FreeBSD_version < 1100002)) */
 		mpr_unlock(sc);
 		status = xpt_register_async(event, mprsas_async, sc,
 					    NULL);
@@ -1023,8 +1023,8 @@ mprsas_action(struct cam_sim *sim, union ccb *ccb)
 		cpi->version_num = 1;
 		cpi->hba_inquiry = PI_SDTR_ABLE|PI_TAG_ABLE|PI_WIDE_16;
 		cpi->target_sprt = 0;
-#if (__FreeBSD_version >= 1000039) || \
-    ((__FreeBSD_version < 1000000) && (__FreeBSD_version >= 902502))
+#if 0 /* (__FreeBSD_version >= 1000039) || \
+    ((__FreeBSD_version < 1000000) && (__FreeBSD_version >= 902502)) */
 		cpi->hba_misc = PIM_NOBUSRESET | PIM_UNMAPPED | PIM_NOSCAN;
 #elif defined(__DragonFly__)
 		cpi->hba_misc = PIM_NOBUSRESET;
@@ -1126,7 +1126,7 @@ mprsas_action(struct cam_sim *sim, union ccb *ccb)
 	case XPT_SCSI_IO:
 		mprsas_action_scsiio(sassc, ccb);
 		return;
-#if __FreeBSD_version >= 900026
+#if 0 /* __FreeBSD_version >= 900026 */
 	case XPT_SMP_IO:
 		mprsas_action_smpio(sassc, ccb);
 		return;
@@ -1769,7 +1769,7 @@ mprsas_build_nvme_unmap(struct mpr_softc *sc, struct mpr_command *cm,
 	uint64_t nvme_dsm_ranges_dma_handle;
 
 	csio = &ccb->csio;
-#if __FreeBSD_version >= 1100103
+#if 0 /* __FreeBSD_version >= 1100103 */
 	list_len = (scsiio_cdb_ptr(csio)[7] << 8 | scsiio_cdb_ptr(csio)[8]);
 #else
 	if (csio->ccb_h.flags & CAM_CDB_POINTER) {
@@ -1876,7 +1876,7 @@ mprsas_build_nvme_unmap(struct mpr_softc *sc, struct mpr_command *cm,
 	    MPI26_REQ_DESCRIPT_FLAGS_PCIE_ENCAPSULATED;
 
 	csio->ccb_h.qos.sim_data = sbinuptime();
-#if __FreeBSD_version >= 1000029
+#if 0 /* __FreeBSD_version >= 1000029 */
 	callout_reset_sbt(&cm->cm_callout, SBT_1MS * ccb->ccb_h.timeout, 0,
 	    mprsas_scsiio_timeout, cm, 0);
 #else //__FreeBSD_version < 1000029
@@ -2009,7 +2009,7 @@ mprsas_action_scsiio(struct mprsas_softc *sassc, union ccb *ccb)
 	/* For NVME device's issue UNMAP command directly to NVME drives by
 	 * constructing equivalent native NVMe DataSetManagement command.
 	 */
-#if __FreeBSD_version >= 1100103
+#if 0 /* __FreeBSD_version >= 1100103 */
 	scsi_opcode = scsiio_cdb_ptr(csio)[0];
 #else
 	if (csio->ccb_h.flags & CAM_CDB_POINTER)
@@ -2205,7 +2205,7 @@ mprsas_action_scsiio(struct mprsas_softc *sassc, union ccb *ccb)
 #if 0 /* XXX swildner sbintime */
 	csio->ccb_h.qos.sim_data = sbinuptime();
 #endif
-#if __FreeBSD_version >= 1000029
+#if 0 /* __FreeBSD_version >= 1000029 */
 	callout_reset_sbt(&cm->cm_callout, SBT_1MS * ccb->ccb_h.timeout, 0,
 	    mprsas_scsiio_timeout, cm, 0);
 #else //__FreeBSD_version < 1000029
@@ -2597,7 +2597,7 @@ mprsas_scsiio_complete(struct mpr_softc *sc, struct mpr_command *cm)
 	 * flag, and use it in a few places in the rest of this function for
 	 * convenience. Use the macro if available.
 	 */
-#if __FreeBSD_version >= 1100103
+#if 0 /* __FreeBSD_version >= 1100103 */
 	scsi_cdb = scsiio_cdb_ptr(csio);
 #else
 	if (csio->ccb_h.flags & CAM_CDB_POINTER)
@@ -2910,7 +2910,7 @@ mprsas_scsiio_complete(struct mpr_softc *sc, struct mpr_command *cm)
 	xpt_done(ccb);
 }
 
-#if __FreeBSD_version >= 900026
+#if 0 /* __FreeBSD_version >= 900026 */
 static void
 mprsas_smpio_complete(struct mpr_softc *sc, struct mpr_command *cm)
 {
@@ -2988,8 +2988,8 @@ mprsas_send_smpcmd(struct mprsas_softc *sassc, union ccb *ccb, uint64_t sasaddr)
 	sg = NULL;
 	error = 0;
 
-#if (__FreeBSD_version >= 1000028) || \
-    ((__FreeBSD_version >= 902001) && (__FreeBSD_version < 1000000))
+#if 0 /* (__FreeBSD_version >= 1000028) || \
+    ((__FreeBSD_version >= 902001) && (__FreeBSD_version < 1000000)) */
 	switch (ccb->ccb_h.flags & CAM_DATA_MASK) {
 	case CAM_DATA_PADDR:
 	case CAM_DATA_SG_PADDR:
@@ -3454,8 +3454,8 @@ mprsas_async(void *callback_arg, uint32_t code, struct cam_path *path,
 	sc = (struct mpr_softc *)callback_arg;
 
 	switch (code) {
-#if (__FreeBSD_version >= 1000006) || \
-    ((__FreeBSD_version >= 901503) && (__FreeBSD_version < 1000000))
+#if 0 /* (__FreeBSD_version >= 1000006) || \
+    ((__FreeBSD_version >= 901503) && (__FreeBSD_version < 1000000)) */
 	case AC_ADVINFO_CHANGED: {
 		struct mprsas_target *target;
 		struct mprsas_softc *sassc;
@@ -3483,8 +3483,8 @@ mprsas_async(void *callback_arg, uint32_t code, struct cam_path *path,
 		 * for all events and filter out the events that don't
 		 * apply to us.
 		 */
-#if (__FreeBSD_version < 1000703) || \
-    ((__FreeBSD_version >= 1100000) && (__FreeBSD_version < 1100002))
+#if 1 /* (__FreeBSD_version < 1000703) || \
+    ((__FreeBSD_version >= 1100000) && (__FreeBSD_version < 1100002)) */
 		if (xpt_path_path_id(path) != sassc->sim->path_id)
 			break;
 #endif
@@ -3525,8 +3525,8 @@ mprsas_async(void *callback_arg, uint32_t code, struct cam_path *path,
 		cdai.ccb_h.func_code = XPT_DEV_ADVINFO;
 		cdai.ccb_h.flags = CAM_DIR_IN;
 		cdai.buftype = CDAI_TYPE_RCAPLONG;
-#if (__FreeBSD_version >= 1100061) || \
-    ((__FreeBSD_version >= 1001510) && (__FreeBSD_version < 1100000))
+#if 0 /* (__FreeBSD_version >= 1100061) || \
+    ((__FreeBSD_version >= 1001510) && (__FreeBSD_version < 1100000)) */
 		cdai.flags = CDAI_FLAG_NONE;
 #else
 		cdai.flags = 0;
@@ -3568,15 +3568,15 @@ mprsas_async(void *callback_arg, uint32_t code, struct cam_path *path,
 		 * for all events and filter out the events that don't
 		 * apply to us.
 		 */
-#if (__FreeBSD_version < 1000703) || \
-    ((__FreeBSD_version >= 1100000) && (__FreeBSD_version < 1100002))
+#if 1 /* (__FreeBSD_version < 1000703) || \
+    ((__FreeBSD_version >= 1100000) && (__FreeBSD_version < 1100002)) */
 		if (xpt_path_path_id(path) != sc->sassc->sim->path_id)
 			break;
 #endif
 
 		cgd = arg;
-#if (__FreeBSD_version < 901503) || \
-    ((__FreeBSD_version >= 1000000) && (__FreeBSD_version < 1000006))
+#if 1 /* (__FreeBSD_version < 901503) || \
+    ((__FreeBSD_version >= 1000000) && (__FreeBSD_version < 1000006)) */
 		mprsas_check_eedp(sc, path, cgd);
 #endif
 		break;
@@ -3586,8 +3586,8 @@ mprsas_async(void *callback_arg, uint32_t code, struct cam_path *path,
 	}
 }
 
-#if (__FreeBSD_version < 901503) || \
-    ((__FreeBSD_version >= 1000000) && (__FreeBSD_version < 1000006))
+#if 1 /* (__FreeBSD_version < 901503) || \
+    ((__FreeBSD_version >= 1000000) && (__FreeBSD_version < 1000006)) */
 static void
 mprsas_check_eedp(struct mpr_softc *sc, struct cam_path *path,
     struct ccb_getdev *cgd)

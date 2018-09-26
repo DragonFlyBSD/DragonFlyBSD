@@ -865,7 +865,7 @@ SYSCTL_DECL(_hw_mpr);
 #define MPR_PRIORITY_XPT	5
 #endif
 
-#if __FreeBSD_version < 800107
+#if 1 /* __FreeBSD_version < 800107 */
 // Prior to FreeBSD-8.0 scp3_flags was not defined.
 #define spc3_flags reserved
 
