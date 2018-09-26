@@ -1831,7 +1831,7 @@ ntfs_runtocn(cn_t *cn,	struct ntfsmount *ntmp, u_int8_t *run, u_long len,
 	u_long          off = 0;
 	int             error = 0;
 
-#if NTFS_DEBUG
+#ifdef NTFS_DEBUG
 	int             i;
 	kprintf("ntfs_runtocn: run: 0x%p, %ld bytes, vcn:%ld\n",
 		run, len, (u_long) vcn);

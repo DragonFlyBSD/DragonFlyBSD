@@ -487,7 +487,7 @@ ntfs_open(struct vop_open_args *ap)
 static int
 ntfs_close(struct vop_close_args *ap)
 {
-#if NTFS_DEBUG
+#ifdef NTFS_DEBUG
 	struct vnode *vp = ap->a_vp;
 	struct ntnode *ip = VTONT(vp);
 
@@ -658,7 +658,7 @@ ntfs_lookup(struct vop_old_lookup_args *ap)
 	struct componentname *cnp = ap->a_cnp;
 	int error;
 	int lockparent = cnp->cn_flags & CNP_LOCKPARENT;
-#if NTFS_DEBUG
+#ifdef NTFS_DEBUG
 	int wantparent = cnp->cn_flags & (CNP_LOCKPARENT | CNP_WANTPARENT);
 #endif
 	dprintf(("ntfs_lookup: \"%.*s\" (%ld bytes) in %ju, lp: %d, wp: %d \n",
