@@ -33,6 +33,9 @@
 
 #include "opt_vga.h"
 #include "opt_fb.h"
+#ifndef FB_DEBUG
+#define	FB_DEBUG	0
+#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
