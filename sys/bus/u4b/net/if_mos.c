@@ -738,7 +738,7 @@ mos_attach_post(struct usb_ether *ue)
 {
 	struct mos_softc *sc = uether_getsc(ue);
 	int err;
-#if USB_DEBUG
+#ifdef USB_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
 #endif
 
