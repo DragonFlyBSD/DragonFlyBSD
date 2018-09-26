@@ -494,7 +494,7 @@ dcons_drv_init(int stage)
 ok:
 	dcons_buf = dg.buf;
 
-#if DDB && DCONS_FORCE_GDB
+#if defined(DDB) && DCONS_FORCE_GDB
 	if (gdb_tab == NULL) {
 		gdb_tab = &dcons_consdev;
 		dcons_consdev.cn_gdbprivate = &sc[DCONS_GDB];
@@ -608,7 +608,7 @@ dcons_modevent(module_t mode, int type, void *data)
 	case MOD_UNLOAD:
 		kprintf("dcons: unload\n");
 		callout_stop(&dcons_callout);
-#if DDB && DCONS_FORCE_GDB
+#if defined(DDB) && DCONS_FORCE_GDB
 #ifdef CONS_NODEV
 		gdb_arg = NULL;
 #else
