@@ -1013,12 +1013,12 @@ trap_fatal(struct trapframe *frame, int usermode, vm_offset_t eva)
 void
 dblfault_handler(void)
 {
-#if JG
+#if 0 /* JG */
 	struct mdglobaldata *gd = mdcpu;
 #endif
 
 	kprintf("\nFatal double fault:\n");
-#if JG
+#if 0 /* JG */
 	kprintf("rip = 0x%lx\n", gd->gd_common_tss.tss_rip);
 	kprintf("rsp = 0x%lx\n", gd->gd_common_tss.tss_rsp);
 	kprintf("rbp = 0x%lx\n", gd->gd_common_tss.tss_rbp);

@@ -678,7 +678,7 @@ init_kern_memory(void)
 				 ~(vm_paddr_t)PAGE_MASK;
 	phys_avail[0].phys_end = Maxmem_bytes;
 
-#if JGV
+#if 0 /* JGV */
 	/*
 	 * (virtual_start, virtual_end) represent unallocated kernel virtual
 	 * memory.  MI code will create kernel_map using these parameters.

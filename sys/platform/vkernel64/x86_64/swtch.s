@@ -371,7 +371,7 @@ ENTRY(cpu_heavy_restore)
 	movq	PCB_EXT(%rdx),%rdi	/* check for a PCB extension */
 	movq	$1,%rcx			/* maybe mark use of a private tss */
 	testq	%rdi,%rdi
-#if JG
+#if 0 /* JG */
 	jnz	2f
 #endif
 
@@ -385,7 +385,7 @@ ENTRY(cpu_heavy_restore)
 	movq	%rcx, PCPU(common_tss) + TSS_RSP0
 	movq	%rcx, PCPU(rsp0)
 
-#if JG
+#if 0 /* JG */
 	cmpl	$0,PCPU(private_tss)	/* don't have to reload if      */
 	je	3f			/* already using the common TSS */
 

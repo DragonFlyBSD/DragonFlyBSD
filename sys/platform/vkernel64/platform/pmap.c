@@ -594,7 +594,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr, int64_t ptov_offset)
 	 */
 	SYSMAP(caddr_t, CMAP1, CADDR1, 1)
 
-#if JGV
+#if 0 /* JGV */
 	/*
 	 * Crashdump maps.
 	 */
