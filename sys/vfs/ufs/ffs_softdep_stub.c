@@ -33,7 +33,6 @@
  *
  *	from: @(#)ffs_softdep_stub.c	9.1 (McKusick) 7/10/97
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep_stub.c,v 1.7.2.1 2000/12/28 11:01:45 ps Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep_stub.c,v 1.8 2006/05/06 16:20:19 dillon Exp $
  */
 
 /* 
@@ -45,7 +44,7 @@
  */
 
 #include "opt_ffs.h"
-#if (SOFTUPDATES == 0 ) /* SOFTUPDATES not configured in, use these stubs. */
+#ifndef SOFTUPDATES /* SOFTUPDATES not configured in, use these stubs. */
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
