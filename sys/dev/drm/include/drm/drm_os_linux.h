@@ -20,8 +20,10 @@
 #    define DRM_DEBUG_DEFAULT_ON 1
 #  endif
 #undef DRM_DEBUG
+#else /* !DRM_DEBUG */
+#  define DRM_DEBUG_DEFAULT_ON 0
 #endif /* DRM_DEBUG */
-#endif /* DragonFly */
+#endif /* __DragonFly__ */
 
 #ifndef readq
 static inline u64 readq(void __iomem *reg)
