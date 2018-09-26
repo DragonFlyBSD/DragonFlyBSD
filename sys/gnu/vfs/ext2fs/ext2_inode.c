@@ -142,7 +142,7 @@ kprintf("ext2_truncate called %d to %d\n", VTOI(ovp)->i_number, length);
 	oip = VTOI(ovp);
 	if (ovp->v_type == VLNK &&
 	    oip->i_size < ovp->v_mount->mnt_maxsymlinklen) {
-#if DIAGNOSTIC
+#ifdef DIAGNOSTIC
 		if (length != 0)
 			panic("ext2_truncate: partial truncate of symlink");
 #endif
@@ -155,7 +155,7 @@ kprintf("ext2_truncate called %d to %d\n", VTOI(ovp)->i_number, length);
 		oip->i_flag |= IN_CHANGE | IN_UPDATE;
 		return (EXT2_UPDATE(ovp, 0));
 	}
-#if QUOTA
+#ifdef QUOTA
 	if ((error = ext2_getinoquota(oip)) != 0)
 		return (error);
 #endif
@@ -326,7 +326,7 @@ kprintf("ext2_truncate called %d to %d\n", VTOI(ovp)->i_number, length);
 		}
 	}
 done:
-#if DIAGNOSTIC
+#ifdef DIAGNOSTIC
 	for (level = SINGLE; level <= TRIPLE; level++)
 		if (newblks[NDADDR + level] != oip->i_ib[level])
 			panic("itrunc1");
@@ -346,7 +346,7 @@ done:
 		oip->i_blocks = 0;
 	oip->i_flag |= IN_CHANGE;
 	vnode_pager_setsize(ovp, length);
-#if QUOTA
+#ifdef QUOTA
 	ext2_chkdq(oip, -blocksreleased, NOCRED, 0);
 #endif
 	return (allerror);

@@ -868,12 +868,12 @@ ext2_flushfiles(struct mount *mp, int flags)
 {
 	struct ext2_mount *ump;
 	int error;
-#if QUOTA
+#ifdef QUOTA
 	int i;
 #endif
 
 	ump = VFSTOEXT2(mp);
-#if QUOTA
+#ifdef QUOTA
 	if (mp->mnt_flag & MNT_QUOTA) {
 		if ((error = vflush(mp, 0, SKIPSYSTEM|flags)) != 0)
 			return (error);
@@ -937,7 +937,7 @@ ext2_sync(struct mount *mp, int waitfor)
 			scaninfo.allerror = error;
 		vn_unlock(ump->um_devvp);
 	}
-#if QUOTA
+#ifdef QUOTA
 	ext2_qsync(mp);
 #endif
 	/*
@@ -1033,7 +1033,7 @@ restart:
 	ip->i_e2fs = fs = ump->um_e2fs;
 	ip->i_dev = dev;
 	ip->i_number = ino;
-#if QUOTA
+#ifdef QUOTA
 	for (i = 0; i < MAXQUOTAS; i++)
 		ip->i_dquot[i] = NODQUOT;
 #endif

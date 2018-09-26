@@ -102,13 +102,13 @@ ext2_alloc(struct inode *ip, daddr_t lbn, daddr_t bpref, int size,
 {
 	struct ext2_sb_info *fs;
 	daddr_t bno;
-#if QUOTA
+#ifdef QUOTA
 	int error;
 #endif
 
 	*bnp = 0;
 	fs = ip->i_e2fs;
-#if DIAGNOSTIC
+#ifdef DIAGNOSTIC
 	if ((u_int)size > fs->s_blocksize || blkoff(fs, size) != 0) {
 		kprintf("dev = %s, bsize = %lu, size = %d, fs = %s\n",
 		    devtoname(ip->i_dev), fs->s_blocksize, size, fs->fs_fsmnt);
@@ -122,7 +122,7 @@ ext2_alloc(struct inode *ip, daddr_t lbn, daddr_t bpref, int size,
 	if (cred->cr_uid != 0 &&
 		fs->s_es->s_free_blocks_count < fs->s_es->s_r_blocks_count)
 		goto nospace;
-#if QUOTA
+#ifdef QUOTA
 	if ((error = ext2_chkdq(ip, (long)btodb(size), cred, 0)) != 0)
 		return (error);
 #endif
@@ -173,7 +173,7 @@ ext2_alloc(struct inode *ip, daddr_t lbn, daddr_t bpref, int size,
 		*bnp = bno;
 		return (0);
 	}
-#if QUOTA
+#ifdef QUOTA
 	/*
 	 * Restore user's disk quota because allocation failed.
 	 */
@@ -240,7 +240,7 @@ return ENOSPC;
 	len = buflist->bs_nchildren;
 	start_lbn = lblkno(fs, buflist->bs_children[0]->b_loffset);
 	end_lbn = start_lbn + len - 1;
-#if DIAGNOSTIC
+#ifdef DIAGNOSTIC
 	for (i = 1; i < len; i++) {
 		if (buflist->bs_children[i]->b_loffset != lblktodoff(fs, start_lbn) + lblktodoff(fs, i))
 			panic("ext2_reallocblks: non-cluster");
@@ -282,7 +282,7 @@ return ENOSPC;
 	if (end_lvl == 0 || (idp = &end_ap[end_lvl - 1])->in_off + 1 >= len) {
 		ssize = len;
 	} else {
-#if DIAGNOSTIC
+#ifdef DIAGNOSTIC
 		if (start_ap[start_lvl-1].in_lbn == idp->in_lbn)
 			panic("ext2_reallocblk: start == end");
 #endif
@@ -308,7 +308,7 @@ return ENOSPC;
 	for (bap = &sbap[soff], i = 0; i < len; i++, blkno += fs->s_frags_per_block) {
 		if (i == ssize)
 			bap = ebap;
-#if DIAGNOSTIC
+#ifdef DIAGNOSTIC
 		if (buflist->bs_children[i]->b_bio2.bio_offset != fsbtodoff(fs, *bap))
 			panic("ext2_reallocblks: alloc mismatch");
 #endif

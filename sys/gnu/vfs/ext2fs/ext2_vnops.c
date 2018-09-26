@@ -222,7 +222,7 @@ loop:
 
 	if (ap->a_waitfor == MNT_WAIT) {
 		bio_track_wait(&vp->v_track_write, 0, 0);
-#if DIAGNOSTIC
+#ifdef DIAGNOSTIC
 		if (!RB_EMPTY(&vp->v_rbdirty_tree)) {
 			vprint("ext2_fsync: dirty", vp);
 			goto loop;
