@@ -469,7 +469,7 @@ struct drive {
 	} *freelist;
 	struct partinfo partinfo;	/* partition information */
 	/* XXX kludge until we get this struct cleaned up */
-#if _KERNEL
+#ifdef _KERNEL
 	struct vnode *vp;
 	struct cdev *dev;
 #else
