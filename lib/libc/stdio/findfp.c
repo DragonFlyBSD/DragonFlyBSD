@@ -83,7 +83,7 @@ static spinlock_t thread_lock = _SPINLOCK_INITIALIZER;
 #define THREAD_LOCK()	if (__isthreaded) _SPINLOCK(&thread_lock)
 #define THREAD_UNLOCK()	if (__isthreaded) _SPINUNLOCK(&thread_lock)
 
-#if NOT_YET
+#if 0 /* not yet */
 #define	SET_GLUE_PTR(ptr, val)	atomic_set_rel_ptr(&(ptr), (uintptr_t)(val))
 #else
 #define	SET_GLUE_PTR(ptr, val)	ptr = val

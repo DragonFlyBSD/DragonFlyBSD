@@ -582,7 +582,7 @@ _thread_kern_scheduler(void)
 			/*
 			 * Continue the thread at its current frame:
 			 */
-#if NOT_YET
+#if 0 /* not yet */
 			_setcontext(&curthread->ctx.uc);
 #else
 			___longjmp(curthread->ctx.jb, 1);
