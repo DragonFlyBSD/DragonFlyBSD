@@ -72,18 +72,6 @@
 
 #include "kvm_private.h"
 
-#if used
-static char *
-kvm_readswap(kvm_t *kd, const struct proc *p, u_long va, u_long *cnt)
-{
-#if defined(__FreeBSD__) || defined(__DragonFly__)
-	/* XXX Stubbed out, our vm system is differnet */
-	_kvm_err(kd, kd->program, "kvm_readswap not implemented");
-	return(0);
-#endif
-}
-#endif
-
 #define KREAD(kd, addr, obj) \
 	(kvm_read(kd, addr, (char *)(obj), sizeof(*obj)) != sizeof(*obj))
 #define KREADSTR(kd, addr) \
