@@ -380,12 +380,6 @@ main(int argc, char *argv[])
 				tmode.c_iflag |= ICRNL;
 				tmode.c_oflag |= ONLCR;
 			}
-#if REALLY_OLD_TTYS
-			if (upper || UC)
-				tmode.sg_flags |= LCASE;
-			if (lower || LC)
-				tmode.sg_flags &= ~LCASE;
-#endif
 			if (tcsetattr(STDIN_FILENO, TCSANOW, &tmode) < 0) {
 				syslog(LOG_ERR, "tcsetattr %s: %m", ttyn);
 				exit(1);

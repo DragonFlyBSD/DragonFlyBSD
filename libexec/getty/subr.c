@@ -293,11 +293,6 @@ set_flags(int n)
 		}
 	} /* else, leave as is */
 
-#if 0
-	if (UC)
-		f |= LCASE;
-#endif
-
 	if (HC)
 		SET(cflag, HUPCL);
 	else
