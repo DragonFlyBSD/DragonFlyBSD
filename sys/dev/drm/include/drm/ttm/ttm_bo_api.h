@@ -220,6 +220,8 @@ struct ttm_buffer_object {
 	struct kref kref;
 	struct kref list_kref;
 
+	wait_queue_head_t event_queue;
+
 	/**
 	 * Members protected by the bo::reserved lock.
 	 */
@@ -243,6 +245,15 @@ struct ttm_buffer_object {
 	struct list_head ddestroy;
 	struct list_head swap;
 	struct list_head io_reserve_lru;
+	unsigned long val_seq;
+	bool seq_valid;
+
+	/**
+	 * Members protected by the bdev::lru_lock
+	 * only when written to.
+	 */
+
+	atomic_t reserved;
 
 	/**
 	 * Members protected by struct buffer_object_device::fence_lock
@@ -272,9 +283,6 @@ struct ttm_buffer_object {
 	uint32_t cur_placement;
 
 	struct sg_table *sg;
-
-	struct reservation_object *resv;
-	struct reservation_object ttm_resv;
 };
 
 /**
@@ -728,7 +736,7 @@ extern void ttm_bo_swapout_all(struct ttm_bo_device *bdev);
  */
 static inline bool ttm_bo_is_reserved(struct ttm_buffer_object *bo)
 {
-	return ww_mutex_is_locked(&bo->resv->lock);
+	return atomic_read(&bo->reserved);
 }
 
 #endif

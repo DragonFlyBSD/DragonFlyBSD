@@ -34,16 +34,11 @@
 #include <drm/ttm/ttm_bo_api.h>
 #include <drm/ttm/ttm_memory.h>
 #include <drm/ttm/ttm_module.h>
-#include <drm/ttm/ttm_placement.h>
 #include <drm/drm_mm.h>
 #include <drm/drm_global.h>
-#include <drm/drm_vma_manager.h>
-#include <linux/workqueue.h>
-#include <linux/fs.h>
-#include <linux/spinlock.h>
-#include <linux/reservation.h>
-
 #include <sys/tree.h>
+#include <linux/workqueue.h>
+#include <linux/reservation.h>
 
 /* XXX nasty hack, but does the job */
 #undef RB_ROOT

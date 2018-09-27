@@ -28,9 +28,8 @@
 #include <drm/ttm/ttm_execbuf_util.h>
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_placement.h>
+#include <linux/export.h>
 #include <linux/wait.h>
-#include <linux/sched.h>
-#include <linux/module.h>
 
 static void ttm_eu_backoff_reservation_locked(struct list_head *list,
 					      struct ww_acquire_ctx *ticket)
@@ -48,7 +47,8 @@ static void ttm_eu_backoff_reservation_locked(struct list_head *list,
 			entry->removed = false;
 
 		} else {
-			ww_mutex_unlock(&bo->resv->lock);
+			atomic_set(&bo->reserved, 0);
+			wake_up_all(&bo->event_queue);
 		}
 	}
 }
@@ -133,43 +133,55 @@ int ttm_eu_reserve_buffers(struct ww_acquire_ctx *ticket,
 	glob = entry->bo->glob;
 
 	ww_acquire_init(ticket, &reservation_ww_class);
+	lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 
 retry:
 	list_for_each_entry(entry, list, head) {
 		struct ttm_buffer_object *bo = entry->bo;
+		int owned;
 
 		/* already slowpath reserved? */
 		if (entry->reserved)
 			continue;
 
-		ret = ttm_bo_reserve_nolru(bo, true, false, true, ticket);
+		ret = ttm_bo_reserve_nolru(bo, true, true, true, ticket);
+		switch (ret) {
+		case 0:
+			break;
+		case -EBUSY:
+			ttm_eu_del_from_lru_locked(list);
+			owned = lockstatus(&glob->lru_lock, curthread);
+			if (owned == LK_EXCLUSIVE)
+				lockmgr(&glob->lru_lock, LK_RELEASE);
+			ret = ttm_bo_reserve_nolru(bo, true, false,
+						   true, ticket);
+			if (owned == LK_EXCLUSIVE)
+				lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
+			if (!ret)
+				break;
 
+			if (unlikely(ret != -EAGAIN))
+				goto err;
 
-		if (ret == -EDEADLK) {
-			/* uh oh, we lost out, drop every reservation and try
-			 * to only reserve this buffer, then start over if
-			 * this succeeds.
-			 */
-			lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
+			/* fallthrough */
+		case -EAGAIN:
 			ttm_eu_backoff_reservation_locked(list, ticket);
 			lockmgr(&glob->lru_lock, LK_RELEASE);
 			ttm_eu_list_ref_sub(list);
-			ret = ww_mutex_lock_slow_interruptible(&bo->resv->lock,
-							       ticket);
-			if (unlikely(ret != 0)) {
-				if (ret == -EINTR)
-					ret = -ERESTARTSYS;
+			ret = ttm_bo_reserve_slowpath_nolru(bo, true, ticket);
+			if (unlikely(ret != 0))
 				goto err_fini;
-			}
 
+			lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 			entry->reserved = true;
 			if (unlikely(atomic_read(&bo->cpu_writers) > 0)) {
 				ret = -EBUSY;
 				goto err;
 			}
 			goto retry;
-		} else if (ret)
+		default:
 			goto err;
+		}
 
 		entry->reserved = true;
 		if (unlikely(atomic_read(&bo->cpu_writers) > 0)) {
@@ -179,14 +191,12 @@ retry:
 	}
 
 	ww_acquire_done(ticket);
-	lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 	ttm_eu_del_from_lru_locked(list);
 	lockmgr(&glob->lru_lock, LK_RELEASE);
 	ttm_eu_list_ref_sub(list);
 	return 0;
 
 err:
-	lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 	ttm_eu_backoff_reservation_locked(list, ticket);
 	lockmgr(&glob->lru_lock, LK_RELEASE);
 	ttm_eu_list_ref_sub(list);
