@@ -184,7 +184,7 @@ void
 svg_text_init(struct svg_text *text, const char *cl)
 {
 	xml_elem_init(&text->el, "text");
-#if remove
+#if 0 /* remove */
 	xml_attribute_init(&text->x, "x", NULL);
 	xml_elem_set_attribute(&text->el, &text->x);
 	xml_attribute_init(&text->y, "y", NULL);
@@ -217,7 +217,7 @@ int
 svg_text_draw(svg_document_t doc, svg_text_t text, svg_transform_t tf,
 	      const char *str, double fontsize)
 {
-#if remove
+#if 0 /* remove */
 	snprintf(&text->x_val[0], sizeof(text->x_val), "%.20lf", x);
 	xml_attribute_set_value(&text->x, &text->x_val[0]);
 	snprintf(&text->y_val[0], sizeof(text->y_val), "%.20lf", y);
