@@ -29,7 +29,7 @@
 #define	_SMBIOS_H_
 
 void	smbios_detect(const caddr_t);
-#if notyet
+#if 0 /* not yet */
 int	smbios_match(const char *, const char *, const char *);
 #endif
 

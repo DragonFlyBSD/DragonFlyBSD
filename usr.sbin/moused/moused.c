@@ -202,7 +202,7 @@ static char *rnames[] = {
     "kidspad",
     "versapad",
     "jogdial",
-#if notyet
+#if 0 /* not yet */
     "mariqua",
 #endif
     NULL
@@ -280,7 +280,7 @@ static symtab_t pnpprod[] = {
     { "PNP0F04",	MOUSE_PROTO_MSC,	MOUSE_MODEL_GENERIC },
     /* MouseSystems */
     { "PNP0F05",	MOUSE_PROTO_MSC,	MOUSE_MODEL_GENERIC },
-#if notyet
+#if 0 /* not yet */
     /* Genius Mouse */
     { "PNP0F06",	MOUSE_PROTO_XXX,	MOUSE_MODEL_GENERIC },
     /* Genius Mouse */
@@ -302,7 +302,7 @@ static symtab_t pnpprod[] = {
     { "PNP0F0E",	MOUSE_PROTO_PS2,	MOUSE_MODEL_GENERIC },
     /* MS BallPoint comatible */
     { "PNP0F0F",	MOUSE_PROTO_MS,		MOUSE_MODEL_GENERIC },
-#if notyet
+#if 0 /* not yet */
     /* TI QuickPort */
     { "PNP0F10",	MOUSE_PROTO_XXX,	MOUSE_MODEL_GENERIC },
 #endif
@@ -312,13 +312,13 @@ static symtab_t pnpprod[] = {
     { "PNP0F12",	MOUSE_PROTO_PS2,	MOUSE_MODEL_GENERIC },
     /* PS/2 */
     { "PNP0F13",	MOUSE_PROTO_PS2,	MOUSE_MODEL_GENERIC },
-#if notyet
+#if 0 /* not yet */
     /* MS Kids Mouse */
     { "PNP0F14",	MOUSE_PROTO_XXX,	MOUSE_MODEL_GENERIC },
 #endif
     /* Logitech bus */
     { "PNP0F15",	MOUSE_PROTO_BUS,	MOUSE_MODEL_GENERIC },
-#if notyet
+#if 0 /* not yet */
     /* Logitech SWIFT */
     { "PNP0F16",	MOUSE_PROTO_XXX,	MOUSE_MODEL_GENERIC },
 #endif
@@ -328,7 +328,7 @@ static symtab_t pnpprod[] = {
     { "PNP0F18",	MOUSE_PROTO_BUS,	MOUSE_MODEL_GENERIC },
     /* Logitech PS/2 compatible */
     { "PNP0F19",	MOUSE_PROTO_PS2,	MOUSE_MODEL_GENERIC },
-#if notyet
+#if 0 /* not yet */
     /* Logitech SWIFT compatible */
     { "PNP0F1A",	MOUSE_PROTO_XXX,	MOUSE_MODEL_GENERIC },
     /* HP Omnibook */
@@ -366,7 +366,7 @@ static unsigned short rodentcflags[] =
     (CS8 | PARENB | PARODD | CREAD | CLOCAL | HUPCL),	/* kidspad etc. */
     (CS8		   | CREAD | CLOCAL | HUPCL),	/* VersaPad */
     0,							/* JogDial */
-#if notyet
+#if 0 /* not yet */
     (CS8 | CSTOPB	   | CREAD | CLOCAL | HUPCL),	/* Mariqua */
 #endif
 };
@@ -1254,7 +1254,7 @@ static unsigned char proto[][7] = {
     {	0x80,	0x80,	0x00,	0x00,	5,    0x00,  0xff }, /* KIDSPAD */
     {	0xc3,	0xc0,	0x00,	0x00,	6,    0x00,  0xff }, /* VersaPad */
     {	0x00,	0x00,	0x00,	0x00,	1,    0x00,  0xff }, /* JogDial */
-#if notyet
+#if 0 /* not yet */
     {	0xf8,	0x80,	0x00,	0x00,	5,   ~0x2f,  0x10 }, /* Mariqua */
 #endif
 };
@@ -1771,7 +1771,7 @@ r_protocol(u_char rBuf, mousestatus_t *act)
 	}
 
 	switch (rodent.rtype) {
-#if notyet
+#if 0 /* not yet */
 	case MOUSE_PROTO_MARIQUA:
 	    /*
 	     * This mouse has 16! buttons in addition to the standard
@@ -1885,7 +1885,7 @@ r_protocol(u_char rBuf, mousestatus_t *act)
 	break;
 
     case MOUSE_PROTO_MSC:		/* MouseSystems Corp */
-#if notyet
+#if 0 /* not yet */
     case MOUSE_PROTO_MARIQUA:		/* Mariqua */
 #endif
 	act->button = butmapmsc[(~pBuf[0]) & MOUSE_MSC_BUTTONS];

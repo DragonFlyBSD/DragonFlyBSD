@@ -665,7 +665,7 @@ carp_stats(u_long off __unused, const char *name, int af1 __unused)
        p(carps_opackets, "\t%ju packet%s sent (IPv4)\n");
        p(carps_opackets6, "\t%ju packet%s sent (IPv6)\n");
        p2(carps_onomem, "\t\t%ju send failed due to mbuf memory error\n");
-#if notyet
+#if 0 /* not yet */
        p(carps_ostates, "\t\t%s state update%s sent\n");
 #endif
 #undef p
