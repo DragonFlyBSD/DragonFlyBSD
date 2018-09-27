@@ -37,6 +37,7 @@
 
 #include "opt_inet.h"
 #include "opt_inet6.h"
+#include "use_bpf.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -140,16 +141,17 @@ pflog_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 	ifp->if_hdrlen = PFLOG_HDRLEN;
 	if_attach(ifp, NULL);
-
+#if NBPF > 0
 	bpfattach(&pflogif->sc_if, DLT_PFLOG, PFLOG_HDRLEN);
-	lwkt_gettoken(&pf_token);
+#endif
 
+	lwkt_gettoken(&pf_token);
 	crit_enter();
 	LIST_INSERT_HEAD(&pflogif_list, pflogif, sc_list);
 	pflogifs[unit] = ifp;
 	crit_exit();
-
 	lwkt_reltoken(&pf_token);
+
 	return (0);
 }
 
@@ -166,7 +168,7 @@ pflog_clone_destroy(struct ifnet *ifp)
 	crit_exit();
 
 	lwkt_reltoken(&pf_token);
-#if NBPFILTER > 0
+#if NBPF > 0
 	bpfdetach(ifp);
 #endif
 	if_detach(ifp);
