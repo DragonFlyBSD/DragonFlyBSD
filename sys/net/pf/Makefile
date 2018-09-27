@@ -17,6 +17,9 @@ opt_inet.h:
 opt_inet6.h:
 	echo "#define INET6 1" > ${.TARGET}
 
+use_bpf.h:
+	echo "#define NBPF 1" > ${.TARGET}
+
 .endif	# !BUILDING_WITH_KERNEL
 
 
