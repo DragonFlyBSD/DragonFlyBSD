@@ -149,7 +149,7 @@
 /* immintrin.h is a GCC header, but clang masquerades as GCC so it's easier to
    check for clang rather than GCC.  The building of DF is likely limited to these
    two compilers as no others are tested, so this approach is valid enough. */
-#if !defined(__clang__) && (_GNUC_ > 4)
+#if !defined(__clang__) && (__GNUC__ > 4)
 #define HAVE_IMMINTRIN_H 1
 #endif
 
