@@ -43,6 +43,10 @@
 #define	LIBSTAND	1
 #endif
 
+#ifndef DEBUG
+#define	DEBUG		0
+#endif
+
 #ifdef BOOT2
 #include "boot2.h"
 #else
