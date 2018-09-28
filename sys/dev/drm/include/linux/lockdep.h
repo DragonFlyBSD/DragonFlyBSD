@@ -27,10 +27,12 @@
 #ifndef _LINUX_LOCKDEP_H_
 #define _LINUX_LOCKDEP_H_
 
+#include <sys/lock.h>
+
 static inline void
 lockdep_assert_held(struct lock *l)
 {
-	/* XXX: This function does nothing */
+	KKASSERT(lockinuse(l));
 }
 
 #define might_lock(lock) do { } while (0)
