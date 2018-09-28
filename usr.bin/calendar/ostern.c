@@ -91,7 +91,7 @@ geteaster(char *s, int year)
 	else
 	    return(0);
 
-#if DEBUG
+#ifdef DEBUG
 	printf("%s %d %d\n", s, year, EASTERNAMELEN);
 #endif
 
