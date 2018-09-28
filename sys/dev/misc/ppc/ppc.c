@@ -27,6 +27,9 @@
  */
 
 #include "opt_ppc.h"
+#ifndef PPC_DEBUG
+#define	PPC_DEBUG	0
+#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
