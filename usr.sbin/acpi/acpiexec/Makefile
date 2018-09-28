@@ -104,6 +104,7 @@ SRCS+=	\
 	exresnte.c \
 	exresolv.c \
 	exresop.c \
+	exserial.c \
 	exstore.c \
 	exstoren.c \
 	exstorob.c \

@@ -162,7 +162,7 @@ smbus_acpi_space_handler(UINT32 Function, ACPI_PHYSICAL_ADDRESS Address,
 	}
 
 	switch (accessor_type) {
-	case AML_FIELD_ATTRIB_SEND_RCV:
+	case AML_FIELD_ATTRIB_SEND_RECEIVE:
 		if (action == ACPI_READ) {
 			val = SMBUS_RECVB(dev, sb->SlaveAddress, &byte);
 			if (val == 0)
@@ -211,7 +211,7 @@ smbus_acpi_space_handler(UINT32 Function, ACPI_PHYSICAL_ADDRESS Address,
 			    count, buf);
 		}
 		break;
-	case AML_FIELD_ATTRIB_MULTIBYTE:
+	case AML_FIELD_ATTRIB_BYTES:
 		if (action == ACPI_READ) {
 			cnt = 0;
 			val = SMBUS_TRANS(dev, sb->SlaveAddress, Address,

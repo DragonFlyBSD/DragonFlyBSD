@@ -2618,6 +2618,7 @@ ${ACPICA_COMP_DIR}/executer/exregion.c		optional acpi
 ${ACPICA_COMP_DIR}/executer/exresnte.c		optional acpi
 ${ACPICA_COMP_DIR}/executer/exresolv.c		optional acpi
 ${ACPICA_COMP_DIR}/executer/exresop.c		optional acpi
+${ACPICA_COMP_DIR}/executer/exserial.c		optional acpi
 ${ACPICA_COMP_DIR}/executer/exstore.c		optional acpi
 ${ACPICA_COMP_DIR}/executer/exstoren.c		optional acpi
 ${ACPICA_COMP_DIR}/executer/exstorob.c		optional acpi
