@@ -16,7 +16,7 @@ SRCS +=	i915_cmd_parser.c \
 	i915_gem_context.c \
 	i915_gem_evict.c \
 	i915_gem_execbuffer.c \
-	i915_gem_fence.o \
+	i915_gem_fence.c \
 	i915_gem_gtt.c \
 	i915_gem.c \
 	i915_gem_render_state.c \
