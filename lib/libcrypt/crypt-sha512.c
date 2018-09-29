@@ -15,7 +15,7 @@
 
 #include "local.h"
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if _BYTE_ORDER == _LITTLE_ENDIAN
 # define SWAP(n) \
   (((n) << 56)					\
    | (((n) & 0xff00) << 40)			\
@@ -266,14 +266,11 @@ __crypt__sha512_process_bytes (const void *buffer, size_t len, struct sha512_ctx
   /* Process available complete blocks.  */
   if (len >= 128)
     {
-#if !_STRING_ARCH_unaligned
-/* To check alignment gcc has an appropriate operator.  Other
-   compilers don't.  */
-# if __GNUC__ >= 2
-#  define UNALIGNED_P(p) (((uintptr_t) p) % __alignof__ (uint64_t) != 0)
-# else
-#  define UNALIGNED_P(p) (((uintptr_t) p) % sizeof (uint64_t) != 0)
-# endif
+#if __GNUC__ >= 2
+# define UNALIGNED_P(p) (((uintptr_t) p) % __alignof__ (uint64_t) != 0)
+#else
+# define UNALIGNED_P(p) (((uintptr_t) p) % sizeof (uint64_t) != 0)
+#endif
       if (UNALIGNED_P (buffer))
 	while (len > 128)
 	  {
@@ -283,7 +280,6 @@ __crypt__sha512_process_bytes (const void *buffer, size_t len, struct sha512_ctx
 	    len -= 128;
 	  }
       else
-#endif
 	{
 	  __crypt__sha512_process_block (buffer, len & ~127, ctx);
 	  buffer = (const char *) buffer + (len & ~127);
