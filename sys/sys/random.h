@@ -41,7 +41,7 @@
 
 /*
  * Many kernel routines will have a use for good random numbers,
- * for example, for truely random TCP sequence numbers, which prevent
+ * for example, for truly random TCP sequence numbers, which prevent
  * certain forms of TCP spoofing attacks.
  * 
  */
@@ -51,9 +51,6 @@
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
-#endif
-#ifndef _SYS_INTERRUPT_H_
-#include <sys/interrupt.h>
 #endif
 #ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
@@ -98,7 +95,6 @@ int add_buffer_randomness_src(const char *, int, int srcid);
 
 u_int read_random(void *buf, u_int size);
 u_int read_random_unlimited(void *buf, u_int size);
-struct thread;
 struct knote;
 int random_filter_read(struct knote *kn, long hint);
 
