@@ -46,7 +46,7 @@ void	 bzero(void *, size_t);					/* LEGACY */
 #endif
 int	 ffs(int) __pure2;
 #endif
-#ifdef __BSD_VISIBLE
+#if __BSD_VISIBLE
 int	 ffsll(long long) __pure2;
 #if !defined(_KERNEL_VIRTUAL)
 int	 ffsl(long) __pure2;

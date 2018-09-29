@@ -120,7 +120,7 @@ struct utmpx *getutxline(const struct utmpx *);
 struct utmpx *pututxline(const struct utmpx *);
 void          setutxent(void);
 
-#ifdef __BSD_VISIBLE
+#if __BSD_VISIBLE
 int _updwtmpx(const char *, const struct utmpx *);
 void updwtmpx(const char *, const struct utmpx *);
 struct lastlogx *getlastlogx(const char *, uid_t, struct lastlogx *);

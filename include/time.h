@@ -106,7 +106,7 @@ typedef	__pid_t		lwpid_t;	/* light weight process id */
 /* These macros are also in sys/time.h. */
 #if !defined(CLOCK_REALTIME) && __POSIX_VISIBLE >= 199309
 #define	CLOCK_REALTIME		0
-#ifdef __BSD_VISIBLE
+#if __BSD_VISIBLE
 #define	CLOCK_VIRTUAL		1
 #define	CLOCK_PROF		2
 #endif
