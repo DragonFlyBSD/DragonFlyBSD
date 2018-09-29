@@ -37,7 +37,6 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
- *
  */
 
 /*
@@ -94,20 +93,11 @@ struct random_softc {
 void rand_initialize(void);
 void add_keyboard_randomness(u_char scancode);
 void add_interrupt_randomness(int intr);
-#ifdef notused
-void add_blkdev_randomness(int major);
-#endif
 int add_buffer_randomness(const char *, int);
 int add_buffer_randomness_src(const char *, int, int srcid);
 
-#ifdef notused
-void get_random_bytes(void *buf, u_int nbytes);
-#endif
 u_int read_random(void *buf, u_int size);
 u_int read_random_unlimited(void *buf, u_int size);
-#ifdef notused
-u_int write_random(const char *buf, u_int nbytes);
-#endif
 struct thread;
 struct knote;
 int random_filter_read(struct knote *kn, long hint);
