@@ -651,7 +651,7 @@ hresolve(struct hfs *hfs, ino_t dirino, const char *name)
 			return (ed->entry.obj_id);
 	}
 
-#if BOOT2
+#ifdef BOOT2
 	if (ls == 2)
 		printf("\n");
 #endif
