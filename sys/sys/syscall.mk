@@ -311,4 +311,5 @@ MIASM =  \
 	lwp_setaffinity.o \
 	lwp_getaffinity.o \
 	lwp_create2.o \
-	getcpuclockid.o
+	getcpuclockid.o \
+	wait6.o

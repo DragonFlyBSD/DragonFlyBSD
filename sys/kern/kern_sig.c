@@ -224,6 +224,31 @@ sig_ffs(sigset_t *set)
 	return (0);
 }
 
+/*
+ * Allows us to populate siginfo->si_pid and si_uid in the target process
+ * (p) from the originating thread (td).  This function must work properly
+ * even if a kernel thread is sending the signal.
+ *
+ * NOTE: Signals are not queued, so if multiple signals are received the
+ *	 signal handler will only see the most recent pid and uid for any
+ *	 given signal number.
+ */
+static __inline void
+sigsetfrompid(thread_t td, struct proc *p, int sig)
+{
+	struct sigacts *sap;
+
+	if ((sap = p->p_sigacts) == NULL)
+		return;
+	if (td->td_proc) {
+		sap->ps_frominfo[sig].pid = td->td_proc->p_pid;
+		sap->ps_frominfo[sig].uid = td->td_ucred->cr_uid;
+	} else {
+		sap->ps_frominfo[sig].pid = 0;
+		sap->ps_frominfo[sig].uid = 0;
+	}
+}
+
 /* 
  * No requirements. 
  */
@@ -1211,6 +1236,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 			lwkt_reltoken(&p->p_token);
 			goto not_stopped;
 		}
+		sigsetfrompid(curthread, p, sig);
 		if (lp) {
 			spin_lock(&lp->lwp_spin);
 			SIGADDSET(lp->lwp_siglist, sig);
@@ -1331,6 +1357,7 @@ active_process:
 	 * it to.
 	 */
 	if (lp == NULL) {
+		sigsetfrompid(curthread, p, sig);
 		KNOTE(&p->p_klist, NOTE_SIGNAL | sig);
 		SIGADDSET_ATOMIC(p->p_siglist, sig);
 		goto out;
@@ -1360,6 +1387,7 @@ active_process:
 		 */
 		lwkt_gettoken(&p->p_token);
 		if (p->p_flags & P_PPWAIT) {
+			sigsetfrompid(curthread, p, sig);
 			SIGADDSET_ATOMIC(p->p_siglist, sig);
 			lwkt_reltoken(&p->p_token);
 			goto out;
@@ -1388,6 +1416,7 @@ active_process:
 	/*
 	 * Mark signal pending at this specific thread.
 	 */
+	sigsetfrompid(curthread, p, sig);
 	spin_lock(&lp->lwp_spin);
 	SIGADDSET(lp->lwp_siglist, sig);
 	spin_unlock(&lp->lwp_spin);

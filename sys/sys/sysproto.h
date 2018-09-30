@@ -2356,6 +2356,17 @@ struct	getcpuclockid_args {
 	lwpid_t	lwp_id;	char lwp_id_[PAD_(lwpid_t)];
 	clockid_t *	clock_id;	char clock_id_[PAD_(clockid_t *)];
 };
+struct	wait6_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	idtype_t	idtype;	char idtype_[PAD_(idtype_t)];
+	id_t	id;	char id_[PAD_(id_t)];
+	int *	status;	char status_[PAD_(int *)];
+	int	options;	char options_[PAD_(int)];
+	struct __wrusage *	wrusage;	char wrusage_[PAD_(struct __wrusage *)];
+	siginfo_t *	info;	char info_[PAD_(siginfo_t *)];
+};
 struct	olseek_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -2853,6 +2864,7 @@ int	sys_lwp_setaffinity (struct lwp_setaffinity_args *);
 int	sys_lwp_getaffinity (struct lwp_getaffinity_args *);
 int	sys_lwp_create2 (struct lwp_create2_args *);
 int	sys_getcpuclockid (struct getcpuclockid_args *);
+int	sys_wait6 (struct wait6_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

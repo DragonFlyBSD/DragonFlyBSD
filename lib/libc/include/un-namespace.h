@@ -204,7 +204,9 @@
 #undef		socketpair
 #undef		usleep
 #undef		wait4
+#undef		wait6
 #undef		waitpid
+#undef		waitid
 #undef		write
 #undef		writev
 

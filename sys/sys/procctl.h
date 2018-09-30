@@ -41,6 +41,10 @@
 #include <sys/types.h>
 #endif
 
+#ifndef _IDTYPE_T_DECLARED
+#define _IDTYPE_T_DECLARED
+/* SEE ALSO SYS/WAIT.H */
+
 typedef enum idtype {
 	/*
 	 * These names were mostly lifted from Solaris source code and
@@ -69,6 +73,8 @@ typedef enum idtype {
 	P_CPUID,		/* CPU identifier. */
 	P_PSETID		/* Processor set identifier. */
 } idtype_t;			/* The type of id_t we are using. */
+
+#endif
 
 struct reaper_status {
 	uint32_t	flags;

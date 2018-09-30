@@ -223,7 +223,9 @@
 #define		socketpair			_socketpair
 #define		usleep				_usleep
 #define		wait4				_wait4
+#define		wait6				_wait6
 #define		waitpid				_waitpid
+#define		waitid				_waitid
 #define		write				_write
 #define		writev				_writev
 

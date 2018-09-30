@@ -344,10 +344,12 @@ prele(struct proc *p)
  * Hold and flag serialized for zombie reaping purposes.
  *
  * This function will fail if it has to block, returning non-zero with
- * neither the flag set or the hold count bumped.  Note that we must block
- * without holding a ref, meaning that the caller must ensure that (p)
- * remains valid through some other interlock (typically on its parent
- * process's p_token).
+ * neither the flag set or the hold count bumped.  Note that (p) may
+ * not be valid in this case if the caller does not have some other
+ * reference on (p).
+ *
+ * This function does not block on other PHOLD()s, only on other
+ * PHOLDZOMB()s.
  *
  * Zero is returned on success.  The hold count will be incremented and
  * the serialization flag acquired.  Note that serialization is only against
@@ -1146,8 +1148,10 @@ proc_move_allproc_zombie(struct proc *p)
  * if someone has a lock on the proces (p_lock).
  *
  * Caller must hold p->p_token.  We are required to wait until p_lock
- * becomes zero before we can manipulate the list, allowing allproc
+ * becomes one before we can manipulate the list, allowing allproc
  * scans to guarantee consistency during a list scan.
+ *
+ * Assumes caller has one ref.
  */
 void
 proc_remove_zombie(struct proc *p)
@@ -1158,9 +1162,9 @@ proc_remove_zombie(struct proc *p)
 	n = ALLPROC_HASH(p->p_pid);
 	prg = &procglob[n];
 
-	PSTALL(p, "reap2", 0);
+	PSTALL(p, "reap2", 1);
 	lwkt_gettoken(&prg->proc_token);
-	PSTALL(p, "reap2a", 0);
+	PSTALL(p, "reap2a", 1);
 	LIST_REMOVE(p, p_list);		/* from remove master list */
 	LIST_REMOVE(p, p_sibling);	/* and from sibling list */
 	p->p_pptr = NULL;

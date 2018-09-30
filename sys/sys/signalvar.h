@@ -56,6 +56,10 @@
 struct	sigacts {
 	sig_t	 ps_sigact[_SIG_MAXSIG];	/* disposition of signals */
 	sigset_t ps_catchmask[_SIG_MAXSIG];	/* signals to be blocked */
+	struct {
+		int	pid;
+		int	uid;
+	} ps_frominfo[_SIG_MAXSIG];
 	sigset_t ps_sigignore;		/* Signals being ignored. */
 	sigset_t ps_sigcatch;		/* Signals being caught by user. */
 	sigset_t ps_sigonstack;		/* signals to take on sigstack */

@@ -489,6 +489,7 @@ DF504.0 {
     svis;
     tcsetsid;
     uid_from_user;
+    waitid;
 };
 
 DFprivate_1.0 {
@@ -676,6 +677,7 @@ DFprivate_1.0 {
     __usleep;
     __wait;
     __waitpid;
+    __waitid;
     _creat;
     _err;
     _readdir_unlocked;
@@ -696,5 +698,6 @@ DFprivate_1.0 {
     _usleep;
     _wait;
     _waitpid;
+    _waitid;
     _warn;
 };

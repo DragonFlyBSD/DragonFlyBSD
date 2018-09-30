@@ -564,4 +564,5 @@ struct sysent sysent[] = {
 	{ AS(lwp_getaffinity_args), (sy_call_t *)sys_lwp_getaffinity },	/* 545 = lwp_getaffinity */
 	{ AS(lwp_create2_args), (sy_call_t *)sys_lwp_create2 },	/* 546 = lwp_create2 */
 	{ AS(getcpuclockid_args), (sy_call_t *)sys_getcpuclockid },	/* 547 = getcpuclockid */
+	{ AS(wait6_args), (sy_call_t *)sys_wait6 },	/* 548 = wait6 */
 };

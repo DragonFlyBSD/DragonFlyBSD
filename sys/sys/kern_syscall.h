@@ -33,6 +33,7 @@
 #error "This file should not be included by userland programs."
 #endif
 
+#include <sys/wait.h>
 #include <sys/uio.h>
 
 #define DUP_FIXED	0x1	/* Copy to specific fd even if in use */
@@ -49,6 +50,8 @@ struct nchandle;
 struct nlookupdata;
 struct rlimit;
 struct rusage;
+struct __wrusage;
+struct __siginfo;
 struct sigaction;
 struct sigaltstack;
 struct __sigset;
@@ -82,8 +85,8 @@ int kern_execve(struct nlookupdata *nd, struct image_args *args);
 /*
  * Prototypes for syscalls in kern/kern_exit.c
  */
-int kern_wait(pid_t pid, int *status, int options, struct rusage *rusage,
-	int *res);
+int kern_wait(idtype_t idtype, id_t id, int *status, int options,
+	struct __wrusage *wrusage, struct __siginfo *info, int *res);
 
 /*
  * Prototypes for syscalls in kern/kern_sig.c

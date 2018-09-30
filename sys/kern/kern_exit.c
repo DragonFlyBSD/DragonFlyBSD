@@ -568,11 +568,12 @@ exit1(int rv)
 	}
 
 	/*
-	 * Save exit status and final rusage info, adding in child rusage
-	 * info and self times.
+	 * Save exit status and final rusage info.  We no longer add
+	 * child rusage info into self times, wait4() and kern_wait()
+	 * handles it in order to properly support wait6().
 	 */
 	calcru_proc(p, &p->p_ru);
-	ruadd(&p->p_ru, &p->p_cru);
+	/*ruadd(&p->p_ru, &p->p_cru); REMOVED */
 
 	/*
 	 * notify interested parties of our demise.
@@ -884,27 +885,92 @@ lwp_dispose(struct lwp *lp)
 int
 sys_wait4(struct wait_args *uap)
 {
-	struct rusage rusage;
-	int error, status;
+	struct __wrusage wrusage;
+	int error;
+	int status;
+	int options;
+	id_t id;
+	idtype_t idtype;
 
-	error = kern_wait(uap->pid, (uap->status ? &status : NULL),
-			  uap->options, (uap->rusage ? &rusage : NULL),
-			  &uap->sysmsg_result);
+	options = uap->options | WEXITED | WTRAPPED;
+	id = uap->pid;
+
+	if (id == WAIT_ANY) {
+		idtype = P_ALL;
+	} else if (id == WAIT_MYPGRP) {
+		idtype = P_PGID;
+		id = curproc->p_pgid;
+	} else if (id < 0) {
+		idtype = P_PGID;
+		id = -id;
+	} else {
+		idtype = P_PID;
+	}
+
+	error = kern_wait(idtype, id, &status, options, &wrusage,
+			  NULL, &uap->sysmsg_result);
 
 	if (error == 0 && uap->status)
 		error = copyout(&status, uap->status, sizeof(*uap->status));
-	if (error == 0 && uap->rusage)
-		error = copyout(&rusage, uap->rusage, sizeof(*uap->rusage));
+	if (error == 0 && uap->rusage) {
+		ruadd(&wrusage.wru_self, &wrusage.wru_children);
+		error = copyout(&wrusage.wru_self, uap->rusage, sizeof(*uap->rusage));
+	}
+	return (error);
+}
+
+int
+sys_wait6(struct wait6_args *uap)
+{
+	struct __wrusage wrusage;
+	struct __siginfo info;
+	struct __siginfo *infop;
+	int error;
+	int status;
+	int options;
+	id_t id;
+	idtype_t idtype;
+
+	/*
+	 * NOTE: wait6() requires WEXITED and WTRAPPED to be specified if
+	 *	 desired.
+	 */
+	options = uap->options;
+	idtype = uap->idtype;
+	id = uap->id;
+	infop = uap->info ? &info : NULL;
+
+	switch(idtype) {
+	case P_PID:
+	case P_PGID:
+		if (id == WAIT_MYPGRP) {
+			idtype = P_PGID;
+			id = curproc->p_pgid;
+		}
+		break;
+	default:
+		/* let kern_wait deal with the remainder */
+		break;
+	}
+
+	error = kern_wait(idtype, id, &status, options,
+			  &wrusage, infop, &uap->sysmsg_result);
+
+	if (error == 0 && uap->status)
+		error = copyout(&status, uap->status, sizeof(*uap->status));
+	if (error == 0 && uap->wrusage)
+		error = copyout(&wrusage, uap->wrusage, sizeof(*uap->wrusage));
+	if (error == 0 && uap->info)
+		error = copyout(&info, uap->info, sizeof(*uap->info));
 	return (error);
 }
 
 /*
- * wait1()
- *
- * wait_args(int pid, int *status, int options, struct rusage *rusage)
+ * kernel wait*() system call support
  */
 int
-kern_wait(pid_t pid, int *status, int options, struct rusage *rusage, int *res)
+kern_wait(idtype_t idtype, id_t id, int *status, int options,
+	  struct __wrusage *wrusage, struct __siginfo *info, int *res)
 {
 	struct thread *td = curthread;
 	struct lwp *lp;
@@ -916,10 +982,17 @@ kern_wait(pid_t pid, int *status, int options, struct rusage *rusage, int *res)
 	int nfound, error;
 	long waitgen;
 
-	if (pid == 0)
-		pid = -q->p_pgid;
-	if (options &~ (WUNTRACED|WNOHANG|WCONTINUED|WLINUXCLONE))
+	/*
+	 * Must not have extraneous options.  Must have at least one
+	 * matchable option.
+	 */
+	if (options &~ (WUNTRACED|WNOHANG|WCONTINUED|WLINUXCLONE|WSTOPPED|
+			WEXITED|WTRAPPED|WNOWAIT)) {
 		return (EINVAL);
+	}
+	if ((options & (WEXITED | WUNTRACED | WCONTINUED | WTRAPPED)) == 0) {
+		return (EINVAL);
+	}
 
 	/*
 	 * Protect the q->p_children list
@@ -956,10 +1029,59 @@ loop:
 	 */
 	waitgen = atomic_fetchadd_long(&q->p_waitgen, 0x80000000);
 	LIST_FOREACH(p, &q->p_children, p_sibling) {
-		if (pid != WAIT_ANY &&
-		    p->p_pid != pid && p->p_pgid != -pid) {
+		/*
+		 * Filter, (p) will be held on fall-through.  Try to optimize
+		 * this to avoid the atomic op until we are pretty sure we
+		 * want this process.
+		 */
+		switch(idtype) {
+		case P_ALL:
+			PHOLD(p);
+			break;
+		case P_PID:
+			if (p->p_pid != (pid_t)id)
+				continue;
+			PHOLD(p);
+			break;
+		case P_PGID:
+			if (p->p_pgid != (pid_t)id)
+				continue;
+			PHOLD(p);
+			break;
+		case P_SID:
+			PHOLD(p);
+			if (p->p_session && p->p_session->s_sid != (pid_t)id) {
+				PRELE(p);
+				continue;
+			}
+			break;
+		case P_UID:
+			PHOLD(p);
+			if (p->p_ucred->cr_uid != (uid_t)id) {
+				PRELE(p);
+				continue;
+			}
+			break;
+		case P_GID:
+			PHOLD(p);
+			if (p->p_ucred->cr_gid != (gid_t)id) {
+				PRELE(p);
+				continue;
+			}
+			break;
+		case P_JAILID:
+			PHOLD(p);
+			if (p->p_ucred->cr_prison &&
+			    p->p_ucred->cr_prison->pr_id != (int)id) {
+				PRELE(p);
+				continue;
+			}
+			break;
+		default:
+			/* unsupported filter */
 			continue;
 		}
+		/* (p) is held at this point */
 
 		/*
 		 * This special case handles a kthread spawned by linux_clone
@@ -971,11 +1093,12 @@ loop:
 		 */
 		if ((p->p_sigparent != SIGCHLD) ^ 
 		    ((options & WLINUXCLONE) != 0)) {
+			PRELE(p);
 			continue;
 		}
 
 		nfound++;
-		if (p->p_stat == SZOMB) {
+		if (p->p_stat == SZOMB && (options & WEXITED)) {
 			/*
 			 * We may go into SZOMB with threads still present.
 			 * We must wait for them to exit before we can reap
@@ -983,19 +1106,16 @@ loop:
 			 * non-master threads.
 			 *
 			 * Only this routine can remove a process from
-			 * the zombie list and destroy it, use PACQUIREZOMB()
-			 * to serialize us and loop if it blocks (interlocked
-			 * by the parent's q->p_token).
-			 *
-			 * WARNING!  (p) can be invalid when PHOLDZOMB(p)
-			 *	     returns non-zero.  Be sure not to
-			 *	     mess with it.
+			 * the zombie list and destroy it.
 			 */
-			if (PHOLDZOMB(p))
+			if (PHOLDZOMB(p)) {
+				PRELE(p);
 				goto loop;
+			}
 			lwkt_gettoken(&p->p_token);
 			if (p->p_pptr != q) {
 				lwkt_reltoken(&p->p_token);
+				PRELE(p);
 				PRELEZOMB(p);
 				goto loop;
 			}
@@ -1037,31 +1157,53 @@ loop:
 			 * put a hold on the process for short periods of
 			 * time.
 			 */
-			PRELE(p);
-			PSTALL(p, "reap3", 0);
+			PRELE(p);		/* from top of loop */
+			PSTALL(p, "reap3", 1);	/* 1 ref (for PZOMBHOLD) */
 
 			/* Take care of our return values. */
 			*res = p->p_pid;
 
-			if (status)
-				*status = p->p_xstat;
-			if (rusage)
-				*rusage = p->p_ru;
+			*status = p->p_xstat;
+			wrusage->wru_self = p->p_ru;
+			wrusage->wru_children = p->p_cru;
+
+			if (info) {
+				bzero(info, sizeof(*info));
+				info->si_errno = 0;
+				info->si_signo = SIGCHLD;
+				if (p->p_xstat)
+					info->si_code = CLD_KILLED;
+				else
+					info->si_code = CLD_EXITED;
+				info->si_status = p->p_xstat;
+				info->si_pid = p->p_pid;
+				info->si_uid = p->p_ucred->cr_uid;
+			}
+
+			/*
+			 * WNOWAIT shortcuts to done here, leaving the
+			 * child on the zombie list.
+			 */
+			if (options & WNOWAIT) {
+				lwkt_reltoken(&p->p_token);
+				PRELEZOMB(p);
+				error = 0;
+				goto done;
+			}
 
 			/*
 			 * If we got the child via a ptrace 'attach',
 			 * we need to give it back to the old parent.
 			 */
 			if (p->p_oppid && (t = pfind(p->p_oppid)) != NULL) {
-				PHOLD(p);
 				p->p_oppid = 0;
 				proc_reparent(p, t);
 				ksignal(t, SIGCHLD);
 				wakeup((caddr_t)t);
-				error = 0;
 				PRELE(t);
 				lwkt_reltoken(&p->p_token);
 				PRELEZOMB(p);
+				error = 0;
 				goto done;
 			}
 
@@ -1078,6 +1220,7 @@ loop:
 
 			p->p_xstat = 0;
 			ruadd(&q->p_cru, &p->p_ru);
+			ruadd(&q->p_cru, &p->p_cru);
 
 			/*
 			 * Decrement the count of procs running with this uid.
@@ -1125,18 +1268,17 @@ loop:
 			 *	 interactions with (q) (such as
 			 *	 fork/exec/wait or 'ps').
 			 */
-			PSTALL(p, "reap4", 0);
+			PSTALL(p, "reap4", 1);
 			lwkt_reltoken(&q->p_token);
 			vmspace_exitfree(p);
 			lwkt_gettoken(&q->p_token);
-			PSTALL(p, "reap5", 0);
+			PSTALL(p, "reap5", 1);
 
 			/*
 			 * NOTE: We have to officially release ZOMB in order
 			 *	 to ensure that a racing thread in kern_wait()
 			 *	 which blocked on ZOMB is woken up.
 			 */
-			PHOLD(p);
 			PRELEZOMB(p);
 			kfree(p->p_uidpcpu, M_SUBPROC);
 			kfree(p, M_PROC);
@@ -1144,10 +1286,14 @@ loop:
 			error = 0;
 			goto done;
 		}
+
+		/*
+		 * Process has not yet exited
+		 */
 		if ((p->p_stat == SSTOP || p->p_stat == SCORE) &&
 		    (p->p_flags & P_WAITED) == 0 &&
-		    ((p->p_flags & P_TRACED) || (options & WUNTRACED))) {
-			PHOLD(p);
+		    (((p->p_flags & P_TRACED) && (options & WTRAPPED)) ||
+		     (options & WSTOPPED))) {
 			lwkt_gettoken(&p->p_token);
 			if (p->p_pptr != q) {
 				lwkt_reltoken(&p->p_token);
@@ -1163,21 +1309,31 @@ loop:
 				goto loop;
 			}
 
-			p->p_flags |= P_WAITED;
+			/*
+			 * Don't set P_WAITED if WNOWAIT specified, leaving
+			 * the process in a waitable state.
+			 */
+			if ((options & WNOWAIT) == 0)
+				p->p_flags |= P_WAITED;
 
 			*res = p->p_pid;
-			if (status)
-				*status = W_STOPCODE(p->p_xstat);
+			*status = W_STOPCODE(p->p_xstat);
 			/* Zero rusage so we get something consistent. */
-			if (rusage)
-				bzero(rusage, sizeof(*rusage));
+			bzero(wrusage, sizeof(*wrusage));
 			error = 0;
+			if (info) {
+				bzero(info, sizeof(*info));
+				if (p->p_flags & P_TRACED)
+					info->si_code = CLD_TRAPPED;
+				else
+					info->si_code = CLD_STOPPED;
+				info->si_status = p->p_xstat;
+			}
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
 			goto done;
 		}
 		if ((options & WCONTINUED) && (p->p_flags & P_CONTINUED)) {
-			PHOLD(p);
 			lwkt_gettoken(&p->p_token);
 			if (p->p_pptr != q) {
 				lwkt_reltoken(&p->p_token);
@@ -1191,15 +1347,26 @@ loop:
 			}
 
 			*res = p->p_pid;
-			p->p_flags &= ~P_CONTINUED;
 
-			if (status)
-				*status = SIGCONT;
+			/*
+			 * Don't set P_WAITED if WNOWAIT specified, leaving
+			 * the process in a waitable state.
+			 */
+			if ((options & WNOWAIT) == 0)
+				p->p_flags &= ~P_CONTINUED;
+
+			*status = SIGCONT;
 			error = 0;
+			if (info) {
+				bzero(info, sizeof(*info));
+				info->si_code = CLD_CONTINUED;
+				info->si_status = p->p_xstat;
+			}
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
 			goto done;
 		}
+		PRELE(p);
 	}
 	if (nfound == 0) {
 		error = ECHILD;

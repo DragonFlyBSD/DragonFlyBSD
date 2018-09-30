@@ -237,6 +237,8 @@ MLINKS+=vmm.2 vmm_guest_ctl.2 \
 	vmm.2 vmm_guest_sync_addr.2
 MLINKS+=wait.2 wait3.2 \
 	wait.2 wait4.2 \
+	wait.2 wait6.2 \
+	wait.2 waitid.2 \
 	wait.2 waitpid.2
 MLINKS+=write.2 extpwrite.2 \
 	write.2 extpwritev.2 \

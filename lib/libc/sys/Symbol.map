@@ -324,6 +324,10 @@ DF410.0 {
     getcpuclockid;
 };
 
+DF504.0 {
+    wait6;
+};
+
 DFprivate_1.0 {
     __fork;
 
@@ -623,6 +627,7 @@ DFprivate_1.0 {
     __sys_vmspace_pwrite;
     __sys_vquotactl;
     __sys_wait4;
+    __sys_wait6;
     __sys_write;
     __sys_writev;
 
@@ -922,6 +927,7 @@ DFprivate_1.0 {
     _vmspace_pwrite;
     _vquotactl;
     _wait4;
+    _wait6;
     _write;
     _writev;
 };

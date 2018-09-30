@@ -219,6 +219,8 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 
 		/* fill siginfo structure */
 		sf.sf_si.si_signo = sig;
+		sf.sf_si.si_pid = psp->ps_frominfo[sig].pid;
+		sf.sf_si.si_uid = psp->ps_frominfo[sig].uid;
 		sf.sf_si.si_code = code;
 		sf.sf_si.si_addr = (void *)regs->tf_addr;
 	} else {
