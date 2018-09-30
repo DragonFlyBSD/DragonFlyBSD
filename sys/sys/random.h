@@ -77,6 +77,7 @@
 #define RAND_SRC_HIFN		0x07
 #define RAND_SRC_UBSEC		0x08
 #define RAND_SRC_SAFE		0x09
+#define RAND_SRC_VIRTIO		0x0a
 
 /* Type of the cookie passed to add_interrupt_randomness. */
 

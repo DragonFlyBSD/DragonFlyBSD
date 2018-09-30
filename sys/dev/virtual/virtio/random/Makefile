@@ -1,5 +1,5 @@
 #
-# $FreeBSD$
+# $FreeBSD: head/sys/modules/virtio/random/Makefile 314651 2017-03-04 10:10:17Z ngie $
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -23,6 +23,9 @@
 # SUCH DAMAGE.
 #
 
-SUBDIR= virtio pci block net random scsi
+KMOD=	virtio_random
+SRCS=	virtio_random.c
+SRCS+=	virtio_bus_if.h virtio_if.h
+SRCS+=	bus_if.h device_if.h
 
-.include <bsd.subdir.mk>
+.include <bsd.kmod.mk>

@@ -2126,6 +2126,7 @@ device		vmbus
 #
 device		virtio
 device		virtio_blk
+device		virtio_random
 device		virtio_scsi
 device		vtnet
 
