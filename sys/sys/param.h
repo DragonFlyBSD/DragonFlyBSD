@@ -187,9 +187,10 @@
  * 500314 - add TAPGIFNAME to tap(4)
  * 500315 - add TUNGIFNAME to tun(4)
  * 500316 - add SIOC[ADG]IFGROUP, SIOCGIFGMEMB ioctl
+ * 500317 - add wait6() and waitid() syscalls
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500316	/* propagated to newvers */
+#define __DragonFly_version 500317	/* propagated to newvers */
 
 #include <sys/_null.h>
 
