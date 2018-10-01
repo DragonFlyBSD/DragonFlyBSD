@@ -3,7 +3,7 @@
 # $DragonFly: src/usr.sbin/pciconf/Makefile,v 1.4 2008/11/03 00:25:45 pavalos Exp $
 
 PROG=	pciconf
-SRCS=	pciconf.c cap.c
+SRCS=	pciconf.c cap.c err.c
 MAN=	pciconf.8
 CFLAGS+= -I${.CURDIR}/../../sys
 

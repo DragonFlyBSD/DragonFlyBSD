@@ -80,6 +80,7 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define	PCIM_CMD_SERRESPEN	0x0100
 #define	PCIM_CMD_BACKTOBACK	0x0200
 #define	PCIM_CMD_INTxDIS	0x0400
+
 #define	PCIR_STATUS	0x06
 #define PCIM_STATUS_INTxSTATE	0x0008
 #define	PCIM_STATUS_CAPPRESENT	0x0010
@@ -95,6 +96,7 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define	PCIM_STATUS_RMABORT	0x2000
 #define	PCIM_STATUS_SERR	0x4000
 #define	PCIM_STATUS_PERR	0x8000
+
 #define	PCIR_REVID	0x08
 #define	PCIR_PROGIF	0x09
 #define	PCIR_SUBCLASS	0x0a
@@ -202,6 +204,11 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define	PCIR_MINGNT	0x3e
 #define	PCIR_MAXLAT	0x3f
 
+#define PCI_PPBMEMBASE(h,l)	((((uint64_t)(h) << 32) + ((l)<<16)) & ~0xfffff)
+#define PCI_PPBMEMLIMIT(h,l)	((((uint64_t)(h) << 32) + ((l)<<16)) | 0xfffff)
+#define PCI_PPBIOBASE(h,l)	((((h)<<16) + ((l)<<8)) & ~0xfff)
+#define PCI_PPBIOLIMIT(h,l)	((((h)<<16) + ((l)<<8)) | 0xfff)
+
 /* config registers for header type 1 (PCI-to-PCI bridge) devices */
 
 #define	PCIR_MAX_BAR_1	1
@@ -253,12 +260,21 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define	PCIR_IOBASE1_2	0x34
 #define	PCIR_IOLIMIT1_2	0x38
 
+#define PCIM_CBBIO_16           0x0
+#define PCIM_CBBIO_32           0x1
+#define PCIM_CBBIO_MASK         0x3
+
 #define	PCIR_BRIDGECTL_2 0x3e
 
 #define	PCIR_SUBVEND_2	0x40
 #define	PCIR_SUBDEV_2	0x42
 
 #define	PCIR_PCCARDIF_2	0x44
+
+#define PCI_CBBMEMBASE(l)	((l) & ~0xfffff)
+#define PCI_CBBMEMLIMIT(l)	((l) | 0xfffff)
+#define PCI_CBBIOBASE(l)	((l) & ~0x3)
+#define PCI_CBBIOLIMIT(l)	((l) | 0x3)
 
 /* PCI device class, subclass and programming interface definitions */
 
@@ -445,6 +461,17 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define	PCIB_BCR_SEC_DISCARD_TIMEOUT	0x0200
 #define	PCIB_BCR_DISCARD_TIMER_STATUS	0x0400
 #define	PCIB_BCR_DISCARD_TIMER_SERREN	0x0800
+
+#define CBB_BCR_PERR_ENABLE		0x0001
+#define CBB_BCR_SERR_ENABLE		0x0002
+#define CBB_BCR_ISA_ENABLE		0x0004
+#define CBB_BCR_VGA_ENABLE		0x0008
+#define CBB_BCR_MASTER_ABORT_MODE	0x0020
+#define CBB_BCR_CARDBUS_RESET		0x0040
+#define CBB_BCR_IREQ_INT_ENABLE		0x0080
+#define CBB_BCR_PREFETCH_0_ENABLE	0x0100
+#define CBB_BCR_PREFETCH_1_ENABLE	0x0200
+#define CBB_BCR_WRITE_POSTING_ENABLE	0x0400
 
 /* PCI power manangement */
 #define	PCIR_POWER_CAP		0x2
@@ -666,6 +693,7 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 					 * switch downstream port
 					 */
 #define PCIEM_CAP_IRQ_MSGNO	0x3e00
+#define PCIEM_CAP_FLR		0x10000000
 
 /* PCI Express port types */
 #define PCIE_END_POINT		0x0000	/* Endpoint device */
@@ -684,6 +712,10 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 
 /* PCI Express device control, 16bits */
 #define PCIER_DEVCTRL			0x08
+#define PCIEM_DEVCTL_COR_ENABLE		0x0001
+#define PCIEM_DEVCTL_NFER_ENABLE	0x0002
+#define PCIEM_DEVCTL_FER_ENABLE		0x0004
+#define PCIEM_DEVCTL_URR_ENABLE		0x0008
 #define PCIEM_DEVCTL_RELAX_ORDER	0x0010	/* Enable Relaxed Ordering */
 #define PCIEM_DEVCTL_MAX_PAYLOAD_MASK	0x00e0	/* Max Payload Size */
 #define PCIEM_DEVCTL_MAX_PAYLOAD_128	0x0000
@@ -747,19 +779,48 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 
 /* PCI Express slot capabilities, 32bits */
 #define PCIER_SLOTCAP		0x14
-#define PCIEM_SLTCAP_ATTEN_BTN	0x00000001 /* Attention button present */
-#define PCIEM_SLTCAP_PWR_CTRL	0x00000002 /* Power controller present */
-#define PCIEM_SLTCAP_MRL_SNS	0x00000004 /* MRL sensor present */
-#define PCIEM_SLTCAP_ATTEN_IND	0x00000008 /* Attention indicator present */
-#define PCIEM_SLTCAP_PWR_IND	0x00000010 /* Power indicator present */
-#define PCIEM_SLTCAP_HP_SURP	0x00000020 /* Hot-Plug surprise */
-#define PCIEM_SLTCAP_HP_CAP	0x00000040 /* Hot-Plug capable */
-#define PCIEM_SLTCAP_HP_MASK	0x0000007f /* Hot-Plug related bits */
+#define PCIEM_SLOTCAP_ATTEN_BTN	0x00000001 /* Attention button present */
+#define PCIEM_SLOTCAP_PWR_CTRL	0x00000002 /* Power controller present */
+#define PCIEM_SLOTCAP_MRL_SNS	0x00000004 /* MRL sensor present */
+#define PCIEM_SLOTCAP_ATTEN_IND	0x00000008 /* Attention indicator present */
+#define PCIEM_SLOTCAP_PWR_IND	0x00000010 /* Power indicator present */
+#define PCIEM_SLOTCAP_HP_SURP	0x00000020 /* Hot-Plug surprise */
+#define PCIEM_SLOTCAP_HP_CAP	0x00000040 /* Hot-Plug capable */
+#define PCIEM_SLOTCAP_HP_MASK	0x0000007f /* Hot-Plug related bits */
+#define PCIEM_SLOTCAP_SPLV	0x00007f80
+#define PCIEM_SLOTCAP_SPLS	0x00018000
+#define PCIEM_SLOTCAP_EIP	0x00020000
+#define PCIEM_SLOTCAP_NCCS	0x00040000
+#define PCIEM_SLOTCAP_PSN	0xfff80000
 
 /* PCI Express slot control, 16bits */
-#define PCIER_SLOTCTRL			0x18
-#define PCIEM_SLTCTL_HPINTR_MASK	0x001f	/* Hot-plug interrupts mask */
-#define PCIEM_SLTCTL_HPINTR_EN		0x0020	/* Enable hot-plug interrupts */
+#define PCIER_SLOTCTL			0x18
+#define PCIEM_SLOTCTL_HPINTR_MASK	0x001f	/* Hot-plug interrupts mask */
+#define PCIEM_SLOTCTL_HPINTR_EN		0x0020	/* Enable hot-plug interrupts */
+#define PCIEM_SLOTCTL_AIC		0x00c0
+#define PCIEM_SLOTCTL_AI_ON		0x0040
+#define PCIEM_SLOTCTL_AI_BLINK		0x0080
+#define PCIEM_SLOTCTL_AI_OFF		0x00c0
+#define PCIEM_SLOTCTL_PIC		0x0300
+#define PCIEM_SLOTCTL_PI_ON		0x0100
+#define PCIEM_SLOTCTL_PI_BLINK		0x0200
+#define PCIEM_SLOTCTL_PI_OFF		0x0300
+#define PCIEM_SLOTCTL_PCC		0x0400
+#define PCIEM_SLOTCTL_PC_ON		0x0000
+#define PCIEM_SLOTCTL_PC_OFF		0x0400
+#define PCIEM_SLOTCTL_EIC		0x0800
+#define PCIEM_SLOTCTL_DLLSCE		0x1000
+
+#define PCIER_SLOTSTA			0x1a
+#define PCIEM_SLOTSTA_ABP		0x0001
+#define PCIEM_SLOTSTA_PFD		0x0002
+#define PCIEM_SLOTSTA_MRLSC		0x0004
+#define PCIEM_SLOTSTA_PDC		0x0008
+#define PCIEM_SLOTSTA_CC		0x0010
+#define PCIEM_SLOTSTA_MRLSS		0x0020
+#define PCIEM_SLOTSTA_PDS		0x0040
+#define PCIEM_SLOTSTA_EIS		0x0080
+#define PCIEM_SLOTSTA_DLLSC		0x0100
 
 /* PCI Express hot-plug interrupts */
 #define PCIE_HPINTR_ATTEN_BTN		0x0001	/* Attention button intr */
@@ -809,35 +870,48 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 
 /* Advanced Error Reporting */
 #define	PCIR_AER_UC_STATUS	0x04
-#define	PCIM_AER_UC_TRAINING_ERROR	0x00000001
-#define	PCIM_AER_UC_DL_PROTOCOL_ERROR	0x00000010
-#define	PCIM_AER_UC_SURPRISE_LINK_DOWN	0x00000020
-#define	PCIM_AER_UC_POISONED_TLP	0x00001000
-#define	PCIM_AER_UC_FC_PROTOCOL_ERROR	0x00002000
-#define	PCIM_AER_UC_COMPLETION_TIMEOUT	0x00004000
-#define	PCIM_AER_UC_COMPLETER_ABORT	0x00008000
-#define	PCIM_AER_UC_UNEXPECTED_COMPLETION 0x00010000
-#define	PCIM_AER_UC_RECEIVER_OVERFLOW	0x00020000
-#define	PCIM_AER_UC_MALFORMED_TLP	0x00040000
-#define	PCIM_AER_UC_ECRC_ERROR		0x00080000
-#define	PCIM_AER_UC_UNSUPPORTED_REQUEST	0x00100000
-#define	PCIM_AER_UC_ACS_VIOLATION	0x00200000
+#define	PCIM_AER_UC_TRAINING_ERROR		0x00000001
+#define	PCIM_AER_UC_DL_PROTOCOL_ERROR		0x00000010
+#define	PCIM_AER_UC_SURPRISE_LINK_DOWN		0x00000020
+#define	PCIM_AER_UC_POISONED_TLP		0x00001000
+#define	PCIM_AER_UC_FC_PROTOCOL_ERROR		0x00002000
+#define	PCIM_AER_UC_COMPLETION_TIMEOUT		0x00004000
+#define	PCIM_AER_UC_COMPLETER_ABORT		0x00008000
+#define	PCIM_AER_UC_UNEXPECTED_COMPLETION	0x00010000
+#define	PCIM_AER_UC_RECEIVER_OVERFLOW		0x00020000
+#define	PCIM_AER_UC_MALFORMED_TLP		0x00040000
+#define	PCIM_AER_UC_ECRC_ERROR			0x00080000
+#define	PCIM_AER_UC_UNSUPPORTED_REQUEST		0x00100000
+#define	PCIM_AER_UC_ACS_VIOLATION		0x00200000
+#define PCIM_AER_UC_INTERNAL_ERROR		0x00400000
+#define PCIM_AER_UC_MC_BLOCKED_TLP		0x00800000
+#define PCIM_AER_UC_ATOMIC_EGRESS_BLK		0x01000000
+#define PCIM_AER_UC_TLP_PREFIX_BLOCKED		0x02000000
+
 #define	PCIR_AER_UC_MASK	0x08	/* Shares bits with UC_STATUS */
 #define	PCIR_AER_UC_SEVERITY	0x0c	/* Shares bits with UC_STATUS */
 #define	PCIR_AER_COR_STATUS	0x10
+
 #define	PCIM_AER_COR_RECEIVER_ERROR	0x00000001
 #define	PCIM_AER_COR_BAD_TLP		0x00000040
 #define	PCIM_AER_COR_BAD_DLLP		0x00000080
 #define	PCIM_AER_COR_REPLAY_ROLLOVER	0x00000100
 #define	PCIM_AER_COR_REPLAY_TIMEOUT	0x00001000
 #define	PCIM_AER_COR_ADVISORY_NF_ERROR	0x00002000
+#define PCIM_AER_COR_INTERNAL_ERROR	0x00004000
+#define PCIM_AER_COR_HEADER_LOG_OVFLOW	0x00008000
 #define	PCIR_AER_COR_MASK	0x14	/* Shares bits with COR_STATUS */
+
 #define	PCIR_AER_CAP_CONTROL	0x18
 #define	PCIM_AER_FIRST_ERROR_PTR	0x0000001f
 #define	PCIM_AER_ECRC_GEN_CAPABLE	0x00000020
 #define	PCIM_AER_ECRC_GEN_ENABLE	0x00000040
 #define	PCIM_AER_ECRC_CHECK_CAPABLE	0x00000080
 #define	PCIM_AER_ECRC_CHECK_ENABLE	0x00000100
+#define PCIM_AER_MULT_HDR_CAPABLE	0x00000200
+#define PCIM_AER_MULT_HDR_ENABLE	0x00000400
+#define PCIM_AER_TLP_PREFIX_LOG_PRESENT	0x00000800
+
 #define	PCIR_AER_HEADER_LOG	0x1c
 #define	PCIR_AER_ROOTERR_CMD	0x2c	/* Only for root complex ports */
 #define	PCIM_AER_ROOTERR_COR_ENABLE	0x00000001

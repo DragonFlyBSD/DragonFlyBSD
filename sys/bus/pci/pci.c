@@ -2498,7 +2498,7 @@ pci_print_verbose_expr(const pcicfgregs *cfg)
 
 	if (pcie_slotimpl(cfg)) {
 		kprintf(", slotcap=0x%08x", expr->expr_slotcap);
-		if (expr->expr_slotcap & PCIEM_SLTCAP_HP_CAP)
+		if (expr->expr_slotcap & PCIEM_SLOTCAP_HP_CAP)
 			kprintf("[HOTPLUG]");
 	}
 	kprintf("\n");

@@ -298,15 +298,15 @@ pcib_attach_common(device_t dev)
 	 * disable all hot-plug interrupts on the PCI Express root
 	 * port or down stream port for now.
 	 */
-#define HPINTRS	(PCIEM_SLTCTL_HPINTR_MASK | PCIEM_SLTCTL_HPINTR_EN)
+#define HPINTRS	(PCIEM_SLOTCTL_HPINTR_MASK | PCIEM_SLOTCTL_HPINTR_EN)
 
 	ptr = pci_get_pciecap_ptr(dev);
-	slot_ctrl = pci_read_config(dev, ptr + PCIER_SLOTCTRL, 2);
+	slot_ctrl = pci_read_config(dev, ptr + PCIER_SLOTCTL, 2);
 	if (slot_ctrl & HPINTRS) {
 	    device_printf(dev, "Disable PCI Express hot-plug "
 	    		  "interrupts(0x%04x)\n", slot_ctrl & HPINTRS);
 	    slot_ctrl &= ~HPINTRS;
-	    pci_write_config(dev, ptr + PCIER_SLOTCTRL, slot_ctrl, 2);
+	    pci_write_config(dev, ptr + PCIER_SLOTCTL, slot_ctrl, 2);
 	}
 
 #undef HPINTRS

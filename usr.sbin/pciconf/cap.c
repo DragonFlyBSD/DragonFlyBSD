@@ -43,6 +43,8 @@
 #include "pciconf.h"
 
 static void	list_ecaps(int fd, struct pci_conf *p);
+static const char *aspm_string(uint8_t aspm);
+static int	slot_power(uint32_t cap);
 
 static void
 cap_power(int fd, struct pci_conf *p, uint8_t ptr)
@@ -363,11 +365,13 @@ cap_subvendor(int fd, struct pci_conf *p, uint8_t ptr)
 static void
 cap_express(int fd, struct pci_conf *p, uint8_t ptr)
 {
-	uint32_t val;
-	uint16_t flags;
+	uint32_t cap;
+	uint16_t ctl, flags, sta;
+	unsigned int version;
 
 	flags = read_config(fd, &p->pc_sel, ptr + PCIER_CAPABILITY, 2);
-	printf("PCI-Express %d ", flags & PCIEM_CAP_VER_MASK);
+	version = flags & PCIEM_CAP_VER_MASK;
+	printf("PCI-Express %u ", version);
 	switch (flags & PCIEM_CAP_PORT_TYPE) {
 	case PCIE_END_POINT:
 		printf("endpoint");
@@ -402,15 +406,78 @@ cap_express(int fd, struct pci_conf *p, uint8_t ptr)
 	}
 	if (flags & PCIEM_CAP_IRQ_MSGNO)
 		printf(" IRQ %d", (flags & PCIEM_CAP_IRQ_MSGNO) >> 8);
-	val = read_config(fd, &p->pc_sel, ptr + PCIER_DEVCAP, 4);
-	flags = read_config(fd, &p->pc_sel, ptr + PCIER_DEVCTRL, 2);
+	cap = read_config(fd, &p->pc_sel, ptr + PCIER_DEVCAP, 4);
+	ctl = read_config(fd, &p->pc_sel, ptr + PCIER_DEVCTRL, 2);
 	printf(" max data %d(%d)",
-	    MAX_PAYLOAD((flags & PCIEM_DEVCAP_MAX_PAYLOAD) >> 5),
-	    MAX_PAYLOAD(val & PCIEM_DEVCAP_MAX_PAYLOAD));
-	val = read_config(fd, &p->pc_sel, ptr + PCIER_LINKCAP, 4);
-	flags = read_config(fd, &p->pc_sel, ptr+ PCIER_LINKSTAT, 2);
-	printf(" link x%d(x%d)", (flags & PCIEM_LNKSTAT_WIDTH) >> 4,
-	    (val & PCIEM_LNKCAP_MAXW_MASK) >> 4);
+	    MAX_PAYLOAD((ctl & PCIEM_DEVCAP_MAX_PAYLOAD) >> 5),
+	    MAX_PAYLOAD(cap & PCIEM_DEVCAP_MAX_PAYLOAD));
+	if ((cap & PCIEM_CAP_FLR) != 0)
+		printf(" FLR");
+	if (ctl & PCIEM_DEVCTL_RELAX_ORDER)
+		printf(" RO");
+	if (ctl & PCIEM_DEVCTL_NOSNOOP)
+		printf(" NS");
+	if (ctl & PCIEM_DEVCTL_COR_ENABLE)
+		printf(" COR");
+	if (ctl & PCIEM_DEVCTL_NFER_ENABLE)
+		printf(" NFER");
+	if (ctl & PCIEM_DEVCTL_FER_ENABLE)
+		printf(" FER");
+	if (ctl & PCIEM_DEVCTL_URR_ENABLE)
+		printf(" URR");
+	if (version >= 2) {
+		cap = read_config(fd, &p->pc_sel, ptr + PCIER_DEVCAP2, 4);
+		if ((cap & PCIEM_DEVCAP2_ALT_RID_SUPP) != 0) {
+			ctl = read_config(fd, &p->pc_sel,
+					  ptr + PCIER_DEVCTRL2, 4);
+			printf(" ARI %s",
+			       (ctl & PCIEM_DEVCTL2_ALT_RID_ENABLE) ?
+			       "enabled" : "disabled");
+
+		}
+		if ((cap & PCIEM_DEVCAP2_LTR_SUPP) != 0) {
+			printf(" LTR %s",
+			       (ctl & PCIEM_DEVCTL2_LTR_ENABLE) ?
+			       "enabled" : "disabled");
+		}
+	}
+
+	cap = read_config(fd, &p->pc_sel, ptr + PCIER_LINKCAP, 4);
+	sta = read_config(fd, &p->pc_sel, ptr+ PCIER_LINKSTAT, 2);
+	if (cap || sta) {
+		printf(" link x%d(x%d)", (sta & PCIEM_LNKSTAT_WIDTH) >> 4,
+		    (cap & PCIEM_LNKCAP_MAXW_MASK) >> 4);
+	}
+	if (cap & PCIEM_LNKCAP_ASPM_MASK) {
+		ctl = read_config(fd, &p->pc_sel, ptr + PCIER_LINKCTRL, 2);
+		printf(" ASPM %s(%s)",
+			aspm_string(ctl & PCIEM_LNKCTL_ASPM_MASK),
+			aspm_string((cap & PCIEM_LNKCAP_ASPM_MASK) >> 10));
+	}
+	if (flags & PCIEM_CAP_SLOT_IMPL) {
+		cap = read_config(fd, &p->pc_sel, ptr + PCIER_SLOTCAP, 4);
+		sta = read_config(fd, &p->pc_sel, ptr + PCIER_SLOTSTA, 2);
+		ctl = read_config(fd, &p->pc_sel, ptr + PCIER_SLOTCTL, 2);
+		printf("\n                ");
+		printf(" slot %d", (cap & PCIEM_SLOTCAP_PSN) >> 19);
+		printf(" power limit %d mW", slot_power(cap));
+		if (cap & PCIEM_SLOTCAP_HP_CAP)
+			printf(" HotPlug(%s)", sta & PCIEM_SLOTSTA_PDS ?
+			       "present" : "empty");
+		if (cap & PCIEM_SLOTCAP_HP_SURP)
+			printf(" surprise");
+		if (cap & PCIEM_SLOTCAP_ATTEN_BTN)
+			printf(" Attn Button");
+		if (cap & PCIEM_SLOTCAP_PWR_CTRL)
+			printf(" PC(%s)", ctl & PCIEM_SLOTCTL_PCC ?
+			       "off" : "on");
+		if (cap & PCIEM_SLOTCAP_MRL_SNS)
+			printf(" MRL(%s)", sta & PCIEM_SLOTSTA_MRLSS ?
+			       "open" : "closed");
+		if (cap & PCIEM_SLOTCAP_EIP)
+			printf(" EI(%s)", sta & PCIEM_SLOTSTA_EIS ?
+			       "engaged" : "disengaged");
+	}
 }
 
 static void
@@ -556,7 +623,7 @@ ecap_aer(int fd, struct pci_conf *p, uint16_t ptr, uint8_t ver)
 	uint32_t sta, mask;
 
 	printf("AER %d", ver);
-	if (ver != 1)
+	if (ver < 1)
 		return;
 	sta = read_config(fd, &p->pc_sel, ptr + PCIR_AER_UC_STATUS, 4);
 	mask = read_config(fd, &p->pc_sel, ptr + PCIR_AER_UC_SEVERITY, 4);
@@ -626,4 +693,97 @@ list_ecaps(int fd, struct pci_conf *p)
 			break;
 		ecap = read_config(fd, &p->pc_sel, ptr, 4);
 	}
+}
+
+static const char *
+aspm_string(uint8_t aspm)
+{
+	switch (aspm) {
+	case 1:
+		return("L0s");
+	case 2:
+		return("L1");
+	case 3:
+		return("L0s/L1");
+	default:
+		return("disabled");
+	}
+}
+
+static int
+slot_power(uint32_t cap)
+{
+	int mwatts;
+
+	mwatts = (cap & PCIEM_SLOTCAP_SPLV) >> 7;
+
+	switch (cap & PCIEM_SLOTCAP_SPLS) {
+	case 0x0:
+		mwatts *= 10;
+		/* fallthrough */
+	case 0x1:
+		mwatts *= 10;
+		/* fallthrough */
+	case 0x2:
+		mwatts *= 10;
+		/* fallthrough */
+	default:
+		break;
+	}
+	return mwatts;
+}
+
+uint8_t
+pci_find_cap(int fd, struct pci_conf *p, uint8_t id)
+{
+	uint16_t sta;
+	uint8_t ptr, cap;
+
+	/* Are capabilities present for this device? */
+	sta = read_config(fd, &p->pc_sel, PCIR_STATUS, 2);
+	if (!(sta & PCIM_STATUS_CAPPRESENT))
+		return (0);
+
+	switch (p->pc_hdr & PCIM_HDRTYPE) {
+	case PCIM_HDRTYPE_NORMAL:
+	case PCIM_HDRTYPE_BRIDGE:
+		ptr = PCIR_CAP_PTR;
+		break;
+	case PCIM_HDRTYPE_CARDBUS:
+		ptr = PCIR_CAP_PTR_2;
+		break;
+	default:
+		return (0);
+	}
+
+	ptr = read_config(fd, &p->pc_sel, ptr, 1);
+	while (ptr != 0 && ptr != 0xff) {
+		cap = read_config(fd, &p->pc_sel, ptr + PCICAP_ID, 1);
+		if (cap == id)
+			return (ptr);
+		ptr = read_config(fd, &p->pc_sel, ptr + PCICAP_NEXTPTR, 1);
+	}
+	return (0);
+}
+
+/* Find offset of a specific extended capability.  Returns 0 on failure. */
+uint16_t
+pcie_find_cap(int fd, struct pci_conf *p, uint16_t id)
+{
+	uint32_t ecap;
+	uint16_t ptr;
+
+	ptr = PCIR_EXTCAP;
+	ecap = read_config(fd, &p->pc_sel, ptr, 4);
+	if (ecap == 0xffffffff || ecap == 0)
+		return (0);
+	for (;;) {
+		if (PCI_EXTCAP_ID(ecap) == id)
+			return (ptr);
+		ptr = PCI_EXTCAP_NEXTPTR(ecap);
+		if (ptr == 0)
+			break;
+		ecap = read_config(fd, &p->pc_sel, ptr, 4);
+	}
+	return (0);
 }
