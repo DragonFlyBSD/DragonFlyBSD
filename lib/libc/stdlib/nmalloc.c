@@ -912,6 +912,27 @@ __posix_memalign(void **memptr, size_t alignment, size_t size)
 	if (size < alignment)
 		size = alignment;
 	size = (size + PAGE_MASK) & ~(size_t)PAGE_MASK;
+	if (alignment == PAGE_SIZE && size <= BIGCACHE_LIMIT) {
+		big = bigcache_find_alloc(size);
+		if (big && big->bytes < size) {
+			_slabfree(big->base, FASTSLABREALLOC, &big);
+			big = NULL;
+		}
+		if (big) {
+			*memptr = big->base;
+			big->active = size;
+			if (big->active < big->bytes) {
+				atomic_add_long(&excess_alloc,
+						big->bytes - big->active);
+			}
+			bigp = bigalloc_lock(*memptr);
+			big->next = *bigp;
+			*bigp = big;
+			bigalloc_unlock(*memptr);
+			handle_excess_big();
+			return(0);
+		}
+	}
 	*memptr = _vmem_alloc(size, alignment, 0);
 	if (*memptr == NULL)
 		return(ENOMEM);
