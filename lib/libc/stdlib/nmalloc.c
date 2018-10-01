@@ -855,13 +855,18 @@ __posix_memalign(void **memptr, size_t alignment, size_t size)
 		size = (size + alignment - 1) & ~(size_t)(alignment - 1);
 
 	/*
-	 * If we have overflown above when rounding to the nearest alignment
+	 * If we have overflowed above when rounding to the nearest alignment
 	 * boundary, just return ENOMEM, size should be == N * sizeof(void *).
+	 *
+	 * Power-of-2 allocations up to 8KB will be aligned to the allocation
+	 * size and _slaballoc() can simply be used.  Please see line 1082
+	 * for this special case: 'Align the storage in the zone based on
+	 * the chunking' has a special case for powers of 2.
 	 */
 	if (size == 0)
 		return(ENOMEM);
 
-	if (size < PAGE_SIZE && (size | (size - 1)) + 1 == (size << 1)) {
+	if (size <= PAGE_SIZE*2 && (size | (size - 1)) + 1 == (size << 1)) {
 		*memptr = _slaballoc(size, 0);
 		return(*memptr ? 0 : ENOMEM);
 	}
@@ -976,6 +981,12 @@ _slaballoc(size_t size, int flags)
 	 * The backend allocator is pretty nasty on a SMP system.   Use the
 	 * slab allocator for one and two page-sized chunks even though we
 	 * lose some efficiency.
+	 *
+	 * NOTE: Please see posix_memalign around line 864, which assumes
+	 *	 that power-of-2 allocations of PAGE_SIZE and PAGE_SIZE*2
+	 *	 can use _slaballoc() and be aligned to the same.  The
+	 *	 zone cache can be used for this case, bigalloc does not
+	 *	 have to be used.
 	 */
 	if (size >= ZoneLimit ||
 	    ((size & PAGE_MASK) == 0 && size > PAGE_SIZE*2)) {
@@ -992,7 +1003,7 @@ _slaballoc(size_t size, int flags)
 		size = (size + PAGE_MASK) & ~(size_t)PAGE_MASK;
 
 		/*
-		 * If we have overflown above when rounding to the page
+		 * If we have overflowed above when rounding to the page
 		 * boundary, something has passed us (size_t)[-PAGE_MASK..-1]
 		 * so just return NULL, size at this point should be >= 0.
 		*/
@@ -1088,6 +1099,16 @@ _slaballoc(size_t size, int flags)
 		 * Set initial conditions for UIndex near the zone header
 		 * to reduce unecessary page faults, vs semi-randomization
 		 * to improve L1 cache saturation.
+		 *
+		 * NOTE: Please see posix_memalign around line 864-ish, which
+		 *	 assumes that power-of-2 allocations of PAGE_SIZE
+		 *	 and PAGE_SIZE*2 can use _slaballoc() and be aligned
+		 *	 to the same.  The zone cache can be used for this
+		 *	 case, bigalloc does not have to be used.
+		 *
+		 *	 ALL power-of-2 requests that fall through to this
+		 *	 code use this rule (conditionals above limit this
+		 *	 to <= PAGE_SIZE*2.
 		 */
 		if ((size | (size - 1)) + 1 == (size << 1))
 			off = roundup2(off, size);
