@@ -2924,6 +2924,7 @@ dev/virtual/hyperv/vmbus/vmbus.c	optional vmbus
 #
 # virtio support
 #
+dev/virtual/virtio/balloon/virtio_balloon.c optional virtio_balloon virtio
 dev/virtual/virtio/block/virtio_blk.c	optional virtio_blk virtio
 dev/virtual/virtio/random/virtio_random.c optional virtio_random virtio
 dev/virtual/virtio/scsi/virtio_scsi.c	optional virtio_scsi virtio

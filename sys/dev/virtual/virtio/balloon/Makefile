@@ -1,5 +1,5 @@
 #
-# $FreeBSD$
+# $FreeBSD: head/sys/modules/virtio/balloon/Makefile 314651 2017-03-04 10:10:17Z ngie $
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -23,6 +23,11 @@
 # SUCH DAMAGE.
 #
 
-SUBDIR= virtio pci balloon block net random scsi
+KMOD=	virtio_balloon
+SRCS=	virtio_balloon.c
+SRCS+=	virtio_bus_if.h
+SRCS+=	bus_if.h device_if.h
 
-.include <bsd.subdir.mk>
+#KCFLAGS+= -DINVARIANTS -DDEBUG
+
+.include <bsd.kmod.mk>

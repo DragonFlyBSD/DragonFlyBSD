@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man4/virtio.4 273515 2014-10-23 04:47:32Z bryanv $
 .\"
-.Dd September 30, 2018
+.Dd October 26, 2018
 .Dt VIRTIO 4
 .Os
 .Sh NAME
@@ -74,11 +74,11 @@ device driver.
 An emulated SCSI HBA is provided by the
 .Xr virtio_scsi 4
 device driver.
-.\".It Nm Balloon
-.\"A pseudo-device to allow the VM to release memory back to the hypervisor is
-.\"provided by the
-.\".Xr virtio_balloon 4
-.\"device driver.
+.It Nm Balloon
+A pseudo-device to allow the VM to release memory back to the hypervisor is
+provided by the
+.Xr virtio_balloon 4
+device driver.
 .El
 .Sh LOADER TUNABLES
 Tunables can be set at the
@@ -91,7 +91,7 @@ This tunable disables MSI-X interrupt usage.
 The default value is 0 (use MSI-X interrupts if available).
 .El
 .Sh SEE ALSO
-.\".Xr virtio_balloon 4 ,
+.Xr virtio_balloon 4 ,
 .Xr virtio_blk 4 ,
 .\".Xr virtio_console 4 ,
 .Xr virtio_random 4 ,
@@ -105,3 +105,6 @@ Support for VirtIO first appeared in
 .Fx
 support for VirtIO was first added by
 .An Bryan Venteicher Aq Mt bryanv@FreeBSD.org .
+.Pp
+.Dx support for Virtio Memory Balloon adapted by
+.An Diederik de Groot Aq Mt info@talon.nl .
