@@ -1490,7 +1490,13 @@ ffs_blkfree_cg(struct fs * fs, struct vnode * i_devvp, cdev_t i_dev, ino_t i_num
 	int i, error, cg, blk, frags, bbase;
 	uint8_t *blksfree;
 
-	VOP_FREEBLKS(i_devvp, fsbtodoff(fs, bno), size);
+#if 0
+	/*
+	 * ffs_blkfree() handles TRIM if UFS is mounted with the 'trim'
+	 * option, do not issue an unconditional duplicate here!
+	 * VOP_FREEBLKS(i_devvp, fsbtodoff(fs, bno), size);
+	 */
+#endif
 	if ((uint)size > fs->fs_bsize || fragoff(fs, size) != 0 ||
 	    fragnum(fs, bno) + numfrags(fs, size) > fs->fs_frag) {
 		kprintf("dev=%s, bno = %ld, bsize = %ld, size = %ld, fs = %s\n",
