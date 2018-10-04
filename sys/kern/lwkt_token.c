@@ -207,14 +207,14 @@ static __inline
 lwkt_token_t
 _lwkt_token_pool_lookup(void *ptr)
 {
-        uintptr_t hash1;
-        uintptr_t hash2;
+	uintptr_t hash1;
+	uintptr_t hash2;
 
-        hash1 = (uintptr_t)ptr + ((uintptr_t)ptr >> 18);
-        hash1 %= POOL_HASH_PRIME1;
-        hash2 = ((uintptr_t)ptr >> 8) + ((uintptr_t)ptr >> 24);
-        hash2 %= POOL_HASH_PRIME2;
-        return (&pool_tokens[(hash1 ^ hash2) & LWKT_POOL_MASK].token);
+	hash1 = (uintptr_t)ptr + ((uintptr_t)ptr >> 18);
+	hash1 %= POOL_HASH_PRIME1;
+	hash2 = ((uintptr_t)ptr >> 8) + ((uintptr_t)ptr >> 24);
+	hash2 %= POOL_HASH_PRIME2;
+	return (&pool_tokens[(hash1 ^ hash2) & LWKT_POOL_MASK].token);
 }
 
 /*
@@ -271,8 +271,8 @@ _lwkt_trytokref(lwkt_tokref_t ref, thread_t td, long mode)
 				 * acquisition.
 				 */
 				if (atomic_fcmpset_long(&tok->t_count, &count,
-						        (count & ~TOK_EXCLREQ) |
-						        TOK_EXCLUSIVE)) {
+							(count & ~TOK_EXCLREQ) |
+							TOK_EXCLUSIVE)) {
 					KKASSERT(tok->t_ref == NULL);
 					tok->t_ref = ref;
 					return TRUE;
@@ -728,15 +728,15 @@ lwkt_gettoken_shared(lwkt_token_t tok)
 	_lwkt_tokref_init(ref, tok, td, TOK_EXCLREQ);
 
 #ifdef DEBUG_LOCKS
-        /*
-         * Taking a pool token in shared mode is a bad idea; other
-         * addresses deeper in the call stack may hash to the same pool
-         * token and you may end up with an exclusive-shared livelock.
-         * Warn in this condition.
-         */
-        if ((tok >= &pool_tokens[0].token) &&
-            (tok < &pool_tokens[LWKT_POOL_TOKENS].token))
-                kprintf("Warning! Taking pool token %p in shared mode\n", tok);
+	/*
+	 * Taking a pool token in shared mode is a bad idea; other
+	 * addresses deeper in the call stack may hash to the same pool
+	 * token and you may end up with an exclusive-shared livelock.
+	 * Warn in this condition.
+	 */
+	if ((tok >= &pool_tokens[0].token) &&
+	    (tok < &pool_tokens[LWKT_POOL_TOKENS].token))
+		kprintf("Warning! Taking pool token %p in shared mode\n", tok);
 #endif
 
 
