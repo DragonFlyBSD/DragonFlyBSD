@@ -82,15 +82,14 @@
 
 extern int lwkt_sched_debug;
 
-#ifndef LWKT_NUM_POOL_TOKENS
-#define LWKT_NUM_POOL_TOKENS	16661
-#endif
+#define LWKT_POOL_TOKENS	16384		/* must be power of 2 */
+#define LWKT_POOL_MASK		(LWKT_POOL_TOKENS - 1)
 
 struct lwkt_pool_token {
 	struct lwkt_token	token;
 } __cachealign;
 
-static struct lwkt_pool_token	pool_tokens[LWKT_NUM_POOL_TOKENS];
+static struct lwkt_pool_token	pool_tokens[LWKT_POOL_TOKENS];
 struct spinlock tok_debug_spin = SPINLOCK_INITIALIZER(&tok_debug_spin,
 						      "tok_debug_spin");
 
@@ -201,14 +200,21 @@ cpu_get_initial_mplock(void)
  * Return a pool token given an address.  Use a prime number to reduce
  * overlaps.
  */
+#define POOL_HASH_PRIME1	66555444443333333ULL
+#define POOL_HASH_PRIME2	989042931893ULL
+
 static __inline
 lwkt_token_t
 _lwkt_token_pool_lookup(void *ptr)
 {
-	uint32_t i;
+        uintptr_t hash1;
+        uintptr_t hash2;
 
-	i = (uint32_t)(uintptr_t)ptr % LWKT_NUM_POOL_TOKENS;
-	return (&pool_tokens[i].token);
+        hash1 = (uintptr_t)ptr + ((uintptr_t)ptr >> 18);
+        hash1 %= POOL_HASH_PRIME1;
+        hash2 = ((uintptr_t)ptr >> 8) + ((uintptr_t)ptr >> 24);
+        hash2 %= POOL_HASH_PRIME2;
+        return (&pool_tokens[(hash1 ^ hash2) & LWKT_POOL_MASK].token);
 }
 
 /*
@@ -692,8 +698,8 @@ good:
 	if (tokens_debug_output > 0) {
 		--tokens_debug_output;
 		spin_lock(&tok_debug_spin);
-		kprintf("Excl Token thread %p %s %s\n",
-			td, tok->t_desc, td->td_comm);
+		kprintf("Excl Token %p thread %p %s %s\n",
+			tok, td, tok->t_desc, td->td_comm);
 		print_backtrace(6);
 		kprintf("\n");
 		spin_unlock(&tok_debug_spin);
@@ -729,7 +735,7 @@ lwkt_gettoken_shared(lwkt_token_t tok)
          * Warn in this condition.
          */
         if ((tok >= &pool_tokens[0].token) &&
-            (tok < &pool_tokens[LWKT_NUM_POOL_TOKENS].token))
+            (tok < &pool_tokens[LWKT_POOL_TOKENS].token))
                 kprintf("Warning! Taking pool token %p in shared mode\n", tok);
 #endif
 
@@ -756,8 +762,8 @@ lwkt_gettoken_shared(lwkt_token_t tok)
 	if (tokens_debug_output > 0) {
 		--tokens_debug_output;
 		spin_lock(&tok_debug_spin);
-		kprintf("Shar Token thread %p %s %s\n",
-			td, tok->t_desc, td->td_comm);
+		kprintf("Shar Token %p thread %p %s %s\n",
+			tok, td, tok->t_desc, td->td_comm);
 		print_backtrace(6);
 		kprintf("\n");
 		spin_unlock(&tok_debug_spin);
@@ -873,7 +879,7 @@ lwkt_token_pool_init(void)
 {
 	int i;
 
-	for (i = 0; i < LWKT_NUM_POOL_TOKENS; ++i)
+	for (i = 0; i < LWKT_POOL_TOKENS; ++i)
 		lwkt_token_init(&pool_tokens[i].token, "pool");
 }
 
