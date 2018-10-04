@@ -12,6 +12,13 @@
 +         UPGRADING DRAGONFLY FROM 5.2 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+DIGI, RP AND SI DRIVERS REMOVED
+-------------------------------
+
+The digi(4), rp(4) and si(4) serial drivers have been removed. None of
+them were in our default kernel configuration file. The sicontrol(8)
+utility was removed, too.
+
 MKINITRD COMMAND REMOVED
 ------------------------
 

@@ -1207,8 +1207,6 @@ options		SND_OLDSTEREO
 # ecc: ECC memory controller
 # ipmi: Intelligent Platform Management Interface
 # joy: joystick
-# nrp: Comtrol Rocketport
-# si: Specialix SI/XIO 4-32 port terminal multiplexor
 # nmdm: nullmodem terminal driver (see nmdm(4))
 # tpm: Trusted Platform Module
 
@@ -1223,8 +1221,6 @@ device		coremctl
 device		dimm
 device		ecc
 device		joy0	at isa? port IO_GAME
-device		nrp
-device		si
 # nullmodem terminal driver
 device		nmdm
 device		tpm
@@ -2203,7 +2199,6 @@ options 	SCSI_NCR_DEBUG
 options 	SCSI_NCR_MAX_SYNC=10000
 options 	SCSI_NCR_MAX_WIDE=1
 options 	SCSI_NCR_MYADDR=7
-options 	SI_DEBUG
 options		SLAB_DEBUG
 options 	SOCKBUF_DEBUG
 options		TDMA_BINTVAL_DEFAULT=5

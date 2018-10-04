@@ -159,8 +159,7 @@ SUBDIR+= \
 	kgmon \
 	lptcontrol \
 	mptable \
-	rndcontrol \
-	sicontrol
+	rndcontrol
 .endif
 
 .ifdef WANT_INSTALLER

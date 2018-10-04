@@ -3434,6 +3434,13 @@ TO_REMOVE+=/usr/share/man/man5/mkinitrd.conf.5.gz
 TO_REMOVE+=/usr/share/man/man8/mkinitrd.8.gz
 TO_REMOVE+=/rescue/rescue.sbin
 TO_REMOVE+=/usr/share/man/man3/fpresetsticky.3.gz
+TO_REMOVE+=/boot/kernel/digi.ko
+TO_REMOVE+=/boot/kernel/rp.ko
+TO_REMOVE+=/usr/sbin/sicontrol
+TO_REMOVE+=/usr/share/man/man4/digi.4.gz
+TO_REMOVE+=/usr/share/man/man4/rp.4.gz
+TO_REMOVE+=/usr/share/man/man4/si.4.gz
+TO_REMOVE+=/usr/share/man/man8/sicontrol.8.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

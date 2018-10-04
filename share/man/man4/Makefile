@@ -77,7 +77,6 @@ MAN=	aac.4 \
 	ddb.4 \
 	de.4 \
 	devctl.4 \
-	digi.4 \
 	disc.4 \
 	divert.4 \
 	dm.4 \
@@ -259,7 +258,6 @@ MAN=	aac.4 \
 	rl.4 \
 	rndtest.4 \
 	route.4 \
-	rp.4 \
 	rum.4 \
 	run.4 \
 	runfw.4 \
@@ -273,7 +271,6 @@ MAN=	aac.4 \
 	sdhci.4 \
 	ses.4 \
 	sf.4 \
-	si.4 \
 	sili.4 \
 	sio.4 \
 	sis.4 \

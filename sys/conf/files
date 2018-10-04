@@ -1183,8 +1183,6 @@ dev/misc/putter/putter.c	optional putter
 dev/disk/vpo/vpo.c		optional vpo
 dev/disk/vpo/vpoio.c	optional vpo
 dev/crypto/rndtest/rndtest.c	optional rndtest
-dev/serial/rp/rp.c		optional nrp
-dev/serial/rp/rp_pci.c		optional nrp pci
 dev/crypto/safe/safe.c		optional safe
 dev/netif/sbsh/if_sbsh.c	optional sbsh
 dev/disk/sdhci/sdhci.c		optional sdhci
@@ -1202,10 +1200,6 @@ bus/smbus/ichsmb/ichsmb.c	optional ichsmb
 bus/smbus/ichsmb/ichsmb_pci.c	optional ichsmb pci
 bus/smbus/smbacpi/smbacpi.c	optional smbacpi acpi
 dev/smbus/smb/smb.c		optional smb
-dev/serial/si/si_drv.c		optional si
-dev/serial/si/si2_z280.c	optional si
-dev/serial/si/si3_t225.c	optional si
-dev/serial/si/si_pci.c		optional si pci
 dev/netif/bwn/siba/siba_bwn.c	optional siba_bwn pci
 dev/netif/bwn/siba/siba_core.c	optional siba_bwn pci
 dev/netif/sln/if_sln.c		optional sln pci

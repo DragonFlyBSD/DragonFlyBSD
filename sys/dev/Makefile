@@ -11,7 +11,6 @@ SUBDIR=	\
 	pccard \
 	powermng \
 	raid \
-	serial \
 	sound \
 	smbus \
 	video \
