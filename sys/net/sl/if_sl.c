@@ -75,7 +75,6 @@
 #include <sys/fcntl.h>
 #include <sys/signalvar.h>
 #include <sys/tty.h>
-#include <sys/clist.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/conf.h>
@@ -155,7 +154,7 @@ TUNABLE_INT("net.sliffopts", &sliffopts);
 #define	SLMTU		552		/* default MTU */
 #endif
 #define	SLTMAX		1500		/* maximum MTU */
-#define	SLIP_HIWAT	roundup(50,CBSIZE)
+#define	SLIP_HIWAT	50
 #define	CLISTRESERVE	1024		/* Can't let clists get too low */
 
 /*
@@ -283,11 +282,10 @@ slopen(cdev_t dev, struct tty *tp)
 			 * be enough.  Reserving cblocks probably makes
 			 * the CLISTRESERVE check unnecessary and wasteful.
 			 */
-			clist_alloc_cblocks(&tp->t_canq, 0, 0);
+			clist_alloc_cblocks(&tp->t_canq, 0);
 			clist_alloc_cblocks(&tp->t_outq,
-			    SLIP_HIWAT + 2 * sc->sc_if.if_mtu + 1,
 			    SLIP_HIWAT + 2 * sc->sc_if.if_mtu + 1);
-			clist_alloc_cblocks(&tp->t_rawq, 0, 0);
+			clist_alloc_cblocks(&tp->t_rawq, 0);
 
 			if_up(&sc->sc_if);
 			lwkt_reltoken(&tty_token);
@@ -384,8 +382,8 @@ sltioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cred)
 					sc->sc_flags |= (nc->sc_flags & SC_STATIC);
 					tp->t_slsc = sc = nc;
 					clist_alloc_cblocks(&tp->t_outq,
-					    SLIP_HIWAT + 2 * sc->sc_if.if_mtu + 1,
-					    SLIP_HIWAT + 2 * sc->sc_if.if_mtu + 1);
+					    SLIP_HIWAT +
+					    2 * sc->sc_if.if_mtu + 1);
 					sl_compress_init(&sc->sc_comp, -1);
 					goto slfound;
 				}
@@ -631,21 +629,8 @@ slstart(struct tty *tp)
 			bpf_reltoken();
 		}
 
-		/*
-		 * If system is getting low on clists, just flush our
-		 * output queue (if the stuff was important, it'll get
-		 * retransmitted). Note that SLTMAX is used instead of
-		 * the current if_mtu setting because connections that
-		 * have already been established still use the original
-		 * (possibly larger) mss.
-		 */
-		if (cfreecount < CLISTRESERVE + SLTMAX) {
-			m_freem(m);
-			IFNET_STAT_INC(&sc->sc_if, collisions, 1);
-			continue;
-		}
-
 		sc->sc_flags &= ~SC_OUTWAIT;
+
 		/*
 		 * The extra FRAME_END will start up a new packet, and thus
 		 * will flush any accumulated garbage.  We do this whenever
@@ -681,11 +666,12 @@ slstart(struct tty *tp)
 					 * Put n characters at once
 					 * into the tty output queue.
 					 */
-					if (b_to_q((char *)bp, cp - bp,
-					    &tp->t_outq))
+					if (clist_btoq((char *)bp, cp - bp,
+						       &tp->t_outq)) {
 						break;
+					}
 					IFNET_STAT_INC(&sc->sc_if, obytes,
-					    cp - bp);
+						       cp - bp);
 				}
 				/*
 				 * If there are characters left in the mbuf,
@@ -1015,7 +1001,6 @@ slioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			tp = sl_softc[ifp->if_dunit].sc_ttyp;
 			if (tp != NULL)
 				clist_alloc_cblocks(&tp->t_outq,
-				    SLIP_HIWAT + 2 * ifp->if_mtu + 1,
 				    SLIP_HIWAT + 2 * ifp->if_mtu + 1);
 		}
 		break;

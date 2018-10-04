@@ -187,7 +187,7 @@ vcons_tty_start(struct tty *tp)
 		return;
 	}
 	tp->t_state |= TS_BUSY;
-	while ((n = q_to_b(&tp->t_outq, buf, sizeof(buf))) > 0) {
+	while ((n = clist_qtob(&tp->t_outq, buf, sizeof(buf))) > 0) {
 		/*
 		 * Dummy up ttyv1, etc.
 		 */

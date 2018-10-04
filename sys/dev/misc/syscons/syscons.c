@@ -1778,7 +1778,7 @@ scstart(struct tty *tp)
 	tp->t_state |= TS_BUSY;
 	rbp = &tp->t_outq;
 	while (rbp->c_cc) {
-	    len = q_to_b(rbp, buf, PCBURST);
+	    len = clist_qtob(rbp, buf, PCBURST);
 	    sc_puts(scp, buf, len);
 	}
 	tp->t_state &= ~TS_BUSY;

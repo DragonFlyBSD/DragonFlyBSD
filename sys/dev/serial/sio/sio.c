@@ -1701,7 +1701,7 @@ sioinput(struct com_s *com)
 			    && !(tp->t_state & TS_TBLOCK))
 				ttyblock(tp);
 			com->delta_error_counts[CE_TTY_BUF_OVERFLOW]
-				+= b_to_q((char *)buf, incc, &tp->t_rawq);
+				+= clist_btoq((char *)buf, incc, &tp->t_rawq);
 			buf += incc;
 			tk_nin += incc;
 			tk_rawcc += incc;
@@ -2556,8 +2556,8 @@ comstart(struct tty *tp)
 
 		if (!com->obufs[0].l_queued) {
 			com->obufs[0].l_tail
-			    = com->obuf1 + q_to_b(&tp->t_outq, com->obuf1,
-						  sizeof com->obuf1);
+			    = com->obuf1 + clist_qtob(&tp->t_outq, com->obuf1,
+						      sizeof com->obuf1);
 			com->obufs[0].l_next = NULL;
 			com->obufs[0].l_queued = TRUE;
 			com_lock();
@@ -2576,8 +2576,8 @@ comstart(struct tty *tp)
 		}
 		if (tp->t_outq.c_cc != 0 && !com->obufs[1].l_queued) {
 			com->obufs[1].l_tail
-			    = com->obuf2 + q_to_b(&tp->t_outq, com->obuf2,
-						  sizeof com->obuf2);
+			    = com->obuf2 + clist_qtob(&tp->t_outq, com->obuf2,
+						      sizeof com->obuf2);
 			com->obufs[1].l_next = NULL;
 			com->obufs[1].l_queued = TRUE;
 			com_lock();

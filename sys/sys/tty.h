@@ -55,11 +55,10 @@
  */
 struct clist {
 	int	c_cc;		/* Number of characters in the clist. */
-	int	c_cbcount;	/* Number of cblocks. */
-	int	c_cbmax;	/* Max # cblocks allowed for this clist. */
-	int	c_cbreserved;	/* # cblocks reserved for this clist. */
-	char	*c_cf;		/* Pointer to the first cblock. */
-	char	*c_cl;		/* Pointer to the last cblock. */
+	int	c_ccmax;	/* Max # chars for this clist. */
+	int	c_cchead;	/* First char */
+	int	c_unused01;
+	short	*c_data;	/* linear data buffer (no longer chained) */
 };
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
@@ -138,16 +137,16 @@ struct tty {
  * and from clists.  The buffers are on the stack so their sizes must be
  * fairly small.
  */
-#define	IBUFSIZ	384			/* Should be >= max value of MIN. */
-#define	OBUFSIZ	100
+#define	IBUFSIZ		384		/* Should be >= max value of MIN. */
+#define	OBUFSIZ		100
 
 #ifndef TTYHOG
-#define	TTYHOG	1024
+#define	TTYHOG		1024
 #endif
 
 #ifdef _KERNEL
-#define	TTMAXHIWAT	roundup(2048, CBSIZE)
-#define	TTMINHIWAT	roundup(100, CBSIZE)
+#define	TTMAXHIWAT	2048
+#define	TTMINHIWAT	100
 #define	TTMAXLOWAT	256
 #define	TTMINLOWAT	32
 #endif
@@ -212,8 +211,8 @@ struct speedtab {
 #define	DMGET		3
 
 /* Flags on a character passed to ttyinput. */
-#define	TTY_CHARMASK	0x000000ff	/* Character mask */
-#define	TTY_QUOTE	0x00000100	/* Character quoted */
+#define	TTY_CHARMASK	0x00ff		/* Character mask */
+#define	TTY_QUOTE	0x0100		/* Character quoted */
 #define	TTY_ERRORMASK	0xff000000	/* Error mask */
 #define	TTY_FE		0x01000000	/* Framing error */
 #define	TTY_PE		0x02000000	/* Parity error */
@@ -230,11 +229,11 @@ struct speedtab {
 
 /* Unique sleep addresses. */
 #define	TSA_CARR_ON(tp)		((void *)&(tp)->t_rawq)
-#define	TSA_HUP_OR_INPUT(tp)	((void *)&(tp)->t_rawq.c_cf)
-#define	TSA_OCOMPLETE(tp)	((void *)&(tp)->t_outq.c_cl)
+#define	TSA_HUP_OR_INPUT(tp)	((void *)&(tp)->t_rawq.c_cchead)
+#define	TSA_OCOMPLETE(tp)	((void *)&(tp)->t_outq.c_ccmax)
 #define	TSA_OLOWAT(tp)		((void *)&(tp)->t_outq)
-#define	TSA_PTC_READ(tp)	((void *)&(tp)->t_outq.c_cf)
-#define	TSA_PTC_WRITE(tp)	((void *)&(tp)->t_rawq.c_cl)
+#define	TSA_PTC_READ(tp)	((void *)&(tp)->t_outq.c_cchead)
+#define	TSA_PTC_WRITE(tp)	((void *)&(tp)->t_rawq.c_ccmax)
 #define	TSA_PTS_READ(tp)	((void *)&(tp)->t_canq)
 
 #ifdef _KERNEL
@@ -247,17 +246,17 @@ MALLOC_DECLARE(M_TTYS);
 
 extern	struct tty *constty;	/* Temporary virtual console. */
 
-int	 b_to_q (char *cp, int cc, struct clist *q);
-void	 catq (struct clist *from, struct clist *to);
-void	 clist_alloc_cblocks (struct clist *q, int ccmax, int ccres);
+int	 clist_btoq (char *cp, int cc, struct clist *q);
+void	 clist_catq (struct clist *from, struct clist *to);
+void	 clist_alloc_cblocks (struct clist *q, int ccmax);
 void	 clist_free_cblocks (struct clist *q);
 int	 clist_getc (struct clist *q);
 int	 clist_unputc (struct clist *q);
 void	 ndflush (struct clist *q, int cc);
-char	*nextc (struct clist *q, char *cp, int *c);
+void	*clist_nextc (struct clist *q, void *cp, int *c);
 void	 nottystop (struct tty *tp, int rw);
 int	 clist_putc (int c, struct clist *q);
-int	 q_to_b (struct clist *q, char *cp, int cc);
+int	 clist_qtob (struct clist *q, char *cp, int cc);
 void	 termioschars (struct termios *t);
 int	 tputchar (int c, struct tty *tp);
 int	 ttcompat (struct tty *tp, u_long com, caddr_t data, int flag);

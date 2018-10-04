@@ -82,7 +82,6 @@
 #define	TTYDEFCHARS
 #include <sys/ttydefaults.h>	/* for ttydefchars, CEOT */
 #undef	TTYDEFCHARS
-#include <sys/clist.h>
 #include <sys/fcntl.h>
 #include <sys/conf.h>
 #include <sys/dkstat.h>
@@ -693,7 +692,7 @@ input_overflow:
 		}
 		if (TTBREAKC(c, lflag)) {
 			tp->t_rocount = 0;
-			catq(&tp->t_rawq, &tp->t_canq);
+			clist_catq(&tp->t_rawq, &tp->t_canq);
 			ttwakeup(tp);
 		} else if (tp->t_rocount++ == 0)
 			tp->t_rocol = tp->t_column;
@@ -773,7 +772,7 @@ ttyoutput(int c, struct tty *tp)
 	    ISSET(oflag, OXTABS) && !ISSET(tp->t_lflag, EXTPROC)) {
 		c = 8 - (tp->t_column & 7);
 		if (!ISSET(tp->t_lflag, FLUSHO)) {
-			c -= b_to_q("        ", c, &tp->t_outq);
+			c -= clist_btoq("        ", c, &tp->t_outq);
 			tk_nout += c;
 			tp->t_outcc += c;
 		}
@@ -1093,15 +1092,15 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 				 * discipline.  Now we have to worry about
 				 * panicing for a null queue.
 				 */
-				if (tp->t_canq.c_cbreserved > 0 &&
-				    tp->t_rawq.c_cbreserved > 0) {
-					catq(&tp->t_rawq, &tp->t_canq);
+				if (tp->t_canq.c_ccmax > 0 &&
+				    tp->t_rawq.c_ccmax > 0) {
+					clist_catq(&tp->t_rawq, &tp->t_canq);
 					/*
 					 * XXX the queue limits may be
 					 * different, so the old queue
 					 * swapping method no longer works.
 					 */
-					catq(&tp->t_canq, &tp->t_rawq);
+					clist_catq(&tp->t_canq, &tp->t_rawq);
 				}
 				CLR(tp->t_lflag, PENDIN);
 			}
@@ -1655,11 +1654,11 @@ ttypend(struct tty *tp)
 	 */
 	tq = tp->t_rawq;
 	bzero(&tp->t_rawq, sizeof tp->t_rawq);
-	tp->t_rawq.c_cbmax = tq.c_cbmax;
-	tp->t_rawq.c_cbreserved = tq.c_cbreserved;
+	clist_alloc_cblocks(&tp->t_rawq, tq.c_ccmax);
 	while ((c = clist_getc(&tq)) >= 0)
 		ttyinput(c, tp);
 	CLR(tp->t_state, TS_TYPEN);
+	clist_free_cblocks(&tq);
 	lwkt_reltoken(&tp->t_token);
 }
 
@@ -1858,7 +1857,7 @@ read:
 		int icc;
 
 		icc = (int)szmin(uio->uio_resid, IBUFSIZ);
-		icc = q_to_b(qp, ibuf, icc);
+		icc = clist_qtob(qp, ibuf, icc);
 		if (icc <= 0) {
 			if (first)
 				goto loop;
@@ -2114,7 +2113,7 @@ loop:
 			 * requiring special handling by ttyoutput.
 			 */
 			tp->t_rocount = 0;
-			i = b_to_q(cp, ce, &tp->t_outq);
+			i = clist_btoq(cp, ce, &tp->t_outq);
 			ce -= i;
 			tp->t_column += ce;
 			cp += ce, cc -= ce, tk_nout += ce;
@@ -2179,7 +2178,7 @@ ovhiwat:
 static void
 ttyrub(int c, struct tty *tp)
 {
-	char *cp;
+	void *cp;
 	int savecol;
 	int tabc;
 
@@ -2220,11 +2219,13 @@ ttyrub(int c, struct tty *tp)
 				SET(tp->t_state, TS_CNTTB);
 				SET(tp->t_lflag, FLUSHO);
 				tp->t_column = tp->t_rocol;
-				cp = tp->t_rawq.c_cf;
-				if (cp)
-					tabc = *cp;	/* XXX FIX NEXTC */
-				for (; cp; cp = nextc(&tp->t_rawq, cp, &tabc))
+
+				cp = clist_nextc(&tp->t_rawq, NULL, &tabc);
+				while (cp) {
 					ttyecho(tabc, tp);
+					cp = clist_nextc(&tp->t_rawq,
+							 cp, &tabc);
+				}
 				CLR(tp->t_lflag, FLUSHO);
 				CLR(tp->t_state, TS_CNTTB);
 
@@ -2288,7 +2289,7 @@ ttyrubo(struct tty *tp, int cnt)
 static void
 ttyretype(struct tty *tp)
 {
-	char *cp;
+	void *cp;
 	int c;
 
 	ASSERT_LWKT_TOKEN_HELD(&tp->t_token);
@@ -2303,12 +2304,16 @@ ttyretype(struct tty *tp)
 	 * FIX: NEXTC IS BROKEN - DOESN'T CHECK QUOTE
 	 * BIT OF FIRST CHAR.
 	 */
-	for (cp = tp->t_canq.c_cf, c = (cp != NULL ? *cp : 0);
-	    cp != NULL; cp = nextc(&tp->t_canq, cp, &c))
+	cp = clist_nextc(&tp->t_canq, NULL, &c);
+	while (cp) {
 		ttyecho(c, tp);
-	for (cp = tp->t_rawq.c_cf, c = (cp != NULL ? *cp : 0);
-	    cp != NULL; cp = nextc(&tp->t_rawq, cp, &c))
+		cp = clist_nextc(&tp->t_canq, cp, &c);
+	}
+	cp = clist_nextc(&tp->t_rawq, NULL, &c);
+	while (cp) {
 		ttyecho(c, tp);
+		cp = clist_nextc(&tp->t_rawq, cp, &c);
+	}
 	CLR(tp->t_state, TS_ERASE);
 
 	tp->t_rocount = tp->t_rawq.c_cc;
@@ -2410,7 +2415,7 @@ ttsetwater(struct tty *tp)
 
 	lwkt_gettoken(&tp->t_token);
 	/* Input. */
-	clist_alloc_cblocks(&tp->t_canq, TTYHOG, 512);
+	clist_alloc_cblocks(&tp->t_canq, TTYHOG);
 	switch (tp->t_ispeedwat) {
 	case (speed_t)-1:
 		cps = tp->t_ispeed / 10;
@@ -2431,7 +2436,7 @@ ttsetwater(struct tty *tp)
 	tp->t_ihiwat = cps;
 	tp->t_ilowat = 7 * cps / 8;
 	x = cps + tp->t_ififosize;
-	clist_alloc_cblocks(&tp->t_rawq, x, x);
+	clist_alloc_cblocks(&tp->t_rawq, x);
 
 	/* Output. */
 	switch (tp->t_ospeedwat) {
@@ -2452,10 +2457,10 @@ ttsetwater(struct tty *tp)
 	tp->t_olowat = x = CLAMP(cps / 2, TTMAXLOWAT, TTMINLOWAT);
 	x += cps;
 	x = CLAMP(x, ttmaxhiwat, TTMINHIWAT);	/* XXX clamps are too magic */
-	tp->t_ohiwat = roundup(x, CBSIZE);	/* XXX for compat */
+	/* tp->t_ohiwat = roundup(x, CBSIZE); */ /* XXX for compat */
 	x = imax(tp->t_ohiwat, TTMAXHIWAT);	/* XXX for compat/safety */
 	x += OBUFSIZ + 100;
-	clist_alloc_cblocks(&tp->t_outq, x, x);
+	clist_alloc_cblocks(&tp->t_outq, x);
 #undef	CLAMP
 	lwkt_reltoken(&tp->t_token);
 }

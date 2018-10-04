@@ -221,10 +221,9 @@ ng_h4_open(struct cdev *dev, struct tty *tp)
 	 */
 
 	ttyflush(tp, FREAD | FWRITE);
-	clist_alloc_cblocks(&tp->t_canq, 0, 0);
-	clist_alloc_cblocks(&tp->t_rawq, 0, 0);
-	clist_alloc_cblocks(&tp->t_outq,
-		MLEN + NG_H4_HIWATER, MLEN + NG_H4_HIWATER);
+	clist_alloc_cblocks(&tp->t_canq, 0);
+	clist_alloc_cblocks(&tp->t_rawq, 0);
+	clist_alloc_cblocks(&tp->t_outq, MLEN + NG_H4_HIWATER);
 
 	NG_H4_UNLOCK(sc);
 
@@ -602,8 +601,8 @@ ng_h4_start(struct tty *tp)
 
 		/* Send as much of it as possible */
 		while (m != NULL) {
-			size = m->m_len - b_to_q(mtod(m, u_char *),
-					m->m_len, &tp->t_outq);
+			size = m->m_len - clist_btoq(mtod(m, u_char *),
+						     m->m_len, &tp->t_outq);
 
 			NG_H4_LOCK(sc);
 			NG_H4_STAT_BYTES_SENT(sc->stat, size);

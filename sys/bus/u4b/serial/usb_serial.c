@@ -92,7 +92,6 @@
 #include <sys/serial.h>
 #include <sys/thread2.h>
 #include <sys/conf.h>
-#include <sys/clist.h>
 
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
@@ -1903,7 +1902,7 @@ ucom_get_data(struct ucom_softc *sc, struct usb_page_cache *pc,
 		}
 		/* copy data directly into USB buffer */
 		SET(tp->t_state, TS_BUSY);
-		cnt = q_to_b(&tp->t_outq, res.buffer, len);
+		cnt = clist_qtob(&tp->t_outq, res.buffer, len);
 		if (cnt == 0) {
 			DPRINTF("ucom_get_data: cnt == 0\n");
 			CLR(tp->t_state, TS_BUSY);
@@ -2026,7 +2025,7 @@ ucom_put_data(struct ucom_softc *sc, struct usb_page_cache *pc,
 				|| tp->t_iflag & IXOFF)
 			    && !(tp->t_state & TS_TBLOCK))
 			       ttyblock(tp);
-			lostcc = b_to_q((char *)buf, cnt, &tp->t_rawq);
+			lostcc = clist_btoq((char *)buf, cnt, &tp->t_rawq);
 			tp->t_rawcc += cnt;
 			if (sc->hotchar) {
 				while (cnt) {

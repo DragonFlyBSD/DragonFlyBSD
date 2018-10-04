@@ -815,8 +815,8 @@ ptcread(struct dev_read_args *ap)
 	if (pti->pt_flags & (PF_PKT|PF_UCNTL))
 		error = ureadc(0, ap->a_uio);
 	while (ap->a_uio->uio_resid > 0 && error == 0) {
-		cc = q_to_b(&tp->t_outq, buf,
-			    (int)szmin(ap->a_uio->uio_resid, BUFSIZ));
+		cc = clist_qtob(&tp->t_outq, buf,
+				(int)szmin(ap->a_uio->uio_resid, BUFSIZ));
 		if (cc <= 0)
 			break;
 		error = uiomove(buf, (size_t)cc, ap->a_uio);
@@ -1036,10 +1036,10 @@ again:
 				}
 			}
 			if (cc > 0) {
-				cc = b_to_q((char *)cp, cc, &tp->t_canq);
+				cc = clist_btoq((char *)cp, cc, &tp->t_canq);
 				/*
 				 * XXX we don't guarantee that the canq size
-				 * is >= TTYHOG, so the above b_to_q() may
+				 * is >= TTYHOG, so the above btoq() may
 				 * leave some bytes uncopied.  However, space
 				 * is guaranteed for the null terminator if
 				 * we don't fail here since (TTYHOG - 1) is

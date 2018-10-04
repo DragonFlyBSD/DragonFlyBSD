@@ -229,10 +229,9 @@ ngt_open(struct cdev *dev, struct tty *tp)
 	 * I'm not sure what is appropriate.
 	 */
 	ttyflush(tp, FREAD | FWRITE);
-	clist_alloc_cblocks(&tp->t_canq, 0, 0);
-	clist_alloc_cblocks(&tp->t_rawq, 0, 0);
-	clist_alloc_cblocks(&tp->t_outq,
-	    MLEN + NGT_HIWATER, MLEN + NGT_HIWATER);
+	clist_alloc_cblocks(&tp->t_canq, 0);
+	clist_alloc_cblocks(&tp->t_rawq, 0);
+	clist_alloc_cblocks(&tp->t_outq, MLEN + NGT_HIWATER);
 
 	lwkt_reltoken(&tp->t_token);
 	return (error);
@@ -428,8 +427,8 @@ ngt_start(struct tty *tp)
 		while (m != NULL) {
 			int     sent;
 
-			sent = m->m_len
-			    - b_to_q(mtod(m, u_char *), m->m_len, &tp->t_outq);
+			sent = m->m_len - clist_btoq(mtod(m, u_char *),
+						     m->m_len, &tp->t_outq);
 			m->m_data += sent;
 			m->m_len -= sent;
 			if (m->m_len > 0)
