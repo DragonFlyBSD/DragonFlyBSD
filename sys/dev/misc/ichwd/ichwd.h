@@ -241,7 +241,7 @@ struct ichwd_softc {
 #define TCO1_STS		0x04 /* TCO Status 1 */
 #define TCO2_STS		0x06 /* TCO Status 2 */
 #define TCO1_CNT		0x08 /* TCO Control 1 */
-#define TCO2_CNT		0x08 /* TCO Control 2 */
+#define TCO2_CNT		0x0a /* TCO Control 2 */
 #define TCO_MESSAGE1		0x0c /* TCO Message 1 */
 #define TCO_MESSAGE2		0x0d /* TCO Message 2 */
 
