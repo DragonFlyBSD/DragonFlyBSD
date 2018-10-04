@@ -183,8 +183,6 @@ sys_extexit(struct extexit_args *uap)
  *
  * If forexec is non-zero the current thread and process flags are
  * cleaned up so they can be reused.
- *
- * Caller must hold curproc->p_token
  */
 int
 killalllwps(int forexec)
@@ -197,9 +195,13 @@ killalllwps(int forexec)
 	 * Interlock against P_WEXIT.  Only one of the process's thread
 	 * is allowed to do the master exit.
 	 */
-	if (p->p_flags & P_WEXIT)
+	lwkt_gettoken(&p->p_token);
+	if (p->p_flags & P_WEXIT) {
+		lwkt_reltoken(&p->p_token);
 		return (EALREADY);
+	}
 	p->p_flags |= P_WEXIT;
+	lwkt_gettoken(&lp->lwp_token);
 
 	/*
 	 * Set temporary stopped state in case we are racing a coredump.
@@ -238,6 +240,9 @@ killalllwps(int forexec)
 		atomic_clear_int(&lp->lwp_mpflags, LWP_MP_WEXIT);
 		p->p_flags &= ~P_WEXIT;
 	}
+	lwkt_reltoken(&lp->lwp_token);
+	lwkt_reltoken(&p->p_token);
+
 	return(0);
 }
 
