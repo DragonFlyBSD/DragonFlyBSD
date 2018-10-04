@@ -328,10 +328,10 @@ register_framebuffer(struct fb_info *info)
 	if (!info->is_vga_boot_display)
 		return 0;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&vga_token);
 	sc = sc_get_softc(0, (sc_console_unit == 0) ? SC_KERNEL_CONSOLE : 0);
 	if (sc == NULL) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&vga_token);
 		kprintf("%s: sc_get_softc(%d, %d) returned NULL\n", __func__,
 		    0, (sc_console_unit == 0) ? SC_KERNEL_CONSOLE : 0);
 		return 0;
@@ -340,7 +340,7 @@ register_framebuffer(struct fb_info *info)
 	/* Ignore this framebuffer if we already switched to KMS framebuffer */
 	if (sc->fbi != NULL && sc->fbi != &efi_fb_info &&
 	    sc->fbi != sc->dummy_fb_info) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&vga_token);
 		return 0;
 	}
 
@@ -386,7 +386,7 @@ register_framebuffer(struct fb_info *info)
 #endif /* NSPLASH */
 
 	lockmgr(&sc_asynctd_lk, LK_RELEASE);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 }
 
@@ -395,17 +395,17 @@ unregister_framebuffer(struct fb_info *info)
 {
 	sc_softc_t *sc;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&vga_token);
 	sc = sc_get_softc(0, (sc_console_unit == 0) ? SC_KERNEL_CONSOLE : 0);
 	if (sc == NULL) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&vga_token);
 		kprintf("%s: sc_get_softc(%d, %d) returned NULL\n", __func__,
 		    0, (sc_console_unit == 0) ? SC_KERNEL_CONSOLE : 0);
 		return;
 	}
 
 	if (sc->fbi != info) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&vga_token);
 		return;
 	}
 
@@ -447,7 +447,7 @@ unregister_framebuffer(struct fb_info *info)
 	syscons_unlock();
 	lockmgr(&sc_asynctd_lk, LK_RELEASE);
 
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 }
 
 void
@@ -583,7 +583,7 @@ sc_attach_unit(int unit, int flags)
 	sc->dev[0] = make_dev(&sc_ops, sc_console_unit*MAXCONS, UID_ROOT,
 			      GID_WHEEL, 0600, "ttyv%s", makedev_unit_b32(tbuf,
 			      sc_console_unit * MAXCONS));
-	sc->dev[0]->si_tty = ttymalloc(sc->dev[0]->si_tty);
+	ttymalloc(&sc->dev[0]->si_tty);
 	sc->dev[0]->si_drv1 = sc_console;
     }
 
@@ -642,7 +642,7 @@ sc_attach_unit(int unit, int flags)
     }
     cctl_dev = make_dev(&sc_ops, SC_CONSOLECTL,
 			UID_ROOT, GID_WHEEL, 0600, "consolectl");
-    cctl_dev->si_tty = sc_console_tty = ttymalloc(sc_console_tty);
+    cctl_dev->si_tty = ttymalloc(&sc_console_tty);
     cctl_dev->si_drv1 = sc_console;
     return 0;
 }
@@ -707,18 +707,19 @@ scopen(struct dev_open_args *ap)
     keyarg_t key;
     int error;
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     unit = scdevtounit(dev);
     DPRINTF(5, ("scopen: dev:%d,%d, unit:%d, vty:%d\n",
 		major(dev), minor(dev), unit, SC_VTY(dev)));
 
     sc = sc_get_softc(unit, (sc_console_unit == unit) ? SC_KERNEL_CONSOLE : 0);
     if (sc == NULL) {
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return ENXIO;
     }
 
-    tp = dev->si_tty = ttymalloc(dev->si_tty);
+    tp = ttymalloc(&dev->si_tty);
+    lwkt_gettoken(&tp->t_token);
     tp->t_oproc = scstart;
     tp->t_param = scparam;
     tp->t_stop = nottystop;
@@ -744,7 +745,8 @@ scopen(struct dev_open_args *ap)
     }
     else
 	if (tp->t_state & TS_XCLUDE && priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&tp->t_token);
+	    lwkt_reltoken(&vga_token);
 	    return(EBUSY);
 	}
 
@@ -772,7 +774,9 @@ scopen(struct dev_open_args *ap)
 	    lwkt_create(scrn_update_thread, scp, &scp->asynctd, NULL, 0, -1,
 			"syscons%d", SC_VTY(dev));
     }
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&tp->t_token);
+    lwkt_reltoken(&vga_token);
+
     return error;
 }
 
@@ -783,7 +787,8 @@ scclose(struct dev_close_args *ap)
     struct tty *tp = dev->si_tty;
     scr_stat *scp;
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
+    lwkt_gettoken(&tp->t_token);
     if (SC_VTY(dev) != SC_CONSOLECTL) {
 	scp = SC_STAT(tp->t_dev);
 	/* were we in the middle of the VT switching process? */
@@ -823,7 +828,8 @@ scclose(struct dev_close_args *ap)
     }
     (*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
     ttyclose(tp);
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&tp->t_token);
+    lwkt_reltoken(&vga_token);
 
     return(0);
 }
@@ -833,10 +839,10 @@ scread(struct dev_read_args *ap)
 {
     int ret;
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     sc_touch_scrn_saver();
     ret = ttyread(ap);
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
     return ret;
 }
 
@@ -849,7 +855,7 @@ sckbdevent(keyboard_t *thiskbd, int event, void *arg)
     size_t len;
     u_char *cp;
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     /*
      * WARNING: In early boot sc->dev may not be setup yet.
      */
@@ -859,7 +865,7 @@ sckbdevent(keyboard_t *thiskbd, int event, void *arg)
     switch (event) {
     case KBDIO_KEYINPUT:
 	if (sc->kbd && sc->kbd->kb_flags & KB_POLLED) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&vga_token);
 		return 0;
 	}
 	break;
@@ -869,10 +875,10 @@ sckbdevent(keyboard_t *thiskbd, int event, void *arg)
 	sc->keyboard = -1;
 	syscons_unlock();
 	kbd_release(thiskbd, (void *)&sc->keyboard);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
     default:
-        lwkt_reltoken(&tty_token);
+        lwkt_reltoken(&vga_token);
 	return EINVAL;
     }
 
@@ -896,6 +902,8 @@ sckbdevent(keyboard_t *thiskbd, int event, void *arg)
 	}
 	syscons_unlock();
 
+	lwkt_gettoken(&cur_tty->t_token);
+
 	switch (KEYFLAGS(c)) {
 	case 0x0000: /* normal key */
 	    (*linesw[cur_tty->t_line].l_rint)(KEYCHAR(c), cur_tty);
@@ -917,24 +925,26 @@ sckbdevent(keyboard_t *thiskbd, int event, void *arg)
 	    (*linesw[cur_tty->t_line].l_rint)('Z', cur_tty);
 	    break;
 	}
+	lwkt_reltoken(&cur_tty->t_token);
     }
 
     syscons_lock();
     sc->cur_scp->status |= MOUSE_HIDDEN;
     syscons_unlock();
 
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
     return 0;
 }
 
 static int
 scparam(struct tty *tp, struct termios *t)
 {
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&tp->t_token);
     tp->t_ispeed = t->c_ispeed;
     tp->t_ospeed = t->c_ospeed;
     tp->t_cflag = t->c_cflag;
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&tp->t_token);
+
     return 0;
 }
 
@@ -951,19 +961,19 @@ scioctl(struct dev_ioctl_args *ap)
     sc_softc_t *sc;
     scr_stat *scp;
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     tp = dev->si_tty;
 
     error = sc_vid_ioctl(tp, cmd, data, flag);
     if (error != ENOIOCTL) {
-        lwkt_reltoken(&tty_token);
+        lwkt_reltoken(&vga_token);
 	return error;
     }
 
 #ifndef SC_NO_HISTORY
     error = sc_hist_ioctl(tp, cmd, data, flag);
     if (error != ENOIOCTL) {
-        lwkt_reltoken(&tty_token);
+        lwkt_reltoken(&vga_token);
 	return error;
     }
 #endif
@@ -971,7 +981,7 @@ scioctl(struct dev_ioctl_args *ap)
 #ifndef SC_NO_SYSMOUSE
     error = sc_mouse_ioctl(tp, cmd, data, flag);
     if (error != ENOIOCTL) {
-        lwkt_reltoken(&tty_token);
+        lwkt_reltoken(&vga_token);
 	return error;
     }
 #endif
@@ -986,7 +996,7 @@ scioctl(struct dev_ioctl_args *ap)
 	error = (*scp->tsw->te_ioctl)(scp, tp, cmd, data, flag);
 	syscons_unlock();
 	if (error != ENOIOCTL) {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return error;
 	}
     }
@@ -995,7 +1005,7 @@ scioctl(struct dev_ioctl_args *ap)
 
     case GIO_ATTR:      	/* get current attributes */
 	/* this ioctl is not processed here, but in the terminal emulator */
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return ENOTTY;
 
     case GIO_COLOR:     	/* is this a color console ? */
@@ -1003,19 +1013,19 @@ scioctl(struct dev_ioctl_args *ap)
 	    *(int *)data = 1;
 	else
 	    *(int *)data = (sc->adp->va_flags & V_ADP_COLOR) ? 1 : 0;
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case CONS_BLANKTIME:    	/* set screen saver timeout (0 = no saver) */
 	if (*(int *)data < 0 || *(int *)data > MAX_BLANKTIME) {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
             return EINVAL;
 	}
 	syscons_lock();
 	scrn_blank_time = *(int *)data;
 	run_scrn_saver = (scrn_blank_time != 0);
 	syscons_unlock();
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case CONS_CURSORTYPE:   	/* set cursor type blink/noblink */
@@ -1039,7 +1049,7 @@ scioctl(struct dev_ioctl_args *ap)
 	    sc_draw_cursor_image(sc->cur_scp);
 	}
 	syscons_unlock();
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case CONS_BELLTYPE: 	/* set bell type sound/visual */
@@ -1056,7 +1066,7 @@ scioctl(struct dev_ioctl_args *ap)
 	    sc->flags &= ~SC_QUIET_BELL;
 
 	syscons_unlock();
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case CONS_GETINFO:  	/* get current (virtual) console info */
@@ -1083,16 +1093,16 @@ scioctl(struct dev_ioctl_args *ap)
 	    if (scp == sc->cur_scp)
 	        save_kbd_state(scp, FALSE);
 	    ptr->mk_keylock = scp->status & LOCK_MASK;
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return 0;
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return EINVAL;
     }
 
     case CONS_GETVERS:  	/* get version number */
 	*(int*)data = 0x200;    /* version 2.0 */
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case CONS_IDLE:		/* see if the screen has been idle */
@@ -1108,7 +1118,7 @@ scioctl(struct dev_ioctl_args *ap)
 	*(int *)data = (sc->flags & SC_SCRN_IDLE)
 		       && (!ISGRAPHSC(sc->cur_scp)
 			   || (sc->cur_scp->status & SAVER_RUNNING));
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case CONS_SAVERMODE:	/* set saver mode */
@@ -1122,7 +1132,7 @@ scioctl(struct dev_ioctl_args *ap)
 #if NSPLASH > 0
 	    if ((error = wait_scrn_saver_stop(NULL, TRUE))) {
 		syscons_unlock();
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&vga_token);
 		return error;
 	    }
 #endif /* NSPLASH */
@@ -1142,10 +1152,10 @@ scioctl(struct dev_ioctl_args *ap)
 	    syscons_unlock();
 	    break;
 	default:
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return EINVAL;
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case CONS_SAVERSTART:	/* immediately start/stop the screen saver */
@@ -1158,7 +1168,7 @@ scioctl(struct dev_ioctl_args *ap)
 	if (run_scrn_saver)
 	    sc->scrn_time_stamp -= scrn_blank_time;
 	syscons_unlock();
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case CONS_SCRSHOT:		/* get a screen shot */
@@ -1167,18 +1177,18 @@ scioctl(struct dev_ioctl_args *ap)
 	syscons_lock();
 	if (ISGRAPHSC(scp)) {
 	    syscons_unlock();
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return EOPNOTSUPP;
 	}
 	if (scp->xsize != ptr->xsize || scp->ysize != ptr->ysize) {
 	    syscons_unlock();
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return EINVAL;
 	}
 	syscons_unlock();
 	copyout ((void*)scp->vtb.vtb_buffer, ptr->buf,
 		 ptr->xsize * ptr->ysize * sizeof(uint16_t));
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
     }
 
@@ -1191,7 +1201,7 @@ scioctl(struct dev_ioctl_args *ap)
 	if (scp->smode.mode == VT_PROCESS) {
 	    if (scp->proc == pfindn(scp->pid) && scp->proc != curproc) {
 		DPRINTF(5, ("error EPERM\n"));
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&vga_token);
 		return EPERM;
 	    }
 	}
@@ -1214,7 +1224,7 @@ scioctl(struct dev_ioctl_args *ap)
 		|| !ISSIGVALID(mode->frsig)) {
 		syscons_unlock();
 		DPRINTF(5, ("error EINVAL\n"));
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&vga_token);
 		return EINVAL;
 	    }
 	    DPRINTF(5, ("VT_PROCESS %d, ", curproc->p_pid));
@@ -1226,13 +1236,13 @@ scioctl(struct dev_ioctl_args *ap)
 	}
 	syscons_unlock();
 	DPRINTF(5, ("\n"));
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
     }
 
     case VT_GETMODE:    	/* get screen switcher mode */
 	bcopy(&scp->smode, data, sizeof(struct vt_mode));
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case VT_RELDISP:    	/* screen switcher ioctl */
@@ -1243,13 +1253,13 @@ scioctl(struct dev_ioctl_args *ap)
 	syscons_lock();
 	if ((scp != sc->cur_scp) || (scp->smode.mode != VT_PROCESS)) {
 	    syscons_unlock();
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return EINVAL;
 	}
 	/* ...and this process is controlling it. */
 	if (scp->proc != curproc) {
 	    syscons_unlock();
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return EPERM;
 	}
 	error = EINVAL;
@@ -1267,7 +1277,7 @@ scioctl(struct dev_ioctl_args *ap)
 		DPRINTF(5, ("sc%d: VT_ACKACQ\n", sc->unit));
 	    syscons_unlock();
 	    /* Wait for drm modesetting callback to finish. */
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    if (sc->fb_set_par_task != NULL)
 		taskqueue_drain(taskqueue_thread[0], sc->fb_set_par_task);
 	    return error;
@@ -1275,7 +1285,7 @@ scioctl(struct dev_ioctl_args *ap)
 	    break;
 	}
 	syscons_unlock();
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return error;
 
     case VT_OPENQRY:    	/* return free virtual console */
@@ -1283,11 +1293,11 @@ scioctl(struct dev_ioctl_args *ap)
 	    tp = VIRTUAL_TTY(sc, i);
 	    if (!ISTTYOPEN(tp)) {
 		*(int *)data = i + 1;
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&vga_token);
 		return 0;
 	    }
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return EINVAL;
 
     case VT_ACTIVATE:   	/* switch to screen *data */
@@ -1296,20 +1306,20 @@ scioctl(struct dev_ioctl_args *ap)
 	sc_clean_up(sc->cur_scp, TRUE);
 	error = sc_switch_scr(sc, i);
 	syscons_unlock();
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return error;
 
     case VT_WAITACTIVE: 	/* wait for switch to occur */
 	i = (*(int *)data == 0) ? scp->index : (*(int *)data - 1);
 	if ((i < sc->first_vty) || (i >= sc->first_vty + sc->vtys)) {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return EINVAL;
 	}
 	syscons_lock();
 	error = sc_clean_up(sc->cur_scp, TRUE);
 	syscons_unlock();
 	if (error) {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return error;
 	}
 
@@ -1320,12 +1330,12 @@ scioctl(struct dev_ioctl_args *ap)
 	 */
 	scp = SC_STAT(SC_DEV(sc, i));
 	if (scp == NULL || scp == scp->sc->cur_scp) {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return 0;
 	}
 	error = tsleep((caddr_t)&scp->smode, PCATCH, "waitvt", 0);
 	/* May return ERESTART */
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	/* Wait for drm modesetting callback to finish. */
 	if (sc->fb_set_par_task != NULL)
 	    taskqueue_drain(taskqueue_thread[0], sc->fb_set_par_task);
@@ -1333,12 +1343,12 @@ scioctl(struct dev_ioctl_args *ap)
 
     case VT_GETACTIVE:		/* get active vty # */
 	*(int *)data = sc->cur_scp->index + 1;
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case VT_GETINDEX:		/* get this vty # */
 	*(int *)data = scp->index + 1;
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case VT_LOCKSWITCH:		/* prevent vty switching */
@@ -1348,17 +1358,17 @@ scioctl(struct dev_ioctl_args *ap)
 	else
 	    sc->flags &= ~SC_SCRN_VTYLOCK;
 	syscons_unlock();
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case KDENABIO:      	/* allow io operations */
 	error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
 	if (error != 0) {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return error;
 	}
 	if (securelevel > 0) {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return EPERM;
 	}
 #if defined(__i386__)
@@ -1366,7 +1376,7 @@ scioctl(struct dev_ioctl_args *ap)
 #elif defined(__x86_64__)
 	curthread->td_lwp->lwp_md.md_regs->tf_rflags |= PSL_IOPL;
 #endif
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case KDDISABIO:     	/* disallow io operations (default) */
@@ -1375,12 +1385,12 @@ scioctl(struct dev_ioctl_args *ap)
 #elif defined(__x86_64__)
 	curthread->td_lwp->lwp_md.md_regs->tf_rflags &= ~PSL_IOPL;
 #endif
-        lwkt_reltoken(&tty_token);
+        lwkt_reltoken(&vga_token);
 	return 0;
 
     case KDSKBSTATE:    	/* set keyboard state (locks) */
 	if (*(int *)data & ~LOCK_MASK) {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return EINVAL;
 	}
 	syscons_lock();
@@ -1389,14 +1399,14 @@ scioctl(struct dev_ioctl_args *ap)
 	syscons_unlock();
 	if (scp == sc->cur_scp)
 	    update_kbd_state(scp, scp->status, LOCK_MASK, FALSE);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case KDGKBSTATE:    	/* get keyboard state (locks) */
 	if (scp == sc->cur_scp)
 	    save_kbd_state(scp, FALSE);
 	*(int *)data = scp->status & LOCK_MASK;
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case KDGETREPEAT:      	/* get keyboard repeat & delay rates */
@@ -1404,7 +1414,7 @@ scioctl(struct dev_ioctl_args *ap)
 	error = kbd_ioctl(sc->kbd, cmd, data);
 	if (error == ENOIOCTL)
 	    error = ENODEV;
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return error;
 
     case KDSKBMODE:     	/* set keyboard mode */
@@ -1415,24 +1425,24 @@ scioctl(struct dev_ioctl_args *ap)
 	    scp->kbd_mode = *(int *)data;
 	    if (scp == sc->cur_scp)
 		kbd_ioctl(sc->kbd, cmd, data);
-            lwkt_reltoken(&tty_token);
+            lwkt_reltoken(&vga_token);
 	    return 0;
 	default:
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return EINVAL;
 	}
 	/* NOT REACHED */
 
     case KDGKBMODE:     	/* get keyboard mode */
 	*(int *)data = scp->kbd_mode;
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case KDGKBINFO:
 	error = kbd_ioctl(sc->kbd, cmd, data);
 	if (error == ENOIOCTL)
 	    error = ENODEV;
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return error;
 
     case KDMKTONE:      	/* sound the bell */
@@ -1443,7 +1453,7 @@ scioctl(struct dev_ioctl_args *ap)
 	else
 	    sc_bell(scp, scp->bell_pitch, scp->bell_duration);
 	syscons_unlock();
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case KIOCSOUND:     	/* make tone (*data) hz */
@@ -1458,7 +1468,7 @@ scioctl(struct dev_ioctl_args *ap)
 	    error = 0;
 	}
 	syscons_unlock();
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return error;
 
     case KDGKBTYPE:     	/* get keyboard type */
@@ -1467,12 +1477,12 @@ scioctl(struct dev_ioctl_args *ap)
 	    /* always return something? XXX */
 	    *(int *)data = 0;
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case KDSETLED:      	/* set keyboard LED status */
 	if (*(int *)data & ~LED_MASK) {	/* FIXME: LOCK_MASK? */
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return EINVAL;
 	}
 	syscons_lock();
@@ -1481,14 +1491,14 @@ scioctl(struct dev_ioctl_args *ap)
 	syscons_unlock();
 	if (scp == sc->cur_scp)
 	    update_kbd_leds(scp, scp->status);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case KDGETLED:      	/* get keyboard LED status */
 	if (scp == sc->cur_scp)
 	    save_kbd_state(scp, FALSE);
 	*(int *)data = scp->status & LED_MASK;
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
 	case KBADDKBD:              /* add/remove keyboard to/from mux */
@@ -1496,7 +1506,7 @@ scioctl(struct dev_ioctl_args *ap)
 		error = kbd_ioctl(sc->kbd, cmd, data);
 		if (error == ENOIOCTL)
 			error = ENODEV;
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&vga_token);
 		return error;
 
     case CONS_SETKBD: 		/* set the new keyboard */
@@ -1505,7 +1515,7 @@ scioctl(struct dev_ioctl_args *ap)
 
 	    newkbd = kbd_get_keyboard(*(int *)data);
 	    if (newkbd == NULL) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&vga_token);
 		return EINVAL;
 	    }
 	    error = 0;
@@ -1530,7 +1540,7 @@ scioctl(struct dev_ioctl_args *ap)
 		    error = EPERM;	/* XXX */
 		}
 	    }
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return error;
 	}
 
@@ -1546,7 +1556,7 @@ scioctl(struct dev_ioctl_args *ap)
 		syscons_unlock();
 	    }
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return error;
 
     case CONS_GETTERM:		/* get the current terminal emulator info */
@@ -1564,13 +1574,13 @@ scioctl(struct dev_ioctl_args *ap)
 		strncpy(((term_info_t *)data)->ti_desc, sw->te_desc, 
 			sizeof(((term_info_t *)data)->ti_desc));
 		((term_info_t *)data)->ti_flags = 0;
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&vga_token);
 		return 0;
 	    } else {
 		((term_info_t *)data)->ti_name[0] = '\0';
 		((term_info_t *)data)->ti_desc[0] = '\0';
 		((term_info_t *)data)->ti_flags = 0;
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&vga_token);
 		return EINVAL;
 	    }
 	}
@@ -1580,12 +1590,12 @@ scioctl(struct dev_ioctl_args *ap)
 	error = sc_init_emulator(scp, ((term_info_t *)data)->ti_name);
 	/* FIXME: what if scp == sc_console! XXX */
 	syscons_unlock();
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return error;
 
     case GIO_SCRNMAP:   	/* get output translation table */
 	bcopy(&sc->scr_map, data, sizeof(sc->scr_map));
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case PIO_SCRNMAP:   	/* set output translation table */
@@ -1593,7 +1603,7 @@ scioctl(struct dev_ioctl_args *ap)
 	for (i=0; i<sizeof(sc->scr_map); i++) {
 	    sc->scr_rmap[sc->scr_map[i]] = i;
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case GIO_KEYMAP:		/* get keyboard translation table */
@@ -1605,14 +1615,14 @@ scioctl(struct dev_ioctl_args *ap)
 	error = kbd_ioctl(sc->kbd, cmd, data);
 	if (error == ENOIOCTL)
 	    error = ENODEV;
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return error;
 
 #ifndef SC_NO_FONT_LOADING
 
     case PIO_FONT8x8:   	/* set 8x8 dot font */
 	if (sc->fbi == NULL && !ISFONTAVAIL(sc->adp->va_flags)) {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return ENXIO;
 	}
 	syscons_lock();
@@ -1628,27 +1638,27 @@ scioctl(struct dev_ioctl_args *ap)
 	    sc_load_font(sc->cur_scp, 0, 8, sc->font_8, 0, 256);
 	}
 	syscons_unlock();
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case GIO_FONT8x8:   	/* get 8x8 dot font */
 	if (sc->fbi == NULL && !ISFONTAVAIL(sc->adp->va_flags)) {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return ENXIO;
 	}
 	if (sc->fonts_loaded & FONT_8) {
 	    bcopy(sc->font_8, data, 8*256);
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return 0;
 	}
 	else {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return ENXIO;
 	}
 
     case PIO_FONT8x14:  	/* set 8x14 dot font */
 	if (sc->fbi == NULL && !ISFONTAVAIL(sc->adp->va_flags)) {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return ENXIO;
 	}
 	syscons_lock();
@@ -1666,27 +1676,27 @@ scioctl(struct dev_ioctl_args *ap)
 	    sc_load_font(sc->cur_scp, 0, 14, sc->font_14, 0, 256);
 	}
 	syscons_unlock();
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case GIO_FONT8x14:  	/* get 8x14 dot font */
 	if (sc->fbi == NULL && !ISFONTAVAIL(sc->adp->va_flags)) {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return ENXIO;
 	}
 	if (sc->fonts_loaded & FONT_14) {
 	    bcopy(sc->font_14, data, 14*256);
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return 0;
 	}
 	else {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return ENXIO;
         }
 
     case PIO_FONT8x16:  	/* set 8x16 dot font */
 	if (sc->fbi == NULL && !ISFONTAVAIL(sc->adp->va_flags)) {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return ENXIO;
 	}
 	syscons_lock();
@@ -1702,21 +1712,21 @@ scioctl(struct dev_ioctl_args *ap)
 	    sc_load_font(sc->cur_scp, 0, 16, sc->font_16, 0, 256);
 	}
 	syscons_unlock();
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
 
     case GIO_FONT8x16:  	/* get 8x16 dot font */
 	if (sc->fbi == NULL && !ISFONTAVAIL(sc->adp->va_flags)) {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return ENXIO;
 	}
 	if (sc->fonts_loaded & FONT_16) {
 	    bcopy(sc->font_16, data, 16*256);
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return 0;
 	}
 	else {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return ENXIO;
         }
 
@@ -1726,17 +1736,26 @@ scioctl(struct dev_ioctl_args *ap)
 	break;
     }
 
+    lwkt_gettoken(&tp->t_token);
     error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, ap->a_cred);
     if (error != ENOIOCTL) {
-        lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
+        lwkt_reltoken(&vga_token);
+
 	return(error);
     }
+
     error = ttioctl(tp, cmd, data, flag);
     if (error != ENOIOCTL) {
-        lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
+        lwkt_reltoken(&vga_token);
+
 	return(error);
     }
-    lwkt_reltoken(&tty_token);
+
+    lwkt_reltoken(&tp->t_token);
+    lwkt_reltoken(&vga_token);
+
     return(ENOTTY);
 }
 
@@ -2411,10 +2430,10 @@ sc_fb_set_par(void *context, int pending)
 {
 	sc_softc_t *sc = context;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&vga_token);
 	if (sc->fbi != NULL && sc->fbi->fbops.fb_set_par != NULL)
 	    sc->fbi->fbops.fb_set_par(sc->fbi);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 }
 
 #if NSPLASH > 0
@@ -2423,7 +2442,7 @@ sc_fb_blank(void *context, int pending)
 {
 	sc_softc_t *sc = context;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&vga_token);
 	if (sc->fbi != NULL && sc->fbi->fbops.fb_blank != NULL) {
 		/* 0 == FB_BLANK_UNBLANK and 4 == FB_BLANK_POWERDOWN */
 		if (sc->flags & SC_SCRN_BLANKED) {
@@ -2439,7 +2458,7 @@ sc_fb_blank(void *context, int pending)
 				cons_unavail = FALSE;
 		}
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 }
 
 static void
@@ -2939,7 +2958,7 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 static void
 do_switch_scr(sc_softc_t *sc)
 {
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     vt_proc_alive(sc->new_scp);
 
     exchange_scr(sc);
@@ -2952,23 +2971,23 @@ do_switch_scr(sc_softc_t *sc)
 	if (sc->unit == sc_console_unit && !sc->fb_blanked)
 	    cons_unavail = FALSE;
     }
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
 }
 
 static int
 vt_proc_alive(scr_stat *scp)
 {
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     if (scp->proc) {
 	if (scp->proc == pfindn(scp->pid)) {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return TRUE;
 	}
 	scp->proc = NULL;
 	scp->smode.mode = VT_AUTO;
 	DPRINTF(5, ("vt controlling process %d died\n", scp->pid));
     }
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
     return FALSE;
 }
 
@@ -2977,9 +2996,9 @@ signal_vt_rel(scr_stat *scp)
 {
     struct proc *p;
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     if (scp->smode.mode != VT_PROCESS) {
-        lwkt_reltoken(&tty_token);
+        lwkt_reltoken(&vga_token);
 	return FALSE;
     }
     scp->status |= SWITCH_WAIT_REL;
@@ -2988,7 +3007,7 @@ signal_vt_rel(scr_stat *scp)
     ksignal(p, scp->smode.relsig);
     PRELE(p);
     DPRINTF(5, ("sending relsig to %d\n", scp->pid));
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
 
     return TRUE;
 }
@@ -2998,9 +3017,9 @@ signal_vt_acq(scr_stat *scp)
 {
     struct proc *p;
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     if (scp->smode.mode != VT_PROCESS) {
-        lwkt_reltoken(&tty_token);
+        lwkt_reltoken(&vga_token);
 	return FALSE;
     }
     if (scp->sc->unit == sc_console_unit)
@@ -3011,7 +3030,7 @@ signal_vt_acq(scr_stat *scp)
     ksignal(p, scp->smode.acqsig);
     PRELE(p);
     DPRINTF(5, ("sending acqsig to %d\n", scp->pid));
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
 
     return TRUE;
 }
@@ -3019,31 +3038,31 @@ signal_vt_acq(scr_stat *scp)
 static int
 finish_vt_rel(scr_stat *scp, int release)
 {
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     if (scp == scp->sc->old_scp && scp->status & SWITCH_WAIT_REL) {
 	scp->status &= ~SWITCH_WAIT_REL;
 	if (release)
 	    do_switch_scr(scp->sc);
 	else
 	    scp->sc->switch_in_progress = 0;
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
     }
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
     return EINVAL;
 }
 
 static int
 finish_vt_acq(scr_stat *scp)
 {
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     if (scp == scp->sc->new_scp && scp->status & SWITCH_WAIT_ACQ) {
 	scp->status &= ~SWITCH_WAIT_ACQ;
 	scp->sc->switch_in_progress = 0;
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
     }
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
     return EINVAL;
 }
 
@@ -3052,7 +3071,7 @@ exchange_scr(sc_softc_t *sc)
 {
     scr_stat *scp;
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     /* save the current state of video and keyboard */
     sc_move_cursor(sc->old_scp, sc->old_scp->xpos, sc->old_scp->ypos);
     if (!ISGRAPHSC(sc->old_scp))
@@ -3096,7 +3115,7 @@ exchange_scr(sc_softc_t *sc)
 	taskqueue_enqueue(taskqueue_thread[0], sc->fb_set_par_task);
     }
 
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
 }
 
 static void
@@ -3277,11 +3296,11 @@ scinit(int unit, int flags)
 	    col = 0;
 	    row = 0;
 	} else {
-	    lwkt_gettoken(&tty_token);
+	    lwkt_gettoken(&vga_token);
 	    /* extract the hw cursor location and hide the cursor for now */
 	    (*vidsw[sc->adapter]->read_hw_cursor)(sc->adp, &col, &row);
 	    (*vidsw[sc->adapter]->set_hw_cursor)(sc->adp, -1, -1);
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	}
 
 	/* set up the first console */
@@ -3306,7 +3325,7 @@ scinit(int unit, int flags)
 				  GID_WHEEL, 0600, "ttyv%s",
 				  makedev_unit_b32(tbuf, unit * MAXCONS));
 
-	    sc->dev[0]->si_tty = ttymalloc(sc->dev[0]->si_tty);
+	    ttymalloc(&sc->dev[0]->si_tty);
 	    scp = alloc_scp(sc, sc->first_vty);
 	    sc->dev[0]->si_drv1 = scp;
 	}
@@ -3423,7 +3442,7 @@ scterm(int unit, int flags)
     if (sc == NULL)
 	return;			/* shouldn't happen */
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
 #if NSPLASH > 0
     /* this console is no longer available for the splash screen */
     if (sc->flags & SC_SPLASH_SCRN) {
@@ -3462,6 +3481,7 @@ scterm(int unit, int flags)
 	kfree(sc->dev, M_SYSCONS);
 #if 0
 	/* XXX: We need a ttyunregister for this */
+	/* XXX: do not race tty token access */
 	kfree(sc->tty, M_SYSCONS);
 #endif
 #ifndef SC_NO_FONT_LOADING
@@ -3474,7 +3494,7 @@ scterm(int unit, int flags)
     bzero(sc, sizeof(*sc));
     sc->keyboard = -1;
     sc->adapter = -1;
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
 }
 #endif
 
@@ -3483,7 +3503,7 @@ scshutdown(void *arg, int howto)
 {
     /* assert(sc_console != NULL) */
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     syscons_lock();
     sc_touch_scrn_saver();
     if (!cold && sc_console
@@ -3493,7 +3513,7 @@ scshutdown(void *arg, int howto)
     }
     shutdown_in_progress = TRUE;
     syscons_unlock();
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
 }
 
 int
@@ -3503,12 +3523,12 @@ sc_clean_up(scr_stat *scp, int need_unlock)
     int error;
 #endif /* NSPLASH */
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     if (scp->sc->flags & SC_SCRN_BLANKED) {
 	sc_touch_scrn_saver();
 #if NSPLASH > 0
 	if ((error = wait_scrn_saver_stop(scp->sc, need_unlock))) {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return error;
 	}
 #endif /* NSPLASH */
@@ -3516,7 +3536,7 @@ sc_clean_up(scr_stat *scp, int need_unlock)
     scp->status |= MOUSE_HIDDEN;
     sc_remove_mouse_image(scp);
     sc_remove_cutmarking(scp);
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
     return 0;
 }
 
@@ -3526,7 +3546,7 @@ sc_alloc_scr_buffer(scr_stat *scp, int wait, int discard)
     sc_vtb_t new;
     sc_vtb_t old;
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     old = scp->vtb;
     sc_vtb_init(&new, VTB_MEMORY, scp->xsize, scp->ysize, NULL, wait);
     if (!discard && (old.vtb_flags & VTB_VALID)) {
@@ -3547,7 +3567,7 @@ sc_alloc_scr_buffer(scr_stat *scp, int wait, int discard)
     /* move the mouse cursor at the center of the screen */
     sc_mouse_move(scp, scp->xpixel / 2, scp->ypixel / 2);
 #endif
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
 }
 
 static scr_stat *
@@ -3575,7 +3595,7 @@ alloc_scp(sc_softc_t *sc, int vty)
 }
 
 /*
- * NOTE: Must be called with tty_token held.
+ * NOTE: Must be called with vga_token held.
  */
 static void
 init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
@@ -3591,9 +3611,9 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
     scp->fbi_generation = sc->fbi_generation;
     callout_init_lk(&scp->blink_screen_ch, &syscons_blink_lk);
     if (scp->sc->fbi == NULL) {
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&vga_token);
 	(*vidsw[sc->adapter]->get_info)(sc->adp, scp->mode, &info);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
     }
     if (scp->sc->fbi != NULL) {
 	scp->xpixel = sc->fbi->width;
@@ -3760,9 +3780,9 @@ scgetc(sc_softc_t *sc, u_int flags)
     int f;
     int i;
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     if (sc->kbd == NULL) {
-        lwkt_reltoken(&tty_token);
+        lwkt_reltoken(&vga_token);
 	return NOKEY;
     }
 
@@ -3783,7 +3803,7 @@ next_code:
 	    if (!(flags & SCGETC_CN))
 		sc_bell(scp, bios_value.bell_pitch, BELL_DURATION);
 	} else if (c == NOKEY) {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return c;
 	} else {
 	    break;
@@ -3799,7 +3819,7 @@ next_code:
 	add_keyboard_randomness(c);
 
     if (scp->kbd_mode != K_XLATE) {
-        lwkt_reltoken(&tty_token);
+        lwkt_reltoken(&vga_token);
 	return KEYCHAR(c);
     }
 
@@ -3911,7 +3931,7 @@ next_code:
 
 	    case BTAB:
 		if (!(sc->flags & SC_SCRN_BLANKED)) {
-                    lwkt_reltoken(&tty_token);
+                    lwkt_reltoken(&vga_token);
 		    return c;
 		}
 		break;
@@ -3966,9 +3986,9 @@ next_code:
 	    case DBG:
 #ifndef SC_DISABLE_DDBKEY
 #ifdef DDB
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&vga_token);
 		Debugger("manual escape to debugger");
-		lwkt_gettoken(&tty_token);
+		lwkt_gettoken(&vga_token);
 #else
 		kprintf("No debugger in kernel\n");
 #endif
@@ -4021,7 +4041,7 @@ next_code:
 		}
 		/* assert(c & FKEY) */
 		if (!(sc->flags & SC_SCRN_BLANKED)) {
-		    lwkt_reltoken(&tty_token);
+		    lwkt_reltoken(&vga_token);
 		    return c;
 		}
 		break;
@@ -4030,7 +4050,7 @@ next_code:
 	} else {
 	    /* regular keys (maybe MKEY is set) */
 	    if (!(sc->flags & SC_SCRN_BLANKED)) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&vga_token);
 		return c;
 	    }
 	}
@@ -4044,17 +4064,17 @@ scmmap(struct dev_mmap_args *ap)
 {
     scr_stat *scp;
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     scp = SC_STAT(ap->a_head.a_dev);
     if (scp != scp->sc->cur_scp) {
-        lwkt_reltoken(&tty_token);
+        lwkt_reltoken(&vga_token);
 	return EINVAL;
     }
     if (scp->sc->fbi != NULL) {
 	size_t sz =
 	    roundup(scp->sc->fbi->height * scp->sc->fbi->stride, PAGE_SIZE);
 	if (ap->a_offset > sz - PAGE_SIZE) {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&vga_token);
 	    return EINVAL;
 	} else {
 	    ap->a_result = atop(scp->sc->fbi->paddr + ap->a_offset);
@@ -4064,7 +4084,7 @@ scmmap(struct dev_mmap_args *ap)
 							ap->a_offset,
 							ap->a_nprot);
     }
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
     return(0);
 }
 
@@ -4133,16 +4153,16 @@ set_mode(scr_stat *scp)
 {
     video_info_t info;
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     /* reject unsupported mode */
     if (scp->sc->fbi == NULL && (*vidsw[scp->sc->adapter]->get_info)(scp->sc->adp, scp->mode, &info)) {
-        lwkt_reltoken(&tty_token);
+        lwkt_reltoken(&vga_token);
 	return 1;
     }
 
     /* if this vty is not currently showing, do nothing */
     if (scp != scp->sc->cur_scp) {
-        lwkt_reltoken(&tty_token);
+        lwkt_reltoken(&vga_token);
 	return 0;
     }
 
@@ -4186,7 +4206,7 @@ set_mode(scr_stat *scp)
     sc_set_cursor_image(scp);
 
 done:
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
     return 0;
 }
 
@@ -4270,18 +4290,21 @@ sc_paste(scr_stat *scp, u_char *p, int count)
     if (scp->kbd_mode != K_XLATE)
 	return;
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     if (scp->status & MOUSE_VISIBLE) {
 	tp = VIRTUAL_TTY(scp->sc, scp->sc->cur_scp->index);
+	lwkt_gettoken(&tp->t_token);
 	if (!ISTTYOPEN(tp)) {
-	    lwkt_reltoken(&tty_token);
+	    lwkt_reltoken(&tp->t_token);
+	    lwkt_reltoken(&vga_token);
 	    return;
 	}
 	rmap = scp->sc->scr_rmap;
 	for (; count > 0; --count)
 	    (*linesw[tp->t_line].l_rint)(rmap[*p++], tp);
+	lwkt_reltoken(&tp->t_token);
     }
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
 }
 
 void

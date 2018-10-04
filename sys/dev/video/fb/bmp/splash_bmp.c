@@ -76,10 +76,10 @@ bmp_start(video_adapter_t *adp)
     video_info_t 	info;
     int			i;
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     if ((bmp_decoder.data == NULL) || (bmp_decoder.data_size <= 0)) {
 	kprintf("splash_bmp: No bitmap file found\n");
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return ENODEV;
     }
     for (i = 0; modes[i] >= 0; ++i) {
@@ -93,7 +93,7 @@ bmp_start(video_adapter_t *adp)
 	kprintf("splash_bmp: No appropriate video mode found\n");
     if (bootverbose)
 	kprintf("bmp_start(): splash_mode:%d\n", splash_mode);
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
     return ((splash_mode < 0) ? ENODEV : 0);
 }
 
@@ -114,16 +114,16 @@ bmp_splash(video_adapter_t *adp, int on)
     struct timeval	tv;
     int			i;
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     if (on) {
 	if (!splash_on) {
 	    /* set up the video mode and draw something */
 	    if ((*vidsw[adp->va_index]->set_mode)(adp, splash_mode)) {
-	        lwkt_reltoken(&tty_token);
+	        lwkt_reltoken(&vga_token);
 		return 1;
 	    }
 	    if (bmp_Draw(adp)) {
-	        lwkt_reltoken(&tty_token);
+	        lwkt_reltoken(&vga_token);
 		return 1;
 	    }
 	    (*vidsw[adp->va_index]->save_palette)(adp, pal);
@@ -159,12 +159,12 @@ bmp_splash(video_adapter_t *adp, int on)
 		time_stamp = tv.tv_sec;
 	    }
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
     } else {
 	/* the video mode will be restored by the caller */
 	splash_on = FALSE;
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return 0;
     }
 }
@@ -258,7 +258,7 @@ bmp_SetPix(BMP_INFO *info, int x, int y, u_char val)
     if ((x < 0) || (x >= info->swidth) || (y < 0) || (y >= info->sheight))
 	return;
     
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     /* 
      * calculate offset into video memory;
      * because 0,0 is bottom-left for DIB, we have to convert.
@@ -295,7 +295,7 @@ bmp_SetPix(BMP_INFO *info, int x, int y, u_char val)
 	*(info->vidmem+sofs) = val;
 	break;
     }
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
 }
     
 /*
@@ -573,7 +573,7 @@ bmp_Draw(video_adapter_t *adp)
 	return(1);
     }
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     /* clear the screen */
     bmp_info.vidmem = (u_char *)adp->va_window;
     bmp_info.adp = adp;
@@ -610,6 +610,6 @@ bmp_Draw(video_adapter_t *adp)
     for (line = 0; (line < bmp_info.height) && bmp_info.index; line++) {
 	bmp_DecodeLine(&bmp_info, line);
     }
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
     return(0);
 }

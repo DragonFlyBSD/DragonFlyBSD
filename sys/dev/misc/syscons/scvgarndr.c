@@ -557,7 +557,7 @@ vga_pxlborder_planar(scr_stat *scp, int color)
 	int y;
 	int i;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&vga_token);
 
 	(*vidsw[scp->sc->adapter]->set_border)(scp->sc->adp, color);
 
@@ -585,7 +585,7 @@ vga_pxlborder_planar(scr_stat *scp, int color)
 	}
 	outw(GDCIDX, 0x0000);		/* set/reset */
 	outw(GDCIDX, 0x0001);		/* set/reset enable */
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 }
 
 static void
@@ -1230,9 +1230,9 @@ vga_pxlmouse_planar(scr_stat *scp, int x, int y, int on)
 static void
 vga_grborder(scr_stat *scp, int color)
 {
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&vga_token);
 	(*vidsw[scp->sc->adapter]->set_border)(scp->sc->adp, color);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 }
 
 #endif

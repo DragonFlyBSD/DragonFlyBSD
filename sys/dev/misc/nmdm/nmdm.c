@@ -32,11 +32,6 @@
  */
 
 /*
- * MPSAFE NOTE: This file acquires the tty_token mainly for linesw access and
- *		tp (struct tty) access.
- */
-
-/*
  * Pseudo-nulmodem Driver
  */
 #include <sys/param.h>
@@ -114,8 +109,6 @@ do {	\
 
 /*
  * This function creates and initializes a pair of ttys.
- *
- * NOTE: Must be called with tty_token held
  */
 static void
 nmdminit(int n)
@@ -130,8 +123,6 @@ nmdminit(int n)
 	if (n & ~0x7f)
 		return;
 
-	ASSERT_LWKT_TOKEN_HELD(&tty_token);
-
 	pt = kmalloc(sizeof(*pt), M_NLMDM, M_WAITOK | M_ZERO);
 	pt->part1.dev = dev1 = make_dev(&nmdm_ops, n << 1,
 					0, 0, 0666, "nmdm%dA", n);
@@ -141,6 +132,8 @@ nmdminit(int n)
 	dev1->si_drv1 = dev2->si_drv1 = pt;
 	dev1->si_tty = &pt->part1.nm_tty;
 	dev2->si_tty = &pt->part2.nm_tty;
+	ttyinit(&pt->part1.nm_tty);
+	ttyinit(&pt->part2.nm_tty);
 	ttyregister(&pt->part1.nm_tty);
 	ttyregister(&pt->part2.nm_tty);
 	pt->part1.nm_tty.t_oproc = nmdmstart;
@@ -190,14 +183,15 @@ nmdmopen(struct dev_open_args *ap)
 	if (!dev->si_drv1)
 		return(ENXIO);	
 
-	lwkt_gettoken(&tty_token);
 	pti = dev->si_drv1;
 	if (is_b) 
 		tp = &pti->part2.nm_tty;
 	else 
 		tp = &pti->part1.nm_tty;
+	lwkt_gettoken(&tp->t_token);
 	GETPARTS(tp, ourpart, otherpart);
 	tp2 = &otherpart->nm_tty;
+	lwkt_gettoken(&tp2->t_token);
 	ourpart->modemsignals |= TIOCM_LE;
 
 	if ((tp->t_state & TS_ISOPEN) == 0) {
@@ -208,10 +202,14 @@ nmdmopen(struct dev_open_args *ap)
 		tp->t_cflag = TTYDEF_CFLAG;
 		tp->t_ispeed = tp->t_ospeed = TTYDEF_SPEED;
 	} else if (tp->t_state & TS_XCLUDE && priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp2->t_token);
+		lwkt_reltoken(&tp->t_token);
+
 		return (EBUSY);
 	} else if (pti->pt_prison != ap->a_cred->cr_prison) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp2->t_token);
+		lwkt_reltoken(&tp->t_token);
+
 		return (EBUSY);
 	}
 
@@ -239,7 +237,9 @@ nmdmopen(struct dev_open_args *ap)
 			break;
 		error = ttysleep(tp, TSA_CARR_ON(tp), PCATCH, "nmdopn", 0);
 		if (error) {
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp2->t_token);
+			lwkt_reltoken(&tp->t_token);
+
 			return (error);
 		}
 	}
@@ -258,7 +258,9 @@ nmdmopen(struct dev_open_args *ap)
 	nmdm_crossover(pti, ourpart, otherpart);
 	if (error == 0)
 		wakeup_other(tp, FREAD|FWRITE); /* XXX */
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp2->t_token);
+	lwkt_reltoken(&tp->t_token);
+
 	return (error);
 }
 
@@ -270,13 +272,14 @@ nmdmclose(struct dev_close_args *ap)
 	int err;
 	struct softpart *ourpart, *otherpart;
 
-	lwkt_gettoken(&tty_token);
 	/*
 	 * let the other end know that the game is up
 	 */
 	tp = dev->si_tty;
+	lwkt_gettoken(&tp->t_token);
 	GETPARTS(tp, ourpart, otherpart);
 	tp2 = &otherpart->nm_tty;
+	lwkt_gettoken(&tp2->t_token);
 	(void)(*linesw[tp2->t_line].l_modem)(tp2, 0);
 
 	/*
@@ -297,8 +300,10 @@ nmdmclose(struct dev_close_args *ap)
 	ourpart->modemsignals &= ~TIOCM_DTR;
 	nmdm_crossover(dev->si_drv1, ourpart, otherpart);
 	nmdmstop(tp, FREAD|FWRITE);
-	(void) ttyclose(tp);
-	lwkt_reltoken(&tty_token);
+	ttyclose(tp);
+	lwkt_reltoken(&tp2->t_token);
+	lwkt_reltoken(&tp->t_token);
+
 	return (err);
 }
 
@@ -313,28 +318,32 @@ nmdmread(struct dev_read_args *ap)
 	struct softpart *ourpart, *otherpart;
 #endif
 
-	lwkt_gettoken(&tty_token);
 	tp = dev->si_tty;
+	lwkt_gettoken(&tp->t_token);
 #if 0
 	GETPARTS(tp, ourpart, otherpart);
 	tp2 = &otherpart->nm_tty;
+	lwkt_gettoken(&tp2->t_token);
 
 	if (tp2->t_state & TS_ISOPEN) {
 		error = (*linesw[tp->t_line].l_read)(tp, ap->a_uio, flag);
 		wakeup_other(tp, FWRITE);
 	} else {
 		if (flag & IO_NDELAY) {
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp2->t_token);
+			lwkt_reltoken(&tp->t_token);
 			return (EWOULDBLOCK);
 		}
 		error = tsleep(TSA_PTC_READ(tp), PCATCH, "nmdout", 0);
 		}
 	}
+	lwkt_reltoken(&tp2->t_token);
 #else
 	if ((error = (*linesw[tp->t_line].l_read)(tp, ap->a_uio, ap->a_ioflag)) == 0)
 		wakeup_other(tp, FWRITE);
 #endif
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
+
 	return (error);
 }
 
@@ -356,18 +365,20 @@ nmdmwrite(struct dev_write_args *ap)
 	struct tty *tp1, *tp;
 	struct softpart *ourpart, *otherpart;
 
-	lwkt_gettoken(&tty_token);
 	tp1 = dev->si_tty;
+	lwkt_gettoken(&tp1->t_token);
 	/*
 	 * Get the other tty struct.
 	 * basically we are writing into the INPUT side of the other device.
 	 */
 	GETPARTS(tp1, ourpart, otherpart);
 	tp = &otherpart->nm_tty;
+	lwkt_gettoken(&tp->t_token);
 
 again:
 	if ((tp->t_state & TS_ISOPEN) == 0) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
+		lwkt_reltoken(&tp1->t_token);
 		return (EIO);
 	}
 	while (uio->uio_resid > 0 || cc > 0) {
@@ -379,14 +390,16 @@ again:
 			cp = locbuf;
 			error = uiomove((caddr_t)cp, cc, uio);
 			if (error) {
-				lwkt_reltoken(&tty_token);
+				lwkt_reltoken(&tp->t_token);
+				lwkt_reltoken(&tp1->t_token);
 				return (error);
 			}
 			/* check again for safety */
 			if ((tp->t_state & TS_ISOPEN) == 0) {
 				/* adjust for data copied in but not written */
 				uio->uio_resid += cc;
-				lwkt_reltoken(&tty_token);
+				lwkt_reltoken(&tp->t_token);
+				lwkt_reltoken(&tp1->t_token);
 				return (EIO);
 			}
 		}
@@ -405,7 +418,8 @@ again:
 					 * not written.
 					 */
 					uio->uio_resid += cc;
-					lwkt_reltoken(&tty_token);
+					lwkt_reltoken(&tp->t_token);
+					lwkt_reltoken(&tp1->t_token);
 					return (EIO);
 				}
 				if (ap->a_ioflag & IO_NDELAY) {
@@ -416,10 +430,12 @@ again:
 					 */
 					uio->uio_resid += cc;
 					if (cnt == 0) {
-						lwkt_reltoken(&tty_token);
+						lwkt_reltoken(&tp->t_token);
+						lwkt_reltoken(&tp1->t_token);
 						return (EWOULDBLOCK);
 					}
-					lwkt_reltoken(&tty_token);
+					lwkt_reltoken(&tp->t_token);
+					lwkt_reltoken(&tp1->t_token);
 					return (0);
 				}
 				error = tsleep(TSA_PTC_WRITE(tp),
@@ -432,7 +448,8 @@ again:
 					 * not written
 					 */
 					uio->uio_resid += cc;
-					lwkt_reltoken(&tty_token);
+					lwkt_reltoken(&tp->t_token);
+					lwkt_reltoken(&tp1->t_token);
 					return (error);
 				}
 				goto again;
@@ -443,7 +460,9 @@ again:
 		}
 		cc = 0;
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
+	lwkt_reltoken(&tp1->t_token);
+
 	return (0);
 }
 
@@ -456,24 +475,26 @@ nmdmstart(struct tty *tp)
 {
 	struct nm_softc *pti = tp->t_dev->si_drv1;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	if (tp->t_state & TS_TTSTOP) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		return;
 	}
 	pti->pt_flags &= ~PF_STOPPED;
 	wakeup_other(tp, FREAD);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
 }
 
-/* Wakes up the OTHER tty;*/
+/*
+ * Wakes up the OTHER tty.  Caller must hold at least tp->t_token.
+ */
 static void
 wakeup_other(struct tty *tp, int flag)
 {
 	struct softpart *ourpart, *otherpart;
 
-	lwkt_gettoken(&tty_token);
 	GETPARTS(tp, ourpart, otherpart);
+	lwkt_gettoken(&otherpart->nm_tty.t_token);
 	if (flag & FREAD) {
 		wakeup(TSA_PTC_READ((&otherpart->nm_tty)));
 		KNOTE(&otherpart->nm_tty.t_rkq.ki_note, 0);
@@ -482,7 +503,7 @@ wakeup_other(struct tty *tp, int flag)
 		wakeup(TSA_PTC_WRITE((&otherpart->nm_tty)));
 		KNOTE(&otherpart->nm_tty.t_wkq.ki_note, 0);
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&otherpart->nm_tty.t_token);
 }
 
 static	void
@@ -491,7 +512,7 @@ nmdmstop(struct tty *tp, int flush)
 	struct nm_softc *pti = tp->t_dev->si_drv1;
 	int flag;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	/* note: FLUSHREAD and FLUSHWRITE already ok */
 	if (flush == 0) {
 		flush = TIOCPKT_STOP;
@@ -505,7 +526,7 @@ nmdmstop(struct tty *tp, int flush)
 	if (flush & FWRITE)
 		flag |= FREAD;
 	wakeup_other(tp, flag);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
 }
 
 /*ARGSUSED*/
@@ -514,13 +535,15 @@ nmdmioctl(struct dev_ioctl_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp = dev->si_tty;
+	struct tty *tp2;
 	struct nm_softc *pti = dev->si_drv1;
 	int error;
 	struct softpart *ourpart, *otherpart;
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	GETPARTS(tp, ourpart, otherpart);
+	tp2 = &otherpart->nm_tty;
+	lwkt_gettoken(&tp2->t_token);
 
 	error = (*linesw[tp->t_line].l_ioctl)(tp, ap->a_cmd, ap->a_data,
 					      ap->a_fflag, ap->a_cred);
@@ -561,31 +584,33 @@ nmdmioctl(struct dev_ioctl_args *ap)
 		case TIOCTIMESTAMP:
 		case TIOCDCDTIMESTAMP:
 		default:
-			lwkt_reltoken(&tty_token);
-			crit_exit();
+			lwkt_reltoken(&tp2->t_token);
+			lwkt_reltoken(&tp->t_token);
 			error = ENOTTY;
 			return (error);
 		}
 		error = 0;
 		nmdm_crossover(pti, ourpart, otherpart);
 	}
-	lwkt_reltoken(&tty_token);
-	crit_exit();
+	lwkt_reltoken(&tp2->t_token);
+	lwkt_reltoken(&tp->t_token);
+
 	return (error);
 }
 
+/*
+ * Caller must hold both tty tokens
+ */
 static void
 nmdm_crossover(struct nm_softc *pti,
 		struct softpart *ourpart,
 		struct softpart *otherpart)
 {
-	lwkt_gettoken(&tty_token);
 	otherpart->modemsignals &= ~(TIOCM_CTS|TIOCM_CAR);
 	if (ourpart->modemsignals & TIOCM_RTS)
 		otherpart->modemsignals |= TIOCM_CTS;
 	if (ourpart->modemsignals & TIOCM_DTR)
 		otherpart->modemsignals |= TIOCM_CAR;
-	lwkt_reltoken(&tty_token);
 }
 
 
@@ -595,10 +620,7 @@ static void nmdm_drvinit (void *unused);
 static void
 nmdm_drvinit(void *unused)
 {
-	/* XXX: Gross hack for DEVFS */
-	lwkt_gettoken(&tty_token);
 	nmdminit(0);
-	lwkt_reltoken(&tty_token);
 }
 
 SYSINIT(nmdmdev, SI_SUB_DRIVERS, SI_ORDER_MIDDLE + CDEV_MAJOR, nmdm_drvinit,

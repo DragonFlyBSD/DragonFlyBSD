@@ -429,6 +429,8 @@ extern struct lwkt_token sigio_token;
 extern struct lwkt_token tty_token;
 extern struct lwkt_token vnode_token;
 extern struct lwkt_token revoke_token;
+extern struct lwkt_token kbd_token;
+extern struct lwkt_token vga_token;
 
 /*
  * Procedures

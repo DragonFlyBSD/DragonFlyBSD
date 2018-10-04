@@ -1271,7 +1271,8 @@ sioopen(struct dev_open_args *ap)
 	if (mynor & CONTROL_MASK)
 		return (0);
 	lwkt_gettoken(&tty_token);
-	tp = dev->si_tty = com->tp = ttymalloc(com->tp);
+	tp = ttymalloc(&com->tp);
+	dev->si_tty = tp;
 	crit_enter();
 	/*
 	 * We jump to this label after all non-interrupted sleeps to pick

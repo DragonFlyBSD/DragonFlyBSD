@@ -74,6 +74,7 @@ struct pgrp;
 struct session;
 struct lwp;
 struct uidcount;
+struct procglob;
 
 LIST_HEAD(proclist, proc);
 LIST_HEAD(pgrplist, pgrp);
@@ -90,6 +91,7 @@ RB_PROTOTYPE2(lwp_rb_tree, lwp, u.lwp_rbnode, rb_lwp_compare, lwpid_t);
 struct	session {
 	LIST_ENTRY(session) s_list;	/* Hash chain. */
 	int	s_count;		/* Ref cnt; pgrps in session. */
+	struct	procglob *s_prg;
 	struct	proc *s_leader;		/* Session leader. */
 	struct	vnode *s_ttyvp;		/* Vnode of controlling terminal. */
 	struct	tty *s_ttyp;		/* Controlling terminal. */

@@ -117,6 +117,7 @@ static int snooplinedisc;
 
 
 static LIST_HEAD(, snoop) snp_sclist = LIST_HEAD_INITIALIZER(&snp_sclist);
+static struct lwkt_token  snp_token = LWKT_TOKEN_INITIALIZER(snp_token);
 
 static struct tty	*snpdevtotty (cdev_t dev);
 static int		snp_detach (struct snoop *snp);
@@ -130,15 +131,18 @@ snplclose(struct tty *tp, int flag)
 	struct snoop *snp;
 	int error;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&snp_token);
 	snp = tp->t_sc;
 	error = snp_down(snp);
 	if (error != 0) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&snp_token);
 		return (error);
 	}
+	lwkt_gettoken(&tp->t_token);
 	error = ttylclose(tp, flag);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
+	lwkt_reltoken(&snp_token);
+
 	return (error);
 }
 
@@ -151,7 +155,7 @@ snplwrite(struct tty *tp, struct uio *uio, int flag)
 	int error, ilen;
 	char *ibuf;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	error = 0;
 	ibuf = NULL;
 	snp = tp->t_sc;
@@ -180,7 +184,7 @@ snplwrite(struct tty *tp, struct uio *uio, int flag)
 	}
 	if (ibuf != NULL)
 		kfree(ibuf, M_SNP);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
 	return (error);
 }
 
@@ -207,11 +211,11 @@ snpwrite(struct dev_write_args *ap)
 	int error, i, len;
 	unsigned char c[SNP_INPUT_BUF];
 
-	lwkt_gettoken(&tty_token);
 	snp = dev->si_drv1;
 	tp = snp->snp_tty;
+	lwkt_gettoken(&tp->t_token);
 	if (tp == NULL) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		return (EIO);
 	}
 	if ((tp->t_sc == snp) && (tp->t_state & TS_SNOOP) &&
@@ -219,29 +223,29 @@ snpwrite(struct dev_write_args *ap)
 		goto tty_input;
 
 	kprintf("Snoop: attempt to write to bad tty.\n");
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
 	return (EIO);
 
 tty_input:
 	if (!(tp->t_state & TS_ISOPEN)) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		return (EIO);
 	}
 
 	while (uio->uio_resid > 0) {
 		len = (int)szmin(uio->uio_resid, SNP_INPUT_BUF);
 		if ((error = uiomove(c, (size_t)len, uio)) != 0) {
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp->t_token);
 			return (error);
 		}
 		for (i=0; i < len; i++) {
 			if (ttyinput(c[i], tp)) {
-				lwkt_reltoken(&tty_token);
+				lwkt_reltoken(&tp->t_token);
 				return (EIO);
 			}
 		}
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
 	return (0);
 }
 
@@ -252,17 +256,19 @@ snpread(struct dev_read_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	struct snoop *snp;
+	struct tty *tp;
 	int error, len, n, nblen;
 	caddr_t from;
 	char *nbuf;
 
-	lwkt_gettoken(&tty_token);
 	snp = dev->si_drv1;
+	tp = snp->snp_tty;
+	lwkt_gettoken(&tp->t_token);
 	KASSERT(snp->snp_len + snp->snp_base <= snp->snp_blen,
 	    ("snoop buffer error"));
 
 	if (snp->snp_tty == NULL) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		return (EIO);
 	}
 
@@ -271,13 +277,13 @@ snpread(struct dev_read_args *ap)
 	do {
 		if (snp->snp_len == 0) {
 			if (ap->a_ioflag & IO_NDELAY) {
-				lwkt_reltoken(&tty_token);
+				lwkt_reltoken(&tp->t_token);
 				return (EWOULDBLOCK);
 			}
 			snp->snp_flags |= SNOOP_RWAIT;
 			error = tsleep((caddr_t)snp, PCATCH, "snprd", 0);
 			if (error != 0) {
-				lwkt_reltoken(&tty_token);
+				lwkt_reltoken(&tp->t_token);
 				return (error);
 			}
 		}
@@ -299,7 +305,6 @@ snpread(struct dev_read_args *ap)
 	if ((snp->snp_flags & SNOOP_OFLOW) && (n < snp->snp_len)) {
 		snp->snp_flags &= ~SNOOP_OFLOW;
 	}
-	crit_enter();
 	nblen = snp->snp_blen;
 	if (((nblen / 2) >= SNOOP_MINLEN) && (nblen / 2) >= snp->snp_len) {
 		while (nblen / 2 >= snp->snp_len && nblen / 2 >= SNOOP_MINLEN)
@@ -312,14 +317,13 @@ snpread(struct dev_read_args *ap)
 			snp->snp_base = 0;
 		}
 	}
-	crit_exit();
+	lwkt_reltoken(&tp->t_token);
 
-	lwkt_reltoken(&tty_token);
 	return (error);
 }
 
 /*
- * NOTE: Must be called with tty_token held
+ * NOTE: Must be called with tp->t_token held
  */
 static int
 snp_in(struct snoop *snp, char *buf, int n)
@@ -329,7 +333,6 @@ snp_in(struct snoop *snp, char *buf, int n)
 	caddr_t from, to;
 	char *nbuf;
 
-	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	KASSERT(n >= 0, ("negative snoop char count"));
 
 	if (n == 0)
@@ -356,7 +359,6 @@ snp_in(struct snoop *snp, char *buf, int n)
 
 
 	if (n > s_free) {
-		crit_enter();
 		nblen = snp->snp_blen;
 		while ((n > s_free) && ((nblen * 2) <= SNOOP_MAXLEN)) {
 			nblen = snp->snp_blen * 2;
@@ -374,10 +376,8 @@ snp_in(struct snoop *snp, char *buf, int n)
 				snp->snp_flags &= ~SNOOP_RWAIT;
 				wakeup((caddr_t)snp);
 			}
-			crit_exit();
 			return (0);
 		}
-		crit_exit();
 	}
 	if (n > s_tail) {
 		from = (caddr_t)(snp->snp_buf + snp->snp_base);
@@ -405,16 +405,16 @@ snpopen(struct dev_open_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct snoop *snp;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&snp_token);
 	if (dev->si_drv1 == NULL) {
 #if 0
 		make_dev(&snp_ops, minor(dev), UID_ROOT, GID_WHEEL,
 		    0600, "snp%d", minor(dev));
 #endif
 		dev->si_drv1 = snp = kmalloc(sizeof(*snp), M_SNP,
-		    M_WAITOK | M_ZERO);
+					     M_WAITOK | M_ZERO);
 	} else {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&snp_token);
 		return (EBUSY);
 	}
 
@@ -436,19 +436,19 @@ snpopen(struct dev_open_args *ap)
 	snp->snp_target = NULL;
 
 	LIST_INSERT_HEAD(&snp_sclist, snp, snp_list);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&snp_token);
 	return (0);
 }
 
 /*
- * NOTE: Must be called with tty_token held
+ * NOTE: Must be called with snp_token held
  */
 static int
 snp_detach(struct snoop *snp)
 {
 	struct tty *tp;
 
-	ASSERT_LWKT_TOKEN_HELD(&tty_token);
+	ASSERT_LWKT_TOKEN_HELD(&snp_token);
 	snp->snp_base = 0;
 	snp->snp_len = 0;
 
@@ -460,13 +460,16 @@ snp_detach(struct snoop *snp)
 	if (tp == NULL)
 		goto detach_notty;
 
-	if (tp && (tp->t_sc == snp) && (tp->t_state & TS_SNOOP) &&
+	lwkt_gettoken(&tp->t_token);
+	if ((tp->t_sc == snp) && (tp->t_state & TS_SNOOP) &&
 	    tp->t_line == snooplinedisc) {
 		tp->t_sc = NULL;
 		tp->t_state &= ~TS_SNOOP;
 		tp->t_line = snp->snp_olddisc;
-	} else
+	} else {
 		kprintf("Snoop: bad attached tty data.\n");
+	}
+	lwkt_reltoken(&tp->t_token);
 
 	snp->snp_tty = NULL;
 	snp->snp_target = NULL;
@@ -486,7 +489,7 @@ snpclose(struct dev_close_args *ap)
 	struct snoop *snp;
 	int ret;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&snp_token);
 	snp = dev->si_drv1;
 	snp->snp_blen = 0;
 	LIST_REMOVE(snp, snp_list);
@@ -498,18 +501,17 @@ snpclose(struct dev_close_args *ap)
 		destroy_dev(dev);
 	}
 	ret = snp_detach(snp);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&snp_token);
 	return ret;
 }
 
 /*
- * NOTE: Must be called with tty_token held
+ * NOTE: Must be called with snp_token held
  */
 static int
 snp_down(struct snoop *snp)
 {
-
-	ASSERT_LWKT_TOKEN_HELD(&tty_token);
+	ASSERT_LWKT_TOKEN_HELD(&snp_token);
 	if (snp->snp_blen != SNOOP_MINLEN) {
 		kfree(snp->snp_buf, M_SNP);
 		snp->snp_buf = kmalloc(SNOOP_MINLEN, M_SNP, M_WAITOK);
@@ -529,28 +531,29 @@ snpioctl(struct dev_ioctl_args *ap)
 	cdev_t tdev;
 	int ret;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&snp_token);
 	snp = dev->si_drv1;
+
 	switch (ap->a_cmd) {
 	case SNPSTTY:
 		tdev = udev2dev(*((udev_t *)ap->a_data), 0);
 		if (tdev == NULL) {
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&snp_token);
 			ret = snp_down(snp);
 			return ret;
 		}
 
 		tp = snpdevtotty(tdev);
 		if (!tp) {
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&snp_token);
 			return (EINVAL);
 		}
+		lwkt_gettoken(&tp->t_token);
 		if (tp->t_state & TS_SNOOP) {
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp->t_token);
+			lwkt_reltoken(&snp_token);
 			return (EBUSY);
 		}
-
-		crit_enter();
 
 		if (snp->snp_target == NULL) {
 			tpo = snp->snp_tty;
@@ -571,7 +574,7 @@ snpioctl(struct dev_ioctl_args *ap)
 		 */
 		snp->snp_flags &= ~SNOOP_OFLOW;
 		snp->snp_flags &= ~SNOOP_DOWN;
-		crit_exit();
+		lwkt_reltoken(&tp->t_token);
 		break;
 
 	case SNPGTTY:
@@ -591,10 +594,9 @@ snpioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case FIONREAD:
-		crit_enter();
-		if (snp->snp_tty != NULL)
+		if (snp->snp_tty != NULL) {
 			*(int *)ap->a_data = snp->snp_len;
-		else
+		} else {
 			if (snp->snp_flags & SNOOP_DOWN) {
 				if (snp->snp_flags & SNOOP_OFLOW)
 					*(int *)ap->a_data = SNP_OFLOW;
@@ -603,14 +605,15 @@ snpioctl(struct dev_ioctl_args *ap)
 			} else {
 				*(int *)ap->a_data = SNP_DETACH;
 			}
-		crit_exit();
+		}
 		break;
 
 	default:
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&snp_token);
 		return (ENOTTY);
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&snp_token);
+
 	return (0);
 }
 
@@ -626,8 +629,9 @@ snpkqfilter(struct dev_kqfilter_args *ap)
 	struct snoop *snp = dev->si_drv1;
 	struct knote *kn = ap->a_kn;
 	struct klist *klist;
+	struct tty *tp = snp->snp_tty;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	ap->a_result = 0;
 
 	switch (kn->kn_filter) {
@@ -641,14 +645,14 @@ snpkqfilter(struct dev_kqfilter_args *ap)
 		break;
 	default:
 		ap->a_result = EOPNOTSUPP;
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		return (0);
 	}
 
 	klist = &snp->snp_kq.ki_note;
 	knote_insert(klist, kn);
+	lwkt_reltoken(&tp->t_token);
 
-	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -666,9 +670,10 @@ static int
 snpfilter_rd(struct knote *kn, long hint)
 {
 	struct snoop *snp = (struct snoop *)kn->kn_hook;
+	struct tty *tp = snp->snp_tty;
 	int ready = 0;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	/*
 	 * If snoop is down, we don't want to poll forever so we return 1.
 	 * Caller should see if we down via FIONREAD ioctl().  The last should
@@ -676,8 +681,8 @@ snpfilter_rd(struct knote *kn, long hint)
 	 */
 	if (snp->snp_flags & SNOOP_DOWN || snp->snp_len > 0)
 		ready = 1;
+	lwkt_reltoken(&tp->t_token);
 
-	lwkt_reltoken(&tty_token);
 	return (ready);
 }
 
@@ -692,11 +697,13 @@ static int
 snpclone(struct dev_clone_args *ap)
 {
 	int unit;
-	lwkt_gettoken(&tty_token);
+
+	lwkt_gettoken(&snp_token);
 	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(snp), 0);
 	ap->a_dev = make_only_dev(&snp_ops, unit, UID_ROOT, GID_WHEEL, 0600,
-							"snp%d", unit);
-	lwkt_reltoken(&tty_token);
+				  "snp%d", unit);
+	lwkt_reltoken(&snp_token);
+
 	return 0;
 }
 
@@ -705,7 +712,8 @@ snp_modevent(module_t mod, int type, void *data)
 {
 	int i;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&snp_token);
+
 	switch (type) {
 	case MOD_LOAD:
 		snooplinedisc = ldisc_register(LDISC_LOAD, &snpdisc);
@@ -719,7 +727,7 @@ snp_modevent(module_t mod, int type, void *data)
 		break;
 	case MOD_UNLOAD:
 		if (!LIST_EMPTY(&snp_sclist)) {
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&snp_token);
 			return (EBUSY);
 		}
 		ldisc_deregister(snooplinedisc);
@@ -730,7 +738,8 @@ snp_modevent(module_t mod, int type, void *data)
 	default:
 		break;
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&snp_token);
+
 	return (0);
 }
 

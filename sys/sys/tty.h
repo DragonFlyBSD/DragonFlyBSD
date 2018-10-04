@@ -67,6 +67,9 @@ struct clist {
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>
+#endif
 
 /*
  * Per-tty structure.
@@ -76,6 +79,7 @@ struct clist {
  * (low, high, timeout).
  */
 struct tty {
+	struct lwkt_token t_token;
 	struct	clist t_rawq;		/* Device raw input queue. */
 	long	t_rawcc;		/* Raw input queue statistics. */
 	struct	clist t_canq;		/* Device canonical queue. */
@@ -279,12 +283,13 @@ void	 ttyunhold (struct tty *tp);
 void	 ttyinfo (struct tty *tp);
 int	 ttyinput (int c, struct tty *tp);
 int	 ttylclose (struct tty *tp, int flag);
-struct tty *ttymalloc (struct tty *tp);
+struct tty *ttymalloc (struct tty **tpp);
 int	 ttymodem (struct tty *tp, int flag);
 int	 ttyopen (cdev_t device, struct tty *tp);
 int	 ttykqfilter (struct dev_kqfilter_args *);
 int	 ttyread (struct dev_read_args *);
 void	 ttyregister (struct tty *tp);
+void	 ttyinit (struct tty *tp);
 void	 ttyunregister (struct tty *tp);
 int	 ttysleep (struct tty *tp, void *chan, int slpflags, char *wmesg,
 	    int timeout);

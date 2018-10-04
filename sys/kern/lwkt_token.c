@@ -140,6 +140,8 @@ struct lwkt_token kvm_token = LWKT_TOKEN_INITIALIZER(kvm_token);
 struct lwkt_token sigio_token = LWKT_TOKEN_INITIALIZER(sigio_token);
 struct lwkt_token tty_token = LWKT_TOKEN_INITIALIZER(tty_token);
 struct lwkt_token vnode_token = LWKT_TOKEN_INITIALIZER(vnode_token);
+struct lwkt_token vga_token = LWKT_TOKEN_INITIALIZER(vga_token);
+struct lwkt_token kbd_token = LWKT_TOKEN_INITIALIZER(kbd_token);
 
 /*
  * Exponential backoff (exclusive tokens) and TSC windowing (shared tokens)

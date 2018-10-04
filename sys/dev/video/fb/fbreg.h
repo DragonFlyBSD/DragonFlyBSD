@@ -102,16 +102,16 @@ typedef struct video_switch {
 
 #define save_palette(adp, pal)				\
 	do {						\
-		lwkt_gettoken(&tty_token);		\
+		lwkt_gettoken(&vga_token);		\
 		(*vidsw[(adp)->va_index]->save_palette)((adp), (pal)); \
-		lwkt_reltoken(&tty_token);		\
+		lwkt_reltoken(&vga_token);		\
 	} while (0)
 
 #define load_palette(adp, pal)				\
 	do {						\
-		lwkt_gettoken(&tty_token);		\
+		lwkt_gettoken(&vga_token);		\
 		(*vidsw[(adp)->va_index]->load_palette)((adp), (pal)); \
-		lwkt_reltoken(&tty_token);		\
+		lwkt_reltoken(&vga_token);		\
 	} while (0)
 
 #define get_mode_info(adp, mode, buf)			\
@@ -123,17 +123,17 @@ typedef struct video_switch {
 #if 0 /* XXX conflicts with syscons' set_border() */
 #define set_border(adp, border)				\
 	do {						\
-		lwkt_gettoken(&tty_token);		\
+		lwkt_gettoken(&vga_token);		\
 		(*vidsw[(adp)->va_index]->set_border)((adp), (border)); \
-		lwkt_reltoken(&tty_token);		\
+		lwkt_reltoken(&vga_token);		\
 	} while (0)
 #endif
 
 #define set_origin(adp, o)				\
 	do {						\
-		lwkt_gettoken(&tty_token);		\
+		lwkt_gettoken(&vga_token);		\
 		(*vidsw[(adp)->va_index]->set_win_org)(adp, o); \
-		lwkt_reltoken(&tty_token);		\
+		lwkt_reltoken(&vga_token);		\
 	} while (0)
 
 /* XXX - add more macros */

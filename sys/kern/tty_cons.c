@@ -149,6 +149,7 @@ cninit(void)
 	 * its init.
 	 */
 	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&vga_token);
 
 	/*
 	 * Check if we should mute the console (for security reasons perhaps)
@@ -204,6 +205,7 @@ done:
 	 * Also assert that the mpcount is still correct or otherwise
 	 * the SMP/AP boot will blow up on us.
 	 */
+	lwkt_reltoken(&vga_token);
 	lwkt_reltoken(&tty_token);
 }
 

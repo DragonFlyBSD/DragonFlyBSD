@@ -144,7 +144,6 @@ dcons_check_break(struct dcons_softc *dc, int c)
 	if (c < 0)
 		return (c);
 
-	lwkt_gettoken(&tty_token);
 	switch (dc->brk_state) {
 	case STATE1:
 		if (c == KEY_TILDE)
@@ -164,7 +163,6 @@ dcons_check_break(struct dcons_softc *dc, int c)
 	}
 	if (c == KEY_CR)
 		dc->brk_state = STATE1;
-	lwkt_reltoken(&tty_token);
 	return (c);
 }
 #else
@@ -176,7 +174,6 @@ dcons_os_checkc(struct dcons_softc *dc)
 {
 	int c;
 
-	lwkt_gettoken(&tty_token);
 	if (dg.dma_tag != NULL)
 		bus_dmamap_sync(dg.dma_tag, dg.dma_map, BUS_DMASYNC_POSTREAD);
   
@@ -185,7 +182,6 @@ dcons_os_checkc(struct dcons_softc *dc)
 	if (dg.dma_tag != NULL)
 		bus_dmamap_sync(dg.dma_tag, dg.dma_map, BUS_DMASYNC_PREREAD);
 
-	lwkt_reltoken(&tty_token);
 	return (c);
 }
 
@@ -221,8 +217,8 @@ dcons_open(struct dev_open_args *ap)
 	if (unit != 0)
 		return (ENXIO);
 
-	lwkt_gettoken(&tty_token);
-	tp = dev->si_tty = ttymalloc(dev->si_tty);
+	tp = ttymalloc(&dev->si_tty);
+	lwkt_gettoken(&tp->t_token);
 	tp->t_oproc = dcons_tty_start;
 	tp->t_param = dcons_tty_param;
 	tp->t_stop = nottystop;
@@ -230,7 +226,6 @@ dcons_open(struct dev_open_args *ap)
 
 	error = 0;
 
-	crit_enter();
 	if ((tp->t_state & TS_ISOPEN) == 0) {
 		tp->t_state |= TS_CARR_ON;
 		ttychars(tp);
@@ -241,14 +236,14 @@ dcons_open(struct dev_open_args *ap)
 		tp->t_ispeed = tp->t_ospeed = TTYDEF_SPEED;
 		ttsetwater(tp);
 	} else if ((tp->t_state & TS_XCLUDE) && priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
-		crit_exit();
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
+
 		return (EBUSY);
 	}
-	crit_exit();
 
 	error = (*linesw[tp->t_line].l_open)(dev, tp);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
+
 	return (error);
 }
 
@@ -263,13 +258,13 @@ dcons_close(struct dev_close_args *ap)
 	if (unit != 0)
 		return (ENXIO);
 
-	lwkt_gettoken(&tty_token);
 	tp = dev->si_tty;
+	lwkt_gettoken(&tp->t_token);
 	if (tp->t_state & TS_ISOPEN) {
 		(*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 		ttyclose(tp);
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
 
 	return (0);
 }
@@ -286,32 +281,32 @@ dcons_ioctl(struct dev_ioctl_args *ap)
 	if (unit != 0)
 		return (ENXIO);
 
-	lwkt_gettoken(&tty_token);
 	tp = dev->si_tty;
+	lwkt_gettoken(&tp->t_token);
 	error = (*linesw[tp->t_line].l_ioctl)(tp, ap->a_cmd, ap->a_data, ap->a_fflag, ap->a_cred);
 	if (error != ENOIOCTL) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		return (error);
 	}
 
 	error = ttioctl(tp, ap->a_cmd, ap->a_data, ap->a_fflag);
 	if (error != ENOIOCTL) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		return (error);
 	}
 
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
 	return (ENOTTY);
 }
 
 static int
 dcons_tty_param(struct tty *tp, struct termios *t)
 {
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	tp->t_ispeed = t->c_ispeed;
 	tp->t_ospeed = t->c_ospeed;
 	tp->t_cflag = t->c_cflag;
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
 	return 0;
 }
 
@@ -320,13 +315,11 @@ dcons_tty_start(struct tty *tp)
 {
 	struct dcons_softc *dc;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	dc = (struct dcons_softc *)tp->t_dev->si_drv1;
-	crit_enter();
 	if (tp->t_state & (TS_TIMEOUT | TS_TTSTOP)) {
 		ttwwakeup(tp);
-		crit_exit();
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		return;
 	}
 
@@ -336,30 +329,30 @@ dcons_tty_start(struct tty *tp)
 	tp->t_state &= ~TS_BUSY;
 
 	ttwwakeup(tp);
-	crit_exit();
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
 }
 
 static void
-dcons_timeout(void *v)
+dcons_timeout(void *dummy __unused)
 {
-	struct	tty *tp;
+	struct tty *tp;
 	struct dcons_softc *dc;
 	int i, c, polltime;
 
-	lwkt_gettoken(&tty_token);
 	for (i = 0; i < DCONS_NPORT; i ++) {
 		dc = &sc[i];
 		tp = ((DEV)dc->dev)->si_tty;
-		while ((c = dcons_os_checkc(dc)) != -1)
+		lwkt_gettoken(&tp->t_token);
+		while ((c = dcons_os_checkc(dc)) != -1) {
 			if (tp->t_state & TS_ISOPEN)
 				(*linesw[tp->t_line].l_rint)(c, tp);
+		}
+		lwkt_reltoken(&tp->t_token);
 	}
 	polltime = hz / poll_hz;
 	if (polltime < 1)
 		polltime = 1;
-	callout_reset(&dcons_callout, polltime, dcons_timeout, tp);
-	lwkt_reltoken(&tty_token);
+	callout_reset(&dcons_callout, polltime, dcons_timeout, NULL);
 }
 
 static void
@@ -505,9 +498,6 @@ ok:
 	return 0;
 }
 
-/*
- * NOTE: Must be called with tty_token held
- */
 static int
 dcons_attach_port(int port, char *name, int flags)
 {
@@ -515,17 +505,14 @@ dcons_attach_port(int port, char *name, int flags)
 	struct tty *tp;
 	DEV dev;
 
-	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	dc = &sc[port];
 	dc->flags = flags;
-	dev = make_dev(&dcons_ops, port, UID_ROOT, GID_WHEEL, 0600, "%s",
-	    name);
+	dev = make_dev(&dcons_ops, port, UID_ROOT, GID_WHEEL, 0600,
+		       "%s", name);
 	dc->dev = (void *)dev;
-	tp = ttymalloc(NULL);
-
 	dev->si_drv1 = (void *)dc;
-	dev->si_tty = tp;
 
+	tp = ttymalloc(&dev->si_tty);
 	tp->t_oproc = dcons_tty_start;
 	tp->t_param = dcons_tty_param;
 	tp->t_stop = nottystop;
@@ -534,15 +521,11 @@ dcons_attach_port(int port, char *name, int flags)
 	return(0);
 }
 
-/*
- * NOTE: Must be called with tty_token held
- */
 static int
 dcons_attach(void)
 {
 	int polltime;
 
-	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	dcons_attach_port(DCONS_CON, "dcons", 0);
 	dcons_attach_port(DCONS_GDB, "dgdb", DC_GDB);
 	callout_init_mp(&dcons_callout);
@@ -553,19 +536,16 @@ dcons_attach(void)
 	return(0);
 }
 
-/*
- * NOTE: Must be called with tty_token held
- */
 static int
 dcons_detach(int port)
 {
 	struct	tty *tp;
 	struct dcons_softc *dc;
 
-	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 	dc = &sc[port];
 
 	tp = ((DEV)dc->dev)->si_tty;
+	lwkt_gettoken(&tp->t_token);
 
 	if (tp->t_state & TS_ISOPEN) {
 		kprintf("dcons: still opened\n");
@@ -580,6 +560,7 @@ dcons_detach(int port)
 #else
 	tsleep((void *)dc, PWAIT, "dcodtc", hz/4);
 #endif
+	lwkt_reltoken(&tp->t_token);
 	destroy_dev(dc->dev);
 
 	return(0);
@@ -592,7 +573,6 @@ dcons_modevent(module_t mode, int type, void *data)
 {
 	int err = 0, ret;
 
-	lwkt_gettoken(&tty_token);
 	switch (type) {
 	case MOD_LOAD:
 		ret = dcons_drv_init(1);
@@ -633,7 +613,6 @@ dcons_modevent(module_t mode, int type, void *data)
 		err = EOPNOTSUPP;
 		break;
 	}
-	lwkt_reltoken(&tty_token);
 	return(err);
 }
 

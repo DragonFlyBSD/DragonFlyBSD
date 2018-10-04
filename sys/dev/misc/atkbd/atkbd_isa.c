@@ -131,7 +131,7 @@ atkbdresume(device_t dev)
         keyboard_t *kbd;
         int args[2];
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
         sc = device_get_softc(dev);
         kbd = kbd_get_keyboard(kbd_find_keyboard(ATKBD_DRIVER_NAME,
                                                  device_get_unit(dev)));
@@ -144,7 +144,7 @@ atkbdresume(device_t dev)
 		kbd_clear_state(kbd);
 
         }
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
         return 0;
 }
 
@@ -153,10 +153,10 @@ atkbd_isa_intr(void *arg)
 {
 	keyboard_t *kbd;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	kbd = (keyboard_t *)arg;
 	kbd_intr(kbd, NULL);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 }
 
 DRIVER_MODULE(atkbd, atkbdc, atkbd_driver, atkbd_devclass, NULL, NULL);

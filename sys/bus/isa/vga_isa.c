@@ -197,7 +197,7 @@ isavga_suspend(device_t dev)
 		return (0);
 	if (bootverbose)
 		device_printf(dev, "saving %d bytes of video state\n", nbytes);
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&vga_token);
 	if ((*vidsw[sc->adp->va_index]->save_state)(sc->adp, sc->state_buf,
 	    nbytes) != 0) {
 		device_printf(dev, "failed to save state (nbytes=%d)\n",
@@ -205,7 +205,7 @@ isavga_suspend(device_t dev)
 		kfree(sc->state_buf, M_TEMP);
 		sc->state_buf = NULL;
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&vga_token);
 	return (0);
 }
 

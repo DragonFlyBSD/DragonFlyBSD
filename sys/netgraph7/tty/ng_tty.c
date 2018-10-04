@@ -193,8 +193,7 @@ ngt_open(struct cdev *dev, struct tty *tp)
 	/* Initialize private struct */
 	sc = kmalloc(sizeof(*sc), M_NETGRAPH, M_WAITOK | M_ZERO);
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	sc->tp = tp;
 	sc->hotchar = NG_TTY_DFL_HOTCHAR;
 	sc->outq.ifq_maxlen = MAX_MBUFQ;
@@ -203,8 +202,7 @@ ngt_open(struct cdev *dev, struct tty *tp)
 	error = ng_make_node_common(&typestruct, &sc->node);
 	if (error) {
 		kfree(sc, M_NETGRAPH);
-		lwkt_reltoken(&tty_token);
-		crit_exit();
+		lwkt_reltoken(&tp->t_token);
 		return (error);
 	}
 
@@ -216,8 +214,7 @@ ngt_open(struct cdev *dev, struct tty *tp)
 		sc->flags |= FLG_DIE;
 		NG_NODE_UNREF(sc->node);
 		log(LOG_ERR, "%s: node name exists?\n", name);
-		lwkt_reltoken(&tty_token);
-		crit_exit();
+		lwkt_reltoken(&tp->t_token);
 		return (error);
 	}
 
@@ -237,8 +234,7 @@ ngt_open(struct cdev *dev, struct tty *tp)
 	clist_alloc_cblocks(&tp->t_outq,
 	    MLEN + NGT_HIWATER, MLEN + NGT_HIWATER);
 
-	lwkt_reltoken(&tty_token);
-	crit_exit();
+	lwkt_reltoken(&tp->t_token);
 	return (error);
 }
 
@@ -251,8 +247,7 @@ ngt_close(struct tty *tp, int flag)
 {
 	const sc_p sc = (sc_p) tp->t_sc;
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	ttyflush(tp, FREAD | FWRITE);
 	clist_free_cblocks(&tp->t_outq);
 	if (sc != NULL) {
@@ -262,8 +257,7 @@ ngt_close(struct tty *tp, int flag)
 		sc->flags |= FLG_DIE;
 		ng_rmnode_self(sc->node);
 	}
-	lwkt_reltoken(&tty_token);
-	crit_exit();
+	lwkt_reltoken(&tp->t_token);
 	return (0);
 }
 
@@ -298,8 +292,7 @@ ngt_tioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cre
 		return (0);
 	}
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	switch (cmd) {
 	case NGIOCGINFO:
 	    {
@@ -315,13 +308,11 @@ ngt_tioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cre
 		break;
 	    }
 	default:
-		lwkt_reltoken(&tty_token);
-		crit_exit();
+		lwkt_reltoken(&tp->t_token);
 		return (ENOIOCTL);
 	}
 
-	lwkt_reltoken(&tty_token);
-	crit_exit();
+	lwkt_reltoken(&tp->t_token);
 	return (0);
 }
 
@@ -340,13 +331,11 @@ ngt_input(int c, struct tty *tp)
 	struct mbuf *m;
 	int error = 0;
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	sc = (sc_p) tp->t_sc;
 	if (sc == NULL) {
 		/* No node attached */
-		lwkt_reltoken(&tty_token);
-		crit_exit();
+		lwkt_reltoken(&tp->t_token);
 		return (0);
 	}
 
@@ -359,8 +348,7 @@ ngt_input(int c, struct tty *tp)
 	if ((tp->t_state & TS_CONNECTED) == 0) {
 		if (sc->flags & FLG_DEBUG)
 			log(LOG_DEBUG, "%s: no carrier\n", NG_NODE_NAME(node));
-		lwkt_reltoken(&tty_token);
-		crit_exit();
+		lwkt_reltoken(&tp->t_token);
 		return (0);
 	}
 	if (c & TTY_ERRORMASK) {
@@ -368,8 +356,7 @@ ngt_input(int c, struct tty *tp)
 		if (sc->flags & FLG_DEBUG)
 			log(LOG_DEBUG, "%s: line error %x\n",
 			    NG_NODE_NAME(node), c & TTY_ERRORMASK);
-		lwkt_reltoken(&tty_token);
-		crit_exit();
+		lwkt_reltoken(&tp->t_token);
 		return (0);
 	}
 	c &= TTY_CHARMASK;
@@ -381,8 +368,7 @@ ngt_input(int c, struct tty *tp)
 			if (sc->flags & FLG_DEBUG)
 				log(LOG_ERR,
 				    "%s: can't get mbuf\n", NG_NODE_NAME(node));
-			lwkt_reltoken(&tty_token);
-			crit_exit();
+			lwkt_reltoken(&tp->t_token);
 			return (ENOBUFS);
 		}
 		m->m_len = m->m_pkthdr.len = 0;
@@ -410,15 +396,13 @@ ngt_input(int c, struct tty *tp)
 
 		if (sc->hook == NULL) {
 			m_freem(m);
-			lwkt_reltoken(&tty_token);
-			crit_exit();
+			lwkt_reltoken(&tp->t_token);
 			return (0);		/* XXX: original behavior */
 		}
 		NG_SEND_DATA_ONLY(error, sc->hook, m);	/* Will queue */
 	}
 
-	lwkt_reltoken(&tty_token);
-	crit_exit();
+	lwkt_reltoken(&tp->t_token);
 	return (error);
 }
 
@@ -431,8 +415,7 @@ ngt_start(struct tty *tp)
 {
 	const sc_p sc = (sc_p) tp->t_sc;
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	while (tp->t_outq.c_cc < NGT_HIWATER) {	/* XXX 2.2 specific ? */
 		struct mbuf *m;
 
@@ -472,8 +455,7 @@ ngt_start(struct tty *tp)
 	if (!IF_QEMPTY(&sc->outq) && !callout_pending(&sc->chand))
 		ng_callout(&sc->chand, sc->node, NULL, 1, ngt_timeout, NULL, 0);
 
-	lwkt_reltoken(&tty_token);
-	crit_exit();
+	lwkt_reltoken(&tp->t_token);
 	return (0);
 }
 
@@ -484,12 +466,11 @@ static void
 ngt_timeout(node_p node, hook_p hook, void *arg1, int arg2)
 {
 	const sc_p sc = NG_NODE_PRIVATE(node);
+	struct tty *tp = sc->tp;
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	ngt_start(sc->tp);
-	lwkt_reltoken(&tty_token);
-	crit_exit();
+	lwkt_reltoken(&tp->t_token);
 }
 
 /******************************************************************
@@ -515,19 +496,17 @@ static int
 ngt_newhook(node_p node, hook_p hook, const char *name)
 {
 	const sc_p sc = NG_NODE_PRIVATE(node);
+	struct tty *tp = sc->tp;
 
 	if (strcmp(name, NG_TTY_HOOK))
 		return (EINVAL);
-	crit_enter();
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	if (sc->hook) {
-		lwkt_reltoken(&tty_token);
-		crit_exit();
+		lwkt_reltoken(&tp->t_token);
 		return (EISCONN);
 	}
 	sc->hook = hook;
-	lwkt_reltoken(&tty_token);
-	crit_exit();
+	lwkt_reltoken(&tp->t_token);
 	return (0);
 }
 
@@ -556,14 +535,13 @@ static int
 ngt_disconnect(hook_p hook)
 {
 	const sc_p sc = NG_NODE_PRIVATE(NG_HOOK_NODE(hook));
+	struct tty *tp = sc->tp;
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	if (hook != sc->hook)
 		panic(__func__);
 	sc->hook = NULL;
-	lwkt_reltoken(&tty_token);
-	crit_exit();
+	lwkt_reltoken(&tp->t_token);
 	return (0);
 }
 
@@ -578,12 +556,11 @@ static int
 ngt_shutdown(node_p node)
 {
 	const sc_p sc = NG_NODE_PRIVATE(node);
+	struct tty *tp = sc->tp;
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	if (!(sc->flags & FLG_DIE)) {
-		lwkt_reltoken(&tty_token);
-		crit_exit();
+		lwkt_reltoken(&tp->t_token);
 		return (EOPNOTSUPP);
 	}
 
@@ -591,8 +568,7 @@ ngt_shutdown(node_p node)
 	IF_DRAIN(&sc->outq);
 	m_freem(sc->m);
 	kfree(sc, M_NETGRAPH);
-	lwkt_reltoken(&tty_token);
-	crit_exit();
+	lwkt_reltoken(&tp->t_token);
 	return (0);
 }
 
@@ -604,6 +580,7 @@ static int
 ngt_rcvdata(hook_p hook, item_p item)
 {
 	const sc_p sc = NG_NODE_PRIVATE(NG_HOOK_NODE(hook));
+	struct tty *tp = sc->tp;
 	struct mbuf *m;
 	int qlen;
 
@@ -613,25 +590,22 @@ ngt_rcvdata(hook_p hook, item_p item)
 	NGI_GET_M(item, m);
 	NG_FREE_ITEM(item);
 
-	crit_enter();
 	if (IF_QFULL(&sc->outq)) {
 		IF_DROP(&sc->outq);
-		crit_exit();
 		NG_FREE_M(m);
 		return (ENOBUFS);
 	}
 
 	IF_ENQUEUE(&sc->outq, m);
 	qlen = sc->outq.ifq_len;
-	crit_exit();
 
 	/*
 	 * If qlen > 1, then we should already have a scheduled callout.
 	 */
 	if (qlen == 1) {
-		lwkt_gettoken(&tty_token);
+		lwkt_gettoken(&tp->t_token);
 		ngt_start(sc->tp);
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 	}
 
 	return (0);
@@ -698,22 +672,17 @@ ngt_mod_event(module_t mod, int event, void *data)
 	switch (event) {
 	case MOD_LOAD:
 		/* Register line discipline */
-		crit_enter();
 		if ((ngt_ldisc = ldisc_register(NETGRAPHDISC, &ngt_disc)) < 0) {
-			crit_exit();
 			log(LOG_ERR, "%s: can't register line discipline",
 			    __func__);
 			return (EIO);
 		}
-		crit_exit();
 		break;
 
 	case MOD_UNLOAD:
 
 		/* Unregister line discipline */
-		crit_enter();
 		ldisc_deregister(ngt_ldisc);
-		crit_exit();
 		break;
 
 	default:

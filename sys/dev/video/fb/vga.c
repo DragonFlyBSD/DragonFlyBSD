@@ -1005,7 +1005,7 @@ vga_set_mode(video_adapter_t *adp, int mode)
     if (vga_get_info(adp, mode, &info))
 	return EINVAL;
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
 
 #if VGA_DEBUG > 1
     kprintf("vga_set_mode(): setting mode %d\n", mode);
@@ -1112,7 +1112,7 @@ setup_grmode:
 	break;
 
     default:
-        lwkt_reltoken(&tty_token);
+        lwkt_reltoken(&vga_token);
 	return EINVAL;
     }
 
@@ -1123,7 +1123,7 @@ setup_grmode:
     /* move hardware cursor out of the way */
     (*vidsw[adp->va_index]->set_hw_cursor)(adp, -1, -1);
 
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
     return 0;
 #else /* VGA_NO_MODE_CHANGE */
     return ENODEV;
@@ -1737,7 +1737,7 @@ planar_fill(video_adapter_t *adp, int val)
     int at;			/* position in the frame buffer */
     int l;
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     outw(GDCIDX, 0x0005);		/* read mode 0, write mode 0 */
     outw(GDCIDX, 0x0003);		/* data rotate/function select */
     outw(GDCIDX, 0x0f01);		/* set/reset enable */
@@ -1754,7 +1754,7 @@ planar_fill(video_adapter_t *adp, int val)
     }
     outw(GDCIDX, 0x0000);		/* set/reset */
     outw(GDCIDX, 0x0001);		/* set/reset enable */
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
 }
 
 static void
@@ -1764,7 +1764,7 @@ packed_fill(video_adapter_t *adp, int val)
     int at;			/* position in the frame buffer */
     int l;
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     at = 0;
     length = adp->va_line_width*adp->va_info.vi_height;
     while (length > 0) {
@@ -1774,7 +1774,7 @@ packed_fill(video_adapter_t *adp, int val)
 	length -= l;
 	at += l;
     }
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
 }
 
 static void
@@ -1784,7 +1784,7 @@ direct_fill(video_adapter_t *adp, int val)
     int at;			/* position in the frame buffer */
     int l;
 
-    lwkt_gettoken(&tty_token);
+    lwkt_gettoken(&vga_token);
     at = 0;
     length = adp->va_line_width*adp->va_info.vi_height;
     while (length > 0) {
@@ -1804,7 +1804,7 @@ direct_fill(video_adapter_t *adp, int val)
 	length -= l;
 	at += l;
     }
-    lwkt_reltoken(&tty_token);
+    lwkt_reltoken(&vga_token);
 }
 
 static int

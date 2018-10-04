@@ -29,13 +29,6 @@
  */
 /*
  * Generic keyboard driver.
- *
- * Interrupt note: keyboards use clist functions and since usb keyboard
- * interrupts are not protected by spltty(), we must use a critical section
- * to protect against corruption.
- * XXX: this keyboard driver doesn't use clist functions anymore!
- *
- * MPSAFE NOTE: all keyboards could easily be put under a different global token.
  */
 
 #include "opt_kbd.h"
@@ -106,7 +99,7 @@ kbd_realloc_array(void)
 	keyboard_switch_t **new_kbdsw;
 	int newsize;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	newsize = ((keyboards + ARRAY_DELTA)/ARRAY_DELTA)*ARRAY_DELTA;
 	new_kbd = kmalloc(sizeof(*new_kbd) * newsize, M_DEVBUF,
 				M_WAITOK | M_ZERO);
@@ -114,7 +107,6 @@ kbd_realloc_array(void)
 				M_WAITOK | M_ZERO);
 	bcopy(keyboard, new_kbd, sizeof(*keyboard)*keyboards);
 	bcopy(kbdsw, new_kbdsw, sizeof(*kbdsw)*keyboards);
-	crit_enter();
 	if (keyboards > 1) {
 		kfree(keyboard, M_DEVBUF);
 		kfree(kbdsw, M_DEVBUF);
@@ -122,12 +114,11 @@ kbd_realloc_array(void)
 	keyboard = new_kbd;
 	kbdsw = new_kbdsw;
 	keyboards = newsize;
-	crit_exit();
 
 	if (bootverbose)
 		kprintf("kbd: new array size %d\n", keyboards);
 
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 	return 0;
 }
 
@@ -147,7 +138,7 @@ kbd_realloc_array(void)
 void
 kbd_reinit_struct(keyboard_t *kbd, int config, int pref)
 {
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	kbd->kb_flags |= KB_NO_DEVICE;	/* device has not been found */
 	kbd->kb_config = config & ~KB_CONF_PROBE_ONLY;
 	kbd->kb_led = 0;		/* unknown */
@@ -161,7 +152,7 @@ kbd_reinit_struct(keyboard_t *kbd, int config, int pref)
 	kbd->kb_count = 0;
 	kbd->kb_pref = pref;
 	bzero(kbd->kb_lastact, sizeof(kbd->kb_lastact));
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 }
 
 /* initialize the keyboard_t structure */
@@ -169,7 +160,7 @@ void
 kbd_init_struct(keyboard_t *kbd, char *name, int type, int unit, int config,
 		int pref, int port, int port_size)
 {
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	kbd->kb_flags = 0;
 	kbd->kb_name = name;
 	kbd->kb_type = type;
@@ -178,42 +169,42 @@ kbd_init_struct(keyboard_t *kbd, char *name, int type, int unit, int config,
 	kbd->kb_io_size = port_size;
 	kbd_reinit_struct(kbd, config, pref);
 	lockinit(&kbd->kb_lock, name, 0, LK_CANRECURSE);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 }
 
 void
 kbd_set_maps(keyboard_t *kbd, keymap_t *keymap, accentmap_t *accmap,
 	     fkeytab_t *fkeymap, int fkeymap_size)
 {
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	kbd->kb_keymap = keymap;
 	kbd->kb_accentmap = accmap;
 	kbd->kb_fkeytab = fkeymap;
 	kbd->kb_fkeytab_size = fkeymap_size;
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 }
 
 /* declare a new keyboard driver */
 int
 kbd_add_driver(keyboard_driver_t *driver)
 {
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	if (SLIST_NEXT(driver, link)) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return EINVAL;
 	}
 	SLIST_INSERT_HEAD(&keyboard_drivers, driver, link);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 	return 0;
 }
 
 int
 kbd_delete_driver(keyboard_driver_t *driver)
 {
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	SLIST_REMOVE(&keyboard_drivers, driver, keyboard_driver, link);
 	SLIST_NEXT(driver, link) = NULL;
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 	return 0;
 }
 
@@ -227,7 +218,7 @@ kbd_register(keyboard_t *kbd)
 	keyboard_info_t ki;
 	int index;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	mux = kbd_get_keyboard(kbd_find_keyboard("kbdmux", -1));
 
 	for (index = 0; index < keyboards; ++index) {
@@ -236,7 +227,7 @@ kbd_register(keyboard_t *kbd)
 	}
 	if (index >= keyboards) {
 		if (kbd_realloc_array()) {
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&kbd_token);
 			return -1;
 		}
 	}
@@ -262,7 +253,7 @@ kbd_register(keyboard_t *kbd)
 				kbd_ioctl(mux, KBADDKBD, (caddr_t) &ki);
 			}
 
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&kbd_token);
 			return index;
 		}
 	}
@@ -279,12 +270,12 @@ kbd_register(keyboard_t *kbd)
 				kbd_ioctl(mux, KBADDKBD, (caddr_t) &ki);
 			}
 
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&kbd_token);
 			return index;
 		}
 	}
 
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 	return -1;
 }
 
@@ -294,29 +285,26 @@ kbd_unregister(keyboard_t *kbd)
 	int error;
 
 	KBD_LOCK_ASSERT(kbd);
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	if ((kbd->kb_index < 0) || (kbd->kb_index >= keyboards)) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return ENOENT;
 	}
 	if (keyboard[kbd->kb_index] != kbd) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return ENOENT;
 	}
 
-	crit_enter();
 	callout_stop(&kbd->kb_atkbd_timeout_ch);
 	if (KBD_IS_BUSY(kbd)) {
 		error = (*kbd->kb_callback.kc_func)(kbd, KBDIO_UNLOADING,
 						    kbd->kb_callback.kc_arg);
 		if (error) {
-			crit_exit();
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&kbd_token);
 			return error;
 		}
 		if (KBD_IS_BUSY(kbd)) {
-			crit_exit();
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&kbd_token);
 			return EBUSY;
 		}
 	}
@@ -328,8 +316,7 @@ kbd_unregister(keyboard_t *kbd)
 	KBD_ALWAYS_UNLOCK(kbd);
 	lockuninit(&kbd->kb_lock);
 
-	crit_exit();
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 	return 0;
 }
 
@@ -340,23 +327,23 @@ kbd_get_switch(char *driver)
 	const keyboard_driver_t **list;
 	const keyboard_driver_t *p;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 
 	SLIST_FOREACH(p, &keyboard_drivers, link) {
 		if (strcmp(p->name, driver) == 0) {
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&kbd_token);
 			return p->kbdsw;
 		}
 	}
 	SET_FOREACH(list, kbddriver_set) {
 		p = *list;
 		if (strcmp(p->name, driver) == 0) {
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&kbd_token);
 			return p->kbdsw;
 		}
 	}
 
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 	return NULL;
 }
 
@@ -380,9 +367,9 @@ kbd_find_keyboard2(char *driver, int unit, int index, int legacy)
 	pref = 0;
 	pref_index = -1;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	if ((index < 0) || (index >= keyboards)) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return (-1);
 	}
 
@@ -405,7 +392,7 @@ kbd_find_keyboard2(char *driver, int unit, int index, int legacy)
 				pref_index = i;
 			}
 		} else {
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&kbd_token);
 			return i;
 		}
 	}
@@ -413,7 +400,7 @@ kbd_find_keyboard2(char *driver, int unit, int index, int legacy)
 	if (!legacy)
 		KKASSERT(pref_index == -1);
 
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 	return (pref_index);
 }
 
@@ -434,14 +421,12 @@ kbd_allocate(char *driver, int unit, void *id, kbd_callback_func_t *func,
 	if (func == NULL)
 		return -1;
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 
 	index = kbd_find_keyboard(driver, unit);
 	if (index >= 0) {
 		if (KBD_IS_BUSY(keyboard[index])) {
-			crit_exit();
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&kbd_token);
 			return -1;
 		}
 		keyboard[index]->kb_token = id;
@@ -451,8 +436,7 @@ kbd_allocate(char *driver, int unit, void *id, kbd_callback_func_t *func,
 		kbd_clear_state(keyboard[index]);
 	}
 
-	lwkt_reltoken(&tty_token);
-	crit_exit();
+	lwkt_reltoken(&kbd_token);
 	return index;
 }
 
@@ -461,8 +445,7 @@ kbd_release(keyboard_t *kbd, void *id)
 {
 	int error;
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 
 	if (!KBD_IS_VALID(kbd) || !KBD_IS_BUSY(kbd)) {
 		error = EINVAL;
@@ -477,8 +460,7 @@ kbd_release(keyboard_t *kbd, void *id)
 		error = 0;
 	}
 
-	lwkt_reltoken(&tty_token);
-	crit_exit();
+	lwkt_reltoken(&kbd_token);
 	return error;
 }
 
@@ -488,8 +470,7 @@ kbd_change_callback(keyboard_t *kbd, void *id, kbd_callback_func_t *func,
 {
 	int error;
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 
 	if (!KBD_IS_VALID(kbd) || !KBD_IS_BUSY(kbd)) {
 		error = EINVAL;
@@ -503,8 +484,7 @@ kbd_change_callback(keyboard_t *kbd, void *id, kbd_callback_func_t *func,
 		error = 0;
 	}
 
-	lwkt_reltoken(&tty_token);
-	crit_exit();
+	lwkt_reltoken(&kbd_token);
 	return error;
 }
 
@@ -514,21 +494,21 @@ kbd_get_keyboard(int index)
 {
 	keyboard_t *kbd;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	if ((index < 0) || (index >= keyboards)) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return NULL;
 	}
 	if (keyboard[index] == NULL) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return NULL;
 	}
 	if (!KBD_IS_VALID(keyboard[index])) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return NULL;
 	}
 	kbd = keyboard[index];
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 
 	return kbd;
 }
@@ -545,7 +525,7 @@ kbd_configure(int flags)
 	const keyboard_driver_t **list;
 	const keyboard_driver_t *p;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 
 	SLIST_FOREACH(p, &keyboard_drivers, link) {
 		if (p->configure != NULL)
@@ -557,7 +537,7 @@ kbd_configure(int flags)
 			(*p->configure)(flags);
 	}
 
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 	return 0;
 }
 
@@ -603,13 +583,13 @@ kbd_attach(keyboard_t *kbd)
 	cdev_t dev;
 	char tbuf[MAKEDEV_MINNBUF];
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	if (kbd->kb_index >= keyboards) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return EINVAL;
 	}
 	if (keyboard[kbd->kb_index] != kbd) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return EINVAL;
 	}
 
@@ -626,7 +606,7 @@ kbd_attach(keyboard_t *kbd)
 	bzero(dev->si_drv1, sizeof(struct genkbd_softc));
 
 	kprintf("kbd%d at %s%d\n", kbd->kb_index, kbd->kb_name, kbd->kb_unit);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 	return 0;
 }
 
@@ -635,14 +615,14 @@ kbd_detach(keyboard_t *kbd)
 {
 	cdev_t dev;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 
 	if (kbd->kb_index >= keyboards) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return EINVAL;
 	}
 	if (keyboard[kbd->kb_index] != kbd) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return EINVAL;
 	}
 
@@ -654,7 +634,7 @@ kbd_detach(keyboard_t *kbd)
 		kbd->kb_dev = NULL;
 	}
 	dev_ops_remove_minor(&kbd_ops, kbd->kb_index);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 	return 0;
 }
 
@@ -669,10 +649,10 @@ genkbd_putc(genkbd_softc_t sc, char c)
 {
 	unsigned int p;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 
 	if (sc->gkb_q_length == KB_QSIZE) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return;
 	}
 
@@ -680,18 +660,18 @@ genkbd_putc(genkbd_softc_t sc, char c)
 	sc->gkb_q[p] = c;
 	sc->gkb_q_length++;
 
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 }
 
 static size_t
 genkbd_getc(genkbd_softc_t sc, char *buf, size_t len)
 {
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 
 	/* Determine copy size. */
 	if (sc->gkb_q_length == 0) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return (0);
 	}
 	if (len >= sc->gkb_q_length)
@@ -704,7 +684,7 @@ genkbd_getc(genkbd_softc_t sc, char *buf, size_t len)
 	sc->gkb_q_start = (sc->gkb_q_start + len) % KB_QSIZE;
 	sc->gkb_q_length -= len;
 
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 	return (len);
 }
 
@@ -718,20 +698,17 @@ genkbdopen(struct dev_open_args *ap)
 	genkbd_softc_t sc;
 	int i;
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	sc = dev->si_drv1;
 	kbd = kbd_get_keyboard(KBD_INDEX(dev));
 	if ((sc == NULL) || (kbd == NULL) || !KBD_IS_VALID(kbd)) {
-		lwkt_reltoken(&tty_token);
-		crit_exit();
+		lwkt_reltoken(&kbd_token);
 		return ENXIO;
 	}
 	i = kbd_allocate(kbd->kb_name, kbd->kb_unit, sc,
 			 genkbd_event, sc);
 	if (i < 0) {
-		lwkt_reltoken(&tty_token);
-		crit_exit();
+		lwkt_reltoken(&kbd_token);
 		return EBUSY;
 	}
 	/* assert(i == kbd->kb_index) */
@@ -743,8 +720,7 @@ genkbdopen(struct dev_open_args *ap)
 	 */
 
 	sc->gkb_q_length = 0;
-	lwkt_reltoken(&tty_token);
-	crit_exit();
+	lwkt_reltoken(&kbd_token);
 
 	return 0;
 }
@@ -760,8 +736,7 @@ genkbdclose(struct dev_close_args *ap)
 	 * NOTE: the device may have already become invalid.
 	 * kbd == NULL || !KBD_IS_VALID(kbd)
 	 */
-	crit_enter();
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	sc = dev->si_drv1;
 	kbd = kbd_get_keyboard(KBD_INDEX(dev));
 	if ((sc == NULL) || (kbd == NULL) || !KBD_IS_VALID(kbd)) {
@@ -769,8 +744,7 @@ genkbdclose(struct dev_close_args *ap)
 	} else {
 		kbd_release(kbd, sc);
 	}
-	lwkt_reltoken(&tty_token);
-	crit_exit();
+	lwkt_reltoken(&kbd_token);
 	return 0;
 }
 
@@ -786,38 +760,32 @@ genkbdread(struct dev_read_args *ap)
 	int error;
 
 	/* wait for input */
-	crit_enter();
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	sc = dev->si_drv1;
 	kbd = kbd_get_keyboard(KBD_INDEX(dev));
 	if ((sc == NULL) || (kbd == NULL) || !KBD_IS_VALID(kbd)) {
-		lwkt_reltoken(&tty_token);
-		crit_exit();
+		lwkt_reltoken(&kbd_token);
 		return ENXIO;
 	}
 	while (sc->gkb_q_length == 0) {
 		if (ap->a_ioflag & IO_NDELAY) { /* O_NONBLOCK? */
-			lwkt_reltoken(&tty_token);
-			crit_exit();
+			lwkt_reltoken(&kbd_token);
 			return EWOULDBLOCK;
 		}
 		sc->gkb_flags |= KB_ASLEEP;
 		error = tsleep((caddr_t)sc, PCATCH, "kbdrea", 0);
 		kbd = kbd_get_keyboard(KBD_INDEX(dev));
 		if ((kbd == NULL) || !KBD_IS_VALID(kbd)) {
-			lwkt_reltoken(&tty_token);
-			crit_exit();
+			lwkt_reltoken(&kbd_token);
 			return ENXIO;	/* our keyboard has gone... */
 		}
 		if (error) {
 			sc->gkb_flags &= ~KB_ASLEEP;
-			lwkt_reltoken(&tty_token);
-			crit_exit();
+			lwkt_reltoken(&kbd_token);
 			return error;
 		}
 	}
-	lwkt_reltoken(&tty_token);
-	crit_exit();
+	lwkt_reltoken(&kbd_token);
 
 	/* copy as much input as possible */
 	error = 0;
@@ -840,13 +808,13 @@ genkbdwrite(struct dev_write_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	keyboard_t *kbd;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	kbd = kbd_get_keyboard(KBD_INDEX(dev));
 	if ((kbd == NULL) || !KBD_IS_VALID(kbd)) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return ENXIO;
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 	return ENODEV;
 }
 
@@ -857,17 +825,17 @@ genkbdioctl(struct dev_ioctl_args *ap)
 	keyboard_t *kbd;
 	int error;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	kbd = kbd_get_keyboard(KBD_INDEX(dev));
 	if ((kbd == NULL) || !KBD_IS_VALID(kbd)) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return ENXIO;
 	}
 	error = kbd_ioctl(kbd, ap->a_cmd, ap->a_data);
 	if (error == ENOIOCTL)
 		error = ENODEV;
 
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 	return error;
 }
 
@@ -921,8 +889,7 @@ genkbdfilter(struct knote *kn, long hint)
 	genkbd_softc_t sc;
 	int ready = 0;
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	sc = dev->si_drv1;
         kbd = kbd_get_keyboard(KBD_INDEX(dev));
 	if ((sc == NULL) || (kbd == NULL) || !KBD_IS_VALID(kbd)) {
@@ -933,8 +900,7 @@ genkbdfilter(struct knote *kn, long hint)
 		if (sc->gkb_q_length > 0)
                         ready = 1;
         }
-	lwkt_reltoken(&tty_token);
-	crit_exit();
+	lwkt_reltoken(&kbd_token);
 
 	return (ready);
 }
@@ -948,7 +914,7 @@ genkbd_event(keyboard_t *kbd, int event, void *arg)
 	int mode;
 	int c;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	/* assert(KBD_IS_VALID(kbd)) */
 	sc = (genkbd_softc_t)arg;
 
@@ -963,10 +929,10 @@ genkbd_event(keyboard_t *kbd, int event, void *arg)
 			wakeup((caddr_t)sc);
 		}
 		KNOTE(&sc->gkb_rkq.ki_note, 0);
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return 0;
 	default:
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return EINVAL;
 	}
 
@@ -1037,7 +1003,7 @@ genkbd_event(keyboard_t *kbd, int event, void *arg)
 		KNOTE(&sc->gkb_rkq.ki_note, 0);
 	}
 
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 	return 0;
 }
 
@@ -1056,8 +1022,7 @@ genkbd_commonioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 	fkeyarg_t *fkeyp;
 	int i;
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	switch (cmd) {
 
 	case KDGKBINFO:		/* get keyboard information */
@@ -1089,8 +1054,7 @@ genkbd_commonioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		bcopy(arg, kbd->kb_keymap, sizeof(*kbd->kb_keymap));
 		break;
 #else
-		lwkt_reltoken(&tty_token);
-		crit_exit();
+		lwkt_reltoken(&kbd_token);
 		return ENODEV;
 #endif
 
@@ -1098,8 +1062,7 @@ genkbd_commonioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		keyp = (keyarg_t *)arg;
 		if (keyp->keynum >= sizeof(kbd->kb_keymap->key)
 					/sizeof(kbd->kb_keymap->key[0])) {
-			lwkt_reltoken(&tty_token);
-			crit_exit();
+			lwkt_reltoken(&kbd_token);
 			return EINVAL;
 		}
 		bcopy(&kbd->kb_keymap->key[keyp->keynum], &keyp->key,
@@ -1110,16 +1073,14 @@ genkbd_commonioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		keyp = (keyarg_t *)arg;
 		if (keyp->keynum >= sizeof(kbd->kb_keymap->key)
 					/sizeof(kbd->kb_keymap->key[0])) {
-			lwkt_reltoken(&tty_token);
-			crit_exit();
+			lwkt_reltoken(&kbd_token);
 			return EINVAL;
 		}
 		bcopy(&keyp->key, &kbd->kb_keymap->key[keyp->keynum],
 		      sizeof(keyp->key));
 		break;
 #else
-		lwkt_reltoken(&tty_token);
-		crit_exit();
+		lwkt_reltoken(&kbd_token);
 		return ENODEV;
 #endif
 
@@ -1131,16 +1092,14 @@ genkbd_commonioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		bcopy(arg, kbd->kb_accentmap, sizeof(*kbd->kb_accentmap));
 		break;
 #else
-		lwkt_reltoken(&tty_token);
-		crit_exit();
+		lwkt_reltoken(&kbd_token);
 		return ENODEV;
 #endif
 
 	case GETFKEY:		/* get functionkey string */
 		fkeyp = (fkeyarg_t *)arg;
 		if (fkeyp->keynum >= kbd->kb_fkeytab_size) {
-			lwkt_reltoken(&tty_token);
-			crit_exit();
+			lwkt_reltoken(&kbd_token);
 			return EINVAL;
 		}
 		bcopy(kbd->kb_fkeytab[fkeyp->keynum].str, fkeyp->keydef,
@@ -1151,8 +1110,7 @@ genkbd_commonioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 #ifndef KBD_DISABLE_KEYMAP_LOAD
 		fkeyp = (fkeyarg_t *)arg;
 		if (fkeyp->keynum >= kbd->kb_fkeytab_size) {
-			lwkt_reltoken(&tty_token);
-			crit_exit();
+			lwkt_reltoken(&kbd_token);
 			return EINVAL;
 		}
 		kbd->kb_fkeytab[fkeyp->keynum].len = imin(fkeyp->flen, MAXFK);
@@ -1160,19 +1118,16 @@ genkbd_commonioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		      kbd->kb_fkeytab[fkeyp->keynum].len);
 		break;
 #else
-		lwkt_reltoken(&tty_token);
-		crit_exit();
+		lwkt_reltoken(&kbd_token);
 		return ENODEV;
 #endif
 
 	default:
-		lwkt_reltoken(&tty_token);
-		crit_exit();
+		lwkt_reltoken(&kbd_token);
 		return ENOIOCTL;
 	}
 
-	lwkt_reltoken(&tty_token);
-	crit_exit();
+	lwkt_reltoken(&kbd_token);
 	return 0;
 }
 
@@ -1185,16 +1140,16 @@ genkbd_get_fkeystr(keyboard_t *kbd, int fkey, size_t *len)
 	if (kbd == NULL)
 		return NULL;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	fkey -= F_FN;
 	if (fkey > kbd->kb_fkeytab_size) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return NULL;
 	}
 	*len = kbd->kb_fkeytab[fkey].len;
 	ch = kbd->kb_fkeytab[fkey].str;
 
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 	return ch;
 }
 
@@ -1248,14 +1203,14 @@ save_accent_key(keyboard_t *kbd, u_int key, int *accents)
 {
 	int i;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	/* make an index into the accent map */
 	i = key - F_ACC + 1;
 	if ((i > kbd->kb_accentmap->n_accs)
 	    || (kbd->kb_accentmap->acc[i - 1].accchar == 0)) {
 		/* the index is out of range or pointing to an empty entry */
 		*accents = 0;
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return ERRKEY;
 	}
 
@@ -1266,13 +1221,13 @@ save_accent_key(keyboard_t *kbd, u_int key, int *accents)
 	if (i == *accents) {
 		key = kbd->kb_accentmap->acc[i - 1].accchar;
 		*accents = 0;
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return key;
 	}
 
 	/* remember the index and wait for the next key  */
 	*accents = i; 
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 	return NOKEY;
 }
 
@@ -1282,7 +1237,7 @@ make_accent_char(keyboard_t *kbd, u_int ch, int *accents)
 	struct acc_t *acc;
 	int i;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	acc = &kbd->kb_accentmap->acc[*accents - 1];
 	*accents = 0;
 
@@ -1291,7 +1246,7 @@ make_accent_char(keyboard_t *kbd, u_int ch, int *accents)
 	 * produce the accent char itself.
 	 */
 	if (ch == ' ') {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return acc->accchar;
 	}
 
@@ -1300,11 +1255,11 @@ make_accent_char(keyboard_t *kbd, u_int ch, int *accents)
 		if (acc->map[i][0] == 0)	/* end of table */
 			break;
 		if (acc->map[i][0] == ch) {
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&kbd_token);
 			return acc->map[i][1];
 		}
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 	/* this char cannot be accented... */
 	return ERRKEY;
 }
@@ -1319,7 +1274,7 @@ genkbd_keyaction(keyboard_t *kbd, int keycode, int up, int *shiftstate,
 	int f;
 	int i;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&kbd_token);
 	i = keycode;
 	f = state & (AGRS | ALKED);
 	if ((f == AGRS1) || (f == AGRS2) || (f == ALKED))
@@ -1417,11 +1372,11 @@ genkbd_keyaction(keyboard_t *kbd, int keycode, int up, int *shiftstate,
 		case NOP:
 			/* release events of regular keys are not reported */
 			*shiftstate &= ~SHIFTAON;
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&kbd_token);
 			return NOKEY;
 		}
 		*shiftstate = state & ~SHIFTAON;
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&kbd_token);
 		return (SPCLKEY | RELKEY | action);
 	} else {	/* make: key pressed */
 		action = key->map[i];
@@ -1506,7 +1461,7 @@ genkbd_keyaction(keyboard_t *kbd, int keycode, int up, int *shiftstate,
 				break;
 			case NOP:
 				*shiftstate = state;
-				lwkt_reltoken(&tty_token);
+				lwkt_reltoken(&kbd_token);
 				return NOKEY;
 			default:
 				/* is this an accent (dead) key? */
@@ -1517,14 +1472,14 @@ genkbd_keyaction(keyboard_t *kbd, int keycode, int up, int *shiftstate,
 					switch (action) {
 					case NOKEY:
 					case ERRKEY:
-						lwkt_reltoken(&tty_token);
+						lwkt_reltoken(&kbd_token);
 						return action;
 					default:
 						if (state & METAS) {
-							lwkt_reltoken(&tty_token);
+							lwkt_reltoken(&kbd_token);
 							return (action | MKEY);
 						} else { 
-							lwkt_reltoken(&tty_token);
+							lwkt_reltoken(&kbd_token);
 							return action;
 						}
 					}
@@ -1533,17 +1488,17 @@ genkbd_keyaction(keyboard_t *kbd, int keycode, int up, int *shiftstate,
 				/* other special keys */
 				if (*accents > 0) {
 					*accents = 0;
-					lwkt_reltoken(&tty_token);
+					lwkt_reltoken(&kbd_token);
 					return ERRKEY;
 				}
 				if (action >= F_FN && action <= L_FN)
 					action |= FKEY;
 				/* XXX: return fkey string for the FKEY? */
-				lwkt_reltoken(&tty_token);
+				lwkt_reltoken(&kbd_token);
 				return (SPCLKEY | action);
 			}
 			*shiftstate = state;
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&kbd_token);
 			return (SPCLKEY | action);
 		} else {
 			/* regular keys */
@@ -1553,16 +1508,16 @@ genkbd_keyaction(keyboard_t *kbd, int keycode, int up, int *shiftstate,
 				/* make an accented char */
 				action = make_accent_char(kbd, action, accents);
 				if (action == ERRKEY) {
-					lwkt_reltoken(&tty_token);
+					lwkt_reltoken(&kbd_token);
 					return action;
 				}
 			}
 			if (state & METAS)
 				action |= MKEY;
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&kbd_token);
 			return action;
 		}
 	}
 	/* NOT REACHED */
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&kbd_token);
 }

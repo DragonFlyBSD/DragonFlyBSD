@@ -379,7 +379,8 @@ ucom_detach(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 	destroy_dev(sc->sc_cdev2_init);
 	destroy_dev(sc->sc_cdev2_lock);
 
-	lwkt_gettoken(&tty_token);
+	if (sc->sc_tty)
+		lwkt_gettoken(&sc->sc_tty->t_token);
 
 	if (ssc->sc_sysctl_ttyname != NULL) {
 		sysctl_remove_oid(ssc->sc_sysctl_ttyname, 1, 0);
@@ -412,7 +413,8 @@ ucom_detach(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 	/* make sure we don't detach twice */
 	ssc->sc_flag &= ~UCOM_FLAG_ATTACHED;
 
-	lwkt_reltoken(&tty_token);
+	if (sc->sc_tty)
+		lwkt_reltoken(&sc->sc_tty->t_token);
 }
 
 void
@@ -444,14 +446,9 @@ ucom_attach_tty(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 	struct tty *tp;
 	char buf[32];			/* temporary TTY device name buffer */
 
-	lwkt_gettoken(&tty_token);
+	tp = ttymalloc(&sc->sc_tty);
 
-	sc->sc_tty = tp = ttymalloc(sc->sc_tty);
-
-	if (tp == NULL) {
-		lwkt_reltoken(&tty_token);
-		return (ENOMEM);
-	}
+	lwkt_gettoken(&tp->t_token);
 
 	tp->t_sc = (void *)sc;
 
@@ -538,7 +535,8 @@ ucom_attach_tty(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 		UCOM_MTX_UNLOCK(ucom_cons_softc);
 	}
 
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
+
 	return (0);
 }
 
@@ -564,8 +562,8 @@ ucom_detach_tty(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 	sc->sc_flag &= ~(UCOM_FLAG_HL_READY | UCOM_FLAG_LL_READY);
 	UCOM_MTX_UNLOCK(sc);
 
-	lwkt_gettoken(&tty_token);
 	if (tp != NULL) {
+		lwkt_gettoken(&tp->t_token);
 		ucom_close_refs++;
 
 		UCOM_MTX_LOCK(sc);
@@ -586,13 +584,13 @@ ucom_detach_tty(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 			(sc->sc_callback->ucom_stop_write) (sc);
 		}
 		UCOM_MTX_UNLOCK(sc);
+		lwkt_reltoken(&tp->t_token);
 	} else {
 		DPRINTF("no tty\n");
 	}
 
 	dev_ops_remove_minor(&ucom_ops,ssc->sc_unit);
 
-	lwkt_reltoken(&tty_token);
 	ucom_unref(ssc);
 }
 
@@ -831,10 +829,8 @@ ucom_open(struct ucom_softc *sc)
 	}
 	sc->sc_flag |= UCOM_FLAG_HL_READY;
 
-	lwkt_gettoken(&tty_token);
 	tp = sc->sc_tty;
-
-	crit_enter();
+	lwkt_gettoken(&tp->t_token);
 
 	if (!ISSET(tp->t_state, TS_ISOPEN)) {
 		struct termios t;
@@ -888,23 +884,22 @@ ucom_open(struct ucom_softc *sc)
 			(*linesw[tp->t_line].l_modem)(tp, 1);
 		}
 	}
-	crit_exit();
 
 	error = ttyopen(sc->sc_cdev, tp);
 	if (error) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		return (error);
 	}
 
 	error = (*linesw[tp->t_line].l_open)(sc->sc_cdev, tp);
 	if (error) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		return (error);
 	}
 
 	disc_optim(tp, &tp->t_termios, sc);
 
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
 
 	return (0);
 }
@@ -968,19 +963,17 @@ ucom_close(struct ucom_softc *sc)
 		(sc->sc_callback->ucom_stop_read) (sc);
 	}
 
-	lwkt_gettoken(&tty_token);
-	crit_enter();
+	lwkt_gettoken(&tp->t_token);
 	(*linesw[tp->t_line].l_close)(tp, 0); /* XXX: flags */
 	disc_optim(tp, &tp->t_termios, sc);
 	ttyclose(tp);
-	crit_exit();
 
 	if (tp->t_dev) {
 		release_dev(tp->t_dev);
 		tp->t_dev = NULL;
 	}
 	/* XXX: Detach wakeup */
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
 
 	return (error);
 }
@@ -1043,9 +1036,8 @@ ucom_dev_read(struct dev_read_args *ap)
 
 	sc = 0;
 
-	lwkt_gettoken(&tty_token);
-
 	tp = dev->si_tty;
+	lwkt_gettoken(&tp->t_token);
 	KKASSERT(tp!=NULL);
 	sc = tp->t_sc;
 	KKASSERT(sc!=NULL);
@@ -1057,9 +1049,9 @@ ucom_dev_read(struct dev_read_args *ap)
 	error = (*linesw[tp->t_line].l_read)(tp, ap->a_uio, ap->a_ioflag);
 	/*UCOM_MTX_UNLOCK(sc);*/
 
+	lwkt_reltoken(&tp->t_token);
 	DPRINTF("error = %d\n", error);
 
-	lwkt_reltoken(&tty_token);
 	return (error);
 }
 
@@ -1071,8 +1063,8 @@ ucom_dev_write(struct dev_write_args *ap)
 	struct tty *tp;
 	int error;
 
-	lwkt_gettoken(&tty_token);
 	tp = dev->si_tty;
+	lwkt_gettoken(&tp->t_token);
 	KKASSERT(tp!=NULL);
 	sc = tp->t_sc;
 	KKASSERT(sc!=NULL);
@@ -1084,9 +1076,9 @@ ucom_dev_write(struct dev_write_args *ap)
 	error = (*linesw[tp->t_line].l_write)(tp, ap->a_uio, ap->a_ioflag);
 	/*UCOM_MTX_UNLOCK(sc);*/
 
+	lwkt_reltoken(&tp->t_token);
 	DPRINTF("ucomwrite: error = %d\n", error);
 
-	lwkt_reltoken(&tty_token);
 	return (error);
 }
 
@@ -1103,12 +1095,12 @@ ucom_dev_ioctl(struct dev_ioctl_args *ap)
 	int mynor;
 
 	UCOM_MTX_LOCK(sc);
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 
 	mynor = minor(dev);
 
 	if (!(sc->sc_flag & UCOM_FLAG_HL_READY)) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		UCOM_MTX_UNLOCK(sc);
 		return (EIO);
 	}
@@ -1124,7 +1116,7 @@ ucom_dev_ioctl(struct dev_ioctl_args *ap)
 			ct = mynor & CALLOUT_MASK ? &sc->sc_lt_out : &sc->sc_lt_in;
 			break;
 		default:
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp->t_token);
 			UCOM_MTX_UNLOCK(sc);
 			return (ENODEV);        /* /dev/nodev */
 		}
@@ -1132,31 +1124,31 @@ ucom_dev_ioctl(struct dev_ioctl_args *ap)
 		case TIOCSETA:
 			error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
 			if (error != 0) {
-				lwkt_reltoken(&tty_token);
+				lwkt_reltoken(&tp->t_token);
 				UCOM_MTX_UNLOCK(sc);
 				return (error);
 			}
 			*ct = *(struct termios *)data;
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp->t_token);
 			UCOM_MTX_UNLOCK(sc);
 			return (0);
 		case TIOCGETA:
 			*(struct termios *)data = *ct;
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp->t_token);
 			UCOM_MTX_UNLOCK(sc);
 			return (0);
 		case TIOCGETD:
 			*(int *)data = TTYDISC;
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp->t_token);
 			UCOM_MTX_UNLOCK(sc);
 			return (0);
 		case TIOCGWINSZ:
 			bzero(data, sizeof(struct winsize));
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp->t_token);
 			UCOM_MTX_UNLOCK(sc);
 			return (0);
 		default:
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp->t_token);
 			UCOM_MTX_UNLOCK(sc);
 			return (ENOTTY);
 		}
@@ -1167,19 +1159,16 @@ ucom_dev_ioctl(struct dev_ioctl_args *ap)
 
 	if (error != ENOIOCTL) {
 		DPRINTF("ucomioctl: l_ioctl: error = %d\n", error);
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		UCOM_MTX_UNLOCK(sc);
 		return (error);
 	}
 
-	crit_enter();
-
 	error = ttioctl(tp, ap->a_cmd, ap->a_data, ap->a_fflag);
 	disc_optim(tp, &tp->t_termios, sc);
 	if (error != ENOIOCTL) {
-		crit_exit();
 		DPRINTF("ucomioctl: ttioctl: error = %d\n", error);
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		UCOM_MTX_UNLOCK(sc);
 
 		return (error);
@@ -1236,9 +1225,7 @@ ucom_dev_ioctl(struct dev_ioctl_args *ap)
 			error = (sc->sc_callback->ucom_ioctl)
 			    (sc, cmd, data, 0, curthread);
 			if (error>=0) {
-				crit_exit();
-
-				lwkt_reltoken(&tty_token);
+				lwkt_reltoken(&tp->t_token);
 				UCOM_MTX_UNLOCK(sc);
 
 				return(error);
@@ -1250,9 +1237,7 @@ ucom_dev_ioctl(struct dev_ioctl_args *ap)
 			error = pps_ioctl(cmd, data, &sc->sc_pps);
 		break;
 	}
-	crit_exit();
-
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
 	UCOM_MTX_UNLOCK(sc);
 
 	return (error);
@@ -1658,7 +1643,7 @@ ucom_param(struct tty *tp, struct termios *t)
 	uint8_t opened;
 	int error;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	UCOM_MTX_ASSERT(sc, MA_OWNED);
 
 	opened = 0;
@@ -1724,8 +1709,8 @@ done:
 			ucom_close(sc);
 		}
 	}
+	lwkt_reltoken(&tp->t_token);
 
-	lwkt_reltoken(&tty_token);
 	return (error);
 }
 
@@ -1753,8 +1738,7 @@ ucom_start(struct tty *tp)
 		return;
 	}
 
-	lwkt_gettoken(&tty_token);
-	crit_enter();
+	lwkt_gettoken(&tp->t_token);
 
 	if (tp->t_state & TS_TBLOCK) {
 		if (ISSET(sc->sc_mcr, SER_RTS) &&
@@ -1799,8 +1783,7 @@ ucom_start(struct tty *tp)
 	ttwwakeup(tp);
 
 out:
-	crit_exit();
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
 	if (didlock)
 		UCOM_MTX_UNLOCK(sc);
 }
@@ -1812,7 +1795,7 @@ ucom_stop(struct tty *tp, int flag)
 
 	DPRINTF("sc = %p, x = 0x%x\n", sc, flag);
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	if (flag & FREAD) {
 		/*   
 		 * This is just supposed to flush pending receive data,
@@ -1833,17 +1816,15 @@ ucom_stop(struct tty *tp, int flag)
 
 	if (flag & FWRITE) {
 		DPRINTF("write\n");
-		crit_enter();
 		if (ISSET(tp->t_state, TS_BUSY)) {
 			/* XXX do what? */
 			if (!ISSET(tp->t_state, TS_TTSTOP))
 				SET(tp->t_state, TS_FLUSH);
 		}
-		crit_exit();
 	}
 
 	DPRINTF("done\n");
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
 }
 
 /*------------------------------------------------------------------------*
@@ -1912,8 +1893,7 @@ ucom_get_data(struct ucom_softc *sc, struct usb_page_cache *pc,
 
 	offset_orig = offset;
 
-	lwkt_gettoken(&tty_token);
-	crit_enter();
+	lwkt_gettoken(&tp->t_token);
 	while (len != 0) {
 		usbd_get_page(pc, offset, &res);
 
@@ -1949,8 +1929,7 @@ ucom_get_data(struct ucom_softc *sc, struct usb_page_cache *pc,
 			break;
 		}
 	}
-	crit_exit();
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
 
 	actlen[0] = offset - offset_orig;
 
@@ -1979,7 +1958,7 @@ ucom_put_data(struct ucom_softc *sc, struct usb_page_cache *pc,
 	DPRINTF("\n");
 
 	UCOM_MTX_ASSERT(sc, MA_OWNED);
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 
 	if (sc->sc_flag & UCOM_FLAG_CONSOLE) {
 		unsigned int temp;
@@ -2006,22 +1985,21 @@ ucom_put_data(struct ucom_softc *sc, struct usb_page_cache *pc,
 		ucom_cons_rx_high += temp;
 		ucom_cons_rx_high %= UCOM_CONS_BUFSIZE;
 
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		return;
 	}
 
 	if (tty_gone(tp)) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		return;			/* multiport device polling */
 	}
 	if (len == 0) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		return;			/* no data */
 	}
 
 	/* set a flag to prevent recursation ? */
 
-	crit_enter();
 	while (len > 0) {
 		usbd_get_page(pc, offset, &res);
 
@@ -2114,8 +2092,7 @@ ucom_put_data(struct ucom_softc *sc, struct usb_page_cache *pc,
 			}
 		}
 	}
-	crit_exit();
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
 	/*
 	ttydisc_rint_done(tp);
 	*/
@@ -2315,12 +2292,12 @@ ucom_unref(struct ucom_super_softc *ssc)
 }
 
 /*
- * NOTE: Must be called with tty_token held.
+ * NOTE: Must be called with tp->t_token held.
  */
 static void
 disc_optim(struct tty *tp, struct termios *t, struct ucom_softc *sc)
 {
-	ASSERT_LWKT_TOKEN_HELD(&tty_token);
+	ASSERT_LWKT_TOKEN_HELD(&tp->t_token);
 	if (!(t->c_iflag & (ICRNL | IGNCR | IMAXBEL | INLCR | ISTRIP | IXON))
 	    && (!(t->c_iflag & BRKINT) || (t->c_iflag & IGNBRK))
 	    && (!(t->c_iflag & PARMRK)

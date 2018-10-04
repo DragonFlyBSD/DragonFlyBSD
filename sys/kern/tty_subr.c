@@ -33,8 +33,6 @@
  * MPSAFE NOTE: 
  * Most functions here could use a separate lock to deal with concurrent
  * access to the cblocks and cblock_*_list.
- *
- * Right now the tty_token must be held for all this.
  */
 
 /*
@@ -106,9 +104,7 @@ clist_init(void *dummy)
 	 * the i/o routines because they are sometimes called from
 	 * interrupt handlers when it may be unsafe to call kmalloc().
 	 */
-	lwkt_gettoken(&tty_token);
 	cblock_alloc_cblocks(cslushcount = INITIAL_CBLOCKS);
-	lwkt_reltoken(&tty_token);
 	KKASSERT(sizeof(struct cblock) == CBLOCK);
 }
 
@@ -118,14 +114,12 @@ clist_init(void *dummy)
  *
  * May not block.
  *
- * NOTE: Must be called with tty_token held
+ * NOTE: Must be called with the related tp->t_token held
  */
 static struct cblock *
 cblock_alloc(void)
 {
 	struct cblock *cblockp;
-
-	ASSERT_LWKT_TOKEN_HELD(&tty_token);
 
 	cblockp = cfreelist;
 	if (cblockp == NULL)
@@ -143,13 +137,11 @@ cblock_alloc(void)
  *
  * May not block, must be called in a critical section
  *
- * NOTE: Must be called with tty_token held
+ * NOTE: Must be called with the related tp->t_token held.
  */
 static void
 cblock_free(struct cblock *cblockp)
 {
-	ASSERT_LWKT_TOKEN_HELD(&tty_token);
-
 	if (isset(cblockp->c_quote, CBQSIZE * NBBY - 1))
 		bzero(cblockp->c_quote, sizeof cblockp->c_quote);
 	KKASSERT(cblockp->c_head.ch_magic == CLIST_MAGIC_USED);
@@ -164,7 +156,7 @@ cblock_free(struct cblock *cblockp)
  *
  * This routine may block, but still must be called in a critical section
  *
- * NOTE: Must be called with tty_token held
+ * NOTE: Must be called with the related tp->t_token held.
  */
 static void
 cblock_alloc_cblocks(int number)
@@ -172,13 +164,11 @@ cblock_alloc_cblocks(int number)
 	int i;
 	struct cblock *cbp;
 
-	ASSERT_LWKT_TOKEN_HELD(&tty_token);
-
 	for (i = 0; i < number; ++i) {
 		cbp = kmalloc(sizeof *cbp, M_TTYS, M_NOWAIT);
 		if (cbp == NULL) {
-			kprintf(
-"clist_alloc_cblocks: M_NOWAIT kmalloc failed, trying M_WAITOK\n");
+			kprintf("clist_alloc_cblocks: M_NOWAIT "
+				"kmalloc failed, trying M_WAITOK\n");
 			cbp = kmalloc(sizeof *cbp, M_TTYS, M_WAITOK);
 		}
 		KKASSERT(((intptr_t)cbp & CROUND) == 0);
@@ -195,6 +185,8 @@ cblock_alloc_cblocks(int number)
 
 /*
  * Set the cblock allocation policy for a clist.
+ *
+ * NOTE: Must be called with the related tp->t_token held.
  */
 void
 clist_alloc_cblocks(struct clist *clistp, int ccmax, int ccreserved)
@@ -209,8 +201,6 @@ clist_alloc_cblocks(struct clist *clistp, int ccmax, int ccreserved)
 	if (ccreserved != 0)
 		ccreserved += CBSIZE - 1;
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
 	clistp->c_cbmax = roundup(ccmax, CBSIZE) / CBSIZE;
 	dcbr = roundup(ccreserved, CBSIZE) / CBSIZE - clistp->c_cbreserved;
 	if (dcbr >= 0) {
@@ -224,50 +214,46 @@ clist_alloc_cblocks(struct clist *clistp, int ccmax, int ccreserved)
 		cblock_free_cblocks(-dcbr);	/* may block */
 	}
 	KKASSERT(clistp->c_cbreserved >= 0);
-	lwkt_reltoken(&tty_token);
-	crit_exit();
 }
 
 /*
  * Free some cblocks from the cfreelist queue back to the
  * system malloc pool.
  *
- * Must be called from within a critical section.  May block.
+ * NOTE: Must be called with the related tp->t_token held.
  */
 static void
 cblock_free_cblocks(int number)
 {
 	int i;
 
-	lwkt_gettoken(&tty_token);
 	for (i = 0; i < number; ++i)
 		kfree(cblock_alloc(), M_TTYS);
 	ctotcount -= number;
-	lwkt_reltoken(&tty_token);
 }
 
 /*
  * Free the cblocks reserved for a clist.
+ *
+ * NOTE: Must be called with the related tp->t_token held.
  */
 void
 clist_free_cblocks(struct clist *clistp)
 {
 	int cbreserved;
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
 	if (clistp->c_cbcount != 0)
 		panic("freeing active clist cblocks");
 	cbreserved = clistp->c_cbreserved;
 	clistp->c_cbmax = 0;
 	clistp->c_cbreserved = 0;
 	cblock_free_cblocks(cbreserved); /* may block */
-	lwkt_reltoken(&tty_token);
-	crit_exit();
 }
 
 /*
  * Get a character from the head of a clist.
+ *
+ * NOTE: Must be called with the related tp->t_token held.
  */
 int
 clist_getc(struct clist *clistp)
@@ -275,8 +261,6 @@ clist_getc(struct clist *clistp)
 	int chr = -1;
 	struct cblock *cblockp;
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
 	if (clistp->c_cc) {
 		KKASSERT(((intptr_t)clistp->c_cf & CROUND) != 0);
 		cblockp = (struct cblock *)((intptr_t)clistp->c_cf & ~CROUND);
@@ -285,8 +269,10 @@ clist_getc(struct clist *clistp)
 		/*
 		 * If this char is quoted, set the flag.
 		 */
-		if (isset(cblockp->c_quote, clistp->c_cf - (char *)cblockp->c_info))
+		if (isset(cblockp->c_quote,
+			  clistp->c_cf - (char *)cblockp->c_info)) {
 			chr |= TTY_QUOTE;
+		}
 
 		/*
 		 * Advance to next character.
@@ -313,8 +299,6 @@ clist_getc(struct clist *clistp)
 				++cslushcount;
 		}
 	}
-	lwkt_reltoken(&tty_token);
-	crit_exit();
 	return (chr);
 }
 
@@ -322,6 +306,8 @@ clist_getc(struct clist *clistp)
  * Copy 'amount' of chars, beginning at head of clist 'clistp' to
  * destination linear buffer 'dest'. Return number of characters
  * actually copied.
+ *
+ * Caller must hold related tp->t_token
  */
 int
 q_to_b(struct clist *clistp, char *dest, int amount)
@@ -331,8 +317,6 @@ q_to_b(struct clist *clistp, char *dest, int amount)
 	char *dest_orig = dest;
 	int numc;
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
 	while (clistp && amount && (clistp->c_cc > 0)) {
 		KKASSERT(((intptr_t)clistp->c_cf & CROUND) != 0);
 		cblockp = (struct cblock *)((intptr_t)clistp->c_cf & ~CROUND);
@@ -363,13 +347,13 @@ q_to_b(struct clist *clistp, char *dest, int amount)
 				++cslushcount;
 		}
 	}
-	lwkt_reltoken(&tty_token);
-	crit_exit();
 	return (dest - dest_orig);
 }
 
 /*
  * Flush 'amount' of chars, beginning at head of clist 'clistp'.
+ *
+ * Caller must hold related tp->t_token
  */
 void
 ndflush(struct clist *clistp, int amount)
@@ -378,8 +362,6 @@ ndflush(struct clist *clistp, int amount)
 	struct cblock *cblockn;
 	int numc;
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
 	while (amount && (clistp->c_cc > 0)) {
 		KKASSERT(((intptr_t)clistp->c_cf & CROUND) != 0);
 		cblockp = (struct cblock *)((intptr_t)clistp->c_cf & ~CROUND);
@@ -408,21 +390,18 @@ ndflush(struct clist *clistp, int amount)
 				++cslushcount;
 		}
 	}
-	lwkt_reltoken(&tty_token);
-	crit_exit();
 }
 
 /*
  * Add a character to the end of a clist. Return -1 is no
  * more clists, or 0 for success.
+ *
+ * Caller must hold related tp->t_token
  */
 int
 clist_putc(int chr, struct clist *clistp)
 {
 	struct cblock *cblockp;
-
-	crit_enter();
-	lwkt_gettoken(&tty_token);
 
 	/*
 	 * Note: this section may point c_cl at the base of a cblock.  This
@@ -431,8 +410,6 @@ clist_putc(int chr, struct clist *clistp)
 	 */
 	if (clistp->c_cl == NULL) {
 		if (clistp->c_cbreserved < 1) {
-			lwkt_reltoken(&tty_token);
-			crit_exit();
 			return (-1);		/* nothing done */
 		}
 		cblockp = cblock_alloc();
@@ -447,8 +424,6 @@ clist_putc(int chr, struct clist *clistp)
 			if (clistp->c_cbcount >= clistp->c_cbreserved) {
 				if (clistp->c_cbcount >= clistp->c_cbmax
 				    || cslushcount <= 0) {
-					lwkt_reltoken(&tty_token);
-					crit_exit();
 					return (-1);
 				}
 				--cslushcount;
@@ -477,14 +452,14 @@ clist_putc(int chr, struct clist *clistp)
 	*clistp->c_cl++ = chr;
 	clistp->c_cc++;
 
-	lwkt_reltoken(&tty_token);
-	crit_exit();
 	return (0);
 }
 
 /*
  * Copy data from linear buffer to clist chain. Return the
  * number of characters not copied.
+ *
+ * Caller must hold related tp->t_token
  */
 int
 b_to_q(char *src, int amount, struct clist *clistp)
@@ -501,9 +476,6 @@ b_to_q(char *src, int amount, struct clist *clistp)
 	if (amount <= 0)
 		return (amount);
 
-	crit_enter();
-	lwkt_gettoken(&tty_token);
-
 	/*
 	 * Note: this section may point c_cl at the base of a cblock.  This
 	 * is a temporary violation of the requirements for c_cl.  Since
@@ -511,9 +483,8 @@ b_to_q(char *src, int amount, struct clist *clistp)
 	 */
 	if (clistp->c_cl == NULL) {
 		if (clistp->c_cbreserved < 1) {
-			lwkt_reltoken(&tty_token);
-			crit_exit();
-			kprintf("b_to_q to a clist with no reserved cblocks.\n");
+			kprintf("b_to_q to a clist with no "
+				"reserved cblocks.\n");
 			return (amount);	/* nothing done */
 		}
 		cblockp = cblock_alloc();
@@ -538,8 +509,6 @@ b_to_q(char *src, int amount, struct clist *clistp)
 			if (clistp->c_cbcount >= clistp->c_cbreserved) {
 				if (clistp->c_cbcount >= clistp->c_cbmax
 				    || cslushcount <= 0) {
-					lwkt_reltoken(&tty_token);
-					crit_exit();
 					return (amount);
 				}
 				--cslushcount;
@@ -606,8 +575,6 @@ b_to_q(char *src, int amount, struct clist *clistp)
 		 */
 		++cblockp;
 	}
-	lwkt_reltoken(&tty_token);
-	crit_exit();
 	return (amount);
 }
 
@@ -616,20 +583,18 @@ b_to_q(char *src, int amount, struct clist *clistp)
  * advance any clist pointers, but return a pointer to the next
  * character position.
  *
- * Must be called at spltty().  This routine may not run in a critical
- * section and so may not call the cblock allocator/deallocator.
+ * Caller must hold related tp->t_token
  */
 char *
 nextc(struct clist *clistp, char *cp, int *dst)
 {
 	struct cblock *cblockp;
 
-	++cp;
 	/*
 	 * See if the next character is beyond the end of
 	 * the clist.
 	 */
-	lwkt_gettoken(&tty_token);
+	++cp;
 	if (clistp->c_cc && (cp != clistp->c_cl)) {
 		/*
 		 * If the next character is beyond the end of this
@@ -643,27 +608,25 @@ nextc(struct clist *clistp, char *cp, int *dst)
 		 * Get the character. Set the quote flag if this character
 		 * is quoted.
 		 */
-		*dst = (u_char)*cp | (isset(cblockp->c_quote, cp - (char *)cblockp->c_info) ? TTY_QUOTE : 0);
+		*dst = (u_char)*cp |
+		    (isset(cblockp->c_quote, cp - (char *)cblockp->c_info) ?
+		     TTY_QUOTE : 0);
 
-		lwkt_reltoken(&tty_token);
 		return (cp);
 	}
-
-	lwkt_reltoken(&tty_token);
 	return (NULL);
 }
 
 /*
  * "Unput" a character from a clist.
+ *
+ * Caller must hold related tp->t_token
  */
 int
 clist_unputc(struct clist *clistp)
 {
 	struct cblock *cblockp = NULL, *cbp = NULL;
 	int chr = -1;
-
-	crit_enter();
-	lwkt_gettoken(&tty_token);
 
 	if (clistp->c_cc) {
 		/*
@@ -697,7 +660,8 @@ clist_unputc(struct clist *clistp)
 		 */
 		KKASSERT(clistp->c_cl >= (char *)cblockp->c_info);
 		if (clistp->c_cc && (clistp->c_cl == (char *)cblockp->c_info)) {
-			cbp = (struct cblock *)((intptr_t)clistp->c_cf & ~CROUND);
+			cbp = (struct cblock *)((intptr_t)clistp->c_cf &
+						 ~CROUND);
 
 			while (cbp->c_head.ch_next != cblockp)
 				cbp = cbp->c_head.ch_next;
@@ -728,9 +692,6 @@ clist_unputc(struct clist *clistp)
 			++cslushcount;
 		clistp->c_cf = clistp->c_cl = NULL;
 	}
-
-	lwkt_reltoken(&tty_token);
-	crit_exit();
 	return (chr);
 }
 
@@ -743,8 +704,6 @@ catq(struct clist *src_clistp, struct clist *dest_clistp)
 {
 	int chr;
 
-	lwkt_gettoken(&tty_token);
-	crit_enter();
 	/*
 	 * If the destination clist is empty (has no cblocks atttached),
 	 * and there are no possible complications with the resource counters,
@@ -762,11 +721,8 @@ catq(struct clist *src_clistp, struct clist *dest_clistp)
 		dest_clistp->c_cbcount = src_clistp->c_cbcount;
 		src_clistp->c_cbcount = 0;
 
-		crit_exit();
-		lwkt_reltoken(&tty_token);
 		return;
 	}
-	crit_exit();
 
 	/*
 	 * XXX  This should probably be optimized to more than one
@@ -774,5 +730,4 @@ catq(struct clist *src_clistp, struct clist *dest_clistp)
 	 */
 	while ((chr = clist_getc(src_clistp)) != -1)
 		clist_putc(chr, dest_clistp);
-	lwkt_reltoken(&tty_token);
 }

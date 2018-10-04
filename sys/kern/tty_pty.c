@@ -33,11 +33,8 @@
  */
 
 /*
- * MPSAFE NOTE: 
  * Most functions here could use a separate lock to deal with concurrent
  * access to the 'pt's.
- *
- * Right now the tty_token must be held for all this.
  */
 
 /*
@@ -87,6 +84,7 @@ static	d_write_t	ptcwrite;
 static	d_kqfilter_t	ptckqfilter;
 
 DEVFS_DEFINE_CLONE_BITMAP(pty);
+static struct pt_ioctl **ptis;		/* keep pti's intact */
 
 static	d_clone_t 	ptyclone;
 
@@ -137,7 +135,9 @@ static struct dev_ops ptc_ops = {
 	.d_revoke =	ttyrevoke
 };
 
-#define BUFSIZ 100		/* Chunk size iomoved to/from user */
+#define BUFSIZ	100		/* Chunk size iomoved to/from user */
+
+#define MAXPTYS	1000		/* Maximum cloneable ptys */
 
 struct	pt_ioctl {
 	int	pt_flags;
@@ -188,67 +188,87 @@ ptyinit(int n)
 {
 	cdev_t devs, devc;
 	char *names = "pqrsPQRS";
-	struct pt_ioctl *pt;
+	struct pt_ioctl *pti;
 
 	/* For now we only map the lower 8 bits of the minor */
 	if (n & ~0xff)
 		return;
 
-	pt = kmalloc(sizeof(*pt), M_PTY, M_WAITOK | M_ZERO);
-	pt->devs = devs = make_dev(&pts_ops, n,
-	    0, 0, 0666, "tty%c%c", names[n / 32], hex2ascii(n % 32));
-	pt->devc = devc = make_dev(&ptc_ops, n,
-	    0, 0, 0666, "pty%c%c", names[n / 32], hex2ascii(n % 32));
+	pti = kmalloc(sizeof(*pti), M_PTY, M_WAITOK | M_ZERO);
+	pti->devs = devs = make_dev(&pts_ops, n, 0, 0, 0666,
+				    "tty%c%c",
+				    names[n / 32], hex2ascii(n % 32));
+	pti->devc = devc = make_dev(&ptc_ops, n, 0, 0, 0666,
+				    "pty%c%c",
+				    names[n / 32], hex2ascii(n % 32));
 
-	pt->pt_tty.t_dev = devs;
-	pt->pt_uminor = n;
-	devs->si_drv1 = devc->si_drv1 = pt;
-	devs->si_tty = devc->si_tty = &pt->pt_tty;
+	pti->pt_tty.t_dev = devs;
+	pti->pt_uminor = n;
+	devs->si_drv1 = devc->si_drv1 = pti;
+	devs->si_tty = devc->si_tty = &pti->pt_tty;
 	devs->si_flags |= SI_OVERRIDE;	/* uid, gid, perms from dev */
 	devc->si_flags |= SI_OVERRIDE;	/* uid, gid, perms from dev */
-	ttyregister(&pt->pt_tty);
+	ttyinit(&pti->pt_tty);
+	ttyregister(&pti->pt_tty);
 }
 
 static int
 ptyclone(struct dev_clone_args *ap)
 {
 	int unit;
-	struct pt_ioctl *pt;
+	struct pt_ioctl *pti;
 
 	/*
 	 * Limit the number of unix98 pty (slave) devices to 1000, as
 	 * the utmp(5) format only allows for 8 bytes for the tty,
 	 * "pts/XXX".
-	 * If this limit is reached, we don't clone and return error
+	 *
+	 * If this limit is reached, we don't clone and return an error
 	 * to devfs.
 	 */
-	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(pty), 1000);
+	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(pty), MAXPTYS);
 
 	if (unit < 0) {
 		ap->a_dev = NULL;
 		return 1;
 	}
 
-	pt = kmalloc(sizeof(*pt), M_PTY, M_WAITOK | M_ZERO);
+	/*
+	 * pti structures must be persistent once allocated.
+	 */
+	if ((pti = ptis[unit]) == NULL) {
+		lwkt_gettoken(&tty_token);
+		pti = kmalloc(sizeof(*pti), M_PTY, M_WAITOK | M_ZERO);
+		if (ptis[unit] == NULL) {
+			ptis[unit] = pti;
+			ttyinit(&pti->pt_tty);
+		} else {
+			kfree(pti, M_PTY);
+		}
+		lwkt_reltoken(&tty_token);
+	}
 
-	pt->devc = make_only_dev(&ptc98_ops, unit,
-				 ap->a_cred->cr_ruid,
-				 0, 0600, "ptm/%d", unit);
-	pt->devs = make_dev(&pts98_ops, unit,
-			    ap->a_cred->cr_ruid,
-			    GID_TTY, 0620, "pts/%d", unit);
-	ap->a_dev = pt->devc;
+	/*
+	 * The cloning bitmap should guarantee isolation during
+	 * initialization.
+	 */
+	pti->devc = make_only_dev(&ptc98_ops, unit,
+				  ap->a_cred->cr_ruid,
+				  0, 0600, "ptm/%d", unit);
+	pti->devs = make_dev(&pts98_ops, unit,
+			     ap->a_cred->cr_ruid,
+			     GID_TTY, 0620, "pts/%d", unit);
+	ap->a_dev = pti->devc;
 
-	pt->devs->si_flags |= SI_OVERRIDE;	/* uid, gid, perms from dev */
-	pt->devc->si_flags |= SI_OVERRIDE;	/* uid, gid, perms from dev */
+	pti->devs->si_flags |= SI_OVERRIDE;	/* uid, gid, perms from dev */
+	pti->devc->si_flags |= SI_OVERRIDE;	/* uid, gid, perms from dev */
 
-	pt->pt_tty.t_dev = pt->devs;
-	pt->pt_flags |= PF_UNIX98;
-	pt->pt_uminor = unit;
-	pt->devs->si_drv1 = pt->devc->si_drv1 = pt;
-	pt->devs->si_tty = pt->devc->si_tty = &pt->pt_tty;
-
-	ttyregister(&pt->pt_tty);
+	pti->pt_tty.t_dev = pti->devs;
+	pti->pt_flags = PF_UNIX98;
+	pti->pt_uminor = unit;
+	pti->devs->si_drv1 = pti->devc->si_drv1 = pti;
+	pti->devs->si_tty = pti->devc->si_tty = &pti->pt_tty;
+	ttyregister(&pti->pt_tty);
 
 	return 0;
 }
@@ -259,8 +279,6 @@ ptyclone(struct dev_clone_args *ap)
  *
  * This function returns non-zero if we cannot hold due to a termination
  * interlock.
- *
- * NOTE: Must be called with tty_token held
  */
 static int
 pti_hold(struct pt_ioctl *pti)
@@ -268,6 +286,7 @@ pti_hold(struct pt_ioctl *pti)
 	if (pti->pt_flags & PF_TERMINATED)
 		return(ENXIO);
 	++pti->pt_refs;
+
 	return(0);
 }
 
@@ -282,16 +301,17 @@ pti_hold(struct pt_ioctl *pti)
 static void
 pti_done(struct pt_ioctl *pti)
 {
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&pti->pt_tty.t_token);
 	if (--pti->pt_refs == 0) {
 		cdev_t dev;
 		int uminor_no;
 
 		/*
-		 * Only unix09 ptys are freed up
+		 * Only unix09 ptys are freed up (the pti structure itself
+		 * is never freed, regardless).
 		 */
 		if ((pti->pt_flags & PF_UNIX98) == 0) {
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&pti->pt_tty.t_token);
 			return;
 		}
 
@@ -319,12 +339,14 @@ pti_done(struct pt_ioctl *pti)
 				destroy_dev(dev);
 			}
 			ttyunregister(&pti->pt_tty);
+			pti->pt_tty.t_dev = NULL;
+
 			devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(pty),
 					       uminor_no);
-			kfree(pti, M_PTY);
+			/* pti structure remains intact */
 		}
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&pti->pt_tty.t_token);
 }
 
 /*ARGSUSED*/
@@ -345,9 +367,9 @@ ptsopen(struct dev_open_args *ap)
 		return(ENXIO);
 	pti = dev->si_drv1;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&pti->pt_tty.t_token);
 	if (pti_hold(pti)) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&pti->pt_tty.t_token);
 		return(ENXIO);
 	}
 
@@ -367,11 +389,11 @@ ptsopen(struct dev_open_args *ap)
 	} else if ((tp->t_state & TS_XCLUDE) &&
 		   priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
 		pti_done(pti);
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&pti->pt_tty.t_token);
 		return (EBUSY);
 	} else if (pti->pt_prison != ap->a_cred->cr_prison) {
 		pti_done(pti);
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&pti->pt_tty.t_token);
 		return (EBUSY);
 	}
 
@@ -396,7 +418,7 @@ ptsopen(struct dev_open_args *ap)
 		error = ttysleep(tp, TSA_CARR_ON(tp), PCATCH, "ptsopn", 0);
 		if (error) {
 			pti_done(pti);
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&pti->pt_tty.t_token);
 			return (error);
 		}
 	}
@@ -412,8 +434,8 @@ ptsopen(struct dev_open_args *ap)
 		ptcwakeup(tp, FREAD|FWRITE);
 	}
 	pti_done(pti);
+	lwkt_reltoken(&pti->pt_tty.t_token);
 
-	lwkt_reltoken(&tty_token);
 	return (error);
 }
 
@@ -425,7 +447,7 @@ ptsclose(struct dev_close_args *ap)
 	struct pt_ioctl *pti = dev->si_drv1;
 	int err;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&pti->pt_tty.t_token);
 	if (pti_hold(pti))
 		panic("ptsclose on terminated pti");
 
@@ -451,7 +473,7 @@ ptsclose(struct dev_close_args *ap)
 	if (tp->t_oproc)
 		ptcwakeup(tp, FREAD);
 	pti_done(pti);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&pti->pt_tty.t_token);
 	return (err);
 }
 
@@ -468,7 +490,7 @@ ptsread(struct dev_read_args *ap)
 
 	lp = curthread->td_lwp;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&pti->pt_tty.t_token);
 again:
 	if (pti->pt_flags & PF_REMOTE) {
 		while (isbackground(p, tp)) {
@@ -476,25 +498,25 @@ again:
 			    SIGISMEMBER(lp->lwp_sigmask, SIGTTIN) ||
 			    p->p_pgrp->pg_jobc == 0 ||
 			    (p->p_flags & P_PPWAIT)) {
-				lwkt_reltoken(&tty_token);
+				lwkt_reltoken(&pti->pt_tty.t_token);
 				return (EIO);
 			}
 			pgsignal(p->p_pgrp, SIGTTIN, 1);
 			error = ttysleep(tp, &lbolt, PCATCH, "ptsbg", 0);
 			if (error) {
-				lwkt_reltoken(&tty_token);
+				lwkt_reltoken(&pti->pt_tty.t_token);
 				return (error);
 			}
 		}
 		if (tp->t_canq.c_cc == 0) {
 			if (ap->a_ioflag & IO_NDELAY) {
-				lwkt_reltoken(&tty_token);
+				lwkt_reltoken(&pti->pt_tty.t_token);
 				return (EWOULDBLOCK);
 			}
 			error = ttysleep(tp, TSA_PTS_READ(tp), PCATCH,
 					 "ptsin", 0);
 			if (error) {
-				lwkt_reltoken(&tty_token);
+				lwkt_reltoken(&pti->pt_tty.t_token);
 				return (error);
 			}
 			goto again;
@@ -507,14 +529,15 @@ again:
 		if (tp->t_canq.c_cc == 1)
 			clist_getc(&tp->t_canq);
 		if (tp->t_canq.c_cc) {
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&pti->pt_tty.t_token);
 			return (error);
 		}
 	} else
 		if (tp->t_oproc)
 			error = (*linesw[tp->t_line].l_read)(tp, ap->a_uio, ap->a_ioflag);
 	ptcwakeup(tp, FWRITE);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&pti->pt_tty.t_token);
+
 	return (error);
 }
 
@@ -530,14 +553,15 @@ ptswrite(struct dev_write_args *ap)
 	struct tty *tp;
 	int ret;
 
-	lwkt_gettoken(&tty_token);
 	tp = dev->si_tty;
+	lwkt_gettoken(&tp->t_token);
 	if (tp->t_oproc == NULL) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		return (EIO);
 	}
 	ret = ((*linesw[tp->t_line].l_write)(tp, ap->a_uio, ap->a_ioflag));
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
+
 	return ret;
 }
 
@@ -548,11 +572,13 @@ ptswrite(struct dev_write_args *ap)
 static void
 ptsstart(struct tty *tp)
 {
-	lwkt_gettoken(&tty_token);
 	struct pt_ioctl *pti = tp->t_dev->si_drv1;
 
+	lwkt_gettoken(&pti->pt_tty.t_token);
+	lwkt_gettoken(&tp->t_token);
 	if (tp->t_state & TS_TTSTOP) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
+		lwkt_reltoken(&pti->pt_tty.t_token);
 		return;
 	}
 	if (pti) {
@@ -562,17 +588,16 @@ ptsstart(struct tty *tp)
 		}
 	}
 	ptcwakeup(tp, FREAD);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
+	lwkt_reltoken(&pti->pt_tty.t_token);
 }
 
 /*
- * NOTE: Must be called with tty_token held
+ * NOTE: Must be called with tp->t_token held
  */
 static void
 ptcwakeup(struct tty *tp, int flag)
 {
-	ASSERT_LWKT_TOKEN_HELD(&tty_token);
-
 	if (flag & FREAD) {
 		wakeup(TSA_PTC_READ(tp));
 		KNOTE(&tp->t_rkq.ki_note, 0);
@@ -595,24 +620,26 @@ ptcopen(struct dev_open_args *ap)
 	 * pre-created if a non-unix 98 pty.  If si_drv1 is NULL
 	 * we are somehow racing a unix98 termination.
 	 */
-	if (dev->si_drv1 == NULL)
+	pti = dev->si_drv1;
+	if (pti == NULL)
 		return(ENXIO);
 
-	lwkt_gettoken(&tty_token);
-	pti = dev->si_drv1;
+	lwkt_gettoken(&pti->pt_tty.t_token);
 	if (pti_hold(pti)) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&pti->pt_tty.t_token);
 		return(ENXIO);
 	}
 	if (pti->pt_prison && pti->pt_prison != ap->a_cred->cr_prison) {
 		pti_done(pti);
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&pti->pt_tty.t_token);
 		return(EBUSY);
 	}
 	tp = dev->si_tty;
+	lwkt_gettoken(&tp->t_token);
 	if (tp->t_oproc) {
 		pti_done(pti);
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
+		lwkt_reltoken(&pti->pt_tty.t_token);
 		return (EIO);
 	}
 
@@ -652,7 +679,9 @@ ptcopen(struct dev_open_args *ap)
 	pti->pt_flags |= PF_MOPEN;
 	pti_done(pti);
 
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
+	lwkt_reltoken(&pti->pt_tty.t_token);
+
 	return (0);
 }
 
@@ -663,11 +692,14 @@ ptcclose(struct dev_close_args *ap)
 	struct tty *tp;
 	struct pt_ioctl *pti = dev->si_drv1;
 
-	lwkt_gettoken(&tty_token);
-	if (pti_hold(pti))
+	lwkt_gettoken(&pti->pt_tty.t_token);
+	if (pti_hold(pti)) {
+		lwkt_reltoken(&pti->pt_tty.t_token);
 		panic("ptcclose on terminated pti");
-
+	}
 	tp = dev->si_tty;
+	lwkt_gettoken(&tp->t_token);
+
 	(void)(*linesw[tp->t_line].l_modem)(tp, 0);
 
 	/*
@@ -702,8 +734,9 @@ ptcclose(struct dev_close_args *ap)
 	pti->devc->si_perms = 0666;
 
 	pti_done(pti);
+	lwkt_reltoken(&tp->t_token);
+	lwkt_reltoken(&pti->pt_tty.t_token);
 
-	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
@@ -716,7 +749,9 @@ ptcread(struct dev_read_args *ap)
 	char buf[BUFSIZ];
 	int error = 0, cc;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&pti->pt_tty.t_token);
+	lwkt_gettoken(&tp->t_token);
+
 	/*
 	 * We want to block until the slave
 	 * is open, and there's something to read;
@@ -728,7 +763,8 @@ ptcread(struct dev_read_args *ap)
 			if ((pti->pt_flags & PF_PKT) && pti->pt_send) {
 				error = ureadc((int)pti->pt_send, ap->a_uio);
 				if (error) {
-					lwkt_reltoken(&tty_token);
+					lwkt_reltoken(&tp->t_token);
+					lwkt_reltoken(&pti->pt_tty.t_token);
 					return (error);
 				}
 				if (pti->pt_send & TIOCPKT_IOCTL) {
@@ -738,33 +774,41 @@ ptcread(struct dev_read_args *ap)
 						ap->a_uio);
 				}
 				pti->pt_send = 0;
-				lwkt_reltoken(&tty_token);
+				lwkt_reltoken(&tp->t_token);
+				lwkt_reltoken(&pti->pt_tty.t_token);
+
 				return (0);
 			}
 			if ((pti->pt_flags & PF_UCNTL) && pti->pt_ucntl) {
 				error = ureadc((int)pti->pt_ucntl, ap->a_uio);
 				if (error) {
-					lwkt_reltoken(&tty_token);
+					lwkt_reltoken(&tp->t_token);
+					lwkt_reltoken(&pti->pt_tty.t_token);
 					return (error);
 				}
 				pti->pt_ucntl = 0;
-				lwkt_reltoken(&tty_token);
+				lwkt_reltoken(&tp->t_token);
+				lwkt_reltoken(&pti->pt_tty.t_token);
+
 				return (0);
 			}
 			if (tp->t_outq.c_cc && (tp->t_state&TS_TTSTOP) == 0)
 				break;
 		}
 		if ((tp->t_state & TS_CONNECTED) == 0) {
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp->t_token);
+			lwkt_reltoken(&pti->pt_tty.t_token);
 			return (0);	/* EOF */
 		}
 		if (ap->a_ioflag & IO_NDELAY) {
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp->t_token);
+			lwkt_reltoken(&pti->pt_tty.t_token);
 			return (EWOULDBLOCK);
 		}
 		error = tsleep(TSA_PTC_READ(tp), PCATCH, "ptcin", 0);
 		if (error) {
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp->t_token);
+			lwkt_reltoken(&pti->pt_tty.t_token);
 			return (error);
 		}
 	}
@@ -778,7 +822,9 @@ ptcread(struct dev_read_args *ap)
 		error = uiomove(buf, (size_t)cc, ap->a_uio);
 	}
 	ttwwakeup(tp);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
+	lwkt_reltoken(&pti->pt_tty.t_token);
+
 	return (error);
 }
 
@@ -788,7 +834,7 @@ ptsstop(struct tty *tp, int flush)
 	struct pt_ioctl *pti = tp->t_dev->si_drv1;
 	int flag;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&pti->pt_tty.t_token);
 	/* note: FLUSHREAD and FLUSHWRITE already ok */
 	if (pti) {
 		if (flush == 0) {
@@ -807,7 +853,7 @@ ptsstop(struct tty *tp, int flush)
 		flag |= FREAD;
 	ptcwakeup(tp, flag);
 
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&pti->pt_tty.t_token);
 }
 
 /*
@@ -821,11 +867,13 @@ ptsunhold(struct tty *tp)
 {
 	struct pt_ioctl *pti = tp->t_dev->si_drv1;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&pti->pt_tty.t_token);
+	lwkt_gettoken(&tp->t_token);
 	pti_hold(pti);
 	--tp->t_refs;
 	pti_done(pti);
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
+	lwkt_reltoken(&pti->pt_tty.t_token);
 }
 
 /*
@@ -870,10 +918,13 @@ filt_ptcread (struct knote *kn, long hint)
 	struct tty *tp = ((cdev_t)kn->kn_hook)->si_tty;
 	struct pt_ioctl *pti = ((cdev_t)kn->kn_hook)->si_drv1;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&pti->pt_tty.t_token);
+	lwkt_gettoken(&tp->t_token);
+
 	if ((tp->t_state & TS_ZOMBIE) || (pti->pt_flags & PF_SCLOSED)) {
-		lwkt_reltoken(&tty_token);
 		kn->kn_flags |= (EV_EOF | EV_NODATA);
+		lwkt_reltoken(&tp->t_token);
+		lwkt_reltoken(&pti->pt_tty.t_token);
 		return (1);
 	}
 
@@ -882,10 +933,12 @@ filt_ptcread (struct knote *kn, long hint)
 	     ((pti->pt_flags & PF_PKT) && pti->pt_send) ||
 	     ((pti->pt_flags & PF_UCNTL) && pti->pt_ucntl))) {
 		kn->kn_data = tp->t_outq.c_cc;
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
+		lwkt_reltoken(&pti->pt_tty.t_token);
 		return(1);
 	} else {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
+		lwkt_reltoken(&pti->pt_tty.t_token);
 		return(0);
 	}
 }
@@ -896,9 +949,11 @@ filt_ptcwrite (struct knote *kn, long hint)
 	struct tty *tp = ((cdev_t)kn->kn_hook)->si_tty;
 	struct pt_ioctl *pti = ((cdev_t)kn->kn_hook)->si_drv1;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&pti->pt_tty.t_token);
+	lwkt_gettoken(&tp->t_token);
 	if (tp->t_state & TS_ZOMBIE) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
+		lwkt_reltoken(&pti->pt_tty.t_token);
 		kn->kn_flags |= (EV_EOF | EV_NODATA);
 		return (1);
 	}
@@ -909,10 +964,12 @@ filt_ptcwrite (struct knote *kn, long hint)
 	     ((tp->t_rawq.c_cc + tp->t_canq.c_cc < TTYHOG - 2) ||
 	      (tp->t_canq.c_cc == 0 && (tp->t_lflag & ICANON))))) {
 		kn->kn_data = tp->t_canq.c_cc + tp->t_rawq.c_cc;
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
+		lwkt_reltoken(&pti->pt_tty.t_token);
 		return(1);
 	} else {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
+		lwkt_reltoken(&pti->pt_tty.t_token);
 		return(0);
 	}
 	/* NOTREACHED */
@@ -949,7 +1006,8 @@ ptcwrite(struct dev_write_args *ap)
 	struct pt_ioctl *pti = dev->si_drv1;
 	int error = 0;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&pti->pt_tty.t_token);
+	lwkt_gettoken(&tp->t_token);
 again:
 	if ((tp->t_state&TS_ISOPEN) == 0)
 		goto block;
@@ -964,14 +1022,16 @@ again:
 				cp = locbuf;
 				error = uiomove(cp, (size_t)cc, ap->a_uio);
 				if (error) {
-					lwkt_reltoken(&tty_token);
+					lwkt_reltoken(&tp->t_token);
+					lwkt_reltoken(&pti->pt_tty.t_token);
 					return (error);
 				}
 				/* check again for safety */
 				if ((tp->t_state & TS_ISOPEN) == 0) {
 					/* adjust as usual */
 					ap->a_uio->uio_resid += cc;
-					lwkt_reltoken(&tty_token);
+					lwkt_reltoken(&tp->t_token);
+					lwkt_reltoken(&pti->pt_tty.t_token);
 					return (EIO);
 				}
 			}
@@ -994,7 +1054,9 @@ again:
 		clist_putc(0, &tp->t_canq);
 		ttwakeup(tp);
 		wakeup(TSA_PTS_READ(tp));
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
+		lwkt_reltoken(&pti->pt_tty.t_token);
+
 		return (0);
 	}
 	while (ap->a_uio->uio_resid > 0 || cc > 0) {
@@ -1003,14 +1065,16 @@ again:
 			cp = locbuf;
 			error = uiomove(cp, (size_t)cc, ap->a_uio);
 			if (error) {
-				lwkt_reltoken(&tty_token);
+				lwkt_reltoken(&tp->t_token);
+				lwkt_reltoken(&pti->pt_tty.t_token);
 				return (error);
 			}
 			/* check again for safety */
 			if ((tp->t_state & TS_ISOPEN) == 0) {
 				/* adjust for data copied in but not written */
 				ap->a_uio->uio_resid += cc;
-				lwkt_reltoken(&tty_token);
+				lwkt_reltoken(&tp->t_token);
+				lwkt_reltoken(&pti->pt_tty.t_token);
 				return (EIO);
 			}
 		}
@@ -1026,7 +1090,8 @@ again:
 		}
 		cc = 0;
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
+	lwkt_reltoken(&pti->pt_tty.t_token);
 	return (0);
 block:
 	/*
@@ -1036,24 +1101,28 @@ block:
 	if ((tp->t_state & TS_CONNECTED) == 0) {
 		/* adjust for data copied in but not written */
 		ap->a_uio->uio_resid += cc;
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
+		lwkt_reltoken(&pti->pt_tty.t_token);
 		return (EIO);
 	}
 	if (ap->a_ioflag & IO_NDELAY) {
 		/* adjust for data copied in but not written */
 		ap->a_uio->uio_resid += cc;
 		if (cnt == 0) {
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp->t_token);
+			lwkt_reltoken(&pti->pt_tty.t_token);
 			return (EWOULDBLOCK);
 		}
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
+		lwkt_reltoken(&pti->pt_tty.t_token);
 		return (0);
 	}
 	error = tsleep(TSA_PTC_WRITE(tp), PCATCH, "ptcout", 0);
 	if (error) {
 		/* adjust for data copied in but not written */
 		ap->a_uio->uio_resid += cc;
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
+		lwkt_reltoken(&pti->pt_tty.t_token);
 		return (error);
 	}
 	goto again;
@@ -1069,7 +1138,9 @@ ptyioctl(struct dev_ioctl_args *ap)
 	u_char *cc = tp->t_cc;
 	int stop, error;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&pti->pt_tty.t_token);
+	lwkt_gettoken(&tp->t_token);
+
 	if (dev_dflags(dev) & D_MASTER) {
 		switch (ap->a_cmd) {
 
@@ -1079,33 +1150,38 @@ ptyioctl(struct dev_ioctl_args *ap)
 			 * in that case, tp must be the controlling terminal.
 			 */
 			*(int *)ap->a_data = tp->t_pgrp ? tp->t_pgrp->pg_id : 0;
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp->t_token);
+			lwkt_reltoken(&pti->pt_tty.t_token);
 			return (0);
 
 		case TIOCPKT:
 			if (*(int *)ap->a_data) {
 				if (pti->pt_flags & PF_UCNTL) {
-					lwkt_reltoken(&tty_token);
+					lwkt_reltoken(&tp->t_token);
+					lwkt_reltoken(&pti->pt_tty.t_token);
 					return (EINVAL);
 				}
 				pti->pt_flags |= PF_PKT;
 			} else {
 				pti->pt_flags &= ~PF_PKT;
 			}
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp->t_token);
+			lwkt_reltoken(&pti->pt_tty.t_token);
 			return (0);
 
 		case TIOCUCNTL:
 			if (*(int *)ap->a_data) {
 				if (pti->pt_flags & PF_PKT) {
-					lwkt_reltoken(&tty_token);
+					lwkt_reltoken(&tp->t_token);
+					lwkt_reltoken(&pti->pt_tty.t_token);
 					return (EINVAL);
 				}
 				pti->pt_flags |= PF_UCNTL;
 			} else {
 				pti->pt_flags &= ~PF_UCNTL;
 			}
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp->t_token);
+			lwkt_reltoken(&pti->pt_tty.t_token);
 			return (0);
 
 		case TIOCREMOTE:
@@ -1114,16 +1190,19 @@ ptyioctl(struct dev_ioctl_args *ap)
 			else
 				pti->pt_flags &= ~PF_REMOTE;
 			ttyflush(tp, FREAD|FWRITE);
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp->t_token);
+			lwkt_reltoken(&pti->pt_tty.t_token);
 			return (0);
 
 		case TIOCISPTMASTER:
 			if ((pti->pt_flags & PF_UNIX98) &&
 			    (pti->devc == dev)) {
-				lwkt_reltoken(&tty_token);
+				lwkt_reltoken(&tp->t_token);
+				lwkt_reltoken(&pti->pt_tty.t_token);
 				return (0);
 			} else {
-				lwkt_reltoken(&tty_token);
+				lwkt_reltoken(&tp->t_token);
+				lwkt_reltoken(&pti->pt_tty.t_token);
 				return (EINVAL);
 			}
 		}
@@ -1133,7 +1212,8 @@ ptyioctl(struct dev_ioctl_args *ap)
 		 * the slave is open.
 		 */
 		if ((tp->t_state & TS_ISOPEN) == 0) {
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp->t_token);
+			lwkt_reltoken(&pti->pt_tty.t_token);
 			return (EAGAIN);
 		}
 
@@ -1153,7 +1233,8 @@ ptyioctl(struct dev_ioctl_args *ap)
 		case TIOCSIG:
 			if (*(unsigned int *)ap->a_data >= NSIG ||
 			    *(unsigned int *)ap->a_data == 0) {
-				lwkt_reltoken(&tty_token);
+				lwkt_reltoken(&tp->t_token);
+				lwkt_reltoken(&pti->pt_tty.t_token);
 				return(EINVAL);
 			}
 			if ((tp->t_lflag&NOFLSH) == 0)
@@ -1162,7 +1243,8 @@ ptyioctl(struct dev_ioctl_args *ap)
 			if ((*(unsigned int *)ap->a_data == SIGINFO) &&
 			    ((tp->t_lflag&NOKERNINFO) == 0))
 				ttyinfo(tp);
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp->t_token);
+			lwkt_reltoken(&pti->pt_tty.t_token);
 			return(0);
 		}
 	}
@@ -1186,7 +1268,8 @@ ptyioctl(struct dev_ioctl_args *ap)
 			}
 			tp->t_lflag &= ~EXTPROC;
 		}
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
+		lwkt_reltoken(&pti->pt_tty.t_token);
 		return(0);
 	}
 	error = (*linesw[tp->t_line].l_ioctl)(tp, ap->a_cmd, ap->a_data,
@@ -1200,7 +1283,8 @@ ptyioctl(struct dev_ioctl_args *ap)
 				pti->pt_ucntl = (u_char)ap->a_cmd;
 				ptcwakeup(tp, FREAD);
 			}
-			lwkt_reltoken(&tty_token);
+			lwkt_reltoken(&tp->t_token);
+			lwkt_reltoken(&pti->pt_tty.t_token);
 			return (0);
 		}
 		error = ENOTTY;
@@ -1236,7 +1320,9 @@ ptyioctl(struct dev_ioctl_args *ap)
 			ptcwakeup(tp, FREAD);
 		}
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
+	lwkt_reltoken(&pti->pt_tty.t_token);
+
 	return (error);
 }
 
@@ -1256,12 +1342,14 @@ ptc_drvinit(void *unused)
 	 * Create the clonable base device.
 	 */
 	make_autoclone_dev(&ptc_ops, &DEVFS_CLONE_BITMAP(pty), ptyclone,
-	    0, 0, 0666, "ptmx");
+			   0, 0, 0666, "ptmx");
+	ptis = kmalloc(sizeof(struct pt_ioctl *) * MAXPTYS, M_PTY,
+		       M_WAITOK | M_ZERO);
 
 	for (i = 0; i < 256; i++) {
 		ptyinit(i);
 	}
 }
 
-SYSINIT(ptcdev, SI_SUB_DRIVERS, SI_ORDER_MIDDLE + CDEV_MAJOR_C, ptc_drvinit,
-    NULL);
+SYSINIT(ptcdev, SI_SUB_DRIVERS, SI_ORDER_MIDDLE + CDEV_MAJOR_C,
+	ptc_drvinit, NULL);

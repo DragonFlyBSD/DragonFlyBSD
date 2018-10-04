@@ -86,8 +86,8 @@ vcons_open(struct dev_open_args *ap)
 	struct tty *tp;
 	int error;
 
-	lwkt_gettoken(&tty_token);
-	tp = dev->si_tty = ttymalloc(dev->si_tty);
+	tp = ttymalloc(&dev->si_tty);
+	lwkt_gettoken(&tp->t_token);
 
 #define	ISSET(t, f)	((t) & (f))
 
@@ -119,7 +119,8 @@ vcons_open(struct dev_open_args *ap)
 		/* dummy up other minors so the installer will run */
 		error = 0;
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
+
 	return(error);
 }
 
@@ -129,11 +130,11 @@ vcons_close(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 
-	lwkt_gettoken(&tty_token);
 	tp = dev->si_tty;
+	lwkt_gettoken(&tp->t_token);
 	(*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 	ttyclose(tp);
-	lwkt_reltoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	return(0);
 }
 
@@ -144,31 +145,32 @@ vcons_ioctl(struct dev_ioctl_args *ap)
 	struct tty *tp;
 	int error;
 
-	lwkt_gettoken(&tty_token);
 	tp = dev->si_tty;
+	lwkt_gettoken(&tp->t_token);
 	error = (*linesw[tp->t_line].l_ioctl)(tp, ap->a_cmd, ap->a_data,
 					      ap->a_fflag, ap->a_cred);
 	if (error != ENOIOCTL) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		return (error);
 	}
 	error = ttioctl(tp, ap->a_cmd, ap->a_data, ap->a_fflag);
 	if (error != ENOIOCTL) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		return (error);
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
+
 	return (ENOTTY);
 }
 
 static int
 vcons_tty_param(struct tty *tp, struct termios *tio)
 {
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	tp->t_ispeed = tio->c_ispeed;
 	tp->t_ospeed = tio->c_ospeed;
 	tp->t_cflag = tio->c_cflag;
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
 	return(0);
 }
 
@@ -178,10 +180,10 @@ vcons_tty_start(struct tty *tp)
 	int n;
 	char buf[64];
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	if (tp->t_state & (TS_TIMEOUT | TS_TTSTOP)) {
 		ttwwakeup(tp);
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		return;
 	}
 	tp->t_state |= TS_BUSY;
@@ -194,7 +196,7 @@ vcons_tty_start(struct tty *tp)
 		}
 	}
 	tp->t_state &= ~TS_BUSY;
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
 	ttwwakeup(tp);
 }
 
@@ -302,13 +304,13 @@ vconsvirt_intr(void *arg __unused, void *frame __unused)
 		return;
 	tp = kqueue_console_tty;
 
-	lwkt_gettoken(&tty_token);
+	lwkt_gettoken(&tp->t_token);
 	/*
 	 * If we aren't open we only have synchronous traffic via the
 	 * debugger and do not need to poll.
 	 */
 	if ((tp->t_state & TS_ISOPEN) == 0) {
-		lwkt_reltoken(&tty_token);
+		lwkt_reltoken(&tp->t_token);
 		return;
 	}
 
@@ -322,7 +324,7 @@ vconsvirt_intr(void *arg __unused, void *frame __unused)
 				(*linesw[tp->t_line].l_rint)(buf[i], tp);
 		} while (n > 0);
 	}
-	lwkt_reltoken(&tty_token);
+	lwkt_reltoken(&tp->t_token);
 }
 
 

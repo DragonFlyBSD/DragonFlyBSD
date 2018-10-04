@@ -725,6 +725,7 @@ enterpgrp(struct proc *p, pid_t pgid, int mksess)
 			sess = kmalloc(sizeof(struct session), M_SESSION,
 				       M_WAITOK | M_ZERO);
 			lwkt_gettoken(&p->p_token);
+			sess->s_prg = prg;
 			sess->s_leader = p;
 			sess->s_sid = p->p_pid;
 			sess->s_count = 1;
@@ -855,12 +856,10 @@ sess_rele(struct session *sess)
 		cpu_ccfence();
 		KKASSERT(count > 0);
 		if (count == 1) {
-			lwkt_gettoken(&tty_token);
 			lwkt_gettoken(&prg->proc_token);
 			if (atomic_cmpset_int(&sess->s_count, 1, 0))
 				break;
 			lwkt_reltoken(&prg->proc_token);
-			lwkt_reltoken(&tty_token);
 			/* retry */
 		} else {
 			if (atomic_cmpset_int(&sess->s_count, count, count - 1))
@@ -870,7 +869,7 @@ sess_rele(struct session *sess)
 	}
 
 	/*
-	 * Successful 1->0 transition and tty_token is held.
+	 * Successful 1->0 transition and prg->proc_token is held.
 	 */
 	LIST_REMOVE(sess, s_list);
 	if (pid_doms[sess->s_sid % PIDSEL_DOMAINS] != (uint8_t)time_second)
@@ -892,7 +891,6 @@ sess_rele(struct session *sess)
 		ttyunhold(tp);
 	}
 	lwkt_reltoken(&prg->proc_token);
-	lwkt_reltoken(&tty_token);
 
 	kfree(sess, M_SESSION);
 }
