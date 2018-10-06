@@ -676,9 +676,10 @@ input_overflow:
 		goto endcase;
 	}
 
-	if (   c == 0377 && ISSET(iflag, PARMRK) && !ISSET(iflag, ISTRIP)
-	     && ISSET(iflag, IGNBRK|IGNPAR) != (IGNBRK|IGNPAR))
+	if (c == 0377 && ISSET(iflag, PARMRK) && !ISSET(iflag, ISTRIP) &&
+	    ISSET(iflag, IGNBRK|IGNPAR) != (IGNBRK|IGNPAR)) {
 		clist_putc(0377 | TTY_QUOTE, &tp->t_rawq);
+	}
 
 	/*
 	 * Put data char in q for user and
@@ -2408,14 +2409,25 @@ ttspeedtab(int speed, struct speedtab *table)
  * are near the ends of the buffer, with about 1 second's worth of input
  * between them.  All this only applies to the standard line discipline.
  */
+#define CLAMP(x, h, l)	((x) > h ? h : ((x) < l) ? l : (x))
+
 void
 ttsetwater(struct tty *tp)
 {
-	int cps, ttmaxhiwat, x;
+	int ttmaxhiwat;		/* maximum high water mark */
+	int cps;		/* characters per second */
+	int x;
 
 	lwkt_gettoken(&tp->t_token);
-	/* Input. */
+
+	/*
+	 * Input side.
+	 *
+	 * Calculate nominal low and high water marks, leave a little
+	 * room to absorb flow control latencies.
+	 */
 	clist_alloc_cblocks(&tp->t_canq, TTYHOG);
+
 	switch (tp->t_ispeedwat) {
 	case (speed_t)-1:
 		cps = tp->t_ispeed / 10;
@@ -2438,7 +2450,12 @@ ttsetwater(struct tty *tp)
 	x = cps + tp->t_ififosize;
 	clist_alloc_cblocks(&tp->t_rawq, x);
 
-	/* Output. */
+	/*
+	 * Output side.
+	 *
+	 * Calculate nominal low and high water marks, and make the
+	 * actual buffer just a tad larger to absorb flow control latencies.
+	 */
 	switch (tp->t_ospeedwat) {
 	case (speed_t)-1:
 		cps = tp->t_ospeed / 10;
@@ -2453,17 +2470,22 @@ ttsetwater(struct tty *tp)
 		ttmaxhiwat = 8 * TTMAXHIWAT;
 		break;
 	}
-#define CLAMP(x, h, l)	((x) > h ? h : ((x) < l) ? l : (x))
-	tp->t_olowat = x = CLAMP(cps / 2, TTMAXLOWAT, TTMINLOWAT);
+
+	x = CLAMP(cps / 2, TTMAXLOWAT, TTMINLOWAT);
+	tp->t_olowat = x;
+
 	x += cps;
-	x = CLAMP(x, ttmaxhiwat, TTMINHIWAT);	/* XXX clamps are too magic */
-	/* tp->t_ohiwat = roundup(x, CBSIZE); */ /* XXX for compat */
-	x = imax(tp->t_ohiwat, TTMAXHIWAT);	/* XXX for compat/safety */
+	x = CLAMP(x, ttmaxhiwat, TTMINHIWAT);
+	tp->t_ohiwat = x;
+
+	x = imax(tp->t_ohiwat, TTMAXHIWAT);
 	x += OBUFSIZ + 100;
 	clist_alloc_cblocks(&tp->t_outq, x);
-#undef	CLAMP
+
 	lwkt_reltoken(&tp->t_token);
 }
+
+#undef	CLAMP
 
 /*
  * Report on state of foreground process group.
