@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/sysctl.9,v 1.3 2006/04/28 23:21:36 keramida Exp $
 .\"
-.Dd July 20, 2018
+.Dd October 6, 2018
 .Dt SYSCTL 9
 .Os
 .Sh NAME
@@ -36,9 +36,16 @@
 .Nm SYSCTL_NODE ,
 .Nm SYSCTL_OPAQUE ,
 .Nm SYSCTL_PROC ,
+.Nm SYSCTL_S8 ,
+.Nm SYSCTL_S16 ,
+.Nm SYSCTL_S32 ,
+.Nm SYSCTL_S64 ,
 .Nm SYSCTL_STRING ,
 .Nm SYSCTL_STRUCT ,
+.Nm SYSCTL_U8 ,
+.Nm SYSCTL_U16 ,
 .Nm SYSCTL_U32 ,
+.Nm SYSCTL_U64 ,
 .Nm SYSCTL_UINT ,
 .Nm SYSCTL_ULONG ,
 .Nm SYSCTL_UQUAD
@@ -59,15 +66,6 @@
 .Fa "descr"
 .Fc
 .Fo SYSCTL_LONG
-.Fa "parent"
-.Fa "nbr"
-.Fa "name"
-.Fa "access"
-.Fa "ptr"
-.Fa "val"
-.Fa "descr"
-.Fc
-.Fo SYSCTL_QUAD
 .Fa "parent"
 .Fa "nbr"
 .Fa "name"
@@ -105,6 +103,51 @@
 .Fa "fmt"
 .Fa "descr"
 .Fc
+.Fo SYSCTL_QUAD
+.Fa "parent"
+.Fa "nbr"
+.Fa "name"
+.Fa "access"
+.Fa "ptr"
+.Fa "val"
+.Fa "descr"
+.Fc
+.Fo SYSCTL_S8
+.Fa "parent"
+.Fa "number"
+.Fa "name"
+.Fa "access"
+.Fa "ptr"
+.Fa "val"
+.Fa "descr"
+.Fc
+.Fo SYSCTL_S16
+.Fa "parent"
+.Fa "number"
+.Fa "name"
+.Fa "access"
+.Fa "ptr"
+.Fa "val"
+.Fa "descr"
+.Fc
+.Fo SYSCTL_S32
+.Fa "parent"
+.Fa "number"
+.Fa "name"
+.Fa "access"
+.Fa "ptr"
+.Fa "val"
+.Fa "descr"
+.Fc
+.Fo SYSCTL_S64
+.Fa "parent"
+.Fa "number"
+.Fa "name"
+.Fa "access"
+.Fa "ptr"
+.Fa "val"
+.Fa "descr"
+.Fc
 .Fo SYSCTL_STRING
 .Fa "parent"
 .Fa "nbr"
@@ -123,7 +166,34 @@
 .Fa "type"
 .Fa "descr"
 .Fc
+.Fo SYSCTL_U8
+.Fa "parent"
+.Fa "number"
+.Fa "name"
+.Fa "access"
+.Fa "ptr"
+.Fa "val"
+.Fa "descr"
+.Fc
+.Fo SYSCTL_U16
+.Fa "parent"
+.Fa "number"
+.Fa "name"
+.Fa "access"
+.Fa "ptr"
+.Fa "val"
+.Fa "descr"
+.Fc
 .Fo SYSCTL_U32
+.Fa "parent"
+.Fa "number"
+.Fa "name"
+.Fa "access"
+.Fa "ptr"
+.Fa "val"
+.Fa "descr"
+.Fc
+.Fo SYSCTL_U64
 .Fa "parent"
 .Fa "number"
 .Fa "name"
@@ -181,9 +251,16 @@ New nodes are declared using one of
 .Nm SYSCTL_NODE ,
 .Nm SYSCTL_OPAQUE ,
 .Nm SYSCTL_PROC ,
+.Nm SYSCTL_S8 ,
+.Nm SYSCTL_S16 ,
+.Nm SYSCTL_S32 ,
+.Nm SYSCTL_S64 ,
 .Nm SYSCTL_STRING ,
 .Nm SYSCTL_STRUCT ,
+.Nm SYSCTL_U8 ,
+.Nm SYSCTL_U16 ,
 .Nm SYSCTL_U32 ,
+.Nm SYSCTL_U64 ,
 .Nm SYSCTL_UINT ,
 .Nm SYSCTL_ULONG ,
 and
@@ -205,6 +282,14 @@ including a type in the access mask is required:
 This is a node intended to be a parent for other nodes.
 .It Dv CTLTYPE_INT
 This is a signed integer.
+.It Dv CTLTYPE_S8
+This is an 8-bit signed integer.
+.It Dv CTLTYPE_S16
+This is a 16-bit signed integer.
+.It Dv CTLTYPE_S32
+This is a 32-bit signed integer.
+.It Dv CTLTYPE_S64
+This is a 64-bit signed integer.
 .It Dv CTLTYPE_STRING
 This is a nul-terminated string stored in a character array.
 .It Dv CTLTYPE_QUAD
@@ -214,8 +299,14 @@ This is an opaque data structure.
 .It Dv CTLTYPE_STRUCT
 Alias for
 .Dv CTLTYPE_OPAQUE .
+.It Dv CTLTYPE_U8
+This is an 8-bit unsigned integer.
+.It Dv CTLTYPE_U16
+This is a 16-bit unsigned integer.
 .It Dv CTLTYPE_U32
 This is a 32-bit unsigned integer.
+.It Dv CTLTYPE_U64
+This is a 64-bit unsigned integer.
 .It Dv CTLTYPE_UINT
 This is an unsigned integer.
 .It Dv CTLTYPE_LONG

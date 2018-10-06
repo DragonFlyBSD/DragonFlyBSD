@@ -571,9 +571,18 @@ sysctl_sysctl_debug_dump_node(struct sysctl_oid_list *l, int i)
 				}
 				break;
 			case CTLTYPE_INT:    kprintf(" Int\n"); break;
+			case CTLTYPE_UINT:   kprintf(" u_int\n"); break;
+			case CTLTYPE_LONG:   kprintf(" Long\n"); break;
+			case CTLTYPE_ULONG:  kprintf(" u_long\n"); break;
 			case CTLTYPE_STRING: kprintf(" String\n"); break;
-			case CTLTYPE_QUAD:   kprintf(" Quad\n"); break;
+			case CTLTYPE_S8:     kprintf(" int8_t\n"); break;
+			case CTLTYPE_S16:    kprintf(" int16_t\n"); break;
+			case CTLTYPE_S32:    kprintf(" int32_t\n"); break;
+			case CTLTYPE_S64:    kprintf(" int64_t\n"); break;
+			case CTLTYPE_U8:     kprintf(" uint8_t\n"); break;
+			case CTLTYPE_U16:    kprintf(" uint16_t\n"); break;
 			case CTLTYPE_U32:    kprintf(" uint32_t\n"); break;
+			case CTLTYPE_U64:    kprintf(" uint64_t\n"); break;
 			case CTLTYPE_OPAQUE: kprintf(" Opaque/struct\n"); break;
 			default:	     kprintf("\n");
 		}
@@ -857,6 +866,46 @@ SYSCTL_NODE(_sysctl, 5, oiddescr, CTLFLAG_RD | CTLFLAG_NOLOCK,
  */
 
 /*
+ * Handle an 8-bit number, signed or unsigned.  arg1 points to it.
+ */
+
+int
+sysctl_handle_8(SYSCTL_HANDLER_ARGS)
+{
+	int error = 0;
+
+	if (!arg1)
+		return (EINVAL);
+	error = SYSCTL_OUT(req, arg1, sizeof(int8_t));
+
+	if (error || !req->newptr)
+		return (error);
+
+	error = SYSCTL_IN(req, arg1, sizeof(int8_t));
+	return (error);
+}
+
+/*
+ * Handle a 16-bit number, signed or unsigned.  arg1 points to it.
+ */
+
+int
+sysctl_handle_16(SYSCTL_HANDLER_ARGS)
+{
+	int error = 0;
+
+	if (!arg1)
+		return (EINVAL);
+	error = SYSCTL_OUT(req, arg1, sizeof(int16_t));
+
+	if (error || !req->newptr)
+		return (error);
+
+	error = SYSCTL_IN(req, arg1, sizeof(int16_t));
+	return (error);
+}
+
+/*
  * Handle a 32-bit number, signed or unsigned.  arg1 points to it.
  */
 
@@ -873,6 +922,26 @@ sysctl_handle_32(SYSCTL_HANDLER_ARGS)
 		return (error);
 
 	error = SYSCTL_IN(req, arg1, sizeof(int32_t));
+	return (error);
+}
+
+/*
+ * Handle a 64-bit number, signed or unsigned.  arg1 points to it.
+ */
+
+int
+sysctl_handle_64(SYSCTL_HANDLER_ARGS)
+{
+	int error = 0;
+
+	if (!arg1)
+		return (EINVAL);
+	error = SYSCTL_OUT(req, arg1, sizeof(int64_t));
+
+	if (error || !req->newptr)
+		return (error);
+
+	error = SYSCTL_IN(req, arg1, sizeof(int64_t));
 	return (error);
 }
 

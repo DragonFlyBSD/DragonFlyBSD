@@ -70,13 +70,20 @@ struct ctlname {
 #define	CTLTYPE_NODE	1	/* name is a node */
 #define	CTLTYPE_INT	2	/* name describes an integer */
 #define	CTLTYPE_STRING	3	/* name describes a string */
-#define	CTLTYPE_QUAD	4	/* name describes a 64-bit number */
+#define	CTLTYPE_S64	4	/* name describes a signed 64-bit number */
+#define	CTLTYPE_QUAD	CTLTYPE_S64 /* name describes a signed 64-bit number */
 #define	CTLTYPE_OPAQUE	5	/* name describes a structure */
 #define	CTLTYPE_STRUCT	CTLTYPE_OPAQUE	/* name describes a structure */
 #define	CTLTYPE_UINT	6	/* name describes an unsigned integer */
 #define	CTLTYPE_LONG	7	/* name describes a long */
 #define	CTLTYPE_ULONG	8	/* name describes an unsigned long */
-#define	CTLTYPE_UQUAD	9	/* name describes an unsigned 64-bit number */
+#define	CTLTYPE_U64	9	/* name describes an unsigned 64-bit number */
+#define	CTLTYPE_UQUAD	CTLTYPE_U64 /* name describes an unsigned 64-bit number */
+#define	CTLTYPE_U8	0xa	/* name describes an unsigned 8-bit number */
+#define	CTLTYPE_U16	0xb	/* name describes an unsigned 16-bit number */
+#define	CTLTYPE_S8	0xc	/* name describes a signed 8-bit number */
+#define	CTLTYPE_S16	0xd	/* name describes a signed 16-bit number */
+#define	CTLTYPE_S32	0xe	/* name describes a signed 32-bit number */
 #define	CTLTYPE_U32	0xf	/* name describes an unsigned 32-bit number */
 
 #define	CTLFLAG_RD	0x80000000	/* Allow reads of variable */
@@ -158,7 +165,10 @@ struct sysctl_oid {
 #define SYSCTL_OUT(r, p, l)	(r->oldfunc)(r, p, l)
 #define SYSCTL_OUT_STR(r, p)	(r->oldfunc)(r, p, strlen(p) + 1)
 
+int sysctl_handle_8(SYSCTL_HANDLER_ARGS);
+int sysctl_handle_16(SYSCTL_HANDLER_ARGS);
 int sysctl_handle_32(SYSCTL_HANDLER_ARGS);
+int sysctl_handle_64(SYSCTL_HANDLER_ARGS);
 int sysctl_handle_int(SYSCTL_HANDLER_ARGS);
 int sysctl_handle_long(SYSCTL_HANDLER_ARGS);
 int sysctl_handle_quad(SYSCTL_HANDLER_ARGS);
@@ -319,6 +329,60 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 		CTLTYPE_ULONG|CTLFLAG_NOLOCK|(access),			\
 		ptr, 0, sysctl_handle_long, "LU", descr)
 
+/* Oid for a signed 8-bit int.  The pointer must be non NULL. */
+#define SYSCTL_S8(parent, nbr, name, access, ptr, val, descr)	\
+	SYSCTL_OID(parent, nbr, name, CTLTYPE_S8|(access),		\
+		ptr, val, sysctl_handle_8, "C", descr)
+
+#define SYSCTL_ADD_S8(ctx, parent, nbr, name, access, ptr, descr)	\
+	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_S8|(access),	\
+	ptr, 0, sysctl_handle_8, "C", descr)
+
+/* Oid for a signed 16-bit int.  The pointer must be non NULL. */
+#define SYSCTL_S16(parent, nbr, name, access, ptr, val, descr)	\
+	SYSCTL_OID(parent, nbr, name, CTLTYPE_S16|(access),		\
+		ptr, val, sysctl_handle_16, "S", descr)
+
+#define SYSCTL_ADD_S16(ctx, parent, nbr, name, access, ptr, descr)	\
+	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_S16|(access),	\
+	ptr, 0, sysctl_handle_16, "S", descr)
+
+/* Oid for a signed 32-bit int.  The pointer must be non NULL. */
+#define SYSCTL_S32(parent, nbr, name, access, ptr, val, descr)	\
+	SYSCTL_OID(parent, nbr, name, CTLTYPE_S32|(access),		\
+		ptr, val, sysctl_handle_32, "I", descr)
+
+#define SYSCTL_ADD_S32(ctx, parent, nbr, name, access, ptr, descr)	\
+	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_S32|(access),	\
+	ptr, 0, sysctl_handle_32, "I", descr)
+
+/* Oid for a signed 64-bit int.  The pointer must be non NULL. */
+#define SYSCTL_S64(parent, nbr, name, access, ptr, val, descr)	\
+	SYSCTL_OID(parent, nbr, name, CTLTYPE_S64|(access),		\
+		ptr, val, sysctl_handle_64, "Q", descr)
+
+#define SYSCTL_ADD_S64(ctx, parent, nbr, name, access, ptr, descr)	\
+	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_S64|(access),	\
+	ptr, 0, sysctl_handle_64, "Q", descr)
+
+/* Oid for an unsigned 8-bit int.  The pointer must be non NULL. */
+#define SYSCTL_U8(parent, nbr, name, access, ptr, val, descr)	\
+	SYSCTL_OID(parent, nbr, name, CTLTYPE_U8|(access),		\
+		ptr, val, sysctl_handle_8, "CU", descr)
+
+#define SYSCTL_ADD_U8(ctx, parent, nbr, name, access, ptr, descr)	\
+	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_U8|(access),	\
+	ptr, 0, sysctl_handle_8, "CU", descr)
+
+/* Oid for an unsigned 16-bit int.  The pointer must be non NULL. */
+#define SYSCTL_U16(parent, nbr, name, access, ptr, val, descr)	\
+	SYSCTL_OID(parent, nbr, name, CTLTYPE_U16|(access),		\
+		ptr, val, sysctl_handle_16, "SU", descr)
+
+#define SYSCTL_ADD_U16(ctx, parent, nbr, name, access, ptr, descr)	\
+	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_U16|(access),	\
+	ptr, 0, sysctl_handle_16, "SU", descr)
+
 /* Oid for an unsigned 32-bit int.  The pointer must be non NULL. */
 #define SYSCTL_U32(parent, nbr, name, access, ptr, val, descr)	\
 	SYSCTL_OID(parent, nbr, name, CTLTYPE_U32|(access),		\
@@ -327,6 +391,15 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define SYSCTL_ADD_U32(ctx, parent, nbr, name, access, ptr, descr)	\
 	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_U32|(access),	\
 	ptr, 0, sysctl_handle_32, "IU", descr)
+
+/* Oid for an unsigned 64-bit int.  The pointer must be non NULL. */
+#define SYSCTL_U64(parent, nbr, name, access, ptr, val, descr)	\
+	SYSCTL_OID(parent, nbr, name, CTLTYPE_U64|(access),		\
+		ptr, val, sysctl_handle_64, "QU", descr)
+
+#define SYSCTL_ADD_U64(ctx, parent, nbr, name, access, ptr, descr)	\
+	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_U64|(access),	\
+	ptr, 0, sysctl_handle_64, "QU", descr)
 
 /* Oid for an opaque object.  Specified by a pointer and a length. */
 #define SYSCTL_OPAQUE(parent, nbr, name, access, ptr, len, fmt, descr)	\

@@ -48,6 +48,7 @@
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -157,14 +158,19 @@ parse(const char *string)
 	size_t len;
 	int i, j;
 	void *newval = NULL;
+	int8_t i8val;
+	uint8_t u8val;
+	int16_t i16val;
+	uint16_t u16val;
+	int32_t i32val;
 	uint32_t u32val;
+	int64_t i64val;
+	uint64_t u64val;
 	int intval;
 	unsigned int uintval;
 	long longval;
 	unsigned long ulongval;
 	size_t newsize = 0;
-	quad_t quadval;
-	u_quad_t uquadval;
 	int mib[CTL_MAXNAME];
 	char *cp, fmt[BUFSIZ];
 	const char *name;
@@ -249,20 +255,45 @@ parse(const char *string)
 				break;
 			case CTLTYPE_STRING:
 				break;
-			case CTLTYPE_QUAD:
-				quadval = strtoq(newval, NULL, 0);
-				newval = &quadval;
-				newsize = sizeof(quadval);
+			case CTLTYPE_S8:
+				i8val = (int8_t)strtol(newval, NULL, 0);
+				newval = &i8val;
+				newsize = sizeof(i8val);
 				break;
-			case CTLTYPE_UQUAD:
-				uquadval = strtouq(newval, NULL, 0);
-				newval = &uquadval;
-				newsize = sizeof(uquadval);
+			case CTLTYPE_S16:
+				i16val = (int16_t)strtol(newval, NULL, 0);
+				newval = &i16val;
+				newsize = sizeof(i16val);
+				break;
+			case CTLTYPE_S32:
+				i32val = (int32_t)strtol(newval, NULL, 0);
+				newval = &i32val;
+				newsize = sizeof(i32val);
+				break;
+			case CTLTYPE_S64:
+				i64val = strtoimax(newval, NULL, 0);
+				newval = &i64val;
+				newsize = sizeof(i64val);
+				break;
+			case CTLTYPE_U8:
+				u8val = (uint8_t)strtoul(newval, NULL, 0);
+				newval = &u8val;
+				newsize = sizeof(u8val);
+				break;
+			case CTLTYPE_U16:
+				u16val = (uint16_t)strtoul(newval, NULL, 0);
+				newval = &u16val;
+				newsize = sizeof(u16val);
 				break;
 			case CTLTYPE_U32:
 				u32val = (uint32_t)strtoul(newval, NULL, 0);
 				newval = &u32val;
 				newsize = sizeof(u32val);
+				break;
+			case CTLTYPE_U64:
+				u64val = strtoumax(newval, NULL, 0);
+				newval = &u64val;
+				newsize = sizeof(u64val);
 				break;
 			case CTLTYPE_OPAQUE:
 				if (strcmp(fmt, "T,dev_t") == 0 ||
