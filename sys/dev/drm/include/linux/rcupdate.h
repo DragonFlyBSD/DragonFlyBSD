@@ -51,6 +51,9 @@ rcu_read_unlock(void)
 {
 }
 
+#define rcu_dereference_protected(p, condition)	\
+	((typeof(*p) *)(p))
+
 #define rcu_dereference(p) (p)
 
 #endif /* LINUX_RCUPDATE_H */
