@@ -729,9 +729,11 @@ static void radeon_hwmon_fini(struct radeon_device *rdev)
 	}
 }
 
-static void radeon_dpm_thermal_work_handler(void *arg, int pending)
+static void radeon_dpm_thermal_work_handler(struct work_struct *work)
 {
-	struct radeon_device *rdev = arg;
+	struct radeon_device *rdev =
+		container_of(work, struct radeon_device,
+			     pm.dpm.thermal.work);
 	/* switch to the thermal state */
 	enum radeon_pm_state_type dpm_state = POWER_STATE_TYPE_INTERNAL_THERMAL;
 
@@ -1298,15 +1300,15 @@ static int radeon_pm_init_dpm(struct radeon_device *rdev)
 	if (ret)
 		return ret;
 
-	TASK_INIT(&rdev->pm.dpm.thermal.work, 0, radeon_dpm_thermal_work_handler, rdev);
-	lockmgr(&rdev->pm.mutex, LK_EXCLUSIVE);
+	INIT_WORK(&rdev->pm.dpm.thermal.work, radeon_dpm_thermal_work_handler);
+	mutex_lock(&rdev->pm.mutex);
 	radeon_dpm_init(rdev);
 	rdev->pm.dpm.current_ps = rdev->pm.dpm.requested_ps = rdev->pm.dpm.boot_ps;
 	if (radeon_dpm == 1)
 		radeon_dpm_print_power_states(rdev);
 	radeon_dpm_setup_asic(rdev);
 	ret = radeon_dpm_enable(rdev);
-	lockmgr(&rdev->pm.mutex, LK_RELEASE);
+	mutex_unlock(&rdev->pm.mutex);
 	if (ret)
 		goto dpm_failed;
 	rdev->pm.dpm_enabled = true;

@@ -134,9 +134,10 @@ static struct r600_audio_pin r600_audio_status(struct radeon_device *rdev)
 /*
  * update all hdmi interfaces with current audio parameters
  */
-void r600_audio_update_hdmi(void *arg, int pending)
+void r600_audio_update_hdmi(struct work_struct *work)
 {
-	struct radeon_device *rdev = arg;
+	struct radeon_device *rdev = container_of(work, struct radeon_device,
+						  audio_work);
 	struct drm_device *dev = rdev->ddev;
 	struct r600_audio_pin audio_status = r600_audio_status(rdev);
 	struct drm_encoder *encoder;

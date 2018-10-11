@@ -1405,11 +1405,6 @@ int radeon_device_init(struct radeon_device *rdev,
 	if (rdev->rio_mem == NULL)
 		DRM_ERROR("Unable to find PCI I/O BAR\n");
 
-	rdev->tq = taskqueue_create("radeonkms", M_WAITOK,
-	    taskqueue_thread_enqueue, &rdev->tq);
-	taskqueue_start_threads(&rdev->tq, 1, TDPRI_KERN_DAEMON,
-				-1, "radeon taskq");
-
 	if (rdev->flags & RADEON_IS_PX)
 		radeon_device_handle_px_quirks(rdev);
 
@@ -1528,11 +1523,6 @@ void radeon_device_fini(struct radeon_device *rdev)
 		vga_switcheroo_fini_domain_pm_ops(rdev->dev);
 	vga_client_register(rdev->pdev, NULL, NULL, NULL);
 #endif /* DUMBBELL_WIP */
-
-	if (rdev->tq != NULL) {
-		taskqueue_free(rdev->tq);
-		rdev->tq = NULL;
-	}
 
 	if (rdev->rio_mem)
 		bus_release_resource(rdev->dev->bsddev, SYS_RES_IOPORT, rdev->rio_rid,

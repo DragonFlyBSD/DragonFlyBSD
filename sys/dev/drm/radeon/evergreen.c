@@ -5132,11 +5132,11 @@ restart_ih:
 		WREG32(IH_RB_RPTR, rptr);
 	}
 	if (queue_hotplug)
-		taskqueue_enqueue(rdev->tq, &rdev->hotplug_work);
+		schedule_work(&rdev->hotplug_work);
 	if (queue_hdmi)
-		taskqueue_enqueue(rdev->tq, &rdev->audio_work);
+		schedule_work(&rdev->audio_work);
 	if (queue_thermal && rdev->pm.dpm_enabled)
-		taskqueue_enqueue(rdev->tq, &rdev->pm.dpm.thermal.work);
+		schedule_work(&rdev->pm.dpm.thermal.work);
 	rdev->ih.rptr = rptr;
 	atomic_set(&rdev->ih.lock, 0);
 

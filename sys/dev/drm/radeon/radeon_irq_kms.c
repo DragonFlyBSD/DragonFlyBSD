@@ -76,9 +76,10 @@ irqreturn_t radeon_driver_irq_handler_kms(int irq, void *arg)
  * and calls the hotplug handler for each one, then sends
  * a drm hotplug event to alert userspace.
  */
-static void radeon_hotplug_work_func(void *arg, int pending)
+static void radeon_hotplug_work_func(struct work_struct *work)
 {
-	struct radeon_device *rdev = arg;
+	struct radeon_device *rdev = container_of(work, struct radeon_device,
+						  hotplug_work);
 	struct drm_device *dev = rdev->ddev;
 	struct drm_mode_config *mode_config = &dev->mode_config;
 	struct drm_connector *connector;
@@ -274,17 +275,14 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 	}
 #endif
 
-	TASK_INIT(&rdev->hotplug_work, 0, radeon_hotplug_work_func, rdev);
-#if 0
-	INIT_WORK(&rdev->dp_work, radeon_dp_work_func);
-#endif
-	TASK_INIT(&rdev->audio_work, 0, r600_audio_update_hdmi, rdev);
+	INIT_WORK(&rdev->hotplug_work, radeon_hotplug_work_func);
+	INIT_WORK(&rdev->audio_work, r600_audio_update_hdmi);
 
 	rdev->irq.installed = true;
 	r = drm_irq_install(rdev->ddev, rdev->ddev->pdev->irq);
 	if (r) {
 		rdev->irq.installed = false;
-		taskqueue_drain(rdev->tq, &rdev->hotplug_work);
+		flush_work(&rdev->hotplug_work);
 		return r;
 	}
 
@@ -305,7 +303,7 @@ void radeon_irq_kms_fini(struct radeon_device *rdev)
 	if (rdev->irq.installed) {
 		drm_irq_uninstall(rdev->ddev);
 		rdev->irq.installed = false;
-		taskqueue_drain(rdev->tq, &rdev->hotplug_work);
+		flush_work(&rdev->hotplug_work);
 	}
 }
 

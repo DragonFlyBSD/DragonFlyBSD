@@ -75,6 +75,7 @@
 #include <linux/wait.h>
 #include <linux/list.h>
 #include <linux/kref.h>
+#include <linux/interval_tree.h>
 #include <linux/hashtable.h>
 #include <linux/fence.h>
 
@@ -1338,7 +1339,7 @@ struct radeon_ps {
 
 struct radeon_dpm_thermal {
 	/* thermal interrupt work */
-	struct task        work;
+	struct work_struct work;
 	/* low temperature threshold */
 	int                min_temp;
 	/* high temperature threshold */
@@ -2358,9 +2359,8 @@ struct radeon_device {
 	struct r600_ih ih; /* r6/700 interrupt ring */
 	struct radeon_rlc rlc;
 	struct radeon_mec mec;
-	struct taskqueue *tq;
-	struct task hotplug_work;
-	struct task audio_work;
+	struct work_struct hotplug_work;
+	struct work_struct audio_work;
 	int num_crtc; /* number of crtcs */
 	struct lock dc_hw_i2c_mutex; /* display controller hw i2c mutex */
 	bool has_uvd;
@@ -2904,7 +2904,7 @@ void radeon_vm_bo_rmv(struct radeon_device *rdev,
 		      struct radeon_bo_va *bo_va);
 
 /* audio */
-void r600_audio_update_hdmi(void *arg, int pending);
+void r600_audio_update_hdmi(struct work_struct *work);
 struct r600_audio_pin *r600_audio_get_pin(struct radeon_device *rdev);
 struct r600_audio_pin *dce6_audio_get_pin(struct radeon_device *rdev);
 void r600_audio_enable(struct radeon_device *rdev,
