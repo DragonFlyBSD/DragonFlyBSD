@@ -181,7 +181,7 @@
 111	OBSOL	freebsd3_sigsuspend
 ; XXX note nonstandard (bogus) calling convention - the libc stub passes
 ; us the mask, not a pointer to it.
-112	OBSOL	sigstack;
+112	OBSOL	sigstack
 113	COMPAT	{ int recvmsg(int s, struct omsghdr *msg, int flags); }
 114	COMPAT	{ int sendmsg(int s, caddr_t msg, int flags); }
 115	OBSOL	vtrace
