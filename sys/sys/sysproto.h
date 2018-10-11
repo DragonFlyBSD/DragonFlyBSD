@@ -2454,13 +2454,6 @@ struct	orecv_args {
 	int	len;	char len_[PAD_(int)];
 	int	flags;	char flags_[PAD_(int)];
 };
-struct	osigstack_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	struct sigstack *	nss;	char nss_[PAD_(struct sigstack *)];
-	struct sigstack *	oss;	char oss_[PAD_(struct sigstack *)];
-};
 struct	orecvmsg_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -2539,7 +2532,6 @@ int	sys_osethostname (struct sethostname_args *);
 int	sys_oaccept (struct accept_args *);
 int	sys_osend (struct osend_args *);
 int	sys_orecv (struct orecv_args *);
-int	sys_osigstack (struct osigstack_args *);
 int	sys_orecvmsg (struct orecvmsg_args *);
 int	sys_osendmsg (struct osendmsg_args *);
 int	sys_orecvfrom (struct recvfrom_args *);

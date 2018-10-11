@@ -115,7 +115,7 @@
 				/* 109 is obsolete 4.3 sigblock */
 				/* 110 is obsolete 4.3 sigsetmask */
 				/* 111 is obsolete freebsd3_sigsuspend */
-				/* 112 is old sigstack */
+				/* 112 is obsolete sigstack; */
 				/* 113 is old recvmsg */
 				/* 114 is old sendmsg */
 				/* 115 is obsolete vtrace */
