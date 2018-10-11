@@ -63,7 +63,6 @@ union sysunion {
 	struct	execve_args execve;
 	struct	umask_args umask;
 	struct	chroot_args chroot;
-	struct	getpagesize_args getpagesize;
 	struct	msync_args msync;
 	struct	vfork_args vfork;
 	struct	sbrk_args sbrk;
@@ -77,7 +76,6 @@ union sysunion {
 	struct	getpgrp_args getpgrp;
 	struct	setpgid_args setpgid;
 	struct	setitimer_args setitimer;
-	struct	owait_args sys_owait;
 	struct	swapon_args swapon;
 	struct	getitimer_args getitimer;
 	struct	getdtablesize_args getdtablesize;
@@ -114,7 +112,6 @@ union sysunion {
 	struct	adjtime_args adjtime;
 	struct	setsid_args setsid;
 	struct	quotactl_args quotactl;
-	struct	oquota_args sys_oquota;
 	struct	nfssvc_args nfssvc;
 	struct	statfs_args statfs;
 	struct	fstatfs_args fstatfs;

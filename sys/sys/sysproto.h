@@ -405,12 +405,6 @@ struct	chroot_args {
 #endif
 	char *	path;	char path_[PAD_(char *)];
 };
-struct	getpagesize_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	register_t dummy;
-};
 struct	msync_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -502,12 +496,6 @@ struct	setitimer_args {
 	u_int	which;	char which_[PAD_(u_int)];
 	struct itimerval *	itv;	char itv_[PAD_(struct itimerval *)];
 	struct itimerval *	oitv;	char oitv_[PAD_(struct itimerval *)];
-};
-struct	owait_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	register_t dummy;
 };
 struct	swapon_args {
 #ifdef _KERNEL
@@ -780,12 +768,6 @@ struct	quotactl_args {
 	int	cmd;	char cmd_[PAD_(int)];
 	int	uid;	char uid_[PAD_(int)];
 	caddr_t	arg;	char arg_[PAD_(caddr_t)];
-};
-struct	oquota_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	register_t dummy;
 };
 struct	nfssvc_args {
 #ifdef _KERNEL
@@ -2367,182 +2349,9 @@ struct	wait6_args {
 	struct __wrusage *	wrusage;	char wrusage_[PAD_(struct __wrusage *)];
 	siginfo_t *	info;	char info_[PAD_(siginfo_t *)];
 };
-struct	olseek_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	fd;	char fd_[PAD_(int)];
-	long	offset;	char offset_[PAD_(long)];
-	int	whence;	char whence_[PAD_(int)];
-};
-struct	ostat_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	char *	path;	char path_[PAD_(char *)];
-	struct ostat *	ub;	char ub_[PAD_(struct ostat *)];
-};
-struct	olstat_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	char *	path;	char path_[PAD_(char *)];
-	struct ostat *	ub;	char ub_[PAD_(struct ostat *)];
-};
-struct	ofstat_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	fd;	char fd_[PAD_(int)];
-	struct ostat *	sb;	char sb_[PAD_(struct ostat *)];
-};
-struct	getkerninfo_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	op;	char op_[PAD_(int)];
-	char *	where;	char where_[PAD_(char *)];
-	size_t *	size;	char size_[PAD_(size_t *)];
-	int	arg;	char arg_[PAD_(int)];
-};
-struct	ommap_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	void *	addr;	char addr_[PAD_(void *)];
-	int	len;	char len_[PAD_(int)];
-	int	prot;	char prot_[PAD_(int)];
-	int	flags;	char flags_[PAD_(int)];
-	int	fd;	char fd_[PAD_(int)];
-	long	pos;	char pos_[PAD_(long)];
-};
-struct	ovadvise_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	anom;	char anom_[PAD_(int)];
-};
-struct	gethostname_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	char *	hostname;	char hostname_[PAD_(char *)];
-	u_int	len;	char len_[PAD_(u_int)];
-};
-struct	sethostname_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	char *	hostname;	char hostname_[PAD_(char *)];
-	u_int	len;	char len_[PAD_(u_int)];
-};
-struct	osend_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	s;	char s_[PAD_(int)];
-	caddr_t	buf;	char buf_[PAD_(caddr_t)];
-	int	len;	char len_[PAD_(int)];
-	int	flags;	char flags_[PAD_(int)];
-};
-struct	orecv_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	s;	char s_[PAD_(int)];
-	caddr_t	buf;	char buf_[PAD_(caddr_t)];
-	int	len;	char len_[PAD_(int)];
-	int	flags;	char flags_[PAD_(int)];
-};
-struct	orecvmsg_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	s;	char s_[PAD_(int)];
-	struct omsghdr *	msg;	char msg_[PAD_(struct omsghdr *)];
-	int	flags;	char flags_[PAD_(int)];
-};
-struct	osendmsg_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	s;	char s_[PAD_(int)];
-	caddr_t	msg;	char msg_[PAD_(caddr_t)];
-	int	flags;	char flags_[PAD_(int)];
-};
-struct	otruncate_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	char *	path;	char path_[PAD_(char *)];
-	long	length;	char length_[PAD_(long)];
-};
-struct	oftruncate_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	fd;	char fd_[PAD_(int)];
-	long	length;	char length_[PAD_(long)];
-};
-struct	ogetpeername_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	fdes;	char fdes_[PAD_(int)];
-	caddr_t	asa;	char asa_[PAD_(caddr_t)];
-	int *	alen;	char alen_[PAD_(int *)];
-};
-struct	ogetrlimit_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	u_int	which;	char which_[PAD_(u_int)];
-	struct orlimit *	rlp;	char rlp_[PAD_(struct orlimit *)];
-};
-struct	osetrlimit_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	u_int	which;	char which_[PAD_(u_int)];
-	struct orlimit *	rlp;	char rlp_[PAD_(struct orlimit *)];
-};
-struct	ogetdirentries_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	fd;	char fd_[PAD_(int)];
-	char *	buf;	char buf_[PAD_(char *)];
-	u_int	count;	char count_[PAD_(u_int)];
-	long *	basep;	char basep_[PAD_(long *)];
-};
 
 #ifdef _KERNEL
 
-int	sys_olseek (struct olseek_args *);
-int	sys_ostat (struct ostat_args *);
-int	sys_olstat (struct olstat_args *);
-int	sys_ofstat (struct ofstat_args *);
-int	sys_ogetkerninfo (struct getkerninfo_args *);
-int	sys_ogetpagesize (struct getpagesize_args *);
-int	sys_ommap (struct ommap_args *);
-int	sys_ovadvise (struct ovadvise_args *);
-int	sys_owait (struct owait_args *);
-int	sys_ogethostname (struct gethostname_args *);
-int	sys_osethostname (struct sethostname_args *);
-int	sys_oaccept (struct accept_args *);
-int	sys_osend (struct osend_args *);
-int	sys_orecv (struct orecv_args *);
-int	sys_orecvmsg (struct orecvmsg_args *);
-int	sys_osendmsg (struct osendmsg_args *);
-int	sys_orecvfrom (struct recvfrom_args *);
-int	sys_otruncate (struct otruncate_args *);
-int	sys_oftruncate (struct oftruncate_args *);
-int	sys_ogetpeername (struct ogetpeername_args *);
-int	sys_ogetrlimit (struct ogetrlimit_args *);
-int	sys_osetrlimit (struct osetrlimit_args *);
-int	sys_oquota (struct oquota_args *);
-int	sys_ogetsockname (struct getsockname_args *);
-int	sys_ogetdirentries (struct ogetdirentries_args *);
 
 #endif /* _KERNEL */
 

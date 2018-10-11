@@ -64,7 +64,7 @@
 17	STD	{ int obreak(char *nsize); } break obreak_args int
 18	STD	{ int getfsstat(struct statfs *buf, long bufsize, \
 			    int flags); }
-19	COMPAT	{ long lseek(int fd, long offset, int whence); }
+19	OBSOL	old lseek
 20	STD	{ pid_t getpid(void); }
 21	STD	{ int mount(char *type, char *path, int flags, \
 			    caddr_t data); }
@@ -87,9 +87,9 @@
 35	STD	{ int fchflags(int fd, int flags); }
 36	STD	{ int sync(void); }
 37	STD	{ int kill(int pid, int signum); }
-38	COMPAT	{ int stat(char *path, struct ostat *ub); }
+38	OBSOL	old stat
 39	STD	{ pid_t getppid(void); }
-40	COMPAT	{ int lstat(char *path, struct ostat *ub); }
+40	OBSOL	old lstat
 41	STD	{ int dup(int fd); }
 42	STD	{ int pipe(void); }
 43	STD	{ gid_t getegid(void); }
@@ -100,9 +100,6 @@
 46	OBSOL	freebsd3_sigaction
 47	STD	{ gid_t getgid(void); }
 48	OBSOL	freebsd3_sigprocmask
-; XXX note nonstandard (bogus) calling convention - the libc stub passes
-; us the mask, not a pointer to it, and we return the old mask as the
-; (int) return value.
 49	STD	{ int getlogin(char *namebuf, u_int namelen); }
 50	STD	{ int setlogin(char *namebuf); }
 51	STD	{ int acct(char *path); }
@@ -116,20 +113,17 @@
 59	STD	{ int execve(char *fname, char **argv, char **envv); }
 60	STD	{ int umask(int newmask); } umask umask_args int
 61	STD	{ int chroot(char *path); }
-62	COMPAT	{ int fstat(int fd, struct ostat *sb); }
-63	COMPAT	{ int getkerninfo(int op, char *where, size_t *size, \
-			    int arg); } getkerninfo getkerninfo_args int
-64	COMPAT	{ int getpagesize(void); } \
-			    getpagesize getpagesize_args int
+62	OBSOL	old fstat
+63	OBSOL	getkerninfo
+64	OBSOL	getpagesize
 65	STD	{ int msync(void *addr, size_t len, int flags); }
 66	STD	{ pid_t vfork(void); }
 67	OBSOL	vread
 68	OBSOL	vwrite
 69	STD	{ int sbrk(int incr); }
 70	STD	{ int sstk(int incr); }
-71	COMPAT	{ int mmap(void *addr, int len, int prot, \
-			    int flags, int fd, long pos); }
-72	COMPAT	{ int vadvise(int anom); } vadvise ovadvise_args int
+71	OBSOL	old mmap
+72	OBSOL	vadvise
 73	STD	{ int munmap(void *addr, size_t len); }
 74	STD	{ int mprotect(void *addr, size_t len, int prot); }
 75	STD	{ int madvise(void *addr, size_t len, int behav); }
@@ -143,13 +137,11 @@
 82	STD	{ int setpgid(int pid, int pgid); }
 83	STD	{ int setitimer(u_int which, struct itimerval *itv, \
 			    struct itimerval *oitv); }
-84	COMPAT	{ int wait(void); }
+84	OBSOL	wait
 85	STD	{ int swapon(char *name); }
 86	STD	{ int getitimer(u_int which, struct itimerval *itv); }
-87	COMPAT	{ int gethostname(char *hostname, u_int len); } \
-			    gethostname gethostname_args int
-88	COMPAT	{ int sethostname(char *hostname, u_int len); } \
-			    sethostname sethostname_args int
+87	OBSOL	gethostname
+88	OBSOL	sethostname
 89	STD	{ int getdtablesize(void); }
 90	STD	{ int dup2(int from, int to); }
 91	UNIMPL	getdopt
@@ -164,11 +156,10 @@
 96	STD	{ int setpriority(int which, int who, int prio); }
 97	STD	{ int socket(int domain, int type, int protocol); }
 98	STD	{ int connect(int s, caddr_t name, int namelen); }
-99	CPT_NOA	{ int accept(int s, caddr_t name, int *anamelen); } \
-			    accept accept_args int
+99	OBSOL	old accept
 100	STD	{ int getpriority(int which, int who); }
-101	COMPAT	{ int send(int s, caddr_t buf, int len, int flags); }
-102	COMPAT	{ int recv(int s, caddr_t buf, int len, int flags); }
+101	OBSOL	send
+102	OBSOL	recv
 103	OBSOL	freebsd3_sigreturn
 104	STD	{ int bind(int s, caddr_t name, int namelen); }
 105	STD	{ int setsockopt(int s, int level, int name, \
@@ -179,11 +170,9 @@
 109	OBSOL	4.3 sigblock
 110	OBSOL	4.3 sigsetmask
 111	OBSOL	freebsd3_sigsuspend
-; XXX note nonstandard (bogus) calling convention - the libc stub passes
-; us the mask, not a pointer to it.
 112	OBSOL	sigstack
-113	COMPAT	{ int recvmsg(int s, struct omsghdr *msg, int flags); }
-114	COMPAT	{ int sendmsg(int s, caddr_t msg, int flags); }
+113	OBSOL	old recvmsg
+114	OBSOL	old sendmsg
 115	OBSOL	vtrace
 116	STD	{ int gettimeofday(struct timeval *tp, \
 			    struct timezone *tzp); }
@@ -198,14 +187,12 @@
 			    struct timezone *tzp); }
 123	STD	{ int fchown(int fd, int uid, int gid); }
 124	STD	{ int fchmod(int fd, int mode); }
-125	CPT_NOA	{ int recvfrom(int s, caddr_t buf, size_t len, \
-			    int flags, caddr_t from, int *fromlenaddr); } \
-			    recvfrom recvfrom_args int
+125	OBSOL	old recvfrom
 126	STD	{ int setreuid(int ruid, int euid); }
 127	STD	{ int setregid(int rgid, int egid); }
 128	STD	{ int rename(char *from, char *to); }
-129	COMPAT	{ int truncate(char *path, long length); }
-130	COMPAT	{ int ftruncate(int fd, long length); }
+129	OBSOL	old truncate
+130	OBSOL	old ftruncate
 131	STD	{ int flock(int fd, int how); }
 132	STD	{ int mkfifo(char *path, int mode); }
 133	STD	{ int sendto(int s, caddr_t buf, size_t len, \
@@ -219,18 +206,17 @@
 139	OBSOL	4.2 sigreturn
 140	STD	{ int adjtime(struct timeval *delta, \
 			    struct timeval *olddelta); }
-141	COMPAT	{ int getpeername(int fdes, caddr_t asa, int *alen); }
+141	OBSOL	old getpeername
 142	OBSOL	4.3 gethostid
 143	OBSOL	4.3 sethostid
-144	COMPAT	{ int getrlimit(u_int which, struct orlimit *rlp); }
-145	COMPAT	{ int setrlimit(u_int which, struct orlimit *rlp); }
+144	OBSOL	old getrlimit
+145	OBSOL	old setrlimit
 146	OBSOL	4.3 killpg
 147	STD	{ int setsid(void); }
 148	STD	{ int quotactl(char *path, int cmd, int uid, \
 			    caddr_t arg); }
-149	COMPAT	{ int quota(void); }
-150	CPT_NOA	{ int getsockname(int fdec, caddr_t asa, int *alen); }\
-			    getsockname getsockname_args int
+149	OBSOL	quota
+150	OBSOL	old getsockname
 
 ; Syscalls 151-180 inclusive are reserved for vendor-specific
 ; system calls.  (This includes various calls added for compatibity
@@ -242,8 +228,7 @@
 154	UNIMPL	nosys
 ; 155 is initialized by the NFS code, if present.
 155	NOIMPL	{ int nfssvc(int flag, caddr_t argp); }
-156	COMPAT	{ int getdirentries(int fd, char *buf, u_int count, \
-			    long *basep); }
+156	OBSOL	old getdirentries
 157	STD	{ int statfs(char *path, struct statfs *buf); }
 158	STD	{ int fstatfs(int fd, struct statfs *buf); }
 159	UNIMPL	nosys
