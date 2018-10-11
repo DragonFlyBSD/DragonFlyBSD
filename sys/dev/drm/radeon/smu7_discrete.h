@@ -483,3 +483,4 @@ typedef struct SMU7_Discrete_PmFuses SMU7_Discrete_PmFuses;
 #pragma pack(pop)
 
 #endif
+
