@@ -28,7 +28,6 @@
  *
  *	@(#)vm_extern.h	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_extern.h,v 1.46.2.3 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_extern.h,v 1.27 2007/04/30 07:18:57 dillon Exp $
  */
 
 #ifndef _VM_VM_EXTERN_H_
@@ -58,19 +57,6 @@ struct vnode;
 #ifdef _KERNEL
 
 extern int vkernel_enable;
-
-#ifdef TYPEDEF_FOR_UAP
-int getpagesize (struct proc * p, void *, int *);
-int madvise (struct proc *, void *, int *);
-int mincore (struct proc *, void *, int *);
-int mprotect (struct proc *, void *, int *);
-int msync (struct proc *, void *, int *);
-int munmap (struct proc *, void *, int *);
-int obreak (struct proc *, void *, int *);
-int sbrk (struct proc *, void *, int *);
-int sstk (struct proc *, void *, int *);
-int swapon (struct proc *, void *, int *);
-#endif
 
 int grow (struct proc *, size_t);
 int kernacc(c_caddr_t, int, int);
