@@ -538,6 +538,7 @@ int radeon_bo_list_validate(struct radeon_device *rdev,
 					domain = lobj->allowed_domains;
 					goto retry;
 				}
+				ttm_eu_backoff_reservation(ticket, head);
 				return r;
 			}
 		}
