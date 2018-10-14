@@ -4,6 +4,14 @@
 # $Id: installer,v 1.20 2005/04/13 03:32:16 cpressey Exp $
 
 ### SUBS ###
+cleanup()
+{
+	PIDS=`ps aux | grep -e dfuife_curses -e dfuibe_installer | awk '{print $1}'`
+	for PID in $PIDS; do
+		# DFUI still running, kill it
+		kill -9 $PID
+	done
+}
 
 background_backend()
 {
@@ -24,6 +32,41 @@ background_backend()
 	*)
 		;;
 	esac
+}
+
+is_serial()
+{
+	# Detect if we are currently connected via a serial console
+	if [ "X`/usr/bin/kenv console`" == "Xcomconsole" ]; then
+		return 0 # return success
+	fi
+	return 1
+}
+
+setup_term()
+{
+	# If TERM has not been set manually (ie: still 'dialup' or from /etc/ttyd), we ask the user what they want to use
+	if [ "X`tty |cut -c6-9`" == "Xttyd" ]; then
+		newterm=${TERM}
+		if [ "X`/usr/bin/kenv smbios.bios.vendor`" == "XSeaBIOS" ]; then
+			# installation on a virtial machine uses this type of simulated bios often, so we can do better than vt100 (eg:vt220-co, vt320-co, cons50-w)
+			newterm="xterm"
+		elif [ "X${TERM}" == "Xdialup" ]; then
+			newterm="vt100"
+		fi
+		echo ""
+		echo -n "What is your terminal type (provide value termcap name)? [${newterm}]: "
+		read input
+		[ "${input}" = '' ] && input=$newterm
+		export TERM="${input}"
+		echo "set new TERM=$TERM"
+	fi
+	TTY_BAUD=`stty speed`
+	if [ $TTY_BAUD -lt 38400 ]; then
+		echo -n "Your serial connection is quite slow ($TTY_BAUD), causing installer slow down. Continue Anyway ? [Y/n]: "
+		read input
+		[ "${input}" == "N" ] || [ "${input}" == "n" ] && exit 0
+	fi
 }
 
 installer_start()
@@ -69,12 +112,20 @@ installer_start()
 
 	if [ "X$pfi_frontend" = "Xauto" ]; then
 		if [ "X$TTY_INST" = "X" ]; then
-		    if $(is_installmedia); then
-				TTY=/dev/ttyv1
-				pfi_frontend="cursesvty"
-			else
+			if $(is_serial); then
+				setup_term
+				RENDEZVOUS="installer"
+				pfi_dfui_transport="npipe"
 				TTY=$(tty)
 				pfi_frontend="curseslog"
+			else
+				if $(is_installmedia); then
+					TTY=/dev/ttyv1
+					pfi_frontend="cursesvty"
+				else
+					TTY=$(tty)
+					pfi_frontend="curseslog"
+				fi
 			fi
 		else
 			pfi_frontend="cursesx11"
@@ -214,6 +265,8 @@ elif [ $# = 1 -a ! -d $1 ]; then
 	echo "source_directory does not exist or is no directory"
 	exit 1
 fi
+
+trap cleanup EXIT SIGTERM SIGINT
 
 #
 # Source directory for the installation
