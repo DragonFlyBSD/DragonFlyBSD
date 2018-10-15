@@ -53,6 +53,7 @@ struct per_cpu_sysctl_info {
 	char cpu_name[32];
 	int physical_id;
 	int core_id;
+	int ht_id;				/* thread id within core */
 	char physical_siblings[8*MAXCPU];
 	char core_siblings[8*MAXCPU];
 };
@@ -68,12 +69,15 @@ static per_cpu_sysctl_info_t *pcpu_sysctl;
 static void sbuf_print_cpuset(struct sbuf *sb, cpumask_t *mask);
 
 int cpu_topology_levels_number = 1;
+int cpu_topology_ht_ids;
 int cpu_topology_core_ids;
 int cpu_topology_phys_ids;
 cpu_node_t *root_cpu_node;
 
 MALLOC_DEFINE(M_PCPUSYS, "pcpusys", "pcpu sysctl topology");
 
+SYSCTL_INT(_hw, OID_AUTO, cpu_topology_ht_ids, CTLFLAG_RW,
+	   &cpu_topology_ht_ids, 0, "# of logical cores per real core");
 SYSCTL_INT(_hw, OID_AUTO, cpu_topology_core_ids, CTLFLAG_RW,
 	   &cpu_topology_core_ids, 0, "# of real cores per package");
 SYSCTL_INT(_hw, OID_AUTO, cpu_topology_phys_ids, CTLFLAG_RW,
@@ -594,9 +598,12 @@ init_pcpu_topology_sysctl(int assumed_ncpus)
 		sbuf_finish(&sb);
 
 		pcpu_sysctl[i].core_id = get_core_number_within_chip(i);
-		if (cpu_topology_core_ids < pcpu_sysctl[i].core_id)
+		if (cpu_topology_core_ids < pcpu_sysctl[i].core_id + 1)
 			cpu_topology_core_ids = pcpu_sysctl[i].core_id + 1;
 
+		pcpu_sysctl[i].ht_id = get_logical_CPU_number_within_core(i);
+		if (cpu_topology_ht_ids < pcpu_sysctl[i].ht_id + 1)
+			cpu_topology_ht_ids = pcpu_sysctl[i].ht_id + 1;
 	}
 
 	/*
@@ -745,6 +752,14 @@ sbuf_print_cpuset(struct sbuf *sb, cpumask_t *mask)
 		}
 	}
 	sbuf_printf(sb, ") ");
+}
+
+int
+get_cpu_ht_id(int cpuid)
+{
+	if (pcpu_sysctl)
+		return(pcpu_sysctl[cpuid].ht_id);
+	return(0);
 }
 
 int

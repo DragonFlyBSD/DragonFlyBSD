@@ -140,6 +140,7 @@ srat_probe(void)
 			kprintf("(not found)\n");
 		}
 	}
+	vm_numa_organize_finalize();
 
 done:
 	sdt_sdth_unmap(&srat->Header);

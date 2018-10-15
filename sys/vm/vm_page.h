@@ -157,10 +157,15 @@ typedef struct vm_page *vm_page_t;
  * lock contention between cpus.
  *
  * Page coloring cannot be disabled.
+ *
+ * In today's world of many-core systems, we must be able to provide enough VM
+ * page queues for each logical cpu thread to cover the L1/L2/L3 cache set
+ * associativity.  If we don't, the cpu caches will not be properly utilized.
+ * Using 2048 allows 8-way set-assoc with 256 logical cpus.
  */
 #define PQ_PRIME1 31	/* Prime number somewhat less than PQ_HASH_SIZE */
 #define PQ_PRIME2 23	/* Prime number somewhat less than PQ_HASH_SIZE */
-#define PQ_L2_SIZE 512	/* A number of colors opt for 1M cache */
+#define PQ_L2_SIZE 2048	/* Must be enough for maximal ncpus x hw set-assoc */
 #define PQ_L2_MASK	(PQ_L2_SIZE - 1)
 
 #define PQ_NONE		0
@@ -386,6 +391,7 @@ void vm_page_remove (vm_page_t);
 void vm_page_rename (vm_page_t, struct vm_object *, vm_pindex_t);
 void vm_page_startup (void);
 void vm_numa_organize(vm_paddr_t ran_beg, vm_paddr_t bytes, int physid);
+void vm_numa_organize_finalize(void);
 void vm_page_unmanage (vm_page_t);
 void vm_page_unwire (vm_page_t, int);
 void vm_page_wire (vm_page_t);

@@ -449,6 +449,8 @@ vm_page_startup(void)
 }
 
 /*
+ * (called from early boot only)
+ *
  * Reorganize VM pages based on numa data.  May be called as many times as
  * necessary.  Will reorganize the vm_page_t page color and related queue(s)
  * to allow vm_page_alloc() to choose pages based on socket affinity.
@@ -466,9 +468,9 @@ vm_numa_organize(vm_paddr_t ran_beg, vm_paddr_t bytes, int physid)
 	struct vpgqueues *vpq;
 	vm_page_t m;
 	vm_page_t mend;
-	int i;
 	int socket_mod;
 	int socket_value;
+	int i;
 
 	/*
 	 * Check if no physical information, or there was only one socket
@@ -541,6 +543,101 @@ vm_numa_organize(vm_paddr_t ran_beg, vm_paddr_t bytes, int physid)
 			}
 			scan_beg += PAGE_SIZE;
 			++m;
+		}
+	}
+
+	crit_exit();
+}
+
+/*
+ * (called from early boot only)
+ *
+ * Don't allow the NUMA organization to leave vm_page_queues[] nodes
+ * completely empty for a logical cpu.  Doing so would force allocations
+ * on that cpu to always borrow from a nearby cpu, create unnecessary
+ * contention, and cause vm_page_alloc() to iterate more queues and run more
+ * slowly.
+ *
+ * This situation can occur when memory sticks are not entirely populated,
+ * populated at different densities, or in naturally assymetric systems
+ * such as the 2990WX.  There could very well be many vm_page_queues[]
+ * entries with *NO* pages assigned to them.
+ *
+ * Fixing this up ensures that each logical CPU has roughly the same
+ * sized memory pool, and more importantly ensures that logical CPUs
+ * do not wind up with an empty memory pool.
+ *
+ * At them moment we just iterate the other queues and borrow pages,
+ * moving them into the queues for cpus with severe deficits even though
+ * the memory might not be local to those cpus.  I am not doing this in
+ * a 'smart' way, its effectively UMA style (sorta, since its page-by-page
+ * whereas real UMA typically exchanges address bits 8-10 with high address
+ * bits).  But it works extremely well and gives us fairly good deterministic
+ * results on the cpu cores associated with these secondary nodes.
+ */
+void
+vm_numa_organize_finalize(void)
+{
+	struct vpgqueues *vpq;
+	vm_page_t m;
+	long lcnt_lo;
+	long lcnt_hi;
+	int iter;
+	int i;
+	int scale_lim;
+
+	crit_enter();
+
+	/*
+	 * Machines might not use an exact power of 2 for phys_ids,
+	 * core_ids, ht_ids, etc.  This can slightly reduce the actual
+	 * range of indices in vm_page_queues[] that are nominally used.
+	 */
+	if (cpu_topology_ht_ids) {
+		scale_lim = PQ_L2_SIZE / cpu_topology_phys_ids;
+		scale_lim = scale_lim / cpu_topology_core_ids;
+		scale_lim = scale_lim / cpu_topology_ht_ids;
+		scale_lim = scale_lim * cpu_topology_ht_ids;
+		scale_lim = scale_lim * cpu_topology_core_ids;
+		scale_lim = scale_lim * cpu_topology_phys_ids;
+	} else {
+		scale_lim = PQ_L2_SIZE;
+	}
+
+	/*
+	 * Calculate an average, set hysteresis for balancing from
+	 * 10% below the average to the average.
+	 */
+	lcnt_hi = 0;
+	for (i = 0; i < scale_lim; ++i) {
+		lcnt_hi += vm_page_queues[i].lcnt;
+	}
+	lcnt_hi /= scale_lim;
+	lcnt_lo = lcnt_hi - lcnt_hi / 10;
+
+	kprintf("vm_page: avg %ld pages per queue, %d queues\n",
+		lcnt_hi, scale_lim);
+
+	iter = 0;
+	for (i = 0; i < scale_lim; ++i) {
+		vpq = &vm_page_queues[PQ_FREE + i];
+		while (vpq->lcnt < lcnt_lo) {
+			struct vpgqueues *vptmp;
+
+			iter = (iter + 1) & PQ_L2_MASK;
+			vptmp = &vm_page_queues[PQ_FREE + iter];
+			if (vptmp->lcnt < lcnt_hi)
+				continue;
+			m = TAILQ_FIRST(&vptmp->pl);
+			KKASSERT(m->queue == PQ_FREE + iter);
+			TAILQ_REMOVE(&vptmp->pl, m, pageq);
+			--vptmp->lcnt;
+			/* queue doesn't change, no need to adj cnt */
+			m->queue -= m->pc;
+			m->pc = i;
+			m->queue += m->pc;
+			TAILQ_INSERT_HEAD(&vpq->pl, m, pageq);
+			++vpq->lcnt;
 		}
 	}
 	crit_exit();
@@ -960,29 +1057,61 @@ u_short
 vm_get_pg_color(int cpuid, vm_object_t object, vm_pindex_t pindex)
 {
 	u_short pg_color;
-	int phys_id;
-	int core_id;
 	int object_pg_color;
 
-	phys_id = get_cpu_phys_id(cpuid);
-	core_id = get_cpu_core_id(cpuid);
+	/*
+	 * WARNING! cpu_topology_core_ids might not be a power of two.
+	 *	    We also shouldn't make assumptions about
+	 *	    cpu_topology_phys_ids either.
+	 *
+	 * WARNING! ncpus might not be known at this time (during early
+	 *	    boot), and might be set to 1.
+	 *
+	 * General format: [phys_id][core_id][cpuid][set-associativity]
+	 * (but uses modulo, so not necessarily precise bit masks)
+	 */
 	object_pg_color = object ? object->pg_color : 0;
 
-	if (cpu_topology_phys_ids && cpu_topology_core_ids) {
-		int grpsize;
+	if (cpu_topology_ht_ids) {
+		int phys_id;
+		int core_id;
+		int ht_id;
+		int physcale;
+		int grpscale;
+		int cpuscale;
 
 		/*
-		 * Break us down by socket and cpu
+		 * Translate cpuid to socket, core, and hyperthread id.
 		 */
-		pg_color = phys_id * PQ_L2_SIZE / cpu_topology_phys_ids;
-		pg_color += core_id * PQ_L2_SIZE /
-			    (cpu_topology_core_ids * cpu_topology_phys_ids);
+		phys_id = get_cpu_phys_id(cpuid);
+		core_id = get_cpu_core_id(cpuid);
+		ht_id = get_cpu_ht_id(cpuid);
 
 		/*
-		 * Calculate remaining component for object/queue color
+		 * Calculate pg_color for our array index.
+		 *
+		 * physcale - socket multiplier.
+		 * grpscale - core multiplier (cores per socket)
+		 * cpu*	    - cpus per core
+		 *
+		 * WARNING! In early boot, ncpus has not yet been
+		 *	    initialized and may be set to (1).
+		 *
+		 * WARNING! physcale must match the organization that
+		 *	    vm_numa_organize() creates to ensure that
+		 *	    we properly localize allocations to the
+		 *	    requested cpuid.
 		 */
-		grpsize = PQ_L2_SIZE / (cpu_topology_core_ids *
-					cpu_topology_phys_ids);
+		physcale = PQ_L2_SIZE / cpu_topology_phys_ids;
+		grpscale = physcale / cpu_topology_core_ids;
+		cpuscale = grpscale / cpu_topology_ht_ids;
+
+		pg_color = phys_id * physcale;
+		pg_color += core_id * grpscale;
+		pg_color += ht_id * cpuscale;
+		pg_color += (pindex + object_pg_color) % cpuscale;
+
+#if 0
 		if (grpsize >= 8) {
 			pg_color += (pindex + object_pg_color) % grpsize;
 		} else {
@@ -996,12 +1125,20 @@ vm_get_pg_color(int cpuid, vm_object_t object, vm_pindex_t pindex)
 			}
 			pg_color += (pindex + object_pg_color) % grpsize;
 		}
+#endif
 	} else {
 		/*
 		 * Unknown topology, distribute things evenly.
+		 *
+		 * WARNING! In early boot, ncpus has not yet been
+		 *	    initialized and may be set to (1).
 		 */
-		pg_color = cpuid * PQ_L2_SIZE / ncpus;
-		pg_color += pindex + object_pg_color;
+		int cpuscale;
+
+		cpuscale = PQ_L2_SIZE / ncpus;
+
+		pg_color = cpuid * cpuscale;
+		pg_color += (pindex + object_pg_color) % cpuscale;
 	}
 	return (pg_color & PQ_L2_MASK);
 }
