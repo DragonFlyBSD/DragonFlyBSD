@@ -1,0 +1,17 @@
+OPENRESOLV
+==========
+
+Original source can be downloaded from:
+https://github.com/rsmarples/openresolv/releases
+
+file = openresolv-openresolv-3.9.0.tar.gz
+date = 2016 December 30
+size = 20931
+sha1 = f1cf9b923b812b56e50c792cd953891bee93cdf6
+
+The file README.DELETED contains a list of deleted files and directories.
+
+No local modification is applied.
+
+The program is installed by 'sbin/resolvconf', and the configuration file is
+installed by 'etc/Makefile'.
