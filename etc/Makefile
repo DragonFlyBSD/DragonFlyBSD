@@ -16,7 +16,8 @@ BINUPDATE= devd.conf fbtab gettytab network.subr \
 BINUPDATE+=mail.rc locate.rc
 .else
 BINUPDATE+=${.CURDIR}/../usr.bin/mail/misc/mail.rc \
-	${.CURDIR}/../usr.bin/locate/locate/locate.rc
+	${.CURDIR}/../usr.bin/locate/locate/locate.rc \
+	${.CURDIR}/../contrib/openresolv/resolvconf.conf
 .endif
 
 # Initial distribution files are installed read-write (644)

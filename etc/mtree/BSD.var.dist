@@ -54,6 +54,8 @@
     run
         ppp             gname=network mode=0770
         ..
+        resolvconf
+        ..
         wpa_supplicant
         ..
         sem             mode=01777

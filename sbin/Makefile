@@ -80,6 +80,7 @@ SUBDIR=	adjkerntz \
 	reboot \
 	rconfig \
 	rcorder \
+	resolvconf \
 	restore \
 	route \
 	routed \
