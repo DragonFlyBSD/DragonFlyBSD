@@ -83,9 +83,11 @@
 #  define SHA256_DIGEST_LENGTH		32
 #endif
 
+#if 0  /* XXX: suppress the warning as dfly currently doesn't support it */
 #ifdef IPV6_POLLADDRFLAG
 #  warning kernel does not report IPv6 address flag changes
 #  warning polling tentative address flags periodically
+#endif
 #endif
 
 /* Hackery at it's finest. */

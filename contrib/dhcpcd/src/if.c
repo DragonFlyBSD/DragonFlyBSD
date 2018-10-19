@@ -479,6 +479,7 @@ if_discover(struct dhcpcd_ctx *ctx, struct ifaddrs **ifaddrs,
 				/* FALLTHROUGH */
 #endif
 #ifdef IFT_L2VLAN
+				/* FALLTHROUGH */
 			case IFT_L2VLAN: /* FALLTHROUGH */
 #endif
 #ifdef IFT_L3IPVLAN
