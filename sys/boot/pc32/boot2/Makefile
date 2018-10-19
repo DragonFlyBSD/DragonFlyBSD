@@ -53,6 +53,7 @@ CFLAGS=	-Os \
 	-fno-unwind-tables \
 	-fno-asynchronous-unwind-tables \
 	-DBOOT2 \
+	-DSIOSPD=${BOOT_COMCONSOLE_SPEED} \
 	-I${.CURDIR}/../../common \
 	-I${.CURDIR}/../../../../lib/libstand \
 	-I${.CURDIR}/../btx/lib -I. \
@@ -86,6 +87,7 @@ NSECT_32?=	16
 NSECT_64?=	30
 LDFLAGS=	-nostdlib -static -N --gc-sections
 LINKSCRIPT=	--script ${.CURDIR}/boot2.ldscript
+BOOT2_H=	../../common/rbx.h ../../common/paths.h ../../../sys/reboot.h
 
 all: boot
 
@@ -93,7 +95,6 @@ boot: boot1_32 boot2_32
 	cat ${.ALLSRC} > boot
 
 .for s in _32 _64
-
 _ADDCFLAGS$s:= -DNSECT=${NSECT$s}
 _ts=	$s
 .if ${_ts} == "_64"
@@ -119,7 +120,7 @@ boot1$s.o: boot1.S
 
 #${.CURDIR}/../../common/ufsread.c ${.CURDIR}/../../../../lib/libstand/hammer2.c
 
-boot2$s.s: boot2.c boot2$s.h ufsread.c hammer2.c scrc32.c
+boot2$s.s: boot2.c boot2$s.h ufsread.c hammer2.c scrc32.c $(BOOT2_H)
 	${CC} ${CFLAGS} ${_ADDCFLAGS$s} -S -o boot2$s.s.tmp ${.CURDIR}/boot2.c
 	sed -e '/align/d' -e '/nop/d' < ${.TARGET}.tmp > ${.TARGET}
 	rm -f ${.TARGET}.tmp
@@ -169,7 +170,6 @@ scrc32$s.o: scrc32.c
 
 sio.o: sio.S
 	${CC} ${CFLAGS} -DSIOPRT=${BOOT_COMCONSOLE_PORT} -DSIOFMT=${B2SIOFMT} \
-		-DSIOSPD=${BOOT_COMCONSOLE_SPEED} \
 		${.ALLSRC} -o ${.TARGET} -c
 
 install:

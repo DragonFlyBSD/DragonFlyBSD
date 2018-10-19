@@ -37,32 +37,47 @@
  * Arguments to reboot system call.  These are passed to
  * the boot program and on to init.
  *
- * Note: if neither MUTE, SERIAL, or VIDEO is set, multi-console mode is
+ * Note: if neither MUTE, SERIAL, or VIDEO is set, multi-console (DUAL) mode is
  * assumed.
  */
-#define	RB_AUTOBOOT	0	/* flags for system auto-booting itself */
+#define	RB_AUTOBOOT	0		/* flags for system auto-booting itself */
 
-#define	RB_ASKNAME	0x001	/* ask for file name to reboot from */
-#define	RB_SINGLE	0x002	/* reboot to single user only */
-#define	RB_NOSYNC	0x004	/* dont sync before reboot */
-#define	RB_HALT		0x008	/* don't reboot, just halt */
-#define	RB_INITNAME	0x010	/* name given for /etc/init (unused) */
-#define	RB_DFLTROOT	0x020	/* use compiled-in rootdev */
-#define	RB_KDB		0x040	/* give control to kernel debugger */
-#define	RB_RDONLY	0x080	/* mount root fs read-only */
-#define	RB_DUMP		0x100	/* dump kernel memory before reboot */
-#define	RB_MINIROOT	0x200	/* mini-root present in memory at boot time */
-#define RB_UNUSED10	0x400	/* was: invoke user configuration routing */
-#define RB_VERBOSE	0x800	/* print all potentially useful info */
-#define	RB_SERIAL	0x1000	/* user serial port as console */
-#define	RB_CDROM	0x2000	/* use cdrom as root */
-#define	RB_POWEROFF	0x4000	/* if you can, turn the power off */
-#define	RB_GDB		0x8000	/* use GDB remote debugger instead of DDB */
-#define	RB_MUTE		0x10000	/* Come up with the console muted */
-#define	RB_SELFTEST	0x20000	/* don't boot to normal operation, do selftest */
-#define	RB_PAUSE	0x40000	/* pause after each output line during probe */
+#define	RB_ASKNAME	1 << 0		/* ask for file name to reboot from (-a) */
+#define	RB_SINGLE	1 << 1		/* reboot to single user only (-s) */
+#define	RB_NOSYNC	1 << 2		/* dont sync before reboot (unused) */
+#define	RB_HALT		1 << 3		/* don't reboot, just halt */
+#define	RB_INITNAME	1 << 4		/* name given for /etc/init (unused) */
+#define	RB_DFLTROOT	1 << 5		/* use compiled-in rootdev (-r) */
+#define	RB_KDB		1 << 6		/* give control to kernel debugger (-d) */
+#define	RB_RDONLY	1 << 7		/* mount root fs read-only (unused) */
+#define	RB_DUMP		1 << 8		/* dump kernel memory before reboot (unused) */
+#define	RB_MINIROOT	1 << 9		/* mini-root present in memory at boot time (unused) */
+#define RB_CONFIG	1 << 10		/* was: invoke user configuration routing (-c) */
+#define RB_VERBOSE	1 << 11		/* print all potentially useful info (-v) */
+#define	RB_SERIAL	1 << 12		/* user serial port as console (-h) */
+#define	RB_CDROM	1 << 13		/* use cdrom as root (-C) */
+#define	RB_POWEROFF	1 << 14		/* if you can, turn the power off (unused) */
+#define	RB_GDB		1 << 15		/* use GDB remote debugger instead of DDB (-g) */
+#define	RB_MUTE		1 << 16		/* Come up with the console muted (-m) */
+#define	RB_SELFTEST	1 << 17		/* don't boot to normal operation, do selftest (unused) */
+#define RB_RESERVED01	1 << 18		/* reserved for internal use of boot blocks */
+#define RB_RESERVED02	1 << 19		/* reserved for internal use of boot blocks */
+#define	RB_PAUSE	1 << 20		/* pause after each output line during probe (-p) */
+#define RB_QUIET	1 << 21		/* Don't generate output during boot1/boot2 (-q) */
+//#define RB_REROOT	1 << 21		/* unmount the rootfs and mount it again (fbsd)*/
+//#define RB_POWERCYCLE	1 << 22		/* Power cycle if possible (fbsd) */
+//#define RB_UNUSED03	1 << 23
+//#define RB_UNUSED04	1 << 24
+//#define RB_UNUSED05	1 << 25
+#define RB_NOINTR	1 << 26		/* Non Interruptable come up (-n) */
+#define RB_DUAL		1 << 27		/* use comconsole and vidconsole (-D) */
+//#define RB_PROBE	1 << 28		/* Probe multiple consoles (fbsd) */
 
-#define RB_VIDEO	0x20000000	/* use video console */
-#define	RB_BOOTINFO	0x80000000	/* have `struct bootinfo *' arg */
+/* temp fixup */
+#define RB_VIDEO	1 << 29		/* use video console */
+#define RB_MULTIPLE	1 << 29		/* use multiple consoles (-D) */
+/* end temp */
+
+#define	RB_BOOTINFO	1 << 31		/* have `struct bootinfo *' arg */
 
 #endif

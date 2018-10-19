@@ -18,8 +18,8 @@
  * $DragonFly: src/sys/boot/pc32/boot2/lib.h,v 1.4 2004/06/27 08:00:46 dillon Exp $
  */
 
-int sio_init(void);	/* returns non-zero if init failed */
-void sio_flush(void);
-void sio_putc(int);
+int sio_init(int) __attribute__((regparm (3))); /* returns non-zero if init failed */
+int sio_flush(void);
+void sio_putc(int) __attribute__((regparm (3)));
 int sio_getc(void);
 int sio_ischar(void);
