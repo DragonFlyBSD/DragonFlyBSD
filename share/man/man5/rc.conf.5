@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd November 8, 2018
+.Dd November 14, 2018
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -290,7 +290,27 @@ Path to the DHCP client program
 .Pa /sbin/dhclient ) .
 .It Va dhclient_flags
 .Pq Vt str
-Additional flags to pass to the DHCP client program.
+Additional flags to pass to the
+.Xr dhclient 8
+program.
+.It Va dhcpcd_enable
+.Pq Vt bool
+Set to
+.Dq Li YES
+to run
+.Xr dhcpcd 8
+in master mode (i.e., configure all available Ethernet interfaces) at startup.
+.It Va dhcpcd_program
+.Pq Vt str
+Path to the
+.Xr dhcpcd 8
+program (default
+.Pa /sbin/dhcpcd ) .
+.It Va dhcpcd_flags
+.Pq Vt str
+Additional flags to pass to the
+.Xr dhcpcd 8
+program.
 .It Va pf_enable
 .Pq Vt bool
 Set to
@@ -2719,6 +2739,7 @@ By default no flags are passed.
 .Xr cron 8 ,
 .Xr devd 8 ,
 .Xr dhclient 8 ,
+.Xr dhcpcd 8 ,
 .Xr dntpd 8 ,
 .Xr ftpd 8 ,
 .Xr ifconfig 8 ,

@@ -1,0 +1,46 @@
+#!/bin/sh
+
+# PROVIDE: dhcpcd
+# REQUIRE: mountcritlocal
+# KEYWORD: nojail
+
+. /etc/rc.subr
+. /etc/network.subr
+
+name="dhcpcd"
+rcvar=
+command="/sbin/$name"
+extra_commands="reload"
+
+load_rc_config $name
+load_rc_config network
+
+ifn="$2"
+if [ -z "$ifn" ]; then
+	rcvar=`set_rcvar`  # running in master mode
+else
+	_if_args="$(get_if_var $ifn dhcpcd_flags_IF)"
+	if dhcpif $ifn ipv4 && dhcpif $ifn ipv6; then
+		command_args="$ifn"
+	elif dhcpif $ifn ipv4; then
+		command_args="-4 $ifn"
+	elif dhcpif $ifn ipv6; then
+		command_args="-6 $ifn"
+	else
+		err 1 "$ifn is not enabled for DHCP (IPv4/IPv6)"
+	fi
+fi
+
+# Work out what pidfile dhcpcd will use based on flags
+if [ -n "$flags" ]; then
+	_flags=$flags
+elif [ -n "$_if_args" ]; then
+	_flags=$_if_args
+else
+	eval _flags=\$${name}_flags
+fi
+pidfile=$($command -P $_flags $command_args 2>/dev/null)
+: ${pidfile:=/var/run/$name.pid}
+unset _flags _if_args
+
+run_rc_command "$1"

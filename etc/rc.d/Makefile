@@ -9,7 +9,7 @@ FILES=	DAEMON LOGIN NETWORKING SERVERS \
 	accounting addswap adjkerntz automount automountd autounmountd \
 	bootconf bootparams btconfig bthcid ccd cleanvar cryptdisks \
 	cleartmp cron cryptdisks \
-	devd devfs dhclient diskless dmesg dntpd dumpon \
+	devd devfs dhclient dhcpcd diskless dmesg dntpd dumpon \
 	fixbootfile fsck ftpd hostname hotplugd \
 	inetd initdiskless initrandom ip6addrctl ip6fw ipfw ipfw3 \
 	jail keyserv \
