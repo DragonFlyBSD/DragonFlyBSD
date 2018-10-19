@@ -351,7 +351,7 @@ mkimg:
 	    cut -f 1 -d: > ${ISODIR}/vn.which
 	vnconfig -e -s labels `cat ${ISODIR}/vn.which` ${IMGFILE}
 	@echo "STEP: set up legacy MBR"
-	fdisk -IB `cat ${ISODIR}/vn.which`
+	fdisk -b ${ISOROOT}/boot/mbr -IB `cat ${ISODIR}/vn.which`
 	fdisk -s `cat ${ISODIR}/vn.which` >${ISODIR}/fdisk.dat
 	awk '(NR==1){printf("g c%s h%s s%s\n", $$2, $$4, $$6);}' \
 	    ${ISODIR}/fdisk.dat >${ISODIR}/fdisk.conf
@@ -376,7 +376,8 @@ mkimg:
 	@echo "STEP: write modified disklabel back"
 	disklabel -R -r `cat ${ISODIR}/vn.which`s2 ${IMGFILE}.label
 	rm ${IMGFILE}.label
-	disklabel -B `cat ${ISODIR}/vn.which`s2
+	disklabel -B -b ${ISOROOT}/boot/boot1_64 -s ${ISOROOT}/boot/boot2_64 \
+	    `cat ${ISODIR}/vn.which`s2
 	newfs /dev/`cat ${ISODIR}/vn.which`s2a
 	mount /dev/`cat ${ISODIR}/vn.which`s2a ${IMGMNT}
 	cpdup ${ISOROOT} ${IMGMNT}
