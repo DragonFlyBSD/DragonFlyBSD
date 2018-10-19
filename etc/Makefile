@@ -17,7 +17,8 @@ BINUPDATE+=mail.rc locate.rc
 .else
 BINUPDATE+=${.CURDIR}/../usr.bin/mail/misc/mail.rc \
 	${.CURDIR}/../usr.bin/locate/locate/locate.rc \
-	${.CURDIR}/../contrib/openresolv/resolvconf.conf
+	${.CURDIR}/../contrib/openresolv/resolvconf.conf \
+	${.CURDIR}/../contrib/dhcpcd/src/dhcpcd.conf
 .endif
 
 # Initial distribution files are installed read-write (644)

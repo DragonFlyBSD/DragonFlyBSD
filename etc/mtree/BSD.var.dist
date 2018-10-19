@@ -28,6 +28,8 @@
     ..
 /set mode=0755
     db
+        dhcpcd
+        ..
     ..
     empty               mode=0555 flags=schg
     ..
@@ -52,6 +54,8 @@
     preserve
     ..
     run
+        dhcpcd
+        ..
         ppp             gname=network mode=0770
         ..
         resolvconf

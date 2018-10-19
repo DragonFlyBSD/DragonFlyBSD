@@ -132,6 +132,8 @@
         ..
         custom
         ..
+        dhcpcd-hooks
+        ..
         gcc47
         ..
         gcc50
@@ -191,6 +193,10 @@
             ..
             cvs
                 contrib
+                ..
+            ..
+            dhcpcd
+                hooks
                 ..
             ..
             diskless

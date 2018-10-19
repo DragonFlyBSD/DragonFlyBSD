@@ -12,6 +12,7 @@ SUBDIR=	adjkerntz \
 	devd \
 	devfsctl \
 	dhclient \
+	dhcpcd \
 	disklabel32 \
 	disklabel64 \
 	diskinfo \
