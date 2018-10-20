@@ -392,7 +392,8 @@ loop:
 		if (dnode) {
 			/*
 			 * Special-case handling to avoid deadlocking against
-			 * dnode.
+			 * dnode.  This case has been validated and occurs
+			 * every so often during synth builds.
 			 */
 			if (vget(vp, (lkflag & ~LK_RETRY) |
 				     LK_NOWAIT |
@@ -405,7 +406,7 @@ loop:
 				}
 				vdrop(vp);
 				TMPFS_NODE_LOCK_SH(dnode);
-				kprintf("tmpfs: deadlock avoided\n");
+
 				return EAGAIN;
 			}
 		} else {

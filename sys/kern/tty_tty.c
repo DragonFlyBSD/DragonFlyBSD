@@ -114,8 +114,12 @@ retry:
 		goto retry;
 	}
 	error = VOP_OPEN(ttyvp, FREAD|FWRITE, ap->a_cred, NULL);
+
+	/*
+	 * Race against ctty close or change.  This case has been validated
+	 * and occurs every so often during synth builds.
+	 */
 	if (ttyvp != cttyvp(p) || (ttyvp->v_flag & VCTTYISOPEN)) {
-		kprintf("Warning: cttyopen: race-2 avoided\n");
 		if (error == 0)
 			VOP_CLOSE(ttyvp, FREAD|FWRITE, NULL);
 		vn_unlock(ttyvp);
