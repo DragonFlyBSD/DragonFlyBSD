@@ -35,7 +35,7 @@
 #define PATH_LOADER_EFI	"/loader.efi"
 #define PATH_KERNEL	"/kernel/kernel"
 
-#define PATH_BOOTPREFIX "/"
+#define PATH_BOOTPREFIX ""
 #define PATH_ROOTPREFIX "/boot"		/* don't have a seperate boot partition */
 
 #endif /* _PATHS_H_ */
