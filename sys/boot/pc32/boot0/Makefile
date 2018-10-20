@@ -1,4 +1,9 @@
 # $FreeBSD: src/sys/boot/i386/boot0/Makefile,v 1.17 2002/09/17 01:48:54 peter Exp $
+.if ${MACHINE_ARCH} == "x86_64"
+.MAKEFLAGS:  MACHINE_ARCH=i386 MACHINE_PLATFORM=pc32 REALLY_X86_64=true
+.else
+.MAKEFLAGS:  REALLY_X86_64=false
+.endif
 
 PROG?=		boot0
 NOMAN=

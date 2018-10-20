@@ -1,4 +1,9 @@
 # $FreeBSD: src/sys/boot/i386/boot2/Makefile,v 1.47 2003/06/26 03:51:57 peter Exp $
+.if ${MACHINE_ARCH} == "x86_64"
+.MAKEFLAGS:  MACHINE_ARCH=i386 MACHINE_PLATFORM=pc32 REALLY_X86_64=true
+.else
+.MAKEFLAGS:  REALLY_X86_64=false
+.endif
 
 BINDIR?=	/boot
 BINMODE=	444
