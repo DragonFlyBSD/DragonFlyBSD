@@ -77,6 +77,7 @@
 #define	KARGS_FLAGS_CD		0x1
 #define	KARGS_FLAGS_PXE		0x2
 
+#define COMCONSOLE_DEBUG	1
 /* Arguments passed in from the boot1/boot2 loader */
 static struct 
 {
@@ -95,8 +96,8 @@ static struct bootinfo	*initial_bootinfo;
 struct arch_switch	archsw;		/* MI/MD interface boundary */
 
 static void		extract_currdev(void);
-static int		isa_inb(int port);
-static void		isa_outb(int port, int value);
+extern int              isa_inb(int port);
+extern void             isa_outb(int port, int value);
 void			exit(int code);
 
 /* from vers.c */
@@ -105,32 +106,56 @@ extern	char bootprog_name[], bootprog_rev[], bootprog_date[], bootprog_maker[];
 /* XXX debugging */
 extern char _end[];
 
-#define COMCONSOLE_DEBUG
-#ifdef COMCONSOLE_DEBUG
-
-static void
-WDEBUG_INIT(void)
+/* move this to rbx.h */
+static struct
 {
-    isa_outb(0x3f8+3, 0x83);	/* DLAB + 8N1 */
-    isa_outb(0x3f8+0, (115200 / 9600) & 0xFF);
-    isa_outb(0x3f8+1, (115200 / 9600) >> 8);
-    isa_outb(0x3f8+3, 0x03);	/* 8N1 */
-    isa_outb(0x3f8+4, 0x03);	/* RTS+DTR */
-    isa_outb(0x3f8+2, 0x01);	/* FIFO_ENABLE */
-}
+        const char 	* const ev;
+        const char 	* const desc;
+        const char 	flag;
+        int		mask;
+} howto_names[] = {
+        {"boot_askname", 	"askname",	'a',	RB_ASKNAME},
+        {"boot_single",		"single", 	's',	RB_SINGLE},
+        {NULL,			"nosync", 	'-',	RB_NOSYNC},
+        {NULL,			"halt",		'-',	RB_HALT},
+        {NULL,			"initname",	'-',	RB_INITNAME},
+        {"boot_dfltroot",	"dfltroot",	'r',	RB_DFLTROOT},
+        {"boot_kdb",		"kdb",		'd',	RB_KDB},
+        {NULL, 			"rdonly",	'-',	RB_RDONLY},
+        {NULL, 			"dump",		'-',	RB_DUMP},
+        {NULL, 			"miniroot",	'-',	RB_MINIROOT},
+        {NULL,			"config",	'c',	RB_CONFIG},
+        {"boot_verbose",	"verbose",	'v',	RB_VERBOSE},
+        {"boot_serial",		"serial",	'h',	RB_SERIAL},
+        {"boot_cdrom",		"cdrom",	'C',	RB_CDROM},
+        {NULL,			"poweroff",	'-',	RB_POWEROFF},
+        {"boot_gdb",		"gdb",		'g',	RB_GDB},
+        {"boot_mute",		"mute",		'm',	RB_MUTE},
+        {NULL,			"selftest",	'-',	RB_SELFTEST},
+        {NULL,			"RESERVED01",	'-',	RB_RESERVED01},
+        {NULL,			"RESERVED02",	'-',	RB_RESERVED02},
+        {"boot_pause",		"pause",	'p',	RB_PAUSE},
+        {NULL,			"quiet",	'q',	RB_QUIET},
+        {NULL,			"noint",	'n',	RB_NOINTR},
+        {"boot_multicons",	"dual",		'D',	RB_DUAL},
+        {"boot_multicons", 	"video",	'-',	RB_VIDEO},
+        {"boot_multicons", 	"multiple",	'M',	RB_MULTIPLE},
+        {NULL,			"bootinfo",	'-',	RB_BOOTINFO}
+};
 
-static void
-WDEBUG(char c)
+/* convert flags to environment "boot_xxx" strings */
+/* copied from /build/freebsd/sys/sys/boot.h, /build/freebsd/sys/kern/subr_boot.c */
+static void howtoflags2env(uint32_t howto)
 {
-    isa_outb(0x3f8, c);
+    uint32_t i;
+    for (i = 0; howto_names[i].mask != RB_BOOTINFO; i++) {
+        if (howto_names[i].ev != NULL && (howto & howto_names[i].mask)) {
+            printf("add:%s\n",howto_names[i].ev);
+            setenv(howto_names[i].ev, "YES", 1);
+        }
+    }
+    printf("\n");
 }
-
-#else
-
-#define WDEBUG(x)
-#define WDEBUG_INIT()
-
-#endif
 
 int
 main(void)
@@ -138,24 +163,15 @@ main(void)
     char *memend;
     int i;
 
-    WDEBUG_INIT();
-    WDEBUG('X');
-
     /* Pick up arguments */
     kargs = (void *)__args;
     initial_howto = kargs->howto;
     initial_bootdev = kargs->bootdev;
     initial_bootinfo = kargs->bootinfo ? (struct bootinfo *)PTOV(kargs->bootinfo) : NULL;
 
-#ifdef COMCONSOLE_DEBUG
-    printf("args at %p initial_howto = %08x bootdev = %08x bootinfo = %p\n", 
-	kargs, initial_howto, initial_bootdev, initial_bootinfo);
-#endif
-
     /* Initialize the v86 register set to a known-good state. */
     bzero(&v86, sizeof(v86));
     v86.efl = PSL_RESERVED_DEFAULT | PSL_I;
-
 
     /* 
      * Initialize the heap as early as possible.  Once this is done, 
@@ -203,14 +219,19 @@ main(void)
      * set it.  If neither is specified or both are specified we leave the
      * console environment variable alone, defaulting to dual boot.
      */
-    if (initial_howto & RB_MUTE) {
-	setenv("console", "nullconsole", 1);
-    } else if ((initial_howto & (RB_VIDEO|RB_SERIAL)) != (RB_VIDEO|RB_SERIAL)) {
-	if (initial_howto & RB_VIDEO)
-	    setenv("console", "vidconsole", 1);
-	if (initial_howto & RB_SERIAL)
-	    setenv("console", "comconsole", 1);
-    }
+    howtoflags2env(initial_howto);
+    if (initial_howto & RB_MUTE)
+        setenv("console", "nullconsole", 1);
+    else if ((initial_howto & RB_MULTIPLE) == RB_MULTIPLE ||
+             (initial_howto & RB_DUAL) == RB_DUAL ||
+             (initial_howto & (RB_VIDEO|RB_SERIAL)) == (RB_VIDEO|RB_SERIAL)	/* old implementation */
+    ) {
+        if (initial_howto & RB_SERIAL)
+            setenv("console", "comconsole vidconsole", 1);
+        else
+            setenv("console", "vidconsole comconsole", 1);
+    } else if (initial_howto & RB_SERIAL)
+        setenv("console", "comconsole", 1);
     cons_probe();
 
     /*
@@ -236,10 +257,10 @@ main(void)
      * March through the device switch probing for things.
      */
     for (i = 0; devsw[i] != NULL; i++) {
-	WDEBUG('M' + i);
+	/*WDEBUG('M' + i);*/
 	if (devsw[i]->dv_init != NULL)
 	    (devsw[i]->dv_init)();
-	WDEBUG('M' + i);
+	/*WDEBUG('M' + i);*/
     }
     printf("BIOS %dkB/%dkB available memory\n", 
 	    bios_basemem / 1024, bios_extmem / 1024);
@@ -263,6 +284,15 @@ main(void)
     printf("\n");
     printf("%s, Revision %s\n", bootprog_name, bootprog_rev);
     printf("(%s, %s)\n", bootprog_maker, bootprog_date);
+
+#if COMCONSOLE_DEBUG
+    printf("args at %p initial_howto = %08x bootdev = %08x bootinfo = %p\n", 
+	kargs, initial_howto, initial_bootdev, initial_bootinfo);
+    if (initial_howto & RB_SERIAL) {
+        printf("Serial at Speed:%s on Port:%s\n", getenv("comconsole_speed"), getenv("comconsole_port"));
+    }
+#endif
+    howtoflags2env(initial_howto);
 
     extract_currdev();				/* set $currdev and $loaddev */
     setenv("LINES", "24", 1);			/* optional */
@@ -387,35 +417,5 @@ command_heap(int argc, char *argv[])
     printf("heap %p-%p (%d)\n", base, base + bytes, (int)bytes);
     printf("stack at %p\n", &argc);
     return(CMD_OK);
-}
-
-/* ISA bus access functions for PnP, derived from <machine/cpufunc.h> */
-static int		
-isa_inb(int port)
-{
-    u_char	data;
-    
-    if (__builtin_constant_p(port) && 
-	(((port) & 0xffff) < 0x100) && 
-	((port) < 0x10000)) {
-	__asm __volatile("inb %1,%0" : "=a" (data) : "id" ((u_short)(port)));
-    } else {
-	__asm __volatile("inb %%dx,%0" : "=a" (data) : "d" (port));
-    }
-    return(data);
-}
-
-static void
-isa_outb(int port, int value)
-{
-    u_char	al = value;
-    
-    if (__builtin_constant_p(port) && 
-	(((port) & 0xffff) < 0x100) && 
-	((port) < 0x10000)) {
-	__asm __volatile("outb %0,%1" : : "a" (al), "id" ((u_short)(port)));
-    } else {
-        __asm __volatile("outb %0,%%dx" : : "a" (al), "d" (port));
-    }
 }
 
