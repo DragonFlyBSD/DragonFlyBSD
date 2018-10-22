@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2018.09.12
-#	Date:    2018-09-12 03:15:02
+#	Version: 2018.10.13
+#	Date:    2018-10-13 03:15:02
 #
 #	Maintained by Albert Pool, Martin Mares, and other volunteers from
 #	the PCI ID Project at http://pci-ids.ucw.cz/.
@@ -412,6 +412,7 @@
 	005c  SAS1064A PCI-X Fusion-MPT SAS
 	005d  MegaRAID SAS-3 3108 [Invader]
 		1000 9361  MegaRAID SAS 9361-8i
+		1000 9363  MegaRAID SAS 9361-4i
 		1000 9364  MegaRAID SAS 9364-8i
 		1000 936a  MegaRAID SAS 9364-8i
 		1028 1f41  PERC H830 Adapter
@@ -1667,7 +1668,8 @@
 		106b 014b  Tropo XT [Radeon R9 M380 Mac Edition]
 	6641  Saturn PRO [Radeon HD 8930M]
 	6646  Bonaire XT [Radeon R9 M280X]
-	6647  Bonaire PRO [Radeon R9 M270X]
+	6647  Saturn PRO/XT [Radeon R9 M270X/M280X]
+		1043 223d  N551ZU laptop Radeon R9 M280X
 	6649  Bonaire [FirePro W5100]
 		1002 0b0c  FirePro W4300
 		103c 0b0c  Bonaire [FirePro W4300]
@@ -2354,7 +2356,7 @@
 		1787 a470  Radeon RX 470
 		1787 a480  Radeon RX 480
 		1849 5001  Phantom Gaming X RX 580 OC
-		1da2 e353  Sapphire Radeon RX 580 Pulse 8GB
+		1da2 e353  Radeon RX 570 Pulse 4GB
 		1da2 e366  Nitro+ Radeon RX 580 4GB
 	67e0  Baffin [Radeon Pro WX 4170]
 		103c 8270  Radeon Pro WX 4170
@@ -2465,8 +2467,9 @@
 		15c3 2b1e  MED-X6000
 	6829  Cape Verde
 	682a  Venus PRO
-	682b  Venus LE / Tropo PRO-L [Radeon HD 8830M / R7 M465X]
+	682b  Cape Verde PRO / Venus LE / Tropo PRO-L [Radeon HD 8830M / R7 250 / R7 M465X]
 		0128 079c  Radeon R7 465X
+		1462 3012  Radeon R7 250
 	682c  Cape Verde GL [FirePro W4100]
 	682d  Chelsea XT GL [FirePro M4000]
 	682f  Chelsea LP [Radeon HD 7730M]
@@ -3658,6 +3661,7 @@
 # I have a Tonga card and this is the HDMI Audio part
 	aad8  Tonga HDMI Audio [Radeon R9 285/380]
 		174b aad8  Radeon R9 285/380 HDMI Audio
+	aae0  Baffin HDMI/DP Audio [Radeon RX 550 640SP / RX 560/560X]
 	aae8  Fiji HDMI/DP Audio [Radeon R9 Nano / FURY/FURY X]
 	aaf0  Ellesmere [Radeon RX 580]
 	ac00  Theater 600 Pro
@@ -4323,10 +4327,16 @@
 	43a1  Hudson PCI to PCI bridge (PCIE port 1)
 	43a2  Hudson PCI to PCI bridge (PCIE port 2)
 	43a3  Hudson PCI to PCI bridge (PCIE port 3)
+	43b0  X370 Series Chipset PCIe Upstream Port
+		1849 43c6  Fatal1ty X370 Professional Gaming
 	43b1  X399 Series Chipset PCIe Bridge
 	43b4  300 Series Chipset PCIe Port
+	43b5  X370 Series Chipset SATA Controller
+		1849 43c8  Fatal1ty X370 Professional Gaming
 	43b6  X399 Series Chipset SATA Controller
 	43b7  300 Series Chipset SATA Controller
+	43b9  X370 Series Chipset USB 3.1 xHCI Controller
+		1849 43d0  Fatal1ty X370 Professional Gaming
 	43ba  X399 Series Chipset USB 3.1 xHCI Controller
 	43bb  300 Series Chipset USB 3.1 xHCI Controller
 	7006  AMD-751 [Irongate] System Controller
@@ -6375,6 +6385,8 @@
 		1077 02a8  QLE2692 Dual Port 16Gb FC to PCIe Gen3 x8 Adapter
 		1077 02ab  QLE2740 Single Port 32Gb FC to PCIe Gen3 x8 Adapter
 		1077 02ac  QLE2742 Dual Port 32Gb FC to PCIe Gen3 x8 Adapter
+		1077 02b8  2x16Gb QME2692 FC HBA
+		1077 02b9  2x32Gb QME2742 FC HBA
 		1590 00f9  StoreFabric SN1100Q 16Gb Single Port Fibre Channel Host Bus Adapter
 		1590 00fa  StoreFabric SN1100Q 16Gb Dual Port Fibre Channel Host Bus Adapter
 		1590 0203  StoreFabric SN1600Q 32Gb Single Port Fibre Channel Host Bus Adapter
@@ -6444,6 +6456,8 @@
 		1077 0007  QLogic 2x1GE+2x10GE QL41264HMCU CNA
 		1077 0009  QLogic 2x1GE+2x10GE QL41162HMRJ CNA
 		1077 000b  25GE 2P QL41262HxCU-DE Adapter
+		1077 000f  2x25GE QL41262HMKR CNA
+		1077 0010  2x25GE QL41232HMKR NIC
 		1077 0011  FastLinQ QL41212HLCU 25GbE Adapter
 		1077 0012  FastLinQ QL41112H 10GbE Adapter
 		1077 0019  QL41232HOCU - Dual Port 25/10GbE SFP28 OCP Adapter
@@ -6464,6 +6478,7 @@
 		1077 000c  QLogic 2x25GE QL41262HMCU CNA
 		1077 000d  FastLinQ QL41262H 25GbE FCoE Adapter
 		1077 000e  FastLinQ QL41162H 10GbE FCoE Adapter
+		1077 000f  2x25GE QL41262HMKR CNA
 	8084  FastLinQ QL41000 Series 10/25/40/50GbE Controller (iSCSI)
 		1077 0001  10GE 2P QL41162HxRJ-DE Adapter
 		1077 0002  10GE 2P QL41112HxCU-DE Adapter
@@ -6477,6 +6492,7 @@
 		1077 000c  QLogic 2x25GE QL41262HMCU CNA
 		1077 000d  FastLinQ QL41262H 25GbE iSCSI Adapter
 		1077 000e  FastLinQ QL41162H 10GbE iSCSI Adapter
+		1077 000f  2x25GE QL41262HMKR CNA
 	8090  FastLinQ QL41000 Series Gigabit Ethernet Controller (SR-IOV VF)
 		1077 0001  25GE 2P QL41262HxCU-DE Adapter
 		1077 0002  10GE 2P QL41112HxCU-DE Adapter
@@ -6490,6 +6506,8 @@
 		1077 000c  QLogic 2x25GE QL41262HMCU CNA
 		1077 000d  FastLinQ QL41262H 25GbE FCoE Adapter (SR-IOV VF)
 		1077 000e  FastLinQ QL41162H 10GbE iSCSI Adapter (SR-IOV VF)
+		1077 000f  2x25GE QL41262HMKR CNA
+		1077 0010  2x25GE QL41232HMKR NIC
 		1077 0011  FastLinQ QL41212H 25GbE Adapter (SR-IOV VF)
 		1077 0012  FastLinQ QL41112H 10GbE Adapter (SR-IOV VF)
 		1590 021e  10/25GbE 2P QL41162HMRJ-HP Adapter
@@ -10329,6 +10347,7 @@
 	0f00  GF108 [GeForce GT 630]
 	0f01  GF108 [GeForce GT 620]
 	0f02  GF108 [GeForce GT 730]
+	0f03  GF108 [GeForce GT 610]
 	0f06  GF108 [GeForce GT 730]
 	0fb0  GM200 High Definition Audio
 	0fb8  GP108 High Definition Audio Controller
@@ -10515,6 +10534,7 @@
 	10ef  GP102 HDMI Audio Controller
 	10f0  GP104 High Definition Audio Controller
 	10f1  GP106 High Definition Audio Controller
+	10f7  TU102 High Definition Audio Controller
 	1140  GF117M [GeForce 610M/710M/810M/820M / GT 620M/625M/630M/720M]
 		1019 0799  GeForce 820M
 		1019 999f  GeForce GT 720M
@@ -11128,12 +11148,13 @@
 	174d  GM108M [GeForce MX130]
 	174e  GM108M [GeForce MX110]
 	1789  GM107GL [GRID M3-3020]
-	179c  NVIDIA GeForce 940MX
+	179c  GM107 [GeForce 940MX]
 	17c2  GM200 [GeForce GTX TITAN X]
 	17c8  GM200 [GeForce GTX 980 Ti]
 	17f0  GM200GL [Quadro M6000]
 	17f1  GM200GL [Quadro M6000 24GB]
 	17fd  GM200GL [Tesla M40]
+	1ad6  TU102 USB 3.1 Controller
 	1b00  GP102 [TITAN X]
 	1b01  GP102
 	1b02  GP102 [TITAN Xp]
@@ -11237,16 +11258,18 @@
 	1dba  GV100GL [Quadro GV100]
 		10de 12eb  TITAN V CEO Edition
 	1e02  TU102
-	1e04  TU102
-	1e07  TU102 [GeForce RTX 2080 Ti]
+	1e04  TU102 [GeForce RTX 2080 Ti]
+	1e07  TU102 [GeForce RTX 2080 Ti Rev. A]
+		1462 3715  RTX 2080 Ti GAMING X TRIO
 	1e30  TU102GL
 	1e3c  TU102GL [Quadro RTX 6000]
 	1e3d  TU102GL
-	1e82  TU104
-	1e87  TU104 [GeForce RTX 2080]
+	1e82  TU104 [GeForce RTX 2080]
+	1e87  TU104 [GeForce RTX 2080 Rev. A]
 	1eab  TU104M [GeForce RTX 2080 Mobile]
 	1eae  TU104M
-	1f07  TU106 [GeForce RTX 2070]
+	1f02  TU106 [GeForce RTX 2070]
+	1f07  TU106 [GeForce RTX 2070 Rev. A]
 10df  Emulex Corporation
 	0720  OneConnect NIC (Skyhawk)
 		103c 1934  FlexFabric 20Gb 2-port 650M Adapter
@@ -16256,9 +16279,10 @@
 		1612 0000  PCI-1612 4-port RS-232/422/485
 	1711  PCI-1711 16-channel data acquisition card 12-bit, 100kS/s
 	1733  PCI-1733 32-channel isolated digital input card
-	1752  PCI-1752
-	1754  PCI-1754
-	1756  PCI-1756
+	1734  PCI-1734 32-channel isolated digital output card
+	1752  PCI-1752 64-channel Isolated Digital Output Card
+	1754  PCI-1754 64-channel Isolated Digital Input Card
+	1756  PCI-1756 64-ch Isolated Digital I/O PCI Card
 # FPGA bridge to two SJA1000
 	c302  MIOe-3680 2-Port CAN-Bus MIOe Module with Isolation Protection
 13ff  Silicon Spice Inc
@@ -18258,8 +18282,9 @@
 # Tomahawk
 	b960  Broadcom BCM56960 Switch ASIC
 	d802  BCM58802 Stingray 50Gb Ethernet SoC
-		14e4 8024  Stingray Dual-Port 25Gb Ethernet PCIe SmartNIC w4GB DRAM
-		14e4 8028  Stingray Dual-Port 25Gb Ethernet PCIe SmartNIC w8GB DRAM
+		14e4 8021  Stingray Dual-Port 25Gb Ethernet PCIe SmartNIC w16GB DRAM (Part No BCM958802A8046C)
+		14e4 8024  Stingray Dual-Port 25Gb Ethernet PCIe SmartNIC w4GB DRAM (Part No BCM958802A8044C)
+		14e4 8028  Stingray Dual-Port 25Gb Ethernet PCIe SmartNIC w8GB DRAM (Part No BCM958802A8048C)
 	d804  BCM58804 Stingray 100Gb Ethernet SoC
 14e5  Pixelfusion Ltd
 14e6  SHINING Technology Inc
@@ -19701,6 +19726,8 @@
 	4353  PMC-DX2003 Reconfigurable FPGA with TTL and Differential I/O
 	4357  PMC-DX502 Reconfigurable Differential I/O Module
 	4457  PMC730, APC730, AcPC730 Multifunction Module
+	4471  XMC730 Multi-function I/O module with front I/O
+	4473  XMC730CC Multi-function I/O module with rear I/O Conduction-cooled
 	464d  PMC408 32-Channel Digital Input/Output Module
 	4850  PMC220-16 12-Bit Analog Output Module
 	4a42  PMC483, APC483, AcPC483 Counter Timer Module
@@ -20656,6 +20683,7 @@
 		1924 0500  SFE4005-A0
 	c101  EF1-21022T [EtherFabric]
 192a  BiTMICRO Networks Inc.
+	0008  RAMPART
 192e  TransDimension
 1931  Option N.V.
 	000c  Qualcomm MSM6275 UMTS chip
@@ -20828,10 +20856,14 @@
 	0102  NodalCore C-2000 Content Classification Accelerator
 	0105  NodalCore C-3000 Content Classification Accelerator
 196d  Club-3D BV
+196e  PNY
 1971  AGEIA Technologies, Inc.
 	1011  Physics Processing Unit [PhysX]
 		1043 0001  PhysX P1
-1974  Eberspaecher Electronics
+# nee Eberspaecher Electronics
+1974  Star Electronics GmbH & Co. KG
+	0009  FlexCard PMC-II
+	0011  FlexCard PMC-II Ethernet
 1976  TRENDnet
 1977  Parsec
 197b  JMicron Technology Corp.
@@ -21205,8 +21237,11 @@
 	1080  ASM1083/1085 PCIe to PCI Bridge
 		1849 1080  Motherboard
 	1142  ASM1042A USB 3.0 Host Controller
+	1184  ASM1184e PCIe Switch Port
+		1849 1184  ASM1184e PCIe Switch
 	1242  ASM1142 USB 3.1 Host Controller
 	1343  ASM1143 USB 3.1 Host Controller
+	2142  ASM2142 USB 3.1 Host Controller
 1b26  Netcope Technologies, a.s.
 	c132  COMBO-LXT155
 	c1c0  NFB-100G1-e0
@@ -21313,6 +21348,7 @@
 		1d5c 1000  Anker USB 3.0 Express Card
 	1009  FL1009 USB 3.0 Host Controller
 	1100  FL1100 USB 3.0 Host Controller
+		16b8 6e31  Allegro Pro USB 3.0 PCIe
 1b74  OpenVox Communication Co. Ltd.
 	0115  D115P/D115E Single-port E1/T1 card
 	d130  D130P/D130E Single-port E1/T1 card (3rd GEN)
@@ -21606,6 +21642,7 @@
 1d72  Xiaomi
 1d78  DERA
 1d7c  Aerotech, Inc.
+1d82  NETINT Technologies Inc.
 1d87  Fuzhou Rockchip Electronics Co., Ltd
 1d8f  Enyx
 1d94  Chengdu Higon IC Design Co.Ltd
@@ -22319,7 +22356,7 @@
 544c  Teralogic Inc
 	0350  TL880-based HDTV/ATSC tuner
 544d  TBS Technologies
-	6178  DVB-S2 4 Tuner PCIe Card
+	6178  DVB Tuner PCIe Card
 		544d 6904  TBS6904 DVB-S2 Quad Tuner PCIe Card
 		544d 6905  TBS6905 DVB-S2 Quad Tuner PCIe Card
 		6205 0001  TBS6205 DVB-T2/T/C Quad TV Tuner PCIe Card
