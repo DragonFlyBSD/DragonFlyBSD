@@ -192,6 +192,47 @@ ifconfig_getargs()
 	echo $_args
 }
 
+# ipv6if if
+#	Returns 0 if the interface should be configured for IPv6 and
+#	1 otherwise.
+ipv6if()
+{
+	local _if _tmpargs
+	_if=$1
+
+	# lo0 is always IPv6-enabled
+	case $_if in
+	lo0)
+		return 0
+		;;
+	esac
+
+	case ${ipv6_enable} in
+	[Nn][Oo]|[Ff][Aa][Ll][Ss][Ee]|[Oo][Ff][Ff]|0)
+		return 1
+		;;
+	esac
+
+	case "${ipv6_network_interfaces}" in
+	$_if|"$_if "*|*" $_if"|*" $_if "*|[Aa][Uu][Tt][Oo])
+		# True if $ipv6_ifconfig_IF is defined.
+		_tmpargs=`_ifconfig_getargs $_if ipv6`
+		if [ -n "${_tmpargs}" ]; then
+			return 0
+		fi
+
+		# True if $ipv6_prefix_IF is defined.
+		_tmpargs=`get_if_var $_if ipv6_prefix_IF`
+		if [ -n "${_tmpargs}" ]; then
+			return 0
+		fi
+
+		;;
+	esac
+
+	return 1
+}
+
 # dhcpif if
 #	Returns 0 if the interface is a DHCP interface and 1 otherwise.
 dhcpif()
