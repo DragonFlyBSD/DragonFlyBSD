@@ -27,9 +27,8 @@
 .\"
 .\"     @(#)arp.8	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.sbin/arp/arp.8,v 1.8.2.11 2003/03/11 21:13:48 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/arp/arp.8,v 1.3 2006/01/19 22:19:31 dillon Exp $
 .\"
-.Dd June 6, 1993
+.Dd October 25, 2018
 .Dt ARP 8
 .Os
 .Sh NAME
@@ -39,16 +38,19 @@
 .Nm
 .Op Fl n
 .Op Fl c Ar cpu
+.Op Fl i Ar interface
 .Ar hostname
 .Nm
 .Op Fl n
 .Op Fl c Ar cpu
+.Op Fl i Ar interface
 .Fl a
 .Nm
 .Fl d Ar hostname
 .Op Cm pub
 .Nm
 .Fl d
+.Op Fl i Ar interface
 .Fl a
 .Nm
 .Fl s Ar hostname ether_addr
@@ -102,6 +104,13 @@ Alternatively, the
 flag may be combined with the
 .Fl a
 flag to delete all entries.
+.It Fl i Ar interface
+Limit the operation scope to the
+.Tn ARP
+entries on
+.Ar interface .
+Applicable only to the following operations:
+display one, display all, delete all.
 .It Fl n
 Show network addresses as numbers (normally
 .Nm

@@ -29,7 +29,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) Copyright (c) 1984, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: arp.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.sbin/arp/arp.c,v 1.22.2.12 2003/04/16 10:02:37 ru Exp $
  */
@@ -89,6 +88,8 @@ static int nflag;	/* no reverse dns lookups */
 static int aflag;	/* do it for all entries */
 static int cpuflag = -1;
 static int s = -1;
+static int rifindex = 0;
+static const char *rifname = NULL;
 
 static struct	sockaddr_in so_mask;
 static struct	sockaddr_inarp blank_sin, sin_m;
@@ -116,13 +117,16 @@ main(int argc, char **argv)
 	int rtn = 0;
 
 	pid = getpid();
-	while ((ch = getopt(argc, argv, "ac:ndfsS")) != -1)
+	while ((ch = getopt(argc, argv, "ac:i:ndfsS")) != -1)
 		switch((char)ch) {
 		case 'a':
 			aflag = 1;
 			break;
 		case 'c':
 			cpuflag = strtol(optarg, NULL, 0);
+			break;
+		case 'i':
+			rifname = optarg;
 			break;
 		case 'd':
 			SETFUNC(F_DELETE);
@@ -156,8 +160,20 @@ main(int argc, char **argv)
 	blank_sdl.sdl_len = sizeof(blank_sdl);
 	blank_sdl.sdl_family = AF_LINK;
 
-	if (!func)
+	if (func == 0)
 		func = F_GET;
+	if (rifname != NULL) {
+		if (func != F_GET && !(func == F_DELETE && aflag))
+			errx(1, "-i not applicable to this operation");
+		if ((rifindex = if_nametoindex(rifname)) == 0) {
+			if (errno == ENXIO)
+				errx(1, "interface %s does not exist",
+				     rifname);
+			else
+				err(1, "if_nametoindex(%s)", rifname);
+		}
+	}
+
 	switch (func) {
 	case F_GET:
 		if (aflag) {
@@ -365,8 +381,11 @@ get(char *host)
 	}
 	search(addr->sin_addr.s_addr, print_entry);
 	if (found_entry == 0) {
-		printf("%s (%s) -- no entry\n",
+		printf("%s (%s) -- no entry",
 		    host, inet_ntoa(addr->sin_addr));
+		if (rifname)
+			printf(" on %s", rifname);
+		printf("\n");
 		return(1);
 	}
 	return(0);
@@ -486,6 +505,8 @@ search(u_long addr, void (*action)(struct sockaddr_dl *sdl,
 		sin2 = (struct sockaddr_inarp *)(rtm + 1);
 		sdl = (struct sockaddr_dl *)((char *)sin2 +
 			    RT_ROUNDUP(sin2->sin_len));
+		if (rifindex > 0 && rifindex != sdl->sdl_index)
+			continue;
 		if (addr) {
 			if (addr != sin2->sin_addr.s_addr)
 				continue;
@@ -585,10 +606,10 @@ static void
 usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
-		"usage: arp [-n] [-c cpu] hostname",
-		"       arp [-n] [-c cpu] -a",
+		"usage: arp [-n] [-c cpu] [-i interface] hostname",
+		"       arp [-n] [-c cpu] [-i interface] -a",
 		"       arp -d hostname [pub]",
-		"       arp -d -a",
+		"       arp -d [-i interface] -a",
 		"       arp -s hostname ether_addr [temp] [pub [only]]",
 		"       arp -S hostname ether_addr [temp] [pub [only]]",
 		"       arp -f filename");
