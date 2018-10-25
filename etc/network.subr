@@ -226,6 +226,14 @@ wpaif()
 	return 1
 }
 
+# ifexists if
+#	Returns 0 if the interface exists and 1 otherwise.
+ifexists()
+{
+	[ -z "$1" ] && return 1
+	ifconfig $1 > /dev/null 2>&1
+}
+
 # ifalias_up if
 #	Configure aliases for network interface $if.
 #	It returns 0 if at least one alias was configured or

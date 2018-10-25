@@ -1,193 +1,136 @@
 #!/bin/sh -
 #
-# $FreeBSD: src/etc/pccard_ether,v 1.15.2.10 2001/09/14 17:28:11 imp Exp $
+# $FreeBSD: head/libexec/rc/pccard_ether 339413 2018-10-17 16:49:11Z bz $
 #
-# pccard_ether interfacename [start|stop] [ifconfig option]
+# pccard_ether interfacename [start|stop|restart]
 #
-# example: pccard_ether ep0 start -link0
+# example: pccard_ether fxp0 start
 #
 
-stop_dhcp() {
-	if [ -s /var/run/dhclient.${interface}.pid ]; then
-		pidfile="/var/run/dhclient.${interface}.pid"
-	elif [ -s /var/run/dhcpc.${interface}.pid ]; then
-		pidfile="/var/run/dhcpc.${interface}.pid"
-	else
-		return
-	fi
-	kill `cat ${pidfile}`
-	rm -f ${pidfile}
-}
+. /etc/rc.subr
+. /etc/network.subr
 
-start_dhcp() {
-	stop_dhcp
-	case ${pccard_ether_delay} in
-	[Nn][Oo])
+name="pccard_ether"
+start_cmd="pccard_ether_start"
+stop_cmd="pccard_ether_stop"
+restart_cmd="pccard_ether_restart"
+startchildren_cmd="pccard_ether_startchildren"
+stopchildren_cmd="pccard_ether_stopchildren"
+extra_commands="startchildren stopchildren"
+
+setup_routes()
+{
+	# Add default route into $static_routes
+	case ${defaultrouter} in
+	[Nn][Oo] | '')
 		;;
-	[0-9])
-		sleep ${pccard_ether_delay}
+	*)
+		static_routes="default ${static_routes}"
+		route_default="default ${defaultrouter}"
 		;;
 	esac
-	[ -n "$dhcp_program" ] && dhclient_program="$dhcp_program"
-	[ -n "$dhcp_flags" ] && dhclient_flags="$dhcp_flags"
-	if [ -x "${dhclient_program}" ]; then
-		if [ `basename ${dhclient_program}` = "dhclient" ]; then
-			pidfile="/var/run/dhclient.${interface}.pid"
-			dhclient_flags="${dhclient_flags} -pf ${pidfile}"
-		fi
-		${dhclient_program} ${dhclient_flags} ${interface}
-	else
-		echo "${dhclient_program}: DHCP client software not available"
+
+	# Add private route for this interface into $static_routes
+	eval ifx_routes=\$static_routes_${ifn}
+	if [ -n "${ifx_routes}" ]; then
+		static_routes="${ifx_routes} ${static_routes}"
+	fi
+
+	# Set up any static routes if specified
+	if [ -n "${static_routes}" ]; then
+		for i in ${static_routes}; do
+			eval route_args=\$route_${i}
+			route add ${route_args}
+		done
 	fi
 }
 
-# Suck in the configuration variables
-#
-if [ -r /etc/defaults/rc.conf ]; then
-	. /etc/defaults/rc.conf
-	source_rc_confs
-elif [ -r /etc/rc.conf ]; then
-	. /etc/rc.conf
+remove_routes()
+{
+	# Delete static route if specified
+	eval ifx_routes=\$static_routes_${ifn}
+	if [ -n "${ifx_routes}" ]; then
+		for i in ${ifx_routes}; do
+			eval route_args=\$route_${i}
+			route delete ${route_args}
+		done
+	fi
+}
+
+pccard_ether_start()
+{
+	ifexists $ifn || exit 1
+
+	if [ -z "$rc_force" ]; then
+		for uif in `ifconfig -ul`; do
+			if [ "${uif}" = "${ifn}" ]; then
+				# Interface is already up, so ignore it.
+				exit 0
+			fi
+		done
+	fi
+
+	/etc/rc.d/netif start $ifn
+
+	# Do route configuration if needed.
+	# XXX: should probably do this by calling rc.d/routing.
+	if [ -n "`ifconfig_getargs $ifn`" ]; then
+		if ! dhcpif $ifn; then
+			setup_routes
+		fi
+	fi
+
+	# XXX: IPv6 setup should be done in some way.
+}
+
+pccard_ether_stop()
+{
+	if [ -n "`ifconfig_getargs $ifn`" ]; then
+		if ! dhcpif $ifn; then
+			remove_routes
+		fi
+	fi
+
+	/etc/rc.d/netif stop $ifn
+
+	# clean ARP table
+	ifexists $ifn && arp -d -i $ifn -a
+}
+
+pccard_ether_restart()
+{
+	# Hand implemented because the default implementation runs
+	# the equivalent of "$0 start; $0 stop" and this script
+	# doesn't support that syntax
+	pccard_ether_stop
+	pccard_ether_start
+}
+
+pccard_ether_startchildren()
+{
+	for child in `get_if_var $ifn wlans_IF`; do
+		if ifexists $child; then
+			continue
+		fi
+		/etc/rc.d/netif start $child
+	done
+}
+
+pccard_ether_stopchildren()
+{
+	for child in `get_if_var $ifn wlans_IF`; do
+		/etc/rc.d/netif stop $child
+	done
+}
+
+ifn=$1
+shift
+if [ -z "$*" ]; then
+	args="start"
+else
+	args=$*
 fi
 
-interface=$1
-shift
-startstop=$1
-shift
-
-case ${pccard_ifconfig} in
-[Nn][Oo] | '')
-	expr "${removable_interfaces}" : ".*${interface}" > /dev/null || exit 0
-	;;
-*)
-	# Backward compatible
-	eval ifconfig_${interface}=\${pccard_ifconfig}
-	;;
-esac
-
-case ${startstop} in
-[Ss][Tt][Aa][Rr][Tt] | '')
-	if ifconfig ${interface} | grep -s UP, > /dev/null 2>&1; then
-		# Interface is already up, so ignore it.
-		exit 0
-	fi
-
-	if [ -r /etc/start_if.${interface} ]; then
-		. /etc/start_if.${interface}
-	fi
-
-	eval ifconfig_args=\$ifconfig_${interface}
-	case ${ifconfig_args} in
-	[Nn][Oo] | '')
-		;;
-	[Dd][Hh][Cc][Pp])
-		# Start up the DHCP client program
-		start_dhcp
-		;;
-	*)
-		# Do the primary ifconfig if specified
-		ifconfig ${interface} ${ifconfig_args} $*
-
-		# Check to see if aliases need to be added
-		alias=0
-		while :
-		do
-			eval ifx_args=\$ifconfig_${interface}_alias${alias}
-			if [ -n "${ifx_args}" ]; then
-				ifconfig ${interface} ${ifx_args} alias
-				alias=`expr ${alias} + 1`
-			else
-				break;
-			fi
-		done
-
-		# Add default route into $static_routes
-		case ${defaultrouter} in
-		[Nn][Oo] | '')
-		        ;;
-		*)
-			static_routes="default ${static_routes}"
-			route_default="default ${defaultrouter}"
-			;;
-		esac
-
-		# Add private route for this interface into $static_routes
-		eval ifx_routes=\$static_routes_${interface}
-		if [ -n "${ifx_routes}" ]; then
-			static_routes="${ifx_routes} ${static_routes}"
-		fi
-
-		# Set up any static routes if specified
-		if [ -n "${static_routes}" ]; then
-			for i in ${static_routes}; do
-				eval route_args=\$route_${i}
-				route add ${route_args}
-			done
-		fi
-		;;
-	esac
-
-	# IPv6 setup
-	case ${ipv6_enable} in
-	[Yy][Ee][Ss])
-		if [ -r /etc/network.subr ]; then
-			. /etc/network.subr
-			network6_interface_setup ${interface}
-		fi
-		;;
-	esac
-	;;
-# Stop the interface
-*)
-	if [ -r /etc/stop_if.${interface} ]; then
-		. /etc/stop_if.${interface}
-	fi
-
-	eval ifconfig_args=\$ifconfig_${interface}
-	case ${ifconfig_args} in
-	[Nn][Oo] | '')
-	        ;;
-	[Dd][Hh][Cc][Pp])
-		# Stop the DHCP client for this interface
-		stop_dhcp
-		;;
-	*)
-		# Delete static route if specified
-		eval ifx_routes=\$static_routes_${interface}
-		if [ -n "${ifx_routes}" ]; then
-			for i in ${ifx_routes}; do
-				eval route_args=\$route_${i}
-				route delete ${route_args}
-			done
-		fi
-
-		# Delete aliases if exist
-		alias=0
-		while :
-		do
-			eval ifx_args=\$ifconfig_${interface}_alias${alias}
-			if [ -n "${ifx_args}" ]; then
-				ifconfig ${interface} ${ifx_args} alias delete
-				alias=`expr ${alias} + 1`
-			else
-				break;
-			fi
-		done
-		;;
-	esac
-
-	# Remove the network interface and clean the ARP table
-	ifconfig ${interface} delete
-	arp -d -a
-	
-	# Clean the routing table
-	case ${removable_route_flush} in
-	[Nn][Oo])
-		;;
-	*)      
-		# flush beforehand, just in case....
-		route -n flush -inet
-		;;
-	esac
-	;;
-esac
+load_rc_config pccard_ether
+load_rc_config network
+run_rc_command $args
