@@ -217,13 +217,8 @@ typedef void __sighandler_t (int);
 
 #if __POSIX_VISIBLE >= 199309 || __XSI_VISIBLE >= 500
 union sigval {
-	/* Members as suggested by SuSv2 and IEEE Std 1003.1 */
-	int     sival_int;
+	int	sival_int;
 	void	*sival_ptr;
-	/* Leave old members for backward compatibility */
-	int     sigval_int;
-	void    *sigval_ptr;
-
 };
 #endif
 
