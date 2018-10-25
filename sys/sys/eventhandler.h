@@ -26,8 +26,6 @@
  * $FreeBSD: src/sys/sys/eventhandler.h,v 1.5 2000/01/16 06:11:33 bde Exp $
  */
 
-#include <sys/queue.h>
-
 #ifndef _SYS_EVENTHANDLER_H_
 #define _SYS_EVENTHANDLER_H_
 
@@ -36,6 +34,8 @@
 #error "This file should not be included by userland programs."
 
 #else
+
+#include <sys/queue.h>
 
 struct eventhandler_entry 
 {
