@@ -2285,8 +2285,7 @@ dsp_mmap(struct dev_mmap_args *ap)
 {
 	vm_offset_t offset = ap->a_offset;
 
-	/* XXX memattr is not honored */
-	ap->a_result = vtophys(offset);
+	ap->a_result = atop(vtophys(offset));
 	return (0);
 }
 
