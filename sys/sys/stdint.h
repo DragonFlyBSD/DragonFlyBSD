@@ -7,11 +7,11 @@
  * with an #ifndef sequence.  Elements are individually protected.
  */
 
-#include <sys/cdefs.h>
-#include <machine/stdint.h>
-
 #ifndef _SYS_STDINT_H_
 #define _SYS_STDINT_H_
+
+#include <sys/cdefs.h>
+#include <machine/stdint.h>
 
 /*
  * wchar_t and rune_t have to be of the same type. rune_t is meant
