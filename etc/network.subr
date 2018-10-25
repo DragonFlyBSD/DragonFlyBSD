@@ -127,18 +127,21 @@ get_if_var()
 	eval echo \${${prefix}${_if}${suffix}-${_default}}
 }
 
-# _ifconfig_getargs if
+# _ifconfig_getargs if [af]
 #	Echos the arguments for the supplied interface to stdout.
 #	returns 1 if empty.  In general, ifconfig_getargs should be used
 #	outside this file.
 _ifconfig_getargs()
 {
+	local _ifn _af _args
 	_ifn=$1
+	_af=${2:+${2}_}
+
 	if [ -z "$_ifn" ]; then
 		return 1
 	fi
 
-	_args=`get_if_var $_ifn ifconfig_IF`
+	_args=`get_if_var $_ifn ${_af}ifconfig_IF`
 	if [ -z "$_args" -a -n "${pccard_ifconfig}" ]; then
 		for _if in ${removable_interfaces} ; do
 			if [ "$_if" = "$_ifn" ] ; then
@@ -151,12 +154,13 @@ _ifconfig_getargs()
 	echo $_args
 }
 
-# ifconfig_getargs if
+# ifconfig_getargs if [af]
 #	Takes the result from _ifconfig_getargs and removes pseudo
 #	args such as DHCP and WPA.
 ifconfig_getargs()
 {
-	_tmpargs=`_ifconfig_getargs $1`
+	local _tmpargs _arg _args
+	_tmpargs=`_ifconfig_getargs $1 $2`
 	if [ $? -eq 1 ]; then
 		return 1
 	fi
