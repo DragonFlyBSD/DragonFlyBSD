@@ -53,7 +53,7 @@ ifconfig_up()
 	fi
 
 	if dhcpif $1; then
-		/etc/rc.d/dhclient start $1
+		/etc/rc.d/dhcp_client start $1
 		_cfg=0
 	fi
 
@@ -93,7 +93,7 @@ ifconfig_down()
 	fi
 
 	if dhcpif $1; then
-		/etc/rc.d/dhclient stop $1
+		/etc/rc.d/dhcp_client stop $1
 		_cfg=0
 	fi
 

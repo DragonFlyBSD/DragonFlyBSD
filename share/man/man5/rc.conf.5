@@ -240,12 +240,14 @@ for a fixed address or
 for a DHCP client).
 .It Va pccard_ether_delay
 .Pq Vt str
-Set the delay before starting
-.Xr dhclient 8
+Set the delay before starting the DHCP client (configured with
+.Va dhcp_client )
 in the
 .Pa /etc/pccard_ether
 script.
-This defaults to 5 seconds to work around a bug in the
+This defaults to
+.Dq Li 5
+seconds to work around a bug in the
 .Xr ed 4
 driver which can lead to system hangs when using some newer
 .Xr ed 4
@@ -269,9 +271,7 @@ containing spaces.
 The fully qualified domain name (FQDN) of this host on the network.
 This should almost certainly be set to something meaningful, even if
 there is no network connection.
-If
-.Xr dhclient 8
-is used to set the hostname via DHCP,
+If DHCP is used to set the hostname,
 this variable should be set to an empty string.
 .It Va ipv6_enable
 .Pq Vt bool
@@ -283,10 +283,18 @@ Note that this requires that the kernel have been compiled with
 The NIS domain name of this host, or
 .Dq Li NO
 if NIS is not used.
+.It Va dhcp_client
+.Pq Vt str
+Set the rc script that is called to start the DHCP client.
+This can be set to
+.Dq Li dhclient
+(default) or
+.Dq Li dhcpcd .
 .It Va dhclient_program
 .Pq Vt str
-Path to the DHCP client program
-(default
+Path to the
+.Xr dhclient 8
+program (default
 .Pa /sbin/dhclient ) .
 .It Va dhclient_flags
 .Pq Vt str
@@ -870,7 +878,7 @@ This variable is to enable configuring the default address selection policy tabl
 .Pq RFC 3484 .
 The default value is
 .Dq Li YES ,
-and the table policy is specified by the
+and the policy table to be installed is specified by the
 .Va ip6addrctl_policy
 variable below.
 .It Va ip6addrctl_policy

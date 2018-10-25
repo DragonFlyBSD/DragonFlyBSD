@@ -25,7 +25,7 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd October 15, 2008
+.Dd October 25, 2018
 .Dt DHCP 8
 .Os
 .Sh NAME
@@ -59,17 +59,25 @@ for more information on the format of this file.
 .Pp
 The
 .Pa /etc/network.subr
-script reads each of these variables at boot-time and runs the
+script reads each of these variables at boot-time and runs the DHCP client,
+e.g.,
 .Xr dhclient 8
-program for each interface that is to be configured via DHCP.
+or
+.Xr dhcpcd 8 ,
+for each interface that is to be configured via DHCP.
 .It
 [Optional] To tweak settings, edit
-.Pa /etc/dhclient.conf .
-This file is shipped with the system.
+.Pa /etc/dhclient.conf
+(if
+.Cm dhcp_client="dhclient" )
+or
+.Pa /etc/dhcpcd.conf
+(if
+.Cm dhcp_client="dhcpcd" ) .
 See
 .Xr dhclient.conf 5
 and
-.Xr dhclient 8
+.Xr dhcpcd.conf 5
 for details.
 .El
 .Pp
@@ -119,19 +127,25 @@ for information on other available options.
 Note, however, that most of the flags are useful only for debugging purposes.
 .Sh FILES
 .Bl -tag -width /usr/local/etc/dhcpd.conf
-.It Pa /usr/local/etc/dhcp/dhcpd.conf
-DHCP server configuration file
 .It Pa /etc/rc.conf
 configuration file where
 DHCP client configuration is set for individual interfaces and
 .Cm dhcpd_flags
 must be set
 .It Pa /etc/dhclient.conf
-DHCP client configuration file
+DHCP client configuration file for
+.Xr dhclient 8
+.It Pa /etc/dhcpcd.conf
+DHCP client configuration file for
+.Xr dhcpcd 8
+.It Pa /usr/local/etc/dhcp/dhcpd.conf
+DHCP server configuration file
 .El
 .Sh SEE ALSO
 .Xr dhclient.conf 5 ,
-.Xr dhcpd.conf 5 Pq Pa net/isc-dhcp42-server ,
+.Xr dhcpcd.conf 5 ,
+.Xr dhcpd.conf 5 Pq Pa net/isc-dhcp44-server ,
 .Xr dhclient 8 ,
-.Xr dhcpd 8 Pq Pa net/isc-dhcp42-server ,
-.Xr dhcrelay 8 Pq Pa net/isc-dhcp42-relay
+.Xr dhcpcd 8 ,
+.Xr dhcpd 8 Pq Pa net/isc-dhcp44-server ,
+.Xr dhcrelay 8 Pq Pa net/isc-dhcp44-relay

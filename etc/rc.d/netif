@@ -64,8 +64,7 @@ network_start()
 	network_common ifn_start verbose
 
 	# Give our interfaces a little time to come up
-	# before we start pounding them.  In particular, dhclient
-	# and named can get mightily confused.
+	# before we start pounding them, e.g., DHCP client.
 	sleep 2
 }
 

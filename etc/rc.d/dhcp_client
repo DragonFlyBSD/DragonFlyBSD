@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# PROVIDE: dhcp_client
+# REQUIRE: mountcritlocal
+# KEYWORD: nojail nostart
+
+. /etc/rc.subr
+
+name="dhcp_client"
+
+load_rc_config ${name}
+dummy_rc_command "$1"
+
+find_client()
+{
+	[ -x "${dhcp_client}" ] && {
+		echo -n "${dhcp_client}"
+		return
+	}
+
+	for dir in /etc/rc.d ${local_startup}; do
+		[ -x "${dir}/${dhcp_client}" ] && {
+			echo -n "${dir}/${dhcp_client}"
+			return
+		}
+	done
+}
+
+command=$(find_client)
+debug "found client program: ${command}"
+if [ -n "${command}" ]; then
+	${command} "$@"
+else
+	echo "ERROR: cannot find the command to start DHCP client."
+	exit 1
+fi
