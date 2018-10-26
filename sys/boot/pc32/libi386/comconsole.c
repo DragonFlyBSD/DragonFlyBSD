@@ -43,7 +43,7 @@
 #endif
 
 #ifndef	COMSPEED
-#define COMSPEED	9600
+#define COMSPEED	115200
 #endif
 
 static int RX_TRY_COUNT = 1000000;

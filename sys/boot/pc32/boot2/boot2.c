@@ -259,7 +259,7 @@ main(void)
 #if SERIAL
 	else if (!(*(uint8_t *) PTOV(0x496) & 0x10)) {	/* probe keyboard, if not present switch to dual mode at least */
 		opts |= OPT_SET(RB_DUAL);
-		check_ioctrl(SIOSPD);
+		check_ioctrl(COMSPEED);
 	}
 #endif
 
@@ -328,7 +328,7 @@ parse(void)
 	char	 	c;
 	int 		i;
 #if SERIAL
-	static int	newcomspeed = SIOSPD;
+	static int	newcomspeed = COMSPEED;
 #endif
 	while ((c = *arg++)) {
 		if (c == ' ' || c == '\t' || c == '\n')

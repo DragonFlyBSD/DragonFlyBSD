@@ -24,9 +24,9 @@ NXLDFLAGS=
 # A value of 0x80 enables LBA support.
 B1FLAGS=	0x80
 
-BOOT_COMCONSOLE_PORT?= 0x3f8
-BOOT_COMCONSOLE_SPEED?= 9600
-B2SIOFMT?=	0x3
+BOOT_COMCONSOLE_PORT?=	0x3f8
+BOOT_COMCONSOLE_SPEED?= 115200
+BOOT_COMCONSOLE_FMT?=	0x3
 
 .if exists(${.OBJDIR}/../btx)
 BTX=	${.OBJDIR}/../btx
@@ -53,7 +53,7 @@ CFLAGS=	-Os \
 	-fno-unwind-tables \
 	-fno-asynchronous-unwind-tables \
 	-DBOOT2 \
-	-DSIOSPD=${BOOT_COMCONSOLE_SPEED} \
+	-DCOMSPEED=${BOOT_COMCONSOLE_SPEED} \
 	-I${.CURDIR}/../../common \
 	-I${.CURDIR}/../../../../lib/libstand \
 	-I${.CURDIR}/../btx/lib -I. \
@@ -169,7 +169,7 @@ scrc32$s.o: scrc32.c
 .endfor
 
 sio.o: sio.S
-	${CC} ${CFLAGS} -DSIOPRT=${BOOT_COMCONSOLE_PORT} -DSIOFMT=${B2SIOFMT} \
+	${CC} ${CFLAGS} -DSIOPRT=${BOOT_COMCONSOLE_PORT} -DSIOFMT=${BOOT_COMCONSOLE_FMT} \
 		${.ALLSRC} -o ${.TARGET} -c
 
 install:
