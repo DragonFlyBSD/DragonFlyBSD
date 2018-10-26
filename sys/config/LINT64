@@ -2120,11 +2120,11 @@ device		vmbus
 #
 # Virtio support
 #
-device		virtio
-device		virtio_blk
-device		virtio_random
-device		virtio_scsi
-device		vtnet
+device		virtio		# Generic VirtIO bus/PCI interface (required)
+device		virtio_blk	# VirtIO Block device
+device		virtio_random	# VirtIO Entropy device
+device		virtio_scsi	# VirtIO SCSI device
+device		vtnet		# VirtIO Ethernet device
 
 # VMware support
 #
