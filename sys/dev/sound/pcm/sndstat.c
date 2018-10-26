@@ -65,16 +65,16 @@ struct sndstat_entry {
 static struct lock sndstat_lock;
 static struct sbuf sndstat_sbuf;
 static struct cdev *sndstat_dev = NULL;
-static int sndstat_bufptr = -1;
+static int sndstat_buflen = 0;
 static int sndstat_maxunit = -1;
 static int sndstat_files = 0;
 
 #define SNDSTAT_PID(x)		((pid_t)((intptr_t)((x)->si_drv1)))
 #define SNDSTAT_PID_SET(x, y)	(x)->si_drv1 = (void *)((intptr_t)(y))
 #define SNDSTAT_FLUSH()		do {					\
-	if (sndstat_bufptr != -1) {					\
+	if (sndstat_buflen != -1) {					\
 		sbuf_delete(&sndstat_sbuf);				\
-		sndstat_bufptr = -1;					\
+		sndstat_buflen = -1;					\
 	}								\
 } while (0)
 
@@ -135,17 +135,21 @@ sndstat_open(struct dev_open_args *ap)
 		return EBADF;
 
 	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
-	if (SNDSTAT_PID(i_dev) != 0) {
+	/* Deal with pulseaudio opening /dev/sndstat twice. */
+	if (SNDSTAT_PID(i_dev) == curproc->p_pid) {
+		/* Nothing */
+	} else if (SNDSTAT_PID(i_dev) != 0) {
 		lockmgr(&sndstat_lock, LK_RELEASE);
 		return EBUSY;
+	} else {
+		SNDSTAT_PID_SET(i_dev, curproc->p_pid);
+		if (sbuf_new(&sndstat_sbuf, NULL, 4096, SBUF_AUTOEXTEND) == NULL) {
+			SNDSTAT_PID_SET(i_dev, 0);
+			lockmgr(&sndstat_lock, LK_RELEASE);
+			return ENXIO;
+		}
+		sndstat_buflen = 0;
 	}
-	SNDSTAT_PID_SET(i_dev, curproc->p_pid);
-	if (sbuf_new(&sndstat_sbuf, NULL, 4096, SBUF_AUTOEXTEND) == NULL) {
-		SNDSTAT_PID_SET(i_dev, 0);
-		lockmgr(&sndstat_lock, LK_RELEASE);
-		return ENXIO;
-	}
-	sndstat_bufptr = 0;
 	lockmgr(&sndstat_lock, LK_RELEASE);
 	return 0;
 }
@@ -184,23 +188,23 @@ sndstat_read(struct dev_read_args *ap)
 
 	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
 	if (SNDSTAT_PID(i_dev) != buf->uio_td->td_proc->p_pid ||
-	    sndstat_bufptr == -1) {
+	    sndstat_buflen == -1) {
 		lockmgr(&sndstat_lock, LK_RELEASE);
 		return EBADF;
 	}
 
-	if (sndstat_bufptr == 0) {
+	if (sndstat_buflen == 0) {
 		err = (sndstat_prepare(&sndstat_sbuf) > 0) ? 0 : ENOMEM;
 		if (err) {
 			SNDSTAT_FLUSH();
 			lockmgr(&sndstat_lock, LK_RELEASE);
 			return err;
 		}
+		sndstat_buflen = sbuf_len(&sndstat_sbuf);
 	}
 
-    	l = min(buf->uio_resid, sbuf_len(&sndstat_sbuf) - sndstat_bufptr);
-	err = (l > 0)? uiomove(sbuf_data(&sndstat_sbuf) + sndstat_bufptr, l, buf) : 0;
-	sndstat_bufptr += l;
+	l = min(buf->uio_resid, sndstat_buflen - buf->uio_offset);
+	err = (l > 0)? uiomove(sbuf_data(&sndstat_sbuf) + buf->uio_offset, l, buf) : 0;
 	lockmgr(&sndstat_lock, LK_RELEASE);
 
 	return err;
