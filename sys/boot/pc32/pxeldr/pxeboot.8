@@ -22,9 +22,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/sys/boot/i386/pxeldr/pxeboot.8,v 1.7 2002/12/12 17:25:59 ru Exp $
+.\" $FreeBSD:  stand/i386/pxeldr/pxeboot.8 433bd38 2017/11/15 17:25:59 ru Exp $
 .\"
-.Dd October 6, 2010
+.Dd May 27, 2017
 .Dt PXEBOOT 8
 .Os
 .Sh NAME
@@ -39,11 +39,17 @@ configured to run under Intel's Preboot Execution Environment (PXE) system.
 PXE is a form of smart boot ROM, built into Intel EtherExpress Pro/100 and
 3Com 3c905c Ethernet cards, and Ethernet-equipped Intel motherboards.
 PXE supports DHCP configuration and provides low-level NIC access services.
+.Pp
+The DHCP client can set a DHCP user class named
+.Va DragonFly
+to allow flexible configuration of the DHCP server (see in example).
+.Pp
 The
 .Nm
 bootloader retrieves the kernel, modules,
-and other files either via NFS over UDP.
-In combination with a NFS-mounted root file system,
+and other files either via NFS over UDP or by TFTP,
+selectable through compile-time options.
+In combination with a memory file system image or NFS-mounted root file system,
 .Nm
 allows for easy,
 EEPROM-burner free construction of diskless machines.
@@ -66,20 +72,14 @@ default-lease-time 120;
 max-lease-time 120;
 
 subnet 10.0.0.0 netmask 255.255.255.0 {
-       filename "boot/pxeboot";
+       filename "pxeboot";
        range 10.0.0.10 10.0.0.254;
-       option root-path "10.0.0.1:/netbootroot";
+       if exists user-class and option user-class = "DragonFly" {
+            option root-path "tftp://10.0.0.1/DragonFly";
+       }
 }
 
 .Ed
-.Nm
-defaults to a conservative 1024 byte NFS data packet.
-This may be changed by setting the
-.Va nfs.read_size
-variable in
-.Pa /boot/loader.conf .
-Valid values range from 1024 to 4096 bytes.
-.Pp
 .Nm
 recognizes
 .Va next-server
@@ -90,68 +90,44 @@ respectively, or the server to make TFTP requests to.
 Note that
 .Nm
 expects to fetch
-.Pa /boot/dloader.rc
+.Pa /boot/loader.rc
 from the specified server before loading any other files.
 .Pp
+Valid
+.Va option root-path
+Syntax is the following
+.Bl -tag -width <scheme>://ip/path indent
+.It /path
+path to the root filesystem on the NFS server
+.It ip:/path
+path to the root filesystem on the NFS server
+.Ar ip
+.It nfs:/path
+path to the root filesystem on the NFS server
+.It nfs://ip/path
+path to the root filesystem on the NFS server
+.Ar ip
+.It tftp:/path
+path to the root filesystem on the TFTP server
+.It tftp://ip/path
+path to the root filesystem on the TFTP server
+.Ar ip
+.El
+.Pp
 .Nm
-uses
-.Pa /boot/kernel.BOOTP
-and
-.Pa /boot/loader-bootp.conf
-and
-.Pa nextboot-bootp.conf
-instead of
-.Pa /boot/kernel
-and
+defaults to a conservative 1024 byte NFS data packet size.
+This may be changed by setting the
+.Va nfs.read_size
+variable in
 .Pa /boot/loader.conf .
-Note that the TFTP version
-.Xr pxeboot_tftp 8
-uses the standard boot loader files.
-The NFS version uses different files to allow BOOTP boots via NFS to
-be overloaded onto the same directory structure as a normal boot,
-though many other changes would have to be made to actually make
-that work.
-However, this is more for historical reasons.
-Current day PXE boot code can handle complex root-path specifications
-allowing the root image to be contained in a sub-directory of the NFS
-export.
+Valid values range from 1024 to 16384 bytes.
 .Pp
 In all other respects,
 .Nm
 acts just like
 .Xr loader 8 .
-.Pp
-As PXE is still in its infancy, some firmware versions may not work
-properly.
-The
-.Nm
-bootloader has been extensively tested on version 0.99 of Intel firmware;
-pre-release versions of the newer 2.0 firmware are known to have
-problems.
-Check with the device's manufacturer for their latest stable release.
-.Pp
-For further information on Intel's PXE specifications and Wired for
-Management (WfM) systems, see
-.Pa http://developer.intel.com/ial/wfm/ .
-.Sh FILES
-.Bl -tag -width ".Pa /boot/defaults/loader-bootp.conf" -compact
-.It Pa /boot/kernel.BOOTP
-Default kernel for
-.Nm .
-.It Pa /boot/defaults/loader-bootp.conf
-.Nm
-configuration file -- do not change this file.
-.It Pa /boot/loader-bootp.conf
-.Nm
-configuration file.
-.El
 .Sh SEE ALSO
-.Xr dhcpd 8 Pq Pa net/isc-dhcp42-server ,
-.Xr diskless 8 ,
-.Xr loader 8 ,
-.Xr nfsd 8 ,
-.Xr pxeboot_tftp 8 ,
-.Xr tftpd 8
+.Xr loader 8
 .Sh HISTORY
 The
 .Nm
@@ -162,8 +138,8 @@ bootloader first appeared in
 The
 .Nm
 bootloader was written by
-.An John Baldwin Aq Mt jhb@FreeBSD.org
+.An John Baldwin Aq jhb@FreeBSD.org
 and
-.An Paul Saab Aq Mt ps@FreeBSD.org .
+.An Paul Saab Aq ps@FreeBSD.org .
 This manual page was written by
-.An Doug White Aq Mt dwhite@FreeBSD.org .
+.An Doug White Aq dwhite@FreeBSD.org .
