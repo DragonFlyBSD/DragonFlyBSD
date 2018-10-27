@@ -144,6 +144,12 @@ The tick resolution of
 and
 .Fa ts_realtime
 and approximate tick resolution for the scheduler, typically 100.
+.It Va fast_gtod
+This integer reflects the state of the "kern.gettimeofday_quick"
+sysctl.  When set to 1, gettimeofday(&tv, NULL) calls will access
+the tick-resolution ts_realtime[] fields instead of executing the
+system call.  Changes in the sysctl are immediately reflected in
+programs that are already running.
 .El
 .Sh NOTES
 With

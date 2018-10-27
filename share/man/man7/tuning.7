@@ -177,6 +177,13 @@ In this document we will only cover the ones that have the greatest effect
 on the system.
 .Pp
 The
+.Va kern.gettimeofday_quick
+sysctl defaults to 0 (off).  Setting this sysctl to 1 causes gettimeofday()
+calls in libc to use a tick-granular time from the kpmap instead of making
+a system call.  Setting this feature can be useful when running benchmarks
+which make large numbers of gettimeofday() calls, such as postgres.
+.Pp
+The
 .Va kern.ipc.shm_use_phys
 sysctl defaults to 1 (on) and may be set to 0 (off) or 1 (on).
 Setting

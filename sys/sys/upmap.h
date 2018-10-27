@@ -86,6 +86,7 @@ typedef struct ukpheader {
 #define KPTYPE_TS_REALTIME	(0x8002 | UKPLEN_TS)
 #define KPTYPE_TSC_FREQ		(0x8003 | UKPLEN_8)
 #define KPTYPE_TICK_FREQ	(0x8004 | UKPLEN_8)
+#define KPTYPE_FAST_GTOD	(0x8005 | UKPLEN_4)
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
@@ -137,6 +138,7 @@ struct sys_kpmap {
 	struct timespec ts_realtime[2];	/* realtime @ticks resolution */
 	int64_t		tsc_freq;	/* (if supported by cpu) */
 	int32_t		tick_freq;	/* scheduler tick frequency */
+	int32_t		fast_gtod;	/* fast gettimeofday() */
 };
 
 #endif

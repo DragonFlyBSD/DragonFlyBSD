@@ -45,6 +45,7 @@
 #include <sys/vnode.h>
 #include <sys/sysctl.h>
 #include <sys/kern_syscall.h>
+#include <sys/upmap.h>
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 
@@ -76,6 +77,9 @@ static int	settime(struct timeval *);
 static void	timevalfix(struct timeval *);
 static void	realitexpire(void *arg);
 
+static int sysctl_gettimeofday_quick(SYSCTL_HANDLER_ARGS);
+
+
 /*
  * Nanosleep tries very hard to sleep for a precisely requested time
  * interval, down to 1uS.  The administrator can impose a minimum delay
@@ -92,8 +96,8 @@ SYSCTL_INT(_kern, OID_AUTO, nanosleep_min_us, CTLFLAG_RW,
 	   &nanosleep_min_us, 0, "");
 SYSCTL_INT(_kern, OID_AUTO, nanosleep_hard_us, CTLFLAG_RW,
 	   &nanosleep_hard_us, 0, "");
-SYSCTL_INT(_kern, OID_AUTO, gettimeofday_quick, CTLFLAG_RW,
-	   &gettimeofday_quick, 0, "");
+SYSCTL_PROC(_kern, OID_AUTO, gettimeofday_quick, CTLTYPE_INT | CTLFLAG_RW,
+	   0, 0, sysctl_gettimeofday_quick, "I", "Quick mode gettimeofday");
 
 static struct lock masterclock_lock = LOCK_INITIALIZER("mstrclk", 0, 0);
 
@@ -1129,4 +1133,20 @@ ppsratecheck(struct timeval *lasttime, int *curpps, int maxpps)
 		(*curpps)++;		/* NB: ignore potential overflow */
 		return (maxpps < 0 || *curpps < maxpps);
 	}
+}
+
+static int
+sysctl_gettimeofday_quick(SYSCTL_HANDLER_ARGS)
+{
+	int error;
+	int gtod;
+
+	gtod = gettimeofday_quick;
+	error = sysctl_handle_int(oidp, &gtod, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	gettimeofday_quick = gtod;
+	if (kpmap)
+		kpmap->fast_gtod = gtod;
+	return 0;
 }

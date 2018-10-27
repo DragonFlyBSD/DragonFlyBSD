@@ -7,4 +7,4 @@ CFLAGS+=-I${.CURDIR}/../libc/sysvipc
 
 CMAPS+=	${.CURDIR}/upmap/Symbol.map
 
-SRCS+=	upmap.c ukp_clock.c ukp_getpid.c ukp_setproctitle.c
+SRCS+=	upmap.c ukp_clock.c ukp_getpid.c ukp_setproctitle.c ukp_gettimeofday.c
