@@ -78,10 +78,10 @@
 #define	WNOHANG		0x0001	/* don't hang in wait */
 #define	WUNTRACED	0x0002	/* tell about stopped, untraced children */
 #define	WCONTINUED	0x0004	/* Report a job control continued process. */
-#define WSTOPPED	WUNTRACED
-#define WNOWAIT		0x0008
-#define WEXITED		0x0010
-#define WTRAPPED	0x0020
+#define	WSTOPPED	WUNTRACED
+#define	WNOWAIT		0x0008
+#define	WEXITED		0x0010
+#define	WTRAPPED	0x0020
 
 #if __BSD_VISIBLE
 #define	WLINUXCLONE	0x80000000 /* wait for kthread spawned from linux_clone */
@@ -94,22 +94,26 @@
 #endif /* __BSD_VISIBLE */
 
 #ifndef _ID_T_DECLARED
-#define _ID_T_DECLARED
-typedef __int64_t	id_t;	/* general id, can hold gid/pid/uid_t */
+#define	_ID_T_DECLARED
+typedef	__int64_t	id_t;	/* general id, can hold gid/pid/uid_t */
 #endif
 
 #ifndef _IDTYPE_T_DECLARED
-#define _IDTYPE_T_DECLARED
+#define	_IDTYPE_T_DECLARED
 
 /* SEE ALSO SYS/PROCCTL.H */
 
-typedef enum idtype {
+typedef	enum
+#if __BSD_VISIBLE
+	idtype
+#endif
+{
 	/*
 	 * These names were mostly lifted from Solaris source code and
 	 * still use Solaris style naming to avoid breaking any
-	 * OpenSolaris code which has been ported to FreeBSD.  There
-	 * is no clear FreeBSD counterpart for all of the names, but
-	 * some have a clear correspondence to FreeBSD entities.
+	 * OpenSolaris code which has been ported to FreeBSD/DragonFly.
+	 * There is no clear DragonFly counterpart for all of the names, but
+	 * some have a clear correspondence to DragonFly entities.
 	 *
 	 * The numerical values are kept synchronized with the Solaris
 	 * values.
