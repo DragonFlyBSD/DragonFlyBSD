@@ -622,8 +622,14 @@ next_code:
 				goto next_code;
 		} else {
 			if (wait) {
-				lksleep(&state->ks_task, &kbd->kb_lock, PCATCH,
-				    "kbdwai", hz/10);
+				if (kbd->kb_flags & KB_POLLED) {
+					tsleep(&state->ks_task, PCATCH,
+						"kbdwai", hz/10);
+				} else {
+					lksleep(&state->ks_task,
+						&kbd->kb_lock, PCATCH,
+						"kbdwai", hz/10);
+				}
 				goto next_code;
 			}
 		}

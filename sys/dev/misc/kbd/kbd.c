@@ -84,43 +84,9 @@ SET_DECLARE(kbddriver_set, const keyboard_driver_t);
  * when necessary.
  */
 
-static int		keyboards = 1;
-static keyboard_t	*kbd_ini;
-static keyboard_t	**keyboard = &kbd_ini;
-static keyboard_switch_t *kbdsw_ini;
-       keyboard_switch_t **kbdsw = &kbdsw_ini;
+static keyboard_t *keyboard[KBD_MAXKEYBOARDS];
 
-#define ARRAY_DELTA	4
-
-static int
-kbd_realloc_array(void)
-{
-	keyboard_t **new_kbd;
-	keyboard_switch_t **new_kbdsw;
-	int newsize;
-
-	lwkt_gettoken(&kbd_token);
-	newsize = ((keyboards + ARRAY_DELTA)/ARRAY_DELTA)*ARRAY_DELTA;
-	new_kbd = kmalloc(sizeof(*new_kbd) * newsize, M_DEVBUF,
-				M_WAITOK | M_ZERO);
-	new_kbdsw = kmalloc(sizeof(*new_kbdsw) * newsize, M_DEVBUF,
-				M_WAITOK | M_ZERO);
-	bcopy(keyboard, new_kbd, sizeof(*keyboard)*keyboards);
-	bcopy(kbdsw, new_kbdsw, sizeof(*kbdsw)*keyboards);
-	if (keyboards > 1) {
-		kfree(keyboard, M_DEVBUF);
-		kfree(kbdsw, M_DEVBUF);
-	}
-	keyboard = new_kbd;
-	kbdsw = new_kbdsw;
-	keyboards = newsize;
-
-	if (bootverbose)
-		kprintf("kbd: new array size %d\n", keyboards);
-
-	lwkt_reltoken(&kbd_token);
-	return 0;
-}
+keyboard_switch_t *kbdsw[KBD_MAXKEYBOARDS];
 
 /*
  * Low-level keyboard driver functions.
@@ -221,15 +187,13 @@ kbd_register(keyboard_t *kbd)
 	lwkt_gettoken(&kbd_token);
 	mux = kbd_get_keyboard(kbd_find_keyboard("kbdmux", -1));
 
-	for (index = 0; index < keyboards; ++index) {
+	for (index = 0; index < KBD_MAXKEYBOARDS; ++index) {
 		if (keyboard[index] == NULL)
 			break;
 	}
-	if (index >= keyboards) {
-		if (kbd_realloc_array()) {
-			lwkt_reltoken(&kbd_token);
-			return -1;
-		}
+	if (index >= KBD_MAXKEYBOARDS) {
+		lwkt_reltoken(&kbd_token);
+		return -1;
 	}
 
 	kbd->kb_index = index;
@@ -286,7 +250,7 @@ kbd_unregister(keyboard_t *kbd)
 
 	KBD_LOCK_ASSERT(kbd);
 	lwkt_gettoken(&kbd_token);
-	if ((kbd->kb_index < 0) || (kbd->kb_index >= keyboards)) {
+	if ((kbd->kb_index < 0) || (kbd->kb_index >= KBD_MAXKEYBOARDS)) {
 		lwkt_reltoken(&kbd_token);
 		return ENOENT;
 	}
@@ -368,12 +332,12 @@ kbd_find_keyboard2(char *driver, int unit, int index, int legacy)
 	pref_index = -1;
 
 	lwkt_gettoken(&kbd_token);
-	if ((index < 0) || (index >= keyboards)) {
+	if ((index < 0) || (index >= KBD_MAXKEYBOARDS)) {
 		lwkt_reltoken(&kbd_token);
 		return (-1);
 	}
 
-	for (i = index; i < keyboards; ++i) {
+	for (i = index; i < KBD_MAXKEYBOARDS; ++i) {
 		if (keyboard[i] == NULL)
 			continue;
 		if (!KBD_IS_VALID(keyboard[i]))
@@ -495,7 +459,7 @@ kbd_get_keyboard(int index)
 	keyboard_t *kbd;
 
 	lwkt_gettoken(&kbd_token);
-	if ((index < 0) || (index >= keyboards)) {
+	if ((index < 0) || (index >= KBD_MAXKEYBOARDS)) {
 		lwkt_reltoken(&kbd_token);
 		return NULL;
 	}
@@ -584,7 +548,7 @@ kbd_attach(keyboard_t *kbd)
 	char tbuf[MAKEDEV_MINNBUF];
 
 	lwkt_gettoken(&kbd_token);
-	if (kbd->kb_index >= keyboards) {
+	if (kbd->kb_index >= KBD_MAXKEYBOARDS) {
 		lwkt_reltoken(&kbd_token);
 		return EINVAL;
 	}
@@ -617,7 +581,7 @@ kbd_detach(keyboard_t *kbd)
 
 	lwkt_gettoken(&kbd_token);
 
-	if (kbd->kb_index >= keyboards) {
+	if (kbd->kb_index >= KBD_MAXKEYBOARDS) {
 		lwkt_reltoken(&kbd_token);
 		return EINVAL;
 	}

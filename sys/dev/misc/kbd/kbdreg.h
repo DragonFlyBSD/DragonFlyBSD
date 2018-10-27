@@ -128,6 +128,8 @@ struct keyboard {
 #define KBD_DEACTIVATE(k)	(--(k)->kb_active)
 #define KBD_LED_VAL(k)		((k)->kb_led)
 
+#define KBD_MAXKEYBOARDS	16
+
 /* Locking functions */
 
 #define KBD_LOCK_DECLARE	int dont_lock
@@ -239,7 +241,7 @@ typedef struct keyboard_driver {
 	DATA_SET(kbddriver_set, name##_kbd_driver)
 
 /* global variables */
-extern keyboard_switch_t **kbdsw;
+extern keyboard_switch_t *kbdsw[KBD_MAXKEYBOARDS];
 
 /* functions for the keyboard driver */
 int			kbd_add_driver(keyboard_driver_t *driver);

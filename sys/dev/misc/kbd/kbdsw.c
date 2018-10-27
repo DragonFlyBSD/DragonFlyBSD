@@ -85,16 +85,27 @@ kbd_term(keyboard_t *kbd)
 	return (error);
 }
 
+/*
+ * Handle a keyboard interrupt.
+ *
+ * Be suspicious, just in case kbd_intr() is called from an interrupt
+ * before the keyboard switch is completely installed.
+ */
 int
 kbd_intr(keyboard_t *kbd, void *arg)
 {
 	int error;
+	int i;
 	KBD_LOCK_DECLARE;
 
-	KBD_LOCK(kbd);
-	error = (*kbdsw[kbd->kb_index]->intr)(kbd, arg);
-	KBD_UNLOCK(kbd);
+	error = EINVAL;
+	i = kbd->kb_index;
 
+	if (i >= 0 && i < KBD_MAXKEYBOARDS && kbdsw[i]) {
+		KBD_LOCK(kbd);
+		error = (*kbdsw[i]->intr)(kbd, arg);
+		KBD_UNLOCK(kbd);
+	}
 	return (error);
 }
 
