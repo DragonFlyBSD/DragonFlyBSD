@@ -9,15 +9,10 @@
 #define	_SYS_SYSPROTO_H_
 
 #include <sys/select.h>
-
 #include <sys/signal.h>
-
 #include <sys/acl.h>
-
 #include <sys/msgport.h>
-
 #include <sys/sysmsg.h>
-
 #include <sys/procctl.h>
 
 #define	PAD_(t)	(sizeof(register_t) <= sizeof(t) ? \
