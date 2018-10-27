@@ -84,12 +84,12 @@ s/\$//g
 		printf " */\n\n" > sysarg
 		printf "#ifndef %s\n", sysproto_h > sysarg
 		printf "#define\t%s\n\n", sysproto_h > sysarg
-		printf "#include <sys/select.h>\n\n" > sysarg
-		printf "#include <sys/signal.h>\n\n" > sysarg
-		printf "#include <sys/acl.h>\n\n" > sysarg
-		printf "#include <sys/msgport.h>\n\n" > sysarg
-		printf "#include <sys/sysmsg.h>\n\n" > sysarg
-		printf "#include <sys/procctl.h>\n\n" > sysarg
+		printf "#include <sys/select.h>\n" > sysarg
+		printf "#include <sys/signal.h>\n" > sysarg
+		printf "#include <sys/acl.h>\n" > sysarg
+		printf "#include <sys/msgport.h>\n" > sysarg
+		printf "#include <sys/sysmsg.h>\n" > sysarg
+		printf "#include <sys/procctl.h>\n" > sysarg
 		printf "#define\tPAD_(t)\t(sizeof(register_t) <= sizeof(t) ? \\\n" > sysarg
 		printf "\t\t0 : sizeof(register_t) - sizeof(t))\n\n" > sysarg
 
