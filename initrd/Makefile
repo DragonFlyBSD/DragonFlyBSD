@@ -53,15 +53,16 @@ _clean_initrd:
 
 clean: _clean_rescue _clean_initrd
 
-quickrescue: _build_rescue _install_rescue
-rescue: _clean_rescue quickrescue .PHONY
+_quickrescue: _build_rescue _install_rescue
+rescue: _clean_rescue _quickrescue .PHONY
 .ORDER: _clean_rescue _build_rescue _install_rescue
 
 _quickinitrd: _stage_initrd _make_initrd
 _initrd: _clean_initrd _quickinitrd
 .ORDER: _clean_initrd _stage_initrd _make_initrd
 
-quickinitrd: quickrescue _quickinitrd
+quickrescue: _quickrescue
+quickinitrd: _quickrescue _quickinitrd
 initrd: rescue _initrd
-.ORDER: quickrescue _quickinitrd
+.ORDER: _quickrescue _quickinitrd
 .ORDER: rescue _initrd

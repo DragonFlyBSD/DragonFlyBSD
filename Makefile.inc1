@@ -295,6 +295,7 @@ CROSSENV=	MAKEOBJDIRPREFIX=${WORLDDEST} \
 		HOST_CCVER=${HOST_CCVER} \
 		CCVER=${WORLD_CCVER} \
 		LDVER=${WORLD_LDVER} \
+		WORLDBUILD=1 \
 		BINUTILSVER=${WORLD_BINUTILSVER}
 
 WMAKEENV=	${CROSSENV} \
@@ -349,6 +350,10 @@ _mtreetmp:
 		-p ${WORLDDEST}/usr/include > /dev/null
 	${LN} -sf ${.CURDIR}/sys ${WORLDDEST}
 
+_bwinit:
+	@echo "--------------------------------------------------------------"
+	@echo ">>> starting buildworld target"
+	@echo "--------------------------------------------------------------"
 _bootstrap-tools:
 	@echo
 	@echo "--------------------------------------------------------------"
@@ -403,10 +408,18 @@ everything:
 	@echo ">>> stage 4d: building everything.."
 	@echo "--------------------------------------------------------------"
 	cd ${.CURDIR}; ${WMAKE} all
-_bwinit:
+_rescue:
+	@echo
 	@echo "--------------------------------------------------------------"
-	@echo ">>> starting buildworld target"
+	@echo ">>> stage 5a: building rescue topology"
 	@echo "--------------------------------------------------------------"
+	cd ${.CURDIR}; ${WMAKE} quickrescue
+_initrd:
+	@echo
+	@echo "--------------------------------------------------------------"
+	@echo ">>> stage 5b: building initrd topology"
+	@echo "--------------------------------------------------------------"
+	cd ${.CURDIR}; ${WMAKE} quickinitrd
 _bwdone:
 	@echo "--------------------------------------------------------------"
 	@echo ">>> buildworld target complete"
@@ -443,10 +456,19 @@ WMAKE_TGTS+=	_obj _build-tools
 WMAKE_TGTS+=	_cross-tools
 .endif
 WMAKE_TGTS+=	_includes _libraries _depend everything
+WMAKE_TGTS+=	_rescue _initrd
+
+.if defined(WMAKE_TGTS_OVERRIDE)
+SUBDIR=
+WMAKE_TGTS=	${WMAKE_TGTS_OVERRIDE}
+.endif
+
+QMAKE_TGTS=	_mtreetmp _obj _includes _libraries _depend everything
+QMAKE_TGTS+=	_rescue _initrd
 
 buildworld: _bwinit ${WMAKE_TGTS} _bwdone
 
-quickworld: _qwinit _mtreetmp _obj _includes _libraries _depend everything _qwdone
+quickworld: _qwinit ${QMAKE_TGTS} _qwdone
 
 realquickworld: _qwinit _mtreetmp _obj _includes _libraries everything _qwdone
 
@@ -474,12 +496,17 @@ installcheck: _iwinit
 .endif
 .endif
 
-#
 # installworld
 #
 # Backs up the current world if ${AUTO_BACKUP} is writable.
 # Installs everything compiled by a 'buildworld'.
 #
+.if (!defined(DESTDIR) || ${DESTDIR} == "" || ${DESTDIR} == "/")
+DESTDIR_RESCUE=/
+.else
+DESTDIR_RESCUE=${DESTDIR}
+.endif
+
 installworld: installcheck
 	-@mkdir -p ${AUTO_BACKUP} > /dev/null 2>&1
 	@cd ${.CURDIR}; \
@@ -491,24 +518,30 @@ installworld: installcheck
 	${INSTALL} -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc \
 	    ${DESTDIR}/etc/upgrade/
 
-.if !exists(/rescue/rescue) && \
-    (!defined(DESTDIR) || ${DESTDIR} == "" || ${DESTDIR} == "/")
-	# Do not leave an empty '/rescue' directory when switching the rescue
-	# tools from '/usr/share/initrd' to '/rescue'.
+.if !exists(${DESTDIR_RESCUE}/rescue/rescue)
 	@echo "--------------------------------------------------------------"
-	@echo ">>> we have to run make upgrade to transition rescue tools"
+	@echo ">>> /rescue is empty, setting up"
 	@echo "--------------------------------------------------------------"
-	(cd ${.CURDIR} && make upgrade)
+	(cd ${.CURDIR} && make installrescue)
+.endif
+.if !exists(${DESTDIR_RESCUE}/boot/kernel/initrd.img.gz)
 	@echo "--------------------------------------------------------------"
-	@echo ">>> build and install rescue tools"
+	@echo ">>> /boot/kernel has no initrd.img.gz, setting up"
 	@echo "--------------------------------------------------------------"
-	(cd ${.CURDIR} && make rescue)
+	(cd ${.CURDIR} && make installinitrd)
 .endif
 
 	sync
 	@echo "--------------------------------------------------------------"
 	@echo ">>> installworld target complete"
 	@echo "--------------------------------------------------------------"
+
+installrescue:
+	cpdup -i0 ${WORLDDEST}/rescue ${DESTDIR}/rescue
+
+installinitrd:
+	${INSTALL} -o root -g wheel -m 644 \
+		${WORLDDEST}/boot/kernel/initrd.img.gz ${DESTDIR}/boot/kernel/
 
 installworld-force:
 	@echo "Doing a forced installworld.  This will install to a temporary directory,"
@@ -843,9 +876,9 @@ BSTRAPDIRS2= \
 	usr.bin/cmp usr.bin/xargs usr.bin/id usr.bin/env usr.bin/dirname \
 	usr.bin/tail usr.bin/unifdef \
 	usr.sbin/chown usr.sbin/mtree usr.sbin/config \
-	usr.sbin/zic usr.sbin/makewhatis \
+	usr.sbin/zic usr.sbin/makewhatis usr.sbin/pwd_mkdb \
 	gnu/usr.bin/grep usr.bin/sort usr.bin/gzip \
-	usr.bin/mkcsmapper usr.bin/mkesdb
+	usr.bin/mkcsmapper usr.bin/mkesdb usr.bin/crunch
 
 bootstrap-tools: bootstrap-tools-before bootstrap-tools-targets1 bootstrap-tools-targets2
 	touch ${BTOOLSDEST}/.bootstrap_done
@@ -1200,6 +1233,12 @@ backup-auto-clean:
 
 backup-clean:
 	rm -f ${WORLD_BACKUP}/binaries.tar.gz
+
+# Build and install the statically linked rescue tools, and create the
+# initrd image.
+#
+rescue initrd quickrescue quickinitrd: .PHONY
+	(cd ${.CURDIR}/initrd; make ${.TARGET})
 
 restoreworld:
 .if !exists(${WORLD_BACKUP}/binaries.tar.gz)

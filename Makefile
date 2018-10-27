@@ -9,8 +9,11 @@
 # realquickworld      - Skip above steps, plus depend.
 # crossworld          - Just do the bootstrap, build, and cross-build steps.
 # installworld        - Install everything built by "buildworld".
+#			(includes rescue and initrd image)
 # installworld-force  - Install everything built by "buildworld";
 #                       special case for old systems.
+# installrescue	      - Install /rescue built by buildworld
+# installinitrd	      - Install initrd image built by buildworld
 # world               - buildworld + installworld.
 # buildkernel         - Rebuild the kernel and the kernel-modules from scratch
 #                       using build/bootstrap/cross tools from the last
@@ -59,12 +62,13 @@
 #
 # 1.  `cd /usr/src'       (or to the directory containing your source tree).
 # 2.  `make buildworld'
-# 3.  `make buildkernel KERNCONF=YOUR_KERNEL_HERE'   (default is X86_64_GENERIC).
-# 4.  `make installkernel KERNCONF=YOUR_KERNEL_HERE' (default is X86_64_GENERIC).
+# 3.  `make buildkernel KERNCONF=YOUR_KERNEL_HERE'   (default X86_64_GENERIC).
+# 4.  `make installkernel KERNCONF=YOUR_KERNEL_HERE' (default X86_64_GENERIC).
 # 5.  `make installworld'
 # 6.  `make upgrade'
 # 7.  `reboot'
-# 8.  `make initrd'       (after making sure that the new world works well).
+# 8.  `make installrescue'  (after making sure that the new world works well).
+# 9.  `make installinitrd'  (after making sure that the new world works well).
 #
 # If TARGET_ARCH=arch (e.g. x86_64) is specified you can
 # cross build world for other architectures using the buildworld target,
@@ -79,6 +83,8 @@ TGTS=	all all-man buildkernel quickkernel realquickkernel nativekernel \
 	cleandepend cleandir depend everything \
 	hierarchy install installcheck installkernel \
 	reinstallkernel installworld installworld-force \
+	rescue initrd \
+	quickrescue quickinitrd installrescue installinitrd \
 	libraries lint maninstall \
 	manlint mk obj objlink regress rerelease tags \
 	backupworld restoreworld restoreworld-auto \
@@ -212,10 +218,3 @@ upgrade:
 	@echo "You also need to upgrade the 3rd-party packages with:"
 	@echo "    # pkg update; pkg [-f] upgrade"
 	@echo "--------------------------------------------------------------"
-
-#
-# Build and install the statically linked rescue tools, and create the
-# initrd image.
-#
-rescue initrd quickrescue quickinitrd: .PHONY
-	(cd ${.CURDIR}/initrd; make ${.TARGET})

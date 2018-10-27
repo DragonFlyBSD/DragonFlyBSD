@@ -65,6 +65,11 @@ BOOT_DIR="/boot"
 # Maximum size (number of MB) allowed for the initrd image
 INITRD_SIZE_MAX="15"  # MB
 
+# When run from the buildworld environment do not require that
+# things like uniq, kldload, mount, newfs, etc be in the cross-tools.
+# These must run natively for the current system version.
+#
+PATH=${PATH}:/sbin:/usr/sbin:/bin:/usr/bin
 
 #
 # Helper functions
