@@ -1358,9 +1358,7 @@ tmpfs_fetch_ino(struct tmpfs_mount *tmp)
 {
 	ino_t ret;
 
-	TMPFS_LOCK(tmp);
-	ret = tmp->tm_ino++;
-	TMPFS_UNLOCK(tmp);
+	ret = atomic_fetchadd_64(&tmp->tm_ino, 1);
 
 	return (ret);
 }
