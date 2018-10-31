@@ -434,10 +434,10 @@ again:
 			}
 		} else if (type == HAMMER2_OBJTYPE_DIRECTORY &&
 		    xop->isdir == 0) {
-			error = HAMMER2_ERROR_ENOTDIR;
+			error = HAMMER2_ERROR_EISDIR;
 		} else if (type != HAMMER2_OBJTYPE_DIRECTORY &&
 			   xop->isdir >= 1) {
-			error = HAMMER2_ERROR_EISDIR;
+			error = HAMMER2_ERROR_ENOTDIR;
 		} else {
 			/*
 			 * Delete the directory entry.  chain might also
