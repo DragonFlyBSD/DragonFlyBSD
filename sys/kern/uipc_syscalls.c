@@ -1358,18 +1358,37 @@ int
 sys_getsockname(struct getsockname_args *uap)
 {
 	struct sockaddr *sa = NULL;
-	int error, sa_len;
+	struct sockaddr satmp;
+	int error, sa_len_in, sa_len_out;
 
-	error = copyin(uap->alen, &sa_len, sizeof(sa_len));
+	error = copyin(uap->alen, &sa_len_in, sizeof(sa_len_in));
 	if (error)
 		return (error);
 
-	error = kern_getsockname(uap->fdes, &sa, &sa_len);
+	sa_len_out = sa_len_in;
+	error = kern_getsockname(uap->fdes, &sa, &sa_len_out);
 
-	if (error == 0)
-		error = copyout(sa, uap->asa, sa_len);
-	if (error == 0)
-		error = copyout(&sa_len, uap->alen, sizeof(*uap->alen));
+	if (error == 0) {
+		if (sa) {
+			error = copyout(sa, uap->asa, sa_len_out);
+		} else {
+			/*
+			 * unnamed uipc sockets don't bother storing
+			 * sockaddr, simulate an AF_LOCAL sockaddr.
+			 */
+			sa_len_out = sizeof(satmp);
+			if (sa_len_out > sa_len_in)
+				sa_len_out = sa_len_in;
+			if (sa_len_out < 0)
+				sa_len_out = 0;
+			bzero(&satmp, sizeof(satmp));
+			satmp.sa_len = sa_len_out;
+			satmp.sa_family = AF_LOCAL;
+			error = copyout(&satmp, uap->asa, sa_len_out);
+		}
+	}
+	if (error == 0 && sa_len_out != sa_len_in)
+		error = copyout(&sa_len_out, uap->alen, sizeof(*uap->alen));
 	if (sa)
 		kfree(sa, M_SONAME);
 	return (error);
