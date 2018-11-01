@@ -33,10 +33,10 @@
 #include <ns16550.h>
 #include "libi386.h"
 
-#define COMC_FMT	0x3		/* 8N1 */
-#define COMC_TXWAIT	0x40000		/* transmit timeout */
-#define COMC_BPS(x)	(115200 / (x))	/* speed to DLAB divisor */
-#define COMC_DIV2BPS(x)	(115200 / (x))	/* DLAB divisor to speed */
+#define COMC_FMT	0x3				/* 8N1 */
+#define COMC_TXWAIT	0x40000				/* transmit timeout */
+#define COMC_BPS(x)     (x ? (115200 / (x)) : 1)	/* speed to DLAB divisor */
+#define COMC_DIV2BPS(x) (x ? (115200 / (x)) : 1)	/* DLAB divisor to speed */
 
 #ifndef	COMPORT
 #define COMPORT		0x3f8
@@ -94,7 +94,7 @@ comc_probe(struct console *cp)
     uint32_t locator;
 #endif
     if (comc_curspeed == 0) {
-	comc_curspeed = 0;
+	comc_curspeed = COMSPEED;
 	/*
 	 * Assume that the speed was set by an earlier boot loader if
 	 * comconsole is already the preferred console.
@@ -377,7 +377,7 @@ comc_setup(int speed, int port)
     outb(comc_port + com_dlbh, COMC_BPS(speed) >> 8);
     outb(comc_port + com_cfcr, COMC_FMT);
     outb(comc_port + com_mcr, MCR_RTS | MCR_DTR);
-    outb(port + com_fifo, FIFO_ENABLE | FIFO_RCV_RST | FIFO_XMT_RST | FIFO_DMA_MODE);
+    outb(comc_port + com_fifo, FIFO_ENABLE | FIFO_RCV_RST | FIFO_XMT_RST | FIFO_DMA_MODE);
 
     tries = 0;
     do

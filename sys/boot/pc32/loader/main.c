@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -30,7 +30,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  * Copyright (c) 1998 Michael Smith <msmith@freebsd.org>
  * All rights reserved.
  *
@@ -79,7 +79,7 @@
 
 #define COMCONSOLE_DEBUG	1
 /* Arguments passed in from the boot1/boot2 loader */
-static struct 
+static struct
 {
     u_int32_t	howto;
     u_int32_t	bootdev;
@@ -173,9 +173,9 @@ main(void)
     bzero(&v86, sizeof(v86));
     v86.efl = PSL_RESERVED_DEFAULT | PSL_I;
 
-    /* 
+    /*
      * Initialize the heap as early as possible.  Once this is done, 
-     * malloc() is usable. 
+     * malloc() is usable.
      *
      * Don't include our stack in the heap.  If the stack is in low
      * user memory use {end,bios_basemem}.  If the stack is in high
@@ -184,7 +184,7 @@ main(void)
      * the heap to bios_basemem.
      *
      * Be sure to use the virtual bios_basemem address rather then
-     * the physical bios_basemem address or we may overwrite BIOS 
+     * the physical bios_basemem address or we may overwrite BIOS
      * data.
      */
     bios_getmem();
@@ -209,8 +209,8 @@ main(void)
 #endif
     setheap((void *)heapbase, (void *)memtop);
 
-    /* 
-     * XXX Chicken-and-egg problem; we want to have console output early, 
+    /*
+     * XXX Chicken-and-egg problem; we want to have console output early,
      * but some console attributes may depend on reading from eg. the boot
      * device, which we can't do yet.
      *
@@ -262,7 +262,7 @@ main(void)
 	    (devsw[i]->dv_init)();
 	/*WDEBUG('M' + i);*/
     }
-    printf("BIOS %dkB/%dkB available memory\n", 
+    printf("BIOS %dkB/%dkB available memory\n",
 	    bios_basemem / 1024, bios_extmem / 1024);
     if (initial_bootinfo != NULL) {
 	initial_bootinfo->bi_basemem = bios_basemem / 1024;
@@ -286,7 +286,7 @@ main(void)
     printf("(%s, %s)\n", bootprog_maker, bootprog_date);
 
 #if COMCONSOLE_DEBUG
-    printf("args at %p initial_howto = %08x bootdev = %08x bootinfo = %p\n", 
+    printf("args at %p initial_howto = %08x bootdev = %08x bootinfo = %p\n",
 	kargs, initial_howto, initial_bootdev, initial_bootinfo);
     if (initial_howto & RB_SERIAL) {
         printf("Serial at Speed:%s on Port:%s\n", getenv("comconsole_speed"), getenv("comconsole_port"));
@@ -296,7 +296,7 @@ main(void)
 
     extract_currdev();				/* set $currdev and $loaddev */
     setenv("LINES", "24", 1);			/* optional */
-    
+
     bios_getsmap();
 
     archsw.arch_autoload = i386_autoload;
@@ -314,7 +314,7 @@ main(void)
 }
 
 /*
- * Set the 'current device' by (if possible) recovering the boot device as 
+ * Set the 'current device' by (if possible) recovering the boot device as
  * supplied by the initial bootstrap.
  *
  * XXX should be extended for netbooting.
@@ -357,14 +357,14 @@ extract_currdev(void)
 	/*
 	 * If we are booted by an old bootstrap, we have to guess at the BIOS
 	 * unit number.  We will loose if there is more than one disk type
-	 * and we are not booting from the lowest-numbered disk type 
+	 * and we are not booting from the lowest-numbered disk type
 	 * (ie. SCSI when IDE also exists).
 	 */
 	if ((biosdev == 0) && (B_TYPE(initial_bootdev) != 2))	/* biosdev doesn't match major */
 	    biosdev = 0x80 + B_UNIT(initial_bootdev);		/* assume harddisk */
     }
     new_currdev.d_type = new_currdev.d_dev->dv_type;
-    
+
     /*
      * If we are booting off of a BIOS disk and we didn't succeed in determining
      * which one we booted off of, just use disk0: as a reasonable default.

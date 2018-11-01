@@ -662,7 +662,7 @@ printf(const char *fmt,...)
 				continue;
 #ifdef HAMMER2FS
 			case 'q':
-			case 'x': 
+			case 'x':
 				if (c=='q') {	/* save space */
 					++fmt;	/* skip the 'x' */
 					q = va_arg(ap, uint64_t);

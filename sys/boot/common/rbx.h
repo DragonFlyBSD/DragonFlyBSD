@@ -29,7 +29,7 @@
 
 static const char optstr[NOPT] = "asrdcvhCgmpqnDM";
 	/* Also 'P':ProbeKeyboard, 'S':SetSerialSpeed */
-	
+
 /* these _LOG2 values are be calculated at compile time */
 static const unsigned char flags[NOPT] = {
 	_LOG2(RB_ASKNAME),

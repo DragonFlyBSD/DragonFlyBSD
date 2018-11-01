@@ -78,7 +78,7 @@ will probe for a console and set the
 .Va console
 variable, or set it to serial console
 .Pq Dq comconsole
-if the previous boot stage already used it. If the speed of 
+if the previous boot stage already used it. If the speed of
 the serial connection was already specified in a previous boot
 stage it will set
 .Va comconsole_speed
@@ -524,7 +524,7 @@ The default is
 .Dq Li kernel .
 
 .It Va comconsole_speed
-Defines the speed of the serial console. If the previous boot stage 
+Defines the speed of the serial console. If the previous boot stage
 indicated that a serial console is in use then this variable is initialized
 to the current speed of the console serial port.
 Otherwise it is set to 115200 unless this was overridden using the
