@@ -261,7 +261,7 @@ dumpbuf(char *bp, size_t bufpos, size_t buflen,
 		if (ch == '\0')
 			continue;
 		*newl = (ch == '\n');
-		vis(buf, ch, 0, 0);
+		vis(buf, ch, VIS_NOSLASH, 0);
 		if (buf[1] == 0)
 			putchar(buf[0]);
 		else
