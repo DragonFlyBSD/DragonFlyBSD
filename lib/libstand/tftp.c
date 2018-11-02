@@ -146,7 +146,7 @@ recvtftp(struct iodesc *d, void *pkt, size_t max_len, time_t tleft)
 	case DATA: {
 		int got;
 
-		if (htons(t->th_block) != d->xid) {
+		if (htons(t->th_block) != (uint16_t)d->xid) {
 			/*
 			 * Expected block?
 			 */
@@ -324,7 +324,7 @@ tftp_read(struct open_file *f, void *addr, size_t size, size_t *resid)
 	while (size > 0) {
 		int needblock, count;
 
-		if (!(tc++ % 16))
+		if (!(tc++ % 256))
 			twiddle();
 
 		needblock = tftpfile->off / SEGSIZE + 1;
