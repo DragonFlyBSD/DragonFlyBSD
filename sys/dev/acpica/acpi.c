@@ -522,7 +522,8 @@ acpi_attach(device_t dev)
     AcpiGbl_DoNotUseXsdt = acpi_ignore_xsdt ? TRUE : FALSE;
     AcpiGbl_EnableAmlDebugObject = acpi_debug_objects ? TRUE : FALSE;
     AcpiGbl_EnableInterpreterSlack = acpi_interpreter_slack ? TRUE : FALSE;
-    AcpiGbl_GroupModuleLevelCode = acpi_group_module_level_code ? TRUE : FALSE;
+    AcpiGbl_ExecuteTablesAsMethods = acpi_group_module_level_code ?
+	FALSE : TRUE;
     AcpiGbl_Use32BitFadtAddresses = acpi_fadt_addr32 ? TRUE : FALSE;
     AcpiGbl_Use32BitFacsAddresses = acpi_facs_addr32 ? TRUE : FALSE;
 
