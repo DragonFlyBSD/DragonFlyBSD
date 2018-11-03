@@ -49,6 +49,8 @@
 #include <linux/hrtimer.h>
 #include <linux/gfp.h>
 
+#include <linux/spinlock.h>
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>

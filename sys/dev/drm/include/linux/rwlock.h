@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018 François Tigeot
+ * Copyright (c) 2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,55 +24,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_SPINLOCK_H_
-#define _LINUX_SPINLOCK_H_
+#ifndef _LINUX_RWLOCK_H_
+#define _LINUX_RWLOCK_H_
 
-#include <linux/compiler.h>
-#include <linux/irqflags.h>
-#include <linux/kernel.h>
-#include <linux/stringify.h>
-#include <asm/barrier.h>
+#define write_lock(lock)	lockmgr((lock), LK_EXCLUSIVE)
+#define write_unlock(lock)	lockmgr((lock), LK_RELEASE)
 
-#include <linux/rwlock.h>
-
-#include <sys/spinlock2.h>
-#include <sys/lock.h>
-
-#define spin_is_locked(x)	spin_held(x)
-
-#define assert_spin_locked(x)	KKASSERT(lockinuse(x))
-
-/*
- * The spin_lock_irq() family of functions stop hardware interrupts
- * from being delivered to the local CPU.
- * A crit_enter()/crit_exit() sequence does the same thing on the
- * DragonFly kernel
- */
-static inline void spin_lock_irq(struct lock *lock)
-{
-	crit_enter();
-	lockmgr(lock, LK_EXCLUSIVE);
-}
-
-static inline void spin_unlock_irq(struct lock *lock)
-{
-	lockmgr(lock, LK_RELEASE);
-	crit_exit();
-}
-
-#define spin_lock_irqsave(lock, flags)		do { flags = 0; spin_lock_irq(lock); } while(0)
-#define spin_unlock_irqrestore(lock, flags)	do { flags = 0; spin_unlock_irq(lock); } while(0)
-
-static inline void
-spin_lock_bh(struct lock *lock)
-{
-	spin_lock_irq(lock);
-}
-
-static inline void
-spin_unlock_bh(struct lock *lock)
-{
-	spin_unlock_irq(lock);
-}
-
-#endif	/* _LINUX_SPINLOCK_H_ */
+#endif	/* _LINUX_RWLOCK_H_ */
