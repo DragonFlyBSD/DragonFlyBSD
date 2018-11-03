@@ -134,7 +134,7 @@ vcons_close(struct dev_close_args *ap)
 	lwkt_gettoken(&tp->t_token);
 	(*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 	ttyclose(tp);
-	lwkt_gettoken(&tp->t_token);
+	lwkt_reltoken(&tp->t_token);
 	return(0);
 }
 
