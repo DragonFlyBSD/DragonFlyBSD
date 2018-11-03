@@ -165,9 +165,10 @@ _gettemp(char *path, int *doopen, int domkdir, int slen, int oflags)
 
 	for (;;) {
 		if (doopen) {
-			if ((*doopen =
-			    _open(path, O_CREAT|O_EXCL|O_RDWR, 0600)) >= 0)
+			if ((*doopen = _open(path, O_CREAT|O_EXCL|O_RDWR|oflags,
+					     0600)) >= 0) {
 				return (1);
+			}
 			if (errno != EEXIST)
 				return (0);
 		} else if (domkdir) {
