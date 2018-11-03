@@ -2120,7 +2120,9 @@ vfs_create_addrlist_af(int af, struct netexport *nep)
 #endif
 
 	NE_ASSERT_LOCKED(nep);
+#if defined(INET) || defined(INET6)
 	KKASSERT(maskhead != NULL);
+#endif
 	switch (af) {
 #ifdef INET
 	case AF_INET:
