@@ -2223,7 +2223,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		error = priv_check_cred(cred, PRIV_ROOT, 0);
 		if (error)
 			break;
-		if (ifp->if_ioctl == 0) {
+		if (ifp->if_ioctl == NULL) {
 			error = EOPNOTSUPP;
 			break;
 		}
@@ -2290,6 +2290,26 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 			break;
 		}
 		error = so_pru_control_direct(so, cmd, data, ifp);
+
+		/*
+		 * If the socket control method returns EOPNOTSUPP, pass the
+		 * request directly to the interface.
+		 *
+		 * Exclude the SIOCSIF{ADDR,BRDADDR,DSTADDR,NETMASK} ioctls,
+		 * because drivers may trust these ioctls to come from an
+		 * already privileged layer and thus do not perform credentials
+		 * checks or input validation.
+		 */
+		if (error == EOPNOTSUPP &&
+		    ifp->if_ioctl != NULL &&
+		    cmd != SIOCSIFADDR &&
+		    cmd != SIOCSIFBRDADDR &&
+		    cmd != SIOCSIFDSTADDR &&
+		    cmd != SIOCSIFNETMASK) {
+			ifnet_serialize_all(ifp);
+			error = ifp->if_ioctl(ifp, cmd, data, cred);
+			ifnet_deserialize_all(ifp);
+		}
 
 		if ((oif_flags ^ ifp->if_flags) & IFF_UP) {
 #ifdef INET6
