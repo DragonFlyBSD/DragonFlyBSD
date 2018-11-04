@@ -594,6 +594,7 @@ nfs_read(struct open_file *f, void *buf, size_t size, size_t *resid)
 {
 	struct nfs_iodesc *fp = (struct nfs_iodesc *)f->f_fsdata;
 	ssize_t cc;
+	static int tc;
 	char *addr = buf;
 	
 #ifdef NFS_DEBUG
@@ -602,7 +603,8 @@ nfs_read(struct open_file *f, void *buf, size_t size, size_t *resid)
 		       (int)fp->off);
 #endif
 	while ((int)size > 0) {
-		twiddle();
+		if (!(tc++ % 256))
+			twiddle();
 		cc = nfs_readdata(fp, fp->off, addr, size);
 		/* XXX maybe should retry on certain errors */
 		if (cc == -1) {
