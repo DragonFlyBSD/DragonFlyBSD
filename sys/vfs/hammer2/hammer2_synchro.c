@@ -601,7 +601,7 @@ hammer2_sync_slaves(hammer2_thread_t *thr, hammer2_inode_t *ip,
 			xop->head.cluster.array[idx].flags =
 							HAMMER2_CITEM_INVALID;
 			xop->head.cluster.array[idx].chain = chain;
-			nip = hammer2_inode_get(pmp, ip, &xop->head, idx);
+			nip = hammer2_inode_get(pmp, &xop->head, -1, idx);
 			xop->head.cluster.array[idx].chain = NULL;
 
 			hammer2_inode_ref(nip);

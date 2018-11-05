@@ -167,34 +167,34 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	 * when vfsync() is called.  However, that requires a vnode.
 	 *
 	 * When the vnode is disassociated we must keep track of any modified
-	 * inode via the sideq so that it is properly flushed.  We cannot
-	 * safely synchronize the inode from inside the reclaim due to
-	 * potentially deep locks held as-of when the reclaim occurs.
+	 * inode to be flushed in a later filesystem sync.  We cannot safely
+	 * synchronize the inode from inside the reclaim due to potentially
+	 * deep locks held as-of when the reclaim occurs.
 	 * Interactions and potential deadlocks abound.
+	 *
+	 * Place the inode on SIDEQ, unless it is already on the SIDEQ or
+	 * SYNCQ.  It will be transfered to the SYNCQ in the next filesystem
+	 * sync.  It is not safe to try to shoehorn it into the current fs
+	 * sync.
 	 */
 	if ((ip->flags & (HAMMER2_INODE_ISUNLINKED |
 			  HAMMER2_INODE_MODIFIED |
 			  HAMMER2_INODE_RESIZED |
 			  HAMMER2_INODE_DIRTYDATA)) &&
 	    (ip->flags & HAMMER2_INODE_ISDELETED) == 0) {
-		hammer2_inode_sideq_t *ipul;
-
-		ipul = kmalloc(sizeof(*ipul), pmp->minode, M_WAITOK | M_ZERO);
-		ipul->ip = ip;
-
 		hammer2_spin_ex(&pmp->list_spin);
-		if ((ip->flags & HAMMER2_INODE_ONSIDEQ) == 0) {
+		if ((ip->flags & (HAMMER2_INODE_SYNCQ |
+				  HAMMER2_INODE_SIDEQ)) == 0) {
 			/* ref -> sideq */
-			atomic_set_int(&ip->flags, HAMMER2_INODE_ONSIDEQ);
-			TAILQ_INSERT_TAIL(&pmp->sideq, ipul, entry);
+			atomic_set_int(&ip->flags, HAMMER2_INODE_SIDEQ);
+			TAILQ_INSERT_TAIL(&pmp->sideq, ip, entry);
 			++pmp->sideq_count;
 			hammer2_spin_unex(&pmp->list_spin);
+			/* retain ip ref for SIDEQ linkage */
 		} else {
 			hammer2_spin_unex(&pmp->list_spin);
-			kfree(ipul, pmp->minode);
 			hammer2_inode_drop(ip);		/* vp ref */
 		}
-		/* retain ref from vp for ipul */
 	} else {
 		hammer2_inode_drop(ip);			/* vp ref */
 	}
@@ -1291,7 +1291,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	if (error) {
 		ip = NULL;
 	} else {
-		ip = hammer2_inode_get(dip->pmp, dip, &xop->head, -1);
+		ip = hammer2_inode_get(dip->pmp, &xop->head, -1, -1);
 	}
 	hammer2_inode_unlock(dip);
 
@@ -1393,10 +1393,8 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	 * create the directory entry.  The creation of the actual inode
 	 * sets its nlinks to 1 which is the value we desire.
 	 */
-	nip = hammer2_inode_create(dip->pmp->iroot, dip, ap->a_vap, ap->a_cred,
-				   NULL, 0, inum,
-				   inum, 0, 0,
-				   0, &error);
+	nip = hammer2_inode_create_normal(dip, ap->a_vap, ap->a_cred,
+					  inum, &error);
 	if (error) {
 		error = hammer2_error_to_errno(error);
 	} else {
@@ -1599,10 +1597,8 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	 * create the directory entry.  The creation of the actual inode
 	 * sets its nlinks to 1 which is the value we desire.
 	 */
-	nip = hammer2_inode_create(dip->pmp->iroot, dip, ap->a_vap, ap->a_cred,
-				   NULL, 0, inum,
-				   inum, 0, 0,
-				   0, &error);
+	nip = hammer2_inode_create_normal(dip, ap->a_vap, ap->a_cred,
+					  inum, &error);
 
 	if (error) {
 		error = hammer2_error_to_errno(error);
@@ -1676,10 +1672,8 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	 * Create the device inode and then create the directory entry.
 	 */
 	inum = hammer2_trans_newinum(dip->pmp);
-	nip = hammer2_inode_create(dip->pmp->iroot, dip, ap->a_vap, ap->a_cred,
-				   NULL, 0, inum,
-				   inum, 0, 0,
-				   0, &error);
+	nip = hammer2_inode_create_normal(dip, ap->a_vap, ap->a_cred,
+					  inum, &error);
 	if (error == 0) {
 		error = hammer2_dirent_create(dip, name, name_len,
 					      nip->meta.inum, nip->meta.type);
@@ -1754,10 +1748,8 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	 */
 	inum = hammer2_trans_newinum(dip->pmp);
 
-	nip = hammer2_inode_create(dip->pmp->iroot, dip, ap->a_vap, ap->a_cred,
-				   NULL, 0, inum,
-				   inum, 0, 0,
-				   0, &error);
+	nip = hammer2_inode_create_normal(dip, ap->a_vap, ap->a_cred,
+					  inum, &error);
 	if (error == 0) {
 		error = hammer2_dirent_create(dip, name, name_len,
 					      nip->meta.inum, nip->meta.type);
@@ -1888,7 +1880,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	hammer2_inode_unlock(dip);
 
 	if (error == 0) {
-		ip = hammer2_inode_get(dip->pmp, dip, &xop->head, -1);
+		ip = hammer2_inode_get(dip->pmp, &xop->head, -1, -1);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		if (ip) {
 			hammer2_inode_unlink_finisher(ip, isopen);
@@ -1965,7 +1957,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	hammer2_inode_unlock(dip);
 
 	if (error == 0) {
-		ip = hammer2_inode_get(dip->pmp, dip, &xop->head, -1);
+		ip = hammer2_inode_get(dip->pmp, &xop->head, -1, -1);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		if (ip) {
 			hammer2_inode_unlink_finisher(ip, isopen);

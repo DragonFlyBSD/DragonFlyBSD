@@ -68,24 +68,19 @@ static
 void
 hammer2_inode_delayed_sideq(hammer2_inode_t *ip)
 {
-	hammer2_inode_sideq_t *ipul;
 	hammer2_pfs_t *pmp = ip->pmp;
 
-	if ((ip->flags & HAMMER2_INODE_ONSIDEQ) == 0) {
-		ipul = kmalloc(sizeof(*ipul), pmp->minode,
-			       M_WAITOK | M_ZERO);
-		ipul->ip = ip;
+	if ((ip->flags & (HAMMER2_INODE_SYNCQ | HAMMER2_INODE_SIDEQ)) == 0) {
 		hammer2_spin_ex(&pmp->list_spin);
-		if ((ip->flags & HAMMER2_INODE_ONSIDEQ) == 0) {
+		if ((ip->flags & (HAMMER2_INODE_SYNCQ |
+				  HAMMER2_INODE_SIDEQ)) == 0) {
 			hammer2_inode_ref(ip);
-			atomic_set_int(&ip->flags,
-				       HAMMER2_INODE_ONSIDEQ);
-			TAILQ_INSERT_TAIL(&pmp->sideq, ipul, entry);
+			atomic_set_int(&ip->flags, HAMMER2_INODE_SIDEQ);
+			TAILQ_INSERT_TAIL(&pmp->sideq, ip, entry);
 			++pmp->sideq_count;
 			hammer2_spin_unex(&pmp->list_spin);
 		} else {
 			hammer2_spin_unex(&pmp->list_spin);
-			kfree(ipul, pmp->minode);
 		}
 	}
 }
@@ -107,6 +102,10 @@ hammer2_inode_delayed_sideq(hammer2_inode_t *ip)
  *	  it can run on an unresolved/out-of-sync cluster, and also by the
  *	  vnode reclamation code to avoid unnecessary I/O (particularly when
  *	  disposing of hundreds of thousands of cached vnodes).
+ *
+ * When an exclusive lock is obtained on an inode that is on the SYNCQ,
+ * HAMMER2 will automatically move the inode to the front of the queue before
+ * blocking to avoid long stalls against filesystem sync operations.
  *
  * The inode locking function locks the inode itself, resolves any stale
  * chains in the inode's cluster, and allocates a fresh copy of the
@@ -130,18 +129,64 @@ hammer2_inode_delayed_sideq(hammer2_inode_t *ip)
 void
 hammer2_inode_lock(hammer2_inode_t *ip, int how)
 {
+	hammer2_pfs_t *pmp;
+
 	hammer2_inode_ref(ip);
+	pmp = ip->pmp;
 
 	/* 
-	 * Inode structure mutex
+	 * Inode structure mutex - Shared lock
 	 */
 	if (how & HAMMER2_RESOLVE_SHARED) {
 		/*how |= HAMMER2_RESOLVE_RDONLY; not used */
 		hammer2_mtx_sh(&ip->lock);
-	} else {
-		hammer2_mtx_ex(&ip->lock);
+		return;
+	}
+
+	/*
+	 * Inode structure mutex - Exclusive lock
+	 *
+	 * The exclusive lock must wait for inodes on SYNCQ to flush
+	 * first, to ensure that meta-data dependencies such as the
+	 * nlink count and related directory entries are not split
+	 * across flushes.
+	 */
+	hammer2_mtx_ex(&ip->lock);
+	while ((ip->flags & HAMMER2_INODE_SYNCQ) && pmp) {
+		hammer2_spin_ex(&pmp->list_spin);
+		if (ip->flags & HAMMER2_INODE_SYNCQ) {
+			atomic_set_int(&ip->flags, HAMMER2_INODE_SYNCQ_WAKEUP);
+			TAILQ_REMOVE(&pmp->syncq, ip, entry);
+			TAILQ_INSERT_HEAD(&pmp->syncq, ip, entry);
+			hammer2_spin_unex(&pmp->list_spin);
+			tsleep_interlock(&ip->flags, 0);
+			hammer2_mtx_unlock(&ip->lock);
+			tsleep(&ip->flags, PINTERLOCKED, "h2sync", 0);
+			hammer2_mtx_ex(&ip->lock);
+			continue;
+		}
+		hammer2_spin_unex(&pmp->list_spin);
+		break;
 	}
 }
+
+/*
+ * Release an inode lock.  If another thread is blocked on SYNCQ_WAKEUP
+ * we wake them up.
+ */
+void
+hammer2_inode_unlock(hammer2_inode_t *ip)
+{
+	if (ip->flags & HAMMER2_INODE_SYNCQ_WAKEUP) {
+		atomic_clear_int(&ip->flags, HAMMER2_INODE_SYNCQ_WAKEUP);
+		hammer2_mtx_unlock(&ip->lock);
+		wakeup(&ip->flags);
+	} else {
+		hammer2_mtx_unlock(&ip->lock);
+	}
+	hammer2_inode_drop(ip);
+}
+
 
 /*
  * Select a chain out of an inode's cluster and lock it.
@@ -219,13 +264,6 @@ hammer2_inode_chain_and_parent(hammer2_inode_t *ip, int clindex,
 	*parentp = parent;
 
 	return chain;
-}
-
-void
-hammer2_inode_unlock(hammer2_inode_t *ip)
-{
-	hammer2_mtx_unlock(&ip->lock);
-	hammer2_inode_drop(ip);
 }
 
 /*
@@ -544,10 +582,17 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 }
 
 /*
- * Returns the inode associated with the passed-in cluster, creating the
- * inode if necessary and synchronizing it to the passed-in cluster otherwise.
- * When synchronizing, if idx >= 0, only cluster index (idx) is synchronized.
- * Otherwise the whole cluster is synchronized.
+ * Returns the inode associated with the passed-in cluster, allocating a new
+ * hammer2_inode structure if necessary, then synchronizing it to the passed
+ * xop cluster.  When synchronizing, if idx >= 0, only cluster index (idx)
+ * is synchronized.  Otherwise the whole cluster is synchronized.  inum will
+ * be extracted from the passed-in xop and the inum argument will be ignored.
+ *
+ * If xop is passed as NULL then a new hammer2_inode is allocated with the
+ * specified inum, and returned.   For normal inodes, the inode will be
+ * indexed in memory and if it already exists the existing ip will be
+ * returned instead of allocating a new one.  The superroot and PFS inodes
+ * are not indexed in memory.
  *
  * The passed-in cluster must be locked and will remain locked on return.
  * The returned inode will be locked and the caller may dispose of both
@@ -560,8 +605,8 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
  * On return the inode is locked with the supplied cluster.
  */
 hammer2_inode_t *
-hammer2_inode_get(hammer2_pfs_t *pmp, hammer2_inode_t *dip,
-		  hammer2_xop_head_t *xop, int idx)
+hammer2_inode_get(hammer2_pfs_t *pmp, hammer2_xop_head_t *xop,
+		  hammer2_tid_t inum, int idx)
 {
 	hammer2_inode_t *nip;
 	const hammer2_inode_data_t *iptmp;
@@ -579,36 +624,38 @@ hammer2_inode_get(hammer2_pfs_t *pmp, hammer2_inode_t *dip,
 	 *
 	 * Cluster can be NULL during the initial pfs allocation.
 	 */
-again:
-	while (xop) {
+	if (xop) {
 		iptmp = &hammer2_xop_gdata(xop)->ipdata;
-		nip = hammer2_inode_lookup(pmp, iptmp->meta.inum);
+		inum = iptmp->meta.inum;
 		hammer2_xop_pdata(xop);
-		if (nip == NULL)
-			break;
-
-		hammer2_mtx_ex(&nip->lock);
-
+	}
+again:
+	nip = hammer2_inode_lookup(pmp, inum);
+	if (nip) {
 		/*
 		 * Handle SMP race (not applicable to the super-root spmp
 		 * which can't index inodes due to duplicative inode numbers).
 		 */
+		hammer2_mtx_ex(&nip->lock);
 		if (pmp->spmp_hmp == NULL &&
 		    (nip->flags & HAMMER2_INODE_ONRBTREE) == 0) {
 			hammer2_mtx_unlock(&nip->lock);
 			hammer2_inode_drop(nip);
-			continue;
+			goto again;
 		}
-		if (idx >= 0)
-			hammer2_inode_repoint_one(nip, &xop->cluster, idx);
-		else
-			hammer2_inode_repoint(nip, NULL, &xop->cluster);
-
+		if (xop) {
+			if (idx >= 0)
+				hammer2_inode_repoint_one(nip, &xop->cluster,
+							  idx);
+			else
+				hammer2_inode_repoint(nip, NULL, &xop->cluster);
+		}
 		return nip;
 	}
 
 	/*
-	 * We couldn't find the inode number, create a new inode.
+	 * We couldn't find the inode number, create a new inode and try to
+	 * insert it, handle insertion races.
 	 */
 	nip = kmalloc(sizeof(*nip), pmp->minode, M_WAITOK | M_ZERO);
 	spin_init(&nip->cluster_spin, "h2clspin");
@@ -632,9 +679,9 @@ again:
 		atomic_set_int(&nip->flags, HAMMER2_INODE_METAGOOD);
 		hammer2_inode_repoint(nip, NULL, &xop->cluster);
 	} else {
-		nip->meta.inum = 1;		/* PFS inum is always 1 XXX */
+		nip->meta.inum = inum;		/* PFS inum is always 1 XXX */
 		/* mtime will be updated when a cluster is available */
-		atomic_set_int(&nip->flags, HAMMER2_INODE_METAGOOD);/*XXX*/
+		atomic_set_int(&nip->flags, HAMMER2_INODE_METAGOOD);	/*XXX*/
 	}
 
 	nip->pmp = pmp;
@@ -664,60 +711,38 @@ again:
 		++pmp->inum_count;
 		hammer2_spin_unex(&pmp->inum_spin);
 	}
-
 	return (nip);
 }
 
 /*
- * MESSY! CLEANUP!
+ * Create a PFS inode under the superroot.  This function will create the
+ * inode, its media chains, and also insert it into the media.
  *
- * Create a new inode using the vattr to figure out the type.  A non-zero
- * type field overrides vattr.  We need the directory to set iparent or to
- * use when the inode is directly embedded in a directory (typically super-root
- * entries), but note that this really only applies OBJTYPE_DIRECTORY as
- * non-directory inodes can be hardlinked.
- *
- * If no error occurs the new inode is returned, otherwise NULL is returned.
- * It is possible for an error to create a junk inode and then fail later.
- * It will attempt to delete the junk inode and return NULL in this situation.
- *
- * If vap and/or cred are NULL the related fields are not set and the
- * inode type defaults to a directory.  This is used when creating PFSs
- * under the super-root, so the inode number is set to 1 in this case.
- *
- * dip is not locked on entry.
- *
- * NOTE: This function is used to create all manners of inodes, including
- *	 super-root entries for snapshots and PFSs.  When used to create a
- *	 snapshot the inode will be temporarily associated with the spmp.
- *
- * NOTE: When creating a normal file or directory the name/name_len/lhc
- *	 is optional, but is typically specified to make debugging and
- *	 recovery easeier.
+ * Caller must be in a flush transaction because we are inserting the inode
+ * onto the media.
  */
 hammer2_inode_t *
-hammer2_inode_create(hammer2_inode_t *dip, hammer2_inode_t *pip,
-		     struct vattr *vap, struct ucred *cred,
-		     const uint8_t *name, size_t name_len, hammer2_key_t lhc,
-		     hammer2_key_t inum,
-		     uint8_t type, uint8_t target_type,
-		     int flags, int *errorp)
+hammer2_inode_create_pfs(hammer2_pfs_t *spmp,
+		     const uint8_t *name, size_t name_len,
+		     int *errorp)
 {
 	hammer2_xop_create_t *xop;
+	hammer2_inode_t *pip;
 	hammer2_inode_t *nip;
 	int error;
-	uid_t xuid;
 	uuid_t pip_uid;
 	uuid_t pip_gid;
 	uint32_t pip_mode;
 	uint8_t pip_comp_algo;
 	uint8_t pip_check_algo;
 	hammer2_tid_t pip_inum;
+	hammer2_key_t lhc;
 
-	if (name)
-		lhc = hammer2_dirhash(name, name_len);
-	*errorp = 0;
+	pip = spmp->iroot;
 	nip = NULL;
+
+	lhc = hammer2_dirhash(name, name_len);
+	*errorp = 0;
 
 	/*
 	 * Locate the inode or indirect block to create the new
@@ -729,7 +754,7 @@ hammer2_inode_create(hammer2_inode_t *dip, hammer2_inode_t *pip,
 	 * two different creates can end up with the same lhc so we
 	 * cannot depend on the OS to prevent the collision.
 	 */
-	hammer2_inode_lock(dip, 0);
+	hammer2_inode_lock(pip, 0);
 
 	pip_uid = pip->meta.uid;
 	pip_gid = pip->meta.gid;
@@ -739,15 +764,14 @@ hammer2_inode_create(hammer2_inode_t *dip, hammer2_inode_t *pip,
 	pip_inum = (pip == pip->pmp->iroot) ? 1 : pip->meta.inum;
 
 	/*
-	 * If name specified, locate an unused key in the collision space.
-	 * Otherwise use the passed-in lhc directly.
+	 * Locate an unused key in the collision space.
 	 */
-	if (name) {
+	{
 		hammer2_xop_scanlhc_t *sxop;
 		hammer2_key_t lhcbase;
 
 		lhcbase = lhc;
-		sxop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
+		sxop = hammer2_xop_alloc(pip, HAMMER2_XOP_MODIFYING);
 		sxop->lhc = lhc;
 		hammer2_xop_start(&sxop->head, &hammer2_scanlhc_desc);
 		while ((error = hammer2_xop_collect(&sxop->head, 0)) == 0) {
@@ -772,66 +796,23 @@ hammer2_inode_create(hammer2_inode_t *dip, hammer2_inode_t *pip,
 	/*
 	 * Create the inode with the lhc as the key.
 	 */
-	xop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
+	xop = hammer2_xop_alloc(pip, HAMMER2_XOP_MODIFYING);
 	xop->lhc = lhc;
-	xop->flags = flags;
+	xop->flags = HAMMER2_INSERT_PFSROOT;
 	bzero(&xop->meta, sizeof(xop->meta));
 
-	if (vap) {
-		xop->meta.type = hammer2_get_obj_type(vap->va_type);
-
-		switch (xop->meta.type) {
-		case HAMMER2_OBJTYPE_CDEV:
-		case HAMMER2_OBJTYPE_BDEV:
-			xop->meta.rmajor = vap->va_rmajor;
-			xop->meta.rminor = vap->va_rminor;
-			break;
-		default:
-			break;
-		}
-		type = xop->meta.type;
-	} else {
-		xop->meta.type = type;
-		xop->meta.target_type = target_type;
-	}
-	xop->meta.inum = inum;
+	xop->meta.type = HAMMER2_OBJTYPE_DIRECTORY;
+	xop->meta.inum = 1;
 	xop->meta.iparent = pip_inum;
-	
+
 	/* Inherit parent's inode compression mode. */
 	xop->meta.comp_algo = pip_comp_algo;
 	xop->meta.check_algo = pip_check_algo;
 	xop->meta.version = HAMMER2_INODE_VERSION_ONE;
 	hammer2_update_time(&xop->meta.ctime);
 	xop->meta.mtime = xop->meta.ctime;
-	if (vap)
-		xop->meta.mode = vap->va_mode;
+	xop->meta.mode = 0755;
 	xop->meta.nlinks = 1;
-	if (vap) {
-		if (dip->pmp) {
-			xuid = hammer2_to_unix_xid(&pip_uid);
-			xuid = vop_helper_create_uid(dip->pmp->mp,
-						     pip_mode,
-						     xuid,
-						     cred,
-						     &vap->va_mode);
-		} else {
-			/* super-root has no dip and/or pmp */
-			xuid = 0;
-		}
-		if (vap->va_vaflags & VA_UID_UUID_VALID)
-			xop->meta.uid = vap->va_uid_uuid;
-		else if (vap->va_uid != (uid_t)VNOVAL)
-			hammer2_guid_to_uuid(&xop->meta.uid, vap->va_uid);
-		else
-			hammer2_guid_to_uuid(&xop->meta.uid, xuid);
-
-		if (vap->va_vaflags & VA_GID_UUID_VALID)
-			xop->meta.gid = vap->va_gid_uuid;
-		else if (vap->va_gid != (gid_t)VNOVAL)
-			hammer2_guid_to_uuid(&xop->meta.gid, vap->va_gid);
-		else
-			xop->meta.gid = pip_gid;
-	}
 
 	/*
 	 * Regular files and softlinks allow a small amount of data to be
@@ -842,12 +823,7 @@ hammer2_inode_create(hammer2_inode_t *dip, hammer2_inode_t *pip,
 	    xop->meta.type == HAMMER2_OBJTYPE_SOFTLINK) {
 		xop->meta.op_flags |= HAMMER2_OPFLAG_DIRECTDATA;
 	}
-	if (name) {
-		hammer2_xop_setname(&xop->head, name, name_len);
-	} else {
-		name_len = hammer2_xop_setname_inum(&xop->head, inum);
-		KKASSERT(lhc == inum);
-	}
+	hammer2_xop_setname(&xop->head, name, name_len);
 	xop->meta.name_len = name_len;
 	xop->meta.name_key = lhc;
 	KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
@@ -876,11 +852,148 @@ hammer2_inode_create(hammer2_inode_t *dip, hammer2_inode_t *pip,
 	 *
 	 * NOTE: nipdata will have chain's blockset data.
 	 */
-	nip = hammer2_inode_get(dip->pmp, dip, &xop->head, -1);
+	nip = hammer2_inode_get(pip->pmp, &xop->head, -1, -1);
 	nip->comp_heuristic = 0;
 done:
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 done2:
+	hammer2_inode_unlock(pip);
+
+	return (nip);
+}
+
+hammer2_inode_t *
+hammer2_inode_create_normal(hammer2_inode_t *pip,
+			    struct vattr *vap, struct ucred *cred,
+			    hammer2_key_t inum, int *errorp)
+{
+	hammer2_xop_create_t *xop;
+	hammer2_inode_t *dip;
+	hammer2_inode_t *nip;
+	int error;
+	uid_t xuid;
+	uuid_t pip_uid;
+	uuid_t pip_gid;
+	uint32_t pip_mode;
+	uint8_t pip_comp_algo;
+	uint8_t pip_check_algo;
+	hammer2_tid_t pip_inum;
+	uint8_t type;
+
+	dip = pip->pmp->iroot;
+	KKASSERT(dip != NULL);
+	nip = NULL;
+
+	*errorp = 0;
+
+	hammer2_inode_lock(dip, 0);
+
+	pip_uid = pip->meta.uid;
+	pip_gid = pip->meta.gid;
+	pip_mode = pip->meta.mode;
+	pip_comp_algo = pip->meta.comp_algo;
+	pip_check_algo = pip->meta.check_algo;
+	pip_inum = (pip == pip->pmp->iroot) ? 1 : pip->meta.inum;
+
+	/*
+	 * Create the inode using (inum) as the key.
+	 */
+	xop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
+	xop->lhc = inum;
+	xop->flags = 0;
+	bzero(&xop->meta, sizeof(xop->meta));
+	KKASSERT(vap);
+
+	/*
+	 * Setup the inode meta-data
+	 */
+	xop->meta.type = hammer2_get_obj_type(vap->va_type);
+
+	switch (xop->meta.type) {
+	case HAMMER2_OBJTYPE_CDEV:
+	case HAMMER2_OBJTYPE_BDEV:
+		xop->meta.rmajor = vap->va_rmajor;
+		xop->meta.rminor = vap->va_rminor;
+		break;
+	default:
+		break;
+	}
+	type = xop->meta.type;
+
+	xop->meta.inum = inum;
+	xop->meta.iparent = pip_inum;
+	
+	/* Inherit parent's inode compression mode. */
+	xop->meta.comp_algo = pip_comp_algo;
+	xop->meta.check_algo = pip_check_algo;
+	xop->meta.version = HAMMER2_INODE_VERSION_ONE;
+	hammer2_update_time(&xop->meta.ctime);
+	xop->meta.mtime = xop->meta.ctime;
+	xop->meta.mode = vap->va_mode;
+	xop->meta.nlinks = 1;
+
+	xuid = hammer2_to_unix_xid(&pip_uid);
+	xuid = vop_helper_create_uid(dip->pmp->mp, pip_mode,
+				     xuid, cred,
+				     &vap->va_mode);
+	if (vap->va_vaflags & VA_UID_UUID_VALID)
+		xop->meta.uid = vap->va_uid_uuid;
+	else if (vap->va_uid != (uid_t)VNOVAL)
+		hammer2_guid_to_uuid(&xop->meta.uid, vap->va_uid);
+	else
+		hammer2_guid_to_uuid(&xop->meta.uid, xuid);
+
+	if (vap->va_vaflags & VA_GID_UUID_VALID)
+		xop->meta.gid = vap->va_gid_uuid;
+	else if (vap->va_gid != (gid_t)VNOVAL)
+		hammer2_guid_to_uuid(&xop->meta.gid, vap->va_gid);
+	else
+		xop->meta.gid = pip_gid;
+
+	/*
+	 * Regular files and softlinks allow a small amount of data to be
+	 * directly embedded in the inode.  This flag will be cleared if
+	 * the size is extended past the embedded limit.
+	 */
+	if (xop->meta.type == HAMMER2_OBJTYPE_REGFILE ||
+	    xop->meta.type == HAMMER2_OBJTYPE_SOFTLINK) {
+		xop->meta.op_flags |= HAMMER2_OPFLAG_DIRECTDATA;
+	}
+
+	xop->meta.name_len = hammer2_xop_setname_inum(&xop->head, inum);
+	xop->meta.name_key = inum;
+
+	/*
+	 * Create the inode media chains
+	 */
+	hammer2_xop_start(&xop->head, &hammer2_inode_create_desc);
+
+	error = hammer2_xop_collect(&xop->head, 0);
+#if INODE_DEBUG
+	kprintf("CREATE INODE %*.*s\n",
+		(int)name_len, (int)name_len, name);
+#endif
+
+	if (error) {
+		*errorp = error;
+		goto done;
+	}
+
+	/*
+	 * Set up the new inode if not a hardlink pointer.
+	 *
+	 * NOTE: *_get() integrates chain's lock into the inode lock.
+	 *
+	 * NOTE: Only one new inode can currently be created per
+	 *	 transaction.  If the need arises we can adjust
+	 *	 hammer2_trans_init() to allow more.
+	 *
+	 * NOTE: nipdata will have chain's blockset data.
+	 */
+	nip = hammer2_inode_get(dip->pmp, &xop->head, -1, -1);
+	nip->comp_heuristic = 0;
+done:
+	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 	hammer2_inode_unlock(dip);
 
 	return (nip);
@@ -1199,6 +1312,10 @@ killit:
  * sync will also handle synchronizing the inode meta-data.  If no vnode
  * is present we must ensure that the inode is on pmp->sideq.
  *
+ * NOTE: We must always queue the inode to the sideq.  This allows H2 to
+ *	 shortcut vsyncscan() and flush inodes and their related vnodes
+ *	 in a two stages.  H2 still calls vfsync() for each vnode.
+ *
  * NOTE: No mtid (modify_tid) is passed into this routine.  The caller is
  *	 only modifying the in-memory inode.  A modify_tid is synchronized
  *	 later when the inode gets flushed.
@@ -1210,11 +1327,10 @@ void
 hammer2_inode_modify(hammer2_inode_t *ip)
 {
 	atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
-	if (ip->vp) {
+	if (ip->vp)
 		vsetisdirty(ip->vp);
-	} else if (ip->pmp && (ip->flags & HAMMER2_INODE_NOSIDEQ) == 0) {
+	if (ip->pmp && (ip->flags & HAMMER2_INODE_NOSIDEQ) == 0)
 		hammer2_inode_delayed_sideq(ip);
-	}
 }
 
 /*
@@ -1297,6 +1413,7 @@ hammer2_inode_chain_flush(hammer2_inode_t *ip)
 	return error;
 }
 
+#if 0
 /*
  * The normal filesystem sync no longer has visibility to an inode structure
  * after its vnode has been reclaimed.  In this situation a dirty inode may
@@ -1395,3 +1512,4 @@ hammer2_inode_run_sideq(hammer2_pfs_t *pmp, int doall)
 	}
 	hammer2_spin_unex(&pmp->list_spin);
 }
+#endif

@@ -700,7 +700,9 @@ hammer2_cluster_wrok(hammer2_cluster_t *cluster)
 	return (cluster->flags & HAMMER2_CLUSTER_WROK);
 }
 
-RB_HEAD(hammer2_inode_tree, hammer2_inode);
+RB_HEAD(hammer2_inode_tree, hammer2_inode);	/* ip->rbnode */
+TAILQ_HEAD(syncq_head, hammer2_inode);		/* ip->entry */
+TAILQ_HEAD(sideq_head, hammer2_inode);		/* ip->entry */
 
 /*
  * A hammer2 inode.
@@ -711,6 +713,7 @@ RB_HEAD(hammer2_inode_tree, hammer2_inode);
  */
 struct hammer2_inode {
 	RB_ENTRY(hammer2_inode) rbnode;		/* inumber lookup (HL) */
+	TAILQ_ENTRY(hammer2_inode) entry;	/* syncq, SYNCQ flag */
 	hammer2_mtx_t		lock;		/* inode lock */
 	hammer2_mtx_t		truncate_lock;	/* prevent truncates */
 	struct hammer2_pfs	*pmp;		/* PFS mount */
@@ -731,6 +734,34 @@ typedef struct hammer2_inode hammer2_inode_t;
  * MODIFIED	- Inode is in a modified state, ip->meta may have changes.
  * RESIZED	- Inode truncated (any) or inode extended beyond
  *		  EMBEDDED_BYTES.
+ *
+ * SYNCQ	- Inode is included in the current filesystem sync.  The
+ *		  DELETING and CREATING flags will be acted upon.
+ *
+ * SIDEQ	- Inode has likely been disconnected from the vnode topology
+ *		  and so is not visible to the vnode-based filesystem syncer
+ *		  code, but is dirty and must be included in the next
+ *		  filesystem sync.  These inodes are moved to the SYNCQ at
+ *		  the time the sync occurs.
+ *
+ *		  Inodes are not placed on this queue simply because they have
+ *		  become dirty, if a vnode is attached.
+ *
+ * DELETING	- Inode is flagged for deletion during the next filesystem
+ *		  sync.  That is, the inode's chain is currently connected
+ *		  and must be deleting during the current or next fs sync.
+ *
+ * CREATING	- Inode is flagged for creation during the next filesystem
+ *		  sync.  That is, the inode's chain topology exists (so
+ *		  kernel buffer flushes can occur), but is currently
+ *		  disconnected and must be inserted during the current or
+ *		  next fs sync.  If the DELETING flag is also set, the
+ *		  topology can be thrown away instead.
+ *
+ * If an inode that is already part of the current filesystem sync is
+ * modified by the frontend, including by buffer flushes, the inode lock
+ * code detects the SYNCQ flag and moves the inode to the head of the
+ * flush-in-progress, then blocks until the flush has gotten past it.
  */
 #define HAMMER2_INODE_MODIFIED		0x0001
 #define HAMMER2_INODE_SROOT		0x0002	/* kmalloc special case */
@@ -740,24 +771,17 @@ typedef struct hammer2_inode hammer2_inode_t;
 #define HAMMER2_INODE_ISDELETED		0x0020	/* deleted */
 #define HAMMER2_INODE_ISUNLINKED	0x0040
 #define HAMMER2_INODE_METAGOOD		0x0080	/* inode meta-data good */
-#define HAMMER2_INODE_ONSIDEQ		0x0100	/* on side processing queue */
+#define HAMMER2_INODE_SIDEQ		0x0100	/* on side processing queue */
 #define HAMMER2_INODE_NOSIDEQ		0x0200	/* disable sideq operation */
 #define HAMMER2_INODE_DIRTYDATA		0x0400	/* interlocks inode flush */
+#define HAMMER2_INODE_SYNCQ		0x0800	/* sync interlock, sequenced */
+#define HAMMER2_INODE_DELETING		0x1000	/* sync interlock, chain topo */
+#define HAMMER2_INODE_CREATING		0x2000	/* sync interlock, chain topo */
+#define HAMMER2_INODE_SYNCQ_WAKEUP	0x4000	/* sync interlock wakeup */
 
 int hammer2_inode_cmp(hammer2_inode_t *ip1, hammer2_inode_t *ip2);
 RB_PROTOTYPE2(hammer2_inode_tree, hammer2_inode, rbnode, hammer2_inode_cmp,
 		hammer2_tid_t);
-
-/*
- * inode-unlink side-structure
- */
-struct hammer2_inode_sideq {
-	TAILQ_ENTRY(hammer2_inode_sideq) entry;
-	hammer2_inode_t	*ip;
-};
-TAILQ_HEAD(h2_sideq_list, hammer2_inode_sideq);
-
-typedef struct hammer2_inode_sideq hammer2_inode_sideq_t;
 
 /*
  * Transaction management sub-structure under hammer2_pfs
@@ -1207,7 +1231,8 @@ struct hammer2_pfs {
 	uint32_t		inmem_dirty_chains;
 	int			count_lwinprog;	/* logical write in prog */
 	struct spinlock		list_spin;
-	struct h2_sideq_list	sideq;		/* last-close dirty/unlink */
+	struct syncq_head	syncq;		/* SYNCQ flagged inodes */
+	struct sideq_head	sideq;		/* SIDEQ flagged inodes */
 	long			sideq_count;
 	hammer2_thread_t	sync_thrs[HAMMER2_MAXCLUSTER];
 	uint32_t		cluster_flags;	/* cached cluster flags */
@@ -1471,8 +1496,8 @@ void hammer2_adjreadcounter(hammer2_blockref_t *bref, size_t bytes);
 struct vnode *hammer2_igetv(hammer2_inode_t *ip, int *errorp);
 hammer2_inode_t *hammer2_inode_lookup(hammer2_pfs_t *pmp,
 			hammer2_tid_t inum);
-hammer2_inode_t *hammer2_inode_get(hammer2_pfs_t *pmp, hammer2_inode_t *dip,
-			hammer2_xop_head_t *xop, int idx);
+hammer2_inode_t *hammer2_inode_get(hammer2_pfs_t *pmp,
+			hammer2_xop_head_t *xop, hammer2_tid_t inum, int idx);
 void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
@@ -1483,12 +1508,12 @@ void hammer2_inode_repoint_one(hammer2_inode_t *ip, hammer2_cluster_t *cluster,
 void hammer2_inode_modify(hammer2_inode_t *ip);
 void hammer2_inode_run_sideq(hammer2_pfs_t *pmp, int doall);
 
-hammer2_inode_t *hammer2_inode_create(hammer2_inode_t *dip,
-			hammer2_inode_t *pip,
+hammer2_inode_t *hammer2_inode_create_normal(hammer2_inode_t *pip,
 			struct vattr *vap, struct ucred *cred,
-			const uint8_t *name, size_t name_len, hammer2_key_t lhc,
-			hammer2_key_t inum, uint8_t type, uint8_t target_type,
-			int flags, int *errorp);
+			hammer2_key_t inum, int *errorp);
+hammer2_inode_t *hammer2_inode_create_pfs(hammer2_pfs_t *spmp,
+			const uint8_t *name, size_t name_len,
+			int *errorp);
 int hammer2_inode_chain_sync(hammer2_inode_t *ip);
 int hammer2_inode_chain_flush(hammer2_inode_t *ip);
 int hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen);
@@ -1789,6 +1814,7 @@ void hammer2_volconf_update(hammer2_dev_t *hmp, int index);
 void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp, char pfx,
 				u_int flags);
 int hammer2_vfs_sync(struct mount *mp, int waitflags);
+int hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor);
 int hammer2_vfs_enospace(hammer2_inode_t *ip, off_t bytes, struct ucred *cred);
 
 hammer2_pfs_t *hammer2_pfsalloc(hammer2_chain_t *chain,
