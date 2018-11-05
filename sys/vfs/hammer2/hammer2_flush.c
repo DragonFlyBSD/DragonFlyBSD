@@ -140,11 +140,19 @@ hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags)
 
 		if (flags & HAMMER2_TRANS_ISFLUSH) {
 			/*
-			 * Requesting flush transaction.  Wait for all
-			 * currently running transactions to finish.
-			 * Afterwords, normal transactions will be
-			 * interlocked.
+			 * Requesting flush transaction.  This interlocks
+			 * only with other flush transactions.  Note that
+			 * non-flush modifying transactions can run
+			 * concurrently, but will interlock on any inode
+			 * that are on the SYNCQ.
 			 */
+			if (oflags & HAMMER2_TRANS_ISFLUSH) {
+				nflags = oflags | HAMMER2_TRANS_WAITING;
+				dowait = 1;
+			} else {
+				nflags = (oflags | flags) + 1;
+			}
+#if 0
 			if (oflags & HAMMER2_TRANS_MASK) {
 				nflags = oflags | HAMMER2_TRANS_FPENDING |
 						  HAMMER2_TRANS_WAITING;
@@ -152,6 +160,7 @@ hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags)
 			} else {
 				nflags = (oflags | flags) + 1;
 			}
+#endif
 		} else if (flags & HAMMER2_TRANS_BUFCACHE) {
 			/*
 			 * Requesting strategy transaction from buffer-cache,
@@ -160,26 +169,13 @@ hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags)
 			 * to avoid deadlocks.
 			 */
 			nflags = (oflags | flags) + 1;
-#if 0
-			/*
-			 * (old) previous code interlocked against the main
-			 *	 flush pass.
-			 */
-			if ((oflags & (HAMMER2_TRANS_ISFLUSH |
-				       HAMMER2_TRANS_PREFLUSH)) ==
-			    HAMMER2_TRANS_ISFLUSH) {
-				nflags = oflags | HAMMER2_TRANS_WAITING;
-				dowait = 1;
-			} else {
-				nflags = (oflags | flags) + 1;
-			}
-#endif
 		} else {
 			/*
 			 * Requesting a normal modifying transaction.
-			 * Waits for any flush to finish before allowing.
-			 * Multiple modifying transactions can run
-			 * concurrently.
+			 * Does not interlock with flushes.  Multiple
+			 * modifying transactions can run concurrently.
+			 * These do not mess with the on-media topology
+			 * above the inode.
 			 *
 			 * If a flush is pending for more than one second
 			 * but can't run because many modifying transactions
@@ -189,6 +185,7 @@ hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags)
 			 *	 such as read, stat, readdir, etc, do
 			 *	 not use transactions.
 			 */
+#if 0
 			if ((oflags & HAMMER2_TRANS_FPENDING) &&
 			    (u_int)(ticks - pmp->trans.fticks) >= (u_int)hz) {
 				nflags = oflags | HAMMER2_TRANS_WAITING;
@@ -196,7 +193,9 @@ hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags)
 			} else if (oflags & HAMMER2_TRANS_ISFLUSH) {
 				nflags = oflags | HAMMER2_TRANS_WAITING;
 				dowait = 1;
-			} else {
+			} else
+#endif
+			{
 				nflags = (oflags | flags) + 1;
 			}
 		}
@@ -251,8 +250,11 @@ hammer2_trans_done(hammer2_pfs_t *pmp, int quicksideq)
 	 * due to potential deadlocks, so we have to deal with them from
 	 * inside other nominal modifying front-end transactions.
 	 */
-	if (quicksideq && pmp->sideq_count > (pmp->inum_count >> 3))
+	if (quicksideq && pmp->sideq_count > (pmp->inum_count >> 3) && pmp->mp)
+		speedup_syncer(pmp->mp);
+#if 0
 		hammer2_inode_run_sideq(pmp, 0);
+#endif
 
 	/*
 	 * Clean-up the transaction

@@ -616,15 +616,12 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 	if (hammer2_ioctl_pfs_lookup(ip, pfs) == 0)
 		return(EEXIST);
 
-	hammer2_trans_init(hmp->spmp, 0);
+	hammer2_trans_init(hmp->spmp, HAMMER2_TRANS_ISFLUSH);
 	mtid = hammer2_trans_sub(hmp->spmp);
-	nip = hammer2_inode_create(hmp->spmp->iroot, hmp->spmp->iroot,
-				   NULL, NULL,
-				   pfs->name, strlen(pfs->name), 0,
-				   1, HAMMER2_OBJTYPE_DIRECTORY, 0,
-				   HAMMER2_INSERT_PFSROOT, &error);
+	nip = hammer2_inode_create_pfs(hmp->spmp, pfs->name, strlen(pfs->name),
+				       &error);
 	if (error == 0) {
-		nip->flags |= HAMMER2_INODE_NOSIDEQ;
+		/* nip->flags |= HAMMER2_INODE_NOSIDEQ; */
 		hammer2_inode_modify(nip);
 		nchain = hammer2_inode_chain(nip, 0, HAMMER2_RESOLVE_ALWAYS);
 		error = hammer2_chain_modify(nchain, mtid, 0, 0);
@@ -766,7 +763,7 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 
 #if 0
         if (error == 0) {
-                ip = hammer2_inode_get(dip->pmp, dip, &xop->head, -1);
+                ip = hammer2_inode_get(dip->pmp, &xop->head, -1, -1);
                 hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
                 if (ip) {
                         hammer2_inode_unlink_finisher(ip, 0);
@@ -795,7 +792,6 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 	hammer2_tid_t	mtid;
 	size_t name_len;
 	hammer2_key_t lhc;
-	struct vattr vat;
 	int error;
 #if 0
 	uuid_t opfs_clid;
@@ -850,15 +846,8 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 	 * chain_duplicate() but it becomes difficult to disentangle
 	 * the shared core so for now just brute-force it.
 	 */
-	VATTR_NULL(&vat);
-	vat.va_type = VDIR;
-	vat.va_mode = 0755;
 	hammer2_chain_unlock(chain);
-	nip = hammer2_inode_create(hmp->spmp->iroot, hmp->spmp->iroot,
-				   &vat, proc0.p_ucred,
-				   pfs->name, name_len, 0,
-				   1, 0, 0,
-				   HAMMER2_INSERT_PFSROOT, &error);
+	nip = hammer2_inode_create_pfs(hmp->spmp, pfs->name, name_len, &error);
 	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
 	ripdata = &chain->data->ipdata;
 
@@ -868,7 +857,7 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 		hammer2_inode_data_t *wipdata;
 		hammer2_key_t	starting_inum;
 
-		nip->flags |= HAMMER2_INODE_NOSIDEQ;
+		/* nip->flags |= HAMMER2_INODE_NOSIDEQ; */
 		hammer2_inode_modify(nip);
 		nchain = hammer2_inode_chain(nip, 0, HAMMER2_RESOLVE_ALWAYS);
 		error = hammer2_chain_modify(nchain, mtid, 0, 0);

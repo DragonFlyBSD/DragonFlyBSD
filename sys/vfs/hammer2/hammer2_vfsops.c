@@ -213,7 +213,9 @@ static int hammer2_vfs_checkexp(struct mount *mp, struct sockaddr *nam,
 				int *exflagsp, struct ucred **credanonp);
 
 static int hammer2_install_volume_header(hammer2_dev_t *hmp);
+#if 0
 static int hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
+#endif
 
 static void hammer2_update_pmps(hammer2_dev_t *hmp);
 
@@ -406,6 +408,7 @@ hammer2_pfsalloc(hammer2_chain_t *chain,
 		spin_init(&pmp->lru_spin, "h2lru");
 		RB_INIT(&pmp->inum_tree);
 		TAILQ_INIT(&pmp->sideq);
+		TAILQ_INIT(&pmp->syncq);
 		TAILQ_INIT(&pmp->lru_list);
 		spin_init(&pmp->list_spin, "hm2pfsalloc_list");
 
@@ -442,7 +445,7 @@ hammer2_pfsalloc(hammer2_chain_t *chain,
 	 * Create the PFS's root inode and any missing XOP helper threads.
 	 */
 	if ((iroot = pmp->iroot) == NULL) {
-		iroot = hammer2_inode_get(pmp, NULL, NULL, -1);
+		iroot = hammer2_inode_get(pmp, NULL, 1, -1);
 		if (ripdata)
 			iroot->meta = ripdata->meta;
 		pmp->iroot = iroot;
@@ -738,10 +741,7 @@ again:
 	TAILQ_FOREACH(pmp, wlist, mntentry) {
 		if ((iroot = pmp->iroot) == NULL)
 			continue;
-		hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH);
-		hammer2_inode_run_sideq(pmp, 1);
-		hammer2_bioq_sync(pmp);
-		hammer2_trans_done(pmp, 0);
+		hammer2_vfs_sync_pmp(pmp, MNT_WAIT);
 
 		/*
 		 * Determine if this PFS is affected.  If it is we must
@@ -850,6 +850,7 @@ again:
 			/*
 			 * Free the pmp and restart the loop
 			 */
+			KKASSERT(TAILQ_EMPTY(&pmp->sideq));
 			hammer2_pfsfree(pmp);
 			goto again;
 		}
@@ -1291,7 +1292,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hammer2_dummy_xop_from_chain(&xop, schain);
 		hammer2_inode_drop(spmp->iroot);
 		spmp->iroot = NULL;
-		spmp->iroot = hammer2_inode_get(spmp, NULL, &xop, -1);
+		spmp->iroot = hammer2_inode_get(spmp, &xop, -1, -1);
 		spmp->spmp_hmp = hmp;
 		spmp->pfs_types[0] = ripdata->meta.pfs_type;
 		spmp->pfs_hmps[0] = hmp;
@@ -1884,7 +1885,7 @@ hammer2_vfs_vget(struct mount *mp, struct vnode *dvp,
 	error = hammer2_xop_collect(&xop->head, 0);
 
 	if (error == 0)
-		ip = hammer2_inode_get(pmp, NULL, &xop->head, -1);
+		ip = hammer2_inode_get(pmp, &xop->head, -1, -1);
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 
 	if (ip) {
@@ -2389,14 +2390,26 @@ hammer2_fixup_pfses(hammer2_dev_t *hmp)
 int
 hammer2_vfs_sync(struct mount *mp, int waitfor)
 {
+	int error;
+
+	error = hammer2_vfs_sync_pmp(MPTOPMP(mp), waitfor);
+
+	return error;
+}
+
+int
+hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor)
+{
+	struct mount *mp;
 	hammer2_xop_flush_t *xop;
-	struct hammer2_sync_info info;
+	/*struct hammer2_sync_info info;*/
 	hammer2_inode_t *iroot;
-	hammer2_pfs_t *pmp;
+	hammer2_inode_t *ip;
+	struct vnode *vp;
 	int flags;
 	int error;
 
-	pmp = MPTOPMP(mp);
+	mp = pmp->mp;
 	iroot = pmp->iroot;
 	KKASSERT(iroot);
 	KKASSERT(iroot->pmp == pmp);
@@ -2418,59 +2431,106 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		flags |= VMSC_ONEPASS;
 
 	/*
-	 * Flush vnodes individually using a normal transaction to avoid
-	 * stalling any concurrent operations.  This will flush the related
-	 * buffer cache buffers and inodes to the media.
-	 *
-	 * For efficiency do an async pass before making sure with a
-	 * synchronous pass on all related buffer cache buffers.
+	 * Move all inodes on sideq to syncq.  This will clear sideq.
+	 * This should represent all flushable inodes.  These inodes
+	 * will already have refs due to being on syncq or sideq.
 	 */
-	hammer2_trans_init(pmp, 0);
-
-	info.error = 0;
-
-	info.waitfor = MNT_NOWAIT;
-	info.pass = 1;
-	vsyncscan(mp, flags | VMSC_NOWAIT, hammer2_sync_scan2, &info);
+	hammer2_spin_ex(&pmp->list_spin);
+	TAILQ_FOREACH(ip, &pmp->sideq, entry) {
+		KKASSERT(ip->flags & HAMMER2_INODE_SIDEQ);
+		atomic_set_int(&ip->flags, HAMMER2_INODE_SYNCQ);
+		atomic_clear_int(&ip->flags, HAMMER2_INODE_SIDEQ);
+	}
+	TAILQ_CONCAT(&pmp->syncq, &pmp->sideq, entry);
+	pmp->sideq_count = 0;
+	hammer2_spin_unex(&pmp->list_spin);
 
 	/*
-	 * Now do two passes making sure we get everything.  The first pass
-	 * vfsync()s dirty vnodes.  The second pass waits for their I/O's
-	 * to finish and cleans up the dirty flag on the vnode.
-	 */
-	info.pass = 1;
-	info.waitfor = MNT_WAIT;
-	vsyncscan(mp, flags, hammer2_sync_scan2, &info);
-
-	info.pass = 2;
-	info.waitfor = MNT_WAIT;
-	vsyncscan(mp, flags, hammer2_sync_scan2, &info);
-
-	/*
-	 * We must also run the sideq to handle any disconnected inodes
-	 * as the vnode scan will not see these.
-	 */
-	hammer2_inode_run_sideq(pmp, 1);
-	hammer2_trans_done(pmp, 0);
-
-	/*
-	 * Start our flush transaction and flush the root topology down to
-	 * the inodes, but not the inodes themselves (which we already flushed
-	 * above).  Any concurrent activity effecting inode contents will not
+	 * Flush transactions only interlock with other flush transactions.
+	 * Any concurrent frontend operations will block when obtaining an
+	 * exclusive inode lock on any inode on SYNCQ, and we will block here
+	 * when we ourselves obtain the exclusive lock.
 	 *
-	 * The flush sequence will
-	 *
-	 * NOTE! It is still possible for the paging code to push pages
-	 *	 out via a UIO_NOCOPY hammer2_vop_write() during the main
-	 *	 flush.
+	 * Now run through all inodes on syncq.
 	 */
 	hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH);
+	ip = NULL;
+	for (;;) {
+		if (ip == NULL) {
+			hammer2_spin_ex(&pmp->list_spin);
+			ip = TAILQ_FIRST(&pmp->syncq);
+			if (ip == NULL) {
+				hammer2_spin_unex(&pmp->list_spin);
+				break;
+			}
+			TAILQ_REMOVE(&pmp->syncq, ip, entry);
+			atomic_clear_int(&ip->flags, HAMMER2_INODE_SYNCQ);
+			hammer2_spin_unex(&pmp->list_spin);
+			/* leave's ip with a ref from being on SYNCQ */
+		}
 
-	/*
-	 * sync dirty vnodes again while in the flush transaction.  This is
-	 * currently an expensive shim to makre sure the logical topology is
-	 * completely consistent before we flush the volume header.
-	 */
+		/*
+		 * We hold a ref on ip, SYNCQ flag has been cleared, and
+		 * since we own the flush transaction it cannot get set
+		 * again (though the ip can be put on SIDEQ again).
+		 *
+		 * Acquire the vnode and inode exclusively.  Be careful
+		 * of order.
+		 */
+		if ((vp = ip->vp) != NULL) {
+			vhold(vp);
+			if (vget(vp, LK_EXCLUSIVE)) {
+                                vdrop(vp);
+				hammer2_inode_drop(ip);
+				continue;
+			}
+			vdrop(vp);
+			hammer2_mtx_ex(&ip->lock);
+			if (ip->vp != vp) {
+				hammer2_mtx_unlock(&ip->lock);	/* unlock */
+				vput(vp);
+				continue;			/* retry w/ip */
+			}
+		} else {
+			hammer2_mtx_ex(&ip->lock);
+			if (ip->vp != NULL) {
+				hammer2_mtx_unlock(&ip->lock);	/* unlock */
+				continue;			/* retry w/ip */
+			}
+		}
+
+		/*
+		 * Ok, we hold the inode and vnode exclusively locked,
+		 * inside a flush transaction, and can now flush them.
+		 *
+		 * vp token needed for v_rbdirty_tree check / vclrisdirty
+		 * sequencing.  Though we hold the vnode exclusively so
+		 * we shouldn't need to hold the token also in this case.
+		 */
+		if (vp) {
+			vfsync(vp, MNT_WAIT, 1, NULL, NULL);
+			bio_track_wait(&vp->v_track_write, 0, 0); /* XXX */
+			lwkt_gettoken(&vp->v_token);
+		}
+		hammer2_inode_chain_sync(ip);
+		hammer2_inode_chain_flush(ip);
+		if (vp) {
+			if ((ip->flags & (HAMMER2_INODE_MODIFIED |
+					  HAMMER2_INODE_RESIZED |
+					  HAMMER2_INODE_DIRTYDATA)) == 0 &&
+			    RB_EMPTY(&vp->v_rbdirty_tree) &&
+			    !bio_track_active(&vp->v_track_write)) {
+				vclrisdirty(vp);
+			}
+			lwkt_reltoken(&vp->v_token);
+			vput(vp);
+		}
+		hammer2_inode_unlock(ip);	/* unlock+drop */
+		ip = NULL;			/* next ip */
+	}
+	hammer2_bioq_sync(pmp);
+
+#if 0
 	info.pass = 1;
 	info.waitfor = MNT_WAIT;
 	vsyncscan(mp, flags, hammer2_sync_scan2, &info);
@@ -2478,8 +2538,15 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	info.pass = 2;
 	info.waitfor = MNT_WAIT;
 	vsyncscan(mp, flags, hammer2_sync_scan2, &info);
+#endif
 
 	/*
+	 * Generally speaking we now want to flush the media topology from
+	 * the iroot through to the inodes.  The flush stops at any inode
+	 * boundary, which allows the frontend to continue running concurrent
+	 * modifying operations on inodes (including kernel flushes of
+	 * buffers) without interfering with the main sync.
+	 *
 	 * Use the XOP interface to concurrently flush all nodes to
 	 * synchronize the PFSROOT subtopology to the media.  A standard
 	 * end-of-scan ENOENT error indicates cluster sufficiency.
@@ -2489,7 +2556,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 *
 	 * XXX For now wait for all flushes to complete.
 	 */
-	if (iroot) {
+	if (mp && iroot) {
 		/*
 		 * If unmounting try to flush everything including any
 		 * sub-trees under inodes, just in case there is dangling
@@ -2520,6 +2587,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	return (error);
 }
 
+#if 0
 /*
  * Sync passes.
  *
@@ -2594,6 +2662,7 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 #endif
 	return(0);
 }
+#endif
 
 static
 int
