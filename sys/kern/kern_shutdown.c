@@ -83,9 +83,13 @@
 
 #include <sys/signalvar.h>
 
+#if defined(WDOG_DISABLE_ON_PANIC)
 #include <sys/wdog.h>
+#endif
 #include <dev/acpica/acpi_pvpanic/panic_notifier.h>
+#if (NGPIO > 0) && defined(ERROR_LED_ON_PANIC)
 #include <dev/misc/gpio/gpio.h>
+#endif
 
 #ifndef PANIC_REBOOT_WAIT_TIME
 #define PANIC_REBOOT_WAIT_TIME 15 /* default to 15 seconds */
