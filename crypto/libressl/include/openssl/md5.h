@@ -66,7 +66,9 @@
 #define __bounded__(x, y, z)
 #endif
 
+#ifndef _KERNEL	/* for DFly kernel compile */
 #include <openssl/opensslconf.h>
+#endif
 
 #ifdef  __cplusplus
 extern "C" {
