@@ -36,17 +36,50 @@
 static struct
 {
 	const char	*ev;
+        const char 	flag;
 	int		mask;
 } howto_names[] = {
-	{ "boot_askname",	RB_ASKNAME},
-	{ "boot_cdrom",		RB_CDROM},
-	{ "boot_ddb",		RB_KDB},
-	{ "boot_gdb",		RB_GDB},
-	{ "boot_single",	RB_SINGLE},
-	{ "boot_verbose",	RB_VERBOSE},
-	{ "boot_vidcons",	RB_VIDEO},
-	{ "boot_serial",	RB_SERIAL},
-	{ NULL,	0}
+        {"boot_askname", 	'a',	RB_ASKNAME},
+        {"boot_single",		's',	RB_SINGLE},
+/*
+        {NULL,			'-',	RB_NOSYNC},
+        {NULL,			'-',	RB_HALT},
+        {NULL,			'-',	RB_INITNAME},
+*/
+        {"boot_dfltroot",	'r',	RB_DFLTROOT},
+        {"boot_ddb",		'd',	RB_KDB},
+/*
+        {NULL, 			'-',	RB_RDONLY},
+        {NULL, 			'-',	RB_DUMP},
+        {NULL, 			'-',	RB_MINIROOT},
+        {NULL,			'c',	RB_CONFIG},
+*/
+        {"boot_verbose",	'v',	RB_VERBOSE},
+        {"boot_serial",		'h',	RB_SERIAL},
+        {"boot_cdrom",		'C',	RB_CDROM},
+/*
+        {NULL,			'-',	RB_POWEROFF},
+*/
+        {"boot_gdb",		'g',	RB_GDB},
+        {"boot_mute",		'm',	RB_MUTE},
+/*
+        {NULL,			'-',	RB_SELFTEST},
+        {NULL,			'-',	RB_RESERVED01},
+        {NULL,			'-',	RB_RESERVED02},
+*/
+        {"boot_pause",		'p',	RB_PAUSE},
+/*
+        {NULL,			'q',	RB_QUIET},
+        {NULL,			'n',	RB_NOINTR},
+*/
+        {"boot_multicons",	'D',	RB_DUAL},
+        {"boot_vidcons",	'-',	RB_VIDEO},
+        {"boot_multicons", 	'M',	RB_MULTIPLE},
+/*
+        {NULL,			'-',	RB_BOOTINFO},
+*/
+	{NULL,			'-',	0}
+
 };
 
 #endif /* !_SYS_BOOT_H_ */

@@ -72,10 +72,10 @@
 //#define RB_UNUSED05	0x04000000
 #define RB_NOINTR	0x08000000	/* Non Interruptable come up (-n) */
 #define RB_DUAL		0x10000000	/* use comconsole and vidconsole (-D) */
-//#define RB_PROBE	0x20000000	/* Probe multiple consoles (fbsd) */
 
 /* temp fixup */
-#define RB_VIDEO	0x40000000	/* use video console */
+//#define RB_PROBE	0x20000000	/* Probe multiple consoles (fbsd) */
+#define RB_VIDEO	0x20000000	/* use video console */
 #define RB_MULTIPLE	0x40000000	/* use multiple consoles (-D) */
 /* end temp */
 

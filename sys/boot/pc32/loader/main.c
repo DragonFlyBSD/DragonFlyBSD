@@ -68,6 +68,7 @@
 #include <machine/bootinfo.h>
 #include <machine/psl.h>
 #include <sys/reboot.h>
+#include <sys/boot.h>
 
 #include "bootstrap.h"
 #include "libi386/libi386.h"
@@ -106,55 +107,29 @@ extern	char bootprog_name[], bootprog_rev[], bootprog_date[], bootprog_maker[];
 /* XXX debugging */
 extern char _end[];
 
-/* move this to rbx.h */
-static struct
-{
-        const char 	* const ev;
-        const char 	* const desc;
-        const char 	flag;
-        int		mask;
-} howto_names[] = {
-        {"boot_askname", 	"askname",	'a',	RB_ASKNAME},
-        {"boot_single",		"single", 	's',	RB_SINGLE},
-        {NULL,			"nosync", 	'-',	RB_NOSYNC},
-        {NULL,			"halt",		'-',	RB_HALT},
-        {NULL,			"initname",	'-',	RB_INITNAME},
-        {"boot_dfltroot",	"dfltroot",	'r',	RB_DFLTROOT},
-        {"boot_kdb",		"kdb",		'd',	RB_KDB},
-        {NULL, 			"rdonly",	'-',	RB_RDONLY},
-        {NULL, 			"dump",		'-',	RB_DUMP},
-        {NULL, 			"miniroot",	'-',	RB_MINIROOT},
-        {NULL,			"config",	'c',	RB_CONFIG},
-        {"boot_verbose",	"verbose",	'v',	RB_VERBOSE},
-        {"boot_serial",		"serial",	'h',	RB_SERIAL},
-        {"boot_cdrom",		"cdrom",	'C',	RB_CDROM},
-        {NULL,			"poweroff",	'-',	RB_POWEROFF},
-        {"boot_gdb",		"gdb",		'g',	RB_GDB},
-        {"boot_mute",		"mute",		'm',	RB_MUTE},
-        {NULL,			"selftest",	'-',	RB_SELFTEST},
-        {NULL,			"RESERVED01",	'-',	RB_RESERVED01},
-        {NULL,			"RESERVED02",	'-',	RB_RESERVED02},
-        {"boot_pause",		"pause",	'p',	RB_PAUSE},
-        {NULL,			"quiet",	'q',	RB_QUIET},
-        {NULL,			"noint",	'n',	RB_NOINTR},
-        {"boot_multicons",	"dual",		'D',	RB_DUAL},
-        {"boot_multicons", 	"video",	'-',	RB_VIDEO},
-        {"boot_multicons", 	"multiple",	'M',	RB_MULTIPLE},
-        {NULL,			"bootinfo",	'-',	RB_BOOTINFO}
-};
-
 /* convert flags to environment "boot_xxx" strings */
-/* copied from /build/freebsd/sys/sys/boot.h, /build/freebsd/sys/kern/subr_boot.c */
 static void howtoflags2env(uint32_t howto)
 {
     uint32_t i;
-    for (i = 0; howto_names[i].mask != RB_BOOTINFO; i++) {
-        if (howto_names[i].ev != NULL && (howto & howto_names[i].mask)) {
-            printf("add:%s\n",howto_names[i].ev);
+    for (i = 0; howto_names[i].mask != 0; i++) {
+        if (howto & howto_names[i].mask) {
             setenv(howto_names[i].ev, "YES", 1);
         }
     }
-    printf("\n");
+}
+
+static void setconsole(void)
+{
+    if (initial_howto & RB_MUTE)
+        setenv("console", "nullconsole", 1);
+    else if (!strcmp(getenv("boot_multicons"), "YES")) {
+        if (!strcmp(getenv("boot_serial"), "YES"))
+            setenv("console", "comconsole vidconsole", 1);
+        else
+            setenv("console", "vidconsole comconsole", 1);
+    } 
+    else if (!strcmp(getenv("boot_serial"), "YES"))
+        setenv("console", "comconsole", 1);
 }
 
 int
@@ -210,34 +185,14 @@ main(void)
     setheap((void *)heapbase, (void *)memtop);
 
     /*
-     * XXX Chicken-and-egg problem; we want to have console output early,
-     * but some console attributes may depend on reading from eg. the boot
-     * device, which we can't do yet.
-     *
-     * We can use printf() etc. once this is done.   The previous boot stage
-     * might have requested a video or serial preference, in which case we
-     * set it.  If neither is specified or both are specified we leave the
-     * console environment variable alone, defaulting to dual boot.
-     */
-    howtoflags2env(initial_howto);
-    if (initial_howto & RB_MUTE)
-        setenv("console", "nullconsole", 1);
-    else if ((initial_howto & RB_MULTIPLE) == RB_MULTIPLE ||
-             (initial_howto & RB_DUAL) == RB_DUAL ||
-             (initial_howto & (RB_VIDEO|RB_SERIAL)) == (RB_VIDEO|RB_SERIAL)	/* old implementation */
-    ) {
-        if (initial_howto & RB_SERIAL)
-            setenv("console", "comconsole vidconsole", 1);
-        else
-            setenv("console", "vidconsole comconsole", 1);
-    } else if (initial_howto & RB_SERIAL)
-        setenv("console", "comconsole", 1);
-    cons_probe();
-
-    /*
      * Initialise the block cache
      */
     bcache_init(32, 512);	/* 16k cache XXX tune this */
+
+    /*
+     * convert flags to environment boot_xxxx entries
+     */
+    howtoflags2env(initial_howto);
 
     /*
      * Special handling for PXE and CD booting.
@@ -252,6 +207,19 @@ main(void)
 	else if (kargs->bootflags & KARGS_FLAGS_CD)
 	    bc_add(initial_bootdev);
     }
+
+    /*
+     * XXX Chicken-and-egg problem; we want to have console output early,
+     * but some console attributes may depend on reading from eg. the boot
+     * device, which we can't do yet.
+     *
+     * We can use printf() etc. once this is done.   The previous boot stage
+     * might have requested a video or serial preference, in which case we
+     * set it.  If neither is specified or both are specified we leave the
+     * console environment variable alone, defaulting to dual boot.
+     */
+    setconsole();
+    cons_probe();
 
     /*
      * March through the device switch probing for things.
@@ -288,11 +256,10 @@ main(void)
 #if COMCONSOLE_DEBUG
     printf("args at %p initial_howto = %08x bootdev = %08x bootinfo = %p\n",
 	kargs, initial_howto, initial_bootdev, initial_bootinfo);
-    if (initial_howto & RB_SERIAL) {
+    if (initial_howto & RB_SERIAL || initial_howto & RB_MULTIPLE || initial_howto & RB_DUAL) {
         printf("Serial at Speed:%s on Port:%s\n", getenv("comconsole_speed"), getenv("comconsole_port"));
     }
 #endif
-    howtoflags2env(initial_howto);
 
     extract_currdev();				/* set $currdev and $loaddev */
     setenv("LINES", "24", 1);			/* optional */

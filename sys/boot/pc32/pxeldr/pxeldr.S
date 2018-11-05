@@ -45,10 +45,6 @@
 		 */
 		.set KARGS_FLAGS_PXE,0x2	# flag to indicate booting from
 						#  PXE loader
-		/*
-		 * Boot howto bits
-		 */
-		//.set RB_SERIAL,0x1000		# serial console
 
 		/*
 		 * Segment selectors.
@@ -111,6 +107,9 @@ start:		cld				# string ops inc
 		orb $KARGS_FLAGS_PXE, 0x8(%bx)	# kargs->bootflags |=
 						#  KARGS_FLAGS_PXE
 		popl 0xc(%bx)			# kargs->pxeinfo = *PXENV+
+#if !defined(ALWAYS_SERIAL) && !defined(PROBE_KEYBOARD)
+		orl $(RB_DUAL | RB_MULTIPLE), (%bx) # enable multi console
+#endif 
 #ifdef ALWAYS_SERIAL
 		/*
 		 * set the RBX_SERIAL bit in the howto byte.
@@ -125,7 +124,6 @@ start:		cld				# string ops inc
 		 */
 		testb $KEYBOARD_BIT, BDA_KEYBOARD # keyboard present?
 		jnz keyb			# yes, so skip
-		//orl $RB_SERIAL, (%bx)		# enable serial console
 		orl $(RB_MULTIPLE | RB_SERIAL), (%bx) # enable serial console
 keyb:
 #endif

@@ -317,9 +317,6 @@ extern struct arch_switch archsw;
 /* This must be provided by the MD code, but should it be in the archsw? */
 void	delay(int delay);
 
-#define usleep(nanosecs) delay(nanosecs * 1000)
-#define sleep(secs) delay(secs * 1000000)
-
 void	dev_cleanup(void);
 
 time_t	time(time_t *tloc);

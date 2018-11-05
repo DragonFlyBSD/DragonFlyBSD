@@ -180,12 +180,26 @@ comc_ischar(void)
     return (inb(comc_port + com_lsr) & LSR_RXRDY);
 }
 
+/* should be moved to one of the common files */
+static void
+sleep(int timeout) {
+    time_t	when, otime, ntime;
+
+    otime = time(NULL);
+    when = otime + timeout;	/* when to boot */
+    for (;;) {
+	ntime = time(NULL);
+	if (ntime >= when)
+	    break;
+        otime = ntime;
+}
+
 static int
 comc_speed_set(struct env_var *ev, int flags, const void *value)
 {
     char intbuf[64];
     int speed;
-    int tries;
+    int tries = 0;
 
     if ((comconsole.c_flags & (C_ACTIVEIN | C_ACTIVEOUT)) != (C_ACTIVEIN | C_ACTIVEOUT)) {
 	printf("Com 0x%x Not Active\n", comc_port);
@@ -198,19 +212,16 @@ comc_speed_set(struct env_var *ev, int flags, const void *value)
     }
 
     if (comc_curspeed != speed) {
-	if (comc_curspeed != -1 && comc_curspeed != speed) {
-	    printf("Com 0x%x: changing speed to %d baud in 5 seconds, "
-	           "change your terminal to match!\n\a",
-		   comc_port, speed);
-	    sleep(5);
-	}
+        printf("Com 0x%x: changing speed from %d to %d baud in 5 seconds, "
+               "change your terminal to match!\n\a",
+               comc_port, comc_curspeed, speed);
+        sleep(5);
 
 	outb(comc_port + com_cfcr, LCR_DLAB);
 	outb(comc_port + com_dlbl, COMC_BPS(speed) & 0xff);
 	outb(comc_port + com_dlbh, COMC_BPS(speed) >> 8);
 	outb(comc_port + com_cfcr, LCR_8BITS);
-
-	tries = 0;
+        outb(comc_port + com_mcr, MCR_RTS | MCR_DTR);
 	do
 	    inb(comc_port + com_data);
 	while (inb(comc_port + com_lsr) & LSR_RXRDY && ++tries < RX_TRY_COUNT);
