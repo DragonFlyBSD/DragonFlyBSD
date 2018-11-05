@@ -46,6 +46,7 @@ SUBDIR= 802_11 \
 	ifmcstat \
 	inetd \
 	iostat \
+	ip6addrctl \
 	jail \
 	jexec \
 	jls \
