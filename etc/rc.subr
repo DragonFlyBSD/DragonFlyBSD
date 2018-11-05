@@ -71,7 +71,20 @@ SYSCTL_W="${SYSCTL}"
 #	functions
 #	---------
 
+# list_vars pattern
+#	List vars matching pattern.
 #
+list_vars()
+{
+	set | { while read LINE; do
+		var="${LINE%%=*}"
+		case "$var" in
+		"$LINE"|*[!a-zA-Z0-9_]*) continue ;;
+		$1) echo $var
+		esac
+	done; }
+}
+
 # set_rcvar base_var
 #	Set the variable name enabling a specific service.
 #	FreeBSD uses ${service}_enable, while NetBSD uses
