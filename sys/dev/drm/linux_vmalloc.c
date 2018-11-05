@@ -57,6 +57,10 @@ vmap(struct page **pages, unsigned int count,
 	if (off == 0)
 		return (NULL);
 
+	for (int i = 0; i < count; i++) {
+		pmap_page_set_memattr((struct vm_page *)pages[i], prot);
+	}
+
 	vmp->addr = (void *)off;
 	vmp->npages = count;
 	pmap_qenter(off, (struct vm_page **)pages, count);
