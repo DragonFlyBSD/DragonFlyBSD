@@ -33,7 +33,7 @@
 
 static inline pgprot_t pgprot_noncached(pgprot_t prot)
 {
-	return (prot | _PAGE_CACHE_UC_MINUS);
+	return (prot | VM_MEMATTR_UNCACHEABLE);
 }
 
 #endif	/* _ASM_PGTABLE_H_ */

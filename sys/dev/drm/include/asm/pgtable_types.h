@@ -51,7 +51,7 @@
 static inline pgprot_t
 pgprot_writecombine(pgprot_t prot)
 {
-	return (prot | _PAGE_CACHE_WC);
+	return (prot | VM_MEMATTR_WRITE_COMBINING);
 }
 
 #endif	/* _ASM_PGTABLE_TYPES_H_ */
