@@ -738,8 +738,8 @@ kpmap_init(const void *udata __unused)
 	kpmap->header[4].offset = offsetof(struct sys_kpmap, tsc_freq);
 	kpmap->header[5].type = KPTYPE_TICK_FREQ;
 	kpmap->header[5].offset = offsetof(struct sys_kpmap, tick_freq);
-	kpmap->header[5].type = KPTYPE_FAST_GTOD;
-	kpmap->header[5].offset = offsetof(struct sys_kpmap, fast_gtod);
+	kpmap->header[6].type = KPTYPE_FAST_GTOD;
+	kpmap->header[6].offset = offsetof(struct sys_kpmap, fast_gtod);
 	kpmap->version = KPMAP_VERSION;
 }
 SYSINIT(kpmapinit, SI_BOOT1_POST, SI_ORDER_FIRST, kpmap_init, NULL);
