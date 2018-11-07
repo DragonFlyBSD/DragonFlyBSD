@@ -45,7 +45,7 @@ DIRS+=	lib/libssh usr.bin/openssl usr.bin/ssh usr.sbin/sshd
 #
 BIN2=	pccard_ether rc.firewall rc.suspend rc.resume
 
-DEFAULTS= compilers.conf devfs.conf make.conf mkinitrd.conf periodic.conf \
+DEFAULTS= compilers.conf devfs.conf make.conf periodic.conf \
 	  pfi.conf rc.conf uuids
 
 MTREE=	BSD.include.dist BSD.root.dist BSD.usr.dist BSD.var.dist

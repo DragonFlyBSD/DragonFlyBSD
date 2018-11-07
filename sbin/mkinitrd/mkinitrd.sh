@@ -31,7 +31,12 @@
 # SUCH DAMAGE.
 #
 
-. /etc/defaults/mkinitrd.conf
+# Default configuration
+BOOT_DIR="/boot"
+CONTENT_DIRS="/usr/share/initrd"
+INITRD_DIRS="bin boot dev etc mnt proc root sbin tmp var var/empty var/db new_root"
+INITRD_SIZE="15m"
+TMP_DIR="/tmp"
 
 if [ -r /etc/mkinitrd.conf ]; then
 	. /etc/mkinitrd.conf
