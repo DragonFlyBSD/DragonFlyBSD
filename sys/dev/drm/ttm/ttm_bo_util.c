@@ -31,9 +31,12 @@
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_placement.h>
 #include <sys/sfbuf.h>
-#include <linux/export.h>
 #include <linux/io.h>
+#include <linux/highmem.h>
 #include <linux/wait.h>
+#include <linux/slab.h>
+#include <linux/vmalloc.h>
+#include <linux/module.h>
 
 void ttm_bo_free_old_node(struct ttm_buffer_object *bo)
 {
@@ -382,17 +385,22 @@ int ttm_bo_move_memcpy(struct ttm_buffer_object *bo,
 	for (i = 0; i < new_mem->num_pages; ++i) {
 		page = i * dir + add;
 		if (old_iomap == NULL) {
-			pgprot_t prot = ttm_io_prot(old_mem->placement);
+			pgprot_t prot = ttm_io_prot(old_mem->placement,
+						    PAGE_KERNEL);
 			ret = ttm_copy_ttm_io_page(ttm, new_iomap, page,
 						   prot);
 		} else if (new_iomap == NULL) {
-			pgprot_t prot = ttm_io_prot(new_mem->placement);
+			pgprot_t prot = ttm_io_prot(new_mem->placement,
+						    PAGE_KERNEL);
 			ret = ttm_copy_io_ttm_page(ttm, old_iomap, page,
 						   prot);
 		} else
 			ret = ttm_copy_io_page(new_iomap, old_iomap, page);
-		if (ret)
+		if (ret) {
+			/* failing here, means keep old copy as-is */
+			old_copy.mm_node = NULL;
 			goto out1;
+		}
 	}
 	cpu_mfence();
 out2:
@@ -486,21 +494,32 @@ static int ttm_buffer_object_transfer(struct ttm_buffer_object *bo,
 	return 0;
 }
 
-vm_memattr_t
-ttm_io_prot(uint32_t caching_flags)
+pgprot_t ttm_io_prot(uint32_t caching_flags, pgprot_t tmp)
 {
-#if defined(__x86_64__)
+#if defined(__i386__) || defined(__x86_64__)
 	if (caching_flags & TTM_PL_FLAG_WC)
-		return (VM_MEMATTR_WRITE_COMBINING);
+		tmp = pgprot_writecombine(tmp);
 	else
-		/*
-		 * We do not support i386, look at the linux source
-		 * for the reason of the comment.
-		 */
-		return (VM_MEMATTR_UNCACHEABLE);
-#else
-#error Port me
+		tmp = pgprot_noncached(tmp);
+
+#elif defined(__powerpc__)
+	if (!(caching_flags & TTM_PL_FLAG_CACHED)) {
+		pgprot_val(tmp) |= _PAGE_NO_CACHE;
+		if (caching_flags & TTM_PL_FLAG_UNCACHED)
+			pgprot_val(tmp) |= _PAGE_GUARDED;
+	}
 #endif
+#if defined(__ia64__)
+	if (caching_flags & TTM_PL_FLAG_WC)
+		tmp = pgprot_writecombine(tmp);
+	else
+		tmp = pgprot_noncached(tmp);
+#endif
+#if defined(__sparc__) || defined(__mips__)
+	if (!(caching_flags & TTM_PL_FLAG_CACHED))
+		tmp = pgprot_noncached(tmp);
+#endif
+	return tmp;
 }
 EXPORT_SYMBOL(ttm_io_prot);
 
@@ -530,8 +549,7 @@ static int ttm_bo_kmap_ttm(struct ttm_buffer_object *bo,
 			   unsigned long num_pages,
 			   struct ttm_bo_kmap_obj *map)
 {
-	struct ttm_mem_reg *mem = &bo->mem;
-	vm_memattr_t prot;
+	struct ttm_mem_reg *mem = &bo->mem; pgprot_t prot;
 	struct ttm_tt *ttm = bo->ttm;
 	int i, ret;
 
@@ -560,7 +578,7 @@ static int ttm_bo_kmap_ttm(struct ttm_buffer_object *bo,
 		 */
 		prot = (mem->placement & TTM_PL_FLAG_CACHED) ?
 			PAGE_KERNEL :
-			ttm_io_prot(mem->placement);
+			ttm_io_prot(mem->placement, PAGE_KERNEL);
 		map->bo_kmap_type = ttm_bo_map_vmap;
 		map->num_pages = num_pages;
 		map->virtual =

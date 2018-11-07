@@ -218,7 +218,7 @@ reserve:
 	if (bo->mem.bus.is_iomem) {
 		m = vm_phys_fictitious_to_vm_page(bo->mem.bus.base +
 		    bo->mem.bus.offset + offset);
-		pmap_page_set_memattr(m, ttm_io_prot(bo->mem.placement));
+		pmap_page_set_memattr(m, ttm_io_prot(bo->mem.placement, 0));
 	} else {
 		ttm = bo->ttm;
 		m = (struct vm_page *)ttm->pages[OFF_TO_IDX(offset)];
@@ -228,7 +228,7 @@ reserve:
 		}
 		pmap_page_set_memattr(m,
 		    (bo->mem.placement & TTM_PL_FLAG_CACHED) ?
-		    VM_MEMATTR_WRITE_BACK : ttm_io_prot(bo->mem.placement));
+		    VM_MEMATTR_WRITE_BACK : ttm_io_prot(bo->mem.placement, 0));
 	}
 
 	VM_OBJECT_LOCK(vm_obj);
