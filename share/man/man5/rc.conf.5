@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd November 6, 2018
+.Dd November 8, 2018
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -846,17 +846,22 @@ this is the default output interface for scoped addresses.
 Now this works only for IPv6 link local multicast addresses.
 .It Va ip6addrctl_enable
 .Pq Vt bool
-This variable is to enable configuring default address selection policy table
+This variable is to enable configuring the default address selection policy table
 .Pq RFC 3484 .
-The table can be specified in another variable
-.Va ip6addrctl_policy .
-For
+The default value is
+.Dq Li YES ,
+and the table policy is specified by the
 .Va ip6addrctl_policy
-the following keywords can be specified:
+variable below.
+.It Va ip6addrctl_policy
+.Pq Vt str
+This variable specifies the policy table to be installed,
+and can be one of the following keywords:
 .Dq Li ipv4_prefer ,
 .Dq Li ipv6_prefer ,
 or
-.Dq Li AUTO .
+.Dq Li AUTO
+(default).
 .Pp
 If
 .Dq Li ipv4_prefer
@@ -885,16 +890,13 @@ variable; if the variable is set to
 .Dq Li YES
 the IPv6-preferred one is used.
 Otherwise IPv4-preferred.
-.Pp
-The default value of
-.Va ip6addrctl_enable
-and
-.Va ip6addrctl_policy
-are
-.Dq Li YES
-and
-.Dq Li AUTO ,
-respectively.
+.It Va ip6addrctl_verbose
+.Pq Vt bool
+If set to
+.Dq Li YES ,
+print the installed policy table after configuring.
+The default value is
+.Dq Li NO .
 .It Va cloned_interfaces
 .Pq Vt str
 Set to the list of clonable network interfaces to create on this host.
