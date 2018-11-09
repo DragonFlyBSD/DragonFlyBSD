@@ -86,13 +86,15 @@ hammer2_inode_delayed_sideq(hammer2_inode_t *ip)
 }
 
 /*
- * HAMMER2 inode locks
+ * Lock an inode, with SYNCQ semantics.
  *
  * HAMMER2 offers shared and exclusive locks on inodes.  Pass a mask of
  * flags for options:
  *
  *	- pass HAMMER2_RESOLVE_SHARED if a shared lock is desired.  The
  *	  inode locking function will automatically set the RDONLY flag.
+ *	  shared locks are not subject to SYNCQ semantics, exclusive locks
+ *	  are.
  *
  *	- pass HAMMER2_RESOLVE_ALWAYS if you need the inode's meta-data.
  *	  Most front-end inode locks do.
@@ -146,20 +148,25 @@ hammer2_inode_lock(hammer2_inode_t *ip, int how)
 	/*
 	 * Inode structure mutex - Exclusive lock
 	 *
-	 * The exclusive lock must wait for inodes on SYNCQ to flush
-	 * first, to ensure that meta-data dependencies such as the
-	 * nlink count and related directory entries are not split
+	 * An exclusive lock (if not recursive) must wait for inodes on
+	 * SYNCQ to flush first, to ensure that meta-data dependencies such
+	 * as the nlink count and related directory entries are not split
 	 * across flushes.
+	 *
+	 * If the vnode is locked by the current thread it must be unlocked
+	 * across the tsleep() to avoid a deadlock.
 	 */
 	hammer2_mtx_ex(&ip->lock);
+	if (hammer2_mtx_refs(&ip->lock) > 1)
+		return;
 	while ((ip->flags & HAMMER2_INODE_SYNCQ) && pmp) {
 		hammer2_spin_ex(&pmp->list_spin);
 		if (ip->flags & HAMMER2_INODE_SYNCQ) {
+			tsleep_interlock(&ip->flags, 0);
 			atomic_set_int(&ip->flags, HAMMER2_INODE_SYNCQ_WAKEUP);
 			TAILQ_REMOVE(&pmp->syncq, ip, entry);
 			TAILQ_INSERT_HEAD(&pmp->syncq, ip, entry);
 			hammer2_spin_unex(&pmp->list_spin);
-			tsleep_interlock(&ip->flags, 0);
 			hammer2_mtx_unlock(&ip->lock);
 			tsleep(&ip->flags, PINTERLOCKED, "h2sync", 0);
 			hammer2_mtx_ex(&ip->lock);
@@ -167,6 +174,76 @@ hammer2_inode_lock(hammer2_inode_t *ip, int how)
 		}
 		hammer2_spin_unex(&pmp->list_spin);
 		break;
+	}
+}
+
+/*
+ * Exclusively lock up to four inodes, in order, with SYNCQ semantics.
+ * ip1 and ip2 must not be NULL.  ip3 and ip4 may be NULL, but if ip3 is
+ * NULL then ip4 must also be NULL.
+ */
+void
+hammer2_inode_lock4(hammer2_inode_t *ip1, hammer2_inode_t *ip2,
+		    hammer2_inode_t *ip3, hammer2_inode_t *ip4)
+{
+	hammer2_inode_t *ips[4];
+	hammer2_inode_t *iptmp;
+	hammer2_pfs_t *pmp;
+	size_t count;
+	size_t i;
+	size_t j;
+
+	pmp = ip1->pmp;			/* may be NULL */
+	KKASSERT(pmp == ip2->pmp);
+
+	ips[0] = ip1;
+	ips[1] = ip2;
+	if (ip3 == NULL) {
+		count = 2;
+	} else if (ip4 == NULL) {
+		count = 3;
+		ips[2] = ip3;
+		KKASSERT(pmp == ip3->pmp);
+	} else {
+		count = 4;
+		ips[2] = ip3;
+		ips[3] = ip4;
+		KKASSERT(pmp == ip3->pmp);
+		KKASSERT(pmp == ip4->pmp);
+	}
+
+	for (i = 0; i < count; ++i)
+		hammer2_inode_ref(ips[i]);
+
+restart:
+	for (i = 0; i < count; ++i) {
+		iptmp = ips[i];
+		hammer2_mtx_ex(&iptmp->lock);
+		if (hammer2_mtx_refs(&iptmp->lock) > 1)
+			continue;
+		if ((iptmp->flags & HAMMER2_INODE_SYNCQ) == 0 || pmp == NULL)
+			continue;
+		tsleep_interlock(&iptmp->flags, 0);
+		hammer2_spin_ex(&pmp->list_spin);
+		if ((iptmp->flags & HAMMER2_INODE_SYNCQ) == 0) {
+			hammer2_spin_unex(&pmp->list_spin);
+			continue;
+		}
+		atomic_set_int(&iptmp->flags, HAMMER2_INODE_SYNCQ_WAKEUP);
+		TAILQ_REMOVE(&pmp->syncq, iptmp, entry);
+		TAILQ_INSERT_HEAD(&pmp->syncq, iptmp, entry);
+		hammer2_spin_unex(&pmp->list_spin);
+
+		/*
+		 * Unlock everything (including the current index) and wait
+		 * for our wakeup.
+		 */
+		for (j = 0; j <= i; ++j)
+			hammer2_mtx_unlock(&ips[j]->lock);
+		tsleep(&iptmp->flags, PINTERLOCKED, "h2sync", 0);
+		/*tsleep(&iptmp->flags, 0, "h2sync2", 1);*/
+
+		goto restart;
 	}
 }
 
@@ -862,6 +939,13 @@ done2:
 	return (nip);
 }
 
+/*
+ * Create a new, normal inode.  This function will create the inode,
+ * the media chains, but will not insert the chains onto the media topology
+ * (doing so would require a flush transaction and cause long stalls).
+ *
+ * Caller must be in a normal transaction.
+ */
 hammer2_inode_t *
 hammer2_inode_create_normal(hammer2_inode_t *pip,
 			    struct vattr *vap, struct ucred *cred,
@@ -882,7 +966,6 @@ hammer2_inode_create_normal(hammer2_inode_t *pip,
 
 	dip = pip->pmp->iroot;
 	KKASSERT(dip != NULL);
-	nip = NULL;
 
 	*errorp = 0;
 
@@ -896,82 +979,101 @@ hammer2_inode_create_normal(hammer2_inode_t *pip,
 	pip_inum = (pip == pip->pmp->iroot) ? 1 : pip->meta.inum;
 
 	/*
-	 * Create the inode using (inum) as the key.
+	 * Create the in-memory hammer2_inode structure for the specified
+	 * inode.
 	 */
-	xop = hammer2_xop_alloc(dip, HAMMER2_XOP_MODIFYING);
-	xop->lhc = inum;
-	xop->flags = 0;
-	bzero(&xop->meta, sizeof(xop->meta));
-	KKASSERT(vap);
+	nip = hammer2_inode_get(dip->pmp, NULL, inum, -1);
+	nip->comp_heuristic = 0;
+	KKASSERT((nip->flags & HAMMER2_INODE_CREATING) == 0 &&
+		 nip->cluster.nchains == 0);
+	atomic_set_int(&nip->flags, HAMMER2_INODE_CREATING);
 
 	/*
 	 * Setup the inode meta-data
 	 */
-	xop->meta.type = hammer2_get_obj_type(vap->va_type);
+	nip->meta.type = hammer2_get_obj_type(vap->va_type);
 
-	switch (xop->meta.type) {
+	switch (nip->meta.type) {
 	case HAMMER2_OBJTYPE_CDEV:
 	case HAMMER2_OBJTYPE_BDEV:
-		xop->meta.rmajor = vap->va_rmajor;
-		xop->meta.rminor = vap->va_rminor;
+		nip->meta.rmajor = vap->va_rmajor;
+		nip->meta.rminor = vap->va_rminor;
 		break;
 	default:
 		break;
 	}
-	type = xop->meta.type;
+	type = nip->meta.type;
 
-	xop->meta.inum = inum;
-	xop->meta.iparent = pip_inum;
+	KKASSERT(nip->meta.inum == inum);
+	nip->meta.iparent = pip_inum;
 	
 	/* Inherit parent's inode compression mode. */
-	xop->meta.comp_algo = pip_comp_algo;
-	xop->meta.check_algo = pip_check_algo;
-	xop->meta.version = HAMMER2_INODE_VERSION_ONE;
-	hammer2_update_time(&xop->meta.ctime);
-	xop->meta.mtime = xop->meta.ctime;
-	xop->meta.mode = vap->va_mode;
-	xop->meta.nlinks = 1;
+	nip->meta.comp_algo = pip_comp_algo;
+	nip->meta.check_algo = pip_check_algo;
+	nip->meta.version = HAMMER2_INODE_VERSION_ONE;
+	hammer2_update_time(&nip->meta.ctime);
+	nip->meta.mtime = nip->meta.ctime;
+	nip->meta.mode = vap->va_mode;
+	nip->meta.nlinks = 1;
 
 	xuid = hammer2_to_unix_xid(&pip_uid);
 	xuid = vop_helper_create_uid(dip->pmp->mp, pip_mode,
 				     xuid, cred,
 				     &vap->va_mode);
 	if (vap->va_vaflags & VA_UID_UUID_VALID)
-		xop->meta.uid = vap->va_uid_uuid;
+		nip->meta.uid = vap->va_uid_uuid;
 	else if (vap->va_uid != (uid_t)VNOVAL)
-		hammer2_guid_to_uuid(&xop->meta.uid, vap->va_uid);
+		hammer2_guid_to_uuid(&nip->meta.uid, vap->va_uid);
 	else
-		hammer2_guid_to_uuid(&xop->meta.uid, xuid);
+		hammer2_guid_to_uuid(&nip->meta.uid, xuid);
 
 	if (vap->va_vaflags & VA_GID_UUID_VALID)
-		xop->meta.gid = vap->va_gid_uuid;
+		nip->meta.gid = vap->va_gid_uuid;
 	else if (vap->va_gid != (gid_t)VNOVAL)
-		hammer2_guid_to_uuid(&xop->meta.gid, vap->va_gid);
+		hammer2_guid_to_uuid(&nip->meta.gid, vap->va_gid);
 	else
-		xop->meta.gid = pip_gid;
+		nip->meta.gid = pip_gid;
 
 	/*
 	 * Regular files and softlinks allow a small amount of data to be
 	 * directly embedded in the inode.  This flag will be cleared if
 	 * the size is extended past the embedded limit.
 	 */
-	if (xop->meta.type == HAMMER2_OBJTYPE_REGFILE ||
-	    xop->meta.type == HAMMER2_OBJTYPE_SOFTLINK) {
-		xop->meta.op_flags |= HAMMER2_OPFLAG_DIRECTDATA;
+	if (nip->meta.type == HAMMER2_OBJTYPE_REGFILE ||
+	    nip->meta.type == HAMMER2_OBJTYPE_SOFTLINK) {
+		nip->meta.op_flags |= HAMMER2_OPFLAG_DIRECTDATA;
 	}
+
+	/*
+	 * Create the inode using (inum) as the key.  Pass pip for
+	 * method inheritance.
+	 */
+	xop = hammer2_xop_alloc(pip, HAMMER2_XOP_MODIFYING);
+	xop->lhc = inum;
+	xop->flags = 0;
+	xop->meta = nip->meta;
+	KKASSERT(vap);
 
 	xop->meta.name_len = hammer2_xop_setname_inum(&xop->head, inum);
 	xop->meta.name_key = inum;
+	nip->meta.name_len = xop->meta.name_len;
+	nip->meta.name_key = xop->meta.name_key;
+	hammer2_inode_modify(nip);
 
 	/*
-	 * Create the inode media chains
+	 * Create the inode media chains but leave them detached.  We are
+	 * not in a flush transaction so we can't mess with media topology
+	 * above normal inodes (i.e. the index of the inodes themselves).
+	 *
+	 * We've already set the INODE_CREATING flag.  The inode's media
+	 * chains will be inserted onto the media topology on the next
+	 * filesystem sync.
 	 */
-	hammer2_xop_start(&xop->head, &hammer2_inode_create_desc);
+	hammer2_xop_start(&xop->head, &hammer2_inode_create_det_desc);
 
 	error = hammer2_xop_collect(&xop->head, 0);
 #if INODE_DEBUG
-	kprintf("CREATE INODE %*.*s\n",
-		(int)name_len, (int)name_len, name);
+	kprintf("create inode type %d error %d\n", nip->meta.type, error);
 #endif
 
 	if (error) {
@@ -980,18 +1082,10 @@ hammer2_inode_create_normal(hammer2_inode_t *pip,
 	}
 
 	/*
-	 * Set up the new inode if not a hardlink pointer.
-	 *
-	 * NOTE: *_get() integrates chain's lock into the inode lock.
-	 *
-	 * NOTE: Only one new inode can currently be created per
-	 *	 transaction.  If the need arises we can adjust
-	 *	 hammer2_trans_init() to allow more.
-	 *
-	 * NOTE: nipdata will have chain's blockset data.
+	 * Associate the media chains created by the backend with the
+	 * frontend inode.
 	 */
-	nip = hammer2_inode_get(dip->pmp, &xop->head, -1, -1);
-	nip->comp_heuristic = 0;
+	hammer2_inode_repoint(nip, NULL, &xop->head.cluster);
 done:
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 	hammer2_inode_unlock(dip);
@@ -1388,6 +1482,37 @@ hammer2_inode_chain_sync(hammer2_inode_t *ip)
 }
 
 /*
+ * When an inode is flagged INODE_CREATING its chains have not actually
+ * been inserting into the on-media tree yet.
+ */
+int
+hammer2_inode_chain_ins(hammer2_inode_t *ip)
+{
+	int error;
+
+	error = 0;
+	if (ip->flags & HAMMER2_INODE_CREATING) {
+		hammer2_xop_create_t *xop;
+
+		atomic_clear_int(&ip->flags, HAMMER2_INODE_CREATING);
+		xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
+		xop->lhc = ip->meta.inum;
+		xop->flags = 0;
+		hammer2_xop_start(&xop->head, &hammer2_inode_create_ins_desc);
+		error = hammer2_xop_collect(&xop->head, 0);
+		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+		if (error == HAMMER2_ERROR_ENOENT)
+			error = 0;
+		if (error) {
+			kprintf("hammer2: backend unable to "
+				"insert inode %p %ld\n", ip, ip->meta.inum);
+			/* XXX return error somehow? */
+		}
+	}
+	return error;
+}
+
+/*
  * Flushes the inode's chain and its sub-topology to media.  Interlocks
  * HAMMER2_INODE_DIRTYDATA by clearing it prior to the flush.  Any strategy
  * function creating or modifying a chain under this inode will re-set the
@@ -1396,14 +1521,13 @@ hammer2_inode_chain_sync(hammer2_inode_t *ip)
  * inode must be locked.
  */
 int
-hammer2_inode_chain_flush(hammer2_inode_t *ip)
+hammer2_inode_chain_flush(hammer2_inode_t *ip, int flags)
 {
 	hammer2_xop_fsync_t *xop;
 	int error;
 
 	atomic_clear_int(&ip->flags, HAMMER2_INODE_DIRTYDATA);
-	xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING |
-				    HAMMER2_XOP_INODE_STOP);
+	xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING | flags);
 	hammer2_xop_start(&xop->head, &hammer2_inode_flush_desc);
 	error = hammer2_xop_collect(&xop->head, HAMMER2_XOP_COLLECT_WAITALL);
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);

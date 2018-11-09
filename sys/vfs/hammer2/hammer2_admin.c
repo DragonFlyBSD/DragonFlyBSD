@@ -54,6 +54,8 @@ H2XOPDESCRIPTOR(lookup);
 H2XOPDESCRIPTOR(delete);
 H2XOPDESCRIPTOR(inode_mkdirent);
 H2XOPDESCRIPTOR(inode_create);
+H2XOPDESCRIPTOR(inode_create_det);
+H2XOPDESCRIPTOR(inode_create_ins);
 H2XOPDESCRIPTOR(inode_destroy);
 H2XOPDESCRIPTOR(inode_chain_sync);
 H2XOPDESCRIPTOR(inode_unlinkall);
