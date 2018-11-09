@@ -68,6 +68,13 @@ static hammer2_chain_t *hammer2_chain_create_indirect(
 		hammer2_chain_t *parent,
 		hammer2_key_t key, int keybits,
 		hammer2_tid_t mtid, int for_type, int *errorp);
+static void hammer2_chain_rename_obref(hammer2_chain_t **parentp,
+		hammer2_chain_t *chain, hammer2_tid_t mtid,
+		int flags, hammer2_blockref_t *obref);
+static int hammer2_chain_delete_obref(hammer2_chain_t *parent,
+		hammer2_chain_t *chain,
+		hammer2_tid_t mtid, int flags,
+		hammer2_blockref_t *obref);
 static hammer2_io_t *hammer2_chain_drop_data(hammer2_chain_t *chain);
 static hammer2_chain_t *hammer2_combined_find(
 		hammer2_chain_t *parent,
@@ -127,14 +134,15 @@ hammer2_chain_assert_no_data(hammer2_chain_t *chain)
 }
 
 /*
- * Make a chain visible to the flusher.  The flusher needs to be able to
- * do flushes of subdirectory chains or single files so it does a top-down
- * recursion using the ONFLUSH flag for the recursion.  It locates MODIFIED
- * or UPDATE chains and flushes back up the chain to the volume root.
+ * Make a chain visible to the flusher.  The flusher operates using a top-down
+ * recursion based on the ONFLUSH flag.  It locates MODIFIED and UPDATE chains,
+ * flushes them, and updates blocks back to the volume root.
  *
- * This routine sets ONFLUSH upward until it hits the volume root.  For
- * simplicity we ignore PFSROOT boundaries whos rules can be complex.
- * Extra ONFLUSH flagging doesn't hurt the filesystem.
+ * This routine sets the ONFLUSH flag upward from the triggering chain until
+ * it hits an inode root or the volume root.  Inode chains serve as inflection
+ * points, requiring the flusher to bridge across trees.  Inodes include
+ * regular inodes, PFS roots (pmp->iroot), and the media super root
+ * (spmp->iroot).
  */
 void
 hammer2_chain_setflush(hammer2_chain_t *chain)
@@ -145,6 +153,8 @@ hammer2_chain_setflush(hammer2_chain_t *chain)
 		hammer2_spin_sh(&chain->core.spin);
 		while ((chain->flags & HAMMER2_CHAIN_ONFLUSH) == 0) {
 			atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONFLUSH);
+			if (chain->bref.type == HAMMER2_BREF_TYPE_INODE)
+				break;
 			if ((parent = chain->parent) == NULL)
 				break;
 			hammer2_spin_sh(&parent->core.spin);
@@ -488,31 +498,7 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 	hammer2_dev_t *hmp;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *rdrop;
-#if 0
-	hammer2_io_t *dio;
-#endif
 
-#if 0
-	/*
-	 * On last drop if there is no parent and data_off is good (at
-	 * least does not represent the volume root), the modified chain
-	 * is probably going to be destroyed.  We have to make sure that
-	 * the data area is not registered for dedup.
-	 *
-	 * XXX removed. In fact, we do not have to make sure that the
-	 *     data area is not registered for dedup.  The data area
-	 *     can, in fact, still be used for dedup because it is
-	 *     still allocated in the freemap and the underlying I/O
-	 *     will still be flushed.
-	 */
-	if (chain->parent == NULL &&
-	    (chain->flags & HAMMER2_CHAIN_MODIFIED) &&
-	    (chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX)) {
-		hmp = chain->hmp;
-		hammer2_io_dedup_delete(hmp, chain->bref.type,
-					chain->bref.data_off, chain->bytes);
-	}
-#endif
 	/*
 	 * We need chain's spinlock to interlock the sub-tree test.
 	 * We already have chain's mutex, protecting chain->parent.
@@ -538,11 +524,6 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 				    HAMMER2_CHAIN_MODIFIED)) {
 			if (atomic_cmpset_int(&chain->refs, 1, 0)) {
 				hammer2_spin_unex(&chain->core.spin);
-#if 0
-				dio = hammer2_chain_drop_data(chain, 0);
-				if (dio)
-					hammer2_io_bqrelse(&dio);
-#endif
 				hammer2_chain_assert_no_data(chain);
 				hammer2_mtx_unlock(&chain->lock);
 				chain = NULL;
@@ -571,22 +552,18 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
 
 		/*
-		 * If the chain has children we must still flush the chain.
+		 * If the chain has children we must propagate the DESTROY
+		 * flag downward and rip the disconnected topology apart.
+		 * This is accomplished by calling hammer2_flush() on the
+		 * chain.
+		 *
 		 * Any dedup is already handled by the underlying DIO, so
 		 * we do not have to specifically flush it here.
-		 *
-		 * In the case where it has children, the DESTROY flag test
-		 * in the flush code will prevent unnecessary flushes of
-		 * MODIFIED chains that are not flagged DEDUP so don't worry
-		 * about that here.
 		 */
 		if (chain->core.chain_count) {
-			/*
-			 * Put on flushq (should ensure refs > 1), retry
-			 * the drop.
-			 */
 			hammer2_spin_unex(&chain->core.spin);
-			hammer2_delayed_flush(chain);
+			hammer2_flush(chain, HAMMER2_FLUSH_TOP |
+					     HAMMER2_FLUSH_ALL);
 			hammer2_mtx_unlock(&chain->lock);
 
 			return(chain);	/* retry drop */
@@ -610,9 +587,6 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 	}
 
 	/* spinlock still held */
-#if 0
-	dio = NULL;
-#endif
 
 	/*
 	 * If any children exist we must leave the chain intact with refs == 0.
@@ -689,9 +663,6 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 		/*
 		 * Success
 		 */
-#if 0
-		dio = hammer2_chain_drop_data(chain, 1);
-#endif
 		hammer2_chain_assert_no_data(chain);
 
 		/*
@@ -727,10 +698,6 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 		}
 		hammer2_spin_unex(&chain->core.spin);
 		hammer2_mtx_unlock(&chain->lock);
-#if 0
-		if (dio)
-			hammer2_io_bqrelse(&dio);
-#endif
 
 		/*
 		 * lru_list hysteresis (see above for depth overrides).
@@ -767,14 +734,6 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 	if (parent) {
 		hammer2_spin_ex(&parent->core.spin);
 		if (atomic_cmpset_int(&chain->refs, 1, 0) == 0) {
-#if 0
-			/* XXX remove, don't try to drop data on fail */
-			hammer2_spin_unex(&parent->core.spin);
-			dio = hammer2_chain_drop_data(chain, 0);
-			hammer2_spin_unex(&chain->core.spin);
-			if (dio)
-				hammer2_io_bqrelse(&dio);
-#endif
 			/*
 			 * 1->0 transition failed, retry.
 			 */
@@ -860,11 +819,6 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, int depth)
 	 */
 	KKASSERT((chain->flags & (HAMMER2_CHAIN_UPDATE |
 				  HAMMER2_CHAIN_MODIFIED)) == 0);
-#if 0
-	dio = hammer2_chain_drop_data(chain, 1);
-	if (dio)
-		hammer2_io_bqrelse(&dio);
-#endif
 
 	/*
 	 * Once chain resources are gone we can use the now dead chain
@@ -3290,6 +3244,12 @@ done:
  * insertion, based on the supplied key/keybits, and may involve creating
  * indirect blocks and moving other chains around via delete/duplicate.
  *
+ * This call can be made with parent == NULL as long as a non -1 methods
+ * is supplied.  hmp must also be supplied in this situation (otherwise
+ * hmp is extracted from the supplied parent).  The chain will be detached
+ * from the topology.  A later call with both parent and chain can be made
+ * to attach it.
+ *
  * THE CALLER MUST HAVE ALREADY PROPERLY SEEKED (*parentp) TO THE INSERTION
  * POINT SANS ANY REQUIRED INDIRECT BLOCK CREATIONS DUE TO THE ARRAY BEING
  * FULL.  This typically means that the caller is creating the chain after
@@ -3320,11 +3280,10 @@ done:
  */
 int
 hammer2_chain_create(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
-		     hammer2_pfs_t *pmp, int methods,
+		     hammer2_dev_t *hmp, hammer2_pfs_t *pmp, int methods,
 		     hammer2_key_t key, int keybits, int type, size_t bytes,
 		     hammer2_tid_t mtid, hammer2_off_t dedup_off, int flags)
 {
-	hammer2_dev_t *hmp;
 	hammer2_chain_t *chain;
 	hammer2_chain_t *parent;
 	hammer2_blockref_t *base;
@@ -3338,9 +3297,11 @@ hammer2_chain_create(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
 	 * Topology may be crossing a PFS boundary.
 	 */
 	parent = *parentp;
-	KKASSERT(hammer2_mtx_owned(&parent->lock));
-	KKASSERT(parent->error == 0);
-	hmp = parent->hmp;
+	if (parent) {
+		KKASSERT(hammer2_mtx_owned(&parent->lock));
+		KKASSERT(parent->error == 0);
+		hmp = parent->hmp;
+	}
 	chain = *chainp;
 
 	if (chain == NULL) {
@@ -3453,9 +3414,13 @@ hammer2_chain_create(hammer2_chain_t **parentp, hammer2_chain_t **chainp,
 	if (flags & HAMMER2_INSERT_PFSROOT)
 		chain->bref.flags |= HAMMER2_BREF_FLAG_PFSROOT;
 
+	if (parent == NULL)
+		goto skip;
+
 	/*
 	 * Calculate how many entries we have in the blockref array and
-	 * determine if an indirect block is required.
+	 * determine if an indirect block is required when inserting into
+	 * the parent.
 	 */
 again:
 	if (--maxloops == 0)
@@ -3544,6 +3509,10 @@ again:
 		goto again;
 	}
 
+	/*
+	 * fall through if parent, or skip to here if no parent.
+	 */
+skip:
 	if (chain->flags & HAMMER2_CHAIN_DELETED)
 		kprintf("Inserting deleted chain @%016jx\n",
 			chain->bref.key);
@@ -3554,11 +3523,13 @@ again:
 	if (chain->parent != NULL)
 		panic("hammer2: hammer2_chain_create: chain already connected");
 	KKASSERT(chain->parent == NULL);
-	KKASSERT(parent->core.live_count < count);
-	hammer2_chain_insert(parent, chain,
-			     HAMMER2_CHAIN_INSERT_SPIN |
-			     HAMMER2_CHAIN_INSERT_LIVE,
-			     0);
+	if (parent) {
+		KKASSERT(parent->core.live_count < count);
+		hammer2_chain_insert(parent, chain,
+				     HAMMER2_CHAIN_INSERT_SPIN |
+				     HAMMER2_CHAIN_INSERT_LIVE,
+				     0);
+	}
 
 	if (allocated) {
 		/*
@@ -3610,7 +3581,8 @@ again:
 	 * already set in the chain (so it won't recurse up to set it in the
 	 * parent).
 	 */
-	hammer2_chain_setflush(parent);
+	if (parent)
+		hammer2_chain_setflush(parent);
 
 done:
 	*chainp = chain;
@@ -3696,12 +3668,60 @@ hammer2_chain_rename(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 		KKASSERT(parent->refs > 0);
 		KKASSERT(parent->error == 0);
 
-		hammer2_chain_create(parentp, &chain,
-				     chain->pmp, HAMMER2_METH_DEFAULT,
+		hammer2_chain_create(parentp, &chain, NULL, chain->pmp,
+				     HAMMER2_METH_DEFAULT,
 				     bref->key, bref->keybits, bref->type,
 				     chain->bytes, mtid, 0, flags);
 		KKASSERT(chain->flags & HAMMER2_CHAIN_UPDATE);
 		hammer2_chain_setflush(*parentp);
+	}
+}
+
+/*
+ * This works in tandem with delete_obref() to install a blockref in
+ * (typically) an indirect block that is associated with the chain being
+ * moved to *parentp.
+ *
+ * The reason we need this function is that the caller needs to maintain
+ * the blockref as it was, and not generate a new blockref for what might
+ * be a modified chain.  Otherwise stuff will leak into the flush that
+ * the flush code's FLUSH_INODE_STOP flag is unable to catch.
+ *
+ * It is EXTREMELY important that we properly set CHAIN_BMAPUPD and
+ * CHAIN_UPDATE.  We must set BMAPUPD if the bref does not match, and
+ * we must clear CHAIN_UPDATE (that was likely set by the chain_rename) if
+ * it does.  Otherwise we can end up in a situation where H2 is unable to
+ * clean up the in-memory chain topology.
+ *
+ * The reason for this is that flushes do not generally flush through
+ * BREF_TYPE_INODE chains and depend on a hammer2_inode_t queued to syncq
+ * or sideq to properly flush and dispose of the related inode chain's flags.
+ * Situations where the inode is not actually modified by the frontend,
+ * but where we have to move the related chains around as we insert or cleanup
+ * indirect blocks, can leave us with a 'dirty' (non-disposable) in-memory
+ * inode chain that does not have a hammer2_inode_t associated with it.
+ */
+void
+hammer2_chain_rename_obref(hammer2_chain_t **parentp, hammer2_chain_t *chain,
+			   hammer2_tid_t mtid, int flags,
+			   hammer2_blockref_t *obref)
+{
+	hammer2_chain_rename(parentp, chain, mtid, flags);
+
+	if (obref->type) {
+		hammer2_blockref_t *tbase;
+		int tcount;
+
+		KKASSERT((chain->flags & HAMMER2_CHAIN_BMAPPED) == 0);
+		hammer2_chain_modify(*parentp, mtid, 0, 0);
+		tbase = hammer2_chain_base_and_count(*parentp, &tcount);
+		hammer2_base_insert(*parentp, tbase, tcount, chain, obref);
+		if (bcmp(obref, &chain->bref, sizeof(chain->bref))) {
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_BMAPUPD |
+						      HAMMER2_CHAIN_UPDATE);
+		} else {
+			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_UPDATE);
+		}
 	}
 }
 
@@ -3715,7 +3735,8 @@ hammer2_chain_rename(hammer2_chain_t **parentp, hammer2_chain_t *chain,
  */
 static int
 _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
-			     hammer2_tid_t mtid, int flags)
+			     hammer2_tid_t mtid, int flags,
+			     hammer2_blockref_t *obref)
 {
 	hammer2_dev_t *hmp;
 	int error = 0;
@@ -3812,7 +3833,7 @@ _hammer2_chain_delete_helper(hammer2_chain_t *parent, hammer2_chain_t *chain,
 		 * undone.  XXX split update possible w/delete in middle?
 		 */
 		if (base) {
-			hammer2_base_delete(parent, base, count, chain);
+			hammer2_base_delete(parent, base, count, chain, obref);
 		}
 		hammer2_spin_unex(&parent->core.spin);
 		hammer2_spin_unex(&chain->core.spin);
@@ -3940,6 +3961,9 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 	/*
 	 * Pre-modify the parent now to avoid having to deal with error
 	 * processing if we tried to later (in the middle of our loop).
+	 *
+	 * We are going to be moving bref's around, the indirect blocks
+	 * cannot be in an initial state.  Do not pass MODIFY_OPTDATA.
 	 */
 	*errorp = hammer2_chain_modify(parent, mtid, 0, 0);
 	if (*errorp) {
@@ -3947,6 +3971,7 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 			*errorp, hammer2_error_str(*errorp));
 		return NULL;
 	}
+	KKASSERT((parent->flags & HAMMER2_CHAIN_INITIAL) == 0);
 
 	/*hammer2_chain_modify(&parent, HAMMER2_MODIFY_OPTDATA);*/
 	base = hammer2_chain_base_and_count(parent, &count);
@@ -4065,8 +4090,11 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 	 * We have to mark it modified to allocate its block, but use
 	 * OPTDATA to allow it to remain in the INITIAL state.  Otherwise
 	 * it won't be acted upon by the flush code.
+	 *
+	 * XXX remove OPTDATA, we need a fully initialized indirect block to
+	 * be able to move the original blockref.
 	 */
-	*errorp = hammer2_chain_modify(ichain, mtid, 0, HAMMER2_MODIFY_OPTDATA);
+	*errorp = hammer2_chain_modify(ichain, mtid, 0, 0);
 	if (*errorp) {
 		kprintf("hammer2_alloc_indirect: error %08x %s\n",
 			*errorp, hammer2_error_str(*errorp));
@@ -4074,6 +4102,7 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 		hammer2_chain_drop(ichain);
 		return NULL;
 	}
+	KKASSERT((ichain->flags & HAMMER2_CHAIN_INITIAL) == 0);
 
 	/*
 	 * Iterate the original parent and move the matching brefs into
@@ -4200,9 +4229,10 @@ hammer2_chain_create_indirect(hammer2_chain_t *parent,
 		 *	    in-progress can continue at the current parent
 		 *	    and will be able to properly find its next key.
 		 */
-		error = hammer2_chain_delete(parent, chain, mtid, 0);
+		error = hammer2_chain_delete_obref(parent, chain, mtid, 0,
+						   &bcopy);
 		KKASSERT(error == 0);
-		hammer2_chain_rename(&ichain, chain, mtid, 0);
+		hammer2_chain_rename_obref(&ichain, chain, mtid, 0, &bcopy);
 		hammer2_chain_unlock(chain);
 		hammer2_chain_drop(chain);
 		KKASSERT(parent->refs > 0);
@@ -4421,12 +4451,13 @@ hammer2_chain_indirect_maintenance(hammer2_chain_t *parent,
 			sub = NULL;	/* safety */
 			continue;
 		}
-		error = hammer2_chain_delete(chain, sub,
-					     sub->bref.modify_tid, 0);
+		error = hammer2_chain_delete_obref(chain, sub,
+						   sub->bref.modify_tid, 0,
+						   &bcopy);
 		KKASSERT(error == 0);
-		hammer2_chain_rename(&parent, sub,
+		hammer2_chain_rename_obref(&parent, sub,
 				     sub->bref.modify_tid,
-				     HAMMER2_INSERT_SAMEPARENT);
+				     HAMMER2_INSERT_SAMEPARENT, &bcopy);
 		hammer2_chain_unlock(sub);
 		hammer2_chain_drop(sub);
 		hammer2_spin_ex(&chain->core.spin);
@@ -5066,7 +5097,47 @@ hammer2_chain_delete(hammer2_chain_t *parent, hammer2_chain_t *chain,
 		KKASSERT((chain->flags & HAMMER2_CHAIN_DELETED) == 0 &&
 			 chain->parent == parent);
 		error = _hammer2_chain_delete_helper(parent, chain,
-						     mtid, flags);
+						     mtid, flags, NULL);
+	}
+
+	/*
+	 * Permanent deletions mark the chain as destroyed.
+	 *
+	 * NOTE: We do not setflush the chain unless the deletion is
+	 *	 permanent, since the deletion of a chain does not actually
+	 *	 require it to be flushed.
+	 */
+	if (error == 0) {
+		if (flags & HAMMER2_DELETE_PERMANENT) {
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_DESTROY);
+			hammer2_chain_setflush(chain);
+		}
+	}
+
+	return error;
+}
+
+static int
+hammer2_chain_delete_obref(hammer2_chain_t *parent, hammer2_chain_t *chain,
+		     hammer2_tid_t mtid, int flags,
+		     hammer2_blockref_t *obref)
+{
+	int error = 0;
+
+	KKASSERT(hammer2_mtx_owned(&chain->lock));
+
+	/*
+	 * Nothing to do if already marked.
+	 *
+	 * We need the spinlock on the core whos RBTREE contains chain
+	 * to protect against races.
+	 */
+	obref->type = 0;
+	if ((chain->flags & HAMMER2_CHAIN_DELETED) == 0) {
+		KKASSERT((chain->flags & HAMMER2_CHAIN_DELETED) == 0 &&
+			 chain->parent == parent);
+		error = _hammer2_chain_delete_helper(parent, chain,
+						     mtid, flags, obref);
 	}
 
 	/*
@@ -5289,7 +5360,8 @@ found:
 void
 hammer2_base_delete(hammer2_chain_t *parent,
 		    hammer2_blockref_t *base, int count,
-		    hammer2_chain_t *chain)
+		    hammer2_chain_t *chain,
+		    hammer2_blockref_t *obref)
 {
 	hammer2_blockref_t *elm = &chain->bref;
 	hammer2_blockref_t *scan;
@@ -5369,6 +5441,8 @@ hammer2_base_delete(hammer2_chain_t *parent,
 		break;
 	}
 
+	if (obref)
+		*obref = *scan;
 	bzero(scan, sizeof(*scan));
 
 	/*
@@ -5827,15 +5901,13 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
  *
  * The flags passed in are LOOKUP flags, not RESOLVE flags.
  *
- * If we are unable to locate the hardlink, INVAL is returned and *chainp
- * will be NULL.  *parentp may still be set error or not, or NULL if the
- * parent itself could not be resolved.
+ * If we are unable to locate the inode, HAMMER2_ERROR_EIO is returned and
+ * *chainp will be NULL.  *parentp may still be set error or not, or NULL
+ * if the parent itself could not be resolved.
  *
- * Caller must pass-in a valid (and locked), or NULL *parentp or *chainp.
- * This function replaces *parentp and *chainp.  Generally speaking, if
- * the caller found a directory entry and wants the inode, the caller should
- * pass the parent,chain representing the directory entry so this function
- * can dispose of it properly to avoid any possible lock order reversals.
+ * The caller may pass-in a locked *parentp and/or *chainp, or neither.
+ * They will be unlocked and released by this function.  The *parentp and
+ * *chainp representing the located inode are returned locked.
  */
 int
 hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,
@@ -5845,6 +5917,7 @@ hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,
 	hammer2_chain_t *parent;
 	hammer2_chain_t *rchain;
 	hammer2_key_t key_dummy;
+	hammer2_inode_t *ip;
 	int resolve_flags;
 	int error;
 
@@ -5863,6 +5936,30 @@ hammer2_chain_inode_find(hammer2_pfs_t *pmp, hammer2_key_t inum,
 		hammer2_chain_unlock(*parentp);
 		hammer2_chain_drop(*parentp);
 		*parentp = NULL;
+	}
+
+	/*
+	 * Be very careful, this is a backend function and we CANNOT
+	 * lock any frontend inode structure we find.  But we have to
+	 * look the inode up this way first in case it exists but is
+	 * detached from the radix tree.
+	 */
+	ip = hammer2_inode_lookup(pmp, inum);
+	if (ip) {
+		*chainp = hammer2_inode_chain_and_parent(ip, clindex,
+						       parentp,
+						       resolve_flags);
+		hammer2_inode_drop(ip);
+		if (*chainp)
+			return 0;
+		hammer2_chain_unlock(*chainp);
+		hammer2_chain_drop(*chainp);
+		*chainp = NULL;
+		if (*parentp) {
+			hammer2_chain_unlock(*parentp);
+			hammer2_chain_drop(*parentp);
+			*parentp = NULL;
+		}
 	}
 
 	/*

@@ -1159,7 +1159,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		RB_INIT(&hmp->iotree);
 		spin_init(&hmp->io_spin, "hm2mount_io");
 		spin_init(&hmp->list_spin, "hm2mount_list");
-		TAILQ_INIT(&hmp->flushq);
 
 		lockinit(&hmp->vollk, "h2vol", 0, 0);
 		lockinit(&hmp->bulklk, "h2bulk", 0, 0);
@@ -2397,6 +2396,15 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	return error;
 }
 
+/*
+ * Because frontend operations lock vnodes before we get a chance to
+ * lock the related inode, we can't just acquire a vnode lock without
+ * risking a deadlock.  The frontend may be holding a vnode lock while
+ * also blocked on our SYNCQ flag while trying to get the inode lock.
+ *
+ * To deal with this situation we can check the vnode lock situation
+ * after locking the inode and perform a work-around.
+ */
 int
 hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor)
 {
@@ -2405,9 +2413,11 @@ hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor)
 	/*struct hammer2_sync_info info;*/
 	hammer2_inode_t *iroot;
 	hammer2_inode_t *ip;
+	hammer2_inode_t *ipdrop;
 	struct vnode *vp;
-	int flags;
+	uint32_t pass2;
 	int error;
+	int dorestart;
 
 	mp = pmp->mp;
 	iroot = pmp->iroot;
@@ -2415,26 +2425,23 @@ hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor)
 	KKASSERT(iroot->pmp == pmp);
 
 	/*
-	 * We can't acquire locks on existing vnodes while in a transaction
-	 * without risking a deadlock.  This assumes that vfsync() can be
-	 * called without the vnode locked (which it can in DragonFly).
-	 * Otherwise we'd have to implement a multi-pass or flag the lock
-	 * failures and retry.
-	 *
-	 * The reclamation code interlocks with the sync list's token
-	 * (by removing the vnode from the scan list) before unlocking
-	 * the inode, giving us time to ref the inode.
-	 */
-	/*flags = VMSC_GETVP;*/
-	flags = 0;
-	if (waitfor & MNT_LAZY)
-		flags |= VMSC_ONEPASS;
-
-	/*
 	 * Move all inodes on sideq to syncq.  This will clear sideq.
 	 * This should represent all flushable inodes.  These inodes
-	 * will already have refs due to being on syncq or sideq.
+	 * will already have refs due to being on syncq or sideq.  We
+	 * must do this all at once to ensure that inode dependencies
+	 * are part of the same flush.
+	 *
+	 * We should be able to do this asynchronously from frontend
+	 * operations because we will be locking the inodes later on
+	 * to actually flush them, and that will partition any frontend
+	 * op using the same inode.  Either it has already locked the
+	 * inode and we will block, or it has not yet locked the inode
+	 * and it will block until we are finished flushing that inode.
 	 */
+	hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH);
+restart:
+	hammer2_trans_setflags(pmp, HAMMER2_TRANS_COPYQ);
+	dorestart = 0;
 	hammer2_spin_ex(&pmp->list_spin);
 	TAILQ_FOREACH(ip, &pmp->sideq, entry) {
 		KKASSERT(ip->flags & HAMMER2_INODE_SIDEQ);
@@ -2444,64 +2451,104 @@ hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor)
 	TAILQ_CONCAT(&pmp->syncq, &pmp->sideq, entry);
 	pmp->sideq_count = 0;
 	hammer2_spin_unex(&pmp->list_spin);
+	hammer2_trans_clearflags(pmp, HAMMER2_TRANS_COPYQ |
+				      HAMMER2_TRANS_WAITING);
 
 	/*
-	 * Flush transactions only interlock with other flush transactions.
-	 * Any concurrent frontend operations will block when obtaining an
-	 * exclusive inode lock on any inode on SYNCQ, and we will block here
-	 * when we ourselves obtain the exclusive lock.
-	 *
 	 * Now run through all inodes on syncq.
+	 *
+	 * Flush transactions only interlock with other flush transactions.
+	 * Any conflicting frontend operations will block on the inode, but
+	 * may hold a vnode lock while doing so.
 	 */
-	hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH);
-	ip = NULL;
-	for (;;) {
-		if (ip == NULL) {
-			hammer2_spin_ex(&pmp->list_spin);
-			ip = TAILQ_FIRST(&pmp->syncq);
-			if (ip == NULL) {
-				hammer2_spin_unex(&pmp->list_spin);
-				break;
-			}
-			TAILQ_REMOVE(&pmp->syncq, ip, entry);
-			atomic_clear_int(&ip->flags, HAMMER2_INODE_SYNCQ);
-			hammer2_spin_unex(&pmp->list_spin);
-			/* leave's ip with a ref from being on SYNCQ */
+	ipdrop = NULL;
+
+	hammer2_spin_ex(&pmp->list_spin);
+	while ((ip = TAILQ_FIRST(&pmp->syncq)) != NULL) {
+		/*
+		 * Remove the inode from the SYNCQ, transfer the syncq ref
+		 * to us.  We must clear SYNCQ to allow any potential
+		 * front-end deadlock to proceed.
+		 */
+		pass2 = ip->flags;
+		cpu_ccfence();
+		if (atomic_cmpset_int(&ip->flags,
+			      pass2,
+			      pass2 & ~(HAMMER2_INODE_SYNCQ |
+					HAMMER2_INODE_SYNCQ_WAKEUP |
+					HAMMER2_INODE_SYNCQ_PASS2)) == 0) {
+			continue;
 		}
+		if (pass2 & HAMMER2_INODE_SYNCQ_WAKEUP)
+			wakeup(&ip->flags);
+		TAILQ_REMOVE(&pmp->syncq, ip, entry);
+		hammer2_spin_unex(&pmp->list_spin);
+		if (ipdrop) {
+			hammer2_inode_drop(ipdrop);
+			ipdrop = NULL;
+		}
+		hammer2_mtx_ex(&ip->lock);
 
 		/*
-		 * We hold a ref on ip, SYNCQ flag has been cleared, and
-		 * since we own the flush transaction it cannot get set
-		 * again (though the ip can be put on SIDEQ again).
+		 * We need the vp in order to vfsync() dirty buffers, so if
+		 * one isn't attached we can skip it.
 		 *
-		 * Acquire the vnode and inode exclusively.  Be careful
-		 * of order.
+		 * Ordering the inode lock and then the vnode lock has the
+		 * potential to deadlock.  If we had left SYNCQ set that could
+		 * also deadlock us against the frontend even if we don't hold
+		 * any locks, but the latter is not a problem now since we
+		 * cleared it.  igetv will temporarily release the inode lock
+		 * in a safe manner to work-around the deadlock.
+		 *
+		 * Unfortunately it is still possible to deadlock when the
+		 * frontend obtains multiple inode locks, because all the
+		 * related vnodes are already locked (nor can the vnode locks
+		 * be released and reacquired without messing up RECLAIM and
+		 * INACTIVE sequencing).
+		 *
+		 * The solution for now is to move the vp back onto SIDEQ
+		 * and set dorestart, which will restart the flush after we
+		 * exhaust the current SYNCQ.  Note that additional
+		 * dependencies may build up, so we definitely need to move
+		 * the whole SIDEQ back to SYNCQ when we restart.
 		 */
-		if ((vp = ip->vp) != NULL) {
-			vhold(vp);
-			if (vget(vp, LK_EXCLUSIVE)) {
-                                vdrop(vp);
-				hammer2_inode_drop(ip);
+		vp = ip->vp;
+		if (vp) {
+			if (vget(vp, LK_EXCLUSIVE|LK_NOWAIT)) {
+				/*
+				 * Failed, move to SIDEQ
+				 */
+				vp = NULL;
+				dorestart = 1;
+				hammer2_spin_ex(&pmp->list_spin);
+				if ((ip->flags & (HAMMER2_INODE_SYNCQ |
+						  HAMMER2_INODE_SIDEQ)) == 0) {
+					atomic_set_int(&ip->flags,
+						   HAMMER2_INODE_SIDEQ |
+						   HAMMER2_INODE_SYNCQ_PASS2);
+					TAILQ_INSERT_TAIL(&pmp->sideq, ip,
+							  entry);
+					hammer2_spin_unex(&pmp->list_spin);
+					hammer2_mtx_unlock(&ip->lock);
+				} else {
+					hammer2_spin_unex(&pmp->list_spin);
+					hammer2_mtx_unlock(&ip->lock);
+					hammer2_inode_drop(ip);
+				}
+				if (pass2 & HAMMER2_INODE_SYNCQ_PASS2) {
+					tsleep(&dorestart, 0, "h2syndel", 2);
+				}
+				hammer2_spin_ex(&pmp->list_spin);
 				continue;
 			}
-			vdrop(vp);
-			hammer2_mtx_ex(&ip->lock);
-			if (ip->vp != vp) {
-				hammer2_mtx_unlock(&ip->lock);	/* unlock */
-				vput(vp);
-				continue;			/* retry w/ip */
-			}
 		} else {
-			hammer2_mtx_ex(&ip->lock);
-			if (ip->vp != NULL) {
-				hammer2_mtx_unlock(&ip->lock);	/* unlock */
-				continue;			/* retry w/ip */
-			}
+			vp = NULL;
 		}
 
 		/*
-		 * Ok, we hold the inode and vnode exclusively locked,
-		 * inside a flush transaction, and can now flush them.
+		 * Ok we have the inode exclusively locked and if vp is
+		 * not NULL that will also be exclusively locked.  Do the
+		 * meat of the flush.
 		 *
 		 * vp token needed for v_rbdirty_tree check / vclrisdirty
 		 * sequencing.  Though we hold the vnode exclusively so
@@ -2510,11 +2557,21 @@ hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor)
 		if (vp) {
 			vfsync(vp, MNT_WAIT, 1, NULL, NULL);
 			bio_track_wait(&vp->v_track_write, 0, 0); /* XXX */
-			lwkt_gettoken(&vp->v_token);
+		}
+
+		/*
+		 * If the inode has not yet been inserted into the tree
+		 * we must do so.  Then sync and flush it.  The flush should
+		 * update the parent.
+		 */
+		if (ip->flags & HAMMER2_INODE_CREATING) {
+			hammer2_inode_chain_ins(ip);
 		}
 		hammer2_inode_chain_sync(ip);
-		hammer2_inode_chain_flush(ip);
+		hammer2_inode_chain_flush(ip, HAMMER2_XOP_INODE_STOP |
+					      HAMMER2_XOP_FSSYNC);
 		if (vp) {
+			lwkt_gettoken(&vp->v_token);
 			if ((ip->flags & (HAMMER2_INODE_MODIFIED |
 					  HAMMER2_INODE_RESIZED |
 					  HAMMER2_INODE_DIRTYDATA)) == 0 &&
@@ -2526,8 +2583,40 @@ hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor)
 			vput(vp);
 		}
 		hammer2_inode_unlock(ip);	/* unlock+drop */
-		ip = NULL;			/* next ip */
+		/* ip pointer invalid */
+
+		/*
+		 * If the inode got dirted after we dropped our locks,
+		 * it will have already been moved back to the SIDEQ.
+		 */
+		hammer2_spin_ex(&pmp->list_spin);
 	}
+	hammer2_spin_unex(&pmp->list_spin);
+	if (ipdrop) {
+		hammer2_inode_drop(ipdrop);
+		ipdrop = NULL;
+	}
+	if (dorestart)
+		goto restart;
+
+	/*
+	 * We have to flush iroot last, even if it does not appear to be
+	 * dirty, because all the inodes in the PFS are indexed under the
+	 * iroot.  The normal flushing of iroot above would only occur if
+	 * directory entries under the root were changed.
+	 */
+	if ((ip = pmp->iroot) != NULL) {
+		hammer2_inode_ref(ip);
+		hammer2_mtx_ex(&ip->lock);
+		hammer2_inode_chain_sync(ip);
+		hammer2_inode_chain_flush(ip, HAMMER2_XOP_INODE_STOP |
+					      HAMMER2_XOP_FSSYNC);
+		hammer2_inode_unlock(ip);	/* unlock+drop */
+	}
+
+	/*
+	 * device bioq sync
+	 */
 	hammer2_bioq_sync(pmp);
 
 #if 0
@@ -2582,87 +2671,10 @@ hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor)
 	} else {
 		error = 0;
 	}
-	hammer2_trans_done(pmp, 0);
+	hammer2_trans_done(pmp, HAMMER2_TRANS_ISFLUSH);
 
 	return (error);
 }
-
-#if 0
-/*
- * Sync passes.
- *
- * Note that we ignore the tranasction mtid we got above.  Instead,
- * each vfsync below will ultimately get its own via TRANS_BUFCACHE
- * transactions.
- *
- * WARNING! The frontend might be waiting on chnmem (limit_dirty_chains)
- * while holding a vnode locked.  When this situation occurs we cannot
- * safely test whether it is ok to clear the dirty bit on the vnode.
- * However, we can still flush the inode's topology.
- */
-static int
-hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
-{
-	struct hammer2_sync_info *info = data;
-	hammer2_inode_t *ip;
-	int error;
-
-	/*
-	 * Degenerate cases.  Note that ip == NULL typically means the
-	 * syncer vnode itself and we don't want to vclrisdirty() in that
-	 * situation.
-	 */
-	ip = VTOI(vp);
-	if (ip == NULL) {
-		return(0);
-	}
-	if (vp->v_type == VNON || vp->v_type == VBAD) {
-		vclrisdirty(vp);
-		return(0);
-	}
-
-	/*
-	 * Synchronize the buffer cche and inode meta-data to the backing
-	 * chain topology.
-	 *
-	 * vfsync is not necessarily synchronous, so it is best NOT to try
-	 * to flush the backing topology to media at this point.
-	 */
-	hammer2_inode_ref(ip);
-	if ((ip->flags & (HAMMER2_INODE_RESIZED|HAMMER2_INODE_MODIFIED)) ||
-	    !RB_EMPTY(&vp->v_rbdirty_tree)) {
-		if (info->pass == 1)
-			vfsync(vp, info->waitfor, 1, NULL, NULL);
-		else
-			bio_track_wait(&vp->v_track_write, 0, 0);
-	}
-	if (info->pass == 2 && (vp->v_flag & VISDIRTY)) {
-		/*
-		 * v_token is needed to interlock v_rbdirty_tree.
-		 */
-		lwkt_gettoken(&vp->v_token);
-		hammer2_inode_lock(ip, 0);
-		hammer2_inode_chain_sync(ip);
-		hammer2_inode_chain_flush(ip);
-		if ((ip->flags & (HAMMER2_INODE_MODIFIED |
-				  HAMMER2_INODE_RESIZED |
-				  HAMMER2_INODE_DIRTYDATA)) == 0 &&
-		    RB_EMPTY(&vp->v_rbdirty_tree) &&
-		    !bio_track_active(&vp->v_track_write)) {
-			vclrisdirty(vp);
-		}
-		hammer2_inode_unlock(ip);
-		lwkt_reltoken(&vp->v_token);
-	}
-	hammer2_inode_drop(ip);
-#if 1
-	error = 0;
-	if (error)
-		info->error = error;
-#endif
-	return(0);
-}
-#endif
 
 static
 int
@@ -2894,6 +2906,9 @@ hammer2_lwinprog_wait(hammer2_pfs_t *pmp, int flush_pipe)
  * We do not want sysads to feel that they have to torpedo kern.maxvnodes
  * to solve this problem, so we implement vfs.hammer2.limit_dirty_inodes
  * (per-mount-basis) and default it to something reasonable.
+ *
+ * XXX we cannot safely block here because we might be holding locks that
+ * the syncer needs.
  */
 static void
 hammer2_pfs_moderate(hammer2_inode_t *ip, int always_moderate)
@@ -2902,7 +2917,8 @@ hammer2_pfs_moderate(hammer2_inode_t *ip, int always_moderate)
 	struct mount *mp = pmp->mp;
 
 	if (mp && vn_syncer_count(mp) > hammer2_limit_dirty_inodes) {
-		vn_syncer_one(mp);
+		speedup_syncer(mp);
+		/*vn_syncer_one(mp);*/
 	}
 }
 
@@ -2923,6 +2939,8 @@ hammer2_pfs_memory_wait(hammer2_inode_t *ip, int always_moderate)
 #if 0
 	static int zzticks;
 #endif
+
+	return; /* XXX */
 
 	/*
 	 * Moderate the number of dirty inodes

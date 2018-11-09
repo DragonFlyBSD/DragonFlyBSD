@@ -758,8 +758,8 @@ hammer2_sync_insert(hammer2_thread_t *thr,
 	KKASSERT(chain == NULL);
 
 	chain = NULL;
-	error = hammer2_chain_create(parentp, &chain,
-				     thr->pmp, focus->bref.methods,
+	error = hammer2_chain_create(parentp, &chain, NULL, thr->pmp,
+				     focus->bref.methods,
 				     focus->bref.key, focus->bref.keybits,
 				     focus->bref.type, focus->bytes,
 				     mtid, 0, 0);

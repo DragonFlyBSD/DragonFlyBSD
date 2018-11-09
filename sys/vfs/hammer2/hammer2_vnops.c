@@ -180,7 +180,9 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	if ((ip->flags & (HAMMER2_INODE_ISUNLINKED |
 			  HAMMER2_INODE_MODIFIED |
 			  HAMMER2_INODE_RESIZED |
-			  HAMMER2_INODE_DIRTYDATA)) &&
+			  HAMMER2_INODE_DIRTYDATA |
+			  HAMMER2_INODE_CREATING |
+			  HAMMER2_INODE_DELETING)) &&
 	    (ip->flags & HAMMER2_INODE_ISDELETED) == 0) {
 		hammer2_spin_ex(&pmp->list_spin);
 		if ((ip->flags & (HAMMER2_INODE_SYNCQ |
@@ -253,11 +255,11 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	/*
 	 * Flush dirty chains related to the inode.
 	 *
-	 * NOTE! XXX We do not currently flush to the volume root, ultimately
-	 *	 we will want to have a shortcut for the flushed inode stored
-	 *	 in the volume root for recovery purposes.
+	 * NOTE! We are not in a flush transaction, so we should not use the
+	 *	 PARENTONFLUSH flag.  The inode remains on the sideq so the
+	 *	 filesystem syncer can synchronize it to the volume root.
 	 */
-	error2 = hammer2_inode_chain_flush(ip);
+	error2 = hammer2_inode_chain_flush(ip, HAMMER2_XOP_INODE_STOP);
 	if (error2)
 		error1 = error2;
 
@@ -517,7 +519,7 @@ done:
 	 * Cleanup.
 	 */
 	hammer2_inode_unlock(ip);
-	hammer2_trans_done(ip->pmp, 1);
+	hammer2_trans_done(ip->pmp, HAMMER2_TRANS_SIDEQ);
 	hammer2_knote(ip->vp, kflags);
 
 	return (error);
@@ -829,7 +831,11 @@ hammer2_vop_write(struct vop_write_args *ap)
 		hammer2_trans_init(ip->pmp, 0);
 	}
 	error = hammer2_write_file(ip, uio, ioflag, seqcount);
-	hammer2_trans_done(ip->pmp, 1);
+	if (uio->uio_segflg == UIO_NOCOPY)
+		hammer2_trans_done(ip->pmp, HAMMER2_TRANS_BUFCACHE |
+					    HAMMER2_TRANS_SIDEQ);
+	else
+		hammer2_trans_done(ip->pmp, HAMMER2_TRANS_SIDEQ);
 
 	return (error);
 }
@@ -1430,7 +1436,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 		hammer2_inode_unlock(dip);
 	}
 
-	hammer2_trans_done(dip->pmp, 1);
+	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
 
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
@@ -1525,8 +1531,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 * Can return NULL and error == EXDEV if the common parent
 	 * crosses a directory with the xlink flag set.
 	 */
-	hammer2_inode_lock(tdip, 0);
-	hammer2_inode_lock(ip, 0);
+	hammer2_inode_lock4(tdip, ip, NULL, NULL);
 
 	/*
 	 * Create the directory entry and bump nlinks.
@@ -1553,7 +1558,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	hammer2_inode_unlock(ip);
 	hammer2_inode_unlock(tdip);
 
-	hammer2_trans_done(ip->pmp, 1);
+	hammer2_trans_done(ip->pmp, HAMMER2_TRANS_SIDEQ);
 	hammer2_knote(ap->a_vp, NOTE_LINK);
 	hammer2_knote(ap->a_dvp, NOTE_WRITE);
 
@@ -1631,7 +1636,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 		hammer2_inode_unlock(dip);
 	}
 
-	hammer2_trans_done(dip->pmp, 1);
+	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
 
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
@@ -1703,7 +1708,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 		hammer2_inode_unlock(dip);
 	}
 
-	hammer2_trans_done(dip->pmp, 1);
+	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
 
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
@@ -1761,7 +1766,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 			nip = NULL;
 		}
 		*ap->a_vpp = NULL;
-		hammer2_trans_done(dip->pmp, 1);
+		hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
 		return error;
 	}
 	*ap->a_vpp = hammer2_igetv(nip, &error);
@@ -1807,7 +1812,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 		hammer2_inode_unlock(dip);
 	}
 
-	hammer2_trans_done(dip->pmp, 1);
+	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
 
 	/*
 	 * Finalize namecache
@@ -1903,7 +1908,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 		hammer2_inode_unlock(dip);
 	}
 
-	hammer2_trans_done(dip->pmp, 1);
+	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
 	if (error == 0) {
 		cache_unlink(ap->a_nch);
 		hammer2_knote(ap->a_dvp, NOTE_WRITE);
@@ -1980,7 +1985,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 		hammer2_inode_unlock(dip);
 	}
 
-	hammer2_trans_done(dip->pmp, 1);
+	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
 	if (error == 0) {
 		cache_unlink(ap->a_nch);
 		hammer2_knote(ap->a_dvp, NOTE_WRITE | NOTE_LINK);
@@ -2058,23 +2063,21 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 * test.  (tip) can be NULL.
 	 */
 	error = 0;
-	if (fdip <= tdip) {
-		hammer2_inode_lock(fdip, 0);
-		hammer2_inode_lock(tdip, 0);
-	} else {
-		hammer2_inode_lock(tdip, 0);
-		hammer2_inode_lock(fdip, 0);
-	}
-	if (tip) {
-		if (ip <= tip) {
-			hammer2_inode_lock(ip, 0);
-			hammer2_inode_lock(tip, 0);
-		} else {
-			hammer2_inode_lock(tip, 0);
-			hammer2_inode_lock(ip, 0);
+	{
+		hammer2_inode_t *ip1 = fdip;
+		hammer2_inode_t *ip2 = tdip;
+		hammer2_inode_t *ip3 = ip;
+		hammer2_inode_t *ip4 = tip;	/* may be NULL */
+
+		if (fdip > tdip) {
+			ip1 = tdip;
+			ip2 = fdip;
 		}
-	} else {
-		hammer2_inode_lock(ip, 0);
+		if (tip && ip > tip) {
+			ip3 = tip;
+			ip4 = ip;
+		}
+		hammer2_inode_lock4(ip1, ip2, ip3, ip4);
 	}
 
 	/*
@@ -2195,7 +2198,7 @@ done2:
 	hammer2_inode_unlock(tdip);
 	hammer2_inode_unlock(fdip);
 	hammer2_inode_drop(ip);
-	hammer2_trans_done(tdip->pmp, 1);
+	hammer2_trans_done(tdip->pmp, HAMMER2_TRANS_SIDEQ);
 
 	/*
 	 * Issue the namecache update after unlocking all the internal

@@ -664,7 +664,7 @@ hammer2_xop_strategy_write(hammer2_xop_t *arg, void *scratch, int clindex)
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 	hammer2_trans_assert_strategy(ip->pmp);
 	hammer2_lwinprog_drop(ip->pmp);
-	hammer2_trans_done(ip->pmp, 0);
+	hammer2_trans_done(ip->pmp, HAMMER2_TRANS_BUFCACHE);
 }
 
 /*
@@ -741,8 +741,7 @@ hammer2_assign_physical(hammer2_inode_t *ip, hammer2_chain_t **parentp,
 		 */
 		dedup_off = hammer2_dedup_lookup((*parentp)->hmp, datap,
 						 pblksize);
-		*errorp |= hammer2_chain_create(parentp, &chain,
-					        ip->pmp,
+		*errorp |= hammer2_chain_create(parentp, &chain, NULL, ip->pmp,
 				       HAMMER2_ENC_CHECK(ip->meta.check_algo) |
 				       HAMMER2_ENC_COMP(HAMMER2_COMP_NONE),
 					        lbase, HAMMER2_PBUFRADIX,

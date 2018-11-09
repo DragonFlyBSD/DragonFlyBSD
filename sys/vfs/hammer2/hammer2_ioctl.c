@@ -658,7 +658,8 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		hammer2_inode_ref(nip);
 		hammer2_inode_unlock(nip);
 		hammer2_inode_chain_sync(nip);
-		hammer2_inode_chain_flush(nip);
+		hammer2_inode_chain_flush(nip, HAMMER2_XOP_INODE_STOP |
+					       HAMMER2_XOP_FSSYNC);
 		KKASSERT(nip->refs == 1);
 		hammer2_inode_drop(nip);
 
@@ -678,7 +679,8 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		hammer2_chain_drop(nchain);
 
 	}
-	hammer2_trans_done(hmp->spmp, 1);
+	hammer2_trans_done(hmp->spmp, HAMMER2_TRANS_ISFLUSH |
+				      HAMMER2_TRANS_SIDEQ);
 
 	return (error);
 }
@@ -775,7 +777,7 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 #endif
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 
-	hammer2_trans_done(spmp, 1);
+	hammer2_trans_done(spmp, HAMMER2_TRANS_SIDEQ);
 
 	return (hammer2_error_to_errno(error));
 }
@@ -898,7 +900,8 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 		hammer2_inode_ref(nip);
 		hammer2_inode_unlock(nip);
 		hammer2_inode_chain_sync(nip);
-		hammer2_inode_chain_flush(nip);
+		hammer2_inode_chain_flush(nip, HAMMER2_XOP_INODE_STOP |
+					       HAMMER2_XOP_FSSYNC);
 		KKASSERT(nip->refs == 1);
 		hammer2_inode_drop(nip);
 
@@ -919,7 +922,7 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 	hammer2_chain_drop(chain);
 
 	hammer2_inode_unlock(ip);
-	hammer2_trans_done(pmp, 1);
+	hammer2_trans_done(pmp, HAMMER2_TRANS_ISFLUSH | HAMMER2_TRANS_SIDEQ);
 
 	lockmgr(&hmp->bulklk, LK_RELEASE);
 
@@ -1007,7 +1010,7 @@ hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 		ip->meta.ncopies = ino->ip_data.meta.ncopies;
 	}
 	hammer2_inode_unlock(ip);
-	hammer2_trans_done(ip->pmp, 1);
+	hammer2_trans_done(ip->pmp, HAMMER2_TRANS_SIDEQ);
 
 	return (hammer2_error_to_errno(error));
 }
@@ -1112,7 +1115,8 @@ hammer2_ioctl_bulkfree_scan(hammer2_inode_t *ip, void *data)
 		hammer2_chain_bulkdrop(vchain);
 	} else {
 		hammer2_chain_drop(vchain);
-		hammer2_trans_done(pmp, 1);
+		hammer2_trans_done(pmp, HAMMER2_TRANS_ISFLUSH |
+					HAMMER2_TRANS_SIDEQ);
 	}
 	error = hammer2_error_to_errno(error);
 
@@ -1170,7 +1174,7 @@ hammer2_ioctl_destroy(hammer2_inode_t *ip, void *data)
 		error = hammer2_error_to_errno(error);
 		hammer2_inode_unlock(ip);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
-		hammer2_trans_done(pmp, 1);
+		hammer2_trans_done(pmp, HAMMER2_TRANS_SIDEQ);
 		}
 		break;
 	case HAMMER2_DELETE_INUM:
@@ -1193,7 +1197,7 @@ hammer2_ioctl_destroy(hammer2_inode_t *ip, void *data)
 		error = hammer2_xop_collect(&xop->head, 0);
 		error = hammer2_error_to_errno(error);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
-		hammer2_trans_done(pmp, 1);
+		hammer2_trans_done(pmp, HAMMER2_TRANS_SIDEQ);
 		}
 		break;
 	default:
