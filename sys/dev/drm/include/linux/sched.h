@@ -134,4 +134,11 @@ cond_resched(void)
 	return 0;
 }
 
+static inline int
+send_sig(int sig, struct proc *p, int priv)
+{
+	ksignal(p, sig);
+	return 0;
+}
+
 #endif	/* _LINUX_SCHED_H_ */
