@@ -98,10 +98,14 @@ hammer2_trans_manage_init(hammer2_pfs_t *pmp)
  * Transaction support for any modifying operation.  Transactions are used
  * in the pmp layer by the frontend and in the spmp layer by the backend.
  *
- * 0			- Normal transaction.  No interlock currently.
+ * 0			- Normal transaction.  Interlocks against just the
+ *			  COPYQ portion of an ISFLUSH transaction.
  *
  * TRANS_ISFLUSH	- Flush transaction.  Interlocks against other flush
  *			  transactions.
+ *
+ *			  When COPYQ is also specified, waits for the count
+ *			  to drop to 1.
  *
  * TRANS_BUFCACHE	- Buffer cache transaction.  No interlock.
  *
@@ -177,6 +181,30 @@ hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags)
 		}
 		/* retry */
 	}
+
+	/*
+	 * When entering a FLUSH transaction with COPYQ set, wait for the
+	 * transaction count to drop to 1 (our flush transaction only)
+	 * before proceeding.
+	 *
+	 * This waits for all non-flush transactions to complete and blocks
+	 * new non-flush transactions from starting until COPYQ is cleared.
+	 * (the flush will then proceed after clearing COPYQ).  This should
+	 * be a very short stall on modifying operations.
+	 */
+	while ((flags & HAMMER2_TRANS_ISFLUSH) &&
+	       (flags & HAMMER2_TRANS_COPYQ)) {
+		oflags = pmp->trans.flags;
+		cpu_ccfence();
+		if ((oflags & HAMMER2_TRANS_MASK) == 1)
+			break;
+		nflags = oflags | HAMMER2_TRANS_WAITING;
+		tsleep_interlock(&pmp->trans.sync_wait, 0);
+		if (atomic_cmpset_int(&pmp->trans.flags, oflags, nflags)) {
+			tsleep(&pmp->trans.sync_wait, PINTERLOCKED,
+			       "h2trans2", hz);
+		}
+	}
 }
 
 /*
@@ -206,6 +234,11 @@ hammer2_trans_setflags(hammer2_pfs_t *pmp, uint32_t flags)
 	atomic_set_int(&pmp->trans.flags, flags);
 }
 
+/*
+ * Typically used to clear trans flags asynchronously.  If TRANS_WAITING
+ * is in the mask, and was previously set, this function will wake up
+ * any waiters.
+ */
 void
 hammer2_trans_clearflags(hammer2_pfs_t *pmp, uint32_t flags)
 {
@@ -245,7 +278,9 @@ hammer2_trans_done(hammer2_pfs_t *pmp, uint32_t flags)
 	}
 
 	/*
-	 * Clean-up the transaction
+	 * Clean-up the transaction.  Wakeup any waiters when finishing
+	 * a flush transaction or transitioning the non-flush transaction
+	 * count from 2->1 while a flush transaction is pending.
 	 */
 	for (;;) {
 		oflags = pmp->trans.flags;
@@ -254,6 +289,10 @@ hammer2_trans_done(hammer2_pfs_t *pmp, uint32_t flags)
 
 		nflags = (oflags - 1) & ~flags;
 		if (flags & HAMMER2_TRANS_ISFLUSH) {
+			nflags &= ~HAMMER2_TRANS_WAITING;
+		}
+		if ((oflags & (HAMMER2_TRANS_ISFLUSH|HAMMER2_TRANS_MASK)) ==
+		    (HAMMER2_TRANS_ISFLUSH|2)) {
 			nflags &= ~HAMMER2_TRANS_WAITING;
 		}
 		if (atomic_cmpset_int(&pmp->trans.flags, oflags, nflags)) {

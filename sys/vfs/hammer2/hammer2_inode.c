@@ -181,6 +181,8 @@ hammer2_inode_lock(hammer2_inode_t *ip, int how)
  * Exclusively lock up to four inodes, in order, with SYNCQ semantics.
  * ip1 and ip2 must not be NULL.  ip3 and ip4 may be NULL, but if ip3 is
  * NULL then ip4 must also be NULL.
+ *
+ * This function will also ensure that if any
  */
 void
 hammer2_inode_lock4(hammer2_inode_t *ip1, hammer2_inode_t *ip2,
@@ -191,7 +193,7 @@ hammer2_inode_lock4(hammer2_inode_t *ip1, hammer2_inode_t *ip2,
 	hammer2_pfs_t *pmp;
 	size_t count;
 	size_t i;
-	size_t j;
+	int dosyncq;
 
 	pmp = ip1->pmp;			/* may be NULL */
 	KKASSERT(pmp == ip2->pmp);
@@ -216,23 +218,72 @@ hammer2_inode_lock4(hammer2_inode_t *ip1, hammer2_inode_t *ip2,
 		hammer2_inode_ref(ips[i]);
 
 restart:
+	dosyncq = 0;
+
+	/*
+	 * Lock the inodes in order
+	 */
 	for (i = 0; i < count; ++i) {
 		iptmp = ips[i];
 		hammer2_mtx_ex(&iptmp->lock);
-		if (hammer2_mtx_refs(&iptmp->lock) > 1)
-			continue;
-		if ((iptmp->flags & HAMMER2_INODE_SYNCQ) == 0 || pmp == NULL)
-			continue;
-		tsleep_interlock(&iptmp->flags, 0);
+		if (iptmp->flags & HAMMER2_INODE_SYNCQ)
+			dosyncq |= 1;
+		if (iptmp->flags & HAMMER2_INODE_SYNCQ_PASS2)
+			dosyncq |= 2;
+	}
+
+	/*
+	 * If any of the inodes are part of a filesystem sync then we
+	 * have to make sure they ALL are, because their modifications
+	 * depend on each other (e.g. inode vs dirent).
+	 */
+	for (i = 0; (dosyncq & 3) && i < count; ++i) {
+		iptmp = ips[i];
 		hammer2_spin_ex(&pmp->list_spin);
-		if ((iptmp->flags & HAMMER2_INODE_SYNCQ) == 0) {
-			hammer2_spin_unex(&pmp->list_spin);
+		atomic_set_int(&iptmp->flags, HAMMER2_INODE_SYNCQ_WAKEUP);
+		if (iptmp->flags & HAMMER2_INODE_SYNCQ) {
+			TAILQ_REMOVE(&pmp->syncq, iptmp, entry);
+			TAILQ_INSERT_HEAD(&pmp->syncq, iptmp, entry);
+		} else if (iptmp->flags & HAMMER2_INODE_SIDEQ) {
+			atomic_set_int(&iptmp->flags, HAMMER2_INODE_SYNCQ);
+			atomic_clear_int(&iptmp->flags, HAMMER2_INODE_SIDEQ);
+			TAILQ_REMOVE(&pmp->sideq, iptmp, entry);
+			TAILQ_INSERT_HEAD(&pmp->syncq, iptmp, entry);
+		} else {
+			atomic_set_int(&iptmp->flags, HAMMER2_INODE_SYNCQ);
+			hammer2_inode_ref(iptmp);
+			TAILQ_INSERT_HEAD(&pmp->syncq, iptmp, entry);
+		}
+		hammer2_spin_unex(&pmp->list_spin);
+	}
+
+	/*
+	 * Block and retry if any of the inodes are on SYNCQ.  It is
+	 * important that we allow the operation to proceed in the
+	 * PASS2 case, to avoid deadlocking against the vnode.
+	 */
+	if (dosyncq & 1) {
+		for (i = 0; i < count; ++i)
+			hammer2_mtx_unlock(&ips[i]->lock);
+		tsleep(&iptmp->flags, 0, "h2sync", 2);
+		goto restart;
+	}
+#if 0
+		if (pmp == NULL ||
+		    ((iptmp->flags & (HAMMER2_INODE_SYNCQ |
+				      HAMMER2_INODE_SYNCQ_PASS2)) == 0 &&
+		     dosyncq == 0)) {
 			continue;
 		}
-		atomic_set_int(&iptmp->flags, HAMMER2_INODE_SYNCQ_WAKEUP);
-		TAILQ_REMOVE(&pmp->syncq, iptmp, entry);
-		TAILQ_INSERT_HEAD(&pmp->syncq, iptmp, entry);
-		hammer2_spin_unex(&pmp->list_spin);
+		dosyncq = 1;
+		tsleep_interlock(&iptmp->flags, 0);
+
+		/*
+		 * We have to accept the inode if it's got more than one
+		 * exclusive count because we can't safely unlock it.
+		 */
+		if (hammer2_mtx_refs(&iptmp->lock) > 1)
+			continue;
 
 		/*
 		 * Unlock everything (including the current index) and wait
@@ -245,6 +296,7 @@ restart:
 
 		goto restart;
 	}
+#endif
 }
 
 /*
@@ -262,6 +314,63 @@ hammer2_inode_unlock(hammer2_inode_t *ip)
 		hammer2_mtx_unlock(&ip->lock);
 	}
 	hammer2_inode_drop(ip);
+}
+
+/*
+ * If either ip1 or ip2 are on SYNCQ, make sure the other one is too.
+ * This ensure that dependencies (e.g. directory-v-inode) are flushed
+ * together.
+ *
+ * We must also check SYNCQ_PASS2, which occurs when the syncer cannot
+ * immediately lock the inode on SYNCQ and must temporarily move it to
+ * SIDEQ to retry again in another pass (but part of the same flush).
+ *
+ * Both ip1 and ip2 must be locked by the caller.  This also ensures
+ * that we can't race the end of the syncer's queue run.
+ */
+void
+hammer2_inode_depend(hammer2_inode_t *ip1, hammer2_inode_t *ip2)
+{
+	hammer2_pfs_t *pmp;
+
+	pmp = ip1->pmp;
+	if (((ip1->flags | ip2->flags) & HAMMER2_INODE_SYNCQ) == 0)
+		return;
+	if ((ip1->flags & (HAMMER2_INODE_SYNCQ |
+			   HAMMER2_INODE_SYNCQ_PASS2)) &&
+	    (ip2->flags & (HAMMER2_INODE_SYNCQ |
+			   HAMMER2_INODE_SYNCQ_PASS2))) {
+		return;
+	}
+	KKASSERT(pmp == ip2->pmp);
+	hammer2_spin_ex(&pmp->list_spin);
+	if ((ip1->flags & (HAMMER2_INODE_SYNCQ |
+			   HAMMER2_INODE_SYNCQ_PASS2)) == 0) {
+		if (ip1->flags & HAMMER2_INODE_SIDEQ) {
+			atomic_set_int(&ip1->flags, HAMMER2_INODE_SYNCQ);
+			atomic_clear_int(&ip1->flags, HAMMER2_INODE_SIDEQ);
+			TAILQ_REMOVE(&pmp->sideq, ip1, entry);
+			TAILQ_INSERT_TAIL(&pmp->syncq, ip1, entry);
+		} else {
+			atomic_set_int(&ip1->flags, HAMMER2_INODE_SYNCQ);
+			hammer2_inode_ref(ip1);
+			TAILQ_INSERT_TAIL(&pmp->syncq, ip1, entry);
+		}
+	}
+	if ((ip2->flags & (HAMMER2_INODE_SYNCQ |
+			   HAMMER2_INODE_SYNCQ_PASS2)) == 0) {
+		if (ip2->flags & HAMMER2_INODE_SIDEQ) {
+			atomic_set_int(&ip2->flags, HAMMER2_INODE_SYNCQ);
+			atomic_clear_int(&ip2->flags, HAMMER2_INODE_SIDEQ);
+			TAILQ_REMOVE(&pmp->sideq, ip2, entry);
+			TAILQ_INSERT_TAIL(&pmp->syncq, ip2, entry);
+		} else {
+			atomic_set_int(&ip2->flags, HAMMER2_INODE_SYNCQ);
+			hammer2_inode_ref(ip2);
+			TAILQ_INSERT_TAIL(&pmp->syncq, ip2, entry);
+		}
+	}
+	hammer2_spin_unex(&pmp->list_spin);
 }
 
 

@@ -1398,7 +1398,10 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	 * Create the actual inode as a hidden file in the iroot, then
 	 * create the directory entry.  The creation of the actual inode
 	 * sets its nlinks to 1 which is the value we desire.
+	 *
+	 * dip must be locked before nip to avoid deadlock.
 	 */
+	hammer2_inode_lock(dip, 0);
 	nip = hammer2_inode_create_normal(dip, ap->a_vap, ap->a_cred,
 					  inum, &error);
 	if (error) {
@@ -1429,12 +1432,13 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	if (error == 0) {
 		uint64_t mtime;
 
-		hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);
+		/*hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);*/
 		hammer2_update_time(&mtime);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
-		hammer2_inode_unlock(dip);
+		/*hammer2_inode_unlock(dip);*/
 	}
+	hammer2_inode_unlock(dip);
 
 	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
 
@@ -1601,7 +1605,10 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	 * Create the actual inode as a hidden file in the iroot, then
 	 * create the directory entry.  The creation of the actual inode
 	 * sets its nlinks to 1 which is the value we desire.
+	 *
+	 * dip must be locked before nip to avoid deadlock.
 	 */
+	hammer2_inode_lock(dip, 0);
 	nip = hammer2_inode_create_normal(dip, ap->a_vap, ap->a_cred,
 					  inum, &error);
 
@@ -1629,12 +1636,13 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	if (error == 0) {
 		uint64_t mtime;
 
-		hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);
+		/*hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);*/
 		hammer2_update_time(&mtime);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
-		hammer2_inode_unlock(dip);
+		/*hammer2_inode_unlock(dip);*/
 	}
+	hammer2_inode_unlock(dip);
 
 	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
 
@@ -1675,8 +1683,12 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 
 	/*
 	 * Create the device inode and then create the directory entry.
+	 *
+	 * dip must be locked before nip to avoid deadlock.
 	 */
 	inum = hammer2_trans_newinum(dip->pmp);
+
+	hammer2_inode_lock(dip, 0);
 	nip = hammer2_inode_create_normal(dip, ap->a_vap, ap->a_cred,
 					  inum, &error);
 	if (error == 0) {
@@ -1701,12 +1713,13 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	if (error == 0) {
 		uint64_t mtime;
 
-		hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);
+		/*hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);*/
 		hammer2_update_time(&mtime);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
-		hammer2_inode_unlock(dip);
+		/*hammer2_inode_unlock(dip);*/
 	}
+	hammer2_inode_unlock(dip);
 
 	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
 
@@ -1750,9 +1763,12 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	/*
 	 * Create the softlink as an inode and then create the directory
 	 * entry.
+	 *
+	 * dip must be locked before nip to avoid deadlock.
 	 */
 	inum = hammer2_trans_newinum(dip->pmp);
 
+	hammer2_inode_lock(dip, 0);
 	nip = hammer2_inode_create_normal(dip, ap->a_vap, ap->a_cred,
 					  inum, &error);
 	if (error == 0) {
@@ -1766,6 +1782,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 			nip = NULL;
 		}
 		*ap->a_vpp = NULL;
+		hammer2_inode_unlock(dip);
 		hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
 		return error;
 	}
@@ -1805,12 +1822,13 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	if (error == 0) {
 		uint64_t mtime;
 
-		hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);
+		/*hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);*/
 		hammer2_update_time(&mtime);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
-		hammer2_inode_unlock(dip);
+		/*hammer2_inode_unlock(dip);*/
 	}
+	hammer2_inode_unlock(dip);
 
 	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
 
@@ -1882,12 +1900,12 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	 */
 	error = hammer2_xop_collect(&xop->head, 0);
 	error = hammer2_error_to_errno(error);
-	hammer2_inode_unlock(dip);
 
 	if (error == 0) {
 		ip = hammer2_inode_get(dip->pmp, &xop->head, -1, -1);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		if (ip) {
+			hammer2_inode_depend(dip, ip);
 			hammer2_inode_unlink_finisher(ip, isopen);
 			hammer2_inode_unlock(ip);
 		}
@@ -1901,12 +1919,13 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	if (error == 0) {
 		uint64_t mtime;
 
-		hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);
+		/*hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);*/
 		hammer2_update_time(&mtime);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
-		hammer2_inode_unlock(dip);
+		/*hammer2_inode_unlock(dip);*/
 	}
+	hammer2_inode_unlock(dip);
 
 	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
 	if (error == 0) {
@@ -1959,12 +1978,12 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	 */
 	error = hammer2_xop_collect(&xop->head, 0);
 	error = hammer2_error_to_errno(error);
-	hammer2_inode_unlock(dip);
 
 	if (error == 0) {
 		ip = hammer2_inode_get(dip->pmp, &xop->head, -1, -1);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		if (ip) {
+			hammer2_inode_depend(dip, ip);
 			hammer2_inode_unlink_finisher(ip, isopen);
 			hammer2_inode_unlock(ip);
 		}
@@ -1978,12 +1997,13 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	if (error == 0) {
 		uint64_t mtime;
 
-		hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);
+		/*hammer2_inode_lock(dip, HAMMER2_RESOLVE_SHARED);*/
 		hammer2_update_time(&mtime);
 		hammer2_inode_modify(dip);
 		dip->meta.mtime = mtime;
-		hammer2_inode_unlock(dip);
+		/*hammer2_inode_unlock(dip);*/
 	}
+	hammer2_inode_unlock(dip);
 
 	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
 	if (error == 0) {

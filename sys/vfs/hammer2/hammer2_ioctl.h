@@ -102,6 +102,8 @@ struct hammer2_ioc_pfs {
 
 typedef struct hammer2_ioc_pfs hammer2_ioc_pfs_t;
 
+#define HAMMER2_PFSFLAGS_NOSYNC		0x00000001
+
 /*
  * Ioctls to manage inodes
  */
