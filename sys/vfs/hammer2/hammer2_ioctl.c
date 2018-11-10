@@ -660,7 +660,6 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		hammer2_inode_chain_sync(nip);
 		hammer2_inode_chain_flush(nip, HAMMER2_XOP_INODE_STOP |
 					       HAMMER2_XOP_FSSYNC);
-		KKASSERT(nip->refs == 1);
 		hammer2_inode_drop(nip);
 
 		/* 
@@ -813,9 +812,19 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 
 	lockmgr(&hmp->bulklk, LK_EXCLUSIVE);
 
-	hammer2_vfs_sync(pmp->mp, MNT_WAIT);
-
-	hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH);
+	/*
+	 * NOSYNC is for debugging.  We skip the filesystem sync and use
+	 * a normal transaction (which is less likely to stall).  used for
+	 * testing filesystem consistency.
+	 *
+	 * In normal mode we sync the filesystem and use a flush transaction.
+	 */
+	if (pfs->pfs_flags & HAMMER2_PFSFLAGS_NOSYNC) {
+		hammer2_trans_init(pmp, 0);
+	} else {
+		hammer2_vfs_sync(pmp->mp, MNT_WAIT);
+		hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH);
+	}
 	mtid = hammer2_trans_sub(pmp);
 	hammer2_inode_lock(ip, 0);
 	hammer2_inode_modify(ip);
@@ -902,7 +911,6 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 		hammer2_inode_chain_sync(nip);
 		hammer2_inode_chain_flush(nip, HAMMER2_XOP_INODE_STOP |
 					       HAMMER2_XOP_FSSYNC);
-		KKASSERT(nip->refs == 1);
 		hammer2_inode_drop(nip);
 
 		force_local = (hmp->hflags & HMNT2_LOCAL) ? hmp : NULL;
@@ -922,7 +930,12 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 	hammer2_chain_drop(chain);
 
 	hammer2_inode_unlock(ip);
-	hammer2_trans_done(pmp, HAMMER2_TRANS_ISFLUSH | HAMMER2_TRANS_SIDEQ);
+	if (pfs->pfs_flags & HAMMER2_PFSFLAGS_NOSYNC) {
+		hammer2_trans_done(pmp, 0);
+	} else {
+		hammer2_trans_done(pmp, HAMMER2_TRANS_ISFLUSH |
+					HAMMER2_TRANS_SIDEQ);
+	}
 
 	lockmgr(&hmp->bulklk, LK_RELEASE);
 

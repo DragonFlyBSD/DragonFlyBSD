@@ -1467,6 +1467,7 @@ void hammer2_inode_lock(hammer2_inode_t *ip, int how);
 void hammer2_inode_lock4(hammer2_inode_t *ip1, hammer2_inode_t *ip2,
 			hammer2_inode_t *ip3, hammer2_inode_t *ip4);
 void hammer2_inode_unlock(hammer2_inode_t *ip);
+void hammer2_inode_depend(hammer2_inode_t *ip1, hammer2_inode_t *ip2);
 hammer2_chain_t *hammer2_inode_chain(hammer2_inode_t *ip, int clindex, int how);
 hammer2_chain_t *hammer2_inode_chain_and_parent(hammer2_inode_t *ip,
 			int clindex, hammer2_chain_t **parentp, int how);

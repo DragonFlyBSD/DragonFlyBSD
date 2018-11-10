@@ -2437,22 +2437,40 @@ hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor)
 	 * op using the same inode.  Either it has already locked the
 	 * inode and we will block, or it has not yet locked the inode
 	 * and it will block until we are finished flushing that inode.
+	 *
+	 * When restarting, only move the inodes flagged as PASS2.
 	 */
 	hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH);
 restart:
 	hammer2_trans_setflags(pmp, HAMMER2_TRANS_COPYQ);
-	dorestart = 0;
 	hammer2_spin_ex(&pmp->list_spin);
-	TAILQ_FOREACH(ip, &pmp->sideq, entry) {
-		KKASSERT(ip->flags & HAMMER2_INODE_SIDEQ);
-		atomic_set_int(&ip->flags, HAMMER2_INODE_SYNCQ);
-		atomic_clear_int(&ip->flags, HAMMER2_INODE_SIDEQ);
+	if (dorestart == 0) {
+		TAILQ_FOREACH(ip, &pmp->sideq, entry) {
+			KKASSERT(ip->flags & HAMMER2_INODE_SIDEQ);
+			atomic_set_int(&ip->flags, HAMMER2_INODE_SYNCQ);
+			atomic_clear_int(&ip->flags, HAMMER2_INODE_SIDEQ);
+		}
+		TAILQ_CONCAT(&pmp->syncq, &pmp->sideq, entry);
+		pmp->sideq_count = 0;
+	} else {
+		ipdrop = TAILQ_FIRST(&pmp->sideq);
+		while ((ip = ipdrop) != NULL) {
+			ipdrop = TAILQ_NEXT(ip, entry);
+			KKASSERT(ip->flags & HAMMER2_INODE_SIDEQ);
+			if (ip->flags & HAMMER2_INODE_SYNCQ_PASS2) {
+				TAILQ_REMOVE(&pmp->sideq, ip, entry);
+				TAILQ_INSERT_TAIL(&pmp->syncq, ip, entry);
+				atomic_set_int(&ip->flags, HAMMER2_INODE_SYNCQ);
+				atomic_clear_int(&ip->flags,
+						 HAMMER2_INODE_SIDEQ);
+				--pmp->sideq_count;
+			}
+		}
 	}
-	TAILQ_CONCAT(&pmp->syncq, &pmp->sideq, entry);
-	pmp->sideq_count = 0;
 	hammer2_spin_unex(&pmp->list_spin);
 	hammer2_trans_clearflags(pmp, HAMMER2_TRANS_COPYQ |
 				      HAMMER2_TRANS_WAITING);
+	dorestart = 0;
 
 	/*
 	 * Now run through all inodes on syncq.
