@@ -1919,6 +1919,8 @@ ENTRY=	1/1178 \
 	t/ti931 \
 	t/ti_ansi \
 	t/tkterm \
+	t/tmux \
+	t/tmux-256color \
 	t/tn1200 \
 	t/tn300 \
 	t/trs16 \
