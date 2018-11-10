@@ -27,20 +27,14 @@
 /*
  * Authors: Thomas Hellstrom <thellstrom-at-vmware-dot-com>
  */
-/*
- * Copyright (c) 2013 The FreeBSD Foundation
- * All rights reserved.
- *
- * Portions of this software were developed by Konstantin Belousov
- * <kib@FreeBSD.org> under sponsorship from the FreeBSD Foundation.
- */
 
 #include <drm/ttm/ttm_lock.h>
 #include <drm/ttm/ttm_module.h>
 #include <linux/atomic.h>
 #include <linux/errno.h>
 #include <linux/wait.h>
-#include <linux/export.h>
+#include <linux/sched.h>
+#include <linux/module.h>
 
 #define TTM_WRITE_LOCK_PENDING    (1 << 0)
 #define TTM_VT_LOCK_PENDING       (1 << 1)
@@ -51,6 +45,7 @@
 void ttm_lock_init(struct ttm_lock *lock)
 {
 	lockinit(&lock->lock, "ttmlk", 0, LK_CANRECURSE);
+	init_waitqueue_head(&lock->queue);
 	lock->rw = 0;
 	lock->flags = 0;
 	lock->kill_takers = false;
@@ -58,20 +53,11 @@ void ttm_lock_init(struct ttm_lock *lock)
 }
 EXPORT_SYMBOL(ttm_lock_init);
 
-static void
-ttm_lock_send_sig(int signo)
-{
-	struct proc *p;
-
-	p = curproc;	/* XXXKIB curthread ? */
-	ksignal(p, signo);
-}
-
 void ttm_read_unlock(struct ttm_lock *lock)
 {
 	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	if (--lock->rw == 0)
-		wakeup(lock);
+		wake_up_all(&lock->queue);
 	lockmgr(&lock->lock, LK_RELEASE);
 }
 EXPORT_SYMBOL(ttm_read_unlock);
@@ -82,7 +68,7 @@ static bool __ttm_read_lock(struct ttm_lock *lock)
 
 	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	if (unlikely(lock->kill_takers)) {
-		ttm_lock_send_sig(lock->signal);
+		send_sig(lock->signal, curproc, 0);
 		lockmgr(&lock->lock, LK_RELEASE);
 		return false;
 	}
@@ -96,24 +82,14 @@ static bool __ttm_read_lock(struct ttm_lock *lock)
 
 int ttm_read_lock(struct ttm_lock *lock, bool interruptible)
 {
-	const char *wmsg;
-	int flags, ret;
+	int ret = 0;
 
-	ret = 0;
-	if (interruptible) {
-		flags = PCATCH;
-		wmsg = "ttmri";
-	} else {
-		flags = 0;
-		wmsg = "ttmr";
-	}
-	lockmgr(&lock->lock, LK_EXCLUSIVE);
-	while (!__ttm_read_lock(lock)) {
-		ret = lksleep(lock, &lock->lock, 0, wmsg, 0);
-		if (ret != 0)
-			break;
-	}
-	return (-ret);
+	if (interruptible)
+		ret = wait_event_interruptible(lock->queue,
+					       __ttm_read_lock(lock));
+	else
+		wait_event(lock->queue, __ttm_read_lock(lock));
+	return ret;
 }
 EXPORT_SYMBOL(ttm_read_lock);
 
@@ -125,7 +101,7 @@ static bool __ttm_read_trylock(struct ttm_lock *lock, bool *locked)
 
 	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	if (unlikely(lock->kill_takers)) {
-		ttm_lock_send_sig(lock->signal);
+		send_sig(lock->signal, curproc, 0);
 		lockmgr(&lock->lock, LK_RELEASE);
 		return false;
 	}
@@ -143,26 +119,19 @@ static bool __ttm_read_trylock(struct ttm_lock *lock, bool *locked)
 
 int ttm_read_trylock(struct ttm_lock *lock, bool interruptible)
 {
-	const char *wmsg;
-	int flags, ret;
+	int ret = 0;
 	bool locked;
 
-	ret = 0;
-	if (interruptible) {
-		flags = PCATCH;
-		wmsg = "ttmrti";
-	} else {
-		flags = 0;
-		wmsg = "ttmrt";
+	if (interruptible)
+		ret = wait_event_interruptible
+			(lock->queue, __ttm_read_trylock(lock, &locked));
+	else
+		wait_event(lock->queue, __ttm_read_trylock(lock, &locked));
+
+	if (unlikely(ret != 0)) {
+		BUG_ON(locked);
+		return ret;
 	}
-	lockmgr(&lock->lock, LK_EXCLUSIVE);
-	while (!__ttm_read_trylock(lock, &locked)) {
-		ret = lksleep(lock, &lock->lock, 0, wmsg, 0);
-		if (ret != 0)
-			break;
-	}
-	KKASSERT(!locked || ret == 0);
-	lockmgr(&lock->lock, LK_RELEASE);
 
 	return (locked) ? 0 : -EBUSY;
 }
@@ -171,7 +140,7 @@ void ttm_write_unlock(struct ttm_lock *lock)
 {
 	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	lock->rw = 0;
-	wakeup(lock);
+	wake_up_all(&lock->queue);
 	lockmgr(&lock->lock, LK_RELEASE);
 }
 EXPORT_SYMBOL(ttm_write_unlock);
@@ -182,7 +151,7 @@ static bool __ttm_write_lock(struct ttm_lock *lock)
 
 	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	if (unlikely(lock->kill_takers)) {
-		ttm_lock_send_sig(lock->signal);
+		send_sig(lock->signal, curproc, 0);
 		lockmgr(&lock->lock, LK_RELEASE);
 		return false;
 	}
@@ -199,32 +168,32 @@ static bool __ttm_write_lock(struct ttm_lock *lock)
 
 int ttm_write_lock(struct ttm_lock *lock, bool interruptible)
 {
-	const char *wmsg;
-	int flags, ret;
+	int ret = 0;
 
-	ret = 0;
 	if (interruptible) {
-		flags = PCATCH;
-		wmsg = "ttmwi";
-	} else {
-		flags = 0;
-		wmsg = "ttmw";
-	}
-	lockmgr(&lock->lock, LK_EXCLUSIVE);
-	/* XXXKIB: linux uses __ttm_read_lock for uninterruptible sleeps */
-	while (!__ttm_write_lock(lock)) {
-		ret = lksleep(lock, &lock->lock, 0, wmsg, 0);
-		if (interruptible && ret != 0) {
+		ret = wait_event_interruptible(lock->queue,
+					       __ttm_write_lock(lock));
+		if (unlikely(ret != 0)) {
+			lockmgr(&lock->lock, LK_EXCLUSIVE);
 			lock->flags &= ~TTM_WRITE_LOCK_PENDING;
-			wakeup(lock);
-			break;
+			wake_up_all(&lock->queue);
+			lockmgr(&lock->lock, LK_RELEASE);
 		}
-	}
-	lockmgr(&lock->lock, LK_RELEASE);
+	} else
+		wait_event(lock->queue, __ttm_read_lock(lock));
 
-	return (-ret);
+	return ret;
 }
 EXPORT_SYMBOL(ttm_write_lock);
+
+void ttm_write_lock_downgrade(struct ttm_lock *lock);
+void ttm_write_lock_downgrade(struct ttm_lock *lock)
+{
+	lockmgr(&lock->lock, LK_EXCLUSIVE);
+	lock->rw = 1;
+	wake_up_all(&lock->queue);
+	lockmgr(&lock->lock, LK_RELEASE);
+}
 
 static int __ttm_vt_unlock(struct ttm_lock *lock)
 {
@@ -234,7 +203,7 @@ static int __ttm_vt_unlock(struct ttm_lock *lock)
 	if (unlikely(!(lock->flags & TTM_VT_LOCK)))
 		ret = -EINVAL;
 	lock->flags &= ~TTM_VT_LOCK;
-	wakeup(lock);
+	wake_up_all(&lock->queue);
 	lockmgr(&lock->lock, LK_RELEASE);
 
 	return ret;
@@ -271,26 +240,20 @@ int ttm_vt_lock(struct ttm_lock *lock,
 		bool interruptible,
 		struct ttm_object_file *tfile)
 {
-	const char *wmsg;
-	int flags, ret;
+	int ret = 0;
 
-	ret = 0;
 	if (interruptible) {
-		flags = PCATCH;
-		wmsg = "ttmwi";
-	} else {
-		flags = 0;
-		wmsg = "ttmw";
-	}
-	lockmgr(&lock->lock, LK_EXCLUSIVE);
-	while (!__ttm_vt_lock(lock)) {
-		ret = lksleep(lock, &lock->lock, 0, wmsg, 0);
-		if (interruptible && ret != 0) {
+		ret = wait_event_interruptible(lock->queue,
+					       __ttm_vt_lock(lock));
+		if (unlikely(ret != 0)) {
+			lockmgr(&lock->lock, LK_EXCLUSIVE);
 			lock->flags &= ~TTM_VT_LOCK_PENDING;
-			wakeup(lock);
-			break;
+			wake_up_all(&lock->queue);
+			lockmgr(&lock->lock, LK_RELEASE);
+			return ret;
 		}
-	}
+	} else
+		wait_event(lock->queue, __ttm_vt_lock(lock));
 
 	/*
 	 * Add a base-object, the destructor of which will
@@ -305,7 +268,7 @@ int ttm_vt_lock(struct ttm_lock *lock,
 	else
 		lock->vt_holder = tfile;
 
-	return (-ret);
+	return ret;
 }
 EXPORT_SYMBOL(ttm_vt_lock);
 
@@ -320,7 +283,7 @@ void ttm_suspend_unlock(struct ttm_lock *lock)
 {
 	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	lock->flags &= ~TTM_SUSPEND_LOCK;
-	wakeup(lock);
+	wake_up_all(&lock->queue);
 	lockmgr(&lock->lock, LK_RELEASE);
 }
 EXPORT_SYMBOL(ttm_suspend_unlock);
@@ -343,9 +306,6 @@ static bool __ttm_suspend_lock(struct ttm_lock *lock)
 
 void ttm_suspend_lock(struct ttm_lock *lock)
 {
-	lockmgr(&lock->lock, LK_EXCLUSIVE);
-	while (!__ttm_suspend_lock(lock))
-		lksleep(lock, &lock->lock, 0, "ttms", 0);
-	lockmgr(&lock->lock, LK_RELEASE);
+	wait_event(lock->queue, __ttm_suspend_lock(lock));
 }
 EXPORT_SYMBOL(ttm_suspend_lock);
