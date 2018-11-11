@@ -28,8 +28,9 @@
 #include <drm/ttm/ttm_execbuf_util.h>
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_placement.h>
-#include <linux/export.h>
 #include <linux/wait.h>
+#include <linux/sched.h>
+#include <linux/module.h>
 
 static void ttm_eu_backoff_reservation_locked(struct list_head *list,
 					      struct ww_acquire_ctx *ticket)
@@ -138,7 +139,6 @@ int ttm_eu_reserve_buffers(struct ww_acquire_ctx *ticket,
 retry:
 	list_for_each_entry(entry, list, head) {
 		struct ttm_buffer_object *bo = entry->bo;
-		int owned;
 
 		/* already slowpath reserved? */
 		if (entry->reserved)
@@ -150,13 +150,11 @@ retry:
 			break;
 		case -EBUSY:
 			ttm_eu_del_from_lru_locked(list);
-			owned = lockstatus(&glob->lru_lock, curthread);
-			if (owned == LK_EXCLUSIVE)
-				lockmgr(&glob->lru_lock, LK_RELEASE);
+			lockmgr(&glob->lru_lock, LK_RELEASE);
 			ret = ttm_bo_reserve_nolru(bo, true, false,
 						   true, ticket);
-			if (owned == LK_EXCLUSIVE)
-				lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
+			lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
+
 			if (!ret)
 				break;
 
