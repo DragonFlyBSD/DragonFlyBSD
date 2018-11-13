@@ -110,6 +110,8 @@ long hammer2_iod_meta_write;
 long hammer2_iod_indr_write;
 long hammer2_iod_fmap_write;
 long hammer2_iod_volu_write;
+long hammer2_iod_inode_creates;
+long hammer2_iod_inode_deletes;
 
 MALLOC_DECLARE(M_HAMMER2_CBUFFER);
 MALLOC_DEFINE(M_HAMMER2_CBUFFER, "HAMMER2-compbuffer",
@@ -185,6 +187,10 @@ SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_fmap_write, CTLFLAG_RW,
 	   &hammer2_iod_fmap_write, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_volu_write, CTLFLAG_RW,
 	   &hammer2_iod_volu_write, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_inode_creates, CTLFLAG_RW,
+	   &hammer2_iod_inode_creates, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_inode_deletes, CTLFLAG_RW,
+	   &hammer2_iod_inode_deletes, 0, "");
 
 long hammer2_process_icrc32;
 long hammer2_process_xxhash64;
@@ -488,6 +494,9 @@ hammer2_pfsalloc(hammer2_chain_t *chain,
 			pmp->pfs_types[j] = ripdata->meta.pfs_type;
 		pmp->pfs_names[j] = kstrdup(ripdata->filename, M_HAMMER2);
 		pmp->pfs_hmps[j] = chain->hmp;
+		hammer2_spin_ex(&pmp->inum_spin);
+		pmp->pfs_iroot_blocksets[j] = chain->data->ipdata.u.blockset;
+		hammer2_spin_unex(&pmp->inum_spin);
 
 		/*
 		 * If the PFS is already mounted we must account
@@ -659,6 +668,7 @@ hammer2_pfsfree(hammer2_pfs_t *pmp)
 {
 	hammer2_inode_t *iroot;
 	hammer2_chain_t *chain;
+	int chains_still_present = 0;
 	int i;
 	int j;
 
@@ -670,25 +680,6 @@ hammer2_pfsfree(hammer2_pfs_t *pmp)
 		TAILQ_REMOVE(&hammer2_spmplist, pmp, mntentry);
 	else
 		TAILQ_REMOVE(&hammer2_pfslist, pmp, mntentry);
-
-	iroot = pmp->iroot;
-	if (iroot) {
-		for (i = 0; i < iroot->cluster.nchains; ++i) {
-			hammer2_thr_delete(&pmp->sync_thrs[i]);
-			for (j = 0; j < HAMMER2_XOPGROUPS; ++j)
-				hammer2_thr_delete(&pmp->xop_groups[j].thrs[i]);
-		}
-#if REPORT_REFS_ERRORS
-		if (pmp->iroot->refs != 1)
-			kprintf("PMP->IROOT %p REFS WRONG %d\n",
-				pmp->iroot, pmp->iroot->refs);
-#else
-		KKASSERT(pmp->iroot->refs == 1);
-#endif
-		/* ref for pmp->iroot */
-		hammer2_inode_drop(pmp->iroot);
-		pmp->iroot = NULL;
-	}
 
 	/*
 	 * Cleanup chains remaining on LRU list.
@@ -708,12 +699,43 @@ hammer2_pfsfree(hammer2_pfs_t *pmp)
 	hammer2_spin_unex(&pmp->lru_spin);
 
 	/*
+	 * Clean up iroot
+	 */
+	iroot = pmp->iroot;
+	if (iroot) {
+		for (i = 0; i < iroot->cluster.nchains; ++i) {
+			hammer2_thr_delete(&pmp->sync_thrs[i]);
+			for (j = 0; j < HAMMER2_XOPGROUPS; ++j)
+				hammer2_thr_delete(&pmp->xop_groups[j].thrs[i]);
+			chain = iroot->cluster.array[i].chain;
+			if (chain && !RB_EMPTY(&chain->core.rbtree)) {
+				kprintf("hammer2: Warning pmp %p still "
+					"has active chains\n", pmp);
+				chains_still_present = 1;
+			}
+		}
+#if REPORT_REFS_ERRORS
+		if (iroot->refs != 1)
+			kprintf("PMP->IROOT %p REFS WRONG %d\n",
+				iroot, iroot->refs);
+#else
+		KKASSERT(iroot->refs == 1);
+#endif
+		/* ref for iroot */
+		hammer2_inode_drop(iroot);
+		pmp->iroot = NULL;
+	}
+
+	/*
 	 * Free remaining pmp resources
 	 */
-	kmalloc_destroy(&pmp->mmsg);
-	kmalloc_destroy(&pmp->minode);
-
-	kfree(pmp, M_HAMMER2);
+	if (chains_still_present) {
+		kprintf("hammer2: cannot free pmp %p, still in use\n", pmp);
+	} else {
+		kmalloc_destroy(&pmp->mmsg);
+		kmalloc_destroy(&pmp->minode);
+		kfree(pmp, M_HAMMER2);
+	}
 }
 
 /*
@@ -728,7 +750,6 @@ hammer2_pfsfree_scan(hammer2_dev_t *hmp, int which)
 	hammer2_pfs_t *pmp;
 	hammer2_inode_t *iroot;
 	hammer2_chain_t *rchain;
-	int didfreeze;
 	int i;
 	int j;
 	struct hammer2_pfslist *wlist;
@@ -741,7 +762,6 @@ again:
 	TAILQ_FOREACH(pmp, wlist, mntentry) {
 		if ((iroot = pmp->iroot) == NULL)
 			continue;
-		hammer2_vfs_sync_pmp(pmp, MNT_WAIT);
 
 		/*
 		 * Determine if this PFS is affected.  If it is we must
@@ -755,73 +775,73 @@ again:
 			if (pmp->pfs_hmps[i] == hmp)
 				break;
 		}
-		if (i != HAMMER2_MAXCLUSTER) {
-			/*
-			 * Make sure all synchronization threads are locked
-			 * down.
-			 */
-			for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
-				if (pmp->pfs_hmps[i] == NULL)
-					continue;
-				hammer2_thr_freeze_async(&pmp->sync_thrs[i]);
-				for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
-					hammer2_thr_freeze_async(
-						&pmp->xop_groups[j].thrs[i]);
-				}
-			}
-			for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
-				if (pmp->pfs_hmps[i] == NULL)
-					continue;
-				hammer2_thr_freeze(&pmp->sync_thrs[i]);
-				for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
-					hammer2_thr_freeze(
-						&pmp->xop_groups[j].thrs[i]);
-				}
-			}
+		if (i == HAMMER2_MAXCLUSTER)
+			continue;
 
-			/*
-			 * Lock the inode and clean out matching chains.
-			 * Note that we cannot use hammer2_inode_lock_*()
-			 * here because that would attempt to validate the
-			 * cluster that we are in the middle of ripping
-			 * apart.
-			 *
-			 * WARNING! We are working directly on the inodes
-			 *	    embedded cluster.
-			 */
-			hammer2_mtx_ex(&iroot->lock);
+		hammer2_vfs_sync_pmp(pmp, MNT_WAIT);
 
-			/*
-			 * Remove the chain from matching elements of the PFS.
-			 */
-			for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
-				if (pmp->pfs_hmps[i] != hmp)
-					continue;
-				hammer2_thr_delete(&pmp->sync_thrs[i]);
-				for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
-					hammer2_thr_delete(
-						&pmp->xop_groups[j].thrs[i]);
-				}
-				rchain = iroot->cluster.array[i].chain;
-				iroot->cluster.array[i].chain = NULL;
-				pmp->pfs_types[i] = 0;
-				if (pmp->pfs_names[i]) {
-					kfree(pmp->pfs_names[i], M_HAMMER2);
-					pmp->pfs_names[i] = NULL;
-				}
-				if (rchain) {
-					hammer2_chain_drop(rchain);
-					/* focus hint */
-					if (iroot->cluster.focus == rchain)
-						iroot->cluster.focus = NULL;
-				}
-				pmp->pfs_hmps[i] = NULL;
+		/*
+		 * Make sure all synchronization threads are locked
+		 * down.
+		 */
+		for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
+			if (pmp->pfs_hmps[i] == NULL)
+				continue;
+			hammer2_thr_freeze_async(&pmp->sync_thrs[i]);
+			for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
+				hammer2_thr_freeze_async(
+					&pmp->xop_groups[j].thrs[i]);
 			}
-			hammer2_mtx_unlock(&iroot->lock);
-			didfreeze = 1;	/* remaster, unfreeze down below */
-		} else {
-			didfreeze = 0;
 		}
+		for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
+			if (pmp->pfs_hmps[i] == NULL)
+				continue;
+			hammer2_thr_freeze(&pmp->sync_thrs[i]);
+			for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
+				hammer2_thr_freeze(
+					&pmp->xop_groups[j].thrs[i]);
+			}
+		}
+
+		/*
+		 * Lock the inode and clean out matching chains.
+		 * Note that we cannot use hammer2_inode_lock_*()
+		 * here because that would attempt to validate the
+		 * cluster that we are in the middle of ripping
+		 * apart.
+		 *
+		 * WARNING! We are working directly on the inodes
+		 *	    embedded cluster.
+		 */
+		hammer2_mtx_ex(&iroot->lock);
+
+		/*
+		 * Remove the chain from matching elements of the PFS.
+		 */
+		for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
+			if (pmp->pfs_hmps[i] != hmp)
+				continue;
+			hammer2_thr_delete(&pmp->sync_thrs[i]);
+			for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
+				hammer2_thr_delete(
+					&pmp->xop_groups[j].thrs[i]);
+			}
+			rchain = iroot->cluster.array[i].chain;
+			iroot->cluster.array[i].chain = NULL;
+			pmp->pfs_types[i] = 0;
+			if (pmp->pfs_names[i]) {
+				kfree(pmp->pfs_names[i], M_HAMMER2);
+				pmp->pfs_names[i] = NULL;
+			}
+			if (rchain) {
+				hammer2_chain_drop(rchain);
+				/* focus hint */
+				if (iroot->cluster.focus == rchain)
+					iroot->cluster.focus = NULL;
+			}
+			pmp->pfs_hmps[i] = NULL;
+		}
+		hammer2_mtx_unlock(&iroot->lock);
 
 		/*
 		 * Cleanup trailing chains.  Gaps may remain.
@@ -851,6 +871,7 @@ again:
 			 * Free the pmp and restart the loop
 			 */
 			KKASSERT(TAILQ_EMPTY(&pmp->sideq));
+			KKASSERT(TAILQ_EMPTY(&pmp->syncq));
 			hammer2_pfsfree(pmp);
 			goto again;
 		}
@@ -859,18 +880,16 @@ again:
 		 * If elements still remain we need to set the REMASTER
 		 * flag and unfreeze it.
 		 */
-		if (didfreeze) {
-			for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
-				if (pmp->pfs_hmps[i] == NULL)
-					continue;
-				hammer2_thr_remaster(&pmp->sync_thrs[i]);
-				hammer2_thr_unfreeze(&pmp->sync_thrs[i]);
-				for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
-					hammer2_thr_remaster(
-						&pmp->xop_groups[j].thrs[i]);
-					hammer2_thr_unfreeze(
-						&pmp->xop_groups[j].thrs[i]);
-				}
+		for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
+			if (pmp->pfs_hmps[i] == NULL)
+				continue;
+			hammer2_thr_remaster(&pmp->sync_thrs[i]);
+			hammer2_thr_unfreeze(&pmp->sync_thrs[i]);
+			for (j = 0; j < HAMMER2_XOPGROUPS; ++j) {
+				hammer2_thr_remaster(
+					&pmp->xop_groups[j].thrs[i]);
+				hammer2_thr_unfreeze(
+					&pmp->xop_groups[j].thrs[i]);
 			}
 		}
 	}
@@ -1722,7 +1741,9 @@ again:
 
 	hammer2_bulkfree_uninit(hmp);
 	hammer2_pfsfree_scan(hmp, 0);
+#if 0
 	hammer2_dev_exlock(hmp);	/* XXX order */
+#endif
 
 	/*
 	 * Cycle the volume data lock as a safety (probably not needed any
@@ -1833,7 +1854,9 @@ again:
 	hammer2_dump_chain(&hmp->vchain, 0, &dumpcnt, 'v', (u_int)-1);
 	dumpcnt = 50;
 	hammer2_dump_chain(&hmp->fchain, 0, &dumpcnt, 'f', (u_int)-1);
+#if 0
 	hammer2_dev_unlock(hmp);
+#endif
 	hammer2_chain_drop(&hmp->vchain);
 
 	hammer2_io_cleanup(hmp, &hmp->iotree);
@@ -2409,9 +2432,8 @@ int
 hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor)
 {
 	struct mount *mp;
-	hammer2_xop_flush_t *xop;
+	/*hammer2_xop_flush_t *xop;*/
 	/*struct hammer2_sync_info info;*/
-	hammer2_inode_t *iroot;
 	hammer2_inode_t *ip;
 	hammer2_inode_t *ipdrop;
 	struct vnode *vp;
@@ -2420,9 +2442,6 @@ hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor)
 	int dorestart;
 
 	mp = pmp->mp;
-	iroot = pmp->iroot;
-	KKASSERT(iroot);
-	KKASSERT(iroot->pmp == pmp);
 
 	/*
 	 * Move all inodes on sideq to syncq.  This will clear sideq.
@@ -2441,30 +2460,30 @@ hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor)
 	 * When restarting, only move the inodes flagged as PASS2.
 	 */
 	hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH);
+#ifdef HAMMER2_DEBUG_SYNC
+	kprintf("FILESYSTEM SYNC BOUNDARY\n");
+#endif
+	dorestart = 0;
 restart:
+#ifdef HAMMER2_DEBUG_SYNC
+	kprintf("FILESYSTEM SYNC RESTART (%d)\n", dorestart);
+#endif
 	hammer2_trans_setflags(pmp, HAMMER2_TRANS_COPYQ);
+	hammer2_trans_clearflags(pmp, HAMMER2_TRANS_RESCAN);
 	hammer2_spin_ex(&pmp->list_spin);
-	if (dorestart == 0) {
-		TAILQ_FOREACH(ip, &pmp->sideq, entry) {
-			KKASSERT(ip->flags & HAMMER2_INODE_SIDEQ);
+
+	ipdrop = TAILQ_FIRST(&pmp->sideq);
+	while ((ip = ipdrop) != NULL) {
+		ipdrop = TAILQ_NEXT(ip, entry);
+		KKASSERT(ip->flags & HAMMER2_INODE_SIDEQ);
+		if (dorestart == 0 ||
+		    (ip->flags & HAMMER2_INODE_SYNCQ_PASS2)) {
+			TAILQ_REMOVE(&pmp->sideq, ip, entry);
+			TAILQ_INSERT_TAIL(&pmp->syncq, ip, entry);
 			atomic_set_int(&ip->flags, HAMMER2_INODE_SYNCQ);
-			atomic_clear_int(&ip->flags, HAMMER2_INODE_SIDEQ);
-		}
-		TAILQ_CONCAT(&pmp->syncq, &pmp->sideq, entry);
-		pmp->sideq_count = 0;
-	} else {
-		ipdrop = TAILQ_FIRST(&pmp->sideq);
-		while ((ip = ipdrop) != NULL) {
-			ipdrop = TAILQ_NEXT(ip, entry);
-			KKASSERT(ip->flags & HAMMER2_INODE_SIDEQ);
-			if (ip->flags & HAMMER2_INODE_SYNCQ_PASS2) {
-				TAILQ_REMOVE(&pmp->sideq, ip, entry);
-				TAILQ_INSERT_TAIL(&pmp->syncq, ip, entry);
-				atomic_set_int(&ip->flags, HAMMER2_INODE_SYNCQ);
-				atomic_clear_int(&ip->flags,
-						 HAMMER2_INODE_SIDEQ);
-				--pmp->sideq_count;
-			}
+			atomic_clear_int(&ip->flags,
+					 HAMMER2_INODE_SIDEQ);
+			--pmp->sideq_count;
 		}
 	}
 	hammer2_spin_unex(&pmp->list_spin);
@@ -2492,9 +2511,9 @@ restart:
 		cpu_ccfence();
 		if (atomic_cmpset_int(&ip->flags,
 			      pass2,
-			      pass2 & ~(HAMMER2_INODE_SYNCQ |
-					HAMMER2_INODE_SYNCQ_WAKEUP |
-					HAMMER2_INODE_SYNCQ_PASS2)) == 0) {
+			      (pass2 & ~(HAMMER2_INODE_SYNCQ |
+					HAMMER2_INODE_SYNCQ_WAKEUP)) |
+					HAMMER2_INODE_SYNCQ_PASS2) == 0) {
 			continue;
 		}
 		if (pass2 & HAMMER2_INODE_SYNCQ_WAKEUP)
@@ -2534,13 +2553,19 @@ restart:
 		if (vp) {
 			if (vget(vp, LK_EXCLUSIVE|LK_NOWAIT)) {
 				/*
-				 * Failed, move to SIDEQ
+				 * Failed, move to SIDEQ.  It may already be
+				 * on the SIDEQ if we lost a race.
 				 */
 				vp = NULL;
 				dorestart = 1;
+#ifdef HAMMER2_DEBUG_SYNC
+				kprintf("inum %ld (sync delayed by vnode)\n",
+					(long)ip->meta.inum);
+#endif
 				hammer2_spin_ex(&pmp->list_spin);
 				if ((ip->flags & (HAMMER2_INODE_SYNCQ |
 						  HAMMER2_INODE_SIDEQ)) == 0) {
+					/* XXX PASS2 redundant */
 					atomic_set_int(&ip->flags,
 						   HAMMER2_INODE_SIDEQ |
 						   HAMMER2_INODE_SYNCQ_PASS2);
@@ -2548,6 +2573,13 @@ restart:
 							  entry);
 					hammer2_spin_unex(&pmp->list_spin);
 					hammer2_mtx_unlock(&ip->lock);
+				} else if (ip->flags & HAMMER2_INODE_SIDEQ) {
+					/* XXX PASS2 redundant */
+					atomic_set_int(&ip->flags,
+						   HAMMER2_INODE_SYNCQ_PASS2);
+					hammer2_spin_unex(&pmp->list_spin);
+					hammer2_mtx_unlock(&ip->lock);
+					hammer2_inode_drop(ip);
 				} else {
 					hammer2_spin_unex(&pmp->list_spin);
 					hammer2_mtx_unlock(&ip->lock);
@@ -2582,9 +2614,22 @@ restart:
 		 * we must do so.  Then sync and flush it.  The flush should
 		 * update the parent.
 		 */
-		if (ip->flags & HAMMER2_INODE_CREATING) {
+		if (ip->flags & HAMMER2_INODE_DELETING) {
+#ifdef HAMMER2_DEBUG_SYNC
+			kprintf("inum %ld destroy\n", (long)ip->meta.inum);
+#endif
+			hammer2_inode_chain_des(ip);
+			atomic_add_long(&hammer2_iod_inode_deletes, 1);
+		} else if (ip->flags & HAMMER2_INODE_CREATING) {
+#ifdef HAMMER2_DEBUG_SYNC
+			kprintf("inum %ld insert\n", (long)ip->meta.inum);
+#endif
 			hammer2_inode_chain_ins(ip);
+			atomic_add_long(&hammer2_iod_inode_creates, 1);
 		}
+#ifdef HAMMER2_DEBUG_SYNC
+		kprintf("inum %ld chain-sync\n", (long)ip->meta.inum);
+#endif
 		hammer2_inode_chain_sync(ip);
 		hammer2_inode_chain_flush(ip, HAMMER2_XOP_INODE_STOP |
 					      HAMMER2_XOP_FSSYNC);
@@ -2600,6 +2645,7 @@ restart:
 			lwkt_reltoken(&vp->v_token);
 			vput(vp);
 		}
+		atomic_clear_int(&ip->flags, HAMMER2_INODE_SYNCQ_PASS2);
 		hammer2_inode_unlock(ip);	/* unlock+drop */
 		/* ip pointer invalid */
 
@@ -2614,23 +2660,40 @@ restart:
 		hammer2_inode_drop(ipdrop);
 		ipdrop = NULL;
 	}
-	if (dorestart)
+	if (dorestart || (pmp->trans.flags & HAMMER2_TRANS_RESCAN)) {
+#ifdef HAMMER2_DEBUG_SYNC
+		kprintf("FILESYSTEM SYNC STAGE 1 RESTART\n");
+		tsleep(&dorestart, 0, "h2STG1-R", hz*20);
+#endif
+		dorestart = 1;
 		goto restart;
+	}
+#ifdef HAMMER2_DEBUG_SYNC
+	kprintf("FILESYSTEM SYNC STAGE 2 BEGIN\n");
+	tsleep(&dorestart, 0, "h2STG2", hz*20);
+#endif
 
 	/*
-	 * We have to flush iroot last, even if it does not appear to be
-	 * dirty, because all the inodes in the PFS are indexed under the
-	 * iroot.  The normal flushing of iroot above would only occur if
-	 * directory entries under the root were changed.
+	 * We have to flush the PFS root last, even if it does not appear to
+	 * be dirty, because all the inodes in the PFS are indexed under it.
+	 * The normal flushing of iroot above would only occur if directory
+	 * entries under the root were changed.
+	 *
+	 * Specifying VOLHDR will cause an additionl flush of hmp->spmp
+	 * for the media making up the cluster.
 	 */
 	if ((ip = pmp->iroot) != NULL) {
 		hammer2_inode_ref(ip);
 		hammer2_mtx_ex(&ip->lock);
 		hammer2_inode_chain_sync(ip);
 		hammer2_inode_chain_flush(ip, HAMMER2_XOP_INODE_STOP |
-					      HAMMER2_XOP_FSSYNC);
+					      HAMMER2_XOP_FSSYNC |
+					      HAMMER2_XOP_VOLHDR);
 		hammer2_inode_unlock(ip);	/* unlock+drop */
 	}
+#ifdef HAMMER2_DEBUG_SYNC
+	kprintf("FILESYSTEM SYNC STAGE 2 DONE\n");
+#endif
 
 	/*
 	 * device bioq sync
@@ -2646,7 +2709,7 @@ restart:
 	info.waitfor = MNT_WAIT;
 	vsyncscan(mp, flags, hammer2_sync_scan2, &info);
 #endif
-
+#if 0
 	/*
 	 * Generally speaking we now want to flush the media topology from
 	 * the iroot through to the inodes.  The flush stops at any inode
@@ -2663,25 +2726,36 @@ restart:
 	 *
 	 * XXX For now wait for all flushes to complete.
 	 */
-	if (mp && iroot) {
+	if (mp && (ip = pmp->iroot) != NULL) {
 		/*
 		 * If unmounting try to flush everything including any
 		 * sub-trees under inodes, just in case there is dangling
 		 * modified data, as a safety.  Otherwise just flush up to
 		 * the inodes in this stage.
 		 */
+		kprintf("MP & IROOT\n");
+#ifdef HAMMER2_DEBUG_SYNC
+		kprintf("FILESYSTEM SYNC STAGE 3 IROOT BEGIN\n");
+#endif
 		if (mp->mnt_kern_flag & MNTK_UNMOUNT) {
-			xop = hammer2_xop_alloc(iroot, HAMMER2_XOP_MODIFYING |
-						       HAMMER2_XOP_VOLHDR);
+			xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING |
+						    HAMMER2_XOP_VOLHDR |
+						    HAMMER2_XOP_FSSYNC |
+						    HAMMER2_XOP_INODE_STOP);
 		} else {
-			xop = hammer2_xop_alloc(iroot, HAMMER2_XOP_MODIFYING |
-						       HAMMER2_XOP_INODE_STOP |
-						       HAMMER2_XOP_VOLHDR);
+			xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING |
+						    HAMMER2_XOP_INODE_STOP |
+						    HAMMER2_XOP_VOLHDR |
+						    HAMMER2_XOP_FSSYNC |
+						    HAMMER2_XOP_INODE_STOP);
 		}
 		hammer2_xop_start(&xop->head, &hammer2_inode_flush_desc);
 		error = hammer2_xop_collect(&xop->head,
 					    HAMMER2_XOP_COLLECT_WAITALL);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+#ifdef HAMMER2_DEBUG_SYNC
+		kprintf("FILESYSTEM SYNC STAGE 3 IROOT END\n");
+#endif
 		if (error == HAMMER2_ERROR_ENOENT)
 			error = 0;
 		else
@@ -2689,6 +2763,8 @@ restart:
 	} else {
 		error = 0;
 	}
+#endif
+	error = 0;	/* XXX */
 	hammer2_trans_done(pmp, HAMMER2_TRANS_ISFLUSH);
 
 	return (error);

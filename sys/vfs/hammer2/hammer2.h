@@ -768,7 +768,7 @@ typedef struct hammer2_inode hammer2_inode_t;
 #define HAMMER2_INODE_RENAME_INPROG	0x0004
 #define HAMMER2_INODE_ONRBTREE		0x0008
 #define HAMMER2_INODE_RESIZED		0x0010	/* requires inode_fsync */
-#define HAMMER2_INODE_ISDELETED		0x0020	/* deleted */
+#define HAMMER2_INODE_UNUSED0020	0x0020
 #define HAMMER2_INODE_ISUNLINKED	0x0040
 #define HAMMER2_INODE_METAGOOD		0x0080	/* inode meta-data good */
 #define HAMMER2_INODE_SIDEQ		0x0100	/* on side processing queue */
@@ -804,6 +804,7 @@ typedef struct hammer2_trans hammer2_trans_t;
 #define HAMMER2_TRANS_SIDEQ		0x20000000	/* run sideq */
 #define HAMMER2_TRANS_COPYQ		0x10000000	/* sideq->syncq */
 #define HAMMER2_TRANS_WAITING		0x08000000	/* someone waiting */
+#define HAMMER2_TRANS_RESCAN		0x04000000	/* rescan sideq */
 #define HAMMER2_TRANS_MASK		0x00FFFFFF	/* count mask */
 
 #define HAMMER2_FREEMAP_HEUR_NRADIX	4	/* pwr 2 PBUFRADIX-MINIORADIX */
@@ -1098,6 +1099,7 @@ typedef struct hammer2_xop_group hammer2_xop_group_t;
 #define HAMMER2_XOP_INODE_STOP		0x00000004
 #define HAMMER2_XOP_VOLHDR		0x00000008
 #define HAMMER2_XOP_FSSYNC		0x00000010
+#define HAMMER2_XOP_IROOT		0x00000020
 
 /*
  * Global (per partition) management structure, represents a hard block
@@ -1208,6 +1210,7 @@ struct hammer2_pfs {
 	uint8_t			pfs_types[HAMMER2_MAXCLUSTER];
 	char			*pfs_names[HAMMER2_MAXCLUSTER];
 	hammer2_dev_t		*pfs_hmps[HAMMER2_MAXCLUSTER];
+	hammer2_blockset_t	pfs_iroot_blocksets[HAMMER2_MAXCLUSTER];
 	hammer2_trans_t		trans;
 	struct lock		lock;		/* PFS lock for certain ops */
 	struct lock		lock_nlink;	/* rename and nlink lock */
@@ -1524,6 +1527,7 @@ hammer2_inode_t *hammer2_inode_create_pfs(hammer2_pfs_t *spmp,
 			const uint8_t *name, size_t name_len,
 			int *errorp);
 int hammer2_inode_chain_ins(hammer2_inode_t *ip);
+int hammer2_inode_chain_des(hammer2_inode_t *ip);
 int hammer2_inode_chain_sync(hammer2_inode_t *ip);
 int hammer2_inode_chain_flush(hammer2_inode_t *ip, int flags);
 int hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen);
