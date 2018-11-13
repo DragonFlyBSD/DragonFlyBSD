@@ -162,21 +162,16 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	vclrisdirty(vp);
 
 	/*
-	 * A modified inode may require chain synchronization.  This
-	 * synchronization is usually handled by VOP_SYNC / VOP_FSYNC
-	 * when vfsync() is called.  However, that requires a vnode.
+	 * Modified inodes will already be on SIDEQ or SYNCQ, no further
+	 * action is needed.
 	 *
-	 * When the vnode is disassociated we must keep track of any modified
-	 * inode to be flushed in a later filesystem sync.  We cannot safely
-	 * synchronize the inode from inside the reclaim due to potentially
-	 * deep locks held as-of when the reclaim occurs.
-	 * Interactions and potential deadlocks abound.
-	 *
-	 * Place the inode on SIDEQ, unless it is already on the SIDEQ or
-	 * SYNCQ.  It will be transfered to the SYNCQ in the next filesystem
-	 * sync.  It is not safe to try to shoehorn it into the current fs
-	 * sync.
+	 * We cannot safely synchronize the inode from inside the reclaim
+	 * due to potentially deep locks held as-of when the reclaim occurs.
+	 * Interactions and potential deadlocks abound.  We also can't do it
+	 * here without desynchronizing from the related directory entrie(s).
 	 */
+	hammer2_inode_drop(ip);			/* vp ref */
+#if 0
 	if ((ip->flags & (HAMMER2_INODE_ISUNLINKED |
 			  HAMMER2_INODE_MODIFIED |
 			  HAMMER2_INODE_RESIZED |
@@ -200,6 +195,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	} else {
 		hammer2_inode_drop(ip);			/* vp ref */
 	}
+#endif
 
 	/*
 	 * XXX handle background sync when ip dirty, kernel will no longer
@@ -1420,6 +1416,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 		*ap->a_vpp = NULL;
 	} else {
 		*ap->a_vpp = hammer2_igetv(nip, &error);
+		hammer2_inode_depend(dip, nip);
 		hammer2_inode_unlock(nip);
 	}
 
@@ -1627,6 +1624,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 		*ap->a_vpp = NULL;
 	} else {
 		*ap->a_vpp = hammer2_igetv(nip, &error);
+		hammer2_inode_depend(dip, nip);
 		hammer2_inode_unlock(nip);
 	}
 
@@ -1704,6 +1702,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 		*ap->a_vpp = NULL;
 	} else {
 		*ap->a_vpp = hammer2_igetv(nip, &error);
+		hammer2_inode_depend(dip, nip);
 		hammer2_inode_unlock(nip);
 	}
 
@@ -1787,6 +1786,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 		return error;
 	}
 	*ap->a_vpp = hammer2_igetv(nip, &error);
+	hammer2_inode_depend(dip, nip);
 
 	/*
 	 * Build the softlink (~like file data) and finalize the namecache.
@@ -1905,8 +1905,8 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 		ip = hammer2_inode_get(dip->pmp, &xop->head, -1, -1);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		if (ip) {
-			hammer2_inode_depend(dip, ip);
 			hammer2_inode_unlink_finisher(ip, isopen);
+			hammer2_inode_depend(dip, ip); /* after modified */
 			hammer2_inode_unlock(ip);
 		}
 	} else {
@@ -1983,8 +1983,8 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 		ip = hammer2_inode_get(dip->pmp, &xop->head, -1, -1);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		if (ip) {
-			hammer2_inode_depend(dip, ip);
 			hammer2_inode_unlink_finisher(ip, isopen);
+			hammer2_inode_depend(dip, ip);
 			hammer2_inode_unlock(ip);
 		}
 	} else {

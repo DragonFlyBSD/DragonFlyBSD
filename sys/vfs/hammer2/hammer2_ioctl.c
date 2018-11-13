@@ -621,7 +621,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 	nip = hammer2_inode_create_pfs(hmp->spmp, pfs->name, strlen(pfs->name),
 				       &error);
 	if (error == 0) {
-		/* nip->flags |= HAMMER2_INODE_NOSIDEQ; */
+		atomic_set_int(&nip->flags, HAMMER2_INODE_NOSIDEQ);
 		hammer2_inode_modify(nip);
 		nchain = hammer2_inode_chain(nip, 0, HAMMER2_RESOLVE_ALWAYS);
 		error = hammer2_chain_modify(nchain, mtid, 0, 0);
@@ -661,6 +661,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		hammer2_inode_chain_flush(nip, HAMMER2_XOP_INODE_STOP |
 					       HAMMER2_XOP_FSSYNC);
 		hammer2_inode_drop(nip);
+		/* nip is dead */
 
 		/* 
 		 * We still have a ref on the chain, relock and associate
@@ -676,7 +677,6 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 
 		hammer2_chain_unlock(nchain);
 		hammer2_chain_drop(nchain);
-
 	}
 	hammer2_trans_done(hmp->spmp, HAMMER2_TRANS_ISFLUSH |
 				      HAMMER2_TRANS_SIDEQ);
@@ -784,7 +784,6 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 static int
 hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 {
-	const hammer2_inode_data_t *ripdata;
 	hammer2_ioc_pfs_t *pfs = data;
 	hammer2_dev_t	*hmp;
 	hammer2_pfs_t	*pmp;
@@ -839,10 +838,6 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 	/*
 	 * Get the clid
 	 */
-	ripdata = &chain->data->ipdata;
-#if 0
-	opfs_clid = ripdata->meta.pfs_clid;
-#endif
 	hmp = chain->hmp;
 
 	/*
@@ -860,7 +855,6 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 	hammer2_chain_unlock(chain);
 	nip = hammer2_inode_create_pfs(hmp->spmp, pfs->name, name_len, &error);
 	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
-	ripdata = &chain->data->ipdata;
 
 	if (nip) {
 		hammer2_dev_t *force_local;
@@ -868,7 +862,7 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 		hammer2_inode_data_t *wipdata;
 		hammer2_key_t	starting_inum;
 
-		/* nip->flags |= HAMMER2_INODE_NOSIDEQ; */
+		atomic_set_int(&nip->flags, HAMMER2_INODE_NOSIDEQ);
 		hammer2_inode_modify(nip);
 		nchain = hammer2_inode_chain(nip, 0, HAMMER2_RESOLVE_ALWAYS);
 		error = hammer2_chain_modify(nchain, mtid, 0, 0);
@@ -901,7 +895,9 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 		/* XXX hack blockset copy */
 		/* XXX doesn't work with real cluster */
 		wipdata->meta = nip->meta;
-		wipdata->u.blockset = ripdata->u.blockset;
+		hammer2_spin_ex(&pmp->inum_spin);
+		wipdata->u.blockset = pmp->pfs_iroot_blocksets[0];
+		hammer2_spin_unex(&pmp->inum_spin);
 
 		KKASSERT(wipdata == &nchain->data->ipdata);
 
@@ -911,7 +907,9 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 		hammer2_inode_chain_sync(nip);
 		hammer2_inode_chain_flush(nip, HAMMER2_XOP_INODE_STOP |
 					       HAMMER2_XOP_FSSYNC);
+					       /* XXX | HAMMER2_XOP_VOLHDR */
 		hammer2_inode_drop(nip);
+		/* nip is dead */
 
 		force_local = (hmp->hflags & HMNT2_LOCAL) ? hmp : NULL;
 

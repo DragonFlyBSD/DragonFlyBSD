@@ -245,14 +245,16 @@ restart:
 			TAILQ_REMOVE(&pmp->syncq, iptmp, entry);
 			TAILQ_INSERT_HEAD(&pmp->syncq, iptmp, entry);
 		} else if (iptmp->flags & HAMMER2_INODE_SIDEQ) {
-			atomic_set_int(&iptmp->flags, HAMMER2_INODE_SYNCQ);
-			atomic_clear_int(&iptmp->flags, HAMMER2_INODE_SIDEQ);
-			TAILQ_REMOVE(&pmp->sideq, iptmp, entry);
-			TAILQ_INSERT_HEAD(&pmp->syncq, iptmp, entry);
+			atomic_set_int(&iptmp->flags,
+				       HAMMER2_INODE_SYNCQ_PASS2);
+			hammer2_trans_setflags(pmp, HAMMER2_TRANS_RESCAN);
 		} else {
-			atomic_set_int(&iptmp->flags, HAMMER2_INODE_SYNCQ);
+			atomic_set_int(&iptmp->flags,
+				       HAMMER2_INODE_SIDEQ |
+				       HAMMER2_INODE_SYNCQ_PASS2);
+			TAILQ_INSERT_TAIL(&pmp->sideq, iptmp, entry);
 			hammer2_inode_ref(iptmp);
-			TAILQ_INSERT_HEAD(&pmp->syncq, iptmp, entry);
+			hammer2_trans_setflags(pmp, HAMMER2_TRANS_RESCAN);
 		}
 		hammer2_spin_unex(&pmp->list_spin);
 	}
@@ -317,8 +319,8 @@ hammer2_inode_unlock(hammer2_inode_t *ip)
 }
 
 /*
- * If either ip1 or ip2 are on SYNCQ, make sure the other one is too.
- * This ensure that dependencies (e.g. directory-v-inode) are flushed
+ * If either ip1 or ip2 have been tapped by the syncer, make sure that both
+ * are.  This ensure that dependencies (e.g. inode-vs-dirent) are synced
  * together.
  *
  * We must also check SYNCQ_PASS2, which occurs when the syncer cannot
@@ -334,8 +336,11 @@ hammer2_inode_depend(hammer2_inode_t *ip1, hammer2_inode_t *ip2)
 	hammer2_pfs_t *pmp;
 
 	pmp = ip1->pmp;
-	if (((ip1->flags | ip2->flags) & HAMMER2_INODE_SYNCQ) == 0)
+
+	if (((ip1->flags | ip2->flags) & (HAMMER2_INODE_SYNCQ |
+					  HAMMER2_INODE_SYNCQ_PASS2)) == 0) {
 		return;
+	}
 	if ((ip1->flags & (HAMMER2_INODE_SYNCQ |
 			   HAMMER2_INODE_SYNCQ_PASS2)) &&
 	    (ip2->flags & (HAMMER2_INODE_SYNCQ |
@@ -347,28 +352,28 @@ hammer2_inode_depend(hammer2_inode_t *ip1, hammer2_inode_t *ip2)
 	if ((ip1->flags & (HAMMER2_INODE_SYNCQ |
 			   HAMMER2_INODE_SYNCQ_PASS2)) == 0) {
 		if (ip1->flags & HAMMER2_INODE_SIDEQ) {
-			atomic_set_int(&ip1->flags, HAMMER2_INODE_SYNCQ);
-			atomic_clear_int(&ip1->flags, HAMMER2_INODE_SIDEQ);
-			TAILQ_REMOVE(&pmp->sideq, ip1, entry);
-			TAILQ_INSERT_TAIL(&pmp->syncq, ip1, entry);
+			atomic_set_int(&ip1->flags,
+				       HAMMER2_INODE_SYNCQ_PASS2);
 		} else {
-			atomic_set_int(&ip1->flags, HAMMER2_INODE_SYNCQ);
+			atomic_set_int(&ip1->flags, HAMMER2_INODE_SIDEQ |
+						    HAMMER2_INODE_SYNCQ_PASS2);
 			hammer2_inode_ref(ip1);
-			TAILQ_INSERT_TAIL(&pmp->syncq, ip1, entry);
+			TAILQ_INSERT_TAIL(&pmp->sideq, ip1, entry);
 		}
+		hammer2_trans_setflags(pmp, HAMMER2_TRANS_RESCAN);
 	}
 	if ((ip2->flags & (HAMMER2_INODE_SYNCQ |
 			   HAMMER2_INODE_SYNCQ_PASS2)) == 0) {
 		if (ip2->flags & HAMMER2_INODE_SIDEQ) {
-			atomic_set_int(&ip2->flags, HAMMER2_INODE_SYNCQ);
-			atomic_clear_int(&ip2->flags, HAMMER2_INODE_SIDEQ);
-			TAILQ_REMOVE(&pmp->sideq, ip2, entry);
-			TAILQ_INSERT_TAIL(&pmp->syncq, ip2, entry);
+			atomic_set_int(&ip2->flags,
+				       HAMMER2_INODE_SYNCQ_PASS2);
 		} else {
-			atomic_set_int(&ip2->flags, HAMMER2_INODE_SYNCQ);
+			atomic_set_int(&ip2->flags, HAMMER2_INODE_SIDEQ |
+						    HAMMER2_INODE_SYNCQ_PASS2);
 			hammer2_inode_ref(ip2);
-			TAILQ_INSERT_TAIL(&pmp->syncq, ip2, entry);
+			TAILQ_INSERT_TAIL(&pmp->sideq, ip2, entry);
 		}
+		hammer2_trans_setflags(pmp, HAMMER2_TRANS_RESCAN);
 	}
 	hammer2_spin_unex(&pmp->list_spin);
 }
@@ -1233,6 +1238,7 @@ hammer2_dirent_create(hammer2_inode_t *dip, const char *name, size_t name_len,
 	 * cannot depend on the OS to prevent the collision.
 	 */
 	hammer2_inode_lock(dip, 0);
+	hammer2_inode_modify(dip);
 
 	/*
 	 * If name specified, locate an unused key in the collision space.
@@ -1489,18 +1495,27 @@ hammer2_inode_unlink_finisher(hammer2_inode_t *ip, int isopen)
 	 * decrement nlinks for the 1->0 transition
 	 *
 	 * Put the inode on the sideq to ensure that any disconnected chains
-	 * get properly flushed (so they can be freed).
+	 * get properly flushed (so they can be freed).  Defer the deletion
+	 * to the sync code, doing it now will desynchronize the inode from
+	 * related directory entries (which is bad).
+	 *
+	 * NOTE: killit can be reached without modifying the inode, so
+	 *	 make sure that it is on the SIDEQ.
 	 */
 	if (isopen == 0) {
+#if 0
 		hammer2_xop_destroy_t *xop;
+#endif
 
 killit:
+		atomic_set_int(&ip->flags, HAMMER2_INODE_DELETING);
 		hammer2_inode_delayed_sideq(ip);
-		atomic_set_int(&ip->flags, HAMMER2_INODE_ISDELETED);
+#if 0
 		xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
 		hammer2_xop_start(&xop->head, &hammer2_inode_destroy_desc);
 		error = hammer2_xop_collect(&xop->head, 0);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+#endif
 	}
 	error = 0;	/* XXX */
 
@@ -1622,6 +1637,41 @@ hammer2_inode_chain_ins(hammer2_inode_t *ip)
 }
 
 /*
+ * When an inode is flagged INODE_DELETING it has been deleted (no directory
+ * entry or open refs are left, though as an optimization H2 might leave
+ * nlinks == 1 to avoid unnecessary block updates).  The backend flush then
+ * needs to actually remove it from the topology.
+ *
+ * NOTE: backend flush must still sync and flush the deleted inode to clean
+ *	 out related chains.
+ */
+int
+hammer2_inode_chain_des(hammer2_inode_t *ip)
+{
+	int error;
+
+	error = 0;
+	if (ip->flags & HAMMER2_INODE_DELETING) {
+		hammer2_xop_destroy_t *xop;
+
+		atomic_clear_int(&ip->flags, HAMMER2_INODE_DELETING);
+		xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
+		hammer2_xop_start(&xop->head, &hammer2_inode_destroy_desc);
+		error = hammer2_xop_collect(&xop->head, 0);
+		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
+
+		if (error == HAMMER2_ERROR_ENOENT)
+			error = 0;
+		if (error) {
+			kprintf("hammer2: backend unable to "
+				"insert inode %p %ld\n", ip, ip->meta.inum);
+			/* XXX return error somehow? */
+		}
+	}
+	return error;
+}
+
+/*
  * Flushes the inode's chain and its sub-topology to media.  Interlocks
  * HAMMER2_INODE_DIRTYDATA by clearing it prior to the flush.  Any strategy
  * function creating or modifying a chain under this inode will re-set the
@@ -1645,104 +1695,3 @@ hammer2_inode_chain_flush(hammer2_inode_t *ip, int flags)
 
 	return error;
 }
-
-#if 0
-/*
- * The normal filesystem sync no longer has visibility to an inode structure
- * after its vnode has been reclaimed.  In this situation a dirty inode may
- * require additional processing to synchronize ip->meta to its underlying
- * cluster nodes.
- *
- * In particular, reclaims can occur in almost any state (for example, when
- * doing operations on unrelated vnodes) and flushing the reclaimed inode
- * in the reclaim path itself is a non-starter.
- *
- * Caller must be in a transaction.
- */
-void
-hammer2_inode_run_sideq(hammer2_pfs_t *pmp, int doall)
-{
-	hammer2_xop_destroy_t *xop;
-	hammer2_inode_sideq_t *ipul;
-	hammer2_inode_t *ip;
-	int error;
-
-	/*
-	 * Nothing to do if sideq is empty or (if doall == 0) there just
-	 * aren't very many sideq entries.
-	 */
-	if (TAILQ_EMPTY(&pmp->sideq))
-		return;
-	if (doall == 0) {
-		if (pmp->sideq_count > (pmp->inum_count >> 3)) {
-			if (hammer2_debug & 0x0001) {
-				kprintf("hammer2: flush sideq %ld/%ld\n",
-					pmp->sideq_count, pmp->inum_count);
-			}
-		}
-	}
-
-	if (doall == 0 && pmp->sideq_count <= (pmp->inum_count >> 3))
-		return;
-
-	hammer2_spin_ex(&pmp->list_spin);
-	while ((ipul = TAILQ_FIRST(&pmp->sideq)) != NULL) {
-		TAILQ_REMOVE(&pmp->sideq, ipul, entry);
-		--pmp->sideq_count;
-		ip = ipul->ip;
-		KKASSERT(ip->flags & HAMMER2_INODE_ONSIDEQ);
-		atomic_clear_int(&ip->flags, HAMMER2_INODE_ONSIDEQ);
-		hammer2_spin_unex(&pmp->list_spin);
-		kfree(ipul, pmp->minode);
-
-		hammer2_inode_lock(ip, 0);
-		if (ip->flags & HAMMER2_INODE_ISDELETED) {
-			/*
-			 * The inode has already been deleted.  This is a
-			 * fairly rare circumstance.  For now we don't rock
-			 * the boat and synchronize it normally.
-			 */
-			hammer2_inode_chain_sync(ip);
-			hammer2_inode_chain_flush(ip);
-		} else if (ip->flags & HAMMER2_INODE_ISUNLINKED) {
-			/*
-			 * The inode was unlinked while open.  The inode must
-			 * be deleted and destroyed.
-			 */
-			xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
-			hammer2_xop_start(&xop->head,
-					  &hammer2_inode_destroy_desc);
-			error = hammer2_xop_collect(&xop->head, 0);
-			/* XXX error handling */
-			hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
-		} else {
-			/*
-			 * The inode was dirty as-of the reclaim, requiring
-			 * synchronization of ip->meta with its underlying
-			 * chains.
-			 */
-			hammer2_inode_chain_sync(ip);
-			hammer2_inode_chain_flush(ip);
-		}
-
-		hammer2_inode_unlock(ip);
-		hammer2_inode_drop(ip);			/* ipul ref */
-
-		hammer2_spin_ex(&pmp->list_spin);
-
-		/*
-		 * If doall is 0 the original sideq_count was greater than
-		 * 1/8 the inode count.  Add some hysteresis in the loop,
-		 * don't stop flushing until sideq_count drops below 1/16.
-		 */
-		if (doall == 0 && pmp->sideq_count <= (pmp->inum_count >> 4)) {
-			if (hammer2_debug & 0x0001) {
-				kprintf("hammer2: flush sideq %ld/%ld (end)\n",
-					pmp->sideq_count, pmp->inum_count);
-			}
-			break;
-		}
-	}
-	hammer2_spin_unex(&pmp->list_spin);
-}
-#endif

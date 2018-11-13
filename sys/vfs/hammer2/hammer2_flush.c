@@ -530,10 +530,10 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 	 * flush-through such situations. XXX removed
 	 */
 	if ((chain->flags & HAMMER2_CHAIN_PFSBOUNDARY) &&
-		   /* (chain->flags & HAMMER2_CHAIN_UPDATE) == 0 && */
-		   (flags & HAMMER2_FLUSH_ALL) == 0 &&
-		   (flags & HAMMER2_FLUSH_TOP) == 0 &&
-		   chain->pmp && chain->pmp->mp) {
+	    /* (chain->flags & HAMMER2_CHAIN_UPDATE) == 0 && */
+	    (flags & HAMMER2_FLUSH_ALL) == 0 &&
+	    (flags & HAMMER2_FLUSH_TOP) == 0 &&
+	    chain->pmp && chain->pmp->mp) {
 		/*
 		 * If FLUSH_ALL is not specified the caller does not want
 		 * to recurse through PFS roots that have been mounted.
@@ -927,9 +927,6 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 
 			KKASSERT((chain->flags & HAMMER2_CHAIN_EMBEDDED) == 0);
 			hammer2_chain_setcheck(chain, chain->data);
-
-				hammer2_inode_data_t *ipdata;
-			ipdata = &chain->data->ipdata;
 			break;
 		default:
 			KKASSERT(chain->flags & HAMMER2_CHAIN_EMBEDDED);
@@ -1000,11 +997,20 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 	 * occurs at the wrong time.
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
+	    (flags & HAMMER2_FLUSH_INODE_STOP) &&
 	    (flags & HAMMER2_FLUSH_FSSYNC) == 0 &&
 	    (flags & HAMMER2_FLUSH_ALL) == 0 &&
 	    chain->pmp && chain->pmp->mp) {
+#ifdef HAMMER2_DEBUG_SYNC
+		kprintf("inum %ld do not update parent, non-fssync\n",
+			(long)chain->bref.key);
+#endif
 		goto skipupdate;
 	}
+#ifdef HAMMER2_DEBUG_SYNC
+	if (chain->bref.type == HAMMER2_BREF_TYPE_INODE)
+		kprintf("inum %ld update parent\n", (long)chain->bref.key);
+#endif
 
 	/*
 	 * The chain may need its blockrefs updated in the parent, normal
@@ -1264,6 +1270,8 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 			if (child->flags & HAMMER2_CHAIN_FLUSH_MASK) {
 				hammer2_chain_setflush(parent);
 			}
+			kprintf("inum %ld do not dive root inode\n",
+				(long)parent->bref.key);
 			goto done;
 		}
 	}
@@ -1332,7 +1340,9 @@ hammer2_xop_inode_flush(hammer2_xop_t *arg, void *scratch __unused, int clindex)
 {
 	hammer2_xop_flush_t *xop = &arg->xop_flush;
 	hammer2_chain_t *chain;
+	hammer2_inode_t *ip;
 	hammer2_dev_t *hmp;
+	hammer2_pfs_t *pmp;
 	int flush_error = 0;
 	int fsync_error = 0;
 	int total_error = 0;
@@ -1349,8 +1359,9 @@ hammer2_xop_inode_flush(hammer2_xop_t *arg, void *scratch __unused, int clindex)
 	/*
 	 * Flush core chains
 	 */
-	chain = hammer2_inode_chain(xop->head.ip1, clindex,
-				    HAMMER2_RESOLVE_ALWAYS);
+	ip = xop->head.ip1;
+	pmp = ip->pmp;
+	chain = hammer2_inode_chain(ip, clindex, HAMMER2_RESOLVE_ALWAYS);
 	if (chain) {
 		hmp = chain->hmp;
 		if (chain->flags & HAMMER2_CHAIN_FLUSH_MASK) {
@@ -1363,6 +1374,14 @@ hammer2_xop_inode_flush(hammer2_xop_t *arg, void *scratch __unused, int clindex)
 			if (chain->parent)
 				hammer2_chain_setflush(chain->parent);
 			hammer2_flush(chain, xflags);
+
+			/* XXX cluster */
+			if (ip == pmp->iroot && pmp != hmp->spmp) {
+				hammer2_spin_ex(&pmp->inum_spin);
+				pmp->pfs_iroot_blocksets[clindex] =
+					chain->data->ipdata.u.blockset;
+				hammer2_spin_unex(&pmp->inum_spin);
+			}
 
 #if 0
 			/*
@@ -1401,7 +1420,7 @@ hammer2_xop_inode_flush(hammer2_xop_t *arg, void *scratch __unused, int clindex)
 	 * flush each hammer2_dev (hmp) once.
 	 */
 	for (j = clindex - 1; j >= 0; --j) {
-		if ((chain = xop->head.ip1->cluster.array[j].chain) != NULL) {
+		if ((chain = ip->cluster.array[j].chain) != NULL) {
 			if (chain->hmp == hmp) {
 				chain = NULL;	/* safety */
 				goto skip;
@@ -1417,6 +1436,27 @@ hammer2_xop_inode_flush(hammer2_xop_t *arg, void *scratch __unused, int clindex)
 	 * vnode flushes here.
 	 */
 	hammer2_trans_init(hmp->spmp, HAMMER2_TRANS_ISFLUSH);
+
+	/*
+	 * We must flush the superroot down to the PFS iroot.  Remember
+	 * that hammer2_chain_setflush() stops at inode boundaries, so
+	 * the pmp->iroot has been flushed and flagged down to the superroot,
+	 * but the volume root (vchain) probably has not yet been flagged.
+	 */
+	if (hmp->spmp->iroot) {
+		chain = hmp->spmp->iroot->cluster.array[0].chain;
+		if (chain) {
+			hammer2_chain_ref(chain);
+			hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
+			flush_error |=
+				hammer2_flush(chain,
+					      HAMMER2_FLUSH_TOP |
+					      HAMMER2_FLUSH_INODE_STOP |
+					      HAMMER2_FLUSH_FSSYNC);
+			hammer2_chain_unlock(chain);
+			hammer2_chain_drop(chain);
+		}
+	}
 
 	/*
 	 * Media mounts have two 'roots', vchain for the topology
