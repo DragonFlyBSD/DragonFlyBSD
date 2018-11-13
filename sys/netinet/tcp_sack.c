@@ -42,6 +42,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/resourcevar.h>
 
 #include <net/if.h>
 
@@ -98,6 +99,7 @@ tcp_sack_tcpcb_init(struct tcpcb *tp)
 static boolean_t
 sack_block_lookup(struct scoreboard *scb, tcp_seq seq, struct sackblock **sb)
 {
+	static struct krate sackkrate = { .freq = 1 };
 	struct sackblock *hint = scb->lastfound;
 	struct sackblock *cur, *last, *prev;
 
@@ -126,7 +128,47 @@ sack_block_lookup(struct scoreboard *scb, tcp_seq seq, struct sackblock **sb)
 	}
 
 	do {
+		/*
+		 * Ensure we can't crash if the list really blows up due to
+		 * delta sign wraps when comparing seq against sblk_start vs
+		 * sblk_end.
+		 */
+		if (cur == NULL) {
+			krateprintf(&sackkrate,
+				    "tcp_sack: fatal corrupt seq\n");
+			*sb = NULL;
+			return FALSE;
+		}
+
+		/*
+		 * Check completion
+		 */
 		if (SEQ_GT(cur->sblk_end, seq)) {
+			if (SEQ_GEQ(seq, cur->sblk_start)) {
+				*sb = scb->lastfound = cur;
+				return TRUE;
+			} else {
+				*sb = scb->lastfound =
+				    TAILQ_PREV(cur, sackblock_list, sblk_list);
+				return FALSE;
+			}
+		}
+
+		/*
+		 * seq is greater than sblk_end, nominally proceed to the
+		 * next block.
+		 *
+		 * It is possible for an overflow to cause the comparison
+		 * between seq an sblk_start vs sblk_end to make it appear
+		 * that seq is less than sblk_start and also greater than
+		 * sblk_end.  If we allow the case to fall through we can
+		 * end up with cur == NULL on the next loop.
+		 */
+		if (SEQ_LT(seq, cur->sblk_start)) {
+			krateprintf(&sackkrate,
+				    "tcp_sack: corrupt seq "
+				    "0x%08x vs 0x%08x-0x%08x\n",
+				    seq, cur->sblk_start, cur->sblk_end);
 			if (SEQ_GEQ(seq, cur->sblk_start)) {
 				*sb = scb->lastfound = cur;
 				return TRUE;
