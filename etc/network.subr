@@ -233,18 +233,38 @@ ipv6if()
 	return 1
 }
 
-# dhcpif if
-#	Returns 0 if the interface is a DHCP interface and 1 otherwise.
+# dhcpif if [ipv4|ipv6]
+#	Returns 0 if the interface needs DHCP for IPv4/IPv6 and 1 otherwise.
+#	If the second argument is "ipv4" (or "ipv6"), then only IPv4 (or
+#	IPv6) is checked, otherwise both are checked.
 dhcpif()
 {
-	_tmpargs=`_ifconfig_getargs $1`
-	for _arg in $_tmpargs; do
-		case $_arg in
-		[Dd][Hh][Cc][Pp])
-			return 0
-			;;
-		esac
-	done
+	local _tmpargs _arg _if _af
+	_if=$1
+	_af=$2
+
+	if [ -z "$_af" -o "$_af" = "ipv4" ]; then
+		_tmpargs=`_ifconfig_getargs $_if`
+		for _arg in $_tmpargs; do
+			case $_arg in
+			[Dd][Hh][Cc][Pp])
+				return 0
+				;;
+			esac
+		done
+	fi
+
+	if [ -z "$_af" -o "$_af" = "ipv6" ] && ipv6if $_if; then
+		_tmpargs=`_ifconfig_getargs $_if ipv6`
+		for _arg in $_tmpargs; do
+			case $_arg in
+			[Dd][Hh][Cc][Pp])
+				return 0
+				;;
+			esac
+		done
+	fi
+
 	return 1
 }
 
@@ -252,6 +272,7 @@ dhcpif()
 #	Returns 0 if the interface is a WPA interface and 1 otherwise.
 wpaif()
 {
+	local _tmpargs _arg
 	_tmpargs=`_ifconfig_getargs $1`
 	is_optarg=no
 	for _arg in $_tmpargs; do
