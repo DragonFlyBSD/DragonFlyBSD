@@ -38,6 +38,9 @@
 #define GFP_ATOMIC	M_NOWAIT
 #define GFP_KERNEL	M_WAITOK
 #define GFP_TEMPORARY	M_WAITOK
+#define GFP_USER	M_WAITOK
+#define GFP_HIGHUSER	M_WAITOK
+
 #define __GFP_ZERO	M_ZERO
 
 #define GFP_DMA32	0x10000	/* XXX: MUST NOT collide with the M_XXX definitions */
