@@ -30,7 +30,6 @@
 
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_placement.h>
-#include <sys/sfbuf.h>
 #include <linux/io.h>
 #include <linux/highmem.h>
 #include <linux/wait.h>
@@ -455,7 +454,7 @@ static int ttm_buffer_object_transfer(struct ttm_buffer_object *bo,
 	struct ttm_bo_device *bdev = bo->bdev;
 	struct ttm_bo_driver *driver = bdev->driver;
 
-	fbo = kmalloc(sizeof(*fbo), M_DRM, M_WAITOK | M_ZERO);
+	fbo = kmalloc(sizeof(*fbo), M_DRM, M_WAITOK);
 	if (!fbo)
 		return -ENOMEM;
 
@@ -535,11 +534,12 @@ static int ttm_bo_ioremap(struct ttm_buffer_object *bo,
 		map->virtual = (void *)(((u8 *)bo->mem.bus.addr) + offset);
 	} else {
 		map->bo_kmap_type = ttm_bo_map_iomap;
-		map->virtual = pmap_mapdev_attr(bo->mem.bus.base +
-		    bo->mem.bus.offset + offset, size,
-		    (mem->placement & TTM_PL_FLAG_WC) ?
-		    VM_MEMATTR_WRITE_COMBINING : VM_MEMATTR_UNCACHEABLE);
-		map->size = size;
+		if (mem->placement & TTM_PL_FLAG_WC)
+			map->virtual = ioremap_wc(bo->mem.bus.base + bo->mem.bus.offset + offset,
+						  size);
+		else
+			map->virtual = ioremap_nocache(bo->mem.bus.base + bo->mem.bus.offset + offset,
+						       size);
 	}
 	return (!map->virtual) ? -ENOMEM : 0;
 }
@@ -551,7 +551,7 @@ static int ttm_bo_kmap_ttm(struct ttm_buffer_object *bo,
 {
 	struct ttm_mem_reg *mem = &bo->mem; pgprot_t prot;
 	struct ttm_tt *ttm = bo->ttm;
-	int i, ret;
+	int ret;
 
 	BUG_ON(!ttm);
 
@@ -569,8 +569,7 @@ static int ttm_bo_kmap_ttm(struct ttm_buffer_object *bo,
 
 		map->bo_kmap_type = ttm_bo_map_kmap;
 		map->page = ttm->pages[start_page];
-		map->sf = sf_buf_alloc((struct vm_page *)map->page);
-		map->virtual = (void *)sf_buf_kva(map->sf);
+		map->virtual = kmap(map->page);
 	} else {
 		/*
 		 * We need to use vmap to get the desired page protection
@@ -580,21 +579,8 @@ static int ttm_bo_kmap_ttm(struct ttm_buffer_object *bo,
 			PAGE_KERNEL :
 			ttm_io_prot(mem->placement, PAGE_KERNEL);
 		map->bo_kmap_type = ttm_bo_map_vmap;
-		map->num_pages = num_pages;
-		map->virtual =
-			(void *)kmem_alloc_nofault(&kernel_map,
-						   num_pages * PAGE_SIZE,
-						   VM_SUBSYS_DRM_TTM,
-						   PAGE_SIZE);
-		if (map->virtual != NULL) {
-			for (i = 0; i < num_pages; i++) {
-				/* XXXKIB hack */
-				pmap_page_set_memattr((struct vm_page *)ttm->pages[start_page +
-				    i], prot);
-			}
-			pmap_qenter((vm_offset_t)map->virtual,
-			    (struct vm_page **)&ttm->pages[start_page], num_pages);
-		}
+		map->virtual = vmap(ttm->pages + start_page, num_pages,
+				    0, prot);
 	}
 	return (!map->virtual) ? -ENOMEM : 0;
 }
@@ -644,15 +630,13 @@ void ttm_bo_kunmap(struct ttm_bo_kmap_obj *map)
 		return;
 	switch (map->bo_kmap_type) {
 	case ttm_bo_map_iomap:
-		pmap_unmapdev((vm_offset_t)map->virtual, map->size);
+		iounmap(map->virtual);
 		break;
 	case ttm_bo_map_vmap:
-		pmap_qremove((vm_offset_t)(map->virtual), map->num_pages);
-		kmem_free(&kernel_map, (vm_offset_t)map->virtual,
-		    map->num_pages * PAGE_SIZE);
+		vunmap(map->virtual);
 		break;
 	case ttm_bo_map_kmap:
-		sf_buf_free(map->sf);
+		kunmap(map->page);
 		break;
 	case ttm_bo_map_premapped:
 		break;
@@ -664,7 +648,6 @@ void ttm_bo_kunmap(struct ttm_bo_kmap_obj *map)
 	ttm_mem_io_unlock(man);
 	map->virtual = NULL;
 	map->page = NULL;
-	map->sf = NULL;
 }
 EXPORT_SYMBOL(ttm_bo_kunmap);
 

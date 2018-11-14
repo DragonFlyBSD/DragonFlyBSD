@@ -1306,7 +1306,6 @@ int ttm_bo_init(struct ttm_bo_device *bdev,
 	INIT_LIST_HEAD(&bo->ddestroy);
 	INIT_LIST_HEAD(&bo->swap);
 	INIT_LIST_HEAD(&bo->io_reserve_lru);
-	/*bzero(&bo->vm_rb, sizeof(bo->vm_rb));*/
 	bo->bdev = bdev;
 	bo->glob = bdev->glob;
 	bo->type = type;
@@ -1556,8 +1555,7 @@ int ttm_bo_global_init(struct drm_global_reference *ref)
 	lockinit(&glob->device_list_mutex, "ttmdlm", 0, LK_CANRECURSE);
 	lockinit(&glob->lru_lock, "ttmlru", 0, LK_CANRECURSE);
 	glob->mem_glob = bo_ref->mem_glob;
-	glob->dummy_read_page = (struct page *)vm_page_alloc_contig(
-	    0, VM_MAX_ADDRESS, PAGE_SIZE, 0, 1*PAGE_SIZE, VM_MEMATTR_UNCACHEABLE);
+	glob->dummy_read_page = alloc_page(__GFP_ZERO | GFP_DMA32);
 
 	if (unlikely(glob->dummy_read_page == NULL)) {
 		ret = -ENOMEM;
