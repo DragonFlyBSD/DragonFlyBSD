@@ -3211,7 +3211,7 @@ scinit(int unit, int flags)
      * but is necessry evil for the time being.  XXX
      */
     static scr_stat main_console;
-    static u_short sc_buffer[ROW*COL];	/* XXX */
+    static u_short sc_buffer[2*ROW*2*COL];	/* XXX */
 #ifndef SC_NO_FONT_LOADING
     static u_char font_8[256*8];
     static u_char font_14[256*14];
@@ -3621,9 +3621,9 @@ init_scp(sc_softc_t *sc, int vty, scr_stat *scp)
 	scp->font_width = 8;
 	scp->font_height = 16;
 
-	/* The first vty uses a statically allocated 80x25 buffer */
+	/* The first vty uses a statically allocated 160x50 buffer */
 	if (vty == sc->first_vty)
-		sc_font_scale(scp, COL, ROW);
+		sc_font_scale(scp, 2*COL, 2*ROW);
 	else
 		sc_font_scale(scp, 0, 0);
 
