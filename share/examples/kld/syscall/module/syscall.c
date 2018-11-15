@@ -40,7 +40,7 @@
  */
 
 static int
-hello (struct proc *p, void *arg)
+hello (void __unused *arg)
 {
 	kprintf ("hello kernel\n");
 	return 0;
@@ -66,7 +66,7 @@ static int offset = NO_SYSCALL;
  */
 
 static int
-load (struct module *module, int cmd, void *arg)
+load (struct module __unused *module, int cmd, void __unused *arg)
 {
 	int error = 0;
 

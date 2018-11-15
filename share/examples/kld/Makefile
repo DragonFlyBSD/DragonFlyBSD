@@ -68,6 +68,6 @@
 #	$DragonFly: src/share/examples/kld/Makefile,v 1.2 2003/06/17 04:36:57 dillon Exp $
 #
 
-SUBDIR=	cdev syscall dyn_sysctl
+SUBDIR=	cdev syscall dyn_sysctl firmware
 
 .include <bsd.subdir.mk>
