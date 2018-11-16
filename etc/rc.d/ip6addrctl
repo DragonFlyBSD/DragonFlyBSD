@@ -4,7 +4,7 @@
 #
 
 # PROVIDE: ip6addrctl
-# REQUIRE: FILESYSTEMS
+# REQUIRE: root mountcritlocal
 # BEFORE: netif
 # KEYWORD: nojailvnet
 
@@ -24,9 +24,16 @@ config_file="/etc/ip6addrctl.conf"
 
 IP6ADDRCTL_CMD="/usr/sbin/ip6addrctl"
 
+has_inet6() {
+	${SYSCTL} -q net.inet6 >/dev/null || {
+		warn "kernel does not support INET6"
+		false
+	}
+}
+
 ip6addrctl_prefer_ipv6()
 {
-	afexists inet6 || return 0
+	has_inet6 || return 0
 
 	${IP6ADDRCTL_CMD} flush >/dev/null 2>&1
 	cat <<EOT | ${IP6ADDRCTL_CMD} install /dev/stdin
@@ -44,7 +51,7 @@ EOT
 
 ip6addrctl_prefer_ipv4()
 {
-	afexists inet6 || return 0
+	has_inet6 || return 0
 
 	${IP6ADDRCTL_CMD} flush >/dev/null 2>&1
 	cat <<EOT | ${IP6ADDRCTL_CMD} install /dev/stdin
@@ -62,7 +69,7 @@ EOT
 
 ip6addrctl_start()
 {
-	afexists inet6 || return 0
+	has_inet6 || return 0
 
 	# Install the policy of the address selection algorithm.
 	case "${ip6addrctl_policy}" in
@@ -102,7 +109,7 @@ ip6addrctl_start()
 
 ip6addrctl_stop()
 {
-	afexists inet6 || return 0
+	has_inet6 || return 0
 
 	ip6addrctl flush >/dev/null 2>&1
 }
