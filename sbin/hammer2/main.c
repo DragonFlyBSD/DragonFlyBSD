@@ -277,24 +277,30 @@ main(int ac, char **av)
 			usage(1);
 		}
 		ecode = cmd_pfs_delete(sel_path, av[1]);
-	} else if (strcmp(av[0], "snapshot") == 0) {
+	} else if (strcmp(av[0], "snapshot") == 0 ||
+		   strcmp(av[0], "snapshot-debug") == 0) {
 		/*
 		 * Create snapshot with optional pfs-type and optional
 		 * label override.
 		 */
+		uint32_t flags = 0;
+
+		if (strcmp(av[0], "snapshot-debug") == 0)
+			flags = HAMMER2_PFSFLAGS_NOSYNC;
+
 		if (ac > 3) {
 			fprintf(stderr, "pfs-snapshot: too many arguments\n");
 			usage(1);
 		}
 		switch(ac) {
 		case 1:
-			ecode = cmd_pfs_snapshot(sel_path, NULL, NULL);
+			ecode = cmd_pfs_snapshot(sel_path, NULL, NULL, flags);
 			break;
 		case 2:
-			ecode = cmd_pfs_snapshot(sel_path, av[1], NULL);
+			ecode = cmd_pfs_snapshot(sel_path, av[1], NULL, flags);
 			break;
 		case 3:
-			ecode = cmd_pfs_snapshot(sel_path, av[1], av[2]);
+			ecode = cmd_pfs_snapshot(sel_path, av[1], av[2], flags);
 			break;
 		}
 	} else if (strcmp(av[0], "service") == 0) {
@@ -538,6 +544,8 @@ usage(int code)
 			"Destroy a PFS\n"
 		"    snapshot <path> [<label>]    "
 			"Snapshot a PFS or directory\n"
+		"    snapshot-debug <path> [<label>]    "
+			"Snapshot without filesystem sync\n"
 		"    service                      "
 			"Start service daemon\n"
 		"    stat [<path>]                "

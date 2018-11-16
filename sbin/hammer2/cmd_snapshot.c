@@ -52,7 +52,8 @@
  */
 
 int
-cmd_pfs_snapshot(const char *sel_path, const char *path, const char *label)
+cmd_pfs_snapshot(const char *sel_path, const char *path, const char *label,
+		 uint32_t pfs_flags)
 {
 	hammer2_ioc_pfs_t pfs;
 	int ecode = 0;
@@ -93,6 +94,7 @@ cmd_pfs_snapshot(const char *sel_path, const char *path, const char *label)
 
 	bzero(&pfs, sizeof(pfs));
 	snprintf(pfs.name, sizeof(pfs.name), "%s", label);
+	pfs.pfs_flags = pfs_flags;
 
 	if (ioctl(fd, HAMMER2IOC_PFS_SNAPSHOT, &pfs) < 0) {
 		perror("ioctl");
