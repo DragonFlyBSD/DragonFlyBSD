@@ -37,39 +37,41 @@
 .Nm sshlockout
 .Nd utility to block port 22 on preauth failures
 .Sh SYNOPSIS
-.Cd #
-.Cd # pf(4) configuration.
-.Cd #
-.Pp
-.Cd # in /etc/pf.conf
-.Cd #
-.Cd table <lockout> persist { }
-.Pp
-.Cd # and later in /etc/pf.conf - see below
-.Cd #
-.Cd block in quick on $ext_if proto tcp from <lockout> to any port 22
-.Pp
-.Cd # in /etc/syslog.conf
-.Cd #
-.Cd auth.info;authpriv.info		|exec /usr/sbin/sshlockout -pf "lockout"
-.Pp
-.Cd # in root's crontab
-.Cd #
-.Cd 3 3 * * *       pfctl -tlockout -T expire 86400
-.Pp
-.Cd #
-.Cd # ipfw(8) configuration.
-.Cd #
-.Cd ipfw table 0 create
-.Cd ipfw add deny ip from '<0>' to any
-.Pp
-.Cd # in /etc/syslog.conf
-.Cd #
-.Cd auth.info;authpriv.info		|exec /usr/sbin/sshlockout -ipfwtbl 0
-.Pp
-.Cd # in root's crontab
-.Cd #
-.Cd 3 3 * * *       ipfw -fq table 0 expire 86400
+.Bd -literal
+#
+# pf(4) configuration.
+#
+
+# in /etc/pf.conf
+#
+table <lockout> persist { }
+
+# and later in /etc/pf.conf - see below
+#
+block in quick on $ext_if proto tcp from <lockout> to any port 22
+
+# in /etc/syslog.conf
+#
+auth.info;authpriv.info          |exec /usr/sbin/sshlockout -pf "lockout"
+
+# in root's crontab
+#
+3 3 * * *       pfctl -tlockout -T expire 86400
+
+#
+# ipfw(8) configuration.
+#
+ipfw table 0 create
+ipfw add deny ip from '<0>' to any
+
+# in /etc/syslog.conf
+#
+auth.info;authpriv.info         |exec /usr/sbin/sshlockout -ipfwtbl 0
+
+# in root's crontab
+#
+3 3 * * *       ipfw -fq table 0 expire 86400
+.Ed
 .Sh DESCRIPTION
 This program is generally installed in
 .Pa /etc/syslog.conf
