@@ -439,7 +439,7 @@ Metrics are used to prefer an interface over another one, lowest wins.
 will supply a default metric of 200 +
 .Xr if_nametoindex 3 .
 An extra 100 will be added for wireless interfaces.
-.It Ic mudurl Ar url 
+.It Ic mudurl Ar url
 Specifies the URL for a manufacturer usage description (MUD).
 The description is used by upstream network devices to instantiate any
 desired access lists.
@@ -689,7 +689,7 @@ with the
 .Ar data .
 This option can be set more than once to add more data, but the behaviour,
 as per
-.Xr RFC 3925
+RFC 3925
 is undefined if the Enterprise Number differs.
 .It Ic waitip Op 4 | 6
 Wait for an address to be assigned before forking to the background.
