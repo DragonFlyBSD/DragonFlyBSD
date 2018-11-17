@@ -236,8 +236,8 @@ Example resolvconf.conf for named:
 .Pp
 Example named.conf:
 .D1 options {
-.D1 	listen-on { 127.0.0.1; };
-.D1 	include "/etc/named-options.conf";
+.D1     listen-on { 127.0.0.1; };
+.D1     include "/etc/named-options.conf";
 .D1 };
 .D1 include "/etc/named-zones.conf";
 .It Sy pdnsd_conf
@@ -259,14 +259,14 @@ Example resolvconf.conf for pdnsd:
 .Pp
 Example pdnsd.conf:
 .D1 global {
-.D1 	server_ip = 127.0.0.1;
-.D1 	status_ctl = on;
+.D1     server_ip = 127.0.0.1;
+.D1     status_ctl = on;
 .D1 }
 .D1 server {
-.D1 	# A server definition is required, even if emtpy.
-.D1 	label="empty";
-.D1 	proxy_only=on;
-.D1 	# file="/etc/pdnsd-resolv.conf";
+.D1     # A server definition is required, even if emtpy.
+.D1     label="empty";
+.D1     proxy_only=on;
+.D1     # file="/etc/pdnsd-resolv.conf";
 .D1 }
 .It Sy unbound_conf
 This file tells unbound about specific and global name servers.
@@ -292,7 +292,6 @@ Also, users could equally want to use a different version from the one
 installed by default, such as bind8 and bind9.
 To accommodate this, the subscribers have these files in configurable
 variables, documented below.
-.Pp
 .Bl -tag -width indent
 .It Sy dnsmasq_service
 Name of the dnsmasq service.
