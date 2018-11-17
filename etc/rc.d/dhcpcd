@@ -43,4 +43,4 @@ pidfile=$($command -P $_flags $command_args 2>/dev/null)
 : ${pidfile:=/var/run/$name.pid}
 unset _flags _if_args
 
-run_rc_command "$1"
+run_rc_command "$@"
