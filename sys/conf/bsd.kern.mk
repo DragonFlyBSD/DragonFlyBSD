@@ -10,7 +10,7 @@
 CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 		-Wmissing-prototypes -Wpointer-arith -Wcast-qual \
 		-Wold-style-definition -Wmissing-include-dirs \
-		-Wno-pointer-sign -Winit-self -std=c99
+		-Wno-pointer-sign -Winit-self -Wundef -std=c99
 
 .if ${CCVER:Mgcc*}
 # All flags inside this block are gcc-specific except for --param
