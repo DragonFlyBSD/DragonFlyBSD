@@ -8,8 +8,8 @@
 #
 
 CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
-		-Wmissing-prototypes -Wpointer-arith -Winline -Wcast-qual \
-		-Wold-style-definition -Wmissing-include-dirs -Wno-inline \
+		-Wmissing-prototypes -Wpointer-arith -Wcast-qual \
+		-Wold-style-definition -Wmissing-include-dirs \
 		-Wno-pointer-sign -Winit-self -std=c99
 
 .if ${CCVER:Mgcc*}
