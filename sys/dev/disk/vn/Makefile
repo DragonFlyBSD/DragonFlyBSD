@@ -3,4 +3,9 @@
 KMOD=   vn
 SRCS=   vn.c use_vn.h
 
+.if !defined(BUILDING_WITH_KERNEL)
+use_vn.h:
+	echo "#define	NVN	4" > ${.TARGET}
+.endif
+
 .include <bsd.kmod.mk>

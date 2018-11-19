@@ -3,4 +3,9 @@
 KMOD=	snp
 SRCS=	snp.c use_snp.h
 
+.if !defined(BUILDING_WITH_KERNEL)
+use_snp.h:
+	echo "#define	NSNP	4" > ${.TARGET}
+.endif
+
 .include <bsd.kmod.mk>
