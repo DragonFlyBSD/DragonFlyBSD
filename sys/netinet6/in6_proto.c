@@ -341,7 +341,7 @@ DOMAIN_SET(inet6);
 #define	IPV6_SENDREDIRECTS	1
 #endif
 
-int	nd6_onlink_ns_rfc4861 = 0; /* allow 'on-link' NS/NA (as in RFC 4861) */
+int	nd6_onlink_ns_rfc4861 = 1; /* allow 'on-link' NS/NA (as in RFC 4861) */
 
 int	ip6_forwarding = IPV6FORWARDING;	/* act as router? */
 int	ip6_sendredirects = IPV6_SENDREDIRECTS;
