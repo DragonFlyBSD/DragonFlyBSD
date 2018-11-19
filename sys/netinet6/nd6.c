@@ -75,6 +75,29 @@
 #define SIN6(s) ((struct sockaddr_in6 *)s)
 #define SDL(s) ((struct sockaddr_dl *)s)
 
+/*
+ * Note that the check for rt_llinfo is necessary because a cloned
+ * route from a parent route that has the L flag (e.g. the default
+ * route to a p2p interface) may have the flag, too, while the
+ * destination is not actually a neighbor.
+ * XXX: we can't use rt->rt_ifp to check for the interface, since
+ *      it might be the loopback interface if the entry is for our
+ *      own address on a non-loopback interface. Instead, we should
+ *      use rt->rt_ifa->ifa_ifp, which would specify the REAL
+ *      interface.
+ */
+#define ND6_RTENTRY_IS_NEIGHBOR(rt, ifp)			\
+	!(((rt)->rt_flags & RTF_GATEWAY) ||			\
+	  ((rt)->rt_flags & RTF_LLINFO) == 0 ||			\
+	  (rt)->rt_gateway->sa_family != AF_LINK ||		\
+	  (rt)->rt_llinfo == NULL ||				\
+	  ((ifp) != NULL && (rt)->rt_ifa->ifa_ifp != (ifp)))
+
+#define ND6_RTENTRY_IS_LLCLONING(rt)				\
+	(((rt)->rt_flags & (RTF_PRCLONING | RTF_LLINFO)) ==	\
+	 (RTF_PRCLONING | RTF_LLINFO) ||			\
+	 ((rt)->rt_flags & RTF_CLONING))
+
 /* timer values */
 int	nd6_prune	= 1;	/* walk list every 1 seconds */
 int	nd6_delay	= 5;	/* delay first probe time 5 second */
@@ -867,21 +890,8 @@ nd6_lookup(struct in6_addr *addr6, int create, struct ifnet *ifp)
 			return (NULL);
 	}
 	rt->rt_refcnt--;
-	/*
-	 * Validation for the entry.
-	 * Note that the check for rt_llinfo is necessary because a cloned
-	 * route from a parent route that has the L flag (e.g. the default
-	 * route to a p2p interface) may have the flag, too, while the
-	 * destination is not actually a neighbor.
-	 * XXX: we can't use rt->rt_ifp to check for the interface, since
-	 *      it might be the loopback interface if the entry is for our
-	 *      own address on a non-loopback interface. Instead, we should
-	 *      use rt->rt_ifa->ifa_ifp, which would specify the REAL
-	 *      interface.
-	 */
-	if ((rt->rt_flags & RTF_GATEWAY) || !(rt->rt_flags & RTF_LLINFO) ||
-	    rt->rt_gateway->sa_family != AF_LINK || rt->rt_llinfo == NULL ||
-	    (ifp && rt->rt_ifa->ifa_ifp != ifp)) {
+
+	if (!ND6_RTENTRY_IS_NEIGHBOR(rt, ifp)) {
 		if (create) {
 			log(LOG_DEBUG,
 			    "nd6_lookup: failed to lookup %s (if = %s)\n",
@@ -889,6 +899,39 @@ nd6_lookup(struct in6_addr *addr6, int create, struct ifnet *ifp)
 			/* xxx more logs... kazu */
 		}
 		return (NULL);
+	}
+	return (rt);
+}
+
+static struct rtentry *
+nd6_neighbor_lookup(struct in6_addr *addr6, struct ifnet *ifp)
+{
+	struct rtentry *rt;
+	struct sockaddr_in6 sin6;
+
+	bzero(&sin6, sizeof(sin6));
+	sin6.sin6_len = sizeof(struct sockaddr_in6);
+	sin6.sin6_family = AF_INET6;
+	sin6.sin6_addr = *addr6;
+
+	rt = rtpurelookup((struct sockaddr *)&sin6);
+	if (rt == NULL)
+		return (NULL);
+	rt->rt_refcnt--;
+
+	if (!ND6_RTENTRY_IS_NEIGHBOR(rt, ifp)) {
+		if (nd6_onlink_ns_rfc4861 &&
+		    (ND6_RTENTRY_IS_LLCLONING(rt) ||	/* not cloned yet */
+		     (rt->rt_parent != NULL &&		/* cloning */
+		      ND6_RTENTRY_IS_LLCLONING(rt->rt_parent)))) {
+			/*
+			 * If cloning ever happened or is happening,
+			 * rtentry for addr6 would or will become a
+			 * neighbor cache.
+			 */
+		} else {
+			rt = NULL;
+		}
 	}
 	return (rt);
 }
@@ -938,7 +981,7 @@ nd6_is_addr_neighbor(struct sockaddr_in6 *addr, struct ifnet *ifp)
 	 * Even if the address matches none of our addresses, it might be
 	 * in the neighbor cache.
 	 */
-	if (nd6_lookup(&addr->sin6_addr, 0, ifp) != NULL)
+	if (nd6_neighbor_lookup(&addr->sin6_addr, ifp) != NULL)
 		return (1);
 
 	return (0);
@@ -1109,10 +1152,7 @@ nd6_rtrequest(int req, struct rtentry *rt)
 
 	if (req == RTM_RESOLVE &&
 	    (nd6_need_cache(ifp) == 0 || /* stf case */
-	     ((!nd6_onlink_ns_rfc4861 || rt->rt_parent == NULL ||
-	       (rt->rt_parent->rt_flags & (RTF_PRCLONING | RTF_LLINFO)) !=
-	       (RTF_PRCLONING | RTF_LLINFO)) &&
-	      !nd6_is_addr_neighbor((struct sockaddr_in6 *)rt_key(rt), ifp)))) {
+	     !nd6_is_addr_neighbor((struct sockaddr_in6 *)rt_key(rt), ifp))) {
 		/*
 		 * FreeBSD and BSD/OS often make a cloned host route based
 		 * on a less-specific route (e.g. the default route).
