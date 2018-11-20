@@ -855,7 +855,6 @@ ours:
 		ip->ip_len -= hlen;
 	}
 
-
 	/*
 	 * We must forward the packet to the correct protocol thread if
 	 * we are not already in it.
@@ -867,36 +866,15 @@ ours:
 	ipstat.ips_delivered++;
 
 	if ((m->m_flags & M_HASH) == 0) {
-#ifdef RSS_DEBUG
-		atomic_add_long(&ip_rehash_count, 1);
-#endif
-		ip->ip_len = htons(ip->ip_len + hlen);
-		ip->ip_off = htons(ip->ip_off);
-
-		ip_hashfn(&m, 0);
+		m = ip_rehashm(m, hlen);
 		if (m == NULL)
 			return;
-
 		ip = mtod(m, struct ip *);
-		ip->ip_len = ntohs(ip->ip_len) - hlen;
-		ip->ip_off = ntohs(ip->ip_off);
-		KKASSERT(m->m_flags & M_HASH);
 	}
 	port = netisr_hashport(m->m_pkthdr.hash);
 
 	if (port != &curthread->td_msgport) {
-		struct netmsg_packet *pmsg;
-
-#ifdef RSS_DEBUG
-		atomic_add_long(&ip_dispatch_slow, 1);
-#endif
-
-		pmsg = &m->m_hdr.mh_netmsg;
-		netmsg_init(&pmsg->base, NULL, &netisr_apanic_rport,
-			    0, transport_processing_handler);
-		pmsg->nm_packet = m;
-		pmsg->base.lmsg.u.ms_result = hlen;
-		lwkt_sendmsg(port, &pmsg->base.lmsg);
+		ip_transport_redispatch(port, m, hlen);
 	} else {
 #ifdef RSS_DEBUG
 		atomic_add_long(&ip_dispatch_fast, 1);
@@ -907,6 +885,47 @@ ours:
 
 bad:
 	m_freem(m);
+}
+
+struct mbuf *
+ip_rehashm(struct mbuf *m, int hlen)
+{
+	struct ip *ip = mtod(m, struct ip *);
+
+#ifdef RSS_DEBUG
+	atomic_add_long(&ip_rehash_count, 1);
+#endif
+	ip->ip_len = htons(ip->ip_len + hlen);
+	ip->ip_off = htons(ip->ip_off);
+
+	ip_hashfn(&m, 0);
+	if (m == NULL)
+		return NULL;
+
+	/* 'm' might be changed by ip_hashfn(). */
+	ip = mtod(m, struct ip *);
+	ip->ip_len = ntohs(ip->ip_len) - hlen;
+	ip->ip_off = ntohs(ip->ip_off);
+	KASSERT(m->m_flags & M_HASH, ("no hash"));
+
+	return (m);
+}
+
+void
+ip_transport_redispatch(struct lwkt_port *port, struct mbuf *m, int hlen)
+{
+	struct netmsg_packet *pmsg;
+
+#ifdef RSS_DEBUG
+	atomic_add_long(&ip_dispatch_slow, 1);
+#endif
+
+	pmsg = &m->m_hdr.mh_netmsg;
+	netmsg_init(&pmsg->base, NULL, &netisr_apanic_rport,
+		    0, transport_processing_handler);
+	pmsg->nm_packet = m;
+	pmsg->base.lmsg.u.ms_result = hlen;
+	lwkt_sendmsg(port, &pmsg->base.lmsg);
 }
 
 /*

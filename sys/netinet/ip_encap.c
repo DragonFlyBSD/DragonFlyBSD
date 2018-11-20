@@ -138,6 +138,25 @@ encap4_input(struct mbuf **mp, int *offp, int proto)
 	struct encaptab *ep, *match;
 	int prio, matchprio;
 
+	if (!IN_NETISR(0)) {
+		/*
+		 * NOTE:
+		 * Some NICs, noticeably igb(4) and ix(4), use inner IP
+		 * datagram to calculate the packet hash, which leads us
+		 * here.
+		 */
+		m->m_flags &= ~M_HASH;
+		m = ip_rehashm(m, off);
+		if (m != NULL) {
+			lwkt_port_t port = netisr_hashport(m->m_pkthdr.hash);
+
+			KASSERT(port != &curthread->td_msgport,
+			    ("mbuf hash recursion"));
+			ip_transport_redispatch(port, m, off);
+		}
+		return (IPPROTO_DONE);
+	}
+
 	ip = mtod(m, struct ip *);
 	*mp = NULL;
 

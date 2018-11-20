@@ -195,8 +195,11 @@ void	 ip_init(void);
 extern int	 (*ip_mforward)(struct ip *, struct ifnet *, struct mbuf *,
 			  struct ip_moptions *);
 
-void	ip_hashfn(struct mbuf **, int);
-void	ip_hashcheck(struct mbuf *, const struct pktinfo *);
+void	 ip_hashfn(struct mbuf **, int);
+void	 ip_hashcheck(struct mbuf *, const struct pktinfo *);
+struct mbuf *
+	 ip_rehashm(struct mbuf *, int);
+void	 ip_transport_redispatch(struct lwkt_port *, struct mbuf *, int);
 
 boolean_t
 	 ip_lengthcheck(struct mbuf **, int);
