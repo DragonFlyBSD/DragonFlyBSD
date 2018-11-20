@@ -189,6 +189,7 @@ gre_input2(struct mbuf *m ,int hlen, u_char proto)
 	}
 
 	m->m_pkthdr.rcvif = &sc->sc_if;
+	m->m_flags &= ~M_HASH;
 	netisr_queue(isr, m);
 	return(1);	/* packet is done, no further processing needed */
 }

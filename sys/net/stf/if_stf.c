@@ -615,6 +615,7 @@ in_stf_input(struct mbuf **mp, int *offp, int proto)
 	 */
 	IFNET_STAT_INC(ifp, ipackets, 1);
 	IFNET_STAT_INC(ifp, ibytes, m->m_pkthdr.len);
+	m->m_flags &= ~M_HASH;
 	netisr_queue(NETISR_IPV6, m);
 	return(IPPROTO_DONE);
 }
