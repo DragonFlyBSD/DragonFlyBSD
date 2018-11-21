@@ -303,6 +303,17 @@ struct vnode {
  */
 #define	VLKTIMEOUT     (hz / 20 + 1)
 
+TAILQ_HEAD(freelst, vnode);
+
+struct vnode_index {
+	struct freelst	active_list;
+	struct vnode	active_rover;
+	struct freelst	inactive_list;
+	struct spinlock	spin;
+	int	deac_rover;
+	int	free_rover;
+} __cachealign;
+
 #ifdef _KERNEL
 
 /*

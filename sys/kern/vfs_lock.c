@@ -93,17 +93,6 @@ static MALLOC_DEFINE(M_VNODE, "vnodes", "vnode structures");
 #define VLIST_HASH(vp)	(((uintptr_t)vp ^ VLIST_XOR) % \
 			 VLIST_PRIME2 % (unsigned)ncpus)
 
-TAILQ_HEAD(freelst, vnode);
-
-struct vnode_index {
-	struct freelst	active_list;
-	struct vnode	active_rover;
-	struct freelst	inactive_list;
-	struct spinlock	spin;
-	int	deac_rover;
-	int	free_rover;
-} __cachealign;
-
 static struct vnode_index *vnode_list_hash;
 
 int  activevnodes = 0;
