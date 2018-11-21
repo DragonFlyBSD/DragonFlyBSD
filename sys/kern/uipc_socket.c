@@ -173,6 +173,7 @@ SYSCTL_INT(_kern_ipc, OID_AUTO, soavailconn, CTLFLAG_RW,
 struct socket *
 soalloc(int waitok, struct protosw *pr)
 {
+	globaldata_t gd = mycpu;
 	struct socket *so;
 	unsigned waitmask;
 
@@ -193,6 +194,7 @@ soalloc(int waitok, struct protosw *pr)
 		so->so_rcvd_msg.nm_pru_flags |= PRUR_ASYNC;
 		so->so_state = SS_NOFDREF;
 		so->so_refs = 1;
+		so->so_inum = gd->gd_anoninum++ * ncpus + gd->gd_cpuid + 2;
 	}
 	return so;
 }

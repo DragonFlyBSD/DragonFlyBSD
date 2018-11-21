@@ -152,6 +152,7 @@ struct socket {
 	/* NB: generation count must not be first; easiest to make it last. */
 	void	*so_emuldata;		/* private data for emulators */
 	int	so_refs;		/* shutdown refs */
+	int	so_reserved01;
 	struct	so_accf { 
 		struct	accept_filter *so_accept_filter;
 		void	*so_accept_filter_arg;	/* saved filter args */
@@ -165,6 +166,8 @@ struct socket {
 	struct netmsg_pru_rcvd so_rcvd_msg;
 
 	lwkt_port_t so_orig_port;
+
+	long	so_inum;
 };
 
 #endif

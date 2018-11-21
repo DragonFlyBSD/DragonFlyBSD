@@ -77,7 +77,7 @@ struct	unpcb {
 	int		unp_msgcount;	/* # of cmsgs this unp are in */
 	int		unp_gcflags;	/* flags reserved for unp GC to use */
 	struct file	*unp_fp;	/* cooresponding fp if unp is in cmsg */
-	ino_t		unp_ino;	/* fake inode number */
+	long		unp_unused01;
 	struct vnode	*unp_vnode;	/* if associated with file */
 	struct vnode	*unp_rvnode;	/* root vp for creating process */
 	TAILQ_ENTRY(unpcb) unp_link; 	/* glue on list of all PCBs */

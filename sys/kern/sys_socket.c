@@ -213,7 +213,9 @@ soo_stat(struct file *fp, struct stat *ub, struct ucred *cred)
 	ub->st_size = so->so_rcv.ssb_cc;
 	ub->st_uid = so->so_cred->cr_uid;
 	ub->st_gid = so->so_cred->cr_gid;
+	ub->st_ino = so->so_inum;
 	error = so_pru_sense(so, ub);
+
 	return (error);
 }
 
