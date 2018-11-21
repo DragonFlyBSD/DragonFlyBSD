@@ -406,6 +406,7 @@ pipe_create(struct pipe **pipep)
 		pipe->next = NULL;
 	} else {
 		pipe = kmalloc(sizeof(*pipe), M_PIPE, M_WAITOK | M_ZERO);
+		pipe->inum = gd->gd_anoninum++ * ncpus + gd->gd_cpuid + 2;
 		lwkt_token_init(&pipe->bufferA.rlock, "piper");
 		lwkt_token_init(&pipe->bufferA.wlock, "pipew");
 		lwkt_token_init(&pipe->bufferB.rlock, "piper");
@@ -1048,8 +1049,11 @@ pipe_stat(struct file *fp, struct stat *ub, struct ucred *cred)
 	ub->st_atimespec = rpb->atime;
 	ub->st_mtimespec = rpb->mtime;
 	ub->st_ctimespec = pipe->ctime;
+	ub->st_uid = fp->f_cred->cr_uid;
+	ub->st_gid = fp->f_cred->cr_gid;
+	ub->st_ino = pipe->inum;
 	/*
-	 * Left as 0: st_dev, st_ino, st_nlink, st_uid, st_gid, st_rdev,
+	 * Left as 0: st_dev, st_nlink, st_rdev,
 	 * st_flags, st_gen.
 	 * XXX (st_dev, st_ino) should be unique.
 	 */

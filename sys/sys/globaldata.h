@@ -186,7 +186,7 @@ struct globaldata {
 	struct lwkt_tokref gd_handoff;		/* hand-off tokref */
 	void		*gd_delayed_wakeup[2];
 	void		*gd_sample_pc;		/* sample program ctr/tr */
-	void		*gd_reserved_pcpu_mmap; /* future */
+	uint64_t	gd_anoninum;		/* anonymous inode (pipes) */
 	uint64_t	gd_forkid;		/* per-cpu unique inc ncpus */
 	void		*gd_sample_sp;		/* sample stack pointer */
 	uint64_t	gd_cpumask_simple;

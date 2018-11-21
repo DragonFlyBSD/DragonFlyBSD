@@ -93,6 +93,8 @@ struct pipe {
 	struct timespec	ctime;		/* time of status change */
 	struct pipe	*next;
 	uint32_t	open_count;
+	uint32_t	unused01;
+	uint64_t	inum;
 } __cachealign;
 
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */
