@@ -192,6 +192,7 @@ sleep(int timeout) {
 	if (ntime >= when)
 	    break;
         otime = ntime;
+    }
 }
 
 static int

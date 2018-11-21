@@ -22,6 +22,8 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/boot/common/console.c,v 1.6 2003/08/25 23:30:41 obrien Exp $
  */
 
 #include <sys/cdefs.h>
@@ -109,12 +111,15 @@ getchar(void)
     int		rv;
 
     /* Loop forever polling all active consoles */
-    for(;;)
-	for (cons = 0; consoles[cons] != NULL; cons++)
+    for(;;) {
+	for (cons = 0; consoles[cons] != NULL; cons++) {
 	    if ((consoles[cons]->c_flags & (C_PRESENTIN | C_ACTIVEIN)) ==
-		(C_PRESENTIN | C_ACTIVEIN) &&
-		((rv = consoles[cons]->c_in()) != -1))
+		    (C_PRESENTIN | C_ACTIVEIN) &&
+		    ((rv = consoles[cons]->c_in()) != -1)) {
 		return(rv);
+	    }
+	}
+    }
 }
 
 int
@@ -122,11 +127,13 @@ ischar(void)
 {
     int		cons;
 
-    for (cons = 0; consoles[cons] != NULL; cons++)
+    for (cons = 0; consoles[cons] != NULL; cons++) {
 	if ((consoles[cons]->c_flags & (C_PRESENTIN | C_ACTIVEIN)) ==
 	    (C_PRESENTIN | C_ACTIVEIN) &&
-	    (consoles[cons]->c_ready() != 0))
+	    (consoles[cons]->c_ready() != 0)) {
 		return(1);
+	}
+    }
     return(0);
 }
 
@@ -139,10 +146,12 @@ putchar(int c)
     if (c == '\n')
 	putchar('\r');
 
-    for (cons = 0; consoles[cons] != NULL; cons++)
+    for (cons = 0; consoles[cons] != NULL; cons++) {
 	if ((consoles[cons]->c_flags & (C_PRESENTOUT | C_ACTIVEOUT)) ==
-	    (C_PRESENTOUT | C_ACTIVEOUT))
+	    (C_PRESENTOUT | C_ACTIVEOUT)) {
 	    consoles[cons]->c_out(c);
+	}
+    }
 }
 
 /*
@@ -153,9 +162,11 @@ cons_find(const char *name)
 {
     int		cons;
 
-    for (cons = 0; consoles[cons] != NULL; cons++)
-	if (!strcmp(consoles[cons]->c_name, name))
+    for (cons = 0; consoles[cons] != NULL; cons++) {
+	if (!strcmp(consoles[cons]->c_name, name)) {
 	    return (cons);
+	}
+    }
     return (-1);
 }
 
@@ -214,8 +225,9 @@ cons_check(const char *string)
 
     if (found == 0 || failed != 0) {
 	printf("Available consoles:\n");
-	for (cons = 0; consoles[cons] != NULL; cons++)
+	for (cons = 0; consoles[cons] != NULL; cons++) {
 	    printf("    %s\n", consoles[cons]->c_name);
+	}
     }
 
     return (found);
