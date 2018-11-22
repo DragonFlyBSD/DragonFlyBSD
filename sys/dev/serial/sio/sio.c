@@ -2861,7 +2861,7 @@ CONS_DRIVER(sio, siocnprobe, siocninit, siocninit_fini,
 #endif
 
 /* To get the GDB related variables */
-#if DDB > 0
+#if defined(DDB)
 #include <ddb/ddb.h>
 #endif
 
@@ -3103,7 +3103,7 @@ siocnprobe(struct consdev *cp)
 				kprintf("sio%d: gdb debugging port\n", unit);
 				siogdbiobase = iobase;
 				siogdbunit = unit;
-#if DDB > 0
+#if defined(DDB)
 				cp->cn_gdbprivate = (void *)(intptr_t)unit;
 				gdb_tab = cp;
 #endif
@@ -3111,7 +3111,7 @@ siocnprobe(struct consdev *cp)
 		}
 	}
 #if defined(__i386__) || defined(__x86_64__)
-#if DDB > 0
+#if defined(DDB)
 	/*
 	 * XXX Ugly Compatibility.
 	 * If no gdb port has been specified, set it to be the console
