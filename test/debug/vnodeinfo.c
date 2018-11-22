@@ -73,6 +73,7 @@
 struct nlist Nl[] = {
     { "_mountlist" },
     { "_vnode_list_hash" },
+    { "_ncpus" },
     { NULL }
 };
 
@@ -101,11 +102,11 @@ int
 main(int ac, char **av)
 {
     struct mount *mp;
-    struct vnode *vp_inactive;
-    struct vnode *vp_active;
-    struct vnode_index *vi;
+    struct vnode_index *vib;
+    struct vnode_index vni;
     kvm_t *kd;
     int ch;
+    int ncpus = 0;
     const char *corefile = NULL;
     const char *sysfile = NULL;
 
@@ -149,18 +150,44 @@ main(int ac, char **av)
 	perror("kvm_nlist");
 	exit(1);
     }
+
+    /* Mount points and their private data */
     kkread(kd, Nl[0].n_value, &mp, sizeof(mp));
     while (mp)
 	mp = dumpmount(kd, mp);
-    kkread(kd, Nl[1].n_value, &vi, sizeof(struct vnode_index));
+
+    /*
+     * Get ncpus for the vnode lists, we could get it with a sysctl
+     * but since we're reading kernel memory, take advantage of it.
+     * Also read the base address of vnode_list_hash.
+     */
+    kkread(kd, Nl[1].n_value, &vib, sizeof(vib));
+    kkread(kd, Nl[2].n_value, &ncpus, sizeof(ncpus));
+
+    /* Per-CPU list of inactive vnodes */
     printf("INACTIVELIST {\n");
-    while (vp_inactive)
-	    vp_inactive = dumpvp(kd, vi->inactive_list.tqh_first,
-		0, NULL);
+
+    for (int i = 0; i < ncpus; i++) {
+	    struct vnode *vp;
+
+	    kkread(kd, (u_long)(vib + i), &vni, sizeof(vni));
+	    vp = vni.inactive_list.tqh_first;
+	    for (; vp != NULL;)
+		    vp = dumpvp(kd, vp, 0, NULL);
+    }
     printf("}\n");
+
+    /* Per-CPU list of active vnodes */
     printf("ACTIVELIST {\n");
-    while (vp_active)
-	    vp_active = dumpvp(kd, vi->active_list.tqh_first, 0, NULL);
+    for (int i = 0; i < ncpus; i++) {
+	    struct vnode *vp;
+
+	    kkread(kd, (u_long)(vib + i), &vni, sizeof(vni));
+	    vp = vni.active_list.tqh_first;
+	    for (; vp;)
+		    vp = dumpvp(kd, vp, 0,
+			NULL);
+    }
     printf("}\n");
     return(0);
 }
