@@ -2,7 +2,7 @@
 
 TARGETS=  buserr revoke fdpassing posixlock seekbench umtx vmpageinfo
 TARGETS+= wildcardinfo kmapinfo kwrite kshowprocs mbufinfo ncptrace
-TARGETS+= ttyinfo vnodeinfo zallocinfo evfilt_user bufqueues testvblank
+TARGETS+= vnodeinfo zallocinfo evfilt_user bufqueues testvblank
 
 CFLAGS= -O0 -Wall -g -I../../sys -I../../sys/dev/drm/include
 LDFLAGS= -lkvm -lpthread
