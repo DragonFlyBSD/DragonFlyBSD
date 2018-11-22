@@ -190,7 +190,7 @@ main(int ac, char **av)
 		m.hold_count,
 		m.wire_count,
 		m.act_count,
-		m.busy,
+		m.busy_count,
 		qstr
 	    );
 	    if (m.object) {
@@ -221,9 +221,9 @@ main(int ac, char **av)
 		ostr = "-";
 	    }
 	    printf(" %-7s", ostr);
-	    if (m.flags & PG_BUSY)
+	    if (m.busy_count & PBUSY_LOCKED)
 		printf(" BUSY");
-	    if (m.flags & PG_WANTED)
+	    if (m.busy_count & PBUSY_WANTED)
 		printf(" WANTED");
 	    if (m.flags & PG_WINATCFLS)
 		printf(" WINATCFLS");
@@ -239,7 +239,7 @@ main(int ac, char **av)
 		printf(" REFERENCED");
 	    if (m.flags & PG_CLEANCHK)
 		printf(" CLEANCHK");
-	    if (m.flags & PG_SWAPINPROG)
+	    if (m.busy_count & PBUSY_SWAPINPROG)
 		printf(" SWAPINPROG");
 	    if (m.flags & PG_NOSYNC)
 		printf(" NOSYNC");

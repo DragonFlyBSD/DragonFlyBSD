@@ -72,8 +72,7 @@
 
 struct nlist Nl[] = {
     { "_mountlist" },
-    { "_vnode_inactive_list" },
-    { "_vnode_active_list" },
+    { "_vnode_list_hash" },
     { NULL }
 };
 
@@ -102,7 +101,9 @@ int
 main(int ac, char **av)
 {
     struct mount *mp;
-    struct vnode *vp;
+    struct vnode *vp_inactive;
+    struct vnode *vp_active;
+    struct vnode_index *vi;
     kvm_t *kd;
     int ch;
     const char *corefile = NULL;
@@ -151,15 +152,15 @@ main(int ac, char **av)
     kkread(kd, Nl[0].n_value, &mp, sizeof(mp));
     while (mp)
 	mp = dumpmount(kd, mp);
+    kkread(kd, Nl[1].n_value, &vi, sizeof(struct vnode_index));
     printf("INACTIVELIST {\n");
-    kkread(kd, Nl[1].n_value, &vp, sizeof(vp));
-    while (vp)
-	    vp = dumpvp(kd, vp, 0, NULL);
+    while (vp_inactive)
+	    vp_inactive = dumpvp(kd, vi->inactive_list.tqh_first,
+		0, NULL);
     printf("}\n");
     printf("ACTIVELIST {\n");
-    kkread(kd, Nl[2].n_value, &vp, sizeof(vp));
-    while (vp)
-	    vp = dumpvp(kd, vp, 0, NULL);
+    while (vp_active)
+	    vp_active = dumpvp(kd, vi->active_list.tqh_first, 0, NULL);
     printf("}\n");
     return(0);
 }
@@ -174,7 +175,7 @@ dumpmount(kvm_t *kd, struct mount *mp)
     kkread(kd, (u_long)mp, &mnt, sizeof(mnt));
     printf("MOUNTPOINT %s on %s {\n",
 	mnt.mnt_stat.f_mntfromname, mnt.mnt_stat.f_mntonname);
-    printf("    lk_flags %08x count %08x holder = %p\n",
+    printf("    lk_flags %08x count %016jx holder = %p\n",
 	mnt.mnt_lock.lk_flags, mnt.mnt_lock.lk_count,
 	mnt.mnt_lock.lk_lockholder);
     printf("    mnt_flag %08x mnt_kern_flag %08x\n",
@@ -299,8 +300,8 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist, char *vfc_name)
 
     printf("\n");
 
-    if (vn.v_lock.lk_count || vn.v_lock.lk_lockholder != LK_NOTHREAD) {
-	printf("\tlk_flags %08x count %08x holder = %p\n",
+    if (vn.v_lock.lk_count || vn.v_lock.lk_lockholder != NULL) {
+	printf("\tlk_flags %08x count %016jx holder = %p\n",
 	    vn.v_lock.lk_flags, vn.v_lock.lk_count,
 	    vn.v_lock.lk_lockholder);
     }
@@ -374,7 +375,7 @@ dumpbufs(kvm_t *kd, void *bufp, const char *id)
 		buf.b_bio1.bio_offset,
 		buf.b_bufsize,
 		buf.b_bio2.bio_offset);
-	printf(" q=%d count=%08x flags=%08x refs=%08x dep=%p",
+	printf(" q=%d count=%016jx flags=%08x refs=%08x dep=%p",
 		buf.b_qindex, buf.b_lock.lk_count,
 		buf.b_flags, buf.b_refs, buf.b_dep.lh_first);
 	printf("\n");

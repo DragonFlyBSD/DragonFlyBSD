@@ -131,12 +131,9 @@ dumptcb(kvm_t *kd, intptr_t tcbaddr)
     printf("    hashbase %p\n", info.hashbase);
     printf("    hashmask %ld\n", info.hashmask);
     printf("    porthashbase %p\n", pinfo.porthashbase);
-    printf("    porthashmask %lu\n", pinfo.porthashmask);
+    printf("    porthashmask %lu\n", pinfo.porthashcnt);
     printf("    wildcardhashbase %p\n", info.wildcardhashbase);
     printf("    wildcardhashmask %lu\n", info.wildcardhashmask);
-    printf("    lastport %d\n", (int)pinfo.lastport);
-    printf("    lastlow %d\n", (int)pinfo.lastlow);
-    printf("    lasthi %d\n", (int)pinfo.lasthi);
     printf("    ipi_size %zu\n", info.ipi_size);
     printf("    ipi_count %d\n", (int)info.ipi_count);
     printf("    ipi_gencnt %lld\n", (long long)info.ipi_gencnt);
