@@ -188,6 +188,8 @@
  * 500315 - add TUNGIFNAME to tun(4)
  * 500316 - add SIOC[ADG]IFGROUP, SIOCGIFGMEMB ioctl
  * 500317 - add wait6() and waitid() syscalls
+ * 500400 - 5.4 release
+ * 500500 - 5.5 development
  */
 #undef __DragonFly_version
 #define __DragonFly_version 500317	/* propagated to newvers */
