@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man7/build.7,v 1.19.2.1 2002/03/18 08:33:02 murray Exp $
 .\"
-.Dd June 27, 2018
+.Dd November 23, 2018
 .Dt BUILD 7
 .Os
 .Sh NAME
@@ -99,7 +99,9 @@ but also skip the depend step.
 Just do the bootstrap, build and cross-build steps.
 .It Cm installworld
 Install everything built by
-.Cm buildworld .
+.Cm buildworld ,
+as well as the rescue tools and the initial ramdisk if they do not exist
+yet.
 .It Cm installworld-force
 Force an
 .Cm installworld .
@@ -152,10 +154,9 @@ Upgrade the files in /etc and also setup the rest of the system for
 the version of
 .Dx
 just installed.
-.It Cm rescue
-Build and install the statically linked rescue tools.
 .It Cm initrd
-Create the initial ramdisk based on the above rescue tools and install.
+Install the statically linked rescue tools and the initial ramdisk built by
+.Cm buildworld .
 .It Cm backupworld
 Manually archive binaries from installed world to location specified by
 .Ev WORLD_BACKUP .
@@ -303,7 +304,9 @@ make initrd
 It is usually a good idea to run this command after rebooting into the new
 world that you installed (so you know the world you installed is good).
 This command will update the initrd image in
-.Pa /boot/kernel .
+.Pa /boot/kernel
+and the rescue tools in
+.Pa /rescue .
 .Sh FILES
 .Bl -tag -width ".Pa /usr/src/Makefile_upgrade.inc" -compact
 .It Pa /etc/make.conf
@@ -323,13 +326,9 @@ make buildkernel KERNCONF=FOO
 make installkernel KERNCONF=FOO
 make installworld
 make upgrade
+reboot
+make initrd
 .Ed
-.Pp
-After running these commands a system reboot is required,
-otherwise many programs which have been rebuilt (such as
-.Xr ps 1 ,
-.Xr top 1 ,
-etc.) may not work with the old kernel which is still running.
 .Pp
 The above mentioned build and install order enforces that the new kernel
 is installed before the new world.

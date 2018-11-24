@@ -295,10 +295,10 @@ CROSSENV=	MAKEOBJDIRPREFIX=${WORLDDEST} \
 		HOST_CCVER=${HOST_CCVER} \
 		CCVER=${WORLD_CCVER} \
 		LDVER=${WORLD_LDVER} \
-		WORLDBUILD=1 \
 		BINUTILSVER=${WORLD_BINUTILSVER}
 
 WMAKEENV=	${CROSSENV} \
+		WORLDBUILD=1 \
 		DESTDIR=${WORLDDEST} \
 		_SHLIBDIRPREFIX=${WORLDDEST} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh" \
@@ -408,18 +408,12 @@ everything:
 	@echo ">>> stage 4d: building everything.."
 	@echo "--------------------------------------------------------------"
 	cd ${.CURDIR}; ${WMAKE} all
-_rescue:
-	@echo
-	@echo "--------------------------------------------------------------"
-	@echo ">>> stage 5a: building rescue topology"
-	@echo "--------------------------------------------------------------"
-	cd ${.CURDIR}; ${WMAKE} quickrescue
 _initrd:
 	@echo
 	@echo "--------------------------------------------------------------"
-	@echo ">>> stage 5b: building initrd topology"
+	@echo ">>> stage 5: building rescue and initrd"
 	@echo "--------------------------------------------------------------"
-	cd ${.CURDIR}; ${WMAKE} quickinitrd
+	cd ${.CURDIR}/initrd; ${WMAKEENV} make all
 _bwdone:
 	@echo "--------------------------------------------------------------"
 	@echo ">>> buildworld target complete"
@@ -455,16 +449,14 @@ WMAKE_TGTS+=	_obj _build-tools
 .if !defined(SUBDIR_OVERRIDE)
 WMAKE_TGTS+=	_cross-tools
 .endif
-WMAKE_TGTS+=	_includes _libraries _depend everything
-WMAKE_TGTS+=	_rescue _initrd
+WMAKE_TGTS+=	_includes _libraries _depend everything _initrd
 
 .if defined(WMAKE_TGTS_OVERRIDE)
 SUBDIR=
 WMAKE_TGTS=	${WMAKE_TGTS_OVERRIDE}
 .endif
 
-QMAKE_TGTS=	_mtreetmp _obj _includes _libraries _depend everything
-QMAKE_TGTS+=	_rescue _initrd
+QMAKE_TGTS=	_mtreetmp _obj _includes _libraries _depend everything _initrd
 
 buildworld: _bwinit ${WMAKE_TGTS} _bwdone
 
@@ -501,12 +493,6 @@ installcheck: _iwinit
 # Backs up the current world if ${AUTO_BACKUP} is writable.
 # Installs everything compiled by a 'buildworld'.
 #
-.if (!defined(DESTDIR) || ${DESTDIR} == "" || ${DESTDIR} == "/")
-DESTDIR_RESCUE=/
-.else
-DESTDIR_RESCUE=${DESTDIR}
-.endif
-
 installworld: installcheck
 	-@mkdir -p ${AUTO_BACKUP} > /dev/null 2>&1
 	@cd ${.CURDIR}; \
@@ -517,31 +503,12 @@ installworld: installcheck
 	cd ${.CURDIR}; ${IMAKE} re${.TARGET:S/world$//}
 	${INSTALL} -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc \
 	    ${DESTDIR}/etc/upgrade/
-
-.if !exists(${DESTDIR_RESCUE}/rescue/rescue)
-	@echo "--------------------------------------------------------------"
-	@echo ">>> /rescue is empty, setting up"
-	@echo "--------------------------------------------------------------"
-	(cd ${.CURDIR} && make installrescue)
-.endif
-.if !exists(${DESTDIR_RESCUE}/boot/kernel/initrd.img.gz)
-	@echo "--------------------------------------------------------------"
-	@echo ">>> /boot/kernel has no initrd.img.gz, setting up"
-	@echo "--------------------------------------------------------------"
-	(cd ${.CURDIR} && make installinitrd)
-.endif
+	cd ${.CURDIR}; ${IMAKE} -DWORLDINSTALL initrd
 
 	sync
 	@echo "--------------------------------------------------------------"
 	@echo ">>> installworld target complete"
 	@echo "--------------------------------------------------------------"
-
-installrescue:
-	cpdup -i0 ${WORLDDEST}/rescue ${DESTDIR}/rescue
-
-installinitrd:
-	${INSTALL} -o root -g wheel -m 644 \
-		${WORLDDEST}/boot/kernel/initrd.img.gz ${DESTDIR}/boot/kernel/
 
 installworld-force:
 	@echo "Doing a forced installworld.  This will install to a temporary directory,"
@@ -570,6 +537,7 @@ installworld-force:
 	sleep 5
 	(cd ${.CURDIR}; ${MAKE} installworld OVERRIDE_CHECKS=TRUE)
 	(cd ${.CURDIR}; ${MAKE} upgrade OVERRIDE_CHECKS=TRUE)
+	(cd ${.CURDIR}; ${MAKE} initrd)
 
 #
 # reinstall
@@ -588,6 +556,13 @@ reinstall:
 	@echo ">>> Installing everything.."
 	@echo "--------------------------------------------------------------"
 	cd ${.CURDIR}; make -f Makefile.inc1 install
+
+# initrd
+#
+# Install the rescue tools and the initrd image built by 'buildworld'.
+#
+initrd: .PHONY
+	(cd ${.CURDIR}/initrd; ${IMAKEENV} make install)
 
 #
 # buildkernel, nativekernel, quickkernel, realquickkernel, and installkernel
@@ -1233,12 +1208,6 @@ backup-auto-clean:
 
 backup-clean:
 	rm -f ${WORLD_BACKUP}/binaries.tar.gz
-
-# Build and install the statically linked rescue tools, and create the
-# initrd image.
-#
-rescue initrd quickrescue quickinitrd: .PHONY
-	(cd ${.CURDIR}/initrd; make ${.TARGET})
 
 restoreworld:
 .if !exists(${WORLD_BACKUP}/binaries.tar.gz)

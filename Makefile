@@ -8,12 +8,10 @@
 # quickworld          - Skip bootstrap, build and cross-build tool steps.
 # realquickworld      - Skip above steps, plus depend.
 # crossworld          - Just do the bootstrap, build, and cross-build steps.
-# installworld        - Install everything built by "buildworld".
-#			(includes rescue and initrd image)
+# installworld        - Install everything built by "buildworld", and the
+#                       rescue tools and initrd image if they do not exist.
 # installworld-force  - Install everything built by "buildworld";
 #                       special case for old systems.
-# installrescue	      - Install /rescue built by buildworld
-# installinitrd	      - Install initrd image built by buildworld
 # world               - buildworld + installworld.
 # buildkernel         - Rebuild the kernel and the kernel-modules from scratch
 #                       using build/bootstrap/cross tools from the last
@@ -31,8 +29,8 @@
 #                       the installworld.
 # upgrade             - Upgrade the files in /etc and also setup the rest
 #                       of the system for DragonFly. ex. two compilers.
-# rescue              - Build and install the statically linked rescue tools.
-# initrd              - Build the rescue tools and create the initrd image.
+# initrd              - Install the statically linked rescue tools and the
+#                       initrd image built by "buildworld".
 # backupworld         - Copy /bin /sbin /usr/bin /usr/sbin /usr/lib
 #                       /usr/libexec to manual backup dir.
 # restoreworld        - Install binaries from manual backup dir to world.
@@ -67,8 +65,7 @@
 # 5.  `make installworld'
 # 6.  `make upgrade'
 # 7.  `reboot'
-# 8.  `make installrescue'  (after making sure that the new world works well).
-# 9.  `make installinitrd'  (after making sure that the new world works well).
+# 8.  `make initrd'  (after making sure that the new world works well).
 #
 # If TARGET_ARCH=arch (e.g. x86_64) is specified you can
 # cross build world for other architectures using the buildworld target,
@@ -82,9 +79,7 @@ TGTS=	all all-man buildkernel quickkernel realquickkernel nativekernel \
 	buildworld crossworld quickworld realquickworld checkdpadd clean \
 	cleandepend cleandir depend everything \
 	hierarchy install installcheck installkernel \
-	reinstallkernel installworld installworld-force \
-	rescue initrd \
-	quickrescue quickinitrd installrescue installinitrd \
+	reinstallkernel installworld installworld-force initrd \
 	libraries lint maninstall \
 	manlint mk obj objlink regress rerelease tags \
 	backupworld restoreworld restoreworld-auto \
@@ -119,7 +114,7 @@ MAKE=	PATH=${PATH} make -m ${.CURDIR}/share/mk -f Makefile.inc1
 #
 # Handle the user-driven targets, using the source relative mk files.
 #
-${TGTS} ${BITGTS}:
+${TGTS} ${BITGTS}: .PHONY
 	@cd ${.CURDIR}; \
 		${MAKE} ${.TARGET}
 
