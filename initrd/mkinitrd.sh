@@ -65,7 +65,7 @@ BOOT_DIR="/boot"
 # Maximum size (number of MB) allowed for the initrd image
 INITRD_SIZE_MAX="15"  # MB
 
-# When run from the buildworld environment do not require that
+# When run from the buildworld/installworld environment do not require that
 # things like uniq, kldload, mount, newfs, etc be in the cross-tools.
 # These must run natively for the current system version.
 #
@@ -131,12 +131,15 @@ calc_initrd_size() {
 	        mb = $1/1024/1024;
 	        print ceil(mb);
 	    }')
-	# Add additional 1 MB
+	# Reserve another 1 MB for advanced user to add custom files to the
+	# initrd without creating it from scratch.
 	echo $((${isize_mb} + 1))
 }
 
 create_vn() {
-	kldload -n vn
+	kldstat -qm vn || kldload -n vn ||
+	    error 1 "Failed to load vn kernel module"
+
 	VN_DEV=$(vnconfig -c -S ${INITRD_SIZE}m -Z -T vn ${INITRD_FILE}) &&
 	    echo "Configured ${VN_DEV}" ||
 	    error 1 "Failed to configure VN device"
@@ -298,7 +301,7 @@ if [ -f "${INITRD_DEST}" ]; then
 	echo " OK (${INITRD_DEST}.old)"
 fi
 
-echo -n "Copying ${INITRD_FILE}.gz to ${INITRD_DEST} ..."
+echo -n "Installing ${INITRD_FILE}.gz to ${INITRD_DEST} ..."
 install -o root -g wheel -m 444 ${INITRD_FILE}.gz ${INITRD_DEST}
 echo " OK"
 rm -f ${INITRD_FILE}.gz

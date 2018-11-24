@@ -191,13 +191,12 @@ buildiso:
 	( cd ${.CURDIR}/../etc; MAKEOBJDIRPREFIX=${NRLOBJDIR}/nrelease \
 		make -m ${.CURDIR}/../share/mk DESTDIR=${ISOROOT} distribution )
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
-	cd ${.CURDIR}/..; \
-	for kernconf in ${KERNCONF}; do \
-		make DESTDIR=${ISOROOT} reinstallkernel KERNCONF=$${kernconf}; \
-	done
+	( cd ${.CURDIR}/..; \
+		for kernconf in ${KERNCONF}; do \
+			make DESTDIR=${ISOROOT} reinstallkernel KERNCONF=$${kernconf}; \
+		done )
 	rm -rf ${ISOROOT}/boot/kernel.old
 	ln -sf kernel ${ISOROOT}/boot/kernel/kernel.BOOTP
-	( cd ${.CURDIR}/..; make DESTDIR=${ISOROOT} initrd )
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
 
