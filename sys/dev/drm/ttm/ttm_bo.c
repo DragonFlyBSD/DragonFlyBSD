@@ -361,11 +361,24 @@ int ttm_bo_reserve_slowpath(struct ttm_buffer_object *bo,
 }
 EXPORT_SYMBOL(ttm_bo_reserve_slowpath);
 
+/*
+ * Must interlock with event_queue to avoid race against
+ * wait_event_common() which can cause wait_event_common()
+ * to become stuck.
+ */
+static void
+ttm_bo_unreserve_core(struct ttm_buffer_object *bo)
+{
+	lockmgr(&bo->event_queue.lock, LK_EXCLUSIVE);
+	atomic_set(&bo->reserved, 0);
+	lockmgr(&bo->event_queue.lock, LK_RELEASE);
+	wake_up_all(&bo->event_queue);
+}
+
 void ttm_bo_unreserve_ticket_locked(struct ttm_buffer_object *bo, struct ww_acquire_ctx *ticket)
 {
 	ttm_bo_add_to_lru(bo);
-	atomic_set(&bo->reserved, 0);
-	wake_up_all(&bo->event_queue);
+	ttm_bo_unreserve_core(bo);
 }
 
 void ttm_bo_unreserve(struct ttm_buffer_object *bo)
@@ -557,9 +570,7 @@ static void ttm_bo_cleanup_memtype_use(struct ttm_buffer_object *bo)
 		bo->ttm = NULL;
 	}
 	ttm_bo_mem_put(bo, &bo->mem);
-
-	atomic_set(&bo->reserved, 0);
-	wake_up_all(&bo->event_queue);
+	ttm_bo_unreserve_core(bo);
 
 	/*
 	 * Since the final reference to this bo may not be dropped by
@@ -601,8 +612,18 @@ static void ttm_bo_cleanup_refs_or_queue(struct ttm_buffer_object *bo)
 	lockmgr(&bdev->fence_lock, LK_RELEASE);
 
 	if (!ret) {
-		atomic_set(&bo->reserved, 0);
-		wake_up_all(&bo->event_queue);
+
+		/*
+		 * Make NO_EVICT bos immediately available to
+		 * shrinkers, now that they are queued for
+		 * destruction.
+		 */
+		if (bo->mem.placement & TTM_PL_FLAG_NO_EVICT) {
+			bo->mem.placement &= ~TTM_PL_FLAG_NO_EVICT;
+			ttm_bo_add_to_lru(bo);
+		}
+
+		ttm_bo_unreserve_core(bo);
 	}
 
 	kref_get(&bo->list_kref);
@@ -653,8 +674,7 @@ static int ttm_bo_cleanup_refs_and_unlock(struct ttm_buffer_object *bo,
 		sync_obj = driver->sync_obj_ref(bo->sync_obj);
 		lockmgr(&bdev->fence_lock, LK_RELEASE);
 
-		atomic_set(&bo->reserved, 0);
-		wake_up_all(&bo->event_queue);
+		ttm_bo_unreserve_core(bo);
 		lockmgr(&glob->lru_lock, LK_RELEASE);
 
 		ret = driver->sync_obj_wait(sync_obj, false, interruptible);
@@ -692,8 +712,7 @@ static int ttm_bo_cleanup_refs_and_unlock(struct ttm_buffer_object *bo,
 		lockmgr(&bdev->fence_lock, LK_RELEASE);
 
 	if (ret || unlikely(list_empty(&bo->ddestroy))) {
-		atomic_set(&bo->reserved, 0);
-		wake_up_all(&bo->event_queue);
+		ttm_bo_unreserve_core(bo);
 		lockmgr(&glob->lru_lock, LK_RELEASE);
 		return ret;
 	}
@@ -1938,8 +1957,7 @@ out:
 	 * already swapped buffer.
 	 */
 
-	atomic_set(&bo->reserved, 0);
-	wake_up_all(&bo->event_queue);
+	ttm_bo_unreserve_core(bo);
 	kref_put(&bo->list_kref, ttm_bo_release_list);
 	return ret;
 }
