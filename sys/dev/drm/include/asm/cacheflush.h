@@ -64,4 +64,31 @@ static inline int set_pages_wb(struct page *page, int num_pages)
 	return 0;
 }
 
+static inline int
+set_pages_array_uc(struct page **pages, int addrinarray)
+{
+	for (int i = 0; i < addrinarray; i++)
+		pmap_page_set_memattr((struct vm_page *)pages[i], VM_MEMATTR_UNCACHEABLE);
+
+	return 0;
+}
+
+static inline int
+set_pages_array_wb(struct page **pages, int addrinarray)
+{
+	for (int i = 0; i < addrinarray; i++)
+		pmap_page_set_memattr((struct vm_page *)pages[i], VM_MEMATTR_WRITE_BACK);
+
+	return 0;
+}
+
+static inline int
+set_pages_array_wc(struct page **pages, int addrinarray)
+{
+	for (int i = 0; i < addrinarray; i++)
+		pmap_page_set_memattr((struct vm_page *)pages[i], VM_MEMATTR_WRITE_COMBINING);
+
+	return 0;
+}
+
 #endif	/* _ASM_CACHEFLUSH_H_ */

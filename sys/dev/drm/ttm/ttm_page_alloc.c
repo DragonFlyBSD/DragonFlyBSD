@@ -238,6 +238,7 @@ static struct kobj_type ttm_pool_kobj_type = {
 
 static struct ttm_pool_manager *_manager;
 
+#ifndef CONFIG_X86
 static int set_pages_array_wb(struct page **pages, int addrinarray)
 {
 	vm_page_t m;
@@ -282,6 +283,7 @@ static int set_pages_array_uc(struct page **pages, int addrinarray)
 	}
 	return 0;
 }
+#endif
 
 /**
  * Select the right pool or requested caching state and ttm flags. */
