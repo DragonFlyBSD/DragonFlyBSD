@@ -26,9 +26,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)script.1	8.1 (Berkeley) 6/6/93
-.\" $FreeBSD: src/usr.bin/script/script.1,v 1.12.2.4 2002/06/21 15:29:06 charnier Exp $
+.\" $FreeBSD: head/usr.bin/script/script.1 314436 2017-02-28 23:42:47Z imp $
 .\"
-.Dd June 6, 1993
+.Dd December 4, 2013
 .Dt SCRIPT 1
 .Os
 .Sh NAME
@@ -36,11 +36,10 @@
 .Nd make typescript of terminal session
 .Sh SYNOPSIS
 .Nm
-.Op Fl a
-.Op Fl k
-.Op Fl q
+.Op Fl adkpqr
+.Op Fl F Ar pipe
 .Op Fl t Ar time
-.Op Ar file Op command ...
+.Op Ar file Op Ar command ...
 .Sh DESCRIPTION
 The
 .Nm
@@ -60,29 +59,48 @@ If no file name is given, the typescript is saved in the file
 .Pa typescript .
 .Pp
 If the argument
-.Ar command ...
+.Ar command
 is given,
 .Nm
 will run the specified command with an optional argument vector
 instead of an interactive shell.
 .Pp
-Options:
-.Bl -tag -width xxxxxxx
+The following options are available:
+.Bl -tag -width indent
 .It Fl a
 Append the output to
 .Ar file
 or
 .Pa typescript ,
 retaining the prior contents.
+.It Fl d
+When playing back a session with the
+.Fl p
+flag, do not sleep between records when playing back a timestamped session.
+.It Fl F Ar pipe
+Immediately flush output after each write.
+This will allow a user to create a named pipe using
+.Xr mkfifo 1
+and another user may watch the live session using a utility like
+.Xr cat 1 .
 .It Fl k
-Log keys sent to program as well as output.
+Log keys sent to the program as well as output.
+.It Fl p
+Play back a session recorded with the
+.Fl r
+flag in real time.
 .It Fl q
-Run in quiet mode, omit the start and stop status messages.
+Run in quiet mode, omit the start, stop and command status messages.
+.It Fl r
+Record a session with input, output, and timestamping.
 .It Fl t Ar time
-Specify time interval between flushing script output file.  A value of 0
+Specify the interval at which the script output file will be flushed
+to disk, in seconds.
+A value of 0
 causes
 .Nm
-to flush for every character I/O event.  The default interval is
+to flush after every character I/O event.
+The default interval is
 30 seconds.
 .El
 .Pp
@@ -95,7 +113,7 @@ and
 .Em exit ,
 .Em logout
 or
-.Em control-d
+.Em control-D
 (if
 .Em ignoreeof
 is not set) for the
@@ -110,9 +128,22 @@ The
 utility works best with commands that do not manipulate the screen.
 The results are meant to emulate a hardcopy terminal, not an addressable one.
 .Sh ENVIRONMENT
-The following environment variable is utilized by
+The following environment variables are utilized by
 .Nm :
 .Bl -tag -width SHELL
+.It Ev SCRIPT
+The
+.Ev SCRIPT
+environment variable is added to the sub-shell.
+If
+.Ev SCRIPT
+already existed in the users environment,
+its value is overwritten within the sub-shell.
+The value of
+.Ev SCRIPT
+is the name of the
+.Ar typescript
+file.
 .It Ev SHELL
 If the variable
 .Ev SHELL
@@ -123,18 +154,30 @@ If
 .Ev SHELL
 is not set, the Bourne shell
 is assumed.
-(Most shells set this variable automatically).
+.Pq Most shells set this variable automatically .
 .El
 .Sh SEE ALSO
 .Xr csh 1
-(for the
-.Em history
-mechanism).
+.Po
+for the
+.Em= history
+mechanism
+.Pc
 .Sh HISTORY
 The
 .Nm
 command appeared in
 .Bx 3.0 .
+.Pp
+The
+.Fl d ,
+.Fl p
+and
+.Fl r
+options first appeared in
+.Nx 2.0
+and were ported to
+.Fx 9.2 .
 .Sh BUGS
 The
 .Nm
@@ -148,6 +191,19 @@ because of argument parsing compatibility issues.
 .Pp
 When running in
 .Fl k
-mode, echo cancelling is far from ideal.  The slave terminal mode is checked
-for ECHO mode to check when to avoid manual echo logging.  This does not
-work when in a raw mode where the program being run is doing manual echo.
+mode, echo cancelling is far from ideal.
+The slave terminal mode is checked
+for ECHO mode to check when to avoid manual echo logging.
+This does not
+work when the terminal is in a raw mode where
+the program being run is doing manual echo.
+.Pp
+If
+.Nm
+reads zero bytes from the terminal, it switches to a mode when it
+only attempts to read
+once a second until there is data to read.
+This prevents
+.Nm
+from spinning on zero-byte reads, but might cause a 1-second delay in
+processing of user input.
