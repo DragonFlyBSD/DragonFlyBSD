@@ -14,13 +14,14 @@ name="wpa_supplicant"
 rcvar=
 command="/usr/sbin/wpa_supplicant"
 conf_file="/etc/wpa_supplicant.conf"
-
 start_precmd="wpa_supplicant_precmd"
+start_postcmd="wpa_supplicant_postcmd"
+
 wpa_supplicant_precmd()
 {
 	ifconfig $ifn up
 }
-start_postcmd="wpa_supplicant_postcmd"
+
 wpa_supplicant_postcmd()
 {
 # don't wait for wpa_supplicant to associate
@@ -62,6 +63,13 @@ if is_ndis_interface ${ifn}; then
 	driver="ndis"
 else
 	driver="bsd"
+fi
+
+# For the moment, prefer the DPorts wpa_supplicant if it exists.
+# Since '/etc/defaults/rc.conf' does not set 'wpa_supplicant_program',
+# the following 'command' assignment is enough.
+if [ -x "/usr/local/sbin/wpa_supplicant" ]; then
+	command="/usr/local/sbin/wpa_supplicant"
 fi
 
 load_rc_config $name
