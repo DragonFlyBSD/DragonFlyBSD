@@ -30,8 +30,6 @@
  *
  * Portions of this software were developed by Konstantin Belousov
  * <kib@FreeBSD.org> under sponsorship from the FreeBSD Foundation.
- *
- * $FreeBSD: head/sys/dev/drm2/ttm/ttm_page_alloc.c 247849 2013-03-05 16:15:34Z kib $
  */
 
 /* simple list based uncached page pool
@@ -42,11 +40,21 @@
 
 #define pr_fmt(fmt) "[TTM] " fmt
 
-#include <sys/eventhandler.h>
+#include <linux/list.h>
+#include <linux/spinlock.h>
+#include <linux/highmem.h>
+#include <linux/mm_types.h>
+#include <linux/module.h>
+#include <linux/mm.h>
+#include <linux/seq_file.h> /* for seq_printf */
+#include <linux/dma-mapping.h>
 
-#include <drm/drmP.h>
+#include <linux/atomic.h>
+
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_page_alloc.h>
+
+#include <sys/eventhandler.h>
 
 #ifdef TTM_HAS_AGP
 #include <asm/agp.h>
@@ -72,9 +80,8 @@
 struct ttm_page_pool {
 	struct lock		lock;
 	bool			fill_lock;
-	bool			dma32;
 	struct pglist		list;
-	int			ttm_page_alloc_flags;
+	gfp_t			gfp_flags;
 	unsigned		npages;
 	char			*name;
 	unsigned long		nfrees;
@@ -114,36 +121,15 @@ struct ttm_pool_manager {
 	struct ttm_pool_opts	options;
 
 	union {
-		struct ttm_page_pool	u_pools[NUM_POOLS];
-		struct _utag {
-			struct ttm_page_pool	u_wc_pool;
-			struct ttm_page_pool	u_uc_pool;
-			struct ttm_page_pool	u_wc_pool_dma32;
-			struct ttm_page_pool	u_uc_pool_dma32;
-		} _ut;
-	} _u;
+		struct ttm_page_pool	pools[NUM_POOLS];
+		struct {
+			struct ttm_page_pool	wc_pool;
+			struct ttm_page_pool	uc_pool;
+			struct ttm_page_pool	wc_pool_dma32;
+			struct ttm_page_pool	uc_pool_dma32;
+		} ;
+	};
 };
-
-#define	pools _u.u_pools
-#define	wc_pool _u._ut.u_wc_pool
-#define	uc_pool _u._ut.u_uc_pool
-#define	wc_pool_dma32 _u._ut.u_wc_pool_dma32
-#define	uc_pool_dma32 _u._ut.u_uc_pool_dma32
-
-static vm_memattr_t
-ttm_caching_state_to_vm(enum ttm_caching_state cstate)
-{
-
-	switch (cstate) {
-	case tt_uncached:
-		return (VM_MEMATTR_UNCACHEABLE);
-	case tt_wc:
-		return (VM_MEMATTR_WRITE_COMBINING);
-	case tt_cached:
-		return (VM_MEMATTR_WRITE_BACK);
-	}
-	panic("caching state %d\n", cstate);
-}
 
 static struct attribute ttm_page_pool_max = {
 	.name = "pool_max_size",
@@ -241,46 +227,34 @@ static struct ttm_pool_manager *_manager;
 #ifndef CONFIG_X86
 static int set_pages_array_wb(struct page **pages, int addrinarray)
 {
-	vm_page_t m;
+#ifdef TTM_HAS_AGP
 	int i;
 
-	for (i = 0; i < addrinarray; i++) {
-		m = (struct vm_page *)pages[i];
-#ifdef TTM_HAS_AGP
+	for (i = 0; i < addrinarray; i++)
 		unmap_page_from_agp(pages[i]);
 #endif
-		pmap_page_set_memattr(m, VM_MEMATTR_WRITE_BACK);
-	}
 	return 0;
 }
 
 static int set_pages_array_wc(struct page **pages, int addrinarray)
 {
-	vm_page_t m;
+#ifdef TTM_HAS_AGP
 	int i;
 
-	for (i = 0; i < addrinarray; i++) {
-		m = (struct vm_page *)pages[i];
-#ifdef TTM_HAS_AGP
+	for (i = 0; i < addrinarray; i++)
 		map_page_into_agp(pages[i]);
 #endif
-		pmap_page_set_memattr(m, VM_MEMATTR_WRITE_COMBINING);
-	}
 	return 0;
 }
 
 static int set_pages_array_uc(struct page **pages, int addrinarray)
 {
-	vm_page_t m;
+#ifdef TTM_HAS_AGP
 	int i;
 
-	for (i = 0; i < addrinarray; i++) {
-		m = (struct vm_page *)pages[i];
-#ifdef TTM_HAS_AGP
+	for (i = 0; i < addrinarray; i++)
 		map_page_into_agp(pages[i]);
 #endif
-		pmap_page_set_memattr(m, VM_MEMATTR_UNCACHEABLE);
-	}
 	return 0;
 }
 #endif
@@ -334,7 +308,8 @@ static void ttm_pool_update_free_locked(struct ttm_page_pool *pool,
  **/
 static int ttm_page_pool_free(struct ttm_page_pool *pool, unsigned nr_free)
 {
-	vm_page_t p, p1;
+	unsigned long irq_flags;
+	struct vm_page *p, *p1;
 	struct page **pages_to_free;
 	unsigned freed_pages = 0,
 		 npages_to_free = nr_free;
@@ -344,10 +319,14 @@ static int ttm_page_pool_free(struct ttm_page_pool *pool, unsigned nr_free)
 		npages_to_free = NUM_PAGES_TO_ALLOC;
 
 	pages_to_free = kmalloc(npages_to_free * sizeof(struct page *),
-	    M_TEMP, M_WAITOK | M_ZERO);
+			M_DRM, M_WAITOK);
+	if (!pages_to_free) {
+		pr_err("Failed to allocate memory for pool free operation\n");
+		return 0;
+	}
 
 restart:
-	lockmgr(&pool->lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&pool->lock, irq_flags);
 
 	TAILQ_FOREACH_REVERSE_MUTABLE(p, &pool->list, pglist, pageq, p1) {
 		if (freed_pages >= npages_to_free)
@@ -365,7 +344,7 @@ restart:
 			 * Because changing page caching is costly
 			 * we unlock the pool to prevent stalling.
 			 */
-			lockmgr(&pool->lock, LK_RELEASE);
+			spin_unlock_irqrestore(&pool->lock, irq_flags);
 
 			ttm_pages_put(pages_to_free, freed_pages);
 			if (likely(nr_free != FREE_ALL_PAGES))
@@ -400,12 +379,12 @@ restart:
 		nr_free -= freed_pages;
 	}
 
-	lockmgr(&pool->lock, LK_RELEASE);
+	spin_unlock_irqrestore(&pool->lock, irq_flags);
 
 	if (freed_pages)
 		ttm_pages_put(pages_to_free, freed_pages);
 out:
-	drm_free(pages_to_free, M_TEMP);
+	kfree(pages_to_free);
 	return nr_free;
 }
 
@@ -446,14 +425,12 @@ static int ttm_pool_mm_shrink(void *arg)
 
 static void ttm_pool_mm_shrink_init(struct ttm_pool_manager *manager)
 {
-
 	manager->lowmem_handler = EVENTHANDLER_REGISTER(vm_lowmem,
 	    ttm_pool_mm_shrink, manager, EVENTHANDLER_PRI_ANY);
 }
 
 static void ttm_pool_mm_shrink_fini(struct ttm_pool_manager *manager)
 {
-
 	EVENTHANDLER_DEREGISTER(vm_lowmem, manager->lowmem_handler);
 }
 
@@ -502,29 +479,27 @@ static void ttm_handle_caching_state_failure(struct pglist *pages,
  * This function is reentrant if caller updates count depending on number of
  * pages returned in pages array.
  */
-static int ttm_alloc_new_pages(struct pglist *pages, int ttm_alloc_flags,
+static int ttm_alloc_new_pages(struct pglist *pages, gfp_t gfp_flags,
 		int ttm_flags, enum ttm_caching_state cstate, unsigned count)
 {
 	struct page **caching_array;
-	struct vm_page *p;
+	struct page *p;
 	int r = 0;
-	unsigned i, cpages, aflags;
+	unsigned i, cpages;
 	unsigned max_cpages = min(count,
-			(unsigned)(PAGE_SIZE/sizeof(vm_page_t)));
+			(unsigned)(PAGE_SIZE/sizeof(struct page *)));
 
-	aflags = VM_ALLOC_NORMAL |
-	    ((ttm_alloc_flags & TTM_PAGE_FLAG_ZERO_ALLOC) != 0 ?
-	    VM_ALLOC_ZERO : 0);
-	
 	/* allocate array for page caching change */
-	caching_array = kmalloc(max_cpages * sizeof(vm_page_t), M_TEMP,
-	    M_WAITOK | M_ZERO);
+	caching_array = kmalloc(max_cpages*sizeof(struct page *), M_DRM, M_WAITOK);
+
+	if (!caching_array) {
+		pr_err("Unable to allocate table for new pages\n");
+		return -ENOMEM;
+	}
 
 	for (i = 0, cpages = 0; i < count; ++i) {
-		p = vm_page_alloc_contig(0,
-		    (ttm_alloc_flags & TTM_PAGE_FLAG_DMA32) ? 0xffffffff :
-		    VM_MAX_ADDRESS, PAGE_SIZE, 0,
-		    1*PAGE_SIZE, ttm_caching_state_to_vm(cstate));
+		p = alloc_page(gfp_flags);
+
 		if (!p) {
 			pr_err("Unable to get page %u\n", i);
 
@@ -541,19 +516,16 @@ static int ttm_alloc_new_pages(struct pglist *pages, int ttm_alloc_flags,
 			r = -ENOMEM;
 			goto out;
 		}
-#if 0
-		p->oflags &= ~VPO_UNMANAGED;
-#endif
-		p->flags |= PG_FICTITIOUS;
+		((struct vm_page *)p)->flags |= PG_FICTITIOUS;
 
-#ifdef CONFIG_HIGHMEM /* KIB: nop */
+#ifdef CONFIG_HIGHMEM
 		/* gfp flags of highmem page should never be dma32 so we
 		 * we should be fine in such case
 		 */
 		if (!PageHighMem(p))
 #endif
 		{
-			caching_array[cpages++] = (struct page *)p;
+			caching_array[cpages++] = p;
 			if (cpages == max_cpages) {
 
 				r = ttm_set_pages_caching(caching_array,
@@ -568,7 +540,7 @@ static int ttm_alloc_new_pages(struct pglist *pages, int ttm_alloc_flags,
 			}
 		}
 
-		TAILQ_INSERT_HEAD(pages, p, pageq);
+		TAILQ_INSERT_HEAD(pages, (struct vm_page *)p, pageq);
 	}
 
 	if (cpages) {
@@ -579,7 +551,7 @@ static int ttm_alloc_new_pages(struct pglist *pages, int ttm_alloc_flags,
 					caching_array, cpages);
 	}
 out:
-	drm_free(caching_array, M_TEMP);
+	kfree(caching_array);
 
 	return r;
 }
@@ -589,7 +561,8 @@ out:
  * pages is small.
  */
 static void ttm_page_pool_fill_locked(struct ttm_page_pool *pool,
-    int ttm_flags, enum ttm_caching_state cstate, unsigned count)
+		int ttm_flags, enum ttm_caching_state cstate, unsigned count,
+		unsigned long *irq_flags)
 {
 	vm_page_t p;
 	int r;
@@ -615,12 +588,12 @@ static void ttm_page_pool_fill_locked(struct ttm_page_pool *pool,
 		 * Can't change page caching if in irqsave context. We have to
 		 * drop the pool->lock.
 		 */
-		lockmgr(&pool->lock, LK_RELEASE);
+		spin_unlock_irqrestore(&pool->lock, *irq_flags);
 
 		TAILQ_INIT(&new_pages);
-		r = ttm_alloc_new_pages(&new_pages, pool->ttm_page_alloc_flags,
-		    ttm_flags, cstate, alloc_size);
-		lockmgr(&pool->lock, LK_EXCLUSIVE);
+		r = ttm_alloc_new_pages(&new_pages, pool->gfp_flags, ttm_flags,
+				cstate,	alloc_size);
+		spin_lock_irqsave(&pool->lock, *irq_flags);
 
 		if (!r) {
 			TAILQ_CONCAT(&pool->list, &new_pages, pageq);
@@ -651,11 +624,12 @@ static unsigned ttm_page_pool_get_pages(struct ttm_page_pool *pool,
 					enum ttm_caching_state cstate,
 					unsigned count)
 {
+	unsigned long irq_flags;
 	vm_page_t p;
 	unsigned i;
 
-	lockmgr(&pool->lock, LK_EXCLUSIVE);
-	ttm_page_pool_fill_locked(pool, ttm_flags, cstate, count);
+	spin_lock_irqsave(&pool->lock, irq_flags);
+	ttm_page_pool_fill_locked(pool, ttm_flags, cstate, count, &irq_flags);
 
 	if (count >= pool->npages) {
 		/* take all pages from the pool */
@@ -672,7 +646,7 @@ static unsigned ttm_page_pool_get_pages(struct ttm_page_pool *pool,
 	pool->npages -= count;
 	count = 0;
 out:
-	lockmgr(&pool->lock, LK_RELEASE);
+	spin_unlock_irqrestore(&pool->lock, irq_flags);
 	return count;
 }
 
@@ -680,6 +654,7 @@ out:
 static void ttm_put_pages(struct page **pages, unsigned npages, int flags,
 			  enum ttm_caching_state cstate)
 {
+	unsigned long irq_flags;
 	struct ttm_page_pool *pool = ttm_get_pool(flags, cstate);
 	unsigned i;
 	struct vm_page *page;
@@ -699,7 +674,7 @@ static void ttm_put_pages(struct page **pages, unsigned npages, int flags,
 		return;
 	}
 
-	lockmgr(&pool->lock, LK_EXCLUSIVE);
+	spin_lock_irqsave(&pool->lock, irq_flags);
 	for (i = 0; i < npages; i++) {
 		if (pages[i]) {
 			page = (struct vm_page *)pages[i];
@@ -717,7 +692,7 @@ static void ttm_put_pages(struct page **pages, unsigned npages, int flags,
 		if (npages < NUM_PAGES_TO_ALLOC)
 			npages = NUM_PAGES_TO_ALLOC;
 	}
-	lockmgr(&pool->lock, LK_RELEASE);
+	spin_unlock_irqrestore(&pool->lock, irq_flags);
 	if (npages)
 		ttm_page_pool_free(pool, npages);
 }
@@ -732,35 +707,37 @@ static int ttm_get_pages(struct page **pages, unsigned npages, int flags,
 	struct ttm_page_pool *pool = ttm_get_pool(flags, cstate);
 	struct pglist plist;
 	struct vm_page *p = NULL;
-	int gfp_flags, aflags;
+	gfp_t gfp_flags = GFP_USER;
 	unsigned count;
 	int r;
 
-	aflags = VM_ALLOC_NORMAL |
-	    ((flags & TTM_PAGE_FLAG_ZERO_ALLOC) != 0 ? VM_ALLOC_ZERO : 0);
+	/* set zero flag for page allocation if required */
+	if (flags & TTM_PAGE_FLAG_ZERO_ALLOC)
+		gfp_flags |= __GFP_ZERO;
 
 	/* No pool for cached pages */
 	if (pool == NULL) {
+		if (flags & TTM_PAGE_FLAG_DMA32)
+			gfp_flags |= GFP_DMA32;
+		else
+			gfp_flags |= GFP_HIGHUSER;
+
 		for (r = 0; r < npages; ++r) {
-			p = vm_page_alloc_contig(0,
-			    (flags & TTM_PAGE_FLAG_DMA32) ? 0xffffffff :
-			    VM_MAX_ADDRESS, PAGE_SIZE,
-			    0, 1*PAGE_SIZE, ttm_caching_state_to_vm(cstate));
+			p = (struct vm_page *)alloc_page(gfp_flags);
 			if (!p) {
+
 				pr_err("Unable to allocate page\n");
 				return -ENOMEM;
 			}
-#if 0
-			p->oflags &= ~VPO_UNMANAGED;
-#endif
 			p->flags |= PG_FICTITIOUS;
+
 			pages[r] = (struct page *)p;
 		}
 		return 0;
 	}
 
 	/* combine zero flag to pool flags */
-	gfp_flags = flags | pool->ttm_page_alloc_flags;
+	gfp_flags |= pool->gfp_flags;
 
 	/* First we take pages from the pool */
 	TAILQ_INIT(&plist);
@@ -783,8 +760,7 @@ static int ttm_get_pages(struct page **pages, unsigned npages, int flags,
 		 * multiple requests in parallel.
 		 **/
 		TAILQ_INIT(&plist);
-		r = ttm_alloc_new_pages(&plist, gfp_flags, flags, cstate,
-		    npages);
+		r = ttm_alloc_new_pages(&plist, gfp_flags, flags, cstate, npages);
 		TAILQ_FOREACH(p, &plist, pageq) {
 			pages[count++] = (struct page *)p;
 		}
@@ -800,14 +776,14 @@ static int ttm_get_pages(struct page **pages, unsigned npages, int flags,
 	return 0;
 }
 
-static void ttm_page_pool_init_locked(struct ttm_page_pool *pool, gfp_t flags,
-				      char *name)
+static void ttm_page_pool_init_locked(struct ttm_page_pool *pool, int flags,
+		char *name)
 {
 	lockinit(&pool->lock, "ttmpool", 0, LK_CANRECURSE);
 	pool->fill_lock = false;
 	TAILQ_INIT(&pool->list);
 	pool->npages = pool->nfrees = 0;
-	pool->ttm_page_alloc_flags = flags;
+	pool->gfp_flags = flags;
 	pool->name = name;
 }
 
@@ -821,12 +797,15 @@ int ttm_page_alloc_init(struct ttm_mem_global *glob, unsigned max_pages)
 
 	_manager = kzalloc(sizeof(*_manager), GFP_KERNEL);
 
-	ttm_page_pool_init_locked(&_manager->wc_pool, 0, "wc");
-	ttm_page_pool_init_locked(&_manager->uc_pool, 0, "uc");
+	ttm_page_pool_init_locked(&_manager->wc_pool, GFP_HIGHUSER, "wc");
+
+	ttm_page_pool_init_locked(&_manager->uc_pool, GFP_HIGHUSER, "uc");
+
 	ttm_page_pool_init_locked(&_manager->wc_pool_dma32,
-	    TTM_PAGE_FLAG_DMA32, "wc dma");
+				  GFP_USER | GFP_DMA32, "wc dma");
+
 	ttm_page_pool_init_locked(&_manager->uc_pool_dma32,
-	    TTM_PAGE_FLAG_DMA32, "uc dma");
+				  GFP_USER | GFP_DMA32, "uc dma");
 
 	_manager->options.max_size = max_pages;
 	_manager->options.small = SMALL_ALLOCATION;
@@ -839,6 +818,7 @@ int ttm_page_alloc_init(struct ttm_mem_global *glob, unsigned max_pages)
 		_manager = NULL;
 		return ret;
 	}
+
 	ttm_pool_mm_shrink_init(_manager);
 
 	return 0;
@@ -912,9 +892,9 @@ void ttm_pool_unpopulate(struct ttm_tt *ttm)
 	}
 	ttm->state = tt_unpopulated;
 }
+EXPORT_SYMBOL(ttm_pool_unpopulate);
 
 #if 0
-/* XXXKIB sysctl */
 int ttm_page_alloc_debugfs(struct seq_file *m, void *data)
 {
 	struct ttm_page_pool *p;
