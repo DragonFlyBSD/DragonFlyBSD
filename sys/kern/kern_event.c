@@ -148,7 +148,7 @@ static struct filterops fs_filtops =
 	{ FILTEROP_MPSAFE, filt_fsattach, filt_fsdetach, filt_fs };
 
 static int 		kq_ncallouts = 0;
-static int 		kq_calloutmax = (4 * 1024);
+static int 		kq_calloutmax = 65536;
 SYSCTL_INT(_kern, OID_AUTO, kq_calloutmax, CTLFLAG_RW,
     &kq_calloutmax, 0, "Maximum number of callouts allocated for kqueue");
 static int		kq_checkloop = 1000000;
@@ -432,7 +432,7 @@ filt_timerreset(struct knote *kn)
 }
 
 /*
- * The callout interlocks with callout_terminate() but can still
+ * The callout interlocks with callout_stop() but can still
  * race a deletion so if KN_DELETING is set we just don't touch
  * the knote.
  */
@@ -498,8 +498,12 @@ filt_timerattach(struct knote *kn)
 /*
  * This function is called with the knote flagged locked but it is
  * still possible to race a callout event due to the callback blocking.
- * We must call callout_terminate() instead of callout_stop() to deal
- * with the race.
+ *
+ * NOTE: Even though the note is locked via KN_PROCSESING, filt_timerexpire()
+ *	 can still race us requeue the callout due to potential token cycling
+ *	 from various blocking conditions.  If this situation arises,
+ *	 callout_stop_sync() will always return non-zero and we can simply
+ *	 retry the operation.
  */
 static void
 filt_timerdetach(struct knote *kn)
@@ -507,7 +511,11 @@ filt_timerdetach(struct knote *kn)
 	struct callout *calloutp;
 
 	calloutp = (struct callout *)kn->kn_hook;
-	callout_terminate(calloutp);
+	while (callout_stop_sync(calloutp)) {
+		kprintf("debug: kqueue timer race fixed, pid %d %s\n",
+			(curthread->td_proc ? curthread->td_proc->p_pid : 0),
+			curthread->td_comm);
+	}
 	kn->kn_hook = NULL;
 	kfree(calloutp, M_KQUEUE);
 	atomic_subtract_int(&kq_ncallouts, 1);
