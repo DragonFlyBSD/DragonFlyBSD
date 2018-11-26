@@ -21,6 +21,9 @@ all:
 	    ${INITRD_MAKE} obj; \
 	    ${INITRD_MAKE} depend all)
 .endfor
+	@echo "--------------------------------------------------------------"
+	@echo ">>> complete building rescue and initrd"
+	@echo "--------------------------------------------------------------"
 
 
 install:
