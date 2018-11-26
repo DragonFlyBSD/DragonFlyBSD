@@ -91,6 +91,14 @@ can remove this option from it now.
 +         UPGRADING DRAGONFLY FROM 4.6 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+DSA OPENSSH KEYS DEPRECATED
+---------------------------
+
+Note that DSA OpenSSH keys were deprecated in the 4.6 to 4.8 release. 
+If you are upgrading from a release older than 4.8 and use DSA OpenSSH 
+keys, please update your private/public key pair or risk locking 
+yourself out.
+
 AHC, AHD, AIC, NCV, NSP AND STG DRIVERS REMOVED
 -----------------------------------------------
 
