@@ -185,11 +185,8 @@ static __inline int *__error(void)
 
 #if __BSD_VISIBLE
 #define	ENOMEDIUM	93		/* linux */
-#define	EUNUSED94	94
-#define	EUNUSED95	95
-#define	EUNUSED96	96
-#define	EUNUSED97	97
-#define	EUNUSED98	98
+
+/* Error numbers 94 to 98 (inclusive) are unused. */
 
 #define	EASYNC		99		/* XXX */
 
