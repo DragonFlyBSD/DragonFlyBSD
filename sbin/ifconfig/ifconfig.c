@@ -77,6 +77,7 @@ int	doalias;
 int	clearaddr;
 int	newaddr = 1;
 int	verbose;
+int	noload;
 
 int	supmedia = 0;
 int	printkeys = 0;		/* Print keying material for interfaces. */
@@ -118,9 +119,10 @@ usage(void)
 	}
 
 	fprintf(stderr,
-	"usage: ifconfig %sinterface address_family [address [dest_address]]\n"
+	"usage: ifconfig %s[-n] interface address_family [address [dest_address]]\n"
 	"                [parameters]\n"
-	"       ifconfig interface create\n"
+	"       ifconfig [-n] interface create\n"
+	"       ifconfig [-n] interface destroy\n"
 	"       ifconfig -a %s[-d] [-m] [-u] [-v] [address_family]\n"
 	"       ifconfig -l [-d] [-u] [address_family]\n"
 	"       ifconfig %s[-d] [-m] [-u] [-v]\n",
@@ -152,7 +154,7 @@ main(int argc, char *argv[])
 	struct option *p;
 	size_t iflen;
 
-	all = downonly = uponly = namesonly = verbose = 0;
+	all = downonly = uponly = namesonly = verbose = noload = 0;
 
 	/*
 	 * Ensure we print interface name when expected to,
@@ -161,7 +163,7 @@ main(int argc, char *argv[])
 	atexit(printifnamemaybe);
 
 	/* Parse leading line options */
-	strlcpy(options, "adklmuv", sizeof(options));
+	strlcpy(options, "adklmnuv", sizeof(options));
 	for (p = opts; p != NULL; p = p->next)
 		strlcat(options, p->opt, sizeof(options));
 	while ((c = getopt(argc, argv, options)) != -1) {
@@ -180,6 +182,9 @@ main(int argc, char *argv[])
 			break;
 		case 'm':	/* show media choices in status */
 			supmedia = 1;
+			break;
+		case 'n':	/* suppress module loading */
+			noload++;
 			break;
 		case 'u':	/* restrict scan to "up" interfaces */
 			uponly++;
@@ -1034,6 +1039,10 @@ ifmaybeload(const char *name)
 	int fileid, modid;
 	char ifkind[IFNAMSIZ + MOD_PREFIX_LEN], ifname[IFNAMSIZ], *dp;
 	const char *cp;
+
+	/* loading suppressed by the user */
+	if (noload)
+		return;
 
 	/* trim the interface number off the end */
 	strlcpy(ifname, name, sizeof(ifname));
