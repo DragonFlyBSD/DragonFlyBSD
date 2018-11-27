@@ -117,6 +117,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <limits.h>
 
 #define kmalloc(a,b,c)	malloc(a)
 #define kfree(a,b)	free(a)
@@ -202,13 +203,14 @@ blist_create(swblk_t blocks)
 
 #if defined(BLIST_DEBUG)
 	kprintf(
-		"BLIST representing %d blocks (%d MB of swap)"
-		", requiring %dK of ram\n",
+		"BLIST representing %lu blocks (%lu MB of swap)"
+		", requiring %6.2fM of ram\n",
 		bl->bl_blocks,
 		bl->bl_blocks * 4 / 1024,
-		(bl->bl_rootblks * sizeof(blmeta_t) + 1023) / 1024
+		(bl->bl_rootblks * sizeof(blmeta_t) + 1023) / (1024.0 * 1024.0)
 	);
-	kprintf("BLIST raw radix tree contains %d records\n", bl->bl_rootblks);
+	kprintf("BLIST raw radix tree: %lu records, top-radix %lu\n",
+		bl->bl_rootblks, bl->bl_radix);
 #endif
 	blst_radix_init(bl->bl_root, bl->bl_radix, bl->bl_skip, blocks);
 
@@ -450,8 +452,11 @@ blst_meta_alloc(blmeta_t *scan, swblk_t blkat,
 		int64_t radix, swblk_t skip)
 {
 	int hintok = (blk >= blkat);
-	swblk_t next_skip = ((u_int)skip / BLIST_META_RADIX);
+	swblk_t next_skip = ((swblk_t)skip / BLIST_META_RADIX);
 	swblk_t i;
+
+	kprintf("blist_meta_alloc blkat %ld blk %ld count %ld radix %ld\n",
+		blkat, blk, count, radix);
 
 	/*
 	 * ALL-ALLOCATED special case
@@ -518,7 +523,8 @@ blst_meta_alloc(blmeta_t *scan, swblk_t blkat,
 			 * count does not fit in object even if it were
 			 * complete free.
 			 */
-			panic("blist_meta_alloc: allocation too large");
+			panic("blist_meta_alloc: allocation too large %lu/%lu",
+			      count, radix);
 		}
 		blk += (swblk_t)radix;
 	}
@@ -580,12 +586,12 @@ blst_meta_free(blmeta_t *scan, swblk_t freeBlk, swblk_t count,
 	       int64_t radix, swblk_t skip, swblk_t blk)
 {
 	swblk_t i;
-	swblk_t next_skip = ((u_int)skip / BLIST_META_RADIX);
+	swblk_t next_skip = ((swblk_t)skip / BLIST_META_RADIX);
 
 #if 0
-	kprintf("FREE (%x,%d) FROM (%x,%lld)\n",
+	kprintf("FREE (%lx,%lu) FROM (%lx,%lu)\n",
 	    freeBlk, count,
-	    blk, (long long)radix
+	    blk, radix
 	);
 #endif
 
@@ -631,8 +637,8 @@ blst_meta_free(blmeta_t *scan, swblk_t freeBlk, swblk_t count,
 	 */
 	if (scan->u.bmu_avail > radix) {
 		panic("blst_meta_free: freeing already "
-		      "free blocks (%ld) %ld/%lld",
-		      count, (long)scan->u.bmu_avail, (long long)radix);
+		      "free blocks (%lu) %lu/%lu",
+		      count, (long)scan->u.bmu_avail, radix);
 	}
 
 	radix /= BLIST_META_RADIX;
@@ -715,7 +721,7 @@ blst_meta_fill(blmeta_t *scan, swblk_t fillBlk, swblk_t count,
 	       int64_t radix, swblk_t skip, swblk_t blk)
 {
 	swblk_t i;
-	swblk_t next_skip = ((u_int)skip / BLIST_META_RADIX);
+	swblk_t next_skip = ((swblk_t)skip / BLIST_META_RADIX);
 	swblk_t nblks = 0;
 
 	if (count == radix || scan->u.bmu_avail == 0) {
@@ -960,9 +966,9 @@ blst_radix_print(blmeta_t *scan, swblk_t blk, int64_t radix, swblk_t skip, int t
 
 	if (radix == BLIST_BMAP_RADIX) {
 		kprintf(
-		    "%*.*s(%04x,%lld): bitmap %08x big=%d\n",
+		    "%*.*s(%04lx,%lu): bitmap %016lx big=%lu\n",
 		    tab, tab, "",
-		    blk, (long long)radix,
+		    blk, radix,
 		    scan->u.bmu_bitmap,
 		    scan->bm_bighint
 		);
@@ -971,25 +977,25 @@ blst_radix_print(blmeta_t *scan, swblk_t blk, int64_t radix, swblk_t skip, int t
 
 	if (scan->u.bmu_avail == 0) {
 		kprintf(
-		    "%*.*s(%04x,%lld) ALL ALLOCATED\n",
+		    "%*.*s(%04lx,%ld) ALL ALLOCATED\n",
 		    tab, tab, "",
 		    blk,
-		    (long long)radix
+		    radix
 		);
 		return;
 	}
 	if (scan->u.bmu_avail == radix) {
 		kprintf(
-		    "%*.*s(%04x,%lld) ALL FREE\n",
+		    "%*.*s(%04lx,%ld) ALL FREE\n",
 		    tab, tab, "",
 		    blk,
-		    (long long)radix
+		    radix
 		);
 		return;
 	}
 
 	kprintf(
-	    "%*.*s(%04x,%lld): subtree (%d/%lld) big=%d {\n",
+	    "%*.*s(%04lx,%lu): subtree (%lu/%lu) big=%lu {\n",
 	    tab, tab, "",
 	    blk, (long long)radix,
 	    scan->u.bmu_avail,
@@ -1004,9 +1010,9 @@ blst_radix_print(blmeta_t *scan, swblk_t blk, int64_t radix, swblk_t skip, int t
 	for (i = 1; i <= skip; i += next_skip) {
 		if (scan[i].bm_bighint == (swblk_t)-1) {
 			kprintf(
-			    "%*.*s(%04x,%lld): Terminator\n",
+			    "%*.*s(%04lx,%ld): Terminator\n",
 			    tab, tab, "",
-			    blk, (long long)radix
+			    blk, radix
 			);
 			break;
 		}
@@ -1058,14 +1064,14 @@ main(int ac, char **av)
 		swblk_t blkat;
 
 
-		kprintf("%d/%d/%lld> ",
+		kprintf("%lu/%lu/%llu> ",
 			bl->bl_free, size, (long long)bl->bl_radix);
 		fflush(stdout);
 		if (fgets(buf, sizeof(buf), stdin) == NULL)
 			break;
 		switch(buf[0]) {
 		case 'r':
-			if (sscanf(buf + 1, "%d", &count) == 1) {
+			if (sscanf(buf + 1, "%li", &count) == 1) {
 				blist_resize(&bl, count, 1);
 				size = count;
 			} else {
@@ -1075,26 +1081,27 @@ main(int ac, char **av)
 			blist_print(bl);
 			break;
 		case 'a':
-			if (sscanf(buf + 1, "%d %d", &count, &blkat) == 1) {
+			if (sscanf(buf + 1, "%li %li", &count, &blkat) == 1) {
+				kprintf("count %ld\n", count);
 				swblk_t blk = blist_alloc(bl, count);
-				kprintf("    R=%04x\n", blk);
-			} else if (sscanf(buf + 1, "%d %d", &count, &blkat) == 2) {
+				kprintf("    R=%04lx\n", blk);
+			} else if (sscanf(buf + 1, "%li %li", &count, &blkat) == 2) {
 				swblk_t blk = blist_allocat(bl, count, blkat);
-				kprintf("    R=%04x\n", blk);
+				kprintf("    R=%04lx\n", blk);
 			} else {
 				kprintf("?\n");
 			}
 			break;
 		case 'f':
-			if (sscanf(buf + 1, "%x %d", &da, &count) == 2) {
+			if (sscanf(buf + 1, "%li %li", &da, &count) == 2) {
 				blist_free(bl, da, count);
 			} else {
 				kprintf("?\n");
 			}
 			break;
 		case 'l':
-			if (sscanf(buf + 1, "%x %d", &da, &count) == 2) {
-				printf("    n=%d\n",
+			if (sscanf(buf + 1, "%li %li", &da, &count) == 2) {
+				printf("    n=%lu\n",
 				    blist_fill(bl, da, count));
 			} else {
 				kprintf("?\n");
@@ -1104,11 +1111,12 @@ main(int ac, char **av)
 		case 'h':
 			puts(
 			    "p          -print\n"
-			    "a %d       -allocate\n"
-			    "f %x %d    -free\n"
-			    "l %x %d	-fill\n"
-			    "r %d       -resize\n"
-			    "h/?        -help"
+			    "a %li      -allocate\n"
+			    "f %li %li  -free\n"
+			    "l %li %li	-fill\n"
+			    "r %li      -resize\n"
+			    "h/?        -help\n"
+			    "    hex may be specified with 0x prefix\n"
 			);
 			break;
 		default:
