@@ -3,7 +3,7 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013-2017 Mellanox Technologies, Ltd.
- * Copyright (c) 2013-2017 François Tigeot
+ * Copyright (c) 2013-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,6 +32,7 @@
 #define	_LINUX_ATOMIC_H_
 
 #include <asm/atomic.h>
+#include <asm/barrier.h>
 
 typedef struct {
 	volatile u_int counter;

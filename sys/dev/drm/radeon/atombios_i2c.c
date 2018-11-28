@@ -25,7 +25,7 @@
  */
 
 #include <drm/drmP.h>
-#include <uapi_drm/radeon_drm.h>
+#include <drm/radeon_drm.h>
 #include <bus/iicbus/iic.h>
 #include <bus/iicbus/iiconf.h>
 #include <bus/iicbus/iicbus.h>

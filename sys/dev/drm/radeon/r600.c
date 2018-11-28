@@ -29,7 +29,7 @@
 #include <linux/firmware.h>
 #include <linux/module.h>
 #include <drm/drmP.h>
-#include <uapi_drm/radeon_drm.h>
+#include <drm/radeon_drm.h>
 #include "radeon.h"
 #include "radeon_asic.h"
 #include "radeon_mode.h"

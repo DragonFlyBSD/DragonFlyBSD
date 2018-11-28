@@ -38,7 +38,7 @@
 #include <drm/ttm/ttm_module.h>
 #include <drm/ttm/ttm_page_alloc.h>
 #include <drm/drmP.h>
-#include <uapi_drm/radeon_drm.h>
+#include <drm/radeon_drm.h>
 #include <linux/seq_file.h>
 #include <linux/slab.h>
 #include "radeon_reg.h"

@@ -27,7 +27,7 @@
  */
 #include <drm/drmP.h>
 #include "radeon.h"
-#include <uapi_drm/radeon_drm.h>
+#include <drm/radeon_drm.h>
 #include "radeon_asic.h"
 #include "radeon_kms.h"
 

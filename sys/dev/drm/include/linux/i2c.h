@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2017 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2013-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,7 +31,7 @@
 #include <linux/device.h>	/* for struct device */
 #include <linux/sched.h>	/* for completion */
 #include <linux/mutex.h>
-#include <uapi_linux/i2c.h>
+#include <uapi/linux/i2c.h>
 
 #include <bus/iicbus/iic.h>
 

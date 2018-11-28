@@ -96,6 +96,7 @@ SRCS   += acpi_if.h device_if.h bus_if.h pci_if.h \
 	  opt_acpi.h opt_drm.h opt_ktr.h
 
 KCFLAGS+= -I${SYSDIR}/dev/drm/include
+KCFLAGS+= -I${SYSDIR}/dev/drm/include/uapi
 KCFLAGS+= -I${SYSDIR}/contrib/dev/acpica/source/include
 KCFLAGS+= -include ${SYSDIR}/dev/drm/kconfig.h
 

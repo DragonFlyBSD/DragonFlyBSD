@@ -29,7 +29,7 @@
 #include <drm/drmP.h>
 #include <drm/drm_crtc.h>
 #include <drm/drm_crtc_helper.h>
-#include <uapi_drm/radeon_drm.h>
+#include <drm/radeon_drm.h>
 #include "radeon.h"
 
 #include <drm/drm_fb_helper.h>

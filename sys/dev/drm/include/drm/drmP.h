@@ -63,8 +63,8 @@
 #include <asm/pgalloc.h>
 #include <asm/uaccess.h>
 
-#include <uapi_drm/drm.h>
-#include <uapi_drm/drm_mode.h>
+#include <uapi/drm/drm.h>
+#include <uapi/drm/drm_mode.h>
 
 #include <drm/drm_agpsupport.h>
 #include <drm/drm_crtc.h>
@@ -73,7 +73,7 @@
 #include <drm/drm_mem_util.h>
 #include <drm/drm_mm.h>
 #include <drm/drm_os_linux.h>
-#include <uapi_drm/drm_sarea.h>
+#include <drm/drm_sarea.h>
 #include <drm/drm_vma_manager.h>
 
 #include <sys/device.h>

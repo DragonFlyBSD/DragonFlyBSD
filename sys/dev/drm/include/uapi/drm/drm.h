@@ -681,7 +681,7 @@ struct drm_prime_handle {
 	__s32 fd;
 };
 
-#include <uapi_drm/drm_mode.h>
+#include "drm_mode.h"
 
 #define DRM_IOCTL_BASE			'd'
 #define DRM_IO(nr)			_IO(DRM_IOCTL_BASE,nr)

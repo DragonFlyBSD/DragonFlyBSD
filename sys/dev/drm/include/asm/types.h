@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 François Tigeot
+ * Copyright (c) 2017-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,6 @@
 #ifndef _ASM_TYPES_H
 #define _ASM_TYPES_H
 
-#include <uapi_asm-generic/int-ll64.h>
+#include <uapi/asm-generic/int-ll64.h>
 
 #endif /* _ASM_TYPES_H */

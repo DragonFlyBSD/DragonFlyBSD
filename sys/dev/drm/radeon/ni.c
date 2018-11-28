@@ -26,7 +26,7 @@
 #include <drm/drmP.h>
 #include "radeon.h"
 #include "radeon_asic.h"
-#include <uapi_drm/radeon_drm.h>
+#include <drm/radeon_drm.h>
 #include "nid.h"
 #include "atom.h"
 #include "ni_reg.h"

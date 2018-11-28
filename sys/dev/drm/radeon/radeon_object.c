@@ -30,7 +30,7 @@
  *    Dave Airlie
  */
 #include <drm/drmP.h>
-#include <uapi_drm/radeon_drm.h>
+#include <drm/radeon_drm.h>
 #include "radeon.h"
 #ifdef TRACE_TODO
 #include "radeon_trace.h"

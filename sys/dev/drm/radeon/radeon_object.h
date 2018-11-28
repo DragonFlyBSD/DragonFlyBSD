@@ -29,7 +29,7 @@
 #ifndef __RADEON_OBJECT_H__
 #define __RADEON_OBJECT_H__
 
-#include <uapi_drm/radeon_drm.h>
+#include <drm/radeon_drm.h>
 #include "radeon.h"
 
 /*

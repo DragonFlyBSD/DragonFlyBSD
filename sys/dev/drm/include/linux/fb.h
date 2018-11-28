@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 François Tigeot
+ * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,12 +27,15 @@
 #ifndef _LINUX_FB_H_
 #define _LINUX_FB_H_
 
-#include <uapi_linux/fb.h>
+#include <uapi/linux/fb.h>
 
 #include <linux/fs.h>
+#include <linux/init.h>
+#include <linux/workqueue.h>
 #include <linux/notifier.h>
 #include <linux/list.h>
 #include <linux/backlight.h>
+#include <asm/io.h>
 
 #include <machine/framebuffer.h>
 

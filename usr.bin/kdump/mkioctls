@@ -28,9 +28,9 @@ ioctl_includes=`
 '^#[ 	]*define[ 	]+[A-Za-z_][A-Za-z0-9_]*[ 	]+_IO[^a-z0-9_]' |
 		awk '{printf("#include <%s>\\\\n", $1)}'
 	printf '#undef loff_t /* XXX ext2_fs.h defines it */\\\\n'
-	printf '#include <dev/drm/include/uapi_drm/drm.h>\\\\n'
-	printf '#include <dev/drm/include/uapi_drm/i915_drm.h>\\\\n'
-	printf '#include <dev/drm/include/uapi_drm/radeon_drm.h>\\\\n'
+	printf '#include <dev/drm/include/uapi/drm/drm.h>\\\\n'
+	printf '#include <dev/drm/include/uapi/drm/i915_drm.h>\\\\n'
+	printf '#include <dev/drm/include/uapi/drm/radeon_drm.h>\\\\n'
 `
 
 awk -v x="$ioctl_includes" 'BEGIN {print x}' |

@@ -30,7 +30,7 @@
 #include <drm/drmP.h>
 #include "drm/drm_legacy.h"		/* for drm_dma_handle_t */
 #include <drm/drm_crtc_helper.h>
-#include <uapi_drm/radeon_drm.h>
+#include <drm/radeon_drm.h>
 #include <asm/io.h>
 #include "radeon_reg.h"
 #include "radeon.h"

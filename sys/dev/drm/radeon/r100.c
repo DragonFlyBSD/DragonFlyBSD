@@ -28,7 +28,7 @@
  * $FreeBSD: head/sys/dev/drm2/radeon/r100.c 255573 2013-09-14 17:24:41Z dumbbell $
  */
 #include <drm/drmP.h>
-#include <uapi_drm/radeon_drm.h>
+#include <drm/radeon_drm.h>
 #include "radeon_reg.h"
 #include "radeon.h"
 #include "radeon_asic.h"

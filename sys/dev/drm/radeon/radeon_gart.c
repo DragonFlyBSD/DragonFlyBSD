@@ -27,10 +27,9 @@
  *
  * $FreeBSD: head/sys/dev/drm2/radeon/radeon_gart.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
-
 #include <drm/drmP.h>
 #include "drm/drm_legacy.h"		/* for drm_dma_handle_t */
-#include <uapi_drm/radeon_drm.h>
+#include <drm/radeon_drm.h>
 #include "radeon.h"
 
 /*

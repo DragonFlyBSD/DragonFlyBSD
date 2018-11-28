@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 François Tigeot
+ * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,6 +26,9 @@
 
 #ifndef _UAPI_LINUX_FB_H_
 #define _UAPI_LINUX_FB_H_
+
+#include <linux/types.h>
+#include <linux/i2c.h>
 
 struct fb_var_screeninfo {
 };

@@ -26,7 +26,7 @@
 #ifndef	_LINUX_TYPES_H_
 #define	_LINUX_TYPES_H_
 
-#include <uapi_linux/types.h>
+#include <uapi/linux/types.h>
 #include <linux/compiler.h>
 
 typedef unsigned int gfp_t;

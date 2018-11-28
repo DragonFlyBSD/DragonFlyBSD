@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 François Tigeot
+ * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,7 @@
 #ifndef _ASM_GENERIC_INT_LL64_H_
 #define _ASM_GENERIC_INT_LL64_H_
 
-#include <uapi_asm-generic/int-ll64.h>
+#include <uapi/asm-generic/int-ll64.h>
 
 typedef int8_t s8;
 typedef uint8_t u8;

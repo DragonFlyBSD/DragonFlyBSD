@@ -10,7 +10,7 @@
 #include <linux/kconfig.h>
 #include <sys/agpio.h>
 #include <dev/agp/agpvar.h>
-#include <uapi_drm/drm.h>
+#include <uapi/drm/drm.h>
 
 struct drm_device;
 struct drm_file;
