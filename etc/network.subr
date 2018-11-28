@@ -584,7 +584,7 @@ network6_interface_setup()
 				esac
 			done
 		fi
-		ipv6_ifconfig=`get_if_var $i ipv6_ifconfig_IF`
+		ipv6_ifconfig=`ifconfig_getargs $i ipv6`
 		if [ -n "${ipv6_ifconfig}" ]; then
 			rtsol_available=no
 			rtsol_interface=no
