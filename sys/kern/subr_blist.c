@@ -455,8 +455,10 @@ blst_meta_alloc(blmeta_t *scan, swblk_t blkat,
 	swblk_t next_skip = ((swblk_t)skip / BLIST_META_RADIX);
 	swblk_t i;
 
+#ifndef _KERNEL
 	kprintf("blist_meta_alloc blkat %ld blk %ld count %ld radix %ld\n",
 		blkat, blk, count, radix);
+#endif
 
 	/*
 	 * ALL-ALLOCATED special case
