@@ -226,7 +226,7 @@ killalllwps(int forexec)
 	/*
 	 * Undo temporary stopped state
 	 */
-	if (fakestop) {
+	if (fakestop && (lp->lwp_mpflags & LWP_MP_WSTOP)) {
 		atomic_clear_int(&lp->lwp_mpflags, LWP_MP_WSTOP);
 		--p->p_nstopped;
 	}

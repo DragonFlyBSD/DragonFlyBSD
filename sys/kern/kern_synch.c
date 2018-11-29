@@ -597,10 +597,13 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 		 * this juncture because that will mess-up the state the
 		 * coredump is trying to save.
 		 */
-		if (p->p_stat == SCORE &&
-		    (lp->lwp_mpflags & LWP_MP_WSTOP) == 0) {
-			atomic_set_int(&lp->lwp_mpflags, LWP_MP_WSTOP);
-			++p->p_nstopped;
+		if (p->p_stat == SCORE) {
+			lwkt_gettoken(&p->p_token);
+			if ((lp->lwp_mpflags & LWP_MP_WSTOP) == 0) {
+				atomic_set_int(&lp->lwp_mpflags, LWP_MP_WSTOP);
+				++p->p_nstopped;
+			}
+			lwkt_reltoken(&p->p_token);
 		}
 
 		/*
