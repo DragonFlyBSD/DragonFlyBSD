@@ -3152,7 +3152,6 @@ TO_REMOVE+=/usr/lib/libprivate_panelw.so.59
 TO_REMOVE+=/usr/lib/libprivate_panelw.so.60
 TO_REMOVE+=/usr/lib/profile/libprivate_panel.a
 TO_REMOVE+=/usr/lib/profile/libprivate_panelw.a
-TO_REMOVE+=/usr/include/compat
 TO_REMOVE+=/usr/include/sys/stdbool.h
 TO_REMOVE+=/usr/share/man/man3/ascftime.3.gz
 TO_REMOVE+=/usr/share/man/man3/cfree.3.gz

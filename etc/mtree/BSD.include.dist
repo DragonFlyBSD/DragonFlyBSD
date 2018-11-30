@@ -247,6 +247,10 @@
             ..
         ..
     ..
+    compat
+        linux
+        ..
+    ..
     cpu
     ..
     crypto
