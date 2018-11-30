@@ -179,6 +179,12 @@ copies:		mtree_setup
 	cd ${.CURDIR}/../sys/dev/misc/evdev; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 input-event-codes.h \
 		${DESTDIR}/usr/include/dev/misc/evdev
+	cd ${.CURDIR}/../sys/dev/misc/evdev; \
+		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 input.h \
+		${DESTDIR}/usr/include/compat/linux
+	cd ${.CURDIR}/../sys/dev/misc/evdev; \
+		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 input-event-codes.h \
+		${DESTDIR}/usr/include/compat/linux
 .if exists(${.CURDIR}/../sys/cpu/${MACHINE_ARCH}/include)
 	cd ${.CURDIR}/../sys/cpu/${MACHINE_ARCH}/include; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 *.h \
