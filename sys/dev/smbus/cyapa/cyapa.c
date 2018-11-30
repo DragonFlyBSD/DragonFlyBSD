@@ -114,7 +114,6 @@
 #include <sys/conf.h>
 #include <sys/uio.h>
 #include <sys/fcntl.h>
-/*#include <sys/input.h>*/
 #include <sys/vnode.h>
 #include <sys/sysctl.h>
 #include <sys/event.h>
