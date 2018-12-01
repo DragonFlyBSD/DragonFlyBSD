@@ -59,7 +59,8 @@ values are available:
 NULL refers to the current locale for the thread,
 or to the global locale if no locale has been set for this thread.
 .It
-LC_GLOBAL_LOCALE refers to the global locale.
+.Dv LC_GLOBAL_LOCALE
+refers to the global locale.
 .El
 .Pp
 The global locale is the locale set with the
@@ -81,7 +82,8 @@ that have been modified to take an explicit
 .Fa locale_t
 parameter as the final argument or, in the case of variadic functions,
 as an additional argument directly before the format string.
-Each of these functions accepts either NULL or LC_GLOBAL_LOCALE.
+Each of these functions accepts either NULL or
+.Dv LC_GLOBAL_LOCALE .
 In these functions, NULL refers to the C locale,
 rather than the thread's current locale.
 If you wish to use the thread's current locale,

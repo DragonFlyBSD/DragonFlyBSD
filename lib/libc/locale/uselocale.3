@@ -42,12 +42,13 @@
 .Sh DESCRIPTION
 Specifies the locale for this thread to use.
 Specifying
-.Fa LC_GLOBAL_LOCALE
+.Dv LC_GLOBAL_LOCALE
 disables the per-thread locale,
 while NULL returns the current locale without setting a new one.
 .Sh RETURN VALUES
-Returns the previous locale,
-or LC_GLOBAL_LOCALE if this thread has no locale associated with it.
+Returns the previous locale, or
+.Dv LC_GLOBAL_LOCALE
+if this thread has no locale associated with it.
 .Sh SEE ALSO
 .Xr duplocale 3 ,
 .Xr freelocale 3 ,
