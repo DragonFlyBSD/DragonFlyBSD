@@ -78,10 +78,8 @@ hammer2_inode_delayed_sideq(hammer2_inode_t *ip)
 			atomic_set_int(&ip->flags, HAMMER2_INODE_SIDEQ);
 			TAILQ_INSERT_TAIL(&pmp->sideq, ip, entry);
 			++pmp->sideq_count;
-			hammer2_spin_unex(&pmp->list_spin);
-		} else {
-			hammer2_spin_unex(&pmp->list_spin);
 		}
+		hammer2_spin_unex(&pmp->list_spin);
 	}
 }
 
@@ -218,46 +216,56 @@ hammer2_inode_lock4(hammer2_inode_t *ip1, hammer2_inode_t *ip2,
 		hammer2_inode_ref(ips[i]);
 
 restart:
-	dosyncq = 0;
-
 	/*
 	 * Lock the inodes in order
 	 */
 	for (i = 0; i < count; ++i) {
 		iptmp = ips[i];
 		hammer2_mtx_ex(&iptmp->lock);
-		if (iptmp->flags & HAMMER2_INODE_SYNCQ)
-			dosyncq |= 1;
-		if (iptmp->flags & HAMMER2_INODE_SYNCQ_PASS2)
-			dosyncq |= 2;
 	}
 
 	/*
 	 * If any of the inodes are part of a filesystem sync then we
 	 * have to make sure they ALL are, because their modifications
 	 * depend on each other (e.g. inode vs dirent).
+	 *
+	 * All PASS2 flags must be set atomically with the spinlock held
+	 * to ensure that they are flushed together.
 	 */
-	for (i = 0; (dosyncq & 3) && i < count; ++i) {
+	hammer2_spin_ex(&pmp->list_spin);
+	dosyncq = 0;
+	for (i = 0; i < count; ++i) {
 		iptmp = ips[i];
-		hammer2_spin_ex(&pmp->list_spin);
-		atomic_set_int(&iptmp->flags, HAMMER2_INODE_SYNCQ_WAKEUP);
-		if (iptmp->flags & HAMMER2_INODE_SYNCQ) {
-			TAILQ_REMOVE(&pmp->syncq, iptmp, entry);
-			TAILQ_INSERT_HEAD(&pmp->syncq, iptmp, entry);
-		} else if (iptmp->flags & HAMMER2_INODE_SIDEQ) {
-			atomic_set_int(&iptmp->flags,
-				       HAMMER2_INODE_SYNCQ_PASS2);
-			hammer2_trans_setflags(pmp, HAMMER2_TRANS_RESCAN);
-		} else {
-			atomic_set_int(&iptmp->flags,
-				       HAMMER2_INODE_SIDEQ |
-				       HAMMER2_INODE_SYNCQ_PASS2);
-			TAILQ_INSERT_TAIL(&pmp->sideq, iptmp, entry);
-			hammer2_inode_ref(iptmp);
-			hammer2_trans_setflags(pmp, HAMMER2_TRANS_RESCAN);
-		}
-		hammer2_spin_unex(&pmp->list_spin);
+		if (iptmp->flags & HAMMER2_INODE_SYNCQ)
+			dosyncq |= 1;
+		if (iptmp->flags & HAMMER2_INODE_SYNCQ_PASS2)
+			dosyncq |= 2;
 	}
+	if (dosyncq & 3) {
+		for (i = 0; i < count; ++i) {
+			iptmp = ips[i];
+			atomic_set_int(&iptmp->flags,
+				       HAMMER2_INODE_SYNCQ_WAKEUP);
+			if (iptmp->flags & HAMMER2_INODE_SYNCQ) {
+				TAILQ_REMOVE(&pmp->syncq, iptmp, entry);
+				TAILQ_INSERT_HEAD(&pmp->syncq, iptmp, entry);
+			} else if (iptmp->flags & HAMMER2_INODE_SIDEQ) {
+				atomic_set_int(&iptmp->flags,
+					       HAMMER2_INODE_SYNCQ_PASS2);
+				hammer2_trans_setflags(pmp,
+						       HAMMER2_TRANS_RESCAN);
+			} else {
+				atomic_set_int(&iptmp->flags,
+					       HAMMER2_INODE_SIDEQ |
+					       HAMMER2_INODE_SYNCQ_PASS2);
+				TAILQ_INSERT_TAIL(&pmp->sideq, iptmp, entry);
+				hammer2_inode_ref(iptmp);
+				hammer2_trans_setflags(pmp,
+						       HAMMER2_TRANS_RESCAN);
+			}
+		}
+	}
+	hammer2_spin_unex(&pmp->list_spin);
 
 	/*
 	 * Block and retry if any of the inodes are on SYNCQ.  It is
@@ -284,8 +292,10 @@ restart:
 		 * We have to accept the inode if it's got more than one
 		 * exclusive count because we can't safely unlock it.
 		 */
-		if (hammer2_mtx_refs(&iptmp->lock) > 1)
+		if (hammer2_mtx_refs(&iptmp->lock) > 1) {
+			kprintf("hammer2: exclcount > 1: %p %ld\n", iptmp, hammer2_mtx_refs(&iptmp->lock));
 			continue;
+		}
 
 		/*
 		 * Unlock everything (including the current index) and wait
@@ -337,18 +347,20 @@ hammer2_inode_depend(hammer2_inode_t *ip1, hammer2_inode_t *ip2)
 
 	pmp = ip1->pmp;
 
+	hammer2_spin_ex(&pmp->list_spin);
 	if (((ip1->flags | ip2->flags) & (HAMMER2_INODE_SYNCQ |
 					  HAMMER2_INODE_SYNCQ_PASS2)) == 0) {
+		hammer2_spin_unex(&pmp->list_spin);
 		return;
 	}
 	if ((ip1->flags & (HAMMER2_INODE_SYNCQ |
 			   HAMMER2_INODE_SYNCQ_PASS2)) &&
 	    (ip2->flags & (HAMMER2_INODE_SYNCQ |
 			   HAMMER2_INODE_SYNCQ_PASS2))) {
+		hammer2_spin_unex(&pmp->list_spin);
 		return;
 	}
 	KKASSERT(pmp == ip2->pmp);
-	hammer2_spin_ex(&pmp->list_spin);
 	if ((ip1->flags & (HAMMER2_INODE_SYNCQ |
 			   HAMMER2_INODE_SYNCQ_PASS2)) == 0) {
 		if (ip1->flags & HAMMER2_INODE_SIDEQ) {
@@ -1083,7 +1095,7 @@ hammer2_inode_create_normal(hammer2_inode_t *pip,
 
 	*errorp = 0;
 
-	hammer2_inode_lock(dip, 0);
+	/*hammer2_inode_lock(dip, 0);*/
 
 	pip_uid = pip->meta.uid;
 	pip_gid = pip->meta.gid;
@@ -1202,7 +1214,7 @@ hammer2_inode_create_normal(hammer2_inode_t *pip,
 	hammer2_inode_repoint(nip, NULL, &xop->head.cluster);
 done:
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
-	hammer2_inode_unlock(dip);
+	/*hammer2_inode_unlock(dip);*/
 
 	return (nip);
 }
@@ -1212,6 +1224,8 @@ done:
  * and OBJTYPE (type).
  *
  * This returns a UNIX errno code, not a HAMMER2_ERROR_* code.
+ *
+ * Caller must hold dip locked.
  */
 int
 hammer2_dirent_create(hammer2_inode_t *dip, const char *name, size_t name_len,
@@ -1237,7 +1251,6 @@ hammer2_dirent_create(hammer2_inode_t *dip, const char *name, size_t name_len,
 	 * two different creates can end up with the same lhc so we
 	 * cannot depend on the OS to prevent the collision.
 	 */
-	hammer2_inode_lock(dip, 0);
 	hammer2_inode_modify(dip);
 
 	/*
@@ -1291,7 +1304,6 @@ hammer2_dirent_create(hammer2_inode_t *dip, const char *name, size_t name_len,
 	hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 done2:
 	error = hammer2_error_to_errno(error);
-	hammer2_inode_unlock(dip);
 
 	return error;
 }

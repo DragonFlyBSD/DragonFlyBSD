@@ -2447,8 +2447,8 @@ hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor)
 	 * Move all inodes on sideq to syncq.  This will clear sideq.
 	 * This should represent all flushable inodes.  These inodes
 	 * will already have refs due to being on syncq or sideq.  We
-	 * must do this all at once to ensure that inode dependencies
-	 * are part of the same flush.
+	 * must do this all at once with the spinlock held to ensure that
+	 * all inode dependencies are part of the same flush.
 	 *
 	 * We should be able to do this asynchronously from frontend
 	 * operations because we will be locking the inodes later on
@@ -2457,7 +2457,9 @@ hammer2_vfs_sync_pmp(hammer2_pfs_t *pmp, int waitfor)
 	 * inode and we will block, or it has not yet locked the inode
 	 * and it will block until we are finished flushing that inode.
 	 *
-	 * When restarting, only move the inodes flagged as PASS2.
+	 * When restarting, only move the inodes flagged as PASS2 from
+	 * SIDEQ to SYNCQ.  PASS2 propagation by inode_lock4() and
+	 * inode_depend() are atomic with the spin-lock.
 	 */
 	hammer2_trans_init(pmp, HAMMER2_TRANS_ISFLUSH);
 #ifdef HAMMER2_DEBUG_SYNC
@@ -2470,8 +2472,8 @@ restart:
 #endif
 	hammer2_trans_setflags(pmp, HAMMER2_TRANS_COPYQ);
 	hammer2_trans_clearflags(pmp, HAMMER2_TRANS_RESCAN);
-	hammer2_spin_ex(&pmp->list_spin);
 
+	hammer2_spin_ex(&pmp->list_spin);
 	ipdrop = TAILQ_FIRST(&pmp->sideq);
 	while ((ip = ipdrop) != NULL) {
 		ipdrop = TAILQ_NEXT(ip, entry);
@@ -2553,8 +2555,10 @@ restart:
 		if (vp) {
 			if (vget(vp, LK_EXCLUSIVE|LK_NOWAIT)) {
 				/*
-				 * Failed, move to SIDEQ.  It may already be
-				 * on the SIDEQ if we lost a race.
+				 * Failed to get the vnode, we have to
+				 * make sure the inode is on SYNCQ or SIDEQ.
+				 * It is already flagged PASS2. Then unlock,
+				 * possibly sleep, and retry later.
 				 */
 				vp = NULL;
 				dorestart = 1;
@@ -2565,21 +2569,12 @@ restart:
 				hammer2_spin_ex(&pmp->list_spin);
 				if ((ip->flags & (HAMMER2_INODE_SYNCQ |
 						  HAMMER2_INODE_SIDEQ)) == 0) {
-					/* XXX PASS2 redundant */
 					atomic_set_int(&ip->flags,
-						   HAMMER2_INODE_SIDEQ |
-						   HAMMER2_INODE_SYNCQ_PASS2);
+						   HAMMER2_INODE_SIDEQ);
 					TAILQ_INSERT_TAIL(&pmp->sideq, ip,
 							  entry);
 					hammer2_spin_unex(&pmp->list_spin);
 					hammer2_mtx_unlock(&ip->lock);
-				} else if (ip->flags & HAMMER2_INODE_SIDEQ) {
-					/* XXX PASS2 redundant */
-					atomic_set_int(&ip->flags,
-						   HAMMER2_INODE_SYNCQ_PASS2);
-					hammer2_spin_unex(&pmp->list_spin);
-					hammer2_mtx_unlock(&ip->lock);
-					hammer2_inode_drop(ip);
 				} else {
 					hammer2_spin_unex(&pmp->list_spin);
 					hammer2_mtx_unlock(&ip->lock);

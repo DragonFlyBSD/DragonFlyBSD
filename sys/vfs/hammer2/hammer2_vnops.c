@@ -1415,8 +1415,12 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 		}
 		*ap->a_vpp = NULL;
 	} else {
+		/*
+		 * inode_depend() must occur before the igetv() because
+		 * the igetv() can temporarily release the inode lock.
+		 */
+		hammer2_inode_depend(dip, nip);	/* before igetv */
 		*ap->a_vpp = hammer2_igetv(nip, &error);
-		hammer2_inode_depend(dip, nip);
 		hammer2_inode_unlock(nip);
 	}
 
@@ -1623,8 +1627,8 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 		}
 		*ap->a_vpp = NULL;
 	} else {
+		hammer2_inode_depend(dip, nip);	/* before igetv */
 		*ap->a_vpp = hammer2_igetv(nip, &error);
-		hammer2_inode_depend(dip, nip);
 		hammer2_inode_unlock(nip);
 	}
 
@@ -1701,8 +1705,8 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 		}
 		*ap->a_vpp = NULL;
 	} else {
+		hammer2_inode_depend(dip, nip);	/* before igetv */
 		*ap->a_vpp = hammer2_igetv(nip, &error);
-		hammer2_inode_depend(dip, nip);
 		hammer2_inode_unlock(nip);
 	}
 
@@ -1785,8 +1789,8 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 		hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
 		return error;
 	}
+	hammer2_inode_depend(dip, nip);	/* before igetv */
 	*ap->a_vpp = hammer2_igetv(nip, &error);
-	hammer2_inode_depend(dip, nip);
 
 	/*
 	 * Build the softlink (~like file data) and finalize the namecache.
@@ -1984,7 +1988,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		if (ip) {
 			hammer2_inode_unlink_finisher(ip, isopen);
-			hammer2_inode_depend(dip, ip);
+			hammer2_inode_depend(dip, ip);	/* after modified */
 			hammer2_inode_unlock(ip);
 		}
 	} else {
