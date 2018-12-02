@@ -28,7 +28,7 @@
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
 .\"
-.Dd July 7, 2018
+.Dd December 2, 2018
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -200,6 +200,9 @@ C include files for the Common Access Methods Layer
 The SCSI device on top of CAM
 .El
 .Pp
+.It Pa compat/
+C include files for compatibility with code ported from other
+operating systems
 .It Pa dev/
 C include files for programming various
 .Dx
@@ -613,12 +616,18 @@ filesystem quota information files
 system information files describing various info about
 system since it was booted
 .Pp
-.Bl -tag -width ".Pa ppp/" -compact
+.Bl -tag -width ".Pa resolvconf/" -compact
+.It Pa dhcpcd/
+for storing files by
+.Xr dhcpcd 8
+hooks
 .It Pa ppp/
 writable by the
 .Dq network
 group for command connection sockets; see
 .Xr ppp 8
+.It Pa resolvconf/
+state directory for resolvconf
 .It Pa utmp
 database of current users;
 see
