@@ -251,9 +251,9 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	/*
 	 * Flush dirty chains related to the inode.
 	 *
-	 * NOTE! We are not in a flush transaction, so we should not use the
-	 *	 PARENTONFLUSH flag.  The inode remains on the sideq so the
-	 *	 filesystem syncer can synchronize it to the volume root.
+	 * NOTE! We are not in a flush transaction.  The inode remains on
+	 *	 the sideq so the filesystem syncer can synchronize it to
+	 *	 the volume root.
 	 */
 	error2 = hammer2_inode_chain_flush(ip, HAMMER2_XOP_INODE_STOP);
 	if (error2)

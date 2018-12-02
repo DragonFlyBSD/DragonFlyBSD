@@ -64,21 +64,131 @@ hammer2_knote(struct vnode *vp, int flags)
 		KNOTE(&vp->v_pollinfo.vpi_kqinfo.ki_note, flags);
 }
 
-static
+/*
+ * Caller holds pmp->list_spin and the inode should be locked.  Merge ip
+ * with the specified depend.
+ *
+ * If the ip is on SYNCQ it stays there and (void *)-1 is returned, indicating
+ * that successive calls must ensure the ip is on a pass2 depend (or they are
+ * all SYNCQ).  If the passed-in depend is not NULL and not (void *)-1 then
+ * we can set pass2 on it and return.
+ *
+ * If the ip is not on SYNCQ it is merged with the passed-in depend, creating
+ * a self-depend if necessary, and depend->pass2 is set according
+ * to the PASS2 flag.  SIDEQ is set.
+ */
+static __noinline
+hammer2_depend_t *
+hammer2_inode_setdepend_locked(hammer2_inode_t *ip, hammer2_depend_t *depend)
+{
+	hammer2_pfs_t *pmp = ip->pmp;
+	hammer2_depend_t *dtmp;
+	hammer2_inode_t *iptmp;
+
+	/*
+	 * If ip is SYNCQ its entry is used for the syncq list and it will
+	 * no longer be associated with a dependency.  Merging this status
+	 * with a passed-in depend implies PASS2.
+	 */
+	if (ip->flags & HAMMER2_INODE_SYNCQ) {
+		if (depend == (void *)-1 ||
+		    depend == NULL) {
+			return ((void *)-1);
+		}
+		depend->pass2 = 1;
+		hammer2_trans_setflags(pmp, HAMMER2_TRANS_RESCAN);
+
+		return depend;
+	}
+
+	/*
+	 * If ip is already SIDEQ, merge ip->depend into the passed-in depend.
+	 * If it is not, associate the ip with the passed-in depend, creating
+	 * a single-entry dependency using depend_static if necessary.
+	 *
+	 * NOTE: The use of ip->depend_static always requires that the
+	 *	 specific ip containing the structure is part of that
+	 *	 particular depend_static's dependency group.
+	 */
+	if (ip->flags & HAMMER2_INODE_SIDEQ) {
+		/*
+		 * Merge ip->depend with the passed-in depend.  If the
+		 * passed-in depend is not a special case, all ips associated
+		 * with ip->depend (including the original ip) must be moved
+		 * to the passed-in depend.
+		 */
+		if (depend == NULL) {
+			depend = ip->depend;
+		} else if (depend == (void *)-1) {
+			depend = ip->depend;
+			depend->pass2 = 1;
+		} else if (depend != ip->depend) {
+#ifdef INVARIANTS
+			int sanitychk = 0;
+#endif
+			dtmp = ip->depend;
+			while ((iptmp = TAILQ_FIRST(&dtmp->sideq)) != NULL) {
+#ifdef INVARIANTS
+				if (iptmp == ip)
+					sanitychk = 1;
+#endif
+				TAILQ_REMOVE(&dtmp->sideq, iptmp, entry);
+				TAILQ_INSERT_TAIL(&depend->sideq, iptmp, entry);
+				iptmp->depend = depend;
+			}
+			KKASSERT(sanitychk == 1);
+			depend->count += dtmp->count;
+			depend->pass2 |= dtmp->pass2;
+			TAILQ_REMOVE(&pmp->depq, dtmp, entry);
+			dtmp->count = 0;
+			dtmp->pass2 = 0;
+		}
+	} else {
+		/*
+		 * Add ip to the sideq, creating a self-dependency if
+		 * necessary.
+		 */
+		hammer2_inode_ref(ip);
+		atomic_set_int(&ip->flags, HAMMER2_INODE_SIDEQ);
+		if (depend == NULL) {
+			depend = &ip->depend_static;
+			TAILQ_INSERT_TAIL(&pmp->depq, depend, entry);
+		} else if (depend == (void *)-1) {
+			depend = &ip->depend_static;
+			depend->pass2 = 1;
+			TAILQ_INSERT_TAIL(&pmp->depq, depend, entry);
+		} /* else add ip to passed-in depend */
+		TAILQ_INSERT_TAIL(&depend->sideq, ip, entry);
+		ip->depend = depend;
+		++depend->count;
+		++pmp->sideq_count;
+	}
+
+	if (ip->flags & HAMMER2_INODE_SYNCQ_PASS2)
+		depend->pass2 = 1;
+	if (depend->pass2)
+		hammer2_trans_setflags(pmp, HAMMER2_TRANS_RESCAN);
+
+	return depend;
+}
+
+/*
+ * Put a solo inode on the SIDEQ (meaning that its dirty).  This can also
+ * occur from inode_lock4() and inode_depend().
+ *
+ * Caller must pass-in a locked inode.
+ */
 void
 hammer2_inode_delayed_sideq(hammer2_inode_t *ip)
 {
 	hammer2_pfs_t *pmp = ip->pmp;
 
+	/*
+	 * Optimize case to avoid pmp spinlock.
+	 */
 	if ((ip->flags & (HAMMER2_INODE_SYNCQ | HAMMER2_INODE_SIDEQ)) == 0) {
 		hammer2_spin_ex(&pmp->list_spin);
-		if ((ip->flags & (HAMMER2_INODE_SYNCQ |
-				  HAMMER2_INODE_SIDEQ)) == 0) {
-			hammer2_inode_ref(ip);
-			atomic_set_int(&ip->flags, HAMMER2_INODE_SIDEQ);
-			TAILQ_INSERT_TAIL(&pmp->sideq, ip, entry);
-			++pmp->sideq_count;
-		}
+		hammer2_inode_setdepend_locked(ip, NULL);
 		hammer2_spin_unex(&pmp->list_spin);
 	}
 }
@@ -180,7 +290,7 @@ hammer2_inode_lock(hammer2_inode_t *ip, int how)
  * ip1 and ip2 must not be NULL.  ip3 and ip4 may be NULL, but if ip3 is
  * NULL then ip4 must also be NULL.
  *
- * This function will also ensure that if any
+ * This creates a dependency between up to four inodes.
  */
 void
 hammer2_inode_lock4(hammer2_inode_t *ip1, hammer2_inode_t *ip2,
@@ -188,10 +298,11 @@ hammer2_inode_lock4(hammer2_inode_t *ip1, hammer2_inode_t *ip2,
 {
 	hammer2_inode_t *ips[4];
 	hammer2_inode_t *iptmp;
+	hammer2_inode_t *ipslp;
+	hammer2_depend_t *depend;
 	hammer2_pfs_t *pmp;
 	size_t count;
 	size_t i;
-	int dosyncq;
 
 	pmp = ip1->pmp;			/* may be NULL */
 	KKASSERT(pmp == ip2->pmp);
@@ -220,49 +331,29 @@ restart:
 	 * Lock the inodes in order
 	 */
 	for (i = 0; i < count; ++i) {
-		iptmp = ips[i];
-		hammer2_mtx_ex(&iptmp->lock);
+		hammer2_mtx_ex(&ips[i]->lock);
 	}
 
 	/*
-	 * If any of the inodes are part of a filesystem sync then we
-	 * have to make sure they ALL are, because their modifications
-	 * depend on each other (e.g. inode vs dirent).
+	 * Associate dependencies, record the first inode found on SYNCQ
+	 * (operation is allowed to proceed for inodes on PASS2) for our
+	 * sleep operation, this inode is theoretically the last one sync'd
+	 * in the sequence.
 	 *
-	 * All PASS2 flags must be set atomically with the spinlock held
-	 * to ensure that they are flushed together.
+	 * All inodes found on SYNCQ are moved to the head of the syncq
+	 * to reduce stalls.
 	 */
 	hammer2_spin_ex(&pmp->list_spin);
-	dosyncq = 0;
+	depend = NULL;
+	ipslp = NULL;
 	for (i = 0; i < count; ++i) {
 		iptmp = ips[i];
-		if (iptmp->flags & HAMMER2_INODE_SYNCQ)
-			dosyncq |= 1;
-		if (iptmp->flags & HAMMER2_INODE_SYNCQ_PASS2)
-			dosyncq |= 2;
-	}
-	if (dosyncq & 3) {
-		for (i = 0; i < count; ++i) {
-			iptmp = ips[i];
-			atomic_set_int(&iptmp->flags,
-				       HAMMER2_INODE_SYNCQ_WAKEUP);
-			if (iptmp->flags & HAMMER2_INODE_SYNCQ) {
-				TAILQ_REMOVE(&pmp->syncq, iptmp, entry);
-				TAILQ_INSERT_HEAD(&pmp->syncq, iptmp, entry);
-			} else if (iptmp->flags & HAMMER2_INODE_SIDEQ) {
-				atomic_set_int(&iptmp->flags,
-					       HAMMER2_INODE_SYNCQ_PASS2);
-				hammer2_trans_setflags(pmp,
-						       HAMMER2_TRANS_RESCAN);
-			} else {
-				atomic_set_int(&iptmp->flags,
-					       HAMMER2_INODE_SIDEQ |
-					       HAMMER2_INODE_SYNCQ_PASS2);
-				TAILQ_INSERT_TAIL(&pmp->sideq, iptmp, entry);
-				hammer2_inode_ref(iptmp);
-				hammer2_trans_setflags(pmp,
-						       HAMMER2_TRANS_RESCAN);
-			}
+		depend = hammer2_inode_setdepend_locked(iptmp, depend);
+		if (iptmp->flags & HAMMER2_INODE_SYNCQ) {
+			TAILQ_REMOVE(&pmp->syncq, iptmp, entry);
+			TAILQ_INSERT_HEAD(&pmp->syncq, iptmp, entry);
+			if (ipslp == NULL)
+				ipslp = iptmp;
 		}
 	}
 	hammer2_spin_unex(&pmp->list_spin);
@@ -272,43 +363,12 @@ restart:
 	 * important that we allow the operation to proceed in the
 	 * PASS2 case, to avoid deadlocking against the vnode.
 	 */
-	if (dosyncq & 1) {
+	if (ipslp) {
 		for (i = 0; i < count; ++i)
 			hammer2_mtx_unlock(&ips[i]->lock);
-		tsleep(&iptmp->flags, 0, "h2sync", 2);
+		tsleep(&ipslp->flags, 0, "h2sync", 2);
 		goto restart;
 	}
-#if 0
-		if (pmp == NULL ||
-		    ((iptmp->flags & (HAMMER2_INODE_SYNCQ |
-				      HAMMER2_INODE_SYNCQ_PASS2)) == 0 &&
-		     dosyncq == 0)) {
-			continue;
-		}
-		dosyncq = 1;
-		tsleep_interlock(&iptmp->flags, 0);
-
-		/*
-		 * We have to accept the inode if it's got more than one
-		 * exclusive count because we can't safely unlock it.
-		 */
-		if (hammer2_mtx_refs(&iptmp->lock) > 1) {
-			kprintf("hammer2: exclcount > 1: %p %ld\n", iptmp, hammer2_mtx_refs(&iptmp->lock));
-			continue;
-		}
-
-		/*
-		 * Unlock everything (including the current index) and wait
-		 * for our wakeup.
-		 */
-		for (j = 0; j <= i; ++j)
-			hammer2_mtx_unlock(&ips[j]->lock);
-		tsleep(&iptmp->flags, PINTERLOCKED, "h2sync", 0);
-		/*tsleep(&iptmp->flags, 0, "h2sync2", 1);*/
-
-		goto restart;
-	}
-#endif
 }
 
 /*
@@ -330,12 +390,12 @@ hammer2_inode_unlock(hammer2_inode_t *ip)
 
 /*
  * If either ip1 or ip2 have been tapped by the syncer, make sure that both
- * are.  This ensure that dependencies (e.g. inode-vs-dirent) are synced
- * together.
+ * are.  This ensure that dependencies (e.g. dirent-v-inode) are synced
+ * together.  For dirent-v-inode depends, pass the dirent as ip1.
  *
- * We must also check SYNCQ_PASS2, which occurs when the syncer cannot
- * immediately lock the inode on SYNCQ and must temporarily move it to
- * SIDEQ to retry again in another pass (but part of the same flush).
+ * If neither ip1 or ip2 have been tapped by the syncer, merge them into a
+ * single dependency.  Dependencies are entered into pmp->depq.  This
+ * effectively flags the inodes SIDEQ.
  *
  * Both ip1 and ip2 must be locked by the caller.  This also ensures
  * that we can't race the end of the syncer's queue run.
@@ -344,52 +404,14 @@ void
 hammer2_inode_depend(hammer2_inode_t *ip1, hammer2_inode_t *ip2)
 {
 	hammer2_pfs_t *pmp;
+	hammer2_depend_t *depend;
 
 	pmp = ip1->pmp;
-
 	hammer2_spin_ex(&pmp->list_spin);
-	if (((ip1->flags | ip2->flags) & (HAMMER2_INODE_SYNCQ |
-					  HAMMER2_INODE_SYNCQ_PASS2)) == 0) {
-		hammer2_spin_unex(&pmp->list_spin);
-		return;
-	}
-	if ((ip1->flags & (HAMMER2_INODE_SYNCQ |
-			   HAMMER2_INODE_SYNCQ_PASS2)) &&
-	    (ip2->flags & (HAMMER2_INODE_SYNCQ |
-			   HAMMER2_INODE_SYNCQ_PASS2))) {
-		hammer2_spin_unex(&pmp->list_spin);
-		return;
-	}
-	KKASSERT(pmp == ip2->pmp);
-	if ((ip1->flags & (HAMMER2_INODE_SYNCQ |
-			   HAMMER2_INODE_SYNCQ_PASS2)) == 0) {
-		if (ip1->flags & HAMMER2_INODE_SIDEQ) {
-			atomic_set_int(&ip1->flags,
-				       HAMMER2_INODE_SYNCQ_PASS2);
-		} else {
-			atomic_set_int(&ip1->flags, HAMMER2_INODE_SIDEQ |
-						    HAMMER2_INODE_SYNCQ_PASS2);
-			hammer2_inode_ref(ip1);
-			TAILQ_INSERT_TAIL(&pmp->sideq, ip1, entry);
-		}
-		hammer2_trans_setflags(pmp, HAMMER2_TRANS_RESCAN);
-	}
-	if ((ip2->flags & (HAMMER2_INODE_SYNCQ |
-			   HAMMER2_INODE_SYNCQ_PASS2)) == 0) {
-		if (ip2->flags & HAMMER2_INODE_SIDEQ) {
-			atomic_set_int(&ip2->flags,
-				       HAMMER2_INODE_SYNCQ_PASS2);
-		} else {
-			atomic_set_int(&ip2->flags, HAMMER2_INODE_SIDEQ |
-						    HAMMER2_INODE_SYNCQ_PASS2);
-			hammer2_inode_ref(ip2);
-			TAILQ_INSERT_TAIL(&pmp->sideq, ip2, entry);
-		}
-		hammer2_trans_setflags(pmp, HAMMER2_TRANS_RESCAN);
-	}
+	depend = hammer2_inode_setdepend_locked(ip1, NULL);
+	depend = hammer2_inode_setdepend_locked(ip2, depend);
 	hammer2_spin_unex(&pmp->list_spin);
 }
-
 
 /*
  * Select a chain out of an inode's cluster and lock it.
@@ -895,7 +917,9 @@ again:
 	 */
 	nip->refs = 1;
 	hammer2_mtx_init(&nip->lock, "h2inode");
+	hammer2_mtx_init(&nip->truncate_lock, "h2trunc");
 	hammer2_mtx_ex(&nip->lock);
+	TAILQ_INIT(&nip->depend_static.sideq);
 	/* combination of thread lock and chain lock == inode lock */
 
 	/*

@@ -109,6 +109,7 @@ struct hammer2_io;
 struct hammer2_chain;
 struct hammer2_cluster;
 struct hammer2_inode;
+struct hammer2_depend;
 struct hammer2_dev;
 struct hammer2_pfs;
 struct hammer2_span;
@@ -701,8 +702,18 @@ hammer2_cluster_wrok(hammer2_cluster_t *cluster)
 }
 
 RB_HEAD(hammer2_inode_tree, hammer2_inode);	/* ip->rbnode */
-TAILQ_HEAD(syncq_head, hammer2_inode);		/* ip->entry */
-TAILQ_HEAD(sideq_head, hammer2_inode);		/* ip->entry */
+TAILQ_HEAD(inoq_head, hammer2_inode);		/* ip->entry */
+TAILQ_HEAD(depq_head, hammer2_depend);		/* depend->entry */
+
+struct hammer2_depend {
+	TAILQ_ENTRY(hammer2_depend) entry;
+	struct inoq_head	sideq;
+	long			count;
+	int			pass2;
+	int			unused01;
+};
+
+typedef struct hammer2_depend hammer2_depend_t;
 
 /*
  * A hammer2 inode.
@@ -713,7 +724,9 @@ TAILQ_HEAD(sideq_head, hammer2_inode);		/* ip->entry */
  */
 struct hammer2_inode {
 	RB_ENTRY(hammer2_inode) rbnode;		/* inumber lookup (HL) */
-	TAILQ_ENTRY(hammer2_inode) entry;	/* syncq, SYNCQ flag */
+	TAILQ_ENTRY(hammer2_inode) entry;	/* SYNCQ/SIDEQ */
+	hammer2_depend_t	*depend;	/* non-NULL if SIDEQ */
+	hammer2_depend_t	depend_static;	/* (in-place allocation) */
 	hammer2_mtx_t		lock;		/* inode lock */
 	hammer2_mtx_t		truncate_lock;	/* prevent truncates */
 	struct hammer2_pfs	*pmp;		/* PFS mount */
@@ -802,7 +815,7 @@ typedef struct hammer2_trans hammer2_trans_t;
 #define HAMMER2_TRANS_ISFLUSH		0x80000000	/* flush code */
 #define HAMMER2_TRANS_BUFCACHE		0x40000000	/* bio strategy */
 #define HAMMER2_TRANS_SIDEQ		0x20000000	/* run sideq */
-#define HAMMER2_TRANS_COPYQ		0x10000000	/* sideq->syncq */
+#define HAMMER2_TRANS_UNUSED10		0x10000000
 #define HAMMER2_TRANS_WAITING		0x08000000	/* someone waiting */
 #define HAMMER2_TRANS_RESCAN		0x04000000	/* rescan sideq */
 #define HAMMER2_TRANS_MASK		0x00FFFFFF	/* count mask */
@@ -1240,9 +1253,9 @@ struct hammer2_pfs {
 	uint32_t		inmem_dirty_chains;
 	int			count_lwinprog;	/* logical write in prog */
 	struct spinlock		list_spin;
-	struct syncq_head	syncq;		/* SYNCQ flagged inodes */
-	struct sideq_head	sideq;		/* SIDEQ flagged inodes */
-	long			sideq_count;
+	struct inoq_head	syncq;		/* SYNCQ flagged inodes */
+	struct depq_head	depq;		/* SIDEQ flagged inodes */
+	long			sideq_count;	/* total inodes on depq */
 	hammer2_thread_t	sync_thrs[HAMMER2_MAXCLUSTER];
 	uint32_t		cluster_flags;	/* cached cluster flags */
 	int			has_xop_threads;
@@ -1434,6 +1447,7 @@ extern int hammer2_bulkfree_tps;
 extern long hammer2_chain_allocs;
 extern long hammer2_chain_frees;
 extern long hammer2_limit_dirty_chains;
+extern long hammer2_limit_dirty_inodes;
 extern long hammer2_count_modified_chains;
 extern long hammer2_iod_invals;
 extern long hammer2_iod_file_read;
@@ -1466,6 +1480,7 @@ extern struct objcache *cache_xops;
 int hammer2_signal_check(time_t *timep);
 const char *hammer2_error_str(int error);
 
+void hammer2_inode_delayed_sideq(hammer2_inode_t *ip);
 void hammer2_inode_lock(hammer2_inode_t *ip, int how);
 void hammer2_inode_lock4(hammer2_inode_t *ip1, hammer2_inode_t *ip2,
 			hammer2_inode_t *ip3, hammer2_inode_t *ip4);
