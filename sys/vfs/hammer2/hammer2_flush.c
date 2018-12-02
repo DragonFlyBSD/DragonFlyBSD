@@ -148,10 +148,8 @@ hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags)
 			nflags = (oflags | flags) + 1;
 		} else {
 			/*
-			 * Normal transaction.  We currently only interlock
-			 * against COPYQ.  We do not interlock against
-			 * BUFCACHE or ISFLUSH.  COPYQ is used to interlock
-			 * the transfer of SIDEQ into SYNCQ.
+			 * Normal transaction.  We do not interlock against
+			 * BUFCACHE or ISFLUSH.
 			 *
 			 * Note that vnode locks may be held going into
 			 * this call.
@@ -160,12 +158,7 @@ hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags)
 			 *	 such as read, stat, readdir, etc, do
 			 *	 not use transactions.
 			 */
-			if (oflags & HAMMER2_TRANS_COPYQ) {
-				nflags = oflags | HAMMER2_TRANS_WAITING;
-				dowait = 1;
-			} else {
-				nflags = (oflags | flags) + 1;
-			}
+			nflags = (oflags | flags) + 1;
 		}
 		if (dowait)
 			tsleep_interlock(&pmp->trans.sync_wait, 0);
@@ -182,6 +175,7 @@ hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags)
 		/* retry */
 	}
 
+#if 0
 	/*
 	 * When entering a FLUSH transaction with COPYQ set, wait for the
 	 * transaction count to drop to 1 (our flush transaction only)
@@ -205,6 +199,7 @@ hammer2_trans_init(hammer2_pfs_t *pmp, uint32_t flags)
 			       "h2trans2", hz);
 		}
 	}
+#endif
 }
 
 /*
@@ -272,6 +267,7 @@ hammer2_trans_done(hammer2_pfs_t *pmp, uint32_t flags)
 	 * inside other nominal modifying front-end transactions.
 	 */
 	if ((flags & HAMMER2_TRANS_SIDEQ) &&
+	    pmp->sideq_count > hammer2_limit_dirty_inodes / 2 &&
 	    pmp->sideq_count > (pmp->inum_count >> 3) &&
 	    pmp->mp) {
 		speedup_syncer(pmp->mp);
@@ -523,14 +519,11 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 	/*
 	 * Downward search recursion
 	 *
-	 * We must be careful on cold stops.  If CHAIN_UPDATE is set and
-	 * we stop cold, the update can wind up never being applied.  This
-	 * situation most typically occurs on inode boundaries due to the way
-	 * hammer2_vfs_sync() breaks-up the flush.  As a safety, we
-	 * flush-through such situations. XXX removed
+	 * We must be careful on cold stops, which often occur on inode
+	 * boundaries due to the way hammer2_vfs_sync() sequences the flush.
+	 * Be sure to issue an appropriate chain_setflush()
 	 */
 	if ((chain->flags & HAMMER2_CHAIN_PFSBOUNDARY) &&
-	    /* (chain->flags & HAMMER2_CHAIN_UPDATE) == 0 && */
 	    (flags & HAMMER2_FLUSH_ALL) == 0 &&
 	    (flags & HAMMER2_FLUSH_TOP) == 0 &&
 	    chain->pmp && chain->pmp->mp) {
@@ -562,7 +555,6 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		}
 		goto done;
 	} else if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
-		   /* (chain->flags & HAMMER2_CHAIN_UPDATE) == 0 && */
 		   (flags & HAMMER2_FLUSH_INODE_STOP) &&
 		   (flags & HAMMER2_FLUSH_ALL) == 0 &&
 		   (flags & HAMMER2_FLUSH_TOP) == 0 &&
@@ -572,6 +564,10 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 		 * to include any inode changes for inodes we encounter,
 		 * with the exception of the inode that the flush began with.
 		 * So: INODE, INODE_STOP, and TOP==0 basically.
+		 *
+		 * Dirty inodes are flushed based on the hammer2_inode
+		 * in-memory structure, issuing a chain_setflush() here
+		 * will only cause unnecessary traversals of the topology.
 		 */
 		goto done;
 #if 0
@@ -1325,11 +1321,6 @@ done:
  * HAMMER2_XOP_INODE_STOP	The flush recursion stops at inode boundaries.
  *				Inodes belonging to the same flush are flushed
  *				separately.
- *
- * HAMMER2_XOP_PARENTONFLUSH	After flushing if the starting chain indicates
- *				a parent update is needed, we setflush the
- *				parent to propogate the flush request across
- *				the inode.
  *
  * chain->parent can be NULL, usually due to destroy races or detached inodes.
  *
