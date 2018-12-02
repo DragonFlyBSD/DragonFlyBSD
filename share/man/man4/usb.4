@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man4/usb.4 258618 2013-11-26 07:52:40Z lwhsu $
 .\"
-.Dd February 22, 2018
+.Dd December 2, 2018
 .Dt USB 4
 .Os
 .Sh NAME
@@ -84,7 +84,7 @@ root hub.
 .Dx
 provides support for the following devices.
 .Ss Storage devices
-.Bl -tag -width ".Xr snd_uaudio 4" -offset indent -compact
+.Bl -tag -width ".Xr umoscom 4" -offset indent -compact
 .\".It Xr natausb 4
 .\"...
 .It Xr umass 4
@@ -95,7 +95,7 @@ Diamond Rio 500 MP3 player
 Mass storage driver for device-side mode
 .El
 .Ss Wired network interfaces
-.Bl -tag -width ".Xr snd_uaudio 4" -offset indent -compact
+.Bl -tag -width ".Xr umoscom 4" -offset indent -compact
 .It Xr aue 4
 ADMtek AN986 Pegasus Ethernet driver
 .It Xr axe 4
@@ -118,7 +118,7 @@ Moschip MCS7730/MCS7830/MCS7832 USB Ethernet driver
 Davicom DM9601 USB Ethernet driver
 .El
 .Ss Wireless network interfaces
-.Bl -tag -width ".Xr snd_uaudio 4" -offset indent -compact
+.Bl -tag -width ".Xr umoscom 4" -offset indent -compact
 .It Xr ndis 4
 NDIS miniport driver wrapper
 .It Xr rum 4
@@ -135,7 +135,7 @@ RNDIS USB ethernet driver
 Realtek RTL8188CU/RTL8192CU IEEE 802.11 driver
 .El
 .Ss Serial and parallel interfaces
-.Bl -tag -width ".Xr snd_uaudio 4" -offset indent -compact
+.Bl -tag -width ".Xr umoscom 4" -offset indent -compact
 .It Xr u3g 4
 support for 3G datacards
 .It Xr uark 4
@@ -177,20 +177,18 @@ support for the Handspring Visor, a Palmpilot compatible PDA
 .It Xr uvscom 4
 SUNTAC Slipper U VS-10U serial adapters
 .El
-.\".Ss Audio devices
-.\".Bl -tag -width ".Xr snd_uaudio 4" -offset indent -compact
-.\".It Xr snd_uaudio 4
-.\"audio device driver
-.\".It Xr urio 4
-.\"driver for the Rio500 MP3 player
-.\".El
+.Ss Audio devices
+.Bl -tag -width ".Xr umoscom 4" -offset indent -compact
+.It Xr uaudio 4
+audio device driver
+.El
 .Ss Radio receiver devices
-.Bl -tag -width ".Xr snd_uaudio 4" -offset indent -compact
+.Bl -tag -width ".Xr umoscom 4" -offset indent -compact
 .It Xr ufm 4
 Cypress Semiconductor FM Radio
 .El
 .Ss Human Interface Devices
-.Bl -tag -width ".Xr snd_uaudio 4" -offset indent -compact
+.Bl -tag -width ".Xr umoscom 4" -offset indent -compact
 .It Xr uep 4
 eGalax touchscreen driver
 .It Xr uhid 4
@@ -281,6 +279,7 @@ specifications can be found at:
 .Xr run 4 ,
 .Xr u3g 4 ,
 .Xr uark 4 ,
+.Xr uaudio 4 ,
 .Xr ubsa 4 ,
 .Xr ubser 4 ,
 .Xr uchcom 4 ,
@@ -304,7 +303,7 @@ specifications can be found at:
 .Xr umoscom 4 ,
 .Xr ums 4 ,
 .Xr uplcom 4 ,
-.\".Xr urio 4 ,
+.Xr urio 4 ,
 .Xr urtwn 4 ,
 .Xr usfs 4 ,
 .Xr uslcom 4 ,
