@@ -3443,6 +3443,7 @@ TO_REMOVE+=/usr/share/man/man8/sicontrol.8.gz
 TO_REMOVE+=/usr/include/sys/clist.h
 TO_REMOVE+=/usr/share/man/man2/sigstack.2.gz
 TO_REMOVE+=/usr/include/sys/input.h
+TO_REMOVE+=/usr/include/sys/linux_types.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
