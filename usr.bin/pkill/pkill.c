@@ -127,7 +127,7 @@ static int	takepid(const char *, int);
 int
 main(int argc, char **argv)
 {
-	char buf[_POSIX2_LINE_MAX], *mstr, **pargv, *p, *q, *pidfile;
+	char buf[_POSIX2_LINE_MAX], *mstr, **pargv, *p, *q, *pidfile, *tdev;
 	const char *execf, *coref;
 	int ancestors, debug_opt, did_action;
 	int i, ch, bestidx, rv, criteria, pidfromfile, pidfilelock;
@@ -180,7 +180,7 @@ main(int argc, char **argv)
 	execf = NULL;
 	coref = _PATH_DEVNULL;
 
-	while ((ch = getopt(argc, argv, "DF:G:ILM:N:P:SU:ac:d:fg:ij:lnoqs:t:u:vx")) != -1)
+	while ((ch = getopt(argc, argv, "DF:G:ILM:N:P:STU:ac:d:fg:ij:lnoqs:t:u:vx")) != -1) {
 		switch (ch) {
 		case 'D':
 			debug_opt++;
@@ -215,6 +215,15 @@ main(int argc, char **argv)
 			if (!pgrep)
 				usage();
 			kthreads = 1;
+			break;
+		case 'T':
+			tdev = ttyname(0);
+			if (tdev == NULL)
+				err(STATUS_ERROR, "Not a terminal");
+			if ((tdev = strdup(tdev)) == NULL)
+				err(STATUS_ERROR, "Cannot allocate memory");
+			makelist(&tdevlist, LT_TTY, tdev);
+			criteria = 1;
 			break;
 		case 'U':
 			makelist(&ruidlist, LT_USER, optarg);
@@ -284,6 +293,7 @@ main(int argc, char **argv)
 			usage();
 			/* NOTREACHED */
 		}
+	}
 
 	argc -= optind;
 	argv += optind;
@@ -572,9 +582,9 @@ usage(void)
 	const char *ustr;
 
 	if (pgrep)
-		ustr = "[-LSfilnoqvx] [-d delim]";
+		ustr = "[-LSTfilnoqvx] [-d delim]";
 	else
-		ustr = "[-signal] [-ILfilnovx]";
+		ustr = "[-signal] [-ILTfilnovx]";
 
 	fprintf(stderr,
 		"usage: %s %s [-F pidfile] [-G gid] [-M core] [-N system]\n"
@@ -740,6 +750,11 @@ makelist(struct listhead *head, enum listtype type, char *src)
 				cp = "console";
 			} else {
 				cp = sp;
+			}
+
+			if (strncmp(cp, _PATH_DEV, sizeof(_PATH_DEV)-1) == 0 &&
+			    stat(cp, &st) != -1) {
+				goto foundtty;
 			}
 
 			snprintf(buf, sizeof(buf), _PATH_DEV "%s", cp);
