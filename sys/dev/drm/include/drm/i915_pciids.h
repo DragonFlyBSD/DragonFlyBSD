@@ -366,4 +366,28 @@
 	INTEL_VGA_DEVICE(0x3EA7, info), /* ULT GT3 */ \
 	INTEL_VGA_DEVICE(0x3EA8, info)  /* ULT GT3 */
 
+/* WHL/CFL U GT1 */
+#define INTEL_WHL_U_GT1_IDS(info) \
+	INTEL_VGA_DEVICE(0x3EA1, info)
+
+/* WHL/CFL U GT2 */
+#define INTEL_WHL_U_GT2_IDS(info) \
+	INTEL_VGA_DEVICE(0x3EA0, info)
+
+/* WHL/CFL U GT3 */
+#define INTEL_WHL_U_GT3_IDS(info) \
+	INTEL_VGA_DEVICE(0x3EA2, info), \
+	INTEL_VGA_DEVICE(0x3EA3, info), \
+	INTEL_VGA_DEVICE(0x3EA4, info)
+
+#define INTEL_CFL_IDS(info)	   \
+	INTEL_CFL_S_GT1_IDS(info), \
+	INTEL_CFL_S_GT2_IDS(info), \
+	INTEL_CFL_H_GT2_IDS(info), \
+	INTEL_CFL_U_GT2_IDS(info), \
+	INTEL_CFL_U_GT3_IDS(info), \
+	INTEL_WHL_U_GT1_IDS(info), \
+	INTEL_WHL_U_GT2_IDS(info), \
+	INTEL_WHL_U_GT3_IDS(info)
+
 #endif /* _I915_PCIIDS_H */
