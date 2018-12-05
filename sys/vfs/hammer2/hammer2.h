@@ -175,8 +175,12 @@ typedef uint32_t hammer2_xid_t;
 #define HAMMER2_XID_MIN			0x00000000U
 #define HAMMER2_XID_MAX			0x7FFFFFFFU
 
-#define HAMMER2_LIMIT_DIRTY_CHAINS	(65536)
-#define HAMMER2_LIMIT_DIRTY_INODES	(16384)
+/*
+ * Cap the dynamic calculation for the maximum number of dirty
+ * chains and dirty inodes allowed.
+ */
+#define HAMMER2_LIMIT_DIRTY_CHAINS	(1024*1024)
+#define HAMMER2_LIMIT_DIRTY_INODES	(65536)
 
 /*
  * The chain structure tracks a portion of the media topology from the
@@ -493,7 +497,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 
 #define HAMMER2_RESOLVE_SHARED		0x10	/* request shared lock */
 #define HAMMER2_RESOLVE_LOCKAGAIN	0x20	/* another shared lock */
-#define HAMMER2_RESOLVE_RDONLY		0x40	/* higher level op flag */
+#define HAMMER2_RESOLVE_UNUSED40	0x40
 #define HAMMER2_RESOLVE_NONBLOCK	0x80	/* non-blocking */
 
 /*
@@ -1228,7 +1232,7 @@ struct hammer2_pfs {
 	struct lock		lock;		/* PFS lock for certain ops */
 	struct lock		lock_nlink;	/* rename and nlink lock */
 	struct netexport	export;		/* nfs export */
-	int			speedup_ticks;	/* speedup_syncer() helper */
+	int			unused00;
 	int			ronly;		/* read-only mount */
 	int			hflags;		/* pfs-specific mount flags */
 	struct malloc_type	*minode;
@@ -1626,7 +1630,7 @@ int hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata);
 int hammer2_chain_dirent_test(hammer2_chain_t *chain, const char *name,
 				size_t name_len);
 
-void hammer2_pfs_memory_wait(hammer2_inode_t *ip, int always_moderate);
+void hammer2_pfs_memory_wait(hammer2_pfs_t *pmp);
 void hammer2_pfs_memory_inc(hammer2_pfs_t *pmp);
 void hammer2_pfs_memory_wakeup(hammer2_pfs_t *pmp);
 

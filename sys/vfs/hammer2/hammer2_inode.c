@@ -213,9 +213,12 @@ hammer2_inode_delayed_sideq(hammer2_inode_t *ip)
  *	  vnode reclamation code to avoid unnecessary I/O (particularly when
  *	  disposing of hundreds of thousands of cached vnodes).
  *
- * When an exclusive lock is obtained on an inode that is on the SYNCQ,
- * HAMMER2 will automatically move the inode to the front of the queue before
- * blocking to avoid long stalls against filesystem sync operations.
+ * This function, along with lock4, has SYNCQ semantics.  If the inode being
+ * locked is on the SYNCQ, that is it has been staged by the syncer, we must
+ * block until the operation is complete (even if we can lock the inode).  In
+ * order to reduce the stall time, we re-order the inode to the front of the
+ * pmp->syncq prior to blocking.  This reordering VERY significantly improves
+ * performance.
  *
  * The inode locking function locks the inode itself, resolves any stale
  * chains in the inode's cluster, and allocates a fresh copy of the
@@ -225,16 +228,6 @@ hammer2_inode_delayed_sideq(hammer2_inode_t *ip)
  *
  * NOTE: We don't combine the inode/chain lock because putting away an
  *       inode would otherwise confuse multiple lock holders of the inode.
- *
- * NOTE: In-memory inodes always point to hardlink targets (the actual file),
- *	 and never point to a hardlink pointer.
- *
- * NOTE: If caller passes HAMMER2_RESOLVE_RDONLY the exclusive locking code
- *	 will feel free to reduce the chain set in the cluster as an
- *	 optimization.  It will still be validated against the quorum if
- *	 appropriate, but the optimization might be able to reduce data
- *	 accesses to one node.  This flag is automatically set if the inode
- *	 is locked with HAMMER2_RESOLVE_SHARED.
  */
 void
 hammer2_inode_lock(hammer2_inode_t *ip, int how)
@@ -248,7 +241,6 @@ hammer2_inode_lock(hammer2_inode_t *ip, int how)
 	 * Inode structure mutex - Shared lock
 	 */
 	if (how & HAMMER2_RESOLVE_SHARED) {
-		/*how |= HAMMER2_RESOLVE_RDONLY; not used */
 		hammer2_mtx_sh(&ip->lock);
 		return;
 	}
@@ -885,8 +877,6 @@ again:
 	nip = kmalloc(sizeof(*nip), pmp->minode, M_WAITOK | M_ZERO);
 	spin_init(&nip->cluster_spin, "h2clspin");
 	atomic_add_long(&pmp->inmem_inodes, 1);
-	hammer2_pfs_memory_inc(pmp);
-	hammer2_pfs_memory_wakeup(pmp);
 	if (pmp->spmp_hmp)
 		nip->flags = HAMMER2_INODE_SROOT;
 

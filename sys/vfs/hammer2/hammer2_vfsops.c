@@ -217,6 +217,7 @@ static int hammer2_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 static int hammer2_vfs_vptofh(struct vnode *vp, struct fid *fhp);
 static int hammer2_vfs_checkexp(struct mount *mp, struct sockaddr *nam,
 				int *exflagsp, struct ucred **credanonp);
+static void hammer2_vfs_modifying(struct mount *mp);
 
 static int hammer2_install_volume_header(hammer2_dev_t *hmp);
 #if 0
@@ -245,7 +246,8 @@ static struct vfsops hammer2_vfsops = {
 	.vfs_vget	= hammer2_vfs_vget,
 	.vfs_vptofh	= hammer2_vfs_vptofh,
 	.vfs_fhtovp	= hammer2_vfs_fhtovp,
-	.vfs_checkexp	= hammer2_vfs_checkexp
+	.vfs_checkexp	= hammer2_vfs_checkexp,
+	.vfs_modifying	= hammer2_vfs_modifying
 };
 
 MALLOC_DEFINE(M_HAMMER2, "HAMMER2-mount", "");
@@ -333,8 +335,10 @@ hammer2_vfs_init(struct vfsconf *conf)
 	hammer2_limit_dirty_chains = maxvnodes / 10;
 	if (hammer2_limit_dirty_chains > HAMMER2_LIMIT_DIRTY_CHAINS)
 		hammer2_limit_dirty_chains = HAMMER2_LIMIT_DIRTY_CHAINS;
+	if (hammer2_limit_dirty_chains < 1000)
+		hammer2_limit_dirty_chains = 1000;
 
-	hammer2_limit_dirty_inodes = maxvnodes / 100;
+	hammer2_limit_dirty_inodes = maxvnodes / 25;
 	if (hammer2_limit_dirty_inodes < 100)
 		hammer2_limit_dirty_inodes = 100;
 	if (hammer2_limit_dirty_inodes > HAMMER2_LIMIT_DIRTY_INODES)
@@ -2509,6 +2513,13 @@ restart:
 	dorestart = 0;
 
 	/*
+	 * sideq_count may have dropped enough to allow us to unstall
+	 * the frontend.
+	 */
+	hammer2_pfs_memory_inc(pmp);
+	hammer2_pfs_memory_wakeup(pmp);
+
+	/*
 	 * Now run through all inodes on syncq.
 	 *
 	 * Flush transactions only interlock with other flush transactions.
@@ -3028,109 +3039,72 @@ hammer2_lwinprog_wait(hammer2_pfs_t *pmp, int flush_pipe)
 }
 
 /*
- * Attempt to proactively fsync dirty vnodes if we have too many.  This
- * solves an issue where the kernel syncer thread can get seriously behind
- * when multiple user processes/threads are furiously modifying inodes.
- * This situation can occur on slow storage and is only limited by
- * kern.maxvnodes without the moderation code below.  It is made worse
- * when the device buffers underlying the modified inodes (which are clean)
- * get evicted before the flush can occur, forcing a re-read.
+ * It is possible for an excessive number of dirty chains or dirty inodes
+ * to build up.  When this occurs we start an asynchronous filesystem sync.
+ * If the level continues to build up, we stall, waiting for it to drop,
+ * with some hysteresis.
  *
- * We do not want sysads to feel that they have to torpedo kern.maxvnodes
- * to solve this problem, so we implement vfs.hammer2.limit_dirty_inodes
- * (per-mount-basis) and default it to something reasonable.
+ * We limit the stall to two seconds per call.
  *
- * XXX we cannot safely block here because we might be holding locks that
- * the syncer needs.
+ * This relies on the kernel calling hammer2_vfs_modifying() prior to
+ * obtaining any vnode locks before making a modifying VOP call.
  */
 static void
-hammer2_pfs_moderate(hammer2_inode_t *ip, int always_moderate)
+hammer2_vfs_modifying(struct mount *mp)
 {
-	hammer2_pfs_t *pmp = ip->pmp;
-	struct mount *mp = pmp->mp;
-
-	if (mp && pmp->sideq_count > hammer2_limit_dirty_inodes) {
-		speedup_syncer(mp);
-		/*vn_syncer_one(mp);*/
-	}
+	hammer2_pfs_memory_wait(MPTOPMP(mp));
 }
 
 /*
- * Manage excessive memory resource use for chain and related
- * structures.
- *
- * Called without any inode locks or transaction locks.  VNodes
- * might be locked by the kernel in the call stack.
+ * Initiate an asynchronous filesystem sync and, with hysteresis,
+ * stall if the internal data structure count becomes too bloated.
  */
 void
-hammer2_pfs_memory_wait(hammer2_inode_t *ip, int always_moderate)
+hammer2_pfs_memory_wait(hammer2_pfs_t *pmp)
 {
-	hammer2_pfs_t *pmp = ip->pmp;
 	uint32_t waiting;
-	uint32_t count;
-	uint32_t limit;
-#if 0
-	static int zzticks;
-#endif
+	int loops;
 
-	return; /* XXX */
+	if (pmp == NULL || pmp->mp == NULL)
+		return;
 
-	/*
-	 * Moderate the number of dirty inodes
-	 */
-	hammer2_pfs_moderate(ip, always_moderate);
-
-	/*
-	 * Atomic check condition and wait.  Also do an early speedup of
-	 * the syncer to try to avoid hitting the wait.
-	 */
-	for (;;) {
-		waiting = pmp->inmem_dirty_chains;
+	for (loops = 0; loops < 2; ++loops) {
+		waiting = pmp->inmem_dirty_chains & HAMMER2_DIRTYCHAIN_MASK;
 		cpu_ccfence();
-		count = waiting & HAMMER2_DIRTYCHAIN_MASK;
 
+		/*
+		 * Start the syncer running at 1/2 the limit
+		 */
+		if (waiting > hammer2_limit_dirty_chains / 2 ||
+		    pmp->sideq_count > hammer2_limit_dirty_inodes / 2) {
+			trigger_syncer(pmp->mp);
+		}
+
+		/*
+		 * Stall at the limit waiting for the counts to drop.
+		 * This code will typically be woken up once the count
+		 * drops below 3/4 the limit, or in one second.
+		 */
+		if (waiting < hammer2_limit_dirty_chains &&
+		    pmp->sideq_count < hammer2_limit_dirty_inodes) {
+			break;
+		}
+		tsleep_interlock(&pmp->inmem_dirty_chains, 0);
+		atomic_set_int(&pmp->inmem_dirty_chains,
+			       HAMMER2_DIRTYCHAIN_WAITING);
+		if (waiting < hammer2_limit_dirty_chains &&
+		    pmp->sideq_count < hammer2_limit_dirty_inodes) {
+			break;
+		}
+		trigger_syncer(pmp->mp);
+		tsleep(&pmp->inmem_dirty_chains, PINTERLOCKED, "h2memw", hz);
+#if 0
 		limit = pmp->mp->mnt_nvnodelistsize / 10;
 		if (limit < hammer2_limit_dirty_chains)
 			limit = hammer2_limit_dirty_chains;
 		if (limit < 1000)
 			limit = 1000;
-
-#if 0
-		if ((int)(ticks - zzticks) > hz) {
-			zzticks = ticks;
-			kprintf("count %ld %ld\n", count, limit);
-		}
 #endif
-
-		/*
-		 * Block if there are too many dirty chains present, wait
-		 * for the flush to clean some out.
-		 */
-		if (count > limit) {
-			hammer2_pfs_moderate(ip, always_moderate);
-			tsleep_interlock(&pmp->inmem_dirty_chains, 0);
-			if (atomic_cmpset_int(&pmp->inmem_dirty_chains,
-					       waiting,
-				       waiting | HAMMER2_DIRTYCHAIN_WAITING)) {
-				if (ticks != pmp->speedup_ticks) {
-					pmp->speedup_ticks = ticks;
-					speedup_syncer(pmp->mp);
-				}
-				tsleep(&pmp->inmem_dirty_chains, PINTERLOCKED,
-				       "chnmem", hz);
-			}
-			continue;	/* loop on success or fail */
-		}
-
-		/*
-		 * Try to start an early flush before we are forced to block.
-		 */
-		if (count > limit * 5 / 10 &&
-		    ticks != pmp->speedup_ticks) {
-			pmp->speedup_ticks = ticks;
-			speedup_syncer(pmp->mp);
-		}
-		break;
 	}
 }
 
@@ -3150,7 +3124,11 @@ hammer2_pfs_memory_wakeup(hammer2_pfs_t *pmp)
 	if (pmp) {
 		waiting = atomic_fetchadd_int(&pmp->inmem_dirty_chains, -1);
 		/* don't need --waiting to test flag */
-		if (waiting & HAMMER2_DIRTYCHAIN_WAITING) {
+
+		if ((waiting & HAMMER2_DIRTYCHAIN_WAITING) &&
+		    (pmp->inmem_dirty_chains & HAMMER2_DIRTYCHAIN_MASK) <=
+		    hammer2_limit_dirty_chains * 2 / 3 &&
+		    pmp->sideq_count <= hammer2_limit_dirty_inodes * 2 / 3) {
 			atomic_clear_int(&pmp->inmem_dirty_chains,
 					 HAMMER2_DIRTYCHAIN_WAITING);
 			wakeup(&pmp->inmem_dirty_chains);
