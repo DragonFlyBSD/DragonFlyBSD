@@ -435,6 +435,10 @@ vfs_register(struct vfsconf *vfc)
 		vfsops->vfs_acdone = vfs_stdac_done;
 	}
 
+	if (vfsops->vfs_modifying == NULL) {
+		vfsops->vfs_modifying = vfs_stdmodifying;
+	}
+
 	/*
 	 * Call init function for this VFS...
 	 */

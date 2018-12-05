@@ -401,8 +401,14 @@ vn_writechk(struct vnode *vp, struct nchandle *nch)
 int
 ncp_writechk(struct nchandle *nch)
 {
-	if (nch->mount && (nch->mount->mnt_flag & MNT_RDONLY))
-		return (EROFS);
+	struct mount *mp;
+
+	if ((mp = nch->mount) != NULL) {
+		if (mp->mnt_flag & MNT_RDONLY)
+			return (EROFS);
+		if (mp->mnt_op->vfs_modifying != vfs_stdmodifying)
+			VFS_MODIFYING(mp);
+	}
 	return(0);
 }
 
@@ -722,6 +728,8 @@ vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		ioflag |= IO_SYNC;
 	if ((flags & O_FOFFSET) == 0)
 		uio->uio_offset = vn_get_fpf_offset(fp);
+	if (vp->v_mount)
+		VFS_MODIFYING(vp->v_mount);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	ioflag |= sequential_heuristic(uio, fp);
 	error = VOP_WRITE(vp, uio, ioflag, cred);

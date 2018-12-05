@@ -1487,4 +1487,10 @@ vfs_stdncpgen_test(struct mount *mp, struct namecache *ncp)
 {
 	return 0;
 }
+
+void
+vfs_stdmodifying(struct mount *mp)
+{
+	/* do nothing */
+}
 /* end of vfs default ops */
