@@ -275,15 +275,7 @@ hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
  * that create/modify/delete elements use it.
  *
  * The chains making up the cluster may be narrowed down based on quorum
- * acceptability, and if RESOLVE_RDONLY is specified the chains can be
- * narrowed down to a single chain as long as the entire subtopology is known
- * to be intact.  So, for example, we can narrow a read-only op to a single
- * fast SLAVE but if we focus a CACHE chain we must still retain at least
- * a SLAVE to ensure that the subtopology can be accessed.
- *
- * RESOLVE_RDONLY operations are effectively as-of so the quorum does not need
- * to be maintained once the topology is validated as-of the top level of
- * the operation.
+ * acceptability.
  *
  * If a failure occurs the operation must be aborted by higher-level code and
  * retried. XXX
@@ -517,16 +509,6 @@ hammer2_cluster_resolve(hammer2_cluster_t *cluster)
 					      chain->bref.modify_tid))) {
 				++nslaves;
 				nflags |= HAMMER2_CLUSTER_RDHARD;
-#if 0
-				/* XXX optimize for RESOLVE_RDONLY */
-				if (cluster->focus == NULL) {
-					focus_pfs_type = HAMMER2_PFSTYPE_SLAVE;
-					cluster->focus_index = i;
-					cluster->focus = chain; /* NULL ok */
-					cluster->error = chain ? chain->error :
-								 0;
-				}
-#endif
 			} else if (chain == NULL || chain->error == 0) {
 				nflags |= HAMMER2_CLUSTER_UNSOFT;
 			}

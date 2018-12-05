@@ -260,6 +260,7 @@ hammer2_trans_done(hammer2_pfs_t *pmp, uint32_t flags)
 	uint32_t oflags;
 	uint32_t nflags;
 
+#if 0
 	/*
 	 * Modifying ops on the front-end can cause dirty inodes to
 	 * build up in the sideq.  We don't flush these on inactive/reclaim
@@ -272,6 +273,7 @@ hammer2_trans_done(hammer2_pfs_t *pmp, uint32_t flags)
 	    pmp->mp) {
 		speedup_syncer(pmp->mp);
 	}
+#endif
 
 	/*
 	 * Clean-up the transaction.  Wakeup any waiters when finishing
