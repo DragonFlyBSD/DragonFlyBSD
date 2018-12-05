@@ -2437,6 +2437,7 @@ kern_link(struct nlookupdata *nd, struct nlookupdata *linknd)
 		vrele(vp);
 		return (EEXIST);
 	}
+	VFS_MODIFYING(vp->v_mount);
 	error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM);
 	if (error) {
 		vrele(vp);

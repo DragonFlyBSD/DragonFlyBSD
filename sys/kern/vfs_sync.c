@@ -116,8 +116,8 @@ struct syncer_ctx {
 	long			syncer_mask;
 	int 			syncer_delayno;
 	int			syncer_forced;
-	int			syncer_rushjob;
-	int			syncer_unused01;
+	int			syncer_rushjob;	/* sequence vnodes faster */
+	int			syncer_trigger;	/* trigger full sync */
 	long			syncer_count;
 };
 
@@ -190,7 +190,8 @@ vn_syncer_count(struct mount *mp)
  *	    depend on the syncer_token (which might already be held by
  *	    the caller) to protect v_synclist and VONWORKLST.
  *
- * MPSAFE
+ * WARNING: The syncer depends on this function not blocking if the caller
+ *	    already holds the syncer token.
  */
 void
 vn_syncer_add(struct vnode *vp, int delay)
@@ -387,6 +388,25 @@ syncer_thread(void *_ctx)
 		 */
 		slp = &ctx->syncer_workitem_pending[ctx->syncer_delayno];
 
+		/*
+		 * If syncer_trigger is set (from trigger_syncer(mp)),
+		 * Immediately do a full filesystem sync.
+		 */
+		if (ctx->syncer_trigger) {
+			ctx->syncer_trigger = 0;
+			if (ctx->sc_mp && ctx->sc_mp->mnt_syncer) {
+				vp = ctx->sc_mp->mnt_syncer;
+				if (vp->v_flag & VONWORKLST) {
+					vn_syncer_add(vp, retrydelay);
+					if (vget(vp, LK_EXCLUSIVE) == 0) {
+						VOP_FSYNC(vp, MNT_LAZY, 0);
+						vput(vp);
+						vnodes_synced++;
+					}
+				}
+			}
+		}
+
 		while ((vp = LIST_FIRST(slp)) != NULL) {
 			vn_syncer_add(vp, retrydelay);
 			if (ctx->syncer_forced) {
@@ -531,8 +551,24 @@ speedup_syncer(struct mount *mp)
 	 */
 	atomic_add_int(&rushjob, 1);
 	++stat_rush_requests;
-	if (mp)
+	if (mp && mp->mnt_syncer_ctx)
 		wakeup(mp->mnt_syncer_ctx);
+}
+
+/*
+ * trigger a full sync
+ */
+void
+trigger_syncer(struct mount *mp)
+{
+	struct syncer_ctx *ctx;
+
+	if (mp && (ctx = mp->mnt_syncer_ctx) != NULL) {
+		if (ctx->syncer_trigger == 0) {
+			ctx->syncer_trigger = 1;
+			wakeup(ctx);
+		}
+	}
 }
 
 /*

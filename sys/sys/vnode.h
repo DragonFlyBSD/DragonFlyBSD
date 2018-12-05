@@ -431,6 +431,7 @@ int	getspecialvnode (enum vtagtype tag, struct mount *mp,
 		    struct vop_ops **ops, struct vnode **vpp, int timo, 
 		    int lkflags);
 void	speedup_syncer (struct mount *mp);
+void	trigger_syncer (struct mount *mp);
 int	vaccess(enum vtype, mode_t, uid_t, gid_t, mode_t, struct ucred *);
 void	vattr_null (struct vattr *vap);
 int	vcount (struct vnode *vp);

@@ -567,6 +567,7 @@ typedef void vfs_account_t(struct mount *mp,
 			uid_t uid, gid_t gid, int64_t delta);
 typedef void vfs_ncpgen_set_t(struct mount *mp, struct namecache *ncp);
 typedef int vfs_ncpgen_test_t(struct mount *mp, struct namecache *ncp);
+typedef void vfs_modifying_t(struct mount *mp);
 
 int vfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred);
 int vfs_start(struct mount *mp, int flags);
@@ -589,7 +590,7 @@ int vfs_uninit(struct vfsconf *vfc, struct vfsconf *vfsp);
 int vfs_extattrctl(struct mount *mp, int cmd, struct vnode *vp,
 		    int attrnamespace, const char *attrname,
 		    struct ucred *cred);
-
+int vfs_modifying(struct mount *mp);
 
 struct vfsops {
 	vfs_mount_t 	*vfs_mount;
@@ -612,6 +613,7 @@ struct vfsops {
 	vfs_account_t	*vfs_account;
 	vfs_ncpgen_set_t	*vfs_ncpgen_set;
 	vfs_ncpgen_test_t	*vfs_ncpgen_test;
+	vfs_modifying_t	*vfs_modifying;
 };
 
 #define VFS_MOUNT(MP, PATH, DATA, CRED)		\
@@ -653,6 +655,8 @@ struct vfsops {
 	MP->mnt_op->vfs_ncpgen_set(MP, NCP)
 #define VFS_NCPGEN_TEST(MP, NCP) \
 	MP->mnt_op->vfs_ncpgen_test(MP, NCP)
+#define VFS_MODIFYING(MP) \
+	MP->mnt_op->vfs_modifying(MP)
 
 #endif
 
@@ -765,6 +769,7 @@ vfs_account_t	vfs_stdaccount;
 vfs_account_t	vfs_noaccount;
 vfs_ncpgen_set_t	vfs_stdncpgen_set;
 vfs_ncpgen_test_t	vfs_stdncpgen_test;
+vfs_modifying_t	vfs_stdmodifying;
 
 struct vop_access_args;
 int vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,
