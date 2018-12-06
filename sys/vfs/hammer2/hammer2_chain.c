@@ -1003,33 +1003,37 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 
 	if (how & HAMMER2_RESOLVE_NONBLOCK) {
 		/*
-		 * For non-blocking operation attempt to get the lock
-		 * before bumping lockcnt, just so we don't have to deal
-		 * with dropping lockcnt (and dealing with the underlying
-		 * data) if we fail.
+		 * We still have to bump lockcnt before acquiring the lock,
+		 * even for non-blocking operation, because the unlock code
+		 * live-loops on lockcnt == 1 when dropping the last lock.
 		 *
-		 * NOTE: LOCKAGAIN must always succeed without blocking.
+		 * If the non-blocking operation fails we have to use a
+		 * ref+drop+unhold sequence to undo the mess (or write a
+		 * hammer2_chain_unhold() function that doesn't drop).
+		 *
+		 * NOTE: LOCKAGAIN must always succeed without blocking,
+		 *	 even if NONBLOCK is specified.
 		 */
+		atomic_add_int(&chain->lockcnt, 1);
 		if (how & HAMMER2_RESOLVE_SHARED) {
 			if (how & HAMMER2_RESOLVE_LOCKAGAIN) {
 				hammer2_mtx_sh_again(&chain->lock);
 			} else {
-				if (hammer2_mtx_sh_try(&chain->lock) != 0)
+				if (hammer2_mtx_sh_try(&chain->lock) != 0) {
+					hammer2_chain_ref(chain);
+					hammer2_chain_drop_unhold(chain);
 					return EAGAIN;
+				}
 			}
 		} else {
-			if (hammer2_mtx_ex_try(&chain->lock) != 0)
+			if (hammer2_mtx_ex_try(&chain->lock) != 0) {
+				hammer2_chain_ref(chain);
+				hammer2_chain_drop_unhold(chain);
 				return EAGAIN;
+			}
 		}
-		atomic_add_int(&chain->lockcnt, 1);
 		++curthread->td_tracker;
 	} else {
-		/*
-		 * Lock the element.  Recursive locks are allowed.  lockcnt
-		 * ensures that data is left intact.
-		 */
-		atomic_add_int(&chain->lockcnt, 1);
-
 		/*
 		 * Get the appropriate lock.  If LOCKAGAIN is flagged with
 		 * SHARED the caller expects a shared lock to already be
@@ -1037,6 +1041,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 		 * importantly not block if there is a pending exclusive lock
 		 * request.
 		 */
+		atomic_add_int(&chain->lockcnt, 1);
 		if (how & HAMMER2_RESOLVE_SHARED) {
 			if (how & HAMMER2_RESOLVE_LOCKAGAIN) {
 				hammer2_mtx_sh_again(&chain->lock);

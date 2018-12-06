@@ -1,11 +1,11 @@
 /*
- * H2CHAINS.C
+ * H2INODES.C
  *
- * cc -I/usr/src/sys h2chains.c -o ~/bin/h2chains -lkvm
+ * cc -I/usr/src/sys h2inodes.c -o ~/bin/h2inodes -lkvm
  *
- * h2chains <hmpaddr>
+ * h2inodes <pfsaddr>
  *
- * Copyright (c) 2017 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -53,8 +53,7 @@
 #include <nlist.h>
 #include <getopt.h>
 
-static void h2chainscan(kvm_t *kd, int tab, uintptr_t cp,
-			uintptr_t pcp, int pflags);
+static void h2inumscan(kvm_t *kd, int tab, uintptr_t cp);
 static void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
 
 #if 0
@@ -71,7 +70,7 @@ main(int ac, char **av)
     kvm_t *kd;
     const char *corefile = NULL;
     const char *sysfile = NULL;
-    hammer2_dev_t hmp;
+    hammer2_pfs_t pmp;
     uintptr_t base;
     uintptr_t cp;
     int ch;
@@ -107,63 +106,29 @@ main(int ac, char **av)
 
     base = strtoul(av[0], NULL, 0);
 
-    kkread(kd, base, &hmp, sizeof(hmp));
-    cp = (uintptr_t)hmp.vchain.core.rbtree.rbh_root;
-    printf("VCHAIN %08x\n", hmp.vchain.flags);
+    kkread(kd, base, &pmp, sizeof(pmp));
+    cp = (uintptr_t)pmp.inum_tree.rbh_root;
     if (cp)
-	    h2chainscan(kd, 4, cp,
-			base + offsetof(struct hammer2_dev, vchain),
-			hmp.vchain.flags);
+	    h2inumscan(kd, 4, cp);
     printf("\n");
-
-    cp = (uintptr_t)hmp.fchain.core.rbtree.rbh_root;
-    printf("FCHAIN %08x\n", hmp.fchain.flags);
-    if (cp)
-	    h2chainscan(kd, 4, cp,
-			base + offsetof(struct hammer2_dev, fchain),
-			hmp.fchain.flags);
-
     return 0;
 }
 
 static
 void
-h2chainscan(kvm_t *kd, int tab, uintptr_t cp, uintptr_t pcp, int pflags)
+h2inumscan(kvm_t *kd, int tab, uintptr_t cp)
 {
-	hammer2_chain_t chain;
+	hammer2_inode_t ip;
 
-	kkread(kd, cp, &chain, sizeof(chain));
-	if (chain.rbnode.rbe_left)
-		h2chainscan(kd, tab, (uintptr_t)chain.rbnode.rbe_left,
-			    pcp, pflags);
-
-	printf("%*.*s chain %p type %02x lock %p dio %p "
-		"off/pbase=%016jx/%016jx flags %08x ",
-		tab, tab, "",
-		(void *)cp, chain.bref.type, chain.lock.mtx_owner, chain.dio,
-		chain.bref.data_off & ~(hammer2_off_t)0x0F,
-		chain.bref.data_off & ~(hammer2_off_t)65535,
-		chain.flags);
-	if (chain.flags & HAMMER2_CHAIN_ONFLUSH)
-		printf("F");
-	if (chain.flags & HAMMER2_CHAIN_MODIFIED)
-		printf("M");
-	if (chain.flags & (HAMMER2_CHAIN_ONFLUSH|HAMMER2_CHAIN_MODIFIED)) {
-		if ((pflags & HAMMER2_CHAIN_ONFLUSH) == 0)
-			printf(" FAIL");
-	}
-	if ((uintptr_t)chain.parent != pcp)
-		printf(" FAIL2");
-	printf("\n");
-	if (chain.core.rbtree.rbh_root)
-		h2chainscan(kd, tab + 4,
-			    (uintptr_t)chain.core.rbtree.rbh_root,
-			    cp, chain.flags);
-
-	if (chain.rbnode.rbe_right)
-		h2chainscan(kd, tab, (uintptr_t)chain.rbnode.rbe_right,
-			    pcp, pflags);
-
+	kkread(kd, cp, &ip, sizeof(ip));
+	if (ip.rbnode.rbe_left)
+		h2inumscan(kd, tab, (uintptr_t)ip.rbnode.rbe_left);
+	printf("%*.*s ip %p inum=%ld refs=%08x "
+		"flags=%08x chain0=%p vp=%p\n",
+		tab, tab, "", (void *)cp, ip.meta.inum, ip.refs,
+		ip.flags, ip.cluster.array[0].chain, ip.vp);
+	if (ip.rbnode.rbe_right)
+		h2inumscan(kd, tab, (uintptr_t)ip.rbnode.rbe_right);
 }
 
 static void

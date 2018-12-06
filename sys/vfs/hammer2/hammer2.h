@@ -1438,6 +1438,7 @@ extern struct lock hammer2_mntlk;
 
 
 extern int hammer2_debug;
+extern long hammer2_debug_inode;
 extern int hammer2_cluster_meta_read;
 extern int hammer2_cluster_data_read;
 extern int hammer2_cluster_write;

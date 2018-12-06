@@ -1268,8 +1268,6 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 			if (child->flags & HAMMER2_CHAIN_FLUSH_MASK) {
 				hammer2_chain_setflush(parent);
 			}
-			kprintf("inum %ld do not dive root inode\n",
-				(long)parent->bref.key);
 			goto done;
 		}
 	}

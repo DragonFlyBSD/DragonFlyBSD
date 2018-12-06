@@ -81,6 +81,7 @@ struct lock hammer2_mntlk;
 
 int hammer2_supported_version = HAMMER2_VOL_VERSION_DEFAULT;
 int hammer2_debug;
+long hammer2_debug_inode;
 int hammer2_cluster_meta_read = 1;	/* physical read-ahead */
 int hammer2_cluster_data_read = 4;	/* physical read-ahead */
 int hammer2_cluster_write = 0;		/* physical write clustering */
@@ -127,6 +128,8 @@ SYSCTL_INT(_vfs_hammer2, OID_AUTO, supported_version, CTLFLAG_RD,
 	   &hammer2_supported_version, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, debug, CTLFLAG_RW,
 	   &hammer2_debug, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, debug_inode, CTLFLAG_RW,
+	   &hammer2_debug_inode, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, cluster_meta_read, CTLFLAG_RW,
 	   &hammer2_cluster_meta_read, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, cluster_data_read, CTLFLAG_RW,
