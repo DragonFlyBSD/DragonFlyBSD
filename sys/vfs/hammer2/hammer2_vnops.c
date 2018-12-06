@@ -1872,6 +1872,15 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 
 	ncp = ap->a_nch->ncp;
 
+	if (hammer2_debug_inode && dip->meta.inum == hammer2_debug_inode) {
+		kprintf("hammer2: attempt to delete inside debug inode: %s\n",
+			ncp->nc_name);
+		while (hammer2_debug_inode &&
+		       dip->meta.inum == hammer2_debug_inode) {
+			tsleep(&hammer2_debug_inode, 0, "h2debug", hz*5);
+		}
+	}
+
 	/*hammer2_pfs_memory_wait(dip->pmp);*/
 	hammer2_trans_init(dip->pmp, 0);
 	hammer2_inode_lock(dip, 0);
@@ -1909,6 +1918,16 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 		ip = hammer2_inode_get(dip->pmp, &xop->head, -1, -1);
 		hammer2_xop_retire(&xop->head, HAMMER2_XOPMASK_VOP);
 		if (ip) {
+			if (hammer2_debug_inode &&
+			    ip->meta.inum == hammer2_debug_inode) {
+				kprintf("hammer2: attempt to delete debug "
+					"inode!\n");
+				while (hammer2_debug_inode &&
+				       ip->meta.inum == hammer2_debug_inode) {
+					tsleep(&hammer2_debug_inode, 0,
+					       "h2debug", hz*5);
+				}
+			}
 			hammer2_inode_unlink_finisher(ip, isopen);
 			hammer2_inode_depend(dip, ip); /* after modified */
 			hammer2_inode_unlock(ip);

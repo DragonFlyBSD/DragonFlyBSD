@@ -415,7 +415,8 @@ hammer2_io_putblk(hammer2_io_t **diop)
 		if ((orefs & HAMMER2_DIO_MASK) == 1 &&
 		    (orefs & HAMMER2_DIO_INPROG) == 0) {
 			/*
-			 * Lastdrop case, INPROG can be set.
+			 * Lastdrop case, INPROG can be set.  GOOD must be
+			 * cleared to prevent the getblk shortcut.
 			 */
 			nrefs = orefs - 1;
 			nrefs &= ~(HAMMER2_DIO_GOOD | HAMMER2_DIO_DIRTY);
@@ -524,7 +525,7 @@ hammer2_io_putblk(hammer2_io_t **diop)
 	atomic_add_int(&hmp->iofree_count, 1);
 
 	/*
-	 * Clear INPROG, GOOD, and WAITING
+	 * Clear INPROG, GOOD, and WAITING (GOOD should already be clear).
 	 */
 	for (;;) {
 		orefs = dio->refs;
