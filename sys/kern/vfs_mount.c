@@ -983,10 +983,8 @@ next:
  * If the SKIPSYSTEM or WRITECLOSE flags are specified, rootrefs must
  * be zero.
  */
-#ifdef DIAGNOSTIC
-static int busyprt = 0;		/* print out busy vnodes */
-SYSCTL_INT(_debug, OID_AUTO, busyprt, CTLFLAG_RW, &busyprt, 0, "");
-#endif
+static int debug_busyprt = 0;		/* print out busy vnodes */
+SYSCTL_INT(_vfs, OID_AUTO, debug_busyprt, CTLFLAG_RW, &debug_busyprt, 0, "");
 
 static int vflush_scan(struct mount *mp, struct vnode *vp, void *data);
 
@@ -1112,10 +1110,15 @@ vflush_scan(struct mount *mp, struct vnode *vp, void *data)
 	}
 	if (vp->v_type == VCHR || vp->v_type == VBLK)
 		kprintf("vflush: Warning, cannot destroy busy device vnode\n");
-#ifdef DIAGNOSTIC
-	if (busyprt)
-		vprint("vflush: busy vnode", vp);
-#endif
+	if (debug_busyprt) {
+		const char *filename;
+
+		spin_lock(&vp->v_spin);
+		filename = TAILQ_FIRST(&vp->v_namecache) ?
+			   TAILQ_FIRST(&vp->v_namecache)->nc_name : "?";
+		spin_unlock(&vp->v_spin);
+		kprintf("vflush: busy vnode (%p) %s\n", vp, filename);
+	}
 	++info->busy;
 	return(0);
 }

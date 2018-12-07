@@ -596,6 +596,8 @@ shutdown_cleanup_proc(struct proc *p)
 		vrele(p->p_textvp);
 		p->p_textvp = NULL;
 	}
+	if (p->p_textnch.ncp)
+		cache_drop(&p->p_textnch);
 	vm = p->p_vmspace;
 	if (vm != NULL) {
 		pmap_remove_pages(vmspace_pmap(vm),

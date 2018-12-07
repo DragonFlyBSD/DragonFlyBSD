@@ -89,11 +89,14 @@ static int setfmode (struct vnode *, int);
 static int setfflags (struct vnode *, int);
 static int setutimes (struct vnode *, struct vattr *,
 			const struct timespec *, int);
-static int	usermount = 0;	/* if 1, non-root can mount fs. */
 
+static int	usermount = 0;	/* if 1, non-root can mount fs. */
 SYSCTL_INT(_vfs, OID_AUTO, usermount, CTLFLAG_RW, &usermount, 0,
     "Allow non-root users to mount filesystems");
 
+static int	debug_unmount = 0; /* if 1 loop until unmount success */
+SYSCTL_INT(_vfs, OID_AUTO, debug_unmount, CTLFLAG_RW, &debug_unmount, 0,
+    "Stall failed unmounts in loop");
 /*
  * Virtual File System System Calls
  */
@@ -701,6 +704,7 @@ dounmount(struct mount *mp, int flags, int halting)
 	int async_flag;
 	int lflags;
 	int freeok = 1;
+	int hadsyncer = 0;
 	int retry;
 	int quickhalt;
 
@@ -750,46 +754,6 @@ dounmount(struct mount *mp, int flags, int halting)
 	mp->mnt_flag &=~ MNT_ASYNC;
 
 	/*
-	 * If this filesystem isn't aliasing other filesystems,
-	 * try to invalidate any remaining namecache entries and
-	 * check the count afterwords.
-	 *
-	 * We own the last mnt_refs by owning mnt_ncmountpt.
-	 */
-	if ((mp->mnt_kern_flag & MNTK_NCALIASED) == 0) {
-		cache_lock(&mp->mnt_ncmountpt);
-		cache_inval(&mp->mnt_ncmountpt, CINV_DESTROY|CINV_CHILDREN);
-		cache_unlock(&mp->mnt_ncmountpt);
-
-		cache_clearmntcache();
-		if ((ncp = mp->mnt_ncmountpt.ncp) != NULL &&
-		    (ncp->nc_refs != 1 || TAILQ_FIRST(&ncp->nc_list))) {
-			allproc_scan(&unmount_allproc_cb, mp, 0);
-		}
-
-		cache_clearmntcache();
-		if ((ncp = mp->mnt_ncmountpt.ncp) != NULL &&
-		    (ncp->nc_refs != 1 || TAILQ_FIRST(&ncp->nc_list))) {
-
-			if ((flags & MNT_FORCE) == 0) {
-				error = EBUSY;
-				mount_warning(mp, "Cannot unmount: "
-						  "%d namecache "
-						  "references still "
-						  "present",
-						  ncp->nc_refs - 1);
-			} else {
-				mount_warning(mp, "Forced unmount: "
-						  "%d namecache "
-						  "references still "
-						  "present",
-						  ncp->nc_refs - 1);
-				freeok = 0;
-			}
-		}
-	}
-
-	/*
 	 * Decomission our special mnt_syncer vnode.  This also stops
 	 * the vnlru code.  If we are unable to unmount we recommission
 	 * the vnode.
@@ -800,8 +764,12 @@ dounmount(struct mount *mp, int flags, int halting)
 		mp->mnt_syncer = NULL;
 		atomic_set_int(&vp->v_refcnt, VREF_FINALIZE);
 		vrele(vp);
+		hadsyncer = 1;
 	}
 
+	/*
+	 * Sync normally-mounted filesystem.
+	 */
 	if (quickhalt == 0) {
 		if ((mp->mnt_flag & MNT_RDONLY) == 0)
 			VFS_SYNC(mp, MNT_WAIT);
@@ -814,24 +782,76 @@ dounmount(struct mount *mp, int flags, int halting)
 	 * Scans can get temporary refs on a mountpoint (thought really
 	 * heavy duty stuff like cache_findmount() do not).
 	 */
-	if (mp->mnt_refs != 1)
-		cache_clearmntcache();
-	for (retry = 0; retry < 10 && mp->mnt_refs != 1; ++retry) {
+	for (retry = 0; (retry < 10 || debug_unmount); ++retry) {
+		/*
+		 * Invalidate the namecache topology under the mount.
+		 * nullfs mounts alias a real mount's namecache topology
+		 * and it should not be invalidated in that case.
+		 */
+		if ((mp->mnt_kern_flag & MNTK_NCALIASED) == 0) {
+			cache_lock(&mp->mnt_ncmountpt);
+			cache_inval(&mp->mnt_ncmountpt,
+				    CINV_DESTROY|CINV_CHILDREN);
+			cache_unlock(&mp->mnt_ncmountpt);
+		}
+
+		/*
+		 * Clear pcpu caches
+		 */
 		cache_unmounting(mp);
+		if (mp->mnt_refs != 1)
+			cache_clearmntcache();
+
+		/*
+		 * Break out if we are good.  Don't count ncp refs if the
+		 * mount is aliased.
+		 */
+		ncp = (mp->mnt_kern_flag & MNTK_NCALIASED) ?
+		      NULL : mp->mnt_ncmountpt.ncp;
+		if (mp->mnt_refs == 1 &&
+		    (ncp == NULL || (ncp->nc_refs == 1 &&
+				     TAILQ_FIRST(&ncp->nc_list) == NULL))) {
+			break;
+		}
+
+		/*
+		 * If forcing the unmount, clean out any p->p_textnch
+		 * nchandles that match this mount.
+		 */
+		if (flags & MNT_FORCE)
+			allproc_scan(&unmount_allproc_cb, mp, 0);
+
+		/*
+		 * Sleep and retry.
+		 */
 		tsleep(&mp->mnt_refs, 0, "mntbsy", hz / 10 + 1);
-		cache_clearmntcache();
+		if ((retry & 15) == 15) {
+			mount_warning(mp,
+				      "(%p) debug - retry %d, "
+				      "%d namecache refs, %d mount refs",
+				      mp, retry,
+				      (ncp ? ncp->nc_refs - 1 : 0),
+				      mp->mnt_refs - 1);
+		}
 	}
-	if (mp->mnt_refs != 1) {
-		if ((flags & MNT_FORCE) == 0) {
-			mount_warning(mp, "Cannot unmount: "
-					  "%d mount refs still present",
-					  mp->mnt_refs - 1);
-			error = EBUSY;
-		} else {
-			mount_warning(mp, "Forced unmount: "
-					  "%d mount refs still present",
-					  mp->mnt_refs - 1);
+
+	error = 0;
+	ncp = (mp->mnt_kern_flag & MNTK_NCALIASED) ?
+	      NULL : mp->mnt_ncmountpt.ncp;
+	if (mp->mnt_refs != 1 ||
+	    (ncp != NULL && (ncp->nc_refs != 1 ||
+			     TAILQ_FIRST(&ncp->nc_list)))) {
+		mount_warning(mp,
+			      "(%p): %d namecache refs, %d mount refs "
+			      "still present",
+			      mp,
+			      (ncp ? ncp->nc_refs - 1 : 0),
+			      mp->mnt_refs - 1);
+		if (flags & MNT_FORCE) {
 			freeok = 0;
+			mount_warning(mp, "forcing unmount\n");
+		} else {
+			error = EBUSY;
 		}
 	}
 
@@ -850,6 +870,12 @@ dounmount(struct mount *mp, int flags, int halting)
 				error = VFS_UNMOUNT(mp, flags);
 			}
 		}
+		if (error) {
+			mount_warning(mp,
+				      "(%p) unmount: vfs refused to unmount, "
+				      "error %d",
+				      mp, error);
+		}
 	}
 
 	/*
@@ -857,7 +883,7 @@ dounmount(struct mount *mp, int flags, int halting)
 	 * syncer vnode and misc flags.
 	 */
 	if (error) {
-		if (mp->mnt_syncer == NULL)
+		if (mp->mnt_syncer == NULL && hadsyncer)
 			vfs_allocate_syncvnode(mp);
 		mp->mnt_kern_flag &= ~(MNTK_UNMOUNT | MNTK_UNMOUNTF);
 		mp->mnt_flag |= async_flag;
