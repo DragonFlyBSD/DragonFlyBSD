@@ -535,7 +535,7 @@ void
 hammer2_inode_lock_downgrade(hammer2_inode_t *ip, int wasexclusive)
 {
 	if (wasexclusive == 0)
-		mtx_downgrade(&ip->lock);
+		hammer2_mtx_downgrade(&ip->lock);
 }
 
 /*

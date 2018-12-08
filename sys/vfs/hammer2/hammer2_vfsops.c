@@ -269,6 +269,7 @@ hammer2_vfs_init(struct vfsconf *conf)
 	int error;
 
 	error = 0;
+	kmalloc_raise_limit(M_HAMMER2, 0);	/* unlimited */
 
 	/*
 	 * A large DIO cache is needed to retain dedup enablement masks.
