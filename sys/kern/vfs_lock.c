@@ -560,6 +560,12 @@ vget(struct vnode *vp, int flags)
 		 * changing.  Since the vnode is not in a VRECLAIMED state,
 		 * we can safely clear VINACTIVE.
 		 *
+		 * It is possible for a shared lock to cause a race with
+		 * another thread that is also in the process of clearing
+		 * VREF_TERMINATE, meaning that we might return with it still
+		 * set and then assert in a later vref().  The solution is to
+		 * unconditionally clear VREF_TERMINATE here as well.
+		 *
 		 * NOTE! Multiple threads may clear VINACTIVE if this is
 		 *	 shared lock.  This race is allowed.
 		 */
@@ -568,6 +574,7 @@ vget(struct vnode *vp, int flags)
 		if (vp->v_act > VACT_MAX)	/* SMP race ok */
 			vp->v_act = VACT_MAX;
 		error = 0;
+		atomic_clear_int(&vp->v_refcnt, VREF_TERMINATE);
 	} else {
 		/*
 		 * If the vnode is not VS_ACTIVE it must be reactivated
@@ -585,6 +592,12 @@ vget(struct vnode *vp, int flags)
 		 * the refcnt is non-zero and the vnode has not been
 		 * reclaimed.  This also means that the transitions do
 		 * not affect cachedvnodes.
+		 *
+		 * It is possible for a shared lock to cause a race with
+		 * another thread that is also in the process of clearing
+		 * VREF_TERMINATE, meaning that we might return with it still
+		 * set and then assert in a later vref().  The solution is to
+		 * unconditionally clear VREF_TERMINATE here as well.
 		 */
 		_vclrflags(vp, VINACTIVE);
 		vp->v_act += VACT_INC;
@@ -606,7 +619,8 @@ vget(struct vnode *vp, int flags)
 			spin_unlock(&vp->v_spin);
 			break;
 		case VS_ACTIVE:
-			atomic_clear_int(&vp->v_refcnt, VREF_FINALIZE);
+			atomic_clear_int(&vp->v_refcnt, VREF_FINALIZE |
+							VREF_TERMINATE);
 			spin_unlock(&vp->v_spin);
 			break;
 		case VS_DYING:
