@@ -1590,6 +1590,8 @@ void hammer2_chain_ref(hammer2_chain_t *chain);
 void hammer2_chain_ref_hold(hammer2_chain_t *chain);
 void hammer2_chain_drop(hammer2_chain_t *chain);
 void hammer2_chain_drop_unhold(hammer2_chain_t *chain);
+void hammer2_chain_unhold(hammer2_chain_t *chain);
+void hammer2_chain_rehold(hammer2_chain_t *chain);
 int hammer2_chain_lock(hammer2_chain_t *chain, int how);
 void hammer2_chain_lock_unhold(hammer2_chain_t *chain, int how);
 void hammer2_chain_load_data(hammer2_chain_t *chain);
@@ -1967,6 +1969,8 @@ hammer2_cluster_t *hammer2_cluster_alloc(hammer2_pfs_t *pmp,
 				hammer2_blockref_t *bref);
 void hammer2_cluster_ref(hammer2_cluster_t *cluster);
 void hammer2_cluster_drop(hammer2_cluster_t *cluster);
+void hammer2_cluster_unhold(hammer2_cluster_t *cluster);
+void hammer2_cluster_rehold(hammer2_cluster_t *cluster);
 void hammer2_cluster_lock(hammer2_cluster_t *cluster, int how);
 int hammer2_cluster_check(hammer2_cluster_t *cluster, hammer2_key_t lokey,
 			int flags);

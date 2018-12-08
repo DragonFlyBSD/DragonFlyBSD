@@ -260,6 +260,34 @@ hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
 	}
 }
 
+void
+hammer2_cluster_unhold(hammer2_cluster_t *cluster)
+{
+	hammer2_chain_t *chain;
+	int i;
+
+	for (i = 0; i < cluster->nchains; ++i) {
+		chain = cluster->array[i].chain;
+		if (chain == NULL)
+			continue;
+		hammer2_chain_unhold(chain);
+	}
+}
+
+void
+hammer2_cluster_rehold(hammer2_cluster_t *cluster)
+{
+	hammer2_chain_t *chain;
+	int i;
+
+	for (i = 0; i < cluster->nchains; ++i) {
+		chain = cluster->array[i].chain;
+		if (chain == NULL)
+			continue;
+		hammer2_chain_rehold(chain);
+	}
+}
+
 /*
  * Calculate the clustering state for the cluster and set its focus.
  * This routine must be called with care.  For example, it should not
