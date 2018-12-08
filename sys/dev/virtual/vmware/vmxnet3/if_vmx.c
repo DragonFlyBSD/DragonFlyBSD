@@ -276,7 +276,7 @@ static driver_t vmxnet3_driver = {
 };
 
 static devclass_t vmxnet3_devclass;
-DRIVER_MODULE(vmx, pci, vmxnet3_driver, vmxnet3_devclass, 0, 0);
+DRIVER_MODULE(vmx, pci, vmxnet3_driver, vmxnet3_devclass, NULL, NULL);
 
 MODULE_DEPEND(vmx, pci, 1, 1, 1);
 MODULE_DEPEND(vmx, ether, 1, 1, 1);

@@ -85,7 +85,7 @@ static driver_t mpr_pci_driver = {
 };
 
 static devclass_t	mpr_devclass;
-DRIVER_MODULE(mpr, pci, mpr_pci_driver, mpr_devclass, 0, 0);
+DRIVER_MODULE(mpr, pci, mpr_pci_driver, mpr_devclass, NULL, NULL);
 MODULE_DEPEND(mpr, cam, 1, 1, 1);
 
 struct mpr_ident {

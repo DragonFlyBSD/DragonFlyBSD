@@ -108,7 +108,7 @@ static driver_t	acpi_sony_driver = {
 static devclass_t acpi_sony_devclass;
 
 DRIVER_MODULE(acpi_sony, acpi, acpi_sony_driver, acpi_sony_devclass,
-	      0, 0);
+    NULL, NULL);
 MODULE_DEPEND(acpi_sony, acpi, 1, 1, 1);
 static char    *sny_id[] = {"SNY5001", NULL};
 

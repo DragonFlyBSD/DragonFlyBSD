@@ -127,7 +127,8 @@ static driver_t ndis_driver = {
 
 static devclass_t ndis_devclass;
 
-DRIVER_MODULE(if_ndis, pci, ndis_driver, ndis_devclass, ndisdrv_modevent, 0);
+DRIVER_MODULE(if_ndis, pci, ndis_driver, ndis_devclass, ndisdrv_modevent,
+    NULL);
 
 static int
 ndis_devcompare(interface_type bustype, struct ndis_pci_type *t, device_t dev)

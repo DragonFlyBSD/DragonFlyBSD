@@ -948,7 +948,7 @@ static driver_t apple_gmux_driver = {
 	sizeof(struct apple_gmux_softc)
 };
 
-DRIVER_MODULE(gmux, acpi, apple_gmux_driver, gmux_devclass, 0, 0);
+DRIVER_MODULE(gmux, acpi, apple_gmux_driver, gmux_devclass, NULL, NULL);
 MODULE_VERSION(apple_gmux, 1);
 MODULE_DEPEND(apple_gmux, drm, 1, 1, 2);
 MODULE_DEPEND(apple_gmux, vga_switcheroo, 1, 1, 2);

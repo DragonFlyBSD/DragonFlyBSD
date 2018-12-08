@@ -3960,7 +3960,7 @@ static driver_t ena_driver = {
 };
 
 devclass_t ena_devclass;
-DRIVER_MODULE(ena, pci, ena_driver, ena_devclass, 0, 0);
+DRIVER_MODULE(ena, pci, ena_driver, ena_devclass, NULL, NULL);
 MODULE_DEPEND(ena, pci, 1, 1, 1);
 MODULE_DEPEND(ena, ether, 1, 1, 1);
 

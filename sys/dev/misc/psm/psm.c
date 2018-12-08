@@ -6391,7 +6391,7 @@ psmresume(device_t dev)
 	return (err);
 }
 
-DRIVER_MODULE(psm, atkbdc, psm_driver, psm_devclass, 0, 0);
+DRIVER_MODULE(psm, atkbdc, psm_driver, psm_devclass, NULL, NULL);
 
 #ifdef DEV_ISA
 #if 0

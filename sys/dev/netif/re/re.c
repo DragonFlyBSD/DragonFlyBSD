@@ -336,7 +336,7 @@ static driver_t re_driver = {
 
 static devclass_t re_devclass;
 
-DRIVER_MODULE(if_re, pci, re_driver, re_devclass, 0, 0);
+DRIVER_MODULE(if_re, pci, re_driver, re_devclass, NULL, NULL);
 #endif	/* !__DragonFly__ */
 
 static int re_is_ups_resume(struct re_softc *sc)
