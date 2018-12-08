@@ -799,6 +799,10 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 }
 
 /*
+ * XXX this API needs a rewrite.  It needs to be split into a
+ * hammer2_inode_alloc() and hammer2_inode_build() to allow us to get
+ * rid of the inode/chain lock reversal fudge.
+ *
  * Returns the inode associated with the passed-in cluster, allocating a new
  * hammer2_inode structure if necessary, then synchronizing it to the passed
  * xop cluster.  When synchronizing, if idx >= 0, only cluster index (idx)
@@ -850,10 +854,23 @@ again:
 	nip = hammer2_inode_lookup(pmp, inum);
 	if (nip) {
 		/*
+		 * We may have to unhold the cluster to avoid a deadlock
+		 * against vnlru (and possibly other XOPs).
+		 */
+		if (xop) {
+			if (hammer2_mtx_ex_try(&nip->lock) != 0) {
+				hammer2_cluster_unhold(&xop->cluster);
+				hammer2_mtx_ex(&nip->lock);
+				hammer2_cluster_rehold(&xop->cluster);
+			}
+		} else {
+			hammer2_mtx_ex(&nip->lock);
+		}
+
+		/*
 		 * Handle SMP race (not applicable to the super-root spmp
 		 * which can't index inodes due to duplicative inode numbers).
 		 */
-		hammer2_mtx_ex(&nip->lock);
 		if (pmp->spmp_hmp == NULL &&
 		    (nip->flags & HAMMER2_INODE_ONRBTREE) == 0) {
 			hammer2_mtx_unlock(&nip->lock);

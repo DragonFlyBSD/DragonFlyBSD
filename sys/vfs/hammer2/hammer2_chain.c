@@ -430,7 +430,7 @@ hammer2_chain_drop(hammer2_chain_t *chain)
  * lock and then simply unlocking the chain.
  */
 void
-hammer2_chain_drop_unhold(hammer2_chain_t *chain)
+hammer2_chain_unhold(hammer2_chain_t *chain)
 {
 	u_int lockcnt;
 	int iter = 0;
@@ -465,7 +465,21 @@ hammer2_chain_drop_unhold(hammer2_chain_t *chain)
 			cpu_pause();
 		}
 	}
+}
+
+void
+hammer2_chain_drop_unhold(hammer2_chain_t *chain)
+{
+	hammer2_chain_unhold(chain);
 	hammer2_chain_drop(chain);
+}
+
+void
+hammer2_chain_rehold(hammer2_chain_t *chain)
+{
+	hammer2_chain_lock(chain, HAMMER2_RESOLVE_SHARED);
+	atomic_add_int(&chain->lockcnt, 1);
+	hammer2_chain_unlock(chain);
 }
 
 /*
@@ -1007,9 +1021,8 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 		 * even for non-blocking operation, because the unlock code
 		 * live-loops on lockcnt == 1 when dropping the last lock.
 		 *
-		 * If the non-blocking operation fails we have to use a
-		 * ref+drop+unhold sequence to undo the mess (or write a
-		 * hammer2_chain_unhold() function that doesn't drop).
+		 * If the non-blocking operation fails we have to use an
+		 * unhold sequence to undo the mess.
 		 *
 		 * NOTE: LOCKAGAIN must always succeed without blocking,
 		 *	 even if NONBLOCK is specified.
@@ -1020,15 +1033,13 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 				hammer2_mtx_sh_again(&chain->lock);
 			} else {
 				if (hammer2_mtx_sh_try(&chain->lock) != 0) {
-					hammer2_chain_ref(chain);
-					hammer2_chain_drop_unhold(chain);
+					hammer2_chain_unhold(chain);
 					return EAGAIN;
 				}
 			}
 		} else {
 			if (hammer2_mtx_ex_try(&chain->lock) != 0) {
-				hammer2_chain_ref(chain);
-				hammer2_chain_drop_unhold(chain);
+				hammer2_chain_unhold(chain);
 				return EAGAIN;
 			}
 		}
