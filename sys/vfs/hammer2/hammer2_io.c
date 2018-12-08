@@ -95,6 +95,27 @@ hammer2_io_mask(hammer2_io_t *dio, hammer2_off_t off, u_int bytes)
 }
 #endif
 
+#ifdef HAMMER2_IO_DEBUG
+
+static __inline void
+DIO_RECORD(hammer2_io_t *dio HAMMER2_IO_DEBUG_ARGS)
+{
+	int i;
+
+	i = atomic_fetchadd_int(&dio->debug_index, 1) & HAMMER2_IO_DEBUG_MASK;
+
+	dio->debug_file[i] = file;
+	dio->debug_line[i] = line;
+	dio->debug_refs[i] = dio->refs;
+	dio->debug_td[i] = curthread;
+}
+
+#else
+
+#define DIO_RECORD(dio)
+
+#endif
+
 /*
  * Returns the DIO corresponding to the data|radix, creating it if necessary.
  *
@@ -182,7 +203,8 @@ hammer2_io_alloc(hammer2_dev_t *hmp, hammer2_key_t data_off, uint8_t btype,
  * a buffer.  If set the buffer already exists and is good to go.
  */
 hammer2_io_t *
-hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize, int op)
+_hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase,
+		   int lsize, int op HAMMER2_IO_DEBUG_ARGS)
 {
 	hammer2_io_t *dio;
 	off_t peof;
@@ -231,6 +253,7 @@ hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize, int op)
 				/* nothing to do */
 				break;
 			}
+			DIO_RECORD(dio HAMMER2_IO_DEBUG_CALL);
 			return (dio);
 		}
 
@@ -353,6 +376,7 @@ hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize, int op)
 		bkvasync(dio->bp);
 		BUF_KERNPROC(dio->bp);
 		dio->bp->b_flags &= ~B_AGE;
+		dio->bp->b_debug_info2 = dio;
 	}
 	dio->error = error;
 
@@ -374,6 +398,7 @@ hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize, int op)
 	}
 
 	/* XXX error handling */
+	DIO_RECORD(dio HAMMER2_IO_DEBUG_CALL);
 
 	return dio;
 }
@@ -385,7 +410,7 @@ hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize, int op)
  * of dio->bp.  Then we clean up DIO_INPROG and DIO_WAITING.
  */
 void
-hammer2_io_putblk(hammer2_io_t **diop)
+_hammer2_io_putblk(hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS)
 {
 	hammer2_dev_t *hmp;
 	hammer2_io_t *dio;
@@ -399,6 +424,7 @@ hammer2_io_putblk(hammer2_io_t **diop)
 	dio = *diop;
 	*diop = NULL;
 	hmp = dio->hmp;
+	DIO_RECORD(dio HAMMER2_IO_DEBUG_CALL);
 
 	KKASSERT((dio->refs & HAMMER2_DIO_MASK) != 0);
 
@@ -653,41 +679,54 @@ hammer2_io_newnz(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 }
 
 int
-hammer2_io_bread(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
-		hammer2_io_t **diop)
+_hammer2_io_bread(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
+		hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS)
 {
-	*diop = hammer2_io_getblk(hmp, btype, lbase, lsize, HAMMER2_DOP_READ);
+#ifdef HAMMER2_IO_DEBUG
+	hammer2_io_t *dio;
+#endif
+
+	*diop = _hammer2_io_getblk(hmp, btype, lbase, lsize,
+				   HAMMER2_DOP_READ HAMMER2_IO_DEBUG_CALL);
+#ifdef HAMMER2_IO_DEBUG
+	if ((dio = *diop) != NULL) {
+		int i = (dio->debug_index - 1) & HAMMER2_IO_DEBUG_MASK;
+		dio->debug_data[i] = debug_data;
+	}
+#endif
 	return ((*diop)->error);
 }
 
 hammer2_io_t *
-hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize)
+_hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase,
+		     int lsize HAMMER2_IO_DEBUG_ARGS)
 {
 	hammer2_io_t *dio;
 
-	dio = hammer2_io_getblk(hmp, 0, lbase, lsize, HAMMER2_DOP_READQ);
+	dio = _hammer2_io_getblk(hmp, 0, lbase, lsize,
+				 HAMMER2_DOP_READQ HAMMER2_IO_DEBUG_CALL);
 	return dio;
 }
 
 void
-hammer2_io_bawrite(hammer2_io_t **diop)
+_hammer2_io_bawrite(hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS)
 {
 	atomic_set_64(&(*diop)->refs, HAMMER2_DIO_DIRTY);
-	hammer2_io_putblk(diop);
+	_hammer2_io_putblk(diop HAMMER2_IO_DEBUG_CALL);
 }
 
 void
-hammer2_io_bdwrite(hammer2_io_t **diop)
+_hammer2_io_bdwrite(hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS)
 {
 	atomic_set_64(&(*diop)->refs, HAMMER2_DIO_DIRTY);
-	hammer2_io_putblk(diop);
+	_hammer2_io_putblk(diop HAMMER2_IO_DEBUG_CALL);
 }
 
 int
-hammer2_io_bwrite(hammer2_io_t **diop)
+_hammer2_io_bwrite(hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS)
 {
 	atomic_set_64(&(*diop)->refs, HAMMER2_DIO_DIRTY);
-	hammer2_io_putblk(diop);
+	_hammer2_io_putblk(diop HAMMER2_IO_DEBUG_CALL);
 	return (0);	/* XXX */
 }
 
@@ -720,15 +759,15 @@ hammer2_io_inval(hammer2_io_t *dio, hammer2_off_t data_off, u_int bytes)
 }
 
 void
-hammer2_io_brelse(hammer2_io_t **diop)
+_hammer2_io_brelse(hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS)
 {
-	hammer2_io_putblk(diop);
+	_hammer2_io_putblk(diop HAMMER2_IO_DEBUG_CALL);
 }
 
 void
-hammer2_io_bqrelse(hammer2_io_t **diop)
+_hammer2_io_bqrelse(hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS)
 {
-	hammer2_io_putblk(diop);
+	_hammer2_io_putblk(diop HAMMER2_IO_DEBUG_CALL);
 }
 
 /*
@@ -854,7 +893,8 @@ hammer2_io_bkvasync(hammer2_io_t *dio)
  * Ref a dio that is already owned
  */
 void
-hammer2_io_ref(hammer2_io_t *dio)
+_hammer2_io_ref(hammer2_io_t *dio HAMMER2_IO_DEBUG_ARGS)
 {
+	DIO_RECORD(dio HAMMER2_IO_DEBUG_CALL);
 	atomic_add_64(&dio->refs, 1);
 }
