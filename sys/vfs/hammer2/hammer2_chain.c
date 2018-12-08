@@ -1146,6 +1146,7 @@ hammer2_chain_load_data(hammer2_chain_t *chain)
 	 * Degenerate case, data already present, or chain has no media
 	 * reference to load.
 	 */
+	KKASSERT(chain->lock.mtx_lock & MTX_MASK);
 	if (chain->data) {
 		if (chain->dio)
 			hammer2_io_bkvasync(chain->dio);
@@ -1675,6 +1676,7 @@ hammer2_chain_modify(hammer2_chain_t *chain, hammer2_tid_t mtid,
 	hmp = chain->hmp;
 	obref = chain->bref;
 	KKASSERT((chain->flags & HAMMER2_CHAIN_FICTITIOUS) == 0);
+	KKASSERT(chain->lock.mtx_lock & MTX_EXCLUSIVE);
 
 	/*
 	 * Data is not optional for freemap chains (we must always be sure

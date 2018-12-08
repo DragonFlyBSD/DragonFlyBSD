@@ -376,7 +376,7 @@ _hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase,
 		bkvasync(dio->bp);
 		BUF_KERNPROC(dio->bp);
 		dio->bp->b_flags &= ~B_AGE;
-		dio->bp->b_debug_info2 = dio;
+		/* dio->bp->b_debug_info2 = dio; */
 	}
 	dio->error = error;
 
