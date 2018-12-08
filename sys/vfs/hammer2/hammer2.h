@@ -280,6 +280,18 @@ RB_HEAD(hammer2_io_tree, hammer2_io);
  * fixed-sized filesystem buffers frontend by variable-sized hammer2_chain
  * structures.
  */
+/* #define HAMMER2_IO_DEBUG */
+
+#ifdef HAMMER2_IO_DEBUG
+#define HAMMER2_IO_DEBUG_ARGS	, const char *file, int line
+#define HAMMER2_IO_DEBUG_CALL	, file, line
+#define HAMMER2_IO_DEBUG_COUNT	2048
+#define HAMMER2_IO_DEBUG_MASK	(HAMMER2_IO_DEBUG_COUNT - 1)
+#else
+#define HAMMER2_IO_DEBUG_ARGS
+#define HAMMER2_IO_DEBUG_CALL
+#endif
+
 struct hammer2_io {
 	RB_ENTRY(hammer2_io) rbnode;	/* indexed by device offset */
 	struct hammer2_dev *hmp;
@@ -291,9 +303,19 @@ struct hammer2_io {
 	int		btype;		/* approximate BREF_TYPE_* */
 	int		ticks;
 	int		error;
+#ifdef HAMMER2_IO_DEBUG
+	int		debug_index;
+#else
 	int		unused01;
+#endif
 	uint64_t	dedup_valid;	/* valid for dedup operation */
 	uint64_t	dedup_alloc;	/* allocated / de-dupable */
+#ifdef HAMMER2_IO_DEBUG
+	const char	*debug_file[HAMMER2_IO_DEBUG_COUNT];
+	void		*debug_td[HAMMER2_IO_DEBUG_COUNT];
+	int		debug_line[HAMMER2_IO_DEBUG_COUNT];
+	uint64_t	debug_refs[HAMMER2_IO_DEBUG_COUNT];
+#endif
 };
 
 typedef struct hammer2_io hammer2_io_t;
@@ -1672,13 +1694,10 @@ int hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data,
 /*
  * hammer2_io.c
  */
-void hammer2_io_putblk(hammer2_io_t **diop);
 void hammer2_io_inval(hammer2_io_t *dio, hammer2_off_t data_off, u_int bytes);
 void hammer2_io_cleanup(hammer2_dev_t *hmp, struct hammer2_io_tree *tree);
 char *hammer2_io_data(hammer2_io_t *dio, off_t lbase);
 void hammer2_io_bkvasync(hammer2_io_t *dio);
-hammer2_io_t *hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase,
-				int lsize, int op);
 void hammer2_io_dedup_set(hammer2_dev_t *hmp, hammer2_blockref_t *bref);
 void hammer2_io_dedup_delete(hammer2_dev_t *hmp, uint8_t btype,
 				hammer2_off_t data_off, u_int bytes);
@@ -1689,16 +1708,76 @@ int hammer2_io_new(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 				hammer2_io_t **diop);
 int hammer2_io_newnz(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
 				hammer2_io_t **diop);
-int hammer2_io_bread(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
-				hammer2_io_t **diop);
-hammer2_io_t *hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase, int lsize);
-void hammer2_io_bawrite(hammer2_io_t **diop);
-void hammer2_io_bdwrite(hammer2_io_t **diop);
-int hammer2_io_bwrite(hammer2_io_t **diop);
+int _hammer2_io_bread(hammer2_dev_t *hmp, int btype, off_t lbase, int lsize,
+				hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS);
 void hammer2_io_setdirty(hammer2_io_t *dio);
-void hammer2_io_brelse(hammer2_io_t **diop);
-void hammer2_io_bqrelse(hammer2_io_t **diop);
-void hammer2_io_ref(hammer2_io_t *dio);
+
+hammer2_io_t *_hammer2_io_getblk(hammer2_dev_t *hmp, int btype, off_t lbase,
+				int lsize, int op HAMMER2_IO_DEBUG_ARGS);
+hammer2_io_t *_hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase,
+				int lsize HAMMER2_IO_DEBUG_ARGS);
+void _hammer2_io_putblk(hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS);
+int _hammer2_io_bwrite(hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS);
+void _hammer2_io_bawrite(hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS);
+void _hammer2_io_bdwrite(hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS);
+void _hammer2_io_brelse(hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS);
+void _hammer2_io_bqrelse(hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS);
+void _hammer2_io_ref(hammer2_io_t *dio HAMMER2_IO_DEBUG_ARGS);
+
+#ifndef HAMMER2_IO_DEBUG
+
+#define hammer2_io_getblk(hmp, btype, lbase, lsize, op)			\
+	_hammer2_io_getblk((hmp), (btype), (lbase), (lsize), (op))
+#define hammer2_io_getquick(hmp, lbase, lsize)				\
+	_hammer2_io_getquick((hmp), (lbase), (lsize))
+#define hammer2_io_putblk(diop)						\
+	_hammer2_io_putblk(diop)
+#define hammer2_io_bwrite(diop)						\
+	_hammer2_io_bwrite((diop))
+#define hammer2_io_bawrite(diop)					\
+	_hammer2_io_bawrite((diop))
+#define hammer2_io_bdwrite(diop)					\
+	_hammer2_io_bdwrite((diop))
+#define hammer2_io_brelse(diop)						\
+	_hammer2_io_brelse((diop))
+#define hammer2_io_bqrelse(diop)					\
+	_hammer2_io_bqrelse((diop))
+#define hammer2_io_ref(dio)						\
+	_hammer2_io_ref((dio))
+
+#define hammer2_io_bread(hmp, btype, lbase, lsize, diop)		\
+	_hammer2_io_bread((hmp), (btype), (lbase), (lsize), (diop))
+
+#else
+
+#define hammer2_io_getblk(hmp, btype, lbase, lsize, op)			\
+	_hammer2_io_getblk((hmp), (btype), (lbase), (lsize), (op),	\
+	__FILE__, __LINE__)
+
+#define hammer2_io_getquick(hmp, lbase, lsize)				\
+	_hammer2_io_getquick((hmp), (lbase), (lsize), __FILE__, __LINE__)
+
+#define hammer2_io_putblk(diop)						\
+	_hammer2_io_putblk(diop, __FILE__, __LINE__)
+
+#define hammer2_io_bwrite(diop)						\
+	_hammer2_io_bwrite((diop), __FILE__, __LINE__)
+#define hammer2_io_bawrite(diop)					\
+	_hammer2_io_bawrite((diop), __FILE__, __LINE__)
+#define hammer2_io_bdwrite(diop)					\
+	_hammer2_io_bdwrite((diop), __FILE__, __LINE__)
+#define hammer2_io_brelse(diop)						\
+	_hammer2_io_brelse((diop), __FILE__, __LINE__)
+#define hammer2_io_bqrelse(diop)					\
+	_hammer2_io_bqrelse((diop), __FILE__, __LINE__)
+#define hammer2_io_ref(dio)						\
+	_hammer2_io_ref((dio), __FILE__, __LINE__)
+
+#define hammer2_io_bread(hmp, btype, lbase, lsize, diop)		\
+	_hammer2_io_bread((hmp), (btype), (lbase), (lsize), (diop),	\
+			  __FILE__, __LINE__)
+
+#endif
 
 /*
  * hammer2_thread.c
@@ -1921,9 +2000,12 @@ void hammer2_dedup_clear(hammer2_dev_t *hmp);
 /*
  * More complex inlines
  */
+
+#define hammer2_xop_gdata(xop)	_hammer2_xop_gdata((xop), __FILE__, __LINE__)
+
 static __inline
 const hammer2_media_data_t *
-hammer2_xop_gdata(hammer2_xop_head_t *xop)
+_hammer2_xop_gdata(hammer2_xop_head_t *xop, const char *file, int line)
 {
 	hammer2_chain_t *focus;
 	const void *data;
@@ -1932,7 +2014,7 @@ hammer2_xop_gdata(hammer2_xop_head_t *xop)
 	if (focus->dio) {
 		lockmgr(&focus->diolk, LK_SHARED);
 		if ((xop->focus_dio = focus->dio) != NULL) {
-			hammer2_io_ref(xop->focus_dio);
+			_hammer2_io_ref(xop->focus_dio HAMMER2_IO_DEBUG_CALL);
 			hammer2_io_bkvasync(xop->focus_dio);
 		}
 		data = focus->data;
@@ -1944,12 +2026,14 @@ hammer2_xop_gdata(hammer2_xop_head_t *xop)
 	return data;
 }
 
+#define hammer2_xop_pdata(xop)	_hammer2_xop_pdata((xop), __FILE__, __LINE__)
+
 static __inline
 void
-hammer2_xop_pdata(hammer2_xop_head_t *xop)
+_hammer2_xop_pdata(hammer2_xop_head_t *xop, const char *file, int line)
 {
 	if (xop->focus_dio)
-		hammer2_io_putblk(&xop->focus_dio);
+		_hammer2_io_putblk(&xop->focus_dio HAMMER2_IO_DEBUG_CALL);
 }
 
 #endif /* !_KERNEL */
