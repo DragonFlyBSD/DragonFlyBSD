@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet/ip_ecn.h,v 1.2.2.2 2001/07/03 11:01:46 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip_ecn.h,v 1.4 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: ip_ecn.h,v 1.6 2001/05/03 14:51:48 itojun Exp $	*/
 
 /*
@@ -43,7 +42,7 @@
 #include <sys/types.h>
 #endif
 
-#if defined(_KERNEL) && !defined(_LKM)
+#ifdef _KERNEL
 #include "opt_inet.h"
 #endif
 

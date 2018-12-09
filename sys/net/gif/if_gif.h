@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/net/if_gif.h,v 1.2.2.5 2002/11/08 16:23:08 ume Exp $	*/
-/*	$DragonFly: src/sys/net/gif/if_gif.h,v 1.4 2004/03/23 22:19:06 hsu Exp $	*/
 /*	$KAME: if_gif.h,v 1.17 2000/09/11 11:36:41 sumikawa Exp $	*/
 
 /*
@@ -39,7 +38,7 @@
 #define _NET_IF_GIF_H_
 
 
-#if defined(_KERNEL) && !defined(_LKM)
+#ifdef _KERNEL
 #include "opt_inet.h"
 #endif
 
