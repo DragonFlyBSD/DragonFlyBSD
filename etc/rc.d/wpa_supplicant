@@ -53,7 +53,7 @@ fi
 
 is_ndis_interface()
 {
-	case `sysctl -n net.wlan.${1#wlan}.%parent 2>/dev/null` in
+	case `${SYSCTL_N} -q net.wlan.${1#wlan}.%parent` in
 		ndis*) true ;;
 		*) false ;;
 	esac

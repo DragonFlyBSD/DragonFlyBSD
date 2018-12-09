@@ -25,7 +25,6 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/serial,v 1.20 2003/05/05 03:26:50 bde Exp $
-# $DragonFly: src/etc/rc.d/serial,v 1.4 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: serial
@@ -50,7 +49,7 @@ default() {
 
 	ci=$1; shift	# call in device identifier
 	co=$1; shift	# call out device identifier
-	drainwait=`sysctl -n kern.drainwait`
+	drainwait=`${SYSCTL_N} kern.drainwait`
 
 	for i in $*
 	do

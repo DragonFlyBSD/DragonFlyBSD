@@ -1,7 +1,6 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/initrandom,v 1.1 2002/06/13 22:14:36 gordon Exp $
-# $DragonFly: src/etc/rc.d/initrandom,v 1.6 2006/07/10 22:19:14 dillon Exp $
 #
 
 # PROVIDE: initrandom
@@ -17,9 +16,9 @@ stop_cmd=":"
 feed_dev_random()
 {
 	if [ -f "${1}" -a -r "${1}" -a -s "${1}" ]; then
-		sysctl kern.seedenable=1 >/dev/null
+		${SYSCTL_W} kern.seedenable=1 >/dev/null
 		cat "${1}" | dd of=/dev/random bs=8k 2>/dev/null
-		sysctl kern.seedenable=0 >/dev/null
+		${SYSCTL_W} kern.seedenable=0 >/dev/null
 	fi
 }
 
@@ -38,16 +37,16 @@ initrandom_start()
 	esac
 
 	# Mix in more junk.  At the very least this will make seeding a
-	# bit more machine specific.  The sysctl -a will also catch the
+	# bit more machine specific.  The 'sysctl -a' will also catch the
 	# TSC, 8254, and a few other things that tend to be somewhat more
 	# random (even from a CD boot) so it isn't all that bad.
 	#
 	echo -n 'Initializing random seed: '
-	sysctl kern.seedenable=1 >/dev/null
-	( ps -fauxww; sysctl -a; date; df -ib; dmesg; ps -fauxww; ) \
+	${SYSCTL_W} kern.seedenable=1 >/dev/null
+	( ps -fauxww; ${SYSCTL} -a; date; df -ib; dmesg; ps -fauxww; ) \
 	    2>&1 | dd of=/dev/random bs=8k 2>/dev/null
 	cat /bin/ls | dd of=/dev/random bs=8k 2>/dev/null
-	sysctl kern.seedenable=0 >/dev/null
+	${SYSCTL_W} kern.seedenable=0 >/dev/null
 	echo 'done. '
 }
 

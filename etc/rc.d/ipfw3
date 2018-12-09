@@ -47,7 +47,7 @@ stop_cmd="${name}_stop"
 ipfw3_precmd()
 {
 	# Load firewall modules, if not already loaded
-	if ! ${SYSCTL} net.inet.ip.fw3.enable > /dev/null 2>&1; then
+	if ! ${SYSCTL} -q net.inet.ip.fw3.enable >/dev/null; then
 		for _module in ${ipfw3_modules}; do
 			kldload -n ${_module} || return 1
 		done

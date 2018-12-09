@@ -22,9 +22,9 @@ fixbootfile_start()
 	[Nn][Oo])
 		;;
 	*)
-		bootfile=`sysctl -n kern.bootfile`
+		bootfile=`${SYSCTL_N} kern.bootfile`
 		if [ -f "/boot$bootfile" ]; then
-			sysctl kern.bootfile="/boot$bootfile"
+			${SYSCTL_W} kern.bootfile="/boot$bootfile"
 		fi
 		;;
 	esac

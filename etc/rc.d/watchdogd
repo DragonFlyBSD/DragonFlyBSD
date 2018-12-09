@@ -25,7 +25,6 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/watchdogd,v 1.1 2003/06/26 09:50:51 smkelly Exp $
-# $DragonFly: src/etc/rc.d/watchdogd,v 1.3 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: watchdogd
@@ -41,7 +40,7 @@ pidfile="/var/run/${name}.pid"
 
 watchdogd_precmd()
 {
-	if ! sysctl debug.watchdog >/dev/null 2>&1; then
+	if ! ${SYSCTL} -q debug.watchdog >/dev/null; then
 		err 1 "Your kernel doesn't have watchdog support."
 	fi
 	return 0

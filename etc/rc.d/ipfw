@@ -18,7 +18,7 @@ stop_cmd="ipfw_stop"
 ipfw_precmd()
 {
 	# Load IPv4 firewall module, if not already loaded
-	if ! ${SYSCTL} net.inet.ip.fw.enable > /dev/null 2>&1; then
+	if ! ${SYSCTL} -q net.inet.ip.fw.enable >/dev/null; then
 		kldstat -qm ipfw || kldload -n ipfw || return 1
 	fi
 	return 0
@@ -58,7 +58,7 @@ ipfw_start()
 	#
 	if checkyesno firewall_logging; then
 		echo 'Firewall logging enabled'
-		sysctl net.inet.ip.fw.verbose=1 >/dev/null
+		${SYSCTL_W} net.inet.ip.fw.verbose=1 >/dev/null
 	fi
 
 	# Enable the firewall
