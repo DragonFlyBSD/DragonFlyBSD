@@ -39,7 +39,7 @@
 
 
 #ifdef _KERNEL
-#include "opt_inet.h"
+#include "opt_inet6.h"
 #endif
 
 #include <netinet/in.h>
