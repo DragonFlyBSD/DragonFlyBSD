@@ -29,16 +29,16 @@ nfsclient_start()
 	#
 	echo -n "NFS CLIENT:"
 	if [ -n "${nfs_access_cache}" ]; then
-		sysctl vfs.nfs.access_cache_timeout=${nfs_access_cache} >/dev/null
+		${SYSCTL_W} vfs.nfs.access_cache_timeout=${nfs_access_cache} >/dev/null
 	fi
 	if [ -n "${nfs_neg_cache}" ]; then
-		sysctl vfs.nfs.neg_cache_timeout=${nfs_neg_cache} >/dev/null
+		${SYSCTL_W} vfs.nfs.neg_cache_timeout=${nfs_neg_cache} >/dev/null
 	fi
 	if [ -n "${nfs_bufpackets}" ]; then
-		sysctl vfs.nfs.bufpackets=${nfs_bufpackets} > /dev/null
+		${SYSCTL_W} vfs.nfs.bufpackets=${nfs_bufpackets} > /dev/null
 	fi
-	echo -n " access_cache_timeout=`sysctl -n vfs.nfs.access_cache_timeout`"
-	echo -n " neg_cache_timeout=`sysctl -n vfs.nfs.neg_cache_timeout`"
+	echo -n " access_cache_timeout=`${SYSCTL_N} vfs.nfs.access_cache_timeout`"
+	echo -n " neg_cache_timeout=`${SYSCTL_N} vfs.nfs.neg_cache_timeout`"
 	unmount_all
 }
 

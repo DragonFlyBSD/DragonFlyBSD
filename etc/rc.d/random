@@ -1,7 +1,6 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/random,v 1.3 2003/04/18 17:55:05 mtm Exp $
-# $DragonFly: src/etc/rc.d/random,v 1.4 2006/07/10 22:19:14 dillon Exp $
 #
 
 # PROVIDE: random
@@ -18,12 +17,12 @@ stop_cmd="random_stop"
 feed_dev_random()
 {
 	if [ -f "${1}" -a -r "${1}" -a -s "${1}" ]; then
-		sysctl kern.seedenable=1 >/dev/null
+		${SYSCTL_W} kern.seedenable=1 >/dev/null
 		# Feed using a small block size so that a pool-based CSPRNG
 		# is more likely to distribute the entropy over several
 		# pools
 		cat "${1}" | dd of=/dev/random bs=512 2>/dev/null
-		sysctl kern.seedenable=0 >/dev/null
+		${SYSCTL_W} kern.seedenable=0 >/dev/null
 	fi
 }
 

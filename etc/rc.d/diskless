@@ -25,7 +25,6 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/diskless,v 1.25 2003/02/15 16:34:14 jhay Exp $
-# $DragonFly: src/etc/rc.d/diskless,v 1.7 2007/05/13 22:25:41 swildner Exp $
 #
 
 # PROVIDE: diskless
@@ -37,7 +36,7 @@ if [ -r /etc/rc.subr ]; then
     dummy_rc_command "$1"
 fi
 
-dlv=`/sbin/sysctl -n vfs.nfs.diskless_valid 2> /dev/null`
+dlv=`${SYSCTL_N} -q vfs.nfs.diskless_valid`
 [ ${dlv:=0} -eq 0 ] && exit 0
 
 name="diskless"

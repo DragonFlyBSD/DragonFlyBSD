@@ -106,16 +106,16 @@ set_sysctl()
 	_mib="$2"
 	_msg="$3"
 
-	_current=`${SYSCTL} -n $_mib 2>/dev/null`
+	_current=`${SYSCTL_N} -q $_mib`
 	if checkyesno $_knob ; then
 		if [ "$_current" -ne 1 ]; then
 			echo -n " ${_msg}=YES"
-			${SYSCTL_W} 1>/dev/null ${_mib}=1
+			${SYSCTL_W} ${_mib}=1 >/dev/null
 		fi
 	else
 		if [ "$_current" -ne 0 ]; then
 			echo -n " ${_msg}=NO"
-			${SYSCTL_W} 1>/dev/null ${_mib}=0
+			${SYSCTL_W} ${_mib}=0 >/dev/null
 		fi
 	fi
 }

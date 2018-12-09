@@ -71,70 +71,70 @@ options_start()
 		;;
 	*)
 		echo -n ' tcp extensions=NO'
-		sysctl net.inet.tcp.rfc1323=0 >/dev/null
+		${SYSCTL_W} net.inet.tcp.rfc1323=0 >/dev/null
 		;;
 	esac
 
 	case ${icmp_bmcastecho} in
 	[Yy][Ee][Ss])
 		echo -n ' broadcast ping responses=YES'
-		sysctl net.inet.icmp.bmcastecho=1 >/dev/null
+		${SYSCTL_W} net.inet.icmp.bmcastecho=1 >/dev/null
 		;;
 	esac
 
 	case ${icmp_drop_redirect} in
 	[Yy][Ee][Ss])
 		echo -n ' ignore ICMP redirect=YES'
-		sysctl net.inet.icmp.drop_redirect=1 >/dev/null
+		${SYSCTL_W} net.inet.icmp.drop_redirect=1 >/dev/null
 		;;
 	esac
 
 	case ${icmp_log_redirect} in
 	[Yy][Ee][Ss])
 		echo -n ' log ICMP redirect=YES'
-		sysctl net.inet.icmp.log_redirect=1 >/dev/null
+		${SYSCTL_W} net.inet.icmp.log_redirect=1 >/dev/null
 		;;
 	esac
 
 	case ${gateway_enable} in
 	[Yy][Ee][Ss])
 		echo -n ' IP gateway=YES'
-		sysctl net.inet.ip.forwarding=1 >/dev/null
+		${SYSCTL_W} net.inet.ip.forwarding=1 >/dev/null
 		;;
 	esac
 
 	case ${forward_sourceroute} in
 	[Yy][Ee][Ss])
 		echo -n ' do source routing=YES'
-		sysctl net.inet.ip.sourceroute=1 >/dev/null
+		${SYSCTL_W} net.inet.ip.sourceroute=1 >/dev/null
 		;;
 	esac
 
 	case ${accept_sourceroute} in
 	[Yy][Ee][Ss])
 		echo -n ' accept source routing=YES'
-		sysctl net.inet.ip.accept_sourceroute=1 >/dev/null
+		${SYSCTL_W} net.inet.ip.accept_sourceroute=1 >/dev/null
 		;;
 	esac
 
 	case ${tcp_keepalive} in
 	[Nn][Oo])
 		echo -n ' TCP keepalive=NO'
-		sysctl net.inet.tcp.always_keepalive=0 >/dev/null
+		${SYSCTL_W} net.inet.tcp.always_keepalive=0 >/dev/null
 		;;
 	esac
 
 	case ${tcp_drop_synfin} in
 	[Yy][Ee][Ss])
 		echo -n ' drop SYN+FIN packets=YES'
-		sysctl net.inet.tcp.drop_synfin=1 >/dev/null
+		${SYSCTL_W} net.inet.tcp.drop_synfin=1 >/dev/null
 		;;
 	esac
 
 	case ${arpproxy_all} in
 	[Yy][Ee][Ss])
 		echo -n ' ARP proxyall=YES'
-		sysctl net.link.ether.inet.proxyall=1 >/dev/null
+		${SYSCTL_W} net.link.ether.inet.proxyall=1 >/dev/null
 		;;
 	esac
 
@@ -143,7 +143,7 @@ options_start()
 		;;
 	*)
 		echo -n " ip_portrange_first=$ip_portrange_first"
-		sysctl net.inet.ip.portrange.first=$ip_portrange_first >/dev/null
+		${SYSCTL_W} net.inet.ip.portrange.first=$ip_portrange_first >/dev/null
 		;;
 	esac
 
@@ -152,7 +152,7 @@ options_start()
 		;;
 	*)
 		echo -n " ip_portrange_last=$ip_portrange_last"
-		sysctl net.inet.ip.portrange.last=$ip_portrange_last >/dev/null
+		${SYSCTL_W} net.inet.ip.portrange.last=$ip_portrange_last >/dev/null
 		;;
 	esac
 

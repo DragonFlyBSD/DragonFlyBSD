@@ -25,7 +25,6 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/initdiskless,v 1.24 2003/06/30 21:47:06 brooks Exp $
-# $DragonFly: src/etc/rc.d/initdiskless,v 1.9 2008/02/19 22:02:47 thomas Exp $
 #
 # PROVIDE: initdiskless
 
@@ -85,7 +84,7 @@ dummy_rc_command "$1"
 # NOTE!  rc.d/diskless will create /var, /tmp, and /dev.  Those filesystems
 # should not be specified in /conf.  At least not yet.
 
-dlv=`/sbin/sysctl -n vfs.nfs.diskless_valid 2> /dev/null`
+dlv=`${SYSCTL_N} -q vfs.nfs.diskless_valid`
 [ ${dlv:=0} -eq 0 ] && exit 0
 
 # chkerr:

@@ -32,7 +32,7 @@ devd_prestart()
 
 	# If devd is disabled, turn it off in the kernel to avoid memory leaks.
 	if ! checkyesno ${rcvar}; then
-	    $SYSCTL hw.bus.devctl_disable=1
+	    ${SYSCTL_W} hw.bus.devctl_disable=1
 	fi
 }
 

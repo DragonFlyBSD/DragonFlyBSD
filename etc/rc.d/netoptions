@@ -1,7 +1,6 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/netoptions,v 1.138 2003/06/29 05:09:48 mtm Exp $
-# $DragonFly: src/etc/rc.d/netoptions,v 1.4 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: netoptions
@@ -32,7 +31,7 @@ esac
 
 [ "${log_in_vain}" -ne 0 ] && (
 	echo -n " log_in_vain=${log_in_vain}"
-	sysctl net.inet.tcp.log_in_vain="${log_in_vain}" >/dev/null
-	sysctl net.inet.udp.log_in_vain="${log_in_vain}" >/dev/null
+	${SYSCTL_W} net.inet.tcp.log_in_vain="${log_in_vain}" >/dev/null
+	${SYSCTL_W} net.inet.udp.log_in_vain="${log_in_vain}" >/dev/null
 )
 echo '.'
