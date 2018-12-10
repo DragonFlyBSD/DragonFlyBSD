@@ -683,6 +683,20 @@ struct drm_prime_handle {
 
 #include <uapi_drm/drm_mode.h>
 
+#if defined(__OpenBSD__) || defined(__DragonFly__)
+struct drm_pciinfo {
+	uint16_t	domain;
+	uint8_t		bus;
+	uint8_t		dev;
+	uint8_t		func;
+	uint16_t	vendor_id;
+	uint16_t	device_id;
+	uint16_t	subvendor_id;
+	uint16_t	subdevice_id;
+	uint8_t		revision_id;
+};
+#endif
+
 #define DRM_IOCTL_BASE			'd'
 #define DRM_IO(nr)			_IO(DRM_IOCTL_BASE,nr)
 #define DRM_IOR(nr,type)		_IOR(DRM_IOCTL_BASE,nr,type)
@@ -709,7 +723,11 @@ struct drm_prime_handle {
 #define DRM_IOCTL_BLOCK			DRM_IOWR(0x12, struct drm_block)
 #define DRM_IOCTL_UNBLOCK		DRM_IOWR(0x13, struct drm_block)
 #define DRM_IOCTL_CONTROL		DRM_IOW( 0x14, struct drm_control)
+#if defined(__OpenBSD__) || defined(__DragonFly__)
+#define DRM_IOCTL_GET_PCIINFO		DRM_IOR( 0x15, struct drm_pciinfo)
+#else
 #define DRM_IOCTL_ADD_MAP		DRM_IOWR(0x15, struct drm_map)
+#endif
 #define DRM_IOCTL_ADD_BUFS		DRM_IOWR(0x16, struct drm_buf_desc)
 #define DRM_IOCTL_MARK_BUFS		DRM_IOW( 0x17, struct drm_buf_desc)
 #define DRM_IOCTL_INFO_BUFS		DRM_IOWR(0x18, struct drm_buf_info)

@@ -34,6 +34,8 @@ int drm_pci_set_unique(struct drm_device *dev,
 		       struct drm_unique *u);
 int drm_irq_by_busid(struct drm_device *dev, void *data,
 		     struct drm_file *file_priv);
+int drm_getpciinfo(struct drm_device *dev, void *data,
+		   struct drm_file *file_priv);
 
 /* drm_vm.c */
 int drm_vma_info(struct seq_file *m, void *data);
