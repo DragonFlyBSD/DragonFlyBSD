@@ -162,6 +162,33 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	vclrisdirty(vp);
 
 	/*
+	 * Modified inodes will already be on SIDEQ or SYNCQ.  However,
+	 * unlinked-but-open inodes may already have been synced and might
+	 * still require deletion-on-reclaim.
+	 */
+	if ((ip->flags & (HAMMER2_INODE_ISUNLINKED |
+			  HAMMER2_INODE_DELETING)) ==
+	    HAMMER2_INODE_ISUNLINKED) {
+		hammer2_inode_lock(ip, 0);
+		if ((ip->flags & (HAMMER2_INODE_ISUNLINKED |
+				  HAMMER2_INODE_DELETING)) ==
+		    HAMMER2_INODE_ISUNLINKED) {
+			const char *filename;
+
+			atomic_set_int(&ip->flags, HAMMER2_INODE_DELETING);
+			if (TAILQ_FIRST(&vp->v_namecache))
+				filename =
+					TAILQ_FIRST(&vp->v_namecache)->nc_name;
+			else
+				filename = "?";
+			kprintf("h2 reclaim final delete %p %s\n",
+				vp, filename);
+			hammer2_inode_delayed_sideq(ip);
+		}
+		hammer2_inode_unlock(ip);
+	}
+
+	/*
 	 * Modified inodes will already be on SIDEQ or SYNCQ, no further
 	 * action is needed.
 	 *
@@ -171,31 +198,6 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	 * here without desynchronizing from the related directory entrie(s).
 	 */
 	hammer2_inode_drop(ip);			/* vp ref */
-#if 0
-	if ((ip->flags & (HAMMER2_INODE_ISUNLINKED |
-			  HAMMER2_INODE_MODIFIED |
-			  HAMMER2_INODE_RESIZED |
-			  HAMMER2_INODE_DIRTYDATA |
-			  HAMMER2_INODE_CREATING |
-			  HAMMER2_INODE_DELETING)) &&
-	    (ip->flags & HAMMER2_INODE_ISDELETED) == 0) {
-		hammer2_spin_ex(&pmp->list_spin);
-		if ((ip->flags & (HAMMER2_INODE_SYNCQ |
-				  HAMMER2_INODE_SIDEQ)) == 0) {
-			/* ref -> sideq */
-			atomic_set_int(&ip->flags, HAMMER2_INODE_SIDEQ);
-			TAILQ_INSERT_TAIL(&pmp->sideq, ip, entry);
-			++pmp->sideq_count;
-			hammer2_spin_unex(&pmp->list_spin);
-			/* retain ip ref for SIDEQ linkage */
-		} else {
-			hammer2_spin_unex(&pmp->list_spin);
-			hammer2_inode_drop(ip);		/* vp ref */
-		}
-	} else {
-		hammer2_inode_drop(ip);			/* vp ref */
-	}
-#endif
 
 	/*
 	 * XXX handle background sync when ip dirty, kernel will no longer
