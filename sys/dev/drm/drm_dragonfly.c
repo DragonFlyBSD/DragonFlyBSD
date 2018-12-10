@@ -107,6 +107,7 @@ static void drm_fill_pdev(device_t dev, struct pci_dev *pdev)
 {
 	int msi_enable = 1;
 	u_int irq_flags;
+	int slot, func;
 
 	pdev->dev.bsddev = dev;
 	pdev->devfn = PCI_DEVFN(pci_get_slot(dev), pci_get_function(dev));
@@ -126,6 +127,10 @@ static void drm_fill_pdev(device_t dev, struct pci_dev *pdev)
 		return;
 
 	pdev->irq = (int)rman_get_start(pdev->_irqr);
+
+	slot = pci_get_slot(dev);
+	func = pci_get_function(dev);
+	pdev->devfn = PCI_DEVFN(slot, func);
 }
 
 void drm_init_pdev(device_t dev, struct pci_dev **pdev)

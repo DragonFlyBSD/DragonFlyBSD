@@ -44,6 +44,7 @@
 #include <linux/atomic.h>
 #include <linux/device.h>
 #include <linux/io.h>
+#include <uapi/linux/pci.h>
 
 #include <linux/pci_ids.h>
 

@@ -209,6 +209,28 @@ static int drm_pci_irq_by_busid(struct drm_device *dev, struct drm_irq_busid *p)
 	return 0;
 }
 
+#ifdef __DragonFly__
+int
+drm_getpciinfo(struct drm_device *dev, void *data, struct drm_file *file_priv)
+{
+	struct drm_pciinfo *info = data;
+
+	info->domain = 0;
+	info->bus = dev->pci_bus;
+	info->dev = PCI_SLOT(dev->pdev->devfn);
+	info->func = PCI_FUNC(dev->pdev->devfn);
+	info->vendor_id = dev->pdev->vendor;
+	info->device_id = dev->pdev->device;
+	info->subvendor_id = dev->pdev->subsystem_vendor;
+	info->subdevice_id = dev->pdev->subsystem_device;
+	info->revision_id = 0;
+
+	kprintf("drm_getpciinfo: bus=%d slot=%d func=%d vendor_id=%x device_id=%x\n",
+		info->bus, info->dev, info->func, info->vendor_id, info->device_id);
+	return 0;
+}
+#endif
+
 /**
  * drm_irq_by_busid - Get interrupt from bus ID
  * @dev: DRM device
