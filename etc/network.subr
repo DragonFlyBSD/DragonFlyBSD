@@ -27,7 +27,7 @@
 
 #
 # Subroutines commonly used from network startup scripts.
-# Requires that rc.conf be loaded first.
+# Requires that /etc/rc.subr be loaded first.
 #
 
 # ifconfig_up if
@@ -39,6 +39,7 @@
 #
 ifconfig_up()
 {
+	local _cfg ifconfig_args
 	_cfg=1
 
 	ifconfig_args=`ifconfig_getargs $1`
@@ -67,6 +68,8 @@ ifconfig_up()
 #
 ifconfig_down()
 {
+	local _cfg _ifs oldifs _inet inetList
+
 	[ -z "$1" ] && return 1
 	_ifs="^"
 	_cfg=1
@@ -106,6 +109,7 @@ ifconfig_down()
 #	replaced with $if after the characters defined in _punct are
 #	replaced with '_'. If the variable is unset, replace it with
 #	$default if given.
+#
 get_if_var()
 {
 	local _if _punct_c _punct _var _default prefix suffix
@@ -129,11 +133,14 @@ get_if_var()
 
 # _ifconfig_getargs if [af]
 #	Echos the arguments for the supplied interface to stdout.
-#	returns 1 if empty.  In general, ifconfig_getargs should be used
-#	outside this file.
+#	Returns 1 if no interface is specified.
+#	In general, the ifconfig_getargs() below should be used outside
+#	this file.
+#
 _ifconfig_getargs()
 {
-	local _ifn _af _args
+	local _if _ifn _af _args
+
 	_ifn=$1
 	_af=${2:+${2}_}
 
@@ -155,11 +162,13 @@ _ifconfig_getargs()
 }
 
 # ifconfig_getargs if [af]
-#	Takes the result from _ifconfig_getargs and removes pseudo
+#	Takes the result from _ifconfig_getargs() and removes pseudo
 #	args such as DHCP and WPA.
+#
 ifconfig_getargs()
 {
-	local _tmpargs _arg _args
+	local _tmpargs _arg _args is_optarg
+
 	_tmpargs=`_ifconfig_getargs $1 $2`
 	if [ $? -eq 1 ]; then
 		return 1
@@ -195,17 +204,16 @@ ifconfig_getargs()
 # ipv6if if
 #	Returns 0 if the interface should be configured for IPv6 and
 #	1 otherwise.
+#
 ipv6if()
 {
 	local _if _tmpargs
 	_if=$1
 
 	# lo0 is always IPv6-enabled
-	case $_if in
-	lo0)
+	if [ "$_if" = "lo0" ]; then
 		return 0
-		;;
-	esac
+	fi
 
 	case ${ipv6_enable} in
 	[Nn][Oo]|[Ff][Aa][Ll][Ss][Ee]|[Oo][Ff][Ff]|0)
@@ -237,6 +245,7 @@ ipv6if()
 #	Returns 0 if the interface needs DHCP for IPv4/IPv6 and 1 otherwise.
 #	If the second argument is "ipv4" (or "ipv6"), then only IPv4 (or
 #	IPv6) is checked, otherwise both are checked.
+#
 dhcpif()
 {
 	local _tmpargs _arg _if _af
@@ -270,9 +279,11 @@ dhcpif()
 
 # wpaif if
 #	Returns 0 if the interface is a WPA interface and 1 otherwise.
+#
 wpaif()
 {
-	local _tmpargs _arg
+	local _tmpargs _arg is_optarg
+
 	_tmpargs=`_ifconfig_getargs $1`
 	is_optarg=no
 	for _arg in $_tmpargs; do
@@ -289,15 +300,17 @@ wpaif()
 			is_optarg=no
 		fi
 	done
+
 	return 1
 }
 
 # ifexists if
 #	Returns 0 if the interface exists and 1 otherwise.
+#
 ifexists()
 {
 	[ -z "$1" ] && return 1
-	ifconfig $1 > /dev/null 2>&1
+	ifconfig -n $1 >/dev/null 2>&1
 }
 
 # ifalias_up if
@@ -307,6 +320,8 @@ ifexists()
 #
 ifalias_up()
 {
+	local _ret alias ifconfig_args
+
 	_ret=1
 	alias=0
 	while : ; do
@@ -329,6 +344,8 @@ ifalias_up()
 #
 ifalias_down()
 {
+	local _ret alias ifconfig_args
+
 	_ret=1
 	alias=0
 	while : ; do
@@ -372,12 +389,15 @@ ifscript_down()
 	return 1
 }
 
-# Create cloneable interfaces.
+# clone_up
+#	Create cloneable interfaces.
 #
 clone_up()
 {
+	local _prefix _list ifn
 	_prefix=
 	_list=
+
 	for ifn in ${cloned_interfaces}; do
 		ifconfig ${ifn} create
 		if [ $? -eq 0 ]; then
@@ -385,16 +405,21 @@ clone_up()
 			[ -z "$_prefix" ] && _prefix=' '
 		fi
 	done
-	debug "Cloned: ${_list}"
+	if [ -n "${_list}" ]; then
+		echo "Created clone interfaces: ${_list}"
+	fi
+	debug "Created clone interfaces: ${_list}"
 }
 
-# Destroy cloned interfaces. Destroyed interfaces are echoed
-# to standard output.
+# clone_down
+#	Destroy cloned interfaces.
 #
 clone_down()
 {
+	local _prefix _list ifn
 	_prefix=
 	_list=
+
 	for ifn in ${cloned_interfaces}; do
 		ifconfig ${ifn} destroy
 		if [ $? -eq 0 ]; then
@@ -402,29 +427,37 @@ clone_down()
 			[ -z "$_prefix" ] && _prefix=' '
 		fi
 	done
-	debug "Destroyed clones: ${_list}"
+	if [ -n "${_list}" ]; then
+		echo "Destroyed clone interfaces: ${_list}"
+	fi
+	debug "Destroyed clone interfaces: ${_list}"
 }
 
+# gif_up
+#	Create IPv6<-->IPv4 tunnels
+#
 gif_up() {
+	local _if _peers
+
 	case ${gif_interfaces} in
 	[Nn][Oo] | '')
-		;;
-	*)
-		for i in ${gif_interfaces}; do
-			eval peers=\$gifconfig_$i
-			case ${peers} in
-			'')
-				continue
-				;;
-			*)
-				ifconfig $i create >/dev/null 2>&1
-				ifconfig $i tunnel ${peers}
-				ifconfig $i up
-				;;
-			esac
-		done
+		return
 		;;
 	esac
+
+	for _if in ${gif_interfaces}; do
+		eval _peers=\$gifconfig_${_if}
+		case ${_peers} in
+		'')
+			continue
+			;;
+		*)
+			ifconfig $_if create >/dev/null 2>&1
+			ifconfig $_if tunnel ${_peers}
+			ifconfig $_if up
+			;;
+		esac
+	done
 }
 
 # ifnet_rename
@@ -432,19 +465,20 @@ gif_up() {
 #
 ifnet_rename()
 {
+	local _ifn_list _if _ifname
 
-	_ifn_list="`ifconfig -l`"
+	_ifn_list=$(ifconfig -l)
 	[ -z "$_ifn_list" ] && return 0
+
 	for _if in ${_ifn_list} ; do
 		_ifname=`get_if_var $_if ifconfig_IF_name`
-		if [ ! -z "$_ifname" ]; then
+		if [ -n "$_ifname" ]; then
 			ifconfig $_if name $_ifname
 		fi
 	done
 	return 0
 }
 
-#
 # list_net_interfaces type
 #	List all network interfaces. The type of interface returned
 #	can be controlled by the type argument. The type
@@ -458,11 +492,13 @@ ifnet_rename()
 #
 list_net_interfaces()
 {
+	local type _tmplist _autolist _lo _if
+	local _aprefix _bprefix _ifarg _dhcplist _nodhcplist
 	type=$1
 
-	# Get a list of ALL the interfaces.  NOTE: cloned interfaces
-	# have already been configured so they should show up in the
-	# ifconfig -l output.
+	# Get a list of ALL the interfaces.
+	# NOTE: cloned interfaces have already been configured so they should
+	# show up in the 'ifconfig -l' output.
 	#
 	case ${network_interfaces} in
 	[Aa][Uu][Tt][Oo])
@@ -534,6 +570,7 @@ hexdigit()
 
 hexprint()
 {
+	local val str dig
 	val=$1
 	str=''
 
@@ -549,9 +586,19 @@ hexprint()
 	echo ${str}
 }
 
+
+#
+# IPv6-specific setup subroutines
+#
+
 # Setup the interfaces for IPv6
 network6_interface_setup()
 {
+	local interfaces rtsol_interfaces ipv6_ifconfig
+	local rtsol_available rtsol_interface
+	local prefix laddr hostid address alias
+	local _if j
+
 	interfaces=$*
 	rtsol_interfaces=''
 	case ${ipv6_gateway_enable} in
@@ -562,50 +609,50 @@ network6_interface_setup()
 		rtsol_available=yes
 		;;
 	esac
-	for i in $interfaces; do
+	for _if in $interfaces; do
 		rtsol_interface=yes
-		prefix=`get_if_var $i ipv6_prefix_IF`
+		prefix=`get_if_var $_if ipv6_prefix_IF`
 		if [ -n "${prefix}" ]; then
 			rtsol_available=no
 			rtsol_interface=no
-			laddr=`network6_getladdr $i`
+			laddr=`network6_getladdr $_if`
 			hostid=`expr "${laddr}" : 'fe80::\(.*\)%\(.*\)'`
 			for j in ${prefix}; do
 				address=$j\:${hostid}
-				ifconfig $i inet6 ${address} prefixlen 64 alias
+				ifconfig $_if inet6 ${address} prefixlen 64 alias
 
 				case ${ipv6_gateway_enable} in
 				[Yy][Ee][Ss])
 					# subnet-router anycast address
 					# (rfc2373)
-					ifconfig $i inet6 $j:: prefixlen 64 \
+					ifconfig $_if inet6 $j:: prefixlen 64 \
 						alias anycast
 					;;
 				esac
 			done
 		fi
-		ipv6_ifconfig=`ifconfig_getargs $i ipv6`
+		ipv6_ifconfig=`ifconfig_getargs $_if ipv6`
 		if [ -n "${ipv6_ifconfig}" ]; then
 			rtsol_available=no
 			rtsol_interface=no
-			ifconfig $i inet6 ${ipv6_ifconfig} alias
+			ifconfig $_if inet6 ${ipv6_ifconfig} alias
 		fi
 
-		if [ ${rtsol_available} = yes -a ${rtsol_interface} = yes ]
-		then
+		if [ "${rtsol_available}" = "yes" -a \
+		     "${rtsol_interface}" = "yes" ]; then
 			case ${i} in
 			lo0|gif[0-9]*|stf[0-9]*|lp[0-9]*|sl[0-9]*|tun[0-9]*)
 				;;
 			*)
-				rtsol_interfaces="${rtsol_interfaces} ${i}"
+				rtsol_interfaces="${rtsol_interfaces} ${_if}"
 				;;
 			esac
 		else
-			ifconfig $i inet6
+			ifconfig $_if inet6
 		fi
 	done
 
-	if [ ${rtsol_available} = yes -a -n "${rtsol_interfaces}" ]; then
+	if [ "${rtsol_available}" = "yes" -a -n "${rtsol_interfaces}" ]; then
 		# Act as endhost - automatically configured.
 		# You can configure only single interface, as
 		# specification assumes that autoconfigured host has
@@ -613,17 +660,18 @@ network6_interface_setup()
 		${SYSCTL_W} net.inet6.ip6.accept_rtadv=1
 		set ${rtsol_interfaces}
 		ifconfig $1 up
+		echo "Auto configuring interface $1 ..."
 		rtsol $1
 	fi
 
-	for i in $interfaces; do
+	for _if in $interfaces; do
 		alias=0
 		while : ; do
-			ipv6_ifconfig=`get_if_var $i ipv6_ifconfig_IF_alias${alias}`
+			ipv6_ifconfig=`get_if_var $_if ipv6_ifconfig_IF_alias${alias}`
 			if [ -z "${ipv6_ifconfig}" ]; then
 				break;
 			fi
-			ifconfig $i inet6 ${ipv6_ifconfig} alias
+			ifconfig $_if inet6 ${ipv6_ifconfig} alias
 			alias=$((${alias} + 1))
 		done
 	done
@@ -632,6 +680,10 @@ network6_interface_setup()
 # Setup IPv6 to IPv4 mapping
 network6_stf_setup()
 {
+	local stf_prefixlen stf_interface_ipv6_ifid
+	local hexfrag1 hexfrag2 ipv4_in_hexformat laddr
+	local _if OIFS
+
 	case ${stf_interface_ipv4addr} in
 	[Nn][Oo] | '')
 		;;
@@ -647,8 +699,8 @@ network6_stf_setup()
 		ipv4_in_hexformat="${hexfrag1}:${hexfrag2}"
 		case ${stf_interface_ipv6_ifid} in
 		[Aa][Uu][Tt][Oo] | '')
-			for i in ${ipv6_network_interfaces}; do
-				laddr=`network6_getladdr ${i}`
+			for _if in ${ipv6_network_interfaces}; do
+				laddr=`network6_getladdr $_if`
 				case ${laddr} in
 				'')
 					;;
@@ -681,6 +733,8 @@ network6_stf_setup()
 # Setup static routes
 network6_static_routes_setup()
 {
+	local _rt
+
 	# Set up any static routes.
 	case ${ipv6_defaultrouter} in
 	[Nn][Oo] | '')
@@ -694,8 +748,8 @@ network6_static_routes_setup()
 	[Nn][Oo] | '')
 		;;
 	*)
-		for i in ${ipv6_static_routes}; do
-			eval ipv6_route_args=\$ipv6_route_${i}
+		for _rt in ${ipv6_static_routes}; do
+			eval ipv6_route_args=\$ipv6_route_${_rt}
 			route add -inet6 ${ipv6_route_args}
 		done
 		;;
@@ -706,21 +760,22 @@ network6_static_routes_setup()
 # as the default route when there's no router.
 network6_default_interface_setup()
 {
+	local _if laddr
+
 	# Choose IPv6 default interface if it is not clearly specified.
 	case ${ipv6_default_interface} in
 	'')
-		for i in ${ipv6_network_interfaces}; do
-			case $i in
-			lo0)
+		for _if in ${ipv6_network_interfaces}; do
+			if [ "${_if}" = "lo0" ]; then
 				continue
-				;;
-			esac
-			laddr=`network6_getladdr $i exclude_tentative`
+			fi
+
+			laddr=`network6_getladdr $_if exclude_tentative`
 			case ${laddr} in
 			'')
 				;;
 			*)
-				ipv6_default_interface=$i
+				ipv6_default_interface=$_if
 				break
 				;;
 			esac
@@ -761,6 +816,8 @@ network6_default_interface_setup()
 
 network6_getladdr()
 {
+	local proto addr rest
+
 	ifconfig $1 2>/dev/null | while read proto addr rest; do
 		case ${proto} in
 		inet6)
