@@ -9,6 +9,18 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 5.4 TO LATER VERSIONS                +
++-----------------------------------------------------------------------+
+
+FFS_ROOT OPTION REMOVED
+-----------------------
+
+The FFS_ROOT kernel configuration option has been finally removed, after
+having been a no-op since 4.9. That means users using a custom kernel
+configuration file that still contains it need to remove the option from
+that file.
+
++-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 5.2 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 

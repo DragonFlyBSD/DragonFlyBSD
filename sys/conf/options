@@ -675,7 +675,6 @@ EVDEV_DEBUG		opt_evdev.h
 
 # Obsolete options (will be removed in the future)
 #
-FFS_ROOT		opt_dontuse.h
 FAST_IPSEC		opt_dontuse.h
 IPSEC			opt_dontuse.h
 IPSEC_DEBUG		opt_dontuse.h
