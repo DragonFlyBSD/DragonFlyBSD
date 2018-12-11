@@ -479,27 +479,16 @@ ifnet_rename()
 	return 0
 }
 
-# list_net_interfaces type
-#	List all network interfaces. The type of interface returned
-#	can be controlled by the type argument. The type
-#	argument can be any of the following:
-#		nodhcp - all interfaces, excluding DHCP configured interfaces
-#		dhcp   - list only DHCP configured interfaces
-#	If no argument is specified all network interfaces are output.
+# list_net_interfaces
+#	List all network interfaces.
 #	Note that the list will include cloned interfaces if applicable.
 #	Cloned interfaces must already exist to have a chance to appear
 #	in the list if ${network_interfaces} is set to `auto'.
 #
 list_net_interfaces()
 {
-	local type _tmplist _autolist _lo _if
-	local _aprefix _bprefix _ifarg _dhcplist _nodhcplist
-	type=$1
+	local _tmplist _autolist _lo _if
 
-	# Get a list of ALL the interfaces.
-	# NOTE: cloned interfaces have already been configured so they should
-	# show up in the 'ifconfig -l' output.
-	#
 	case ${network_interfaces} in
 	[Aa][Uu][Tt][Oo])
 		_autolist="`ifconfig -l` `sysctl -in net.wlan.devices`"
@@ -518,38 +507,7 @@ list_net_interfaces()
 		;;
 	esac
 
-	if [ -z "$type" ]; then
-		echo $_tmplist
-		return 0
-	fi
-
-	# Separate out dhcp and non-dhcp interfaces
-	#
-	_aprefix=
-	_bprefix=
-	for _if in ${_tmplist} ; do
-		eval _ifarg="\$ifconfig_${_if}"
-		case "$_ifarg" in
-		[Dd][Hh][Cc][Pp])
-			_dhcplist="${_dhcplist}${_aprefix}${_if}"
-			[ -z "$_aprefix" ] && _aprefix=' '
-			;;
-		''|*)
-			_nodhcplist="${_nodhcplist}${_bprefix}${_if}"
-			[ -z "$_bprefix" ] && _bprefix=' '
-			;;
-		esac
-	done
-
-	case "$type" in
-	nodhcp)
-		echo $_nodhcplist
-		;;
-	dhcp)
-		echo $_dhcplist
-		;;
-	esac
-	return 0
+	echo $_tmplist
 }
 
 hexdigit()
