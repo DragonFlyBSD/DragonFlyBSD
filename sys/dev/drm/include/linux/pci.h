@@ -91,11 +91,6 @@ struct pci_bus {
 struct pci_driver {
 };
 
-/* XXX: should be in uapi/linux/pci.h */
-#define PCI_DEVFN(slot, func)	((((slot) & 0x1f) << 3) | ((func) & 0x07))
-#define PCI_SLOT(devfn)		(((devfn) >> 3) & 0x1f)
-#define PCI_FUNC(devfn)		((devfn) & 0x07)
-
 #define PCI_DMA_BIDIRECTIONAL	0
 
 /* extracted from radeon/si.c radeon/cik.c */
