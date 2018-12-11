@@ -31,15 +31,16 @@
 . /etc/rc.subr
 . /etc/network.subr
 
-name="network"
-start_cmd="network_start"
-stop_cmd="network_stop"
+name="netif"
+rcvar=`set_rcvar`
+start_cmd="netif_start"
+stop_cmd="netif_stop"
 cloneup_cmd="clone_up"
 clonedown_cmd="clone_down"
 extra_commands="cloneup clonedown"
 _cmdifn=
 
-network_start()
+netif_start()
 {
 	# Set the list of interfaces to work on.
 	#
@@ -61,14 +62,14 @@ network_start()
 	fi
 
 	# Configure the interface(s).
-	network_common ifn_start verbose
+	netif_common ifn_start verbose
 
 	# Give our interfaces a little time to come up
 	# before we start pounding them, e.g., DHCP client.
 	sleep 2
 }
 
-network_stop()
+netif_stop()
 {
 	# Set the list of interfaces to work on.
 	#
@@ -77,24 +78,25 @@ network_stop()
 	echo -n "Stopping network:"
 
 	# Deconfigure the interface(s)
-	network_common ifn_stop
+	netif_common ifn_stop
 	echo '.'
 }
 
-# network_common routine verbose
+# netif_common routine verbose
 #	Common configuration subroutine for network interfaces. This
 #	routine takes all the preparatory steps needed for configuring
 #	an interface and then calls $routine. If $verbose is specified,
 #	it will call ifconfig(8) to show, in long format, the configured
 #	interfaces. If $verbose is not given, it will simply output the
 #	configured interface(s).
-network_common()
+#
+netif_common()
 {
 	_func=
 	_verbose=
 
 	if [ -z "$1" ]; then
-		err 1 "network_common(): No function name specified."
+		err 1 "netif_common(): No function name specified."
 	else
 		_func="$1"
 	fi
@@ -141,13 +143,16 @@ network_common()
 	debug "The following interfaces were not configured: $_fail"
 }
 
+# ifn_start ifn
+#	Bring up and configure an interface.
+#
 ifn_start()
 {
 	local ifn cfg
 	ifn="$1"
 	cfg=1
 
-	[ -z "$ifn" ] && return 1
+	[ -z "$ifn" ] && err 1 "ifn_start called without an interface"
 
 	ifscript_up ${ifn} && cfg=0
 	ifconfig_up ${ifn} && cfg=0
@@ -157,13 +162,16 @@ ifn_start()
 	return $cfg
 }
 
+# ifn_stop ifn
+#	Shutdown and de-configure an interface.
+#
 ifn_stop()
 {
 	local ifn cfg
 	ifn="$1"
 	cfg=1
 
-	[ -z "$ifn" ] && return 1
+	[ -z "$ifn" ] && err 1 "ifn_stop called without an interface"
 
 	ifalias_down ${ifn} && cfg=0
 	ifconfig_down ${ifn} && cfg=0
@@ -248,5 +256,7 @@ childif_destroy()
 	return ${cfg}
 }
 
+# Load the old "network" config file also for compatibility
+load_rc_config network
 load_rc_config $name
 run_rc_command $*
