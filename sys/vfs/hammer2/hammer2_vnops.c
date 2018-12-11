@@ -173,16 +173,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 		if ((ip->flags & (HAMMER2_INODE_ISUNLINKED |
 				  HAMMER2_INODE_DELETING)) ==
 		    HAMMER2_INODE_ISUNLINKED) {
-			const char *filename;
-
 			atomic_set_int(&ip->flags, HAMMER2_INODE_DELETING);
-			if (TAILQ_FIRST(&vp->v_namecache))
-				filename =
-					TAILQ_FIRST(&vp->v_namecache)->nc_name;
-			else
-				filename = "?";
-			kprintf("h2 reclaim final delete %p %s\n",
-				vp, filename);
 			hammer2_inode_delayed_sideq(ip);
 		}
 		hammer2_inode_unlock(ip);

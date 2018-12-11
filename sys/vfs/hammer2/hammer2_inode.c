@@ -1687,6 +1687,9 @@ hammer2_inode_chain_ins(hammer2_inode_t *ip)
  *
  * NOTE: backend flush must still sync and flush the deleted inode to clean
  *	 out related chains.
+ *
+ * NOTE: We must clear not only INODE_DELETING, but also INODE_ISUNLINKED
+ *	 to prevent the vnode reclaim code from trying to delete it twice.
  */
 int
 hammer2_inode_chain_des(hammer2_inode_t *ip)
@@ -1697,7 +1700,8 @@ hammer2_inode_chain_des(hammer2_inode_t *ip)
 	if (ip->flags & HAMMER2_INODE_DELETING) {
 		hammer2_xop_destroy_t *xop;
 
-		atomic_clear_int(&ip->flags, HAMMER2_INODE_DELETING);
+		atomic_clear_int(&ip->flags, HAMMER2_INODE_DELETING |
+					     HAMMER2_INODE_ISUNLINKED);
 		xop = hammer2_xop_alloc(ip, HAMMER2_XOP_MODIFYING);
 		hammer2_xop_start(&xop->head, &hammer2_inode_destroy_desc);
 		error = hammer2_xop_collect(&xop->head, 0);
