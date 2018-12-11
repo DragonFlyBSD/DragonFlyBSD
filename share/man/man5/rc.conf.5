@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd November 14, 2018
+.Dd December 11, 2018
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -822,6 +822,14 @@ It is possible to rename interface by doing:
 ifconfig_ed0_name="net0"
 ifconfig_net0="inet 10.0.0.1 netmask 0xffff0000"
 .Ed
+.It Va netif_enable
+.Pq Vt bool
+Set to
+.Dq Li YES
+by default.
+Setting to
+.Dq Li NO
+will disable the configuration of network interfaces.
 .It Va network_interfaces
 .Pq Vt str
 The list of network interfaces to configure on this host,
