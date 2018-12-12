@@ -313,52 +313,62 @@ ifexists()
 	ifconfig -n $1 >/dev/null 2>&1
 }
 
-# ifalias_up if
-#	Configure aliases for network interface $if.
+# ifalias_common if action [ipv6]
+#	Helper function for ifalias_up() and ifalias_down().
+#	The $action argument can be either "alias" (to add an
+#	alias) or "-alias" (to remove an alias).
+#	Returns 0 if at least one alias was added/removed or
+#	1 if there were none.
+#
+ifalias_common()
+{
+	local _if _action _af _af2 _ret _var _args _alias
+	_if=$1
+	_action=$2
+	_af=$3
+
+	_ret=1
+	_alias=0
+	while : ; do
+		if [ "${_af}" = "ipv6" ]; then
+			_af2="inet6"
+			_var="ipv6_ifconfig_IF_alias${_alias}"
+		else
+			_af2="inet"
+			_var="ifconfig_IF_alias${_alias}"
+		fi
+		_args=`get_if_var $_if $_var`
+		_args="${_args#${_af2} }"
+		if [ -z "${_args}" ]; then
+			break
+		fi
+		ifconfig $_if $_af2 $_args $_action
+		_alias=$((${_alias} + 1))
+		_ret=0
+	done
+	return $_ret
+}
+
+# ifalias_up if [ipv6]
+#	Configure IPv4 aliases for network interface $if or
+#	IPv6 aliases if the second argument is "ipv6".
 #	It returns 0 if at least one alias was configured or
 #	1 if there were none.
 #
 ifalias_up()
 {
-	local _ret alias ifconfig_args
-
-	_ret=1
-	alias=0
-	while : ; do
-		ifconfig_args=`get_if_var $1 ifconfig_IF_alias${alias}`
-		if [ -n "${ifconfig_args}" ]; then
-			ifconfig $1 ${ifconfig_args} alias
-			alias=$((${alias} + 1))
-			_ret=0
-		else
-			break
-		fi
-	done
-	return $_ret
+	ifalias_common $1 alias $2
 }
 
-#ifalias_down if
-#	Remove aliases for network interface $if.
+# ifalias_down if [ipv6]
+#	Remove IPv4 aliases for network interface $if or
+#	IPv6 aliases if the second argument is "ipv6".
 #	It returns 0 if at least one alias was removed or
 #	1 if there were none.
 #
 ifalias_down()
 {
-	local _ret alias ifconfig_args
-
-	_ret=1
-	alias=0
-	while : ; do
-		ifconfig_args=`get_if_var $1 ifconfig_IF_alias${alias}`
-		if [ -n "${ifconfig_args}" ]; then
-			ifconfig $1 ${ifconfig_args} -alias
-			alias=$((${alias} + 1))
-			_ret=0
-		else
-			break
-		fi
-	done
-	return $_ret
+	ifalias_common $1 -alias $2
 }
 
 # ifscript_up if
@@ -554,7 +564,7 @@ network6_interface_setup()
 {
 	local interfaces rtsol_interfaces ipv6_ifconfig
 	local rtsol_available rtsol_interface
-	local prefix laddr hostid address alias
+	local prefix laddr hostid address
 	local _if j
 
 	interfaces=$*
@@ -623,15 +633,7 @@ network6_interface_setup()
 	fi
 
 	for _if in $interfaces; do
-		alias=0
-		while : ; do
-			ipv6_ifconfig=`get_if_var $_if ipv6_ifconfig_IF_alias${alias}`
-			if [ -z "${ipv6_ifconfig}" ]; then
-				break;
-			fi
-			ifconfig $_if inet6 ${ipv6_ifconfig} alias
-			alias=$((${alias} + 1))
-		done
+		ifalias_up $_if ipv6
 	done
 }
 
