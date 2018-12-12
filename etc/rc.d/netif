@@ -37,7 +37,9 @@ start_cmd="netif_start"
 stop_cmd="netif_stop"
 cloneup_cmd="clone_up"
 clonedown_cmd="clone_down"
-extra_commands="cloneup clonedown"
+wlanup_cmd="wlan_up"
+wlandown_cmd="wlan_down"
+extra_commands="cloneup clonedown wlanup wlandown"
 _cmdifn=
 
 netif_start()
@@ -51,6 +53,9 @@ netif_start()
 		# We're operating as a general network start routine.
 		#
 
+		# Create IEEE 802.11 interfaces
+		wlan_up
+
 		# Create cloned interfaces
 		clone_up
 
@@ -63,10 +68,6 @@ netif_start()
 
 	# Configure the interface(s).
 	netif_common ifn_start verbose
-
-	# Give our interfaces a little time to come up
-	# before we start pounding them, e.g., DHCP client.
-	sleep 2
 }
 
 netif_stop()
@@ -134,7 +135,7 @@ netif_common()
 		eval showstat=\$showstat_${ifn}
 		if [ ! -z ${showstat} ]; then
 			if [ -n "$_verbose" ]; then
-				ifconfig ${ifn} 2>/dev/null
+				ifconfig ${ifn}
 			else
 				echo -n " ${ifn}"
 			fi
@@ -173,45 +174,23 @@ ifn_stop()
 
 	[ -z "$ifn" ] && err 1 "ifn_stop called without an interface"
 
+	childif_destroy ${ifn} && cfg=0
 	ifalias_down ${ifn} && cfg=0
 	ifconfig_down ${ifn} && cfg=0
 	ifscript_down ${ifn} && cfg=0
-	childif_destroy ${ifn} && cfg=0
 
 	return $cfg
 }
 
-# childif_create
+# childif_create ifn
 #	Create and configure child interfaces.  Return 0 if child
 #	interfaces are created.
 #
 childif_create()
 {
-	local cfg child child_vlans child_wlans create_args debug_flags ifn i
+	local cfg child child_vlans create_args ifn i
 	cfg=1
 	ifn=$1
-
-	# Create wireless interfaces
-	child_wlans=`get_if_var $ifn wlans_IF`
-
-	for child in ${child_wlans}; do
-		create_args="wlandev $ifn `get_if_var $child create_args_IF`"
-		debug_flags="`get_if_var $child wlandebug_IF`"
-
-		if expr $child : 'wlan[0-9][0-9]*$' >/dev/null 2>&1; then
-			ifconfig $child create ${create_args} && cfg=0
-			if [ -n "${debug_flags}" ]; then
-				wlandebug -i $child ${debug_flags}
-			fi
-		else
-			i=`ifconfig wlan create ${create_args}`
-			if [ -n "${debug_flags}" ]; then
-				wlandebug -i $i ${debug_flags}
-			fi
-			ifconfig $i name $child && cfg=0
-		fi
-		ifn_start $child
-	done
 
 	# Create vlan interfaces
 	child_vlans=`get_if_var $ifn vlans_IF`
@@ -236,17 +215,21 @@ childif_create()
 	return ${cfg}
 }
 
-# childif_destroy
+# childif_destroy ifn
 #	Destroy child interfaces.
 #
 childif_destroy()
 {
-	local cfg child child_vlans child_wlans ifn
+	local cfg child child_vlans ifn
 	cfg=1
+	ifn=$1
 
-	child_wlans=`get_if_var $ifn wlans_IF`
-	for child in ${child_wlans}; do
-		if ! `ifconfig -n $child > /dev/null 2>&1`; then
+	child_vlans=`get_if_var $ifn vlans_IF`
+	for child in ${child_vlans}; do
+		if expr $child : '[1-9][0-9]*$' >/dev/null 2>&1; then
+			child="${ifn}.${child}"
+		fi
+		if ! ifexists $child; then
 			continue
 		fi
 		ifn_stop $child
