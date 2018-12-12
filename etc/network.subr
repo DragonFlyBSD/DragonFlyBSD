@@ -52,6 +52,14 @@ ifconfig_up()
 	if wpaif $1; then
 		ifconfig $1 up
 		/etc/rc.d/wpa_supplicant start $1
+		# NOTE: wpa_supplicant(8) needs to control the interface's
+		#	state in order to perform the SSID scan.  But
+		#	dhcpcd(8), which may be started by the "dhcp_client"
+		#	below, can race against wpa_supplicant(8) and modify
+		#	the interface's state, breaking the SSID scan and
+		#	preventing the SSID association.
+		#	Insert a small delay here to workaround the issue.
+		sleep 1
 		_cfg=0		# XXX: not sure this should count
 	fi
 
