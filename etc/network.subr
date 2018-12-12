@@ -45,10 +45,12 @@ ifconfig_up()
 	ifconfig_args=`ifconfig_getargs $1`
 	if [ -n "${ifconfig_args}" ]; then
 		ifconfig $1 ${ifconfig_args}
+		ifconfig $1 up
 		_cfg=0
 	fi
 
 	if wpaif $1; then
+		ifconfig $1 up
 		/etc/rc.d/wpa_supplicant start $1
 		_cfg=0		# XXX: not sure this should count
 	fi
@@ -97,6 +99,11 @@ ifconfig_down()
 
 	if dhcpif $1; then
 		/etc/rc.d/dhcp_client stop $1
+		_cfg=0
+	fi
+
+	if ifexists $1; then
+		ifconfig $1 down
 		_cfg=0
 	fi
 
