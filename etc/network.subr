@@ -677,6 +677,7 @@ network6_interface_setup()
 			done
 		fi
 		ipv6_ifconfig=`ifconfig_getargs $_if ipv6`
+		ipv6_ifconfig="${ipv6_ifconfig#inet6 }"
 		if [ -n "${ipv6_ifconfig}" ]; then
 			rtsol_available=no
 			rtsol_interface=no
