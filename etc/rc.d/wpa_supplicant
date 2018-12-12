@@ -14,20 +14,10 @@ name="wpa_supplicant"
 rcvar=
 command="/usr/sbin/wpa_supplicant"
 conf_file="/etc/wpa_supplicant.conf"
-start_precmd="wpa_supplicant_precmd"
 start_postcmd="wpa_supplicant_postcmd"
-
-wpa_supplicant_precmd()
-{
-	ifconfig $ifn up
-}
 
 wpa_supplicant_postcmd()
 {
-# don't wait for wpa_supplicant to associate
-#	while ! ifconfig $ifn | grep -qw "status: associated"; do
-#		sleep 1
-#	done
 	if [ "${command}" = "/usr/sbin/wpa_supplicant" ];
 	then
 		cat << EOF
