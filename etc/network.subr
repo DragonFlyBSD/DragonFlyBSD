@@ -406,6 +406,76 @@ ifscript_down()
 	return 1
 }
 
+# wlan_up
+#	Create IEEE 802.11 interfaces.
+#
+wlan_up()
+{
+	local _prefix _list parent child child_wlans create_args debug_flags
+	_prefix=
+	_list=
+
+	for parent in `${SYSCTL_N} -q net.wlan.devices`; do
+		# Parse wlans_$parent="$child ..."
+		child_wlans=`get_if_var $parent wlans_IF`
+		for child in ${child_wlans}; do
+			if ifexists $child; then
+				continue
+			fi
+
+			create_args="wlandev $parent `get_if_var $child create_args_IF`"
+			debug_flags="`get_if_var $child wlandebug_IF`"
+			if expr $child : 'wlan[0-9][0-9]*$' >/dev/null 2>&1; then
+				ifconfig $child create ${create_args}
+			else
+				ifconfig wlan create ${create_args} name $child
+			fi
+			if [ $? -eq 0 ]; then
+				_list="${_list}${_prefix}${child}"
+				[ -z "$_prefix" ] && _prefix=' '
+			fi
+			if [ -n "${debug_flags}" ]; then
+				wlandebug -i $child ${debug_flags}
+			fi
+		done
+	done
+
+	if [ -n "${_list}" ]; then
+		echo "Created wlan interfaces: ${_list}"
+	fi
+	debug "Created wlan interfaces: ${_list}"
+}
+
+# wlan_down
+#	Destroy IEEE 802.11 interfaces.
+#
+wlan_down()
+{
+	local _prefix _list parent child child_wlans
+	_prefix=
+	_list=
+
+	for parent in `${SYSCTL_N} -q net.wlan.devices`; do
+		child_wlans=`get_if_var $parent wlans_IF`
+		for child in ${child_wlans}; do
+			if ! ifexists $child; then
+				continue
+			fi
+
+			ifconfig -n $child destroy
+			if [ $? -eq 0 ]; then
+				_list="${_list}${_prefix}${child}"
+				[ -z "$_prefix" ] && _prefix=' '
+			fi
+		done
+	done
+
+	if [ -n "${_list}" ]; then
+		echo "Destroyed wlan interfaces: ${_list}"
+	fi
+	debug "Destroyed wlan interfaces: ${_list}"
+}
+
 # clone_up
 #	Create cloneable interfaces.
 #
@@ -508,7 +578,7 @@ list_net_interfaces()
 
 	case ${network_interfaces} in
 	[Aa][Uu][Tt][Oo])
-		_autolist="`ifconfig -l` `sysctl -in net.wlan.devices`"
+		_autolist=$(ifconfig -l)
 		_lo=
 		for _if in ${_autolist} ; do
 			if [ "$_if" = "lo0" ]; then
