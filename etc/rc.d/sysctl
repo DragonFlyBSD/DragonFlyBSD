@@ -11,44 +11,45 @@
 . /etc/rc.subr
 
 name="sysctl"
+required_files="/etc/sysctl.conf"
 stop_cmd=":"
-start_cmd="DragonFly_start"
+start_cmd="sysctl_start"
+reload_cmd="sysctl_start"
+lastload_cmd="sysctl_start last"
 extra_commands="reload lastload"
-reload_cmd="DragonFly_start"
-lastload_cmd="DragonFly_start last"
 
-DragonFly_start()
+sysctl_start()
 {
-	#
-	# Read in /etc/sysctl.conf and set things accordingly
-	#
-	if [ -f /etc/sysctl.conf ]; then
-		while read var comments
-		do
-			case ${var} in
-			\#*|'')
-				;;
-			*)
-				mib=${var%=*}
-				val=${var#*=}
+	local config extra mib val
 
-				if current_value=`${SYSCTL_N} -q ${mib}`; then
-					case ${current_value} in
-					${val})
-						;;
-					*)
-						${SYSCTL_W} ${var}
-						;;
-					esac
-				elif [ "$1" = "last" ]; then
-					warn "sysctl ${mib} does not exist."
-				fi
-				;;
-			esac
-		done < /etc/sysctl.conf
+	if [ ! -f "/etc/sysctl.conf" ]; then
+		return
 	fi
-}
 
+	# NOTE: Do not miss the last line when it does not end with a LF.
+	while read config extra || [ -n "${config}" ]; do
+		case ${config} in
+		\#*|'')
+			continue
+			;;
+		*[^=]=[^=]*)
+			mib=${config%=*}
+			val=${config#*=}
+			;;
+		*)
+			warn "invalid syntax: ${config}"
+			continue
+			;;
+		esac
+
+		if ${SYSCTL_N} -q ${mib}; then
+			debug "${SYSCTL_W} ${mib}=${val}"
+			${SYSCTL_W} ${mib}=${val}
+		elif [ "$1" = "last" ]; then
+			warn "sysctl '${mib}' does not exist."
+		fi
+	done < /etc/sysctl.conf
+}
 
 load_rc_config $name
 run_rc_command "$1"
