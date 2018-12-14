@@ -79,6 +79,7 @@ MAN=	accept_filter.9 \
 	devtoname.9 \
 	driver.9 \
 	DRIVER_MODULE.9 \
+	efirt.9 \
 	errno.9 \
 	EVENTHANDLER.9 \
 	extattr.9 \
@@ -476,6 +477,13 @@ MLINKS+=devstat.9 devicestat.9 \
 	devstat.9 devstat_remove_entry.9 \
 	devstat.9 devstat_start_transaction.9
 MLINKS+=DRIVER_MODULE.9 DRIVER_MODULE_ORDERED.9
+MLINKS+=efirt.9 efi_get_table.9 \
+	efirt.9 efi_get_time.9 \
+	efirt.9 efi_reset_system.9 \
+	efirt.9 efi_set_time.9 \
+	efirt.9 efi_var_get.9 \
+	efirt.9 efi_var_nextname.9 \
+	efirt.9 efi_var_set.9
 MLINKS+=EVENTHANDLER.9 EVENTHANDLER_DECLARE.9 \
 	EVENTHANDLER.9 EVENTHANDLER_DEREGISTER.9 \
 	EVENTHANDLER.9 eventhandler_deregister.9 \

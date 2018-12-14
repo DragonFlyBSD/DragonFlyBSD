@@ -88,6 +88,7 @@ MAN=	aac.4 \
 	drm.4 \
 	dummynet.4 \
 	ecc.4 \
+	efidev.4 \
 	ehci.4 \
 	em.4 \
 	ena.4 \
@@ -434,6 +435,7 @@ MLINKS+=cue.4 if_cue.4
 MLINKS+=dc.4 if_dc.4
 MLINKS+=disc.4 if_disc.4
 MLINKS+=dm.4 dm_target_linear.4
+MLINKS+=efidev.4 efirtc.4
 MLINKS+=em.4 emx.4 \
 	em.4 if_em.4 \
 	em.4 if_emx.4
