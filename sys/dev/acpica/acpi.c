@@ -3481,6 +3481,7 @@ static struct debugtag dbg_level[] = {
     {"ACPI_LV_RESOURCES",	ACPI_LV_RESOURCES},
     {"ACPI_LV_USER_REQUESTS",	ACPI_LV_USER_REQUESTS},
     {"ACPI_LV_PACKAGE",		ACPI_LV_PACKAGE},
+    {"ACPI_LV_EVALUATION",	ACPI_LV_EVALUATION},
     {"ACPI_LV_VERBOSITY1",	ACPI_LV_VERBOSITY1},
 
     /* Trace verbosity level 2 [Function tracing and memory allocation] */
