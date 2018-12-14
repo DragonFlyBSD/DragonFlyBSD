@@ -216,7 +216,7 @@
 #define ACPI_LV_RESOURCES           0x00010000
 #define ACPI_LV_USER_REQUESTS       0x00020000
 #define ACPI_LV_PACKAGE             0x00040000
-#define ACPI_LV_VERBOSITY1          0x0007FF40 | ACPI_LV_ALL_EXCEPTIONS
+#define ACPI_LV_VERBOSITY1          0x0007FFE0 | ACPI_LV_ALL_EXCEPTIONS
 
 /* Trace verbosity level 2 [Function tracing and memory allocation] */
 
