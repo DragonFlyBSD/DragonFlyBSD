@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd December 11, 2018
+.Dd December 14, 2018
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -319,6 +319,11 @@ program (default
 Additional flags to pass to the
 .Xr dhcpcd 8
 program.
+The default value is
+.Fl b ,
+i.e., tell
+.Xr dhcpcd 8
+to go to background immediately.
 .It Va pf_enable
 .Pq Vt bool
 Set to
