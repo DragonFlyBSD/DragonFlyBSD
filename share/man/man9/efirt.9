@@ -71,7 +71,7 @@
     "size_t *datasize" "void *data"
 .Sh DESCRIPTION
 .\"All of the following calls will return
-.\".Dv ENXIO
+.\".Er ENXIO
 .\"if UEFI runtime services are not available.
 .\".Nm
 .\"is currently only available on amd64 and arm64.
@@ -79,7 +79,7 @@
 .\"The
 .\".Fn efi_rt_ok
 .\"Returns 0 if UEFI runtime services are present and functional, or
-.\".Dv ENXIO
+.\".Er ENXIO
 .\"if not.
 .\".Pp
 The
@@ -87,10 +87,10 @@ The
 function gets a table by uuid from the UEFI system table.
 Returns 0 if the table was found and populates *ptr with the address.
 Returns
-.Dv ENXIO
+.Er ENXIO
 if the configuration table or system table are unset.
 Returns
-.Dv ENOENT
+.Er ENOENT
 if the requested table cannot be found.
 .Pp
 The
@@ -100,13 +100,13 @@ Returns 0 and populates the
 .Vt struct efi_tm
 on success.
 Returns
-.Dv EINVAL
+.Er EINVAL
 if the
 .Vt struct efi_tm
 is
 .Dv NULL ,
 or
-.Dv EIO
+.Er EIO
 if the time could not be retrieved due to a hardware error.
 .Pp
 .\"The
@@ -116,13 +116,13 @@ if the time could not be retrieved due to a hardware error.
 .\".Vt struct efi_tmcap
 .\"on success.
 .\"Returns
-.\".Dv EINVAL
+.\".Er EINVAL
 .\"if the
 .\".Vt struct efi_tm
 .\"is
 .\".Dv NULL ,
 .\"or
-.\".Dv EIO
+.\".Er EIO
 .\"if the time could not be retrieved due to a hardware error.
 .\".Pp
 The
@@ -135,9 +135,9 @@ function sets the time on the RTC to the time described by the
 .Vt struct efi_tm
 passed in.
 Returns 0 on success,
-.Dv EINVAL
+.Er EINVAL
 if a time field is out of range, or
-.Dv EIO
+.Er EIO
 if the time could not be set due to a hardware error.
 .Pp
 The
@@ -153,15 +153,15 @@ and
 .Fa data
 on success.
 Otherwise, one of the following errors are returned:
-.Bl -tag -width ".Dv EOVERFLOW"
-.It Dv ENOENT
+.Bl -tag -width ".Er EOVERFLOW"
+.It Er ENOENT
 The variable was not found.
-.It Dv EOVERFLOW
+.It Er EOVERFLOW
 .Fa datasize
 is not sufficient to hold the variable data.
 .Fa namesize
 is updated to reflect the size needed to complete the request.
-.It Dv EINVAL
+.It Er EINVAL
 One of
 .Fa name ,
 .Fa vendor ,
@@ -173,9 +173,9 @@ Alternatively,
 is large enough to hold the response but
 .Fa data
 is NULL.
-.It Dv EIO
+.It Er EIO
 The variable could not be retrieved due to a hardware error.
-.It Dv EDOOFUS
+.It Er EDOOFUS
 The variable could not be retireved due to an authentication failure.
 .El
 .Pp
@@ -191,7 +191,7 @@ Subsequent calls should pass in the last
 and
 .Fa vendor
 returned until
-.Dv ENOENT
+.Er ENOENT
 is returned.
 Returns 0 and populates
 .Fa namesize ,
@@ -200,22 +200,22 @@ and
 .Fa vendor
 with the next variable's data.
 Otherwise, returns one of the following errors:
-.Bl -tag -width ".Dv EOVERFLOW"
-.It Dv ENOENT
+.Bl -tag -width ".Er EOVERFLOW"
+.It Er ENOENT
 The next variable was not found.
-.It Dv EOVERFLOW
+.It Er EOVERFLOW
 .Fa datasize
 is not sufficient to hold the variable data.
 .Fa namesize
 is updated to reflect the size needed to complete the request.
-.It Dv EINVAL
+.It Er EINVAL
 One of
 .Fa name ,
 .Fa vendor ,
 or
 .Fa datasize
 are NULL.
-.It Dv EIO
+.It Er EIO
 The variable could not be retrieved due to a hardware error.
 .El
 .Pp
@@ -227,8 +227,8 @@ and
 .Fa vendor .
 Returns 0 if the variable has been successfully.
 Otherwise, returns one of the following errors:
-.Bl -tag -width ".Dv EOVERFLOW"
-.It Dv EINVAL
+.Bl -tag -width ".Er EOVERFLOW"
+.It Er EINVAL
 Either
 .Fa attrib
 was an invalid combination of attributes,
@@ -236,15 +236,15 @@ was an invalid combination of attributes,
 exceeds the maximum allowed size, or
 .Fa name
 is an empty Unicode stirng.
-.It Dv EAGAIN
+.It Er EAGAIN
 Not enough storage is available to hold the variable and its data.
-.It Dv EIO
+.It Er EIO
 The variable could not be saved due to a hardware error.
-.It Dv EROFS
+.It Er EROFS
 The variable in question is read-only or may not be deleted.
-.It Dv EDOOFUS
+.It Er EDOOFUS
 The varialbe could not be set due to an authentication failure.
-.It Dv ENOENT
+.It Er ENOENT
 The variable trying to be updated or deleted was not found.
 .El
 .Sh SEE ALSO
