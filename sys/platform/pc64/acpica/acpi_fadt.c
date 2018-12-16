@@ -74,8 +74,14 @@ static const struct acpi_sci_mode acpi_sci_modes[] = {
 	{ INTR_TRIGGER_CONFORM,	INTR_POLARITY_CONFORM }
 };
 
-/* Defaulting to 1, to stop atkbdc from being configured early, via cninit() */
-int acpi_fadt_8042_nolegacy = 1;
+/*
+ * Set to 1 to stop atkbdc from being configured early, via cninit().
+ *
+ * Currently set to 0 because this is causing problems for several
+ * people.  Can be set to 1 with a tunable.
+ */
+int acpi_fadt_8042_nolegacy = 0;
+TUNABLE_INT("hw.acpi.fadt_8042_nolegacy", &acpi_fadt_8042_nolegacy);
 
 static void
 fadt_probe(void)
