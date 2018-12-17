@@ -535,10 +535,12 @@ do_cleanup(const char *path)
 
 	/*
 	 * Cleanup, and delay a little
+	 *
+	 * NOTE: pidfile_remove() closes, removes, and frees the pfh.
+	 *	 pidfile_close() closes and frees.
 	 */
 	close(fd);
 	usleep(1000);
-	pidfile_close(pfh);
 	pidfile_remove(pfh);
 }
 
