@@ -216,8 +216,23 @@ h2disk_check(const char *devpath,
 		fprintf(stderr, "DIOCGPART failed on \"%s\"\n", devpath);
 		goto done;
 	}
-	if (partinfo.fstype != FS_HAMMER2)
-		goto done;
+
+	/*
+	 * Check partition or slice for HAMMER2 designation.  Validate the
+	 * designation either from the fstype (typically set for disklabel
+	 * partitions), or the fstype_uuid (typically set for direct-mapped
+	 * hammer2 GPT slices).
+	 */
+	if (partinfo.fstype != FS_HAMMER2) {
+		uint32_t status;
+		uuid_t h2uuid;
+
+		uuid_from_string(HAMMER2_UUID_STRING, &h2uuid, &status);
+		if (status != uuid_s_ok ||
+		    uuid_compare(&partinfo.fstype_uuid, &h2uuid, NULL) != 0) {
+			goto done;
+		}
+	}
 
 	/*
 	 * Find the best volume header.
