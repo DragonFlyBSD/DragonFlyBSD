@@ -69,7 +69,7 @@
 .Fn efi_var_nextname "size_t *namesize" "uint16_t *name" "struct uuid *vendor"
 .Ft int
 .Fn efi_var_set "uint16_t *name" "struct uuid *vendor" "uint32_t *attrib" \
-    "size_t *datasize" "void *data"
+    "size_t datasize" "void *data"
 .Sh DESCRIPTION
 .\"All of the following calls will return
 .\".Er ENXIO
