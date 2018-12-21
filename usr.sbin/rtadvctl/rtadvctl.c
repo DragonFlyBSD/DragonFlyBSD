@@ -92,7 +92,7 @@ static int	action_show_dnssl(void *);
 
 static int	csock_client_open(struct sockinfo *);
 static size_t	dname_labeldec(char *, size_t, const char *);
-static void	mysyslog(int, const char *, ...);
+static void	mysyslog(int, const char *, ...) __printflike(2, 3);
 
 static const char *rtpref_str[] = {
 	"medium",		/* 00 */
@@ -262,7 +262,7 @@ action_plgeneric(int action, char *plstr, char *buf)
 		}
 		cm->cm_len += cm_pl2bin(msg, &cp);
 
-		mysyslog(LOG_DEBUG, "<%s> key=%s, val_len=%d, ifname=%s",
+		mysyslog(LOG_DEBUG, "<%s> key=%s, val_len=%zu, ifname=%s",
 		    __func__,cp.cp_key, cp.cp_val_len, cp.cp_ifname);
 	}
 
@@ -286,9 +286,9 @@ action_propget(char *argv, struct ctrl_msg_pl *cp)
 		return (1);
 
 	cm_bin2pl(msg, cp);
-	mysyslog(LOG_DEBUG, "<%s> type=%d, len=%d",
+	mysyslog(LOG_DEBUG, "<%s> type=%d, len=%zu",
 	    __func__, cm->cm_type, cm->cm_len);
-	mysyslog(LOG_DEBUG, "<%s> key=%s, val_len=%d, ifname=%s",
+	mysyslog(LOG_DEBUG, "<%s> key=%s, val_len=%zu, ifname=%s",
 	    __func__,cp->cp_key, cp->cp_val_len, cp->cp_ifname);
 
 	return (0);
