@@ -167,8 +167,7 @@ send_fd(int sock, int fd)
 	msg.msg_iovlen = 1;
 
 	if ((n = sendmsg(sock, &msg, 0)) == -1) {
-		sysv_print_err("sendmsg(%d)\n",
-				sock, getpid());
+		sysv_print_err("sendmsg(%d)\n", sock);
 		return (-1);
 	}
 	if (n != sizeof(int)) {

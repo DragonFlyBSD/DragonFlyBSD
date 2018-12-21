@@ -124,7 +124,7 @@ mark_for_removal(int shmid) {
 
 static int
 try_rwlock_rdlock(int semid, struct semid_pool *semaptr) {
-	sysv_print(" before rd lock id = %d %x\n", semid, semaptr);
+	sysv_print(" before rd lock id = %d %p\n", semid, semaptr);
 #ifdef SYSV_RWLOCK
 	sysv_rwlock_rdlock(&semaptr->rwlock);
 	sysv_print("rd lock id = %d\n", semid);
@@ -150,7 +150,7 @@ try_rwlock_rdlock(int semid, struct semid_pool *semaptr) {
 static int
 try_rwlock_wrlock(int semid, struct semid_pool *semaptr) {
 #ifdef SYSV_RWLOCK
-	sysv_print("before wrlock id = %d %x\n", semid, semaptr);
+	sysv_print("before wrlock id = %d %p\n", semid, semaptr);
 	sysv_rwlock_wrlock(&semaptr->rwlock);
 #else
 	sysv_print("before lock id = %d %x\n", semid, semaptr);
@@ -174,7 +174,7 @@ try_rwlock_wrlock(int semid, struct semid_pool *semaptr) {
 
 static int
 rwlock_unlock(int semid, struct semid_pool *semaptr) {
-	sysv_print("unlock id = %d %x\n", semid, semaptr);
+	sysv_print("unlock id = %d %p\n", semid, semaptr);
 	if (!sema_exist(semid, semaptr)) {
 		/* Internal resources must be freed. */
 		mark_for_removal(semid);
@@ -613,7 +613,7 @@ int sysvipc_semop (int semid, struct sembuf *sops, unsigned nsops) {
 
 	if (nsops > MAX_SOPS) {
 		sysv_print("too many sops (max=%d, nsops=%u)\n",
-				getpid(), MAX_SOPS, nsops);
+		    MAX_SOPS, nsops);
 		eval = E2BIG;
 		goto done;
 	}
