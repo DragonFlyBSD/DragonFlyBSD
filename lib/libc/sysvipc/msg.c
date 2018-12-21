@@ -626,7 +626,7 @@ sysvipc_msgrcv(int msqid, void *msgp, size_t msgsz, long mtype, int msgflg)
 				if (msgsz < msghdr->msg_ts &&
 				    (msgflg & MSG_NOERROR) == 0) {
 						sysv_print_err("first message on the queue is too big"
-							"(want %d, got %d)\n",
+							"(want %zu, got %d)\n",
 							msgsz, msghdr->msg_ts);
 					errno = E2BIG;
 					goto done;
@@ -659,12 +659,12 @@ sysvipc_msgrcv(int msqid, void *msgp, size_t msgsz, long mtype, int msgflg)
 				 */
 				if (mtype == msghdr->msg_type ||
 				    msghdr->msg_type <= -mtype) {
-					sysv_print("found message type %d, requested %d\n",
+					sysv_print("found message type %ld, requested %ld\n",
 					    msghdr->msg_type, mtype);
 					if (msgsz < msghdr->msg_ts &&
 					    (msgflg & MSG_NOERROR) == 0) {
 						sysv_print_err("requested message on the queue"
-							" is too big (want %d, got %d)\n",
+							" is too big (want %zu, got %d)\n",
 						    msgsz, msghdr->msg_ts);
 						errno = E2BIG;
 						goto done;
@@ -697,7 +697,7 @@ sysvipc_msgrcv(int msqid, void *msgp, size_t msgsz, long mtype, int msgflg)
 		 * No message found.  Does the user want to wait?
 		 */
 		if ((msgflg & IPC_NOWAIT) != 0) {
-			sysv_print_err("no appropriate message found (mtype=%d)\n",
+			sysv_print_err("no appropriate message found (mtype=%ld)\n",
 			    mtype);
 			errno = ENOMSG;
 			goto done;
@@ -759,7 +759,7 @@ sysvipc_msgrcv(int msqid, void *msgp, size_t msgsz, long mtype, int msgflg)
 	 * Note that this effectively truncates the message if it is too long
 	 * (since msgsz is never increased).
 	 */
-	sysv_print("found a message, msgsz=%d, msg_ts=%d\n", msgsz,
+	sysv_print("found a message, msgsz=%zu, msg_ts=%d\n", msgsz,
 	    msghdr->msg_ts);
 	if (msgsz > msghdr->msg_ts)
 		msgsz = msghdr->msg_ts;
