@@ -25,8 +25,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _SYSV_UTILS_H_
-#define _SYSV_UTILS_H_
+#ifndef _SYSVIPC_UTILS_H_
+#define _SYSVIPC_UTILS_H_
+
+#include <sys/cdefs.h>
 
 #include <sys/cdefs.h>
 
@@ -34,4 +36,4 @@
 void sysv_print_err(const char *fmt, ...) __printflike(1, 2);
 void sysv_print(const char *fmt, ...) __printflike(1, 2);
 
-#endif
+#endif /* !_SYSVIPC_UTILS_H_ */

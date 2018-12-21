@@ -235,7 +235,8 @@ receive_fd(int sock)
 }
 
 static void
-close_fds(int *fds, int num_fds) {
+close_fds(int *fds, int num_fds)
+{
 	int i;
 
 	for (i=0; i < num_fds; i++)
@@ -244,7 +245,8 @@ close_fds(int *fds, int num_fds) {
 
 /* Send with the message, credentials too. */
 int
-send_msg_with_cred(int sock, char *buffer, size_t size) {
+send_msg_with_cred(int sock, char *buffer, size_t size)
+{
 	struct msghdr msg;
 	struct iovec vec;
 	ssize_t n;
@@ -279,7 +281,8 @@ send_msg_with_cred(int sock, char *buffer, size_t size) {
 /* Receive a message and the credentials of the sender. */
 int
 receive_msg_with_cred(int sock, char *buffer, size_t size,
-		struct cmsgcred *cred) {
+    struct cmsgcred *cred)
+{
 	struct msghdr msg = { .msg_name = NULL };
 	struct iovec vec;
 	ssize_t n;

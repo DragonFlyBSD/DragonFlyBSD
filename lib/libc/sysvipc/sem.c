@@ -30,7 +30,7 @@
 #include "sysvipc_hash.h"
 
 
-#define SYSV_MUTEX_LOCK(x)		if (__isthreaded) _pthread_mutex_lock(x)
+#define SYSV_MUTEX_LOCK(x)	if (__isthreaded) _pthread_mutex_lock(x)
 #define SYSV_MUTEX_UNLOCK(x)	if (__isthreaded) _pthread_mutex_unlock(x)
 #define SYSV_MUTEX_DESTROY(x)	if (__isthreaded) _pthread_mutex_destroy(x)
 
@@ -44,7 +44,8 @@ pthread_mutex_t lock_undo = PTHREAD_MUTEX_INITIALIZER;
 static int semundo_clear(int, int);
 
 static int
-put_shmdata(int id) {
+put_shmdata(int id)
+{
 	struct shm_data *data;
 	int ret = -1;
 
@@ -78,8 +79,9 @@ done:
 	return (ret);
 }
 
-static struct semid_pool*
-get_semaptr(int semid, int to_remove, int shm_access) {
+static struct semid_pool *
+get_semaptr(int semid, int to_remove, int shm_access)
+{
 	struct semid_pool *semaptr;
 
 	struct shm_data *shmdata = get_shmdata(semid, to_remove, shm_access);
@@ -99,7 +101,8 @@ get_semaptr(int semid, int to_remove, int shm_access) {
 }
 
 static int
-sema_exist(int semid, struct semid_pool *semaptr) {
+sema_exist(int semid, struct semid_pool *semaptr)
+{
 	/* Was it removed? */
 	if (semaptr->gen == -1 ||
 			semaptr->ds.sem_perm.seq != IPCID_TO_SEQ(semid))
@@ -112,7 +115,8 @@ sema_exist(int semid, struct semid_pool *semaptr) {
  * is descovered as removed. It marks the process
  * internal data and munmap the */
 static void
-mark_for_removal(int shmid) {
+mark_for_removal(int shmid)
+{
 	sysv_print("Mark that the segment was removed\n");
 	get_shmdata(shmid, SEG_ALREADY_REMOVED, 0);
 	 /* Setting SEG_ALREADY_REMOVED parameter, when put_shmdata
@@ -123,7 +127,8 @@ mark_for_removal(int shmid) {
 }
 
 static int
-try_rwlock_rdlock(int semid, struct semid_pool *semaptr) {
+try_rwlock_rdlock(int semid, struct semid_pool *semaptr)
+{
 	sysv_print(" before rd lock id = %d %p\n", semid, semaptr);
 #ifdef SYSV_RWLOCK
 	sysv_rwlock_rdlock(&semaptr->rwlock);
@@ -148,7 +153,8 @@ try_rwlock_rdlock(int semid, struct semid_pool *semaptr) {
 }
 
 static int
-try_rwlock_wrlock(int semid, struct semid_pool *semaptr) {
+try_rwlock_wrlock(int semid, struct semid_pool *semaptr)
+{
 #ifdef SYSV_RWLOCK
 	sysv_print("before wrlock id = %d %p\n", semid, semaptr);
 	sysv_rwlock_wrlock(&semaptr->rwlock);
@@ -173,7 +179,8 @@ try_rwlock_wrlock(int semid, struct semid_pool *semaptr) {
 }
 
 static int
-rwlock_unlock(int semid, struct semid_pool *semaptr) {
+rwlock_unlock(int semid, struct semid_pool *semaptr)
+{
 	sysv_print("unlock id = %d %p\n", semid, semaptr);
 	if (!sema_exist(semid, semaptr)) {
 		/* Internal resources must be freed. */
@@ -190,7 +197,8 @@ rwlock_unlock(int semid, struct semid_pool *semaptr) {
 }
 
 int
-sysvipc_semget(key_t key, int nsems, int semflg) {
+sysvipc_semget(key_t key, int nsems, int semflg)
+{
 	int semid;
 	void *shmaddr;
 	//int shm_access;
@@ -275,7 +283,7 @@ done:
 }
 
 int
-sysvipc___semctl(int semid, int semnum , int cmd, union semun *arg)
+sysvipc___semctl(int semid, int semnum, int cmd, union semun *arg)
 {
 	int i, error;
 	struct semid_pool *semaptr = NULL;
@@ -578,7 +586,9 @@ done:
 	return (error);
 }
 
-int sysvipc_semop (int semid, struct sembuf *sops, unsigned nsops) {
+int
+sysvipc_semop(int semid, struct sembuf *sops, unsigned nsops)
+{
 	struct semid_pool *semaptr = NULL, *auxsemaptr = NULL;
 	struct sembuf *sopptr;
 	struct sem *semptr = NULL;

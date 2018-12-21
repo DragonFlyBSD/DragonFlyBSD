@@ -39,7 +39,7 @@
 #include "sysvipc_msg.h"
 #include "sysvipc_shm.h"
 
-#define SYSV_MUTEX_LOCK(x)		if (__isthreaded) _pthread_mutex_lock(x)
+#define SYSV_MUTEX_LOCK(x)	if (__isthreaded) _pthread_mutex_lock(x)
 #define SYSV_MUTEX_UNLOCK(x)	if (__isthreaded) _pthread_mutex_unlock(x)
 #define SYSV_MUTEX_DESTROY(x)	if (__isthreaded) _pthread_mutex_destroy(x)
 
@@ -57,7 +57,8 @@ struct msginfo msginfo = {
 };
 
 static int
-put_shmdata(int id) {
+put_shmdata(int id)
+{
 	struct shm_data *data;
 	int ret = -1;
 
@@ -91,7 +92,8 @@ done:
 }
 
 static struct msqid_pool*
-get_msqpptr(int msqid, int to_remove, int shm_access) {
+get_msqpptr(int msqid, int to_remove, int shm_access)
+{
 	struct msqid_pool *msqpptr;
 
 	struct shm_data *shmdata =
@@ -112,7 +114,8 @@ get_msqpptr(int msqid, int to_remove, int shm_access) {
 }
 
 static int
-msqp_exist(int msqid, struct msqid_pool *msqpptr) {
+msqp_exist(int msqid, struct msqid_pool *msqpptr)
+{
 	/* Was it removed? */
 	if (msqpptr->gen == -1 ||
 			msqpptr->ds.msg_perm.seq != IPCID_TO_SEQ(msqid))
@@ -122,7 +125,8 @@ msqp_exist(int msqid, struct msqid_pool *msqpptr) {
 }
 
 static int
-try_rwlock_rdlock(int msqid, struct msqid_pool *msqpptr) {
+try_rwlock_rdlock(int msqid, struct msqid_pool *msqpptr)
+{
 	sysv_print("try get rd lock\n");
 #ifdef SYSV_RWLOCK
 	sysv_rwlock_rdlock(&msqpptr->rwlock);
@@ -145,7 +149,8 @@ try_rwlock_rdlock(int msqid, struct msqid_pool *msqpptr) {
 }
 
 static int
-try_rwlock_wrlock(int msqid, struct msqid_pool *msqpptr) {
+try_rwlock_wrlock(int msqid, struct msqid_pool *msqpptr)
+{
 	sysv_print("try get wr lock\n");
 #ifdef SYSV_RWLOCK
 	sysv_rwlock_wrlock(&msqpptr->rwlock);
@@ -168,7 +173,8 @@ try_rwlock_wrlock(int msqid, struct msqid_pool *msqpptr) {
 }
 
 static int
-rwlock_unlock(int msqid, struct msqid_pool *msqpptr) {
+rwlock_unlock(int msqid, struct msqid_pool *msqpptr)
+{
 	if (!msqp_exist(msqid, msqpptr)) {
 		errno = EINVAL;
 		return -1;
@@ -212,7 +218,8 @@ msg_freehdr(struct msqid_pool *msqpptr, struct msg *msghdr)
 }
 
 int
-sysvipc_msgget(key_t key, int msgflg) {
+sysvipc_msgget(key_t key, int msgflg)
+{
 	int msqid;
 	void *shmaddr;
 	size_t size = sizeof(struct msqid_pool);
@@ -251,7 +258,8 @@ done:
 }
 
 int
-sysvipc_msgctl(int msqid, int cmd, struct msqid_ds *buf) {
+sysvipc_msgctl(int msqid, int cmd, struct msqid_ds *buf)
+{
 	int error;
 	struct msqid_pool *msqpptr = NULL;
 	struct shmid_ds shmds;

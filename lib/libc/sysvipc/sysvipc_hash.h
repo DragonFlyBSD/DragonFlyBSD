@@ -25,6 +25,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef _SYSVIPC_HASH_H_
+#define _SYSVIPC_HASH_H_
+
 #include <sys/queue.h>
 
 struct hashentry {
@@ -40,9 +43,11 @@ struct hashtable {
 	struct entries_list *entries;
 };
 
-struct hashtable * _hash_init(int);
+struct hashtable *_hash_init(int);
 int _hash_destroy(struct hashtable *);
 void _hash_insert(struct hashtable *, u_long, void *);
 void *_hash_lookup(struct hashtable *, u_long);
 void *_hash_remove(struct hashtable *, u_long);
 int get_hash_size(int);
+
+#endif /* !_SYSVIPC_HASH_H_ */

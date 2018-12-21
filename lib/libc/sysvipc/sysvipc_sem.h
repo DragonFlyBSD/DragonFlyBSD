@@ -9,8 +9,8 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  */
 
-#ifndef _SYSV_SEM_H_
-#define _SYSV_SEM_H_
+#ifndef _SYSVIPC_SEM_H_
+#define _SYSVIPC_SEM_H_
 
 #include <sys/sem.h>
 
@@ -72,8 +72,8 @@ struct sem_undo {
 	} un_ent[0];			/* undo entries */
 };
 
-int sysvipc___semctl (int, int, int, union semun *);
-int sysvipc_semget (key_t, int, int);
-int sysvipc_semop (int, struct sembuf *, unsigned);
+int sysvipc___semctl(int, int, int, union semun *);
+int sysvipc_semget(key_t, int, int);
+int sysvipc_semop(int, struct sembuf *, unsigned);
 
-#endif /* !_SEM_H_ */
+#endif /* !_SYSVIPC_SEM_H_ */

@@ -20,8 +20,8 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  */
 
-#ifndef _SYSV_MSG_H_
-#define _SYSV_MSG_H_
+#ifndef _SYSVIPC_MSG_H_
+#define _SYSVIPC_MSG_H_
 
 #include <sys/msg.h>
 #include "sysvipc_lock.h"
@@ -118,9 +118,9 @@ struct msqid_pool {
 	char msgpool[MSGMAX];		/* MSGMAX byte long msg buffer pool */
 };
 
-int sysvipc_msgctl (int, int, struct msqid_ds *);
-int sysvipc_msgget (key_t, int);
-int sysvipc_msgsnd (int, const void *, size_t, int);
-int sysvipc_msgrcv (int, void *, size_t, long, int);
+int sysvipc_msgctl(int, int, struct msqid_ds *);
+int sysvipc_msgget(key_t, int);
+int sysvipc_msgsnd(int, const void *, size_t, int);
+int sysvipc_msgrcv(int, void *, size_t, long, int);
 
-#endif /* !_SYSV_MSG_H_ */
+#endif /* !_SYSVIPC_MSG_H_ */

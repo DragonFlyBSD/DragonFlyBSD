@@ -25,8 +25,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _SYSV_DFLY_UMTX_GEN_H_
-#define _SYSV_DFLY_UMTX_GEN_H_
+#ifndef _SYSVIPC_LOCK_H_
+#define _SYSVIPC_LOCK_H_
 
 #include "sysvipc_lock_generic.h"
 
@@ -55,5 +55,4 @@ int sysv_rwlock_unlock(struct sysv_rwlock *);
 int sysv_rwlock_wrlock(struct sysv_rwlock *);
 int sysv_rwlock_rdlock(struct sysv_rwlock *);
 
-#endif
-
+#endif /* !_SYSVIPC_LOCK_H_ */

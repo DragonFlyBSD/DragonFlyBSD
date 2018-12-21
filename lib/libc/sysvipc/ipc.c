@@ -46,7 +46,7 @@
 #include "sysvipc_lock.h"
 #include "sysvipc_lock_generic.h"
 
-#define SYSV_MUTEX_LOCK(x)		if (__isthreaded) _pthread_mutex_lock(x)
+#define SYSV_MUTEX_LOCK(x)	if (__isthreaded) _pthread_mutex_lock(x)
 #define SYSV_MUTEX_UNLOCK(x)	if (__isthreaded) _pthread_mutex_unlock(x)
 #define SYSV_MUTEX_DESTROY(x)	if (__isthreaded) _pthread_mutex_destroy(x)
 
@@ -59,14 +59,16 @@ extern struct hashtable *shmaddrs;
 
 /* Send the type of the message followed by data. */
 int
-send_message(int fd, int type, char *data, int size) {
+send_message(int fd, int type, char *data, int size)
+{
 	_write(fd, &type, sizeof(type));
 	return (send_msg_with_cred(fd, data, size));
 }
 
 /* Receive the type of the message that will follow. */
 int
-receive_type_message(int fd) {
+receive_type_message(int fd)
+{
 	int type;
 	int r = _read(fd, &type, sizeof(type));
 	return (r == 0 ? 0 : type);
@@ -74,18 +76,21 @@ receive_type_message(int fd) {
 
 /* Receive data. */
 int
-receive_message(int fd, char *data, int size) {
+receive_message(int fd, char *data, int size)
+{
 	_read(fd, data, size);
 	return (0);
 }
 
 int
-is_sysvinit(void) {
+is_sysvinit(void)
+{
 	return (daemon_fd == -1 ? 0:1);
 }
 
 static int
-register_to_daemon(void) {
+register_to_daemon(void)
+{
 	int flags;
 	char test = 't';
 
@@ -112,7 +117,8 @@ register_to_daemon(void) {
  * release it.
  */
 static void
-acquire_locks(void) {
+acquire_locks(void)
+{
 	struct entries_list *list;
 	struct hashentry *tmp;
 	struct shm_data *data;
@@ -151,7 +157,8 @@ acquire_locks(void) {
  * acquired before fork.
  */
 static void
-parent_release_locks(void) {
+parent_release_locks(void)
+{
 	struct entries_list *list;
 	struct hashentry *tmp;
 	struct shm_data *data;
@@ -187,14 +194,16 @@ parent_release_locks(void) {
  * parent.
  */
 static void
-child_release_locks(void) {
+child_release_locks(void)
+{
 	SYSV_MUTEX_UNLOCK(&lock_undo);
 	SYSV_MUTEX_UNLOCK(&lock_resources);
 	//pthread_rwlock_unlock(&rwlock_addrs);
 }
 
 static void
-prepare_parent_atfork(void) {
+prepare_parent_atfork(void)
+{
 	/* Function called only if the process has
 	 * sysv ipc structures initialized.
 	 */
@@ -208,7 +217,8 @@ prepare_parent_atfork(void) {
 }
 
 static void
-parent_atfork(void) {
+parent_atfork(void)
+{
 	if (!is_sysvinit())
 		return;
 
@@ -217,7 +227,8 @@ parent_atfork(void) {
 }
 
 static void
-child_atfork(void) {
+child_atfork(void)
+{
 	if (!is_sysvinit())
 		return;
 
@@ -240,8 +251,8 @@ child_atfork(void) {
  * the first time sysv ipc resources.
  */
 int
-sysvinit(void) {
-
+sysvinit(void)
+{
 	if (is_sysvinit()) {
 		return (IPC_INITIALIZED);
 	}
@@ -259,7 +270,8 @@ sysvinit(void) {
 }
 
 int
-sysvexit(void) {
+sysvexit(void)
+{
 	if (!is_sysvinit())
 		return (-1);
 

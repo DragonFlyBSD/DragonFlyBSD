@@ -28,8 +28,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _SYSV_SHM_H_
-#define _SYSV_SHM_H_
+#ifndef _SYSVIPC_SHM_H_
+#define _SYSVIPC_SHM_H_
 
 #include <sys/ipc.h>
 
@@ -55,12 +55,12 @@ struct shm_data {
 int _shmget(key_t, size_t, int, int);
 void shmchild(void);
 
-int sysvipc_shmget (key_t, size_t, int);
-int sysvipc_shmctl (int, int, struct shmid_ds *);
-void *sysvipc_shmat  (int, const void *, int);
-int sysvipc_shmdt  (const void *);
+int sysvipc_shmget(key_t, size_t, int);
+int sysvipc_shmctl(int, int, struct shmid_ds *);
+void *sysvipc_shmat(int, const void *, int);
+int sysvipc_shmdt(const void *);
 
 struct shm_data *get_shmdata(int, int, int);
 int set_shmdata_access(int, int);
 
-#endif /* !_SYSV_SHM_H_ */
+#endif /* !_SYSVIPC_SHM_H_ */

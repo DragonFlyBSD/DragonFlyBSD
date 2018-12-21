@@ -24,8 +24,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _SYSV_SOCK_H_
-#define _SYSV_SOCK_H_
+#ifndef _SYSVIPC_SOCKETS_H_
+#define _SYSVIPC_SOCKETS_H_
 
 #include <sys/socket.h>
 
@@ -41,4 +41,4 @@ int receive_msg_with_cred(int, char *, size_t, struct cmsgcred *);
 int send_fd(int, int);
 int receive_fd(int);
 
-#endif
+#endif /* !_SYSVIPC_SOCKETS_H_ */

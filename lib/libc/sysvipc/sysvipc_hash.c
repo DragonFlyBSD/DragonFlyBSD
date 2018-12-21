@@ -31,7 +31,8 @@
 #include "sysvipc_hash.h"
 
 struct hashtable *
-_hash_init(int nr_elems) {
+_hash_init(int nr_elems)
+{
 	long hashsize;
 	struct hashtable *hashtable;
 	int i;
@@ -63,7 +64,8 @@ out:
 }
 
 int
-_hash_destroy(struct hashtable *hashtable) {
+_hash_destroy(struct hashtable *hashtable)
+{
 	struct entries_list *tmp;
 	u_long hashmask = hashtable->nr_elems -1;
 
@@ -78,9 +80,8 @@ _hash_destroy(struct hashtable *hashtable) {
 }
 
 void
-_hash_insert(struct hashtable *hashtable,
-		u_long key,
-		void *value) {
+_hash_insert(struct hashtable *hashtable, u_long key, void *value)
+{
 
 	u_long hashmask = hashtable->nr_elems -1;
 	struct entries_list *list =
@@ -92,7 +93,8 @@ _hash_insert(struct hashtable *hashtable,
 }
 
 void *
-_hash_lookup(struct hashtable *hashtable, u_long key) {
+_hash_lookup(struct hashtable *hashtable, u_long key)
+{
 
 	u_long hashmask = hashtable->nr_elems -1;
 	struct entries_list *list =
@@ -109,8 +111,8 @@ _hash_lookup(struct hashtable *hashtable, u_long key) {
 }
 
 void *
-_hash_remove(struct hashtable *hashtable,
-		u_long key) {
+_hash_remove(struct hashtable *hashtable, u_long key)
+{
 
 	void *value;
 	u_long hashmask = hashtable->nr_elems -1;
@@ -133,7 +135,8 @@ done:
 }
 
 int
-get_hash_size(int nr_elems) {
+get_hash_size(int nr_elems)
+{
 	long hashsize = 0;
 
 	for (hashsize = 2; hashsize < nr_elems; hashsize <<= 1)

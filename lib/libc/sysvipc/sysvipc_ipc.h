@@ -25,8 +25,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _SYSV_IPC_H_
-#define _SYSV_IPC_H_
+#ifndef _SYSVIPC_IPC_H_
+#define _SYSVIPC_IPC_H_
 
 #define MAXSIZE		100
 
@@ -102,4 +102,4 @@ int is_sysvinit(void);
 int sysvinit(void);
 int sysvexit(void);
 
-#endif
+#endif /* !_SYSVIPC_IPC_H_ */

@@ -22,13 +22,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/lib/libthread_xu/thread/thr_umtx.h,v 1.5 2008/04/14 20:12:41 dillon Exp $
- * $DragonFly: src/lib/libsysvipc/lock_generic.h,v 1 2013/09/20 Larisa Grigore<lariisagrigore@gmail.com>
  */
 
-#ifndef _SYSV_DFLY_UMTX_H_
-#define _SYSV_DFLY_UMTX_H_
+#ifndef _SYSVIPC_LOCK_GENERIC_H_
+#define _SYSVIPC_LOCK_GENERIC_H_
 
 #include <unistd.h>
 #include <machine/atomic.h>
@@ -62,4 +59,4 @@ _sysv_umtx_unlock(volatile umtx_t *mtx)
     __sysv_umtx_unlock(mtx);
 }
 
-#endif
+#endif /* !_SYSVIPC_LOCK_GENERIC_H_ */
