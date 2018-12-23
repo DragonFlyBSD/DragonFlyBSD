@@ -41,6 +41,7 @@
 #include <sys/sysent.h>
 #include <sys/posix4.h>
 #include <sys/proc.h>
+#include <sys/semaphore.h>
 #include <sys/syslog.h>
 #include <sys/module.h>
 #include <sys/sysproto.h>
@@ -355,10 +356,33 @@ p31binit(void *notused)
 {
 	sched_attach();
 	p31b_setcfg(CTL_P1003_1B_ASYNCHRONOUS_IO, -1);
+	p31b_setcfg(CTL_P1003_1B_FSYNC, _POSIX_FSYNC);
+	p31b_setcfg(CTL_P1003_1B_MAPPED_FILES, _POSIX_MAPPED_FILES);
 	p31b_setcfg(CTL_P1003_1B_MESSAGE_PASSING, _POSIX_MESSAGE_PASSING);
 	p31b_setcfg(CTL_P1003_1B_PAGESIZE, PAGE_SIZE);
+	p31b_setcfg(CTL_P1003_1B_SEMAPHORES, _POSIX_SEMAPHORES);
+	p31b_setcfg(CTL_P1003_1B_SEM_NSEMS_MAX, 256);
+	p31b_setcfg(CTL_P1003_1B_SEM_VALUE_MAX, SEM_VALUE_MAX);
 	p31b_setcfg(CTL_P1003_1B_SHARED_MEMORY_OBJECTS,
 	    _POSIX_SHARED_MEMORY_OBJECTS);
+
+#if 0 /* XXX missing */
+	p31b_setcfg(CTL_P1003_1B_ASYNCHRONOUS_IO, _POSIX_ASYNCHRONOUS_IO);
+	p31b_setcfg(CTL_P1003_1B_AIO_PRIO_DELTA_MAX, 0);
+	p31b_setcfg(CTL_P1003_1B_AIO_MAX, 0);
+	p31b_setcfg(CTL_P1003_1B_AIO_LISTIO_MAX, 0);
+	p31b_setcfg(CTL_P1003_1B_DELAYTIMER_MAX, 0);
+	p31b_setcfg(CTL_P1003_1B_MEMLOCK, 0);
+	p31b_setcfg(CTL_P1003_1B_MEMLOCK_RANGE, 0);
+	p31b_setcfg(CTL_P1003_1B_MEMORY_PROTECTION, 0);
+	p31b_setcfg(CTL_P1003_1B_PRIORITIZED_IO, _POSIX_PRIORITIZED_IO);
+	p31b_setcfg(CTL_P1003_1B_REALTIME_SIGNALS, _POSIX_REALTIME_SIGNALS);
+	p31b_setcfg(CTL_P1003_1B_RTSIG_MAX, SIGRTMAX - SIGRTMIN + 1);
+	p31b_setcfg(CTL_P1003_1B_SIGQUEUE_MAX, 0);
+	p31b_setcfg(CTL_P1003_1B_SYNCHRONIZED_IO, _POSIX_SYNCHRONIZED_IO);
+	p31b_setcfg(CTL_P1003_1B_TIMERS, _POSIX_TIMERS);
+	p31b_setcfg(CTL_P1003_1B_TIMER_MAX, 0);
+#endif
 }
 
 SYSINIT(p31b, SI_SUB_P1003_1B, SI_ORDER_FIRST, p31binit, NULL);
