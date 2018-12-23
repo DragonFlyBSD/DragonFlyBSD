@@ -292,7 +292,7 @@ int mrsas_passthru( struct mrsas_softc *sc, void *arg )
         }
         sense_ptr = 
             (unsigned long *)((unsigned long)cmd->frame + user_ioc->sense_off);
-            sense_ptr = ioctl_sense_mem;
+	*sense_ptr = ioctl_sense_phys_addr;
     }
 
     /*
