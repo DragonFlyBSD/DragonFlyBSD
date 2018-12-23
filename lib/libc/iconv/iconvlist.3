@@ -34,7 +34,7 @@
 .\"
 .\" $FreeBSD: head/lib/libc/iconv/iconvlist.3 233625 2012-03-28 19:20:28Z joel $
 .\"
-.Dd September 19, 2013
+.Dd December 23, 2018
 .Dt ICONVLIST 3
 .Os
 .Sh NAME
@@ -47,7 +47,7 @@
 .In iconv.h
 .Ft void
 .Fo iconvlist
-.Fa "int (*do_one)(unsigned int *count, const char * const *names, void *arg)"
+.Fa "int (*do_one)(unsigned int count, const char * const *names, void *arg)"
 .Fa "void *arg"
 .Fc
 .Sh DESCRIPTION
