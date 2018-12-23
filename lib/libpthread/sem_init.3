@@ -26,7 +26,7 @@
 .\" EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc_r/man/sem_init.3,v 1.1.2.9 2001/12/17 10:08:26 ru Exp $
-.\" $DragonFly: src/lib/libc_r/man/sem_init.3,v 1.2 2003/06/17 04:26:48 dillon Exp $
+.\"
 .Dd June 30, 2009
 .Dt SEM_INIT 3
 .Os
@@ -83,7 +83,8 @@ will fail if:
 .Bl -tag -width Er
 .It Bq Er EINVAL
 .Fa value
-exceeds SEM_VALUE_MAX.
+exceeds
+.Dv SEM_VALUE_MAX .
 .It Bq Er ENOSPC
 Memory allocation error.
 .El
