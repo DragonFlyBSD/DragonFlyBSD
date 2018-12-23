@@ -58,7 +58,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/bus_space.9,v 1.5 2008/03/07 17:02:34 rwatson Exp $
 .\"
-.Dd March 16, 2008
+.Dd December 23, 2018
 .Dt BUS_SPACE 9
 .Os
 .Sh NAME
@@ -247,19 +247,19 @@
 .Ft void
 .Fo bus_space_write_region_1
 .Fa "bus_space_tag_t space"
-.Fa "bus_space_handle_t handle" "bus_size_t offset" "u_int8_t *datap"
+.Fa "bus_space_handle_t handle" "bus_size_t offset" "const u_int8_t *datap"
 .Fa "bus_size_t count"
 .Fc
 .Ft void
 .Fo bus_space_write_region_2
 .Fa "bus_space_tag_t space"
-.Fa "bus_space_handle_t handle" "bus_size_t offset" "u_int16_t *datap"
+.Fa "bus_space_handle_t handle" "bus_size_t offset" "const u_int16_t *datap"
 .Fa "bus_size_t count"
 .Fc
 .Ft void
 .Fo bus_space_write_region_4
 .Fa "bus_space_tag_t space"
-.Fa "bus_space_handle_t handle" "bus_size_t offset" "u_int32_t *datap"
+.Fa "bus_space_handle_t handle" "bus_size_t offset" "const u_int32_t *datap"
 .Fa "bus_size_t count"
 .Fc
 .Ft void
@@ -391,19 +391,19 @@
 .Ft void
 .Fo bus_space_write_multi_1
 .Fa "bus_space_tag_t space"
-.Fa "bus_space_handle_t handle" "bus_size_t offset" "u_int8_t *datap"
+.Fa "bus_space_handle_t handle" "bus_size_t offset" "const u_int8_t *datap"
 .Fa "bus_size_t count"
 .Fc
 .Ft void
 .Fo bus_space_write_multi_2
 .Fa "bus_space_tag_t space"
-.Fa "bus_space_handle_t handle" "bus_size_t offset" "u_int16_t *datap"
+.Fa "bus_space_handle_t handle" "bus_size_t offset" "const u_int16_t *datap"
 .Fa "bus_size_t count"
 .Fc
 .Ft void
 .Fo bus_space_write_multi_4
 .Fa "bus_space_tag_t space"
-.Fa "bus_space_handle_t handle" "bus_size_t offset" "u_int32_t *datap"
+.Fa "bus_space_handle_t handle" "bus_size_t offset" "const u_int32_t *datap"
 .Fa "bus_size_t count"
 .Fc
 .Ft void
