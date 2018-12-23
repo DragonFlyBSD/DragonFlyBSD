@@ -85,7 +85,7 @@ main(int argc, char *argv[])
 	case DEAD_PROCESS:
 		break;
 	default:
-		errx(1, "Invalid utmpx type %d", (int)utx->ut_type);
+		errx(1, "Invalid utmpx type %hd", utx->ut_type);
 	}
 
 	if (ruid != 0) {

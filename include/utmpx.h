@@ -97,7 +97,7 @@ struct utmpx {
 	char ut_host[_UTX_HOSTSIZE];	/* host name */
 	uint8_t	ut_unused[16];		/* reserved for future use */
 	uint16_t ut_session;		/* session id used for windowing */
-	uint16_t ut_type;		/* type of this entry */
+	short ut_type;			/* type of this entry */
 	pid_t ut_pid;			/* process id creating the entry */
 	struct exit_status ut_exit;	/* process termination/exit status */
 	struct sockaddr_storage ut_ss;	/* address where entry was made from */

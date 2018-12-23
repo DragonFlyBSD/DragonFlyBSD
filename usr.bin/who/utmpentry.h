@@ -53,7 +53,7 @@ struct utmpentry {
 	uint16_t term;
 	uint16_t exit;
 	uint16_t sess;
-	uint16_t type;
+	short type;
 	struct utmpentry *next;
 };
 
