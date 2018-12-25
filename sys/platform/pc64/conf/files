@@ -119,6 +119,7 @@ vfs/smbfs/smbfs_vnops.c		optional	smbfs
 
 cpu/x86_64/misc/atomic.c		standard			\
 	compile-with    "${NORMAL_C} ${empty(DEFINED_PROF):?-fomit-frame-pointer:} ${WERROR}"
+cpu/x86_64/misc/cputimer_tsc.c		standard
 platform/pc64/x86_64/autoconf.c	standard
 platform/pc64/x86_64/mpboot.S	standard
 

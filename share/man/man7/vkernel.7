@@ -279,12 +279,16 @@ swap space until the vkernel is shut down.
 Boot into single-user mode.
 .It Fl t
 Tell the vkernel to use a precise host timer when calculating clock values.
-This will impose higher overhead on the vkernel as it will have to make
-a system call to the real host every time it wants to get the time.
+If the TSC isn't used, this will impose higher overhead on the vkernel as it
+will have to make a system call to the real host every time it wants to get
+the time.
 However, the more precise timer might be necessary for your application.
 .Pp
-By default, the vkernel uses an imprecise (host-tick-resolution) timer
-which uses a user-mapped kernel page and does not have any syscall overhead.
+By default, the vkernel uses the TSC cpu timer if possible, or an imprecise
+(host-tick-resolution) timer which uses a user-mapped kernel page and doe
+ not have any syscall overhead.
+.It Fl T
+Force the vkernel to not use the TSC cpu timer.
 .It Fl U
 Enable writing to kernel memory and module loading.
 By default, those are disabled for security reasons.

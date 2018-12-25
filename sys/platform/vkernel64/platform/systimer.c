@@ -174,7 +174,7 @@ static void
 vktimer_intr_initclock(struct cputimer_intr *cti __unused,
 		       boolean_t selected __unused)
 {
-	vktimer_target = vkernel_timer_get_timecount();
+	vktimer_target = sys_cputimer->count();
 
 	vktimer_ts.tv_nsec = 1000000000 / 20;
 	vktimer_cotd = cothread_create(vktimer_thread, NULL, NULL, "vktimer");
@@ -237,6 +237,7 @@ vktimer_thread(cothread_t cotd)
 		sysclock_t reload;
 		ssysclock_t delta;
 		int n;
+		uint32_t freq;
 
 		/*
 		 * Sleep
@@ -244,8 +245,9 @@ vktimer_thread(cothread_t cotd)
 		cothread_sleep(cotd, &vktimer_ts);
 
 rescan:
-		curtime = vkernel_timer_get_timecount();
-		reload = 999999;
+		freq = sys_cputimer->freq;
+		curtime = sys_cputimer->count();
+		reload = freq - 1;
 
 		/*
 		 * Reset the target
@@ -271,14 +273,15 @@ rescan:
 			if (delta > 0 && reload > delta)
 				goto rescan;
 		}
-		if (!use_precise_timer && reload < ticklength_us / 10) {
+		if (sys_cputimer == &vkernel_cputimer &&
+                    !use_precise_timer && reload < ticklength_us / 10) {
 			/*
 			 * Avoid pointless short sleeps, when we only measure
 			 * the current time at tick precision.
 			 */
 			reload = ticklength_us / 10;
 		}
-		vktimer_ts.tv_nsec = reload * 1000;
+		vktimer_ts.tv_nsec = ((uint64_t)reload * 1000000000) / freq;
 	}
 }
 
@@ -290,9 +293,9 @@ rescan:
 static void
 vktimer_intr_reload(struct cputimer_intr *cti __unused, sysclock_t reload)
 {
-	if (reload >= 1000000)		/* uS */
-		reload = 1000000;
-	reload += vkernel_timer_get_timecount();
+	if (reload >= sys_cputimer->freq)
+		reload = sys_cputimer->freq;
+	reload += sys_cputimer->count();
 	vktimer_reload[mycpu->gd_cpuid] = reload;
 	if (vktimer_cotd && (ssysclock_t)(reload - vktimer_target) < 0) {
 		while ((sysclock_t)(reload - vktimer_target) < 0)
