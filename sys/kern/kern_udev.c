@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2010,2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Alex Hornung <ahornung@gmail.com>
@@ -88,7 +88,6 @@ struct cmd_function {
 		   u_long, prop_dictionary_t);
 };
 
-
 static int _udev_dict_set_cstr(prop_dictionary_t, const char *, char *);
 static int _udev_dict_set_int(prop_dictionary_t, const char *, int64_t);
 static int _udev_dict_set_uint(prop_dictionary_t, const char *, uint64_t);
@@ -130,6 +129,41 @@ static int udev_initiated_count;
 static int udev_open_count;
 static int udev_seqwait;
 static int udev_seq;
+static struct lock udev_dict_lk = LOCK_INITIALIZER("dict", 0, 0);
+
+/*
+ * Acquire the device's si_dict and lock the device's si_dict field.
+ * If the device does not have an attached dictionary, NULL is returned.
+ *
+ * This function must be matched by a udev_put_dict() call regardless of
+ * the return value.  The device field is STILL LOCKED even when NULL is
+ * returned.
+ *
+ * Currently a single global lock is implemented.
+ */
+static prop_dictionary_t
+udev_get_dict(cdev_t dev)
+{
+	prop_dictionary_t udict;
+
+	lockmgr(&udev_dict_lk, LK_EXCLUSIVE|LK_CANRECURSE);
+	udict = dev->si_dict;
+	if (udict)
+		prop_object_retain(udict);
+	return udict;
+}
+
+/*
+ * Release the dictionary previously returned by udev_get_dict() and unlock
+ * the device's si_dict field.  udict may be NULL.
+ */
+static void
+udev_put_dict(cdev_t dev, prop_dictionary_t udict)
+{
+	if (udict)
+		prop_object_release(udict);
+	lockmgr(&udev_dict_lk, LK_RELEASE);
+}
 
 static int
 _udev_dict_set_cstr(prop_dictionary_t dict, const char *key, char *str)
@@ -243,106 +277,142 @@ error_out:
 int
 udev_dict_set_cstr(cdev_t dev, const char *key, char *str)
 {
-	prop_dictionary_t	dict;
+	prop_dictionary_t dict;
+	prop_dictionary_t udict;
 	int error;
 
 	KKASSERT(dev != NULL);
 
-	if (dev->si_dict == NULL) {
+	while ((udict = udev_get_dict(dev)) == NULL) {
 		error = udev_init_dict(dev);
+		udev_put_dict(dev, udict);
 		if (error)
 			return -1;
 	}
 
 	/* Queue a key update event */
 	dict = udev_init_dict_event(dev, key);
-	if (dict == NULL)
-		return ENOMEM;
+	if (dict == NULL) {
+		error = ENOMEM;
+		goto errout;
+	}
 
 	if ((error = _udev_dict_set_cstr(dict, "value", str))) {
 		prop_object_release(dict);
-		return error;
+		goto errout;
 	}
 	udev_event_insert(UDEV_EV_KEY_UPDATE, dict);
 	prop_object_release(dict);
+	error = _udev_dict_set_cstr(udict, key, str);
 
-	error = _udev_dict_set_cstr(dev->si_dict, key, str);
+errout:
+	udev_put_dict(dev, udict);
+
 	return error;
 }
 
 int
 udev_dict_set_int(cdev_t dev, const char *key, int64_t val)
 {
-	prop_dictionary_t	dict;
+	prop_dictionary_t dict;
+	prop_dictionary_t udict;
 	int error;
 
 	KKASSERT(dev != NULL);
 
-	if (dev->si_dict == NULL) {
+	while ((udict = udev_get_dict(dev)) == NULL) {
 		error = udev_init_dict(dev);
+		udev_put_dict(dev, udict);
 		if (error)
 			return -1;
 	}
 
 	/* Queue a key update event */
 	dict = udev_init_dict_event(dev, key);
-	if (dict == NULL)
-		return ENOMEM;
+	if (dict == NULL) {
+		error = ENOMEM;
+		goto errout;
+	}
 	if ((error = _udev_dict_set_int(dict, "value", val))) {
 		prop_object_release(dict);
-		return error;
+		goto errout;
 	}
 	udev_event_insert(UDEV_EV_KEY_UPDATE, dict);
 	prop_object_release(dict);
+	error = _udev_dict_set_int(udict, key, val);
+errout:
+	udev_put_dict(dev, udict);
 
-	return _udev_dict_set_int(dev->si_dict, key, val);
+	return error;
 }
 
 int
 udev_dict_set_uint(cdev_t dev, const char *key, uint64_t val)
 {
-	prop_dictionary_t	dict;
+	prop_dictionary_t dict;
+	prop_dictionary_t udict;
 	int error;
 
 	KKASSERT(dev != NULL);
 
-	if (dev->si_dict == NULL) {
+	while ((udict = udev_get_dict(dev)) == NULL) {
 		error = udev_init_dict(dev);
+		udev_put_dict(dev, udict);
 		if (error)
 			return -1;
 	}
 
 	/* Queue a key update event */
 	dict = udev_init_dict_event(dev, key);
-	if (dict == NULL)
-		return ENOMEM;
+	if (dict == NULL) {
+		error = ENOMEM;
+		goto errout;
+	}
 	if ((error = _udev_dict_set_uint(dict, "value", val))) {
 		prop_object_release(dict);
-		return error;
+		goto errout;
 	}
 	udev_event_insert(UDEV_EV_KEY_UPDATE, dict);
 	prop_object_release(dict);
+	error = _udev_dict_set_uint(udict, key, val);
+errout:
+	udev_put_dict(dev, udict);
 
-	return _udev_dict_set_uint(dev->si_dict, key, val);
+	return error;
 }
 
 int
 udev_dict_delete_key(cdev_t dev, const char *key)
 {
-	prop_dictionary_t	dict;
+	prop_dictionary_t dict;
+	prop_dictionary_t udict;
+	int error;
 
 	KKASSERT(dev != NULL);
+	udict = udev_get_dict(dev);
+	if (udict == NULL) {
+		error = ENOMEM;
+		goto errout;
+	}
 
 	/* Queue a key removal event */
 	dict = udev_init_dict_event(dev, key);
-	if (dict == NULL)
-		return ENOMEM;
+	if (dict == NULL) {
+		error = ENOMEM;
+		goto errout;
+	}
 	udev_event_insert(UDEV_EV_KEY_REMOVE, dict);
 	prop_object_release(dict);
+	error = _udev_dict_delete_key(udict, key);
+errout:
+	udev_put_dict(dev, udict);
 
-	return _udev_dict_delete_key(dev->si_dict, key);
+	return error;
 }
 
+/*
+ * device dictionary access already locked
+ */
 static int
 udev_init_dict(cdev_t dev)
 {
@@ -355,17 +425,17 @@ udev_init_dict(cdev_t dev)
 	KKASSERT(dev != NULL);
 
 	if (dev->si_dict != NULL) {
-#if 0
 		log(LOG_DEBUG,
-		    "udev_init_dict: new dict for %s, but has dict already (%p)!\n",
+		    "udev_init_dict: new dict for %s, but has "
+		    "dict already (%p)!\n",
 		    dev->si_name, dev->si_dict);
-#endif
 		return 0;
 	}
 
 	dict = prop_dictionary_create();
 	if (dict == NULL) {
-		log(LOG_DEBUG, "udev_init_dict: prop_dictionary_create() failed\n");
+		log(LOG_DEBUG,
+		    "udev_init_dict: prop_dictionary_create() failed\n");
 		return ENOMEM;
 	}
 
@@ -375,8 +445,10 @@ udev_init_dict(cdev_t dev)
 		goto error_out;
 	if ((error = _udev_dict_set_uint(dict, "kptr", kptr)))
 		goto error_out;
-	if ((error = _udev_dict_set_uint(dict, "devtype", (dev_dflags(dev) & D_TYPEMASK))))
+	if ((error = _udev_dict_set_uint(dict, "devtype",
+					 (dev_dflags(dev) & D_TYPEMASK)))) {
 		goto error_out;
+	}
 
 	/* XXX: The next 3 are marginallly useful, if at all */
 	if ((error = _udev_dict_set_uint(dict, "uid", dev->si_uid)))
@@ -405,15 +477,23 @@ error_out:
 	return error;
 }
 
+/*
+ * device dictionary access already locked
+ */
 static int
 udev_destroy_dict(cdev_t dev)
 {
-	KKASSERT(dev != NULL);
+	prop_dictionary_t udict;
 
-	if (dev->si_dict != NULL) {
+	KKASSERT(dev != NULL);
+	udict = udev_get_dict(dev);
+
+	/* field is now locked, use directly to handle races */
+	if (dev->si_dict) {
 		prop_object_release(dev->si_dict);
 		dev->si_dict = NULL;
 	}
+	udev_put_dict(dev, udict);
 
 	return 0;
 }
@@ -501,15 +581,19 @@ udev_event_externalize(struct udev_event_kernel *ev)
 int
 udev_event_attach(cdev_t dev, char *name, int alias)
 {
-	prop_dictionary_t	dict;
+	prop_dictionary_t dict;
+	prop_dictionary_t udict;
 	int error;
 
 	KKASSERT(dev != NULL);
 
 	error = ENOMEM;
 
+	udict = udev_get_dict(dev);
 	if (alias) {
-		dict = prop_dictionary_copy(dev->si_dict);
+		if (udict == NULL)
+			goto error_out;
+		dict = prop_dictionary_copy(udict);
 		if (dict == NULL)
 			goto error_out;
 
@@ -523,27 +607,33 @@ udev_event_attach(cdev_t dev, char *name, int alias)
 		udev_event_insert(UDEV_EVENT_ATTACH, dict);
 		prop_object_release(dict);
 	} else {
-		error = udev_init_dict(dev);
-		if (error)
-			goto error_out;
-
-		_udev_dict_set_int(dev->si_dict, "alias", 0);
-		udev_event_insert(UDEV_EVENT_ATTACH, dev->si_dict);
+		while (udict == NULL) {
+			error = udev_init_dict(dev);
+			if (error)
+				goto error_out;
+			udev_put_dict(dev, udict);
+			udict = udev_get_dict(dev);
+		}
+		_udev_dict_set_int(udict, "alias", 0);
+		udev_event_insert(UDEV_EVENT_ATTACH, udict);
 	}
-
 error_out:
+	udev_put_dict(dev, udict);
+
 	return error;
 }
 
 int
 udev_event_detach(cdev_t dev, char *name, int alias)
 {
-	prop_dictionary_t	dict;
+	prop_dictionary_t dict;
+	prop_dictionary_t udict;
 
 	KKASSERT(dev != NULL);
 
+	udict = udev_get_dict(dev);
 	if (alias) {
-		dict = prop_dictionary_copy(dev->si_dict);
+		dict = prop_dictionary_copy(udict);
 		if (dict == NULL)
 			goto error_out;
 
@@ -557,11 +647,13 @@ udev_event_detach(cdev_t dev, char *name, int alias)
 		udev_event_insert(UDEV_EVENT_DETACH, dict);
 		prop_object_release(dict);
 	} else {
-		udev_event_insert(UDEV_EVENT_DETACH, dev->si_dict);
+		if (udict)
+			udev_event_insert(UDEV_EVENT_DETACH, udict);
 	}
 
 error_out:
 	udev_destroy_dict(dev);
+	udev_put_dict(dev, udict);
 
 	return 0;
 }
