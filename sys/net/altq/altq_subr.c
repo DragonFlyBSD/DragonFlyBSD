@@ -844,58 +844,27 @@ init_machclk(void)
 #endif
 
 #if defined(__x86_64__)
-	if (!tsc_mpsync)
+	if (tsc_mpsync && tsc_present)
+		machclk_freq = tsc_frequency;
+	else
 		machclk_usepcc = 0;
 #else
 	machclk_usepcc = 0;
 #endif
 
-	if (!machclk_usepcc) {
+	if (machclk_usepcc) {
+#ifdef ALTQ_DEBUG
+		kprintf("altq: CPU clock: %juHz\n", (uintmax_t)machclk_freq);
+#endif
+	} else {
 		/* emulate 256MHz using microuptime() */
 		machclk_freq = 1000000LLU << MACHCLK_SHIFT;
-		machclk_per_tick = machclk_freq / hz;
 #ifdef ALTQ_DEBUG
 		kprintf("altq: emulate %juHz cpu clock\n",
 		    (uintmax_t)machclk_freq);
 #endif
-		return;
 	}
-
-	/*
-	 * If the clock frequency (of Pentium TSC) is accessible,
-	 * just use it.
-	 */
-#ifdef _RDTSC_SUPPORTED_
-	if (tsc_present)
-		machclk_freq = tsc_frequency;
-#endif
-
-	/*
-	 * If we don't know the clock frequency, measure it.
-	 */
-	if (machclk_freq == 0) {
-		static int	wait;
-		struct timeval	tv_start, tv_end;
-		uint64_t	start, end, diff;
-		int		timo;
-
-		microtime(&tv_start);
-		start = read_machclk();
-		timo = hz;	/* 1 sec */
-		tsleep(&wait, PCATCH, "init_machclk", timo);
-		microtime(&tv_end);
-		end = read_machclk();
-		diff = (uint64_t)(tv_end.tv_sec - tv_start.tv_sec) * 1000000
-		    + tv_end.tv_usec - tv_start.tv_usec;
-		if (diff != 0)
-			machclk_freq = (end - start) * 1000000 / diff;
-	}
-
 	machclk_per_tick = machclk_freq / hz;
-
-#ifdef ALTQ_DEBUG
-	kprintf("altq: CPU clock: %juHz\n", (uintmax_t)machclk_freq);
-#endif
 }
 
 uint64_t
