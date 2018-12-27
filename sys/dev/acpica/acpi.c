@@ -1985,9 +1985,12 @@ acpi_DeviceIsPresent(device_t dev)
 	return (FALSE);
     status = acpi_GetInteger(h, "_STA", &s);
 
-    /* If no _STA method, must be present */
+    /*
+     * If no _STA method or if it failed, then assume that
+     * the device is present.
+     */
     if (ACPI_FAILURE(status))
-	return (status == AE_NOT_FOUND ? TRUE : FALSE);
+	return (TRUE);
 
     return (ACPI_DEVICE_PRESENT(s) ? TRUE : FALSE);
 }
@@ -2007,9 +2010,12 @@ acpi_BatteryIsPresent(device_t dev)
 	return (FALSE);
     status = acpi_GetInteger(h, "_STA", &s);
 
-    /* If no _STA method, must be present */
+    /*
+     * If no _STA method or if it failed, then assume that
+     * the device is present.
+     */
     if (ACPI_FAILURE(status))
-	return (status == AE_NOT_FOUND ? TRUE : FALSE);
+	return (TRUE);
 
     return (ACPI_BATTERY_PRESENT(s) ? TRUE : FALSE);
 }
