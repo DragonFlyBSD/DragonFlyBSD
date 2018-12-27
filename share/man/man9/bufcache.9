@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd July 29, 2005
+.Dd December 27, 2018
 .Dt BUFCACHE 9
 .Os
 .Sh NAME
@@ -46,7 +46,7 @@
 .Ft int
 .Fo bread
 .Fa "struct vnode *vp"
-.Fa "daddr_t blkno"
+.Fa "off_t loffset"
 .Fa "int size"
 .Fa "struct buf **bpp"
 .Fc
@@ -80,7 +80,7 @@ the
 .Xr loader 8 .
 .Sh FUNCTIONS
 .Bl -tag -width compact
-.It Fn bread "*vp" "blkno" "size" "**bpp"
+.It Fn bread "*vp" "loffset" "size" "**bpp"
 Retrieve a buffer with specified data.
 An internal function,
 .Fn getblk
@@ -92,7 +92,7 @@ If the data is available in cache, the
 flag will be set otherwise
 .Fa size
 bytes will be read starting at block number
-.Fa blkno
+.Fa loffset
 from the block special device vnode
 .Fa vp .
 .Pp
