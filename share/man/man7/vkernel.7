@@ -287,8 +287,9 @@ However, the more precise timer might be necessary for your application.
 By default, the vkernel uses the TSC cpu timer if possible, or an imprecise
 (host-tick-resolution) timer which uses a user-mapped kernel page and does
 not have any syscall overhead.
-.It Fl T
-Force the vkernel to not use the TSC cpu timer.
+To disable the TSC cpu timer, use the
+.Fl e Ar hw.tsc_cputimer_enable=0
+flag.
 .It Fl U
 Enable writing to kernel memory and module loading.
 By default, those are disabled for security reasons.

@@ -124,7 +124,6 @@ int vkernel_b_arg;	/* no of logical CPU bits - only SMP */
 int vkernel_B_arg;	/* no of core bits - only SMP */
 int vmm_enabled;	/* VMM HW assisted enable */
 int use_precise_timer = 0;	/* use a precise timer (more expensive) */
-int allow_tsc_timer = 1;	/* use the TSC cpu timer if possible */
 struct privatespace *CPU_prvspace;
 
 tsc_uclock_t tsc_frequency;
@@ -318,9 +317,6 @@ main(int ac, char **av)
 			break;
 		case 't':
 			use_precise_timer = 1;
-			break;
-		case 'T':
-			allow_tsc_timer = 0;
 			break;
 		case 'v':
 			bootverbose = 1;
@@ -1579,7 +1575,7 @@ static
 void
 usage_help(_Bool help)
 {
-	fprintf(stderr, "Usage: %s [-hsUvdtT] [-c file] [-e name=value:name=value:...]\n"
+	fprintf(stderr, "Usage: %s [-hsUvdt] [-c file] [-e name=value:name=value:...]\n"
 	    "\t[-i file] [-I interface[:address1[:address2][/netmask]]] [-l cpulock]\n"
 	    "\t[-m size] [-n numcpus[:lbits[:cbits]]]\n"
 	    "\t[-p file] [-r file]\n", save_av[0]);
@@ -1608,7 +1604,6 @@ usage_help(_Bool help)
 		    "\t-R\tSpecify a COW disk image file, iterates vkd0..n\n"
 		    "\t-s\tBoot into single-user mode.\n"
 		    "\t-t\tUse a precise host timer when calculating clock values.\n"
-		    "\t-T\tDisallow use of the TSC cpu timer as a clock.\n"
 		    "\t-U\tEnable writing to kernel memory and module loading.\n"
 		    "\t-v\tTurn on verbose booting.\n");
 

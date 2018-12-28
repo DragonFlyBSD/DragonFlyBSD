@@ -74,8 +74,6 @@ static struct cpucounter tsc_cpucounter = {
 };
 
 #ifdef _KERNEL_VIRTUAL
-extern int allow_tsc_timer;
-
 #define TSC_CPUTIMER_FREQMAX	2000000	/* 2MHz */
 #else
 #define TSC_CPUTIMER_FREQMAX	128000000	/* 128Mhz */
@@ -136,11 +134,6 @@ tsc_cputimer_register(void)
 {
 	uint64_t freq;
 	int enable = 1;
-
-#ifdef _KERNEL_VIRTUAL
-	if (!allow_tsc_timer)
-		return;
-#endif
 
 	if (!tsc_mpsync) {
 #ifndef _KERNEL_VIRTUAL
