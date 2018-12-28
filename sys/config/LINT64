@@ -380,7 +380,7 @@ pseudo-device carp
 options CARP
 
 # Link aggregation interface.
-device		lagg
+pseudo-device	lagg
 
 # The MBUF_STRESS_TEST option enables options which create
 # various random failures / extreme cases related to mbuf
