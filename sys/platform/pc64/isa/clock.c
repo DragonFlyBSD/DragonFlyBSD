@@ -109,7 +109,6 @@ int	disable_rtc_set;	/* disable resettodr() if != 0 */
 int	tsc_present;
 int	tsc_invariant;
 int	tsc_mpsync;
-int	tsc_is_broken;
 int	wall_cmos_clock;	/* wall CMOS clock assumed if != 0 */
 int	timer0_running;
 tsc_uclock_t tsc_frequency;

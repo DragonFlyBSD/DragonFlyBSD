@@ -27,20 +27,9 @@ extern int	disable_rtc_set;
 extern int	tsc_present;
 extern int	tsc_invariant;
 extern int	tsc_mpsync;
-extern int	tsc_is_broken;
 extern int	wall_cmos_clock;
 extern tsc_uclock_t tsc_frequency;
 extern tsc_uclock_t tsc_oneus_approx;	/* do not use for fine calc, min 1 */
-
-/*
- * Driver to clock driver interface.
- */
-
-int	rtcin (int val);
-int	acquire_timer2 (int mode);
-int	release_timer2 (void);
-int	sysbeep (int pitch, int period);
-void	timer_restore (void);
 
 #endif /* _KERNEL */
 
