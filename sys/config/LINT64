@@ -23,7 +23,7 @@ machine_arch	x86_64
 # This is the ``identification'' of the kernel.  Usually this should
 # be the same as the name of your kernel.
 #
-ident		X86_64_LINT
+ident		LINT64
 
 #
 # The `maxusers' parameter controls the static sizing of a number of
@@ -378,6 +378,9 @@ device		pflog
 #CARP
 pseudo-device carp
 options CARP
+
+# Link aggregation interface.
+device		lagg
 
 # The MBUF_STRESS_TEST option enables options which create
 # various random failures / extreme cases related to mbuf

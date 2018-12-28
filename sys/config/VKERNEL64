@@ -89,4 +89,4 @@ device		vkd
 device		vke
 device		vcd
 
-device lagg
+pseudo-device	lagg
