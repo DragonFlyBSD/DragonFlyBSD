@@ -30,7 +30,6 @@
  * I2C bus IP driver
  */
 
-#ifdef _KERNEL
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
@@ -50,9 +49,6 @@
 #include <net/if_types.h>
 #include <net/netisr.h>
 
-#endif
-#include <sys/mbuf.h>
-#include <sys/socket.h>
 #include <net/route.h>
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
