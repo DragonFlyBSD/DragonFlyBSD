@@ -48,11 +48,8 @@ __FBSDID("$FreeBSD: head/sys/dev/sound/midi/midi.c 227309 2011-11-07 15:43:11Z e
 #include <sys/sysctl.h>
 #include <sys/types.h>
 #include <sys/malloc.h>
-#include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/proc.h>
 #include <sys/fcntl.h>
-#include <sys/types.h>
 #include <sys/uio.h>
 #include <sys/poll.h>
 #include <sys/sbuf.h>

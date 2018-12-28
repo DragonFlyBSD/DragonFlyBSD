@@ -33,13 +33,9 @@
 #include <sys/rman.h>
 #include <sys/sysctl.h>
 #include <sys/taskqueue.h>
-#include <sys/lock.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-
-#include <sys/bus.h>
-#include <sys/resource.h>
 
 #include <bus/mmc/bridge.h>
 

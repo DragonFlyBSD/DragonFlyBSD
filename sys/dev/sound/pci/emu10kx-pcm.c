@@ -34,7 +34,6 @@
 #include <sys/systm.h>
 #include <sys/sbuf.h>
 #include <sys/queue.h>
-#include <sys/systm.h>
 #include <sys/lock.h>
 #include <sys/mutex.h>
 

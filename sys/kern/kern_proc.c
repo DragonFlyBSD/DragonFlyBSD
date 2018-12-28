@@ -41,7 +41,6 @@
 #include <sys/signalvar.h>
 #include <sys/spinlock.h>
 #include <sys/random.h>
-#include <sys/vnode.h>
 #include <sys/exec.h>
 #include <vm/vm.h>
 #include <sys/lock.h>
