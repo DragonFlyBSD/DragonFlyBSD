@@ -46,7 +46,7 @@
 # Default configurations
 #
 
-# Directory hierarchy on the initrad
+# Directory hierarchy on the initrd
 #
 # * 'new_root' will always be created
 # * 'sbin' will be symlinked to 'bin'
