@@ -209,22 +209,6 @@ main(int argc, char **argv)
 	if (setlocale(LC_CTYPE, "") == NULL)
 		err(1, "setlocale");
 
-	/* Cache iconv conversion data before entering capability mode. */
-	if (show_label) {
-		for (i = 0; i < nitems(fstypes); i++) {
-			iconv_t cd;
-
-			if (fstypes[i].precache_encoding == NULL)
-				continue;
-			cd = iconv_open("", fstypes[i].precache_encoding);
-			if (cd == (iconv_t)-1)
-				err(1, "%s: iconv_open %s", fstypes[i].name,
-				    fstypes[i].precache_encoding);
-			/* Iconv keeps a small cache of unused encodings. */
-			iconv_close(cd);
-		}
-	}
-
 	/*
 	 * DragonFly: Filesystems may have syntax to decorate path.
 	 * Make a wild guess.
