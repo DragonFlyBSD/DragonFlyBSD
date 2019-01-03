@@ -14,6 +14,7 @@ SRCS =	i915_drv.c \
 SRCS +=	i915_cmd_parser.c \
 	i915_gem_batch_pool.c \
 	i915_gem_context.c \
+	i915_gem_dmabuf.c \
 	i915_gem_evict.c \
 	i915_gem_execbuffer.c \
 	i915_gem_fence.c \

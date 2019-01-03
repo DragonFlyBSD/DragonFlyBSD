@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2018-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,12 +35,65 @@
 #include <linux/fence.h>
 #include <linux/wait.h>
 
+struct dma_buf_ops {
+	struct sg_table * (*map_dma_buf)(struct dma_buf_attachment *,
+						enum dma_data_direction);
+	void (*unmap_dma_buf)(struct dma_buf_attachment *,
+						struct sg_table *,
+						enum dma_data_direction);
+	void (*release)(struct dma_buf *);
+	void *(*kmap)(struct dma_buf *, unsigned long);
+	void *(*kmap_atomic)(struct dma_buf *, unsigned long);
+	void (*kunmap)(struct dma_buf *, unsigned long, void *);
+	void (*kunmap_atomic)(struct dma_buf *, unsigned long, void *);
+	int (*mmap)(struct dma_buf *, struct vm_area_struct *vma);
+	void *(*vmap)(struct dma_buf *);
+	void (*vunmap)(struct dma_buf *, void *vaddr);
+	int (*begin_cpu_access)(struct dma_buf *, enum dma_data_direction);
+	int (*end_cpu_access)(struct dma_buf *, enum dma_data_direction);
+};
+
 struct dma_buf {
 	struct reservation_object *resv;
+	void *priv;
+	const struct dma_buf_ops *ops;
+	size_t size;
 };
 
 struct dma_buf_attachment {
 	struct dma_buf *dmabuf;
+	struct device *dev;
 };
+
+struct dma_buf_export_info {
+	const struct dma_buf_ops *ops;
+	size_t size;
+	int flags;
+	void *priv;
+};
+
+struct dma_buf *dma_buf_export(const struct dma_buf_export_info *exp_info);
+
+#define DEFINE_DMA_BUF_EXPORT_INFO(name)	\
+	struct dma_buf_export_info name = {	\
+	}
+
+struct sg_table * dma_buf_map_attachment(struct dma_buf_attachment *,
+						enum dma_data_direction);
+void dma_buf_unmap_attachment(struct dma_buf_attachment *,
+				struct sg_table *, enum dma_data_direction);
+
+static inline struct dma_buf_attachment *
+dma_buf_attach(struct dma_buf *dmabuf, struct device *dev)
+{
+	/* XXX: this function is a stub */
+	struct dma_buf_attachment *attach;
+
+	attach = kmalloc(sizeof(struct dma_buf_attachment), M_DRM, M_WAITOK | M_ZERO);
+
+	return attach;
+}
+
+
 
 #endif /* LINUX_DMA_BUF_H */

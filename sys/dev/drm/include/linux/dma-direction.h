@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 François Tigeot
+ * Copyright (c) 2016-2019 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,6 +29,7 @@
 
 enum dma_data_direction {
 	DMA_BIDIRECTIONAL = 0,
+	DMA_TO_DEVICE = 1,
 };
 
 #endif	/* _LINUX_DMA_DIRECTION_H_ */

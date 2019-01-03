@@ -2315,6 +2315,7 @@ dev/drm/i915/i915_drv.c			optional i915 drm compile-with "${NORMAL_C} -include $
 dev/drm/i915/i915_gem.c			optional i915 drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/i915/i915_gem_batch_pool.c	optional i915 drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/i915/i915_gem_context.c		optional i915 drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
+dev/drm/i915/i915_gem_dmabuf.c		optional i915 drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/i915/i915_gem_execbuffer.c	optional i915 drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/i915/i915_gem_fence.c		optional i915 drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/i915/i915_gem_evict.c		optional i915 drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
