@@ -90,7 +90,7 @@ struct drm_gem_object {
 	 * case @filp is NULL.
 	 */
 #ifdef __DragonFly__
-	vm_object_t vm_obj;
+	struct vm_object *filp;
 #else
 	struct file *filp;
 #endif

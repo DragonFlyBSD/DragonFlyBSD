@@ -299,10 +299,8 @@ i915_gem_object_attach_phys(struct drm_i915_gem_object *obj,
 	if (obj->madv != I915_MADV_WILLNEED)
 		return -EFAULT;
 
-#if 0
 	if (obj->base.filp == NULL)
 		return -EINVAL;
-#endif
 
 	ret = drop_pages(obj);
 	if (ret)
@@ -943,8 +941,8 @@ i915_gem_shmem_pwrite(struct drm_device *dev,
 	offset = args->offset;
 	obj->dirty = 1;
 
-	VM_OBJECT_LOCK(obj->base.vm_obj);
-	vm_object_pip_add(obj->base.vm_obj, 1);
+	VM_OBJECT_LOCK(obj->base.filp);
+	vm_object_pip_add(obj->base.filp, 1);
 
 	for_each_sg_page(obj->pages->sgl, &sg_iter, obj->pages->nents,
 			 offset >> PAGE_SHIFT) {
@@ -999,8 +997,8 @@ next_page:
 		user_data += page_length;
 		offset += page_length;
 	}
-	vm_object_pip_wakeup(obj->base.vm_obj);
-	VM_OBJECT_UNLOCK(obj->base.vm_obj);
+	vm_object_pip_wakeup(obj->base.filp);
+	VM_OBJECT_UNLOCK(obj->base.filp);
 
 out:
 	i915_gem_object_unpin_pages(obj);
@@ -1713,6 +1711,10 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 	/* prime objects have no backing filp to GEM mmap
 	 * pages from.
 	 */
+	if (!obj->filp) {
+		drm_gem_object_unreference_unlocked(obj);
+		return -EINVAL;
+	}
 
 	/*
 	 * Call hint to ensure that NULL is not returned as a valid address
@@ -1728,11 +1730,12 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 	 * virtual address but it appears to fix a number of application/X
 	 * crashes and kms console switching is much faster.
 	 */
-	vm_object_hold(obj->vm_obj);
-	vm_object_reference_locked(obj->vm_obj);
-	vm_object_drop(obj->vm_obj);
+	vm_object_hold(obj->filp);
+	vm_object_reference_locked(obj->filp);
+	vm_object_drop(obj->filp);
 
-	rv = vm_map_find(map, obj->vm_obj, NULL,
+/* Something gets wrong here: fails to mmap 4096 */
+	rv = vm_map_find(map, obj->filp, NULL,
 			 args->offset, &addr, args->size,
 			 256 * 1024, /* align */
 			 TRUE, /* fitit */
@@ -1741,7 +1744,7 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 			 VM_PROT_READ | VM_PROT_WRITE, /* max */
 			 MAP_SHARED /* cow */);
 	if (rv != KERN_SUCCESS) {
-		vm_object_deallocate(obj->vm_obj);
+		vm_object_deallocate(obj->filp);
 		error = -vm_mmap_to_errno(rv);
 	} else {
 		args->addr_ptr = (uint64_t)addr;
@@ -2271,7 +2274,7 @@ i915_gem_object_truncate(struct drm_i915_gem_object *obj)
 {
 	vm_object_t vm_obj;
 
-	vm_obj = obj->base.vm_obj;
+	vm_obj = obj->base.filp;
 	VM_OBJECT_LOCK(vm_obj);
 	vm_object_page_remove(vm_obj, 0, 0, false);
 	VM_OBJECT_UNLOCK(vm_obj);
@@ -2294,10 +2297,10 @@ i915_gem_object_invalidate(struct drm_i915_gem_object *obj)
 		return;
 	}
 
-#if 0
 	if (obj->base.filp == NULL)
 		return;
 
+#if 0
 	mapping = file_inode(obj->base.filp)->i_mapping,
 	invalidate_mapping_pages(mapping, 0, (loff_t)-1);
 #endif
@@ -2416,7 +2419,7 @@ i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj)
 	 *
 	 * Fail silently without starting the shrinker
 	 */
-	vm_obj = obj->base.vm_obj;
+	vm_obj = obj->base.filp;
 	VM_OBJECT_LOCK(vm_obj);
 	sg = st->sgl;
 	st->nents = 0;
@@ -4717,7 +4720,7 @@ static bool discard_backing_storage(struct drm_i915_gem_object *obj)
 	if (obj->madv != I915_MADV_WILLNEED)
 		return false;
 
-	if (obj->base.vm_obj == NULL)
+	if (obj->base.filp == NULL)
 		return true;
 
 	/* At first glance, this looks racy, but then again so would be

@@ -176,7 +176,7 @@ int drm_gem_object_init(struct drm_device *dev,
 {
 	drm_gem_private_object_init(dev, obj, size);
 
-	obj->vm_obj = default_pager_alloc(NULL, size,
+	obj->filp = default_pager_alloc(NULL, size,
 	    VM_PROT_READ | VM_PROT_WRITE, 0);
 
 	return 0;
@@ -199,7 +199,7 @@ void drm_gem_private_object_init(struct drm_device *dev,
 	BUG_ON((size & (PAGE_SIZE - 1)) != 0);
 
 	obj->dev = dev;
-	obj->vm_obj = NULL;
+	obj->filp = NULL;
 
 	kref_init(&obj->refcount);
 	obj->handle_count = 0;
@@ -211,25 +211,22 @@ EXPORT_SYMBOL(drm_gem_private_object_init);
 static void
 drm_gem_remove_prime_handles(struct drm_gem_object *obj, struct drm_file *filp)
 {
+	/*
+	 * Note: obj->dma_buf can't disappear as long as we still hold a
+	 * handle reference in obj->handle_count.
+	 */
+	mutex_lock(&filp->prime.lock);
 #if 0
-	if (obj->import_attach) {
-		drm_prime_remove_buf_handle(&filp->prime,
-				obj->import_attach->dmabuf);
-	}
-	if (obj->export_dma_buf) {
-		drm_prime_remove_buf_handle(&filp->prime,
-				obj->export_dma_buf);
+	if (obj->dma_buf) {
+		drm_prime_remove_buf_handle_locked(&filp->prime,
+						   obj->dma_buf);
 	}
 #endif
-}
-
-static void drm_gem_object_ref_bug(struct kref *list_kref)
-{
-	BUG();
+	mutex_unlock(&filp->prime.lock);
 }
 
 /**
- * drm_gem_object_free - release resources bound to userspace handles
+ * drm_gem_object_handle_free - release resources bound to userspace handles
  * @obj: GEM object to clean up.
  *
  * Called after the last handle to the object has been closed
@@ -246,30 +243,26 @@ static void drm_gem_object_handle_free(struct drm_gem_object *obj)
 	if (obj->name) {
 		idr_remove(&dev->object_name_idr, obj->name);
 		obj->name = 0;
-	/*
-	 * The object name held a reference to this object, drop
-	 * that now.
-	*
-	* This cannot be the last reference, since the handle holds one too.
-	 */
-		kref_put(&obj->refcount, drm_gem_object_ref_bug);
 	}
 }
 
-#if 0
 static void drm_gem_object_exported_dma_buf_free(struct drm_gem_object *obj)
 {
+#if 0
 	/* Unbreak the reference cycle if we have an exported dma_buf. */
 	if (obj->dma_buf) {
 		dma_buf_put(obj->dma_buf);
 		obj->dma_buf = NULL;
 	}
-}
 #endif
+}
 
 static void
 drm_gem_object_handle_unreference_unlocked(struct drm_gem_object *obj)
 {
+	struct drm_device *dev = obj->dev;
+	bool final = false;
+
 	if (WARN_ON(obj->handle_count == 0))
 		return;
 
@@ -279,16 +272,20 @@ drm_gem_object_handle_unreference_unlocked(struct drm_gem_object *obj)
 	* checked for a name
 	*/
 
-	mutex_lock(&obj->dev->object_name_lock);
-	if (--obj->handle_count == 0)
+	mutex_lock(&dev->object_name_lock);
+	if (--obj->handle_count == 0) {
 		drm_gem_object_handle_free(obj);
-	mutex_unlock(&obj->dev->object_name_lock);
+		drm_gem_object_exported_dma_buf_free(obj);
+		final = true;
+	}
+	mutex_unlock(&dev->object_name_lock);
 
-	drm_gem_object_unreference_unlocked(obj);
+	if (final)
+		drm_gem_object_unreference_unlocked(obj);
 }
 
 /*
- * Called at device close to release the file's
+ * Called at device or object close to release the file's
  * handle references on objects.
  */
 static int
@@ -298,7 +295,9 @@ drm_gem_object_release_handle(int id, void *ptr, void *data)
 	struct drm_gem_object *obj = ptr;
 	struct drm_device *dev = obj->dev;
 
-	drm_gem_remove_prime_handles(obj, file_priv);
+	if (drm_core_check_feature(dev, DRIVER_PRIME))
+		drm_gem_remove_prime_handles(obj, file_priv);
+	drm_vma_node_revoke(&obj->vma_node, file_priv->filp);
 
 	if (dev->driver->gem_close_object)
 		dev->driver->gem_close_object(obj, file_priv);
@@ -741,7 +740,7 @@ drm_gem_object_release(struct drm_gem_object *obj)
 	/*
 	 * obj->vm_obj can be NULL for private gem objects.
 	 */
-	vm_object_deallocate(obj->vm_obj);
+	vm_object_deallocate(obj->filp);
 }
 EXPORT_SYMBOL(drm_gem_object_release);
 

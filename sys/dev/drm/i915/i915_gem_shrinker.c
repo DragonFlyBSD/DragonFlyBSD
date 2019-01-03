@@ -70,7 +70,7 @@ static bool swap_available(void)
 static bool can_release_pages(struct drm_i915_gem_object *obj)
 {
 	/* Only shmemfs objects are backed by swap */
-	if (!obj->base.vm_obj)
+	if (!obj->base.filp)
 		return false;
 
 	/* Only report true if by unbinding the object and putting its pages
