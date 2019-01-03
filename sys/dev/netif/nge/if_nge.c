@@ -1241,7 +1241,7 @@ nge_rxeof(struct nge_softc *sc)
 		 * only gigE chip I know of with alignment constraints
 		 * on receive buffers. RX buffers must be 64-bit aligned.
 		 */
-#ifdef __i386__
+#ifdef __x86_64__
 		/*
 		 * By popular demand, ignore the alignment problems
 		 * on the Intel x86 platform. The performance hit
@@ -1264,7 +1264,7 @@ nge_rxeof(struct nge_softc *sc)
 			}
 			m_adj(m0, ETHER_ALIGN);
 			m = m0;
-#ifdef __i386__
+#ifdef __x86_64__
 		} else {
 			m->m_pkthdr.rcvif = ifp;
 			m->m_pkthdr.len = m->m_len = total_len;

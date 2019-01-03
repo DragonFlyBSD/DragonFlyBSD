@@ -3129,7 +3129,7 @@ refresh_rx:
 		}
 
 		IFNET_STAT_INC(ifp, ipackets, 1);
-#if !defined(__i386__) && !defined(__x86_64__)
+#if !defined(__x86_64__)
 		/*
 		 * The x86 allows unaligned accesses, but for other
 		 * platforms we must make sure the payload is aligned.

@@ -314,7 +314,7 @@ static driver_t dc_driver = {
 
 static devclass_t dc_devclass;
 
-#ifdef __i386__
+#ifdef __x86_64__
 static int dc_quick=1;
 SYSCTL_INT(_hw, OID_AUTO, dc_quick, CTLFLAG_RW,
 	&dc_quick,0,"do not mdevget in dc driver");
@@ -2567,7 +2567,7 @@ dc_rxeof(struct dc_softc *sc)
 		/* No errors; receive the packet. */	
 		total_len -= ETHER_CRC_LEN;
 
-#ifdef __i386__
+#ifdef __x86_64__
 		/*
 		 * On the x86 we do not have alignment problems, so try to
 		 * allocate a new buffer for the receive ring, and pass up

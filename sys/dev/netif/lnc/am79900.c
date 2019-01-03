@@ -251,7 +251,7 @@ am79900_rint(struct lance_softc *sc)
 	struct lermd rmd;
 	uint32_t rmd1;
 	int bix, rp;
-#if defined(__i386__)
+#if defined(__x86_64__)
 	struct ether_header *eh;
 #endif
 
@@ -312,7 +312,7 @@ am79900_rint(struct lance_softc *sc)
 		if (m != NULL) {
 			IFNET_STAT_INC(ifp, ipackets, 1);
 
-#ifdef __i386__
+#ifdef __x86_64__
 			/*
 			 * The VMware LANCE does not present IFF_SIMPLEX
 			 * behavior on multicast packets. Thus drop the

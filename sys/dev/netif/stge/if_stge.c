@@ -157,7 +157,7 @@ static void	stge_txeof(struct stge_softc *);
 static void	stge_rxeof(struct stge_softc *, int);
 static __inline void stge_discard_rxbuf(struct stge_softc *, int);
 static int	stge_newbuf(struct stge_softc *, int, int);
-#ifndef __i386__
+#ifndef __x86_64__
 static __inline struct mbuf *stge_fixup_rx(struct stge_softc *, struct mbuf *);
 #endif
 
@@ -1505,7 +1505,7 @@ stge_discard_rxbuf(struct stge_softc *sc, int idx)
 	rfd->rfd_status = 0;
 }
 
-#ifndef __i386__
+#ifndef __x86_64__
 /*
  * It seems that TC9021's DMA engine has alignment restrictions in
  * DMA scatter operations. The first DMA segment has no address
@@ -1653,7 +1653,7 @@ stge_rxeof(struct stge_softc *sc, int count)
 				}
 			}
 
-#ifndef __i386__
+#ifndef __x86_64__
 			if (sc->sc_if_framesize > (MCLBYTES - ETHER_ALIGN)) {
 				if ((m = stge_fixup_rx(sc, m)) == NULL) {
 					STGE_RXCHAIN_RESET(sc);
