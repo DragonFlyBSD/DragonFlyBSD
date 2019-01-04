@@ -6,17 +6,6 @@
 
 
 KMOD	= radeonkms
-SRCS	=								\
-	rn50_reg_safe.h							\
-	r100_reg_safe.h							\
-	r200_reg_safe.h							\
-	rv515_reg_safe.h						\
-	r300_reg_safe.h							\
-	r420_reg_safe.h							\
-	rs600_reg_safe.h						\
-	r600_reg_safe.h							\
-	evergreen_reg_safe.h						\
-	cayman_reg_safe.h
 SRCS	+=								\
 	radeon_acpi.c							\
 	radeon_agp.c							\
@@ -135,7 +124,6 @@ SRCS	+=								\
 SRCS	+=								\
 	opt_acpi.h							\
 	opt_drm.h							\
-	opt_ktr.h							\
 	acpi_if.h							\
 	bus_if.h							\
 	device_if.h							\

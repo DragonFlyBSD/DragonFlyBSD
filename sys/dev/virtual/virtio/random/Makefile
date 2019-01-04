@@ -25,7 +25,6 @@
 
 KMOD=	virtio_random
 SRCS=	virtio_random.c
-SRCS+=	virtio_bus_if.h
 SRCS+=	bus_if.h device_if.h
 
 .include <bsd.kmod.mk>

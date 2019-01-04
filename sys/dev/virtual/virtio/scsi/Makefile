@@ -25,7 +25,6 @@
 
 KMOD=	virtio_scsi
 SRCS=	virtio_scsi.c
-SRCS+=	virtio_bus_if.h
-SRCS+=	bus_if.h device_if.h opt_scsi.h opt_cam.h
+SRCS+=	bus_if.h device_if.h opt_cam.h
 
 .include <bsd.kmod.mk>

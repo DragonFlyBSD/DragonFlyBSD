@@ -2,8 +2,7 @@ KMOD    = if_iwi
 SRCS    = if_iwi.c \
           device_if.h \
           bus_if.h \
-          pci_if.h \
-          opt_inet.h
+          pci_if.h
 
 SUBDIR	= fw
 

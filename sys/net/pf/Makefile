@@ -1,7 +1,7 @@
 KMOD=	pf
 SRCS=	if_pflog.c if_pfsync.c pf.c pf_if.c pf_ioctl.c pf_norm.c pf_osfp.c pf_subr.c
 SRCS+=	pf_table.c pf_ruleset.c
-SRCS+=	use_bpf.h use_pflog.h use_pfsync.h opt_inet.h opt_inet6.h opt_carp.h
+SRCS+=	use_bpf.h use_pflog.h opt_inet.h opt_inet6.h opt_carp.h
 SRCS+=	opt_icmp_bandlim.h
 
 use_pflog.h:

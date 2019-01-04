@@ -3,8 +3,8 @@
 .PATH: ${.CURDIR}/..
 
 KMOD    = if_urtwn
-SRCS    = if_urtwn.c if_urtwnreg.h \
+SRCS    = if_urtwn.c \
 	  bus_if.h device_if.h \
-	  opt_bus.h opt_usb.h usb_if.h usbdevs.h opt_urtwn.h opt_wlan.h
+	  opt_usb.h usbdevs.h opt_urtwn.h opt_wlan.h
 
 .include <bsd.kmod.mk>

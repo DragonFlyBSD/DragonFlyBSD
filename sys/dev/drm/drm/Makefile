@@ -75,7 +75,7 @@ SRCS	= \
 	ttm_module.c
 
 SRCS   += device_if.h bus_if.h pci_if.h device_if.h iicbus_if.h opt_drm.h \
-	  opt_ktr.h opt_vm.h
+	  opt_vm.h
 
 KCFLAGS+= -I${SYSDIR}/dev/drm/include
 KCFLAGS+= -I${SYSDIR}/dev/drm/include/uapi

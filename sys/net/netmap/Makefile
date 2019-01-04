@@ -3,10 +3,10 @@
 
 KMOD	= netmap
 SRCS	= device_if.h bus_if.h opt_netmap.h
-SRCS	+= netmap.c netmap_kern.h
-SRCS	+= netmap_mem2.c netmap_mem2.h
+SRCS	+= netmap.c
+SRCS	+= netmap_mem2.c
 SRCS	+= netmap_generic.c
-SRCS	+= netmap_mbq.c netmap_mbq.h
+SRCS	+= netmap_mbq.c
 SRCS	+= netmap_vale.c
 SRCS	+= netmap_freebsd.c
 

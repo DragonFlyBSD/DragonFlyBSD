@@ -1,12 +1,11 @@
 # $Id: Makefile,v 1.6 2003/10/24 15:41:26 simokawa Exp $
 # $FreeBSD: src/sys/modules/dcons/Makefile,v 1.2 2004/07/13 09:37:49 simokawa Exp $
-# $DragonFly: src/sys/dev/misc/dcons/dcons/Makefile,v 1.5 2006/10/25 20:55:54 dillon Exp $
 
 .PATH:	${.CURDIR}/..
 
 KMOD	= dcons
 SRCS	= dcons.c dcons_os.c
-SRCS	+= dcons.h dcons_os.h opt_dcons.h opt_ddb.h opt_comconsole.h
+SRCS	+= opt_dcons.h opt_ddb.h opt_comconsole.h
 SRCS	+= device_if.h bus_if.h
 
 .if !defined(BUILDING_WITH_KERNEL)

@@ -28,6 +28,6 @@
 .PATH: ${.CURDIR}/..
 
 KMOD=	urio
-SRCS=   bus_if.h device_if.h opt_bus.h opt_usb.h usb_if.h usbdevs.h urio.c
+SRCS=   bus_if.h device_if.h opt_usb.h usbdevs.h urio.c
 
 .include <bsd.kmod.mk>

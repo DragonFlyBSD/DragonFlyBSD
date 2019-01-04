@@ -5,7 +5,7 @@
 # $FreeBSD: src/sys/modules/hptmv/Makefile,v 1.5 2010/08/23 06:13:29 imp Exp $
 
 KMOD= hptmv
-SRCS= opt_scsi.h opt_cam.h
+SRCS= opt_cam.h
 SRCS+= bus_if.h device_if.h pci_if.h
 SRCS+= mv.c entry.c ioctl.c hptproc.c gui_lib.c
 OBJS+= hptmvraid.bo

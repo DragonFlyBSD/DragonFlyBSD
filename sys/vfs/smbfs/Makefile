@@ -7,9 +7,7 @@
 
 KMOD=	smbfs
 
-SRCS=	opt_inet.h \
-	opt_netsmb.h \
-	iconv_converter_if.h \
+SRCS=	opt_netsmb.h \
 	md4c.c \
 	smb_conn.c smb_dev.c smb_trantcp.c smb_smb.c smb_subr.c smb_rq.c \
 	smb_usr.c smb_crypt.c smb_iod.c \

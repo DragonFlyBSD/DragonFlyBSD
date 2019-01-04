@@ -2,7 +2,7 @@
 
 KMOD=	hpt27xx
 SRCS=	bus_if.h device_if.h pci_if.h
-SRCS+=	opt_cam.h opt_scsi.h
+SRCS+=	opt_cam.h
 SRCS+=	hpt27xx_os_bsd.c hpt27xx_osm_bsd.c hpt27xx_config.c
 OBJS+=	hpt27xx_lib.bo
 

@@ -1,5 +1,5 @@
 KMOD=	putter
-SRCS=	putter.c putter.h putter_sys.h
+SRCS=	putter.c
 
 #DEBUG_FLAGS+= -DPUTTERDEBUG
 

@@ -2,7 +2,7 @@
 # $FreeBSD: head/sys/modules/hptrr/Makefile 314651 2017-03-04 10:10:17Z ngie $
 
 KMOD = hptrr
-SRCS = opt_scsi.h opt_cam.h bus_if.h device_if.h pci_if.h os_bsd.h
+SRCS = opt_cam.h bus_if.h device_if.h pci_if.h
 SRCS+= hptrr_os_bsd.c hptrr_osm_bsd.c hptrr_config.c
 OBJS = hptrr_lib.bo
 
