@@ -3444,6 +3444,7 @@ TO_REMOVE+=/usr/include/sys/clist.h
 TO_REMOVE+=/usr/share/man/man2/sigstack.2.gz
 TO_REMOVE+=/usr/include/sys/input.h
 TO_REMOVE+=/usr/include/sys/linux_types.h
+TO_REMOVE+=/etc/devd/uath.conf
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

@@ -1,5 +1,5 @@
 #
-# XXX MISSING: rue smsc uhso usie
+# XXX MISSING: smsc
 
 SUBDIR=	aue axe axge cdce cue ipheth kue mos udav uether urndis
 
