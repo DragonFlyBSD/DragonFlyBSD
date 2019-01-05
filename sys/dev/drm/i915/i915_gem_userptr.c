@@ -298,7 +298,6 @@ i915_mmu_notifier_free(struct i915_mmu_notifier *mn,
 
 #else
 
-#if 0
 static void
 i915_gem_userptr_release__mmu_notifier(struct drm_i915_gem_object *obj)
 {
@@ -322,7 +321,6 @@ i915_mmu_notifier_free(struct i915_mmu_notifier *mn,
 		       struct mm_struct *mm)
 {
 }
-#endif
 
 #endif
 
@@ -339,12 +337,15 @@ __i915_mm_struct_find(struct drm_i915_private *dev_priv, struct mm_struct *real)
 
 	return NULL;
 }
+#endif
 
 static int
 i915_gem_userptr_init__mm_struct(struct drm_i915_gem_object *obj)
 {
 	struct drm_i915_private *dev_priv = to_i915(obj->base.dev);
+#if 0
 	struct i915_mm_struct *mm;
+#endif
 	int ret = 0;
 
 	/* During release of the GEM object we hold the struct_mutex. This
@@ -358,11 +359,14 @@ i915_gem_userptr_init__mm_struct(struct drm_i915_gem_object *obj)
 	 * up.
 	 */
 	mutex_lock(&dev_priv->mm_lock);
+#if 0
 	mm = __i915_mm_struct_find(dev_priv, current->mm);
 	if (mm == NULL) {
 		mm = kmalloc(sizeof(*mm), GFP_KERNEL);
 		if (mm == NULL) {
+#endif
 			ret = -ENOMEM;
+#if 0
 			goto out;
 		}
 
@@ -382,6 +386,7 @@ i915_gem_userptr_init__mm_struct(struct drm_i915_gem_object *obj)
 
 	obj->userptr.mm = mm;
 out:
+#endif
 	mutex_unlock(&dev_priv->mm_lock);
 	return ret;
 }
@@ -391,7 +396,9 @@ __i915_mm_struct_free__worker(struct work_struct *work)
 {
 	struct i915_mm_struct *mm = container_of(work, typeof(*mm), work);
 	i915_mmu_notifier_free(mm->mn, mm->mm);
+#if 0
 	mmdrop(mm->mm);
+#endif
 	kfree(mm);
 }
 
@@ -401,7 +408,9 @@ __i915_mm_struct_free(struct kref *kref)
 	struct i915_mm_struct *mm = container_of(kref, typeof(*mm), kref);
 
 	/* Protected by dev_priv->mm_lock */
+#if 0
 	hash_del(&mm->node);
+#endif
 	mutex_unlock(&mm->i915->mm_lock);
 
 	INIT_WORK(&mm->work, __i915_mm_struct_free__worker);
@@ -419,7 +428,6 @@ i915_gem_userptr_release__mm_struct(struct drm_i915_gem_object *obj)
 		       &to_i915(obj->base.dev)->mm_lock);
 	obj->userptr.mm = NULL;
 }
-#endif
 
 struct get_pages_work {
 	struct work_struct work;
@@ -440,7 +448,7 @@ st_set_pages(struct sg_table **st, struct page **pvec, int num_pages)
 	struct scatterlist *sg;
 	int ret, n;
 
-	*st = kmalloc(sizeof(**st), GFP_KERNEL);
+	*st = kmalloc(sizeof(**st), M_DRM, M_WAITOK);
 	if (*st == NULL)
 		return -ENOMEM;
 
@@ -486,6 +494,7 @@ __i915_gem_userptr_set_pages(struct drm_i915_gem_object *obj,
 
 	return ret;
 }
+#endif
 
 static int
 __i915_gem_userptr_set_active(struct drm_i915_gem_object *obj,
@@ -523,6 +532,7 @@ __i915_gem_userptr_set_active(struct drm_i915_gem_object *obj,
 	return ret;
 }
 
+#if 0
 static void
 __i915_gem_userptr_get_pages_worker(struct work_struct *_work)
 {
@@ -635,10 +645,12 @@ __i915_gem_userptr_get_pages_schedule(struct drm_i915_gem_object *obj,
 	*active = true;
 	return -EAGAIN;
 }
+#endif
 
 static int
 i915_gem_userptr_get_pages(struct drm_i915_gem_object *obj)
 {
+#if 0
 	const int num_pages = obj->base.size >> PAGE_SHIFT;
 	struct page **pvec;
 	int pinned, ret;
@@ -705,6 +717,9 @@ i915_gem_userptr_get_pages(struct drm_i915_gem_object *obj)
 	}
 	drm_free_large(pvec);
 	return ret;
+#else
+	return 0;
+#endif	/* 0 */
 }
 
 static void
@@ -727,7 +742,9 @@ i915_gem_userptr_put_pages(struct drm_i915_gem_object *obj)
 			set_page_dirty(page);
 
 		mark_page_accessed(page);
+#if 0
 		page_cache_release(page);
+#endif
 	}
 	obj->dirty = 0;
 
@@ -816,9 +833,11 @@ i915_gem_userptr_ioctl(struct drm_device *dev, void *data, struct drm_file *file
 	if (offset_in_page(args->user_ptr | args->user_size))
 		return -EINVAL;
 
+#if 0
 	if (!access_ok(args->flags & I915_USERPTR_READ_ONLY ? VERIFY_READ : VERIFY_WRITE,
 		       (char __user *)(unsigned long)args->user_ptr, args->user_size))
 		return -EFAULT;
+#endif
 
 	if (args->flags & I915_USERPTR_READ_ONLY) {
 		/* On almost all of the current hw, we cannot tell the GPU that a
@@ -858,7 +877,6 @@ i915_gem_userptr_ioctl(struct drm_device *dev, void *data, struct drm_file *file
 	args->handle = handle;
 	return 0;
 }
-#endif
 
 int
 i915_gem_init_userptr(struct drm_device *dev)
