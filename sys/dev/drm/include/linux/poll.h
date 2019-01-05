@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2017-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,5 +33,8 @@
 #include <linux/string.h>
 #include <linux/fs.h>
 #include <asm/uaccess.h>
+
+struct poll_table_struct {
+};
 
 #endif	/* _LINUX_POLL_H_ */

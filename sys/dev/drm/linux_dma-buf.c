@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,43 +24,25 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_FS_H_
-#define _LINUX_FS_H_
+#include <linux/fs.h>
+#include <linux/slab.h>
+#include <linux/dma-buf.h>
+#include <linux/fence.h>
+#include <linux/export.h>
+#include <linux/module.h>
+#include <linux/seq_file.h>
+#include <linux/poll.h>
+#include <linux/reservation.h>
+#include <linux/mm.h>
 
-#include <linux/wait.h>
-#include <linux/cache.h>
-#include <linux/stat.h>
-#include <linux/list.h>
-#include <linux/rbtree.h>
-#include <linux/init.h>
-#include <linux/pid.h>
-#include <linux/bug.h>
-#include <linux/mutex.h>
-#include <linux/capability.h>
-#include <linux/atomic.h>
-#include <linux/lockdep.h>
+struct dma_buf *dma_buf_export(const struct dma_buf_export_info *exp_info)
+{
+	return ERR_PTR(-EINVAL);
+}
 
-#include <sys/file.h>	/* for struct file */
+void dma_buf_unmap_attachment(struct dma_buf_attachment *attach,
+				struct sg_table *sg_table,
+				enum dma_data_direction direction)
+{
+}
 
-struct address_space;
-
-struct poll_table_struct;
-struct vm_area_struct;
-
-struct inode {
-};
-
-struct file_operations {
-	struct module *owner;
-	int (*open) (struct inode *, struct file *);
-	int (*release) (struct inode *, struct file *);
-	long (*unlocked_ioctl) (struct file *, unsigned int, unsigned long);
-	int (*mmap) (struct file *, struct vm_area_struct *);
-	unsigned int (*poll) (struct file *, struct poll_table_struct *);
-	ssize_t (*read) (struct file *, char __user *, size_t, loff_t *);
-	loff_t (*llseek) (struct file *, loff_t, int);
-};
-
-extern loff_t noop_llseek(struct file *file, loff_t offset, int whence);
-
-#endif	/* _LINUX_FS_H_ */

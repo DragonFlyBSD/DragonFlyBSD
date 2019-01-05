@@ -39,6 +39,7 @@ SRCS	= \
 	drm_panel.c \
 	drm_pci.c \
 	drm_plane_helper.c \
+	drm_prime.c \
 	drm_probe_helper.c \
 	drm_rect.c \
 	drm_scatter.c \
@@ -49,6 +50,7 @@ SRCS	= \
 	linux_async.c \
 	linux_compat.c \
 	linux_dma.c \
+	linux_dma-buf.c \
 	linux_hdmi.c \
 	linux_i2c.c \
 	linux_hrtimer.c \

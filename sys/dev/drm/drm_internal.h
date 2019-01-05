@@ -41,7 +41,6 @@ int drm_getpciinfo(struct drm_device *dev, void *data,
 int drm_vma_info(struct seq_file *m, void *data);
 
 /* drm_prime.c */
-#if 0
 int drm_prime_handle_to_fd_ioctl(struct drm_device *dev, void *data,
 				 struct drm_file *file_priv);
 int drm_prime_fd_to_handle_ioctl(struct drm_device *dev, void *data,
@@ -51,7 +50,6 @@ void drm_prime_init_file_private(struct drm_prime_file_private *prime_fpriv);
 void drm_prime_destroy_file_private(struct drm_prime_file_private *prime_fpriv);
 void drm_prime_remove_buf_handle_locked(struct drm_prime_file_private *prime_fpriv,
 					struct dma_buf *dma_buf);
-#endif
 
 /* drm_info.c */
 int drm_name_info(struct seq_file *m, void *data);

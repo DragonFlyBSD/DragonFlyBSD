@@ -35,6 +35,11 @@
 #include <linux/fence.h>
 #include <linux/wait.h>
 
+#include <linux/slab.h>
+
+struct dma_buf;
+struct dma_buf_attachment;
+
 struct dma_buf_ops {
 	struct sg_table * (*map_dma_buf)(struct dma_buf_attachment *,
 						enum dma_data_direction);
@@ -51,6 +56,8 @@ struct dma_buf_ops {
 	void (*vunmap)(struct dma_buf *, void *vaddr);
 	int (*begin_cpu_access)(struct dma_buf *, enum dma_data_direction);
 	int (*end_cpu_access)(struct dma_buf *, enum dma_data_direction);
+	int (*attach)(struct dma_buf *, struct device *, struct dma_buf_attachment *);
+	void (*detach)(struct dma_buf *, struct dma_buf_attachment *);
 };
 
 struct dma_buf {
@@ -63,6 +70,7 @@ struct dma_buf {
 struct dma_buf_attachment {
 	struct dma_buf *dmabuf;
 	struct device *dev;
+	void *priv;
 };
 
 struct dma_buf_export_info {
@@ -70,6 +78,7 @@ struct dma_buf_export_info {
 	size_t size;
 	int flags;
 	void *priv;
+	struct reservation_object *resv;
 };
 
 struct dma_buf *dma_buf_export(const struct dma_buf_export_info *exp_info);
@@ -93,7 +102,5 @@ dma_buf_attach(struct dma_buf *dmabuf, struct device *dev)
 
 	return attach;
 }
-
-
 
 #endif /* LINUX_DMA_BUF_H */
