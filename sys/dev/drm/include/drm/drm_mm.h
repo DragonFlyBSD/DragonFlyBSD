@@ -310,30 +310,13 @@ extern struct drm_mm_node *drm_mm_search_free_generic(const struct drm_mm *mm,
 						unsigned alignment,
 						unsigned long color,
 						enum drm_mm_search_flags flags);
-extern struct drm_mm_node *drm_mm_search_free_in_range_generic(const struct drm_mm *mm,
-						u64 size,
-						unsigned alignment,
-						unsigned long color,
-						u64 start,
-						u64 end,
-						enum drm_mm_search_flags flags);
+
 static inline struct drm_mm_node *drm_mm_search_free(const struct drm_mm *mm,
 						     unsigned long size,
 						     unsigned alignment,
 						     enum drm_mm_search_flags flags)
 {
 	return drm_mm_search_free_generic(mm,size, alignment, 0, flags);
-}
-static inline  struct drm_mm_node *drm_mm_search_free_in_range(
-						const struct drm_mm *mm,
-						unsigned long size,
-						unsigned alignment,
-						unsigned long start,
-						unsigned long end,
-						enum drm_mm_search_flags flags)
-{
-	return drm_mm_search_free_in_range_generic(mm, size, alignment, 0,
-						   start, end, flags);
 }
 
 extern int drm_mm_pre_get(struct drm_mm *mm);

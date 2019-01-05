@@ -139,6 +139,14 @@ int drm_mm_pre_get(struct drm_mm *mm)
  * some basic allocator dumpers for debugging.
  */
 
+static struct drm_mm_node *drm_mm_search_free_in_range_generic(const struct drm_mm *mm,
+						u64 size,
+						unsigned alignment,
+						unsigned long color,
+						u64 start,
+						u64 end,
+						enum drm_mm_search_flags flags);
+
 static void drm_mm_insert_helper(struct drm_mm_node *hole_node,
 				 struct drm_mm_node *node,
 				 u64 size, unsigned alignment,
@@ -526,7 +534,7 @@ struct drm_mm_node *drm_mm_search_free_generic(const struct drm_mm *mm,
 	return best;
 }
 
-struct drm_mm_node *drm_mm_search_free_in_range_generic(const struct drm_mm *mm,
+static struct drm_mm_node *drm_mm_search_free_in_range_generic(const struct drm_mm *mm,
 							u64 size,
 							unsigned alignment,
 							unsigned long color,
