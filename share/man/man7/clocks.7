@@ -27,7 +27,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man7/clocks.7,v 1.9.2.5 2001/12/17 11:30:15 ru Exp $
 .\"
-.Dd May 2, 2009
+.Dd January 5, 2019
 .Dt CLOCKS 7
 .Os
 .Sh NAME
@@ -95,8 +95,7 @@ and throwing away information and resolution.
 .It
 The profiling clock.  This is a real clock with frequency 1024.
 It is used mainly by
-.Xr moncontrol 3 ,
-.Xr kgmon 8
+.Xr moncontrol 3
 and
 .Xr gprof 1 .
 Applications should determine its actual frequency using

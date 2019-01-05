@@ -46,9 +46,6 @@
 #include <sys/lock.h>
 #include <vm/vm_map.h>
 #include <sys/user.h>
-#ifdef GPROF 
-#include <sys/gmon.h>
-#endif
 
 #include <machine/smp.h>
 #include <machine_base/isa/isa_intr.h>

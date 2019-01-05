@@ -200,7 +200,6 @@ enum sysinit_sub_id {
 	SI_SUB_PROTO_IFATTACHDOMAIN	
 				= 0x8800001,	/* domain dependent data init */
 	SI_SUB_PROTO_END	= 0x8ffffff,	/* network protocol post-init */
-	SI_SUB_KPROF		= 0x9000000,	/* kernel profiling*/
 	SI_SUB_KICK_SCHEDULER	= 0xa000000,	/* start the timeout events*/
 	SI_SUB_INT_CONFIG_HOOKS	= 0xa800000,	/* Interrupts enabled config */
 

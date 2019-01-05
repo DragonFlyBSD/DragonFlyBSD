@@ -54,9 +54,8 @@ struct file_list {
  */
 #define NORMAL		1
 #define	INVISIBLE	2
-#define	PROFILING	3
-#define NODEPEND	4
-#define LOCAL		5
+#define NODEPEND	3
+#define LOCAL		4
 #define DEVDONE		0x80000000
 #define TYPEMASK	0x7fffffff
 
@@ -157,7 +156,6 @@ extern int	yyline;
 
 extern struct	file_list *ftab;
 
-extern int	profiling;
 extern int	debugging;
 
 extern int	maxusers;

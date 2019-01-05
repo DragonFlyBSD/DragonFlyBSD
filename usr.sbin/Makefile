@@ -157,7 +157,6 @@ SUBDIR+=nscd
 
 .if ${MACHINE_ARCH} == "x86_64"
 SUBDIR+= \
-	kgmon \
 	lptcontrol \
 	mptable \
 	rndcontrol

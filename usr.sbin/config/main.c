@@ -61,7 +61,6 @@ char 	srcdir[MAXPATHLEN - 32];
 
 static int no_config_clobber = TRUE;
 int	debugging;
-int	profiling;
 
 extern int yyparse(void);
 static void configfile(void);
@@ -85,7 +84,7 @@ main(int argc, char *argv[])
 	static const char *emus[] = { "linux" };
 #endif
 
-	while ((ch = getopt(argc, argv, "d:gpr")) != -1)
+	while ((ch = getopt(argc, argv, "d:gr")) != -1)
 		switch (ch) {
 		case 'd':
 			if (*destdir == '\0')
@@ -95,9 +94,6 @@ main(int argc, char *argv[])
 			break;
 		case 'g':
 			debugging++;
-			break;
-		case 'p':
-			profiling++;
 			break;
 		case 'r':
 			no_config_clobber = FALSE;

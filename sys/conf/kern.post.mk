@@ -273,8 +273,6 @@ ioconf.o:
 vers.c: $S/conf/newvers.sh $S/sys/param.h ${SYSTEM_DEP}
 	sh $S/conf/newvers.sh $S/..
 
-# XXX strictly, everything depends on Makefile because changes to ${PROF}
-# only appear there, but we don't handle that.
 vers.o:
 	${NORMAL_C} ${WERROR}
 

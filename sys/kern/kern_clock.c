@@ -104,10 +104,6 @@
 #include <machine/specialreg.h>
 #include <machine/clock.h>
 
-#ifdef GPROF
-#include <sys/gmon.h>
-#endif
-
 #ifdef DEBUG_PCTRACK
 static void do_pctrack(struct intrframe *frame, int which);
 #endif
@@ -814,10 +810,6 @@ hardclock(systimer_t info, int in_ipi, struct intrframe *frame)
 static void
 statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 {
-#ifdef GPROF
-	struct gmonparam *g;
-	int i;
-#endif
 	globaldata_t gd = mycpu;
 	thread_t td;
 	struct proc *p;
@@ -892,19 +884,6 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 			 */
 			--intr_nest;
 		}
-#ifdef GPROF
-		/*
-		 * Kernel statistics are just like addupc_intr, only easier.
-		 */
-		g = &_gmonparam;
-		if (g->state == GMON_PROF_ON && frame) {
-			i = CLKF_PC(frame) - g->lowpc;
-			if (i < g->textsize) {
-				i /= HISTFRACTION * sizeof(*g->kcount);
-				g->kcount[i]++;
-			}
-		}
-#endif
 
 #define IS_INTR_RUNNING	((frame && CLKF_INTR(intr_nest)) || CLKF_INTR_TD(td))
 

@@ -80,8 +80,7 @@ extern	db_addr_t	BP_REGS(db_regs_t *regs);
 #define inst_store(ins)		0
 
 /*
- * There no interesting addresses below _kstack = 0xefbfe000.  There
- * are small absolute values for GUPROF, but we don't want to see them.
+ * There no interesting addresses below _kstack = 0xefbfe000.
  * Treat "negative" addresses below _kstack as non-small to allow for
  * future reductions of _kstack and to avoid sign extension problems.
  *

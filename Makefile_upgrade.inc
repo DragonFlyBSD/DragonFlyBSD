@@ -3445,6 +3445,8 @@ TO_REMOVE+=/usr/share/man/man2/sigstack.2.gz
 TO_REMOVE+=/usr/include/sys/input.h
 TO_REMOVE+=/usr/include/sys/linux_types.h
 TO_REMOVE+=/etc/devd/uath.conf
+TO_REMOVE+=/usr/sbin/kgmon
+TO_REMOVE+=/usr/share/man/man8/kgmon.8.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

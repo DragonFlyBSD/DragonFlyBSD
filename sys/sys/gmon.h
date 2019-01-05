@@ -33,6 +33,8 @@
 #ifndef _SYS_GMON_H_
 #define _SYS_GMON_H_
 
+#include <sys/cdefs.h>
+
 #include <machine/profile.h>
 
 /*
@@ -49,14 +51,7 @@ struct gmonhdr {
 };
 #define GMONVERSION	0x00051879
 
-/*
- * Type of histogram counters used in the kernel.
- */
-#ifdef GPROF4
-#define	HISTCOUNTER	int64_t
-#else
 #define	HISTCOUNTER	unsigned short
-#endif
 
 /*
  * Fraction of text space to allocate for histogram counters.
@@ -188,24 +183,9 @@ extern struct gmonparam _gmonparam;
 #define	GMON_PROF_OFF	3
 #define	GMON_PROF_HIRES	4
 
-/*
- * Sysctl definitions for extracting profiling information from the kernel.
- */
-#define	GPROF_STATE	0	/* int: profiling enabling variable */
-#define	GPROF_COUNT	1	/* struct: profile tick count buffer */
-#define	GPROF_FROMS	2	/* struct: from location hash bucket */
-#define	GPROF_TOS	3	/* struct: destination/count structure */
-#define	GPROF_GMONPARAM	4	/* struct: profiling parameters (see above) */
-
-#ifndef _KERNEL
-
-#include <sys/cdefs.h>
-
 __BEGIN_DECLS
 void	moncontrol(int);
 void	monstartup(u_long, u_long);
 __END_DECLS
-
-#endif /* !_KERNEL */
 
 #endif /* !_SYS_GMON_H_ */

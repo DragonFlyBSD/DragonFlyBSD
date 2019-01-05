@@ -28,7 +28,7 @@
 .\"     @(#)config.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/usr.sbin/config/config.8,v 1.21.2.7 2003/04/23 07:32:39 brueffer Exp $
 .\"
-.Dd May 8, 2018
+.Dd January 5, 2019
 .Dt CONFIG 8
 .Os
 .Sh NAME
@@ -36,7 +36,7 @@
 .Nd build system configuration files
 .Sh SYNOPSIS
 .Nm
-.Op Fl gpr
+.Op Fl gr
 .Op Fl d Ar destdir
 .Ar SYSTEM_NAME
 .Sh DESCRIPTION
@@ -69,16 +69,6 @@ does not append
 to the directory given.
 .It Fl g
 Configure a system for debugging.
-.It Fl p
-Configure a system for profiling; for example,
-.Xr kgmon 8
-and
-.Xr gprof 1 .
-If two or more
-.Fl p
-options are supplied,
-.Nm
-configures a system for high resolution profiling.
 .It Fl r
 Remove the old compile directory (see below).
 .It Ar SYSTEM_NAME
@@ -219,8 +209,7 @@ specific files
 .Xr make 1 ,
 .Xr kernconf 5 ,
 .Xr build 7 ,
-.Xr vkernel 7 ,
-.Xr kgmon 8
+.Xr vkernel 7
 .Pp
 The
 .Sx SYNOPSIS

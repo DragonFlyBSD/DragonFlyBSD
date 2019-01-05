@@ -159,11 +159,6 @@ makefile(void)
 	fprintf(ofp, ".export MACHINE\n");
 	fprintf(ofp, ".export MACHINE_ARCH\n");
 	fprintf(ofp, "IDENT=");
-	if (profiling) {
-		/* Don't compile kernel profiling code for vkernel */
-		if (strncmp(platformname, "vkernel", 6) != 0)
-			fprintf(ofp, " -DGPROF");
-	}
 
 	if (cputype == 0) {
 		printf("cpu type must be specified\n");
@@ -174,10 +169,6 @@ makefile(void)
 		fprintf(ofp, "%s=%s\n", op->op_name, op->op_value);
 	if (debugging)
 		fprintf(ofp, "DEBUG=-g\n");
-	if (profiling) {
-		fprintf(ofp, "PROF=-pg\n");
-		fprintf(ofp, "PROFLEVEL=%d\n", profiling);
-	}
 	if (*srcdir != '\0')
 		fprintf(ofp,"S=%s\n", srcdir);
 	while (fgets(line, BUFSIZ, ifp) != 0) {
@@ -256,7 +247,7 @@ openit:
 next:
 	/*
 	 * filename    [ standard | mandatory | optional ] [ config-dependent ]
-	 *	[ dev* | profiling-routine ] [ no-obj ]
+	 *	[ dev* ] [ no-obj ]
 	 *	[ compile-with "compile rule" [no-implicit-rule] ]
 	 *      [ dependency "dependency-list"] [ before-depend ]
 	 *	[ clean "file-list"] [ warning "text warning" ]
@@ -430,10 +421,6 @@ nextparam:
 		printf("%s: `device-driver' flag obsolete.\n", fname);
 		exit(1);
 	}
-	if (strcmp(wd, "profiling-routine") == 0) {
-		filetype = PROFILING;
-		goto nextparam;
-	}
 	if (needs == NULL && nreqs == 1)
 		needs = strdup(wd);
 	if (isdup)
@@ -501,8 +488,6 @@ doneparam:
 		    fname, this);
 		exit(1);
 	}
-	if (filetype == PROFILING && profiling == 0)
-		goto next;
 	if (tp == NULL)
 		tp = new_fent();
 	tp->f_fn = this;
@@ -740,12 +725,6 @@ do_rules(FILE *f)
 
 			case NORMAL:
 				ftype = "NORMAL";
-				break;
-
-			case PROFILING:
-				if (!profiling)
-					continue;
-				ftype = "PROFILE";
 				break;
 
 			default:

@@ -33,41 +33,7 @@
 #ifndef _CPU_PROFILE_H_
 #define	_CPU_PROFILE_H_
 
-#ifdef _KERNEL
-
-/*
- * Config generates something to tell the compiler to align functions on 16
- * byte boundaries.  A strict alignment is good for keeping the tables small.
- */
-#define	FUNCTION_ALIGNMENT	16
-
-/*
- * The kernel uses assembler stubs instead of unportable inlines.
- * This is mainly to save a little time when profiling is not enabled,
- * which is the usual case for the kernel.
- */
-#define	_MCOUNT_DECL void mcount
-#define	MCOUNT
-
-#ifdef GUPROF
-#define	CALIB_SCALE	1000
-#define	KCOUNT(p,index)	((p)->kcount[(index) \
-			 / (HISTFRACTION * sizeof(HISTCOUNTER))])
-#define	MCOUNT_DECL(s)
-#define	MCOUNT_ENTER(s)
-#define	MCOUNT_EXIT(s)
-#define	PC_TO_I(p, pc)	((uintfptr_t)(pc) - (uintfptr_t)(p)->lowpc)
-#else
-#define	MCOUNT_DECL(s)	u_long s;
-extern int	mcount_lock;
-#define	MCOUNT_ENTER(s)	{ s = read_rflags(); disable_intr(); \
- 			  while (!atomic_cmpset_acq_int(&mcount_lock, 0, 1)) \
-			  	/* nothing */ ; }
-#define	MCOUNT_EXIT(s)	{ atomic_store_rel_int(&mcount_lock, 0); \
-			  write_rflags(s); }
-#endif /* GUPROF */
-
-#else /* !_KERNEL */
+#include <sys/cdefs.h>
 
 #define	FUNCTION_ALIGNMENT	4
 
@@ -111,54 +77,16 @@ mcount()		\
 
 typedef	unsigned long	uintfptr_t;
 
-#endif /* _KERNEL */
-
 /*
  * An unsigned integral type that can hold non-negative difference between
  * function pointers.
  */
 typedef	unsigned long	fptrdiff_t;
 
-#ifdef _KERNEL
-
-void	mcount(uintfptr_t frompc, uintfptr_t selfpc);
-void	kmupetext(uintfptr_t nhighpc);
-
-#ifdef GUPROF
-struct gmonparam;
-
-void	nullfunc_loop_profiled(void);
-void	nullfunc_profiled(void);
-void	startguprof(struct gmonparam *p);
-void	stopguprof(struct gmonparam *p);
-#else
-#define	startguprof(p)
-#define	stopguprof(p)
-#endif /* GUPROF */
-
-#else /* !_KERNEL */
-
-#include <sys/cdefs.h>
-
 __BEGIN_DECLS
 #ifdef __GNUC__
 void	mcount(void) __asm(".mcount");
 #endif
 __END_DECLS
-
-#endif /* _KERNEL */
-
-#ifdef GUPROF
-/* XXX doesn't quite work outside kernel yet. */
-extern int	cputime_bias;
-
-__BEGIN_DECLS
-int	cputime(void);
-void	empty_loop(void);
-void	mexitcount(uintfptr_t selfpc);
-void	nullfunc(void);
-void	nullfunc_loop(void);
-__END_DECLS
-#endif
 
 #endif /* !_CPU_PROFILE_H_ */

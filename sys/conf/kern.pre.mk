@@ -66,15 +66,7 @@ CFLAGS=	${COPTFLAGS} ${KCFLAGS} ${CWARNFLAGS} ${DEBUG} ${COPTS}
 # XXX LOCORE means "don't declare C stuff" not "for locore.s".
 ASM_CFLAGS= -x assembler-with-cpp -DLOCORE ${CFLAGS:N-flto}
 
-DEFINED_PROF=	${PROF}
-.if defined(PROF)
-CFLAGS+=	-falign-functions=16
-.if ${PROFLEVEL} >= 2
-IDENT+=	-DGPROF4 -DGUPROF
-.endif
-.endif
-
-# Put configuration-specific C flags last (except for ${PROF}) so that they
+# Put configuration-specific C flags last so that they
 # can override the others.
 CFLAGS+=	${CONF_CFLAGS}
 
@@ -83,13 +75,12 @@ CFLAGS+=	${CONF_CFLAGS}
 CFLAGS+= -MD
 .endif
 
-NORMAL_C= ${CC} -c ${CFLAGS} ${PROF} ${.IMPSRC}
-NORMAL_C_C= ${CC} -c ${CFLAGS} ${PROF} ${.IMPSRC}
+NORMAL_C= ${CC} -c ${CFLAGS} ${.IMPSRC}
+NORMAL_C_C= ${CC} -c ${CFLAGS} ${.IMPSRC}
 NORMAL_S= ${CC} -c ${ASM_CFLAGS} ${.IMPSRC}
-PROFILE_C= ${CC} -c ${CFLAGS} ${.IMPSRC}
 
 NORMAL_M= awk -f $S/tools/makeobjops.awk -- -c $<; \
-	${CC} -c ${CFLAGS} ${PROF} ${.PREFIX}.c
+	${CC} -c ${CFLAGS} ${.PREFIX}.c
 
 NORMAL_FW= uudecode -o ${.TARGET} ${.ALLSRC}
 NORMAL_FWO= ${LD} -b binary -d -warn-common -r -o ${.TARGET} ${.ALLSRC:M*.fw}
