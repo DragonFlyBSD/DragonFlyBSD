@@ -169,7 +169,6 @@ enum sysinit_sub_id {
 	 * Finish up core kernel initialization and set up the process
 	 * abstraction.
 	 */
-	SI_BOOT2_BIOS		= 0x1d00000,
 	SI_BOOT2_MACHDEP	= 0x1d80000,
 	SI_BOOT2_KLD		= 0x1e00000,
 	SI_BOOT2_VMM		= 0x1e40000,
@@ -188,7 +187,6 @@ enum sysinit_sub_id {
 	SI_SUB_ISWARM		= 0x3c00000,	/* No longer in cold boot */
 	SI_SUB_VFS		= 0x4000000,	/* virtual file system*/
 	SI_SUB_HELPER_THREADS	= 0x5400000,	/* misc helper threads */
-	SI_SUB_CLIST		= 0x5800000,	/* clists*/
 	SI_SUB_SYSV_SHM		= 0x6400000,	/* System V shared memory*/
 	SI_SUB_SYSV_SEM		= 0x6800000,	/* System V semaphores*/
 	SI_SUB_SYSV_MSG		= 0x6C00000,	/* System V message queues*/
