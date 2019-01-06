@@ -380,7 +380,6 @@ entry_parser(char **tokens, char **options, int type)
 			if ((error = tc_api_task_set(tcplay_task, "dev", go.device))) {
 				fprintf(stderr, "tc_api_task_set dev failed\n");
 				goto tcplay_err;
-				tc_api_uninit();
 			}
 			if ((error = tc_api_task_set(tcplay_task, "map_name",
 			    go.map_name))) {
