@@ -1747,14 +1747,12 @@ priv_script_go(void)
 	pid = fork();
 	if (pid < 0) {
 		error("fork: %m");
-		wstatus = 0;
 	} else if (pid) {
 		do {
 			wpid = wait(&wstatus);
 		} while (wpid != pid && wpid > 0);
 		if (wpid < 0) {
 			error("wait: %m");
-			wstatus = 0;
 		}
 	} else {
 		execve(scriptName, argv, envp);
