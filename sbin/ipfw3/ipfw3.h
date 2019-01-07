@@ -161,7 +161,7 @@ int	show_filter(ipfw_insn *cmd, char *word, int type);
 void	help(void);
 void	rule_delete(int ac, char **av);
 void	rule_list(int ac, char **av);
-void	rule_add(int ac, char **av);
+void	rule_add(int ac, char **av, uint8_t insert);
 void	rule_zero(int ac, char **av);
 void	rule_flush(void);
 void	rule_show(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth);

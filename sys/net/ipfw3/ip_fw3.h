@@ -345,6 +345,7 @@ struct ipfw_ioc_rule {
 	uint16_t	cmd_len;	/* # of 32-bit words in cmd	*/
 	uint16_t	rulenum;	/* rule number			*/
 	uint8_t		set;		/* rule set (0..31)		*/
+	uint8_t         insert;         /* insert or append     	*/
 
 	/* Rule set information */
 	uint32_t	sets;	/* disabled rule sets		*/

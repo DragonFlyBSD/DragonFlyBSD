@@ -351,7 +351,7 @@ next_cmd(ipfw_insn *cmd)
  *
  */
 void
-rule_add(int ac, char *av[])
+rule_add(int ac, char *av[], uint8_t insert)
 {
 	/*
 	 * rules are added into the 'rulebuf' and then copied in
@@ -383,6 +383,8 @@ rule_add(int ac, char *av[])
 	cmd = (ipfw_insn *)cmdbuf;
 	action = (ipfw_insn *)actbuf;
 	other = (ipfw_insn *)othbuf;
+
+	rule->insert = insert;
 
 	NEED2("need more parameters");
 	NEXT_ARG;
@@ -1028,7 +1030,10 @@ ipfw3_main(int ac, char **av)
 
 	if (!strncmp(*av, "add", strlen(*av))) {
 		module_load();
-		rule_add(ac, av);
+		rule_add(ac, av, 0);
+	} else if (!strncmp(*av, "insert", strlen(*av))) {
+		module_load();
+		rule_add(ac, av, 1);
 	} else if (!strncmp(*av, "delete", strlen(*av))) {
 		rule_delete(ac, av);
 	} else if (!strncmp(*av, "flush", strlen(*av))) {

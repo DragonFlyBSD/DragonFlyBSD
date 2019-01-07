@@ -663,8 +663,14 @@ add_rule_dispatch(netmsg_t nmsg)
 
 	for (prev = NULL, next = ctx->rules;
 		next; prev = next, next = next->next) {
-		if (next->rulenum > ioc_rule->rulenum) {
-			break;
+		if (ioc_rule->insert) {
+			if (next->rulenum >= ioc_rule->rulenum) {
+				break;
+			}
+		} else {
+			if (next->rulenum > ioc_rule->rulenum) {
+				break;
+			}
 		}
 	}
 	KASSERT(next != NULL, ("no default rule?!"));
