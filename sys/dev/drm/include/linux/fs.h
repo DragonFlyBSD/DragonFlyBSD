@@ -63,4 +63,18 @@ struct file_operations {
 
 extern loff_t noop_llseek(struct file *file, loff_t offset, int whence);
 
+static inline unsigned long
+invalidate_mapping_pages(struct vm_object *obj, pgoff_t start, pgoff_t end)
+{
+	int start_count, end_count, clean_only = 1;
+
+	VM_OBJECT_LOCK(obj);
+	start_count = obj->resident_page_count;
+	/* Only non-dirty pages must be freed or invalidated */
+	vm_object_page_remove(obj, start, end, clean_only);
+	end_count = obj->resident_page_count;
+	VM_OBJECT_UNLOCK(obj);
+	return (start_count - end_count);
+}
+
 #endif	/* _LINUX_FS_H_ */
