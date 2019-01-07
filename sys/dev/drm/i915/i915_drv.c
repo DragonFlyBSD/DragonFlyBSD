@@ -28,14 +28,18 @@
  */
 
 #include <linux/device.h>
+#include <linux/acpi.h>
 #include <drm/drmP.h>
 #include <drm/i915_drm.h>
 #include "i915_drv.h"
 #include "i915_trace.h"
 #include "intel_drv.h"
 
+#include <linux/apple-gmux.h>
 #include <linux/console.h>
 #include <linux/module.h>
+#include <linux/pm_runtime.h>
+#include <linux/vgaarb.h>
 #include <linux/vga_switcheroo.h>
 #include <drm/drm_crtc_helper.h>
 
@@ -860,9 +864,7 @@ static int i915_drm_resume(struct drm_device *dev)
 	dev_priv->modeset_restore = MODESET_DONE;
 	mutex_unlock(&dev_priv->modeset_restore_lock);
 
-#if 0
 	intel_opregion_notify_adapter(dev, PCI_D0);
-#endif
 
 	drm_kms_helper_poll_enable(dev);
 
@@ -1777,9 +1779,11 @@ static const struct vm_operations_struct i915_gem_vm_ops = {
 	.open = drm_gem_vm_open,
 	.close = drm_gem_vm_close,
 };
+#endif
 
 static const struct file_operations i915_driver_fops = {
 	.owner = THIS_MODULE,
+#if 0
 	.open = drm_open,
 	.release = drm_release,
 	.unlocked_ioctl = drm_ioctl,
@@ -1790,8 +1794,8 @@ static const struct file_operations i915_driver_fops = {
 	.compat_ioctl = i915_compat_ioctl,
 #endif
 	.llseek = noop_llseek,
-};
 #endif
+};
 
 static struct cdev_pager_ops i915_gem_vm_ops = {
 	.cdev_pg_fault	= i915_gem_fault,
@@ -1812,6 +1816,7 @@ static struct drm_driver driver = {
 	.lastclose = i915_driver_lastclose,
 	.preclose = i915_driver_preclose,
 	.postclose = i915_driver_postclose,
+	.set_busid = drm_pci_set_busid,
 
 #if defined(CONFIG_DEBUG_FS)
 	.debugfs_init = i915_debugfs_init,
@@ -1820,11 +1825,17 @@ static struct drm_driver driver = {
 	.gem_free_object = i915_gem_free_object,
 	.gem_vm_ops = &i915_gem_vm_ops,
 
+	.prime_handle_to_fd = drm_gem_prime_handle_to_fd,
+	.prime_fd_to_handle = drm_gem_prime_fd_to_handle,
+	.gem_prime_export = i915_gem_prime_export,
+	.gem_prime_import = i915_gem_prime_import,
+
 	.dumb_create = i915_gem_dumb_create,
 	.dumb_map_offset = i915_gem_mmap_gtt,
 	.dumb_destroy = drm_gem_dumb_destroy,
 	.ioctls = i915_ioctls,
 	.sysctl_init = i915_sysctl_init,
+	.fops = &i915_driver_fops,
 	.name = DRIVER_NAME,
 	.desc = DRIVER_DESC,
 	.date = DRIVER_DATE,
