@@ -9,6 +9,6 @@ SRCS+=	opt_acpi.h
 SRCS+=	acpi_if.h bus_if.h device_if.h isa_if.h pci_if.h smbus_if.h
 
 KCFLAGS+= -I${.CURDIR}/../../../contrib/dev/acpica/source/include
-#CFLAGS+=-DIPMI_DEBUG -DKCS_DEBUG -DSMIC_DEBUG -DSSIF_DEBUG -DSSIF_ERROR_DEBUG -DSSIF_RETRY_DEBUG
+#KCFLAGS+=-DIPMI_DEBUG -DKCS_DEBUG -DSMIC_DEBUG -DSSIF_DEBUG -DSSIF_ERROR_DEBUG -DSSIF_RETRY_DEBUG
 
 .include <bsd.kmod.mk>

@@ -29,6 +29,6 @@ SRCS+=	bus_if.h device_if.h pci_if.h opt_inet.h opt_inet6.h
 
 # With VMXNET3_LEGACY_TX, the driver will use the non-multiqueue
 # capable if_start interface.
-#CFLAGS+= -DVMXNET3_LEGACY_TX
+#KCFLAGS+= -DVMXNET3_LEGACY_TX
 
 .include <bsd.kmod.mk>

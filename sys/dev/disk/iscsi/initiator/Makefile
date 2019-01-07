@@ -7,6 +7,6 @@ SRCS+= opt_cam.h opt_iscsi_initiator.h
 SRCS+= bus_if.h device_if.h
 
 # Debugging
-#CFLAGS+= -g -DISCSI_INITIATOR_DEBUG=9
+#KCFLAGS+= -g -DISCSI_INITIATOR_DEBUG=9
 
 .include <bsd.kmod.mk>

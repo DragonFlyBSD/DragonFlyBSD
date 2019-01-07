@@ -5,6 +5,7 @@ SRCS		=  ciss.c
 SRCS		+= opt_cam.h
 SRCS		+= device_if.h bus_if.h pci_if.h
 
-#CFLAGS		+=-DCISS_DEBUG
+#KCFLAGS		+=-DCISS_DEBUG
+#SRCS		+=opt_ddb.h
 
 .include <bsd.kmod.mk>

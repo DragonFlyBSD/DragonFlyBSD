@@ -6,6 +6,6 @@ SRCS+=	mps_config.c mps_mapping.c mps_sas_lsi.c
 SRCS+=	opt_cam.h
 SRCS+=	device_if.h bus_if.h pci_if.h
 
-#CFLAGS += -DMPS_DEBUG
+#KCFLAGS += -DMPS_DEBUG
 
 .include <bsd.kmod.mk>
