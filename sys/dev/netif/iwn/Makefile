@@ -1,4 +1,3 @@
-
 # $FreeBSD: head/sys/modules/iwn/Makefile 253911 2013-08-03 08:21:35Z uqs $
 
 KMOD    = if_iwn
