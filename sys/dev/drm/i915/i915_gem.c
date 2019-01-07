@@ -37,6 +37,7 @@
 #include <linux/slab.h>
 #include <linux/swap.h>
 #include <linux/pci.h>
+#include <linux/dma-buf.h>
 
 #include <sys/mman.h>
 #include <vm/vm_map.h>
@@ -2302,8 +2303,8 @@ i915_gem_object_invalidate(struct drm_i915_gem_object *obj)
 
 #if 0
 	mapping = file_inode(obj->base.filp)->i_mapping,
-	invalidate_mapping_pages(mapping, 0, (loff_t)-1);
 #endif
+	invalidate_mapping_pages(obj->base.filp, 0, (loff_t)-1);
 }
 
 static void
