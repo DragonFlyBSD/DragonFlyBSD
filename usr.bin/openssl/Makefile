@@ -21,6 +21,4 @@ SRCS=	apps.c apps_posix.c asn1pars.c ca.c certhash.c ciphers.c cms.c crl.c \
 
 .include <bsd.prog.mk>
 
-.PATH:	${LIBRESSL_SRC}/apps/openssl \
-	${.CURDIR}/man
-
+.PATH:	${LIBRESSL_SRC}/apps/openssl
