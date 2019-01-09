@@ -2413,9 +2413,25 @@ do_next:
 	for (off = 0; off < msgbuf_size; off += PAGE_SIZE) {
 		pmap_kenter((vm_offset_t)msgbufp + off, avail_end + off);
 	}
+
 	/* Try to get EFI framebuffer working as early as possible */
-	if (have_efi_framebuffer)
-		efi_fb_init_vaddr(1);
+	{
+		/*
+		 * HACK: Setting machdep.hack_efifb_probe_early=1 works around
+		 * an issue that occurs on some recent systems where there is
+		 * no system console when booting via UEFI. Bug #3167.
+		 *
+		 * NOTE: This is not intended to be a permant fix.
+		 */
+
+		int hack_efifb_probe_early = 0;
+		TUNABLE_INT_FETCH("machdep.hack_efifb_probe_early", &hack_efifb_probe_early);
+
+		if (hack_efifb_probe_early)
+			probe_efi_fb(1);
+		else if (have_efi_framebuffer)
+			efi_fb_init_vaddr(1);
+	}
 }
 
 struct machintr_abi MachIntrABI;
