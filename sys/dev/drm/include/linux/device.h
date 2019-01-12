@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2014-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,6 +44,9 @@ struct device {
 	struct kobject kobj;
 
 	device_t	bsddev;
+};
+
+struct device_driver {
 };
 
 #define	dev_dbg(dev, fmt, ...)						\

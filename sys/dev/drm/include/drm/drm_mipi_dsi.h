@@ -276,9 +276,7 @@ int mipi_dsi_dcs_set_pixel_format(struct mipi_dsi_device *dsi, u8 format);
  * @shutdown: called at shutdown time to quiesce the device
  */
 struct mipi_dsi_driver {
-#if 0
 	struct device_driver driver;
-#endif
 	int(*probe)(struct mipi_dsi_device *dsi);
 	int(*remove)(struct mipi_dsi_device *dsi);
 	void (*shutdown)(struct mipi_dsi_device *dsi);
