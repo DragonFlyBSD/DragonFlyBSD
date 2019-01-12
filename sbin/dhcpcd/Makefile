@@ -26,7 +26,7 @@ CFLAGS+=	-DDHCP6
 SRCS+=		dhcp6.c
 
 .PATH:		${DISTDIR}/compat
-SRCS+=		pidfile.c reallocarray.c strtoi.c strtou.c
+SRCS+=		pidfile.c strtoi.c strtou.c
 .PATH:		${DISTDIR}/compat/crypt
 SRCS+=		hmac.c
 

@@ -190,9 +190,10 @@
  * 500317 - add wait6() and waitid() syscalls
  * 500400 - 5.4 release
  * 500500 - 5.5 development
+ * 500501 - reallocarray() added to libc
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500500	/* propagated to newvers */
+#define __DragonFly_version 500501	/* propagated to newvers */
 
 #include <sys/_null.h>
 

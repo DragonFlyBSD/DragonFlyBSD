@@ -8,7 +8,6 @@
 #define	TAILQ_FOREACH_SAFE	TAILQ_FOREACH_MUTABLE
 #define	HAVE_KQUEUE
 #define	HAVE_REALLOCARRAY
-#include			"compat/reallocarray.h"
 #include			"compat/pidfile.h"
 #include			"compat/strtoi.h"
 #define	HAVE_MD5_H

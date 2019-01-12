@@ -116,6 +116,10 @@ DF504.0 {
     strsuftollx;
 };
 
+DF506.0 {
+    reallocarray;
+};
+
 /*
  * ignore WEAK:  __pthread_cxa_finalize;
  */
