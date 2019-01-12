@@ -31,7 +31,7 @@ SRCS+=	authfd.c authfile.c bufaux.c bufbn.c bufec.c buffer.c \
 # Portability layer
 SRCS+=	bcrypt_pbkdf.c blowfish.c bsd-misc.c explicit_bzero.c \
 	getrrsetbyname.c glob.c openssl-compat.c port-tun.c \
-	reallocarray.c realpath.c recallocarray.c timingsafe_bcmp.c
+	realpath.c recallocarray.c timingsafe_bcmp.c
 
 # only when USE_BUILTIN_RIJNDAEL
 #SRCS+=	cipher-aes.c

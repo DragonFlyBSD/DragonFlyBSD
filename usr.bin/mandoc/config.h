@@ -12,6 +12,7 @@
 #define HAVE_FGETLN
 #define HAVE_GETSUBOPT
 #define HAVE_MMAP
+#define HAVE_REALLOCARRAY
 #define HAVE_STRCASESTR
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY

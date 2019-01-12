@@ -19,6 +19,6 @@ SRCS+=	eqn_html.c html.c man_html.c mdoc_html.c tbl_html.c
 SRCS+=	mdoc_man.c
 SRCS+=	eqn_term.c man_term.c mdoc_term.c term.c term_ascii.c term_ps.c \
 	tbl_term.c
-SRCS+=	main.c out.c tree.c compat_reallocarray.c mandoc_aux.c
+SRCS+=	main.c out.c tree.c mandoc_aux.c
 
 .include <bsd.prog.mk>
