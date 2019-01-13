@@ -1371,18 +1371,14 @@ scioctl(struct dev_ioctl_args *ap)
 	    lwkt_reltoken(&vga_token);
 	    return EPERM;
 	}
-#if defined(__i386__)
-	curthread->td_lwp->lwp_md.md_regs->tf_eflags |= PSL_IOPL;
-#elif defined(__x86_64__)
+#if defined(__x86_64__)
 	curthread->td_lwp->lwp_md.md_regs->tf_rflags |= PSL_IOPL;
 #endif
 	lwkt_reltoken(&vga_token);
 	return 0;
 
     case KDDISABIO:     	/* disallow io operations (default) */
-#if defined(__i386__)
-	curthread->td_lwp->lwp_md.md_regs->tf_eflags &= ~PSL_IOPL;
-#elif defined(__x86_64__)
+#if defined(__x86_64__)
 	curthread->td_lwp->lwp_md.md_regs->tf_rflags &= ~PSL_IOPL;
 #endif
         lwkt_reltoken(&vga_token);

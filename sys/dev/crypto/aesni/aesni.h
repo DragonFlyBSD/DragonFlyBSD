@@ -35,15 +35,11 @@
 
 #include <opencrypto/cryptodev.h>
 
-#if defined(__x86_64__) || defined(__i386__)
+#if defined(__x86_64__)
 #include <machine/cpufunc.h>
 #include <machine/cputypes.h>
 #include <machine/md_var.h>
 #include <machine/specialreg.h>
-#endif
-#if defined(__i386__)
-#include <machine/npx.h>
-#elif defined(__x86_64__)
 #include <machine/npx.h>
 #endif
 
