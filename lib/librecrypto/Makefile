@@ -259,6 +259,6 @@ SRCS=		${ASM_X86_64_ELF} ${SRC_TOP} ${SRC_AES} ${SRC_ASN1} \
 	${LIBRESSL_SRC}/include/openssl
 
 # compat/
-SRCS+=	explicit_bzero.c reallocarray.c timingsafe_bcmp.c timingsafe_memcmp.c
+SRCS+=	explicit_bzero.c timingsafe_bcmp.c timingsafe_memcmp.c
 
 .include <bsd.lib.mk>
