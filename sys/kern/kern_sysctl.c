@@ -51,6 +51,8 @@
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 
+#include "opt_sysctl.h"
+
 static MALLOC_DEFINE(M_SYSCTL, "sysctl", "sysctl internal magic");
 static MALLOC_DEFINE(M_SYSCTLOID, "sysctloid", "sysctl dynamic oids");
 
@@ -524,6 +526,7 @@ sysctl_register_all(void *arg)
 }
 SYSINIT(sysctl, SI_BOOT1_POST, SI_ORDER_ANY, sysctl_register_all, 0);
 
+#ifdef SYSCTL_DEBUG
 /*
  * "Staff-functions"
  *
@@ -605,6 +608,7 @@ sysctl_sysctl_debug(SYSCTL_HANDLER_ARGS)
 
 SYSCTL_PROC(_sysctl, 0, debug, CTLTYPE_STRING | CTLFLAG_RD,
 	    0, 0, sysctl_sysctl_debug, "-", "");
+#endif /* SYSCTL_DEBUG */
 
 static int
 sysctl_sysctl_name(SYSCTL_HANDLER_ARGS)
