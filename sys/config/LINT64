@@ -200,6 +200,14 @@ options 	INVARIANTS
 options 	DIAGNOSTIC
 
 #
+# SYSCTL_DEBUG enables a 'sysctl' debug tree that can be used to dump the
+# contents of the registered sysctl nodes on the console.  It is disabled by
+# default because it generates excessively verbose console output that can
+# interfere with serial console operation.
+#
+options 	SYSCTL_DEBUG
+
+#
 # This option let some drivers co-exist that can't co-exist in a running
 # system.  This is used to be able to compile all kernel code in one go for
 # quality assurance purposes (like this file, which the option takes it name
