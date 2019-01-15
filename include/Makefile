@@ -56,7 +56,7 @@ LSUBDIRS= \
 	bus/cam bus/pccard bus/pci bus/isa bus/ppbus bus/smbus bus/u4b \
 	dev/disk/dm \
 	dev/disk/mpt/mpilib \
-	dev/misc/lpt dev/misc/ppi dev/misc/putter \
+	dev/misc/lpt dev/misc/ppi \
 	dev/netif/wi \
 	dev/raid/ciss dev/raid/mfi \
 	dev/smbus/smb \
@@ -85,7 +85,7 @@ LSUBDIRS= \
 	netgraph7/pptpgre netgraph7/rfc1490 netgraph7/socket \
 	netgraph7/tcpmss netgraph7/tee netgraph7/tty netgraph7/vjc \
 	netproto/802_11 netproto/mpls netproto/smb \
-	vfs/isofs/cd9660 vfs/puffs \
+	vfs/isofs/cd9660 \
 	vfs/msdosfs vfs/nfs vfs/ntfs \
 	vfs/smbfs vfs/udf vfs/ufs vfs/hammer vfs/hammer2 \
 	vfs/autofs vfs/tmpfs

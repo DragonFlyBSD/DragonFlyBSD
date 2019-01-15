@@ -273,8 +273,6 @@
             ..
             ppi
             ..
-            putter
-            ..
         ..
         netif
             wi
@@ -519,8 +517,6 @@
         nfs
         ..
         ntfs
-        ..
-        puffs
         ..
         smbfs
         ..

@@ -249,10 +249,6 @@
             ..
             printing
             ..
-            puffs
-                pnullfs
-                ..
-            ..
             rconfig
             ..
             scsi_target

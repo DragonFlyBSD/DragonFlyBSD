@@ -12,6 +12,13 @@
 +         UPGRADING DRAGONFLY FROM 5.4 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+PUFFS, PUTTER AND LIBREFUSE REMOVED
+-----------------------------------
+
+The puffs(4)/putter(4) subsystem has been removed, along with librefuse,
+libpuffs, and the mount_psshfs(8) utility. All of these have never been
+working correctly.
+
 FFS_ROOT OPTION REMOVED
 -----------------------
 

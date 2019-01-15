@@ -191,9 +191,10 @@
  * 500400 - 5.4 release
  * 500500 - 5.5 development
  * 500501 - reallocarray() added to libc
+ * 500502 - puffs etc. removed
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500501	/* propagated to newvers */
+#define __DragonFly_version 500502	/* propagated to newvers */
 
 #include <sys/_null.h>
 

@@ -83,8 +83,6 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libpcap \
 	libposix1e \
 	libprop \
-	libpuffs \
-	librefuse \
 	librpcsvc \
 	libsdp \
 	${_libsm} \

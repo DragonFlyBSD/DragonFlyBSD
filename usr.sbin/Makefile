@@ -84,7 +84,6 @@ SUBDIR= 802_11 \
 	prefix \
 	procctl \
 	pstat \
-	puffs \
 	pw \
 	pwd_mkdb \
 	quot \

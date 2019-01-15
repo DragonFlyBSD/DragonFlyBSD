@@ -467,7 +467,6 @@ options 	MSDOSFS			#MS DOS filesystem
 options 	NTFS			#NT filesystem
 options 	NULLFS			#NULL filesystem
 options 	PROCFS			#Process filesystem
-options		PUFFS			#Userspace file systems (e.g. ntfs-3g & sshfs)
 options 	SMBFS			#SMB/CIFS filesystem
 options 	TMPFS			#Temporary filesystem
 options		UDF			#UDF filesystem
@@ -717,7 +716,6 @@ pseudo-device	pty		# Pseudo ttys
 pseudo-device	gzip		# Exec gzipped a.out's
 pseudo-device	md		# Memory/malloc disk
 pseudo-device	vn		# File image "disks"
-pseudo-device	putter		# for puffs and pud
 pseudo-device	snp		# Snoop device - to look at pty/vty/etc..
 pseudo-device	ccd	4	# Concatenated disk driver
 
