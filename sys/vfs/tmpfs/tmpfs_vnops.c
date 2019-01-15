@@ -450,6 +450,12 @@ tmpfs_fsync(struct vop_fsync_args *ap)
 
 	node = VP_TO_TMPFS_NODE(vp);
 
+	/*
+	 * tmpfs vnodes typically remain dirty, avoid long syncer scans
+	 * by forcing removal from the syncer list.
+	 */
+	vn_syncer_remove(vp, 1);
+
 	tmpfs_update(vp);
 	if (vp->v_type == VREG) {
 		if (vp->v_flag & VRECLAIMED) {
@@ -459,6 +465,7 @@ tmpfs_fsync(struct vop_fsync_args *ap)
 				vfsync(ap->a_vp, ap->a_waitfor, 1, NULL, NULL);
 		}
 	}
+
 	return 0;
 }
 
