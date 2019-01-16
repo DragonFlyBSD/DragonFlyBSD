@@ -41,6 +41,11 @@
 .Ft char *
 .Fn fgetln "FILE *stream" "size_t *len"
 .Sh DESCRIPTION
+Using this function is error-prone in multiple ways;
+consider using the safer and more portable function
+.Xr getline 3
+instead.
+.Pp
 The
 .Fn fgetln
 function
