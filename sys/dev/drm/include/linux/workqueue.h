@@ -3,7 +3,7 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
- * Copyright (c) 2014-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2014-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -45,7 +45,7 @@ struct workqueue_struct {
 struct work_struct {
 	struct	task 		work_task;
 	struct	taskqueue	*taskqueue;
-	void			(*fn)(struct work_struct *);
+	void			(*func)(struct work_struct *);
 };
 
 struct delayed_work {
@@ -67,21 +67,21 @@ _work_fn(void *context, int pending)
 	struct work_struct *work;
 
 	work = context;
-	work->fn(work);
+	work->func(work);
 }
 
-#define	INIT_WORK(work, func) 	 					\
+#define	INIT_WORK(work, _func) 	 					\
 do {									\
-	(work)->fn = (func);						\
+	(work)->func = (_func);						\
 	(work)->taskqueue = NULL;					\
 	TASK_INIT(&(work)->work_task, 0, _work_fn, (work));		\
 } while (0)
 
-#define INIT_WORK_ONSTACK(work, func)	INIT_WORK(work, func)
+#define INIT_WORK_ONSTACK(work, _func)	INIT_WORK(work, _func)
 
-#define INIT_DELAYED_WORK(_work, func)					\
+#define INIT_DELAYED_WORK(_work, _func)					\
 do {									\
-	INIT_WORK(&(_work)->work, func);				\
+	INIT_WORK(&(_work)->work, _func);				\
 	callout_init_mp(&(_work)->timer);				\
 } while (0)
 
