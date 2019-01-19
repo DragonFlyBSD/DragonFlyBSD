@@ -218,50 +218,8 @@ drm_gem_object_reference(struct drm_gem_object *obj)
 	kref_get(&obj->refcount);
 }
 
-/**
- * drm_gem_object_unreference - release a GEM BO reference
- * @obj: GEM buffer object
- *
- * This releases a reference to @obj. Callers must hold the dev->struct_mutex
- * lock when calling this function, even when the driver doesn't use
- * dev->struct_mutex for anything.
- *
- * For drivers not encumbered with legacy locking use
- * drm_gem_object_unreference_unlocked() instead.
- */
-static inline void
-drm_gem_object_unreference(struct drm_gem_object *obj)
-{
-	if (obj != NULL) {
-#if 0
-		WARN_ON(!mutex_is_locked(&obj->dev->struct_mutex));
-#endif
-
-		kref_put(&obj->refcount, drm_gem_object_free);
-	}
-}
-
-/**
- * drm_gem_object_unreference_unlocked - release a GEM BO reference
- * @obj: GEM buffer object
- *
- * This releases a reference to @obj. Callers must not hold the
- * dev->struct_mutex lock when calling this function.
- */
-static inline void
-drm_gem_object_unreference_unlocked(struct drm_gem_object *obj)
-{
-	struct drm_device *dev;
-
-	if (!obj)
-		return;
-
-	dev = obj->dev;
-	if (kref_put_mutex(&obj->refcount, drm_gem_object_free, &dev->struct_mutex))
-		mutex_unlock(&dev->struct_mutex);
-	else
-		might_lock(&dev->struct_mutex);
-}
+void drm_gem_object_unreference_unlocked(struct drm_gem_object *obj);
+void drm_gem_object_unreference(struct drm_gem_object *obj);
 
 int drm_gem_handle_create(struct drm_file *file_priv,
 			  struct drm_gem_object *obj,
