@@ -225,6 +225,11 @@ drm_gem_remove_prime_handles(struct drm_gem_object *obj, struct drm_file *filp)
 	mutex_unlock(&filp->prime.lock);
 }
 
+static void drm_gem_object_ref_bug(struct kref *list_kref)
+{
+	BUG();
+}
+
 /**
  * drm_gem_object_handle_free - release resources bound to userspace handles
  * @obj: GEM object to clean up.
@@ -243,6 +248,13 @@ static void drm_gem_object_handle_free(struct drm_gem_object *obj)
 	if (obj->name) {
 		idr_remove(&dev->object_name_idr, obj->name);
 		obj->name = 0;
+	/*
+	 * The object name held a reference to this object, drop
+	 * that now.
+	*
+	* This cannot be the last reference, since the handle holds one too.
+	 */
+		kref_put(&obj->refcount, drm_gem_object_ref_bug);
 	}
 }
 
@@ -261,7 +273,6 @@ static void
 drm_gem_object_handle_unreference_unlocked(struct drm_gem_object *obj)
 {
 	struct drm_device *dev = obj->dev;
-	bool final = false;
 
 	if (WARN_ON(obj->handle_count == 0))
 		return;
@@ -276,12 +287,10 @@ drm_gem_object_handle_unreference_unlocked(struct drm_gem_object *obj)
 	if (--obj->handle_count == 0) {
 		drm_gem_object_handle_free(obj);
 		drm_gem_object_exported_dma_buf_free(obj);
-		final = true;
 	}
 	mutex_unlock(&dev->object_name_lock);
 
-	if (final)
-		drm_gem_object_unreference_unlocked(obj);
+	drm_gem_object_unreference_unlocked(obj);
 }
 
 /*
@@ -295,9 +304,7 @@ drm_gem_object_release_handle(int id, void *ptr, void *data)
 	struct drm_gem_object *obj = ptr;
 	struct drm_device *dev = obj->dev;
 
-	if (drm_core_check_feature(dev, DRIVER_PRIME))
-		drm_gem_remove_prime_handles(obj, file_priv);
-	drm_vma_node_revoke(&obj->vma_node, file_priv->filp);
+	drm_gem_remove_prime_handles(obj, file_priv);
 
 	if (dev->driver->gem_close_object)
 		dev->driver->gem_close_object(obj, file_priv);
