@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,15 +24,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_HARDIRQ_H_
-#define _LINUX_HARDIRQ_H_
+#ifndef _LINUX_PREEMPT_H_
+#define _LINUX_PREEMPT_H_
 
-#include <linux/preempt.h>
-#include <linux/lockdep.h>
+#include <linux/list.h>
 
-static inline void
-synchronize_irq(unsigned int irq)
-{
-}
+#define preempt_disable()		cpu_ccfence()
 
-#endif	/* _LINUX_HARDIRQ_H_ */
+#define preempt_enable()		cpu_ccfence()
+
+#endif	/* _LINUX_PREEMPT_H_ */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018 François Tigeot
+ * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,7 @@
 #ifndef _LINUX_SPINLOCK_H_
 #define _LINUX_SPINLOCK_H_
 
+#include <linux/preempt.h>
 #include <linux/compiler.h>
 #include <linux/irqflags.h>
 #include <linux/kernel.h>

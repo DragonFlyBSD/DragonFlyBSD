@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2017-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,6 +29,7 @@
 
 #include <linux/kernel.h>
 #include <linux/bitops.h>
+#include <linux/preempt.h>
 #include <linux/cpumask.h>
 #include <linux/irqreturn.h>
 #include <linux/hardirq.h>
