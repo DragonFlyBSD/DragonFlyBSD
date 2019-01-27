@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013,2015 François Tigeot
+ * Copyright (c) 2013-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,5 +28,6 @@
 #define _LINUX_EXPORT_H_
 
 #define EXPORT_SYMBOL(name)
+#define EXPORT_SYMBOL_GPL(name)
 
 #endif	/* _LINUX_EXPORT_H_ */
