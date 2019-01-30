@@ -283,7 +283,7 @@ autofs_dirent_reclen(const char *name)
 }
 
 static int
-autofs_readdir_one(struct uio *uio, const char *name, ino_t ino)
+autofs_write_dirent(struct uio *uio, const char *name, ino_t ino)
 {
 	int error = 0;
 
@@ -333,7 +333,7 @@ autofs_readdir(struct vop_readdir_args *ap)
 	 * Write out the directory entry for ".".
 	 */
 	if (uio->uio_offset == 0) {
-		error = autofs_readdir_one(uio, ".", anp->an_ino);
+		error = autofs_write_dirent(uio, ".", anp->an_ino);
 		if (error)
 			goto out;
 	}
@@ -345,7 +345,7 @@ autofs_readdir(struct vop_readdir_args *ap)
 	if (uio->uio_offset <= reclens) {
 		if (uio->uio_offset != reclens)
 			return (EINVAL);
-		error = autofs_readdir_one(uio, "..",
+		error = autofs_write_dirent(uio, "..",
 		    (anp->an_parent ? anp->an_parent->an_ino : anp->an_ino));
 		if (error)
 			goto out;
@@ -374,7 +374,7 @@ autofs_readdir(struct vop_readdir_args *ap)
 			return (EINVAL);
 		}
 
-		error = autofs_readdir_one(uio, child->an_name, child->an_ino);
+		error = autofs_write_dirent(uio, child->an_name, child->an_ino);
 		reclens += autofs_dirent_reclen(child->an_name);
 		if (error) {
 			mtx_unlock_sh(&amp->am_lock);
