@@ -283,13 +283,9 @@ autofs_dirent_reclen(const char *name)
 }
 
 static int
-autofs_readdir_one(struct uio *uio, const char *name, ino_t ino,
-    size_t *reclenp)
+autofs_readdir_one(struct uio *uio, const char *name, ino_t ino)
 {
 	int error = 0;
-
-	if (reclenp != NULL)
-		*reclenp = autofs_dirent_reclen(name);
 
 	if (vop_write_dirent(&error, uio, ino, DT_DIR, strlen(name), name))
 		return (EINVAL);
@@ -306,7 +302,7 @@ autofs_readdir(struct vop_readdir_args *ap)
 	struct autofs_node *child;
 	struct uio *uio = ap->a_uio;
 	ssize_t initial_resid = ap->a_uio->uio_resid;
-	size_t reclen, reclens;
+	size_t reclens = 0;
 	int error;
 
 	KASSERT(vp->v_type == VDIR, ("!VDIR"));
@@ -337,7 +333,7 @@ autofs_readdir(struct vop_readdir_args *ap)
 	 * Write out the directory entry for ".".
 	 */
 	if (uio->uio_offset == 0) {
-		error = autofs_readdir_one(uio, ".", anp->an_ino, &reclen);
+		error = autofs_readdir_one(uio, ".", anp->an_ino);
 		if (error)
 			goto out;
 	}
@@ -350,8 +346,7 @@ autofs_readdir(struct vop_readdir_args *ap)
 		if (uio->uio_offset != reclens)
 			return (EINVAL);
 		error = autofs_readdir_one(uio, "..",
-		    (anp->an_parent ? anp->an_parent->an_ino : anp->an_ino),
-		    &reclen);
+		    (anp->an_parent ? anp->an_parent->an_ino : anp->an_ino));
 		if (error)
 			goto out;
 	}
@@ -379,9 +374,8 @@ autofs_readdir(struct vop_readdir_args *ap)
 			return (EINVAL);
 		}
 
-		error = autofs_readdir_one(uio, child->an_name, child->an_ino,
-		    &reclen);
-		reclens += reclen;
+		error = autofs_readdir_one(uio, child->an_name, child->an_ino);
+		reclens += autofs_dirent_reclen(child->an_name);
 		if (error) {
 			mtx_unlock_sh(&amp->am_lock);
 			goto out;
@@ -403,7 +397,7 @@ out:
 	/*
 	 * Don't return an error if we managed to copy out some entries.
 	 */
-	if (uio->uio_resid < reclen)
+	if (uio->uio_resid < initial_resid)
 		return (0);
 
 	return (error);
