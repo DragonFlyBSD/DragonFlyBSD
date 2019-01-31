@@ -32,7 +32,7 @@
  */
 
 #ifndef AUTOFS_H
-#define	AUTOFS_H
+#define AUTOFS_H
 
 #include <sys/kernel.h>
 #include <sys/module.h>
@@ -67,14 +67,14 @@ extern struct vop_ops autofs_vnode_vops;
 extern int autofs_debug;
 //extern int autofs_mount_on_stat;
 
-#define	AUTOFS_DEBUG(X, ...)				\
+#define AUTOFS_DEBUG(X, ...)				\
 	do {						\
 		if (autofs_debug > 1)			\
 			kprintf("%s: " X "\n",		\
 			    __func__, ## __VA_ARGS__);	\
 	} while (0)
 
-#define	AUTOFS_WARN(X, ...)				\
+#define AUTOFS_WARN(X, ...)				\
 	do {						\
 		if (autofs_debug > 0) {			\
 			kprintf("WARNING: %s: " X "\n",	\

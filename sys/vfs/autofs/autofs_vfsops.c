@@ -102,7 +102,7 @@ autofs_uninit(struct vfsconf *vfsp)
 
 	mtx_unlock_ex(&autofs_softc->sc_lock);
 
-	kfree(autofs_softc, M_AUTOFS);	/* race with open */
+	kfree(autofs_softc, M_AUTOFS); /* race with open */
 	autofs_softc = NULL;
 
 	return (0);

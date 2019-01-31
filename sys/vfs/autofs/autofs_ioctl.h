@@ -32,12 +32,12 @@
  */
 
 #ifndef AUTOFS_IOCTL_H
-#define	AUTOFS_IOCTL_H
+#define AUTOFS_IOCTL_H
 
 #include <sys/param.h>
 #include <sys/ioccom.h>
 
-#define	AUTOFS_PATH		"/dev/autofs"
+#define AUTOFS_PATH	"/dev/autofs"
 
 struct autofs_daemon_request {
 	/*
@@ -99,7 +99,7 @@ struct autofs_daemon_done {
 	int		add_spare[7];
 };
 
-#define	AUTOFSREQUEST	_IOR('I', 0x01, struct autofs_daemon_request)
-#define	AUTOFSDONE	_IOW('I', 0x03, struct autofs_daemon_done)
+#define AUTOFSREQUEST	_IOR('I', 0x01, struct autofs_daemon_request)
+#define AUTOFSDONE	_IOW('I', 0x03, struct autofs_daemon_done)
 
 #endif /* !AUTOFS_IOCTL_H */
