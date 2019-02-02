@@ -28,7 +28,7 @@
 .\"	@(#)gcore.1	8.2 (Berkeley) 4/18/94
 .\" $FreeBSD: src/usr.bin/gcore/gcore.1,v 1.8.2.5 2002/07/15 06:25:27 keramida Exp $
 .\"
-.Dd April 18, 1994
+.Dd February 2, 2019
 .Dt GCORE 1
 .Os
 .Sh NAME
@@ -36,10 +36,9 @@
 .Nd get core images of running process
 .Sh SYNOPSIS
 .Nm
+.Op Fl sv
 .Op Fl c Ar core
 .Op Fl l Ar seglimit
-.Op Fl s
-.Op Fl v
 .Op Ar executable
 .Ar pid
 .Sh DESCRIPTION
@@ -66,13 +65,14 @@ Write the core file to the specified file instead of
 .Dq Pa core.<pid> .
 .It Fl l Ar seglimit
 Tells gcore to skip map segments larger than the specified
-limit, in bytes.  Specify a suffix 'k', 'm', 'g', or 't' for
-kilobytes, etc.  Segments ignored due to the option will be reported.
+limit, in bytes.
+Specify a suffix 'k', 'm', 'g', or 't' for kilobytes, etc.
+Segments ignored due to the option will be reported.
 .It Fl s
 Stop the process while gathering the core image, and resume it
-when done.  This guarantees that the resulting core dump will
-be in a consistent state.  The process is resumed even if it was
-already stopped.
+when done.
+This guarantees that the resulting core dump will be in a consistent state.
+The process is resumed even if it was already stopped.
 The same effect can be achieved manually with
 .Xr kill 1 .
 .It Fl v

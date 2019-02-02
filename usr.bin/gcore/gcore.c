@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)gcore.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/usr.bin/gcore/gcore.c,v 1.15.2.2 2001/08/17 20:56:22 mikeh Exp $
- * $DragonFly: src/usr.bin/gcore/gcore.c,v 1.11 2007/02/25 23:07:08 corecode Exp $
  */
 
 /*
@@ -161,7 +160,7 @@ main(int argc, char **argv)
 		errx(1, "Invalid executable file");
 
 	if (corefile == NULL) {
-		(void)snprintf(fname, sizeof(fname), "core.%d", pid);
+		snprintf(fname, sizeof(fname), "core.%d", pid);
 		corefile = fname;
 	}
 	fd = open(corefile, O_RDWR|O_CREAT|O_TRUNC, DEFFILEMODE);
@@ -179,7 +178,7 @@ main(int argc, char **argv)
 
 	elf_coredump(fd, pid);
 
-	(void)close(fd);
+	close(fd);
 	exit(0);
 }
 
@@ -200,6 +199,7 @@ restart_target(void)
 void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: gcore [-s] [-c core] [executable] pid\n");
+	fprintf(stderr,
+	    "usage: gcore [-sv] [-c core] [-l seglimit] [executable] pid\n");
 	exit(1);
 }
