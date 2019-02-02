@@ -147,7 +147,6 @@ autofs_mount(struct mount *mp, char *mntpt, caddr_t data, struct ucred *cred)
 	 */
 	amp = kmalloc(sizeof(*amp), M_AUTOFS, M_WAITOK | M_ZERO);
 	mp->mnt_data = (qaddr_t)amp;
-	amp->am_mp = mp;
 	strlcpy(amp->am_from, sbp->f_mntfromname, sizeof(amp->am_from));
 	strlcpy(amp->am_on, sbp->f_mntonname, sizeof(amp->am_on));
 

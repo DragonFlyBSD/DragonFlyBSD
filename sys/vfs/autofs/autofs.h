@@ -107,9 +107,7 @@ struct autofs_node {
 };
 
 struct autofs_mount {
-	TAILQ_ENTRY(autofs_mount)	am_next;
 	struct autofs_node		*am_root;
-	struct mount			*am_mp;
 	mtx_t				am_lock;
 	char				am_from[MAXPATHLEN];
 	char				am_on[MAXPATHLEN];
@@ -136,7 +134,6 @@ struct autofs_request {
 };
 
 struct autofs_softc {
-	device_t			sc_dev;
 	struct cdev			*sc_cdev;
 	struct cv			sc_cv;
 	struct mtx			sc_lock;
