@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1992, 1993
+ * Copyright (c) 1992, 1993, 2019
  *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -72,6 +72,8 @@ static void	usage(void) __dead2;
 kvm_t *kd;
 
 static pid_t pid;
+ssize_t gcore_seg_limit = -1;
+int gcore_verbose;
 
 int
 main(int argc, char **argv)
@@ -79,17 +81,47 @@ main(int argc, char **argv)
 	struct exec exec;
 	int ch, cnt, efd, fd, sflag;
 	char *binfile, *corefile;
+	char *eptr;
 	char fname[MAXPATHLEN + 1];
 
 	sflag = 0;
 	corefile = NULL;
-        while ((ch = getopt(argc, argv, "c:s")) != -1) {
+        while ((ch = getopt(argc, argv, "c:l:sv")) != -1) {
                 switch (ch) {
                 case 'c':
 			corefile = optarg;
                         break;
+		case 'l':
+			gcore_seg_limit = strtol(optarg, &eptr, 0);
+			switch(*eptr) {
+			case 0:
+				break;
+			case 't':
+			case 'T':
+				gcore_seg_limit *= 1024;
+				/* fall through */
+			case 'g':
+			case 'G':
+				gcore_seg_limit *= 1024;
+				/* fall through */
+			case 'm':
+			case 'M':
+				gcore_seg_limit *= 1024;
+				/* fall through */
+			case 'k':
+			case 'K':
+				gcore_seg_limit *= 1024;
+				break;
+			default:
+				usage();
+				break;
+			}
+			break;
 		case 's':
 			sflag = 1;
+			break;
+		case 'v':
+			gcore_verbose = 1;
 			break;
 		default:
 			usage();

@@ -46,6 +46,9 @@
 
 #include "extern.h"
 
+extern ssize_t gcore_seg_limit;
+extern int gcore_verbose;
+
 /*
  * Code for generating ELF core dumps.
  */
@@ -452,14 +455,15 @@ readmap(pid_t pid)
 	 * be read with a single read() call.  Start with a reasonbly sized
 	 * buffer, and double it until it is big enough.
 	 */
-	bufsize = 8 * 1024;
+	bufsize = 65536;
 	mapbuf = NULL;
 	for ( ; ; ) {
 		if ((mapbuf = realloc(mapbuf, bufsize + 1)) == NULL)
 			errx(1, "out of memory");
 		mapsize = read(mapfd, mapbuf, bufsize);
-		if (mapsize != -1 || errno != EFBIG)
+		if ((mapsize != -1 || errno != EFBIG) && mapsize != bufsize) {
 			break;
+		}
 		bufsize *= 2;
 		/* This lseek shouldn't be necessary, but it is. */
 		lseek(mapfd, (off_t)0, SEEK_SET);
@@ -482,21 +486,41 @@ readmap(pid_t pid)
 		char type[16];
 		int n;
 		int len;
+		int skipme = 0;
 
 		len = 0;
 		n = sscanf(mapbuf + pos, "%lx %lx %*d %*d %*x %3[-rwx]"
 		    " %*d %*d %*x %*s %*s %15s %*s%*[\n]%n",
 		    &start, &end, prot, type, &len);
 		if (n != 4)
-			errx(1, "ill-formed line in %s", mapname);
+			errx(1, "ill-formed line in %s: '%s'",
+			    mapname, mapbuf);
 		pos += len;
 
 		/* Ignore segments of the wrong kind, and unwritable ones */
+		if (gcore_seg_limit >= 0 && end - start > gcore_seg_limit) {
+			skipme = 1;
+		}
 		if (strncmp(prot, "rw", 2) != 0 ||
 		    (strcmp(type, "default") != 0 &&
 		    strcmp(type, "vnode") != 0 &&
-		    strcmp(type, "swap") != 0))
+		    strcmp(type, "swap") != 0)) {
+			skipme = 2;
+		}
+		if (gcore_verbose || skipme == 1)
+			printf("%016lx-%016lx (%ldM) %s,%s",
+			       start, end,
+				(end - start) / (1024 * 1024),
+				prot, type);
+		if (skipme) {
+			if (skipme == 1)
+				printf(" (ignored - seglimit)\n");
+			else if (gcore_verbose)
+				printf(" (ignored)\n");
 			continue;
+		}
+		if (gcore_verbose)
+			printf("\n");
 
 		if ((ent = (vm_map_entry_t)calloc(1, sizeof *ent)) == NULL)
 			errx(1, "out of memory");
