@@ -984,7 +984,9 @@ sys_mlock(struct mlock_args *uap)
 	size += pageoff;
 	size = (vm_size_t) round_page(size);
 	if (size < uap->len)		/* wrap */
-		return(EINVAL);
+		return (EINVAL);
+	if (size == 0)			/* silently allow 0 size */
+		return (0);
 	tmpaddr = addr + size;		/* workaround gcc4 opt */
 	if (tmpaddr < addr)		/* wrap */
 		return (EINVAL);
@@ -1144,6 +1146,8 @@ sys_munlock(struct munlock_args *uap)
 	tmpaddr = addr + size;
 	if (tmpaddr < addr)		/* wrap */
 		return (EINVAL);
+	if (size == 0)			/* silently allow 0 size */
+		return (0);
 
 #ifndef pmap_wired_count
 	error = priv_check(td, PRIV_ROOT);
