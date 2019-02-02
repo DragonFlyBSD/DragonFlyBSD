@@ -125,15 +125,15 @@ elf_coredump(int fd, pid_t pid)
 
 	php = (Elf_Phdr *)((char *)hdr + sizeof(Elf_Ehdr)) + 1;
 	for (i = 0;  i < seginfo.count;  i++) {
-		int nleft = php->p_filesz;
+		long nleft = php->p_filesz;
 
 		lseek(memfd, (off_t)php->p_vaddr, SEEK_SET);
 		while (nleft > 0) {
-			char buf[8*1024];
-			int nwant;
-			int ngot;
+			char buf[65536];
+			ssize_t nwant;
+			ssize_t ngot;
 
-			nwant = nleft;
+			nwant = (ssize_t)nleft;
 			if (nwant > sizeof buf)
 				nwant = sizeof buf;
 			ngot = read(memfd, buf, nwant);
@@ -141,7 +141,7 @@ elf_coredump(int fd, pid_t pid)
 				err(1, "read from %s", memname);
 			if (ngot < nwant)
 				errx(1, "short read from %s:"
-				    " wanted %d, got %d\n", memname,
+				    " wanted %zd, got %zd\n", memname,
 				    nwant, ngot);
 			ngot = write(fd, buf, nwant);
 			if (ngot == -1)
