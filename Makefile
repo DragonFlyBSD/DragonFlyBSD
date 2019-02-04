@@ -211,5 +211,5 @@ upgrade:
 	@echo "NOTE: Do this only after verifying the new system works as expected!"
 	@echo ""
 	@echo "You also need to upgrade the 3rd-party packages with:"
-	@echo "    # pkg update; pkg [-f] upgrade"
+	@echo "    # pkg update; pkg upgrade [-f]"
 	@echo "--------------------------------------------------------------"
