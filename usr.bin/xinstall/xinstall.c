@@ -1125,7 +1125,7 @@ usage(void)
 {
 	fprintf(stderr,
 "usage: install [-bCcpSsUv] [-f flags] [-g group] [-m mode] [-o owner]\n"
-"               [-D dest] [-h hash] [-T tags]\n"
+"               [-D dest] [-h hash]\n"
 "               [-B suffix] [-l linkflags] [-N dbdir]\n"
 "               file1 file2\n"
 "       install [-bCcpSsUv] [-B suffix] [-D dest] [-f flags] [-g group]\n"
