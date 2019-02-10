@@ -32,10 +32,10 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
  * OF SUCH DAMAGE.
+ *
+ * $FreeBSD: head/usr.sbin/makefs/cd9660/cd9660_debug.c 333664 2018-05-16 02:58:05Z emaste $
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.sbin/makefs/cd9660/cd9660_debug.c 333664 2018-05-16 02:58:05Z emaste $");
 #include <sys/param.h>
 
 #include <sys/mount.h>

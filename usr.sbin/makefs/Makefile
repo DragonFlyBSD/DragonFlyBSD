@@ -1,12 +1,8 @@
 #	$FreeBSD: head/usr.sbin/makefs/Makefile 332844 2018-04-20 22:23:38Z emaste $
 
-SRCDIR:=${.PARSEDIR:tA}
-
-.include <src.opts.mk>
-
 PROG=	makefs
 
-CFLAGS+=-I${SRCDIR}
+CFLAGS+=-I${.CURDIR}
 
 SRCS=	cd9660.c ffs.c \
 	makefs.c \
@@ -16,23 +12,20 @@ MAN=	makefs.8
 
 WARNS?=	2
 
-.include "${SRCDIR}/cd9660/Makefile.inc"
-.include "${SRCDIR}/ffs/Makefile.inc"
+.include "${.CURDIR}/cd9660/Makefile.inc"
+.include "${.CURDIR}/ffs/Makefile.inc"
 
 CFLAGS+=-DHAVE_STRUCT_STAT_ST_FLAGS=1
 
-.PATH: ${SRCTOP}/contrib/mtree
-CFLAGS+=-I${SRCTOP}/contrib/mtree
-SRCS+=	getid.c misc.c spec.c
+.PATH: ${.CURDIR}/../mtree
+CFLAGS+=-I${.CURDIR}/../mtree
+SRCS+=	getid.c misc.c pack_dev.c spec.c stat_flags.c
 
-.PATH: ${SRCTOP}/contrib/mknod
-CFLAGS+=-I${SRCTOP}/contrib/mknod
-SRCS+=	pack_dev.c
+DPADD=	${LIBUTIL} ${LIBSBUF}
+LDADD=	-lutil -lsbuf
 
-CFLAGS+=	-I${SRCTOP}/lib/libnetbsd
-LIBADD=		netbsd util sbuf
-
-HAS_TESTS=
-SUBDIR.${MK_TESTS}+= tests
+#.if ${MK_TESTS} != "no"
+#SUBDIR+=	tests
+#.endif
 
 .include <bsd.prog.mk>

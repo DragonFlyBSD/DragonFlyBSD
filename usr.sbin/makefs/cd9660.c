@@ -95,10 +95,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
-  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.sbin/makefs/cd9660.c 331843 2018-03-31 15:04:41Z benno $");
+ * $FreeBSD: head/usr.sbin/makefs/cd9660.c 331843 2018-03-31 15:04:41Z benno $
+ */
 
 #include <sys/param.h>
 #include <sys/queue.h>

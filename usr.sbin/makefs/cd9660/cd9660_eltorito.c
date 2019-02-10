@@ -32,14 +32,13 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
  * OF SUCH DAMAGE.
+ *
+ * $FreeBSD: head/usr.sbin/makefs/cd9660/cd9660_eltorito.c 331843 2018-03-31 15:04:41Z benno $
  */
 
 #include "cd9660.h"
 #include "cd9660_eltorito.h"
 #include <util.h>
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.sbin/makefs/cd9660/cd9660_eltorito.c 331843 2018-03-31 15:04:41Z benno $");
 
 #ifdef DEBUG
 #define	ELTORITO_DPRINTF(__x)	printf __x

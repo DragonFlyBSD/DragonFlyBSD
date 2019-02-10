@@ -23,14 +23,13 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: head/usr.sbin/makefs/mtree.c 332986 2018-04-25 02:43:53Z pfg $
  */
 
 #if HAVE_NBTOOL_CONFIG_H
 #include "nbtool_config.h"
 #endif
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.sbin/makefs/mtree.c 332986 2018-04-25 02:43:53Z pfg $");
 
 #include <sys/param.h>
 #include <sys/queue.h>

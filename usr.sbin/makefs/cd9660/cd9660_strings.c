@@ -32,12 +32,12 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
  * OF SUCH DAMAGE.
+ *
+ * $FreeBSD: head/usr.sbin/makefs/cd9660/cd9660_strings.c 326276 2017-11-27 15:37:16Z pfg $
  */
 
 #include <sys/mount.h>
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.sbin/makefs/cd9660/cd9660_strings.c 326276 2017-11-27 15:37:16Z pfg $");
 #include <sys/param.h>
 #include <ctype.h>
 

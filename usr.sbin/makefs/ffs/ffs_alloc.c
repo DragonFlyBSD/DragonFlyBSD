@@ -41,10 +41,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)ffs_alloc.c	8.19 (Berkeley) 7/13/95
+ * $FreeBSD: head/usr.sbin/makefs/ffs/ffs_alloc.c 336736 2018-07-26 13:33:10Z emaste $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.sbin/makefs/ffs/ffs_alloc.c 336736 2018-07-26 13:33:10Z emaste $");
 
 #include <sys/param.h>
 #include <sys/time.h>
@@ -62,13 +60,15 @@ __FBSDID("$FreeBSD: head/usr.sbin/makefs/ffs/ffs_alloc.c 336736 2018-07-26 13:33
 #include "ffs/ufs_inode.h"
 #include "ffs/ffs_extern.h"
 
+#include "ffs.h"	/* XXX swildner: for compat defines */
+
 static int scanc(u_int, const u_char *, const u_char *, int);
 
-static daddr_t ffs_alloccg(struct inode *, int, daddr_t, int);
-static daddr_t ffs_alloccgblk(struct inode *, struct buf *, daddr_t);
-static daddr_t ffs_hashalloc(struct inode *, u_int, daddr_t, int,
-		     daddr_t (*)(struct inode *, int, daddr_t, int));
-static int32_t ffs_mapsearch(struct fs *, struct cg *, daddr_t, int);
+static makefs_daddr_t ffs_alloccg(struct inode *, int, makefs_daddr_t, int);
+static makefs_daddr_t ffs_alloccgblk(struct inode *, struct buf *, makefs_daddr_t);
+static makefs_daddr_t ffs_hashalloc(struct inode *, u_int, makefs_daddr_t, int,
+		     makefs_daddr_t (*)(struct inode *, int, makefs_daddr_t, int));
+static int32_t ffs_mapsearch(struct fs *, struct cg *, makefs_daddr_t, int);
 
 /*
  * Allocate a block in the file system.
@@ -90,11 +90,11 @@ static int32_t ffs_mapsearch(struct fs *, struct cg *, daddr_t, int);
  *      available block is located.
  */
 int
-ffs_alloc(struct inode *ip, daddr_t lbn __unused, daddr_t bpref, int size,
-    daddr_t *bnp)
+ffs_alloc(struct inode *ip, makefs_daddr_t lbn __unused, makefs_daddr_t bpref, int size,
+    makefs_daddr_t *bnp)
 {
 	struct fs *fs = ip->i_fs;
-	daddr_t bno;
+	makefs_daddr_t bno;
 	int cg;
 	
 	*bnp = 0;
@@ -114,8 +114,10 @@ ffs_alloc(struct inode *ip, daddr_t lbn __unused, daddr_t bpref, int size,
 	if (bno > 0) {
 		if (ip->i_fs->fs_magic == FS_UFS1_MAGIC)
 			ip->i_ffs1_blocks += size / DEV_BSIZE;
+#ifndef __DragonFly__ /* XXX UFS2 */
 		else
 			ip->i_ffs2_blocks += size / DEV_BSIZE;
+#endif
 		*bnp = bno;
 		return (0);
 	}
@@ -150,8 +152,8 @@ nospace:
  * schedule another I/O transfer.
  */
 /* XXX ondisk32 */
-daddr_t
-ffs_blkpref_ufs1(struct inode *ip, daddr_t lbn, int indx, int32_t *bap)
+makefs_daddr_t
+ffs_blkpref_ufs1(struct inode *ip, makefs_daddr_t lbn, int indx, int32_t *bap)
 {
 	struct fs *fs;
 	u_int cg, startcg;
@@ -189,6 +191,7 @@ ffs_blkpref_ufs1(struct inode *ip, daddr_t lbn, int indx, int32_t *bap)
 	return ufs_rw32(bap[indx - 1], UFS_FSNEEDSWAP(fs)) + fs->fs_frag;
 }
 
+#ifndef __DragonFly__ /* XXX UFS2 */
 daddr_t
 ffs_blkpref_ufs2(struct inode *ip, daddr_t lbn, int indx, int64_t *bap)
 {
@@ -229,6 +232,7 @@ ffs_blkpref_ufs2(struct inode *ip, daddr_t lbn, int indx, int64_t *bap)
 	 */
 	return ufs_rw64(bap[indx - 1], UFS_FSNEEDSWAP(fs)) + fs->fs_frag;
 }
+#endif
 
 /*
  * Implement the cylinder overflow algorithm.
@@ -241,12 +245,12 @@ ffs_blkpref_ufs2(struct inode *ip, daddr_t lbn, int indx, int64_t *bap)
  * `size':	size for data blocks, mode for inodes
  */
 /*VARARGS5*/
-static daddr_t
-ffs_hashalloc(struct inode *ip, u_int cg, daddr_t pref, int size,
-    daddr_t (*allocator)(struct inode *, int, daddr_t, int))
+static makefs_daddr_t
+ffs_hashalloc(struct inode *ip, u_int cg, makefs_daddr_t pref, int size,
+    makefs_daddr_t (*allocator)(struct inode *, int, makefs_daddr_t, int))
 {
 	struct fs *fs;
-	daddr_t result;
+	makefs_daddr_t result;
 	u_int i, icg = cg;
 
 	fs = ip->i_fs;
@@ -290,12 +294,12 @@ ffs_hashalloc(struct inode *ip, u_int cg, daddr_t pref, int size,
  * Check to see if a block of the appropriate size is available,
  * and if it is, allocate it.
  */
-static daddr_t
-ffs_alloccg(struct inode *ip, int cg, daddr_t bpref, int size)
+static makefs_daddr_t
+ffs_alloccg(struct inode *ip, int cg, makefs_daddr_t bpref, int size)
 {
 	struct cg *cgp;
 	struct buf *bp;
-	daddr_t bno, blkno;
+	makefs_daddr_t bno, blkno;
 	int error, frags, allocsiz, i;
 	struct fs *fs = ip->i_fs;
 	const int needswap = UFS_FSNEEDSWAP(fs);
@@ -376,11 +380,11 @@ ffs_alloccg(struct inode *ip, int cg, daddr_t bpref, int size)
  * Note that this routine only allocates fs_bsize blocks; these
  * blocks may be fragmented by the routine that allocates them.
  */
-static daddr_t
-ffs_alloccgblk(struct inode *ip, struct buf *bp, daddr_t bpref)
+static makefs_daddr_t
+ffs_alloccgblk(struct inode *ip, struct buf *bp, makefs_daddr_t bpref)
 {
 	struct cg *cgp;
-	daddr_t blkno;
+	makefs_daddr_t blkno;
 	int32_t bno;
 	struct fs *fs = ip->i_fs;
 	const int needswap = UFS_FSNEEDSWAP(fs);
@@ -413,6 +417,10 @@ gotit:
 	ufs_add32(cgp->cg_cs.cs_nbfree, -1, needswap);
 	fs->fs_cstotal.cs_nbfree--;
 	fs->fs_cs(fs, ufs_rw32(cgp->cg_cgx, needswap)).cs_nbfree--;
+#ifdef __DragonFly__ /* XXX swildner: our fsck checks these */
+	cg_blks(fs, cgp, cbtocylno(fs, bno))[cbtorpos(fs, bno)]--;
+	cg_blktot(cgp)[cbtocylno(fs, bno)]--;
+#endif
 	fs->fs_fmod = 1;
 	blkno = ufs_rw32(cgp->cg_cgx, needswap) * fs->fs_fpg + bno;
 	return (blkno);
@@ -426,7 +434,7 @@ gotit:
  * block reassembly is checked.
  */
 void
-ffs_blkfree(struct inode *ip, daddr_t bno, long size)
+ffs_blkfree(struct inode *ip, makefs_daddr_t bno, long size)
 {
 	struct cg *cgp;
 	struct buf *bp;
@@ -469,6 +477,10 @@ ffs_blkfree(struct inode *ip, daddr_t bno, long size)
 		ufs_add32(cgp->cg_cs.cs_nbfree, 1, needswap);
 		fs->fs_cstotal.cs_nbfree++;
 		fs->fs_cs(fs, cg).cs_nbfree++;
+#ifdef __DragonFly__ /* XXX swildner: our fsck checks these */
+		cg_blks(fs, cgp, cbtocylno(fs, bno))[cbtorpos(fs, bno)]++;
+		cg_blktot(cgp)[cbtocylno(fs, bno)]++;
+#endif
 	} else {
 		bbase = cgbno - fragnum(fs, cgbno);
 		/*
@@ -507,6 +519,11 @@ ffs_blkfree(struct inode *ip, daddr_t bno, long size)
 			ufs_add32(cgp->cg_cs.cs_nbfree, 1, needswap);
 			fs->fs_cstotal.cs_nbfree++;
 			fs->fs_cs(fs, cg).cs_nbfree++;
+#ifdef __DragonFly__ /* XXX swildner: our fsck checks these */
+			cg_blks(fs, cgp,
+			    cbtocylno(fs, bbase))[cbtorpos(fs, bbase)]++;
+			cg_blktot(cgp)[cbtocylno(fs, bbase)]++;
+#endif
 		}
 	}
 	fs->fs_fmod = 1;
@@ -531,7 +548,7 @@ scanc(u_int size, const u_char *cp, const u_char table[], int mask)
  * available.
  */
 static int32_t
-ffs_mapsearch(struct fs *fs, struct cg *cgp, daddr_t bpref, int allocsiz)
+ffs_mapsearch(struct fs *fs, struct cg *cgp, makefs_daddr_t bpref, int allocsiz)
 {
 	int32_t bno;
 	int start, len, loc, i;

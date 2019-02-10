@@ -31,10 +31,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)ffs_subr.c	8.5 (Berkeley) 3/21/95
+ * $FreeBSD: head/usr.sbin/makefs/ffs/ffs_subr.c 333664 2018-05-16 02:58:05Z emaste $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.sbin/makefs/ffs/ffs_subr.c 333664 2018-05-16 02:58:05Z emaste $");
 
 #include <sys/param.h>
 #include <sys/types.h>

@@ -44,7 +44,7 @@ struct inode;
  * ufs_getlbns and used by truncate and bmap code.
  */
 struct indir {
-	daddr_t in_lbn;		/* Logical block number. */
+	makefs_daddr_t in_lbn;		/* Logical block number. */
 	int	in_off;			/* Offset in buffer. */
 };
 
@@ -52,10 +52,12 @@ struct indir {
 _Noreturn void panic(const char *, ...) __printflike(1, 2);
 
 	/* ffs_alloc.c */
-int ffs_alloc(struct inode *, daddr_t, daddr_t, int, daddr_t *);
-daddr_t ffs_blkpref_ufs1(struct inode *, daddr_t, int, int32_t *);
-daddr_t ffs_blkpref_ufs2(struct inode *, daddr_t, int, int64_t *);
-void ffs_blkfree(struct inode *, daddr_t, long);
+int ffs_alloc(struct inode *, makefs_daddr_t, makefs_daddr_t, int, makefs_daddr_t *);
+makefs_daddr_t ffs_blkpref_ufs1(struct inode *, makefs_daddr_t, int, int32_t *);
+#ifndef __DragonFly__ /* XXX UFS2 */
+makefs_daddr_t ffs_blkpref_ufs2(struct inode *, makefs_daddr_t, int, int64_t *);
+#endif
+void ffs_blkfree(struct inode *, makefs_daddr_t, long);
 void ffs_clusteracct(struct fs *, struct cg *, int32_t, int);
 
 	/* ffs_balloc.c */
@@ -64,7 +66,9 @@ int ffs_balloc(struct inode *, off_t, int, struct buf **);
 	/* ffs_bswap.c */
 void ffs_sb_swap(struct fs*, struct fs *);
 void ffs_dinode1_swap(struct ufs1_dinode *, struct ufs1_dinode *);
+#ifndef __DragonFly__ /* XXX UFS2 */
 void ffs_dinode2_swap(struct ufs2_dinode *, struct ufs2_dinode *);
+#endif
 void ffs_csum_swap(struct csum *, struct csum *, int);
 void ffs_cg_swap(struct cg *, struct cg *, struct fs *);
 
@@ -76,4 +80,4 @@ void ffs_clrblock(struct fs *, u_char *, int32_t);
 void ffs_setblock(struct fs *, u_char *, int32_t);
 
 	/* ufs_bmap.c */
-int ufs_getlbns(struct inode *, daddr_t, struct indir *, int *);
+int ufs_getlbns(struct inode *, makefs_daddr_t, struct indir *, int *);

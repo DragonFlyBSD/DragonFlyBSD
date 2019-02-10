@@ -38,10 +38,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: head/usr.sbin/makefs/ffs/mkfs.c 326025 2017-11-20 19:49:47Z pfg $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.sbin/makefs/ffs/mkfs.c 326025 2017-11-20 19:49:47Z pfg $");
 
 #include <sys/param.h>
 #include <sys/time.h>
@@ -102,7 +101,9 @@ static int64_t fssize;	   /* file system size */
 static int     sectorsize;	   /* bytes/sector */
 static int     fsize;	   /* fragment size */
 static int     bsize;	   /* block size */
+#ifndef __DragonFly__
 static int     maxbsize;   /* maximum clustering */
+#endif
 static int     maxblkspercg;
 static int     minfree;	   /* free space threshold */
 static int     opt;		   /* optimization preference (space or time) */
@@ -131,7 +132,9 @@ ffs_mkfs(const char *fsys, const fsinfo_t *fsopts, time_t tstamp)
 	sectorsize =    fsopts->sectorsize;
 	fsize =         ffs_opts->fsize;
 	bsize =         ffs_opts->bsize;
+#ifndef __DragonFly__
 	maxbsize =      ffs_opts->maxbsize;
+#endif
 	maxblkspercg =  ffs_opts->maxblkspercg;
 	minfree =       ffs_opts->minfree;
 	opt =           ffs_opts->optimization;
@@ -145,15 +148,24 @@ ffs_mkfs(const char *fsys, const fsinfo_t *fsopts, time_t tstamp)
 
 	strlcpy(sblock.fs_volname, ffs_opts->label, sizeof(sblock.fs_volname));
 
+#ifndef __DragonFly__ /* XXX dead code */
 	if (Oflag == 0) {
 		sblock.fs_old_inodefmt = FS_42INODEFMT;
 		sblock.fs_maxsymlinklen = 0;
 		sblock.fs_old_flags = 0;
-	} else {
+	} else
+#endif
+	{
 		sblock.fs_old_inodefmt = FS_44INODEFMT;
+#ifndef __DragonFly__ /* XXX UFS2 */
 		sblock.fs_maxsymlinklen = (Oflag == 1 ? UFS1_MAXSYMLINKLEN :
 		    UFS2_MAXSYMLINKLEN);
+#else
+		sblock.fs_maxsymlinklen = UFS1_MAXSYMLINKLEN;
+#endif
+#ifndef __DragonFly__
 		sblock.fs_old_flags = FS_FLAGS_UPDATED;
+#endif
 		sblock.fs_flags = 0;
 	}
 	/*
@@ -214,6 +226,7 @@ ffs_mkfs(const char *fsys, const fsinfo_t *fsopts, time_t tstamp)
 		exit(20);
 	}
 
+#ifndef __DragonFly__
 	if (maxbsize < bsize || !POWEROF2(maxbsize)) {
 		sblock.fs_maxbsize = sblock.fs_bsize;
 		printf("Extent size set to %d\n", sblock.fs_maxbsize);
@@ -223,11 +236,14 @@ ffs_mkfs(const char *fsys, const fsinfo_t *fsopts, time_t tstamp)
 	} else {
 		sblock.fs_maxbsize = maxbsize;
 	}
+#endif
 	sblock.fs_maxcontig = maxcontig;
+#ifndef __DragonFly__
 	if (sblock.fs_maxcontig < sblock.fs_maxbsize / sblock.fs_bsize) {
 		sblock.fs_maxcontig = sblock.fs_maxbsize / sblock.fs_bsize;
 		printf("Maxcontig raised to %d\n", sblock.fs_maxbsize);
 	}
+#endif
 
 	if (sblock.fs_maxcontig > 1)
 		sblock.fs_contigsumsize = MIN(sblock.fs_maxcontig,FS_MAXCONTIG);
@@ -251,12 +267,18 @@ ffs_mkfs(const char *fsys, const fsinfo_t *fsopts, time_t tstamp)
 		exit(21);
 	}
 	sblock.fs_fsbtodb = ilog2(sblock.fs_fsize / sectorsize);
+#ifndef __DragonFly__
 	sblock.fs_size = sblock.fs_providersize = fssize =
 	    dbtofsb(&sblock, fssize);
+#else
+	sblock.fs_size = fssize = dbtofsb(&sblock, fssize);
+#endif
 
 	if (Oflag <= 1) {
 		sblock.fs_magic = FS_UFS1_MAGIC;
+#ifndef __DragonFly__
 		sblock.fs_sblockloc = SBLOCK_UFS1;
+#endif
 		sblock.fs_nindir = sblock.fs_bsize / sizeof(ufs1_daddr_t);
 		sblock.fs_inopb = sblock.fs_bsize / sizeof(struct ufs1_dinode);
 		sblock.fs_maxsymlinklen = ((UFS_NDADDR + UFS_NIADDR) *
@@ -264,7 +286,9 @@ ffs_mkfs(const char *fsys, const fsinfo_t *fsopts, time_t tstamp)
 		sblock.fs_old_inodefmt = FS_44INODEFMT;
 		sblock.fs_old_cgoffset = 0;
 		sblock.fs_old_cgmask = 0xffffffff;
+#ifndef __DragonFly__
 		sblock.fs_old_size = sblock.fs_size;
+#endif
 		sblock.fs_old_rotdelay = 0;
 		sblock.fs_old_rps = 60;
 		sblock.fs_old_nspf = sblock.fs_fsize / sectorsize;
@@ -274,6 +298,10 @@ ffs_mkfs(const char *fsys, const fsinfo_t *fsopts, time_t tstamp)
 		sblock.fs_old_cpc = 0;
 		sblock.fs_old_postblformat = 1;
 		sblock.fs_old_nrpos = 1;
+#ifdef __DragonFly__	/* softupdates support */
+		if (ffs_opts->softupdates == 1)
+			sblock.fs_flags |= FS_DOSOFTDEP;
+#else	/* XXX UFS2 */
 	} else {
 		sblock.fs_magic = FS_UFS2_MAGIC;
 		sblock.fs_sblockloc = SBLOCK_UFS2;
@@ -283,12 +311,17 @@ ffs_mkfs(const char *fsys, const fsinfo_t *fsopts, time_t tstamp)
 		    sizeof (ufs2_daddr_t));
 		if (ffs_opts->softupdates == 1)
 			sblock.fs_flags |= FS_DOSOFTDEP;
+#endif
 	}
 
 	sblock.fs_sblkno =
+#ifndef __DragonFly__
 	    roundup(howmany(sblock.fs_sblockloc + SBLOCKSIZE, sblock.fs_fsize),
+#else
+	    roundup(howmany(8192 + SBLOCKSIZE, sblock.fs_fsize),
+#endif
 		sblock.fs_frag);
-	sblock.fs_cblkno = (daddr_t)(sblock.fs_sblkno +
+	sblock.fs_cblkno = (makefs_daddr_t)(sblock.fs_sblkno +
 	    roundup(howmany(SBLOCKSIZE, sblock.fs_fsize), sblock.fs_frag));
 	sblock.fs_iblkno = sblock.fs_cblkno + sblock.fs_frag;
 	sblock.fs_maxfilesize = sblock.fs_bsize * UFS_NDADDR - 1;
@@ -330,8 +363,13 @@ ffs_mkfs(const char *fsys, const fsinfo_t *fsopts, time_t tstamp)
 			sblock.fs_fpg = minfpg;
 		sblock.fs_ipg = roundup(howmany(sblock.fs_fpg, fragsperinode),
 		    INOPB(&sblock));
+#ifndef __DragonFly__
 		if (CGSIZE(&sblock) < (unsigned long)sblock.fs_bsize)
 			break;
+#else
+		if (FBSD_CGSIZE(&sblock) < (unsigned long)sblock.fs_bsize)
+			break;
+#endif
 		density -= sblock.fs_fsize;
 	}
 	if (density != origdensity)
@@ -349,10 +387,17 @@ ffs_mkfs(const char *fsys, const fsinfo_t *fsopts, time_t tstamp)
 		    INOPB(&sblock));
 		if (sblock.fs_size / sblock.fs_fpg < 1)
 			break;
+#ifndef __DragonFly__
 		if (CGSIZE(&sblock) < (unsigned long)sblock.fs_bsize)
 			continue;
 		if (CGSIZE(&sblock) == (unsigned long)sblock.fs_bsize)
 			break;
+#else
+		if (FBSD_CGSIZE(&sblock) < (unsigned long)sblock.fs_bsize)
+			continue;
+		if (FBSD_CGSIZE(&sblock) == (unsigned long)sblock.fs_bsize)
+			break;
+#endif
 		sblock.fs_fpg -= sblock.fs_frag;
 		sblock.fs_ipg = roundup(howmany(sblock.fs_fpg, fragsperinode),
 		    INOPB(&sblock));
@@ -384,7 +429,11 @@ ffs_mkfs(const char *fsys, const fsinfo_t *fsopts, time_t tstamp)
 	if (optimalfpg != sblock.fs_fpg)
 		printf("Reduced frags per cylinder group from %d to %d %s\n",
 		   optimalfpg, sblock.fs_fpg, "to enlarge last cyl group");
+#ifndef __DragonFly__
 	sblock.fs_cgsize = fragroundup(&sblock, CGSIZE(&sblock));
+#else
+	sblock.fs_cgsize = fragroundup(&sblock, FBSD_CGSIZE(&sblock));
+#endif
 	sblock.fs_dblkno = sblock.fs_iblkno + sblock.fs_ipg / INOPF(&sblock);
 	if (Oflag <= 1) {
 		sblock.fs_old_spc = sblock.fs_fpg * sblock.fs_old_nspf;
@@ -455,6 +504,7 @@ ffs_mkfs(const char *fsys, const fsinfo_t *fsopts, time_t tstamp)
 	sblock.fs_cstotal.cs_ndir = 0;
 	sblock.fs_dsize -= csfrags;
 	sblock.fs_time = tstamp;
+#ifndef __DragonFly__
 	if (Oflag <= 1) {
 		sblock.fs_old_time = tstamp;
 		sblock.fs_old_dsize = sblock.fs_dsize;
@@ -464,6 +514,7 @@ ffs_mkfs(const char *fsys, const fsinfo_t *fsopts, time_t tstamp)
 		sblock.fs_old_cstotal.cs_nifree = sblock.fs_cstotal.cs_nifree;
 		sblock.fs_old_cstotal.cs_nffree = sblock.fs_cstotal.cs_nffree;
 	}
+#endif
 	/*
 	 * Dump out summary information about file system.
 	 */
@@ -522,12 +573,14 @@ ffs_mkfs(const char *fsys, const fsinfo_t *fsopts, time_t tstamp)
 	 * then write out the super-block.
 	 */
 	sblock.fs_time = tstamp;
+#ifndef __DragonFly__
 	if (Oflag <= 1) {
 		sblock.fs_old_cstotal.cs_ndir = sblock.fs_cstotal.cs_ndir;
 		sblock.fs_old_cstotal.cs_nbfree = sblock.fs_cstotal.cs_nbfree;
 		sblock.fs_old_cstotal.cs_nifree = sblock.fs_cstotal.cs_nifree;
 		sblock.fs_old_cstotal.cs_nffree = sblock.fs_cstotal.cs_nffree;
 	}
+#endif
 	if (fsopts->needswap)
 		sblock.fs_flags |= FS_SWAPPED;
 	ffs_write_superblock(&sblock, fsopts);
@@ -552,7 +605,11 @@ ffs_write_superblock(struct fs *fs, const fsinfo_t *fsopts)
         memcpy(writebuf, &sblock, sbsize);
 	if (fsopts->needswap)
 		ffs_sb_swap(fs, (struct fs*)writebuf);
+#ifndef __DragonFly__
 	ffs_wtfs(fs->fs_sblockloc / sectorsize, sbsize, writebuf, fsopts);
+#else
+	ffs_wtfs(8192 / sectorsize, sbsize, writebuf, fsopts);
+#endif
 
 	/* Write out the duplicate super blocks */
 	for (cylno = 0; cylno < fs->fs_ncg; cylno++)
@@ -586,11 +643,13 @@ ffs_write_superblock(struct fs *fs, const fsinfo_t *fsopts)
 static void
 initcg(uint32_t cylno, time_t utime, const fsinfo_t *fsopts)
 {
-	daddr_t cbase, dmax;
+	makefs_daddr_t cbase, dmax;
 	int32_t blkno;
 	uint32_t i, j, d, dlower, dupper;
 	struct ufs1_dinode *dp1;
+#ifndef __DragonFly__ /* XXX UFS2 */
 	struct ufs2_dinode *dp2;
+#endif
 	int start;
 
 	/*
@@ -611,24 +670,35 @@ initcg(uint32_t cylno, time_t utime, const fsinfo_t *fsopts)
 	acg.cg_magic = CG_MAGIC;
 	acg.cg_cgx = cylno;
 	acg.cg_niblk = sblock.fs_ipg;
+#ifndef __DragonFly__ /* XXX UFS2 */
 	acg.cg_initediblk = MIN(sblock.fs_ipg, 2 * INOPB(&sblock));
+#endif
 	acg.cg_ndblk = dmax - cbase;
 	if (sblock.fs_contigsumsize > 0)
 		acg.cg_nclusterblks = acg.cg_ndblk >> sblock.fs_fragshift;
 	start = &acg.cg_space[0] - (u_char *)(&acg.cg_firstfield);
+#ifndef __DragonFly__ /* XXX UFS2 */
 	if (Oflag == 2) {
 		acg.cg_iusedoff = start;
-	} else {
+	} else
+#endif
+	{
 		if (cylno == sblock.fs_ncg - 1)
+#ifndef __DragonFly__
 			acg.cg_old_ncyl = howmany(acg.cg_ndblk,
 			    sblock.fs_fpg / sblock.fs_old_cpg);
+#else
+			acg.cg_ncyl = sblock.fs_ncyl % sblock.fs_cpg;
+#endif
 		else
 			acg.cg_old_ncyl = sblock.fs_old_cpg;
+#ifndef __DragonFly__
 		acg.cg_old_time = acg.cg_time;
 		acg.cg_time = 0;
 		acg.cg_old_niblk = acg.cg_niblk;
 		acg.cg_niblk = 0;
 		acg.cg_initediblk = 0;
+#endif
 		acg.cg_old_btotoff = start;
 		acg.cg_old_boff = acg.cg_old_btotoff +
 		    sblock.fs_old_cpg * sizeof(int32_t);
@@ -669,6 +739,11 @@ initcg(uint32_t cylno, time_t utime, const fsinfo_t *fsopts)
 			if (sblock.fs_contigsumsize > 0)
 				setbit(cg_clustersfree_swap(&acg, 0), blkno);
 			acg.cg_cs.cs_nbfree++;
+#ifdef __DragonFly__ /* XXX swildner: our fsck checks these */
+			cg_blktot(&acg)[cbtocylno(&sblock, d)]++;
+			cg_blks(&sblock, &acg, cbtocylno(&sblock, d))
+			    [cbtorpos(&sblock, d)]++;
+#endif
 			d += sblock.fs_frag;
 			blkno++;
 		}
@@ -686,6 +761,11 @@ initcg(uint32_t cylno, time_t utime, const fsinfo_t *fsopts)
 		if (sblock.fs_contigsumsize > 0)
 			setbit(cg_clustersfree_swap(&acg, 0), blkno);
 		acg.cg_cs.cs_nbfree++;
+#ifdef __DragonFly__ /* XXX swildner: our fsck checks these */
+		cg_blktot(&acg)[cbtocylno(&sblock, d)]++;
+		cg_blks(&sblock, &acg, cbtocylno(&sblock, d))
+		    [cbtorpos(&sblock, d)]++;
+#endif
 		d += sblock.fs_frag;
 		blkno++;
 	}
@@ -736,6 +816,7 @@ initcg(uint32_t cylno, time_t utime, const fsinfo_t *fsopts)
 		ffs_cg_swap(&acg, (struct cg*)&iobuf[start], &sblock);
 	start += sblock.fs_bsize;
 	dp1 = (struct ufs1_dinode *)(&iobuf[start]);
+#ifndef __DragonFly__ /* XXX UFS2 */
 	dp2 = (struct ufs2_dinode *)(&iobuf[start]);
 	for (i = 0; i < acg.cg_initediblk; i++) {
 		if (sblock.fs_magic == FS_UFS1_MAGIC) {
@@ -747,6 +828,7 @@ initcg(uint32_t cylno, time_t utime, const fsinfo_t *fsopts)
 			dp2++;
 		}
 	}
+#endif
 	ffs_wtfs(fsbtodb(&sblock, cgsblock(&sblock, cylno)), iobufsize, iobuf,
 	    fsopts);
 	/*
@@ -771,7 +853,7 @@ initcg(uint32_t cylno, time_t utime, const fsinfo_t *fsopts)
  * read a block from the file system
  */
 void
-ffs_rdfs(daddr_t bno, int size, void *bf, const fsinfo_t *fsopts)
+ffs_rdfs(makefs_daddr_t bno, int size, void *bf, const fsinfo_t *fsopts)
 {
 	int n;
 	off_t offset;
@@ -795,7 +877,7 @@ ffs_rdfs(daddr_t bno, int size, void *bf, const fsinfo_t *fsopts)
  * write a block to the file system
  */
 void
-ffs_wtfs(daddr_t bno, int size, void *bf, const fsinfo_t *fsopts)
+ffs_wtfs(makefs_daddr_t bno, int size, void *bf, const fsinfo_t *fsopts)
 {
 	int n;
 	off_t offset;

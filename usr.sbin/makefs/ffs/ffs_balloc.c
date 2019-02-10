@@ -32,10 +32,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)ffs_balloc.c	8.8 (Berkeley) 6/16/95
+ * $FreeBSD: head/usr.sbin/makefs/ffs/ffs_balloc.c 336736 2018-07-26 13:33:10Z emaste $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.sbin/makefs/ffs/ffs_balloc.c 336736 2018-07-26 13:33:10Z emaste $");
 
 #include <sys/param.h>
 #include <sys/time.h>
@@ -57,7 +55,9 @@ __FBSDID("$FreeBSD: head/usr.sbin/makefs/ffs/ffs_balloc.c 336736 2018-07-26 13:3
 #include "ffs/ffs_extern.h"
 
 static int ffs_balloc_ufs1(struct inode *, off_t, int, struct buf **);
+#ifndef __DragonFly__ /* XXX UFS2 */
 static int ffs_balloc_ufs2(struct inode *, off_t, int, struct buf **);
+#endif
 
 /*
  * Balloc defines the structure of file system storage
@@ -70,22 +70,24 @@ static int ffs_balloc_ufs2(struct inode *, off_t, int, struct buf **);
 int
 ffs_balloc(struct inode *ip, off_t offset, int bufsize, struct buf **bpp)
 {
+#ifndef __DragonFly__ /* XXX UFS2 */
 	if (ip->i_fs->fs_magic == FS_UFS2_MAGIC)
 		return ffs_balloc_ufs2(ip, offset, bufsize, bpp);
 	else
+#endif
 		return ffs_balloc_ufs1(ip, offset, bufsize, bpp);
 }
 
 static int
 ffs_balloc_ufs1(struct inode *ip, off_t offset, int bufsize, struct buf **bpp)
 {
-	daddr_t lbn, lastlbn;
+	makefs_daddr_t lbn, lastlbn;
 	int size;
 	int32_t nb;
 	struct buf *bp, *nbp;
 	struct fs *fs = ip->i_fs;
 	struct indir indirs[UFS_NIADDR + 2];
-	daddr_t newb, pref;
+	makefs_daddr_t newb, pref;
 	int32_t *bap;
 	int osize, nsize, num, i, error;
 	int32_t *allocblk, allociblk[UFS_NIADDR + 1];
@@ -328,6 +330,7 @@ ffs_balloc_ufs1(struct inode *ip, off_t offset, int bufsize, struct buf **bpp)
 	return (0);
 }
 
+#ifndef __DragonFly__ /* XXX UFS2 */
 static int
 ffs_balloc_ufs2(struct inode *ip, off_t offset, int bufsize, struct buf **bpp)
 {
@@ -578,3 +581,4 @@ ffs_balloc_ufs2(struct inode *ip, off_t offset, int bufsize, struct buf **bpp)
 	}
 	return (0);
 }
+#endif

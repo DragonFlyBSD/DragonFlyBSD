@@ -35,10 +35,9 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: head/usr.sbin/makefs/ffs/buf.c 336736 2018-07-26 13:33:10Z emaste $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.sbin/makefs/ffs/buf.c 336736 2018-07-26 13:33:10Z emaste $");
 
 #include <sys/param.h>
 #include <sys/time.h>
@@ -57,7 +56,7 @@ __FBSDID("$FreeBSD: head/usr.sbin/makefs/ffs/buf.c 336736 2018-07-26 13:33:10Z e
 static TAILQ_HEAD(buftailhead,buf) buftail;
 
 int
-bread(struct vnode *vp, daddr_t blkno, int size, struct ucred *u1 __unused,
+bread(struct vnode *vp, makefs_daddr_t blkno, int size, struct ucred *u1 __unused,
     struct buf **bpp)
 {
 	off_t	offset;
@@ -173,7 +172,7 @@ bcleanup(void)
 }
 
 struct buf *
-getblk(struct vnode *vp, daddr_t blkno, int size, int u1 __unused,
+getblk(struct vnode *vp, makefs_daddr_t blkno, int size, int u1 __unused,
     int u2 __unused, int u3 __unused)
 {
 	static int buftailinitted;

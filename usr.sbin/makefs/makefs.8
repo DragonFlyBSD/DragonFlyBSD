@@ -35,7 +35,7 @@
 .\"
 .\" $FreeBSD: head/usr.sbin/makefs/makefs.8 331843 2018-03-31 15:04:41Z benno $
 .\"
-.Dd March 30, 2018
+.Dd February 10, 2019
 .Dt MAKEFS 8
 .Os
 .Sh NAME
@@ -307,13 +307,14 @@ Optimization preference; one of
 .Ql space
 or
 .Ql time .
-.It Sy extent
-Maximum extent size.
+.\".It Sy extent
+.\"Maximum extent size.
 .It Sy maxbpcg
 Maximum total number of blocks in a cylinder group.
 .It Sy version
 UFS version.
-1 for FFS (default), 2 for UFS2.
+1 for FFS (default and the only supported value).
+.\", 2 for UFS2.
 .It Sy softupdates
 0 for disable (default), 1 for enable
 .El

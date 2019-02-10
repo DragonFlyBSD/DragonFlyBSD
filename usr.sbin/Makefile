@@ -55,6 +55,7 @@ SUBDIR= 802_11 \
 	keyserv \
 	lastlogin \
 	mailwrapper \
+	makefs \
 	makewhatis \
 	manctl \
 	memcontrol \

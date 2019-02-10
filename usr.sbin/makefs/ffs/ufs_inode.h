@@ -42,7 +42,9 @@
 
 union dinode {
 	struct ufs1_dinode ffs1_din;
+#ifndef __DragonFly__ /* XXX UFS2 */
 	struct ufs2_dinode ffs2_din;
+#endif
 };
 
 struct inode {
@@ -72,6 +74,7 @@ struct inode {
 #define	i_ffs1_size		i_din.ffs1_din.di_size
 #define	i_ffs1_uid		i_din.ffs1_din.di_uid
 
+#ifndef __DragonFly__ /* XXX UFS2 */
 #define	i_ffs2_atime		i_din.ffs2_din.di_atime
 #define	i_ffs2_atimensec	i_din.ffs2_din.di_atimensec
 #define	i_ffs2_blocks		i_din.ffs2_din.di_blocks
@@ -92,8 +95,13 @@ struct inode {
 #define	i_ffs2_shortlink	i_din.ffs2_din.db
 #define	i_ffs2_size		i_din.ffs2_din.di_size
 #define	i_ffs2_uid		i_din.ffs2_din.di_uid
+#endif
 
 #undef DIP
+#if 0 /* XXX UFS2 */
 #define DIP(ip, field) \
         (((ip)->i_fs->fs_magic == FS_UFS1_MAGIC) ? \
         (ip)->i_ffs1_##field : (ip)->i_ffs2_##field)
+#else
+#define DIP(ip, field) ((ip)->i_ffs1_##field)
+#endif

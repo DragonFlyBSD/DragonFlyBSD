@@ -64,10 +64,70 @@ typedef struct {
 	int	avgfilesize;	/* expected average file size */
 	int	avgfpdir;	/* expected # of files per directory */
 	int	version;	/* filesystem version (1 = FFS, 2 = UFS2) */
+#ifndef __DragonFly__
 	int	maxbsize;	/* maximum extent size */
+#endif
 	int	maxblkspercg;	/* max # of blocks per cylinder group */
 	int	softupdates;	/* soft updates */
 		/* XXX: support `old' file systems ? */
 } ffs_opt_t;
+
+#ifdef __DragonFly__
+#define	SBLOCK_UFS1		8192
+#define	SBLOCKSIZE		SBSIZE
+#define	FS_UFS1_MAGIC		FS_MAGIC
+
+#define	csum_total		csum
+#define	ufs1_daddr_t		ufs_daddr_t
+
+#define	fs_old_cgmask		fs_cgmask
+#define	fs_old_cgoffset		fs_cgoffset
+#define	fs_old_cpc		fs_cpc
+#define	fs_old_cpg		fs_cpg
+#define	fs_old_flags		fs_flags
+#define	fs_old_inodefmt		fs_inodefmt
+#define	fs_old_interleave	fs_interleave
+#define	fs_old_ncyl		fs_ncyl
+#define	fs_old_npsect		fs_npsect
+#define	fs_old_nrpos		fs_nrpos
+#define	fs_old_nsect		fs_nsect
+#define	fs_old_nspf		fs_nspf
+#define	fs_old_postblformat	fs_postblformat
+#define	fs_old_postbloff	fs_postbloff
+#define	fs_old_rotbloff		fs_rotbloff
+#define	fs_old_rotdelay		fs_rotdelay
+#define	fs_old_rps		fs_rps
+#define	fs_old_spc		fs_spc
+#define	fs_old_trackskew	fs_trackskew
+
+#define	cg_old_boff		cg_boff
+#define	cg_old_btotoff		cg_btotoff
+#define	cg_old_ncyl		cg_ncyl
+#define	cg_old_niblk		cg_niblk
+#define	cg_old_time		cg_time
+
+typedef	__int64_t	makefs_daddr_t;	/* XXX swildner: ours is 32 bits?! */
+
+/*
+ * The size of a cylinder group is calculated by CGSIZE. The maximum size
+ * is limited by the fact that cylinder groups are at most one block.
+ * Its size is derived from the size of the maps maintained in the
+ * cylinder group and the (struct cg) size.
+ */
+
+/*
+ * XXX swildner: go with FreeBSD's CGSIZE macro until I've figured out
+ *               what's wrong with ours
+ */
+#define	FBSD_CGSIZE(fs) \
+    /* base cg */	(sizeof(struct cg) + sizeof(int32_t) + \
+    /* old btotoff */	(fs)->fs_cpg * sizeof(int32_t) + \
+    /* old boff */	(fs)->fs_cpg * sizeof(u_int16_t) + \
+    /* inode map */	howmany((fs)->fs_ipg, NBBY) + \
+    /* block map */	howmany((fs)->fs_fpg, NBBY) +\
+    /* if present */	((fs)->fs_contigsumsize <= 0 ? 0 : \
+    /* cluster sum */	(fs)->fs_contigsumsize * sizeof(int32_t) + \
+    /* cluster map */	howmany(fragstoblks(fs, (fs)->fs_fpg), NBBY)))
+#endif
 
 #endif /* _FFS_H */

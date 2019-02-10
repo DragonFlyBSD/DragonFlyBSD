@@ -35,10 +35,9 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: head/usr.sbin/makefs/makefs.c 326276 2017-11-27 15:37:16Z pfg $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.sbin/makefs/makefs.c 326276 2017-11-27 15:37:16Z pfg $");
 
 #include <sys/types.h>
 #include <sys/stat.h>

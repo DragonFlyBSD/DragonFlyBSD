@@ -65,10 +65,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)ffs_alloc.c	8.19 (Berkeley) 7/13/95
+ * $FreeBSD: head/usr.sbin/makefs/ffs.c 336736 2018-07-26 13:33:10Z emaste $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.sbin/makefs/ffs.c 336736 2018-07-26 13:33:10Z emaste $");
 
 #if HAVE_NBTOOL_CONFIG_H
 #include "nbtool_config.h"
@@ -108,15 +106,24 @@ __FBSDID("$FreeBSD: head/usr.sbin/makefs/ffs.c 336736 2018-07-26 13:33:10Z emast
 #include "ffs/ffs_extern.h"
 
 #undef DIP
+#if 0 /* XXX UFS2 */
 #define DIP(dp, field) \
 	((ffs_opts->version == 1) ? \
 	(dp)->ffs1_din.di_##field : (dp)->ffs2_din.di_##field)
+#else
+#define DIP(dp, field) (dp)->ffs1_din.di_##field
+#endif
 
 /*
  * Various file system defaults (cribbed from newfs(8)).
  */
+#ifdef __DragonFly__
+#define	DFL_FRAGSIZE		2048		/* fragment size */
+#define	DFL_BLKSIZE		16384		/* block size */
+#else
 #define	DFL_FRAGSIZE		4096		/* fragment size */
 #define	DFL_BLKSIZE		32768		/* block size */
+#endif
 #define	DFL_SECSIZE		512		/* sector size */
 #define	DFL_CYLSPERGROUP	65536		/* cylinders per group */
 #define	DFL_FRAGSPERINODE	4		/* fragments per inode */
@@ -145,8 +152,10 @@ static	void	ffs_write_file(union dinode *, uint32_t, void *, fsinfo_t *);
 static	void	ffs_write_inode(union dinode *, uint32_t, const fsinfo_t *);
 static  void	*ffs_build_dinode1(struct ufs1_dinode *, dirbuf_t *, fsnode *,
 				 fsnode *, fsinfo_t *);
+#if 0 /* XXX UFS2 */
 static  void	*ffs_build_dinode2(struct ufs2_dinode *, dirbuf_t *, fsnode *,
 				 fsnode *, fsinfo_t *);
+#endif
 
 
 	/* publicly visible functions */
@@ -171,12 +180,18 @@ ffs_prep_opts(fsinfo_t *fsopts)
 	      1, INT_MAX, "expected average file size" },
 	    { 'n', "avgfpdir", &ffs_opts->avgfpdir, OPT_INT32,
 	      1, INT_MAX, "expected # of files per directory" },
+#ifndef __DragonFly__
 	    { 'x', "extent", &ffs_opts->maxbsize, OPT_INT32,
 	      1, INT_MAX, "maximum # extent size" },
+#endif
 	    { 'g', "maxbpcg", &ffs_opts->maxblkspercg, OPT_INT32,
 	      1, INT_MAX, "max # of blocks per group" },
 	    { 'v', "version", &ffs_opts->version, OPT_INT32,
+#ifndef __DragonFly__
 	      1, 2, "UFS version" },
+#else
+	      1, 1, "UFS version" },
+#endif
 	    { 'o', "optimization", NULL, OPT_STRBUF,
 	      0, 0, "Optimization (time|space)" },
 	    { 'l', "label", ffs_opts->label, OPT_STRARRAY,
@@ -299,10 +314,12 @@ ffs_makefs(const char *image, const char *dir, fsnode *root, fsinfo_t *fsopts)
 		/* update various superblock parameters */
 	superblock = fsopts->superblock;
 	superblock->fs_fmod = 0;
+#ifndef __DragonFly__
 	superblock->fs_old_cstotal.cs_ndir   = superblock->fs_cstotal.cs_ndir;
 	superblock->fs_old_cstotal.cs_nbfree = superblock->fs_cstotal.cs_nbfree;
 	superblock->fs_old_cstotal.cs_nifree = superblock->fs_cstotal.cs_nifree;
 	superblock->fs_old_cstotal.cs_nffree = superblock->fs_cstotal.cs_nffree;
+#endif
 
 		/* write out superblock; image is now complete */
 	ffs_write_superblock(fsopts->superblock, fsopts);
@@ -401,10 +418,12 @@ ffs_validate(const char *dir, fsnode *root, fsinfo_t *fsopts)
 		fsopts->size += ncg * DINODE1_SIZE *
 		    roundup(fsopts->inodes / ncg, 
 			ffs_opts->bsize / DINODE1_SIZE);
+#ifndef __DragonFly__ /* XXX UFS2 */
 	else
 		fsopts->size += ncg * DINODE2_SIZE *
 		    roundup(fsopts->inodes / ncg, 
 			ffs_opts->bsize / DINODE2_SIZE);
+#endif
 
 		/* add minfree */
 	if (ffs_opts->minfree > 0)
@@ -642,9 +661,13 @@ ffs_size_dir(fsnode *root, fsinfo_t *fsopts)
 				size_t slen;
 
 				slen = strlen(node->symlink) + 1;
+#ifndef __DragonFly__ /* XXX UFS2 */
 				if (slen >= (ffs_opts->version == 1 ?
 						UFS1_MAXSYMLINKLEN :
 						UFS2_MAXSYMLINKLEN))
+#else
+				if (slen >= UFS1_MAXSYMLINKLEN)
+#endif
 					ADDSIZE(slen);
 			}
 		}
@@ -706,6 +729,7 @@ ffs_build_dinode1(struct ufs1_dinode *dinp, dirbuf_t *dbufp, fsnode *cur,
 	return membuf;
 }
 
+#ifndef __DragonFly__ /* XXX UFS2 */
 static void *
 ffs_build_dinode2(struct ufs2_dinode *dinp, dirbuf_t *dbufp, fsnode *cur,
 		 fsnode *root, fsinfo_t *fsopts)
@@ -757,6 +781,7 @@ ffs_build_dinode2(struct ufs2_dinode *dinp, dirbuf_t *dbufp, fsnode *cur,
 	}
 	return membuf;
 }
+#endif
 
 static int
 ffs_populate_dir(const char *dir, fsnode *root, fsinfo_t *fsopts)
@@ -833,9 +858,11 @@ ffs_populate_dir(const char *dir, fsnode *root, fsinfo_t *fsopts)
 		if (ffs_opts->version == 1)
 			membuf = ffs_build_dinode1(&din.ffs1_din, &dirbuf, cur,
 			    root, fsopts);
+#ifndef __DragonFly__ /* XXX UFS2 */
 		else
 			membuf = ffs_build_dinode2(&din.ffs2_din, &dirbuf, cur,
 			    root, fsopts);
+#endif
 
 		if (debug & DEBUG_FS_POPULATE_NODE) {
 			printf("ffs_populate_dir: writing ino %d, %s",
@@ -922,9 +949,11 @@ ffs_write_file(union dinode *din, uint32_t ino, void *buf, fsinfo_t *fsopts)
 	if (ffs_opts->version == 1)
 		memcpy(&in.i_din.ffs1_din, &din->ffs1_din,
 		    sizeof(in.i_din.ffs1_din));
+#ifndef __DragonFly__ /* XXX UFS2 */
 	else
 		memcpy(&in.i_din.ffs2_din, &din->ffs2_din,
 		    sizeof(in.i_din.ffs2_din));
+#endif
 
 	if (DIP(din, size) == 0)
 		goto write_inode_and_leave;		/* mmm, cheating */
@@ -1079,14 +1108,20 @@ ffs_write_inode(union dinode *dp, uint32_t ino, const fsinfo_t *fsopts)
 {
 	char 		*buf;
 	struct ufs1_dinode *dp1;
+#ifndef __DragonFly__ /* XXX UFS2 */
 	struct ufs2_dinode *dp2, *dip;
+#endif
 	struct cg	*cgp;
 	struct fs	*fs;
 	int		cg, cgino;
+#ifndef __DragonFly__ /* XXX UFS2 */
 	uint32_t	i;
-	daddr_t		d;
+#endif
+	makefs_daddr_t	d;
 	char		sbbuf[FFS_MAXBSIZE];
+#ifndef __DragonFly__ /* XXX UFS2 */
 	uint32_t	initediblk;
+#endif
 	ffs_opt_t	*ffs_opts = fsopts->fs_specific;
 
 	assert (dp != NULL);
@@ -1111,7 +1146,9 @@ ffs_write_inode(union dinode *dp, uint32_t ino, const fsinfo_t *fsopts)
 
 	buf = emalloc(fs->fs_bsize);
 	dp1 = (struct ufs1_dinode *)buf;
+#ifndef __DragonFly__ /* XXX UFS2 */
 	dp2 = (struct ufs2_dinode *)buf;
+#endif
 
 	if (fs->fs_cstotal.cs_nifree == 0)
 		errx(1, "ffs_write_inode: fs out of inodes for ino %u",
@@ -1130,6 +1167,7 @@ ffs_write_inode(union dinode *dp, uint32_t ino, const fsinfo_t *fsopts)
 		fs->fs_cs(fs, cg).cs_ndir++; 
 	}
 
+#ifndef __DragonFly__ /* XXX UFS2 */
 	/*
 	 * Initialize inode blocks on the fly for UFS2.
 	 */
@@ -1148,6 +1186,7 @@ ffs_write_inode(union dinode *dp, uint32_t ino, const fsinfo_t *fsopts)
 		initediblk += INOPB(fs);
 		cgp->cg_initediblk = ufs_rw32(initediblk, fsopts->needswap);
 	}
+#endif
 
 
 	ffs_wtfs(fsbtodb(fs, cgtod(fs, cg)), (int)fs->fs_cgsize, &sbbuf,
@@ -1160,14 +1199,18 @@ ffs_write_inode(union dinode *dp, uint32_t ino, const fsinfo_t *fsopts)
 		if (ffs_opts->version == 1)
 			ffs_dinode1_swap(&dp->ffs1_din,
 			    &dp1[ino_to_fsbo(fs, ino)]);
+#ifndef __DragonFly__ /* XXX UFS2 */
 		else
 			ffs_dinode2_swap(&dp->ffs2_din,
 			    &dp2[ino_to_fsbo(fs, ino)]);
+#endif
 	} else {
 		if (ffs_opts->version == 1)
 			dp1[ino_to_fsbo(fs, ino)] = dp->ffs1_din;
+#ifndef __DragonFly__ /* XXX UFS2 */
 		else
 			dp2[ino_to_fsbo(fs, ino)] = dp->ffs2_din;
+#endif
 	}
 	ffs_wtfs(d, fs->fs_bsize, buf, fsopts);
 	free(buf);

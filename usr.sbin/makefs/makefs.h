@@ -270,10 +270,16 @@ extern	struct stat stampst;
 #define        FS_ISCLEAN      1
 
 #define        DINODE1_SIZE    (sizeof(struct ufs1_dinode))
+#ifndef __DragonFly__ /* XXX UFS2 */
 #define        DINODE2_SIZE    (sizeof(struct ufs2_dinode))
+#endif
 
+#ifndef __DragonFly__
 #define UFS1_MAXSYMLINKLEN   ((UFS_NDADDR + UFS_NIADDR) * sizeof(ufs1_daddr_t))
+#endif
+#ifndef __DragonFly__ /* XXX UFS2 */
 #define UFS2_MAXSYMLINKLEN   ((UFS_NDADDR + UFS_NIADDR) * sizeof(ufs2_daddr_t))
+#endif
 
 #if (BYTE_ORDER == LITTLE_ENDIAN)
 #define DIRSIZ_SWAP(oldfmt, dp, needswap)      \

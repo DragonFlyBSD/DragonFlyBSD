@@ -25,10 +25,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
+ * $FreeBSD: head/usr.sbin/makefs/ffs/ffs_bswap.c 326276 2017-11-27 15:37:16Z pfg $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.sbin/makefs/ffs/ffs_bswap.c 326276 2017-11-27 15:37:16Z pfg $");
 
 #include <sys/param.h>
 #if defined(_KERNEL)
@@ -48,6 +46,9 @@ __FBSDID("$FreeBSD: head/usr.sbin/makefs/ffs/ffs_bswap.c 326276 2017-11-27 15:37
 #include <ufs/ffs/fs.h>
 #include "ffs/ffs_extern.h"
 
+#ifdef __DragonFly__
+#include "ffs.h"	/* XXX swildner: for compat defines */
+#else
 #define	fs_old_postbloff	fs_spare5[0]
 #define	fs_old_rotbloff		fs_spare5[1]
 #define	fs_old_postbl_start	fs_maxbsize
@@ -55,6 +56,7 @@ __FBSDID("$FreeBSD: head/usr.sbin/makefs/ffs/ffs_bswap.c 326276 2017-11-27 15:37
 #define	fs_old_trkseek	fs_id[1]
 #define	fs_old_csmask	fs_spare1[0]
 #define	fs_old_csshift	fs_spare1[1]
+#endif
 
 #define	FS_42POSTBLFMT		-1	/* 4.2BSD rotational table format */
 #define	FS_DYNAMICPOSTBLFMT	1	/* dynamic rotational table format */
@@ -86,8 +88,10 @@ ffs_sb_swap(struct fs *o, struct fs *n)
 	 * historic FS_DYNAMICPOSTBLFMT postbl table, and with the
 	 * first half of the historic FS_42POSTBLFMT postbl table.
 	 */
+#ifndef __DragonFly__
 	n->fs_maxbsize = bswap32(o->fs_maxbsize);
 	n->fs_sblockloc = bswap64(o->fs_sblockloc);
+#endif
 	ffs_csumtotal_swap(&o->fs_cstotal, &n->fs_cstotal);
 	n->fs_time = bswap64(o->fs_time);
 	n->fs_size = bswap64(o->fs_size);
@@ -142,6 +146,7 @@ ffs_dinode1_swap(struct ufs1_dinode *o, struct ufs1_dinode *n)
 	n->di_gid = bswap32(o->di_gid);
 }
 
+#ifndef __DragonFly__ /* XXX UFS2 */
 void
 ffs_dinode2_swap(struct ufs2_dinode *o, struct ufs2_dinode *n)
 {
@@ -168,6 +173,7 @@ ffs_dinode2_swap(struct ufs2_dinode *o, struct ufs2_dinode *n)
 	memcpy(n->di_db, o->di_db, sizeof(n->di_db));
 	memcpy(n->di_ib, o->di_ib, sizeof(n->di_ib));
 }
+#endif
 
 void
 ffs_csum_swap(struct csum *o, struct csum *n, int size)
@@ -227,12 +233,16 @@ ffs_cg_swap(struct cg *o, struct cg *n, struct fs *fs)
 	n->cg_clustersumoff = bswap32(o->cg_clustersumoff);
 	n->cg_clusteroff = bswap32(o->cg_clusteroff);
 	n->cg_nclusterblks = bswap32(o->cg_nclusterblks);
+#ifndef __DragonFly__
 	n->cg_niblk = bswap32(o->cg_niblk);
 	n->cg_initediblk = bswap32(o->cg_initediblk);
 	n->cg_time = bswap64(o->cg_time);
+#endif
 
+#ifndef __DragonFly__ /* XXX UFS2 */
 	if (fs->fs_magic == FS_UFS2_MAGIC)
 		return;
+#endif
 
 	if (n->cg_magic == CG_MAGIC) {
 		btotoff = n->cg_old_btotoff;

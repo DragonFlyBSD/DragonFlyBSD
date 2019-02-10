@@ -37,10 +37,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)ufs_bmap.c	8.8 (Berkeley) 8/11/95
+ * $FreeBSD: head/usr.sbin/makefs/ffs/ufs_bmap.c 326025 2017-11-20 19:49:47Z pfg $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.sbin/makefs/ffs/ufs_bmap.c 326025 2017-11-20 19:49:47Z pfg $");
 
 #include <sys/param.h>
 #include <sys/time.h>
@@ -68,9 +66,9 @@ __FBSDID("$FreeBSD: head/usr.sbin/makefs/ffs/ufs_bmap.c 326025 2017-11-20 19:49:
  * once with the offset into the page itself.
  */
 int
-ufs_getlbns(struct inode *ip, daddr_t bn, struct indir *ap, int *nump)
+ufs_getlbns(struct inode *ip, makefs_daddr_t bn, struct indir *ap, int *nump)
 {
-	daddr_t metalbn, realbn;
+	makefs_daddr_t metalbn, realbn;
 	int64_t blockcnt;
 	int lbc;
 	int i, numlevels, off;
