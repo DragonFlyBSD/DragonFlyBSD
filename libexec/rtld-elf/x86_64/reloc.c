@@ -63,8 +63,12 @@ do_copy_relocations(Obj_Entry *dstobj)
 {
     const Elf_Rela *relalim;
     const Elf_Rela *rela;
+    int error = 0;
 
     assert(dstobj->mainprog);	/* COPY relocations are invalid elsewhere */
+
+    if (dstobj->relro_protected)
+	mprotect(dstobj->relro_page, dstobj->relro_size, PROT_READ | PROT_WRITE);
 
     relalim = (const Elf_Rela *) ((caddr_t) dstobj->rela + dstobj->relasize);
     for (rela = dstobj->rela;  rela < relalim;  rela++) {
@@ -99,7 +103,8 @@ do_copy_relocations(Obj_Entry *dstobj)
 	    if (srcobj == NULL) {
 		_rtld_error("Undefined symbol \"%s\" referenced from COPY"
 		  " relocation in %s", name, dstobj->path);
-		return -1;
+		error = -1;
+		break;
 	    }
 
 	    srcaddr = (const void *) (defobj->relocbase + srcsym->st_value);
@@ -107,7 +112,10 @@ do_copy_relocations(Obj_Entry *dstobj)
 	}
     }
 
-    return 0;
+    if (dstobj->relro_protected)
+	mprotect(dstobj->relro_page, dstobj->relro_size, PROT_READ);
+
+    return error;
 }
 
 /* Initialize the special GOT entries. */

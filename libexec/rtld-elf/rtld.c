@@ -2676,6 +2676,7 @@ relocate_object(Obj_Entry *obj, bool bind_now, Obj_Entry *rtldobj,
 		  obj->path, rtld_strerror(errno));
 		return (-1);
 	    }
+	    obj->relro_protected = true;
 	}
 	return (0);
 }
