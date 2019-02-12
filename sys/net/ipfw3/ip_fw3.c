@@ -962,7 +962,7 @@ ip_fw3_ctl_add_rule(struct sockopt *sopt)
 
 	size = sopt->sopt_valsize;
 	if (size > (sizeof(uint32_t) * IPFW_RULE_SIZE_MAX) ||
-			size < sizeof(*ioc_rule)) {
+			size < sizeof(*ioc_rule) - sizeof(ipfw_insn)) {
 		return EINVAL;
 	}
 	if (size != (sizeof(uint32_t) * IPFW_RULE_SIZE_MAX)) {
