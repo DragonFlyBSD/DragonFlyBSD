@@ -358,7 +358,8 @@ struct sockaddr_in {
 #define	IP_FW_TBL_ZERO		46   /* clear ipfw table counters */
 #define	IP_FW_TBL_EXPIRE	47   /* expire addresses in ipfw table */
 
-#define	IP_FW_X			49   /* ipfw2 firewall */
+#define	IP_FW_X			49   /* ipfw3 firewall */
+
 #define	IP_FW_ADD		50   /* add a firewall rule to chain */
 #define	IP_FW_DEL		51   /* delete a firewall rule from chain */
 #define	IP_FW_FLUSH		52   /* flush firewall rule chain */

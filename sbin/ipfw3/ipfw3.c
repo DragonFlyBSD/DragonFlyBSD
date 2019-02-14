@@ -600,7 +600,7 @@ done:
 	rule->cmd_len = (u_int32_t *)dst - (u_int32_t *)(rule->cmd);
 	i = (void *)dst - (void *)rule;
 	if (do_set_x(IP_FW_ADD, (void *)rule, i) == -1) {
-		err(EX_UNAVAILABLE, "getsockopt(%s)", "IP_FW_ADD");
+		err(EX_UNAVAILABLE, "setsockopt(%s)", "IP_FW_ADD");
 	}
 	if (!do_quiet)
 		rule_show(rule, 10, 10);
@@ -892,7 +892,7 @@ done:
 }
 
 /*
- * do_set_x - extended version og do_set
+ * do_set_x - extended version of do_set
  * insert a x_header in the beginning of the rule buf
  * and call setsockopt() with IP_FW_X.
  */

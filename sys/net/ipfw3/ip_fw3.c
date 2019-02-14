@@ -1038,7 +1038,7 @@ ip_fw3_ctl_get_rules(struct sockopt *sopt)
 
 /*
  * ip_fw3_ctl_x - extended version of ip_fw3_ctl
- * remove the x_header, and adjust the sopt_name,sopt_val and sopt_valsize.
+ * remove the x_header, and adjust the sopt_name, sopt_val and sopt_valsize.
  */
 int
 ip_fw3_ctl_x(struct sockopt *sopt)
