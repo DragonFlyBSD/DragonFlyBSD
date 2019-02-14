@@ -32,7 +32,6 @@
  *
  * @(#)position.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/position.c,v 1.17.2.2 2001/01/23 14:23:55 asmodai Exp $
- * $DragonFly: src/bin/dd/position.c,v 1.4 2008/01/28 16:08:02 matthias Exp $
  */
 
 #include <sys/types.h>
@@ -84,8 +83,11 @@ pos_in(void)
 					bcnt = in.dbsz;
 					--cnt;
 				}
-			} else
+			} else {
 				--cnt;
+			}
+			if (need_summary)
+				summary();
 			continue;
 		}
 

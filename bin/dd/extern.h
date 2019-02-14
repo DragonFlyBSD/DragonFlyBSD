@@ -35,25 +35,26 @@
  */
 
 #include <sys/cdefs.h>
+#include <signal.h>
 
-void block (void);
-void block_close (void);
-void dd_out (int);
-void def (void);
-void def_close (void);
-void jcl (char **);
-void pos_in (void);
-void pos_out (void);
-void summary (void);
-void summaryx (int);
-void terminate (int) __dead2;
-void unblock (void);
-void unblock_close (void);
-void bitswab (void *, size_t);
+void block(void);
+void block_close(void);
+void dd_out(int);
+void def(void);
+void def_close(void);
+void jcl(char **);
+void pos_in(void);
+void pos_out(void);
+void summary(void);
+void siginfo_handler(int);
+void terminate(int) __dead2;
+void unblock(void);
+void unblock_close(void);
+void bitswab(void *, size_t);
 
 extern IO in, out;
 extern STAT st;
-extern void (*cfunc) (void);
+extern void (*cfunc)(void);
 extern quad_t cpy_cnt;
 extern size_t cbsz;
 extern u_int ddflags;
@@ -63,3 +64,4 @@ extern const u_char a2e_32V[], a2e_POSIX[];
 extern const u_char e2a_32V[], e2a_POSIX[];
 extern const u_char a2ibm_32V[], a2ibm_POSIX[];
 extern u_char casetab[];
+extern volatile sig_atomic_t need_summary;

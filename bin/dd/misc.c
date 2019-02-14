@@ -32,7 +32,6 @@
  *
  * @(#)misc.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/misc.c,v 1.18.2.1 2001/08/01 01:40:03 obrien Exp $
- * $DragonFly: src/bin/dd/misc.c,v 1.6 2008/01/28 16:08:02 matthias Exp $
  */
 
 #include <sys/types.h>
@@ -52,44 +51,36 @@ summary(void)
 {
 	struct timeval tv;
 	double secs;
-	char buf[100];
 
 	gettimeofday(&tv, NULL);
 	secs = tv.tv_sec + tv.tv_usec * 1e-6 - st.start;
 	if (secs < 1e-6)
 		secs = 1e-6;
-	/* Use snprintf(3) so that we don't reenter stdio(3). */
-	snprintf(buf, sizeof(buf),
-	    "%ju+%ju records in\n%ju+%ju records out\n",
+	fprintf(stderr, "%ju+%ju records in\n%ju+%ju records out\n",
 	    (uintmax_t)st.in_full, (uintmax_t)st.in_part,
 	    (uintmax_t)st.out_full, (uintmax_t)st.out_part);
-	write(STDERR_FILENO, buf, strlen(buf));
 	if (st.swab) {
-		snprintf(buf, sizeof(buf), "%ju odd length swab %s\n",
+		fprintf(stderr, "%ju odd length swab %s\n",
 		     (uintmax_t)st.swab,
 		     ((st.swab == 1) ? "block" : "blocks"));
-		write(STDERR_FILENO, buf, strlen(buf));
 	}
 	if (st.trunc) {
-		snprintf(buf, sizeof(buf), "%ju truncated %s\n",
+		fprintf(stderr, "%ju truncated %s\n",
 		     (uintmax_t)st.trunc,
 		     ((st.trunc == 1) ? "block" : "blocks"));
-		write(STDERR_FILENO, buf, strlen(buf));
 	}
-	snprintf(buf, sizeof(buf),
+	fprintf(stderr,
 	    "%ju bytes transferred in %.6f secs (%.0f bytes/sec)\n",
 	    (uintmax_t)st.bytes, secs, st.bytes / secs);
-	write(STDERR_FILENO, buf, strlen(buf));
+	need_summary = 0;
 }
 
 /* ARGSUSED */
 void
-summaryx(int notused __unused)
+siginfo_handler(int signo __unused)
 {
-	int save_errno = errno;
 
-	summary();
-	errno = save_errno;
+	need_summary = 1;
 }
 
 /* ARGSUSED */

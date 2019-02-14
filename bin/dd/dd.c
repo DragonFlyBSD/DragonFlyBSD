@@ -50,6 +50,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <unistd.h>
 
 #include "dd.h"
@@ -69,6 +70,7 @@ u_int	ddflags;		/* conversion options */
 size_t	cbsz;			/* conversion block size */
 quad_t	files_cnt = 1;		/* # of files to copy */
 const	u_char *ctab;		/* conversion table */
+volatile sig_atomic_t need_summary;
 
 int
 main(int argc __unused, char **argv)
@@ -77,7 +79,7 @@ main(int argc __unused, char **argv)
 	jcl(argv);
 	setup();
 
-	signal(SIGINFO, summaryx);
+	signal(SIGINFO, siginfo_handler);
 	signal(SIGINT, terminate);
 
 	atexit(summary);
@@ -336,6 +338,8 @@ dd_in(void)
 
 		in.dbp += in.dbrcnt;
 		(*cfunc)();
+		if (need_summary)
+			summary();
 	}
 }
 
