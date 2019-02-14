@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1991, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -31,8 +33,7 @@
  * SUCH DAMAGE.
  *
  * @(#)conv.c	8.3 (Berkeley) 4/2/94
- * $FreeBSD: src/bin/dd/conv.c,v 1.15 1999/09/13 21:47:10 green Exp $
- * $DragonFly: src/bin/dd/conv.c,v 1.6 2008/01/28 16:08:02 matthias Exp $
+ * $FreeBSD: head/bin/dd/conv.c 326025 2017-11-20 19:49:47Z pfg $
  */
 
 #include <sys/param.h>
@@ -69,7 +70,7 @@ def(void)
 		dd_out(0);
 
 		/*
-		 * Ddout copies the leftover output to the beginning of
+		 * dd_out copies the leftover output to the beginning of
 		 * the buffer and resets the output buffer.  Reset the
 		 * input buffer to match it.
 	 	 */
@@ -128,20 +129,21 @@ block(void)
 	 */
 	ch = 0;
 	for (inp = in.dbp - in.dbcnt, outp = out.dbp; in.dbcnt;) {
-		maxlen = MIN(cbsz, in.dbcnt);
-		if ((t = ctab) != NULL)
+		maxlen = MIN(cbsz, (size_t)in.dbcnt);
+		if ((t = ctab) != NULL) {
 			for (cnt = 0; cnt < maxlen && (ch = *inp++) != '\n';
 			    ++cnt)
 				*outp++ = t[ch];
-		else
+		} else {
 			for (cnt = 0; cnt < maxlen && (ch = *inp++) != '\n';
 			    ++cnt)
 				*outp++ = ch;
+		}
 		/*
 		 * Check for short record without a newline.  Reassemble the
 		 * input block.
 		 */
-		if (ch != '\n' && in.dbcnt < cbsz) {
+		if (ch != '\n' && (size_t)in.dbcnt < cbsz) {
 			memmove(in.db, in.dbp - in.dbcnt, in.dbcnt);
 			break;
 		}
@@ -152,9 +154,9 @@ block(void)
 			--in.dbcnt;
 
 		/* Pad short records with spaces. */
-		if (cnt < cbsz)
+		if (cnt < cbsz) {
 			memset(outp, ctab ? ctab[' '] : ' ', cbsz - cnt);
-		else {
+		} else {
 			/*
 			 * If the next character wouldn't have ended the
 			 * block, it's a truncation.
@@ -163,7 +165,8 @@ block(void)
 				++st.trunc;
 
 			/* Toss characters to a newline. */
-			for (; in.dbcnt && *inp++ != '\n'; --in.dbcnt);
+			for (; in.dbcnt && *inp++ != '\n'; --in.dbcnt)
+				;
 			if (!in.dbcnt)
 				intrunc = 1;
 			else
@@ -215,16 +218,14 @@ unblock(void)
 
 	/* Translation and case conversion. */
 	if ((t = ctab) != NULL)
-		for (cnt = in.dbrcnt, inp = in.dbp; cnt--;) {
-			inp--;
+		for (inp = in.dbp - (cnt = in.dbrcnt); cnt--; ++inp)
 			*inp = t[*inp];
-		}
 	/*
 	 * Copy records (max cbsz size chunks) into the output buffer.  The
 	 * translation has to already be done or we might not recognize the
 	 * spaces.
 	 */
-	for (inp = in.db; in.dbcnt >= cbsz; inp += cbsz, in.dbcnt -= cbsz) {
+	for (inp = in.db; (size_t)in.dbcnt >= cbsz; inp += cbsz, in.dbcnt -= cbsz) {
 		for (t = inp + cbsz - 1; t >= inp && *t == ' '; --t)
 			;
 		if (t >= inp) {

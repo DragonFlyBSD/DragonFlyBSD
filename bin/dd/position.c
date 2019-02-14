@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1991, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -31,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * @(#)position.c	8.3 (Berkeley) 4/2/94
- * $FreeBSD: src/bin/dd/position.c,v 1.17.2.2 2001/01/23 14:23:55 asmodai Exp $
+ * $FreeBSD: head/bin/dd/position.c 337865 2018-08-15 19:46:13Z kevans $
  */
 
 #include <sys/types.h>
@@ -39,10 +41,41 @@
 
 #include <err.h>
 #include <errno.h>
+#include <limits.h>
 #include <unistd.h>
 
 #include "dd.h"
 #include "extern.h"
+
+static off_t seek_offset(IO *);
+
+static off_t
+seek_offset(IO *io)
+{
+	off_t n;
+	size_t sz;
+
+	n = io->offset;
+	sz = io->dbsz;
+
+	_Static_assert(sizeof(io->offset) == sizeof(int64_t), "64-bit off_t");
+
+	/*
+	 * If the lseek offset will be negative, verify that this is a special
+	 * device file.  Some such files (e.g. /dev/kmem) permit "negative"
+	 * offsets.
+	 *
+	 * Bail out if the calculation of a file offset would overflow.
+	 */
+	if ((io->flags & ISCHR) == 0 && (n < 0 || n > OFF_MAX / (ssize_t)sz))
+		errx(1, "seek offsets cannot be larger than %jd",
+		    (intmax_t)OFF_MAX);
+	else if ((io->flags & ISCHR) != 0 && (uint64_t)n > UINT64_MAX / sz)
+		errx(1, "seek offsets cannot be larger than %ju",
+		    (uintmax_t)UINT64_MAX);
+
+	return ((off_t)( (uint64_t)n * sz ));
+}
 
 /*
  * Position input/output data streams before starting the copy.  Device type
@@ -61,7 +94,7 @@ pos_in(void)
 	/* If known to be seekable, try to seek on it. */
 	if (in.flags & ISSEEK) {
 		errno = 0;
-		if (lseek(in.fd, in.offset * in.dbsz, SEEK_CUR) == -1 &&
+		if (lseek(in.fd, seek_offset(&in), SEEK_CUR) == -1 &&
 		    errno != 0)
 			err(1, "%s", in.name);
 		return;
@@ -132,7 +165,7 @@ pos_out(void)
 	 */
 	if (out.flags & (ISSEEK | ISPIPE)) {
 		errno = 0;
-		if (lseek(out.fd, out.offset * out.dbsz, SEEK_CUR) == -1 &&
+		if (lseek(out.fd, seek_offset(&out), SEEK_CUR) == -1 &&
 		    errno != 0)
 			err(1, "%s", out.name);
 		return;
@@ -174,7 +207,7 @@ pos_out(void)
 			n = write(out.fd, out.db, out.dbsz);
 			if (n == -1)
 				err(1, "%s", out.name);
-			if ((size_t)n != out.dbsz)
+			if (n != out.dbsz)
 				errx(1, "%s: write failure", out.name);
 		}
 		break;

@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -31,11 +33,13 @@
  * SUCH DAMAGE.
  *
  * @(#)conv_tab.c	8.1 (Berkeley) 5/31/93
- * $FreeBSD: src/bin/dd/conv_tab.c,v 1.10 1999/09/12 16:51:53 green Exp $
- * $DragonFly: src/bin/dd/conv_tab.c,v 1.3 2008/01/28 16:08:02 matthias Exp $
+ * $FreeBSD: head/bin/dd/conv_tab.c 326025 2017-11-20 19:49:47Z pfg $
  */
 
 #include <sys/types.h>
+
+#include "dd.h"
+#include "extern.h"
 
 /*
  * There are currently six tables:

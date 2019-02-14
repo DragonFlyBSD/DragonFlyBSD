@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1991, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -31,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * @(#)misc.c	8.3 (Berkeley) 4/2/94
- * $FreeBSD: src/bin/dd/misc.c,v 1.18.2.1 2001/08/01 01:40:03 obrien Exp $
+ * $FreeBSD: head/bin/dd/misc.c 338646 2018-09-13 14:54:46Z kevans $
  */
 
 #include <sys/types.h>
@@ -39,7 +41,6 @@
 #include <err.h>
 #include <errno.h>
 #include <libutil.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -82,22 +83,19 @@ summary(void)
 	secs = secs_elapsed();
 
 	fprintf(stderr, "%ju+%ju records in\n%ju+%ju records out\n",
-	    (uintmax_t)st.in_full, (uintmax_t)st.in_part,
-	    (uintmax_t)st.out_full, (uintmax_t)st.out_part);
+	    st.in_full, st.in_part, st.out_full, st.out_part);
 	if (st.swab) {
 		fprintf(stderr, "%ju odd length swab %s\n",
-		     (uintmax_t)st.swab,
-		     ((st.swab == 1) ? "block" : "blocks"));
+		     st.swab, (st.swab == 1) ? "block" : "blocks");
 	}
 	if (st.trunc) {
 		fprintf(stderr, "%ju truncated %s\n",
-		     (uintmax_t)st.trunc,
-		     ((st.trunc == 1) ? "block" : "blocks"));
+		     st.trunc, (st.trunc == 1) ? "block" : "blocks");
 	}
 	if (!(ddflags & C_NOXFER)) {
 		fprintf(stderr,
 		    "%ju bytes transferred in %.6f secs (%.0f bytes/sec)\n",
-		    (uintmax_t)st.bytes, secs, st.bytes / secs);
+		    st.bytes, secs, st.bytes / secs);
 	}
 	need_summary = 0;
 }
@@ -127,27 +125,21 @@ progress(void)
 	need_progress = 0;
 }
 
-/* ARGSUSED */
 void
 siginfo_handler(int signo __unused)
 {
-
 	need_summary = 1;
 }
 
-/* ARGSUSED */
 void
 sigalarm_handler(int signo __unused)
 {
-
 	need_progress = 1;
 }
 
-/* ARGSUSED */
 void
 terminate(int sig)
 {
-
 	summary();
 	_exit(sig == 0 ? 0 : 1);
 }

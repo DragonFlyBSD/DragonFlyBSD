@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1991, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -31,7 +33,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.3 (Berkeley) 4/2/94
- * $FreeBSD: src/bin/dd/extern.h,v 1.9.2.1 2000/08/07 08:30:17 ps Exp $
+ * $FreeBSD: head/bin/dd/extern.h 337869 2018-08-15 20:50:38Z kevans $
  */
 
 #include <sys/cdefs.h>
@@ -45,27 +47,28 @@ void def_close(void);
 void jcl(char **);
 void pos_in(void);
 void pos_out(void);
-double secs_elapsed(void);
 void progress(void);
-void summary(void);
+double secs_elapsed(void);
 void sigalarm_handler(int);
 void siginfo_handler(int);
+void summary(void);
 void terminate(int) __dead2;
 void unblock(void);
 void unblock_close(void);
-void bitswab(void *, size_t);
 
 extern IO in, out;
 extern STAT st;
 extern void (*cfunc)(void);
-extern quad_t cpy_cnt;
+extern uintmax_t cpy_cnt;
 extern size_t cbsz;
 extern u_int ddflags;
-extern quad_t files_cnt;
+extern size_t speed;
+extern uintmax_t files_cnt;
 extern const u_char *ctab;
 extern const u_char a2e_32V[], a2e_POSIX[];
 extern const u_char e2a_32V[], e2a_POSIX[];
 extern const u_char a2ibm_32V[], a2ibm_POSIX[];
 extern u_char casetab[];
+extern char fill_char;
 extern volatile sig_atomic_t need_summary;
 extern volatile sig_atomic_t need_progress;

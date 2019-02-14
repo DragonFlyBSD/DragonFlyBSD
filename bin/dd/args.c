@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1991, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -31,13 +33,14 @@
  * SUCH DAMAGE.
  *
  * @(#)args.c	8.3 (Berkeley) 4/2/94
- * $FreeBSD: src/bin/dd/args.c,v 1.25.2.2 2001/01/23 14:20:03 asmodai Exp $
+ * $FreeBSD: head/bin/dd/args.c 337505 2018-08-08 21:37:02Z kevans $
  */
 
 #include <sys/types.h>
 
 #include <err.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,15 +55,18 @@ static void	f_cbs(char *);
 static void	f_conv(char *);
 static void	f_count(char *);
 static void	f_files(char *);
+static void	f_fillchar(char *);
 static void	f_ibs(char *);
 static void	f_if(char *);
 static void	f_obs(char *);
 static void	f_of(char *);
 static void	f_seek(char *);
 static void	f_skip(char *);
+static void	f_speed(char *);
 static void	f_status(char *);
-static quad_t	get_num(char *);
-static off_t	get_offset(char *);
+static uintmax_t get_num(const char *);
+static off_t	get_off_t(const char *);
+static intmax_t postfix_to_mult(const char);
 
 static const struct arg {
 	const char *name;
@@ -72,6 +78,7 @@ static const struct arg {
 	{ "conv",	f_conv,		0,	 0 },
 	{ "count",	f_count,	C_COUNT, C_COUNT },
 	{ "files",	f_files,	C_FILES, C_FILES },
+	{ "fillchar",	f_fillchar,	C_FILL,	 C_FILL },
 	{ "ibs",	f_ibs,		C_IBS,	 C_BS|C_IBS },
 	{ "if",		f_if,		C_IF,	 C_IF },
 	{ "iseek",	f_skip,		C_SKIP,	 C_SKIP },
@@ -80,6 +87,7 @@ static const struct arg {
 	{ "oseek",	f_seek,		C_SEEK,	 C_SEEK },
 	{ "seek",	f_seek,		C_SEEK,	 C_SEEK },
 	{ "skip",	f_skip,		C_SKIP,	 C_SKIP },
+	{ "speed",	f_speed,	0,	 0 },
 	{ "status",	f_status,	C_STATUS,C_STATUS },
 };
 
@@ -152,24 +160,17 @@ jcl(char **argv)
 				ddflags |= C_BLOCK;
 				cfunc = block;
 			}
-		} else
+		} else {
 			errx(1, "cbs meaningless if not doing record operations");
-	} else
+		}
+	} else {
 		cfunc = def;
-
-	/*
-	 * Bail out if the calculation of a file offset would overflow.
-	 */
-	if (in.offset > QUAD_MAX / (ssize_t)in.dbsz ||
-	    out.offset > QUAD_MAX / (ssize_t)out.dbsz) {
-		errx(1, "seek offsets cannot be larger than %lld", QUAD_MAX);
 	}
 }
 
 static int
 c_arg(const void *a, const void *b)
 {
-
 	return (strcmp(((const struct arg *)a)->name,
 	    ((const struct arg *)b)->name));
 }
@@ -177,7 +178,7 @@ c_arg(const void *a, const void *b)
 static void
 f_bs(char *arg)
 {
-	quad_t res;
+	uintmax_t res;
 
 	res = get_num(arg);
 	if (res < 1 || res > SSIZE_MAX)
@@ -188,7 +189,7 @@ f_bs(char *arg)
 static void
 f_cbs(char *arg)
 {
-	quad_t res;
+	uintmax_t res;
 
 	res = get_num(arg);
 	if (res < 1 || res > SSIZE_MAX)
@@ -199,27 +200,38 @@ f_cbs(char *arg)
 static void
 f_count(char *arg)
 {
+	uintmax_t res;
 
-	cpy_cnt = get_num(arg);
-	if (cpy_cnt < 0)
-		errx(1, "count cannot be negative");
-	if (cpy_cnt == 0)
-		cpy_cnt = -1;
+	res = get_num(arg);
+	if (res == UINTMAX_MAX)
+		errc(1, ERANGE, "%s", oper);
+	if (res == 0)
+		cpy_cnt = UINTMAX_MAX;
+	else
+		cpy_cnt = res;
 }
 
 static void
 f_files(char *arg)
 {
-
 	files_cnt = get_num(arg);
 	if (files_cnt < 1)
-		errx(1, "files must be between 1 and %qd", QUAD_MAX);
+		errx(1, "files must be between 1 and %zu", SIZE_MAX);
+}
+
+static void
+f_fillchar(char *arg)
+{
+	if (strlen(arg) != 1)
+		errx(1, "need exactly one fill char");
+
+	fill_char = arg[0];
 }
 
 static void
 f_ibs(char *arg)
 {
-	quad_t res;
+	uintmax_t res;
 
 	if (!(ddflags & C_BS)) {
 		res = get_num(arg);
@@ -232,14 +244,13 @@ f_ibs(char *arg)
 static void
 f_if(char *arg)
 {
-
 	in.name = arg;
 }
 
 static void
 f_obs(char *arg)
 {
-	quad_t res;
+	uintmax_t res;
 
 	if (!(ddflags & C_BS)) {
 		res = get_num(arg);
@@ -252,28 +263,30 @@ f_obs(char *arg)
 static void
 f_of(char *arg)
 {
-
 	out.name = arg;
 }
 
 static void
 f_seek(char *arg)
 {
-
-	out.offset = get_offset(arg);
+	out.offset = get_off_t(arg);
 }
 
 static void
 f_skip(char *arg)
 {
+	in.offset = get_off_t(arg);
+}
 
-	in.offset = get_offset(arg);
+static void
+f_speed(char *arg)
+{
+	speed = get_num(arg);
 }
 
 static void
 f_status(char *arg)
 {
-
 	if (strcmp(arg, "none") == 0)
 		ddflags |= C_NOINFO;
 	else if (strcmp(arg, "noxfer") == 0)
@@ -300,6 +313,10 @@ static const struct conv {
 	{ "oldebcdic",	C_EBCDIC,	C_ASCII,	a2e_32V },
 	{ "oldibm",	C_EBCDIC,	C_ASCII,	a2ibm_32V },
 	{ "osync",	C_OSYNC,	C_BS,		NULL },
+	{ "pareven",	C_PAREVEN,	C_PARODD|C_PARSET|C_PARNONE, NULL},
+	{ "parnone",	C_PARNONE,	C_PARODD|C_PARSET|C_PAREVEN, NULL},
+	{ "parodd",	C_PARODD,	C_PAREVEN|C_PARSET|C_PARNONE, NULL},
+	{ "parset",	C_PARSET,	C_PARODD|C_PAREVEN|C_PARNONE, NULL},
 	{ "sparse",	C_SPARSE,	0,		NULL },
 	{ "swab",	C_SWAB,		0,		NULL },
 	{ "sync",	C_SYNC,		0,		NULL },
@@ -329,103 +346,154 @@ f_conv(char *arg)
 static int
 c_conv(const void *a, const void *b)
 {
-
 	return (strcmp(((const struct conv *)a)->name,
 	    ((const struct conv *)b)->name));
 }
 
-/*
- * Convert an expression of the following forms to a quad_t.
- * 	1) A positive decimal number.
- *	2) A positive decimal number followed by a b (mult by 512.)
- *	3) A positive decimal number followed by a k (mult by 1 << 10.)
- *	4) A positive decimal number followed by a m (mult by 1 << 20.)
- *	5) A positive decimal number followed by a g (mult by 1 << 30.)
- *	5) A positive decimal number followed by a w (mult by sizeof int.)
- *	6) Two or more positive decimal numbers (with/without [bkmgw])
- *	   separated by x (also * for backwards compatibility), specifying
- *	   the product of the indicated values.
- */
-static quad_t
-get_num(char *val)
+static intmax_t
+postfix_to_mult(const char expr)
 {
-	quad_t num, t;
+	intmax_t mult;
+
+	mult = 0;
+	switch (expr) {
+	case 'B':
+	case 'b':
+		mult = 512;
+		break;
+	case 'K':
+	case 'k':
+		mult = 1 << 10;
+		break;
+	case 'M':
+	case 'm':
+		mult = 1 << 20;
+		break;
+	case 'G':
+	case 'g':
+		mult = 1 << 30;
+		break;
+	case 'T':
+	case 't':
+		mult = (uintmax_t)1 << 40;
+		break;
+	case 'P':
+	case 'p':
+		mult = (uintmax_t)1 << 50;
+		break;
+	case 'W':
+	case 'w':
+		mult = sizeof(int);
+		break;
+	}
+
+	return (mult);
+}
+
+/*
+ * Convert an expression of the following forms to a uintmax_t.
+ * 	1) A positive decimal number.
+ *	2) A positive decimal number followed by a 'b' or 'B' (mult by 512).
+ *	3) A positive decimal number followed by a 'k' or 'K' (mult by 1 << 10).
+ *	4) A positive decimal number followed by a 'm' or 'M' (mult by 1 << 20).
+ *	5) A positive decimal number followed by a 'g' or 'G' (mult by 1 << 30).
+ *	6) A positive decimal number followed by a 't' or 'T' (mult by 1 << 40).
+ *	7) A positive decimal number followed by a 'p' or 'P' (mult by 1 << 50).
+ *	8) A positive decimal number followed by a 'w' or 'W' (mult by sizeof int).
+ *	9) Two or more positive decimal numbers (with/without [BbKkMmGgWw])
+ *	   separated by 'x' or 'X' (also '*' for backwards compatibility),
+ *	   specifying the product of the indicated values.
+ */
+static uintmax_t
+get_num(const char *val)
+{
+	uintmax_t num, mult, prevnum;
 	char *expr;
 
 	errno = 0;
-	num = strtoll(val, &expr, 0);
-	if (errno != 0)				/* Overflow or underflow. */
-		err(1, "%s", oper);
-	
+	num = strtoumax(val, &expr, 0);
 	if (expr == val)			/* No valid digits. */
-		errx(1, "%s: illegal numeric value", oper);
+		errx(1, "%s: invalid numeric value", oper);
+	if (errno != 0)
+		err(1, "%s", oper);
 
-	switch (*expr) {
-	case 'b':
-	case 'B':
-		t = num;
-		num *= 512;
-		if (t > num)
+	mult = postfix_to_mult(*expr);
+
+	if (mult != 0) {
+		prevnum = num;
+		num *= mult;
+		/* Check for overflow. */
+		if (num / mult != prevnum)
 			goto erange;
-		++expr;
-		break;
-	case 'k':
-	case 'K':
-		t = num;
-		num *= 1 << 10;
-		if (t > num)
-			goto erange;
-		++expr;
-		break;
-	case 'm':
-	case 'M':
-		t = num;
-		num *= 1 << 20;
-		if (t > num)
-			goto erange;
-		++expr;
-		break;
-	case 'g':
-	case 'G':
-		t = num;
-		num *= 1 << 30;
-		if (t > num)
-			goto erange;
-		++expr;
-		break;
-	case 'w':
-		t = num;
-		num *= sizeof(int);
-		if (t > num)
-			goto erange;
-		++expr;
-		break;
+		expr++;
 	}
 
 	switch (*expr) {
-		case '\0':
+	case '\0':
+		break;
+	case '*':			/* Backward compatible. */
+	case 'X':
+	case 'x':
+		mult = get_num(expr + 1);
+		prevnum = num;
+		num *= mult;
+		if (num / mult == prevnum)
 			break;
-		case '*':			/* Backward compatible. */
-		case 'x':
-			t = num;
-			num *= get_num(expr + 1);
-			if (t <= num)
-				break;
 erange:
-			errx(1, "%s: %s", oper, strerror(ERANGE));
-		default:
-			errx(1, "%s: illegal numeric value", oper);
+		errx(1, "%s: %s", oper, strerror(ERANGE));
+	default:
+		errx(1, "%s: illegal numeric value", oper);
 	}
+
 	return (num);
 }
 
+/*
+ * Convert an expression to an off_t.  This is the same as get_num(), but it
+ * uses signed numbers.  The supported forms are also similar to get_num().
+ *
+ * The major problem here is that an off_t may not necessarily be a intmax_t.
+ */
 static off_t
-get_offset(char *val)
+get_off_t(const char *val)
 {
-	quad_t num;
+	intmax_t num, mult, prevnum;
+	char *expr;
 
-	num = get_num(val);
-	if (num > QUAD_MAX)	/* XXX can't happen && quad_t != off_t */
-		errx(1, "%s: illegal offset", oper);	/* Too big. */
-	return ((off_t)num);
+	errno = 0;
+	num = strtoimax(val, &expr, 0);
+	if (expr == val)			/* No valid digits. */
+		errx(1, "%s: invalid numeric value", oper);
+	if (errno != 0)
+		err(1, "%s", oper);
+
+	mult = postfix_to_mult(*expr);
+
+	if (mult != 0) {
+		prevnum = num;
+		num *= mult;
+		/* Check for overflow. */
+		if ((prevnum > 0) != (num > 0) || num / mult != prevnum)
+			goto erange;
+		expr++;
+	}
+
+	switch (*expr) {
+	case '\0':
+		break;
+	case '*':			/* Backward compatible. */
+	case 'X':
+	case 'x':
+		mult = (intmax_t)get_off_t(expr + 1);
+		prevnum = num;
+		num *= mult;
+		if ((prevnum > 0) == (num > 0) && num / mult == prevnum)
+			break;
+erange:
+		errx(1, "%s: %s", oper, strerror(ERANGE));
+	default:
+		errx(1, "%s: illegal numeric value", oper);
+	}
+
+	return (num);
 }

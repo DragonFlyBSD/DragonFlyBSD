@@ -1,3 +1,4 @@
+.\"-
 .\" Copyright (c) 1990, 1993
 .\"	The Regents of the University of California.  All rights reserved.
 .\"
@@ -29,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)dd.1	8.2 (Berkeley) 1/13/94
-.\" $FreeBSD: src/bin/dd/dd.1,v 1.15.2.5 2003/01/24 02:17:12 keramida Exp $
+.\" $FreeBSD: head/bin/dd/dd.1 337505 2018-08-08 21:37:02Z kevans $
 .\"
 .Dd February 14, 2019
 .Dt DD 1
@@ -53,7 +54,7 @@ displays the number of complete and partial input and output blocks
 and truncated input records to the standard error output.
 .Pp
 The following operands are available:
-.Bl -tag -width ".Cm of Ns = Ns Ar file"
+.Bl -tag -width "of=file"
 .It Cm bs Ns = Ns Ar n
 Set both input and output block size to
 .Ar n
@@ -84,6 +85,15 @@ Copy
 .Ar n
 input files before terminating.
 This operand is only applicable when the input device is a tape.
+.It Cm fillchar Ns = Ns Ar c
+When padding a block in conversion mode or due to use of
+.Cm noerror
+and
+.Cm sync
+modes, fill with the specified
+.Tn ASCII
+character, rather than using a space or
+.Dv NUL .
 .It Cm ibs Ns = Ns Ar n
 Set the input block size to
 .Ar n
@@ -146,6 +156,10 @@ Otherwise, input data is read and discarded.
 For pipes, the correct number of bytes is read.
 For all other devices, the correct number of blocks is read without
 distinguishing between a partial or complete block being read.
+.It Cm speed Ns = Ns Ar n
+Limit the copying speed to
+.Ar n
+bytes per second.
 .It Cm status Ns = Ns Ar value
 Where
 .Cm value
@@ -163,7 +177,7 @@ Print basic transfer statistics once per second.
 Where
 .Cm value
 is one of the symbols from the following list.
-.Bl -tag -width ".Cm unblock"
+.Bl -tag -width "unblock"
 .It Cm ascii , oldascii
 The same as the
 .Cm unblock
@@ -240,6 +254,13 @@ and
 systems.
 .It Cm lcase
 Transform uppercase characters into lowercase characters.
+.It Cm pareven , parnone , parodd , parset
+Output data with the specified parity.
+The parity bit on input is stripped unless
+.Tn EBCDIC
+to
+.Tn ASCII
+conversions is also specified.
 .It Cm noerror
 Do not stop processing on an input error.
 When an input error occurs, a diagnostic message followed by the current
@@ -252,6 +273,11 @@ with
 .Dv NUL
 bytes (or with spaces if a block oriented conversion value was
 specified) and processed as a normal input buffer.
+If the
+.Cm fillchar
+option is specified, the fill character provided on the command line
+will override
+the automatic selection of the fill character.
 If the
 .Cm sync
 conversion is not specified, the input block is omitted from the output.
@@ -305,21 +331,20 @@ appended.
 .El
 .El
 .Pp
-Where sizes are specified, a decimal, octal, or hexadecimal number of
+Where sizes or speed are specified, a decimal, octal, or hexadecimal number of
 bytes is expected.
 If the number ends with a
 .Dq Li b ,
-.Dq Li B ,
 .Dq Li k ,
-.Dq Li K ,
 .Dq Li m ,
-.Dq Li M ,
 .Dq Li g ,
-.Dq Li G ,
+.Dq Li t ,
+.Dq Li p ,
 or
 .Dq Li w ,
 the
-number is multiplied by 512, 1024 (1K), 1048576 (1M), 1073741824 (1G)
+number is multiplied by 512, 1024 (1K), 1048576 (1M), 1073741824 (1G),
+1099511627776 (1T), 1125899906842624 (1P)
 or the number of bytes in an integer, respectively.
 Two or more numbers may be separated by an
 .Dq Li x
@@ -370,6 +395,33 @@ in the same format as the standard completion message and
 will exit.
 .Sh EXIT STATUS
 .Ex -std
+.Sh EXAMPLES
+Check that a disk drive contains no bad blocks:
+.Pp
+.Dl "dd if=/dev/da0 of=/dev/null bs=1m"
+.Pp
+Do a refresh of a disk drive, in order to prevent presently
+recoverable read errors from progressing into unrecoverable read errors:
+.Pp
+.Dl "dd if=/dev/da0 of=/dev/da0 bs=1m"
+.Pp
+Remove parity bit from a file:
+.Pp
+.Dl "dd if=file conv=parnone of=file.txt"
+.Pp
+Check for (even) parity errors on a file:
+.Pp
+.Dl "dd if=file conv=pareven | cmp -x - file"
+.Pp
+To create an image of a Mode-1 CD-ROM, which is a commonly used format
+for data CD-ROM disks, use a block size of 2048 bytes:
+.Pp
+.Dl "dd if=/dev/cd0 of=filename.iso bs=2048"
+.Pp
+Write a filesystem image to a memory stick, padding the end with zeros,
+if necessary, to a 1MiB boundary:
+.Pp
+.Dl "dd if=memstick.img of=/dev/da8 bs=1m conv=noerror,sync"
 .Sh SEE ALSO
 .Xr cp 1 ,
 .Xr mt 1 ,
