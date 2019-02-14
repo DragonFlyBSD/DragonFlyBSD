@@ -35,6 +35,8 @@
  * $DragonFly: src/bin/dd/dd.h,v 1.3 2008/01/28 16:08:02 matthias Exp $
  */
 
+#include <sys/time.h>
+
 /* Input/output stream state. */
 typedef struct {
 	u_char		*db;		/* buffer address */
@@ -70,7 +72,7 @@ typedef struct {
 	u_quad_t	trunc;		/* # of truncated records */
 	u_quad_t	swab;		/* # of odd-length swab blocks */
 	u_quad_t	bytes;		/* # of bytes written */
-	double		start; 			/* start time of dd */
+	struct timespec	start;		/* start time of dd */
 } STAT;
 
 /* Flags (in ddflags). */

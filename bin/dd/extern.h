@@ -45,6 +45,7 @@ void def_close(void);
 void jcl(char **);
 void pos_in(void);
 void pos_out(void);
+double secs_elapsed(void);
 void summary(void);
 void siginfo_handler(int);
 void terminate(int) __dead2;

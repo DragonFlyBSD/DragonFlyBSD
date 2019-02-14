@@ -40,7 +40,6 @@
 #include <sys/conf.h>
 #include <sys/device.h>
 #include <sys/filio.h>
-#include <sys/time.h>
 
 #include <ctype.h>
 #include <err.h>
@@ -51,6 +50,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "dd.h"
@@ -95,7 +95,6 @@ static void
 setup(void)
 {
 	u_int cnt;
-	struct timeval tv;
 
 	if (in.name == NULL) {
 		in.name = "stdin";
@@ -189,8 +188,8 @@ setup(void)
 		ctab = casetab;
 	}
 
-	gettimeofday(&tv, NULL);
-	st.start = tv.tv_sec + tv.tv_usec * 1e-6; 
+	if (clock_gettime(CLOCK_MONOTONIC, &st.start))
+		err(1, "clock_gettime");
 }
 
 static void

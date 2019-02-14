@@ -35,27 +35,44 @@
  */
 
 #include <sys/types.h>
-#include <sys/time.h>
 
+#include <err.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "dd.h"
 #include "extern.h"
 
+double
+secs_elapsed(void)
+{
+	struct timespec end, ts_res;
+	double secs, res;
+
+	if (clock_gettime(CLOCK_MONOTONIC, &end))
+		err(1, "clock_gettime");
+	if (clock_getres(CLOCK_MONOTONIC, &ts_res))
+		err(1, "clock_getres");
+	secs = (end.tv_sec - st.start.tv_sec) +
+	       (end.tv_nsec - st.start.tv_nsec) * 1e-9;
+	res = ts_res.tv_sec + ts_res.tv_nsec * 1e-9;
+	if (secs < res)
+		secs = res;
+
+	return (secs);
+}
+
 void
 summary(void)
 {
-	struct timeval tv;
 	double secs;
 
-	gettimeofday(&tv, NULL);
-	secs = tv.tv_sec + tv.tv_usec * 1e-6 - st.start;
-	if (secs < 1e-6)
-		secs = 1e-6;
+	secs = secs_elapsed();
+
 	fprintf(stderr, "%ju+%ju records in\n%ju+%ju records out\n",
 	    (uintmax_t)st.in_full, (uintmax_t)st.in_part,
 	    (uintmax_t)st.out_full, (uintmax_t)st.out_part);
