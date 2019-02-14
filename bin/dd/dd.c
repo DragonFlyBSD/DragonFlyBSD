@@ -30,7 +30,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)dd.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/dd.c,v 1.27.2.3 2001/08/01 01:37:35 obrien Exp $
  */
@@ -60,6 +59,7 @@ static void dd_close (void);
 static void dd_in (void);
 static void getfdtype (IO *);
 static void setup (void);
+static void swapbytes(void *, size_t);
 
 IO	in, out;		/* input/output state */
 STAT	st;			/* statistics */
@@ -71,15 +71,23 @@ size_t	cbsz;			/* conversion block size */
 quad_t	files_cnt = 1;		/* # of files to copy */
 const	u_char *ctab;		/* conversion table */
 volatile sig_atomic_t need_summary;
+volatile sig_atomic_t need_progress;
 
 int
 main(int argc __unused, char **argv)
 {
+	/* SIGALRM every second, if needed */
+	struct itimerval itv = { { 1, 0 }, { 1, 0 } };
+
 	setlocale(LC_CTYPE, "");
 	jcl(argv);
 	setup();
 
 	signal(SIGINFO, siginfo_handler);
+	if (ddflags & C_PROGRESS) {
+		signal(SIGALRM, sigalarm_handler);
+		setitimer(ITIMER_REAL, &itv, NULL);
+	}
 	signal(SIGINT, terminate);
 
 	atexit(summary);
@@ -339,6 +347,8 @@ dd_in(void)
 		(*cfunc)();
 		if (need_summary)
 			summary();
+		if (need_progress)
+			progress();
 	}
 }
 

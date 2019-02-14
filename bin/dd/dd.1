@@ -30,9 +30,8 @@
 .\"
 .\"     @(#)dd.1	8.2 (Berkeley) 1/13/94
 .\" $FreeBSD: src/bin/dd/dd.1,v 1.15.2.5 2003/01/24 02:17:12 keramida Exp $
-.\" $DragonFly: src/bin/dd/dd.1,v 1.3 2008/01/28 16:08:02 matthias Exp $
 .\"
-.Dd August 23, 2016
+.Dd February 14, 2019
 .Dt DD 1
 .Os
 .Sh NAME
@@ -147,6 +146,19 @@ Otherwise, input data is read and discarded.
 For pipes, the correct number of bytes is read.
 For all other devices, the correct number of blocks is read without
 distinguishing between a partial or complete block being read.
+.It Cm status Ns = Ns Ar value
+Where
+.Cm value
+is one of the symbols from the following list.
+.Bl -tag -width ".Cm progress"
+.It Cm none
+Do not print the status output.
+Error messages are shown; informational messages are not.
+.It Cm noxfer
+Do not print the transfer statistics as the last line of status output.
+.It Cm progress
+Print basic transfer statistics once per second.
+.El
 .It Cm conv Ns = Ns Ar value Ns Op , Ns Ar value ...
 Where
 .Cm value
@@ -370,7 +382,9 @@ utility is expected to be a superset of the
 standard.
 The
 .Cm files
-operand and the
+and
+.Cm status
+operands and the
 .Cm ascii ,
 .Cm ebcdic ,
 .Cm ibm ,

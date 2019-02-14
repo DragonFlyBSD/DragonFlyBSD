@@ -88,6 +88,8 @@ pos_in(void)
 			}
 			if (need_summary)
 				summary();
+			if (need_progress)
+				progress();
 			continue;
 		}
 

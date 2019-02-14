@@ -38,6 +38,8 @@
 
 #include <err.h>
 #include <errno.h>
+#include <libutil.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -71,6 +73,12 @@ summary(void)
 {
 	double secs;
 
+	if (ddflags & C_NOINFO)
+		return;
+
+	if (ddflags & C_PROGRESS)
+		fprintf(stderr, "\n");
+
 	secs = secs_elapsed();
 
 	fprintf(stderr, "%ju+%ju records in\n%ju+%ju records out\n",
@@ -86,10 +94,37 @@ summary(void)
 		     (uintmax_t)st.trunc,
 		     ((st.trunc == 1) ? "block" : "blocks"));
 	}
-	fprintf(stderr,
-	    "%ju bytes transferred in %.6f secs (%.0f bytes/sec)\n",
-	    (uintmax_t)st.bytes, secs, st.bytes / secs);
+	if (!(ddflags & C_NOXFER)) {
+		fprintf(stderr,
+		    "%ju bytes transferred in %.6f secs (%.0f bytes/sec)\n",
+		    (uintmax_t)st.bytes, secs, st.bytes / secs);
+	}
 	need_summary = 0;
+}
+
+void
+progress(void)
+{
+	static int outlen;
+	char si[4 + 1 + 2 + 1];		/* 123 <space> <suffix> NUL */
+	char iec[4 + 1 + 3 + 1];	/* 123 <space> <suffix> NUL */
+	char persec[4 + 1 + 2 + 1];	/* 123 <space> <suffix> NUL */
+	char *buf;
+	double secs;
+
+	secs = secs_elapsed();
+	humanize_number(si, sizeof(si), (int64_t)st.bytes, "B", HN_AUTOSCALE,
+	    HN_DECIMAL | HN_DIVISOR_1000);
+	humanize_number(iec, sizeof(iec), (int64_t)st.bytes, "B", HN_AUTOSCALE,
+	    HN_DECIMAL | HN_IEC_PREFIXES);
+	humanize_number(persec, sizeof(persec), (int64_t)(st.bytes / secs), "B",
+	    HN_AUTOSCALE, HN_DECIMAL | HN_DIVISOR_1000);
+	asprintf(&buf, "  %'ju bytes (%s, %s) transferred %.3fs, %s/s",
+	    (uintmax_t)st.bytes, si, iec, secs, persec);
+	outlen = fprintf(stderr, "%-*s\r", outlen, buf) - 1;
+	fflush(stderr);
+	free(buf);
+	need_progress = 0;
 }
 
 /* ARGSUSED */
@@ -98,6 +133,14 @@ siginfo_handler(int signo __unused)
 {
 
 	need_summary = 1;
+}
+
+/* ARGSUSED */
+void
+sigalarm_handler(int signo __unused)
+{
+
+	need_progress = 1;
 }
 
 /* ARGSUSED */

@@ -32,7 +32,6 @@
  *
  * @(#)args.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/args.c,v 1.25.2.2 2001/01/23 14:20:03 asmodai Exp $
- * $DragonFly: src/bin/dd/args.c,v 1.6 2008/01/28 16:08:02 matthias Exp $
  */
 
 #include <sys/types.h>
@@ -46,25 +45,26 @@
 #include "dd.h"
 #include "extern.h"
 
-static int	c_arg (const void *, const void *);
-static int	c_conv (const void *, const void *);
-static void	f_bs (char *);
-static void	f_cbs (char *);
-static void	f_conv (char *);
-static void	f_count (char *);
-static void	f_files (char *);
-static void	f_ibs (char *);
-static void	f_if (char *);
+static int	c_arg(const void *, const void *);
+static int	c_conv(const void *, const void *);
+static void	f_bs(char *);
+static void	f_cbs(char *);
+static void	f_conv(char *);
+static void	f_count(char *);
+static void	f_files(char *);
+static void	f_ibs(char *);
+static void	f_if(char *);
 static void	f_obs(char *);
-static void	f_of (char *);
-static void	f_seek (char *);
-static void	f_skip (char *);
-static quad_t	get_num (char *);
-static off_t	get_offset (char *);
+static void	f_of(char *);
+static void	f_seek(char *);
+static void	f_skip(char *);
+static void	f_status(char *);
+static quad_t	get_num(char *);
+static off_t	get_offset(char *);
 
 static const struct arg {
 	const char *name;
-	void (*f) (char *);
+	void (*f)(char *);
 	u_int set, noset;
 } args[] = {
 	{ "bs",		f_bs,		C_BS,	 C_BS|C_IBS|C_OBS|C_OSYNC },
@@ -80,6 +80,7 @@ static const struct arg {
 	{ "oseek",	f_seek,		C_SEEK,	 C_SEEK },
 	{ "seek",	f_seek,		C_SEEK,	 C_SEEK },
 	{ "skip",	f_skip,		C_SKIP,	 C_SKIP },
+	{ "status",	f_status,	C_STATUS,C_STATUS },
 };
 
 static char *oper;
@@ -267,6 +268,20 @@ f_skip(char *arg)
 {
 
 	in.offset = get_offset(arg);
+}
+
+static void
+f_status(char *arg)
+{
+
+	if (strcmp(arg, "none") == 0)
+		ddflags |= C_NOINFO;
+	else if (strcmp(arg, "noxfer") == 0)
+		ddflags |= C_NOXFER;
+	else if (strcmp(arg, "progress") == 0)
+		ddflags |= C_PROGRESS;
+	else
+		errx(1, "unknown status %s", arg);
 }
 
 static const struct conv {

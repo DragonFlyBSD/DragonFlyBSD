@@ -32,7 +32,6 @@
  *
  *	@(#)dd.h	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/dd.h,v 1.15.2.1 2000/08/07 08:30:17 ps Exp $
- * $DragonFly: src/bin/dd/dd.h,v 1.3 2008/01/28 16:08:02 matthias Exp $
  */
 
 #include <sys/time.h>
@@ -98,3 +97,7 @@ typedef struct {
 #define	C_UNBLOCK	0x80000
 #define	C_OSYNC		0x100000
 #define	C_SPARSE	0x200000
+#define	C_STATUS	0x400000
+#define	C_NOXFER	0x800000
+#define	C_NOINFO	0x1000000
+#define	C_PROGRESS	0x2000000
