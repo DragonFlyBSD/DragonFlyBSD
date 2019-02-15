@@ -131,7 +131,7 @@ mtx_lock_ex_link(mtx_t *mtx, mtx_link_t *link, int flags, int to)
 
 /*
  * Short-form exclusive-lock a mutex, block until acquired.  Recursion is
- * allowed.  This is equivalent to mtx_lock_ex(mtx, "mtxex", 0, 0).
+ * allowed.  This is equivalent to mtx_lock_ex(mtx, 0, 0).
  */
 static __inline void
 mtx_lock(mtx_t *mtx)
