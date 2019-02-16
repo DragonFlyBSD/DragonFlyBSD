@@ -1076,7 +1076,7 @@ AcpiDmIsValidTarget (
  *
  * DESCRIPTION: Determine if the Target duplicates the operand, in order to
  *              detect if the expression can be converted to a compound
- *              assigment. (+=, *=, etc.)
+ *              assignment. (+=, *=, etc.)
  *
  ******************************************************************************/
 
@@ -1132,7 +1132,7 @@ AcpiDmIsTargetAnOperand (
         }
     }
 
-    /* Supress the duplicate operand at the top-level */
+    /* Suppress the duplicate operand at the top-level */
 
     if (TopLevel)
     {

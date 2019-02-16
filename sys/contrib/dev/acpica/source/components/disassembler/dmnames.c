@@ -234,7 +234,7 @@ AcpiDmDumpName (
  *
  * RETURN:      Status
  *
- * DESCRIPTION: Diplay the pathname associated with a named object. Two
+ * DESCRIPTION: Display the pathname associated with a named object. Two
  *              versions. One searches the parse tree (for parser-only
  *              applications suchas AcpiDump), and the other searches the
  *              ACPI namespace (the parse tree is probably deleted)

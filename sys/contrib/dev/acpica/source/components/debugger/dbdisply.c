@@ -412,7 +412,7 @@ AcpiDbDecodeAndDisplayObject (
 
         default:
 
-            /* Is not a recognizeable object */
+            /* Is not a recognizable object */
 
             AcpiOsPrintf (
                 "Not a known ACPI internal object, descriptor type %2.2X\n",
@@ -868,7 +868,7 @@ AcpiDbDisplayObjectType (
  *
  * DESCRIPTION: Display the result of an AML opcode
  *
- * Note: Curently only displays the result object if we are single stepping.
+ * Note: Currently only displays the result object if we are single stepping.
  * However, this output may be useful in other contexts and could be enabled
  * to do so if needed.
  *
