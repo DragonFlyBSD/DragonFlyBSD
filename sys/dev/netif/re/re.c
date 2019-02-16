@@ -42,7 +42,7 @@
 
 #ifndef __DragonFly__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/re/if_re.c,v 1.94.01 " __DATE__ " " __TIME__ "  wpaul Exp $");
+__FBSDID("$FreeBSD: src/sys/dev/re/if_re.c,v 1.95.00 " __DATE__ " " __TIME__ "  wpaul Exp $");
 
 /*
 * This driver also support Realtek 8139C+, 8110S/SB/SC, RTL8111B/C/CP/D and RTL8101E/8102E/8103E.
@@ -4406,7 +4406,7 @@ static int re_attach(device_t dev)
         /*
          * A RealTek chip was detected. Inform the world.
          */
-        device_printf(dev,"version:1.94.01\n");
+        device_printf(dev,"version:1.95.00\n");
         device_printf(dev,"Ethernet address: %6D\n", eaddr, ":");
         printf("\nThis product is covered by one or more of the following patents: \
            \nUS6,570,884, US6,115,776, and US6,327,625.\n");
@@ -5529,7 +5529,7 @@ static void re_hw_start_unlock(struct re_softc *sc)
                 re_eri_write(sc, 0xdc, 1, Data32, ERIAR_ExGMAC);
 
                 Data32 = re_eri_read(sc, 0xD4, 4, ERIAR_ExGMAC);
-                Data32 |= BIT_11 | BIT_10;
+                Data32 |= (BIT_8 | BIT_9 | BIT_10 | BIT_11 | BIT_12);
                 re_eri_write(sc, 0xD4, 4, Data32, ERIAR_ExGMAC);
                 if (sc ->re_type == MACFG_39) {
                         Data32 = re_eri_read(sc, 0x1B0, 4, ERIAR_ExGMAC);
@@ -5675,7 +5675,7 @@ static void re_hw_start_unlock(struct re_softc *sc)
                 CSR_WRITE_1(sc, RE_TDFNR, 0x8);
 
                 Data32 = re_eri_read(sc, 0xD4, 4, ERIAR_ExGMAC);
-                Data32 |= BIT_11 | BIT_10;
+                Data32 |= (BIT_8 | BIT_9 | BIT_10 | BIT_11 | BIT_12);
                 re_eri_write(sc, 0xD4, 4, Data32, ERIAR_ExGMAC);
                 re_eri_write(sc, 0xC0, 2, 0x0000, ERIAR_ExGMAC);
                 re_eri_write(sc, 0xB8, 4, 0x00000000, ERIAR_ExGMAC);
@@ -5843,7 +5843,7 @@ static void re_hw_start_unlock(struct re_softc *sc)
                 CSR_WRITE_1(sc, RE_CFG2, CSR_READ_1(sc, RE_CFG2) | BIT_5);
 
                 if (sc->re_type == MACFG_59) {
-                        MP_WriteMcuAccessRegWord(sc, 0xD3C0, 0x03F8);
+                        MP_WriteMcuAccessRegWord(sc, 0xD3C0, 0x0B00);
                         MP_WriteMcuAccessRegWord(sc, 0xD3C2, 0x0000);
                 }
 
@@ -6231,6 +6231,7 @@ static void re_hw_start_unlock(struct re_softc *sc)
 
                 Data32 = re_eri_read(sc, 0xD4, 4, ERIAR_ExGMAC);
                 Data32 |= BIT_7 | BIT_8 | BIT_9 | BIT_10 | BIT_11 | BIT_12;
+                if (sc->re_type == MACFG_71) Data32 |= BIT_4;
                 re_eri_write(sc, 0xD4, 4, Data32, ERIAR_ExGMAC);
 
                 re_eri_write(sc, 0xC8, 4, 0x00080002, ERIAR_ExGMAC);
@@ -6273,6 +6274,17 @@ static void re_hw_start_unlock(struct re_softc *sc)
                 CSR_WRITE_1(sc, 0x1B, CSR_READ_1(sc, 0x1B) & ~0x07);
 
                 CSR_WRITE_2 (sc, RE_CPlusCmd, 0x2060);
+
+                ClearAndSetPCIePhyBit(sc,
+                                      0x19,
+                                      BIT_6,
+                                      (BIT_12| BIT_8)
+                                     );
+                ClearAndSetPCIePhyBit(sc,
+                                      0x59,
+                                      BIT_6,
+                                      (BIT_12| BIT_8)
+                                     );
 
                 CSR_WRITE_1(sc, RE_CFG3, CSR_READ_1(sc, RE_CFG3) & ~BIT_0);
 
@@ -8048,6 +8060,8 @@ static int re_ifmedia_upd(struct ifnet *ifp)
                 //Disable Giga Lite
                 MP_WritePhyUshort(sc, 0x1F, 0x0A42);
                 ClearEthPhyBit(sc, 0x14, BIT_9);
+                if (sc->re_type == MACFG_70 || sc->re_type == MACFG_71)
+                        ClearEthPhyBit(sc, 0x14, BIT_7);
                 MP_WritePhyUshort(sc, 0x1F, 0x0A40);
                 MP_WritePhyUshort(sc, 0x1F, 0x0000);
         }
@@ -17614,7 +17628,7 @@ static void re_set_phy_mcu_8168f_2(struct re_softc *sc)
         PhyRegValue = MP_ReadPhyUshort(sc, 0x15);
         PhyRegValue &= ~(BIT_12);
         MP_WritePhyUshort(sc, 0x15, PhyRegValue);
-        MP_WritePhyUshort(sc, 0x00, 0x9800);
+        MP_WritePhyUshort(sc, 0x00, 0x4800);
         MP_WritePhyUshort(sc, 0x1f, 0x0007);
         MP_WritePhyUshort(sc, 0x1e, 0x002f);
         for (i = 0; i < 1000; i++) {
@@ -17623,6 +17637,19 @@ static void re_set_phy_mcu_8168f_2(struct re_softc *sc)
                 if (PhyRegValue & BIT_7)
                         break;
         }
+        MP_WritePhyUshort(sc, 0x1f, 0x0000);
+        MP_WritePhyUshort(sc, 0x00, 0x1800);
+        MP_WritePhyUshort(sc, 0x1f, 0x0007);
+        MP_WritePhyUshort(sc, 0x1e, 0x0023);
+        for (i = 0; i < 200; i++) {
+                DELAY(100);
+                PhyRegValue = MP_ReadPhyUshort(sc, 0x18);
+                if (!(PhyRegValue & BIT_0))
+                        break;
+        }
+        MP_WritePhyUshort(sc, 0x1f, 0x0005);
+        MP_WritePhyUshort(sc, 0x05, 0xfff6);
+        MP_WritePhyUshort(sc, 0x06, 0x0080);
         MP_WritePhyUshort(sc, 0x1f, 0x0007);
         MP_WritePhyUshort(sc, 0x1e, 0x0023);
         MP_WritePhyUshort(sc, 0x16, 0x0306);
@@ -17925,6 +17952,14 @@ static void re_set_phy_mcu_8168f_2(struct re_softc *sc)
         PhyRegValue |= BIT_0;
         MP_WritePhyUshort(sc, 0x06, PhyRegValue);
         MP_WritePhyUshort(sc, 0x1f, 0x0000);
+        MP_WritePhyUshort(sc, 0x1f, 0x0005);
+        for (i = 0; i < 200; i++) {
+                DELAY(100);
+                PhyRegValue = MP_ReadPhyUshort(sc, 0x00);
+                if (PhyRegValue & BIT_7)
+                        break;
+        }
+
         MP_WritePhyUshort(sc, 0x1f, 0x0007);
         MP_WritePhyUshort(sc, 0x1e, 0x0023);
         PhyRegValue = MP_ReadPhyUshort(sc, 0x17);
@@ -20920,6 +20955,81 @@ static void re_set_phy_mcu_8168ep_1(struct re_softc *sc)
         MP_WritePhyUshort(sc,0x00, 0x9200);
 }
 
+static void re_set_phy_mcu_8168ep_2(struct re_softc *sc)
+{
+        u_int16_t PhyRegValue;
+        u_int32_t WaitCnt;
+
+        MP_WritePhyUshort(sc,0x1f, 0x0B82);
+        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
+        PhyRegValue |= BIT_4;
+        MP_WritePhyUshort(sc,0x10, PhyRegValue);
+
+        MP_WritePhyUshort(sc,0x1f, 0x0B80);
+        WaitCnt = 0;
+        do {
+                PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
+                PhyRegValue &= 0x0040;
+                DELAY(50);
+                DELAY(50);
+                WaitCnt++;
+        } while(PhyRegValue != 0x0040 && WaitCnt <1000);
+
+        MP_WritePhyUshort(sc,0x1f, 0x0A43);
+        MP_WritePhyUshort(sc,0x13, 0x8146);
+        MP_WritePhyUshort(sc,0x14, 0x8700);
+        MP_WritePhyUshort(sc,0x13, 0xB82E);
+        MP_WritePhyUshort(sc,0x14, 0x0001);
+
+        MP_WritePhyUshort(sc, 0x1F, 0x0A43);
+
+        MP_WritePhyUshort(sc, 0x13, 0x83DD);
+        MP_WritePhyUshort(sc, 0x14, 0xAF83);
+        MP_WritePhyUshort(sc, 0x14, 0xE9AF);
+        MP_WritePhyUshort(sc, 0x14, 0x83EE);
+        MP_WritePhyUshort(sc, 0x14, 0xAF83);
+        MP_WritePhyUshort(sc, 0x14, 0xF1A1);
+        MP_WritePhyUshort(sc, 0x14, 0x83F4);
+        MP_WritePhyUshort(sc, 0x14, 0xD149);
+        MP_WritePhyUshort(sc, 0x14, 0xAF06);
+        MP_WritePhyUshort(sc, 0x14, 0x47AF);
+        MP_WritePhyUshort(sc, 0x14, 0x0000);
+        MP_WritePhyUshort(sc, 0x14, 0xAF00);
+        MP_WritePhyUshort(sc, 0x14, 0x00AF);
+        MP_WritePhyUshort(sc, 0x14, 0x0000);
+
+        MP_WritePhyUshort(sc, 0x13, 0xB818);
+        MP_WritePhyUshort(sc, 0x14, 0x0645);
+
+        MP_WritePhyUshort(sc, 0x13, 0xB81A);
+        MP_WritePhyUshort(sc, 0x14, 0x0000);
+
+        MP_WritePhyUshort(sc, 0x13, 0xB81C);
+        MP_WritePhyUshort(sc, 0x14, 0x0000);
+
+        MP_WritePhyUshort(sc, 0x13, 0xB81E);
+        MP_WritePhyUshort(sc, 0x14, 0x0000);
+
+        MP_WritePhyUshort(sc, 0x13, 0xB832);
+        MP_WritePhyUshort(sc, 0x14, 0x0001);
+
+        MP_WritePhyUshort(sc,0x1F, 0x0A43);
+        MP_WritePhyUshort(sc,0x13, 0x0000);
+        MP_WritePhyUshort(sc,0x14, 0x0000);
+        MP_WritePhyUshort(sc,0x1f, 0x0B82);
+        PhyRegValue = MP_ReadPhyUshort(sc, 0x17);
+        PhyRegValue &= ~(BIT_0);
+        MP_WritePhyUshort(sc,0x17, PhyRegValue);
+        MP_WritePhyUshort(sc,0x1f, 0x0A43);
+        MP_WritePhyUshort(sc,0x13, 0x8146);
+        MP_WritePhyUshort(sc,0x14, 0x0000);
+
+        MP_WritePhyUshort(sc,0x1f, 0x0B82);
+        PhyRegValue = MP_ReadPhyUshort(sc, 0x10);
+        PhyRegValue &= ~(BIT_4);
+        MP_WritePhyUshort(sc,0x10, PhyRegValue);
+}
+
 static void re_init_hw_phy_mcu(struct re_softc *sc)
 {
         if (re_hw_phy_mcu_code_ver_matched(sc)) return;
@@ -20957,6 +21067,9 @@ static void re_init_hw_phy_mcu(struct re_softc *sc)
                 break;
         case MACFG_61:
                 re_set_phy_mcu_8168ep_1(sc);
+                break;
+        case MACFG_67:
+                re_set_phy_mcu_8168ep_2(sc);
                 break;
         case MACFG_68:
                 re_set_phy_mcu_8168h_1(sc);
@@ -25566,143 +25679,126 @@ static void re_hw_phy_config(struct re_softc *sc)
         }  else if (sc->re_type == MACFG_70 || sc->re_type == MACFG_71) {
                 MP_WritePhyUshort(sc, 0x1F, 0x0A43);
                 MP_WritePhyUshort(sc, 0x13, 0x808E);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0xFF00,
-                                      0x4000
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     0xFF00,
+                                     0x4800);
                 MP_WritePhyUshort(sc, 0x13, 0x8090);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0xFF00,
-                                      0xCC00
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     0xFF00,
+                                     0xCC00);
                 MP_WritePhyUshort(sc, 0x13, 0x8092);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0xFF00,
-                                      0xB000
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     0xFF00,
+                                     0xB000);
                 MP_WritePhyUshort(sc, 0x13, 0x8088);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0xFF00,
-                                      0x8000
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     0xFF00,
+                                     0x6000);
                 MP_WritePhyUshort(sc, 0x13, 0x808B);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0x3F00,
-                                      0x0B00
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     BIT_13|BIT_12|BIT_11|BIT_10|BIT_9|BIT_8,
+                                     0x0B00);
                 MP_WritePhyUshort(sc, 0x13, 0x808D);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0x1F00,
-                                      0x0600
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     BIT_12|BIT_11|BIT_10|BIT_9|BIT_8,
+                                     0x0600);
                 MP_WritePhyUshort(sc, 0x13, 0x808C);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0xFF00,
-                                      0xB000
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     0xFF00,
+                                     0xB000);
 
                 MP_WritePhyUshort(sc, 0x13, 0x80A0);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0xFF00,
-                                      0x2000
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     0xFF00,
+                                     0x2800);
                 MP_WritePhyUshort(sc, 0x13, 0x80A2);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0xFF00,
-                                      0x5000
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     0xFF00,
+                                     0x5000);
                 MP_WritePhyUshort(sc, 0x13, 0x809B);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0xF800,
-                                      0xB000
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     BIT_15|BIT_14|BIT_13|BIT_12|BIT_11,
+                                     BIT_15|BIT_13|BIT_12);
                 MP_WritePhyUshort(sc, 0x13, 0x809A);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0xFF00,
-                                      0x4B00
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     0xFF00,
+                                     0x4B00);
                 MP_WritePhyUshort(sc, 0x13, 0x809D);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0x3F00,
-                                      0x0800
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     BIT_13|BIT_12|BIT_11|BIT_10|BIT_9|BIT_8,
+                                     0x0800);
                 MP_WritePhyUshort(sc, 0x13, 0x80A1);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0xFF00,
-                                      0x7000
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     0xFF00,
+                                     0x7000);
                 MP_WritePhyUshort(sc, 0x13, 0x809F);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0x1F00,
-                                      0x0300
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     BIT_12|BIT_11|BIT_10|BIT_9|BIT_8,
+                                     0x0300);
                 MP_WritePhyUshort(sc, 0x13, 0x809E);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0xFF00,
-                                      0x8800
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     0xFF00,
+                                     0x8800);
 
                 MP_WritePhyUshort(sc, 0x13, 0x80B2);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0xFF00,
-                                      0x2200
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     0xFF00,
+                                     0x2200);
                 MP_WritePhyUshort(sc, 0x13, 0x80AD);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0xF800,
-                                      0x9800
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     BIT_15|BIT_14|BIT_13|BIT_12|BIT_11,
+                                     BIT_15|BIT_12|BIT_11);
                 MP_WritePhyUshort(sc, 0x13, 0x80AF);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0x3F00,
-                                      0x0800
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     BIT_13|BIT_12|BIT_11|BIT_10|BIT_9|BIT_8,
+                                     0x0800);
                 MP_WritePhyUshort(sc, 0x13, 0x80B3);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0xFF00,
-                                      0x6F00
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     0xFF00,
+                                     0x6F00);
                 MP_WritePhyUshort(sc, 0x13, 0x80B1);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0x1F00,
-                                      0x0300
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     BIT_12|BIT_11|BIT_10|BIT_9|BIT_8,
+                                     0x0300);
                 MP_WritePhyUshort(sc, 0x13, 0x80B0);
-                ClearAndSetEthPhyBit( sc,
-                                      0x14,
-                                      0xFF00,
-                                      0x9300
-                                    );
+                ClearAndSetEthPhyBit(sc,
+                                     0x14,
+                                     0xFF00,
+                                     0x9300);
                 MP_WritePhyUshort(sc, 0x1F, 0x0000);
 
                 MP_WritePhyUshort(sc, 0x1F, 0x0A43);
                 MP_WritePhyUshort(sc, 0x13, 0x8011);
                 SetEthPhyBit(sc, 0x14, BIT_11);
-                MP_WritePhyUshort(sc, 0x1F, 0x0A42);
-                SetEthPhyBit(sc, 0x16, BIT_1);
+                MP_WritePhyUshort(sc, 0x1F, 0x0000);
 
                 MP_WritePhyUshort(sc, 0x1F, 0x0A44);
                 SetEthPhyBit( sc, 0x11, BIT_11 );
+                MP_WritePhyUshort(sc, 0x1F, 0x0000);
+
+                MP_WritePhyUshort(sc, 0x1F, 0x0A43);
+                MP_WritePhyUshort(sc, 0x13, 0x8016);
+                SetEthPhyBit(sc, 0x14, BIT_10);
                 MP_WritePhyUshort(sc, 0x1F, 0x0000);
 
                 if (phy_power_saving == 1) {
