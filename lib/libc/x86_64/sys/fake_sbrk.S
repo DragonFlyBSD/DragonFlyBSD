@@ -45,7 +45,7 @@ HIDENAME(minbrk):	.quad	CNAME(_end)
 HIDENAME(curbrk):	.quad	CNAME(_end)
 	.text
 
-ENTRY(sbrk)
+ENTRY(fake_sbrk)
 	pushq	%rdi
 	movq	%rdi,%rcx
 #ifdef PIC
@@ -83,6 +83,6 @@ err:
 #else
 	jmp	HIDENAME(cerror)
 #endif
-END(sbrk)
+END(fake_sbrk)
 
 	.section .note.GNU-stack,"",%progbits

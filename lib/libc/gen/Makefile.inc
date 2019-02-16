@@ -28,7 +28,7 @@ SRCS+=  _once_stub.c _pthread_stubs.c _rand48.c _spinlock_stub.c \
 	nlist.c nrand48.c ntp_gettime.c opendir.c \
 	pause.c pmadvise.c popen.c posix_spawn.c posixshm.c \
 	psignal.c pw_scan.c pwcache.c \
-	raise.c readdir.c readpassphrase.c rewinddir.c signbit.c \
+	raise.c readdir.c readpassphrase.c rewinddir.c ovsbrk.c signbit.c \
 	sysvipc.c sysvipc_shmget.c sysvipc_shmctl.c \
 	sysvipc_shmdt.c sysvipc_shmat.c\
 	scandir.c seed48.c seekdir.c sysvipc_semctl.c sysvipc_semget.c sysvipc_semop.c \
