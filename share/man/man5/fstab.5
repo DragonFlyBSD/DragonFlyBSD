@@ -181,13 +181,13 @@ If the option ``noauto'' is specified, the file system will not be automatically
 mounted at system startup.
 This is recommended for all remote file systems other than NFS,
 since only NFS mounts are delayed until after network initialization
-by the
+by the 
+.Xr rc 8
+startup scripts.
 .Pp
 Swap partitions may specify the option ``crypt'' to automatically encrypt
 the swap partition with a random key.  Note that you will not be able to
 recover any kernel core dumps if you use this option.
-.Xr rc 8
-startup scripts.
 .Pp
 The type of the mount is extracted from the
 .Fa fs_mntops
