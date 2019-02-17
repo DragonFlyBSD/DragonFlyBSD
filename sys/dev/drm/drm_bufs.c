@@ -169,7 +169,7 @@ static int drm_addmap_core(struct drm_device * dev, resource_size_t offset,
 	if (map->type == _DRM_SHM)
 		map->size = PAGE_ALIGN(map->size);
 
-	if ((map->offset & (~(resource_size_t)PAGE_MASK)) || (map->size & (~PAGE_MASK))) {
+	if ((map->offset & (~(resource_size_t)LINUX_PAGE_MASK)) || (map->size & (~LINUX_PAGE_MASK))) {
 		kfree(map);
 		return -EINVAL;
 	}

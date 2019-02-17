@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -36,6 +36,8 @@ page_to_phys(struct page *page)
 
 	return VM_PAGE_TO_PHYS(p);
 }
+
+#define LINUX_PAGE_MASK	(~PAGE_MASK)
 
 #include <asm/memory_model.h>
 

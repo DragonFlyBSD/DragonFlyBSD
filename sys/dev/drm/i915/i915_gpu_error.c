@@ -1013,7 +1013,7 @@ static void i915_gem_record_active_context(struct intel_engine_cs *engine,
 		if (!i915_gem_obj_ggtt_bound(obj))
 			continue;
 
-		if ((error->ccid & PAGE_MASK) == i915_gem_obj_ggtt_offset(obj)) {
+		if ((error->ccid & LINUX_PAGE_MASK) == i915_gem_obj_ggtt_offset(obj)) {
 			ering->ctx = i915_error_ggtt_object_create(dev_priv, obj);
 			break;
 		}

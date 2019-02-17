@@ -332,7 +332,7 @@ relocate_entry_gtt(struct drm_i915_gem_object *obj,
 	offset = i915_gem_obj_ggtt_offset(obj);
 	offset += reloc->offset;
 	reloc_page = io_mapping_map_atomic_wc(ggtt->mappable,
-					      offset & ~PAGE_MASK);
+					      offset & LINUX_PAGE_MASK);
 	iowrite32(lower_32_bits(delta), reloc_page + offset_in_page(offset));
 
 	if (INTEL_INFO(dev)->gen >= 8) {
@@ -1023,7 +1023,7 @@ validate_exec_list(struct drm_device *dev,
 		 */
 		if (exec[i].flags & EXEC_OBJECT_PINNED) {
 			if (exec[i].offset !=
-			    gen8_canonical_addr(exec[i].offset & PAGE_MASK))
+			    gen8_canonical_addr(exec[i].offset & I915_GTT_PAGE_MASK))
 				return -EINVAL;
 
 			/* From drm_mm perspective address space is continuous,
