@@ -1,8 +1,7 @@
 /*
  * Névnapok
  *
- * $FreeBSD: src/usr.bin/calendar/calendars/hu_HU.ISO8859-2/calendar.nevnapok,v 1.1 2004/08/16 09:31:09 dwmalone Exp $
- * $DragonFly: src/usr.bin/calendar/calendars/hu_HU.ISO8859-2/calendar.nevnapok,v 1.1 2007/09/24 21:38:18 pavalos Exp $
+ * $FreeBSD: head/usr.bin/calendar/calendars/hu_HU.ISO8859-2/calendar.nevnapok 133833 2004-08-16 09:31:09Z dwmalone $
  */
 
 #ifndef _hu_HU_ISO8859_2_nevnapok_
@@ -352,7 +351,7 @@ LANG=hu_HU.ISO8859-2
 11/28	Stefánia
 11/29	Taksony
 11/30	András, Andor
-12/01	Elza	
+12/01	Elza
 12/02	Melinda, Vivien
 12/03	Ferenc, Olívia
 12/04	Borbála, Barbara
@@ -382,6 +381,6 @@ LANG=hu_HU.ISO8859-2
 12/28	Kamilla
 12/29	Tamás, Tamara
 12/30	Dávid
-12/31	Szilveszter	
+12/31	Szilveszter
 
 #endif /*! _hu_HU_ISO8859_2_nevnapok_ */

@@ -3858,6 +3858,7 @@ TO_REMOVE+=/usr/share/man/man4/radeondrm.4.gz
 TO_REMOVE+=/usr/share/man/man4/radeonkms.4.gz
 TO_REMOVE+=/usr/bin/checknr
 TO_REMOVE+=/usr/share/man/man1/checknr.1.gz
+TO_REMOVE+=/usr/share/calendar/ru_RU.KOI8-R/calendar.msk
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

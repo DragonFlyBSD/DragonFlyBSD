@@ -1,8 +1,7 @@
 /*
  * USA holiday
  *
- * $FreeBSD: src/usr.bin/calendar/calendars/calendar.usholiday,v 1.9 2007/04/29 20:03:06 dwmalone Exp $
- * $DragonFly: src/usr.bin/calendar/calendars/calendar.usholiday,v 1.4 2007/09/24 21:38:17 pavalos Exp $
+ * $FreeBSD: head/usr.bin/calendar/calendars/calendar.usholiday 169102 2007-04-29 20:03:06Z dwmalone $
  */
 
 #ifndef _calendar_usholiday_

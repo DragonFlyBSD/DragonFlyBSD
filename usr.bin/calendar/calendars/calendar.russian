@@ -1,8 +1,7 @@
 /*
  * Russian calendar files
  *
- * $FreeBSD: src/usr.bin/calendar/calendars/calendar.russian,v 1.4.2.1 2002/01/05 15:43:37 phantom Exp $
- * $DragonFly: src/usr.bin/calendar/calendars/calendar.russian,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $FreeBSD: head/usr.bin/calendar/calendars/calendar.russian 59948 2000-05-04 11:35:27Z phantom $
  */
 
 #ifndef _calendar_russian_

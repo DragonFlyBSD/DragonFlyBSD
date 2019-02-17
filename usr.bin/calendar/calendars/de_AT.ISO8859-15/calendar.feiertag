@@ -1,7 +1,7 @@
 /*
  * Feiertage
  *
- * $FreeBSD: src/usr.bin/calendar/calendars/de_AT.ISO_8859-15/calendar.feiertag,v 1.1 2004/05/23 13:22:01 josef Exp $
+ * $FreeBSD: head/usr.bin/calendar/calendars/de_AT.ISO_8859-15/calendar.feiertag 343560 2019-01-29 19:54:37Z gonzo $
  */
 
 #ifndef _de_AT_ISO8859_15_feiertag_
@@ -37,7 +37,7 @@ Easter+60	Fronleichnam
 
 /*  Gedenktage - nicht arbeitsfreie Feiertage */
 02/14			Valentinstag
-02/WednesdayLast	Aschermittwoch
+Easter-46		Aschermittwoch
 Easter-7		Palmsonntag
 Nov Sun+3		Totensonntag
 Nov Sun+4		1. Advent

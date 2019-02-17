@@ -1,8 +1,7 @@
 /*
  * Jours fériés
  *
- * $FreeBSD: src/usr.bin/calendar/calendars/fr_FR.ISO8859-1/calendar.jferies,v 1.1.2.1 2002/05/27 12:15:06 dwmalone Exp $
- * $DragonFly: src/usr.bin/calendar/calendars/fr_FR.ISO8859-1/calendar.jferies,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $FreeBSD: head/usr.bin/calendar/calendars/fr_FR.ISO8859-1/calendar.jferies 157720 2006-04-13 12:14:44Z flz $
  */
 
 #ifndef _fr_FR_ISO8859_1_jferies_
@@ -40,7 +39,8 @@ Easter+50	Lundi de Pentecôte
 10/SundayLast	Passage à l'heure d'hiver
 
 /* Divers */
-May Sun+2 	Fêtes des mères
-June Sun+2	Fêtes des pères
+/* BUG : si Penteco^te = 05/SunLast, fe^te des me`res repousse'e d'une semaine */
+05/SundayLast	Fêtes des mères
+June Sun+3	Fêtes des pères
 
 #endif /*! _fr_FR_ISO8859_1_jferies_ */

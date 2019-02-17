@@ -1,8 +1,7 @@
 /*
  * Music
  *
- * $FreeBSD: src/usr.bin/calendar/calendars/calendar.music,v 1.19 2007/01/24 21:21:38 dougb Exp $
- * $DragonFly: src/usr.bin/calendar/calendars/calendar.music,v 1.4 2007/09/24 21:38:17 pavalos Exp $
+ * $FreeBSD: head/usr.bin/calendar/calendars/calendar.music 228991 2011-12-30 10:59:15Z uqs $
  */
 
 #ifndef _calendar_music_
@@ -183,7 +182,7 @@
 10/16	Bob Weir (Grateful Dead) is born in San Francisco, 1947
 10/17	"Hair" opens at New York's Public Theater, 1967
 10/17	Frederic Chopin dies in Paris, France, 1849
-10/18	Chuck Berry is born in San Jose, California, 1926
+10/18	Chuck Berry is born in St. Louis, Missouri, 1926
 10/20	Three members of Lynyrd Skynyrd die in a plane crash, 1977
 10/21	Jesus Christ Super Star debuted on Broadway, 1971
 10/22	Franz Liszt born, 1811
@@ -226,7 +225,7 @@
 12/08	Jim Morrison is born in Melbourne, Florida, 1943
 12/08	John Lennon is shot and killed in New York City, 1980
 12/09	The Who's "Tommy" premieres in London, 1973
-12/11	(Louis) Hector Berlioz born in La-Côte-Saint-André, 1803
+12/11	(Louis) Hector Berlioz born in La-CÃ´te-Saint-AndrÃ©, 1803
 12/13	Ted Nugent, the motor city madman, born in Detroit, 1949
 12/15	Thomas Edison receives patent on the phonograph, 1877
 12/16	Don McLean's "American Pie" is released, 1971

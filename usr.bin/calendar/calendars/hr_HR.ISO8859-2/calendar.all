@@ -1,13 +1,12 @@
 /*
  *  hrvatski calendar
  *
- * $FreeBSD: src/usr.bin/calendar/calendars/hr_HR.ISO8859-2/calendar.all,v 1.5.2.1 2002/01/05 15:43:37 phantom Exp $
- * $DragonFly: src/usr.bin/calendar/calendars/hr_HR.ISO8859-2/calendar.all,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $FreeBSD: head/usr.bin/calendar/calendars/hr_HR.ISO8859-2/calendar.all 232105 2012-02-24 11:40:20Z osa $
  */
 
-#ifndef _hr_HR_ISO8859_2_all
-#define _hr_HR_ISO8859_2_all
+#ifndef _hr_HR_ISO8859_2_all_
+#define _hr_HR_ISO8859_2_all_
 
 #include <hr_HR.ISO8859-2/calendar.praznici>
 
-#endif /* !_hr_HR_ISO8859_2_all */
+#endif /* !_hr_HR_ISO8859_2_all_ */

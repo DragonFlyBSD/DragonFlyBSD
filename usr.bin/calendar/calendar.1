@@ -27,9 +27,8 @@
 .\"
 .\"     @(#)calendar.1  8.1 (Berkeley) 6/29/93
 .\" $FreeBSD: src/usr.bin/calendar/calendar.1,v 1.38 2005/02/13 22:25:20 ru Exp $
-.\" $DragonFly: src/usr.bin/calendar/calendar.1,v 1.5 2007/09/24 18:57:47 pavalos Exp $
 .\"
-.Dd June 13, 2002
+.Dd February 17, 2019
 .Dt CALENDAR 1
 .Os
 .Sh NAME
@@ -188,7 +187,8 @@ calendar file to use if no calendar file exists in the current directory.
 do not send mail if this file exists.
 .El
 .Pp
-The following default calendar files are provided:
+The following default calendar files are provided in
+.Pa /usr/share/calendar :
 .Pp
 .Bl -tag -width calendar.southafrica -compact
 .It Pa calendar.all
@@ -197,6 +197,8 @@ File which includes all the default files.
 Calendar of events in Australia.
 .It Pa calendar.birthday
 Births and deaths of famous (and not-so-famous) people.
+.It Pa calendar.brazilian
+Calendar of events in Brazil.
 .It Pa calendar.christian
 Christian holidays.
 This calendar should be updated yearly by the local system administrator
@@ -205,6 +207,11 @@ so that roving holidays are set correctly for the current year.
 Days of special significance to computer people.
 .It Pa calendar.croatian
 Calendar of events in Croatia.
+.It Pa calendar.dragonfly
+The birthday of
+.Dx .
+.It Pa calendar.dutch
+Calendar of events in the Netherlands.
 .It Pa calendar.french
 Calendar of events in France.
 .It Pa calendar.german
@@ -215,10 +222,17 @@ Everything else, mostly U.S.\& historical events.
 Other holidays, including the not-well-known, obscure, and
 .Em really
 obscure.
+.It Pa calendar.hungarian
+Calendar of events in Hungary.
 .It Pa calendar.judaic
 Jewish holidays.
 This calendar should be updated yearly by the local system administrator
 so that roving holidays are set correctly for the current year.
+The entries for this calendar have been obtained from the port
+.Pa deskutils/hebcal .
+.It Pa calendar.lotr
+Calendar of events in
+.Em Load Of The Rings .
 .It Pa calendar.music
 Musical events, births, and deaths.
 Strongly oriented toward rock 'n' roll.

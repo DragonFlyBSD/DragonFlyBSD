@@ -1,8 +1,7 @@
 /*
  * Lord Of The Rings
  *
- * $FreeBSD: src/usr.bin/calendar/calendars/calendar.lotr,v 1.2 2003/10/09 00:31:48 grog Exp $
- * $DragonFly: src/usr.bin/calendar/calendars/calendar.lotr,v 1.3 2006/09/16 18:38:00 pavalos Exp $
+ * $FreeBSD: head/usr.bin/calendar/calendars/calendar.lotr 120919 2003-10-09 00:31:48Z grog $
  */
 
 #ifndef _calendar_lotr_
