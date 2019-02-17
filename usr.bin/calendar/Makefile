@@ -2,7 +2,11 @@
 # $FreeBSD: src/usr.bin/calendar/Makefile,v 1.12.8.6 2003/04/06 20:04:56 dwmalone Exp $
 
 PROG=	calendar
-SRCS=	calendar.c io.c day.c ostern.c paskha.c
+SRCS=	calendar.c locale.c events.c dates.c parsedata.c io.c day.c \
+	ostern.c paskha.c pom.c sunpos.c
+
+DPADD=	${LIBM}
+LDADD=	-lm
 
 .if !defined(NO_SHARE)
 INTER=		de_AT.ISO8859-15 de_DE.ISO8859-1 fr_FR.ISO8859-1 \
