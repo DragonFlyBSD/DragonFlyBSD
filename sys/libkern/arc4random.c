@@ -105,11 +105,6 @@ karc4random(void)
 	struct arc4_data *d = arc4_data_pcpu[mycpuid];
 	uint32_t ret;
 
-#if 0
-	/* No one call this function in ISR/ithread. */
-	crit_enter();
-#endif
-
 	if (++(d->arc4_numruns) > ARC4_MAXRUNS ||
 	    time_uptime > d->arc4_nextreseed)
 		arc4_randomstir(d);
@@ -119,9 +114,27 @@ karc4random(void)
 	ret |= arc4_randbyte(d) << 16;
 	ret |= arc4_randbyte(d) << 24;
 
-#if 0
-	crit_exit();
-#endif
+	return ret;
+}
+
+uint64_t
+karc4random64(void)
+{
+	struct arc4_data *d = arc4_data_pcpu[mycpuid];
+	uint64_t ret;
+
+	if (++(d->arc4_numruns) > ARC4_MAXRUNS ||
+	    time_uptime > d->arc4_nextreseed)
+		arc4_randomstir(d);
+
+	ret = arc4_randbyte(d);
+	ret |= arc4_randbyte(d) << 8;
+	ret |= arc4_randbyte(d) << 16;
+	ret |= arc4_randbyte(d) << 24;
+	ret |= (uint64_t)arc4_randbyte(d) << 32;
+	ret |= (uint64_t)arc4_randbyte(d) << 40;
+	ret |= (uint64_t)arc4_randbyte(d) << 48;
+	ret |= (uint64_t)arc4_randbyte(d) << 56;
 
 	return ret;
 }

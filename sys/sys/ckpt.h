@@ -55,8 +55,8 @@ struct ckpt_filehdr {
 };
 
 struct ckpt_vminfo {
-	segsz_t		cvm_dsize;
-	segsz_t		cvm_tsize;
+	segsz_t		cvm_dsize;	/* in pages */
+	segsz_t		cvm_tsize;	/* in pages */
 	segsz_t		cvm_reserved1[4];
 	caddr_t		cvm_daddr;
 	caddr_t		cvm_taddr;

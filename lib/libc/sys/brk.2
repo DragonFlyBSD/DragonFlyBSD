@@ -35,7 +35,7 @@
 .Sh NAME
 .Nm brk ,
 .Nm sbrk
-.Nd change data segment size
+.Nd change data segment size (obsolete)
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
@@ -53,6 +53,14 @@ and
 .Fn sbrk
 functions are legacy interfaces from before the
 advent of modern virtual memory management.
+.Fn brk
+is no longer implemented by
+.Dx
+and
+.Fn sbrk
+has only limited functionality due to having to play nice with
+modern system calls such as
+.Xr mmap 2 .
 .Ef
 .Pp
 The
@@ -67,25 +75,40 @@ The break is the first address after the end of the process's
 uninitialized data segment (also known as the
 .Dq BSS ) .
 .Pp
+The break range is limited by the
+.Dv RLIMIT_DATA
+resource limit applied to the process.
+.Pp
 The
 .Fn brk
 function
 sets the break to
 .Fa addr .
+.Dx
+no longer implements this function.
 .Pp
 The
 .Fn sbrk
 function raises the break by
 .Fa incr
-bytes, thus allocating at least
+bytes, returning a pointer to the base of the new memory.
+.Pp
+In the traditional call, a negative
 .Fa incr
-bytes of new memory in the data segment.
-If
-.Fa incr
-is negative,
-the break is lowered by
-.Fa incr
-bytes.
+lowers the break address by the specified number of bytes.
+However,
+.Dx
+no longer supports using this legacy function to lower the break
+address.  The reason is because the resource limit can be adjusted
+upward and downward at run-time and indirectly allow normal memory-mappings
+via
+.Fn mmap
+to infiltrate the traditional data area.  In addition, lowering the break
+address in this manner is not thread safe.
+Any attempt to lower the break point will return
+.Po Vt "void *" Pc Ns \-1
+and set errno to
+.Er EOPNOTSUPP .
 .Sh NOTES
 While the actual process data segment size maintained by the kernel will only
 grow or shrink in page sizes, these functions allow setting the break
@@ -94,6 +117,10 @@ page of the data segment).
 .Pp
 The current value of the program break may be determined by calling
 .Fn sbrk 0 .
+.Pp
+The
+.Fn sbrk
+function is thread-safe.
 See also
 .Xr end 3 .
 .Pp
@@ -118,7 +145,7 @@ for the definition of
 .Pp
 The
 .Fn sbrk
-function returns the prior break value if successful;
+function returns the prior break pointer if successful;
 otherwise the value
 .Po Vt "void *" Pc Ns \-1
 is returned and the global variable
@@ -139,6 +166,9 @@ was exceeded.
 .It Bq Er ENOMEM
 Insufficient space existed in the swap area
 to support the expansion of the data segment.
+.It Bq Er EOPNOTSUPP
+An attempt has been made to perform an action that is no longer supported
+by this function.
 .El
 .Sh SEE ALSO
 .Xr execve 2 ,

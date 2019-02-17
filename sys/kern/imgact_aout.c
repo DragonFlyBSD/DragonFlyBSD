@@ -233,8 +233,8 @@ exec_aout_imgact(struct image_params *imgp)
 	vm_map_entry_release(count);
 
 	/* Fill in process VM information */
-	vmspace->vm_tsize = a_out->a_text >> PAGE_SHIFT;
-	vmspace->vm_dsize = (a_out->a_data + bss_size) >> PAGE_SHIFT;
+	vmspace->vm_tsize = a_out->a_text;		/* in bytes */
+	vmspace->vm_dsize = a_out->a_data + bss_size;	/* in bytes */
 	vmspace->vm_taddr = (caddr_t) (uintptr_t) virtual_offset;
 	vmspace->vm_daddr = (caddr_t) (uintptr_t)
 			    (virtual_offset + a_out->a_text);

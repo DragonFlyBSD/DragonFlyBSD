@@ -507,7 +507,7 @@ void	 sync(void);
 #endif /* __XSI_VISIBLE */
 
 #if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE < 600)
-int	 brk(const void *);
+/* int	 brk(const void *); no longer implemented */
 int	 chroot(const char *);
 int	 chroot_kernel(const char *);
 int	 getdtablesize(void);

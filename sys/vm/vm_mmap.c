@@ -85,16 +85,6 @@ int vkernel_enable;
 SYSCTL_INT(_vm, OID_AUTO, vkernel_enable, CTLFLAG_RW, &vkernel_enable, 0, "");
 
 /*
- * MPSAFE
- */
-int
-sys_sbrk(struct sbrk_args *uap)
-{
-	/* Not yet implemented */
-	return (EOPNOTSUPP);
-}
-
-/*
  * sstk_args(int incr)
  *
  * MPSAFE

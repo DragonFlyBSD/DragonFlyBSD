@@ -154,9 +154,9 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 		/*kp->kp_vm_prssize = vmspace_president_count(vm);*/
 #endif
 		kp->kp_vm_swrss = vm->vm_swrss;
-		kp->kp_vm_tsize = vm->vm_tsize;
-		kp->kp_vm_dsize = vm->vm_dsize;
-		kp->kp_vm_ssize = vm->vm_ssize;
+		kp->kp_vm_tsize = btoc(vm->vm_tsize);
+		kp->kp_vm_dsize = btoc(vm->vm_dsize);
+		kp->kp_vm_ssize = btoc(vm->vm_ssize);
 	}
 
 	if (p->p_ucred && jailed(p->p_ucred))

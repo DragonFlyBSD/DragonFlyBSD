@@ -556,9 +556,9 @@ elf_gettextvp(struct proc *p, struct file *fp)
 
 	vmspace_exec(p, NULL);
 	p->p_vmspace->vm_daddr = vminfo.cvm_daddr;
-	p->p_vmspace->vm_dsize = vminfo.cvm_dsize;
+	p->p_vmspace->vm_dsize = ctob(vminfo.cvm_dsize);	/* in bytes */
 	p->p_vmspace->vm_taddr = vminfo.cvm_taddr;
-	p->p_vmspace->vm_tsize = vminfo.cvm_tsize;
+	p->p_vmspace->vm_tsize = ctob(vminfo.cvm_tsize);	/* in bytes */
 	if ((error = read_check(fp, &vpcount, sizeof(int))) != 0)
 		goto done;
 	vnh = kmalloc(sizeof(struct vn_hdr) * vpcount, M_TEMP, M_WAITOK);

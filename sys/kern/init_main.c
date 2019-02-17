@@ -591,7 +591,7 @@ start_init(void *dummy, struct trapframe *frame)
 	if (error)
 		panic("init: couldn't allocate argument space");
 	p->p_vmspace->vm_maxsaddr = (caddr_t)addr;
-	p->p_vmspace->vm_ssize = 1;
+	p->p_vmspace->vm_ssize = PAGE_SIZE;
 
 	if ((var = kgetenv("init_path")) != NULL) {
 		strncpy(init_path, var, sizeof init_path);

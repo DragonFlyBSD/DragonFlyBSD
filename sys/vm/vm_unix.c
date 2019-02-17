@@ -57,7 +57,113 @@
 #include <sys/thread.h>
 
 /*
- * sys_obreak backs the C library sbrk call
+ * sys_sbrk backs the C library sbrk call
+ *
+ * void *sbrk(intptr_t incr)
+ *
+ * No requirements.
+ */
+int
+sys_sbrk(struct sbrk_args *uap)
+{
+	struct proc *p = curproc;
+	struct vmspace *vm = p->p_vmspace;
+	vm_offset_t nbase;
+	vm_offset_t base;
+	vm_offset_t base_end;
+	vm_offset_t incr;
+	int rv;
+	int error;
+
+	error = 0;
+
+	lwkt_gettoken(&vm->vm_map.token);
+
+	/*
+	 * Cannot assume that last data page for binary is mapped R/W.
+	 */
+	base = round_page((vm_offset_t)vm->vm_daddr) + vm->vm_dsize;
+	incr = uap->incr;
+
+	/*
+	 * Cannot allow space to be freed with sbrk() because it is not
+	 * thread-safe for userland and because unrelated mmap()s can reside
+	 * in the data space if the DATA rlimit is raised on the running
+	 * program.
+	 */
+	if (incr < 0) {
+		error = EOPNOTSUPP;
+		goto done;
+	}
+
+	/*
+	 * Userland requests current base
+	 */
+	if (incr == 0) {
+		uap->sysmsg_resultp = (void *)base;
+		goto done;
+	}
+
+	/*
+	 * Calculate approximate area (vm_map_find() may change this).
+	 * Check for overflow, address space, and rlimit caps.
+	 */
+	base_end = base + incr;
+	if (base_end >= VM_MAX_USER_ADDRESS) {
+		error = ENOMEM;
+		goto done;
+	}
+	if (base_end < base ||
+	    base_end - (vm_offset_t)vm->vm_daddr >
+	    (vm_offset_t)p->p_rlimit[RLIMIT_DATA].rlim_cur) {
+		error = ENOMEM;
+		goto done;
+	}
+
+	/*
+	 * Same-page optimization (protected by token)
+	 */
+	if ((base & PAGE_MASK) != 0 &&
+	    ((base ^ (base_end - 1)) & ~(vm_offset_t)PAGE_MASK) == 0) {
+		uap->sysmsg_resultp = (void *)base;
+		vm->vm_dsize += incr;
+		goto done;
+	}
+
+	/*
+	 * Formally map more space
+	 */
+	nbase = round_page(base);
+	rv = vm_map_find(&vm->vm_map, NULL, NULL,
+			 0, &nbase, round_page(incr),
+			 PAGE_SIZE, FALSE,
+			 VM_MAPTYPE_NORMAL, VM_SUBSYS_BRK,
+			 VM_PROT_ALL, VM_PROT_ALL, 0);
+	if (rv != KERN_SUCCESS) {
+		error = ENOMEM;
+		goto done;
+	}
+	base_end = nbase + round_page(incr);
+	uap->sysmsg_resultp = (void *)nbase;
+	if (vm->vm_map.flags & MAP_WIREFUTURE)
+		vm_map_wire(&vm->vm_map, base, base_end, FALSE);
+
+	/*
+	 * Adjust dsize upwards only
+	 */
+	incr = nbase + incr - round_page((vm_offset_t)vm->vm_daddr);
+	if (vm->vm_dsize < incr)
+		vm->vm_dsize = incr;
+
+done:
+	lwkt_reltoken(&vm->vm_map.token);
+
+	return (error);
+}
+
+/*
+ * sys_obreak is used by the sbrk emulation code in libc when sbrk()
+ * is not supported.
  *
  * obreak_args(char *nsize)
  *
@@ -78,7 +184,7 @@ sys_obreak(struct obreak_args *uap)
 
 	base = round_page((vm_offset_t)vm->vm_daddr);
 	new = round_page((vm_offset_t)uap->nsize);
-	old = base + ctob(vm->vm_dsize);
+	old = base + round_page(vm->vm_dsize);
 
 	if (new > base) {
 		/*
@@ -124,14 +230,17 @@ sys_obreak(struct obreak_args *uap)
 		if (vm->vm_map.flags & MAP_WIREFUTURE)
 			vm_map_wire(&vm->vm_map, old, new, FALSE);
 
-		vm->vm_dsize += btoc(diff);
+		vm->vm_dsize += diff;
 	} else if (new < old) {
+		error = EOPNOTSUPP;
+#if 0
 		rv = vm_map_remove(&vm->vm_map, new, old);
 		if (rv != KERN_SUCCESS) {
 			error = ENOMEM;
 			goto done;
 		}
-		vm->vm_dsize -= btoc(old - new);
+		vm->vm_dsize -= old - new;
+#endif
 	}
 done:
 	lwkt_reltoken(&vm->vm_map.token);

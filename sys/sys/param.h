@@ -192,9 +192,12 @@
  * 500500 - 5.5 development
  * 500501 - reallocarray() added to libc
  * 500502 - puffs etc. removed
+ * 500503 - Lowered DATA rlimit supported by mmap(), libc sbrk() emulation
+ *	    had to be rewritten.  libc brk() removed entirely.  These changes
+ *	    are required to allow mmap hints to utilize lowered data rlimits.
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500502	/* propagated to newvers */
+#define __DragonFly_version 500503	/* propagated to newvers */
 
 #include <sys/_null.h>
 

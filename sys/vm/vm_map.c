@@ -82,6 +82,7 @@
 #include <sys/tree.h>
 #include <sys/malloc.h>
 #include <sys/objcache.h>
+#include <sys/kern_syscall.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -3959,7 +3960,7 @@ Retry:
 	/* If this is the main process stack, see if we're over the 
 	 * stack limit.
 	 */
-	if (is_procstack && (ctob(vm->vm_ssize) + grow_amount >
+	if (is_procstack && (vm->vm_ssize + grow_amount >
 			     p->p_rlimit[RLIMIT_STACK].rlim_cur)) {
 		rv = KERN_NO_SPACE;
 		goto done;
@@ -3970,10 +3971,9 @@ Retry:
 	if (grow_amount > stack_entry->aux.avail_ssize) {
 		grow_amount = stack_entry->aux.avail_ssize;
 	}
-	if (is_procstack && (ctob(vm->vm_ssize) + grow_amount >
+	if (is_procstack && (vm->vm_ssize + grow_amount >
 	                     p->p_rlimit[RLIMIT_STACK].rlim_cur)) {
-		grow_amount = p->p_rlimit[RLIMIT_STACK].rlim_cur -
-		              ctob(vm->vm_ssize);
+		grow_amount = p->p_rlimit[RLIMIT_STACK].rlim_cur - vm->vm_ssize;
 	}
 
 	/* If we would blow our VMEM resource limit, no go */
@@ -4017,9 +4017,10 @@ Retry:
 			new_stack_entry->aux.avail_ssize =
 				stack_entry->aux.avail_ssize -
 				(new_stack_entry->end - new_stack_entry->start);
-			if (is_procstack)
-				vm->vm_ssize += btoc(new_stack_entry->end -
-						     new_stack_entry->start);
+			if (is_procstack) {
+				vm->vm_ssize += new_stack_entry->end -
+						new_stack_entry->start;
+			}
 		}
 
 		if (map->flags & MAP_WIREFUTURE)
@@ -4112,6 +4113,16 @@ vm_offset_t
 vm_map_hint(struct proc *p, vm_offset_t addr, vm_prot_t prot)
 {
 	struct vmspace *vms = p->p_vmspace;
+	struct rlimit limit;
+	rlim_t dsiz;
+
+	/*
+	 * Acquire datasize limit for mmap() operation,
+	 * calculate nearest power of 2.
+	 */
+	if (kern_getrlimit(RLIMIT_DATA, &limit))
+		limit.rlim_cur = maxdsiz;
+	dsiz = limit.rlim_cur;
 
 	if (!randomize_mmap || addr != 0) {
 		/*
@@ -4121,15 +4132,20 @@ vm_map_hint(struct proc *p, vm_offset_t addr, vm_prot_t prot)
 		 */
 		if (addr == 0 ||
 		    (addr >= round_page((vm_offset_t)vms->vm_taddr) &&
-		     addr < round_page((vm_offset_t)vms->vm_daddr + maxdsiz))) {
-			addr = round_page((vm_offset_t)vms->vm_daddr + maxdsiz);
+		     addr < round_page((vm_offset_t)vms->vm_daddr + dsiz))) {
+			addr = round_page((vm_offset_t)vms->vm_daddr + dsiz);
 		}
 
 		return addr;
 	}
-	addr = (vm_offset_t)vms->vm_daddr + MAXDSIZ;
-	addr += karc4random() & (MIN((256 * 1024 * 1024), MAXDSIZ) - 1);
 
+	/*
+	 * randomize_mmap && addr == 0.  For now randomize the
+	 * address within a dsiz range beyond the data limit.
+	 */
+	addr = (vm_offset_t)vms->vm_daddr + dsiz;
+	if (dsiz)
+		addr += (karc4random64() & 0x7FFFFFFFFFFFFFFFLU) % dsiz;
 	return (round_page(addr));
 }
 

@@ -120,8 +120,8 @@
 66	STD	{ pid_t vfork(void); }
 67	OBSOL	vread
 68	OBSOL	vwrite
-69	STD	{ int sbrk(int incr); }
-70	STD	{ int sstk(int incr); }
+69	STD	{ caddr_t sbrk(size_t incr); }
+70	STD	{ int sstk(size_t incr); }
 71	OBSOL	old mmap
 72	OBSOL	vadvise
 73	STD	{ int munmap(void *addr, size_t len); }

@@ -816,9 +816,9 @@ __CONCAT(exec_,__elfN(imgact))(struct image_params *imgp)
 		}
 	}
 
-	vmspace->vm_tsize = text_size >> PAGE_SHIFT;
+	vmspace->vm_tsize = text_size;		/* in bytes */
 	vmspace->vm_taddr = (caddr_t)(uintptr_t)text_addr;
-	vmspace->vm_dsize = data_size >> PAGE_SHIFT;
+	vmspace->vm_dsize = data_size;		/* in bytes */
 	vmspace->vm_daddr = (caddr_t)(uintptr_t)data_addr;
 
 	addr = ELF_RTLD_ADDR(vmspace);
@@ -1659,8 +1659,8 @@ elf_puttextvp(struct proc *p, elf_buf_t target)
 
 	vminfo = target_reserve(target, sizeof(struct ckpt_vminfo), &error);
 	if (vminfo != NULL) {
-		vminfo->cvm_dsize = p->p_vmspace->vm_dsize;
-		vminfo->cvm_tsize = p->p_vmspace->vm_tsize;
+		vminfo->cvm_dsize = btoc(p->p_vmspace->vm_dsize); /* pages */
+		vminfo->cvm_tsize = btoc(p->p_vmspace->vm_tsize); /* pages */
 		vminfo->cvm_daddr = p->p_vmspace->vm_daddr;
 		vminfo->cvm_taddr = p->p_vmspace->vm_taddr;
 	}

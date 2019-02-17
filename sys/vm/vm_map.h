@@ -344,9 +344,9 @@ struct vmspace {
 #define vm_startcopy vm_rssize
 	segsz_t vm_rssize;	/* current resident set size in pages */
 	segsz_t vm_swrss;	/* resident set size before last swap */
-	segsz_t vm_tsize;	/* text size (pages) XXX */
-	segsz_t vm_dsize;	/* data size (pages) XXX */
-	segsz_t vm_ssize;	/* stack size (pages) */
+	segsz_t vm_tsize;	/* text size (bytes) */
+	segsz_t vm_dsize;	/* data size (bytes) */
+	segsz_t vm_ssize;	/* stack size (bytes) */
 	caddr_t vm_taddr;	/* user virtual address of text XXX */
 	caddr_t vm_daddr;	/* user virtual address of data XXX */
 	caddr_t vm_maxsaddr;	/* user VA at max stack growth */

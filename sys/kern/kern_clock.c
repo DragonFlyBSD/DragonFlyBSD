@@ -1043,9 +1043,9 @@ schedclock(systimer_t info, int in_ipi __unused, struct intrframe *frame)
 		 */
 		if ((ru = &lp->lwp_proc->p_ru) &&
 		    (vm = lp->lwp_proc->p_vmspace) != NULL) {
-			ru->ru_ixrss += pgtok(vm->vm_tsize);
-			ru->ru_idrss += pgtok(vm->vm_dsize);
-			ru->ru_isrss += pgtok(vm->vm_ssize);
+			ru->ru_ixrss += pgtok(btoc(vm->vm_tsize));
+			ru->ru_idrss += pgtok(btoc(vm->vm_dsize));
+			ru->ru_isrss += pgtok(btoc(vm->vm_ssize));
 			if (lwkt_trytoken(&vm->vm_map.token)) {
 				rss = pgtok(vmspace_resident_count(vm));
 				if (ru->ru_maxrss < rss)

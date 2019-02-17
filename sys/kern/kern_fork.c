@@ -674,20 +674,20 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 
 	if (flags == (RFFDG | RFPROC | RFPGLOCK)) {
 		mycpu->gd_cnt.v_forks++;
-		mycpu->gd_cnt.v_forkpages += p2->p_vmspace->vm_dsize +
-					     p2->p_vmspace->vm_ssize;
+		mycpu->gd_cnt.v_forkpages += btoc(p2->p_vmspace->vm_dsize) +
+					     btoc(p2->p_vmspace->vm_ssize);
 	} else if (flags == (RFFDG | RFPROC | RFPPWAIT | RFMEM | RFPGLOCK)) {
 		mycpu->gd_cnt.v_vforks++;
-		mycpu->gd_cnt.v_vforkpages += p2->p_vmspace->vm_dsize +
-					      p2->p_vmspace->vm_ssize;
+		mycpu->gd_cnt.v_vforkpages += btoc(p2->p_vmspace->vm_dsize) +
+					      btoc(p2->p_vmspace->vm_ssize);
 	} else if (p1 == &proc0) {
 		mycpu->gd_cnt.v_kthreads++;
-		mycpu->gd_cnt.v_kthreadpages += p2->p_vmspace->vm_dsize +
-						p2->p_vmspace->vm_ssize;
+		mycpu->gd_cnt.v_kthreadpages += btoc(p2->p_vmspace->vm_dsize) +
+						btoc(p2->p_vmspace->vm_ssize);
 	} else {
 		mycpu->gd_cnt.v_rforks++;
-		mycpu->gd_cnt.v_rforkpages += p2->p_vmspace->vm_dsize +
-					      p2->p_vmspace->vm_ssize;
+		mycpu->gd_cnt.v_rforkpages += btoc(p2->p_vmspace->vm_dsize) +
+					      btoc(p2->p_vmspace->vm_ssize);
 	}
 
 	/*

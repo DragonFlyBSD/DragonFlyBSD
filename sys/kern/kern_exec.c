@@ -855,11 +855,12 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 	if (error)
 		return (error);
 
-	/* vm_ssize and vm_maxsaddr are somewhat antiquated concepts in the
+	/*
+	 * vm_ssize and vm_maxsaddr are somewhat antiquated concepts in the
 	 * VM_STACK case, but they are still used to monitor the size of the
 	 * process stack so we can check the stack rlimit.
 	 */
-	vmspace->vm_ssize = sgrowsiz >> PAGE_SHIFT;
+	vmspace->vm_ssize = sgrowsiz;		/* in bytes */
 	vmspace->vm_maxsaddr = (char *)USRSTACK - maxssiz;
 
 	return(0);
