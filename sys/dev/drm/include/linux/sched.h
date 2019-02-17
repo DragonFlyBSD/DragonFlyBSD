@@ -50,6 +50,8 @@
 #include <linux/hrtimer.h>
 #include <linux/gfp.h>
 
+#include <asm/processor.h>
+
 #include <linux/spinlock.h>
 
 #include <sys/param.h>

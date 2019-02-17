@@ -4,7 +4,7 @@
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013, 2014 Mellanox Technologies, Ltd.
  * Copyright (c) 2015 Matthew Dillon <dillon@backplane.com>
- * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -45,6 +45,7 @@
 
 #include <asm/page.h>
 #include <asm/pgtable.h>
+#include <asm/processor.h>
 
 static inline struct page *
 nth_page(struct page *page, int n)

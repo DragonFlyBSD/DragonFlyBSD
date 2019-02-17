@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,23 +24,24 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _ASM_CPUFEATURE_H_
-#define _ASM_CPUFEATURE_H_
+#ifndef _ASM_PROCESSOR_H_
+#define _ASM_PROCESSOR_H_
 
-#include <asm/processor.h>
-
+#include <asm/types.h>
+#include <asm/current.h>
 #include <asm/cpufeatures.h>
+#include <asm/page.h>
+#include <asm/pgtable_types.h>
+#include <asm/special_insns.h>
 
-static inline bool
-static_cpu_has(uint16_t feature)
-{
-	switch(feature) {
-	case X86_FEATURE_CLFLUSH:
-		/* All amd64 CPUs have the clflush instruction */
-		return true;
-	default:
-		return false;
-	}
-}
+#include <linux/cache.h>
+#include <linux/threads.h>
+#include <linux/math64.h>
+#include <linux/err.h>
+#include <linux/irqflags.h>
 
-#endif	/* _ASM_CPUFEATURE_H_ */
+#include <machine/cpufunc.h>
+
+#define cpu_relax()	cpu_pause()
+
+#endif	/* _ASM_PROCESSOR_H_ */

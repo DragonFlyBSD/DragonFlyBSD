@@ -31,6 +31,7 @@
 #include <linux/preempt.h>
 #include <linux/lockdep.h>
 #include <linux/compiler.h>
+#include <asm/processor.h>
 
 typedef struct {
 	unsigned sequence;
