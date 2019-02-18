@@ -22,4 +22,4 @@ LANG=pt_BR.UTF-8
 11/15	Dia da proclamação da República
 12/25	Natal
 
-#endif
+#endif /* !_pt_BR_UTF_8_holidays_ */

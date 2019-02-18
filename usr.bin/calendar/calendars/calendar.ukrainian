@@ -7,6 +7,6 @@
 #ifndef _calendar_ukrainian_
 #define _calendar_ukrainian_
 
-#include <uk_UA.KOI8-U/calendar.all>
+#include <uk_UA.UTF-8/calendar.all>
 
 #endif /* !_calendar_ukrainian_ */

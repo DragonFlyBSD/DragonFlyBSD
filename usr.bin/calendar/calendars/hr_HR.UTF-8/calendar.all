@@ -1,0 +1,12 @@
+/*
+ *  hrvatski calendar
+ *
+ * $FreeBSD: head/usr.bin/calendar/calendars/hr_HR.ISO8859-2/calendar.all 232105 2012-02-24 11:40:20Z osa $
+ */
+
+#ifndef _hr_HR_UTF_8_all_
+#define _hr_HR_UTF_8_all_
+
+#include <hr_HR.UTF-8/calendar.praznici>
+
+#endif /* !_hr_HR_UTF_8_all_ */

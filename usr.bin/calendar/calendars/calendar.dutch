@@ -4,7 +4,6 @@
  * Originally submitted by Edwin Groothuis <edwin@FreeBSD.org>
  */
 
-LANG=nl_NL.ISO8859-15
 Easter=Pasen
 
 /*

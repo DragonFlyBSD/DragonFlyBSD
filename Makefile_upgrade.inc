@@ -3859,6 +3859,16 @@ TO_REMOVE+=/usr/share/man/man4/radeonkms.4.gz
 TO_REMOVE+=/usr/bin/checknr
 TO_REMOVE+=/usr/share/man/man1/checknr.1.gz
 TO_REMOVE+=/usr/share/calendar/ru_RU.KOI8-R/calendar.msk
+TO_REMOVE+=/usr/share/calendar/de_AT.ISO8859-15
+TO_REMOVE+=/usr/share/calendar/de_DE.ISO8859-1
+TO_REMOVE+=/usr/share/calendar/de_DE.ISO8859-15
+TO_REMOVE+=/usr/share/calendar/fr_FR.ISO8859-1
+TO_REMOVE+=/usr/share/calendar/fr_FR.ISO8859-15
+TO_REMOVE+=/usr/share/calendar/hr_HR.ISO8859-2
+TO_REMOVE+=/usr/share/calendar/hu_HU.ISO8859-2
+TO_REMOVE+=/usr/share/calendar/pt_BR.ISO8859-1
+TO_REMOVE+=/usr/share/calendar/ru_RU.KOI8-R
+TO_REMOVE+=/usr/share/calendar/uk_UA.KOI8-U
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

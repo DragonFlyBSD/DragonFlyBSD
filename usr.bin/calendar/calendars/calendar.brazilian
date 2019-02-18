@@ -8,6 +8,6 @@
 #ifndef _calendar_brazilian_
 #define _calendar_brazilian_
 
-#include <pt_BR.ISO8859-1/calendar.all>
+#include <pt_BR.UTF-8/calendar.all>
 
 #endif

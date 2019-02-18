@@ -9,11 +9,14 @@ DPADD=	${LIBM}
 LDADD=	-lm
 
 .if !defined(NO_SHARE)
-INTER=		de_AT.ISO8859-15 de_DE.ISO8859-1 fr_FR.ISO8859-1 \
-		hr_HR.ISO8859-2 hu_HU.ISO8859-2 pt_BR.ISO8859-1 \
-		pt_BR.UTF-8 ru_RU.KOI8-R ru_RU.UTF-8 uk_UA.KOI8-U
-DE_LINKS=	de_DE.ISO8859-15
-FR_LINKS=	fr_FR.ISO8859-15
+INTER=		de_AT.UTF-8 \
+		de_DE.UTF-8 \
+		fr_FR.UTF-8 \
+		hr_HR.UTF-8 \
+		hu_HU.UTF-8 \
+		pt_BR.UTF-8 \
+		ru_RU.UTF-8 \
+		uk_UA.UTF-8
 
 FILESGROUPS+=	CALS
 CALS=		calendars/calendar.all \
@@ -41,10 +44,9 @@ CALS=		calendars/calendar.all \
 		calendars/calendar.world
 CALSDIR=	${SHAREDIR}/calendar
 
-CAL_de_AT.ISO8859-15=	calendar.feiertag
+CAL_de_AT.UTF-8=calendar.feiertag
 
-CAL_de_DE.ISO8859-1= \
-		calendar.all \
+CAL_de_DE.UTF-8=calendar.all \
 		calendar.feiertag \
 		calendar.geschichte \
 		calendar.kirche \
@@ -52,52 +54,32 @@ CAL_de_DE.ISO8859-1= \
 		calendar.musik \
 		calendar.wissenschaft
 
-CAL_fr_FR.ISO8859-1= \
-		calendar.all \
+CAL_fr_FR.UTF-8=calendar.all \
 		calendar.fetes \
 		calendar.french \
 		calendar.jferies \
 		calendar.proverbes
 
-CAL_hr_HR.ISO8859-2= \
-		calendar.all \
+CAL_hr_HR.UTF-8=calendar.all \
 		calendar.praznici
 
-CAL_hu_HU.ISO8859-2= \
-		calendar.all \
+CAL_hu_HU.UTF-8=calendar.all \
 		calendar.nevnapok \
 		calendar.unnepek
 
-CAL_pt_BR.ISO8859-1= \
-		calendar.all \
+CAL_pt_BR.UTF-8=calendar.all \
 		calendar.commemorative \
 		calendar.holidays \
 		calendar.mcommemorative
 
-CAL_pt_BR.UTF-8= \
-		calendar.all \
-		calendar.commemorative \
-		calendar.holidays \
-		calendar.mcommemorative
-
-CAL_ru_RU.KOI8-R= \
-		calendar.all \
+CAL_ru_RU.UTF-8=calendar.all \
 		calendar.common \
 		calendar.holiday \
 		calendar.military \
 		calendar.orthodox \
 		calendar.pagan
 
-CAL_ru_RU.UTF-8= \
-		calendar.all \
-		calendar.common \
-		calendar.holiday \
-		calendar.military \
-		calendar.orthodox \
-		calendar.pagan
-
-CAL_uk_UA.KOI8-U= \
-		calendar.all \
+CAL_uk_UA.UTF-8=calendar.all \
 		calendar.holiday \
 		calendar.misc \
 		calendar.orthodox
@@ -110,12 +92,6 @@ CALS_${lang}+=	${file:S@^@calendars/${lang}/@}
 .  endfor
 .endfor
 
-.for link in ${DE_LINKS}
-SYMLINKS+=	de_DE.ISO8859-1 ${SHAREDIR}/calendar/${link}
-.endfor
-.for link in ${FR_LINKS}
-SYMLINKS+=	fr_FR.ISO8859-1 ${SHAREDIR}/calendar/${link}
-.endfor
 .endif  # !defined(NO_SHARE)
 
 .include <bsd.prog.mk>
