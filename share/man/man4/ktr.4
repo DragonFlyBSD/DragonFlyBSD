@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ktr.4,v 1.9 2003/09/08 19:57:19 ru Exp $
 .\"
-.Dd June 29, 2014
+.Dd February 18, 2019
 .Dt KTR 4
 .Os
 .Sh NAME
@@ -48,6 +48,7 @@
 .Cd options KTR_IFQ
 .Cd options KTR_IPIQ
 .Cd options KTR_KERNENTRY
+.Cd options KTR_LAPIC
 .Cd options KTR_MEMORY
 .Cd options KTR_SERIALIZER
 .Cd options KTR_SPIN_CONTENTION
@@ -114,6 +115,8 @@ operation
 running/avoiding/scheduling ifnet.if_start
 .It Dv KTR_IPIQ
 IPI related data (IPI requests, CPU synchronization etc.)
+.It Dv KTR_LAPIC
+Track LAPIC operation, for example EOI writes.
 .It Dv KTR_KERNENTRY
 entry of the kernel from userland (faults, syscalls)
 .It Dv KTR_MEMORY
