@@ -75,7 +75,6 @@ int	logoutx(const char *, int, int);
 void	logwtmp(const char *, const char *, const char *);
 void	logwtmpx(const char *, const char *, const char *, int, int);
 void	trimdomain(char *, int);
-int	expand_number(const char *_buf, uint64_t *_num);
 int	flopen(const char *_path, int _flags, ...);
 int	forkpty(int *_amaster, char *_name,
 	    struct termios *_termp, struct winsize *_winp);
