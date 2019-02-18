@@ -186,7 +186,6 @@ struct	ioc_vol
 #define	CDIOCSETMONO	_IO('c',12)
 
 #define	CDIOCSETSTEREO	_IO('c',13)
-#define	CDIOCSETSTERIO	CDIOCSETSTEREO
 
 #define	CDIOCSETMUTE	_IO('c',14)
 
@@ -230,59 +229,5 @@ struct ioc_play_msf
 				/*<1>causes the drive to close its door*/
 				/*<1>and make the media (if any) ready*/
 #define CDIOCCLOSE	_IO('c',28)	/*<1>*/
-
-
-struct	ioc_pitch		/*<1>For drives that support it, this*/
-{				/*<1>call instructs the drive to play the*/
-	short	speed;		/*<1>audio at a faster or slower-than-normal*/
-};				/*<1>rate. -32767 to -1 is slower, 0==normal,*/
-				/*<1>and 1 to 32767 is faster.  LSB bits are*/
-				/*<1>discarded first by drives with less res.*/
-#define	CDIOCPITCH	_IOW('c',29,struct ioc_pitch)	/*<1>*/
-
-struct ioc_capability {			/*<2>*/
-	u_long	play_function;		/*<2>*/
-#define CDDOPLAYTRK	0x00000001	/*<2>Can Play tracks/index*/
-#define	CDDOPLAYMSF	0x00000002	/*<2>Can Play msf to msf*/
-#define	CDDOPLAYBLOCKS	0x00000004	/*<2>Can Play range of blocks*/
-#define	CDDOPAUSE	0x00000100	/*<2>Output can be paused*/
-#define	CDDORESUME	0x00000200	/*<2>Output can be resumed*/
-#define	CDDORESET	0x00000400	/*<2>Drive can be completely reset*/
-#define	CDDOSTART	0x00000800	/*<2>Audio can be started*/
-#define CDDOSTOP	0x00001000	/*<2>Audio can be stopped*/
-#define CDDOPITCH	0x00002000	/*<2>Audio pitch */
-
-	u_long	routing_function;	/*<2>*/
-#define CDREADVOLUME	0x00000001	/*<2>Volume settings can be read*/
-#define CDSETVOLUME	0x00000002	/*<2>Volume settings can be set*/
-#define	CDSETMONO	0x00000100	/*<2>Output can be set to mono*/
-#define CDSETSTEREO	0x00000200	/*<2>Output can be set to stereo (def)*/
-#define	CDSETLEFT	0x00000400	/*<2>Output can be set to left only*/
-#define	CDSETRIGHT	0x00000800	/*<2>Output can be set to right only*/
-#define	CDSETMUTE	0x00001000	/*<2>Output can be muted*/
-#define CDSETPATCH	0x00008000	/*<2>Direct routing control allowed*/
-
-	u_long	special_function;	/*<2>*/
-#define	CDDOEJECT	0x00000001	/*<2>The tray can be opened*/
-#define	CDDOCLOSE	0x00000002	/*<2>The tray can be closed*/
-#define	CDDOLOCK	0x00000004	/*<2>The tray can be locked*/
-#define CDREADHEADER	0x00000100	/*<2>Can read Table of Contents*/
-#define	CDREADENTRIES	0x00000200	/*<2>Can read TOC Entries*/
-#define	CDREADSUBQ	0x00000200	/*<2>Can read Subchannel info*/
-#define CDREADRW	0x00000400	/*<2>Can read subcodes R-W*/
-#define	CDHASDEBUG	0x00004000	/*<2>The tray has dynamic debugging*/
-};					/*<2>*/
-
-#define	CDIOCCAPABILITY	_IOR('c',30,struct ioc_capability)	/*<2>*/
-
-struct ioc_read_audio
-{
-	u_char address_format;
-	union msf_lba address;
-	int nframes;
-	u_char* buffer;
-};
-
-#define CDIOCREADAUDIO _IOWR('c',31,struct ioc_read_audio)
 
 #endif /* !_SYS_CDIO_H_ */
