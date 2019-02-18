@@ -56,7 +56,6 @@ CAL_de_DE.UTF-8=calendar.all \
 
 CAL_fr_FR.UTF-8=calendar.all \
 		calendar.fetes \
-		calendar.french \
 		calendar.jferies \
 		calendar.proverbes
 
