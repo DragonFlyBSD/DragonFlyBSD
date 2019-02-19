@@ -2244,6 +2244,7 @@ options	KTR_VERBOSE=1
 #options KTR_IF_START
 #options KTR_IPIQ
 #options KTR_KERNENTRY
+#options KTR_LAPIC
 #options KTR_MEMORY
 #options KTR_SERIALIZER
 #options KTR_SOWAKEUP
