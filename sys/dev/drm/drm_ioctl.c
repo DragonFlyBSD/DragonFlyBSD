@@ -77,18 +77,22 @@ static int drm_getunique(struct drm_device *dev, void *data,
  * Copies the bus id from userspace into drm_device::unique, and verifies that
  * it matches the device this DRM is attached to (EINVAL otherwise).  Deprecated
  * in interface version 1.1 and will return EBUSY when setversion has requested
- * version 1.1 or greater.
+ * version 1.1 or greater. Also note that KMS is all version 1.1 and later and
+ * UMS was only ever supported on pci devices.
  */
 static int drm_setunique(struct drm_device *dev, void *data,
 		  struct drm_file *file_priv)
 {
 	struct drm_unique *u = data;
-	int domain, bus, slot, func, ret;
+	int ret;
+	int domain, bus, slot, func;
 	char *busid;
 
-	/* Check and copy in the submitted Bus ID */
 	if (!u->unique_len || u->unique_len > 1024)
 		return -EINVAL;
+
+	if (drm_core_check_feature(dev, DRIVER_MODESET))
+		return 0;
 
 	busid = kmalloc(u->unique_len + 1, M_DRM, M_WAITOK);
 	if (busid == NULL)
@@ -207,24 +211,9 @@ static int drm_getstats(struct drm_device *dev, void *data,
 		 struct drm_file *file_priv)
 {
 	struct drm_stats *stats = data;
-	int          i;
 
-	memset(stats, 0, sizeof(struct drm_stats));
-	
-	DRM_LOCK(dev);
-
-	for (i = 0; i < dev->counters; i++) {
-		if (dev->types[i] == _DRM_STAT_LOCK)
-			stats->data[i].value =
-			    (dev->lock.hw_lock ? dev->lock.hw_lock->lock : 0);
-		else 
-			stats->data[i].value = atomic_read(&dev->counts[i]);
-		stats->data[i].type = dev->types[i];
-	}
-	
-	stats->count = dev->counters;
-
-	DRM_UNLOCK(dev);
+	/* Clear stats to prevent userspace from eating its stack garbage. */
+	memset(stats, 0, sizeof(*stats));
 
 	return 0;
 }
@@ -251,6 +240,10 @@ static int drm_getcap(struct drm_device *dev, void *data, struct drm_file *file_
 	case DRM_CAP_DUMB_PREFER_SHADOW:
 		req->value = dev->mode_config.prefer_shadow;
 		break;
+	case DRM_CAP_PRIME:
+		req->value |= dev->driver->prime_fd_to_handle ? DRM_PRIME_CAP_IMPORT : 0;
+		req->value |= dev->driver->prime_handle_to_fd ? DRM_PRIME_CAP_EXPORT : 0;
+		break;
 	case DRM_CAP_TIMESTAMP_MONOTONIC:
 		req->value = drm_timestamp_monotonic;
 		break;
@@ -268,6 +261,9 @@ static int drm_getcap(struct drm_device *dev, void *data, struct drm_file *file_
 			req->value = dev->mode_config.cursor_height;
 		else
 			req->value = 64;
+		break;
+	case DRM_CAP_ADDFB2_MODIFIERS:
+		req->value = dev->mode_config.allow_fb_modifiers;
 		break;
 	default:
 		return -EINVAL;
@@ -473,7 +469,6 @@ static int drm_version(struct drm_device *dev, void *data,
  * indicated permissions. If so, returns zero. Otherwise returns an
  * error code suitable for ioctl return.
  */
-#if 0
 int drm_ioctl_permit(u32 flags, struct drm_file *file_priv)
 {
 	/* ROOT_ONLY is only for CAP_SYS_ADMIN */
@@ -481,36 +476,22 @@ int drm_ioctl_permit(u32 flags, struct drm_file *file_priv)
 		return -EACCES;
 
 	/* AUTH is only for authenticated or render client */
-	if (unlikely((flags & DRM_AUTH) && !drm_is_render_client(file_priv) &&
-		     !file_priv->authenticated))
+	if (unlikely((flags & DRM_AUTH) && !file_priv->authenticated))
 		return -EACCES;
 
 	/* MASTER is only for master or control clients */
-	if (unlikely((flags & DRM_MASTER) && !file_priv->is_master &&
-		     !drm_is_control_client(file_priv)))
-		return -EACCES;
-
-	/* Control clients must be explicitly allowed */
-	if (unlikely(!(flags & DRM_CONTROL_ALLOW) &&
-		     drm_is_control_client(file_priv)))
-		return -EACCES;
-
-	/* Render clients must be explicitly allowed */
-	if (unlikely(!(flags & DRM_RENDER_ALLOW) &&
-		     drm_is_render_client(file_priv)))
+	if (unlikely((flags & DRM_MASTER) && !file_priv->master))
 		return -EACCES;
 
 	return 0;
 }
 EXPORT_SYMBOL(drm_ioctl_permit);
-#endif
 
 #define DRM_IOCTL_DEF(ioctl, _func, _flags)	\
 	[DRM_IOCTL_NR(ioctl)] = {		\
 		.cmd = ioctl,			\
 		.func = _func,			\
 		.flags = _flags,		\
-		.cmd_drv = 0,			\
 		.name = #ioctl			\
 	}
 
@@ -597,10 +578,8 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_GETRESOURCES, drm_mode_getresources, DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 
-#if 0
 	DRM_IOCTL_DEF(DRM_IOCTL_PRIME_HANDLE_TO_FD, drm_prime_handle_to_fd_ioctl, DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF(DRM_IOCTL_PRIME_FD_TO_HANDLE, drm_prime_fd_to_handle_ioctl, DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
-#endif
 
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_GETPLANERESOURCES, drm_mode_getplane_res, DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_GETCRTC, drm_mode_getcrtc, DRM_CONTROL_ALLOW|DRM_UNLOCKED),
@@ -652,22 +631,19 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 {
 	struct file *filp = ap->a_fp;
 	struct drm_file *file_priv = filp->private_data;
-	struct cdev *kdev = ap->a_head.a_dev;
 	struct drm_device *dev;
 	const struct drm_ioctl_desc *ioctl = NULL;
 	u_long cmd = ap->a_cmd;
+	drm_ioctl_t *func;
 	unsigned int nr = DRM_IOCTL_NR(cmd);
 	int retcode = 0;
 	caddr_t data = ap->a_data;
-	int (*func)(struct drm_device *dev, void *data, struct drm_file *file_priv);
 	bool is_driver_ioctl;
 
-	dev = drm_get_device_from_kdev(kdev);
-
-	atomic_inc(&dev->counts[_DRM_STAT_IOCTLS]);
+	dev = drm_get_device_from_kdev(ap->a_head.a_dev);
 
 	if (drm_device_is_unplugged(dev))
-		return ENODEV;
+		return -ENODEV;
 
 	is_driver_ioctl = nr >= DRM_COMMAND_BASE && nr < DRM_COMMAND_END;
 
@@ -689,7 +665,8 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	}
 
 	DRM_DEBUG_IOCTL("pid=%d, dev=0x%lx, auth=%d, %s\n",
-		  DRM_CURRENTPID, (long)dev->dev,
+		  DRM_CURRENTPID,
+		  (long)dev->dev,
 		  file_priv->authenticated, ioctl->name);
 
 	/* Do not trust userspace, use our own definition */
@@ -701,10 +678,9 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 		goto err_i1;
 	}
 
-	if (((ioctl->flags & DRM_ROOT_ONLY) && !capable(CAP_SYS_ADMIN)) ||
-	    ((ioctl->flags & DRM_AUTH) && !file_priv->authenticated) ||
-	    ((ioctl->flags & DRM_MASTER) && !file_priv->master))
-		return EACCES;
+	retcode = drm_ioctl_permit(ioctl->flags, file_priv);
+	if (unlikely(retcode))
+		goto err_i1;
 
 	/* Enforce sane locking for kms driver ioctls. Core ioctls are
 	 * too messy still. */
@@ -713,15 +689,13 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 			mutex_lock(&drm_global_mutex);
 		/* shared code returns -errno */
 		retcode = -func(dev, data, file_priv);
-		if (retcode == ERESTARTSYS)
-			retcode = EINTR;
 		if ((ioctl->flags & DRM_UNLOCKED) == 0)
 			mutex_unlock(&drm_global_mutex);
 	} else {
 		retcode = -func(dev, data, file_priv);
-		if (retcode == ERESTARTSYS)
-			retcode = EINTR;
 	}
+	if (retcode == ERESTARTSYS)
+			retcode = EINTR;
 
       err_i1:
 	if (!ioctl)

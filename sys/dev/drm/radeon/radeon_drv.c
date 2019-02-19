@@ -521,9 +521,9 @@ static struct drm_driver kms_driver = {
 	.fops = &radeon_driver_kms_fops,
 #endif /* DUMBBELL_WIP */
 
-#ifdef DUMBBELL_WIP
 	.prime_handle_to_fd = drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle = drm_gem_prime_fd_to_handle,
+#ifdef DUMBBELL_WIP
 	.gem_prime_export = drm_gem_prime_export,
 	.gem_prime_import = drm_gem_prime_import,
 	.gem_prime_pin = radeon_gem_prime_pin,
