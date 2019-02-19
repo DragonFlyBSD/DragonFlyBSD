@@ -34,6 +34,7 @@
 
 #include <sys/param.h>
 #include <sys/tls.h>
+#include <sys/mman.h>
 
 #include <machine/tls.h>
 
@@ -90,7 +91,7 @@ __libc_free_tls(struct tls_tcb *tcb)
 		    ~RTLD_STATIC_TLS_ALIGN_MASK;
 
 	if (tcb == initial_tcb) {
-		/* initial_tcb was allocated with sbrk(), cannot call free() */
+		/* initial_tcb was allocated with mmap(), cannot call free() */
 	} else {
 		free((char *)tcb - data_size);
 	}
@@ -114,12 +115,22 @@ __libc_allocate_tls(void)
 
 	/*
 	 * Allocate space.  malloc() may require a working TLS segment
-	 * so we use sbrk() for main's TLS.
+	 * so we use sbrk() for main's TLS.  Oops, but in order to be
+	 * compatible with older kernels we cannot use sbrk() because it
+	 * will generate an errno (which needs the TLS), so use mmap().
 	 */
-	if (initial_tcb == NULL)
-		tcb = sbrk(data_size + sizeof(*tcb) + 3 * sizeof(*dtv));
-	else
+	if (initial_tcb == NULL) {
+		size_t bytes;
+
+		bytes = data_size + sizeof(*tcb) + 3 * sizeof(*dtv);
+		bytes = (bytes + PAGE_MASK) & ~(size_t)PAGE_MASK;
+		tcb = mmap((void *)1, bytes,
+			   PROT_READ | PROT_WRITE,
+			   MAP_PRIVATE | MAP_ANON,
+			   -1, 0);
+	} else {
 		tcb = malloc(data_size + sizeof(*tcb) + 3 * sizeof(*dtv));
+	}
 
 	tcb = (struct tls_tcb *)((char *)tcb + data_size);
 	dtv = (Elf_Addr *)(tcb + 1);
