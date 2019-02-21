@@ -218,7 +218,7 @@ srcs:
 	#
 	cd ${ISOROOT}/usr/dports && git gc --aggressive
 .endif
-	cd ${ISOROOT}/usr && make src-create-repo GITURL_SRC=${GITURL_SRC}
+	cd ${ISOROOT}/usr && make src-create GITURL_SRC=${GITURL_SRC}
 	# XXX: git gc --aggressive
 .else
 	rm -f ${ISOROOT}/usr/src-sys.tgz
