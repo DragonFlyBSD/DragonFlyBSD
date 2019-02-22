@@ -29,11 +29,10 @@
  * $FreeBSD: src/lib/libc_r/uthread/uthread_sem.c,v 1.3.2.5 2002/10/22 14:44:03 fjoe Exp $
  */
 
-#include <sys/semaphore.h>
-
 #include <stdlib.h>
 #include <errno.h>
 #include <pthread.h>
+#include <semaphore.h>
 
 #include "pthread_private.h"
 

@@ -37,6 +37,7 @@
 
 /* semaphore.h: POSIX 1003.1b semaphores */
 
+#include <sys/cdefs.h>
 #include <sys/_timespec.h>
 #include <machine/limits.h>
 
@@ -46,9 +47,6 @@ typedef struct sem *sem_t;
 
 #define SEM_FAILED	((sem_t *)0)
 #define SEM_VALUE_MAX	INT_MAX
-
-#ifndef _KERNEL
-#include <sys/cdefs.h>
 
 __BEGIN_DECLS
 int	 sem_init (sem_t *, int, unsigned int);
@@ -62,7 +60,5 @@ int	 sem_timedwait (sem_t * __restrict, const struct timespec * __restrict);
 int	 sem_post (sem_t *);
 int	 sem_getvalue (sem_t * __restrict, int * __restrict);
 __END_DECLS
-
-#endif
 
 #endif /* _SEMAPHORE_H_ */

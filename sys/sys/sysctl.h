@@ -682,11 +682,11 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define CTL_P1003_1B_AIO_MAX			16	/* int */
 #define CTL_P1003_1B_AIO_PRIO_DELTA_MAX		17	/* int */
 #define CTL_P1003_1B_DELAYTIMER_MAX		18	/* int */
-#define CTL_P1003_1B_UNUSED1			19	/* int */
+#define CTL_P1003_1B_UNUSED19			19	/* int */
 #define CTL_P1003_1B_PAGESIZE			20	/* int */
 #define CTL_P1003_1B_RTSIG_MAX			21	/* int */
 #define CTL_P1003_1B_SEM_NSEMS_MAX		22	/* int */
-#define CTL_P1003_1B_SEM_VALUE_MAX		23	/* int */
+#define CTL_P1003_1B_UNUSED23			23	/* int */
 #define CTL_P1003_1B_SIGQUEUE_MAX		24	/* int */
 #define CTL_P1003_1B_TIMER_MAX			25	/* int */
 

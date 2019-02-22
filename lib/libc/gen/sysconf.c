@@ -43,6 +43,7 @@
 #include <limits.h>
 #include <paths.h>
 #include <pthread.h>		/* we just need the limits */
+#include <semaphore.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -105,6 +106,8 @@ sysconf(int name)
 			return (-1);
 		}
 		return ((long)rl.rlim_cur);
+	case _SC_SEM_VALUE_MAX:
+		return (SEM_VALUE_MAX);
 	case _SC_STREAM_MAX:
 		if (getrlimit(RLIMIT_NOFILE, &rl) != 0)
 			return (-1);
@@ -284,10 +287,6 @@ do_NAME_MAX:
 	case _SC_SEM_NSEMS_MAX:
 		mib[0] = CTL_P1003_1B;
 		mib[1] = CTL_P1003_1B_SEM_NSEMS_MAX;
-		goto yesno;
-	case _SC_SEM_VALUE_MAX:
-		mib[0] = CTL_P1003_1B;
-		mib[1] = CTL_P1003_1B_SEM_VALUE_MAX;
 		goto yesno;
 	case _SC_SIGQUEUE_MAX:
 		mib[0] = CTL_P1003_1B;

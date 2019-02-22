@@ -195,9 +195,10 @@
  * 500503 - Lowered DATA rlimit supported by mmap(), libc sbrk() emulation
  *	    had to be rewritten.  libc brk() removed entirely.  These changes
  *	    are required to allow mmap hints to utilize lowered data rlimits.
+ * 500504 - removed <sys/semaphore.h>, only <semaphore.h> remains
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500503	/* propagated to newvers */
+#define __DragonFly_version 500504	/* propagated to newvers */
 
 #include <sys/_null.h>
 

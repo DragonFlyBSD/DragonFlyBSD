@@ -41,7 +41,6 @@
 #include <sys/sysent.h>
 #include <sys/posix4.h>
 #include <sys/proc.h>
-#include <sys/semaphore.h>
 #include <sys/syslog.h>
 #include <sys/module.h>
 #include <sys/sysproto.h>
@@ -362,7 +361,6 @@ p31binit(void *notused)
 	p31b_setcfg(CTL_P1003_1B_PAGESIZE, PAGE_SIZE);
 	p31b_setcfg(CTL_P1003_1B_SEMAPHORES, _POSIX_SEMAPHORES);
 	p31b_setcfg(CTL_P1003_1B_SEM_NSEMS_MAX, 256);
-	p31b_setcfg(CTL_P1003_1B_SEM_VALUE_MAX, SEM_VALUE_MAX);
 	p31b_setcfg(CTL_P1003_1B_SHARED_MEMORY_OBJECTS,
 	    _POSIX_SHARED_MEMORY_OBJECTS);
 

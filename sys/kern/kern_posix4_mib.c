@@ -93,8 +93,6 @@ P1B_SYSCTL(CTL_P1003_1B_RTSIG_MAX, rtsig_max,
     "Maximum number of realtime signals reserved for application use");
 P1B_SYSCTL(CTL_P1003_1B_SEM_NSEMS_MAX, sem_nsems_max,
     "Maximum number of semaphores per process");
-P1B_SYSCTL(CTL_P1003_1B_SEM_VALUE_MAX, sem_value_max,
-    "Maximum value of a semaphore");
 P1B_SYSCTL(CTL_P1003_1B_SIGQUEUE_MAX, sigqueue_max,
     "Maximum number of queued signals per process");
 P1B_SYSCTL(CTL_P1003_1B_TIMER_MAX, timer_max,

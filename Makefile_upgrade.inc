@@ -3496,6 +3496,7 @@ TO_REMOVE+=/usr/share/man/man3/refuse.3.gz
 TO_REMOVE+=/usr/share/man/man4/puffs.4.gz
 TO_REMOVE+=/usr/share/man/man8/mount_psshfs.8.gz
 TO_REMOVE+=/usr/share/man/man9/putter.9.gz
+TO_REMOVE+=/usr/include/sys/semaphore.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

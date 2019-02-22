@@ -30,7 +30,6 @@
 
 #include "namespace.h"
 #include <machine/tls.h>
-#include <sys/semaphore.h>
 #include <sys/mman.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
@@ -39,6 +38,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <pthread.h>
+#include <semaphore.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>

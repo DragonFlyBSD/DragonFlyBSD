@@ -19,7 +19,8 @@ INCS=	a.out.h ar.h assert.h bitstring.h cpio.h ctype.h db.h \
 	paths.h printf.h pthread.h pthread_np.h pwd.h \
 	ranlib.h readpassphrase.h \
 	re_comp.h resolv.h res_update.h rmd160.h runetype.h \
-	search.h setjmp.h signal.h spawn.h stdalign.h stdarg.h stdbool.h \
+	search.h semaphore.h setjmp.h signal.h spawn.h \
+	stdalign.h stdarg.h stdbool.h \
 	stddef.h stdint.h stdio.h stdlib.h stdnoreturn.h \
 	string.h stringlist.h strings.h sysexits.h \
 	tar.h time.h \
@@ -37,7 +38,7 @@ INCS+=	hesiod.h
 SHDRS=	soundcard.h joystick.h
 
 LHDRS=	aio.h errno.h fcntl.h linker_set.h poll.h sched.h \
-	semaphore.h syslog.h termios.h ucontext.h
+	syslog.h termios.h ucontext.h
 
 # directories which also contain header files that need to be copied.
 # Other directories, like 'bus' and 'netproto', are created using mtree.
