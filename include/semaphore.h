@@ -43,22 +43,22 @@
 
 /* Opaque type definition. */
 struct sem;
-typedef struct sem *sem_t;
+typedef	struct sem *sem_t;
 
-#define SEM_FAILED	((sem_t *)0)
-#define SEM_VALUE_MAX	INT_MAX
+#define	SEM_FAILED	((sem_t *)0)
+#define	SEM_VALUE_MAX	INT_MAX
 
 __BEGIN_DECLS
-int	 sem_init (sem_t *, int, unsigned int);
-int	 sem_destroy (sem_t *);
-sem_t	*sem_open (const char *, int, ...);
-int	 sem_close (sem_t *);
-int	 sem_unlink (const char *);
-int	 sem_wait (sem_t *);
-int	 sem_trywait (sem_t *);
-int	 sem_timedwait (sem_t * __restrict, const struct timespec * __restrict);
-int	 sem_post (sem_t *);
-int	 sem_getvalue (sem_t * __restrict, int * __restrict);
+int	 sem_init(sem_t *, int, unsigned int);
+int	 sem_destroy(sem_t *);
+sem_t	*sem_open(const char *, int, ...);
+int	 sem_close(sem_t *);
+int	 sem_unlink(const char *);
+int	 sem_wait(sem_t *);
+int	 sem_trywait(sem_t *);
+int	 sem_timedwait(sem_t * __restrict, const struct timespec * __restrict);
+int	 sem_post(sem_t *);
+int	 sem_getvalue(sem_t * __restrict, int * __restrict);
 __END_DECLS
 
 #endif /* _SEMAPHORE_H_ */
