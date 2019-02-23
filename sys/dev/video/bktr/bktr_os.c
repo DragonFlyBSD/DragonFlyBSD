@@ -107,13 +107,6 @@ SYSCTL_INT(_hw_bt848, OID_AUTO, dolby, CTLFLAG_RW, &bt848_dolby, 0, "");
 #include <dev/video/bktr/bktr_core.h>
 #include <dev/video/bktr/bktr_os.h>
 
-#if defined(BKTR_USE_FREEBSD_SMBUS)
-#include <dev/video/bktr/bktr_i2c.h>
-
-#include "iicbb_if.h"
-#include "smbus_if.h"
-#endif
-
 static int	bktr_probe( device_t dev );
 static int	bktr_attach( device_t dev );
 static int	bktr_detach( device_t dev );
@@ -126,22 +119,6 @@ static device_method_t bktr_methods[] = {
 	DEVMETHOD(device_attach,        bktr_attach),
 	DEVMETHOD(device_detach,        bktr_detach),
 	DEVMETHOD(device_shutdown,      bktr_shutdown),
-
-#if defined(BKTR_USE_FREEBSD_SMBUS)
-	/* iicbb interface */
-	DEVMETHOD(iicbb_callback,	bti2c_iic_callback),
-	DEVMETHOD(iicbb_setsda,		bti2c_iic_setsda),
-	DEVMETHOD(iicbb_setscl,		bti2c_iic_setscl),
-	DEVMETHOD(iicbb_getsda,		bti2c_iic_getsda),
-	DEVMETHOD(iicbb_getscl,		bti2c_iic_getscl),
-	DEVMETHOD(iicbb_reset,		bti2c_iic_reset),
-	
-	/* smbus interface */
-	DEVMETHOD(smbus_callback,	bti2c_smb_callback),
-	DEVMETHOD(smbus_writeb,		bti2c_smb_writeb),
-	DEVMETHOD(smbus_writew,		bti2c_smb_writew),
-	DEVMETHOD(smbus_readb,		bti2c_smb_readb),
-#endif
 
 	DEVMETHOD_END
 };
@@ -313,11 +290,6 @@ bktr_attach( device_t dev )
 #endif
 	pci_write_config(dev, 0x40, fun, 2);
 
-#if defined(BKTR_USE_FREEBSD_SMBUS)
-	if (bt848_i2c_attach(dev))
-		kprintf("bktr%d: i2c_attach: can't attach\n", unit);
-#endif
-
 /*
  * PCI latency timer.  32 is a good value for 4 bus mastering slots, if
  * you have more than four, then 16 would probably be a better value.
@@ -383,11 +355,6 @@ bktr_detach( device_t dev )
 	OUTL(bktr, BKTR_INT_MASK, ALL_INTS_DISABLED);
 	OUTW(bktr, BKTR_GPIO_DMA_CTL, FIFO_RISC_DISABLED);
 
-#if defined(BKTR_USE_FREEBSD_SMBUS)
-	if (bt848_i2c_detach(dev))
-		kprintf("bktr%d: i2c_attach: can't attach\n",
-		     device_get_unit(dev));
-#endif
 #ifdef USE_VBIMUTEX
         mtx_destroy(&bktr->vbimutex);
 #endif

@@ -1867,7 +1867,6 @@ dev/disk/amd/amd.c		optional amd
 dev/video/bktr/bktr_audio.c	optional bktr pci
 dev/video/bktr/bktr_card.c	optional bktr pci
 dev/video/bktr/bktr_core.c	optional bktr pci
-dev/video/bktr/bktr_i2c.c	optional bktr pci smbus
 dev/video/bktr/bktr_os.c	optional bktr pci
 dev/video/bktr/bktr_tuner.c	optional bktr pci
 dev/video/bktr/msp34xx.c	optional bktr pci

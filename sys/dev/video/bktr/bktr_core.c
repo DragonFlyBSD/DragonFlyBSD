@@ -118,16 +118,8 @@
 #include <dev/video/bktr/bktr_audio.h>
 #include <dev/video/bktr/bktr_os.h>
 #include <dev/video/bktr/bktr_core.h>
-#if defined(BKTR_FREEBSD_MODULE)
+#if defined(KLD_MODULE)
 #include <dev/video/bktr/bktr_mem.h>
-#endif
-
-#if defined(BKTR_USE_FREEBSD_SMBUS)
-#include <dev/video/bktr/bktr_i2c.h>
-#include <bus/smbus/smbconf.h>
-#include <bus/iicbus/iiconf.h>
-#include "smbus_if.h"
-#include "iicbus_if.h"
 #endif
 
 const char *
@@ -362,7 +354,6 @@ static void	remote_read(bktr_ptr_t bktr, struct bktr_remote *remote);
 static int	common_ioctl( bktr_ptr_t bktr, ioctl_cmd_t cmd, caddr_t arg );
 
 
-#if !defined(BKTR_USE_FREEBSD_SMBUS)
 /*
  * i2c primitives for low level control of i2c bus. Added for MSP34xx control
  */
@@ -370,7 +361,6 @@ static void     i2c_start( bktr_ptr_t bktr);
 static void     i2c_stop( bktr_ptr_t bktr);
 static int      i2c_write_byte( bktr_ptr_t bktr, unsigned char data);
 static int      i2c_read_byte( bktr_ptr_t bktr, unsigned char *data, int last );
-#endif
 
 
 
@@ -387,7 +377,7 @@ common_bktr_attach( bktr_ptr_t bktr, int unit, u_long pci_id, u_int rev )
 #endif
 
 /* If this is a module, check if there is any currently saved contiguous memory */
-#if defined(BKTR_FREEBSD_MODULE)
+#if defined(KLD_MODULE)
 	if (bktr_has_stored_addresses(unit) == 1) {
 		/* recover the addresses */
 		bktr->dma_prog     = bktr_retrieve_address(unit, BKTR_MEM_DMA_PROG);
@@ -420,7 +410,7 @@ common_bktr_attach( bktr_ptr_t bktr, int unit, u_long pci_id, u_int rev )
 #endif
 
 /* If this is a module, save the current contiguous memory */
-#if defined(BKTR_FREEBSD_MODULE)
+#if defined(KLD_MODULE)
 bktr_store_address(unit, BKTR_MEM_DMA_PROG,     bktr->dma_prog);
 bktr_store_address(unit, BKTR_MEM_ODD_DMA_PROG, bktr->odd_dma_prog);
 bktr_store_address(unit, BKTR_MEM_VBIDATA,      bktr->vbidata);
@@ -3704,155 +3694,6 @@ static int oformat_meteor_to_bt( u_long format )
 				 BT848_DATA_CTL_I2CSCL |	\
 				 BT848_DATA_CTL_I2CSDA)
 
-/* Select between old i2c code and new iicbus / smbus code */
-#if defined(BKTR_USE_FREEBSD_SMBUS)
-
-/*
- * The hardware interface is actually SMB commands
- */
-int
-i2cWrite( bktr_ptr_t bktr, int addr, int byte1, int byte2 )
-{
-	char cmd;
-
-	if (bktr->id == BROOKTREE_848  ||
-	    bktr->id == BROOKTREE_848A ||
-	    bktr->id == BROOKTREE_849A)
-		cmd = I2C_COMMAND;
-	else
-		cmd = I2C_COMMAND_878;
-
-	if (byte2 != -1) {
-		if (smbus_writew(bktr->i2c_sc.smbus, addr, cmd,
-			(short)(((byte2 & 0xff) << 8) | (byte1 & 0xff))))
-			return (-1);
-	} else {
-		if (smbus_writeb(bktr->i2c_sc.smbus, addr, cmd,
-			(char)(byte1 & 0xff)))
-			return (-1);
-	}
-
-	/* return OK */
-	return( 0 );
-}
-
-int
-i2cRead( bktr_ptr_t bktr, int addr )
-{
-	char result;
-	char cmd;
-
-	if (bktr->id == BROOKTREE_848  ||
-	    bktr->id == BROOKTREE_848A ||
-	    bktr->id == BROOKTREE_849A)
-		cmd = I2C_COMMAND;
-	else
-		cmd = I2C_COMMAND_878;
-
-	if (smbus_readb(bktr->i2c_sc.smbus, addr, cmd, &result))
-		return (-1);
-
-	return ((int)((unsigned char)result));
-}
-
-#define IICBUS(bktr) ((bktr)->i2c_sc.iicbb)
-
-/* The MSP34xx and DPL35xx Audio chip require i2c bus writes of up */
-/* to 5 bytes which the bt848 automated i2c bus controller cannot handle */
-/* Therefore we need low level control of the i2c bus hardware */
-
-/* Write to the MSP or DPL registers */
-void
-msp_dpl_write(bktr_ptr_t bktr, int i2c_addr,  unsigned char dev, unsigned int addr, unsigned int data)
-{
-	unsigned char addr_l, addr_h, data_h, data_l ;
-
-	addr_h = (addr >>8) & 0xff;
-	addr_l = addr & 0xff;
-	data_h = (data >>8) & 0xff;
-	data_l = data & 0xff;
-
-	iicbus_start(IICBUS(bktr), i2c_addr, 0 /* no timeout? */);
-
-	iicbus_write_byte(IICBUS(bktr), dev, 0);
-	iicbus_write_byte(IICBUS(bktr), addr_h, 0);
-	iicbus_write_byte(IICBUS(bktr), addr_l, 0);
-	iicbus_write_byte(IICBUS(bktr), data_h, 0);
-	iicbus_write_byte(IICBUS(bktr), data_l, 0);
-
-	iicbus_stop(IICBUS(bktr));
-
-	return;
-}
-
-/* Read from the MSP or DPL registers */
-unsigned int
-msp_dpl_read(bktr_ptr_t bktr, int i2c_addr, unsigned char dev, unsigned int addr)
-{
-	unsigned int data;
-	unsigned char addr_l, addr_h, dev_r;
-	int read;
-	u_char data_read[2];
-
-	addr_h = (addr >>8) & 0xff;
-	addr_l = addr & 0xff;
-	dev_r = dev+1;
-
-	/* XXX errors ignored */
-	iicbus_start(IICBUS(bktr), i2c_addr, 0 /* no timeout? */);
-
-	iicbus_write_byte(IICBUS(bktr), dev_r, 0);
-	iicbus_write_byte(IICBUS(bktr), addr_h, 0);
-	iicbus_write_byte(IICBUS(bktr), addr_l, 0);
-
-	iicbus_repeated_start(IICBUS(bktr), i2c_addr +1, 0 /* no timeout? */);
-	iicbus_read(IICBUS(bktr), data_read, 2, &read, IIC_LAST_READ, 0);
-	iicbus_stop(IICBUS(bktr));
-
-	data = (data_read[0]<<8) | data_read[1];
-
-	return (data);
-}
-
-/* Reset the MSP or DPL chip */
-/* The user can block the reset (which is handy if you initialise the
- * MSP and/or DPL audio in another operating system first (eg in Windows)
- */
-void
-msp_dpl_reset( bktr_ptr_t bktr, int i2c_addr )
-{
-
-#ifndef BKTR_NO_MSP_RESET
-	/* put into reset mode */
-	iicbus_start(IICBUS(bktr), i2c_addr, 0 /* no timeout? */);
-	iicbus_write_byte(IICBUS(bktr), 0x00, 0);
-	iicbus_write_byte(IICBUS(bktr), 0x80, 0);
-	iicbus_write_byte(IICBUS(bktr), 0x00, 0);
-	iicbus_stop(IICBUS(bktr));
-
-	/* put back to operational mode */
-	iicbus_start(IICBUS(bktr), i2c_addr, 0 /* no timeout? */);
-	iicbus_write_byte(IICBUS(bktr), 0x00, 0);
-	iicbus_write_byte(IICBUS(bktr), 0x00, 0);
-	iicbus_write_byte(IICBUS(bktr), 0x00, 0);
-	iicbus_stop(IICBUS(bktr));
-#endif
-	return;
-}
-
-static void remote_read(bktr_ptr_t bktr, struct bktr_remote *remote) {
-	int read;
-
-	/* XXX errors ignored */
-	iicbus_start(IICBUS(bktr), bktr->remote_control_addr, 0 /* no timeout? */);
-	iicbus_read(IICBUS(bktr),  remote->data, 3, &read, IIC_LAST_READ, 0);
-	iicbus_stop(IICBUS(bktr));
-
-	return;
-}
-
-#else /* defined(BKTR_USE_FREEBSD_SMBUS) */
-
 /*
  * Program the i2c bus directly
  */
@@ -4106,8 +3947,6 @@ static void remote_read(bktr_ptr_t bktr, struct bktr_remote *remote) {
 
 	return;
 }
-
-#endif /* defined(BKTR_USE_FREEBSD_SMBUS) */
 
 
 #if defined( I2C_SOFTWARE_PROBE )

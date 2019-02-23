@@ -1,6 +1,5 @@
 /*-
  * $FreeBSD: src/sys/dev/bktr/bktr_reg.h,v 1.50 2005/05/24 20:42:08 cognet Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_reg.h,v 1.7 2007/10/03 19:27:08 swildner Exp $
  *
  * Copyright (c) 1999 Roger Hardiman
  * Copyright (c) 1998 Amancio Hasty
@@ -420,16 +419,6 @@ struct format_params {
   int vbi_num_lines, vbi_num_samples;
 };
 
-#if defined(BKTR_USE_FREEBSD_SMBUS)
-struct bktr_i2c_softc {
-	int bus_owned;
-
-	device_t iicbb;
-	device_t smbus;
-};
-#endif
-
-
 /* Bt848/878 register access
  * The registers can either be access via a memory mapped structure
  * or accessed via bus_space.
@@ -458,9 +447,6 @@ struct bktr_softc {
     bus_space_tag_t	memt;	/* Bus space register access functions */
     bus_space_handle_t	memh;	/* Bus space register access functions */
     bus_size_t		obmemsz;/* Size of card (bytes) */
-#if defined(BKTR_USE_FREEBSD_SMBUS)
-      struct bktr_i2c_softc i2c_sc;	/* bt848_i2c device */
-#endif
     char	bktr_xname[7];	/* device name and unit number */
 
     vm_offset_t bigbuf;	     /* buffer that holds the captured image */
