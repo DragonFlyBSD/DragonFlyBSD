@@ -418,13 +418,13 @@ struct	sbrk_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
 #endif
-	int	incr;	char incr_[PAD_(int)];
+	size_t	incr;	char incr_[PAD_(size_t)];
 };
 struct	sstk_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
 #endif
-	int	incr;	char incr_[PAD_(int)];
+	size_t	incr;	char incr_[PAD_(size_t)];
 };
 struct	munmap_args {
 #ifdef _KERNEL
