@@ -599,7 +599,7 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *mpp, int bytecount,
 				kprintf("page failed but no I/O error page "
 					"%p object %p pindex %d\n",
 					mt, mt->object, (int) mt->pindex);
-				kprintf("i=%d foff=%016lx bytecount=%d/%d"
+				kprintf("i=%d foff=%016lx bytecount=%d/%d "
 					"uioresid=%zd\n",
 					i, foff, obytecount, bytecount,
 					auio.uio_resid);
