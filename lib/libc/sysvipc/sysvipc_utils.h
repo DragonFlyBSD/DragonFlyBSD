@@ -30,8 +30,6 @@
 
 #include <sys/cdefs.h>
 
-#include <sys/cdefs.h>
-
 /* Print wrappers. */
 void sysv_print_err(const char *fmt, ...) __printflike(1, 2);
 void sysv_print(const char *fmt, ...) __printflike(1, 2);
