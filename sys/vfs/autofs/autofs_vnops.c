@@ -456,8 +456,6 @@ autofs_print(struct vop_print_args *ap)
 
 struct vop_ops autofs_vnode_vops = {
 	.vop_default =		vop_defaultop,
-	.vop_getpages =		vop_stdgetpages,
-	.vop_putpages =		vop_stdputpages,
 	.vop_access =		autofs_access,
 	.vop_getattr =		autofs_getattr,
 	.vop_nresolve =		autofs_nresolve,
