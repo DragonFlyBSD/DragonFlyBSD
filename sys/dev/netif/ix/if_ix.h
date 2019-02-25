@@ -326,14 +326,20 @@ struct ix_softc {
 	int			ifm_media;	/* IFM_ */
 	uint32_t		link_speed;
 	bool			link_up;
-	boolean_t		sfp_probe;	/* plyggable optics */
+	boolean_t		sfp_probe;	/* pluggable optics */
 	uint32_t		phy_layer;
 
-	uint32_t		caps;		/* IX_CAP_ */
+	uint16_t		caps;		/* IX_CAP_ */
 #define IX_CAP_DETECT_FANFAIL	0x0001
 #define IX_CAP_TEMP_SENSOR	0x0002
 #define IX_CAP_EEE		0x0004
 #define IX_CAP_LEGACY_INTR	0x0008
+#define IX_CAP_FW_RECOVERY	0x0010
+
+	uint16_t		flags;		/* IX_FLAG_ */
+#define IX_FLAG_FW_RECOVERY	0x0001
+
+	struct callout		fw_timer;
 
 	struct ixgbe_hw_stats 	stats;
 

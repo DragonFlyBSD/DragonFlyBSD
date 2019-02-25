@@ -83,6 +83,7 @@ s32 ixgbe_init_ops_X550(struct ixgbe_hw *hw)
 	mac->ops.enable_mdd = ixgbe_enable_mdd_X550;
 	mac->ops.mdd_event = ixgbe_mdd_event_X550;
 	mac->ops.restore_mdd_vf = ixgbe_restore_mdd_vf_X550;
+	mac->ops.fw_recovery_mode = ixgbe_fw_recovery_mode_X550;
 	mac->ops.disable_rx = ixgbe_disable_rx_x550;
 	/* Manageability interface */
 	mac->ops.set_fw_drv_ver = ixgbe_set_fw_drv_ver_x550;
@@ -350,7 +351,7 @@ static s32 ixgbe_identify_phy_x550em(struct ixgbe_hw *hw)
 
 	switch (hw->device_id) {
 	case IXGBE_DEV_ID_X550EM_A_SFP:
-		return ixgbe_identify_module_generic(hw);
+		return ixgbe_identify_sfp_module_X550em(hw);
 	case IXGBE_DEV_ID_X550EM_X_SFP:
 		/* set up for CS4227 usage */
 		ixgbe_setup_mux_ctl(hw);
@@ -358,7 +359,7 @@ static s32 ixgbe_identify_phy_x550em(struct ixgbe_hw *hw)
 		/* Fallthrough */
 
 	case IXGBE_DEV_ID_X550EM_A_SFP_N:
-		return ixgbe_identify_module_generic(hw);
+		return ixgbe_identify_sfp_module_X550em(hw);
 		break;
 	case IXGBE_DEV_ID_X550EM_X_KX4:
 		hw->phy.type = ixgbe_phy_x550em_kx4;
@@ -1674,6 +1675,8 @@ static s32 ixgbe_restart_an_internal_phy_x550em(struct ixgbe_hw *hw)
 /**
  * ixgbe_setup_sgmii - Set up link for sgmii
  * @hw: pointer to hardware structure
+ * @speed: new link speed
+ * @autoneg_wait: TRUE when waiting for completion is needed
  */
 static s32 ixgbe_setup_sgmii(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 			     bool autoneg_wait)
@@ -1741,6 +1744,8 @@ static s32 ixgbe_setup_sgmii(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 /**
  * ixgbe_setup_sgmii_fw - Set up link for internal PHY SGMII auto-negotiation
  * @hw: pointer to hardware structure
+ * @speed: new link speed
+ * @autoneg_wait: TRUE when waiting for completion is needed
  */
 static s32 ixgbe_setup_sgmii_fw(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 				bool autoneg_wait)
@@ -2608,6 +2613,8 @@ s32 ixgbe_setup_kr_x550em(struct ixgbe_hw *hw)
 /**
  *  ixgbe_setup_mac_link_sfp_x550em - Setup internal/external the PHY for SFP
  *  @hw: pointer to hardware structure
+ *  @speed: new link speed
+ *  @autoneg_wait_to_complete: unused
  *
  *  Configure the external PHY and the integrated KR PHY for SFP support.
  **/
@@ -2700,6 +2707,8 @@ static s32 ixgbe_setup_sfi_x550a(struct ixgbe_hw *hw, ixgbe_link_speed *speed)
 /**
  *  ixgbe_setup_mac_link_sfp_x550a - Setup internal PHY for SFP
  *  @hw: pointer to hardware structure
+ *  @speed: new link speed
+ *  @autoneg_wait_to_complete: unused
  *
  *  Configure the the integrated PHY for SFP support.
  **/
@@ -2787,9 +2796,9 @@ s32 ixgbe_setup_mac_link_sfp_x550a(struct ixgbe_hw *hw,
 				 (IXGBE_CS4227_EDC_MODE_SR << 1));
 
 		if (setup_linear)
-			reg_phy_ext = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
+			reg_phy_ext |= (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
 		else
-			reg_phy_ext = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
+			reg_phy_ext |= (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
 		ret_val = hw->phy.ops.write_reg(hw, reg_slice,
 					 IXGBE_MDIO_ZERO_DEV_TYPE, reg_phy_ext);
 
@@ -3321,6 +3330,8 @@ out:
  * @ptr: pointer offset in eeprom
  * @size: size of section pointed by ptr, if 0 first word will be used as size
  * @csum: address of checksum to update
+ * @buffer: pointer to buffer containing calculated checksum
+ * @buffer_size: size of buffer
  *
  * Returns error status for any failure
  */
@@ -3692,6 +3703,7 @@ s32 ixgbe_get_bus_info_X550em(struct ixgbe_hw *hw)
 
 /**
  * ixgbe_disable_rx_x550 - Disable RX unit
+ * @hw: pointer to hardware structure
  *
  * Enables the Rx DMA unit for x550
  **/
@@ -4336,6 +4348,7 @@ static void ixgbe_release_swfw_sync_X550a(struct ixgbe_hw *hw, u32 mask)
  *  ixgbe_read_phy_reg_x550a  - Reads specified PHY register
  *  @hw: pointer to hardware structure
  *  @reg_addr: 32 bit address of PHY register to read
+ *  @device_type: 5 bit device type
  *  @phy_data: Pointer to read data from PHY register
  *
  *  Reads a value from a specified PHY register using the SWFW lock and PHY
@@ -4630,3 +4643,19 @@ s32 ixgbe_set_fw_drv_ver_x550(struct ixgbe_hw *hw, u8 maj, u8 min,
 
 	return ret_val;
 }
+
+/**
+ * ixgbe_fw_recovery_mode_X550 - Check FW NVM recovery mode
+ * @hw: pointer t hardware structure
+ *
+ * Returns TRUE if in FW NVM recovery mode.
+ **/
+bool ixgbe_fw_recovery_mode_X550(struct ixgbe_hw *hw)
+{
+	u32 fwsm;
+
+	fwsm = IXGBE_READ_REG(hw, IXGBE_FWSM_BY_MAC(hw));
+
+	return !!(fwsm & IXGBE_FWSM_FW_NVM_RECOVERY_MODE);
+}
+

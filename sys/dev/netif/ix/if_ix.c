@@ -167,6 +167,7 @@ static void	ix_stop(struct ix_softc *);
 static void	ix_media_status(struct ifnet *, struct ifmediareq *);
 static int	ix_media_change(struct ifnet *);
 static void	ix_timer(void *);
+static void	ix_fw_timer(void *);
 #ifdef IFPOLL_ENABLE
 static void	ix_npoll(struct ifnet *, struct ifpoll_info *);
 static void	ix_npoll_rx(struct ifnet *, void *, int);
@@ -203,7 +204,7 @@ static void	ix_setup_ifp(struct ix_softc *);
 static void	ix_setup_serialize(struct ix_softc *);
 static void	ix_setup_caps(struct ix_softc *);
 static void	ix_set_ring_inuse(struct ix_softc *, boolean_t);
-static void	ix_set_timer_cpuid(struct ix_softc *, boolean_t);
+static int	ix_get_timer_cpuid(const struct ix_softc *, boolean_t);
 static void	ix_update_stats(struct ix_softc *);
 static void	ix_detect_fanfail(struct ix_softc *, uint32_t, boolean_t);
 
@@ -281,6 +282,9 @@ static int	ix_powerdown(struct ix_softc *);
 static void	ix_config_flowctrl(struct ix_softc *);
 static void	ix_config_dmac(struct ix_softc *);
 static void	ix_init_media(struct ix_softc *);
+
+static void	ix_serialize_skipmain(struct ix_softc *);
+static void	ix_deserialize_skipmain(struct ix_softc *);
 
 static device_method_t ix_methods[] = {
 	/* Device interface */
@@ -481,6 +485,7 @@ ix_attach(device_t dev)
 	sc->direct_input = ix_direct_input;
 	TASK_INIT(&sc->wdog_task, 0, ix_watchdog_task, sc);
 
+	callout_init_mp(&sc->fw_timer);
 	callout_init_mp(&sc->timer);
 	lwkt_serialize_init(&sc->main_serialize);
 
@@ -655,6 +660,12 @@ ix_attach(device_t dev)
 	/* Check PCIE slot type/speed/width */
 	ix_slot_info(sc);
 
+	if (sc->caps & IX_CAP_FW_RECOVERY) {
+		device_printf(dev, "start fw timer\n");
+		callout_reset_bycpu(&sc->fw_timer, hz,
+		    ix_fw_timer, sc, ix_get_timer_cpuid(sc, FALSE));
+	}
+
 	return 0;
 failed:
 	ix_detach(dev);
@@ -682,6 +693,7 @@ ix_detach(device_t dev)
 		callout_terminate(&sc->timer);
 		ether_ifdetach(ifp);
 	}
+	callout_terminate(&sc->fw_timer);
 
 	if (sc->mem_res != NULL) {
 		uint32_t ctrl_ext;
@@ -923,6 +935,9 @@ ix_init(void *xsc)
 
 	ix_stop(sc);
 
+	if (sc->flags & IX_FLAG_FW_RECOVERY)
+		return;
+
 	polling = FALSE;
 #ifdef IFPOLL_ENABLE
 	if (ifp->if_flags & IFF_NPOLLING)
@@ -1144,7 +1159,7 @@ ix_init(void *xsc)
 		}
 	}
 
-	ix_set_timer_cpuid(sc, polling);
+	sc->timer_cpuid = ix_get_timer_cpuid(sc, polling);
 	callout_reset_bycpu(&sc->timer, hz, ix_timer, sc, sc->timer_cpuid);
 }
 
@@ -1214,13 +1229,19 @@ ix_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 	struct ix_softc *sc = ifp->if_softc;
 	struct ifmedia *ifm = &sc->media;
 	int layer;
+	boolean_t link_active;
 
-	ix_update_link_status(sc);
+	if (sc->flags & IX_FLAG_FW_RECOVERY) {
+		link_active = FALSE;
+	} else {
+		ix_update_link_status(sc);
+		link_active = sc->link_active;
+	}
 
 	ifmr->ifm_status = IFM_AVALID;
 	ifmr->ifm_active = IFM_ETHER;
 
-	if (!sc->link_active) {
+	if (!link_active) {
 		if (IFM_SUBTYPE(ifm->ifm_media) != IFM_AUTO)
 			ifmr->ifm_active |= ifm->ifm_media;
 		else
@@ -3084,6 +3105,9 @@ ix_set_vlan(struct ix_softc *sc)
 	struct ixgbe_hw *hw = &sc->hw;
 	uint32_t ctrl;
 
+	if ((sc->arpcom.ac_if.if_capenable & IFCAP_VLAN_HWTAGGING) == 0)
+		return;
+
 	if (hw->mac.type == ixgbe_mac_82598EB) {
 		ctrl = IXGBE_READ_REG(hw, IXGBE_VLNCTRL);
 		ctrl |= IXGBE_VLNCTRL_VME;
@@ -4102,6 +4126,18 @@ ix_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 	return ifnet_serialize_array_try(sc->serializes, sc->nserialize, slz);
 }
 
+static void
+ix_serialize_skipmain(struct ix_softc *sc)
+{
+	lwkt_serialize_array_enter(sc->serializes, sc->nserialize, 1);
+}
+
+static void
+ix_deserialize_skipmain(struct ix_softc *sc)
+{
+	lwkt_serialize_array_exit(sc->serializes, sc->nserialize, 1);
+}
+
 #ifdef INVARIANTS
 
 static void
@@ -4619,13 +4655,13 @@ ix_add_intr_rate_sysctl(struct ix_softc *sc, int use,
 	}
 }
 
-static void
-ix_set_timer_cpuid(struct ix_softc *sc, boolean_t polling)
+static int
+ix_get_timer_cpuid(const struct ix_softc *sc, boolean_t polling)
 {
 	if (polling || sc->intr_type == PCI_INTR_TYPE_MSIX)
-		sc->timer_cpuid = 0; /* XXX fixed */
+		return 0; /* XXX fixed */
 	else
-		sc->timer_cpuid = rman_get_cpuid(sc->intr_data[0].intr_res);
+		return rman_get_cpuid(sc->intr_data[0].intr_res);
 }
 
 static void
@@ -5481,12 +5517,13 @@ ix_setup_caps(struct ix_softc *sc)
 		break;
 
 	case ixgbe_mac_X550:
-		sc->caps |= IX_CAP_TEMP_SENSOR;
+		sc->caps |= IX_CAP_TEMP_SENSOR | IX_CAP_FW_RECOVERY;
 		break;
 
 	case ixgbe_mac_X550EM_x:
 		if (sc->hw.device_id == IXGBE_DEV_ID_X550EM_X_KR)
 			sc->caps |= IX_CAP_EEE;
+		sc->caps |= IX_CAP_FW_RECOVERY;
 		break;
 
 	case ixgbe_mac_X550EM_a:
@@ -5494,6 +5531,7 @@ ix_setup_caps(struct ix_softc *sc)
 		if (sc->hw.device_id == IXGBE_DEV_ID_X550EM_A_1G_T ||
 		    sc->hw.device_id == IXGBE_DEV_ID_X550EM_A_1G_T_L)
 			sc->caps |= IX_CAP_TEMP_SENSOR | IX_CAP_EEE;
+		sc->caps |= IX_CAP_FW_RECOVERY;
 		break;
 
 	case ixgbe_mac_82599EB:
@@ -5558,4 +5596,47 @@ ix_config_gpie(struct ix_softc *sc)
 	}
 
 	IXGBE_WRITE_REG(hw, IXGBE_GPIE, gpie);
+}
+
+static void
+ix_fw_timer(void *xsc)
+{
+	struct ix_softc *sc = xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+
+	lwkt_serialize_enter(&sc->main_serialize);
+
+	if (ixgbe_fw_recovery_mode(&sc->hw)) {
+		if ((sc->flags & IX_FLAG_FW_RECOVERY) == 0) {
+			sc->flags |= IX_FLAG_FW_RECOVERY;
+			if (ifp->if_flags & IFF_RUNNING) {
+				if_printf(ifp,
+				    "fw recovery mode entered, stop\n");
+				ix_serialize_skipmain(sc);
+				ix_stop(sc);
+				ix_deserialize_skipmain(sc);
+			} else {
+				if_printf(ifp, "fw recovery mode entered\n");
+			}
+		}
+	} else {
+		if (sc->flags & IX_FLAG_FW_RECOVERY) {
+			sc->flags &= ~IX_FLAG_FW_RECOVERY;
+			if (ifp->if_flags & IFF_UP) {
+				if_printf(ifp,
+				    "fw recovery mode exited, reinit\n");
+				ix_serialize_skipmain(sc);
+				ix_init(sc);
+				ix_deserialize_skipmain(sc);
+			} else {
+				if_printf(ifp, "fw recovery mode exited\n");
+			}
+		}
+	}
+
+	callout_reset_bycpu(&sc->fw_timer, hz, ix_fw_timer, sc,
+	    ix_get_timer_cpuid(sc,
+		(ifp->if_flags & IFF_NPOLLING) ? TRUE : FALSE));
+
+	lwkt_serialize_exit(&sc->main_serialize);
 }
