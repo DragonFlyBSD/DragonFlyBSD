@@ -1688,8 +1688,8 @@ vm_page_unqueue(vm_page_t m)
  * The page coloring optimization also, very importantly, tries to localize
  * memory to cpus and physical sockets.
  *
- * On MP systems each PQ_FREE and PQ_CACHE color queue has its own spinlock
- * and the algorithm is adjusted to localize allocations on a per-core basis.
+ * Each PQ_FREE and PQ_CACHE color queue has its own spinlock and the
+ * algorithm is adjusted to localize allocations on a per-core basis.
  * This is done by 'twisting' the colors.
  *
  * The page is returned spinlocked and removed from its queue (it will
@@ -1709,28 +1709,41 @@ static __inline
 vm_page_t
 _vm_page_list_find(int basequeue, int index)
 {
+	struct vpgqueues *pq;
 	vm_page_t m;
 
-	for (;;) {
-		m = TAILQ_FIRST(&vm_page_queues[basequeue+index].pl);
-		if (m == NULL) {
-			m = _vm_page_list_find2(basequeue, index);
+	index &= PQ_L2_MASK;
+	pq = &vm_page_queues[basequeue + index];
+
+	/*
+	 * Try this cpu's colored queue first.  Test for a page unlocked,
+	 * then lock the queue and locate a page.  Note that the lock order
+	 * is reversed, but we do not want to dwadle on the page spinlock
+	 * anyway as it is held significantly longer than the queue spinlock.
+	 */
+	if (TAILQ_FIRST(&pq->pl)) {
+		spin_lock(&pq->spin);
+		TAILQ_FOREACH(m, &pq->pl, pageq) {
+			if (spin_trylock(&m->spin) == 0)
+				continue;
+			KKASSERT(m->queue == basequeue + index);
+			_vm_page_rem_queue_spinlocked(m);
 			return(m);
 		}
-		vm_page_and_queue_spin_lock(m);
-		if (m->queue == basequeue + index) {
-			_vm_page_rem_queue_spinlocked(m);
-			/* vm_page_t spin held, no queue spin */
-			break;
-		}
-		vm_page_and_queue_spin_unlock(m);
+		spin_unlock(&pq->spin);
 	}
+
+	/*
+	 * If we are unable to get a page, do a more involved NUMA-aware
+	 * search.
+	 */
+	m = _vm_page_list_find2(basequeue, index);
 	return(m);
 }
 
 /*
  * If we could not find the page in the desired queue try to find it in
- * a nearby queue.
+ * a nearby (NUMA-aware) queue.
  */
 static vm_page_t
 _vm_page_list_find2(int basequeue, int index)
@@ -1747,21 +1760,26 @@ _vm_page_list_find2(int basequeue, int index)
 	/*
 	 * Run local sets of 16, 32, 64, 128, and the whole queue if all
 	 * else fails (PQ_L2_MASK which is 255).
+	 *
+	 * Test each queue unlocked first, then lock the queue and locate
+	 * a page.  Note that the lock order is reversed, but we do not want
+	 * to dwadle on the page spinlock anyway as it is held significantly
+	 * longer than the queue spinlock.
 	 */
 	do {
 		pqmask = (pqmask << 1) | 1;
 		for (i = 0; i <= pqmask; ++i) {
 			pqi = (index & ~pqmask) | ((index + i) & pqmask);
-			m = TAILQ_FIRST(&pq[pqi].pl);
-			if (m) {
-				_vm_page_and_queue_spin_lock(m);
-				if (m->queue == basequeue + pqi) {
+			if (TAILQ_FIRST(&pq[pqi].pl)) {
+				spin_lock(&pq[pqi].spin);
+				TAILQ_FOREACH(m, &pq[pqi].pl, pageq) {
+					if (spin_trylock(&m->spin) == 0)
+						continue;
+					KKASSERT(m->queue == basequeue + pqi);
 					_vm_page_rem_queue_spinlocked(m);
 					return(m);
 				}
-				_vm_page_and_queue_spin_unlock(m);
-				--i;
-				continue;
+				spin_unlock(&pq[pqi].spin);
 			}
 		}
 	} while (pqmask != PQ_L2_MASK);
