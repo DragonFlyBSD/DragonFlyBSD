@@ -2433,14 +2433,52 @@ vfs_msync_scan2(struct mount *mp, struct vnode *vp, void *data)
 {
 	vm_object_t obj;
 	int flags = (int)(intptr_t)data;
+	int opcflags;
 
 	if (vp->v_flag & VRECLAIMED)
 		return(0);
 
 	if ((mp->mnt_flag & MNT_RDONLY) == 0 && (vp->v_flag & VOBJDIRTY)) {
 		if ((obj = vp->v_object) != NULL) {
-			vm_object_page_clean(obj, 0, 0, 
-			 flags == MNT_WAIT ? OBJPC_SYNC : OBJPC_NOSYNC);
+			if (flags == MNT_WAIT) {
+				/*
+				 * VFS_MSYNC is called with MNT_WAIT when
+				 * unmounting.
+				 */
+				opcflags = OBJPC_SYNC;
+			} else if (vp->v_writecount || obj->ref_count) {
+				/*
+				 * VFS_MSYNC is otherwise called via the
+				 * periodic filesystem sync or the 'sync'
+				 * command.  Honor MADV_NOSYNC / MAP_NOSYNC
+				 * if the file is open for writing or memory
+				 * mapped.  Pages flagged PG_NOSYNC will not
+				 * be automatically flushed at this time.
+				 *
+				 * The obj->ref_count test is not perfect
+				 * since temporary refs may be present, but
+				 * the periodic filesystem sync will ultimately
+				 * catch it if the file is not open and not
+				 * mapped.
+				 */
+				opcflags = OBJPC_NOSYNC;
+			} else {
+				/*
+				 * If the file is no longer open for writing
+				 * and also no longer mapped, do not honor
+				 * MAP_NOSYNC.  That is, fully synchronize
+				 * the file.
+				 *
+				 * This still occurs on the periodic fs sync,
+				 * so frontend programs which turn the file
+				 * over quickly enough can still avoid the
+				 * sync, but ultimately we do want to flush
+				 * even MADV_NOSYNC pages once it is no longer
+				 * mapped or open for writing.
+				 */
+				opcflags = 0;
+			}
+			vm_object_page_clean(obj, 0, 0, opcflags);
 		}
 	}
 	return(0);
