@@ -110,6 +110,24 @@ l64_getnumparts(disklabel_t lp)
 	return(lp.lab64->d_npartitions);
 }
 
+static int
+l64_getpackname(disklabel_t lp, char *buf, size_t bytes)
+{
+	size_t slen;
+
+	if (lp.lab64->d_packname[0] == 0) {
+		buf[0] = 0;
+		return -1;
+	}
+	slen = strnlen(lp.lab64->d_packname, sizeof(lp.lab64->d_packname));
+	if (slen >= bytes)
+		slen = bytes - 1;
+	bcopy(lp.lab64->d_packname, buf, slen);
+	buf[slen] = 0;
+
+	return 0;
+}
+
 static void
 l64_freedisklabel(disklabel_t *lpp)
 {
@@ -517,6 +535,7 @@ struct disklabel_ops disklabel64_ops = {
 	.op_getpartbounds = l64_getpartbounds,
 	.op_loadpartinfo = l64_loadpartinfo,
 	.op_getnumparts = l64_getnumparts,
+	.op_getpackname = l64_getpackname,
 	.op_makevirginlabel = l64_makevirginlabel,
 	.op_freedisklabel = l64_freedisklabel
 };

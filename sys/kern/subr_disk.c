@@ -208,14 +208,23 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 	}
 
 	if (msg == NULL) {
+		char packname[DISKLABEL_MAXPACKNAME];
+
 		if (slice != WHOLE_DISK_SLICE)
 			ops->op_adjust_label_reserved(dp->d_slice, slice, sp);
 		else
 			sp->ds_reserved = 0;
 
+		ops->op_getpackname(sp->ds_label, packname, sizeof(packname));
+
+		destroy_dev_alias(dev, "by-label/*");
+		if (packname[0])
+			make_dev_alias(dev, "by-label/%s", packname);
+
 		sp->ds_ops = ops;
 		for (i = 0; i < ops->op_getnumparts(sp->ds_label); i++) {
 			ops->op_loadpartinfo(sp->ds_label, i, &part);
+
 			if (part.fstype) {
 				if (reprobe &&
 				    (ndev = devfs_find_device_by_name("%s%c",
@@ -230,7 +239,10 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 					/*
 					 * Destroy old UUID alias
 					 */
-					destroy_dev_alias(ndev, "part-by-uuid/*");
+					destroy_dev_alias(ndev,
+							  "part-by-uuid/*");
+					destroy_dev_alias(ndev,
+							  "part-by-label/*");
 
 					/* Create UUID alias */
 					if (!kuuid_is_nil(&part.storage_uuid)) {
@@ -241,6 +253,11 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 						    "part-by-uuid/%s",
 						    uuid_buf);
 						udev_dict_set_cstr(ndev, "uuid", uuid_buf);
+					}
+					if (packname[0]) {
+						make_dev_alias(ndev,
+						    "part-by-label/%s.%c",
+						    packname, 'a' + i);
 					}
 				} else {
 					ndev = make_dev_covering(dops,
@@ -276,6 +293,11 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 						    "part-by-uuid/%s",
 						    uuid_buf);
 						udev_dict_set_cstr(ndev, "uuid", uuid_buf);
+					}
+					if (packname[0]) {
+						make_dev_alias(ndev,
+						    "part-by-label/%s.%c",
+						    packname, 'a' + i);
 					}
 					ndev->si_flags |= SI_REPROBE_TEST;
 				}

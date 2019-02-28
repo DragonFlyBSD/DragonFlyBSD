@@ -62,6 +62,8 @@ struct diskslices;
 struct disk_info;
 struct partinfo;
 
+#define DISKLABEL_MAXPACKNAME	64
+
 struct disklabel_ops {
 	struct uuid type;	/* uuid specifies disklabel type */
 	int labelsize;		/* size of disklabel in bytes */
@@ -86,6 +88,8 @@ struct disklabel_ops {
 		    (disklabel_t, u_int32_t, struct partinfo *);
 	u_int32_t (*op_getnumparts)
 		    (disklabel_t);
+	int  (*op_getpackname)
+		    (disklabel_t, char *, size_t);
 	void (*op_makevirginlabel)
 		    (disklabel_t, struct diskslices *,
 		     struct diskslice *, struct disk_info *);
