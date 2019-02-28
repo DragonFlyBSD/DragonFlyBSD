@@ -1520,6 +1520,10 @@ brelse(struct buf *bp)
 	} else {
 		/*
 		 * Rundown for non-VMIO buffers.
+		 *
+		 * XXX With B_MALLOC buffers removed, there should no longer
+		 * be any situation where brelse() is called on a non B_VMIO
+		 * buffer.  Recommend assertion here.  XXX
 		 */
 		if (bp->b_flags & (B_INVAL | B_RELBUF)) {
 			if (bp->b_bufsize)
