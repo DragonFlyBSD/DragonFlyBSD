@@ -28,6 +28,12 @@ MAKE_JOBS?=	$$(sysctl -n hw.ncpu)
 KERNCONF ?= X86_64_GENERIC
 .endif
 
+# The label/name of the disklabel64(5) slice in the ".img" file.  This is
+# used to identify the USB device with DragonFly installation image, avoiding
+# hardcoding the USB device name (e.g., "da8").
+#
+LABEL?=		DragonFly_${KERNCONF}
+
 CHROOT_CMD?=		/usr/sbin/chroot ${ISOROOT} sh -c
 
 .if !make(nopkgs)
@@ -105,11 +111,6 @@ ISOFILE ?= ${ISODIR}/dfly.iso
 IMGFILE ?= ${ISODIR}/dfly.img
 
 IMGMNT ?= ${ISODIR}/mnt
-
-# USB umass now probes starting at da8, so the usb stick is
-# probably sitting on da8.
-#
-IMGUSBDEV ?= da8
 
 # note: we use the '${NRLOBJDIR}/nrelease' construct, that is we add
 # the additional '/nrelease' manually, as a safety measure.
@@ -370,9 +371,10 @@ mkimg:
 	disklabel -w -r `cat ${ISODIR}/vn.which`s2 auto
 	@echo "STEP: read disklabel back"
 	disklabel -r `cat ${ISODIR}/vn.which`s2 > ${IMGFILE}.label
-	@echo "STEP: determine number of sectors of whole disk"
-	secs=`tail -n 1 ${IMGFILE}.label | cut -f 3 -w`;		\
-	    echo "  a:  $${secs} 0 4.2BSD" >> ${IMGFILE}.label;
+	@echo "STEP: set disklabel name"
+	echo "label: ${LABEL}" >> ${IMGFILE}.label
+	@echo "STEP: add slice parition"
+	echo "a: * * 4.2BSD" >> ${IMGFILE}.label;
 	@echo "STEP: write modified disklabel back"
 	disklabel -R -r `cat ${ISODIR}/vn.which`s2 ${IMGFILE}.label
 	rm ${IMGFILE}.label
@@ -382,7 +384,7 @@ mkimg:
 	mount /dev/`cat ${ISODIR}/vn.which`s2a ${IMGMNT}
 	cpdup ${ISOROOT} ${IMGMNT}
 	@echo "STEP: fixup ${IMGMNT}/etc/fstab"
-	echo "/dev/${IMGUSBDEV}s2a / ufs rw,noatime 0 1" > ${IMGMNT}/etc/fstab
+	echo "/dev/part-by-label/${LABEL}.a / ufs rw,noatime 0 1" > ${IMGMNT}/etc/fstab
 	echo "dummy /tmp tmpfs rw 0 0" >> ${IMGMNT}/etc/fstab
 	echo "dummy /var/tmp tmpfs rw 0 0" >> ${IMGMNT}/etc/fstab
 	echo "dummy /var/run tmpfs rw,-C 0 0" >> ${IMGMNT}/etc/fstab
@@ -390,7 +392,7 @@ mkimg:
 	echo "proc /proc procfs rw 0 0" >> ${IMGMNT}/etc/fstab
 	@echo "STEP: fixup ${IMGMNT}/boot/loader.conf"
 	-fgrep -v kernel_options ${IMGMNT}/boot/loader.conf > ${IMGMNT}/boot/loader.conf.new
-	echo 'vfs.root.mountfrom="ufs:${IMGUSBDEV}s2a"' >> ${IMGMNT}/boot/loader.conf.new
+	echo 'vfs.root.mountfrom="ufs:part-by-label/${LABEL}.a"' >> ${IMGMNT}/boot/loader.conf.new
 	mv ${IMGMNT}/boot/loader.conf.new ${IMGMNT}/boot/loader.conf
 	@echo "STEP: cleanup"
 	df ${IMGMNT}
