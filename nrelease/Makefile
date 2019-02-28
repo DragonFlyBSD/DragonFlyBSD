@@ -28,11 +28,15 @@ MAKE_JOBS?=	$$(sysctl -n hw.ncpu)
 KERNCONF ?= X86_64_GENERIC
 .endif
 
+GITREV!=	sh ${.CURDIR}/../tools/gitrev.sh
+
 # The label/name of the disklabel64(5) slice in the ".img" file.  This is
 # used to identify the USB device with DragonFly installation image, avoiding
 # hardcoding the USB device name (e.g., "da8").
 #
-LABEL?=		DragonFly_${KERNCONF}
+# This label is also used as the volume ID of the ".iso" file.
+#
+LABEL?=		DragonFly_${GITREV}
 
 CHROOT_CMD?=		/usr/sbin/chroot ${ISOROOT} sh -c
 
@@ -324,9 +328,10 @@ mkiso:
 	cp ${ISOROOT}/boot/loader.efi ${IMGMNT}/EFI/BOOT/BOOTX64.EFI
 	umount ${IMGMNT}
 	( cd ${ISOROOT}; mkisofs -R -J -o ${ISOFILE} \
-		-b boot/cdboot -no-emul-boot \
-		-eltorito-alt-boot -eltorito-platform efi -eltorito-boot boot/efiboot.img -no-emul-boot \
-		-V "DragonFly `${.CURDIR}/../tools/gitrev.sh | cut -c -22`" . )
+	    -b boot/cdboot -no-emul-boot \
+	    -eltorito-alt-boot -eltorito-platform efi \
+	    -eltorito-boot boot/efiboot.img -no-emul-boot \
+	    -V ${LABEL:C/(^.{32}).*/\1/} . )  # cut label to <= 32 characters
 	rm -f ${ISOROOT}/boot/efiboot.img
 
 mkimg:
