@@ -128,12 +128,6 @@ MLINKS+=exec.3 execl.3 \
 	exec.3 execv.3 \
 	exec.3 execvp.3 \
 	exec.3 execvP.3
-MLINKS+=fpclassify.3 finite.3 \
-	fpclassify.3 finitef.3 \
-	fpclassify.3 isfinite.3 \
-	fpclassify.3 isinf.3 \
-	fpclassify.3 isnan.3 \
-	fpclassify.3 isnormal.3
 MLINKS+=frexp.3 frexpf.3 \
 	frexp.3 frexpl.3
 MLINKS+=fts.3 fts_children.3 \
