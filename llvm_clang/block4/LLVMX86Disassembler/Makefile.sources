@@ -1,8 +1,0 @@
-# Automatically generated.  Do not edit!
-
-LIB=	LLVMX86Disassembler
-
-SRCS=	X86Disassembler.cpp \
-	X86DisassemblerDecoder.cpp \
-
-SRCDIR= lib/Target/X86/Disassembler

@@ -1,7 +1,0 @@
-# Automatically generated.  Do not edit!
-
-LIB=	LLVMMipsAsmPrinter
-
-SRCS=	MipsInstPrinter.cpp \
-
-SRCDIR= lib/Target/Mips/InstPrinter

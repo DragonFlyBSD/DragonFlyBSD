@@ -1,7 +1,0 @@
-# Automatically generated.  Do not edit!
-
-LIB=	LLVMARMInfo
-
-SRCS=	ARMTargetInfo.cpp \
-
-SRCDIR= lib/Target/ARM/TargetInfo

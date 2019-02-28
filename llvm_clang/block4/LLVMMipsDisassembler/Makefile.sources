@@ -1,7 +1,0 @@
-# Automatically generated.  Do not edit!
-
-LIB=	LLVMMipsDisassembler
-
-SRCS=	MipsDisassembler.cpp \
-
-SRCDIR= lib/Target/Mips/Disassembler

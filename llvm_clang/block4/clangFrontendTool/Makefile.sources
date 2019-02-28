@@ -1,7 +1,0 @@
-# Automatically generated.  Do not edit!
-
-LIB=	clangFrontendTool
-
-SRCS=	ExecuteCompilerInvocation.cpp \
-
-SRCDIR= tools/clang/lib/FrontendTool

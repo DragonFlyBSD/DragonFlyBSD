@@ -1,7 +1,0 @@
-# Automatically generated.  Do not edit!
-
-LIB=	LLVMAMDGPUUtils
-
-SRCS=	AMDGPUBaseInfo.cpp \
-
-SRCDIR= lib/Target/AMDGPU/Utils

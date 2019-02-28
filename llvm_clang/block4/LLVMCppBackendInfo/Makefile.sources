@@ -1,7 +1,0 @@
-# Automatically generated.  Do not edit!
-
-LIB=	LLVMCppBackendInfo
-
-SRCS=	CppBackendTargetInfo.cpp \
-
-SRCDIR= lib/Target/CppBackend/TargetInfo

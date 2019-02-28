@@ -1,7 +1,0 @@
-# Automatically generated.  Do not edit!
-
-LIB=	LLVMAMDGPUAsmParser
-
-SRCS=	AMDGPUAsmParser.cpp \
-
-SRCDIR= lib/Target/AMDGPU/AsmParser

@@ -1,9 +1,0 @@
-# Automatically generated.  Do not edit!
-
-LIB=	clangEdit
-
-SRCS=	Commit.cpp \
-	EditedSource.cpp \
-	RewriteObjCFoundationAPI.cpp \
-
-SRCDIR= tools/clang/lib/Edit

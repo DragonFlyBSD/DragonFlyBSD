@@ -1,7 +1,0 @@
-# Automatically generated.  Do not edit!
-
-LIB=	LLVMAArch64AsmPrinter
-
-SRCS=	AArch64InstPrinter.cpp \
-
-SRCDIR= lib/Target/AArch64/InstPrinter

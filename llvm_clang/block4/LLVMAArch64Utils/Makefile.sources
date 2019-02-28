@@ -1,7 +1,0 @@
-# Automatically generated.  Do not edit!
-
-LIB=	LLVMAArch64Utils
-
-SRCS=	AArch64BaseInfo.cpp \
-
-SRCDIR= lib/Target/AArch64/Utils

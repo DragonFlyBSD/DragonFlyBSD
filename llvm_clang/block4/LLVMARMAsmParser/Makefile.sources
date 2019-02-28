@@ -1,7 +1,0 @@
-# Automatically generated.  Do not edit!
-
-LIB=	LLVMARMAsmParser
-
-SRCS=	ARMAsmParser.cpp \
-
-SRCDIR= lib/Target/ARM/AsmParser

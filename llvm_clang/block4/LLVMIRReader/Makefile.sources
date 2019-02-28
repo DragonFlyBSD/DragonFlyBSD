@@ -1,9 +1,0 @@
-# Automatically generated.  Do not edit!
-
-LIB=	LLVMIRReader
-
-SRCS=	IRReader.cpp \
-
-HDRDIR=	llvm/IRReader
-
-SRCDIR= lib/IRReader

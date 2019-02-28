@@ -1,7 +1,0 @@
-# Automatically generated.  Do not edit!
-
-LIB=	LLVMMipsAsmParser
-
-SRCS=	MipsAsmParser.cpp \
-
-SRCDIR= lib/Target/Mips/AsmParser
