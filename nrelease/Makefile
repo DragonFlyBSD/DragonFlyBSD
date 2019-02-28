@@ -11,7 +11,7 @@
 gui installer img nopkgs:
 
 #########################################################################
-#				 SETUP					#
+#				SETUP					#
 #########################################################################
 
 DPORTS_PATH?=	/usr/dports
@@ -25,7 +25,7 @@ MAKE_JOBS?=	$$(sysctl -n hw.ncpu)
 # XXX makeshift fix to build the right kernel for the (target) architecture
 # We should configure this in the platform files somehow
 .if ${MACHINE_ARCH} == "x86_64"
-KERNCONF ?= X86_64_GENERIC
+KERNCONF?=	X86_64_GENERIC
 .endif
 
 GITREV!=	sh ${.CURDIR}/../tools/gitrev.sh
@@ -38,7 +38,16 @@ GITREV!=	sh ${.CURDIR}/../tools/gitrev.sh
 #
 LABEL?=		DragonFly_${GITREV}
 
-CHROOT_CMD?=		/usr/sbin/chroot ${ISOROOT} sh -c
+CHROOT_CMD?=	/usr/sbin/chroot ${ISOROOT} sh -c
+
+ISOFILE?=	${ISODIR}/dfly.iso
+IMGFILE?=	${ISODIR}/dfly.img
+IMGMNT?=	${ISODIR}/mnt
+
+# NOTE: we use the '${NRLOBJDIR}/nrelease' construct, that is we add
+# the additional '/nrelease' manually, as a safety measure.
+#
+NRLOBJDIR?=	/usr/obj
 
 .if !make(nopkgs)
 # User may specify extra packages in addition to the defaults
@@ -72,19 +81,12 @@ REQ_ROOTSKELS=	${.CURDIR}/root
 ROOTSKELS?=	${REQ_ROOTSKELS}
 
 .if make(gui)
-# LIST OF PACKAGES NOT INCLUDED DUE TO BUILD ISSUES:
-#	chat/pidgin		textproc/enchant dependency is broken
-#	x11/rxvt-unicode	broken configure
-#	net/nmap		tries to access openssl/md2.h which does not
-#				exist.
-#	sysutils/idesk		dying on link __sync_fetch_and_add_4
-#
 ISOFILE?=		${ISODIR}/dfly-gui.iso
 IMGFILE?=		${ISODIR}/dfly-gui.img
 
+.if !make(nopkgs)
 # NOTE: order important, do not sort package list
 #
-.if !make(nopkgs)
 DPORTS_PACKAGES+=	x11/xorg \
 			x11-wm/fluxbox \
 			x11-wm/fvwm \
@@ -111,16 +113,6 @@ DPORTS_PACKAGES+=	x11/xorg \
 ROOTSKELS+=		${.CURDIR}/gui
 .endif
 
-ISOFILE ?= ${ISODIR}/dfly.iso
-IMGFILE ?= ${ISODIR}/dfly.img
-
-IMGMNT ?= ${ISODIR}/mnt
-
-# note: we use the '${NRLOBJDIR}/nrelease' construct, that is we add
-# the additional '/nrelease' manually, as a safety measure.
-#
-NRLOBJDIR?= /usr/obj
-
 #########################################################################
 #				BASE ISO TARGETS			#
 #########################################################################
@@ -141,7 +133,7 @@ quick:		quickrel
 realquick:	realquickrel
 
 #########################################################################
-#			   CORE SUPPORT TARGETS 			#
+#			CORE SUPPORT TARGETS				#
 #########################################################################
 
 check:
@@ -176,7 +168,7 @@ buildkernel1 buildkernel2:
 			KERNCONF=$${kernconf}; \
 	done
 
-# note that we do not want to mess with any /usr/obj directories not related
+# Note that we do not want to mess with any /usr/obj directories not related
 # to buildworld, buildkernel, or nrelease, so we must supply the proper
 # MAKEOBJDIRPREFIX for targets that are not run through the buildworld and
 # buildkernel mechanism.
