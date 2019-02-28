@@ -315,14 +315,7 @@ MACHINE_PLATFORM!=sysctl -n hw.platform
 # that no longer can bootstrap itself.
 
 # Private helper for handling alternative compilers and Makefile.inc1 tester.
-#
-# We'd like this to be gcc47 in master but for the moment it has to
-# be 'all' to build 47 and 50, in addition to 80, because some existing
-# packages appear to need libraries in /usr/lib/gcc50.  Change back
-# to gcc47 once this issue is resolved.
-#
-#WORLD_ALTCOMPILER?= gcc47
-WORLD_ALTCOMPILER?= all
+WORLD_ALTCOMPILER?= gcc47
 
 # Include global user settings.
 __MAKE_CONF?=/etc/make.conf
