@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2017-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -55,5 +55,11 @@ rcu_read_unlock(void)
 	((typeof(*p) *)(p))
 
 #define rcu_dereference(p) (p)
+
+#define rcu_assign_pointer(p, v)	\
+do {					\
+	cpu_mfence();			\
+	WRITE_ONCE((p), (v));		\
+} while (0)
 
 #endif /* LINUX_RCUPDATE_H */
