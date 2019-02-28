@@ -3514,6 +3514,18 @@ TO_REMOVE+=/usr/share/games/fortune/limerick
 TO_REMOVE+=/usr/share/games/fortune/murphy-o
 .endif
 
+# XXX Move to common list when gcc50 is removed from the src tree
+TO_REMOVE_LATE+=/usr/include/c++/5.0
+TO_REMOVE_LATE+=/usr/libdata/gcc50
+TO_REMOVE_LATE+=/usr/libexec/gcc50
+TO_REMOVE_LATE+=/usr/share/man/man1/CC50.1.gz
+TO_REMOVE_LATE+=/usr/share/man/man1/c++50.1.gz
+TO_REMOVE_LATE+=/usr/share/man/man1/cc50.1.gz
+TO_REMOVE_LATE+=/usr/share/man/man1/cpp50.1.gz
+TO_REMOVE_LATE+=/usr/share/man/man1/g++50.1.gz
+TO_REMOVE_LATE+=/usr/share/man/man1/gcc50.1.gz
+TO_REMOVE_LATE+=/usr/share/man/man1/gcov50.1.gz
+
 # Very special cases only.
 TO_REMOVE_LATE+=/lib/libcrypto.so.5
 TO_REMOVE_LATE+=/usr/lib/libssl.a
@@ -3526,6 +3538,8 @@ TO_REMOVE_LATE+=/usr/lib/profile/libssl.a
 TO_REMOVE_LATE+=/usr/lib/profile/libcrypto.a
 TO_REMOVE_LATE+=/usr/include/openssl
 TO_REMOVE_LATE+=/usr/share/openssl
+TO_REMOVE_LATE+=/usr/lib/gcc50/libstdc++.so.9
+TO_REMOVE_LATE+=/usr/lib/gcc50
 
 # XXX Remove when pfsync(4) has been fixed
 TO_REMOVE+=/usr/share/man/man4/pfsync.4.gz
