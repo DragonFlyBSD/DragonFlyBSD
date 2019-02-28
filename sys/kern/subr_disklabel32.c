@@ -155,6 +155,24 @@ l32_getnumparts(disklabel_t lp)
 	return(lp.lab32->d_npartitions);
 }
 
+static int
+l32_getpackname(disklabel_t lp, char *buf, size_t bytes)
+{
+	size_t slen;
+
+	if (lp.lab32->d_packname[0] == 0) {
+		buf[0] = 0;
+		return -1;
+	}
+	slen = strnlen(lp.lab32->d_packname, sizeof(lp.lab32->d_packname));
+	if (slen >= bytes)
+		slen = bytes - 1;
+	bcopy(lp.lab32->d_packname, buf, slen);
+	buf[slen] = 0;
+
+	return 0;
+}
+
 static void
 l32_freedisklabel(disklabel_t *lpp)
 {
@@ -636,6 +654,7 @@ struct disklabel_ops disklabel32_ops = {
 	.op_loadpartinfo = l32_loadpartinfo,
 	.op_getnumparts = l32_getnumparts,
 	.op_makevirginlabel = l32_makevirginlabel,
+	.op_getpackname = l32_getpackname,
 	.op_freedisklabel = l32_freedisklabel
 };
 
