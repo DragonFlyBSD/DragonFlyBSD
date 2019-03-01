@@ -27,13 +27,11 @@
 .\"
 .\"     @(#)brk.2	8.4 (Berkeley) 5/1/95
 .\" $FreeBSD: src/lib/libc/sys/brk.2,v 1.13.2.10 2002/03/04 12:00:31 dwmalone Exp $
-.\" $DragonFly: src/lib/libc/sys/brk.2,v 1.3 2006/02/17 19:35:06 swildner Exp $
 .\"
-.Dd July 12, 1999
-.Dt BRK 2
+.Dd March 1, 2019
+.Dt SBRK 2
 .Os
 .Sh NAME
-.Nm brk ,
 .Nm sbrk
 .Nd change data segment size (obsolete)
 .Sh LIBRARY
@@ -41,22 +39,14 @@
 .Sh SYNOPSIS
 .In sys/types.h
 .In unistd.h
-.Ft int
-.Fn brk "const void *addr"
 .Ft void *
 .Fn sbrk "intptr_t incr"
 .Sh DESCRIPTION
 .Bf -symbolic
 The
-.Fn brk
-and
 .Fn sbrk
-functions are legacy interfaces from before the
+function is a legacy interface from before the
 advent of modern virtual memory management.
-.Fn brk
-is no longer implemented by
-.Dx
-and
 .Fn sbrk
 has only limited functionality due to having to play nice with
 modern system calls such as
@@ -64,12 +54,10 @@ modern system calls such as
 .Ef
 .Pp
 The
-.Fn brk
-and
 .Fn sbrk
-functions are used to change the amount of memory allocated in a
+function is used to change the amount of memory allocated in a
 process's data segment.
-They do this by moving the location of the
+It does this by moving the location of the
 .Dq break .
 The break is the first address after the end of the process's
 uninitialized data segment (also known as the
@@ -80,38 +68,17 @@ The break range is limited by the
 resource limit applied to the process.
 .Pp
 The
-.Fn brk
-function
-sets the break to
-.Fa addr .
-.Dx
-no longer implements this function.
-.Pp
-The
 .Fn sbrk
 function raises the break by
 .Fa incr
 bytes, returning a pointer to the base of the new memory.
-.Pp
-In the traditional call, a negative
-.Fa incr
-lowers the break address by the specified number of bytes.
-However,
-.Dx
-no longer supports using this legacy function to lower the break
-address.  The reason is because the resource limit can be adjusted
-upward and downward at run-time and indirectly allow normal memory-mappings
-via
-.Fn mmap
-to infiltrate the traditional data area.  In addition, lowering the break
-address in this manner is not thread safe.
 Any attempt to lower the break point will return
 .Po Vt "void *" Pc Ns \-1
 and set errno to
 .Er EOPNOTSUPP .
 .Sh NOTES
 While the actual process data segment size maintained by the kernel will only
-grow or shrink in page sizes, these functions allow setting the break
+grow or shrink in page sizes, this function allows setting the break
 to unaligned values (i.e., it may point to any address inside the last
 page of the data segment).
 .Pp
@@ -141,8 +108,6 @@ value is returned from a call to
 for the definition of
 .Va etext ) .
 .Sh RETURN VALUES
-.Rv -std brk
-.Pp
 The
 .Fn sbrk
 function returns the prior break pointer if successful;
@@ -152,8 +117,6 @@ is returned and the global variable
 .Va errno
 is set to indicate the error.
 .Sh ERRORS
-.Fn brk
-or
 .Fn sbrk
 will fail if:
 .Bl -tag -width Er
@@ -177,15 +140,8 @@ by this function.
 .Xr end 3 ,
 .Xr free 3 ,
 .Xr malloc 3
-.Sh HISTORY
-A
-.Fn brk
-function call appeared in
-.At v7 .
 .Sh BUGS
 Mixing
-.Fn brk
-or
 .Fn sbrk
 with
 .Xr malloc 3 ,

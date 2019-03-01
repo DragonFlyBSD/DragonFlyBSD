@@ -30,9 +30,8 @@
 .\"
 .\"	@(#)a.out.5	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man5/a.out.5,v 1.10.2.4 2002/04/16 14:50:18 trhodes Exp $
-.\" $DragonFly: src/share/man/man5/a.out.5,v 1.3 2006/05/26 19:39:40 swildner Exp $
 .\"
-.Dd June 5, 1993
+.Dd March 1, 2019
 .Dt A.OUT 5
 .Os
 .Sh NAME
@@ -163,10 +162,7 @@ Contains the size of the text segment in bytes.
 Contains the size of the data segment in bytes.
 .It Fa a_bss
 Contains the number of bytes in the
-.Sq bss segment
-and is used by the kernel to set the initial break
-.Pq Xr brk 2
-after the data segment.
+.Sq bss segment .
 The kernel loads the program so that this amount of writable memory
 appears to follow the data segment and initially reads as zeroes.
 .Po
@@ -434,7 +430,6 @@ is always 4 on 32-bit machines.
 .Xr as 1 ,
 .Xr gdb 1 ,
 .Xr ld 1 ,
-.Xr brk 2 ,
 .Xr execve 2 ,
 .Xr nlist 3 ,
 .Xr core 5 ,
