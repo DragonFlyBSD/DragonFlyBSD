@@ -1925,7 +1925,7 @@ ena_request_mgmnt_irq(struct ena_adapter *adapter)
 	error = pci_alloc_msix_vector(adapter->pdev, 0, &irq->vector, 0);
 	if (error) {
 		device_printf(adapter->pdev, "Could not initialize MGMNT MSI-X Vector on cpu0\n");
-		goto err_res_free;
+		return (ENXIO);
 	}
 
 	irq->res = bus_alloc_resource_any(adapter->pdev, SYS_RES_IRQ,
