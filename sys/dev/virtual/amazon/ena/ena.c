@@ -1934,6 +1934,7 @@ ena_request_mgmnt_irq(struct ena_adapter *adapter)
 	if (unlikely(irq->res == NULL)) {
 		device_printf(adapter->pdev, "could not allocate "
 		    "irq vector: %d\n", irq->vector);
+		pci_release_msix_vector(adapter->pdev, irq->vector);
 		return (ENXIO);
 	}
 
