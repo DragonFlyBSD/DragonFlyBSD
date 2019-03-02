@@ -48,7 +48,6 @@
 #include <machine/stdarg.h>
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
-#include <sys/callout.h>
 
 extern int securelevel;		/* system security level (see init(8)) */
 extern int kernel_mem_readonly;	/* disable writes to kernel memory */
