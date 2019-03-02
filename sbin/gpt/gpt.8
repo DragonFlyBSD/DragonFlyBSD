@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/sbin/gpt/gpt.8,v 1.17 2006/06/22 22:22:32 marcel Exp $
 .\"
-.Dd September 28, 2009
+.Dd March 2, 2019
 .Dt GPT 8
 .Os
 .Sh NAME
@@ -376,25 +376,28 @@ See above for a description of these options.
 Partitions are removed by clearing the partition type.
 No other information is changed.
 .\" ==== show ====
-.It Nm Ic show Oo Fl lu Oc Ar device ...
+.It Nm Ic show Oo Fl glu Oc Ar device ...
 The
 .Ic show
 command displays the current partitioning on the listed devices and gives
 an overall view of the disk contents.
+By default, the GPT partition type is displayed in a user-friendly form.
+If the
+.Fl u
+option is specified, the GPT partition type is displayed as a UUID.
 With the
 .Fl l
-option the GPT partition label will be displayed instead of the GPT partition
+option, the GPT partition label will be displayed instead of the GPT partition
 type.
-The option has no effect on non-GPT partitions.
 With the
-.Fl u
-option the GPT partition type is displayed as an UUID instead of in a
-user friendly form.
-The
-.Fl l
-option takes precedence over the
-.Fl u
-option.
+.Fl g
+option, the GPT partition GUID will be displayed instead of the GPT partition
+type.
+None of the options has any effect on non-GPT partitions.
+The order of precedence of the options are:
+.Fl l ,
+.Fl g ,
+.Fl u .
 .El
 .Sh FILES
 .Bl -tag -width ".Pa /etc/defaults/uuids"
