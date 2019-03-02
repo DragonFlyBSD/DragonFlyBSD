@@ -61,4 +61,4 @@ int	 sem_post(sem_t *);
 int	 sem_getvalue(sem_t * __restrict, int * __restrict);
 __END_DECLS
 
-#endif /* _SEMAPHORE_H_ */
+#endif /* !_SEMAPHORE_H_ */
