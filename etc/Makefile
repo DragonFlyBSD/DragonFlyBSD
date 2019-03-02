@@ -109,7 +109,8 @@ remove-deprecated-files:
 		echo "==================================================================" ; \
 		echo "= You have $$count now deprecated files." ; \
 		echo "= Once you are sure that none of your third party (ports or local)" ; \
-		echo "= software are still using them, rerun with REMOVE_DEPRECATED set." ; \
+		echo "= software are still using them, rerun with:" ; \
+		echo "=     make upgrade -DREMOVE_DEPRECATED" ; \
 		echo "==================================================================" ; \
 	fi;
 .endif
