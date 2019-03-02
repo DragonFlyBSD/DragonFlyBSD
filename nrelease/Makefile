@@ -47,11 +47,6 @@ ISOFILE?=	${ISODIR}/dfly.iso
 IMGFILE?=	${ISODIR}/dfly.img
 IMGMNT?=	${ISODIR}/mnt
 
-# NOTE: we use the '${NRLOBJDIR}/nrelease' construct, that is we add
-# the additional '/nrelease' manually, as a safety measure.
-#
-NRLOBJDIR?=	/usr/obj
-
 .if !make(nopkgs)
 # User may specify extra packages in addition to the defaults
 #
@@ -168,11 +163,6 @@ buildkernel1 buildkernel2:
 			KERNCONF=$${kernconf}; \
 	done
 
-# Note that we do not want to mess with any /usr/obj directories not related
-# to buildworld, buildkernel, or nrelease, so we must supply the proper
-# MAKEOBJDIRPREFIX for targets that are not run through the buildworld and
-# buildkernel mechanism.
-#
 # Unconditionally clean out ${ISOROOT} so a previous img build
 # does not blow up a future quick iso build
 #
@@ -183,10 +173,15 @@ buildiso:
 	-chflags -R noschg ${ISOROOT}
 	rm -rf ${ISOROOT}
 	mkdir -p ${ISOROOT}
-	if [ ! -d ${NRLOBJDIR}/nrelease ]; then mkdir -p ${NRLOBJDIR}/nrelease; fi
 	( cd ${.CURDIR}/..; make -DWANT_INSTALLER DESTDIR=${ISOROOT} installworld )
-	( cd ${.CURDIR}/../etc; MAKEOBJDIRPREFIX=${NRLOBJDIR}/nrelease \
-		make -m ${.CURDIR}/../share/mk DESTDIR=${ISOROOT} distribution )
+	# Do not mess with any /usr/obj directories not related to
+	# buildworld, buildkernel, or nrelease.
+	( cd ${.CURDIR}/../etc && \
+		tmpdir=`mktemp -d -t nrelease` && \
+		MAKEOBJDIRPREFIX=$${tmpdir} \
+			make -m ${.CURDIR}/../share/mk \
+			DESTDIR=${ISOROOT} distribution && \
+		rm -rf $${tmpdir} )
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
 	( cd ${.CURDIR}/..; \
 		for kernconf in ${KERNCONF}; do \
@@ -411,7 +406,6 @@ clean:
 	    vnconfig -u `cat ${ISODIR}/vn.which`; fi
 	if [ -d ${ISOROOT} ]; then chflags -R noschg ${ISOROOT}; fi
 	rm -rf ${ISOROOT}
-	rm -rf ${NRLOBJDIR}/nrelease
 	rm -f ${ISODIR}/.didbootstrap ${ISODIR}/vn.which
 
 realclean:	clean
