@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2014,2018 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -111,8 +111,9 @@ struct callout {
 	void	*c_arg;			/* function argument */
 	void	(*c_func) (void *);	/* function to call */
 	int	c_flags;		/* state of this entry */
-	int	c_unused02;
+	int	c_lineno;		/* debugging */
 	struct lock *c_lk;		/* auto-lock */
+	const char *c_ident;		/* debugging */
 };
 
 /*
@@ -201,6 +202,9 @@ void	hardclock_softtick(struct globaldata *);
 void	callout_init (struct callout *);
 void	callout_init_mp (struct callout *);
 void	callout_init_lk (struct callout *, struct lock *);
+void	callout_initd (struct callout *, const char *, int);
+void	callout_initd_mp (struct callout *, const char *, int);
+void	callout_initd_lk (struct callout *, struct lock *, const char *, int);
 void	callout_reset (struct callout *, int, void (*)(void *), void *);
 int	callout_stop (struct callout *);
 void	callout_stop_async (struct callout *);
@@ -210,6 +214,13 @@ void	callout_reset_bycpu (struct callout *, int, void (*)(void *), void *,
 	    int);
 
 #define	callout_drain(x) callout_stop_sync(x)
+
+#define CALLOUT_DEBUG
+#ifdef CALLOUT_DEBUG
+#define	callout_init(co)	callout_initd(co, __FILE__, __LINE__)
+#define	callout_init_mp(co)	callout_initd_mp(co, __FILE__, __LINE__)
+#define	callout_init_lk(co, lk)	callout_initd_lk(co, lk, __FILE__, __LINE__)
+#endif
 
 #endif
 

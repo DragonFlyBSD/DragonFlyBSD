@@ -911,6 +911,15 @@ _callout_init(struct callout *c, int flags)
 	c->c_flags = flags;
 }
 
+/*
+ * Setup callout, with debugging support
+ */
+#ifdef callout_init
+#undef callout_init
+#undef callout_init_mp
+#undef callout_init_lk
+#endif
+
 void
 callout_init(struct callout *c)
 {
@@ -927,5 +936,33 @@ void
 callout_init_lk(struct callout *c, struct lock *lk)
 {
 	_callout_init(c, CALLOUT_DID_INIT | CALLOUT_MPSAFE | CALLOUT_AUTOLOCK);
+	c->c_lk = lk;
+}
+
+void
+callout_initd(struct callout *c,
+		 const char *ident, int lineno)
+{
+	_callout_init(c, CALLOUT_DID_INIT);
+	c->c_ident = ident;
+	c->c_lineno = lineno;
+}
+
+void
+callout_initd_mp(struct callout *c,
+		 const char *ident, int lineno)
+{
+	_callout_init(c, CALLOUT_DID_INIT | CALLOUT_MPSAFE);
+	c->c_ident = ident;
+	c->c_lineno = lineno;
+}
+
+void
+callout_initd_lk(struct callout *c, struct lock *lk,
+		 const char *ident, int lineno)
+{
+	_callout_init(c, CALLOUT_DID_INIT | CALLOUT_MPSAFE | CALLOUT_AUTOLOCK);
+	c->c_ident = ident;
+	c->c_lineno = lineno;
 	c->c_lk = lk;
 }
