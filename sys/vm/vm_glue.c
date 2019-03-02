@@ -87,7 +87,6 @@
 
 #include <sys/user.h>
 #include <vm/vm_page2.h>
-#include <sys/thread2.h>
 
 /*
  * THIS MUST BE THE LAST INITIALIZATION ITEM!!!

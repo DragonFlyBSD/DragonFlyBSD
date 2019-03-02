@@ -67,8 +67,6 @@
 #include <net/gif/if_gif.h>	
 #include <net/net_osdep.h>
 
-#include <sys/thread2.h>	/* ipstat */
-
 #ifdef INET
 static int gif_validate4 (const struct ip *, struct gif_softc *,
 			  struct ifnet *);

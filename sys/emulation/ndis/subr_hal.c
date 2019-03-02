@@ -48,7 +48,6 @@
 
 #include <sys/bus.h>
 #include <sys/rman.h>
-#include <sys/thread2.h>
 
 #include <emulation/ndis/pe_var.h>
 #include <emulation/ndis/resource_var.h>

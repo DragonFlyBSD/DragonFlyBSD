@@ -36,7 +36,6 @@
 #include <sys/sysctl.h>
 #include <sys/lock.h>
 
-#include <sys/thread2.h>
 #include <sys/spinlock2.h>
 #include <sys/mplock2.h>
 

@@ -36,7 +36,6 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/thread.h>
-#include <sys/thread2.h>
 
 #include <machine/console.h>
 

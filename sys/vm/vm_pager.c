@@ -76,7 +76,6 @@
 #include <sys/dsched.h>
 #include <sys/proc.h>
 #include <sys/sysctl.h>
-#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>

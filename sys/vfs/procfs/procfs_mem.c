@@ -61,8 +61,6 @@
 
 #include <machine/vmm.h>
 
-#include <sys/thread2.h>
-
 static int	procfs_rwmem (struct proc *curp,
 				  struct proc *p, struct uio *uio);
 

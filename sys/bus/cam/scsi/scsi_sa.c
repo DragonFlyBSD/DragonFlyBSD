@@ -45,7 +45,6 @@
 #ifdef _KERNEL
 #include <sys/proc.h>
 #include <sys/buf2.h>
-#include <sys/thread2.h>
 #endif
 #include <sys/fcntl.h>
 #include <sys/devicestat.h>

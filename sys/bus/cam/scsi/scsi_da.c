@@ -48,7 +48,6 @@
 #include <sys/proc.h>
 
 #include <sys/buf2.h>
-#include <sys/thread2.h>
 
 #endif /* _KERNEL */
 

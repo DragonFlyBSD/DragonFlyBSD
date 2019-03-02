@@ -74,7 +74,6 @@
 #include <sys/socket.h>
 #include <sys/protosw.h>
 #include <sys/syslog.h>
-#include <sys/thread2.h>
 
 #include <net/if.h>
 

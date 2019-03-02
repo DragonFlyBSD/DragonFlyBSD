@@ -39,7 +39,6 @@
 #include <sys/errno.h>
 #include <sys/devicestat.h>
 #include <sys/buf2.h>
-#include <sys/thread2.h>
 
 #include "../cam.h"
 #include "../cam_ccb.h"

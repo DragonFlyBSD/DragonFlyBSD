@@ -68,7 +68,6 @@
 #include <vm/vm_object.h>
 
 #include <sys/buf2.h>
-#include <sys/thread2.h>
 
 #define VACT_MAX	10
 #define VACT_INC	2

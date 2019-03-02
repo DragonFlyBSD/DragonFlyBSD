@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/kern/kern_iosched.c,v 1.1 2008/06/28 17:59:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,7 +45,6 @@
 #include <sys/buf.h>
 #include <sys/limits.h>
 
-#include <sys/thread2.h>
 #include <sys/spinlock2.h>
 
 #include <vm/vm.h>

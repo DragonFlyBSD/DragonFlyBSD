@@ -47,7 +47,6 @@
 #include <sys/globaldata.h>
 #include <sys/mutex.h>
 
-#include <sys/thread2.h>
 #include <sys/mutex2.h>
 
 #include <net/if.h>

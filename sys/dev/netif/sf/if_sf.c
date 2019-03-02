@@ -90,7 +90,6 @@
 #include <sys/serialize.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
-#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>

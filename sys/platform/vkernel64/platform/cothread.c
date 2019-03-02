@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/platform/vkernel/platform/cothread.c,v 1.3 2008/05/07 17:19:47 dillon Exp $
  */
 /*
  * Provides the vkernel with an asynchronous I/O mechanism using pthreads
@@ -47,6 +45,7 @@
 #include <sys/tls.h>
 #include <sys/types.h>
 #include <sys/bus.h>
+#include <sys/thread2.h>
 #include <time.h>
 
 #include <vm/vm_extern.h>

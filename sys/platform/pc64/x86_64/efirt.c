@@ -54,7 +54,6 @@
 #include <vm/vm_extern.h>
 
 #include <vm/vm_page2.h>
-#include <sys/thread2.h>
 
 #include <machine/efi.h>
 #include <machine/metadata.h>

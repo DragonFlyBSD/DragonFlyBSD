@@ -54,7 +54,6 @@
 #include <sys/lockf.h>
 #include <sys/spinlock.h>
 
-#include <sys/thread2.h>
 #include <sys/spinlock2.h>
 
 static MALLOC_DEFINE(M_CRED, "cred", "credentials");

@@ -91,9 +91,6 @@
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
 #endif
-#ifndef _SYS_THREAD2_H_
-#include <sys/thread2.h>
-#endif
 
 #ifdef __x86_64__
 #include <machine/vmparam.h>

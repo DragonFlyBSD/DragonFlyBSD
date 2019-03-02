@@ -35,7 +35,6 @@
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/malloc.h>
-#include <sys/thread2.h>
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
 #include <sys/queue.h>

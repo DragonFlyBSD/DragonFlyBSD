@@ -30,7 +30,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/thread2.h>
 #include <sys/disk.h>
 #include <sys/disklabel.h>
 #include <sys/devicestat.h>

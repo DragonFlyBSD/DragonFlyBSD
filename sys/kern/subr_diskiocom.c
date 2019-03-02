@@ -56,7 +56,6 @@
 
 #include <sys/buf2.h>
 #include <sys/msgport2.h>
-#include <sys/thread2.h>
 
 struct dios_open {
 	int	openrd;

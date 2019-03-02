@@ -82,8 +82,6 @@
 #include <netinet/in.h>
 #include <netinet/in_var.h>
 
-#include <sys/thread2.h>
-
 /* Defs */
 #define	TRUE	1
 #define	FALSE	0

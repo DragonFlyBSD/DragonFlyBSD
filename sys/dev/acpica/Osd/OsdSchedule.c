@@ -43,7 +43,6 @@
 #include <sys/taskqueue.h>
 #include <machine/clock.h>
 
-#include <sys/thread2.h>
 #include <sys/msgport2.h>
 
 #include "acpi.h"

@@ -76,7 +76,6 @@
 
 #include <sys/file2.h>
 #include <sys/thread.h>
-#include <sys/thread2.h>
 #include <vm/vm_page2.h>
 
 static int max_proc_mmap = 1000000;

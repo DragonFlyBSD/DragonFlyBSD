@@ -42,8 +42,6 @@
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 
-#include <sys/thread2.h>
-
 #include "cam.h"
 #include "cam_ccb.h"
 #include "cam_xpt_periph.h"

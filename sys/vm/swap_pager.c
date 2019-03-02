@@ -120,7 +120,6 @@
 #include <vm/vm_zone.h>
 #include <vm/vnode_pager.h>
 
-#include <sys/thread2.h>
 #include <sys/buf2.h>
 #include <vm/vm_page2.h>
 

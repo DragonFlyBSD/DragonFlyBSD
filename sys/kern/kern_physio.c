@@ -24,7 +24,6 @@
 #include <sys/proc.h>
 #include <sys/uio.h>
 #include <sys/device.h>
-#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>

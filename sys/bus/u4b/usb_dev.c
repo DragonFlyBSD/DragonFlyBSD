@@ -33,7 +33,6 @@
 #include <sys/types.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <sys/thread2.h>
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>

@@ -46,8 +46,6 @@
 #include <machine/globaldata.h>
 #include <machine/md_var.h>
 
-#include <sys/thread2.h>
-
 #include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>

@@ -55,7 +55,6 @@
 #include <sys/signalvar.h>
 #include <sys/malloc.h>
 #include <sys/device.h>
-#include <sys/thread2.h>
 #include <sys/devfs.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>

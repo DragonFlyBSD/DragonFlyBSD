@@ -58,7 +58,6 @@
 #include <sys/systm.h>
 #include <sys/limits.h>
 #include <sys/thread.h>
-#include <sys/thread2.h>
 #include <sys/malloc.h>
 #include <sys/ctype.h>
 #include <sys/sbuf.h>

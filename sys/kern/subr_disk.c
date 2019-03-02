@@ -106,7 +106,6 @@
 
 #include <sys/buf2.h>
 #include <sys/msgport2.h>
-#include <sys/thread2.h>
 
 static MALLOC_DEFINE(M_DISK, "disk", "disk data");
 static int disk_debug_enable = 0;

@@ -41,7 +41,6 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/tty.h>
-#include <sys/thread2.h>
 
 /*
  * Allocate or reallocate clist buffers.

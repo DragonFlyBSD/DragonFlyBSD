@@ -40,7 +40,6 @@
 #include <net/netisr.h>
 #include <net/route.h>
 
-#include <sys/thread2.h>
 #include <sys/mplock2.h>
 
 #include <netproto/mpls/mpls.h>

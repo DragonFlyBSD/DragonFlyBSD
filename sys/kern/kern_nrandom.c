@@ -146,7 +146,6 @@
 #include <machine/atomic.h>
 #include <machine/clock.h>
 
-#include <sys/thread2.h>
 #include <sys/spinlock2.h>
 
 struct csprng_state csprng_state;

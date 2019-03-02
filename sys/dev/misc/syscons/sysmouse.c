@@ -42,7 +42,6 @@
 #include <sys/priv.h>
 #include <sys/vnode.h>
 #include <sys/kernel.h>
-#include <sys/thread2.h>
 #include <sys/signalvar.h>
 #include <sys/filio.h>
 

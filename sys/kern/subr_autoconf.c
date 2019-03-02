@@ -44,7 +44,6 @@
 #include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/thread.h>
-#include <sys/thread2.h>
 
 /*
  * Autoconfiguration subroutines.

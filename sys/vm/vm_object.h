@@ -97,10 +97,6 @@
 
 #ifdef _KERNEL
 
-#ifndef _SYS_THREAD2_H_
-#include <sys/thread2.h>
-#endif
-
 #ifndef _SYS_REFCOUNT_H_
 #include <sys/refcount.h>
 #endif

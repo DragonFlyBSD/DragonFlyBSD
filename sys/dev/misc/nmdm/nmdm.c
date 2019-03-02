@@ -38,7 +38,6 @@
 #include <sys/systm.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
-#include <sys/thread2.h>
 #include <sys/tty.h>
 #include <sys/ttydefaults.h>	/* for TTYDEF_* */
 #include <sys/conf.h>

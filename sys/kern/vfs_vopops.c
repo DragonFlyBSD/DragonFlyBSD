@@ -79,7 +79,6 @@
 #include <vm/vm_zone.h>
 
 #include <sys/buf2.h>
-#include <sys/thread2.h>
 #include <sys/mplock2.h>
 
 #define VDESCNAME(name)	__CONCAT(__CONCAT(vop_,name),_desc)

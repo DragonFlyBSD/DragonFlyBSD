@@ -83,7 +83,6 @@
 #include <machine/limits.h>
 
 #include <sys/buf2.h>
-#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>

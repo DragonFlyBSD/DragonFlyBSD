@@ -70,7 +70,6 @@
 #include "ufs_extern.h"
 
 #include <sys/buf2.h>
-#include <sys/thread2.h>
 #include <sys/lock.h>
 
 /*

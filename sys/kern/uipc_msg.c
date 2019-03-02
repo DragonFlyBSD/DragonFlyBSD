@@ -40,7 +40,6 @@
 #include <sys/socketvar.h>
 #include <sys/socketops.h>
 #include <sys/thread.h>
-#include <sys/thread2.h>
 #include <sys/msgport2.h>
 #include <sys/spinlock2.h>
 #include <sys/sysctl.h>

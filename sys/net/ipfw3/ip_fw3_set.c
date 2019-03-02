@@ -45,7 +45,6 @@
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
 #include <sys/systimer.h>
-#include <sys/thread2.h>
 #include <sys/in_cksum.h>
 #include <sys/systm.h>
 #include <sys/proc.h>

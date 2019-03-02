@@ -30,7 +30,6 @@
 #include <sys/device.h>
 #include <sys/filio.h>
 #include <sys/sockio.h>
-#include <sys/thread2.h>
 #include <sys/ttycom.h>
 #include <sys/signalvar.h>
 #include <sys/filedesc.h>

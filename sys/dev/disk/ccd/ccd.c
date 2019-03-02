@@ -146,7 +146,6 @@
 #include <vfs/ufs/dinode.h> 	/* XXX Used only for fs.h */
 #include <vfs/ufs/fs.h> 	/* XXX used only to get BBSIZE and SBSIZE */
 
-#include <sys/thread2.h>
 #include <sys/buf2.h>
 
 #if defined(CCDDEBUG) && !defined(DEBUG)

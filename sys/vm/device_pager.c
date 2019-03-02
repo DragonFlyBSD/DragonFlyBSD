@@ -45,7 +45,6 @@
 #include <sys/device.h>
 #include <sys/queue.h>
 #include <sys/malloc.h>
-#include <sys/thread2.h>
 #include <sys/mutex2.h>
 
 #include <vm/vm.h>

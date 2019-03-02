@@ -38,7 +38,6 @@
 #include <sys/kernel.h>
 #include <sys/machintr.h>
 #include <sys/systm.h>
-#include <sys/thread2.h>
 
 #include <contrib/dev/acpica/source/include/acpi.h>
 

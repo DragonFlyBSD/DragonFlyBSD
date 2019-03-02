@@ -45,7 +45,6 @@
 #include <sys/interrupt.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
-#include <sys/thread2.h>
 
 #include <machine/smp.h>
 #include <machine/segments.h>

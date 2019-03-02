@@ -73,7 +73,6 @@
 #include <vm/vnode_pager.h>
 
 #include <sys/buf2.h>
-#include <sys/thread2.h>
 
 #include <vfs/fifofs/fifo.h>
 

@@ -40,6 +40,7 @@
 #include <dev/raid/twe/twe_tables.h>
 #include <sys/dtype.h>
 #include <sys/mplock2.h>
+#include <sys/thread2.h>
 
 #include <vm/vm.h>
 

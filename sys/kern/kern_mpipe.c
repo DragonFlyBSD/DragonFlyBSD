@@ -46,8 +46,6 @@
 #include <sys/mpipe.h>
 #include <sys/kthread.h>
 
-#include <sys/thread2.h>
-
 struct mpipe_callback {
 	STAILQ_ENTRY(mpipe_callback) entry;
 	void (*func)(void *arg1, void *arg2);

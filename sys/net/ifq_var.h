@@ -39,9 +39,6 @@
 #ifndef _SYS_SYSTM_H_
 #include <sys/systm.h>
 #endif
-#ifndef _SYS_THREAD2_H_
-#include <sys/thread2.h>
-#endif
 #ifndef _SYS_SERIALIZE_H_
 #include <sys/serialize.h>
 #endif

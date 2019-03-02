@@ -97,7 +97,6 @@
 #include <sys/signal2.h>
 #include <sys/buf2.h>
 #include <sys/mutex2.h>
-#include <sys/thread2.h>
 #endif
 
 #include "hammer2_xxhash.h"

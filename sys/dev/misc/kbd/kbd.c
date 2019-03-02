@@ -44,7 +44,6 @@
 #include <sys/vnode.h>
 #include <sys/uio.h>
 #include <sys/thread.h>
-#include <sys/thread2.h>
 
 #include <machine/console.h>
 

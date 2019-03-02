@@ -95,7 +95,6 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/rman.h> 
-#include <sys/thread2.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>

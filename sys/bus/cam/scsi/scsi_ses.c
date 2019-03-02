@@ -36,7 +36,6 @@
 #include <sys/buf.h>
 #include <sys/errno.h>
 #include <sys/devicestat.h>
-#include <sys/thread2.h>
 #include <machine/stdarg.h>
 
 #include "../cam.h"

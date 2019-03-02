@@ -57,8 +57,6 @@
 #include <sys/socket.h>
 #include <sys/vnode.h>
 
-#include <sys/thread2.h>
-
 #include <net/if.h>
 #include <net/bpf.h>
 #include <net/bpfdesc.h>

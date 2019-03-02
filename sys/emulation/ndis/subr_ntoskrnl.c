@@ -40,7 +40,6 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/lock.h>
-#include <sys/thread2.h>
 #include <sys/mutex.h>
 #include <sys/mutex2.h>
 

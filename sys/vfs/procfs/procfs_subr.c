@@ -44,7 +44,6 @@
 #include <sys/malloc.h>
 #include <sys/spinlock.h>
 
-#include <sys/thread2.h>
 #include <sys/spinlock2.h>
 
 #include <vfs/procfs/procfs.h>

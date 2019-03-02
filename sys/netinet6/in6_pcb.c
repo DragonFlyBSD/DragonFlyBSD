@@ -80,7 +80,6 @@
 #include <sys/priv.h>
 #include <sys/jail.h>
 
-#include <sys/thread2.h>
 #include <sys/msgport2.h>
 
 #include <vm/vm_zone.h>

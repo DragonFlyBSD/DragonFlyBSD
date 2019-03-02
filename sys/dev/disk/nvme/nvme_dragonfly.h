@@ -61,5 +61,4 @@
 #include <bus/pci/pcivar.h>
 #include "pcidevs.h"
 
-#include <sys/thread2.h>
 #include <sys/mplock2.h>

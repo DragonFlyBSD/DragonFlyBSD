@@ -51,7 +51,6 @@
 #include <sys/sysctl.h>
 #include <sys/event.h>
 
-#include <sys/thread2.h>
 #include <sys/msgport2.h>
 #include <sys/socketvar2.h>
 

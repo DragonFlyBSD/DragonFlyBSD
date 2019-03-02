@@ -2,8 +2,6 @@
  * SYS/MSGPORT2.H
  *
  *	Implements Inlines for LWKT messages and ports.
- * 
- * $DragonFly: src/sys/sys/msgport2.h,v 1.17 2008/11/09 09:20:09 sephe Exp $
  */
 
 #ifndef _SYS_MSGPORT2_H_
@@ -15,9 +13,7 @@
 
 #else
 
-#ifndef _SYS_THREAD2_H_
-#include <sys/thread2.h>
-#endif
+#include <sys/systm.h>
 
 /*
  * Initialize a LWKT message structure.  Note that if the message supports

@@ -45,7 +45,6 @@
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
 #include <sys/systimer.h>
-#include <sys/thread2.h>
 
 #include <net/ethernet.h>
 #include <net/netmsg2.h>

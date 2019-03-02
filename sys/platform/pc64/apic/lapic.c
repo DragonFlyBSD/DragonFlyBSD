@@ -45,7 +45,6 @@
 #include <machine_base/apic/apicvar.h>
 #include <machine_base/icu/icu_var.h>
 #include <machine/segments.h>
-#include <sys/thread2.h>
 #include <sys/spinlock2.h>
 
 #include <machine/cputypes.h>

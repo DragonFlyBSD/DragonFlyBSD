@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/kern/vfs_jops.c,v 1.36 2007/08/21 17:43:52 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -73,7 +71,6 @@
 #include <vm/vnode_pager.h>
 
 #include <sys/file2.h>
-#include <sys/thread2.h>
 
 static int journal_attach(struct mount *mp);
 static void journal_detach(struct mount *mp);

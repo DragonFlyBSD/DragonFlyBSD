@@ -48,7 +48,6 @@
 #include <sys/proc.h>
 #include <sys/rtprio.h>
 #include <sys/queue.h>
-#include <sys/thread2.h>
 #include <sys/serialize.h>
 #include <sys/sysctl.h>
 #include <sys/ktr.h>

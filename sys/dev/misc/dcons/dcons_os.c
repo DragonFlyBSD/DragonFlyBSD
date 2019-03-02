@@ -49,7 +49,6 @@
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
-#include <sys/thread2.h>
 #include <sys/ucred.h>
 #include <sys/bus.h>
 

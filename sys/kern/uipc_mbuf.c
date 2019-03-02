@@ -83,7 +83,6 @@
 #include <sys/proc.h>
 #include <sys/globaldata.h>
 
-#include <sys/thread2.h>
 #include <sys/spinlock2.h>
 
 #include <machine/atomic.h>

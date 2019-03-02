@@ -42,7 +42,6 @@
 #include <sys/namecache.h>
 #include <sys/nlookup.h>
 #include <sys/proc.h>
-#include <sys/thread2.h>
 #include <sys/devfs.h>
 
 struct mount	*synth_mp;

@@ -82,7 +82,6 @@
 #include <sys/ktr.h>
 #include <sys/jail.h>
 
-#include <sys/thread2.h>
 #include <sys/socketvar2.h>
 #include <sys/serialize.h>
 

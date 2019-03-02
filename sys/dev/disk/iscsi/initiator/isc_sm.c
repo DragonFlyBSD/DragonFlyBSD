@@ -53,7 +53,6 @@
 #include <sys/bus.h>
 #include <sys/eventhandler.h>
 
-#include <sys/thread2.h>
 #include <sys/mutex2.h>
 #include <sys/mplock2.h>
 

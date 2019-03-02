@@ -89,7 +89,6 @@
 #include <net/netmsg2.h>
 #include <net/netisr2.h>
 
-#include <sys/thread2.h>
 #include <sys/socketvar2.h>
 #include <sys/spinlock2.h>
 

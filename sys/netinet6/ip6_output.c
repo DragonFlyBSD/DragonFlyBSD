@@ -77,7 +77,6 @@
 #include <sys/proc.h>
 #include <sys/priv.h>
 
-#include <sys/thread2.h>
 #include <sys/msgport2.h>
 
 #include <net/if.h>

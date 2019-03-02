@@ -42,7 +42,6 @@
 #include <sys/interrupt.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
-#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>

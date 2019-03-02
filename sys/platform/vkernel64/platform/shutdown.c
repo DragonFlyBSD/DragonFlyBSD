@@ -44,8 +44,6 @@
 #include <sys/bus.h>
 #include <ddb/ddb.h>
 
-#include <sys/thread2.h>
-
 #include <machine/trap.h>
 #include <machine/md_var.h>
 #include <machine/segments.h>

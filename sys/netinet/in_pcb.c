@@ -79,7 +79,6 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 
-#include <sys/thread2.h>
 #include <sys/socketvar2.h>
 #include <sys/msgport2.h>
 

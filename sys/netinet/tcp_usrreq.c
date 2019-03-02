@@ -85,7 +85,6 @@
 #include <sys/protosw.h>
 #include <sys/jail.h>
 
-#include <sys/thread2.h>
 #include <sys/msgport2.h>
 #include <sys/socketvar2.h>
 

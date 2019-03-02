@@ -72,7 +72,6 @@
 #include <sys/ttycom.h>
 #include <sys/syslog.h>
 #include <sys/errno.h>
-#include <sys/thread2.h>
 
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>

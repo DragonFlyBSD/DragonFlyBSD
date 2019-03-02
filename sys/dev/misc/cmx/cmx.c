@@ -50,7 +50,6 @@
 #include <sys/types.h>
 #include <sys/lock.h>
 #include <sys/device.h>
-#include <sys/thread2.h>
 
 #include <sys/module.h>
 #include <sys/bus.h>

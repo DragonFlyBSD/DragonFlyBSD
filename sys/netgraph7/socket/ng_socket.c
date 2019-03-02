@@ -71,7 +71,6 @@
 #include <sys/syscallsubr.h>
 */
 #include <sys/sysctl.h>
-#include <sys/thread2.h>
 #include <sys/vnode.h>
 
 #include <netgraph7/ng_message.h>

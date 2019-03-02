@@ -43,7 +43,6 @@
 #include <sys/serialize.h>
 #include <sys/systimer.h>
 #include <sys/sysctl.h>
-#include <sys/thread2.h>
 
 extern void	pcpu_timer_process(void);
 extern void	pcpu_timer_process_frame(struct intrframe *);

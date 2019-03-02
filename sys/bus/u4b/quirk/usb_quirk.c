@@ -43,7 +43,6 @@
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
-#include <sys/thread2.h>
 
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usb_ioctl.h>

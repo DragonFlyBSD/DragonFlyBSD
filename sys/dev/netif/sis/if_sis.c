@@ -68,7 +68,6 @@
 #include <sys/socket.h>
 #include <sys/sysctl.h>
 #include <sys/serialize.h>
-#include <sys/thread2.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/interrupt.h>

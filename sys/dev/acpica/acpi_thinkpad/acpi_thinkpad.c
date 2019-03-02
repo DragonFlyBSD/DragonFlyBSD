@@ -46,7 +46,6 @@
 #include <sys/sbuf.h>
 #include <sys/sysctl.h>
 #include <sys/lock.h>
-#include <sys/thread2.h>
 #include <machine/clock.h>
 #include <dev/misc/led/led.h>
 

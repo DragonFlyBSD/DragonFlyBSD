@@ -30,7 +30,6 @@
 
 #ifdef _KERNEL
 #include "opt_ntfs.h"
-#include <sys/thread2.h>
 #endif
 
 

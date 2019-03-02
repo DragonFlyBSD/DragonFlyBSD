@@ -65,7 +65,6 @@
 #include <sys/xdiskioctl.h>
 
 #include <sys/buf2.h>
-#include <sys/thread2.h>
 
 struct xa_softc;
 struct xa_softc_tree;

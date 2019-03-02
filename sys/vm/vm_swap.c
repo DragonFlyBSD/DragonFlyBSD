@@ -57,7 +57,6 @@
 #include <vm/vm_zone.h>
 #include <vm/vm_param.h>
 
-#include <sys/thread2.h>
 #include <sys/mutex2.h>
 #include <sys/spinlock2.h>
 

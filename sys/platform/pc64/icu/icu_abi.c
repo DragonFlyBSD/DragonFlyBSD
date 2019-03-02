@@ -52,8 +52,6 @@
 #include <machine/smp.h>
 #include <machine/msi_var.h>
 
-#include <sys/thread2.h>
-
 #include <machine_base/icu/elcr_var.h>
 
 #include <machine_base/icu/icu.h>

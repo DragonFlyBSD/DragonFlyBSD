@@ -44,8 +44,6 @@
 #include <sys/reg.h>
 #include <sys/globaldata.h>
 
-#include <sys/thread2.h>
-
 #include <machine/cpu.h>
 #include <machine/clock.h>
 #include <machine/specialreg.h>

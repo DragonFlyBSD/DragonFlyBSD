@@ -31,7 +31,6 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_kerb.c,v 1.3 2006/09/05 00:55:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -54,8 +53,6 @@
 #include "xdr_subs.h"
 #include "nfsmount.h"
 #include "nfsnode.h"
-
-#include <sys/thread2.h>
 
 #define TRUE	1
 #define	FALSE	0

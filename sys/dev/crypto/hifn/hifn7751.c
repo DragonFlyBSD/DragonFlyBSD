@@ -58,7 +58,6 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/random.h>
-#include <sys/thread2.h>
 #include <sys/uio.h>
 
 #include <vm/vm.h>

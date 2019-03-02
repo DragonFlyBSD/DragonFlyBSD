@@ -37,7 +37,6 @@
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
 #include <sys/systm.h>
-#include <sys/thread2.h>
 #include <sys/time.h>
 #include <sys/in_cksum.h>
 

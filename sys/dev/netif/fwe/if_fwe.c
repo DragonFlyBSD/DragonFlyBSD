@@ -48,7 +48,6 @@
 #include <sys/systm.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <sys/thread2.h>
 
 #include <net/bpf.h>
 #include <net/ethernet.h>

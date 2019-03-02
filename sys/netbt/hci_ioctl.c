@@ -1,4 +1,3 @@
-/* $DragonFly: src/sys/netbt/hci_ioctl.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
 /* $OpenBSD: src/sys/netbt/hci_ioctl.c,v 1.2 2008/02/24 21:34:48 uwe Exp $ */
 /* $NetBSD: hci_ioctl.c,v 1.7 2007/11/28 20:16:12 plunky Exp $ */
 
@@ -39,7 +38,6 @@
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/systm.h>
-#include <sys/thread2.h>
 #include <sys/bus.h>
 
 #include <netbt/bluetooth.h>

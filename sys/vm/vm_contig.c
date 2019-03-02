@@ -64,7 +64,6 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
- * $DragonFly: src/sys/vm/vm_contig.c,v 1.21 2006/12/28 21:24:02 dillon Exp $
  */
 
 /*
@@ -117,7 +116,6 @@
 #include <vm/vm_pager.h>
 #include <vm/vm_extern.h>
 
-#include <sys/thread2.h>
 #include <sys/spinlock2.h>
 #include <vm/vm_page2.h>
 

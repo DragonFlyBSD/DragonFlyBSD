@@ -96,7 +96,6 @@
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 
-#include <sys/thread2.h>
 #include <sys/file2.h>
 #include <sys/spinlock2.h>
 

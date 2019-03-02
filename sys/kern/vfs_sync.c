@@ -75,7 +75,6 @@
 #include <vm/vnode_pager.h>
 
 #include <sys/buf2.h>
-#include <sys/thread2.h>
 
 /*
  * The workitem queue.

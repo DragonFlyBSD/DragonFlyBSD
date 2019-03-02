@@ -41,7 +41,6 @@
 #include <machine/md_var.h>
 #include <machine/thread.h>
 #include <machine/vmparam.h>
-#include <sys/thread2.h>
 
 CTASSERT(sizeof(struct kerneldumpheader) == 512);
 

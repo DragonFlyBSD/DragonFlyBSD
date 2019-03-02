@@ -47,7 +47,6 @@
 #include <sys/lock.h>
 #include <sys/sysctl.h>
 #include <sys/spinlock.h>
-#include <sys/thread2.h>
 #include <sys/spinlock2.h>
 #include <sys/indefinite2.h>
 

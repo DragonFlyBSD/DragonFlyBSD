@@ -35,7 +35,6 @@
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
-#include <sys/thread2.h>
 #include <sys/machintr.h>
  
 #include "acpi.h"

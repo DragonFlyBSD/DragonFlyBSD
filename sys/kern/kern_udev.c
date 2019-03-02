@@ -47,8 +47,6 @@
 #include <sys/devfs.h>
 #include <libprop/proplib.h>
 
-#include <sys/thread2.h>
-
 MALLOC_DEFINE(M_UDEV, "udev", "udev allocs");
 static struct objcache *udev_event_kernel_cache;
 

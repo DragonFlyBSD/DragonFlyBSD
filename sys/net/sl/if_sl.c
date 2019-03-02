@@ -78,7 +78,6 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/conf.h>
-#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>

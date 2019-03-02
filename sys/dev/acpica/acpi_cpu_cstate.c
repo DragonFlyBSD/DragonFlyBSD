@@ -37,7 +37,6 @@
 #include <sys/power.h>
 #include <sys/proc.h>
 #include <sys/sbuf.h>
-#include <sys/thread2.h>
 #include <sys/serialize.h>
 #include <sys/msgport2.h>
 #include <sys/microtime_pcpu.h>

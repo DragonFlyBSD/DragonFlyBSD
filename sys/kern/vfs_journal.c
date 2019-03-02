@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/kern/vfs_journal.c,v 1.33 2007/05/09 00:53:34 dillon Exp $
  */
 /*
  * The journaling protocol is intended to evolve into a two-way stream
@@ -89,7 +87,6 @@
 #include <vm/vnode_pager.h>
 
 #include <sys/file2.h>
-#include <sys/thread2.h>
 #include <sys/mplock2.h>
 #include <sys/spinlock2.h>
 

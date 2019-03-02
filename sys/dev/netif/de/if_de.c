@@ -49,7 +49,6 @@ __FBSDID("$FreeBSD: head/sys/dev/de/if_de.c 271849 2014-09-19 03:51:26Z glebius 
 #include <sys/eventhandler.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
-#include <sys/thread2.h>
 #include <sys/interrupt.h>
 
 #include "opt_inet.h"

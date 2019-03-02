@@ -25,12 +25,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_ioctl.c,v 1.5 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_ioctl.c,v 1.8 2006/09/05 03:48:11 dillon Exp $
  */
 
 #include <dev/raid/ips/ips.h>
 #include <dev/raid/ips/ips_ioctl.h>
-#include <sys/thread2.h>
 
 static void
 ips_ioctl_finish(ips_command_t *command)

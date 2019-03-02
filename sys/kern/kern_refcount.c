@@ -48,8 +48,6 @@
 
 #include <machine/cpufunc.h>
 
-#include <sys/thread2.h>
-
 /*
  * Helper function to wait for a reference count to become zero.
  * We set REFCNTF_WAITING and sleep if the reference count is not zero.

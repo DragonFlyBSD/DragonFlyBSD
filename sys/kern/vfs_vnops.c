@@ -52,7 +52,6 @@
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
 
-#include <sys/thread2.h>
 #include <sys/mplock2.h>
 
 static int vn_closefile (struct file *fp);
