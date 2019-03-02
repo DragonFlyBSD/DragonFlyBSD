@@ -24,10 +24,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/show.c,v 1.14 2006/06/22 22:22:32 marcel Exp $
- * $DragonFly: src/sbin/gpt/show.c,v 1.3 2007/06/17 08:34:59 dillon Exp $
  */
 
 #include <sys/types.h>
+#include <sys/diskmbr.h>
 
 #include <err.h>
 #include <stddef.h>
@@ -100,6 +100,9 @@ show(int fd __unused)
 		putchar(' ');
 		putchar(' ');
 		switch (m->map_type) {
+		case MAP_TYPE_UNUSED:
+			printf("Unused");
+			break;
 		case MAP_TYPE_MBR:
 			if (m->map_start != 0)
 				printf("Extended ");
@@ -130,7 +133,9 @@ show(int fd __unused)
 				if (m->map_start == p->map_start + start)
 					break;
 			}
-			printf("%d", mbr->mbr_part[i].part_typ);
+			printf("%d%s", mbr->mbr_part[i].part_typ,
+			    mbr->mbr_part[i].part_flag == 0x80 ?
+			    " (active)" : "");
 			break;
 		case MAP_TYPE_GPT_PART:
 			printf("GPT part ");
@@ -145,6 +150,13 @@ show(int fd __unused)
 			break;
 		case MAP_TYPE_PMBR:
 			printf("PMBR");
+			mbr = m->map_data;
+			if (mbr->mbr_part[0].part_typ == DOSPTYP_PMBR &&
+			    mbr->mbr_part[0].part_flag == 0x80)
+				printf(" (active)");
+			break;
+		default:
+			printf("Unkown %#x", m->map_type);
 			break;
 		}
 		putchar('\n');
