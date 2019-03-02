@@ -68,10 +68,6 @@
 #include <sys/condvar.h>
 #include <sys/taskqueue.h>
 
-#ifndef KOBJMETHOD_END
-#define KOBJMETHOD_END	{ NULL, NULL }
-#endif
-
 struct pcm_channel;
 struct pcm_feeder;
 struct snd_dbuf;

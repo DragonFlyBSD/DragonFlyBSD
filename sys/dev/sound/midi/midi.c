@@ -68,10 +68,6 @@ __FBSDID("$FreeBSD: head/sys/dev/sound/midi/midi.c 227309 2011-11-07 15:43:11Z e
 #include "synth_if.h"
 MALLOC_DEFINE(M_MIDI, "midi buffers", "Midi data allocation area");
 
-#ifndef KOBJMETHOD_END
-#define KOBJMETHOD_END	{ NULL, NULL }
-#endif
-
 #define PCMMKMINOR(u, d, c) ((((c) & 0xff) << 16) | (((u) & 0x0f) << 4) | ((d) & 0x0f))
 #define MIDIMKMINOR(u, d, c) PCMMKMINOR(u, d, c)
 
