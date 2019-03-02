@@ -1,11 +1,7 @@
 
 # gcc80 is now the default.  See sys.mk for WORLD_ALTCOMPILER default.
 #
-# (duplicate WORLD_CCVER for ALTCOMPILER == all is already built and
-#  takes no extra time)
-#
 SUBDIR+= gcc80
-SUBDIR+= ${WORLD_CCVER}
 
 .if !defined(NO_ALTCOMPILER)
 . if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47})
