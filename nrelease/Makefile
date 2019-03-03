@@ -103,15 +103,15 @@ ROOTSKELS+=		${.CURDIR}/gui
 #########################################################################
 
 release:	check clean buildworld1 buildkernel1 \
-		buildiso srcs customizeiso mkiso mkimg
+		buildiso customizeiso srcs mkiso mkimg
 
 quickrel:	check clean buildworld2 buildkernel2 \
-		buildiso srcs customizeiso mkiso mkimg
+		buildiso customizeiso srcs mkiso mkimg
 
 realquickrel:	check clean \
-		buildiso srcs customizeiso mkiso mkimg
+		buildiso customizeiso srcs mkiso mkimg
 
-restartpkgs:	check customizeiso mkiso mkimg
+restartpkgs:	check customizeiso srcs mkiso mkimg
 
 quick:		quickrel
 
@@ -177,32 +177,24 @@ buildiso:
 		-p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
 
-# The GUI build includes the ports tree (~1G+) while the nominal release
-# build does not.
-#
-# The GUI build includes full sources while the nominal release build
-# only includes kernel sources (~27MB).
+# The GUI build includes the full system source (~500 MB) and the full
+# dports tree (~250 MB).  The nominal release build only includes the
+# kernel source (~30 MB).
 #
 srcs:
+	rm -rf ${ISOROOT}/usr/dports
+	rm -f ${ISOROOT}/usr/src-sys.tar.bz2
 .if !defined(WITHOUT_SRCS)
 .if make(gui)
-	rm -f ${ISOROOT}/usr/src-sys.tgz
-	rm -f ${ISOROOT}/usr/src-sys.tar.bz2
-.if !empty(DPORTS_PACKAGES)
-	cd ${ISOROOT}/usr && make dports-create GITURL_DPORTS=${GITURL_DPORTS}
-	# NOTE: Adding the git gc --aggressive helps by significantly
-	#	reducing the disk space required.
-	#
-	cd ${ISOROOT}/usr/dports && git gc --aggressive
-.endif
-	cd ${ISOROOT}/usr && make src-create GITURL_SRC=${GITURL_SRC}
-	# XXX: git gc --aggressive
+	( cd ${ISOROOT}/usr && \
+		make dports-create-shallow GITURL_DPORTS=${GITURL_DPORTS} )
+	( cd ${ISOROOT}/usr && \
+		make src-create-shallow GITURL_SRC=${GITURL_SRC} )
 .else
-	rm -f ${ISOROOT}/usr/src-sys.tgz
-	rm -f ${ISOROOT}/usr/src-sys.tar.bz2
-	cd ${.CURDIR}/.. && tar --exclude .git -s '/^\./src/' \
-		-cf - ./Makefile ./Makefile.inc1 ./sys | \
-		bzip2 -9 > ${ISOROOT}/usr/src-sys.tar.bz2
+	( cd ${.CURDIR}/.. && \
+		tar --exclude .git -s '/^\./src/' -cf - \
+			./Makefile ./Makefile.inc1 ./sys | \
+			bzip2 -9 > ${ISOROOT}/usr/src-sys.tar.bz2 )
 .endif
 .endif
 
