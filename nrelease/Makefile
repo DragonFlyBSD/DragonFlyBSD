@@ -103,15 +103,15 @@ ROOTSKELS+=		${.CURDIR}/gui
 #########################################################################
 
 release:	check clean buildworld1 buildkernel1 \
-		buildiso customizeiso srcs mkiso mkimg
+		buildiso customizeiso pkgs srcs mkiso mkimg
 
 quickrel:	check clean buildworld2 buildkernel2 \
-		buildiso customizeiso srcs mkiso mkimg
+		buildiso customizeiso pkgs srcs mkiso mkimg
 
 realquickrel:	check clean \
-		buildiso customizeiso srcs mkiso mkimg
+		buildiso customizeiso pkgs srcs mkiso mkimg
 
-restartpkgs:	check customizeiso srcs mkiso mkimg
+restartpkgs:	check pkgs srcs mkiso mkimg
 
 quick:		quickrel
 
@@ -176,6 +176,7 @@ buildiso:
 	mtree ${MTREE_FSCHG} -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist \
 		-p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
+	${CHROOT_CMD} "rcrestart ldconfig"
 
 # The GUI build includes the full system source (~500 MB) and the full
 # dports tree (~250 MB).  The nominal release build only includes the
@@ -198,8 +199,7 @@ srcs:
 .endif
 .endif
 
-# Customize the ISO by copying rootskels in reverse priority order,
-# building packages, and doing other post-install tasks.
+# Customize the ISO by copying rootskels in reverse priority order.
 #
 customizeiso:
 	# Copy the rootskels.  Allow sources to be owned by someone other
@@ -221,62 +221,60 @@ customizeiso:
 		     periodic/monthly/Makefile
 	cp -R ${.CURDIR}/../etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
 .endfor
-	#
-	# Setup some things & mount dports tree.  Use defensive umounts and
-	# rm -rf's to allow restarts.  Allow /usr/dports to be read-only.
-	#
-	-@umount ${ISOROOT}/dev
-	mount_null /dev ${ISOROOT}/dev
+
+# Install packages by building from dports.
+#
+pkgs:
 .if !empty(DPORTS_PACKAGES)
 	cp /etc/resolv.conf ${ISOROOT}/etc
-	${CHROOT_CMD} "ldconfig -elf /lib /usr/lib /usr/lib/gcc*"
+	-@umount ${ISOROOT}/dev
+	mount_null /dev ${ISOROOT}/dev
+
 	-@umount ${ISOROOT}/usr/distfiles
 	-@umount ${ISOROOT}/usr/dports
 	rm -rf ${ISOROOT}/usr/obj/dports
-	#
-	# Mount /usr/dports, make sure /usr/distfiles is writable.
-	# Make /usr/dports read-only for safety, else a failed umount and
-	# our rm -rf will do bad things.
-	#
+
 	mkdir -p ${ISOROOT}/usr/dports
 	mkdir -p ${ISOROOT}/usr/distfiles
+
+	# Mount /usr/dports read-only for safety, else a failed umount
+	# and our rm -rf will do bad things.
 	mount_null -o ro ${DPORTS_PATH} ${ISOROOT}/usr/dports
+
+	# Make sure /usr/distfiles is writable
 	cp /etc/shells ${ISOROOT}/usr/distfiles/.test > /dev/null 2>&1 \
 	    || mount_null ${ISODIR}/distfiles ${ISOROOT}/usr/distfiles
-	#
-	# Build and install packages, skip packages already installed
-	#
+
 .for PKG in ${DPORTS_PACKAGES}
 	${CHROOT_CMD} "cd /usr/dports/${PKG} && make ${DPORTS_OPTIONS} install"
 .endfor
 .for PKG in ${DPORTS_PACKAGES}
 	${CHROOT_CMD} "cd /usr/dports/${PKG} && make ${DPORTS_OPTIONS} clean"
 .endfor
-	#
-	# Remove packages which nothing depends on, add a whatis database
-	# for dports manual pages, create an initial locate database and
-	# clean up
-	#
+
 	${CHROOT_CMD} "yes | pkg autoremove"
-	${CHROOT_CMD} "makewhatis /usr/local/man"
+
 	-umount ${ISOROOT}/usr/distfiles
 	umount ${ISOROOT}/usr/dports
+
 	rm -rf ${ISOROOT}/usr/dports
-	rm -rf ${ISOROOT}/usr/obj/dports
 	rm -rf ${ISOROOT}/usr/distfiles
-	rm -f ${ISOROOT}/etc/resolv.conf
-.endif
-	#
-	# Finally, update the locate(8) database, allow ISODIR
+	rm -rf ${ISOROOT}/usr/obj/dports
+
+	# Update the locate(8) and whatis(1) databases, allow ISODIR
 	# to be on tmpfs (fails to create locate database then)
 	#
 	-${CHROOT_CMD} /etc/periodic/weekly/310.locate
+	-${CHROOT_CMD} /etc/periodic/weekly/320.whatis
+
 	umount ${ISOROOT}/dev
-	#
+	rm -f ${ISOROOT}/etc/resolv.conf
+
 	# Recopy files that dports may have updated in /etc into /etc.hdd
 	#
 	cpdup ${ISOROOT}/etc/shells ${ISOROOT}/etc.hdd/shells
 	cpdup ${ISOROOT}/etc/group ${ISOROOT}/etc.hdd/group
+.endif
 
 mkiso:
 	if [ ! -d ${IMGMNT} ]; then mkdir -p ${IMGMNT}; fi
@@ -411,4 +409,4 @@ help all:
 .PHONY: quick realquick
 .PHONY: check buildworld1 buildworld2
 .PHONY: buildkernel1 buildkernel2 buildiso customizeiso mkiso mkimg
-.PHONY: clean realclean help all srcs
+.PHONY: clean realclean help all srcs pkgs
