@@ -31,6 +31,7 @@
 #define	_LINUX_KERNEL_H_
 
 #include <stdarg.h>
+#include <linux/stddef.h>
 #include <linux/types.h>
 #include <linux/compiler.h>
 #include <linux/bitops.h>

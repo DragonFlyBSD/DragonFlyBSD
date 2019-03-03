@@ -29,6 +29,10 @@
 #ifndef	_LINUX_RBTREE_H_
 #define	_LINUX_RBTREE_H_
 
+#include <linux/kernel.h>
+#include <linux/stddef.h>
+#include <linux/rcupdate.h>
+
 #include <sys/tree.h>
 
 struct rb_node {
@@ -105,7 +109,6 @@ rb_replace_node(struct rb_node *victim, struct rb_node *new,
 	*new = *victim;
 }
 
-#undef RB_ROOT
-#define RB_ROOT		(struct rb_root) { NULL }
+#define LINUX_RB_ROOT		(struct rb_root) { NULL }
 
 #endif	/* _LINUX_RBTREE_H_ */

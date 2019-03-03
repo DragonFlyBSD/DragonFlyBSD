@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2018-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,7 +28,9 @@
 #define _LINUX_KMOD_H_
 
 #include <linux/gfp.h>
+#include <linux/stddef.h>
 #include <linux/errno.h>
 #include <linux/compiler.h>
+#include <linux/workqueue.h>
 
 #endif	/* _LINUX_KMOD_H_ */

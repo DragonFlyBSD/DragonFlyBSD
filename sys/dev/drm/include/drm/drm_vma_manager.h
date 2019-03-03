@@ -134,7 +134,7 @@ static inline void drm_vma_offset_unlock_lookup(struct drm_vma_offset_manager *m
 static inline void drm_vma_node_reset(struct drm_vma_offset_node *node)
 {
 	memset(node, 0, sizeof(*node));
-	node->vm_files = RB_ROOT;
+	node->vm_files = LINUX_RB_ROOT;
 	lockinit(&node->vm_lock, "vmlock", 0, LK_CANRECURSE);
 }
 

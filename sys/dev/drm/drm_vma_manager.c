@@ -85,7 +85,7 @@ void drm_vma_offset_manager_init(struct drm_vma_offset_manager *mgr,
 				 unsigned long page_offset, unsigned long size)
 {
 	lockinit(&mgr->vm_lock, "drmvml", 0, LK_CANRECURSE);
-	mgr->vm_addr_space_rb = RB_ROOT;
+	mgr->vm_addr_space_rb = LINUX_RB_ROOT;
 	drm_mm_init(&mgr->vm_addr_space_mm, page_offset, size);
 }
 EXPORT_SYMBOL(drm_vma_offset_manager_init);

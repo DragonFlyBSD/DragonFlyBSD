@@ -30,12 +30,6 @@
 #include <sys/param.h>
 #include <linux/rbtree.h>
 
-/* Undo Linux compat changes. */
-#undef RB_ROOT
-#undef file
-#undef cdev
-#define	RB_ROOT(head)	(head)->rbh_root
-
 int
 panic_cmp(struct rb_node *one, struct rb_node *two)
 {

@@ -3,7 +3,7 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013-2016 Mellanox Technologies, Ltd.
- * Copyright (c) 2015-2017 François Tigeot
+ * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -36,6 +36,8 @@
  * definition prior to the undef.
  */
 #include <linux/types.h>
+#include <linux/stddef.h>
+#include <linux/kernel.h>
 
 #include <sys/param.h>
 #include <sys/kernel.h>

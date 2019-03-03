@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014 Imre Vadász
- * Copyright (c) 2014-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2014-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,6 +29,7 @@
 #define _LINUX_WAIT_H_
 
 #include <linux/list.h>
+#include <linux/stddef.h>
 #include <linux/spinlock.h>
 #include <asm/current.h>
 
