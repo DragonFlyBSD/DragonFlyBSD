@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2015, Intel Corporation 
+  Copyright (c) 2001-2016, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -167,7 +167,6 @@ bool e1000_is_mphy_ready(struct e1000_hw *hw);
 #define GS40G_MAC_LB			0x4140
 #define GS40G_MAC_SPEED_1G		0X0006
 #define GS40G_COPPER_SPEC		0x0010
-#define GS40G_CS_POWER_DOWN		0x0002
 
 #define HV_INTC_FC_PAGE_START		768
 #define I82578_ADDR_REG			29
@@ -203,6 +202,13 @@ bool e1000_is_mphy_ready(struct e1000_hw *hw);
 #define E1000_82580_PM_SPD		0x0001 /* Smart Power Down */
 #define E1000_82580_PM_D0_LPLU		0x0002 /* For D0a states */
 #define E1000_82580_PM_D3_LPLU		0x0004 /* For all other states */
+#define E1000_82580_PM_GO_LINKD		0x0020 /* Go Link Disconnect */
+
+#define E1000_MPHY_DIS_ACCESS		0x80000000 /* disable_access bit */
+#define E1000_MPHY_ENA_ACCESS		0x40000000 /* enable_access bit */
+#define E1000_MPHY_BUSY			0x00010000 /* busy bit */
+#define E1000_MPHY_ADDRESS_FNC_OVERRIDE	0x20000000 /* fnc_override bit */
+#define E1000_MPHY_ADDRESS_MASK		0x0000FFFF /* address mask */
 
 /* BM PHY Copper Specific Control 1 */
 #define BM_CS_CTRL1			16
@@ -221,14 +227,6 @@ bool e1000_is_mphy_ready(struct e1000_hw *hw);
 #define HV_M_STATUS_SPEED_1000		0x0200
 #define HV_M_STATUS_SPEED_100		0x0100
 #define HV_M_STATUS_LINK_UP		0x0040
-
-#define E1000_82580_PM_GO_LINKD		0x0020 /* Go Link Disconnect */
-
-#define E1000_MPHY_DIS_ACCESS		0x80000000 /* disable_access bit */
-#define E1000_MPHY_ENA_ACCESS		0x40000000 /* enable_access bit */
-#define E1000_MPHY_BUSY			0x00010000 /* busy bit */
-#define E1000_MPHY_ADDRESS_FNC_OVERRIDE	0x20000000 /* fnc_override bit */
-#define E1000_MPHY_ADDRESS_MASK		0x0000FFFF /* address mask */
 
 #define IGP01E1000_PHY_PCS_INIT_REG	0x00B4
 #define IGP01E1000_PHY_POLARITY_MASK	0x0078
@@ -277,17 +275,6 @@ bool e1000_is_mphy_ready(struct e1000_hw *hw);
 #define E1000_KMRNCTRLSTA_K1_CONFIG	0x7
 #define E1000_KMRNCTRLSTA_K1_ENABLE	0x0002 /* enable K1 */
 #define E1000_KMRNCTRLSTA_HD_CTRL	0x10   /* Kumeran HD Control */
-#if !defined(EXTERNAL_RELEASE) || defined(ULP_IN_D0_SUPPORT)
-#define E1000_KMRNCTRLSTA_K0S_CTRL	0x1E	/* Kumeran K0s Control */
-#define E1000_KMRNCTRLSTA_K0S_CTRL_ENTRY_LTNCY_SHIFT	0
-#define E1000_KMRNCTRLSTA_K0S_CTRL_MIN_TIME_SHIFT	4
-#define E1000_KMRNCTRLSTA_K0S_CTRL_ENTRY_LTNCY_MASK	\
-	(3 << E1000_KMRNCTRLSTA_K0S_CTRL_ENTRY_LTNCY_SHIFT)
-#define E1000_KMRNCTRLSTA_K0S_CTRL_MIN_TIME_MASK \
-	(7 << E1000_KMRNCTRLSTA_K0S_CTRL_MIN_TIME_SHIFT)
-#define E1000_KMRNCTRLSTA_OP_MODES	0x1F   /* Kumeran Modes of Operation */
-#define E1000_KMRNCTRLSTA_OP_MODES_LSC2CSC	0x0002 /* change LSC to CSC */
-#endif /* !EXTERNAL_RELEASE || ULP_IN_D0_SUPPORT */
 
 #define IFE_PHY_EXTENDED_STATUS_CONTROL	0x10
 #define IFE_PHY_SPECIAL_CONTROL		0x11 /* 100BaseTx PHY Special Ctrl */

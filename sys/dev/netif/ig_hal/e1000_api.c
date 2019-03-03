@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2015, Intel Corporation 
+  Copyright (c) 2001-2016, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -310,7 +310,13 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 	case E1000_DEV_ID_PCH_SPT_I219_LM5:
 	case E1000_DEV_ID_PCH_SPT_I219_V5:
 		mac->type = e1000_pch_spt;
- 		break;
+		break;
+	case E1000_DEV_ID_PCH_CNP_I219_LM6:
+	case E1000_DEV_ID_PCH_CNP_I219_V6:
+	case E1000_DEV_ID_PCH_CNP_I219_LM7:
+	case E1000_DEV_ID_PCH_CNP_I219_V7:
+		mac->type = e1000_pch_cnp;
+		break;
 	case E1000_DEV_ID_82575EB_COPPER:
 	case E1000_DEV_ID_82575EB_FIBER_SERDES:
 	case E1000_DEV_ID_82575GB_QUAD_COPPER:
@@ -462,6 +468,7 @@ s32 e1000_setup_init_funcs(struct e1000_hw *hw, bool init_device)
 	case e1000_pch2lan:
 	case e1000_pch_lpt:
 	case e1000_pch_spt:
+	case e1000_pch_cnp:
 		e1000_init_function_pointers_ich8lan(hw);
 		break;
 	case e1000_82575:
@@ -1226,21 +1233,6 @@ s32 e1000_read_pba_string(struct e1000_hw *hw, u8 *pba_num, u32 pba_num_size)
 s32 e1000_read_pba_length(struct e1000_hw *hw, u32 *pba_num_size)
 {
 	return e1000_read_pba_length_generic(hw, pba_num_size);
-}
-
-/**
- *  e1000_read_pba_num - Read device part number
- *  @hw: pointer to the HW structure
- *  @pba_num: pointer to device part number
- *
- *  Reads the product board assembly (PBA) number from the EEPROM and stores
- *  the value in pba_num.
- *  Currently no func pointer exists and all implementations are handled in the
- *  generic version of this function.
- **/
-s32 e1000_read_pba_num(struct e1000_hw *hw, u32 *pba_num)
-{
-	return e1000_read_pba_num_generic(hw, pba_num);
 }
 
 /**

@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2015, Intel Corporation 
+  Copyright (c) 2001-2016, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -930,40 +930,6 @@ s32 e1000_read_pba_length_generic(struct e1000_hw *hw, u32 *pba_num_size)
 	return E1000_SUCCESS;
 }
 
-/**
- *  e1000_read_pba_num_generic - Read device part number
- *  @hw: pointer to the HW structure
- *  @pba_num: pointer to device part number
- *
- *  Reads the product board assembly (PBA) number from the EEPROM and stores
- *  the value in pba_num.
- **/
-s32 e1000_read_pba_num_generic(struct e1000_hw *hw, u32 *pba_num)
-{
-	s32 ret_val;
-	u16 nvm_data;
-
-	DEBUGFUNC("e1000_read_pba_num_generic");
-
-	ret_val = hw->nvm.ops.read(hw, NVM_PBA_OFFSET_0, 1, &nvm_data);
-	if (ret_val) {
-		DEBUGOUT("NVM Read Error\n");
-		return ret_val;
-	} else if (nvm_data == NVM_PBA_PTR_GUARD) {
-		DEBUGOUT("NVM Not Supported\n");
-		return -E1000_NOT_IMPLEMENTED;
-	}
-	*pba_num = (u32)(nvm_data << 16);
-
-	ret_val = hw->nvm.ops.read(hw, NVM_PBA_OFFSET_1, 1, &nvm_data);
-	if (ret_val) {
-		DEBUGOUT("NVM Read Error\n");
-		return ret_val;
-	}
-	*pba_num |= nvm_data;
-
-	return E1000_SUCCESS;
-}
 
 /**
  *  e1000_read_pba_raw
@@ -1291,6 +1257,7 @@ void e1000_get_fw_version(struct e1000_hw *hw, struct e1000_fw_version *fw_vers)
 	case e1000_82575:
 	case e1000_82576:
 	case e1000_82580:
+	case e1000_i354:
 		hw->nvm.ops.read(hw, NVM_ETRACK_HIWORD, 1, &etrack_test);
 		/* Use this format, unless EETRACK ID exists,
 		 * then use alternate format
@@ -1376,5 +1343,4 @@ etrack_id:
 				     eeprom_verl;
 	}
 }
-
 

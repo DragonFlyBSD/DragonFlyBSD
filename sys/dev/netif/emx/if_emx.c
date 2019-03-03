@@ -180,6 +180,10 @@ static const struct emx_device {
 	EMX_DEVICE(PCH_SPT_I219_V4),
 	EMX_DEVICE(PCH_SPT_I219_LM5),
 	EMX_DEVICE(PCH_SPT_I219_V5),
+	EMX_DEVICE(PCH_CNP_I219_LM6),
+	EMX_DEVICE(PCH_CNP_I219_V6),
+	EMX_DEVICE(PCH_CNP_I219_LM7),
+	EMX_DEVICE(PCH_CNP_I219_V7),
 
 	/* required last entry */
 	EMX_DEVICE_NULL
@@ -668,7 +672,7 @@ again:
 		 * XXX this goof is actually not used.
 		 */
 		sc->hw.flash_address = (uint8_t *)sc->flash;
-	} else if (sc->hw.mac.type == e1000_pch_spt) {
+	} else if (sc->hw.mac.type >= e1000_pch_spt) {
 		/*
 		 * In the new SPT device flash is not a seperate BAR,
 		 * rather it is also in BAR0, so use the same tag and
@@ -741,6 +745,7 @@ again:
 	    sc->hw.mac.type == e1000_80003es2lan ||
 	    sc->hw.mac.type == e1000_pch_lpt ||
 	    sc->hw.mac.type == e1000_pch_spt ||
+	    sc->hw.mac.type == e1000_pch_cnp ||
 	    sc->hw.mac.type == e1000_82574)
 		tx_ring_max = EMX_NTX_RING;
 	ring_cnt = device_getenv_int(dev, "txr", emx_txr);
@@ -829,6 +834,14 @@ again:
 			e1000_read_nvm(&sc->hw,
 			    NVM_INIT_CONTROL3_PORT_A, 1, &eeprom_data);
 		}
+		break;
+
+	case e1000_pch_lpt:
+	case e1000_pch_spt:
+	case e1000_pch_cnp:
+		apme_mask = E1000_WUC_APME;
+		sc->flags |= EMX_FLAG_HAS_AMT;
+		eeprom_data = E1000_READ_REG(&sc->hw, E1000_WUC);
 		break;
 
 	default:
@@ -1152,6 +1165,7 @@ emx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		case e1000_82574:
 		case e1000_pch_lpt:
 		case e1000_pch_spt:
+		case e1000_pch_cnp:
 		case e1000_80003es2lan:
 			max_frame_size = 9234;
 			break;
@@ -1904,7 +1918,7 @@ emx_update_link_status(struct emx_softc *sc)
 	switch (hw->phy.media_type) {
 	case e1000_media_type_copper:
 		if (hw->mac.get_link_status) {
-			if (hw->mac.type == e1000_pch_spt)
+			if (hw->mac.type >= e1000_pch_spt)
 				msec_delay(50);
 			/* Do the work to read phy */
 			e1000_check_for_link(hw);
@@ -2004,7 +2018,7 @@ emx_stop(struct emx_softc *sc)
 	}
 
 	/* I219 needs some special flushing to avoid hangs */
-	if (sc->hw.mac.type == e1000_pch_spt)
+	if (sc->hw.mac.type >= e1000_pch_spt)
 		emx_flush_txrx_ring(sc);
 
 	/*
@@ -2069,6 +2083,7 @@ emx_reset(struct emx_softc *sc)
 
 	case e1000_pch_lpt:
 	case e1000_pch_spt:
+	case e1000_pch_cnp:
  		pba = E1000_PBA_26K;
  		break;
 
@@ -2109,7 +2124,8 @@ emx_reset(struct emx_softc *sc)
 	 * Device specific overrides/settings
 	 */
 	if (sc->hw.mac.type == e1000_pch_lpt ||
-	    sc->hw.mac.type == e1000_pch_spt) {
+	    sc->hw.mac.type == e1000_pch_spt ||
+	    sc->hw.mac.type == e1000_pch_cnp) {
 		sc->hw.fc.high_water = 0x5C20;
 		sc->hw.fc.low_water = 0x5048;
 		sc->hw.fc.pause_time = 0x0650;
@@ -2124,7 +2140,7 @@ emx_reset(struct emx_softc *sc)
 	}
 
 	/* I219 needs some special flushing to avoid hangs */
-	if (sc->hw.mac.type == e1000_pch_spt)
+	if (sc->hw.mac.type >= e1000_pch_spt)
 		emx_flush_txrx_ring(sc);
 
 	/* Issue a global reset */
@@ -2399,7 +2415,8 @@ emx_create_tx_ring(struct emx_txdata *tdata)
 	if (tdata->sc->hw.mac.type == e1000_82571 ||
 	    tdata->sc->hw.mac.type == e1000_82572 ||
 	    tdata->sc->hw.mac.type == e1000_pch_lpt ||
-	    tdata->sc->hw.mac.type == e1000_pch_spt)
+	    tdata->sc->hw.mac.type == e1000_pch_spt ||
+	    tdata->sc->hw.mac.type == e1000_pch_cnp)
 		tdata->tx_flags |= EMX_TXFLAG_TSO_PULLEX;
 
 	return (0);
@@ -2536,7 +2553,7 @@ emx_init_tx_unit(struct emx_softc *sc)
 		tarc = E1000_READ_REG(&sc->hw, E1000_TARC(1));
 		tarc &= ~(1 << 28);
 		E1000_WRITE_REG(&sc->hw, E1000_TARC(1), tarc);
-	} else if (sc->hw.mac.type == e1000_pch_spt) {
+	} else if (sc->hw.mac.type >= e1000_pch_spt) {
 		uint32_t reg;
 
 		reg = E1000_READ_REG(&sc->hw, E1000_IOSFPC);

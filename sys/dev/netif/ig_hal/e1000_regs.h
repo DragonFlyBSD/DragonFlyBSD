@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2015, Intel Corporation 
+  Copyright (c) 2001-2016, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -68,7 +68,6 @@
 #define E1000_FEXTNVM9	0x5BB4  /* Future Extended NVM 9 - RW */
 #define E1000_FEXTNVM11	0x5BBC  /* Future Extended NVM 11 - RW */
 #define E1000_PCIEANACFG	0x00F18 /* PCIE Analog Config */
-
 #define E1000_FCT	0x00030  /* Flow Control Type - RW */
 #define E1000_CONNSW	0x00034  /* Copper/Fiber switch control - RW */
 #define E1000_VET	0x00038  /* VLAN Ether Type - RW */
@@ -113,9 +112,9 @@
 #define E1000_PBECCSTS	0x0100C  /* Packet Buffer ECC Status - RW */
 #define E1000_IOSFPC	0x00F28  /* TX corrupted data  */
 #define E1000_EEMNGCTL	0x01010  /* MNG EEprom Control */
+#define E1000_FLASHT	0x01028  /* FLASH Timer Register */
 #define E1000_EEMNGCTL_I210	0x01010  /* i210 MNG EEprom Mode Control */
 #define E1000_EEARBC	0x01024  /* EEPROM Auto Read Bus Control */
-#define E1000_FLASHT	0x01028  /* FLASH Timer Register */
 #define E1000_EEARBC_I210	0x12024 /* EEPROM Auto Read Bus Control */
 #define E1000_EEWR	0x0102C  /* EEPROM Write Register - RW */
 #define E1000_FLSWCTL	0x01030  /* FLASH control register */
@@ -542,15 +541,6 @@
 #define E1000_IMIREXT(_i)	(0x05AA0 + ((_i) * 4)) /* Immediate INTR Ext*/
 #define E1000_IMIRVP		0x05AC0 /* Immediate INT Rx VLAN Priority -RW */
 #define E1000_MSIXBM(_i)	(0x01600 + ((_i) * 4)) /* MSI-X Alloc Reg -RW */
-/* MSI-X Table entry addr low reg - RW */
-#define E1000_MSIXTADD(_i)	(0x0C000 + ((_i) * 0x10))
-/* MSI-X Table entry addr upper reg - RW */
-#define E1000_MSIXTUADD(_i)	(0x0C004 + ((_i) * 0x10))
-/* MSI-X Table entry message reg - RW */
-#define E1000_MSIXTMSG(_i)	(0x0C008 + ((_i) * 0x10))
-/* MSI-X Table entry vector ctrl reg - RW */
-#define E1000_MSIXVCTRL(_i)	(0x0C00C + ((_i) * 0x10))
-#define E1000_MSIXPBA	0x0E000 /* MSI-X Pending bit array */
 #define E1000_RETA(_i)	(0x05C00 + ((_i) * 4)) /* Redirection Table - RW */
 #define E1000_RSSRK(_i)	(0x05C80 + ((_i) * 4)) /* RSS Random Key - RW */
 #define E1000_RSSIM	0x05864 /* RSS Interrupt Mask */

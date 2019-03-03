@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2015, Intel Corporation 
+  Copyright (c) 2001-2016, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -410,14 +410,13 @@ s32 e1000_check_alt_mac_addr_generic(struct e1000_hw *hw)
 	if (ret_val)
 		return ret_val;
 
-	/* not supported on older hardware or 82573 */
-	if ((hw->mac.type < e1000_82571) || (hw->mac.type == e1000_82573))
-		return E1000_SUCCESS;
-
-	/* Alternate MAC address is handled by the option ROM for 82580
+	/* not supported on older hardware or 82573.
+	 *
+	 * Alternate MAC address is handled by the option ROM for 82580
 	 * and newer. SW support not required.
 	 */
-	if (hw->mac.type >= e1000_82580)
+	if ((hw->mac.type < e1000_82571) || (hw->mac.type == e1000_82573) ||
+	    hw->mac.type >= e1000_82580)
 		return E1000_SUCCESS;
 
 	ret_val = hw->nvm.ops.read(hw, NVM_ALT_MAC_ADDR_PTR, 1,
@@ -2098,7 +2097,8 @@ s32 e1000_disable_pcie_master_generic(struct e1000_hw *hw)
 
 	while (timeout) {
 		if (!(E1000_READ_REG(hw, E1000_STATUS) &
-		      E1000_STATUS_GIO_MASTER_ENABLE))
+		      E1000_STATUS_GIO_MASTER_ENABLE) ||
+				E1000_REMOVED(hw->hw_addr))
 			break;
 		usec_delay(100);
 		timeout--;

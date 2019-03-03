@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2013, Intel Corporation 
+  Copyright (c) 2001-2016, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -101,7 +101,6 @@ static s32 e1000_validate_nvm_checksum_with_offset(struct e1000_hw *hw,
 						   u16 offset);
 static s32 e1000_validate_nvm_checksum_i350(struct e1000_hw *hw);
 static s32 e1000_update_nvm_checksum_i350(struct e1000_hw *hw);
-static void e1000_write_vfta_i350(struct e1000_hw *hw, u32 offset, u32 value);
 static void e1000_clear_vfta_i350(struct e1000_hw *hw);
 
 static void e1000_i2c_start(struct e1000_hw *hw);

@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2013, Intel Corporation 
+  Copyright (c) 2001-2016, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -418,8 +418,10 @@ void e1000_update_mc_addr_list_vf(struct e1000_hw *hw,
 
 	DEBUGOUT1("MC Addr Count = %d\n", mc_addr_count);
 
-	if (mc_addr_count > 30)
+	if (mc_addr_count > 30) {
+		msgbuf[0] |= E1000_VF_SET_MULTICAST_OVERFLOW;
 		mc_addr_count = 30;
+	}
 
 	msgbuf[0] = E1000_VF_SET_MULTICAST;
 	msgbuf[0] |= mc_addr_count << E1000_VT_MSGINFO_SHIFT;

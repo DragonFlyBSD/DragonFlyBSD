@@ -251,6 +251,10 @@ static const struct em_vendor_info em_vendor_info_array[] = {
 	EM_EMX_DEVICE(PCH_SPT_I219_V4),
 	EM_EMX_DEVICE(PCH_SPT_I219_LM5),
 	EM_EMX_DEVICE(PCH_SPT_I219_V5),
+	EM_EMX_DEVICE(PCH_CNP_I219_LM6),
+	EM_EMX_DEVICE(PCH_CNP_I219_V6),
+	EM_EMX_DEVICE(PCH_CNP_I219_LM7),
+	EM_EMX_DEVICE(PCH_CNP_I219_V7),
 
 	/* required last entry */
 	EM_DEVICE_NULL
@@ -569,7 +573,7 @@ em_attach(device_t dev)
 		 * XXX this goof is actually not used.
 		 */
 		adapter->hw.flash_address = (uint8_t *)adapter->flash;
-	} else if (adapter->hw.mac.type == e1000_pch_spt) {
+	} else if (adapter->hw.mac.type >= e1000_pch_spt) {
 		/*
 		 * In the new SPT device flash is not a seperate BAR,
 		 * rather it is also in BAR0, so use the same tag and
@@ -587,6 +591,7 @@ em_attach(device_t dev)
 	case e1000_82572:
 	case e1000_pch_lpt:
 	case e1000_pch_spt:
+	case e1000_pch_cnp:
 		/*
 		 * Pullup extra 4bytes into the first data segment for
 		 * TSO, see:
@@ -835,6 +840,9 @@ em_attach(device_t dev)
 	case e1000_ich10lan:
 	case e1000_pchlan:
 	case e1000_pch2lan:
+	case e1000_pch_lpt:
+	case e1000_pch_spt:
+	case e1000_pch_cnp:
 		apme_mask = E1000_WUC_APME;
 		adapter->flags |= EM_FLAG_HAS_AMT;
 		eeprom_data = E1000_READ_REG(&adapter->hw, E1000_WUC);
@@ -1214,6 +1222,7 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		case e1000_pch2lan:
 		case e1000_pch_lpt:
 		case e1000_pch_spt:
+		case e1000_pch_cnp:
 		case e1000_82574:
 		case e1000_82583:
 		case e1000_80003es2lan:
@@ -2218,7 +2227,7 @@ em_update_link_status(struct adapter *adapter)
 	switch (hw->phy.media_type) {
 	case e1000_media_type_copper:
 		if (hw->mac.get_link_status) {
-			if (hw->mac.type == e1000_pch_spt)
+			if (hw->mac.type >= e1000_pch_spt)
 				msec_delay(50);
 			/* Do the work to read phy */
 			e1000_check_for_link(hw);
@@ -2318,7 +2327,7 @@ em_stop(struct adapter *adapter)
 	callout_stop(&adapter->tx_gc_timer);
 
 	/* I219 needs some special flushing to avoid hangs */
-	if (adapter->hw.mac.type == e1000_pch_spt)
+	if (adapter->hw.mac.type >= e1000_pch_spt)
 		em_flush_txrx_ring(adapter);
 
 	e1000_reset_hw(&adapter->hw);
@@ -2598,6 +2607,7 @@ em_reset(struct adapter *adapter)
 	case e1000_pch2lan:
 	case e1000_pch_lpt:
 	case e1000_pch_spt:
+	case e1000_pch_cnp:
 		pba = E1000_PBA_26K;
 		break;
 
@@ -2663,6 +2673,7 @@ em_reset(struct adapter *adapter)
 	case e1000_pch2lan:
 	case e1000_pch_lpt:
 	case e1000_pch_spt:
+	case e1000_pch_cnp:
 		adapter->hw.fc.high_water = 0x5C20;
 		adapter->hw.fc.low_water = 0x5048;
 		adapter->hw.fc.pause_time = 0x0650;
@@ -2690,7 +2701,7 @@ em_reset(struct adapter *adapter)
 	}
 
 	/* I219 needs some special flushing to avoid hangs */
-	if (adapter->hw.mac.type == e1000_pch_spt)
+	if (adapter->hw.mac.type >= e1000_pch_spt)
 		em_flush_txrx_ring(adapter);
 
 	/* Issue a global reset */
@@ -3031,7 +3042,7 @@ em_init_tx_unit(struct adapter *adapter)
 		tarc = E1000_READ_REG(&adapter->hw, E1000_TARC(1));
 		tarc &= ~(1 << 28);
 		E1000_WRITE_REG(&adapter->hw, E1000_TARC(1), tarc);
-	} else if (adapter->hw.mac.type == e1000_pch_spt) {
+	} else if (adapter->hw.mac.type >= e1000_pch_spt) {
 		uint32_t reg;
 
 		reg = E1000_READ_REG(&adapter->hw, E1000_IOSFPC);

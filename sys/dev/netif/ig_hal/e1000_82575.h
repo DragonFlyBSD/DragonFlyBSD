@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2013, Intel Corporation 
+  Copyright (c) 2001-2016, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -493,6 +493,7 @@ enum e1000_promisc_type {
 void e1000_vfta_set_vf(struct e1000_hw *, u16, bool);
 void e1000_rlpml_set_vf(struct e1000_hw *, u16);
 s32 e1000_promisc_set_vf(struct e1000_hw *, enum e1000_promisc_type type);
+void e1000_write_vfta_i350(struct e1000_hw *hw, u32 offset, u32 value);
 u16 e1000_rxpbs_adjust_82580(u32 data);
 s32 e1000_read_emi_reg(struct e1000_hw *hw, u16 addr, u16 *data);
 s32 e1000_set_eee_i350(struct e1000_hw *hw, bool adv1G, bool adv100M);
