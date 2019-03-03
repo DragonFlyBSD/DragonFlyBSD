@@ -2,13 +2,10 @@
 #				ENHANCEMENTS				#
 #########################################################################
 
-# New method e.g. 'make gui release'.  A series of enhancement
-# targets may be specified which set make variables which enhance
+# Optional targets may be specified which set make variables which enhance
 # the build in various ways.
 #
-# img is now the default (produces both the .iso and .img)
-#
-gui installer img nopkgs:
+gui nopkgs:
 
 #########################################################################
 #				SETUP					#
@@ -405,7 +402,10 @@ help all:
 	@echo "  quick       - attempt to do an incremental rebuild"
 	@echo "  realquick   - attempt to restart after world & kernel"
 	@echo "  restartpkgs - attempt to restart at the pkg building stage"
-	@echo "NOTE: Add the optional 'gui' target to do a GUI release"
+	@echo ""
+	@echo "Optional targets:"
+	@echo "  nopkgs      - do not install any packages"
+	@echo "  gui         - do a GUI release"
 	@echo ""
 	@echo "Variables:"
 	@echo "  DPORTS_EXTRA_PACKAGES: add additional packages"
@@ -413,9 +413,9 @@ help all:
 	@echo "  GITURL_DPORTS: override the Git URL to dports repository"
 	@echo "  IMGSIZE: override the size of .img (in 512-byte sectors)"
 	@echo "  MAKE_JOBS: override the default value (sysctl hw.ncpu)"
+	@echo ""
 
 .PHONY: release quickrel realquickrel
-.PHONY: installer
 .PHONY: quick realquick
 .PHONY: check buildworld1 buildworld2
 .PHONY: buildkernel1 buildkernel2 buildiso customizeiso mkiso mkimg
