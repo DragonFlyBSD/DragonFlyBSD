@@ -17,18 +17,11 @@ gui installer img nopkgs:
 DPORTS_PATH?=	/usr/dports
 ISODIR?=	/usr/obj/release
 ISOROOT?=	${ISODIR}/root
-OBJSYS=		${.OBJDIR}/../sys
 GITURL_SRC?=	git://git.dragonflybsd.org/dragonfly.git
 GITURL_DPORTS?=	git://mirror-master.dragonflybsd.org/dports.git
 MAKE_JOBS?=	$$(sysctl -n hw.ncpu)
 .if !defined(NOFSCHG)
 MTREE_FSCHG=	-i
-.endif
-
-# XXX makeshift fix to build the right kernel for the (target) architecture
-# We should configure this in the platform files somehow
-.if ${MACHINE_ARCH} == "x86_64"
-KERNCONF?=	X86_64_GENERIC
 .endif
 
 GITREV!=	sh ${.CURDIR}/../tools/gitrev.sh
@@ -157,11 +150,8 @@ buildworld1 buildworld2:
 
 buildkernel1 buildkernel2:
 	cd ${.CURDIR}/..; \
-	for kernconf in ${KERNCONF}; do \
-		${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
-			make -j ${MAKE_JOBS} ${.TARGET:C/build(.*)2/quick\1/:C/1//} \
-			KERNCONF=$${kernconf}; \
-	done
+	${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
+		make -j ${MAKE_JOBS} ${.TARGET:C/build(.*)2/quick\1/:C/1//}
 
 # Unconditionally clean out ${ISOROOT} so a previous img build
 # does not blow up a future quick iso build
@@ -183,10 +173,7 @@ buildiso:
 			DESTDIR=${ISOROOT} distribution && \
 		rm -rf $${tmpdir} )
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
-	( cd ${.CURDIR}/..; \
-		for kernconf in ${KERNCONF}; do \
-			make DESTDIR=${ISOROOT} reinstallkernel KERNCONF=$${kernconf}; \
-		done )
+	( cd ${.CURDIR}/..; make DESTDIR=${ISOROOT} reinstallkernel )
 	rm -rf ${ISOROOT}/boot/kernel.old
 	ln -sf kernel ${ISOROOT}/boot/kernel/kernel.BOOTP
 	mtree ${MTREE_FSCHG} -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist \
@@ -409,7 +396,6 @@ clean:
 	rm -f ${ISODIR}/.didbootstrap ${ISODIR}/vn.which
 
 realclean:	clean
-	rm -rf ${OBJSYS}/${KERNCONF}
 	rm -rf ${ISODIR}/packages
 	rm -rf ${ISODIR}/distfiles
 
@@ -434,5 +420,3 @@ help all:
 .PHONY: check buildworld1 buildworld2
 .PHONY: buildkernel1 buildkernel2 buildiso customizeiso mkiso mkimg
 .PHONY: clean realclean help all srcs
-
-.include <bsd.prog.mk>

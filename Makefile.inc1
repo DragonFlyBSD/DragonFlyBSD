@@ -34,13 +34,6 @@ SUBDIR+= include
 .if exists(${.CURDIR}/lib)
 SUBDIR+= lib
 .endif
-# This exists simply to ensure that the obj dir hierarchy is
-# intact for nrelease, allowing the nrelease Makefile's to
-# reference ${.OBJDIR}.
-#
-.if exists(${.CURDIR}/nrelease)
-SUBDIR+= nrelease
-.endif
 
 .if exists(${.CURDIR}/bin)
 SUBDIR+= bin
