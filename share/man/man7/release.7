@@ -121,6 +121,32 @@ If they cannot be found, the release process will stop and give
 proper commands for downloading and setting up these packages.
 .Sh ENVIRONMENT
 .Bl -tag -width ".Va DPORTS_EXTRA_PACKAGES"
+.It Va DPORTS_PACKAGES
+List of packages to be added to the ISO.
+.It Va DPORTS_EXTRA_PACKAGES
+List of packages, in addition to
+.Va DPORTS_PACKAGES ,
+to be added to the ISO.
+.It Va DPORTS_PATH
+Location of the
+.Xr dports 7
+tree to be used for package building.
+.It Va GITURL_SRC
+The Git URL to the system source repository.
+.It Va GITURL_DPORTS
+The Git URL to the
+.Xr dports 7
+repository.
+.It Va IMGFILE
+The name of the image file (default is
+.Pa /usr/obj/release/dfly.img ) .
+.It Va IMGMNT
+The mount point for the image (default is
+.Pa /usr/obj/release/mnt ) .
+.It Va IMGSIZE
+The size of the IMG file (in units of 512-byte sector).
+The default size is determined from the actual content by leaving about
+600 MB free space.
 .It Va ISODIR
 Default prefix of
 .Va ISOFILE
@@ -134,35 +160,18 @@ Name of the ISO image to generate (default is
 .It Va ISOROOT
 Location where the image contents are installed to before the ISO is prepared.
 .It Va KERNCONF
-Kernel configuration(s) to use.
-.It Va PKGBIN_MKISOFS
-Location of the
-.Xr mkisofs 8
-utility which is to be used during the build.
-.It Va DPORTS_PACKAGES
-List of packages to be added to the ISO.
-.It Va DPORTS_EXTRA_PACKAGES
-List of packages, in addition to
-.Va DPORTS_PACKAGES ,
-to be added to the ISO.
-.It Va DPORTS_PATH
-Location of the
-.Xr dports 7
-tree to be used for package building.
+Kernel configuration to use.
+.It Va LABEL
+The name of the
+.Xr disklabel64 5
+slice in the IMG file and is used to identify the installation USB device.
+The is also the volume ID of the ISO file.
+.It Va MAKE_JOBS
+The number of make jobs (default is the value of sysctl
+.Va hw.ncpu ) .
 .It Va WITHOUT_SRCS
 If set, this variable will prevent source code from being copied to
 the ISO image.
-.It Va IMGFILE
-The name of the image file (default is
-.Pa /usr/obj/release/dfly.img ) .
-.It Va IMGMNT
-The mount point for the image (default is
-.Pa /usr/obj/release/mnt ) .
-.It Va IMGUSBDEV
-The disk device to use in the image's
-.Xr fstab 5
-(default is
-.Pa /dev/da8 ) .
 .El
 .Sh FILES
 .Bl -tag -compact -width ".Pa src/nrelease/Makefile"
