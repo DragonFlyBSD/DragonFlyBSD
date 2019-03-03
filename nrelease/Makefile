@@ -5,7 +5,7 @@
 # Optional targets may be specified which set make variables which enhance
 # the build in various ways.
 #
-gui nopkgs:
+gui nopkgs binpkgs:
 
 #########################################################################
 #				SETUP					#
@@ -99,6 +99,18 @@ DPORTS_PACKAGES+=	x11/xorg \
 
 ROOTSKELS+=		${.CURDIR}/gui
 .endif  # make(gui)
+
+# one port may have multiple binary packages (e.g., Python flavors) or have a
+# different name that may not be found by pkg(8), therefore, allow to specify
+# the exact binary package name for a port by setting 'PKG_<port>=<pkg-name>'.
+#
+.for PORT in ${DPORTS_PACKAGES}
+.if defined(PKG_${PORT})
+PACKAGES+=	${PKG_${PORT}}
+.else
+PACKAGES+=	${PORT}
+.endif
+.endfor
 
 #########################################################################
 #				BASE ISO TARGETS			#
@@ -224,7 +236,7 @@ customizeiso:
 	cp -R ${SRCDIR}/etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
 .endfor
 
-# Install packages by building from dports.
+# Install packages by using pkg(8) or building from dports.
 #
 pkgs:
 .if !empty(DPORTS_PACKAGES)
@@ -232,6 +244,21 @@ pkgs:
 	-@umount ${ISOROOT}/dev
 	mount_null /dev ${ISOROOT}/dev
 
+.if make(binpkgs)
+	${CHROOT_CMD} "cd /usr && make pkg-bootstrap-force"
+	${CHROOT_CMD} "pkg update"
+.for PKG in ${PACKAGES}
+	@${CHROOT_CMD} "pkg search --exact --search name ${PKG}" || \
+	${CHROOT_CMD} "pkg search --exact --search origin ${PKG}" || \
+	{ \
+		echo "ERROR: Cannot find the package for port '${PKG}'!"; \
+		echo "-----> Use 'pkg_${PKG}=<pkg-name>' to specify the package name."; \
+		false; \
+	}
+.endfor
+	${CHROOT_CMD} "pkg install --yes ${PACKAGES}"
+
+.else  # !make(binpkgs)
 	-@umount ${ISOROOT}/usr/distfiles
 	-@umount ${ISOROOT}/usr/dports
 	rm -rf ${ISOROOT}/usr/obj/dports
@@ -265,6 +292,7 @@ pkgs:
 	rm -rf ${ISOROOT}/usr/dports
 	rm -rf ${ISOROOT}/usr/distfiles
 	rm -rf ${ISOROOT}/usr/obj/dports
+.endif  # make(binpkgs)
 
 	# Update the locate(8) and whatis(1) databases, allow ISODIR
 	# to be on tmpfs (fails to create locate database then)
@@ -400,6 +428,7 @@ help all:
 	@echo ""
 	@echo "Optional targets:"
 	@echo "  nopkgs      - do not install any packages"
+	@echo "  binpkgs     - use binary packages with pkg(8)"
 	@echo "  gui         - do a GUI release"
 	@echo ""
 	@echo "Variables:"
@@ -408,6 +437,8 @@ help all:
 	@echo "  GITURL_DPORTS: override the Git URL to dports repository"
 	@echo "  IMGSIZE: override the size of .img (in 512-byte sectors)"
 	@echo "  MAKE_JOBS: override the default value (sysctl hw.ncpu)"
+	@echo "  PKG_<port>: specify the package name for port <port>"
+	@echo "  WITHOUT_SRCS: do not package source code if set"
 	@echo ""
 
 .PHONY: release quickrel realquickrel

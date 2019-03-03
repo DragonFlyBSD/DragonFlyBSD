@@ -30,7 +30,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man7/release.7,v 1.3.2.6 2003/04/12 20:42:30 murray Exp $
 .\"
-.Dd May 9, 2015
+.Dd November 1, 2019
 .Dt NRELEASE 7
 .Os
 .Sh NAME
@@ -113,6 +113,11 @@ Do not add any packages (for debugging purposes).
 This is equivalent to setting
 .Va DPORTS_PACKAGES
 empty.
+.It Cm binpkgs
+Install binary packages using
+.Xr pkg 8
+instead of building them from
+.Xr dports 7 .
 .El
 .Pp
 During the process of rolling a release a check is performed to find
@@ -169,6 +174,9 @@ The is also the volume ID of the ISO file.
 .It Va MAKE_JOBS
 The number of make jobs (default is the value of sysctl
 .Va hw.ncpu ) .
+.It Va PKG_ Ns Aq Ar port
+Specify the binary package name for port
+.Dq port .
 .It Va WITHOUT_SRCS
 If set, this variable will prevent source code from being copied to
 the ISO image.
