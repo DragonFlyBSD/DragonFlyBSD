@@ -11,6 +11,8 @@ gui nopkgs:
 #				SETUP					#
 #########################################################################
 
+SRCDIR=		${.CURDIR}/..
+
 DPORTS_PATH?=	/usr/dports
 ISODIR?=	/usr/obj/release
 ISOROOT?=	${ISODIR}/root
@@ -21,7 +23,7 @@ MAKE_JOBS?=	$$(sysctl -n hw.ncpu)
 MTREE_FSCHG=	-i
 .endif
 
-GITREV!=	sh ${.CURDIR}/../tools/gitrev.sh
+GITREV!=	sh ${SRCDIR}/tools/gitrev.sh
 
 # The label/name of the disklabel64(5) slice in the ".img" file.  This is
 # used to identify the USB device with DragonFly installation image, avoiding
@@ -96,7 +98,7 @@ DPORTS_PACKAGES+=	x11/xorg \
 .endif
 
 ROOTSKELS+=		${.CURDIR}/gui
-.endif
+.endif  # make(gui)
 
 #########################################################################
 #				BASE ISO TARGETS			#
@@ -141,39 +143,39 @@ check:
 	@echo "Using ${DPORTS_PATH} as the dports tree."
 
 buildworld1 buildworld2:
-	cd ${.CURDIR}/..; \
-	${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
-		make -j ${MAKE_JOBS} -DWANT_INSTALLER ${.TARGET:C/build(.*)2/quick\1/:C/1//}
+	( cd ${SRCDIR}; \
+		${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
+			make -j ${MAKE_JOBS} -DWANT_INSTALLER \
+			${.TARGET:C/build(.*)2/quick\1/:C/1//} )
 
 buildkernel1 buildkernel2:
-	cd ${.CURDIR}/..; \
-	${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
-		make -j ${MAKE_JOBS} ${.TARGET:C/build(.*)2/quick\1/:C/1//}
+	( cd ${SRCDIR}; \
+		${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
+			make -j ${MAKE_JOBS} \
+			${.TARGET:C/build(.*)2/quick\1/:C/1//} )
 
 # Unconditionally clean out ${ISOROOT} so a previous img build
 # does not blow up a future quick iso build
-#
-# We install with INSTALLSTRIPPEDMODULES to make things fit into the ISO.
-# We leave the kernel's debug variables intact.
 #
 buildiso:
 	-chflags -R noschg ${ISOROOT}
 	rm -rf ${ISOROOT}
 	mkdir -p ${ISOROOT}
-	( cd ${.CURDIR}/..; make -DWANT_INSTALLER DESTDIR=${ISOROOT} installworld )
+	( cd ${SRCDIR}; \
+		make -DWANT_INSTALLER DESTDIR=${ISOROOT} installworld )
 	# Do not mess with any /usr/obj directories not related to
 	# buildworld, buildkernel, or nrelease.
-	( cd ${.CURDIR}/../etc && \
+	( cd ${SRCDIR}/etc && \
 		tmpdir=`mktemp -d -t nrelease` && \
 		MAKEOBJDIRPREFIX=$${tmpdir} \
-			make -m ${.CURDIR}/../share/mk \
+			make -m ${SRCDIR}/share/mk \
 			DESTDIR=${ISOROOT} distribution && \
 		rm -rf $${tmpdir} )
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
-	( cd ${.CURDIR}/..; make DESTDIR=${ISOROOT} reinstallkernel )
+	( cd ${SRCDIR}; make DESTDIR=${ISOROOT} reinstallkernel )
 	rm -rf ${ISOROOT}/boot/kernel.old
 	ln -sf kernel ${ISOROOT}/boot/kernel/kernel.BOOTP
-	mtree ${MTREE_FSCHG} -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist \
+	mtree ${MTREE_FSCHG} -deU -f ${SRCDIR}/etc/mtree/BSD.var.dist \
 		-p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
 	${CHROOT_CMD} "rcrestart ldconfig"
@@ -192,7 +194,7 @@ srcs:
 	( cd ${ISOROOT}/usr && \
 		make src-create-shallow GITURL_SRC=${GITURL_SRC} )
 .else
-	( cd ${.CURDIR}/.. && \
+	( cd ${SRCDIR} && \
 		tar --exclude .git -s '/^\./src/' -cf - \
 			./Makefile ./Makefile.inc1 ./sys | \
 			bzip2 -9 > ${ISOROOT}/usr/src-sys.tar.bz2 )
@@ -219,7 +221,7 @@ customizeiso:
 		     periodic/security/Makefile	\
 		     periodic/weekly/Makefile	\
 		     periodic/monthly/Makefile
-	cp -R ${.CURDIR}/../etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
+	cp -R ${SRCDIR}/etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
 .endfor
 
 # Install packages by building from dports.
