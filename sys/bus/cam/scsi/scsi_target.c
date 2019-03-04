@@ -292,7 +292,7 @@ targioctl(struct dev_ioctl_args *ap)
 			status = CAM_DEV_NOT_THERE;
 			break;
 		}
-		cdbg = xpt_alloc_ccb();
+		cdbg = &xpt_alloc_ccb()->cdbg;
 		if (*((int *)ap->a_data) != 0)
 			cdbg->flags = CAM_DEBUG_PERIPH;
 		else
