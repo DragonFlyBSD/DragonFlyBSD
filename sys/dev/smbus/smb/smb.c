@@ -42,8 +42,6 @@
 #include "smb.h"
 
 #include "smbus_if.h"
-#include "bus_if.h"
-#include "device_if.h"
 
 #define BUFSIZE 1024
 

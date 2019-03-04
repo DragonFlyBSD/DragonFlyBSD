@@ -163,8 +163,6 @@
 #include "atmel_mxt.h"
 
 #include "smbus_if.h"
-#include "bus_if.h"
-#include "device_if.h"
 
 struct elopacket {
 	uint8_t	sync;

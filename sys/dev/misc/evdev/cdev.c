@@ -50,8 +50,6 @@
 
 #include <sys/device.h>
 #include <sys/bus.h>
-#include "bus_if.h"
-#include "device_if.h"
 
 /* Use FreeBSD bitstring locally. */
 #include "freebsd-bitstring.h"

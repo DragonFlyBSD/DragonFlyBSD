@@ -35,7 +35,6 @@
 #include "smbconf.h"
 #include "smbus.h"
 #include "smbus_if.h"
-#include "bus_if.h"
 
 /*
  * Autoconfiguration and support routines for System Management bus
