@@ -84,14 +84,6 @@ caddr_t malloc();
 */
 #ifdef HAVE_STDARG_H
 #include <stdarg.h>
-#ifndef HAVE_SNPRINTF
-int ap_snprintf(char *buf, size_t len, const char *format,...);
-#define snprintf ap_snprintf
-#endif
-#ifndef HAVE_VSNPRINTF
-int ap_vsnprintf(char *buf, size_t len, const char *format,va_list ap);
-#define vsnprintf ap_vsnprintf
-#endif
 #endif
 
 #if !HAVE_PID_T
