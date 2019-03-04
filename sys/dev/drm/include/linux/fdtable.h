@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,43 +23,18 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef _LINUX_HRTIMER_H_
-#define _LINUX_HRTIMER_H_
 
-#include <linux/rbtree.h>
-#include <linux/ktime.h>
+#ifndef _LINUX_FDTABLE_H_
+#define _LINUX_FDTABLE_H_
+
+#include <linux/posix_types.h>
+#include <linux/compiler.h>
+#include <linux/spinlock.h>
+#include <linux/rcupdate.h>
+#include <linux/types.h>
 #include <linux/init.h>
-#include <linux/list.h>
-#include <linux/wait.h>
-#include <linux/timer.h>
+#include <linux/fs.h>
 
-enum hrtimer_mode {
-	HRTIMER_MODE_ABS = 0x0,
-	HRTIMER_MODE_REL = 0x1,
-};
+#include <linux/atomic.h>
 
-enum hrtimer_restart {
-	HRTIMER_NORESTART,	/* Timer is not restarted */
-	HRTIMER_RESTART,	/* Timer must be restarted */
-};
-
-struct hrtimer {
-	struct callout timer_callout;
-	clockid_t 		clock_id;
-	enum hrtimer_mode	ht_mode;
-	bool active;
-	enum hrtimer_restart	(*function)(struct hrtimer *);
-	struct lwkt_token timer_token;
-};
-
-extern void hrtimer_init(struct hrtimer *timer, clockid_t which_clock,
-			 enum hrtimer_mode mode);
-
-extern void hrtimer_start_range_ns(struct hrtimer *timer, ktime_t tim,
-				   u64 range_ns, const enum hrtimer_mode mode);
-
-extern int hrtimer_cancel(struct hrtimer *timer);
-
-extern bool hrtimer_active(const struct hrtimer *timer);
-
-#endif /* _LINUX_HRTIMER_H_ */
+#endif	/* _LINUX_FDTABLE_H_ */

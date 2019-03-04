@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2018-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,6 +32,9 @@
 #include <linux/list.h>
 #include <linux/spinlock.h>
 #include <linux/atomic.h>
+
+#define down_read(semaphore)	lockmgr((semaphore), LK_EXCLUSIVE)
+#define up_read(semaphore)	lockmgr((semaphore), LK_RELEASE)
 
 #define down_write(semaphore)	lockmgr((semaphore), LK_EXCLUSIVE)
 #define up_write(semaphore)	lockmgr((semaphore), LK_RELEASE)
