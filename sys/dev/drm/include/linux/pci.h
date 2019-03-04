@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2014-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,16 +27,10 @@
 #ifndef LINUX_PCI_H
 #define LINUX_PCI_H
 
-#define PCI_ANY_ID	(~0u)
-
-#include <sys/param.h>
-#include <sys/bus.h>
-#include <sys/pciio.h>
-#include <sys/rman.h>
-#include <bus/pci/pcivar.h>
-#include <bus/pci/pcireg.h>
+#include <linux/mod_devicetable.h>
 
 #include <linux/types.h>
+#include <linux/init.h>
 #include <linux/list.h>
 #include <linux/compiler.h>
 #include <linux/errno.h>
@@ -47,6 +41,13 @@
 #include <uapi/linux/pci.h>
 
 #include <linux/pci_ids.h>
+
+#include <sys/pciio.h>
+#include <sys/rman.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+
+#define PCI_ANY_ID	(~0u)
 
 struct pci_bus;
 
@@ -329,6 +330,24 @@ static inline int
 pci_register_driver(struct pci_driver *drv)
 {
 	return 0;
+}
+
+static inline void
+pci_clear_master(struct pci_dev *pdev)
+{
+	pci_disable_busmaster(pdev->dev.bsddev);
+}
+
+static inline void
+pci_set_master(struct pci_dev *pdev)
+{
+	pci_enable_busmaster(pdev->dev.bsddev);
+}
+
+static inline int
+pci_pcie_cap(struct pci_dev *pdev)
+{
+	return pci_get_pciecap_ptr(pdev->dev.bsddev);
 }
 
 #endif /* LINUX_PCI_H */
