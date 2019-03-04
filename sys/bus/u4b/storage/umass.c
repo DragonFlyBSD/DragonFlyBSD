@@ -125,12 +125,12 @@
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
 #include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt.h>
 #include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_xpt_periph.h>
+#include <bus/cam/cam_periph.h>
 #include <bus/cam/scsi/scsi_all.h>
 #include <bus/cam/scsi/scsi_da.h>
-
-#include <bus/cam/cam_periph.h>
-
 
 #if 0
 #define UMASS_EXT_BUFFER
@@ -2140,7 +2140,7 @@ umass_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 #endif
 
 	xpt_free_path(ccb->ccb_h.path);
-	kfree(ccb, M_USBDEV);
+	xpt_free_ccb(&ccb->ccb_h);
 }
 
 /*
@@ -2154,7 +2154,7 @@ umass_cam_rescan(void *addr)
 	struct cam_path *path;
 	union ccb *ccb;
 
-	ccb = kmalloc(sizeof(union ccb), M_USBDEV, M_INTWAIT|M_ZERO);
+	ccb = xpt_alloc_ccb();
 
 	DPRINTF(sc, UDMASS_SCSI, "scbus%d: scanning for %s:%d:%d:%d\n",
 	    cam_sim_path(sc->sc_sim),
@@ -2163,7 +2163,7 @@ umass_cam_rescan(void *addr)
 
 	if (xpt_create_path(&path, xpt_periph, cam_sim_path(sc->sc_sim),
 	    CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
-		kfree(ccb, M_USBDEV);
+		xpt_free_ccb(&ccb->ccb_h);
 		return;
 	}
 

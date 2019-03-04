@@ -96,6 +96,11 @@
  * $FreeBSD: src/sys/dev/mpt/mpt_cam.c,v 1.84 2012/02/11 12:03:44 marius Exp $
  */
 
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_xpt.h>
+#include <bus/cam/cam_xpt_periph.h>
+
 #include <dev/disk/mpt/mpt.h>
 #include <dev/disk/mpt/mpt_cam.h>
 #include <dev/disk/mpt/mpt_raid.h>
@@ -2354,7 +2359,7 @@ static void
 mpt_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 {
     xpt_free_path(ccb->ccb_h.path);
-    kfree(ccb, M_TEMP);
+    xpt_free_ccb(&ccb->ccb_h);
 }
 
 static int
@@ -2408,21 +2413,20 @@ mpt_cam_event(struct mpt_softc *mpt, request_t *req,
 		 * Allocate a CCB, create a wildcard path for this bus,
 		 * and schedule a rescan.
 		 */
-		ccb = kmalloc(sizeof(union ccb), M_TEMP, M_WAITOK | M_ZERO);
+		ccb = xpt_alloc_ccb();
 
 		if (xpt_create_path(&ccb->ccb_h.path, xpt_periph, pathid,
 		    CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 			mpt_prt(mpt, "unable to create path for rescan\n");
-			kfree(ccb, M_TEMP);
+			xpt_free_ccb(&ccb->ccb_h);
 			break;
 		}
 
-		xpt_setup_ccb(&ccb->ccb_h, ccb->ccb_h.path, 5/*priority (low)*/);
+		xpt_setup_ccb(&ccb->ccb_h, ccb->ccb_h.path, /*lowpri*/5);
 		ccb->ccb_h.func_code = XPT_SCAN_BUS;
 		ccb->ccb_h.cbfcnp = mpt_cam_rescan_callback;
 		ccb->crcn.flags = CAM_FLAG_NONE;
 		xpt_action(ccb);
-
 		/* scan is now in progress */
 
 		break;
@@ -2503,7 +2507,7 @@ mpt_cam_event(struct mpt_softc *mpt, request_t *req,
 	{
 		struct cam_sim *sim;
 		struct cam_path *tmppath;
-		struct ccb_relsim crs;
+		struct ccb_relsim *crs;
 		PTR_EVENT_DATA_QUEUE_FULL pqf;
 		lun_id_t lun_id;
 
@@ -2524,16 +2528,18 @@ mpt_cam_event(struct mpt_softc *mpt, request_t *req,
 				    "XPT_REL_SIMQ");
 				break;
 			}
-			xpt_setup_ccb(&crs.ccb_h, tmppath, 5);
-			crs.ccb_h.func_code = XPT_REL_SIMQ;
-			crs.ccb_h.flags = CAM_DEV_QFREEZE;
-			crs.release_flags = RELSIM_ADJUST_OPENINGS;
-			crs.openings = pqf->CurrentDepth - 1;
-			xpt_action((union ccb *)&crs);
-			if (crs.ccb_h.status != CAM_REQ_CMP) {
+			crs = &xpt_alloc_ccb()->crs;
+			xpt_setup_ccb(&crs->ccb_h, tmppath, 5);
+			crs->ccb_h.func_code = XPT_REL_SIMQ;
+			crs->ccb_h.flags = CAM_DEV_QFREEZE;
+			crs->release_flags = RELSIM_ADJUST_OPENINGS;
+			crs->openings = pqf->CurrentDepth - 1;
+			xpt_action((union ccb *)crs);
+			if (crs->ccb_h.status != CAM_REQ_CMP) {
 				mpt_prt(mpt, "XPT_REL_SIMQ failed\n");
 			}
 			xpt_free_path(tmppath);
+			xpt_free_ccb(&crs->ccb_h);
 		}
 		break;
 	}
@@ -2556,22 +2562,21 @@ mpt_cam_event(struct mpt_softc *mpt, request_t *req,
 			sim = mpt->sim;
 		switch(psdsc->ReasonCode) {
 		case MPI_EVENT_SAS_DEV_STAT_RC_ADDED:
-			ccb = kmalloc(sizeof(union ccb), M_TEMP,
-			    M_WAITOK | M_ZERO);
+			ccb = xpt_alloc_ccb();
 			if (xpt_create_path(&ccb->ccb_h.path, xpt_periph,
 			    cam_sim_path(sim), psdsc->TargetID,
 			    CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 				mpt_prt(mpt,
 				    "unable to create path for rescan\n");
-				kfree(ccb, M_TEMP);
+				xpt_free_ccb(&ccb->ccb_h);
 				break;
 			}
-			xpt_setup_ccb(&ccb->ccb_h, ccb->ccb_h.path,
-			    5/*priority (low)*/);
+			xpt_setup_ccb(&ccb->ccb_h, ccb->ccb_h.path, /*lopri*/5);
 			ccb->ccb_h.func_code = XPT_SCAN_BUS;
 			ccb->ccb_h.cbfcnp = mpt_cam_rescan_callback;
 			ccb->crcn.flags = CAM_FLAG_NONE;
 			xpt_action(ccb);
+			/* scan now in progress */
 			break;
 		case MPI_EVENT_SAS_DEV_STAT_RC_NOT_RESPONDING:
 			if (xpt_create_path(&tmppath, NULL, cam_sim_path(sim),

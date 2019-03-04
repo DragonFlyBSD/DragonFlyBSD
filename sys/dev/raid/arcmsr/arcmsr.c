@@ -1639,7 +1639,7 @@ static void arcmsr_rescanLun_cb(struct cam_periph *periph, union ccb *ccb)
 		kprintf("arcmsr_rescanLun_cb: Rescan lun successfully!\n");
 */
 	xpt_free_path(ccb->ccb_h.path);
-	xpt_free_ccb(ccb);
+	xpt_free_ccb(&ccb->ccb_h);
 }
 
 static void	arcmsr_rescan_lun(struct AdapterControlBlock *acb, int target, int lun)
@@ -1651,11 +1651,9 @@ static void	arcmsr_rescan_lun(struct AdapterControlBlock *acb, int target, int l
 		return;
 	if (xpt_create_path(&path, xpt_periph, cam_sim_path(acb->psim), target, lun) != CAM_REQ_CMP)
 	{
-		xpt_free_ccb(ccb);
+		xpt_free_ccb(&ccb->ccb_h);
 		return;
 	}
-/*	kprintf("arcmsr_rescan_lun: Rescan Target=%x, Lun=%x\n", target, lun); */
-	bzero(ccb, sizeof(union ccb));
 	xpt_setup_ccb(&ccb->ccb_h, path, 5);
 	ccb->ccb_h.func_code = XPT_SCAN_LUN;
 	ccb->ccb_h.cbfcnp = arcmsr_rescanLun_cb;
@@ -4748,7 +4746,7 @@ static int arcmsr_attach(device_t dev)
 	return (0);
 
 xpt_path_failed:
-        xpt_free_ccb(ccb);
+        xpt_free_ccb(&ccb->ccb_h);
 xpt_ccb_failed:
 	xpt_bus_deregister(cam_sim_path(acb->psim));
 xpt_bus_failed:

@@ -61,6 +61,7 @@
 #include <bus/cam/cam_sim.h>
 #include <bus/cam/cam_xpt_sim.h>
 #include <bus/cam/cam_debug.h>
+#include <bus/cam/cam_xpt_periph.h>
 
 #include <bus/cam/scsi/scsi_message.h>
 
@@ -322,8 +323,9 @@ adwexecuteacb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	acb->state |= ACB_ACTIVE;
 	ccb->ccb_h.status |= CAM_SIM_QUEUED;
 	LIST_INSERT_HEAD(&adw->pending_ccbs, &ccb->ccb_h, sim_links.le);
-	callout_reset(&ccb->ccb_h.timeout_ch, (ccb->ccb_h.timeout * hz) / 1000,
-	    adwtimeout, acb);
+	callout_reset(ccb->ccb_h.timeout_ch,
+		      (ccb->ccb_h.timeout * hz) / 1000,
+		      adwtimeout, acb);
 
 	adw_send_acb(adw, acb, acbvtob(adw, acb));
 
@@ -1150,7 +1152,7 @@ adw_init(struct adw_softc *adw)
 int
 adw_attach(struct adw_softc *adw)
 {
-	struct ccb_setasync csa;
+	struct ccb_setasync *csa;
 	int error;
 
 	error = 0;
@@ -1188,12 +1190,14 @@ adw_attach(struct adw_softc *adw)
 	if (xpt_create_path(&adw->path, /*periph*/NULL, cam_sim_path(adw->sim),
 			    CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD)
 	   == CAM_REQ_CMP) {
-		xpt_setup_ccb(&csa.ccb_h, adw->path, /*priority*/5);
-		csa.ccb_h.func_code = XPT_SASYNC_CB;
-		csa.event_enable = AC_LOST_DEVICE;
-		csa.callback = adw_async;
-		csa.callback_arg = adw;
-		xpt_action((union ccb *)&csa);
+		csa = &xpt_alloc_ccb()->csa;
+		xpt_setup_ccb(&csa->ccb_h, adw->path, /*priority*/5);
+		csa->ccb_h.func_code = XPT_SASYNC_CB;
+		csa->event_enable = AC_LOST_DEVICE;
+		csa->callback = adw_async;
+		csa->callback_arg = adw;
+		xpt_action((union ccb *)csa);
+		xpt_free_ccb(&csa->ccb_h);
 	}
 
 fail:
@@ -1292,7 +1296,7 @@ adw_intr(void *arg)
 
 		/* Process CCB */
 		ccb = acb->ccb;
-		callout_stop(&ccb->ccb_h.timeout_ch);
+		callout_stop(ccb->ccb_h.timeout_ch);
 		if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE) {
 			bus_dmasync_op_t op;
 

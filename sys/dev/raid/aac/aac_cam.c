@@ -130,7 +130,7 @@ aac_cam_rescan(struct aac_softc *sc, uint32_t channel, uint32_t target_id)
 		if (xpt_create_path(&ccb->ccb_h.path, xpt_periph,
 		    cam_sim_path(camsc->sim),
 		    target_id, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
-			xpt_free_ccb(ccb);
+			xpt_free_ccb(&ccb->ccb_h);
 			device_printf(sc->aac_dev,
 			    "Cannot create path for bus rescan.\n");
 			return;
@@ -152,7 +152,7 @@ aac_bus_scan_cb(struct cam_periph *periph, union ccb *ccb)
 			ccb->ccb_h.status);
 
 	xpt_free_path(ccb->ccb_h.path);
-	xpt_free_ccb(ccb);
+	xpt_free_ccb(&ccb->ccb_h);
 }
 
 static void

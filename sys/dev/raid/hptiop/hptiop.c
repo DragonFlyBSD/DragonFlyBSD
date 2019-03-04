@@ -637,7 +637,7 @@ static void hptiop_request_callback_mvfrey(struct hpt_iop_hba * hba,
 
 		ccb = (union ccb *)srb->ccb;
 
-		callout_stop(&ccb->ccb_h.timeout_ch);
+		callout_stop(ccb->ccb_h.timeout_ch);
 
 		if (ccb->ccb_h.flags & CAM_CDB_POINTER)
 			cdb = ccb->csio.cdb_io.cdb_ptr;
@@ -1394,7 +1394,7 @@ static int  hptiop_rescan_bus(struct hpt_iop_hba * hba)
 		return(ENOMEM);
 	if (xpt_create_path(&ccb->ccb_h.path, xpt_periph, cam_sim_path(hba->sim),
 		CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
-		xpt_free_ccb(ccb);
+		xpt_free_ccb(&ccb->ccb_h);
 		return(EIO);
 	}
 
@@ -1409,7 +1409,7 @@ static int  hptiop_rescan_bus(struct hpt_iop_hba * hba)
 static void hptiop_bus_scan_cb(struct cam_periph *periph, union ccb *ccb)
 {
 	xpt_free_path(ccb->ccb_h.path);
-	kfree(ccb, M_TEMP);
+	xpt_free_ccb(&ccb->ccb_h);
 }
 
 static	bus_dmamap_callback_t	hptiop_map_srb;
@@ -1878,7 +1878,7 @@ static int hptiop_attach(device_t dev)
 	struct hpt_iop_request_set_config  set_config;
 	int rid = 0;
 	struct cam_devq *devq;
-	struct ccb_setasync ccb;
+	struct ccb_setasync *ccb;
 	u_int32_t unit = device_get_unit(dev);
 
 	device_printf(dev, "RocketRAID 3xxx/4xxx controller driver %s\n",
@@ -2031,12 +2031,15 @@ static int hptiop_attach(device_t dev)
 		goto free_hba_path;
 	}
 
-	xpt_setup_ccb(&ccb.ccb_h, hba->path, /*priority*/5);
-	ccb.ccb_h.func_code = XPT_SASYNC_CB;
-	ccb.event_enable = (AC_FOUND_DEVICE | AC_LOST_DEVICE);
-	ccb.callback = hptiop_async;
-	ccb.callback_arg = hba->sim;
-	xpt_action((union ccb *)&ccb);
+	ccb = &xpt_alloc_ccb()->csa;
+
+	xpt_setup_ccb(&ccb->ccb_h, hba->path, /*priority*/5);
+	ccb->ccb_h.func_code = XPT_SASYNC_CB;
+	ccb->event_enable = (AC_FOUND_DEVICE | AC_LOST_DEVICE);
+	ccb->callback = hptiop_async;
+	ccb->callback_arg = hba->sim;
+	xpt_action((union ccb *)ccb);
+	xpt_free_ccb(&ccb->ccb_h);
 
 	rid = 0;
 	if ((hba->irq_res = bus_alloc_resource(hba->pcidev, SYS_RES_IRQ,
@@ -2648,8 +2651,8 @@ static void hptiop_post_req_mvfrey(struct hpt_iop_hba *hba,
 	BUS_SPACE_RD4_MVFREY2(inbound_write_ptr);
 
 	if (req->header.type == IOP_REQUEST_TYPE_SCSI_COMMAND) {
-		callout_reset(&ccb->ccb_h.timeout_ch, 20*hz,
-		    hptiop_reset_adapter, hba);
+		callout_reset(ccb->ccb_h.timeout_ch, 20 * hz,
+			      hptiop_reset_adapter, hba);
 	}
 }
 
@@ -2803,15 +2806,17 @@ static void hptiop_release_resource(struct hpt_iop_hba *hba)
 {
 	int i;
 	if (hba->path) {
-		struct ccb_setasync ccb;
+		struct ccb_setasync *ccb;
 
-		xpt_setup_ccb(&ccb.ccb_h, hba->path, /*priority*/5);
-		ccb.ccb_h.func_code = XPT_SASYNC_CB;
-		ccb.event_enable = 0;
-		ccb.callback = hptiop_async;
-		ccb.callback_arg = hba->sim;
-		xpt_action((union ccb *)&ccb);
+		ccb = &xpt_alloc_ccb()->csa;
+		xpt_setup_ccb(&ccb->ccb_h, hba->path, /*priority*/5);
+		ccb->ccb_h.func_code = XPT_SASYNC_CB;
+		ccb->event_enable = 0;
+		ccb->callback = hptiop_async;
+		ccb->callback_arg = hba->sim;
+		xpt_action((union ccb *)ccb);
 		xpt_free_path(hba->path);
+		xpt_free_ccb(&ccb->ccb_h);
 	}
 
 	if (hba->sim) {

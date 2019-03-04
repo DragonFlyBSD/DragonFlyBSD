@@ -1011,7 +1011,7 @@ static void hpt_final_init(void *dummy)
 	/* register CAM interface */
 	ldm_for_each_vbus(vbus, vbus_ext) {
 		struct cam_devq *devq;
-		struct ccb_setasync	ccb;
+		struct ccb_setasync *ccb;
 
 		if (bus_dma_tag_create(NULL,/* parent */
 				4,	/* alignment */
@@ -1082,12 +1082,14 @@ static void hpt_final_init(void *dummy)
 		}
 		hpt_unlock_vbus(vbus_ext);
 
-		xpt_setup_ccb(&ccb.ccb_h, vbus_ext->path, /*priority*/5);
-		ccb.ccb_h.func_code = XPT_SASYNC_CB;
-		ccb.event_enable = AC_LOST_DEVICE;
-		ccb.callback = hpt_async;
-		ccb.callback_arg = vbus_ext;
-		xpt_action((union ccb *)&ccb);
+		ccb = &xpt_alloc_ccb()->csa;
+		xpt_setup_ccb(&ccb->ccb_h, vbus_ext->path, /*priority*/5);
+		ccb->ccb_h.func_code = XPT_SASYNC_CB;
+		ccb->event_enable = AC_LOST_DEVICE;
+		ccb->callback = hpt_async;
+		ccb->callback_arg = vbus_ext;
+		xpt_action((union ccb *)ccb);
+		xpt_free_ccb(&ccb->ccb_h);
 
 		for (hba = vbus_ext->hba_list; hba; hba = hba->next) {
 			int rid = 0;
@@ -1306,7 +1308,7 @@ invalid:
 static void	hpt_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 {
 	xpt_free_path(ccb->ccb_h.path);
-	xpt_free_ccb(ccb);
+	xpt_free_ccb(&ccb->ccb_h);
 }
 
 static int	hpt_rescan_bus(void)
@@ -1321,7 +1323,7 @@ static int	hpt_rescan_bus(void)
 		if (xpt_create_path(&ccb->ccb_h.path, xpt_periph,
 		    cam_sim_path(vbus_ext->sim),
 		    CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
-			xpt_free_ccb(ccb);
+			xpt_free_ccb(&ccb->ccb_h);
 			return(EIO);
 		}
 

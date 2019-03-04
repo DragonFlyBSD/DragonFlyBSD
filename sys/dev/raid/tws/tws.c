@@ -40,6 +40,8 @@
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_xpt.h>
+#include <bus/cam/cam_xpt_periph.h>
 
 static int	tws_msi_enable = 1;
 
@@ -395,7 +397,7 @@ tws_detach(device_t dev)
 
     kfree(sc->reqs, M_TWS);
     kfree(sc->sense_bufs, M_TWS);
-    kfree(sc->scan_ccb, M_TWS);
+    xpt_free_ccb(&sc->scan_ccb->ccb_h);
     kfree(sc->aen_q.q, M_TWS);
     kfree(sc->trace_q.q, M_TWS);
     lockuninit(&sc->q_lock);
@@ -537,7 +539,7 @@ tws_init(struct tws_softc *sc)
                       M_WAITOK | M_ZERO);
     sc->sense_bufs = kmalloc(sizeof(struct tws_sense) * tws_queue_depth, M_TWS,
                       M_WAITOK | M_ZERO);
-    sc->scan_ccb = kmalloc(sizeof(union ccb), M_TWS, M_WAITOK | M_ZERO);
+    sc->scan_ccb = xpt_alloc_ccb();
 
     if ( !tws_ctlr_ready(sc) )
         if( !tws_ctlr_reset(sc) )

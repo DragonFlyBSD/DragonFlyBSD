@@ -55,6 +55,7 @@
 #include "../cam.h"
 #include "../cam_ccb.h"
 #include "../cam_xpt.h"
+#include "../cam_xpt_periph.h"
 #include "scsi_all.h"
 #include <sys/sbuf.h>
 #ifndef _KERNEL
@@ -2997,27 +2998,31 @@ scsi_command_string(struct cam_device *device, struct ccb_scsiio *csio,
 	struct scsi_inquiry_data *inq_data;
 	char cdb_str[(SCSI_MAX_CDBLEN * 3) + 1];
 #ifdef _KERNEL
-	struct	  ccb_getdev cgd;
+	struct	  ccb_getdev *cgd;
+	struct	  scsi_inquiry_data copy_data;
 #endif
 
 #ifdef _KERNEL
 	/*
 	 * Get the device information.
 	 */
-	xpt_setup_ccb(&cgd.ccb_h,
+	cgd = &xpt_alloc_ccb()->cgd;
+	xpt_setup_ccb(&cgd->ccb_h,
 		      csio->ccb_h.path,
 		      /*priority*/ 1);
-	cgd.ccb_h.func_code = XPT_GDEV_TYPE;
-	xpt_action((union ccb *)&cgd);
+	cgd->ccb_h.func_code = XPT_GDEV_TYPE;
+	xpt_action((union ccb *)cgd);
 
 	/*
 	 * If the device is unconfigured, just pretend that it is a hard
 	 * drive.  scsi_op_desc() needs this.
 	 */
-	if (cgd.ccb_h.status == CAM_DEV_NOT_THERE)
-		cgd.inq_data.device = T_DIRECT;
+	if (cgd->ccb_h.status == CAM_DEV_NOT_THERE)
+		cgd->inq_data.device = T_DIRECT;
 
-	inq_data = &cgd.inq_data;
+	copy_data = cgd->inq_data;
+	inq_data = &copy_data;
+	xpt_free_ccb(&cgd->ccb_h);
 
 #else /* !_KERNEL */
 
@@ -3056,7 +3061,8 @@ scsi_sense_sbuf(struct cam_device *device, struct ccb_scsiio *csio,
 	struct	  scsi_sense_data *sense;
 	struct	  scsi_inquiry_data *inq_data;
 #ifdef _KERNEL
-	struct	  ccb_getdev cgd;
+	struct	  ccb_getdev *cgd;
+	struct	  scsi_inquiry_data copy_data;
 #endif /* _KERNEL */
 	u_int32_t info;
 	int	  error_code;
@@ -3087,20 +3093,21 @@ scsi_sense_sbuf(struct cam_device *device, struct ccb_scsiio *csio,
 	/*
 	 * Get the device information.
 	 */
-	xpt_setup_ccb(&cgd.ccb_h,
-		      csio->ccb_h.path,
-		      /*priority*/ 1);
-	cgd.ccb_h.func_code = XPT_GDEV_TYPE;
-	xpt_action((union ccb *)&cgd);
+	cgd = &xpt_alloc_ccb()->cgd;
+	xpt_setup_ccb(&cgd->ccb_h, csio->ccb_h.path, /*priority*/ 1);
+	cgd->ccb_h.func_code = XPT_GDEV_TYPE;
+	xpt_action((union ccb *)cgd);
 
 	/*
 	 * If the device is unconfigured, just pretend that it is a hard
 	 * drive.  scsi_op_desc() needs this.
 	 */
-	if (cgd.ccb_h.status == CAM_DEV_NOT_THERE)
-		cgd.inq_data.device = T_DIRECT;
+	if (cgd->ccb_h.status == CAM_DEV_NOT_THERE)
+		cgd->inq_data.device = T_DIRECT;
 
-	inq_data = &cgd.inq_data;
+	copy_data = cgd->inq_data;
+	inq_data = &copy_data;
+	xpt_free_ccb(&cgd->ccb_h);
 
 #else /* !_KERNEL */
 

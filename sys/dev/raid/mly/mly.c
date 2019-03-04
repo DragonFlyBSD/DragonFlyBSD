@@ -2012,7 +2012,7 @@ mly_cam_rescan_btl(struct mly_softc *sc, int bus, int target)
     if (xpt_create_path(&ccb->ccb_h.path, xpt_periph,
 			cam_sim_path(sc->mly_cam_sim[bus]), target, 0) != CAM_REQ_CMP) {
 	mly_printf(sc, "rescan failed (can't create path)\n");
-	xpt_free_ccb(ccb);
+	xpt_free_ccb(&ccb->ccb_h);
 	return;
     }
 
@@ -2027,7 +2027,7 @@ mly_cam_rescan_btl(struct mly_softc *sc, int bus, int target)
 static void
 mly_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 {
-    xpt_free_ccb(ccb);
+    xpt_free_ccb(&ccb->ccb_h);
 }
 
 /********************************************************************************

@@ -538,7 +538,7 @@ tw_osli_request_bus_scan(struct twa_softc *sc)
 	lockmgr(sc->sim_lock, LK_EXCLUSIVE);
 	if (xpt_create_path(&ccb->ccb_h.path, xpt_periph, cam_sim_path(sc->sim),
 	    CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
-		xpt_free_ccb(ccb);
+		xpt_free_ccb(&ccb->ccb_h);
 		lockmgr(sc->sim_lock, LK_RELEASE);
 		return(EIO);
 	}

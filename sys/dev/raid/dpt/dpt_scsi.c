@@ -775,7 +775,7 @@ dptexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	dccb->state |= DCCB_ACTIVE;
 	ccb->ccb_h.status |= CAM_SIM_QUEUED;
 	LIST_INSERT_HEAD(&dpt->pending_ccb_list, &ccb->ccb_h, sim_links.le);
-	callout_reset(&ccb->ccb_h.timeout_ch, (ccb->ccb_h.timeout * hz) / 1000,
+	callout_reset(ccb->ccb_h.timeout_ch, (ccb->ccb_h.timeout * hz) / 1000,
 		      dpttimeout, dccb);
 	if (dpt_send_eata_command(dpt, &dccb->eata_ccb,
 				  dccb->eata_ccb.cp_busaddr,
@@ -1592,7 +1592,7 @@ dpt_intr(void *arg)
 		}
 		/* Process CCB */
 		ccb = dccb->ccb;
-		callout_stop(&ccb->ccb_h.timeout_ch);
+		callout_stop(ccb->ccb_h.timeout_ch);
 		if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE) {
 			bus_dmasync_op_t op;
 

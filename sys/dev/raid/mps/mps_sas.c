@@ -292,7 +292,7 @@ mpssas_rescan_target(struct mps_softc *sc, struct mpssas_target *targ)
 	if (xpt_create_path(&ccb->ccb_h.path, xpt_periph, pathid,
 		            targetid, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		mps_dprint(sc, MPS_FAULT, "unable to create path for rescan\n");
-		xpt_free_ccb(ccb);
+		xpt_free_ccb(&ccb->ccb_h);
 		return;
 	}
 
@@ -2868,7 +2868,7 @@ mpssas_rescan_done(struct cam_periph *periph, union ccb *done_ccb)
 	mps_dprint(sassc->sc, MPS_INFO, "Completing rescan for %s\n", path_str);
 
 	xpt_free_path(done_ccb->ccb_h.path);
-	xpt_free_ccb(done_ccb);
+	xpt_free_ccb(&done_ccb->ccb_h);
 
 #if 1 /* __FreeBSD_version < 1000006 */
 	/*
@@ -2960,7 +2960,7 @@ mpssas_async(void *callback_arg, uint32_t code, struct cam_path *path,
 		struct mpssas_target *target;
 		struct mpssas_softc *sassc;
 		struct scsi_read_capacity_data_long rcap_buf;
-		struct ccb_dev_advinfo cdai;
+		struct ccb_dev_advinfo *cdai;
 		struct mpssas_lun *lun;
 		lun_id_t lunid;
 		int found_lun;
@@ -3012,20 +3012,21 @@ mpssas_async(void *callback_arg, uint32_t code, struct cam_path *path,
 			SLIST_INSERT_HEAD(&target->luns, lun, lun_link);
 		}
 
+		cdai = xpt_alloc_ccb();
 		bzero(&rcap_buf, sizeof(rcap_buf));
-		xpt_setup_ccb(&cdai.ccb_h, path, CAM_PRIORITY_NORMAL);
-		cdai.ccb_h.func_code = XPT_DEV_ADVINFO;
-		cdai.ccb_h.flags = CAM_DIR_IN;
-		cdai.buftype = CDAI_TYPE_RCAPLONG;
-		cdai.flags = 0;
-		cdai.bufsiz = sizeof(rcap_buf);
-		cdai.buf = (uint8_t *)&rcap_buf;
-		xpt_action((union ccb *)&cdai);
-		if ((cdai.ccb_h.status & CAM_DEV_QFRZN) != 0)
-			cam_release_devq(cdai.ccb_h.path,
+		xpt_setup_ccb(&cdai->ccb_h, path, CAM_PRIORITY_NORMAL);
+		cdai->ccb_h.func_code = XPT_DEV_ADVINFO;
+		cdai->ccb_h.flags = CAM_DIR_IN;
+		cdai->buftype = CDAI_TYPE_RCAPLONG;
+		cdai->flags = 0;
+		cdai->bufsiz = sizeof(rcap_buf);
+		cdai->buf = (uint8_t *)&rcap_buf;
+		xpt_action((union ccb *)cdai);
+		if ((cdai->ccb_h.status & CAM_DEV_QFRZN) != 0)
+			cam_release_devq(cdai->ccb_h.path,
 					 0, 0, 0, FALSE);
 
-		if (((cdai.ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)
+		if (((cdai->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)
 		 && (rcap_buf.prot & SRC16_PROT_EN)) {
 			lun->eedp_formatted = TRUE;
 			lun->eedp_block_size = scsi_4btoul(rcap_buf.length);
@@ -3033,6 +3034,7 @@ mpssas_async(void *callback_arg, uint32_t code, struct cam_path *path,
 			lun->eedp_formatted = FALSE;
 			lun->eedp_block_size = 0;
 		}
+		xpt_free_ccb(&cdai->ccb_h);
 		break;
 	}
 	default:
@@ -3086,7 +3088,7 @@ mpssas_check_eedp(struct mpssas_softc *sassc)
 				mps_dprint(sc, MPS_FAULT, "Unable to create "
 				    "path for EEDP support\n");
 				kfree(rcap_buf, M_MPT2);
-				xpt_free_ccb(ccb);
+				xpt_free_ccb(&ccb->ccb_h);
 				return;
 			}
 
@@ -3158,7 +3160,7 @@ mpssas_check_eedp(struct mpssas_softc *sassc)
 			} else {
 				kfree(rcap_buf, M_MPT2);
 				xpt_free_path(ccb->ccb_h.path);
-				xpt_free_ccb(ccb);
+				xpt_free_ccb(&ccb->ccb_h);
 			}
 		} while (found_periph);
 	}
@@ -3227,7 +3229,7 @@ mpssas_read_cap_done(struct cam_periph *periph, union ccb *done_ccb)
 	// Finished with this CCB and path.
 	kfree(rcap_buf, M_MPT2);
 	xpt_free_path(done_ccb->ccb_h.path);
-	xpt_free_ccb(done_ccb);
+	xpt_free_ccb(&done_ccb->ccb_h);
 }
 #endif /* __FreeBSD_version >= 1000006 */
 

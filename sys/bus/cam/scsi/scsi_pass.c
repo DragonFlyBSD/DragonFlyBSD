@@ -502,7 +502,7 @@ passioctl(struct dev_ioctl_args *ap)
 		error = passsendccb(periph, ccb, inccb);
 
 		if (ccb_malloced)
-			xpt_free_ccb(ccb);
+			xpt_free_ccb(&ccb->ccb_h);
 		else
 			xpt_release_ccb(ccb);
 

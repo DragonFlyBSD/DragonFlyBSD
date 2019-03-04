@@ -1066,7 +1066,7 @@ xptioctl(struct dev_ioctl_args *ap)
 					    CAM_REQ_CMP){
 				error = EINVAL;
 				CAM_SIM_UNLOCK(bus->sim);
-				xpt_free_ccb(ccb);
+				xpt_free_ccb(&ccb->ccb_h);
 				break;
 			}
 			/* Ensure all of our fields are correct */
@@ -1077,12 +1077,14 @@ xptioctl(struct dev_ioctl_args *ap)
 			cam_periph_runccb(ccb, NULL, 0, 0, NULL);
 			bcopy(ccb, inccb, sizeof(union ccb));
 			xpt_free_path(ccb->ccb_h.path);
-			xpt_free_ccb(ccb);
+			xpt_free_ccb(&ccb->ccb_h);
 			CAM_SIM_UNLOCK(bus->sim);
 			break;
 
 		case XPT_DEBUG: {
-			union ccb ccb;
+			union ccb *ccb;
+
+			ccb = xpt_alloc_ccb();
 
 			/*
 			 * This is an immediate CCB, so it's okay to
@@ -1095,24 +1097,28 @@ xptioctl(struct dev_ioctl_args *ap)
 			 * Create a path using the bus, target, and lun the
 			 * user passed in.
 			 */
-			if (xpt_create_path(&ccb.ccb_h.path, xpt_periph,
+			if (xpt_create_path(&ccb->ccb_h.path, xpt_periph,
 					    inccb->ccb_h.path_id,
 					    inccb->ccb_h.target_id,
 					    inccb->ccb_h.target_lun) !=
 					    CAM_REQ_CMP){
 				error = EINVAL;
 				CAM_SIM_UNLOCK(bus->sim);
+				xpt_free_ccb(&ccb->ccb_h);
 				break;
 			}
 			/* Ensure all of our fields are correct */
-			xpt_setup_ccb(&ccb.ccb_h, ccb.ccb_h.path,
+			xpt_setup_ccb(&ccb->ccb_h, ccb->ccb_h.path,
 				      inccb->ccb_h.pinfo.priority);
-			xpt_merge_ccb(&ccb, inccb);
-			ccb.ccb_h.cbfcnp = xptdone;
-			xpt_action(&ccb);
+			xpt_merge_ccb(ccb, inccb);
+			ccb->ccb_h.cbfcnp = xptdone;
+			xpt_action(ccb);
 			CAM_SIM_UNLOCK(bus->sim);
-			bcopy(&ccb, inccb, sizeof(union ccb));
-			xpt_free_path(ccb.ccb_h.path);
+			bcopy(ccb, inccb, sizeof(union ccb));
+			inccb->ccb_h.timeout_ch = NULL;	/* SAFETY */
+			xpt_free_path(ccb->ccb_h.path);
+			xpt_free_ccb(&ccb->ccb_h);
+
 			break;
 
 		}
@@ -1618,8 +1624,8 @@ xpt_remove_periph(struct cam_periph *periph)
 void
 xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 {
-	struct	ccb_pathinq cpi;
-	struct	ccb_trans_settings cts;
+	struct	ccb_pathinq *cpi;
+	struct	ccb_trans_settings *cts;
 	struct	cam_path *path;
 	u_int	speed;
 	u_int	freq;
@@ -1648,25 +1654,28 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 	}
 
 	/* Acquire and report transfer speed */
-	xpt_setup_ccb(&cts.ccb_h, path, /*priority*/1);
-	cts.ccb_h.func_code = XPT_GET_TRAN_SETTINGS;
-	cts.type = CTS_TYPE_CURRENT_SETTINGS;
-	xpt_action((union ccb*)&cts);
-	if ((cts.ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
+	cts = &xpt_alloc_ccb()->cts;
+	xpt_setup_ccb(&cts->ccb_h, path, /*priority*/1);
+	cts->ccb_h.func_code = XPT_GET_TRAN_SETTINGS;
+	cts->type = CTS_TYPE_CURRENT_SETTINGS;
+	xpt_action((union ccb*)cts);
+	if ((cts->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
+		xpt_free_ccb(&cts->ccb_h);
 		return;
 	}
 
 	/* Ask the SIM for its base transfer speed */
-	xpt_setup_ccb(&cpi.ccb_h, path, /*priority*/1);
-	cpi.ccb_h.func_code = XPT_PATH_INQ;
-	xpt_action((union ccb *)&cpi);
+	cpi = &xpt_alloc_ccb()->cpi;
+	xpt_setup_ccb(&cpi->ccb_h, path, /*priority*/1);
+	cpi->ccb_h.func_code = XPT_PATH_INQ;
+	xpt_action((union ccb *)cpi);
 
-	speed = cpi.base_transfer_speed;
+	speed = cpi->base_transfer_speed;
 	freq = 0;
-	if (cts.ccb_h.status == CAM_REQ_CMP && cts.transport == XPORT_SPI) {
+	if (cts->ccb_h.status == CAM_REQ_CMP && cts->transport == XPORT_SPI) {
 		struct	ccb_trans_settings_spi *spi;
 
-		spi = &cts.xport_specific.spi;
+		spi = &cts->xport_specific.spi;
 		if ((spi->valid & CTS_SPI_VALID_SYNC_OFFSET) != 0
 		  && spi->sync_offset != 0) {
 			freq = scsi_calc_syncsrate(spi->sync_period);
@@ -1676,15 +1685,15 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 		if ((spi->valid & CTS_SPI_VALID_BUS_WIDTH) != 0)
 			speed *= (0x01 << spi->bus_width);
 	}
-	if (cts.ccb_h.status == CAM_REQ_CMP && cts.transport == XPORT_FC) {
-		struct	ccb_trans_settings_fc *fc = &cts.xport_specific.fc;
+	if (cts->ccb_h.status == CAM_REQ_CMP && cts->transport == XPORT_FC) {
+		struct	ccb_trans_settings_fc *fc = &cts->xport_specific.fc;
 		if (fc->valid & CTS_FC_VALID_SPEED) {
 			speed = fc->bitrate;
 		}
 	}
 
-	if (cts.ccb_h.status == CAM_REQ_CMP && cts.transport == XPORT_SAS) {
-		struct	ccb_trans_settings_sas *sas = &cts.xport_specific.sas;
+	if (cts->ccb_h.status == CAM_REQ_CMP && cts->transport == XPORT_SAS) {
+		struct	ccb_trans_settings_sas *sas = &cts->xport_specific.sas;
 		if (sas->valid & CTS_SAS_VALID_SPEED) {
 			speed = sas->bitrate;
 		}
@@ -1700,10 +1709,10 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 		       periph->unit_number, speed);
 
 	/* Report additional information about SPI connections */
-	if (cts.ccb_h.status == CAM_REQ_CMP && cts.transport == XPORT_SPI) {
+	if (cts->ccb_h.status == CAM_REQ_CMP && cts->transport == XPORT_SPI) {
 		struct	ccb_trans_settings_spi *spi;
 
-		spi = &cts.xport_specific.spi;
+		spi = &cts->xport_specific.spi;
 		if (freq != 0) {
 			kprintf(" (%d.%03dMHz%s, offset %d", freq / 1000,
 			       freq % 1000,
@@ -1723,10 +1732,10 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 			kprintf(")");
 		}
 	}
-	if (cts.ccb_h.status == CAM_REQ_CMP && cts.transport == XPORT_FC) {
+	if (cts->ccb_h.status == CAM_REQ_CMP && cts->transport == XPORT_FC) {
 		struct	ccb_trans_settings_fc *fc;
 
-		fc = &cts.xport_specific.fc;
+		fc = &cts->xport_specific.fc;
 		if (fc->valid & CTS_FC_VALID_WWNN)
 			kprintf(" WWNN 0x%llx", (long long) fc->wwnn);
 		if (fc->valid & CTS_FC_VALID_WWPN)
@@ -1735,12 +1744,15 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 			kprintf(" PortID 0x%x", fc->port);
 	}
 
-	if (path->device->inq_flags & SID_CmdQue
-	 || path->device->flags & CAM_DEV_TAG_AFTER_COUNT) {
+	if (path->device->inq_flags & SID_CmdQue ||
+	    path->device->flags & CAM_DEV_TAG_AFTER_COUNT) {
 		kprintf("\n%s%d: Command Queueing Enabled",
 		       periph->periph_name, periph->unit_number);
 	}
 	kprintf("\n");
+
+	xpt_free_ccb(&cpi->ccb_h);
+	xpt_free_ccb(&cts->ccb_h);
 
 	/*
 	 * We only want to print the caller's announce string if they've
@@ -2866,7 +2878,7 @@ static int
 xptsetasyncfunc(struct cam_ed *device, void *arg)
 {
 	struct cam_path path;
-	struct ccb_getdev cgd;
+	struct ccb_getdev *cgd;
 	struct async_node *cur_entry;
 
 	cur_entry = (struct async_node *)arg;
@@ -2885,13 +2897,16 @@ xptsetasyncfunc(struct cam_ed *device, void *arg)
 			 device->target->bus->path_id,
 			 device->target->target_id,
 			 device->lun_id);
-	xpt_setup_ccb(&cgd.ccb_h, &path, /*priority*/1);
-	cgd.ccb_h.func_code = XPT_GDEV_TYPE;
-	xpt_action((union ccb *)&cgd);
+
+	cgd = &xpt_alloc_ccb()->cgd;
+	xpt_setup_ccb(&cgd->ccb_h, &path, /*priority*/1);
+	cgd->ccb_h.func_code = XPT_GDEV_TYPE;
+	xpt_action((union ccb *)cgd);
 	cur_entry->callback(cur_entry->callback_arg,
 			    AC_FOUND_DEVICE,
-			    &path, &cgd);
+			    &path, cgd);
 	xpt_release_path(&path);
+	xpt_free_ccb(&cgd->ccb_h);
 
 	return(1);
 }
@@ -2900,7 +2915,7 @@ static int
 xptsetasyncbusfunc(struct cam_eb *bus, void *arg)
 {
 	struct cam_path path;
-	struct ccb_pathinq cpi;
+	struct ccb_pathinq *cpi;
 	struct async_node *cur_entry;
 
 	cur_entry = (struct async_node *)arg;
@@ -2909,13 +2924,15 @@ xptsetasyncbusfunc(struct cam_eb *bus, void *arg)
 			 bus->sim->path_id,
 			 CAM_TARGET_WILDCARD,
 			 CAM_LUN_WILDCARD);
-	xpt_setup_ccb(&cpi.ccb_h, &path, /*priority*/1);
-	cpi.ccb_h.func_code = XPT_PATH_INQ;
-	xpt_action((union ccb *)&cpi);
+	cpi = &xpt_alloc_ccb()->cpi;
+	xpt_setup_ccb(&cpi->ccb_h, &path, /*priority*/1);
+	cpi->ccb_h.func_code = XPT_PATH_INQ;
+	xpt_action((union ccb *)cpi);
 	cur_entry->callback(cur_entry->callback_arg,
 			    AC_PATH_REGISTERED,
-			    &path, &cpi);
+			    &path, cpi);
 	xpt_release_path(&path);
+	xpt_free_ccb(&cpi->ccb_h);
 
 	return(1);
 }
@@ -3885,7 +3902,7 @@ void
 xpt_setup_ccb(struct ccb_hdr *ccb_h, struct cam_path *path, u_int32_t priority)
 {
 	CAM_DEBUG(path, CAM_DEBUG_TRACE, ("xpt_setup_ccb\n"));
-	callout_init(&ccb_h->timeout_ch);
+	callout_init(ccb_h->timeout_ch);
 	ccb_h->pinfo.priority = priority;
 	ccb_h->path = path;
 	ccb_h->path_id = path->bus->path_id;
@@ -4243,13 +4260,13 @@ xpt_release_ccb(union ccb *free_ccb)
 
 	cam_ccbq_release_opening(&device->ccbq);
 	if (sim->ccb_count > sim->max_ccbs) {
-		xpt_free_ccb(free_ccb);
+		xpt_free_ccb(&free_ccb->ccb_h);
 		sim->ccb_count--;
 	} else if (sim == &cam_dead_sim) {
-		xpt_free_ccb(free_ccb);
+		xpt_free_ccb(&free_ccb->ccb_h);
 	} else  {
 		SLIST_INSERT_HEAD(&sim->ccb_freeq, &free_ccb->ccb_h,
-		    xpt_links.sle);
+				  xpt_links.sle);
 	}
 	if (sim->devq == NULL) {
 		return;
@@ -4281,7 +4298,7 @@ xpt_bus_register(struct cam_sim *sim, u_int32_t bus)
 {
 	struct cam_eb *new_bus;
 	struct cam_eb *old_bus;
-	struct ccb_pathinq cpi;
+	struct ccb_pathinq *cpi;
 
 	sim_lock_assert_owned(sim->lock);
 
@@ -4321,13 +4338,15 @@ xpt_bus_register(struct cam_sim *sim, u_int32_t bus)
 	if (sim->path_id != CAM_XPT_PATH_ID) {
 		struct cam_path path;
 
+		cpi = &xpt_alloc_ccb()->cpi;
 		xpt_compile_path(&path, /*periph*/NULL, sim->path_id,
 			         CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD);
-		xpt_setup_ccb(&cpi.ccb_h, &path, /*priority*/1);
-		cpi.ccb_h.func_code = XPT_PATH_INQ;
-		xpt_action((union ccb *)&cpi);
-		xpt_async(AC_PATH_REGISTERED, &path, &cpi);
+		xpt_setup_ccb(&cpi->ccb_h, &path, /*priority*/1);
+		cpi->ccb_h.func_code = XPT_PATH_INQ;
+		xpt_action((union ccb *)cpi);
+		xpt_async(AC_PATH_REGISTERED, &path, cpi);
 		xpt_release_path(&path);
+		xpt_free_ccb(&cpi->ccb_h);
 	}
 	return (CAM_SUCCESS);
 }
@@ -4911,16 +4930,20 @@ xpt_alloc_ccb(void)
 	union ccb *new_ccb;
 
 	new_ccb = kmalloc(sizeof(*new_ccb), M_CAMXPT, M_INTWAIT | M_ZERO);
+	new_ccb->ccb_h.timeout_ch = kmalloc(sizeof(struct callout), M_CAMXPT,
+					    M_INTWAIT | M_ZERO);
+
 	return (new_ccb);
 }
 
 void
-xpt_free_ccb(union ccb *free_ccb)
+xpt_free_ccb(struct ccb_hdr *free_ccb)
 {
+	KKASSERT(free_ccb->timeout_ch != NULL);
+	kfree(free_ccb->timeout_ch, M_CAMXPT);
+	free_ccb->timeout_ch = NULL;
 	kfree(free_ccb, M_CAMXPT);
 }
-
-
 
 /* Private XPT functions */
 
@@ -4941,7 +4964,7 @@ xpt_get_ccb(struct cam_ed *device)
 	if ((new_ccb = (union ccb *)SLIST_FIRST(&sim->ccb_freeq)) == NULL) {
 		new_ccb = xpt_alloc_ccb();
 		if ((sim->flags & CAM_SIM_MPSAFE) == 0)
-			callout_init(&new_ccb->ccb_h.timeout_ch);
+			callout_init(new_ccb->ccb_h.timeout_ch);
 		SLIST_INSERT_HEAD(&sim->ccb_freeq, &new_ccb->ccb_h,
 				  xpt_links.sle);
 		sim->ccb_count++;
@@ -5315,7 +5338,7 @@ xpt_scan_bus(struct cam_periph *periph, union ccb *request_ccb)
 		xpt_action(work_ccb);
 		if (work_ccb->ccb_h.status != CAM_REQ_CMP) {
 			request_ccb->ccb_h.status = work_ccb->ccb_h.status;
-			xpt_free_ccb(work_ccb);
+			xpt_free_ccb(&work_ccb->ccb_h);
 			xpt_done(request_ccb);
 			return;
 		}
@@ -5326,7 +5349,7 @@ xpt_scan_bus(struct cam_periph *periph, union ccb *request_ccb)
 			 * cannot perform the initiator role.
 			 */
 			request_ccb->ccb_h.status = CAM_REQ_CMP;
-			xpt_free_ccb(work_ccb);
+			xpt_free_ccb(&work_ccb->ccb_h);
 			xpt_done(request_ccb);
 			return;
 		}
@@ -5369,7 +5392,7 @@ xpt_scan_bus(struct cam_periph *periph, union ccb *request_ccb)
 				       status);
 				kfree(scan_info, M_CAMXPT);
 				request_ccb->ccb_h.status = status;
-				xpt_free_ccb(work_ccb);
+				xpt_free_ccb(&work_ccb->ccb_h);
 				xpt_done(request_ccb);
 				break;
 			}
@@ -5478,8 +5501,8 @@ xpt_scan_bus(struct cam_periph *periph, union ccb *request_ccb)
 				}
 			}
 			if (done) {
-				xpt_free_ccb(request_ccb);
-				xpt_free_ccb((union ccb *)scan_info->cpi);
+				xpt_free_ccb(&request_ccb->ccb_h);
+				xpt_free_ccb(&scan_info->cpi->ccb_h);
 				request_ccb = scan_info->request_ccb;
 				kfree(scan_info, M_CAMXPT);
 				request_ccb->ccb_h.status = CAM_REQ_CMP;
@@ -5497,8 +5520,8 @@ xpt_scan_bus(struct cam_periph *periph, union ccb *request_ccb)
 				kprintf("xpt_scan_bus: xpt_create_path failed"
 				    " with status %#x, bus scan halted\n",
 			       	    status);
-				xpt_free_ccb(request_ccb);
-				xpt_free_ccb((union ccb *)scan_info->cpi);
+				xpt_free_ccb(&request_ccb->ccb_h);
+				xpt_free_ccb(&scan_info->cpi->ccb_h);
 				request_ccb = scan_info->request_ccb;
 				kfree(scan_info, M_CAMXPT);
 				request_ccb->ccb_h.status = status;
@@ -5506,7 +5529,7 @@ xpt_scan_bus(struct cam_periph *periph, union ccb *request_ccb)
 				break;
 			}
 			xpt_setup_ccb(&request_ccb->ccb_h, path,
-			    request_ccb->ccb_h.pinfo.priority);
+				      request_ccb->ccb_h.pinfo.priority);
 			request_ccb->ccb_h.func_code = XPT_SCAN_LUN;
 			request_ccb->ccb_h.cbfcnp = xpt_scan_bus;
 			request_ccb->ccb_h.ppriv_ptr0 = scan_info;
@@ -5595,7 +5618,7 @@ static void
 xpt_scan_lun(struct cam_periph *periph, struct cam_path *path,
 	     cam_flags flags, union ccb *request_ccb)
 {
-	struct ccb_pathinq cpi;
+	struct ccb_pathinq *cpi;
 	cam_status status;
 	struct cam_path *new_path;
 	struct cam_periph *old_periph;
@@ -5603,19 +5626,21 @@ xpt_scan_lun(struct cam_periph *periph, struct cam_path *path,
 	CAM_DEBUG(request_ccb->ccb_h.path, CAM_DEBUG_TRACE,
 		  ("xpt_scan_lun\n"));
 
-	xpt_setup_ccb(&cpi.ccb_h, path, /*priority*/1);
-	cpi.ccb_h.func_code = XPT_PATH_INQ;
-	xpt_action((union ccb *)&cpi);
+	cpi = &xpt_alloc_ccb()->cpi;
+	xpt_setup_ccb(&cpi->ccb_h, path, /*priority*/1);
+	cpi->ccb_h.func_code = XPT_PATH_INQ;
+	xpt_action((union ccb *)cpi);
 
-	if (cpi.ccb_h.status != CAM_REQ_CMP) {
+	if (cpi->ccb_h.status != CAM_REQ_CMP) {
 		if (request_ccb != NULL) {
-			request_ccb->ccb_h.status = cpi.ccb_h.status;
+			request_ccb->ccb_h.status = cpi->ccb_h.status;
 			xpt_done(request_ccb);
 		}
+		xpt_free_ccb(&cpi->ccb_h);
 		return;
 	}
 
-	if ((cpi.hba_misc & PIM_NOINITIATOR) != 0) {
+	if ((cpi->hba_misc & PIM_NOINITIATOR) != 0) {
 		/*
 		 * Can't scan the bus on an adapter that
 		 * cannot perform the initiator role.
@@ -5624,11 +5649,13 @@ xpt_scan_lun(struct cam_periph *periph, struct cam_path *path,
 			request_ccb->ccb_h.status = CAM_REQ_CMP;
 			xpt_done(request_ccb);
 		}
+		xpt_free_ccb(&cpi->ccb_h);
 		return;
 	}
+	xpt_free_ccb(&cpi->ccb_h);
 
 	if (request_ccb == NULL) {
-		request_ccb = kmalloc(sizeof(union ccb), M_CAMXPT, M_INTWAIT);
+		request_ccb = xpt_alloc_ccb();
 		new_path = kmalloc(sizeof(*new_path), M_CAMXPT, M_INTWAIT);
 		status = xpt_compile_path(new_path, xpt_periph,
 					  path->bus->path_id,
@@ -5638,7 +5665,7 @@ xpt_scan_lun(struct cam_periph *periph, struct cam_path *path,
 		if (status != CAM_REQ_CMP) {
 			xpt_print(path, "xpt_scan_lun: can't compile path, "
 			    "can't continue\n");
-			kfree(request_ccb, M_CAMXPT);
+			xpt_free_ccb(&request_ccb->ccb_h);
 			kfree(new_path, M_CAMXPT);
 			return;
 		}
@@ -5675,7 +5702,7 @@ xptscandone(struct cam_periph *periph, union ccb *done_ccb)
 {
 	xpt_release_path(done_ccb->ccb_h.path);
 	kfree(done_ccb->ccb_h.path, M_CAMXPT);
-	kfree(done_ccb, M_CAMXPT);
+	xpt_free_ccb(&done_ccb->ccb_h);
 }
 
 static cam_status
@@ -5725,16 +5752,17 @@ proberegister(struct cam_periph *periph, void *arg)
 static void
 probeschedule(struct cam_periph *periph)
 {
-	struct ccb_pathinq cpi;
+	struct ccb_pathinq *cpi;
 	union ccb *ccb;
 	probe_softc *softc;
 
 	softc = (probe_softc *)periph->softc;
 	ccb = (union ccb *)TAILQ_FIRST(&softc->request_ccbs);
 
-	xpt_setup_ccb(&cpi.ccb_h, periph->path, /*priority*/1);
-	cpi.ccb_h.func_code = XPT_PATH_INQ;
-	xpt_action((union ccb *)&cpi);
+	cpi = &xpt_alloc_ccb()->cpi;
+	xpt_setup_ccb(&cpi->ccb_h, periph->path, /*priority*/1);
+	cpi->ccb_h.func_code = XPT_PATH_INQ;
+	xpt_action((union ccb *)cpi);
 
 	/*
 	 * If a device has gone away and another device, or the same one,
@@ -5757,8 +5785,8 @@ probeschedule(struct cam_periph *periph)
 	if (((ccb->ccb_h.path->device->flags & CAM_DEV_UNCONFIGURED) == 0)
 	 && (ccb->ccb_h.target_lun == 0)) {
 		PROBE_SET_ACTION(softc, PROBE_TUR);
-	} else if ((cpi.hba_inquiry & (PI_WIDE_32|PI_WIDE_16|PI_SDTR_ABLE)) != 0
-	      && (cpi.hba_misc & PIM_NOBUSRESET) != 0) {
+	} else if ((cpi->hba_inquiry & (PI_WIDE_32|PI_WIDE_16|PI_SDTR_ABLE)) != 0
+	      && (cpi->hba_misc & PIM_NOBUSRESET) != 0) {
 		proberequestdefaultnegotiation(periph);
 		PROBE_SET_ACTION(softc, PROBE_INQUIRY);
 	} else {
@@ -5771,6 +5799,7 @@ probeschedule(struct cam_periph *periph)
 		softc->flags &= ~PROBE_NO_ANNOUNCE;
 
 	xpt_schedule(periph, ccb->ccb_h.pinfo.priority);
+	xpt_free_ccb(&cpi->ccb_h);
 }
 
 static void
@@ -5951,18 +5980,21 @@ probestart(struct cam_periph *periph, union ccb *start_ccb)
 static void
 proberequestdefaultnegotiation(struct cam_periph *periph)
 {
-	struct ccb_trans_settings cts;
+	struct ccb_trans_settings *cts;
 
-	xpt_setup_ccb(&cts.ccb_h, periph->path, /*priority*/1);
-	cts.ccb_h.func_code = XPT_GET_TRAN_SETTINGS;
-	cts.type = CTS_TYPE_USER_SETTINGS;
-	xpt_action((union ccb *)&cts);
-	if ((cts.ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
+	cts = &xpt_alloc_ccb()->cts;
+	xpt_setup_ccb(&cts->ccb_h, periph->path, /*priority*/1);
+	cts->ccb_h.func_code = XPT_GET_TRAN_SETTINGS;
+	cts->type = CTS_TYPE_USER_SETTINGS;
+	xpt_action((union ccb *)cts);
+	if ((cts->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
+		xpt_free_ccb(&cts->ccb_h);
 		return;
 	}
-	cts.ccb_h.func_code = XPT_SET_TRAN_SETTINGS;
-	cts.type = CTS_TYPE_CURRENT_SETTINGS;
-	xpt_action((union ccb *)&cts);
+	cts->ccb_h.func_code = XPT_SET_TRAN_SETTINGS;
+	cts->type = CTS_TYPE_CURRENT_SETTINGS;
+	xpt_action((union ccb *)cts);
+	xpt_free_ccb(&cts->ccb_h);
 }
 
 /*
@@ -5971,28 +6003,30 @@ proberequestdefaultnegotiation(struct cam_periph *periph)
 static int
 proberequestbackoff(struct cam_periph *periph, struct cam_ed *device)
 {
-	struct ccb_trans_settings cts;
+	struct ccb_trans_settings *cts;
 	struct ccb_trans_settings_spi *spi;
+	int result;
 
-	memset(&cts, 0, sizeof (cts));
-	xpt_setup_ccb(&cts.ccb_h, periph->path, /*priority*/1);
-	cts.ccb_h.func_code = XPT_GET_TRAN_SETTINGS;
-	cts.type = CTS_TYPE_CURRENT_SETTINGS;
-	xpt_action((union ccb *)&cts);
-	if ((cts.ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
+	result = 0;
+	cts = &xpt_alloc_ccb()->cts;
+	xpt_setup_ccb(&cts->ccb_h, periph->path, /*priority*/1);
+	cts->ccb_h.func_code = XPT_GET_TRAN_SETTINGS;
+	cts->type = CTS_TYPE_CURRENT_SETTINGS;
+	xpt_action((union ccb *)cts);
+	if ((cts->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
 		if (bootverbose) {
 			xpt_print(periph->path,
 			    "failed to get current device settings\n");
 		}
-		return (0);
+		goto done;
 	}
-	if (cts.transport != XPORT_SPI) {
+	if (cts->transport != XPORT_SPI) {
 		if (bootverbose) {
 			xpt_print(periph->path, "not SPI transport\n");
 		}
-		return (0);
+		goto done;
 	}
-	spi = &cts.xport_specific.spi;
+	spi = &cts->xport_specific.spi;
 
 	/*
 	 * We cannot renegotiate sync rate if we don't have one.
@@ -6001,7 +6035,7 @@ proberequestbackoff(struct cam_periph *periph, struct cam_ed *device)
 		if (bootverbose) {
 			xpt_print(periph->path, "no sync rate known\n");
 		}
-		return (0);
+		goto done;
 	}
 
 	/*
@@ -6019,13 +6053,13 @@ proberequestbackoff(struct cam_periph *periph, struct cam_ed *device)
 		if (bootverbose) {
 			xpt_print(periph->path, "no sync rate available\n");
 		}
-		return (0);
+		goto done;
 	}
 
 	if (device->flags & CAM_DEV_DV_HIT_BOTTOM) {
 		CAM_DEBUG(periph->path, CAM_DEBUG_INFO,
 		    ("hit async: giving up on DV\n"));
-		return (0);
+		goto done;
 	}
 
 
@@ -6055,19 +6089,22 @@ proberequestbackoff(struct cam_periph *periph, struct cam_ed *device)
 			    ("DV: period 0x%x\n", spi->sync_period));
 			kprintf("setting period to 0x%x\n", spi->sync_period);
 		}
-		cts.ccb_h.func_code = XPT_SET_TRAN_SETTINGS;
-		cts.type = CTS_TYPE_CURRENT_SETTINGS;
-		xpt_action((union ccb *)&cts);
-		if ((cts.ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP) {
+		cts->ccb_h.func_code = XPT_SET_TRAN_SETTINGS;
+		cts->type = CTS_TYPE_CURRENT_SETTINGS;
+		xpt_action((union ccb *)cts);
+		if ((cts->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP) {
 			break;
 		}
 		CAM_DEBUG(periph->path, CAM_DEBUG_INFO,
 		    ("DV: failed to set period 0x%x\n", spi->sync_period));
-		if (spi->sync_period == 0) {
-			return (0);
-		}
+		if (spi->sync_period == 0)
+			goto done;
 	}
-	return (1);
+	result = 1;
+done:
+	xpt_free_ccb(&cts->ccb_h);
+
+	return result;
 }
 
 static void
@@ -6525,23 +6562,26 @@ sysctl_cam_search_luns(SYSCTL_HANDLER_ARGS)
 static void
 xpt_devise_transport(struct cam_path *path)
 {
-	struct ccb_pathinq cpi;
-	struct ccb_trans_settings cts;
+	struct ccb_pathinq *cpi;
+	struct ccb_trans_settings *cts;
 	struct scsi_inquiry_data *inq_buf;
 
 	/* Get transport information from the SIM */
-	xpt_setup_ccb(&cpi.ccb_h, path, /*priority*/1);
-	cpi.ccb_h.func_code = XPT_PATH_INQ;
-	xpt_action((union ccb *)&cpi);
+	cpi = &xpt_alloc_ccb()->cpi;
+	cts = &xpt_alloc_ccb()->cts;
+
+	xpt_setup_ccb(&cpi->ccb_h, path, /*priority*/1);
+	cpi->ccb_h.func_code = XPT_PATH_INQ;
+	xpt_action((union ccb *)cpi);
 
 	inq_buf = NULL;
 	if ((path->device->flags & CAM_DEV_INQUIRY_DATA_VALID) != 0)
 		inq_buf = &path->device->inq_data;
 	path->device->protocol = PROTO_SCSI;
 	path->device->protocol_version =
-	    inq_buf != NULL ? SID_ANSI_REV(inq_buf) : cpi.protocol_version;
-	path->device->transport = cpi.transport;
-	path->device->transport_version = cpi.transport_version;
+	    inq_buf != NULL ? SID_ANSI_REV(inq_buf) : cpi->protocol_version;
+	path->device->transport = cpi->transport;
+	path->device->transport_version = cpi->transport_version;
 
 	/*
 	 * Any device not using SPI3 features should
@@ -6590,24 +6630,27 @@ xpt_devise_transport(struct cam_path *path)
 	 */
 
 	/* Tell the controller what we think */
-	xpt_setup_ccb(&cts.ccb_h, path, /*priority*/1);
-	cts.ccb_h.func_code = XPT_SET_TRAN_SETTINGS;
-	cts.type = CTS_TYPE_CURRENT_SETTINGS;
-	cts.transport = path->device->transport;
-	cts.transport_version = path->device->transport_version;
-	cts.protocol = path->device->protocol;
-	cts.protocol_version = path->device->protocol_version;
-	cts.proto_specific.valid = 0;
-	cts.xport_specific.valid = 0;
-	xpt_action((union ccb *)&cts);
+	xpt_setup_ccb(&cts->ccb_h, path, /*priority*/1);
+	cts->ccb_h.func_code = XPT_SET_TRAN_SETTINGS;
+	cts->type = CTS_TYPE_CURRENT_SETTINGS;
+	cts->transport = path->device->transport;
+	cts->transport_version = path->device->transport_version;
+	cts->protocol = path->device->protocol;
+	cts->protocol_version = path->device->protocol_version;
+	cts->proto_specific.valid = 0;
+	cts->xport_specific.valid = 0;
+	xpt_action((union ccb *)cts);
+
+	xpt_free_ccb(&cts->ccb_h);
+	xpt_free_ccb(&cpi->ccb_h);
 }
 
 static void
 xpt_set_transfer_settings(struct ccb_trans_settings *cts, struct cam_ed *device,
 			  int async_update)
 {
-	struct	ccb_pathinq cpi;
-	struct	ccb_trans_settings cur_cts;
+	struct	ccb_pathinq *cpi;
+	struct	ccb_trans_settings *cur_cts;
 	struct	ccb_trans_settings_scsi *scsi;
 	struct	ccb_trans_settings_scsi *cur_scsi;
 	struct	cam_sim *sim;
@@ -6682,14 +6725,17 @@ xpt_set_transfer_settings(struct ccb_trans_settings *cts, struct cam_ed *device,
 		return;
 	}
 
+	cpi = &xpt_alloc_ccb()->cpi;
+	cur_cts = &xpt_alloc_ccb()->cts;
+
 	inq_data = &device->inq_data;
 	scsi = &cts->proto_specific.scsi;
-	xpt_setup_ccb(&cpi.ccb_h, cts->ccb_h.path, /*priority*/1);
-	cpi.ccb_h.func_code = XPT_PATH_INQ;
-	xpt_action((union ccb *)&cpi);
+	xpt_setup_ccb(&cpi->ccb_h, cts->ccb_h.path, /*priority*/1);
+	cpi->ccb_h.func_code = XPT_PATH_INQ;
+	xpt_action((union ccb *)cpi);
 
 	/* SCSI specific sanity checking */
-	if ((cpi.hba_inquiry & PI_TAG_ABLE) == 0
+	if ((cpi->hba_inquiry & PI_TAG_ABLE) == 0
 	 || (INQ_DATA_TQ_ENABLED(inq_data)) == 0
 	 || (device->queue_flags & SCP_QUEUE_DQUE) != 0
 	 || (device->quirk->mintags == 0)) {
@@ -6705,14 +6751,14 @@ xpt_set_transfer_settings(struct ccb_trans_settings *cts, struct cam_ed *device,
 		 * Perform sanity checking against what the
 		 * controller and device can do.
 		 */
-		xpt_setup_ccb(&cur_cts.ccb_h, cts->ccb_h.path, /*priority*/1);
-		cur_cts.ccb_h.func_code = XPT_GET_TRAN_SETTINGS;
-		cur_cts.type = cts->type;
-		xpt_action((union ccb *)&cur_cts);
-		if ((cur_cts.ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
-			return;
+		xpt_setup_ccb(&cur_cts->ccb_h, cts->ccb_h.path, /*priority*/1);
+		cur_cts->ccb_h.func_code = XPT_GET_TRAN_SETTINGS;
+		cur_cts->type = cts->type;
+		xpt_action((union ccb *)cur_cts);
+		if ((cur_cts->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
+			goto done;
 		}
-		cur_scsi = &cur_cts.proto_specific.scsi;
+		cur_scsi = &cur_cts->proto_specific.scsi;
 		if ((scsi->valid & CTS_SCSI_VALID_TQ) == 0) {
 			scsi->flags &= ~CTS_SCSI_FLAGS_TAG_ENB;
 			scsi->flags |= cur_scsi->flags & CTS_SCSI_FLAGS_TAG_ENB;
@@ -6729,7 +6775,7 @@ xpt_set_transfer_settings(struct ccb_trans_settings *cts, struct cam_ed *device,
 
 		spi = &cts->xport_specific.spi;
 
-		cur_spi = &cur_cts.xport_specific.spi;
+		cur_spi = &cur_cts->xport_specific.spi;
 
 		/* Fill in any gaps in what the user gave us */
 		if ((spi->valid & CTS_SPI_VALID_SYNC_RATE) == 0)
@@ -6757,7 +6803,7 @@ xpt_set_transfer_settings(struct ccb_trans_settings *cts, struct cam_ed *device,
 		if (((device->flags & CAM_DEV_INQUIRY_DATA_VALID) != 0
 		  && (inq_data->flags & SID_Sync) == 0
 		  && cts->type == CTS_TYPE_CURRENT_SETTINGS)
-		 || ((cpi.hba_inquiry & PI_SDTR_ABLE) == 0)) {
+		 || ((cpi->hba_inquiry & PI_SDTR_ABLE) == 0)) {
 			/* Force async */
 			spi->sync_period = 0;
 			spi->sync_offset = 0;
@@ -6768,14 +6814,14 @@ xpt_set_transfer_settings(struct ccb_trans_settings *cts, struct cam_ed *device,
 			if (((device->flags & CAM_DEV_INQUIRY_DATA_VALID) == 0
 			  || (inq_data->flags & SID_WBus32) != 0
 			  || cts->type == CTS_TYPE_USER_SETTINGS)
-			 && (cpi.hba_inquiry & PI_WIDE_32) != 0)
+			 && (cpi->hba_inquiry & PI_WIDE_32) != 0)
 				break;
 			/* Fall Through to 16-bit */
 		case MSG_EXT_WDTR_BUS_16_BIT:
 			if (((device->flags & CAM_DEV_INQUIRY_DATA_VALID) == 0
 			  || (inq_data->flags & SID_WBus16) != 0
 			  || cts->type == CTS_TYPE_USER_SETTINGS)
-			 && (cpi.hba_inquiry & PI_WIDE_16) != 0) {
+			 && (cpi->hba_inquiry & PI_WIDE_16) != 0) {
 				spi->bus_width = MSG_EXT_WDTR_BUS_16_BIT;
 				break;
 			}
@@ -6787,7 +6833,7 @@ xpt_set_transfer_settings(struct ccb_trans_settings *cts, struct cam_ed *device,
 			break;
 		}
 
-		spi3caps = cpi.xport_specific.spi.ppr_options;
+		spi3caps = cpi->xport_specific.spi.ppr_options;
 		if ((device->flags & CAM_DEV_INQUIRY_DATA_VALID) != 0
 		 && cts->type == CTS_TYPE_CURRENT_SETTINGS)
 			spi3caps &= inq_data->spi3data;
@@ -6886,6 +6932,9 @@ xpt_set_transfer_settings(struct ccb_trans_settings *cts, struct cam_ed *device,
 	}
 	if (async_update == FALSE)
 		(*(sim->sim_action))(sim, (union ccb *)cts);
+done:
+	xpt_free_ccb(&cur_cts->ccb_h);
+	xpt_free_ccb(&cpi->ccb_h);
 }
 
 static void
@@ -6904,31 +6953,34 @@ xpt_toggle_tags(struct cam_path *path)
 	if ((dev->flags & CAM_DEV_TAG_AFTER_COUNT) != 0
 	 || ((dev->inq_flags & SID_CmdQue) != 0
  	  && (dev->inq_flags & (SID_Sync|SID_WBus16|SID_WBus32)) != 0)) {
-		struct ccb_trans_settings cts;
+		struct ccb_trans_settings *cts;
 
-		xpt_setup_ccb(&cts.ccb_h, path, 1);
-		cts.protocol = PROTO_SCSI;
-		cts.protocol_version = PROTO_VERSION_UNSPECIFIED;
-		cts.transport = XPORT_UNSPECIFIED;
-		cts.transport_version = XPORT_VERSION_UNSPECIFIED;
-		cts.proto_specific.scsi.flags = 0;
-		cts.proto_specific.scsi.valid = CTS_SCSI_VALID_TQ;
-		xpt_set_transfer_settings(&cts, path->device,
+		cts = &xpt_alloc_ccb()->cts;
+		xpt_setup_ccb(&cts->ccb_h, path, 1);
+		cts->protocol = PROTO_SCSI;
+		cts->protocol_version = PROTO_VERSION_UNSPECIFIED;
+		cts->transport = XPORT_UNSPECIFIED;
+		cts->transport_version = XPORT_VERSION_UNSPECIFIED;
+		cts->proto_specific.scsi.flags = 0;
+		cts->proto_specific.scsi.valid = CTS_SCSI_VALID_TQ;
+		xpt_set_transfer_settings(cts, path->device,
 					  /*async_update*/TRUE);
-		cts.proto_specific.scsi.flags = CTS_SCSI_FLAGS_TAG_ENB;
-		xpt_set_transfer_settings(&cts, path->device,
+		cts->proto_specific.scsi.flags = CTS_SCSI_FLAGS_TAG_ENB;
+		xpt_set_transfer_settings(cts, path->device,
 					  /*async_update*/TRUE);
+		xpt_free_ccb(&cts->ccb_h);
 	}
 }
 
 static void
 xpt_start_tags(struct cam_path *path)
 {
-	struct ccb_relsim crs;
+	struct ccb_relsim *crs;
 	struct cam_ed *device;
 	struct cam_sim *sim;
 	int    newopenings;
 
+	crs = &xpt_alloc_ccb()->crs;
 	device = path->device;
 	sim = path->bus->sim;
 	device->flags &= ~CAM_DEV_TAG_AFTER_COUNT;
@@ -6940,14 +6992,15 @@ xpt_start_tags(struct cam_path *path)
 		newopenings = min(device->quirk->maxtags,
 				  sim->max_tagged_dev_openings);
 	xpt_dev_ccbq_resize(path, newopenings);
-	xpt_setup_ccb(&crs.ccb_h, path, /*priority*/1);
-	crs.ccb_h.func_code = XPT_REL_SIMQ;
-	crs.release_flags = RELSIM_RELEASE_AFTER_QEMPTY;
-	crs.openings
-	    = crs.release_timeout
-	    = crs.qfrozen_cnt
+	xpt_setup_ccb(&crs->ccb_h, path, /*priority*/1);
+	crs->ccb_h.func_code = XPT_REL_SIMQ;
+	crs->release_flags = RELSIM_RELEASE_AFTER_QEMPTY;
+	crs->openings
+	    = crs->release_timeout
+	    = crs->qfrozen_cnt
 	    = 0;
-	xpt_action((union ccb *)&crs);
+	xpt_action((union ccb *)crs);
+	xpt_free_ccb(&crs->ccb_h);
 }
 
 static int busses_to_config;
@@ -6960,7 +7013,7 @@ xptconfigbuscountfunc(struct cam_eb *bus, void *arg)
 
 	if (bus->counted_to_config == 0 && bus->path_id != CAM_XPT_PATH_ID) {
 		struct cam_path path;
-		struct ccb_pathinq cpi;
+		struct ccb_pathinq *cpi;
 		int can_negotiate;
 
 		if (bootverbose) {
@@ -6973,18 +7026,22 @@ xptconfigbuscountfunc(struct cam_eb *bus, void *arg)
 				kprintf(" (unknown)\n");
 			}
 		}
+
+		cpi = &xpt_alloc_ccb()->cpi;
+
 		atomic_add_int(&busses_to_config, 1);
 		bus->counted_to_config = 1;
 		xpt_compile_path(&path, NULL, bus->path_id,
 				 CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD);
-		xpt_setup_ccb(&cpi.ccb_h, &path, /*priority*/1);
-		cpi.ccb_h.func_code = XPT_PATH_INQ;
-		xpt_action((union ccb *)&cpi);
-		can_negotiate = cpi.hba_inquiry;
+		xpt_setup_ccb(&cpi->ccb_h, &path, /*priority*/1);
+		cpi->ccb_h.func_code = XPT_PATH_INQ;
+		xpt_action((union ccb *)cpi);
+		can_negotiate = cpi->hba_inquiry;
 		can_negotiate &= (PI_WIDE_32|PI_WIDE_16|PI_SDTR_ABLE);
-		if ((cpi.hba_misc & PIM_NOBUSRESET) == 0 && can_negotiate)
+		if ((cpi->hba_misc & PIM_NOBUSRESET) == 0 && can_negotiate)
 			busses_to_reset++;
 		xpt_release_path(&path);
+		xpt_free_ccb(&cpi->ccb_h);
 	} else
 	if (bus->counted_to_config == 0 && bus->path_id == CAM_XPT_PATH_ID) {
 		/* this is our dummy periph/bus */
@@ -7014,7 +7071,7 @@ xptconfigfunc(struct cam_eb *bus, void *arg)
 			kprintf("xptconfigfunc: xpt_create_path failed with "
 			       "status %#x for bus %d\n", status, bus->path_id);
 			kprintf("xptconfigfunc: halting bus configuration\n");
-			xpt_free_ccb(work_ccb);
+			xpt_free_ccb(&work_ccb->ccb_h);
 			xpt_uncount_bus(bus);
 			return(0);
 		}
@@ -7209,7 +7266,7 @@ xpt_finishconfig(struct cam_periph *periph, union ccb *done_ccb)
 		}
 		xpt_uncount_bus(path->bus);
 		xpt_free_path(path);
-		xpt_free_ccb(done_ccb);
+		xpt_free_ccb(&done_ccb->ccb_h);
 		break;
 	}
 }
@@ -7218,7 +7275,7 @@ cam_status
 xpt_register_async(int event, ac_callback_t *cbfunc, void *cbarg,
 		   struct cam_path *path)
 {
-	struct ccb_setasync csa;
+	struct ccb_setasync *csa;
 	cam_status status;
 	int xptpath = 0;
 
@@ -7233,17 +7290,20 @@ xpt_register_async(int event, ac_callback_t *cbfunc, void *cbarg,
 		xptpath = 1;
 	}
 
-	xpt_setup_ccb(&csa.ccb_h, path, /*priority*/5);
-	csa.ccb_h.func_code = XPT_SASYNC_CB;
-	csa.event_enable = event;
-	csa.callback = cbfunc;
-	csa.callback_arg = cbarg;
-	xpt_action((union ccb *)&csa);
-	status = csa.ccb_h.status;
+	csa = &xpt_alloc_ccb()->csa;
+	xpt_setup_ccb(&csa->ccb_h, path, /*priority*/5);
+	csa->ccb_h.func_code = XPT_SASYNC_CB;
+	csa->event_enable = event;
+	csa->callback = cbfunc;
+	csa->callback_arg = cbarg;
+	xpt_action((union ccb *)csa);
+	status = csa->ccb_h.status;
 	if (xptpath) {
 		xpt_free_path(path);
 		lockmgr(&xsoftc.xpt_lock, LK_RELEASE);
 	}
+	xpt_free_ccb(&csa->ccb_h);
+
 	return (status);
 }
 

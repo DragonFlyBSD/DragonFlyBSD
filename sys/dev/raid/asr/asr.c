@@ -130,6 +130,7 @@
 #include <bus/cam/cam_ccb.h>
 #include <bus/cam/cam_sim.h>
 #include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_xpt_periph.h>
 
 #include <bus/cam/scsi/scsi_all.h>
 #include <bus/cam/scsi/scsi_message.h>
@@ -780,8 +781,9 @@ ASR_ccbAdd(Asr_softc_t *sc, union asr_ccb *ccb)
 			 */
 			ccb->ccb_h.timeout = 6 * 60 * 1000;
 		}
-		callout_reset(&ccb->ccb_h.timeout_ch,
-		    (ccb->ccb_h.timeout * hz) / 1000, asr_timeout, ccb);
+		callout_reset(ccb->ccb_h.timeout_ch,
+			      (ccb->ccb_h.timeout * hz) / 1000,
+			      asr_timeout, ccb);
 	}
 	crit_exit();
 } /* ASR_ccbAdd */
@@ -793,7 +795,7 @@ static __inline void
 ASR_ccbRemove(Asr_softc_t *sc, union asr_ccb *ccb)
 {
 	crit_enter();
-	callout_stop(&ccb->ccb_h.timeout_ch);
+	callout_stop(ccb->ccb_h.timeout_ch);
 	LIST_REMOVE(&(ccb->ccb_h), sim_links.le);
 	crit_exit();
 } /* ASR_ccbRemove */
@@ -1169,15 +1171,18 @@ ASR_rescan(Asr_softc_t *sc)
 							  AC_LOST_DEVICE,
 							  path, NULL);
 						} else if (LastTID == (tid_t)-1) {
-							struct ccb_getdev ccb;
+							struct ccb_getdev *ccb;
+
+							ccb = &xpt_alloc_ccb()->cgd;
 
 							xpt_setup_ccb(
-							  &(ccb.ccb_h),
+							  &ccb->ccb_h,
 							  path, /*priority*/5);
 							xpt_async(
 							  AC_FOUND_DEVICE,
 							  path,
-							  &ccb);
+							  ccb);
+							xpt_free_ccb(&ccb->ccb_h);
 						} else {
 							xpt_async(
 							  AC_INQ_CHANGED,
@@ -1300,8 +1305,9 @@ asr_timeout(void *arg)
 		  cam_sim_unit(xpt_path_sim(ccb->ccb_h.path)), s);
 		if (ASR_reset (sc) == ENXIO) {
 			/* Try again later */
-			callout_reset(&ccb->ccb_h.timeout_ch,
-			    (ccb->ccb_h.timeout * hz) / 1000, asr_timeout, ccb);
+			callout_reset(ccb->ccb_h.timeout_ch,
+				      (ccb->ccb_h.timeout * hz) / 1000,
+				      asr_timeout, ccb);
 		}
 		return;
 	}
@@ -1315,8 +1321,9 @@ asr_timeout(void *arg)
 	if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_CMD_TIMEOUT) {
 		debug_asr_printf (" AGAIN\nreinitializing adapter\n");
 		if (ASR_reset (sc) == ENXIO) {
-			callout_reset(&ccb->ccb_h.timeout_ch,
-			    (ccb->ccb_h.timeout * hz) / 1000, asr_timeout, ccb);
+			callout_reset(ccb->ccb_h.timeout_ch,
+				      (ccb->ccb_h.timeout * hz) / 1000,
+				      asr_timeout, ccb);
 		}
 		crit_exit();
 		return;
@@ -1325,7 +1332,8 @@ asr_timeout(void *arg)
 	/* If the BUS reset does not take, then an adapter reset is next! */
 	ccb->ccb_h.status &= ~CAM_STATUS_MASK;
 	ccb->ccb_h.status |= CAM_CMD_TIMEOUT;
-	callout_reset(&ccb->ccb_h.timeout_ch, (ccb->ccb_h.timeout * hz) / 1000,
+	callout_reset(ccb->ccb_h.timeout_ch,
+		      (ccb->ccb_h.timeout * hz) / 1000,
 		      asr_timeout, ccb);
 	ASR_resetBus (sc, cam_sim_bus(xpt_path_sim(ccb->ccb_h.path)));
 	xpt_async (AC_BUS_RESET, ccb->ccb_h.path, NULL);

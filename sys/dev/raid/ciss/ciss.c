@@ -93,6 +93,7 @@
 #include <bus/cam/cam_xpt_sim.h>
 #include <bus/cam/scsi/scsi_all.h>
 #include <bus/cam/scsi/scsi_message.h>
+#include <bus/cam/cam_xpt_periph.h>
 
 #include <machine/endian.h>
 #include <sys/rman.h>
@@ -2844,17 +2845,17 @@ ciss_cam_init(struct ciss_softc *sc)
 static void
 ciss_cam_rescan_target(struct ciss_softc *sc, int bus, int target)
 {
-    union ccb		*ccb;
+    union ccb *ccb;
 
     debug_called(1);
 
-    ccb = kmalloc(sizeof(union ccb), M_TEMP, M_WAITOK | M_ZERO);
+    ccb = xpt_alloc_ccb();
 
     if (xpt_create_path(&ccb->ccb_h.path, xpt_periph,
 	    cam_sim_path(sc->ciss_cam_sim[bus]),
 	    target, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 	ciss_printf(sc, "rescan failed (can't create path)\n");
-	kfree(ccb, M_TEMP);
+	xpt_free_ccb(&ccb->ccb_h);
 	return;
     }
 
@@ -2885,7 +2886,7 @@ static void
 ciss_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 {
     xpt_free_path(ccb->ccb_h.path);
-    kfree(ccb, M_TEMP);
+    xpt_free_ccb(&ccb->ccb_h);
 }
 
 /************************************************************************

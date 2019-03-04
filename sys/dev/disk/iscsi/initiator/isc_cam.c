@@ -43,7 +43,9 @@
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
 #include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt.h>
 #include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_xpt_periph.h>
 #include <bus/cam/cam_periph.h>
 
 #include <dev/disk/iscsi/initiator/iscsi.h>
@@ -100,9 +102,8 @@ _scan_callback(struct cam_periph *periph, union ccb *ccb)
 
      debug_called(8);
 
-     kfree(ccb, M_TEMP);
-
-     if(sp->flags & ISC_FFPWAIT) {
+     xpt_free_ccb(&ccb->ccb_h);
+     if (sp->flags & ISC_FFPWAIT) {
 	  sp->flags &= ~ISC_FFPWAIT;
 	  wakeup(sp);
      }
@@ -111,15 +112,13 @@ _scan_callback(struct cam_periph *periph, union ccb *ccb)
 static void
 _scan_target(isc_session_t *sp, int target)
 {
-     union ccb		*ccb;
+     union ccb *ccb;
 
      debug_called(8);
      sdebug(2, "target=%d", target);
 
-     if((ccb = kmalloc(sizeof(union ccb), M_TEMP, M_WAITOK | M_ZERO)) == NULL) {
-	  xdebug("scan failed (can't allocate CCB)");
-	  return;
-     }
+     ccb = xpt_alloc_ccb();
+
      CAM_LOCK(sp->isc);
      xpt_setup_ccb(&ccb->ccb_h, sp->cam_path, 5/*priority (low)*/);
      ccb->ccb_h.func_code	= XPT_SCAN_BUS;

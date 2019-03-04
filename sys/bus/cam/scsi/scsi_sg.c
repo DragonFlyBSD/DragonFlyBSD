@@ -738,7 +738,7 @@ sgwrite(struct dev_write_args *ap)
 out_buf:
 	kfree(buf, M_DEVBUF);
 out_ccb:
-	xpt_free_ccb(ccb);
+	xpt_free_ccb(&ccb->ccb_h);
 out_hdr:
 	kfree(rdwr, M_DEVBUF);
 	return (error);
@@ -843,7 +843,7 @@ search:
 		error = uiomove(rdwr->buf, rdwr->buf_len, uio);
 
 	cam_periph_lock(periph);
-	xpt_free_ccb(rdwr->ccb);
+	xpt_free_ccb(&rdwr->ccb->ccb_h);
 	cam_periph_unlock(periph);
 	kfree(rdwr->buf, M_DEVBUF);
 	kfree(rdwr, M_DEVBUF);

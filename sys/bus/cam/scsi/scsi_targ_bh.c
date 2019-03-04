@@ -229,7 +229,7 @@ targbhasync(void *callback_arg, u_int32_t code,
 static cam_status
 targbhenlun(struct cam_periph *periph)
 {
-	union ccb immed_ccb;
+	union ccb *immed_ccb;
 	struct targbh_softc *softc;
 	cam_status status;
 	int i;
@@ -239,15 +239,18 @@ targbhenlun(struct cam_periph *periph)
 	if ((softc->flags & TARGBH_FLAG_LUN_ENABLED) != 0)
 		return (CAM_REQ_CMP);
 
-	xpt_setup_ccb(&immed_ccb.ccb_h, periph->path, /*priority*/1);
-	immed_ccb.ccb_h.func_code = XPT_EN_LUN;
+	immed_ccb = xpt_alloc_ccb();
+	xpt_setup_ccb(&immed_ccb->ccb_h, periph->path, /*priority*/1);
+	immed_ccb->ccb_h.func_code = XPT_EN_LUN;
 
 	/* Don't need support for any vendor specific commands */
-	immed_ccb.cel.grp6_len = 0;
-	immed_ccb.cel.grp7_len = 0;
-	immed_ccb.cel.enable = 1;
-	xpt_action(&immed_ccb);
-	status = immed_ccb.ccb_h.status;
+	immed_ccb->cel.grp6_len = 0;
+	immed_ccb->cel.grp7_len = 0;
+	immed_ccb->cel.enable = 1;
+	xpt_action(immed_ccb);
+	status = immed_ccb->ccb_h.status;
+	xpt_free_ccb(&immed_ccb->ccb_h);
+
 	if (status != CAM_REQ_CMP) {
 		xpt_print(periph->path,
 		    "targbhenlun - Enable Lun Rejected with status 0x%x\n",
@@ -264,8 +267,7 @@ targbhenlun(struct cam_periph *periph)
 	for (i = 0; i < MAX_ACCEPT; i++) {
 		struct ccb_accept_tio *atio;
 
-		atio = kmalloc(sizeof(*atio), M_SCSIBH, M_INTWAIT);
-
+		atio = &xpt_alloc_ccb()->atio;
 		atio->ccb_h.ccb_descr = targbhallocdescr();
 
 		xpt_setup_ccb(&atio->ccb_h, periph->path, /*priority*/1);
@@ -275,7 +277,7 @@ targbhenlun(struct cam_periph *periph)
 		status = atio->ccb_h.status;
 		if (status != CAM_REQ_INPROG) {
 			targbhfreedescr(atio->ccb_h.ccb_descr);
-			kfree(atio, M_SCSIBH);
+			xpt_free_ccb(&atio->ccb_h);
 			break;
 		}
 		((struct targbh_cmd_desc*)atio->ccb_h.ccb_descr)->atio_link =
@@ -298,7 +300,7 @@ targbhenlun(struct cam_periph *periph)
 	for (i = 0; i < MAX_ACCEPT; i++) {
 		struct ccb_immed_notify *inot;
 
-		inot = kmalloc(sizeof(*inot), M_SCSIBH, M_INTWAIT);
+		inot = &xpt_alloc_ccb()->cin;
 
 		xpt_setup_ccb(&inot->ccb_h, periph->path, /*priority*/1);
 		inot->ccb_h.func_code = XPT_IMMED_NOTIFY;
@@ -306,7 +308,7 @@ targbhenlun(struct cam_periph *periph)
 		xpt_action((union ccb *)inot);
 		status = inot->ccb_h.status;
 		if (status != CAM_REQ_INPROG) {
-			kfree(inot, M_SCSIBH);
+			xpt_free_ccb(&inot->ccb_h);
 			break;
 		}
 		SLIST_INSERT_HEAD(&softc->immed_notify_slist, &inot->ccb_h,
@@ -327,10 +329,11 @@ targbhenlun(struct cam_periph *periph)
 static cam_status
 targbhdislun(struct cam_periph *periph)
 {
-	union ccb ccb;
+	union ccb *ccb;
 	struct targbh_softc *softc;
 	struct ccb_accept_tio* atio;
 	struct ccb_hdr *ccb_h;
+	u_int32_t status;
 
 	softc = (struct targbh_softc *)periph->softc;
 	if ((softc->flags & TARGBH_FLAG_LUN_ENABLED) == 0)
@@ -338,39 +341,44 @@ targbhdislun(struct cam_periph *periph)
 
 	/* XXX Block for Continue I/O completion */
 
+	ccb = xpt_alloc_ccb();
+
 	/* Kill off all ACCECPT and IMMEDIATE CCBs */
 	while ((atio = softc->accept_tio_list) != NULL) {
-		
 		softc->accept_tio_list =
 		    ((struct targbh_cmd_desc*)atio->ccb_h.ccb_descr)->atio_link;
-		xpt_setup_ccb(&ccb.cab.ccb_h, periph->path, /*priority*/1);
-		ccb.cab.ccb_h.func_code = XPT_ABORT;
-		ccb.cab.abort_ccb = (union ccb *)atio;
-		xpt_action(&ccb);
+		xpt_setup_ccb(&ccb->cab.ccb_h, periph->path, /*priority*/1);
+		ccb->cab.ccb_h.func_code = XPT_ABORT;
+		ccb->cab.abort_ccb = (union ccb *)atio;
+		xpt_action(ccb);
 	}
 
 	while ((ccb_h = SLIST_FIRST(&softc->immed_notify_slist)) != NULL) {
 		SLIST_REMOVE_HEAD(&softc->immed_notify_slist, periph_links.sle);
-		xpt_setup_ccb(&ccb.cab.ccb_h, periph->path, /*priority*/1);
-		ccb.cab.ccb_h.func_code = XPT_ABORT;
-		ccb.cab.abort_ccb = (union ccb *)ccb_h;
-		xpt_action(&ccb);
+		xpt_setup_ccb(&ccb->cab.ccb_h, periph->path, /*priority*/1);
+		ccb->cab.ccb_h.func_code = XPT_ABORT;
+		ccb->cab.abort_ccb = (union ccb *)ccb_h;
+		xpt_action(ccb);
+		/* XXX xpt_free_ccb(ccb_h); needed? */
 	}
 
 	/*
 	 * Dissable this lun.
 	 */
-	xpt_setup_ccb(&ccb.cel.ccb_h, periph->path, /*priority*/1);
-	ccb.cel.ccb_h.func_code = XPT_EN_LUN;
-	ccb.cel.enable = 0;
-	xpt_action(&ccb);
+	xpt_setup_ccb(&ccb->cel.ccb_h, periph->path, /*priority*/1);
+	ccb->cel.ccb_h.func_code = XPT_EN_LUN;
+	ccb->cel.enable = 0;
+	xpt_action(ccb);
 
-	if (ccb.cel.ccb_h.status != CAM_REQ_CMP)
+	status = ccb->cel.ccb_h.status;
+	xpt_free_ccb(&ccb->ccb_h);
+
+	if (status != CAM_REQ_CMP)
 		kprintf("targbhdislun - Disabling lun on controller failed "
-		       "with status 0x%x\n", ccb.cel.ccb_h.status);
+		       "with status 0x%x\n", status);
 	else 
 		softc->flags &= ~TARGBH_FLAG_LUN_ENABLED;
-	return (ccb.cel.ccb_h.status);
+	return (status);
 }
 
 static cam_status
@@ -533,7 +541,7 @@ targbhdone(struct cam_periph *periph, union ccb *done_ccb)
 		if (softc->state == TARGBH_STATE_TEARDOWN
 		 || atio->ccb_h.status == CAM_REQ_ABORTED) {
 			targbhfreedescr(descr);
-			xpt_free_ccb(done_ccb);
+			xpt_free_ccb(&done_ccb->ccb_h);
 			return;
 		}
 
@@ -682,7 +690,7 @@ targbhdone(struct cam_periph *periph, union ccb *done_ccb)
 			break;
 		} else {
 			targbhfreedescr(desc);
-			kfree(atio, M_SCSIBH);
+			xpt_free_ccb(&atio->ccb_h);
 		}
 		break;
 	}
@@ -694,7 +702,7 @@ targbhdone(struct cam_periph *periph, union ccb *done_ccb)
 		if (softc->state == TARGBH_STATE_TEARDOWN
 		 || done_ccb->ccb_h.status == CAM_REQ_ABORTED) {
 			kprintf("Freed an immediate notify\n");
-			xpt_free_ccb(done_ccb);
+			xpt_free_ccb(&done_ccb->ccb_h);
 		} else {
 			/* Requeue for another immediate event */
 			xpt_action(done_ccb);

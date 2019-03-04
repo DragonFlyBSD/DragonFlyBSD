@@ -278,8 +278,8 @@ struct ccb_hdr {
 	ccb_ppriv_area	periph_priv;
 	ccb_spriv_area	sim_priv;
 	u_int32_t	timeout;	/* Timeout value */
-	struct		callout timeout_ch;
-					/* Callout handle used for timeouts */
+	struct	callout *timeout_ch;	/* Callout handle used for timeouts */
+	char		pad[48];	/* user/kernel structure compat */
 };
 
 /* Get Device Information CCB */

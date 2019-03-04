@@ -263,7 +263,7 @@ mprsas_free_tm(struct mpr_softc *sc, struct mpr_command *tm)
 		    target_id);
 		xpt_release_devq(tm->cm_ccb->ccb_h.path, 1, TRUE);
 		xpt_free_path(tm->cm_ccb->ccb_h.path);
-		xpt_free_ccb(tm->cm_ccb);
+		xpt_free_ccb(&tm->cm_ccb->ccb_h);
 	}
 
 	mpr_free_high_priority_command(sc, tm);
@@ -277,7 +277,7 @@ mprsas_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 			ccb->ccb_h.status);
 
 	xpt_free_path(ccb->ccb_h.path);
-	xpt_free_ccb(ccb);
+	xpt_free_ccb(&ccb->ccb_h);
 }
 
 void
@@ -307,7 +307,7 @@ mprsas_rescan_target(struct mpr_softc *sc, struct mprsas_target *targ)
 	if (xpt_create_path(&ccb->ccb_h.path, xpt_periph, pathid, targetid,
 	    CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		mpr_dprint(sc, MPR_ERROR, "unable to create path for rescan\n");
-		xpt_free_ccb(ccb);
+		xpt_free_ccb(&ccb->ccb_h);
 		return;
 	}
 
@@ -3460,7 +3460,7 @@ mprsas_async(void *callback_arg, uint32_t code, struct cam_path *path,
 		struct mprsas_target *target;
 		struct mprsas_softc *sassc;
 		struct scsi_read_capacity_data_long rcap_buf;
-		struct ccb_dev_advinfo cdai;
+		struct ccb_dev_advinfo *cdai;
 		struct mprsas_lun *lun;
 		lun_id_t lunid;
 		int found_lun;
@@ -3521,21 +3521,24 @@ mprsas_async(void *callback_arg, uint32_t code, struct cam_path *path,
 		}
 
 		bzero(&rcap_buf, sizeof(rcap_buf));
-		xpt_setup_ccb(&cdai.ccb_h, path, CAM_PRIORITY_NORMAL);
-		cdai.ccb_h.func_code = XPT_DEV_ADVINFO;
-		cdai.ccb_h.flags = CAM_DIR_IN;
-		cdai.buftype = CDAI_TYPE_RCAPLONG;
+		cdai = xpt_alloc_ccb();
+		xpt_setup_ccb(&cdai->ccb_h, path, CAM_PRIORITY_NORMAL);
+		cdai->ccb_h.func_code = XPT_DEV_ADVINFO;
+		cdai->ccb_h.flags = CAM_DIR_IN;
+		cdai->buftype = CDAI_TYPE_RCAPLONG;
 #if 0 /* (__FreeBSD_version >= 1100061) || \
     ((__FreeBSD_version >= 1001510) && (__FreeBSD_version < 1100000)) */
-		cdai.flags = CDAI_FLAG_NONE;
+		cdai->flags = CDAI_FLAG_NONE;
 #else
-		cdai.flags = 0;
+		cdai->flags = 0;
 #endif
-		cdai.bufsiz = sizeof(rcap_buf);
-		cdai.buf = (uint8_t *)&rcap_buf;
-		xpt_action((union ccb *)&cdai);
-		if ((cdai.ccb_h.status & CAM_DEV_QFRZN) != 0)
-			cam_release_devq(cdai.ccb_h.path, 0, 0, 0, FALSE);
+		cdai->bufsiz = sizeof(rcap_buf);
+		cdai->buf = (uint8_t *)&rcap_buf;
+		xpt_action((union ccb *)cdai);
+		if ((cdai->ccb_h.status & CAM_DEV_QFRZN) != 0)
+			cam_release_devq(cdai->ccb_h.path, 0, 0, 0, FALSE);
+
+		xpt_free_ccb(&cdai->ccb_h);
 
 		if ((mprsas_get_ccbstatus((union ccb *)&cdai) == CAM_REQ_CMP)
 		    && (rcap_buf.prot & SRC16_PROT_EN)) {
@@ -3641,7 +3644,7 @@ mprsas_check_eedp(struct mpr_softc *sc, struct cam_path *path,
 	    CAM_REQ_CMP) {
 		mpr_dprint(sc, MPR_ERROR, "Unable to create path for EEDP "
 		    "support.\n");
-		xpt_free_ccb(ccb);
+		xpt_free_ccb(&ccb->ccb_h);
 		return;
 	}
 
@@ -3662,7 +3665,7 @@ mprsas_check_eedp(struct mpr_softc *sc, struct cam_path *path,
 			mpr_dprint(sc, MPR_ERROR, "Unable to alloc LUN for "
 			    "EEDP support.\n");
 			xpt_free_path(local_path);
-			xpt_free_ccb(ccb);
+			xpt_free_ccb(&ccb->ccb_h);
 			return;
 		}
 		lun->lun_id = lunid;
@@ -3684,7 +3687,7 @@ mprsas_check_eedp(struct mpr_softc *sc, struct cam_path *path,
 		mpr_dprint(sc, MPR_ERROR, "Unable to alloc read capacity "
 		    "buffer for EEDP support.\n");
 		xpt_free_path(ccb->ccb_h.path);
-		xpt_free_ccb(ccb);
+		xpt_free_ccb(&ccb->ccb_h);
 		return;
 	}
 	xpt_setup_ccb(&ccb->ccb_h, local_path, CAM_PRIORITY_NORMAL);
@@ -3776,7 +3779,7 @@ mprsas_read_cap_done(struct cam_periph *periph, union ccb *done_ccb)
 	// Finished with this CCB and path.
 	kfree(rcap_buf, M_MPR);
 	xpt_free_path(done_ccb->ccb_h.path);
-	xpt_free_ccb(done_ccb);
+	xpt_free_ccb(&done_ccb->ccb_h);
 }
 #endif /* (__FreeBSD_version < 901503) || \
           ((__FreeBSD_version >= 1000000) && (__FreeBSD_version < 1000006)) */
@@ -3800,7 +3803,7 @@ mprsas_prepare_for_tm(struct mpr_softc *sc, struct mpr_command *tm,
 		path_id = cam_sim_path(sc->sassc->sim);
 		if (xpt_create_path(&ccb->ccb_h.path, xpt_periph, path_id,
 		    target->tid, lun_id) != CAM_REQ_CMP) {
-			xpt_free_ccb(ccb);
+			xpt_free_ccb(&ccb->ccb_h);
 		} else {
 			tm->cm_ccb = ccb;
 			tm->cm_targ = target;

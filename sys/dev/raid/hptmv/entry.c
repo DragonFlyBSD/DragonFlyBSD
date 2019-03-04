@@ -44,6 +44,10 @@
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_xpt.h>
+#include <bus/cam/cam_xpt_periph.h>
 
 #ifndef __KERNEL__
 #define __KERNEL__
@@ -2024,8 +2028,7 @@ hpt_attach(device_t dev)
 		return(ENXIO);
 	}
 
-
-	ccb = kmalloc(sizeof(*ccb), M_DEVBUF, M_WAITOK | M_ZERO);
+	ccb = xpt_alloc_ccb();
 	ccb->ccb_h.pinfo.priority = 1;
 	ccb->ccb_h.pinfo.index = CAM_UNQUEUED_INDEX;
 
@@ -2065,13 +2068,13 @@ hpt_attach(device_t dev)
 		return ENXIO;
 	}
 
-	xpt_setup_ccb(&(ccb->ccb_h), pAdapter->path, /*priority*/5);
+	xpt_setup_ccb(&ccb->ccb_h, pAdapter->path, /*priority*/5);
 	ccb->ccb_h.func_code = XPT_SASYNC_CB;
 	ccb->csa.event_enable = AC_LOST_DEVICE;
 	ccb->csa.callback = hpt_async;
 	ccb->csa.callback_arg = hpt_vsim;
 	xpt_action(ccb);
-	kfree(ccb, M_DEVBUF);
+	xpt_free_ccb(&ccb->ccb_h);
 
 	callout_init(&pAdapter->event_timer_connect);
 	callout_init(&pAdapter->event_timer_disconnect);
@@ -2664,7 +2667,7 @@ hpt_io_dmamap_callback(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
 		bus_dmamap_sync(pAdapter->io_dma_parent, pmap->dma_map, BUS_DMASYNC_PREWRITE);
 	}
 
-	callout_reset(&ccb->ccb_h.timeout_ch, 20*hz, hpt_timeout, ccb);
+	callout_reset(ccb->ccb_h.timeout_ch, 20*hz, hpt_timeout, ccb);
 	pVDev->pfnSendCommand(_VBUS_P pCmd);
 	CheckPendingCall(_VBUS_P0);
 }
@@ -2860,7 +2863,8 @@ OsSendCommand(_VBUS_ARG union ccb *ccb)
 					pCmd->pSgTable[idx].wSgFlag= (idx==ccb->csio.sglist_cnt-1)?SG_FLAG_EOT: 0;
 				}
 
-				callout_reset(&ccb->ccb_h.timeout_ch, 20*hz, hpt_timeout, ccb);
+				callout_reset(ccb->ccb_h.timeout_ch, 20 * hz,
+					      hpt_timeout, ccb);
 				pVDev->pfnSendCommand(_VBUS_P pCmd);
 			}
 			else {
@@ -2904,7 +2908,7 @@ fOsCommandDone(_VBUS_ARG PCommand pCmd)
 
 	KdPrint(("fOsCommandDone(pcmd=%p, result=%d)\n", pCmd, pCmd->Result));
 
-	callout_stop(&ccb->ccb_h.timeout_ch);
+	callout_stop(ccb->ccb_h.timeout_ch);
 
 	switch(pCmd->Result) {
 	case RETURN_SUCCESS:

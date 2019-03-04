@@ -52,7 +52,9 @@
 #include <bus/cam/cam_ccb.h>
 #include <bus/cam/cam_periph.h>
 #include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt.h>
 #include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_xpt_periph.h>
 
 #include <sys/callout.h>
 #include <sys/kthread.h>
@@ -272,7 +274,7 @@ mpt_raid_probe(struct mpt_softc *mpt)
 static int
 mpt_raid_attach(struct mpt_softc *mpt)
 {
-	struct ccb_setasync csa;
+	struct ccb_setasync *csa;
 	mpt_handler_t	 handler;
 	int		 error;
 
@@ -283,6 +285,7 @@ mpt_raid_attach(struct mpt_softc *mpt)
 		mpt_prt(mpt, "Unable to spawn RAID thread!\n");
 		goto cleanup;
 	}
+	csa = &xpt_alloc_ccb()->csa;
 
 	MPT_LOCK(mpt);
 	handler.reply_handler = mpt_raid_reply_handler;
@@ -293,18 +296,19 @@ mpt_raid_attach(struct mpt_softc *mpt)
 		goto cleanup;
 	}
 
-	xpt_setup_ccb(&csa.ccb_h, mpt->path, 5);
-	csa.ccb_h.func_code = XPT_SASYNC_CB;
-	csa.event_enable = AC_FOUND_DEVICE;
-	csa.callback = mpt_raid_async;
-	csa.callback_arg = mpt;
-	xpt_action((union ccb *)&csa);
-	if (csa.ccb_h.status != CAM_REQ_CMP) {
+	xpt_setup_ccb(&csa->ccb_h, mpt->path, 5);
+	csa->ccb_h.func_code = XPT_SASYNC_CB;
+	csa->event_enable = AC_FOUND_DEVICE;
+	csa->callback = mpt_raid_async;
+	csa->callback_arg = mpt;
+	xpt_action((union ccb *)csa);
+	if (csa->ccb_h.status != CAM_REQ_CMP) {
 		mpt_prt(mpt, "mpt_raid_attach: Unable to register "
 			"CAM async handler.\n");
 	}
 	MPT_UNLOCK(mpt);
 
+	xpt_free_ccb(&csa->ccb_h);
 	mpt_raid_sysctl_attach(mpt);
 	return (0);
 cleanup:
@@ -323,9 +327,10 @@ mpt_raid_enable(struct mpt_softc *mpt)
 static void
 mpt_raid_detach(struct mpt_softc *mpt)
 {
-	struct ccb_setasync csa;
+	struct ccb_setasync *csa;
 	mpt_handler_t handler;
 
+	csa = &xpt_alloc_ccb()->csa;
 	mpt_callout_drain(mpt, &mpt->raid_timer);
 
 	MPT_LOCK(mpt);
@@ -333,13 +338,15 @@ mpt_raid_detach(struct mpt_softc *mpt)
 	handler.reply_handler = mpt_raid_reply_handler;
 	mpt_deregister_handler(mpt, MPT_HANDLER_REPLY, handler,
 			       raid_handler_id);
-	xpt_setup_ccb(&csa.ccb_h, mpt->path, /*priority*/5);
-	csa.ccb_h.func_code = XPT_SASYNC_CB;
-	csa.event_enable = 0;
-	csa.callback = mpt_raid_async;
-	csa.callback_arg = mpt;
-	xpt_action((union ccb *)&csa);
+	xpt_setup_ccb(&csa->ccb_h, mpt->path, /*priority*/5);
+	csa->ccb_h.func_code = XPT_SASYNC_CB;
+	csa->event_enable = 0;
+	csa->callback = mpt_raid_async;
+	csa->callback_arg = mpt;
+	xpt_action((union ccb *)csa);
 	MPT_UNLOCK(mpt);
+
+	xpt_free_ccb(&csa->ccb_h);
 }
 
 static void
@@ -718,8 +725,7 @@ mpt_raid_thread(void *arg)
 				kfree(ccb, M_TEMP);
 				mpt_prt(mpt, "Unable to rescan RAID Bus!\n");
 			} else {
-				xpt_setup_ccb(&ccb->ccb_h, ccb->ccb_h.path,
-				    5/*priority (low)*/);
+				xpt_setup_ccb(&ccb->ccb_h, ccb->ccb_h.path, 5);
 				ccb->ccb_h.func_code = XPT_SCAN_BUS;
 				ccb->ccb_h.cbfcnp = mpt_cam_rescan_callback;
 				ccb->crcn.flags = CAM_FLAG_NONE;
@@ -1082,17 +1088,20 @@ static void
 mpt_adjust_queue_depth(struct mpt_softc *mpt, struct mpt_raid_volume *mpt_vol,
 		       struct cam_path *path)
 {
-	struct ccb_relsim crs;
+	struct ccb_relsim *crs;
 
-	xpt_setup_ccb(&crs.ccb_h, path, /*priority*/5);
-	crs.ccb_h.func_code = XPT_REL_SIMQ;
-	crs.ccb_h.flags = CAM_DEV_QFREEZE;
-	crs.release_flags = RELSIM_ADJUST_OPENINGS;
-	crs.openings = mpt->raid_queue_depth;
-	xpt_action((union ccb *)&crs);
-	if (crs.ccb_h.status != CAM_REQ_CMP)
+	crs = &xpt_alloc_ccb()->crs;
+	xpt_setup_ccb(&crs->ccb_h, path, /*priority*/5);
+	crs->ccb_h.func_code = XPT_REL_SIMQ;
+	crs->ccb_h.flags = CAM_DEV_QFREEZE;
+	crs->release_flags = RELSIM_ADJUST_OPENINGS;
+	crs->openings = mpt->raid_queue_depth;
+	xpt_action((union ccb *)crs);
+	if (crs->ccb_h.status != CAM_REQ_CMP) {
 		mpt_vol_prt(mpt, mpt_vol, "mpt_adjust_queue_depth failed "
-			    "with CAM status %#x\n", crs.ccb_h.status);
+			    "with CAM status %#x\n", crs->ccb_h.status);
+	}
+	xpt_free_ccb(&crs->ccb_h);
 }
 
 static void

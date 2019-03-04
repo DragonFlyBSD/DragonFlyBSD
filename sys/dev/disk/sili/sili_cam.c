@@ -720,7 +720,7 @@ sili_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 		ap->ap_flags |= AP_F_SCAN_COMPLETED;
 		wakeup(&ap->ap_flags);
 	}
-	xpt_free_ccb(ccb);
+	xpt_free_ccb(&ccb->ccb_h);
 }
 
 static void

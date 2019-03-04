@@ -662,7 +662,7 @@ static cam_status
 cdregister(struct cam_periph *periph, void *arg)
 {
 	struct cd_softc *softc;
-	struct ccb_pathinq cpi;
+	struct ccb_pathinq *cpi;
 	struct ccb_getdev *cgd;
 	char tmpstr[80];
 	caddr_t match;
@@ -707,11 +707,13 @@ cdregister(struct cam_periph *periph, void *arg)
 		softc->quirks = CD_Q_NONE;
 
 	/* Check if the SIM does not want 6 byte commands */
-	xpt_setup_ccb(&cpi.ccb_h, periph->path, /*priority*/1);
-	cpi.ccb_h.func_code = XPT_PATH_INQ;
-	xpt_action((union ccb *)&cpi);
-	if (cpi.ccb_h.status == CAM_REQ_CMP && (cpi.hba_misc & PIM_NO_6_BYTE))
+	cpi = &xpt_alloc_ccb()->cpi;
+	xpt_setup_ccb(&cpi->ccb_h, periph->path, /*priority*/1);
+	cpi->ccb_h.func_code = XPT_PATH_INQ;
+	xpt_action((union ccb *)cpi);
+	if (cpi->ccb_h.status == CAM_REQ_CMP && (cpi->hba_misc & PIM_NO_6_BYTE))
 		softc->quirks |= CD_Q_10_BYTE_ONLY;
+	xpt_free_ccb(&cpi->ccb_h);
 
 	TASK_INIT(&softc->sysctl_task, 0, cdsysctlinit, periph);
 
@@ -1711,7 +1713,7 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 				int sense_key, error_code;
 				int have_sense;
 				cam_status status;
-				struct ccb_getdev cgd;
+				struct ccb_getdev *cgd;
 
 				/* Don't wedge this device's queue */
 				cam_release_devq(done_ccb->ccb_h.path,
@@ -1722,11 +1724,12 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 
 				status = done_ccb->ccb_h.status;
 
-				xpt_setup_ccb(&cgd.ccb_h, 
+				cgd = &xpt_alloc_ccb()->cgd;
+				xpt_setup_ccb(&cgd->ccb_h,
 					      done_ccb->ccb_h.path,
 					      /* priority */ 1);
-				cgd.ccb_h.func_code = XPT_GDEV_TYPE;
-				xpt_action((union ccb *)&cgd);
+				cgd->ccb_h.func_code = XPT_GDEV_TYPE;
+				xpt_action((union ccb *)cgd);
 
 				if (((csio->ccb_h.flags & CAM_SENSE_PHYS) != 0)
 				 || ((csio->ccb_h.flags & CAM_SENSE_PTR) != 0)
@@ -1753,7 +1756,7 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 					const char *asc_desc;
 
 					scsi_sense_desc(sense_key, asc, ascq,
-							&cgd.inq_data,
+							&cgd->inq_data,
 							&sense_key_desc,
 							&asc_desc);
 					ksnprintf(announce_buf,
@@ -1764,7 +1767,7 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 						asc_desc);
 					info.d_media_blksize = 2048;
 					doinfo = 1;
-				} else if (SID_TYPE(&cgd.inq_data) == T_CDROM) {
+				} else if (SID_TYPE(&cgd->inq_data) == T_CDROM) {
 					/*
 					 * We only print out an error for
 					 * CDROM type devices.  For WORM
@@ -1806,6 +1809,7 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 					cam_periph_invalidate(periph);
 					announce_buf[0] = '\0';
 				}
+				xpt_free_ccb(&cgd->ccb_h);
 			}
 		}
 		kfree(rdcap, M_SCSICD);
@@ -2798,7 +2802,7 @@ cdcheckmedia(struct cam_periph *periph)
 	struct cd_softc *softc;
 	struct ioc_toc_header *toch;
 	struct cd_toc_single leadout;
-	struct ccb_getdev cgd;
+	struct ccb_getdev *cgd;
 	u_int32_t size, toclen;
 	int error, num_entries, cdindex;
 	int first_track_audio;
@@ -2823,16 +2827,19 @@ cdcheckmedia(struct cam_periph *periph)
 	 * Grab the inquiry data to get the vendor and product names.
 	 * Put them in the typename and packname for the label.
 	 */
-	xpt_setup_ccb(&cgd.ccb_h, periph->path, /*priority*/ 1);
-	cgd.ccb_h.func_code = XPT_GDEV_TYPE;
-	xpt_action((union ccb *)&cgd);
+	cgd = &xpt_alloc_ccb()->cgd;
+	xpt_setup_ccb(&cgd->ccb_h, periph->path, /*priority*/ 1);
+	cgd->ccb_h.func_code = XPT_GDEV_TYPE;
+	xpt_action((union ccb *)cgd);
 
 #if 0
-	strncpy(label->d_typename, cgd.inq_data.vendor,
+	strncpy(label->d_typename, cgd->inq_data.vendor,
 		min(SID_VENDOR_SIZE, sizeof(label->d_typename)));
-	strncpy(label->d_packname, cgd.inq_data.product,
+	strncpy(label->d_packname, cgd->inq_data.product,
 		min(SID_PRODUCT_SIZE, sizeof(label->d_packname)));
 #endif
+	xpt_free_ccb(&cgd->ccb_h);
+
 	/*
 	 * Clear the valid media and TOC flags until we've verified that we
 	 * have both.

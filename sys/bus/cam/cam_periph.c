@@ -602,21 +602,21 @@ camperiphfree(struct cam_periph *periph)
 	xpt_remove_periph(periph);
 
 	if (periph->flags & CAM_PERIPH_NEW_DEV_FOUND) {
-		union ccb ccb;
+		union ccb *ccb = xpt_alloc_ccb();
 		void *arg;
 
 		switch (periph->deferred_ac) {
 		case AC_FOUND_DEVICE:
-			ccb.ccb_h.func_code = XPT_GDEV_TYPE;
-			xpt_setup_ccb(&ccb.ccb_h, periph->path, /*priority*/ 1);
-			xpt_action(&ccb);
-			arg = &ccb;
+			ccb->ccb_h.func_code = XPT_GDEV_TYPE;
+			xpt_setup_ccb(&ccb->ccb_h, periph->path, /*priority*/1);
+			xpt_action(ccb);
+			arg = ccb;
 			break;
 		case AC_PATH_REGISTERED:
-			ccb.ccb_h.func_code = XPT_PATH_INQ;
-			xpt_setup_ccb(&ccb.ccb_h, periph->path, /*priority*/ 1);
-			xpt_action(&ccb);
-			arg = &ccb;
+			ccb->ccb_h.func_code = XPT_PATH_INQ;
+			xpt_setup_ccb(&ccb->ccb_h, periph->path, /*priority*/1);
+			xpt_action(ccb);
+			arg = ccb;
 			break;
 		default:
 			arg = NULL;
@@ -624,6 +624,7 @@ camperiphfree(struct cam_periph *periph)
 		}
 		periph->deferred_callback(NULL, periph->deferred_ac,
 					  periph->path, arg);
+		xpt_free_ccb(&ccb->ccb_h);
 	}
 	xpt_free_path(periph->path);
 	kfree(periph, M_CAMPERIPH);
@@ -990,12 +991,15 @@ cam_periph_runccb(union ccb *ccb,
 void
 cam_freeze_devq(struct cam_path *path)
 {
-	struct ccb_hdr ccb_h;
+	struct ccb_hdr *ccb_h;
 
-	xpt_setup_ccb(&ccb_h, path, /*priority*/1);
-	ccb_h.func_code = XPT_NOOP;
-	ccb_h.flags = CAM_DEV_QFREEZE;
-	xpt_action((union ccb *)&ccb_h);
+	ccb_h = &xpt_alloc_ccb()->ccb_h;
+	xpt_setup_ccb(ccb_h, path, /*priority*/1);
+	ccb_h->func_code = XPT_NOOP;
+	ccb_h->flags = CAM_DEV_QFREEZE;
+	xpt_action((union ccb *)ccb_h);
+
+	xpt_free_ccb(ccb_h);
 }
 
 u_int32_t
@@ -1003,17 +1007,23 @@ cam_release_devq(struct cam_path *path, u_int32_t relsim_flags,
 		 u_int32_t openings, u_int32_t timeout,
 		 int getcount_only)
 {
-	struct ccb_relsim crs;
+	struct ccb_relsim *crs;
+	uint32_t cnt;
 
-	xpt_setup_ccb(&crs.ccb_h, path,
-		      /*priority*/1);
-	crs.ccb_h.func_code = XPT_REL_SIMQ;
-	crs.ccb_h.flags = getcount_only ? CAM_DEV_QFREEZE : 0;
-	crs.release_flags = relsim_flags;
-	crs.openings = openings;
-	crs.release_timeout = timeout;
-	xpt_action((union ccb *)&crs);
-	return (crs.qfrozen_cnt);
+	crs = &xpt_alloc_ccb()->crs;
+
+	xpt_setup_ccb(&crs->ccb_h, path, /*priority*/1);
+	crs->ccb_h.func_code = XPT_REL_SIMQ;
+	crs->ccb_h.flags = getcount_only ? CAM_DEV_QFREEZE : 0;
+	crs->release_flags = relsim_flags;
+	crs->openings = openings;
+	crs->release_timeout = timeout;
+	xpt_action((union ccb *)crs);
+	cnt = crs->qfrozen_cnt;
+
+	xpt_free_ccb(&crs->ccb_h);
+
+	return cnt;
 }
 
 static void
@@ -1103,11 +1113,12 @@ camperiphdone(struct cam_periph *periph, union ccb *done_ccb)
 		scsi_cmd = (struct scsi_start_stop_unit *)
 				&done_ccb->csio.cdb_io.cdb_bytes;
 		if (sense != 0) {
-			struct ccb_getdev cgd;
+			struct ccb_getdev *cgd;
 			struct scsi_sense_data *sense;
 			int    error_code, sense_key, asc, ascq;	
 			scsi_sense_action err_action;
 
+			cgd = &xpt_alloc_ccb()->cgd;
 			sense = &done_ccb->csio.sense_data;
 			scsi_extract_sense(sense, &error_code, 
 					   &sense_key, &asc, &ascq);
@@ -1115,12 +1126,14 @@ camperiphdone(struct cam_periph *periph, union ccb *done_ccb)
 			/*
 			 * Grab the inquiry data for this device.
 			 */
-			xpt_setup_ccb(&cgd.ccb_h, done_ccb->ccb_h.path,
+			xpt_setup_ccb(&cgd->ccb_h, done_ccb->ccb_h.path,
 				      /*priority*/ 1);
-			cgd.ccb_h.func_code = XPT_GDEV_TYPE;
-			xpt_action((union ccb *)&cgd);
+			cgd->ccb_h.func_code = XPT_GDEV_TYPE;
+			xpt_action((union ccb *)cgd);
 			err_action = scsi_error_action(&done_ccb->csio,
-						       &cgd.inq_data, 0);
+						       &cgd->inq_data, 0);
+			xpt_free_ccb(&cgd->ccb_h);
+			cgd = NULL;	/* safety */
 
 			/*
 	 		 * If the error is "invalid field in CDB", 
@@ -1253,12 +1266,14 @@ cam_periph_async(struct cam_periph *periph, u_int32_t code,
 void
 cam_periph_bus_settle(struct cam_periph *periph, u_int bus_settle)
 {
-	struct ccb_getdevstats cgds;
+	struct ccb_getdevstats *cgds;
 
-	xpt_setup_ccb(&cgds.ccb_h, periph->path, /*priority*/1);
-	cgds.ccb_h.func_code = XPT_GDEV_STATS;
-	xpt_action((union ccb *)&cgds);
-	cam_periph_freeze_after_event(periph, &cgds.last_reset, bus_settle);
+	cgds = &xpt_alloc_ccb()->cgds;
+	xpt_setup_ccb(&cgds->ccb_h, periph->path, /*priority*/1);
+	cgds->ccb_h.func_code = XPT_GDEV_STATS;
+	xpt_action((union ccb *)cgds);
+	cam_periph_freeze_after_event(periph, &cgds->last_reset, bus_settle);
+	xpt_free_ccb(&cgds->ccb_h);
 }
 
 void
@@ -1315,23 +1330,23 @@ camperiphscsistatuserror(union ccb *ccb, cam_flags camflags,
 	case SCSI_STATUS_QUEUE_FULL:
 	{
 		/* no decrement */
-		struct ccb_getdevstats cgds;
+		struct ccb_getdevstats *cgds;
+
+		cgds = &xpt_alloc_ccb()->cgds;
 
 		/*
 		 * First off, find out what the current
 		 * transaction counts are.
 		 */
-		xpt_setup_ccb(&cgds.ccb_h,
-			      ccb->ccb_h.path,
-			      /*priority*/1);
-		cgds.ccb_h.func_code = XPT_GDEV_STATS;
-		xpt_action((union ccb *)&cgds);
+		xpt_setup_ccb(&cgds->ccb_h, ccb->ccb_h.path, /*priority*/1);
+		cgds->ccb_h.func_code = XPT_GDEV_STATS;
+		xpt_action((union ccb *)cgds);
 
 		/*
 		 * If we were the only transaction active, treat
 		 * the QUEUE FULL as if it were a BUSY condition.
 		 */
-		if (cgds.dev_active != 0) {
+		if (cgds->dev_active != 0) {
 			int total_openings;
 
 			/*
@@ -1341,13 +1356,13 @@ camperiphscsistatuserror(union ccb *ccb, cam_flags camflags,
 			 * minimum allowed tag count for this
 			 * device.
 			 */
-			total_openings = cgds.dev_active + cgds.dev_openings;
-			*openings = cgds.dev_active;
-			if (*openings < cgds.mintags)
-				*openings = cgds.mintags;
-			if (*openings < total_openings)
+			total_openings = cgds->dev_active + cgds->dev_openings;
+			*openings = cgds->dev_active;
+			if (*openings < cgds->mintags)
+				*openings = cgds->mintags;
+			if (*openings < total_openings) {
 				*relsim_flags = RELSIM_ADJUST_OPENINGS;
-			else {
+			} else {
 				/*
 				 * Some devices report queue full for
 				 * temporary resource shortages.  For
@@ -1367,8 +1382,10 @@ camperiphscsistatuserror(union ccb *ccb, cam_flags camflags,
 			if (bootverbose) {
 				xpt_print(ccb->ccb_h.path, "Queue Full\n");
 			}
+			xpt_free_ccb(&cgds->ccb_h);
 			break;
 		}
+		xpt_free_ccb(&cgds->ccb_h);
 		/* FALLTHROUGH */
 	}
 	case SCSI_STATUS_BUSY:
@@ -1430,7 +1447,7 @@ camperiphscsisenseerror(union ccb *ccb, cam_flags camflags,
 		error = ERESTART;
 	} else {
 		scsi_sense_action err_action;
-		struct ccb_getdev cgd;
+		struct ccb_getdev *cgd;
 		const char *action_string;
 		union ccb* print_ccb;
 
@@ -1446,13 +1463,14 @@ camperiphscsisenseerror(union ccb *ccb, cam_flags camflags,
 		/*
 		 * Grab the inquiry data for this device.
 		 */
-		xpt_setup_ccb(&cgd.ccb_h, ccb->ccb_h.path, /*priority*/ 1);
-		cgd.ccb_h.func_code = XPT_GDEV_TYPE;
-		xpt_action((union ccb *)&cgd);
+		cgd = &xpt_alloc_ccb()->cgd;
+		xpt_setup_ccb(&cgd->ccb_h, ccb->ccb_h.path, /*priority*/ 1);
+		cgd->ccb_h.func_code = XPT_GDEV_TYPE;
+		xpt_action((union ccb *)cgd);
 
 		if ((ccb->ccb_h.status & CAM_AUTOSNS_VALID) != 0)
 			err_action = scsi_error_action(&ccb->csio,
-						       &cgd.inq_data,
+						       &cgd->inq_data,
 						       sense_flags);
 		else if ((ccb->ccb_h.flags & CAM_DIS_AUTOSENSE) == 0)
 			err_action = SS_REQSENSE;
@@ -1514,7 +1532,7 @@ camperiphscsisenseerror(union ccb *ccb, cam_flags camflags,
 			 * Check for removable media and set
 			 * load/eject flag appropriately.
 			 */
-			if (SID_IS_REMOVABLE(&cgd.inq_data))
+			if (SID_IS_REMOVABLE(&cgd->inq_data))
 				le = TRUE;
 			else
 				le = FALSE;
@@ -1600,14 +1618,15 @@ camperiphscsisenseerror(union ccb *ccb, cam_flags camflags,
 		}
 
 sense_error_done:
-		if ((err_action & SSQ_PRINT_SENSE) != 0
-		 && (ccb->ccb_h.status & CAM_AUTOSNS_VALID) != 0) {
+		if ((err_action & SSQ_PRINT_SENSE) != 0 &&
+		    (ccb->ccb_h.status & CAM_AUTOSNS_VALID) != 0) {
 			cam_error_print(print_ccb, CAM_ESF_ALL, CAM_EPF_ALL);
 			xpt_print_path(ccb->ccb_h.path);
 			if (bootverbose)
 				scsi_sense_print(&print_ccb->csio);
 			kprintf("%s\n", action_string);
 		}
+		xpt_free_ccb(&cgd->ccb_h);
 	}
 	return (error);
 }

@@ -54,6 +54,7 @@
 #include <bus/cam/cam_xpt_sim.h>
 #include <bus/cam/cam_debug.h>
 #include <bus/cam/scsi/scsi_message.h>
+#include <bus/cam/cam_xpt_periph.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -1538,24 +1539,27 @@ btdone(struct bt_softc *bt, struct bt_ccb *bccb, bt_mbi_comp_code_t comp_code)
 			break;
 		case BTSTAT_TAGGED_MSG_REJECTED:
 		{
-			struct ccb_trans_settings neg; 
-			struct ccb_trans_settings_scsi *scsi =
-			    &neg.proto_specific.scsi;
+			struct ccb_trans_settings *neg;
+			struct ccb_trans_settings_scsi *scsi;
 
-			neg.protocol = PROTO_SCSI;
-			neg.protocol_version = SCSI_REV_2;
-			neg.transport = XPORT_SPI;
-			neg.transport_version = 2;
+			neg = &xpt_alloc_ccb()->cts;
+			scsi = &neg->proto_specific.scsi;
+
+			neg->protocol = PROTO_SCSI;
+			neg->protocol_version = SCSI_REV_2;
+			neg->transport = XPORT_SPI;
+			neg->transport_version = 2;
 			scsi->valid = CTS_SCSI_VALID_TQ;
 			scsi->flags = 0;
 			xpt_print_path(csio->ccb_h.path);
 			kprintf("refuses tagged commands.  Performing "
 			       "non-tagged I/O\n");
-			xpt_setup_ccb(&neg.ccb_h, csio->ccb_h.path,
+			xpt_setup_ccb(&neg->ccb_h, csio->ccb_h.path,
 				      /*priority*/1); 
-			xpt_async(AC_TRANSFER_NEG, csio->ccb_h.path, &neg);
+			xpt_async(AC_TRANSFER_NEG, csio->ccb_h.path, neg);
 			bt->tags_permitted &= ~(0x01 << csio->ccb_h.target_id);
 			csio->ccb_h.status = CAM_MSG_REJECT_REC;
+			xpt_free_ccb(&neg->ccb_h);
 			break;
 		}
 		case BTSTAT_UNSUPPORTED_MSG_RECEIVED:
@@ -2035,7 +2039,7 @@ btfetchtransinfo(struct bt_softc *bt, struct ccb_trans_settings *cts)
 		if (wide_active)
 			bus_width = MSG_EXT_WDTR_BUS_16_BIT;
 	} else if ((bt->wide_permitted & targ_mask) != 0) {
-		struct ccb_getdev cgd;
+		struct ccb_getdev *cgd;
 
 		/*
 		 * Prior to rev 5.06L, wide status isn't provided,
@@ -2044,12 +2048,15 @@ btfetchtransinfo(struct bt_softc *bt, struct ccb_trans_settings *cts)
 		 * data for the device indicates that it can handle
 		 * wide transfers.
 		 */
-		xpt_setup_ccb(&cgd.ccb_h, cts->ccb_h.path, /*priority*/1);
-		cgd.ccb_h.func_code = XPT_GDEV_TYPE;
-		xpt_action((union ccb *)&cgd);
-		if ((cgd.ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP
-		 && (cgd.inq_data.flags & SID_WBus16) != 0)
+		cgd = &xpt_alloc_ccb()->cgd;
+		xpt_setup_ccb(&cgd->ccb_h, cts->ccb_h.path, /*priority*/1);
+		cgd->ccb_h.func_code = XPT_GDEV_TYPE;
+		xpt_action((union ccb *)cgd);
+		if ((cgd->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP &&
+		    (cgd->inq_data.flags & SID_WBus16) != 0) {
 			bus_width = MSG_EXT_WDTR_BUS_16_BIT;
+		}
+		xpt_free_ccb(&cgd->ccb_h);
 	}
 
 	if (bt->firmware_ver[0] >= '3') {

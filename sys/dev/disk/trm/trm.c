@@ -85,7 +85,9 @@
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
 #include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt.h>
 #include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_xpt_periph.h>
 #include <bus/cam/cam_debug.h>
 
 #include <bus/cam/scsi/scsi_all.h>
@@ -2274,7 +2276,7 @@ static void
 trm_SetXferRate(PACB pACB,PSRB pSRB, PDCB pDCB)
 {
 	union ccb	*pccb;
-	struct ccb_trans_settings neg;
+	struct ccb_trans_settings *neg;
 	u_int16_t	cnt, i;
 	u_int8_t	bval;
 	PDCB		pDCBTemp;
@@ -2284,13 +2286,17 @@ trm_SetXferRate(PACB pACB,PSRB pSRB, PDCB pDCB)
 	 */
 	TRM_DPRINTF("trm_SetXferRate\n");
 	pccb = pSRB->pccb;
-	memset(&neg, 0, sizeof (neg));
-	neg.xport_specific.spi.sync_period = pDCB->tinfo.goal.period;
-	neg.xport_specific.spi.sync_offset = pDCB->tinfo.goal.offset;
-	neg.xport_specific.spi.valid =
+
+	neg = &xpt_alloc_ccb()->cts;
+
+	neg->xport_specific.spi.sync_period = pDCB->tinfo.goal.period;
+	neg->xport_specific.spi.sync_offset = pDCB->tinfo.goal.offset;
+	neg->xport_specific.spi.valid =
 	    CTS_SPI_VALID_SYNC_RATE | CTS_SPI_VALID_SYNC_OFFSET;
-	xpt_setup_ccb(&neg.ccb_h, pccb->ccb_h.path, /* priority */1);
-	xpt_async(AC_TRANSFER_NEG, pccb->ccb_h.path, &neg);
+	xpt_setup_ccb(&neg->ccb_h, pccb->ccb_h.path, /* priority */1);
+	xpt_async(AC_TRANSFER_NEG, pccb->ccb_h.path, neg);
+	xpt_free_ccb(&neg->ccb_h);
+
 	if (!(pDCB->IdentifyMsg & 0x07)) {
 		pDCBTemp = pACB->pLinkDCB;
 		cnt = pACB->DeviceCnt;
@@ -2304,7 +2310,6 @@ trm_SetXferRate(PACB pACB,PSRB pSRB, PDCB pDCB)
 			pDCBTemp = pDCBTemp->pNextDCB;
 		}
 	}
-	return;
 }
 
 /*

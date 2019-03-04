@@ -425,7 +425,7 @@ static void os_cmddone(PCOMMAND pCmd)
 
 	KdPrint(("os_cmddone(%p, %d)", pCmd, pCmd->Result));
 
-	callout_stop(&ccb->ccb_h.timeout_ch);
+	callout_stop(ccb->ccb_h.timeout_ch);
 
 	switch(pCmd->Result) {
 	case RETURN_SUCCESS:
@@ -527,7 +527,8 @@ static void hpt_io_dmamap_callback(void *arg, bus_dma_segment_t *segs, int nsegs
 		bus_dmamap_sync(ext->vbus_ext->io_dmat, ext->dma_map, BUS_DMASYNC_PREWRITE);
 	}
 
-	callout_reset(&ext->ccb->ccb_h.timeout_ch, HPT_OSM_TIMEOUT, hpt_timeout, pCmd);
+	callout_reset(ext->ccb->ccb_h.timeout_ch, HPT_OSM_TIMEOUT,
+		      hpt_timeout, pCmd);
 	ldm_queue_cmd(pCmd);
 }
 
@@ -726,7 +727,8 @@ static void hpt_scsi_io(PVBUS_EXT vbus_ext, union ccb *ccb)
 				pCmd->psg[idx].eot = (idx==ccb->csio.sglist_cnt-1)? 1 : 0;
 			}
 
-			callout_reset(&ccb->ccb_h.timeout_ch, HPT_OSM_TIMEOUT, hpt_timeout, pCmd);
+			callout_reset(ccb->ccb_h.timeout_ch, HPT_OSM_TIMEOUT,
+				      hpt_timeout, pCmd);
 			ldm_queue_cmd(pCmd);
 		}
 		else {
@@ -1033,7 +1035,7 @@ static void hpt_final_init(void *dummy)
 	/* register CAM interface */
 	ldm_for_each_vbus(vbus, vbus_ext) {
 		struct cam_devq *devq;
-		struct ccb_setasync	ccb;
+		struct ccb_setasync *ccb;
 
 		lockinit(&vbus_ext->lock, "hptsleeplock", 0, LK_CANRECURSE);
 		if (bus_dma_tag_create(NULL,/* parent */
@@ -1099,12 +1101,14 @@ static void hpt_final_init(void *dummy)
 			return ;
 		}
 
-		xpt_setup_ccb(&ccb.ccb_h, vbus_ext->path, /*priority*/5);
-		ccb.ccb_h.func_code = XPT_SASYNC_CB;
-		ccb.event_enable = AC_LOST_DEVICE;
-		ccb.callback = hpt_async;
-		ccb.callback_arg = vbus_ext;
-		xpt_action((union ccb *)&ccb);
+		ccb = &xpt_alloc_ccb()->csa;
+		xpt_setup_ccb(&ccb->ccb_h, vbus_ext->path, /*priority*/5);
+		ccb->ccb_h.func_code = XPT_SASYNC_CB;
+		ccb->event_enable = AC_LOST_DEVICE;
+		ccb->callback = hpt_async;
+		ccb->callback_arg = vbus_ext;
+		xpt_action((union ccb *)ccb);
+		xpt_free_ccb(&ccb->ccb_h);
 
 		for (hba = vbus_ext->hba_list; hba; hba = hba->next) {
 			int rid = 0;
@@ -1344,7 +1348,7 @@ static int	hpt_rescan_bus(void)
 			rel_mplock();
 			return(EIO);
 		}
-		ccb = kmalloc(sizeof(union ccb), M_TEMP, M_WAITOK);
+		ccb = xpt_alloc_ccb();
 		bzero(ccb, sizeof(union ccb));
 		xpt_setup_ccb(&ccb->ccb_h, path, 5);
 		ccb->ccb_h.func_code = XPT_SCAN_BUS;
@@ -1366,6 +1370,5 @@ static	void	hpt_bus_scan_cb(struct cam_periph *periph, union ccb *ccb)
 		KdPrint(("Scan bus successfully!"));
 
 	xpt_free_path(ccb->ccb_h.path);
-	kfree(ccb, M_TEMP);
-	return;
+	xpt_free_ccb(&ccb->ccb_h);
 }

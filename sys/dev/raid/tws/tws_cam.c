@@ -227,10 +227,8 @@ tws_bus_scan(struct tws_softc *sc)
 
     ccb = sc->scan_ccb;
 
-    bzero(ccb, sizeof(union ccb));
     if (xpt_create_path(&path, xpt_periph, cam_sim_path(sc->sim),
                   CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
-        kfree(ccb, M_TEMP);
         /* lockmgr(&sc->sim_lock, LK_RELEASE); */
         return(EIO);
     }
@@ -364,7 +362,7 @@ tws_scsi_complete(struct tws_request *req)
     tws_q_remove_request(sc, req, TWS_BUSY_Q);
     lockmgr(&sc->q_lock, LK_RELEASE);
 
-    callout_stop(&req->ccb_ptr->ccb_h.timeout_ch);
+    callout_stop(req->ccb_ptr->ccb_h.timeout_ch);
     tws_unmap_request(req->sc, req);
 
 
@@ -484,7 +482,7 @@ tws_cmd_complete(struct tws_request *req)
 {
     struct tws_softc *sc = req->sc;
 
-    callout_stop(&req->ccb_ptr->ccb_h.timeout_ch);
+    callout_stop(req->ccb_ptr->ccb_h.timeout_ch);
     tws_unmap_request(sc, req);
 
 }
@@ -595,7 +593,7 @@ tws_scsi_err_complete(struct tws_request *req, struct tws_command_header *hdr)
     xpt_done(ccb);
     lockmgr(&sc->sim_lock, LK_RELEASE);
 
-    callout_stop(&req->ccb_ptr->ccb_h.timeout_ch);
+    callout_stop(req->ccb_ptr->ccb_h.timeout_ch);
     tws_unmap_request(req->sc, req);
     lockmgr(&sc->q_lock, LK_EXCLUSIVE);
     tws_q_remove_request(sc, req, TWS_BUSY_Q);
@@ -626,7 +624,7 @@ tws_drain_busy_queue(struct tws_softc *sc)
     req = tws_q_remove_tail(sc, TWS_BUSY_Q);
     lockmgr(&sc->q_lock, LK_RELEASE);
     while ( req ) {
-	callout_stop(&req->ccb_ptr->ccb_h.timeout_ch);
+	callout_stop(req->ccb_ptr->ccb_h.timeout_ch);
         tws_unmap_request(req->sc, req);
 
         TWS_TRACE_DEBUG(sc, "drained", 0, req->request_id);
@@ -806,8 +804,8 @@ tws_execute_scsi(struct tws_softc *sc, union ccb *ccb)
      * and submit the I/O.
      */
     sc->stats.scsi_ios++;
-    callout_reset(&ccb_h->timeout_ch, (ccb_h->timeout * hz)/1000, tws_timeout,
-	req);
+    callout_reset(ccb_h->timeout_ch, (ccb_h->timeout * hz)/1000,
+		  tws_timeout, req);
     error = tws_map_request(sc, req);
     return(error);
 }

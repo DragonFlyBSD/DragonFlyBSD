@@ -196,8 +196,11 @@
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
 #include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt.h>
 #include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_xpt_periph.h>
 #include <bus/cam/cam_debug.h>
+
 
 #include <bus/cam/scsi/scsi_all.h>
 #include <bus/cam/scsi/scsi_message.h>
@@ -4909,7 +4912,7 @@ static void
 ncr_setsync(ncb_p np, nccb_p cp, u_char scntl3, u_char sxfer, u_char period)
 {
 	union	ccb *ccb;
-	struct	ccb_trans_settings neg;	
+	struct	ccb_trans_settings *neg;
 	tcb_p	tp;
 	int	div;
 	u_int	target = INB (nc_sdid) & 0x0f;
@@ -4965,18 +4968,17 @@ ncr_setsync(ncb_p np, nccb_p cp, u_char scntl3, u_char sxfer, u_char period)
 	** Tell the SCSI layer about the
 	** new transfer parameters.
 	*/
-	memset(&neg, 0, sizeof (neg));
-	neg.protocol = PROTO_SCSI;
-	neg.protocol_version = SCSI_REV_2;
-	neg.transport = XPORT_SPI;
-	neg.transport_version = 2;
-	neg.xport_specific.spi.sync_period = period;
-	neg.xport_specific.spi.sync_offset = sxfer & 0x1f;
-	neg.xport_specific.spi.valid = CTS_SPI_VALID_SYNC_RATE
+	neg = &xpt_alloc_ccb()->cts;
+	neg->protocol = PROTO_SCSI;
+	neg->protocol_version = SCSI_REV_2;
+	neg->transport = XPORT_SPI;
+	neg->transport_version = 2;
+	neg->xport_specific.spi.sync_period = period;
+	neg->xport_specific.spi.sync_offset = sxfer & 0x1f;
+	neg->xport_specific.spi.valid = CTS_SPI_VALID_SYNC_RATE
 		| CTS_SPI_VALID_SYNC_OFFSET;
-	xpt_setup_ccb(&neg.ccb_h, ccb->ccb_h.path,
-		      /*priority*/1);
-	xpt_async(AC_TRANSFER_NEG, ccb->ccb_h.path, &neg);
+	xpt_setup_ccb(&neg->ccb_h, ccb->ccb_h.path, /*priority*/1);
+	xpt_async(AC_TRANSFER_NEG, ccb->ccb_h.path, neg);
 	
 	/*
 	**	set actual value and sync_status
@@ -4995,6 +4997,8 @@ ncr_setsync(ncb_p np, nccb_p cp, u_char scntl3, u_char sxfer, u_char period)
 		cp->sync_status = sxfer;
 		cp->wide_status = scntl3;
 	}
+
+	xpt_free_ccb(&neg->ccb_h);
 }
 
 /*==========================================================
@@ -5010,7 +5014,7 @@ ncr_setsync(ncb_p np, nccb_p cp, u_char scntl3, u_char sxfer, u_char period)
 static void ncr_setwide (ncb_p np, nccb_p cp, u_char wide, u_char ack)
 {
 	union	ccb *ccb;
-	struct	ccb_trans_settings neg;		
+	struct	ccb_trans_settings *neg;
 	u_int	target = INB (nc_sdid) & 0x0f;
 	tcb_p	tp;
 	u_char	scntl3;
@@ -5042,20 +5046,21 @@ static void ncr_setwide (ncb_p np, nccb_p cp, u_char wide, u_char ack)
 	tp->tinfo.wval = scntl3;
 
 	/* Tell the SCSI layer about the new transfer params */
-	memset(&neg, 0, sizeof (neg));
-	neg.protocol = PROTO_SCSI;
-	neg.protocol_version = SCSI_REV_2;
-	neg.transport = XPORT_SPI;
-	neg.transport_version = 2;
-	neg.xport_specific.spi.bus_width = (scntl3 & EWS) ?
+	neg = &xpt_alloc_ccb()->cts;
+
+	neg->protocol = PROTO_SCSI;
+	neg->protocol_version = SCSI_REV_2;
+	neg->transport = XPORT_SPI;
+	neg->transport_version = 2;
+	neg->xport_specific.spi.bus_width = (scntl3 & EWS) ?
 	    MSG_EXT_WDTR_BUS_16_BIT : MSG_EXT_WDTR_BUS_8_BIT;
-	neg.xport_specific.spi.sync_period = 0;
-	neg.xport_specific.spi.sync_offset = 0;
-	neg.xport_specific.spi.valid = CTS_SPI_VALID_SYNC_RATE
+	neg->xport_specific.spi.sync_period = 0;
+	neg->xport_specific.spi.sync_offset = 0;
+	neg->xport_specific.spi.valid = CTS_SPI_VALID_SYNC_RATE
 		| CTS_SPI_VALID_SYNC_OFFSET
 		| CTS_SPI_VALID_BUS_WIDTH;
-	xpt_setup_ccb(&neg.ccb_h, ccb->ccb_h.path, /*priority*/1);
-	xpt_async(AC_TRANSFER_NEG, ccb->ccb_h.path, &neg);	
+	xpt_setup_ccb(&neg->ccb_h, ccb->ccb_h.path, /*priority*/1);
+	xpt_async(AC_TRANSFER_NEG, ccb->ccb_h.path, neg);
 
 	/*
 	**	set actual value and sync_status
@@ -5074,6 +5079,8 @@ static void ncr_setwide (ncb_p np, nccb_p cp, u_char wide, u_char ack)
 		cp->sync_status = sxfer;
 		cp->wide_status = scntl3;
 	}
+
+	xpt_free_ccb(&neg->ccb_h);
 }
 
 /*==========================================================

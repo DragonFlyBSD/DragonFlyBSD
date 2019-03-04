@@ -88,8 +88,11 @@
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
 #include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt.h>
 #include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_xpt_periph.h>
 #include <bus/cam/cam_debug.h>
+
 
 #include <bus/cam/scsi/scsi_all.h>
 #include <bus/cam/scsi/scsi_message.h>
@@ -3443,7 +3446,7 @@ sym_getsync(hcb_p np, u_char dt, u_char sfac, u_char *divp, u_char *fakp)
 static void
 sym_xpt_async_transfer_neg(hcb_p np, int target, u_int spi_valid)
 {
-	struct ccb_trans_settings cts;
+	struct ccb_trans_settings *cts;
 	struct cam_path *path;
 	int sts;
 	tcb_p tp = &np->target[target];
@@ -3453,16 +3456,16 @@ sym_xpt_async_transfer_neg(hcb_p np, int target, u_int spi_valid)
 	if (sts != CAM_REQ_CMP)
 		return;
 
-	bzero(&cts, sizeof(cts));
+	cts = &xpt_alloc_ccb()->cts;
 
-#define	cts__scsi (cts.proto_specific.scsi)
-#define	cts__spi  (cts.xport_specific.spi)
+#define	cts__scsi (cts->proto_specific.scsi)
+#define	cts__spi  (cts->xport_specific.spi)
 
-	cts.type      = CTS_TYPE_CURRENT_SETTINGS;
-	cts.protocol  = PROTO_SCSI;
-	cts.transport = XPORT_SPI;
-	cts.protocol_version  = tp->tinfo.current.scsi_version;
-	cts.transport_version = tp->tinfo.current.spi_version;
+	cts->type      = CTS_TYPE_CURRENT_SETTINGS;
+	cts->protocol  = PROTO_SCSI;
+	cts->transport = XPORT_SPI;
+	cts->protocol_version  = tp->tinfo.current.scsi_version;
+	cts->transport_version = tp->tinfo.current.spi_version;
 
 	cts__spi.valid = spi_valid;
 	if (spi_valid & CTS_SPI_VALID_SYNC_RATE)
@@ -3475,9 +3478,10 @@ sym_xpt_async_transfer_neg(hcb_p np, int target, u_int spi_valid)
 		cts__spi.ppr_options = tp->tinfo.current.options;
 #undef cts__spi
 #undef cts__scsi
-	xpt_setup_ccb(&cts.ccb_h, path, /*priority*/1);
-	xpt_async(AC_TRANSFER_NEG, path, &cts);
+	xpt_setup_ccb(&cts->ccb_h, path, /*priority*/1);
+	xpt_async(AC_TRANSFER_NEG, path, cts);
 	xpt_free_path(path);
+	xpt_free_ccb(&cts->ccb_h);
 }
 
 #define SYM_SPI_VALID_WDTR		\

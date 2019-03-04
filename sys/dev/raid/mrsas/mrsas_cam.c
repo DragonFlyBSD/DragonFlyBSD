@@ -1104,7 +1104,7 @@ static void
 mrsas_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 {
 	xpt_free_path(ccb->ccb_h.path);
-	xpt_free_ccb(ccb);
+	xpt_free_ccb(&ccb->ccb_h);
 }
 
 /*
@@ -1127,23 +1127,23 @@ int mrsas_bus_scan(struct mrsas_softc *sc)
     }
 
     if ((ccb_1 = xpt_alloc_ccb()) == NULL) {
-	xpt_free_ccb(ccb_0);
+	xpt_free_ccb(&ccb_0->ccb_h);
         lockmgr(&sc->sim_lock, LK_RELEASE);
         return(ENOMEM);
     } 
 
     if (xpt_create_path(&ccb_0->ccb_h.path, xpt_periph, cam_sim_path(sc->sim_0),
             CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP){
-        xpt_free_ccb(ccb_0);
-        xpt_free_ccb(ccb_1);
+        xpt_free_ccb(&ccb_0->ccb_h);
+        xpt_free_ccb(&ccb_1->ccb_h);
         lockmgr(&sc->sim_lock, LK_RELEASE);
         return(EIO);
     }
 
     if (xpt_create_path(&ccb_1->ccb_h.path, xpt_periph, cam_sim_path(sc->sim_1),
             CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP){
-        xpt_free_ccb(ccb_0);
-        xpt_free_ccb(ccb_1);
+        xpt_free_ccb(&ccb_0->ccb_h);
+        xpt_free_ccb(&ccb_1->ccb_h);
         lockmgr(&sc->sim_lock, LK_RELEASE);
         return(EIO);
     }
@@ -1182,7 +1182,7 @@ int mrsas_bus_scan_sim(struct mrsas_softc *sc, struct cam_sim *sim)
     }
     if (xpt_create_path(&ccb->ccb_h.path, xpt_periph, cam_sim_path(sim),
             CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP){
-        xpt_free_ccb(ccb);
+        xpt_free_ccb(&ccb->ccb_h);
         lockmgr(&sc->sim_lock, LK_RELEASE);
         return(EIO);
     }

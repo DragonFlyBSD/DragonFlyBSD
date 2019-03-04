@@ -84,7 +84,7 @@ static struct dev_ops isp_ops = {
 static int
 isp_attach_chan(ispsoftc_t *isp, struct cam_devq *devq, int chan)
 {
-	struct ccb_setasync csa;
+	struct ccb_setasync *csa;
 	struct cam_sim *sim;
 	struct cam_path *path;
 
@@ -112,12 +112,14 @@ isp_attach_chan(ispsoftc_t *isp, struct cam_devq *devq, int chan)
 		cam_sim_free(sim);
 		return (ENXIO);
 	}
-	xpt_setup_ccb(&csa.ccb_h, path, 5);
-	csa.ccb_h.func_code = XPT_SASYNC_CB;
-	csa.event_enable = AC_LOST_DEVICE;
-	csa.callback = isp_cam_async;
-	csa.callback_arg = sim;
-	xpt_action((union ccb *)&csa);
+	csa = &xpt_alloc_ccb()->csa;
+	xpt_setup_ccb(&csa->ccb_h, path, 5);
+	csa->ccb_h.func_code = XPT_SASYNC_CB;
+	csa->event_enable = AC_LOST_DEVICE;
+	csa->callback = isp_cam_async;
+	csa->callback_arg = sim;
+	xpt_action((union ccb *)csa);
+	xpt_free_ccb(&csa->ccb_h);
 
 	if (IS_SCSI(isp)) {
 		struct isp_spi *spi = ISP_SPI_PC(isp, chan);
@@ -264,7 +266,7 @@ isp_detach(ispsoftc_t *isp)
 {
 	struct cam_sim *sim;
 	struct cam_path *path;
-	struct ccb_setasync csa;
+	struct ccb_setasync *csa;
 	int chan;
 
 	ISP_LOCK(isp);
@@ -293,12 +295,14 @@ isp_detach(ispsoftc_t *isp)
 			sim = ISP_SPI_PC(isp, chan)->sim;
 			path = ISP_SPI_PC(isp, chan)->path;
 		}
-		xpt_setup_ccb(&csa.ccb_h, path, 5);
-		csa.ccb_h.func_code = XPT_SASYNC_CB;
-		csa.event_enable = 0;
-		csa.callback = isp_cam_async;
-		csa.callback_arg = sim;
-		xpt_action((union ccb *)&csa);
+		csa = &xpt_alloc_ccb()->csa;
+		xpt_setup_ccb(&csa->ccb_h, path, 5);
+		csa->ccb_h.func_code = XPT_SASYNC_CB;
+		csa->event_enable = 0;
+		csa->callback = isp_cam_async;
+		csa->callback_arg = sim;
+		xpt_action((union ccb *)csa);
+		xpt_free_ccb(&csa->ccb_h);
 		xpt_free_path(path);
 		xpt_bus_deregister(cam_sim_path(sim));
 		cam_sim_free(sim);
@@ -3606,7 +3610,7 @@ isp_target_thread(ispsoftc_t *isp, int chan)
 	xpt_action(ccb);
 	ISP_UNLOCK(isp);
 	if (ccb->ccb_h.status != CAM_REQ_CMP) {
-		xpt_free_ccb(ccb);
+		xpt_free_ccb(&ccb->ccb_h);
 		xpt_print(periph->path, "failed to enable lun (0x%x)\n", ccb->ccb_h.status);
 		goto out;
 	}
@@ -3618,18 +3622,19 @@ isp_target_thread(ispsoftc_t *isp, int chan)
 	xpt_action(ccb);
 	ISP_UNLOCK(isp);
 	if (ccb->ccb_h.status != CAM_REQ_CMP) {
-		xpt_free_ccb(ccb);
+		xpt_free_ccb(&ccb->ccb_h);
 		xpt_print(wperiph->path, "failed to enable lun (0x%x)\n", ccb->ccb_h.status);
 		goto out;
 	}
-	xpt_free_ccb(ccb);
+	xpt_free_ccb(&ccb->ccb_h);
+	ccb = NULL; /* safety */
 
 	/*
 	 * Add resources
 	 */
 	ISP_GET_PC_ADDR(isp, chan, target_proc, wchan);
 	for (i = 0; i < 4; i++) {
-		ccb = kmalloc(sizeof (*ccb), M_ISPTARG, M_WAITOK | M_ZERO);
+		ccb = xpt_alloc_ccb();
 		xpt_setup_ccb(&ccb->ccb_h, wperiph->path, 1);
 		ccb->ccb_h.func_code = XPT_ACCEPT_TARGET_IO;
 		ccb->ccb_h.cbfcnp = isptarg_done;
@@ -3638,7 +3643,7 @@ isp_target_thread(ispsoftc_t *isp, int chan)
 		ISP_UNLOCK(isp);
 	}
 	for (i = 0; i < NISP_TARG_CMDS; i++) {
-		ccb = kmalloc(sizeof (*ccb), M_ISPTARG, M_WAITOK | M_ZERO);
+		ccb = xpt_alloc_ccb();
 		xpt_setup_ccb(&ccb->ccb_h, periph->path, 1);
 		ccb->ccb_h.func_code = XPT_ACCEPT_TARGET_IO;
 		ccb->ccb_h.cbfcnp = isptarg_done;
@@ -3647,7 +3652,7 @@ isp_target_thread(ispsoftc_t *isp, int chan)
 		ISP_UNLOCK(isp);
 	}
 	for (i = 0; i < 4; i++) {
-		ccb = kmalloc(sizeof (*ccb), M_ISPTARG, M_WAITOK | M_ZERO);
+		ccb = xpt_alloc_ccb();
 		xpt_setup_ccb(&ccb->ccb_h, wperiph->path, 1);
 		ccb->ccb_h.func_code = XPT_IMMEDIATE_NOTIFY;
 		ccb->ccb_h.cbfcnp = isptarg_done;
@@ -3656,7 +3661,7 @@ isp_target_thread(ispsoftc_t *isp, int chan)
 		ISP_UNLOCK(isp);
 	}
 	for (i = 0; i < NISP_TARG_NOTIFIES; i++) {
-		ccb = kmalloc(sizeof (*ccb), M_ISPTARG, M_WAITOK | M_ZERO);
+		ccb = xpt_alloc_ccb();
 		xpt_setup_ccb(&ccb->ccb_h, periph->path, 1);
 		ccb->ccb_h.func_code = XPT_IMMEDIATE_NOTIFY;
 		ccb->ccb_h.cbfcnp = isptarg_done;
@@ -3668,12 +3673,14 @@ isp_target_thread(ispsoftc_t *isp, int chan)
 	/*
 	 * Now turn it all back on
 	 */
+	ccb = xpt_alloc_ccb();
 	xpt_setup_ccb(&ccb->ccb_h, periph->path, 10);
 	ccb->ccb_h.func_code = XPT_SET_SIM_KNOB;
 	ccb->knob.xport_specific.fc.valid = KNOB_VALID_ROLE;
 	ccb->knob.xport_specific.fc.role = KNOB_ROLE_TARGET;
 	ISP_LOCK(isp);
 	xpt_action(ccb);
+	xpt_free_ccb(&ccb->ccb_h);
 	ISP_UNLOCK(isp);
 
 	/*
@@ -3956,7 +3963,7 @@ isp_bus_scan_cb(struct cam_periph *periph, union ccb *ccb)
 			ccb->ccb_h.status);
 
 	xpt_free_path(ccb->ccb_h.path);
-	kfree(ccb, M_TEMP);
+	xpt_free_ccb(&ccb->ccb_h);
 }
 
 static void
@@ -3979,7 +3986,7 @@ isp_make_here(ispsoftc_t *isp, int chan, int tgt)
 	}
 	if (xpt_create_path(&ccb->ccb_h.path, xpt_periph, cam_sim_path(fc->sim), tgt, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		isp_prt(isp, ISP_LOGWARN, "unable to create path for rescan");
-		xpt_free_ccb(ccb);
+		xpt_free_ccb(&ccb->ccb_h);
 		return;
 	}
 	xpt_setup_ccb(&ccb->ccb_h, ccb->ccb_h.path, 5/*priority (low)*/);

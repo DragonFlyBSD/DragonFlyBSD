@@ -38,9 +38,12 @@
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
 #include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt.h>
 #include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_xpt_periph.h>
 #include <bus/cam/cam_debug.h>
 #include <bus/cam/cam_periph.h>
+
 
 #include <bus/cam/scsi/scsi_all.h>
 #include <bus/cam/scsi/scsi_message.h>
@@ -173,15 +176,16 @@ vpo_attach(device_t dev)
 static void
 vpo_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 {
-        kfree(ccb, M_TEMP);
+	xpt_free_ccb(&ccb->ccb_h);
 }
 
 static void
 vpo_cam_rescan(struct vpo_data *vpo)
 {
         struct cam_path *path;
-        union ccb *ccb = kmalloc(sizeof(union ccb), M_TEMP, M_WAITOK | M_ZERO);
+        union ccb *ccb;
 
+	ccb = xpt_alloc_ccb();
         if (xpt_create_path(&path, xpt_periph, cam_sim_path(vpo->sim), 0, 0)
             != CAM_REQ_CMP) {
 		/* A failure is benign as the user can do a manual rescan */

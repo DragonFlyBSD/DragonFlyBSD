@@ -51,6 +51,7 @@
 #include <bus/cam/cam_xpt_sim.h>
 #include <bus/cam/cam_debug.h>
 #include <bus/cam/scsi/scsi_all.h>
+#include <bus/cam/cam_xpt_periph.h>
 
 #include "ata-all.h"
 #include "ata_if.h"
@@ -324,16 +325,20 @@ reinit_bus(struct atapi_xpt_softc *scp, enum reinit_reason reason) {
 static void
 setup_async_cb(struct atapi_xpt_softc *scp, uint32_t events)
 {
-    struct ccb_setasync csa;
+    struct ccb_setasync *csa;
+
+    csa = &xpt_alloc_ccb()->csa;
 
     get_mplock();
-    xpt_setup_ccb(&csa.ccb_h, scp->path, /*priority*/ 5);
-    csa.ccb_h.func_code = XPT_SASYNC_CB;
-    csa.event_enable = events;
-    csa.callback = &atapi_async;
-    csa.callback_arg = scp->sim;
-    xpt_action((union ccb *) &csa);
+    xpt_setup_ccb(&csa->ccb_h, scp->path, /*priority*/ 5);
+    csa->ccb_h.func_code = XPT_SASYNC_CB;
+    csa->event_enable = events;
+    csa->callback = &atapi_async;
+    csa->callback_arg = scp->sim;
+    xpt_action((union ccb *)csa);
     rel_mplock();
+
+    xpt_free_ccb(&csa->ccb_h);
 }
 
 static void
@@ -818,20 +823,22 @@ cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 		      ("Rescan succeeded\n"));
 	}
 	xpt_free_path(ccb->ccb_h.path);
-	kfree(ccb, M_ATACAM);
+	xpt_free_ccb(&ccb->ccb_h);
 }
 
 static void
 cam_rescan(struct cam_sim *sim)
 {
     struct cam_path *path;
-    union ccb *ccb = kmalloc(sizeof(union ccb), M_ATACAM, M_WAITOK | M_ZERO);
+    union ccb *ccb;
+
+    ccb = xpt_alloc_ccb();
 
     get_mplock();
     if (xpt_create_path(&path, xpt_periph, cam_sim_path(sim),
 			CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 	rel_mplock();
-	kfree(ccb, M_ATACAM);
+	xpt_free_ccb(&ccb->ccb_h);
 	return;
     }
 

@@ -1506,7 +1506,7 @@ mprsas_SSU_to_SATA_devices(struct mpr_softc *sc)
 			    CAM_REQ_CMP) {
 				mpr_dprint(sc, MPR_ERROR, "Unable to create "
 				    "path to stop unit.\n");
-				xpt_free_ccb(ccb);
+				xpt_free_ccb(&ccb->ccb_h);
 				return;
 			}
 			xpt_path_string(ccb->ccb_h.path, path_str,
@@ -1580,7 +1580,7 @@ mprsas_stop_unit_done(struct cam_periph *periph, union ccb *done_ccb)
 	 * the SCSI Command process.
 	 */
 	xpt_free_path(done_ccb->ccb_h.path);
-	xpt_free_ccb(done_ccb);
+	xpt_free_ccb(&done_ccb->ccb_h);
 }
 
 /**

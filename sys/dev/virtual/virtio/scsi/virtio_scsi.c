@@ -717,31 +717,37 @@ vtscsi_cam_async(void *cb_arg, uint32_t code, struct cam_path *path, void *arg)
 static int
 vtscsi_register_async(struct vtscsi_softc *sc)
 {
-	struct ccb_setasync csa;
+	struct ccb_setasync *csa;
+	u_int32_t status;
 
-	xpt_setup_ccb(&csa.ccb_h, sc->vtscsi_path, 5);
-	csa.ccb_h.func_code = XPT_SASYNC_CB;
-	csa.event_enable = AC_LOST_DEVICE | AC_FOUND_DEVICE;
-	csa.callback = vtscsi_cam_async;
-	csa.callback_arg = sc->vtscsi_sim;
+	csa = &xpt_alloc_ccb()->csa;
 
-	xpt_action((union ccb *) &csa);
+	xpt_setup_ccb(&csa->ccb_h, sc->vtscsi_path, 5);
+	csa->ccb_h.func_code = XPT_SASYNC_CB;
+	csa->event_enable = AC_LOST_DEVICE | AC_FOUND_DEVICE;
+	csa->callback = vtscsi_cam_async;
+	csa->callback_arg = sc->vtscsi_sim;
 
-	return (csa.ccb_h.status);
+	xpt_action((union ccb *)csa);
+	status = csa->ccb_h.status;
+	xpt_free_ccb(&csa->ccb_h);
+
+	return status;
 }
 
 static void
 vtscsi_deregister_async(struct vtscsi_softc *sc)
 {
-	struct ccb_setasync csa;
+	struct ccb_setasync *csa;
 
-	xpt_setup_ccb(&csa.ccb_h, sc->vtscsi_path, 5);
-	csa.ccb_h.func_code = XPT_SASYNC_CB;
-	csa.event_enable = 0;
-	csa.callback = vtscsi_cam_async;
-	csa.callback_arg = sc->vtscsi_sim;
-
-	xpt_action((union ccb *) &csa);
+	csa = &xpt_alloc_ccb()->csa;
+	xpt_setup_ccb(&csa->ccb_h, sc->vtscsi_path, 5);
+	csa->ccb_h.func_code = XPT_SASYNC_CB;
+	csa->event_enable = 0;
+	csa->callback = vtscsi_cam_async;
+	csa->callback_arg = sc->vtscsi_sim;
+	xpt_action((union ccb *)csa);
+	xpt_free_ccb(&csa->ccb_h);
 }
 
 static void
@@ -1759,7 +1765,7 @@ static void
 vtscsi_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 {
 	xpt_free_path(ccb->ccb_h.path);
-	xpt_free_ccb(ccb);
+	xpt_free_ccb(&ccb->ccb_h);
 }
 
 static void
@@ -1778,7 +1784,7 @@ vtscsi_execute_rescan(struct vtscsi_softc *sc, target_id_t target_id,
 	status = xpt_create_path(&ccb->ccb_h.path, NULL,
 	    cam_sim_path(sc->vtscsi_sim), target_id, lun_id);
 	if (status != CAM_REQ_CMP) {
-		xpt_free_ccb(ccb);
+		xpt_free_ccb(&ccb->ccb_h);
 		return;
 	}
 
@@ -1805,7 +1811,7 @@ vtscsi_execute_rescan_bus(struct vtscsi_softc *sc)
 	    cam_sim_path(sc->vtscsi_sim),
 	    CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD);
 	if (status != CAM_REQ_CMP) {
-		xpt_free_ccb(ccb);
+		xpt_free_ccb(&ccb->ccb_h);
 		return;
 	}
 

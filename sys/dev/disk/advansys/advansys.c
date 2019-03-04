@@ -154,7 +154,7 @@ adv_clear_state_really(struct adv_softc *adv, union ccb* ccb)
 			 */
 			ccb_h = LIST_FIRST(&adv->pending_ccbs);
 			while (ccb_h != NULL) {
-				callout_reset(&ccb_h->timeout_ch,
+				callout_reset(ccb_h->timeout_ch,
 				    (ccb_h->timeout * hz) / 1000,
 				    adv_timeout, ccb_h);
 				ccb_h = LIST_NEXT(ccb_h, sim_links.le);
@@ -628,8 +628,8 @@ adv_execute_ccb(void *arg, bus_dma_segment_t *dm_segs,
 	ccb_h->status |= CAM_SIM_QUEUED;
 	LIST_INSERT_HEAD(&adv->pending_ccbs, ccb_h, sim_links.le);
 	/* Schedule our timeout */
-	callout_reset(&ccb_h->timeout_ch, (ccb_h->timeout * hz)/1000,
-	    adv_timeout, csio);
+	callout_reset(ccb_h->timeout_ch, (ccb_h->timeout * hz) / 1000,
+		      adv_timeout, csio);
 	crit_exit();
 }
 
@@ -701,7 +701,7 @@ adv_timeout(void *arg)
 
 		ccb_h = LIST_FIRST(&adv->pending_ccbs);
 		while (ccb_h != NULL) {
-			callout_stop(&ccb_h->timeout_ch);
+			callout_stop(ccb_h->timeout_ch);
 			ccb_h = LIST_NEXT(ccb_h, sim_links.le);
 		}
 
@@ -712,7 +712,7 @@ adv_timeout(void *arg)
 		adv_abort_ccb(adv, ccb->ccb_h.target_id,
 			      ccb->ccb_h.target_lun, ccb,
 			      CAM_CMD_TIMEOUT, /*queued_only*/FALSE);
-		callout_reset(&ccb->ccb_h.timeout_ch, 2 * hz, adv_timeout, ccb);
+		callout_reset(ccb->ccb_h.timeout_ch, 2 * hz, adv_timeout, ccb);
 	} else {
 		/* Our attempt to perform an abort failed, go for a reset */
 		xpt_print_path(ccb->ccb_h.path);
@@ -1125,7 +1125,7 @@ adv_done(struct adv_softc *adv, union ccb *ccb, u_int done_stat,
 
 	cinfo = (struct adv_ccb_info *)ccb->ccb_h.ccb_cinfo_ptr;
 	LIST_REMOVE(&ccb->ccb_h, sim_links.le);
-	callout_stop(&ccb->ccb_h.timeout_ch);
+	callout_stop(ccb->ccb_h.timeout_ch);
 	if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE) {
 		bus_dmasync_op_t op;
 
@@ -1284,7 +1284,7 @@ adv_poll(struct cam_sim *sim)
 int
 adv_attach(struct adv_softc *adv)
 {
-	struct ccb_setasync csa;
+	struct ccb_setasync *csa;
 	int max_sg;
 
 	/*
@@ -1404,11 +1404,14 @@ adv_attach(struct adv_softc *adv)
 		return (ENXIO);
 	}
 
-	xpt_setup_ccb(&csa.ccb_h, adv->path, /*priority*/5);
-	csa.ccb_h.func_code = XPT_SASYNC_CB;
-	csa.event_enable = AC_FOUND_DEVICE|AC_LOST_DEVICE;
-	csa.callback = advasync;
-	csa.callback_arg = adv;
-	xpt_action((union ccb *)&csa);
+	csa = &xpt_alloc_ccb()->csa;
+	xpt_setup_ccb(&csa->ccb_h, adv->path, /*priority*/5);
+	csa->ccb_h.func_code = XPT_SASYNC_CB;
+	csa->event_enable = AC_FOUND_DEVICE|AC_LOST_DEVICE;
+	csa->callback = advasync;
+	csa->callback_arg = adv;
+	xpt_action((union ccb *)csa);
+	xpt_free_ccb(&csa->ccb_h);
+
 	return (0);
 }
