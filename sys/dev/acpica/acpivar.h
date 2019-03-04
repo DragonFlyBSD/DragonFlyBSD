@@ -34,8 +34,6 @@
 #ifdef _KERNEL
 
 
-#include "acpi_if.h"
-#include "bus_if.h"
 #include <sys/eventhandler.h>
 #include <sys/sysctl.h>
 #include <sys/lock.h>
@@ -49,6 +47,8 @@
 #include <contrib/dev/acpica/source/include/acobject.h>
 #include <contrib/dev/acpica/source/include/acstruct.h>
 #include <contrib/dev/acpica/source/include/acutils.h>
+
+#include "acpi_if.h"
 
 struct apm_clone_data;
 struct acpi_softc {

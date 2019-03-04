@@ -34,16 +34,8 @@
 #include "acpi.h"
 #include "accommon.h"
 
-#include "opt_acpi.h"
-
 #include <sys/kernel.h>
-#include <sys/bus.h>
-#include <sys/malloc.h>
 #include <sys/sysctl.h>
-#include <sys/lock.h>
-#include <sys/thread.h>
-#include <sys/thread2.h>
-#include <sys/spinlock2.h>
 
 #include <dev/acpica/acpivar.h>
 
