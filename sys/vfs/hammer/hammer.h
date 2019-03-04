@@ -274,31 +274,6 @@ typedef struct hammer_node_cache {
 TAILQ_HEAD(hammer_node_cache_list, hammer_node_cache);
 
 /*
- * Live dedup cache
- */
-struct hammer_dedup_cache;
-RB_HEAD(hammer_dedup_crc_rb_tree, hammer_dedup_cache);
-RB_PROTOTYPE2(hammer_dedup_crc_rb_tree, hammer_dedup_cache, crc_entry,
-		hammer_dedup_crc_rb_compare, hammer_crc_t);
-
-RB_HEAD(hammer_dedup_off_rb_tree, hammer_dedup_cache);
-RB_PROTOTYPE2(hammer_dedup_off_rb_tree, hammer_dedup_cache, off_entry,
-		hammer_dedup_off_rb_compare, hammer_off_t);
-
-typedef struct hammer_dedup_cache {
-	RB_ENTRY(hammer_dedup_cache) crc_entry;
-	RB_ENTRY(hammer_dedup_cache) off_entry;
-	TAILQ_ENTRY(hammer_dedup_cache) lru_entry;
-	struct hammer_mount *hmp;
-	int64_t obj_id;
-	uint32_t localization;
-	off_t file_offset;
-	int bytes;
-	hammer_off_t data_offset;
-	hammer_crc_t crc;
-} *hammer_dedup_cache_t;
-
-/*
  * Structure used to organize flush groups.  Flush groups must be
  * organized into chunks in order to avoid blowing out the UNDO FIFO.
  * Without this a 'sync' could end up flushing 50,000 inodes in a single
@@ -553,7 +528,6 @@ typedef struct hammer_record {
 #define HAMMER_RECF_COMMITTED		0x0010	/* committed to the B-Tree */
 #define HAMMER_RECF_INTERLOCK_BE	0x0020	/* backend interlock */
 #define HAMMER_RECF_WANTED		0x0040	/* wanted by the frontend */
-#define HAMMER_RECF_DEDUPED		0x0080	/* will be live-dedup'ed */
 #define HAMMER_RECF_CONVERT_DELETE	0x0100	/* special case */
 #define HAMMER_RECF_REDO		0x1000	/* REDO was laid down */
 
@@ -765,7 +739,6 @@ typedef struct hammer_reserve {
 	int		refs;
 	int		zone;
 	int		append_off;
-	int32_t		bytes_free;
 	hammer_off_t	zone_offset;
 } *hammer_reserve_t;
 
@@ -824,10 +797,6 @@ typedef struct hammer_mount {
 	struct hammer_res_rb_tree rb_resv_root;
 	struct hammer_buf_rb_tree rb_bufs_root;
 	struct hammer_pfs_rb_tree rb_pfsm_root;
-
-	struct hammer_dedup_crc_rb_tree rb_dedup_crc_root;
-	struct hammer_dedup_off_rb_tree rb_dedup_off_root;
-
 	hammer_volume_t rootvol;
 	struct hammer_base_elm root_btree_beg;
 	struct hammer_base_elm root_btree_end;
@@ -866,7 +835,6 @@ typedef struct hammer_mount {
 	long	locked_dirty_space;		/* meta/volu count    */
 	long	io_running_space;		/* io_token */
 	int	objid_cache_count;
-	int	dedup_cache_count;
 	int	error;				/* critical I/O error */
 	struct krate	krate;			/* rate limited kprintf */
 	struct krate	kdiag;			/* rate limited kprintf */
@@ -894,8 +862,6 @@ typedef struct hammer_mount {
 	hammer_flush_group_t	fill_flush_group;
 	hammer_flush_group_t	next_flush_group;
 	TAILQ_HEAD(, hammer_objid_cache) objid_cache_list;
-	TAILQ_HEAD(, hammer_dedup_cache) dedup_lru_list;
-	hammer_dedup_cache_t	dedup_free_cache;
 	TAILQ_HEAD(, hammer_reclaim) reclaim_list;
 	TAILQ_HEAD(, hammer_io) iorun_list;
 
@@ -951,7 +917,6 @@ extern int hammer_debug_tid;
 extern int hammer_debug_recover;
 extern int hammer_debug_critical;
 extern int hammer_cluster_enable;
-extern int hammer_live_dedup;
 extern int hammer_tdmux_ticks;
 extern int hammer_count_fsyncs;
 extern int hammer_count_inodes;
@@ -999,11 +964,6 @@ extern int hammer_yield_check;
 extern int hammer_fsync_mode;
 extern int hammer_autoflush;
 extern int64_t hammer_contention_count;
-
-extern int64_t hammer_live_dedup_vnode_bcmps;
-extern int64_t hammer_live_dedup_device_bcmps;
-extern int64_t hammer_live_dedup_findblk_failures;
-extern int64_t hammer_live_dedup_bmap_saves;
 
 void	hammer_critical_error(hammer_mount_t hmp, hammer_inode_t ip,
 			int error, const char *msg);
@@ -1106,20 +1066,6 @@ hammer_tid_t hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip,
 			int64_t namekey);
 void hammer_clear_objid(hammer_inode_t dip);
 void hammer_destroy_objid_cache(hammer_mount_t hmp);
-
-int hammer_dedup_crc_rb_compare(hammer_dedup_cache_t dc1,
-			hammer_dedup_cache_t dc2);
-int hammer_dedup_off_rb_compare(hammer_dedup_cache_t dc1,
-			hammer_dedup_cache_t dc2);
-hammer_dedup_cache_t hammer_dedup_cache_add(hammer_inode_t ip,
-			hammer_btree_leaf_elm_t leaf);
-hammer_dedup_cache_t hammer_dedup_cache_lookup(hammer_mount_t hmp,
-			hammer_crc_t crc);
-void hammer_dedup_cache_inval(hammer_mount_t hmp, hammer_off_t base_offset);
-void hammer_destroy_dedup_cache(hammer_mount_t hmp);
-void hammer_dump_dedup_cache(hammer_mount_t hmp);
-int hammer_dedup_validate(hammer_dedup_cache_t dcp, int zone, int bytes,
-			void *data);
 
 int hammer_enter_undo_history(hammer_mount_t hmp, hammer_off_t offset,
 			int bytes);
@@ -1268,8 +1214,6 @@ hammer_off_t hammer_blockmap_alloc(hammer_transaction_t trans, int zone,
 			int bytes, hammer_off_t hint, int *errorp);
 hammer_reserve_t hammer_blockmap_reserve(hammer_mount_t hmp, int zone,
 			int bytes, hammer_off_t *zone_offp, int *errorp);
-hammer_reserve_t hammer_blockmap_reserve_dedup(hammer_mount_t hmp, int zone,
-			int bytes, hammer_off_t zone_offset, int *errorp);
 void hammer_blockmap_reserve_complete(hammer_mount_t hmp,
 			hammer_reserve_t resv);
 void hammer_reserve_clrdelay(hammer_mount_t hmp, hammer_reserve_t resv);

@@ -50,7 +50,6 @@ int hammer_debug_tid;
 int hammer_debug_recover;		/* -1 will disable, +1 will force */
 int hammer_debug_critical;		/* non-zero enter debugger on error */
 int hammer_cluster_enable = 2;		/* ena cluster_read, scale x 2 */
-int hammer_live_dedup = 0;
 int hammer_tdmux_ticks;
 int hammer_count_fsyncs;
 int hammer_count_inodes;
@@ -104,18 +103,7 @@ int64_t hammer_contention_count;
 int hammer_noatime = 1;
 TUNABLE_INT("vfs.hammer.noatime", &hammer_noatime);
 
-/*
- * Live dedup debug counters (sysctls are writable so that counters
- * can be reset from userspace).
- */
-int64_t hammer_live_dedup_vnode_bcmps = 0;
-int64_t hammer_live_dedup_device_bcmps = 0;
-int64_t hammer_live_dedup_findblk_failures = 0;
-int64_t hammer_live_dedup_bmap_saves = 0;
-
-
 SYSCTL_NODE(_vfs, OID_AUTO, hammer, CTLFLAG_RW, 0, "HAMMER filesystem");
-
 SYSCTL_INT(_vfs_hammer, OID_AUTO, supported_version, CTLFLAG_RD,
 	   &hammer_supported_version, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_general, CTLFLAG_RW,
@@ -136,16 +124,6 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_critical, CTLFLAG_RW,
 	   &hammer_debug_critical, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, cluster_enable, CTLFLAG_RW,
 	   &hammer_cluster_enable, 0, "");
-/*
- * 0 - live dedup is disabled
- * 1 - dedup cache is populated on reads only
- * 2 - dedup cache is populated on both reads and writes
- *
- * LIVE_DEDUP IS DISABLED PERMANENTLY!  This feature appears to cause
- * blockmap corruption over time so we've turned it off permanently.
- */
-SYSCTL_INT(_vfs_hammer, OID_AUTO, live_dedup, CTLFLAG_RD,
-	   &hammer_live_dedup, 0, "Enable live dedup (experimental)");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, tdmux_ticks, CTLFLAG_RW,
 	   &hammer_tdmux_ticks, 0, "Hammer tdmux ticks");
 
@@ -217,19 +195,6 @@ SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_undo, CTLFLAG_RD,
 	   &hammer_stats_undo, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_redo, CTLFLAG_RD,
 	   &hammer_stats_redo, 0, "");
-
-SYSCTL_QUAD(_vfs_hammer, OID_AUTO, live_dedup_vnode_bcmps, CTLFLAG_RW,
-	    &hammer_live_dedup_vnode_bcmps, 0,
-	    "successful vnode buffer comparisons");
-SYSCTL_QUAD(_vfs_hammer, OID_AUTO, live_dedup_device_bcmps, CTLFLAG_RW,
-	    &hammer_live_dedup_device_bcmps, 0,
-	    "successful device buffer comparisons");
-SYSCTL_QUAD(_vfs_hammer, OID_AUTO, live_dedup_findblk_failures, CTLFLAG_RW,
-	    &hammer_live_dedup_findblk_failures, 0,
-	    "block lookup failures for comparison");
-SYSCTL_QUAD(_vfs_hammer, OID_AUTO, live_dedup_bmap_saves, CTLFLAG_RW,
-	    &hammer_live_dedup_bmap_saves, 0,
-	    "useful physical block lookups");
 
 SYSCTL_LONG(_vfs_hammer, OID_AUTO, count_dirtybufspace, CTLFLAG_RD,
 	   &hammer_count_dirtybufspace, 0, "");
@@ -485,10 +450,6 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		TAILQ_INIT(&hmp->objid_cache_list);
 		TAILQ_INIT(&hmp->undo_lru_list);
 		TAILQ_INIT(&hmp->reclaim_list);
-
-		RB_INIT(&hmp->rb_dedup_crc_root);
-		RB_INIT(&hmp->rb_dedup_off_root);
-		TAILQ_INIT(&hmp->dedup_lru_list);
 	}
 	hmp->hflags &= ~HMNT_USERFLAGS;
 	hmp->hflags |= info.hflags & HMNT_USERFLAGS;
@@ -918,11 +879,6 @@ hammer_free_hmp(struct mount *mp)
 	mp->mnt_flag &= ~MNT_LOCAL;
 	hmp->mp = NULL;
 	hammer_destroy_objid_cache(hmp);
-	hammer_destroy_dedup_cache(hmp);
-	if (hmp->dedup_free_cache != NULL) {
-		kfree(hmp->dedup_free_cache, hmp->m_misc);
-		hmp->dedup_free_cache = NULL;
-	}
 	kmalloc_destroy(&hmp->m_misc);
 	kmalloc_destroy(&hmp->m_inodes);
 	lwkt_reltoken(&hmp->fs_token);

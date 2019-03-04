@@ -2617,9 +2617,6 @@ hammer_vop_strategy(struct vop_strategy_args *ap)
 		biodone(ap->a_bio);
 		break;
 	}
-
-	/* hammer_dump_dedup_cache(((hammer_inode_t)ap->a_vp->v_data)->hmp); */
-
 	return (error);
 }
 
@@ -2687,7 +2684,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		 * only compatible buffer sizes (meaning those generated
 		 * by normal filesystem buffers) are legal.
 		 */
-		if (hammer_live_dedup == 0 && (bp->b_flags & B_PAGING) == 0) {
+		if ((bp->b_flags & B_PAGING) == 0) {
 			lwkt_gettoken(&hmp->fs_token);
 			error = hammer_io_indirect_read(hmp, nbio, NULL);
 			lwkt_reltoken(&hmp->fs_token);
@@ -2853,41 +2850,25 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 			KKASSERT(hammer_is_zone_large_data(disk_offset));
 			nbio->bio_offset = disk_offset;
 			error = hammer_io_direct_read(hmp, nbio, cursor.leaf);
-			if (hammer_live_dedup && error == 0)
-				hammer_dedup_cache_add(ip, cursor.leaf);
 			goto done;
 		} else if (isdedupable) {
 			/*
 			 * Async I/O case for reading from backing store
 			 * and copying the data to the filesystem buffer.
-			 * live-dedup has to verify the data anyway if it
-			 * gets a hit later so we can just add the entry
-			 * now.
 			 */
 			KKASSERT(hammer_is_zone_large_data(disk_offset));
 			nbio->bio_offset = disk_offset;
-			if (hammer_live_dedup)
-				hammer_dedup_cache_add(ip, cursor.leaf);
 			error = hammer_io_indirect_read(hmp, nbio, cursor.leaf);
 			goto done;
 		} else if (n) {
 			error = hammer_ip_resolve_data(&cursor);
 			if (error == 0) {
-				if (hammer_live_dedup && isdedupable)
-					hammer_dedup_cache_add(ip, cursor.leaf);
 				bcopy((char *)cursor.data + roff,
 				      (char *)bp->b_data + boff, n);
 			}
 		}
 		if (error)
 			break;
-
-		/*
-		 * We have to be sure that the only elements added to the
-		 * dedup cache are those which are already on-media.
-		 */
-		if (hammer_live_dedup && hammer_cursor_ondisk(&cursor))
-			hammer_dedup_cache_add(ip, cursor.leaf);
 
 		/*
 		 * Iterate until we have filled the request.
@@ -3111,11 +3092,7 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 			}
 			last_offset = rec_offset + rec_len;
 			last_disk_offset = disk_offset + rec_len;
-
-			if (hammer_live_dedup)
-				hammer_dedup_cache_add(ip, cursor.leaf);
 		}
-
 		error = hammer_ip_next(&cursor);
 	}
 
@@ -3282,13 +3259,7 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 			record->flags |= HAMMER_RECF_REDO;
 			bp->b_flags &= ~B_VFSFLAG1;
 		}
-		if (record->flags & HAMMER_RECF_DEDUPED) {
-			bp->b_resid = 0;
-			hammer_ip_replace_bulk(hmp, record);
-			biodone(ap->a_bio);
-		} else {
-			hammer_io_direct_write(hmp, bio, record);
-		}
+		hammer_io_direct_write(hmp, bio, record);
 		if (ip->rsv_recs > 1 && hmp->rsv_recs > hammer_limit_recs)
 			hammer_flush_inode(ip, 0);
 	} else {
