@@ -1,11 +1,8 @@
 # $FreeBSD: src/usr.bin/top/Makefile,v 1.5.6.2 2002/08/11 17:09:54 dwmalone Exp $
 PROG=	top
 
-TOPDIR=	${.CURDIR}/../../contrib/top
-.PATH:	${TOPDIR}
-
 CFLAGS+= -DHAVE_GETOPT -DHAVE_STRERROR -I${.CURDIR} -I${.OBJDIR} \
-		 -I${TOPDIR} -I. -DORDER
+		 -I. -DORDER
 
 .if ${MACHINE_ARCH} == "x86_64"
 CFLAGS+=-D_ENABLEX64
