@@ -40,13 +40,11 @@ CWARNFLAGS	+=	-Werror
 .  endif
 .  if ${WARNS} >= 2
 CWARNFLAGS	+=	-Wall -Wformat-security -Winit-self
-_cnowarnflags	+=	-Wno-pointer-sign
 .  endif
 .  if ${WARNS} >= 3
 CWARNFLAGS	+=	-Wextra -Wstrict-prototypes\
 			-Wmissing-prototypes -Wpointer-arith\
 			-Wold-style-definition
-_cnowarnflags	+=	-Wno-unused-parameter
 .  endif
 .  if ${WARNS} >= 4
 CWARNFLAGS	+=	-Wreturn-type -Wcast-qual -Wwrite-strings -Wswitch\
@@ -56,6 +54,10 @@ CWARNFLAGS	+=	-Wreturn-type -Wcast-qual -Wwrite-strings -Wswitch\
 CWARNFLAGS	+=	-Wchar-subscripts -Winline -Wnested-externs\
 			-Wredundant-decls
 .  endif
+.  if ${WARNS} >= 2 && ${WARNS} <= 6
+# Delete -Wno-pointer-sign from -Wall by default (C only).
+_cnowarnflags	+=	-Wno-pointer-sign
+.  endif
 .  if ${WARNS} >= 2 && ${WARNS} <= 4
 # XXX Delete -Wmaybe-uninitialized by default for now -- the compiler doesn't
 # XXX always get it right.
@@ -64,6 +66,10 @@ _cnowarnflags	+=	-Wno-maybe-uninitialized
 .   else
 _cnowarnflags	+=	-Wno-uninitialized
 .   endif
+.  endif
+.  if ${WARNS} == 3
+# Delete -Wno-unused-parameter from -Wextra by default only if WARNS < 4.
+_cnowarnflags	+=	-Wno-unused-parameter
 .  endif
 # Delete -Wformat-* family that give little benefits, same for stringop.
 .  if ${WARNS} >= 2 && ${WARNS} <= 6 && ${_WCCVER:Mgcc8*}
