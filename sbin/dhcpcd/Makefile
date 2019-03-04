@@ -71,6 +71,9 @@ ${f}: ${f}.in
 	sed ${_SED_CMDS} ${SRCDIR}/${f}.in > $@
 .endfor
 
+# XXX -Wunused-parameter in duid.c, not implemented duid_machineuuid().
+WARNS?=		3
+
 # NOTE:
 # The configuration file 'dhcpcd.conf' is installed by 'etc/Makefile'
 
