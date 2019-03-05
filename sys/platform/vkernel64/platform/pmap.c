@@ -1637,15 +1637,15 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		while ((*pmap_pde(&kernel_pmap, kernel_vm_end) & VPTE_V) != 0) {
 			kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) & ~(PAGE_SIZE * NPTEPG - 1);
 			nkpt++;
-			if (kernel_vm_end - 1 >= kernel_map.max_offset) {
-				kernel_vm_end = kernel_map.max_offset;
+			if (kernel_vm_end - 1 >= kernel_map.header.end) {
+				kernel_vm_end = kernel_map.header.end;
 				break;
 			}
 		}
 	}
 	addr = roundup2(addr, PAGE_SIZE * NPTEPG);
-	if (addr - 1 >= kernel_map.max_offset)
-		addr = kernel_map.max_offset;
+	if (addr - 1 >= kernel_map.header.end)
+		addr = kernel_map.header.end;
 	while (kernel_vm_end < addr) {
 		pde = pmap_pde(&kernel_pmap, kernel_vm_end);
 		if (pde == NULL) {
@@ -1671,8 +1671,8 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		if ((*pde & VPTE_V) != 0) {
 			kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) &
 					~(PAGE_SIZE * NPTEPG - 1);
-			if (kernel_vm_end - 1 >= kernel_map.max_offset) {
-				kernel_vm_end = kernel_map.max_offset;
+			if (kernel_vm_end - 1 >= kernel_map.header.end) {
+				kernel_vm_end = kernel_map.header.end;
 				break;
 			}
 			continue;
@@ -1700,8 +1700,8 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 
 		kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) &
 				~(PAGE_SIZE * NPTEPG - 1);
-		if (kernel_vm_end - 1 >= kernel_map.max_offset) {
-			kernel_vm_end = kernel_map.max_offset;
+		if (kernel_vm_end - 1 >= kernel_map.header.end) {
+			kernel_vm_end = kernel_map.header.end;
 			break;
 		}
 	}

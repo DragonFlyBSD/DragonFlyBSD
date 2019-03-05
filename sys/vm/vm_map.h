@@ -321,8 +321,6 @@ struct vm_map {
 	struct spinlock ilock_spin;	/* interlocks (spinlock for) */
 	struct lwkt_token token;	/* Soft serializer */
 	vm_offset_t pgout_offset;	/* for RLIMIT_RSS scans */
-#define	min_offset		header.start
-#define max_offset		header.end
 };
 
 /*
@@ -496,8 +494,8 @@ vm_map_lock_upgrade(vm_map_t map) {
 /*
  *	Functions implemented as macros
  */
-#define		vm_map_min(map)		((map)->min_offset)
-#define		vm_map_max(map)		((map)->max_offset)
+#define		vm_map_min(map)		((map)->header.start)
+#define		vm_map_max(map)		((map)->header.end)
 #define		vm_map_pmap(map)	((map)->pmap)
 
 /*

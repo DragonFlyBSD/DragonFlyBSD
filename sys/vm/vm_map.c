@@ -511,8 +511,8 @@ vmspace_terminate(struct vmspace *vm, int final)
 		 * Delete all of the mappings and pages they hold, then call
 		 * the pmap module to reclaim anything left.
 		 */
-		vm_map_delete(&vm->vm_map, vm->vm_map.min_offset,
-			      vm->vm_map.max_offset, &count);
+		vm_map_delete(&vm->vm_map, vm->vm_map.header.start,
+			      vm->vm_map.header.end, &count);
 		vm_map_unlock(&vm->vm_map);
 		vm_map_entry_release(count);
 
@@ -614,8 +614,8 @@ vm_map_init(struct vm_map *map, vm_offset_t min, vm_offset_t max, pmap_t pmap)
 	map->nentries = 0;
 	map->size = 0;
 	map->system_map = 0;
-	map->min_offset = min;
-	map->max_offset = max;
+	map->header.start = min;
+	map->header.end = max;
 	map->pmap = pmap;
 	map->timestamp = 0;
 	map->flags = 0;
@@ -1073,7 +1073,7 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 	/*
 	 * Check that the start and end points are not bogus.
 	 */
-	if ((start < map->min_offset) || (end > map->max_offset) ||
+	if ((start < map->header.start) || (end > map->header.end) ||
 	    (start >= end))
 		return (KERN_INVALID_ADDRESS);
 
@@ -1282,9 +1282,9 @@ vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
 	vm_offset_t end;
 	vm_offset_t align_mask;
 
-	if (start < map->min_offset)
-		start = map->min_offset;
-	if (start > map->max_offset)
+	if (start < map->header.start)
+		start = map->header.start;
+	if (start > map->header.end)
 		return (1);
 
 	/*
@@ -1332,7 +1332,7 @@ vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
 		 * entry.
 		 */
 		end = start + length;
-		if (end > map->max_offset || end < start)
+		if (end > map->header.end || end < start)
 			return (1);
 		next = entry->next;
 
@@ -3574,7 +3574,7 @@ vmspace_fork(struct vmspace *vm1)
 	lwkt_gettoken(&vm1->vm_map.token);
 	vm_map_lock(old_map);
 
-	vm2 = vmspace_alloc(old_map->min_offset, old_map->max_offset);
+	vm2 = vmspace_alloc(old_map->header.start, old_map->header.end);
 	lwkt_gettoken(&vm2->vm_map.token);
 
 	/*
@@ -4060,7 +4060,7 @@ vmspace_exec(struct proc *p, struct vmspace *vmcopy)
 		newvmspace = vmspace_fork(vmcopy);
 		lwkt_gettoken(&newvmspace->vm_map.token);
 	} else {
-		newvmspace = vmspace_alloc(map->min_offset, map->max_offset);
+		newvmspace = vmspace_alloc(map->header.start, map->header.end);
 		lwkt_gettoken(&newvmspace->vm_map.token);
 		bcopy(&oldvmspace->vm_startcopy, &newvmspace->vm_startcopy,
 		      (caddr_t)&oldvmspace->vm_endcopy -

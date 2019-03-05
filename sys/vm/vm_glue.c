@@ -131,7 +131,7 @@ kernacc(c_caddr_t addr, int len, int rw)
 	/*
 	 * Nominal kernel memory access - check access via kernel_map.
 	 */
-	if ((vm_offset_t)addr + len > kernel_map.max_offset ||
+	if ((vm_offset_t)addr + len > kernel_map.header.end ||
 	    (vm_offset_t)addr + len < (vm_offset_t)addr) {
 		return (FALSE);
 	}
