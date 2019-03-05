@@ -32,12 +32,6 @@
 #include <drm/radeon_drm.h>
 #include "radeon.h"
 
-/*
- * Undefine max_offset (defined in vm/vm_map.h), because it conflicts
- * with an argument of the function radeon_bo_pin_restricted().
- */
-#undef max_offset
-
 /**
  * radeon_mem_type_to_domain - return domain corresponding to mem_type
  * @mem_type:	ttm memory type
