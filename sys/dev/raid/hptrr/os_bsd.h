@@ -48,7 +48,6 @@
 #include <sys/stat.h>
 #include <sys/malloc.h>
 #include <sys/conf.h>
-#include <sys/libkern.h>
 #include <sys/kernel.h>
 
 #include <sys/kthread.h>

@@ -32,9 +32,7 @@
 #ifndef _PROPLIB_PROP_OBJECT_IMPL_H_
 #define	_PROPLIB_PROP_OBJECT_IMPL_H_
 
-#if defined(_KERNEL) || defined(_STANDALONE)
-#include <sys/libkern.h>
-#else
+#if !defined(_KERNEL) && !defined(_STANDALONE)
 #include <inttypes.h>
 #endif
 
