@@ -47,4 +47,7 @@ typedef unsigned short umode_t;
 
 typedef unsigned long pgoff_t;
 
+struct rcu_head {
+};
+
 #endif	/* _LINUX_TYPES_H_ */
