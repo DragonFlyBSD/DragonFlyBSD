@@ -56,8 +56,7 @@ int radeon_sa_bo_manager_init(struct radeon_device *rdev,
 {
 	int i, r;
 
-	lockinit(&sa_manager->wq_lock, "drm__radeon_sa_manager_wq_mtx", 0,
-		 LK_CANRECURSE);
+	lockinit(&sa_manager->wq_lock, "drsamwm", 0, LK_CANRECURSE);
 	cv_init(&sa_manager->wq, "drm__radeon_sa_manager__wq");
 	sa_manager->bo = NULL;
 	sa_manager->size = size;

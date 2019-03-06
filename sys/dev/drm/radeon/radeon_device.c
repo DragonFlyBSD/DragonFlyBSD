@@ -1274,21 +1274,16 @@ int radeon_device_init(struct radeon_device *rdev,
 
 	/* mutex initialization are all done here so we
 	 * can recall function without having locking issues */
-	lockinit(&rdev->ring_lock, "drm__radeon_device__ring_lock", 0,
-		 LK_CANRECURSE);
-	lockinit(&rdev->dc_hw_i2c_mutex,
-		 "drm__radeon_device__dc_hw_i2c_mutex", 0, LK_CANRECURSE);
+	lockinit(&rdev->ring_lock, "drdrl", 0, LK_CANRECURSE);
+	lockinit(&rdev->dc_hw_i2c_mutex, "drddi2cm", 0, LK_CANRECURSE);
 	atomic_set(&rdev->ih.lock, 0);
 	lockinit(&rdev->gem.mutex, "radeon_gemmtx", 0, LK_CANRECURSE);
-	lockinit(&rdev->pm.mutex, "drm__radeon_device__pm__mutex", 0,
-		 LK_CANRECURSE);
+	lockinit(&rdev->pm.mutex, "drdpmm", 0, LK_CANRECURSE);
 
 	lockinit(&rdev->gpu_clock_mutex, "radeon_clockmtx", 0, LK_CANRECURSE);
 	lockinit(&rdev->srbm_mutex, "radeon_srbm_mutex", 0, LK_CANRECURSE);
-	lockinit(&rdev->pm.mclk_lock, "drm__radeon_device__pm__mclk_lock", 0,
-		 LK_CANRECURSE);
-	lockinit(&rdev->exclusive_lock, "drm__radeon_device__exclusive_lock",
-		 0, LK_CANRECURSE);
+	lockinit(&rdev->pm.mclk_lock, "drpmml", 0, LK_CANRECURSE);
+	lockinit(&rdev->exclusive_lock, "drdel", 0, LK_CANRECURSE);
 	init_waitqueue_head(&rdev->irq.vblank_queue);
 	r = radeon_gem_init(rdev);
 	if (r)
