@@ -39,8 +39,7 @@
  * IDR is a small Integer ID management library that provides an interface to
  * map integers with some pointer that can later be retrieved.
  *
- * NOTE: Pointer mapped by integer can't be NULL.
- *
+ * NOTE: Maintains compatibility with linux, allowing NULL pointers.
  */
 
 
@@ -73,7 +72,7 @@ struct idr {
 
 void	*idr_find(struct idr *idp, int id);
 void	*idr_replace(struct idr *idp, void *ptr, int id);
-void	 idr_remove(struct idr *idp, int id);
+void	*idr_remove(struct idr *idp, int id);
 void	 idr_remove_all(struct idr *idp);
 void	 idr_destroy(struct idr *idp);
 int	 idr_for_each(struct idr *idp, int (*fn)(int id, void *p, void *data), void *data);

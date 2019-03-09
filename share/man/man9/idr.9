@@ -129,7 +129,8 @@ The
 .Fn idr_remove
 function removes the specified
 .Fa id
-from the tree.
+from the tree, returning its pointer.
+NULL is returned if the id could not be found.
 .Pp
 The
 .Fn idr_remove_all
@@ -146,5 +147,6 @@ with the new pointer
 .Fa ptr .
 It returns
 .Dv NULL
-if the pointer is not found.
-This behavior is different from the Linux API.
+if the id is not found.
+This behavior is different from the Linux API, which returns ERR_PTR(-ENOENT)
+if the id could not be found.

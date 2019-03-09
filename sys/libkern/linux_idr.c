@@ -58,6 +58,7 @@
 #define MALLOC_DEFINE(a, b, c)
 #define lwkt_gettoken(x)
 #define lwkt_reltoken(x)
+#undef kmalloc
 #define kmalloc(bytes, zone, flags)	calloc(bytes, 1)
 #define lwkt_token_init(a, b)
 #define lwkt_token_uninit(a)
@@ -72,7 +73,7 @@ main(int ac, char **av)
 {
 	char buf[256];
 	struct idr idr;
-	intptr_t generation = 0x10000000;
+	intptr_t generation = 0x0;
 	int error;
 	int id;
 
@@ -459,7 +460,7 @@ idr_grow(struct idr *idp, int want)
 	idp->idr_nexpands++;
 }
 
-void
+void *
 idr_remove(struct idr *idp, int id)
 {
 	void *ptr;
@@ -467,16 +468,19 @@ idr_remove(struct idr *idp, int id)
 	lwkt_gettoken(&idp->idr_token);
 	if (id < 0 || id >= idp->idr_count) {
 		lwkt_reltoken(&idp->idr_token);
-		return;
+		return NULL;
 	}
-	if ((ptr = idp->idr_nodes[id].data) == NULL) {
-		lwkt_reltoken(&idp->idr_token);
-		return;
-	}
+        if (idp->idr_nodes[id].allocated == 0) {
+                lwkt_reltoken(&idp->idr_token);
+                return NULL;
+        }
+	ptr = idp->idr_nodes[id].data;
 	idp->idr_nodes[id].data = NULL;
 	idr_reserve(idp, id, -1);
 	idrfixup(idp, id);
 	lwkt_reltoken(&idp->idr_token);
+
+	return ptr;
 }
 
 /*
@@ -549,7 +553,7 @@ idr_replace(struct idr *idp, void *ptr, int id)
 
 	lwkt_gettoken(&idp->idr_token);
 	idrnp = idr_get_node(idp, id);
-	if (idrnp == NULL || ptr == NULL) {
+	if (idrnp == NULL) {
 		ret = NULL;
 	} else {
 		ret = idrnp->data;
