@@ -178,10 +178,13 @@ on the system.
 .Pp
 The
 .Va kern.gettimeofday_quick
-sysctl defaults to 0 (off).  Setting this sysctl to 1 causes gettimeofday()
+sysctl defaults to 0 (off).  Setting this sysctl to 1 causes
+.Fn gettimeofday
 calls in libc to use a tick-granular time from the kpmap instead of making
 a system call.  Setting this feature can be useful when running benchmarks
-which make large numbers of gettimeofday() calls, such as postgres.
+which make large numbers of
+.Fn gettimeofday
+calls, such as postgres.
 .Pp
 The
 .Va kern.ipc.shm_use_phys
@@ -663,7 +666,8 @@ wired kernel memory.
 .It mmu page tables
 Even though the underlying data pages themselves can be paged to swap,
 the page tables are usually wired into memory.
-This can create problems when a large number of processes are mmap()ing
+This can create problems when a large number of processes are
+.Fn mmap Ns ing
 very large files.
 Sometimes turning on
 .Va machdep.pmap_mmu_optimize

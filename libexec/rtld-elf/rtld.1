@@ -287,8 +287,9 @@ at the same time.
 .Sh DIFFERENCES BETWEEN .1 and .2
 ABI changes have been made to support TLS allocation and initialization
 and to give threading libraries a chance to complete initialization of the
-TCB prior to the calling of the _init() functions for the dynamically loaded
-libraries.
+TCB prior to the calling of the
+.Fn _init
+functions for the dynamically loaded libraries.
 .Sh FILES
 .Bl -tag -width ".Pa /var/run/ld-elf.so.hints" -compact
 .It Pa /var/run/ld-elf.so.hints

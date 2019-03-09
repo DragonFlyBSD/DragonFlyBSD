@@ -27,7 +27,6 @@
 .\"
 .\"	From: @(#)listen.2	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/lib/libc/sys/listen.2,v 1.12.2.9 2002/05/09 02:24:40 silby Exp $
-.\" $DragonFly: src/lib/libc/sys/listen.2,v 1.5 2007/05/12 21:22:10 swildner Exp $
 .\"
 .Dd November 3, 1995
 .Dt LISTEN 2
@@ -76,9 +75,11 @@ and the introduction of the syncache, the
 .Fa backlog
 parameter also determined the length of the incomplete
 connection queue, which held TCP sockets in the process
-of completing TCP's 3-way handshake.  These incomplete connections
+of completing TCP's 3-way handshake.
+These incomplete connections
 are now held entirely in the syncache, which is unaffected by
-queue lengths.  Inflated
+queue lengths.
+Inflated
 .Fa backlog
 values to help handle denial
 of service attacks are no longer necessary.
@@ -98,9 +99,12 @@ is silently forced to
 .Sh INTERACTION WITH ACCEPT FILTERS
 When accept filtering is used on a socket, a second queue will
 be used to hold sockets that have connected, but have not yet
-met their accept filtering criteria.  Once the criteria has been
+met their accept filtering criteria.
+Once the criteria has been
 met, these sockets will be moved over into the completed connection
-queue to be accept()ed.  If this secondary queue is full and a
+queue to be
+.Fn accept Ns ed.
+If this secondary queue is full and a
 new connection comes in, the oldest socket which has not yet met
 its accept filter criteria will be terminated.
 .Pp

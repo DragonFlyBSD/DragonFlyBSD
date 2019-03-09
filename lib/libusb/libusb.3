@@ -465,7 +465,9 @@ are no threads currently handling events.
 Acquire the event_waiters lock.
 This lock is designed to be obtained in the
 situation where you want to be aware when events are completed, but some other
-thread is event handling so calling libusb_handle_events() is not allowed.
+thread is event handling so calling
+.Fn libusb_handle_events
+is not allowed.
 .Pp
 .Ft void
 .Fn libusb_unlock_event_waiters "libusb_context *ctx"
@@ -475,10 +477,12 @@ Release the event_waiters lock.
 .Fn libusb_wait_for_event "libusb_context *ctx" "struct timeval *tv"
 Wait for another thread to signal completion of an event.
 Must be called
-with the event waiters lock held, see libusb_lock_event_waiters().
+with the event waiters lock held, see
+.Fn libusb_lock_event_waiters .
 This will
 block until the timeout expires or a transfer completes or a thread releases
-the event handling lock through libusb_unlock_events().
+the event handling lock through
+.Fn libusb_unlock_events .
 Returns 0 after a
 transfer completes or another thread stops event handling, and 1 if the
 timeout expired.

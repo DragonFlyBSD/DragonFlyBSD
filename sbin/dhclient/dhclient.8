@@ -190,10 +190,13 @@ DHCP client configuration file.
 Database of acquired leases.
 .It Pa /var/run/dhclient.<IFNAME>.pid
 Pidfile for running instance.
-While active, the pidfile is flock()'d by
+While active, the pidfile is
+.Fn flock Ap d
+by
 .Nm
-which can be tested by a program using flock() or by a script
-using the
+which can be tested by a program using
+.Fn flock
+or by a script using the
 .Xr lockf 1
 utility, via a non-blocking lock attempt.
 .El

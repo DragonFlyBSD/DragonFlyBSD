@@ -89,10 +89,13 @@ For example 'r+' or 'w+'.
 The open will fail if the file already exists (C11).
 For example 'wx'.
 .It Dq Li e
-Close-on-exec.  The underlying descriptor will automatically be closed on
-any exec() (glibc compatibility).
+Close-on-exec.
+The underlying descriptor will automatically be closed on any
+.Fn exec
+(glibc compatibility).
 .It Dq Li b
-Binary mode.  On UNIX systems file reading and writing is always in binary
+Binary mode.
+On UNIX systems file reading and writing is always in binary
 mode so this flag has no effect.
 .El
 .Pp

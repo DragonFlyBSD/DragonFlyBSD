@@ -140,8 +140,8 @@ This option is typically only used with diagnostic commands
 as kernel-supported commands will use the kernel's buffer cache.
 .It Fl R Ar restrictcmd
 This option is used by hammer ssh-remote to restrict the command later
-on in the argument list.  Multiple commands may be specified, separated
-by a comma (all one argument).
+on in the argument list.
+Multiple commands may be specified, separated by a comma (all one argument).
 .It Fl T Ar restrictpath
 This option is used by hammer ssh-remote to restrict the filesystem path
 specified later on in the argument list.
@@ -1599,8 +1599,9 @@ Tends to maintain inode number / directory name entry ordering better
 for files after minor renaming.
 .It 7
 .Dx 4.8 .
-Use the ISCSI crc32 algorithm instead of our custom polynomial.  This makes
-it easier to use faster cpu implementation of the crc algorithm.  CPU
+Use the ISCSI crc32 algorithm instead of our custom polynomial.
+This makes it easier to use faster cpu implementation of the crc algorithm.
+CPU
 overhead is reduced but performance is unlikely to be impacted a whole lot.
 .El
 .El
@@ -1642,7 +1643,8 @@ and
 .Cm pfs-slave
 directives require that the PFS softlink be created under the main
 .Nm
-filesystem mount. You may only access PFS softlinks via the main
+filesystem mount.
+You may only access PFS softlinks via the main
 .Nm
 filesystem mount.
 .Sh DOUBLE_BUFFER MODE
@@ -1660,7 +1662,8 @@ node
 to 1
 .Nm HAMMER
 will cache file data via the block device and copy it into the per-file
-buffers as needed.  The data will be double-cached at least until the
+buffers as needed.
+The data will be double-cached at least until the
 buffer cache throws away the file buffer.
 This mode is typically used in conjunction with
 .Xr swapcache 8
@@ -1794,7 +1797,9 @@ required for a flush sequence.
 Version 4 also implements the REDO log (see
 .Sx FSYNC FLUSH MODES
 below) which is capable
-of fsync()ing with either one disk flush or zero disk flushes.
+of
+.Fn fsync Ns ing
+with either one disk flush or zero disk flushes.
 .Sh UPGRADE INSTRUCTIONS HAMMER V4 TO V5
 This upgrade brings in deduplication support.
 It is possible to upgrade a V4 file system to V5 in place.
