@@ -52,7 +52,8 @@ This file is either an executable object file,
 or a file of data for an interpreter.
 An executable object file consists of an identifying header,
 followed by pages of data representing the initial program (text)
-and initialized data pages.  Additional pages may be specified
+and initialized data pages.
+Additional pages may be specified
 by the header to be initialized with zero data;  see
 .Xr elf 5
 and
@@ -81,8 +82,8 @@ and the name of the originally
 file becomes the second argument;
 otherwise, the name of the originally
 .Sy execve Ap d
-file becomes the first argument.  The original arguments are shifted over to
-become the subsequent arguments.
+file becomes the first argument.
+The original arguments are shifted over to become the subsequent arguments.
 The zeroth argument is set to the specified
 .Em interpreter .
 (See
@@ -94,7 +95,8 @@ The argument
 is a pointer to a null-terminated array of
 character pointers to null-terminated character strings.
 These strings construct the argument list to be made available to the new
-process.  At least one argument must be present in
+process.
+At least one argument must be present in
 the array; by custom, the first element should be
 the name of the executed program (for example, the last component of
 .Fa path ) .
@@ -148,8 +150,8 @@ These values may be used in changing the effective IDs later (see
 .Pp
 The set-ID bits are not honored if the respective file system has the
 .Ar nosuid
-option enabled or if the new process file is an interpreter file.  Syscall
-tracing is disabled if effective IDs are changed.
+option enabled or if the new process file is an interpreter file.
+Syscall tracing is disabled if effective IDs are changed.
 .Pp
 The new process also inherits the following attributes from
 the calling process:
@@ -254,7 +256,7 @@ to an illegal address.
 .It Bq Er EIO
 An I/O error occurred while reading from the file system.
 .El
-.Sh CAVEAT
+.Sh CAVEATS
 If a program is
 .Em setuid
 to a non-super-user, but is executed when
@@ -264,8 +266,8 @@ is ``root'', then the program has some of the powers
 of a super-user as well.
 .Sh SEE ALSO
 .Xr ktrace 1 ,
-.Xr fork 2 ,
 .Xr _exit 2 ,
+.Xr fork 2 ,
 .Xr execl 3 ,
 .Xr exit 3 ,
 .Xr sysctl 3 ,

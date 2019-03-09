@@ -68,7 +68,9 @@ has no specific limitation other than what fits in the signed integer.
 A negative timeout will return
 .Er EINVAL .
 .Pp
-WARNING! In order to properly interlock against fork(), this function will
+WARNING! In order to properly interlock against
+.Fn fork ,
+this function will
 do an atomic read-modify-write on the underlying memory by atomically
 adding the value 0 to it.
 .Pp
@@ -77,10 +79,12 @@ The
 system call will wakeup the specified number of processes sleeping
 in
 .Fn umtx_sleep
-on the specified user address.  A count of 0 will wake up all sleeping
-processes.  This function may wake up more processes then the specified
+on the specified user address.
+A count of 0 will wake up all sleeping processes.
+This function may wake up more processes then the specified
 count but will never wake up fewer processes (unless there are simply not
-that many currently sleeping on the address).  The current
+that many currently sleeping on the address).
+The current
 .Dx
 implementation optimized the count = 1 case but otherwise just wakes up
 all processes sleeping on the address.
@@ -105,17 +109,18 @@ that system calls should restart.
 Various operating system events can cause
 .Fn umtx_sleep
 to return prematurely, with the contents of the mutex unchanged relative
-to the compare value.  Callers must be able to deal with such returns.
+to the compare value.
+Callers must be able to deal with such returns.
 .Sh RETURN VALUES
 .Fn umtx_sleep
-will return 0 if it successfully slept and was then woken up.  Otherwise
-it will return -1 and set
+will return 0 if it successfully slept and was then woken up.
+Otherwise it will return -1 and set
 .Va errno
 as shown below.
 .Pp
 .Fn umtx_wakeup
 will generally return 0 unless the address is bad.
-.Sh EXAMPLE
+.Sh EXAMPLES
 .Bd -literal -compact
 
 void

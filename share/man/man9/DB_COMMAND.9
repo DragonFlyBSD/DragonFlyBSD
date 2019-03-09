@@ -75,7 +75,7 @@ command.
 .Pp
 The general command syntax:
 .Cm command Ns Op Li \&/ Ns Ar modifier
-.Ar address Ns Op Li , Ns Ar count ,
+.Ar address Ns Op , Ns Ar count ,
 translates into the following parameters for
 .Fa command_function :
 .Bl -tag -width Fa -offset indent
@@ -94,7 +94,7 @@ For example, the
 .Sy examine
 command will display words in decimal form if it is passed the modifier "d".
 .El
-.Sh EXAMPLE
+.Sh EXAMPLES
 In your module, the command is declared as:
 .Bd -literal
 DB_COMMAND(mycmd, my_cmd_func)

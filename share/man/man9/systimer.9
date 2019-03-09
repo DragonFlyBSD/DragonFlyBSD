@@ -80,7 +80,10 @@ to be invoked with argument
 once, after at least
 .Fa us
 microseconds.
-.Sh EXAMPLE
+.Sh FILES
+The systimer implementation is in
+.Pa /sys/kern/kern_systimer.c .
+.Sh EXAMPLES
 A simple example of using a one-short systimer to call a function after a short
 time:
 .Bd -literal -offset indent
@@ -91,9 +94,6 @@ char *str = "goodbye!";
 systimer_init_oneshot(&short_st, panic, str, 1000);
 \&...
 .Ed
-.Sh FILES
-The systimer implementation is in
-.Pa /sys/kern/kern_systimer.c .
 .Sh SEE ALSO
 .Xr callout 9
 .Sh HISTORY

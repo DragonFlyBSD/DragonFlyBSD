@@ -30,8 +30,6 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/tls.2,v 1.11 2008/05/02 02:05:04 swildner Exp $
-.\"
 .Dd February 21, 2005
 .Dt TLS 2
 .Os
@@ -54,16 +52,18 @@ system call creates an entry for the TLS facility
 .Fa which
 representing thread local storage as specified by the
 .Fa info
-structure.  A descriptor representing the facility is returned, or -1 if
-an error occurred.  The facility may be cleared by specifying a NULL pointer
-and an infosize of 0.
+structure.
+A descriptor representing the facility is returned, or -1 if an error occurred.
+The facility may be cleared by specifying a NULL pointer and an infosize of 0.
 The
 .Fn get_tls_area
-system call retrieves the requested TLS facility.  A descriptor representing
-the facility is returned, or -1 if an error occurred.  If you simply want the
+system call retrieves the requested TLS facility.
+A descriptor representing the facility is returned, or -1 if an error occurred.
+If you simply want the
 descriptor you may specify a NULL pointer and an infosize of 0.
 .Pp
-The returned descriptor and the TLS mechanism is machine-dependent.  On IA32
+The returned descriptor and the TLS mechanism is machine-dependent.
+On IA32
 three global segment descriptors are supported  (0, 1, and 2) and the %gs
 load value is returned.
 .Pp
@@ -80,13 +80,14 @@ struct tls_info {
 };
 .Ed
 .Pp
-The actual implementation of the area is machine-dependent.  If the kernel
+The actual implementation of the area is machine-dependent.
+If the kernel
 is unable to accommodate the supplied size it may create a larger area.
 If the kernel is unable to accommodate the supplied base address an error
 will be returned.
 .Sh RETURN VALUES
 A return value of 0 is returned on success, -1 on error.
-.Sh EXAMPLE
+.Sh EXAMPLES
 .Bd -literal -compact
 
 /*

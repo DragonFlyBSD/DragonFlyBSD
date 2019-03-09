@@ -50,7 +50,8 @@ The
 function
 does the same as
 .Xr dlsym 3
-but takes a version string as an additional argument.  Both the name and
+but takes a version string as an additional argument.
+Both the name and
 the version must match in order for the symbol to be resolved.
 .Sh NOTES
 ELF executables need to be linked
@@ -60,7 +61,7 @@ option to
 .Xr ld 1
 for symbols defined in the executable to become visible to
 .Fn dlvsym .
-.Sh RETURN VALUE
+.Sh RETURN VALUES
 The
 .Fn dlvsym
 function
@@ -68,7 +69,7 @@ returns the address of the symbol unless the symbol can not be found.
 In this case, it returns a null pointer and sets an error condition
 which may be queried with
 .Fn dlerror .
-.Sh EXAMPLE
+.Sh EXAMPLES
 The following program will obtain a pointer to the gcc library __adsvsi3
 function using dlvsym specified to version GCC_3.0, and then it will use it
 to print out the sum of 500 + 325.

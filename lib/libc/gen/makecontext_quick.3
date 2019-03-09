@@ -129,14 +129,7 @@ There is no quick version for
 on purpose.
 .Sh RETURN VALUES
 These functions have no return value.
-.Sh ERRORS
-.Bl -tag -width Er
-.It Bq Er ENOMEM
-There is not enough stack space in
-.Fa ucp
-to complete the operation.
-.El
-.Sh EXAMPLE
+.Sh EXAMPLES
 .Bd -literal
 /*
  * quick context test program
@@ -225,6 +218,13 @@ test3(ucontext_t *ucp, void *arg)
 	}
 }
 .Ed
+.Sh ERRORS
+.Bl -tag -width Er
+.It Bq Er ENOMEM
+There is not enough stack space in
+.Fa ucp
+to complete the operation.
+.El
 .Sh SEE ALSO
 .Xr getcontext 3 ,
 .Xr makecontext 3 ,

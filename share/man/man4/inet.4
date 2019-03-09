@@ -56,8 +56,8 @@ protocol.
 Internet addresses are four byte quantities, stored in
 network standard format (on the
 .Tn VAX
-these are word and byte
-reversed).  The include file
+these are word and byte reversed).
+The include file
 .In netinet/in.h
 defines this address
 as a discriminated union.
@@ -112,7 +112,8 @@ abstraction while
 .Tn UDP
 is used to support the
 .Dv SOCK_DGRAM
-abstraction.  A raw interface to
+abstraction.
+A raw interface to
 .Tn IP
 is available
 by creating an Internet socket of type
@@ -122,7 +123,8 @@ The
 message protocol is accessible from a raw socket.
 .Pp
 The 32-bit Internet address contains both network and host parts.
-However, direct examination of addresses is discouraged.  For those
+However, direct examination of addresses is discouraged.
+For those
 programs which absolutely need to break addresses into their component
 parts, the following
 .Xr ioctl 2
@@ -145,8 +147,8 @@ Get interface network mask.
 .Sh ROUTING
 The current implementation of Internet protocols includes some routing-table
 adaptations to provide enhanced caching of certain end-to-end
-information necessary for Transaction TCP and Path MTU Discovery.  The
-following changes are the most significant:
+information necessary for Transaction TCP and Path MTU Discovery.
+The following changes are the most significant:
 .Bl -enum
 .It
 All IP routes, except those with the
@@ -157,8 +159,8 @@ flag forcibly enabled (they are thus said to be
 .Dq "protocol cloning" ) .
 .It
 When the last reference to an IP route is dropped, the route is
-examined to determine if it was created by cloning such a route.  If
-this is the case, the
+examined to determine if it was created by cloning such a route.
+If this is the case, the
 .Dv RTF_PROTO3
 flag is turned on, and the expiration timer is initialized to go off in
 .Va net.inet.ip.rtexpire
@@ -177,8 +179,8 @@ If after an expiration run there are still more than
 .Va net.inet.ip.rtmaxcache
 unreferenced routes remaining, the rtexpire
 value is multiplied by \(34, and any routes which have longer
-expiration times have those times adjusted.  This process is damped
-somewhat by specification of a minimum rtexpire value
+expiration times have those times adjusted.
+This process is damped somewhat by specification of a minimum rtexpire value
 .Va ( net.inet.ip.rtminexpire ) ,
 and by restricting the reduction to once in a ten-minute period.
 .Pp
@@ -195,7 +197,8 @@ external routing process, or under the management of a link layer
 for Ethernets).
 .Pp
 Only certain types of network activity will result in the cloning of a
-route using this mechanism.  Specifically, those protocols (such as
+route using this mechanism.
+Specifically, those protocols (such as
 .Tn TCP
 and
 .Tn UDP )
@@ -221,7 +224,8 @@ Boolean: enable/disable the use of fast IP forwarding code.
 Defaults to off.
 When fast forwarding is enabled, IP packets are forwarded directly to
 the appropriate network interface with a minimal validity checking, which
-greatly improves the throughput.  On the other hand, they bypass the
+greatly improves the throughput.
+On the other hand, they bypass the
 standard procedures, such as IP option processing and
 .Xr ipfirewall 4
 checking.
@@ -247,12 +251,12 @@ Boolean: enable/disable forwarding of source-routed IP packets (default false).
 .Pq ip.rtexpire
 Integer: lifetime in seconds of protocol-cloned
 .Tn IP
-routes after the last reference drops (default one hour).  This value
-varies dynamically as described above.
+routes after the last reference drops (default one hour).
+This value varies dynamically as described above.
 .It Dv IPCTL_RTMINEXPIRE
 .Pq ip.rtminexpire
-Integer: minimum value of ip.rtexpire (default ten seconds).  This
-value has no effect on user modifications, but restricts the dynamic
+Integer: minimum value of ip.rtexpire (default ten seconds).
+This value has no effect on user modifications, but restricts the dynamic
 adaptation described above.
 .It Dv IPCTL_RTMAXCACHE
 .Pq ip.rtmaxcache
@@ -279,10 +283,10 @@ which initiates dynamic adaptation (default 128).
 .%B PS1
 .%N 8
 .Re
-.Sh CAVEAT
+.Sh CAVEATS
 The Internet protocol support is subject to change as
-the Internet protocols develop.  Users should not depend
-on details of the current implementation, but rather
+the Internet protocols develop.
+Users should not depend on details of the current implementation, but rather
 the services exported.
 .Sh HISTORY
 The

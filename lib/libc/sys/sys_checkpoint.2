@@ -30,8 +30,6 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/sys_checkpoint.2,v 1.10 2008/05/02 02:05:04 swildner Exp $
-.\"
 .Dd June 29, 2007
 .Dt SYS_CHECKPOINT 2
 .Os
@@ -106,7 +104,7 @@ A checkpoint being resumed typically returns a positive value;
 otherwise the value -1 is returned and the global variable
 .Va errno
 is set to indicate the error.
-.Sh EXAMPLE
+.Sh EXAMPLES
 .Bd -literal -offset indent -compact
 /*
  * Demonstrate checkpointing.  Use control-E to checkpoint

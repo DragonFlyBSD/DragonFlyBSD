@@ -169,7 +169,7 @@ option to
 .Xr ld 1
 for symbols defined in the executable to become visible to
 .Fn dlsym .
-.Sh RETURN VALUE
+.Sh RETURN VALUES
 The
 .Fn dlsym
 and
@@ -179,7 +179,7 @@ return the address of the symbol unless the symbol can not be found.
 In this case, they return a null pointer and set an error condition
 which may be queried with
 .Fn dlerror .
-.Sh EXAMPLE
+.Sh EXAMPLES
 The following program will obtain a pointer to the cosine function using
 dlsym, and then it will use it to print out the value of cosine (2.0).
 .Bd -literal

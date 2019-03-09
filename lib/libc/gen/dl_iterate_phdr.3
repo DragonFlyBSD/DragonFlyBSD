@@ -75,9 +75,14 @@ The number of objects removed from the main program.
 To make it possible for programs to check whether any new members have
 been added, the size of the structure is passed as an argument to
 .Fa callback .
-.Sh EXAMPLE
+.Sh RETURN VALUES
+The
+.Fn dl_iterate_phdr
+function returns whatever value was returned by the last call to callback.
+.Sh EXAMPLES
 The following program displays a list of pathnames of the shared objects it has
-loaded. For each shared object, the program lists the virtual addresses at
+loaded.
+For each shared object, the program lists the virtual addresses at
 which the object's ELF segments are loaded.
 .Bd -literal
 #include <link.h>
@@ -103,10 +108,6 @@ main(int argc, char *argv[])
     exit(EXIT_SUCCESS);
 }
 .Ed
-.Sh RETURN VALUE
-The
-.Fn dl_iterate_phdr
-function returns whatever value was returned by the last call to callback.
 .Sh SEE ALSO
 .Xr ld 1 ,
 .Xr ld-elf.so.2 1 ,
