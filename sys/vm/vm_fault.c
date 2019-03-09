@@ -1919,7 +1919,7 @@ readrest:
 					kprintf("vm_fault: pager read error, "
 						"thread %p (%s)\n",
 						curthread,
-						curproc->p_comm);
+						curthread->td_comm);
 				}
 			}
 
