@@ -207,9 +207,21 @@ static void radeon_evict_flags(struct ttm_buffer_object *bo,
 	*placement = rbo->placement;
 }
 
-static int radeon_verify_access(struct ttm_buffer_object *bo)
+static int radeon_verify_access(struct ttm_buffer_object *bo, struct file *fp)
 {
+#if 0
+	struct radeon_bo *rbo = container_of(bo, struct radeon_bo, tbo);
+#endif
+
 	return 0;
+
+#if 0
+	/* XXX needs radeon_gem_userptr_ioctl() and related infrastructure */
+	if (radeon_ttm_tt_has_userptr(bo->ttm))
+		return -EPERM;
+	return drm_vma_node_verify_access(&rbo->gem_base.vma_node,
+					  fp->private_data);
+#endif
 }
 
 static void radeon_move_null(struct ttm_buffer_object *bo,

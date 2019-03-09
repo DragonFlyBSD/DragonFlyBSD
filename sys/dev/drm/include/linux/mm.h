@@ -47,6 +47,8 @@
 #include <asm/pgtable.h>
 #include <asm/processor.h>
 
+struct vm_operations_struct;
+
 static inline struct page *
 nth_page(struct page *page, int n)
 {
@@ -55,12 +57,34 @@ nth_page(struct page *page, int n)
 
 #define PAGE_ALIGN(addr) round_page(addr)
 
+struct vm_fault {
+	uintptr_t	virtual_address;
+};
+
+#define VM_FAULT_NOPAGE		0x0001
+#define VM_FAULT_SIGBUS		0x0002
+#define VM_FAULT_OOM		0x0004
+
 struct vm_area_struct {
 	vm_offset_t	vm_start;
 	vm_offset_t	vm_end;
 	vm_offset_t	vm_pgoff;
 	vm_paddr_t	vm_pfn;		/* PFN For mmap. */
 	vm_memattr_t	vm_page_prot;
+	void		*vm_private_data;
+	int		vm_flags;
+	const struct vm_operations_struct *vm_ops;
+};
+
+#define VM_DONTDUMP	0x0001
+#define VM_DONTEXPAND	0x0002
+#define VM_IO		0x0004
+#define VM_MIXEDMAP	0x0008
+
+struct vm_operations_struct {
+	int (*fault)(struct vm_area_struct *vma, struct vm_fault *vmf);
+	void (*open)(struct vm_area_struct *vma);
+	void (*close)(struct vm_area_struct *vma);
 };
 
 /*

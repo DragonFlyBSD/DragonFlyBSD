@@ -217,19 +217,6 @@ static inline u64 drm_mm_hole_node_end(struct drm_mm_node *hole_node)
  */
 int drm_mm_reserve_node(struct drm_mm *mm, struct drm_mm_node *node);
 
-extern struct drm_mm_node *drm_mm_get_block_generic(struct drm_mm_node *node,
-						    unsigned long size,
-						    unsigned alignment,
-						    unsigned long color,
-						    int atomic);
-
-static inline struct drm_mm_node *drm_mm_get_block_atomic(struct drm_mm_node *parent,
-							  unsigned long size,
-							  unsigned alignment)
-{
-	return drm_mm_get_block_generic(parent, size, alignment, 0, 1);
-}
-
 int drm_mm_insert_node_generic(struct drm_mm *mm,
 			       struct drm_mm_node *node,
 			       u64 size,
@@ -304,22 +291,6 @@ static inline int drm_mm_insert_node_in_range(struct drm_mm *mm,
 }
 
 extern void drm_mm_put_block(struct drm_mm_node *cur);
-
-extern struct drm_mm_node *drm_mm_search_free_generic(const struct drm_mm *mm,
-						u64 size,
-						unsigned alignment,
-						unsigned long color,
-						enum drm_mm_search_flags flags);
-
-static inline struct drm_mm_node *drm_mm_search_free(const struct drm_mm *mm,
-						     unsigned long size,
-						     unsigned alignment,
-						     enum drm_mm_search_flags flags)
-{
-	return drm_mm_search_free_generic(mm,size, alignment, 0, flags);
-}
-
-extern int drm_mm_pre_get(struct drm_mm *mm);
 
 void drm_mm_remove_node(struct drm_mm_node *node);
 void drm_mm_replace_node(struct drm_mm_node *old, struct drm_mm_node *new);

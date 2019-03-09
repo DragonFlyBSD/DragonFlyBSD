@@ -145,4 +145,11 @@ send_sig(int sig, struct proc *p, int priv)
 	return 0;
 }
 
+static inline void
+set_need_resched(void)
+{
+	/* do nothing for now */
+	/* used on ttm_bo_reserve failures */
+}
+
 #endif	/* _LINUX_SCHED_H_ */

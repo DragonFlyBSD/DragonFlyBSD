@@ -556,9 +556,6 @@ int radeon_bo_get_surface_reg(struct radeon_bo *bo)
 	int steal;
 	int i;
 
-	KASSERT(radeon_bo_is_reserved(bo),
-	    ("radeon_bo_get_surface_reg: radeon_bo is not reserved"));
-
 	if (!bo->tiling_flags)
 		return 0;
 
@@ -683,8 +680,6 @@ void radeon_bo_get_tiling_flags(struct radeon_bo *bo,
 				uint32_t *tiling_flags,
 				uint32_t *pitch)
 {
-	KASSERT(radeon_bo_is_reserved(bo),
-	    ("radeon_bo_get_tiling_flags: radeon_bo is not reserved"));
 	if (tiling_flags)
 		*tiling_flags = bo->tiling_flags;
 	if (pitch)
@@ -694,8 +689,6 @@ void radeon_bo_get_tiling_flags(struct radeon_bo *bo,
 int radeon_bo_check_tiling(struct radeon_bo *bo, bool has_moved,
 				bool force_drop)
 {
-	KASSERT((radeon_bo_is_reserved(bo) || force_drop),
-	    ("radeon_bo_check_tiling: radeon_bo is not reserved && !force_drop"));
 
 	if (!(bo->tiling_flags & RADEON_TILING_SURFACE))
 		return 0;

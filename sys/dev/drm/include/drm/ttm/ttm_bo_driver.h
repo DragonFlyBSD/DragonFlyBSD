@@ -30,10 +30,10 @@
 #ifndef _TTM_BO_DRIVER_H_
 #define _TTM_BO_DRIVER_H_
 
-#include <drm/ttm/ttm_bo_api.h>
-#include <drm/ttm/ttm_memory.h>
-#include <drm/ttm/ttm_module.h>
-#include <drm/ttm/ttm_placement.h>
+#include <ttm/ttm_bo_api.h>
+#include <ttm/ttm_memory.h>
+#include <ttm/ttm_module.h>
+#include <ttm/ttm_placement.h>
 #include <drm/drm_mm.h>
 #include <drm/drm_global.h>
 #include <drm/drm_vma_manager.h>
@@ -41,12 +41,6 @@
 #include <linux/fs.h>
 #include <linux/spinlock.h>
 #include <linux/reservation.h>
-
-#include <sys/tree.h>
-
-/* XXX nasty hack, but does the job */
-#undef RB_ROOT
-#define	RB_ROOT(head)	(head)->rbh_root
 
 struct ttm_backend_func {
 	/**
@@ -188,7 +182,6 @@ struct ttm_mem_type_manager_func {
 	 * @man: Pointer to a memory type manager.
 	 * @bo: Pointer to the buffer object we're allocating space for.
 	 * @placement: Placement details.
-	 * @flags: Additional placement flags.
 	 * @mem: Pointer to a struct ttm_mem_reg to be filled in.
 	 *
 	 * This function should allocate space in the memory type managed
@@ -212,7 +205,7 @@ struct ttm_mem_type_manager_func {
 	 */
 	int  (*get_node)(struct ttm_mem_type_manager *man,
 			 struct ttm_buffer_object *bo,
-			 const struct ttm_place *place,
+			 struct ttm_placement *placement,
 			 struct ttm_mem_reg *mem);
 
 	/**
@@ -412,7 +405,6 @@ struct ttm_bo_driver {
 	 *
 	 * @bo: Pointer to a buffer object.
 	 * @filp: Pointer to a struct file trying to access the object.
-	 * FreeBSD: use devfs_get_cdevpriv etc.
 	 *
 	 * Called from the map / write / read methods to verify that the
 	 * caller is permitted to access the buffer object.
@@ -420,7 +412,8 @@ struct ttm_bo_driver {
 	 * access for all buffer objects.
 	 * This function should return 0 if access is granted, -EPERM otherwise.
 	 */
-	int (*verify_access) (struct ttm_buffer_object *bo);
+	int (*verify_access) (struct ttm_buffer_object *bo,
+			      struct file *filp);
 
 	/**
 	 * In case a driver writer dislikes the TTM fence objects,
@@ -517,10 +510,10 @@ struct ttm_bo_global {
 
 #define TTM_NUM_MEM_TYPES 8
 
-#define TTM_BO_PRIV_FLAG_MOVING	0	/* Buffer object is moving and needs
+#define TTM_BO_PRIV_FLAG_MOVING  0	/* Buffer object is moving and needs
 					   idling before CPU mapping */
-#define TTM_BO_PRIV_FLAG_MAX	1
-#define TTM_BO_PRIV_FLAG_ACTIVE	2	/* Used for release sequencing */
+#define TTM_BO_PRIV_FLAG_ACTIVE	 1
+#define TTM_BO_PRIV_FLAG_MAX 2
 /**
  * struct ttm_bo_device - Buffer object driver device-specific data.
  *
@@ -528,7 +521,7 @@ struct ttm_bo_global {
  * @man: An array of mem_type_managers.
  * @fence_lock: Protects the synchronizing members on *all* bos belonging
  * to this device.
- * @addr_space_mm: Range manager for the device address space.
+ * @vma_manager: Address space manager
  * lru_lock: Spinlock that protects the buffer+device lru lists and
  * ddestroy lists.
  * @val_seq: Current validation sequence.
@@ -546,15 +539,13 @@ struct ttm_bo_device {
 	struct list_head device_list;
 	struct ttm_bo_global *glob;
 	struct ttm_bo_driver *driver;
-	struct lock vm_lock;
 	struct ttm_mem_type_manager man[TTM_NUM_MEM_TYPES];
 	struct lock fence_lock;
-	/*
-	 * Protected by the vm lock.
-	 */
 
-	RB_HEAD(ttm_bo_device_buffer_objects, ttm_buffer_object) addr_space_rb;
-	struct drm_mm addr_space_mm;
+	/*
+	 * Protected by internal locks.
+	 */
+	struct drm_vma_offset_manager vma_manager;
 
 	/*
 	 * Protected by the global:lru lock.
@@ -661,6 +652,18 @@ extern void ttm_tt_unbind(struct ttm_tt *ttm);
  * Swap in a previously swap out ttm_tt.
  */
 extern int ttm_tt_swapin(struct ttm_tt *ttm);
+
+/**
+ * ttm_tt_cache_flush:
+ *
+ * @pages: An array of pointers to struct page:s to flush.
+ * @num_pages: Number of pages to flush.
+ *
+ * Flush the data of the indicated pages from the cpu caches.
+ * This is used when changing caching attributes of the pages from
+ * cache-coherent.
+ */
+extern void ttm_tt_cache_flush(struct page *pages[], unsigned long num_pages);
 
 /**
  * ttm_tt_set_placement_caching:
@@ -1039,7 +1042,7 @@ extern pgprot_t ttm_io_prot(uint32_t caching_flags, pgprot_t tmp);
 
 extern const struct ttm_mem_type_manager_func ttm_bo_manager_func;
 
-#if (defined(CONFIG_AGP) || (defined(CONFIG_AGP_MODULE) && defined(MODULE))) && 0
+#if (defined(CONFIG_AGP) || (defined(CONFIG_AGP_MODULE) && defined(MODULE)))
 #define TTM_HAS_AGP
 #include <linux/agp_backend.h>
 
@@ -1065,11 +1068,11 @@ int ttm_agp_tt_populate(struct ttm_tt *ttm);
 void ttm_agp_tt_unpopulate(struct ttm_tt *ttm);
 #endif
 
-
+/* required for DragonFly VM, see ttm/ttm_bo_vm.c */
+struct ttm_bo_device_buffer_objects;
 int ttm_bo_cmp_rb_tree_items(struct ttm_buffer_object *a,
         struct ttm_buffer_object *b);
 RB_PROTOTYPE(ttm_bo_device_buffer_objects, ttm_buffer_object, vm_rb,
-    ttm_bo_cmp_rb_tree_items);
-
+	ttm_bo_cmp_rb_tree_items);
 
 #endif

@@ -26,15 +26,15 @@
  **************************************************************************/
 /*
  * Authors: Thomas Hellstrom <thellstrom-at-vmware-dot-com>
- *
- * $FreeBSD: head/sys/dev/drm2/ttm/ttm_bo_manager.c 247835 2013-03-05 09:49:34Z kib $
  */
 
 #include <drm/ttm/ttm_module.h>
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_placement.h>
 #include <drm/drm_mm.h>
-#include <linux/export.h>
+#include <linux/slab.h>
+#include <linux/spinlock.h>
+#include <linux/module.h>
 
 /**
  * Currently we use a spinlock for the lock, but a mutex *may* be
@@ -49,7 +49,7 @@ struct ttm_range_manager {
 
 static int ttm_bo_man_get_node(struct ttm_mem_type_manager *man,
 			       struct ttm_buffer_object *bo,
-			       const struct ttm_place *place,
+			       struct ttm_placement *placement,
 			       struct ttm_mem_reg *mem)
 {
 	struct ttm_range_manager *rman = (struct ttm_range_manager *) man->priv;
@@ -59,23 +59,24 @@ static int ttm_bo_man_get_node(struct ttm_mem_type_manager *man,
 	unsigned long lpfn;
 	int ret;
 
-	lpfn = place->lpfn;
+	lpfn = placement->lpfn;
 	if (!lpfn)
 		lpfn = man->size;
 
 	node = kzalloc(sizeof(*node), GFP_KERNEL);
 	if (!node)
 		return -ENOMEM;
-
-	if (place->flags & TTM_PL_FLAG_TOPDOWN)
+	/* not in yet ?
+	if (placement->flags & TTM_PL_FLAG_TOPDOWN)
 		aflags = DRM_MM_CREATE_TOP;
+	*/
 
 	lockmgr(&rman->lock, LK_EXCLUSIVE);
 	ret = drm_mm_insert_node_in_range_generic(mm, node, mem->num_pages,
-					  mem->page_alignment, 0,
-					  place->fpfn, lpfn,
-					  DRM_MM_SEARCH_BEST,
-					  aflags);
+					mem->page_alignment, 0,
+					placement->fpfn, lpfn,
+					DRM_MM_SEARCH_BEST,
+					aflags);
 	lockmgr(&rman->lock, LK_RELEASE);
 
 	if (unlikely(ret)) {
@@ -84,7 +85,6 @@ static int ttm_bo_man_get_node(struct ttm_mem_type_manager *man,
 		mem->mm_node = node;
 		mem->start = node->start;
 	}
-
 	return 0;
 }
 
@@ -95,10 +95,8 @@ static void ttm_bo_man_put_node(struct ttm_mem_type_manager *man,
 
 	if (mem->mm_node) {
 		lockmgr(&rman->lock, LK_EXCLUSIVE);
-		drm_mm_remove_node(mem->mm_node);
+		drm_mm_put_block(mem->mm_node);
 		lockmgr(&rman->lock, LK_RELEASE);
-
-		kfree(mem->mm_node);
 		mem->mm_node = NULL;
 	}
 }

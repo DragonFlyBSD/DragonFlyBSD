@@ -79,11 +79,6 @@ static inline unsigned long radeon_bo_size(struct radeon_bo *bo)
 	return bo->tbo.num_pages << PAGE_SHIFT;
 }
 
-static inline bool radeon_bo_is_reserved(struct radeon_bo *bo)
-{
-	return ttm_bo_is_reserved(&bo->tbo);
-}
-
 static inline unsigned radeon_bo_ngpu_pages(struct radeon_bo *bo)
 {
 	return (bo->tbo.num_pages << PAGE_SHIFT) / RADEON_GPU_PAGE_SIZE;
@@ -99,13 +94,10 @@ static inline unsigned radeon_bo_gpu_page_alignment(struct radeon_bo *bo)
  * @bo:	radeon object for which we query the offset
  *
  * Returns mmap offset of the object.
- *
- * Note: addr_space_offset is constant after ttm bo init thus isn't protected
- * by any lock.
  */
 static inline u64 radeon_bo_mmap_offset(struct radeon_bo *bo)
 {
-	return bo->tbo.addr_space_offset;
+	return drm_vma_node_offset_addr(&bo->tbo.vma_node);
 }
 
 extern int radeon_bo_wait(struct radeon_bo *bo, u32 *mem_type,

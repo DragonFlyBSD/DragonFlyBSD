@@ -27,111 +27,66 @@
 /*
  * Authors: Thomas Hellstrom <thellstrom-at-vmware-dot-com>
  */
-/*
- * Copyright (c) 2013 The FreeBSD Foundation
- * All rights reserved.
- *
- * Portions of this software were developed by Konstantin Belousov
- * <kib@FreeBSD.org> under sponsorship from the FreeBSD Foundation.
- *
- *$FreeBSD: head/sys/dev/drm2/ttm/ttm_bo_vm.c 253710 2013-07-27 16:44:37Z kib $
- */
-
-#include "opt_vm.h"
 
 #define pr_fmt(fmt) "[TTM] " fmt
 
-#include <drm/ttm/ttm_module.h>
-#include <drm/ttm/ttm_bo_driver.h>
-#include <drm/ttm/ttm_placement.h>
+#include <ttm/ttm_module.h>
+#include <ttm/ttm_bo_driver.h>
+#include <ttm/ttm_bo_api.h>
+#include <ttm/ttm_placement.h>
+#include <drm/drm_vma_manager.h>
+#include <linux/mm.h>
+#include <linux/rbtree.h>
+#include <linux/module.h>
+#include <linux/uaccess.h>
+
+#include <sys/sysctl.h>
 #include <vm/vm.h>
 #include <vm/vm_page.h>
-#include <linux/errno.h>
-#include <linux/export.h>
-
 #include <vm/vm_page2.h>
-
-RB_GENERATE(ttm_bo_device_buffer_objects, ttm_buffer_object, vm_rb,
-    ttm_bo_cmp_rb_tree_items);
-
 
 #define TTM_BO_VM_NUM_PREFAULT 16
 
-int
-ttm_bo_cmp_rb_tree_items(struct ttm_buffer_object *a,
-    struct ttm_buffer_object *b)
+/*
+ * Always unstall on unexpected vm_page alias, fatal bus fault.
+ * Set to 0 to stall, set to positive count to unstall N times,
+ * then stall again.
+ */
+static int drm_unstall = -1;
+SYSCTL_INT(_debug, OID_AUTO, unstall, CTLFLAG_RW, &drm_unstall, 0, "");
+
+static int ttm_bo_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 {
-    if (a->vm_node->start < b->vm_node->start) {
-        return (-1);
-    } else if (a->vm_node->start > b->vm_node->start) {
-        return (1);
-    } else {
-        return (0);
-    }
-}
-
-
-static struct ttm_buffer_object *ttm_bo_vm_lookup_rb(struct ttm_bo_device *bdev,
-						     unsigned long page_start,
-						     unsigned long num_pages)
-{
-	unsigned long cur_offset;
-	struct ttm_buffer_object *bo;
-	struct ttm_buffer_object *best_bo = NULL;
-
-	bo = RB_ROOT(&bdev->addr_space_rb);
-	while (bo != NULL) {
-		cur_offset = bo->vm_node->start;
-		if (page_start >= cur_offset) {
-			best_bo = bo;
-			if (page_start == cur_offset)
-				break;
-			bo = RB_RIGHT(bo, vm_rb);
-		} else
-			bo = RB_LEFT(bo, vm_rb);
-	}
-
-	if (unlikely(best_bo == NULL))
-		return NULL;
-
-	if (unlikely((best_bo->vm_node->start + best_bo->num_pages) <
-		     (page_start + num_pages)))
-		return NULL;
-
-	return best_bo;
-}
-
-static int
-ttm_bo_vm_fault(vm_object_t vm_obj, vm_ooffset_t offset,
-    int prot, vm_page_t *mres)
-{
-	struct ttm_buffer_object *bo = vm_obj->handle;
+	/* see ttm_bo_mmap_single() at end of this file */
+	/* ttm_bo_vm_ops not currently used, no entry should occur */
+	panic("ttm_bo_vm_fault");
+#if 0
+	struct ttm_buffer_object *bo = (struct ttm_buffer_object *)
+	    vma->vm_private_data;
 	struct ttm_bo_device *bdev = bo->bdev;
+	unsigned long page_offset;
+	unsigned long page_last;
+	unsigned long pfn;
 	struct ttm_tt *ttm = NULL;
-	vm_page_t m, m1, oldm;
+	struct page *page;
 	int ret;
-	int retval = VM_PAGER_OK;
+	int i;
+	unsigned long address = (unsigned long)vmf->virtual_address;
+	int retval = VM_FAULT_NOPAGE;
 	struct ttm_mem_type_manager *man =
 		&bdev->man[bo->mem.mem_type];
 
-	vm_object_pip_add(vm_obj, 1);
-	oldm = *mres;
-	if (oldm != NULL) {
-		vm_page_remove(oldm);
-		*mres = NULL;
-	} else
-		oldm = NULL;
-retry:
-	VM_OBJECT_UNLOCK(vm_obj);
-	m = NULL;
+	/*
+	 * Work around locking order reversal in fault / nopfn
+	 * between mmap_sem and bo_reserve: Perform a trylock operation
+	 * for reserve, and if it fails, retry the fault after scheduling.
+	 */
 
-reserve:
-	ret = ttm_bo_reserve(bo, false, false, false, 0);
+	ret = ttm_bo_reserve(bo, true, true, false, 0);
 	if (unlikely(ret != 0)) {
-		if (ret == -EBUSY) {
-			lwkt_yield();
-			goto reserve;
-		}
+		if (ret == -EBUSY)
+			set_need_resched();
+		return VM_FAULT_NOPAGE;
 	}
 
 	if (bdev->driver->fault_reserve_notify) {
@@ -140,10 +95,437 @@ reserve:
 		case 0:
 			break;
 		case -EBUSY:
+			set_need_resched();
+		case -ERESTARTSYS:
+			retval = VM_FAULT_NOPAGE;
+			goto out_unlock;
+		default:
+			retval = VM_FAULT_SIGBUS;
+			goto out_unlock;
+		}
+	}
+
+	/*
+	 * Wait for buffer data in transit, due to a pipelined
+	 * move.
+	 */
+
+	lockmgr(&bdev->fence_lock, LK_EXCLUSIVE);
+	if (test_bit(TTM_BO_PRIV_FLAG_MOVING, &bo->priv_flags)) {
+		ret = ttm_bo_wait(bo, false, true, false);
+		lockmgr(&bdev->fence_lock, LK_RELEASE);
+		if (unlikely(ret != 0)) {
+			retval = (ret != -ERESTARTSYS) ?
+			    VM_FAULT_SIGBUS : VM_FAULT_NOPAGE;
+			goto out_unlock;
+		}
+	} else
+		lockmgr(&bdev->fence_lock, LK_RELEASE);
+
+	ret = ttm_mem_io_lock(man, true);
+	if (unlikely(ret != 0)) {
+		retval = VM_FAULT_NOPAGE;
+		goto out_unlock;
+	}
+	ret = ttm_mem_io_reserve_vm(bo);
+	if (unlikely(ret != 0)) {
+		retval = VM_FAULT_SIGBUS;
+		goto out_io_unlock;
+	}
+
+	page_offset = ((address - vma->vm_start) >> PAGE_SHIFT) +
+	    drm_vma_node_start(&bo->vma_node) - vma->vm_pgoff;
+	page_last = vma_pages(vma) +
+	    drm_vma_node_start(&bo->vma_node) - vma->vm_pgoff;
+
+	if (unlikely(page_offset >= bo->num_pages)) {
+		retval = VM_FAULT_SIGBUS;
+		goto out_io_unlock;
+	}
+
+	/*
+	 * Strictly, we're not allowed to modify vma->vm_page_prot here,
+	 * since the mmap_sem is only held in read mode. However, we
+	 * modify only the caching bits of vma->vm_page_prot and
+	 * consider those bits protected by
+	 * the bo->mutex, as we should be the only writers.
+	 * There shouldn't really be any readers of these bits except
+	 * within vm_insert_mixed()? fork?
+	 *
+	 * TODO: Add a list of vmas to the bo, and change the
+	 * vma->vm_page_prot when the object changes caching policy, with
+	 * the correct locks held.
+	 */
+	if (bo->mem.bus.is_iomem) {
+		vma->vm_page_prot = ttm_io_prot(bo->mem.placement,
+						vma->vm_page_prot);
+	} else {
+		ttm = bo->ttm;
+		vma->vm_page_prot = (bo->mem.placement & TTM_PL_FLAG_CACHED) ?
+		    vm_get_page_prot(vma->vm_flags) :
+		    ttm_io_prot(bo->mem.placement, vma->vm_page_prot);
+
+		/* Allocate all page at once, most common usage */
+		if (ttm->bdev->driver->ttm_tt_populate(ttm)) {
+			retval = VM_FAULT_OOM;
+			goto out_io_unlock;
+		}
+	}
+
+	/*
+	 * Speculatively prefault a number of pages. Only error on
+	 * first page.
+	 */
+	for (i = 0; i < TTM_BO_VM_NUM_PREFAULT; ++i) {
+		if (bo->mem.bus.is_iomem)
+			pfn = ((bo->mem.bus.base + bo->mem.bus.offset) >> PAGE_SHIFT) + page_offset;
+		else {
+			page = ttm->pages[page_offset];
+			if (unlikely(!page && i == 0)) {
+				retval = VM_FAULT_OOM;
+				goto out_io_unlock;
+			} else if (unlikely(!page)) {
+				break;
+			}
+			pfn = page_to_pfn(page);
+		}
+
+		ret = vm_insert_mixed(vma, address, pfn);
+		/*
+		 * Somebody beat us to this PTE or prefaulting to
+		 * an already populated PTE, or prefaulting error.
+		 */
+
+		if (unlikely((ret == -EBUSY) || (ret != 0 && i > 0)))
+			break;
+		else if (unlikely(ret != 0)) {
+			retval =
+			    (ret == -ENOMEM) ? VM_FAULT_OOM : VM_FAULT_SIGBUS;
+			goto out_io_unlock;
+		}
+
+		address += PAGE_SIZE;
+		if (unlikely(++page_offset >= page_last))
+			break;
+	}
+out_io_unlock:
+	ttm_mem_io_unlock(man);
+out_unlock:
+	ttm_bo_unreserve(bo);
+	return retval;
+#endif
+}
+
+/* ttm_bo_vm_ops not currently used, no entry should occur */
+static void ttm_bo_vm_open(struct vm_area_struct *vma)
+{
+	struct ttm_buffer_object *bo =
+	    (struct ttm_buffer_object *)vma->vm_private_data;
+
+	(void)ttm_bo_reference(bo);
+}
+
+/* ttm_bo_vm_ops not currently used, no entry should occur */
+static void ttm_bo_vm_close(struct vm_area_struct *vma)
+{
+	struct ttm_buffer_object *bo = (struct ttm_buffer_object *)vma->vm_private_data;
+
+	ttm_bo_unref(&bo);
+	vma->vm_private_data = NULL;
+}
+
+static const struct vm_operations_struct ttm_bo_vm_ops = {
+	.fault = ttm_bo_vm_fault,
+	.open = ttm_bo_vm_open,
+	.close = ttm_bo_vm_close
+};
+
+static struct ttm_buffer_object *ttm_bo_vm_lookup(struct ttm_bo_device *bdev,
+						  unsigned long offset,
+						  unsigned long pages)
+{
+	struct drm_vma_offset_node *node;
+	struct ttm_buffer_object *bo = NULL;
+
+	drm_vma_offset_lock_lookup(&bdev->vma_manager);
+
+	node = drm_vma_offset_lookup_locked(&bdev->vma_manager, offset, pages);
+	if (likely(node)) {
+		bo = container_of(node, struct ttm_buffer_object, vma_node);
+		if (!kref_get_unless_zero(&bo->kref))
+			bo = NULL;
+	}
+
+	drm_vma_offset_unlock_lookup(&bdev->vma_manager);
+
+	if (!bo)
+		pr_err("Could not find buffer object to map\n");
+
+	return bo;
+}
+
+int ttm_bo_mmap(struct file *filp, struct vm_area_struct *vma,
+		struct ttm_bo_device *bdev)
+{
+	struct ttm_bo_driver *driver;
+	struct ttm_buffer_object *bo;
+	int ret;
+
+	bo = ttm_bo_vm_lookup(bdev, vma->vm_pgoff, vma_pages(vma));
+	if (unlikely(!bo))
+		return -EINVAL;
+
+	driver = bo->bdev->driver;
+	if (unlikely(!driver->verify_access)) {
+		ret = -EPERM;
+		goto out_unref;
+	}
+	ret = driver->verify_access(bo, filp);
+	if (unlikely(ret != 0))
+		goto out_unref;
+
+	vma->vm_ops = &ttm_bo_vm_ops;
+
+	/*
+	 * Note: We're transferring the bo reference to
+	 * vma->vm_private_data here.
+	 */
+
+	vma->vm_private_data = bo;
+	vma->vm_flags |= VM_IO | VM_MIXEDMAP | VM_DONTEXPAND | VM_DONTDUMP;
+	return 0;
+out_unref:
+	ttm_bo_unref(&bo);
+	return ret;
+}
+EXPORT_SYMBOL(ttm_bo_mmap);
+
+int ttm_fbdev_mmap(struct vm_area_struct *vma, struct ttm_buffer_object *bo)
+{
+	if (vma->vm_pgoff != 0)
+		return -EACCES;
+
+	vma->vm_ops = &ttm_bo_vm_ops;
+	vma->vm_private_data = ttm_bo_reference(bo);
+	vma->vm_flags |= VM_IO | VM_MIXEDMAP | VM_DONTEXPAND;
+	return 0;
+}
+EXPORT_SYMBOL(ttm_fbdev_mmap);
+
+
+ssize_t ttm_bo_io(struct ttm_bo_device *bdev, struct file *filp,
+		  const char __user *wbuf, char __user *rbuf, size_t count,
+		  loff_t *f_pos, bool write)
+{
+	struct ttm_buffer_object *bo;
+	struct ttm_bo_driver *driver;
+	struct ttm_bo_kmap_obj map;
+	unsigned long dev_offset = (*f_pos >> PAGE_SHIFT);
+	unsigned long kmap_offset;
+	unsigned long kmap_end;
+	unsigned long kmap_num;
+	size_t io_size;
+	unsigned int page_offset;
+	char *virtual;
+	int ret;
+	bool no_wait = false;
+	bool dummy;
+
+	bo = ttm_bo_vm_lookup(bdev, dev_offset, 1);
+	if (unlikely(bo == NULL))
+		return -EFAULT;
+
+	driver = bo->bdev->driver;
+	if (unlikely(!driver->verify_access)) {
+		ret = -EPERM;
+		goto out_unref;
+	}
+
+	ret = driver->verify_access(bo, filp);
+	if (unlikely(ret != 0))
+		goto out_unref;
+
+	kmap_offset = dev_offset - drm_vma_node_start(&bo->vma_node);
+	if (unlikely(kmap_offset >= bo->num_pages)) {
+		ret = -EFBIG;
+		goto out_unref;
+	}
+
+	page_offset = *f_pos & ~PAGE_MASK;
+	io_size = bo->num_pages - kmap_offset;
+	io_size = (io_size << PAGE_SHIFT) - page_offset;
+	if (count < io_size)
+		io_size = count;
+
+	kmap_end = (*f_pos + count - 1) >> PAGE_SHIFT;
+	kmap_num = kmap_end - kmap_offset + 1;
+
+	ret = ttm_bo_reserve(bo, true, no_wait, false, 0);
+
+	switch (ret) {
+	case 0:
+		break;
+	case -EBUSY:
+		ret = -EAGAIN;
+		goto out_unref;
+	default:
+		goto out_unref;
+	}
+
+	ret = ttm_bo_kmap(bo, kmap_offset, kmap_num, &map);
+	if (unlikely(ret != 0)) {
+		ttm_bo_unreserve(bo);
+		goto out_unref;
+	}
+
+	virtual = ttm_kmap_obj_virtual(&map, &dummy);
+	virtual += page_offset;
+
+	if (write)
+		ret = copy_from_user(virtual, wbuf, io_size);
+	else
+		ret = copy_to_user(rbuf, virtual, io_size);
+
+	ttm_bo_kunmap(&map);
+	ttm_bo_unreserve(bo);
+	ttm_bo_unref(&bo);
+
+	if (unlikely(ret != 0))
+		return -EFBIG;
+
+	*f_pos += io_size;
+
+	return io_size;
+out_unref:
+	ttm_bo_unref(&bo);
+	return ret;
+}
+
+ssize_t ttm_bo_fbdev_io(struct ttm_buffer_object *bo, const char __user *wbuf,
+			char __user *rbuf, size_t count, loff_t *f_pos,
+			bool write)
+{
+	struct ttm_bo_kmap_obj map;
+	unsigned long kmap_offset;
+	unsigned long kmap_end;
+	unsigned long kmap_num;
+	size_t io_size;
+	unsigned int page_offset;
+	char *virtual;
+	int ret;
+	bool no_wait = false;
+	bool dummy;
+
+	kmap_offset = (*f_pos >> PAGE_SHIFT);
+	if (unlikely(kmap_offset >= bo->num_pages))
+		return -EFBIG;
+
+	page_offset = *f_pos & ~PAGE_MASK;
+	io_size = bo->num_pages - kmap_offset;
+	io_size = (io_size << PAGE_SHIFT) - page_offset;
+	if (count < io_size)
+		io_size = count;
+
+	kmap_end = (*f_pos + count - 1) >> PAGE_SHIFT;
+	kmap_num = kmap_end - kmap_offset + 1;
+
+	ret = ttm_bo_reserve(bo, true, no_wait, false, 0);
+
+	switch (ret) {
+	case 0:
+		break;
+	case -EBUSY:
+		return -EAGAIN;
+	default:
+		return ret;
+	}
+
+	ret = ttm_bo_kmap(bo, kmap_offset, kmap_num, &map);
+	if (unlikely(ret != 0)) {
+		ttm_bo_unreserve(bo);
+		return ret;
+	}
+
+	virtual = ttm_kmap_obj_virtual(&map, &dummy);
+	virtual += page_offset;
+
+	if (write)
+		ret = copy_from_user(virtual, wbuf, io_size);
+	else
+		ret = copy_to_user(rbuf, virtual, io_size);
+
+	ttm_bo_kunmap(&map);
+	ttm_bo_unreserve(bo);
+	ttm_bo_unref(&bo);
+
+	if (unlikely(ret != 0))
+		return ret;
+
+	*f_pos += io_size;
+
+	return io_size;
+}
+
+/*
+ * DragonFlyBSD Interface
+ */
+
+#include "opt_vm.h"
+
+#include <vm/vm.h>
+#include <vm/vm_page.h>
+#include <linux/errno.h>
+#include <linux/export.h>
+
+#include <vm/vm_page2.h>
+
+static int
+ttm_bo_vm_fault_dfly(vm_object_t vm_obj, vm_ooffset_t offset,
+		     int prot, vm_page_t *mres)
+{
+	struct ttm_buffer_object *bo = vm_obj->handle;
+	struct ttm_bo_device *bdev = bo->bdev;
+	struct ttm_tt *ttm = NULL;
+	vm_page_t m, oldm;
+	int ret;
+	int retval = VM_PAGER_OK;
+	struct ttm_mem_type_manager *man;
+
+	man = &bdev->man[bo->mem.mem_type];
+
+	/*kprintf("FAULT %p %p/%ld\n", vm_obj, bo, offset);*/
+
+	vm_object_pip_add(vm_obj, 1);
+	oldm = *mres;
+	*mres = NULL;
+
+retry:
+	VM_OBJECT_UNLOCK(vm_obj);
+	m = NULL;
+
+	/*
+	 * NOTE: set nowait to false, we don't have ttm_bo_wait_unreserved()
+	 * 	 for the -BUSY case yet.
+	 */
+	ret = ttm_bo_reserve(bo, true, false, false, 0);
+	if (unlikely(ret != 0)) {
+		retval = VM_PAGER_ERROR;
+		VM_OBJECT_LOCK(vm_obj);
+		goto out_unlock2;
+	}
+
+	if (bdev->driver->fault_reserve_notify) {
+		ret = bdev->driver->fault_reserve_notify(bo);
+		switch (ret) {
+		case 0:
+			break;
+		case -EBUSY:
+			lwkt_yield();
+			/* fall through */
 		case -ERESTARTSYS:
 		case -EINTR:
-			lwkt_yield();
-			goto reserve;
+			retval = VM_PAGER_ERROR;
+			goto out_unlock;
 		default:
 			retval = VM_PAGER_ERROR;
 			goto out_unlock;
@@ -154,7 +536,6 @@ reserve:
 	 * Wait for buffer data in transit, due to a pipelined
 	 * move.
 	 */
-
 	lockmgr(&bdev->fence_lock, LK_EXCLUSIVE);
 	if (test_bit(TTM_BO_PRIV_FLAG_MOVING, &bo->priv_flags)) {
 		/*
@@ -179,8 +560,9 @@ reserve:
 			retval = VM_PAGER_ERROR;
 			goto out_unlock;
 		}
-	} else
+	} else {
 		lockmgr(&bdev->fence_lock, LK_RELEASE);
+	}
 
 	ret = ttm_mem_io_lock(man, true);
 	if (unlikely(ret != 0)) {
@@ -189,6 +571,10 @@ reserve:
 	}
 	ret = ttm_mem_io_reserve_vm(bo);
 	if (unlikely(ret != 0)) {
+		retval = VM_PAGER_ERROR;
+		goto out_io_unlock;
+	}
+	if (unlikely(OFF_TO_IDX(offset) >= bo->num_pages)) {
 		retval = VM_PAGER_ERROR;
 		goto out_io_unlock;
 	}
@@ -206,21 +592,20 @@ reserve:
 	 * vma->vm_page_prot when the object changes caching policy, with
 	 * the correct locks held.
 	 */
-	if (!bo->mem.bus.is_iomem) {
+
+	if (bo->mem.bus.is_iomem) {
+		m = vm_phys_fictitious_to_vm_page(bo->mem.bus.base +
+						  bo->mem.bus.offset + offset);
+		pmap_page_set_memattr(m, ttm_io_prot(bo->mem.placement, 0));
+	} else {
 		/* Allocate all page at once, most common usage */
 		ttm = bo->ttm;
 		if (ttm->bdev->driver->ttm_tt_populate(ttm)) {
 			retval = VM_PAGER_ERROR;
 			goto out_io_unlock;
 		}
-	}
-
-	if (bo->mem.bus.is_iomem) {
-		m = vm_phys_fictitious_to_vm_page(bo->mem.bus.base +
-		    bo->mem.bus.offset + offset);
-		pmap_page_set_memattr(m, ttm_io_prot(bo->mem.placement, 0));
-	} else {
 		ttm = bo->ttm;
+
 		m = (struct vm_page *)ttm->pages[OFF_TO_IDX(offset)];
 		if (unlikely(!m)) {
 			retval = VM_PAGER_ERROR;
@@ -232,34 +617,61 @@ reserve:
 	}
 
 	VM_OBJECT_LOCK(vm_obj);
-	if ((m->busy_count & PBUSY_LOCKED) != 0) {
-#if 0
-		vm_page_sleep(m, "ttmpbs");
-#endif
+
+	if (vm_page_busy_try(m, FALSE)) {
+		kprintf("r");
+		vm_page_sleep_busy(m, FALSE, "ttmvmf");
 		ttm_mem_io_unlock(man);
 		ttm_bo_unreserve(bo);
 		goto retry;
 	}
+
+	/*
+	 * We want our fake page in the VM object, not the page the OS
+	 * allocatedd for us as a placeholder.
+	 */
 	m->valid = VM_PAGE_BITS_ALL;
 	*mres = m;
-	m1 = vm_page_lookup(vm_obj, OFF_TO_IDX(offset));
-	if (m1 == NULL) {
-		vm_page_insert(m, vm_obj, OFF_TO_IDX(offset));
-	} else {
-		KASSERT(m == m1,
-		    ("inconsistent insert bo %p m %p m1 %p offset %jx",
-		    bo, m, m1, (uintmax_t)offset));
-	}
-	vm_page_busy_try(m, FALSE);
-
 	if (oldm != NULL) {
+		vm_page_remove(oldm);
+		if (m->object) {
+			retval = VM_PAGER_ERROR;
+			kprintf("ttm_bo_vm_fault_dfly: m(%p) already inserted "
+				"in obj %p, attempt obj %p\n",
+				m, m->object, vm_obj);
+			while (drm_unstall == 0) {
+				tsleep(&retval, 0, "DEBUG", hz/10);
+			}
+			if (drm_unstall > 0)
+				--drm_unstall;
+		} else {
+			vm_page_insert(m, vm_obj, OFF_TO_IDX(offset));
+		}
 		vm_page_free(oldm);
+		oldm = NULL;
+	} else {
+		vm_page_t mtmp;
+
+		kprintf("oldm NULL\n");
+
+		mtmp = vm_page_lookup(vm_obj, OFF_TO_IDX(offset));
+		KASSERT(mtmp == NULL || mtmp == m,
+		    ("inconsistent insert bo %p m %p mtmp %p offset %jx",
+		    bo, m, mtmp, (uintmax_t)offset));
+		if (mtmp == NULL)
+			vm_page_insert(m, vm_obj, OFF_TO_IDX(offset));
 	}
+	/*vm_page_busy_try(m, FALSE);*/
 
 out_io_unlock1:
 	ttm_mem_io_unlock(man);
 out_unlock1:
 	ttm_bo_unreserve(bo);
+out_unlock2:
+	if (oldm) {
+		vm_page_remove(oldm);
+		vm_page_free(oldm);
+	}
 	vm_object_pip_wakeup(vm_obj);
 	return (retval);
 
@@ -274,7 +686,7 @@ out_unlock:
 
 static int
 ttm_bo_vm_ctor(void *handle, vm_ooffset_t size, vm_prot_t prot,
-    vm_ooffset_t foff, struct ucred *cred, u_short *color)
+	       vm_ooffset_t foff, struct ucred *cred, u_short *color)
 {
 
 	/*
@@ -302,60 +714,64 @@ ttm_bo_vm_dtor(void *handle)
 }
 
 static struct cdev_pager_ops ttm_pager_ops = {
-	.cdev_pg_fault = ttm_bo_vm_fault,
+	.cdev_pg_fault = ttm_bo_vm_fault_dfly,
 	.cdev_pg_ctor = ttm_bo_vm_ctor,
 	.cdev_pg_dtor = ttm_bo_vm_dtor
 };
 
+/*
+ * Called from drm_drv.c
+ *
+ * *offset - object offset in bytes
+ * size	   - map size in bytes
+ *
+ * We setup a dummy vma (for now) and call ttm_bo_mmap().  Then we setup
+ * our own VM object and dfly ops.  Note that the ops supplied by
+ * ttm_bo_mmap() are not currently used.
+ */
 int
-ttm_bo_mmap_single(struct ttm_bo_device *bdev, vm_ooffset_t *offset, vm_size_t size,
-    struct vm_object **obj_res, int nprot)
+ttm_bo_mmap_single(struct drm_device *dev, vm_ooffset_t *offset,
+		   vm_size_t size, struct vm_object **obj_res, int nprot)
 {
-	struct ttm_bo_driver *driver;
+	struct ttm_bo_device *bdev = dev->drm_ttm_bdev;
 	struct ttm_buffer_object *bo;
 	struct vm_object *vm_obj;
+	struct vm_area_struct vma;
 	int ret;
 
 	*obj_res = NULL;
 
-	lockmgr(&bdev->vm_lock, LK_EXCLUSIVE);
-	bo = ttm_bo_vm_lookup_rb(bdev, OFF_TO_IDX(*offset), OFF_TO_IDX(size));
-	if (likely(bo != NULL))
-		kref_get(&bo->kref);
-	lockmgr(&bdev->vm_lock, LK_RELEASE);
+	bzero(&vma, sizeof(vma));
+	vma.vm_start = *offset;		/* bdev-relative offset */
+	vma.vm_end = vma.vm_start + size;
+	vma.vm_pgoff = vma.vm_start >> PAGE_SHIFT;
+	/* vma.vm_page_prot */
+	/* vma.vm_flags */
 
-	if (unlikely(bo == NULL)) {
-		pr_err("Could not find buffer object to map\n");
-		return (EINVAL);
-	}
-
-	driver = bo->bdev->driver;
-	if (unlikely(!driver->verify_access)) {
-		ret = EPERM;
-		goto out_unref;
-	}
-	ret = -driver->verify_access(bo);
-	if (unlikely(ret != 0))
-		goto out_unref;
-
-	vm_obj = cdev_pager_allocate(bo, OBJT_MGTDEVICE, &ttm_pager_ops,
-	    size, nprot, 0, curthread->td_ucred);
-
-	if (vm_obj == NULL) {
-		ret = EINVAL;
-		goto out_unref;
-	}
 	/*
-	 * Note: We're transferring the bo reference to vm_obj->handle here.
+	 * Call the linux-ported code to do the work, and on success just
+	 * setup our own VM object and ignore what the linux code did other
+	 * then supplying us the 'bo'.
 	 */
-	*offset = 0;
-	*obj_res = vm_obj;
-	return 0;
-out_unref:
-	ttm_bo_unref(&bo);
+	ret = ttm_bo_mmap(NULL, &vma, bdev);
+
+	if (ret == 0) {
+		bo = vma.vm_private_data;
+		vm_obj = cdev_pager_allocate(bo, OBJT_MGTDEVICE,
+					     &ttm_pager_ops,
+					     size, nprot, 0,
+					     curthread->td_ucred);
+		if (vm_obj) {
+			*obj_res = vm_obj;
+			*offset = 0;		/* object-relative offset */
+		} else {
+			ttm_bo_unref(&bo);
+			ret = EINVAL;
+		}
+	}
 	return ret;
 }
-EXPORT_SYMBOL(ttm_bo_mmap);
+EXPORT_SYMBOL(ttm_bo_mmap_single);
 
 void
 ttm_bo_release_mmap(struct ttm_buffer_object *bo)

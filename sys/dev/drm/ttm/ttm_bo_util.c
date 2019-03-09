@@ -30,6 +30,7 @@
 
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_placement.h>
+#include <drm/drm_vma_manager.h>
 #include <linux/io.h>
 #include <linux/highmem.h>
 #include <linux/wait.h>
@@ -88,7 +89,7 @@ int ttm_mem_io_lock(struct ttm_mem_type_manager *man, bool interruptible)
 			return (0);
 	}
 
-	mutex_lock(&man->io_reserve_mutex);
+	lockmgr(&man->io_reserve_mutex, LK_EXCLUSIVE);
 	return 0;
 }
 EXPORT_SYMBOL(ttm_mem_io_lock);
@@ -98,7 +99,7 @@ void ttm_mem_io_unlock(struct ttm_mem_type_manager *man)
 	if (likely(man->io_reserve_fastpath))
 		return;
 
-	mutex_unlock(&man->io_reserve_mutex);
+	lockmgr(&man->io_reserve_mutex, LK_RELEASE);
 }
 EXPORT_SYMBOL(ttm_mem_io_unlock);
 
@@ -470,7 +471,7 @@ static int ttm_buffer_object_transfer(struct ttm_buffer_object *bo,
 	INIT_LIST_HEAD(&fbo->lru);
 	INIT_LIST_HEAD(&fbo->swap);
 	INIT_LIST_HEAD(&fbo->io_reserve_lru);
-	fbo->vm_node = NULL;
+	drm_vma_node_reset(&fbo->vma_node);
 	atomic_set(&fbo->cpu_writers, 0);
 
 	lockmgr(&bdev->fence_lock, LK_EXCLUSIVE);

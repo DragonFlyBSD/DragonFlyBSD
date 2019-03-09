@@ -34,6 +34,7 @@
 #include <linux/rcupdate.h>
 
 #include <sys/tree.h>
+#include <sys/spinlock.h>
 
 struct rb_node {
 	RB_ENTRY(rb_node)	__entry;
@@ -42,11 +43,12 @@ struct rb_node {
 #define	rb_right	__entry.rbe_right
 
 /*
- * We provide a false structure that has the same bit pattern as tree.h
- * presents so it matches the member names expected by linux.
+ * This must match enough of sys/tree.h so the macros still work.
  */
 struct rb_root {
-	struct	rb_node	*rb_node;
+	struct	rb_node	*rb_node;	/* only member under linux */
+	void	*rbh_inprog;		/* so we can use sys/tree macros */
+	struct spinlock rbh_spin;	/* so we can use sys/tree macros */
 };
 
 /*
