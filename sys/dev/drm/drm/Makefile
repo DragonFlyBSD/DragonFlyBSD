@@ -2,7 +2,6 @@
 KMOD	= drm
 SRCS	= \
 	ati_pcigart.c \
-	drm_agpsupport.c \
 	drm_auth.c \
 	drm_bufs.c \
 	drm_cache.c \
@@ -75,6 +74,9 @@ SRCS	= \
 	ttm_page_alloc.c \
 	ttm_bo_vm.c \
 	ttm_module.c
+
+# if CONFIG_AGP is set
+#SRCS+=	drm_agpsupport.c \
 
 SRCS   += device_if.h bus_if.h pci_if.h device_if.h iicbus_if.h opt_drm.h \
 	  opt_vm.h

@@ -7,10 +7,12 @@
 #include <linux/mm.h>
 #include <linux/mutex.h>
 #include <linux/types.h>
+#include <uapi/drm/drm.h>
+
 #include <linux/kconfig.h>
+
 #include <sys/agpio.h>
 #include <dev/agp/agpvar.h>
-#include <uapi/drm/drm.h>
 
 struct drm_device;
 struct drm_file;
@@ -28,10 +30,8 @@ struct drm_agp_head {
 	unsigned long page_mask;
 };
 
-#define CONFIG_AGP 1
 #if IS_ENABLED(CONFIG_AGP)
 
-#ifdef __linux__
 void drm_free_agp(struct agp_memory * handle, int pages);
 int drm_bind_agp(struct agp_memory * handle, unsigned int start);
 int drm_unbind_agp(struct agp_memory * handle);
@@ -40,7 +40,6 @@ struct agp_memory *drm_agp_bind_pages(struct drm_device *dev,
 				unsigned long num_pages,
 				uint32_t gtt_offset,
 				uint32_t type);
-#endif
 
 struct drm_agp_head *drm_agp_init(struct drm_device *dev);
 void drm_legacy_agp_clear(struct drm_device *dev);
@@ -99,7 +98,7 @@ static inline struct drm_agp_head *drm_agp_init(struct drm_device *dev)
 	return NULL;
 }
 
-static inline void drm_agp_clear(struct drm_device *dev)
+static inline void drm_legacy_agp_clear(struct drm_device *dev)
 {
 }
 
