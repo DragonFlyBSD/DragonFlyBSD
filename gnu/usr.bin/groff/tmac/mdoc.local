@@ -122,6 +122,7 @@
 .ds doc-operating-system-FreeBSD-10.1 10.1
 .ds doc-operating-system-FreeBSD-10.2 10.2
 .ds doc-operating-system-FreeBSD-11.0 11.0
+.ds doc-operating-system-FreeBSD-11.1 11.1
 .
 .\" NetBSD releases not found in doc-common.
 .ds doc-operating-system-NetBSD-5.0   5.0
