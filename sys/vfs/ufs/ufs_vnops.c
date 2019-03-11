@@ -160,22 +160,28 @@ ufs_itimes(struct vnode *vp)
 	if ((vp->v_mount->mnt_flag & MNT_RDONLY) == 0) {
 		vfs_timestamp(&ts);
 		if (ip->i_flag & IN_ACCESS) {
-			ip->i_atime = ts.tv_sec;
+			ip->i_atime = (uint32_t)ts.tv_sec;
+			ip->i_atime_ext = ts.tv_sec >> 32;
 			ip->i_atimensec = ts.tv_nsec;
 		}
 		if (ip->i_flag & IN_CHANGE) {
-			ip->i_ctime = ts.tv_sec;
+			ip->i_ctime = (uint32_t)ts.tv_sec;
+			ip->i_ctime_ext = ts.tv_sec >> 32;
 			ip->i_ctimensec = ts.tv_nsec;
 		}
 		if (ip->i_flag & IN_UPDATE) {
 			if (ip->i_flag & IN_NOCOPYWRITE) {
 				if (vp->v_flag & VLASTWRITETS) {
-					ip->i_mtime = vp->v_lastwrite_ts.tv_sec;
+					ip->i_mtime = (uint32_t)
+						vp->v_lastwrite_ts.tv_sec;
+					ip->i_mtime_ext =
+						vp->v_lastwrite_ts.tv_sec >> 32;
 					ip->i_mtimensec =
 						vp->v_lastwrite_ts.tv_nsec;
 				}
 			} else {
-				ip->i_mtime = ts.tv_sec;
+				ip->i_mtime = (uint32_t)ts.tv_sec;
+				ip->i_mtime_ext = ts.tv_sec >> 32;
 				ip->i_mtimensec = ts.tv_nsec;
 			}
 			ip->i_modrev++;
@@ -341,11 +347,14 @@ ufs_getattr(struct vop_getattr_args *ap)
 	vap->va_rmajor = umajor(ip->i_rdev);
 	vap->va_rminor = uminor(ip->i_rdev);
 	vap->va_size = ip->i_din.di_size;
-	vap->va_atime.tv_sec = ip->i_atime;
+	vap->va_atime.tv_sec =
+		(time_t)(ip->i_atime | ((uint64_t)ip->i_atime_ext << 32));
 	vap->va_atime.tv_nsec = ip->i_atimensec;
-	vap->va_mtime.tv_sec = ip->i_mtime;
+	vap->va_mtime.tv_sec =
+		(time_t)(ip->i_mtime | ((uint64_t)ip->i_mtime_ext << 32));
 	vap->va_mtime.tv_nsec = ip->i_mtimensec;
-	vap->va_ctime.tv_sec = ip->i_ctime;
+	vap->va_ctime.tv_sec =
+		(time_t)(ip->i_ctime | ((uint64_t)ip->i_ctime_ext << 32));
 	vap->va_ctime.tv_nsec = ip->i_ctimensec;
 	vap->va_flags = ip->i_flags;
 	vap->va_gen = ip->i_gen;
@@ -473,11 +482,13 @@ ufs_setattr(struct vop_setattr_args *ap)
 			ip->i_flag |= IN_CHANGE | IN_UPDATE;
 		ufs_itimes(vp);
 		if (vap->va_atime.tv_sec != VNOVAL) {
-			ip->i_atime = vap->va_atime.tv_sec;
+			ip->i_atime = (uint32_t)vap->va_atime.tv_sec;
+			ip->i_atime_ext = vap->va_atime.tv_sec >> 32;
 			ip->i_atimensec = vap->va_atime.tv_nsec;
 		}
 		if (vap->va_mtime.tv_sec != VNOVAL) {
-			ip->i_mtime = vap->va_mtime.tv_sec;
+			ip->i_mtime = (uint32_t)vap->va_mtime.tv_sec;
+			ip->i_mtime_ext = vap->va_mtime.tv_sec >> 32;
 			ip->i_mtimensec = vap->va_mtime.tv_nsec;
 			vclrflags(vp, VLASTWRITETS);
 		}
@@ -2069,8 +2080,7 @@ ufs_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 	}
 #endif
 #endif	/* !SUIDDIR */
-	ip->i_din.di_spare[0] = 0;
-	ip->i_din.di_spare[1] = 0;
+	ip->i_din.di_spare7E = 0;
 	ip->i_flag |= IN_ACCESS | IN_CHANGE | IN_UPDATE;
 	ip->i_mode = mode;
 	tvp->v_type = IFTOVT(mode);	/* Rest init'd in getnewvnode(). */

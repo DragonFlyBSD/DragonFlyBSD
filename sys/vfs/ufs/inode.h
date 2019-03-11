@@ -106,9 +106,11 @@ struct inode {
 };
 
 #define	i_atime		i_din.di_atime
+#define	i_atime_ext	i_din.di_atime_ext
 #define	i_atimensec	i_din.di_atimensec
 #define	i_blocks	i_din.di_blocks
 #define	i_ctime		i_din.di_ctime
+#define	i_ctime_ext	i_din.di_ctime_ext
 #define	i_ctimensec	i_din.di_ctimensec
 #define	i_db		i_din.di_db
 #define	i_flags		i_din.di_flags
@@ -117,6 +119,7 @@ struct inode {
 #define	i_ib		i_din.di_ib
 #define	i_mode		i_din.di_mode
 #define	i_mtime		i_din.di_mtime
+#define	i_mtime_ext	i_din.di_mtime_ext
 #define	i_mtimensec	i_din.di_mtimensec
 #define	i_nlink		i_din.di_nlink
 #define	i_rdev		i_din.di_rdev

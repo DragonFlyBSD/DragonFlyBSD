@@ -74,12 +74,12 @@ struct ufs1_dinode {
 		int32_t	  inumber;	/*   4: Lfs: inode number. */
 	} di_u;
 	uint64_t	di_size;	/*   8: File byte count. */
-	int32_t		di_atime;	/*  16: Last access time. */
-	int32_t		di_atimensec;	/*  20: Last access time. */
-	int32_t		di_mtime;	/*  24: Last modified time. */
-	int32_t		di_mtimensec;	/*  28: Last modified time. */
-	int32_t		di_ctime;	/*  32: Last inode change time. */
-	int32_t		di_ctimensec;	/*  36: Last inode change time. */
+	uint32_t	di_atime;	/*  16: Last access time. */
+	uint32_t	di_atimensec;	/*  20: Last access time. */
+	uint32_t	di_mtime;	/*  24: Last modified time. */
+	uint32_t	di_mtimensec;	/*  28: Last modified time. */
+	uint32_t	di_ctime;	/*  32: Last inode change time. */
+	uint32_t	di_ctimensec;	/*  36: Last inode change time. */
 	ufs_daddr_t	di_db[UFS_NDADDR]; /*  40: Direct disk blocks. */
 	ufs_daddr_t	di_ib[UFS_NIADDR]; /*  88: Indirect disk blocks. */
 	uint32_t	di_flags;	/* 100: Status flags (chflags). */
@@ -87,9 +87,15 @@ struct ufs1_dinode {
 	int32_t		di_gen;		/* 108: Generation number. */
 	uint32_t	di_uid;		/* 112: File owner. */
 	uint32_t	di_gid;		/* 116: File group. */
-	union {				/* 120: File hierarchy modified */
-	    int32_t	spare[2];	/*	(used by ext2fs) */
-	} di_v;
+
+	/*
+	 * Originally two 32-bit spare fields, set to 0.  Extended by
+	 * DragonFly 10-Mar-2019 to support 48-bit time fields.
+	 */
+	uint16_t	di_atime_ext;	/* 120: 16 msb time bits */
+	uint16_t	di_mtime_ext;	/* 122: 16 msb time bits */
+	uint16_t	di_ctime_ext;	/* 124: 16 msb time bits */
+	uint16_t	di_spare7E;	/* 126: spare field */
 };
 
 /*
