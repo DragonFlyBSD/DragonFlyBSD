@@ -1,6 +1,11 @@
 /*
  * Copyright (c) 2015 Michael Neumann <mneumann@ntecs.de>
  * All rights reserved.
+ * Copyright (c) 2003-2011 The DragonFly Project.  All rights reserved.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Michael Neumann <mneumann@ntecs.de> and
+ *    Matthew Dillon <dillon@backplane.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,20 +48,23 @@
 #include <sys/spinlock2.h>
 
 struct ww_class {
-	volatile u_long			stamp;
-	const char			*name;
+	volatile u_long		stamp;
+	const char		*name;
 };
 
 struct ww_acquire_ctx {
-	u_long				stamp;
-	struct ww_class			*ww_class;
+	u_long			stamp;
+	int			acquired;
+	int			unused01;
+	struct ww_class		*ww_class;
 };
 
 struct ww_mutex {
-	struct spinlock			lock;
-	volatile int			acquired;
-	volatile struct ww_acquire_ctx	*ctx;
-	volatile struct thread		*owner;
+	struct lock		base;
+	struct ww_acquire_ctx	*ctx;
+	u_long			stamp;	/* heuristic */
+	int			blocked;
+	int			unused01;
 };
 
 #define DEFINE_WW_CLASS(classname)	\
@@ -65,198 +73,38 @@ struct ww_mutex {
 		.name = #classname	\
 	}
 
-static inline void
-ww_acquire_init(struct ww_acquire_ctx *ctx, struct ww_class *ww_class) {
-	ctx->stamp = atomic_fetchadd_long(&ww_class->stamp, 1);
-	ctx->ww_class = ww_class;
-}
+extern void ww_acquire_init(struct ww_acquire_ctx *ctx,
+			struct ww_class *ww_class);
+extern void ww_acquire_done(struct ww_acquire_ctx *ctx);
+extern void ww_acquire_fini(struct ww_acquire_ctx *ctx);
+extern void ww_mutex_init(struct ww_mutex *ww, struct ww_class *ww_class);
+extern int ww_mutex_lock(struct ww_mutex *ww, struct ww_acquire_ctx *ctx);
+extern int ww_mutex_lock_slow(struct ww_mutex *ww, struct ww_acquire_ctx *ctx);
+extern int ww_mutex_lock_interruptible(struct ww_mutex *ww,
+			struct ww_acquire_ctx *ctx);
+extern int ww_mutex_lock_slow_interruptible(struct ww_mutex *ww,
+			struct ww_acquire_ctx *ctx);
+extern void ww_mutex_unlock(struct ww_mutex *ww);
+extern void ww_mutex_destroy(struct ww_mutex *ww);
 
-static inline void
-ww_acquire_done(__unused struct ww_acquire_ctx *ctx) {
-}
-
-static inline void
-ww_acquire_fini(__unused struct ww_acquire_ctx *ctx) {
-}
-
-static inline void
-ww_mutex_init(struct ww_mutex *lock, struct ww_class *ww_class) {
-	spin_init(&lock->lock, ww_class->name);
-	lock->acquired = 0;
-	lock->ctx = NULL;
-	lock->owner = NULL;
-}
-
+/*
+ * Returns 1 if locked, 0 otherwise
+ */
 static inline bool
-ww_mutex_is_locked(struct ww_mutex *lock) {
-	bool res = false;
-	spin_lock(&lock->lock);
-	if (lock->acquired > 0) res = true;
-	spin_unlock(&lock->lock);
-	return res;
+ww_mutex_is_locked(struct ww_mutex *ww)
+{
+	return (lockstatus(&ww->base, NULL) != 0);
 }
 
 /*
- * Return 1 if lock could be acquired, else 0 (contended).
- */
-static inline int
-ww_mutex_trylock(struct ww_mutex *lock) {
-	int res = 1;
-	KKASSERT(curthread);
-
-	spin_lock(&lock->lock);
-	/*
-	 * In case no one holds the ww_mutex yet, we acquire it.
-	 */
-	if (lock->acquired == 0) {
-		KKASSERT(lock->ctx == NULL);
-		lock->acquired += 1;
-		lock->owner = curthread;
-	}
-	/*
-	 * In case we already hold the ww_mutex, increase a count.
-	 */
-	else if (lock->owner == curthread) {
-		lock->acquired += 1;
-	}
-	else {
-		res = 0;
-	}
-	spin_unlock(&lock->lock);
-	return res;
-}
-
-/*
- * When `slow` is `true`, it will always block if the ww_mutex is contended.
- * It is assumed that the called will not hold any (ww_mutex) resources when
- * calling the slow path as this could lead to deadlocks.
+ * Returns 1 on success, 0 if contended.
  *
- * When `intr` is `true`, the ssleep will be interruptable.
- * `ctx` can be NULL in order to acquire only a single lock.
+ * This call has no context accounting.
  */
 static inline int
-__ww_mutex_lock(struct ww_mutex *lock, struct ww_acquire_ctx *ctx, bool slow, bool intr) {
-	int err;
-
-	KKASSERT(curthread);
-
-	spin_lock(&lock->lock);
-	for (;;) {
-		/*
-		 * In case no one holds the ww_mutex yet, we acquire it.
-		 */
-		if (lock->acquired == 0) {
-			KKASSERT(lock->ctx == NULL);
-			lock->acquired += 1;
-			lock->ctx = ctx;
-			lock->owner = curthread;
-			err = 0;
-			break;
-		}
-		/*
-		 * In case we already hold the ww_mutex, simply increase
-		 * a count and return -ALREADY.
-		 */
-		else if (lock->owner == curthread) {
-			lock->acquired += 1;
-			err = -EALREADY;
-			break;
-		}
-		/*
-		 * This is the contention case where the ww_mutex is
-		 * already held by another context.
-		 */
-		else {
-			/*
-			 * Three cases:
-			 *
-			 * - We are in the slow-path (first lock to obtain).
-                         *
-			 * - No context was specified. We assume a single
-			 *   resouce, so there is no danger of a deadlock.
-                         *
-			 * - An `older` process (`ctx`) tries to acquire a
-			 *   lock already held by a `younger` process.
-                         *   We put the `older` process to sleep until
-                         *   the `younger` process gives up all it's
-                         *   resources.
-			 */
-			if (slow || ctx == NULL ||
-			    (lock->ctx != NULL && ctx->stamp < lock->ctx->stamp)) {
-				int s = ssleep(lock, &lock->lock,
-					       intr ? PCATCH : 0,
-					       ctx ? ctx->ww_class->name : "ww_mutex_lock", 0);
-				if (intr && (s == EINTR || s == ERESTART)) {
-					// XXX: Should we handle ERESTART?
-					err = -EINTR;
-					break;
-				}
-			}
-			/*
-			 * If a `younger` process tries to acquire a lock
-			 * already held by an `older` process, we `wound` it,
-			 * i.e. we return -EDEADLK because there is a potential
-			 * risk for a deadlock. The `younger` process then
-			 * should give up all it's resources and try again to
-			 * acquire the lock in question, this time in a
-			 * blocking manner.
-			 */
-			else {
-				err = -EDEADLK;
-				break;
-			}
-		}
-
-	} /* for */
-	spin_unlock(&lock->lock);
-	return err;
-}
-
-static inline int
-ww_mutex_lock(struct ww_mutex *lock, struct ww_acquire_ctx *ctx) {
-	return __ww_mutex_lock(lock, ctx, false, false);
-}
-	
-static inline void
-ww_mutex_lock_slow(struct ww_mutex *lock, struct ww_acquire_ctx *ctx) {
-	(void)__ww_mutex_lock(lock, ctx, true, false);
-}
-
-static inline int
-ww_mutex_lock_interruptible(struct ww_mutex *lock, struct ww_acquire_ctx *ctx) {
-	return __ww_mutex_lock(lock, ctx, false, true);
-}
-	
-static inline int __must_check
-ww_mutex_lock_slow_interruptible(struct ww_mutex *lock, struct ww_acquire_ctx *ctx) {
-	return __ww_mutex_lock(lock, ctx, true, true);
-}
-
-static inline void
-ww_mutex_unlock(struct ww_mutex *lock) {
-	spin_lock(&lock->lock);
-	KKASSERT(lock->owner == curthread);
-	KKASSERT(lock->acquired > 0);
-
-	--lock->acquired;
-	if (lock->acquired > 0) {
-		spin_unlock(&lock->lock);
-		return;
-	}
-
-	KKASSERT(lock->acquired == 0);
-	lock->ctx = NULL;
-	lock->owner = NULL;
-	spin_unlock(&lock->lock);
-	wakeup(lock);
-}
-
-static inline void
-ww_mutex_destroy(struct ww_mutex *lock) {
-	KKASSERT(lock->acquired == 0);
-	KKASSERT(lock->ctx == NULL);
-	KKASSERT(lock->owner == NULL);
-	spin_uninit(&lock->lock);
+ww_mutex_trylock(struct ww_mutex *ww)
+{
+	return (lockmgr(&ww->base, LK_EXCLUSIVE|LK_NOWAIT) == 0);
 }
 
 #endif	/* _LINUX_WW_MUTEX_H_ */

@@ -63,6 +63,7 @@ SRCS	= \
 	linux_sort.c \
 	linux_vmalloc.c \
 	linux_workqueue.c \
+	linux_wwmutex.c \
 	ttm_lock.c \
 	ttm_object.c \
 	ttm_tt.c \
