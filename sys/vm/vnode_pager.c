@@ -227,9 +227,7 @@ vnode_pager_dealloc(vm_object_t object)
 }
 
 /*
- * Return whether the vnode pager has the requested page.  Return the
- * number of disk-contiguous pages before and after the requested page,
- * not including the requested page.
+ * Return whether the vnode pager has the requested page.
  */
 static boolean_t
 vnode_pager_haspage(vm_object_t object, vm_pindex_t pindex)
@@ -261,7 +259,7 @@ vnode_pager_haspage(vm_object_t object, vm_pindex_t pindex)
 	voff = loffset % bsize;
 
 	/*
-	 * XXX
+	 * XXX (obsolete - before and after pointers are now NULL)
 	 *
 	 * BMAP returns byte counts before and after, where after
 	 * is inclusive of the base page.  haspage must return page
