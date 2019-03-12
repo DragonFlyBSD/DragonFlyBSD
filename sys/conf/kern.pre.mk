@@ -58,7 +58,9 @@ INCLUDES+= -I${.OBJDIR} -I"$S/${OSACPI_MI_DIR}" -I"$S/${ACPICA_DIR}/include"
 INCLUDES+= -I$S/dev/netif/ath/ath_hal -I$S/contrib/dev/ath/ath_hal
 
 # Same thing for drm includes
-INCLUDES+= -I$S/dev/drm/include -I$S/dev/drm/include/uapi
+INCLUDES+= -I$S/dev/drm/include
+INCLUDES+= -I$S/dev/drm/include/drm
+INCLUDES+= -I$S/dev/drm/include/uapi
 
 COPTS=	${INCLUDES} ${IDENT} -D_KERNEL -DHAVE_KERNEL_OPTION_HEADERS -include opt_global.h
 CFLAGS=	${COPTFLAGS} ${KCFLAGS} ${CWARNFLAGS} ${DEBUG} ${COPTS}

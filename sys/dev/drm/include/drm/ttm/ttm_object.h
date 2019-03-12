@@ -27,7 +27,6 @@
 /*
  * Authors: Thomas Hellstrom <thellstrom-at-vmware-dot-com>
  */
-/* $FreeBSD: head/sys/dev/drm2/ttm/ttm_object.h 247835 2013-03-05 09:49:34Z kib $ */
 /** @file ttm_object.h
  *
  * Base- and reference object implementation for the various
@@ -38,9 +37,11 @@
 #ifndef _TTM_OBJECT_H_
 #define _TTM_OBJECT_H_
 
+#include <linux/list.h>
 #include <drm/drm_hashtab.h>
-#include <drm/ttm/ttm_memory.h>
 #include <linux/kref.h>
+#include <linux/rcupdate.h>
+#include <ttm/ttm_memory.h>
 
 /**
  * enum ttm_ref_type
@@ -120,7 +121,7 @@ struct ttm_object_device;
  */
 
 struct ttm_base_object {
-	/* struct rcu_head rhead;XXXKIB */
+	struct rcu_head rhead;
 	struct drm_hash_item hash;
 	enum ttm_object_type object_type;
 	bool shareable;

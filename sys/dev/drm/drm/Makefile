@@ -83,6 +83,7 @@ SRCS   += device_if.h bus_if.h pci_if.h device_if.h iicbus_if.h opt_drm.h \
 	  opt_vm.h
 
 KCFLAGS+= -I${SYSDIR}/dev/drm/include
+KCFLAGS+= -I${SYSDIR}/dev/drm/include/drm
 KCFLAGS+= -I${SYSDIR}/dev/drm/include/uapi
 KCFLAGS+= -include ${SYSDIR}/dev/drm/kconfig.h
 
