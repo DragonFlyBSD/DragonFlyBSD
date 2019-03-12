@@ -372,7 +372,8 @@ typedef struct elantechaction {
 /* driver control block */
 struct psm_softc {		/* Driver status information */
 	int		unit;
-	struct kqinfo rkq;         /* Processes with registered kevents */
+	struct kqinfo	rkq;		/* Processes with registered kevents */
+	struct lock	lock;		/* Control lock */
 	u_char		state;		/* Mouse driver state */
 	int		config;		/* driver configuration flags */
 	int		flags;		/* other flags */
@@ -1144,7 +1145,7 @@ reinitialize(struct psm_softc *sc, int doinit)
 	if (!kbdc_lock(sc->kbdc, TRUE))
 		return (EIO);
 
-	crit_enter();
+	lockmgr(&sc->lock, LK_EXCLUSIVE);
 
 	/* block our watchdog timer */
 	sc->watchdog = FALSE;
@@ -1163,7 +1164,7 @@ reinitialize(struct psm_softc *sc, int doinit)
 		    KBD_AUX_CONTROL_BITS,
 		    KBD_ENABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
 		/* CONTROLLER ERROR */
-		crit_exit();
+		lockmgr(&sc->lock, LK_RELEASE);
 		kbdc_lock(sc->kbdc, FALSE);
 		log(LOG_ERR,
 		    "psm%d: unable to set the command byte (reinitialize).\n",
@@ -1198,7 +1199,7 @@ reinitialize(struct psm_softc *sc, int doinit)
 			err = ENXIO;
 		}
 	}
-	crit_exit();
+	lockmgr(&sc->lock, LK_RELEASE);
 
 	/* restore the driver state */
 	if ((sc->state & PSM_OPEN) && (err == 0)) {
@@ -1607,8 +1608,9 @@ psmattach(device_t dev)
 
 	/* Setup initial state */
 	sc->state = PSM_VALID;
-	callout_init(&sc->callout);
-	callout_init(&sc->softcallout);
+	callout_init_lk(&sc->callout, &sc->lock);
+	callout_init_lk(&sc->softcallout, &sc->lock);
+	lockinit(&sc->lock, "psmlk", 0, LK_CANRECURSE);
 
 	/* Setup our interrupt handler */
 	rid = KBDC_RID_AUX;
@@ -1743,7 +1745,7 @@ psmopen(struct dev_open_args *ap)
 		return (EIO);
 
 	/* save the current controller command byte */
-	crit_enter();
+	lockmgr(&sc->lock, LK_EXCLUSIVE);
 	command_byte = get_controller_command_byte(sc->kbdc);
 
 	/* enable the aux port and temporalily disable the keyboard */
@@ -1753,7 +1755,7 @@ psmopen(struct dev_open_args *ap)
 		KBD_ENABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
 		/* CONTROLLER ERROR; do you know how to get out of this? */
 		kbdc_lock(sc->kbdc, FALSE);
-		crit_exit();
+		lockmgr(&sc->lock, LK_RELEASE);
 		log(LOG_ERR,
 		    "psm%d: unable to set the command byte (psmopen).\n",
 		    sc->unit);
@@ -1766,7 +1768,7 @@ psmopen(struct dev_open_args *ap)
 	 * but timeout routines will be blocked by the poll flag set
 	 * via `kbdc_lock()'
 	 */
-	crit_exit();
+	lockmgr(&sc->lock, LK_RELEASE);
 
 	/* enable the mouse device */
 	err = doopen(sc, command_byte);
@@ -1792,11 +1794,11 @@ psmclose(struct dev_close_args *ap)
 		return (EIO);
 
 	/* save the current controller command byte */
-	crit_enter();
+	lockmgr(&sc->lock, LK_EXCLUSIVE);
 	command_byte = get_controller_command_byte(sc->kbdc);
 	if (command_byte == -1) {
 		kbdc_lock(sc->kbdc, FALSE);
-		crit_exit();
+		lockmgr(&sc->lock, LK_RELEASE);
 		return (EIO);
 	}
 
@@ -1814,7 +1816,7 @@ psmclose(struct dev_close_args *ap)
 		 * so long as the mouse will accept the DISABLE command.
 		 */
 	}
-	crit_exit();
+	lockmgr(&sc->lock, LK_RELEASE);
 
 	/* stop the watchdog timer */
 	callout_stop(&sc->callout);
@@ -1942,29 +1944,29 @@ psmread(struct dev_read_args *ap)
 		return (EIO);
 
 	/* block until mouse activity occurred */
-	crit_enter();
+	lockmgr(&sc->lock, LK_EXCLUSIVE);
 	while (sc->queue.count <= 0) {
 		if (ap->a_ioflag & IO_NDELAY) {
-			crit_exit();
+			lockmgr(&sc->lock, LK_RELEASE);
 			return (EWOULDBLOCK);
 		}
 		sc->state |= PSM_ASLP;
-		error = tsleep(sc, PCATCH, "psmrea", 0);
+		error = lksleep(sc, &sc->lock, PCATCH, "psmrea", 0);
 		sc->state &= ~PSM_ASLP;
 		if (error) {
-			crit_exit();
+			lockmgr(&sc->lock, LK_RELEASE);
 			return (error);
 		} else if ((sc->state & PSM_VALID) == 0) {
 			/* the device disappeared! */
-			crit_exit();
+			lockmgr(&sc->lock, LK_RELEASE);
 			return (EIO);
 		}
 	}
-	crit_exit();
+	lockmgr(&sc->lock, LK_RELEASE);
 
 	/* copy data to the user land */
 	while ((sc->queue.count > 0) && (uio->uio_resid > 0)) {
-		crit_enter();
+		lockmgr(&sc->lock, LK_EXCLUSIVE);
 		l = imin(sc->queue.count, uio->uio_resid);
 		if (l > sizeof(buf))
 			l = sizeof(buf);
@@ -1978,7 +1980,7 @@ psmread(struct dev_read_args *ap)
 			bcopy(&sc->queue.buf[sc->queue.head], &buf[0], l);
 		sc->queue.count -= l;
 		sc->queue.head = (sc->queue.head + l) % sizeof(sc->queue.buf);
-		crit_exit();
+		lockmgr(&sc->lock, LK_RELEASE);
 		error = uiomove(buf, l, uio);
 		if (error)
 			break;
@@ -1994,14 +1996,14 @@ block_mouse_data(struct psm_softc *sc, int *c)
 	if (!kbdc_lock(sc->kbdc, TRUE))
 		return (EIO);
 
-	crit_enter();
+	lockmgr(&sc->lock, LK_EXCLUSIVE);
 	*c = get_controller_command_byte(sc->kbdc);
 	if ((*c == -1) ||
 	    !set_controller_command_byte(sc->kbdc,
 		    KBD_AUX_CONTROL_BITS,
 		    KBD_ENABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
 		/* this is CONTROLLER ERROR */
-		crit_exit();
+		lockmgr(&sc->lock, LK_RELEASE);
 		kbdc_lock(sc->kbdc, FALSE);
 		return (EIO);
 	}
@@ -2015,13 +2017,13 @@ block_mouse_data(struct psm_softc *sc, int *c)
 	 * output buffer; throw it away. Note that the second argument
 	 * to `empty_aux_buffer()' is zero, so that the call will just
 	 * flush the internal queue.
-	 * `psmintr()' will be invoked after `crit_exit()' if an interrupt is
-	 * pending; it will see no data and returns immediately.
+	 * `psmintr()' will be invoked after the lock is released if an
+	 * interrupt is pending; it will see no data and returns immediately.
 	 */
 	empty_aux_buffer(sc->kbdc, 0);		/* flush the queue */
 	read_aux_data_no_wait(sc->kbdc);	/* throw away data if any */
 	flushpackets(sc);
-	crit_exit();
+	lockmgr(&sc->lock, LK_RELEASE);
 
 	return (0);
 }
@@ -2079,7 +2081,6 @@ unblock_mouse_data(struct psm_softc *sc, int c)
 static int
 psmioctl(struct dev_ioctl_args *ap)
 {
-
 	cdev_t dev = ap->a_head.a_dev;
 	caddr_t addr=  ap->a_data;
 	struct psm_softc *sc = dev->si_drv1;
@@ -2097,33 +2098,33 @@ psmioctl(struct dev_ioctl_args *ap)
 	switch (ap->a_cmd) {
 
 	case OLD_MOUSE_GETHWINFO:
-		crit_enter();
+		lockmgr(&sc->lock, LK_EXCLUSIVE);
 		((old_mousehw_t *)addr)->buttons = sc->hw.buttons;
 		((old_mousehw_t *)addr)->iftype = sc->hw.iftype;
 		((old_mousehw_t *)addr)->type = sc->hw.type;
 		((old_mousehw_t *)addr)->hwid = sc->hw.hwid & 0x00ff;
-		crit_exit();
+		lockmgr(&sc->lock, LK_RELEASE);
 		break;
 
 	case MOUSE_GETHWINFO:
-		crit_enter();
+		lockmgr(&sc->lock, LK_EXCLUSIVE);
 		*(mousehw_t *)addr = sc->hw;
 		if (sc->mode.level == PSM_LEVEL_BASE)
 			((mousehw_t *)addr)->model = MOUSE_MODEL_GENERIC;
-		crit_exit();
+		lockmgr(&sc->lock, LK_RELEASE);
 		break;
 
 	case MOUSE_SYN_GETHWINFO:
-		crit_enter();
+		lockmgr(&sc->lock, LK_EXCLUSIVE);
 		if (sc->synhw.infoMajor >= 4)
 			*(synapticshw_t *)addr = sc->synhw;
 		else
 			error = EINVAL;
-		crit_exit();
+		lockmgr(&sc->lock, LK_RELEASE);
 		break;
 
 	case OLD_MOUSE_GETMODE:
-		crit_enter();
+		lockmgr(&sc->lock, LK_EXCLUSIVE);
 		switch (sc->mode.level) {
 		case PSM_LEVEL_BASE:
 			((old_mousemode_t *)addr)->protocol = MOUSE_PROTO_PS2;
@@ -2136,11 +2137,11 @@ psmioctl(struct dev_ioctl_args *ap)
 		((old_mousemode_t *)addr)->rate = sc->mode.rate;
 		((old_mousemode_t *)addr)->resolution = sc->mode.resolution;
 		((old_mousemode_t *)addr)->accelfactor = sc->mode.accelfactor;
-		crit_exit();
+		lockmgr(&sc->lock, LK_RELEASE);
 		break;
 
 	case MOUSE_GETMODE:
-		crit_enter();
+		lockmgr(&sc->lock, LK_EXCLUSIVE);
 		*(mousemode_t *)addr = sc->mode;
 		if ((sc->flags & PSM_NEED_SYNCBITS) != 0) {
 			((mousemode_t *)addr)->syncmask[0] = 0;
@@ -2162,7 +2163,7 @@ psmioctl(struct dev_ioctl_args *ap)
 			((mousemode_t *)addr)->syncmask[1] = MOUSE_SYS_SYNC;
 			break;
 		}
-		crit_exit();
+		lockmgr(&sc->lock, LK_RELEASE);
 		break;
 
 	case OLD_MOUSE_SETMODE:
@@ -2242,12 +2243,12 @@ psmioctl(struct dev_ioctl_args *ap)
 		set_mouse_scaling(sc->kbdc, 1);
 		get_mouse_status(sc->kbdc, stat, 0, 3);
 
-		crit_enter();
+		lockmgr(&sc->lock, LK_EXCLUSIVE);
 		sc->mode.rate = mode.rate;
 		sc->mode.resolution = mode.resolution;
 		sc->mode.accelfactor = mode.accelfactor;
 		sc->mode.level = mode.level;
-		crit_exit();
+		lockmgr(&sc->lock, LK_RELEASE);
 
 		unblock_mouse_data(sc, command_byte);
 		break;
@@ -2264,7 +2265,7 @@ psmioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case MOUSE_GETSTATUS:
-		crit_enter();
+		lockmgr(&sc->lock, LK_EXCLUSIVE);
 		status = sc->status;
 		sc->status.flags = 0;
 		sc->status.obutton = sc->status.button;
@@ -2272,7 +2273,7 @@ psmioctl(struct dev_ioctl_args *ap)
 		sc->status.dx = 0;
 		sc->status.dy = 0;
 		sc->status.dz = 0;
-		crit_exit();
+		lockmgr(&sc->lock, LK_RELEASE);
 		*(mousestatus_t *)addr = status;
 		break;
 
@@ -2280,11 +2281,11 @@ psmioctl(struct dev_ioctl_args *ap)
 	case MOUSE_GETVARS:
 		var = (mousevar_t *)addr;
 		bzero(var, sizeof(*var));
-		crit_enter();
+		lockmgr(&sc->lock, LK_EXCLUSIVE);
 		var->var[0] = MOUSE_VARS_PS2_SIG;
 		var->var[1] = sc->config;
 		var->var[2] = sc->flags;
-		crit_exit();
+		lockmgr(&sc->lock, LK_RELEASE);
 		break;
 
 	case MOUSE_SETVARS:
@@ -2404,14 +2405,14 @@ psmtimeout(void *arg)
 	struct psm_softc *sc;
 
 	sc = (struct psm_softc *)arg;
-	crit_enter();
+	lockmgr(&sc->lock, LK_EXCLUSIVE);
 	if (sc->watchdog && kbdc_lock(sc->kbdc, TRUE)) {
 		VLOG(4, (LOG_DEBUG, "psm%d: lost interrupt?\n", sc->unit));
 		psmintr(sc);
 		kbdc_lock(sc->kbdc, FALSE);
 	}
 	sc->watchdog = TRUE;
-	crit_exit();
+	lockmgr(&sc->lock, LK_RELEASE);
 	callout_reset(&sc->callout, hz, psmtimeout, (void *)(uintptr_t)sc);
 }
 
@@ -4149,7 +4150,7 @@ psmsoftintr(void *arg)
 
 	getmicrouptime(&sc->lastsoftintr);
 
-	crit_enter();
+	lockmgr(&sc->lock, LK_EXCLUSIVE);
 
 	do {
 		pb = &sc->pqueue[sc->pqueue_start];
@@ -4400,7 +4401,7 @@ next:
 		VLOG(2, (LOG_DEBUG, "softintr: callout set: %d ticks\n",
 		    tvtohz_high(&sc->idletimeout)));
 	}
-	crit_exit();
+	lockmgr(&sc->lock, LK_RELEASE);
 }
 
 static struct filterops psmfiltops =
@@ -4448,10 +4449,10 @@ psmfilter(struct knote *kn, long hint)
 	struct psm_softc *sc = (struct psm_softc *)kn->kn_hook;
 	int ready = 0;
 
-	crit_enter();
+	lockmgr(&sc->lock, LK_EXCLUSIVE);
 	if (sc->queue.count > 0)
 		ready = 1;
-	crit_exit();
+	lockmgr(&sc->lock, LK_RELEASE);
 
 	return (ready);
 }
