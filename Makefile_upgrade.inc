@@ -3500,6 +3500,7 @@ TO_REMOVE+=/usr/share/man/man8/mount_psshfs.8.gz
 TO_REMOVE+=/usr/share/man/man9/putter.9.gz
 TO_REMOVE+=/usr/include/sys/semaphore.h
 TO_REMOVE+=/usr/share/man/man2/brk.2.gz
+TO_REMOVE+=/usr/share/man/man1/ld-elf.so.1.1.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
