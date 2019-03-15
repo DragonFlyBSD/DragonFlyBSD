@@ -118,6 +118,7 @@ SUBDIR=	alias \
 	mail \
 	mandoc \
 	mesg \
+	ministat \
 	mkcsmapper \
 	mkdep \
 	mkesdb \
