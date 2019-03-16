@@ -33,8 +33,15 @@
 #include <linux/spinlock.h>
 #include <asm/current.h>
 
-typedef struct {
-} wait_queue_t;
+typedef struct __wait_queue wait_queue_t;
+
+typedef int (*wait_queue_func_t)(wait_queue_t *wait, unsigned mode, int flags, void *key);
+
+struct __wait_queue {
+	unsigned int flags;
+	void *private;
+	wait_queue_func_t func;
+};
 
 typedef struct {
 	struct lock	lock;
@@ -48,6 +55,7 @@ init_waitqueue_head(wait_queue_head_t *eq)
 
 #define wake_up(eq)			wakeup_one(eq)
 #define wake_up_all(eq)			wakeup(eq)
+#define wake_up_all_locked(eq)		wakeup(eq)
 #define wake_up_interruptible(eq)	wakeup_one(eq)
 #define wake_up_interruptible_all(eq)	wakeup(eq)
 
@@ -152,9 +160,19 @@ add_wait_queue(wait_queue_head_t *q, wait_queue_t *wait)
 {
 }
 
+static inline void
+__add_wait_queue(wait_queue_head_t *head, wait_queue_t *new)
+{
+}
+
 #define DECLARE_WAIT_QUEUE_HEAD(name)					\
 	wait_queue_head_t name = {					\
 		.lock = LOCK_INITIALIZER("name", 0, LK_CANRECURSE)	\
 	}
+
+static inline void
+__remove_wait_queue(wait_queue_head_t *head, wait_queue_t *old)
+{
+}
 
 #endif	/* _LINUX_WAIT_H_ */
