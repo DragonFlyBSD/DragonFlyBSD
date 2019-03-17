@@ -2,7 +2,7 @@
 # $FreeBSD: src/share/misc/Makefile,v 1.17.2.4 2002/08/25 14:31:25 schweikh Exp $
 
 FILES=	ascii birthtoken bsd-family-tree eqnchar flowers gdbinit init.ee \
-	iso639 latin1 man.template mdoc.template operator pci_vendors \
+	iso639 latin1 mdoc.template operator pci_vendors \
 	scsi_modes usb_hid_usages dragonfly.el dragonfly.vim indent.pro
 NOOBJ=	noobj
 FILESDIR=	${BINDIR}/misc
