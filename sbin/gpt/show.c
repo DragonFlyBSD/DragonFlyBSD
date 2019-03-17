@@ -165,7 +165,7 @@ show(int fd __unused)
 				printf(" (active)");
 			break;
 		default:
-			printf("Unkown %#x", m->map_type);
+			printf("Unknown %#x", m->map_type);
 			break;
 		}
 		putchar('\n');

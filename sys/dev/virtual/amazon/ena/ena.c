@@ -3742,7 +3742,7 @@ ena_attach(device_t pdev)
 	}
 
 	/* initialize rings basic information */
-	device_printf(pdev, "initalize %d io queues\n", io_queue_num);
+	device_printf(pdev, "initialize %d io queues\n", io_queue_num);
 	ena_init_io_rings(adapter);
 
 	/* setup network interface */
