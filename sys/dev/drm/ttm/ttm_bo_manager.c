@@ -95,8 +95,10 @@ static void ttm_bo_man_put_node(struct ttm_mem_type_manager *man,
 
 	if (mem->mm_node) {
 		lockmgr(&rman->lock, LK_EXCLUSIVE);
-		drm_mm_put_block(mem->mm_node);
+		drm_mm_remove_node(mem->mm_node);
 		lockmgr(&rman->lock, LK_RELEASE);
+
+		kfree(mem->mm_node);
 		mem->mm_node = NULL;
 	}
 }
