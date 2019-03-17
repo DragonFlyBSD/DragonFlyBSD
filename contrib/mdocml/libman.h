@@ -1,77 +1,42 @@
-/*	$Id: libman.h,v 1.63 2014/08/01 21:24:17 schwarze Exp $ */
+/*	$Id: libman.h,v 1.86 2018/12/31 10:04:39 schwarze Exp $ */
 /*
  * Copyright (c) 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
+ * Copyright (c) 2014, 2015, 2018 Ingo Schwarze <schwarze@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHORS DISCLAIM ALL WARRANTIES
  * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR
  * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef LIBMAN_H
-#define LIBMAN_H
 
-enum	man_next {
-	MAN_NEXT_SIBLING = 0,
-	MAN_NEXT_CHILD
-};
+struct	roff_node;
+struct	roff_man;
 
-struct	man {
-	struct mparse	*parse; /* parse pointer */
-	int		 quick; /* abort parse early */
-	int		 flags; /* parse flags */
-#define	MAN_ELINE	(1 << 1) /* Next-line element scope. */
-#define	MAN_BLINE	(1 << 2) /* Next-line block scope. */
-#define	MAN_LITERAL	(1 << 4) /* Literal input. */
-#define	MAN_NEWLINE	(1 << 6) /* first macro/text in a line */
-	enum man_next	 next; /* where to put the next node */
-	struct man_node	*last; /* the last parsed node */
-	struct man_node	*first; /* the first parsed node */
-	struct man_meta	 meta; /* document meta-data */
-	struct roff	*roff;
-};
-
-#define	MACRO_PROT_ARGS	  struct man *man, \
-			  enum mant tok, \
+#define	MACRO_PROT_ARGS	  struct roff_man *man, \
+			  enum roff_tok tok, \
 			  int line, \
 			  int ppos, \
 			  int *pos, \
 			  char *buf
 
 struct	man_macro {
-	int		(*fp)(MACRO_PROT_ARGS);
+	void		(*fp)(MACRO_PROT_ARGS);
 	int		  flags;
-#define	MAN_SCOPED	 (1 << 0)
-#define	MAN_EXPLICIT	 (1 << 1)	/* See blk_imp(). */
-#define	MAN_FSCOPED	 (1 << 2)	/* See blk_imp(). */
-#define	MAN_NSCOPED	 (1 << 3)	/* See in_line_eoln(). */
-#define	MAN_NOCLOSE	 (1 << 4)	/* See blk_exp(). */
-#define	MAN_BSCOPE	 (1 << 5)	/* Break BLINE scope. */
+#define	MAN_BSCOPED	 (1 << 0)  /* Optional next-line block scope. */
+#define	MAN_ESCOPED	 (1 << 1)  /* Optional next-line element scope. */
+#define	MAN_NSCOPED	 (1 << 2)  /* Allowed in next-line element scope. */
+#define	MAN_XSCOPE	 (1 << 3)  /* Exit next-line block scope. */
+#define	MAN_JOIN	 (1 << 4)  /* Join arguments together. */
 };
 
-extern	const struct man_macro *const man_macros;
+const struct man_macro *man_macro(enum roff_tok);
 
-__BEGIN_DECLS
-
-int		  man_word_alloc(struct man *, int, int, const char *);
-int		  man_block_alloc(struct man *, int, int, enum mant);
-int		  man_head_alloc(struct man *, int, int, enum mant);
-int		  man_tail_alloc(struct man *, int, int, enum mant);
-int		  man_body_alloc(struct man *, int, int, enum mant);
-int		  man_elem_alloc(struct man *, int, int, enum mant);
-void		  man_node_delete(struct man *, struct man_node *);
-void		  man_hash_init(void);
-enum mant	  man_hash_find(const char *);
-int		  man_macroend(struct man *);
-int		  man_valid_post(struct man *);
-int		  man_unscope(struct man *, const struct man_node *);
-
-__END_DECLS
-
-#endif /*!LIBMAN_H*/
+void		  man_descope(struct roff_man *, int, int, char *);
+void		  man_unscope(struct roff_man *, const struct roff_node *);

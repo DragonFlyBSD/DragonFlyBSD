@@ -1,4 +1,4 @@
-/*	$Id: msec.in,v 1.6 2010/06/19 20:46:28 kristaps Exp $ */
+/*	$Id: msec.in,v 1.8 2017/06/24 17:37:06 schwarze Exp $ */
 /*
  * Copyright (c) 2009 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -25,16 +25,9 @@
 LINE("1",		"DragonFly General Commands Manual")
 LINE("2",		"DragonFly System Calls Manual")
 LINE("3",		"DragonFly Library Functions Manual")
-LINE("3p",		"DragonFly Perl Library Functions Manual")
 LINE("4",		"DragonFly Kernel Interfaces Manual")
 LINE("5",		"DragonFly File Formats Manual")
 LINE("6",		"DragonFly Games Manual")
 LINE("7",		"DragonFly Miscellaneous Information Manual")
 LINE("8",		"DragonFly System Manager\'s Manual")
 LINE("9",		"DragonFly Kernel Developer\'s Manual")
-LINE("X11",		"X11 Developer\'s Manual")
-LINE("X11R6",		"X11 Developer\'s Manual")
-LINE("unass",		"Unassociated")
-LINE("local",		"Local")
-LINE("draft",		"Draft")
-LINE("paper",		"Paper")

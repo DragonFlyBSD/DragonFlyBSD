@@ -1,7 +1,7 @@
-/*	$Id: tbl.c,v 1.29 2014/04/20 16:46:05 schwarze Exp $ */
+/*	$Id: tbl.c,v 1.46 2018/12/14 06:33:14 schwarze Exp $ */
 /*
  * Copyright (c) 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
- * Copyright (c) 2011 Ingo Schwarze <schwarze@openbsd.org>
+ * Copyright (c) 2011, 2015 Ingo Schwarze <schwarze@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,9 +15,9 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
+
+#include <sys/types.h>
 
 #include <assert.h>
 #include <stdio.h>
@@ -25,152 +25,159 @@
 #include <string.h>
 #include <time.h>
 
-#include "mandoc.h"
 #include "mandoc_aux.h"
+#include "mandoc.h"
+#include "tbl.h"
 #include "libmandoc.h"
-#include "libroff.h"
+#include "tbl_parse.h"
+#include "tbl_int.h"
 
 
-enum rofferr
-tbl_read(struct tbl_node *tbl, int ln, const char *p, int offs)
+void
+tbl_read(struct tbl_node *tbl, int ln, const char *p, int pos)
 {
-	int		 len;
 	const char	*cp;
-
-	cp = &p[offs];
-	len = (int)strlen(cp);
+	int		 active;
 
 	/*
-	 * If we're in the options section and we don't have a
-	 * terminating semicolon, assume we've moved directly into the
-	 * layout section.  No need to report a warning: this is,
-	 * apparently, standard behaviour.
+	 * In the options section, proceed to the layout section
+	 * after a semicolon, or right away if there is no semicolon.
+	 * Ignore semicolons in arguments.
 	 */
 
-	if (TBL_PART_OPTS == tbl->part && len)
-		if (';' != cp[len - 1])
-			tbl->part = TBL_PART_LAYOUT;
-
-	/* Now process each logical section of the table.  */
-
-	switch (tbl->part) {
-	case TBL_PART_OPTS:
-		return(tbl_option(tbl, ln, p) ? ROFF_IGN : ROFF_ERR);
-	case TBL_PART_LAYOUT:
-		return(tbl_layout(tbl, ln, p) ? ROFF_IGN : ROFF_ERR);
-	case TBL_PART_CDATA:
-		return(tbl_cdata(tbl, ln, p) ? ROFF_TBL : ROFF_IGN);
-	default:
-		break;
+	if (tbl->part == TBL_PART_OPTS) {
+		tbl->part = TBL_PART_LAYOUT;
+		active = 1;
+		for (cp = p + pos; *cp != '\0'; cp++) {
+			switch (*cp) {
+			case '(':
+				active = 0;
+				continue;
+			case ')':
+				active = 1;
+				continue;
+			case ';':
+				if (active)
+					break;
+				continue;
+			default:
+				continue;
+			}
+			break;
+		}
+		if (*cp == ';') {
+			tbl_option(tbl, ln, p, &pos);
+			if (p[pos] == '\0')
+				return;
+		}
 	}
 
-	/*
-	 * This only returns zero if the line is empty, so we ignore it
-	 * and continue on.
-	 */
-	return(tbl_data(tbl, ln, p) ? ROFF_TBL : ROFF_IGN);
+	/* Process the other section types.  */
+
+	switch (tbl->part) {
+	case TBL_PART_LAYOUT:
+		tbl_layout(tbl, ln, p, pos);
+		break;
+	case TBL_PART_CDATA:
+		tbl_cdata(tbl, ln, p, pos);
+		break;
+	default:
+		tbl_data(tbl, ln, p, pos);
+		break;
+	}
 }
 
 struct tbl_node *
-tbl_alloc(int pos, int line, struct mparse *parse)
+tbl_alloc(int pos, int line, struct tbl_node *last_tbl)
 {
 	struct tbl_node	*tbl;
 
-	tbl = mandoc_calloc(1, sizeof(struct tbl_node));
+	tbl = mandoc_calloc(1, sizeof(*tbl));
+	if (last_tbl != NULL)
+		last_tbl->next = tbl;
 	tbl->line = line;
 	tbl->pos = pos;
-	tbl->parse = parse;
 	tbl->part = TBL_PART_OPTS;
 	tbl->opts.tab = '\t';
-	tbl->opts.linesize = 12;
 	tbl->opts.decimal = '.';
-	return(tbl);
+	return tbl;
 }
 
 void
 tbl_free(struct tbl_node *tbl)
 {
+	struct tbl_node	*old_tbl;
 	struct tbl_row	*rp;
 	struct tbl_cell	*cp;
 	struct tbl_span	*sp;
 	struct tbl_dat	*dp;
-	struct tbl_head	*hp;
 
-	while (NULL != (rp = tbl->first_row)) {
-		tbl->first_row = rp->next;
-		while (rp->first) {
-			cp = rp->first;
-			rp->first = cp->next;
-			free(cp);
+	while (tbl != NULL) {
+		while ((rp = tbl->first_row) != NULL) {
+			tbl->first_row = rp->next;
+			while (rp->first != NULL) {
+				cp = rp->first;
+				rp->first = cp->next;
+				free(cp->wstr);
+				free(cp);
+			}
+			free(rp);
 		}
-		free(rp);
-	}
-
-	while (NULL != (sp = tbl->first_span)) {
-		tbl->first_span = sp->next;
-		while (sp->first) {
-			dp = sp->first;
-			sp->first = dp->next;
-			if (dp->string)
+		while ((sp = tbl->first_span) != NULL) {
+			tbl->first_span = sp->next;
+			while (sp->first != NULL) {
+				dp = sp->first;
+				sp->first = dp->next;
 				free(dp->string);
-			free(dp);
+				free(dp);
+			}
+			free(sp);
 		}
-		free(sp);
+		old_tbl = tbl;
+		tbl = tbl->next;
+		free(old_tbl);
 	}
-
-	while (NULL != (hp = tbl->first_head)) {
-		tbl->first_head = hp->next;
-		free(hp);
-	}
-
-	free(tbl);
 }
 
 void
 tbl_restart(int line, int pos, struct tbl_node *tbl)
 {
-	if (TBL_PART_CDATA == tbl->part)
-		mandoc_msg(MANDOCERR_TBLBLOCK, tbl->parse,
-		    tbl->line, tbl->pos, NULL);
+	if (tbl->part == TBL_PART_CDATA)
+		mandoc_msg(MANDOCERR_TBLDATA_BLK, line, pos, "T&");
 
 	tbl->part = TBL_PART_LAYOUT;
 	tbl->line = line;
 	tbl->pos = pos;
-
-	if (NULL == tbl->first_span || NULL == tbl->first_span->first)
-		mandoc_msg(MANDOCERR_TBLNODATA, tbl->parse,
-		    tbl->line, tbl->pos, NULL);
 }
 
-const struct tbl_span *
+struct tbl_span *
 tbl_span(struct tbl_node *tbl)
 {
 	struct tbl_span	 *span;
 
-	assert(tbl);
 	span = tbl->current_span ? tbl->current_span->next
 				 : tbl->first_span;
-	if (span)
+	if (span != NULL)
 		tbl->current_span = span;
-	return(span);
+	return span;
 }
 
-void
-tbl_end(struct tbl_node **tblp)
+int
+tbl_end(struct tbl_node *tbl, int still_open)
 {
-	struct tbl_node	*tbl;
+	struct tbl_span *sp;
 
-	tbl = *tblp;
-	*tblp = NULL;
+	if (still_open)
+		mandoc_msg(MANDOCERR_BLK_NOEND, tbl->line, tbl->pos, "TS");
+	else if (tbl->part == TBL_PART_CDATA)
+		mandoc_msg(MANDOCERR_TBLDATA_BLK, tbl->line, tbl->pos, "TE");
 
-	if (NULL == tbl->first_span || NULL == tbl->first_span->first)
-		mandoc_msg(MANDOCERR_TBLNODATA, tbl->parse,
-		    tbl->line, tbl->pos, NULL);
-
-	if (tbl->last_span)
-		tbl->last_span->flags |= TBL_SPAN_LAST;
-
-	if (TBL_PART_CDATA == tbl->part)
-		mandoc_msg(MANDOCERR_TBLBLOCK, tbl->parse,
-		    tbl->line, tbl->pos, NULL);
+	sp = tbl->first_span;
+	while (sp != NULL && sp->first == NULL)
+		sp = sp->next;
+	if (sp == NULL) {
+		mandoc_msg(MANDOCERR_TBLDATA_NONE, tbl->line, tbl->pos, NULL);
+		return 0;
+	}
+	return 1;
 }

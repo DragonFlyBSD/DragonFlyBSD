@@ -1,7 +1,7 @@
-/*	$Id: mansearch.h,v 1.15 2014/07/24 20:30:45 schwarze Exp $ */
+/*	$Id: mansearch.h,v 1.29 2018/11/22 12:01:46 schwarze Exp $ */
 /*
  * Copyright (c) 2012 Kristaps Dzonsons <kristaps@bsd.lv>
- * Copyright (c) 2013, 2014 Ingo Schwarze <schwarze@openbsd.org>
+ * Copyright (c) 2013, 2014, 2016, 2017 Ingo Schwarze <schwarze@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,10 +15,17 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef MANSEARCH_H
-#define MANSEARCH_H
 
 #define	MANDOC_DB	 "mandoc.db"
+#define	MANDOCDB_MAGIC	 0x3a7d0cdb
+#define	MANDOCDB_VERSION 1
+
+#define	MACRO_MAX	 36
+#define	KEY_arch	 0
+#define	KEY_sec		 1
+#define	KEY_Nm		 38
+#define	KEY_Nd		 39
+#define	KEY_MAX		 40
 
 #define	TYPE_arch	 0x0000000000000001ULL
 #define	TYPE_sec	 0x0000000000000002ULL
@@ -62,40 +69,49 @@
 #define	TYPE_Nd		 0x0000008000000000ULL
 
 #define	NAME_SYN	 0x0000004000000001ULL
-#define	NAME_FILE	 0x0000004000000002ULL
-#define	NAME_TITLE	 0x000000400000000cULL
-#define	NAME_FIRST	 0x0000004000000008ULL
-#define	NAME_HEAD	 0x0000004000000010ULL
+#define	NAME_FIRST	 0x0000004000000004ULL
+#define	NAME_TITLE	 0x0000004000000006ULL
+#define	NAME_HEAD	 0x0000004000000008ULL
+#define	NAME_FILE	 0x0000004000000010ULL
 #define	NAME_MASK	 0x000000000000001fULL
 
-__BEGIN_DECLS
+enum	form {
+	FORM_SRC = 1,	/* Format is mdoc(7) or man(7). */
+	FORM_CAT,	/* Manual page is preformatted. */
+	FORM_NONE	/* Format is unknown. */
+};
+
+enum	argmode {
+	ARG_FILE = 0,
+	ARG_NAME,
+	ARG_WORD,
+	ARG_EXPR
+};
 
 struct	manpage {
 	char		*file; /* to be prefixed by manpath */
 	char		*names; /* a list of names with sections */
 	char		*output; /* user-defined additional output */
+	size_t		 ipath; /* number of the manpath */
 	int		 sec; /* section number, 10 means invalid */
-	int		 form; /* 0 == catpage */
+	enum form	 form;
 };
 
 struct	mansearch {
 	const char	*arch; /* architecture/NULL */
 	const char	*sec; /* mansection/NULL */
-	uint64_t	 deftype; /* type if no key  */
-	int		 flags;
-#define	MANSEARCH_WHATIS 0x01 /* whatis(1) mode: whole words, no keys */
-#define	MANSEARCH_MAN    0x02 /* man(1) mode: string equality, no keys */
+	const char	*outkey; /* show content of this macro */
+	enum argmode	 argmode; /* interpretation of arguments */
+	int		 firstmatch; /* first matching database only */
 };
 
-int	mansearch_setup(int);
+
+struct	manpaths;
+
 int	mansearch(const struct mansearch *cfg, /* options */
 		const struct manpaths *paths, /* manpaths */
 		int argc, /* size of argv */
 		char *argv[],  /* search terms */
-		const char *outkey, /* name of additional output key */
 		struct manpage **res, /* results */
 		size_t *ressz); /* results returned */
-
-__END_DECLS
-
-#endif /*!MANSEARCH_H*/
+void	mansearch_free(struct manpage *, size_t);
