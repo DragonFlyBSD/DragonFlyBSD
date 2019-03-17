@@ -1,7 +1,7 @@
-/*	$Id: tbl_layout.c,v 1.26 2014/04/20 16:46:05 schwarze Exp $ */
+/*	$Id: tbl_layout.c,v 1.48 2018/12/14 05:18:03 schwarze Exp $ */
 /*
  * Copyright (c) 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
- * Copyright (c) 2012, 2014 Ingo Schwarze <schwarze@openbsd.org>
+ * Copyright (c) 2012, 2014, 2015, 2017 Ingo Schwarze <schwarze@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,34 +15,29 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
+
+#include <sys/types.h>
 
 #include <ctype.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
-#include "mandoc.h"
 #include "mandoc_aux.h"
+#include "mandoc.h"
+#include "tbl.h"
 #include "libmandoc.h"
-#include "libroff.h"
+#include "tbl_int.h"
 
 struct	tbl_phrase {
 	char		 name;
 	enum tbl_cellt	 key;
 };
 
-/*
- * FIXME: we can make this parse a lot nicer by, when an error is
- * encountered in a layout key, bailing to the next key (i.e. to the
- * next whitespace then continuing).
- */
-
-#define	KEYS_MAX	 11
-
-static	const struct tbl_phrase keys[KEYS_MAX] = {
+static	const struct tbl_phrase keys[] = {
 	{ 'c',		 TBL_CELL_CENTRE },
 	{ 'r',		 TBL_CELL_RIGHT },
 	{ 'l',		 TBL_CELL_LEFT },
@@ -55,58 +50,31 @@ static	const struct tbl_phrase keys[KEYS_MAX] = {
 	{ '=',		 TBL_CELL_DHORIZ }
 };
 
-static	int		 mods(struct tbl_node *, struct tbl_cell *,
+#define KEYS_MAX ((int)(sizeof(keys)/sizeof(keys[0])))
+
+static	void		 mods(struct tbl_node *, struct tbl_cell *,
 				int, const char *, int *);
-static	int		 cell(struct tbl_node *, struct tbl_row *,
+static	void		 cell(struct tbl_node *, struct tbl_row *,
 				int, const char *, int *);
-static	void		 row(struct tbl_node *, int, const char *, int *);
 static	struct tbl_cell *cell_alloc(struct tbl_node *, struct tbl_row *,
-				enum tbl_cellt, int vert);
+				enum tbl_cellt);
 
 
-static int
+static void
 mods(struct tbl_node *tbl, struct tbl_cell *cp,
 		int ln, const char *p, int *pos)
 {
-	char		 buf[5];
-	int		 i;
-
-	/* Not all types accept modifiers. */
-
-	switch (cp->pos) {
-	case TBL_CELL_DOWN:
-		/* FALLTHROUGH */
-	case TBL_CELL_HORIZ:
-		/* FALLTHROUGH */
-	case TBL_CELL_DHORIZ:
-		return(1);
-	default:
-		break;
-	}
+	char		*endptr;
+	size_t		 sz;
 
 mod:
-	/*
-	 * XXX: since, at least for now, modifiers are non-conflicting
-	 * (are separable by value, regardless of position), we let
-	 * modifiers come in any order.  The existing tbl doesn't let
-	 * this happen.
-	 */
-	switch (p[*pos]) {
-	case '\0':
-		/* FALLTHROUGH */
-	case ' ':
-		/* FALLTHROUGH */
-	case '\t':
-		/* FALLTHROUGH */
-	case ',':
-		/* FALLTHROUGH */
-	case '.':
-		/* FALLTHROUGH */
-	case '|':
-		return(1);
-	default:
-		break;
-	}
+	while (p[*pos] == ' ' || p[*pos] == '\t')
+		(*pos)++;
+
+	/* Row delimiters and cell specifiers end modifier lists. */
+
+	if (strchr(".,-=^_ACLNRSaclnrs", p[*pos]) != NULL)
+		return;
 
 	/* Throw away parenthesised expression. */
 
@@ -118,115 +86,147 @@ mod:
 			(*pos)++;
 			goto mod;
 		}
-		mandoc_msg(MANDOCERR_TBLLAYOUT, tbl->parse,
-		    ln, *pos, NULL);
-		return(0);
+		mandoc_msg(MANDOCERR_TBLLAYOUT_PAR, ln, *pos, NULL);
+		return;
 	}
 
 	/* Parse numerical spacing from modifier string. */
 
 	if (isdigit((unsigned char)p[*pos])) {
-		for (i = 0; i < 4; i++) {
-			if ( ! isdigit((unsigned char)p[*pos + i]))
-				break;
-			buf[i] = p[*pos + i];
-		}
-		buf[i] = '\0';
-
-		/* No greater than 4 digits. */
-
-		if (4 == i) {
-			mandoc_msg(MANDOCERR_TBLLAYOUT,
-			    tbl->parse, ln, *pos, NULL);
-			return(0);
-		}
-
-		*pos += i;
-		cp->spacing = (size_t)atoi(buf);
-
+		cp->spacing = strtoull(p + *pos, &endptr, 10);
+		*pos = endptr - p;
 		goto mod;
-		/* NOTREACHED */
 	}
 
-	/* TODO: GNU has many more extensions. */
-
 	switch (tolower((unsigned char)p[(*pos)++])) {
-	case 'z':
-		cp->flags |= TBL_CELL_WIGN;
-		goto mod;
-	case 'u':
-		cp->flags |= TBL_CELL_UP;
-		goto mod;
-	case 'e':
-		cp->flags |= TBL_CELL_EQUAL;
-		goto mod;
-	case 't':
-		cp->flags |= TBL_CELL_TALIGN;
+	case 'b':
+		cp->flags |= TBL_CELL_BOLD;
 		goto mod;
 	case 'd':
 		cp->flags |= TBL_CELL_BALIGN;
 		goto mod;
-	case 'w':  /* XXX for now, ignore minimal column width */
+	case 'e':
+		cp->flags |= TBL_CELL_EQUAL;
 		goto mod;
 	case 'f':
 		break;
-	case 'r':
-		/* FALLTHROUGH */
-	case 'b':
-		/* FALLTHROUGH */
-	case 'i':
-		(*pos)--;
-		break;
-	default:
-		mandoc_msg(MANDOCERR_TBLLAYOUT, tbl->parse,
-		    ln, *pos - 1, NULL);
-		return(0);
-	}
-
-	switch (tolower((unsigned char)p[(*pos)++])) {
-	case '3':
-		/* FALLTHROUGH */
-	case 'b':
-		cp->flags |= TBL_CELL_BOLD;
-		goto mod;
-	case '2':
-		/* FALLTHROUGH */
 	case 'i':
 		cp->flags |= TBL_CELL_ITALIC;
 		goto mod;
-	case '1':
-		/* FALLTHROUGH */
-	case 'r':
+	case 'm':
+		mandoc_msg(MANDOCERR_TBLLAYOUT_MOD, ln, *pos, "m");
+		goto mod;
+	case 'p':
+	case 'v':
+		if (p[*pos] == '-' || p[*pos] == '+')
+			(*pos)++;
+		while (isdigit((unsigned char)p[*pos]))
+			(*pos)++;
+		goto mod;
+	case 't':
+		cp->flags |= TBL_CELL_TALIGN;
+		goto mod;
+	case 'u':
+		cp->flags |= TBL_CELL_UP;
+		goto mod;
+	case 'w':
+		sz = 0;
+		if (p[*pos] == '(') {
+			(*pos)++;
+			while (p[*pos + sz] != '\0' && p[*pos + sz] != ')')
+				sz++;
+		} else
+			while (isdigit((unsigned char)p[*pos + sz]))
+				sz++;
+		if (sz) {
+			free(cp->wstr);
+			cp->wstr = mandoc_strndup(p + *pos, sz);
+			*pos += sz;
+			if (p[*pos] == ')')
+				(*pos)++;
+		}
+		goto mod;
+	case 'x':
+		cp->flags |= TBL_CELL_WMAX;
+		goto mod;
+	case 'z':
+		cp->flags |= TBL_CELL_WIGN;
+		goto mod;
+	case '|':
+		if (cp->vert < 2)
+			cp->vert++;
+		else
+			mandoc_msg(MANDOCERR_TBLLAYOUT_VERT,
+			    ln, *pos - 1, NULL);
 		goto mod;
 	default:
-		break;
+		mandoc_msg(MANDOCERR_TBLLAYOUT_CHAR,
+		    ln, *pos - 1, "%c", p[*pos - 1]);
+		goto mod;
 	}
 
-	mandoc_msg(MANDOCERR_TBLLAYOUT, tbl->parse,
-	    ln, *pos - 1, NULL);
-	return(0);
+	/* Ignore parenthised font names for now. */
+
+	if (p[*pos] == '(')
+		goto mod;
+
+	/* Support only one-character font-names for now. */
+
+	if (p[*pos] == '\0' || (p[*pos + 1] != ' ' && p[*pos + 1] != '.')) {
+		mandoc_msg(MANDOCERR_FT_BAD,
+		    ln, *pos, "TS %s", p + *pos - 1);
+		if (p[*pos] != '\0')
+			(*pos)++;
+		if (p[*pos] != '\0')
+			(*pos)++;
+		goto mod;
+	}
+
+	switch (p[(*pos)++]) {
+	case '3':
+	case 'B':
+		cp->flags |= TBL_CELL_BOLD;
+		goto mod;
+	case '2':
+	case 'I':
+		cp->flags |= TBL_CELL_ITALIC;
+		goto mod;
+	case '1':
+	case 'R':
+		goto mod;
+	default:
+		mandoc_msg(MANDOCERR_FT_BAD,
+		    ln, *pos - 1, "TS f%c", p[*pos - 1]);
+		goto mod;
+	}
 }
 
-static int
+static void
 cell(struct tbl_node *tbl, struct tbl_row *rp,
 		int ln, const char *p, int *pos)
 {
-	int		 vert, i;
+	int		 i;
 	enum tbl_cellt	 c;
 
-	/* Handle vertical lines. */
+	/* Handle leading vertical lines */
 
-	for (vert = 0; '|' == p[*pos]; ++*pos)
-		vert++;
-	while (' ' == p[*pos])
+	while (p[*pos] == ' ' || p[*pos] == '\t' || p[*pos] == '|') {
+		if (p[*pos] == '|') {
+			if (rp->vert < 2)
+				rp->vert++;
+			else
+				mandoc_msg(MANDOCERR_TBLLAYOUT_VERT,
+				    ln, *pos, NULL);
+		}
+		(*pos)++;
+	}
+
+again:
+	while (p[*pos] == ' ' || p[*pos] == '\t')
 		(*pos)++;
 
-	/* Handle trailing vertical lines */
-
-	if ('.' == p[*pos] || '\0' == p[*pos]) {
-		rp->vert = vert;
-		return(1);
-	}
+	if (p[*pos] == '.' || p[*pos] == '\0')
+		return;
 
 	/* Parse the column position (`c', `l', `r', ...). */
 
@@ -234,167 +234,140 @@ cell(struct tbl_node *tbl, struct tbl_row *rp,
 		if (tolower((unsigned char)p[*pos]) == keys[i].name)
 			break;
 
-	if (KEYS_MAX == i) {
-		mandoc_msg(MANDOCERR_TBLLAYOUT, tbl->parse,
-		    ln, *pos, NULL);
-		return(0);
+	if (i == KEYS_MAX) {
+		mandoc_msg(MANDOCERR_TBLLAYOUT_CHAR,
+		    ln, *pos, "%c", p[*pos]);
+		(*pos)++;
+		goto again;
 	}
-
 	c = keys[i].key;
 
-	/*
-	 * If a span cell is found first, raise a warning and abort the
-	 * parse.  If a span cell is found and the last layout element
-	 * isn't a "normal" layout, bail.
-	 *
-	 * FIXME: recover from this somehow?
-	 */
+	/* Special cases of spanners. */
 
-	if (TBL_CELL_SPAN == c) {
-		if (NULL == rp->first) {
-			mandoc_msg(MANDOCERR_TBLLAYOUT, tbl->parse,
-			    ln, *pos, NULL);
-			return(0);
-		} else if (rp->last)
-			switch (rp->last->pos) {
-			case TBL_CELL_HORIZ:
-				/* FALLTHROUGH */
-			case TBL_CELL_DHORIZ:
-				mandoc_msg(MANDOCERR_TBLLAYOUT,
-				    tbl->parse, ln, *pos, NULL);
-				return(0);
-			default:
-				break;
-			}
-	}
-
-	/*
-	 * If a vertical spanner is found, we may not be in the first
-	 * row.
-	 */
-
-	if (TBL_CELL_DOWN == c && rp == tbl->first_row) {
-		mandoc_msg(MANDOCERR_TBLLAYOUT, tbl->parse, ln, *pos, NULL);
-		return(0);
-	}
+	if (c == TBL_CELL_SPAN) {
+		if (rp->last == NULL)
+			mandoc_msg(MANDOCERR_TBLLAYOUT_SPAN, ln, *pos, NULL);
+		else if (rp->last->pos == TBL_CELL_HORIZ ||
+		    rp->last->pos == TBL_CELL_DHORIZ)
+			c = rp->last->pos;
+	} else if (c == TBL_CELL_DOWN && rp == tbl->first_row)
+		mandoc_msg(MANDOCERR_TBLLAYOUT_DOWN, ln, *pos, NULL);
 
 	(*pos)++;
 
-	/* Disallow adjacent spacers. */
-
-	if (vert > 2) {
-		mandoc_msg(MANDOCERR_TBLLAYOUT, tbl->parse, ln, *pos - 1, NULL);
-		return(0);
-	}
-
 	/* Allocate cell then parse its modifiers. */
 
-	return(mods(tbl, cell_alloc(tbl, rp, c, vert), ln, p, pos));
+	mods(tbl, cell_alloc(tbl, rp, c), ln, p, pos);
 }
 
-static void
-row(struct tbl_node *tbl, int ln, const char *p, int *pos)
+void
+tbl_layout(struct tbl_node *tbl, int ln, const char *p, int pos)
 {
 	struct tbl_row	*rp;
 
-row:	/*
-	 * EBNF describing this section:
-	 *
-	 * row		::= row_list [:space:]* [.]?[\n]
-	 * row_list	::= [:space:]* row_elem row_tail
-	 * row_tail	::= [:space:]*[,] row_list |
-	 *                  epsilon
-	 * row_elem	::= [\t\ ]*[:alpha:]+
-	 */
+	rp = NULL;
+	for (;;) {
+		/* Skip whitespace before and after each cell. */
 
-	rp = mandoc_calloc(1, sizeof(struct tbl_row));
-	if (tbl->last_row)
-		tbl->last_row->next = rp;
-	else
-		tbl->first_row = rp;
-	tbl->last_row = rp;
+		while (p[pos] == ' ' || p[pos] == '\t')
+			pos++;
 
-cell:
-	while (isspace((unsigned char)p[*pos]))
-		(*pos)++;
+		switch (p[pos]) {
+		case ',':  /* Next row on this input line. */
+			pos++;
+			rp = NULL;
+			continue;
+		case '\0':  /* Next row on next input line. */
+			return;
+		case '.':  /* End of layout. */
+			pos++;
+			tbl->part = TBL_PART_DATA;
 
-	/* Safely exit layout context. */
+			/*
+			 * When the layout is completely empty,
+			 * default to one left-justified column.
+			 */
 
-	if ('.' == p[*pos]) {
-		tbl->part = TBL_PART_DATA;
-		if (NULL == tbl->first_row)
-			mandoc_msg(MANDOCERR_TBLNOLAYOUT,
-			    tbl->parse, ln, *pos, NULL);
-		(*pos)++;
-		return;
+			if (tbl->first_row == NULL) {
+				tbl->first_row = tbl->last_row =
+				    mandoc_calloc(1, sizeof(*rp));
+			}
+			if (tbl->first_row->first == NULL) {
+				mandoc_msg(MANDOCERR_TBLLAYOUT_NONE,
+				    ln, pos, NULL);
+				cell_alloc(tbl, tbl->first_row,
+				    TBL_CELL_LEFT);
+				if (tbl->opts.lvert < tbl->first_row->vert)
+					tbl->opts.lvert = tbl->first_row->vert;
+				return;
+			}
+
+			/*
+			 * Search for the widest line
+			 * along the left and right margins.
+			 */
+
+			for (rp = tbl->first_row; rp; rp = rp->next) {
+				if (tbl->opts.lvert < rp->vert)
+					tbl->opts.lvert = rp->vert;
+				if (rp->last != NULL &&
+				    rp->last->col + 1 == tbl->opts.cols &&
+				    tbl->opts.rvert < rp->last->vert)
+					tbl->opts.rvert = rp->last->vert;
+
+				/* If the last line is empty, drop it. */
+
+				if (rp->next != NULL &&
+				    rp->next->first == NULL) {
+					free(rp->next);
+					rp->next = NULL;
+					tbl->last_row = rp;
+				}
+			}
+			return;
+		default:  /* Cell. */
+			break;
+		}
+
+		/*
+		 * If the last line had at least one cell,
+		 * start a new one; otherwise, continue it.
+		 */
+
+		if (rp == NULL) {
+			if (tbl->last_row == NULL ||
+			    tbl->last_row->first != NULL) {
+				rp = mandoc_calloc(1, sizeof(*rp));
+				if (tbl->last_row)
+					tbl->last_row->next = rp;
+				else
+					tbl->first_row = rp;
+				tbl->last_row = rp;
+			} else
+				rp = tbl->last_row;
+		}
+		cell(tbl, rp, ln, p, &pos);
 	}
-
-	/* End (and possibly restart) a row. */
-
-	if (',' == p[*pos]) {
-		(*pos)++;
-		goto row;
-	} else if ('\0' == p[*pos])
-		return;
-
-	if ( ! cell(tbl, rp, ln, p, pos))
-		return;
-
-	goto cell;
-	/* NOTREACHED */
-}
-
-int
-tbl_layout(struct tbl_node *tbl, int ln, const char *p)
-{
-	int		 pos;
-
-	pos = 0;
-	row(tbl, ln, p, &pos);
-
-	/* Always succeed. */
-	return(1);
 }
 
 static struct tbl_cell *
-cell_alloc(struct tbl_node *tbl, struct tbl_row *rp, enum tbl_cellt pos,
-		int vert)
+cell_alloc(struct tbl_node *tbl, struct tbl_row *rp, enum tbl_cellt pos)
 {
 	struct tbl_cell	*p, *pp;
-	struct tbl_head	*h, *hp;
 
-	p = mandoc_calloc(1, sizeof(struct tbl_cell));
+	p = mandoc_calloc(1, sizeof(*p));
+	p->spacing = SIZE_MAX;
+	p->pos = pos;
 
-	if (NULL != (pp = rp->last)) {
+	if ((pp = rp->last) != NULL) {
 		pp->next = p;
-		h = pp->head->next;
-	} else {
+		p->col = pp->col + 1;
+	} else
 		rp->first = p;
-		h = tbl->first_head;
-	}
 	rp->last = p;
 
-	p->pos = pos;
-	p->vert = vert;
+	if (tbl->opts.cols <= p->col)
+		tbl->opts.cols = p->col + 1;
 
-	/* Re-use header. */
-
-	if (h) {
-		p->head = h;
-		return(p);
-	}
-
-	hp = mandoc_calloc(1, sizeof(struct tbl_head));
-	hp->ident = tbl->opts.cols++;
-	hp->vert = vert;
-
-	if (tbl->last_head) {
-		hp->prev = tbl->last_head;
-		tbl->last_head->next = hp;
-	} else
-		tbl->first_head = hp;
-	tbl->last_head = hp;
-
-	p->head = hp;
-	return(p);
+	return p;
 }
