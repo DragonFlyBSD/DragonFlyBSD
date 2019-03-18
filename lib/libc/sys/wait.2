@@ -366,11 +366,30 @@ For the exited process, the
 .Fa si_status
 field of the
 .Dv siginfo_t
-structure contains the full 32 bit exit status passed to
-.Xr _exit 2 ;
-the
-.Fa status
-argument of other calls only returns 8 lowest bits of the exit status.
+structure contains the fully decoded exit code passed to
+.Xr _exit 2 .
+Note that exit codes are limited to the values 0-255.
+For a process killed by a signal, the
+.Fa si_status
+field contains the fully decoded signal.
+.Pp
+The si_code field of the
+.Dv siginfo_t
+structure may be set to the following values:
+.Bl -tag -width Dv
+.It Dv CLD_EXITED
+Child exited with an exit code.
+.It Dv CLD_KILLED
+Child terminated abnormally with a signal.
+.It Dv CLD_DUMPED
+Child terminated abnormally and dumped (not implemented by DragonFly).
+.It Dv CLD_TRAPPED
+Traced child has trapped.
+.It Dv CLD_STOPPED
+Child has stopped.
+.It Dv CLD_CONTINUED
+Child has been resumed.
+.El
 .Pp
 When the
 .Dv WNOHANG
