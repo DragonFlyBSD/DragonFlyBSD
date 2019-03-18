@@ -1175,10 +1175,10 @@ loop:
 				bzero(info, sizeof(*info));
 				info->si_errno = 0;
 				info->si_signo = SIGCHLD;
-				if (p->p_xstat)
-					info->si_code = CLD_KILLED;
-				else
+				if (WIFEXITED(p->p_xstat))
 					info->si_code = CLD_EXITED;
+				else
+					info->si_code = CLD_KILLED;
 				info->si_status = p->p_xstat;
 				info->si_pid = p->p_pid;
 				info->si_uid = p->p_ucred->cr_uid;
