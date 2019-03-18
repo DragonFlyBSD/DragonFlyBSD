@@ -1175,11 +1175,14 @@ loop:
 				bzero(info, sizeof(*info));
 				info->si_errno = 0;
 				info->si_signo = SIGCHLD;
-				if (WIFEXITED(p->p_xstat))
+				if (WIFEXITED(p->p_xstat)) {
 					info->si_code = CLD_EXITED;
-				else
+					info->si_status =
+						WEXITSTATUS(p->p_xstat);
+				} else {
 					info->si_code = CLD_KILLED;
-				info->si_status = p->p_xstat;
+					info->si_status = WTERMSIG(p->p_xstat);
+				}
 				info->si_pid = p->p_pid;
 				info->si_uid = p->p_ucred->cr_uid;
 			}
@@ -1331,7 +1334,7 @@ loop:
 					info->si_code = CLD_TRAPPED;
 				else
 					info->si_code = CLD_STOPPED;
-				info->si_status = p->p_xstat;
+				info->si_status = WSTOPSIG(p->p_xstat);
 			}
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
@@ -1364,7 +1367,7 @@ loop:
 			if (info) {
 				bzero(info, sizeof(*info));
 				info->si_code = CLD_CONTINUED;
-				info->si_status = p->p_xstat;
+				info->si_status = WSTOPSIG(p->p_xstat);
 			}
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
