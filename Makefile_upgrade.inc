@@ -3513,6 +3513,7 @@ TO_REMOVE+=/usr/share/man/man1/g++50.1.gz
 TO_REMOVE+=/usr/share/man/man1/gcc50.1.gz
 TO_REMOVE+=/usr/share/man/man1/gcov50.1.gz
 TO_REMOVE+=/usr/share/mk/bsd.cpu.gcc50.mk
+TO_REMOVE+=/usr/include/dev/video/bktr/bktr_i2c.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
