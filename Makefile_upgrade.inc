@@ -3502,6 +3502,17 @@ TO_REMOVE+=/usr/include/sys/semaphore.h
 TO_REMOVE+=/usr/share/man/man2/brk.2.gz
 TO_REMOVE+=/usr/share/man/man1/ld-elf.so.1.1.gz
 TO_REMOVE+=/usr/share/misc/man.template
+TO_REMOVE+=/usr/include/c++/5.0
+TO_REMOVE+=/usr/libdata/gcc50
+TO_REMOVE+=/usr/libexec/gcc50
+TO_REMOVE+=/usr/share/man/man1/CC50.1.gz
+TO_REMOVE+=/usr/share/man/man1/c++50.1.gz
+TO_REMOVE+=/usr/share/man/man1/cc50.1.gz
+TO_REMOVE+=/usr/share/man/man1/cpp50.1.gz
+TO_REMOVE+=/usr/share/man/man1/g++50.1.gz
+TO_REMOVE+=/usr/share/man/man1/gcc50.1.gz
+TO_REMOVE+=/usr/share/man/man1/gcov50.1.gz
+TO_REMOVE+=/usr/share/mk/bsd.cpu.gcc50.mk
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
@@ -3518,18 +3529,6 @@ TO_REMOVE+=/usr/share/games/fortune/fortunes-o
 TO_REMOVE+=/usr/share/games/fortune/limerick
 TO_REMOVE+=/usr/share/games/fortune/murphy-o
 .endif
-
-# XXX Move to common list when gcc50 is removed from the src tree
-TO_REMOVE_LATE+=/usr/include/c++/5.0
-TO_REMOVE_LATE+=/usr/libdata/gcc50
-TO_REMOVE_LATE+=/usr/libexec/gcc50
-TO_REMOVE_LATE+=/usr/share/man/man1/CC50.1.gz
-TO_REMOVE_LATE+=/usr/share/man/man1/c++50.1.gz
-TO_REMOVE_LATE+=/usr/share/man/man1/cc50.1.gz
-TO_REMOVE_LATE+=/usr/share/man/man1/cpp50.1.gz
-TO_REMOVE_LATE+=/usr/share/man/man1/g++50.1.gz
-TO_REMOVE_LATE+=/usr/share/man/man1/gcc50.1.gz
-TO_REMOVE_LATE+=/usr/share/man/man1/gcov50.1.gz
 
 # Very special cases only.
 TO_REMOVE_LATE+=/lib/libcrypto.so.5

@@ -42,8 +42,6 @@ CPUTYPE= ${FORCE_CPUTYPE}
 .  endif
 .elif ${CCVER} == gcc47
 .  include <bsd.cpu.gcc47.mk>
-.elif ${CCVER} == gcc50
-.  include <bsd.cpu.gcc50.mk>
 .elif ${CCVER} == gcc80
 .  include <bsd.cpu.gcc80.mk>
 .elif ${CCVER:Mclang*}

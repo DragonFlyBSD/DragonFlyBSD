@@ -32,24 +32,6 @@
             profile
             ..
         ..
-        gcc50
-            plugin
-                include
-                    c-family
-                    ..
-                    objc
-                    ..
-                    config
-                        i386
-                        ..
-                    ..
-                    cp
-                    ..
-                ..
-            ..
-            profile
-            ..
-        ..
         gcc80
             plugin
                 include
@@ -96,12 +78,6 @@
             ssp
             ..
         ..
-        gcc50
-            objc
-            ..
-            ssp
-            ..
-        ..
         gcc80
             ssp
             ..
@@ -135,8 +111,6 @@
         dhcpcd-hooks
         ..
         gcc47
-        ..
-        gcc50
         ..
         gcc80
         ..

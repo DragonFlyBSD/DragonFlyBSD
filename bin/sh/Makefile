@@ -15,7 +15,6 @@ SRCS= ${SHSRCS} ${GENSRCS} ${GENHDRS}
 # would be needed if WARNS upgraded to 3, but lets keep the stderr output
 # clean, so WARNS has been lowered to 2.
 #
-# NO_WERROR=	yes # [-Werror=clobbered] on gcc50
 WARNS?= 2
 
 # MLINKS for Shell built in commands for which there are no userland

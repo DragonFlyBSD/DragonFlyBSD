@@ -917,19 +917,12 @@ bstrap-${_tool}!
 # and this file for WORLD_CCVER.
 #
 _gcc47_cross= gnu/usr.bin/cc47
-_gcc50_cross= gnu/usr.bin/cc50
 _gcc80_cross= gnu/usr.bin/cc80
 _gcc_common_cross= lib/libz gnu/usr.bin/gmp gnu/usr.bin/mpfr gnu/usr.bin/mpc
 
 .if !defined(NO_ALTCOMPILER)
 . if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47})
 _altcompiler_cross+= ${_gcc47_cross}
-. endif
-.endif
-
-.if !defined(NO_ALTCOMPILER)
-. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc50})
-_altcompiler_cross+= ${_gcc50_cross}
 . endif
 .endif
 
@@ -995,11 +988,6 @@ libraries:
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc47 \
 		make -f Makefile.inc1 _startup_libs47 -DSYSBUILD -DLIBGCC_ONLY;
 . endif
-. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc50})
-	cd ${.CURDIR}; \
-	    HOST_CCVER=${HOST_CCVER} CCVER=gcc50 \
-		make -f Makefile.inc1 _startup_libs50 -DSYSBUILD -DLIBGCC_ONLY;
-. endif
 .endif
 	cd ${.CURDIR}; \
 	    make -f Makefile.inc1 _startup_libs -DSYSBUILD && \
@@ -1020,13 +1008,6 @@ _startup_libs47=	gnu/usr.bin/cc47/cc_prep \
 			gnu/lib/gcc47/libgcc_eh \
 			gnu/lib/gcc47/libgcc_pic
 
-_startup_libs50=	gnu/usr.bin/cc50/cc_prep \
-			gnu/usr.bin/cc50/cc_tools \
-			gnu/lib/gcc50/csu \
-			gnu/lib/gcc50/libgcc \
-			gnu/lib/gcc50/libgcc_eh \
-			gnu/lib/gcc50/libgcc_pic
-
 _startup_libs80=	gnu/usr.bin/cc80/cc_prep \
 			gnu/usr.bin/cc80/cc_tools \
 			gnu/lib/gcc80/csu \
@@ -1037,12 +1018,6 @@ _startup_libs80=	gnu/usr.bin/cc80/cc_prep \
 .if !defined(NO_ALTCOMPILER)
 . if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc47})
 _startup_libs_alt+=	_startup_libs47
-. endif
-.endif
-
-.if !defined(NO_ALTCOMPILER)
-. if defined(WORLD_ALTCOMPILER) && (${WORLD_ALTCOMPILER} == "all" || ${WORLD_ALTCOMPILER:Mgcc50})
-_startup_libs_alt+=	_startup_libs50
 . endif
 .endif
 

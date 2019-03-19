@@ -12,6 +12,13 @@
 +         UPGRADING DRAGONFLY FROM 5.4 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+GCC50 REMOVED
+-------------
+
+The GCC50 compiler has been retired.  It has been replaced by a GCC80.
+The default alternative compiler has stayed the same - GCC47.
+
+
 PUFFS, PUTTER AND LIBREFUSE REMOVED
 -----------------------------------
 
