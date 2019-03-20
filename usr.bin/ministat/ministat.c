@@ -541,7 +541,7 @@ main(int argc, char **argv)
 	int column = 1;
 	int flag_s = 0;
 	int flag_n = 0;
-	int termwidth = 74;
+	int termwidth = 76;
 	int suppress_plot = 0;
 
 	if (isatty(STDOUT_FILENO)) {
@@ -551,7 +551,7 @@ main(int argc, char **argv)
 			termwidth = atoi(p);
 		else if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &wsz) != -1 &&
 			 wsz.ws_col > 0)
-			termwidth = wsz.ws_col - 2;
+			termwidth = wsz.ws_col;
 	}
 
 	ci = -1;
@@ -629,7 +629,8 @@ main(int argc, char **argv)
 		printf("%c %s\n", symbol[i+1], ds[i]->name);
 
 	if (!flag_n && !suppress_plot) {
-		SetupPlot(termwidth, flag_s, nds);
+		/* The plot frame will occupy 2 columns. */
+		SetupPlot(termwidth - 2, flag_s, nds);
 		for (i = 0; i < nds; i++)
 			DimPlot(ds[i]);
 		for (i = 0; i < nds; i++)
