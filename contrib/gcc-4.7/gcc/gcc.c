@@ -139,7 +139,8 @@ static const char *target_sysroot_hdrs_suffix = 0;
 static enum save_temps {
   SAVE_TEMPS_NONE,		/* no -save-temps */
   SAVE_TEMPS_CWD,		/* -save-temps in current directory */
-  SAVE_TEMPS_OBJ		/* -save-temps in object directory */
+  SAVE_TEMPS_OBJ,		/* -save-temps in object directory */
+  SAVE_TEMPS_OBJZ		/* -save-temps in object directory with mangling */
 } save_temps_flag;
 
 /* Output file to use to get the object directory for -save-temps=obj  */
@@ -3422,6 +3423,8 @@ driver_handle_option (struct gcc_options *opts,
       else if (strcmp (arg, "obj") == 0
 	       || strcmp (arg, "object") == 0)
 	save_temps_flag = SAVE_TEMPS_OBJ;
+      else if (strcmp (arg, "objects") == 0)
+	save_temps_flag = SAVE_TEMPS_OBJZ;
       else
 	fatal_error ("%qs is an unknown -save-temps option",
 		     decoded->orig_option_with_args_text);
@@ -3877,6 +3880,10 @@ process_command (unsigned int decoded_options_count,
 	  save_temps_prefix[save_temps_length] = '\0';
 	}
 
+    }
+  else if (save_temps_flag == SAVE_TEMPS_OBJZ && save_temps_prefix != NULL)
+    {
+      save_temps_length = strlen (save_temps_prefix);
     }
   else if (save_temps_prefix != NULL)
     {
