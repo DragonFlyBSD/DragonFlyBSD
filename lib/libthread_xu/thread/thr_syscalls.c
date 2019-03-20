@@ -582,6 +582,8 @@ _sleep(unsigned int seconds)
 	return (ret);
 }
 
+__strong_reference(_sleep, sleep);
+
 int
 _system(const char *string)
 {
