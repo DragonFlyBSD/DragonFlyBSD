@@ -1243,11 +1243,12 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		}
 
 		/*
-		 * Really important to get these right or flush will get
-		 * confused.
+		 * Really important to get these right or the flush and
+		 * teardown code will get confused.
 		 */
 		hmp->spmp = hammer2_pfsalloc(NULL, NULL, 0, NULL);
 		spmp = hmp->spmp;
+		spmp->pfs_hmps[0] = hmp;
 
 		/*
 		 * Dummy-up vchain and fchain's modify_tid.  mirror_tid
