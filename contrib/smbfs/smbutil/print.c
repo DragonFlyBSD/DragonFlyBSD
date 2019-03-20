@@ -145,7 +145,7 @@ void
 print_usage(void)
 {
 	printf(
-	"usage: smbutil print [connection optinons] //user@server/share\n"
+	"usage: smbutil print [connection options] //user@server/share\n"
 	);
 	exit(1);
 }
