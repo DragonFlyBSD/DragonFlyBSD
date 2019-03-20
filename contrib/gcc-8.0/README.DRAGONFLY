@@ -30,6 +30,7 @@ The following files have been patched (* planned)
   gcc/c-family/c-format.c		extra TZ "%+" format for strftime()
   gcc/config/dragonfly.h		default dynamic linker path
   gcc/gcc.c				default paths for base tools
+					add -save-temps=objects option
   libbacktrace/fileline.c		KERN_PROC_PATHNAME addition
   libgcc/gthr-posix.h			avoid weakref (ld.gold issue)
   libssp/ssp.c				include <stdlib.h> for alloca()
