@@ -64,8 +64,6 @@ SRCS	= \
 	linux_vmalloc.c \
 	linux_workqueue.c \
 	linux_wwmutex.c \
-	ttm_lock.c \
-	ttm_object.c \
 	ttm_tt.c \
 	ttm_bo_util.c \
 	ttm_bo.c \
