@@ -827,8 +827,8 @@ vm_pageout_scan_inactive(int pass, int q, long avail_shortage,
 		 * Remaining operations run with the page busy and neither
 		 * the page or the queue will be spin-locked.
 		 */
-		vm_page_queues_spin_unlock(PQ_INACTIVE + q);
 		KKASSERT(m->queue == PQ_INACTIVE + q);
+		vm_page_queues_spin_unlock(PQ_INACTIVE + q);
 
 		/*
 		 * The emergency pager runs when the primary pager gets
@@ -938,18 +938,13 @@ vm_pageout_page(vm_page_t m, long *max_launderp, long *vnodes_skippedp,
 	int count = 0;
 
 	/*
-	 * It is possible for a page to be busied ad-hoc (e.g. the
-	 * pmap_collect() code) and wired and race against the
-	 * allocation of a new page.  vm_page_alloc() may be forced
-	 * to deactivate the wired page in which case it winds up
-	 * on the inactive queue and must be handled here.  We
-	 * correct the problem simply by unqueuing the page.
+	 * Wiring no longer removes a page from its queue.  The last unwiring
+	 * will requeue the page.  Obviously wired pages cannot be paged out
+	 * so unqueue it and return.
 	 */
 	if (m->wire_count) {
 		vm_page_unqueue_nowakeup(m);
 		vm_page_wakeup(m);
-		kprintf("WARNING: pagedaemon: wired page on "
-			"inactive queue %p\n", m);
 		return 0;
 	}
 
@@ -1200,6 +1195,16 @@ vm_pageout_page(vm_page_t m, long *max_launderp, long *vnodes_skippedp,
 			vm_page_unhold(m);
 
 			/*
+			 * If it was wired while we didn't own it.
+			 */
+			if (m->wire_count) {
+				vm_page_unqueue_nowakeup(m);
+				vput(vp);
+				vm_page_wakeup(m);
+				return 0;
+			}
+
+			/*
 			 * (m) is busied again
 			 *
 			 * We own the busy bit and remove our hold
@@ -1340,15 +1345,15 @@ vm_pageout_scan_active(int pass, int q,
 		 * Remaining operations run with the page busy and neither
 		 * the page or the queue will be spin-locked.
 		 */
-		vm_page_queues_spin_unlock(PQ_ACTIVE + q);
 		KKASSERT(m->queue == PQ_ACTIVE + q);
+		vm_page_queues_spin_unlock(PQ_ACTIVE + q);
 
 #if 0
 		/*
 		 * Don't deactivate pages that are held, even if we can
 		 * busy them.  (XXX why not?)
 		 */
-		if (m->hold_count != 0) {
+		if (m->hold_count) {
 			vm_page_and_queue_spin_lock(m);
 			if (m->queue - m->pc == PQ_ACTIVE) {
 				TAILQ_REMOVE(
@@ -1363,6 +1368,14 @@ vm_pageout_scan_active(int pass, int q,
 			goto next;
 		}
 #endif
+		/*
+		 * We can just remove wired pages from the queue
+		 */
+		if (m->wire_count) {
+			vm_page_unqueue_nowakeup(m);
+			vm_page_wakeup(m);
+			goto next;
+		}
 
 		/*
 		 * The emergency pager ignores vnode-backed pages as these
@@ -1559,6 +1572,10 @@ vm_pageout_scan_cache(long avail_shortage, int pass,
 		m = vm_page_list_find(PQ_CACHE, cache_rover[isep] & PQ_L2_MASK);
 		if (m == NULL)
 			break;
+
+		/*
+		 * If the busy attempt fails we can still deactivate the page.
+		 */
 		/* page is returned removed from its queue and spinlocked */
 		if (vm_page_busy_try(m, TRUE)) {
 			vm_page_deactivate_locked(m);
@@ -1734,6 +1751,42 @@ vm_pageout_scan_callback(struct proc *p, void *data)
 }
 
 /*
+ * This old guy slowly walks PQ_HOLD looking for pages which need to be
+ * moved back to PQ_FREE.  It is possible for pages to accumulate here
+ * when vm_page_free() races against vm_page_unhold(), resulting in a
+ * page being left on a PQ_HOLD queue with hold_count == 0.
+ *
+ * It is easier to handle this edge condition here, in non-critical code,
+ * rather than enforce a spin-lock for every 1->0 transition in
+ * vm_page_unhold().
+ *
+ * NOTE: TAILQ_FOREACH becomes invalid the instant we unlock the queue.
+ */
+static void
+vm_pageout_scan_hold(int q)
+{
+	vm_page_t m;
+
+	vm_page_queues_spin_lock(PQ_HOLD + q);
+	TAILQ_FOREACH(m, &vm_page_queues[PQ_HOLD + q].pl, pageq) {
+		if (m->flags & PG_MARKER)
+			continue;
+
+		/*
+		 * Process one page and return
+		 */
+		if (m->hold_count)
+			break;
+		kprintf("DEBUG: pageout HOLD->FREE %p\n", m);
+		vm_page_hold(m);
+		vm_page_queues_spin_unlock(PQ_HOLD + q);
+		vm_page_unhold(m);	/* reprocess */
+		return;
+	}
+	vm_page_queues_spin_unlock(PQ_HOLD + q);
+}
+
+/*
  * This routine tries to maintain the pseudo LRU active queue,
  * so that during long periods of time where there is no paging,
  * that some statistic accumulation still occurs.  This code
@@ -1807,16 +1860,26 @@ vm_pageout_page_stats(int q)
 		 * Remaining operations run with the page busy and neither
 		 * the page or the queue will be spin-locked.
 		 */
-		vm_page_queues_spin_unlock(PQ_ACTIVE + q);
 		KKASSERT(m->queue == PQ_ACTIVE + q);
+		vm_page_queues_spin_unlock(PQ_ACTIVE + q);
+
+		/*
+		 * We can just remove wired pages from the queue
+		 */
+		if (m->wire_count) {
+			vm_page_unqueue_nowakeup(m);
+			vm_page_wakeup(m);
+			goto next;
+		}
+
 
 		/*
 		 * We now have a safely busied page, the page and queue
 		 * spinlocks have been released.
 		 *
-		 * Ignore held pages
+		 * Ignore held and wired pages
 		 */
-		if (m->hold_count) {
+		if (m->hold_count || m->wire_count) {
 			vm_page_wakeup(m);
 			goto next;
 		}
@@ -1952,6 +2015,7 @@ vm_pageout_thread(void)
 	int q;
 	int q1iterator = 0;
 	int q2iterator = 0;
+	int q3iterator = 0;
 	int isep;
 
 	curthread->td_flags |= TDF_SYSTHREAD;
@@ -2104,7 +2168,13 @@ skip_setup:
 		} else {
 			/*
 			 * Primary pagedaemon
+			 *
+			 * NOTE: We unconditionally cleanup PQ_HOLD even
+			 *	 when there is no work to do.
 			 */
+			vm_pageout_scan_hold(q3iterator & PQ_L2_MASK);
+			++q3iterator;
+
 			if (vm_pages_needed == 0) {
 				error = tsleep(&vm_pages_needed,
 					       0, "psleep",

@@ -1303,8 +1303,15 @@ vm_page_hold(vm_page_t m)
  * The opposite of vm_page_hold().  If the page is on the HOLD queue
  * it was freed while held and must be moved back to the FREE queue.
  *
- * To avoid racing against vm_page_free*() we must test conditions
- * after obtaining the spin-lock.
+ * To avoid racing against vm_page_free*() we must re-test conditions
+ * after obtaining the spin-lock.  The initial test can also race a
+ * vm_page_free*() that is in the middle of moving a page to PQ_HOLD,
+ * leaving the page on PQ_HOLD with hold_count == 0.  Rather than
+ * throw a spin-lock in the critical path, we rely on the pageout
+ * daemon to clean-up these loose ends.
+ *
+ * More critically, the 'easy movement' between queues without busying
+ * a vm_page is only allowed for PQ_FREE<->PQ_HOLD.
  */
 void
 vm_page_unhold(vm_page_t m)
@@ -1314,7 +1321,8 @@ vm_page_unhold(vm_page_t m)
 		 "on FREE queue (%d)",
 		 m, m->hold_count, m->queue - m->pc));
 
-	if (atomic_fetchadd_int(&m->hold_count, -1) == 1) {
+	if (atomic_fetchadd_int(&m->hold_count, -1) == 1 &&
+	    m->queue - m->pc == PQ_HOLD) {
 		vm_page_spin_lock(m);
 		if (m->hold_count == 0 && m->queue - m->pc == PQ_HOLD) {
 			_vm_page_queue_spin_lock(m);
@@ -1976,14 +1984,20 @@ vm_page_select_free(u_short pg_color)
 			/*
 			 * Theoretically if we are able to busy the page
 			 * atomic with the queue removal (using the vm_page
-			 * lock) nobody else should be able to mess with the
-			 * page before us.
+			 * lock) nobody else should have been able to mess
+			 * with the page before us.
+			 *
+			 * Assert the page state.  Note that even though
+			 * wiring doesn't adjust queues, a page on the free
+			 * queue should never be wired at this point.
 			 */
 			KKASSERT((m->flags & (PG_UNMANAGED |
 					      PG_NEED_COMMIT)) == 0);
-			KASSERT(m->hold_count == 0, ("m->hold_count is not zero "
-						     "pg %p q=%d flags=%08x hold=%d wire=%d",
-						     m, m->queue, m->flags, m->hold_count, m->wire_count));
+			KASSERT(m->hold_count == 0,
+				("m->hold_count is not zero "
+				 "pg %p q=%d flags=%08x hold=%d wire=%d",
+				 m, m->queue, m->flags,
+				 m->hold_count, m->wire_count));
 			KKASSERT(m->wire_count == 0);
 			vm_page_spin_unlock(m);
 			pagedaemon_wakeup();
@@ -2500,7 +2514,7 @@ vm_page_activate(vm_page_t m)
 
 		if (oqueue == PQ_CACHE)
 			mycpu->gd_cnt.v_reactivated++;
-		if (m->wire_count == 0 && (m->flags & PG_UNMANAGED) == 0) {
+		if ((m->flags & PG_UNMANAGED) == 0) {
 			if (m->act_count < ACT_INIT)
 				m->act_count = ACT_INIT;
 			_vm_page_add_queue_spinlocked(m, PQ_ACTIVE + m->pc, 0);
@@ -2670,11 +2684,10 @@ vm_page_free_toq(vm_page_t m)
  * vm_page_unmanage()
  *
  * Prevent PV management from being done on the page.  The page is
- * removed from the paging queues as if it were wired, and as a 
- * consequence of no longer being managed the pageout daemon will not
- * touch it (since there is no way to locate the pte mappings for the
- * page).  madvise() calls that mess with the pmap will also no longer
- * operate on the page.
+ * also removed from the paging queues, and as a consequence of no longer
+ * being managed the pageout daemon will not touch it (since there is no
+ * way to locate the pte mappings for the page).  madvise() calls that
+ * mess with the pmap will also no longer operate on the page.
  *
  * Beyond that the page is still reasonably 'normal'.  Freeing the page
  * will clear the flag.
@@ -2691,15 +2704,14 @@ vm_page_unmanage(vm_page_t m)
 {
 	KKASSERT(m->busy_count & PBUSY_LOCKED);
 	if ((m->flags & PG_UNMANAGED) == 0) {
-		if (m->wire_count == 0)
-			vm_page_unqueue(m);
+		vm_page_unqueue(m);
 	}
 	vm_page_flag_set(m, PG_UNMANAGED);
 }
 
 /*
- * Mark this page as wired down by yet another map, removing it from
- * paging queues as necessary.
+ * Mark this page as wired down by yet another map.  We do not adjust the
+ * queue the page is on, it will be checked for wiring as-needed.
  *
  * Caller must be holding the page busy.
  */
@@ -2715,8 +2727,6 @@ vm_page_wire(vm_page_t m)
 	KKASSERT(m->busy_count & PBUSY_LOCKED);
 	if ((m->flags & PG_FICTITIOUS) == 0) {
 		if (atomic_fetchadd_int(&m->wire_count, 1) == 0) {
-			if ((m->flags & PG_UNMANAGED) == 0)
-				vm_page_unqueue(m);
 			atomic_add_long(&mycpu->gd_vmstats_adj.v_wire_count, 1);
 		}
 		KASSERT(m->wire_count != 0,
@@ -2726,6 +2736,10 @@ vm_page_wire(vm_page_t m)
 
 /*
  * Release one wiring of this page, potentially enabling it to be paged again.
+ *
+ * Note that wired pages are no longer unconditionally removed from the
+ * paging queues, so the page may already be on a queue.  Move the page
+ * to the desired queue if necessary.
  *
  * Many pages placed on the inactive queue should actually go
  * into the cache, but it is difficult to figure out which.  What
@@ -2758,7 +2772,7 @@ vm_page_unwire(vm_page_t m, int activate)
 	KKASSERT(m->busy_count & PBUSY_LOCKED);
 	if (m->flags & PG_FICTITIOUS) {
 		/* do nothing */
-	} else if (m->wire_count <= 0) {
+	} else if ((int)m->wire_count <= 0) {
 		panic("vm_page_unwire: invalid wire count: %d", m->wire_count);
 	} else {
 		if (atomic_fetchadd_int(&m->wire_count, -1) == 1) {
@@ -2766,32 +2780,38 @@ vm_page_unwire(vm_page_t m, int activate)
 			if (m->flags & PG_UNMANAGED) {
 				;
 			} else if (activate || (m->flags & PG_NEED_COMMIT)) {
+				vm_page_activate(m);
+#if 0
 				vm_page_spin_lock(m);
 				_vm_page_add_queue_spinlocked(m,
 							PQ_ACTIVE + m->pc, 0);
 				_vm_page_and_queue_spin_unlock(m);
+#endif
 			} else {
+				vm_page_deactivate(m);
+#if 0
 				vm_page_spin_lock(m);
 				vm_page_flag_clear(m, PG_WINATCFLS);
 				_vm_page_add_queue_spinlocked(m,
 							PQ_INACTIVE + m->pc, 0);
-				++vm_swapcache_inactive_heuristic;
 				_vm_page_and_queue_spin_unlock(m);
+#endif
+				++vm_swapcache_inactive_heuristic;
 			}
 		}
 	}
 }
 
 /*
- * Move the specified page to the inactive queue.  If the page has
- * any associated swap, the swap is deallocated.
+ * Move the specified page to the inactive queue.
  *
  * Normally athead is 0 resulting in LRU operation.  athead is set
  * to 1 if we want this page to be 'as if it were placed in the cache',
  * except without unmapping it from the process address space.
  *
  * vm_page's spinlock must be held on entry and will remain held on return.
- * This routine may not block.
+ * This routine may not block.  The caller does not have to hold the page
+ * busied but should have some sort of interlock on its validity.
  */
 static void
 _vm_page_deactivate_locked(vm_page_t m, int athead)
@@ -2806,7 +2826,7 @@ _vm_page_deactivate_locked(vm_page_t m, int athead)
 	_vm_page_queue_spin_lock(m);
 	oqueue = _vm_page_rem_queue_spinlocked(m);
 
-	if (m->wire_count == 0 && (m->flags & PG_UNMANAGED) == 0) {
+	if ((m->flags & PG_UNMANAGED) == 0) {
 		if (oqueue == PQ_CACHE)
 			mycpu->gd_cnt.v_reactivated++;
 		vm_page_flag_clear(m, PG_WINATCFLS);

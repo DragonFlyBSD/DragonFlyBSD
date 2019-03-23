@@ -163,6 +163,7 @@ static int vm_fault_quick_enable = 0;
 TUNABLE_INT("vm.fault_quick", &vm_fault_quick_enable);
 SYSCTL_INT(_vm, OID_AUTO, fault_quick, CTLFLAG_RW,
 		&vm_fault_quick_enable, 0, "Allow fast vm_fault shortcut");
+#ifdef VM_FAULT_QUICK_DEBUG
 static long vm_fault_quick_success_count = 0;
 SYSCTL_LONG(_vm, OID_AUTO, fault_quick_success_count, CTLFLAG_RW,
 		&vm_fault_quick_success_count, 0, "");
@@ -178,6 +179,7 @@ SYSCTL_LONG(_vm, OID_AUTO, fault_quick_failure_count3, CTLFLAG_RW,
 static long vm_fault_quick_failure_count4 = 0;
 SYSCTL_LONG(_vm, OID_AUTO, fault_quick_failure_count4, CTLFLAG_RW,
 		&vm_fault_quick_failure_count4, 0, "");
+#endif
 
 static int vm_fault_quick(struct faultstate *fs, vm_pindex_t first_pindex,
 			vm_prot_t fault_type);
@@ -721,12 +723,14 @@ RetryFault:
 	}
 
 success:
-
 	/*
 	 * On success vm_fault_object() does not unlock or deallocate, and fs.m
 	 * will contain a busied page.
 	 *
 	 * Enter the page into the pmap and do pmap-related adjustments.
+	 *
+	 * WARNING! Soft-busied fs.m's can only be manipulated in limited
+	 *	    ways.
 	 */
 	KKASSERT(fs.lookup_still_valid == TRUE);
 	vm_page_flag_set(fs.m, PG_REFERENCED);
@@ -739,19 +743,23 @@ success:
 	/*
 	 * If the page is not wired down, then put it where the pageout daemon
 	 * can find it.
+	 *
+	 * NOTE: We cannot safely wire, unwire, or adjust queues for a
+	 *	 soft-busied page.
 	 */
-	if (fs.fault_flags & VM_FAULT_WIRE_MASK) {
-		if (fs.wflags & FW_WIRED)
-			vm_page_wire(fs.m);
-		else
-			vm_page_unwire(fs.m, 1);
-	} else {
-		vm_page_activate(fs.m);
-	}
 	if (fs.msoftonly) {
 		KKASSERT(fs.m->busy_count & PBUSY_MASK);
+		KKASSERT((fs.fault_flags & VM_FAULT_WIRE_MASK) == 0);
 		vm_page_sbusy_drop(fs.m);
 	} else {
+		if (fs.fault_flags & VM_FAULT_WIRE_MASK) {
+			if (fs.wflags & FW_WIRED)
+				vm_page_wire(fs.m);
+			else
+				vm_page_unwire(fs.m, 1);
+		} else {
+			vm_page_activate(fs.m);
+		}
 		KKASSERT(fs.m->busy_count & PBUSY_LOCKED);
 		vm_page_wakeup(fs.m);
 	}
@@ -859,10 +867,19 @@ vm_fault_quick(struct faultstate *fs, vm_pindex_t first_pindex,
 		return KERN_FAILURE;
 
 	/*
+	 * This will try to wire/unwire a page, which can't be done with
+	 * a soft-busied page.
+	 */
+	if (fs->fault_flags & VM_FAULT_WIRE_MASK)
+		return KERN_FAILURE;
+
+	/*
 	 * Ick, can't handle this
 	 */
 	if (fs->entry->maptype == VM_MAPTYPE_VPAGETABLE) {
+#ifdef VM_FAULT_QUICK_DEBUG
 		++vm_fault_quick_failure_count1;
+#endif
 		return KERN_FAILURE;
 	}
 
@@ -872,7 +889,9 @@ vm_fault_quick(struct faultstate *fs, vm_pindex_t first_pindex,
 	 */
 	m = vm_page_hash_get(obj, first_pindex);
 	if (m == NULL) {
+#ifdef VM_FAULT_QUICK_DEBUG
 		++vm_fault_quick_failure_count2;
+#endif
 		return KERN_FAILURE;
 	}
 	if ((obj->flags & OBJ_DEAD) ||
@@ -880,7 +899,9 @@ vm_fault_quick(struct faultstate *fs, vm_pindex_t first_pindex,
 	    m->queue - m->pc == PQ_CACHE ||
 	    (m->flags & PG_SWAPPED)) {
 		vm_page_sbusy_drop(m);
+#ifdef VM_FAULT_QUICK_DEBUG
 		++vm_fault_quick_failure_count3;
+#endif
 		return KERN_FAILURE;
 	}
 
@@ -897,23 +918,35 @@ vm_fault_quick(struct faultstate *fs, vm_pindex_t first_pindex,
 	}
 
 	/*
-	 * Check write permissions.  We don't hold an object lock so the
-	 * object must already be flagged writable and dirty.
+	 * If this is a write fault the object and the page must already
+	 * be writable.  Since we don't hold an object lock and only a
+	 * soft-busy on the page, we cannot manipulate the object or
+	 * the page state (other than the page queue).
 	 */
 	if (fs->prot & VM_PROT_WRITE) {
 		if ((obj->flags & (OBJ_WRITEABLE | OBJ_MIGHTBEDIRTY)) !=
 		    (OBJ_WRITEABLE | OBJ_MIGHTBEDIRTY) ||
 		    m->dirty != VM_PAGE_BITS_ALL) {
 			vm_page_sbusy_drop(m);
+#ifdef VM_FAULT_QUICK_DEBUG
 			++vm_fault_quick_failure_count4;
+#endif
 			return KERN_FAILURE;
 		}
 		vm_set_nosync(m, fs->entry);
 	}
+
+	/*
+	 * Even though we are only soft-busied we can still move pages
+	 * around in the normal queue(s).  The soft-busy prevents the
+	 * page from being removed from the object, etc (normal operation).
+	 */
 	vm_page_activate(m);
 	fs->m = m;
 	fs->msoftonly = 1;
+#ifdef VM_FAULT_QUICK_DEBUG
 	++vm_fault_quick_success_count;
+#endif
 
 	return KERN_SUCCESS;
 }

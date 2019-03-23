@@ -271,6 +271,10 @@ SYSCTL_INT(_machdep, OID_AUTO, pmap_nx_enable, CTLFLAG_RD,
     &pmap_nx_enable, 0,
     "no-execute support (0=disabled, 1=w/READ, 2=w/READ & WRITE)");
 
+static int pmap_pv_debug = 50;
+SYSCTL_INT(_machdep, OID_AUTO, pmap_pv_debug, CTLFLAG_RW,
+    &pmap_pv_debug, 0, "");
+
 /* Standard user access funtions */
 extern int std_copyinstr (const void *udaddr, void *kaddr, size_t len,
     size_t *lencopied);
@@ -2534,7 +2538,15 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 
 	vm_page_spin_lock(m);
 	pmap_page_stats_adding(m);
+
+	/*
+	 * PGTABLE pv's only exist in the context of the pmap RB tree
+	 * (pmap->pm_pvroot).
+	 */
+#if 0
 	TAILQ_INSERT_TAIL(&m->md.pv_list, pv, pv_list);
+#endif
+	pv->pv_flags |= PV_FLAG_PGTABLE;
 	pv->pv_m = m;
 	vm_page_flag_set(m, PG_MAPPED | PG_WRITEABLE);
 	vm_page_spin_unlock(m);
@@ -3465,10 +3477,15 @@ pmap_remove_pv_page(pv_entry_t pv)
 	vm_page_spin_lock(m);
 	KKASSERT(m && m == pv->pv_m);
 	pv->pv_m = NULL;
-	TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
-	pmap_page_stats_deleting(m);
-	if (TAILQ_EMPTY(&m->md.pv_list))
+	if (pv->pv_flags & PV_FLAG_PGTABLE) {
 		vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
+		KKASSERT(TAILQ_EMPTY(&m->md.pv_list));
+	} else {
+		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
+		if (TAILQ_EMPTY(&m->md.pv_list))
+			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
+	}
+	pmap_page_stats_deleting(m);
 	vm_page_spin_unlock(m);
 
 	return(m);
@@ -3795,6 +3812,7 @@ _pv_alloc(pmap_t pmap, vm_pindex_t pindex, int *isnew PMAP_DEBUG_DECL)
 			pnew->pv_pmap = pmap;
 			pnew->pv_pindex = pindex;
 			pnew->pv_hold = PV_HOLD_LOCKED | 2;
+			pnew->pv_flags = 0;
 #ifdef PMAP_DEBUG
 			pnew->pv_func = func;
 			pnew->pv_line = lineno;
@@ -4968,6 +4986,12 @@ pmap_remove_all(vm_page_t m)
 
 	vm_page_spin_lock(m);
 	while ((pv = TAILQ_FIRST(&m->md.pv_list)) != NULL) {
+		if (pv->pv_m != m) {
+			kprintf("pmap_remove_all FAILURE\n");
+			kprintf("pv %p pv->pv_m %p m %p\n", pv, pv->pv_m, m);
+			kprintf("pvflags %08x\n", pv->pv_flags);
+		}
+
 		KKASSERT(pv->pv_m == m);
 		if (pv_hold_try(pv)) {
 			vm_page_spin_unlock(m);
@@ -5434,14 +5458,29 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		 *
 		 * Enter on the PV list if part of our managed memory.
 		 */
+
+		if (m->object == NULL && pmap_pv_debug > 0) {
+			--pmap_pv_debug;
+			kprintf("pte_m %p pv_entry %p NOOBJ\n", m, pte_pv);
+			print_backtrace(16);
+		}
+
 		KKASSERT(pte_pv && (pte_pv->pv_m == NULL || pte_pv->pv_m == m));
 		vm_page_spin_lock(m);
 		pte_pv->pv_m = m;
 		pmap_page_stats_adding(m);
 		TAILQ_INSERT_TAIL(&m->md.pv_list, pte_pv, pv_list);
-		vm_page_flag_set(m, PG_MAPPED);
-		if (newpte & pmap->pmap_bits[PG_RW_IDX])
+
+		/*
+		 * Set vm_page flags.  Avoid a cache mastership change if
+		 * the bits are already set.
+		 */
+		if ((m->flags & PG_MAPPED) == 0)
+			vm_page_flag_set(m, PG_MAPPED);
+		if ((newpte & pmap->pmap_bits[PG_RW_IDX]) &&
+		    (m->flags & PG_WRITEABLE) == 0) {
 			vm_page_flag_set(m, PG_WRITEABLE);
+		}
 		vm_page_spin_unlock(m);
 
 		if (pt_pv && opa &&

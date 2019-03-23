@@ -362,7 +362,8 @@ typedef struct pv_entry {
 #define PV_HOLD_UNUSED2000	0x20000000U
 #define PV_HOLD_MASK		0x1FFFFFFFU
 
-#define PV_FLAG_VMOBJECT	0x00000001U	/* shared pt in VM obj */
+#define PV_FLAG_UNUSED01	0x00000001U
+#define PV_FLAG_PGTABLE		0x00000002U	/* page table page */
 
 #ifdef	_KERNEL
 

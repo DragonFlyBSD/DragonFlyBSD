@@ -100,6 +100,33 @@
 
 /*
  * vm_page structure
+ *
+ * hard-busy: (PBUSY_LOCKED)
+ *
+ *	Hard-busying a page allows major manipulation of the page structure.
+ *	No new soft-busies can accumulate while a page is hard-busied.  The
+ *	page busying code typically waits for all soft-busies to drop before
+ *	allowing the hard-busy.
+ *
+ * soft-busy: (PBUSY_MASK)
+ *
+ *	Soft-busying a page typically indicates I/O or read-only use of
+ *	the content.  A page can have multiple soft-busies on it.  New
+ *	soft-busies block on any hard-busied page (wait for the hard-busy
+ *	to go away).
+ *
+ * hold_count
+ *
+ *	This prevents a page from being freed.  This does not prevent any
+ *	other operation.  The page may still be disassociated from its
+ *	object and essentially scrapped.  It just won't be reused while
+ *	a non-zero hold_count is present.
+ *
+ * wire_count
+ *
+ *	This indicates that the page has been wired into memory somewhere
+ *	(typically a buffer cache buffer, or a user wire).  The pageout
+ *	daemon will skip wired pages.
  */
 TAILQ_HEAD(pglist, vm_page);
 

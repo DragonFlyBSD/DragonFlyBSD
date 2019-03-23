@@ -138,7 +138,7 @@ efi_destroy_1t1_map(void)
 		while ((m = RB_ROOT(&obj->rb_memq)) != NULL) {
 			vm_page_busy_wait(m, FALSE, "efipg");
 			vm_page_unwire(m, 1);
-			m->flags &= ~(PG_MAPPED | PG_WRITEABLE);
+			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
 			cdev_pager_free_page(obj, m);
 			kfree(m, M_EFI);
 		}
