@@ -142,6 +142,7 @@ struct faultstate {
 	int fault_flags;
 	int map_generation;
 	int shared;
+	int msoftonly;
 	int first_shared;
 	int wflags;
 	struct vnode *vp;
@@ -158,7 +159,28 @@ int vm_shared_fault = 1;
 TUNABLE_INT("vm.shared_fault", &vm_shared_fault);
 SYSCTL_INT(_vm, OID_AUTO, shared_fault, CTLFLAG_RW,
 		&vm_shared_fault, 0, "Allow shared token on vm_object");
+static int vm_fault_quick_enable = 0;
+TUNABLE_INT("vm.fault_quick", &vm_fault_quick_enable);
+SYSCTL_INT(_vm, OID_AUTO, fault_quick, CTLFLAG_RW,
+		&vm_fault_quick_enable, 0, "Allow fast vm_fault shortcut");
+static long vm_fault_quick_success_count = 0;
+SYSCTL_LONG(_vm, OID_AUTO, fault_quick_success_count, CTLFLAG_RW,
+		&vm_fault_quick_success_count, 0, "");
+static long vm_fault_quick_failure_count1 = 0;
+SYSCTL_LONG(_vm, OID_AUTO, fault_quick_failure_count1, CTLFLAG_RW,
+		&vm_fault_quick_failure_count1, 0, "");
+static long vm_fault_quick_failure_count2 = 0;
+SYSCTL_LONG(_vm, OID_AUTO, fault_quick_failure_count2, CTLFLAG_RW,
+		&vm_fault_quick_failure_count2, 0, "");
+static long vm_fault_quick_failure_count3 = 0;
+SYSCTL_LONG(_vm, OID_AUTO, fault_quick_failure_count3, CTLFLAG_RW,
+		&vm_fault_quick_failure_count3, 0, "");
+static long vm_fault_quick_failure_count4 = 0;
+SYSCTL_LONG(_vm, OID_AUTO, fault_quick_failure_count4, CTLFLAG_RW,
+		&vm_fault_quick_failure_count4, 0, "");
 
+static int vm_fault_quick(struct faultstate *fs, vm_pindex_t first_pindex,
+			vm_prot_t fault_type);
 static int vm_fault_object(struct faultstate *, vm_pindex_t, vm_prot_t, int);
 static int vm_fault_vpagetable(struct faultstate *, vm_pindex_t *,
 			vpte_t, int, int);
@@ -378,6 +400,7 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 	thread_t td;
 	struct vm_map_ilock ilock;
 	int didilock;
+	int didhold;
 	int growstack;
 	int retry = 0;
 	int inherit_prot;
@@ -398,6 +421,12 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 		lp->lwp_flags |= LWP_PAGING;
 
 RetryFault:
+	/*
+	 * vm_fault_quick() can shortcut us.
+	 */
+	fs.msoftonly = 0;
+	didhold = 0;
+
 	/*
 	 * Find the vm_map_entry representing the backing store and resolve
 	 * the top level object and page index.  This may have the side
@@ -601,6 +630,16 @@ RetryFault:
 	}
 
 	/*
+	 * Try to shortcut the entire mess and run the fault lockless.
+	 */
+	if (vm_fault_quick_enable &&
+	    vm_fault_quick(&fs, first_pindex, fault_type) == KERN_SUCCESS) {
+		didilock = 0;
+		fault_flags &= ~VM_FAULT_BURST;
+		goto success;
+	}
+
+	/*
 	 * Obtain a top-level object lock, shared or exclusive depending
 	 * on fs.first_shared.  If a shared lock winds up being insufficient
 	 * we will retry with an exclusive lock.
@@ -613,6 +652,7 @@ RetryFault:
 		vm_object_hold(fs.first_object);
 	if (fs.vp == NULL)
 		fs.vp = vnode_pager_lock(fs.first_object);
+	didhold = 1;
 
 	/*
 	 * The page we want is at (first_object, first_pindex), but if the
@@ -680,6 +720,8 @@ RetryFault:
 		goto done;
 	}
 
+success:
+
 	/*
 	 * On success vm_fault_object() does not unlock or deallocate, and fs.m
 	 * will contain a busied page.
@@ -694,9 +736,6 @@ RetryFault:
 	if (didilock)
 		vm_map_deinterlock(fs.map, &ilock);
 
-	/*KKASSERT(fs.m->queue == PQ_NONE); page-in op may deactivate page */
-	KKASSERT(fs.m->busy_count & PBUSY_LOCKED);
-
 	/*
 	 * If the page is not wired down, then put it where the pageout daemon
 	 * can find it.
@@ -709,7 +748,13 @@ RetryFault:
 	} else {
 		vm_page_activate(fs.m);
 	}
-	vm_page_wakeup(fs.m);
+	if (fs.msoftonly) {
+		KKASSERT(fs.m->busy_count & PBUSY_MASK);
+		vm_page_sbusy_drop(fs.m);
+	} else {
+		KKASSERT(fs.m->busy_count & PBUSY_LOCKED);
+		vm_page_wakeup(fs.m);
+	}
 
 	/*
 	 * Burst in a few more pages if possible.  The fs.map should still
@@ -760,7 +805,7 @@ done_success:
 
 	result = KERN_SUCCESS;
 done:
-	if (fs.first_object)
+	if (fs.first_object && didhold)
 		vm_object_drop(fs.first_object);
 done2:
 	if (lp)
@@ -791,6 +836,86 @@ done2:
 #endif
 
 	return (result);
+}
+
+/*
+ * Attempt a lockless vm_fault() shortcut.  The stars have to align for this
+ * to work.  But if it does we can get our page only soft-busied and not
+ * have to touch the vm_object or vnode locks at all.
+ */
+static
+int
+vm_fault_quick(struct faultstate *fs, vm_pindex_t first_pindex,
+	       vm_prot_t fault_type)
+{
+	vm_page_t m;
+	vm_object_t obj;	/* NOT LOCKED */
+
+	/*
+	 * Don't waste time if the object is only being used by one vm_map.
+	 */
+	obj = fs->first_object;
+	if (obj->flags & OBJ_ONEMAPPING)
+		return KERN_FAILURE;
+
+	/*
+	 * Ick, can't handle this
+	 */
+	if (fs->entry->maptype == VM_MAPTYPE_VPAGETABLE) {
+		++vm_fault_quick_failure_count1;
+		return KERN_FAILURE;
+	}
+
+	/*
+	 * Ok, try to get the vm_page quickly via the hash table.  The
+	 * page will be soft-busied on success (NOT hard-busied).
+	 */
+	m = vm_page_hash_get(obj, first_pindex);
+	if (m == NULL) {
+		++vm_fault_quick_failure_count2;
+		return KERN_FAILURE;
+	}
+	if ((obj->flags & OBJ_DEAD) ||
+	    m->valid != VM_PAGE_BITS_ALL ||
+	    m->queue - m->pc == PQ_CACHE ||
+	    (m->flags & PG_SWAPPED)) {
+		vm_page_sbusy_drop(m);
+		++vm_fault_quick_failure_count3;
+		return KERN_FAILURE;
+	}
+
+	/*
+	 * The page is already fully valid, ACTIVE, and is not PG_SWAPPED.
+	 *
+	 * Don't map the page writable when emulating the dirty bit, a
+	 * fault must be taken for proper emulation (vkernel).
+	 */
+	if (curthread->td_lwp && curthread->td_lwp->lwp_vmspace &&
+	    pmap_emulate_ad_bits(&curthread->td_lwp->lwp_vmspace->vm_pmap)) {
+		if ((fault_type & VM_PROT_WRITE) == 0)
+			fs->prot &= ~VM_PROT_WRITE;
+	}
+
+	/*
+	 * Check write permissions.  We don't hold an object lock so the
+	 * object must already be flagged writable and dirty.
+	 */
+	if (fs->prot & VM_PROT_WRITE) {
+		if ((obj->flags & (OBJ_WRITEABLE | OBJ_MIGHTBEDIRTY)) !=
+		    (OBJ_WRITEABLE | OBJ_MIGHTBEDIRTY) ||
+		    m->dirty != VM_PAGE_BITS_ALL) {
+			vm_page_sbusy_drop(m);
+			++vm_fault_quick_failure_count4;
+			return KERN_FAILURE;
+		}
+		vm_set_nosync(m, fs->entry);
+	}
+	vm_page_activate(m);
+	fs->m = m;
+	fs->msoftonly = 1;
+	++vm_fault_quick_success_count;
+
+	return KERN_SUCCESS;
 }
 
 /*
@@ -879,6 +1004,7 @@ vm_fault_page(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type,
 	fs.vp = NULL;
 	fs.shared = vm_shared_fault;
 	fs.first_shared = vm_shared_fault;
+	fs.msoftonly = 0;
 	growstack = 1;
 
 	/*
@@ -1233,6 +1359,7 @@ vm_fault_object_page(vm_object_t object, vm_ooffset_t offset,
 	fs.map = NULL;
 	fs.shared = vm_shared_fault;
 	fs.first_shared = *sharedp;
+	fs.msoftonly = 0;
 	fs.vp = NULL;
 	KKASSERT((fault_flags & VM_FAULT_WIRE_MASK) == 0);
 

@@ -168,6 +168,8 @@ typedef enum {
 	VM_SUBSYS_DRM_TTM,
 	VM_SUBSYS_HAMMER,
 
+	VM_SUBSYS_VMPGHASH,
+
 	VM_SUBSYS_LIMIT		/* end of list */
 } vm_subsys_t;
 

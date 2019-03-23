@@ -131,6 +131,8 @@ static struct alist vm_contig_alist;
 static struct almeta vm_contig_ameta[ALIST_RECORDS_65536];
 static struct spinlock vm_contig_spin = SPINLOCK_INITIALIZER(&vm_contig_spin, "vm_contig_spin");
 
+static struct vm_page **vm_page_hash;
+
 static u_long vm_dma_reserved = 0;
 TUNABLE_ULONG("vm.dma_reserved", &vm_dma_reserved);
 SYSCTL_ULONG(_vm, OID_AUTO, dma_reserved, CTLFLAG_RD, &vm_dma_reserved, 0,
@@ -696,6 +698,7 @@ vm_page_startup_finish(void *dummy __unused)
 	alist_blk_t xcount;
 	alist_blk_t bfree;
 	vm_page_t m;
+	vm_page_t *mp;
 
 	spin_lock(&vm_contig_spin);
 	for (;;) {
@@ -764,6 +767,16 @@ vm_page_startup_finish(void *dummy __unused)
 		(intmax_t)(vmstats.v_dma_pages - vm_contig_alist.bl_free) *
 		(PAGE_SIZE / 1024),
 		(intmax_t)vm_contig_alist.bl_free * (PAGE_SIZE / 1024));
+
+	/*
+	 * hash table for vm_page_lookup_quick()
+	 */
+	mp = (void *)kmem_alloc3(&kernel_map,
+				 vm_page_array_size * sizeof(vm_page_t),
+				 VM_SUBSYS_VMPGHASH, KM_CPU(0));
+	bzero(mp, vm_page_array_size * sizeof(vm_page_t));
+	cpu_sfence();
+	vm_page_hash = mp;
 }
 SYSINIT(vm_pgend, SI_SUB_PROC0_POST, SI_ORDER_ANY,
 	vm_page_startup_finish, NULL);
@@ -1446,6 +1459,69 @@ vm_page_remove(vm_page_t m)
 }
 
 /*
+ * Calculate the hash position for the vm_page hash heuristic.
+ */
+static __inline
+struct vm_page **
+vm_page_hash_hash(vm_object_t object, vm_pindex_t pindex)
+{
+	size_t hi;
+
+	hi = (uintptr_t)object % (uintptr_t)vm_page_array_size + pindex;
+	hi %= vm_page_array_size;
+	return (&vm_page_hash[hi]);
+}
+
+/*
+ * Heuristical page lookup that does not require any locks.  Returns
+ * a soft-busied page on success, NULL on failure.
+ *
+ * Caller must lookup the page the slow way if NULL is returned.
+ */
+vm_page_t
+vm_page_hash_get(vm_object_t object, vm_pindex_t pindex)
+{
+	struct vm_page **mp;
+	vm_page_t m;
+
+	if (vm_page_hash == NULL)
+		return NULL;
+	mp = vm_page_hash_hash(object, pindex);
+	m = *mp;
+	cpu_ccfence();
+	if (m == NULL)
+		return NULL;
+	if (m->object != object || m->pindex != pindex)
+		return NULL;
+	if (vm_page_sbusy_try(m))
+		return NULL;
+	if (m->object != object || m->pindex != pindex) {
+		vm_page_wakeup(m);
+		return NULL;
+	}
+	return m;
+}
+
+/*
+ * Enter page onto vm_page_hash[].  This is a heuristic, SMP collisions
+ * are allowed.
+ */
+static __inline
+void
+vm_page_hash_enter(vm_page_t m)
+{
+	struct vm_page **mp;
+
+	if (vm_page_hash &&
+	    m > &vm_page_array[0] &&
+	    m < &vm_page_array[vm_page_array_size]) {
+		mp = vm_page_hash_hash(m->object, m->pindex);
+		if (*mp != m)
+			*mp = m;
+	}
+}
+
+/*
  * Locate and return the page at (object, pindex), or NULL if the
  * page could not be found.
  *
@@ -1461,7 +1537,10 @@ vm_page_lookup(vm_object_t object, vm_pindex_t pindex)
 	 */
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
 	m = vm_page_rb_tree_RB_LOOKUP(&object->rb_memq, pindex);
-	KKASSERT(m == NULL || (m->object == object && m->pindex == pindex));
+	if (m) {
+		KKASSERT(m->object == object && m->pindex == pindex);
+		vm_page_hash_enter(m);
+	}
 	return(m);
 }
 
@@ -1504,6 +1583,7 @@ VM_PAGE_DEBUG_EXT(vm_page_lookup_busy_wait)(struct vm_object *object,
 			m->busy_func = func;
 			m->busy_line = lineno;
 #endif
+			vm_page_hash_enter(m);
 			break;
 		}
 	}
@@ -1550,6 +1630,7 @@ VM_PAGE_DEBUG_EXT(vm_page_lookup_busy_try)(struct vm_object *object,
 			m->busy_func = func;
 			m->busy_line = lineno;
 #endif
+			vm_page_hash_enter(m);
 			break;
 		}
 	}
@@ -1581,6 +1662,8 @@ vm_page_lookup_sbusy_try(struct vm_object *object, vm_pindex_t pindex,
 			   (m->flags & PG_FICTITIOUS)) {
 			vm_page_sbusy_drop(m);
 			m = NULL;
+		} else {
+			vm_page_hash_enter(m);
 		}
 	}
 	return m;

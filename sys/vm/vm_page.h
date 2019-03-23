@@ -375,6 +375,9 @@ void vm_page_deactivate (vm_page_t);
 void vm_page_deactivate_locked (vm_page_t);
 void vm_page_initfake(vm_page_t m, vm_paddr_t paddr, vm_memattr_t memattr);
 int vm_page_insert (vm_page_t, struct vm_object *, vm_pindex_t);
+
+vm_page_t vm_page_hash_get(vm_object_t object, vm_pindex_t pindex);
+
 vm_page_t vm_page_lookup (struct vm_object *, vm_pindex_t);
 vm_page_t vm_page_lookup_sbusy_try(struct vm_object *object,
 		vm_pindex_t pindex, int pgoff, int pgbytes);
