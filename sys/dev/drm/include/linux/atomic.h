@@ -3,7 +3,7 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013-2017 Mellanox Technologies, Ltd.
- * Copyright (c) 2013-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2013-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -195,5 +195,7 @@ atomic_andnot(int i, atomic_t *v)
 })
 
 #define cmpxchg_relaxed(...)	cmpxchg(__VA_ARGS__)
+
+#include <asm-generic/atomic-long.h>
 
 #endif	/* _LINUX_ATOMIC_H_ */
