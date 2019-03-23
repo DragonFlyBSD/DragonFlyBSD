@@ -3507,8 +3507,8 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 				break;
 			kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) &
 					~(vm_offset_t)(PAGE_SIZE * NPTEPG - 1);
-			if (kernel_vm_end - 1 >= kernel_map.header.end) {
-				kernel_vm_end = kernel_map.header.end;
+			if (kernel_vm_end - 1 >= vm_map_max(&kernel_map)) {
+				kernel_vm_end = vm_map_max(&kernel_map);
 				break;                       
 			}
 		}
@@ -3531,8 +3531,8 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 	kstart = rounddown2(kstart, (vm_offset_t)(PAGE_SIZE * NPTEPG));
 	kend = roundup2(kend, (vm_offset_t)(PAGE_SIZE * NPTEPG));
 
-	if (kend - 1 >= kernel_map.header.end)
-		kend = kernel_map.header.end;
+	if (kend - 1 >= vm_map_max(&kernel_map))
+		kend = vm_map_max(&kernel_map);
 
 	while (kstart < kend) {
 		pt = pmap_pt(&kernel_pmap, kstart);
@@ -3570,8 +3570,8 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		if ((*pt & kernel_pmap.pmap_bits[PG_V_IDX]) != 0) {
 			kstart = (kstart + PAGE_SIZE * NPTEPG) &
 				 ~(vm_offset_t)(PAGE_SIZE * NPTEPG - 1);
-			if (kstart - 1 >= kernel_map.header.end) {
-				kstart = kernel_map.header.end;
+			if (kstart - 1 >= vm_map_max(&kernel_map)) {
+				kstart = vm_map_max(&kernel_map);
 				break;                       
 			}
 			continue;
@@ -3601,8 +3601,8 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		kstart = (kstart + PAGE_SIZE * NPTEPG) &
 			  ~(vm_offset_t)(PAGE_SIZE * NPTEPG - 1);
 
-		if (kstart - 1 >= kernel_map.header.end) {
-			kstart = kernel_map.header.end;
+		if (kstart - 1 >= vm_map_max(&kernel_map)) {
+			kstart = vm_map_max(&kernel_map);
 			break;                       
 		}
 	}

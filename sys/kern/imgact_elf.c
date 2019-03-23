@@ -1191,8 +1191,7 @@ each_segment(struct proc *p, segment_callback func, void *closure, int writable)
 	vm_map_t map = &p->p_vmspace->vm_map;
 	vm_map_entry_t entry;
 
-	for (entry = map->header.next; error == 0 && entry != &map->header;
-	    entry = entry->next) {
+	RB_FOREACH(entry, vm_map_rb_tree, &map->rb_root) {
 		vm_object_t obj;
 		vm_object_t lobj;
 		vm_object_t tobj;

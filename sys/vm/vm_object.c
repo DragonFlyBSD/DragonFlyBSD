@@ -2983,29 +2983,29 @@ _vm_object_in_map(vm_map_t map, vm_object_t object, vm_map_entry_t entry)
 	vm_object_t obj, nobj;
 	int entcount;
 
-	if (map == 0)
+	if (map == NULL)
 		return 0;
-	if (entry == 0) {
-		tmpe = map->header.next;
+	if (entry == NULL) {
+		tmpe = RB_MIN(vm_map_rb_tree, &map->rb_root);
 		entcount = map->nentries;
-		while (entcount-- && (tmpe != &map->header)) {
+		while (entcount-- && tmpe) {
 			if( _vm_object_in_map(map, object, tmpe)) {
 				return 1;
 			}
-			tmpe = tmpe->next;
+			tmpe = vm_map_rb_tree_RB_NEXT(tmpe);
 		}
 		return (0);
 	}
 	switch(entry->maptype) {
 	case VM_MAPTYPE_SUBMAP:
 		tmpm = entry->object.sub_map;
-		tmpe = tmpm->header.next;
+		tmpe = RB_MIN(vm_map_rb_tree, &tmpm->rb_root);
 		entcount = tmpm->nentries;
-		while (entcount-- && tmpe != &tmpm->header) {
+		while (entcount-- && tmpe) {
 			if( _vm_object_in_map(tmpm, object, tmpe)) {
 				return 1;
 			}
-			tmpe = tmpe->next;
+			tmpe = vm_map_rb_tree_RB_NEXT(tmpe);
 		}
 		break;
 	case VM_MAPTYPE_NORMAL:

@@ -85,8 +85,7 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	vm_map_lock_read(map);
 	lwkt_reltoken(&p->p_token);
 
-	for (entry = map->header.next; entry != &map->header;
-		entry = entry->next) {
+	RB_FOREACH(entry, vm_map_rb_tree, &map->rb_root) {
 		vm_object_t obj, tobj, lobj;
 		int ref_count, shadow_count, flags;
 		vm_offset_t e_start, e_end;

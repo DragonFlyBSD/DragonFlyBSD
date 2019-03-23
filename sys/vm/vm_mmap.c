@@ -782,7 +782,7 @@ RestartScan:
 	timestamp = map->timestamp;
 
 	if (!vm_map_lookup_entry(map, addr, &entry))
-		entry = entry->next;
+		entry = RB_MIN(vm_map_rb_tree, &map->rb_root);
 
 	/*
 	 * Do this on a map entry basis so that if the pages are not
@@ -790,10 +790,9 @@ RestartScan:
 	 * up the pages elsewhere.
 	 */
 	lastvecindex = -1;
-	for(current = entry;
-		(current != &map->header) && (current->start < end);
-		current = current->next) {
-
+	for (current = entry;
+	     current && current->start < end;
+	     current = vm_map_rb_tree_RB_NEXT(current)) {
 		/*
 		 * ignore submaps (for now) or null objects
 		 */
@@ -1027,14 +1026,12 @@ sys_mlockall(struct mlockall_args *uap)
 	vm_map_lock(map);
 	do {
 		if (how & MCL_CURRENT) {
-			for(entry = map->header.next;
-			    entry != &map->header;
-			    entry = entry->next);
-
+			RB_FOREACH(entry, vm_map_rb_tree, &map->rb_root) {
+				; /* NOT IMPLEMENTED YET */
+			}
 			rc = ENOSYS;
 			break;
 		}
-	
 		if (how & MCL_FUTURE)
 			map->flags |= MAP_WIREFUTURE;
 	} while(0);
@@ -1065,9 +1062,7 @@ sys_munlockall(struct munlockall_args *uap)
 	map->flags &= ~MAP_WIREFUTURE;
 
 retry:
-	for (entry = map->header.next;
-	     entry != &map->header;
-	     entry = entry->next) {
+	RB_FOREACH(entry, vm_map_rb_tree, &map->rb_root) {
 		if ((entry->eflags & MAP_ENTRY_USER_WIRED) == 0)
 			continue;
 

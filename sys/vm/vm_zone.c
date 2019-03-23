@@ -638,7 +638,7 @@ zget(vm_zone_t z)
 		crit_enter();
 		while (gd->gd_vme_avail < 2 && nitems > 1) {
 			entry = item;
-			entry->next = gd->gd_vme_base;
+			MAPENT_FREELIST(entry) = gd->gd_vme_base;
 			gd->gd_vme_base = entry;
 			atomic_add_int(&gd->gd_vme_avail, 1);
 			item = (uint8_t *)item + z->zsize;

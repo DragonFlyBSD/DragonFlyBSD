@@ -184,8 +184,6 @@ typedef enum {
  *	page directory index.
  */
 struct vm_map_entry {
-	struct vm_map_entry *prev;	/* previous entry */
-	struct vm_map_entry *next;	/* next entry */
 	RB_ENTRY(vm_map_entry) rb_entry;
 	vm_offset_t start;		/* start address */
 	vm_offset_t end;		/* end address */
@@ -200,6 +198,8 @@ struct vm_map_entry {
 	int wired_count;		/* can be paged if = 0 */
 	vm_subsys_t id;			/* subsystem id */
 };
+
+#define MAPENT_FREELIST(ent)		(ent)->rb_entry.rbe_left
 
 #define MAP_ENTRY_NOSYNC		0x0001
 #define MAP_ENTRY_STACK			0x0002
@@ -301,10 +301,13 @@ typedef struct vm_map_freehint vm_map_freehint_t;
  * NOTE: The vm_map structure can be hard-locked with the lockmgr lock
  *	 or soft-serialized with the token, or both.
  */
+RB_HEAD(vm_map_rb_tree, vm_map_entry);
+
 struct vm_map {
-	struct vm_map_entry header;	/* List of entries */
-	RB_HEAD(vm_map_rb_tree, vm_map_entry) rb_root;
 	struct lock lock;		/* Lock for map data */
+	struct vm_map_rb_tree rb_root;	/* Organize map entries */
+	vm_offset_t min_addr;		/* min address */
+	vm_offset_t max_addr;		/* max address */
 	int nentries;			/* Number of entries */
 	unsigned int timestamp;		/* Version number */
 	vm_size_t size;			/* virtual size */
@@ -494,8 +497,8 @@ vm_map_lock_upgrade(vm_map_t map) {
 /*
  *	Functions implemented as macros
  */
-#define		vm_map_min(map)		((map)->header.start)
-#define		vm_map_max(map)		((map)->header.end)
+#define		vm_map_min(map)		((map)->min_addr)
+#define		vm_map_max(map)		((map)->max_addr)
 #define		vm_map_pmap(map)	((map)->pmap)
 
 /*
@@ -537,7 +540,7 @@ vmspace_president_count(struct vmspace *vmspace)
 		return(map->president_cache);
 #endif
 
-	for (cur = map->header.next; cur != &map->header; cur = cur->next) {
+	RB_FOREACH(cur, vm_map_rb_tree, &map->rb_root) {
 		switch(cur->maptype) {
 		case VM_MAPTYPE_NORMAL:
 		case VM_MAPTYPE_VPAGETABLE:
