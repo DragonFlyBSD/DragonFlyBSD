@@ -828,6 +828,22 @@ show_var(int *oid, size_t nlen)
 		fwrite(p, nul == NULL ? (int)len : nul - p, 1, stdout);
 		return (0);
 		
+	case 'C':
+		if (!nflag)
+			printf("%s%s", name, sep);
+		fmt++;
+		spacer = "";
+		while (len >= sizeof(char)) {
+			if(*fmt == 'U')
+				printf("%s%hhu", spacer, *(unsigned char *)p);
+			else
+				printf("%s%hhd", spacer, *(char *)p);
+			spacer = " ";
+			len -= sizeof(char);
+			p += sizeof(char);
+		}
+		goto done;
+
 	case 'I':
 		if (!nflag)
 			printf("%s%s", name, sep);
@@ -889,6 +905,24 @@ show_var(int *oid, size_t nlen)
 
 	case 'T':
 	case 'S':
+		if (fmt[0] == 'S' && fmt[1] != ',') {
+			if (!nflag)
+				printf("%s%s", name, sep);
+			fmt++;
+			spacer = "";
+			while (len >= sizeof(short)) {
+				if(*fmt == 'U')
+					printf("%s%hu", spacer,
+					    *(unsigned short *)p);
+				else
+					printf("%s%hd", spacer, *(short *)p);
+				spacer = " ";
+				len -= sizeof(short);
+				p += sizeof(short);
+			}
+			goto done;
+		}
+			
 		if (!oflag && !xflag) {
 			i = 0;
 			if (strcmp(fmt, "S,clockinfo") == 0)
