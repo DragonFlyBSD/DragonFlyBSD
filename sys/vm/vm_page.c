@@ -1,7 +1,7 @@
 /*
+ * Copyright (c) 2003-2019 The DragonFly Project.  All rights reserved.
  * Copyright (c) 1991 Regents of the University of California.
  * All rights reserved.
- * Copyright (c) 2003-2011 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
  * The Mach Operating System project at Carnegie-Mellon University.
@@ -1231,9 +1231,6 @@ VM_PAGE_DEBUG_EXT(vm_page_busy_try)(vm_page_t m, int also_m_busy
  * Clear the BUSY flag and return non-zero to indicate to the caller
  * that a wakeup() should be performed.
  *
- * The vm_page must be spinlocked and will remain spinlocked on return.
- * The related queue must NOT be spinlocked (which could deadlock us).
- *
  * (inline version)
  */
 static __inline
@@ -1242,16 +1239,16 @@ _vm_page_wakeup(vm_page_t m)
 {
 	u_int32_t busy_count;
 
+	busy_count = m->busy_count;
+	cpu_ccfence();
 	for (;;) {
-		busy_count = m->busy_count;
-		cpu_ccfence();
-		if (atomic_cmpset_int(&m->busy_count, busy_count,
+		if (atomic_fcmpset_int(&m->busy_count, &busy_count,
 				      busy_count &
 				      ~(PBUSY_LOCKED | PBUSY_WANTED))) {
-			break;
+			return((int)(busy_count & PBUSY_WANTED));
 		}
 	}
-	return((int)(busy_count & PBUSY_WANTED));
+	/* not reached */
 }
 
 /*
@@ -1264,33 +1261,32 @@ vm_page_wakeup(vm_page_t m)
 {
         KASSERT(m->busy_count & PBUSY_LOCKED,
 		("vm_page_wakeup: page not busy!!!"));
-	vm_page_spin_lock(m);
-	if (_vm_page_wakeup(m)) {
-		vm_page_spin_unlock(m);
+	if (_vm_page_wakeup(m))
 		wakeup(m);
-	} else {
-		vm_page_spin_unlock(m);
-	}
 }
 
 /*
- * Holding a page keeps it from being reused.  Other parts of the system
- * can still disassociate the page from its current object and free it, or
- * perform read or write I/O on it and/or otherwise manipulate the page,
- * but if the page is held the VM system will leave the page and its data
- * intact and not reuse the page for other purposes until the last hold
- * reference is released.  (see vm_page_wire() if you want to prevent the
- * page from being disassociated from its object too).
+ * Hold a page, preventing reuse.  This is typically only called on pages
+ * in a known state (either held busy, special, or interlocked in some
+ * manner).  Holding a page does not ensure that it remains valid, it only
+ * prevents reuse.  The page must not already be on the FREE queue or in
+ * any danger of being moved to the FREE queue concurrent with this call.
  *
- * The caller must still validate the contents of the page and, if necessary,
- * wait for any pending I/O (e.g. vm_page_sleep_busy() loop) to complete
- * before manipulating the page.
+ * Other parts of the system can still disassociate the page from its object
+ * and attempt to free it, or perform read or write I/O on it and/or otherwise
+ * manipulate the page, but if the page is held the VM system will leave the
+ * page and its data intact and not cycle it through the FREE queue until
+ * the last hold has been released.
  *
- * XXX get vm_page_spin_lock() here and move FREE->HOLD if necessary
+ * (see vm_page_wire() if you want to prevent the page from being
+ *  disassociated from its object too).
  */
 void
 vm_page_hold(vm_page_t m)
 {
+	atomic_add_int(&m->hold_count, 1);
+	KKASSERT(m->queue - m->pc != PQ_FREE);
+#if 0
 	vm_page_spin_lock(m);
 	atomic_add_int(&m->hold_count, 1);
 	if (m->queue - m->pc == PQ_FREE) {
@@ -1300,37 +1296,41 @@ vm_page_hold(vm_page_t m)
 		_vm_page_queue_spin_unlock(m);
 	}
 	vm_page_spin_unlock(m);
+#endif
 }
 
 /*
  * The opposite of vm_page_hold().  If the page is on the HOLD queue
  * it was freed while held and must be moved back to the FREE queue.
+ *
+ * To avoid racing against vm_page_free*() we must test conditions
+ * after obtaining the spin-lock.
  */
 void
 vm_page_unhold(vm_page_t m)
 {
 	KASSERT(m->hold_count > 0 && m->queue - m->pc != PQ_FREE,
-		("vm_page_unhold: pg %p illegal hold_count (%d) or on FREE queue (%d)",
+		("vm_page_unhold: pg %p illegal hold_count (%d) or "
+		 "on FREE queue (%d)",
 		 m, m->hold_count, m->queue - m->pc));
-	vm_page_spin_lock(m);
-	atomic_add_int(&m->hold_count, -1);
-	if (m->hold_count == 0 && m->queue - m->pc == PQ_HOLD) {
-		_vm_page_queue_spin_lock(m);
-		_vm_page_rem_queue_spinlocked(m);
-		_vm_page_add_queue_spinlocked(m, PQ_FREE + m->pc, 1);
-		_vm_page_queue_spin_unlock(m);
+
+	if (atomic_fetchadd_int(&m->hold_count, -1) == 1) {
+		vm_page_spin_lock(m);
+		if (m->hold_count == 0 && m->queue - m->pc == PQ_HOLD) {
+			_vm_page_queue_spin_lock(m);
+			_vm_page_rem_queue_spinlocked(m);
+			_vm_page_add_queue_spinlocked(m, PQ_FREE + m->pc, 1);
+			_vm_page_queue_spin_unlock(m);
+		}
+		vm_page_spin_unlock(m);
 	}
-	vm_page_spin_unlock(m);
 }
 
 /*
- *	vm_page_getfake:
- *
- *	Create a fictitious page with the specified physical address and
- *	memory attribute.  The memory attribute is the only the machine-
- *	dependent aspect of a fictitious page that must be initialized.
+ * Create a fictitious page with the specified physical address and
+ * memory attribute.  The memory attribute is the only the machine-
+ * dependent aspect of a fictitious page that must be initialized.
  */
-
 void
 vm_page_initfake(vm_page_t m, vm_paddr_t paddr, vm_memattr_t memattr)
 {
@@ -2849,18 +2849,16 @@ vm_page_deactivate_locked(vm_page_t m)
 int
 vm_page_try_to_cache(vm_page_t m)
 {
-	vm_page_spin_lock(m);
+	/*
+	 * Shortcut if we obviously cannot move the page, or if the
+	 * page is already on the cache queue.
+	 */
 	if (m->dirty || m->hold_count || m->wire_count ||
+	    m->queue - m->pc == PQ_CACHE ||
 	    (m->flags & (PG_UNMANAGED | PG_NEED_COMMIT))) {
-		if (_vm_page_wakeup(m)) {
-			vm_page_spin_unlock(m);
-			wakeup(m);
-		} else {
-			vm_page_spin_unlock(m);
-		}
+		vm_page_wakeup(m);
 		return(0);
 	}
-	vm_page_spin_unlock(m);
 
 	/*
 	 * Page busied by us and no longer spinlocked.  Dirty pages cannot
@@ -2879,16 +2877,14 @@ vm_page_try_to_cache(vm_page_t m)
  * Attempt to free the page.  If we cannot free it, we do nothing.
  * 1 is returned on success, 0 on failure.
  *
+ * Caller provides an unlocked/non-busied page.
  * No requirements.
  */
 int
 vm_page_try_to_free(vm_page_t m)
 {
-	vm_page_spin_lock(m);
-	if (vm_page_busy_try(m, TRUE)) {
-		vm_page_spin_unlock(m);
+	if (vm_page_busy_try(m, TRUE))
 		return(0);
-	}
 
 	/*
 	 * The page can be in any state, including already being on the free
@@ -2901,15 +2897,9 @@ vm_page_try_to_free(vm_page_t m)
 			 PG_NEED_COMMIT)) ||	/* or needs a commit */
 	    m->queue - m->pc == PQ_FREE ||	/* already on PQ_FREE */
 	    m->queue - m->pc == PQ_HOLD) {	/* already on PQ_HOLD */
-		if (_vm_page_wakeup(m)) {
-			vm_page_spin_unlock(m);
-			wakeup(m);
-		} else {
-			vm_page_spin_unlock(m);
-		}
+		vm_page_wakeup(m);
 		return(0);
 	}
-	vm_page_spin_unlock(m);
 
 	/*
 	 * We can probably free the page.
@@ -2990,13 +2980,8 @@ vm_page_cache(vm_page_t m)
 		_vm_page_and_queue_spin_lock(m);
 		_vm_page_rem_queue_spinlocked(m);
 		_vm_page_add_queue_spinlocked(m, PQ_CACHE + m->pc, 0);
-		_vm_page_queue_spin_unlock(m);
-		if (_vm_page_wakeup(m)) {
-			vm_page_spin_unlock(m);
-			wakeup(m);
-		} else {
-			vm_page_spin_unlock(m);
-		}
+		_vm_page_and_queue_spin_unlock(m);
+		vm_page_wakeup(m);
 		vm_page_free_wakeup();
 	}
 }

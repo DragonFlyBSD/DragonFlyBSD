@@ -258,11 +258,9 @@ vm_pageout_clean_helper(vm_page_t m, int vmflush_flags)
 	object = m->object;
 
 	/*
-	 * Don't mess with the page if it's held or special.
-	 *
-	 * XXX do we really need to check hold_count here?  hold_count
-	 * isn't supposed to mess with vm_page ops except prevent the
-	 * page from being reused.
+	 * Don't mess with the page if it's held or special.  Theoretically
+	 * we can pageout held pages but there is no real need to press our
+	 * luck, so don't.
 	 */
 	if (m->hold_count != 0 || (m->flags & PG_UNMANAGED)) {
 		vm_page_wakeup(m);
@@ -1345,6 +1343,7 @@ vm_pageout_scan_active(int pass, int q,
 		vm_page_queues_spin_unlock(PQ_ACTIVE + q);
 		KKASSERT(m->queue == PQ_ACTIVE + q);
 
+#if 0
 		/*
 		 * Don't deactivate pages that are held, even if we can
 		 * busy them.  (XXX why not?)
@@ -1363,6 +1362,7 @@ vm_pageout_scan_active(int pass, int q,
 			vm_page_wakeup(m);
 			goto next;
 		}
+#endif
 
 		/*
 		 * The emergency pager ignores vnode-backed pages as these
