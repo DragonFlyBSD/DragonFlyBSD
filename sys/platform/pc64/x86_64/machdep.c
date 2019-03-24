@@ -1875,10 +1875,10 @@ add_smap_entries(int *physmap_idx)
 static void
 add_efi_map_entries(int *physmap_idx)
 {
-	 struct efi_md *map, *p;
-	 const char *type;
-	 size_t efisz;
-	 int i, ndesc;
+	struct efi_md *map, *p;
+	const char *type;
+	size_t efisz;
+	int i, ndesc;
 
 	static const char *types[] = {
 		"Reserved",
