@@ -149,7 +149,6 @@ configure(void *dummy)
 	 * Free up reserve if we got it.
 	 */
 	if (low_dma_reserve != NULL) {
-		kprintf("Freeing low dma reserve @ %p\n", low_dma_reserve);
 		contigfree(low_dma_reserve, 0x80000, M_TEMP);
 	} else if (bootverbose) {
 		kprintf("low dma reserve was not allocated\n");
