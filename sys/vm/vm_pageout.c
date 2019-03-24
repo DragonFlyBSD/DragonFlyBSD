@@ -740,7 +740,7 @@ vm_pageout_scan_inactive(int pass, int q, long avail_shortage,
 	vm_page_t m;
 	struct vm_page marker;
 	struct vnode *vpfailed;		/* warning, allowed to be stale */
-	int maxscan;
+	long maxscan;
 	long delta = 0;
 	long max_launder;
 	int isep;
@@ -958,7 +958,6 @@ vm_pageout_page(vm_page_t m, long *max_launderp, long *vnodes_skippedp,
 				&vm_page_queues[m->queue].pl, m, pageq);
 			TAILQ_INSERT_TAIL(
 				&vm_page_queues[m->queue].pl, m, pageq);
-			++vm_swapcache_inactive_heuristic;
 		}
 		vm_page_and_queue_spin_unlock(m);
 		vm_page_wakeup(m);
@@ -1061,7 +1060,6 @@ vm_pageout_page(vm_page_t m, long *max_launderp, long *vnodes_skippedp,
 				&vm_page_queues[m->queue].pl, m, pageq);
 			TAILQ_INSERT_TAIL(
 				&vm_page_queues[m->queue].pl, m, pageq);
-			++vm_swapcache_inactive_heuristic;
 		}
 		vm_page_and_queue_spin_unlock(m);
 		vm_page_wakeup(m);
@@ -1105,7 +1103,6 @@ vm_pageout_page(vm_page_t m, long *max_launderp, long *vnodes_skippedp,
 				TAILQ_INSERT_TAIL(
 				    &vm_page_queues[m->queue].pl,
 				    m, pageq);
-				++vm_swapcache_inactive_heuristic;
 			}
 			vm_page_and_queue_spin_unlock(m);
 			vm_page_wakeup(m);
@@ -1216,7 +1213,6 @@ vm_pageout_page(vm_page_t m, long *max_launderp, long *vnodes_skippedp,
 				if (m->queue - m->pc == PQ_INACTIVE) {
 					TAILQ_REMOVE(&vm_page_queues[m->queue].pl, m, pageq);
 					TAILQ_INSERT_TAIL(&vm_page_queues[m->queue].pl, m, pageq);
-					++vm_swapcache_inactive_heuristic;
 				}
 				vm_page_and_queue_spin_unlock(m);
 				if (object->flags & OBJ_MIGHTBEDIRTY)

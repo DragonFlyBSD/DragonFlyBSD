@@ -96,7 +96,6 @@ extern swblk_t vm_swap_max;
 extern swblk_t vm_swap_cache_use;
 extern swblk_t vm_swap_anon_use;
 extern int vm_swapcache_read_enable;
-extern int vm_swapcache_inactive_heuristic;
 extern int vm_swapcache_use_chflags;
 
 extern struct blist *swapblist;

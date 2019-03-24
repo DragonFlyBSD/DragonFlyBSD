@@ -92,7 +92,7 @@ struct thread *swapcached_thread;
 SYSCTL_NODE(_vm, OID_AUTO, swapcache, CTLFLAG_RW, NULL, NULL);
 
 int vm_swapcache_read_enable;
-int vm_swapcache_inactive_heuristic;
+static long vm_swapcache_wtrigger;
 static int vm_swapcache_sleep;
 static int vm_swapcache_maxscan = PQ_L2_SIZE * 8;
 static int vm_swapcache_maxlaunder = PQ_L2_SIZE * 4;
@@ -204,7 +204,7 @@ vm_swapcached_thread(void)
 
 	vm_swapcache_min_hysteresis = 1024;
 	vm_swapcache_hysteresis = vm_swapcache_min_hysteresis;
-	vm_swapcache_inactive_heuristic = -vm_swapcache_hysteresis;
+	vm_swapcache_wtrigger = -vm_swapcache_hysteresis;
 
 	/*
 	 * Initialize our marker for the vm_object scan (SWAPC_CLEANING)
@@ -308,8 +308,7 @@ vm_swapcached_thread(void)
 			burst = SWAPB_BURSTING;
 		}
 		if (reached_end == PQ_L2_SIZE) {
-			vm_swapcache_inactive_heuristic =
-				-vm_swapcache_hysteresis;
+			vm_swapcache_wtrigger = -vm_swapcache_hysteresis;
 		}
 	}
 
@@ -351,6 +350,8 @@ static int
 vm_swapcache_writing_heuristic(void)
 {
 	int hyst;
+	int q;
+	long adds;
 
 	hyst = vmstats.v_inactive_count / 4;
 	if (hyst < vm_swapcache_min_hysteresis)
@@ -358,10 +359,14 @@ vm_swapcache_writing_heuristic(void)
 	cpu_ccfence();
 	vm_swapcache_hysteresis = hyst;
 
-	if (vm_swapcache_inactive_heuristic < -hyst)
-		vm_swapcache_inactive_heuristic = -hyst;
-
-	return (vm_swapcache_inactive_heuristic >= 0);
+	adds = 0;
+	for (q = PQ_INACTIVE; q < PQ_INACTIVE + PQ_L2_SIZE; ++q) {
+		adds += atomic_swap_long(&vm_page_queues[q].adds, 0);
+	}
+	vm_swapcache_wtrigger += adds;
+	if (vm_swapcache_wtrigger < -hyst)
+		vm_swapcache_wtrigger = -hyst;
+	return (vm_swapcache_wtrigger >= 0);
 }
 
 /*

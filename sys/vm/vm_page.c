@@ -124,7 +124,7 @@ static void vm_numa_add_topology_mem(cpu_node_t *cpup, int physid, long bytes);
 /*
  * Array of tailq lists
  */
-__cachealign struct vpgqueues vm_page_queues[PQ_COUNT];
+struct vpgqueues vm_page_queues[PQ_COUNT];
 
 static volatile int vm_pages_waiting;
 static struct alist vm_contig_alist;
@@ -2796,7 +2796,6 @@ vm_page_unwire(vm_page_t m, int activate)
 							PQ_INACTIVE + m->pc, 0);
 				_vm_page_and_queue_spin_unlock(m);
 #endif
-				++vm_swapcache_inactive_heuristic;
 			}
 		}
 	}
@@ -2831,8 +2830,10 @@ _vm_page_deactivate_locked(vm_page_t m, int athead)
 			mycpu->gd_cnt.v_reactivated++;
 		vm_page_flag_clear(m, PG_WINATCFLS);
 		_vm_page_add_queue_spinlocked(m, PQ_INACTIVE + m->pc, athead);
-		if (athead == 0)
-			++vm_swapcache_inactive_heuristic;
+		if (athead == 0) {
+			atomic_add_long(
+				&vm_page_queues[PQ_INACTIVE + m->pc].adds, 1);
+		}
 	}
 	/* NOTE: PQ_NONE if condition not taken */
 	_vm_page_queue_spin_unlock(m);
@@ -3581,25 +3582,25 @@ DB_SHOW_COMMAND(pageq, vm_page_print_pageq_info)
 	int i;
 	db_printf("PQ_FREE:");
 	for (i = 0; i < PQ_L2_SIZE; i++) {
-		db_printf(" %d", vm_page_queues[PQ_FREE + i].lcnt);
+		db_printf(" %ld", vm_page_queues[PQ_FREE + i].lcnt);
 	}
 	db_printf("\n");
 		
 	db_printf("PQ_CACHE:");
 	for(i = 0; i < PQ_L2_SIZE; i++) {
-		db_printf(" %d", vm_page_queues[PQ_CACHE + i].lcnt);
+		db_printf(" %ld", vm_page_queues[PQ_CACHE + i].lcnt);
 	}
 	db_printf("\n");
 
 	db_printf("PQ_ACTIVE:");
 	for(i = 0; i < PQ_L2_SIZE; i++) {
-		db_printf(" %d", vm_page_queues[PQ_ACTIVE + i].lcnt);
+		db_printf(" %ld", vm_page_queues[PQ_ACTIVE + i].lcnt);
 	}
 	db_printf("\n");
 
 	db_printf("PQ_INACTIVE:");
 	for(i = 0; i < PQ_L2_SIZE; i++) {
-		db_printf(" %d", vm_page_queues[PQ_INACTIVE + i].lcnt);
+		db_printf(" %ld", vm_page_queues[PQ_INACTIVE + i].lcnt);
 	}
 	db_printf("\n");
 }
