@@ -867,7 +867,7 @@ show_ipfw(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 		if (twidth == 0) {
 			time_t t0 = 0;
 
-			strcpy(timestr, ctime((time_t *)&t0));
+			strcpy(timestr, ctime(&t0));
 			*strchr(timestr, '\n') = '\0';
 			twidth = strlen(timestr);
 		}
