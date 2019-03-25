@@ -43,7 +43,6 @@ static device_t	acpi_dev;
 
 #include <sys/event.h>
 
-#include <machine/pc/bios.h>
 #include <machine_base/apic/ioapic.h>
 #include <machine/smp.h>
 

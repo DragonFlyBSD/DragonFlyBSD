@@ -44,33 +44,12 @@ extern u_int32_t	bios_sigsearch(u_int32_t start, u_char *sig, int siglen,
 #define SMAP_SIG	0x534D4150			/* 'SMAP' */
 
 #define	SMAP_TYPE_MEMORY	1
-#define	SMAP_TYPE_RESERVED	2
-#define	SMAP_TYPE_ACPI_RECLAIM	3
-#define	SMAP_TYPE_ACPI_NVS	4
-#define	SMAP_TYPE_ACPI_ERROR	5
 
 struct bios_smap {
     u_int64_t	base;
     u_int64_t	length;
     u_int32_t	type;
 } __packed;
-
-struct bios_oem_signature {
-	char * anchor;		/* search anchor string in BIOS memory */
-	size_t offset;		/* offset from anchor (may be negative) */
-	size_t totlen;		/* total length of BIOS string to copy */
-} __packed;
-struct bios_oem_range {
-	u_int from;		/* shouldn't be below 0xe0000 */
-	u_int to;		/* shouldn't be above 0xfffff */
-} __packed;
-struct bios_oem {
-	struct bios_oem_range range;
-	struct bios_oem_signature signature[];
-} __packed;
-
-extern int
-bios_oem_strings(struct bios_oem *oem, u_char *buffer, size_t maxlen);
 
 /*
  * System Management BIOS
