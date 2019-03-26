@@ -165,7 +165,7 @@ is
 and
 .Fn wait6
 wait for the child process with a process ID equal to
-.Dv (pid_t)id .
+.Vt ( pid_t ) Fa id .
 .It
 If
 .Fa idtype
@@ -175,7 +175,7 @@ is
 and
 .Fn wait6
 wait for the child process with a process group ID equal to
-.Dv (pid_t)id .
+.Vt ( pid_t ) Fa id .
 .It
 If
 .Fa idtype
@@ -185,7 +185,7 @@ is
 and
 .Fn wait6
 wait for any child process and the
-.Dv id
+.Fa id
 is ignored.
 .It
 If
@@ -195,7 +195,7 @@ is
 or
 .Dv P_PGID
 and the
-.Dv id
+.Fa id
 is zero,
 .Fn waitid
 and
@@ -212,10 +212,10 @@ are:
 .Bl -tag -width P_JAILID
 .It Dv P_UID
 Wait for processes whose effective user ID is equal to
-.Dv (uid_t) Fa id .
+.Vt ( uid_t ) Fa id .
 .It Dv P_GID
 Wait for processes whose effective group ID is equal to
-.Dv (gid_t) Fa id .
+.Vt ( gid_t ) Fa id .
 .It Dv P_SID
 Wait for processes whose session ID is equal to
 .Fa id .
@@ -337,7 +337,7 @@ must be specified.
 Otherwise there will be no events for the call to report.
 To avoid hanging indefinitely in such a case these functions
 return -1 with
-.Dv errno
+.Va errno
 set to
 .Dv EINVAL .
 .Pp
@@ -354,7 +354,7 @@ by the terminated process and the resources used by all its children.
 If
 .Fa infop
 is non-NULL, a
-.Dv siginfo_t
+.Vt siginfo_t
 structure is returned with the
 .Fa si_signo
 field set to
@@ -365,7 +365,7 @@ field set to the process ID of the process reporting status.
 For the exited process, the
 .Fa si_status
 field of the
-.Dv siginfo_t
+.Vt siginfo_t
 structure contains the fully decoded exit code passed to
 .Xr _exit 2 .
 Note that exit codes are limited to the values 0-255.
@@ -374,7 +374,7 @@ For a process killed by a signal, the
 field contains the fully decoded signal.
 .Pp
 The si_code field of the
-.Dv siginfo_t
+.Vt siginfo_t
 structure may be set to the following values:
 .Bl -tag -width Dv
 .It Dv CLD_EXITED
