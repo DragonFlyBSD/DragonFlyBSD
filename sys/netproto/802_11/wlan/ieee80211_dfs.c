@@ -371,7 +371,9 @@ ieee80211_dfs_notify_radar(struct ieee80211com *ic, struct ieee80211_channel *ch
 
 		if (callout_pending(&dfs->cac_timer))
 #if defined(__DragonFly__)
-			callout_schedule_dfly(&dfs->cac_timer, 0, cac_timeout, dfs->cac_timer.c_arg);
+			callout_schedule_dfly(&dfs->cac_timer, 0,
+					      cac_timeout,
+					      callout_arg(&dfs->cac_timer));
 #else
 			callout_schedule(&dfs->cac_timer, 0);
 #endif

@@ -912,11 +912,11 @@ tcp_close(struct tcpcb *tp)
 	 * (tp->tt_msg->tt_tcb == NULL), timers are never used too.
 	 */
 	if (tp->tt_msg != NULL && tp->tt_msg->tt_tcb != NULL) {
-		tcp_callout_stop(tp, tp->tt_rexmt);
-		tcp_callout_stop(tp, tp->tt_persist);
-		tcp_callout_stop(tp, tp->tt_keep);
-		tcp_callout_stop(tp, tp->tt_2msl);
-		tcp_callout_stop(tp, tp->tt_delack);
+		tcp_callout_terminate(tp, tp->tt_rexmt);
+		tcp_callout_terminate(tp, tp->tt_persist);
+		tcp_callout_terminate(tp, tp->tt_keep);
+		tcp_callout_terminate(tp, tp->tt_2msl);
+		tcp_callout_terminate(tp, tp->tt_delack);
 	}
 
 	if (tp->t_flags & TF_ONOUTPUTQ) {

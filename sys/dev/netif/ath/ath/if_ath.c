@@ -1911,7 +1911,7 @@ ath_suspend(struct ath_softc *sc)
 
 	ATH_LOCK(sc);
 #if defined(__DragonFly__)
-	callout_stop_sync(&sc->sc_cal_ch);
+	callout_cancel(&sc->sc_cal_ch);
 #else
 	callout_stop(&sc->sc_cal_ch);
 #endif
@@ -2691,7 +2691,7 @@ ath_stop(struct ath_softc *sc)
 			sc->sc_tx99->stop(sc->sc_tx99);
 #endif
 #if defined(__DragonFly__)
-		callout_stop_sync(&sc->sc_wd_ch);
+		callout_cancel(&sc->sc_wd_ch);
 #else
 		callout_stop(&sc->sc_wd_ch);
 #endif
@@ -2701,7 +2701,7 @@ ath_stop(struct ath_softc *sc)
 		if (!sc->sc_invalid) {
 			if (sc->sc_softled) {
 #if defined(__DragonFly__)
-				callout_stop_sync(&sc->sc_ledtimer);
+				callout_cancel(&sc->sc_ledtimer);
 #else
 				callout_stop(&sc->sc_ledtimer);
 #endif
@@ -5665,7 +5665,7 @@ ath_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	 * ATH_LOCK held.
 	 */
 #if defined(__DragonFly__)
-	callout_stop_sync(&sc->sc_cal_ch);
+	callout_cancel(&sc->sc_cal_ch);
 #else
 	callout_stop(&sc->sc_cal_ch);
 #endif

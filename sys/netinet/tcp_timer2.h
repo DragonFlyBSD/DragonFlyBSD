@@ -73,6 +73,18 @@ tcp_callout_stop(struct tcpcb *_tp, struct tcp_callout *_tc)
 }
 
 static __inline void
+tcp_callout_terminate(struct tcpcb *_tp, struct tcp_callout *_tc)
+{
+	KKASSERT(_tp->tt_msg->tt_cpuid == mycpuid);
+
+	crit_enter();
+	callout_terminate(&_tc->tc_callout);
+	_tp->tt_msg->tt_tasks &= ~_tc->tc_task;
+	_tp->tt_msg->tt_running_tasks &= ~_tc->tc_task;
+	crit_exit();
+}
+
+static __inline void
 tcp_callout_reset(struct tcpcb *_tp, struct tcp_callout *_tc, int _to_ticks,
 		  void (*_func)(void *))
 {

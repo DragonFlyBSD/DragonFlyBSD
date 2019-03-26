@@ -773,7 +773,7 @@ mpt_assign_serno(struct mpt_softc *mpt, request_t *req)
 #define mpt_callout_init(mpt, c) \
 	callout_init_mp(c)
 #define mpt_callout_drain(mpt, c) \
-	callout_stop_sync(c)
+	callout_drain(c)
 
 /******************************* Register Access ******************************/
 static __inline void mpt_write(struct mpt_softc *, size_t, uint32_t);

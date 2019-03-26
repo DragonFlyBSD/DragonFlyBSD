@@ -116,7 +116,7 @@
     * callout API.  callout_init_mtx() is already macrod to
       callout_init_lk(). 
 
-      callout_stop()	-> callout_stop_sync()
+      callout_stop()	-> callout_cancel()
       callout_sched()	-> must be converted to the proper callout_reset(...)
 			   call (function must be re-provided).
 

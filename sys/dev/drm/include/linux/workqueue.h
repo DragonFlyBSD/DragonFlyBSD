@@ -197,8 +197,7 @@ cancel_delayed_work(struct delayed_work *work)
 static inline int
 cancel_delayed_work_sync(struct delayed_work *work)
 {
-
-	callout_drain(&work->timer);
+	callout_cancel(&work->timer);
 	if (work->work.taskqueue &&
 	    taskqueue_cancel(work->work.taskqueue, &work->work.work_task, NULL))
 		taskqueue_drain(work->work.taskqueue, &work->work.work_task);

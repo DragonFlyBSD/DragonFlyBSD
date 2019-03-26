@@ -378,7 +378,7 @@ vmxnet3_detach(device_t dev)
 		vmxnet3_stop(sc);
 		VMXNET3_CORE_UNLOCK(sc);
 
-		callout_stop_sync(&sc->vmx_tick);
+		callout_terminate(&sc->vmx_tick);
 #ifndef VMXNET3_LEGACY_TX
 		vmxnet3_drain_taskqueue(sc);
 #endif

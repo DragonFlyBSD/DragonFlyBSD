@@ -1908,7 +1908,7 @@ ciss_free(struct ciss_softc *sc)
 	destroy_dev(sc->ciss_dev_t);
 
     /* Final cleanup of the callout. */
-    callout_stop_sync(&sc->ciss_periodic);
+    callout_terminate(&sc->ciss_periodic);
     lockuninit(&sc->ciss_lock);
 
     /* free the controller data */

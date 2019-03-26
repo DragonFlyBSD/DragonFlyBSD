@@ -155,7 +155,7 @@ vtrnd_detach(device_t dev)
 
 	sc = device_get_softc(dev);
 
-	callout_stop_sync(&sc->vtrnd_callout);
+	callout_terminate(&sc->vtrnd_callout);
 
 	return (0);
 }

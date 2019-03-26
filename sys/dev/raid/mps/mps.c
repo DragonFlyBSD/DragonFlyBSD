@@ -1325,7 +1325,7 @@ mps_free(struct mps_softc *sc)
 	mps_lock(sc);
 	sc->mps_flags |= MPS_FLAGS_SHUTDOWN;
 	mps_unlock(sc);
-	callout_stop_sync(&sc->periodic);
+	callout_terminate(&sc->periodic);
 
 	if (((error = mps_detach_log(sc)) != 0) ||
 	    ((error = mps_detach_sas(sc)) != 0))

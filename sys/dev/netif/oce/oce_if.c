@@ -328,7 +328,7 @@ oce_detach(device_t dev)
 	oce_if_deactivate(sc);
 	UNLOCK(&sc->dev_lock);
 
-	callout_stop_sync(&sc->timer);
+	callout_terminate(&sc->timer);
 
 	if (sc->vlan_attach != NULL)
 		EVENTHANDLER_DEREGISTER(vlan_config, sc->vlan_attach);

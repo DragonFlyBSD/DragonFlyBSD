@@ -408,7 +408,7 @@ struct usb_callout {
 #define	usb_callout_init_mtx(c,m,f) callout_init_lk(&(c)->co, m) 
 #define	usb_callout_reset(c,t,f,d)  callout_reset(&(c)->co, t, f, d)
 #define	usb_callout_stop(c) callout_stop(&(c)->co)
-#define	usb_callout_drain(c) callout_stop_sync(&(c)->co)
+#define	usb_callout_drain(c) callout_drain(&(c)->co)
 #define	usb_callout_pending(c) callout_pending(&(c)->co)
 
 /* USB transfer states */

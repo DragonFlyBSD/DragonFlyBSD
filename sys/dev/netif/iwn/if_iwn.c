@@ -2909,7 +2909,7 @@ iwn_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	IEEE80211_UNLOCK(ic);
 	IWN_LOCK(sc);
 #if defined(__DragonFly__)
-	callout_stop_sync(&sc->calib_to);
+	callout_cancel(&sc->calib_to);
 #else
 	callout_stop(&sc->calib_to);
 #endif
@@ -8987,8 +8987,8 @@ iwn_stop_locked(struct iwn_softc *sc)
 	sc->sc_is_scanning = 0;
 	sc->sc_tx_timer = 0;
 #if defined(__DragonFly__)
-	callout_stop_sync(&sc->watchdog_to);
-	callout_stop_sync(&sc->calib_to);
+	callout_cancel(&sc->watchdog_to);
+	callout_cancel(&sc->calib_to);
 #else
 	callout_stop(&sc->watchdog_to);
 	callout_stop(&sc->calib_to);

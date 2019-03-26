@@ -333,7 +333,7 @@ _destroy(struct dm_delay_info *di)
 
 	mtx_lock(&di->cal_mtx);
 	if (callout_pending(&di->cal))
-		callout_stop_sync(&di->cal);
+		callout_cancel(&di->cal);
 	mtx_unlock(&di->cal_mtx);
 
 	_submit_queue(di, 1);

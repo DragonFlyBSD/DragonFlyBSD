@@ -498,12 +498,6 @@ filt_timerattach(struct knote *kn)
 /*
  * This function is called with the knote flagged locked but it is
  * still possible to race a callout event due to the callback blocking.
- *
- * NOTE: Even though the note is locked via KN_PROCSESING, filt_timerexpire()
- *	 can still race us requeue the callout due to potential token cycling
- *	 from various blocking conditions.  If this situation arises,
- *	 callout_stop_sync() will always return non-zero and we can simply
- *	 retry the operation.
  */
 static void
 filt_timerdetach(struct knote *kn)
@@ -511,11 +505,7 @@ filt_timerdetach(struct knote *kn)
 	struct callout *calloutp;
 
 	calloutp = (struct callout *)kn->kn_hook;
-	while (callout_stop_sync(calloutp)) {
-		kprintf("debug: kqueue timer race fixed, pid %d %s\n",
-			(curthread->td_proc ? curthread->td_proc->p_pid : 0),
-			curthread->td_comm);
-	}
+	callout_terminate(calloutp);
 	kn->kn_hook = NULL;
 	kfree(calloutp, M_KQUEUE);
 	atomic_subtract_int(&kq_ncallouts, 1);

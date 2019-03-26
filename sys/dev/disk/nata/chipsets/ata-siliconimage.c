@@ -569,7 +569,7 @@ ata_siiprb_end_transaction(struct ata_request *request)
     int error, timeout;
 
     /* kill the timeout */
-    callout_stop_sync(&request->callout);
+    callout_cancel(&request->callout);
 
     prb = (struct ata_siiprb_command *)
 	((u_int8_t *)rman_get_virtual(ctlr->r_res2) + offset);

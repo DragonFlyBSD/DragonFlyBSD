@@ -1688,8 +1688,8 @@ psmdetach(device_t dev)
 	destroy_dev(sc->dev);
 
 	/* XXX: callout_drain in original freebsd11 code */
-	callout_stop_sync(&sc->callout);
-	callout_stop_sync(&sc->softcallout);
+	callout_terminate(&sc->callout);
+	callout_terminate(&sc->softcallout);
 
 	return (0);
 }

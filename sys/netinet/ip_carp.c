@@ -686,9 +686,9 @@ carp_clone_destroy_dispatch(netmsg_t msg)
 	sc->sc_dead = TRUE;
 	carp_detach(sc, TRUE, FALSE);
 
-	callout_stop_sync(&sc->sc_ad_tmo);
-	callout_stop_sync(&sc->sc_md_tmo);
-	callout_stop_sync(&sc->sc_md6_tmo);
+	callout_cancel(&sc->sc_ad_tmo);
+	callout_cancel(&sc->sc_md_tmo);
+	callout_cancel(&sc->sc_md6_tmo);
 
 	crit_enter();
 	lwkt_dropmsg(&sc->sc_ad_msg.base.lmsg);

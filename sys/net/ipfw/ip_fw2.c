@@ -7506,10 +7506,10 @@ ipfw_ctx_fini_dispatch(netmsg_t nmsg)
 
 	ASSERT_NETISR_NCPUS(mycpuid);
 
-	callout_stop_sync(&ctx->ipfw_stateto_ch);
-	callout_stop_sync(&ctx->ipfw_trackto_ch);
-	callout_stop_sync(&ctx->ipfw_keepalive_ch);
-	callout_stop_sync(&ctx->ipfw_xlatreap_ch);
+	callout_cancel(&ctx->ipfw_stateto_ch);
+	callout_cancel(&ctx->ipfw_trackto_ch);
+	callout_cancel(&ctx->ipfw_keepalive_ch);
+	callout_cancel(&ctx->ipfw_xlatreap_ch);
 
 	crit_enter();
 	netisr_dropmsg(&ctx->ipfw_stateexp_more);
@@ -7551,7 +7551,7 @@ ipfw_fini_dispatch(netmsg_t nmsg)
 	    ipfw_ctx_fini_dispatch);
 	netisr_domsg_global(&nm);
 
-	callout_stop_sync(&ipfw_gd.ipfw_crossref_ch);
+	callout_cancel(&ipfw_gd.ipfw_crossref_ch);
 	crit_enter();
 	netisr_dropmsg(&ipfw_gd.ipfw_crossref_nm);
 	crit_exit();

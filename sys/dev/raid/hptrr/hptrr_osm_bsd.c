@@ -374,7 +374,7 @@ static void hpt_shutdown_vbus(PVBUS_EXT vbus_ext, int howto)
 		kfree(hba->ldm_adapter.him_handle, M_DEVBUF);
 	}
 
-	callout_stop_sync(&vbus_ext->timer);
+	callout_terminate(&vbus_ext->timer);
 	lockuninit(&vbus_ext->lock);
 	kfree(vbus_ext, M_DEVBUF);
 	KdPrint(("hpt_shutdown_vbus done"));

@@ -370,14 +370,17 @@ MLINKS+=byteorder.9 be16dec.9 \
 	byteorder.9 le64toh.9
 MLINKS+=callout.9 callout_active.9 \
 	callout.9 callout_deactivate.9 \
+	callout.9 callout_drain.9 \
 	callout.9 callout_init.9 \
 	callout.9 callout_init_lk.9 \
 	callout.9 callout_init_mp.9 \
 	callout.9 callout_pending.9 \
 	callout.9 callout_reset.9 \
+	callout.9 callout_reset_bycpu.9 \
 	callout.9 callout_stop.9 \
 	callout.9 callout_stop_async.9 \
-	callout.9 callout_stop_sync.9
+	callout.9 callout_cancel.9 \
+	callout.9 callout_terminate.9 \
 MLINKS+=condvar.9 cv_broadcast.9 \
 	condvar.9 cv_broadcastpri.9 \
 	condvar.9 cv_destroy.9 \

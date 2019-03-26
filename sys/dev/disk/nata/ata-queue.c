@@ -575,7 +575,7 @@ ata_fail_requests(device_t dev)
 
     /* do we have any running request to care about ? */
     if ((request = ch->running) && (!dev || request->dev == dev)) {
-	callout_stop_sync(&request->callout);
+	callout_cancel(&request->callout);
 	ch->running = NULL;
 	request->result = ENXIO;
 	TAILQ_INSERT_TAIL(&fail_requests, request, chain);

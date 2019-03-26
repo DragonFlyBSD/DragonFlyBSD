@@ -883,7 +883,7 @@ ipmi_detach(device_t dev)
 		destroy_dev(sc->ipmi_cdev);
 
 	/* Detach from watchdog handling and turn off watchdog. */
-	callout_stop_sync(&sc->ipmi_watchdog);
+	callout_cancel(&sc->ipmi_watchdog);
 	ipmi_set_watchdog(sc, 0);
 
 	/* XXX: should use shutdown callout I think. */

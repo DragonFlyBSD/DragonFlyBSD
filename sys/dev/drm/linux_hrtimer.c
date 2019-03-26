@@ -84,12 +84,13 @@ hrtimer_start_range_ns(struct hrtimer *timer, ktime_t tim,
 int
 hrtimer_cancel(struct hrtimer *timer)
 {
-	return callout_drain(&timer->timer_callout) == 0;
+	return callout_cancel(&timer->timer_callout) == 0;
 }
 
 /* Returns non-zero if the timer is already on the queue */
 bool
-hrtimer_active(const struct hrtimer *timer)
+hrtimer_active(const struct hrtimer *const_timer)
 {
+	struct hrtimer *timer = __DECONST(struct hrtimer *, const_timer);
 	return callout_pending(&timer->timer_callout);
 }

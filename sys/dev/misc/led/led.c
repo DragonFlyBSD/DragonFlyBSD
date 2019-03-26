@@ -362,7 +362,7 @@ led_drvexit(void)
 		error = EINVAL;
 	lockmgr(&led_lock, LK_RELEASE);
 	if (error == 0) {
-		callout_stop_sync(&led_ch);
+		callout_cancel(&led_ch);
 		delete_unrhdr(led_unit);
 		lockuninit(&led_lock);
 		lockuninit(&led_lock2);

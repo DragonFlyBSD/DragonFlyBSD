@@ -746,7 +746,7 @@ tsleep(const volatile void *ident, int flags, const char *wmesg, int timo)
 			error = EWOULDBLOCK;
 		} else {
 			/* does not block when on same cpu */
-			callout_stop(&thandle);
+			callout_cancel(&thandle);
 		}
 	}
 	td->td_flags &= ~TDF_TSLEEP_DESCHEDULED;

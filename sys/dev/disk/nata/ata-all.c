@@ -205,7 +205,7 @@ ata_reinit(device_t dev)
     /* catch eventual request in ch->running */
     lockmgr(&ch->state_mtx, LK_EXCLUSIVE);
     if ((request = ch->running))
-	callout_stop_sync(&request->callout);
+	callout_cancel(&request->callout);
     ch->running = NULL;
 
     /* unconditionally grap the channel lock */

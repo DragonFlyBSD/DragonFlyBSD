@@ -278,7 +278,7 @@ ecc_x3400_stop(device_t dev)
 {
 	struct ecc_x3400_softc *sc = device_get_softc(dev);
 
-	callout_stop_sync(&sc->ecc_callout);
+	callout_cancel(&sc->ecc_callout);
 }
 
 static int

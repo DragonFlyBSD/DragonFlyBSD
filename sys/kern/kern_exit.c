@@ -367,7 +367,7 @@ exit1(int rv)
 	SIGEMPTYSET(p->p_siglist);
 	SIGEMPTYSET(lp->lwp_siglist);
 	if (timevalisset(&p->p_realtimer.it_value))
-		callout_stop_sync(&p->p_ithandle);
+		callout_terminate(&p->p_ithandle);
 
 	/*
 	 * Reset any sigio structures pointing to us as a result of

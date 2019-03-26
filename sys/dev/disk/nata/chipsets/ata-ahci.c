@@ -343,7 +343,7 @@ ata_ahci_end_transaction(struct ata_request *request)
     int tag = 0;
 
     /* kill the timeout */
-    callout_stop_sync(&request->callout);
+    callout_cancel(&request->callout);
 
     /* get status */
     tf_data = ATA_INL(ctlr->r_res2, ATA_AHCI_P_TFD + offset);

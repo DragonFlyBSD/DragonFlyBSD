@@ -107,7 +107,7 @@ rdrand_detach(device_t dev)
 
 	sc = device_get_softc(dev);
 
-	callout_stop_sync(&sc->sc_rng_co);
+	callout_terminate(&sc->sc_rng_co);
 
 	return (0);
 }

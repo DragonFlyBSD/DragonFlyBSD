@@ -1820,7 +1820,7 @@ restart:
 		ccb = &ap->ap_ccbs[slot];
 		if (ccb->ccb_xa.flags & ATA_F_TIMEOUT_RUNNING) {
 			serial = ccb->ccb_xa.serial;
-			callout_stop_sync(&ccb->ccb_timeout);
+			callout_cancel(&ccb->ccb_timeout);
 			if (serial != ccb->ccb_xa.serial) {
 				kprintf("%s: Warning: timeout race ccb %p\n",
 					PORTNAME(ap), ccb);
@@ -1841,7 +1841,7 @@ restart:
 		ccb = &ap->ap_ccbs[slot];
 		if (ccb->ccb_xa.flags & ATA_F_TIMEOUT_RUNNING) {
 			serial = ccb->ccb_xa.serial;
-			callout_stop_sync(&ccb->ccb_timeout);
+			callout_cancel(&ccb->ccb_timeout);
 			if (serial != ccb->ccb_xa.serial) {
 				kprintf("%s: Warning: timeout race ccb %p\n",
 					PORTNAME(ap), ccb);
@@ -3702,7 +3702,7 @@ ahci_ata_cmd_done(struct ahci_ccb *ccb)
 	 */
 	if (xa->flags & ATA_F_TIMEOUT_RUNNING) {
 		serial = ccb->ccb_xa.serial;
-		callout_stop_sync(&ccb->ccb_timeout);
+		callout_cancel(&ccb->ccb_timeout);
 		if (serial != ccb->ccb_xa.serial) {
 			kprintf("%s: Warning: timeout race ccb %p\n",
 				PORTNAME(ccb->ccb_port), ccb);

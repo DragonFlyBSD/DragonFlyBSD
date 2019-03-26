@@ -453,7 +453,7 @@ ata_marvell_edma_end_transaction(struct ata_request *request)
 	int slot;
 
 	/* stop timeout */
-	callout_stop_sync(&request->callout);
+	callout_cancel(&request->callout);
 
 	/* get response ptr's */
 	rsp_in = ATA_INL(ctlr->r_res1, 0x02020 + ATA_MV_EDMA_BASE(ch));

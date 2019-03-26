@@ -402,8 +402,7 @@ void
 taskqueue_drain_timeout(struct taskqueue *queue,
     struct timeout_task *timeout_task)
 {
-
-	callout_stop_sync(&timeout_task->c);
+	callout_cancel(&timeout_task->c);
 	taskqueue_drain(queue, &timeout_task->t);
 }
 

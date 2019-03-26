@@ -902,7 +902,7 @@ sys_setitimer(struct setitimer_args *uap)
 	lwkt_gettoken(&p->p_token);
 	if (uap->which == ITIMER_REAL) {
 		if (timevalisset(&p->p_realtimer.it_value))
-			callout_stop_sync(&p->p_ithandle);
+			callout_cancel(&p->p_ithandle);
 		if (timevalisset(&aitv.it_value)) 
 			callout_reset(&p->p_ithandle,
 			    tvtohz_high(&aitv.it_value), realitexpire, p);
