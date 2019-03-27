@@ -605,7 +605,8 @@ sys_unmount(struct unmount_args *uap)
 	if (usermount == 0 && (error = priv_check(td, PRIV_ROOT)))
 		goto done;
 
-	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE,
+			     NLC_FOLLOW | NLC_IGNBADDIR);
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error)
@@ -864,9 +865,9 @@ dounmount(struct mount *mp, int flags, int halting)
 			error = VFS_UNMOUNT(mp, flags);
 		} else {
 			error = VFS_SYNC(mp, MNT_WAIT);
-			if ((error == 0) ||
-			    (error == EOPNOTSUPP) || /* No sync */
-			    (flags & MNT_FORCE)) {
+			if (error == 0 ||		/* no error */
+			    error == EOPNOTSUPP ||	/* no sync avail */
+			    (flags & MNT_FORCE)) {	/* force anyway */
 				error = VFS_UNMOUNT(mp, flags);
 			}
 		}
@@ -1284,8 +1285,14 @@ kern_statfs(struct nlookupdata *nd, struct statfs *buf)
 		return (error);
 	mp = nd->nl_nch.mount;
 	sp = &mp->mnt_stat;
-	if ((error = VFS_STATFS(mp, sp, nd->nl_cred)) != 0)
-		return (error);
+
+	/*
+	 * Ignore refresh error, user should have visibility.
+	 * This can happen if a NFS mount goes bad (e.g. server
+	 * revokes perms or goes down).
+	 */
+	error = VFS_STATFS(mp, sp, nd->nl_cred);
+	/* ignore error */
 
 	error = mount_path(p, mp, &fullpath, &freepath);
 	if (error)
@@ -1353,9 +1360,14 @@ kern_fstatfs(int fd, struct statfs *buf)
 		error = EINVAL;
 		goto done;
 	}
+
+	/*
+	 * Ignore refresh error, user should have visibility.
+	 * This can happen if a NFS mount goes bad (e.g. server
+	 * revokes perms or goes down).
+	 */
 	sp = &mp->mnt_stat;
-	if ((error = VFS_STATFS(mp, sp, fp->f_cred)) != 0)
-		goto done;
+	error = VFS_STATFS(mp, sp, fp->f_cred);
 
 	if ((error = mount_path(p, mp, &fullpath, &freepath)) != 0)
 		goto done;
@@ -1551,11 +1563,15 @@ getfsstat_callback(struct mount *mp, void *data)
 		 * If MNT_NOWAIT or MNT_LAZY is specified, do not
 		 * refresh the fsstat cache. MNT_NOWAIT or MNT_LAZY
 		 * overrides MNT_WAIT.
+		 *
+		 * Ignore refresh error, user should have visibility.
+		 * This can happen if a NFS mount goes bad (e.g. server
+		 * revokes perms or goes down).
 		 */
 		if (((info->flags & (MNT_LAZY|MNT_NOWAIT)) == 0 ||
 		    (info->flags & MNT_WAIT)) &&
 		    (error = VFS_STATFS(mp, sp, info->td->td_ucred))) {
-			return(0);
+			/* ignore error */
 		}
 		sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 
@@ -1642,18 +1658,22 @@ getvfsstat_callback(struct mount *mp, void *data)
 		 * If MNT_NOWAIT or MNT_LAZY is specified, do not
 		 * refresh the fsstat cache. MNT_NOWAIT or MNT_LAZY
 		 * overrides MNT_WAIT.
+		 *
+		 * Ignore refresh error, user should have visibility.
+		 * This can happen if a NFS mount goes bad (e.g. server
+		 * revokes perms or goes down).
 		 */
 		if (((info->flags & (MNT_LAZY|MNT_NOWAIT)) == 0 ||
 		    (info->flags & MNT_WAIT)) &&
 		    (error = VFS_STATFS(mp, sp, info->td->td_ucred))) {
-			return(0);
+			/* ignore error */
 		}
 		sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 
 		if (((info->flags & (MNT_LAZY|MNT_NOWAIT)) == 0 ||
 		    (info->flags & MNT_WAIT)) &&
 		    (error = VFS_STATVFS(mp, vsp, info->td->td_ucred))) {
-			return(0);
+			/* ignore error */
 		}
 		vsp->f_flag = 0;
 		if (mp->mnt_flag & MNT_RDONLY)

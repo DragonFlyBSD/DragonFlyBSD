@@ -74,6 +74,24 @@ static int naccess(struct nchandle *nch, int vmode, struct ucred *cred,
 		int *stickyp);
 
 /*
+ * unmount operations flag NLC_IGNBADDIR in order to allow the
+ * umount to successfully issue a nlookup() on the path in order
+ * to extract the mount point.  Allow certain errors through.
+ */
+static __inline
+int
+keeperror(struct nlookupdata *nd, int error)
+{
+	if (error) {
+		if ((nd->nl_flags & NLC_IGNBADDIR) == 0 ||
+		   (error != EIO && error != EBADRPC && error != ESTALE)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/*
  * Initialize a nlookup() structure, early error return for copyin faults
  * or a degenerate empty string (which is not allowed).
  *
@@ -575,8 +593,11 @@ nlookup_start:
 	    error = naccess(&nd->nl_nch, NLC_EXEC, nd->nl_cred, NULL);
 	else
 	    error = naccess(&nd->nl_nch, NLC_EXEC, nd->nl_cred, &dflags);
-	if (error)
-	    break;
+	if (error) {
+	    if (keeperror(nd, error))
+		    break;
+	    error = 0;
+	}
 
 	/*
 	 * Extract the next (or last) path component.  Path components are
@@ -734,6 +755,10 @@ nlookup_start:
 		cache_lock_maybe_shared(&par, wantsexcllock(nd, ptr));
 		error = naccess(&par, 0, nd->nl_cred, &dflags);
 		cache_put(&par);
+		if (error) {
+		    if (!keeperror(nd, error))
+			    error = 0;
+		}
 	    }
 	}
 
@@ -856,7 +881,7 @@ nlookup_start:
 	     */
 	    continue;
 	}
-
+	
 	/*
 	 * If the element is a directory and we are crossing a mount point,
 	 * Locate the mount.
@@ -897,19 +922,21 @@ again:
 		error = VFS_ROOT(mp, &tdp);
 		vfs_unbusy(mp);
 		vfs_do_busy = 0;
-		if (error) {
+		if (keeperror(nd, error)) {
 		    cache_dropmount(mp);
 		    break;
 		}
-		cache_setvp(&nch, tdp);
-		vput(tdp);
+		if (error == 0) {
+		    cache_setvp(&nch, tdp);
+		    vput(tdp);
+		}
 	    }
 	    if (vfs_do_busy)
 		vfs_unbusy(mp);
 	    cache_dropmount(mp);
 	}
 
-	if (error) {
+	if (keeperror(nd, error)) {
 	    cache_put(&nch);
 double_break:
 	    break;
@@ -972,7 +999,7 @@ double_break:
 	if (nch.ncp->nc_vp && (nd->nl_flags & NLC_ALLCHKS)) {
 	    error = naccess(&nch, nd->nl_flags | dflags,
 			    nd->nl_cred, NULL);
-	    if (error) {
+	    if (keeperror(nd, error)) {
 		cache_put(&nch);
 		break;
 	    }
@@ -987,7 +1014,7 @@ double_break:
 		cache_lock(&nd->nl_nch);
 		error = cache_vref(&nd->nl_nch, nd->nl_cred, &nd->nl_dvp);
 		cache_unlock(&nd->nl_nch);
-		if (error) {
+		if (keeperror(nd, error)) {
 			kprintf("NLC_REFDVP: Cannot ref dvp of %p\n", nch.ncp);
 			cache_put(&nch);
 			break;
