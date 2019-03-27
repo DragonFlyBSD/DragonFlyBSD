@@ -41,6 +41,7 @@
 #ifndef _SYS_LOCK_H_
 #include <sys/lock.h>
 #endif
+#include <sys/spinlock.h>
 
 /*
  * WITH TYPESTABLE (currently disabled)
