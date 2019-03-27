@@ -213,7 +213,7 @@ each_writable_segment(vm_map_entry_t map, segment_callback func, void *closure)
 {
 	vm_map_entry_t entry;
 
-	for (entry = map;  entry != NULL;  entry = entry->next)
+	for (entry = map; entry; entry = entry->rb_entry.rbe_parent)
 		(*func)(entry, closure);
 }
 
@@ -359,7 +359,7 @@ static void
 freemap(vm_map_entry_t map)
 {
 	while (map != NULL) {
-		vm_map_entry_t next = map->next;
+		vm_map_entry_t next = map->rb_entry.rbe_parent;
 		free(map);
 		map = next;
 	}
@@ -531,7 +531,7 @@ readmap(pid_t pid)
 		    ent->protection |= VM_PROT_EXECUTE;
 
 		*linkp = ent;
-		linkp = &ent->next;
+		linkp = &ent->rb_entry.rbe_parent;
 	}
 	free(mapbuf);
 	return map;
