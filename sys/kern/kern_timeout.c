@@ -991,7 +991,7 @@ callout_reset_bycpu(struct callout *cc, int to_ticks, void (*ftn)(void *),
 	 */
 	atomic_set_int(&c->flags, CALLOUT_RESET);
 
-	sc = softclock_pcpu_ary[mycpu->gd_cpuid];
+	sc = softclock_pcpu_ary[cpuid];
 	c->rsc = sc;
 	c->rtick = sc->curticks + to_ticks;
 	c->rfunc = ftn;
