@@ -980,6 +980,7 @@ _vm_page_rem_queue_spinlocked(vm_page_t m)
  * are cache-hot.
  *
  * The vm_page must be spinlocked.
+ * The vm_page must NOT be FICTITIOUS (that would be a disaster)
  * This function will return with both the page and the queue locked.
  */
 static __inline void
@@ -988,7 +989,7 @@ _vm_page_add_queue_spinlocked(vm_page_t m, u_short queue, int athead)
 	struct vpgqueues *pq;
 	u_long *cnt;
 
-	KKASSERT(m->queue == PQ_NONE);
+	KKASSERT(m->queue == PQ_NONE && (m->flags & PG_FICTITIOUS) == 0);
 
 	if (queue != PQ_NONE) {
 		vm_page_queues_spin_lock(queue);
@@ -2507,7 +2508,7 @@ vm_page_activate(vm_page_t m)
 	u_short oqueue;
 
 	vm_page_spin_lock(m);
-	if (m->queue - m->pc != PQ_ACTIVE) {
+	if (m->queue - m->pc != PQ_ACTIVE && !(m->flags & PG_FICTITIOUS)) {
 		_vm_page_queue_spin_lock(m);
 		oqueue = _vm_page_rem_queue_spinlocked(m);
 		/* page is left spinlocked, queue is unlocked */
@@ -2624,18 +2625,18 @@ vm_page_free_toq(vm_page_t m)
 	 * queue).
 	 */
 	vm_page_remove(m);
-	vm_page_and_queue_spin_lock(m);
-	_vm_page_rem_queue_spinlocked(m);
 
 	/*
 	 * No further management of fictitious pages occurs beyond object
 	 * and queue removal.
 	 */
 	if ((m->flags & PG_FICTITIOUS) != 0) {
-		vm_page_spin_unlock(m);
+		KKASSERT(m->queue == PQ_NONE);
 		vm_page_wakeup(m);
 		return;
 	}
+	vm_page_and_queue_spin_lock(m);
+	_vm_page_rem_queue_spinlocked(m);
 
 	m->valid = 0;
 	vm_page_undirty(m);
@@ -2820,7 +2821,7 @@ _vm_page_deactivate_locked(vm_page_t m, int athead)
 	/*
 	 * Ignore if already inactive.
 	 */
-	if (m->queue - m->pc == PQ_INACTIVE)
+	if (m->queue - m->pc == PQ_INACTIVE || (m->flags & PG_FICTITIOUS))
 		return;
 	_vm_page_queue_spin_lock(m);
 	oqueue = _vm_page_rem_queue_spinlocked(m);
@@ -2872,11 +2873,11 @@ vm_page_try_to_cache(vm_page_t m)
 {
 	/*
 	 * Shortcut if we obviously cannot move the page, or if the
-	 * page is already on the cache queue.
+	 * page is already on the cache queue, or it is ficitious.
 	 */
 	if (m->dirty || m->hold_count || m->wire_count ||
 	    m->queue - m->pc == PQ_CACHE ||
-	    (m->flags & (PG_UNMANAGED | PG_NEED_COMMIT))) {
+	    (m->flags & (PG_UNMANAGED | PG_NEED_COMMIT | PG_FICTITIOUS))) {
 		vm_page_wakeup(m);
 		return(0);
 	}
@@ -2915,7 +2916,8 @@ vm_page_try_to_free(vm_page_t m)
 	    m->hold_count ||			/* or held (XXX may be wrong) */
 	    m->wire_count ||			/* or wired */
 	    (m->flags & (PG_UNMANAGED |		/* or unmanaged */
-			 PG_NEED_COMMIT)) ||	/* or needs a commit */
+			 PG_NEED_COMMIT |	/* or needs a commit */
+			 PG_FICTITIOUS)) ||	/* or is fictitious */
 	    m->queue - m->pc == PQ_FREE ||	/* already on PQ_FREE */
 	    m->queue - m->pc == PQ_HOLD) {	/* already on PQ_HOLD */
 		vm_page_wakeup(m);
@@ -2957,7 +2959,7 @@ vm_page_cache(vm_page_t m)
 	/*
 	 * Not suitable for the cache
 	 */
-	if ((m->flags & (PG_UNMANAGED | PG_NEED_COMMIT)) ||
+	if ((m->flags & (PG_UNMANAGED | PG_NEED_COMMIT | PG_FICTITIOUS)) ||
 	    (m->busy_count & PBUSY_MASK) ||
 	    m->wire_count || m->hold_count) {
 		vm_page_wakeup(m);

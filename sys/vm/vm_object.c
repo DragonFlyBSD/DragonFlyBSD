@@ -139,6 +139,9 @@ MALLOC_DEFINE(M_VM_OBJECT, "vm_object", "vm_object structures");
 #define VMOBJ_HASH_PRIME1	66555444443333333ULL
 #define VMOBJ_HASH_PRIME2	989042931893ULL
 
+int vm_object_debug;
+SYSCTL_INT(_vm, OID_AUTO, object_debug, CTLFLAG_RW, &vm_object_debug, 0, "");
+
 static __inline
 struct vm_object_hash *
 vmobj_hash(vm_object_t obj)
@@ -1311,9 +1314,14 @@ vm_object_terminate_callback(vm_page_t p, void *data)
 		vm_page_free(p);
 		mycpu->gd_cnt.v_pfree++;
 	} else {
-		if (p->queue != PQ_NONE)
+		if (p->queue != PQ_NONE) {
 			kprintf("vm_object_terminate: Warning: Encountered "
 				"wired page %p on queue %d\n", p, p->queue);
+			if (vm_object_debug > 0) {
+				--vm_object_debug;
+				print_backtrace(10);
+			}
+		}
 		vm_page_remove(p);
 		vm_page_wakeup(p);
 	}
