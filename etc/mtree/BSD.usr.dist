@@ -161,11 +161,9 @@
             ..
         ..
         examples
-	    aws
-	    ..
-            IPv6
-            ..
             acpica
+            ..
+            aws
             ..
             cvs
                 contrib
@@ -186,6 +184,8 @@
             find_interface
             ..
             ipfw
+            ..
+            IPv6
             ..
             kld
                 cdev
