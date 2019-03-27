@@ -1,6 +1,6 @@
 .\" $FreeBSD: src/sbin/i386/fdisk/fdisk.8,v 1.17.2.11 2002/04/25 16:25:12 trhodes Exp $
 .\"
-.Dd September 29, 2016
+.Dd March 27, 2019
 .Dt FDISK 8
 .Os
 .Sh NAME
@@ -222,8 +222,7 @@ The second slice overlaps the end of the first.
 .It Em "sysid"
 is used to label the slice.
 .Dx
-reserves the
-magic number 165 decimal (A5 in hex).
+reserves the magic number 108 decimal (6C in hexadecimal).
 .It Em start No and Em size
 fields provide the start address
 and size of a slice in sectors.
@@ -437,7 +436,7 @@ if one is present.
 .Pp
 The
 .Ar type
-is 165 for
+is 108 for
 .Dx
 slices.
 Specifying a slice type of zero is
@@ -464,7 +463,7 @@ slice, starting at sector 1
 for 2503871 sectors (note: these numbers will be rounded upwards and
 downwards to correspond to head and cylinder boundaries):
 .Bd -literal -offset indent
-p       1       165     1       2503871
+p       1       108     1       2503871
 .Ed
 .It Xo
 .Ic a
