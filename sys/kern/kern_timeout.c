@@ -101,7 +101,6 @@ struct _callout_mag;
 /*
  * DID_INIT	- Sanity check
  * SYNC		- Synchronous waiter, request SYNCDONE and wakeup()
- * SYNCDONE	- Synchronous waiter ackknowlegement
  * CANCEL_RES	- Flags that a cancel/stop prevented a callback
  * STOP_RES
  * RESET	- Callout_reset request queued
@@ -115,8 +114,8 @@ struct _callout_mag;
  *		  *NOT* the same as whether a callout is queued or not.
  */
 #define CALLOUT_DID_INIT	0x00000001	/* frontend */
-#define CALLOUT_SYNC		0x00000002	/* backend */
-#define CALLOUT_SYNCDONE	0x00000004	/* frontend */
+#define CALLOUT_UNUSED0002	0x00000002
+#define CALLOUT_UNUSED0004	0x00000004
 #define CALLOUT_CANCEL_RES	0x00000008	/* frontend */
 #define CALLOUT_STOP_RES	0x00000010	/* frontend */
 #define CALLOUT_RESET		0x00000020	/* backend */
@@ -300,17 +299,13 @@ _callout_process_spinlocked(struct _callout *c, int fromsoftclock)
 				atomic_set_int(&c->verifier->flags,
 					       CALLOUT_CANCEL_RES |
 					       CALLOUT_STOP_RES);
-			if (c->flags & CALLOUT_SYNC) {
-				atomic_set_int(&c->verifier->flags,
-					       CALLOUT_SYNCDONE);
-				wakeup(c->verifier);
-			}
 			atomic_clear_int(&c->flags, CALLOUT_SET |
 						    CALLOUT_INPROG |
 						    CALLOUT_STOP |
 						    CALLOUT_CANCEL |
-						    CALLOUT_RESET |
-						    CALLOUT_SYNC);
+						    CALLOUT_RESET);
+			if (c->waiters)
+				wakeup(c->verifier);
 			res = 0;
 		} else if (c->flags & CALLOUT_RESET) {
 			/*
@@ -345,15 +340,11 @@ _callout_process_spinlocked(struct _callout *c, int fromsoftclock)
 			 * this is from our control thread the callout has
 			 * already been removed from the queue.
 			 */
-			if (c->flags & CALLOUT_SYNC) {
-				atomic_set_int(&c->verifier->flags,
-					       CALLOUT_SYNCDONE);
-				wakeup(c->verifier);
-			}
 			atomic_clear_int(&c->flags, CALLOUT_SET |
 						    CALLOUT_INPROG |
-						    CALLOUT_STOP |
-						    CALLOUT_SYNC);
+						    CALLOUT_STOP);
+			if (c->waiters)
+				wakeup(c->verifier);
 			res = 1;
 		}
 	} else if (c->flags & CALLOUT_SET) {
@@ -387,15 +378,12 @@ _callout_process_spinlocked(struct _callout *c, int fromsoftclock)
 			TAILQ_REMOVE(&wheel->list, c, entry);
 			atomic_set_int(&c->verifier->flags, CALLOUT_CANCEL_RES |
 							    CALLOUT_STOP_RES);
-			if (c->flags & CALLOUT_SYNC) {
-				atomic_set_int(&c->verifier->flags,
-					       CALLOUT_SYNCDONE);
-				/* direct from API no need to wakeup() */
-				/* wakeup(c->verifier); */
-			}
 			atomic_clear_int(&c->flags, CALLOUT_STOP |
-						    CALLOUT_SYNC |
-						    CALLOUT_SET);
+						    CALLOUT_SET |
+						    CALLOUT_CANCEL |
+						    CALLOUT_RESET);
+			if (c->waiters)
+				wakeup(c->verifier);
 			res = 0;
 		} else if (c->flags & CALLOUT_RESET) {
 			/*
@@ -438,15 +426,10 @@ _callout_process_spinlocked(struct _callout *c, int fromsoftclock)
 				sc->next = TAILQ_NEXT(c, entry);
 			TAILQ_REMOVE(&wheel->list, c, entry);
 			atomic_set_int(&c->verifier->flags, CALLOUT_STOP_RES);
-			if (c->flags & CALLOUT_SYNC) {
-				atomic_set_int(&c->verifier->flags,
-					       CALLOUT_SYNCDONE);
-				/* direct from API no need to wakeup() */
-				/* wakeup(c->verifier); */
-			}
 			atomic_clear_int(&c->flags, CALLOUT_STOP |
-						    CALLOUT_SYNC |
 						    CALLOUT_SET);
+			if (c->waiters)
+				wakeup(c->verifier);
 			res = 1;
 		} else {
 			/*
@@ -466,15 +449,16 @@ _callout_process_spinlocked(struct _callout *c, int fromsoftclock)
 			/*
 			 * CANCEL request (nothing to cancel)
 			 */
-			if (c->flags & CALLOUT_SYNC) {
+			if (c->flags & CALLOUT_RESET) {
 				atomic_set_int(&c->verifier->flags,
-					       CALLOUT_SYNCDONE);
-				/* direct from API no need to wakeup() */
-				/* wakeup(c->verifier); */
+					       CALLOUT_CANCEL_RES |
+					       CALLOUT_STOP_RES);
 			}
 			atomic_clear_int(&c->flags, CALLOUT_STOP |
 						    CALLOUT_CANCEL |
-						    CALLOUT_SYNC);
+						    CALLOUT_RESET);
+			if (c->waiters)
+				wakeup(c->verifier);
 			res = 0;
 		} else if (c->flags & CALLOUT_RESET) {
 			/*
@@ -509,14 +493,9 @@ _callout_process_spinlocked(struct _callout *c, int fromsoftclock)
 			/*
 			 * STOP request (nothing to stop)
 			 */
-			if (c->flags & CALLOUT_SYNC) {
-				atomic_set_int(&c->verifier->flags,
-					       CALLOUT_SYNCDONE);
-				/* direct from API no need to wakeup() */
-				/* wakeup(c->verifier); */
-			}
-			atomic_clear_int(&c->flags, CALLOUT_STOP |
-						    CALLOUT_SYNC);
+			atomic_clear_int(&c->flags, CALLOUT_STOP);
+			if (c->waiters)
+				wakeup(c->verifier);
 			res = 1;
 		} else {
 			/*
@@ -735,6 +714,12 @@ loop:
 					atomic_set_int(&c->verifier->flags,
 						       CALLOUT_STOP_RES);
 				}
+			} else if (c->flags & CALLOUT_RESET) {
+				/*
+				 * A RESET raced, make it seem like it
+				 * didn't.  Do nothing here and let the
+				 * process routine requeue us.
+				 */
 			} else if (c->flags & CALLOUT_AUTOLOCK) {
 				/*
 				 * Interlocked cancelable call.  If the
@@ -966,8 +951,11 @@ callout_reset(struct callout *cc, int to_ticks, void (*ftn)(void *), void *arg)
 
 	atomic_set_int(&cc->flags, CALLOUT_ACTIVE);
 	c = _callout_gettoc(cc);
-	atomic_set_int(&c->flags, CALLOUT_RESET);
 
+	/*
+	 * Set RESET.  Do not clear STOP here (let the process code do it).
+	 */
+	atomic_set_int(&c->flags, CALLOUT_RESET);
 	sc = softclock_pcpu_ary[mycpu->gd_cpuid];
 	c->rsc = sc;
 	c->rtick = sc->curticks + to_ticks;
@@ -993,16 +981,17 @@ callout_reset_bycpu(struct callout *cc, int to_ticks, void (*ftn)(void *),
 {
 	softclock_pcpu_t sc;
 	struct _callout *c;
-	globaldata_t gd;
 	int res;
 
-	gd = globaldata_find(cpuid);
 	atomic_set_int(&cc->flags, CALLOUT_ACTIVE);
 	c = _callout_gettoc(cc);
-	atomic_set_int(&c->flags, CALLOUT_RESET);
-	atomic_clear_int(&c->flags, CALLOUT_STOP);
 
-	sc = softclock_pcpu_ary[gd->gd_cpuid];
+	/*
+	 * Set RESET.  Do not clear STOP here (let the process code do it).
+	 */
+	atomic_set_int(&c->flags, CALLOUT_RESET);
+
+	sc = softclock_pcpu_ary[mycpu->gd_cpuid];
 	c->rsc = sc;
 	c->rtick = sc->curticks + to_ticks;
 	c->rfunc = ftn;
@@ -1024,7 +1013,6 @@ _callout_cancel_or_stop(struct callout *cc, uint32_t flags)
 {
 	struct _callout *c;
 	softclock_pcpu_t sc;
-	uint32_t oflags;
 	int res;
 
 #ifdef CALLOUT_TYPESTABLE
@@ -1036,10 +1024,20 @@ _callout_cancel_or_stop(struct callout *cc, uint32_t flags)
 	/*
 	 * Setup for synchronous
 	 */
-	atomic_clear_int(&cc->flags, CALLOUT_SYNCDONE | CALLOUT_ACTIVE);
+	atomic_clear_int(&cc->flags, CALLOUT_ACTIVE);
 	c = _callout_gettoc(cc);
-	oflags = c->flags;
-	atomic_set_int(&c->flags, flags | CALLOUT_SYNC);
+
+	/*
+	 * Set STOP or CANCEL request.  If this is a STOP, clear a queued
+	 * RESET now.
+	 */
+	atomic_set_int(&c->flags, flags);
+	if (flags & CALLOUT_STOP) {
+		if (c->flags & CALLOUT_RESET) {
+			atomic_set_int(&cc->flags, CALLOUT_STOP_RES);
+			atomic_clear_int(&c->flags, CALLOUT_RESET);
+		}
+	}
 	sc = softclock_pcpu_ary[mycpu->gd_cpuid];
 	res = _callout_process_spinlocked(c, 0);
 	spin_unlock(&c->spin);
@@ -1049,15 +1047,13 @@ _callout_cancel_or_stop(struct callout *cc, uint32_t flags)
 #endif
 
 	/*
-	 * Wait for stop or completion.  NOTE: The backend only
-	 * runs atomic ops on the frontend cc->flags for the sync
-	 * operation.
+	 * Wait for the CANCEL or STOP to finish.
 	 *
 	 * WARNING! (c) can go stale now, so do not use (c) after this
-	 *	    point.
+	 *	    point. XXX
 	 */
-	flags = cc->flags;
-	if ((flags & CALLOUT_SYNCDONE) == 0) {
+	if (c->flags & flags) {
+		atomic_add_int(&c->waiters, 1);
 #ifdef CALLOUT_TYPESTABLE
 		if (cc->flags & CALLOUT_AUTOLOCK)
 			lockmgr(cc->lk, LK_CANCEL_BEG);
@@ -1065,16 +1061,12 @@ _callout_cancel_or_stop(struct callout *cc, uint32_t flags)
 		if (cc->flags & CALLOUT_AUTOLOCK)
 			lockmgr(c->lk, LK_CANCEL_BEG);
 #endif
-		while ((flags & CALLOUT_SYNCDONE) == 0) {
+		for (;;) {
 			tsleep_interlock(cc, 0);
-			if (atomic_cmpset_int(&cc->flags,
-					      flags | CALLOUT_SYNCDONE,
-					      flags | CALLOUT_SYNCDONE)) {
+			if ((atomic_fetchadd_int(&c->flags, 0) & flags) == 0)
 				break;
-			}
 			tsleep(cc, PINTERLOCKED, "costp", 0);
-			flags = cc->flags;	/* recheck after sleep */
-			cpu_ccfence();
+			kprintf("C");
 		}
 #ifdef CALLOUT_TYPESTABLE
 		if (cc->flags & CALLOUT_AUTOLOCK)
@@ -1083,16 +1075,9 @@ _callout_cancel_or_stop(struct callout *cc, uint32_t flags)
 		if (cc->flags & CALLOUT_AUTOLOCK)
 			lockmgr(c->lk, LK_CANCEL_END);
 #endif
+		atomic_add_int(&c->waiters, -1);
 	}
-
-	/*
-	 * If CALLOUT_SYNC was already set before we began, multiple
-	 * threads may have been doing a synchronous wait.  This can
-	 * cause the processing code to optimize-out the wakeup().
-	 * Make sure the wakeup() is issued.
-	 */
-	if (oflags & CALLOUT_SYNC)
-		wakeup(c->verifier);
+	KKASSERT(cc->toc.verifier == cc);
 }
 
 /*
@@ -1155,8 +1140,16 @@ callout_stop_async(struct callout *cc)
 	KKASSERT(cc->toc.verifier == cc);
 #endif
 	c = _callout_gettoc(cc);
+
+	/*
+	 * Set STOP or CANCEL request.  If this is a STOP, clear a queued
+	 * RESET now.
+	 */
 	atomic_set_int(&c->flags, CALLOUT_STOP);
-	atomic_clear_int(&c->flags, CALLOUT_RESET);
+	if (c->flags & CALLOUT_RESET) {
+		atomic_set_int(&cc->flags, CALLOUT_STOP_RES);
+		atomic_clear_int(&c->flags, CALLOUT_RESET);
+	}
 	sc = softclock_pcpu_ary[mycpu->gd_cpuid];
 	res = _callout_process_spinlocked(c, 0);
 	flags = cc->flags;

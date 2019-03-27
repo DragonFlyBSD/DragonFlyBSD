@@ -41,7 +41,9 @@
 #ifndef _SYS_LOCK_H_
 #include <sys/lock.h>
 #endif
+#ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
+#endif
 
 /*
  * WITH TYPESTABLE (currently disabled)
@@ -73,11 +75,13 @@ struct _callout {
 	void		*rarg;
 	void		(*rfunc)(void *);
 	int		rtick;
+	int		unused01;
 
 	struct softclock_pcpu *qsc;	/* active info */
 	void		*qarg;
 	void		(*qfunc)(void *);
 	int		qtick;
+	int		waiters;
 };
 
 struct callout {
@@ -98,6 +102,9 @@ struct callout {
 #define callout_arg(cc)	((cc)->arg)
 #else
 #define callout_arg(cc)	((cc)->toc.rarg)
+#endif
+#ifndef _SYS_SPINLOCK_H_
+#include <sys/spinlock.h>
 #endif
 
 #ifdef _KERNEL
