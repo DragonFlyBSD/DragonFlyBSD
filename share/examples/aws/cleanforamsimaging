@@ -1,0 +1,34 @@
+#!/bin/csh
+#
+#
+
+echo "Clean for AMD copyimage.  This script will destroy ssh keys and"
+echo "logs, touch /firstboot, and generally make a base AMI image that"
+echo "has not been messed with a whole lot ready for an aws ec2 create-image"
+echo "operation."
+echo ""
+echo "Use:"
+echo '    aws ec2 create-image \\'
+echo '        --name YourAMINameHere \\'
+echo '        --description "Your AMI Description Here" \\'
+echo '        --instance-id i-ThisInstanceId \\'
+echo ""
+
+if ( "$argv" != "doit" ) then
+    echo "Execute script with 'doit' to really do it"
+    exit 1
+endif
+
+echo "Starting cleanup"
+sleep 1
+rm -f ~root/.ssh/{authorized_keys,known_hosts} ~root/.history
+rm -f /home/ec2-user/.ssh/{authorized_keys,known_hosts}
+rm -f /home/ec2-user/.history
+touch /firstboot
+killall syslogd
+sleep 0.1
+find /var/log -type f -delete
+touch /var/log/{auth.log,cron,daemon,maillog,messages,security,userlog}
+touch /var/log/{wtmp,wtmpx}
+
+echo "Cleanup complete"

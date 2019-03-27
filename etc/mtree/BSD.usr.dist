@@ -161,6 +161,8 @@
             ..
         ..
         examples
+	    aws
+	    ..
             IPv6
             ..
             acpica
