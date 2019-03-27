@@ -34,6 +34,7 @@
 #include <sys/user.h>
 #include <sys/param.h>
 #include <sys/time.h>
+#include <sys/tree.h>
 #include <sys/stat.h>
 #include <sys/vnode.h>
 #include <sys/socket.h>
@@ -387,6 +388,19 @@ dofiles(struct kinfo_proc *kp, struct proc *p)
 	}
 }
 
+/* from sys/vm/vm_map.c */
+static int
+rb_vm_map_compare(vm_map_entry_t a, vm_map_entry_t b)
+{
+	if (a->start < b->start)
+		return(-1);
+	else if (a->start > b->start)
+		return(1);
+	return(0);
+}
+
+RB_GENERATE(vm_map_rb_tree, vm_map_entry, rb_entry, rb_vm_map_compare);
+
 static void
 dommap(struct proc *p)
 {
@@ -406,8 +420,7 @@ dommap(struct proc *p)
 
 	map = &vmspace.vm_map;
 
-	for (entryp = map->header.next; entryp != &p->p_vmspace->vm_map.header;
-	    entryp = entry.next) {
+	RB_FOREACH(entryp, vm_map_rb_tree, &map->rb_root) {
 		if (!kread(entryp, &entry, sizeof(entry))) {
 			dprintf(stderr,
 			    "can't read vm_map_entry at %p for pid %d\n",
