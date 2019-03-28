@@ -98,14 +98,18 @@ struct callout {
 #endif
 };
 
+/*
+ * Legacy access/setting of the function and argument.  Used only
+ * by netgraph7 and ieee80211_dfs.c.  DO NOT USE FOR NEW CODE!
+ */
 #ifdef CALLOUT_TYPESTABLE
-#define callout_set_arg(cc, _arg)	((cc)->arg = (_arg))
-#define callout_arg(cc)			((cc)->arg)
-#define callout_func(cc)		((cc)->func)
+#define callout_set_arg(cc, _arg)	((cc)->qarg = (_arg))
+#define callout_arg(cc)			((cc)->qarg)
+#define callout_func(cc)		((cc)->qfunc)
 #else
-#define callout_set_arg(cc, _arg)	((cc)->toc.arg = (_arg))
-#define callout_arg(cc)			((cc)->toc.rarg)
-#define callout_func(cc)		((cc)->toc.func)
+#define callout_set_arg(cc, _arg)	((cc)->toc.qarg = (_arg))
+#define callout_arg(cc)			((cc)->toc.qarg)
+#define callout_func(cc)		((cc)->toc.qfunc)
 #endif
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
