@@ -257,6 +257,7 @@ struct mount {
 	struct bio_ops	*mnt_bioops;		/* BIO ops (hammer, softupd) */
 
 	struct vfs_acct	mnt_acct;		/* vfs space accounting */
+	RB_ENTRY(mount)	mnt_node;		/* mnt_stat.f_fsid */
 };
 
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
@@ -732,7 +733,7 @@ struct	netcred *vfs_export_lookup	    /* lookup host in fs export list */
 	  (struct mount *, struct netexport *, struct sockaddr *);
 int	vfs_allocate_syncvnode (struct mount *);
 void	vfs_getnewfsid (struct mount *);
-int	vfs_setfsid(struct mount *mp, fsid_t *template);
+void	vfs_setfsid(struct mount *mp, fsid_t *template);
 cdev_t	vfs_getrootfsid (struct mount *);
 struct	mount *vfs_getvfs (fsid_t *);      /* return vfs given fsid */
 int	vfs_modevent (module_t, int, void *);

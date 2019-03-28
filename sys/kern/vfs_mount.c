@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004,2013 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2004,2013-2019 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -102,6 +102,26 @@ struct vnlru_info {
 	int	pass;
 };
 
+static int
+mount_cmp(struct mount *mnt1, struct mount *mnt2)
+{
+	/* memcmp returns < 0, 0, or > 0, bcmp just returns 0 or 1 */
+	return memcmp(&mnt1->mnt_stat.f_fsid, &mnt2->mnt_stat.f_fsid,
+		      sizeof(mnt1->mnt_stat.f_fsid));
+}
+
+static int
+mount_fsid_cmp(fsid_t *fsid, struct mount *mnt)
+{
+	return memcmp(fsid, &mnt->mnt_stat.f_fsid, sizeof(*fsid));
+}
+
+RB_HEAD(mount_rb_tree, mount);
+RB_PROTOTYPEX(mount_rb_tree, FSID, mount, mnt_node, mount_cmp, fsid_t *);
+RB_GENERATE(mount_rb_tree, mount, mnt_node, mount_cmp);
+RB_GENERATE_XLOOKUP(mount_rb_tree, FSID, mount, mnt_node,
+			mount_fsid_cmp, fsid_t *);
+
 static int vnlru_nowhere = 0;
 SYSCTL_INT(_debug, OID_AUTO, vnlru_nowhere, CTLFLAG_RD,
 	    &vnlru_nowhere, 0,
@@ -113,6 +133,7 @@ static struct mount dummymount;
 
 /* note: mountlist exported to pstat */
 struct mntlist mountlist = TAILQ_HEAD_INITIALIZER(mountlist);
+struct mount_rb_tree mounttree = RB_INITIALIZER(dev_tree_mounttree);
 static TAILQ_HEAD(,mountscan_info) mountscan_list;
 static struct lwkt_token mountlist_token;
 
@@ -382,66 +403,67 @@ vfs_getvfs(fsid_t *fsid)
 	struct mount *mp;
 
 	lwkt_gettoken_shared(&mountlist_token);
-	TAILQ_FOREACH(mp, &mountlist, mnt_list) {
-		if (mp->mnt_stat.f_fsid.val[0] == fsid->val[0] &&
-		    mp->mnt_stat.f_fsid.val[1] == fsid->val[1]) {
-			mount_hold(mp);
-			break;
-		}
-	}
+	mp = mount_rb_tree_RB_LOOKUP_FSID(&mounttree, fsid);
+	if (mp)
+		mount_hold(mp);
 	lwkt_reltoken(&mountlist_token);
 	return (mp);
 }
 
 /*
+ * Generate a FSID based on the mountpt.  The FSID will be adjusted to avoid
+ * collisions when the mount is added to mountlist.
+ *
+ * May only be called prior to the mount succeeding.
+ *
+ * OLD:
+ *
  * Get a new unique fsid.  Try to make its val[0] unique, since this value
  * will be used to create fake device numbers for stat().  Also try (but
  * not so hard) make its val[0] unique mod 2^16, since some emulators only
  * support 16-bit device numbers.  We end up with unique val[0]'s for the
  * first 2^16 calls and unique val[0]'s mod 2^16 for the first 2^8 calls.
- *
- * Keep in mind that several mounts may be running in parallel.  Starting
- * the search one past where the previous search terminated is both a
- * micro-optimization and a defense against returning the same fsid to
- * different mounts.
  */
 void
 vfs_getnewfsid(struct mount *mp)
 {
-	static u_int16_t mntid_base;
-	struct mount *mptmp;
 	fsid_t tfsid;
 	int mtype;
+	int error;
+	char *retbuf;
+	char *freebuf;
 
-	lwkt_gettoken(&mntid_token);
 	mtype = mp->mnt_vfc->vfc_typenum;
 	tfsid.val[1] = mtype;
-	mtype = (mtype & 0xFF) << 24;
-	for (;;) {
+	error = cache_fullpath(NULL, &mp->mnt_ncmounton, NULL,
+			       &retbuf, &freebuf, 0);
+	if (error) {
+		tfsid.val[0] = makeudev(255, 0);
+	} else {
 		tfsid.val[0] = makeudev(255,
-		    mtype | ((mntid_base & 0xFF00) << 8) | (mntid_base & 0xFF));
-		mntid_base++;
-		mptmp = vfs_getvfs(&tfsid);
-		if (mptmp == NULL)
-			break;
-		mount_drop(mptmp);
+					iscsi_crc32(retbuf, strlen(retbuf)) &
+					~makeudev(255, 0));
+		kfree(freebuf, M_TEMP);
 	}
 	mp->mnt_stat.f_fsid.val[0] = tfsid.val[0];
 	mp->mnt_stat.f_fsid.val[1] = tfsid.val[1];
-	lwkt_reltoken(&mntid_token);
 }
 
 /*
- * Set the FSID for a new mount point to the template.  Adjust
- * the FSID to avoid collisions.
+ * Set the FSID for a new mount point to the template.
+ *
+ * The FSID will be adjusted to avoid collisions when the mount is
+ * added to mountlist.
+ *
+ * May only be called prior to the mount succeeding.
  */
-int
+void
 vfs_setfsid(struct mount *mp, fsid_t *template)
 {
-	struct mount *mptmp;
-	int didmunge = 0;
-
 	bzero(&mp->mnt_stat.f_fsid, sizeof(mp->mnt_stat.f_fsid));
+
+#if 0
+	struct mount *mptmp;
 
 	lwkt_gettoken(&mntid_token);
 	for (;;) {
@@ -449,13 +471,11 @@ vfs_setfsid(struct mount *mp, fsid_t *template)
 		if (mptmp == NULL)
 			break;
 		mount_drop(mptmp);
-		didmunge = 1;
 		++template->val[1];
 	}
-	mp->mnt_stat.f_fsid = *template;
 	lwkt_reltoken(&mntid_token);
-
-	return(didmunge);
+#endif
+	mp->mnt_stat.f_fsid = *template;
 }
 
 /*
@@ -542,16 +562,39 @@ vnlru_proc(void)
 /*
  * mountlist_insert (MP SAFE)
  *
- * Add a new mount point to the mount list.
+ * Add a new mount point to the mount list.  Filesystem should attempt to
+ * supply a unique fsid but if a duplicate occurs adjust the fsid to ensure
+ * uniqueness.
  */
 void
 mountlist_insert(struct mount *mp, int how)
 {
+	int lim = 0x01000000;
+
 	lwkt_gettoken(&mountlist_token);
 	if (how == MNTINS_FIRST)
 		TAILQ_INSERT_HEAD(&mountlist, mp, mnt_list);
 	else
 		TAILQ_INSERT_TAIL(&mountlist, mp, mnt_list);
+	while (mount_rb_tree_RB_INSERT(&mounttree, mp)) {
+		int32_t val;
+
+		kprintf("X");
+		/*
+		 * minor device mask: 0xFFFF00FF
+		 */
+		val = mp->mnt_stat.f_fsid.val[0];
+		val = ((val & 0xFFFF0000) >> 8) | (val & 0x000000FF);
+		++val;
+		val = ((val << 8) & 0xFFFF0000) | (val & 0x000000FF);
+		mp->mnt_stat.f_fsid.val[0] = val;
+		if (--lim == 0) {
+			lim = 0x01000000;
+			mp->mnt_stat.f_fsid.val[1] += 0x0100;
+			kprintf("mountlist_insert: fsid collision, "
+				"too many mounts\n");
+		}
+	}
 	lwkt_reltoken(&mountlist_token);
 }
 
@@ -613,6 +656,7 @@ mountlist_remove(struct mount *mp)
 		}
 	}
 	TAILQ_REMOVE(&mountlist, mp, mnt_list);
+	mount_rb_tree_RB_REMOVE(&mounttree, mp);
 	lwkt_reltoken(&mountlist_token);
 }
 

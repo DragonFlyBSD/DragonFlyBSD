@@ -380,8 +380,8 @@ update:
 	 * XXX The final recipients of VFS_MOUNT just overwrite the ndp they
 	 * get. 
 	 */
-	error = VFS_MOUNT(mp, uap->path, uap->data, cred);
 	if (mp->mnt_flag & MNT_UPDATE) {
+		error = VFS_MOUNT(mp, uap->path, uap->data, cred);
 		if (mp->mnt_kern_flag & MNTK_WANTRDWR)
 			mp->mnt_flag &= ~MNT_RDONLY;
 		mp->mnt_flag &=~ (MNT_UPDATE | MNT_RELOAD | MNT_FORCE);
@@ -396,6 +396,8 @@ update:
 		cache_drop(&nch);
 		goto done;
 	}
+	mp->mnt_ncmounton = nch;
+	error = VFS_MOUNT(mp, uap->path, uap->data, cred);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 
 	/*
@@ -420,7 +422,6 @@ update:
 			cache_unlock(&mp->mnt_ncmountpt);
 		}
 		vn_unlock(vp);
-		mp->mnt_ncmounton = nch;		/* inherits ref */
 		cache_lock(&nch);
 		nch.ncp->nc_flag |= NCF_ISMOUNTPT;
 		cache_unlock(&nch);
@@ -437,6 +438,7 @@ update:
 		vrele(vp);
 		KNOTE(&fs_klist, VQ_MOUNT);
 	} else {
+		bzero(&mp->mnt_ncmounton, sizeof(mp->mnt_ncmounton));
 		vn_syncer_thr_stop(mp);
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_coherency_ops);
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_journal_ops);

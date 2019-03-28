@@ -315,13 +315,13 @@ vfs_mountroot_devfs(void)
 		mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;
 	strncpy(mp->mnt_stat.f_fstypename, vfsp->vfc_name, MFSNAMELEN);
 	mp->mnt_stat.f_owner = cred->cr_uid;
+	mp->mnt_ncmounton = nch;
 	vn_unlock(vp);
 
 	/*
 	 * Mount the filesystem.
 	 */
 	error = VFS_MOUNT(mp, "/dev", NULL, cred);
-
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 
 	/*
@@ -344,7 +344,6 @@ vfs_mountroot_devfs(void)
 			cache_unlock(&mp->mnt_ncmountpt);
 		}
 		vn_unlock(vp);
-		mp->mnt_ncmounton = nch;		/* inherits ref */
 		cache_lock(&nch);
 		nch.ncp->nc_flag |= NCF_ISMOUNTPT;
 		cache_unlock(&nch);
@@ -367,6 +366,7 @@ vfs_mountroot_devfs(void)
 		error = VFS_START(mp, 0);
 		vrele(vp);
 	} else {
+		bzero(&mp->mnt_ncmounton, sizeof(mp->mnt_ncmounton));
 		vn_syncer_thr_stop(mp);
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_coherency_ops);
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_journal_ops);
