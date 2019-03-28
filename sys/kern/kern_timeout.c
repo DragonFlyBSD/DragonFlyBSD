@@ -1066,7 +1066,6 @@ _callout_cancel_or_stop(struct callout *cc, uint32_t flags)
 			if ((atomic_fetchadd_int(&c->flags, 0) & flags) == 0)
 				break;
 			tsleep(cc, PINTERLOCKED, "costp", 0);
-			kprintf("C");
 		}
 #ifdef CALLOUT_TYPESTABLE
 		if (cc->flags & CALLOUT_AUTOLOCK)
