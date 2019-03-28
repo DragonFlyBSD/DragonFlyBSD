@@ -105,15 +105,29 @@ struct vnlru_info {
 static int
 mount_cmp(struct mount *mnt1, struct mount *mnt2)
 {
-	/* memcmp returns < 0, 0, or > 0, bcmp just returns 0 or 1 */
-	return memcmp(&mnt1->mnt_stat.f_fsid, &mnt2->mnt_stat.f_fsid,
-		      sizeof(mnt1->mnt_stat.f_fsid));
+	if (mnt1->mnt_stat.f_fsid.val[0] < mnt2->mnt_stat.f_fsid.val[0])
+		return -1;
+	if (mnt1->mnt_stat.f_fsid.val[0] > mnt2->mnt_stat.f_fsid.val[0])
+		return 1;
+	if (mnt1->mnt_stat.f_fsid.val[1] < mnt2->mnt_stat.f_fsid.val[1])
+		return -1;
+	if (mnt1->mnt_stat.f_fsid.val[1] > mnt2->mnt_stat.f_fsid.val[1])
+		return 1;
+	return 0;
 }
 
 static int
 mount_fsid_cmp(fsid_t *fsid, struct mount *mnt)
 {
-	return memcmp(fsid, &mnt->mnt_stat.f_fsid, sizeof(*fsid));
+	if (fsid->val[0] < mnt->mnt_stat.f_fsid.val[0])
+		return -1;
+	if (fsid->val[0] > mnt->mnt_stat.f_fsid.val[0])
+		return 1;
+	if (fsid->val[1] < mnt->mnt_stat.f_fsid.val[1])
+		return -1;
+	if (fsid->val[1] > mnt->mnt_stat.f_fsid.val[1])
+		return 1;
+	return 0;
 }
 
 RB_HEAD(mount_rb_tree, mount);
@@ -579,7 +593,6 @@ mountlist_insert(struct mount *mp, int how)
 	while (mount_rb_tree_RB_INSERT(&mounttree, mp)) {
 		int32_t val;
 
-		kprintf("X");
 		/*
 		 * minor device mask: 0xFFFF00FF
 		 */
