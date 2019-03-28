@@ -29,4 +29,4 @@
  * SUCH DAMAGE.
  */
 #define BCMP
-#include "memcmp.S"
+#include "memcmp.s"

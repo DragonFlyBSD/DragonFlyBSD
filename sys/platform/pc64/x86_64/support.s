@@ -130,27 +130,6 @@ ENTRY(pagezero)
 END(pagezero)
 
 /*
- * bcmp(ptr:%rdi, ptr:%rsi, bytes:%rdx)
- */
-ENTRY(bcmp)
-	movq	%rdx,%rcx
-	shrq	$3,%rcx
-	repe
-	cmpsq
-	jne	1f
-
-	movq	%rdx,%rcx
-	andq	$7,%rcx
-	je	1f
-	repe
-	cmpsb
-1:
-	setne	%al
-	movsbl	%al,%eax
-	ret
-END(bcmp)
-
-/*
  * bcopy(src:%rdi, dst:%rsi, cnt:%rdx)
  *
  * ws@tools.de (Wolfgang Solfrank, TooLs GmbH) +49-228-985800

@@ -149,6 +149,8 @@ platform/pc64/x86_64/msi_vector.s	standard
 platform/pc64/x86_64/ipl.s		standard
 platform/pc64/x86_64/global.s		standard
 platform/pc64/x86_64/support.s		standard
+platform/pc64/x86_64/bcmp.s		standard
+platform/pc64/x86_64/memcmp.s		standard
 platform/pc64/x86_64/sigtramp.s		standard
 platform/pc64/x86_64/swtch.s		standard
 platform/pc64/x86_64/npx.c		standard

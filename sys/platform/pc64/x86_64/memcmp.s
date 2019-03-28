@@ -6,8 +6,14 @@
  * $NetBSD: memcmp.S,v 1.2 2003/07/26 19:24:39 salo Exp $
  * $FreeBSD: src/lib/libc/amd64/string/memcmp.S,v 1.2 2008/11/02 01:10:54 peter Exp $
  */
+#include <machine/asmacros.h>
+#include <machine/pmap.h>
 
-#include <machine/asm.h>
+#include "assym.s"
+
+	ALIGN_DATA
+
+	.text
 
 #ifdef BCMP
 ENTRY(bcmp)
@@ -46,5 +52,3 @@ END(bcmp)
 #else
 END(memcmp)
 #endif
-
-	.section .note.GNU-stack,"",%progbits
