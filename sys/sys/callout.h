@@ -99,9 +99,13 @@ struct callout {
 };
 
 #ifdef CALLOUT_TYPESTABLE
-#define callout_arg(cc)	((cc)->arg)
+#define callout_set_arg(cc, _arg)	((cc)->arg = (_arg))
+#define callout_arg(cc)			((cc)->arg)
+#define callout_func(cc)		((cc)->func)
 #else
-#define callout_arg(cc)	((cc)->toc.rarg)
+#define callout_set_arg(cc, _arg)	((cc)->toc.arg = (_arg))
+#define callout_arg(cc)			((cc)->toc.rarg)
+#define callout_func(cc)		((cc)->toc.func)
 #endif
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
