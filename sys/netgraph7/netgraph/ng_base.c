@@ -3263,7 +3263,7 @@ ng_callout(struct callout *c, node_p node, hook_p hook, int ticks,
 	NGI_FN(item) = fn;
 	NGI_ARG1(item) = arg1;
 	NGI_ARG2(item) = arg2;
-	oitem = c->c_arg;
+	oitem = callout_arg(c);
 	callout_reset(c, ticks, &ng_callout_trampoline, item);
 	return (0);
 }
@@ -3279,9 +3279,9 @@ ng_uncallout(struct callout *c, node_p node)
 	KASSERT(node != NULL, ("ng_uncallout: NULL node"));
 
 	rval = callout_stop(c);
-	item = c->c_arg;
+	item = callout_arg(c);
 	/* Do an extra check */
-	if ((rval > 0) && (c->c_func == &ng_callout_trampoline) &&
+	if ((rval > 0) && (callout_func(c) == &ng_callout_trampoline) &&
 	    (NGI_NODE(item) == node)) {
 		/*
 		 * We successfully removed it from the queue before it ran
@@ -3290,7 +3290,7 @@ ng_uncallout(struct callout *c, node_p node)
 		 */
 		NG_FREE_ITEM(item);
 	}
-	c->c_arg = NULL;
+	callout_set_arg(c, NULL);
 
 	return (rval);
 }
