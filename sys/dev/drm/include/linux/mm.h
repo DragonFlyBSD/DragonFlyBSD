@@ -42,6 +42,7 @@
 #include <linux/atomic.h>
 #include <linux/mm_types.h>
 #include <linux/err.h>
+#include <linux/shrinker.h>
 
 #include <asm/page.h>
 #include <asm/pgtable.h>

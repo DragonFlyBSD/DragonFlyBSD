@@ -38,6 +38,7 @@
 #include <linux/mutex.h>
 #include <linux/capability.h>
 #include <linux/atomic.h>
+#include <linux/shrinker.h>
 #include <linux/lockdep.h>
 
 #include <sys/file.h>	/* for struct file */
