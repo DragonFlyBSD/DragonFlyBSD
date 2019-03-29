@@ -81,15 +81,10 @@ int ttm_mem_io_lock(struct ttm_mem_type_manager *man, bool interruptible)
 	if (likely(man->io_reserve_fastpath))
 		return 0;
 
-	if (interruptible) {
-		if (lockmgr(&man->io_reserve_mutex,
-			    LK_EXCLUSIVE | LK_SLEEPFAIL))
-			return (-EINTR);
-		else
-			return (0);
-	}
+	if (interruptible)
+		return mutex_lock_interruptible(&man->io_reserve_mutex);
 
-	lockmgr(&man->io_reserve_mutex, LK_EXCLUSIVE);
+	mutex_lock(&man->io_reserve_mutex);
 	return 0;
 }
 EXPORT_SYMBOL(ttm_mem_io_lock);
@@ -99,7 +94,7 @@ void ttm_mem_io_unlock(struct ttm_mem_type_manager *man)
 	if (likely(man->io_reserve_fastpath))
 		return;
 
-	lockmgr(&man->io_reserve_mutex, LK_RELEASE);
+	mutex_unlock(&man->io_reserve_mutex);
 }
 EXPORT_SYMBOL(ttm_mem_io_unlock);
 
@@ -209,9 +204,10 @@ static int ttm_mem_reg_ioremap(struct ttm_bo_device *bdev, struct ttm_mem_reg *m
 	if (mem->bus.addr) {
 		addr = mem->bus.addr;
 	} else {
-		addr = pmap_mapdev_attr(mem->bus.base + mem->bus.offset,
-		    mem->bus.size, (mem->placement & TTM_PL_FLAG_WC) ?
-		    VM_MEMATTR_WRITE_COMBINING : VM_MEMATTR_UNCACHEABLE);
+		if (mem->placement & TTM_PL_FLAG_WC)
+			addr = ioremap_wc(mem->bus.base + mem->bus.offset, mem->bus.size);
+		else
+			addr = ioremap_nocache(mem->bus.base + mem->bus.offset, mem->bus.size);
 		if (!addr) {
 			(void) ttm_mem_io_lock(man, false);
 			ttm_mem_io_free(bdev, mem);
@@ -231,7 +227,7 @@ static void ttm_mem_reg_iounmap(struct ttm_bo_device *bdev, struct ttm_mem_reg *
 	man = &bdev->man[mem->mem_type];
 
 	if (virtual && mem->bus.addr == NULL)
-		pmap_unmapdev((vm_offset_t)virtual, mem->bus.size);
+		iounmap(virtual);
 	(void) ttm_mem_io_lock(man, false);
 	ttm_mem_io_free(bdev, mem);
 	ttm_mem_io_unlock(man);
@@ -246,8 +242,7 @@ static int ttm_copy_io_page(void *dst, void *src, unsigned long page)
 
 	int i;
 	for (i = 0; i < PAGE_SIZE / sizeof(uint32_t); ++i)
-		/* iowrite32(ioread32(srcP++), dstP++); */
-		*dstP++ = *srcP++;
+		iowrite32(ioread32(srcP++), dstP++);
 	return 0;
 }
 
@@ -396,13 +391,10 @@ int ttm_bo_move_memcpy(struct ttm_buffer_object *bo,
 						   prot);
 		} else
 			ret = ttm_copy_io_page(new_iomap, old_iomap, page);
-		if (ret) {
-			/* failing here, means keep old copy as-is */
-			old_copy.mm_node = NULL;
+		if (ret)
 			goto out1;
-		}
 	}
-	cpu_mfence();
+	mb();
 out2:
 	old_copy = *old_mem;
 	*old_mem = *new_mem;
@@ -489,7 +481,7 @@ static int ttm_buffer_object_transfer(struct ttm_buffer_object *bo,
 	ret = ww_mutex_trylock(&fbo->resv->lock);
 	WARN_ON(!ret);
 
-        /*
+	/*
 	 * Mirror ref from kref_init() for list_kref.
 	 */
 	set_bit(TTM_BO_PRIV_FLAG_ACTIVE, &fbo->priv_flags);

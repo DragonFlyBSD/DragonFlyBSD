@@ -66,17 +66,16 @@ static int ttm_bo_man_get_node(struct ttm_mem_type_manager *man,
 	node = kzalloc(sizeof(*node), GFP_KERNEL);
 	if (!node)
 		return -ENOMEM;
-	/* not in yet ?
-	if (placement->flags & TTM_PL_FLAG_TOPDOWN)
+
+	if (bo->mem.placement & TTM_PL_FLAG_TOPDOWN)
 		aflags = DRM_MM_CREATE_TOP;
-	*/
 
 	lockmgr(&rman->lock, LK_EXCLUSIVE);
 	ret = drm_mm_insert_node_in_range_generic(mm, node, mem->num_pages,
-					mem->page_alignment, 0,
-					placement->fpfn, lpfn,
-					DRM_MM_SEARCH_BEST,
-					aflags);
+					  mem->page_alignment, 0,
+					  placement->fpfn, lpfn,
+					  DRM_MM_SEARCH_BEST,
+					  aflags);
 	lockmgr(&rman->lock, LK_RELEASE);
 
 	if (unlikely(ret)) {
@@ -85,6 +84,7 @@ static int ttm_bo_man_get_node(struct ttm_mem_type_manager *man,
 		mem->mm_node = node;
 		mem->start = node->start;
 	}
+
 	return 0;
 }
 

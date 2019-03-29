@@ -45,7 +45,6 @@
 #define TTM_DEBUG(fmt, arg...)
 #define TTM_BO_HASH_ORDER 13
 
-static int ttm_bo_setup_vm(struct ttm_buffer_object *bo);
 static int ttm_bo_swapout(struct ttm_mem_shrink *shrink);
 static void ttm_bo_global_kobj_release(struct kobject *kobj);
 
@@ -154,7 +153,7 @@ static void ttm_bo_release_list(struct kref *list_kref)
 	atomic_dec(&bo->glob->bo_count);
 	if (bo->resv == &bo->ttm_resv)
 		reservation_object_fini(&bo->ttm_resv);
-
+	mutex_destroy(&bo->wu_mutex);
 	if (bo->destroy)
 		bo->destroy(bo);
 	else {
@@ -354,9 +353,11 @@ static int ttm_bo_handle_move_mem(struct ttm_buffer_object *bo,
 
 moved:
 	if (bo->evicted) {
-		ret = bdev->driver->invalidate_caches(bdev, bo->mem.placement);
-		if (ret)
-			pr_err("Can not flush read caches\n");
+		if (bdev->driver->invalidate_caches) {
+			ret = bdev->driver->invalidate_caches(bdev, bo->mem.placement);
+			if (ret)
+				pr_err("Can not flush read caches\n");
+		}
 		bo->evicted = false;
 	}
 
@@ -413,7 +414,7 @@ static void ttm_bo_cleanup_refs_or_queue(struct ttm_buffer_object *bo)
 	int ret;
 
 	lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
-	ret = ttm_bo_reserve_nolru(bo, false, true, false, 0);
+	ret = __ttm_bo_reserve(bo, false, true, false, 0);
 
 	lockmgr(&bdev->fence_lock, LK_EXCLUSIVE);
 	(void) ttm_bo_wait(bo, false, false, true);
@@ -432,8 +433,20 @@ static void ttm_bo_cleanup_refs_or_queue(struct ttm_buffer_object *bo)
 		sync_obj = driver->sync_obj_ref(bo->sync_obj);
 	lockmgr(&bdev->fence_lock, LK_RELEASE);
 
-	if (!ret)
-		ww_mutex_unlock(&bo->resv->lock);
+	if (!ret) {
+
+		/*
+		 * Make NO_EVICT bos immediately available to
+		 * shrinkers, now that they are queued for
+		 * destruction.
+		 */
+		if (bo->mem.placement & TTM_PL_FLAG_NO_EVICT) {
+			bo->mem.placement &= ~TTM_PL_FLAG_NO_EVICT;
+			ttm_bo_add_to_lru(bo);
+		}
+
+		__ttm_bo_unreserve(bo);
+	}
 
 	kref_get(&bo->list_kref);
 	list_add_tail(&bo->ddestroy, &bdev->ddestroy);
@@ -483,7 +496,7 @@ static int ttm_bo_cleanup_refs_and_unlock(struct ttm_buffer_object *bo,
 		sync_obj = driver->sync_obj_ref(bo->sync_obj);
 		lockmgr(&bdev->fence_lock, LK_RELEASE);
 
-		ww_mutex_unlock(&bo->resv->lock);
+		__ttm_bo_unreserve(bo);
 		lockmgr(&glob->lru_lock, LK_RELEASE);
 
 		ret = driver->sync_obj_wait(sync_obj, false, interruptible);
@@ -503,7 +516,7 @@ static int ttm_bo_cleanup_refs_and_unlock(struct ttm_buffer_object *bo,
 			return ret;
 
 		lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
-		ret = ttm_bo_reserve_nolru(bo, false, true, false, 0);
+		ret = __ttm_bo_reserve(bo, false, true, false, 0);
 
 		/*
 		 * We raced, and lost, someone else holds the reservation now,
@@ -521,7 +534,7 @@ static int ttm_bo_cleanup_refs_and_unlock(struct ttm_buffer_object *bo,
 		lockmgr(&bdev->fence_lock, LK_RELEASE);
 
 	if (ret || unlikely(list_empty(&bo->ddestroy))) {
-		ww_mutex_unlock(&bo->resv->lock);
+		__ttm_bo_unreserve(bo);
 		lockmgr(&glob->lru_lock, LK_RELEASE);
 		return ret;
 	}
@@ -566,11 +579,11 @@ static int ttm_bo_delayed_delete(struct ttm_bo_device *bdev, bool remove_all)
 			kref_get(&nentry->list_kref);
 		}
 
-		ret = ttm_bo_reserve_nolru(entry, false, true, false, 0);
+		ret = __ttm_bo_reserve(entry, false, true, false, 0);
 		if (remove_all && ret) {
 			lockmgr(&glob->lru_lock, LK_RELEASE);
-			ret = ttm_bo_reserve_nolru(entry, false, false,
-						   false, 0);
+			ret = __ttm_bo_reserve(entry, false, false,
+					       false, 0);
 			lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 		}
 
@@ -715,7 +728,7 @@ static int ttm_mem_evict_first(struct ttm_bo_device *bdev,
 
 	lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 	list_for_each_entry(bo, &man->lru, lru) {
-		ret = ttm_bo_reserve_nolru(bo, false, true, false, 0);
+		ret = __ttm_bo_reserve(bo, false, true, false, 0);
 		if (!ret)
 			break;
 	}
@@ -1107,6 +1120,7 @@ int ttm_bo_init(struct ttm_bo_device *bdev,
 	INIT_LIST_HEAD(&bo->ddestroy);
 	INIT_LIST_HEAD(&bo->swap);
 	INIT_LIST_HEAD(&bo->io_reserve_lru);
+	lockinit(&bo->wu_mutex, "ttmbwm", 0, LK_CANRECURSE);
 	bo->bdev = bdev;
 	bo->glob = bdev->glob;
 	bo->type = type;
@@ -1137,7 +1151,8 @@ int ttm_bo_init(struct ttm_bo_device *bdev,
 	if (likely(!ret) &&
 	    (bo->type == ttm_bo_type_device ||
 	     bo->type == ttm_bo_type_sg))
-		ret = ttm_bo_setup_vm(bo);
+		ret = drm_vma_offset_add(&bdev->vma_manager, &bo->vma_node,
+					 bo->mem.num_pages);
 
 	locked = ww_mutex_trylock(&bo->resv->lock);
 	WARN_ON(!locked);
@@ -1405,9 +1420,9 @@ int ttm_bo_device_release(struct ttm_bo_device *bdev)
 		}
 	}
 
-	lockmgr(&glob->device_list_mutex, LK_EXCLUSIVE);
+	mutex_lock(&glob->device_list_mutex);
 	list_del(&bdev->device_list);
-	lockmgr(&glob->device_list_mutex, LK_RELEASE);
+	mutex_unlock(&glob->device_list_mutex);
 
 	cancel_delayed_work_sync(&bdev->wq);
 
@@ -1431,6 +1446,7 @@ EXPORT_SYMBOL(ttm_bo_device_release);
 int ttm_bo_device_init(struct ttm_bo_device *bdev,
 		       struct ttm_bo_global *glob,
 		       struct ttm_bo_driver *driver,
+		       struct address_space *mapping,
 		       uint64_t file_page_offset,
 		       bool need_dma32)
 {
@@ -1456,14 +1472,14 @@ int ttm_bo_device_init(struct ttm_bo_device *bdev,
 	 * XXX DRAGONFLY - dev_mapping NULL atm, find other XXX DRAGONFLY
 	 * lines and fix when it no longer is in later API change.
 	 */
-	bdev->dev_mapping = NULL;
+	bdev->dev_mapping = mapping;
 	bdev->glob = glob;
 	bdev->need_dma32 = need_dma32;
 	bdev->val_seq = 0;
 	lockinit(&bdev->fence_lock, "ttmfnc", 0, 0);
-	lockmgr(&glob->device_list_mutex, LK_EXCLUSIVE);
+	mutex_lock(&glob->device_list_mutex);
 	list_add_tail(&bdev->device_list, &glob->device_list);
-	lockmgr(&glob->device_list_mutex, LK_RELEASE);
+	mutex_unlock(&glob->device_list_mutex);
 
 	return 0;
 out_no_sys:
@@ -1492,29 +1508,45 @@ bool ttm_mem_reg_is_pci(struct ttm_bo_device *bdev, struct ttm_mem_reg *mem)
 	return true;
 }
 
+#ifdef __DragonFly__
+
+/*
+ * XXX DRAGONFLY - device_mapping not yet implemented so
+ * file_mapping is basically always NULL.  We have to properly
+ * release the mmap, etc.
+*/
+void ttm_bo_release_mmap(struct ttm_buffer_object *bo);
+
+/**
+ * drm_vma_node_unmap() - Unmap offset node
+ * @node: Offset node
+ * @file_mapping: Address space to unmap @node from
+ *
+ * Unmap all userspace mappings for a given offset node. The mappings must be
+ * associated with the @file_mapping address-space. If no offset exists or
+ * the address-space is invalid, nothing is done.
+ *
+ * This call is unlocked. The caller must guarantee that drm_vma_offset_remove()
+ * is not called on this node concurrently.
+ */
+static inline void drm_vma_node_unmap(struct drm_vma_offset_node *node,
+				      struct address_space *file_mapping)
+{
+	struct ttm_buffer_object *bo = container_of(node, struct ttm_buffer_object, vma_node);
+
+	if (drm_vma_node_has_offset(node))
+		unmap_mapping_range(file_mapping,
+				    drm_vma_node_offset_addr(node),
+				    drm_vma_node_size(node) << PAGE_SHIFT, 1);
+	ttm_bo_release_mmap(bo);
+}
+#endif
+
 void ttm_bo_unmap_virtual_locked(struct ttm_buffer_object *bo)
 {
 	struct ttm_bo_device *bdev = bo->bdev;
-	loff_t offset, holelen;
 
-	if (!bdev->dev_mapping) {
-		/*
-		 * XXX DRAGONFLY - device_mapping not yet implemented so
-		 * dev_mapping is basically always NULL.  We have to properly
-		 * release the mmap, etc.
-		 */
-		ttm_bo_release_mmap(bo);
-		ttm_mem_io_free_vm(bo);
-		return;
-	}
-
-	if (drm_vma_node_has_offset(&bo->vma_node)) {
-		offset = (loff_t) drm_vma_node_offset_addr(&bo->vma_node);
-		holelen = ((loff_t) bo->mem.num_pages) << PAGE_SHIFT;
-
-		unmap_mapping_range(bdev->dev_mapping, offset, holelen, 1);
-	}
-	ttm_bo_release_mmap(bo);	/* for DragonFly VM interface */
+	drm_vma_node_unmap(&bo->vma_node, bdev->dev_mapping);
 	ttm_mem_io_free_vm(bo);
 }
 
@@ -1531,24 +1563,6 @@ void ttm_bo_unmap_virtual(struct ttm_buffer_object *bo)
 
 EXPORT_SYMBOL(ttm_bo_unmap_virtual);
 
-/**
- * ttm_bo_setup_vm:
- *
- * @bo: the buffer to allocate address space for
- *
- * Allocate address space in the drm device so that applications
- * can mmap the buffer and access the contents. This only
- * applies to ttm_bo_type_device objects as others are not
- * placed in the drm device address space.
- */
-
-static int ttm_bo_setup_vm(struct ttm_buffer_object *bo)
-{
-	struct ttm_bo_device *bdev = bo->bdev;
-
-	return drm_vma_offset_add(&bdev->vma_manager, &bo->vma_node,
-				  bo->mem.num_pages);
-}
 
 int ttm_bo_wait(struct ttm_buffer_object *bo,
 		bool lazy, bool interruptible, bool no_wait)
@@ -1649,7 +1663,7 @@ static int ttm_bo_swapout(struct ttm_mem_shrink *shrink)
 
 	lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 	list_for_each_entry(bo, &glob->swap_lru, swap) {
-		ret = ttm_bo_reserve_nolru(bo, false, true, false, 0);
+		ret = __ttm_bo_reserve(bo, false, true, false, 0);
 		if (!ret)
 			break;
 	}
@@ -1716,7 +1730,7 @@ out:
 	 * already swapped buffer.
 	 */
 
-	ww_mutex_unlock(&bo->resv->lock);
+	__ttm_bo_unreserve(bo);
 	kref_put(&bo->list_kref, ttm_bo_release_list);
 	return ret;
 }
@@ -1727,3 +1741,35 @@ void ttm_bo_swapout_all(struct ttm_bo_device *bdev)
 		;
 }
 EXPORT_SYMBOL(ttm_bo_swapout_all);
+
+/**
+ * ttm_bo_wait_unreserved - interruptible wait for a buffer object to become
+ * unreserved
+ *
+ * @bo: Pointer to buffer
+ */
+int ttm_bo_wait_unreserved(struct ttm_buffer_object *bo)
+{
+	int ret;
+
+	/*
+	 * In the absense of a wait_unlocked API,
+	 * Use the bo::wu_mutex to avoid triggering livelocks due to
+	 * concurrent use of this function. Note that this use of
+	 * bo::wu_mutex can go away if we change locking order to
+	 * mmap_sem -> bo::reserve.
+	 */
+	ret = mutex_lock_interruptible(&bo->wu_mutex);
+	if (unlikely(ret != 0))
+		return -ERESTARTSYS;
+	if (!ww_mutex_is_locked(&bo->resv->lock))
+		goto out_unlock;
+	ret = __ttm_bo_reserve(bo, true, false, false, NULL);
+	if (unlikely(ret != 0))
+		goto out_unlock;
+	__ttm_bo_unreserve(bo);
+
+out_unlock:
+	mutex_unlock(&bo->wu_mutex);
+	return ret;
+}

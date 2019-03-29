@@ -27,7 +27,6 @@
 /*
  * Authors: Thomas Hellstrom <thellstrom-at-vmware-dot-com>
  */
-/* $FreeBSD: head/sys/dev/drm2/ttm/ttm_placement.h 247835 2013-03-05 09:49:34Z kib $ */
 
 #ifndef _TTM_PLACEMENT_H_
 #define _TTM_PLACEMENT_H_

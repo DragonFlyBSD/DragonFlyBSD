@@ -23,12 +23,13 @@
  * Authors: Dave Airlie <airlied@redhat.com>
  *          Jerome Glisse <jglisse@redhat.com>
  */
-/* $FreeBSD: head/sys/dev/drm2/ttm/ttm_page_alloc.h 247835 2013-03-05 09:49:34Z kib $ */
 #ifndef TTM_PAGE_ALLOC
 #define TTM_PAGE_ALLOC
 
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_memory.h>
+
+struct device;
 
 /**
  * Initialize pool allocator.
@@ -60,11 +61,10 @@ extern void ttm_pool_unpopulate(struct ttm_tt *ttm);
 /**
  * Output the state of pools to debugfs file
  */
-/* XXXKIB
 extern int ttm_page_alloc_debugfs(struct seq_file *m, void *data);
-*/
 
-#ifdef CONFIG_SWIOTLB
+
+#if defined(CONFIG_SWIOTLB) || defined(CONFIG_INTEL_IOMMU)
 /**
  * Initialize pool allocator.
  */
@@ -92,12 +92,19 @@ static inline int ttm_dma_page_alloc_init(struct ttm_mem_global *glob,
 
 static inline void ttm_dma_page_alloc_fini(void) { return; }
 
-/* XXXKIB
 static inline int ttm_dma_page_alloc_debugfs(struct seq_file *m, void *data)
 {
 	return 0;
 }
-*/
+static inline int ttm_dma_populate(struct ttm_dma_tt *ttm_dma,
+				   struct device *dev)
+{
+	return -ENOMEM;
+}
+static inline void ttm_dma_unpopulate(struct ttm_dma_tt *ttm_dma,
+				      struct device *dev)
+{
+}
 #endif
 
 #endif

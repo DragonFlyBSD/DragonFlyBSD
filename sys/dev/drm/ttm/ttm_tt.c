@@ -27,28 +27,22 @@
 /*
  * Authors: Thomas Hellstrom <thellstrom-at-vmware-dot-com>
  */
-/*
- * Copyright (c) 2013 The FreeBSD Foundation
- * All rights reserved.
- *
- * Portions of this software were developed by Konstantin Belousov
- * <kib@FreeBSD.org> under sponsorship from the FreeBSD Foundation.
- *
- * $FreeBSD: head/sys/dev/drm2/ttm/ttm_tt.c 251452 2013-06-06 06:17:20Z alc $
- */
 
 #define pr_fmt(fmt) "[TTM] " fmt
 
-#include <drm/drmP.h>
-
+#include <linux/sched.h>
+#include <linux/highmem.h>
+#include <linux/pagemap.h>
+#include <linux/shmem_fs.h>
+#include <linux/file.h>
+#include <linux/swap.h>
+#include <linux/slab.h>
 #include <linux/export.h>
 #include <drm/drm_mem_util.h>
 #include <drm/ttm/ttm_module.h>
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_placement.h>
 #include <drm/ttm/ttm_page_alloc.h>
-
-#include <vm/vm_page2.h>
 
 /**
  * Allocates storage for pointers to the pages that back the ttm.
@@ -65,19 +59,26 @@ static void ttm_dma_tt_alloc_page_directory(struct ttm_dma_tt *ttm)
 					    sizeof(*ttm->dma_address));
 }
 
+#ifdef CONFIG_X86
 static inline int ttm_tt_set_page_caching(struct page *p,
 					  enum ttm_caching_state c_old,
 					  enum ttm_caching_state c_new)
 {
+	int ret = 0;
 
-	/* XXXKIB our VM does not need this. */
 #if 0
+	if (PageHighMem(p))
+		return 0;
+#endif
+
 	if (c_old != tt_cached) {
 		/* p isn't in the default caching state, set it to
 		 * writeback first to free its current memtype. */
-		pmap_page_set_memattr(p, VM_MEMATTR_WRITE_BACK);
+
+		ret = set_pages_wb(p, 1);
+		if (ret)
+			return ret;
 	}
-#endif
 
 	if (c_new == tt_wc)
 		pmap_page_set_memattr((struct vm_page *)p, VM_MEMATTR_WRITE_COMBINING);
@@ -86,6 +87,14 @@ static inline int ttm_tt_set_page_caching(struct page *p,
 
 	return (0);
 }
+#else /* CONFIG_X86 */
+static inline int ttm_tt_set_page_caching(struct page *p,
+					  enum ttm_caching_state c_old,
+					  enum ttm_caching_state c_new)
+{
+	return 0;
+}
+#endif /* CONFIG_X86 */
 
 /*
  * Change caching policy for the linear kernel map
@@ -162,9 +171,8 @@ void ttm_tt_destroy(struct ttm_tt *ttm)
 		ttm_tt_unbind(ttm);
 	}
 
-	if (likely(ttm->pages != NULL)) {
-		ttm->bdev->driver->ttm_tt_unpopulate(ttm);
-	}
+	if (ttm->state == tt_unbound)
+		ttm_tt_unpopulate(ttm);
 
 	if (!(ttm->page_flags & TTM_PAGE_FLAG_PERSISTENT_SWAP) &&
 	    ttm->swap_storage)
@@ -279,37 +287,38 @@ EXPORT_SYMBOL(ttm_tt_bind);
 int ttm_tt_swapin(struct ttm_tt *ttm)
 {
 	vm_object_t obj;
-	vm_page_t from_page, to_page;
-	int i, ret, rv;
+	struct page *from_page;
+	struct page *to_page;
+	int i;
+	int ret = -ENOMEM;
 
 	obj = ttm->swap_storage;
 
 	VM_OBJECT_LOCK(obj);
 	vm_object_pip_add(obj, 1);
 	for (i = 0; i < ttm->num_pages; ++i) {
-		from_page = vm_page_grab(obj, i, VM_ALLOC_NORMAL |
+		from_page = (struct page *)vm_page_grab(obj, i, VM_ALLOC_NORMAL |
 						 VM_ALLOC_RETRY);
-		if (from_page->valid != VM_PAGE_BITS_ALL) {
+		if (((struct vm_page *)from_page)->valid != VM_PAGE_BITS_ALL) {
 			if (vm_pager_has_page(obj, i)) {
-				rv = vm_pager_get_page(obj, &from_page, 1);
-				if (rv != VM_PAGER_OK) {
-					vm_page_free(from_page);
+				if (vm_pager_get_page(obj, (struct vm_page **)&from_page, 1) != VM_PAGER_OK) {
+					vm_page_free((struct vm_page *)from_page);
 					ret = -EIO;
-					goto err_ret;
+					goto out_err;
 				}
 			} else {
-				vm_page_zero_invalid(from_page, TRUE);
+				vm_page_zero_invalid((struct vm_page *)from_page, TRUE);
 			}
 		}
-		to_page = (struct vm_page *)ttm->pages[i];
+		to_page = ttm->pages[i];
 		if (unlikely(to_page == NULL)) {
-			ret = -ENOMEM;
-			vm_page_wakeup(from_page);
-			goto err_ret;
+			vm_page_wakeup((struct vm_page *)from_page);
+			goto out_err;
 		}
-		pmap_copy_page(VM_PAGE_TO_PHYS(from_page),
-			       VM_PAGE_TO_PHYS(to_page));
-		vm_page_wakeup(from_page);
+
+		pmap_copy_page(VM_PAGE_TO_PHYS((struct vm_page *)from_page),
+			       VM_PAGE_TO_PHYS((struct vm_page *)to_page));
+		vm_page_wakeup((struct vm_page *)from_page);
 	}
 	vm_object_pip_wakeup(obj);
 	VM_OBJECT_UNLOCK(obj);
@@ -318,12 +327,12 @@ int ttm_tt_swapin(struct ttm_tt *ttm)
 		vm_object_deallocate(obj);
 	ttm->swap_storage = NULL;
 	ttm->page_flags &= ~TTM_PAGE_FLAG_SWAPPED;
-	return (0);
 
-err_ret:
+	return 0;
+out_err:
 	vm_object_pip_wakeup(obj);
 	VM_OBJECT_UNLOCK(obj);
-	return (ret);
+	return ret;
 }
 
 int ttm_tt_swapout(struct ttm_tt *ttm, vm_object_t persistent_swap_storage)
@@ -362,11 +371,36 @@ int ttm_tt_swapout(struct ttm_tt *ttm, vm_object_t persistent_swap_storage)
 	vm_object_pip_wakeup(obj);
 	VM_OBJECT_UNLOCK(obj);
 
-	ttm->bdev->driver->ttm_tt_unpopulate(ttm);
+	ttm_tt_unpopulate(ttm);
 	ttm->swap_storage = obj;
 	ttm->page_flags |= TTM_PAGE_FLAG_SWAPPED;
 	if (persistent_swap_storage)
 		ttm->page_flags |= TTM_PAGE_FLAG_PERSISTENT_SWAP;
 
 	return 0;
+}
+
+static void ttm_tt_clear_mapping(struct ttm_tt *ttm)
+{
+#if 0
+	pgoff_t i;
+	struct page **page = ttm->pages;
+
+	if (ttm->page_flags & TTM_PAGE_FLAG_SG)
+		return;
+
+	for (i = 0; i < ttm->num_pages; ++i) {
+		(*page)->mapping = NULL;
+		(*page++)->index = 0;
+	}
+#endif
+}
+
+void ttm_tt_unpopulate(struct ttm_tt *ttm)
+{
+	if (ttm->state == tt_unpopulated)
+		return;
+
+	ttm_tt_clear_mapping(ttm);
+	ttm->bdev->driver->ttm_tt_unpopulate(ttm);
 }

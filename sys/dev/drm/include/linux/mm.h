@@ -187,4 +187,8 @@ unmap_mapping_range(struct address_space *mapping,
 {
 }
 
+#define VM_SHARED	0x00000008
+
+#define VM_PFNMAP	0x00000400
+
 #endif	/* _LINUX_MM_H_ */

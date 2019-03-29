@@ -79,9 +79,6 @@ struct drm_mm {
 	/* head_node.node_list is the list of all memory nodes, ordered
 	 * according to the (increasing) start address of the memory node. */
 	struct drm_mm_node head_node;
-	struct list_head unused_nodes;
-	int num_unused;
-	struct spinlock unused_lock;
 	unsigned int scan_check_range : 1;
 	unsigned scan_alignment;
 	unsigned long scan_color;
@@ -289,8 +286,6 @@ static inline int drm_mm_insert_node_in_range(struct drm_mm *mm,
 						   0, start, end, flags,
 						   DRM_MM_CREATE_DEFAULT);
 }
-
-extern void drm_mm_put_block(struct drm_mm_node *cur);
 
 void drm_mm_remove_node(struct drm_mm_node *node);
 void drm_mm_replace_node(struct drm_mm_node *old, struct drm_mm_node *new);

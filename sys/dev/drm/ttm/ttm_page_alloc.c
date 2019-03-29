@@ -117,6 +117,7 @@ struct ttm_pool_opts {
  **/
 struct ttm_pool_manager {
 	struct kobject		kobj;
+	struct shrinker		mm_shrink;
 	eventhandler_tag lowmem_handler;
 	struct ttm_pool_opts	options;
 
@@ -388,27 +389,26 @@ out:
 	return nr_free;
 }
 
-/* Get good estimation how many pages are free in pools */
-static int ttm_pool_get_num_unused_pages(void)
-{
-	unsigned i;
-	int total = 0;
-	for (i = 0; i < NUM_POOLS; ++i)
-		total += _manager->pools[i].npages;
-
-	return total;
-}
-
 /**
  * Callback for mm to request pool to reduce number of page held.
+ *
+ * XXX: (dchinner) Deadlock warning!
+ *
+ * ttm_page_pool_free() does memory allocation using GFP_KERNEL.  that means
+ * this can deadlock when called a sc->gfp_mask that is not equal to
+ * GFP_KERNEL.
+ *
+ * This code is crying out for a shrinker per pool....
  */
-static int ttm_pool_mm_shrink(void *arg)
+static unsigned long
+ttm_pool_shrink_scan(void *arg)
 {
-	static unsigned int start_pool = 0;
+	static atomic_t start_pool = ATOMIC_INIT(0);
 	unsigned i;
-	unsigned pool_offset = atomic_fetchadd_int(&start_pool, 1);
+	unsigned pool_offset = atomic_add_return(1, &start_pool);
 	struct ttm_page_pool *pool;
 	int shrink_pages = 100; /* XXXKIB */
+	unsigned long freed = 0;
 
 	pool_offset = pool_offset % NUM_POOLS;
 	/* select start pool in round robin fashion */
@@ -418,15 +418,29 @@ static int ttm_pool_mm_shrink(void *arg)
 			break;
 		pool = &_manager->pools[(i + pool_offset)%NUM_POOLS];
 		shrink_pages = ttm_page_pool_free(pool, nr_free);
+		freed += nr_free - shrink_pages;
 	}
-	/* return estimated number of unused pages in pool */
-	return ttm_pool_get_num_unused_pages();
+	return freed;
+}
+
+
+static unsigned long
+ttm_pool_shrink_count(struct shrinker *shrink, struct shrink_control *sc)
+{
+	unsigned i;
+	unsigned long count = 0;
+
+	for (i = 0; i < NUM_POOLS; ++i)
+		count += _manager->pools[i].npages;
+
+	return count;
 }
 
 static void ttm_pool_mm_shrink_init(struct ttm_pool_manager *manager)
 {
+	manager->mm_shrink.count_objects = ttm_pool_shrink_count;
 	manager->lowmem_handler = EVENTHANDLER_REGISTER(vm_lowmem,
-	    ttm_pool_mm_shrink, manager, EVENTHANDLER_PRI_ANY);
+	    ttm_pool_shrink_scan, manager, EVENTHANDLER_PRI_ANY);
 }
 
 static void ttm_pool_mm_shrink_fini(struct ttm_pool_manager *manager)

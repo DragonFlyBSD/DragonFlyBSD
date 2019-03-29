@@ -25,6 +25,7 @@
 #include <drm/drmP.h>
 #include <drm/drm_mm.h>
 #include <drm/drm_vma_manager.h>
+#include <linux/fs.h>
 #include <linux/mm.h>
 #include <linux/module.h>
 #include <linux/rbtree.h>

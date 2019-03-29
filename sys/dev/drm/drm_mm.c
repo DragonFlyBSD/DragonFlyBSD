@@ -395,27 +395,6 @@ void drm_mm_remove_node(struct drm_mm_node *node)
 }
 EXPORT_SYMBOL(drm_mm_remove_node);
 
-/*
- * Remove a memory node from the allocator and free the allocated struct
- * drm_mm_node. Only to be used on a struct drm_mm_node obtained by one of the
- * drm_mm_get_block functions.
- */
-void drm_mm_put_block(struct drm_mm_node *node)
-{
-
-	struct drm_mm *mm = node->mm;
-
-	drm_mm_remove_node(node);
-
-	spin_lock(&mm->unused_lock);
-	if (mm->num_unused < MM_UNUSED_TARGET) {
-		list_add(&node->node_list, &mm->unused_nodes);
-		++mm->num_unused;
-	} else
-		kfree(node);
-	spin_unlock(&mm->unused_lock);
-}
-
 static int check_free_hole(u64 start, u64 end, u64 size, unsigned alignment)
 {
 	if (end - start < size)
@@ -765,8 +744,6 @@ EXPORT_SYMBOL(drm_mm_clean);
 void drm_mm_init(struct drm_mm * mm, u64 start, u64 size)
 {
 	INIT_LIST_HEAD(&mm->hole_stack);
-	INIT_LIST_HEAD(&mm->unused_nodes);
-	mm->num_unused = 0;
 	mm->scanned_blocks = 0;
 
 	/* Clever trick to avoid a special case in the free hole tracking. */
