@@ -135,8 +135,6 @@
   multi-channel devices) are not freed before all references have gone
   away.
 
-* callout_drain() should be replaced by callout_stop_sync()
-
 * UNRHDR functions - DragonFly uses a more generic idr(9) subsystem
   compatible with the Linux API of the same name
 
