@@ -376,7 +376,8 @@ done_2:
 	USB_BUS_UNLOCK(&sc->sc_bus);
 
 	/* stop root interrupt */
-	usb_callout_drain(&sc->sc_root_intr);
+	if (sc->sc_didinit)
+		usb_callout_drain(&sc->sc_root_intr);
 
 	USB_BUS_LOCK(&sc->sc_bus);
 }
@@ -452,6 +453,7 @@ uhci_init(uhci_softc_t *sc)
 
 	DPRINTF("start\n");
 
+	sc->sc_didinit = 1;
 	usb_callout_init_mtx(&sc->sc_root_intr, &sc->sc_bus.bus_lock, 0);
 
 #ifdef USB_DEBUG
