@@ -111,9 +111,6 @@ struct callout {
 #define callout_arg(cc)			((cc)->toc.qarg)
 #define callout_func(cc)		((cc)->toc.qfunc)
 #endif
-#ifndef _SYS_SPINLOCK_H_
-#include <sys/spinlock.h>
-#endif
 
 #ifdef _KERNEL
 

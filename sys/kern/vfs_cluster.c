@@ -89,7 +89,6 @@ typedef struct cluster_cache cluster_cache_t;
 cluster_cache_t cluster_array[CLUSTER_CACHE_SIZE];
 
 #if defined(CLUSTERDEBUG)
-#include <sys/sysctl.h>
 static int	rcluster= 0;
 SYSCTL_INT(_debug, OID_AUTO, rcluster, CTLFLAG_RW, &rcluster, 0, "");
 #endif
