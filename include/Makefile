@@ -23,7 +23,7 @@ INCS=	a.out.h ar.h assert.h bitstring.h cpio.h ctype.h db.h \
 	stdalign.h stdarg.h stdbool.h \
 	stddef.h stdint.h stdio.h stdlib.h stdnoreturn.h \
 	string.h stringlist.h strings.h sysexits.h \
-	tar.h time.h \
+	tar.h termios.h time.h \
 	timeconv.h \
 	timers.h ttyent.h \
 	uchar.h unistd.h ulimit.h utime.h utmp.h utmpx.h \
@@ -37,8 +37,7 @@ INCS+=	hesiod.h
 # Only for default SHARED=copies case
 SHDRS=	soundcard.h joystick.h
 
-LHDRS=	aio.h errno.h fcntl.h linker_set.h poll.h sched.h \
-	syslog.h termios.h ucontext.h
+LHDRS=	aio.h errno.h fcntl.h linker_set.h poll.h sched.h syslog.h ucontext.h
 
 # directories which also contain header files that need to be copied.
 # Other directories, like 'bus' and 'netproto', are created using mtree.

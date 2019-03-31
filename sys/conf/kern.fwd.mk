@@ -23,8 +23,7 @@ ${_fwd}: ${_h}
 # mimic a standard user include topology.  Only the virtual kernel
 # build uses these.  e.g. in order for #include <fcntl.h> to work.
 #
-_lhdrs= aio.h errno.h fcntl.h linker_set.h poll.h syslog.h \
-	termios.h ucontext.h
+_lhdrs= aio.h errno.h fcntl.h linker_set.h poll.h syslog.h ucontext.h
 _LHDRS=
 .for _h in ${_lhdrs}
 _fwd:=	${_MACHINE_FWD}/include/${_h}

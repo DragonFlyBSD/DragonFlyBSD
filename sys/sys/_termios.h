@@ -222,4 +222,8 @@ struct termios {
 	speed_t		c_ospeed;	/* output speed */
 };
 
+#if __BSD_VISIBLE
+#define	CCEQ(val, c)	((c) == (val) ? (val) != _POSIX_VDISABLE : 0)
+#endif
+
 #endif /* !_SYS__TERMIOS_H_ */

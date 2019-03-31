@@ -33,21 +33,10 @@
  *
  *	@(#)tty.h	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/tty.h,v 1.53.2.1 2001/02/26 04:23:21 jlemon Exp $
- * $DragonFly: src/sys/sys/tty.h,v 1.12 2006/09/10 01:26:40 dillon Exp $
  */
 
 #ifndef _SYS_TTY_H_
 #define	_SYS_TTY_H_
-
-#ifndef _SYS_TERMIOS_H_
-#include <sys/termios.h>
-#endif
-#ifndef _SYS_EVENT_H_
-#include <sys/event.h>
-#endif
-#ifdef _KERNEL
-#include <sys/device.h>
-#endif
 
 /*
  * Clists are character lists, which is a variable length linked list
@@ -63,8 +52,12 @@ struct clist {
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
-#ifndef _SYS_QUEUE_H_
+#include <sys/_termios.h>
+#include <sys/event.h>
 #include <sys/queue.h>
+#include <sys/ttycom.h>
+#ifdef _KERNEL
+#include <sys/device.h>
 #endif
 #ifndef _SYS_THREAD_H_
 #include <sys/thread.h>

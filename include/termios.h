@@ -30,8 +30,8 @@
  * $FreeBSD: src/sys/sys/termios.h,v 1.13.2.1 2001/03/06 06:31:44 jhb Exp $
  */
 
-#ifndef _SYS_TERMIOS_H_
-#define	_SYS_TERMIOS_H_
+#ifndef _TERMIOS_H_
+#define	_TERMIOS_H_
 
 #include <sys/cdefs.h>
 #include <sys/_termios.h>
@@ -40,10 +40,6 @@
 #ifndef _PID_T_DECLARED
 typedef	__pid_t pid_t;
 #define	_PID_T_DECLARED
-#endif
-
-#if __BSD_VISIBLE
-#define	CCEQ(val, c)	((c) == (val) ? (val) != _POSIX_VDISABLE : 0)
 #endif
 
 /*
@@ -101,7 +97,7 @@ __END_DECLS
 /*
  * END OF PROTECTED INCLUDE.
  */
-#endif /* !_SYS_TERMIOS_H_ */
+#endif /* !_TERMIOS_H_ */
 
 #if __BSD_VISIBLE
 #include <sys/ttydefaults.h>

@@ -196,9 +196,10 @@
  *	    had to be rewritten.  libc brk() removed entirely.  These changes
  *	    are required to allow mmap hints to utilize lowered data rlimits.
  * 500504 - removed <sys/semaphore.h>, only <semaphore.h> remains
+ * 500505 - rename <sys/termios.h> to <termios.h>
  */
 #undef __DragonFly_version
-#define __DragonFly_version 500504	/* propagated to newvers */
+#define __DragonFly_version 500505	/* propagated to newvers */
 
 #include <sys/_null.h>
 
