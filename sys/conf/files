@@ -2010,6 +2010,14 @@ vfs/tmpfs/tmpfs_vnops.c		optional tmpfs
 vfs/autofs/autofs.c		optional autofs
 vfs/autofs/autofs_vfsops.c	optional autofs
 vfs/autofs/autofs_vnops.c	optional autofs
+vfs/fuse/fuse_device.c		optional fuse
+vfs/fuse/fuse_file.c		optional fuse
+vfs/fuse/fuse_io.c		optional fuse
+vfs/fuse/fuse_ipc.c		optional fuse
+vfs/fuse/fuse_node.c		optional fuse
+vfs/fuse/fuse_util.c		optional fuse
+vfs/fuse/fuse_vfsops.c		optional fuse
+vfs/fuse/fuse_vnops.c		optional fuse
 #
 vm/default_pager.c		standard
 vm/device_pager.c		standard

@@ -89,7 +89,7 @@ LSUBDIRS= \
 	vfs/isofs/cd9660 \
 	vfs/msdosfs vfs/nfs vfs/ntfs \
 	vfs/smbfs vfs/udf vfs/ufs vfs/hammer vfs/hammer2 \
-	vfs/autofs vfs/tmpfs
+	vfs/autofs vfs/fuse vfs/tmpfs
 
 # For SHARED=symlinks, bus/cam is a symlink, so cam/scsi is taken care of
 LSYMSUBDIRS=	${LSUBDIRS:Nbus/cam/scsi:Nnet/*:Nnetgraph/*:Nnetgraph7/*}

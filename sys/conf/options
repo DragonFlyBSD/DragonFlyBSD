@@ -101,6 +101,7 @@ SMBFS		opt_dontuse.h
 TMPFS		opt_dontuse.h
 UDF		opt_dontuse.h
 AUTOFS		opt_dontuse.h
+FUSE		opt_dontuse.h
 
 # These static filesystems has one slightly bogus static dependency in
 # sys/platform/.../x86_64/autoconf.c.  If any of these filesystems are

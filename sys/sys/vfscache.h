@@ -108,7 +108,7 @@ enum vtagtype	{
 	VT_UNUSED7, VT_UNUSED8, VT_NULL, VT_UNUSED10, VT_UNUSED11, VT_PROCFS,
 	VT_UNUSED13, VT_ISOFS, VT_UNUSED15, VT_MSDOSFS, VT_UNUSED17, VT_VFS,
 	VT_UNUSED19, VT_NTFS, VT_HPFS, VT_SMBFS, VT_UDF, VT_EXT2FS, VT_SYNTH,
-	VT_HAMMER, VT_HAMMER2, VT_DEVFS, VT_TMPFS, VT_AUTOFS
+	VT_HAMMER, VT_HAMMER2, VT_DEVFS, VT_TMPFS, VT_AUTOFS, VT_FUSE
 };
 
 /*
@@ -138,7 +138,8 @@ struct vattr {
 	u_quad_t	va_filerev;	/* file modification number */
 	u_int		va_vaflags;	/* operations flags, see below */
 	long		va_spare;	/* remain quad aligned */
-	int64_t		va_unused01;
+	uint32_t	va_fuseflags;	/* used by FUSE */
+	uint32_t	va_unused01;
 	uuid_t		va_uid_uuid;	/* native uuids if available */
 	uuid_t		va_gid_uuid;
 	uuid_t		va_fsid_uuid;

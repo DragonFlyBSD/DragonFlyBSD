@@ -169,6 +169,7 @@ again:
 			VATTR_NULL(vap);
 			vap->va_type = VREG;
 			vap->va_mode = cmode;
+			vap->va_fuseflags = fmode; /* FUSE */
 			if (fmode & O_EXCL)
 				vap->va_vaflags |= VA_EXCLUSIVE;
 			error = VOP_NCREATE(&nd->nl_nch, nd->nl_dvp, &vp,
