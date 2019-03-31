@@ -67,6 +67,8 @@ static void	lapic_timer_set_divisor(int);
 static void	lapic_timer_fixup_handler(void *);
 static void	lapic_timer_restart_handler(void *);
 
+static int	lapic_timer_c1e_test = 1;
+TUNABLE_INT("hw.lapic_timer_c1e_test", &lapic_timer_c1e_test);
 
 static int	lapic_timer_enable = 1;
 TUNABLE_INT("hw.lapic_timer_enable", &lapic_timer_enable);
@@ -762,7 +764,8 @@ lapic_timer_fixup_handler(void *arg)
 		 *   #32559 revision 3.00
 		 */
 		if ((cpu_id & 0x00000f00) == 0x00000f00 &&
-		    (cpu_id & 0x0fff0000) >= 0x00040000) {
+		    (cpu_id & 0x0fff0000) >= 0x00040000 &&
+		    lapic_timer_c1e_test) {
 			uint64_t msr;
 
 			msr = rdmsr(0xc0010055);
