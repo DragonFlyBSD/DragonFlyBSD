@@ -341,7 +341,8 @@ vop_access(struct vop_ops *ops, struct vnode *vp, int mode, int flags,
  * MPSAFE
  */
 int
-vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap)
+vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
+	struct file *fp)
 {
 	struct vop_getattr_args ap;
 	VFS_MPLOCK_DECLARE;
@@ -351,6 +352,7 @@ vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap)
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_vap = vap;
+	ap.a_fp = fp;
 
 	VFS_MPLOCK_FLAG(vp->v_mount, MNTK_GA_MPSAFE);
 	DO_OPS(ops, error, &ap, vop_getattr);
@@ -364,7 +366,7 @@ vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap)
  */
 int
 vop_setattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
-	struct ucred *cred)
+	struct ucred *cred, struct file *fp)
 {
 	struct vop_setattr_args ap;
 	VFS_MPLOCK_DECLARE;
@@ -375,6 +377,7 @@ vop_setattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
 	ap.a_vp = vp;
 	ap.a_vap = vap;
 	ap.a_cred = cred;
+	ap.a_fp = fp;
 
 	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_setattr);
@@ -387,7 +390,7 @@ vop_setattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
  */
 int
 vop_read(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
-	struct ucred *cred)
+	struct ucred *cred, struct file *fp)
 {
 	struct vop_read_args ap;
 	VFS_MPLOCK_DECLARE;
@@ -399,6 +402,7 @@ vop_read(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	ap.a_uio = uio;
 	ap.a_ioflag = ioflag;
 	ap.a_cred = cred;
+	ap.a_fp = fp;
 
 	VFS_MPLOCK_FLAG(vp->v_mount, MNTK_RD_MPSAFE);
 	DO_OPS(ops, error, &ap, vop_read);
@@ -411,7 +415,7 @@ vop_read(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
  */
 int
 vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
-	struct ucred *cred)
+	struct ucred *cred, struct file *fp)
 {
 	struct vop_write_args ap;
 	VFS_MPLOCK_DECLARE;
@@ -427,6 +431,7 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	ap.a_uio = uio;
 	ap.a_ioflag = ioflag;
 	ap.a_cred = cred;
+	ap.a_fp = fp;
 
 	/* is this a regular vnode ? */
 	VFS_MPLOCK_FLAG(vp->v_mount, MNTK_WR_MPSAFE);
@@ -556,7 +561,8 @@ vop_mmap(struct vop_ops *ops, struct vnode *vp, int fflags, struct ucred *cred)
  * MPSAFE
  */
 int
-vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor, int flags)
+vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor, int flags,
+	struct file *fp)
 {
 	struct vop_fsync_args ap;
 	VFS_MPLOCK_DECLARE;
@@ -567,6 +573,7 @@ vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor, int flags)
 	ap.a_vp = vp;
 	ap.a_waitfor = waitfor;
 	ap.a_flags = flags;
+	ap.a_fp = fp;
 
 	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_fsync);
@@ -725,7 +732,8 @@ vop_old_symlink(struct vop_ops *ops, struct vnode *dvp,
  */
 int
 vop_readdir(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
-	struct ucred *cred, int *eofflag, int *ncookies, off_t **cookies)
+	struct ucred *cred, int *eofflag, int *ncookies, off_t **cookies,
+	struct file *fp)
 {
 	struct vop_readdir_args ap;
 	VFS_MPLOCK_DECLARE;
@@ -739,6 +747,7 @@ vop_readdir(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 	ap.a_eofflag = eofflag;
 	ap.a_ncookies = ncookies;
 	ap.a_cookies = cookies;
+	ap.a_fp = fp;
 
 	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_readdir);

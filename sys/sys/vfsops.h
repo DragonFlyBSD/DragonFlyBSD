@@ -149,6 +149,7 @@ struct vop_getattr_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
 	struct vattr *a_vap;
+	struct file *a_fp; /* FUSE */
 };
 
 struct vop_setattr_args {
@@ -156,6 +157,7 @@ struct vop_setattr_args {
 	struct vnode *a_vp;
 	struct vattr *a_vap;
 	struct ucred *a_cred;
+	struct file *a_fp; /* FUSE */
 };
 
 struct vop_read_args {
@@ -164,6 +166,7 @@ struct vop_read_args {
 	struct uio *a_uio;
 	int a_ioflag;
 	struct ucred *a_cred;
+	struct file *a_fp; /* FUSE */
 };
 
 struct vop_write_args {
@@ -172,6 +175,7 @@ struct vop_write_args {
 	struct uio *a_uio;
 	int a_ioflag;
 	struct ucred *a_cred;
+	struct file *a_fp; /* FUSE */
 };
 
 struct vop_ioctl_args {
@@ -209,6 +213,7 @@ struct vop_fsync_args {
 	struct vnode *a_vp;
 	int a_waitfor;
 	int a_flags;
+	struct file *a_fp; /* FUSE */
 };
 
 struct vop_old_remove_args {
@@ -267,6 +272,7 @@ struct vop_readdir_args {
 	int *a_eofflag;
 	int *a_ncookies;
 	off_t **a_cookies;
+	struct file *a_fp; /* FUSE */
 };
 
 struct vop_readlink_args {
@@ -744,13 +750,14 @@ int vop_close(struct vop_ops *ops, struct vnode *vp, int fflag,
 		struct file *file);
 int vop_access(struct vop_ops *ops, struct vnode *vp, int mode, int flags,
 		struct ucred *cred);
-int vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap);
+int vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
+		struct file *fp);
 int vop_setattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
-		struct ucred *cred);
+		struct ucred *cred, struct file *fp);
 int vop_read(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
-		int ioflag, struct ucred *cred);
+		int ioflag, struct ucred *cred, struct file *fp);
 int vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
-		int ioflag, struct ucred *cred);
+		int ioflag, struct ucred *cred, struct file *fp);
 int vop_ioctl(struct vop_ops *ops, struct vnode *vp, u_long command,
 		caddr_t data, int fflag, struct ucred *cred,
 		struct sysmsg *msg);
@@ -759,7 +766,8 @@ int vop_poll(struct vop_ops *ops, struct vnode *vp, int events,
 int vop_kqfilter(struct vop_ops *ops, struct vnode *vp, struct knote *kn);
 int vop_mmap(struct vop_ops *ops, struct vnode *vp, int fflags,
 		struct ucred *cred);
-int vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor, int flags);
+int vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor, int flags,
+		struct file *fp);
 int vop_old_remove(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode *vp, struct componentname *cnp);
 int vop_old_link(struct vop_ops *ops, struct vnode *tdvp,
@@ -778,7 +786,7 @@ int vop_old_symlink(struct vop_ops *ops, struct vnode *dvp,
 		struct vattr *vap, char *target);
 int vop_readdir(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 		struct ucred *cred, int *eofflag, 
-		int *ncookies, off_t **cookies);
+		int *ncookies, off_t **cookies, struct file *fp);
 int vop_readlink(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 		struct ucred *cred);
 int vop_inactive(struct vop_ops *ops, struct vnode *vp);
@@ -989,14 +997,22 @@ extern struct syslink_desc vop_nrename_desc;
 	vop_access(*(vp)->v_ops, vp, mode, AT_EACCESS, cred)
 #define VOP_ACCESS_FLAGS(vp, mode, flags, cred)		\
 	vop_access(*(vp)->v_ops, vp, mode, flags, cred)
+#define VOP_GETATTR_FP(vp, vap, fp)			\
+	vop_getattr(*(vp)->v_ops, vp, vap, fp) /* FUSE */
 #define VOP_GETATTR(vp, vap)				\
-	vop_getattr(*(vp)->v_ops, vp, vap)
+	VOP_GETATTR_FP(vp, vap, NULL)
+#define VOP_SETATTR_FP(vp, vap, cred, fp)		\
+	vop_setattr(*(vp)->v_ops, vp, vap, cred, fp) /* FUSE */
 #define VOP_SETATTR(vp, vap, cred)			\
-	vop_setattr(*(vp)->v_ops, vp, vap, cred)
+	VOP_SETATTR_FP(vp, vap, cred, NULL)
+#define VOP_READ_FP(vp, uio, ioflag, cred, fp)		\
+	vop_read(*(vp)->v_ops, vp, uio, ioflag, cred, fp) /* FUSE */
 #define VOP_READ(vp, uio, ioflag, cred)			\
-	vop_read(*(vp)->v_ops, vp, uio, ioflag, cred)
+	VOP_READ_FP(vp, uio, ioflag, cred, NULL)
+#define VOP_WRITE_FP(vp, uio, ioflag, cred, fp)		\
+	vop_write(*(vp)->v_ops, vp, uio, ioflag, cred, fp) /* FUSE */
 #define VOP_WRITE(vp, uio, ioflag, cred)		\
-	vop_write(*(vp)->v_ops, vp, uio, ioflag, cred)
+	VOP_WRITE_FP(vp, uio, ioflag, cred, NULL)
 #define VOP_IOCTL(vp, command, data, fflag, cred, msg)	\
 	vop_ioctl(*(vp)->v_ops, vp, command, data, fflag, cred, msg)
 #define VOP_POLL(vp, events, cred)			\
@@ -1005,10 +1021,14 @@ extern struct syslink_desc vop_nrename_desc;
 	vop_kqfilter(*(vp)->v_ops, vp, kn)
 #define VOP_MMAP(vp, fflags, cred)			\
 	vop_mmap(*(vp)->v_ops, vp, fflags, cred)
+#define VOP_FSYNC_FP(vp, waitfor, flags, fp)		\
+	vop_fsync(*(vp)->v_ops, vp, waitfor, flags, fp) /* FUSE*/
 #define VOP_FSYNC(vp, waitfor, flags)			\
-	vop_fsync(*(vp)->v_ops, vp, waitfor, flags)
+	VOP_FSYNC_FP(vp, waitfor, flags, NULL)
+#define VOP_READDIR_FP(vp, uio, cred, eofflag, ncookies, cookies, fp)	\
+	vop_readdir(*(vp)->v_ops, vp, uio, cred, eofflag, ncookies, cookies, fp) /* FUSE */
 #define VOP_READDIR(vp, uio, cred, eofflag, ncookies, cookies)		\
-	vop_readdir(*(vp)->v_ops, vp, uio, cred, eofflag, ncookies, cookies)
+	VOP_READDIR_FP(vp, uio, cred, eofflag, ncookies, cookies, NULL)
 #define VOP_READLINK(vp, uio, cred)			\
 	vop_readlink(*(vp)->v_ops, vp, uio, cred)
 #define VOP_INACTIVE(vp)				\

@@ -2749,7 +2749,7 @@ kern_lseek(int fd, off_t offset, int whence, off_t *res)
 		error = 0;
 		break;
 	case L_XTND:
-		error = VOP_GETATTR(vp, &vattr);
+		error = VOP_GETATTR_FP(vp, &vattr, fp);
 		spin_lock(&fp->f_spin);
 		new_offset = offset + vattr.va_size;
 		break;
@@ -3722,7 +3722,7 @@ kern_futimens(int fd, struct timespec *ts)
 		vp = fp->f_data;
 		error = vget(vp, LK_EXCLUSIVE);
 		if (error == 0) {
-			error = VOP_GETATTR(vp, &vattr);
+			error = VOP_GETATTR_FP(vp, &vattr, fp);
 			if (error == 0) {
 				error = naccess_va(&vattr, NLC_OWN | NLC_WRITE,
 						   fp->f_cred);
@@ -3958,7 +3958,7 @@ kern_ftruncate(int fd, off_t length)
 	}
 
 	if (vfs_quota_enabled) {
-		error = VOP_GETATTR(vp, &vattr);
+		error = VOP_GETATTR_FP(vp, &vattr, fp);
 		KASSERT(error == 0, ("kern_ftruncate(): VOP_GETATTR didn't return 0"));
 		uid = vattr.va_uid;
 		gid = vattr.va_gid;
@@ -3968,7 +3968,7 @@ kern_ftruncate(int fd, off_t length)
 	if ((error = vn_writechk(vp, NULL)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_size = length;
-		error = VOP_SETATTR(vp, &vattr, fp->f_cred);
+		error = VOP_SETATTR_FP(vp, &vattr, fp->f_cred, fp);
 		mp = vq_vptomp(vp);
 		VFS_ACCOUNT(mp, uid, gid, length - old_size);
 	}
@@ -4017,7 +4017,7 @@ sys_fsync(struct fsync_args *uap)
 			vm_object_page_clean(obj, 0, 0, 0);
 		}
 	}
-	error = VOP_FSYNC(vp, MNT_WAIT, VOP_FSYNC_SYSCALL);
+	error = VOP_FSYNC_FP(vp, MNT_WAIT, VOP_FSYNC_SYSCALL, fp);
 	if (error == 0 && vp->v_mount)
 		error = buf_fsync(vp);
 	vn_unlock(vp);
@@ -4432,7 +4432,7 @@ kern_getdirentries(int fd, char *buf, u_int count, long *basep, int *res,
 	auio.uio_td = td;
 	auio.uio_resid = count;
 	loff = auio.uio_offset = fp->f_offset;
-	error = VOP_READDIR(vp, &auio, fp->f_cred, &eofflag, NULL, NULL);
+	error = VOP_READDIR_FP(vp, &auio, fp->f_cred, &eofflag, NULL, NULL, fp);
 	fp->f_offset = auio.uio_offset;
 	if (error)
 		goto done;

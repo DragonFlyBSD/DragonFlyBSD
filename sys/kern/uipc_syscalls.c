@@ -1791,9 +1791,9 @@ retry_lookup:
 			auio.uio_td = td;
 
 			vn_lock(vp, LK_SHARED | LK_RETRY);
-			error = VOP_READ(vp, &auio, 
+			error = VOP_READ_FP(vp, &auio,
 					 IO_VMIO | ((MAXBSIZE / bsize) << 16),
-					 td->td_ucred);
+					 td->td_ucred, fp);
 			vn_unlock(vp);
 			vm_object_hold_shared(obj);
 

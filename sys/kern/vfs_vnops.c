@@ -250,7 +250,7 @@ again:
 		osize = vp->v_filesize;
 		VATTR_NULL(vap);
 		vap->va_size = 0;
-		error = VOP_SETATTR(vp, vap, cred);
+		error = VOP_SETATTR_FP(vp, vap, cred, fp);
 		if (error)
 			goto bad;
 		error = VOP_GETATTR(vp, vap);
@@ -678,7 +678,7 @@ vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	vn_lock(vp, LK_SHARED | LK_RETRY);
 	ioflag |= sequential_heuristic(uio, fp);
 
-	error = VOP_READ(vp, uio, ioflag, cred);
+	error = VOP_READ_FP(vp, uio, ioflag, cred, fp);
 	fp->f_nextoff = uio->uio_offset;
 	vn_unlock(vp);
 	if ((flags & O_FOFFSET) == 0 && (vp->v_flag & VNOTSEEKABLE) == 0)
@@ -731,7 +731,7 @@ vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		VFS_MODIFYING(vp->v_mount);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	ioflag |= sequential_heuristic(uio, fp);
-	error = VOP_WRITE(vp, uio, ioflag, cred);
+	error = VOP_WRITE_FP(vp, uio, ioflag, cred, fp);
 	fp->f_nextoff = uio->uio_offset;
 	vn_unlock(vp);
 	if ((flags & O_FOFFSET) == 0)

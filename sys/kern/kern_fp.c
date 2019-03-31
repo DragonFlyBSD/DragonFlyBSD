@@ -527,7 +527,7 @@ fp_mmap(void *addr_arg, size_t size, int prot, int flags, struct file *fp,
 	) {
 	    if ((fp->f_flag & FWRITE) != 0) {
 		struct vattr va;
-		if ((error = VOP_GETATTR(vp, &va))) {
+		if ((error = VOP_GETATTR_FP(vp, &va, fp))) {
 		    goto done;
 		}
 		if ((va.va_flags & (IMMUTABLE|APPEND)) == 0) {
