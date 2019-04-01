@@ -28,7 +28,6 @@
  *
  *	@(#)atexit.h	8.2 (Berkeley) 7/3/94
  * $FreeBSD: src/lib/libc/stdlib/atexit.h,v 1.4 2007/01/09 00:28:09 imp Exp $
- * $DragonFly: src/lib/libc/stdlib/atexit.h,v 1.3 2004/01/24 22:18:12 joerg Exp $
  */
 
 /* must be at least 32 to guarantee ANSI conformance */
