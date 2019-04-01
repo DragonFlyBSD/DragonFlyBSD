@@ -157,11 +157,10 @@ fuse_device_write(struct dev_write_args *ap)
 {
 	struct uio *uio = ap->a_uio;
 	struct fuse_mount *fmp;
-	struct fuse_ipc *fip, *tmp;
+	struct fuse_ipc *fip;
 	struct fuse_buf fb;
 	struct fuse_in_header *ihd;
 	struct fuse_out_header *ohd;
-	bool found = false;
 	int error;
 
 	error = devfs_get_cdevpriv(ap->a_fp, (void**)&fmp);
@@ -180,16 +179,15 @@ fuse_device_write(struct dev_write_args *ap)
 	ohd = fb.buf;
 
 	mtx_lock(&fmp->ipc_lock);
-	TAILQ_FOREACH_MUTABLE(fip, &fmp->reply_head, reply_entry, tmp) {
+	TAILQ_FOREACH(fip, &fmp->reply_head, reply_entry) {
 		if (fip->unique == ohd->unique) {
 			TAILQ_REMOVE(&fmp->reply_head, fip, reply_entry);
-			found = true;
 			break;
 		}
 	}
 	mtx_unlock(&fmp->ipc_lock);
 
-	if (!found) {
+	if (!fip) {
 		fuse_dbg("unique=%ju not found\n", ohd->unique);
 		fuse_buf_free(&fb);
 		return ENOMSG;

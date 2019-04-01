@@ -117,16 +117,16 @@ static void
 fuse_ipc_remove(struct fuse_ipc *fip)
 {
 	struct fuse_mount *fmp = fip->fmp;
-	struct fuse_ipc *p, *tmp;
+	struct fuse_ipc *p;
 
 	mtx_lock(&fmp->ipc_lock);
-	TAILQ_FOREACH_MUTABLE(p, &fmp->request_head, request_entry, tmp) {
+	TAILQ_FOREACH(p, &fmp->request_head, request_entry) {
 		if (fip == p) {
 			TAILQ_REMOVE(&fmp->request_head, p, request_entry);
 			break;
 		}
 	}
-	TAILQ_FOREACH_MUTABLE(p, &fmp->reply_head, reply_entry, tmp) {
+	TAILQ_FOREACH(p, &fmp->reply_head, reply_entry) {
 		if (fip == p) {
 			TAILQ_REMOVE(&fmp->reply_head, p, reply_entry);
 			break;
