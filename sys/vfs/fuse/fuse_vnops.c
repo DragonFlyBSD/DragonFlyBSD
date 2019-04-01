@@ -32,6 +32,8 @@
 #include <sys/namei.h>
 #include <sys/uio.h>
 #include <sys/mountctl.h>
+#include <vm/vm_pager.h>
+#include <vm/vnode_pager.h>
 
 static int
 fuse_set_attr(struct fuse_node *fnp, struct fuse_attr *fat)
@@ -1573,6 +1575,26 @@ filt_fusevnode(struct knote *kn, long hint)
 	return kn->kn_fflags != 0;
 }
 
+static int
+fuse_vop_getpages(struct vop_getpages_args *ap)
+{
+	if (!ap->a_vp->v_mount)
+		return VM_PAGER_BAD;
+
+	return vnode_pager_generic_getpages(ap->a_vp, ap->a_m, ap->a_count,
+	    ap->a_reqpage, ap->a_seqaccess);
+}
+
+static int
+fuse_vop_putpages(struct vop_putpages_args *ap)
+{
+	if (!ap->a_vp->v_mount)
+		return VM_PAGER_BAD;
+
+	return vnode_pager_generic_putpages(ap->a_vp, ap->a_m, ap->a_count,
+	    ap->a_sync, ap->a_rtvals);
+}
+
 struct vop_ops fuse_vnode_vops = {
 	.vop_default =		vop_defaultop,
 	.vop_access =		fuse_vop_access,
@@ -1604,8 +1626,8 @@ struct vop_ops fuse_vnode_vops = {
 	.vop_reclaim =		fuse_vop_reclaim,
 	.vop_mountctl =		fuse_vop_mountctl,
 	.vop_kqfilter =		fuse_kqfilter,
-	.vop_getpages =		vop_stdgetpages,
-	.vop_putpages =		vop_stdputpages,
+	.vop_getpages =		fuse_vop_getpages,
+	.vop_putpages =		fuse_vop_putpages,
 };
 
 struct vop_ops fuse_spec_vops = {
