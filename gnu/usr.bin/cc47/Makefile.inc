@@ -58,7 +58,7 @@ CFLAGS+=	-DPREFIX2=\"${USRDATA_PREFIX}/usr\"
 CFLAGS+= -DCROSS_COMPILE
 .endif
 
-# when building with gcc50 creates just too much noise
+# when building with newer GCCs it creates just too much noise
 .if ${CCVER:Mgcc*} && !${CCVER:Mgcc4[789]}
 CWARNFLAGS+=	-Wno-switch-bool
 .endif
