@@ -65,7 +65,6 @@ struct vop_ops dead_vnode_vops = {
 	.vop_old_lookup =	dead_lookup,
 	.vop_old_mkdir =	(void *)dead_badop,
 	.vop_old_mknod =	(void *)dead_badop,
-	.vop_mmap =		(void *)dead_badop,
 	.vop_open =		dead_open,
 	.vop_close =		dead_close,
 	.vop_pathconf =		(void *)vop_ebadf,	/* per pathconf(2) */

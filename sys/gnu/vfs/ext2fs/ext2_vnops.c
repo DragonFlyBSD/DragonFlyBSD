@@ -92,7 +92,6 @@ static int ext2_chown (struct vnode *, uid_t, gid_t, struct ucred *);
 static int ext2_close (struct vop_close_args *);
 static int ext2_getattr (struct vop_getattr_args *);
 static int ext2_makeinode (int mode, struct vnode *, struct vnode **, struct componentname *);
-static int ext2_mmap (struct vop_mmap_args *);
 static int ext2_open (struct vop_open_args *);
 static int ext2_pathconf (struct vop_pathconf_args *);
 static int ext2_print (struct vop_print_args *);
@@ -1626,21 +1625,6 @@ good:
 }
 
 /*
- * Mmap a file
- *
- * NB Currently unsupported.
- *
- * ext2_mmap(struct vnode *a_vp, int a_fflags, struct ucred *a_cred)
- */
-/* ARGSUSED */
-static
-int
-ext2_mmap(struct vop_mmap_args *ap)
-{
-	return (EINVAL);
-}
-
-/*
  * whiteout vnode call
  *
  * ext2_whiteout(struct vnode *a_dvp, struct componentname *a_cnp, int a_flags)
@@ -2041,7 +2025,6 @@ struct vop_ops ext2_vnode_vops = {
 	.vop_old_link =		ext2_link,
 	.vop_old_mkdir =	ext2_mkdir,
 	.vop_old_mknod =	ext2_mknod,
-	.vop_mmap =		ext2_mmap,
 	.vop_open =		ext2_open,
 	.vop_pathconf =		ext2_pathconf,
 	.vop_kqfilter =		ext2_kqfilter,

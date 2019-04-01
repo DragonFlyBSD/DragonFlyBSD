@@ -89,7 +89,6 @@ static int ufs_markatime (struct vop_markatime_args *);
 static int ufs_missingop (struct vop_generic_args *ap);
 static int ufs_mkdir (struct vop_old_mkdir_args *);
 static int ufs_mknod (struct vop_old_mknod_args *);
-static int ufs_mmap (struct vop_mmap_args *);
 static int ufs_print (struct vop_print_args *);
 static int ufs_readdir (struct vop_readdir_args *);
 static int ufs_readlink (struct vop_readlink_args *);
@@ -637,21 +636,6 @@ good:
 	if (cred->cr_uid != 0 && (ouid != uid || ogid != gid))
 		ip->i_mode &= ~(ISUID | ISGID);
 	return (0);
-}
-
-/*
- * Mmap a file
- *
- * NB Currently unsupported.
- *
- * ufs_mmap(struct vnode *a_vp, int a_fflags, struct ucred *a_cred)
- */
-/* ARGSUSED */
-static
-int
-ufs_mmap(struct vop_mmap_args *ap)
-{
-	return (EINVAL);
 }
 
 /*
@@ -2256,7 +2240,6 @@ static struct vop_ops ufs_vnode_vops = {
 	.vop_old_link =		ufs_link,
 	.vop_old_mkdir =	ufs_mkdir,
 	.vop_old_mknod =	ufs_mknod,
-	.vop_mmap =		ufs_mmap,
 	.vop_open =		vop_stdopen,
 	.vop_pathconf =		vop_stdpathconf,
 	.vop_kqfilter =		ufs_kqfilter,

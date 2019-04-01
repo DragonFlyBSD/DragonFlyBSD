@@ -99,7 +99,6 @@ static	int	nfs_access (struct vop_access_args *);
 static	int	nfs_getattr (struct vop_getattr_args *);
 static	int	nfs_setattr (struct vop_setattr_args *);
 static	int	nfs_read (struct vop_read_args *);
-static	int	nfs_mmap (struct vop_mmap_args *);
 static	int	nfs_fsync (struct vop_fsync_args *);
 static	int	nfs_remove (struct vop_old_remove_args *);
 static	int	nfs_link (struct vop_old_link_args *);
@@ -139,7 +138,6 @@ struct vop_ops nfsv2_vnode_vops = {
 	.vop_old_lookup =	nfs_lookup,
 	.vop_old_mkdir =	nfs_mkdir,
 	.vop_old_mknod =	nfs_mknod,
-	.vop_mmap =		nfs_mmap,
 	.vop_open =		nfs_open,
 	.vop_print =		nfs_print,
 	.vop_read =		nfs_read,
@@ -3226,21 +3224,6 @@ nfs_strategy(struct vop_strategy_args *ap)
 	lwkt_reltoken(&nmp->nm_token);
 
 	return (error);
-}
-
-/*
- * Mmap a file
- *
- * NB Currently unsupported.
- *
- * nfs_mmap(struct vnode *a_vp, int a_fflags, struct ucred *a_cred)
- */
-/* ARGSUSED */
-static int
-nfs_mmap(struct vop_mmap_args *ap)
-{
-	/* no token lock required */
-	return (EINVAL);
 }
 
 /*
