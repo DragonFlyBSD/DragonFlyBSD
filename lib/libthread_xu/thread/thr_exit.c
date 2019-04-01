@@ -41,6 +41,7 @@
 #include <pthread.h>
 #include "un-namespace.h"
 
+#include "libc_private.h"
 #include "thr_private.h"
 
 static void	exit_thread(void) __dead2;
@@ -117,6 +118,8 @@ _pthread_exit(void *status)
 	while (curthread->cleanup != NULL) {
 		_pthread_cleanup_pop(1);
 	}
+	/* Call TLS destructors, if any. */
+	_thread_finalize();
 
 	exit_thread();
 }

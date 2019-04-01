@@ -88,6 +88,11 @@ int _yp_check(char **);
 extern const char *__progname;
 
 /*
+ * Notify libc that thread is exiting and its TLS destructors can be called.
+ */
+void _thread_finalize(void);
+
+/*
  * Function to clean up streams, called from abort() and exit().
  */
 extern void (*__cleanup)(void);

@@ -28,7 +28,6 @@
  *
  * @(#)exit.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdlib/exit.c,v 1.9 2007/01/09 00:28:09 imp Exp $
- * $DragonFly: src/lib/libc/stdlib/exit.c,v 1.8 2005/11/20 12:37:48 swildner Exp $
  */
 
 #include "namespace.h"
@@ -61,6 +60,8 @@ exit(int status)
 
 	_thread_autoinit_dummy_decl = 1;
 
+	/* Call TLS destructors, if any. */
+	_thread_finalize();
 	__cxa_finalize(NULL);
 	if (__cleanup)
 		(*__cleanup)();

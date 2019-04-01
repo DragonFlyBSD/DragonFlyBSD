@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_exit.c,v 1.16.2.8 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_exit.c,v 1.6 2007/01/08 21:41:53 dillon Exp $
  */
 #include <errno.h>
 #include <unistd.h>
@@ -39,6 +38,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include "libc_private.h"
 #include "pthread_private.h"
 
 #define FLAGS_IN_SCHEDQ	\
@@ -168,6 +168,9 @@ _pthread_exit(void *status)
 		/* Run the thread-specific data destructors: */
 		_thread_cleanupspecific();
 	}
+
+	/* Call TLS destructors, if any */
+	_thread_finalize();
 
 	/* Free thread-specific poll_data structure, if allocated: */
 	if (curthread->poll_data.fds != NULL) {

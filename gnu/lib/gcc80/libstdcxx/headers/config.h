@@ -711,7 +711,7 @@
 /* #undef HAVE___CXA_THREAD_ATEXIT */
 
 /* Define to 1 if you have the `__cxa_thread_atexit_impl' function. */
-/* #undef HAVE___CXA_THREAD_ATEXIT_IMPL */
+#define HAVE___CXA_THREAD_ATEXIT_IMPL 1
 
 /* Define as const if the declaration of iconv() needs const. */
 /* #undef ICONV_CONST */
