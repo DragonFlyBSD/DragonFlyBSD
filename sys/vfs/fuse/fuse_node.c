@@ -88,6 +88,7 @@ fuse_node_free(struct fuse_node *fnp)
 	fuse_dbg("free ino=%ju\n", fnp->ino);
 
 	if (dfnp) {
+		KKASSERT(dfnp->type == VDIR);
 		mtx_lock(&dfnp->node_lock);
 		RB_FOREACH(fep, fuse_dent_tree, &dfnp->dent_head) {
 			if (fep->fnp == fnp) {
@@ -217,6 +218,7 @@ fuse_alloc_node(struct fuse_node *dfnp, uint64_t ino, const char *name,
 	struct fuse_dent *fep = NULL;
 	int error;
 
+	KKASSERT(dfnp->type == VDIR);
 	if (vtyp == VBLK || vtyp == VCHR || vtyp == VFIFO)
 		return EINVAL;
 
