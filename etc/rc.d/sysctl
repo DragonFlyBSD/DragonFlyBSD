@@ -20,7 +20,7 @@ extra_commands="reload lastload"
 
 sysctl_start()
 {
-	local config extra mib val old_val
+	local config extra mib val old_val output
 
 	if [ ! -f "/etc/sysctl.conf" ]; then
 		return
@@ -45,7 +45,8 @@ sysctl_start()
 		if old_val=$(${SYSCTL_N} -q ${mib}); then
 			debug "sysctl '${mib}': '${old_val}' -> '${val}'"
 			if [ "${old_val}" != "${val}" ]; then
-				${SYSCTL_W} ${mib}=${val}
+				output=$(${SYSCTL_W} ${mib}=${val})
+				echo ${output}
 			fi
 		elif [ "$1" = "last" ]; then
 			warn "sysctl '${mib}' does not exist."
