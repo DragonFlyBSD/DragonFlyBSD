@@ -67,7 +67,7 @@ static void	lapic_timer_set_divisor(int);
 static void	lapic_timer_fixup_handler(void *);
 static void	lapic_timer_restart_handler(void *);
 
-static int	lapic_timer_c1e_test = 1;
+static int	lapic_timer_c1e_test = -1;	/* auto-detect */
 TUNABLE_INT("hw.lapic_timer_c1e_test", &lapic_timer_c1e_test);
 
 static int	lapic_timer_enable = 1;
@@ -751,6 +751,22 @@ lapic_timer_fixup_handler(void *arg)
 		*started = 0;
 
 	if (cpu_vendor_id == CPU_VENDOR_AMD) {
+		int c1e_test = lapic_timer_c1e_test;
+
+		if (c1e_test < 0) {
+			if (vmm_guest == VMM_GUEST_NONE) {
+				c1e_test = 1;
+			} else {
+				/*
+				 * Don't do this C1E testing and adjustment
+				 * on virtual machines, the best case for
+				 * accessing this MSR is a NOOP; the worst
+				 * cases could be pretty nasty, e.g. crash.
+				 */
+				c1e_test = 0;
+			}
+		}
+
 		/*
 		 * Detect the presence of C1E capability mostly on latest
 		 * dual-cores (or future) k8 family.  This feature renders
@@ -765,7 +781,7 @@ lapic_timer_fixup_handler(void *arg)
 		 */
 		if ((cpu_id & 0x00000f00) == 0x00000f00 &&
 		    (cpu_id & 0x0fff0000) >= 0x00040000 &&
-		    lapic_timer_c1e_test) {
+		    c1e_test) {
 			uint64_t msr;
 
 			msr = rdmsr(0xc0010055);
