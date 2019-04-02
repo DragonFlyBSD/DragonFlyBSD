@@ -166,10 +166,10 @@ fuse_ipc_wait(struct fuse_ipc *fip)
 		return 0;
 again:
 	fuse_block_sigs(&oldset);
-	error = tsleep(fip, PCATCH, "ftxp", 5 * hz);
+	error = tsleep(fip, 0, "ftxp", 5 * hz);
 	fuse_restore_sigs(&oldset);
 	if (!error)
-		KKASSERT(fuse_ipc_test_replied(fip)); /* XXX */
+		KKASSERT(fuse_ipc_test_replied(fip));
 
 	if (error == EWOULDBLOCK) {
 		if (!fuse_ipc_test_replied(fip)) {
