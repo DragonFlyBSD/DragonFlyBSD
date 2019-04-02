@@ -50,7 +50,7 @@ AcpiOsPredefinedOverride (
 	return (AE_BAD_PARAMETER);
 
     *NewVal = NULL;
-    if (ACPI_COMPARE_NAME(InitVal->Name, "_OS_") &&
+    if (ACPI_COMPARE_NAMESEG(InitVal->Name, "_OS_") &&
 	InitVal->Type == ACPI_TYPE_STRING && strlen(acpi_osname) > 0) {
 	kprintf("ACPI: Overriding _OS definition with \"%s\"\n", acpi_osname);
 	*NewVal = acpi_osname;
@@ -70,7 +70,7 @@ AcpiOsTableOverride (
 	return(AE_BAD_PARAMETER);
 
     *NewTable = NULL;
-    if (ACPI_COMPARE_NAME(ExistingTable->Signature, ACPI_SIG_DSDT) == 0)
+    if (ACPI_COMPARE_NAMESEG(ExistingTable->Signature, ACPI_SIG_DSDT) == 0)
 	return(AE_SUPPORT);
     if ((acpi_dsdt = preload_search_by_type("acpi_dsdt")) == NULL)
 	return(AE_NOT_FOUND);

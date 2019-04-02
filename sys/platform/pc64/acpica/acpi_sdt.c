@@ -175,7 +175,7 @@ sdt_search_xsdt(vm_paddr_t xsdt_paddr, const uint8_t *sig)
 	}
 
 	if (memcmp(xsdt->Header.Signature, ACPI_SIG_XSDT,
-		   ACPI_NAME_SIZE) != 0) {
+		   ACPI_NAMESEG_SIZE) != 0) {
 		kprintf("sdt_search_xsdt: not XSDT\n");
 		goto back;
 	}
@@ -203,7 +203,7 @@ sdt_search_xsdt(vm_paddr_t xsdt_paddr, const uint8_t *sig)
 		if (sdth != NULL) {
 			int ret;
 
-			ret = memcmp(sdth->Signature, sig, ACPI_NAME_SIZE);
+			ret = memcmp(sdth->Signature, sig, ACPI_NAMESEG_SIZE);
 			sdt_sdth_unmap(sdth);
 
 			if (ret == 0) {
@@ -236,7 +236,7 @@ sdt_search_rsdt(vm_paddr_t rsdt_paddr, const uint8_t *sig)
 	}
 
 	if (memcmp(rsdt->Header.Signature, ACPI_SIG_RSDT,
-		   ACPI_NAME_SIZE) != 0) {
+		   ACPI_NAMESEG_SIZE) != 0) {
 		kprintf("sdt_search_rsdt: not RSDT\n");
 		goto back;
 	}
@@ -264,7 +264,7 @@ sdt_search_rsdt(vm_paddr_t rsdt_paddr, const uint8_t *sig)
 		if (sdth != NULL) {
 			int ret;
 
-			ret = memcmp(sdth->Signature, sig, ACPI_NAME_SIZE);
+			ret = memcmp(sdth->Signature, sig, ACPI_NAMESEG_SIZE);
 			sdt_sdth_unmap(sdth);
 
 			if (ret == 0) {

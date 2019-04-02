@@ -201,8 +201,8 @@ AcpiDmDumpName (
 
     /* Remove all trailing underscores from the name */
 
-    Length = ACPI_NAME_SIZE;
-    for (i = (ACPI_NAME_SIZE - 1); i != 0; i--)
+    Length = ACPI_NAMESEG_SIZE;
+    for (i = (ACPI_NAMESEG_SIZE - 1); i != 0; i--)
     {
         if (NewName[i] == '_')
         {
@@ -380,7 +380,7 @@ AcpiDmNamestring (
             AcpiOsPrintf (".");
         }
 
-        Name += ACPI_NAME_SIZE;
+        Name += ACPI_NAMESEG_SIZE;
     }
 }
 
