@@ -516,6 +516,7 @@ hdaa_patch(struct hdaa_devinfo *devinfo)
 {
 	struct hdaa_widget *w;
 	uint32_t id, subid, subsystemid;
+	uint32_t val;
 	int i;
 
 	id = hdaa_codec_id(devinfo);
@@ -669,6 +670,10 @@ hdaa_patch(struct hdaa_devinfo *devinfo)
 		w = hdaa_widget_get(devinfo, 24);
 		if (w != NULL)
 			w->connsenable[0] = 0;
+		break;
+	case HDA_CODEC_ALC256:
+		val = hda_read_coef_idx(devinfo->dev, 0x20, 0x46);
+		hda_write_coef_idx(devinfo->dev, 0x20, 0x46, val|0x3000);
 		break;
 	case HDA_CODEC_ALC269:
 		/*
