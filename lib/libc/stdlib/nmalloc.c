@@ -351,6 +351,7 @@ static size_t excess_alloc;				/* excess big allocs */
 static void *_slaballoc(size_t size, int flags);
 static void *_slabrealloc(void *ptr, size_t size);
 static void _slabfree(void *ptr, int, bigalloc_t *);
+static int _slabmemalign(void **memptr, size_t alignment, size_t size);
 static void *_vmem_alloc(size_t bytes, size_t align, int flags);
 static void _vmem_free(void *ptr, size_t bytes);
 static void *magazine_alloc(struct magazine *, int *);
@@ -813,31 +814,70 @@ __realloc(void *ptr, size_t size)
 }
 
 /*
+ * aligned_alloc()
+ *
+ * Allocate (size) bytes with a alignment of (alignment).
+ */
+void *
+__aligned_alloc(size_t alignment, size_t size)
+{
+	void *ptr;
+	int rc;
+
+	ptr = NULL;
+	rc = _slabmemalign(&ptr, alignment, size);
+	if (rc)
+		errno = rc;
+
+	return (ptr);
+}
+
+/*
  * posix_memalign()
  *
  * Allocate (size) bytes with a alignment of (alignment), where (alignment)
  * is a power of 2 >= sizeof(void *).
- *
+ */
+int
+__posix_memalign(void **memptr, size_t alignment, size_t size)
+{
+	int rc;
+
+	/*
+	 * OpenGroup spec issue 6 check
+	 */
+	if (alignment < sizeof(void *)) {
+		*memptr = NULL;
+		return(EINVAL);
+	}
+
+	rc = _slabmemalign(memptr, alignment, size);
+
+	return (rc);
+}
+
+/*
  * The slab allocator will allocate on power-of-2 boundaries up to
  * at least PAGE_SIZE.  We use the zoneindex mechanic to find a
  * zone matching the requirements, and _vmem_alloc() otherwise.
  */
-int
-__posix_memalign(void **memptr, size_t alignment, size_t size)
+static int
+_slabmemalign(void **memptr, size_t alignment, size_t size)
 {
 	bigalloc_t *bigp;
 	bigalloc_t big;
 	size_t chunking;
 	int zi __unused;
 
+	if (alignment < 1) {
+		*memptr = NULL;
+		return(EINVAL);
+	}
+
 	/*
 	 * OpenGroup spec issue 6 checks
 	 */
 	if ((alignment | (alignment - 1)) + 1 != (alignment << 1)) {
-		*memptr = NULL;
-		return(EINVAL);
-	}
-	if (alignment < sizeof(void *)) {
 		*memptr = NULL;
 		return(EINVAL);
 	}
@@ -1942,6 +1982,7 @@ _mpanic(const char *ctl, ...)
 	abort();
 }
 
+__weak_reference(__aligned_alloc, aligned_alloc);
 __weak_reference(__malloc, malloc);
 __weak_reference(__calloc, calloc);
 __weak_reference(__posix_memalign, posix_memalign);

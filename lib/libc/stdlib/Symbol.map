@@ -117,6 +117,7 @@ DF504.0 {
 };
 
 DF506.0 {
+    __aligned_alloc;
     __cxa_thread_atexit_impl;
     reallocarray;
 };
