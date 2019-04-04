@@ -3516,6 +3516,7 @@ TO_REMOVE+=/usr/share/mk/bsd.cpu.gcc50.mk
 TO_REMOVE+=/usr/include/dev/video/bktr/bktr_i2c.h
 TO_REMOVE+=/usr/share/man/man9/callout_stop_sync.9.gz
 TO_REMOVE+=/usr/include/sys/termios.h
+TO_REMOVE+=/usr/share/zoneinfo/Etc/UCT
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
