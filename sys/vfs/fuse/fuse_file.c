@@ -73,6 +73,16 @@ void fuse_put_fh(struct file *fp)
  * This exists due to how BSD VFS is implemented.
  * There are situations where FUSE VOP's can't access fh required by FUSE ops.
  */
+/*
+ * The main problem is that due to difference vs Linux in ref counting of open
+ * file, FUSE can issue FUSE_RELEASE via VOP_CLOSE() when mmap(2) mapping still
+ * exists. By the time VOP_GETPAGES() or VOP_PUTPAGES() gets called, FUSE may
+ * have already released open file via FUSE_RELEASE, hence I/O fails.
+ *
+ * In Linux this is different because ->release() of open file gets called only
+ * after mmap(2) mapping is gone. FUSE_RELEASE naturally works under Linux VFS
+ * semantics.
+ */
 uint64_t fuse_nfh(struct fuse_node *fnp)
 {
 	fuse_dbg("ino=%ju fh=%jx\n", fnp->ino, fnp->fh);
