@@ -118,9 +118,9 @@ typedef	__uint32_t	uid_t;		/* XXX __uid_t */
 #define	_POSIX_THREAD_PROCESS_SHARED	-1	/* [TSH] */
 #define	_POSIX_THREAD_ROBUST_PRIO_INHERIT -1	/* [RPI] */
 #define	_POSIX_THREAD_ROBUST_PRIO_PROTECT -1	/* [RPP] */
-#define	_POSIX_THREAD_SAFE_FUNCTIONS	-1
+#define	_POSIX_THREAD_SAFE_FUNCTIONS	-1	/* XXX mandatory ([TSF]) */
 #define	_POSIX_THREAD_SPORADIC_SERVER	-1	/* [TSP] */
-#define	_POSIX_THREADS			200112L
+#define	_POSIX_THREADS			200112L	/* mandatory ([THR]) */
 #define	_POSIX_TRACE			-1	/* [TRC] obsolescent */
 #define	_POSIX_TRACE_EVENT_FILTER	-1	/* [TEF] obsolescent */
 #define	_POSIX_TRACE_INHERIT		-1	/* [TRI] obsolescent */
@@ -129,7 +129,7 @@ typedef	__uint32_t	uid_t;		/* XXX __uid_t */
 #define	_POSIX2_C_BIND			200809L	/* mandatory */
 #define	_POSIX2_C_DEV			200809L	/* [CD] */
 #define	_POSIX2_CHAR_TERM		1
-#define	_POSIX2_FORT_DEV		-1	/* [FD] need fort77 utility */
+#define	_POSIX2_FORT_DEV		-1	/* [FD] obsolescent */
 #define	_POSIX2_FORT_RUN		200809L	/* [FR] */
 #define	_POSIX2_LOCALEDEF		200809L
 #define	_POSIX2_PBS			-1	/* [BE] obsolescent */

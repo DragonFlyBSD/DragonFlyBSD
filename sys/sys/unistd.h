@@ -51,39 +51,39 @@
  * returns -1, the functions may be stubbed out.
  */
 #define	_POSIX_ADVISORY_INFO		-1	/* [ADV] */
-#define	_POSIX_ASYNCHRONOUS_IO		0	/* mandatory */
-#define	_POSIX_BARRIERS			200112L	/* mandatory */
+#define	_POSIX_ASYNCHRONOUS_IO		0	/* mandatory ([AIO]) */
+#define	_POSIX_BARRIERS			200112L	/* mandatory ([BAR]) */
 #define	_POSIX_CHOWN_RESTRICTED		1
-#define	_POSIX_CLOCK_SELECTION		-1	/* XXX mandatory */
+#define	_POSIX_CLOCK_SELECTION		-1	/* XXX mandatory ([CS]) */
 #define	_POSIX_CPUTIME			200112L	/* [CPT] */
 #define	_POSIX_FSYNC			200112L	/* [FSC] */
 #define	_POSIX_IPV6			0
 #define	_POSIX_JOB_CONTROL		1	/* mandatory */
-#define	_POSIX_MAPPED_FILES		200112L	/* mandatory */
+#define	_POSIX_MAPPED_FILES		200112L	/* mandatory ([MF]) */
 #define	_POSIX_MEMLOCK			-1	/* [ML] */
 #define	_POSIX_MEMLOCK_RANGE		200112L	/* [MLR] */
-#define	_POSIX_MEMORY_PROTECTION	200112L	/* mandatory */
+#define	_POSIX_MEMORY_PROTECTION	200112L	/* mandatory ([MPR]) */
 #define	_POSIX_MESSAGE_PASSING		200112L	/* [MSG] */
 #define	_POSIX_MONOTONIC_CLOCK		200112L	/* [MON] */
 #define	_POSIX_NO_TRUNC			1
 #define	_POSIX_PRIORITIZED_IO		-1	/* [PIO] */
 #define	_POSIX_PRIORITY_SCHEDULING	200112L	/* [PS] */
 #define	_POSIX_RAW_SOCKETS		200112L	/* [RS] */
-#define	_POSIX_REALTIME_SIGNALS		200112L	/* mandatory */
-#define	_POSIX_SEMAPHORES		200112L	/* mandatory */
+#define	_POSIX_REALTIME_SIGNALS		200112L	/* mandatory ([RTS]) */
+#define	_POSIX_SEMAPHORES		200112L	/* mandatory ([SEM]) */
 #define	_POSIX_SHARED_MEMORY_OBJECTS	200112L	/* [SHM] */
-#define	_POSIX_SPIN_LOCKS		200112L	/* mandatory */
+#define	_POSIX_SPIN_LOCKS		200112L	/* mandatory ([SPI]) */
 #define	_POSIX_SPORADIC_SERVER		-1	/* [SS] */
 #define	_POSIX_SYNCHRONIZED_IO		-1	/* [SIO] */
 #define	_POSIX_THREAD_CPUTIME		200112L	/* [TCT] */
-#define	_POSIX_TIMEOUTS			200112L	/* mandatory */
-#define	_POSIX_TIMERS			200112L	/* mandatory */
+#define	_POSIX_TIMEOUTS			200112L	/* mandatory ([TMO]) */
+#define	_POSIX_TIMERS			200112L	/* XXX mandatory ([TMR]) */
 #define	_POSIX_TYPED_MEMORY_OBJECTS	-1	/* [TYM] */
 #define	_POSIX_VDISABLE			0xff
 
 #if __XSI_VISIBLE
 #define	_XOPEN_SHM			1
-#define	_XOPEN_STREAMS			-1
+#define	_XOPEN_STREAMS			-1	/* [XSR] obsolescent */
 #endif
 
 /*
