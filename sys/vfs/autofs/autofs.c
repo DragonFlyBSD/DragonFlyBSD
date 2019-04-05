@@ -84,7 +84,7 @@ static d_close_t	autofs_close;
 static d_ioctl_t	autofs_ioctl;
 
 struct dev_ops autofs_ops = {
-	{ "autofs", 0, 0 },
+	{ "autofs", 0, D_MPSAFE },
 	.d_open		= autofs_open,
 	.d_close	= autofs_close,
 	.d_ioctl	= autofs_ioctl,
