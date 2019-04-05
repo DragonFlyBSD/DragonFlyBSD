@@ -180,7 +180,7 @@ autofs_mount(struct mount *mp, char *mntpt, caddr_t data, struct ucred *cred)
 	vfs_getnewfsid(mp);
 	vfs_add_vnodeops(mp, &autofs_vnode_vops, &mp->mnt_vn_norm_ops);
 
-	autofs_statfs(mp, sbp, cred);
+	VFS_STATFS(mp, &mp->mnt_stat, cred);
 
 	return (0);
 
