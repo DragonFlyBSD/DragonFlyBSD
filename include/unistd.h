@@ -106,7 +106,7 @@ typedef	__uint32_t	uid_t;		/* XXX __uid_t */
  * the POSIX standard; however, if the relevant sysconf() function
  * returns -1, the functions may be stubbed out.
  */
-#define	_POSIX_READER_WRITER_LOCKS	200112L
+#define	_POSIX_READER_WRITER_LOCKS	200112L	/* mandatory ([THR]) */
 #define	_POSIX_REGEXP			1	/* mandatory */
 #define	_POSIX_SHELL			1	/* mandatory */
 #define	_POSIX_SPAWN			200112L	/* [SPN] */
