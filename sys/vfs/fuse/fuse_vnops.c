@@ -1075,7 +1075,7 @@ fuse_vop_readdir(struct vop_readdir_args *ap)
 			error = 0;
 			if (vop_write_dirent(&error, uio, fde->ino, fde->type,
 			    fde->namelen, fde->name))
-				break;
+				error = EINVAL;
 			if (error)
 				break;
 			fuse_dbg("ino=%ju type=%d name=%s len=%u\n",
