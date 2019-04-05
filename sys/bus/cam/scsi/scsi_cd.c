@@ -109,7 +109,8 @@ typedef enum {
 	CD_FLAG_VALID_MEDIA	= 0x0400,
 	CD_FLAG_VALID_TOC	= 0x0800,
 	CD_FLAG_SCTX_INIT	= 0x1000,
-	CD_FLAG_OPEN		= 0x2000
+	CD_FLAG_OPEN		= 0x2000,
+	CD_FLAG_CAP_MUTE	= 0x4000
 } cd_flags;
 
 typedef enum {
@@ -1035,6 +1036,12 @@ cdopen(struct dev_open_args *ap)
 	 * code work well with media changing underneath it.
 	 */
 	error = cdcheckmedia(periph);
+
+	if (error) {
+		softc->flags |= CD_FLAG_CAP_MUTE;
+	} else {
+		softc->flags &= ~CD_FLAG_CAP_MUTE;
+	}
 
 	cdprevent(periph, PR_PREVENT);
 	CAM_DEBUG(periph->path, CAM_DEBUG_TRACE, ("leaving cdopen\n"));
@@ -3028,6 +3035,9 @@ cdsize(struct cam_periph *periph, u_int32_t *size)
 			   rcap_buf,
 			   SSD_FULL_SIZE,
 			   /* timeout */20000);
+
+	if (softc->flags & CD_FLAG_CAP_MUTE)
+		ccb->ccb_h.flags |= CAM_QUIET;
 
 	error = cdrunccb(ccb, cderror, /*cam_flags*/CAM_RETRY_SELTO,
 			 /*sense_flags*/SF_RETRY_UA|SF_NO_PRINT);

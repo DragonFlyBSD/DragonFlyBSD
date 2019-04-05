@@ -93,7 +93,8 @@ typedef enum {
 	DA_FLAG_SCTX_INIT	= 0x200,
 	DA_FLAG_RD_LIMIT	= 0x400,
 	DA_FLAG_WR_LIMIT	= 0x800,
-	DA_FLAG_CAN_TRIM	= 0x1000
+	DA_FLAG_CAN_TRIM	= 0x1000,
+	DA_FLAG_CAP_MUTE	= 0x2000
 } da_flags;
 
 typedef enum {
@@ -346,7 +347,7 @@ static	void		dadone(struct cam_periph *periph,
 static  int		daerror(union ccb *ccb, u_int32_t cam_flags,
 				u_int32_t sense_flags);
 static void		daprevent(struct cam_periph *periph, int action);
-static int		dagetcapacity(struct cam_periph *periph);
+static int		dagetcapacity(struct cam_periph *periph, int ccbflags);
 static int		dacheckmedia(struct cam_periph *periph);
 static void		dasetgeom(struct cam_periph *periph, uint32_t block_len,
 				  uint64_t maxsector);
@@ -546,10 +547,12 @@ daopen(struct dev_open_args *ap)
 	}
 	
 	if (error == 0) {
+		softc->flags &= ~DA_FLAG_CAP_MUTE;
 		if ((softc->flags & DA_FLAG_PACK_REMOVABLE) != 0 &&
 		    (softc->quirks & DA_Q_NO_PREVENT) == 0)
 			daprevent(periph, PR_PREVENT);
 	} else {
+		softc->flags |= DA_FLAG_CAP_MUTE;
 		softc->flags &= ~DA_FLAG_OPEN;
 		cam_periph_release(periph);
 	}
@@ -2049,11 +2052,17 @@ dacheckmedia(struct cam_periph *periph)
 	struct da_softc *softc;
 	struct disk_info info;
 	int error;
+	int mute;
 
 	softc = (struct da_softc *)periph->softc;
 	dp = &softc->params;
 
-	error = dagetcapacity(periph);
+	if (softc->flags & DA_FLAG_CAP_MUTE)	/* additional ccb flags */
+		mute = CAM_QUIET;
+	else
+		mute = 0;
+
+	error = dagetcapacity(periph, mute);
 
 	/*
 	 * Only reprobe on initial open and if the media is removable.
@@ -2095,8 +2104,11 @@ dacheckmedia(struct cam_periph *periph)
 		}
 		CAM_SIM_LOCK(periph->sim);
 	} else {
-		kprintf("%s%d: open removable media: no media present\n",
-			periph->periph_name, periph->unit_number);
+		if (!mute || bootverbose) {
+			kprintf("%s%d: open removable media: "
+				"no media present\n",
+				periph->periph_name, periph->unit_number);
+		}
 		info.d_media_blksize = 512;
 		disk_setdiskinfo(&softc->disk, &info);
 	}
@@ -2104,7 +2116,7 @@ dacheckmedia(struct cam_periph *periph)
 }
 
 static int
-dagetcapacity(struct cam_periph *periph)
+dagetcapacity(struct cam_periph *periph, int ccbflags)
 {
 	struct da_softc *softc;
 	union ccb *ccb;
@@ -2134,6 +2146,7 @@ dagetcapacity(struct cam_periph *periph)
 			   SSD_FULL_SIZE,
 			   /*timeout*/60000);
 	ccb->ccb_h.ccb_bio = NULL;
+	ccb->ccb_h.flags |= ccbflags;
  
 	error = cam_periph_runccb(ccb, daerror,
 				  /*cam_flags*/CAM_RETRY_SELTO,

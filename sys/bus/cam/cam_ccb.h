@@ -80,7 +80,7 @@ typedef enum {
 	CAM_DIS_DISCONNECT	= 0x00020000,/* Disable disconnect	      */
 	CAM_SG_LIST_PHYS	= 0x00040000,/* SG list has physical addrs.   */
 	CAM_POLLED		= 0x00080000,/* Requested that polling be used*/
-	CAM_UNUSED100000	= 0x00100000,
+	CAM_QUIET		= 0x00100000,/* Quiet error reporting	      */
 	CAM_DATA_PHYS		= 0x00200000,/* SG/Buffer data ptrs are phys. */
 	CAM_CDB_PHYS		= 0x00400000,/* CDB poiner is physical	      */
 	CAM_ENG_SGLIST		= 0x00800000,/* SG list is for the HBA engine */

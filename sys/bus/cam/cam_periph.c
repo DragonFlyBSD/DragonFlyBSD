@@ -1620,11 +1620,18 @@ camperiphscsisenseerror(union ccb *ccb, cam_flags camflags,
 sense_error_done:
 		if ((err_action & SSQ_PRINT_SENSE) != 0 &&
 		    (ccb->ccb_h.status & CAM_AUTOSNS_VALID) != 0) {
-			cam_error_print(print_ccb, CAM_ESF_ALL, CAM_EPF_ALL);
-			xpt_print_path(ccb->ccb_h.path);
+			if ((ccb->ccb_h.flags & CAM_QUIET) == 0 ||
+			    bootverbose) {
+				cam_error_print(print_ccb,
+						CAM_ESF_ALL, CAM_EPF_ALL);
+				xpt_print_path(ccb->ccb_h.path);
+			}
 			if (bootverbose)
 				scsi_sense_print(&print_ccb->csio);
-			kprintf("%s\n", action_string);
+			if ((ccb->ccb_h.flags & CAM_QUIET) == 0 ||
+			    bootverbose) {
+				kprintf("%s\n", action_string);
+			}
 		}
 		xpt_free_ccb(&cgd->ccb_h);
 	}
