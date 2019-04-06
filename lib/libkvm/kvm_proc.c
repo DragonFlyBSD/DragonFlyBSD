@@ -157,7 +157,7 @@ kvm_firstlwp(kvm_t *kd, struct lwp *lwp, struct proc *proc)
  * If the parent is NULL we are done.
  */
 static uintptr_t
-kvm_nextlwp(kvm_t *kd, uintptr_t lwppos, struct lwp *lwp, struct proc *proc)
+kvm_nextlwp(kvm_t *kd, uintptr_t lwppos, struct lwp *lwp)
 {
 	uintptr_t nextpos;
 
@@ -400,7 +400,7 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 				free(wmesg);
 			if ((what & KERN_PROC_FLAG_LWP) == 0)
 				break;
-			lwppos = kvm_nextlwp(kd, lwppos, &lwp, &proc);
+			lwppos = kvm_nextlwp(kd, lwppos, &lwp);
 		}
 		if (lwppos == (uintptr_t)-1)
 			return(-1);
@@ -413,8 +413,7 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
  * We reallocate kd->procbase as necessary.
  */
 static int
-kvm_deadprocs(kvm_t *kd, int what, int arg, u_long a_procglob,
-	      int allproc_hsize)
+kvm_deadprocs(kvm_t *kd, int what, int arg, int allproc_hsize)
 {
 	struct kinfo_proc *bp;
 	struct proc *p;
@@ -529,8 +528,7 @@ kvm_getprocs(kvm_t *kd, int op, int arg, int *cnt)
 			_kvm_err(kd, kd->program, "can't read allproc_hsize");
 			return (0);
 		}
-		nprocs = kvm_deadprocs(kd, op, arg, nl[1].n_value,
-				      allproc_hsize);
+		nprocs = kvm_deadprocs(kd, op, arg, allproc_hsize);
 #ifdef notdef
 		size = nprocs * sizeof(struct kinfo_proc);
 		(void)realloc(kd->procbase, size);
@@ -764,7 +762,7 @@ ps_str_e(struct ps_strings *p, u_long *addr, int *n)
  * being wrong are very low.
  */
 static int
-proc_verify(kvm_t *kd, const struct kinfo_proc *p)
+proc_verify(const struct kinfo_proc *p)
 {
 	struct kinfo_proc kp;
 	int mib[4];
@@ -820,7 +818,7 @@ kvm_doargv(kvm_t *kd, const struct kinfo_proc *kp, int nchr,
 	 * For live kernels, make sure this process didn't go away.
 	 */
 	if (ap != NULL && (kvm_ishost(kd) || kvm_isvkernel(kd)) &&
-	    !proc_verify(kd, kp))
+	    !proc_verify(kp))
 		ap = NULL;
 	return (ap);
 }

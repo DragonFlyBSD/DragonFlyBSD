@@ -176,7 +176,7 @@ kvm_deadfiles(kvm_t *kd, struct kinfo_proc *kproc, int kproc_cnt, int nfiles)
 }
 
 struct kinfo_file *
-kvm_getfiles(kvm_t *kd, int op, int arg, int *cnt)
+kvm_getfiles(kvm_t *kd, int op __unused, int arg __unused, int *cnt)
 {
 	int nfiles;
 	size_t size;

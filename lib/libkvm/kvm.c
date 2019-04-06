@@ -252,7 +252,7 @@ failed:
 }
 
 kvm_t *
-kvm_openfiles(const char *uf, const char *mf, const char *sf, int flag,
+kvm_openfiles(const char *uf, const char *mf, const char *sf __unused, int flag,
 	      char *errout)
 {
 	kvm_t *kd;
@@ -267,7 +267,7 @@ kvm_openfiles(const char *uf, const char *mf, const char *sf, int flag,
 }
 
 kvm_t *
-kvm_open(const char *uf, const char *mf, const char *sf, int flag,
+kvm_open(const char *uf, const char *mf, const char *sf __unused, int flag,
 	 const char *errstr)
 {
 	kvm_t *kd;

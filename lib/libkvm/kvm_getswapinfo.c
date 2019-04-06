@@ -413,7 +413,7 @@ dump_blist(kvm_t *kd)
 
 static
 int
-kvm_getswapinfo_sysctl(kvm_t *kd, struct kvm_swap *swap_ary,
+kvm_getswapinfo_sysctl(kvm_t *kd __unused, struct kvm_swap *swap_ary,
 		       int swap_max, int flags)
 {
 	size_t bytes = 0;
