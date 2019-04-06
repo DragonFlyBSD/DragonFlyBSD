@@ -28,7 +28,6 @@
  *
  *	@(#)kvm.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/lib/libkvm/kvm.h,v 1.11 1999/08/27 23:44:50 peter Exp $
- * $DragonFly: src/lib/libkvm/kvm.h,v 1.7 2007/02/01 10:33:25 corecode Exp $
  */
 
 #ifndef _KVM_H_
@@ -46,8 +45,8 @@ typedef struct __kvm kvm_t;
 
 struct kinfo_file;
 struct kinfo_proc;
-struct proc;
 struct nchstats;
+struct proc;
 
 struct kvm_swap {
 	char	ksw_devname[32];
@@ -62,7 +61,6 @@ struct kvm_swap {
 #define SWIF_DEV_PREFIX	0x0002
 
 __BEGIN_DECLS
-void kvm_nch_cpuagg(struct nchstats *, struct nchstats *, int);
 int	  kvm_close (kvm_t *);
 char	**kvm_getargv (kvm_t *, const struct kinfo_proc *, int);
 char	**kvm_getenvv (kvm_t *, const struct kinfo_proc *, int);
@@ -73,16 +71,15 @@ int	  kvm_getloadavg (kvm_t *, double [], int);
 struct kinfo_proc *
 	  kvm_getprocs (kvm_t *, int, int, int *);
 int	  kvm_getswapinfo (kvm_t *, struct kvm_swap *, int, int);
+void	  kvm_nch_cpuagg (struct nchstats *, struct nchstats *, int);
 int	  kvm_nlist (kvm_t *, struct nlist *);
-kvm_t	 *kvm_open
-	    (const char *, const char *, const char *, int, const char *);
-kvm_t	 *kvm_openfiles
-	    (const char *, const char *, const char *, int, char *);
-__ssize_t	  kvm_read (kvm_t *, unsigned long, void *, __size_t);
-char	 *kvm_readstr(kvm_t *, u_long, char *, size_t *);
-__ssize_t	  kvm_uread
-	    (kvm_t *, pid_t, unsigned long, char *, __size_t);
-__ssize_t	  kvm_write (kvm_t *, unsigned long, const void *, __size_t);
+kvm_t	 *kvm_open (const char *, const char *, const char *, int,
+		    const char *);
+kvm_t	 *kvm_openfiles (const char *, const char *, const char *, int, char *);
+__ssize_t kvm_read (kvm_t *, unsigned long, void *, __size_t);
+char	 *kvm_readstr (kvm_t *, u_long, char *, size_t *);
+__ssize_t kvm_uread (kvm_t *, pid_t, unsigned long, char *, __size_t);
+__ssize_t kvm_write (kvm_t *, unsigned long, const void *, __size_t);
 __END_DECLS
 
 #endif /* !_KVM_H_ */
