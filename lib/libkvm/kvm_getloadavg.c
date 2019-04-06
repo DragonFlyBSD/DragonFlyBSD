@@ -45,11 +45,11 @@
 #include "kvm_private.h"
 
 static struct nlist nl[] = {
-	{ "_averunnable" },
+	{ .n_name = "_averunnable" },
 #define	X_AVERUNNABLE	0
-	{ "_fscale" },
+	{ .n_name = "_fscale" },
 #define	X_FSCALE	1
-	{ "" },
+	{ .n_name = "" },
 };
 
 /*
