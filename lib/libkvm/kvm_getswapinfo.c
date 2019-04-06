@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/lib/libkvm/kvm_getswapinfo.c,v 1.10.2.4 2003/01/12 09:23:13 dillon Exp $
- * $DragonFly: src/lib/libkvm/kvm_getswapinfo.c,v 1.5 2006/03/18 17:15:35 dillon Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -48,7 +47,6 @@
 
 #include <err.h>
 #include <fcntl.h>
-#include <kvm.h>
 #include <nlist.h>
 #include <paths.h>
 #include <stdio.h>
@@ -57,6 +55,7 @@
 #include <unistd.h>
 #include <limits.h>
 
+#include "kvm.h"
 #include "kvm_private.h"
 
 static struct nlist kvm_swap_nl[] = {

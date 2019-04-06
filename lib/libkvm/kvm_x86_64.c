@@ -49,7 +49,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <nlist.h>
-#include <kvm.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -58,6 +57,7 @@
 
 #include <limits.h>
 
+#include "kvm.h"
 #include "kvm_private.h"
 
 #ifndef btop

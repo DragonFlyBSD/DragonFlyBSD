@@ -50,7 +50,6 @@
 
 #include <ctype.h>
 #include <fcntl.h>
-#include <kvm.h>
 #include <limits.h>
 #include <nlist.h>
 #include <paths.h>
@@ -60,6 +59,7 @@
 #include <stdarg.h>
 #include <unistd.h>
 
+#include "kvm.h"
 #include "kvm_private.h"
 
 /* from src/lib/libc/gen/nlist.c */

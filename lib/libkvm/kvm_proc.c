@@ -58,7 +58,6 @@
 #include <stddef.h>
 #include <unistd.h>
 #include <nlist.h>
-#include <kvm.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -70,6 +69,7 @@
 #include <memory.h>
 #include <paths.h>
 
+#include "kvm.h"
 #include "kvm_private.h"
 
 dev_t	dev2udev(cdev_t dev);

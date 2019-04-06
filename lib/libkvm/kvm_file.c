@@ -44,7 +44,6 @@
 #include <sys/ioctl.h>
 #include <sys/kinfo.h>
 #include <nlist.h>
-#include <kvm.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -59,6 +58,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "kvm.h"
 #include "kvm_private.h"
 
 #define KREAD(kd, addr, obj) \

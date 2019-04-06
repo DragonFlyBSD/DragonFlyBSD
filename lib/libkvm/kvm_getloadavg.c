@@ -28,7 +28,6 @@
  *
  * @(#)kvm_getloadavg.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libkvm/kvm_getloadavg.c,v 1.3 1999/12/27 07:14:57 peter Exp $
- * $DragonFly: src/lib/libkvm/kvm_getloadavg.c,v 1.4 2004/04/11 21:28:03 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -41,8 +40,8 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <nlist.h>
-#include <kvm.h>
 
+#include "kvm.h"
 #include "kvm_private.h"
 
 static struct nlist nl[] = {
