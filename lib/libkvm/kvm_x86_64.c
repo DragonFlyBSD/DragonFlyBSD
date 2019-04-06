@@ -150,7 +150,7 @@ _kvm_freevtop(kvm_t *kd)
 int
 _kvm_initvtop(kvm_t *kd)
 {
-	struct nlist nlist[2];
+	struct nlist nlists[2];
 	u_long pa;
 	u_long kernbase;
 	pml4_entry_t	*PML4;
@@ -187,23 +187,23 @@ _kvm_initvtop(kvm_t *kd)
 			return (-1);
 	}
 
-	nlist[0].n_name = "kernbase";
-	nlist[1].n_name = 0;
+	nlists[0].n_name = "kernbase";
+	nlists[1].n_name = 0;
 
-	if (kvm_nlist(kd, nlist) != 0) {
+	if (kvm_nlist(kd, nlists) != 0) {
 		_kvm_err(kd, kd->program, "bad namelist - no kernbase");
 		return (-1);
 	}
-	kernbase = nlist[0].n_value;
+	kernbase = nlists[0].n_value;
 
-	nlist[0].n_name = "dumppcb";
-	nlist[1].n_name = 0;
+	nlists[0].n_name = "dumppcb";
+	nlists[1].n_name = 0;
 
-	if (kvm_nlist(kd, nlist) != 0) {
+	if (kvm_nlist(kd, nlists) != 0) {
 		_kvm_err(kd, kd->program, "bad namelist - no dumppcb");
 		return (-1);
 	}
-	if (kvm_read(kd, (nlist[0].n_value - kernbase), &dumppcb,
+	if (kvm_read(kd, (nlists[0].n_value - kernbase), &dumppcb,
 		     sizeof(dumppcb)) != sizeof(dumppcb)) {
 		_kvm_err(kd, kd->program, "cannot read dumppcb");
 		return (-1);
