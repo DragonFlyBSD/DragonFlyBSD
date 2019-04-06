@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/lib/libkvm/kvm_util.c,v 1.3 2004/07/16 05:04:36 hmp Exp $
  */
 
 /*
@@ -42,11 +40,9 @@
 #include <sys/param.h>
 #include <sys/nchstats.h>
 #include <sys/sysctl.h>
-
-#include <stdio.h>
-#include <stdlib.h>
 #include <strings.h>
-#include <err.h>
+
+#include "kvm.h"
 
 /*
  * Aggregate the per-cpu counters we retrieved via sysctl(2)
@@ -63,7 +59,7 @@ kvm_nch_cpuagg(struct nchstats *unagg, struct nchstats *ttl, int cpucnt)
 		return;
 
 	bzero(ttl, siz);
-	
+
 	/* kick hmp@ for this nasty loop! :-) */
 	for (i = 0; i < cpucnt; ++i) {
 		for (off = 0; off < siz; off += sizeof(u_long)) {
