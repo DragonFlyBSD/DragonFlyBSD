@@ -249,7 +249,7 @@ _kvm_minidump_init_hdr2(kvm_t *kd, struct vmstate *vmst,
 		return (-1);
 	}
 	if (pread(kd->pmfd, vmst->bitmap, hdr->bitmapsize, off) !=
-	    hdr->bitmapsize) {
+	    (intmax_t)hdr->bitmapsize) {
 		_kvm_err(kd, kd->program,
 			 "cannot read %jd bytes for page bitmap",
 			 (intmax_t)hdr->bitmapsize);
@@ -265,7 +265,7 @@ _kvm_minidump_init_hdr2(kvm_t *kd, struct vmstate *vmst,
 		return (-1);
 	}
 	if (pread(kd->pmfd, vmst->ptemap, hdr->ptesize, off) !=
-	    hdr->ptesize) {
+	    (intmax_t)hdr->ptesize) {
 		_kvm_err(kd, kd->program,
 			 "cannot read %jd bytes for ptemap",
 			 (intmax_t)hdr->ptesize);

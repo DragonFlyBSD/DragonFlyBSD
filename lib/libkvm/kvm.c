@@ -388,7 +388,7 @@ kvm_read(kvm_t *kd, u_long kva, void *buf, size_t len)
 		if (cc < 0) {
 			_kvm_syserr(kd, 0, "kvm_read");
 			return (-1);
-		} else if (cc < len)
+		} else if (cc < (ssize_t)len)
 			_kvm_err(kd, kd->program, "short read");
 		return (cc);
 	} else {
@@ -399,7 +399,7 @@ kvm_read(kvm_t *kd, u_long kva, void *buf, size_t len)
 			cc = _kvm_kvatop(kd, kva, &pa);
 			if (cc == 0)
 				return (-1);
-			if (cc > len)
+			if (cc > (ssize_t)len)
 				cc = len;
 			errno = 0;
 			if (lseek(kd->pmfd, pa, 0) == -1 && errno != 0) {
@@ -465,7 +465,7 @@ kvm_readstr(kvm_t *kd, u_long kva, char *buf, size_t *lenp)
 				return NULL;
 			} else if (cc < 1)
 				_kvm_err(kd, kd->program, "short read");
-			if (pos == asize) {
+			if ((ssize_t)pos == asize) {
 				buf = realloc(buf, asize *= 2);
 				if (buf == NULL) {
 					_kvm_syserr(kd, kd->program, "kvm_readstr");
@@ -504,7 +504,7 @@ kvm_readstr(kvm_t *kd, u_long kva, char *buf, size_t *lenp)
 				return NULL;
 			} else if (cc < 1)
 				_kvm_err(kd, kd->program, "short read");
-			if (pos == asize) {
+			if ((ssize_t)pos == asize) {
 				buf = realloc(buf, asize *= 2);
 				if (buf == NULL) {
 					_kvm_syserr(kd, kd->program, "kvm_readstr");
@@ -544,7 +544,7 @@ kvm_write(kvm_t *kd, u_long kva, const void *buf, size_t len)
 		if (cc < 0) {
 			_kvm_syserr(kd, 0, "kvm_write");
 			return (-1);
-		} else if (cc < len)
+		} else if (cc < (ssize_t)len)
 			_kvm_err(kd, kd->program, "short write");
 		return (cc);
 	} else {

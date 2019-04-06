@@ -92,6 +92,7 @@ kvm_deadfiles(kvm_t *kd, struct kinfo_proc *kproc, int kproc_cnt, int nfiles)
 {
 	struct kinfo_file *kinfo_file = (struct kinfo_file *)kd->argspc;
 	struct fdnode *fd_files;
+	size_t size;
 	int i, fd_nfiles, found = 0;
 
 	fd_nfiles = NDFILE;
@@ -154,8 +155,6 @@ kvm_deadfiles(kvm_t *kd, struct kinfo_proc *kproc, int kproc_cnt, int nfiles)
 			found++;
 
 			if (found == nfiles) {
-				size_t size;
-
 				nfiles *= 2;
 				size = nfiles * sizeof(struct kinfo_file);
 
@@ -194,7 +193,7 @@ kvm_getfiles(kvm_t *kd, int op __unused, int arg __unused, int *cnt)
 		}
 		if (kd->argspc == NULL)
 			kd->argspc = _kvm_malloc(kd, size);
-		else if (kd->arglen < size)
+		else if (kd->arglen < (ssize_t)size)
 			kd->argspc = _kvm_realloc(kd, kd->argspc, size);
 		if (kd->argspc == NULL)
 			return NULL;
@@ -250,7 +249,7 @@ kvm_getfiles(kvm_t *kd, int op __unused, int arg __unused, int *cnt)
 		size = nfiles * sizeof(struct kinfo_file);
 		if (kd->argspc == NULL)
 			kd->argspc = _kvm_malloc(kd, size);
-		else if (kd->arglen < size)
+		else if (kd->arglen < (ssize_t)size)
 			kd->argspc = _kvm_realloc(kd, kd->argspc, size);
 		if (kd->argspc == NULL) {
 			free(kproc);

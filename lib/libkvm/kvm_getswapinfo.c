@@ -256,7 +256,8 @@ scanradix(
 	blmeta_t meta;
 	blmeta_t scan_array[BLIST_BMAP_RADIX];
 	int64_t avail_tmp = 0;
-	int i, im;
+	unsigned int iu;
+	int im;
 	int next_skip;
 
 	if (scan_cache) {
@@ -296,8 +297,8 @@ scanradix(
 		);
 
 		if (meta.u.bmu_bitmap) {
-			for (i = 0; i < BLIST_BMAP_RADIX; ++i) {
-				if (meta.u.bmu_bitmap & (1 << i))
+			for (iu = 0; iu < BLIST_BMAP_RADIX; ++iu) {
+				if (meta.u.bmu_bitmap & (1 << iu))
 					++*availp;
 			}
 		}
