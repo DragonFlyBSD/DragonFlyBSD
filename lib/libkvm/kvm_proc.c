@@ -574,6 +574,8 @@ kvm_argv(kvm_t *kd, pid_t pid, u_long addr, int narg, int maxcnt)
 {
 	char *np, *cp, *ep, *ap;
 	u_long oaddr = -1;
+	u_long addr_min = VM_MIN_USER_ADDRESS;
+	u_long addr_max = VM_MAX_USER_ADDRESS;
 	int len, cc;
 	char **argv;
 
@@ -581,10 +583,8 @@ kvm_argv(kvm_t *kd, pid_t pid, u_long addr, int narg, int maxcnt)
 	 * Check that there aren't an unreasonable number of agruments,
 	 * and that the address is in user space.
 	 */
-	if (narg > 512 || 
-	    addr < VM_MIN_USER_ADDRESS || addr >= VM_MAX_USER_ADDRESS) {
+	if (narg > 512 || addr < addr_min || addr >= addr_max)
 		return (0);
-	}
 
 	/*
 	 * kd->argv : work space for fetching the strings from the target 
