@@ -65,6 +65,12 @@
 /* from src/lib/libc/gen/nlist.c */
 int __fdnlist		(int, struct nlist *);
 
+static int
+kvm_notrans(kvm_t *kd)
+{
+	return kvm_ishost(kd) || kvm_isvkernel(kd);
+}
+
 char *
 kvm_geterr(kvm_t *kd)
 {

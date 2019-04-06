@@ -89,13 +89,6 @@ kvm_isvkernel(kvm_t *kd)
 	return kd->flags & KVMF_VKERN;
 }
 
-static inline
-int
-kvm_notrans(kvm_t *kd)
-{
-	return kvm_ishost(kd) || kvm_isvkernel(kd);
-}
-
 /*
  * Functions used internally by kvm, but across kvm modules.
  */
