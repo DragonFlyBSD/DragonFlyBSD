@@ -78,9 +78,7 @@ extern kvm_t *kd;
 extern int vflg;
 extern int Pid;
 
-/* XXX symbol conflict with libkvm.a */
-#define	dev2udev fstat_dev2udev
-udev_t dev2udev(void *);
+udev_t fstat_dev2udev(void *);
 udev_t makeudev(int, int);
 
 /* Additional filesystem types */

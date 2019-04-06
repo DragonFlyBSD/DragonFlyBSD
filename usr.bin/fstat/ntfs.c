@@ -67,7 +67,7 @@ ntfs_filestat(struct vnode *vp, struct filestat *fsp)
 		return 0;
 	}
 	fsp->mode = mp.ntm_mode | mtrans(vp->v_type);
-	fsp->rdev = fsp->fsid = dev2udev(ino.i_dev);
+	fsp->rdev = fsp->fsid = fstat_dev2udev(ino.i_dev);
 	fsp->size = fn.f_size;
 	fsp->fileid = ino.i_number;
 

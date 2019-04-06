@@ -594,7 +594,7 @@ ufs_filestat(struct vnode *vp, struct filestat *fsp)
 	 * contain dev_t structures. We need to convert to udev to make
 	 * comparisons
 	 */
-	fsp->fsid = dev2udev(inode.i_dev);
+	fsp->fsid = fstat_dev2udev(inode.i_dev);
 	fsp->fileid = (long)inode.i_number;
 	fsp->mode = (mode_t)inode.i_mode;
 	fsp->size = inode.i_size;
@@ -633,7 +633,7 @@ devfs_filestat(struct vnode *vp, struct filestat *fsp)
 		    (void *)vp->v_data, Pid);
 		return 0;
 	}
-	fsp->fsid = fsp->rdev = dev2udev(vp->v_rdev);
+	fsp->fsid = fsp->rdev = fstat_dev2udev(vp->v_rdev);
 	fsp->fileid = devfs_node.d_dir.d_ino;
 	fsp->mode = (devfs_node.mode & ~S_IFMT) | S_IFCHR;
 	fsp->size = 0;
@@ -913,7 +913,7 @@ bad:
  * in order to work out the associated udev_t
  */
 udev_t
-dev2udev(void *dev)
+fstat_dev2udev(void *dev)
 {
 	struct cdev si;
 

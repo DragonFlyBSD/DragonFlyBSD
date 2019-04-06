@@ -52,7 +52,7 @@ ext2fs_filestat(struct vnode *vp, struct filestat *fsp)
 		return 0;
 	}
 	fsp->mode = ino.i_mode | mtrans(vp->v_type);
-	fsp->rdev = fsp->fsid = dev2udev(ino.i_dev);
+	fsp->rdev = fsp->fsid = fstat_dev2udev(ino.i_dev);
 	fsp->size = ino.i_din.di_size;
 	fsp->fileid = ino.i_number;
 

@@ -67,6 +67,6 @@ hammer_filestat(struct vnode *vp, struct filestat *fsp)
 	fsp->mode = ino.ino_data.mode | mtrans(vp->v_type);
 	fsp->fileid = (long)ino.ino_leaf.base.obj_id;
 	fsp->size = ino.ino_data.size;
-	fsp->rdev = dev2udev(vp->v_rdev);
+	fsp->rdev = fstat_dev2udev(vp->v_rdev);
 	return 1;
 }

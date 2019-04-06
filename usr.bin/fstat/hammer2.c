@@ -57,7 +57,7 @@ hammer2_filestat(struct vnode *vp, struct filestat *fsp)
 		return 0;
 	}
 
-	fsp->fsid = fsp->rdev = dev2udev(vp->v_rdev);
+	fsp->fsid = fsp->rdev = fstat_dev2udev(vp->v_rdev);
 	fsp->mode = ino.meta.mode | mtrans(vp->v_type);
 	fsp->fileid = ino.meta.inum;
 	fsp->size = ino.meta.size;
