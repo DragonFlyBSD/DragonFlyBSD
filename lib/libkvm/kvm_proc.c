@@ -72,6 +72,8 @@
 
 #include "kvm_private.h"
 
+dev_t	dev2udev(cdev_t dev);
+
 #define KREAD(kd, addr, obj) \
 	(kvm_read(kd, addr, (char *)(obj), sizeof(*obj)) != sizeof(*obj))
 #define KREADSTR(kd, addr) \
