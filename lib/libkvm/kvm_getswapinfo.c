@@ -248,14 +248,16 @@ scanradix(
 	swblk_t skip,
 	swblk_t count,
 	kvm_t *kd,
-	int dmmax, 
-	int nswdev,
+	int dmmaxr,
+	int nswdevr,
 	int64_t *availp,
 	int tab
 ) {
 	blmeta_t meta;
 	blmeta_t scan_array[BLIST_BMAP_RADIX];
-	int i;
+	int64_t avail_tmp = 0;
+	int i, im;
+	int next_skip;
 
 	if (scan_cache) {
 		meta = *scan_cache;
@@ -324,10 +326,6 @@ scanradix(
 		/*
 		 * Meta node if not all free
 		 */
-		int i;
-		int next_skip;
-		int64_t avail_tmp = 0;
-
 		printf("%*.*s(0x%06jx,%jd) Submap avail=%jd big=%jd {\n",
 		    TABME,
 		    (intmax_t)blk,
@@ -339,21 +337,21 @@ scanradix(
 		radix /= BLIST_META_RADIX;
 		next_skip = skip / BLIST_META_RADIX;
 
-		for (i = 1; i <= skip; i += next_skip) {
+		for (im = 1; im <= skip; im += next_skip) {
 			int r;
 			swblk_t vcount = (count > radix) ?
 					(swblk_t)radix : count;
 
 			r = scanradix(
-			    &scan[i],
-			    ((next_skip == 1) ? &scan_array[i] : NULL),
+			    &scan[im],
+			    ((next_skip == 1) ? &scan_array[im] : NULL),
 			    blk,
 			    radix,
 			    next_skip - 1,
 			    vcount,
 			    kd,
-			    dmmax,
-			    nswdev,
+			    dmmaxr,
+			    nswdevr,
 			    &avail_tmp,
 			    tab + 4
 			);
