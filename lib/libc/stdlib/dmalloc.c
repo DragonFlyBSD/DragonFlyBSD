@@ -278,10 +278,9 @@ struct slglobaldata {
  * WARNING: A limited number of spinlocks are available, BIGXSIZE should
  *	    not be larger then 64.
  */
+#ifdef INVARIANTS
 #define WEIRD_ADDR      0xdeadc0de
-#define MAX_COPY        sizeof(weirdary)
-
-#define arysize(ary)	(sizeof(ary)/sizeof((ary)[0]))
+#endif
 
 /*
  * Thread control
@@ -316,12 +315,14 @@ static int opt_utrace = 0;
 static int g_malloc_flags = 0;
 static int malloc_panic;
 
+#ifdef INVARIANTS
 static const int32_t weirdary[16] = {
 	WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR,
 	WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR,
 	WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR,
 	WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR
 };
+#endif
 
 static void *memalloc(size_t size, int flags);
 static void *memrealloc(void *ptr, size_t size);
