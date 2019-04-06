@@ -95,7 +95,7 @@ _kvm_err(kvm_t *kd, const char *program, const char *fmt, ...)
 		(void)fputc('\n', stderr);
 	} else
 		(void)vsnprintf(kd->errbuf,
-		    sizeof(kd->errbuf), (char *)fmt, ap);
+		    sizeof(kd->errbuf), fmt, ap);
 
 	va_end(ap);
 }
@@ -114,7 +114,7 @@ _kvm_syserr(kvm_t *kd, const char *program, const char *fmt, ...)
 	} else {
 		char *cp = kd->errbuf;
 
-		(void)vsnprintf(cp, sizeof(kd->errbuf), (char *)fmt, ap);
+		(void)vsnprintf(cp, sizeof(kd->errbuf), fmt, ap);
 		n = strlen(cp);
 		(void)snprintf(&cp[n], sizeof(kd->errbuf) - n, ": %s",
 		    strerror(errno));
