@@ -8,7 +8,7 @@ LIB=	kvm
 SHLIBDIR?= /lib
 CFLAGS+=-I${SYSDIR}
 SRCS=	kvm.c kvm_${MACHINE_ARCH}.c kvm_file.c kvm_getloadavg.c \
-	kvm_getswapinfo.c kvm_proc.c kvm_util.c	\
+	kvm_getswapinfo.c kvm_proc.c kvm_util.c	kvm_vm_map.c \
 	kern_kinfo.c kvm_minidump_${MACHINE_ARCH}.c
 INCS=	kvm.h
 

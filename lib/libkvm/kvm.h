@@ -47,6 +47,8 @@ struct kinfo_file;
 struct kinfo_proc;
 struct nchstats;
 struct proc;
+struct vm_map;
+struct vm_map_entry;
 
 struct kvm_swap {
 	char	ksw_devname[32];
@@ -80,6 +82,12 @@ __ssize_t kvm_read (kvm_t *, unsigned long, void *, __size_t);
 char	 *kvm_readstr (kvm_t *, u_long, char *, size_t *);
 __ssize_t kvm_uread (kvm_t *, pid_t, unsigned long, char *, __size_t);
 __ssize_t kvm_write (kvm_t *, unsigned long, const void *, __size_t);
+struct vm_map_entry *
+	  kvm_vm_map_entry_first (kvm_t *, struct vm_map *,
+				  struct vm_map_entry *);
+struct vm_map_entry *
+	  kvm_vm_map_entry_next (kvm_t *, struct vm_map_entry *,
+				 struct vm_map_entry *);
 __END_DECLS
 
 #endif /* !_KVM_H_ */

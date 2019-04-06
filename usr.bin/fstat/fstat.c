@@ -94,7 +94,6 @@
 DEVS *devs;
 
 static void make_printable(char *buf, int len);
-static int kreadent(const void *kaddr, vm_map_entry_t copy);
 
 #ifdef notdef
 struct nlist nl[] = {
@@ -117,7 +116,6 @@ int	ino_width = 6;
 const char *Uname;
 char	*Comm;
 int	Pid;
-
 
 struct fdnode *ofiles; 	/* buffer of pointers to file structures */
 int maxfiles;
@@ -389,60 +387,6 @@ dofiles(struct kinfo_proc *kp, struct proc *p)
 	}
 }
 
-static
-vm_map_entry_t
-kinfo_vm_map_entry_first(vm_map_t map, vm_map_entry_t copy)
-{
-	vm_map_entry_t ken;
-
-	ken = map->rb_root.rbh_root;
-	if (ken == NULL)
-		return NULL;
-	if (!kreadent(ken, copy))
-		return NULL;
-	while (copy->rb_entry.rbe_left) {
-		ken = copy->rb_entry.rbe_left;
-		if (!kreadent(ken, copy))
-			return NULL;
-	}
-	return ken;
-}
-
-static
-vm_map_entry_t
-kinfo_vm_map_entry_next(vm_map_entry_t ken, vm_map_entry_t copy)
-{
-	vm_map_entry_t ken2;
-
-	if (copy->rb_entry.rbe_right) {
-		ken = copy->rb_entry.rbe_right;
-		if (!kreadent(ken, copy))
-			return NULL;
-		while (copy->rb_entry.rbe_left) {
-			ken = copy->rb_entry.rbe_left;
-			if (!kreadent(ken, copy))
-				return NULL;
-		}
-	} else {
-		if ((ken2 = copy->rb_entry.rbe_parent) == NULL)
-			return NULL;
-		if (!kreadent(ken2, copy))
-			return NULL;
-		if (ken == copy->rb_entry.rbe_left) {
-			ken = ken2;
-		} else {
-			while (ken == copy->rb_entry.rbe_right) {
-				ken = ken2;
-				ken2 = copy->rb_entry.rbe_parent;
-				if (!kreadent(ken2, copy))
-					return NULL;
-			}
-			ken = ken2;
-		}
-	}
-	return ken;
-}
-
 static void
 dommap(struct proc *p)
 {
@@ -461,9 +405,8 @@ dommap(struct proc *p)
 	}
 
 	map = &vmspace.vm_map;
-	for (ken = kinfo_vm_map_entry_first(map, &entry);
-	     ken;
-	     ken = kinfo_vm_map_entry_next(ken, &entry)) {
+	for (ken = kvm_vm_map_entry_first(kd, map, &entry);
+	     ken; ken = kvm_vm_map_entry_next(kd, ken, &entry)) {
 		if (entry.maptype == VM_MAPTYPE_SUBMAP)
 			continue;
 
@@ -1063,15 +1006,4 @@ kread(const void *kaddr, void *uaddr, size_t nbytes)
 	return(1);
     else
 	return(0);
-}
-
-static
-int
-kreadent(const void *kaddr, vm_map_entry_t copy)
-{
-	if (kread(kaddr, copy, sizeof(*copy)))
-		return 1;
-	dprintf(stderr, "can't read vm_map_entry at %p for pid %d\n",
-		kaddr, Pid);
-	return 0;
 }
