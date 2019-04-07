@@ -37,8 +37,9 @@
 #include <sys/_termios.h>
 /* Needed by tcgetsid(3). */
 #include <sys/stdint.h>
+
 #ifndef _PID_T_DECLARED
-typedef	__pid_t pid_t;
+typedef	__pid_t	pid_t;
 #define	_PID_T_DECLARED
 #endif
 
@@ -84,21 +85,9 @@ int	tcsetsid(int, pid_t);
 #endif /* __BSD_VISIBLE */
 __END_DECLS
 
-#if __BSD_VISIBLE
-
-/*
- * Include tty ioctl's that aren't just for backwards compatibility
- * with the old tty driver.  These ioctl definitions were previously
- * in <sys/ioctl.h>.
- */
-#include <sys/ttycom.h>
-#endif
-
-/*
- * END OF PROTECTED INCLUDE.
- */
 #endif /* !_TERMIOS_H_ */
 
 #if __BSD_VISIBLE
+#include <sys/ttycom.h>
 #include <sys/ttydefaults.h>
 #endif
