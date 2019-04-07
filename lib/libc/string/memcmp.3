@@ -32,11 +32,12 @@
 .\"     @(#)memcmp.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: head/lib/libc/string/memcmp.3 251069 2013-05-28 20:57:40Z emaste $
 .\"
-.Dd June 4, 1993
+.Dd April 7, 2019
 .Dt MEMCMP 3
 .Os
 .Sh NAME
-.Nm memcmp
+.Nm memcmp ,
+.Nm bcmp
 .Nd compare byte string
 .Sh LIBRARY
 .Lb libc
@@ -44,11 +45,15 @@
 .In string.h
 .Ft int
 .Fn memcmp "const void *b1" "const void *b2" "size_t len"
+.Ft int
+.Fn bcmp "const void *b1" "const void *b2" "size_t len"
 .Sh DESCRIPTION
 The
 .Fn memcmp
-function
-compares byte string
+and
+.Fn bcmp
+functions
+compare byte string
 .Fa b1
 against byte string
 .Fa b2 .
@@ -58,9 +63,11 @@ bytes long.
 .Sh RETURN VALUES
 The
 .Fn memcmp
-function
-returns zero if the two strings are identical,
-otherwise returns the difference between the first two differing bytes
+and
+.Fn bcmp
+functions
+return zero if the two strings are identical,
+otherwise return the difference between the first two differing bytes
 (treated as
 .Vt "unsigned char"
 values, so that
@@ -82,3 +89,15 @@ The
 function
 conforms to
 .St -isoC .
+.Pp
+A
+.Fn bcmp
+function first appeared in
+.Bx 4.2 .
+Its prototype existed previously in
+.In string.h
+before it was moved to
+.In strings.h
+for
+.St -p1003.1-2001
+compliance.

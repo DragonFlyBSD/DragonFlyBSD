@@ -30,7 +30,7 @@ MISRCS+=bcmp.c bcopy.c bzero.c ffs.c ffsl.c ffsll.c fls.c flsl.c flsll.c \
 .endif
 
 .if ${LIB} == "c"
-MAN+=	bcmp.3 bcopy.3 bstring.3 bzero.3 ffs.3 index.3 memccpy.3 memchr.3 \
+MAN+=	bcopy.3 bstring.3 bzero.3 ffs.3 index.3 memccpy.3 memchr.3 \
 	memcmp.3 memcpy.3 memmem.3 memmove.3 memset.3 strcasecmp.3 strcat.3 \
 	strchr.3 strcmp.3 strcoll.3 strcpy.3 strcspn.3 strdup.3 strerror.3 \
 	string.3 strlcpy.3 strlen.3 strmode.3 strpbrk.3 strsep.3 \
@@ -44,6 +44,7 @@ MLINKS+=ffs.3 ffsl.3 \
 	ffs.3 flsll.3
 MLINKS+=index.3 rindex.3
 MLINKS+=memchr.3 memrchr.3
+MLINKS+=memcmp.3 bcmp.3
 MLINKS+=memcpy.3 mempcpy.3
 MLINKS+=strcasecmp.3 strcasecmp_l.3 \
 	strcasecmp.3 strncasecmp.3 \
