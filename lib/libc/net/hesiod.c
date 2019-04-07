@@ -240,7 +240,7 @@ hesiod_resolve(void *context, const char *name, const char *type)
 
 /*ARGSUSED*/
 void
-hesiod_free_list(void *context, char **list)
+hesiod_free_list(void *context __unused, char **list)
 {
 	char  **p;
 

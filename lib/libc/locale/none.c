@@ -210,7 +210,7 @@ _none_wcsnrtombs(char * __restrict dst, const wchar_t ** __restrict src,
  */
 static size_t
 _none_mbintowcr(wchar_t * __restrict dst, const char * __restrict src,
-		size_t dlen, size_t *slen, int flags)
+		size_t dlen, size_t *slen, int flags __unused)
 {
 	size_t i;
 	size_t j;
@@ -251,7 +251,7 @@ _none_mbintowcr(wchar_t * __restrict dst, const char * __restrict src,
  */
 static size_t
 _none_wcrtombin(char * __restrict dst, const wchar_t * __restrict src,
-		size_t dlen, size_t *slen, int flags)
+		size_t dlen, size_t *slen, int flags __unused)
 {
 	size_t i;
 	size_t j;

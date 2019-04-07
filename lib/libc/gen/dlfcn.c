@@ -110,7 +110,7 @@ dlvsym(void *handle __unused,const char *name __unused,
 
 #pragma weak _rtld_thread_init
 void
-_rtld_thread_init(void * li)
+_rtld_thread_init(void * li __unused)
 {
 	_rtld_error(sorry);
 }

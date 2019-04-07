@@ -72,7 +72,7 @@ towctrans(wint_t wc, wctrans_t desc)
  * use the locale, wctrans() must be modified to call __get_locale().
  */
 wctrans_t
-wctrans_l(const char *charclass, locale_t locale)
+wctrans_l(const char *charclass, locale_t locale __unused)
 {
 	struct {
 		const char	*name;

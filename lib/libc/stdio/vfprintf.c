@@ -149,7 +149,7 @@ grouping_print(struct grouping_state *gs, struct io_state *iop,
  * then reset it so that it can be reused.
  */
 static int
-__sprint(FILE *fp, struct __suio *uio, locale_t locale)
+__sprint(FILE *fp, struct __suio *uio, locale_t locale __unused)
 {
 	int err;
 

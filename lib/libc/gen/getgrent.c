@@ -918,7 +918,7 @@ dns_endstate(void *p)
 
 
 static int
-dns_setgrent(void *retval, void *cb_data, va_list ap)
+dns_setgrent(void *retval __unused, void *cb_data __unused, va_list ap __unused)
 {
 	struct dns_state	*st;
 	int			 rv;

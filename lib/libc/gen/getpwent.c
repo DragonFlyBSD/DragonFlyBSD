@@ -1084,7 +1084,7 @@ dns_endstate(void *p)
 
 
 static int
-dns_setpwent(void *retval, void *mdata, va_list ap)
+dns_setpwent(void *retval __unused, void *mdata __unused, va_list ap __unused)
 {
 	struct dns_state	*st;
 	int			 rv;

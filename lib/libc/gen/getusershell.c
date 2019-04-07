@@ -140,7 +140,7 @@ static int	_dns_initshells(void *, void *, va_list);
 
 /*ARGSUSED*/
 static int
-_dns_initshells(void *rv, void *cb_data, va_list ap)
+_dns_initshells(void *rv __unused, void *cb_data __unused, va_list ap __unused)
 {
 	char	  shellname[] = "shells-XXXXX";
 	int	  hsindex, hpi, r;
