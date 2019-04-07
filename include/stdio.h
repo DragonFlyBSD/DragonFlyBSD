@@ -414,7 +414,10 @@ __sfileno(FILE *_fp)
 	return (_p->_fileno);
 }
 
+#ifndef __LIBC_ISTHREADED_DECLARED
+#define __LIBC_ISTHREADED_DECLARED
 extern int __isthreaded;
+#endif
 
 #ifndef __cplusplus
 #define	feof(p)		(!__isthreaded ? __sfeof(p) : (feof)(p))

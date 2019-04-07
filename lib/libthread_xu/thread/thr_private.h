@@ -597,7 +597,8 @@ do {								\
 	(curthr->report_events &&			\
 	 (((curthr)->event_mask | _thread_event_mask ) & e) != 0)
 
-#if !defined(_LIBC_PRIVATE_H_) && !defined(_STDIO_H_)
+#ifndef __LIBC_ISTHREADED_DECLARED
+#define __LIBC_ISTHREADED_DECLARED
 extern int __isthreaded;
 #endif
 
