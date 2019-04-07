@@ -44,12 +44,6 @@ static const ns_src defaultsrc[] = {
 	{ NULL, 0 }
 };
 
-#ifdef NS_CACHING
-extern int __proto_id_func(char *, size_t *, va_list, void *);
-extern int __proto_marshal_func(char *, size_t *, void *, va_list, void *);
-extern int __proto_unmarshal_func(char *, size_t, void *, va_list, void *);
-#endif
-
 static int
 files_getprotobyname(void *retval, void *mdata __unused, va_list ap)
 {
