@@ -121,8 +121,6 @@ extern struct glue __sglue;
 
 __BEGIN_DECLS
 int	__sfvwrite(FILE *, struct __suio *);
-int	__fflush(FILE *);
-int	__ungetc(int, FILE *);
 __END_DECLS
 
 #endif /* _LIBC_PRIV_STDIO_H_ */
