@@ -30,6 +30,9 @@
  * $FreeBSD: head/lib/libc/db/btree/extern.h 165903 2007-01-09 00:28:16Z imp $
  */
 
+#ifndef _DB_BTREE_EXTERN_H_
+#define	_DB_BTREE_EXTERN_H_
+
 int	 __bt_close(DB *);
 int	 __bt_cmp(BTREE *, const DBT *, EPG *);
 int	 __bt_crsrdel(BTREE *, EPGNO *);
@@ -65,3 +68,5 @@ void	 __bt_dump(DB *);
 #ifdef STATISTICS
 void	 __bt_stat(DB *);
 #endif
+
+#endif /* _DB_BTREE_EXTERN_H_ */
