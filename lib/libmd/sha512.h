@@ -40,12 +40,8 @@
 #include <sys/types.h>
 #include <openssl/sha.h>
 
-#define SHA384_BLOCK_LENGTH		128
-#define SHA384_DIGEST_STRING_LENGTH	(SHA384_DIGEST_LENGTH * 2 + 1)
 #define SHA512_BLOCK_LENGTH		128
 #define SHA512_DIGEST_STRING_LENGTH	(SHA512_DIGEST_LENGTH * 2 + 1)
-
-#define SHA384_CTX SHA512_CTX
 
 __BEGIN_DECLS
 char *SHA512_End(SHA512_CTX *, char *);

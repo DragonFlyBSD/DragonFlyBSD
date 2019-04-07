@@ -3517,6 +3517,7 @@ TO_REMOVE+=/usr/include/dev/video/bktr/bktr_i2c.h
 TO_REMOVE+=/usr/share/man/man9/callout_stop_sync.9.gz
 TO_REMOVE+=/usr/include/sys/termios.h
 TO_REMOVE+=/usr/share/zoneinfo/Etc/UCT
+TO_REMOVE+=/usr/share/man/man3/sha384.3.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

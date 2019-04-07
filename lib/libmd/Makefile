@@ -15,7 +15,7 @@ NO_STRICT_ALIASING=
 VERSION_DEF=	${.CURDIR}/../libc/Versions.def
 SYMBOL_MAPS=	${.CURDIR}/Symbol.map
 
-MAN+=	md2.3 md4.3 md5.3 sha.3 sha256.3 sha384.3 sha512.3
+MAN+=	md2.3 md4.3 md5.3 sha.3 sha256.3 sha512.3
 MLINKS+=md2.3 MD2Init.3 md2.3 MD2Update.3 md2.3 MD2Pad.3 md2.3 MD2Final.3
 MLINKS+=md2.3 MD2End.3  md2.3 MD2File.3   md2.3 MD2FileChunk.3
 MLINKS+=md2.3 MD2Data.3
