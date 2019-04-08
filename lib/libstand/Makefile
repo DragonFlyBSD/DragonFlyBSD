@@ -67,8 +67,6 @@ SRCS+=	bcmp.c bcopy.c bzero.c ffs.c index.c memccpy.c memchr.c memcmp.c \
 qdivrem.o:	qdivrem.c
 	${CC} ${CFLAGS:N-flto} -c -o ${.TARGET} ${.IMPSRC}
 .endif
-.PATH:	${LIBSTAND_SRC}/../../sys/libkern
-SRCS+=  icrc32.c
 
 # _setjmp/_longjmp
 .PATH:	${LIBSTAND_SRC}/${LIBSTAND_ARCH}
@@ -77,6 +75,14 @@ SRCS+=  icrc32.c
 CFLAGS+=-I${LIBSTAND_SRC}/../libc/${MACHINE_ARCH}
 .endif
 SRCS+=	_setjmp.S
+
+# decompression functionality from libz
+# NOTE: crc32.c is used from libz and not libkern
+.include "../libz/Makefile.stand"
+
+# iscsi_crc32() for hammer2
+.PATH:	${LIBSTAND_SRC}/../../sys/libkern
+SRCS+=  icrc32.c
 
 # decompression functionality from libbz2
 BZ2DIR=	${LIBSTAND_SRC}/../../contrib/bzip2
@@ -92,8 +98,6 @@ CLEANFILES+=   ${file}
 ${file}: ${BZ2DIR}/${file} ${file}.diff
 	patch -o ${.TARGET} < ${.ALLSRC:M*.diff} ${.ALLSRC:M*.[ch]}
 .endfor
-
-.include "../libz/Makefile.stand"
 
 # io routines
 SRCS+=	closeall.c dev.c ioctl.c nullfs.c stat.c \

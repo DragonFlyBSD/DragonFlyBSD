@@ -1,5 +1,3 @@
-# $DragonFly: src/lib/libz/Makefile.stand,v 1.4 2005/07/21 16:07:41 joerg Exp $
-
 # decompression functionality from libz for libstand
 
 # relative to lib/libstand
