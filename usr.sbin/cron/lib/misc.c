@@ -419,7 +419,7 @@ allowed(char *username)
 
 
 void
-log_it(char *username, int xpid, char *event, char *detail)
+log_it(char *username, int xpid, char *event, const char *detail)
 {
 	PID_T pid = xpid;
 #if defined(LOG_FILE)

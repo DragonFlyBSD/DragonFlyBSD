@@ -171,7 +171,7 @@ typedef	struct _entry {
 #define	DOM_STAR	0x01
 #define	DOW_STAR	0x02
 #define	WHEN_REBOOT	0x04
-#define	RUN_AT	0x08
+#define	RUN_AT		0x08
 #define	NOT_UNTIL	0x10
 	time_t	lastrun;
 } entry;
@@ -211,7 +211,7 @@ void		set_cron_uid(void),
 		free_entry(entry *),
 		acquire_daemonlock(int),
 		skip_comments(FILE *),
-		log_it(char *, int, char *, char *),
+		log_it(char *, int, char *, const char *),
 		log_close(void);
 
 int		job_runqueue(void),
@@ -236,7 +236,7 @@ char		*env_get(char *, char **),
 user		*load_user(int, struct passwd *, char *),
 		*find_user(cron_db *, char *);
 
-entry		*load_entry(FILE *, void (*)(),
+entry		*load_entry(FILE *, void (*)(const char *),
 				 struct passwd *, char **);
 
 FILE		*cron_popen(char *, char *, entry *);

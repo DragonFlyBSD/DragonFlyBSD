@@ -15,7 +15,6 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/cron/user.c,v 1.8 1999/08/28 01:15:50 peter Exp $
- * $DragonFly: src/usr.sbin/cron/cron/user.c,v 1.3 2003/11/16 11:51:14 eirikn Exp $
  */
 
 /* vix 26jan87 [log is in RCS file]
@@ -40,7 +39,7 @@ free_user(user *u)
 }
 
 static void
-log_error(char *msg)
+log_error(const char *msg)
 {
 	log_it(User_name, getpid(), "PARSE", msg);
 }

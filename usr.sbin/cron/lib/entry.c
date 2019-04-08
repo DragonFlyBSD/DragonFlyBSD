@@ -43,7 +43,7 @@ static char	get_list(bitstr_t *, int, int, char *[], int, FILE *),
 		get_number(int *, int, char *[], int, FILE *);
 static int	set_element(bitstr_t *, int, int, int);
 
-static char *ecodes[] =
+static const char *ecodes[] =
 	{
 		"no error",
 		"bad minute",
@@ -81,7 +81,8 @@ free_entry(entry *e)
  * otherwise return a pointer to a new entry.
  */
 entry *
-load_entry(FILE *file, void (*error_func)(), struct passwd *pw, char **envp)
+load_entry(FILE *file, void (*error_func)(const char *),
+	   struct passwd *pw, char **envp)
 {
 	/* this function reads one crontab entry -- the next -- from a file.
 	 * it skips any leading blank lines, ignores comments, and returns
