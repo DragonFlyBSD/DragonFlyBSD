@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/lib/libstand/libstand.3,v 1.5.2.11 2002/06/26 19:14:43 schweikh Exp $
 .\"
-.Dd February 14, 2018
+.Dd April 8, 2019
 .Dt LIBSTAND 3
 .Os
 .Sh NAME
@@ -604,9 +604,9 @@ File access via TFTP.
 File access via NFS.
 .It Va cd9660_fsops
 ISO 9660 (CD-ROM) filesystem.
-.It Va zipfs_fsops
+.It Va gzipfs_fsops
 Stacked filesystem supporting gzipped files.
-When trying the zipfs filesystem,
+When trying the gzipfs filesystem,
 .Nm
 appends
 .Li .gz
@@ -623,7 +623,7 @@ and
 on gzipped files will report an invalid length.
 .It Va bzipfs_fsops
 The same as
-.Va zipfs_fsops ,
+.Va gzipfs_fsops ,
 but for
 .Xr bzip2 1 Ns -compressed
 files.
