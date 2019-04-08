@@ -41,6 +41,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+void _makecontext(ucontext_t *, void (*)(void), int, ...);
+
 typedef void (*func_t)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
 
 /* Prototypes */

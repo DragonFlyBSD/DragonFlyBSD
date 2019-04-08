@@ -42,6 +42,8 @@
 #include "un-namespace.h"
 #include "libc_private.h"
 
+int __system(const char *);
+
 int
 __system(const char *command)
 {

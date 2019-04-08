@@ -29,6 +29,8 @@
 #include <stddef.h>
 #include <string.h>
 
+char *__strchrnul(const char *, int);
+
 char *
 __strchrnul(const char *p, int ch)
 {

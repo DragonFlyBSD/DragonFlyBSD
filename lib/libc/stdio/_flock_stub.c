@@ -43,6 +43,9 @@
 
 #include "local.h"
 
+void _flockfile_debug_stub(FILE *, char *, int);
+int _ftrylockfile(FILE *);
+
 void
 _flockfile(FILE *fp)
 {

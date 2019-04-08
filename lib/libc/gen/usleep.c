@@ -35,6 +35,8 @@
 #include <unistd.h>
 #include "un-namespace.h"
 
+int __usleep(unsigned int);
+
 int
 __usleep(unsigned int useconds)
 {

@@ -32,6 +32,8 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+int __fork(void);
+
 void (*cb_prepare)(void) = 0;
 void (*cb_parent)(void) = 0;
 void (*cb_child)(void) = 0;

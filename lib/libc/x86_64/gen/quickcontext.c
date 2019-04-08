@@ -39,6 +39,8 @@
 
 /* Prototypes */
 
+void _makecontext_quick(ucontext_t *);
+
 static void makectx_quick_wrapper(ucontext_t *ucp, uint64_t *stack_top);
 
 /*

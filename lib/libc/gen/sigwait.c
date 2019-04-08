@@ -28,6 +28,8 @@
 #include <errno.h>
 #include "un-namespace.h"
 
+int _sigwait(const sigset_t *, int *);
+
 extern int __sys_sigwaitinfo(const sigset_t *, siginfo_t *);
 
 int

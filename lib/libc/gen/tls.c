@@ -49,6 +49,7 @@
 
 struct tls_tcb *__libc_allocate_tls(void);
 void __libc_free_tls(struct tls_tcb *tcb);
+void __libc_call_init(void);
 
 #if !defined(RTLD_STATIC_TLS_VARIANT_II)
 #error "Unsupported TLS layout"

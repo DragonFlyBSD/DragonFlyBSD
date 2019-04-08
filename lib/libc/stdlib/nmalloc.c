@@ -134,6 +134,13 @@
 #include "un-namespace.h"
 
 
+void __free(void *);
+void *__malloc(size_t);
+void *__calloc(size_t, size_t);
+void *__realloc(void *, size_t);
+void *__aligned_alloc(size_t, size_t);
+int __posix_memalign(void **, size_t, size_t);
+
 /*
  * Linked list of large allocations
  */

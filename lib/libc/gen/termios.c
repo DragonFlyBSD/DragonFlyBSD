@@ -46,6 +46,8 @@
 #include <unistd.h>
 #include "un-namespace.h"
 
+int __tcdrain(int);
+
 int
 tcgetattr(int fd, struct termios *t)
 {

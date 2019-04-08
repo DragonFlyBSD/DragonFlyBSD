@@ -40,6 +40,8 @@
 #include <string.h>
 #include <ctype.h>
 
+const char *__fmtcheck(const char *, const char *);
+
 enum __e_fmtcheck_types {
 	FMTCHECK_START,
 	FMTCHECK_SHORT,

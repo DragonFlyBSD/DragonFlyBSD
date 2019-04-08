@@ -38,6 +38,8 @@
 #include <sys/resource.h>
 #include "un-namespace.h"
 
+pid_t __waitpid(pid_t, int *, int);
+
 pid_t
 __waitpid(pid_t pid, int *istat, int options)
 {

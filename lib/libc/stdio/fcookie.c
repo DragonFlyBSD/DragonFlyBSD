@@ -37,6 +37,8 @@
 
 #include "priv_stdio.h"
 
+void *_fcookie(FILE *);
+
 void *
 _fcookie(FILE *fp)
 {

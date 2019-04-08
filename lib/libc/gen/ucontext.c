@@ -36,6 +36,9 @@
 #include <signal.h>
 #include "un-namespace.h"
 
+int _swapcontext(ucontext_t *, const ucontext_t *);
+int _setcontext(const ucontext_t *);
+
 /*
  * We need to block most signals during a context switch so we do not
  * dispatch a signal vector during a context switch.
