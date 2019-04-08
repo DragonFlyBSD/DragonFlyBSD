@@ -3,11 +3,11 @@
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -30,7 +30,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  * $FreeBSD: src/lib/libkvm/kvm_getswapinfo.c,v 1.10.2.4 2003/01/12 09:23:13 dillon Exp $
  */
 
@@ -114,9 +114,9 @@ static int kvm_getswapinfo_sysctl(kvm_t *kd, struct kvm_swap *swap_ary,
 
 int
 kvm_getswapinfo(
-	kvm_t *kd, 
+	kvm_t *kd,
 	struct kvm_swap *swap_ary,
-	int swap_max, 
+	int swap_max,
 	int flags
 ) {
 	int i, ti, swi;
@@ -241,7 +241,7 @@ nlist_init(kvm_t *kd)
 
 static int
 scanradix(
-	blmeta_t *scan, 
+	blmeta_t *scan,
 	blmeta_t *scan_cache,
 	swblk_t blk,
 	int64_t radix,

@@ -147,7 +147,7 @@ kvm_firstlwp(kvm_t *kd, struct lwp *lwp, struct proc *proc)
 }
 
 /*
- * If the current element is the left side of the parent the next element 
+ * If the current element is the left side of the parent the next element
  * will be a left side traversal of the parent's right side.  If the parent
  * has no right side the next element will be the parent.
  *
@@ -587,7 +587,7 @@ kvm_argv(kvm_t *kd, pid_t pid, u_long addr, int narg, int maxcnt)
 		return (0);
 
 	/*
-	 * kd->argv : work space for fetching the strings from the target 
+	 * kd->argv : work space for fetching the strings from the target
 	 *            process's space, and is converted for returning to caller
 	 */
 	if (kd->argv == 0) {
@@ -845,7 +845,7 @@ kvm_getargv(kvm_t *kd, const struct kinfo_proc *kp, int nchr)
 
 	if (!buflen) {
 		bufsz = sizeof(buflen);
-		i = sysctlbyname("kern.ps_arg_cache_limit", 
+		i = sysctlbyname("kern.ps_arg_cache_limit",
 		    &buflen, &bufsz, NULL, 0);
 		if (i == -1) {
 			buflen = 0;

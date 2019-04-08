@@ -236,7 +236,7 @@ _kvm_open(kvm_t *kd, const char *uf, const char *mf, int flag, char *errout)
 				_kvm_syserr(kd, kd->program, "empty file");
 				goto failed;
 			}
-			
+
 			/*
 			 * This is a crash dump.
 			 * Initialize the virtual address translation machinery,
