@@ -41,6 +41,7 @@ TARGET_PROFLIBDIR?=	${PROFLIBDIR:S!/profile$!/priv/profile!}
 TARGET_SHLIBDIR?=	${SHLIBDIR}/priv
 .endif
 
+PRIVATELIB_CFLAGS?=	-I${_SHLIBDIRPREFIX}/usr/include/priv
 PRIVATELIB_LDFLAGS?=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 # prefer .s to a .c, add .po, remove stuff not used in the BSD libraries

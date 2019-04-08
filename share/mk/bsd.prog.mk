@@ -11,7 +11,7 @@ CFLAGS+=${COPTS} ${DEBUG_FLAGS}
 CFLAGS+=${CRUNCH_CFLAGS}
 .endif
 
-PRIVATELIB_BLDFLAGS?=	-rpath /lib/priv -L /usr/lib/priv
+PRIVATELIB_CFLAGS?=	-I${_SHLIBDIRPREFIX}/usr/include/priv
 PRIVATELIB_LDFLAGS?=	-rpath /lib/priv -L ${_SHLIBDIRPREFIX}/usr/lib/priv
 
 .if !defined(DEBUG_FLAGS)
