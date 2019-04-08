@@ -1176,6 +1176,11 @@ prog_makefile_rules(FILE *outmk, prog_t *p)
 	    "int _crunched_%s_stub(int argc, char **argv, char **envp)"
 	    "{return main(argc,argv,envp);}\" >%s_stub.c\n",
 	    p->ident, p->name);
+	fprintf(outmk, "%s_stub.o: %s_stub.c\n",
+	    p->name, p->name);
+	fprintf(outmk, "\t${CC} ${CFLAGS:N-flto*} -c %s_stub.c -o %s_stub.o",
+	    p->name, p->name);
+	fprintf(outmk, "\n");
 	fprintf(outmk, "%s.lo: %s_stub.o ${%s_OBJPATHS}",
 	    p->name, p->name, p->ident);
 	if (p->libs_int)
