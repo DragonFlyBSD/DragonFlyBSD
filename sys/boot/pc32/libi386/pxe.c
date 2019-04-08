@@ -413,6 +413,24 @@ pxe_perror(int err)
 	return;
 }
 
+/* To prevent LTO warnings. Must match libstand/nfs.c struct. */
+struct nfsv2_fattrs {
+	n_long	fa_type;
+	n_long	fa_mode;
+	n_long	fa_nlink;
+	n_long	fa_uid;
+	n_long	fa_gid;
+	n_long	fa_size;
+	n_long	fa_blocksize;
+	n_long	fa_rdev;
+	n_long	fa_blocks;
+	n_long	fa_fsid;
+	n_long	fa_fileid;
+	struct nfsv2_time fa_atime;
+	struct nfsv2_time fa_mtime;
+	struct nfsv2_time fa_ctime;
+};
+
 /*
  * Reach inside the libstand NFS code and dig out an NFS handle
  * for the root filesystem.  If there is no nfs handle but a NFS root
@@ -425,7 +443,7 @@ struct nfs_iodesc {
 	off_t	off;
 	u_char	fh[NFS_FHSIZE];
 	/* structure truncated here */
-/* XXX: this does not match one in libstand/nfs.c and causes issues with LTO. */
+	struct nfsv2_fattrs unused;	/* unused */
 };
 extern struct	nfs_iodesc nfs_root_node;
 
