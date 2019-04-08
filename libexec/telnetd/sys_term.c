@@ -996,7 +996,7 @@ startslave(char *host, int autologin, char *autoname)
 		autologin = 0;
 
 	if (autologin < auth_level) {
-		fatal(net, "Authorization failed");
+		fatalmsg(net, "Authorization failed");
 		exit(1);
 	}
 #endif

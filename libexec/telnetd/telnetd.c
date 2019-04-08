@@ -642,13 +642,13 @@ doit(struct sockaddr *who)
 #ifndef	convex
 	pty = getpty(&ptynum);
 	if (pty < 0)
-		fatal(net, "All network ports in use");
+		fatalmsg(net, "All network ports in use");
 #else
 	for (;;) {
 		char *lp;
 
 		if ((lp = getpty()) == NULL)
-			fatal(net, "Out of ptys");
+			fatalmsg(net, "Out of ptys");
 
 		if ((pty = open(lp, 2)) >= 0) {
 			strlcpy(line,lp,sizeof(line));
@@ -661,7 +661,7 @@ doit(struct sockaddr *who)
 	/* get name of connected client */
 	if (realhostname_sa(remote_hostname, sizeof(remote_hostname) - 1,
 	    who, who->sa_len) == HOSTNAME_INVALIDADDR && registerd_host_only)
-		fatal(net, "Couldn't resolve your address into a host name.\r\n\
+		fatalmsg(net, "Couldn't resolve your address into a host name.\r\n\
 	Please contact your net administrator");
 	remote_hostname[sizeof(remote_hostname) - 1] = '\0';
 

@@ -93,7 +93,7 @@ extern void
 	dooption(int),
 	dontoption(int),
 	edithost(char *, char *),
-	fatal(int, const char *) __dead2,
+	fatalmsg(int, const char *) __dead2,
 	fatalperror(int, const char *) __dead2,
 	get_slc_defaults(void),
 	init_env(void),

@@ -315,7 +315,7 @@ netflush(void)
 
 
 void
-fatal(int f, const char *msg)
+fatalmsg(int f, const char *msg)
 {
 	char buf[BUFSIZ];
 
@@ -341,7 +341,7 @@ fatalperror(int f, const char *msg)
 	char buf[BUFSIZ];
 
 	(void) snprintf(buf, sizeof(buf), "%s: %s", msg, strerror(errno));
-	fatal(f, buf);
+	fatalmsg(f, buf);
 }
 
 char editedhost[32];
