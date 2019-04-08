@@ -479,11 +479,11 @@ dovmstat(u_int interval, int reps)
 		if (sysctlbyname("vm.vmmeter", &vmm, &vmm_size, NULL, 0)) {
 			perror("sysctlbyname: vm.vmmeter");
 			exit(1);
-		} 
+		}
 		if (sysctlbyname("vm.vmtotal", &total, &vmt_size, NULL, 0)) {
 			perror("sysctlbyname: vm.vmtotal");
 			exit(1);
-		} 
+		}
 		if (dooutput) {
 			printf("%3ld %2ld %2ld",
 			       total.t_rq - 1,
@@ -752,7 +752,7 @@ dosum(void)
 	printf("%9lu pages free\n", vms.v_free_count);
 	printf("%9u bytes per page\n", vms.v_page_size);
 	printf("%9u global smp invltlbs\n", vmm.v_smpinvltlb);
-	
+
 	if ((nch_tmp = malloc(nch_size)) == NULL) {
 		perror("malloc");
 		exit(1);
@@ -768,7 +768,7 @@ dosum(void)
 			}
 		}
 	}
-	
+
 	cpucnt = nch_size / sizeof(struct nchstats);
 	kvm_nch_cpuagg(nch_tmp, &nchstats, cpucnt);
 
@@ -925,13 +925,13 @@ dointr(void)
 				}
 				infop = irqinfo;
 			}
-			printf("%-*.*s %11lu %10lu\n", 
+			printf("%-*.*s %11lu %10lu\n",
 				nwidth, nwidth, infop,
 				intrcnt[i], intrcnt[i] / uptime);
 		}
 		inttotal += intrcnt[i];
 	}
-	printf("%-*.*s %11llu %10llu\n", 
+	printf("%-*.*s %11llu %10llu\n",
 		nwidth, nwidth, "Total",
 		(long long)inttotal, (long long)(inttotal / uptime));
 }
@@ -980,9 +980,9 @@ domem(void)
 		if (sizeof(kmemstats[0]) != kvm_read(kd, (u_long)kmsp,
 		    &kmemstats[nkms], sizeof(kmemstats[0])))
 			err(1, "kvm_read(%p)", (void *)kmsp);
-		if (sizeof(buf) !=  kvm_read(kd, 
+		if (sizeof(buf) !=  kvm_read(kd,
 	            (u_long)kmemstats[nkms].ks_shortdesc, buf, sizeof(buf)))
-			err(1, "kvm_read(%p)", 
+			err(1, "kvm_read(%p)",
 			    kmemstats[nkms].ks_shortdesc);
 		buf[sizeof(buf) - 1] = '\0';
 		kmemstats[nkms].ks_shortdesc = strdup(buf);
