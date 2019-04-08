@@ -159,6 +159,8 @@ typedef	struct _entry {
 	gid_t		gid;
 #ifdef LOGIN_CAP
 	char            *class;
+#else
+	char            *unused;
 #endif
 	char		**envp;
 	char		*cmd;
