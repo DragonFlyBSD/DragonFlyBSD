@@ -10,7 +10,7 @@ SRCS=	hammer.c ondisk.c blockmap.c cache.c misc.c cycle.c uuid.c \
 MAN=	hammer.8
 
 CFLAGS+= -I${.CURDIR}/../../sys
-CFLAGS+= -I${.CURDIR}/../../crypto/libressl/include
+CFLAGS+= -I${_SHLIBDIRPREFIX}/usr/include/priv
 LDADD=	-lm -lutil -lhammer -lprivate_crypto
 DPADD=	${LIBM} ${LIBUTIL} ${LIBHAMMER} ${LIBCRYPTO}
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
