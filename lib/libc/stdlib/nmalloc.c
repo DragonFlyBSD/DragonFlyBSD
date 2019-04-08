@@ -479,7 +479,7 @@ slgd_unlock(slglobaldata_t slgd)
 }
 
 static __inline void
-depot_lock(magazine_depot *dp)
+depot_lock(magazine_depot *dp __unused)
 {
 	if (__isthreaded)
 		_SPINLOCK(&depot_spinlock);
@@ -490,7 +490,7 @@ depot_lock(magazine_depot *dp)
 }
 
 static __inline void
-depot_unlock(magazine_depot *dp)
+depot_unlock(magazine_depot *dp __unused)
 {
 	if (__isthreaded)
 		_SPINUNLOCK(&depot_spinlock);
