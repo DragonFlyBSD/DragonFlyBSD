@@ -528,8 +528,8 @@ nbp_name_print(const struct atNBPtuple *tp, register const u_char *ep)
 #define HASHNAMESIZE 4096
 
 struct hnamemem {
-	int addr;
-	char *name;
+	u_int32_t addr;
+	const char *name;
 	struct hnamemem *nxt;
 };
 
