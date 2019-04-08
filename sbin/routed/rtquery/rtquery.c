@@ -48,6 +48,7 @@ char copyright[] =
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <md5.h>
 
 #if !defined(__NetBSD__)
 static char sccsid[] __attribute__((unused))= "@(#)query.c	8.1 (Berkeley) 6/5/93";
@@ -56,17 +57,6 @@ __RCSID("$NetBSD: rtquery.c,v 1.10 1999/02/23 10:47:41 christos Exp $");
 #endif
 
 #define _HAVE_SIN_LEN
-
-#define MD5_DIGEST_LEN 16
-typedef struct {
-	u_int32_t state[4];		/* state (ABCD) */
-	u_int32_t count[2];		/* # of bits, modulo 2^64 (LSB 1st) */
-	unsigned char buffer[64];	/* input buffer */
-} MD5_CTX;
-extern void MD5Init(MD5_CTX*);
-extern void MD5Update(MD5_CTX*, u_char*, u_int);
-extern void MD5Final(u_char[MD5_DIGEST_LEN], MD5_CTX*);
-
 
 #define	WTIME	15		/* Time to wait for all responses */
 #define	STIME	(250*1000)	/* usec to wait for another response */

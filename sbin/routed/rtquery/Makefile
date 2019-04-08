@@ -6,5 +6,6 @@ MAN=	rtquery.8
 LDADD+=	-lmd
 DPADD+=	${LIBMD}
 NO_WARRAY_BOUNDS=
+CFLAGS+=	-I${.CURDIR}/../../../crypto/libressl/include
 
 .include <bsd.prog.mk>
