@@ -31,7 +31,6 @@
  * $FreeBSD: head/lib/libc/stdio/fgetwln.c 227753 2011-11-20 14:45:42Z theraven $
  */
 
-
 #include "namespace.h"
 #include <stdio.h>
 #include <wchar.h>
@@ -39,6 +38,8 @@
 #include "libc_private.h"
 #include "local.h"
 #include "xlocale_private.h"
+
+wchar_t *fgetwln_l(FILE * __restrict, size_t *, locale_t);
 
 wchar_t *
 fgetwln_l(FILE * __restrict fp, size_t *lenp, locale_t locale)

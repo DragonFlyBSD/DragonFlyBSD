@@ -55,6 +55,7 @@ static int	s_scale;
 
 #define ERR(s) _write(2, s, sizeof(s))
 
+void	_mcleanup(void);
 void	moncontrol(int);
 static int hertz(void);
 

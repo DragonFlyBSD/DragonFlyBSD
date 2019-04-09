@@ -45,6 +45,8 @@
 #include "local.h"
 #include "libc_private.h"
 
+size_t __sreadahead(FILE *);
+
 size_t
 __sreadahead(FILE *fp)
 {

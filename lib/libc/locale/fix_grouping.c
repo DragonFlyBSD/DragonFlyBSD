@@ -26,10 +26,11 @@
  * $FreeBSD: head/lib/libc/locale/fix_grouping.c 116875 2003-06-26 10:46:16Z phantom $
  */
 
-
 #include <ctype.h>
 #include <limits.h>
 #include <stddef.h>
+
+const char *__fix_locale_grouping_str(const char *);
 
 static const char nogrouping[] = { CHAR_MAX, '\0' };
 

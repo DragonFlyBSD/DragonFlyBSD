@@ -31,6 +31,13 @@
 #include <link.h>
 #include <stddef.h>
 #include <string.h>
+#include "libc_private.h"
+
+struct dl_phdr_info build_phdr_info(void);
+void _rtld_thread_childfork(void);
+void _rtld_thread_init(void *);
+void _rtld_thread_postfork(void);
+void _rtld_thread_prefork(void);
 
 extern char **environ;
 

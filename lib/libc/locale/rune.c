@@ -50,6 +50,8 @@
 
 #include "runefile.h"
 
+_RuneLocale *_Read_RuneMagi(const char *);
+
 _RuneLocale *
 _Read_RuneMagi(const char *fname)
 {

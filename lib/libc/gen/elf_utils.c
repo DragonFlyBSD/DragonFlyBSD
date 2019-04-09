@@ -28,6 +28,8 @@
 
 #include <link.h>
 
+int __elf_phdr_match_addr(struct dl_phdr_info *, void *);
+
 int
 __elf_phdr_match_addr(struct dl_phdr_info *phdr_info, void *addr)
 {
