@@ -34,7 +34,7 @@
 .\"     @(#)malloc.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdlib/malloc.3,v 1.73 2007/06/15 22:32:33 jasone Exp $
 .\"
-.Dd January 12, 2019
+.Dd April 11, 2019
 .Dt MALLOC 3
 .Os
 .Sh NAME
@@ -42,7 +42,8 @@
 .Nm calloc ,
 .Nm realloc ,
 .Nm reallocf ,
-.Nm free
+.Nm free ,
+.Nm freezero
 .Nd general purpose memory allocation functions
 .Sh LIBRARY
 .Lb libc
@@ -58,6 +59,8 @@
 .Fn reallocf "void *ptr" "size_t size"
 .Ft void
 .Fn free "void *ptr"
+.Ft void
+.Fn freezero "void *ptr" "size_t size"
 .Sh DESCRIPTION
 The
 .Fn malloc
@@ -136,6 +139,17 @@ If
 is
 .Dv NULL ,
 no action occurs.
+.Pp
+The
+.Fn freezero
+function is similar to the
+.Fn free
+function.
+Cached free objects are cleared with
+.Xr explicit_bzero 3 .
+The
+.Fa size
+argument must be equal to or smaller than the size of the earlier allocation.
 .Sh IMPLEMENTATION NOTES
 .Dx Ap s
 .Nm
@@ -328,6 +342,13 @@ The
 .Fn reallocf
 function first appeared in
 .Fx 3.0 .
+.Pp
+The
+.Fn freezero
+function appeared in
+.Ox 6.2
+and
+.Dx 5.6 .
 .Pp
 .Dx Ap s
 .Nm

@@ -9,7 +9,8 @@ CMAPS+=	${.CURDIR}/stdlib/Symbol.map
 MISRCS+=a64l.c abort.c abs.c atexit.c \
 	atof.c atoi.c atol.c atoll.c \
 	bsearch.c cxa_thread_atexit_impl.c \
-	div.c exit.c getenv.c getopt.c getopt_long.c \
+	div.c exit.c freezero.c \
+	getenv.c getopt.c getopt_long.c \
 	getsubopt.c hcreate.c heapsort.c imaxabs.c imaxdiv.c \
 	insque.c l64a.c labs.c ldiv.c llabs.c lldiv.c lsearch.c \
 	merge.c ptsname.c qsort.c qsort_r.c quick_exit.c \
@@ -64,6 +65,7 @@ MLINKS+=insque.3 remque.3
 MLINKS+=lsearch.3 lfind.3
 MLINKS+=malloc.3 calloc.3 \
 	malloc.3 free.3 \
+	malloc.3 freezero.3 \
 	malloc.3 realloc.3 \
 	malloc.3 reallocf.3
 MLINKS+=posix_memalign.3 aligned_alloc.3

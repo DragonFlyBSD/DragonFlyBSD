@@ -286,6 +286,7 @@ char	*devname(dev_t, mode_t);
 char	*devname_r(dev_t, mode_t, char *, size_t);
 char	*fdevname(int);
 int	 fdevname_r(int, char *, size_t);
+void	 freezero(void *, size_t);
 int	 getloadavg(double [], int);
 const char *
 	 getprogname(void);
