@@ -96,6 +96,8 @@ DF404.0 {
 
 DF506.0 {
     explicit_bzero;
+    timingsafe_bcmp;
+    timingsafe_memcmp;
 };
 
 DFprivate_1.0 {
