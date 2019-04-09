@@ -94,6 +94,10 @@ DF404.0 {
     wmemset;
 };
 
+DF506.0 {
+    explicit_bzero;
+};
+
 DFprivate_1.0 {
     __strchrnul;
     __strtok_r;

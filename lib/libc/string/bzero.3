@@ -31,11 +31,12 @@
 .\"	@(#)bzero.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: head/lib/libc/string/bzero.3 251069 2013-05-28 20:57:40Z emaste $
 .\"
-.Dd June 4, 1993
+.Dd April 11, 2019
 .Dt BZERO 3
 .Os
 .Sh NAME
-.Nm bzero
+.Nm bzero ,
+.Nm explicit_bzero
 .Nd write zeroes to a byte string
 .Sh LIBRARY
 .Lb libc
@@ -43,11 +44,12 @@
 .In strings.h
 .Ft void
 .Fn bzero "void *b" "size_t len"
+.Ft void
+.Fn explicit_bzero "void *b" "size_t len"
 .Sh DESCRIPTION
 The
 .Fn bzero
-function
-writes
+function writes
 .Fa len
 zero bytes to the string
 .Fa b .
@@ -56,14 +58,30 @@ If
 is zero,
 .Fn bzero
 does nothing.
+.Pp
+The
+.Fn explicit_bzero
+variant behaves the same, but will not be removed by a compiler's dead store
+optimization pass, making it useful for clearing sensitive memory such as a
+password.
 .Sh SEE ALSO
 .Xr memset 3 ,
 .Xr swab 3
-.Sh HISTORY
-A
+.Sh STANDARDS
+The
 .Fn bzero
-function
-appeared in
+function conforms to the X/Open System Interfaces option of the
+.St -p1003.1-2004
+specification.
+It was removed from the standard in
+.St -p1003.1-2008 ,
+which recommends using
+.Xr memset 3
+instead.
+.Sh HISTORY
+The
+.Fn bzero
+function appeared in
 .Bx 4.3 .
 Its prototype existed previously in
 .In string.h
@@ -72,3 +90,10 @@ before it was moved to
 for
 .St -p1003.1-2001
 compliance.
+.Pp
+The
+.Fn explicit_bzero
+function first appeared in
+.Ox 5.5
+and
+.Dx 5.6 .
