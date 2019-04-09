@@ -15,7 +15,7 @@ MISRCS+=a64l.c abort.c abs.c atexit.c \
 	insque.c l64a.c labs.c ldiv.c llabs.c lldiv.c lsearch.c \
 	merge.c ptsname.c qsort.c qsort_r.c quick_exit.c \
 	radixsort.c rand.c random.c \
-	reallocarray.c reallocf.c realpath.c remque.c \
+	reallocarray.c reallocf.c realpath.c recallocarray.c remque.c \
 	strfmon.c strsuftoll.c strtoimax.c \
 	strtol.c strtoll.c strtonum.c strtoq.c strtoul.c strtoull.c \
 	strtoumax.c strtouq.c system.c tdelete.c tfind.c tsearch.c twalk.c
@@ -75,6 +75,7 @@ MLINKS+=qsort.3 heapsort.3 \
 	qsort.3 mergesort.3 \
 	qsort.3 qsort_r.3
 MLINKS+=radixsort.3 sradixsort.3
+MLINKS+=reallocarray.3 recallocarray.3
 MLINKS+=rand.3 rand_r.3 \
 	rand.3 srand.3 \
 	rand.3 sranddev.3

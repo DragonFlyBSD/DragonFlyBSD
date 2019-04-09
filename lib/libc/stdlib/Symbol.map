@@ -121,6 +121,7 @@ DF506.0 {
     __cxa_thread_atexit_impl;
     freezero;
     reallocarray;
+    recallocarray;
 };
 
 /*

@@ -28,25 +28,27 @@
 .\"
 .\" $FreeBSD: head/lib/libc/stdlib/reallocarray.3 282472 2015-05-05 10:44:17Z pluknet $
 .\"
-.Dd January 12, 2019
+.Dd April 11, 2019
 .Dt REALLOCARRAY 3
 .Os
 .Sh NAME
-.Nm reallocarray
-.Nd memory reallocation function
+.Nm reallocarray ,
+.Nm recallocarray
+.Nd memory reallocation functions
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
 .In stdlib.h
 .Ft void *
 .Fn reallocarray "void *ptr" "size_t number" "size_t size"
+.Ft void *
+.Fn recallocarray "void *ptr" "size_t oldnmemb" "size_t nmemb" "size_t size"
 .Sh DESCRIPTION
 The
 .Fn reallocarray
 function is similar to the
 .Fn realloc
-function
-except it operates on
+function except it operates on
 .Fa number
 members of size
 .Fa size
@@ -54,6 +56,13 @@ and checks for integer overflow in the calculation
 .Fa number
 *
 .Fa size .
+.Pp
+The
+.Fn recallocarray
+function is similar to
+.Fn reallocarray
+except it ensures newly allocated memory is cleared similar to
+.Fn calloc .
 .Sh RETURN VALUES
 The
 .Fn reallocarray
@@ -137,6 +146,13 @@ if ((newp = reallocarray(p, num, size)) == NULL) {
 The
 .Fn reallocarray
 function first appeared in
-.Ox 5.6
+.Ox
+/
+.Dx 5.6 .
+.Pp
+The
+.Fn recallocarray
+function appeared in
+.Ox 6.1
 and
-.Fx 11.0 .
+.Dx 5.6 .
