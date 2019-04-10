@@ -69,13 +69,11 @@ inet6_rthdr_lasthop(struct cmsghdr *cmsg __unused, unsigned int flags __unused)
 	return (-1); /* type not supported */
 }
 
-#if 0
 int
 inet6_rthdr_reverse(const struct cmsghdr *in __unused, struct cmsghdr *out __unused)
 {
 	return -1; /* type not supported */
 }
-#endif
 
 int
 inet6_rthdr_segments(const struct cmsghdr *cmsg __unused)

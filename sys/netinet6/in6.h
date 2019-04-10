@@ -650,9 +650,7 @@ struct in6_addr *inet6_rthdr_getaddr (struct cmsghdr *, int);
 int		 inet6_rthdr_getflags (const struct cmsghdr *, int);
 struct cmsghdr	*inet6_rthdr_init (void *, int);
 int		 inet6_rthdr_lasthop (struct cmsghdr *, unsigned int);
-#if 0					/* not implemented yet */
 int		 inet6_rthdr_reverse (const struct cmsghdr *, struct cmsghdr *);
-#endif
 int		 inet6_rthdr_segments (const struct cmsghdr *);
 size_t		 inet6_rthdr_space (int, int);
 __END_DECLS
