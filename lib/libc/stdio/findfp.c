@@ -157,35 +157,6 @@ found:
 }
 
 /*
- * XXX.  Force immediate allocation of internal memory.  Not used by stdio,
- * but documented historically for certain applications.  Bad applications.
- */
-__warn_references(f_prealloc, 
-	"warning: this program uses f_prealloc(), which is not recommended.");
-
-void
-f_prealloc(void)
-{
-	struct glue *g;
-	int n;
-
-	n = getdtablesize() - FOPEN_MAX + 20;		/* 20 for slop. */
-	/*
-	 * It should be safe to walk the list without locking it;
-	 * new nodes are only added to the end and none are ever
-	 * removed.
-	 */
-	for (g = &__sglue; (n -= g->niobs) > 0 && g->next; g = g->next)
-		/* void */;
-	if ((n > 0) && ((g = moreglue(n)) != NULL)) {
-		THREAD_LOCK();
-		SET_GLUE_PTR(lastglue->next, g);
-		lastglue = g;
-		THREAD_UNLOCK();
-	}
-}
-
-/*
  * exit() calls _cleanup() through *__cleanup, set whenever we
  * open or buffer a file.  This chicanery is done so that programs
  * that do not use stdio need not link it all in.
