@@ -85,6 +85,11 @@ des_block *(*__key_gendes_LOCAL)() = NULL;
 
 static int key_call( u_long, xdrproc_t, void *, xdrproc_t, void *);
 
+int key_decryptsession_pk(char *, netobj *, des_block *);
+int key_encryptsession_pk(char *, netobj *, des_block *);
+int key_get_conv(char *, des_block *);
+int key_setnet(struct key_netstarg *);
+
 int
 key_setsecret(const char *secretkey)
 {

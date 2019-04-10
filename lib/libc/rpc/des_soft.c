@@ -25,9 +25,10 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
  * POSSIBILITY OF SUCH DAMAGE.
- *
- * $DragonFly: src/lib/libc/rpc/des_soft.c,v 1.2 2005/11/13 12:27:04 swildner Exp $
  */
+
+#include <rpc/des_crypt.h>
+
 /*
  * Table giving odd parity in the low bit for ASCII characters
  */
