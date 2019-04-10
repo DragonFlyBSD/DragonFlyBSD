@@ -72,8 +72,8 @@ int __get_locale_str(int category, const char *str, char * const res);
 int __detect_path_locale(void);
 
 struct _xlocale __xlocale_global_locale = {
-	{0},
-	{
+	.header = {0},
+	.components = {
 		&__xlocale_global_collate,
 		&__xlocale_global_ctype,
 		&__xlocale_global_monetary,
@@ -81,23 +81,23 @@ struct _xlocale __xlocale_global_locale = {
 		&__xlocale_global_time,
 		&__xlocale_global_messages
 	},
-	1,
-	0,
-	1,
-	0
+	.monetary_locale_changed = 1,
+	.using_monetary_locale = 0,
+	.numeric_locale_changed = 1,
+	.using_numeric_locale = 0
 };
 
 struct _xlocale __xlocale_C_locale = {
-	{0},
-	{
+	.header = {0},
+	.components = {
 		&__xlocale_C_collate,
 		&__xlocale_C_ctype,
 		0, 0, 0, 0
 	},
-	1,
-	0,
-	1,
-	0
+	.monetary_locale_changed = 1,
+	.using_monetary_locale = 0,
+	.numeric_locale_changed = 1,
+	.using_numeric_locale = 0
 };
 
 static void*(*constructors[])(const char*, locale_t) =

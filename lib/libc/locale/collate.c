@@ -53,11 +53,13 @@
 #include "libc_private.h"
 
 struct xlocale_collate __xlocale_global_collate = {
-	{{0}, "C"}, 1, 0, 0, 0
+	.header = {{0}, "C"},
+	.__collate_load_error = 1
 };
 
 struct xlocale_collate __xlocale_C_collate = {
-	{{0}, "C"}, 1, 0, 0, 0
+	.header = {{0}, "C"},
+	.__collate_load_error = 1
 };
 
 static int
