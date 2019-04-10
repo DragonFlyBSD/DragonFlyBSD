@@ -496,14 +496,8 @@ int	 nice(int);
 int	 setpgrp(pid_t _pid, pid_t _pgrp); /* obsoleted by setpgid() */
 int	 setregid(gid_t, gid_t);
 int	 setreuid(uid_t, uid_t);
-
-#ifndef _SWAB_DECLARED
-#define _SWAB_DECLARED
 void	 swab(const void * __restrict, void * __restrict, ssize_t);
-#endif /* _SWAB_DECLARED */
-
 void	 sync(void);
-
 #endif /* __XSI_VISIBLE */
 
 #if __BSD_VISIBLE || (__XSI_VISIBLE && __XSI_VISIBLE < 600)
