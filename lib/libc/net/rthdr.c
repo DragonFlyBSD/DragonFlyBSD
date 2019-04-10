@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/rthdr.c,v 1.2.2.1 2002/04/28 05:40:24 suz Exp $
- * $DragonFly: src/lib/libc/net/rthdr.c,v 1.6 2008/09/04 09:08:21 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -49,49 +48,51 @@
 size_t
 inet6_rthdr_space(int type __unused, int seg __unused)
 {
-	return(0); /* type not suppported */
+	return(0); /* type not supported */
 }
 
 struct cmsghdr *
 inet6_rthdr_init(void *bp __unused, int type __unused)
 {
-	return(NULL); /* type not suppported */
+	return(NULL); /* type not supported */
 }
 
 int
 inet6_rthdr_add(struct cmsghdr *cmsg __unused, const struct in6_addr *addr __unused, u_int flags __unused)
 {
-	return(-1); /* type not suppported */
+	return(-1); /* type not supported */
 }
 
 int
 inet6_rthdr_lasthop(struct cmsghdr *cmsg __unused, unsigned int flags __unused)
 {
-	return (-1); /* type not suppported */
+	return (-1); /* type not supported */
 }
 
+#if 0
 int
 inet6_rthdr_reverse(const struct cmsghdr *in __unused, struct cmsghdr *out __unused)
 {
-	return -1; /* type not suppported */
+	return -1; /* type not supported */
 }
+#endif
 
 int
 inet6_rthdr_segments(const struct cmsghdr *cmsg __unused)
 {
-	return -1; /* type not suppported */
+	return -1; /* type not supported */
 }
 
 struct in6_addr *
 inet6_rthdr_getaddr(struct cmsghdr *cmsg __unused, int idx __unused)
 {
-	return NULL; /* type not suppported */
+	return NULL; /* type not supported */
 }
 
 int
 inet6_rthdr_getflags(const struct cmsghdr *cmsg __unused, int idx __unused)
 {
-	return -1; /* type not suppported */
+	return -1; /* type not supported */
 }
 
 /*
@@ -100,7 +101,7 @@ inet6_rthdr_getflags(const struct cmsghdr *cmsg __unused, int idx __unused)
 socklen_t
 inet6_rth_space(int type __unused, int segments __unused)
 {
-	return (0);	/* type not suppported */
+	return (0);	/* type not supported */
 }
 
 void *
