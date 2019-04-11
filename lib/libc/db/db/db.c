@@ -128,14 +128,10 @@ void
 __dbpanic(DB *dbp)
 {
 	/* The only thing that can succeed is a close. */
-	dbp->del = (int (*)(const struct __db *, const DBT *,
-	    unsigned int))__dberr_del;
-	dbp->fd = (int (*)(const struct __db *))__dberr_fd;
-	dbp->get = (int (*)(const struct __db *, const DBT *, DBT *,
-	    unsigned int))__dberr_get;
-	dbp->put = (int (*)(const struct __db *, DBT *, const DBT *,
-	    unsigned int))__dberr_put;
-	dbp->seq = (int (*)(const struct __db *, DBT *, DBT *,
-	    unsigned int))__dberr_seq;
-	dbp->sync = (int (*)(const struct __db *, unsigned int))__dberr_sync;
+	dbp->del = __dberr_del;
+	dbp->fd = __dberr_fd;
+	dbp->get = __dberr_get;
+	dbp->put = __dberr_put;
+	dbp->seq = __dberr_seq;
+	dbp->sync = __dberr_sync;
 }
