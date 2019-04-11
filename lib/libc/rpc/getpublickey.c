@@ -54,7 +54,7 @@
 /*
  * Hack to let ypserv/rpc.nisd use AUTH_DES.
  */
-int (*__getpublickey_LOCAL)() = NULL;
+int (*__getpublickey_LOCAL)(const char *, char *) = NULL;
 
 /*
  * Get somebody's public key

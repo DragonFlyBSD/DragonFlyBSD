@@ -38,7 +38,7 @@
 #include <rpc/des.h>
 
 static int common_crypt	( char *, char *, unsigned, unsigned, struct desparams * );
-int (*__des_crypt_LOCAL)() = NULL;
+int (*__des_crypt_LOCAL)(char *, int, struct desparams *) = NULL;
 extern int _des_crypt_call( char *, int, struct desparams * );
 /*
  * Copy 8 bytes
