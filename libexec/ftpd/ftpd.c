@@ -81,7 +81,6 @@
 
 #include "pathnames.h"
 #include "extern.h"
-#include "pidfile.h"
 
 #include <stdarg.h>
 

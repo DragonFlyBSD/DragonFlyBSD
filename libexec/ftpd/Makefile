@@ -27,10 +27,6 @@ LDADD+=	-lm
 # XXX sys/md5.h shim errata for bootstrap REMOVE_OPENSSL_FILES
 CFLAGS+= -I${_SHLIBDIRPREFIX}/usr/include/priv
 
-.PATH:	${.CURDIR}/../../usr.sbin/nscd
-SRCS+=	pidfile.c
-CFLAGS+=-I${.CURDIR}/../../usr.sbin/nscd
-
 .if !defined(NO_INET6)
 CFLAGS+=-DINET6
 .endif
