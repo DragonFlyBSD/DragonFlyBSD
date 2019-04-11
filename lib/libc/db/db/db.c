@@ -40,6 +40,12 @@
 #include <db.h>
 
 static int __dberr(void);
+static int __dberr_del(const struct __db *, const DBT *, unsigned int);
+static int __dberr_fd(const struct __db *);
+static int __dberr_get(const struct __db *, const DBT *, DBT *, unsigned int);
+static int __dberr_put(const struct __db *, DBT *, const DBT *, unsigned int);
+static int __dberr_seq(const struct __db *, DBT *, DBT *, unsigned int);
+static int __dberr_sync(const struct __db *, unsigned int);
 
 DB *
 dbopen(const char *fname, int flags, mode_t mode, DBTYPE type, const void *openinfo)
@@ -72,6 +78,46 @@ __dberr(void)
 	return (RET_ERROR);
 }
 
+static int
+__dberr_del(const struct __db *dbp __unused, const DBT *key __unused,
+    unsigned int flags __unused)
+{
+	return (__dberr());
+}
+
+static int
+__dberr_fd(const struct __db *dbp __unused)
+{
+	return (__dberr());
+}
+
+static int
+__dberr_get(const struct __db *dbp __unused, const DBT *key __unused,
+    DBT *data __unused, unsigned int flag __unused)
+{
+	return (__dberr());
+}
+
+static int
+__dberr_put(const struct __db *dbp __unused, DBT *key __unused,
+    const DBT *data __unused, unsigned int flag __unused)
+{
+	return (__dberr());
+}
+
+static int
+__dberr_seq(const struct __db *dbp __unused, DBT *key __unused,
+    DBT *data __unused, unsigned int flag __unused)
+{
+	return (__dberr());
+}
+
+static int
+__dberr_sync(const struct __db *dbp __unused, unsigned int flags __unused)
+{
+	return (__dberr());
+}
+
 /*
  * __DBPANIC -- Stop.
  *
@@ -83,13 +129,13 @@ __dbpanic(DB *dbp)
 {
 	/* The only thing that can succeed is a close. */
 	dbp->del = (int (*)(const struct __db *, const DBT *,
-	    unsigned int))__dberr;
-	dbp->fd = (int (*)(const struct __db *))__dberr;
+	    unsigned int))__dberr_del;
+	dbp->fd = (int (*)(const struct __db *))__dberr_fd;
 	dbp->get = (int (*)(const struct __db *, const DBT *, DBT *,
-	    unsigned int))__dberr;
+	    unsigned int))__dberr_get;
 	dbp->put = (int (*)(const struct __db *, DBT *, const DBT *,
-	    unsigned int))__dberr;
+	    unsigned int))__dberr_put;
 	dbp->seq = (int (*)(const struct __db *, DBT *, DBT *,
-	    unsigned int))__dberr;
-	dbp->sync = (int (*)(const struct __db *, unsigned int))__dberr;
+	    unsigned int))__dberr_seq;
+	dbp->sync = (int (*)(const struct __db *, unsigned int))__dberr_sync;
 }
