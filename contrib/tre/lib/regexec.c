@@ -275,7 +275,7 @@ tre_match(const tre_tnfa_t *tnfa, const void *string, size_t len,
   if (tnfa->have_backrefs || eflags & REG_BACKTRACKING_MATCHER)
     {
       /* The regex has back references, use the backtracking matcher. */
-      status = tre_tnfa_run_backtrack(tnfa, string + offset, (int)len, type,
+      status = tre_tnfa_run_backtrack(tnfa, (const char *)string + offset, (int)len, type,
 				      tags, eflags, &eo);
     }
 #ifdef TRE_APPROX
@@ -294,7 +294,7 @@ tre_match(const tre_tnfa_t *tnfa, const void *string, size_t len,
   else
     {
       /* Exact matching, no back references, use the parallel matcher. */
-      status = tre_tnfa_run_parallel(tnfa, string + offset, (int)len, type,
+      status = tre_tnfa_run_parallel(tnfa, (const char *)string + offset, (int)len, type,
 				     tags, eflags, &eo);
     }
 
