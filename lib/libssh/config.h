@@ -1676,7 +1676,7 @@
 /* #undef USE_LINUX_AUDIT */
 
 /* Enable OpenSSL engine support */
-#define USE_OPENSSL_ENGINE 1
+/* #undef USE_OPENSSL_ENGINE */
 
 /* Define if you want to enable PAM support */
 #define USE_PAM 1
