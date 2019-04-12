@@ -139,6 +139,7 @@ int cmd_pfs_snapshot(const char *sel_path, const char *name, const char *label,
 
 int cmd_service(void);
 int cmd_hash(int ac, const char **av);
+int cmd_dhash(int ac, const char **av);
 int cmd_info(int ac, const char **av);
 int cmd_mountall(int ac, const char **av);
 int cmd_stat(int ac, const char **av);

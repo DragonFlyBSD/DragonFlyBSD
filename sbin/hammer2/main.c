@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2019 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -215,6 +215,8 @@ main(int ac, char **av)
 		ecode = cmd_destroy_inum(sel_path, ac - 1, (const char **)(void *)&av[1]);
 	} else if (strcmp(av[0], "hash") == 0) {
 		ecode = cmd_hash(ac - 1, (const char **)(void *)&av[1]);
+	} else if (strcmp(av[0], "dhash") == 0) {
+		ecode = cmd_dhash(ac - 1, (const char **)(void *)&av[1]);
 	} else if (strcmp(av[0], "info") == 0) {
 		ecode = cmd_info(ac - 1, (const char **)(void *)&av[1]);
 	} else if (strcmp(av[0], "mountall") == 0) {
@@ -525,7 +527,9 @@ usage(int code)
 		"    disconnect <target>          "
 			"Del cluster link\n"
 		"    hash filename*               "
-			"Print directory hash\n"
+			"Print directory hash (key) for name\n"
+		"    dhash filename*               "
+			"Print data hash for long directory entry"
 		"    info [devpath...]            "
 			"Info on all offline or online H2 partitions\n"
 		"    mountall [devpath...]        "
