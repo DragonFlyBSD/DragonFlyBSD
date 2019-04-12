@@ -644,13 +644,20 @@ hammer2_bmap_alloc(hammer2_dev_t *hmp, hammer2_bmap_data_t *bmap,
 		/*
 		 * Use linear iterator if it is not block-aligned to avoid
 		 * wasting space.
+		 *
+		 * Calculate the bitmapq[] index (i) and calculate the
+		 * shift count within the 64-bit bitmapq[] entry.
+		 *
+		 * The freemap block size is 16KB, but each bitmap
+		 * entry is two bits so use a little trick to get
+		 * a (j) shift of 0, 2, 4, ... 62 in 16KB chunks.
 		 */
 		KKASSERT(bmap->linear >= 0 &&
 			 bmap->linear + size <= HAMMER2_SEGSIZE &&
 			 (bmap->linear & (HAMMER2_ALLOC_MIN - 1)) == 0);
 		offset = bmap->linear;
-		i = offset / (HAMMER2_SEGSIZE / 8);
-		j = (offset / (HAMMER2_FREEMAP_BLOCK_SIZE / 2)) & 30;
+		i = offset / (HAMMER2_SEGSIZE / HAMMER2_BMAP_ELEMENTS);
+		j = (offset / (HAMMER2_FREEMAP_BLOCK_SIZE / 2)) & 62;
 		bmmask = (bmradix == HAMMER2_BMAP_BITS_PER_ELEMENT) ?
 			 HAMMER2_BMAP_ALLONES :
 			 ((hammer2_bitmap_t)1 << bmradix) - 1;
