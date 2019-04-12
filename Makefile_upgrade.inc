@@ -3629,6 +3629,11 @@ TO_REMOVE+=/usr/lib/gcc47/libobjc.so.4
 TO_REMOVE+=/usr/lib/gcc47/profile/libobjc.a
 TO_REMOVE+=/usr/libdata/gcc47/objc
 TO_REMOVE+=/usr/libexec/gcc47/cc1obj
+TO_REMOVE+=/usr/include/priv/openssl/asn1_mac.h
+TO_REMOVE+=/usr/include/priv/openssl/cms.h
+TO_REMOVE+=/usr/include/priv/openssl/engine.h
+TO_REMOVE+=/usr/include/priv/openssl/krb5_asn.h
+TO_REMOVE+=/usr/include/priv/openssl/ui_compat.h
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer
@@ -3660,6 +3665,8 @@ TO_REMOVE_LATE+=/usr/include/openssl
 TO_REMOVE_LATE+=/usr/share/openssl
 TO_REMOVE_LATE+=/usr/lib/gcc50/libstdc++.so.9
 TO_REMOVE_LATE+=/usr/lib/gcc50
+TO_REMOVE_LATE+=/lib/priv/libprivate_crypto.so.38
+TO_REMOVE_LATE+=/lib/priv/libprivate_ssl.so.39
 
 # XXX Remove when pfsync(4) has been fixed
 TO_REMOVE+=/usr/share/man/man4/pfsync.4.gz

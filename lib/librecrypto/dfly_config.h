@@ -1,0 +1,110 @@
+
+#if 0
+/* added to openssl/opensslfeatures.h */
+#define OPENSSL_NO_ENGINE
+#define OPENSSL_NO_HW_PADLOCK
+#endif
+
+#if 0
+/* use as default */
+#define OPENSSLDIR "/etc/ssl"
+#endif
+
+#if 0
+/* unused */
+#define PACKAGE_NAME "libressl"
+#define PACKAGE_TARNAME "libressl"
+#define PACKAGE_VERSION "2.9.1"
+#define PACKAGE_STRING "libressl 2.9.1"
+#define PACKAGE_BUGREPORT ""
+#define PACKAGE_URL ""
+#define PACKAGE "libressl"
+#define VERSION "2.9.1"
+#define LT_OBJDIR ".libs/"
+#endif
+
+#if 0
+/* only if using/compiling compat/ sources */
+#define STDC_HEADERS 1
+#define HAVE_SYS_TYPES_H 1
+#define HAVE_SYS_STAT_H 1
+#define HAVE_STDLIB_H 1
+#define HAVE_STRING_H 1
+#define HAVE_MEMORY_H 1
+#define HAVE_STRINGS_H 1
+#define HAVE_INTTYPES_H 1
+#define HAVE_STDINT_H 1
+#define HAVE_UNISTD_H 1
+#define HAVE_SYMLINK 1
+#define HAVE_ERR_H 1
+#define HAVE_READPASSPHRASE_H 1
+#define HAVE_ASPRINTF 1
+#define HAVE_FREEZERO 1
+#define HAVE_MEMMEM 1
+#define HAVE_READPASSPHRASE 1
+#define HAVE_REALLOCARRAY 1
+#define HAVE_RECALLOCARRAY 1
+#define HAVE_STRLCAT 1
+#define HAVE_STRLCPY 1
+#define HAVE_STRNDUP 1
+#define HAVE_STRNLEN 1
+#define HAVE_STRSEP 1
+#define HAVE_STRTONUM 1
+#define HAVE_TIMEGM 1
+#define HAVE_GETPROGNAME 1
+#define HAVE_SYSLOG 1
+#define HAVE_ACCEPT4 1
+#define HAVE_PIPE2 1
+#define HAVE_POLL 1
+#define HAVE_SOCKETPAIR 1
+#define HAVE_ARC4RANDOM 1
+#define HAVE_ARC4RANDOM_BUF 1
+#define HAVE_ARC4RANDOM_UNIFORM 1
+#define HAVE_EXPLICIT_BZERO 1
+#define HAVE_TIMINGSAFE_BCMP 1
+#define HAVE_TIMINGSAFE_MEMCMP 1
+#define HAVE_DL_ITERATE_PHDR 1
+#define HAVE_CLOCK_GETTIME 1
+#define HAVE_VA_COPY 1
+#define HAVE___VA_COPY 1
+#define HAS_GNU_WARNING_LONG 1
+#define SIZEOF_TIME_T 8
+#endif
+
+#if 0
+/* global for libressl */
+#define LIBRESSL_INTERNAL
+#define __BEGIN_HIDDEN_DECLS
+#define __END_HIDDEN_DECLS
+#endif
+
+#if 0
+/* only for crypto/ * / *.c */
+#define __STRICT_ALIGNMENT
+#endif
+#if 0
+/* only for crypto/ * / *.S */
+#define HAVE_GNU_STACK
+#endif
+
+#if 0
+/* only for crypto/chacha/chacha-merged.c */
+#define __bounded__(x, y, z)
+#endif
+#if 0
+/* only for apps/ */
+#define pledge(request, paths) 0
+#define unveil(path, permissions) 0
+#endif
+#if 0
+/* only for apps/openssl/apps_posix.c */
+#define timespecsub(tsp, usp, vsp)                                      \
+        do {                                                            \
+                (vsp)->tv_sec = (tsp)->tv_sec - (usp)->tv_sec;          \
+                (vsp)->tv_nsec = (tsp)->tv_nsec - (usp)->tv_nsec;       \
+                if ((vsp)->tv_nsec < 0) {                               \
+                        (vsp)->tv_sec--;                                \
+                        (vsp)->tv_nsec += 1000000000L;                  \
+                }                                                       \
+        } while (0)
+#endif
