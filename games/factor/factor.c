@@ -259,8 +259,7 @@ pollard_pminus1(BIGNUM *val)
 		BN_gcd(x, x, val, ctx);
 
 		if (!BN_is_one(x)) {
-			if (BN_is_prime(x, PRIME_CHECKS, NULL, NULL,
-			    NULL) == 1)
+			if (BN_is_prime_ex(x, PRIME_CHECKS, NULL, NULL) == 1)
 				pr_print(x);
 			else
 				pollard_pminus1(x);
@@ -269,8 +268,8 @@ pollard_pminus1(BIGNUM *val)
 			BN_div(num, NULL, val, x, ctx);
 			if (BN_is_one(num))
 				return;
-			if (BN_is_prime(num, PRIME_CHECKS, NULL, NULL,
-			    NULL) == 1) {
+			if (BN_is_prime_ex(num, PRIME_CHECKS, NULL, NULL) == 1)
+			{
 				pr_print(num);
 				fflush(stdout);
 				return;
