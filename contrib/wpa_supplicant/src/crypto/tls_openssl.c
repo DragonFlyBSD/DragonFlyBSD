@@ -2761,7 +2761,7 @@ struct wpabuf * tls_connection_decrypt(void *tls_ctx,
 
 int tls_connection_resumed(void *ssl_ctx, struct tls_connection *conn)
 {
-	return conn ? conn->ssl->hit : 0;
+	return conn ? SSL_session_reused(conn->ssl) : 0;
 }
 
 
@@ -3255,6 +3255,7 @@ int tls_global_set_params(void *tls_ctx,
 }
 
 
+#if !(defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER > 0x20700000L)
 int tls_connection_get_keyblock_size(void *tls_ctx,
 				     struct tls_connection *conn)
 {
@@ -3296,6 +3297,7 @@ unsigned int tls_capabilities(void *tls_ctx)
 {
 	return 0;
 }
+#endif
 
 
 #if defined(EAP_FAST) || defined(EAP_FAST_DYNAMIC) || defined(EAP_SERVER_FAST)
