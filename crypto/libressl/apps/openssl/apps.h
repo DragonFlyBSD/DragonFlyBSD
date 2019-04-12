@@ -127,6 +127,12 @@
 #endif
 
 #include <unistd.h>
+
+#if !defined(OpenBSD)
+#define pledge(request, paths) 0
+#define unveil(path, permissions) 0
+#endif
+
 extern int single_execution;
 
 extern CONF *config;

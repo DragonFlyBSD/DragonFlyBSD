@@ -55,13 +55,13 @@
 /* #define OPENSSL_NO_EC2M */
 #define OPENSSL_NO_EC_NISTP_64_GCC_128
 #define OPENSSL_NO_EGD
-/* #define OPENSSL_NO_ENGINE */
+#define OPENSSL_NO_ENGINE
 /* #define OPENSSL_NO_ERR */
 /* #define OPENSSL_NO_FUZZ_LIBFUZZER */
 /* #define OPENSSL_NO_GOST */
 #define OPENSSL_NO_HEARTBEATS
 /* #define OPENSSL_NO_HW */
-/* #define OPENSSL_NO_HW_PADLOCK */
+#define OPENSSL_NO_HW_PADLOCK
 /* #define OPENSSL_NO_IDEA */
 #define OPENSSL_NO_MD2
 /* #define OPENSSL_NO_MD4 */

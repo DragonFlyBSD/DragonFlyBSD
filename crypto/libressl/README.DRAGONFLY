@@ -4,9 +4,31 @@ LIBRESSL
 Original source can be downloaded from:
 http://www.libressl.org
 
-file = libressl-2.4.4.tar.gz
-date = 6 November 2016
-size = 3014463
-sha1 = 5daaf33f5cc382e1c9dd7375a67e26aad1d0b2ed
+file = libressl-2.9.1.tar.gz
+date = 13 April 2019
+size = 3607116
+sha1 = 46f33e42a307d53e17e11f105a4403b9ccfdcc76
 
 The file README.DELETED contains a list of deleted files and directories.
+
+These sources are used in:
+	lib/librecrypto
+	lib/libressl
+	usr.bin/openssl
+	usr.bin/nc
+
+NOTE: The configure script misdetects HOST_ABI=elf and disables ASM versions.
+Configured with
+===============
+  --enable-nc ac_cv_header_dlfcn_h=no ac_cv_lib_dl_dlopen=no
+
+The following files have been patched (* planned)
+=================================================
+  apps/nc/netcat.c			pledge dummies
+  apps/openssl/apps.h			pledge dummies
+  crypto/chacha/chacha-merged.c		__bounded__ dummy
+  crypto/cryptlib.c			WARNS nested externs, vsyslog()
+  crypto/ecdsa/ecs_sign.c		missing defs ECDSAerror() and
+  crypto/ecdsa/ecs_vrf.c		EVP_R_METHOD_NOT_SUPPORTED
+  include/openssl/md5.h			exclude <opensslconf.h> for kernel
+  include/openssl/opensslfeatures.h	disable engine and hw_padlock

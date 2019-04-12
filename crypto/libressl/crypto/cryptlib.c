@@ -314,11 +314,17 @@ OPENSSL_cpu_caps(void)
 
 #if defined(OPENSSL_CPUID_OBJ) && !defined(OPENSSL_NO_ASM)
 #define OPENSSL_CPUID_SETUP
+#ifdef __DragonFly__
+extern uint64_t OPENSSL_ia32_cpuid(void);
+#endif
 void
 OPENSSL_cpuid_setup(void)
 {
 	static int trigger = 0;
+#ifndef __DragonFly__
+	/* -Werror=nested-externs */
 	uint64_t OPENSSL_ia32_cpuid(void);
+#endif
 
 	if (trigger)
 		return;
@@ -345,11 +351,18 @@ OPENSSL_cpuid_setup(void)
 static void
 OPENSSL_showfatal(const char *fmta, ...)
 {
+#ifndef __DragonFly__
 	struct syslog_data sdata = SYSLOG_DATA_INIT;
+#endif
 	va_list ap;
 
 	va_start(ap, fmta);
+#ifndef __DragonFly__
+	/* syslog abusing? */
 	vsyslog_r(LOG_INFO|LOG_LOCAL2, &sdata, fmta, ap);
+#else
+	vsyslog(LOG_INFO|LOG_LOCAL2, fmta, ap);
+#endif
 	va_end(ap);
 }
 

@@ -59,6 +59,11 @@
 
 #include "atomicio.h"
 
+#if !defined(OpenBSD)
+#define pledge(request, paths) 0
+#define unveil(path, permissions) 0
+#endif
+
 #define PORT_MAX	65535
 #define UNIX_DG_TMP_SOCKET_SIZE	19
 

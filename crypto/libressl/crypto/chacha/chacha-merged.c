@@ -9,6 +9,10 @@ Public domain.
 
 #include <stdint.h>
 
+#if !defined(__OpenBSD__)
+#define __bounded__(x, y, z)
+#endif
+
 #define CHACHA_MINKEYLEN 	16
 #define CHACHA_NONCELEN		8
 #define CHACHA_CTRLEN		8

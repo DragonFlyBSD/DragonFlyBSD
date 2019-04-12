@@ -57,6 +57,8 @@
  */
 
 #include <openssl/opensslconf.h>
+#include <openssl/err.h>	/* for EVP_R_METHOD_NOT_SUPPORTED */
+#include <openssl/evp.h>	/* for ECDSAerror() */
 
 #include "ecs_locl.h"
 #include "ec_lcl.h"
