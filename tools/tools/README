@@ -21,6 +21,7 @@ scsi-defects	Get at the primary or grown defect list of a SCSI disk.
 splitpatch	Python script to split a large patch file into independent
 		patches.  Default name convention is compatible with
 		the patch framework.
+unpriv_base	Crates symlinks for private base libraries and headers.
 vop_table	Generates a HTML document that shows all the VOP's in
 		the kernel.
 wlandebug	Manipulate netproto/802_11 debug flags symbolically.
