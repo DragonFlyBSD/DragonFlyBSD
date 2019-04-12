@@ -484,20 +484,49 @@ hammer2_xop_start_except(hammer2_xop_head_t *xop, hammer2_xop_desc_t *desc,
 	 * get behind and the frontend is allowed to complete the moment a
 	 * quorum of targets succeed.
 	 *
-	 * Strategy operations must be segregated from non-strategy operations
-	 * to avoid a deadlock.  For example, if a vfsync and a bread/bwrite
-	 * were queued to the same worker thread, the locked buffer in the
-	 * strategy operation can deadlock the vfsync's buffer list scan.
+	 * Strategy operations:
+	 *
+	 *	(1) Must be segregated from non-strategy operations to
+	 *	    avoid a deadlock.  A vfsync and a bread/bwrite can
+	 *	    deadlock the vfsync's buffer list scan.
+	 *
+	 *	(2) Reads are separated from writes to avoid write stalls
+	 *	    from excessively intefering with reads.  Reads are allowed
+	 *	    to wander across multiple worker threads for potential
+	 *	    single-file concurrency improvements.
+	 *
+	 *	(3) Writes are serialized to a single worker thread (for any
+	 *	    given inode) in order to try to improve block allocation
+	 *	    sequentiality and to reduce lock contention.
 	 *
 	 * TODO - RENAME fails here because it is potentially modifying
-	 *	  three different inodes.
+	 *	  three different inodes, but we triple-lock the inodes
+	 *	  involved so it shouldn't create a sequencing schism.
 	 */
 	if (xop->flags & HAMMER2_XOP_STRATEGY) {
 		hammer2_xop_strategy_t *xopst;
+		hammer2_off_t off;
+		int cdr;
 
 		xopst = &((hammer2_xop_t *)xop)->xop_strategy;
-		ng = (int)(hammer2_icrc32(&xop->ip1, sizeof(xop->ip1)) ^
-			   hammer2_icrc32(&xopst->lbase, sizeof(xopst->lbase)));
+		ng = (int)(hammer2_icrc32(&xop->ip1, sizeof(xop->ip1)));
+		if (desc == &hammer2_strategy_read_desc) {
+			off = xopst->lbase / HAMMER2_PBUFSIZE;
+			cdr = hammer2_cluster_data_read;
+			/* sysctl race, load into var */
+			cpu_ccfence();
+			if (cdr)
+				off /= cdr;
+			ng ^= hammer2_icrc32(&off, sizeof(off)) &
+			      (hammer2_worker_rmask << 1);
+			ng |= 1;
+		} else {
+#if 0
+			off = xopst->lbase >> 21;
+			ng ^= hammer2_icrc32(&off, sizeof(off)) & 3;
+#endif
+			ng &= ~1;
+		}
 		ng = ng & (HAMMER2_XOPGROUPS_MASK >> 1);
 		ng += HAMMER2_XOPGROUPS / 2;
 	} else {

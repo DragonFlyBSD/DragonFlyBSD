@@ -498,40 +498,34 @@ _hammer2_io_putblk(hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS)
 			/*
 			 * Allows dirty buffers to accumulate and
 			 * possibly be canceled (e.g. by a 'rm'),
-			 * will burst-write later.
+			 * by default we will burst-write later.
 			 *
-			 * We normally do not allow the kernel to
-			 * cluster dirty buffers because H2 already
-			 * uses a large block size.
+			 * We generally do NOT want to issue an actual
+			 * b[a]write() or cluster_write() here.  Due to
+			 * the way chains are locked, buffers may be cycled
+			 * in and out quite often and disposal here can cause
+			 * multiple writes or write-read stalls.
 			 *
-			 * NOTE: Do not use cluster_write() here.  The
-			 *	 problem is that due to the way chains
-			 *	 are locked, buffers are cycled in and out
-			 *	 quite often so the disposal here is not
-			 *	 necessarily the final disposal.  Avoid
-			 *	 excessive rewriting of the same blocks
-			 *	 by using bdwrite().
+			 * If FLUSH is set we do want to issue the actual
+			 * write.  This typically occurs in the write-behind
+			 * case when writing to large files.
 			 */
-#if 0
 			off_t peof;
 			int hce;
-
-			if ((hce = hammer2_cluster_write) > 0) {
-				/*
-				 * Allows write-behind to keep the buffer
-				 * cache sane.
-				 */
-				peof = (pbase + HAMMER2_SEGMASK64) &
-				       ~HAMMER2_SEGMASK64;
-				bp->b_flags |= B_CLUSTEROK;
-				cluster_write(bp, peof, psize, hce);
-			} else
-#endif
-			if (hammer2_cluster_write)
-				bp->b_flags |= B_CLUSTEROK;
-			else
+			if (dio->refs & HAMMER2_DIO_FLUSH) {
+				if ((hce = hammer2_cluster_write) != 0) {
+					peof = (pbase + HAMMER2_SEGMASK64) &
+					       ~HAMMER2_SEGMASK64;
+					bp->b_flags |= B_CLUSTEROK;
+					cluster_write(bp, peof, psize, hce);
+				} else {
+					bp->b_flags &= ~B_CLUSTEROK;
+					bawrite(bp);
+				}
+			} else {
 				bp->b_flags &= ~B_CLUSTEROK;
-			bdwrite(bp);
+				bdwrite(bp);
+			}
 		} else if (bp->b_flags & (B_ERROR | B_INVAL | B_RELBUF)) {
 			brelse(bp);
 		} else {
@@ -552,12 +546,14 @@ _hammer2_io_putblk(hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS)
 
 	/*
 	 * Clear INPROG, GOOD, and WAITING (GOOD should already be clear).
+	 *
+	 * Also clear FLUSH as it was handled above.
 	 */
 	for (;;) {
 		orefs = dio->refs;
 		cpu_ccfence();
 		nrefs = orefs & ~(HAMMER2_DIO_INPROG | HAMMER2_DIO_GOOD |
-				  HAMMER2_DIO_WAITING);
+				  HAMMER2_DIO_WAITING | HAMMER2_DIO_FLUSH);
 		if (atomic_cmpset_64(&dio->refs, orefs, nrefs)) {
 			if (orefs & HAMMER2_DIO_WAITING)
 				wakeup(dio);
@@ -711,7 +707,8 @@ _hammer2_io_getquick(hammer2_dev_t *hmp, off_t lbase,
 void
 _hammer2_io_bawrite(hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS)
 {
-	atomic_set_64(&(*diop)->refs, HAMMER2_DIO_DIRTY);
+	atomic_set_64(&(*diop)->refs, HAMMER2_DIO_DIRTY |
+				      HAMMER2_DIO_FLUSH);
 	_hammer2_io_putblk(diop HAMMER2_IO_DEBUG_CALL);
 }
 
@@ -725,7 +722,8 @@ _hammer2_io_bdwrite(hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS)
 int
 _hammer2_io_bwrite(hammer2_io_t **diop HAMMER2_IO_DEBUG_ARGS)
 {
-	atomic_set_64(&(*diop)->refs, HAMMER2_DIO_DIRTY);
+	atomic_set_64(&(*diop)->refs, HAMMER2_DIO_DIRTY |
+				      HAMMER2_DIO_FLUSH);
 	_hammer2_io_putblk(diop HAMMER2_IO_DEBUG_CALL);
 	return (0);	/* XXX */
 }

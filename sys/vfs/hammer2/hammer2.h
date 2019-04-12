@@ -323,6 +323,7 @@ typedef struct hammer2_io hammer2_io_t;
 #define HAMMER2_DIO_GOOD	0x4000000000000000LLU	/* dio->bp is stable */
 #define HAMMER2_DIO_WAITING	0x2000000000000000LLU	/* wait on INPROG */
 #define HAMMER2_DIO_DIRTY	0x1000000000000000LLU	/* flush last drop */
+#define HAMMER2_DIO_FLUSH	0x0800000000000000LLU	/* immediate flush */
 
 #define HAMMER2_DIO_MASK	0x00FFFFFFFFFFFFFFLLU
 
@@ -1470,6 +1471,7 @@ extern int hammer2_flush_pipe;
 extern int hammer2_dio_count;
 extern int hammer2_dio_limit;
 extern int hammer2_bulkfree_tps;
+extern int hammer2_worker_rmask;
 extern long hammer2_chain_allocs;
 extern long hammer2_chain_frees;
 extern long hammer2_limit_dirty_chains;
