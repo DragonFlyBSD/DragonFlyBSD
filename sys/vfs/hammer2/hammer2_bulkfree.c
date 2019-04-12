@@ -1071,30 +1071,36 @@ h2_bulkfree_sync_adjust(hammer2_bulkfree_info_t *cbinfo,
 		++cbinfo->count_l0cleans;
 	} else if (bindex < 7) {
 		/*
-		 * Partially full, bitmapq[bindex] != 0.  The live->linear
-		 * offset can legitimately be just about anything, but
-		 * our bulkfree pass doesn't record enough information to
-		 * set it exactly.  Just make sure that it is set to a
-		 * safe value that also works in our match code above (the
-		 * bcmp and linear test).
+		 * Partially full, bitmapq[bindex] != 0.  Our bulkfree pass
+		 * does not record enough information to set live->linear
+		 * exactly.
 		 *
-		 * We cannot safely leave live->linear at a sub-block offset
-		 * unless it is already in the same block as bmap->linear.
+		 * NOTE: Setting live->linear to a sub-block (16K) boundary
+		 *	 forces the live code to iterate to the next fully
+		 *	 free block.  It does NOT mean that all blocks above
+		 *	 live->linear are available.
 		 *
-		 * If it is not in the same block, we cannot assume that
-		 * we can set it to bmap->linear on a sub-block boundary,
-		 * because the live system could have bounced it around.
-		 * In that situation we satisfy our bcmp/skip requirement
-		 * above by setting it to the nearest higher block boundary.
-		 * This alignment effectively kills any partial allocation it
-		 * might have been tracking before.
+		 *	 Setting live->linear to a fragmentary (less than
+		 *	 16K) boundary allows allocations to iterate within
+		 *	 that sub-block.
 		 */
 		if (live->linear < bmap->linear &&
 		    ((live->linear ^ bmap->linear) &
 		     ~HAMMER2_FREEMAP_BLOCK_MASK) == 0) {
+			/*
+			 * If greater than but still within the same
+			 * sub-block as live we can adjust linear upward.
+			 */
 			live->linear = bmap->linear;
 			++cbinfo->count_linadjusts;
 		} else {
+			/*
+			 * Otherwise adjust to the nearest higher or same
+			 * sub-block boundary.  The live system may have
+			 * bounced live->linear around so we cannot make any
+			 * assumptions with regards to available fragmentary
+			 * allocations.
+			 */
 			live->linear =
 				(bmap->linear + HAMMER2_FREEMAP_BLOCK_MASK) &
 				~HAMMER2_FREEMAP_BLOCK_MASK;
