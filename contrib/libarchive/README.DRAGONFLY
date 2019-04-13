@@ -1,13 +1,31 @@
+LIBARCHIVE
+==========
+
 Original source can be downloaded from:
 http://www.libarchive.org/
 
-A list of deleted files is in README.DELETED.
+file = libarchive-3.3.3.tar.gz
+date = 9 April 2019
+size = 6535598
+sha1 = 499a8f48a895faff4151d7398b24070d578f0b2e
 
-configure hint:
-./configure --without-nettle --without-openssl --without-xml2
+A list of deleted files is in README.DELETED.
 
 This source is used in:
 	lib/libarchive
 	usr.bin/bsdcat
 	usr.bin/cpio
 	usr.bin/tar
+
+Configured with
+===============
+./configure --without-nettle --with-openssl --without-xml2 --without-zstd \
+	    --without-lz4 --without-lzo2 \
+	    ac_cv_lib_md_MD5Init=no ac_cv_lzma_has_mt=no
+
+NOTE: test_read_disk_directory_traversals is expected to fail atime restore
+
+The following files have been patched (* planned)
+=================================================
+  libarchive/archive_read_disk_posix.c	futimens()/utimes()
+  libarchive/archive_write_disk_posix.c futimens()/utimes()

@@ -6,15 +6,15 @@ CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive/libarchive
 .PATH: ${CONTRIBDIR}
 
 SHLIB_MAJOR=	5
-CFLAGS+=	-DPLATFORM_CONFIG_H=\"config.h\"
+CFLAGS+=	-DHAVE_CONFIG_H
 CFLAGS+=	-I${.OBJDIR} -I${.CURDIR} -I${CONTRIBDIR}
 # This can be changed back to CFLAGS once iconv works correctly with
 # statically linked libraries (iconv uses dynamic-only dlopen(3))
 SHARED_CFLAGS+=	-DHAVE_ICONV=1 -DHAVE_ICONV_H=1
 WARNS?=	2
 
-DPADD=	${LIBBZ2} ${LIBLZMA} ${LIBMD} ${LIBCRYPTO} ${LIBZ}
-LDADD=	-lbz2 -llzma -lmd -lprivate_crypto -lz
+DPADD=	${LIBBZ2} ${LIBLZMA} ${LIBCRYPTO} ${LIBZ}
+LDADD=	-lbz2 -llzma -lprivate_crypto -lz
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 
@@ -69,6 +69,7 @@ SRCS=	archive_acl.c					\
 	archive_read_support_filter_rpm.c		\
 	archive_read_support_filter_uu.c		\
 	archive_read_support_filter_xz.c		\
+	archive_read_support_filter_zstd.c		\
 	archive_read_support_format_7zip.c		\
 	archive_read_support_format_all.c		\
 	archive_read_support_format_ar.c		\
@@ -88,15 +89,9 @@ SRCS=	archive_acl.c					\
 	archive_string.c				\
 	archive_string_sprintf.c			\
 	archive_util.c					\
+	archive_version_details.c			\
 	archive_virtual.c				\
 	archive_write.c					\
-	archive_write_disk_acl.c			\
-	archive_write_disk_posix.c			\
-	archive_write_disk_set_standard_lookup.c	\
-	archive_write_open_fd.c				\
-	archive_write_open_file.c			\
-	archive_write_open_filename.c			\
-	archive_write_open_memory.c			\
 	archive_write_add_filter.c			\
 	archive_write_add_filter_b64encode.c		\
 	archive_write_add_filter_by_name.c		\
@@ -111,6 +106,13 @@ SRCS=	archive_acl.c					\
 	archive_write_add_filter_program.c		\
 	archive_write_add_filter_uuencode.c		\
 	archive_write_add_filter_xz.c			\
+	archive_write_add_filter_zstd.c			\
+	archive_write_disk_posix.c			\
+	archive_write_disk_set_standard_lookup.c	\
+	archive_write_open_fd.c				\
+	archive_write_open_file.c			\
+	archive_write_open_filename.c			\
+	archive_write_open_memory.c			\
 	archive_write_set_format.c			\
 	archive_write_set_format_7zip.c			\
 	archive_write_set_format_ar.c			\

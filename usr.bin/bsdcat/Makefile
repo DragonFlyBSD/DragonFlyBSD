@@ -3,15 +3,13 @@ SRCS=	bsdcat.c cmdline.c
 SRCS+=	err.c
 
 WARNS?=	2
-DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBLZMA} ${LIBMD} ${LIBZ}
-LDADD=	-larchive -lbz2 -llzma -lmd -lz
+DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBLZMA} ${LIBZ}
+LDADD=	-larchive -lbz2 -llzma -lz
 
 CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive/cat
 .PATH: ${CONTRIBDIR} ${CONTRIBDIR}/../libarchive_fe
-LIBARCHIVE_VERSION!=	cat ${CONTRIBDIR}/../build/version
-VERSION!=	echo $$((${LIBARCHIVE_VERSION} / 1000000)).$$((${LIBARCHIVE_VERSION} / 1000 % 1000)).$$((${LIBARCHIVE_VERSION} % 1000))
-CFLAGS+=	-I${.CURDIR}/../../lib/libarchive -I${CONTRIBDIR} -I${CONTRIBDIR}/../libarchive_fe
-CFLAGS+=	-DPLATFORM_CONFIG_H=\"config.h\"
-CFLAGS+=	-DBSDCAT_VERSION_STRING=\"${VERSION}\"
+CFLAGS+=	-DHAVE_CONFIG_H -I${.CURDIR}/../../lib/libarchive
+CFLAGS+=	-I${CONTRIBDIR}
+CFLAGS+=	-I${CONTRIBDIR}/../libarchive -I${CONTRIBDIR}/../libarchive_fe
 
 .include <bsd.prog.mk>

@@ -1,17 +1,15 @@
 PROG=	bsdcpio
 SRCS=	cmdline.c cpio.c
 SRCS+=	err.c line_reader.c passphrase.c
-DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBLZMA} ${LIBMD} ${LIBCRYPTO} ${LIBZ}
-LDADD=	-larchive -lbz2 -llzma -lmd -lprivate_crypto -lz
+DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBLZMA} ${LIBCRYPTO} ${LIBZ}
+LDADD=	-larchive -lbz2 -llzma -lprivate_crypto -lz
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive/cpio
 .PATH: ${CONTRIBDIR} ${CONTRIBDIR}/../libarchive_fe
-LIBARCHIVE_VERSION!=	cat ${CONTRIBDIR}/../build/version
-VERSION!=	echo $$((${LIBARCHIVE_VERSION} / 1000000)).$$((${LIBARCHIVE_VERSION} / 1000 % 1000)).$$((${LIBARCHIVE_VERSION} % 1000))
-CFLAGS+=	-I${.CURDIR}/../../lib/libarchive -I${CONTRIBDIR} -I${CONTRIBDIR}/../libarchive_fe
-CFLAGS+=	-DPLATFORM_CONFIG_H=\"config.h\"
-CFLAGS+=	-DBSDCPIO_VERSION_STRING=\"${VERSION}\"
+CFLAGS+=	-DHAVE_CONFIG_H -I${.CURDIR}/../../lib/libarchive
+CFLAGS+=	-I${CONTRIBDIR}
+CFLAGS+=	-I${CONTRIBDIR}/../libarchive -I${CONTRIBDIR}/../libarchive_fe
 
 SYMLINKS=	bsdcpio ${BINDIR}/cpio
 MLINKS=	bsdcpio.1 cpio.1
