@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2014, Mike Kazantsev
+ * Copyright (c) 2017 Martin Matuska
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -21,36 +21,29 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD$
  */
 
-#if defined(PLATFORM_CONFIG_H)
-/* Use hand-built config.h in environments that need it. */
-#include PLATFORM_CONFIG_H
-#else
-/* Not having a config.h of some sort is a serious problem. */
-#include "config.h"
+/* !!ONLY FOR USE INTERNALLY TO LIBARCHIVE!! */
+
+#ifndef ARCHIVE_PLATFORM_ACL_H_INCLUDED
+#define ARCHIVE_PLATFORM_ACL_H_INCLUDED
+
+/*
+ * Determine what ACL types are supported
+ */
+#if ARCHIVE_ACL_FREEBSD || ARCHIVE_ACL_SUNOS || ARCHIVE_ACL_LIBACL
+#define ARCHIVE_ACL_POSIX1E     1
 #endif
 
-#include <archive.h>
-#include <archive_entry.h>
+#if ARCHIVE_ACL_FREEBSD_NFS4 || ARCHIVE_ACL_SUNOS_NFS4 || \
+    ARCHIVE_ACL_DARWIN  || ARCHIVE_ACL_LIBRICHACL
+#define ARCHIVE_ACL_NFS4        1
+#endif
 
-struct bsdcat {
-	/* Option parser state */
-	int		  getopt_state;
-	char		 *getopt_word;
+#if ARCHIVE_ACL_POSIX1E || ARCHIVE_ACL_NFS4
+#define ARCHIVE_ACL_SUPPORT     1
+#endif
 
-	/* Miscellaneous state information */
-	int		  argc;
-	char		**argv;
-	const char	 *argument;
-};
-
-enum {
-	OPTION_VERSION
-};
-
-int bsdcat_getopt(struct bsdcat *);
-void usage(FILE *stream, int eval);
-void bsdcat_next(void);
-void bsdcat_print_error(void);
-void bsdcat_read_to_stdout(const char* filename);
+#endif	/* ARCHIVE_PLATFORM_ACL_H_INCLUDED */

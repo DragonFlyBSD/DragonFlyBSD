@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2014, Mike Kazantsev
+ * Copyright (c) 2003-2007 Tim Kientzle
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,35 +22,27 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef ARCHIVE_OPENSSL_EVP_PRIVATE_H_INCLUDED
+#define ARCHIVE_OPENSSL_EVP_PRIVATE_H_INCLUDED
 
-#if defined(PLATFORM_CONFIG_H)
-/* Use hand-built config.h in environments that need it. */
-#include PLATFORM_CONFIG_H
-#else
-/* Not having a config.h of some sort is a serious problem. */
-#include "config.h"
+#include <openssl/evp.h>
+#include <openssl/opensslv.h>
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#include <stdlib.h> /* malloc, free */
+#include <string.h> /* memset */
+static inline EVP_MD_CTX *EVP_MD_CTX_new(void)
+{
+	EVP_MD_CTX *ctx = (EVP_MD_CTX *)calloc(1, sizeof(EVP_MD_CTX));
+	return ctx;
+}
+
+static inline void EVP_MD_CTX_free(EVP_MD_CTX *ctx)
+{
+	EVP_MD_CTX_cleanup(ctx);
+	memset(ctx, 0, sizeof(*ctx));
+	free(ctx);
+}
 #endif
 
-#include <archive.h>
-#include <archive_entry.h>
-
-struct bsdcat {
-	/* Option parser state */
-	int		  getopt_state;
-	char		 *getopt_word;
-
-	/* Miscellaneous state information */
-	int		  argc;
-	char		**argv;
-	const char	 *argument;
-};
-
-enum {
-	OPTION_VERSION
-};
-
-int bsdcat_getopt(struct bsdcat *);
-void usage(FILE *stream, int eval);
-void bsdcat_next(void);
-void bsdcat_print_error(void);
-void bsdcat_read_to_stdout(const char* filename);
+#endif

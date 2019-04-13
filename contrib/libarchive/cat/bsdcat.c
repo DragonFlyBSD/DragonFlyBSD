@@ -42,10 +42,10 @@ __FBSDID("$FreeBSD$");
 
 #define	BYTES_PER_BLOCK	(20*512)
 
-struct archive *a;
-struct archive_entry *ae;
-char *bsdcat_current_path;
-int exit_status = 0;
+static struct archive *a;
+static struct archive_entry *ae;
+static const char *bsdcat_current_path;
+static int exit_status = 0;
 
 
 void
@@ -61,15 +61,21 @@ usage(FILE *stream, int eval)
 static void
 version(void)
 {
-	printf("bsdcat %s - %s\n",
+	printf("bsdcat %s - %s \n",
 	    BSDCAT_VERSION_STRING,
 	    archive_version_details());
 	exit(0);
 }
 
 void
-bsdcat_next()
+bsdcat_next(void)
 {
+	if (a != NULL) {
+		if (archive_read_close(a) != ARCHIVE_OK)
+			bsdcat_print_error();
+		archive_read_free(a);
+	}
+
 	a = archive_read_new();
 	archive_read_support_filter_all(a);
 	archive_read_support_format_empty(a);
@@ -85,7 +91,7 @@ bsdcat_print_error(void)
 }
 
 void
-bsdcat_read_to_stdout(char* filename)
+bsdcat_read_to_stdout(const char* filename)
 {
 	int r;
 
@@ -100,8 +106,10 @@ bsdcat_read_to_stdout(char* filename)
 		;
 	else if (archive_read_data_into_fd(a, 1) != ARCHIVE_OK)
 		bsdcat_print_error();
-	if (archive_read_free(a) != ARCHIVE_OK)
+	if (archive_read_close(a) != ARCHIVE_OK)
 		bsdcat_print_error();
+	archive_read_free(a);
+	a = NULL;
 }
 
 int
@@ -135,12 +143,14 @@ main(int argc, char **argv)
 	if (*bsdcat->argv == NULL) {
 		bsdcat_current_path = "<stdin>";
 		bsdcat_read_to_stdout(NULL);
-	} else
+	} else {
 		while (*bsdcat->argv) {
 			bsdcat_current_path = *bsdcat->argv++;
 			bsdcat_read_to_stdout(bsdcat_current_path);
 			bsdcat_next();
 		}
+		archive_read_free(a); /* Help valgrind & friends */
+	}
 
 	exit(exit_status);
 }
