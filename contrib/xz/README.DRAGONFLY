@@ -1,13 +1,18 @@
 This is XZ Utils imported from:
 http://tukaani.org/xz/
 
-file = xz-5.2.2.tar.bz2
-date = 29 September 2015
-size = 1192692
-sha1 = 3cbd8d42117b6958a1db72acbed677f9b11d69a6
+file = xz-5.2.4.tar.bz2
+date = 29 April 2018
+size = 1287922
+sha1 = 50ad451279404fb5206e23c7b1ba9c4aa858c994
 
-When upgrading, remember to update config.h in lib/liblzma.
-./configure --disable-nls --enable-symbol-versions --prefix=/usr
+NOTE: When upgrading, remember to update both config.h files.
+The liblzma is configured without multi-threading.
+./configure --prefix=/usr --disable-nls --disable-rpath --disable-doc \
+	    --enable-symbol-versions --enable-threads=no
+The xz(1) is configured with threading support.
+./configure --prefix=/usr --disable-nls --disable-rpath --disable-doc \
+	    --enable-symbol-versions --enable-threads=posix
 
 Used in:
 	lib/liblzma

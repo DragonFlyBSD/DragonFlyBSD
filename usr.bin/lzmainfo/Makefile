@@ -8,8 +8,8 @@ SRCS=	lzmainfo.c
 .PATH: ${XZDIR}/common
 SRCS+=	tuklib_progname.c tuklib_exit.c
 
-CFLAGS+= -DHAVE_CONFIG_H
-CFLAGS+= -I${.CURDIR}/../../lib/liblzma -I${XZDIR}/common
+CFLAGS+= -DHAVE_CONFIG_H -I${.CURDIR}/../../lib/liblzma
+CFLAGS+= -I${XZDIR}/common
 
 DPADD=	${LIBLZMA}
 LDADD=	-llzma
