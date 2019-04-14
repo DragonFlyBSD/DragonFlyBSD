@@ -5,19 +5,18 @@
 # built are visible:
 #
 # [Handled by /usr/src/Makefile.inc1, before this Makefile triggers]
-#    libmd must be built before libopie, libradius, libtacplus
+#    libmd must be built before libopie, libtacplus
 #    libthread_xu|libc_r must be built before libpthread.
-#    libpthread must be built before liblmza, libprop.
 #    libprop must be built before libdevattr
 #
-# libmd must be built before libfetch, libarchive.
 # libcrypt must be built before libfetch, libarchive, and libradius.
 # libz must be built before libarchive, libmagic.
 # libbz2 must be built before libarchive
+# liblmza must be built before libarchive.
 # libncurses must be built before libedit.
 # libsbuf must be built before libcam.
+# libpcap must be built before libipfw3.
 # libpthread must be built before librt, and libusb.
-# liblmza must be built before libarchive.
 # libelf must be built before libexecinfo.
 #
 # Otherwise, the SUBDIR list should be in alphabetical order.
@@ -28,9 +27,12 @@ SUBDIR_ORDERED= \
 	libressl \
 	libssh \
 	libcrypt \
-	libarchive \
+	libbz2 \
+	liblzma \
 	libz \
 	libmd \
+	libopie \
+	libypclnt \
 	libncurses \
 	libradius \
 	libsbuf \
@@ -38,10 +40,11 @@ SUBDIR_ORDERED= \
 	libthread_xu \
 	libutil \
 	libpthread \
-	liblzma \
 	libfetch \
 	libedit \
 	libcam \
+	libpcap \
+	libprop \
 	librt \
 	libusb \
 	libelf \
@@ -52,8 +55,8 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	csu \
 	i18n_module \
 	libalias \
+	libarchive \
 	libbluetooth \
-	libbz2 \
 	libc \
 	libc_rtld \
 	libcalendar \
@@ -78,11 +81,8 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libm \
 	libmagic \
 	${_libnetgraph} \
-	libopie \
 	libpam \
-	libpcap \
 	libposix1e \
-	libprop \
 	librpcsvc \
 	libsdp \
 	${_libsm} \
@@ -94,8 +94,7 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libu4bhid \
 	libvgl \
 	libwrap \
-	liby \
-	libypclnt
+	liby
 
 .if make(install)
 SUBDIR:=	libc ${SUBDIR:Nlibc}

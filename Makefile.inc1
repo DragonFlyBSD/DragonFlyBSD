@@ -1026,7 +1026,7 @@ _startup_libs_base=	_startup_libs80
 _startup_libs=		lib/csu lib/libc lib/libc_rtld
 lib/libc__L: lib/csu__L
 
-_prebuild_libs=		lib/libbz2 lib/libz
+_prebuild_libs=		lib/libbz2 lib/liblzma lib/libz
 _prebuild_libs+=	lib/libutil
 
 _prebuild_libs+=	lib/libelf
@@ -1053,9 +1053,7 @@ lib/libopie__L: lib/librecrypto__L
 
 _prebuild_libs+= lib/libsbuf lib/libtacplus lib/libm \
 		lib/libpam/libpam lib/libypclnt lib/lib${THREAD_LIB} \
-		lib/libpthread lib/liblzma lib/libprop lib/libdevattr
-lib/liblzma__L: lib/libpthread__L
-lib/libdevattr__L: lib/libprop__L
+		lib/libpthread lib/libprop
 
 _generic_libs+=	usr.bin/flex/lib
 
