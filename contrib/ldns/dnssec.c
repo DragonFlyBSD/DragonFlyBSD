@@ -81,7 +81,7 @@ ldns_dnssec_get_dnskey_for_rrsig(const ldns_rr *rrsig,
 }
 
 ldns_rdf *
-ldns_nsec_get_bitmap(ldns_rr *nsec) {
+ldns_nsec_get_bitmap(const ldns_rr *nsec) {
 	if (ldns_rr_get_type(nsec) == LDNS_RR_TYPE_NSEC) {
 		return ldns_rr_rdf(nsec, 1);
 	} else if (ldns_rr_get_type(nsec) == LDNS_RR_TYPE_NSEC3) {
@@ -94,9 +94,9 @@ ldns_nsec_get_bitmap(ldns_rr *nsec) {
 /*return the owner name of the closest encloser for name from the list of rrs */
 /* this is NOT the hash, but the original name! */
 ldns_rdf *
-ldns_dnssec_nsec3_closest_encloser(ldns_rdf *qname,
+ldns_dnssec_nsec3_closest_encloser(const ldns_rdf *qname,
                                    ATTR_UNUSED(ldns_rr_type qtype),
-                                   ldns_rr_list *nsec3s)
+                                   const ldns_rr_list *nsec3s)
 {
 	/* remember parameters, they must match */
 	uint8_t algorithm;
@@ -215,7 +215,7 @@ ldns_dnssec_pkt_has_rrsigs(const ldns_pkt *pkt)
 
 ldns_rr_list *
 ldns_dnssec_pkt_get_rrsigs_for_name_and_type(const ldns_pkt *pkt,
-									ldns_rdf *name,
+									const ldns_rdf *name,
 									ldns_rr_type type)
 {
 	uint16_t t_netorder;
@@ -298,7 +298,7 @@ ldns_calc_keytag(const ldns_rr *key)
 	return ac16;
 }
 
-uint16_t ldns_calc_keytag_raw(uint8_t* key, size_t keysize)
+uint16_t ldns_calc_keytag_raw(const uint8_t* key, size_t keysize)
 {
 	unsigned int i;
 	uint32_t ac32;
@@ -327,14 +327,14 @@ uint16_t ldns_calc_keytag_raw(uint8_t* key, size_t keysize)
 
 #ifdef HAVE_SSL
 DSA *
-ldns_key_buf2dsa(ldns_buffer *key)
+ldns_key_buf2dsa(const ldns_buffer *key)
 {
-	return ldns_key_buf2dsa_raw((unsigned char*)ldns_buffer_begin(key),
+	return ldns_key_buf2dsa_raw((const unsigned char*)ldns_buffer_begin(key),
 						   ldns_buffer_position(key));
 }
 
 DSA *
-ldns_key_buf2dsa_raw(unsigned char* key, size_t len)
+ldns_key_buf2dsa_raw(const unsigned char* key, size_t len)
 {
 	uint8_t T;
 	uint16_t length;
@@ -375,25 +375,43 @@ ldns_key_buf2dsa_raw(unsigned char* key, size_t len)
 		BN_free(Y);
 		return NULL;
 	}
+#if OPENSSL_VERSION_NUMBER < 0x10100000 || defined(HAVE_LIBRESSL)
 #ifndef S_SPLINT_S
 	dsa->p = P;
 	dsa->q = Q;
 	dsa->g = G;
 	dsa->pub_key = Y;
 #endif /* splint */
+#else /* OPENSSL_VERSION_NUMBER */
+	if (!DSA_set0_pqg(dsa, P, Q, G)) {
+		/* QPG not yet attached, need to free */
+		BN_free(Q);
+		BN_free(P);
+		BN_free(G);
 
+		DSA_free(dsa);
+		BN_free(Y);
+		return NULL;
+	}
+	if (!DSA_set0_key(dsa, Y, NULL)) {
+		/* QPG attached, cleaned up by DSA_fre() */
+		DSA_free(dsa);
+		BN_free(Y);
+		return NULL;
+	}
+#endif /* OPENSSL_VERSION_NUMBER */
 	return dsa;
 }
 
 RSA *
-ldns_key_buf2rsa(ldns_buffer *key)
+ldns_key_buf2rsa(const ldns_buffer *key)
 {
-	return ldns_key_buf2rsa_raw((unsigned char*)ldns_buffer_begin(key),
+	return ldns_key_buf2rsa_raw((const unsigned char*)ldns_buffer_begin(key),
 						   ldns_buffer_position(key));
 }
 
 RSA *
-ldns_key_buf2rsa_raw(unsigned char* key, size_t len)
+ldns_key_buf2rsa_raw(const unsigned char* key, size_t len)
 {
 	uint16_t offset;
 	uint16_t exp;
@@ -443,16 +461,25 @@ ldns_key_buf2rsa_raw(unsigned char* key, size_t len)
 		BN_free(modulus);
 		return NULL;
 	}
+#if OPENSSL_VERSION_NUMBER < 0x10100000 || defined(HAVE_LIBRESSL)
 #ifndef S_SPLINT_S
 	rsa->n = modulus;
 	rsa->e = exponent;
 #endif /* splint */
+#else /* OPENSSL_VERSION_NUMBER */
+	if (!RSA_set0_key(rsa, modulus, exponent, NULL)) {
+		BN_free(exponent);
+		BN_free(modulus);
+		RSA_free(rsa);
+		return NULL;
+	}
+#endif /* OPENSSL_VERSION_NUMBER */
 
 	return rsa;
 }
 
 int
-ldns_digest_evp(unsigned char* data, unsigned int len, unsigned char* dest,
+ldns_digest_evp(const unsigned char* data, unsigned int len, unsigned char* dest,
 	const EVP_MD* md)
 {
 	EVP_MD_CTX* ctx;
@@ -654,110 +681,120 @@ ldns_key_rr2ds(const ldns_rr *key, ldns_hash h)
 	return ds;
 }
 
+/* From RFC3845:
+ *
+ * 2.1.2.  The List of Type Bit Map(s) Field
+ * 
+ *    The RR type space is split into 256 window blocks, each representing
+ *    the low-order 8 bits of the 16-bit RR type space.  Each block that
+ *    has at least one active RR type is encoded using a single octet
+ *    window number (from 0 to 255), a single octet bitmap length (from 1
+ *    to 32) indicating the number of octets used for the window block's
+ *    bitmap, and up to 32 octets (256 bits) of bitmap.
+ * 
+ *    Window blocks are present in the NSEC RR RDATA in increasing
+ *    numerical order.
+ * 
+ *    "|" denotes concatenation
+ * 
+ *    Type Bit Map(s) Field = ( Window Block # | Bitmap Length | Bitmap ) +
+ * 
+ *    <cut>
+ * 
+ *    Blocks with no types present MUST NOT be included.  Trailing zero
+ *    octets in the bitmap MUST be omitted.  The length of each block's
+ *    bitmap is determined by the type code with the largest numerical
+ *    value within that block, among the set of RR types present at the
+ *    NSEC RR's owner name.  Trailing zero octets not specified MUST be
+ *    interpreted as zero octets.
+ */
 ldns_rdf *
 ldns_dnssec_create_nsec_bitmap(ldns_rr_type rr_type_list[],
                                size_t size,
                                ldns_rr_type nsec_type)
 {
-	size_t i;
-	uint8_t *bitmap;
-	uint16_t bm_len = 0;
-	uint16_t i_type;
-	ldns_rdf *bitmap_rdf;
+	uint8_t  window;		/*  most significant octet of type */
+	uint8_t  subtype;		/* least significant octet of type */
+	int      windows[256];		/* Max subtype per window */
+	uint8_t  windowpresent[256];	/* bool if window appears in bitmap */
+	ldns_rr_type* d;	/* used to traverse rr_type_list*/
+	size_t i;		/* used to traverse windows array */
 
-	uint8_t *data = NULL;
-	uint8_t cur_data[32];
-	uint8_t cur_window = 0;
-	uint8_t cur_window_max = 0;
-	uint16_t cur_data_size = 0;
+	size_t sz;			/* size needed for type bitmap rdf */
+	uint8_t* data = NULL;		/* rdf data */
+	uint8_t* dptr;			/* used to itraverse rdf data */
+	ldns_rdf* rdf;			/* bitmap rdf to return */
 
 	if (nsec_type != LDNS_RR_TYPE_NSEC &&
 	    nsec_type != LDNS_RR_TYPE_NSEC3) {
 		return NULL;
 	}
+	memset(windows, 0, sizeof(int)*256);
+	memset(windowpresent, 0, 256);
 
-	i_type = 0;
-	for (i = 0; i < size; i++) {
-		if (i_type < rr_type_list[i])
-			i_type = rr_type_list[i];
-	}
-	if (i_type < nsec_type) {
-		i_type = nsec_type;
-	}
-
-	bm_len = i_type / 8 + 2;
-	bitmap = LDNS_XMALLOC(uint8_t, bm_len);
-        if(!bitmap) return NULL;
-	for (i = 0; i < bm_len; i++) {
-		bitmap[i] = 0;
+	/* Which other windows need to be in the bitmap rdf?
+	 */
+	for (d = rr_type_list; d < rr_type_list + size; d++) {
+		window  = *d >> 8;
+		subtype = *d & 0xff;
+		windowpresent[window] = 1;
+		if (windows[window] < (int)subtype) {
+			windows[window] = (int)subtype;
+		}
 	}
 
-	for (i = 0; i < size; i++) {
-		i_type = rr_type_list[i];
-		ldns_set_bit(bitmap + (int) i_type / 8,
-				   (int) (7 - (i_type % 8)),
-				   true);
+	/* How much space do we need in the rdf for those windows?
+	 */
+	sz = 0;
+	for (i = 0; i < 256; i++) {
+		if (windowpresent[i]) {
+			sz += windows[i] / 8 + 3;
+		}
 	}
+	if (sz > 0) {
+		/* Format rdf data according RFC3845 Section 2.1.2 (see above)
+		 */
+		dptr = data = LDNS_CALLOC(uint8_t, sz);
+		if (!data) {
+			return NULL;
+		}
+		for (i = 0; i < 256; i++) {
+			if (windowpresent[i]) {
+				*dptr++ = (uint8_t)i;
+				*dptr++ = (uint8_t)(windows[i] / 8 + 1);
 
-	/* fold it into windows TODO: can this be done directly? */
-	memset(cur_data, 0, 32);
-	for (i = 0; i < bm_len; i++) {
-		if (i / 32 > cur_window) {
-			/* check, copy, new */
-			if (cur_window_max > 0) {
-				/* this window has stuff, add it */
-				data = LDNS_XREALLOC(data,
-								 uint8_t,
-								 cur_data_size + cur_window_max + 3);
-                                if(!data) {
-                                        LDNS_FREE(bitmap);
-                                        return NULL;
-                                }
-				data[cur_data_size] = cur_window;
-				data[cur_data_size + 1] = cur_window_max + 1;
-				memcpy(data + cur_data_size + 2,
-					  cur_data,
-					  cur_window_max+1);
-				cur_data_size += cur_window_max + 3;
+				/* Now let windows[i] index the bitmap
+				 * within data
+				 */
+				windows[i] = (int)(dptr - data);
+
+				dptr += dptr[-1];
 			}
-			cur_window++;
-			cur_window_max = 0;
-			memset(cur_data, 0, 32);
-		}
-		cur_data[i%32] = bitmap[i];
-		if (bitmap[i] > 0) {
-			cur_window_max = i%32;
 		}
 	}
-	if (cur_window_max > 0 || cur_data[0] != 0) {
-		/* this window has stuff, add it */
-		data = LDNS_XREALLOC(data,
-						 uint8_t,
-						 cur_data_size + cur_window_max + 3);
-                if(!data) {
-                        LDNS_FREE(bitmap);
-                        return NULL;
-                }
-		data[cur_data_size] = cur_window;
-		data[cur_data_size + 1] = cur_window_max + 1;
-		memcpy(data + cur_data_size + 2, cur_data, cur_window_max+1);
-		cur_data_size += cur_window_max + 3;
+
+	/* Set the bits?
+	 */
+	for (d = rr_type_list; d < rr_type_list + size; d++) {
+		subtype = *d & 0xff;
+		data[windows[*d >> 8] + subtype/8] |= (0x80 >> (subtype % 8));
 	}
-	bitmap_rdf = ldns_rdf_new_frm_data(LDNS_RDF_TYPE_NSEC,
-								cur_data_size,
-								data);
 
-	LDNS_FREE(bitmap);
-	LDNS_FREE(data);
-
-	return bitmap_rdf;
+	/* Allocate and return rdf structure for the data
+	 */
+	rdf = ldns_rdf_new(LDNS_RDF_TYPE_BITMAP, sz, data);
+	if (!rdf) {
+		LDNS_FREE(data);
+		return NULL;
+	}
+	return rdf;
 }
 
 int
-ldns_dnssec_rrsets_contains_type(ldns_dnssec_rrsets *rrsets,
+ldns_dnssec_rrsets_contains_type(const ldns_dnssec_rrsets *rrsets,
                                  ldns_rr_type type)
 {
-	ldns_dnssec_rrsets *cur_rrset = rrsets;
+	const ldns_dnssec_rrsets *cur_rrset = rrsets;
 	while (cur_rrset) {
 		if (cur_rrset->type == type) {
 			return 1;
@@ -768,8 +805,8 @@ ldns_dnssec_rrsets_contains_type(ldns_dnssec_rrsets *rrsets,
 }
 
 ldns_rr *
-ldns_dnssec_create_nsec(ldns_dnssec_name *from,
-                        ldns_dnssec_name *to,
+ldns_dnssec_create_nsec(const ldns_dnssec_name *from,
+                        const ldns_dnssec_name *to,
                         ldns_rr_type nsec_type)
 {
 	ldns_rr *nsec_rr;
@@ -822,14 +859,14 @@ ldns_dnssec_create_nsec(ldns_dnssec_name *from,
 }
 
 ldns_rr *
-ldns_dnssec_create_nsec3(ldns_dnssec_name *from,
-					ldns_dnssec_name *to,
-					ldns_rdf *zone_name,
+ldns_dnssec_create_nsec3(const ldns_dnssec_name *from,
+					const ldns_dnssec_name *to,
+					const ldns_rdf *zone_name,
 					uint8_t algorithm,
 					uint8_t flags,
 					uint16_t iterations,
 					uint8_t salt_length,
-					uint8_t *salt)
+					const uint8_t *salt)
 {
 	ldns_rr *nsec_rr;
 	ldns_rr_type types[65536];
@@ -961,11 +998,11 @@ ldns_create_nsec(ldns_rdf *cur_owner, ldns_rdf *next_owner, ldns_rr_list *rrs)
 }
 
 ldns_rdf *
-ldns_nsec3_hash_name(ldns_rdf *name,
+ldns_nsec3_hash_name(const ldns_rdf *name,
 				 uint8_t algorithm,
 				 uint16_t iterations,
 				 uint8_t salt_length,
-				 uint8_t *salt)
+				 const uint8_t *salt)
 {
 	size_t hashed_owner_str_len;
 	ldns_rdf *cann;
@@ -987,7 +1024,9 @@ ldns_nsec3_hash_name(ldns_rdf *name,
 	/* prepare the owner name according to the draft section bla */
 	cann = ldns_rdf_clone(name);
 	if(!cann) {
+#ifdef STDERR_MSGS
 		fprintf(stderr, "Memory error\n");
+#endif
 		return NULL;
 	}
 	ldns_dname2canonical(cann);
@@ -1032,11 +1071,13 @@ ldns_nsec3_hash_name(ldns_rdf *name,
                 hashed_owner_b32,
                 ldns_b32_ntop_calculate_size(hashed_owner_str_len)+1);
 	if (hashed_owner_b32_len < 1) {
+#ifdef STDERR_MSGS
 		fprintf(stderr, "Error in base32 extended hex encoding ");
 		fprintf(stderr, "of hashed owner name (name: ");
 		ldns_rdf_print(stderr, name);
 		fprintf(stderr, ", return code: %u)\n",
 		        (unsigned int) hashed_owner_b32_len);
+#endif
 		LDNS_FREE(hashed_owner_b32);
 		return NULL;
 	}
@@ -1044,7 +1085,9 @@ ldns_nsec3_hash_name(ldns_rdf *name,
 
 	status = ldns_str2rdf_dname(&hashed_owner, hashed_owner_b32);
 	if (status != LDNS_STATUS_OK) {
+#ifdef STDERR_MSGS
 		fprintf(stderr, "Error creating rdf from %s\n", hashed_owner_b32);
+#endif
 		LDNS_FREE(hashed_owner_b32);
 		return NULL;
 	}
@@ -1059,7 +1102,7 @@ ldns_nsec3_add_param_rdfs(ldns_rr *rr,
 					 uint8_t flags,
 					 uint16_t iterations,
 					 uint8_t salt_length,
-					 uint8_t *salt)
+					 const uint8_t *salt)
 {
 	ldns_rdf *salt_rdf = NULL;
 	uint8_t *salt_data = NULL;
@@ -1105,7 +1148,7 @@ ldns_nsec3_add_param_rdfs(ldns_rr *rr,
 }
 
 static int
-rr_list_delegation_only(ldns_rdf *origin, ldns_rr_list *rr_list)
+rr_list_delegation_only(const ldns_rdf *origin, const ldns_rr_list *rr_list)
 {
 	size_t i;
 	ldns_rr *cur_rr;
@@ -1125,14 +1168,14 @@ rr_list_delegation_only(ldns_rdf *origin, ldns_rr_list *rr_list)
 /* this will NOT return the NSEC3  completed, you will have to run the
    finalize function on the rrlist later! */
 ldns_rr *
-ldns_create_nsec3(ldns_rdf *cur_owner,
-                  ldns_rdf *cur_zone,
-                  ldns_rr_list *rrs,
+ldns_create_nsec3(const ldns_rdf *cur_owner,
+                  const ldns_rdf *cur_zone,
+                  const ldns_rr_list *rrs,
                   uint8_t algorithm,
                   uint8_t flags,
                   uint16_t iterations,
                   uint8_t salt_length,
-                  uint8_t *salt,
+                  const uint8_t *salt,
                   bool emptynonterminal)
 {
 	size_t i;
@@ -1313,7 +1356,7 @@ ldns_nsec3_bitmap(const ldns_rr *nsec3_rr)
 }
 
 ldns_rdf *
-ldns_nsec3_hash_name_frm_nsec3(const ldns_rr *nsec, ldns_rdf *name)
+ldns_nsec3_hash_name_frm_nsec3(const ldns_rr *nsec, const ldns_rdf *name)
 {
 	uint8_t algorithm;
 	uint16_t iterations;
@@ -1338,37 +1381,119 @@ ldns_nsec3_hash_name_frm_nsec3(const ldns_rr *nsec, ldns_rdf *name)
 }
 
 bool
-ldns_nsec_bitmap_covers_type(const ldns_rdf *nsec_bitmap, ldns_rr_type type)
+ldns_nsec_bitmap_covers_type(const ldns_rdf* bitmap, ldns_rr_type type)
 {
-	uint8_t window_block_nr;
-	uint8_t bitmap_length;
-	uint16_t cur_type;
-	uint16_t pos = 0;
-	uint16_t bit_pos;
-	uint8_t *data;
+	uint8_t* dptr;
+	uint8_t* dend;
 
-	if (nsec_bitmap == NULL) {
+	/* From RFC3845 Section 2.1.2:
+	 *
+	 *	"The RR type space is split into 256 window blocks, each re-
+	 *	 presenting the low-order 8 bits of the 16-bit RR type space."
+	 */
+	uint8_t  window = type >> 8;
+	uint8_t subtype = type & 0xff;
+
+	if (! bitmap) {
 		return false;
 	}
-	data = ldns_rdf_data(nsec_bitmap);
-	while(pos < ldns_rdf_size(nsec_bitmap)) {
-		window_block_nr = data[pos];
-		bitmap_length = data[pos + 1];
-		pos += 2;
+	assert(ldns_rdf_get_type(bitmap) == LDNS_RDF_TYPE_BITMAP);
 
-		for (bit_pos = 0; bit_pos < (bitmap_length) * 8; bit_pos++) {
-			if (ldns_get_bit(&data[pos], bit_pos)) {
-				cur_type = 256 * (uint16_t) window_block_nr + bit_pos;
-				if (cur_type == type) {
-					return true;
-				}
-			}
+	dptr = ldns_rdf_data(bitmap);
+	dend = ldns_rdf_data(bitmap) + ldns_rdf_size(bitmap);
+
+	/* Type Bitmap = ( Window Block # | Bitmap Length | Bitmap ) +
+	 *                 dptr[0]          dptr[1]         dptr[2:]
+	 */
+	while (dptr < dend && dptr[0] <= window) {
+
+		if (dptr[0] == window && subtype / 8 < dptr[1] &&
+				dptr + dptr[1] + 2 <= dend) {
+
+			return dptr[2 + subtype / 8] & (0x80 >> (subtype % 8));
 		}
-
-		pos += (uint16_t) bitmap_length;
+		dptr += dptr[1] + 2; /* next window */
 	}
 	return false;
 }
+
+ldns_status
+ldns_nsec_bitmap_set_type(ldns_rdf* bitmap, ldns_rr_type type)
+{
+	uint8_t* dptr;
+	uint8_t* dend;
+
+	/* From RFC3845 Section 2.1.2:
+	 *
+	 *	"The RR type space is split into 256 window blocks, each re-
+	 *	 presenting the low-order 8 bits of the 16-bit RR type space."
+	 */
+	uint8_t  window = type >> 8;
+	uint8_t subtype = type & 0xff;
+
+	if (! bitmap) {
+		return false;
+	}
+	assert(ldns_rdf_get_type(bitmap) == LDNS_RDF_TYPE_BITMAP);
+
+	dptr = ldns_rdf_data(bitmap);
+	dend = ldns_rdf_data(bitmap) + ldns_rdf_size(bitmap);
+
+	/* Type Bitmap = ( Window Block # | Bitmap Length | Bitmap ) +
+	 *                 dptr[0]          dptr[1]         dptr[2:]
+	 */
+	while (dptr < dend && dptr[0] <= window) {
+
+		if (dptr[0] == window && subtype / 8 < dptr[1] &&
+				dptr + dptr[1] + 2 <= dend) {
+
+			dptr[2 + subtype / 8] |= (0x80 >> (subtype % 8));
+			return LDNS_STATUS_OK;
+		}
+		dptr += dptr[1] + 2; /* next window */
+	}
+	return LDNS_STATUS_TYPE_NOT_IN_BITMAP;
+}
+
+ldns_status
+ldns_nsec_bitmap_clear_type(ldns_rdf* bitmap, ldns_rr_type type)
+{
+	uint8_t* dptr;
+	uint8_t* dend;
+
+	/* From RFC3845 Section 2.1.2:
+	 *
+	 *	"The RR type space is split into 256 window blocks, each re-
+	 *	 presenting the low-order 8 bits of the 16-bit RR type space."
+	 */
+	uint8_t  window = type >> 8;
+	uint8_t subtype = type & 0xff;
+
+	if (! bitmap) {
+		return false;
+	}
+
+	assert(ldns_rdf_get_type(bitmap) == LDNS_RDF_TYPE_BITMAP);
+
+	dptr = ldns_rdf_data(bitmap);
+	dend = ldns_rdf_data(bitmap) + ldns_rdf_size(bitmap);
+
+	/* Type Bitmap = ( Window Block # | Bitmap Length | Bitmap ) +
+	 *                 dptr[0]          dptr[1]         dptr[2:]
+	 */
+	while (dptr < dend && dptr[0] <= window) {
+
+		if (dptr[0] == window && subtype / 8 < dptr[1] &&
+				dptr + dptr[1] + 2 <= dend) {
+
+			dptr[2 + subtype / 8] &= ~(0x80 >> (subtype % 8));
+			return LDNS_STATUS_OK;
+		}
+		dptr += dptr[1] + 2; /* next window */
+	}
+	return LDNS_STATUS_TYPE_NOT_IN_BITMAP;
+}
+
 
 bool
 ldns_nsec_covers_name(const ldns_rr *nsec, const ldns_rdf *name)
@@ -1407,9 +1532,11 @@ ldns_nsec_covers_name(const ldns_rr *nsec, const ldns_rdf *name)
 	if(ldns_dname_compare(nsec_owner, nsec_next) > 0) {
 		result = (ldns_dname_compare(nsec_owner, name) <= 0 ||
 				ldns_dname_compare(name, nsec_next) < 0);
-	} else {
+	} else if(ldns_dname_compare(nsec_owner, nsec_next) < 0) {
 		result = (ldns_dname_compare(nsec_owner, name) <= 0 &&
 		          ldns_dname_compare(name, nsec_next) < 0);
+	} else {
+		result = true;
 	}
 
 	ldns_rdf_deep_free(nsec_next);
@@ -1420,8 +1547,8 @@ ldns_nsec_covers_name(const ldns_rr *nsec, const ldns_rdf *name)
 /* sig may be null - if so look in the packet */
 
 ldns_status
-ldns_pkt_verify_time(ldns_pkt *p, ldns_rr_type t, ldns_rdf *o, 
-		ldns_rr_list *k, ldns_rr_list *s, 
+ldns_pkt_verify_time(const ldns_pkt *p, ldns_rr_type t, const ldns_rdf *o, 
+		const ldns_rr_list *k, const ldns_rr_list *s, 
 		time_t check_time, ldns_rr_list *good_keys)
 {
 	ldns_rr_list *rrset;
@@ -1442,7 +1569,7 @@ ldns_pkt_verify_time(ldns_pkt *p, ldns_rr_type t, ldns_rdf *o,
 
 	if (s) {
 		/* if s is not NULL, the sigs are given to use */
-		sigs = s;
+		sigs = (ldns_rr_list *)s;
 	} else {
 		/* otherwise get them from the packet */
 		sigs = ldns_pkt_rr_list_by_name_and_type(p, o,
@@ -1484,8 +1611,8 @@ ldns_pkt_verify_time(ldns_pkt *p, ldns_rr_type t, ldns_rdf *o,
 }
 
 ldns_status
-ldns_pkt_verify(ldns_pkt *p, ldns_rr_type t, ldns_rdf *o, 
-		ldns_rr_list *k, ldns_rr_list *s, ldns_rr_list *good_keys)
+ldns_pkt_verify(const ldns_pkt *p, ldns_rr_type t, const ldns_rdf *o, 
+		const ldns_rr_list *k, const ldns_rr_list *s, ldns_rr_list *good_keys)
 {
 	return ldns_pkt_verify_time(p, t, o, k, s, ldns_time(NULL), good_keys);
 }
@@ -1607,8 +1734,10 @@ ldns_rdf *
 ldns_convert_dsa_rrsig_asn12rdf(const ldns_buffer *sig,
 						  const long sig_len)
 {
+#ifdef USE_DSA
 	ldns_rdf *sigdata_rdf;
 	DSA_SIG *dsasig;
+	const BIGNUM *R, *S;
 	unsigned char *dsasig_data = (unsigned char*)ldns_buffer_begin(sig);
 	size_t byte_offset;
 
@@ -1626,22 +1755,28 @@ ldns_convert_dsa_rrsig_asn12rdf(const ldns_buffer *sig,
                 return NULL;
         }
 	dsasig_data[0] = 0;
-	byte_offset = (size_t) (20 - BN_num_bytes(dsasig->r));
+# ifdef HAVE_DSA_SIG_GET0
+	DSA_SIG_get0(dsasig, &R, &S);
+# else
+	R = dsasig->r;
+	S = dsasig->s;
+# endif
+	byte_offset = (size_t) (20 - BN_num_bytes(R));
 	if (byte_offset > 20) {
                 DSA_SIG_free(dsasig);
                 LDNS_FREE(dsasig_data);
 		return NULL;
 	}
 	memset(&dsasig_data[1], 0, byte_offset);
-	BN_bn2bin(dsasig->r, &dsasig_data[1 + byte_offset]);
-	byte_offset = (size_t) (20 - BN_num_bytes(dsasig->s));
+	BN_bn2bin(R, &dsasig_data[1 + byte_offset]);
+	byte_offset = (size_t) (20 - BN_num_bytes(S));
 	if (byte_offset > 20) {
                 DSA_SIG_free(dsasig);
                 LDNS_FREE(dsasig_data);
 		return NULL;
 	}
 	memset(&dsasig_data[21], 0, byte_offset);
-	BN_bn2bin(dsasig->s, &dsasig_data[21 + byte_offset]);
+	BN_bn2bin(S, &dsasig_data[21 + byte_offset]);
 
 	sigdata_rdf = ldns_rdf_new(LDNS_RDF_TYPE_B64, 41, dsasig_data);
         if(!sigdata_rdf) {
@@ -1650,12 +1785,17 @@ ldns_convert_dsa_rrsig_asn12rdf(const ldns_buffer *sig,
 	DSA_SIG_free(dsasig);
 
 	return sigdata_rdf;
+#else
+	(void)sig; (void)sig_len;
+	return NULL;
+#endif
 }
 
 ldns_status
 ldns_convert_dsa_rrsig_rdf2asn1(ldns_buffer *target_buffer,
 						  const ldns_rdf *sig_rdf)
 {
+#ifdef USE_DSA
 	/* the EVP api wants the DER encoding of the signature... */
 	BIGNUM *R, *S;
 	DSA_SIG *dsasig;
@@ -1683,9 +1823,13 @@ ldns_convert_dsa_rrsig_rdf2asn1(ldns_buffer *target_buffer,
 		BN_free(S);
 		return LDNS_STATUS_MEM_ERR;
 	}
-
+# ifdef HAVE_DSA_SIG_SET0
+       if (! DSA_SIG_set0(dsasig, R, S))
+	       return LDNS_STATUS_SSL_ERR;
+# else
 	dsasig->r = R;
 	dsasig->s = S;
+# endif
 
 	raw_sig_len = i2d_DSA_SIG(dsasig, &raw_sig);
 	if (raw_sig_len < 0) {
@@ -1701,30 +1845,48 @@ ldns_convert_dsa_rrsig_rdf2asn1(ldns_buffer *target_buffer,
 	free(raw_sig);
 
 	return ldns_buffer_status(target_buffer);
+#else
+	(void)target_buffer; (void)sig_rdf;
+	return LDNS_STATUS_CRYPTO_ALGO_NOT_IMPL;
+#endif
 }
 
 #ifdef USE_ECDSA
 #ifndef S_SPLINT_S
 ldns_rdf *
-ldns_convert_ecdsa_rrsig_asn12rdf(const ldns_buffer *sig, const long sig_len)
+ldns_convert_ecdsa_rrsig_asn1len2rdf(const ldns_buffer *sig,
+	const long sig_len, int num_bytes)
 {
         ECDSA_SIG* ecdsa_sig;
+	const BIGNUM *r, *s;
 	unsigned char *data = (unsigned char*)ldns_buffer_begin(sig);
         ldns_rdf* rdf;
 	ecdsa_sig = d2i_ECDSA_SIG(NULL, (const unsigned char **)&data, sig_len);
         if(!ecdsa_sig) return NULL;
 
+#ifdef HAVE_ECDSA_SIG_GET0
+	ECDSA_SIG_get0(ecdsa_sig, &r, &s);
+#else
+	r = ecdsa_sig->r;
+	s = ecdsa_sig->s;
+#endif
         /* "r | s". */
-        data = LDNS_XMALLOC(unsigned char,
-                BN_num_bytes(ecdsa_sig->r) + BN_num_bytes(ecdsa_sig->s));
+        if(BN_num_bytes(r) > num_bytes ||
+		BN_num_bytes(s) > num_bytes) {
+                ECDSA_SIG_free(ecdsa_sig);
+		return NULL; /* numbers too big for passed curve size */
+	}
+        data = LDNS_XMALLOC(unsigned char, num_bytes*2);
         if(!data) {
                 ECDSA_SIG_free(ecdsa_sig);
                 return NULL;
         }
-        BN_bn2bin(ecdsa_sig->r, data);
-        BN_bn2bin(ecdsa_sig->s, data+BN_num_bytes(ecdsa_sig->r));
-	rdf = ldns_rdf_new(LDNS_RDF_TYPE_B64, (size_t)(
-		BN_num_bytes(ecdsa_sig->r) + BN_num_bytes(ecdsa_sig->s)), data);
+	/* write the bignums (in big-endian) a little offset if the BN code
+	 * wants to write a shorter number of bytes, with zeroes prefixed */
+	memset(data, 0, num_bytes*2);
+        BN_bn2bin(r, data+num_bytes-BN_num_bytes(r));
+        BN_bn2bin(s, data+num_bytes*2-BN_num_bytes(s));
+	rdf = ldns_rdf_new(LDNS_RDF_TYPE_B64, (size_t)(num_bytes*2), data);
         ECDSA_SIG_free(ecdsa_sig);
         return rdf;
 }
@@ -1733,37 +1895,116 @@ ldns_status
 ldns_convert_ecdsa_rrsig_rdf2asn1(ldns_buffer *target_buffer,
         const ldns_rdf *sig_rdf)
 {
-        ECDSA_SIG* sig;
-	int raw_sig_len;
+        /* convert from two BIGNUMs in the rdata buffer, to ASN notation.
+	 * ASN preable:  30440220 <R 32bytefor256> 0220 <S 32bytefor256>
+	 * the '20' is the length of that field (=bnsize).
+	 * the '44' is the total remaining length.
+	 * if negative, start with leading zero.
+	 * if starts with 00s, remove them from the number.
+	 */
+        uint8_t pre[] = {0x30, 0x44, 0x02, 0x20};
+        int pre_len = 4;
+        uint8_t mid[] = {0x02, 0x20};
+        int mid_len = 2;
+        int raw_sig_len, r_high, s_high, r_rem=0, s_rem=0;
         long bnsize = (long)ldns_rdf_size(sig_rdf) / 2;
+        uint8_t* d = ldns_rdf_data(sig_rdf);
         /* if too short, or not even length, do not bother */
         if(bnsize < 16 || (size_t)bnsize*2 != ldns_rdf_size(sig_rdf))
                 return LDNS_STATUS_ERR;
-        
-        /* use the raw data to parse two evenly long BIGNUMs, "r | s". */
-        sig = ECDSA_SIG_new();
-        if(!sig) return LDNS_STATUS_MEM_ERR;
-        sig->r = BN_bin2bn((const unsigned char*)ldns_rdf_data(sig_rdf),
-                bnsize, sig->r);
-        sig->s = BN_bin2bn((const unsigned char*)ldns_rdf_data(sig_rdf)+bnsize,
-                bnsize, sig->s);
-        if(!sig->r || !sig->s) {
-                ECDSA_SIG_free(sig);
-                return LDNS_STATUS_MEM_ERR;
+        /* strip leading zeroes from r (but not last one) */
+        while(r_rem < bnsize-1 && d[r_rem] == 0)
+                r_rem++;
+        /* strip leading zeroes from s (but not last one) */
+        while(s_rem < bnsize-1 && d[bnsize+s_rem] == 0)
+                s_rem++;
+
+        r_high = ((d[0+r_rem]&0x80)?1:0);
+        s_high = ((d[bnsize+s_rem]&0x80)?1:0);
+        raw_sig_len = pre_len + r_high + bnsize - r_rem + mid_len +
+		s_high + bnsize - s_rem;
+        if(ldns_buffer_reserve(target_buffer, (size_t) raw_sig_len)) {
+                ldns_buffer_write_u8(target_buffer, pre[0]);
+                ldns_buffer_write_u8(target_buffer, raw_sig_len-2);
+                ldns_buffer_write_u8(target_buffer, pre[2]);
+                ldns_buffer_write_u8(target_buffer, bnsize + r_high - r_rem);
+                if(r_high)
+                        ldns_buffer_write_u8(target_buffer, 0);
+                ldns_buffer_write(target_buffer, d+r_rem, bnsize-r_rem);
+                ldns_buffer_write(target_buffer, mid, mid_len-1);
+                ldns_buffer_write_u8(target_buffer, bnsize + s_high - s_rem);
+                if(s_high)
+                        ldns_buffer_write_u8(target_buffer, 0);
+                ldns_buffer_write(target_buffer, d+bnsize+s_rem, bnsize-s_rem);
         }
-
-	raw_sig_len = i2d_ECDSA_SIG(sig, NULL);
-	if (ldns_buffer_reserve(target_buffer, (size_t) raw_sig_len)) {
-                unsigned char* pp = (unsigned char*)
-			ldns_buffer_current(target_buffer);
-	        raw_sig_len = i2d_ECDSA_SIG(sig, &pp);
-                ldns_buffer_skip(target_buffer, (ssize_t) raw_sig_len);
-	}
-        ECDSA_SIG_free(sig);
-
-	return ldns_buffer_status(target_buffer);
+        return ldns_buffer_status(target_buffer);
 }
 
 #endif /* S_SPLINT_S */
 #endif /* USE_ECDSA */
+
+#if defined(USE_ED25519) || defined(USE_ED448)
+/* debug printout routine */
+static void print_hex(const char* str, uint8_t* d, int len)
+{
+	const char hex[] = "0123456789abcdef";
+	int i;
+	printf("%s [len=%d]: ", str, len);
+	for(i=0; i<len; i++) {
+		int x = (d[i]&0xf0)>>4;
+		int y = (d[i]&0x0f);
+		printf("%c%c", hex[x], hex[y]);
+	}
+	printf("\n");
+}
+#endif
+
+#ifdef USE_ED25519
+ldns_rdf *
+ldns_convert_ed25519_rrsig_asn12rdf(const ldns_buffer *sig, long sig_len)
+{
+	unsigned char *data = (unsigned char*)ldns_buffer_begin(sig);
+        ldns_rdf* rdf = NULL;
+
+	/* TODO when Openssl supports signing and you can test this */
+	print_hex("sig in ASN", data, sig_len);
+
+        return rdf;
+}
+
+ldns_status
+ldns_convert_ed25519_rrsig_rdf2asn1(ldns_buffer *target_buffer,
+        const ldns_rdf *sig_rdf)
+{
+	/* TODO when Openssl supports signing and you can test this. */
+	/* convert sig_buf into ASN1 into the target_buffer */
+	print_hex("sig raw", ldns_rdf_data(sig_rdf), ldns_rdf_size(sig_rdf));
+        return ldns_buffer_status(target_buffer);
+}
+#endif /* USE_ED25519 */
+
+#ifdef USE_ED448
+ldns_rdf *
+ldns_convert_ed448_rrsig_asn12rdf(const ldns_buffer *sig, long sig_len)
+{
+	unsigned char *data = (unsigned char*)ldns_buffer_begin(sig);
+        ldns_rdf* rdf = NULL;
+
+	/* TODO when Openssl supports signing and you can test this */
+	print_hex("sig in ASN", data, sig_len);
+
+	return rdf;
+}
+
+ldns_status
+ldns_convert_ed448_rrsig_rdf2asn1(ldns_buffer *target_buffer,
+        const ldns_rdf *sig_rdf)
+{
+	/* TODO when Openssl supports signing and you can test this. */
+	/* convert sig_buf into ASN1 into the target_buffer */
+	print_hex("sig raw", ldns_rdf_data(sig_rdf), ldns_rdf_size(sig_rdf));
+        return ldns_buffer_status(target_buffer);
+}
+#endif /* USE_ED448 */
+
 #endif /* HAVE_SSL */

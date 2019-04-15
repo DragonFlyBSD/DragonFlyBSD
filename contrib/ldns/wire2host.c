@@ -64,10 +64,12 @@ ldns_wire2dname(ldns_rdf **dname, const uint8_t *wire, size_t max, size_t *pos)
 	uint8_t tmp_dname[LDNS_MAX_DOMAINLEN];
 	unsigned int pointer_count = 0;
 
+	if (pos == NULL) {
+		return LDNS_STATUS_WIRE_RDATA_ERR;
+	}
 	if (*pos >= max) {
 		return LDNS_STATUS_PACKET_OVERFLOW;
 	}
-
 	label_size = wire[*pos];
 	while (label_size > 0) {
 		/* compression */
@@ -162,8 +164,12 @@ ldns_wire2rdf(ldns_rr *rr, const uint8_t *wire, size_t max, size_t *pos)
 	uint16_t rd_length;
 	ldns_rdf *cur_rdf = NULL;
 	ldns_rdf_type cur_rdf_type;
-	const ldns_rr_descriptor *descriptor = ldns_rr_descript(ldns_rr_get_type(rr));
+	const ldns_rr_descriptor *descriptor;
 	ldns_status status;
+
+	assert(rr != NULL);
+
+	descriptor = ldns_rr_descript(ldns_rr_get_type(rr));
 
 	if (*pos + 2 > max) {
 		return LDNS_STATUS_PACKET_OVERFLOW;
@@ -178,14 +184,15 @@ ldns_wire2rdf(ldns_rr *rr, const uint8_t *wire, size_t max, size_t *pos)
 
 	end = *pos + (size_t) rd_length;
 
-	for (rdf_index = 0;
-	     rdf_index < ldns_rr_descriptor_maximum(descriptor); rdf_index++) {
-		if (*pos >= end) {
-			break;
-		}
+	rdf_index = 0;
+	while (*pos < end &&
+			rdf_index < ldns_rr_descriptor_maximum(descriptor)) {
+
 		cur_rdf_length = 0;
 
-		cur_rdf_type = ldns_rr_descriptor_field_type(descriptor, rdf_index);
+		cur_rdf_type = ldns_rr_descriptor_field_type(
+				descriptor, rdf_index);
+
 		/* handle special cases immediately, set length
 		   for fixed length rdata and do them below */
 		switch (cur_rdf_type) {
@@ -195,6 +202,9 @@ ldns_wire2rdf(ldns_rr *rr, const uint8_t *wire, size_t max, size_t *pos)
 			break;
 		case LDNS_RDF_TYPE_CLASS:
 		case LDNS_RDF_TYPE_ALG:
+		case LDNS_RDF_TYPE_CERTIFICATE_USAGE:
+		case LDNS_RDF_TYPE_SELECTOR:
+		case LDNS_RDF_TYPE_MATCHING_TYPE:
 		case LDNS_RDF_TYPE_INT8:
 			cur_rdf_length = LDNS_RDF_SIZE_BYTE;
 			break;
@@ -210,21 +220,40 @@ ldns_wire2rdf(ldns_rr *rr, const uint8_t *wire, size_t max, size_t *pos)
 			cur_rdf_length = LDNS_RDF_SIZE_DOUBLEWORD;
 			break;
 		case LDNS_RDF_TYPE_TSIGTIME:
+		case LDNS_RDF_TYPE_EUI48:
 			cur_rdf_length = LDNS_RDF_SIZE_6BYTES;
+			break;
+		case LDNS_RDF_TYPE_ILNP64:
+		case LDNS_RDF_TYPE_EUI64:
+			cur_rdf_length = LDNS_RDF_SIZE_8BYTES;
 			break;
 		case LDNS_RDF_TYPE_AAAA:
 			cur_rdf_length = LDNS_RDF_SIZE_16BYTES;
 			break;
 		case LDNS_RDF_TYPE_STR:
 		case LDNS_RDF_TYPE_NSEC3_SALT:
+		case LDNS_RDF_TYPE_TAG:
 			/* len is stored in first byte
 			 * it should be in the rdf too, so just
 			 * copy len+1 from this position
 			 */
 			cur_rdf_length = ((size_t) wire[*pos]) + 1;
 			break;
+
 		case LDNS_RDF_TYPE_INT16_DATA:
-			cur_rdf_length = (size_t) ldns_read_uint16(&wire[*pos]) + 2;
+			if (*pos + 2 > end) {
+				return LDNS_STATUS_PACKET_OVERFLOW;
+			}
+			cur_rdf_length =
+				(size_t) ldns_read_uint16(&wire[*pos]) + 2;
+			break;
+		case LDNS_RDF_TYPE_HIP:
+			if (*pos + 4 > end) {
+				return LDNS_STATUS_PACKET_OVERFLOW;
+			}
+			cur_rdf_length =
+				(size_t) wire[*pos] + 
+				(size_t) ldns_read_uint16(&wire[*pos + 2]) + 4;
 			break;
 		case LDNS_RDF_TYPE_B32_EXT:
 		case LDNS_RDF_TYPE_NSEC3_NEXT_OWNER:
@@ -242,7 +271,7 @@ ldns_wire2rdf(ldns_rr *rr, const uint8_t *wire, size_t max, size_t *pos)
 		case LDNS_RDF_TYPE_NSAP:
 		case LDNS_RDF_TYPE_ATMA:
 		case LDNS_RDF_TYPE_IPSECKEY:
-		case LDNS_RDF_TYPE_TSIG:
+		case LDNS_RDF_TYPE_LONG_STR:
 		case LDNS_RDF_TYPE_NONE:
 			/*
 			 * Read to end of rr rdata
@@ -262,7 +291,8 @@ ldns_wire2rdf(ldns_rr *rr, const uint8_t *wire, size_t max, size_t *pos)
 			}
 			memcpy(data, &wire[*pos], cur_rdf_length);
 
-			cur_rdf = ldns_rdf_new(cur_rdf_type, cur_rdf_length, data);
+			cur_rdf = ldns_rdf_new(cur_rdf_type,
+					cur_rdf_length, data);
 			*pos = *pos + cur_rdf_length;
 		}
 
@@ -270,7 +300,11 @@ ldns_wire2rdf(ldns_rr *rr, const uint8_t *wire, size_t max, size_t *pos)
 			ldns_rr_push_rdf(rr, cur_rdf);
 			cur_rdf = NULL;
 		}
-	}
+
+		rdf_index++;
+
+	} /* while (rdf_index < ldns_rr_descriptor_maximum(descriptor)) */
+
 
 	return LDNS_STATUS_OK;
 }
@@ -358,7 +392,7 @@ ldns_wire2pkt_hdr(ldns_pkt *packet, const uint8_t *wire, size_t max, size_t *pos
 }
 
 ldns_status
-ldns_buffer2pkt_wire(ldns_pkt **packet, ldns_buffer *buffer)
+ldns_buffer2pkt_wire(ldns_pkt **packet, const ldns_buffer *buffer)
 {
 	/* lazy */
 	return ldns_wire2pkt(packet, ldns_buffer_begin(buffer),
@@ -374,7 +408,7 @@ ldns_wire2pkt(ldns_pkt **packet_p, const uint8_t *wire, size_t max)
 	ldns_rr *rr;
 	ldns_pkt *packet = ldns_pkt_new();
 	ldns_status status = LDNS_STATUS_OK;
-	int have_edns = 0;
+	uint8_t have_edns = 0;
 
 	uint8_t data[4];
 
@@ -446,6 +480,7 @@ ldns_wire2pkt(ldns_pkt **packet_p, const uint8_t *wire, size_t max)
 	if(have_edns)
 		ldns_pkt_set_arcount(packet, ldns_pkt_arcount(packet)
                         - have_edns);
+        packet->_edns_present = have_edns;
 
 	*packet_p = packet;
 	return status;

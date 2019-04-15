@@ -13,6 +13,7 @@ extern "C" {
 
 /** Sign flag that makes DNSKEY type signed by all keys, not only by SEP keys*/
 #define LDNS_SIGN_DNSKEY_WITH_ZSK 1
+#define LDNS_SIGN_WITH_ALL_ALGORITHMS 2 
 
 /**
  * Create an empty RRSIG RR (i.e. without the actual signature data)
@@ -21,8 +22,8 @@ extern "C" {
  * \return signature rr
  */
 ldns_rr *
-ldns_create_empty_rrsig(ldns_rr_list *rrset,
-                        ldns_key *key);
+ldns_create_empty_rrsig(const ldns_rr_list *rrset,
+                        const ldns_key *key);
 
 /**
  * Sign the buffer which contains the wiredata of an rrset, and the
@@ -87,7 +88,7 @@ ldns_rdf *ldns_sign_public_rsamd5(ldns_buffer *to_sign, RSA *key);
  * when walking the tree with the ldns_dnssec_name_node_next_nonglue()
  * function. But watch out! Names that are partially occluded (like glue with
  * the same name as the delegation) will not be marked and should specifically 
- * be taken into account seperately.
+ * be taken into account separately.
  *
  * When glue_list is given (not NULL), in the process of marking the names, all
  * glue resource records will be pushed to that list, even glue at the delegation name.
@@ -105,7 +106,7 @@ ldns_dnssec_zone_mark_and_get_glue(
  * when walking the tree with the ldns_dnssec_name_node_next_nonglue()
  * function. But watch out! Names that are partially occluded (like glue with
  * the same name as the delegation) will not be marked and should specifically 
- * be taken into account seperately.
+ * be taken into account separately.
  *
  * \param[in] zone the zone in which to mark the names
  * \return LDNS_STATUS_OK on succesful completion
