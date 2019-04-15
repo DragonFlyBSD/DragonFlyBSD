@@ -44,12 +44,35 @@
    don't. */
 #define HAVE_DECL_NID_SECP384R1 1
 
+/* Define to 1 if you have the declaration of `NID_X25519', and to 0 if you
+   don't. */
+/* #undef HAVE_DECL_NID_X25519 */
+
+/* Define to 1 if you have the declaration of `NID_X448', and to 0 if you
+   don't. */
+/* #undef HAVE_DECL_NID_X448 */
+
 /* Define to 1 if you have the declaration of `NID_X9_62_prime256v1', and to 0
    if you don't. */
 #define HAVE_DECL_NID_X9_62_PRIME256V1 1
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
-#define HAVE_DLFCN_H 1
+/* #undef HAVE_DLFCN_H */
+
+/* Define to 1 if you have the `DSA_get0_key' function. */
+#define HAVE_DSA_GET0_KEY 1
+
+/* Define to 1 if you have the `DSA_get0_pqg' function. */
+#define HAVE_DSA_GET0_PQG 1
+
+/* Define to 1 if you have the `DSA_SIG_get0' function. */
+#define HAVE_DSA_SIG_GET0 1
+
+/* Define to 1 if you have the `DSA_SIG_set0' function. */
+#define HAVE_DSA_SIG_SET0 1
+
+/* Define to 1 if you have the `ECDSA_SIG_get0' function. */
+#define HAVE_ECDSA_SIG_GET0 1
 
 /* Define to 1 if you have the `endprotoent' function. */
 #define HAVE_ENDPROTOENT 1
@@ -57,8 +80,29 @@
 /* Define to 1 if you have the `endservent' function. */
 #define HAVE_ENDSERVENT 1
 
+/* Define to 1 if you have the `ENGINE_load_cryptodev' function. */
+/* #undef HAVE_ENGINE_LOAD_CRYPTODEV */
+
+/* Define to 1 if you have the `EVP_dss1' function. */
+#define HAVE_EVP_DSS1 1
+
+/* Define to 1 if you have the `EVP_MD_CTX_new' function. */
+#define HAVE_EVP_MD_CTX_NEW 1
+
+/* Define to 1 if you have the `EVP_PKEY_base_id' function. */
+#define HAVE_EVP_PKEY_BASE_ID 1
+
+/* Define to 1 if you have the `EVP_PKEY_keygen' function. */
+#define HAVE_EVP_PKEY_KEYGEN 1
+
 /* Define to 1 if you have the `EVP_sha256' function. */
 #define HAVE_EVP_SHA256 1
+
+/* Define to 1 if you have the `EVP_sha384' function. */
+#define HAVE_EVP_SHA384 1
+
+/* Define to 1 if you have the `EVP_sha512' function. */
+#define HAVE_EVP_SHA512 1
 
 /* Define to 1 if you have the `fcntl' function. */
 #define HAVE_FCNTL 1
@@ -75,8 +119,8 @@
 /* Define to 1 if you have the `gmtime_r' function. */
 #define HAVE_GMTIME_R 1
 
-/* If you have HMAC_CTX_init */
-#define HAVE_HMAC_CTX_INIT 1
+/* If you have HMAC_Update */
+#define HAVE_HMAC_UPDATE 1
 
 /* Define to 1 if you have the `inet_aton' function. */
 #define HAVE_INET_ATON 1
@@ -86,9 +130,6 @@
 
 /* Define to 1 if you have the `inet_pton' function. */
 #define HAVE_INET_PTON 1
-
-/* Define to 1 if the system has the type `intptr_t'. */
-#define HAVE_INTPTR_T 1
 
 /* define if you have inttypes.h */
 #define HAVE_INTTYPES_H 1
@@ -104,6 +145,9 @@
 
 /* Define to 1 if you have the `pcap' library (-lpcap). */
 /* #undef HAVE_LIBPCAP */
+
+/* Define if we have LibreSSL */
+#define HAVE_LIBRESSL 1
 
 /* Define to 1 if you have the `localtime_r' function. */
 #define HAVE_LOCALTIME_R 1
@@ -165,6 +209,9 @@
 
 /* Define to 1 if you have the <pcap.h> header file. */
 /* #undef HAVE_PCAP_H */
+
+/* This platform supports poll(7). */
+#define HAVE_POLL 1
 
 /* If available, contains the Python version number currently in use. */
 /* #undef HAVE_PYTHON */
@@ -263,11 +310,7 @@
 /* Is a CAPATH given at configure time */
 /* #undef LDNS_DANE_CA_PATH */
 
-/* Default trust anchor file */
-#define LDNS_TRUST_ANCHOR_FILE "/usr/local/etc/unbound/root.key"
-
-/* Define to the sub-directory in which libtool stores uninstalled libraries.
-   */
+/* Define to the sub-directory where libtool stores uninstalled libraries. */
 #define LT_OBJDIR ".libs/"
 
 /* Define to the address where bug reports for this package should be sent. */
@@ -277,7 +320,7 @@
 #define PACKAGE_NAME "ldns"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "ldns 1.6.16"
+#define PACKAGE_STRING "ldns 1.7.0"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "libdns"
@@ -286,19 +329,55 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "1.6.16"
+#define PACKAGE_VERSION "1.7.0"
+
+/* Define this to enable RR type AVC. */
+/* #undef RRTYPE_AVC */
+
+/* Define this to enable RR type NINFO. */
+/* #undef RRTYPE_NINFO */
+
+/* Define this to enable RR type OPENPGPKEY. */
+#define RRTYPE_OPENPGPKEY /**/
+
+/* Define this to enable RR type RKEY. */
+/* #undef RRTYPE_RKEY */
+
+/* Define this to enable RR type TA. */
+/* #undef RRTYPE_TA */
 
 /* The size of `time_t', as computed by sizeof. */
-#define SIZEOF_TIME_T 4
+#define SIZEOF_TIME_T 8
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
 
+/* Define this to enable messages to stderr. */
+/* #undef STDERR_MSGS */
+
 /* System configuration dir */
 #define SYSCONFDIR sysconfdir
 
+/* Define this to enable DANE support. */
+#define USE_DANE 1
+
+/* Define this to enable DANE-TA usage type support. */
+/* #undef USE_DANE_TA_USAGE */
+
+/* Define this to enable DANE verify support. */
+#define USE_DANE_VERIFY 1
+
+/* Define this to enable DSA support. */
+#define USE_DSA 1
+
 /* Define this to enable ECDSA support. */
 #define USE_ECDSA 1
+
+/* Define this to enable ED25519 support. */
+/* #undef USE_ED25519 */
+
+/* Define this to enable ED448 support. */
+/* #undef USE_ED448 */
 
 /* Define this to enable GOST support. */
 /* #undef USE_GOST */
@@ -349,6 +428,9 @@
 /* Define to 1 if on MINIX. */
 /* #undef _MINIX */
 
+/* Enable for compile on Minix */
+/* #undef _NETBSD_SOURCE */
+
 /* Define to 2 if the system does not provide POSIX.1 features except with
    this defined. */
 /* #undef _POSIX_1_SOURCE */
@@ -383,8 +465,7 @@
 /* Define to `char' if <sys/types.h> does not define. */
 /* #undef int8_t */
 
-/* Define to the type of a signed integer type wide enough to hold a pointer,
-   if such a type exists, and if the system does not define it. */
+/* Define to `size_t' if <sys/types.h> does not define. */
 /* #undef intptr_t */
 
 /* Define to rpl_malloc if the replacement function should be used. */
@@ -489,7 +570,6 @@
 extern "C" {
 #endif
 
-#ifndef B64_PTON
 int ldns_b64_ntop(uint8_t const *src, size_t srclength,
 	 	  char *target, size_t targsize);
 /**
@@ -500,8 +580,6 @@ static inline size_t ldns_b64_ntop_calculate_size(size_t srcsize)
 {
 	return ((((srcsize + 2) / 3) * 4) + 1);
 }
-#endif /* !B64_PTON */
-#ifndef B64_NTOP
 int ldns_b64_pton(char const *src, uint8_t *target, size_t targsize);
 /**
  * calculates the size needed to store the result of ldns_b64_pton
@@ -511,7 +589,12 @@ static inline size_t ldns_b64_pton_calculate_size(size_t srcsize)
 {
 	return (((((srcsize + 3) / 4) * 3)) + 1);
 }
-#endif /* !B64_NTOP */
+
+/**
+ * Given in dnssec_zone.c, also used in dnssec_sign.c:w
+
+ */
+int ldns_dname_compare_v(const void *a, const void *b);
 
 #ifndef HAVE_SLEEP
 /* use windows sleep, in millisecs, instead */
@@ -559,6 +642,15 @@ void *memmove(void *dest, const void *src, size_t n);
 #ifndef HAVE_STRLCPY
 size_t strlcpy(char *dst, const char *src, size_t siz);
 #endif
+
+#ifdef USE_WINSOCK
+#define SOCK_INVALID INVALID_SOCKET
+#define close_socket(_s) do { if (_s > SOCK_INVALID) {closesocket(_s); _s = SOCK_INVALID;} } while(0)
+#else
+#define SOCK_INVALID -1
+#define close_socket(_s) do { if (_s > SOCK_INVALID) {close(_s); _s = SOCK_INVALID;} } while(0)
+#endif
+
 #ifdef __cplusplus
 }
 #endif
@@ -569,3 +661,6 @@ size_t strlcpy(char *dst, const char *src, size_t siz);
 #define strtoul (unsigned long)strtol
 #endif
 
+/* Default trust anchor file */
+/* Added here from previous ldns version config.h, avoids long CFLAG */
+#define LDNS_TRUST_ANCHOR_FILE "/usr/local/etc/unbound/root.key"

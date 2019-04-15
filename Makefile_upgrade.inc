@@ -3634,6 +3634,8 @@ TO_REMOVE+=/usr/include/priv/openssl/cms.h
 TO_REMOVE+=/usr/include/priv/openssl/engine.h
 TO_REMOVE+=/usr/include/priv/openssl/krb5_asn.h
 TO_REMOVE+=/usr/include/priv/openssl/ui_compat.h
+TO_REMOVE+=/usr/include/ldns
+TO_REMOVE+=/usr/lib/priv/libprivate_ldns.so.1
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

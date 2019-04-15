@@ -32,7 +32,6 @@ CFLAGS+=	-D__STRICT_ALIGNMENT
 
 # Local sources:
 # Replacement for malloc-wrapper.c, base tools depend on CRYPTO_free() here:
-#  contrib/ldns/keys.c		CRYPTO_free(),  unused (only if USE_GOST)
 #  contrib/ldns/host2str.c	OPENSSL_free(), unused (only if USE_GOST)
 #  lib/libfetch/common.c	OPENSSL_free()
 #  lib/libtelnet/pk.c		OPENSSL_free()

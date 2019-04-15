@@ -4,14 +4,20 @@ LDNS
 Original source can be downloaded from:
 http://www.nlnetlabs.nl/downloads/ldns/
 
-file = ldns-1.6.16.tar.gz
-date = 13 November 2012
-size = 1109941
-sha1 = 5b4fc6c5c3078cd061905c47178478cb1015c62a
+file = ldns-1.7.0.tar.gz
+date = 20 December 2016
+size = 1304424
+sha1 = ceeeccf8a27e61a854762737f6ee02f44662c1b8
 
 A list of files and directories removed is in README.DELETED
 
-The following files have been patched:
-  ldns/keys.h			added OPENSSL_NO_ENGINE checks
+Configured with
+===============
+./configure --prefix=/usr --disable-rpath --disable-dane-ta-usage --with-drill \
+	    --with-trust-anchor=/usr/local/etc/unbound/root.key \
+	    ac_cv_header_dlfcn_h=no
 
-dnssec_verify.c - to silence -Winit-self and not have to lower WARNS
+The following files have been patched (* planned)
+=================================================
+  dnssec_verify.c		to silence -Winit-self
+  keys.c			added OPENSSL_NO_ENGINE checks

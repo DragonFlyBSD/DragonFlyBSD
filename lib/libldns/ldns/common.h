@@ -24,6 +24,9 @@
 #define LDNS_BUILD_CONFIG_HAVE_ATTR_FORMAT 1
 #define LDNS_BUILD_CONFIG_HAVE_ATTR_UNUSED 1
 #define LDNS_BUILD_CONFIG_HAVE_SOCKLEN_T   1
+#define LDNS_BUILD_CONFIG_USE_DANE         1
+#define LDNS_BUILD_CONFIG_HAVE_B32_PTON    0
+#define LDNS_BUILD_CONFIG_HAVE_B32_NTOP    0
 
 /*
  * HAVE_STDBOOL_H is not available when distributed as a library, but no build 
@@ -34,20 +37,22 @@
  */
 /*@ignore@*/
 /* splint barfs on this construct */
-#ifdef HAVE_STDBOOL_H
-# include <stdbool.h>
-#else
-# ifndef HAVE__BOOL
-#  ifdef __cplusplus
+#ifndef __bool_true_false_are_defined
+# ifdef HAVE_STDBOOL_H
+#  include <stdbool.h>
+# else
+#  ifndef HAVE__BOOL
+#   ifdef __cplusplus
 typedef bool _Bool;
-#  else
-#   define _Bool signed char
+#   else
+#    define _Bool signed char
+#   endif
 #  endif
+#  define bool _Bool
+#  define false 0
+#  define true 1
+#  define __bool_true_false_are_defined 1
 # endif
-# define bool _Bool
-# define false 0
-# define true 1
-# define __bool_true_false_are_defined 1
 #endif
 /*@end@*/
 
