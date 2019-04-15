@@ -25,6 +25,7 @@ NOINSTALLLIB=	yes
 LIBMODE=	555
 
 # GCC driver looks for LTO plugin library in libexec, not lib
+TARGET_LIBDIR=		/usr/libexec/gcc80
 TARGET_SHLIBDIR=	/usr/libexec/gcc80
 
 # Plugin support file locations

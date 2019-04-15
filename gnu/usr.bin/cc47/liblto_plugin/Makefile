@@ -14,6 +14,7 @@ NOPROFILE=	yes
 NOINSTALLLIB=	yes
 
 # GCC driver looks for LTO plugin library in libexec, not lib
+TARGET_LIBDIR=		/usr/libexec/gcc47
 TARGET_SHLIBDIR=	/usr/libexec/gcc47
 
 # Plugin support file locations
