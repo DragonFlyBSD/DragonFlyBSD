@@ -26,7 +26,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/rpc/netname.c,v 1.8 2004/10/16 06:11:35 obrien Exp $
- * $DragonFly: src/lib/libc/rpc/netname.c,v 1.3 2005/11/13 12:27:04 swildner Exp $
  *
  * @(#)netname.c 1.8 91/03/11 Copyr 1986 Sun Micro
  */
@@ -64,16 +63,16 @@
 
 #define TYPE_BIT(type)  (sizeof (type) * CHAR_BIT)
 
-#define TYPE_SIGNED(type) (((type) -1) < 0)
-
 /*
 ** 302 / 1000 is log10(2.0) rounded up.
 ** Subtract one for the sign bit if the type is signed;
 ** add one for integer division truncation;
 ** add one more for a minus sign if the type is signed.
 */
-#define INT_STRLEN_MAXIMUM(type) \
-    ((TYPE_BIT(type) - TYPE_SIGNED(type)) * 302 / 1000 + 1 + TYPE_SIGNED(type))
+#define U_INT_STRLEN_MAXIMUM(type) \
+    (TYPE_BIT(type) * 302 / 1000 + 1)
+#define S_INT_STRLEN_MAXIMUM(type) \
+    ((TYPE_BIT(type) - 1) * 302 / 1000 + 1 + 1)
 
 static char *OPSYS = "unix";
 
@@ -108,7 +107,7 @@ user2netname(char *netname, const uid_t uid, const char *domain)
 		}
 		domain = dfltdom;
 	}
-	if (strlen(domain) + 1 + INT_STRLEN_MAXIMUM(u_long) + 1 + strlen(OPSYS) > MAXNETNAMELEN) {
+	if (strlen(domain) + 1 + U_INT_STRLEN_MAXIMUM(u_long) + 1 + strlen(OPSYS) > MAXNETNAMELEN) {
 		return (0);
 	}
 	sprintf(netname, "%s.%ld@%s", OPSYS, (u_long)uid, domain);	
