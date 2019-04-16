@@ -112,7 +112,7 @@ sys_tun_open(int tun, int mode)
 #include <net/if.h>
 
 #ifdef HAVE_NET_IF_TUN_H
-#include <net/tun/if_tun.h>
+#include <net/if_tun.h>
 #endif
 
 int

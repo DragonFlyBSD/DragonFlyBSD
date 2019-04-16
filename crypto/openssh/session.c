@@ -1237,7 +1237,7 @@ do_nologin(struct passwd *pw)
 #ifdef HAVE_LOGIN_CAP
 	if (login_getcapbool(lc, "ignorenologin", 0) || pw->pw_uid == 0)
 		return;
-	nl = strdup(login_getcapstr(lc, "nologin", def_nl, def_nl));
+	nl = login_getcapstr(lc, "nologin", def_nl, def_nl);
 #else
 	if (pw->pw_uid == 0)
 		return;
