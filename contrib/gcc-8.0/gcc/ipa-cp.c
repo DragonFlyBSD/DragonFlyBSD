@@ -820,7 +820,7 @@ build_toporder_info (struct ipa_topo_info *topo)
   topo->stack = XCNEWVEC (struct cgraph_node *, symtab->cgraph_count);
 
   gcc_checking_assert (topo->stack_top == 0);
-  topo->nnodes = ipa_reduced_postorder (topo->order, true, true, NULL);
+  topo->nnodes = ipa_reduced_postorder (topo->order, true, NULL);
 }
 
 /* Free information about strongly connected components and the arrays in
@@ -4127,7 +4127,9 @@ intersect_with_plats (struct ipcp_param_lattices *plats,
 	  if (aglat->offset - offset == item->offset)
 	    {
 	      gcc_checking_assert (item->value);
-	      if (values_equal_for_ipcp_p (item->value, aglat->values->value))
+	      if (aglat->is_single_const ()
+		  && values_equal_for_ipcp_p (item->value,
+					      aglat->values->value))
 		found = true;
 	      break;
 	    }

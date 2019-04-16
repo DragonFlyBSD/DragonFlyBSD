@@ -1051,8 +1051,10 @@ build_array_of_n_type (tree elt, int n)
   return build_cplus_array_type (elt, build_index_type (size_int (n - 1)));
 }
 
-/* True iff T is an N3639 array of runtime bound (VLA).  These were
-   approved for C++14 but then removed.  */
+/* True iff T is an N3639 array of runtime bound (VLA).  These were approved
+   for C++14 but then removed.  This should only be used for N3639
+   specifically; code wondering more generally if something is a VLA should use
+   vla_type_p.  */
 
 bool
 array_of_runtime_bound_p (tree t)
@@ -1067,6 +1069,23 @@ array_of_runtime_bound_p (tree t)
   tree max = TYPE_MAX_VALUE (dom);
   return (!potential_rvalue_constant_expression (max)
 	  || (!value_dependent_expression_p (max) && !TREE_CONSTANT (max)));
+}
+
+/* True iff T is a variable length array.  */
+
+bool
+vla_type_p (tree t)
+{
+  for (; t && TREE_CODE (t) == ARRAY_TYPE;
+       t = TREE_TYPE (t))
+    if (tree dom = TYPE_DOMAIN (t))
+      {
+	tree max = TYPE_MAX_VALUE (dom);
+	if (!potential_rvalue_constant_expression (max)
+	    || (!value_dependent_expression_p (max) && !TREE_CONSTANT (max)))
+	  return true;
+      }
+  return false;
 }
 
 /* Return a reference type node referring to TO_TYPE.  If RVAL is
@@ -1704,9 +1723,9 @@ strip_typedefs_expr (tree t, bool *remove_attributes)
 	tree it;
 	for (it = t; it; it = TREE_CHAIN (it))
 	  {
-	    tree val = strip_typedefs_expr (TREE_VALUE (t), remove_attributes);
+	    tree val = strip_typedefs_expr (TREE_VALUE (it), remove_attributes);
 	    vec_safe_push (vec, val);
-	    if (val != TREE_VALUE (t))
+	    if (val != TREE_VALUE (it))
 	      changed = true;
 	    gcc_assert (TREE_PURPOSE (it) == NULL_TREE);
 	  }
@@ -3000,7 +3019,8 @@ bot_manip (tree* tp, int* walk_subtrees, void* data_)
   /* Make a copy of this node.  */
   t = copy_tree_r (tp, walk_subtrees, NULL);
   if (TREE_CODE (*tp) == CALL_EXPR)
-    set_flags_from_callee (*tp);
+    if (!processing_template_decl)
+      set_flags_from_callee (*tp);
   if (data.clear_location && EXPR_HAS_LOCATION (*tp))
     SET_EXPR_LOCATION (*tp, input_location);
   return t;
@@ -3862,6 +3882,14 @@ cp_tree_equal (tree t1, tree t2)
 				     DEFERRED_NOEXCEPT_ARGS (t2)));
       break;
 
+    case USING_DECL:
+      if (DECL_DEPENDENT_P (t1) && DECL_DEPENDENT_P (t2))
+	return (cp_tree_equal (USING_DECL_SCOPE (t1),
+			       USING_DECL_SCOPE (t2))
+		&& cp_tree_equal (DECL_NAME (t1),
+				  DECL_NAME (t2)));
+      return false;
+
     default:
       break;
     }
@@ -4047,15 +4075,26 @@ maybe_warn_parm_abi (tree t, location_t loc)
       || !deleted_copy_types->contains (t))
     return;
 
-  warning_at (loc, OPT_Wabi, "the calling convention for %qT changes in "
-	      "-fabi-version=12 (GCC 8)", t);
-  static bool explained = false;
-  if (!explained)
+  if ((flag_abi_version == 12 || warn_abi_version == 12)
+      && classtype_has_non_deleted_move_ctor (t))
     {
-      inform (loc, " because all of its copy and move constructors "
-	      "are deleted");
-      explained = true;
+      bool w;
+      if (flag_abi_version > 12)
+	w = warning_at (loc, OPT_Wabi, "-fabi-version=13 (GCC 8.2) fixes the "
+			"calling convention for %qT, which was accidentally "
+			"changed in 8.1", t);
+      else
+	w = warning_at (loc, OPT_Wabi, "-fabi-version=12 (GCC 8.1) accident"
+			"ally changes the calling convention for %qT", t);
+      if (w)
+	inform (location_of (t), " declared here");
+      return;
     }
+
+  if (warning_at (loc, OPT_Wabi, "the calling convention for %qT changes in "
+		  "-fabi-version=13 (GCC 8.2)", t))
+    inform (location_of (t), " because all of its copy and move "
+	    "constructors are deleted");
 }
 
 /* Returns true iff copying an object of type T (including via move
@@ -4090,6 +4129,7 @@ type_has_nontrivial_copy_init (const_tree type)
 
       bool saw_copy = false;
       bool saw_non_deleted = false;
+      bool saw_non_deleted_move = false;
 
       if (CLASSTYPE_LAZY_MOVE_CTOR (t))
 	saw_copy = saw_non_deleted = true;
@@ -4121,19 +4161,27 @@ type_has_nontrivial_copy_init (const_tree type)
 		    break;
 		  }
 	      }
+	    else if (move_fn_p (fn))
+	      if (!DECL_DELETED_FN (fn))
+		saw_non_deleted_move = true;
 	  }
 
       gcc_assert (saw_copy);
 
-      if (saw_copy && !saw_non_deleted)
-	{
-	  if (warn_abi && abi_version_crosses (12))
-	    remember_deleted_copy (t);
-	  if (abi_version_at_least (12))
-	    return true;
-	}
+      /* ABI v12 buggily ignored move constructors.  */
+      bool v11nontriv = false;
+      bool v12nontriv = !saw_non_deleted;
+      bool v13nontriv = !saw_non_deleted && !saw_non_deleted_move;
+      bool nontriv = (abi_version_at_least (13) ? v13nontriv
+		      : flag_abi_version == 12 ? v12nontriv
+		      : v11nontriv);
+      bool warn_nontriv = (warn_abi_version >= 13 ? v13nontriv
+			   : warn_abi_version == 12 ? v12nontriv
+			   : v11nontriv);
+      if (nontriv != warn_nontriv)
+	remember_deleted_copy (t);
 
-      return false;
+      return nontriv;
     }
   else
     return 0;
@@ -4906,6 +4954,14 @@ cp_walk_subtrees (tree *tp, int *walk_subtrees_p, walk_tree_fn func,
 	  WALK_SUBTREE (DECL_SIZE (decl));
 	  WALK_SUBTREE (DECL_SIZE_UNIT (decl));
 	}
+      break;
+
+    case LAMBDA_EXPR:
+      /* Don't walk into the body of the lambda, but the capture initializers
+	 are part of the enclosing context.  */
+      for (tree cap = LAMBDA_EXPR_CAPTURE_LIST (*tp); cap;
+	   cap = TREE_CHAIN (cap))
+	WALK_SUBTREE (TREE_VALUE (cap));
       break;
 
     default:

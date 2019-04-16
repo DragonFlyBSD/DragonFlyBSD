@@ -260,6 +260,11 @@ private:
      post-order walk.  */
   auto_sbitmap m_visited_blocks;
 
+  /* A bitmap of phis that we have finished processing in the initial
+     post-order walk, excluding those from blocks mentioned in
+     M_VISITED_BLOCKS.  */
+  auto_bitmap m_visited_phis;
+
   /* A worklist of SSA names whose definitions need to be reconsidered.  */
   auto_vec <tree, 64> m_worklist;
 
@@ -496,14 +501,18 @@ bool
 backprop::intersect_uses (tree var, usage_info *info)
 {
   imm_use_iterator iter;
-  gimple *stmt;
+  use_operand_p use_p;
   *info = usage_info::intersection_identity ();
-  FOR_EACH_IMM_USE_STMT (stmt, iter, var)
+  FOR_EACH_IMM_USE_FAST (use_p, iter, var)
     {
+      gimple *stmt = USE_STMT (use_p);
       if (is_gimple_debug (stmt))
 	continue;
-      if (is_a <gphi *> (stmt)
-	  && !bitmap_bit_p (m_visited_blocks, gimple_bb (stmt)->index))
+      gphi *phi = dyn_cast <gphi *> (stmt);
+      if (phi
+	  && !bitmap_bit_p (m_visited_blocks, gimple_bb (phi)->index)
+	  && !bitmap_bit_p (m_visited_phis,
+			    SSA_NAME_VERSION (gimple_phi_result (phi))))
 	{
 	  /* Skip unprocessed phis.  */
 	  if (dump_file && (dump_flags & TDF_DETAILS))
@@ -511,7 +520,7 @@ backprop::intersect_uses (tree var, usage_info *info)
 	      fprintf (dump_file, "[BACKEDGE] ");
 	      print_generic_expr (dump_file, var);
 	      fprintf (dump_file, " in ");
-	      print_gimple_stmt (dump_file, stmt, 0, TDF_SLIM);
+	      print_gimple_stmt (dump_file, phi, 0, TDF_SLIM);
 	    }
 	}
       else
@@ -520,10 +529,7 @@ backprop::intersect_uses (tree var, usage_info *info)
 	  process_use (stmt, var, &subinfo);
 	  *info &= subinfo;
 	  if (!info->is_useful ())
-	    {
-	      BREAK_FROM_IMM_USE_STMT (iter);
-	      return false;
-	    }
+	    return false;
 	}
     }
   return true;
@@ -635,7 +641,12 @@ backprop::process_block (basic_block bb)
     }
   for (gphi_iterator gpi = gsi_start_phis (bb); !gsi_end_p (gpi);
        gsi_next (&gpi))
-    process_var (gimple_phi_result (gpi.phi ()));
+    {
+      tree result = gimple_phi_result (gpi.phi ());
+      process_var (result);
+      bitmap_set_bit (m_visited_phis, SSA_NAME_VERSION (result));
+    }
+  bitmap_clear (m_visited_phis);
 }
 
 /* Delete the definition of VAR, which has no uses.  */

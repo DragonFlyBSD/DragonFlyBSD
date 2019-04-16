@@ -1252,6 +1252,8 @@ adjust_temp_type (tree type, tree temp)
   /* Avoid wrapping an aggregate value in a NOP_EXPR.  */
   if (TREE_CODE (temp) == CONSTRUCTOR)
     return build_constructor (type, CONSTRUCTOR_ELTS (temp));
+  if (TREE_CODE (temp) == EMPTY_CLASS_EXPR)
+    return build0 (EMPTY_CLASS_EXPR, type);
   gcc_assert (scalarish_type_p (type));
   return cp_fold_convert (type, temp);
 }
@@ -2066,6 +2068,7 @@ cxx_eval_binary_expression (const constexpr_ctx *ctx, tree t,
     {
       if (!ctx->quiet)
 	error ("arithmetic involving a null pointer in %qE", lhs);
+      *non_constant_p = true;
       return t;
     }
   else if (code == POINTER_PLUS_EXPR)
@@ -2506,9 +2509,13 @@ cxx_eval_component_reference (const constexpr_ctx *ctx, tree t,
 					     lval,
 					     non_constant_p, overflow_p);
   if (INDIRECT_REF_P (whole)
-      && integer_zerop (TREE_OPERAND (whole, 0))
-      && !ctx->quiet)
-    error ("dereferencing a null pointer in %qE", orig_whole);
+      && integer_zerop (TREE_OPERAND (whole, 0)))
+    {
+      if (!ctx->quiet)
+	error ("dereferencing a null pointer in %qE", orig_whole);
+      *non_constant_p = true;
+      return t;
+    }
 
   if (TREE_CODE (whole) == PTRMEM_CST)
     whole = cplus_expand_constant (whole);
@@ -2989,6 +2996,9 @@ cxx_eval_vec_init_1 (const constexpr_ctx *ctx, tree atype, tree init,
 	{
 	  /* Initializing an element using value or default initialization
 	     we just pre-built above.  */
+	  if (init == void_node)
+	    /* Trivial default-init, don't do anything to the CONSTRUCTOR.  */
+	    return ctx->ctor;
 	  eltinit = cxx_eval_constant_expression (&new_ctx, init, lval,
 						  non_constant_p, overflow_p);
 	  reuse = i == 0;
@@ -3926,6 +3936,16 @@ cxx_eval_statement_list (const constexpr_ctx *ctx, tree t,
   for (i = tsi_start (t); !tsi_end_p (i); tsi_next (&i))
     {
       tree stmt = tsi_stmt (i);
+      /* We've found a continue, so skip everything until we reach
+	 the label its jumping to.  */
+      if (continues (jump_target))
+	{
+	  if (label_matches (ctx, jump_target, stmt))
+	    /* Found it.  */
+	    *jump_target = NULL_TREE;
+	  else
+	    continue;
+	}
       if (TREE_CODE (stmt) == DEBUG_BEGIN_STMT)
 	continue;
       r = cxx_eval_constant_expression (ctx, stmt, false,
@@ -3993,13 +4013,13 @@ cxx_eval_switch_expr (const constexpr_ctx *ctx, tree t,
 		      bool *non_constant_p, bool *overflow_p,
 		      tree *jump_target)
 {
-  tree cond = TREE_OPERAND (t, 0);
+  tree cond = SWITCH_COND (t);
   cond = cxx_eval_constant_expression (ctx, cond, false,
 				       non_constant_p, overflow_p);
   VERIFY_CONSTANT (cond);
   *jump_target = cond;
 
-  tree body = TREE_OPERAND (t, 1);
+  tree body = SWITCH_BODY (t);
   constexpr_ctx new_ctx = *ctx;
   constexpr_switch_state css = css_default_not_seen;
   new_ctx.css_state = &css;
@@ -4528,6 +4548,7 @@ cxx_eval_constant_expression (const constexpr_ctx *ctx, tree t,
     case COND_EXPR:
       if (jump_target && *jump_target)
 	{
+	  tree orig_jump = *jump_target;
 	  /* When jumping to a label, the label might be either in the
 	     then or else blocks, so process then block first in skipping
 	     mode first, and if we are still in the skipping mode at its end,
@@ -4535,7 +4556,19 @@ cxx_eval_constant_expression (const constexpr_ctx *ctx, tree t,
 	  r = cxx_eval_constant_expression (ctx, TREE_OPERAND (t, 1),
 					    lval, non_constant_p, overflow_p,
 					    jump_target);
-	  if (*jump_target)
+	  /* It's possible that we found the label in the then block.  But
+	     it could have been followed by another jumping statement, e.g.
+	     say we're looking for case 1:
+	      if (cond)
+		{
+		  // skipped statements
+		  case 1:; // clears up *jump_target
+		  return 1; // and sets it to a RETURN_EXPR
+		}
+	      else { ... }
+	     in which case we need not go looking to the else block.
+	     (goto is not allowed in a constexpr function.)  */
+	  if (*jump_target == orig_jump)
 	    r = cxx_eval_constant_expression (ctx, TREE_OPERAND (t, 2),
 					      lval, non_constant_p, overflow_p,
 					      jump_target);
@@ -4551,7 +4584,7 @@ cxx_eval_constant_expression (const constexpr_ctx *ctx, tree t,
       break;
 
     case CONSTRUCTOR:
-      if (TREE_CONSTANT (t))
+      if (TREE_CONSTANT (t) && reduced_constant_expression_p (t))
 	{
 	  /* Don't re-process a constant CONSTRUCTOR, but do fold it to
 	     VECTOR_CST if applicable.  */
@@ -5107,12 +5140,12 @@ clear_cv_and_fold_caches (void)
 /* Like maybe_constant_value but first fully instantiate the argument.
 
    Note: this is equivalent to instantiate_non_dependent_expr_sfinae
-   (t, tf_none) followed by maybe_constant_value but is more efficient,
+   (t, complain) followed by maybe_constant_value but is more efficient,
    because calls instantiation_dependent_expression_p and
    potential_constant_expression at most once.  */
 
 tree
-fold_non_dependent_expr (tree t)
+fold_non_dependent_expr (tree t, tsubst_flags_t complain /* = tf_none */)
 {
   if (t == NULL_TREE)
     return NULL_TREE;
@@ -5129,7 +5162,7 @@ fold_non_dependent_expr (tree t)
       if (is_nondependent_constant_expression (t))
 	{
 	  processing_template_decl_sentinel s;
-	  t = instantiate_non_dependent_expr_internal (t, tf_none);
+	  t = instantiate_non_dependent_expr_internal (t, complain);
 
 	  if (type_unknown_p (t)
 	      || BRACE_ENCLOSED_INITIALIZER_P (t))

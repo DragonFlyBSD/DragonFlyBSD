@@ -1961,8 +1961,7 @@ copy_bb (copy_body_data *id, basic_block bb,
 		   && id->call_stmt
 		   && (decl = gimple_call_fndecl (stmt))
 		   && DECL_BUILT_IN_CLASS (decl) == BUILT_IN_NORMAL
-		   && DECL_FUNCTION_CODE (decl) == BUILT_IN_VA_ARG_PACK_LEN
-		   && ! gimple_call_va_arg_pack_p (id->call_stmt))
+		   && DECL_FUNCTION_CODE (decl) == BUILT_IN_VA_ARG_PACK_LEN)
 	    {
 	      /* __builtin_va_arg_pack_len () should be replaced by
 		 the number of anonymous arguments.  */
@@ -1980,10 +1979,28 @@ copy_bb (copy_body_data *id, basic_block bb,
 		if (POINTER_BOUNDS_P (gimple_call_arg (id->call_stmt, i)))
 		  nargs--;
 
-	      count = build_int_cst (integer_type_node, nargs);
-	      new_stmt = gimple_build_assign (gimple_call_lhs (stmt), count);
-	      gsi_replace (&copy_gsi, new_stmt, false);
-	      stmt = new_stmt;
+	      if (!gimple_call_lhs (stmt))
+		{
+		  /* Drop unused calls.  */
+		  gsi_remove (&copy_gsi, false);
+		  continue;
+		}
+	      else if (!gimple_call_va_arg_pack_p (id->call_stmt))
+		{
+		  count = build_int_cst (integer_type_node, nargs);
+		  new_stmt = gimple_build_assign (gimple_call_lhs (stmt), count);
+		  gsi_replace (&copy_gsi, new_stmt, false);
+		  stmt = new_stmt;
+		}
+	      else if (nargs != 0)
+		{
+		  tree newlhs = create_tmp_reg_or_ssa_name (integer_type_node);
+		  count = build_int_cst (integer_type_node, nargs);
+		  new_stmt = gimple_build_assign (gimple_call_lhs (stmt),
+						  PLUS_EXPR, newlhs, count);
+		  gimple_call_set_lhs (stmt, newlhs);
+		  gsi_insert_after (&copy_gsi, new_stmt, GSI_NEW_STMT);
+		}
 	    }
 	  else if (call_stmt
 		   && id->call_stmt
@@ -4132,6 +4149,9 @@ estimate_num_insns (gimple *stmt, eni_weights *weights)
 	   with very long asm statements.  */
 	if (count > 1000)
 	  count = 1000;
+	/* If this asm is asm inline, count anything as minimum size.  */
+	if (gimple_asm_inline_p (as_a <gasm *> (stmt)))
+	  count = MIN (1, count);
 	return MAX (1, count);
       }
 
@@ -4552,10 +4572,16 @@ expand_call_inline (basic_block bb, gimple *stmt, copy_body_data *id)
      not refer to them in any way to not break GC for locations.  */
   if (gimple_block (stmt))
     {
+      /* We do want to assign a not UNKNOWN_LOCATION BLOCK_SOURCE_LOCATION
+         to make inlined_function_outer_scope_p return true on this BLOCK.  */
+      location_t loc = LOCATION_LOCUS (gimple_location (stmt));
+      if (loc == UNKNOWN_LOCATION)
+	loc = LOCATION_LOCUS (DECL_SOURCE_LOCATION (fn));
+      if (loc == UNKNOWN_LOCATION)
+	loc = BUILTINS_LOCATION;
       id->block = make_node (BLOCK);
       BLOCK_ABSTRACT_ORIGIN (id->block) = fn;
-      BLOCK_SOURCE_LOCATION (id->block) 
-	= LOCATION_LOCUS (gimple_location (stmt));
+      BLOCK_SOURCE_LOCATION (id->block) = loc;
       prepend_lexical_block (gimple_block (stmt), id->block);
     }
 

@@ -1637,7 +1637,7 @@ vect_finish_replace_stmt (gimple *stmt, gimple *vec_stmt)
   gcc_assert (gimple_get_lhs (stmt) == gimple_get_lhs (vec_stmt));
 
   gimple_stmt_iterator gsi = gsi_for_stmt (stmt);
-  gsi_replace (&gsi, vec_stmt, false);
+  gsi_replace (&gsi, vec_stmt, true);
 
   vect_finish_stmt_generation_1 (stmt, vec_stmt);
 }
@@ -3745,7 +3745,7 @@ vectorizable_simd_clone_call (gimple *stmt, gimple_stmt_iterator *gsi,
 	dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
 			 "not considering SIMD clones; not yet supported"
 			 " for variable-width vectors.\n");
-      return NULL;
+      return false;
     }
 
   unsigned int badness = 0;
@@ -5381,6 +5381,15 @@ vectorizable_shift (gimple *stmt, gimple_stmt_iterator *gsi,
 	  FOR_EACH_VEC_ELT (stmts, k, slpstmt)
 	    if (!operand_equal_p (gimple_assign_rhs2 (slpstmt), op1, 0))
 	      scalar_shift_arg = false;
+
+	  /* For internal SLP defs we have to make sure we see scalar stmts
+	     for all vector elements.
+	     ???  For different vectors we could resort to a different
+	     scalar shift operand but code-generation below simply always
+	     takes the first.  */
+	  if (dt[1] == vect_internal_def
+	      && maybe_ne (nunits_out * SLP_TREE_NUMBER_OF_VEC_STMTS (slp_node),                           stmts.length ()))
+	    scalar_shift_arg = false;
 	}
 
       /* If the shift amount is computed by a pattern stmt we cannot
@@ -5923,14 +5932,33 @@ vectorizable_operation (gimple *stmt, gimple_stmt_iterator *gsi,
       /* Handle uses.  */
       if (j == 0)
 	{
-	  if (op_type == binary_op || op_type == ternary_op)
+	  if (op_type == binary_op)
 	    vect_get_vec_defs (op0, op1, stmt, &vec_oprnds0, &vec_oprnds1,
 			       slp_node);
+	  else if (op_type == ternary_op)
+	    {
+	      if (slp_node)
+		{
+		  auto_vec<tree> ops(3);
+		  ops.quick_push (op0);
+		  ops.quick_push (op1);
+		  ops.quick_push (op2);
+		  auto_vec<vec<tree> > vec_defs(3);
+		  vect_get_slp_defs (ops, slp_node, &vec_defs);
+		  vec_oprnds0 = vec_defs[0];
+		  vec_oprnds1 = vec_defs[1];
+		  vec_oprnds2 = vec_defs[2];
+		}
+	      else
+		{
+		  vect_get_vec_defs (op0, op1, stmt, &vec_oprnds0, &vec_oprnds1,
+				     NULL);
+		  vect_get_vec_defs (op2, NULL_TREE, stmt, &vec_oprnds2, NULL,
+				     NULL);
+		}
+	    }
 	  else
 	    vect_get_vec_defs (op0, NULL_TREE, stmt, &vec_oprnds0, NULL,
-			       slp_node);
-	  if (op_type == ternary_op)
-	    vect_get_vec_defs (op2, NULL_TREE, stmt, &vec_oprnds2, NULL,
 			       slp_node);
 	}
       else
@@ -7634,6 +7662,10 @@ vectorizable_load (gimple *stmt, gimple_stmt_iterator *gsi, gimple **vec_stmt,
 	    }
 	  ltype = build_aligned_type (ltype, TYPE_ALIGN (TREE_TYPE (vectype)));
 	}
+      /* Load vector(1) scalar_type if it's 1 element-wise vectype.  */
+      else if (nloads == 1)
+	ltype = vectype;
+
       if (slp)
 	{
 	  /* For SLP permutation support we need to load the whole group,
@@ -8487,7 +8519,7 @@ vect_is_simple_cond (tree cond, vec_info *vinfo,
 
   *comp_vectype = vectype1 ? vectype1 : vectype2;
   /* Invariant comparison.  */
-  if (! *comp_vectype)
+  if (! *comp_vectype && vectype)
     {
       tree scalar_type = TREE_TYPE (lhs);
       /* If we can widen the comparison to match vectype do so.  */
@@ -8599,7 +8631,7 @@ vectorizable_condition (gimple *stmt, gimple_stmt_iterator *gsi,
   else_clause = gimple_assign_rhs3 (stmt);
 
   if (!vect_is_simple_cond (cond_expr, stmt_info->vinfo,
-			    &comp_vectype, &dts[0], vectype)
+			    &comp_vectype, &dts[0], slp_node ? NULL : vectype)
       || !comp_vectype)
     return false;
 
@@ -9579,7 +9611,7 @@ vect_transform_stmt (gimple *stmt, gimple_stmt_iterator *gsi,
       if (gimple_code (stmt) == GIMPLE_PHI)
         scalar_dest = PHI_RESULT (stmt);
       else
-        scalar_dest = gimple_assign_lhs (stmt);
+        scalar_dest = gimple_get_lhs (stmt);
 
       FOR_EACH_IMM_USE_FAST (use_p, imm_iter, scalar_dest)
        {

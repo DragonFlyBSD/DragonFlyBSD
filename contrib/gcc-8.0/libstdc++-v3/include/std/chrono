@@ -275,15 +275,15 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       struct duration_values
       {
 	static constexpr _Rep
-	zero()
+	zero() noexcept
 	{ return _Rep(0); }
 
 	static constexpr _Rep
-	max()
+	max() noexcept
 	{ return numeric_limits<_Rep>::max(); }
 
 	static constexpr _Rep
-	min()
+	min() noexcept
 	{ return numeric_limits<_Rep>::lowest(); }
       };
 
@@ -325,8 +325,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 	duration(const duration&) = default;
 
+	// _GLIBCXX_RESOLVE_LIB_DEFECTS
+	// 3050. Conversion specification problem in chrono::duration
 	template<typename _Rep2, typename = _Require<
-		 is_convertible<_Rep2, rep>,
+		 is_convertible<const _Rep2&, rep>,
 		 __or_<__is_float<rep>, __not_<__is_float<_Rep2>>>>>
 	  constexpr explicit duration(const _Rep2& __rep)
 	  : __r(static_cast<rep>(__rep)) { }
@@ -428,15 +430,15 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 	// 20.11.5.4 special values
 	static constexpr duration
-	zero()
+	zero() noexcept
 	{ return duration(duration_values<rep>::zero()); }
 
 	static constexpr duration
-	min()
+	min() noexcept
 	{ return duration(duration_values<rep>::min()); }
 
 	static constexpr duration
-	max()
+	max() noexcept
 	{ return duration(duration_values<rep>::max()); }
 
       private:
@@ -471,10 +473,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
     // SFINAE helper to obtain common_type<_Rep1, _Rep2> only if _Rep2
     // is implicitly convertible to it.
+    // _GLIBCXX_RESOLVE_LIB_DEFECTS
+    // 3050. Conversion specification problem in chrono::duration constructor
     template<typename _Rep1, typename _Rep2,
 	     typename _CRep = typename common_type<_Rep1, _Rep2>::type>
-      using __common_rep_t
-	= typename enable_if<is_convertible<_Rep2, _CRep>::value, _CRep>::type;
+      using __common_rep_t = typename
+	enable_if<is_convertible<const _Rep2&, _CRep>::value, _CRep>::type;
 
     template<typename _Rep1, typename _Period, typename _Rep2>
       constexpr duration<__common_rep_t<_Rep1, _Rep2>, _Period>
@@ -652,11 +656,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 	// special values
 	static constexpr time_point
-	min()
+	min() noexcept
 	{ return time_point(duration::min()); }
 
 	static constexpr time_point
-	max()
+	max() noexcept
 	{ return time_point(duration::max()); }
 
       private:

@@ -192,6 +192,9 @@ lookup_base (tree t, tree base, base_access access,
   else
     {
       t = complete_type (TYPE_MAIN_VARIANT (t));
+      if (dependent_type_p (t))
+	if (tree open = currently_open_class (t))
+	  t = open;
       t_binfo = TYPE_BINFO (t);
     }
 
@@ -1117,7 +1120,7 @@ lookup_member (tree xbasetype, tree name, int protect, bool want_type,
 
   /* Make sure we're looking for a member of the current instantiation in the
      right partial specialization.  */
-  if (flag_concepts && dependent_type_p (type))
+  if (dependent_type_p (type))
     if (tree t = currently_open_class (type))
       type = t;
 
@@ -1224,9 +1227,16 @@ lookup_field_fuzzy_info::fuzzy_lookup_field (tree type)
 
   for (tree field = TYPE_FIELDS (type); field; field = DECL_CHAIN (field))
     {
-      if (!m_want_type_p || DECL_DECLARES_TYPE_P (field))
-	if (DECL_NAME (field))
-	  m_candidates.safe_push (DECL_NAME (field));
+      if (m_want_type_p && !DECL_DECLARES_TYPE_P (field))
+	continue;
+
+      if (!DECL_NAME (field))
+	continue;
+
+      if (is_lambda_ignored_entity (field))
+	continue;
+
+      m_candidates.safe_push (DECL_NAME (field));
     }
 }
 

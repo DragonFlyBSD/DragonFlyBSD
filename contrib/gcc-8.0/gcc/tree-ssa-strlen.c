@@ -795,9 +795,9 @@ get_stridx_plus_constant (strinfo *basesi, unsigned HOST_WIDE_INT off,
   si = new_strinfo (ptr, idx, build_int_cst (size_type_node, nonzero_chars),
 		    basesi->full_string_p);
   set_strinfo (idx, si);
-  if (chainsi->next)
+  if (strinfo *nextsi = get_strinfo (chainsi->next))
     {
-      strinfo *nextsi = unshare_strinfo (get_strinfo (chainsi->next));
+      nextsi = unshare_strinfo (nextsi);
       si->next = nextsi->idx;
       nextsi->prev = idx;
     }
@@ -1156,14 +1156,15 @@ adjust_last_stmt (strinfo *si, gimple *stmt, bool is_strcat)
   update_stmt (last.stmt);
 }
 
-/* For an LHS that is an SSA_NAME and for strlen() argument SRC, set
-   LHS range info to [0, N] if SRC refers to a character array A[N]
-   with unknown length bounded by N.  */
+/* For an LHS that is an SSA_NAME with integer type and for strlen()
+   argument SRC, set LHS range info to [0, N] if SRC refers to
+   a character array A[N] with unknown length bounded by N.  */
 
 static void
 maybe_set_strlen_range (tree lhs, tree src)
 {
-  if (TREE_CODE (lhs) != SSA_NAME)
+  if (TREE_CODE (lhs) != SSA_NAME
+      || !INTEGRAL_TYPE_P (TREE_TYPE (lhs)))
     return;
 
   if (TREE_CODE (src) == SSA_NAME)
@@ -1181,15 +1182,18 @@ maybe_set_strlen_range (tree lhs, tree src)
      suggests if it's treated as a poor-man's flexible array member.  */
   src = TREE_OPERAND (src, 0);
   if (TREE_CODE (TREE_TYPE (src)) != ARRAY_TYPE
+      || TREE_CODE (src) == MEM_REF
       || array_at_struct_end_p (src))
     return;
 
   tree type = TREE_TYPE (src);
-  if (tree dom = TYPE_DOMAIN (type))
-    if (tree maxval = TYPE_MAX_VALUE (dom))
+  if (tree size = TYPE_SIZE_UNIT (type))
+    if (size && TREE_CODE (size) == INTEGER_CST)
       {
-	wide_int max = wi::to_wide (maxval);
+	wide_int max = wi::to_wide (size);
 	wide_int min = wi::zero (max.get_precision ());
+	if (max != 0)
+	  --max;
 	set_range_info (lhs, VR_RANGE, min, max);
       }
 }
@@ -1735,7 +1739,7 @@ handle_builtin_strncat (built_in_function bcode, gimple_stmt_iterator *gsi)
    assumed to be the argument in some call to strlen() whose relationship
    to SRC is being ascertained.  */
 
-static bool
+bool
 is_strlen_related_p (tree src, tree len)
 {
   if (TREE_CODE (TREE_TYPE (len)) == POINTER_TYPE
@@ -1772,10 +1776,18 @@ is_strlen_related_p (tree src, tree len)
 	  && (code == BIT_AND_EXPR
 	      || code == NOP_EXPR)))
     {
-      /* Pointer plus (an integer) and integer cast or truncation are
-	 considered among the (potentially) related expressions to strlen.
-	 Others are not.  */
+      /* Pointer plus (an integer), and truncation are considered among
+	 the (potentially) related expressions to strlen.  */
       return is_strlen_related_p (src, rhs1);
+    }
+
+  if (tree rhs2 = gimple_assign_rhs2 (def_stmt))
+    {
+      /* Integer subtraction is considered strlen-related when both
+	 arguments are integers and second one is strlen-related.  */
+      rhstype = TREE_TYPE (rhs2);
+      if (INTEGRAL_TYPE_P (rhstype) && code == MINUS_EXPR)
+	return is_strlen_related_p (src, rhs2);
     }
 
   return false;
@@ -1848,9 +1860,22 @@ maybe_diag_stxncpy_trunc (gimple_stmt_iterator gsi, tree src, tree cnt)
   if (TREE_CODE (dstdecl) == ADDR_EXPR)
     dstdecl = TREE_OPERAND (dstdecl, 0);
 
-  /* If the destination refers to a an array/pointer declared nonstring
-     return early.  */
   tree ref = NULL_TREE;
+
+  if (!sidx)
+    {
+      /* If the source is a non-string return early to avoid warning
+	 for possible truncation (if the truncation is certain SIDX
+	 is non-zero).  */
+      tree srcdecl = gimple_call_arg (stmt, 1);
+      if (TREE_CODE (srcdecl) == ADDR_EXPR)
+	srcdecl = TREE_OPERAND (srcdecl, 0);
+      if (get_attr_nonstring_decl (srcdecl, &ref))
+	return false;
+    }
+
+  /* Likewise, if the destination refers to a an array/pointer declared
+     nonstring return early.  */
   if (get_attr_nonstring_decl (dstdecl, &ref))
     return false;
 

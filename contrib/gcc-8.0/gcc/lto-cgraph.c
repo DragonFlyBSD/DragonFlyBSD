@@ -546,7 +546,11 @@ lto_output_node (struct lto_simple_output_block *ob, struct cgraph_node *node,
   streamer_write_bitpack (&bp);
   streamer_write_data_stream (ob->main_stream, section, strlen (section) + 1);
 
-  if (node->thunk.thunk_p)
+  /* Stream thunk info always because we use it in
+     ipa_polymorphic_call_context::ipa_polymorphic_call_context
+     to properly interpret THIS pointers for thunks that has been converted
+     to Gimple.  */
+  if (node->definition)
     {
       streamer_write_uhwi_stream
 	 (ob->main_stream,
@@ -1257,6 +1261,8 @@ input_node (struct lto_file_decl_data *file_data,
 	 of ipa passes is done.  Alays forcingly create a fresh node.  */
       node = symtab->create_empty ();
       node->decl = fn_decl;
+      if (lookup_attribute ("ifunc", DECL_ATTRIBUTES (fn_decl)))
+	node->ifunc_resolver = 1;
       node->register_symbol ();
     }
 
@@ -1315,7 +1321,7 @@ input_node (struct lto_file_decl_data *file_data,
   if (section)
     node->set_section_for_node (section);
 
-  if (node->thunk.thunk_p)
+  if (node->definition)
     {
       int type = streamer_read_uhwi (ib);
       HOST_WIDE_INT fixed_offset = streamer_read_uhwi (ib);

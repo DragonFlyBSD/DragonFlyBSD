@@ -2391,14 +2391,22 @@ start_over:
     /* The main loop handles all iterations.  */
     LOOP_VINFO_PEELING_FOR_NITER (loop_vinfo) = false;
   else if (LOOP_VINFO_NITERS_KNOWN_P (loop_vinfo)
-	   && LOOP_VINFO_PEELING_FOR_ALIGNMENT (loop_vinfo) > 0)
+	   && LOOP_VINFO_PEELING_FOR_ALIGNMENT (loop_vinfo) >= 0)
     {
-      if (!multiple_p (LOOP_VINFO_INT_NITERS (loop_vinfo)
-		       - LOOP_VINFO_PEELING_FOR_ALIGNMENT (loop_vinfo),
+      /* Work out the (constant) number of iterations that need to be
+	 peeled for reasons other than niters.  */
+      unsigned int peel_niter = LOOP_VINFO_PEELING_FOR_ALIGNMENT (loop_vinfo);
+      if (LOOP_VINFO_PEELING_FOR_GAPS (loop_vinfo))
+	peel_niter += 1;
+      if (!multiple_p (LOOP_VINFO_INT_NITERS (loop_vinfo) - peel_niter,
 		       LOOP_VINFO_VECT_FACTOR (loop_vinfo)))
 	LOOP_VINFO_PEELING_FOR_NITER (loop_vinfo) = true;
     }
   else if (LOOP_VINFO_PEELING_FOR_ALIGNMENT (loop_vinfo)
+	   /* ??? When peeling for gaps but not alignment, we could
+	      try to check whether the (variable) niters is known to be
+	      VF * N + 1.  That's something of a niche case though.  */
+	   || LOOP_VINFO_PEELING_FOR_GAPS (loop_vinfo)
 	   || !LOOP_VINFO_VECT_FACTOR (loop_vinfo).is_constant (&const_vf)
 	   || ((tree_ctz (LOOP_VINFO_NITERS (loop_vinfo))
 		< (unsigned) exact_log2 (const_vf))
@@ -2805,8 +2813,8 @@ vect_is_slp_reduction (loop_vec_info loop_info, gimple *phi,
   struct loop *loop = (gimple_bb (phi))->loop_father;
   struct loop *vect_loop = LOOP_VINFO_LOOP (loop_info);
   enum tree_code code;
-  gimple *current_stmt = NULL, *loop_use_stmt = NULL, *first, *next_stmt;
-  stmt_vec_info use_stmt_info, current_stmt_info;
+  gimple *loop_use_stmt = NULL;
+  stmt_vec_info use_stmt_info;
   tree lhs;
   imm_use_iterator imm_iter;
   use_operand_p use_p;
@@ -2816,6 +2824,7 @@ vect_is_slp_reduction (loop_vec_info loop_info, gimple *phi,
   if (loop != vect_loop)
     return false;
 
+  auto_vec<stmt_vec_info, 8> reduc_chain;
   lhs = PHI_RESULT (phi);
   code = gimple_assign_rhs_code (first_stmt);
   while (1)
@@ -2868,18 +2877,9 @@ vect_is_slp_reduction (loop_vec_info loop_info, gimple *phi,
 
       /* Insert USE_STMT into reduction chain.  */
       use_stmt_info = vinfo_for_stmt (loop_use_stmt);
-      if (current_stmt)
-        {
-          current_stmt_info = vinfo_for_stmt (current_stmt);
-	  GROUP_NEXT_ELEMENT (current_stmt_info) = loop_use_stmt;
-          GROUP_FIRST_ELEMENT (use_stmt_info)
-            = GROUP_FIRST_ELEMENT (current_stmt_info);
-        }
-      else
-	GROUP_FIRST_ELEMENT (use_stmt_info) = loop_use_stmt;
+      reduc_chain.safe_push (use_stmt_info);
 
       lhs = gimple_assign_lhs (loop_use_stmt);
-      current_stmt = loop_use_stmt;
       size++;
    }
 
@@ -2889,9 +2889,9 @@ vect_is_slp_reduction (loop_vec_info loop_info, gimple *phi,
   /* Swap the operands, if needed, to make the reduction operand be the second
      operand.  */
   lhs = PHI_RESULT (phi);
-  next_stmt = GROUP_FIRST_ELEMENT (vinfo_for_stmt (current_stmt));
-  while (next_stmt)
+  for (unsigned i = 0; i < reduc_chain.length (); ++i)
     {
+      gassign *next_stmt = as_a <gassign *> (reduc_chain[i]->stmt);
       if (gimple_assign_rhs2 (next_stmt) == lhs)
 	{
 	  tree op = gimple_assign_rhs1 (next_stmt);
@@ -2916,7 +2916,6 @@ vect_is_slp_reduction (loop_vec_info loop_info, gimple *phi,
                       && !is_loop_header_bb_p (gimple_bb (def_stmt)))))
 	    {
 	      lhs = gimple_assign_lhs (next_stmt);
-	      next_stmt = GROUP_NEXT_ELEMENT (vinfo_for_stmt (next_stmt));
  	      continue;
 	    }
 
@@ -2964,13 +2963,20 @@ vect_is_slp_reduction (loop_vec_info loop_info, gimple *phi,
         }
 
       lhs = gimple_assign_lhs (next_stmt);
-      next_stmt = GROUP_NEXT_ELEMENT (vinfo_for_stmt (next_stmt));
     }
 
+  /* Build up the actual chain.  */
+  for (unsigned i = 0; i < reduc_chain.length () - 1; ++i)
+    {
+      GROUP_FIRST_ELEMENT (reduc_chain[i]) = reduc_chain[0]->stmt;
+      GROUP_NEXT_ELEMENT (reduc_chain[i]) = reduc_chain[i+1]->stmt;
+    }
+  GROUP_FIRST_ELEMENT (reduc_chain.last ()) = reduc_chain[0]->stmt;
+  GROUP_NEXT_ELEMENT (reduc_chain.last ()) = NULL;
+
   /* Save the chain for further analysis in SLP detection.  */
-  first = GROUP_FIRST_ELEMENT (vinfo_for_stmt (current_stmt));
-  LOOP_VINFO_REDUCTION_CHAINS (loop_info).safe_push (first);
-  GROUP_SIZE (vinfo_for_stmt (first)) = size;
+  LOOP_VINFO_REDUCTION_CHAINS (loop_info).safe_push (reduc_chain[0]->stmt);
+  GROUP_SIZE (reduc_chain[0]) = size;
 
   return true;
 }
@@ -5558,6 +5564,9 @@ vect_create_epilog_for_reduction (vec<tree> vect_defs, gimple *stmt,
 	  if (STMT_VINFO_VEC_REDUCTION_TYPE (stmt_info)
 	      == INTEGER_INDUC_COND_REDUCTION)
 	    code = induc_code;
+	  else if (STMT_VINFO_VEC_REDUCTION_TYPE (stmt_info)
+		   == CONST_COND_REDUCTION)
+	    code = STMT_VINFO_VEC_CONST_COND_REDUC_CODE (stmt_info);
 	  else
 	    code = MAX_EXPR;
 	}
@@ -6312,7 +6321,7 @@ vectorize_fold_left_reduction (gimple *stmt, gimple_stmt_iterator *gsi,
 	  /* Remove the statement, so that we can use the same code paths
 	     as for statements that we've just created.  */
 	  gimple_stmt_iterator tmp_gsi = gsi_for_stmt (new_stmt);
-	  gsi_remove (&tmp_gsi, false);
+	  gsi_remove (&tmp_gsi, true);
 	}
 
       if (i == vec_num - 1)

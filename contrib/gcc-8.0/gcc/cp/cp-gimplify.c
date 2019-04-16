@@ -1085,6 +1085,7 @@ cp_genericize_r (tree *stmt_p, int *walk_subtrees, void *data)
       if (h)
 	{
 	  *stmt_p = h->to;
+	  TREE_USED (h->to) |= TREE_USED (stmt);
 	  *walk_subtrees = 0;
 	  return NULL;
 	}
@@ -1463,6 +1464,7 @@ cp_genericize_r (tree *stmt_p, int *walk_subtrees, void *data)
     case OMP_FOR:
     case OMP_SIMD:
     case OMP_DISTRIBUTE:
+    case OACC_LOOP:
       genericize_omp_for_stmt (stmt_p, walk_subtrees, data);
       break;
 
@@ -1621,6 +1623,13 @@ cp_maybe_instrument_return (tree fndecl)
 	case STATEMENT_LIST:
 	  {
 	    tree_stmt_iterator i = tsi_last (t);
+	    while (!tsi_end_p (i))
+	      {
+		tree p = tsi_stmt (i);
+		if (TREE_CODE (p) != DEBUG_BEGIN_STMT)
+		  break;
+		tsi_prev (&i);
+	      }
 	    if (!tsi_end_p (i))
 	      {
 		t = tsi_stmt (i);
@@ -1957,7 +1966,7 @@ cxx_omp_const_qual_no_mutable (tree decl)
 /* True if OpenMP sharing attribute of DECL is predetermined.  */
 
 enum omp_clause_default_kind
-cxx_omp_predetermined_sharing (tree decl)
+cxx_omp_predetermined_sharing_1 (tree decl)
 {
   /* Static data members are predetermined shared.  */
   if (TREE_STATIC (decl))
@@ -1970,6 +1979,32 @@ cxx_omp_predetermined_sharing (tree decl)
   /* Const qualified vars having no mutable member are predetermined
      shared.  */
   if (cxx_omp_const_qual_no_mutable (decl))
+    return OMP_CLAUSE_DEFAULT_SHARED;
+
+  return OMP_CLAUSE_DEFAULT_UNSPECIFIED;
+}
+
+/* Likewise, but also include the artificial vars.  We don't want to
+   disallow the artificial vars being mentioned in explicit clauses,
+   as we use artificial vars e.g. for loop constructs with random
+   access iterators other than pointers, but during gimplification
+   we want to treat them as predetermined.  */
+
+enum omp_clause_default_kind
+cxx_omp_predetermined_sharing (tree decl)
+{
+  enum omp_clause_default_kind ret = cxx_omp_predetermined_sharing_1 (decl);
+  if (ret != OMP_CLAUSE_DEFAULT_UNSPECIFIED)
+    return ret;
+
+  /* Predetermine artificial variables holding integral values, those
+     are usually result of gimplify_one_sizepos or SAVE_EXPR
+     gimplification.  */
+  if (VAR_P (decl)
+      && DECL_ARTIFICIAL (decl)
+      && INTEGRAL_TYPE_P (TREE_TYPE (decl))
+      && !(DECL_LANG_SPECIFIC (decl)
+	   && DECL_OMP_PRIVATIZED_MEMBER (decl)))
     return OMP_CLAUSE_DEFAULT_SHARED;
 
   return OMP_CLAUSE_DEFAULT_UNSPECIFIED;
@@ -2231,8 +2266,9 @@ cp_fold (tree x)
 	    {
 	      val = TREE_OPERAND (val, 0);
 	      STRIP_NOPS (val);
+	      val = maybe_constant_value (val);
 	      if (TREE_CODE (val) == INTEGER_CST)
-		return fold_convert (TREE_TYPE (x), fold_offsetof_1 (op0));
+		return fold_offsetof (op0, TREE_TYPE (x));
 	    }
 	}
       goto finish_unary;

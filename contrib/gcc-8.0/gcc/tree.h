@@ -1263,6 +1263,9 @@ extern tree maybe_wrap_with_location (tree, location_t);
    ASM_OPERAND with no operands.  */
 #define ASM_INPUT_P(NODE) (ASM_EXPR_CHECK (NODE)->base.static_flag)
 #define ASM_VOLATILE_P(NODE) (ASM_EXPR_CHECK (NODE)->base.public_flag)
+/* Nonzero if we want to consider this asm as minimum length and cost
+   for inlining decisions.  */
+#define ASM_INLINE_P(NODE) (ASM_EXPR_CHECK (NODE)->base.protected_flag)
 
 /* COND_EXPR accessors.  */
 #define COND_EXPR_COND(NODE)	(TREE_OPERAND (COND_EXPR_CHECK (NODE), 0))
@@ -3060,6 +3063,10 @@ extern vec<tree, va_gc> **decl_debug_args_insert (tree);
    Devirtualization machinery uses this to track types in destruction.  */
 #define DECL_CXX_DESTRUCTOR_P(NODE)\
    (FUNCTION_DECL_CHECK (NODE)->decl_with_vis.cxx_destructor)
+
+/* In FUNCTION_DECL, this is set if this function is a lambda function.  */
+#define DECL_LAMBDA_FUNCTION(NODE) \
+  (FUNCTION_DECL_CHECK (NODE)->function_decl.lambda_function)
 
 /* In FUNCTION_DECL that represent an virtual method this is set when
    the method is final.  */

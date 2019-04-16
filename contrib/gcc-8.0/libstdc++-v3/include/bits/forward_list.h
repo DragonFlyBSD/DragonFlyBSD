@@ -289,7 +289,6 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
     struct _Fwd_list_base
     {
     protected:
-      typedef __alloc_rebind<_Alloc, _Tp> 		  _Tp_alloc_type;
       typedef __alloc_rebind<_Alloc, _Fwd_list_node<_Tp>> _Node_alloc_type;
       typedef __gnu_cxx::__alloc_traits<_Node_alloc_type> _Node_alloc_traits;
 
@@ -299,7 +298,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
 	_Fwd_list_node_base _M_head;
 
 	_Fwd_list_impl()
-	  noexcept( noexcept(_Node_alloc_type()) )
+	  noexcept(is_nothrow_default_constructible<_Node_alloc_type>::value)
 	: _Node_alloc_type(), _M_head()
 	{ }
 
@@ -363,11 +362,10 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
 	  _Node* __node = this->_M_get_node();
 	  __try
 	    {
-	      _Tp_alloc_type __a(_M_get_Node_allocator());
-	      typedef allocator_traits<_Tp_alloc_type> _Alloc_traits;
 	      ::new ((void*)__node) _Node;
-	      _Alloc_traits::construct(__a, __node->_M_valptr(),
-				       std::forward<_Args>(__args)...);
+	      _Node_alloc_traits::construct(_M_get_Node_allocator(),
+					    __node->_M_valptr(),
+					    std::forward<_Args>(__args)...);
 	    }
 	  __catch(...)
 	    {
@@ -437,10 +435,9 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
       typedef _Fwd_list_base<_Tp, _Alloc>		_Base;
       typedef _Fwd_list_node<_Tp>			_Node;
       typedef _Fwd_list_node_base			_Node_base;
-      typedef typename _Base::_Tp_alloc_type		_Tp_alloc_type;
       typedef typename _Base::_Node_alloc_type		_Node_alloc_type;
       typedef typename _Base::_Node_alloc_traits	_Node_alloc_traits;
-      typedef __gnu_cxx::__alloc_traits<_Tp_alloc_type>	_Alloc_traits;
+      typedef allocator_traits<__alloc_rebind<_Alloc, _Tp>>	_Alloc_traits;
 
     public:
       // types:

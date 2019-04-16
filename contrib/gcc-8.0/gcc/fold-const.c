@@ -474,12 +474,15 @@ negate_expr_p (tree t)
     case EXACT_DIV_EXPR:
       if (TYPE_UNSIGNED (type))
 	break;
-      if (negate_expr_p (TREE_OPERAND (t, 0)))
+      /* In general we can't negate A in A / B, because if A is INT_MIN and
+         B is not 1 we change the sign of the result.  */
+      if (TREE_CODE (TREE_OPERAND (t, 0)) == INTEGER_CST
+	  && negate_expr_p (TREE_OPERAND (t, 0)))
 	return true;
       /* In general we can't negate B in A / B, because if A is INT_MIN and
 	 B is 1, we may turn this into INT_MIN / -1 which is undefined
 	 and actually traps on some architectures.  */
-      if (! INTEGRAL_TYPE_P (TREE_TYPE (t))
+      if (! ANY_INTEGRAL_TYPE_P (TREE_TYPE (t))
 	  || TYPE_OVERFLOW_WRAPS (TREE_TYPE (t))
 	  || (TREE_CODE (TREE_OPERAND (t, 1)) == INTEGER_CST
 	      && ! integer_onep (TREE_OPERAND (t, 1))))
@@ -652,14 +655,17 @@ fold_negate_expr_1 (location_t loc, tree t)
     case EXACT_DIV_EXPR:
       if (TYPE_UNSIGNED (type))
 	break;
-      if (negate_expr_p (TREE_OPERAND (t, 0)))
+      /* In general we can't negate A in A / B, because if A is INT_MIN and
+	 B is not 1 we change the sign of the result.  */
+      if (TREE_CODE (TREE_OPERAND (t, 0)) == INTEGER_CST
+	  && negate_expr_p (TREE_OPERAND (t, 0)))
 	return fold_build2_loc (loc, TREE_CODE (t), type,
 				negate_expr (TREE_OPERAND (t, 0)),
 				TREE_OPERAND (t, 1));
       /* In general we can't negate B in A / B, because if A is INT_MIN and
 	 B is 1, we may turn this into INT_MIN / -1 which is undefined
 	 and actually traps on some architectures.  */
-      if ((! INTEGRAL_TYPE_P (TREE_TYPE (t))
+      if ((! ANY_INTEGRAL_TYPE_P (TREE_TYPE (t))
 	   || TYPE_OVERFLOW_WRAPS (TREE_TYPE (t))
 	   || (TREE_CODE (TREE_OPERAND (t, 1)) == INTEGER_CST
 	       && ! integer_onep (TREE_OPERAND (t, 1))))
@@ -4916,8 +4922,8 @@ build_range_check (location_t loc, tree type, tree exp, int in_p,
   /* Disable this optimization for function pointer expressions
      on targets that require function pointer canonicalization.  */
   if (targetm.have_canonicalize_funcptr_for_compare ()
-      && TREE_CODE (etype) == POINTER_TYPE
-      && TREE_CODE (TREE_TYPE (etype)) == FUNCTION_TYPE)
+      && POINTER_TYPE_P (etype)
+      && FUNC_OR_METHOD_TYPE_P (TREE_TYPE (etype)))
     return NULL_TREE;
 
   if (! in_p)
@@ -5946,12 +5952,13 @@ fold_truth_andor_1 (location_t loc, enum tree_code code, tree truth_type,
     }
 
   /* If the right sides are not constant, do the same for it.  Also,
-     disallow this optimization if a size or signedness mismatch occurs
-     between the left and right sides.  */
+     disallow this optimization if a size, signedness or storage order
+     mismatch occurs between the left and right sides.  */
   if (l_const == 0)
     {
       if (ll_bitsize != lr_bitsize || rl_bitsize != rr_bitsize
 	  || ll_unsignedp != lr_unsignedp || rl_unsignedp != rr_unsignedp
+	  || ll_reversep != lr_reversep
 	  /* Make sure the two fields on the right
 	     correspond to the left without being swapped.  */
 	  || ll_bitpos - rl_bitpos != lr_bitpos - rr_bitpos)
@@ -10792,8 +10799,7 @@ fold_binary_loc (location_t loc, enum tree_code code, tree type,
 		strlen(ptr) != 0   =>  *ptr != 0
 	 Other cases should reduce to one of these two (or a constant)
 	 due to the return value of strlen being unsigned.  */
-      if (TREE_CODE (arg0) == CALL_EXPR
-	  && integer_zerop (arg1))
+      if (TREE_CODE (arg0) == CALL_EXPR && integer_zerop (arg1))
 	{
 	  tree fndecl = get_callee_fndecl (arg0);
 
@@ -10801,12 +10807,17 @@ fold_binary_loc (location_t loc, enum tree_code code, tree type,
 	      && DECL_BUILT_IN_CLASS (fndecl) == BUILT_IN_NORMAL
 	      && DECL_FUNCTION_CODE (fndecl) == BUILT_IN_STRLEN
 	      && call_expr_nargs (arg0) == 1
-	      && TREE_CODE (TREE_TYPE (CALL_EXPR_ARG (arg0, 0))) == POINTER_TYPE)
+	      && (TREE_CODE (TREE_TYPE (CALL_EXPR_ARG (arg0, 0)))
+		  == POINTER_TYPE))
 	    {
-	      tree iref = build_fold_indirect_ref_loc (loc,
-						   CALL_EXPR_ARG (arg0, 0));
+	      tree ptrtype
+		= build_pointer_type (build_qualified_type (char_type_node,
+							    TYPE_QUAL_CONST));
+	      tree ptr = fold_convert_loc (loc, ptrtype,
+					   CALL_EXPR_ARG (arg0, 0));
+	      tree iref = build_fold_indirect_ref_loc (loc, ptr);
 	      return fold_build2_loc (loc, code, type, iref,
-				  build_int_cst (TREE_TYPE (iref), 0));
+				      build_int_cst (TREE_TYPE (iref), 0));
 	    }
 	}
 
@@ -11559,10 +11570,16 @@ fold_ternary_loc (location_t loc, enum tree_code code, tree type,
 	  && integer_pow2p (arg1)
 	  && TREE_CODE (TREE_OPERAND (arg0, 0)) == BIT_AND_EXPR
 	  && operand_equal_p (TREE_OPERAND (TREE_OPERAND (arg0, 0), 1),
-			      arg1, OEP_ONLY_CONST))
+			      arg1, OEP_ONLY_CONST)
+	  /* operand_equal_p compares just value, not precision, so e.g.
+	     arg1 could be 8-bit -128 and be power of two, but BIT_AND_EXPR
+	     second operand 32-bit -128, which is not a power of two (or vice
+	     versa.  */
+	  && integer_pow2p (TREE_OPERAND (TREE_OPERAND (arg0, 0), 1)))
 	return pedantic_non_lvalue_loc (loc,
-				    fold_convert_loc (loc, type,
-						      TREE_OPERAND (arg0, 0)));
+					fold_convert_loc (loc, type,
+							  TREE_OPERAND (arg0,
+									0)));
 
       /* Disable the transformations below for vectors, since
 	 fold_binary_op_with_conditional_arg may undo them immediately,

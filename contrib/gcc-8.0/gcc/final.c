@@ -2306,6 +2306,9 @@ final_scan_insn_1 (rtx_insn *insn, FILE *file, int optimize_p ATTRIBUTE_UNUSED,
 	      ASM_OUTPUT_LABEL (asm_out_file,
 				IDENTIFIER_POINTER (cold_function_name));
 #endif
+	      if (dwarf2out_do_frame ()
+	          && cfun->fde->dw_fde_second_begin != NULL)
+		ASM_OUTPUT_LABEL (asm_out_file, cfun->fde->dw_fde_second_begin);
 	    }
 	  break;
 
@@ -4673,7 +4676,11 @@ rest_of_handle_final (void)
   final_start_function_1 (&first, asm_out_file, &seen, optimize);
   final_1 (first, asm_out_file, seen, optimize);
   if (flag_ipa_ra
-      && !lookup_attribute ("noipa", DECL_ATTRIBUTES (current_function_decl)))
+      && !lookup_attribute ("noipa", DECL_ATTRIBUTES (current_function_decl))
+      /* Functions with naked attributes are supported only with basic asm
+	 statements in the body, thus for supported use cases the information
+	 on clobbered registers is not available.  */
+      && !lookup_attribute ("naked", DECL_ATTRIBUTES (current_function_decl)))
     collect_fn_hard_reg_usage ();
   final_end_function ();
 

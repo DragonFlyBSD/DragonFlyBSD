@@ -1396,6 +1396,13 @@ standard_conversion (tree to, tree from, tree expr, bool c_cast_p,
 	     || (fcode == REAL_TYPE && !(flags & LOOKUP_NO_NON_INTEGRAL)))
           || SCOPED_ENUM_P (from))
 	return NULL;
+
+      /* If we're parsing an enum with no fixed underlying type, we're
+	 dealing with an incomplete type, which renders the conversion
+	 ill-formed.  */
+      if (!COMPLETE_TYPE_P (from))
+	return NULL;
+
       conv = build_conv (ck_std, to, conv);
 
       /* Give this a better rank if it's a promotion.  */
@@ -6783,7 +6790,9 @@ convert_like_real (conversion *convs, tree expr, tree fn, int argnum,
 	    return expr;
 	  }
 
-	expr = mark_rvalue_use (expr);
+	/* We don't know here whether EXPR is being used as an lvalue or
+	   rvalue, but we know it's read.  */
+	mark_exp_read (expr);
 
 	/* Pass LOOKUP_NO_CONVERSION so rvalue/base handling knows not to allow
 	   any more UDCs.  */
@@ -6872,7 +6881,7 @@ convert_like_real (conversion *convs, tree expr, tree fn, int argnum,
 	elttype = cp_build_qualified_type
 	  (elttype, cp_type_quals (elttype) | TYPE_QUAL_CONST);
 	array = build_array_of_n_type (elttype, len);
-	array = finish_compound_literal (array, new_ctor, complain);
+	array = finish_compound_literal (array, new_ctor, complain, fcl_c99);
 	/* Take the address explicitly rather than via decay_conversion
 	   to avoid the error about taking the address of a temporary.  */
 	array = cp_build_addr_expr (array, complain);
@@ -10824,14 +10833,12 @@ make_temporary_var_for_ref_to_temp (tree decl, tree type)
       tree name = mangle_ref_init_variable (decl);
       DECL_NAME (var) = name;
       SET_DECL_ASSEMBLER_NAME (var, name);
-
-      var = pushdecl (var);
     }
   else
     /* Create a new cleanup level if necessary.  */
     maybe_push_cleanup_level (type);
 
-  return var;
+  return pushdecl (var);
 }
 
 /* EXPR is the initializer for a variable DECL of reference or
@@ -11035,7 +11042,9 @@ extend_ref_init_temps_1 (tree decl, tree init, vec<tree, va_gc> **cleanups)
   if (TREE_CODE (sub) != ADDR_EXPR)
     return init;
   /* Deal with binding to a subobject.  */
-  for (p = &TREE_OPERAND (sub, 0); TREE_CODE (*p) == COMPONENT_REF; )
+  for (p = &TREE_OPERAND (sub, 0);
+       (TREE_CODE (*p) == COMPONENT_REF
+	|| TREE_CODE (*p) == ARRAY_REF); )
     p = &TREE_OPERAND (*p, 0);
   if (TREE_CODE (*p) == TARGET_EXPR)
     {

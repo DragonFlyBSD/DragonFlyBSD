@@ -611,7 +611,7 @@ split_nonconstant_init_1 (tree dest, tree init)
       array_type_p = true;
       if ((TREE_SIDE_EFFECTS (init)
 	   && TYPE_HAS_NONTRIVIAL_DESTRUCTOR (type))
-	  || array_of_runtime_bound_p (type))
+	  || vla_type_p (type))
 	{
 	  /* For an array, we only need/want a single cleanup region rather
 	     than one per element.  */
@@ -822,7 +822,7 @@ store_init_value (tree decl, tree init, vec<tree, va_gc>** cleanups, int flags)
   if (decl_maybe_constant_var_p (decl) || TREE_STATIC (decl))
     {
       bool const_init;
-      value = fold_non_dependent_expr (value);
+      value = fold_non_dependent_expr (value, tf_warning_or_error);
       if (DECL_DECLARED_CONSTEXPR_P (decl)
 	  || (DECL_IN_AGGR_P (decl)
 	      && DECL_INITIALIZED_IN_CLASS_P (decl)
@@ -861,7 +861,7 @@ store_init_value (tree decl, tree init, vec<tree, va_gc>** cleanups, int flags)
      will perform the dynamic initialization.  */
   if (value != error_mark_node
       && (TREE_SIDE_EFFECTS (value)
-	  || array_of_runtime_bound_p (type)
+	  || vla_type_p (type)
 	  || ! reduced_constant_expression_p (value)))
     return split_nonconstant_init (decl, value);
   /* If the value is a constant, just put it in DECL_INITIAL.  If DECL
@@ -1364,6 +1364,9 @@ process_init_constructor_array (tree type, tree init, int nested,
 	    flags |= picflag_from_initializer (next);
 	    CONSTRUCTOR_APPEND_ELT (v, size_int (i), next);
 	  }
+	else
+	  /* Don't bother checking all the other elements.  */
+	  break;
       }
 
   CONSTRUCTOR_ELTS (init) = v;

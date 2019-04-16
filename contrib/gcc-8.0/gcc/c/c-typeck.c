@@ -3840,7 +3840,12 @@ pointer_diff (location_t loc, tree op0, tree op1, tree *instrument_expr)
     op0 = build_binary_op (loc, MINUS_EXPR, convert (inttype, op0),
 			   convert (inttype, op1), false);
   else
-    op0 = build2_loc (loc, POINTER_DIFF_EXPR, inttype, op0, op1);
+    {
+      /* Cast away qualifiers.  */
+      op0 = convert (c_common_type (TREE_TYPE (op0), TREE_TYPE (op0)), op0);
+      op1 = convert (c_common_type (TREE_TYPE (op1), TREE_TYPE (op1)), op1);
+      op0 = build2_loc (loc, POINTER_DIFF_EXPR, inttype, op0, op1);
+    }
 
   /* This generates an error if op1 is pointer to incomplete type.  */
   if (!COMPLETE_OR_VOID_TYPE_P (TREE_TYPE (TREE_TYPE (orig_op1))))
@@ -4676,7 +4681,7 @@ build_unary_op (location_t location, enum tree_code code, tree xarg,
       if (val && INDIRECT_REF_P (val)
           && TREE_CONSTANT (TREE_OPERAND (val, 0)))
 	{
-	  ret = fold_convert_loc (location, argtype, fold_offsetof_1 (arg));
+	  ret = fold_offsetof (arg, argtype);
 	  goto return_build_unary_op;
 	}
 
@@ -9311,6 +9316,65 @@ output_init_element (location_t loc, tree value, tree origtype,
     output_pending_init_elements (0, braced_init_obstack);
 }
 
+/* For two FIELD_DECLs in the same chain, return -1 if field1
+   comes before field2, 1 if field1 comes after field2 and
+   0 if field1 == field2.  */
+
+static int
+init_field_decl_cmp (tree field1, tree field2)
+{
+  if (field1 == field2)
+    return 0;
+
+  tree bitpos1 = bit_position (field1);
+  tree bitpos2 = bit_position (field2);
+  if (tree_int_cst_equal (bitpos1, bitpos2))
+    {
+      /* If one of the fields has non-zero bitsize, then that
+	 field must be the last one in a sequence of zero
+	 sized fields, fields after it will have bigger
+	 bit_position.  */
+      if (TREE_TYPE (field1) != error_mark_node
+	  && COMPLETE_TYPE_P (TREE_TYPE (field1))
+	  && integer_nonzerop (TREE_TYPE (field1)))
+	return 1;
+      if (TREE_TYPE (field2) != error_mark_node
+	  && COMPLETE_TYPE_P (TREE_TYPE (field2))
+	  && integer_nonzerop (TREE_TYPE (field2)))
+	return -1;
+      /* Otherwise, fallback to DECL_CHAIN walk to find out
+	 which field comes earlier.  Walk chains of both
+	 fields, so that if field1 and field2 are close to each
+	 other in either order, it is found soon even for large
+	 sequences of zero sized fields.  */
+      tree f1 = field1, f2 = field2;
+      while (1)
+	{
+	  f1 = DECL_CHAIN (f1);
+	  f2 = DECL_CHAIN (f2);
+	  if (f1 == NULL_TREE)
+	    {
+	      gcc_assert (f2);
+	      return 1;
+	    }
+	  if (f2 == NULL_TREE)
+	    return -1;
+	  if (f1 == field2)
+	    return -1;
+	  if (f2 == field1)
+	    return 1;
+	  if (!tree_int_cst_equal (bit_position (f1), bitpos1))
+	    return 1;
+	  if (!tree_int_cst_equal (bit_position (f2), bitpos1))
+	    return -1;
+	}
+    }
+  else if (tree_int_cst_lt (bitpos1, bitpos2))
+    return -1;
+  else
+    return 1;
+}
+
 /* Output any pending elements which have become next.
    As we output elements, constructor_unfilled_{fields,index}
    advances, which may cause other elements to become next;
@@ -9382,25 +9446,18 @@ output_pending_init_elements (int all, struct obstack * braced_init_obstack)
 	}
       else if (RECORD_OR_UNION_TYPE_P (constructor_type))
 	{
-	  tree ctor_unfilled_bitpos, elt_bitpos;
-
 	  /* If the current record is complete we are done.  */
 	  if (constructor_unfilled_fields == NULL_TREE)
 	    break;
 
-	  ctor_unfilled_bitpos = bit_position (constructor_unfilled_fields);
-	  elt_bitpos = bit_position (elt->purpose);
-	  /* We can't compare fields here because there might be empty
-	     fields in between.  */
-	  if (tree_int_cst_equal (elt_bitpos, ctor_unfilled_bitpos))
-	    {
-	      constructor_unfilled_fields = elt->purpose;
-	      output_init_element (input_location, elt->value, elt->origtype,
-				   true, TREE_TYPE (elt->purpose),
-				   elt->purpose, false, false,
-				   braced_init_obstack);
-	    }
-	  else if (tree_int_cst_lt (ctor_unfilled_bitpos, elt_bitpos))
+	  int cmp = init_field_decl_cmp (constructor_unfilled_fields,
+					 elt->purpose);
+	  if (cmp == 0)
+	    output_init_element (input_location, elt->value, elt->origtype,
+				 true, TREE_TYPE (elt->purpose),
+				 elt->purpose, false, false,
+				 braced_init_obstack);
+	  else if (cmp < 0)
 	    {
 	      /* Advance to the next smaller node.  */
 	      if (elt->left)
@@ -9426,8 +9483,8 @@ output_pending_init_elements (int all, struct obstack * braced_init_obstack)
 		    elt = elt->parent;
 		  elt = elt->parent;
 		  if (elt
-		      && (tree_int_cst_lt (ctor_unfilled_bitpos,
-					   bit_position (elt->purpose))))
+		      && init_field_decl_cmp (constructor_unfilled_fields,
+					      elt->purpose) < 0)
 		    {
 		      next = elt->purpose;
 		      break;
@@ -9922,9 +9979,9 @@ process_init_element (location_t loc, struct c_expr value, bool implicit,
    (guaranteed to be 'volatile' or null) and ARGS (represented using
    an ASM_EXPR node).  */
 tree
-build_asm_stmt (tree cv_qualifier, tree args)
+build_asm_stmt (bool is_volatile, tree args)
 {
-  if (!ASM_VOLATILE_P (args) && cv_qualifier)
+  if (is_volatile)
     ASM_VOLATILE_P (args) = 1;
   return add_stmt (args);
 }
@@ -9933,10 +9990,12 @@ build_asm_stmt (tree cv_qualifier, tree args)
    some INPUTS, and some CLOBBERS.  The latter three may be NULL.
    SIMPLE indicates whether there was anything at all after the
    string in the asm expression -- asm("blah") and asm("blah" : )
-   are subtly different.  We use a ASM_EXPR node to represent this.  */
+   are subtly different.  We use a ASM_EXPR node to represent this.
+   LOC is the location of the asm, and IS_INLINE says whether this
+   is asm inline.  */
 tree
 build_asm_expr (location_t loc, tree string, tree outputs, tree inputs,
-		tree clobbers, tree labels, bool simple)
+		tree clobbers, tree labels, bool simple, bool is_inline)
 {
   tree tail;
   tree args;
@@ -10054,6 +10113,7 @@ build_asm_expr (location_t loc, tree string, tree outputs, tree inputs,
      as volatile.  */
   ASM_INPUT_P (args) = simple;
   ASM_VOLATILE_P (args) = (noutputs == 0);
+  ASM_INLINE_P (args) = is_inline;
 
   return args;
 }

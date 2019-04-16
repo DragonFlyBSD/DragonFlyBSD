@@ -5824,7 +5824,12 @@ free_lang_data (void)
   /* If we are the LTO frontend we have freed lang-specific data already.  */
   if (in_lto_p
       || (!flag_generate_lto && !flag_generate_offload))
-    return 0;
+    {
+      /* Rebuild type inheritance graph even when not doing LTO to get
+	 consistent profile data.  */
+      rebuild_type_inheritance_graph ();
+      return 0;
+    }
 
   /* Provide a dummy TRANSLATION_UNIT_DECL if the FE failed to provide one.  */
   if (vec_safe_is_empty (all_translation_units))
@@ -6616,7 +6621,8 @@ type_hash_canon (unsigned int hashcode, tree type)
   if (*loc)
     {
       tree t1 = ((type_hash *) *loc)->type;
-      gcc_assert (TYPE_MAIN_VARIANT (t1) == t1);
+      gcc_assert (TYPE_MAIN_VARIANT (t1) == t1
+		  && t1 != type);
       if (TYPE_UID (type) + 1 == next_type_uid)
 	--next_type_uid;
       /* Free also min/max values and the cache for integer
@@ -7351,6 +7357,9 @@ add_expr (const_tree t, inchash::hash &hstate, unsigned int flags)
       for (i = 0; i < TREE_VEC_LENGTH (t); ++i)
 	inchash::add_expr (TREE_VEC_ELT (t, i), hstate, flags);
       return;
+    case IDENTIFIER_NODE:
+      hstate.add_object (IDENTIFIER_HASH_VALUE (t));
+      return;
     case FUNCTION_DECL:
       /* When referring to a built-in FUNCTION_DECL, use the __builtin__ form.
 	 Otherwise nodes that compare equal according to operand_equal_p might
@@ -8013,6 +8022,8 @@ build_function_type (tree value_type, tree arg_types)
   inchash::hash hstate;
   bool any_structural_p, any_noncanonical_p;
   tree canon_argtypes;
+
+  gcc_assert (arg_types != error_mark_node);
 
   if (TREE_CODE (value_type) == FUNCTION_TYPE)
     {
@@ -9780,8 +9791,7 @@ build_common_tree_nodes (bool signed_char)
       TYPE_SIZE (int_n_trees[i].signed_type) = bitsize_int (int_n_data[i].bitsize);
       TYPE_SIZE (int_n_trees[i].unsigned_type) = bitsize_int (int_n_data[i].bitsize);
 
-      if (int_n_data[i].bitsize > LONG_LONG_TYPE_SIZE
-	  && int_n_enabled_p[i])
+      if (int_n_enabled_p[i])
 	{
 	  integer_types[itk_intN_0 + i * 2] = int_n_trees[i].signed_type;
 	  integer_types[itk_unsigned_intN_0 + i * 2] = int_n_trees[i].unsigned_type;

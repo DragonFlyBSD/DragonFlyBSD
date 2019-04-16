@@ -242,6 +242,10 @@ simd_clone_clauses_extract (struct cgraph_node *node, tree clauses,
 	  }
 	case OMP_CLAUSE_ALIGNED:
 	  {
+	    /* Ignore aligned (x) for declare simd, for the ABI we really
+	       need an alignment specified.  */
+	    if (OMP_CLAUSE_ALIGNED_ALIGNMENT (t) == NULL_TREE)
+	      break;
 	    tree decl = OMP_CLAUSE_DECL (t);
 	    int argno = tree_to_uhwi (decl);
 	    clone_info->args[argno].alignment
@@ -996,6 +1000,8 @@ ipa_simd_modify_function_body (struct cgraph_node *node,
 	  if (greturn *return_stmt = dyn_cast <greturn *> (stmt))
 	    {
 	      tree retval = gimple_return_retval (return_stmt);
+	      edge e = find_edge (bb, EXIT_BLOCK_PTR_FOR_FN (cfun));
+	      e->flags |= EDGE_FALLTHRU;
 	      if (!retval)
 		{
 		  gsi_remove (&gsi, true);
@@ -1013,6 +1019,21 @@ ipa_simd_modify_function_body (struct cgraph_node *node,
 	  if (info.modified)
 	    {
 	      update_stmt (stmt);
+	      /* If the above changed the var of a debug bind into something
+		 different, remove the debug stmt.  We could also for all the
+		 replaced parameters add VAR_DECLs for debug info purposes,
+		 add debug stmts for those to be the simd array accesses and
+		 replace debug stmt var operand with that var.  Debugging of
+		 vectorized loops doesn't work too well, so don't bother for
+		 now.  */
+	      if ((gimple_debug_bind_p (stmt)
+		   && !DECL_P (gimple_debug_bind_get_var (stmt)))
+		  || (gimple_debug_source_bind_p (stmt)
+		      && !DECL_P (gimple_debug_source_bind_get_var (stmt))))
+		{
+		  gsi_remove (&gsi, true);
+		  continue;
+		}
 	      if (maybe_clean_eh_stmt (stmt))
 		gimple_purge_dead_eh_edges (gimple_bb (stmt));
 	    }
@@ -1137,14 +1158,9 @@ simd_clone_adjust (struct cgraph_node *node)
       incr_bb = create_empty_bb (orig_exit);
       incr_bb->count = profile_count::zero ();
       add_bb_to_loop (incr_bb, body_bb->loop_father);
-      /* The succ of orig_exit was EXIT_BLOCK_PTR_FOR_FN (cfun), with an empty
-	 flag.  Set it now to be a FALLTHRU_EDGE.  */
-      gcc_assert (EDGE_COUNT (orig_exit->succs) == 1);
-      EDGE_SUCC (orig_exit, 0)->flags |= EDGE_FALLTHRU;
-      for (unsigned i = 0;
-	   i < EDGE_COUNT (EXIT_BLOCK_PTR_FOR_FN (cfun)->preds); ++i)
+      while (EDGE_COUNT (EXIT_BLOCK_PTR_FOR_FN (cfun)->preds))
 	{
-	  edge e = EDGE_PRED (EXIT_BLOCK_PTR_FOR_FN (cfun), i);
+	  edge e = EDGE_PRED (EXIT_BLOCK_PTR_FOR_FN (cfun), 0);
 	  redirect_edge_succ (e, incr_bb);
 	  incr_bb->count += e->count ();
 	}
