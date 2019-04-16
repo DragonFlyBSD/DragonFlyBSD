@@ -601,7 +601,8 @@ in the following sections.
 \&\-print\-multi\-directory  \-print\-multi\-lib  \-print\-multi\-os\-directory 
 \&\-print\-prog\-name=\fR\fIprogram\fR  \fB\-print\-search\-dirs  \-Q 
 \&\-print\-sysroot  \-print\-sysroot\-headers\-suffix 
-\&\-save\-temps  \-save\-temps=cwd  \-save\-temps=obj  \-time\fR[\fB=\fR\fIfile\fR]
+\&\-save\-temps  \-save\-temps=cwd  \-save\-temps=obj \-save\-temps=objects 
+\&\-time\fR[\fB=\fR\fIfile\fR]
 .IP "\fIMachine-Dependent Options\fR" 4
 .IX Item "Machine-Dependent Options"
 \&\fIAArch64 Options\fR
@@ -13786,6 +13787,26 @@ For example:
 .Sp
 creates \fIfoo.i\fR, \fIfoo.s\fR, \fIdir/xbar.i\fR,
 \&\fIdir/xbar.s\fR, \fIdir2/yfoobar.i\fR, \fIdir2/yfoobar.s\fR, and
+\&\fIdir2/yfoobar.o\fR.
+.IP "\fB\-save\-temps=objects\fR" 4
+.IX Item "-save-temps=objects"
+Is DragonFly extension for buildworld library targets to support
+\&\fIfoo.o\fR, \fIfoo.po\fR, \fIfoo.So\fR intermediates.
+If the \&\fB\-o\fR option is used, the temporary files are based on the
+object file without removing extension.
+If the \fB\-o\fR option is not used, the \fB\-save\-temps=objects\fR switch
+behaves like \fB\-save\-temps=obj\fR.
+.Sp
+For example:
+.Sp
+.Vb 3
+\&        gcc \-save\-temps=objects \-c foo.c \-o foo.So
+\&        gcc \-save\-temps=objects \-c bar.c \-o dir/xbar.o
+\&        gcc \-save\-temps=objects foobar.c \-o dir2/yfoobar
+.Ve
+.Sp
+creates \fIfoo.So.i\fR, \fIfoo.So.s\fR, \fIdir/xbar.o.i\fR,
+\&\fIdir/xbar.o.s\fR, \fIdir2/yfoobar.i\fR, \fIdir2/yfoobar.s\fR, and
 \&\fIdir2/yfoobar.o\fR.
 .IP "\fB\-time\fR[\fB=\fR\fIfile\fR]" 4
 .IX Item "-time[=file]"
