@@ -1650,7 +1650,6 @@ vn_reference_lookup_or_insert_for_pieces (tree vuse,
 }
 
 static vn_nary_op_t vn_nary_op_insert_stmt (gimple *stmt, tree result);
-static unsigned mprts_hook_cnt;
 
 /* Hook for maybe_push_res_to_seq, lookup the expression in the VN tables.  */
 
@@ -1672,22 +1671,8 @@ vn_lookup_simplify_result (code_helper rcode, tree type, tree *ops_)
 	ops[i] = CONSTRUCTOR_ELT (ops_[0], i)->value;
     }
   vn_nary_op_t vnresult = NULL;
-  tree res = vn_nary_op_lookup_pieces (length, (tree_code) rcode,
-				       type, ops, &vnresult);
-  /* We can end up endlessly recursing simplifications if the lookup above
-     presents us with a def-use chain that mirrors the original simplification.
-     See PR80887 for an example.  Limit successful lookup artificially
-     to 10 times if we are called as mprts_hook.  */
-  if (res
-      && mprts_hook
-      && --mprts_hook_cnt == 0)
-    {
-      if (dump_file && (dump_flags & TDF_DETAILS))
-	fprintf (dump_file, "Resetting mprts_hook after too many "
-		 "invocations.\n");
-      mprts_hook = NULL;
-    }
-  return res;
+  return vn_nary_op_lookup_pieces (length, (tree_code) rcode,
+				   type, ops, &vnresult);
 }
 
 /* Return a value-number for RCODE OPS... either by looking up an existing
@@ -1704,7 +1689,6 @@ vn_nary_build_or_lookup_1 (code_helper rcode, tree type, tree *ops,
      So first simplify and lookup this expression to see if it
      is already available.  */
   mprts_hook = vn_lookup_simplify_result;
-  mprts_hook_cnt = 9;
   bool res = false;
   switch (TREE_CODE_LENGTH ((tree_code) rcode))
     {
@@ -1880,7 +1864,16 @@ vn_reference_lookup_3 (ao_ref *ref, tree vuse, void *vr_,
 	 VN_WALKREWRITE guard).  */
       if (vn_walk_kind == VN_WALKREWRITE
 	  && is_gimple_reg_type (TREE_TYPE (lhs))
-	  && types_compatible_p (TREE_TYPE (lhs), vr->type))
+	  && types_compatible_p (TREE_TYPE (lhs), vr->type)
+	  /* The overlap restriction breaks down when either access
+	     alias-set is zero.  Still for accesses of the size of
+	     an addressable unit there can be no overlaps.  Overlaps
+	     between different union members are not an issue since
+	     activation of a union member via a store makes the
+	     values of untouched bytes unspecified.  */
+	  && (known_eq (ref->size, BITS_PER_UNIT)
+	      || (get_alias_set (lhs) != 0
+		  && ao_ref_alias_set (ref) != 0)))
 	{
 	  tree *saved_last_vuse_ptr = last_vuse_ptr;
 	  /* Do not update last_vuse_ptr in vn_reference_lookup_2.  */
@@ -1992,6 +1985,7 @@ vn_reference_lookup_3 (ao_ref *ref, tree vuse, void *vr_,
       base2 = get_ref_base_and_extent (gimple_assign_lhs (def_stmt),
 				       &offset2, &size2, &maxsize2, &reverse);
       if (known_size_p (maxsize2)
+	  && known_eq (maxsize2, size2)
 	  && operand_equal_p (base, base2, 0)
 	  && known_subrange_p (offset, maxsize, offset2, size2))
 	{
@@ -2085,6 +2079,7 @@ vn_reference_lookup_3 (ao_ref *ref, tree vuse, void *vr_,
       base2 = get_ref_base_and_extent (gimple_assign_lhs (def_stmt),
 				       &offset2, &size2, &maxsize2,
 				       &reverse);
+      tree def_rhs = gimple_assign_rhs1 (def_stmt);
       if (!reverse
 	  && known_size_p (maxsize2)
 	  && known_eq (maxsize2, size2)
@@ -2096,11 +2091,13 @@ vn_reference_lookup_3 (ao_ref *ref, tree vuse, void *vr_,
 	     according to endianness.  */
 	  && (! INTEGRAL_TYPE_P (vr->type)
 	      || known_eq (ref->size, TYPE_PRECISION (vr->type)))
-	  && multiple_p (ref->size, BITS_PER_UNIT))
+	  && multiple_p (ref->size, BITS_PER_UNIT)
+	  && (! INTEGRAL_TYPE_P (TREE_TYPE (def_rhs))
+	      || type_has_mode_precision_p (TREE_TYPE (def_rhs))))
 	{
 	  code_helper rcode = BIT_FIELD_REF;
 	  tree ops[3];
-	  ops[0] = SSA_VAL (gimple_assign_rhs1 (def_stmt));
+	  ops[0] = SSA_VAL (def_rhs);
 	  ops[1] = bitsize_int (ref->size);
 	  ops[2] = bitsize_int (offset - offset2);
 	  tree val = vn_nary_build_or_lookup (rcode, vr->type, ops);
@@ -3622,7 +3619,17 @@ visit_nary_op (tree lhs, gassign *stmt)
 		  ops[0] = vn_nary_op_lookup_pieces
 		      (2, gimple_assign_rhs_code (def), type, ops, NULL);
 		  /* We have wider operation available.  */
-		  if (ops[0])
+		  if (ops[0]
+		      /* If the leader is a wrapping operation we can
+			 insert it for code hoisting w/o introducing
+			 undefined overflow.  If it is not it has to
+			 be available.  See PR86554.  */
+		      && (TYPE_OVERFLOW_WRAPS (TREE_TYPE (ops[0]))
+			  || TREE_CODE (ops[0]) != SSA_NAME
+			  || SSA_NAME_IS_DEFAULT_DEF (ops[0])
+			  || dominated_by_p_w_unex
+			       (gimple_bb (stmt),
+				gimple_bb (SSA_NAME_DEF_STMT (ops[0])))))
 		    {
 		      unsigned lhs_prec = TYPE_PRECISION (type);
 		      unsigned rhs_prec = TYPE_PRECISION (TREE_TYPE (rhs1));
@@ -3979,7 +3986,6 @@ try_to_simplify (gassign *stmt)
 
   /* First try constant folding based on our current lattice.  */
   mprts_hook = vn_lookup_simplify_result;
-  mprts_hook_cnt = 9;
   tem = gimple_fold_stmt_to_constant_1 (stmt, vn_valueize, vn_valueize);
   mprts_hook = NULL;
   if (tem

@@ -111,12 +111,8 @@ build_word_mode_vector_type (int nunits)
       return vector_last_type;
     }
 
-  /* We build a new type, but we canonicalize it nevertheless,
-     because it still saves some memory.  */
   vector_last_nunits = nunits;
-  vector_last_type = type_hash_canon (nunits,
-				      build_vector_type (vector_inner_type,
-							 nunits));
+  vector_last_type = build_vector_type (vector_inner_type, nunits);
   return vector_last_type;
 }
 
@@ -1612,6 +1608,12 @@ expand_vector_operations_1 (gimple_stmt_iterator *gsi)
   if (!VECTOR_TYPE_P (type)
       || !VECTOR_TYPE_P (TREE_TYPE (rhs1)))
     return;
+ 
+  /* A scalar operation pretending to be a vector one.  */
+  if (VECTOR_BOOLEAN_TYPE_P (type)
+      && !VECTOR_MODE_P (TYPE_MODE (type))
+      && TYPE_MODE (type) != BLKmode)
+    return;
 
   /* If the vector operation is operating on all same vector elements
      implement it with a scalar operation and a splat if the target
@@ -1638,12 +1640,6 @@ expand_vector_operations_1 (gimple_stmt_iterator *gsi)
 	  return;
 	}
     }
- 
-  /* A scalar operation pretending to be a vector one.  */
-  if (VECTOR_BOOLEAN_TYPE_P (type)
-      && !VECTOR_MODE_P (TYPE_MODE (type))
-      && TYPE_MODE (type) != BLKmode)
-    return;
 
   if (CONVERT_EXPR_CODE_P (code)
       || code == FLOAT_EXPR

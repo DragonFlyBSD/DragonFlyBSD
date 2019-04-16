@@ -143,8 +143,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       { return !eq_int_type(__c, eof()) ? __c : to_int_type(char_type()); }
     };
 
-#define __cpp_lib_constexpr_char_traits 201611
-
   template<typename _CharT>
     _GLIBCXX14_CONSTEXPR int
     char_traits<_CharT>::
@@ -185,6 +183,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     char_traits<_CharT>::
     move(char_type* __s1, const char_type* __s2, std::size_t __n)
     {
+      if (__n == 0)
+	return __s1;
       return static_cast<_CharT*>(__builtin_memmove(__s1, __s2,
 						    __n * sizeof(char_type)));
     }
@@ -217,6 +217,8 @@ namespace std _GLIBCXX_VISIBILITY(default)
 _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 #if __cplusplus > 201402
+#define __cpp_lib_constexpr_char_traits 201611
+
   /**
    *  @brief Determine whether the characters of a NULL-terminated
    *  string are known at compile time.
@@ -246,7 +248,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     __constant_char_array_p(const _CharT* __a, size_t __n)
     {
       size_t __i = 0;
-      while (__builtin_constant_p(__a[__i]) && __i < __n)
+      while (__i < __n && __builtin_constant_p(__a[__i]))
 	__i++;
       return __i == __n;
     }

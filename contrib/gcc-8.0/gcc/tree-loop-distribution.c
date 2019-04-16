@@ -115,6 +115,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree-scalar-evolution.h"
 #include "params.h"
 #include "tree-vectorizer.h"
+#include "tree-eh.h"
 
 
 #define MAX_DATAREFS_NUM \
@@ -997,7 +998,7 @@ generate_memset_builtin (struct loop *loop, partition *partition)
   /* The new statements will be placed before LOOP.  */
   gsi = gsi_last_bb (loop_preheader_edge (loop)->src);
 
-  nb_bytes = builtin->size;
+  nb_bytes = rewrite_to_non_trapping_overflow (builtin->size);
   nb_bytes = force_gimple_operand_gsi (&gsi, nb_bytes, true, NULL_TREE,
 				       false, GSI_CONTINUE_LINKING);
   mem = builtin->dst_base;
@@ -1049,7 +1050,7 @@ generate_memcpy_builtin (struct loop *loop, partition *partition)
   /* The new statements will be placed before LOOP.  */
   gsi = gsi_last_bb (loop_preheader_edge (loop)->src);
 
-  nb_bytes = builtin->size;
+  nb_bytes = rewrite_to_non_trapping_overflow (builtin->size);
   nb_bytes = force_gimple_operand_gsi (&gsi, nb_bytes, true, NULL_TREE,
 				       false, GSI_CONTINUE_LINKING);
   dest = builtin->dst_base;
@@ -1922,7 +1923,8 @@ pg_add_dependence_edges (struct graph *rdg, int dir,
 	      if (DDR_NUM_DIST_VECTS (ddr) != 1)
 		this_dir = 2;
 	      /* If the overlap is exact preserve stmt order.  */
-	      else if (lambda_vector_zerop (DDR_DIST_VECT (ddr, 0), 1))
+	      else if (lambda_vector_zerop (DDR_DIST_VECT (ddr, 0),
+					    DDR_NB_LOOPS (ddr)))
 		;
 	      /* Else as the distance vector is lexicographic positive swap
 		 the dependence direction.  */

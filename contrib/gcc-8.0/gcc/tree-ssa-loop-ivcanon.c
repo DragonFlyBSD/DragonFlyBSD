@@ -367,8 +367,8 @@ tree_estimate_loop_size (struct loop *loop, edge exit, edge edge_to_cancel,
 	    size->non_call_stmts_on_hot_path++;
 	  if (((gimple_code (stmt) == GIMPLE_COND
 	        && (!constant_after_peeling (gimple_cond_lhs (stmt), stmt, loop)
-		    || constant_after_peeling (gimple_cond_rhs (stmt), stmt,
-					       loop)))
+		    || !constant_after_peeling (gimple_cond_rhs (stmt), stmt,
+						loop)))
 	       || (gimple_code (stmt) == GIMPLE_SWITCH
 		   && !constant_after_peeling (gimple_switch_index (
 						 as_a <gswitch *> (stmt)),
@@ -1177,7 +1177,7 @@ canonicalize_loop_induction_variables (struct loop *loop,
 	= niter_desc.may_be_zero && !integer_zerop (niter_desc.may_be_zero);
     }
   if (TREE_CODE (niter) == INTEGER_CST)
-    locus = gimple_location (last_stmt (exit->src));
+    locus = gimple_location_safe (last_stmt (exit->src));
   else
     {
       /* For non-constant niter fold may_be_zero into niter again.  */
@@ -1204,7 +1204,7 @@ canonicalize_loop_induction_variables (struct loop *loop,
 	niter = find_loop_niter_by_eval (loop, &exit);
 
       if (exit)
-        locus = gimple_location (last_stmt (exit->src));
+        locus = gimple_location_safe (last_stmt (exit->src));
 
       if (TREE_CODE (niter) != INTEGER_CST)
 	exit = NULL;

@@ -645,7 +645,7 @@ size_must_be_zero_p (tree size)
   if (integer_zerop (size))
     return true;
 
-  if (TREE_CODE (size) != SSA_NAME)
+  if (TREE_CODE (size) != SSA_NAME || !INTEGRAL_TYPE_P (TREE_TYPE (size)))
     return false;
 
   wide_int min, max;
@@ -3546,9 +3546,10 @@ gimple_fold_builtin_strlen (gimple_stmt_iterator *gsi)
       return true;
     }
 
-  tree lhs = gimple_call_lhs (stmt);
-  if (lhs && TREE_CODE (lhs) == SSA_NAME)
-    set_range_info (lhs, VR_RANGE, minlen, maxlen);
+  if (tree lhs = gimple_call_lhs (stmt))
+    if (TREE_CODE (lhs) == SSA_NAME
+	&& INTEGRAL_TYPE_P (TREE_TYPE (lhs)))
+      set_range_info (lhs, VR_RANGE, minlen, maxlen);
 
   return false;
 }

@@ -517,6 +517,9 @@ cgraph_node::create (tree decl)
 	g->have_offload = true;
     }
 
+  if (lookup_attribute ("ifunc", DECL_ATTRIBUTES (decl)))
+    node->ifunc_resolver = true;
+
   node->register_symbol ();
 
   if (DECL_CONTEXT (decl) && TREE_CODE (DECL_CONTEXT (decl)) == FUNCTION_DECL)
@@ -575,6 +578,8 @@ cgraph_node::create_alias (tree alias, tree target)
   alias_node->alias = true;
   if (lookup_attribute ("weakref", DECL_ATTRIBUTES (alias)) != NULL)
     alias_node->transparent_alias = alias_node->weakref = true;
+  if (lookup_attribute ("ifunc", DECL_ATTRIBUTES (alias)))
+    alias_node->ifunc_resolver = true;
   return alias_node;
 }
 
@@ -2299,7 +2304,7 @@ cgraph_node::get_availability (symtab_node *ref)
     avail = AVAIL_AVAILABLE;
   else if (transparent_alias)
     ultimate_alias_target (&avail, ref);
-  else if (lookup_attribute ("ifunc", DECL_ATTRIBUTES (decl))
+  else if (ifunc_resolver
 	   || lookup_attribute ("noipa", DECL_ATTRIBUTES (decl)))
     avail = AVAIL_INTERPOSABLE;
   else if (!externally_visible)
@@ -3002,42 +3007,55 @@ cgraph_node::collect_callers (void)
   return redirect_callers;
 }
 
-/* Return TRUE if NODE2 a clone of NODE or is equivalent to it.  */
+
+/* Return TRUE if NODE2 a clone of NODE or is equivalent to it.  Return
+   optimistically true if this cannot be determined.  */
 
 static bool
 clone_of_p (cgraph_node *node, cgraph_node *node2)
 {
-  bool skipped_thunk = false;
   node = node->ultimate_alias_target ();
   node2 = node2->ultimate_alias_target ();
+
+  if (node2->clone_of == node
+      || node2->former_clone_of == node->decl)
+    return true;
+
+  if (!node->thunk.thunk_p && !node->former_thunk_p ())
+    {
+      while (node2 && node->decl != node2->decl)
+	node2 = node2->clone_of;
+      return node2 != NULL;
+    }
 
   /* There are no virtual clones of thunks so check former_clone_of or if we
      might have skipped thunks because this adjustments are no longer
      necessary.  */
-  while (node->thunk.thunk_p)
+  while (node->thunk.thunk_p || node->former_thunk_p ())
     {
-      if (node2->former_clone_of == node->decl)
-	return true;
       if (!node->thunk.this_adjusting)
 	return false;
+      /* In case of instrumented expanded thunks, which can have multiple calls
+	 in them, we do not know how to continue and just have to be
+	 optimistic.  */
+      if (node->callees->next_callee)
+	return true;
       node = node->callees->callee->ultimate_alias_target ();
-      skipped_thunk = true;
-    }
 
-  if (skipped_thunk)
-    {
       if (!node2->clone.args_to_skip
 	  || !bitmap_bit_p (node2->clone.args_to_skip, 0))
 	return false;
       if (node2->former_clone_of == node->decl)
 	return true;
-      else if (!node2->clone_of)
-	return false;
+
+      cgraph_node *n2 = node2;
+      while (n2 && node->decl != n2->decl)
+	n2 = n2->clone_of;
+      if (n2)
+	return true;
     }
 
-  while (node != node2 && node2)
-    node2 = node2->clone_of;
-  return node2 != NULL;
+  return false;
 }
 
 /* Verify edge count and frequency.  */

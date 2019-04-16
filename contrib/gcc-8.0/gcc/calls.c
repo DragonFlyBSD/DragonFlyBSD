@@ -50,11 +50,13 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree-chkp.h"
 #include "tree-vrp.h"
 #include "tree-ssanames.h"
+#include "tree-ssa-strlen.h"
 #include "rtl-chkp.h"
 #include "intl.h"
 #include "stringpool.h"
 #include "attribs.h"
 #include "builtins.h"
+#include "gimple-fold.h"
 
 /* Like PREFERRED_STACK_BOUNDARY but in units of bytes, not bits.  */
 #define STACK_BYTES (PREFERRED_STACK_BOUNDARY / BITS_PER_UNIT)
@@ -1230,65 +1232,81 @@ static GTY(()) tree alloc_object_size_limit;
 static tree
 alloc_max_size (void)
 {
-  if (!alloc_object_size_limit)
+  if (alloc_object_size_limit)
+    return alloc_object_size_limit;
+
+  alloc_object_size_limit = max_object_size ();
+
+  if (!warn_alloc_size_limit)
+    return alloc_object_size_limit;
+
+  const char *optname = "-Walloc-size-larger-than=";
+
+  char *end = NULL;
+  errno = 0;
+  unsigned HOST_WIDE_INT unit = 1;
+  unsigned HOST_WIDE_INT limit
+    = strtoull (warn_alloc_size_limit, &end, 10);
+
+  /* If the value is too large to be represented use the maximum
+     representable value that strtoull sets limit to (setting
+     errno to ERANGE).  */
+
+  if (end && *end)
     {
-      alloc_object_size_limit = max_object_size ();
-
-      if (warn_alloc_size_limit)
+      /* Numeric option arguments are at most INT_MAX.  Make it
+	 possible to specify a larger value by accepting common
+	 suffixes.  */
+      if (!strcmp (end, "kB"))
+	unit = 1000;
+      else if (!strcasecmp (end, "KiB") || !strcmp (end, "KB"))
+	unit = 1024;
+      else if (!strcmp (end, "MB"))
+	unit = HOST_WIDE_INT_UC (1000) * 1000;
+      else if (!strcasecmp (end, "MiB"))
+	unit = HOST_WIDE_INT_UC (1024) * 1024;
+      else if (!strcasecmp (end, "GB"))
+	unit = HOST_WIDE_INT_UC (1000) * 1000 * 1000;
+      else if (!strcasecmp (end, "GiB"))
+	unit = HOST_WIDE_INT_UC (1024) * 1024 * 1024;
+      else if (!strcasecmp (end, "TB"))
+	unit = HOST_WIDE_INT_UC (1000) * 1000 * 1000 * 1000;
+      else if (!strcasecmp (end, "TiB"))
+	unit = HOST_WIDE_INT_UC (1024) * 1024 * 1024 * 1024;
+      else if (!strcasecmp (end, "PB"))
+	unit = HOST_WIDE_INT_UC (1000) * 1000 * 1000 * 1000 * 1000;
+      else if (!strcasecmp (end, "PiB"))
+	unit = HOST_WIDE_INT_UC (1024) * 1024 * 1024 * 1024 * 1024;
+      else if (!strcasecmp (end, "EB"))
+	unit = HOST_WIDE_INT_UC (1000) * 1000 * 1000 * 1000 * 1000
+	  * 1000;
+      else if (!strcasecmp (end, "EiB"))
+	unit = HOST_WIDE_INT_UC (1024) * 1024 * 1024 * 1024 * 1024
+	  * 1024;
+      else
 	{
-	  char *end = NULL;
-	  errno = 0;
-	  unsigned HOST_WIDE_INT unit = 1;
-	  unsigned HOST_WIDE_INT limit
-	    = strtoull (warn_alloc_size_limit, &end, 10);
+	  /* This could mean an unknown suffix or a bad prefix, like
+	     "+-1".  */
+	  warning_at (UNKNOWN_LOCATION, 0,
+		      "invalid argument %qs to %qs",
+		      warn_alloc_size_limit, optname);
 
-	  if (!errno)
-	    {
-	      if (end && *end)
-		{
-		  /* Numeric option arguments are at most INT_MAX.  Make it
-		     possible to specify a larger value by accepting common
-		     suffixes.  */
-		  if (!strcmp (end, "kB"))
-		    unit = 1000;
-		  else if (!strcasecmp (end, "KiB") || strcmp (end, "KB"))
-		    unit = 1024;
-		  else if (!strcmp (end, "MB"))
-		    unit = HOST_WIDE_INT_UC (1000) * 1000;
-		  else if (!strcasecmp (end, "MiB"))
-		    unit = HOST_WIDE_INT_UC (1024) * 1024;
-		  else if (!strcasecmp (end, "GB"))
-		    unit = HOST_WIDE_INT_UC (1000) * 1000 * 1000;
-		  else if (!strcasecmp (end, "GiB"))
-		    unit = HOST_WIDE_INT_UC (1024) * 1024 * 1024;
-		  else if (!strcasecmp (end, "TB"))
-		    unit = HOST_WIDE_INT_UC (1000) * 1000 * 1000 * 1000;
-		  else if (!strcasecmp (end, "TiB"))
-		    unit = HOST_WIDE_INT_UC (1024) * 1024 * 1024 * 1024;
-		  else if (!strcasecmp (end, "PB"))
-		    unit = HOST_WIDE_INT_UC (1000) * 1000 * 1000 * 1000 * 1000;
-		  else if (!strcasecmp (end, "PiB"))
-		    unit = HOST_WIDE_INT_UC (1024) * 1024 * 1024 * 1024 * 1024;
-		  else if (!strcasecmp (end, "EB"))
-		    unit = HOST_WIDE_INT_UC (1000) * 1000 * 1000 * 1000 * 1000
-			   * 1000;
-		  else if (!strcasecmp (end, "EiB"))
-		    unit = HOST_WIDE_INT_UC (1024) * 1024 * 1024 * 1024 * 1024
-			   * 1024;
-		  else
-		    unit = 0;
-		}
-
-	      if (unit)
-		{
-		  widest_int w = wi::mul (limit, unit);
-		  if (w < wi::to_widest (alloc_object_size_limit))
-		    alloc_object_size_limit
-		      = wide_int_to_tree (ptrdiff_type_node, w);
-		}
-	    }
+	  /* Ignore the limit extracted by strtoull.  */
+	  unit = 0;
 	}
     }
+
+  if (unit)
+    {
+      widest_int w = wi::mul (limit, unit);
+      if (w < wi::to_widest (alloc_object_size_limit))
+	alloc_object_size_limit
+	  = wide_int_to_tree (ptrdiff_type_node, w);
+      else
+	alloc_object_size_limit = build_all_ones_cst (size_type_node);
+    }
+
+
   return alloc_object_size_limit;
 }
 
@@ -1586,8 +1604,12 @@ get_attr_nonstring_decl (tree expr, tree *ref)
   if (ref)
     *ref = decl;
 
-  if (TREE_CODE (decl) == COMPONENT_REF)
+  if (TREE_CODE (decl) == ARRAY_REF)
+    decl = TREE_OPERAND (decl, 0);
+  else if (TREE_CODE (decl) == COMPONENT_REF)
     decl = TREE_OPERAND (decl, 1);
+  else if (TREE_CODE (decl) == MEM_REF)
+    return get_attr_nonstring_decl (TREE_OPERAND (decl, 0), ref);
 
   if (DECL_P (decl)
       && lookup_attribute ("nonstring", DECL_ATTRIBUTES (decl)))
@@ -1605,6 +1627,9 @@ maybe_warn_nonstring_arg (tree fndecl, tree exp)
   if (!fndecl || DECL_BUILT_IN_CLASS (fndecl) != BUILT_IN_NORMAL)
     return;
 
+  if (!warn_stringop_overflow)
+    return;
+
   bool with_bounds = CALL_WITH_BOUNDS_P (exp);
 
   unsigned nargs = call_expr_nargs (exp);
@@ -1612,15 +1637,42 @@ maybe_warn_nonstring_arg (tree fndecl, tree exp)
   /* The bound argument to a bounded string function like strncpy.  */
   tree bound = NULL_TREE;
 
+  /* The range of lengths of a string argument to one of the comparison
+     functions.  If the length is less than the bound it is used instead.  */
+  tree lenrng[2] = { NULL_TREE, NULL_TREE };
+
   /* It's safe to call "bounded" string functions with a non-string
      argument since the functions provide an explicit bound for this
-     purpose.  */
-  switch (DECL_FUNCTION_CODE (fndecl))
+     purpose.  The exception is strncat where the bound may refer to
+     either the destination or the source.  */
+  int fncode = DECL_FUNCTION_CODE (fndecl);
+  switch (fncode)
     {
-    case BUILT_IN_STPNCPY:
-    case BUILT_IN_STPNCPY_CHK:
+    case BUILT_IN_STRCMP:
     case BUILT_IN_STRNCMP:
     case BUILT_IN_STRNCASECMP:
+      {
+	/* For these, if one argument refers to one or more of a set
+	   of string constants or arrays of known size, determine
+	   the range of their known or possible lengths and use it
+	   conservatively as the bound for the unbounded function,
+	   and to adjust the range of the bound of the bounded ones.  */
+	unsigned stride = with_bounds ? 2 : 1;
+	for (unsigned argno = 0;
+	     argno < MIN (nargs, 2 * stride)
+	     && !(lenrng[1] && TREE_CODE (lenrng[1]) == INTEGER_CST);
+	     argno += stride)
+	  {
+	    tree arg = CALL_EXPR_ARG (exp, argno);
+	    if (!get_attr_nonstring_decl (arg))
+	      get_range_strlen (arg, lenrng);
+	  }
+      }
+      /* Fall through.  */
+
+    case BUILT_IN_STRNCAT:
+    case BUILT_IN_STPNCPY:
+    case BUILT_IN_STPNCPY_CHK:
     case BUILT_IN_STRNCPY:
     case BUILT_IN_STRNCPY_CHK:
       {
@@ -1646,6 +1698,31 @@ maybe_warn_nonstring_arg (tree fndecl, tree exp)
   tree bndrng[2] = { NULL_TREE, NULL_TREE };
   if (bound)
     get_size_range (bound, bndrng);
+
+  if (lenrng[1] && TREE_CODE (lenrng[1]) == INTEGER_CST)
+    {
+      /* Add one for the nul.  */
+      lenrng[1] = const_binop (PLUS_EXPR, TREE_TYPE (lenrng[1]),
+			       lenrng[1], size_one_node);
+
+      if (!bndrng[0])
+	{
+	  /* Conservatively use the upper bound of the lengths for
+	     both the lower and the upper bound of the operation.  */
+	  bndrng[0] = lenrng[1];
+	  bndrng[1] = lenrng[1];
+	  bound = void_type_node;
+	}
+      else
+	{
+	  /* Replace the bound on the oparation with the upper bound
+	     of the length of the string if the latter is smaller.  */
+	  if (tree_int_cst_lt (lenrng[1], bndrng[0]))
+	    bndrng[0] = lenrng[1];
+	  else if (tree_int_cst_lt (lenrng[1], bndrng[1]))
+	    bndrng[1] = lenrng[1];
+	}
+    }
 
   /* Iterate over the built-in function's formal arguments and check
      each const char* against the actual argument.  If the actual
@@ -1687,30 +1764,98 @@ maybe_warn_nonstring_arg (tree fndecl, tree exp)
       if (!decl)
 	continue;
 
-      tree type = TREE_TYPE (decl);
-
+      /* The maximum number of array elements accessed.  */
       offset_int wibnd = 0;
-      if (bndrng[0])
+
+      if (argno && fncode == BUILT_IN_STRNCAT)
+	{
+	  /* See if the bound in strncat is derived from the length
+	     of the strlen of the destination (as it's expected to be).
+	     If so, reset BOUND and FNCODE to trigger a warning.  */
+	  tree dstarg = CALL_EXPR_ARG (exp, 0);
+	  if (is_strlen_related_p (dstarg, bound))
+	    {
+	      /* The bound applies to the destination, not to the source,
+		 so reset these to trigger a warning without mentioning
+		 the bound.  */
+	      bound = NULL;
+	      fncode = 0;
+	    }
+	  else if (bndrng[1])
+	    /* Use the upper bound of the range for strncat.  */
+	    wibnd = wi::to_offset (bndrng[1]);
+	}
+      else if (bndrng[0])
+	/* Use the lower bound of the range for functions other than
+	   strncat.  */
 	wibnd = wi::to_offset (bndrng[0]);
 
+      /* Determine the size of the argument array if it is one.  */
       offset_int asize = wibnd;
+      bool known_size = false;
+      tree type = TREE_TYPE (decl);
 
+      /* Determine the array size.  For arrays of unknown bound and
+	 pointers reset BOUND to trigger the appropriate warning.  */
       if (TREE_CODE (type) == ARRAY_TYPE)
-	if (tree arrbnd = TYPE_DOMAIN (type))
-	  {
-	    if ((arrbnd = TYPE_MAX_VALUE (arrbnd)))
-	      asize = wi::to_offset (arrbnd) + 1;
-	  }
+	{
+	  if (tree arrbnd = TYPE_DOMAIN (type))
+	    {
+	      if ((arrbnd = TYPE_MAX_VALUE (arrbnd)))
+		{
+		  asize = wi::to_offset (arrbnd) + 1;
+		  known_size = true;
+		}
+	    }
+	  else if (bound == void_type_node)
+	    bound = NULL_TREE;
+	}
+      else if (bound == void_type_node)
+	bound = NULL_TREE;
 
       location_t loc = EXPR_LOCATION (exp);
+
+      /* In a call to strncat with a bound in a range whose lower but
+	 not upper bound is less than the array size, reset ASIZE to
+	 be the same as the bound and the other variable to trigger
+	 the apprpriate warning below.  */
+      if (fncode == BUILT_IN_STRNCAT
+	  && bndrng[0] != bndrng[1]
+	  && wi::ltu_p (wi::to_offset (bndrng[0]), asize)
+	  && (!known_size
+	      || wi::ltu_p (asize, wibnd)))
+	{
+	  asize = wibnd;
+	  bound = NULL_TREE;
+	  fncode = 0;
+	}
 
       bool warned = false;
 
       if (wi::ltu_p (asize, wibnd))
-	warned = warning_at (loc, OPT_Wstringop_overflow_,
-			     "%qD argument %i declared attribute %<nonstring%> "
-			     "is smaller than the specified bound %E",
-			     fndecl, argno + 1, bndrng[0]);
+	{
+	  if (bndrng[0] == bndrng[1])
+	    warned = warning_at (loc, OPT_Wstringop_overflow_,
+				 "%qD argument %i declared attribute "
+				 "%<nonstring%> is smaller than the specified "
+				 "bound %wu",
+				 fndecl, argno + 1, wibnd.to_uhwi ());
+	  else if (wi::ltu_p (asize, wi::to_offset (bndrng[0])))
+	    warned = warning_at (loc, OPT_Wstringop_overflow_,
+				 "%qD argument %i declared attribute "
+				 "%<nonstring%> is smaller than "
+				 "the specified bound [%E, %E]",
+				 fndecl, argno + 1, bndrng[0], bndrng[1]);
+	  else
+	    warned = warning_at (loc, OPT_Wstringop_overflow_,
+				 "%qD argument %i declared attribute "
+				 "%<nonstring%> may be smaller than "
+				 "the specified bound [%E, %E]",
+				 fndecl, argno + 1, bndrng[0], bndrng[1]);
+	}
+      else if (fncode == BUILT_IN_STRNCAT)
+	; /* Avoid warning for calls to strncat() when the bound
+	     is equal to the size of the non-string argument.  */
       else if (!bound)
 	warned = warning_at (loc, OPT_Wstringop_overflow_,
 			     "%qD argument %i declared attribute %<nonstring%>",

@@ -3343,19 +3343,21 @@ expand_mult_const (machine_mode mode, rtx op0, HOST_WIDE_INT val,
 	  /* Write a REG_EQUAL note on the last insn so that we can cse
 	     multiplication sequences.  Note that if ACCUM is a SUBREG,
 	     we've set the inner register and must properly indicate that.  */
-          tem = op0, nmode = mode;
-          accum_inner = accum;
-          if (GET_CODE (accum) == SUBREG)
+	  tem = op0, nmode = mode;
+	  accum_inner = accum;
+	  if (GET_CODE (accum) == SUBREG)
 	    {
 	      accum_inner = SUBREG_REG (accum);
 	      nmode = GET_MODE (accum_inner);
 	      tem = gen_lowpart (nmode, op0);
 	    }
 
-          insn = get_last_insn ();
-          set_dst_reg_note (insn, REG_EQUAL,
-			    gen_rtx_MULT (nmode, tem,
-					  gen_int_mode (val_so_far, nmode)),
+	  insn = get_last_insn ();
+	  wide_int wval_so_far
+	    = wi::uhwi (val_so_far,
+			GET_MODE_PRECISION (as_a <scalar_mode> (nmode)));
+	  rtx c = immed_wide_int_const (wval_so_far, nmode);
+	  set_dst_reg_note (insn, REG_EQUAL, gen_rtx_MULT (nmode, tem, c),
 			    accum_inner);
 	}
     }
@@ -4480,6 +4482,11 @@ expand_divmod (int rem_flag, enum tree_code code, machine_mode mode,
 		HOST_WIDE_INT d = INTVAL (op1);
 		unsigned HOST_WIDE_INT abs_d;
 
+		/* Not prepared to handle division/remainder by
+		   0xffffffffffffffff8000000000000000 etc.  */
+		if (d == HOST_WIDE_INT_MIN && size > HOST_BITS_PER_WIDE_INT)
+		  break;
+
 		/* Since d might be INT_MIN, we have to cast to
 		   unsigned HOST_WIDE_INT before negating to avoid
 		   undefined signed overflow.  */
@@ -4522,9 +4529,7 @@ expand_divmod (int rem_flag, enum tree_code code, machine_mode mode,
 			     || (optab_handler (sdivmod_optab, int_mode)
 				 != CODE_FOR_nothing)))
 		  ;
-		else if (EXACT_POWER_OF_2_OR_ZERO_P (abs_d)
-			 && (size <= HOST_BITS_PER_WIDE_INT
-			     || abs_d != (unsigned HOST_WIDE_INT) d))
+		else if (EXACT_POWER_OF_2_OR_ZERO_P (abs_d))
 		  {
 		    if (rem_flag)
 		      {
@@ -6036,6 +6041,11 @@ emit_store_flag (rtx target, enum rtx_code code, rtx op0, rtx op1,
 	}
 
       if (!HAVE_conditional_move)
+	return 0;
+
+      /* Do not turn a trapping comparison into a non-trapping one.  */
+      if ((code != EQ && code != NE && code != UNEQ && code != LTGT)
+	  && flag_trapping_math)
 	return 0;
 
       /* Try using a setcc instruction for ORDERED/UNORDERED, followed by a

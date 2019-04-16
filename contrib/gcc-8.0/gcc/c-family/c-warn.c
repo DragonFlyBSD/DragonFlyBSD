@@ -34,6 +34,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "gcc-rich-location.h"
 #include "gimplify.h"
 #include "c-family/c-indentation.h"
+#include "calls.h"
 
 /* Print a warning if a constant expression had overflow in folding.
    Invoke this function on every expression that the language
@@ -798,6 +799,13 @@ sizeof_pointer_memaccess_warning (location_t *sizeof_arg_loc, tree callee,
 	  tem = tree_strip_nop_conversions (src);
 	  if (TREE_CODE (tem) == ADDR_EXPR)
 	    tem = TREE_OPERAND (tem, 0);
+
+	  /* Avoid diagnosing sizeof SRC when SRC is declared with
+	     attribute nonstring.  */
+	  tree dummy;
+	  if (get_attr_nonstring_decl (tem, &dummy))
+	    return;
+
 	  if (operand_equal_p (tem, sizeof_arg[idx], OEP_ADDRESS_OF))
 	    warning_at (sizeof_arg_loc[idx], OPT_Wsizeof_pointer_memaccess,
 			"argument to %<sizeof%> in %qD call is the same "
@@ -1897,7 +1905,8 @@ warn_for_memset (location_t loc, tree arg0, tree arg2,
 	{
 	  tree elt_type = TREE_TYPE (type);
 	  tree domain = TYPE_DOMAIN (type);
-	  if (!integer_onep (TYPE_SIZE_UNIT (elt_type))
+	  if (COMPLETE_TYPE_P (elt_type)
+	      && !integer_onep (TYPE_SIZE_UNIT (elt_type))
 	      && domain != NULL_TREE
 	      && TYPE_MAX_VALUE (domain)
 	      && TYPE_MIN_VALUE (domain)
@@ -2246,18 +2255,16 @@ diagnose_mismatched_attributes (tree olddecl, tree newdecl)
 		       newdecl);
 
   /* Diagnose inline __attribute__ ((noinline)) which is silly.  */
-  const char *noinline = "noinline";
-
   if (DECL_DECLARED_INLINE_P (newdecl)
       && DECL_UNINLINABLE (olddecl)
-      && lookup_attribute (noinline, DECL_ATTRIBUTES (olddecl)))
+      && lookup_attribute ("noinline", DECL_ATTRIBUTES (olddecl)))
     warned |= warning (OPT_Wattributes, "inline declaration of %qD follows "
-		       "declaration with attribute %qs", newdecl, noinline);
+		       "declaration with attribute %qs", newdecl, "noinline");
   else if (DECL_DECLARED_INLINE_P (olddecl)
 	   && DECL_UNINLINABLE (newdecl)
 	   && lookup_attribute ("noinline", DECL_ATTRIBUTES (newdecl)))
     warned |= warning (OPT_Wattributes, "declaration of %q+D with attribute "
-		       "%qs follows inline declaration", newdecl, noinline);
+		       "%qs follows inline declaration", newdecl, "noinline");
 
   return warned;
 }

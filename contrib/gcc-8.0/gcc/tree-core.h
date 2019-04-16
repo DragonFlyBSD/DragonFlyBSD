@@ -1161,6 +1161,9 @@ struct GTY(()) tree_base {
        OMP_CLAUSE_LINEAR_VARIABLE_STRIDE in
 	   OMP_CLAUSE_LINEAR
 
+       ASM_INLINE_P in
+	   ASM_EXPR
+
    side_effects_flag:
 
        TREE_SIDE_EFFECTS in
@@ -1796,8 +1799,8 @@ struct GTY(()) tree_function_decl {
   unsigned pure_flag : 1;
   unsigned looping_const_or_pure_flag : 1;
   unsigned has_debug_args_flag : 1;
-  unsigned tm_clone_flag : 1;
   unsigned versioned_function : 1;
+  unsigned lambda_function: 1;
   /* No bits left.  */
 };
 

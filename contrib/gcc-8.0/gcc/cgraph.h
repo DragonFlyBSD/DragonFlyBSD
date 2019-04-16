@@ -530,6 +530,9 @@ public:
   /* Set when symbol can be streamed into bytecode for offloading.  */
   unsigned offloadable : 1;
 
+  /* Set when symbol is an IFUNC resolver.  */
+  unsigned ifunc_resolver : 1;
+
 
   /* Ordering of all symtab entries.  */
   int order;
@@ -994,12 +997,17 @@ public:
      If non-NULL BLOCK_TO_COPY determine what basic blocks to copy.
      If non_NULL NEW_ENTRY determine new entry BB of the clone.
 
+     If TARGET_ATTRIBUTES is non-null, when creating a new declaration,
+     add the attributes to DECL_ATTRIBUTES.  And call valid_attribute_p
+     that will promote value of the attribute DECL_FUNCTION_SPECIFIC_TARGET
+     of the declaration.
+
      Return the new version's cgraph node.  */
   cgraph_node *create_version_clone_with_body
     (vec<cgraph_edge *> redirect_callers,
      vec<ipa_replace_map *, va_gc> *tree_map, bitmap args_to_skip,
      bool skip_return, bitmap bbs_to_copy, basic_block new_entry_block,
-     const char *clone_name);
+     const char *clone_name, tree target_attributes = NULL_TREE);
 
   /* Insert a new cgraph_function_version_info node into cgraph_fnver_htab
      corresponding to cgraph_node.  */
@@ -1254,6 +1262,9 @@ public:
 
      Note that at WPA stage, the function body may not be present in memory.  */
   inline bool has_gimple_body_p (void);
+
+  /* Return true if this node represents a former, i.e. an expanded, thunk.  */
+  inline bool former_thunk_p (void);
 
   /* Return true if function should be optimized for size.  */
   bool optimize_for_size_p (void);
@@ -2855,6 +2866,16 @@ cgraph_node::has_gimple_body_p (void)
   return definition && !thunk.thunk_p && !alias;
 }
 
+/* Return true if this node represents a former, i.e. an expanded, thunk.  */
+
+inline bool
+cgraph_node::former_thunk_p (void)
+{
+  return (!thunk.thunk_p
+	  && (thunk.fixed_offset
+	      || thunk.virtual_offset_p));
+}
+
 /* Walk all functions with body defined.  */
 #define FOR_EACH_FUNCTION_WITH_GIMPLE_BODY(node) \
    for ((node) = symtab->first_function_with_gimple_body (); (node); \
@@ -2886,6 +2907,7 @@ cgraph_node::only_called_directly_or_aliased_p (void)
 {
   gcc_assert (!global.inlined_to);
   return (!force_output && !address_taken
+	  && !ifunc_resolver
 	  && !used_from_other_partition
 	  && !DECL_VIRTUAL_P (decl)
 	  && !DECL_STATIC_CONSTRUCTOR (decl)

@@ -373,8 +373,11 @@ c_finish_omp_atomic (location_t loc, enum tree_code code,
 	    }
 	}
       if (blhs)
-	x = build3_loc (loc, BIT_FIELD_REF, TREE_TYPE (blhs), x,
-			bitsize_int (bitsize), bitsize_int (bitpos));
+	{
+	  x = build3_loc (loc, BIT_FIELD_REF, TREE_TYPE (blhs), x,
+			  bitsize_int (bitsize), bitsize_int (bitpos));
+	  type = TREE_TYPE (blhs);
+	}
       x = build_modify_expr (loc, v, NULL_TREE, NOP_EXPR,
 			     loc, x, NULL_TREE);
       if (rhs1 && rhs1 != orig_lhs)
@@ -1609,6 +1612,14 @@ c_omp_predetermined_sharing (tree decl)
   /* Variables with const-qualified type having no mutable member
      are predetermined shared.  */
   if (TREE_READONLY (decl))
+    return OMP_CLAUSE_DEFAULT_SHARED;
+
+  /* Predetermine artificial variables holding integral values, those
+     are usually result of gimplify_one_sizepos or SAVE_EXPR
+     gimplification.  */
+  if (VAR_P (decl)
+      && DECL_ARTIFICIAL (decl)
+      && INTEGRAL_TYPE_P (TREE_TYPE (decl)))
     return OMP_CLAUSE_DEFAULT_SHARED;
 
   return OMP_CLAUSE_DEFAULT_UNSPECIFIED;

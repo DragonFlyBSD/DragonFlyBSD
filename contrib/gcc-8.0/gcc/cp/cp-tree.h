@@ -6180,6 +6180,7 @@ extern bool trivial_default_constructor_is_constexpr (tree);
 extern bool type_has_constexpr_default_constructor (tree);
 extern bool type_has_virtual_destructor		(tree);
 extern bool classtype_has_move_assign_or_move_ctor_p (tree, bool user_declared);
+extern bool classtype_has_non_deleted_move_ctor (tree);
 extern bool type_build_ctor_call		(tree);
 extern bool type_build_dtor_call		(tree);
 extern void explain_non_literal_class		(tree);
@@ -6644,7 +6645,7 @@ extern bool template_parameter_pack_p           (const_tree);
 extern bool function_parameter_pack_p		(const_tree);
 extern bool function_parameter_expanded_from_pack_p (tree, tree);
 extern tree make_pack_expansion                 (tree, tsubst_flags_t = tf_warning_or_error);
-extern bool check_for_bare_parameter_packs      (tree);
+extern bool check_for_bare_parameter_packs      (tree, location_t = UNKNOWN_LOCATION);
 extern tree build_template_info			(tree, tree);
 extern tree get_template_info			(const_tree);
 extern vec<qualified_typedef_usage_t, va_gc> *get_types_needing_access_check (tree);
@@ -6827,9 +6828,9 @@ extern bool perform_or_defer_access_check	(tree, tree, tree,
 
 struct deferring_access_check_sentinel
 {
-  deferring_access_check_sentinel ()
+  deferring_access_check_sentinel (enum deferring_kind kind = dk_deferred)
   {
-    push_deferring_access_checks (dk_deferred);
+    push_deferring_access_checks (kind);
   }
   ~deferring_access_check_sentinel ()
   {
@@ -6896,7 +6897,7 @@ extern tree begin_compound_stmt			(unsigned int);
 
 extern void finish_compound_stmt		(tree);
 extern tree finish_asm_stmt			(int, tree, tree, tree, tree,
-						 tree);
+						 tree, bool);
 extern tree finish_label_stmt			(tree);
 extern void finish_label_decl			(tree);
 extern cp_expr finish_parenthesized_expr	(cp_expr);
@@ -7035,6 +7036,7 @@ extern tree finish_builtin_launder		(location_t, tree,
 						 tsubst_flags_t);
 extern void start_lambda_scope			(tree);
 extern void record_lambda_scope			(tree);
+extern void record_null_lambda_scope		(tree);
 extern void finish_lambda_scope			(void);
 extern tree start_lambda_function		(tree fn, tree lambda_expr);
 extern void finish_lambda_function		(tree body);
@@ -7096,6 +7098,7 @@ extern tree get_target_expr_sfinae		(tree, tsubst_flags_t);
 extern tree build_cplus_array_type		(tree, tree);
 extern tree build_array_of_n_type		(tree, int);
 extern bool array_of_runtime_bound_p		(tree);
+extern bool vla_type_p				(tree);
 extern tree build_array_copy			(tree);
 extern tree build_vec_init_expr			(tree, tree, tsubst_flags_t);
 extern void diagnose_non_constexpr_vec_init	(tree);
@@ -7409,6 +7412,7 @@ extern int cp_gimplify_expr			(tree *, gimple_seq *,
 						 gimple_seq *);
 extern void cp_genericize			(tree);
 extern bool cxx_omp_const_qual_no_mutable	(tree);
+extern enum omp_clause_default_kind cxx_omp_predetermined_sharing_1 (tree);
 extern enum omp_clause_default_kind cxx_omp_predetermined_sharing (tree);
 extern tree cxx_omp_clause_default_ctor		(tree, tree, tree);
 extern tree cxx_omp_clause_copy_ctor		(tree, tree, tree);
@@ -7542,7 +7546,7 @@ extern tree cxx_constant_value			(tree, tree = NULL_TREE);
 extern tree cxx_constant_init			(tree, tree = NULL_TREE);
 extern tree maybe_constant_value		(tree, tree = NULL_TREE);
 extern tree maybe_constant_init			(tree, tree = NULL_TREE);
-extern tree fold_non_dependent_expr		(tree);
+extern tree fold_non_dependent_expr		(tree, tsubst_flags_t = tf_none);
 extern tree fold_simple				(tree);
 extern bool is_sub_constant_expr                (tree);
 extern bool reduced_constant_expression_p       (tree);

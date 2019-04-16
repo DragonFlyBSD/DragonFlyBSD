@@ -820,7 +820,7 @@ build_toporder_info (struct ipa_topo_info *topo)
   topo->stack = XCNEWVEC (struct cgraph_node *, symtab->cgraph_count);
 
   gcc_checking_assert (topo->stack_top == 0);
-  topo->nnodes = ipa_reduced_postorder (topo->order, true, true, NULL);
+  topo->nnodes = ipa_reduced_postorder (topo->order, true, NULL);
 }
 
 /* Free information about strongly connected components and the arrays in
@@ -2852,11 +2852,18 @@ perform_estimation_of_a_value (cgraph_node *node, vec<tree> known_csts,
   base_time -= time;
   if (base_time > 65535)
     base_time = 65535;
-  time_benefit = base_time.to_int ()
-    + devirtualization_time_bonus (node, known_csts, known_contexts,
-				   known_aggs_ptrs)
-    + hint_time_bonus (hints)
-    + removable_params_cost + est_move_cost;
+
+  /* Extern inline functions have no cloning local time benefits because they
+     will be inlined anyway.  The only reason to clone them is if it enables
+     optimization in any of the functions they call.  */
+  if (DECL_EXTERNAL (node->decl) && DECL_DECLARED_INLINE_P (node->decl))
+    time_benefit = 0;
+  else
+    time_benefit = base_time.to_int ()
+      + devirtualization_time_bonus (node, known_csts, known_contexts,
+				     known_aggs_ptrs)
+      + hint_time_bonus (hints)
+      + removable_params_cost + est_move_cost;
 
   gcc_checking_assert (size >=0);
   /* The inliner-heuristics based estimates may think that in certain
@@ -4127,7 +4134,9 @@ intersect_with_plats (struct ipcp_param_lattices *plats,
 	  if (aglat->offset - offset == item->offset)
 	    {
 	      gcc_checking_assert (item->value);
-	      if (values_equal_for_ipcp_p (item->value, aglat->values->value))
+	      if (aglat->is_single_const ()
+		  && values_equal_for_ipcp_p (item->value,
+					      aglat->values->value))
 		found = true;
 	      break;
 	    }

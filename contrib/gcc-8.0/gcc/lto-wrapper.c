@@ -65,6 +65,7 @@ static enum lto_mode_d lto_mode = LTO_MODE_NONE;
 static char *ltrans_output_file;
 static char *flto_out;
 static unsigned int nr;
+static int *ltrans_priorities;
 static char **input_names;
 static char **output_names;
 static char **offload_names;
@@ -407,6 +408,11 @@ merge_and_complain (struct cl_decoded_option **decoded_options,
      It is a common mistake to mix few -fPIC compiled objects into otherwise
      non-PIC code.  We do not want to build everything with PIC then.
 
+     Similarly we merge PIE options, however in addition we keep
+      -fPIC + -fPIE = -fPIE
+      -fpic + -fPIE = -fpie
+      -fPIC/-fpic + -fpie = -fpie
+
      It would be good to warn on mismatches, but it is bit hard to do as
      we do not know what nothing translates to.  */
     
@@ -414,11 +420,38 @@ merge_and_complain (struct cl_decoded_option **decoded_options,
     if ((*decoded_options)[j].opt_index == OPT_fPIC
         || (*decoded_options)[j].opt_index == OPT_fpic)
       {
-	if (!pic_option
-	    || (pic_option->value > 0) != ((*decoded_options)[j].value > 0))
-	  remove_option (decoded_options, j, decoded_options_count);
-	else if (pic_option->opt_index == OPT_fPIC
-		 && (*decoded_options)[j].opt_index == OPT_fpic)
+	/* -fno-pic in one unit implies -fno-pic everywhere.  */
+	if ((*decoded_options)[j].value == 0)
+	  j++;
+	/* If we have no pic option or merge in -fno-pic, we still may turn
+	   existing pic/PIC mode into pie/PIE if -fpie/-fPIE is present.  */
+	else if ((pic_option && pic_option->value == 0)
+		 || !pic_option)
+	  {
+	    if (pie_option)
+	      {
+		bool big = (*decoded_options)[j].opt_index == OPT_fPIC
+			   && pie_option->opt_index == OPT_fPIE;
+	        (*decoded_options)[j].opt_index = big ? OPT_fPIE : OPT_fpie;
+		if (pie_option->value)
+	          (*decoded_options)[j].canonical_option[0] = big ? "-fPIE" : "-fpie";
+		else
+	          (*decoded_options)[j].canonical_option[0] = big ? "-fno-pie" : "-fno-pie";
+		(*decoded_options)[j].value = pie_option->value;
+	        j++;
+	      }
+	    else if (pic_option)
+	      {
+	        (*decoded_options)[j] = *pic_option;
+	        j++;
+	      }
+	    /* We do not know if target defaults to pic or not, so just remove
+	       option if it is missing in one unit but enabled in other.  */
+	    else
+	      remove_option (decoded_options, j, decoded_options_count);
+	  }
+	else if (pic_option->opt_index == OPT_fpic
+		 && (*decoded_options)[j].opt_index == OPT_fPIC)
 	  {
 	    (*decoded_options)[j] = *pic_option;
 	    j++;
@@ -429,11 +462,42 @@ merge_and_complain (struct cl_decoded_option **decoded_options,
    else if ((*decoded_options)[j].opt_index == OPT_fPIE
             || (*decoded_options)[j].opt_index == OPT_fpie)
       {
-	if (!pie_option
-	    || pie_option->value != (*decoded_options)[j].value)
-	  remove_option (decoded_options, j, decoded_options_count);
-	else if (pie_option->opt_index == OPT_fPIE
-		 && (*decoded_options)[j].opt_index == OPT_fpie)
+	/* -fno-pie in one unit implies -fno-pie everywhere.  */
+	if ((*decoded_options)[j].value == 0)
+	  j++;
+	/* If we have no pie option or merge in -fno-pie, we still preserve
+	   PIE/pie if pic/PIC is present.  */
+	else if ((pie_option && pie_option->value == 0)
+		 || !pie_option)
+	  {
+	    /* If -fPIC/-fpic is given, merge it with -fPIE/-fpie.  */
+	    if (pic_option)
+	      {
+		if (pic_option->opt_index == OPT_fpic
+		    && (*decoded_options)[j].opt_index == OPT_fPIE)
+		  {
+	            (*decoded_options)[j].opt_index = OPT_fpie;
+	            (*decoded_options)[j].canonical_option[0]
+			 = pic_option->value ? "-fpie" : "-fno-pie";
+		  }
+		else if (!pic_option->value)
+		  (*decoded_options)[j].canonical_option[0] = "-fno-pie";
+		(*decoded_options)[j].value = pic_option->value;
+		j++;
+	      }
+	    else if (pie_option)
+	      {
+	        (*decoded_options)[j] = *pie_option;
+		j++;
+	      }
+	    /* Because we always append pic/PIE options this code path should
+	       not happen unless the LTO object was built by old lto1 which
+	       did not contain that logic yet.  */
+	    else
+	      remove_option (decoded_options, j, decoded_options_count);
+	  }
+	else if (pie_option->opt_index == OPT_fpie
+		 && (*decoded_options)[j].opt_index == OPT_fPIE)
 	  {
 	    (*decoded_options)[j] = *pie_option;
 	    j++;
@@ -1018,6 +1082,13 @@ debug_objcopy (const char *infile)
   return outfile;
 }
 
+/* Helper for qsort: compare priorities for parallel compilation.  */
+
+int
+cmp_priority (const void *a, const void *b)
+{
+  return *((const int *)b)-*((const int *)a);
+}
 
 
 /* Execute gcc. ARGC is the number of arguments. ARGV contains the arguments. */
@@ -1477,6 +1548,7 @@ cont1:
       FILE *stream = fopen (ltrans_output_file, "r");
       FILE *mstream = NULL;
       struct obstack env_obstack;
+      int priority;
 
       if (!stream)
 	fatal_error (input_location, "fopen: %s: %m", ltrans_output_file);
@@ -1492,6 +1564,14 @@ cont1:
 	  size_t len;
 
 	  buf = input_name;
+          if (fscanf (stream, "%i\n", &priority) != 1)
+	    {
+	      if (!feof (stream))
+	        fatal_error (input_location,
+		             "Corrupted ltrans output file %s",
+			     ltrans_output_file);
+	      break;
+	    }
 cont:
 	  if (!fgets (buf, piece, stream))
 	    break;
@@ -1508,8 +1588,12 @@ cont:
 	    output_name = &input_name[1];
 
 	  nr++;
+	  ltrans_priorities
+	     = (int *)xrealloc (ltrans_priorities, nr * sizeof (int) * 2);
 	  input_names = (char **)xrealloc (input_names, nr * sizeof (char *));
 	  output_names = (char **)xrealloc (output_names, nr * sizeof (char *));
+	  ltrans_priorities[(nr-1)*2] = priority;
+	  ltrans_priorities[(nr-1)*2+1] = nr-1;
 	  input_names[nr-1] = input_name;
 	  output_names[nr-1] = output_name;
 	}
@@ -1521,6 +1605,7 @@ cont:
 	{
 	  makefile = make_temp_file (".mk");
 	  mstream = fopen (makefile, "w");
+	  qsort (ltrans_priorities, nr, sizeof (int) * 2, cmp_priority);
 	}
 
       /* Execute the LTRANS stage for each input file (or prepare a
@@ -1584,9 +1669,14 @@ cont:
 	  struct pex_obj *pex;
 	  char jobs[32];
 
-	  fprintf (mstream, "all:");
+	  fprintf (mstream,
+		   ".PHONY: all\n"
+		   "all:");
 	  for (i = 0; i < nr; ++i)
-	    fprintf (mstream, " \\\n\t%s", output_names[i]);
+	    {
+	      int j = ltrans_priorities[i*2 + 1];
+	      fprintf (mstream, " \\\n\t%s", output_names[j]);
+	    }
 	  fprintf (mstream, "\n");
 	  fclose (mstream);
 	  if (!jobserver)
@@ -1630,6 +1720,7 @@ cont:
 	  free (input_names[i]);
 	}
       nr = 0;
+      free (ltrans_priorities);
       free (output_names);
       free (input_names);
       free (list_option_full);

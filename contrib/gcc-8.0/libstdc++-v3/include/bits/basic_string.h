@@ -506,6 +506,11 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
        *  @param  __s  Source C string.
        *  @param  __a  Allocator to use (default is default allocator).
        */
+#if __cpp_deduction_guides && ! defined _GLIBCXX_DEFINING_STRING_INSTANTIATIONS
+      // _GLIBCXX_RESOLVE_LIB_DEFECTS
+      // 3076. basic_string CTAD ambiguity
+      template<typename = _RequireAllocator<_Alloc>>
+#endif
       basic_string(const _CharT* __s, const _Alloc& __a = _Alloc())
       : _M_dataplus(_M_local_data(), __a)
       { _M_construct(__s, __s ? __s + traits_type::length(__s) : __s+npos); }
@@ -516,6 +521,11 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
        *  @param  __c  Character to use.
        *  @param  __a  Allocator to use (default is default allocator).
        */
+#if __cpp_deduction_guides && ! defined _GLIBCXX_DEFINING_STRING_INSTANTIATIONS
+      // _GLIBCXX_RESOLVE_LIB_DEFECTS
+      // 3076. basic_string CTAD ambiguity
+      template<typename = _RequireAllocator<_Alloc>>
+#endif
       basic_string(size_type __n, _CharT __c, const _Alloc& __a = _Alloc())
       : _M_dataplus(_M_local_data(), __a)
       { _M_construct(__n, __c); }
@@ -734,20 +744,29 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
 	// Replace allocator if POCMA is true.
 	std::__alloc_on_move(_M_get_allocator(), __str._M_get_allocator());
 
-	if (!__str._M_is_local()
-	    && (_Alloc_traits::_S_propagate_on_move_assign()
-	      || _Alloc_traits::_S_always_equal()))
+	if (__str._M_is_local())
 	  {
+	    // We've always got room for a short string, just copy it.
+	    if (__str.size())
+	      this->_S_copy(_M_data(), __str._M_data(), __str.size());
+	    _M_set_length(__str.size());
+	  }
+	else if (_Alloc_traits::_S_propagate_on_move_assign()
+	    || _Alloc_traits::_S_always_equal()
+	    || _M_get_allocator() == __str._M_get_allocator())
+	  {
+	    // Just move the allocated pointer, our allocator can free it.
 	    pointer __data = nullptr;
 	    size_type __capacity;
 	    if (!_M_is_local())
 	      {
 		if (_Alloc_traits::_S_always_equal())
 		  {
+		    // __str can reuse our existing storage.
 		    __data = _M_data();
 		    __capacity = _M_allocated_capacity;
 		  }
-		else
+		else // __str can't use it, so free it.
 		  _M_destroy(_M_allocated_capacity);
 	      }
 
@@ -762,8 +781,8 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
 	    else
 	      __str._M_data(__str._M_local_buf);
 	  }
-	else
-	    assign(__str);
+	else // Need to do a deep copy
+	  assign(__str);
 	__str.clear();
 	return *this;
       }
@@ -1216,7 +1235,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
        *  remainder of @a __str is appended.
        */
       basic_string&
-      append(const basic_string& __str, size_type __pos, size_type __n)
+      append(const basic_string& __str, size_type __pos, size_type __n = npos)
       { return _M_append(__str._M_data()
 			 + __str._M_check(__pos, "basic_string::append"),
 			 __str._M_limit(__pos, __n)); }
@@ -1381,7 +1400,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
        *  __str, the remainder of @a __str is used.
        */
       basic_string&
-      assign(const basic_string& __str, size_type __pos, size_type __n)
+      assign(const basic_string& __str, size_type __pos, size_type __n = npos)
       { return _M_replace(size_type(0), this->size(), __str._M_data()
 			  + __str._M_check(__pos, "basic_string::assign"),
 			  __str._M_limit(__pos, __n)); }
@@ -1633,7 +1652,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
       */
       basic_string&
       insert(size_type __pos1, const basic_string& __str,
-	     size_type __pos2, size_type __n)
+	     size_type __pos2, size_type __n = npos)
       { return this->replace(__pos1, size_type(0), __str._M_data()
 			     + __str._M_check(__pos2, "basic_string::insert"),
 			     __str._M_limit(__pos2, __n)); }
@@ -1881,7 +1900,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
       */
       basic_string&
       replace(size_type __pos1, size_type __n1, const basic_string& __str,
-	      size_type __pos2, size_type __n2)
+	      size_type __pos2, size_type __n2 = npos)
       { return this->replace(__pos1, __n1, __str._M_data()
 			     + __str._M_check(__pos2, "basic_string::replace"),
 			     __str._M_limit(__pos2, __n2)); }
@@ -2941,7 +2960,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
       */
       int
       compare(size_type __pos1, size_type __n1, const basic_string& __str,
-	      size_type __pos2, size_type __n2) const;
+	      size_type __pos2, size_type __n2 = npos) const;
 
       /**
        *  @brief  Compare to a C string.
@@ -4135,7 +4154,7 @@ _GLIBCXX_END_NAMESPACE_CXX11
        *  remainder of @a __str is appended.
        */
       basic_string&
-      append(const basic_string& __str, size_type __pos, size_type __n);
+      append(const basic_string& __str, size_type __pos, size_type __n = npos);
 
       /**
        *  @brief  Append a C substring.
@@ -4280,7 +4299,7 @@ _GLIBCXX_END_NAMESPACE_CXX11
        *  __str, the remainder of @a __str is used.
        */
       basic_string&
-      assign(const basic_string& __str, size_type __pos, size_type __n)
+      assign(const basic_string& __str, size_type __pos, size_type __n = npos)
       { return this->assign(__str._M_data()
 			    + __str._M_check(__pos, "basic_string::assign"),
 			    __str._M_limit(__pos, __n)); }
@@ -4468,7 +4487,7 @@ _GLIBCXX_END_NAMESPACE_CXX11
       */
       basic_string&
       insert(size_type __pos1, const basic_string& __str,
-	     size_type __pos2, size_type __n)
+	     size_type __pos2, size_type __n = npos)
       { return this->insert(__pos1, __str._M_data()
 			    + __str._M_check(__pos2, "basic_string::insert"),
 			    __str._M_limit(__pos2, __n)); }
@@ -4703,7 +4722,7 @@ _GLIBCXX_END_NAMESPACE_CXX11
       */
       basic_string&
       replace(size_type __pos1, size_type __n1, const basic_string& __str,
-	      size_type __pos2, size_type __n2)
+	      size_type __pos2, size_type __n2 = npos)
       { return this->replace(__pos1, __n1, __str._M_data()
 			     + __str._M_check(__pos2, "basic_string::replace"),
 			     __str._M_limit(__pos2, __n2)); }
@@ -5130,7 +5149,10 @@ _GLIBCXX_END_NAMESPACE_CXX11
       */
       _CharT*
       data() noexcept
-      { return _M_data(); }
+      {
+	_M_leak();
+	return _M_data();
+      }
 #endif
 
       /**
@@ -5779,7 +5801,7 @@ _GLIBCXX_END_NAMESPACE_CXX11
       */
       int
       compare(size_type __pos1, size_type __n1, const basic_string& __str,
-	      size_type __pos2, size_type __n2) const;
+	      size_type __pos2, size_type __n2 = npos) const;
 
       /**
        *  @brief  Compare to a C string.
@@ -5873,6 +5895,23 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
 	   typename = _RequireAllocator<_Allocator>>
     basic_string(_InputIterator, _InputIterator, _Allocator = _Allocator())
       -> basic_string<_CharT, char_traits<_CharT>, _Allocator>;
+
+  // _GLIBCXX_RESOLVE_LIB_DEFECTS
+  // 3075. basic_string needs deduction guides from basic_string_view
+  template<typename _CharT, typename _Traits,
+	   typename _Allocator = allocator<_CharT>,
+	   typename = _RequireAllocator<_Allocator>>
+    basic_string(basic_string_view<_CharT, _Traits>, const _Allocator& = _Allocator())
+      -> basic_string<_CharT, _Traits, _Allocator>;
+
+  template<typename _CharT, typename _Traits,
+	   typename _Allocator = allocator<_CharT>,
+	   typename = _RequireAllocator<_Allocator>>
+    basic_string(basic_string_view<_CharT, _Traits>,
+		 typename basic_string<_CharT, _Traits, _Allocator>::size_type,
+		 typename basic_string<_CharT, _Traits, _Allocator>::size_type,
+		 const _Allocator& = _Allocator())
+      -> basic_string<_CharT, _Traits, _Allocator>;
 _GLIBCXX_END_NAMESPACE_CXX11
 #endif
 

@@ -2686,6 +2686,8 @@ print_destructor (pretty_printer *buffer, tree t, tree type)
   tree decl_name = DECL_NAME (TYPE_NAME (type));
 
   pp_string (buffer, "Delete_");
+  if (strncmp (IDENTIFIER_POINTER (DECL_NAME (t)), "__dt_del", 8) == 0)
+    pp_string (buffer, "And_Free_");
   pp_ada_tree_identifier (buffer, decl_name, t, 0, false);
 }
 
@@ -2734,19 +2736,25 @@ dump_ada_declaration (pretty_printer *buffer, tree t, tree type, int spc)
 
 	  if (TYPE_NAME (typ))
 	    {
-	      /* If types have same representation, and same name (ignoring
-		 casing), then ignore the second type.  */
+	      /* If the types have the same name (ignoring casing), then ignore
+		 the second type, but forward declare the first if need be.  */
 	      if (type_name (typ) == type_name (TREE_TYPE (t))
 		  || !strcasecmp (type_name (typ), type_name (TREE_TYPE (t))))
 		{
+		  if (RECORD_OR_UNION_TYPE_P (typ) && !TREE_VISITED (stub))
+		    {
+		      INDENT (spc);
+		      dump_forward_type (buffer, typ, t, 0);
+		    }
+
 		  TREE_VISITED (t) = 1;
 		  return 0;
 		}
 
 	      INDENT (spc);
 
-	      if (RECORD_OR_UNION_TYPE_P (typ))
-		dump_forward_type (buffer, stub, t, spc);
+	      if (RECORD_OR_UNION_TYPE_P (typ) && !TREE_VISITED (stub))
+		dump_forward_type (buffer, typ, t, spc);
 
 	      pp_string (buffer, "subtype ");
 	      dump_ada_node (buffer, t, type, spc, false, true);
@@ -2931,9 +2939,10 @@ dump_ada_declaration (pretty_printer *buffer, tree t, tree type, int spc)
 	  if (DECL_ARTIFICIAL (t))
 	    return 0;
 
-	  /* Only consider constructors/destructors for complete objects.  */
+	  /* Only consider complete constructors and deleting destructors.  */
 	  if (strncmp (IDENTIFIER_POINTER (decl_name), "__ct_comp", 9) != 0
-	      && strncmp (IDENTIFIER_POINTER (decl_name), "__dt_comp", 9) != 0)
+	      && strncmp (IDENTIFIER_POINTER (decl_name), "__dt_comp", 9) != 0
+	      && strncmp (IDENTIFIER_POINTER (decl_name), "__dt_del", 8) != 0)
 	    return 0;
 	}
 

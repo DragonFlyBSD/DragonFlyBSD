@@ -262,6 +262,9 @@ is_capture_proxy (tree decl)
 	  && DECL_HAS_VALUE_EXPR_P (decl)
 	  && !DECL_ANON_UNION_VAR_P (decl)
 	  && !DECL_DECOMPOSITION_P (decl)
+	  && !(DECL_ARTIFICIAL (decl)
+	       && DECL_LANG_SPECIFIC (decl)
+	       && DECL_OMP_PRIVATIZED_MEMBER (decl))
 	  && LAMBDA_FUNCTION_P (DECL_CONTEXT (decl)));
 }
 
@@ -884,7 +887,7 @@ resolvable_dummy_lambda (tree object)
       && current_class_type
       && LAMBDA_TYPE_P (current_class_type)
       && lambda_function (current_class_type)
-      && DERIVED_FROM_P (type, current_nonlambda_class_type ()))
+      && DERIVED_FROM_P (type, nonlambda_method_basetype()))
     return CLASSTYPE_LAMBDA_EXPR (current_class_type);
 
   return NULL_TREE;
@@ -949,30 +952,37 @@ current_nonlambda_function (void)
   return fn;
 }
 
-/* Returns the method basetype of the innermost non-lambda function, or
-   NULL_TREE if none.  */
+/* Returns the method basetype of the innermost non-lambda function, including
+   a hypothetical constructor if inside an NSDMI, or NULL_TREE if none.  */
 
 tree
 nonlambda_method_basetype (void)
 {
-  tree fn, type;
   if (!current_class_ref)
     return NULL_TREE;
 
-  type = current_class_type;
+  tree type = current_class_type;
   if (!type || !LAMBDA_TYPE_P (type))
     return type;
 
-  /* Find the nearest enclosing non-lambda function.  */
-  fn = TYPE_NAME (type);
-  do
-    fn = decl_function_context (fn);
-  while (fn && LAMBDA_FUNCTION_P (fn));
+  while (true)
+    {
+      tree lam = CLASSTYPE_LAMBDA_EXPR (type);
+      tree ex = LAMBDA_EXPR_EXTRA_SCOPE (lam);
+      if (ex && TREE_CODE (ex) == FIELD_DECL)
+	/* Lambda in an NSDMI.  */
+	return DECL_CONTEXT (ex);
 
-  if (!fn || !DECL_NONSTATIC_MEMBER_FUNCTION_P (fn))
-    return NULL_TREE;
-
-  return TYPE_METHOD_BASETYPE (TREE_TYPE (fn));
+      tree fn = TYPE_CONTEXT (type);
+      if (!fn || TREE_CODE (fn) != FUNCTION_DECL
+	  || !DECL_NONSTATIC_MEMBER_FUNCTION_P (fn))
+	/* No enclosing non-lambda method.  */
+	return NULL_TREE;
+      if (!LAMBDA_FUNCTION_P (fn))
+	/* Found an enclosing non-lambda method.  */
+	return TYPE_METHOD_BASETYPE (TREE_TYPE (fn));
+      type = DECL_CONTEXT (fn);
+    }
 }
 
 /* Like current_scope, but looking through lambdas.  */
@@ -1107,6 +1117,9 @@ maybe_add_lambda_conv_op (tree type)
     while (src)
       {
 	tree new_node = copy_node (src);
+
+	/* Clear TREE_ADDRESSABLE on thunk arguments.  */
+	TREE_ADDRESSABLE (new_node) = 0;
 
 	if (!fn_args)
 	  fn_args = tgt = new_node;
@@ -1373,6 +1386,24 @@ record_lambda_scope (tree lambda)
   LAMBDA_EXPR_DISCRIMINATOR (lambda) = lambda_count++;
 }
 
+/* This lambda is an instantiation of a lambda in a template default argument
+   that got no LAMBDA_EXPR_EXTRA_SCOPE, so this shouldn't either.  But we do
+   need to use and increment the global count to avoid collisions.  */
+
+void
+record_null_lambda_scope (tree lambda)
+{
+  if (vec_safe_is_empty (lambda_scope_stack))
+    record_lambda_scope (lambda);
+  else
+    {
+      tree_int *p = lambda_scope_stack->begin();
+      LAMBDA_EXPR_EXTRA_SCOPE (lambda) = p->t;
+      LAMBDA_EXPR_DISCRIMINATOR (lambda) = p->i++;
+    }
+  gcc_assert (LAMBDA_EXPR_EXTRA_SCOPE (lambda) == NULL_TREE);
+}
+
 void
 finish_lambda_scope (void)
 {
@@ -1446,8 +1477,10 @@ mark_const_cap_r (tree *t, int *walk_subtrees, void *data)
     {
       tree decl = DECL_EXPR_DECL (*t);
       if (is_constant_capture_proxy (decl))
-	var = DECL_CAPTURED_VARIABLE (decl);
-      *walk_subtrees = 0;
+	{
+	  var = DECL_CAPTURED_VARIABLE (decl);
+	  *walk_subtrees = 0;
+	}
     }
   else if (is_constant_capture_proxy (*t))
     var = DECL_CAPTURED_VARIABLE (*t);
@@ -1486,8 +1519,8 @@ prune_lambda_captures (tree body)
       tree cap = *capp;
       if (tree var = var_to_maybe_prune (cap))
 	{
-	  tree *use = *const_vars.get (var);
-	  if (TREE_CODE (*use) == DECL_EXPR)
+	  tree **use = const_vars.get (var);
+	  if (use && TREE_CODE (**use) == DECL_EXPR)
 	    {
 	      /* All uses of this capture were folded away, leaving only the
 		 proxy declaration.  */
@@ -1502,7 +1535,7 @@ prune_lambda_captures (tree body)
 	      *fieldp = DECL_CHAIN (*fieldp);
 
 	      /* And remove the capture proxy declaration.  */
-	      *use = void_node;
+	      **use = void_node;
 	      continue;
 	    }
 	}

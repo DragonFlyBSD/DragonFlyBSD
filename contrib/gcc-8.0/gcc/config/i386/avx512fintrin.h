@@ -3762,7 +3762,7 @@ _mm512_maskz_fnmsub_round_ps (__mmask16 __U, __m512 __A, __m512 __B,
     (__m512d)__builtin_ia32_vfmaddsubpd512_mask(A, B, C, -1, R)
 
 #define _mm512_mask_fmaddsub_round_pd(A, U, B, C, R)    \
-    (__m512d)__builtin_ia32_vfmaddpd512_mask(A, B, C, U, R)
+    (__m512d)__builtin_ia32_vfmaddsubpd512_mask(A, B, C, U, R)
 
 #define _mm512_mask3_fmaddsub_round_pd(A, B, C, U, R)   \
     (__m512d)__builtin_ia32_vfmaddsubpd512_mask3(A, B, C, U, R)
@@ -7306,7 +7306,7 @@ _mm512_xor_epi64 (__m512i __A, __m512i __B)
 
 extern __inline __m512i
 __attribute__ ((__gnu_inline__, __always_inline__, __artificial__))
-_mm512_mask_xor_epi64 (__m512i __W, __mmask16 __U, __m512i __A, __m512i __B)
+_mm512_mask_xor_epi64 (__m512i __W, __mmask8 __U, __m512i __A, __m512i __B)
 {
   return (__m512i) __builtin_ia32_pxorq512_mask ((__v8di) __A,
 						 (__v8di) __B,
@@ -7316,7 +7316,7 @@ _mm512_mask_xor_epi64 (__m512i __W, __mmask16 __U, __m512i __A, __m512i __B)
 
 extern __inline __m512i
 __attribute__ ((__gnu_inline__, __always_inline__, __artificial__))
-_mm512_maskz_xor_epi64 (__mmask16 __U, __m512i __A, __m512i __B)
+_mm512_maskz_xor_epi64 (__mmask8 __U, __m512i __A, __m512i __B)
 {
   return (__m512i) __builtin_ia32_pxorq512_mask ((__v8di) __A,
 						 (__v8di) __B,
@@ -7727,7 +7727,7 @@ _mm512_mask_abs_ps (__m512 __W, __mmask16 __U, __m512 __A)
 
 extern __inline __m512d
 __attribute__ ((__gnu_inline__, __always_inline__, __artificial__))
-_mm512_abs_pd (__m512 __A)
+_mm512_abs_pd (__m512d __A)
 {
   return (__m512d) _mm512_and_epi64 ((__m512i) __A,
 				     _mm512_set1_epi64 (0x7fffffffffffffffLL));
@@ -7735,7 +7735,7 @@ _mm512_abs_pd (__m512 __A)
 
 extern __inline __m512d
 __attribute__ ((__gnu_inline__, __always_inline__, __artificial__))
-_mm512_mask_abs_pd (__m512d __W, __mmask8 __U, __m512 __A)
+_mm512_mask_abs_pd (__m512d __W, __mmask8 __U, __m512d __A)
 {
   return (__m512d)
 	 _mm512_mask_and_epi64 ((__m512i) __W, __U, (__m512i) __A,
@@ -9544,7 +9544,7 @@ _mm512_cmpneq_epu32_mask (__m512i __X, __m512i __Y)
 
 extern __inline __mmask8
 __attribute__ ((__gnu_inline__, __always_inline__, __artificial__))
-_mm512_mask_cmpneq_epi64_mask (__mmask16 __M, __m512i __X, __m512i __Y)
+_mm512_mask_cmpneq_epi64_mask (__mmask8 __M, __m512i __X, __m512i __Y)
 {
   return (__mmask8) __builtin_ia32_cmpq512_mask ((__v8di) __X,
 						    (__v8di) __Y, 4,
@@ -10806,22 +10806,22 @@ _mm512_mask_insertf32x4 (__m512 __A, __mmask16 __B, __m512 __C,
 #define _mm512_maskz_insertf32x4(A, X, Y, C)                            \
   ((__m512) __builtin_ia32_insertf32x4_mask ((__v16sf)(__m512) (X),     \
     (__v4sf)(__m128) (Y), (int) (C), (__v16sf)_mm512_setzero_ps(),      \
-    (__mmask8)(A)))
+    (__mmask16)(A)))
 
 #define _mm512_maskz_inserti32x4(A, X, Y, C)                            \
   ((__m512i) __builtin_ia32_inserti32x4_mask ((__v16si)(__m512i) (X),   \
     (__v4si)(__m128i) (Y), (int) (C), (__v16si)_mm512_setzero_si512 (),     \
-    (__mmask8)(A)))
+    (__mmask16)(A)))
 
 #define _mm512_mask_insertf32x4(A, B, X, Y, C)                          \
   ((__m512) __builtin_ia32_insertf32x4_mask ((__v16sf)(__m512) (X),     \
     (__v4sf)(__m128) (Y), (int) (C), (__v16sf)(__m512) (A),             \
-					     (__mmask8)(B)))
+					     (__mmask16)(B)))
 
 #define _mm512_mask_inserti32x4(A, B, X, Y, C)                          \
   ((__m512i) __builtin_ia32_inserti32x4_mask ((__v16si)(__m512i) (X),   \
     (__v4si)(__m128i) (Y), (int) (C), (__v16si)(__m512i) (A),           \
-					      (__mmask8)(B)))
+					      (__mmask16)(B)))
 #endif
 
 extern __inline __m512i

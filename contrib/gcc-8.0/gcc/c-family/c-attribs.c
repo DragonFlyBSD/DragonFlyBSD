@@ -403,7 +403,7 @@ const struct attribute_spec c_common_attribute_table[] =
 			      0, 0, true, false, false, false,
 			      handle_no_address_safety_analysis_attribute,
 			      NULL },
-  { "no_sanitize",	      1, 1, true, false, false, false,
+  { "no_sanitize",	      1, -1, true, false, false, false,
 			      handle_no_sanitize_attribute, NULL },
   { "no_sanitize_address",    0, 0, true, false, false, false,
 			      handle_no_sanitize_address_attribute, NULL },
@@ -444,6 +444,8 @@ const struct attribute_spec c_common_attribute_table[] =
   { "omp declare target",     0, 0, true, false, false, false,
 			      handle_omp_declare_target_attribute, NULL },
   { "omp declare target link", 0, 0, true, false, false, false,
+			      handle_omp_declare_target_attribute, NULL },
+  { "omp declare target implicit", 0, 0, true, false, false, false,
 			      handle_omp_declare_target_attribute, NULL },
   { "alloc_align",	      1, 1, false, true, true, false,
 			      handle_alloc_align_attribute,
@@ -517,8 +519,13 @@ handle_packed_attribute (tree *node, tree name, tree ARG_UNUSED (args),
   if (TYPE_P (*node))
     {
       if (!(flags & (int) ATTR_FLAG_TYPE_IN_PLACE))
-	*node = build_variant_type_copy (*node);
-      TYPE_PACKED (*node) = 1;
+	{
+	  warning (OPT_Wattributes,
+		   "%qE attribute ignored for type %qT", name, *node);
+	  *no_add_attrs = true;
+	}
+      else
+	TYPE_PACKED (*node) = 1;
     }
   else if (TREE_CODE (*node) == FIELD_DECL)
     {
@@ -683,22 +690,26 @@ static tree
 handle_no_sanitize_attribute (tree *node, tree name, tree args, int,
 			      bool *no_add_attrs)
 {
+  unsigned int flags = 0;
   *no_add_attrs = true;
-  tree id = TREE_VALUE (args);
   if (TREE_CODE (*node) != FUNCTION_DECL)
     {
       warning (OPT_Wattributes, "%qE attribute ignored", name);
       return NULL_TREE;
     }
 
-  if (TREE_CODE (id) != STRING_CST)
+  for (; args; args = TREE_CHAIN (args))
     {
-      error ("no_sanitize argument not a string");
-      return NULL_TREE;
-    }
+      tree id = TREE_VALUE (args);
+      if (TREE_CODE (id) != STRING_CST)
+	{
+	  error ("no_sanitize argument not a string");
+	  return NULL_TREE;
+	}
 
-  char *string = ASTRDUP (TREE_STRING_POINTER (id));
-  unsigned int flags = parse_no_sanitize_attribute (string);
+      char *string = ASTRDUP (TREE_STRING_POINTER (id));
+      flags |= parse_no_sanitize_attribute (string);
+    }
 
   add_no_sanitize_value (*node, flags);
 

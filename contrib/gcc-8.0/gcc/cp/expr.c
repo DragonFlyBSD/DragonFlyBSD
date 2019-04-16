@@ -139,6 +139,9 @@ mark_use (tree expr, bool rvalue_p, bool read_p,
 		  break;
 		}
 	    }
+	  temp_override<location_t> l (input_location);
+	  if (loc != UNKNOWN_LOCATION)
+	    input_location = loc;
 	  expr = process_outer_var_ref (expr, tf_warning_or_error, true);
 	  if (!(TREE_TYPE (oexpr)
 		&& TREE_CODE (TREE_TYPE (oexpr)) == REFERENCE_TYPE))
@@ -183,6 +186,14 @@ mark_use (tree expr, bool rvalue_p, bool read_p,
 	    expr = convert_from_reference (r);
 	}
       break;
+
+    CASE_CONVERT:
+    case VIEW_CONVERT_EXPR:
+      if (location_wrapper_p (expr))
+	loc = EXPR_LOCATION (expr);
+      recurse_op[0] = true;
+      break;
+
     default:
       break;
     }

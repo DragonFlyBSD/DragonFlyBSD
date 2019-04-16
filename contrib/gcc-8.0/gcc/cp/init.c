@@ -577,6 +577,16 @@ get_nsdmi (tree member, bool in_ctor, tsubst_flags_t complain)
 
 	  DECL_INSTANTIATING_NSDMI_P (member) = 1;
 
+	  bool pushed = false;
+	  if (!currently_open_class (DECL_CONTEXT (member)))
+	    {
+	      push_to_top_level ();
+	      push_nested_class (DECL_CONTEXT (member));
+	      pushed = true;
+	    }
+
+	  gcc_checking_assert (!processing_template_decl);
+
 	  inject_this_parameter (DECL_CONTEXT (member), TYPE_UNQUALIFIED);
 
 	  start_lambda_scope (member);
@@ -597,6 +607,12 @@ get_nsdmi (tree member, bool in_ctor, tsubst_flags_t complain)
 	      if (!nsdmi_inst)
 		nsdmi_inst = tree_cache_map::create_ggc (37);
 	      nsdmi_inst->put (member, init);
+	    }
+
+	  if (pushed)
+	    {
+	      pop_nested_class ();
+	      pop_from_top_level ();
 	    }
 
 	  input_location = sloc;
@@ -1678,6 +1694,7 @@ build_aggr_init (tree exp, tree init, int flags, tsubst_flags_t complain)
       if (VAR_P (exp) && DECL_DECOMPOSITION_P (exp))
 	{
 	  from_array = 1;
+	  init = mark_rvalue_use (init);
 	  if (init && DECL_P (init)
 	      && !(flags & LOOKUP_ONLYCONVERTING))
 	    {
@@ -2856,10 +2873,9 @@ build_new_1 (vec<tree, va_gc> **placement, tree type, tree nelts,
       outer_nelts_from_type = true;
     }
 
-  /* Lots of logic below. depends on whether we have a constant number of
+  /* Lots of logic below depends on whether we have a constant number of
      elements, so go ahead and fold it now.  */
-  if (outer_nelts)
-    outer_nelts = maybe_constant_value (outer_nelts);
+  const_tree cst_outer_nelts = fold_non_dependent_expr (outer_nelts);
 
   /* If our base type is an array, then make sure we know how many elements
      it has.  */
@@ -2911,7 +2927,7 @@ build_new_1 (vec<tree, va_gc> **placement, tree type, tree nelts,
   /* Warn if we performed the (T[N]) to T[N] transformation and N is
      variable.  */
   if (outer_nelts_from_type
-      && !TREE_CONSTANT (outer_nelts))
+      && !TREE_CONSTANT (cst_outer_nelts))
     {
       if (complain & tf_warning_or_error)
 	{
@@ -3010,9 +3026,9 @@ build_new_1 (vec<tree, va_gc> **placement, tree type, tree nelts,
 
       size = size_binop (MULT_EXPR, size, fold_convert (sizetype, nelts));
 
-      if (INTEGER_CST == TREE_CODE (outer_nelts))
+      if (TREE_CODE (cst_outer_nelts) == INTEGER_CST)
 	{
-	  if (tree_int_cst_lt (max_outer_nelts_tree, outer_nelts))
+	  if (tree_int_cst_lt (max_outer_nelts_tree, cst_outer_nelts))
 	    {
 	      /* When the array size is constant, check it at compile time
 		 to make sure it doesn't exceed the implementation-defined
@@ -3638,13 +3654,13 @@ build_new (vec<tree, va_gc> **placement, tree type, tree nelts,
       /* Try to determine the constant value only for the purposes
 	 of the diagnostic below but continue to use the original
 	 value and handle const folding later.  */
-      const_tree cst_nelts = maybe_constant_value (nelts);
+      const_tree cst_nelts = fold_non_dependent_expr (nelts);
 
       /* The expression in a noptr-new-declarator is erroneous if it's of
 	 non-class type and its value before converting to std::size_t is
 	 less than zero. ... If the expression is a constant expression,
 	 the program is ill-fomed.  */
-      if (INTEGER_CST == TREE_CODE (cst_nelts)
+      if (TREE_CODE (cst_nelts) == INTEGER_CST
 	  && tree_int_cst_sgn (cst_nelts) == -1)
 	{
 	  if (complain & tf_error)
@@ -4006,7 +4022,7 @@ build_vec_init (tree base, tree maxindex, tree init,
   tree compound_stmt;
   int destroy_temps;
   tree try_block = NULL_TREE;
-  int num_initialized_elts = 0;
+  HOST_WIDE_INT num_initialized_elts = 0;
   bool is_global;
   tree obase = base;
   bool xvalue = false;
@@ -4441,10 +4457,13 @@ build_vec_init (tree base, tree maxindex, tree init,
 
 	  if (e)
 	    {
-	      int max = tree_to_shwi (maxindex)+1;
-	      for (; num_initialized_elts < max; ++num_initialized_elts)
+	      HOST_WIDE_INT last = tree_to_shwi (maxindex);
+	      if (num_initialized_elts <= last)
 		{
 		  tree field = size_int (num_initialized_elts);
+		  if (num_initialized_elts != last)
+		    field = build2 (RANGE_EXPR, sizetype, field,
+				    size_int (last));
 		  CONSTRUCTOR_APPEND_ELT (const_vec, field, e);
 		}
 	    }

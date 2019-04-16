@@ -422,6 +422,8 @@ insert_reciprocals (gimple_stmt_iterator *def_gsi, struct occurrence *occ,
 	    gsi_next (&gsi);
 
 	  gsi_insert_before (&gsi, new_stmt, GSI_SAME_STMT);
+	  if (should_insert_square_recip)
+	    gsi_insert_before (&gsi, new_square_stmt, GSI_SAME_STMT);
 	}
       else if (def_gsi && occ->bb == def_gsi->bb)
 	{
@@ -429,20 +431,18 @@ insert_reciprocals (gimple_stmt_iterator *def_gsi, struct occurrence *occ,
 	     never happen if the definition statement can throw, because in
 	     that case the sole successor of the statement's basic block will
 	     dominate all the uses as well.  */
-	  gsi = *def_gsi;
 	  gsi_insert_after (def_gsi, new_stmt, GSI_NEW_STMT);
+	  if (should_insert_square_recip)
+	    gsi_insert_after (def_gsi, new_square_stmt, GSI_NEW_STMT);
 	}
       else
 	{
 	  /* Case 3: insert in a basic block not containing defs/uses.  */
 	  gsi = gsi_after_labels (occ->bb);
 	  gsi_insert_before (&gsi, new_stmt, GSI_SAME_STMT);
+	  if (should_insert_square_recip)
+	    gsi_insert_before (&gsi, new_square_stmt, GSI_SAME_STMT);
 	}
-
-      /* Regardless of which case the reciprocal as inserted in,
-	 we insert the square immediately after the reciprocal.  */
-      if (should_insert_square_recip)
-	gsi_insert_before (&gsi, new_square_stmt, GSI_SAME_STMT);
 
       reciprocal_stats.rdivs_inserted++;
 
@@ -603,7 +603,7 @@ execute_cse_reciprocals_1 (gimple_stmt_iterator *def_gsi, tree def)
 
   /* If it is more profitable to optimize 1 / x, don't optimize 1 / (x * x).  */
   if (sqrt_recip_count > square_recip_count)
-    return;
+    goto out;
 
   /* Do the expensive part only if we can hope to optimize something.  */
   if (count + square_recip_count >= threshold && count >= 1)
@@ -646,6 +646,7 @@ execute_cse_reciprocals_1 (gimple_stmt_iterator *def_gsi, tree def)
 	}
     }
 
+out:
   for (occ = occ_head; occ; )
     occ = free_bb (occ);
 

@@ -3844,10 +3844,10 @@ register_edge_assert_for_1 (tree op, enum tree_code code,
    Such comparison can yield assertions like
      X >= XX...X00...0
      X <= XX...X11...1
-   in case of COND_OP being NE_EXPR or
+   in case of COND_OP being EQ_EXPR or
      X < XX...X00...0
      X > XX...X11...1
-   in case of EQ_EXPR.  */
+   in case of NE_EXPR.  */
 
 static bool
 is_masked_range_test (tree name, tree valt, enum tree_code cond_code,
@@ -3867,6 +3867,10 @@ is_masked_range_test (tree name, tree valt, enum tree_code cond_code,
 
   wi::tree_to_wide_ref mask = wi::to_wide (maskt);
   wide_int inv_mask = ~mask;
+  /* Must have been removed by now so don't bother optimizing.  */
+  if (mask == 0 || inv_mask == 0)
+    return false;
+
   /* Assume VALT is INTEGER_CST.  */
   wi::tree_to_wide_ref val = wi::to_wide (valt);
 
@@ -3906,9 +3910,6 @@ is_masked_range_test (tree name, tree valt, enum tree_code cond_code,
   *new_name = t;
   *low = wide_int_to_tree (type, val);
   *high = wide_int_to_tree (type, val | inv_mask);
-
-  if (wi::neg_p (val, TYPE_SIGN (type)))
-    std::swap (*low, *high);
 
   return true;
 }
@@ -5921,9 +5922,9 @@ union_ranges (enum value_range_type *vr0type,
 	  if (TREE_CODE (*vr0min) == INTEGER_CST)
 	    {
 	      *vr0type = vr1type;
-	      *vr0min = vr1min;
 	      *vr0max = int_const_binop (MINUS_EXPR, *vr0min,
 					 build_int_cst (TREE_TYPE (*vr0min), 1));
+	      *vr0min = vr1min;
 	    }
 	  else
 	    goto give_up;

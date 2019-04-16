@@ -1190,13 +1190,16 @@ scan_sharing_clauses (tree clauses, omp_context *ctx,
 	  /* Global variables with "omp declare target" attribute
 	     don't need to be copied, the receiver side will use them
 	     directly.  However, global variables with "omp declare target link"
-	     attribute need to be copied.  */
+	     attribute need to be copied.  Or when ALWAYS modifier is used.  */
 	  if (OMP_CLAUSE_CODE (c) == OMP_CLAUSE_MAP
 	      && DECL_P (decl)
 	      && ((OMP_CLAUSE_MAP_KIND (c) != GOMP_MAP_FIRSTPRIVATE_POINTER
 		   && (OMP_CLAUSE_MAP_KIND (c)
 		       != GOMP_MAP_FIRSTPRIVATE_REFERENCE))
 		  || TREE_CODE (TREE_TYPE (decl)) == ARRAY_TYPE)
+	      && OMP_CLAUSE_MAP_KIND (c) != GOMP_MAP_ALWAYS_TO
+	      && OMP_CLAUSE_MAP_KIND (c) != GOMP_MAP_ALWAYS_FROM
+	      && OMP_CLAUSE_MAP_KIND (c) != GOMP_MAP_ALWAYS_TOFROM
 	      && is_global_var (maybe_lookup_decl_in_outer_ctx (decl, ctx))
 	      && varpool_node::get_create (decl)->offloadable
 	      && !lookup_attribute ("omp declare target link",
@@ -2832,12 +2835,23 @@ check_omp_nesting_restrictions (gimple *stmt, omp_context *ctx)
 	  case GIMPLE_OMP_FOR:
 	    if (gimple_omp_for_kind (ctx->stmt) == GF_OMP_FOR_KIND_TASKLOOP)
 	      goto ordered_in_taskloop;
-	    if (omp_find_clause (gimple_omp_for_clauses (ctx->stmt),
-				 OMP_CLAUSE_ORDERED) == NULL)
+	    tree o;
+	    o = omp_find_clause (gimple_omp_for_clauses (ctx->stmt),
+				 OMP_CLAUSE_ORDERED);
+	    if (o == NULL)
 	      {
 		error_at (gimple_location (stmt),
 			  "%<ordered%> region must be closely nested inside "
 			  "a loop region with an %<ordered%> clause");
+		return false;
+	      }
+	    if (OMP_CLAUSE_ORDERED_EXPR (o) != NULL_TREE
+		&& omp_find_clause (c, OMP_CLAUSE_DEPEND) == NULL_TREE)
+	      {
+		error_at (gimple_location (stmt),
+			  "%<ordered%> region without %<depend%> clause may "
+			  "not be closely nested inside a loop region with "
+			  "an %<ordered%> clause with a parameter");
 		return false;
 	      }
 	    return true;
@@ -7099,6 +7113,7 @@ create_task_copyfn (gomp_task *task_stmt, omp_context *ctx)
   splay_tree_node n;
   struct omp_taskcopy_context tcctx;
   location_t loc = gimple_location (task_stmt);
+  size_t looptempno = 0;
 
   child_fn = gimple_omp_task_copy_fn (task_stmt);
   child_cfun = DECL_STRUCT_FUNCTION (child_fn);
@@ -7212,6 +7227,15 @@ create_task_copyfn (gomp_task *task_stmt, omp_context *ctx)
 	t = build2 (MODIFY_EXPR, TREE_TYPE (dst), dst, src);
 	append_to_statement_list (t, &list);
 	break;
+      case OMP_CLAUSE__LOOPTEMP_:
+	/* Fields for first two _looptemp_ clauses are initialized by
+	   GOMP_taskloop*, the rest are handled like firstprivate.  */
+        if (looptempno < 2)
+	  {
+	    looptempno++;
+	    break;
+	  }
+	/* FALLTHRU */
       case OMP_CLAUSE_FIRSTPRIVATE:
 	decl = OMP_CLAUSE_DECL (c);
 	if (is_variable_sized (decl))
@@ -7237,7 +7261,10 @@ create_task_copyfn (gomp_task *task_stmt, omp_context *ctx)
 	  src = decl;
 	dst = build_simple_mem_ref_loc (loc, arg);
 	dst = omp_build_component_ref (dst, f);
-	t = lang_hooks.decls.omp_clause_copy_ctor (c, dst, src);
+	if (OMP_CLAUSE_CODE (c) == OMP_CLAUSE__LOOPTEMP_)
+	  t = build2 (MODIFY_EXPR, TREE_TYPE (dst), dst, src);
+	else
+	  t = lang_hooks.decls.omp_clause_copy_ctor (c, dst, src);
 	append_to_statement_list (t, &list);
 	break;
       case OMP_CLAUSE_PRIVATE:

@@ -182,7 +182,7 @@
 	  rtx op1 = XEXP (XEXP (op, 0), 0);
 	  rtx op2 = XEXP (XEXP (op, 0), 1);
 
-	  if (ix86_cmodel == CM_LARGE)
+	  if (ix86_cmodel == CM_LARGE && GET_CODE (op1) != UNSPEC)
 	    return false;
 	  if (!CONST_INT_P (op2))
 	    return false;
@@ -1517,7 +1517,7 @@
       if (GET_CODE (elt) != SET
 	  || GET_CODE (SET_DEST (elt)) != REG
 	  || GET_MODE (SET_DEST (elt)) != V8SImode
-	  || REGNO (SET_DEST (elt)) != SSE_REGNO (i)
+	  || REGNO (SET_DEST (elt)) != GET_SSE_REGNO (i)
 	  || SET_SRC (elt) != CONST0_RTX (V8SImode))
 	return false;
     }

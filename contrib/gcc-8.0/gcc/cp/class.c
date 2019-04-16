@@ -278,6 +278,9 @@ build_base_path (enum tree_code code,
   probe = TYPE_MAIN_VARIANT (TREE_TYPE (expr));
   if (want_pointer)
     probe = TYPE_MAIN_VARIANT (TREE_TYPE (probe));
+  if (dependent_type_p (probe))
+    if (tree open = currently_open_class (probe))
+      probe = open;
 
   if (code == PLUS_EXPR
       && !SAME_BINFO_TYPE_P (BINFO_TYPE (d_binfo), probe))
@@ -417,7 +420,7 @@ build_base_path (enum tree_code code,
     {
       expr = cp_build_fold_indirect_ref (expr);
       expr = build_simple_base_path (expr, binfo);
-      if (rvalue)
+      if (rvalue && lvalue_p (expr))
 	expr = move (expr);
       if (want_pointer)
 	expr = build_address (expr);
@@ -1137,9 +1140,6 @@ add_method (tree type, tree method, bool via_using)
 	    }
 	}
     }
-
-  /* A class should never have more than one destructor.  */
-  gcc_assert (!current_fns || !DECL_DESTRUCTOR_P (method));
 
   current_fns = ovl_insert (method, current_fns, via_using);
 
@@ -1954,6 +1954,7 @@ fixup_attribute_variants (tree t)
   unsigned align = TYPE_ALIGN (t);
   bool user_align = TYPE_USER_ALIGN (t);
   bool may_alias = lookup_attribute ("may_alias", attrs);
+  bool packed = TYPE_PACKED (t);
 
   if (may_alias)
     fixup_may_alias (t);
@@ -1971,6 +1972,7 @@ fixup_attribute_variants (tree t)
       else
 	TYPE_USER_ALIGN (variants) = user_align;
       SET_TYPE_ALIGN (variants, valign);
+      TYPE_PACKED (variants) = packed;
       if (may_alias)
 	fixup_may_alias (variants);
     }
@@ -2025,6 +2027,7 @@ maybe_warn_about_overly_private_class (tree t)
 {
   int has_member_fn = 0;
   int has_nonprivate_method = 0;
+  bool nonprivate_ctor = false;
 
   if (!warn_ctor_dtor_privacy
       /* If the class has friends, those entities might create and
@@ -2055,7 +2058,11 @@ maybe_warn_about_overly_private_class (tree t)
      non-private statics, we can't ever call any of the private member
      functions.)  */
   for (tree fn = TYPE_FIELDS (t); fn; fn = DECL_CHAIN (fn))
-    if (!DECL_DECLARES_FUNCTION_P (fn))
+    if (TREE_CODE (fn) == USING_DECL
+	&& DECL_NAME (fn) == ctor_identifier
+	&& !TREE_PRIVATE (fn))
+      nonprivate_ctor = true;
+    else if (!DECL_DECLARES_FUNCTION_P (fn))
       /* Not a function.  */;
     else if (DECL_ARTIFICIAL (fn))
       /* We're not interested in compiler-generated methods; they don't
@@ -2117,7 +2124,6 @@ maybe_warn_about_overly_private_class (tree t)
       /* Implicitly generated constructors are always public.  */
       && !CLASSTYPE_LAZY_DEFAULT_CTOR (t))
     {
-      bool nonprivate_ctor = false;
       tree copy_or_move = NULL_TREE;
 
       /* If a non-template class does not define a copy
@@ -5165,9 +5171,24 @@ classtype_has_move_assign_or_move_ctor_p (tree t, bool user_p)
     for (ovl_iterator iter (get_class_binding_direct
 			    (t, assign_op_identifier));
 	 iter; ++iter)
-      if ((!user_p || !DECL_ARTIFICIAL (*iter)) && move_fn_p (*iter))
+      if ((!user_p || !DECL_ARTIFICIAL (*iter))
+	  && DECL_CONTEXT (*iter) == t
+	  && move_fn_p (*iter))
 	return true;
   
+  return false;
+}
+
+/* True iff T has a move constructor that is not deleted.  */
+
+bool
+classtype_has_non_deleted_move_ctor (tree t)
+{
+  if (CLASSTYPE_LAZY_MOVE_CTOR (t))
+    lazily_declare_fn (sfk_move_constructor, t);
+  for (ovl_iterator iter (CLASSTYPE_CONSTRUCTORS (t)); iter; ++iter)
+    if (move_fn_p (*iter) && !DECL_DELETED_FN (*iter))
+      return true;
   return false;
 }
 
@@ -6226,6 +6247,7 @@ layout_class_type (tree t, tree *virtuals_p)
 				  bitsize_int (BITS_PER_UNIT)));
       SET_TYPE_ALIGN (base_t, rli->record_align);
       TYPE_USER_ALIGN (base_t) = TYPE_USER_ALIGN (t);
+      TYPE_TYPELESS_STORAGE (base_t) = TYPE_TYPELESS_STORAGE (t);
 
       /* Copy the non-static data members of T. This will include its
 	 direct non-virtual bases & vtable.  */
@@ -7014,6 +7036,20 @@ finish_struct (tree t, tree attributes)
 	else if (DECL_DECLARES_FUNCTION_P (x))
 	  DECL_IN_AGGR_P (x) = false;
 
+      /* Also add a USING_DECL for operator=.  We know there'll be (at
+	 least) one, but we don't know the signature(s).  We want name
+	 lookup not to fail or recurse into bases.  This isn't added
+	 to the template decl list so we drop this at instantiation
+	 time.  */
+      tree ass_op = build_lang_decl (USING_DECL, assign_op_identifier,
+				     NULL_TREE);
+      DECL_CONTEXT (ass_op) = t;
+      USING_DECL_SCOPE (ass_op) = t;
+      DECL_DEPENDENT_P (ass_op) = true;
+      DECL_ARTIFICIAL (ass_op) = true;
+      DECL_CHAIN (ass_op) = TYPE_FIELDS (t);
+      TYPE_FIELDS (t) = ass_op;
+
       TYPE_SIZE (t) = bitsize_zero_node;
       TYPE_SIZE_UNIT (t) = size_zero_node;
       /* COMPLETE_TYPE_P is now true.  */
@@ -7427,8 +7463,8 @@ pop_class_stack (void)
     --current_class_stack[current_class_depth - 1].hidden;
 }
 
-/* Returns 1 if the class type currently being defined is either T or
-   a nested type of T.  Returns the type from the current_class_stack,
+/* If the class type currently being defined is either T or
+   a nested type of T, returns the type from the current_class_stack,
    which might be equivalent to but not equal to T in case of
    constrained partial specializations.  */
 

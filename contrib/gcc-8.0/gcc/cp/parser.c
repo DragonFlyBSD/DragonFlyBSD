@@ -2243,7 +2243,7 @@ static tree cp_parser_default_argument
 static void cp_parser_function_body
   (cp_parser *, bool);
 static tree cp_parser_initializer
-  (cp_parser *, bool *, bool *);
+  (cp_parser *, bool *, bool *, bool = false);
 static cp_expr cp_parser_initializer_clause
   (cp_parser *, bool *);
 static cp_expr cp_parser_braced_list
@@ -5609,6 +5609,9 @@ cp_parser_primary_expression (cp_parser *parser,
 	      }
 	  }
 
+	if (processing_template_decl && is_overloaded_fn (decl))
+	  lookup_keep (get_fns (decl), true);
+
 	decl = (finish_id_expression
 		(id_expression, decl, parser->scope,
 		 idk,
@@ -7147,14 +7150,19 @@ cp_parser_postfix_expression (cp_parser *parser, bool address_p, bool cast_p,
 		else if (!args->is_empty ()
 			 && is_overloaded_fn (postfix_expression))
 		  {
+		    /* We only need to look at the first function,
+		       because all the fns share the attribute we're
+		       concerned with (all member fns or all local
+		       fns).  */
 		    tree fn = get_first_fn (postfix_expression);
 		    fn = STRIP_TEMPLATE (fn);
 
 		    /* Do not do argument dependent lookup if regular
 		       lookup finds a member function or a block-scope
 		       function declaration.  [basic.lookup.argdep]/3  */
-		    if (!DECL_FUNCTION_MEMBER_P (fn)
-			&& !DECL_LOCAL_FUNCTION_P (fn))
+		    if (!((TREE_CODE (fn) == USING_DECL && DECL_DEPENDENT_P (fn))
+			  || DECL_FUNCTION_MEMBER_P (fn)
+			  || DECL_LOCAL_FUNCTION_P (fn)))
 		      {
 			koenig_p = true;
 			if (!any_type_dependent_arguments_p (args))
@@ -7494,10 +7502,7 @@ cp_parser_postfix_dot_deref_expression (cp_parser *parser,
 	 access (5.2.5) outside the member function body.  */
       if (postfix_expression != current_class_ref
 	  && scope != error_mark_node
-	  && !(processing_template_decl
-	       && current_class_type
-	       && (same_type_ignoring_top_level_qualifiers_p
-		   (scope, current_class_type))))
+	  && !currently_open_class (scope))
 	{
 	  scope = complete_type (scope);
 	  if (!COMPLETE_TYPE_P (scope)
@@ -10358,7 +10363,7 @@ cp_parser_lambda_introducer (cp_parser* parser, tree lambda_expr)
 		     "lambda capture initializers "
 		     "only available with -std=c++14 or -std=gnu++14");
 	  capture_init_expr = cp_parser_initializer (parser, &direct,
-						     &non_constant);
+						     &non_constant, true);
 	  explicit_init_p = true;
 	  if (capture_init_expr == NULL_TREE)
 	    {
@@ -10620,6 +10625,7 @@ cp_parser_lambda_declarator_opt (cp_parser* parser, tree lambda_expr)
 	DECL_ARTIFICIAL (fco) = 1;
 	/* Give the object parameter a different name.  */
 	DECL_NAME (DECL_ARGUMENTS (fco)) = get_identifier ("__closure");
+	DECL_LAMBDA_FUNCTION (fco) = 1;
 	if (return_type)
 	  TYPE_HAS_LATE_RETURN_TYPE (TREE_TYPE (fco)) = 1;
       }
@@ -12293,12 +12299,9 @@ cp_parser_init_statement (cp_parser* parser, tree *decl)
 	  cp_lexer_consume_token (parser->lexer);
 	  is_range_for = true;
 	  if (cxx_dialect < cxx11)
-	    {
-	      pedwarn (cp_lexer_peek_token (parser->lexer)->location, 0,
-		       "range-based %<for%> loops only available with "
-		       "-std=c++11 or -std=gnu++11");
-	      *decl = error_mark_node;
-	    }
+	    pedwarn (cp_lexer_peek_token (parser->lexer)->location, 0,
+		     "range-based %<for%> loops only available with "
+		     "-std=c++11 or -std=gnu++11");
 	}
       else
 	  /* The ';' is not consumed yet because we told
@@ -19064,22 +19067,35 @@ cp_parser_using_directive (cp_parser* parser)
 
 /* Parse an asm-definition.
 
+  asm-qualifier:
+    volatile
+    inline
+    goto
+
+  asm-qualifier-list:
+    asm-qualifier
+    asm-qualifier-list asm-qualifier
+
    asm-definition:
      asm ( string-literal ) ;
 
    GNU Extension:
 
    asm-definition:
-     asm volatile [opt] ( string-literal ) ;
-     asm volatile [opt] ( string-literal : asm-operand-list [opt] ) ;
-     asm volatile [opt] ( string-literal : asm-operand-list [opt]
-			  : asm-operand-list [opt] ) ;
-     asm volatile [opt] ( string-literal : asm-operand-list [opt]
-			  : asm-operand-list [opt]
+     asm asm-qualifier-list [opt] ( string-literal ) ;
+     asm asm-qualifier-list [opt] ( string-literal : asm-operand-list [opt] ) ;
+     asm asm-qualifier-list [opt] ( string-literal : asm-operand-list [opt]
+				    : asm-operand-list [opt] ) ;
+     asm asm-qualifier-list [opt] ( string-literal : asm-operand-list [opt]
+				    : asm-operand-list [opt]
 			  : asm-clobber-list [opt] ) ;
-     asm volatile [opt] goto ( string-literal : : asm-operand-list [opt]
-			       : asm-clobber-list [opt]
-			       : asm-goto-list ) ;  */
+     asm asm-qualifier-list [opt] ( string-literal : : asm-operand-list [opt]
+				    : asm-clobber-list [opt]
+				    : asm-goto-list ) ;
+
+  The form with asm-goto-list is valid if and only if the asm-qualifier-list
+  contains goto, and is the only allowed form in that case.  No duplicates are
+  allowed in an asm-qualifier-list.  */
 
 static void
 cp_parser_asm_definition (cp_parser* parser)
@@ -19090,11 +19106,9 @@ cp_parser_asm_definition (cp_parser* parser)
   tree clobbers = NULL_TREE;
   tree labels = NULL_TREE;
   tree asm_stmt;
-  bool volatile_p = false;
   bool extended_p = false;
   bool invalid_inputs_p = false;
   bool invalid_outputs_p = false;
-  bool goto_p = false;
   required_token missing = RT_NONE;
 
   /* Look for the `asm' keyword.  */
@@ -19107,24 +19121,78 @@ cp_parser_asm_definition (cp_parser* parser)
       cp_function_chain->invalid_constexpr = true;
     }
 
-  /* See if the next token is `volatile'.  */
-  if (cp_parser_allow_gnu_extensions_p (parser)
-      && cp_lexer_next_token_is_keyword (parser->lexer, RID_VOLATILE))
+  /* Handle the asm-qualifier-list.  */
+  location_t volatile_loc = UNKNOWN_LOCATION;
+  location_t inline_loc = UNKNOWN_LOCATION;
+  location_t goto_loc = UNKNOWN_LOCATION;
+  location_t first_loc = UNKNOWN_LOCATION;
+
+  if (cp_parser_allow_gnu_extensions_p (parser))
+    for (;;)
+      {
+	cp_token *token = cp_lexer_peek_token (parser->lexer);
+	location_t loc = token->location;
+	switch (cp_lexer_peek_token (parser->lexer)->keyword)
+	  {
+	  case RID_VOLATILE:
+	    if (volatile_loc)
+	      {
+		error_at (loc, "duplicate asm qualifier %qT", token->u.value);
+		inform (volatile_loc, "first seen here");
+	      }
+	    else
+	      volatile_loc = loc;
+	    cp_lexer_consume_token (parser->lexer);
+	    continue;
+
+	  case RID_INLINE:
+	    if (inline_loc)
+	      {
+		error_at (loc, "duplicate asm qualifier %qT", token->u.value);
+		inform (inline_loc, "first seen here");
+	      }
+	    else
+	      inline_loc = loc;
+	    if (!first_loc)
+	      first_loc = loc;
+	    cp_lexer_consume_token (parser->lexer);
+	    continue;
+
+	  case RID_GOTO:
+	    if (goto_loc)
+	      {
+		error_at (loc, "duplicate asm qualifier %qT", token->u.value);
+		inform (goto_loc, "first seen here");
+	      }
+	    else
+	      goto_loc = loc;
+	    if (!first_loc)
+	      first_loc = loc;
+	    cp_lexer_consume_token (parser->lexer);
+	    continue;
+
+	  case RID_CONST:
+	  case RID_RESTRICT:
+	    error_at (loc, "%qT is not an asm qualifier", token->u.value);
+	    cp_lexer_consume_token (parser->lexer);
+	    continue;
+
+	  default:
+	    break;
+	  }
+	break;
+      }
+
+  bool volatile_p = (volatile_loc != UNKNOWN_LOCATION);
+  bool inline_p = (inline_loc != UNKNOWN_LOCATION);
+  bool goto_p = (goto_loc != UNKNOWN_LOCATION);
+
+  if (!parser->in_function_body && (inline_p || goto_p))
     {
-      /* Remember that we saw the `volatile' keyword.  */
-      volatile_p = true;
-      /* Consume the token.  */
-      cp_lexer_consume_token (parser->lexer);
+      error_at (first_loc, "asm qualifier outside of function body");
+      inline_p = goto_p = false;
     }
-  if (cp_parser_allow_gnu_extensions_p (parser)
-      && parser->in_function_body
-      && cp_lexer_next_token_is_keyword (parser->lexer, RID_GOTO))
-    {
-      /* Remember that we saw the `goto' keyword.  */
-      goto_p = true;
-      /* Consume the token.  */
-      cp_lexer_consume_token (parser->lexer);
-    }
+
   /* Look for the opening `('.  */
   if (!cp_parser_require (parser, CPP_OPEN_PAREN, RT_OPEN_PAREN))
     return;
@@ -19216,8 +19284,7 @@ cp_parser_asm_definition (cp_parser* parser)
 					     CPP_CLOSE_PAREN))
 	    clobbers = cp_parser_asm_clobber_list (parser);
 	}
-      else if (goto_p
-	       && cp_lexer_next_token_is (parser->lexer, CPP_SCOPE))
+      else if (goto_p && cp_lexer_next_token_is (parser->lexer, CPP_SCOPE))
 	/* The labels are coming next.  */
 	labels_p = true;
 
@@ -19251,7 +19318,7 @@ cp_parser_asm_definition (cp_parser* parser)
       if (parser->in_function_body)
 	{
 	  asm_stmt = finish_asm_stmt (volatile_p, string, outputs,
-				      inputs, clobbers, labels);
+				      inputs, clobbers, labels, inline_p);
 	  /* If the extended syntax was not used, mark the ASM_EXPR.  */
 	  if (!extended_p)
 	    {
@@ -21601,7 +21668,8 @@ cp_parser_parameter_declaration (cp_parser *parser,
      parameter was introduced during cp_parser_parameter_declaration,
      change any implicit parameters introduced into packs.  */
   if (parser->implicit_template_parms
-      && (token->type == CPP_ELLIPSIS
+      && ((token->type == CPP_ELLIPSIS
+	   && declarator_can_be_parameter_pack (declarator))
 	  || (declarator && declarator->parameter_pack_p)))
     {
       int latest_template_parm_idx = TREE_VEC_LENGTH
@@ -21860,7 +21928,7 @@ cp_parser_ctor_initializer_opt_and_function_body (cp_parser *parser,
 
 static tree
 cp_parser_initializer (cp_parser* parser, bool* is_direct_init,
-		       bool* non_constant_p)
+		       bool* non_constant_p, bool subexpression_p)
 {
   cp_token *token;
   tree init;
@@ -21907,7 +21975,7 @@ cp_parser_initializer (cp_parser* parser, bool* is_direct_init,
       init = error_mark_node;
     }
 
-  if (check_for_bare_parameter_packs (init))
+  if (!subexpression_p && check_for_bare_parameter_packs (init))
     init = error_mark_node;
 
   return init;
@@ -22500,7 +22568,7 @@ cp_parser_class_specifier_1 (cp_parser* parser)
   cp_ensure_no_oacc_routine (parser);
 
   /* Issue an error message if type-definitions are forbidden here.  */
-  cp_parser_check_type_definition (parser);
+  bool type_definition_ok_p = cp_parser_check_type_definition (parser);
   /* Remember that we are defining one more class.  */
   ++parser->num_classes_being_defined;
   /* Inside the class, surrounding template-parameter-lists do not
@@ -22695,7 +22763,7 @@ cp_parser_class_specifier_1 (cp_parser* parser)
       cp_default_arg_entry *e;
       tree save_ccp, save_ccr;
 
-      if (any_erroneous_template_args_p (type))
+      if (!type_definition_ok_p || any_erroneous_template_args_p (type))
 	{
 	  /* Skip default arguments, NSDMIs, etc, in order to improve
 	     error recovery (c++/71169, c++/71832).  */
@@ -25218,14 +25286,19 @@ cp_parser_std_attribute (cp_parser *parser, tree attr_ns)
 	  return error_mark_node;
 	}
 
+      attr_ns = canonicalize_attr_name (attr_ns);
       attr_id = canonicalize_attr_name (attr_id);
       attribute = build_tree_list (build_tree_list (attr_ns, attr_id),
 				   NULL_TREE);
       token = cp_lexer_peek_token (parser->lexer);
     }
   else if (attr_ns)
-    attribute = build_tree_list (build_tree_list (attr_ns, attr_id),
-				 NULL_TREE);
+    {
+      attr_ns = canonicalize_attr_name (attr_ns);
+      attr_id = canonicalize_attr_name (attr_id);
+      attribute = build_tree_list (build_tree_list (attr_ns, attr_id),
+				   NULL_TREE);
+    }
   else
     {
       attr_id = canonicalize_attr_name (attr_id);
@@ -25417,7 +25490,7 @@ cp_parser_std_attribute_spec (cp_parser *parser)
 	  || !cp_parser_require (parser, CPP_CLOSE_SQUARE, RT_CLOSE_SQUARE))
 	cp_parser_skip_to_end_of_statement (parser);
       else
-	/* Warn about parsing c++11 attribute in non-c++1 mode, only
+	/* Warn about parsing c++11 attribute in non-c++11 mode, only
 	   when we are sure that we have actually parsed them.  */
 	maybe_warn_cpp0x (CPP0X_ATTRIBUTES);
     }
@@ -34847,7 +34920,7 @@ cp_parser_omp_for_incr (cp_parser *parser, tree decl)
 static tree
 cp_parser_omp_for_loop_init (cp_parser *parser,
 			     tree &this_pre_body,
-			     vec<tree, va_gc> *for_block,
+			     vec<tree, va_gc> *&for_block,
 			     tree &init,
 			     tree &orig_init,
 			     tree &decl,

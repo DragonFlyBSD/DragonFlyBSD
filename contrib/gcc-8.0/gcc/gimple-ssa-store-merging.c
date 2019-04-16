@@ -1416,6 +1416,7 @@ struct merged_store_group
   unsigned int load_align[2];
   unsigned int first_order;
   unsigned int last_order;
+  unsigned int first_nonmergeable_order;
 
   auto_vec<store_immediate_info *> stores;
   /* We record the first and last original statements in the sequence because
@@ -1806,6 +1807,7 @@ merged_store_group::merged_store_group (store_immediate_info *info)
      width has been finalized.  */
   val = NULL;
   mask = NULL;
+  first_nonmergeable_order = ~0U;
   unsigned HOST_WIDE_INT align_bitpos = 0;
   get_object_alignment_1 (gimple_assign_lhs (info->stmt),
 			  &align, &align_bitpos);
@@ -2640,18 +2642,153 @@ imm_store_chain_info::coalesce_immediate_stores ()
 	    }
 	}
 
+      if (info->order >= merged_store->first_nonmergeable_order)
+	;
+
       /* |---store 1---|
 	       |---store 2---|
 	 Overlapping stores.  */
-      if (IN_RANGE (info->bitpos, merged_store->start,
-		    merged_store->start + merged_store->width - 1))
+      else if (IN_RANGE (info->bitpos, merged_store->start,
+			 merged_store->start + merged_store->width - 1))
 	{
 	  /* Only allow overlapping stores of constants.  */
 	  if (info->rhs_code == INTEGER_CST
 	      && merged_store->stores[0]->rhs_code == INTEGER_CST)
 	    {
-	      merged_store->merge_overlapping (info);
-	      continue;
+	      unsigned int last_order
+		= MAX (merged_store->last_order, info->order);
+	      unsigned HOST_WIDE_INT end
+		= MAX (merged_store->start + merged_store->width,
+		       info->bitpos + info->bitsize);
+	      if (check_no_overlap (m_store_info, i, INTEGER_CST,
+				    last_order, end))
+		{
+		  /* check_no_overlap call above made sure there are no
+		     overlapping stores with non-INTEGER_CST rhs_code
+		     in between the first and last of the stores we've
+		     just merged.  If there are any INTEGER_CST rhs_code
+		     stores in between, we need to merge_overlapping them
+		     even if in the sort_by_bitpos order there are other
+		     overlapping stores in between.  Keep those stores as is.
+		     Example:
+			MEM[(int *)p_28] = 0;
+			MEM[(char *)p_28 + 3B] = 1;
+			MEM[(char *)p_28 + 1B] = 2;
+			MEM[(char *)p_28 + 2B] = MEM[(char *)p_28 + 6B];
+		     We can't merge the zero store with the store of two and
+		     not merge anything else, because the store of one is
+		     in the original order in between those two, but in
+		     store_by_bitpos order it comes after the last store that
+		     we can't merge with them.  We can merge the first 3 stores
+		     and keep the last store as is though.  */
+		  unsigned int len = m_store_info.length ();
+		  unsigned int try_order = last_order;
+		  unsigned int first_nonmergeable_order;
+		  unsigned int k;
+		  bool last_iter = false;
+		  int attempts = 0;
+		  do
+		    {
+		      unsigned int max_order = 0;
+		      unsigned first_nonmergeable_int_order = ~0U;
+		      unsigned HOST_WIDE_INT this_end = end;
+		      k = i;
+		      first_nonmergeable_order = ~0U;
+		      for (unsigned int j = i + 1; j < len; ++j)
+			{
+			  store_immediate_info *info2 = m_store_info[j];
+			  if (info2->bitpos >= this_end)
+			    break;
+			  if (info2->order < try_order)
+			    {
+			      if (info2->rhs_code != INTEGER_CST)
+				{
+				  /* Normally check_no_overlap makes sure this
+				     doesn't happen, but if end grows below,
+				     then we need to process more stores than
+				     check_no_overlap verified.  Example:
+				      MEM[(int *)p_5] = 0;
+				      MEM[(short *)p_5 + 3B] = 1;
+				      MEM[(char *)p_5 + 4B] = _9;
+				      MEM[(char *)p_5 + 2B] = 2;  */
+				  k = 0;
+				  break;
+				}
+			      k = j;
+			      this_end = MAX (this_end,
+					      info2->bitpos + info2->bitsize);
+			    }
+			  else if (info2->rhs_code == INTEGER_CST
+				   && !last_iter)
+			    {
+			      max_order = MAX (max_order, info2->order + 1);
+			      first_nonmergeable_int_order
+				= MIN (first_nonmergeable_int_order,
+				       info2->order);
+			    }
+			  else
+			    first_nonmergeable_order
+			      = MIN (first_nonmergeable_order, info2->order);
+			}
+		      if (k == 0)
+			{
+			  if (last_order == try_order)
+			    break;
+			  /* If this failed, but only because we grew
+			     try_order, retry with the last working one,
+			     so that we merge at least something.  */
+			  try_order = last_order;
+			  last_iter = true;
+			  continue;
+			}
+		      last_order = try_order;
+		      /* Retry with a larger try_order to see if we could
+			 merge some further INTEGER_CST stores.  */
+		      if (max_order
+			  && (first_nonmergeable_int_order
+			      < first_nonmergeable_order))
+			{
+			  try_order = MIN (max_order,
+					   first_nonmergeable_order);
+			  try_order
+			    = MIN (try_order,
+				   merged_store->first_nonmergeable_order);
+			  if (try_order > last_order && ++attempts < 16)
+			    continue;
+			}
+		      first_nonmergeable_order
+			= MIN (first_nonmergeable_order,
+			       first_nonmergeable_int_order);
+		      end = this_end;
+		      break;
+		    }
+		  while (1);
+
+		  if (k != 0)
+		    {
+		      merged_store->merge_overlapping (info);
+
+		      merged_store->first_nonmergeable_order
+			= MIN (merged_store->first_nonmergeable_order,
+			       first_nonmergeable_order);
+
+		      for (unsigned int j = i + 1; j <= k; j++)
+			{
+			  store_immediate_info *info2 = m_store_info[j];
+			  gcc_assert (info2->bitpos < end);
+			  if (info2->order < last_order)
+			    {
+			      gcc_assert (info2->rhs_code == INTEGER_CST);
+			      if (info != info2)
+				merged_store->merge_overlapping (info2);
+			    }
+			  /* Other stores are kept and not merged in any
+			     way.  */
+			}
+		      ignore = k;
+		      continue;
+		    }
+		}
 	    }
 	}
       /* |---store 1---||---store 2---|
@@ -3343,6 +3480,8 @@ invert_op (split_store *split_store, int idx, tree int_type, tree &mask)
 bool
 imm_store_chain_info::output_merged_store (merged_store_group *group)
 {
+  split_store *split_store;
+  unsigned int i;
   unsigned HOST_WIDE_INT start_byte_pos
     = group->bitregion_start / BITS_PER_UNIT;
 
@@ -3351,7 +3490,6 @@ imm_store_chain_info::output_merged_store (merged_store_group *group)
     return false;
 
   auto_vec<struct split_store *, 32> split_stores;
-  split_stores.create (0);
   bool allow_unaligned_store
     = !STRICT_ALIGNMENT && PARAM_VALUE (PARAM_STORE_MERGING_ALLOW_UNALIGNED);
   bool allow_unaligned_load = allow_unaligned_store;
@@ -3378,6 +3516,8 @@ imm_store_chain_info::output_merged_store (merged_store_group *group)
 	fprintf (dump_file, "Exceeded original number of stmts (%u)."
 			    "  Not profitable to emit new sequence.\n",
 		 orig_num_stmts);
+      FOR_EACH_VEC_ELT (split_stores, i, split_store)
+	delete split_store;
       return false;
     }
   if (total_orig <= total_new)
@@ -3389,6 +3529,8 @@ imm_store_chain_info::output_merged_store (merged_store_group *group)
 			    " not larger than estimated number of new"
 			    " stmts (%u).\n",
 		 total_orig, total_new);
+      FOR_EACH_VEC_ELT (split_stores, i, split_store)
+	delete split_store;
       return false;
     }
 
@@ -3453,8 +3595,6 @@ imm_store_chain_info::output_merged_store (merged_store_group *group)
     }
 
   gimple *stmt = NULL;
-  split_store *split_store;
-  unsigned int i;
   auto_vec<gimple *, 32> orig_stmts;
   gimple_seq this_seq;
   tree addr = force_gimple_operand_1 (unshare_expr (base_addr), &this_seq,
