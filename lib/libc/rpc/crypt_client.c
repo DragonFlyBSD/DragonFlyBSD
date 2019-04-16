@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/rpc/crypt_client.c,v 1.9 2003/02/16 17:29:10 nectar Exp $
- * $DragonFly: src/lib/libc/rpc/crypt_client.c,v 1.3 2005/11/13 12:27:04 swildner Exp $
  */
 
 #include "namespace.h"
@@ -41,6 +40,8 @@
 #include <string.h>
 #include <rpcsvc/crypt.h>
 #include "un-namespace.h"
+
+int _des_crypt_call(char *, int, struct desparams *);
 
 int
 _des_crypt_call(char *buf, int len, struct desparams *dparms)

@@ -8,6 +8,7 @@
 void __stack_chk_fail(void);
 
 #ifdef PIC
+void __stack_chk_fail_local(void);
 void
 __stack_chk_fail_local(void)
 {

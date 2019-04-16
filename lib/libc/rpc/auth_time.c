@@ -47,6 +47,9 @@
 #include <rpcsvc/nis.h>
 #include "un-namespace.h"
 
+int __rpc_get_time_offset(struct timeval *, nis_server *, char *, char **,
+	struct sockaddr_in *);
+
 extern int	_rpc_dtablesize(void);
 
 #ifdef TESTING

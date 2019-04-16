@@ -44,6 +44,8 @@
 
 #include "libc_private.h"
 
+int __cxa_atexit(void (*)(void *), void *, void *);
+
 #define	ATEXIT_FN_EMPTY	0
 #define	ATEXIT_FN_STD	1
 #define	ATEXIT_FN_CXA	2

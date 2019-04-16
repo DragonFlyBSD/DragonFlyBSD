@@ -38,7 +38,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <rpc/rpc.h>
 #include "un-namespace.h"
+
+#include "rpc_com.h"
 
 static char *default_domain = NULL;
 
