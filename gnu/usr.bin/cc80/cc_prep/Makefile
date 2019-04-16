@@ -15,6 +15,9 @@ version.c: ${CONTRIBDIR}/version.c Makefile ../Makefile.inc
 	echo '#define BUGURL "<http://bugs.dragonflybsd.org>"' >> ${.TARGET}
 	cat ${.ALLSRC:M*.c} >> ${.TARGET}
 
+# NOTE: BUILDING_GCC_PATCHLEVEL is hardcoded to 1. Should not be used.
+# Check gcc/cppbuiltin.c for GCC_VERSION and BUILDING_GCC_VERSION.
+
 bversion.h:
 	echo "#define BUILDING_GCC_MAJOR `echo $(GCCCOMPLETEVER) | sed -e 's/^\([0-9]*\).*$$/\1/'`" > ${.TARGET}
 	echo "#define BUILDING_GCC_MINOR `echo $(GCCCOMPLETEVER) | sed -e 's/^[0-9]*\.\([0-9]*\).*$$/\1/'`" >> ${.TARGET}

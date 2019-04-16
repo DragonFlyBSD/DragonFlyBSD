@@ -85,6 +85,8 @@ externtemplate=1
 dualabi=1
 cxx11abi=1
 allocatornew=1
+float128=define _GLIBCXX_USE_FLOAT128 1
+#float128=undef _GLIBCXX_USE_FLOAT128
 ldbl_compat='s,g,g,'
 S1='s,define __GLIBCXX__,define __GLIBCXX__ ${GCCSHORTDATE},'
 S2='s,define _GLIBCXX_RELEASE,define _GLIBCXX_RELEASE ${release},'
@@ -94,10 +96,11 @@ S5='s,define _GLIBCXX_EXTERN_TEMPLATE$$, define _GLIBCXX_EXTERN_TEMPLATE ${exter
 S6='s,define _GLIBCXX_USE_DUAL_ABI, define _GLIBCXX_USE_DUAL_ABI ${dualabi},'
 S7='s,define _GLIBCXX_USE_CXX11_ABI, define _GLIBCXX_USE_CXX11_ABI ${cxx11abi},'
 S8='s,define _GLIBCXX_USE_ALLOCATOR_NEW, define _GLIBCXX_USE_ALLOCATOR_NEW ${allocatornew},'
-S9='${ldbl_compat}'
+S9='s,define _GLIBCXX_USE_FLOAT128, ${float128},'
+S10='${ldbl_compat}'
 
 c++config.h: config.h
-	sed -e ${S1} -e ${S2} -e ${S3} -e ${S4} -e ${S5} -e ${S6} -e ${S7} -e ${S8} -e ${S9} \
+	sed -e ${S1} -e ${S2} -e ${S3} -e ${S4} -e ${S5} -e ${S6} -e ${S7} -e ${S8} -e ${S9} -e ${S10} \
 	    < ${GCCDIR}/libstdc++-v3/include/bits/c++config > ${.TARGET}
 	sed -e 's/HAVE_/_GLIBCXX_HAVE_/g' \
 	    -e 's/PACKAGE/_GLIBCXX_PACKAGE/g' \

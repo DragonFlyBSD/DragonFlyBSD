@@ -401,7 +401,7 @@ BACKEND_OBJS+=	fibonacci_heap.o function-tests.o \
 		selftest-run-tests.o typed-splay-tree.o
 .endif
 
-# only whwn HAVE_isl
+# only when HAVE_isl
 #BACKEND_OBJS+= \
 	graphite-isl-ast-to-gimple.o \
 	graphite-dependences.o \
