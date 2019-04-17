@@ -30,10 +30,16 @@ SRCS+=		pidfile.c strtoi.c strtou.c
 .PATH:		${DISTDIR}/compat/crypt
 SRCS+=		hmac.c
 
-DPADD=		${LIBMD} ${LIBCRYPTO}
-LDADD=		-lmd -lprivate_crypto
+# Fully convert to openssl/md5.h and openssl/sha2.h
+FLAGS_GROUPS=	openssl
+openssl_FLAGS=	-I${_SHLIBDIRPREFIX}/usr/include/priv/openssl
+openssl_FLAGS+=	-DMD5Init=MD5_Init -DMD5Update=MD5_Update -DMD5Final=MD5_Final
+openssl_FLAGS_FILES= hmac.c ipv6.c
+
+CFLAGS+=	${PRIVATELIB_CFLAGS}
+DPADD=		${LIBCRYPTO}
+LDADD=		-lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
-CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 
 # system directories
 _SYSCONFDIR=	/etc

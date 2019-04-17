@@ -11,5 +11,5 @@
 #include			"compat/pidfile.h"
 #include			"compat/strtoi.h"
 #define	HAVE_MD5_H
-#define	SHA2_H			<sha256.h>
+#define	SHA2_H			<openssl/sha.h>
 #include			"compat/crypt/hmac.h"
