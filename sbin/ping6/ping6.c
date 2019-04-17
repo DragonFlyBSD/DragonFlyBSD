@@ -119,7 +119,7 @@
 #include <poll.h>
 #endif
 
-#include <md5.h>
+#include <openssl/md5.h>
 
 struct tv32 {
 	u_int32_t tv32_sec;
@@ -2463,11 +2463,11 @@ nigroup(char *name)
 
 	/* generate 8 bytes of pseudo-random value. */
 	memset(&ctxt, 0, sizeof(ctxt));
-	MD5Init(&ctxt);
+	MD5_Init(&ctxt);
 	c = l & 0xff;
-	MD5Update(&ctxt, &c, sizeof(c));
-	MD5Update(&ctxt, (unsigned char *)name, l);
-	MD5Final(digest, &ctxt);
+	MD5_Update(&ctxt, &c, sizeof(c));
+	MD5_Update(&ctxt, (unsigned char *)name, l);
+	MD5_Final(digest, &ctxt);
 
 	if (inet_pton(AF_INET6, "ff02::2:0000:0000", &in6) != 1)
 		return NULL;	/*XXX*/
