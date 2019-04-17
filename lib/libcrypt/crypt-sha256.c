@@ -13,6 +13,7 @@
 #include <sys/param.h>
 #include <sys/types.h>
 
+#include "crypt.h"
 #include "local.h"
 
 #if _BYTE_ORDER == _LITTLE_ENDIAN

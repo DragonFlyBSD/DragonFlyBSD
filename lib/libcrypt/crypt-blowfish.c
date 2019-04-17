@@ -59,6 +59,7 @@
 #include <string.h>
 #include <pwd.h>
 #include "blowfish.h"
+#include "crypt.h"
 
 /* This implementation is adaptable to current computing power.
  * You can have up to 2^31 rounds which should be enough for some
@@ -185,8 +186,8 @@ crypt_blowfish(const char *key, const char *salt)
 	u_int8_t ciphertext[4 * BCRYPT_BLOCKS] = "OrpheanBeholderScryDoubt";
 	u_int8_t csalt[BCRYPT_MAXSALT];
 	u_int32_t cdata[BCRYPT_BLOCKS];
-	static char     *magic = "$2a$04$";
-                                   
+	static const char *magic = "$2a$04$";
+
 		/* Defaults */
 	minor = 'a';
 	logr = 4;

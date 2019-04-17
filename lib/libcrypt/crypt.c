@@ -24,12 +24,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcrypt/crypt.c,v 1.14.2.2 2001/05/24 12:20:02 markm Exp $
- * $DragonFly: src/lib/libcrypt/crypt.c,v 1.3 2005/08/04 17:27:09 drhodus Exp $
  */
 
 #include <sys/types.h>
 #include <string.h>
 #include <libutil.h>
+#include <unistd.h>
 #include "crypt.h"
 
 /*
@@ -123,7 +123,7 @@ crypt_get_format(void)
 }
 
 int
-crypt_set_format(char *type)
+crypt_set_format(const char *type)
 {
 	int i;
 
@@ -138,7 +138,7 @@ crypt_set_format(char *type)
 }
 
 char *
-crypt(char *passwd, char *salt)
+crypt(const char *passwd, const char *salt)
 {
 	int i;
 
