@@ -3,8 +3,6 @@
 
 PROG=	md5
 
-SRCS=	md5.c sha1hl.c
-
 LINKS=	${BINDIR}/md5 ${BINDIR}/rmd160 \
 	${BINDIR}/md5 ${BINDIR}/sha1 \
 	${BINDIR}/md5 ${BINDIR}/sha256 \
@@ -15,9 +13,9 @@ MLINKS=	md5.1 rmd160.1 \
 	md5.1 sha256.1 \
 	md5.1 sha512.1
 
-DPADD=	${LIBMD} ${LIBCRYPTO}
-LDADD=	-lmd -lprivate_crypto
+CFLAGS+=	${PRIVATELIB_CFLAGS}
+DPADD=		${LIBCRYPTO}
+LDADD=		-lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
-CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 
 .include <bsd.prog.mk>
