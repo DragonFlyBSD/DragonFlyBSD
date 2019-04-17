@@ -240,7 +240,6 @@ CRUNCH_LIBS+= -llzma  # xz
 CRUNCH_LIBS+= -lbz2  # bzip2
 CRUNCH_LIBS+= -lkvm  # ccdconfig, dmesg, pkill, ps
 CRUNCH_LIBS+= -lcrypt  # pw
-CRUNCH_LIBS+= -lmd  # cpdup
 CRUNCH_LIBS+= -lprivate_edit  # bc, sh, vinum
 #CRUNCH_LIBS+= -lprivate_ncurses  # bc, less, ls, tput, vinum (=> ncursesw)
 CRUNCH_LIBS+= -lprivate_ncursesw  # vi
