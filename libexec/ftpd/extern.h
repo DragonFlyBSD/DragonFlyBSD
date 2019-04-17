@@ -65,6 +65,9 @@ void	user(char *);
 void	yyerror(char *);
 int	yyparse(void);
 int	ls_main(int, char **);
+#ifndef NOMD5
+char *sitemd5(const char *, char * const);
+#endif
 
 struct sockaddr_in;
 struct sockaddr_in6;

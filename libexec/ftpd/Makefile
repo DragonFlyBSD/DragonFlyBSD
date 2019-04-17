@@ -14,18 +14,12 @@ WFORMAT=0
 DPADD=	${LIBUTIL} ${LIBCRYPT}
 LDADD=	-lutil -lcrypt
 
-DPADD+=	${LIBMD}
-LDADD+=	-lmd
-
 LSDIR=	../../bin/ls
 .PATH:	${.CURDIR}/${LSDIR}
 SRCS+=	ls.c cmp.c print.c util.c
 CFLAGS+=-Dmain=ls_main -I${.CURDIR}/${LSDIR}
 DPADD+=	${LIBM}
 LDADD+=	-lm
-
-# XXX sys/md5.h shim errata for bootstrap REMOVE_OPENSSL_FILES
-CFLAGS+= -I${_SHLIBDIRPREFIX}/usr/include/priv
 
 .if !defined(NO_INET6)
 CFLAGS+=-DINET6
@@ -36,6 +30,16 @@ CFLAGS+=-DUSE_PAM
 DPADD+= ${LIBPAM}
 LDADD+= ${MINUSLPAM}
 LDFLAGS+= ${LDFLAGSPAM}
+.endif
+
+.if defined(NOMD5)
+CFLAGS+= -DNOMD5
+.else
+SRCS+= site_md5.c
+CFLAGS+=	${PRIVATELIB_CFLAGS}
+DPADD+=		${LIBCRYPTO}
+LDADD+=		-lprivate_crypto
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 .endif
 
 .include <bsd.prog.mk>

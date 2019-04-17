@@ -28,7 +28,6 @@
  *
  * @(#)ftpcmd.y	8.3 (Berkeley) 4/6/94
  * $FreeBSD: src/libexec/ftpd/ftpcmd.y,v 1.67 2008/12/23 01:23:09 cperciva Exp $
- * $DragonFly: src/libexec/ftpd/ftpcmd.y,v 1.4 2004/06/19 20:36:04 joerg Exp $
  */
 
 /*
@@ -50,7 +49,6 @@
 #include <glob.h>
 #include <libutil.h>
 #include <limits.h>
-#include <md5.h>
 #include <netdb.h>
 #include <pwd.h>
 #include <signal.h>
@@ -597,10 +595,11 @@ cmd
 		}
 	| SITE SP MDFIVE check_login SP pathname CRLF
 		{
+#ifndef NOMD5
 			char p[64], *q;
 
 			if ($4 && $6) {
-				q = MD5File($6, p);
+				q = sitemd5($6, p);
 				if (q != NULL)
 					reply(200, "MD5(%s) = %s", $6, p);
 				else
@@ -608,6 +607,9 @@ cmd
 			}
 			if ($6)
 				free($6);
+#else
+			reply(202, "md5 command disabled.");
+#endif
 		}
 	| SITE SP UMASK check_login CRLF
 		{
