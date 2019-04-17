@@ -55,7 +55,9 @@ static char    *pw_shellpolicy(struct userconf * cnf, struct cargs * args, char 
 static char    *pw_password(struct userconf * cnf, struct cargs * args, char const * user);
 static char    *shell_path(char const * path, char *shells[], char *sh);
 static void     rmat(uid_t uid);
+#ifdef OPIE
 static void     rmopie(char const * name);
+#endif
 
 /*-
  * -C config      configuration file
@@ -377,11 +379,13 @@ pw_user(struct userconf * cnf, int mode, struct cargs * args)
 				errx(EX_DATAERR, "cannot remove user 'root'");
 
 			if (!PWALTDIR()) {
+#ifdef OPIE
 				/*
 				 * Remove opie record from /etc/opiekeys
 		        	 */
 
 				rmopie(pwd->pw_name);
+#endif
 
 				/*
 				 * Remove crontabs
@@ -1241,6 +1245,7 @@ rmat(uid_t uid)
 	}
 }
 
+#ifdef OPIE
 static void
 rmopie(char const * name)
 {
@@ -1267,4 +1272,5 @@ rmopie(char const * name)
 		fclose(fp);
 	}
 }
+#endif
 
