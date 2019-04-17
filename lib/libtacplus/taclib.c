@@ -35,7 +35,6 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <md5.h>
 #include <netdb.h>
 #include <stdarg.h>
 #include <stddef.h>
@@ -45,6 +44,13 @@
 #include <unistd.h>
 
 #include "taclib_private.h"
+
+#define MD5Init        _libtacplus_MD5Init
+#define MD5Final       _libtacplus_MD5Final
+#define MD5Pad         _libtacplus_MD5Pad
+#define MD5Transform   _libtacplus_MD5Transform
+#define MD5Update      _libtacplus_MD5Update
+#include "private_md5.h"
 
 static int		 add_str_8(struct tac_handle *, u_int8_t *,
 			    struct clnt_str *);

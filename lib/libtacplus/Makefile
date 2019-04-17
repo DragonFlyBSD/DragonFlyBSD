@@ -28,11 +28,8 @@ LIB=		tacplus
 SRCS=		taclib.c
 INCS=		taclib.h
 
-# XXX sys/md5.h shim errata for bootstrap REMOVE_OPENSSL_FILES
-CFLAGS+= -I${_SHLIBDIRPREFIX}/usr/include/priv
+CFLAGS+=	-I${.CURDIR}/../omd
 
-DPADD+=		${LIBMD}
-LDADD+=		-lmd
 SHLIB_MAJOR=	2
 WARNS?=		2
 MAN=		libtacplus.3 tacplus.conf.5

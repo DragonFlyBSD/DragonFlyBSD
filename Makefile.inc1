@@ -1037,7 +1037,7 @@ _generic_libs=	gnu/lib
 _prebuild_libs+= lib/libcrypt lib/libmd \
 		lib/libncurses/libncurses
 
-lib/libopie__L lib/libtacplus__L: lib/libmd__L
+lib/libopie__L: lib/libmd__L
 
 _generic_libs+=	lib
 
