@@ -62,6 +62,7 @@
 #include <pwd.h>
 #include <string.h>
 #include "crypt.h"
+#include "local_xsi.h"
 
 /* We can't always assume gcc */
 #ifdef __GNUC__
@@ -697,4 +698,59 @@ crypt_des(const char *key, const char *setting)
 	*p = 0;
 
 	return(output);
+}
+
+/*
+ * For crypt_xsi.c compatibility.
+ */
+
+typedef union {
+	unsigned char b[8];
+	struct {
+		int32_t	i0;
+		int32_t	i1;
+	} b32;
+} C_block;
+
+int
+__crypt_setkey(const char *key)
+{
+	int i, j, k;
+	C_block keyblock;
+
+	for (i = 0; i < 8; i++) {
+		k = 0;
+		for (j = 0; j < 8; j++) {
+			k <<= 1;
+			k |= (unsigned char)*key++;
+		}
+		keyblock.b[i] = k;
+	}
+	return (des_setkey((char *)keyblock.b));
+}
+
+int
+__crypt_encrypt(char *block, int flag)
+{
+	int i, j, k;
+	C_block cblock;
+
+	for (i = 0; i < 8; i++) {
+		k = 0;
+		for (j = 0; j < 8; j++) {
+			k <<= 1;
+			k |= (unsigned char)*block++;
+		}
+		cblock.b[i] = k;
+	}
+	if (des_cipher((char *)&cblock, (char *)&cblock, 0L, (flag ? -1: 1)))
+		return (1);
+	for (i = 7; i >= 0; i--) {
+		k = cblock.b[i];
+		for (j = 7; j >= 0; j--) {
+			*--block = k&01;
+			k >>= 1;
+		}
+	}
+	return (0);
 }

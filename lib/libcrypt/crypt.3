@@ -31,11 +31,13 @@
 .\"
 .\" Manual page, using -mandoc macros
 .\"
-.Dd January 21, 2012
+.Dd April 24, 2019
 .Dt CRYPT 3
 .Os
 .Sh NAME
-.Nm crypt
+.Nm crypt ,
+.Nm encrypt ,
+.Nm setkey
 .Nd Trapdoor encryption
 .Sh LIBRARY
 .Lb libcrypt
@@ -47,6 +49,11 @@
 .Fn crypt_get_format "void"
 .Ft int
 .Fn crypt_set_format "const char *string"
+.Ft int
+.Fn encrypt "char *block" "int flag"
+.In stdlib.h
+.Ft int
+.Fn setkey "const char *key"
 .Sh DESCRIPTION
 The
 .Fn crypt
@@ -162,6 +169,44 @@ The value returned is a
 string, 20 or 13 bytes (plus null) in length, consisting of the
 .Ar salt
 followed by the encoded 64-bit encryption.
+.Pp
+The
+functions
+.Fn encrypt ,
+.Fn setkey
+allow limited access to the
+.Tn DES
+algorithm itself.
+The
+.Ar key
+argument to
+.Fn setkey
+is a 64 character array of
+binary values (numeric 0 or 1).
+A 56-bit key is derived from this array by dividing the array
+into groups of 8 and ignoring the last bit in each group.
+.Pp
+The
+.Fn encrypt
+argument
+.Fa block
+is also a 64 character array of
+binary values.
+If the value of
+.Fa flag
+is 0,
+the argument
+.Fa block
+is encrypted, otherwise it
+is decrypted.
+The encryption or decryption is returned in the original
+array
+.Fa block
+after using the
+key specified
+by
+.Fn setkey
+to process it.
 .Ss "Modular" crypt:
 If the salt begins with the string
 .Fa $digit$
