@@ -9,8 +9,8 @@ BINMODE=	6555
 .PATH:	${.CURDIR}/../pfctl
 CFLAGS+=	-I${.CURDIR}/../pfctl
 
-LDADD+= -lm -lmd -lutil
-DPADD+= ${LIBM} ${LIBMD} ${LIBUTIL}
+DPADD= ${LIBM} ${LIBUTIL}
+LDADD= -lm -lutil
 
 CLEANFILES+=	y.tab.h
 
