@@ -982,10 +982,10 @@ ck_passwd(struct interface *aifp,
 					       naddr_ntoa(from));
 			}
 
-			MD5Init(&md5_ctx);
-			MD5Update(&md5_ctx, (u_char *)rip, len);
-			MD5Update(&md5_ctx, ap->key, RIP_AUTH_MD5_LEN);
-			MD5Final(hash, &md5_ctx);
+			MD5_Init(&md5_ctx);
+			MD5_Update(&md5_ctx, (u_char *)rip, len);
+			MD5_Update(&md5_ctx, ap->key, RIP_AUTH_MD5_LEN);
+			MD5_Final(hash, &md5_ctx);
 			if (!memcmp(hash, na2->au.au_pw, sizeof(hash)))
 				return 1;
 		}

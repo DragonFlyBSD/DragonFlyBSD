@@ -291,10 +291,10 @@ end_md5_auth(struct ws_buf *wb,
 	na2->a_family = RIP_AF_AUTH;
 	na2->a_type = htons(1);
 	na->au.a_md5.md5_pkt_len = htons(len);
-	MD5Init(&md5_ctx);
-	MD5Update(&md5_ctx, (u_char *)wb->buf, len);
-	MD5Update(&md5_ctx, ap->key, RIP_AUTH_MD5_LEN);
-	MD5Final(na2->au.au_pw, &md5_ctx);
+	MD5_Init(&md5_ctx);
+	MD5_Update(&md5_ctx, (u_char *)wb->buf, len);
+	MD5_Update(&md5_ctx, ap->key, RIP_AUTH_MD5_LEN);
+	MD5_Final(na2->au.au_pw, &md5_ctx);
 	wb->n++;
 }
 

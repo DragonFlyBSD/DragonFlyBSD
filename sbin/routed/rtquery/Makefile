@@ -3,9 +3,11 @@
 
 PROG=	rtquery
 MAN=	rtquery.8
-LDADD+=	-lmd
-DPADD+=	${LIBMD}
 NO_WARRAY_BOUNDS=
-CFLAGS+=	-I${.CURDIR}/../../../crypto/libressl/include
+
+CFLAGS+=	${PRIVATELIB_CFLAGS}
+LDADD=		-lprivate_crypto
+DPADD=		${LIBCRYPTO}
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

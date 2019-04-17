@@ -48,7 +48,7 @@ char copyright[] =
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <md5.h>
+#include <openssl/md5.h>
 
 #if !defined(__NetBSD__)
 static char sccsid[] __attribute__((unused))= "@(#)query.c	8.1 (Berkeley) 6/5/93";
@@ -374,12 +374,12 @@ query_loop(char *argv[], int argc)
 			NA0.au.a_md5.md5_pkt_len = htons(cc);
 			NA2.a_family = RIP_AF_AUTH;
 			NA2.a_type = htons(1);
-			MD5Init(&md5_ctx);
-			MD5Update(&md5_ctx,
+			MD5_Init(&md5_ctx);
+			MD5_Update(&md5_ctx,
 				  (u_char *)&OMSG, cc);
-			MD5Update(&md5_ctx,
+			MD5_Update(&md5_ctx,
 				  (u_char *)passwd, RIP_AUTH_MD5_LEN);
-			MD5Final(NA2.au.au_pw, &md5_ctx);
+			MD5_Final(NA2.au.au_pw, &md5_ctx);
 			omsg_len += 2*sizeof(OMSG.rip_nets[0]);
 		}
 
@@ -709,12 +709,12 @@ rip_input(struct sockaddr_in *from,
 			putc('\n', stdout);
 			if (md5_authed && n+1 > lim
 			    && na->a_type == ntohs(1)) {
-				MD5Init(&md5_ctx);
-				MD5Update(&md5_ctx, (u_char *)&IMSG,
+				MD5_Init(&md5_ctx);
+				MD5_Update(&md5_ctx, (u_char *)&IMSG,
 					  (char *)na-(char *)&IMSG);
-				MD5Update(&md5_ctx, (u_char *)passwd,
+				MD5_Update(&md5_ctx, (u_char *)passwd,
 					  RIP_AUTH_MD5_LEN);
-				MD5Final(hash, &md5_ctx);
+				MD5_Final(hash, &md5_ctx);
 				printf("    %s hash\n",
 				       memcmp(hash, na->au.au_pw, sizeof(hash))
 				       ? "WRONG" : "correct");

@@ -80,7 +80,7 @@
 #include <arpa/inet.h>
 #define RIPVERSION RIPv2
 #include <protocols/routed.h>
-#include <md5.h>
+#include <openssl/md5.h>
 
 
 /* Type of an IP address.

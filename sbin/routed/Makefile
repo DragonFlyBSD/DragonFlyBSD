@@ -5,8 +5,9 @@ SRCS=   if.c input.c main.c output.c parms.c radix.c rdisc.c table.c trace.c
 MAN=   routed.8
 SUBDIR= rtquery
 
-DPADD+=	${LIBMD}
-LDADD=	-lmd
-CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
+CFLAGS+=	${PRIVATELIB_CFLAGS}
+DPADD=		${LIBCRYPTO}
+LDADD=		-lprivate_crypto
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>
