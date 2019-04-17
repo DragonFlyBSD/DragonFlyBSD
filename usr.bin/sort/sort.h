@@ -38,7 +38,7 @@
 
 #include <sys/types.h>
 #if defined(SORT_RANDOM)
-#include <md5.h>
+#include <openssl/md5.h>
 #endif
 
 #define	VERSION	"2.3-FreeBSD"

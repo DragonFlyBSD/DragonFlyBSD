@@ -35,13 +35,13 @@
 #include <langinfo.h>
 #include <limits.h>
 #include <math.h>
-#if defined(SORT_RANDOM)
-#include <md5.h>
-#endif
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
 #include <wctype.h>
+#if defined(SORT_RANDOM)
+#include <openssl/md5.h>
+#endif
 
 #include "coll.h"
 #include "vsort.h"
@@ -974,6 +974,26 @@ hnumcoll(struct key_value *kv1, struct key_value *kv2, size_t offset)
  * Implements random sort (-R).
  */
 #if defined(SORT_RANDOM)
+static char *
+randomcollend(MD5_CTX *ctx)
+{
+	unsigned char digest[MD5_DIGEST_LENGTH];
+	static const char hex[]="0123456789abcdef";
+	char *buf;
+	int i;
+
+	buf = malloc(MD5_DIGEST_LENGTH * 2 + 1);
+	if (!buf)
+		return NULL;
+	MD5_Final(digest, ctx);
+	for (i = 0; i < MD5_DIGEST_LENGTH; i++) {
+		buf[2*i] = hex[digest[i] >> 4];
+		buf[2*i+1] = hex[digest[i] & 0x0f];
+	}
+	buf[MD5_DIGEST_LENGTH * 2] = '\0';
+	return buf;
+}
+
 static int
 randomcoll(struct key_value *kv1, struct key_value *kv2,
     size_t offset __unused)
@@ -996,10 +1016,10 @@ randomcoll(struct key_value *kv1, struct key_value *kv2,
 	memcpy(&ctx1,&md5_ctx,sizeof(MD5_CTX));
 	memcpy(&ctx2,&md5_ctx,sizeof(MD5_CTX));
 
-	MD5Update(&ctx1, bwsrawdata(s1), bwsrawlen(s1));
-	MD5Update(&ctx2, bwsrawdata(s2), bwsrawlen(s2));
-	b1 = MD5End(&ctx1, NULL);
-	b2 = MD5End(&ctx2, NULL);
+	MD5_Update(&ctx1, bwsrawdata(s1), bwsrawlen(s1));
+	MD5_Update(&ctx2, bwsrawdata(s2), bwsrawlen(s2));
+	b1 = randomcollend(&ctx1);
+	b2 = randomcollend(&ctx2);
 	if (b1 == NULL) {
 		if (b2 == NULL)
 			return (0);

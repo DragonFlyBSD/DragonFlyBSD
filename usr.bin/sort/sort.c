@@ -37,9 +37,6 @@
 #include <getopt.h>
 #include <limits.h>
 #include <locale.h>
-#if defined(SORT_RANDOM)
-#include <md5.h>
-#endif
 #include <regex.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -49,6 +46,9 @@
 #include <unistd.h>
 #include <wchar.h>
 #include <wctype.h>
+#if defined(SORT_RANDOM)
+#include <openssl/md5.h>
+#endif
 
 #include "coll.h"
 #include "file.h"
@@ -932,6 +932,60 @@ fix_obsolete_keys(int *argc, char **argv)
  * Set random seed
  */
 #if defined(SORT_RANDOM)
+static char *
+random_md5end(MD5_CTX *ctx)
+{
+	unsigned char digest[MD5_DIGEST_LENGTH];
+	static const char hex[]="0123456789abcdef";
+	char *buf;
+	int i;
+
+	buf = malloc(MD5_DIGEST_LENGTH * 2 + 1);
+	if (!buf)
+		return NULL;
+	MD5_Final(digest, ctx);
+	for (i = 0; i < MD5_DIGEST_LENGTH; i++) {
+		buf[2*i] = hex[digest[i] >> 4];
+		buf[2*i+1] = hex[digest[i] & 0x0f];
+	}
+	buf[MD5_DIGEST_LENGTH * 2] = '\0';
+	return buf;
+}
+
+static char *
+random_fromfile(const char *filename)
+{
+	MD5_CTX ctx;
+	FILE* fp;
+	unsigned char buffer[4096];
+	struct stat st;
+	off_t size;
+	int bytes;
+
+	fp = openfile(filename, "r");
+	if (fp == NULL)
+		return NULL;
+	if (fstat(fileno(fp), &st) < 0) {
+		bytes = -1;
+		goto err;
+	}
+
+	MD5_Init(&ctx);
+	size = st.st_size;
+	bytes = 0;
+	while (size > 0 && (bytes = fread(buffer, 1, sizeof(buffer), fp)) > 0) {
+		MD5_Update(&ctx, buffer, bytes);
+		size -= bytes;
+	}
+
+err:
+	closefile(fp, NULL);
+	if (bytes < 0)
+		return NULL;
+
+	return (random_md5end(&ctx));
+}
+
 static void
 set_random_seed(void)
 {
@@ -959,18 +1013,18 @@ set_random_seed(void)
 
 			closefile(fseed, random_source);
 
-			MD5Init(&ctx);
-			MD5Update(&ctx, rsd, sz);
+			MD5_Init(&ctx);
+			MD5_Update(&ctx, rsd, sz);
 
-			random_seed = MD5End(&ctx, NULL);
+			random_seed = random_md5end(&ctx);
 			random_seed_size = strlen(random_seed);
 
 		} else {
 			MD5_CTX ctx;
 			char *b;
 
-			MD5Init(&ctx);
-			b = MD5File(random_source, NULL);
+			MD5_Init(&ctx);
+			b = random_fromfile(random_source);
 			if (b == NULL)
 				err(2, NULL);
 
@@ -978,9 +1032,9 @@ set_random_seed(void)
 			random_seed_size = strlen(b);
 		}
 
-		MD5Init(&md5_ctx);
+		MD5_Init(&md5_ctx);
 		if(random_seed_size>0) {
-			MD5Update(&md5_ctx, random_seed, random_seed_size);
+			MD5_Update(&md5_ctx, random_seed, random_seed_size);
 		}
 	}
 }

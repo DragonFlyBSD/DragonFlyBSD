@@ -11,17 +11,16 @@ SRCS=	bwstring.c \
 
 CFLAGS+= -DWITHOUT_NLS
 
-.if !defined(BOOTSTRAPPING)
-DPADD=	${LIBMD}
-LDADD=	-lmd
+.if !defined(BOOTSTRAPPING) && !defined(RESCUE)
 CFLAGS+= -DSORT_RANDOM
+CFLAGS+=	${PRIVATELIB_CFLAGS}
+DPADD+=		${LIBCRYPTO}
+LDADD+=		-lprivate_crypto
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 DPADD+=	${LIBPTHREAD}
 LDADD+=	-lpthread
 CFLAGS+= -DSORT_THREADS
-
-# XXX sys/md5.h shim errata for bootstrap REMOVE_OPENSSL_FILES
-CFLAGS+= -I${_SHLIBDIRPREFIX}/usr/include/priv
 .endif
 
 .include <bsd.prog.mk>
