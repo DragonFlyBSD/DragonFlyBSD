@@ -34,6 +34,7 @@
 #include <sys/un.h>
 #include <sys/file.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <netinet/in.h>
 
 #include <ctype.h>
@@ -118,7 +119,6 @@ static int margc;
 static char *margv[20];
 
 #ifdef OPIE
-#include <sys/wait.h>
 #define PATH_OPIEKEY	"/usr/bin/opiekey"
 static int
 opie_calc(int argc, char *argv[])

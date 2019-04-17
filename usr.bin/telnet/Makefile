@@ -5,7 +5,7 @@ PROG=		telnet
 SRCS=		authenc.c commands.c main.c network.c ring.c sys_bsd.c \
 		telnet.c terminal.c utilities.c
 
-CFLAGS+=	-DKLUDGELINEMODE -DUSE_TERMIO -DENV_HACK -DOPIE \
+CFLAGS+=	-DKLUDGELINEMODE -DUSE_TERMIO -DENV_HACK \
 		-I${.CURDIR}/../../lib -I${.CURDIR}/../../lib/libtelnet
 WARNS?=		2
 NO_STRICT_ALIASING=
