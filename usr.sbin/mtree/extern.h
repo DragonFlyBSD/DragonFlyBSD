@@ -78,6 +78,7 @@ int	 verify(FILE *);
 void	 load_only(const char *fname);
 bool	 find_only(const char *path);
 
+char	*dohash(int, const char *);
 char	*flags_to_string(unsigned long, const char *);
 int	 string_to_flags(char **, unsigned long *, unsigned long *);
 

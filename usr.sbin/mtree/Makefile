@@ -13,16 +13,14 @@ SRCS+=	pack_dev.c stat_flags.c
 DPADD+=	${LIBUTIL}
 LDADD+=	-lutil
 
-.if !defined(BOOTSTRAPPING)
-.PATH: ${.CURDIR}/../../sbin/md5
-SRCS+=	sha1hl.c
-DPADD+=	${LIBMD} ${LIBCRYPTO}
-LDADD+=	-lmd -lprivate_crypto
+.if !defined(BOOTSTRAPPING) && !defined(RESCUE)
+SRCS+= hash.c
+CFLAGS+= 	${PRIVATELIB_CFLAGS}
+DPADD+=		${LIBCRYPTO}
+LDADD+=		-lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
-CFLAGS+= 	-I${.CURDIR}/../../crypto/libressl/include
-CFLAGS+=	-I${.CURDIR}/../../sbin/md5
 .else
-CFLAGS+=-DNO_MD5 -DNO_SHA1 -DNO_SHA2 -DNO_RMD160
+CFLAGS+=-DNO_MD5 -DNO_SHA -DNO_RMD160
 .if ${WORLD_VERSION} < 500302 # pwcache(3)/vis(3) upgrades came in about here
 .PATH: ${.CURDIR}/../../lib/libc/gen
 SRCS+=	pwcache.c vis.c

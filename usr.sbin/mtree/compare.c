@@ -47,19 +47,13 @@
 #include <unistd.h>
 
 #ifndef NO_MD5
-#include <md5.h>
+#include <openssl/md5.h>
 #endif
 #ifndef NO_RMD160
-#include <ripemd.h>
-#include <rmd160.h>
+#include <openssl/ripemd.h>
 #endif
-#ifndef NO_SHA1
-#include <sha.h>
-#include <sha1hl.h>
-#endif
-#ifndef NO_SHA2
-#include <sha256.h>
-#include <sha512.h>
+#ifndef NO_SHA
+#include <openssl/sha.h>
 #endif
 
 #include "extern.h"
@@ -133,7 +127,7 @@ compare(NODE *s, FTSENT *p)
 	u_int32_t len, val, flags;
 	int fd, label;
 	const char *cp, *tab;
-#if !defined(NO_MD5) || !defined(NO_RMD160) || !defined(NO_SHA1) || !defined(NO_SHA2)
+#if !defined(NO_MD5) || !defined(NO_RMD160) || !defined(NO_SHA)
 	char *digestbuf;
 #endif
 
@@ -421,7 +415,7 @@ typeerr:		LABEL;
 	}
 #ifndef NO_MD5
 	if (s->flags & F_MD5) {
-		if ((digestbuf = MD5File(p->fts_accpath, NULL)) == NULL) {
+		if ((digestbuf = dohash(F_MD5, p->fts_accpath)) == NULL) {
 			LABEL;
 			printf("%s%s: %s: %s\n",
 			    tab, MD5KEY, p->fts_accpath, strerror(errno));
@@ -441,7 +435,7 @@ typeerr:		LABEL;
 #endif	/* ! NO_MD5 */
 #ifndef NO_RMD160
 	if (s->flags & F_RMD160) {
-		if ((digestbuf = RIPEMD160_File(p->fts_accpath, NULL)) == NULL) {
+		if ((digestbuf = dohash(F_RMD160, p->fts_accpath)) == NULL) {
 			LABEL;
 			printf("%s%s: %s: %s\n",
 			    tab, RMD160KEY, p->fts_accpath, strerror(errno));
@@ -459,9 +453,9 @@ typeerr:		LABEL;
 		}
 	}
 #endif	/* ! NO_RMD160 */
-#ifndef NO_SHA1
+#ifndef NO_SHA
 	if (s->flags & F_SHA1) {
-		if ((digestbuf = SHA1_File(p->fts_accpath, NULL)) == NULL) {
+		if ((digestbuf = dohash(F_SHA1, p->fts_accpath)) == NULL) {
 			LABEL;
 			printf("%s%s: %s: %s\n",
 			    tab, SHA1KEY, p->fts_accpath, strerror(errno));
@@ -469,7 +463,7 @@ typeerr:		LABEL;
 		} else {
 			if (strcmp(s->sha1digest, digestbuf)) {
 				LABEL;
-				printf(flavor == F_FREEBSD9 ? 
+				printf(flavor == F_FREEBSD9 ?
 				    "%s%s expected %s found %s\n" :
 				    "%s%s (0x%s, 0x%s)\n",
 				    tab, SHA1KEY, s->sha1digest, digestbuf);
@@ -478,10 +472,8 @@ typeerr:		LABEL;
 			free(digestbuf);
 		}
 	}
-#endif	/* ! NO_SHA1 */
-#ifndef NO_SHA2
 	if (s->flags & F_SHA256) {
-		if ((digestbuf = SHA256_File(p->fts_accpath, NULL)) == NULL) {
+		if ((digestbuf = dohash(F_SHA256, p->fts_accpath)) == NULL) {
 			LABEL;
 			printf("%s%s: %s: %s\n",
 			    tab, SHA256KEY, p->fts_accpath, strerror(errno));
@@ -489,7 +481,7 @@ typeerr:		LABEL;
 		} else {
 			if (strcmp(s->sha256digest, digestbuf)) {
 				LABEL;
-				printf(flavor == F_FREEBSD9 ? 
+				printf(flavor == F_FREEBSD9 ?
 				    "%s%s expected %s found %s\n" :
 				    "%s%s (0x%s, 0x%s)\n",
 				    tab, SHA256KEY, s->sha256digest, digestbuf);
@@ -498,10 +490,9 @@ typeerr:		LABEL;
 			free(digestbuf);
 		}
 	}
-#ifdef SHA384_BLOCK_LENGTH
-#if !defined(__DragonFly__)
+#ifdef SHA384_DIGEST_LENGTH
 	if (s->flags & F_SHA384) {
-		if ((digestbuf = SHA384_File(p->fts_accpath, NULL)) == NULL) {
+		if ((digestbuf = dohash(F_SHA384, p->fts_accpath)) == NULL) {
 			LABEL;
 			printf("%s%s: %s: %s\n",
 			    tab, SHA384KEY, p->fts_accpath, strerror(errno));
@@ -509,7 +500,7 @@ typeerr:		LABEL;
 		} else {
 			if (strcmp(s->sha384digest, digestbuf)) {
 				LABEL;
-				printf(flavor == F_FREEBSD9 ? 
+				printf(flavor == F_FREEBSD9 ?
 				    "%s%s expected %s found %s\n" :
 				    "%s%s (0x%s, 0x%s)\n",
 				    tab, SHA384KEY, s->sha384digest, digestbuf);
@@ -519,9 +510,8 @@ typeerr:		LABEL;
 		}
 	}
 #endif
-#endif
 	if (s->flags & F_SHA512) {
-		if ((digestbuf = SHA512_File(p->fts_accpath, NULL)) == NULL) {
+		if ((digestbuf = dohash(F_SHA512, p->fts_accpath)) == NULL) {
 			LABEL;
 			printf("%s%s: %s: %s\n",
 			    tab, SHA512KEY, p->fts_accpath, strerror(errno));
@@ -529,7 +519,7 @@ typeerr:		LABEL;
 		} else {
 			if (strcmp(s->sha512digest, digestbuf)) {
 				LABEL;
-				printf(flavor == F_FREEBSD9 ? 
+				printf(flavor == F_FREEBSD9 ?
 				    "%s%s expected %s found %s\n" :
 				    "%s%s (0x%s, 0x%s)\n",
 				    tab, SHA512KEY, s->sha512digest, digestbuf);
@@ -538,11 +528,11 @@ typeerr:		LABEL;
 			free(digestbuf);
 		}
 	}
-#endif	/* ! NO_SHA2 */
+#endif	/* ! NO_SHA */
 	if (s->flags & F_SLINK &&
 	    strcmp(cp = rlink(p->fts_accpath), s->slink)) {
 		LABEL;
-		printf(flavor == F_FREEBSD9 ? 
+		printf(flavor == F_FREEBSD9 ?
 		    "%slink ref expected %s found %s" :
 		    "%slink ref (%s, %s", tab, cp, s->slink);
 		if (uflag) {

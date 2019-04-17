@@ -54,19 +54,13 @@
 #include <unistd.h>
 
 #ifndef NO_MD5
-#include <md5.h>
+#include <openssl/md5.h>
 #endif
 #ifndef NO_RMD160
-#include <ripemd.h>
-#include <rmd160.h>
+#include <openssl/ripemd.h>
 #endif
-#ifndef NO_SHA1
-#include <sha.h>
-#include <sha1hl.h>
-#endif
-#ifndef NO_SHA2
-#include <sha256.h>
-#include <sha512.h>
+#ifndef NO_SHA
+#include <openssl/sha.h>
 #endif
 
 #include "extern.h"
@@ -177,12 +171,17 @@ static void
 dosum(FILE *fp, int indent, FTSENT *p, int *offset, int flag,
     char * (*func)(const char *, char *), const char *key)
 {
-	char *digestbuf;
+	char *digestbuf = NULL;
 
 	if ((keys & flag) == 0)
 		return;
 
-	digestbuf = (*func)(p->fts_accpath, NULL);
+	if (func)
+		digestbuf = (*func)(p->fts_accpath, NULL);
+#if !defined(NO_MD5) && !defined(NO_RMD160) && !defined(NO_SHA)
+	else
+		digestbuf = dohash(flag, p->fts_accpath);
+#endif
 	if (digestbuf != NULL) {
 		output(fp, indent, offset, "%s=%s", key, digestbuf);
 		free(digestbuf);
@@ -281,23 +280,17 @@ statf(FILE *fp, int indent, FTSENT *p)
 	if (S_ISREG(p->fts_statp->st_mode))  {
 		dosum(fp, indent, p, &offset, F_CKSUM, crcFile, "cksum");
 #ifndef NO_MD5
-		dosum(fp, indent, p, &offset, F_MD5, MD5File, MD5KEY);
-#endif	/* ! NO_MD5 */
+		dosum(fp, indent, p, &offset, F_MD5, NULL, MD5KEY);
+#endif
 #ifndef NO_RMD160
-		dosum(fp, indent, p, &offset, F_RMD160, RIPEMD160_File, RMD160KEY);
-#endif	/* ! NO_RMD160 */
-#ifndef NO_SHA1
-		dosum(fp, indent, p, &offset, F_SHA1, SHA1_File, SHA1KEY);
-#endif	/* ! NO_SHA1 */
-#ifndef NO_SHA2
-		dosum(fp, indent, p, &offset, F_SHA256, SHA256_File, SHA256KEY);
-#ifdef SHA384_BLOCK_LENGTH
-#if !defined(__DragonFly__)
-		dosum(fp, indent, p, &offset, F_SHA384, SHA384_File, SHA384KEY);
+		dosum(fp, indent, p, &offset, F_RMD160, NULL, RMD160KEY);
 #endif
+#ifndef NO_SHA
+		dosum(fp, indent, p, &offset, F_SHA1, NULL, SHA1KEY);
+		dosum(fp, indent, p, &offset, F_SHA256, NULL, SHA256KEY);
+		dosum(fp, indent, p, &offset, F_SHA384, NULL, SHA384KEY);
+		dosum(fp, indent, p, &offset, F_SHA512, NULL, SHA512KEY);
 #endif
-		dosum(fp, indent, p, &offset, F_SHA512, SHA512_File, SHA512KEY);
-#endif	/* ! NO_SHA2 */
 	}
 	if (keys & F_SLINK &&
 	    (p->fts_info == FTS_SL || p->fts_info == FTS_SLNONE))
