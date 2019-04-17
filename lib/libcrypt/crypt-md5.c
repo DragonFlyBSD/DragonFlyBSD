@@ -7,15 +7,25 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libcrypt/crypt-md5.c,v 1.5.2.1 2001/05/24 12:20:02 markm Exp $
- * $DragonFly: src/lib/libcrypt/crypt-md5.c,v 1.3 2005/08/04 17:27:09 drhodus Exp $
  */
 
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
-#include <md5.h>
 #include <err.h>
+
 #include "crypt.h"
+
+#define MD5Init		_libcrypt_MD5Init
+#define MD5Final	_libcrypt_MD5Final
+#define MD5Pad		_libcrypt_MD5Pad
+#define MD5Transform	_libcrypt_MD5Transform
+#define MD5Update	_libcrypt_MD5Update
+#define WITH_OPENSSL
+#include "private_md5.h"
+
+/* magic sizes, moved out from crypt.h */
+#define MD5_SIZE 16
 
 /*
  * UNIX password

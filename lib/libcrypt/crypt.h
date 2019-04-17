@@ -24,12 +24,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcrypt/crypt.h,v 1.4.2.2 2001/05/24 12:20:02 markm Exp $
- * $DragonFly: src/lib/libcrypt/crypt.h,v 1.2 2003/06/17 04:26:49 dillon Exp $
  *
  */
-
-/* magic sizes */
-#define MD5_SIZE 16
 
 char *crypt_des(const char *pw, const char *salt);
 char *crypt_md5(const char *pw, const char *salt);
