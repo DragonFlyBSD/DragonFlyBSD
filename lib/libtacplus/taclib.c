@@ -921,10 +921,10 @@ tac_config(struct tac_handle *h, const char *path)
 
 		if (tac_add_server(h, host, port, secret, timeout,
 		    options) == -1) {
-			char msg[ERRSIZE];
+			char msgl[ERRSIZE];
 
 			strcpy(msg, h->errmsg);
-			generr(h, "%s:%d: %s", path, linenum, msg);
+			generr(h, "%s:%d: %s", path, linenum, msgl);
 			retval = -1;
 			break;
 		}
