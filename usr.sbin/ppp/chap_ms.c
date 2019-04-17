@@ -32,18 +32,13 @@
 #include <ctype.h>
 #include <sys/types.h>
 #include <stdlib.h>
-#ifdef __DragonFly__
-#include <openssl/des.h>
-#include <sha.h>
-#else
-#ifdef __NetBSD__
+#if defined(__DragonFly__) || defined(__NetBSD__)
 #include <openssl/des.h>
 #else
 #include <des.h>
 #endif
 #include <openssl/sha.h>
-#endif
-#include <md4.h>
+#include <openssl/md4.h>
 #include <string.h>
 
 #include "chap_ms.h"
@@ -135,9 +130,9 @@ NtPasswordHash(char *key, int keylen, char *hash)
 {
   MD4_CTX MD4context;
 
-  MD4Init(&MD4context);
-  MD4Update(&MD4context, key, keylen);
-  MD4Final(hash, &MD4context);
+  MD4_Init(&MD4context);
+  MD4_Update(&MD4context, key, keylen);
+  MD4_Final(hash, &MD4context);
 }
 
 void
@@ -145,9 +140,9 @@ HashNtPasswordHash(char *hash, char *hashhash)
 {
   MD4_CTX MD4context;
 
-  MD4Init(&MD4context);
-  MD4Update(&MD4context, hash, 16);
-  MD4Final(hashhash, &MD4context);
+  MD4_Init(&MD4context);
+  MD4_Update(&MD4context, hash, 16);
+  MD4_Final(hashhash, &MD4context);
 }
 
 static void

@@ -45,9 +45,6 @@
 #endif
 
 #include <errno.h>
-#ifndef NODES
-#include <md5.h>
-#endif
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,6 +53,9 @@
 #include <termios.h>
 #include <unistd.h>
 #include <netdb.h>
+#ifndef NODES
+#include <openssl/md5.h>
+#endif
 
 #include "layer.h"
 #include "defs.h"
@@ -175,11 +175,11 @@ demangle(struct radius *r, const void *mangled, size_t mlen,
   Slen = strlen(S);
   P = alloca(Clen);				/* We derive our plaintext */
 
-  MD5Init(&Context);
-  MD5Update(&Context, S, Slen);
-  MD5Update(&Context, R, AUTH_LEN);
-  MD5Update(&Context, A, SALT_LEN);
-  MD5Final(b, &Context);
+  MD5_Init(&Context);
+  MD5_Update(&Context, S, Slen);
+  MD5_Update(&Context, R, AUTH_LEN);
+  MD5_Update(&Context, A, SALT_LEN);
+  MD5_Final(b, &Context);
   Ppos = 0;
 
   while (Clen) {
@@ -189,10 +189,10 @@ demangle(struct radius *r, const void *mangled, size_t mlen,
       P[Ppos++] = C[i] ^ b[i];
 
     if (Clen) {
-      MD5Init(&Context);
-      MD5Update(&Context, S, Slen);
-      MD5Update(&Context, C, 16);
-      MD5Final(b, &Context);
+      MD5_Init(&Context);
+      MD5_Update(&Context, S, Slen);
+      MD5_Update(&Context, C, 16);
+      MD5_Final(b, &Context);
     }
 
     C += 16;

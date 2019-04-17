@@ -18,8 +18,8 @@ BINOWN=	root
 BINGRP=	network
 M4FLAGS=
 
-LDADD= -lcrypt -lmd -lutil -lz
-DPADD=	${LIBCRYPT} ${LIBMD} ${LIBUTIL} ${LIBZ}
+LDADD= -lcrypt -lutil -lz
+DPADD=	${LIBCRYPT} ${LIBUTIL} ${LIBZ}
 
 .SUFFIXES: .8 .8.m4
 
@@ -58,19 +58,14 @@ SRCS+=	id.c
 CFLAGS+=-DNODES
 .else
 SRCS+=		chap_ms.c mppe.c
-LDADD+= 	-lprivate_crypto
-DPADD+= 	${LIBCRYPTO}
-LDFLAGS+=	${PRIVATELIB_LDFLAGS}
-CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 .endif
 
 .if defined(NORADIUS)
 CFLAGS+=-DNORADIUS
 .else
 SRCS+=	radius.c
-LDADD+=	-lradius -lprivate_crypto
-DPADD+= ${LIBRADIUS} ${LIBCRYPTO}
-LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+LDADD+=	-lradius
+DPADD+= ${LIBRADIUS}
 .endif
 
 .if defined(WANT_NETGRAPH7)
@@ -91,7 +86,9 @@ SRCS+=	netgraph.c
 
 NO_STRICT_ALIASING=
 
-# XXX sys/md5.h shim errata for bootstrap REMOVE_OPENSSL_FILES
-CFLAGS+= -I${_SHLIBDIRPREFIX}/usr/include/priv
+CFLAGS+=	${PRIVATELIB_CFLAGS}
+DPADD+=		${LIBCRYPTO}
+LDADD+=		-lprivate_crypto
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>
