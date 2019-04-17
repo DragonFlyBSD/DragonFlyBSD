@@ -3637,6 +3637,13 @@ TO_REMOVE+=/usr/include/priv/openssl/ui_compat.h
 TO_REMOVE+=/usr/include/ldns
 TO_REMOVE+=/usr/lib/priv/libprivate_ldns.so.1
 TO_REMOVE+=/usr/lib/priv/libprivate_ssh.so.4
+TO_REMOVE+=/usr/lib/libcipher.a
+TO_REMOVE+=/usr/lib/libcipher.so
+TO_REMOVE+=/usr/lib/libcipher.so.3
+TO_REMOVE+=/usr/lib/profile/libcipher.a
+TO_REMOVE+=/usr/share/man/man3/cipher.3.gz
+TO_REMOVE+=/usr/share/man/man3/des_cipher.3.gz
+TO_REMOVE+=/usr/share/man/man3/des_setkey.3.gz
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

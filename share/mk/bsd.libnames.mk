@@ -1,7 +1,7 @@
 # $FreeBSD: src/share/mk/bsd.libnames.mk,v 1.28.2.10 2002/08/08 09:33:28 ru Exp $
 #
-# The include file <bsd.libnames.mk> define library names. 
-# Other include files (e.g. bsd.prog.mk, bsd.lib.mk) include this 
+# The include file <bsd.libnames.mk> define library names.
+# Other include files (e.g. bsd.prog.mk, bsd.lib.mk) include this
 # file where necessary.
 
 .if !target(__<bsd.init.mk>__)
@@ -16,7 +16,6 @@ LIBBZ2?=	${DESTDIR}${LIBDIR}/libbz2.a
 LIBC?=		${DESTDIR}${LIBDIR}/libc.a
 LIBCALENDAR?=	${DESTDIR}${LIBDIR}/libcalendar.a
 LIBCAM?=	${DESTDIR}${LIBDIR}/libcam.a
-LIBCIPHER?=	${DESTDIR}${LIBDIR}/libcipher.a
 LIBCOMPAT?=	${DESTDIR}${LIBDIR}/libcompat.a
 LIBCRYPT?=	${DESTDIR}${LIBDIR}/libcrypt.a
 LIBCRYPTO?=	${DESTDIR}${LIBDIR}/priv/libprivate_crypto.a

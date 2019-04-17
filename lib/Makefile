@@ -51,7 +51,6 @@ SUBDIR_ORDERED= \
 	libexecinfo
 
 SUBDIR=	${SUBDIR_ORDERED} \
-	libcipher \
 	csu \
 	i18n_module \
 	libalias \
