@@ -49,7 +49,7 @@
  */
 
 /*-
- * Example: cc -O cpdup.c -o cpdup -lmd
+ * Example: cc -O cpdup.c -o cpdup -lcrypto
  *
  * ".MD5.CHECKSUMS" contains md5 checksumms for the current directory.
  * This file is stored on the source.
