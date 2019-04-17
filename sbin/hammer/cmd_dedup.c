@@ -36,7 +36,7 @@
 
 #include <sys/tree.h>
 #include <libutil.h>
-#include <sha.h>
+#include <openssl/sha.h>
 
 #define DEDUP_BUF (64 * 1024)
 
