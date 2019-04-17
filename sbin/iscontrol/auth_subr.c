@@ -43,8 +43,8 @@
 #include <string.h>
 #include <fcntl.h>
 
-#include <md5.h>
-#include <sha.h>
+#include <openssl/md5.h>
+#include <openssl/sha.h>
 
 #include "iscsi.h"
 #include "iscontrol.h"
@@ -58,25 +58,25 @@ chapMD5(char id, char *cp, char *chapSecret, unsigned char *digest)
 
      debug_called(3);
 
-     MD5Init(&ctx);
+     MD5_Init(&ctx);
 
-     MD5Update(&ctx, &id, 1);
+     MD5_Update(&ctx, &id, 1);
 
      if((len = str2bin(chapSecret, &tmp)) == 0) {
 	  // print error
 	  return -1;
      }
-     MD5Update(&ctx, tmp, len);
+     MD5_Update(&ctx, tmp, len);
      free(tmp);
 
      if((len = str2bin(cp, &tmp)) == 0) {
 	  // print error
 	  return -1;
      }
-     MD5Update(&ctx, tmp, len);
+     MD5_Update(&ctx, tmp, len);
      free(tmp);
 
-     MD5Final(digest, &ctx);
+     MD5_Final(digest, &ctx);
 
 
      return 0;
@@ -85,7 +85,7 @@ chapMD5(char id, char *cp, char *chapSecret, unsigned char *digest)
 static int
 chapSHA1(char id, char *cp, char *chapSecret, unsigned char *digest)
 {
-     SHA1_CTX	ctx;
+     SHA_CTX	ctx;
      char	*tmp;
      int	len;
 
