@@ -5,10 +5,11 @@
 PROG=	ckdist
 SRCS=   ckdist.c crc.c
 
-DPADD=	${LIBMD}
-LDADD=	-lmd
 
-# XXX sys/md5.h shim errata for bootstrap REMOVE_OPENSSL_FILES
-CFLAGS+= -I${_SHLIBDIRPREFIX}/usr/include/priv
+CFLAGS+=	${PRIVATELIB_CFLAGS}
+DPADD=		${LIBCRYPTO}
+LDADD=		-lprivate_crypto
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+
 
 .include <bsd.prog.mk>

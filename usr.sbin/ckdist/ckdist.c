@@ -36,12 +36,12 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <fts.h>
-#include <md5.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <openssl/md5.h>
 
 extern int crc(int fd, uint32_t *cval, off_t *clen);
 
@@ -216,6 +216,57 @@ ckdist(const char *path, int type)
     return rval;
 }
 
+static char *
+md5_file(const char *filename, char * const buf)
+{
+    unsigned char digest[MD5_DIGEST_LENGTH];
+    static const char hex[]="0123456789abcdef";
+    MD5_CTX ctx;
+    unsigned char buffer[4096];
+    struct stat st;
+    off_t size;
+    int fd, bytes, i;
+
+    if (!buf)
+	return NULL;
+
+    fd = open(filename, O_RDONLY);
+    if (fd < 0)
+	return NULL;
+    if (fstat(fd, &st) < 0) {
+	bytes = -1;
+	goto err;
+    }
+
+    MD5_Init(&ctx);
+    size = st.st_size;
+    bytes = 0;
+    while (size > 0) {
+	if ((size_t)size > sizeof(buffer))
+	    bytes = read(fd, buffer, sizeof(buffer));
+	else
+	    bytes = read(fd, buffer, size);
+	if (bytes < 0)
+	    break;
+	MD5_Update(&ctx, buffer, bytes);
+	size -= bytes;
+    }
+
+err:
+    close(fd);
+    if (bytes < 0)
+	return NULL;
+
+    MD5_Final(digest, &ctx);
+    for (i = 0; i < MD5_DIGEST_LENGTH; i++) {
+	buf[2*i] = hex[digest[i] >> 4];
+	buf[2*i+1] = hex[digest[i] & 0x0f];
+    }
+    buf[MD5_DIGEST_LENGTH * 2] = '\0';
+
+    return buf;
+}
+
 static int
 chkmd5(FILE * fp, const char *path)
 {
@@ -246,7 +297,7 @@ chkmd5(FILE * fp, const char *path)
 		    error = E_ERRNO;
 		else if (close(fd))
 		    err(2, "%s", dname);
-	    } else if (!MD5File(dname, chk))
+	    } else if (!md5_file(dname, chk))
 		error = E_ERRNO;
 	    else if (strcmp(chk, sum))
 		error = E_CHKSUM;
