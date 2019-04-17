@@ -61,7 +61,9 @@
 #include <netdb.h>
 #include <pwd.h>
 #include <grp.h>
+#ifdef OPIE
 #include <opie.h>
+#endif
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -166,8 +168,10 @@ static int	auth_pam(struct passwd**, const char*);
 pam_handle_t	*pamh = NULL;
 #endif
 
+#ifdef OPIE
 static struct opie	opiedata;
 static char		opieprompt[OPIE_CHALLENGE_MAX+1];
+#endif
 static int		pwok;
 
 char	*pid_file = NULL; /* means default location to pidfile(3) */
@@ -1038,6 +1042,7 @@ user(char *name)
 		strncpy(curname, name, sizeof(curname)-1);
 
 	pwok = 0;
+#ifdef OPIE
 #ifdef USE_PAM
 	/* XXX Kluge! The conversation mechanism needs to be fixed. */
 #endif
@@ -1051,6 +1056,10 @@ user(char *name)
 		pwok = 1;
 		reply(331, "Password required for %s.", name);
 	}
+#else
+	pwok = 1;
+	reply(331, "Password required for %s.", name);
+#endif
 	askpasswd = 1;
 	/*
 	 * Delay before reading passwd after first failed
@@ -1362,13 +1371,18 @@ pass(char *passwd)
 #ifdef USE_PAM
 		rval = auth_pam(&pw, passwd);
 		if (rval >= 0) {
+#ifdef OPIE
 			opieunlock();
+#endif
 			goto skip;
 		}
 #endif
+#ifdef OPIE
 		if (opieverify(&opiedata, passwd) == 0)
 			xpasswd = pw->pw_passwd;
-		else if (pwok) {
+		else
+#endif
+		if (pwok) {
 			xpasswd = crypt(passwd, pw->pw_passwd);
 			if (passwd[0] == '\0' && pw->pw_passwd[0] != '\0')
 				xpasswd = ":";

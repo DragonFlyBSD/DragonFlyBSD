@@ -14,8 +14,8 @@ WFORMAT=0
 DPADD=	${LIBUTIL} ${LIBCRYPT}
 LDADD=	-lutil -lcrypt
 
-DPADD+=	${LIBOPIE} ${LIBMD}
-LDADD+=	-lopie -lmd
+DPADD+=	${LIBMD}
+LDADD+=	-lmd
 
 LSDIR=	../../bin/ls
 .PATH:	${.CURDIR}/${LSDIR}
