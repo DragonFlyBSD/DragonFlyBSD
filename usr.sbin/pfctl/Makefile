@@ -10,12 +10,14 @@ MAN=	pfctl.8
 # Ruleset and Anchor handling
 .PATH: ${.CURDIR}/../../sys/net/pf
 
-LDADD+=	-lmd -lm
-DPADD+=	${LIBMD} ${LIBM}
+LDADD=	-lm
+DPADD=	${LIBM}
 
 WARNS?=	2
 
-# XXX sys/md5.h shim errata for bootstrap REMOVE_OPENSSL_FILES
-CFLAGS+= -I${_SHLIBDIRPREFIX}/usr/include/priv
+CFLAGS+=	${PRIVATELIB_CFLAGS}
+DPADD+=		${LIBCRYPTO}
+LDADD+=		-lprivate_crypto
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>
