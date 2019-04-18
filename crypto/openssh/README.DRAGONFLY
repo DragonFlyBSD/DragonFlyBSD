@@ -1,11 +1,21 @@
+OPENSSH
+=======
+
 Original source can be downloaded from OpenBSD at
 ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/
+
+file = openssh-8.0p1.tar.gz
+date = 18 April 2019
+size = 1597697
+sha1 = 756dbb99193f9541c9206a667eaa27b0fa184a4f
 
 A list of deleted files is in README.DELETED.
 
 Upgrading notes:
-./configure --prefix=/usr --sysconfdir=/etc/ssh --with-sandbox=rlimit \
-	--with-pam --with-libedit --with-ssl-engine
+./configure --prefix=/usr --sysconfdir=/etc/ssh --with-sandbox=rlimit --with-pam \
+	    --with-libedit --without-ssl-engine --without-rpath \
+	    --with-privsep-path=/var/empty --with-xauth=/usr/local/bin/xauth \
+	    --disable-pkcs11 ac_cv_lib_dl_dlopen=no
 
 Update config.h in lib/libssh.
 Update version in sshd_config, sshd_config.5, version.h.
@@ -15,6 +25,7 @@ lib/libssh/
 lib/libpam/modules/pam_ssh/
 libexec/sftp-server/
 libexec/ssh-keysign/
+libexec/ssh-pkcs11-helper/
 usr.bin/scp/
 usr.bin/sftp/
 usr.bin/ssh-add/
