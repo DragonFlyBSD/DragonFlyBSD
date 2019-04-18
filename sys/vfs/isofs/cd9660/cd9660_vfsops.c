@@ -205,7 +205,7 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	 */
 	if (mp->mnt_flag & MNT_UPDATE) {
 		imp = VFSTOISOFS(mp);
-		if (args.fspec == 0)
+		if (args.fspec == NULL)
 			return (vfs_export(mp, &imp->im_export, &args.export));
 	}
 	/*

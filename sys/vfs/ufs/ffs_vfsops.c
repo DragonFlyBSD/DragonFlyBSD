@@ -264,7 +264,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 			mp->mnt_flag &= ~MNT_ASYNC;
 		}
 		/* if not updating name...*/
-		if (args.fspec == 0) {
+		if (args.fspec == NULL) {
 			/*
 			 * Process export requests.  Jumping to "success"
 			 * will return the vfs_export() error code.

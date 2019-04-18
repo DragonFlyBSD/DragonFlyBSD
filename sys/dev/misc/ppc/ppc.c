@@ -1884,7 +1884,7 @@ ppc_probe(device_t dev)
 					     &ppc->rid_ioport, 0, ~0,
 					     IO_LPTSIZE_EXTENDED, RF_ACTIVE);
 
-	if (ppc->res_ioport != 0) {
+	if (ppc->res_ioport != NULL) {
 		if (bootverbose)
 			device_printf(dev, "using extended I/O port range\n");
 	} else {
@@ -1893,7 +1893,7 @@ ppc_probe(device_t dev)
 						      &ppc->rid_ioport, 0, ~0,
 						      IO_LPTSIZE_NORMAL,
 						      RF_ACTIVE);
-		if (ppc->res_ioport != 0) {
+		if (ppc->res_ioport != NULL) {
 			if (bootverbose)
 				device_printf(dev, "using normal I/O port range\n");
 		} else {
@@ -1938,17 +1938,17 @@ ppc_probe(device_t dev)
 	return (0);
 
 error:
-	if (ppc->res_irq != 0) {
+	if (ppc->res_irq != NULL) {
 		bus_release_resource(dev, SYS_RES_IRQ, ppc->rid_irq,
 				     ppc->res_irq);
 	}
-	if (ppc->res_ioport != 0) {
+	if (ppc->res_ioport != NULL) {
 		bus_deactivate_resource(dev, SYS_RES_IOPORT, ppc->rid_ioport,
 					ppc->res_ioport);
 		bus_release_resource(dev, SYS_RES_IOPORT, ppc->rid_ioport,
 				     ppc->res_ioport);
 	}
-	if (ppc->res_drq != 0) {
+	if (ppc->res_drq != NULL) {
 		bus_deactivate_resource(dev, SYS_RES_DRQ, ppc->rid_drq,
 					ppc->res_drq);
 		bus_release_resource(dev, SYS_RES_DRQ, ppc->rid_drq,

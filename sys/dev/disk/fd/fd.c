@@ -544,7 +544,7 @@ fdc_alloc_resources(struct fdc_data *fdc)
 					     &fdc->rid_ioport, 0ul, ~0ul, 
 					     ispcmcia ? 8 : (ispnp ? 1 : 6),
 					     RF_ACTIVE);
-	if (fdc->res_ioport == 0) {
+	if (fdc->res_ioport == NULL) {
 		device_printf(dev, "cannot reserve I/O port range\n");
 		return ENXIO;
 	}
@@ -592,7 +592,7 @@ fdc_alloc_resources(struct fdc_data *fdc)
 		fdc->res_ctl = bus_alloc_resource(dev, SYS_RES_IOPORT,
 						  &fdc->rid_ctl,
 						  0ul, ~0ul, 1, RF_ACTIVE);
-		if (fdc->res_ctl == 0) {
+		if (fdc->res_ctl == NULL) {
 			device_printf(dev,
 				      "cannot reserve control I/O port range\n");
 			return ENXIO;
@@ -604,7 +604,7 @@ fdc_alloc_resources(struct fdc_data *fdc)
 	fdc->res_irq = bus_alloc_resource(dev, SYS_RES_IRQ,
 					  &fdc->rid_irq, 0ul, ~0ul, 1, 
 					  RF_ACTIVE);
-	if (fdc->res_irq == 0) {
+	if (fdc->res_irq == NULL) {
 		device_printf(dev, "cannot reserve interrupt line\n");
 		return ENXIO;
 	}
@@ -613,7 +613,7 @@ fdc_alloc_resources(struct fdc_data *fdc)
 		fdc->res_drq = bus_alloc_resource(dev, SYS_RES_DRQ,
 						  &fdc->rid_drq, 0ul, ~0ul, 1, 
 						  RF_ACTIVE);
-		if (fdc->res_drq == 0) {
+		if (fdc->res_drq == NULL) {
 			device_printf(dev, "cannot reserve DMA request line\n");
 			return ENXIO;
 		}
@@ -629,25 +629,25 @@ fdc_release_resources(struct fdc_data *fdc)
 	device_t dev;
 
 	dev = fdc->fdc_dev;
-	if (fdc->res_irq != 0) {
+	if (fdc->res_irq != NULL) {
 		bus_deactivate_resource(dev, SYS_RES_IRQ, fdc->rid_irq,
 					fdc->res_irq);
 		bus_release_resource(dev, SYS_RES_IRQ, fdc->rid_irq,
 				     fdc->res_irq);
 	}
-	if (fdc->res_ctl != 0) {
+	if (fdc->res_ctl != NULL) {
 		bus_deactivate_resource(dev, SYS_RES_IOPORT, fdc->rid_ctl,
 					fdc->res_ctl);
 		bus_release_resource(dev, SYS_RES_IOPORT, fdc->rid_ctl,
 				     fdc->res_ctl);
 	}
-	if (fdc->res_ioport != 0) {
+	if (fdc->res_ioport != NULL) {
 		bus_deactivate_resource(dev, SYS_RES_IOPORT, fdc->rid_ioport,
 					fdc->res_ioport);
 		bus_release_resource(dev, SYS_RES_IOPORT, fdc->rid_ioport,
 				     fdc->res_ioport);
 	}
-	if (fdc->res_drq != 0) {
+	if (fdc->res_drq != NULL) {
 		bus_deactivate_resource(dev, SYS_RES_DRQ, fdc->rid_drq,
 					fdc->res_drq);
 		bus_release_resource(dev, SYS_RES_DRQ, fdc->rid_drq,
@@ -1316,7 +1316,7 @@ Fdopen(struct dev_open_args *ap)
 	fdc_p	fdc;
 
 	/* check bounds */
-	if ((fd = devclass_get_softc(fd_devclass, fdu)) == 0)
+	if ((fd = devclass_get_softc(fd_devclass, fdu)) == NULL)
 		return (ENXIO);
 	fdc = fd->fdc;
 	if ((fdc == NULL) || (fd->type == NO_TYPE))
@@ -1471,7 +1471,7 @@ fdstrategy(struct dev_strategy_args *ap)
 
  	fdu = dkunit(dev);
 	fd = devclass_get_softc(fd_devclass, fdu);
-	if (fd == 0)
+	if (fd == NULL)
 		panic("fdstrategy: buf for nonexistent device (%#lx, %#lx)",
 		      (u_long)major(dev), (u_long)minor(dev));
 	fdc = fd->fdc;

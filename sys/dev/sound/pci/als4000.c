@@ -766,7 +766,7 @@ als_resource_grab(device_t dev, struct sc_info *sc)
 	sc->regid = PCIR_BAR(0);
 	sc->reg = bus_alloc_resource(dev, SYS_RES_IOPORT, &sc->regid, 0, ~0,
 				     ALS_CONFIG_SPACE_BYTES, RF_ACTIVE);
-	if (sc->reg == 0) {
+	if (sc->reg == NULL) {
 		device_printf(dev, "unable to allocate register space\n");
 		goto bad;
 	}
@@ -775,7 +775,7 @@ als_resource_grab(device_t dev, struct sc_info *sc)
 
 	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->irqid,
 					 RF_ACTIVE | RF_SHAREABLE);
-	if (sc->irq == 0) {
+	if (sc->irq == NULL) {
 		device_printf(dev, "unable to allocate interrupt\n");
 		goto bad;
 	}

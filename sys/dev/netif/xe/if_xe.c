@@ -1923,7 +1923,7 @@ xe_activate(device_t dev)
 			sc->port_res = bus_alloc_resource(dev,
 			    SYS_RES_IOPORT, &sc->port_rid, start, 0x3ff, 16,
 			    RF_ACTIVE);
-			if (sc->port_res == 0)
+			if (sc->port_res == NULL)
 				break;		/* we failed */
 			if ((rman_get_start(sc->port_res) & 0xf) == 0)
 				break;		/* good */
@@ -1961,7 +1961,7 @@ xe_activate(device_t dev)
 		sc->port_res = bus_alloc_resource(dev, SYS_RES_IOPORT,
 						  &sc->port_rid, start,
 						  start + 18, 18, RF_ACTIVE);
-		if (sc->port_res == 0)
+		if (sc->port_res == NULL)
 		    continue;	/* Failed, try again if possible */
 		if (bus_get_resource_start(dev, SYS_RES_IOPORT,
 					   sc->port_rid) == start)
