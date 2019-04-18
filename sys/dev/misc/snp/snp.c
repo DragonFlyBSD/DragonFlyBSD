@@ -213,11 +213,9 @@ snpwrite(struct dev_write_args *ap)
 
 	snp = dev->si_drv1;
 	tp = snp->snp_tty;
-	lwkt_gettoken(&tp->t_token);
-	if (tp == NULL) {
-		lwkt_reltoken(&tp->t_token);
+	if (tp == NULL)
 		return (EIO);
-	}
+	lwkt_gettoken(&tp->t_token);
 	if ((tp->t_sc == snp) && (tp->t_state & TS_SNOOP) &&
 	    tp->t_line == snooplinedisc)
 		goto tty_input;
