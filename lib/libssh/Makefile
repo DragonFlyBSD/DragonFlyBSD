@@ -2,48 +2,50 @@ LIB=	private_ssh
 SHLIB_MAJOR= 4
 PRIVATELIB=
 
-SRCS=	ssh_api.c \
-	ssherr.c \
-	sshbuf.c \
-	sshkey.c \
-	sshbuf-getput-basic.c \
-	sshbuf-misc.c \
-	sshbuf-getput-crypto.c \
-	krl.c \
-	bitmap.c
-SRCS+=	authfd.c authfile.c bufaux.c bufbn.c bufec.c buffer.c \
-	canohost.c channels.c cipher.c \
-	cleanup.c \
-	compat.c crc32.c fatal.c hostfile.c \
-	log.c match.c moduli.c nchan.c packet.c opacket.c \
-	readpass.c ttymodes.c xmalloc.c addrmatch.c \
-	atomicio.c key.c dispatch.c mac.c uidswap.c uuencode.c misc.c utf8.c \
-	monitor_fdpass.c rijndael.c ssh-dss.c ssh-ecdsa.c ssh-rsa.c dh.c \
-	msg.c progressmeter.c dns.c entropy.c umac.c umac128.c \
-	ssh-pkcs11.c smult_curve25519_ref.c \
-	poly1305.c chacha.c cipher-chachapoly.c \
-	ssh-ed25519.c digest-openssl.c hmac.c \
-	sc25519.c ge25519.c fe25519.c ed25519.c verify.c hash.c blocks.c \
-	kex.c kexdh.c kexgex.c kexecdh.c kexc25519.c \
-	kexdhc.c kexgexc.c kexecdhc.c kexc25519c.c \
-	kexdhs.c kexgexs.c kexecdhs.c kexc25519s.c \
-	platform-pledge.c platform-tracing.c platform-misc.c
+SRCS=	addrmatch.c atomicio.c authfd.c authfile.c bitmap.c canohost.c \
+	chacha.c channels.c cipher.c cipher-chachapoly.c cleanup.c compat.c \
+	dh.c digest-openssl.c dispatch.c dns.c entropy.c fatal.c \
+	hash.c hmac.c hostfile.c \
+	krl.c log.c mac.c match.c misc.c moduli.c monitor_fdpass.c msg.c \
+	nchan.c packet.c platform-misc.c poly1305.c readpass.c \
+	ssh_api.c ssh-dss.c ssh-ecdsa.c ssh-ed25519.c ssh-rsa.c \
+	sshbuf.c sshbuf-getput-basic.c sshbuf-getput-crypto.c sshbuf-misc.c \
+	ssherr.c sshkey.c ttymodes.c \
+	umac.c umac128.c utf8.c uuencode.c verify.c xmalloc.c
+SRCS+=	ed25519.c fe25519.c ge25519.c sc25519.c smult_curve25519_ref.c
+SRCS+=	kex.c kexc25519.c kexdh.c kexecdh.c \
+	kexgen.c kexgex.c kexgexc.c kexgexs.c \
+	kexsntrup4591761x25519.c sntrup4591761.c
+
+# not implemented: platform-pledge.c platform-tracing.c
+# only for scp/sftp: progressmeter.c
+# disabled: ssh-pkcs11.c
+# no GSSAPI: gss-genr.c
+# no openssl: cipher-aes.c cipher-aesctr.c cipher-ctr.c crc32.c digest-libc.c rijndael.c
+# no xmss: ssh-xmss.c sshkey-xmss.c xmss_commons.c xmss_fast.c xmss_hash.c
+#	   xmss_hash_address.c xmss_wots.c
+
 # Portability layer
-SRCS+=	bcrypt_pbkdf.c blowfish.c bsd-misc.c explicit_bzero.c \
-	getrrsetbyname.c glob.c openssl-compat.c port-tun.c \
-	realpath.c recallocarray.c timingsafe_bcmp.c
+.PATH: ${.CURDIR}/openbsd-compat
+SRCS+=	bcrypt_pbkdf.c blowfish.c bsd-misc.c bsd-signal.c fmt_scaled.c \
+	glob.c openssl-compat.c port-net.c realpath.c xcrypt.c
+SRCS+=	getrrsetbyname.c
+# XXX needs to link libldns, use simple version for now
+#SRCS+=	getrrsetbyname-ldns.c
 
-# only when USE_BUILTIN_RIJNDAEL
-#SRCS+=	cipher-aes.c
-
-# only when GSSAPI
-#SRCS+=	gss-genr.c
-
-# only when !OPENSSL_HAVE_EVPCTR
-#SRCS+=	cipher-ctr.c
-
-# only when !HAVE_EVP_SHA256
-#SRCS+=	md-sha256.c
+# not needed compat:
+# arc4random.c base64.c basename.c bindresvport.c bsd-asprintf.c
+# bsd-closefrom.c bsd-cygwin_util.c bsd-err.c bsd-flock.c bsd-getline.c
+# bsd-getpagesize.c bsd-getpeereid.c bsd-malloc.c bsd-nextstep.c bsd-openpty.c
+# bsd-poll.c bsd-setres_id.c bsd-snprintf.c bsd-statvfs.c bsd-waitpid.c
+# daemon.c dirname.c explicit_bzero.c fake-rfc2553.c freezero.c getcwd.c
+# getgrouplist.c getopt_long.c inet_aton.c inet_ntoa.c inet_ntop.c
+# kludge-fd_set.c libressl-api-compat.c md5.c mktemp.c
+# port-aix.c port-irix.c port-linux.c port-solaris.c port-uw.c
+# pwcache.c readpassphrase.c reallocarray.c recallocarray.c rmd160.c
+# rresvport.c setenv.c setproctitle.c sha1.c sha2.c sigact.c
+# strcasestr.c strlcat.c strlcpy.c strmode.c strndup.c strnlen.c strptime.c
+# strsep.c strtoll.c strtonum.c strtoul.c strtoull.c timingsafe_bcmp.c vis.c
 
 MAN=	moduli.5
 

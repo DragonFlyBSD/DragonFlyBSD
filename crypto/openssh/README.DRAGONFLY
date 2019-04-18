@@ -11,14 +11,24 @@ sha1 = 756dbb99193f9541c9206a667eaa27b0fa184a4f
 
 A list of deleted files is in README.DELETED.
 
-Upgrading notes:
+Configured with
+===============
 ./configure --prefix=/usr --sysconfdir=/etc/ssh --with-sandbox=rlimit --with-pam \
 	    --with-libedit --without-ssl-engine --without-rpath \
 	    --with-privsep-path=/var/empty --with-xauth=/usr/local/bin/xauth \
 	    --disable-pkcs11 ac_cv_lib_dl_dlopen=no
 
-Update config.h in lib/libssh.
-Update version in sshd_config, sshd_config.5, version.h.
+The following files have been patched (* planned)
+=================================================
+  auth-pam.c			WARNS, static sshpam_password_change_required()
+  platform.h			pledge dummies
+  readconf.c			disabled default password authentification
+  session.c			WARNS, unused copy_environment()
+				WARNS, strdup(login_getcapstr()) (leak)
+  sshd_config			PasswordAuthentication no
+
+NOTE: The configure script misdetects few things.
+Update config.h and openbsd-compat in lib/libssh.
 
 Used in:
 lib/libssh/

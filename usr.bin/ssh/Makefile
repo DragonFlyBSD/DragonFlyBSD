@@ -6,9 +6,9 @@ MAN=	ssh.1 ssh_config.5
 MLINKS=	ssh.1 slogin.1
 WARNS?=	2
 
-SRCS=	ssh.c readconf.c clientloop.c sshtty.c \
-	sshconnect.c sshconnect2.c mux.c
-SRCS+=	fmt_scaled.c
+SRCS=	ssh.c
+SRCS+=	clientloop.c mux.c readconf.c \
+	sshconnect.c sshconnect2.c sshtty.c
 
 .include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>
