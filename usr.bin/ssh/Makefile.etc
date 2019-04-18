@@ -1,5 +1,4 @@
-# $DragonFly: src/secure/usr.bin/ssh/Makefile.etc,v 1.2 2008/04/08 12:12:53 swildner Exp $
-#
+.PATH: ${.CURDIR}/../../crypto/openssh
 
 FILES=		ssh_config
 FILESDIR=	/etc/ssh
@@ -7,5 +6,4 @@ FILESOWN=	${BINOWN}
 FILESGRP=	${BINGRP}
 FILESMODE=	644
 
-.include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>

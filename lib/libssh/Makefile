@@ -2,6 +2,7 @@ LIB=	private_ssh
 SHLIB_MAJOR= 4
 PRIVATELIB=
 
+.PATH: ${.CURDIR}/../../crypto/openssh
 SRCS=	addrmatch.c atomicio.c authfd.c authfile.c bitmap.c canohost.c \
 	chacha.c channels.c cipher.c cipher-chachapoly.c cleanup.c compat.c \
 	dh.c digest-openssl.c dispatch.c dns.c entropy.c fatal.c \
@@ -52,5 +53,13 @@ MAN=	moduli.5
 WARNS?=	2
 NO_STRICT_ALIASING=
 
-.include "../../Makefile.ssh.common"
+CFLAGS+=	-I${.CURDIR} -I${.CURDIR}/../../crypto/openssh
+CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
+# XXX investigate why
+.if 0
+DPADD=		${LIBCRYPTO} ${LIBUTIL} ${LIBZ}
+LDADD=		-lprivate_crypto -lutil -lz
+LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}
+.endif
+
 .include <bsd.lib.mk>

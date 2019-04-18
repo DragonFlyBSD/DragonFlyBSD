@@ -22,8 +22,17 @@ MAN=	sshd.8 sshd_config.5
 CFLAGS+= -DUSE_PAM
 #CFLAGS+= -DHAVE_SECURITY_PAM_APPL_H -DHAVE_PAM_GETENVLIST -DHAVE_PAM_PUTENV
 
+.if defined(XAUTH_PATH)
+CFLAGS+= -DXAUTH_PATH=\"${XAUTH_PATH}\"
+.endif
+
 LDADD+=	-lcrypt ${MINUSLPAM}
 DPADD+=	${LIBCRYPT} ${LIBPAM}
 
-.include "../../Makefile.ssh.common"
+CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${.CURDIR}/../../crypto/openssh
+CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
+DPADD+=		${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ}
+LDADD+=		-lprivate_ssh -lprivate_crypto -lutil -lz
+LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}
+
 .include <bsd.prog.mk>

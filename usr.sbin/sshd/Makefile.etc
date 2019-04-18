@@ -1,3 +1,5 @@
+.PATH: ${.CURDIR}/../../crypto/openssh
+
 FILES=		sshd_config
 FILESDIR=	/etc/ssh
 FILESMODE=	644
@@ -12,5 +14,4 @@ beforeinstall:
 		exit 1;	\
 	fi
 
-.include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>
