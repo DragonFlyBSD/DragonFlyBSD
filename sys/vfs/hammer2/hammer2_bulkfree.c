@@ -387,19 +387,44 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 	hammer2_dedup_clear(hmp);
 
 	/*
-	 * Setup for free pass.  Maximum buffer memory is 1/4 physical
-	 * memory.
+	 * Setup for free pass using the buffer size specified by the
+	 * hammer2 utility, 32K-aligned.
 	 */
 	bzero(&cbinfo, sizeof(cbinfo));
 	size = (bfi->size + HAMMER2_FREEMAP_LEVELN_PSIZE - 1) &
 	       ~(size_t)(HAMMER2_FREEMAP_LEVELN_PSIZE - 1);
-	if (size < 1024 * 1024)
-		size = 1024 * 1024;
+
+	/*
+	 * Cap at 1/4 physical memory (hammer2 utility will not normally
+	 * ever specify a buffer this big, but leave the option available).
+	 */
 	if (size > kmem_lim_size() * 1024 * 1024 / 4) {
 		size = kmem_lim_size() * 1024 * 1024 / 4;
 		kprintf("hammer2: Warning: capping bulkfree buffer at %jdM\n",
 			(intmax_t)size / (1024 * 1024));
 	}
+
+#define HAMMER2_FREEMAP_SIZEDIV	\
+	(HAMMER2_FREEMAP_LEVEL1_SIZE / HAMMER2_FREEMAP_LEVELN_PSIZE)
+#define HAMMER2_FREEMAP_SIZEMASK	(HAMMER2_FREEMAP_SIZEDIV - 1)
+
+	/*
+	 * Cap at the size needed to cover the whole volume to avoid
+	 * making an unnecessarily large allocation.
+	 */
+	if (size > hmp->voldata.volu_size / HAMMER2_FREEMAP_SIZEDIV) {
+		size = (hmp->voldata.volu_size + HAMMER2_FREEMAP_SIZEMASK) /
+			HAMMER2_FREEMAP_SIZEDIV;
+	}
+
+	/*
+	 * Minimum bitmap buffer size, then align to a LEVELN_PSIZE (32K)
+	 * boundary.
+	 */
+	if (size < 1024 * 1024)
+		size = 1024 * 1024;
+	size = (size + HAMMER2_FREEMAP_LEVELN_PSIZE - 1) &
+	       ~(size_t)(HAMMER2_FREEMAP_LEVELN_PSIZE - 1);
 
 	cbinfo.hmp = hmp;
 	cbinfo.bmap = kmem_alloc_swapbacked(&cbinfo.kp, size, VM_SUBSYS_HAMMER);
@@ -407,6 +432,9 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 
 	cbinfo.dedup = kmalloc(sizeof(*cbinfo.dedup) * HAMMER2_DEDUP_HEUR_SIZE,
 			       M_HAMMER2, M_WAITOK | M_ZERO);
+
+	kprintf("hammer2: bulkfree buf=%jdM\n",
+		(intmax_t)size / (1024 * 1024));
 
 	/*
 	 * Normalize start point to a 2GB boundary.  We operate on a
@@ -437,6 +465,8 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 		 * Since the ranging is different, we have to restart
 		 * the dedup heuristic too.
 		 */
+		int allmedia;
+
 		cbinfo_bmap_init(&cbinfo, size);
 		bzero(cbinfo.dedup, sizeof(*cbinfo.dedup) *
 				    HAMMER2_DEDUP_HEUR_SIZE);
@@ -448,16 +478,23 @@ hammer2_bulkfree_pass(hammer2_dev_t *hmp, hammer2_chain_t *vchain,
 
 		incr = size / HAMMER2_FREEMAP_LEVELN_PSIZE *
 		       HAMMER2_FREEMAP_LEVEL1_SIZE;
-		if (hmp->voldata.volu_size - cbinfo.sbase < incr)
+		if (hmp->voldata.volu_size - cbinfo.sbase <= incr) {
 			cbinfo.sstop = hmp->voldata.volu_size;
-		else
+			allmedia = 1;
+		} else {
 			cbinfo.sstop = cbinfo.sbase + incr;
-		kprintf("hammer2: bulkfree buf=%5jdM "
-			"pass %016jx-%016jx (%jdGB of media)\n",
-			(intmax_t)size / (1024 * 1024),
+			allmedia = 0;
+		}
+		kprintf("hammer2: pass %016jx-%016jx ",
 			(intmax_t)cbinfo.sbase,
-			(intmax_t)cbinfo.sstop,
-			(intmax_t)incr / (1024L*1024*1024));
+			(intmax_t)cbinfo.sstop);
+		if (allmedia && cbinfo.sbase == 0)
+			kprintf("(all media)\n");
+		else if (allmedia)
+			kprintf("(remaining media)\n");
+		else
+			kprintf("(%jdGB of media)\n",
+				(intmax_t)incr / (1024L*1024*1024));
 
 		/*
 		 * Scan topology for stuff inside this range.
