@@ -22,11 +22,8 @@ MAN=	sshd.8 sshd_config.5
 CFLAGS+= -DUSE_PAM
 #CFLAGS+= -DHAVE_SECURITY_PAM_APPL_H -DHAVE_PAM_GETENVLIST -DHAVE_PAM_PUTENV
 
-LDADD+=	-lopie
-DPADD+=	${LIBOPIE}
-
-LDADD+=	-lcrypt -lwrap ${MINUSLPAM}
-DPADD+=	${LIBCRYPT} ${LIBWRAP} ${LIBPAM}
+LDADD+=	-lcrypt ${MINUSLPAM}
+DPADD+=	${LIBCRYPT} ${LIBPAM}
 
 .include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>
