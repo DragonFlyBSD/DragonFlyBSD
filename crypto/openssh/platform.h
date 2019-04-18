@@ -29,9 +29,20 @@ void platform_setusercontext_post_groups(struct passwd *);
 char *platform_get_krb5_client(const char *);
 char *platform_krb5_get_principal_name(const char *);
 int platform_sys_dir_uid(uid_t);
+#ifndef __DragonFly__
+/* XXX not implemented */
 void platform_disable_tracing(int);
+#else
+#define platform_disable_tracing(x)
+#endif
 
 /* in platform-pledge.c */
+#ifndef __DragonFly__
 void platform_pledge_agent(void);
 void platform_pledge_sftp_server(void);
 void platform_pledge_mux(void);
+#else
+#define platform_pledge_agent()
+#define platform_pledge_sftp_server()
+#define platform_pledge_mux()
+#endif
