@@ -3562,7 +3562,7 @@ void mrsas_aen_handler(struct mrsas_softc *sc)
 	int error;
 
 	if (!sc) {
-		device_printf(sc->mrsas_dev, "invalid instance!\n");
+		kprintf("invalid instance!\n");
 		return;
 	}
 

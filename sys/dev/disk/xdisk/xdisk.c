@@ -766,10 +766,8 @@ xa_close(struct dev_close_args *ap)
 
 	lockmgr(&xdisk_lk, LK_EXCLUSIVE);
 	sc = dev->si_drv1;
-	if (sc == NULL) {
-		lockmgr(&sc->lk, LK_RELEASE);
+	if (sc == NULL)
 		return ENXIO;	/* raced destruction */
-	}
 	if (sc->terminating) {
 		lockmgr(&sc->lk, LK_RELEASE);
 		return ENXIO;	/* raced destruction */

@@ -36,7 +36,6 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)chpass.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/chpass/chpass.c,v 1.28 2006/09/25 15:06:24 marck Exp $
- * $DragonFly: src/usr.bin/chpass/chpass.c,v 1.4 2003/11/03 19:31:28 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -229,8 +228,11 @@ main(int argc, char **argv)
 #ifdef YP
 	case _PWF_NIS:
 		ypclnt = ypclnt_new(yp_domain, "passwd.byname", yp_host);
-		if (ypclnt == NULL ||
-		    ypclnt_connect(ypclnt) == -1 ||
+		if (ypclnt == NULL) {
+			warnx("ypclnt_new failed");
+			exit(1);
+		}
+		if (ypclnt_connect(ypclnt) == -1 ||
 		    ypclnt_passwd(ypclnt, pw, password) == -1) {
 			warnx("%s", ypclnt->error);
 			ypclnt_free(ypclnt);
