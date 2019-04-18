@@ -95,7 +95,7 @@ WR(stub_zero, pthread_condattr_init);
 WR(stub_zero, pthread_condattr_setclock);
 WR(stub_zero, pthread_condattr_setpshared);
 WR(stub_zero, pthread_detach);
-WR(stub_true, pthread_equal);
+WR(stub_equal, pthread_equal);
 WR(stub_exit, pthread_exit);
 WR(stub_zero, pthread_getaffinity_np);
 WR(stub_zero, pthread_getconcurrency);
@@ -220,9 +220,9 @@ stub_main(void)
 }
 
 static int __used
-stub_true(void)
+stub_equal(pthread_t a, pthread_t b)
 {
-	return (1);
+	return (a == b);
 }
 
 static void __used
