@@ -273,7 +273,7 @@ XMAKEENV=	MAKEOBJDIRPREFIX=${CTOOLSDEST} \
 		PATH=${BTOOLSPATH}:${PATH}
 
 XMAKE=		${XMAKEENV} make -f Makefile.inc1 -DNO_GDB \
-		-DBOOTSTRAPPING -DNOSHARED -DSYSBUILD
+		-DBOOTSTRAPPING -DNOMAN -DNOSHARED -DSYSBUILD
 
 # world stage, note the strict path and note that TOOLS_PREFIX is left
 # unset and USRDATA_PREFIX (which defaults to TOOLS_PREFIX) is set to empty,
