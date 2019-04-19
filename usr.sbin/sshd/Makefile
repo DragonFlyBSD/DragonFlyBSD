@@ -15,6 +15,10 @@ SRCS+=	auth.c auth-options.c auth-pam.c auth-passwd.c auth-rhosts.c \
 # sandbox-capsicum.c sandbox-darwin.c sandbox-null.c sandbox-pledge.c
 # sandbox-seccomp-filter.c sandbox-solaris.c sandbox-systrace.c
 
+# Custom password routine
+SRCS+=	auth-passwd-custom.c
+CFLAGS+= -DCUSTOM_SYS_AUTH_PASSWD
+
 WARNS?=	3
 
 MAN=	sshd.8 sshd_config.5
