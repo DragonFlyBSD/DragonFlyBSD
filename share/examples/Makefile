@@ -3,7 +3,8 @@
 # Doing a make install builds /usr/share/examples
 
 DIRS!=	for i in *; do \
-	    if test -d $$i -a $$i != acpica -a $$i != smbfs; then \
+	    if test -d $$i -a $$i != acpica -a $$i != smbfs \
+			-a $$i != ssh -a $$i != ssl ; then \
 		echo $$i; \
             fi; \
 	done
@@ -40,7 +41,7 @@ etc-examples:
 .endif
 
 .if ${SHARED} != "symlinks"
-SUBDIR=	acpica smbfs
+SUBDIR=	acpica smbfs ssh ssl
 .endif
 
 .include <bsd.subdir.mk>

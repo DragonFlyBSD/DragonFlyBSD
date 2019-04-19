@@ -75,3 +75,10 @@ defaults/make.conf	- system build default information
 defaults/periodic.conf	- default configuration file for periodic(8)
 defaults/rc.conf	- system configuration default info
 defaults/uuids		- default list of UUIDs and names (see uuid(3))
+ssh/			- directory containing default ssh files
+ssh/moduli		- default prime numbers for sshd(8)
+ssh/ssh_config		- default SSH client configuration
+ssh/sshd_config		- default SSH daemon configuration
+ssl/			- directory containing default ssl files
+ssl/cert.pem		- default certificate bundle
+ssl/openssl.cnf		- default certificate configuration

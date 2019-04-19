@@ -178,6 +178,10 @@
             etc
                 defaults
                 ..
+                ssh
+                ..
+                ssl
+                ..
             ..
             find_interface
             ..
