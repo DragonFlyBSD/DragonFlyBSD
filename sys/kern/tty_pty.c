@@ -665,7 +665,7 @@ ptcopen(struct dev_open_args *ap)
 	pti->pt_ucntl = 0;
 
 	pti->devs->si_uid = ap->a_cred->cr_uid;
-	pti->devs->si_gid = 0;
+	pti->devs->si_gid = ap->a_cred->cr_uid ? GID_TTY : 0;
 	pti->devs->si_perms = 0600;
 	pti->devc->si_uid = ap->a_cred->cr_uid;
 	pti->devc->si_gid = 0;
