@@ -22,9 +22,9 @@ The following files have been patched (* planned)
 =================================================
   auth-pam.c			WARNS, static sshpam_password_change_required()
   platform.h			pledge dummies
-  readconf.c			disabled default password authentification
   session.c			WARNS, unused copy_environment()
 				WARNS, strdup(login_getcapstr()) (leak)
+  servconf.c			PAM defaults
   sshd_config			PasswordAuthentication no
 
 NOTE: The configure script misdetects few things.
