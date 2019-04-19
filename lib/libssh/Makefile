@@ -1,6 +1,6 @@
 LIB=	private_ssh
-SHLIB_MAJOR= 4
-PRIVATELIB=
+SHLIB_MAJOR= 5
+PRIVATELIB= shpub
 
 .PATH: ${.CURDIR}/../../crypto/openssh
 SRCS=	addrmatch.c atomicio.c authfd.c authfile.c bitmap.c canohost.c \

@@ -25,11 +25,12 @@ SUBDIR_ORDERED= \
 	${_libc_r} \
 	librecrypto \
 	libressl \
-	libssh \
 	libcrypt \
 	libbz2 \
 	liblzma \
 	libz \
+	libutil \
+	libssh \
 	libmd \
 	libopie \
 	libypclnt \
@@ -38,7 +39,6 @@ SUBDIR_ORDERED= \
 	libsbuf \
 	libtacplus \
 	libthread_xu \
-	libutil \
 	libpthread \
 	libfetch \
 	libedit \
