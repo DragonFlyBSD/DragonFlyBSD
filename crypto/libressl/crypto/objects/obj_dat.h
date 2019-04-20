@@ -62,12 +62,12 @@
  * [including the GNU Public Licence.]
  */
 
-#define NUM_NID 950
-#define NUM_SN 943
-#define NUM_LN 943
-#define NUM_OBJ 884
+#define NUM_NID 980
+#define NUM_SN 973
+#define NUM_LN 973
+#define NUM_OBJ 905
 
-static const unsigned char lvalues[6199]={
+static const unsigned char lvalues[6336]={
 0x2A,0x86,0x48,0x86,0xF7,0x0D,               /* [  0] OBJ_rsadsi */
 0x2A,0x86,0x48,0x86,0xF7,0x0D,0x01,          /* [  6] OBJ_pkcs */
 0x2A,0x86,0x48,0x86,0xF7,0x0D,0x02,0x02,     /* [ 13] OBJ_md2 */
@@ -946,6 +946,27 @@ static const unsigned char lvalues[6199]={
 0x2A,0x85,0x03,0x07,0x01,0x01,0x01,0x02,     /* [6174] OBJ_id_tc26_gost3410_2012_512 */
 0x2A,0x85,0x03,0x07,0x01,0x01,0x03,0x02,     /* [6182] OBJ_id_tc26_signwithdigest_gost3410_2012_256 */
 0x2A,0x85,0x03,0x07,0x01,0x01,0x03,0x03,     /* [6190] OBJ_id_tc26_signwithdigest_gost3410_2012_512 */
+0x2B,0x65,0x6E,                              /* [6198] OBJ_X25519 */
+0x2B,0x65,0x6F,                              /* [6201] OBJ_X448 */
+0x2B,0x65,0x70,                              /* [6204] OBJ_Ed25519 */
+0x2B,0x65,0x71,                              /* [6207] OBJ_Ed448 */
+0x2B,0x65,0x72,                              /* [6210] OBJ_Ed25519ph */
+0x2B,0x65,0x73,                              /* [6213] OBJ_Ed448ph */
+0x2B,0x06,0x01,0x04,0x01,0x82,0x37,0x3C,0x02,0x01,0x01,/* [6216] OBJ_jurisdictionLocalityName */
+0x2B,0x06,0x01,0x04,0x01,0x82,0x37,0x3C,0x02,0x01,0x02,/* [6227] OBJ_jurisdictionStateOrProvinceName */
+0x2B,0x06,0x01,0x04,0x01,0x82,0x37,0x3C,0x02,0x01,0x03,/* [6238] OBJ_jurisdictionCountryName */
+0x2A,0x81,0x1C,0xCF,0x55,0x01,0x83,0x11,     /* [6249] OBJ_sm3 */
+0x2A,0x81,0x1C,0xCF,0x55,0x01,0x83,0x78,     /* [6257] OBJ_sm3WithRSAEncryption */
+0x2A,0x81,0x1C,                              /* [6265] OBJ_ISO_CN */
+0x2A,0x81,0x1C,0xCF,0x55,                    /* [6268] OBJ_oscca */
+0x2A,0x81,0x1C,0xCF,0x55,0x01,               /* [6273] OBJ_sm_scheme */
+0x2A,0x81,0x1C,0xCF,0x55,0x01,0x68,0x01,     /* [6279] OBJ_sm4_ecb */
+0x2A,0x81,0x1C,0xCF,0x55,0x01,0x68,0x02,     /* [6287] OBJ_sm4_cbc */
+0x2A,0x81,0x1C,0xCF,0x55,0x01,0x68,0x03,     /* [6295] OBJ_sm4_ofb128 */
+0x2A,0x81,0x1C,0xCF,0x55,0x01,0x68,0x04,     /* [6303] OBJ_sm4_cfb128 */
+0x2A,0x81,0x1C,0xCF,0x55,0x01,0x68,0x05,     /* [6311] OBJ_sm4_cfb1 */
+0x2A,0x81,0x1C,0xCF,0x55,0x01,0x68,0x06,     /* [6319] OBJ_sm4_cfb8 */
+0x2A,0x81,0x1C,0xCF,0x55,0x01,0x68,0x07,     /* [6327] OBJ_sm4_ctr */
 };
 
 static const ASN1_OBJECT nid_objs[NUM_NID]={
@@ -2145,7 +2166,7 @@ static const ASN1_OBJECT nid_objs[NUM_NID]={
 	&(lvalues[5097]),0},
 {"subjectDirectoryAttributes","X509v3 Subject Directory Attributes",
 	NID_subject_directory_attributes,3,&(lvalues[5105]),0},
-{"issuingDistributionPoint","X509v3 Issuing Distrubution Point",
+{"issuingDistributionPoint","X509v3 Issuing Distribution Point",
 	NID_issuing_distribution_point,3,&(lvalues[5108]),0},
 {"certificateIssuer","X509v3 Certificate Issuer",
 	NID_certificate_issuer,3,&(lvalues[5111]),0},
@@ -2483,6 +2504,40 @@ static const ASN1_OBJECT nid_objs[NUM_NID]={
 {"id-tc26-signwithdigest-gost3410-2012-512",
 	"GOST R 34.11-2012 with GOST R 34.10-2012 (512 bit)",
 	NID_id_tc26_signwithdigest_gost3410_2012_512,8,&(lvalues[6190]),0},
+{"X25519","X25519",NID_X25519,3,&(lvalues[6198]),0},
+{"X448","X448",NID_X448,3,&(lvalues[6201]),0},
+{"Ed25519","Ed25519",NID_Ed25519,3,&(lvalues[6204]),0},
+{"Ed448","Ed448",NID_Ed448,3,&(lvalues[6207]),0},
+{"Ed25519ph","Ed25519ph",NID_Ed25519ph,3,&(lvalues[6210]),0},
+{"Ed448ph","Ed448ph",NID_Ed448ph,3,&(lvalues[6213]),0},
+{"jurisdictionLocalityName","jurisdictionLocalityName",
+	NID_jurisdictionLocalityName,11,&(lvalues[6216]),0},
+{"jurisdictionStateOrProvinceName","jurisdictionStateOrProvinceName",
+	NID_jurisdictionStateOrProvinceName,11,&(lvalues[6227]),0},
+{"jurisdictionCountryName","jurisdictionCountryName",
+	NID_jurisdictionCountryName,11,&(lvalues[6238]),0},
+{"KxRSA","kx-rsa",NID_kx_rsa,0,NULL,0},
+{"KxECDHE","kx-ecdhe",NID_kx_ecdhe,0,NULL,0},
+{"KxDHE","kx-dhe",NID_kx_dhe,0,NULL,0},
+{"KxGOST","kx-gost",NID_kx_gost,0,NULL,0},
+{"AuthRSA","auth-rsa",NID_auth_rsa,0,NULL,0},
+{"AuthECDSA","auth-ecdsa",NID_auth_ecdsa,0,NULL,0},
+{"AuthGOST01","auth-gost01",NID_auth_gost01,0,NULL,0},
+{"AuthNULL","auth-null",NID_auth_null,0,NULL,0},
+{"ChaCha20-Poly1305","chacha20-poly1305",NID_chacha20_poly1305,0,NULL,0},
+{"SM3","sm3",NID_sm3,8,&(lvalues[6249]),0},
+{"RSA-SM3","sm3WithRSAEncryption",NID_sm3WithRSAEncryption,8,
+	&(lvalues[6257]),0},
+{"ISO-CN","ISO CN Member Body",NID_ISO_CN,3,&(lvalues[6265]),0},
+{"oscca","oscca",NID_oscca,5,&(lvalues[6268]),0},
+{"sm-scheme","sm-scheme",NID_sm_scheme,6,&(lvalues[6273]),0},
+{"SM4-ECB","sm4-ecb",NID_sm4_ecb,8,&(lvalues[6279]),0},
+{"SM4-CBC","sm4-cbc",NID_sm4_cbc,8,&(lvalues[6287]),0},
+{"SM4-OFB","sm4-ofb",NID_sm4_ofb128,8,&(lvalues[6295]),0},
+{"SM4-CFB","sm4-cfb",NID_sm4_cfb128,8,&(lvalues[6303]),0},
+{"SM4-CFB1","sm4-cfb1",NID_sm4_cfb1,8,&(lvalues[6311]),0},
+{"SM4-CFB8","sm4-cfb8",NID_sm4_cfb8,8,&(lvalues[6319]),0},
+{"SM4-CTR","sm4-ctr",NID_sm4_ctr,8,&(lvalues[6327]),0},
 };
 
 static const unsigned int sn_objs[NUM_SN]={
@@ -2513,6 +2568,10 @@ static const unsigned int sn_objs[NUM_SN]={
 426,	/* "AES-256-ECB" */
 428,	/* "AES-256-OFB" */
 914,	/* "AES-256-XTS" */
+964,	/* "AuthECDSA" */
+965,	/* "AuthGOST01" */
+966,	/* "AuthNULL" */
+963,	/* "AuthRSA" */
 91,	/* "BF-CBC" */
 93,	/* "BF-CFB" */
 92,	/* "BF-ECB" */
@@ -2545,6 +2604,7 @@ static const unsigned int sn_objs[NUM_SN]={
 141,	/* "CRLReason" */
 417,	/* "CSPName" */
 937,	/* "ChaCha" */
+967,	/* "ChaCha20-Poly1305" */
 367,	/* "CrlID" */
 391,	/* "DC" */
 31,	/* "DES-CBC" */
@@ -2572,6 +2632,10 @@ static const unsigned int sn_objs[NUM_SN]={
 70,	/* "DSA-SHA1-old" */
 67,	/* "DSA-old" */
 297,	/* "DVCS" */
+952,	/* "Ed25519" */
+954,	/* "Ed25519ph" */
+953,	/* "Ed448" */
+955,	/* "Ed448ph" */
 936,	/* "FRP256v1" */
 99,	/* "GN" */
 855,	/* "HMAC" */
@@ -2583,10 +2647,15 @@ static const unsigned int sn_objs[NUM_SN]={
 36,	/* "IDEA-ECB" */
 46,	/* "IDEA-OFB" */
 181,	/* "ISO" */
+970,	/* "ISO-CN" */
 183,	/* "ISO-US" */
 645,	/* "ITU-T" */
 646,	/* "JOINT-ISO-ITU-T" */
 773,	/* "KISA" */
+961,	/* "KxDHE" */
+960,	/* "KxECDHE" */
+962,	/* "KxGOST" */
+959,	/* "KxRSA" */
 15,	/* "L" */
 856,	/* "LocalKeySet" */
  3,	/* "MD2" */
@@ -2652,6 +2721,7 @@ static const unsigned int sn_objs[NUM_SN]={
 668,	/* "RSA-SHA256" */
 669,	/* "RSA-SHA384" */
 670,	/* "RSA-SHA512" */
+969,	/* "RSA-SM3" */
 919,	/* "RSAES-OAEP" */
 912,	/* "RSASSA-PSS" */
 777,	/* "SEED-CBC" */
@@ -2664,6 +2734,14 @@ static const unsigned int sn_objs[NUM_SN]={
 672,	/* "SHA256" */
 673,	/* "SHA384" */
 674,	/* "SHA512" */
+968,	/* "SM3" */
+974,	/* "SM4-CBC" */
+976,	/* "SM4-CFB" */
+977,	/* "SM4-CFB1" */
+978,	/* "SM4-CFB8" */
+979,	/* "SM4-CTR" */
+973,	/* "SM4-ECB" */
+975,	/* "SM4-OFB" */
 188,	/* "SMIME" */
 167,	/* "SMIME-CAPS" */
 100,	/* "SN" */
@@ -2671,6 +2749,8 @@ static const unsigned int sn_objs[NUM_SN]={
 143,	/* "SXNetID" */
 458,	/* "UID" */
  0,	/* "UNDEF" */
+950,	/* "X25519" */
+951,	/* "X448" */
 11,	/* "X500" */
 378,	/* "X500algorithms" */
 12,	/* "X509" */
@@ -3088,6 +3168,9 @@ static const unsigned int sn_objs[NUM_SN]={
 86,	/* "issuerAltName" */
 770,	/* "issuingDistributionPoint" */
 492,	/* "janetMailbox" */
+958,	/* "jurisdictionCountryName" */
+956,	/* "jurisdictionLocalityName" */
+957,	/* "jurisdictionStateOrProvinceName" */
 150,	/* "keyBag" */
 83,	/* "keyUsage" */
 477,	/* "lastModifiedBy" */
@@ -3133,6 +3216,7 @@ static const unsigned int sn_objs[NUM_SN]={
 77,	/* "nsSslServerName" */
 681,	/* "onBasis" */
 491,	/* "organizationalStatus" */
+971,	/* "oscca" */
 475,	/* "otherMailbox" */
 876,	/* "owner" */
 489,	/* "pagerTelephoneNumber" */
@@ -3379,6 +3463,7 @@ static const unsigned int sn_objs[NUM_SN]={
 52,	/* "signingTime" */
 454,	/* "simpleSecurityObject" */
 496,	/* "singleLevelQuality" */
+972,	/* "sm-scheme" */
 387,	/* "snmpv2" */
 941,	/* "streebog256" */
 942,	/* "streebog512" */
@@ -3447,6 +3532,10 @@ static const unsigned int ln_objs[NUM_LN]={
 382,	/* "Directory" */
 392,	/* "Domain" */
 132,	/* "E-mail Protection" */
+952,	/* "Ed25519" */
+954,	/* "Ed25519ph" */
+953,	/* "Ed448" */
+955,	/* "Ed448ph" */
 389,	/* "Enterprises" */
 384,	/* "Experimental" */
 372,	/* "Extended OCSP Status" */
@@ -3483,6 +3572,7 @@ static const unsigned int ln_objs[NUM_LN]={
 294,	/* "IPSec End System" */
 295,	/* "IPSec Tunnel" */
 296,	/* "IPSec User" */
+970,	/* "ISO CN Member Body" */
 182,	/* "ISO Member Body" */
 183,	/* "ISO US Member Body" */
 667,	/* "Independent" */
@@ -3547,6 +3637,8 @@ static const unsigned int ln_objs[NUM_LN]={
 129,	/* "TLS Web Server Authentication" */
 133,	/* "Time Stamping" */
 375,	/* "Trust Root" */
+950,	/* "X25519" */
+951,	/* "X448" */
 12,	/* "X509" */
 402,	/* "X509v3 AC Targeting" */
 746,	/* "X509v3 Any Policy" */
@@ -3562,7 +3654,7 @@ static const unsigned int ln_objs[NUM_LN]={
 857,	/* "X509v3 Freshest CRL" */
 748,	/* "X509v3 Inhibit Any Policy" */
 86,	/* "X509v3 Issuer Alternative Name" */
-770,	/* "X509v3 Issuing Distrubution Point" */
+770,	/* "X509v3 Issuing Distribution Point" */
 83,	/* "X509v3 Key Usage" */
 666,	/* "X509v3 Name Constraints" */
 403,	/* "X509v3 No Revocation Available" */
@@ -3618,6 +3710,10 @@ static const unsigned int ln_objs[NUM_LN]={
 484,	/* "associatedDomain" */
 485,	/* "associatedName" */
 501,	/* "audio" */
+964,	/* "auth-ecdsa" */
+965,	/* "auth-gost01" */
+966,	/* "auth-null" */
+963,	/* "auth-rsa" */
 882,	/* "authorityRevocationList" */
 91,	/* "bf-cbc" */
 93,	/* "bf-cfb" */
@@ -3690,6 +3786,7 @@ static const unsigned int ln_objs[NUM_LN]={
 517,	/* "certificate extensions" */
 883,	/* "certificateRevocationList" */
 937,	/* "chacha" */
+967,	/* "chacha20-poly1305" */
 54,	/* "challengePassword" */
 407,	/* "characteristic-two-field" */
 395,	/* "clearance" */
@@ -4023,8 +4120,15 @@ static const unsigned int ln_objs[NUM_LN]={
 645,	/* "itu-t" */
 492,	/* "janetMailbox" */
 646,	/* "joint-iso-itu-t" */
+958,	/* "jurisdictionCountryName" */
+956,	/* "jurisdictionLocalityName" */
+957,	/* "jurisdictionStateOrProvinceName" */
 150,	/* "keyBag" */
 773,	/* "kisa" */
+961,	/* "kx-dhe" */
+960,	/* "kx-ecdhe" */
+962,	/* "kx-gost" */
+959,	/* "kx-rsa" */
 477,	/* "lastModifiedBy" */
 476,	/* "lastModifiedTime" */
 157,	/* "localKeyID" */
@@ -4057,6 +4161,7 @@ static const unsigned int ln_objs[NUM_LN]={
 17,	/* "organizationName" */
 491,	/* "organizationalStatus" */
 18,	/* "organizationalUnitName" */
+971,	/* "oscca" */
 475,	/* "otherMailbox" */
 876,	/* "owner" */
 489,	/* "pagerTelephoneNumber" */
@@ -4330,6 +4435,16 @@ static const unsigned int ln_objs[NUM_LN]={
 52,	/* "signingTime" */
 454,	/* "simpleSecurityObject" */
 496,	/* "singleLevelQuality" */
+972,	/* "sm-scheme" */
+968,	/* "sm3" */
+969,	/* "sm3WithRSAEncryption" */
+974,	/* "sm4-cbc" */
+976,	/* "sm4-cfb" */
+977,	/* "sm4-cfb1" */
+978,	/* "sm4-cfb8" */
+979,	/* "sm4-ctr" */
+973,	/* "sm4-ecb" */
+975,	/* "sm4-ofb" */
 16,	/* "stateOrProvinceName" */
 660,	/* "streetAddress" */
 498,	/* "subtreeMaximumQuality" */
@@ -4398,8 +4513,15 @@ static const unsigned int obj_objs[NUM_OBJ]={
 512,	/* OBJ_id_set                       2 23 42 */
 678,	/* OBJ_wap                          2 23 43 */
 435,	/* OBJ_pss                          0 9 2342 */
+970,	/* OBJ_ISO_CN                       1 2 156 */
 183,	/* OBJ_ISO_US                       1 2 840 */
 381,	/* OBJ_iana                         1 3 6 1 */
+950,	/* OBJ_X25519                       1 3 101 110 */
+951,	/* OBJ_X448                         1 3 101 111 */
+952,	/* OBJ_Ed25519                      1 3 101 112 */
+953,	/* OBJ_Ed448                        1 3 101 113 */
+954,	/* OBJ_Ed25519ph                    1 3 101 114 */
+955,	/* OBJ_Ed448ph                      1 3 101 115 */
 677,	/* OBJ_certicom_arc                 1 3 132 */
 394,	/* OBJ_selected_attribute_types     2 5 1 5 */
 13,	/* OBJ_commonName                   2 5 4 3 */
@@ -4613,6 +4735,7 @@ static const unsigned int obj_objs[NUM_OBJ]={
 637,	/* OBJ_set_brand_Diners             2 23 42 8 30 */
 638,	/* OBJ_set_brand_AmericanExpress    2 23 42 8 34 */
 639,	/* OBJ_set_brand_JCB                2 23 42 8 35 */
+971,	/* OBJ_oscca                        1 2 156 10197 */
 805,	/* OBJ_cryptopro                    1 2 643 2 2 */
 806,	/* OBJ_cryptocom                    1 2 643 2 9 */
 940,	/* OBJ_tc26                         1 2 643 7 1 */
@@ -4688,6 +4811,7 @@ static const unsigned int obj_objs[NUM_OBJ]={
 745,	/* OBJ_wap_wsg_idm_ecid_wtls12      2 23 43 1 4 12 */
 804,	/* OBJ_whirlpool                    1 0 10118 3 0 55 */
 124,	/* OBJ_rle_compression              1 1 1 1 666 1 */
+972,	/* OBJ_sm_scheme                    1 2 156 10197 1 */
 773,	/* OBJ_kisa                         1 2 410 200004 */
 807,	/* OBJ_id_GostR3411_94_with_GostR3410_2001 1 2 643 2 2 3 */
 808,	/* OBJ_id_GostR3411_94_with_GostR3410_94 1 2 643 2 2 4 */
@@ -4783,6 +4907,15 @@ static const unsigned int obj_objs[NUM_OBJ]={
 768,	/* OBJ_camellia_256_ofb128          0 3 4401 5 3 1 9 43 */
 759,	/* OBJ_camellia_256_cfb128          0 3 4401 5 3 1 9 44 */
 437,	/* OBJ_pilot                        0 9 2342 19200300 100 */
+973,	/* OBJ_sm4_ecb                      1 2 156 10197 1 104 1 */
+974,	/* OBJ_sm4_cbc                      1 2 156 10197 1 104 2 */
+975,	/* OBJ_sm4_ofb128                   1 2 156 10197 1 104 3 */
+976,	/* OBJ_sm4_cfb128                   1 2 156 10197 1 104 4 */
+977,	/* OBJ_sm4_cfb1                     1 2 156 10197 1 104 5 */
+978,	/* OBJ_sm4_cfb8                     1 2 156 10197 1 104 6 */
+979,	/* OBJ_sm4_ctr                      1 2 156 10197 1 104 7 */
+968,	/* OBJ_sm3                          1 2 156 10197 1 401 */
+969,	/* OBJ_sm3WithRSAEncryption         1 2 156 10197 1 504 */
 776,	/* OBJ_seed_ecb                     1 2 410 200004 1 3 */
 777,	/* OBJ_seed_cbc                     1 2 410 200004 1 4 */
 779,	/* OBJ_seed_cfb128                  1 2 410 200004 1 5 */
@@ -5262,5 +5395,8 @@ static const unsigned int obj_objs[NUM_OBJ]={
 154,	/* OBJ_secretBag                    1 2 840 113549 1 12 10 1 5 */
 155,	/* OBJ_safeContentsBag              1 2 840 113549 1 12 10 1 6 */
 34,	/* OBJ_idea_cbc                     1 3 6 1 4 1 188 7 1 1 2 */
+956,	/* OBJ_jurisdictionLocalityName     1 3 6 1 4 1 311 60 2 1 1 */
+957,	/* OBJ_jurisdictionStateOrProvinceName 1 3 6 1 4 1 311 60 2 1 2 */
+958,	/* OBJ_jurisdictionCountryName      1 3 6 1 4 1 311 60 2 1 3 */
 };
 

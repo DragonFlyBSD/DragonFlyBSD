@@ -1,4 +1,4 @@
-/* $OpenBSD: ech_key.c,v 1.5 2015/09/13 14:11:57 jsing Exp $ */
+/* $OpenBSD: ech_key.c,v 1.9 2019/01/19 01:12:48 tb Exp $ */
 /* ====================================================================
  * Copyright 2002 Sun Microsystems, Inc. ALL RIGHTS RESERVED.
  *
@@ -78,6 +78,7 @@
 #include <openssl/sha.h>
 
 #include "ech_locl.h"
+#include "ec_lcl.h"
 
 static int ecdh_compute_key(void *out, size_t len, const EC_POINT *pub_key,
     EC_KEY *ecdh,
@@ -106,7 +107,7 @@ ecdh_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
 
 	if (outlen > INT_MAX) {
 		/* Sort of, anyway. */
-		ECDHerr(ECDH_F_ECDH_COMPUTE_KEY, ERR_R_MALLOC_FAILURE);
+		ECDHerror(ERR_R_MALLOC_FAILURE);
 		return -1;
 	}
 
@@ -120,19 +121,22 @@ ecdh_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
 
 	priv_key = EC_KEY_get0_private_key(ecdh);
 	if (priv_key == NULL) {
-		ECDHerr(ECDH_F_ECDH_COMPUTE_KEY, ECDH_R_NO_PRIVATE_VALUE);
+		ECDHerror(ECDH_R_NO_PRIVATE_VALUE);
 		goto err;
 	}
 
 	group = EC_KEY_get0_group(ecdh);
+
+	if (!EC_POINT_is_on_curve(group, pub_key, ctx))
+		goto err;
+
 	if ((tmp = EC_POINT_new(group)) == NULL) {
-		ECDHerr(ECDH_F_ECDH_COMPUTE_KEY, ERR_R_MALLOC_FAILURE);
+		ECDHerror(ERR_R_MALLOC_FAILURE);
 		goto err;
 	}
 
 	if (!EC_POINT_mul(group, tmp, NULL, pub_key, priv_key, ctx)) {
-		ECDHerr(ECDH_F_ECDH_COMPUTE_KEY,
-		    ECDH_R_POINT_ARITHMETIC_FAILURE);
+		ECDHerror(ECDH_R_POINT_ARITHMETIC_FAILURE);
 		goto err;
 	}
 
@@ -140,8 +144,7 @@ ecdh_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
 	    NID_X9_62_prime_field) {
 		if (!EC_POINT_get_affine_coordinates_GFp(group, tmp, x, y,
 		    ctx)) {
-			ECDHerr(ECDH_F_ECDH_COMPUTE_KEY,
-			    ECDH_R_POINT_ARITHMETIC_FAILURE);
+			ECDHerror(ECDH_R_POINT_ARITHMETIC_FAILURE);
 			goto err;
 		}
 	}
@@ -149,8 +152,7 @@ ecdh_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
 	else {
 		if (!EC_POINT_get_affine_coordinates_GF2m(group, tmp, x, y,
 		    ctx)) {
-			ECDHerr(ECDH_F_ECDH_COMPUTE_KEY,
-			    ECDH_R_POINT_ARITHMETIC_FAILURE);
+			ECDHerror(ECDH_R_POINT_ARITHMETIC_FAILURE);
 			goto err;
 		}
 	}
@@ -159,28 +161,28 @@ ecdh_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
 	buflen = ECDH_size(ecdh);
 	len = BN_num_bytes(x);
 	if (len > buflen) {
-		ECDHerr(ECDH_F_ECDH_COMPUTE_KEY, ERR_R_INTERNAL_ERROR);
+		ECDHerror(ERR_R_INTERNAL_ERROR);
 		goto err;
 	}
 	if (KDF == NULL && outlen < buflen) {
 		/* The resulting key would be truncated. */
-		ECDHerr(ECDH_F_ECDH_COMPUTE_KEY, ECDH_R_KEY_TRUNCATION);
+		ECDHerror(ECDH_R_KEY_TRUNCATION);
 		goto err;
 	}
 	if ((buf = malloc(buflen)) == NULL) {
-		ECDHerr(ECDH_F_ECDH_COMPUTE_KEY, ERR_R_MALLOC_FAILURE);
+		ECDHerror(ERR_R_MALLOC_FAILURE);
 		goto err;
 	}
 
 	memset(buf, 0, buflen - len);
 	if (len != (size_t)BN_bn2bin(x, buf + buflen - len)) {
-		ECDHerr(ECDH_F_ECDH_COMPUTE_KEY, ERR_R_BN_LIB);
+		ECDHerror(ERR_R_BN_LIB);
 		goto err;
 	}
 
 	if (KDF != NULL) {
 		if (KDF(buf, buflen, out, &outlen) == NULL) {
-			ECDHerr(ECDH_F_ECDH_COMPUTE_KEY, ECDH_R_KDF_FAILED);
+			ECDHerror(ECDH_R_KDF_FAILED);
 			goto err;
 		}
 		ret = outlen;
@@ -214,13 +216,26 @@ ECDH_OpenSSL(void)
 	return &openssl_ecdh_meth;
 }
 
+/* replace w/ ecdh_compute_key() when ECDH_METHOD gets removed */
+int
+ossl_ecdh_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
+    EC_KEY *eckey,
+    void *(*KDF)(const void *in, size_t inlen, void *out, size_t *outlen))
+{
+	ECDH_DATA *ecdh;
+
+	if ((ecdh = ecdh_check(eckey)) == NULL)
+		return 0;
+	return ecdh->meth->compute_key(out, outlen, pub_key, eckey, KDF);
+}
+
 int
 ECDH_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
     EC_KEY *eckey,
     void *(*KDF)(const void *in, size_t inlen, void *out, size_t *outlen))
 {
-	ECDH_DATA *ecdh = ecdh_check(eckey);
-	if (ecdh == NULL)
-		return 0;
-	return ecdh->meth->compute_key(out, outlen, pub_key, eckey, KDF);
+	if (eckey->meth->compute_key != NULL)
+		return eckey->meth->compute_key(out, outlen, pub_key, eckey, KDF);
+	ECerror(EC_R_NOT_IMPLEMENTED);
+	return 0;
 }

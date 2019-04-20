@@ -1,4 +1,4 @@
-/* $OpenBSD: ecp_nist.c,v 1.8 2014/06/12 15:49:29 deraadt Exp $ */
+/* $OpenBSD: ecp_nist.c,v 1.15 2018/11/05 20:18:21 tb Exp $ */
 /*
  * Written by Nils Larsch for the OpenSSL project.
  */
@@ -103,8 +103,12 @@ EC_GFp_nist_method(void)
 		.point_cmp = ec_GFp_simple_cmp,
 		.make_affine = ec_GFp_simple_make_affine,
 		.points_make_affine = ec_GFp_simple_points_make_affine,
+		.mul_generator_ct = ec_GFp_simple_mul_generator_ct,
+		.mul_single_ct = ec_GFp_simple_mul_single_ct,
+		.mul_double_nonct = ec_GFp_simple_mul_double_nonct,
 		.field_mul = ec_GFp_nist_field_mul,
-		.field_sqr = ec_GFp_nist_field_sqr
+		.field_sqr = ec_GFp_nist_field_sqr,
+		.blind_coordinates = ec_GFp_simple_blind_coordinates,
 	};
 
 	return &ret;
@@ -145,13 +149,13 @@ ec_GFp_nist_group_set_curve(EC_GROUP *group, const BIGNUM *p,
 	else if (BN_ucmp(BN_get0_nist_prime_521(), p) == 0)
 		group->field_mod_func = BN_nist_mod_521;
 	else {
-		ECerr(EC_F_EC_GFP_NIST_GROUP_SET_CURVE, EC_R_NOT_A_NIST_PRIME);
+		ECerror(EC_R_NOT_A_NIST_PRIME);
 		goto err;
 	}
 
 	ret = ec_GFp_simple_group_set_curve(group, p, a, b, ctx);
 
-err:
+ err:
 	BN_CTX_end(ctx);
 	BN_CTX_free(new_ctx);
 	return ret;
@@ -166,7 +170,7 @@ ec_GFp_nist_field_mul(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
 	BN_CTX *ctx_new = NULL;
 
 	if (!group || !r || !a || !b) {
-		ECerr(EC_F_EC_GFP_NIST_FIELD_MUL, ERR_R_PASSED_NULL_PARAMETER);
+		ECerror(ERR_R_PASSED_NULL_PARAMETER);
 		goto err;
 	}
 	if (!ctx)
@@ -179,7 +183,7 @@ ec_GFp_nist_field_mul(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
 		goto err;
 
 	ret = 1;
-err:
+ err:
 	BN_CTX_free(ctx_new);
 	return ret;
 }
@@ -193,7 +197,7 @@ ec_GFp_nist_field_sqr(const EC_GROUP * group, BIGNUM * r, const BIGNUM * a,
 	BN_CTX *ctx_new = NULL;
 
 	if (!group || !r || !a) {
-		ECerr(EC_F_EC_GFP_NIST_FIELD_SQR, EC_R_PASSED_NULL_PARAMETER);
+		ECerror(EC_R_PASSED_NULL_PARAMETER);
 		goto err;
 	}
 	if (!ctx)
@@ -206,7 +210,7 @@ ec_GFp_nist_field_sqr(const EC_GROUP * group, BIGNUM * r, const BIGNUM * a,
 		goto err;
 
 	ret = 1;
-err:
+ err:
 	BN_CTX_free(ctx_new);
 	return ret;
 }

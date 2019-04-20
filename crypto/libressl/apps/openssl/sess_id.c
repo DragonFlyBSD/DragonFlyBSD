@@ -1,4 +1,4 @@
-/* $OpenBSD: sess_id.c,v 1.6 2015/10/10 22:28:51 doug Exp $ */
+/* $OpenBSD: sess_id.c,v 1.9 2018/02/07 05:47:55 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -159,7 +159,7 @@ sess_id_main(int argc, char **argv)
 	BIO *out = NULL;
 
 	if (single_execution) {
-		if (pledge("stdio rpath wpath cpath", NULL) == -1) {
+		if (pledge("stdio cpath wpath rpath", NULL) == -1) {
 			perror("pledge");
 			exit(1);
 		}
@@ -249,7 +249,7 @@ sess_id_main(int argc, char **argv)
 	}
 	ret = 0;
 
-end:
+ end:
 	BIO_free_all(out);
 	SSL_SESSION_free(x);
 
@@ -289,7 +289,7 @@ load_sess_id(char *infile, int format)
 		ERR_print_errors(bio_err);
 		goto end;
 	}
-end:
+ end:
 	BIO_free(in);
 	return (x);
 }

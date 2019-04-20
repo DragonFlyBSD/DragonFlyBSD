@@ -1,4 +1,4 @@
-/* $OpenBSD: ex_data.c,v 1.17 2014/07/11 08:44:47 jsing Exp $ */
+/* $OpenBSD: ex_data.c,v 1.20 2018/03/17 16:20:01 beck Exp $ */
 
 /*
  * Overhaul notes;
@@ -312,6 +312,8 @@ def_get_class(int class_index)
 	EX_CLASS_ITEM d, *p, *gen;
 	EX_DATA_CHECK(return NULL;)
 	d.class_index = class_index;
+	if (!OPENSSL_init_crypto(0, NULL))
+		return NULL;
 	CRYPTO_w_lock(CRYPTO_LOCK_EX_DATA);
 	p = lh_EX_CLASS_ITEM_retrieve(ex_data, &d);
 	if (!p) {
@@ -332,7 +334,7 @@ def_get_class(int class_index)
 	}
 	CRYPTO_w_unlock(CRYPTO_LOCK_EX_DATA);
 	if (!p)
-		CRYPTOerr(CRYPTO_F_DEF_GET_CLASS, ERR_R_MALLOC_FAILURE);
+		CRYPTOerror(ERR_R_MALLOC_FAILURE);
 	return p;
 }
 
@@ -346,7 +348,7 @@ def_add_index(EX_CLASS_ITEM *item, long argl, void *argp,
 	CRYPTO_EX_DATA_FUNCS *a = malloc(sizeof(CRYPTO_EX_DATA_FUNCS));
 
 	if (!a) {
-		CRYPTOerr(CRYPTO_F_DEF_ADD_INDEX, ERR_R_MALLOC_FAILURE);
+		CRYPTOerror(ERR_R_MALLOC_FAILURE);
 		return -1;
 	}
 	a->argl = argl;
@@ -357,7 +359,7 @@ def_add_index(EX_CLASS_ITEM *item, long argl, void *argp,
 	CRYPTO_w_lock(CRYPTO_LOCK_EX_DATA);
 	while (sk_CRYPTO_EX_DATA_FUNCS_num(item->meth) <= item->meth_num) {
 		if (!sk_CRYPTO_EX_DATA_FUNCS_push(item->meth, NULL)) {
-			CRYPTOerr(CRYPTO_F_DEF_ADD_INDEX, ERR_R_MALLOC_FAILURE);
+			CRYPTOerror(ERR_R_MALLOC_FAILURE);
 			free(a);
 			goto err;
 		}
@@ -434,7 +436,7 @@ int_new_ex_data(int class_index, void *obj, CRYPTO_EX_DATA *ad)
 skip:
 	CRYPTO_r_unlock(CRYPTO_LOCK_EX_DATA);
 	if ((mx > 0) && !storage) {
-		CRYPTOerr(CRYPTO_F_INT_NEW_EX_DATA, ERR_R_MALLOC_FAILURE);
+		CRYPTOerror(ERR_R_MALLOC_FAILURE);
 		return 0;
 	}
 	for (i = 0; i < mx; i++) {
@@ -478,7 +480,7 @@ int_dup_ex_data(int class_index, CRYPTO_EX_DATA *to, CRYPTO_EX_DATA *from)
 skip:
 	CRYPTO_r_unlock(CRYPTO_LOCK_EX_DATA);
 	if ((mx > 0) && !storage) {
-		CRYPTOerr(CRYPTO_F_INT_DUP_EX_DATA, ERR_R_MALLOC_FAILURE);
+		CRYPTOerror(ERR_R_MALLOC_FAILURE);
 		return 0;
 	}
 	for (i = 0; i < mx; i++) {
@@ -500,6 +502,7 @@ int_free_ex_data(int class_index, void *obj, CRYPTO_EX_DATA *ad)
 	EX_CLASS_ITEM *item;
 	void *ptr;
 	CRYPTO_EX_DATA_FUNCS **storage = NULL;
+
 	if ((item = def_get_class(class_index)) == NULL)
 		return;
 	CRYPTO_r_lock(CRYPTO_LOCK_EX_DATA);
@@ -515,7 +518,7 @@ int_free_ex_data(int class_index, void *obj, CRYPTO_EX_DATA *ad)
 skip:
 	CRYPTO_r_unlock(CRYPTO_LOCK_EX_DATA);
 	if ((mx > 0) && !storage) {
-		CRYPTOerr(CRYPTO_F_INT_FREE_EX_DATA, ERR_R_MALLOC_FAILURE);
+		CRYPTOerror(ERR_R_MALLOC_FAILURE);
 		return;
 	}
 	for (i = 0; i < mx; i++) {
@@ -605,8 +608,7 @@ CRYPTO_set_ex_data(CRYPTO_EX_DATA *ad, int idx, void *val)
 
 	if (ad->sk == NULL) {
 		if ((ad->sk = sk_void_new_null()) == NULL) {
-			CRYPTOerr(CRYPTO_F_CRYPTO_SET_EX_DATA,
-			    ERR_R_MALLOC_FAILURE);
+			CRYPTOerror(ERR_R_MALLOC_FAILURE);
 			return (0);
 		}
 	}
@@ -614,8 +616,7 @@ CRYPTO_set_ex_data(CRYPTO_EX_DATA *ad, int idx, void *val)
 
 	while (i <= idx) {
 		if (!sk_void_push(ad->sk, NULL)) {
-			CRYPTOerr(CRYPTO_F_CRYPTO_SET_EX_DATA,
-			    ERR_R_MALLOC_FAILURE);
+			CRYPTOerror(ERR_R_MALLOC_FAILURE);
 			return (0);
 		}
 		i++;

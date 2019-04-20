@@ -1,4 +1,4 @@
-/* $OpenBSD: s_server.c,v 1.23 2015/12/01 12:04:51 jca Exp $ */
+/* $OpenBSD: s_server.c,v 1.30 2018/02/07 05:47:55 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -333,7 +333,6 @@ sv_usage(void)
 	BIO_printf(bio_err, "                 not specified (default is %s)\n", TEST_CERT2);
 	BIO_printf(bio_err, " -tlsextdebug  - hex dump of all TLS extensions received\n");
 	BIO_printf(bio_err, " -no_ticket    - disable use of RFC4507bis session tickets\n");
-	BIO_printf(bio_err, " -nextprotoneg arg - set the advertised protocols for the NPN extension (comma-separated list)\n");
 	BIO_printf(bio_err," -alpn arg  - set the advertised protocols for the ALPN extension (comma-separated list)\n");
 #ifndef OPENSSL_NO_SRTP
 	BIO_printf(bio_err, " -use_srtp profiles - Offer SRTP key management with a colon-separated profile list\n");
@@ -405,7 +404,7 @@ cert_status_cb(SSL * s, void *arg)
 {
 	tlsextstatusctx *srctx = arg;
 	BIO *err = srctx->err;
-	char *host, *port, *path;
+	char *host = NULL, *port = NULL, *path = NULL;
 	int use_ssl;
 	unsigned char *rspder = NULL;
 	int rspderlen;
@@ -488,7 +487,7 @@ cert_status_cb(SSL * s, void *arg)
 		OCSP_RESPONSE_print(err, resp, 2);
 	}
 	ret = SSL_TLSEXT_ERR_OK;
-done:
+ done:
 	if (ret != SSL_TLSEXT_ERR_OK)
 		ERR_print_errors(err);
 	if (aia) {
@@ -504,28 +503,10 @@ done:
 	if (resp)
 		OCSP_RESPONSE_free(resp);
 	return ret;
-err:
+ err:
 	ret = SSL_TLSEXT_ERR_ALERT_FATAL;
 	goto done;
 }
-
-/* This is the context that we pass to next_proto_cb */
-typedef struct tlsextnextprotoctx_st {
-	unsigned char *data;
-	unsigned int len;
-} tlsextnextprotoctx;
-
-static int
-next_proto_cb(SSL * s, const unsigned char **data, unsigned int *len, void *arg)
-{
-	tlsextnextprotoctx *next_proto = arg;
-
-	*data = next_proto->data;
-	*len = next_proto->len;
-
-	return SSL_TLSEXT_ERR_OK;
-}
-
 
 /* This the context that we pass to alpn_cb */
 typedef struct tlsextalpnctx_st {
@@ -599,13 +580,11 @@ s_server_main(int argc, char *argv[])
 	EVP_PKEY *s_key2 = NULL;
 	X509 *s_cert2 = NULL;
 	tlsextctx tlsextcbp = {NULL, NULL, SSL_TLSEXT_ERR_ALERT_WARNING};
-	const char *next_proto_neg_in = NULL;
-	tlsextnextprotoctx next_proto = { NULL, 0 };
 	const char *alpn_in = NULL;
 	tlsextalpnctx alpn_ctx = { NULL, 0 };
 
 	if (single_execution) {
-		if (pledge("stdio inet dns rpath tty", NULL) == -1) {
+		if (pledge("stdio rpath inet dns tty", NULL) == -1) {
 			perror("pledge");
 			exit(1);
 		}
@@ -843,13 +822,12 @@ s_server_main(int argc, char *argv[])
 			if (--argc < 1)
 				goto bad;
 			s_key_file2 = *(++argv);
-		}
-		else if (strcmp(*argv, "-nextprotoneg") == 0) {
+		} else if (strcmp(*argv, "-nextprotoneg") == 0) {
+			/* Ignored. */
 			if (--argc < 1)
 				goto bad;
-			next_proto_neg_in = *(++argv);
-		}
-		else if	(strcmp(*argv,"-alpn") == 0) {
+			++argv;
+		} else if (strcmp(*argv,"-alpn") == 0) {
 			if (--argc < 1)
 				goto bad;
 			alpn_in = *(++argv);
@@ -880,7 +858,7 @@ s_server_main(int argc, char *argv[])
 		argv++;
 	}
 	if (badop) {
-bad:
+ bad:
 		if (errstr)
 			BIO_printf(bio_err, "invalid argument %s: %s\n",
 			    *argv, errstr);
@@ -927,15 +905,6 @@ bad:
 				goto end;
 			}
 		}
-	}
-	if (next_proto_neg_in) {
-		unsigned short len;
-		next_proto.data = next_protos_parse(&len, next_proto_neg_in);
-		if (next_proto.data == NULL)
-			goto end;
-		next_proto.len = len;
-	} else {
-		next_proto.data = NULL;
 	}
 	alpn_ctx.data = NULL;
 	if (alpn_in) {
@@ -1083,8 +1052,6 @@ bad:
 		if (vpm)
 			SSL_CTX_set1_param(ctx2, vpm);
 	}
-	if (next_proto.data)
-		SSL_CTX_set_next_protos_advertised_cb(ctx, next_proto_cb, &next_proto);
 	if (alpn_ctx.data)
 		SSL_CTX_set_alpn_select_cb(ctx, alpn_cb, &alpn_ctx);
 
@@ -1231,31 +1198,21 @@ bad:
 		do_server(port, socket_type, &accept_socket, sv_body, context);
 	print_stats(bio_s_out, ctx);
 	ret = 0;
-end:
-	if (ctx != NULL)
-		SSL_CTX_free(ctx);
-	if (s_cert)
-		X509_free(s_cert);
-	if (s_dcert)
-		X509_free(s_dcert);
-	if (s_key)
-		EVP_PKEY_free(s_key);
-	if (s_dkey)
-		EVP_PKEY_free(s_dkey);
+ end:
+	SSL_CTX_free(ctx);
+	X509_free(s_cert);
+	X509_free(s_dcert);
+	EVP_PKEY_free(s_key);
+	EVP_PKEY_free(s_dkey);
 	free(pass);
 	free(dpass);
-	if (vpm)
-		X509_VERIFY_PARAM_free(vpm);
+	X509_VERIFY_PARAM_free(vpm);
 	free(tlscstatp.host);
 	free(tlscstatp.port);
 	free(tlscstatp.path);
-	if (ctx2 != NULL)
-		SSL_CTX_free(ctx2);
-	if (s_cert2)
-		X509_free(s_cert2);
-	if (s_key2)
-		EVP_PKEY_free(s_key2);
-	free(next_proto.data);
+	SSL_CTX_free(ctx2);
+	X509_free(s_cert2);
+	EVP_PKEY_free(s_key2);
 	free(alpn_ctx.data);
 	if (bio_s_out != NULL) {
 		BIO_free(bio_s_out);
@@ -1583,17 +1540,14 @@ sv_body(char *hostname, int s, unsigned char *context)
 			}
 		}
 	}
-err:
+ err:
 	if (con != NULL) {
 		BIO_printf(bio_s_out, "shutting down SSL\n");
 		SSL_set_shutdown(con, SSL_SENT_SHUTDOWN | SSL_RECEIVED_SHUTDOWN);
 		SSL_free(con);
 	}
 	BIO_printf(bio_s_out, "CONNECTION CLOSED\n");
-	if (buf != NULL) {
-		explicit_bzero(buf, bufsize);
-		free(buf);
-	}
+	freezero(buf, bufsize);
 	if (ret >= 0)
 		BIO_printf(bio_s_out, "ACCEPT\n");
 	return (ret);
@@ -1617,8 +1571,6 @@ init_ssl_connection(SSL * con)
 	X509 *peer;
 	long verify_error;
 	char buf[BUFSIZ];
-	const unsigned char *next_proto_neg;
-	unsigned next_proto_neg_len;
 	unsigned char *exportedkeymat;
 
 	i = SSL_accept(con);
@@ -1653,12 +1605,6 @@ init_ssl_connection(SSL * con)
 	str = SSL_CIPHER_get_name(SSL_get_current_cipher(con));
 	BIO_printf(bio_s_out, "CIPHER is %s\n", (str != NULL) ? str : "(NONE)");
 
-	SSL_get0_next_proto_negotiated(con, &next_proto_neg, &next_proto_neg_len);
-	if (next_proto_neg) {
-		BIO_printf(bio_s_out, "NEXTPROTO is ");
-		BIO_write(bio_s_out, next_proto_neg, next_proto_neg_len);
-		BIO_printf(bio_s_out, "\n");
-	}
 #ifndef OPENSSL_NO_SRTP
 	{
 		SRTP_PROTECTION_PROFILE *srtp_profile
@@ -1709,7 +1655,7 @@ load_dh_param(const char *dhfile)
 	if ((bio = BIO_new_file(dhfile, "r")) == NULL)
 		goto err;
 	ret = PEM_read_bio_DHparams(bio, NULL, NULL, NULL);
-err:
+ err:
 	BIO_free(bio);
 	return (ret);
 }
@@ -1994,18 +1940,17 @@ www_body(char *hostname, int s, unsigned char *context)
 		} else
 			break;
 	}
-end:
+ end:
 	/* make sure we re-use sessions */
 	SSL_set_shutdown(con, SSL_SENT_SHUTDOWN | SSL_RECEIVED_SHUTDOWN);
 
-err:
+ err:
 
 	if (ret >= 0)
 		BIO_printf(bio_s_out, "ACCEPT\n");
 
 	free(buf);
-	if (io != NULL)
-		BIO_free_all(io);
+	BIO_free_all(io);
 /*	if (ssl_bio != NULL) BIO_free(ssl_bio);*/
 	return (ret);
 }

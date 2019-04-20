@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_lu.c,v 1.19 2015/02/10 11:22:21 jsing Exp $ */
+/* $OpenBSD: x509_lu.c,v 1.30 2018/08/24 19:21:09 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -63,6 +63,8 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #include "x509_lcl.h"
+
+static void X509_OBJECT_dec_ref_count(X509_OBJECT *a);
 
 X509_LOOKUP *
 X509_LOOKUP_new(X509_LOOKUP_METHOD *method)
@@ -151,8 +153,8 @@ X509_LOOKUP_by_issuer_serial(X509_LOOKUP *ctx, int type, X509_NAME *name,
 }
 
 int
-X509_LOOKUP_by_fingerprint(X509_LOOKUP *ctx, int type, unsigned char *bytes,
-    int len, X509_OBJECT *ret)
+X509_LOOKUP_by_fingerprint(X509_LOOKUP *ctx, int type,
+    const unsigned char *bytes, int len, X509_OBJECT *ret)
 {
 	if ((ctx->method == NULL) || (ctx->method->get_by_fingerprint == NULL))
 		return X509_LU_FAIL;
@@ -160,7 +162,7 @@ X509_LOOKUP_by_fingerprint(X509_LOOKUP *ctx, int type, unsigned char *bytes,
 }
 
 int
-X509_LOOKUP_by_alias(X509_LOOKUP *ctx, int type, char *str, int len,
+X509_LOOKUP_by_alias(X509_LOOKUP *ctx, int type, const char *str, int len,
     X509_OBJECT *ret)
 {
 	if ((ctx->method == NULL) || (ctx->method->get_by_alias == NULL))
@@ -231,16 +233,9 @@ err:
 }
 
 static void
-cleanup(X509_OBJECT *a)
+X509_OBJECT_free(X509_OBJECT *a)
 {
-	if (a->type == X509_LU_X509) {
-		X509_free(a->data.x509);
-	} else if (a->type == X509_LU_CRL) {
-		X509_CRL_free(a->data.crl);
-	} else {
-		/* abort(); */
-	}
-
+	X509_OBJECT_free_contents(a);
 	free(a);
 }
 
@@ -265,11 +260,18 @@ X509_STORE_free(X509_STORE *vfy)
 		X509_LOOKUP_free(lu);
 	}
 	sk_X509_LOOKUP_free(sk);
-	sk_X509_OBJECT_pop_free(vfy->objs, cleanup);
+	sk_X509_OBJECT_pop_free(vfy->objs, X509_OBJECT_free);
 
 	CRYPTO_free_ex_data(CRYPTO_EX_INDEX_X509_STORE, vfy, &vfy->ex_data);
 	X509_VERIFY_PARAM_free(vfy->param);
 	free(vfy);
+}
+
+int
+X509_STORE_up_ref(X509_STORE *x)
+{
+	int refs = CRYPTO_add(&x->references, 1, CRYPTO_LOCK_X509_STORE);
+	return (refs > 1) ? 1 : 0;
 }
 
 X509_LOOKUP *
@@ -353,7 +355,7 @@ X509_STORE_add_cert(X509_STORE *ctx, X509 *x)
 		return 0;
 	obj = malloc(sizeof(X509_OBJECT));
 	if (obj == NULL) {
-		X509err(X509_F_X509_STORE_ADD_CERT, ERR_R_MALLOC_FAILURE);
+		X509error(ERR_R_MALLOC_FAILURE);
 		return 0;
 	}
 	obj->type = X509_LU_X509;
@@ -364,15 +366,24 @@ X509_STORE_add_cert(X509_STORE *ctx, X509 *x)
 	X509_OBJECT_up_ref_count(obj);
 
 	if (X509_OBJECT_retrieve_match(ctx->objs, obj)) {
-		X509_OBJECT_free_contents(obj);
-		free(obj);
-		X509err(X509_F_X509_STORE_ADD_CERT,
-		    X509_R_CERT_ALREADY_IN_HASH_TABLE);
+		X509error(X509_R_CERT_ALREADY_IN_HASH_TABLE);
 		ret = 0;
-	} else
-		sk_X509_OBJECT_push(ctx->objs, obj);
+	} else {
+		if (sk_X509_OBJECT_push(ctx->objs, obj) == 0) {
+			X509error(ERR_R_MALLOC_FAILURE);
+			ret = 0;
+		}
+	}
+
+	if (ret == 0)
+		X509_OBJECT_dec_ref_count(obj);
 
 	CRYPTO_w_unlock(CRYPTO_LOCK_X509_STORE);
+
+	if (ret == 0) {
+		obj->data.x509 = NULL; /* owned by the caller */
+		X509_OBJECT_free(obj);
+	}
 
 	return ret;
 }
@@ -387,7 +398,7 @@ X509_STORE_add_crl(X509_STORE *ctx, X509_CRL *x)
 		return 0;
 	obj = malloc(sizeof(X509_OBJECT));
 	if (obj == NULL) {
-		X509err(X509_F_X509_STORE_ADD_CRL, ERR_R_MALLOC_FAILURE);
+		X509error(ERR_R_MALLOC_FAILURE);
 		return 0;
 	}
 	obj->type = X509_LU_CRL;
@@ -398,30 +409,57 @@ X509_STORE_add_crl(X509_STORE *ctx, X509_CRL *x)
 	X509_OBJECT_up_ref_count(obj);
 
 	if (X509_OBJECT_retrieve_match(ctx->objs, obj)) {
-		X509_OBJECT_free_contents(obj);
-		free(obj);
-		X509err(X509_F_X509_STORE_ADD_CRL,
-		    X509_R_CERT_ALREADY_IN_HASH_TABLE);
+		X509error(X509_R_CERT_ALREADY_IN_HASH_TABLE);
 		ret = 0;
-	} else
-		sk_X509_OBJECT_push(ctx->objs, obj);
+	} else {
+		if (sk_X509_OBJECT_push(ctx->objs, obj) == 0) {
+			X509error(ERR_R_MALLOC_FAILURE);
+			ret = 0;
+		}
+	}
+
+	if (ret == 0)
+		X509_OBJECT_dec_ref_count(obj);
 
 	CRYPTO_w_unlock(CRYPTO_LOCK_X509_STORE);
+
+	if (ret == 0) {
+		obj->data.crl = NULL; /* owned by the caller */
+		X509_OBJECT_free(obj);
+	}
 
 	return ret;
 }
 
-void
+static void
+X509_OBJECT_dec_ref_count(X509_OBJECT *a)
+{
+	switch (a->type) {
+	case X509_LU_X509:
+		CRYPTO_add(&a->data.x509->references, -1, CRYPTO_LOCK_X509);
+		break;
+	case X509_LU_CRL:
+		CRYPTO_add(&a->data.crl->references, -1, CRYPTO_LOCK_X509_CRL);
+		break;
+	}
+}
+
+int
 X509_OBJECT_up_ref_count(X509_OBJECT *a)
 {
 	switch (a->type) {
 	case X509_LU_X509:
-		CRYPTO_add(&a->data.x509->references, 1, CRYPTO_LOCK_X509);
-		break;
+		return X509_up_ref(a->data.x509);
 	case X509_LU_CRL:
-		CRYPTO_add(&a->data.crl->references, 1, CRYPTO_LOCK_X509_CRL);
-		break;
+		return X509_CRL_up_ref(a->data.crl);
 	}
+	return 1;
+}
+
+int
+X509_OBJECT_get_type(const X509_OBJECT *a)
+{
+	return a->type;
 }
 
 void
@@ -497,6 +535,22 @@ X509_OBJECT_retrieve_by_subject(STACK_OF(X509_OBJECT) *h, int type,
 	if (idx == -1)
 		return NULL;
 	return sk_X509_OBJECT_value(h, idx);
+}
+
+X509 *
+X509_OBJECT_get0_X509(const X509_OBJECT *xo)
+{
+	if (xo != NULL && xo->type == X509_LU_X509)
+		return xo->data.x509;
+	return NULL;
+}
+
+X509_CRL *
+X509_OBJECT_get0_X509_CRL(X509_OBJECT *xo)
+{
+	if (xo != NULL && xo->type == X509_LU_CRL)
+		return xo->data.crl;
+	return NULL;
 }
 
 STACK_OF(X509) *
@@ -622,7 +676,6 @@ X509_OBJECT_retrieve_match(STACK_OF(X509_OBJECT) *h, X509_OBJECT *x)
 	return NULL;
 }
 
-
 /* Try to get issuer certificate from store. Due to limitations
  * of the API this can only retrieve a single certificate matching
  * a given subject name. However it will fill the cache with all
@@ -647,8 +700,7 @@ X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x)
 	if (ok != X509_LU_X509) {
 		if (ok == X509_LU_RETRY) {
 			X509_OBJECT_free_contents(&obj);
-			X509err(X509_F_X509_STORE_CTX_GET1_ISSUER,
-			    X509_R_SHOULD_RETRY);
+			X509error(X509_R_SHOULD_RETRY);
 			return -1;
 		} else if (ok != X509_LU_FAIL) {
 			X509_OBJECT_free_contents(&obj);
@@ -700,6 +752,24 @@ X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x)
 	return ret;
 }
 
+STACK_OF(X509_OBJECT) *
+X509_STORE_get0_objects(X509_STORE *xs)
+{
+	return xs->objs;
+}
+
+void *
+X509_STORE_get_ex_data(X509_STORE *xs, int idx)
+{
+	return CRYPTO_get_ex_data(&xs->ex_data, idx);
+}
+
+int
+X509_STORE_set_ex_data(X509_STORE *xs, int idx, void *data)
+{
+	return CRYPTO_set_ex_data(&xs->ex_data, idx, data);
+}
+
 int
 X509_STORE_set_flags(X509_STORE *ctx, unsigned long flags)
 {
@@ -729,6 +799,12 @@ int
 X509_STORE_set1_param(X509_STORE *ctx, X509_VERIFY_PARAM *param)
 {
 	return X509_VERIFY_PARAM_set1(ctx->param, param);
+}
+
+X509_VERIFY_PARAM *
+X509_STORE_get0_param(X509_STORE *ctx)
+{
+	return ctx->param;
 }
 
 void

@@ -1,4 +1,4 @@
-/* $OpenBSD: atomicio.h,v 1.1 2005/05/24 20:13:28 avsm Exp $ */
+/* $OpenBSD: atomicio.h,v 1.2 2007/09/07 14:50:44 tobias Exp $ */
 
 /*
  * Copyright (c) 2006 Damien Miller.  All rights reserved.

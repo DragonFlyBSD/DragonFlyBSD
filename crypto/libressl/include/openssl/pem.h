@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: pem.h,v 1.19 2018/08/24 19:51:31 tb Exp $ */
 /* Copyright (C) 1995-1997 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -201,11 +201,11 @@ typedef struct pem_ctx_st {
 	unsigned char *data;
 } PEM_CTX;
 
+#ifndef LIBRESSL_INTERNAL
 /* These macros make the PEM_read/PEM_write functions easier to maintain and
  * write. Now they are all implemented with either:
  * IMPLEMENT_PEM_rw(...) or IMPLEMENT_PEM_rw_cb(...)
  */
-
 
 #define IMPLEMENT_PEM_read_fp(name, type, str, asn1) \
 type *PEM_read_##name(FILE *fp, type **x, pem_password_cb *cb, void *u)\
@@ -306,6 +306,8 @@ int PEM_write_bio_##name(BIO *bp, type *x, const EVP_CIPHER *enc, \
 	IMPLEMENT_PEM_read(name, type, str, asn1) \
 	IMPLEMENT_PEM_write_cb(name, type, str, asn1)
 
+#endif
+
 /* These are the same except they are for the declarations */
 
 
@@ -383,8 +385,8 @@ int	PEM_do_header (EVP_CIPHER_INFO *cipher, unsigned char *data, long *len,
 #ifndef OPENSSL_NO_BIO
 int	PEM_read_bio(BIO *bp, char **name, char **header,
 	    unsigned char **data, long *len);
-int	PEM_write_bio(BIO *bp, const char *name, char *hdr, unsigned char *data,
-	    long len);
+int	PEM_write_bio(BIO *bp, const char *name, const char *hdr,
+	    const unsigned char *data, long len);
 int	PEM_bytes_read_bio(unsigned char **pdata, long *plen, char **pnm,
 	    const char *name, BIO *bp, pem_password_cb *cb, void *u);
 void *	PEM_ASN1_read_bio(d2i_of_void *d2i, const char *name, BIO *bp,
@@ -401,8 +403,8 @@ int	PEM_X509_INFO_write_bio(BIO *bp, X509_INFO *xi, EVP_CIPHER *enc,
 
 int	PEM_read(FILE *fp, char **name, char **header,
 	    unsigned char **data, long *len);
-int	PEM_write(FILE *fp, char *name, char *hdr, unsigned char *data,
-	    long len);
+int	PEM_write(FILE *fp, const char *name, const char *hdr,
+	    const unsigned char *data, long len);
 void *  PEM_ASN1_read(d2i_of_void *d2i, const char *name, FILE *fp, void **x,
 	    pem_password_cb *cb, void *u);
 int	PEM_ASN1_write(i2d_of_void *i2d, const char *name, FILE *fp,
@@ -419,8 +421,8 @@ void	PEM_SealUpdate(PEM_ENCODE_SEAL_CTX *ctx, unsigned char *out, int *outl,
 int	PEM_SealFinal(PEM_ENCODE_SEAL_CTX *ctx, unsigned char *sig, int *sigl,
 	    unsigned char *out, int *outl, EVP_PKEY *priv);
 
-void    PEM_SignInit(EVP_MD_CTX *ctx, EVP_MD *type);
-void    PEM_SignUpdate(EVP_MD_CTX *ctx, unsigned char *d, unsigned int cnt);
+int    PEM_SignInit(EVP_MD_CTX *ctx, EVP_MD *type);
+int    PEM_SignUpdate(EVP_MD_CTX *ctx, unsigned char *d, unsigned int cnt);
 int	PEM_SignFinal(EVP_MD_CTX *ctx, unsigned char *sigret,
 	    unsigned int *siglen, EVP_PKEY *pkey);
 

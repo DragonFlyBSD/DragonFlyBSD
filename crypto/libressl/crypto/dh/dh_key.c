@@ -1,4 +1,4 @@
-/* $OpenBSD: dh_key.c,v 1.24 2016/06/30 02:02:06 bcook Exp $ */
+/* $OpenBSD: dh_key.c,v 1.36 2018/11/12 17:39:17 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -62,6 +62,8 @@
 #include <openssl/dh.h>
 #include <openssl/err.h>
 
+#include "bn_lcl.h"
+
 static int generate_key(DH *dh);
 static int compute_key(unsigned char *key, const BIGNUM *pub_key, DH *dh);
 static int dh_bn_mod_exp(const DH *dh, BIGNUM *r, const BIGNUM *a,
@@ -100,30 +102,29 @@ static int
 generate_key(DH *dh)
 {
 	int ok = 0;
-	int generate_new_key = 0;
 	unsigned l;
 	BN_CTX *ctx;
 	BN_MONT_CTX *mont = NULL;
-	BIGNUM *pub_key = NULL, *priv_key = NULL;
+	BIGNUM *pub_key = NULL, *priv_key = NULL, *two = NULL;
+
+	if (BN_num_bits(dh->p) > OPENSSL_DH_MAX_MODULUS_BITS) {
+		DHerror(DH_R_MODULUS_TOO_LARGE);
+		return 0;
+	}
 
 	ctx = BN_CTX_new();
 	if (ctx == NULL)
 		goto err;
 
-	if (dh->priv_key == NULL) {
-		priv_key = BN_new();
-		if (priv_key == NULL)
+	if ((priv_key = dh->priv_key) == NULL) {
+		if ((priv_key = BN_new()) == NULL)
 			goto err;
-		generate_new_key = 1;
-	} else
-		priv_key = dh->priv_key;
+	}
 
-	if (dh->pub_key == NULL) {
-		pub_key = BN_new();
-		if (pub_key == NULL)
+	if ((pub_key = dh->pub_key) == NULL) {
+		if ((pub_key = BN_new()) == NULL)
 			goto err;
-	} else
-		pub_key = dh->pub_key;
+	}
 
 	if (dh->flags & DH_FLAG_CACHE_MONT_P) {
 		mont = BN_MONT_CTX_set_locked(&dh->method_mont_p,
@@ -132,12 +133,14 @@ generate_key(DH *dh)
 			goto err;
 	}
 
-	if (generate_new_key) {
+	if (dh->priv_key == NULL) {
 		if (dh->q) {
-			do {
-				if (!BN_rand_range(priv_key, dh->q))
-					goto err;
-			} while (BN_is_zero(priv_key) || BN_is_one(priv_key));
+			if ((two = BN_new()) == NULL)
+				goto err;
+			if (!BN_add(two, BN_value_one(), BN_value_one()))
+				goto err;
+			if (!bn_rand_interval(priv_key, two, dh->q))
+				goto err;
 		} else {
 			/* secret exponent length */
 			l = dh->length ? dh->length : BN_num_bits(dh->p) - 1;
@@ -146,30 +149,23 @@ generate_key(DH *dh)
 		}
 	}
 
-	{
-		BIGNUM prk;
-
-		BN_init(&prk);
-		BN_with_flags(&prk, priv_key, BN_FLG_CONSTTIME);
-
-		if (!dh->meth->bn_mod_exp(dh, pub_key, dh->g, &prk, dh->p, ctx,
-		    mont)) {
-			goto err;
-		}
-	}
+	if (!dh->meth->bn_mod_exp(dh, pub_key, dh->g, priv_key, dh->p, ctx,
+	    mont))
+		goto err;
 
 	dh->pub_key = pub_key;
 	dh->priv_key = priv_key;
 	ok = 1;
-err:
+ err:
 	if (ok != 1)
-		DHerr(DH_F_GENERATE_KEY, ERR_R_BN_LIB);
+		DHerror(ERR_R_BN_LIB);
 
-	if (pub_key != NULL && dh->pub_key == NULL)
+	if (dh->pub_key == NULL)
 		BN_free(pub_key);
-	if (priv_key != NULL && dh->priv_key == NULL)
+	if (dh->priv_key == NULL)
 		BN_free(priv_key);
 	BN_CTX_free(ctx);
+	BN_free(two);
 	return ok;
 }
 
@@ -183,7 +179,7 @@ compute_key(unsigned char *key, const BIGNUM *pub_key, DH *dh)
         int check_result;
 
 	if (BN_num_bits(dh->p) > OPENSSL_DH_MAX_MODULUS_BITS) {
-		DHerr(DH_F_COMPUTE_KEY, DH_R_MODULUS_TOO_LARGE);
+		DHerror(DH_R_MODULUS_TOO_LARGE);
 		goto err;
 	}
 
@@ -193,9 +189,9 @@ compute_key(unsigned char *key, const BIGNUM *pub_key, DH *dh)
 	BN_CTX_start(ctx);
 	if ((tmp = BN_CTX_get(ctx)) == NULL)
 		goto err;
-	
+
 	if (dh->priv_key == NULL) {
-		DHerr(DH_F_COMPUTE_KEY, DH_R_NO_PRIVATE_VALUE);
+		DHerror(DH_R_NO_PRIVATE_VALUE);
 		goto err;
 	}
 
@@ -210,18 +206,18 @@ compute_key(unsigned char *key, const BIGNUM *pub_key, DH *dh)
 	}
 
         if (!DH_check_pub_key(dh, pub_key, &check_result) || check_result) {
-		DHerr(DH_F_COMPUTE_KEY, DH_R_INVALID_PUBKEY);
+		DHerror(DH_R_INVALID_PUBKEY);
 		goto err;
 	}
 
 	if (!dh->meth->bn_mod_exp(dh, tmp, pub_key, dh->priv_key, dh->p, ctx,
 	    mont)) {
-		DHerr(DH_F_COMPUTE_KEY, ERR_R_BN_LIB);
+		DHerror(ERR_R_BN_LIB);
 		goto err;
 	}
 
 	ret = BN_bn2bin(tmp, key);
-err:
+ err:
 	if (ctx != NULL) {
 		BN_CTX_end(ctx);
 		BN_CTX_free(ctx);
@@ -233,7 +229,7 @@ static int
 dh_bn_mod_exp(const DH *dh, BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
     const BIGNUM *m, BN_CTX *ctx, BN_MONT_CTX *m_ctx)
 {
-	return BN_mod_exp_mont(r, a, p, m, ctx, m_ctx);
+	return BN_mod_exp_mont_ct(r, a, p, m, ctx, m_ctx);
 }
 
 static int

@@ -1,4 +1,4 @@
-/* $OpenBSD: f_int.c,v 1.16 2014/06/12 15:49:27 deraadt Exp $ */
+/* $OpenBSD: f_int.c,v 1.20 2018/05/13 13:48:08 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -63,7 +63,7 @@
 #include <openssl/err.h>
 
 int
-i2a_ASN1_INTEGER(BIO *bp, ASN1_INTEGER *a)
+i2a_ASN1_INTEGER(BIO *bp, const ASN1_INTEGER *a)
 {
 	int i, n = 0;
 	static const char h[] = "0123456789ABCDEF";
@@ -153,16 +153,13 @@ a2i_ASN1_INTEGER(BIO *bp, ASN1_INTEGER *bs, char *buf, int size)
 		k = 0;
 		i -= again;
 		if (i % 2 != 0) {
-			ASN1err(ASN1_F_A2I_ASN1_INTEGER,
-			    ASN1_R_ODD_NUMBER_OF_CHARS);
+			ASN1error(ASN1_R_ODD_NUMBER_OF_CHARS);
 			goto err;
 		}
 		i /= 2;
 		if (num + i > slen) {
-			sp = OPENSSL_realloc_clean(s, slen, num + i);
-			if (sp == NULL) {
-				ASN1err(ASN1_F_A2I_ASN1_INTEGER,
-				    ERR_R_MALLOC_FAILURE);
+			if ((sp = recallocarray(s, slen, num + i, 1)) == NULL) {
+				ASN1error(ERR_R_MALLOC_FAILURE);
 				goto err;
 			}
 			s = sp;
@@ -178,8 +175,7 @@ a2i_ASN1_INTEGER(BIO *bp, ASN1_INTEGER *bs, char *buf, int size)
 				else if ((m >= 'A') && (m <= 'F'))
 					m = m - 'A' + 10;
 				else {
-					ASN1err(ASN1_F_A2I_ASN1_INTEGER,
-					    ASN1_R_NON_HEX_CHARACTERS);
+					ASN1error(ASN1_R_NON_HEX_CHARACTERS);
 					goto err;
 				}
 				s[num + j] <<= 4;
@@ -197,7 +193,7 @@ a2i_ASN1_INTEGER(BIO *bp, ASN1_INTEGER *bs, char *buf, int size)
 	return (1);
 
 err_sl:
-	ASN1err(ASN1_F_A2I_ASN1_INTEGER, ASN1_R_SHORT_LINE);
+	ASN1error(ASN1_R_SHORT_LINE);
 err:
 	free(s);
 	return (ret);

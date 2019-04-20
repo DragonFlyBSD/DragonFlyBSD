@@ -1,4 +1,4 @@
-/* $OpenBSD: x509.c,v 1.11 2015/10/17 07:51:10 semarie Exp $ */
+/* $OpenBSD: x509.c,v 1.17 2019/01/19 21:17:05 jsg Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -199,7 +199,7 @@ x509_main(int argc, char **argv)
 	const char *errstr = NULL;
 
 	if (single_execution) {
-		if (pledge("stdio rpath wpath cpath tty", NULL) == -1) {
+		if (pledge("stdio cpath wpath rpath tty", NULL) == -1) {
 			perror("pledge");
 			exit(1);
 		}
@@ -429,7 +429,7 @@ x509_main(int argc, char **argv)
 	}
 
 	if (badops) {
-bad:
+ bad:
 		for (pp = x509_usage; (*pp != NULL); pp++)
 			BIO_printf(bio_err, "%s", *pp);
 		goto end;
@@ -788,7 +788,7 @@ bad:
 				const EVP_MD *fdig = digest;
 
 				if (!fdig)
-					fdig = EVP_sha1();
+					fdig = EVP_sha256();
 
 				if (!X509_digest(x, fdig, md, &n)) {
 					BIO_printf(bio_err, "out of memory\n");
@@ -893,7 +893,7 @@ bad:
 		nx.header = &hdr;
 		nx.cert = x;
 
-		i = ASN1_item_i2d_bio(ASN1_ITEM_rptr(NETSCAPE_X509), out, &nx);
+		i = ASN1_item_i2d_bio(&NETSCAPE_X509_it, out, &nx);
 	} else {
 		BIO_printf(bio_err, "bad output format specified for outfile\n");
 		goto end;
@@ -905,7 +905,7 @@ bad:
 	}
 	ret = 0;
 
-end:
+ end:
 	OBJ_cleanup();
 	NCONF_free(extconf);
 	BIO_free_all(out);
@@ -916,8 +916,7 @@ end:
 	X509_free(xca);
 	EVP_PKEY_free(Upkey);
 	EVP_PKEY_free(CApkey);
-	if (sigopts)
-		sk_OPENSSL_STRING_free(sigopts);
+	sk_OPENSSL_STRING_free(sigopts);
 	X509_REQ_free(rq);
 	ASN1_INTEGER_free(sno);
 	sk_ASN1_OBJECT_pop_free(trust, ASN1_OBJECT_free);
@@ -964,7 +963,7 @@ x509_load_serial(char *CAfile, char *serialfile, int create)
 	if (!save_serial(buf, NULL, serial, &bs))
 		goto end;
 
-end:
+ end:
 	free(buf);
 	BN_free(serial);
 
@@ -1037,7 +1036,7 @@ x509_certify(X509_STORE *ctx, char *CAfile, const EVP_MD *digest, X509 *x,
 	if (!do_X509_sign(bio_err, x, pkey, digest, sigopts))
 		goto end;
 	ret = 1;
-end:
+ end:
 	X509_STORE_CTX_cleanup(&xsc);
 	if (!ret)
 		ERR_print_errors(bio_err);
@@ -1123,7 +1122,7 @@ sign(X509 *x, EVP_PKEY *pkey, int days, int clrext, const EVP_MD *digest,
 		goto err;
 	return 1;
 
-err:
+ err:
 	ERR_print_errors(bio_err);
 	return 0;
 }

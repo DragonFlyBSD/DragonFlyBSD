@@ -1,4 +1,4 @@
-/* $OpenBSD: a_int.c,v 1.28 2015/07/29 14:58:34 jsing Exp $ */
+/* $OpenBSD: a_int.c,v 1.33 2019/03/26 09:15:07 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -56,6 +56,7 @@
  * [including the GNU Public Licence.]
  */
 
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -63,9 +64,18 @@
 #include <openssl/bn.h>
 #include <openssl/err.h>
 
+static int
+ASN1_INTEGER_valid(const ASN1_INTEGER *a)
+{
+	return (a != NULL && a->length >= 0);
+}
+
 ASN1_INTEGER *
 ASN1_INTEGER_dup(const ASN1_INTEGER *x)
 {
+	if (!ASN1_INTEGER_valid(x))
+		return NULL;
+
 	return ASN1_STRING_dup(x);
 }
 
@@ -123,8 +133,9 @@ i2c_ASN1_INTEGER(ASN1_INTEGER *a, unsigned char **pp)
 	int pad = 0, ret, i, neg;
 	unsigned char *p, *n, pb = 0;
 
-	if (a == NULL)
-		return (0);
+	if (!ASN1_INTEGER_valid(a))
+		return 0;
+
 	neg = a->type & V_ASN1_NEG;
 	if (a->length == 0)
 		ret = 1;
@@ -201,11 +212,24 @@ c2i_ASN1_INTEGER(ASN1_INTEGER **a, const unsigned char **pp, long len)
 	} else
 		ret = (*a);
 
+	if (!ASN1_INTEGER_valid(ret)) {
+		/*
+		 * XXX using i for an alert is confusing,
+		 * we should call this al
+		 */
+		i = ERR_R_ASN1_LENGTH_MISMATCH;
+		goto err;
+	}
+
 	p = *pp;
 	pend = p + len;
 
 	/* We must malloc stuff, even for 0 bytes otherwise it
 	 * signifies a missing NULL parameter. */
+	if (len < 0 || len > INT_MAX) {
+		i = ERR_R_ASN1_LENGTH_MISMATCH;
+		goto err;
+	}
 	s = malloc(len + 1);
 	if (s == NULL) {
 		i = ERR_R_MALLOC_FAILURE;
@@ -266,7 +290,7 @@ c2i_ASN1_INTEGER(ASN1_INTEGER **a, const unsigned char **pp, long len)
 	return (ret);
 
 err:
-	ASN1err(ASN1_F_C2I_ASN1_INTEGER, i);
+	ASN1error(i);
 	if (a == NULL || *a != ret)
 		ASN1_INTEGER_free(ret);
 	return (NULL);
@@ -294,6 +318,11 @@ d2i_ASN1_UINTEGER(ASN1_INTEGER **a, const unsigned char **pp, long length)
 	} else
 		ret = (*a);
 
+	if (!ASN1_INTEGER_valid(ret)) {
+		i = ERR_R_ASN1_LENGTH_MISMATCH;
+		goto err;
+	}
+
 	p = *pp;
 	inf = ASN1_get_object(&p, &len, &tag, &xclass, length);
 	if (inf & 0x80) {
@@ -308,6 +337,10 @@ d2i_ASN1_UINTEGER(ASN1_INTEGER **a, const unsigned char **pp, long length)
 
 	/* We must malloc stuff, even for 0 bytes otherwise it
 	 * signifies a missing NULL parameter. */
+	if (len < 0 || len > INT_MAX) {
+		i = ERR_R_ASN1_LENGTH_MISMATCH;
+		goto err;
+	}
 	s = malloc(len + 1);
 	if (s == NULL) {
 		i = ERR_R_MALLOC_FAILURE;
@@ -332,7 +365,7 @@ d2i_ASN1_UINTEGER(ASN1_INTEGER **a, const unsigned char **pp, long length)
 	return (ret);
 
 err:
-	ASN1err(ASN1_F_D2I_ASN1_UINTEGER, i);
+	ASN1error(i);
 	if (a == NULL || *a != ret)
 		ASN1_INTEGER_free(ret);
 	return (NULL);
@@ -353,7 +386,7 @@ ASN1_INTEGER_set(ASN1_INTEGER *a, long v)
 		a->data = calloc(1, sizeof(long) + 1);
 	}
 	if (a->data == NULL) {
-		ASN1err(ASN1_F_ASN1_INTEGER_SET, ERR_R_MALLOC_FAILURE);
+		ASN1error(ERR_R_MALLOC_FAILURE);
 		return (0);
 	}
 	d = v;
@@ -375,6 +408,12 @@ ASN1_INTEGER_set(ASN1_INTEGER *a, long v)
 	return (1);
 }
 
+/*
+ * XXX this particular API is a gibbering eidrich horror that makes it
+ * impossible to determine valid return cases from errors.. "a bit
+ * ugly" is preserved for posterity, unfortunately this is probably
+ * unfixable without changing public API
+ */
 long
 ASN1_INTEGER_get(const ASN1_INTEGER *a)
 {
@@ -388,6 +427,9 @@ ASN1_INTEGER_get(const ASN1_INTEGER *a)
 		neg = 1;
 	else if (i != V_ASN1_INTEGER)
 		return -1;
+
+	if (!ASN1_INTEGER_valid(a))
+		return -1; /* XXX best effort */
 
 	if (a->length > (int)sizeof(long)) {
 		/* hmm... a bit ugly, return all ones */
@@ -416,9 +458,13 @@ BN_to_ASN1_INTEGER(const BIGNUM *bn, ASN1_INTEGER *ai)
 	else
 		ret = ai;
 	if (ret == NULL) {
-		ASN1err(ASN1_F_BN_TO_ASN1_INTEGER, ERR_R_NESTED_ASN1_ERROR);
+		ASN1error(ERR_R_NESTED_ASN1_ERROR);
 		goto err;
 	}
+
+	if (!ASN1_INTEGER_valid(ret))
+		goto err;
+
 	if (BN_is_negative(bn))
 		ret->type = V_ASN1_NEG_INTEGER;
 	else
@@ -428,7 +474,7 @@ BN_to_ASN1_INTEGER(const BIGNUM *bn, ASN1_INTEGER *ai)
 	if (ret->length < len + 4) {
 		unsigned char *new_data = realloc(ret->data, len + 4);
 		if (!new_data) {
-			ASN1err(ASN1_F_BN_TO_ASN1_INTEGER, ERR_R_MALLOC_FAILURE);
+			ASN1error(ERR_R_MALLOC_FAILURE);
 			goto err;
 		}
 		ret->data = new_data;
@@ -453,8 +499,11 @@ ASN1_INTEGER_to_BN(const ASN1_INTEGER *ai, BIGNUM *bn)
 {
 	BIGNUM *ret;
 
+	if (!ASN1_INTEGER_valid(ai))
+		return (NULL);
+
 	if ((ret = BN_bin2bn(ai->data, ai->length, bn)) == NULL)
-		ASN1err(ASN1_F_ASN1_INTEGER_TO_BN, ASN1_R_BN_LIB);
+		ASN1error(ASN1_R_BN_LIB);
 	else if (ai->type == V_ASN1_NEG_INTEGER)
 		BN_set_negative(ret, 1);
 	return (ret);

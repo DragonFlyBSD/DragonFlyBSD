@@ -1,4 +1,4 @@
-/* $OpenBSD: ecdsa.h,v 1.3 2014/11/17 20:25:50 miod Exp $ */
+/* $OpenBSD: ecdsa.h,v 1.8 2019/01/19 01:17:41 tb Exp $ */
 /**
  * \file   crypto/ecdsa/ecdsa.h Include file for the OpenSSL ECDSA functions
  * \author Written by Nils Larsch for the OpenSSL project
@@ -133,6 +133,20 @@ int i2d_ECDSA_SIG(const ECDSA_SIG *sig, unsigned char **pp);
  */
 ECDSA_SIG *d2i_ECDSA_SIG(ECDSA_SIG **sig, const unsigned char **pp, long len);
 
+/** Accessor for r and s fields of ECDSA_SIG
+ *  \param  sig  pointer to ECDSA_SIG pointer
+ *  \param  pr   pointer to BIGNUM pointer for r (may be NULL)
+ *  \param  ps   pointer to BIGNUM pointer for s (may be NULL)
+ */
+void ECDSA_SIG_get0(const ECDSA_SIG *sig, const BIGNUM **pr, const BIGNUM **ps);
+
+/** Setter for r and s fields of ECDSA_SIG
+ *  \param  sig  pointer to ECDSA_SIG pointer
+ *  \param  r    pointer to BIGNUM for r (may be NULL)
+ *  \param  s    pointer to BIGNUM for s (may be NULL)
+ */
+int ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s);
+
 /** Computes the ECDSA signature of the given hash value using
  *  the supplied private key and returns the created signature.
  *  \param  dgst      pointer to the hash value
@@ -253,6 +267,37 @@ int ECDSA_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
     CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func);
 int ECDSA_set_ex_data(EC_KEY *d, int idx, void *arg);
 void *ECDSA_get_ex_data(EC_KEY *d, int idx);
+
+
+/* XXX should be in ec.h, but needs ECDSA_SIG */
+void EC_KEY_METHOD_set_sign(EC_KEY_METHOD *meth,
+    int (*sign)(int type, const unsigned char *dgst,
+	int dlen, unsigned char *sig, unsigned int *siglen,
+	const BIGNUM *kinv, const BIGNUM *r, EC_KEY *eckey),
+    int (*sign_setup)(EC_KEY *eckey, BN_CTX *ctx_in,
+	BIGNUM **kinvp, BIGNUM **rp),
+    ECDSA_SIG *(*sign_sig)(const unsigned char *dgst,
+	int dgst_len, const BIGNUM *in_kinv, const BIGNUM *in_r,
+	EC_KEY *eckey));
+void EC_KEY_METHOD_set_verify(EC_KEY_METHOD *meth,
+    int (*verify)(int type, const unsigned char *dgst, int dgst_len,
+	const unsigned char *sigbuf, int sig_len, EC_KEY *eckey),
+    int (*verify_sig)(const unsigned char *dgst, int dgst_len,
+	const ECDSA_SIG *sig, EC_KEY *eckey));
+void EC_KEY_METHOD_get_sign(const EC_KEY_METHOD *meth,
+    int (**psign)(int type, const unsigned char *dgst,
+	int dlen, unsigned char *sig, unsigned int *siglen,
+	const BIGNUM *kinv, const BIGNUM *r, EC_KEY *eckey),
+    int (**psign_setup)(EC_KEY *eckey, BN_CTX *ctx_in,
+	BIGNUM **kinvp, BIGNUM **rp),
+    ECDSA_SIG *(**psign_sig)(const unsigned char *dgst,
+	int dgst_len, const BIGNUM *in_kinv, const BIGNUM *in_r,
+	EC_KEY *eckey));
+void EC_KEY_METHOD_get_verify(const EC_KEY_METHOD *meth,
+    int (**pverify)(int type, const unsigned char *dgst, int dgst_len,
+	const unsigned char *sigbuf, int sig_len, EC_KEY *eckey),
+    int (**pverify_sig)(const unsigned char *dgst, int dgst_len,
+	const ECDSA_SIG *sig, EC_KEY *eckey));
 
 
 /* BEGIN ERROR CODES */

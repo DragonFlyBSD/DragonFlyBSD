@@ -1,4 +1,4 @@
-/* $OpenBSD: gendsa.c,v 1.6 2015/10/17 07:51:10 semarie Exp $ */
+/* $OpenBSD: gendsa.c,v 1.10 2018/02/07 05:47:55 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -86,7 +86,7 @@ gendsa_main(int argc, char **argv)
 	const EVP_CIPHER *enc = NULL;
 
 	if (single_execution) {
-		if (pledge("stdio rpath wpath cpath tty", NULL) == -1) {
+		if (pledge("stdio cpath wpath rpath tty", NULL) == -1) {
 			perror("pledge");
 			exit(1);
 		}
@@ -143,7 +143,7 @@ gendsa_main(int argc, char **argv)
 	}
 
 	if (dsaparams == NULL) {
-bad:
+ bad:
 		BIO_printf(bio_err, "usage: gendsa [args] dsaparam-file\n");
 		BIO_printf(bio_err, " -out file - output the key to 'file'\n");
 #ifndef OPENSSL_NO_DES
@@ -202,14 +202,12 @@ bad:
 	if (!PEM_write_bio_DSAPrivateKey(out, dsa, enc, NULL, 0, NULL, passout))
 		goto end;
 	ret = 0;
-end:
+ end:
 	if (ret != 0)
 		ERR_print_errors(bio_err);
 	BIO_free(in);
-	if (out != NULL)
-		BIO_free_all(out);
-	if (dsa != NULL)
-		DSA_free(dsa);
+	BIO_free_all(out);
+	DSA_free(dsa);
 	free(passout);
 
 	return (ret);

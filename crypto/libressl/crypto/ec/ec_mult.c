@@ -1,4 +1,4 @@
-/* $OpenBSD: ec_mult.c,v 1.18 2015/02/15 08:44:35 miod Exp $ */
+/* $OpenBSD: ec_mult.c,v 1.24 2018/07/15 16:27:39 tb Exp $ */
 /*
  * Originally written by Bodo Moeller and Nils Larsch for the OpenSSL project.
  */
@@ -107,7 +107,7 @@ ec_pre_comp_new(const EC_GROUP * group)
 
 	ret = malloc(sizeof(EC_PRE_COMP));
 	if (!ret) {
-		ECerr(EC_F_EC_PRE_COMP_NEW, ERR_R_MALLOC_FAILURE);
+		ECerror(ERR_R_MALLOC_FAILURE);
 		return ret;
 	}
 	ret->group = group;
@@ -177,8 +177,7 @@ ec_pre_comp_clear_free(void *pre_)
 		}
 		free(pre->points);
 	}
-	explicit_bzero(pre, sizeof *pre);
-	free(pre);
+	freezero(pre, sizeof *pre);
 }
 
 
@@ -205,7 +204,7 @@ compute_wNAF(const BIGNUM * scalar, int w, size_t * ret_len)
 	if (BN_is_zero(scalar)) {
 		r = malloc(1);
 		if (!r) {
-			ECerr(EC_F_COMPUTE_WNAF, ERR_R_MALLOC_FAILURE);
+			ECerror(ERR_R_MALLOC_FAILURE);
 			goto err;
 		}
 		r[0] = 0;
@@ -215,7 +214,7 @@ compute_wNAF(const BIGNUM * scalar, int w, size_t * ret_len)
 	if (w <= 0 || w > 7) {
 		/* 'signed char' can represent integers with
 		 * absolute values less than 2^7 */
-		ECerr(EC_F_COMPUTE_WNAF, ERR_R_INTERNAL_ERROR);
+		ECerror(ERR_R_INTERNAL_ERROR);
 		goto err;
 	}
 	bit = 1 << w;		/* at most 128 */
@@ -226,7 +225,7 @@ compute_wNAF(const BIGNUM * scalar, int w, size_t * ret_len)
 		sign = -1;
 	}
 	if (scalar->d == NULL || scalar->top == 0) {
-		ECerr(EC_F_COMPUTE_WNAF, ERR_R_INTERNAL_ERROR);
+		ECerror(ERR_R_INTERNAL_ERROR);
 		goto err;
 	}
 	len = BN_num_bits(scalar);
@@ -235,7 +234,7 @@ compute_wNAF(const BIGNUM * scalar, int w, size_t * ret_len)
 				 * set to the actual length, i.e. at most
 				 * BN_num_bits(scalar) + 1) */
 	if (r == NULL) {
-		ECerr(EC_F_COMPUTE_WNAF, ERR_R_MALLOC_FAILURE);
+		ECerror(ERR_R_MALLOC_FAILURE);
 		goto err;
 	}
 	window_val = scalar->d[0] & mask;
@@ -269,7 +268,7 @@ compute_wNAF(const BIGNUM * scalar, int w, size_t * ret_len)
 			}
 
 			if (digit <= -bit || digit >= bit || !(digit & 1)) {
-				ECerr(EC_F_COMPUTE_WNAF, ERR_R_INTERNAL_ERROR);
+				ECerror(ERR_R_INTERNAL_ERROR);
 				goto err;
 			}
 			window_val -= digit;
@@ -280,7 +279,7 @@ compute_wNAF(const BIGNUM * scalar, int w, size_t * ret_len)
 			 * be 2^w
 			 */
 			if (window_val != 0 && window_val != next_bit && window_val != bit) {
-				ECerr(EC_F_COMPUTE_WNAF, ERR_R_INTERNAL_ERROR);
+				ECerror(ERR_R_INTERNAL_ERROR);
 				goto err;
 			}
 		}
@@ -290,19 +289,19 @@ compute_wNAF(const BIGNUM * scalar, int w, size_t * ret_len)
 		window_val += bit * BN_is_bit_set(scalar, j + w);
 
 		if (window_val > next_bit) {
-			ECerr(EC_F_COMPUTE_WNAF, ERR_R_INTERNAL_ERROR);
+			ECerror(ERR_R_INTERNAL_ERROR);
 			goto err;
 		}
 	}
 
 	if (j > len + 1) {
-		ECerr(EC_F_COMPUTE_WNAF, ERR_R_INTERNAL_ERROR);
+		ECerror(ERR_R_INTERNAL_ERROR);
 		goto err;
 	}
 	len = j;
 	ok = 1;
 
-err:
+ err:
 	if (!ok) {
 		free(r);
 		r = NULL;
@@ -363,7 +362,7 @@ ec_wNAF_mul(const EC_GROUP * group, EC_POINT * r, const BIGNUM * scalar,
 	int ret = 0;
 
 	if (group->meth != r->meth) {
-		ECerr(EC_F_EC_WNAF_MUL, EC_R_INCOMPATIBLE_OBJECTS);
+		ECerror(EC_R_INCOMPATIBLE_OBJECTS);
 		return 0;
 	}
 	if ((scalar == NULL) && (num == 0)) {
@@ -371,7 +370,7 @@ ec_wNAF_mul(const EC_GROUP * group, EC_POINT * r, const BIGNUM * scalar,
 	}
 	for (i = 0; i < num; i++) {
 		if (group->meth != points[i]->meth) {
-			ECerr(EC_F_EC_WNAF_MUL, EC_R_INCOMPATIBLE_OBJECTS);
+			ECerror(EC_R_INCOMPATIBLE_OBJECTS);
 			return 0;
 		}
 	}
@@ -384,7 +383,7 @@ ec_wNAF_mul(const EC_GROUP * group, EC_POINT * r, const BIGNUM * scalar,
 	if (scalar != NULL) {
 		generator = EC_GROUP_get0_generator(group);
 		if (generator == NULL) {
-			ECerr(EC_F_EC_WNAF_MUL, EC_R_UNDEFINED_GENERATOR);
+			ECerror(EC_R_UNDEFINED_GENERATOR);
 			goto err;
 		}
 		/* look if we can use precomputed multiples of generator */
@@ -413,7 +412,7 @@ ec_wNAF_mul(const EC_GROUP * group, EC_POINT * r, const BIGNUM * scalar,
 
 			/* check that pre_comp looks sane */
 			if (pre_comp->num != (pre_comp->numblocks * pre_points_per_block)) {
-				ECerr(EC_F_EC_WNAF_MUL, ERR_R_INTERNAL_ERROR);
+				ECerror(ERR_R_INTERNAL_ERROR);
 				goto err;
 			}
 		} else {
@@ -429,7 +428,7 @@ ec_wNAF_mul(const EC_GROUP * group, EC_POINT * r, const BIGNUM * scalar,
 	/* includes space for pivot */
 	wNAF = reallocarray(NULL, (totalnum + 1), sizeof wNAF[0]);
 	if (wNAF == NULL) {
-		ECerr(EC_F_EC_WNAF_MUL, ERR_R_MALLOC_FAILURE);
+		ECerror(ERR_R_MALLOC_FAILURE);
 		goto err;
 	}
 
@@ -440,7 +439,7 @@ ec_wNAF_mul(const EC_GROUP * group, EC_POINT * r, const BIGNUM * scalar,
 	val_sub = reallocarray(NULL, totalnum, sizeof val_sub[0]);
 
 	if (wsize == NULL || wNAF_len == NULL || val_sub == NULL) {
-		ECerr(EC_F_EC_WNAF_MUL, ERR_R_MALLOC_FAILURE);
+		ECerror(ERR_R_MALLOC_FAILURE);
 		goto err;
 	}
 
@@ -466,7 +465,7 @@ ec_wNAF_mul(const EC_GROUP * group, EC_POINT * r, const BIGNUM * scalar,
 
 		if (pre_comp == NULL) {
 			if (num_scalar != 1) {
-				ECerr(EC_F_EC_WNAF_MUL, ERR_R_INTERNAL_ERROR);
+				ECerror(ERR_R_INTERNAL_ERROR);
 				goto err;
 			}
 			/* we have already generated a wNAF for 'scalar' */
@@ -474,7 +473,7 @@ ec_wNAF_mul(const EC_GROUP * group, EC_POINT * r, const BIGNUM * scalar,
 			size_t tmp_len = 0;
 
 			if (num_scalar != 0) {
-				ECerr(EC_F_EC_WNAF_MUL, ERR_R_INTERNAL_ERROR);
+				ECerror(ERR_R_INTERNAL_ERROR);
 				goto err;
 			}
 			/*
@@ -524,7 +523,7 @@ ec_wNAF_mul(const EC_GROUP * group, EC_POINT * r, const BIGNUM * scalar,
 					 */
 					numblocks = (tmp_len + blocksize - 1) / blocksize;
 					if (numblocks > pre_comp->numblocks) {
-						ECerr(EC_F_EC_WNAF_MUL, ERR_R_INTERNAL_ERROR);
+						ECerror(ERR_R_INTERNAL_ERROR);
 						goto err;
 					}
 					totalnum = num + numblocks;
@@ -537,7 +536,7 @@ ec_wNAF_mul(const EC_GROUP * group, EC_POINT * r, const BIGNUM * scalar,
 					if (i < totalnum - 1) {
 						wNAF_len[i] = blocksize;
 						if (tmp_len < blocksize) {
-							ECerr(EC_F_EC_WNAF_MUL, ERR_R_INTERNAL_ERROR);
+							ECerror(ERR_R_INTERNAL_ERROR);
 							goto err;
 						}
 						tmp_len -= blocksize;
@@ -553,7 +552,7 @@ ec_wNAF_mul(const EC_GROUP * group, EC_POINT * r, const BIGNUM * scalar,
 					wNAF[i + 1] = NULL;
 					wNAF[i] = malloc(wNAF_len[i]);
 					if (wNAF[i] == NULL) {
-						ECerr(EC_F_EC_WNAF_MUL, ERR_R_MALLOC_FAILURE);
+						ECerror(ERR_R_MALLOC_FAILURE);
 						goto err;
 					}
 					memcpy(wNAF[i], pp, wNAF_len[i]);
@@ -561,7 +560,7 @@ ec_wNAF_mul(const EC_GROUP * group, EC_POINT * r, const BIGNUM * scalar,
 						max_len = wNAF_len[i];
 
 					if (*tmp_points == NULL) {
-						ECerr(EC_F_EC_WNAF_MUL, ERR_R_INTERNAL_ERROR);
+						ECerror(ERR_R_INTERNAL_ERROR);
 						goto err;
 					}
 					val_sub[i] = tmp_points;
@@ -579,7 +578,7 @@ ec_wNAF_mul(const EC_GROUP * group, EC_POINT * r, const BIGNUM * scalar,
 	 */
 	val = reallocarray(NULL, (num_val + 1), sizeof val[0]);
 	if (val == NULL) {
-		ECerr(EC_F_EC_WNAF_MUL, ERR_R_MALLOC_FAILURE);
+		ECerror(ERR_R_MALLOC_FAILURE);
 		goto err;
 	}
 	val[num_val] = NULL;	/* pivot element */
@@ -596,7 +595,7 @@ ec_wNAF_mul(const EC_GROUP * group, EC_POINT * r, const BIGNUM * scalar,
 		}
 	}
 	if (!(v == val + num_val)) {
-		ECerr(EC_F_EC_WNAF_MUL, ERR_R_INTERNAL_ERROR);
+		ECerror(ERR_R_INTERNAL_ERROR);
 		goto err;
 	}
 	if (!(tmp = EC_POINT_new(group)))
@@ -679,7 +678,7 @@ ec_wNAF_mul(const EC_GROUP * group, EC_POINT * r, const BIGNUM * scalar,
 
 	ret = 1;
 
-err:
+ err:
 	BN_CTX_free(new_ctx);
 	EC_POINT_free(tmp);
 	free(wsize);
@@ -743,7 +742,7 @@ ec_wNAF_precompute_mult(EC_GROUP * group, BN_CTX * ctx)
 
 	generator = EC_GROUP_get0_generator(group);
 	if (generator == NULL) {
-		ECerr(EC_F_EC_WNAF_PRECOMPUTE_MULT, EC_R_UNDEFINED_GENERATOR);
+		ECerror(EC_R_UNDEFINED_GENERATOR);
 		goto err;
 	}
 	if (ctx == NULL) {
@@ -758,7 +757,7 @@ ec_wNAF_precompute_mult(EC_GROUP * group, BN_CTX * ctx)
 	if (!EC_GROUP_get_order(group, order, ctx))
 		goto err;
 	if (BN_is_zero(order)) {
-		ECerr(EC_F_EC_WNAF_PRECOMPUTE_MULT, EC_R_UNKNOWN_ORDER);
+		ECerror(EC_R_UNKNOWN_ORDER);
 		goto err;
 	}
 	bits = BN_num_bits(order);
@@ -786,20 +785,20 @@ ec_wNAF_precompute_mult(EC_GROUP * group, BN_CTX * ctx)
 
 	points = reallocarray(NULL, (num + 1), sizeof(EC_POINT *));
 	if (!points) {
-		ECerr(EC_F_EC_WNAF_PRECOMPUTE_MULT, ERR_R_MALLOC_FAILURE);
+		ECerror(ERR_R_MALLOC_FAILURE);
 		goto err;
 	}
 	var = points;
 	var[num] = NULL;	/* pivot */
 	for (i = 0; i < num; i++) {
 		if ((var[i] = EC_POINT_new(group)) == NULL) {
-			ECerr(EC_F_EC_WNAF_PRECOMPUTE_MULT, ERR_R_MALLOC_FAILURE);
+			ECerror(ERR_R_MALLOC_FAILURE);
 			goto err;
 		}
 	}
 
 	if (!(tmp_point = EC_POINT_new(group)) || !(base = EC_POINT_new(group))) {
-		ECerr(EC_F_EC_WNAF_PRECOMPUTE_MULT, ERR_R_MALLOC_FAILURE);
+		ECerror(ERR_R_MALLOC_FAILURE);
 		goto err;
 	}
 	if (!EC_POINT_copy(base, generator))
@@ -829,7 +828,7 @@ ec_wNAF_precompute_mult(EC_GROUP * group, BN_CTX * ctx)
 			size_t k;
 
 			if (blocksize <= 2) {
-				ECerr(EC_F_EC_WNAF_PRECOMPUTE_MULT, ERR_R_INTERNAL_ERROR);
+				ECerror(ERR_R_INTERNAL_ERROR);
 				goto err;
 			}
 			if (!EC_POINT_dbl(group, base, tmp_point, ctx))
@@ -858,7 +857,7 @@ ec_wNAF_precompute_mult(EC_GROUP * group, BN_CTX * ctx)
 	pre_comp = NULL;
 
 	ret = 1;
-err:
+ err:
 	if (ctx != NULL)
 		BN_CTX_end(ctx);
 	BN_CTX_free(new_ctx);

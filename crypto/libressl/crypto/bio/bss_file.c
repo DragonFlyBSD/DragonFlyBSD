@@ -1,4 +1,4 @@
-/* $OpenBSD: bss_file.c,v 1.30 2014/07/11 08:44:47 jsing Exp $ */
+/* $OpenBSD: bss_file.c,v 1.33 2018/05/30 00:23:04 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -98,7 +98,7 @@ static long file_ctrl(BIO *h, int cmd, long arg1, void *arg2);
 static int file_new(BIO *h);
 static int file_free(BIO *data);
 
-static BIO_METHOD methods_filep = {
+static const BIO_METHOD methods_filep = {
 	.type = BIO_TYPE_FILE,
 	.name = "FILE pointer",
 	.bwrite = file_write,
@@ -119,12 +119,12 @@ BIO_new_file(const char *filename, const char *mode)
 	file = fopen(filename, mode);
 
 	if (file == NULL) {
-		SYSerr(SYS_F_FOPEN, errno);
+		SYSerror(errno);
 		ERR_asprintf_error_data("fopen('%s', '%s')", filename, mode);
 		if (errno == ENOENT)
-			BIOerr(BIO_F_BIO_NEW_FILE, BIO_R_NO_SUCH_FILE);
+			BIOerror(BIO_R_NO_SUCH_FILE);
 		else
-			BIOerr(BIO_F_BIO_NEW_FILE, ERR_R_SYS_LIB);
+			BIOerror(ERR_R_SYS_LIB);
 		return (NULL);
 	}
 	if ((ret = BIO_new(BIO_s_file())) == NULL) {
@@ -148,7 +148,7 @@ BIO_new_fp(FILE *stream, int close_flag)
 	return (ret);
 }
 
-BIO_METHOD *
+const BIO_METHOD *
 BIO_s_file(void)
 {
 	return (&methods_filep);
@@ -188,8 +188,8 @@ file_read(BIO *b, char *out, int outl)
 	if (b->init && out != NULL) {
 		ret = fread(out, 1, outl, (FILE *)b->ptr);
 		if (ret == 0 && ferror((FILE *)b->ptr)) {
-			SYSerr(SYS_F_FREAD, errno);
-			BIOerr(BIO_F_FILE_READ, ERR_R_SYS_LIB);
+			SYSerror(errno);
+			BIOerror(ERR_R_SYS_LIB);
 			ret = -1;
 		}
 	}
@@ -246,15 +246,15 @@ file_ctrl(BIO *b, int cmd, long num, void *ptr)
 		else if (num & BIO_FP_READ)
 			strlcpy(p, "r", sizeof p);
 		else {
-			BIOerr(BIO_F_FILE_CTRL, BIO_R_BAD_FOPEN_MODE);
+			BIOerror(BIO_R_BAD_FOPEN_MODE);
 			ret = 0;
 			break;
 		}
 		fp = fopen(ptr, p);
 		if (fp == NULL) {
-			SYSerr(SYS_F_FOPEN, errno);
+			SYSerror(errno);
 			ERR_asprintf_error_data("fopen('%s', '%s')", ptr, p);
-			BIOerr(BIO_F_FILE_CTRL, ERR_R_SYS_LIB);
+			BIOerror(ERR_R_SYS_LIB);
 			ret = 0;
 			break;
 		}

@@ -1,4 +1,4 @@
-/* $OpenBSD: tasn_fre.c,v 1.13 2015/02/14 13:32:46 jsing Exp $ */
+/* $OpenBSD: tasn_fre.c,v 1.17 2019/04/01 15:48:04 jsing Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2000.
  */
@@ -88,7 +88,10 @@ asn1_item_combine_free(ASN1_VALUE **pval, const ASN1_ITEM *it, int combine)
 	ASN1_aux_cb *asn1_cb = NULL;
 	int i;
 
-	if (pval == NULL || *pval == NULL)
+	if (pval == NULL)
+		return;
+	/* For primitive types *pval may be something other than C pointer. */
+	if (it->itype != ASN1_ITYPE_PRIMITIVE && *pval == NULL)
 		return;
 
 	if (aux != NULL && aux->asn1_cb != NULL)
@@ -176,13 +179,13 @@ ASN1_template_free(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt)
 		for (i = 0; i < sk_ASN1_VALUE_num(sk); i++) {
 			ASN1_VALUE *vtmp;
 			vtmp = sk_ASN1_VALUE_value(sk, i);
-			asn1_item_combine_free(&vtmp, ASN1_ITEM_ptr(tt->item),
+			asn1_item_combine_free(&vtmp, tt->item,
 			    0);
 		}
 		sk_ASN1_VALUE_free(sk);
 		*pval = NULL;
 	} else
-		asn1_item_combine_free(pval, ASN1_ITEM_ptr(tt->item),
+		asn1_item_combine_free(pval, tt->item,
 		    tt->flags & ASN1_TFLG_COMBINE);
 }
 
@@ -190,14 +193,14 @@ void
 ASN1_primitive_free(ASN1_VALUE **pval, const ASN1_ITEM *it)
 {
 	int utype;
-	if (it) {
-		const ASN1_PRIMITIVE_FUNCS *pf;
-		pf = it->funcs;
-		if (pf && pf->prim_free) {
-			pf->prim_free(pval, it);
-			return;
-		}
+
+	if (it != NULL && it->funcs != NULL) {
+		const ASN1_PRIMITIVE_FUNCS *pf = it->funcs;
+
+		pf->prim_free(pval, it);
+		return;
 	}
+
 	/* Special case: if 'it' is NULL free contents of ASN1_TYPE */
 	if (!it) {
 		ASN1_TYPE *typ = (ASN1_TYPE *)*pval;

@@ -1,4 +1,4 @@
-/* $OpenBSD: dgst.c,v 1.8 2015/10/17 07:51:10 semarie Exp $ */
+/* $OpenBSD: dgst.c,v 1.13 2019/01/18 23:33:57 naddy Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -124,7 +124,7 @@ dgst_main(int argc, char **argv)
 	STACK_OF(OPENSSL_STRING) * sigopts = NULL, *macopts = NULL;
 
 	if (single_execution) {
-		if (pledge("stdio rpath wpath cpath tty", NULL) == -1) {
+		if (pledge("stdio cpath wpath rpath tty", NULL) == -1) {
 			perror("pledge");
 			exit(1);
 		}
@@ -373,7 +373,7 @@ mac_end:
 	/* we use md as a filter, reading from 'in' */
 	else {
 		if (md == NULL)
-			md = EVP_md5();
+			md = EVP_sha256();
 		if (!BIO_set_md(bmd, md)) {
 			BIO_printf(bio_err, "Error setting digest %s\n", pname);
 			ERR_print_errors(bio_err);
@@ -447,11 +447,8 @@ mac_end:
 		}
 	}
 
-end:
-	if (buf != NULL) {
-		explicit_bzero(buf, BUFSIZE);
-		free(buf);
-	}
+ end:
+	freezero(buf, BUFSIZE);
 	if (in != NULL)
 		BIO_free(in);
 	free(passin);

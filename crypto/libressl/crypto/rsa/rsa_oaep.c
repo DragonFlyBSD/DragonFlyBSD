@@ -1,4 +1,4 @@
-/* $OpenBSD: rsa_oaep.c,v 1.24 2014/10/22 13:02:04 jsing Exp $ */
+/* $OpenBSD: rsa_oaep.c,v 1.29 2018/08/19 20:17:20 tb Exp $ */
 /* Written by Ulf Moeller. This software is distributed on an "AS IS"
    basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. */
 
@@ -44,14 +44,12 @@ RSA_padding_add_PKCS1_OAEP(unsigned char *to, int tlen,
 	unsigned char *dbmask, seedmask[SHA_DIGEST_LENGTH];
 
 	if (flen > emlen - 2 * SHA_DIGEST_LENGTH - 1) {
-		RSAerr(RSA_F_RSA_PADDING_ADD_PKCS1_OAEP,
-		    RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE);
+		RSAerror(RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE);
 		return 0;
 	}
 
 	if (emlen < 2 * SHA_DIGEST_LENGTH + 1) {
-		RSAerr(RSA_F_RSA_PADDING_ADD_PKCS1_OAEP,
-		    RSA_R_KEY_SIZE_TOO_SMALL);
+		RSAerror(RSA_R_KEY_SIZE_TOO_SMALL);
 		return 0;
 	}
 
@@ -69,19 +67,23 @@ RSA_padding_add_PKCS1_OAEP(unsigned char *to, int tlen,
 
 	dbmask = malloc(emlen - SHA_DIGEST_LENGTH);
 	if (dbmask == NULL) {
-		RSAerr(RSA_F_RSA_PADDING_ADD_PKCS1_OAEP, ERR_R_MALLOC_FAILURE);
+		RSAerror(ERR_R_MALLOC_FAILURE);
 		return 0;
 	}
 
 	if (MGF1(dbmask, emlen - SHA_DIGEST_LENGTH, seed,
-	    SHA_DIGEST_LENGTH) < 0)
+	    SHA_DIGEST_LENGTH) < 0) {
+		free(dbmask);
 		return 0;
+	}
 	for (i = 0; i < emlen - SHA_DIGEST_LENGTH; i++)
 		db[i] ^= dbmask[i];
 
 	if (MGF1(seedmask, SHA_DIGEST_LENGTH, db,
-	    emlen - SHA_DIGEST_LENGTH) < 0)
+	    emlen - SHA_DIGEST_LENGTH) < 0) {
+		free(dbmask);
 		return 0;
+	}
 	for (i = 0; i < SHA_DIGEST_LENGTH; i++)
 		seed[i] ^= seedmask[i];
 
@@ -124,10 +126,8 @@ RSA_padding_check_PKCS1_OAEP(unsigned char *to, int tlen,
 	}
 
 	dblen = num - SHA_DIGEST_LENGTH;
-	db = malloc(dblen + num);
-	if (db == NULL) {
-		RSAerr(RSA_F_RSA_PADDING_CHECK_PKCS1_OAEP,
-		    ERR_R_MALLOC_FAILURE);
+	if ((db = malloc(dblen + num)) == NULL) {
+		RSAerror(ERR_R_MALLOC_FAILURE);
 		return -1;
 	}
 
@@ -142,17 +142,17 @@ RSA_padding_check_PKCS1_OAEP(unsigned char *to, int tlen,
 	maskeddb = padded_from + SHA_DIGEST_LENGTH;
 
 	if (MGF1(seed, SHA_DIGEST_LENGTH, maskeddb, dblen))
-		return -1;
+		goto err;
 	for (i = 0; i < SHA_DIGEST_LENGTH; i++)
 		seed[i] ^= padded_from[i];
 
 	if (MGF1(db, dblen, seed, SHA_DIGEST_LENGTH))
-		return -1;
+		goto err;
 	for (i = 0; i < dblen; i++)
 		db[i] ^= maskeddb[i];
 
 	if (!EVP_Digest((void *)param, plen, phash, NULL, EVP_sha1(), NULL))
-		return -1;
+		goto err;
 
 	if (timingsafe_memcmp(db, phash, SHA_DIGEST_LENGTH) != 0 || bad)
 		goto decoding_err;
@@ -167,8 +167,7 @@ RSA_padding_check_PKCS1_OAEP(unsigned char *to, int tlen,
 
 			mlen = dblen - ++i;
 			if (tlen < mlen) {
-				RSAerr(RSA_F_RSA_PADDING_CHECK_PKCS1_OAEP,
-				    RSA_R_DATA_TOO_LARGE);
+				RSAerror(RSA_R_DATA_TOO_LARGE);
 				mlen = -1;
 			} else
 				memcpy(to, db + i, mlen);
@@ -177,12 +176,13 @@ RSA_padding_check_PKCS1_OAEP(unsigned char *to, int tlen,
 	free(db);
 	return mlen;
 
-decoding_err:
+ decoding_err:
 	/*
 	 * To avoid chosen ciphertext attacks, the error message should not
 	 * reveal which kind of decoding error happened
 	 */
-	RSAerr(RSA_F_RSA_PADDING_CHECK_PKCS1_OAEP, RSA_R_OAEP_DECODING_ERROR);
+	RSAerror(RSA_R_OAEP_DECODING_ERROR);
+ err:
 	free(db);
 	return -1;
 }
@@ -223,7 +223,7 @@ PKCS1_MGF1(unsigned char *mask, long len, const unsigned char *seed,
 		}
 	}
 	rv = 0;
-err:
+ err:
 	EVP_MD_CTX_cleanup(&c);
 	return rv;
 }

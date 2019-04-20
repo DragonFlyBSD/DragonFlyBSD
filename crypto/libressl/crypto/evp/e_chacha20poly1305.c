@@ -1,4 +1,4 @@
-/* $OpenBSD: e_chacha20poly1305.c,v 1.13 2016/04/13 13:25:05 jsing Exp $ */
+/* $OpenBSD: e_chacha20poly1305.c,v 1.21 2019/03/27 15:34:01 jsing Exp $ */
 
 /*
  * Copyright (c) 2015 Reyk Floter <reyk@openbsd.org>
@@ -32,17 +32,11 @@
 #include "evp_locl.h"
 
 #define POLY1305_TAG_LEN 16
-#define CHACHA20_NONCE_LEN_OLD 8
 
-/*
- * The informational RFC 7539, "ChaCha20 and Poly1305 for IETF Protocols",
- * introduced a modified AEAD construction that is incompatible with the
- * common style that has been already used in TLS.  The IETF version also
- * adds a constant (salt) that is prepended to the nonce.
- */
 #define CHACHA20_CONSTANT_LEN 4
 #define CHACHA20_IV_LEN 8
 #define CHACHA20_NONCE_LEN (CHACHA20_CONSTANT_LEN + CHACHA20_IV_LEN)
+#define XCHACHA20_NONCE_LEN 24
 
 struct aead_chacha20_poly1305_ctx {
 	unsigned char key[32];
@@ -59,7 +53,7 @@ aead_chacha20_poly1305_init(EVP_AEAD_CTX *ctx, const unsigned char *key,
 		tag_len = POLY1305_TAG_LEN;
 
 	if (tag_len > POLY1305_TAG_LEN) {
-		EVPerr(EVP_F_AEAD_CHACHA20_POLY1305_INIT, EVP_R_TOO_LARGE);
+		EVPerror(EVP_R_TOO_LARGE);
 		return 0;
 	}
 
@@ -83,8 +77,7 @@ aead_chacha20_poly1305_cleanup(EVP_AEAD_CTX *ctx)
 {
 	struct aead_chacha20_poly1305_ctx *c20_ctx = ctx->aead_state;
 
-	explicit_bzero(c20_ctx->key, sizeof(c20_ctx->key));
-	free(c20_ctx);
+	freezero(c20_ctx, sizeof(*c20_ctx));
 }
 
 static void
@@ -142,50 +135,34 @@ aead_chacha20_poly1305_seal(const EVP_AEAD_CTX *ctx, unsigned char *out,
 	 * Casting to uint64_t inside the conditional is not sufficient to stop
 	 * the warning. */
 	if (in_len_64 >= (1ULL << 32) * 64 - 64) {
-		EVPerr(EVP_F_AEAD_CHACHA20_POLY1305_SEAL, EVP_R_TOO_LARGE);
+		EVPerror(EVP_R_TOO_LARGE);
 		return 0;
 	}
 
 	if (max_out_len < in_len + c20_ctx->tag_len) {
-		EVPerr(EVP_F_AEAD_CHACHA20_POLY1305_SEAL,
-		    EVP_R_BUFFER_TOO_SMALL);
+		EVPerror(EVP_R_BUFFER_TOO_SMALL);
 		return 0;
 	}
 
 	if (nonce_len != ctx->aead->nonce_len) {
-		EVPerr(EVP_F_AEAD_CHACHA20_POLY1305_SEAL, EVP_R_IV_TOO_LARGE);
+		EVPerror(EVP_R_IV_TOO_LARGE);
 		return 0;
 	}
 
-	if (nonce_len == CHACHA20_NONCE_LEN_OLD) {
-		/* Google's draft-agl-tls-chacha20poly1305-04, Nov 2013 */
+	ctr = (uint64_t)((uint32_t)(nonce[0]) | (uint32_t)(nonce[1]) << 8 |
+	    (uint32_t)(nonce[2]) << 16 | (uint32_t)(nonce[3]) << 24) << 32;
+	iv = nonce + CHACHA20_CONSTANT_LEN;
 
-		memset(poly1305_key, 0, sizeof(poly1305_key));
-		CRYPTO_chacha_20(poly1305_key, poly1305_key,
-		    sizeof(poly1305_key), c20_ctx->key, nonce, 0);
+	memset(poly1305_key, 0, sizeof(poly1305_key));
+	CRYPTO_chacha_20(poly1305_key, poly1305_key,
+	    sizeof(poly1305_key), c20_ctx->key, iv, ctr);
 
-		CRYPTO_poly1305_init(&poly1305, poly1305_key);
-		poly1305_update_with_length(&poly1305, ad, ad_len);
-		CRYPTO_chacha_20(out, in, in_len, c20_ctx->key, nonce, 1);
-		poly1305_update_with_length(&poly1305, out, in_len);
-	} else if (nonce_len == CHACHA20_NONCE_LEN) {
-		/* RFC 7539, May 2015 */
-
-		ctr = (uint64_t)(nonce[0] | nonce[1] << 8 |
-		    nonce[2] << 16 | nonce[3] << 24) << 32;
-		iv = nonce + CHACHA20_CONSTANT_LEN;
-
-		memset(poly1305_key, 0, sizeof(poly1305_key));
-		CRYPTO_chacha_20(poly1305_key, poly1305_key,
-		    sizeof(poly1305_key), c20_ctx->key, iv, ctr);
-
-		CRYPTO_poly1305_init(&poly1305, poly1305_key);
-		poly1305_update_with_pad16(&poly1305, ad, ad_len);
-		CRYPTO_chacha_20(out, in, in_len, c20_ctx->key, iv, ctr + 1);
-		poly1305_update_with_pad16(&poly1305, out, in_len);
-		poly1305_update_with_length(&poly1305, NULL, ad_len);
-		poly1305_update_with_length(&poly1305, NULL, in_len);
-	}
+	CRYPTO_poly1305_init(&poly1305, poly1305_key);
+	poly1305_update_with_pad16(&poly1305, ad, ad_len);
+	CRYPTO_chacha_20(out, in, in_len, c20_ctx->key, iv, ctr + 1);
+	poly1305_update_with_pad16(&poly1305, out, in_len);
+	poly1305_update_with_length(&poly1305, NULL, ad_len);
+	poly1305_update_with_length(&poly1305, NULL, in_len);
 
 	if (c20_ctx->tag_len != POLY1305_TAG_LEN) {
 		unsigned char tag[POLY1305_TAG_LEN];
@@ -216,7 +193,7 @@ aead_chacha20_poly1305_open(const EVP_AEAD_CTX *ctx, unsigned char *out,
 	uint64_t ctr = 0;
 
 	if (in_len < c20_ctx->tag_len) {
-		EVPerr(EVP_F_AEAD_CHACHA20_POLY1305_OPEN, EVP_R_BAD_DECRYPT);
+		EVPerror(EVP_R_BAD_DECRYPT);
 		return 0;
 	}
 
@@ -228,55 +205,40 @@ aead_chacha20_poly1305_open(const EVP_AEAD_CTX *ctx, unsigned char *out,
 	 * Casting to uint64_t inside the conditional is not sufficient to stop
 	 * the warning. */
 	if (in_len_64 >= (1ULL << 32) * 64 - 64) {
-		EVPerr(EVP_F_AEAD_CHACHA20_POLY1305_OPEN, EVP_R_TOO_LARGE);
+		EVPerror(EVP_R_TOO_LARGE);
 		return 0;
 	}
 
 	if (nonce_len != ctx->aead->nonce_len) {
-		EVPerr(EVP_F_AEAD_CHACHA20_POLY1305_OPEN, EVP_R_IV_TOO_LARGE);
+		EVPerror(EVP_R_IV_TOO_LARGE);
 		return 0;
 	}
 
 	plaintext_len = in_len - c20_ctx->tag_len;
 
 	if (max_out_len < plaintext_len) {
-		EVPerr(EVP_F_AEAD_CHACHA20_POLY1305_OPEN,
-		    EVP_R_BUFFER_TOO_SMALL);
+		EVPerror(EVP_R_BUFFER_TOO_SMALL);
 		return 0;
 	}
 
-	if (nonce_len == CHACHA20_NONCE_LEN_OLD) {
-		/* Google's draft-agl-tls-chacha20poly1305-04, Nov 2013 */
+	ctr = (uint64_t)((uint32_t)(nonce[0]) | (uint32_t)(nonce[1]) << 8 |
+	    (uint32_t)(nonce[2]) << 16 | (uint32_t)(nonce[3]) << 24) << 32;
+	iv = nonce + CHACHA20_CONSTANT_LEN;
 
-		memset(poly1305_key, 0, sizeof(poly1305_key));
-		CRYPTO_chacha_20(poly1305_key, poly1305_key,
-		    sizeof(poly1305_key), c20_ctx->key, nonce, 0);
+	memset(poly1305_key, 0, sizeof(poly1305_key));
+	CRYPTO_chacha_20(poly1305_key, poly1305_key,
+	    sizeof(poly1305_key), c20_ctx->key, iv, ctr);
 
-		CRYPTO_poly1305_init(&poly1305, poly1305_key);
-		poly1305_update_with_length(&poly1305, ad, ad_len);
-		poly1305_update_with_length(&poly1305, in, plaintext_len);
-	} else if (nonce_len == CHACHA20_NONCE_LEN) {
-		/* RFC 7539, May 2015 */
-
-		ctr = (uint64_t)(nonce[0] | nonce[1] << 8 |
-		    nonce[2] << 16 | nonce[3] << 24) << 32;
-		iv = nonce + CHACHA20_CONSTANT_LEN;
-
-		memset(poly1305_key, 0, sizeof(poly1305_key));
-		CRYPTO_chacha_20(poly1305_key, poly1305_key,
-		    sizeof(poly1305_key), c20_ctx->key, iv, ctr);
-
-		CRYPTO_poly1305_init(&poly1305, poly1305_key);
-		poly1305_update_with_pad16(&poly1305, ad, ad_len);
-		poly1305_update_with_pad16(&poly1305, in, plaintext_len);
-		poly1305_update_with_length(&poly1305, NULL, ad_len);
-		poly1305_update_with_length(&poly1305, NULL, plaintext_len);
-	}
+	CRYPTO_poly1305_init(&poly1305, poly1305_key);
+	poly1305_update_with_pad16(&poly1305, ad, ad_len);
+	poly1305_update_with_pad16(&poly1305, in, plaintext_len);
+	poly1305_update_with_length(&poly1305, NULL, ad_len);
+	poly1305_update_with_length(&poly1305, NULL, plaintext_len);
 
 	CRYPTO_poly1305_finish(&poly1305, mac);
 
 	if (timingsafe_memcmp(mac, in + plaintext_len, c20_ctx->tag_len) != 0) {
-		EVPerr(EVP_F_AEAD_CHACHA20_POLY1305_OPEN, EVP_R_BAD_DECRYPT);
+		EVPerror(EVP_R_BAD_DECRYPT);
 		return 0;
 	}
 
@@ -285,21 +247,112 @@ aead_chacha20_poly1305_open(const EVP_AEAD_CTX *ctx, unsigned char *out,
 	return 1;
 }
 
+static int
+aead_xchacha20_poly1305_seal(const EVP_AEAD_CTX *ctx, unsigned char *out,
+    size_t *out_len, size_t max_out_len, const unsigned char *nonce,
+    size_t nonce_len, const unsigned char *in, size_t in_len,
+    const unsigned char *ad, size_t ad_len)
+{
+	const struct aead_chacha20_poly1305_ctx *c20_ctx = ctx->aead_state;
+	unsigned char poly1305_key[32];
+	unsigned char subkey[32];
+	poly1305_state poly1305;
+
+	if (max_out_len < in_len + c20_ctx->tag_len) {
+		EVPerror(EVP_R_BUFFER_TOO_SMALL);
+		return 0;
+	}
+
+	if (nonce_len != ctx->aead->nonce_len) {
+		EVPerror(EVP_R_IV_TOO_LARGE);
+		return 0;
+	}
+
+	CRYPTO_hchacha_20(subkey, c20_ctx->key, nonce);
+
+	CRYPTO_chacha_20(out, in, in_len, subkey, nonce + 16, 1);
+
+	memset(poly1305_key, 0, sizeof(poly1305_key));
+	CRYPTO_chacha_20(poly1305_key, poly1305_key, sizeof(poly1305_key),
+	    subkey, nonce + 16, 0);
+
+	CRYPTO_poly1305_init(&poly1305, poly1305_key);
+	poly1305_update_with_pad16(&poly1305, ad, ad_len);
+	poly1305_update_with_pad16(&poly1305, out, in_len);
+	poly1305_update_with_length(&poly1305, NULL, ad_len);
+	poly1305_update_with_length(&poly1305, NULL, in_len);
+
+	if (c20_ctx->tag_len != POLY1305_TAG_LEN) {
+		unsigned char tag[POLY1305_TAG_LEN];
+		CRYPTO_poly1305_finish(&poly1305, tag);
+		memcpy(out + in_len, tag, c20_ctx->tag_len);
+		*out_len = in_len + c20_ctx->tag_len;
+		return 1;
+	}
+
+	CRYPTO_poly1305_finish(&poly1305, out + in_len);
+	*out_len = in_len + POLY1305_TAG_LEN;
+	return 1;
+}
+
+static int
+aead_xchacha20_poly1305_open(const EVP_AEAD_CTX *ctx, unsigned char *out,
+    size_t *out_len, size_t max_out_len, const unsigned char *nonce,
+    size_t nonce_len, const unsigned char *in, size_t in_len,
+    const unsigned char *ad, size_t ad_len)
+{
+	const struct aead_chacha20_poly1305_ctx *c20_ctx = ctx->aead_state;
+	unsigned char mac[POLY1305_TAG_LEN];
+	unsigned char poly1305_key[32];
+	unsigned char subkey[32];
+	poly1305_state poly1305;
+	size_t plaintext_len;
+
+	if (in_len < c20_ctx->tag_len) {
+		EVPerror(EVP_R_BAD_DECRYPT);
+		return 0;
+	}
+
+	if (nonce_len != ctx->aead->nonce_len) {
+		EVPerror(EVP_R_IV_TOO_LARGE);
+		return 0;
+	}
+
+	plaintext_len = in_len - c20_ctx->tag_len;
+
+	if (max_out_len < plaintext_len) {
+		EVPerror(EVP_R_BUFFER_TOO_SMALL);
+		return 0;
+	}
+
+	CRYPTO_hchacha_20(subkey, c20_ctx->key, nonce);
+
+	memset(poly1305_key, 0, sizeof(poly1305_key));
+	CRYPTO_chacha_20(poly1305_key, poly1305_key, sizeof(poly1305_key),
+	    subkey, nonce + 16, 0);
+
+	CRYPTO_poly1305_init(&poly1305, poly1305_key);
+	poly1305_update_with_pad16(&poly1305, ad, ad_len);
+	poly1305_update_with_pad16(&poly1305, in, plaintext_len);
+	poly1305_update_with_length(&poly1305, NULL, ad_len);
+	poly1305_update_with_length(&poly1305, NULL, plaintext_len);
+
+	CRYPTO_poly1305_finish(&poly1305, mac);
+	if (timingsafe_memcmp(mac, in + plaintext_len, c20_ctx->tag_len) != 0) {
+		EVPerror(EVP_R_BAD_DECRYPT);
+		return 0;
+	}
+
+	CRYPTO_chacha_20(out, in, plaintext_len, subkey, nonce + 16, 1);
+
+	*out_len = plaintext_len;
+	return 1;
+}
+
+/* RFC 7539 */
 static const EVP_AEAD aead_chacha20_poly1305 = {
 	.key_len = 32,
 	.nonce_len = CHACHA20_NONCE_LEN,
-	.overhead = POLY1305_TAG_LEN,
-	.max_tag_len = POLY1305_TAG_LEN,
-
-	.init = aead_chacha20_poly1305_init,
-	.cleanup = aead_chacha20_poly1305_cleanup,
-	.seal = aead_chacha20_poly1305_seal,
-	.open = aead_chacha20_poly1305_open,
-};
-
-static const EVP_AEAD aead_chacha20_poly1305_old = {
-	.key_len = 32,
-	.nonce_len = CHACHA20_NONCE_LEN_OLD,
 	.overhead = POLY1305_TAG_LEN,
 	.max_tag_len = POLY1305_TAG_LEN,
 
@@ -315,10 +368,22 @@ EVP_aead_chacha20_poly1305()
 	return &aead_chacha20_poly1305;
 }
 
+static const EVP_AEAD aead_xchacha20_poly1305 = {
+	.key_len = 32,
+	.nonce_len = XCHACHA20_NONCE_LEN,
+	.overhead = POLY1305_TAG_LEN,
+	.max_tag_len = POLY1305_TAG_LEN,
+
+	.init = aead_chacha20_poly1305_init,
+	.cleanup = aead_chacha20_poly1305_cleanup,
+	.seal = aead_xchacha20_poly1305_seal,
+	.open = aead_xchacha20_poly1305_open,
+};
+
 const EVP_AEAD *
-EVP_aead_chacha20_poly1305_old()
+EVP_aead_xchacha20_poly1305()
 {
-	return &aead_chacha20_poly1305_old;
+	return &aead_xchacha20_poly1305;
 }
 
 #endif  /* !OPENSSL_NO_CHACHA && !OPENSSL_NO_POLY1305 */

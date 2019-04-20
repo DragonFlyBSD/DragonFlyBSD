@@ -1,10 +1,11 @@
+#include "x86_arch.h"
 
 .hidden	OPENSSL_cpuid_setup
 .section	.init
 	call	OPENSSL_cpuid_setup
 
+
 .hidden	OPENSSL_ia32cap_P
-.comm	OPENSSL_ia32cap_P,8,4
 
 .text	
 
@@ -19,7 +20,7 @@ OPENSSL_atomic_add:
 	jne	.Lspin
 	movl	%r8d,%eax
 .byte	0x48,0x98	
-	.byte	0xf3,0xc3
+	retq
 .size	OPENSSL_atomic_add,.-OPENSSL_atomic_add
 
 .globl	OPENSSL_ia32_cpuid
@@ -63,8 +64,8 @@ OPENSSL_ia32_cpuid:
 	movl	%eax,%r10d
 	movl	$2147483649,%eax
 	cpuid
-	orl	%ecx,%r9d
-	andl	$2049,%r9d
+	andl	$IA32CAP_MASK1_AMD_XOP,%r9d
+	orl	$1,%r9d
 
 	cmpl	$2147483656,%r10d
 	jb	.Lintel
@@ -76,12 +77,12 @@ OPENSSL_ia32_cpuid:
 
 	movl	$1,%eax
 	cpuid
-	btl	$28,%edx
+	btl	$IA32CAP_BIT0_HT,%edx
 	jnc	.Lgeneric
 	shrl	$16,%ebx
 	cmpb	%r10b,%bl
 	ja	.Lgeneric
-	andl	$4026531839,%edx
+	xorl	$IA32CAP_MASK0_HT,%edx
 	jmp	.Lgeneric
 
 .Lintel:
@@ -99,33 +100,37 @@ OPENSSL_ia32_cpuid:
 .Lnocacheinfo:
 	movl	$1,%eax
 	cpuid
-	andl	$3220176895,%edx
+
+	andl	$(~(IA32CAP_MASK0_INTELP4 | IA32CAP_MASK0_INTEL)),%edx
 	cmpl	$0,%r9d
 	jne	.Lnotintel
-	orl	$1073741824,%edx
+
+	orl	$IA32CAP_MASK0_INTEL,%edx
 	andb	$15,%ah
 	cmpb	$15,%ah
 	jne	.Lnotintel
-	orl	$1048576,%edx
+
+	orl	$IA32CAP_MASK0_INTELP4,%edx
 .Lnotintel:
-	btl	$28,%edx
+	btl	$IA32CAP_BIT0_HT,%edx
 	jnc	.Lgeneric
-	andl	$4026531839,%edx
+	xorl	$IA32CAP_MASK0_HT,%edx
 	cmpl	$0,%r10d
 	je	.Lgeneric
 
-	orl	$268435456,%edx
+	orl	$IA32CAP_MASK0_HT,%edx
 	shrl	$16,%ebx
 	cmpb	$1,%bl
 	ja	.Lgeneric
-	andl	$4026531839,%edx
+	xorl	$IA32CAP_MASK0_HT,%edx
+
 .Lgeneric:
-	andl	$2048,%r9d
-	andl	$4294965247,%ecx
+	andl	$IA32CAP_MASK1_AMD_XOP,%r9d
+	andl	$(~IA32CAP_MASK1_AMD_XOP),%ecx
 	orl	%ecx,%r9d
 
 	movl	%edx,%r10d
-	btl	$27,%r9d
+	btl	$IA32CAP_BIT1_OSXSAVE,%r9d
 	jnc	.Lclear_avx
 	xorl	%ecx,%ecx
 .byte	0x0f,0x01,0xd0		
@@ -133,14 +138,14 @@ OPENSSL_ia32_cpuid:
 	cmpl	$6,%eax
 	je	.Ldone
 .Lclear_avx:
-	movl	$4026525695,%eax
+	movl	$(~(IA32CAP_MASK1_AVX | IA32CAP_MASK1_FMA3 | IA32CAP_MASK1_AMD_XOP)),%eax
 	andl	%eax,%r9d
 .Ldone:
 	shlq	$32,%r9
 	movl	%r10d,%eax
 	movq	%r8,%rbx
 	orq	%r9,%rax
-	.byte	0xf3,0xc3
+	retq
 .size	OPENSSL_ia32_cpuid,.-OPENSSL_ia32_cpuid
 .globl	OPENSSL_wipe_cpu
 .type	OPENSSL_wipe_cpu,@function
@@ -171,7 +176,7 @@ OPENSSL_wipe_cpu:
 	xorq	%r10,%r10
 	xorq	%r11,%r11
 	leaq	8(%rsp),%rax
-	.byte	0xf3,0xc3
+	retq
 .size	OPENSSL_wipe_cpu,.-OPENSSL_wipe_cpu
 #if defined(HAVE_GNU_STACK)
 .section .note.GNU-stack,"",%progbits

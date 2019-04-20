@@ -1,4 +1,4 @@
-/* $OpenBSD: smime.c,v 1.6 2015/10/17 07:51:10 semarie Exp $ */
+/* $OpenBSD: smime.c,v 1.10 2018/02/07 05:47:55 jsing Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project.
  */
@@ -113,7 +113,7 @@ smime_main(int argc, char **argv)
 	X509_VERIFY_PARAM *vpm = NULL;
 
 	if (single_execution) {
-		if (pledge("stdio rpath wpath cpath tty", NULL) == -1) {
+		if (pledge("stdio cpath wpath rpath tty", NULL) == -1) {
 			perror("pledge");
 			exit(1);
 		}
@@ -342,7 +342,7 @@ smime_main(int argc, char **argv)
 		badarg = 1;
 
 	if (badarg) {
-argerr:
+ argerr:
 		BIO_printf(bio_err, "Usage smime [options] cert.pem ...\n");
 		BIO_printf(bio_err, "where options are\n");
 		BIO_printf(bio_err, "-encrypt       encrypt message\n");
@@ -620,17 +620,14 @@ argerr:
 		}
 	}
 	ret = 0;
-end:
+ end:
 	if (ret)
 		ERR_print_errors(bio_err);
 	sk_X509_pop_free(encerts, X509_free);
 	sk_X509_pop_free(other, X509_free);
-	if (vpm)
-		X509_VERIFY_PARAM_free(vpm);
-	if (sksigners)
-		sk_OPENSSL_STRING_free(sksigners);
-	if (skkeys)
-		sk_OPENSSL_STRING_free(skkeys);
+	X509_VERIFY_PARAM_free(vpm);
+	sk_OPENSSL_STRING_free(sksigners);
+	sk_OPENSSL_STRING_free(skkeys);
 	X509_STORE_free(store);
 	X509_free(cert);
 	X509_free(recip);

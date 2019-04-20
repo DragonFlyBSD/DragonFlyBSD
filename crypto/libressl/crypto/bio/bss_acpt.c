@@ -1,4 +1,4 @@
-/* $OpenBSD: bss_acpt.c,v 1.25 2014/07/25 06:05:32 doug Exp $ */
+/* $OpenBSD: bss_acpt.c,v 1.29 2018/05/12 18:51:59 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -100,7 +100,7 @@ static void BIO_ACCEPT_free(BIO_ACCEPT *a);
 #define ACPT_S_GET_ACCEPT_SOCKET	2
 #define ACPT_S_OK			3
 
-static BIO_METHOD methods_acceptp = {
+static const BIO_METHOD methods_acceptp = {
 	.type = BIO_TYPE_ACCEPT,
 	.name = "socket accept",
 	.bwrite = acpt_write,
@@ -111,7 +111,7 @@ static BIO_METHOD methods_acceptp = {
 	.destroy = acpt_free
 };
 
-BIO_METHOD *
+const BIO_METHOD *
 BIO_s_accept(void)
 {
 	return (&methods_acceptp);
@@ -201,7 +201,7 @@ again:
 	switch (c->state) {
 	case ACPT_S_BEFORE:
 		if (c->param_addr == NULL) {
-			BIOerr(BIO_F_ACPT_STATE, BIO_R_NO_ACCEPT_PORT_SPECIFIED);
+			BIOerror(BIO_R_NO_ACCEPT_PORT_SPECIFIED);
 			return (-1);
 		}
 		s = BIO_get_accept_socket(c->param_addr, c->bind_mode);
@@ -211,7 +211,7 @@ again:
 		if (c->accept_nbio) {
 			if (!BIO_socket_nbio(s, 1)) {
 				close(s);
-				BIOerr(BIO_F_ACPT_STATE, BIO_R_ERROR_SETTING_NBIO_ON_ACCEPT_SOCKET);
+				BIOerror(BIO_R_ERROR_SETTING_NBIO_ON_ACCEPT_SOCKET);
 				return (-1);
 			}
 		}
@@ -248,7 +248,7 @@ again:
 
 		if (c->nbio) {
 			if (!BIO_socket_nbio(i, 1)) {
-				BIOerr(BIO_F_ACPT_STATE, BIO_R_ERROR_SETTING_NBIO_ON_ACCEPTED_SOCKET);
+				BIOerror(BIO_R_ERROR_SETTING_NBIO_ON_ACCEPTED_SOCKET);
 				goto err;
 			}
 		}
@@ -436,7 +436,7 @@ acpt_puts(BIO *bp, const char *str)
 }
 
 BIO *
-BIO_new_accept(char *str)
+BIO_new_accept(const char *str)
 {
 	BIO *ret;
 

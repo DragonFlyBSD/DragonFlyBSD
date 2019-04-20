@@ -1,4 +1,4 @@
-/* $OpenBSD: speed.c,v 1.17 2015/10/10 22:28:51 doug Exp $ */
+/* $OpenBSD: speed.c,v 1.23 2018/07/13 18:36:56 cheloha Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -78,9 +78,6 @@
 #define DSA_SECONDS	10
 #define ECDSA_SECONDS   10
 #define ECDH_SECONDS    10
-
-/* 11-Sep-92 Andrew Daviel   Support for Silicon Graphics IRIX added */
-/* 06-Apr-92 Luke Brennan    Support for VMS and add extra signal calls */
 
 #include <math.h>
 #include <signal.h>
@@ -198,14 +195,17 @@ sig_done(int sig)
 	run = 0;
 }
 
-#define START	0
-#define STOP	1
+#define START	TM_RESET
+#define STOP	TM_GET
 
 
 static double
 Time_F(int s)
 {
-	return app_tminterval(s, usertime);
+	if (usertime)
+		return app_timer_user(s);
+	else
+		return app_timer_real(s);
 }
 
 
@@ -541,7 +541,7 @@ speed_main(int argc, char **argv)
 			doit[D_EVP] = 1;
 		} else if (argc > 0 && !strcmp(*argv, "-decrypt")) {
 			decrypt = 1;
-			j--;	/* Otherwise, -elapsed gets confused with an
+			j--;	/* Otherwise, -decrypt gets confused with an
 				 * algorithm. */
 		}
 		else if ((argc > 0) && (strcmp(*argv, "-multi") == 0)) {
@@ -556,7 +556,7 @@ speed_main(int argc, char **argv)
 				BIO_printf(bio_err, "bad multi count: %s", errstr);
 				goto end;
 			}
-			j--;	/* Otherwise, -mr gets confused with an
+			j--;	/* Otherwise, -multi gets confused with an
 				 * algorithm. */
 		}
 		else if (argc > 0 && !strcmp(*argv, "-mr")) {
@@ -1897,7 +1897,7 @@ show_res:
 
 	mret = 0;
 
-end:
+ end:
 	ERR_print_errors(bio_err);
 	free(buf);
 	free(buf2);

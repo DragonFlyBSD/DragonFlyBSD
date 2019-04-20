@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: evp_locl.h,v 1.15 2018/11/24 11:16:44 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2000.
  */
@@ -55,6 +55,8 @@
  * Hudson (tjh@cryptsoft.com).
  *
  */
+
+__BEGIN_HIDDEN_DECLS
 
 /* Macros to code block cipher wrappers */
 
@@ -263,7 +265,7 @@ const EVP_CIPHER *EVP_##cname##_ecb(void) { return &cname##_ecb; }
 			     EVP_CIPHER_get_asn1_iv, \
 			     NULL)
 
-										struct evp_pkey_ctx_st {
+struct evp_pkey_ctx_st {
 	/* Method associated with this operation */
 	const EVP_PKEY_METHOD *pmeth;
 	/* Engine that implements this method or NULL if builtin */
@@ -364,3 +366,5 @@ struct evp_aead_st {
 	    size_t nonce_len, const unsigned char *in, size_t in_len,
 	    const unsigned char *ad, size_t ad_len);
 };
+
+__END_HIDDEN_DECLS

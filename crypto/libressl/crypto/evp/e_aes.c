@@ -1,4 +1,4 @@
-/* $OpenBSD: e_aes.c,v 1.28 2015/06/20 12:01:14 jsing Exp $ */
+/* $OpenBSD: e_aes.c,v 1.35 2019/03/17 18:07:41 tb Exp $ */
 /* ====================================================================
  * Copyright (c) 2001-2011 The OpenSSL Project.  All rights reserved.
  *
@@ -49,6 +49,7 @@
  *
  */
 
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -143,17 +144,17 @@ void AES_xts_decrypt(const char *inp, char *out, size_t len,
     const AES_KEY *key1, const AES_KEY *key2, const unsigned char iv[16]);
 #endif
 
-#if	defined(AES_ASM) && !defined(I386_ONLY) &&	(  \
+#if	defined(AES_ASM) &&				(  \
 	((defined(__i386)	|| defined(__i386__)	|| \
 	  defined(_M_IX86)) && defined(OPENSSL_IA32_SSE2))|| \
 	defined(__x86_64)	|| defined(__x86_64__)	|| \
 	defined(_M_AMD64)	|| defined(_M_X64)	|| \
 	defined(__INTEL__)				)
 
-extern unsigned int OPENSSL_ia32cap_P[2];
+#include "x86_arch.h"
 
 #ifdef VPAES_ASM
-#define VPAES_CAPABLE	(OPENSSL_ia32cap_P[1]&(1<<(41-32)))
+#define VPAES_CAPABLE	(OPENSSL_cpu_caps() & CPUCAP_MASK_SSSE3)
 #endif
 #ifdef BSAES_ASM
 #define BSAES_CAPABLE	VPAES_CAPABLE
@@ -161,7 +162,7 @@ extern unsigned int OPENSSL_ia32cap_P[2];
 /*
  * AES-NI section
  */
-#define	AESNI_CAPABLE	(OPENSSL_ia32cap_P[1]&(1<<(57-32)))
+#define	AESNI_CAPABLE	(OPENSSL_cpu_caps() & CPUCAP_MASK_AESNI)
 
 int aesni_set_encrypt_key(const unsigned char *userKey, int bits,
     AES_KEY *key);
@@ -225,7 +226,7 @@ aesni_init_key(EVP_CIPHER_CTX *ctx, const unsigned char *key,
 	}
 
 	if (ret < 0) {
-		EVPerr(EVP_F_AESNI_INIT_KEY, EVP_R_AES_KEY_SETUP_FAILED);
+		EVPerror(EVP_R_AES_KEY_SETUP_FAILED);
 		return 0;
 	}
 
@@ -563,7 +564,7 @@ aes_init_key(EVP_CIPHER_CTX *ctx, const unsigned char *key,
 		}
 
 	if (ret < 0) {
-		EVPerr(EVP_F_AES_INIT_KEY, EVP_R_AES_KEY_SETUP_FAILED);
+		EVPerror(EVP_R_AES_KEY_SETUP_FAILED);
 		return 0;
 	}
 
@@ -807,11 +808,16 @@ aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr)
 			    c->buf[arg - 1];
 
 			/* Correct length for explicit IV */
+			if (len < EVP_GCM_TLS_EXPLICIT_IV_LEN)
+				return 0;
 			len -= EVP_GCM_TLS_EXPLICIT_IV_LEN;
 
 			/* If decrypting correct for tag too */
-			if (!c->encrypt)
+			if (!c->encrypt) {
+				if (len < EVP_GCM_TLS_TAG_LEN)
+					return 0;
 				len -= EVP_GCM_TLS_TAG_LEN;
+			}
 			c->buf[arg - 2] = len >> 8;
 			c->buf[arg - 1] = len & 0xff;
 		}
@@ -1378,7 +1384,7 @@ aead_aes_gcm_init(EVP_AEAD_CTX *ctx, const unsigned char *key, size_t key_len,
 
 	/* EVP_AEAD_CTX_init should catch this. */
 	if (key_bits != 128 && key_bits != 256) {
-		EVPerr(EVP_F_AEAD_AES_GCM_INIT, EVP_R_BAD_KEY_LENGTH);
+		EVPerror(EVP_R_BAD_KEY_LENGTH);
 		return 0;
 	}
 
@@ -1386,7 +1392,7 @@ aead_aes_gcm_init(EVP_AEAD_CTX *ctx, const unsigned char *key, size_t key_len,
 		tag_len = EVP_AEAD_AES_GCM_TAG_LEN;
 
 	if (tag_len > EVP_AEAD_AES_GCM_TAG_LEN) {
-		EVPerr(EVP_F_AEAD_AES_GCM_INIT, EVP_R_TAG_TOO_LARGE);
+		EVPerror(EVP_R_TAG_TOO_LARGE);
 		return 0;
 	}
 
@@ -1417,8 +1423,7 @@ aead_aes_gcm_cleanup(EVP_AEAD_CTX *ctx)
 {
 	struct aead_aes_gcm_ctx *gcm_ctx = ctx->aead_state;
 
-	explicit_bzero(gcm_ctx, sizeof(*gcm_ctx));
-	free(gcm_ctx);
+	freezero(gcm_ctx, sizeof(*gcm_ctx));
 }
 
 static int
@@ -1432,7 +1437,7 @@ aead_aes_gcm_seal(const EVP_AEAD_CTX *ctx, unsigned char *out, size_t *out_len,
 	size_t bulk = 0;
 
 	if (max_out_len < in_len + gcm_ctx->tag_len) {
-		EVPerr(EVP_F_AEAD_AES_GCM_SEAL, EVP_R_BUFFER_TOO_SMALL);
+		EVPerror(EVP_R_BUFFER_TOO_SMALL);
 		return 0;
 	}
 
@@ -1471,14 +1476,14 @@ aead_aes_gcm_open(const EVP_AEAD_CTX *ctx, unsigned char *out, size_t *out_len,
 	size_t bulk = 0;
 
 	if (in_len < gcm_ctx->tag_len) {
-		EVPerr(EVP_F_AEAD_AES_GCM_OPEN, EVP_R_BAD_DECRYPT);
+		EVPerror(EVP_R_BAD_DECRYPT);
 		return 0;
 	}
 
 	plaintext_len = in_len - gcm_ctx->tag_len;
 
 	if (max_out_len < plaintext_len) {
-		EVPerr(EVP_F_AEAD_AES_GCM_OPEN, EVP_R_BUFFER_TOO_SMALL);
+		EVPerror(EVP_R_BUFFER_TOO_SMALL);
 		return 0;
 	}
 
@@ -1500,7 +1505,7 @@ aead_aes_gcm_open(const EVP_AEAD_CTX *ctx, unsigned char *out, size_t *out_len,
 
 	CRYPTO_gcm128_tag(&gcm, tag, gcm_ctx->tag_len);
 	if (timingsafe_memcmp(tag, in + plaintext_len, gcm_ctx->tag_len) != 0) {
-		EVPerr(EVP_F_AEAD_AES_GCM_OPEN, EVP_R_BAD_DECRYPT);
+		EVPerror(EVP_R_BAD_DECRYPT);
 		return 0;
 	}
 
@@ -1543,6 +1548,149 @@ const EVP_AEAD *
 EVP_aead_aes_256_gcm(void)
 {
 	return &aead_aes_256_gcm;
+}
+
+typedef struct {
+	union {
+		double align;
+		AES_KEY ks;
+	} ks;
+	unsigned char *iv;
+} EVP_AES_WRAP_CTX;
+
+static int
+aes_wrap_init_key(EVP_CIPHER_CTX *ctx, const unsigned char *key,
+    const unsigned char *iv, int enc)
+{
+	EVP_AES_WRAP_CTX *wctx = (EVP_AES_WRAP_CTX *)ctx->cipher_data;
+
+	if (iv == NULL && key == NULL)
+		return 1;
+
+	if (key != NULL) {
+		if (ctx->encrypt)
+			AES_set_encrypt_key(key, 8 * ctx->key_len,
+			    &wctx->ks.ks);
+		else
+			AES_set_decrypt_key(key, 8 * ctx->key_len,
+			    &wctx->ks.ks);
+
+		if (iv == NULL)
+			wctx->iv = NULL;
+	}
+
+	if (iv != NULL) {
+		memcpy(ctx->iv, iv, EVP_CIPHER_CTX_iv_length(ctx));
+		wctx->iv = ctx->iv;
+	}
+
+	return 1;
+}
+
+static int
+aes_wrap_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
+    const unsigned char *in, size_t inlen)
+{
+	EVP_AES_WRAP_CTX *wctx = ctx->cipher_data;
+	int ret;
+
+	if (in == NULL)
+		return 0;
+
+	if (inlen % 8 != 0)
+		return -1;
+	if (ctx->encrypt && inlen < 8)
+		return -1;
+	if (!ctx->encrypt && inlen < 16)
+		return -1;
+	if (inlen > INT_MAX)
+		return -1;
+
+	if (out == NULL) {
+		if (ctx->encrypt)
+			return inlen + 8;
+		else
+			return inlen - 8;
+	}
+
+	if (ctx->encrypt)
+		ret = AES_wrap_key(&wctx->ks.ks, wctx->iv, out, in,
+		    (unsigned int)inlen);
+	else
+		ret = AES_unwrap_key(&wctx->ks.ks, wctx->iv, out, in,
+		    (unsigned int)inlen);
+
+	return ret != 0 ? ret : -1;
+}
+
+#define WRAP_FLAGS \
+    ( EVP_CIPH_WRAP_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_FLAG_CUSTOM_CIPHER | \
+      EVP_CIPH_ALWAYS_CALL_INIT | EVP_CIPH_FLAG_DEFAULT_ASN1 )
+
+static const EVP_CIPHER aes_128_wrap = {
+	.nid = NID_id_aes128_wrap,
+	.block_size = 8,
+	.key_len = 16,
+	.iv_len = 8,
+	.flags = WRAP_FLAGS,
+	.init = aes_wrap_init_key,
+	.do_cipher = aes_wrap_cipher,
+	.cleanup = NULL,
+	.ctx_size = sizeof(EVP_AES_WRAP_CTX),
+	.set_asn1_parameters = NULL,
+	.get_asn1_parameters = NULL,
+	.ctrl = NULL,
+	.app_data = NULL,
+};
+
+const EVP_CIPHER *
+EVP_aes_128_wrap(void)
+{
+	return &aes_128_wrap;
+}
+
+static const EVP_CIPHER aes_192_wrap = {
+	.nid = NID_id_aes192_wrap,
+	.block_size = 8,
+	.key_len = 24,
+	.iv_len = 8,
+	.flags = WRAP_FLAGS,
+	.init = aes_wrap_init_key,
+	.do_cipher = aes_wrap_cipher,
+	.cleanup = NULL,
+	.ctx_size = sizeof(EVP_AES_WRAP_CTX),
+	.set_asn1_parameters = NULL,
+	.get_asn1_parameters = NULL,
+	.ctrl = NULL,
+	.app_data = NULL,
+};
+
+const EVP_CIPHER *
+EVP_aes_192_wrap(void)
+{
+	return &aes_192_wrap;
+}
+
+static const EVP_CIPHER aes_256_wrap = {
+	.nid = NID_id_aes256_wrap,
+	.block_size = 8,
+	.key_len = 32,
+	.iv_len = 8,
+	.flags = WRAP_FLAGS,
+	.init = aes_wrap_init_key,
+	.do_cipher = aes_wrap_cipher,
+	.cleanup = NULL,
+	.ctx_size = sizeof(EVP_AES_WRAP_CTX),
+	.set_asn1_parameters = NULL,
+	.get_asn1_parameters = NULL,
+	.ctrl = NULL,
+	.app_data = NULL,
+};
+
+const EVP_CIPHER *
+EVP_aes_256_wrap(void)
+{
+	return &aes_256_wrap;
 }
 
 #endif

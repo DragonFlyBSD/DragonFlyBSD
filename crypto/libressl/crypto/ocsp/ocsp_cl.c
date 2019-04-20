@@ -1,4 +1,4 @@
-/* $OpenBSD: ocsp_cl.c,v 1.10 2016/07/05 03:24:38 beck Exp $ */
+/* $OpenBSD: ocsp_cl.c,v 1.16 2018/11/25 19:48:43 jmc Exp $ */
 /* Written by Tom Titchener <Tom_Titchener@groove.net> for the OpenSSL
  * project. */
 
@@ -71,9 +71,6 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
-int asn1_time_parse(const char *, size_t, struct tm *, int);
-int asn1_tm_cmp(struct tm *, struct tm *);
-
 /* Utility functions related to sending OCSP requests and extracting
  * relevant information from the response.
  */
@@ -142,7 +139,7 @@ OCSP_request_add1_cert(OCSP_REQUEST *req, X509 *cert)
 	return 1;
 }
 
-/* Sign an OCSP request set the requestorName to the subjec
+/* Sign an OCSP request set the requestorName to the subject
  * name of an optional signers certificate and include one
  * or more optional certificates in the request. Behaves
  * like PKCS7_sign().
@@ -162,8 +159,7 @@ OCSP_request_sign(OCSP_REQUEST *req, X509 *signer, EVP_PKEY *key,
 		goto err;
 	if (key) {
 		if (!X509_check_private_key(signer, key)) {
-			OCSPerr(OCSP_F_OCSP_REQUEST_SIGN,
-			    OCSP_R_PRIVATE_KEY_DOES_NOT_MATCH_CERTIFICATE);
+			OCSPerror(OCSP_R_PRIVATE_KEY_DOES_NOT_MATCH_CERTIFICATE);
 			goto err;
 		}
 		if (!OCSP_REQUEST_sign(req, key, dgst))
@@ -205,17 +201,15 @@ OCSP_response_get1_basic(OCSP_RESPONSE *resp)
 
 	rb = resp->responseBytes;
 	if (!rb) {
-		OCSPerr(OCSP_F_OCSP_RESPONSE_GET1_BASIC,
-		    OCSP_R_NO_RESPONSE_DATA);
+		OCSPerror(OCSP_R_NO_RESPONSE_DATA);
 		return NULL;
 	}
 	if (OBJ_obj2nid(rb->responseType) != NID_id_pkix_OCSP_basic) {
-		OCSPerr(OCSP_F_OCSP_RESPONSE_GET1_BASIC,
-		    OCSP_R_NOT_BASIC_RESPONSE);
+		OCSPerror(OCSP_R_NOT_BASIC_RESPONSE);
 		return NULL;
 	}
 
-	return ASN1_item_unpack(rb->response, ASN1_ITEM_rptr(OCSP_BASICRESP));
+	return ASN1_item_unpack(rb->response, &OCSP_BASICRESP_it);
 }
 
 /* Return number of OCSP_SINGLERESP reponses present in
@@ -342,18 +336,16 @@ OCSP_check_validity(ASN1_GENERALIZEDTIME *thisupd,
 	 */
 
 	/* Check thisUpdate is valid and not more than nsec in the future */
-	if (asn1_time_parse(thisupd->data, thisupd->length, &tm_this,
+	if (ASN1_time_parse(thisupd->data, thisupd->length, &tm_this,
 	    V_ASN1_GENERALIZEDTIME) != V_ASN1_GENERALIZEDTIME) {
-		OCSPerr(OCSP_F_OCSP_CHECK_VALIDITY,
-		    OCSP_R_ERROR_IN_THISUPDATE_FIELD);
+		OCSPerror(OCSP_R_ERROR_IN_THISUPDATE_FIELD);
 		return 0;
 	} else {
 		t_tmp = t_now + nsec;
 		if (gmtime_r(&t_tmp, &tm_tmp) == NULL)
 			return 0;
-		if (asn1_tm_cmp(&tm_this, &tm_tmp) > 0) {
-			OCSPerr(OCSP_F_OCSP_CHECK_VALIDITY,
-			    OCSP_R_STATUS_NOT_YET_VALID);
+		if (ASN1_time_tm_cmp(&tm_this, &tm_tmp) > 0) {
+			OCSPerror(OCSP_R_STATUS_NOT_YET_VALID);
 			return 0;
 		}
 
@@ -365,9 +357,8 @@ OCSP_check_validity(ASN1_GENERALIZEDTIME *thisupd,
 			t_tmp = t_now - maxsec;
 			if (gmtime_r(&t_tmp, &tm_tmp) == NULL)
 				return 0;
-			if (asn1_tm_cmp(&tm_this, &tm_tmp) < 0) {
-				OCSPerr(OCSP_F_OCSP_CHECK_VALIDITY,
-				    OCSP_R_STATUS_TOO_OLD);
+			if (ASN1_time_tm_cmp(&tm_this, &tm_tmp) < 0) {
+				OCSPerror(OCSP_R_STATUS_TOO_OLD);
 				return 0;
 			}
 		}
@@ -377,28 +368,31 @@ OCSP_check_validity(ASN1_GENERALIZEDTIME *thisupd,
 		return 1;
 
 	/* Check nextUpdate is valid and not more than nsec in the past */
-	if (asn1_time_parse(nextupd->data, nextupd->length, &tm_next,
+	if (ASN1_time_parse(nextupd->data, nextupd->length, &tm_next,
 	    V_ASN1_GENERALIZEDTIME) != V_ASN1_GENERALIZEDTIME) {
-		OCSPerr(OCSP_F_OCSP_CHECK_VALIDITY,
-		    OCSP_R_ERROR_IN_NEXTUPDATE_FIELD);
+		OCSPerror(OCSP_R_ERROR_IN_NEXTUPDATE_FIELD);
 		return 0;
 	} else {
 		t_tmp = t_now - nsec;
 		if (gmtime_r(&t_tmp, &tm_tmp) == NULL)
 			return 0;
-		if (asn1_tm_cmp(&tm_next, &tm_tmp) < 0) {
-			OCSPerr(OCSP_F_OCSP_CHECK_VALIDITY,
-			    OCSP_R_STATUS_EXPIRED);
+		if (ASN1_time_tm_cmp(&tm_next, &tm_tmp) < 0) {
+			OCSPerror(OCSP_R_STATUS_EXPIRED);
 			return 0;
 		}
 	}
 
 	/* Also don't allow nextUpdate to precede thisUpdate */
-	if (asn1_tm_cmp(&tm_next, &tm_this) < 0) {
-		OCSPerr(OCSP_F_OCSP_CHECK_VALIDITY,
-		    OCSP_R_NEXTUPDATE_BEFORE_THISUPDATE);
+	if (ASN1_time_tm_cmp(&tm_next, &tm_this) < 0) {
+		OCSPerror(OCSP_R_NEXTUPDATE_BEFORE_THISUPDATE);
 		return 0;
 	}
 
 	return 1;
+}
+
+const OCSP_CERTID *
+OCSP_SINGLERESP_get0_id(const OCSP_SINGLERESP *single)
+{
+	return single->certId;
 }
