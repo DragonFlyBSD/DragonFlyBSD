@@ -5856,10 +5856,23 @@ hammer2_characterize_failed_chain(hammer2_chain_t *chain, uint64_t check,
 	} else if (chain && chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		kprintf("   Resides in inode index - CRITICAL!!!\n");
 	} else {
-		kprintf("   Resides in super-root (PFS) index - CRITICAL!!!\n");
+		kprintf("   Resides in root index - CRITICAL!!!\n");
 	}
 	if (ochain->hmp) {
-		kprintf("   On device %s\n", ochain->hmp->devrepname);
+		const char *pfsname = "UNKNOWN";
+		int i;
+
+		if (ochain->pmp) {
+			for (i = 0; i < HAMMER2_MAXCLUSTER; ++i) {
+				if (ochain->pmp->pfs_hmps[i] == ochain->hmp &&
+				    ochain->pmp->pfs_names[i]) {
+					pfsname = ochain->pmp->pfs_names[i];
+					break;
+				}
+			}
+		}
+		kprintf("   In pfs %s on device %s\n",
+			pfsname, ochain->hmp->devrepname);
 	}
 }
 
