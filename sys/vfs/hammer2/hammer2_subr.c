@@ -465,3 +465,31 @@ hammer2_error_str(int error)
 		return("Timeout");
 	return("Unknown Error");
 }
+
+const char *
+hammer2_bref_type_str(hammer2_blockref_t *bref)
+{
+	switch(bref->type) {
+	case HAMMER2_BREF_TYPE_EMPTY:
+		return("Unknown-zero'd field");
+	case HAMMER2_BREF_TYPE_INODE:
+		return("Inode");
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		return("Indirect-Block");
+	case HAMMER2_BREF_TYPE_DATA:
+		return("Data-Block");
+	case HAMMER2_BREF_TYPE_DIRENT:
+		return("Directory-Entry");
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+		return("Freemap-Node");
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		return("Freemap-Leaf");
+	case HAMMER2_BREF_TYPE_FREEMAP:
+		return("Freemap-Header");
+	case HAMMER2_BREF_TYPE_VOLUME:
+		return("Volume-Header");
+	default:
+		break;
+	}
+	return("Unknown");
+}

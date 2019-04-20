@@ -1507,6 +1507,7 @@ extern struct objcache *cache_xops;
 
 int hammer2_signal_check(time_t *timep);
 const char *hammer2_error_str(int error);
+const char *hammer2_bref_type_str(hammer2_blockref_t *bref);
 
 void hammer2_inode_delayed_sideq(hammer2_inode_t *ip);
 void hammer2_inode_lock(hammer2_inode_t *ip, int how);

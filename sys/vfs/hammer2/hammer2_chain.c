@@ -5808,6 +5808,61 @@ hammer2_chain_setcheck(hammer2_chain_t *chain, void *bdata)
 	}
 }
 
+/*
+ * Characterize a failed check code and try to trace back to the inode.
+ */
+static void
+hammer2_characterize_failed_chain(hammer2_chain_t *chain, uint64_t check,
+				  int bits)
+{
+	hammer2_chain_t *lchain;
+	hammer2_chain_t *ochain;
+
+	kprintf("chain %016jx.%02x (%s) meth=%02x CHECK FAIL "
+		"(flags=%08x, bref/data ",
+		chain->bref.data_off,
+		chain->bref.type,
+		hammer2_bref_type_str(&chain->bref),
+		chain->bref.methods,
+		chain->flags);
+	if (bits == 32) {
+		kprintf("%08x/%08x)\n",
+			chain->bref.check.iscsi32.value,
+			(uint32_t)check);
+	} else {
+		kprintf("%016jx/%016jx)\n",
+			chain->bref.check.xxhash64.value,
+			check);
+	}
+
+	/*
+	 * Run up the chains to try to find the governing inode so we
+	 * can report it.
+	 *
+	 * XXX This error reporting is not really MPSAFE
+	 */
+	ochain = chain;
+	lchain = chain;
+	while (chain && chain->bref.type != HAMMER2_BREF_TYPE_INODE) {
+		lchain = chain;
+		chain = chain->parent;
+	}
+
+	if (chain && chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
+	    ((chain->bref.flags & HAMMER2_BREF_FLAG_PFSROOT) == 0 ||
+	     (lchain->bref.key & HAMMER2_DIRHASH_VISIBLE))) {
+		kprintf("   Resides at/in inode %ld\n",
+			chain->bref.key);
+	} else if (chain && chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
+		kprintf("   Resides in inode index - CRITICAL!!!\n");
+	} else {
+		kprintf("   Resides in super-root (PFS) index - CRITICAL!!!\n");
+	}
+	if (ochain->hmp) {
+		kprintf("   On device %s\n", ochain->hmp->devrepname);
+	}
+}
+
 int
 hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 {
@@ -5829,14 +5884,7 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 		check32 = hammer2_icrc32(bdata, chain->bytes);
 		r = (chain->bref.check.iscsi32.value == check32);
 		if (r == 0) {
-			kprintf("chain %016jx.%02x meth=%02x CHECK FAIL "
-				"(flags=%08x, bref/data %08x/%08x)\n",
-				chain->bref.data_off,
-				chain->bref.type,
-				chain->bref.methods,
-				chain->flags,
-				chain->bref.check.iscsi32.value,
-				check32);
+			hammer2_characterize_failed_chain(chain, check32, 32);
 		}
 		hammer2_process_icrc32 += chain->bytes;
 		break;
@@ -5844,16 +5892,7 @@ hammer2_chain_testcheck(hammer2_chain_t *chain, void *bdata)
 		check64 = XXH64(bdata, chain->bytes, XXH_HAMMER2_SEED);
 		r = (chain->bref.check.xxhash64.value == check64);
 		if (r == 0) {
-			kprintf("chain %016jx.%02x key=%016jx "
-				"meth=%02x CHECK FAIL "
-				"(flags=%08x, bref/data %016jx/%016jx)\n",
-				chain->bref.data_off,
-				chain->bref.type,
-				chain->bref.key,
-				chain->bref.methods,
-				chain->flags,
-				chain->bref.check.xxhash64.value,
-				check64);
+			hammer2_characterize_failed_chain(chain, check64, 64);
 		}
 		hammer2_process_xxhash64 += chain->bytes;
 		break;
