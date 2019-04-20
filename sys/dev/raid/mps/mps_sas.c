@@ -3080,8 +3080,7 @@ mpssas_check_eedp(struct mpssas_softc *sassc)
 				return;
 			}
 
-			ccb = kmalloc(sizeof(union ccb), M_TEMP,
-			    M_WAITOK | M_ZERO);
+			ccb = xpt_alloc_ccb();
 
 			if (xpt_create_path(&ccb->ccb_h.path, xpt_periph,
 			    pathid, targetid, lunid) != CAM_REQ_CMP) {

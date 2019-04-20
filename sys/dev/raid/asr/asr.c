@@ -290,17 +290,9 @@ typedef struct {
 } target2lun_t;
 
 /*
- *	To ensure that we only allocate and use the worst case ccb here, lets
- *	make our own local ccb union. If asr_alloc_ccb is utilized for another
- *	ccb type, ensure that you add the additional structures into our local
- *	ccb union. To ensure strict type checking, we will utilize the local
- *	ccb definition wherever possible.
+ * Don't play games with the ccb any more, use the CAM ccb
  */
-union asr_ccb {
-	struct ccb_hdr	    ccb_h;  /* For convenience */
-	struct ccb_scsiio   csio;
-	struct ccb_setasync csa;
-};
+#define asr_ccb ccb
 
 struct Asr_status_mem {
 	I2O_EXEC_STATUS_GET_REPLY	status;
@@ -679,19 +671,18 @@ asr_alloc_ccb(Asr_softc_t *sc)
 {
 	union asr_ccb *new_ccb;
 
-	if ((new_ccb = (union asr_ccb *)kmalloc(sizeof(*new_ccb),
-	  M_DEVBUF, M_WAITOK | M_ZERO)) != NULL) {
-		new_ccb->ccb_h.pinfo.priority = 1;
-		new_ccb->ccb_h.pinfo.index = CAM_UNQUEUED_INDEX;
-		new_ccb->ccb_h.spriv_ptr0 = sc;
-	}
+	new_ccb = xpt_alloc_ccb();
+	new_ccb->ccb_h.pinfo.priority = 1;
+	new_ccb->ccb_h.pinfo.index = CAM_UNQUEUED_INDEX;
+	new_ccb->ccb_h.spriv_ptr0 = sc;
+
 	return (new_ccb);
 } /* asr_alloc_ccb */
 
 static __inline void
 asr_free_ccb(union asr_ccb *free_ccb)
 {
-	kfree(free_ccb, M_DEVBUF);
+	xpt_free_ccb(&free_ccb->ccb_h);
 } /* asr_free_ccb */
 
 /*
