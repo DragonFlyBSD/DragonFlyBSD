@@ -22,7 +22,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.bin/makewhatis/makewhatis.local.8,v 1.13 2002/07/14 15:12:00 charnier Exp $
+.\" $FreeBSD: head/libexec/makewhatis.local/makewhatis.local.8 323550 2017-09-13 16:35:16Z gordon $
 .\"
 .Dd April 21, 2019
 .Dt MAKEWHATIS.LOCAL 8
@@ -40,9 +40,11 @@ The
 utility starts
 .Xr makewhatis 8
 only for file systems physically mounted on the system
-where the
+where
 .Nm
-is being executed. Running makewhatis
+is being executed.
+Running
+.Xr makewhatis 8
 by
 .Pa periodic weekly
 for rw nfs-mounted /usr may kill

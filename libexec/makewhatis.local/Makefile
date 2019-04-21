@@ -1,4 +1,4 @@
-# $FreeBSD: src/usr.bin/makewhatis/Makefile,v 1.3 2002/11/18 10:11:22 ru Exp $
+# $FreeBSD: head/libexec/makewhatis.local/Makefile 323550 2017-09-13 16:35:16Z gordon $
 
 SCRIPTS=	makewhatis.local.sh
 MAN=		makewhatis.local.8
