@@ -22,7 +22,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.sbin/manctl/manctl.8,v 1.9.2.4 2003/03/11 21:13:51 trhodes Exp $
+.\" $FreeBSD: head/usr.sbin/manctl/manctl.8 323342 2017-09-09 03:09:02Z gordon $
 .\"
 .Dd April 21, 2019
 .Dt MANCTL 8
@@ -34,7 +34,6 @@
 .Nm
 .Op Fl compress
 .Op Fl uncompress
-.Op Fl purge
 .Op Fl help
 .Ar path ...
 .Sh DESCRIPTION
@@ -51,8 +50,6 @@ Print options and exit.
 Compress uncompressed man pages (eliminating .so's).
 .It Fl uncompress
 Uncompress compressed man pages.
-.It Fl purge
-Purge old formatted man pages (not implemented yet).
 .El
 .Sh SEE ALSO
 .Xr man 1
