@@ -39,4 +39,12 @@
 #define down_write(semaphore)	lockmgr((semaphore), LK_EXCLUSIVE)
 #define up_write(semaphore)	lockmgr((semaphore), LK_RELEASE)
 
+/*
+ * trylock for reading -- returns 1 if successful, 0 if contention
+ */
+static inline int
+down_read_trylock(struct lock *sem) {
+	return !lockmgr(sem, LK_EXCLUSIVE|LK_NOWAIT);
+}
+
 #endif	/* _LINUX_RWSEM_H_ */
