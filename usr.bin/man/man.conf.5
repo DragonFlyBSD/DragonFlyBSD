@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: head/usr.bin/man/man.conf.5 236508 2012-06-03 11:09:51Z joel $
 .\"
-.Dd June 3, 2011
+.Dd April 21, 2019
 .Dt MAN.CONF 5
 .Os
 .Sh NAME
@@ -51,7 +51,7 @@ and
 The files contained in
 .Pa /usr/local/etc/man.d/*.conf
 are intended to be used by the
-.Xr ports 7
+.Xr dports 7
 system for extending the manual set to support additional paths and locales.
 .Pa /etc/man.conf
 is intended to be used by the local administrator to set additional policy.
@@ -123,7 +123,7 @@ If the system administrator decides to override the
 .Va LOCALBASE
 .Xr make 1
 variable causing all
-.Xr ports 7
+.Xr dports 7
 to be installed into
 .Pa /opt
 instead of
