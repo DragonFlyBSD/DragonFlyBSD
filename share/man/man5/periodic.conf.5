@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man5/periodic.conf.5 323550 2017-09-13 16:35:16Z gordon $
 .\"
-.Dd March 13, 2018
+.Dd April 21, 2019
 .Dt PERIODIC.CONF 5
 .Os
 .Sh NAME
@@ -556,15 +556,6 @@ if you want to run
 This script regenerates the database used by the
 .Xr apropos 1
 command.
-.It Va weekly_catman_enable
-.Pq Vt bool
-Set to
-.Dq YES
-if you want to run
-.Pa /usr/libexec/catman.local .
-This script processes all out of date man pages, speeding up the
-.Xr man 1
-command at the expense of disk space.
 .It Va weekly_noid_enable
 .Pq Vt bool
 Set to

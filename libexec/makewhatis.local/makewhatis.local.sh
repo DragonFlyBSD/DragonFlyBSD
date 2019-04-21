@@ -26,15 +26,12 @@
 #
 # makewhatis.local - start makewhatis(8) only for file systems 
 #		     physically mounted on the system
-# catman.local -     start catman(1) only for file systems 
-#		     physically mounted on the system
 #
 # Running makewhatis from /etc/periodic/weekly/320.whatis for rw nfs-mounted
 # /usr may kill your NFS server -- all clients start makewhatis at the same
 # time! So use this wrapper instead calling makewhatis directly.
 #
 # $FreeBSD: src/usr.bin/makewhatis/makewhatis.local.sh,v 1.7 1999/08/27 23:36:10 peter Exp $
-# $DragonFly: src/libexec/makewhatis.local/makewhatis.local.sh,v 1.1 2004/03/25 18:05:49 joerg Exp $
 
 PATH=/bin:/usr/bin:$PATH; export PATH
 opt= dirs= localdirs=

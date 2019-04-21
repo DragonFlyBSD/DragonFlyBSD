@@ -25,7 +25,6 @@ SUBDIR=	alias \
 	c99 \
 	calendar \
 	cap_mkdb \
-	catman \
 	chat \
 	checknr \
 	checkpt \

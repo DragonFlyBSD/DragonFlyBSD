@@ -28,7 +28,7 @@
 .\"	@(#)su.1	8.2 (Berkeley) 4/18/94
 .\" $FreeBSD: src/usr.bin/su/su.1,v 1.41 2008/07/01 20:56:23 danger Exp $
 .\"
-.Dd July 1, 2008
+.Dd April 21, 2019
 .Dt SU 1
 .Os
 .Sh NAME
@@ -184,18 +184,24 @@ PAM configuration for
 .El
 .Sh EXAMPLES
 .Bl -tag -width 5n -compact
-.It Li "su -m man -c catman"
-Runs the command
-.Li catman
-as user
-.Li man .
-You will be asked for man's password unless your real UID is 0.
+.It Li "su -m operator -c poweroff"
+Starts a shell as user
+.Li operator ,
+and runs the command
+.Li poweroff .
+You will be asked for operator's password unless your real UID is 0.
 Note that the
 .Fl m
 option is required since user
-.Dq man
+.Dq operator
 does not have a valid shell by default.
-.It Li "su -m man -c 'catman /usr/share/man /usr/local/man /usr/pkg/man'"
+In this example,
+.Fl c
+is passed to the shell of the user
+.Dq operator ,
+and is not interpreted as an argument to
+.Nm .
+.It Li "su -m operator -c 'shutdown -p now'"
 Same as above, but the target command consists of more than a
 single word and hence is quoted for use with the
 .Fl c
@@ -203,7 +209,7 @@ option being passed to the shell.
 (Most shells expect the argument to
 .Fl c
 to be a single word).
-.It Li "su -m -c staff man -c 'catman /usr/share/man /usr/local/man /usr/pkg/man'"
+.It Li "su -m -c staff operator -c 'shutdown -p now'"
 Same as above, but the target command is run with the resource limits of
 the login class
 .Dq staff .
