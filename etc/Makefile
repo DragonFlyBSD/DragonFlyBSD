@@ -166,7 +166,7 @@ upgrade_base:	upgrade_check preupgrade remove-obsolete-files
 	    ${DEFAULTS} ${DESTDIR}/etc/defaults
 	cd ${UPGRADE_SRCDIR}/periodic; ${MAKE} install
 	mkdir -p ${DESTDIR}/etc/rc.d
-	cd ${UPGRADE_SRCDIR}/rc.d; ${MAKE} install 
+	cd ${UPGRADE_SRCDIR}/rc.d; ${MAKE} install
 	cd ${UPGRADE_SRCDIR}/devd; ${MAKE} install
 	mkdir -p ${DESTDIR}/etc/autofs
 	cd ${UPGRADE_SRCDIR}/autofs; ${MAKE} install
@@ -183,7 +183,7 @@ upgrade_base:	upgrade_check preupgrade remove-obsolete-files
 	cd ${UPGRADE_SRCDIR}/pam.d; ${MAKE} install
 	sh ${DESTDIR}/etc/pam.d/convert.sh ${DESTDIR}/etc/pam.d ${DESTDIR}/etc/pam.conf
 .else
-.for pamconf in README convert.sh atrun cron passwd rsh su system
+.for pamconf in README convert.sh atrun cron passwd su system
 .if !exists(${DESTDIR}/etc/pam.d/${pamconf})
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${UPGRADE_SRCDIR}/pam.d/${pamconf} ${DESTDIR}/etc/pam.d
 .endif
@@ -245,7 +245,7 @@ upgrade_base:	upgrade_check preupgrade remove-obsolete-files
 	chmod 1777 ${DESTDIR}/var/run/sem
 
 # The existence of cleartext_pass_ok means pam config files are out of date.
-	@set - `fgrep cleartext_pass_ok ${DESTDIR}/etc/pam.d/*`; \
+	@set - `fgrep -e cleartext_pass_ok -e pam_opie ${DESTDIR}/etc/pam.d/*`; \
 	if [ $$# -gt 0 ] ; \
 	then \
 		echo "It appears your PAM configuration files need to be updated"; \
@@ -274,7 +274,7 @@ distribution:
 	cd ${.CURDIR}/pam.d; ${MAKE} install
 	cd ${.CURDIR}/bluetooth; ${MAKE} install
 	cd ${.CURDIR}/periodic; ${MAKE} install
-	cd ${.CURDIR}/rc.d; ${MAKE} install 
+	cd ${.CURDIR}/rc.d; ${MAKE} install
 	cd ${.CURDIR}/devd; ${MAKE} install
 	cd ${.CURDIR}/autofs; ${MAKE} install
 	cd ${.CURDIR}/../share/termcap; ${MAKE} etc-termcap

@@ -10,7 +10,6 @@ FILES=	README \
 	other \
 	passwd \
 	pop3 \
-	rsh \
 	sshd \
 	su \
 	system \
