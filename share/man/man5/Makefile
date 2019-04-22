@@ -31,7 +31,6 @@ MAN=	acct.5 \
 	loader.conf.5 \
 	mailer.conf.5 \
 	make.conf.5 \
-	manpath.config.5 \
 	motd.5 \
 	msdos.5 \
 	networks.5 \

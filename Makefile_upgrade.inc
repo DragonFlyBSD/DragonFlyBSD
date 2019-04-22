@@ -86,7 +86,6 @@ TO_REMOVE+=/usr/lib/libstdc++.so.3
 TO_REMOVE+=/usr/lib/libstdc++_p.a
 TO_REMOVE+=/usr/libexec/binutils214
 TO_REMOVE+=/usr/libexec/binutils215
-TO_REMOVE+=/usr/bin/makewhatis
 TO_REMOVE+=/usr/sbin/prebind
 TO_REMOVE+=/modules/checkpt.ko
 TO_REMOVE+=/usr/share/man/man1aout
@@ -3522,6 +3521,19 @@ TO_REMOVE+=/usr/bin/catman
 TO_REMOVE+=/usr/libexec/catman.local
 TO_REMOVE+=/usr/share/man/man1/catman.1.gz
 TO_REMOVE+=/usr/share/man/man8/catman.local.8.gz
+TO_REMOVE+=/etc/manpath.config
+TO_REMOVE+=/usr/sbin/makewhatis
+TO_REMOVE+=/usr/share/man/cat1
+TO_REMOVE+=/usr/share/man/cat2
+TO_REMOVE+=/usr/share/man/cat3
+TO_REMOVE+=/usr/share/man/cat4
+TO_REMOVE+=/usr/share/man/cat5
+TO_REMOVE+=/usr/share/man/cat6
+TO_REMOVE+=/usr/share/man/cat7
+TO_REMOVE+=/usr/share/man/cat8
+TO_REMOVE+=/usr/share/man/cat9
+TO_REMOVE+=/usr/share/man/man5/manpath.config.5.gz
+TO_REMOVE+=/usr/share/man/whatis
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

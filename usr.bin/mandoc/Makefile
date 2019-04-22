@@ -1,8 +1,8 @@
 .PATH:	${.CURDIR}/../../contrib/mdocml
 
 PROG=	mandoc
-MAN=	mandoc.1 mandoc_char.7
-#MAN+=	apropos.1 mandoc.db.5 eqn.7 man.7 mdoc.7 roff.7 tbl.7 makewhatis.8
+MAN=	apropos.1 mandoc.1 mandoc.db.5 mandoc_char.7 makewhatis.8
+#MAN+=	eqn.7 man.7 mdoc.7 roff.7 tbl.7
 WARNS?=	3
 
 CFLAGS+=-I${.CURDIR}
@@ -27,5 +27,8 @@ SRCS+=	compat_ohash.c compat_recallocarray.c
 
 LDADD=	-lz
 DPADD=	${LIBZ}
+
+LINKS=	${BINDIR}/mandoc ${BINDIR}/apropos
+LINKS+=	${BINDIR}/mandoc ${BINDIR}/makewhatis
 
 .include <bsd.prog.mk>

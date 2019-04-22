@@ -872,7 +872,7 @@ BSTRAPDIRS2= \
 	usr.bin/cmp usr.bin/xargs usr.bin/id usr.bin/env usr.bin/dirname \
 	usr.bin/tail usr.bin/unifdef \
 	usr.sbin/chown usr.sbin/mtree usr.sbin/config \
-	usr.sbin/zic usr.sbin/makewhatis usr.sbin/pwd_mkdb \
+	usr.sbin/zic usr.sbin/pwd_mkdb \
 	gnu/usr.bin/grep usr.bin/sort usr.bin/gzip \
 	usr.bin/mkcsmapper usr.bin/mkesdb usr.bin/crunch
 

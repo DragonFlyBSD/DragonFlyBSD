@@ -115,6 +115,7 @@ SUBDIR=	alias \
 	lzmainfo \
 	m4 \
 	mail \
+	man \
 	mandoc \
 	mesg \
 	ministat \

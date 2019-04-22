@@ -1,6 +1,6 @@
 # $FreeBSD: src/share/mk/bsd.man.mk,v 1.31.2.11 2002/12/19 13:48:33 ru Exp $
 #
-# The include file <bsd.man.mk> handles installing manual pages and 
+# The include file <bsd.man.mk> handles installing manual pages and
 # their links.
 #
 #
@@ -26,11 +26,11 @@
 #		stdout. [${COMPRESS_CMD}]
 #
 # MLINKS	List of manual page links (using a suffix). The
-#		linked-to file must come first, the linked file 
-#		second, and there may be multiple pairs. The files 
+#		linked-to file must come first, the linked file
+#		second, and there may be multiple pairs. The files
 #		are hard-linked.
 #
-# NOMANCOMPRESS	If you do not want unformatted manual pages to be 
+# NOMANCOMPRESS	If you do not want unformatted manual pages to be
 #		compressed when they are installed. [not set]
 #
 # NOMLINKS	If you do not want install manual page links. [not set]
@@ -41,7 +41,8 @@
 # MANBUILDCAT	create preformatted manual pages in addition to normal
 #		pages. [not set]
 #
-# MROFF_CMD	command and flags to create preformatted pages
+# MANDOC_CMD	command and flags to create preformatted pages
+# MROFF_CMD	groff command for manlint and mandiff
 #
 # +++ targets +++
 #
@@ -60,6 +61,7 @@ MINSTALL?=	${INSTALL} -o ${MANOWN} -g ${MANGRP} -m ${MANMODE} \
 
 CATDIR=		${MANDIR:H:S/$/\/cat/}
 CATEXT=		.cat
+MANDOC_CMD?=	mandoc -Tascii
 MROFF_CMD?=	groff -Tascii -mtty-char -man -t
 
 MCOMPRESS_CMD?=	${COMPRESS_CMD}
@@ -106,7 +108,7 @@ ${target}: ${page}
 .for target in ${page:T:S/$/${CATEXT}${FILTEXTENSION}/g}
 _manpages: ${target}
 ${target}: ${page}
-	${MANFILTER} < ${.ALLSRC} | ${MROFF_CMD} > ${.TARGET}
+	${MANFILTER} < ${.ALLSRC} | ${MANDOC_CMD} > ${.TARGET}
 .endfor
 .endif
 .endfor
@@ -119,7 +121,7 @@ CLEANFILES+=	${MAN:T:S/$/${CATEXT}/g}
 .for target in ${page:T:S/$/${CATEXT}/g}
 _manpages: ${target}
 ${target}: ${page}
-	${MROFF_CMD} ${.ALLSRC} > ${.TARGET}
+	${MANDOC_CMD} ${.ALLSRC} > ${.TARGET}
 .endfor
 .endfor
 .else
@@ -150,9 +152,9 @@ ${target}: ${page}
 _manpages: ${target}
 ${target}: ${page}
 .if defined(MANFILTER)
-	${MANFILTER} < ${.ALLSRC} | ${MROFF_CMD} | ${MCOMPRESS_CMD} > ${.TARGET}
+	${MANFILTER} < ${.ALLSRC} | ${MANDOC_CMD} | ${MCOMPRESS_CMD} > ${.TARGET}
 .else
-	${MROFF_CMD} ${.ALLSRC} | ${MCOMPRESS_CMD} > ${.TARGET}
+	${MANDOC_CMD} ${.ALLSRC} | ${MCOMPRESS_CMD} > ${.TARGET}
 .endif
 .endfor
 .endif
@@ -248,15 +250,15 @@ mandiff: ${page}diff
 ${page}lint: ${page}
 .if defined(MANFILTER)
 	@${MANFILTER} < ${.ALLSRC} | ${MROFF_CMD} -ww -z
-	@-${MANFILTER} < ${.ALLSRC} | mandoc -Tlint
+	@-${MANFILTER} < ${.ALLSRC} | ${MANDOC_CMD} -Tlint
 .else
 	@${MROFF_CMD} -ww -z ${.ALLSRC}
-	@-mandoc -Tlint ${.ALLSRC}
+	@-${MANDOC_CMD} -Tlint ${.ALLSRC}
 .endif
 ${page}.out.groff: ${page}
-	@-nroff -man -t ${.ALLSRC} 2>&1 > ${.TARGET}
+	@-${MROFF_CMD} ${.ALLSRC} 2>&1 > ${.TARGET}
 ${page}.out.mandoc: ${page}
-	@-mandoc -Werror ${.ALLSRC} 2>&1 > ${.TARGET}
+	@-${MANDOC_CMD} -Werror ${.ALLSRC} 2>&1 > ${.TARGET}
 ${page}diff: ${page}.out.groff ${page}.out.mandoc
 	@-diff -au ${.ALLSRC}
 	@rm ${.ALLSRC}

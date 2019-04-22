@@ -56,7 +56,6 @@ SUBDIR= 802_11 \
 	lastlogin \
 	mailwrapper \
 	makefs \
-	makewhatis \
 	manctl \
 	memcontrol \
 	mergemaster \

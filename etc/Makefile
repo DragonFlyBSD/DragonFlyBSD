@@ -35,11 +35,6 @@ BIN1=	auth.conf auto_master \
 	shells sysctl.conf syslog.conf \
 	wpa_supplicant.conf \
 	etc.${MACHINE_ARCH}/ttys
-.if defined(BINARY_UPGRADE) # location of these depends on upgrade method
-BIN1+=	manpath.config
-.else
-BIN1+=	${.CURDIR}/../gnu/usr.bin/man/manpath/manpath.config
-.endif
 
 DIRS+=	lib/libssh usr.bin/openssl usr.bin/ssh usr.sbin/sshd
 
@@ -79,13 +74,6 @@ remove-obsolete-files:
 			rm -rf "${DESTDIR}$${item}"; \
 		fi; \
 	done;
-	@for item in ${TO_REMOVE:M*/man/man[1-9]/*:C@/man/man([1-9])/@/man/cat\1/@g}; do \
-		if [ -e ${DESTDIR}$${item} ]; then \
-			echo "${DESTDIR}$${item}"; \
-			chflags -Rf noschg "${DESTDIR}$${item}"; \
-			rm -rf "${DESTDIR}$${item}"; \
-		fi; \
-	done
 
 remove-deprecated-files:
 .if defined(REMOVE_DEPRECATED)
