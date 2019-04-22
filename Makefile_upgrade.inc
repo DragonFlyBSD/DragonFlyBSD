@@ -3517,6 +3517,7 @@ TO_REMOVE+=/usr/share/man/man9/callout_stop_sync.9.gz
 TO_REMOVE+=/usr/include/sys/termios.h
 TO_REMOVE+=/usr/share/zoneinfo/Etc/UCT
 TO_REMOVE+=/usr/share/man/man3/sha384.3.gz
+TO_REMOVE+=/etc/periodic/weekly/330.catman
 TO_REMOVE+=/usr/bin/catman
 TO_REMOVE+=/usr/libexec/catman.local
 TO_REMOVE+=/usr/share/man/man1/catman.1.gz
