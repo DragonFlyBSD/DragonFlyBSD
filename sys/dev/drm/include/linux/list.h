@@ -180,6 +180,11 @@ list_del_init(struct list_head *entry)
 	for (p = list_next_entry((p), field); &p->field != (h);		\
 	    p = list_next_entry((p), field))
 
+#define list_for_each_entry_continue_reverse(pos, head, member)         	\
+        for (pos = list_entry(pos->member.prev, __typeof(*pos), member);	\
+             &pos->member != (head);    					\
+             pos = list_entry(pos->member.prev, __typeof(*pos), member))
+
 #define list_for_each_entry_safe_from(pos, n, head, member) 			\
 	for (n = list_entry(pos->member.next, typeof(*pos), member);		\
 	     &pos->member != (head);						\
