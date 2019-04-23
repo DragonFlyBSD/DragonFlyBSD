@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,5 +37,7 @@
 #define IS_ENABLED2(x)			IS_ENABLED3(__kconfig_value##x)
 #define IS_ENABLED3(x)			IS_ENABLED4(x 1, 0)
 #define IS_ENABLED4(one, two, ...)	two
+
+#define config_enabled(x)		IS_ENABLED(x)
 
 #endif /* LINUX_KCONFIG_H */
