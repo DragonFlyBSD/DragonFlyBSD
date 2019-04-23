@@ -38,7 +38,7 @@ __targets= \
 	maninstall realinstall	\
 	lint manlint regress \
 	buildfiles buildincludes installfiles installincludes
-__targets+=	mandiff # XXX temporary target
+#__targets+=	mandiff # XXX temporary target
 
 .for __target in ${__targets}
 

@@ -242,25 +242,25 @@ _maninstall: ${MAN}
 .endif
 
 manlint:
-mandiff:
+#mandiff:
 .if defined(MAN) && !empty(MAN)
 .for page in ${MAN}
 manlint: ${page}lint
-mandiff: ${page}diff
+#mandiff: ${page}diff
 ${page}lint: ${page}
 .if defined(MANFILTER)
-	@${MANFILTER} < ${.ALLSRC} | ${MROFF_CMD} -ww -z
+#	@${MANFILTER} < ${.ALLSRC} | ${MROFF_CMD} -ww -z
 	@-${MANFILTER} < ${.ALLSRC} | ${MANDOC_CMD} -Tlint
 .else
-	@${MROFF_CMD} -ww -z ${.ALLSRC}
+#	@${MROFF_CMD} -ww -z ${.ALLSRC}
 	@-${MANDOC_CMD} -Tlint ${.ALLSRC}
 .endif
-${page}.out.groff: ${page}
-	@-${MROFF_CMD} ${.ALLSRC} 2>&1 > ${.TARGET}
-${page}.out.mandoc: ${page}
-	@-${MANDOC_CMD} -Werror ${.ALLSRC} 2>&1 > ${.TARGET}
-${page}diff: ${page}.out.groff ${page}.out.mandoc
-	@-diff -au ${.ALLSRC}
-	@rm ${.ALLSRC}
+#${page}.out.groff: ${page}
+#	@-${MROFF_CMD} ${.ALLSRC} 2>&1 > ${.TARGET}
+#${page}.out.mandoc: ${page}
+#	@-${MANDOC_CMD} -Werror ${.ALLSRC} 2>&1 > ${.TARGET}
+#${page}diff: ${page}.out.groff ${page}.out.mandoc
+#	@-diff -au ${.ALLSRC}
+#	@rm ${.ALLSRC}
 .endfor
 .endif

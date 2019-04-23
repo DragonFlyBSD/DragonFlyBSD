@@ -227,7 +227,6 @@ SUBDIR=	alias \
 	users \
 	uudecode \
 	uuencode \
-	vgrind \
 	vi \
 	vis \
 	vknet \

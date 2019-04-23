@@ -1,8 +1,8 @@
 .PATH:	${.CURDIR}/../../contrib/mdocml
 
 PROG=	mandoc
-MAN=	apropos.1 mandoc.1 mandoc.db.5 mandoc_char.7 makewhatis.8
-#MAN+=	eqn.7 man.7 mdoc.7 roff.7 tbl.7
+MAN=	apropos.1 mandoc.1 mandoc.db.5 eqn.7 man.7 mandoc_char.7 mdoc.7 roff.7
+MAN+=	tbl.7 makewhatis.8
 WARNS?=	3
 
 CFLAGS+=-I${.CURDIR}

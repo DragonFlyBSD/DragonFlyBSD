@@ -9,7 +9,6 @@ SUBDIR= colldef \
 	i18n \
 	locale-links \
 	man \
-	me \
 	misc \
 	mk \
 	monetdef \

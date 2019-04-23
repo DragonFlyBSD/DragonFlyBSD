@@ -28,7 +28,7 @@
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
 .\"
-.Dd December 2, 2018
+.Dd March 9, 2019
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -359,7 +359,7 @@ system daemons & system utilities (executed by users)
 .It Pa share/
 architecture-independent files
 .Pp
-.Bl -tag -width ".Pa groff_font/" -compact
+.Bl -tag -width ".Pa installer/" -compact
 .It Pa calendar/
 a variety of pre-fab calendar files;
 see
@@ -392,8 +392,6 @@ License files for vendor supplied firmware
 various examples for users and programmers
 .It Pa games/
 ASCII text files used by various games
-.It Pa groff_font/
-device description file for device name
 .It Pa i18n/
 internationalization databases; see
 .Xr iconv 3
@@ -407,10 +405,6 @@ see
 .Xr setlocale 3
 .It Pa man/
 manual pages
-.It Pa me/
-macros for use with the me macro package;
-see
-.Xr me 7
 .It Pa misc/
 misc system-wide ASCII text files
 .Pp
@@ -465,12 +459,6 @@ see
 compiled
 .Xr terminfo 5
 database files
-.It Pa tmac/
-text processing macros;
-see
-.Xr nroff 1
-and
-.Xr troff 1
 .It Pa vi/
 localization support and utilities for
 .Xr vi 1
