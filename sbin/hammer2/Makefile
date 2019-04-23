@@ -10,13 +10,17 @@ MAN=	hammer2.8
 CFLAGS+= -DXXH_NAMESPACE=h2_
 CFLAGS+= -I${.CURDIR}/../../sys
 CFLAGS+= -pthread
-LDADD=	-ldmsg -lm -lutil
-DPADD=	${LIBDMSG} ${LIBM} ${LIBUTIL}
 
+DPADD=	${LIBDMSG} ${LIBM} ${LIBUTIL}
+LDADD=	-ldmsg -lm -lutil
+
+CFLAGS+=	${PRIVATELIB_CFLAGS}
 DPADD+=		${LIBCRYPTO}
 LDADD+=		-lprivate_crypto
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
-CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
+
+DPADD+=		${LIBPTHREAD}
+LDADD+=		-lpthread
 
 #.PATH: ${.CURDIR}/../../sys/libkern
 #SRCS+= crc32.c
