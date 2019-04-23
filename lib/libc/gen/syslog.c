@@ -28,7 +28,6 @@
  *
  * @(#)syslog.c	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/lib/libc/gen/syslog.c,v 1.39 2007/01/09 00:27:55 imp Exp $
- * $DragonFly: src/lib/libc/gen/syslog.c,v 1.9 2005/11/19 22:32:53 swildner Exp $
  */
 
 #include "namespace.h"
@@ -130,10 +129,9 @@ syslog(int pri, const char *fmt, ...)
 void
 vsyslog(int pri, const char *fmt, va_list ap)
 {
-	int cnt;
 	char ch, *p;
 	time_t now;
-	int fd, saved_errno;
+	int cnt, fd, saved_errno, maxtries;
 	char *stdp, tbuf[2048], fmt_cpy[1024], timbuf[26], errstr[64];
 	FILE *fp, *fmt_fp;
 	struct bufcookie tbuf_cookie;
@@ -187,9 +185,8 @@ vsyslog(int pri, const char *fmt, va_list ap)
 		fprintf(fp, "%s", LogTag);
 	if (LogStat & LOG_PID)
 		fprintf(fp, "[%d]", getpid());
-	if (LogTag != NULL) {
+	if (LogTag != NULL)
 		fprintf(fp, ": ");
-	}
 
 	/* Check to see if we can skip expanding the %m */
 	if (strstr(fmt, "%m")) {
@@ -261,7 +258,7 @@ vsyslog(int pri, const char *fmt, va_list ap)
 	connectlog();
 
 	/*
-	 * If the send() failed, there are two likely scenarios:
+	 * If the send() fails, there are three likely scenarios:
 	 *  1) syslogd was restarted
 	 *  2) /var/run/log is out of socket buffer space, which
 	 *     in most cases means local DoS.
@@ -275,14 +272,12 @@ vsyslog(int pri, const char *fmt, va_list ap)
 	 * broken syslogd will completely and utterly break the
 	 * entire system == bad.
 	 *
-	 * If we are working with a priveleged socket, then take
+	 * If we are working with a privileged socket, then take
 	 * only one attempt, because we don't want to freeze a
 	 * critical application like su(1) or sshd(8).
 	 *
 	 */
 	if (send(LogFile, tbuf, cnt, 0) < 0) {
-		int maxtries;
-
 		if (errno != ENOBUFS) {
 			disconnectlog();
 			connectlog();
@@ -358,7 +353,7 @@ connectlog(void)
 		SyslogAddr.sun_family = AF_UNIX;
 
 		/*
-		 * First try priveleged socket. If no success,
+		 * First try privileged socket. If no success,
 		 * then try default socket.
 		 */
 		strncpy(SyslogAddr.sun_path, _PATH_LOG_PRIV,
