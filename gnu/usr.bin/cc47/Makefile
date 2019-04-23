@@ -22,7 +22,6 @@ SUBDIR+=	cpp
 SUBDIR+=	gcov
 SUBDIR+=	cc1plus
 SUBDIR+=	c++
-SUBDIR+=	cc1obj
 
 .ORDER: ${SUBDIR}
 

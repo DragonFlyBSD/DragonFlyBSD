@@ -73,8 +73,6 @@
         clangb
         ..
         gcc47
-            objc
-            ..
             ssp
             ..
         ..

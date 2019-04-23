@@ -3623,6 +3623,12 @@ TO_REMOVE+=/usr/share/me
 TO_REMOVE+=/usr/share/misc/vgrindefs
 TO_REMOVE+=/usr/share/misc/vgrindefs.db
 TO_REMOVE+=/usr/share/tmac
+TO_REMOVE+=/usr/lib/gcc47/libobjc.a
+TO_REMOVE+=/usr/lib/gcc47/libobjc.so
+TO_REMOVE+=/usr/lib/gcc47/libobjc.so.4
+TO_REMOVE+=/usr/lib/gcc47/profile/libobjc.a
+TO_REMOVE+=/usr/libdata/gcc47/objc
+TO_REMOVE+=/usr/libexec/gcc47/cc1obj
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

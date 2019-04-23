@@ -13,6 +13,5 @@ SUBDIR+=	libssp_nonshared
 SUBDIR+=	libgomp
 SUBDIR+=	libstdc++
 SUBDIR+=	libsupc++
-SUBDIR+=	libobjc
 
 .include <bsd.subdir.mk>
