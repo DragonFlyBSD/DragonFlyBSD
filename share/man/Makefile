@@ -6,7 +6,7 @@ SUBDIR=	man1 man3 man4 man5 man6 man7 man8 man9
 MAKEWHATIS=	/usr/bin/makewhatis	
 
 makedb:
-	${MAKEWHATIS}	${DESTDIR}${BINDIR}/man
+	-${MAKEWHATIS}	${DESTDIR}${BINDIR}/man
 
 .include "${.CURDIR}/../Makefile.inc"
 .include <bsd.subdir.mk>
