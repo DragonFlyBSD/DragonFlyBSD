@@ -30,5 +30,7 @@ DPADD=	${LIBZ}
 
 LINKS=	${BINDIR}/mandoc ${BINDIR}/apropos
 LINKS+=	${BINDIR}/mandoc ${BINDIR}/makewhatis
+LINKS+=	${BINDIR}/mandoc ${BINDIR}/whatis
+MLINKS=	apropos.1 whatis.1
 
 .include <bsd.prog.mk>
