@@ -126,8 +126,8 @@ syslog(int pri, const char *fmt, ...)
 	va_end(ap);
 }
 
-void
-vsyslog(int pri, const char *fmt, va_list ap)
+static void
+vsyslog_unlocked(int pri, const char *fmt, va_list ap)
 {
 	char ch, *p;
 	time_t now;
@@ -149,13 +149,9 @@ vsyslog(int pri, const char *fmt, va_list ap)
 
 	saved_errno = errno;
 
-	THREAD_LOCK();
-
 	/* Check priority against setlogmask values. */
-	if (!(LOG_MASK(LOG_PRI(pri)) & LogMask)) {
-		THREAD_UNLOCK();
+	if (!(LOG_MASK(LOG_PRI(pri)) & LogMask))
 		return;
-	}
 
 	/* Set default facility if none specified. */
 	if ((pri & LOG_FACMASK) == 0)
@@ -165,10 +161,8 @@ vsyslog(int pri, const char *fmt, va_list ap)
 	tbuf_cookie.base = tbuf;
 	tbuf_cookie.left = sizeof(tbuf);
 	fp = fwopen(&tbuf_cookie, writehook);
-	if (fp == NULL) {
-		THREAD_UNLOCK();
+	if (fp == NULL)
 		return;
-	}
 
 	/* Build the message. */
 	time(&now);
@@ -197,7 +191,6 @@ vsyslog(int pri, const char *fmt, va_list ap)
 		fmt_fp = fwopen(&fmt_cookie, writehook);
 		if (fmt_fp == NULL) {
 			fclose(fp);
-			THREAD_UNLOCK();
 			return;
 		}
 
@@ -283,10 +276,8 @@ vsyslog(int pri, const char *fmt, va_list ap)
 			connectlog();
 		}
 		for (maxtries = 10; maxtries; --maxtries) {
-			if (send(LogFile, tbuf, cnt, 0) >= 0) {
-				THREAD_UNLOCK();
+			if (send(LogFile, tbuf, cnt, 0) >= 0)
 				return;
-			}
 			if (status == CONNPRIV)
 				break;
 			if (errno != ENOBUFS)
@@ -294,7 +285,6 @@ vsyslog(int pri, const char *fmt, va_list ap)
 			_usleep(1000000 / 10);
 		}
 	} else {
-		THREAD_UNLOCK();
 		return;
 	}
 
@@ -317,7 +307,13 @@ vsyslog(int pri, const char *fmt, va_list ap)
 		_writev(fd, iov, 2);
 		_close(fd);
 	}
+}
 
+void
+vsyslog(int pri, const char *fmt, va_list ap)
+{
+	THREAD_LOCK();
+	vsyslog_unlocked(pri, fmt, ap);
 	THREAD_UNLOCK();
 }
 
@@ -344,9 +340,9 @@ connectlog(void)
 	struct sockaddr_un SyslogAddr;	/* AF_UNIX address of local logger */
 
 	if (LogFile == -1) {
-		if ((LogFile = _socket(AF_UNIX, SOCK_DGRAM, 0)) == -1)
+		if ((LogFile = _socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC,
+		    0)) == -1)
 			return;
-		_fcntl(LogFile, F_SETFD, 1);
 	}
 	if (LogFile != -1 && status == NOCONN) {
 		SyslogAddr.sun_len = sizeof(SyslogAddr);
@@ -417,8 +413,10 @@ void
 closelog(void)
 {
 	THREAD_LOCK();
-	_close(LogFile);
-	LogFile = -1;
+	if (LogFile != -1) {
+		_close(LogFile);
+		LogFile = -1;
+	}
 	LogTag = NULL;
 	status = NOCONN;
 	THREAD_UNLOCK();
