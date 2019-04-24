@@ -152,11 +152,11 @@ typedef	__uint32_t	uid_t;		/* XXX __uid_t */
 #define	_V7_LPBIG_OFFBIG		-1
 
 #if __XSI_VISIBLE
-#define	_XOPEN_CRYPT			-1 /* XXX ??? */
-#define	_XOPEN_ENH_I18N			-1 /* mandatory in XSI */
-#define	_XOPEN_LEGACY			-1
-#define	_XOPEN_REALTIME			-1
-#define	_XOPEN_REALTIME_THREADS		-1
+#define	_XOPEN_CRYPT			-1
+#define	_XOPEN_ENH_I18N			1	/* mandatory */
+#define	_XOPEN_LEGACY			-1	/* until _XOPEN_SOURCE < 700 */
+#define	_XOPEN_REALTIME			-1	/* missing: [ML] and [SIO] */
+#define	_XOPEN_REALTIME_THREADS		-1	/* missing: [RPI] and [RPP] */
 #define	_XOPEN_UNIX			-1
 #endif
 
