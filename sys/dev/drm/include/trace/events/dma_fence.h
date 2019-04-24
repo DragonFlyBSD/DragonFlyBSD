@@ -24,13 +24,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LINUX_TRACEPOINT_H_
-#define _LINUX_TRACEPOINT_H_
+#ifndef _TRACE_EVENTS_DMA_FENCE_H_
+#define _TRACE_EVENTS_DMA_FENCE_H_
 
-#include <linux/errno.h>
-#include <linux/types.h>
-#include <linux/rcupdate.h>
+#include <linux/tracepoint.h>
 
-#define EXPORT_TRACEPOINT_SYMBOL(name)
-
-#endif	/* _LINUX_TRACEPOINT_H_ */
+#endif	/* _TRACE_EVENTS_DMA_FENCE_H_ */
