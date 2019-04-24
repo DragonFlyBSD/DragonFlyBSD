@@ -118,7 +118,7 @@ typedef	__uint32_t	uid_t;		/* XXX __uid_t */
 #define	_POSIX_THREAD_PROCESS_SHARED	-1	/* [TSH] */
 #define	_POSIX_THREAD_ROBUST_PRIO_INHERIT -1	/* [RPI] */
 #define	_POSIX_THREAD_ROBUST_PRIO_PROTECT -1	/* [RPP] */
-#define	_POSIX_THREAD_SAFE_FUNCTIONS	-1	/* XXX mandatory ([TSF]) */
+#define	_POSIX_THREAD_SAFE_FUNCTIONS	200112L	/* mandatory ([TSF]) */
 #define	_POSIX_THREAD_SPORADIC_SERVER	-1	/* [TSP] */
 #define	_POSIX_THREADS			200112L	/* mandatory ([THR]) */
 #define	_POSIX_TRACE			-1	/* [TRC] obsolescent */
