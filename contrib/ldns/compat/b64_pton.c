@@ -40,26 +40,9 @@
  * IF IBM IS APPRISED OF THE POSSIBILITY OF SUCH DAMAGES.
  */
 #include <ldns/config.h>
-
-#include <sys/types.h>
-#include <sys/param.h>
-#ifdef HAVE_SYS_SOCKET_H
-#include <sys/socket.h>
-#endif
-
-#ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
-#endif
-#ifdef HAVE_ARPA_INET_H
-#include <arpa/inet.h>
-#endif
-
 #include <ctype.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#define Assert(Cond) if (!(Cond)) abort()
 
 static const char Base64[] =
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -135,15 +118,16 @@ static const char Pad64 = '=';
  */
 
 int
-ldns_b64_pton(char const *src, uint8_t *target, size_t targsize)
+ldns_b64_pton(char const *origsrc, uint8_t *target, size_t targsize)
 {
+	unsigned char const* src = (unsigned char*)origsrc;
 	int tarindex, state, ch;
 	char *pos;
 
 	state = 0;
 	tarindex = 0;
 
-	if (strlen(src) == 0) {
+	if (strlen(origsrc) == 0) {
 		return 0;
 	}
 

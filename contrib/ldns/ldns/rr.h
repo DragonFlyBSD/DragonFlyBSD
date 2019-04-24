@@ -36,8 +36,8 @@ extern "C" {
 /** The bytes TTL, CLASS and length use up in an rr */
 #define LDNS_RR_OVERHEAD	10
 
-/* The first fields are 'common' and can be referenced instantly */
-#define LDNS_RDATA_FIELD_DESCRIPTORS_COMMON 53
+/* The first fields are contiguous and can be referenced instantly */
+#define LDNS_RDATA_FIELD_DESCRIPTORS_COMMON 259
 
 
 
@@ -163,7 +163,7 @@ enum ldns_enum_rr_type
 	LDNS_RR_TYPE_OPT = 41,
 	/**  RFC3123 */
 	LDNS_RR_TYPE_APL = 42,
-	/**  draft-ietf-dnsext-delegation */
+	/**  RFC4034, RFC3658 */
 	LDNS_RR_TYPE_DS = 43,
 	/**  SSH Key Fingerprint */
 	LDNS_RR_TYPE_SSHFP = 44, /* RFC 4255 */
@@ -179,19 +179,38 @@ enum ldns_enum_rr_type
 	LDNS_RR_TYPE_NSEC3 = 50, /* RFC 5155 */
 	LDNS_RR_TYPE_NSEC3PARAM = 51, /* RFC 5155 */
 	LDNS_RR_TYPE_NSEC3PARAMS = 51,
-	/** draft-ietf-dane-protocol */
-	LDNS_RR_TYPE_TLSA = 52,
+	LDNS_RR_TYPE_TLSA = 52, /* RFC 6698 */
+	LDNS_RR_TYPE_SMIMEA = 53, /* draft-ietf-dane-smime */
 
+	LDNS_RR_TYPE_HIP = 55, /* RFC 5205 */
+
+	/** draft-reid-dnsext-zs */
+	LDNS_RR_TYPE_NINFO = 56,
+	/** draft-reid-dnsext-rkey */
+	LDNS_RR_TYPE_RKEY = 57,
         /** draft-ietf-dnsop-trust-history */
         LDNS_RR_TYPE_TALINK = 58,
+	LDNS_RR_TYPE_CDS = 59, /* RFC 7344 */
+	LDNS_RR_TYPE_CDNSKEY = 60, /* RFC 7344 */
+	LDNS_RR_TYPE_OPENPGPKEY = 61, /* RFC 7929 */
+	LDNS_RR_TYPE_CSYNC = 62, /* RFC 7477 */
 
-	LDNS_RR_TYPE_SPF = 99,
+	LDNS_RR_TYPE_SPF = 99, /* RFC 4408 */
 
 	LDNS_RR_TYPE_UINFO = 100,
 	LDNS_RR_TYPE_UID = 101,
 	LDNS_RR_TYPE_GID = 102,
 	LDNS_RR_TYPE_UNSPEC = 103,
 
+	LDNS_RR_TYPE_NID = 104, /* RFC 6742 */
+	LDNS_RR_TYPE_L32 = 105, /* RFC 6742 */
+	LDNS_RR_TYPE_L64 = 106, /* RFC 6742 */
+	LDNS_RR_TYPE_LP = 107, /* RFC 6742 */
+
+	LDNS_RR_TYPE_EUI48 = 108, /* RFC 7043 */
+	LDNS_RR_TYPE_EUI64 = 109, /* RFC 7043 */
+
+	LDNS_RR_TYPE_TKEY = 249, /* RFC 2930 */
 	LDNS_RR_TYPE_TSIG = 250,
 	LDNS_RR_TYPE_IXFR = 251,
 	LDNS_RR_TYPE_AXFR = 252,
@@ -201,7 +220,12 @@ enum ldns_enum_rr_type
 	LDNS_RR_TYPE_MAILA = 254,
 	/**  any type (wildcard) */
 	LDNS_RR_TYPE_ANY = 255,
+	LDNS_RR_TYPE_URI = 256, /* RFC 7553 */
+	LDNS_RR_TYPE_CAA = 257, /* RFC 6844 */
+	LDNS_RR_TYPE_AVC = 258, /* Cisco's DNS-AS RR, see www.dns-as.org */
 
+	/** DNSSEC Trust Authorities */
+	LDNS_RR_TYPE_TA = 32768,
 	/* RFC 4431, 5074, DNSSEC Lookaside Validation */
 	LDNS_RR_TYPE_DLV = 32769,
 
@@ -337,6 +361,23 @@ struct ldns_struct_rr_descriptor
 };
 typedef struct ldns_struct_rr_descriptor ldns_rr_descriptor;
 
+
+/**
+ * Create a rr type bitmap rdf providing enough space to set all 
+ * known (to ldns) rr types.
+ * \param[out] rdf the constructed rdf
+ * \return LDNS_STATUS_OK if all went well.
+ */
+ldns_status ldns_rdf_bitmap_known_rr_types_space(ldns_rdf** rdf);
+
+/**
+ * Create a rr type bitmap rdf with at least all known (to ldns) rr types set.
+ * \param[out] rdf the constructed rdf
+ * \return LDNS_STATUS_OK if all went well.
+ */
+ldns_status ldns_rdf_bitmap_known_rr_types(ldns_rdf** rdf);
+
+
 /**
  * creates a new rr structure.
  * \return ldns_rr *
@@ -373,7 +414,7 @@ void ldns_rr_free(ldns_rr *rr);
  * \return a status msg describing an error or LDNS_STATUS_OK
  */
 ldns_status ldns_rr_new_frm_str(ldns_rr **n, const char *str,
-                                uint32_t default_ttl, ldns_rdf *origin,
+                                uint32_t default_ttl, const ldns_rdf *origin,
                                 ldns_rdf **prev);
 
 /**
@@ -390,7 +431,7 @@ ldns_status ldns_rr_new_frm_str(ldns_rr **n, const char *str,
  * \return a status msg describing an error or LDNS_STATUS_OK
  */
 ldns_status ldns_rr_new_question_frm_str(ldns_rr **n, const char *str,
-                                ldns_rdf *origin, ldns_rdf **prev);
+                                const ldns_rdf *origin, ldns_rdf **prev);
 
 /**
  * creates a new rr from a file containing a string.
@@ -589,7 +630,7 @@ ldns_rr* ldns_rr_list_rr(const ldns_rr_list *rr_list, size_t nr);
  * creates a new rr_list structure.
  * \return a new rr_list structure
  */
-ldns_rr_list* ldns_rr_list_new();
+ldns_rr_list* ldns_rr_list_new(void);
 
 /**
  * frees an rr_list structure.
@@ -610,7 +651,7 @@ void ldns_rr_list_deep_free(ldns_rr_list *rr_list);
  * \param[in] right the rightside
  * \return a left with right concatenated to it
  */
-bool ldns_rr_list_cat(ldns_rr_list *left, ldns_rr_list *right);
+bool ldns_rr_list_cat(ldns_rr_list *left, const ldns_rr_list *right);
 
 /**
  * concatenates two ldns_rr_lists together, but makes clones of the rr's 
@@ -619,7 +660,7 @@ bool ldns_rr_list_cat(ldns_rr_list *left, ldns_rr_list *right);
  * \param[in] right the rightside
  * \return a new rr_list with leftside/rightside concatenated
  */
-ldns_rr_list* ldns_rr_list_cat_clone(ldns_rr_list *left, ldns_rr_list *right);
+ldns_rr_list* ldns_rr_list_cat_clone(const ldns_rr_list *left, const ldns_rr_list *right);
 
 /**
  * pushes an rr to an rrlist.
@@ -659,14 +700,14 @@ ldns_rr_list* ldns_rr_list_pop_rr_list(ldns_rr_list *rr_list, size_t size);
  * \param[in] rr the rr to check
  * \return true if rr_list contains rr, false otherwise
  */
-bool ldns_rr_list_contains_rr(const ldns_rr_list *rr_list, ldns_rr *rr); 
+bool ldns_rr_list_contains_rr(const ldns_rr_list *rr_list, const ldns_rr *rr); 
 
 /**
  * checks if an rr_list is a rrset.
  * \param[in] rr_list the rr_list to check
  * \return true if it is an rrset otherwise false
  */
-bool ldns_is_rrset(ldns_rr_list *rr_list);
+bool ldns_is_rrset(const ldns_rr_list *rr_list);
 
 /**
  * pushes an rr to an rrset (which really are rr_list's).
@@ -756,7 +797,7 @@ int ldns_rr_compare_no_rdata(const ldns_rr *rr1, const ldns_rr *rr2);
  *         -1 if rr1_buf comes before rr2_buf
  *         +1 if rr2_buf comes before rr1_buf
  */
-int ldns_rr_compare_wire(ldns_buffer *rr1_buf, ldns_buffer *rr2_buf);
+int ldns_rr_compare_wire(const ldns_buffer *rr1_buf, const ldns_buffer *rr2_buf);
 
 /**
  * returns true of the given rr's are equal.
@@ -797,14 +838,14 @@ void ldns_rr2canonical(ldns_rr *rr);
  * \param[in] rr_list the rr_list to work on
  * \return void
  */
-void ldns_rr_list2canonical(ldns_rr_list *rr_list);
+void ldns_rr_list2canonical(const ldns_rr_list *rr_list);
 
 /** 
  * counts the number of labels of the ownername.
  * \param[in] rr count the labels of this rr
  * \return the number of labels
  */
-uint8_t ldns_rr_label_count(ldns_rr *rr);
+uint8_t ldns_rr_label_count(const ldns_rr *rr);
 
 /**
  * returns the resource record descriptor for the given rr type.
@@ -850,11 +891,11 @@ ldns_rdf_type ldns_rr_descriptor_field_type(const ldns_rr_descriptor *descriptor
  * \return a new rr list with only the RRs that match 
  *
  */
-ldns_rr_list *ldns_rr_list_subtype_by_rdf(ldns_rr_list *l, ldns_rdf *r, size_t pos);
+ldns_rr_list *ldns_rr_list_subtype_by_rdf(const ldns_rr_list *l, const ldns_rdf *r, size_t pos);
 
 /**
  * convert an rdf of type LDNS_RDF_TYPE_TYPE to an actual
- * LDNS_RR_TYPE. This is usefull in the case when inspecting
+ * LDNS_RR_TYPE. This is useful in the case when inspecting
  * the rrtype covered field of an RRSIG.
  * \param[in] rd the rdf to look at
  * \return a ldns_rr_type with equivalent LDNS_RR_TYPE

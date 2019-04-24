@@ -65,6 +65,7 @@ ldns_lookup_table ldns_error_str[] = {
 	{ LDNS_STATUS_WIRE_INCOMPLETE_AUTHORITY, "authority section incomplete" },
 	{ LDNS_STATUS_WIRE_INCOMPLETE_ADDITIONAL, "additional section incomplete" },
 	{ LDNS_STATUS_NO_DATA, "No data" },
+	{ LDNS_STATUS_EXISTS_ERR, "Element already exists" },
 	{ LDNS_STATUS_CERT_BAD_ALGORITHM, "Bad algorithm type for CERT record" },
 	{ LDNS_STATUS_SYNTAX_TYPE_ERR, "Syntax error, could not parse the RR's type" },
 	{ LDNS_STATUS_SYNTAX_CLASS_ERR, "Syntax error, could not parse the RR's class" },
@@ -124,6 +125,38 @@ ldns_lookup_table ldns_error_str[] = {
 	{ LDNS_STATUS_DANE_PKIX_NO_SELF_SIGNED_TRUST_ANCHOR,
 		"The validation path "
 		"did not end in a self-signed certificate" },
+        { LDNS_STATUS_INVALID_ILNP64, 
+		"Conversion error, 4 colon separated hex numbers expected" },
+        { LDNS_STATUS_INVALID_EUI48, 
+		"Conversion error, 6 two character hex numbers "
+		"separated by dashes expected (i.e. xx-xx-xx-xx-xx-xx" },
+        { LDNS_STATUS_INVALID_EUI64, 
+		"Conversion error, 8 two character hex numbers "
+		"separated by dashes expected (i.e. xx-xx-xx-xx-xx-xx-xx-xx" },
+	{ LDNS_STATUS_WIRE_RDATA_ERR, "invalid rdata in wire format" },
+        { LDNS_STATUS_INVALID_TAG, 
+		"Conversion error, a non-zero sequence of US-ASCII letters "
+		"and numbers in lower case expected" },
+        { LDNS_STATUS_TYPE_NOT_IN_BITMAP, 
+		"The RR type bitmap rdata field did not have "
+		"a bit reserved for the specific RR type" },
+        { LDNS_STATUS_INVALID_RDF_TYPE, 
+		"The rdata field was not of the expected type" },
+        { LDNS_STATUS_RDATA_OVERFLOW, "Rdata size overflow" },
+	{ LDNS_STATUS_SYNTAX_SUPERFLUOUS_TEXT_ERR,
+		"Syntax error, superfluous text present" },
+        { LDNS_STATUS_NSEC3_DOMAINNAME_OVERFLOW,
+		"The NSEC3 domainname length overflow" },
+#if OPENSSL_VERSION_NUMBER < 0x10100000 || defined(HAVE_LIBRESSL)
+        { LDNS_STATUS_DANE_NEED_OPENSSL_GE_1_1_FOR_DANE_TA,
+		"ldns needs to be linked with OpenSSL >= 1.1.0 to be able "
+       		"to verify the DANE-TA usage type." },
+#else
+        { LDNS_STATUS_DANE_NEED_OPENSSL_GE_1_1_FOR_DANE_TA,
+		"ldns depends on the availability of the SSL_get0_dane() and "
+		"X509_STORE_CTX_set0_dane() functions within OpenSSL >= 1.1.0 "
+		"to be able to verify the DANE-TA usage type." },
+#endif
 	{ 0, NULL }
 };
 

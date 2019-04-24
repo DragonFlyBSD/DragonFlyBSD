@@ -2,7 +2,7 @@
  * higher.c
  *
  * Specify some higher level functions that would
- * be usefull to would be developers
+ * be useful to would be developers
  *
  * a Net::DNS like library for C
  *
@@ -21,8 +21,8 @@
 #endif /* HAVE_SSL */
 
 ldns_rr_list *
-ldns_get_rr_list_addr_by_name(ldns_resolver *res, ldns_rdf *name, ldns_rr_class c, 
-		uint16_t flags)
+ldns_get_rr_list_addr_by_name(ldns_resolver *res, const ldns_rdf *name,
+		ldns_rr_class c, uint16_t flags)
 {
 	ldns_pkt *pkt;
 	ldns_rr_list *aaaa;
@@ -104,8 +104,8 @@ ldns_get_rr_list_addr_by_name(ldns_resolver *res, ldns_rdf *name, ldns_rr_class 
 }
 
 ldns_rr_list *
-ldns_get_rr_list_name_by_addr(ldns_resolver *res, ldns_rdf *addr, ldns_rr_class c, 
-		uint16_t flags)
+ldns_get_rr_list_name_by_addr(ldns_resolver *res, const ldns_rdf *addr,
+		ldns_rr_class c, uint16_t flags)
 {
 	ldns_pkt *pkt;
 	ldns_rr_list *names;
@@ -131,6 +131,7 @@ ldns_get_rr_list_name_by_addr(ldns_resolver *res, ldns_rdf *addr, ldns_rr_class 
 		/* extract the data we need */
 		names = ldns_pkt_rr_list_by_type(pkt, 
 				LDNS_RR_TYPE_PTR, LDNS_SECTION_ANSWER);
+		ldns_pkt_free(pkt);
 	}
 	return names;
 }
@@ -215,6 +216,9 @@ ldns_get_rr_list_hosts_frm_fp_l(FILE *fp, int *line_nr)
 				}
 				(void)strlcpy(addr, word, LDNS_MAX_LINELEN+1);
 			} else {
+				/* Stop parsing line when a comment begins. */
+				if (word[0] == '#')
+					break;
 				/* la al la la */
 				if (ip6) {
 					snprintf(rr_str, LDNS_MAX_LINELEN, 
@@ -226,8 +230,8 @@ ldns_get_rr_list_hosts_frm_fp_l(FILE *fp, int *line_nr)
 				parse_result = ldns_rr_new_frm_str(&rr, rr_str, 0, NULL, NULL);
 				if (parse_result == LDNS_STATUS_OK && ldns_rr_owner(rr) && ldns_rr_rd_count(rr) > 0) {
 					ldns_rr_list_push_rr(list, ldns_rr_clone(rr));
+					ldns_rr_free(rr);
 				}
-				ldns_rr_free(rr);
 			}
 		}
 		ldns_buffer_free(linebuf);
@@ -261,8 +265,8 @@ ldns_get_rr_list_hosts_frm_file(char *filename)
 }
 
 uint16_t
-ldns_getaddrinfo(ldns_resolver *res, ldns_rdf *node, ldns_rr_class c, 
-		ldns_rr_list **ret)
+ldns_getaddrinfo(ldns_resolver *res, const ldns_rdf *node,
+		ldns_rr_class c, ldns_rr_list **ret)
 {
 	ldns_rdf_type t;
 	uint16_t names_found;
@@ -301,41 +305,23 @@ ldns_getaddrinfo(ldns_resolver *res, ldns_rdf *node, ldns_rr_class c,
 }
 
 bool
-ldns_nsec_type_check(ldns_rr *nsec, ldns_rr_type t)
+ldns_nsec_type_check(const ldns_rr *nsec, ldns_rr_type t)
 {
-	/* does the nsec cover the t given? */
-	/* copied from host2str.c line 465: ldns_rdf2buffer_str_nsec */
-        uint8_t window_block_nr;
-        uint8_t bitmap_length;
-        uint16_t type;
-        uint16_t pos = 0;
-        uint16_t bit_pos;
-	ldns_rdf *nsec_type_list = ldns_rr_rdf(nsec, 1); 
-	uint8_t *data;
-	
-	if (nsec_type_list == NULL) {
-		return false;
+	switch (ldns_rr_get_type(nsec)) {
+	case LDNS_RR_TYPE_NSEC	: if (ldns_rr_rd_count(nsec) < 2) {
+					  return false;
+				  }
+				  return ldns_nsec_bitmap_covers_type(
+						  ldns_rr_rdf(nsec, 1), t);
+
+	case LDNS_RR_TYPE_NSEC3	: if (ldns_rr_rd_count(nsec) < 6) {
+					  return false;
+				  }
+				  return ldns_nsec_bitmap_covers_type(
+						  ldns_rr_rdf(nsec, 5), t);
+
+	default			: return false;
 	}
-	data  = ldns_rdf_data(nsec_type_list);
-
-	while(pos < ldns_rdf_size(nsec_type_list)) {
-		window_block_nr = data[pos];
-		bitmap_length = data[pos + 1];
-		pos += 2;
-
-		for (bit_pos = 0; bit_pos < (bitmap_length) * 8; bit_pos++) {
-			if (ldns_get_bit(&data[pos], bit_pos)) {
-				type = 256 * (uint16_t) window_block_nr + bit_pos;
-
-				if ((ldns_rr_type)type == t) {
-					/* we have a winner */
-					return true;
-				}
-			}
-		}
-		pos += (uint16_t) bitmap_length;
-	}
-	return false;
 }
 
 void
@@ -358,3 +344,4 @@ ldns_print_rr_rdf(FILE *fp, ldns_rr *r, int rdfnum, ...)
 	}
 	va_end(va_rdf);
 }
+
