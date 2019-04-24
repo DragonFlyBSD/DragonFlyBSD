@@ -1,4 +1,6 @@
-/*
+/*-
+ * SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+ *
  * Copyright (c) 2001 Jens Schweikhardt
  * All rights reserved.
  *
@@ -23,23 +25,24 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/indent/indent.h,v 1.2 2002/03/30 17:10:20 dwmalone Exp $
+ * $FreeBSD: head/usr.bin/indent/indent.h 336333 2018-07-16 05:46:50Z pstef $
  */
 
-void	addkey(char *, int);
+void	add_typename(const char *);
+void	alloc_typenames(void);
 int	compute_code_target(void);
 int	compute_label_target(void);
 int	count_spaces(int, char *);
-int	lexi(void);
+int	count_spaces_until(int, char *, char *);
+void	init_constant_tt(void);
+int	lexi(struct parser_state *);
 void	diag2(int, const char *);
 void	diag3(int, const char *, int);
 void	diag4(int, const char *, int, int);
 void	dump_line(void);
 void	fill_buffer(void);
 void	parse(int);
-void	parsefont(struct fstate *, const char *);
 void	pr_comment(void);
 void	set_defaults(void);
 void	set_option(char *);
-void	set_profile(void);
-void	writefdef(struct fstate *f, int);
+void	set_profile(const char *);

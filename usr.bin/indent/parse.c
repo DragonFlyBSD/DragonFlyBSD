@@ -1,4 +1,6 @@
-/*
+/*-
+ * SPDX-License-Identifier: BSD-4-Clause
+ *
  * Copyright (c) 1985 Sun Microsystems, Inc.
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -29,9 +31,10 @@
  * SUCH DAMAGE.
  *
  * @(#)parse.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/indent/parse.c,v 1.10 2003/06/15 09:28:17 charnier Exp $
+ * $FreeBSD: head/usr.bin/indent/parse.c 337651 2018-08-11 19:20:06Z pstef $
  */
 
+#include <err.h>
 #include <stdio.h>
 #include "indent_globs.h"
 #include "indent_codes.h"
@@ -60,7 +63,7 @@ parse(int tk) /* tk: the code for the construct scanned */
 				 * input */
 
     case decl:			/* scanned a declaration word */
-	ps.search_brace = btype_2;
+	ps.search_brace = opt.btype_2;
 	/* indicate that following brace should be on same line */
 	if (ps.p_stack[ps.tos] != decl) {	/* only put one declaration
 						 * onto stack */
@@ -69,7 +72,7 @@ parse(int tk) /* tk: the code for the construct scanned */
 	    ps.p_stack[++ps.tos] = decl;
 	    ps.il[ps.tos] = ps.i_l_follow;
 
-	    if (ps.ljust_decl) {/* only do if we want left justified
+	    if (opt.ljust_decl) {/* only do if we want left justified
 				 * declarations */
 		ps.ind_level = 0;
 		for (i = ps.tos - 1; i > 0; --i)
@@ -82,15 +85,21 @@ parse(int tk) /* tk: the code for the construct scanned */
 	break;
 
     case ifstmt:		/* scanned if (...) */
-	if (ps.p_stack[ps.tos] == elsehead && ps.else_if)	/* "else if ..." */
-	    ps.i_l_follow = ps.il[ps.tos];
+	if (ps.p_stack[ps.tos] == elsehead && opt.else_if) /* "else if ..." */
+		/*
+		 * Note that the stack pointer here is decremented, effectively
+		 * reducing "else if" to "if". This saves a lot of stack space
+		 * in case of a long "if-else-if ... else-if" sequence.
+		 */
+		ps.i_l_follow = ps.il[ps.tos--];
+	/* the rest is the same as for dolit and forstmt */
 	/* FALLTHROUGH */
     case dolit:		/* 'do' */
     case forstmt:		/* for (...) */
 	ps.p_stack[++ps.tos] = tk;
 	ps.il[ps.tos] = ps.ind_level = ps.i_l_follow;
 	++ps.i_l_follow;	/* subsequent statements should be indented 1 */
-	ps.search_brace = btype_2;
+	ps.search_brace = opt.btype_2;
 	break;
 
     case lbrace:		/* scanned { */
@@ -108,7 +117,7 @@ parse(int tk) /* tk: the code for the construct scanned */
 		/*
 		 * it is a group as part of a while, for, etc.
 		 */
-		if (ps.p_stack[ps.tos] == swstmt && ps.case_indent >= 1)
+		if (ps.p_stack[ps.tos] == swstmt && opt.case_indent >= 1)
 		    --ps.ind_level;
 		/*
 		 * for a switch, brace should be two levels out from the code
@@ -134,7 +143,7 @@ parse(int tk) /* tk: the code for the construct scanned */
 	    ps.p_stack[++ps.tos] = whilestmt;
 	    ps.il[ps.tos] = ps.i_l_follow;
 	    ++ps.i_l_follow;
-	    ps.search_brace = btype_2;
+	    ps.search_brace = opt.btype_2;
 	}
 
 	break;
@@ -150,13 +159,13 @@ parse(int tk) /* tk: the code for the construct scanned */
 						 * be in 1 level */
 	    ps.p_stack[ps.tos] = elsehead;
 	    /* remember if with else */
-	    ps.search_brace = btype_2 | ps.else_if;
+	    ps.search_brace = opt.btype_2 | opt.else_if;
 	}
 	break;
 
     case rbrace:		/* scanned a } */
 	/* stack should have <lbrace> <stmt> or <lbrace> <stmtl> */
-	if (ps.p_stack[ps.tos - 1] == lbrace) {
+	if (ps.tos > 0 && ps.p_stack[ps.tos - 1] == lbrace) {
 	    ps.ind_level = ps.i_l_follow = ps.il[--ps.tos];
 	    ps.p_stack[ps.tos] = stmt;
 	}
@@ -169,12 +178,12 @@ parse(int tk) /* tk: the code for the construct scanned */
 	ps.cstk[ps.tos] = case_ind;
 	/* save current case indent level */
 	ps.il[ps.tos] = ps.i_l_follow;
-	case_ind = ps.i_l_follow + ps.case_indent;	/* cases should be one
+	case_ind = ps.i_l_follow + opt.case_indent;	/* cases should be one
 							 * level down from
 							 * switch */
-	ps.i_l_follow += ps.case_indent + 1;	/* statements should be two
+	ps.i_l_follow += opt.case_indent + 1;	/* statements should be two
 						 * levels in */
-	ps.search_brace = btype_2;
+	ps.search_brace = opt.btype_2;
 	break;
 
     case semicolon:		/* this indicates a simple stmt */
@@ -190,6 +199,9 @@ parse(int tk) /* tk: the code for the construct scanned */
 
 
     }				/* end of switch */
+
+    if (ps.tos >= STACKSIZE - 1)
+	errx(1, "Parser stack overflow");
 
     reduce();			/* see if any reduction can be done */
 
