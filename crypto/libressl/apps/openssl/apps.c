@@ -1,4 +1,4 @@
-/* $OpenBSD: apps.c,v 1.36 2015/09/13 12:41:01 bcook Exp $ */
+/* $OpenBSD: apps.c,v 1.51 2019/02/09 15:49:21 inoguchi Exp $ */
 /*
  * Copyright (c) 2014 Joel Sing <jsing@openbsd.org>
  *
@@ -397,10 +397,7 @@ password_callback(char *buf, int bufsiz, int verify, void *arg)
 			} while (ok < 0 &&
 			    UI_ctrl(ui, UI_CTRL_IS_REDOABLE, 0, 0, 0));
 
-		if (buff) {
-			explicit_bzero(buff, (unsigned int) bufsiz);
-			free(buff);
-		}
+		freezero(buff, (unsigned int) bufsiz);
 		if (ok >= 0)
 			res = strlen(buf);
 		if (ok == -1) {
@@ -586,9 +583,8 @@ load_pkcs12(BIO *err, BIO *in, const char *desc, pem_password_cb *pem_cb,
 	}
 	ret = PKCS12_parse(p12, pass, pkey, cert, ca);
 
-die:
-	if (p12)
-		PKCS12_free(p12);
+ die:
+	PKCS12_free(p12);
 	return ret;
 }
 
@@ -619,7 +615,7 @@ load_cert(BIO *err, const char *file, int format, const char *pass,
 		x = d2i_X509_bio(cert, NULL);
 	else if (format == FORMAT_NETSCAPE) {
 		NETSCAPE_X509 *nx;
-		nx = ASN1_item_d2i_bio(ASN1_ITEM_rptr(NETSCAPE_X509),
+		nx = ASN1_item_d2i_bio(&NETSCAPE_X509_it,
 		    cert, NULL);
 		if (nx == NULL)
 			goto end;
@@ -646,7 +642,7 @@ load_cert(BIO *err, const char *file, int format, const char *pass,
 		goto end;
 	}
 
-end:
+ end:
 	if (x == NULL) {
 		BIO_printf(err, "unable to load certificate\n");
 		ERR_print_errors(err);
@@ -709,7 +705,7 @@ load_key(BIO *err, const char *file, int format, int maybe_stdin,
 		BIO_printf(err, "bad input format specified for key file\n");
 		goto end;
 	}
-end:
+ end:
 	BIO_free(key);
 	if (pkey == NULL) {
 		BIO_printf(err, "unable to load %s\n", key_descrip);
@@ -786,7 +782,7 @@ load_pubkey(BIO *err, const char *file, int format, int maybe_stdin,
 		goto end;
 	}
 
-end:
+ end:
 	BIO_free(key);
 	if (pkey == NULL)
 		BIO_printf(err, "unable to load %s\n", key_descrip);
@@ -831,7 +827,7 @@ load_netscape_key(BIO *err, BIO *key, const char *file,
 	EVP_PKEY_set1_RSA(pkey, rsa);
 	return pkey;
 
-error:
+ error:
 	BUF_MEM_free(buf);
 	EVP_PKEY_free(pkey);
 	return NULL;
@@ -902,9 +898,8 @@ load_certs_crls(BIO *err, const char *file, int format, const char *pass,
 	if (pcrls && sk_X509_CRL_num(*pcrls) > 0)
 		rv = 1;
 
-end:
-	if (xis)
-		sk_X509_INFO_pop_free(xis, X509_INFO_free);
+ end:
+	sk_X509_INFO_pop_free(xis, X509_INFO_free);
 
 	if (rv == 0) {
 		if (pcerts) {
@@ -1069,7 +1064,7 @@ copy_extensions(X509 *x, X509_REQ *req, int copy_type)
 
 	ret = 1;
 
-end:
+ end:
 	sk_X509_EXTENSION_pop_free(exts, X509_EXTENSION_free);
 
 	return ret;
@@ -1184,7 +1179,7 @@ setup_verify(BIO *bp, char *CAfile, char *CApath)
 	ERR_clear_error();
 	return store;
 
-end:
+ end:
 	X509_STORE_free(store);
 	return NULL;
 }
@@ -1269,8 +1264,6 @@ static IMPLEMENT_LHASH_COMP_FN(index_serial, OPENSSL_CSTRING)
 static IMPLEMENT_LHASH_HASH_FN(index_name, OPENSSL_CSTRING)
 static IMPLEMENT_LHASH_COMP_FN(index_name, OPENSSL_CSTRING)
 
-#define BUFLEN 256
-
 BIGNUM *
 load_serial(char *serialfile, int create, ASN1_INTEGER **retai)
 {
@@ -1297,7 +1290,7 @@ load_serial(char *serialfile, int create, ASN1_INTEGER **retai)
 				BIO_printf(bio_err, "Out of memory\n");
 		}
 	} else {
-		if (!a2i_ASN1_INTEGER(in, ai, buf, 1024)) {
+		if (!a2i_ASN1_INTEGER(in, ai, buf, sizeof buf)) {
 			BIO_printf(bio_err, "unable to load number from %s\n",
 			    serialfile);
 			goto err;
@@ -1315,11 +1308,9 @@ load_serial(char *serialfile, int create, ASN1_INTEGER **retai)
 		ai = NULL;
 	}
 
-err:
-	if (in != NULL)
-		BIO_free(in);
-	if (ai != NULL)
-		ASN1_INTEGER_free(ai);
+ err:
+	BIO_free(in);
+	ASN1_INTEGER_free(ai);
 	return (ret);
 }
 
@@ -1327,26 +1318,17 @@ int
 save_serial(char *serialfile, char *suffix, BIGNUM *serial,
     ASN1_INTEGER **retai)
 {
-	char buf[1][BUFLEN];
+	char serialpath[PATH_MAX];
 	BIO *out = NULL;
 	int ret = 0, n;
 	ASN1_INTEGER *ai = NULL;
-	int j;
 
 	if (suffix == NULL)
-		j = strlen(serialfile);
+		n = strlcpy(serialpath, serialfile, sizeof serialpath);
 	else
-		j = strlen(serialfile) + strlen(suffix) + 1;
-	if (j >= BUFLEN) {
-		BIO_printf(bio_err, "file name too long\n");
-		goto err;
-	}
-	if (suffix == NULL)
-		n = strlcpy(buf[0], serialfile, BUFLEN);
-	else
-		n = snprintf(buf[0], sizeof buf[0], "%s.%s",
+		n = snprintf(serialpath, sizeof serialpath, "%s.%s",
 		    serialfile, suffix);
-	if (n == -1 || n >= sizeof(buf[0])) {
+	if (n == -1 || n >= sizeof(serialpath)) {
 		BIO_printf(bio_err, "serial too long\n");
 		goto err;
 	}
@@ -1355,7 +1337,7 @@ save_serial(char *serialfile, char *suffix, BIGNUM *serial,
 		ERR_print_errors(bio_err);
 		goto err;
 	}
-	if (BIO_write_filename(out, buf[0]) <= 0) {
+	if (BIO_write_filename(out, serialpath) <= 0) {
 		perror(serialfile);
 		goto err;
 	}
@@ -1372,55 +1354,52 @@ save_serial(char *serialfile, char *suffix, BIGNUM *serial,
 		ai = NULL;
 	}
 
-err:
-	if (out != NULL)
-		BIO_free_all(out);
-	if (ai != NULL)
-		ASN1_INTEGER_free(ai);
+ err:
+	BIO_free_all(out);
+	ASN1_INTEGER_free(ai);
 	return (ret);
 }
 
 int
 rotate_serial(char *serialfile, char *new_suffix, char *old_suffix)
 {
-	char buf[5][BUFLEN];
-	int i, j;
+	char opath[PATH_MAX], npath[PATH_MAX];
 
-	i = strlen(serialfile) + strlen(old_suffix);
-	j = strlen(serialfile) + strlen(new_suffix);
-	if (i > j)
-		j = i;
-	if (j + 1 >= BUFLEN) {
+	if (snprintf(npath, sizeof npath, "%s.%s", serialfile,
+	    new_suffix) >= sizeof npath) {
 		BIO_printf(bio_err, "file name too long\n");
 		goto err;
 	}
-	snprintf(buf[0], sizeof buf[0], "%s.%s", serialfile, new_suffix);
-	snprintf(buf[1], sizeof buf[1], "%s.%s", serialfile, old_suffix);
 
+	if (snprintf(opath, sizeof opath, "%s.%s", serialfile,
+	    old_suffix) >= sizeof opath) {
+		BIO_printf(bio_err, "file name too long\n");
+		goto err;
+	}
 
-	if (rename(serialfile, buf[1]) < 0 &&
+	if (rename(serialfile, opath) < 0 &&
 	    errno != ENOENT && errno != ENOTDIR) {
 		BIO_printf(bio_err, "unable to rename %s to %s\n",
-		    serialfile, buf[1]);
+		    serialfile, opath);
 		perror("reason");
 		goto err;
 	}
 
 
-	if (rename(buf[0], serialfile) < 0) {
+	if (rename(npath, serialfile) < 0) {
 		BIO_printf(bio_err, "unable to rename %s to %s\n",
-		    buf[0], serialfile);
+		    npath, serialfile);
 		perror("reason");
-		if (rename(buf[1], serialfile) < 0) {
+		if (rename(opath, serialfile) < 0) {
 			BIO_printf(bio_err, "unable to rename %s to %s\n",
-			    buf[1], serialfile);
+			    opath, serialfile);
 			perror("reason");
 		}
 		goto err;
 	}
 	return 1;
 
-err:
+ err:
 	return 0;
 }
 
@@ -1445,8 +1424,8 @@ rand_serial(BIGNUM *b, ASN1_INTEGER *ai)
 
 	ret = 1;
 
-error:
-	if (!b)
+ error:
+	if (b != btmp)
 		BN_free(btmp);
 
 	return ret;
@@ -1459,7 +1438,7 @@ load_index(char *dbfile, DB_ATTR *db_attr)
 	TXT_DB *tmpdb = NULL;
 	BIO *in = BIO_new(BIO_s_file());
 	CONF *dbattr_conf = NULL;
-	char buf[1][BUFLEN];
+	char attrpath[PATH_MAX];
 	long errorline = -1;
 
 	if (in == NULL) {
@@ -1474,13 +1453,18 @@ load_index(char *dbfile, DB_ATTR *db_attr)
 	if ((tmpdb = TXT_DB_read(in, DB_NUMBER)) == NULL)
 		goto err;
 
-	snprintf(buf[0], sizeof buf[0], "%s.attr", dbfile);
+	if (snprintf(attrpath, sizeof attrpath, "%s.attr", dbfile)
+	    >= sizeof attrpath) {
+		BIO_printf(bio_err, "attr filename too long\n");
+		goto err;
+	}
+
 	dbattr_conf = NCONF_new(NULL);
-	if (NCONF_load(dbattr_conf, buf[0], &errorline) <= 0) {
+	if (NCONF_load(dbattr_conf, attrpath, &errorline) <= 0) {
 		if (errorline > 0) {
 			BIO_printf(bio_err,
 			    "error on line %ld of db attribute file '%s'\n",
-			    errorline, buf[0]);
+			    errorline, attrpath);
 			goto err;
 		} else {
 			NCONF_free(dbattr_conf);
@@ -1506,13 +1490,10 @@ load_index(char *dbfile, DB_ATTR *db_attr)
 		}
 	}
 
-err:
-	if (dbattr_conf)
-		NCONF_free(dbattr_conf);
-	if (tmpdb)
-		TXT_DB_free(tmpdb);
-	if (in)
-		BIO_free_all(in);
+ err:
+	NCONF_free(dbattr_conf);
+	TXT_DB_free(tmpdb);
+	BIO_free_all(in);
 	return retdb;
 }
 
@@ -1537,9 +1518,9 @@ index_index(CA_DB *db)
 }
 
 int
-save_index(const char *dbfile, const char *suffix, CA_DB *db)
+save_index(const char *file, const char *suffix, CA_DB *db)
 {
-	char buf[3][BUFLEN];
+	char attrpath[PATH_MAX], dbfile[PATH_MAX];
 	BIO *out = BIO_new(BIO_s_file());
 	int j;
 
@@ -1547,17 +1528,18 @@ save_index(const char *dbfile, const char *suffix, CA_DB *db)
 		ERR_print_errors(bio_err);
 		goto err;
 	}
-	j = strlen(dbfile) + strlen(suffix);
-	if (j + 6 >= BUFLEN) {
+	if (snprintf(attrpath, sizeof attrpath, "%s.attr.%s",
+	    file, suffix) >= sizeof attrpath) {
 		BIO_printf(bio_err, "file name too long\n");
 		goto err;
 	}
-	snprintf(buf[2], sizeof buf[2], "%s.attr", dbfile);
-	snprintf(buf[1], sizeof buf[1], "%s.attr.%s", dbfile, suffix);
-	snprintf(buf[0], sizeof buf[0], "%s.%s", dbfile, suffix);
+	if (snprintf(dbfile, sizeof dbfile, "%s.%s",
+	    file, suffix) >= sizeof dbfile) {
+		BIO_printf(bio_err, "file name too long\n");
+		goto err;
+	}
 
-
-	if (BIO_write_filename(out, buf[0]) <= 0) {
+	if (BIO_write_filename(out, dbfile) <= 0) {
 		perror(dbfile);
 		BIO_printf(bio_err, "unable to open '%s'\n", dbfile);
 		goto err;
@@ -1570,10 +1552,9 @@ save_index(const char *dbfile, const char *suffix, CA_DB *db)
 
 	out = BIO_new(BIO_s_file());
 
-
-	if (BIO_write_filename(out, buf[1]) <= 0) {
-		perror(buf[2]);
-		BIO_printf(bio_err, "unable to open '%s'\n", buf[2]);
+	if (BIO_write_filename(out, attrpath) <= 0) {
+		perror(attrpath);
+		BIO_printf(bio_err, "unable to open '%s'\n", attrpath);
 		goto err;
 	}
 	BIO_printf(out, "unique_subject = %s\n",
@@ -1582,94 +1563,102 @@ save_index(const char *dbfile, const char *suffix, CA_DB *db)
 
 	return 1;
 
-err:
+ err:
 	return 0;
 }
 
 int
 rotate_index(const char *dbfile, const char *new_suffix, const char *old_suffix)
 {
-	char buf[5][BUFLEN];
-	int i, j;
+	char attrpath[PATH_MAX], nattrpath[PATH_MAX], oattrpath[PATH_MAX];
+	char dbpath[PATH_MAX], odbpath[PATH_MAX];
 
-	i = strlen(dbfile) + strlen(old_suffix);
-	j = strlen(dbfile) + strlen(new_suffix);
-	if (i > j)
-		j = i;
-	if (j + 6 >= BUFLEN) {
+	if (snprintf(attrpath, sizeof attrpath, "%s.attr",
+	    dbfile) >= sizeof attrpath) {
 		BIO_printf(bio_err, "file name too long\n");
 		goto err;
 	}
-	snprintf(buf[4], sizeof buf[4], "%s.attr", dbfile);
-	snprintf(buf[2], sizeof buf[2], "%s.attr.%s", dbfile, new_suffix);
-	snprintf(buf[0], sizeof buf[0], "%s.%s", dbfile, new_suffix);
-	snprintf(buf[1], sizeof buf[1], "%s.%s", dbfile, old_suffix);
-	snprintf(buf[3], sizeof buf[3], "%s.attr.%s", dbfile, old_suffix);
+	if (snprintf(nattrpath, sizeof nattrpath, "%s.attr.%s",
+	    dbfile, new_suffix) >= sizeof nattrpath) {
+		BIO_printf(bio_err, "file name too long\n");
+		goto err;
+	}
+	if (snprintf(oattrpath, sizeof oattrpath, "%s.attr.%s",
+	    dbfile, old_suffix) >= sizeof oattrpath) {
+		BIO_printf(bio_err, "file name too long\n");
+		goto err;
+	}
+	if (snprintf(dbpath, sizeof dbpath, "%s.%s",
+	    dbfile, new_suffix) >= sizeof dbpath) {
+		BIO_printf(bio_err, "file name too long\n");
+		goto err;
+	}
+	if (snprintf(odbpath, sizeof odbpath, "%s.%s",
+	    dbfile, old_suffix) >= sizeof odbpath) {
+		BIO_printf(bio_err, "file name too long\n");
+		goto err;
+	}
 
-
-	if (rename(dbfile, buf[1]) < 0 && errno != ENOENT && errno != ENOTDIR) {
+	if (rename(dbfile, odbpath) < 0 && errno != ENOENT && errno != ENOTDIR) {
 		BIO_printf(bio_err, "unable to rename %s to %s\n",
-		    dbfile, buf[1]);
+		    dbfile, odbpath);
 		perror("reason");
 		goto err;
 	}
 
-
-	if (rename(buf[0], dbfile) < 0) {
+	if (rename(dbpath, dbfile) < 0) {
 		BIO_printf(bio_err, "unable to rename %s to %s\n",
-		    buf[0], dbfile);
+		    dbpath, dbfile);
 		perror("reason");
-		if (rename(buf[1], dbfile) < 0) {
+		if (rename(odbpath, dbfile) < 0) {
 			BIO_printf(bio_err, "unable to rename %s to %s\n",
-			    buf[1], dbfile);
-			perror("reason");
-		}
-		goto err;
-	}
-
-
-	if (rename(buf[4], buf[3]) < 0 && errno != ENOENT && errno != ENOTDIR) {
-		BIO_printf(bio_err, "unable to rename %s to %s\n",
-		    buf[4], buf[3]);
-		perror("reason");
-		if (rename(dbfile, buf[0]) < 0) {
-			BIO_printf(bio_err, "unable to rename %s to %s\n",
-			    dbfile, buf[0]);
-			perror("reason");
-		}
-		if (rename(buf[1], dbfile) < 0) {
-			BIO_printf(bio_err, "unable to rename %s to %s\n",
-			    buf[1], dbfile);
+			    odbpath, dbfile);
 			perror("reason");
 		}
 		goto err;
 	}
 
-
-	if (rename(buf[2], buf[4]) < 0) {
+	if (rename(attrpath, oattrpath) < 0 && errno != ENOENT && errno != ENOTDIR) {
 		BIO_printf(bio_err, "unable to rename %s to %s\n",
-		    buf[2], buf[4]);
+		    attrpath, oattrpath);
 		perror("reason");
-		if (rename(buf[3], buf[4]) < 0) {
+		if (rename(dbfile, dbpath) < 0) {
 			BIO_printf(bio_err, "unable to rename %s to %s\n",
-			    buf[3], buf[4]);
+			    dbfile, dbpath);
 			perror("reason");
 		}
-		if (rename(dbfile, buf[0]) < 0) {
+		if (rename(odbpath, dbfile) < 0) {
 			BIO_printf(bio_err, "unable to rename %s to %s\n",
-			    dbfile, buf[0]);
+			    odbpath, dbfile);
 			perror("reason");
 		}
-		if (rename(buf[1], dbfile) < 0) {
+		goto err;
+	}
+
+	if (rename(nattrpath, attrpath) < 0) {
+		BIO_printf(bio_err, "unable to rename %s to %s\n",
+		    nattrpath, attrpath);
+		perror("reason");
+		if (rename(oattrpath, attrpath) < 0) {
 			BIO_printf(bio_err, "unable to rename %s to %s\n",
-			    buf[1], dbfile);
+			    oattrpath, attrpath);
+			perror("reason");
+		}
+		if (rename(dbfile, dbpath) < 0) {
+			BIO_printf(bio_err, "unable to rename %s to %s\n",
+			    dbfile, dbpath);
+			perror("reason");
+		}
+		if (rename(odbpath, dbfile) < 0) {
+			BIO_printf(bio_err, "unable to rename %s to %s\n",
+			    odbpath, dbfile);
 			perror("reason");
 		}
 		goto err;
 	}
 	return 1;
 
-err:
+ err:
 	return 0;
 }
 
@@ -1677,8 +1666,7 @@ void
 free_index(CA_DB *db)
 {
 	if (db) {
-		if (db->db)
-			TXT_DB_free(db->db);
+		TXT_DB_free(db->db);
 		free(db);
 	}
 }
@@ -1833,11 +1821,11 @@ parse_name(char *subject, long chtype, int multirdn)
 	}
 	goto done;
 
-error:
+ error:
 	X509_NAME_free(name);
 	name = NULL;
 
-done:
+ done:
 	free(ne_values);
 	free(ne_types);
 	free(mval);
@@ -1947,8 +1935,7 @@ args_verify(char ***pargs, int *pargc, int *badarg, BIO *err,
 		return 0;
 
 	if (*badarg) {
-		if (*pm)
-			X509_VERIFY_PARAM_free(*pm);
+		X509_VERIFY_PARAM_free(*pm);
 		*pm = NULL;
 		goto end;
 	}
@@ -1972,7 +1959,7 @@ args_verify(char ***pargs, int *pargc, int *badarg, BIO *err,
 	if (at_time)
 		X509_VERIFY_PARAM_set_time(*pm, at_time);
 
-end:
+ end:
 	(*pargs)++;
 
 	if (pargc)
@@ -2077,11 +2064,13 @@ policies_print(BIO *out, X509_STORE_CTX *ctx)
 
 	nodes_print(out, "Authority", X509_policy_tree_get0_policies(tree));
 	nodes_print(out, "User", X509_policy_tree_get0_user_policies(tree));
+
 	if (free_out)
 		BIO_free(out);
 }
 
-/* next_protos_parse parses a comma separated list of strings into a string
+/*
+ * next_protos_parse parses a comma separated list of strings into a string
  * in a format suitable for passing to SSL_CTX_set_next_protos_advertised.
  *   outlen: (output) set to the length of the resulting buffer on success.
  *   err: (maybe NULL) on failure, an error message line is written to this BIO.
@@ -2217,7 +2206,8 @@ options_parse(int argc, char **argv, struct option *opts, char **unnamed,
 		    opt->type == OPTION_ARG_FORMAT ||
 		    opt->type == OPTION_ARG_FUNC ||
 		    opt->type == OPTION_ARG_INT ||
-		    opt->type == OPTION_ARG_LONG) {
+		    opt->type == OPTION_ARG_LONG ||
+		    opt->type == OPTION_ARG_TIME) {
 			if (++i >= argc) {
 				fprintf(stderr, "missing %s argument for -%s\n",
 				    opt->argname, opt->name);
@@ -2271,6 +2261,16 @@ options_parse(int argc, char **argv, struct option *opts, char **unnamed,
 			*opt->opt.lvalue = (long)val;
 			break;
 
+		case OPTION_ARG_TIME:
+			val = strtonum(argv[i], 0, LLONG_MAX, &errstr);
+			if (errstr != NULL) {
+				fprintf(stderr, "%s %s argument for -%s\n",
+				    errstr, opt->argname, opt->name);
+				return (1);
+			}
+			*opt->opt.tvalue = val;
+			break;
+
 		case OPTION_DISCARD:
 			break;
 
@@ -2306,17 +2306,29 @@ options_parse(int argc, char **argv, struct option *opts, char **unnamed,
 		}
 	}
 
-done:
+ done:
 	if (argsused != NULL)
 		*argsused = i;
 
 	return (0);
 
-toomany:
+ toomany:
 	fprintf(stderr, "too many arguments\n");
 	return (1);
 
-unknown:
+ unknown:
 	fprintf(stderr, "unknown option '%s'\n", arg);
 	return (1);
 }
+
+void
+show_cipher(const OBJ_NAME *name, void *arg)
+{
+	int *n = arg;
+
+	if (!islower((unsigned char)*name->name))
+		return;
+
+	fprintf(stderr, " -%-24s%s", name->name, (++*n % 3 != 0 ? "" : "\n"));
+}
+

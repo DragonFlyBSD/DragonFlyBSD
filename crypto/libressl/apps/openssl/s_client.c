@@ -1,4 +1,4 @@
-/* $OpenBSD: s_client.c,v 1.27 2015/12/01 12:01:56 jca Exp $ */
+/* $OpenBSD: s_client.c,v 1.37 2018/11/14 06:24:21 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -243,8 +243,8 @@ sc_usage(void)
 	BIO_printf(bio_err, " -tlsextdebug      - hex dump of all TLS extensions received\n");
 	BIO_printf(bio_err, " -status           - request certificate status from server\n");
 	BIO_printf(bio_err, " -no_ticket        - disable use of RFC4507bis session tickets\n");
-	BIO_printf(bio_err, " -nextprotoneg arg - enable NPN extension, considering named protocols supported (comma-separated list)\n");
 	BIO_printf(bio_err, " -alpn arg         - enable ALPN extension, considering named protocols supported (comma-separated list)\n");
+	BIO_printf(bio_err, " -groups arg       - specify EC curve groups (colon-separated list)\n");
 #ifndef OPENSSL_NO_SRTP
 	BIO_printf(bio_err, " -use_srtp profiles - Offer SRTP key management with a colon-separated profile list\n");
 #endif
@@ -276,36 +276,6 @@ ssl_servername_cb(SSL * s, int *ad, void *arg)
 #ifndef OPENSSL_NO_SRTP
 char *srtp_profiles = NULL;
 #endif
-
-/* This the context that we pass to next_proto_cb */
-typedef struct tlsextnextprotoctx_st {
-	unsigned char *data;
-	unsigned short len;
-	int status;
-} tlsextnextprotoctx;
-
-static tlsextnextprotoctx next_proto;
-
-static int
-next_proto_cb(SSL * s, unsigned char **out, unsigned char *outlen, const unsigned char *in, unsigned int inlen, void *arg)
-{
-	tlsextnextprotoctx *ctx = arg;
-
-	if (!c_quiet) {
-		/* We can assume that |in| is syntactically valid. */
-		unsigned i;
-		BIO_printf(bio_c_out, "Protocols advertised by server: ");
-		for (i = 0; i < inlen;) {
-			if (i)
-				BIO_write(bio_c_out, ", ", 2);
-			BIO_write(bio_c_out, &in[i + 1], in[i]);
-			i += in[i] + 1;
-		}
-		BIO_write(bio_c_out, "\n", 1);
-	}
-	ctx->status = SSL_select_next_proto(out, outlen, in, inlen, ctx->data, ctx->len);
-	return SSL_TLSEXT_ERR_OK;
-}
 
 enum {
 	PROTO_OFF = 0,
@@ -353,10 +323,9 @@ s_client_main(int argc, char **argv)
 	struct timeval timeout;
 	const char *errstr = NULL;
 	char *servername = NULL;
-	tlsextctx tlsextcbp =
-	{NULL, 0};
-	const char *next_proto_neg_in = NULL;
+	tlsextctx tlsextcbp = {NULL, 0};
 	const char *alpn_in = NULL;
+	const char *groups_in = NULL;
 	char *sess_in = NULL;
 	char *sess_out = NULL;
 	struct sockaddr peer;
@@ -365,7 +334,7 @@ s_client_main(int argc, char **argv)
 	long socket_mtu = 0;
 
 	if (single_execution) {
-		if (pledge("stdio inet dns rpath wpath cpath tty", NULL) == -1) {
+		if (pledge("stdio cpath wpath rpath inet dns tty", NULL) == -1) {
 			perror("pledge");
 			exit(1);
 		}
@@ -527,19 +496,21 @@ s_client_main(int argc, char **argv)
 			off |= SSL_OP_NO_SSLv2;
 		else if (strcmp(*argv, "-no_comp") == 0) {
 			off |= SSL_OP_NO_COMPRESSION;
-		}
-		else if (strcmp(*argv, "-no_ticket") == 0) {
+		} else if (strcmp(*argv, "-no_ticket") == 0) {
 			off |= SSL_OP_NO_TICKET;
-		}
-		else if (strcmp(*argv, "-nextprotoneg") == 0) {
+		} else if (strcmp(*argv, "-nextprotoneg") == 0) {
+			/* Ignored. */
 			if (--argc < 1)
 				goto bad;
-			next_proto_neg_in = *(++argv);
-		}
-		else if (strcmp(*argv, "-alpn") == 0) {
+			++argv;
+		} else if (strcmp(*argv, "-alpn") == 0) {
 			if (--argc < 1)
 				goto bad;
 			alpn_in = *(++argv);
+		} else if (strcmp(*argv, "-groups") == 0) {
+			if (--argc < 1)
+				goto bad;
+			groups_in = *(++argv);
 		} else if (strcmp(*argv, "-serverpref") == 0)
 			off |= SSL_OP_CIPHER_SERVER_PREFERENCE;
 		else if (strcmp(*argv, "-legacy_renegotiation") == 0)
@@ -621,7 +592,7 @@ s_client_main(int argc, char **argv)
 			goto bad;
 	}
 	if (badop) {
-bad:
+ bad:
 		if (errstr)
 			BIO_printf(bio_err, "invalid argument %s: %s\n",
 			    *argv, errstr);
@@ -629,16 +600,6 @@ bad:
 			sc_usage();
 		goto end;
 	}
-
-	next_proto.status = -1;
-	if (next_proto_neg_in) {
-		next_proto.data = next_protos_parse(&next_proto.len, next_proto_neg_in);
-		if (next_proto.data == NULL) {
-			BIO_printf(bio_err, "Error parsing -nextprotoneg argument\n");
-			goto end;
-		}
-	} else
-		next_proto.data = NULL;
 
 	if (!app_passwd(bio_err, passarg, NULL, &pass, NULL)) {
 		BIO_printf(bio_err, "Error getting password\n");
@@ -701,8 +662,6 @@ bad:
 	if (socket_type == SOCK_DGRAM)
 		SSL_CTX_set_read_ahead(ctx, 1);
 
-	if (next_proto.data)
-		SSL_CTX_set_next_proto_select_cb(ctx, next_proto_cb, &next_proto);
 	if (alpn_in) {
 		unsigned short alpn_len;
 		unsigned char *alpn = next_protos_parse(&alpn_len, alpn_in);
@@ -713,6 +672,13 @@ bad:
 		}
 		SSL_CTX_set_alpn_protos(ctx, alpn, alpn_len);
 		free(alpn);
+	}
+	if (groups_in != NULL) {
+		if (SSL_CTX_set1_groups_list(ctx, groups_in) != 1) {
+			BIO_printf(bio_err, "Failed to set groups '%s'\n",
+			    groups_in);
+			goto end;
+		}
 	}
 
 	if (state)
@@ -893,7 +859,7 @@ re_start:
 		BIO_free(fbio);
 		if (!foundit)
 			BIO_printf(bio_err,
-			    "didn't found starttls in server response,"
+			    "didn't find starttls in server response,"
 			    " try anyway...\n");
 		BIO_printf(sbio, "STARTTLS\r\n");
 		BIO_read(sbio, sbuf, BUFSIZZ);
@@ -925,7 +891,7 @@ re_start:
 		BIO_free(fbio);
 		if (!foundit)
 			BIO_printf(bio_err,
-			    "didn't found STARTTLS in server response,"
+			    "didn't find STARTTLS in server response,"
 			    " try anyway...\n");
 		BIO_printf(sbio, ". STARTTLS\r\n");
 		BIO_read(sbio, sbuf, BUFSIZZ);
@@ -1234,40 +1200,26 @@ re_start:
 	}
 
 	ret = 0;
-shut:
+ shut:
 	if (in_init)
 		print_stuff(bio_c_out, con, full_log);
 	SSL_shutdown(con);
 	shutdown(SSL_get_fd(con), SHUT_RD);
 	close(SSL_get_fd(con));
-end:
+ end:
 	if (con != NULL) {
 		if (prexit != 0)
 			print_stuff(bio_c_out, con, 1);
 		SSL_free(con);
 	}
-	free(next_proto.data);
-	if (ctx != NULL)
-		SSL_CTX_free(ctx);
-	if (cert)
-		X509_free(cert);
-	if (key)
-		EVP_PKEY_free(key);
+	SSL_CTX_free(ctx);
+	X509_free(cert);
+	EVP_PKEY_free(key);
 	free(pass);
-	if (vpm)
-		X509_VERIFY_PARAM_free(vpm);
-	if (cbuf != NULL) {
-		explicit_bzero(cbuf, BUFSIZZ);
-		free(cbuf);
-	}
-	if (sbuf != NULL) {
-		explicit_bzero(sbuf, BUFSIZZ);
-		free(sbuf);
-	}
-	if (mbuf != NULL) {
-		explicit_bzero(mbuf, BUFSIZZ);
-		free(mbuf);
-	}
+	X509_VERIFY_PARAM_free(vpm);
+	freezero(cbuf, BUFSIZZ);
+	freezero(sbuf, BUFSIZZ);
+	freezero(mbuf, BUFSIZZ);
 	if (bio_c_out != NULL) {
 		BIO_free(bio_c_out);
 		bio_c_out = NULL;
@@ -1365,6 +1317,9 @@ print_stuff(BIO * bio, SSL * s, int full)
 			}
 			BIO_write(bio, "\n", 1);
 		}
+
+		ssl_print_tmp_key(bio, s);
+
 		BIO_printf(bio, "---\nSSL handshake has read %ld bytes and written %ld bytes\n",
 		    BIO_number_read(SSL_get_rbio(s)),
 		    BIO_number_written(SSL_get_wbio(s)));
@@ -1400,14 +1355,6 @@ print_stuff(BIO * bio, SSL * s, int full)
 	}
 #endif
 
-	if (next_proto.status != -1) {
-		const unsigned char *proto;
-		unsigned int proto_len;
-		SSL_get0_next_proto_negotiated(s, &proto, &proto_len);
-		BIO_printf(bio, "Next protocol: (%d) ", next_proto.status);
-		BIO_write(bio, proto, proto_len);
-		BIO_write(bio, "\n", 1);
-	}
 	{
 		const unsigned char *proto;
 		unsigned int proto_len;
@@ -1454,8 +1401,7 @@ print_stuff(BIO * bio, SSL * s, int full)
 		}
 	}
 	BIO_printf(bio, "---\n");
-	if (peer != NULL)
-		X509_free(peer);
+	X509_free(peer);
 	/* flush, or debugging output gets mixed with http response */
 	(void) BIO_flush(bio);
 }

@@ -1,4 +1,4 @@
-/* $OpenBSD: ssl3.h,v 1.40 2015/07/18 19:41:54 doug Exp $ */
+/* $OpenBSD: ssl3.h,v 1.49 2018/11/08 22:28:52 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -117,6 +117,7 @@
 #ifndef HEADER_SSL3_H
 #define HEADER_SSL3_H
 
+#include <openssl/opensslconf.h>
 #include <openssl/buffer.h>
 #include <openssl/evp.h>
 #include <openssl/ssl.h>
@@ -347,145 +348,22 @@ typedef struct ssl3_buffer_st {
  */
 #define SSL3_CT_NUMBER			11
 
-
 #define SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS	0x0001
-#define SSL3_FLAGS_DELAY_CLIENT_FINISHED	0x0002
-#define SSL3_FLAGS_POP_BUFFER			0x0004
-#define TLS1_FLAGS_TLS_PADDING_BUG		0x0
 #define TLS1_FLAGS_SKIP_CERT_VERIFY		0x0010
-#define TLS1_FLAGS_KEEP_HANDSHAKE		0x0020
+#define TLS1_FLAGS_FREEZE_TRANSCRIPT		0x0020
 #define SSL3_FLAGS_CCS_OK			0x0080
 
 #ifndef OPENSSL_NO_SSL_INTERN
 
+struct ssl3_state_internal_st;
+
 typedef struct ssl3_state_st {
 	long flags;
-	int delay_buf_pop_ret;
-
-	unsigned char read_sequence[SSL3_SEQUENCE_SIZE];
-	int read_mac_secret_size;
-	unsigned char read_mac_secret[EVP_MAX_MD_SIZE];
-	unsigned char write_sequence[SSL3_SEQUENCE_SIZE];
-	int write_mac_secret_size;
-	unsigned char write_mac_secret[EVP_MAX_MD_SIZE];
 
 	unsigned char server_random[SSL3_RANDOM_SIZE];
 	unsigned char client_random[SSL3_RANDOM_SIZE];
 
-	/* flags for countermeasure against known-IV weakness */
-	int need_empty_fragments;
-	int empty_fragment_done;
-
-	SSL3_BUFFER rbuf;	/* read IO goes into here */
-	SSL3_BUFFER wbuf;	/* write IO goes into here */
-
-	SSL3_RECORD rrec;	/* each decoded record goes in here */
-	SSL3_RECORD wrec;	/* goes out from here */
-
-	/* storage for Alert/Handshake protocol data received but not
-	 * yet processed by ssl3_read_bytes: */
-	unsigned char alert_fragment[2];
-	unsigned int alert_fragment_len;
-	unsigned char handshake_fragment[4];
-	unsigned int handshake_fragment_len;
-
-	/* partial write - check the numbers match */
-	unsigned int wnum;	/* number of bytes sent so far */
-	int wpend_tot;		/* number bytes written */
-	int wpend_type;
-	int wpend_ret;		/* number of bytes submitted */
-	const unsigned char *wpend_buf;
-
-	/* used during startup, digest all incoming/outgoing packets */
-	BIO *handshake_buffer;
-	/* When set of handshake digests is determined, buffer is hashed
-	 * and freed and MD_CTX-es for all required digests are stored in
-	 * this array */
-	EVP_MD_CTX **handshake_dgst;
-	/* this is set whenerver we see a change_cipher_spec message
-	 * come in when we are not looking for one */
-	int change_cipher_spec;
-
-	int warn_alert;
-	int fatal_alert;
-	/* we allow one fatal and one warning alert to be outstanding,
-	 * send close alert via the warning alert */
-	int alert_dispatch;
-	unsigned char send_alert[2];
-
-	/* This flag is set when we should renegotiate ASAP, basically when
-	 * there is no more data in the read or write buffers */
-	int renegotiate;
-	int total_renegotiations;
-	int num_renegotiations;
-
-	int in_read_app_data;
-
-	struct	{
-		/* actually only needs to be 16+20 */
-		unsigned char cert_verify_md[EVP_MAX_MD_SIZE*2];
-
-		/* actually only need to be 16+20 for SSLv3 and 12 for TLS */
-		unsigned char finish_md[EVP_MAX_MD_SIZE*2];
-		int finish_md_len;
-		unsigned char peer_finish_md[EVP_MAX_MD_SIZE*2];
-		int peer_finish_md_len;
-
-		unsigned long message_size;
-		int message_type;
-
-		/* used to hold the new cipher we are going to use */
-		const SSL_CIPHER *new_cipher;
-		DH *dh;
-
-		EC_KEY *ecdh; /* holds short lived ECDH key */
-
-		/* used when SSL_ST_FLUSH_DATA is entered */
-		int next_state;
-
-		int reuse_message;
-
-		/* used for certificate requests */
-		int cert_req;
-		int ctype_num;
-		char ctype[SSL3_CT_NUMBER];
-		STACK_OF(X509_NAME) *ca_names;
-
-		int key_block_length;
-		unsigned char *key_block;
-
-		const EVP_CIPHER *new_sym_enc;
-		const EVP_AEAD *new_aead;
-		const EVP_MD *new_hash;
-		int new_mac_pkey_type;
-		int new_mac_secret_size;
-		int cert_request;
-	} tmp;
-
-	/* Connection binding to prevent renegotiation attacks */
-	unsigned char previous_client_finished[EVP_MAX_MD_SIZE];
-	unsigned char previous_client_finished_len;
-	unsigned char previous_server_finished[EVP_MAX_MD_SIZE];
-	unsigned char previous_server_finished_len;
-	int send_connection_binding; /* TODOEKR */
-
-	/* Set if we saw the Next Protocol Negotiation extension from our peer.
-	 */
-	int next_proto_neg_seen;
-
-	/*
-	 * ALPN information
-	 * (we are in the process of transitioning from NPN to ALPN).
-	 */
-
-	/*
-	 * In a server these point to the selected ALPN protocol after the
-	 * ClientHello has been processed. In a client these contain the
-	 * protocol that the server selected once the ServerHello has been
-	 * processed.
-	 */
-	unsigned char *alpn_selected;
-	unsigned int alpn_selected_len;
+	struct ssl3_state_internal_st *internal;
 } SSL3_STATE;
 
 #endif
@@ -521,8 +399,6 @@ typedef struct ssl3_state_st {
 #define SSL3_ST_CW_CERT_VRFY_B			(0x191|SSL_ST_CONNECT)
 #define SSL3_ST_CW_CHANGE_A			(0x1A0|SSL_ST_CONNECT)
 #define SSL3_ST_CW_CHANGE_B			(0x1A1|SSL_ST_CONNECT)
-#define SSL3_ST_CW_NEXT_PROTO_A			(0x200|SSL_ST_CONNECT)
-#define SSL3_ST_CW_NEXT_PROTO_B			(0x201|SSL_ST_CONNECT)
 #define SSL3_ST_CW_FINISHED_A			(0x1B0|SSL_ST_CONNECT)
 #define SSL3_ST_CW_FINISHED_B			(0x1B1|SSL_ST_CONNECT)
 /* read from server */
@@ -568,8 +444,6 @@ typedef struct ssl3_state_st {
 #define SSL3_ST_SR_CERT_VRFY_B			(0x1A1|SSL_ST_ACCEPT)
 #define SSL3_ST_SR_CHANGE_A			(0x1B0|SSL_ST_ACCEPT)
 #define SSL3_ST_SR_CHANGE_B			(0x1B1|SSL_ST_ACCEPT)
-#define SSL3_ST_SR_NEXT_PROTO_A			(0x210|SSL_ST_ACCEPT)
-#define SSL3_ST_SR_NEXT_PROTO_B			(0x211|SSL_ST_ACCEPT)
 #define SSL3_ST_SR_FINISHED_A			(0x1C0|SSL_ST_ACCEPT)
 #define SSL3_ST_SR_FINISHED_B			(0x1C1|SSL_ST_ACCEPT)
 /* write to client */
@@ -594,8 +468,6 @@ typedef struct ssl3_state_st {
 #define SSL3_MT_CLIENT_KEY_EXCHANGE		16
 #define SSL3_MT_FINISHED			20
 #define SSL3_MT_CERTIFICATE_STATUS		22
-
-#define SSL3_MT_NEXT_PROTO			67
 
 #define DTLS1_MT_HELLO_VERIFY_REQUEST		3
 

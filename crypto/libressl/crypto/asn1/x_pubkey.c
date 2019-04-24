@@ -1,4 +1,4 @@
-/* $OpenBSD: x_pubkey.c,v 1.24 2015/02/11 03:39:51 jsing Exp $ */
+/* $OpenBSD: x_pubkey.c,v 1.27 2018/03/17 14:55:39 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -149,17 +149,15 @@ X509_PUBKEY_set(X509_PUBKEY **x, EVP_PKEY *pkey)
 	if (pkey->ameth) {
 		if (pkey->ameth->pub_encode) {
 			if (!pkey->ameth->pub_encode(pk, pkey)) {
-				X509err(X509_F_X509_PUBKEY_SET,
-				    X509_R_PUBLIC_KEY_ENCODE_ERROR);
+				X509error(X509_R_PUBLIC_KEY_ENCODE_ERROR);
 				goto error;
 			}
 		} else {
-			X509err(X509_F_X509_PUBKEY_SET,
-			    X509_R_METHOD_NOT_SUPPORTED);
+			X509error(X509_R_METHOD_NOT_SUPPORTED);
 			goto error;
 		}
 	} else {
-		X509err(X509_F_X509_PUBKEY_SET, X509_R_UNSUPPORTED_ALGORITHM);
+		X509error(X509_R_UNSUPPORTED_ALGORITHM);
 		goto error;
 	}
 
@@ -177,39 +175,36 @@ error:
 }
 
 EVP_PKEY *
-X509_PUBKEY_get(X509_PUBKEY *key)
+X509_PUBKEY_get0(X509_PUBKEY *key)
 {
 	EVP_PKEY *ret = NULL;
 
 	if (key == NULL)
 		goto error;
 
-	if (key->pkey != NULL) {
-		CRYPTO_add(&key->pkey->references, 1, CRYPTO_LOCK_EVP_PKEY);
+	if (key->pkey != NULL)
 		return key->pkey;
-	}
 
 	if (key->public_key == NULL)
 		goto error;
 
 	if ((ret = EVP_PKEY_new()) == NULL) {
-		X509err(X509_F_X509_PUBKEY_GET, ERR_R_MALLOC_FAILURE);
+		X509error(ERR_R_MALLOC_FAILURE);
 		goto error;
 	}
 
 	if (!EVP_PKEY_set_type(ret, OBJ_obj2nid(key->algor->algorithm))) {
-		X509err(X509_F_X509_PUBKEY_GET, X509_R_UNSUPPORTED_ALGORITHM);
+		X509error(X509_R_UNSUPPORTED_ALGORITHM);
 		goto error;
 	}
 
 	if (ret->ameth->pub_decode) {
 		if (!ret->ameth->pub_decode(ret, key)) {
-			X509err(X509_F_X509_PUBKEY_GET,
-			    X509_R_PUBLIC_KEY_DECODE_ERROR);
+			X509error(X509_R_PUBLIC_KEY_DECODE_ERROR);
 			goto error;
 		}
 	} else {
-		X509err(X509_F_X509_PUBKEY_GET, X509_R_METHOD_NOT_SUPPORTED);
+		X509error(X509_R_METHOD_NOT_SUPPORTED);
 		goto error;
 	}
 
@@ -223,13 +218,25 @@ X509_PUBKEY_get(X509_PUBKEY *key)
 		key->pkey = ret;
 		CRYPTO_w_unlock(CRYPTO_LOCK_EVP_PKEY);
 	}
-	CRYPTO_add(&ret->references, 1, CRYPTO_LOCK_EVP_PKEY);
 
 	return ret;
 
 error:
 	EVP_PKEY_free(ret);
 	return (NULL);
+}
+
+EVP_PKEY *
+X509_PUBKEY_get(X509_PUBKEY *key)
+{
+	EVP_PKEY *pkey;
+
+	if ((pkey = X509_PUBKEY_get0(key)) == NULL)
+		return (NULL);
+
+	CRYPTO_add(&pkey->references, 1, CRYPTO_LOCK_EVP_PKEY);
+
+	return pkey;
 }
 
 /* Now two pseudo ASN1 routines that take an EVP_PKEY structure
@@ -304,7 +311,7 @@ i2d_RSA_PUBKEY(RSA *a, unsigned char **pp)
 		return 0;
 	pktmp = EVP_PKEY_new();
 	if (!pktmp) {
-		ASN1err(ASN1_F_I2D_RSA_PUBKEY, ERR_R_MALLOC_FAILURE);
+		ASN1error(ERR_R_MALLOC_FAILURE);
 		return 0;
 	}
 	EVP_PKEY_set1_RSA(pktmp, a);
@@ -346,7 +353,7 @@ i2d_DSA_PUBKEY(DSA *a, unsigned char **pp)
 		return 0;
 	pktmp = EVP_PKEY_new();
 	if (!pktmp) {
-		ASN1err(ASN1_F_I2D_DSA_PUBKEY, ERR_R_MALLOC_FAILURE);
+		ASN1error(ERR_R_MALLOC_FAILURE);
 		return 0;
 	}
 	EVP_PKEY_set1_DSA(pktmp, a);
@@ -387,7 +394,7 @@ i2d_EC_PUBKEY(EC_KEY *a, unsigned char **pp)
 	if (!a)
 		return (0);
 	if ((pktmp = EVP_PKEY_new()) == NULL) {
-		ASN1err(ASN1_F_I2D_EC_PUBKEY, ERR_R_MALLOC_FAILURE);
+		ASN1error(ERR_R_MALLOC_FAILURE);
 		return (0);
 	}
 	EVP_PKEY_set1_EC_KEY(pktmp, a);

@@ -1,4 +1,4 @@
-/* $OpenBSD: tasn_prn.c,v 1.13 2015/02/14 15:15:27 miod Exp $ */
+/* $OpenBSD: tasn_prn.c,v 1.20 2019/04/07 16:35:50 jsing Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2000.
  */
@@ -87,7 +87,7 @@ ASN1_PCTX_new(void)
 	ASN1_PCTX *ret;
 	ret = malloc(sizeof(ASN1_PCTX));
 	if (ret == NULL) {
-		ASN1err(ASN1_F_ASN1_PCTX_NEW, ERR_R_MALLOC_FAILURE);
+		ASN1error(ERR_R_MALLOC_FAILURE);
 		return NULL;
 	}
 	ret->flags = 0;
@@ -105,7 +105,7 @@ ASN1_PCTX_free(ASN1_PCTX *p)
 }
 
 unsigned long
-ASN1_PCTX_get_flags(ASN1_PCTX *p)
+ASN1_PCTX_get_flags(const ASN1_PCTX *p)
 {
 	return p->flags;
 }
@@ -117,7 +117,7 @@ ASN1_PCTX_set_flags(ASN1_PCTX *p, unsigned long flags)
 }
 
 unsigned long
-ASN1_PCTX_get_nm_flags(ASN1_PCTX *p)
+ASN1_PCTX_get_nm_flags(const ASN1_PCTX *p)
 {
 	return p->nm_flags;
 }
@@ -129,7 +129,7 @@ ASN1_PCTX_set_nm_flags(ASN1_PCTX *p, unsigned long flags)
 }
 
 unsigned long
-ASN1_PCTX_get_cert_flags(ASN1_PCTX *p)
+ASN1_PCTX_get_cert_flags(const ASN1_PCTX *p)
 {
 	return p->cert_flags;
 }
@@ -141,7 +141,7 @@ ASN1_PCTX_set_cert_flags(ASN1_PCTX *p, unsigned long flags)
 }
 
 unsigned long
-ASN1_PCTX_get_oid_flags(ASN1_PCTX *p)
+ASN1_PCTX_get_oid_flags(const ASN1_PCTX *p)
 {
 	return p->oid_flags;
 }
@@ -153,7 +153,7 @@ ASN1_PCTX_set_oid_flags(ASN1_PCTX *p, unsigned long flags)
 }
 
 unsigned long
-ASN1_PCTX_get_str_flags(ASN1_PCTX *p)
+ASN1_PCTX_get_str_flags(const ASN1_PCTX *p)
 {
 	return p->str_flags;
 }
@@ -339,7 +339,7 @@ asn1_template_print_ctx(BIO *out, ASN1_VALUE **fld, int indent,
 
 	flags = tt->flags;
 	if (pctx->flags & ASN1_PCTX_FLAGS_SHOW_FIELD_STRUCT_NAME)
-		sname = ASN1_ITEM_ptr(tt->item)->sname;
+		sname = tt->item->sname;
 	else
 		sname = NULL;
 	if (pctx->flags & ASN1_PCTX_FLAGS_NO_FIELD_NAME)
@@ -371,7 +371,7 @@ asn1_template_print_ctx(BIO *out, ASN1_VALUE **fld, int indent,
 				return 0;
 			skitem = sk_ASN1_VALUE_value(stack, i);
 			if (!asn1_item_print_ctx(out, &skitem, indent + 2,
-			    ASN1_ITEM_ptr(tt->item), NULL, NULL, 1, pctx))
+			    tt->item, NULL, NULL, 1, pctx))
 				return 0;
 		}
 		if (!i && BIO_printf(out, "%*s<EMPTY>\n", indent + 2, "") <= 0)
@@ -382,7 +382,7 @@ asn1_template_print_ctx(BIO *out, ASN1_VALUE **fld, int indent,
 		}
 		return 1;
 	}
-	return asn1_item_print_ctx(out, fld, indent, ASN1_ITEM_ptr(tt->item),
+	return asn1_item_print_ctx(out, fld, indent, tt->item,
 	    fname, sname, 0, pctx);
 }
 
@@ -500,13 +500,18 @@ asn1_primitive_print(BIO *out, ASN1_VALUE **fld, const ASN1_ITEM *it,
 	ASN1_STRING *str;
 	int ret = 1, needlf = 1;
 	const char *pname;
-	const ASN1_PRIMITIVE_FUNCS *pf;
 
-	pf = it->funcs;
 	if (!asn1_print_fsname(out, indent, fname, sname, pctx))
 		return 0;
-	if (pf && pf->prim_print)
+
+	if (it != NULL && it->funcs != NULL) {
+		const ASN1_PRIMITIVE_FUNCS *pf = it->funcs;
+
+		if (pf->prim_print == NULL)
+			return 0;
+
 		return pf->prim_print(out, fld, it, indent, pctx);
+	}
 	str = (ASN1_STRING *)*fld;
 	if (it->itype == ASN1_ITYPE_MSTRING)
 		utype = str->type & ~V_ASN1_NEG;

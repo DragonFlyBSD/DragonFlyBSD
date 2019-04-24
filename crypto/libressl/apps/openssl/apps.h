@@ -1,4 +1,4 @@
-/* $OpenBSD: apps.h,v 1.16 2015/09/13 12:41:01 bcook Exp $ */
+/* $OpenBSD: apps.h,v 1.22 2019/02/09 06:27:37 inoguchi Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -277,9 +277,10 @@ unsigned char *next_protos_parse(unsigned short *outlen, const char *in);
 
 int app_isdir(const char *);
 
-#define TM_START	0
-#define TM_STOP		1
-double app_tminterval (int stop, int usertime);
+#define TM_RESET	0
+#define TM_GET		1
+double app_timer_real(int);
+double app_timer_user(int);
 
 #define OPENSSL_NO_SSL_INTERN
 
@@ -294,6 +295,7 @@ struct option {
 		OPTION_ARG_FUNC,
 		OPTION_ARG_INT,
 		OPTION_ARG_LONG,
+		OPTION_ARG_TIME,
 		OPTION_DISCARD,
 		OPTION_FUNC,
 		OPTION_FLAG,
@@ -310,6 +312,7 @@ struct option {
 		int (*func)(void);
 		long *lvalue;
 		int *value;
+		time_t *tvalue;
 	} opt;
 	const int value;
 };
@@ -317,5 +320,7 @@ struct option {
 void options_usage(struct option *opts);
 int options_parse(int argc, char **argv, struct option *opts, char **unnamed,
     int *argsused);
+
+void show_cipher(const OBJ_NAME *name, void *arg);
 
 #endif

@@ -1,4 +1,4 @@
-/* $OpenBSD: s_socket.c,v 1.7 2015/07/20 03:22:25 doug Exp $ */
+/* $OpenBSD: s_socket.c,v 1.10 2018/08/19 20:07:06 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -122,7 +122,7 @@ init_client(int *sock, char *host, char *port, int type, int af)
 	}
 
 	perror("connect");
-out:
+ out:
 	if (s != -1)
 		close(s);
 	freeaddrinfo(ai_top);
@@ -210,7 +210,7 @@ init_server_long(int *sock, int port, char *ip, int type)
 		goto err;
 	*sock = s;
 	ret = 1;
-err:
+ err:
 	if ((ret == 0) && (s != -1)) {
 		shutdown(s, SHUT_RD);
 		close(s);
@@ -233,7 +233,7 @@ do_accept(int acc_sock, int *sock, char **host)
 	socklen_t len;
 /*	struct linger ling; */
 
-redoit:
+ redoit:
 
 	memset((char *) &from, 0, sizeof(from));
 	len = sizeof(from);
@@ -276,16 +276,18 @@ redoit:
 		if (h2 == NULL) {
 			BIO_printf(bio_err, "gethostbyname failure\n");
 			close(ret);
+			free(*host);
 			return (0);
 		}
 		if (h2->h_addrtype != AF_INET) {
 			BIO_printf(bio_err, "gethostbyname addr is not AF_INET\n");
 			close(ret);
+			free(*host);
 			return (0);
 		}
 	}
 
-end:
+ end:
 	*sock = ret;
 	return (1);
 }

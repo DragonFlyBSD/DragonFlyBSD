@@ -1,4 +1,4 @@
-/* $OpenBSD: gendh.c,v 1.6 2015/10/10 22:28:51 doug Exp $ */
+/* $OpenBSD: gendh.c,v 1.10 2018/02/07 05:47:55 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -135,7 +135,7 @@ gendh_main(int argc, char **argv)
 	char *strbits = NULL;
 
 	if (single_execution) {
-		if (pledge("stdio rpath wpath cpath", NULL) == -1) {
+		if (pledge("stdio cpath wpath rpath", NULL) == -1) {
 			perror("pledge");
 			exit(1);
 		}
@@ -186,13 +186,11 @@ gendh_main(int argc, char **argv)
 	if (!PEM_write_bio_DHparams(out, dh))
 		goto end;
 	ret = 0;
-end:
+ end:
 	if (ret != 0)
 		ERR_print_errors(bio_err);
-	if (out != NULL)
-		BIO_free_all(out);
-	if (dh != NULL)
-		DH_free(dh);
+	BIO_free_all(out);
+	DH_free(dh);
 
 	return (ret);
 }

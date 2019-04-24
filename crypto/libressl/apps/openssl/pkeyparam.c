@@ -1,4 +1,4 @@
-/* $OpenBSD: pkeyparam.c,v 1.8 2015/10/10 22:28:51 doug Exp $ */
+/* $OpenBSD: pkeyparam.c,v 1.11 2018/02/07 05:47:55 jsing Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2006
  */
@@ -119,7 +119,7 @@ pkeyparam_main(int argc, char **argv)
 	int ret = 1;
 
 	if (single_execution) {
-		if (pledge("stdio rpath wpath cpath", NULL) == -1) {
+		if (pledge("stdio cpath wpath rpath", NULL) == -1) {
 			perror("pledge");
 			exit(1);
 		}
@@ -165,7 +165,7 @@ pkeyparam_main(int argc, char **argv)
 
 	ret = 0;
 
-end:
+ end:
 	EVP_PKEY_free(pkey);
 	BIO_free_all(out);
 	BIO_free(in);

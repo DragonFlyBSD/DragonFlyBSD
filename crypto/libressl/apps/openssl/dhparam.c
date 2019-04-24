@@ -1,4 +1,4 @@
-/* $OpenBSD: dhparam.c,v 1.7 2015/10/10 22:28:51 doug Exp $ */
+/* $OpenBSD: dhparam.c,v 1.11 2018/02/07 05:47:55 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -244,7 +244,7 @@ dhparam_main(int argc, char **argv)
 	int i;
 
 	if (single_execution) {
-		if (pledge("stdio rpath wpath cpath", NULL) == -1) {
+		if (pledge("stdio cpath wpath rpath", NULL) == -1) {
 			perror("pledge");
 			exit(1);
 		}
@@ -292,8 +292,7 @@ dhparam_main(int argc, char **argv)
 			BIO_printf(bio_err, "Generating DSA parameters, %d bit long prime\n", num);
 			if (!dsa || !DSA_generate_parameters_ex(dsa, num,
 				NULL, 0, NULL, NULL, &cb)) {
-				if (dsa)
-					DSA_free(dsa);
+				DSA_free(dsa);
 				ERR_print_errors(bio_err);
 				goto end;
 			}
@@ -467,12 +466,10 @@ dhparam_main(int argc, char **argv)
 	}
 	ret = 0;
 
-end:
+ end:
 	BIO_free(in);
-	if (out != NULL)
-		BIO_free_all(out);
-	if (dh != NULL)
-		DH_free(dh);
+	BIO_free_all(out);
+	DH_free(dh);
 
 	return (ret);
 }

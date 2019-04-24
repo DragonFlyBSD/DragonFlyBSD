@@ -1,4 +1,4 @@
-/* $OpenBSD: ca.c,v 1.19 2015/10/17 15:00:11 doug Exp $ */
+/* $OpenBSD: ca.c,v 1.26 2018/02/07 05:47:55 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -207,6 +207,26 @@ static int preserve = 0;
 static int msie_hack = 0;
 
 
+/*
+ * Set a certificate time based on user provided input. Make sure
+ * what we put in the certificate is legit for RFC 5280. Returns
+ * 0 on success, -1 on an invalid time string. Strings must be
+ * YYYYMMDDHHMMSSZ for post 2050 dates. YYYYMMDDHHMMSSZ or
+ * YYMMDDHHMMSSZ is accepted for pre 2050 dates, and fixed up to
+ * be the correct format in the certificate.
+ */
+static int
+setCertificateTime(ASN1_TIME *x509time, char *timestring)
+{
+	struct tm tm1;
+	memset(&tm1, 0, sizeof(tm1));
+	if (ASN1_time_parse(timestring, strlen(timestring), &tm1, 0) == -1)
+		return (-1);
+	if (!ASN1_TIME_set_tm(x509time, &tm1))
+		return (-1);
+	return 0;
+}
+
 int
 ca_main(int argc, char **argv)
 {
@@ -280,14 +300,12 @@ ca_main(int argc, char **argv)
 	STACK_OF(CONF_VALUE) * attribs = NULL;
 	STACK_OF(X509) * cert_sk = NULL;
 	STACK_OF(OPENSSL_STRING) * sigopts = NULL;
-#define BUFLEN 256
-	char buf[3][BUFLEN];
 	char *tofree = NULL;
 	const char *errstr = NULL;
 	DB_ATTR db_attr;
 
 	if (single_execution) {
-		if (pledge("stdio rpath wpath cpath tty", NULL) == -1) {
+		if (pledge("stdio cpath wpath rpath tty", NULL) == -1) {
 			perror("pledge");
 			exit(1);
 		}
@@ -479,7 +497,7 @@ ca_main(int argc, char **argv)
 			rev_type = REV_CA_COMPROMISE;
 		}
 		else {
-bad:
+ bad:
 			if (errstr)
 				BIO_printf(bio_err, "invalid argument %s: %s\n",
 				    *argv, errstr);
@@ -704,34 +722,11 @@ bad:
 
 	/*****************************************************************/
 	/* lookup where to write new certificates */
-	if ((outdir == NULL) && (req)) {
-
+	if (outdir == NULL && req) {
 		if ((outdir = NCONF_get_string(conf, section,
 		    ENV_NEW_CERTS_DIR)) == NULL) {
-			BIO_printf(bio_err, "there needs to be defined a directory for new certificate to be placed in\n");
-			goto err;
-		}
-		/*
-		 * outdir is a directory spec, but access() for VMS demands a
-		 * filename.  In any case, stat(), below, will catch the
-		 * problem if outdir is not a directory spec, and the fopen()
-		 * or open() will catch an error if there is no write access.
-		 *
-		 * Presumably, this problem could also be solved by using the
-		 * DEC C routines to convert the directory syntax to Unixly,
-		 * and give that to access().  However, time's too short to
-		 * do that just now.
-		 */
-		if (access(outdir, R_OK | W_OK | X_OK) != 0) {
-			BIO_printf(bio_err,
-			    "I am unable to access the %s directory\n", outdir);
-			perror(outdir);
-			goto err;
-		}
-		if (app_isdir(outdir) <= 0) {
-			BIO_printf(bio_err,
-			    "%s need to be a directory\n", outdir);
-			perror(outdir);
+			BIO_printf(bio_err, "output directory %s not defined\n",
+			    ENV_NEW_CERTS_DIR);
 			goto err;
 		}
 	}
@@ -930,10 +925,6 @@ bad:
 			if (startdate == NULL)
 				ERR_clear_error();
 		}
-		if (startdate && !ASN1_TIME_set_string(NULL, startdate)) {
-			BIO_printf(bio_err, "start date is invalid, it should be YYMMDDHHMMSSZ or YYYYMMDDHHMMSSZ\n");
-			goto err;
-		}
 		if (startdate == NULL)
 			startdate = "today";
 
@@ -943,16 +934,12 @@ bad:
 			if (enddate == NULL)
 				ERR_clear_error();
 		}
-		if (enddate && !ASN1_TIME_set_string(NULL, enddate)) {
-			BIO_printf(bio_err, "end date is invalid, it should be YYMMDDHHMMSSZ or YYYYMMDDHHMMSSZ\n");
-			goto err;
-		}
-		if (days == 0) {
+		if (days == 0 && enddate == NULL) {
 			if (!NCONF_get_number(conf, section,
-			    ENV_DEFAULT_DAYS, &days))
+				ENV_DEFAULT_DAYS, &days))
 				days = 0;
 		}
-		if (!enddate && (days == 0)) {
+		if (enddate == NULL && days == 0) {
 			BIO_printf(bio_err,
 			    "cannot lookup how many days to certify for\n");
 			goto err;
@@ -1079,15 +1066,16 @@ bad:
 
 		if (sk_X509_num(cert_sk) > 0) {
 			if (!batch) {
+				char answer[10];
+
 				BIO_printf(bio_err, "\n%d out of %d certificate requests certified, commit? [y/n]", total_done, total);
 				(void) BIO_flush(bio_err);
-				buf[0][0] = '\0';
-				if (!fgets(buf[0], 10, stdin)) {
+				if (!fgets(answer, sizeof answer - 1, stdin)) {
 					BIO_printf(bio_err, "CERTIFICATION CANCELED: I/O error\n");
 					ret = 0;
 					goto err;
 				}
-				if ((buf[0][0] != 'y') && (buf[0][0] != 'Y')) {
+				if ((answer[0] != 'y') && (answer[0] != 'Y')) {
 					BIO_printf(bio_err, "CERTIFICATION CANCELED\n");
 					ret = 0;
 					goto err;
@@ -1107,6 +1095,7 @@ bad:
 			int k;
 			char *serialstr;
 			unsigned char *data;
+			char pempath[PATH_MAX];
 
 			x = sk_X509_value(cert_sk, i);
 
@@ -1117,10 +1106,10 @@ bad:
 			else
 				serialstr = strdup("00");
 			if (serialstr) {
-				k = snprintf(buf[2], sizeof(buf[2]),
+				k = snprintf(pempath, sizeof(pempath),
 				    "%s/%s.pem", outdir, serialstr);
 				free(serialstr);
-				if (k == -1 || k >= sizeof(buf[2])) {
+				if (k == -1 || k >= sizeof(pempath)) {
 					BIO_printf(bio_err,
 					    "certificate file name too long\n");
 					goto err;
@@ -1131,10 +1120,10 @@ bad:
 				goto err;
 			}
 			if (verbose)
-				BIO_printf(bio_err, "writing %s\n", buf[2]);
+				BIO_printf(bio_err, "writing %s\n", pempath);
 
-			if (BIO_write_filename(Cout, buf[2]) <= 0) {
-				perror(buf[2]);
+			if (BIO_write_filename(Cout, pempath) <= 0) {
+				perror(pempath);
 				goto err;
 			}
 			write_new_certificate(Cout, x, 0, notext);
@@ -1321,7 +1310,7 @@ bad:
 	/*****************************************************************/
 	ret = 0;
 
-err:
+ err:
 	free(tofree);
 
 	BIO_free_all(Cout);
@@ -1418,7 +1407,7 @@ certify(X509 ** xret, char *infile, EVP_PKEY * pkey, X509 * x509,
 	    verbose, req, ext_sect, lconf, certopt, nameopt, default_op,
 	    ext_copy, selfsign);
 
-err:
+ err:
 	if (req != NULL)
 		X509_REQ_free(req);
 	if (in != NULL)
@@ -1475,7 +1464,7 @@ certify_cert(X509 ** xret, char *infile, EVP_PKEY * pkey, X509 * x509,
 	    verbose, rreq, ext_sect, lconf, certopt, nameopt, default_op,
 	    ext_copy, 0);
 
-err:
+ err:
 	if (rreq != NULL)
 		X509_REQ_free(rreq);
 	if (req != NULL)
@@ -1507,7 +1496,6 @@ do_body(X509 ** xret, EVP_PKEY * pkey, X509 * x509, const EVP_MD * dgst,
 	OPENSSL_STRING row[DB_NUMBER];
 	OPENSSL_STRING *irow = NULL;
 	OPENSSL_STRING *rrow = NULL;
-	char buf[25];
 
 	tmptm = ASN1_UTCTIME_new();
 	if (tmptm == NULL) {
@@ -1798,13 +1786,19 @@ again2:
 
 	if (strcmp(startdate, "today") == 0)
 		X509_gmtime_adj(X509_get_notBefore(ret), 0);
-	else
-		ASN1_TIME_set_string(X509_get_notBefore(ret), startdate);
+	else if (setCertificateTime(X509_get_notBefore(ret), startdate) == -1) {
+		BIO_printf(bio_err, "Invalid start date %s\n",
+		    startdate);
+		goto err;
+	}
 
 	if (enddate == NULL)
 		X509_time_adj_ex(X509_get_notAfter(ret), days, 0, NULL);
-	else
-		ASN1_TIME_set_string(X509_get_notAfter(ret), enddate);
+	else if (setCertificateTime(X509_get_notAfter(ret), enddate) == -1) {
+		BIO_printf(bio_err, "Invalid end date %s\n",
+		    enddate);
+		goto err;
+	}
 
 	if (!X509_set_subject_name(ret, subject))
 		goto err;
@@ -1904,17 +1898,17 @@ again2:
 	BIO_printf(bio_err, "\n");
 
 	if (!batch) {
+		char answer[25];
 
 		BIO_printf(bio_err, "Sign the certificate? [y/n]:");
 		(void) BIO_flush(bio_err);
-		buf[0] = '\0';
-		if (!fgets(buf, sizeof(buf) - 1, stdin)) {
+		if (!fgets(answer, sizeof(answer) - 1, stdin)) {
 			BIO_printf(bio_err,
 			    "CERTIFICATE WILL NOT BE CERTIFIED: I/O error\n");
 			ok = 0;
 			goto err;
 		}
-		if (!((buf[0] == 'y') || (buf[0] == 'Y'))) {
+		if (!((answer[0] == 'y') || (answer[0] == 'Y'))) {
 			BIO_printf(bio_err,
 			    "CERTIFICATE WILL NOT BE CERTIFIED\n");
 			ok = 0;
@@ -1975,7 +1969,7 @@ again2:
 		goto err;
 	}
 	ok = 1;
-err:
+ err:
 	for (i = 0; i < DB_NUMBER; i++)
 		free(row[i]);
 
@@ -2132,7 +2126,7 @@ certify_spkac(X509 ** xret, char *infile, EVP_PKEY * pkey, X509 * x509,
 	    verbose, req, ext_sect, lconf, certopt, nameopt, default_op,
 	    ext_copy, 0);
 
-err:
+ err:
 	if (req != NULL)
 		X509_REQ_free(req);
 	if (parms != NULL)
@@ -2254,7 +2248,7 @@ do_revoke(X509 * x509, CA_DB * db, int type, char *value)
 	}
 	ok = 1;
 
-err:
+ err:
 	for (i = 0; i < DB_NUMBER; i++)
 		free(row[i]);
 
@@ -2326,7 +2320,7 @@ get_certificate_status(const char *serial, CA_DB * db)
 		ok = -1;
 	}
 
-err:
+ err:
 	for (i = 0; i < DB_NUMBER; i++)
 		free(row[i]);
 
@@ -2389,7 +2383,7 @@ do_updatedb(CA_DB * db)
 		}
 	}
 
-err:
+ err:
 	ASN1_UTCTIME_free(a_tm);
 	free(a_tm_s);
 
@@ -2540,7 +2534,7 @@ make_revoked(X509_REVOKED * rev, const char *str)
 	else
 		ret = 1;
 
-err:
+ err:
 	free(tmp);
 
 	ASN1_OBJECT_free(hold);
@@ -2687,7 +2681,7 @@ unpack_revinfo(ASN1_TIME ** prevtm, int *preason, ASN1_OBJECT ** phold,
 
 	ret = 1;
 
-err:
+ err:
 	free(tmp);
 
 	if (!phold)

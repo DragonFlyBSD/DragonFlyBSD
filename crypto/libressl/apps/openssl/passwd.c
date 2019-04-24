@@ -1,4 +1,4 @@
-/* $OpenBSD: passwd.c,v 1.6 2015/10/17 07:51:10 semarie Exp $ */
+/* $OpenBSD: passwd.c,v 1.9 2018/02/07 05:47:55 jsing Exp $ */
 
 #if defined OPENSSL_NO_MD5
 #define NO_MD5CRYPT_1
@@ -146,7 +146,7 @@ passwd_main(int argc, char **argv)
 	int ret = 1;
 
 	if (single_execution) {
-		if (pledge("stdio rpath wpath cpath tty", NULL) == -1) {
+		if (pledge("stdio cpath wpath rpath tty", NULL) == -1) {
 			perror("pledge");
 			exit(1);
 		}
@@ -273,7 +273,7 @@ passwd_main(int argc, char **argv)
 	}
 	ret = 0;
 
-err:
+ err:
 	ERR_print_errors(bio_err);
 
 	free(salt_malloc);
@@ -477,7 +477,7 @@ do_passwd(int passed_salt, char **salt_p, char **salt_malloc_p,
 		BIO_printf(out, "%s\n", hash);
 	return 1;
 
-err:
+ err:
 	return 0;
 }
 #else

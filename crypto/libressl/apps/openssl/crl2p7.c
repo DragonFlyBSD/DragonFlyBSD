@@ -1,4 +1,4 @@
-/* $OpenBSD: crl2p7.c,v 1.5 2015/10/10 22:28:51 doug Exp $ */
+/* $OpenBSD: crl2p7.c,v 1.8 2018/02/07 05:47:55 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -170,7 +170,7 @@ crl2pkcs7_main(int argc, char **argv)
 	int ret = 1;
 
 	if (single_execution) {
-		if (pledge("stdio rpath wpath cpath", NULL) == -1) {
+		if (pledge("stdio cpath wpath rpath", NULL) == -1) {
 			perror("pledge");
 			exit(1);
 		}
@@ -277,7 +277,7 @@ crl2pkcs7_main(int argc, char **argv)
 	}
 	ret = 0;
 
-end:
+ end:
 	if (in != NULL)
 		BIO_free(in);
 	if (out != NULL)
@@ -323,7 +323,7 @@ add_certs_from_file(STACK_OF(X509) *stack, char *certfile)
 
 	ret = count;
 
-end:
+ end:
 	/* never need to free x */
 	if (in != NULL)
 		BIO_free(in);

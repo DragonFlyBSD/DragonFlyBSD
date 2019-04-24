@@ -1,4 +1,4 @@
-/* $OpenBSD: tasn_enc.c,v 1.19 2016/05/04 14:53:29 tedu Exp $ */
+/* $OpenBSD: tasn_enc.c,v 1.22 2019/04/01 15:48:04 jsing Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2000.
  */
@@ -330,7 +330,7 @@ asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
 		for (i = 0; i < sk_ASN1_VALUE_num(sk); i++) {
 			skitem = sk_ASN1_VALUE_value(sk, i);
 			skcontlen += ASN1_item_ex_i2d(&skitem, NULL,
-			    ASN1_ITEM_ptr(tt->item), -1, iclass);
+			    tt->item, -1, iclass);
 		}
 		sklen = ASN1_object_size(ndef, skcontlen, sktag);
 		/* If EXPLICIT need length of surrounding tag */
@@ -349,7 +349,7 @@ asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
 		/* SET or SEQUENCE and IMPLICIT tag */
 		ASN1_put_object(out, ndef, skcontlen, sktag, skaclass);
 		/* And the stuff itself */
-		asn1_set_seq_out(sk, out, skcontlen, ASN1_ITEM_ptr(tt->item),
+		asn1_set_seq_out(sk, out, skcontlen, tt->item,
 		    isset, iclass);
 		if (ndef == 2) {
 			ASN1_put_eoc(out);
@@ -363,7 +363,7 @@ asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
 	if (flags & ASN1_TFLG_EXPTAG) {
 		/* EXPLICIT tagging */
 		/* Find length of tagged item */
-		i = ASN1_item_ex_i2d(pval, NULL, ASN1_ITEM_ptr(tt->item),
+		i = ASN1_item_ex_i2d(pval, NULL, tt->item,
 		    -1, iclass);
 		if (!i)
 			return 0;
@@ -372,7 +372,7 @@ asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
 		if (out) {
 			/* Output tag and item */
 			ASN1_put_object(out, ndef, i, ttag, tclass);
-			ASN1_item_ex_i2d(pval, out, ASN1_ITEM_ptr(tt->item),
+			ASN1_item_ex_i2d(pval, out, tt->item,
 			    -1, iclass);
 			if (ndef == 2)
 				ASN1_put_eoc(out);
@@ -381,7 +381,7 @@ asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
 	}
 
 	/* Either normal or IMPLICIT tagging: combine class and flags */
-	return ASN1_item_ex_i2d(pval, out, ASN1_ITEM_ptr(tt->item),
+	return ASN1_item_ex_i2d(pval, out, tt->item,
 	    ttag, tclass | iclass);
 }
 
@@ -541,11 +541,14 @@ asn1_ex_i2c(ASN1_VALUE **pval, unsigned char *cout, int *putype,
 	const unsigned char *cont;
 	unsigned char c;
 	int len;
-	const ASN1_PRIMITIVE_FUNCS *pf;
 
-	pf = it->funcs;
-	if (pf && pf->prim_i2c)
+	if (it->funcs != NULL) {
+		const ASN1_PRIMITIVE_FUNCS *pf = it->funcs;
+
+		if (pf->prim_i2c == NULL)
+			return -1;
 		return pf->prim_i2c(pval, cout, putype, it);
+	}
 
 	/* Should type be omitted? */
 	if ((it->itype != ASN1_ITYPE_PRIMITIVE) ||

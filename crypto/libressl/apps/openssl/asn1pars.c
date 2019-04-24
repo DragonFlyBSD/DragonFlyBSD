@@ -1,4 +1,4 @@
-/* $OpenBSD: asn1pars.c,v 1.5 2015/10/10 22:28:51 doug Exp $ */
+/* $OpenBSD: asn1pars.c,v 1.9 2018/02/07 05:47:55 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -248,7 +248,7 @@ asn1parse_main(int argc, char **argv)
 	ASN1_TYPE *at = NULL;
 
 	if (single_execution) {
-		if (pledge("stdio rpath wpath cpath", NULL) == -1) {
+		if (pledge("stdio cpath wpath rpath", NULL) == -1) {
 			perror("pledge");
 			exit(1);
 		}
@@ -408,7 +408,7 @@ asn1parse_main(int argc, char **argv)
 		goto end;
 	}
 	ret = 0;
-end:
+ end:
 	BIO_free(derout);
 	BIO_free(in);
 	BIO_free_all(out);
@@ -416,8 +416,7 @@ end:
 	if (ret != 0)
 		ERR_print_errors(bio_err);
 	BUF_MEM_free(buf);
-	if (at != NULL)
-		ASN1_TYPE_free(at);
+	ASN1_TYPE_free(at);
 	sk_OPENSSL_STRING_free(asn1pars_config.osk);
 	OBJ_cleanup();
 
@@ -465,7 +464,7 @@ do_generate(BIO * bio, char *genstr, char *genconf, BUF_MEM * buf)
 	ASN1_TYPE_free(atyp);
 	return len;
 
-conferr:
+ conferr:
 
 	if (errline > 0)
 		BIO_printf(bio, "Error on line %ld of config file '%s'\n",
@@ -473,7 +472,7 @@ conferr:
 	else
 		BIO_printf(bio, "Error loading config file '%s'\n", genconf);
 
-err:
+ err:
 	NCONF_free(cnf);
 	ASN1_TYPE_free(atyp);
 

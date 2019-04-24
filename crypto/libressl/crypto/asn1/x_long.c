@@ -1,4 +1,4 @@
-/* $OpenBSD: x_long.c,v 1.9 2014/07/11 08:44:47 jsing Exp $ */
+/* $OpenBSD: x_long.c,v 1.14 2019/04/01 15:48:50 jsing Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2000.
  */
@@ -63,26 +63,30 @@
 #include <openssl/bn.h>
 #include <openssl/err.h>
 
-/* Custom primitive type for long handling. This converts between an ASN1_INTEGER
- * and a long directly.
+/*
+ * Custom primitive type for long handling. This converts between an
+ * ASN1_INTEGER and a long directly.
  */
-
 
 static int long_new(ASN1_VALUE **pval, const ASN1_ITEM *it);
 static void long_free(ASN1_VALUE **pval, const ASN1_ITEM *it);
 
-static int long_i2c(ASN1_VALUE **pval, unsigned char *cont, int *putype, const ASN1_ITEM *it);
-static int long_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len, int utype, char *free_cont, const ASN1_ITEM *it);
-static int long_print(BIO *out, ASN1_VALUE **pval, const ASN1_ITEM *it, int indent, const ASN1_PCTX *pctx);
+static int long_i2c(ASN1_VALUE **pval, unsigned char *cont, int *putype,
+    const ASN1_ITEM *it);
+static int long_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
+    int utype, char *free_cont, const ASN1_ITEM *it);
+static int long_print(BIO *out, ASN1_VALUE **pval, const ASN1_ITEM *it,
+    int indent, const ASN1_PCTX *pctx);
 
 static ASN1_PRIMITIVE_FUNCS long_pf = {
-	NULL, 0,
-	long_new,
-	long_free,
-	long_free,	/* Clear should set to initial value */
-	long_c2i,
-	long_i2c,
-	long_print
+	.app_data = NULL,
+	.flags = 0,
+	.prim_new = long_new,
+	.prim_free = long_free,
+	.prim_clear = long_free,	/* Clear should set to initial value */
+	.prim_c2i = long_c2i,
+	.prim_i2c = long_i2c,
+	.prim_print = long_print,
 };
 
 const ASN1_ITEM LONG_it = {
@@ -173,7 +177,7 @@ long_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len, int utype,
 	unsigned long utmp = 0;
 	char *cp = (char *)pval;
 	if (len > (int)sizeof(long)) {
-		ASN1err(ASN1_F_LONG_C2I, ASN1_R_INTEGER_TOO_LARGE_FOR_LONG);
+		ASN1error(ASN1_R_INTEGER_TOO_LARGE_FOR_LONG);
 		return 0;
 	}
 	/* Is it negative? */
@@ -195,7 +199,7 @@ long_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len, int utype,
 		ltmp = -ltmp;
 	}
 	if (ltmp == it->size) {
-		ASN1err(ASN1_F_LONG_C2I, ASN1_R_INTEGER_TOO_LARGE_FOR_LONG);
+		ASN1error(ASN1_R_INTEGER_TOO_LARGE_FOR_LONG);
 		return 0;
 	}
 	memcpy(cp, &ltmp, sizeof(long));
@@ -206,5 +210,8 @@ static int
 long_print(BIO *out, ASN1_VALUE **pval, const ASN1_ITEM *it, int indent,
     const ASN1_PCTX *pctx)
 {
-	return BIO_printf(out, "%ld\n", *(long *)pval);
+	if (BIO_printf(out, "%ld\n", *(long *)pval) <= 0)
+		return 0;
+
+	return 1;
 }

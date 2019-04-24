@@ -1,4 +1,4 @@
-/* $OpenBSD: hmac.c,v 1.21 2014/07/11 08:44:48 jsing Exp $ */
+/* $OpenBSD: hmac.c,v 1.25 2018/02/17 14:53:58 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -70,17 +70,23 @@ HMAC_Init_ex(HMAC_CTX *ctx, const void *key, int len, const EVP_MD *md,
 	int i, j, reset = 0;
 	unsigned char pad[HMAC_MAX_MD_CBLOCK];
 
+	/* If we are changing MD then we must have a key */
+	if (md != NULL && md != ctx->md && (key == NULL || len < 0))
+		return 0;
+
 	if (md != NULL) {
 		reset = 1;
 		ctx->md = md;
-	} else
+	} else if (ctx->md != NULL)
 		md = ctx->md;
+	else
+		return 0;
 
 	if (key != NULL) {
 		reset = 1;
 		j = EVP_MD_block_size(md);
 		if ((size_t)j > sizeof(ctx->key)) {
-			EVPerr(EVP_F_HMAC_INIT_EX, EVP_R_BAD_BLOCK_LENGTH);
+			EVPerror(EVP_R_BAD_BLOCK_LENGTH);
 			goto err;
 		}
 		if (j < len) {
@@ -92,9 +98,8 @@ HMAC_Init_ex(HMAC_CTX *ctx, const void *key, int len, const EVP_MD *md,
 			    &ctx->key_length))
 				goto err;
 		} else {
-			if ((size_t)len > sizeof(ctx->key)) {
-				EVPerr(EVP_F_HMAC_INIT_EX,
-				    EVP_R_BAD_KEY_LENGTH);
+			if (len < 0 || (size_t)len > sizeof(ctx->key)) {
+				EVPerror(EVP_R_BAD_KEY_LENGTH);
 				goto err;
 			}
 			memcpy(ctx->key, key, len);
@@ -138,6 +143,9 @@ HMAC_Init(HMAC_CTX *ctx, const void *key, int len, const EVP_MD *md)
 int
 HMAC_Update(HMAC_CTX *ctx, const unsigned char *data, size_t len)
 {
+	if (ctx->md == NULL)
+		return 0;
+
 	return EVP_DigestUpdate(&ctx->md_ctx, data, len);
 }
 
@@ -146,6 +154,9 @@ HMAC_Final(HMAC_CTX *ctx, unsigned char *md, unsigned int *len)
 {
 	unsigned int i;
 	unsigned char buf[EVP_MAX_MD_SIZE];
+
+	if (ctx->md == NULL)
+		goto err;
 
 	if (!EVP_DigestFinal_ex(&ctx->md_ctx, buf, &i))
 		goto err;
@@ -160,12 +171,45 @@ err:
 	return 0;
 }
 
+HMAC_CTX *
+HMAC_CTX_new(void)
+{
+	HMAC_CTX *ctx;
+
+	if ((ctx = calloc(1, sizeof(*ctx))) == NULL)
+		return NULL;
+
+	HMAC_CTX_init(ctx);
+
+	return ctx;
+}
+
+void
+HMAC_CTX_free(HMAC_CTX *ctx)
+{
+	if (ctx == NULL)
+		return;
+
+	HMAC_CTX_cleanup(ctx);
+
+	free(ctx);
+}
+
+int
+HMAC_CTX_reset(HMAC_CTX *ctx)
+{
+	HMAC_CTX_cleanup(ctx);
+	HMAC_CTX_init(ctx);
+	return 1;
+}
+
 void
 HMAC_CTX_init(HMAC_CTX *ctx)
 {
 	EVP_MD_CTX_init(&ctx->i_ctx);
 	EVP_MD_CTX_init(&ctx->o_ctx);
 	EVP_MD_CTX_init(&ctx->md_ctx);
+	ctx->md = NULL;
 }
 
 int
@@ -191,7 +235,21 @@ HMAC_CTX_cleanup(HMAC_CTX *ctx)
 	EVP_MD_CTX_cleanup(&ctx->i_ctx);
 	EVP_MD_CTX_cleanup(&ctx->o_ctx);
 	EVP_MD_CTX_cleanup(&ctx->md_ctx);
-	memset(ctx, 0, sizeof *ctx);
+	explicit_bzero(ctx, sizeof(*ctx));
+}
+
+void
+HMAC_CTX_set_flags(HMAC_CTX *ctx, unsigned long flags)
+{
+	EVP_MD_CTX_set_flags(&ctx->i_ctx, flags);
+	EVP_MD_CTX_set_flags(&ctx->o_ctx, flags);
+	EVP_MD_CTX_set_flags(&ctx->md_ctx, flags);
+}
+
+const EVP_MD *
+HMAC_CTX_get_md(const HMAC_CTX *ctx)
+{
+	return ctx->md;
 }
 
 unsigned char *
@@ -213,13 +271,6 @@ HMAC(const EVP_MD *evp_md, const void *key, int key_len, const unsigned char *d,
 	HMAC_CTX_cleanup(&c);
 	return md;
 err:
+	HMAC_CTX_cleanup(&c);
 	return NULL;
-}
-
-void
-HMAC_CTX_set_flags(HMAC_CTX *ctx, unsigned long flags)
-{
-	EVP_MD_CTX_set_flags(&ctx->i_ctx, flags);
-	EVP_MD_CTX_set_flags(&ctx->o_ctx, flags);
-	EVP_MD_CTX_set_flags(&ctx->md_ctx, flags);
 }

@@ -1,4 +1,4 @@
-/* $OpenBSD: a_enum.c,v 1.16 2014/09/21 12:17:42 miod Exp $ */
+/* $OpenBSD: a_enum.c,v 1.19 2018/04/25 11:48:21 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -81,7 +81,7 @@ ASN1_ENUMERATED_set(ASN1_ENUMERATED *a, long v)
 		a->data = calloc(1, sizeof(long) + 1);
 	}
 	if (a->data == NULL) {
-		ASN1err(ASN1_F_ASN1_ENUMERATED_SET, ERR_R_MALLOC_FAILURE);
+		ASN1error(ERR_R_MALLOC_FAILURE);
 		return (0);
 	}
 	d = v;
@@ -104,7 +104,7 @@ ASN1_ENUMERATED_set(ASN1_ENUMERATED *a, long v)
 }
 
 long
-ASN1_ENUMERATED_get(ASN1_ENUMERATED *a)
+ASN1_ENUMERATED_get(const ASN1_ENUMERATED *a)
 {
 	int neg = 0, i;
 	long r = 0;
@@ -134,7 +134,7 @@ ASN1_ENUMERATED_get(ASN1_ENUMERATED *a)
 }
 
 ASN1_ENUMERATED *
-BN_to_ASN1_ENUMERATED(BIGNUM *bn, ASN1_ENUMERATED *ai)
+BN_to_ASN1_ENUMERATED(const BIGNUM *bn, ASN1_ENUMERATED *ai)
 {
 	ASN1_ENUMERATED *ret;
 	int len, j;
@@ -144,7 +144,7 @@ BN_to_ASN1_ENUMERATED(BIGNUM *bn, ASN1_ENUMERATED *ai)
 	else
 		ret = ai;
 	if (ret == NULL) {
-		ASN1err(ASN1_F_BN_TO_ASN1_ENUMERATED, ERR_R_NESTED_ASN1_ERROR);
+		ASN1error(ERR_R_NESTED_ASN1_ERROR);
 		goto err;
 	}
 	if (BN_is_negative(bn))
@@ -156,7 +156,7 @@ BN_to_ASN1_ENUMERATED(BIGNUM *bn, ASN1_ENUMERATED *ai)
 	if (ret->length < len + 4) {
 		unsigned char *new_data = realloc(ret->data, len + 4);
 		if (!new_data) {
-			ASN1err(ASN1_F_BN_TO_ASN1_ENUMERATED, ERR_R_MALLOC_FAILURE);
+			ASN1error(ERR_R_MALLOC_FAILURE);
 			goto err;
 		}
 		ret->data = new_data;
@@ -177,12 +177,12 @@ err:
 }
 
 BIGNUM *
-ASN1_ENUMERATED_to_BN(ASN1_ENUMERATED *ai, BIGNUM *bn)
+ASN1_ENUMERATED_to_BN(const ASN1_ENUMERATED *ai, BIGNUM *bn)
 {
 	BIGNUM *ret;
 
 	if ((ret = BN_bin2bn(ai->data, ai->length, bn)) == NULL)
-		ASN1err(ASN1_F_ASN1_ENUMERATED_TO_BN, ASN1_R_BN_LIB);
+		ASN1error(ASN1_R_BN_LIB);
 	else if (ai->type == V_ASN1_NEG_ENUMERATED)
 		BN_set_negative(ret, 1);
 	return (ret);

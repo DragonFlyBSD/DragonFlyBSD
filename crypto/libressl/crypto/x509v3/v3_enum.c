@@ -1,4 +1,4 @@
-/* $OpenBSD: v3_enum.c,v 1.10 2014/07/13 16:03:10 beck Exp $ */
+/* $OpenBSD: v3_enum.c,v 1.13 2018/05/19 10:37:02 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -78,7 +78,7 @@ static ENUMERATED_NAMES crl_reasons[] = {
 const X509V3_EXT_METHOD v3_crl_reason = {
 	.ext_nid = NID_crl_reason,
 	.ext_flags = 0,
-	.it = ASN1_ITEM_ref(ASN1_ENUMERATED),
+	.it = &ASN1_ENUMERATED_it,
 	.ext_new = NULL,
 	.ext_free = NULL,
 	.d2i = NULL,
@@ -93,7 +93,7 @@ const X509V3_EXT_METHOD v3_crl_reason = {
 };
 
 char *
-i2s_ASN1_ENUMERATED_TABLE(X509V3_EXT_METHOD *method, ASN1_ENUMERATED *e)
+i2s_ASN1_ENUMERATED_TABLE(X509V3_EXT_METHOD *method, const ASN1_ENUMERATED *e)
 {
 	ENUMERATED_NAMES *enam;
 	long strval;

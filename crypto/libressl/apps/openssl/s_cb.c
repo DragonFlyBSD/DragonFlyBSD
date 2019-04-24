@@ -1,4 +1,4 @@
-/* $OpenBSD: s_cb.c,v 1.5 2015/09/10 06:36:45 bcook Exp $ */
+/* $OpenBSD: s_cb.c,v 1.11 2018/11/06 05:45:50 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -282,6 +282,43 @@ set_cert_key_stuff(SSL_CTX * ctx, X509 * cert, EVP_PKEY * key)
 		    "Private key does not match the certificate public key\n");
 		return 0;
 	}
+	return 1;
+}
+
+int
+ssl_print_tmp_key(BIO *out, SSL *s)
+{
+	const char *cname;
+	EVP_PKEY *pkey;
+	EC_KEY *ec;
+	int nid;
+
+	if (!SSL_get_server_tmp_key(s, &pkey))
+		return 0;
+
+	BIO_puts(out, "Server Temp Key: ");
+	switch (EVP_PKEY_id(pkey)) {
+	case EVP_PKEY_DH:
+		BIO_printf(out, "DH, %d bits\n", EVP_PKEY_bits(pkey));
+		break;
+
+	case EVP_PKEY_EC:
+		ec = EVP_PKEY_get1_EC_KEY(pkey);
+		nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec));
+		EC_KEY_free(ec);
+
+		if ((cname = EC_curve_nid2nist(nid)) == NULL)
+			cname = OBJ_nid2sn(nid);
+
+		BIO_printf(out, "ECDH, %s, %d bits\n", cname, EVP_PKEY_bits(pkey));
+		break;
+
+	default:
+		BIO_printf(out, "%s, %d bits\n", OBJ_nid2sn(EVP_PKEY_id(pkey)),
+		    EVP_PKEY_bits(pkey));
+	}
+
+	EVP_PKEY_free(pkey);
 	return 1;
 }
 
@@ -663,8 +700,8 @@ tlsext_cb(SSL * s, int client_server, int type, unsigned char *data, int len,
 		extname = "cert type";
 		break;
 
-	case TLSEXT_TYPE_elliptic_curves:
-		extname = "elliptic curves";
+	case TLSEXT_TYPE_supported_groups:
+		extname = "supported groups";
 		break;
 
 	case TLSEXT_TYPE_ec_point_formats:
@@ -695,11 +732,13 @@ tlsext_cb(SSL * s, int client_server, int type, unsigned char *data, int len,
 		extname = "renegotiation info";
 		break;
 
-#ifdef TLSEXT_TYPE_next_proto_neg
-	case TLSEXT_TYPE_next_proto_neg:
-		extname = "next protocol";
+	case TLSEXT_TYPE_application_layer_protocol_negotiation:
+		extname = "application layer protocol negotiation";
 		break;
-#endif
+
+	case TLSEXT_TYPE_padding:
+		extname = "TLS padding";
+		break;
 
 	default:
 		extname = "unknown";
@@ -782,7 +821,8 @@ generate_cookie_callback(SSL * ssl, unsigned char *cookie,
 }
 
 int
-verify_cookie_callback(SSL * ssl, unsigned char *cookie, unsigned int cookie_len)
+verify_cookie_callback(SSL * ssl, const unsigned char *cookie,
+    unsigned int cookie_len)
 {
 	unsigned char *buffer, result[EVP_MAX_MD_SIZE];
 	unsigned int length, resultlength;

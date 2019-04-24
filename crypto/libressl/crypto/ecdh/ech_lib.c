@@ -1,4 +1,4 @@
-/* $OpenBSD: ech_lib.c,v 1.10 2015/09/13 10:46:20 jsing Exp $ */
+/* $OpenBSD: ech_lib.c,v 1.14 2018/04/14 07:09:21 tb Exp $ */
 /* ====================================================================
  * Copyright 2002 Sun Microsystems, Inc. ALL RIGHTS RESERVED.
  *
@@ -109,10 +109,8 @@ ECDH_set_method(EC_KEY *eckey, const ECDH_METHOD *meth)
 		return 0;
 
 #ifndef OPENSSL_NO_ENGINE
-	if (ecdh->engine) {
-		ENGINE_finish(ecdh->engine);
-		ecdh->engine = NULL;
-	}
+	ENGINE_finish(ecdh->engine);
+	ecdh->engine = NULL;
 #endif
 	ecdh->meth = meth;
 	return 1;
@@ -125,7 +123,7 @@ ECDH_DATA_new_method(ENGINE *engine)
 
 	ret = malloc(sizeof(ECDH_DATA));
 	if (ret == NULL) {
-		ECDHerr(ECDH_F_ECDH_DATA_NEW_METHOD, ERR_R_MALLOC_FAILURE);
+		ECDHerror(ERR_R_MALLOC_FAILURE);
 		return (NULL);
 	}
 
@@ -138,8 +136,8 @@ ECDH_DATA_new_method(ENGINE *engine)
 		ret->engine = ENGINE_get_default_ECDH();
 	if (ret->engine) {
 		ret->meth = ENGINE_get_ECDH(ret->engine);
-		if (!ret->meth) {
-			ECDHerr(ECDH_F_ECDH_DATA_NEW_METHOD, ERR_R_ENGINE_LIB);
+		if (ret->meth == NULL) {
+			ECDHerror(ERR_R_ENGINE_LIB);
 			ENGINE_finish(ret->engine);
 			free(ret);
 			return NULL;
@@ -176,15 +174,12 @@ ecdh_data_free(void *data)
 	ECDH_DATA *r = (ECDH_DATA *)data;
 
 #ifndef OPENSSL_NO_ENGINE
-	if (r->engine)
-		ENGINE_finish(r->engine);
+	ENGINE_finish(r->engine);
 #endif
 
 	CRYPTO_free_ex_data(CRYPTO_EX_INDEX_ECDH, r, &r->ex_data);
 
-	explicit_bzero((void *)r, sizeof(ECDH_DATA));
-
-	free(r);
+	freezero(r, sizeof(ECDH_DATA));
 }
 
 ECDH_DATA *

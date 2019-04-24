@@ -1,4 +1,4 @@
-/* $OpenBSD: ciphers.c,v 1.7 2015/10/10 22:28:51 doug Exp $ */
+/* $OpenBSD: ciphers.c,v 1.9 2018/02/07 05:47:55 jsing Exp $ */
 /*
  * Copyright (c) 2014 Joel Sing <jsing@openbsd.org>
  *
@@ -140,11 +140,11 @@ ciphers_main(int argc, char **argv)
 
 	goto done;
 
-err:
+ err:
 	ERR_print_errors_fp(stderr);
 	rv = 1;
 
-done:
+ done:
 	SSL_CTX_free(ssl_ctx);
 	SSL_free(ssl);
 

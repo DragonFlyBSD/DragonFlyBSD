@@ -1,4 +1,4 @@
-/*	$OpenBSD: socks.c,v 1.23 2015/12/10 18:31:52 mmcc Exp $	*/
+/*	$OpenBSD: socks.c,v 1.27 2019/01/10 12:44:54 mestre Exp $	*/
 
 /*
  * Copyright (c) 1999 Niklas Hallqvist.  All rights reserved.
@@ -65,7 +65,7 @@ decode_addrport(const char *h, const char *p, struct sockaddr *addr,
 	int r;
 	struct addrinfo hints, *res;
 
-	bzero(&hints, sizeof(hints));
+	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = v4only ? PF_INET : PF_UNSPEC;
 	hints.ai_flags = numeric ? AI_NUMERICHOST : 0;
 	hints.ai_socktype = SOCK_STREAM;
@@ -109,17 +109,16 @@ proxy_read_line(int fd, char *buf, size_t bufsz)
 	return (off);
 }
 
-static const char *
-getproxypass(const char *proxyuser, const char *proxyhost)
+static void
+getproxypass(const char *proxyuser, const char *proxyhost,
+    char *pw, size_t pwlen)
 {
 	char prompt[512];
-	static char pw[256];
 
 	snprintf(prompt, sizeof(prompt), "Proxy password for %s@%s: ",
 	   proxyuser, proxyhost);
-	if (readpassphrase(prompt, pw, sizeof(pw), RPP_REQUIRE_TTY) == NULL)
+	if (readpassphrase(prompt, pw, pwlen, RPP_REQUIRE_TTY) == NULL)
 		errx(1, "Unable to read proxy passphrase");
-	return (pw);
 }
 
 /*
@@ -188,7 +187,6 @@ socks_connect(const char *host, const char *port,
 	struct sockaddr_in *in4 = (struct sockaddr_in *)&addr;
 	struct sockaddr_in6 *in6 = (struct sockaddr_in6 *)&addr;
 	in_port_t serverport;
-	const char *proxypass = NULL;
 
 	if (proxyport == NULL)
 		proxyport = (socksv == -1) ? HTTP_PROXY_PORT : SOCKS_PORT;
@@ -345,11 +343,14 @@ socks_connect(const char *host, const char *port,
 			err(1, "write failed (%zu/%d)", cnt, r);
 
 		if (authretry > 1) {
+			char proxypass[256];
 			char resp[1024];
 
-			proxypass = getproxypass(proxyuser, proxyhost);
+			getproxypass(proxyuser, proxyhost,
+			    proxypass, sizeof proxypass);
 			r = snprintf(buf, sizeof(buf), "%s:%s",
 			    proxyuser, proxypass);
+			explicit_bzero(proxypass, sizeof proxypass);
 			if (r == -1 || (size_t)r >= sizeof(buf) ||
 			    b64_ntop(buf, strlen(buf), resp,
 			    sizeof(resp)) == -1)
@@ -361,6 +362,8 @@ socks_connect(const char *host, const char *port,
 			r = strlen(buf);
 			if ((cnt = atomicio(vwrite, proxyfd, buf, r)) != r)
 				err(1, "write failed (%zu/%d)", cnt, r);
+			explicit_bzero(proxypass, sizeof proxypass);
+			explicit_bzero(buf, sizeof buf);
 		}
 
 		/* Terminate headers */

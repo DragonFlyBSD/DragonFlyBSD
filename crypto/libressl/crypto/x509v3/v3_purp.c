@@ -1,4 +1,4 @@
-/* $OpenBSD: v3_purp.c,v 1.25 2015/02/10 11:22:22 jsing Exp $ */
+/* $OpenBSD: v3_purp.c,v 1.31 2018/05/18 18:30:03 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2001.
  */
@@ -64,6 +64,14 @@
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
 #include <openssl/x509_vfy.h>
+
+#define V1_ROOT (EXFLAG_V1|EXFLAG_SS)
+#define ku_reject(x, usage) \
+	(((x)->ex_flags & EXFLAG_KUSAGE) && !((x)->ex_kusage & (usage)))
+#define xku_reject(x, usage) \
+	(((x)->ex_flags & EXFLAG_XKUSAGE) && !((x)->ex_xkusage & (usage)))
+#define ns_reject(x, usage) \
+	(((x)->ex_flags & EXFLAG_NSCERT) && !((x)->ex_nscert & (usage)))
 
 static void x509v3_cache_extensions(X509 *x);
 
@@ -138,7 +146,7 @@ int
 X509_PURPOSE_set(int *p, int purpose)
 {
 	if (X509_PURPOSE_get_by_id(purpose) == -1) {
-		X509V3err(X509V3_F_X509_PURPOSE_SET, X509V3_R_INVALID_PURPOSE);
+		X509V3error(X509V3_R_INVALID_PURPOSE);
 		return 0;
 	}
 	*p = purpose;
@@ -164,7 +172,7 @@ X509_PURPOSE_get0(int idx)
 }
 
 int
-X509_PURPOSE_get_by_sname(char *sname)
+X509_PURPOSE_get_by_sname(const char *sname)
 {
 	int i;
 	X509_PURPOSE *xptmp;
@@ -196,8 +204,8 @@ X509_PURPOSE_get_by_id(int purpose)
 
 int
 X509_PURPOSE_add(int id, int trust, int flags,
-    int (*ck)(const X509_PURPOSE *, const X509 *, int), char *name,
-    char *sname, void *arg)
+    int (*ck)(const X509_PURPOSE *, const X509 *, int), const char *name,
+    const char *sname, void *arg)
 {
 	int idx;
 	X509_PURPOSE *ptmp;
@@ -206,8 +214,7 @@ X509_PURPOSE_add(int id, int trust, int flags,
 	name_dup = sname_dup = NULL;
 
 	if (name == NULL || sname == NULL) {
-		X509V3err(X509V3_F_X509_PURPOSE_ADD,
-		    X509V3_R_INVALID_NULL_ARGUMENT);
+		X509V3error(X509V3_R_INVALID_NULL_ARGUMENT);
 		return 0;
 	}
 
@@ -220,8 +227,7 @@ X509_PURPOSE_add(int id, int trust, int flags,
 	/* Need a new entry */
 	if (idx == -1) {
 		if ((ptmp = malloc(sizeof(X509_PURPOSE))) == NULL) {
-			X509V3err(X509V3_F_X509_PURPOSE_ADD,
-			    ERR_R_MALLOC_FAILURE);
+			X509V3error(ERR_R_MALLOC_FAILURE);
 			return 0;
 		}
 		ptmp->flags = X509_PURPOSE_DYNAMIC;
@@ -266,7 +272,7 @@ err:
 	free(sname_dup);
 	if (idx == -1)
 		free(ptmp);
-	X509V3err(X509V3_F_X509_PURPOSE_ADD, ERR_R_MALLOC_FAILURE);
+	X509V3error(ERR_R_MALLOC_FAILURE);
 	return 0;
 }
 
@@ -296,25 +302,25 @@ X509_PURPOSE_cleanup(void)
 }
 
 int
-X509_PURPOSE_get_id(X509_PURPOSE *xp)
+X509_PURPOSE_get_id(const X509_PURPOSE *xp)
 {
 	return xp->purpose;
 }
 
 char *
-X509_PURPOSE_get0_name(X509_PURPOSE *xp)
+X509_PURPOSE_get0_name(const X509_PURPOSE *xp)
 {
 	return xp->name;
 }
 
 char *
-X509_PURPOSE_get0_sname(X509_PURPOSE *xp)
+X509_PURPOSE_get0_sname(const X509_PURPOSE *xp)
 {
 	return xp->sname;
 }
 
 int
-X509_PURPOSE_get_trust(X509_PURPOSE *xp)
+X509_PURPOSE_get_trust(const X509_PURPOSE *xp)
 {
 	return xp->trust;
 }
@@ -325,8 +331,24 @@ nid_cmp(const int *a, const int *b)
 	return *a - *b;
 }
 
-DECLARE_OBJ_BSEARCH_CMP_FN(int, int, nid);
-IMPLEMENT_OBJ_BSEARCH_CMP_FN(int, int, nid);
+static int nid_cmp_BSEARCH_CMP_FN(const void *, const void *);
+static int nid_cmp(int const *, int const *);
+static int *OBJ_bsearch_nid(int *key, int const *base, int num);
+
+static int
+nid_cmp_BSEARCH_CMP_FN(const void *a_, const void *b_)
+{
+	int const *a = a_;
+	int const *b = b_;
+	return nid_cmp(a, b);
+}
+
+static int *
+OBJ_bsearch_nid(int *key, int const *base, int num)
+{
+	return (int *)OBJ_bsearch_(key, base, num, sizeof(int),
+	    nid_cmp_BSEARCH_CMP_FN);
+}
 
 int
 X509_supported_extension(X509_EXTENSION *ex)
@@ -413,19 +435,19 @@ x509v3_cache_extensions(X509 *x)
 	ASN1_BIT_STRING *ns;
 	EXTENDED_KEY_USAGE *extusage;
 	X509_EXTENSION *ex;
-
 	int i;
+
 	if (x->ex_flags & EXFLAG_SET)
 		return;
+
 #ifndef OPENSSL_NO_SHA
 	X509_digest(x, EVP_sha1(), x->sha1_hash, NULL);
 #endif
-	/* Does subject name match issuer ? */
-	if (!X509_NAME_cmp(X509_get_subject_name(x), X509_get_issuer_name(x)))
-		x->ex_flags |= EXFLAG_SI;
+
 	/* V1 should mean no extensions ... */
 	if (!X509_get_version(x))
 		x->ex_flags |= EXFLAG_V1;
+
 	/* Handle basic constraints */
 	if ((bs = X509_get_ext_d2i(x, NID_basic_constraints, NULL, NULL))) {
 		if (bs->ca)
@@ -442,6 +464,7 @@ x509v3_cache_extensions(X509 *x)
 		BASIC_CONSTRAINTS_free(bs);
 		x->ex_flags |= EXFLAG_BCONS;
 	}
+
 	/* Handle proxy certificates */
 	if ((pci = X509_get_ext_d2i(x, NID_proxyCertInfo, NULL, NULL))) {
 		if (x->ex_flags & EXFLAG_CA ||
@@ -450,13 +473,20 @@ x509v3_cache_extensions(X509 *x)
 			x->ex_flags |= EXFLAG_INVALID;
 		}
 		if (pci->pcPathLengthConstraint) {
-			x->ex_pcpathlen =
-			    ASN1_INTEGER_get(pci->pcPathLengthConstraint);
+			if (pci->pcPathLengthConstraint->type ==
+			    V_ASN1_NEG_INTEGER) {
+				x->ex_flags |= EXFLAG_INVALID;
+				x->ex_pcpathlen = 0;
+			} else
+				x->ex_pcpathlen =
+				    ASN1_INTEGER_get(pci->
+				      pcPathLengthConstraint);
 		} else
 			x->ex_pcpathlen = -1;
 		PROXY_CERT_INFO_EXTENSION_free(pci);
 		x->ex_flags |= EXFLAG_PROXY;
 	}
+
 	/* Handle key usage */
 	if ((usage = X509_get_ext_d2i(x, NID_key_usage, NULL, NULL))) {
 		if (usage->length > 0) {
@@ -521,6 +551,16 @@ x509v3_cache_extensions(X509 *x)
 
 	x->skid = X509_get_ext_d2i(x, NID_subject_key_identifier, NULL, NULL);
 	x->akid = X509_get_ext_d2i(x, NID_authority_key_identifier, NULL, NULL);
+
+	/* Does subject name match issuer? */
+	if (!X509_NAME_cmp(X509_get_subject_name(x), X509_get_issuer_name(x))) {
+		x->ex_flags |= EXFLAG_SI;
+		/* If SKID matches AKID also indicate self signed. */
+		if (X509_check_akid(x, x->akid) == X509_V_OK &&
+		    !ku_reject(x, KU_KEY_CERT_SIGN))
+			x->ex_flags |= EXFLAG_SS;
+	}
+
 	x->altname = X509_get_ext_d2i(x, NID_subject_alt_name, NULL, NULL);
 	x->nc = X509_get_ext_d2i(x, NID_name_constraints, &i, NULL);
 	if (!x->nc && (i != -1))
@@ -550,14 +590,6 @@ x509v3_cache_extensions(X509 *x)
  * 3 basicConstraints absent but self signed V1.
  * 4 basicConstraints absent but keyUsage present and keyCertSign asserted.
  */
-
-#define V1_ROOT (EXFLAG_V1|EXFLAG_SS)
-#define ku_reject(x, usage) \
-	(((x)->ex_flags & EXFLAG_KUSAGE) && !((x)->ex_kusage & (usage)))
-#define xku_reject(x, usage) \
-	(((x)->ex_flags & EXFLAG_XKUSAGE) && !((x)->ex_xkusage & (usage)))
-#define ns_reject(x, usage) \
-	(((x)->ex_flags & EXFLAG_NSCERT) && !((x)->ex_nscert & (usage)))
 
 static int
 check_ca(const X509 *x)

@@ -1,4 +1,4 @@
-/* $OpenBSD: dsa_sign.c,v 1.18 2014/07/12 16:03:37 miod Exp $ */
+/* $OpenBSD: dsa_sign.c,v 1.20 2018/06/14 17:01:49 jsing Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -76,20 +76,13 @@ DSA_sign_setup(DSA *dsa, BN_CTX *ctx_in, BIGNUM **kinvp, BIGNUM **rp)
 DSA_SIG *
 DSA_SIG_new(void)
 {
-	DSA_SIG *sig;
-
-	sig = malloc(sizeof(DSA_SIG));
-	if (!sig)
-		return NULL;
-	sig->r = NULL;
-	sig->s = NULL;
-	return sig;
+	return calloc(1, sizeof(DSA_SIG));
 }
 
 void
 DSA_SIG_free(DSA_SIG *sig)
 {
-	if (sig) {
+	if (sig != NULL) {
 		BN_free(sig->r);
 		BN_free(sig->s);
 		free(sig);

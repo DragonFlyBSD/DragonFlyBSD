@@ -1,4 +1,4 @@
-/* $OpenBSD: x509_v3.c,v 1.12 2015/07/29 14:58:34 jsing Exp $ */
+/* $OpenBSD: x509_v3.c,v 1.17 2018/05/19 10:54:40 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -86,8 +86,8 @@ X509v3_get_ext_by_NID(const STACK_OF(X509_EXTENSION) *x, int nid, int lastpos)
 }
 
 int
-X509v3_get_ext_by_OBJ(const STACK_OF(X509_EXTENSION) *sk, ASN1_OBJECT *obj,
-    int lastpos)
+X509v3_get_ext_by_OBJ(const STACK_OF(X509_EXTENSION) *sk,
+    const ASN1_OBJECT *obj, int lastpos)
 {
 	int n;
 	X509_EXTENSION *ex;
@@ -156,7 +156,7 @@ X509v3_add_ext(STACK_OF(X509_EXTENSION) **x, X509_EXTENSION *ex, int loc)
 	STACK_OF(X509_EXTENSION) *sk = NULL;
 
 	if (x == NULL) {
-		X509err(X509_F_X509V3_ADD_EXT, ERR_R_PASSED_NULL_PARAMETER);
+		X509error(ERR_R_PASSED_NULL_PARAMETER);
 		goto err2;
 	}
 
@@ -181,7 +181,7 @@ X509v3_add_ext(STACK_OF(X509_EXTENSION) **x, X509_EXTENSION *ex, int loc)
 	return (sk);
 
 err:
-	X509err(X509_F_X509V3_ADD_EXT, ERR_R_MALLOC_FAILURE);
+	X509error(ERR_R_MALLOC_FAILURE);
 err2:
 	if (new_ex != NULL)
 		X509_EXTENSION_free(new_ex);
@@ -199,8 +199,7 @@ X509_EXTENSION_create_by_NID(X509_EXTENSION **ex, int nid, int crit,
 
 	obj = OBJ_nid2obj(nid);
 	if (obj == NULL) {
-		X509err(X509_F_X509_EXTENSION_CREATE_BY_NID,
-		    X509_R_UNKNOWN_NID);
+		X509error(X509_R_UNKNOWN_NID);
 		return (NULL);
 	}
 	ret = X509_EXTENSION_create_by_OBJ(ex, obj, crit, data);
@@ -210,15 +209,14 @@ X509_EXTENSION_create_by_NID(X509_EXTENSION **ex, int nid, int crit,
 }
 
 X509_EXTENSION *
-X509_EXTENSION_create_by_OBJ(X509_EXTENSION **ex, ASN1_OBJECT *obj, int crit,
-    ASN1_OCTET_STRING *data)
+X509_EXTENSION_create_by_OBJ(X509_EXTENSION **ex, const ASN1_OBJECT *obj,
+    int crit, ASN1_OCTET_STRING *data)
 {
 	X509_EXTENSION *ret;
 
 	if ((ex == NULL) || (*ex == NULL)) {
 		if ((ret = X509_EXTENSION_new()) == NULL) {
-			X509err(X509_F_X509_EXTENSION_CREATE_BY_OBJ,
-			    ERR_R_MALLOC_FAILURE);
+			X509error(ERR_R_MALLOC_FAILURE);
 			return (NULL);
 		}
 	} else
@@ -242,7 +240,7 @@ err:
 }
 
 int
-X509_EXTENSION_set_object(X509_EXTENSION *ex, ASN1_OBJECT *obj)
+X509_EXTENSION_set_object(X509_EXTENSION *ex, const ASN1_OBJECT *obj)
 {
 	if ((ex == NULL) || (obj == NULL))
 		return (0);
@@ -290,7 +288,7 @@ X509_EXTENSION_get_data(X509_EXTENSION *ex)
 }
 
 int
-X509_EXTENSION_get_critical(X509_EXTENSION *ex)
+X509_EXTENSION_get_critical(const X509_EXTENSION *ex)
 {
 	if (ex == NULL)
 		return (0);

@@ -1,4 +1,4 @@
-/* $OpenBSD: nseq.c,v 1.5 2015/10/10 22:28:51 doug Exp $ */
+/* $OpenBSD: nseq.c,v 1.8 2018/02/07 05:47:55 jsing Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 1999.
  */
@@ -110,7 +110,7 @@ nseq_main(int argc, char **argv)
 	int i, ret = 1;
 
 	if (single_execution) {
-		if (pledge("stdio rpath wpath cpath", NULL) == -1) {
+		if (pledge("stdio cpath wpath rpath", NULL) == -1) {
 			perror("pledge");
 			exit(1);
 		}
@@ -167,7 +167,7 @@ nseq_main(int argc, char **argv)
 		PEM_write_bio_X509(out, x509);
 	}
 	ret = 0;
-end:
+ end:
 	BIO_free(in);
 	BIO_free_all(out);
 	NETSCAPE_CERT_SEQUENCE_free(seq);

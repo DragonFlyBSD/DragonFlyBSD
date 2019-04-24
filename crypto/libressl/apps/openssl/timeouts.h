@@ -1,4 +1,4 @@
-/* $OpenBSD: timeouts.h,v 1.3 2014/06/12 15:49:27 deraadt Exp $ */
+/* $OpenBSD: timeouts.h,v 1.1 2014/08/26 17:47:25 jsing Exp $ */
 /*
  * DTLS implementation written by Nagendra Modadugu
  * (nagendra@cs.stanford.edu) for the OpenSSL project 2005.

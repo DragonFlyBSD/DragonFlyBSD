@@ -1,4 +1,4 @@
-/* $OpenBSD: a_digest.c,v 1.14 2014/06/24 19:37:58 miod Exp $ */
+/* $OpenBSD: a_digest.c,v 1.16 2018/04/06 09:19:36 tb Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -77,8 +77,11 @@ ASN1_item_digest(const ASN1_ITEM *it, const EVP_MD *type, void *asn,
 	if (!str)
 		return (0);
 
-	if (!EVP_Digest(str, i, md, len, type, NULL))
-		return 0;
+	if (!EVP_Digest(str, i, md, len, type, NULL)) {
+		free(str);
+		return (0);
+	}
+
 	free(str);
 	return (1);
 }

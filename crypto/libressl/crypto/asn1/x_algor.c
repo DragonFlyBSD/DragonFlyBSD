@@ -1,4 +1,4 @@
-/* $OpenBSD: x_algor.c,v 1.20 2015/02/11 04:00:39 jsing Exp $ */
+/* $OpenBSD: x_algor.c,v 1.22 2018/05/01 19:01:27 tb Exp $ */
 /* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
  * project 2000.
  */
@@ -176,8 +176,8 @@ X509_ALGOR_set0(X509_ALGOR *alg, ASN1_OBJECT *aobj, int ptype, void *pval)
 }
 
 void
-X509_ALGOR_get0(ASN1_OBJECT **paobj, int *pptype, void **ppval,
-    X509_ALGOR *algor)
+X509_ALGOR_get0(const ASN1_OBJECT **paobj, int *pptype, const void **ppval,
+    const X509_ALGOR *algor)
 {
 	if (paobj)
 		*paobj = algor->algorithm;

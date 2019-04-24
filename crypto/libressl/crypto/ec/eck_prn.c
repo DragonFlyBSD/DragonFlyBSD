@@ -1,4 +1,4 @@
-/* $OpenBSD: eck_prn.c,v 1.10 2014/07/12 16:03:37 miod Exp $ */
+/* $OpenBSD: eck_prn.c,v 1.15 2018/07/15 16:27:39 tb Exp $ */
 /*
  * Written by Nils Larsch for the OpenSSL project.
  */
@@ -78,7 +78,7 @@ ECPKParameters_print_fp(FILE * fp, const EC_GROUP * x, int off)
 	int ret;
 
 	if ((b = BIO_new(BIO_s_file())) == NULL) {
-		ECerr(EC_F_ECPKPARAMETERS_PRINT_FP, ERR_R_BUF_LIB);
+		ECerror(ERR_R_BUF_LIB);
 		return (0);
 	}
 	BIO_set_fp(b, fp, BIO_NOCLOSE);
@@ -94,7 +94,7 @@ EC_KEY_print_fp(FILE * fp, const EC_KEY * x, int off)
 	int ret;
 
 	if ((b = BIO_new(BIO_s_file())) == NULL) {
-		ECerr(EC_F_EC_KEY_PRINT_FP, ERR_R_BIO_LIB);
+		ECerror(ERR_R_BIO_LIB);
 		return (0);
 	}
 	BIO_set_fp(b, fp, BIO_NOCLOSE);
@@ -110,7 +110,7 @@ ECParameters_print_fp(FILE * fp, const EC_KEY * x)
 	int ret;
 
 	if ((b = BIO_new(BIO_s_file())) == NULL) {
-		ECerr(EC_F_ECPARAMETERS_PRINT_FP, ERR_R_BIO_LIB);
+		ECerror(ERR_R_BIO_LIB);
 		return (0);
 	}
 	BIO_set_fp(b, fp, BIO_NOCLOSE);
@@ -321,9 +321,9 @@ ECPKParameters_print(BIO * bp, const EC_GROUP * x, int off)
 			goto err;
 	}
 	ret = 1;
-err:
+ err:
 	if (!ret)
-		ECerr(EC_F_ECPKPARAMETERS_PRINT, reason);
+		ECerror(reason);
 	BN_free(p);
 	BN_free(a);
 	BN_free(b);

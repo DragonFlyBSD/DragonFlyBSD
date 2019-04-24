@@ -1,4 +1,4 @@
-/* $OpenBSD: rsa.c,v 1.7 2015/10/17 07:51:10 semarie Exp $ */
+/* $OpenBSD: rsa.c,v 1.13 2019/02/09 15:49:21 inoguchi Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -235,16 +235,10 @@ static struct option rsa_options[] = {
 };
 
 static void
-show_ciphers(const OBJ_NAME *name, void *arg)
-{
-	static int n;
-
-	fprintf(stderr, " -%-24s%s", name->name, (++n % 3 ? "" : "\n"));
-}
-
-static void
 rsa_usage()
 {
+	int n = 0;
+
 	fprintf(stderr,
 	    "usage: rsa [-ciphername] [-check] [-in file] "
 	    "[-inform fmt]\n"
@@ -255,7 +249,7 @@ rsa_usage()
 	fprintf(stderr, "\n");
 
 	fprintf(stderr, "Valid ciphername values:\n\n");
-	OBJ_NAME_do_all_sorted(OBJ_NAME_TYPE_CIPHER_METH, show_ciphers, NULL);
+	OBJ_NAME_do_all_sorted(OBJ_NAME_TYPE_CIPHER_METH, show_cipher, &n);
 	fprintf(stderr, "\n");
 }
 
@@ -269,7 +263,7 @@ rsa_main(int argc, char **argv)
 	char *passin = NULL, *passout = NULL;
 
 	if (single_execution) {
-		if (pledge("stdio rpath wpath cpath tty", NULL) == -1) {
+		if (pledge("stdio cpath wpath rpath tty", NULL) == -1) {
 			perror("pledge");
 			exit(1);
 		}
@@ -439,7 +433,7 @@ rsa_main(int argc, char **argv)
 	} else
 		ret = 0;
 
-end:
+ end:
 	BIO_free_all(out);
 	RSA_free(rsa);
 	free(passin);

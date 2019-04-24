@@ -1,4 +1,4 @@
-/*	$OpenBSD: bs_cbb.c,v 1.12 2015/06/18 23:25:07 doug Exp $	*/
+/*	$OpenBSD: bs_cbb.c,v 1.20 2019/01/23 22:20:40 beck Exp $	*/
 /*
  * Copyright (c) 2014, Google Inc.
  *
@@ -14,13 +14,14 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <openssl/opensslconf.h>
 
 #include "bytestring.h"
+
+#define CBB_INITIAL_SIZE 64
 
 static int
 cbb_init(CBB *cbb, uint8_t *buf, size_t cap)
@@ -49,10 +50,11 @@ CBB_init(CBB *cbb, size_t initial_capacity)
 
 	memset(cbb, 0, sizeof(*cbb));
 
-	if (initial_capacity > 0) {
-		if ((buf = malloc(initial_capacity)) == NULL)
-			return 0;
-	}
+	if (initial_capacity == 0)
+		initial_capacity = CBB_INITIAL_SIZE;
+
+	if ((buf = malloc(initial_capacity)) == NULL)
+		return 0;
 
 	if (!cbb_init(cbb, buf, initial_capacity)) {
 		free(buf);
@@ -80,11 +82,11 @@ CBB_cleanup(CBB *cbb)
 {
 	if (cbb->base) {
 		if (cbb->base->can_resize)
-			free(cbb->base->buf);
-
+			freezero(cbb->base->buf, cbb->base->cap);
 		free(cbb->base);
 	}
 	cbb->base = NULL;
+	cbb->child = NULL;
 }
 
 static int
@@ -110,7 +112,7 @@ cbb_buffer_add(struct cbb_buffer_st *base, uint8_t **out, size_t len)
 		if (newcap < base->cap || newcap < newlen)
 			newcap = newlen;
 
-		newbuf = realloc(base->buf, newcap);
+		newbuf = recallocarray(base->buf, base->cap, newcap, 1);
 		if (newbuf == NULL)
 			return 0;
 
@@ -211,7 +213,8 @@ CBB_flush(CBB *cbb)
 		uint8_t initial_length_byte;
 
 		/* We already wrote 1 byte for the length. */
-		assert (cbb->pending_len_len == 1);
+		if (cbb->pending_len_len != 1)
+			return 0;
 
 		/* Check for long form */
 		if (len > 0xfffffffe)
@@ -268,6 +271,20 @@ CBB_flush(CBB *cbb)
 	return 1;
 }
 
+void
+CBB_discard_child(CBB *cbb)
+{
+	if (cbb->child == NULL)
+		return;
+
+	cbb->base->len = cbb->offset;
+	
+	cbb->child->base = NULL;
+	cbb->child = NULL;
+	cbb->pending_len_len = 0;
+	cbb->pending_is_asn1 = 0;
+	cbb->offset = 0;
+}
 
 static int
 cbb_add_length_prefixed(CBB *cbb, CBB *out_contents, size_t len_len)
@@ -386,6 +403,15 @@ CBB_add_u24(CBB *cbb, size_t value)
 		return 0;
 
 	return cbb_add_u(cbb, (uint32_t)value, 3);
+}
+
+int
+CBB_add_u32(CBB *cbb, size_t value)
+{
+	if (value > 0xffffffffUL)
+		return 0;
+
+	return cbb_add_u(cbb, (uint32_t)value, 4);
 }
 
 int

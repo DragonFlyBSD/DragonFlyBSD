@@ -1,4 +1,4 @@
-/* $OpenBSD: genrsa.c,v 1.7 2015/10/17 07:51:10 semarie Exp $ */
+/* $OpenBSD: genrsa.c,v 1.12 2018/12/09 19:30:34 tobias Exp $ */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -101,7 +101,7 @@ genrsa_main(int argc, char **argv)
 	RSA *rsa = NULL;
 
 	if (single_execution) {
-		if (pledge("stdio rpath wpath cpath tty", NULL) == -1) {
+		if (pledge("stdio cpath wpath rpath tty", NULL) == -1) {
 			perror("pledge");
 			exit(1);
 		}
@@ -165,10 +165,12 @@ genrsa_main(int argc, char **argv)
 		argc--;
 	}
 	if ((argc >= 1) && ((sscanf(*argv, "%d", &num) == 0) || (num < 0))) {
-bad:
+ bad:
 		BIO_printf(bio_err, "usage: genrsa [args] [numbits]\n");
+#ifndef OPENSSL_NO_DES
 		BIO_printf(bio_err, " -des            encrypt the generated key with DES in cbc mode\n");
 		BIO_printf(bio_err, " -des3           encrypt the generated key with DES in ede cbc mode (168 bit key)\n");
+#endif
 #ifndef OPENSSL_NO_IDEA
 		BIO_printf(bio_err, " -idea           encrypt the generated key with IDEA in cbc mode\n");
 #endif
@@ -233,14 +235,12 @@ bad:
 	}
 
 	ret = 0;
-err:
-	if (bn)
-		BN_free(bn);
-	if (rsa)
-		RSA_free(rsa);
-	if (out)
-		BIO_free_all(out);
+ err:
+	BN_free(bn);
+	RSA_free(rsa);
+	BIO_free_all(out);
 	free(passout);
+
 	if (ret != 0)
 		ERR_print_errors(bio_err);
 
