@@ -1,6 +1,7 @@
 # This version of openssl(1) is from LibreSSL
 PROG=	openssl
 WARNS?=	2
+MAN=	openssl.1 openssl.cnf.5
 
 .include "${.CURDIR}/../../lib/librecrypto/Makefile.inc"
 
@@ -22,4 +23,4 @@ SRCS=	apps_posix.c apps.c asn1pars.c ca.c certhash.c ciphers.c crl2p7.c crl.c \
 
 .include <bsd.prog.mk>
 
-.PATH:	${LIBRESSL_SRC}/apps/openssl
+.PATH:	${LIBRESSL_SRC}/apps/openssl ${LIBRESSL_SRC}/man
