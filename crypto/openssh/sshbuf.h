@@ -1,4 +1,4 @@
-/*	$OpenBSD: sshbuf.h,v 1.9 2017/09/12 06:32:07 djm Exp $	*/
+/*	$OpenBSD: sshbuf.h,v 1.13 2019/01/21 09:54:11 djm Exp $	*/
 /*
  * Copyright (c) 2011 Damien Miller
  *
@@ -49,15 +49,6 @@ struct sshbuf {
 	u_int refcount;		/* Tracks self and number of child buffers */
 	struct sshbuf *parent;	/* If child, pointer to parent */
 };
-
-#ifndef SSHBUF_NO_DEPREACTED
-/*
- * NB. Please do not use sshbuf_init() in new code. Please use sshbuf_new()
- * instead. sshbuf_init() is deprectated and will go away soon (it is
- * only included to allow compat with buffer_* in OpenSSH)
- */
-void sshbuf_init(struct sshbuf *buf);
-#endif
 
 /*
  * Create a new sshbuf buffer.
@@ -221,10 +212,8 @@ int	sshbuf_put_bignum2_bytes(struct sshbuf *buf, const void *v, size_t len);
 int	sshbuf_get_bignum2_bytes_direct(struct sshbuf *buf,
 	    const u_char **valp, size_t *lenp);
 #ifdef WITH_OPENSSL
-int	sshbuf_get_bignum2(struct sshbuf *buf, BIGNUM *v);
-int	sshbuf_get_bignum1(struct sshbuf *buf, BIGNUM *v);
+int	sshbuf_get_bignum2(struct sshbuf *buf, BIGNUM **valp);
 int	sshbuf_put_bignum2(struct sshbuf *buf, const BIGNUM *v);
-int	sshbuf_put_bignum1(struct sshbuf *buf, const BIGNUM *v);
 # ifdef OPENSSL_HAS_ECC
 int	sshbuf_get_ec(struct sshbuf *buf, EC_POINT *v, const EC_GROUP *g);
 int	sshbuf_get_eckey(struct sshbuf *buf, EC_KEY *v);
