@@ -37,7 +37,8 @@ DPORTS_EXTRA_PACKAGES?=
 
 # dports packages to be built and installed on the release ISO
 #
-DPORTS_PACKAGES?=	devel/git \
+DPORTS_PACKAGES?=	security/ca_root_nss \
+			devel/git \
 			dns/bind-tools \
 			net/isc-dhcp44-server \
 			sysutils/cdrtools \
