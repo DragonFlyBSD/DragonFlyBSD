@@ -32,8 +32,7 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/types.h>
-#include <sys/syslimits.h>
+#include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/device.h>
 #include <sys/queue.h>
