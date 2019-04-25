@@ -728,11 +728,13 @@ struct wi_scan_p2_hdr {
 #define WI_PRISM2_RES_SIZE	62
 
 
+#if 0 /* unimplemented */
 /*
  * prism2 debug mode definitions
  */
 #define SIOCSPRISM2DEBUG	_IOW('i', 137, struct ifreq)
 #define SIOCGPRISM2DEBUG	_IOWR('i', 138, struct ifreq)
+#endif
 
 #define WI_DEBUG_RESET		0x00
 #define WI_DEBUG_INIT		0x01
