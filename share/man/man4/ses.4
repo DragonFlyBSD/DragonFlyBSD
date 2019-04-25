@@ -24,9 +24,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ses.4,v 1.2.2.6 2001/08/17 13:08:39 ru Exp $
-.\" $DragonFly: src/share/man/man4/ses.4,v 1.4 2008/05/02 02:05:05 swildner Exp $
 .\"
-.Dd January 29, 2000
+.Dd April 25, 2019
 .Dt SES 4
 .Os
 .Sh NAME
@@ -98,11 +97,11 @@ Set the overall enclosure status.
 Get the status of a particular object.
 .It Dv SESIOC_SETOBJSTAT
 Set the status of a particular object.
-.It Dv SESIOC_GETTEXT
-Get the associated help text for an object (not yet implemented).
-.Nm
-devices often have descriptive text for an object which can tell
-you things like location (e.g, "left power supply").
+.\".It Dv SESIOC_GETTEXT
+.\"Get the associated help text for an object (not yet implemented).
+.\".Nm
+.\"devices often have descriptive text for an object which can tell
+.\"you things like location (e.g, "left power supply").
 .It Dv SESIOC_INIT
 Initialize the enclosure.
 .El

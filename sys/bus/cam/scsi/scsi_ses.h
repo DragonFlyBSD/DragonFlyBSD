@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.h,v 1.2 2000/01/15 22:40:04 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.h,v 1.3 2007/12/02 01:54:27 pavalos Exp $ */
 /*
  * Copyright (c) 2000 by Matthew Jacob
  * All rights reserved.
@@ -27,7 +26,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
  */
 
 #include <sys/ioccom.h>
@@ -39,7 +37,9 @@
 #define	SESIOC_SETENCSTAT	_IO(SESIOC, 4)
 #define	SESIOC_GETOBJSTAT	_IO(SESIOC, 5)
 #define	SESIOC_SETOBJSTAT	_IO(SESIOC, 6)
+#if 0 /* unimplemented */
 #define	SESIOC_GETTEXT		_IO(SESIOC, 7)
+#endif
 #define	SESIOC_INIT		_IO(SESIOC, 8)
 
 /*
