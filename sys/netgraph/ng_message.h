@@ -264,7 +264,9 @@ struct typelist {
  */
 
 #define NGIOCGINFO	_IOR('N', 40, struct nodeinfo)	/* get node info */
+#if 0 /* unimplemented */
 #define NGIOCSETNAME	_IOW('N', 41, struct ngm_name)	/* set node name */
+#endif
 
 #ifdef _KERNEL
 /*
