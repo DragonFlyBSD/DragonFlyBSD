@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1998-2014 Dag-Erling Smørgrav
  * All rights reserved.
  *
@@ -25,7 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/lib/libfetch/common.h 261284 2014-01-30 08:37:23Z des $
+ * $FreeBSD: head/lib/libfetch/common.h 334317 2018-05-29 10:28:20Z des $
  */
 
 #ifndef _COMMON_H_INCLUDED
@@ -76,6 +78,7 @@ void		 fetch_syserr(void);
 void		 fetch_info(const char *, ...) __printflike(1, 2);
 int		 fetch_default_port(const char *);
 int		 fetch_default_proxy_port(const char *);
+struct addrinfo *fetch_resolve(const char *, int, int);
 int		 fetch_bind(int, int, const char *);
 conn_t		*fetch_connect(const char *, int, int, int);
 conn_t		*fetch_reopen(int);
@@ -101,9 +104,16 @@ int		 fetch_no_proxy_match(const char *);
 #define url_seterr(n)	 fetch_seterr(url_errlist, n)
 
 #ifndef NDEBUG
-#define DEBUG(x) do { if (fetchDebug) { x; } } while (0)
+#define DEBUGF(...)							\
+	do {								\
+		if (fetchDebug)						\
+			fprintf(stderr, __VA_ARGS__);			\
+	} while (0)
 #else
-#define DEBUG(x) do { } while (0)
+#define DEBUGF(...)							\
+	do {								\
+		/* nothing */						\
+	} while (0)
 #endif
 
 /*
@@ -117,6 +127,9 @@ int		 fetch_no_proxy_match(const char *);
  */
 FILE		*http_request(struct url *, const char *,
 		     struct url_stat *, struct url *, const char *);
+FILE		*http_request_body(struct url *, const char *,
+		     struct url_stat *, struct url *, const char *,
+		     const char *, const char *);
 FILE		*ftp_request(struct url *, const char *,
 		     struct url_stat *, struct url *, const char *);
 

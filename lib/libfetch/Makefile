@@ -1,4 +1,4 @@
-# $FreeBSD: src/lib/libfetch/Makefile,v 1.51 2007/12/19 05:10:07 ru Exp $
+# $FreeBSD: head/lib/libfetch/Makefile 298107 2016-04-16 07:45:30Z gjb $
 
 LIB=		fetch
 CFLAGS+=	-I.
@@ -10,9 +10,10 @@ MAN=		fetch.3
 CLEANFILES=	ftperr.h httperr.h
 NO_STRICT_ALIASING=
 
-CFLAGS+=	-DWITH_SSL -I${.CURDIR}/../../crypto/libressl/include
+CFLAGS+=	-DWITH_SSL
 DPADD=		${LIBSSL} ${LIBCRYPTO}
 LDADD=		-lprivate_ssl -lprivate_crypto
+CFLAGS+=	${PRIVATELIB_CFLAGS}
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 SHLIB_MAJOR=    4

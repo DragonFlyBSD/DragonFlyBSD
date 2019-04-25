@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1998-2011 Dag-Erling Smørgrav
  * All rights reserved.
  *
@@ -25,7 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/lib/libfetch/file.c 240495 2012-09-14 12:15:13Z eadler $
+ * $FreeBSD: head/lib/libfetch/file.c 326219 2017-11-26 02:00:33Z pfg $
  */
 
 #include <sys/param.h>
@@ -47,7 +49,7 @@ fetchXGetFile(struct url *u, struct url_stat *us, const char *flags)
 	if (us && fetchStatFile(u, us, flags) == -1)
 		return (NULL);
 
-	f = fopen(u->doc, "r");
+	f = fopen(u->doc, "re");
 
 	if (f == NULL) {
 		fetch_syserr();
@@ -60,7 +62,6 @@ fetchXGetFile(struct url *u, struct url_stat *us, const char *flags)
 		return (NULL);
 	}
 
-	fcntl(fileno(f), F_SETFD, FD_CLOEXEC);
 	return (f);
 }
 
@@ -76,9 +77,9 @@ fetchPutFile(struct url *u, const char *flags)
 	FILE *f;
 
 	if (CHECK_FLAG('a'))
-		f = fopen(u->doc, "a");
+		f = fopen(u->doc, "ae");
 	else
-		f = fopen(u->doc, "w+");
+		f = fopen(u->doc, "w+e");
 
 	if (f == NULL) {
 		fetch_syserr();
@@ -91,7 +92,6 @@ fetchPutFile(struct url *u, const char *flags)
 		return (NULL);
 	}
 
-	fcntl(fileno(f), F_SETFD, FD_CLOEXEC);
 	return (f);
 }
 
@@ -150,5 +150,6 @@ fetchListFile(struct url *u, const char *flags __unused)
 		fetch_add_entry(&ue, &size, &len, de->d_name, &us);
 	}
 
+	closedir(dir);
 	return (ue);
 }
