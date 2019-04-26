@@ -11,10 +11,5 @@ MAN=	wpa_cli.8
 
 CFLAGS+= -DCONFIG_CTRL_IFACE
 CFLAGS+= -DCONFIG_CTRL_IFACE_UNIX
-CFLAGS+= -DCONFIG_READLINE
-
-LDADD+= -lprivate_edit -lprivate_ncurses
-DPADD+= ${LIBEDIT} ${LIBNCURSES}
-LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>
