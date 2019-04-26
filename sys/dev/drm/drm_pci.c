@@ -225,8 +225,6 @@ drm_getpciinfo(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	info->subdevice_id = dev->pdev->subsystem_device;
 	info->revision_id = 0;
 
-	kprintf("drm_getpciinfo: bus=%d slot=%d func=%d vendor_id=%x device_id=%x\n",
-		info->bus, info->dev, info->func, info->vendor_id, info->device_id);
 	return 0;
 }
 #endif
