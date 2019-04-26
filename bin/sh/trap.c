@@ -56,7 +56,6 @@ __FBSDID("$FreeBSD$");
 #include "trap.h"
 #include "mystring.h"
 #include "builtins.h"
-#include "myhistedit.h"
 
 
 /*

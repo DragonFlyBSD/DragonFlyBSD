@@ -59,7 +59,9 @@ __FBSDID("$FreeBSD$");
 #include "error.h"
 #include "alias.h"
 #include "parser.h"
+#ifndef NO_HISTORY
 #include "myhistedit.h"
+#endif
 #include "trap.h"
 
 #define EOF_NLEFT -99		/* value of parsenleft when EOF pushed back */
@@ -102,7 +104,9 @@ static struct parsefile basepf = {	/* top level input file */
 static struct parsefile *parsefile = &basepf;	/* current input file */
 int whichprompt;		/* 1 == PS1, 2 == PS2 */
 
+#ifndef NO_HISTORY
 EditLine *el;			/* cookie for editline package */
+#endif
 
 static void pushfile(void);
 static int preadfd(void);
