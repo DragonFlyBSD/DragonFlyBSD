@@ -208,7 +208,6 @@ upgrade_base:	upgrade_check preupgrade remove-obsolete-files
 	rm -f ${DESTDIR}/usr/lib/${lib}
 .endif
 .endfor
-	cd ${.CURDIR}/../lib/libssh; ${MAKE} -f Makefile.etc obj
 	cd ${.CURDIR}/../lib/libssh; ${MAKE} -f Makefile.etc install
 .if exists(${DESTDIR}/boot)
 .if exists(${DESTDIR}/kernel)

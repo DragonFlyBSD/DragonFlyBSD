@@ -1,5 +1,6 @@
 .PATH: ${.CURDIR}/../../crypto/openssh
 
+NOOBJ=
 FILES=		moduli
 FILESDIR=	/etc/ssh
 FILESOWN=	${BINOWN}
