@@ -24,8 +24,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LINUX_RCUPDATE_H
-#define LINUX_RCUPDATE_H
+#ifndef _LINUX_RCUPDATE_H_
+#define _LINUX_RCUPDATE_H_
 
 #include <linux/types.h>
 #include <linux/cache.h>
@@ -42,19 +42,31 @@
 #include <asm/barrier.h>
 
 static inline void
+call_rcu(struct rcu_head *head, void (*func)(struct rcu_head *))
+{
+	func(head);
+}
+
+static inline void
 rcu_read_lock(void)
 {
+	preempt_disable();
 }
 
 static inline void
 rcu_read_unlock(void)
 {
+	preempt_enable();
 }
 
 #define rcu_dereference_protected(p, condition)	\
 	((typeof(*p) *)(p))
 
-#define rcu_dereference(p) (p)
+#define rcu_dereference(p)					\
+({								\
+	typeof(*(p)) *__rcu_dereference_tmp = READ_ONCE(p);	\
+	__rcu_dereference_tmp;					\
+})
 
 #define rcu_assign_pointer(p, v)	\
 do {					\
@@ -62,4 +74,14 @@ do {					\
 	WRITE_ONCE((p), (v));		\
 } while (0)
 
-#endif /* LINUX_RCUPDATE_H */
+#define RCU_INIT_POINTER(p, v)		\
+do {					\
+	p = v;				\
+} while (0)
+
+#define kfree_rcu(ptr, rcu_head)	\
+do {					\
+	kfree(ptr);			\
+} while (0)
+
+#endif  /* _LINUX_RCUPDATE_H_ */

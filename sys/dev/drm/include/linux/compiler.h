@@ -3,7 +3,7 @@
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
  * Copyright (c) 2013-2016 Mellanox Technologies, Ltd.
- * Copyright (c) 2015-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2015-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -149,6 +149,8 @@ __volatile_write(volatile void *var, int size, void *value)
 	__volatile_write(&(var), sizeof(var), &result.nc_type);	\
 	result.initial_type;					\
 })
+
+#define __rcu
 
 #endif	/* __KERNEL__ */
 
