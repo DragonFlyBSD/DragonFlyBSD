@@ -57,7 +57,7 @@ DPORTS_EXTRA_PACKAGES?=
 # dports packages to be built and installed on the release ISO
 #
 DPORTS_PACKAGES?=	security/ca_root_nss \
-			devel/git \
+			devel/git-lite \
 			dns/bind-tools \
 			net/isc-dhcp44-server \
 			sysutils/cdrtools \
@@ -66,12 +66,8 @@ DPORTS_PACKAGES?=	security/ca_root_nss \
 
 # dports options to use when building packages
 #
-DPORTS_OPTIONS+=		-DBATCH
-.if make(gui)
-DPORTS_OPTIONS.devel_git+=	-DWITH_GUI
-.else
-DPORTS_OPTIONS.devel_git+=	-DWITHOUT_CONTRIB -DWITHOUT_PERL
-.endif
+DPORTS_OPTIONS+=	-DBATCH
+DPORTS_OPTIONS+=	dns_bind-tools_UNSET=PYTHON
 .endif
 
 # Specify which root skeletons are required, and let the user include
@@ -277,7 +273,7 @@ customizeiso:
 	# Build and install packages, skip packages already installed
 	#
 .for PKG in ${DPORTS_PACKAGES}
-	${CHROOT_CMD} "cd /usr/dports/${PKG} && make ${DPORTS_OPTIONS} ${DPORTS_OPTIONS.${PKG:S/\//_/g}} install"
+	${CHROOT_CMD} "cd /usr/dports/${PKG} && make ${DPORTS_OPTIONS} install"
 .endfor
 .for PKG in ${DPORTS_PACKAGES}
 	${CHROOT_CMD} "cd /usr/dports/${PKG} && make ${DPORTS_OPTIONS} clean"
