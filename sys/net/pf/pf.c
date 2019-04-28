@@ -469,7 +469,7 @@ pf_src_connlimit(struct pf_state *state)
 	int bad = 0;
 	int cpu = mycpu->gd_cpuid;
 
-	state->src_node->conn++;
+	atomic_add_int(&state->src_node->conn, 1);
 	state->src.tcp_est = 1;
 	pf_add_threshold(&state->src_node->conn_rate);
 
@@ -1409,7 +1409,7 @@ pf_purge_expired_src_nodes(int waslocked)
 				 * decrements in rule should be ok, token is
 				 * held exclusively in this code path.
 				 */
-				 cur->rule.ptr->src_nodes--;
+				 atomic_add_int(&cur->rule.ptr->src_nodes, -1);
 				 if (cur->rule.ptr->states_cur <= 0 &&
 				     cur->rule.ptr->max_src_nodes <= 0)
 					 pf_rm_rule(NULL, cur->rule.ptr);
@@ -1432,7 +1432,7 @@ pf_src_tree_remove_state(struct pf_state *s)
 
 	if (s->src_node != NULL) {
 		if (s->src.tcp_est)
-			--s->src_node->conn;
+			atomic_add_int(&s->src_node->conn, -1);
 		if (--s->src_node->states <= 0) {
 			timeout = s->rule.ptr->timeout[PFTM_SRC_NODE];
 			if (!timeout) {
