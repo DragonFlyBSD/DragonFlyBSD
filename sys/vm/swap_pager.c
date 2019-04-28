@@ -160,6 +160,7 @@ swblk_t vm_swap_cache_use;
 swblk_t vm_swap_anon_use;
 static int vm_report_swap_allocs;
 
+static struct krate kswaprate = { 1 };
 static int nsw_rcount;		/* free read buffers			*/
 static int nsw_wcount_sync;	/* limit write buffers / synchronous	*/
 static int nsw_wcount_async;	/* limit write buffers / asynchronous	*/
@@ -535,14 +536,17 @@ swp_pager_getswapspace(vm_object_t object, int npages)
 		blk = blist_allocat(swapblist, npages, 0);
 	if (blk == SWAPBLK_NONE) {
 		if (swap_pager_full != 2) {
-			if (vm_swap_max == 0)
-				kprintf("Warning: The system would like to "
+			if (vm_swap_max == 0) {
+				krateprintf(&kswaprate,
+					"Warning: The system would like to "
 					"page to swap but no swap space "
 					"is configured!\n");
-			else
-				kprintf("swap_pager_getswapspace: "
+			} else {
+				krateprintf(&kswaprate,
+					"swap_pager_getswapspace: "
 					"swap full allocating %d pages\n",
 					npages);
+			}
 			swap_pager_full = 2;
 			if (swap_pager_almost_full == 0)
 				swap_fail_ticks = ticks;
