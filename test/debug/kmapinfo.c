@@ -78,7 +78,7 @@ vm_offset_t total_used_byid[VM_SUBSYS_LIMIT];
 static const char *formatnum(int64_t value);
 static const char *entryid(vm_subsys_t id);
 static void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
-static void mapscan(kvm_t *kd, vm_map_entry_t entry,
+static void mapscan(kvm_t *kd, vm_map_entry_t kptr, vm_map_entry_t ken,
 		    vm_offset_t *lastp);
 
 int
@@ -90,6 +90,8 @@ main(int ac, char **av)
     int ch;
     int i;
     vm_offset_t last;
+    struct vm_map_entry entry;
+    struct vm_map_entry *kptr;
 
     while ((ch = getopt(ac, av, "M:N:dv")) != -1) {
 	switch(ch) {
@@ -122,15 +124,20 @@ main(int ac, char **av)
 	exit(1);
     }
     kkread(kd, Nl[0].n_value, &kmap, sizeof(kmap));
-    last = kmap.header.start;
-    mapscan(kd, kmap.rb_root.rbh_root, &last);
+    last = kmap.min_addr;
+
+    kptr = kvm_vm_map_entry_first(kd, &kmap, &entry);
+    while (kptr) {
+	mapscan(kd, kptr, &entry, &last);
+	kptr = kvm_vm_map_entry_next(kd, kptr, &entry);
+    }
 
     printf("%4ldM 0x%016jx %08lx-%08lx (%6s) EMPTY\n",
 	total_used / 1024 / 1024,
 	(intmax_t)NULL,
-	last, kmap.header.end,
-	formatnum(kmap.header.end - last));
-    total_empty += kmap.header.end - last;
+	last, kmap.max_addr,
+	formatnum(kmap.max_addr - last));
+    total_empty += kmap.max_addr - last;
 
     printf("-----------------------------------------------\n");
     for (i = 0; i < VM_SUBSYS_LIMIT; ++i)
@@ -188,36 +195,29 @@ formatnum(int64_t value)
 }
 
 static void
-mapscan(kvm_t *kd, vm_map_entry_t entryp, vm_offset_t *lastp)
+mapscan(kvm_t *kd, vm_map_entry_t kptr, vm_map_entry_t ken, vm_offset_t *lastp)
 {
-    struct vm_map_entry entry;
-
-    if (entryp == NULL)
-	return;
-    kkread(kd, (u_long)entryp, &entry, sizeof(entry));
-    mapscan(kd, entry.rb_entry.rbe_left, lastp);
-    if (*lastp != entry.start) {
+    if (*lastp != ken->start) {
 	    printf("%4ldM %p %08lx-%08lx (%s) EMPTY\n",
 		total_used / 1024 / 1024,
-		entryp,
-		*lastp, entry.start,
-		formatnum(entry.start - *lastp));
-	    total_empty += entry.start - *lastp;
+		kptr,
+		*lastp, ken->start,
+		formatnum(ken->start - *lastp));
+	    total_empty += ken->start - *lastp;
     }
     printf("%4ldM %p %08lx-%08lx (%6ldK) id=%-8s object=%p\n",
 	total_used / 1024 / 1024,
-	entryp,
-	entry.start, entry.end,
-	(entry.end - entry.start) / 1024,
-	entryid(entry.id),
-	entry.object.map_object);
-    total_used += entry.end - entry.start;
-    if (entry.id < VM_SUBSYS_LIMIT)
-	total_used_byid[entry.id] += entry.end - entry.start;
+	kptr,
+	ken->start, ken->end,
+	(ken->end - ken->start) / 1024,
+	entryid(ken->id),
+	ken->object.map_object);
+    total_used += ken->end - ken->start;
+    if (ken->id < VM_SUBSYS_LIMIT)
+	total_used_byid[ken->id] += ken->end - ken->start;
     else
-	total_used_byid[0] += entry.end - entry.start;
-    *lastp = entry.end;
-    mapscan(kd, entry.rb_entry.rbe_right, lastp);
+	total_used_byid[0] += ken->end - ken->start;
+    *lastp = ken->end;
 }
 
 static
@@ -288,6 +288,8 @@ entryid(vm_subsys_t id)
 		return("DRM_TTM");
 	case VM_SUBSYS_HAMMER:
 		return("HAMMER");
+	case VM_SUBSYS_VMPGHASH:
+		return("VMPGHASH");
 	default:
 		break;
 	}
