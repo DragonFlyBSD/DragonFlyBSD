@@ -533,7 +533,8 @@ noccc:
 	 * ready to go.
 	 */
 	if (error == 0) {
-		error = bus_setup_intr(dev, sc->sc_irq, INTR_MPSAFE,
+		error = bus_setup_intr(dev, sc->sc_irq, INTR_MPSAFE |
+							INTR_HIFREQ,
 				       ahci_intr, sc,
 				       &sc->sc_irq_handle, NULL);
 	}
