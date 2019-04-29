@@ -145,6 +145,8 @@ static MALLOC_DEFINE(M_PFALTQPL, "pfaltqpl", "pf altq pool list");
 static MALLOC_DEFINE(M_PFPOOLADDRPL, "pfpooladdrpl", "pf pool address pool list");
 static MALLOC_DEFINE(M_PFFRENTPL, "pffrent", "pf frent pool list");
 
+MALLOC_DEFINE(M_PF, 	  "pf", "pf general");
+
 
 /*
  * XXX - These are new and need to be checked when moveing to a new version
@@ -210,6 +212,25 @@ pfattach(void)
 	kmalloc_raise_limit(pf_frent_pl, 0);
 	kmalloc_create(&pf_cent_pl, "pf cent pool list");
 	kmalloc_raise_limit(pf_cent_pl, 0);
+
+	/*
+	 * Allocate pcpu array.
+	 *
+	 * NOTE: The state table also has a global element which we index
+	 *	 at [ncpus], so it needs one extra slot.
+	 */
+	tree_src_tracking = kmalloc(sizeof(*tree_src_tracking) * ncpus,
+				M_PF, M_WAITOK | M_ZERO);
+	tree_id = kmalloc(sizeof(*tree_id) * ncpus,
+				M_PF, M_WAITOK | M_ZERO);
+	state_list = kmalloc(sizeof(*state_list) * ncpus,
+				M_PF, M_WAITOK | M_ZERO);
+	pf_counters = kmalloc(sizeof(*pf_counters) * ncpus,
+				M_PF, M_WAITOK | M_ZERO);
+	pf_statetbl = kmalloc(sizeof(*pf_statetbl) * (ncpus + 1),
+				M_PF, M_WAITOK | M_ZERO);
+	purge_cur = kmalloc(sizeof(*purge_cur) * ncpus,
+				M_PF, M_WAITOK | M_ZERO);
 	
 	pfr_initialize();
 	pfi_initialize();
@@ -1748,8 +1769,27 @@ pfioctl(struct dev_ioctl_args *ap)
 	}
 
 	case DIOCGETSTATUS: {
+		/*
+		 * Retrieve pf_status, merge pcpu counters into pf_status
+		 * for user consumption.
+		 */
 		struct pf_status *s = (struct pf_status *)addr;
+		struct pf_counters *pfc;
+		int n;
+		int i;
+
 		bcopy(&pf_status, s, sizeof(struct pf_status));
+		for (n = 0; n < ncpus; ++n) {
+			pfc = &pf_counters[n];
+			for (i = 0; i < PFRES_MAX; ++i)
+				s->counters[i] += pfc->counters[i];
+			for (i = 0; i < LCNT_MAX; ++i)
+				s->lcounters[i] += pfc->lcounters[i];
+			for (i = 0; i < FCNT_MAX; ++i)
+				s->fcounters[i] += pfc->fcounters[i];
+			for (i = 0; i < SCNT_MAX; ++i)
+				s->scounters[i] += pfc->scounters[i];
+		}
 		pfi_update_status(s->ifname, s);
 		break;
 	}
@@ -1766,9 +1806,17 @@ pfioctl(struct dev_ioctl_args *ap)
 	}
 
 	case DIOCCLRSTATUS: {
+		int i;
+
 		bzero(pf_status.counters, sizeof(pf_status.counters));
 		bzero(pf_status.fcounters, sizeof(pf_status.fcounters));
 		bzero(pf_status.scounters, sizeof(pf_status.scounters));
+		for (i = 0; i < ncpus; ++i) {
+			bzero(pf_counters[i].counters, sizeof(pf_counters[0].counters));
+			bzero(pf_counters[i].fcounters, sizeof(pf_counters[0].fcounters));
+			bzero(pf_counters[i].scounters, sizeof(pf_counters[0].scounters));
+		}
+
 		pf_status.since = time_second;
 		if (*pf_status.ifname)
 			pfi_update_status(pf_status.ifname, NULL);
@@ -3357,11 +3405,12 @@ pf_unload(void)
 		lwkt_reltoken(&pf_token);
 		return error;
 	}
-	shutdown_pf();
+	kprintf("PF shutdown\n");
 	pf_end_threads = 1;
+	shutdown_pf();
 	while (pf_end_threads < 2) {
 		wakeup_one(pf_purge_thread);
-		tsleep(pf_purge_thread, 0, "pftmo", hz);
+		tsleep(pf_purge_thread, 0, "pftmo", hz / 10);
 	}
 	pfi_cleanup();
 	pf_osfp_flush();
@@ -3369,6 +3418,7 @@ pf_unload(void)
 	lockuninit(&pf_consistency_lock);
 	lwkt_reltoken(&pf_token);
 
+	pf_normalize_unload();
 	if (pf_maskhead != NULL) {
 		pf_maskhead->rnh_walktree(pf_maskhead,
 			pf_mask_del, pf_maskhead);
@@ -3378,6 +3428,14 @@ pf_unload(void)
 	kmalloc_destroy(&pf_state_pl);
 	kmalloc_destroy(&pf_frent_pl);
 	kmalloc_destroy(&pf_cent_pl);
+
+	kfree(tree_src_tracking, M_PF);
+	kfree(tree_id, M_PF);
+	kfree(state_list, M_PF);
+	kfree(pf_counters, M_PF);
+	kfree(pf_statetbl, M_PF);
+	kfree(purge_cur, M_PF);
+
 	return 0;
 }
 

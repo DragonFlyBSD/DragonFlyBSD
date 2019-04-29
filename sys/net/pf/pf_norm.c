@@ -68,13 +68,13 @@
 #define BUFFER_FRAGMENTS(fr)	(!((fr)->fr_flags & PFFRAG_NOBUFFER))
 
 
-TAILQ_HEAD(pf_fragqueue, pf_fragment)	pf_fragqueue[MAXCPU];
-TAILQ_HEAD(pf_cachequeue, pf_fragment)	pf_cachequeue[MAXCPU];
+TAILQ_HEAD(pf_fragqueue, pf_fragment)	*pf_fragqueue;
+TAILQ_HEAD(pf_cachequeue, pf_fragment)	*pf_cachequeue;
 
 static __inline int	 pf_frag_compare(struct pf_fragment *,
 			    struct pf_fragment *);
-RB_HEAD(pf_frag_tree, pf_fragment)	pf_frag_tree[MAXCPU],
-					pf_cache_tree[MAXCPU];
+RB_HEAD(pf_frag_tree, pf_fragment)	*pf_frag_tree,
+					*pf_cache_tree;
 RB_PROTOTYPE(pf_frag_tree, pf_fragment, fr_entry, pf_frag_compare);
 RB_GENERATE(pf_frag_tree, pf_fragment, fr_entry, pf_frag_compare);
 
@@ -121,12 +121,33 @@ pf_normalize_init(void)
 	pool_sethardlimit(&pf_cent_pl, PFFRAG_FRCENT_HIWAT, NULL, 0);
 	*/
 
-	for (n = 0; n < MAXCPU; ++n) {
+	/*
+	 * pcpu queues and trees
+	 */
+	pf_fragqueue = kmalloc(sizeof(*pf_fragqueue) * ncpus,
+				M_PF, M_WAITOK | M_ZERO);
+	pf_cachequeue = kmalloc(sizeof(*pf_cachequeue) * ncpus,
+				M_PF, M_WAITOK | M_ZERO);
+	pf_frag_tree = kmalloc(sizeof(*pf_frag_tree) * ncpus,
+				M_PF, M_WAITOK | M_ZERO);
+	pf_cache_tree = kmalloc(sizeof(*pf_cache_tree) * ncpus,
+				M_PF, M_WAITOK | M_ZERO);
+
+	for (n = 0; n < ncpus; ++n) {
 		TAILQ_INIT(&pf_fragqueue[n]);
 		TAILQ_INIT(&pf_cachequeue[n]);
 		RB_INIT(&pf_frag_tree[n]);
 		RB_INIT(&pf_cache_tree[n]);
 	}
+}
+
+void
+pf_normalize_unload(void)
+{
+	kfree(pf_fragqueue, M_PF);
+	kfree(pf_cachequeue, M_PF);
+	kfree(pf_frag_tree, M_PF);
+	kfree(pf_cache_tree, M_PF);
 }
 
 static __inline int

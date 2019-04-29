@@ -75,6 +75,7 @@ extern struct lwkt_token pf_gtoken;
 #define RT_NUMFIBS		1
 #define ALTQ_IS_ENABLED(ifq)	((ifq)->altq_flags & ALTQF_ENABLED)
 
+MALLOC_DECLARE(M_PF);
 
 #define PF_MD5_DIGEST_LENGTH	16
 #ifdef MD5_DIGEST_LENGTH
@@ -1160,9 +1161,6 @@ TAILQ_HEAD(pfi_grouphead, pfi_kif);
 TAILQ_HEAD(pfi_statehead, pfi_kif);
 RB_HEAD(pfi_ifhead, pfi_kif);
 
-/* state tables */
-extern struct pf_state_tree	 pf_statetbl[MAXCPU+1];
-
 /* keep synced with pfi_kif, used in RB_FIND */
 struct pfi_kif_cmp {
 	char				 pfik_name[IFNAMSIZ];
@@ -1344,14 +1342,26 @@ struct pf_pdesc {
 			*(a) = (x); \
 	} while (0)
 
-#define REASON_SET(a, x) \
-	do { \
+#define PF_INC_COUNTER(x)	pf_counters[mycpu->gd_cpuid].counters[(x)]++
+#define PF_INC_LCOUNTER(x)	pf_counters[mycpu->gd_cpuid].lcounters[(x)]++
+#define PF_INC_FCOUNTER(x)	pf_counters[mycpu->gd_cpuid].fcounters[(x)]++
+#define PF_INC_SCOUNTER(x)	pf_counters[mycpu->gd_cpuid].scounters[(x)]++
+
+#define REASON_SET(a, x)			\
+	do {					\
 		u_short *r = (a); /* keep -Waddress happy */ \
-		if (r != NULL) \
-			*r = (x); \
-		if ((x) < PFRES_MAX) \
-			pf_status.counters[(x)]++; \
+		if (r != NULL)			\
+			*r = (x);		\
+		if ((x) < PFRES_MAX)		\
+			PF_INC_COUNTER(x);	\
 	} while (0)
+
+struct pf_counters {
+	u_int64_t	counters[PFRES_MAX];
+	u_int64_t	lcounters[LCNT_MAX];	/* limit counters */
+	u_int64_t	fcounters[FCNT_MAX];
+	u_int64_t	scounters[SCNT_MAX];
+} __cachealign;
 
 struct pf_status {
 	u_int64_t	counters[PFRES_MAX];
@@ -1742,13 +1752,17 @@ struct pf_ifspeed {
 #ifdef _KERNEL
 RB_HEAD(pf_src_tree, pf_src_node);
 RB_PROTOTYPE(pf_src_tree, pf_src_node, entry, pf_src_compare);
-extern struct pf_src_tree tree_src_tracking[MAXCPU];
 
 RB_HEAD(pf_state_tree_id, pf_state);
 RB_PROTOTYPE(pf_state_tree_id, pf_state,
     entry_id, pf_state_compare_id);
-extern struct pf_state_tree_id tree_id[MAXCPU];
-extern struct pf_state_queue state_list[MAXCPU];
+
+extern struct pf_src_tree *tree_src_tracking;	/* ncpus */
+extern struct pf_state_tree_id *tree_id;	/* ncpus */
+extern struct pf_state_queue *state_list;	/* ncpus */
+extern struct pf_counters *pf_counters;		/* ncpus */
+extern struct pf_state **purge_cur;		/* ncpus */
+extern struct pf_state_tree *pf_statetbl;	/* ncpus + 1 */
 
 TAILQ_HEAD(pf_poolqueue, pf_pool);
 extern struct pf_poolqueue		  pf_pools[2];
@@ -1834,6 +1848,7 @@ int	pf_match_uid(u_int8_t, uid_t, uid_t, uid_t);
 int	pf_match_gid(u_int8_t, gid_t, gid_t, gid_t);
 
 void	pf_normalize_init(void);
+void	pf_normalize_unload(void);
 int	pf_normalize_ip(struct mbuf **, int, struct pfi_kif *, u_short *,
 	    struct pf_pdesc *);
 int	pf_normalize_ip6(struct mbuf **, int, struct pfi_kif *, u_short *,

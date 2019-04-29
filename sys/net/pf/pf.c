@@ -130,8 +130,8 @@ struct spinlock pf_spin = SPINLOCK_INITIALIZER(pf_spin, "pf_spin");
 struct radix_node_head	*pf_maskhead;
 
 /* state tables */
-struct pf_state_tree	 pf_statetbl[MAXCPU+1];	/* incls one global table */
-
+struct pf_state_tree	 *pf_statetbl;		/* incls one global table */
+struct pf_state		**purge_cur;
 struct pf_altqqueue	 pf_altqs[2];
 struct pf_palist	 pf_pabuf;
 struct pf_altqqueue	*pf_altqs_active;
@@ -351,9 +351,10 @@ static __inline int pf_state_compare_rkey(struct pf_state_key *,
 static __inline int pf_state_compare_id(struct pf_state *,
 				struct pf_state *);
 
-struct pf_src_tree tree_src_tracking[MAXCPU];
-struct pf_state_tree_id tree_id[MAXCPU];
-struct pf_state_queue state_list[MAXCPU];
+struct pf_src_tree *tree_src_tracking;
+struct pf_state_tree_id *tree_id;
+struct pf_state_queue *state_list;
+struct pf_counters *pf_counters;
 
 RB_GENERATE(pf_src_tree, pf_src_node, entry, pf_src_compare);
 RB_GENERATE(pf_state_tree, pf_state_key, entry, pf_state_compare_key);
@@ -476,13 +477,13 @@ pf_src_connlimit(struct pf_state *state)
 	if (state->rule.ptr->max_src_conn &&
 	    state->rule.ptr->max_src_conn <
 	    state->src_node->conn) {
-		pf_status.lcounters[LCNT_SRCCONN]++;
+		PF_INC_LCOUNTER(LCNT_SRCCONN);
 		bad++;
 	}
 
 	if (state->rule.ptr->max_src_conn_rate.limit &&
 	    pf_check_threshold(&state->src_node->conn_rate)) {
-		pf_status.lcounters[LCNT_SRCCONNRATE]++;
+		PF_INC_LCOUNTER(LCNT_SRCCONNRATE);
 		bad++;
 	}
 
@@ -493,7 +494,7 @@ pf_src_connlimit(struct pf_state *state)
 		struct pfr_addr p;
 		u_int32_t	killed = 0;
 
-		pf_status.lcounters[LCNT_OVERLOAD_TABLE]++;
+		PF_INC_LCOUNTER(LCNT_OVERLOAD_TABLE);
 		if (pf_status.debug >= PF_DEBUG_MISC) {
 			kprintf("pf_src_connlimit: blocking address ");
 			pf_print_host(&state->src_node->addr, 0,
@@ -525,7 +526,7 @@ pf_src_connlimit(struct pf_state *state)
 			struct pf_state_key *sk;
 			struct pf_state *st;
 
-			pf_status.lcounters[LCNT_OVERLOAD_FLUSH]++;
+			PF_INC_LCOUNTER(LCNT_OVERLOAD_FLUSH);
 			RB_FOREACH(st, pf_state_tree_id, &tree_id[cpu]) {
 				sk = st->key[PF_SK_WIRE];
 				/*
@@ -580,7 +581,7 @@ pf_insert_src_node(struct pf_src_node **sn, struct pf_rule *rule,
 			k.rule.ptr = rule;
 		else
 			k.rule.ptr = NULL;
-		pf_status.scounters[SCNT_SRC_NODE_SEARCH]++;
+		PF_INC_SCOUNTER(SCNT_SRC_NODE_SEARCH);
 		*sn = RB_FIND(pf_src_tree, &tree_src_tracking[cpu], &k);
 	}
 	if (*sn == NULL) {
@@ -589,7 +590,7 @@ pf_insert_src_node(struct pf_src_node **sn, struct pf_rule *rule,
 			(*sn) = kmalloc(sizeof(struct pf_src_node),
 					M_PFSRCTREEPL, M_NOWAIT|M_ZERO);
 		else
-			pf_status.lcounters[LCNT_SRCNODES]++;
+			PF_INC_LCOUNTER(LCNT_SRCNODES);
 		if ((*sn) == NULL)
 			return (-1);
 
@@ -624,12 +625,12 @@ pf_insert_src_node(struct pf_src_node **sn, struct pf_rule *rule,
 		(*sn)->ruletype = rule->action;
 		if ((*sn)->rule.ptr != NULL)
 			atomic_add_int(&(*sn)->rule.ptr->src_nodes, 1);
-		pf_status.scounters[SCNT_SRC_NODE_INSERT]++;
+		PF_INC_SCOUNTER(SCNT_SRC_NODE_INSERT);
 		atomic_add_int(&pf_status.src_nodes, 1);
 	} else {
 		if (rule->max_src_states &&
 		    (*sn)->states >= rule->max_src_states) {
-			pf_status.lcounters[LCNT_SRCSTATES]++;
+			PF_INC_LCOUNTER(LCNT_SRCSTATES);
 			return (-1);
 		}
 	}
@@ -814,7 +815,7 @@ pf_state_key_attach(struct pf_state_key *sk, struct pf_state *s, int idx)
 	 * in the state.
 	 */
 	if (s->state_flags & PFSTATE_STACK_GLOBAL) {
-		cpu = MAXCPU;
+		cpu = ncpus;
 		lockmgr(&pf_global_statetbl_lock, LK_EXCLUSIVE);
 	} else {
 		cpu = mycpu->gd_cpuid;
@@ -857,9 +858,9 @@ pf_state_key_attach(struct pf_state_key *sk, struct pf_state *s, int idx)
 	 * pf_global_statetbl_lock will be locked shared when testing and
 	 * not entering into the global state table.
 	 */
-	if (cpu != MAXCPU &&
+	if (cpu != ncpus &&
 	    (cur = RB_FIND(pf_state_rtree,
-			   (struct pf_state_rtree *)&pf_statetbl[MAXCPU],
+			   (struct pf_state_rtree *)&pf_statetbl[ncpus],
 			   sk)) != NULL) {
 		TAILQ_FOREACH(si, &cur->states, entry) {
 			/*
@@ -973,7 +974,7 @@ pf_state_key_detach(struct pf_state *s, int idx)
 	 * statetbl tree for this case.
 	 */
 	if (s->state_flags & PFSTATE_STACK_GLOBAL) {
-		cpu = MAXCPU;
+		cpu = ncpus;
 		lockmgr(&pf_global_statetbl_lock, LK_EXCLUSIVE);
 	} else {
 		cpu = mycpu->gd_cpuid;
@@ -1123,7 +1124,7 @@ pf_state_insert(struct pfi_kif *kif, struct pf_state_key *skw,
 		return (-1);
 	}
 	TAILQ_INSERT_TAIL(&state_list[cpu], s, entry_list);
-	pf_status.fcounters[FCNT_STATE_INSERT]++;
+	PF_INC_FCOUNTER(FCNT_STATE_INSERT);
 	atomic_add_int(&pf_status.states, 1);
 	pfi_kif_ref(kif, PFI_KIF_REF_STATE);
 	pfsync_insert_state(s);
@@ -1135,7 +1136,7 @@ pf_find_state_byid(struct pf_state_cmp *key)
 {
 	int cpu = mycpu->gd_cpuid;
 
-	pf_status.fcounters[FCNT_STATE_SEARCH]++;
+	PF_INC_FCOUNTER(FCNT_STATE_SEARCH);
 
 	return (RB_FIND(pf_state_tree_id, &tree_id[cpu],
 			(struct pf_state *)key));
@@ -1157,7 +1158,7 @@ pf_find_state(struct pfi_kif *kif, struct pf_state_key_cmp *key, u_int dir,
 	int cpu = mycpu->gd_cpuid;
 	int globalstl = 0;
 
-	pf_status.fcounters[FCNT_STATE_SEARCH]++;
+	PF_INC_FCOUNTER(FCNT_STATE_SEARCH);
 
 	if (dir == PF_OUT && m->m_pkthdr.pf.statekey &&
 	    ((struct pf_state_key *)m->m_pkthdr.pf.statekey)->reverse) {
@@ -1166,7 +1167,7 @@ pf_find_state(struct pfi_kif *kif, struct pf_state_key_cmp *key, u_int dir,
 		sk = RB_FIND(pf_state_tree, &pf_statetbl[cpu], skey);
 		if (sk == NULL) {
 			lockmgr(&pf_global_statetbl_lock, LK_SHARED);
-			sk = RB_FIND(pf_state_tree, &pf_statetbl[MAXCPU], skey);
+			sk = RB_FIND(pf_state_tree, &pf_statetbl[ncpus], skey);
 			if (sk == NULL) {
 				lockmgr(&pf_global_statetbl_lock, LK_RELEASE);
 				return (NULL);
@@ -1225,12 +1226,12 @@ pf_find_state_all(struct pf_state_key_cmp *key, u_int dir, int *more)
 	int cpu = mycpu->gd_cpuid;
 	int globalstl = 0;
 
-	pf_status.fcounters[FCNT_STATE_SEARCH]++;
+	PF_INC_FCOUNTER(FCNT_STATE_SEARCH);
 
 	sk = RB_FIND(pf_state_tree, &pf_statetbl[cpu], skey);
 	if (sk == NULL) {
 		lockmgr(&pf_global_statetbl_lock, LK_SHARED);
-		sk = RB_FIND(pf_state_tree, &pf_statetbl[MAXCPU], skey);
+		sk = RB_FIND(pf_state_tree, &pf_statetbl[ncpus], skey);
 		globalstl = 1;
 	}
 	if (sk != NULL) {
@@ -1415,7 +1416,7 @@ pf_purge_expired_src_nodes(int waslocked)
 					 pf_rm_rule(NULL, cur->rule.ptr);
 			 }
 			 RB_REMOVE(pf_src_tree, &tree_src_tracking[cpu], cur);
-			 pf_status.scounters[SCNT_SRC_NODE_REMOVALS]++;
+			 PF_INC_SCOUNTER(SCNT_SRC_NODE_REMOVALS);
 			 atomic_add_int(&pf_status.src_nodes, -1);
 			 kfree(cur, M_PFSRCTREEPL);
 		}
@@ -1478,8 +1479,6 @@ pf_unlink_state(struct pf_state *cur)
 	pf_detach_state(cur);
 }
 
-static struct pf_state	*purge_cur[MAXCPU];
-
 /*
  * callers should be at crit_enter() and hold pf_consistency_lock exclusively.
  * pf_token must also be held exclusively.
@@ -1528,7 +1527,7 @@ pf_free_state(struct pf_state *cur)
 	if (cur->tag)
 		pf_tag_unref(cur->tag);
 	kfree(cur, M_PFSTATEPL);
-	pf_status.fcounters[FCNT_STATE_REMOVALS]++;
+	PF_INC_FCOUNTER(FCNT_STATE_REMOVALS);
 	atomic_add_int(&pf_status.states, -1);
 }
 
@@ -2699,7 +2698,7 @@ pf_map_addr(sa_family_t af, struct pf_rule *r, struct pf_addr *saddr,
 			k.rule.ptr = r;
 		else
 			k.rule.ptr = NULL;
-		pf_status.scounters[SCNT_SRC_NODE_SEARCH]++;
+		PF_INC_SCOUNTER(SCNT_SRC_NODE_SEARCH);
 		*sn = RB_FIND(pf_src_tree, &tree_src_tracking[cpu], &k);
 		if (*sn != NULL && !PF_AZERO(&(*sn)->raddr, af)) {
 			PF_ACPY(naddr, &(*sn)->raddr, af);
@@ -4089,7 +4088,7 @@ pf_create_state(struct pf_rule *r, struct pf_rule *nr, struct pf_rule *a,
 
 	/* check maximums */
 	if (r->max_states && (r->states_cur >= r->max_states)) {
-		pf_status.lcounters[LCNT_STATES]++;
+		PF_INC_LCOUNTER(LCNT_STATES);
 		REASON_SET(&reason, PFRES_MAXSTATES);
 		return (PF_DROP);
 	}
@@ -4287,13 +4286,13 @@ csfailed:
 
 	if (sn != NULL && sn->states == 0 && sn->expire == 0) {
 		RB_REMOVE(pf_src_tree, &tree_src_tracking[cpu], sn);
-		pf_status.scounters[SCNT_SRC_NODE_REMOVALS]++;
+		PF_INC_SCOUNTER(SCNT_SRC_NODE_REMOVALS);
 		atomic_add_int(&pf_status.src_nodes, -1);
 		kfree(sn, M_PFSRCTREEPL);
 	}
 	if (nsn != sn && nsn != NULL && nsn->states == 0 && nsn->expire == 0) {
 		RB_REMOVE(pf_src_tree, &tree_src_tracking[cpu], nsn);
-		pf_status.scounters[SCNT_SRC_NODE_REMOVALS]++;
+		PF_INC_SCOUNTER(SCNT_SRC_NODE_REMOVALS);
 		atomic_add_int(&pf_status.src_nodes, -1);
 		kfree(nsn, M_PFSRCTREEPL);
 	}
