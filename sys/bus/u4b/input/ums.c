@@ -739,7 +739,7 @@ ums_attach(device_t dev)
 	for (i = 0; i < info->sc_buttons; i++)
 		evdev_support_key(sc->sc_evdev, BTN_MOUSE + i);
 
-	err = evdev_register_mtx(sc->sc_evdev, &sc->sc_lock);
+	err = evdev_register(sc->sc_evdev);
 	if (err)
 		goto detach;
 #endif
@@ -959,7 +959,7 @@ ums_ev_open(struct evdev_dev *evdev, void *ev_softc)
 {
 	struct ums_softc *sc = (struct ums_softc *)ev_softc;
 
-	KKASSERT(lockowned(&sc->sc_lock));
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 
 	sc->sc_evflags = UMS_EVDEV_OPENED;
 
@@ -967,6 +967,8 @@ ums_ev_open(struct evdev_dev *evdev, void *ev_softc)
 		ums_reset(sc);
 		ums_start_rx(sc);
 	}
+
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 
 	return (0);
 }
@@ -976,12 +978,14 @@ ums_ev_close(struct evdev_dev *evdev, void *ev_softc)
 {
 	struct ums_softc *sc = (struct ums_softc *)ev_softc;
 
-	KKASSERT(lockowned(&sc->sc_lock));
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 
 	sc->sc_evflags = 0;
 
 	if (sc->sc_fflags == 0)
 		ums_stop_rx(sc);
+
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 }
 #endif
 
