@@ -3647,6 +3647,7 @@ TO_REMOVE+=/usr/share/man/man3/cipher.3.gz
 TO_REMOVE+=/usr/share/man/man3/des_cipher.3.gz
 TO_REMOVE+=/usr/share/man/man3/des_setkey.3.gz
 TO_REMOVE+=/usr/include/histedit.h
+TO_REMOVE+=/lib/priv/libprivate_edit.so.5
 
 .if !defined(WANT_INSTALLER)
 TO_REMOVE+=/usr/sbin/dfuibe_installer

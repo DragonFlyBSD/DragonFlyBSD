@@ -35,6 +35,8 @@ CFLAGS+=	-Wno-stack-protector
 #
 .if !defined(RESCUE)
 CFLAGS+=	-DREADLINE_SUPPORT
+# libedit api change for lvm.c
+CFLAGS+=	-DCPPFunction=rl_completion_func_t
 CFLAGS+=	${PRIVATELIB_CFLAGS}
 DPADD+=		${LIBEDIT} ${LIBNCURSES}
 LDADD+=		-lprivate_edit -lprivate_ncurses

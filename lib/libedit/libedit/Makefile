@@ -2,24 +2,27 @@
 .include	"../Makefile.inc"
 
 LIB=		private_edit
-SHLIB_MAJOR=	5
+SHLIB_MAJOR=	6
 SHLIBDIR?=	/lib
-PRIVATELIB=
+PRIVATELIB=	shpub
 
 SRCDIR= 	${BASEDIR}/src
 .PATH:		${SRCDIR}
 
 CFLAGS+=	-I${SRCDIR} -I${.CURDIR} -I${.OBJDIR}
-CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 
+CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
 DPADD=		${LIBNCURSES}
 LDADD=		-lprivate_ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 WARNS?=		2
 
+# DO NOT ENABLE
+.if 0
 VERSION_DEF=	${.CURDIR}/Versions.def
 SYMBOL_MAPS=	${.CURDIR}/Symbol.map
+.endif
 
 SRCS+=		chared.c \
 		common.c \
@@ -44,16 +47,16 @@ SRCS+=		chared.c \
 		readline.c \
 		eln.c
 
-SRCS+=		common.h emacs.h fcns.h help.h vi.h
-SRCS+=		fcns.c help.c tokenizern.c historyn.c
+SRCS+=		tokenizern.c historyn.c
+
+SRCS+=		common.h emacs.h fcns.h func.h help.h vi.h
 
 INCS=		histedit.h
 INCSDIR=	${INCLUDEDIR}/priv
 
 MAN=		editrc.5
 
-CLEANFILES+=	common.h emacs.h fcns.c fcns.h help.c help.h
-CLEANFILES+=	historyn.c tokenizern.c vi.h
+CLEANFILES+=	common.h emacs.h fcns.h func.h help.h vi.h
 AHDR=		vi.h emacs.h common.h
 ASRC=		${SRCDIR}/vi.c ${SRCDIR}/emacs.c ${SRCDIR}/common.c
 
@@ -69,19 +72,10 @@ common.h:
 fcns.h: ${AHDR}
 	AWK=awk sh ${SRCDIR}/makelist -fh ${AHDR} > ${.TARGET}
 
-help.h:
-	AWK=awk sh ${SRCDIR}/makelist -bh ${ASRC} > ${.TARGET}
-
-fcns.c: ${AHDR}
+func.h: ${AHDR}
 	AWK=awk sh ${SRCDIR}/makelist -fc ${AHDR} > ${.TARGET}
 
-help.c: ${ASRC}
-	AWK=awk sh ${SRCDIR}/makelist -bc ${ASRC} > ${.TARGET}
-
-tokenizern.c: tokenizer.c
-	AWK=awk sh ${SRCDIR}/makelist -n ${.ALLSRC} > ${.TARGET}
-
-historyn.c: history.c
-	AWK=awk sh ${SRCDIR}/makelist -n ${.ALLSRC} > ${.TARGET}
+help.h:
+	AWK=awk sh ${SRCDIR}/makelist -bh ${ASRC} > ${.TARGET}
 
 .include <bsd.lib.mk>
