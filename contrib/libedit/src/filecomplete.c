@@ -1,4 +1,4 @@
-/*	$NetBSD: filecomplete.c,v 1.44 2016/10/31 17:46:32 abhinav Exp $	*/
+/*	$NetBSD: filecomplete.c,v 1.51 2018/05/04 20:38:26 christos Exp $	*/
 
 /*-
  * Copyright (c) 1997 The NetBSD Foundation, Inc.
@@ -32,7 +32,7 @@
 #include "config.h"
 
 #if !defined(lint) && !defined(SCCSID)
-__RCSID("$NetBSD: filecomplete.c,v 1.44 2016/10/31 17:46:32 abhinav Exp $");
+__RCSID("$NetBSD: filecomplete.c,v 1.51 2018/05/04 20:38:26 christos Exp $");
 #endif /* not lint && not SCCSID */
 
 #include <sys/types.h>
@@ -127,6 +127,136 @@ fn_tilde_expand(const char *txt)
 	return temp;
 }
 
+static int
+needs_escaping(char c)
+{
+	switch (c) {
+	case '\'':
+	case '"':
+	case '(':
+	case ')':
+	case '\\':
+	case '<':
+	case '>':
+	case '$':
+	case '#':
+	case ' ':
+	case '\n':
+	case '\t':
+	case '?':
+	case ';':
+	case '`':
+	case '@':
+	case '=':
+	case '|':
+	case '{':
+	case '}':
+	case '&':
+	case '*':
+	case '[':
+		return 1;
+	default:
+		return 0;
+	}
+}
+
+static char *
+escape_filename(EditLine * el, const char *filename)
+{
+	size_t original_len = 0;
+	size_t escaped_character_count = 0;
+	size_t offset = 0;
+	size_t newlen;
+	const char *s;
+	char c;
+	size_t s_quoted = 0;	/* does the input contain a single quote */
+	size_t d_quoted = 0;	/* does the input contain a double quote */
+	char *escaped_str;
+	wchar_t *temp = el->el_line.buffer;
+
+	while (temp != el->el_line.cursor) {
+		/*
+		 * If we see a single quote but have not seen a double quote so far
+		 * set/unset s_quote
+		 */
+		if (temp[0] == '\'' && !d_quoted)
+			s_quoted = !s_quoted;
+		/*
+		 * vice versa to the above condition
+		 */
+		else if (temp[0] == '"' && !s_quoted)
+			d_quoted = !d_quoted;
+		temp++;
+	}
+
+	/* Count number of special characters so that we can calculate
+	 * number of extra bytes needed in the new string
+	 */
+	for (s = filename; *s; s++, original_len++) {
+		c = *s;
+		/* Inside a single quote only single quotes need escaping */
+		if (s_quoted && c == '\'') {
+			escaped_character_count += 3;
+			continue;
+		}
+		/* Inside double quotes only ", \, ` and $ need escaping */
+		if (d_quoted && (c == '"' || c == '\\' || c == '`' || c == '$')) {
+			escaped_character_count++;
+			continue;
+		}
+		if (!s_quoted && !d_quoted && needs_escaping(c))
+			escaped_character_count++;
+	}
+
+	newlen = original_len + escaped_character_count + 1;
+	if ((escaped_str = el_malloc(newlen)) == NULL)
+		return NULL;
+
+	for (s = filename; *s; s++) {
+		c = *s;
+		if (!needs_escaping(c)) {
+			/* no escaping is required continue as usual */
+			escaped_str[offset++] = c;
+			continue;
+		}
+
+		/* single quotes inside single quotes require special handling */
+		if (c == '\'' && s_quoted) {
+			escaped_str[offset++] = '\'';
+			escaped_str[offset++] = '\\';
+			escaped_str[offset++] = '\'';
+			escaped_str[offset++] = '\'';
+			continue;
+		}
+
+		/* Otherwise no escaping needed inside single quotes */
+		if (s_quoted) {
+			escaped_str[offset++] = c;
+			continue;
+		}
+
+		/* No escaping needed inside a double quoted string either
+		 * unless we see a '$', '\', '`', or '"' (itself)
+		 */
+		if (d_quoted && c != '"' && c != '$' && c != '\\' && c != '`') {
+			escaped_str[offset++] = c;
+			continue;
+		}
+
+		/* If we reach here that means escaping is actually needed */
+		escaped_str[offset++] = '\\';
+		escaped_str[offset++] = c;
+	}
+
+	/* close the quotes */
+	if (s_quoted)
+		escaped_str[offset++] = '\'';
+	else if (d_quoted)
+		escaped_str[offset++] = '"';
+
+	escaped_str[offset] = 0;
+	return escaped_str;
+}
 
 /*
  * return first found file name starting by the ``text'' or NULL if no
@@ -349,10 +479,13 @@ _fn_qsort_string_compare(const void *i1, const void *i2)
  * num, so the strings are matches[1] *through* matches[num-1].
  */
 void
-fn_display_match_list (EditLine *el, char **matches, size_t num, size_t width)
+fn_display_match_list(EditLine * el, char **matches, size_t num, size_t width,
+    const char *(*app_func) (const char *))
 {
 	size_t line, lines, col, cols, thisguy;
 	int screenwidth = el->el_terminal.t_size.h;
+	if (app_func == NULL)
+		app_func = append_char_function;
 
 	/* Ignore matches[0]. Avoid 1-based array logic below. */
 	matches++;
@@ -380,11 +513,58 @@ fn_display_match_list (EditLine *el, char **matches, size_t num, size_t width)
 			thisguy = line + col * lines;
 			if (thisguy >= num)
 				break;
-			(void)fprintf(el->el_outfile, "%s%-*s",
-			    col == 0 ? "" : " ", (int)width, matches[thisguy]);
+			(void)fprintf(el->el_outfile, "%s%s%s",
+			    col == 0 ? "" : " ", matches[thisguy],
+				append_char_function(matches[thisguy]));
+			(void)fprintf(el->el_outfile, "%-*s",
+				(int) (width - strlen(matches[thisguy])), "");
 		}
 		(void)fprintf(el->el_outfile, "\n");
 	}
+}
+
+static wchar_t *
+find_word_to_complete(const wchar_t * cursor, const wchar_t * buffer,
+    const wchar_t * word_break, const wchar_t * special_prefixes, size_t * length)
+{
+	/* We now look backwards for the start of a filename/variable word */
+	const wchar_t *ctemp = cursor;
+	int cursor_at_quote;
+	size_t len;
+	wchar_t *temp;
+
+	/* if the cursor is placed at a slash or a quote, we need to find the
+	 * word before it
+	 */
+	if (ctemp > buffer) {
+		switch (ctemp[-1]) {
+		case '\\':
+		case '\'':
+		case '"':
+			cursor_at_quote = 1;
+			ctemp--;
+			break;
+		default:
+			cursor_at_quote = 0;
+		}
+	} else
+		cursor_at_quote = 0;
+
+	while (ctemp > buffer
+	    && !wcschr(word_break, ctemp[-1])
+	    && (!special_prefixes || !wcschr(special_prefixes, ctemp[-1])))
+		ctemp--;
+
+	len = (size_t) (cursor - ctemp - cursor_at_quote);
+	temp = el_malloc((len + 1) * sizeof(*temp));
+	if (temp == NULL)
+		return NULL;
+	(void) wcsncpy(temp, ctemp, len);
+	temp[len] = '\0';
+	if (cursor_at_quote)
+		len++;
+	*length = len;
+	return temp;
 }
 
 /*
@@ -409,8 +589,7 @@ fn_complete(EditLine *el,
 {
 	const LineInfoW *li;
 	wchar_t *temp;
-        char **matches;
-	const wchar_t *ctemp;
+	char **matches;
 	size_t len;
 	int what_to_do = '\t';
 	int retval = CC_NORM;
@@ -427,18 +606,11 @@ fn_complete(EditLine *el,
 	if (!app_func)
 		app_func = append_char_function;
 
-	/* We now look backwards for the start of a filename/variable word */
 	li = el_wline(el);
-	ctemp = li->cursor;
-	while (ctemp > li->buffer
-	    && !wcschr(word_break, ctemp[-1])
-	    && (!special_prefixes || !wcschr(special_prefixes, ctemp[-1]) ) )
-		ctemp--;
-
-	len = (size_t)(li->cursor - ctemp);
-	temp = el_malloc((len + 1) * sizeof(*temp));
-	(void)wcsncpy(temp, ctemp, len);
-	temp[len] = '\0';
+	temp = find_word_to_complete(li->cursor,
+	    li->buffer, word_break, special_prefixes, &len);
+	if (temp == NULL)
+		goto out;
 
 	/* these can be used by function called in completion_matches() */
 	/* or (*attempted_completion_function)() */
@@ -465,30 +637,40 @@ fn_complete(EditLine *el,
 	if (matches) {
 		int i;
 		size_t matches_num, maxlen, match_len, match_display=1;
+		int single_match = matches[2] == NULL &&
+			(matches[1] == NULL || strcmp(matches[0], matches[1]) == 0);
 
 		retval = CC_REFRESH;
-		/*
-		 * Only replace the completed string with common part of
-		 * possible matches if there is possible completion.
-		 */
+
 		if (matches[0][0] != '\0') {
 			el_deletestr(el, (int) len);
-			el_winsertstr(el,
-			    ct_decode_string(matches[0], &el->el_scratch));
+			if (single_match) {
+				/*
+				 * We found exact match. Add a space after
+				 * it, unless we do filename completion and the
+				 * object is a directory. Also do necessary escape quoting
+				 */
+				char *escaped_completion = escape_filename(el, matches[0]);
+				if (escaped_completion == NULL)
+					goto out;
+				el_winsertstr(el,
+					ct_decode_string(escaped_completion, &el->el_scratch));
+				el_winsertstr(el,
+						ct_decode_string((*app_func)(escaped_completion),
+							&el->el_scratch));
+				free(escaped_completion);
+			} else {
+				/*
+				 * Only replace the completed string with common part of
+				 * possible matches if there is possible completion.
+				 */
+				el_winsertstr(el,
+					ct_decode_string(matches[0], &el->el_scratch));
+			}
 		}
 
 
-		if (matches[2] == NULL &&
-		    (matches[1] == NULL || strcmp(matches[0], matches[1]) == 0)) {
-			/*
-			 * We found exact match. Add a space after
-			 * it, unless we do filename completion and the
-			 * object is a directory.
-			 */
-			el_winsertstr(el,
-			    ct_decode_string((*app_func)(matches[0]),
-			    &el->el_scratch));
-		} else if (what_to_do == '!' || what_to_do == '?') {
+		if (!single_match && (what_to_do == '!' || what_to_do == '?')) {
 			/*
 			 * More than one match and requested to list possible
 			 * matches.
@@ -528,7 +710,7 @@ fn_complete(EditLine *el,
 				 * add 1 to matches_num for the call.
 				 */
 				fn_display_match_list(el, matches,
-				    matches_num+1, maxlen);
+				    matches_num+1, maxlen, app_func);
 			}
 			retval = CC_REDISPLAY;
 		} else if (matches[0][0]) {
@@ -551,6 +733,8 @@ fn_complete(EditLine *el,
 		el_free(matches);
 		matches = NULL;
 	}
+
+out:
 	el_free(temp);
 	return retval;
 }

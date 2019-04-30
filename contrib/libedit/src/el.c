@@ -1,4 +1,4 @@
-/*	$NetBSD: el.c,v 1.92 2016/05/22 19:44:26 christos Exp $	*/
+/*	$NetBSD: el.c,v 1.97 2018/11/18 17:09:39 christos Exp $	*/
 
 /*-
  * Copyright (c) 1992, 1993
@@ -37,7 +37,7 @@
 #if 0
 static char sccsid[] = "@(#)el.c	8.2 (Berkeley) 1/3/94";
 #else
-__RCSID("$NetBSD: el.c,v 1.92 2016/05/22 19:44:26 christos Exp $");
+__RCSID("$NetBSD: el.c,v 1.97 2018/11/18 17:09:39 christos Exp $");
 #endif
 #endif /* not lint && not SCCSID */
 
@@ -94,9 +94,9 @@ el_init(const char *prog, FILE *fin, FILE *fout, FILE *ferr)
 	fileno(ferr));
 }
 
-EditLine *
-el_init_fd(const char *prog, FILE *fin, FILE *fout, FILE *ferr,
-    int fdin, int fdout, int fderr)
+libedit_private EditLine *
+el_init_internal(const char *prog, FILE *fin, FILE *fout, FILE *ferr,
+    int fdin, int fdout, int fderr, int flags)
 {
 	EditLine *el = el_malloc(sizeof(*el));
 
@@ -122,11 +122,7 @@ el_init_fd(const char *prog, FILE *fin, FILE *fout, FILE *ferr,
 	/*
          * Initialize all the modules. Order is important!!!
          */
-	el->el_flags = 0;
-	if (setlocale(LC_CTYPE, NULL) != NULL){
-		if (strcmp(nl_langinfo(CODESET), "UTF-8") == 0)
-			el->el_flags |= CHARSET_IS_UTF8;
-	}
+	el->el_flags = flags;
 
 	if (terminal_init(el) == -1) {
 		el_free(el->el_prog);
@@ -142,6 +138,7 @@ el_init_fd(const char *prog, FILE *fin, FILE *fout, FILE *ferr,
 	(void) hist_init(el);
 	(void) prompt_init(el);
 	(void) sig_init(el);
+	(void) literal_init(el);
 	if (read_init(el) == -1) {
 		el_end(el);
 		return NULL;
@@ -149,6 +146,12 @@ el_init_fd(const char *prog, FILE *fin, FILE *fout, FILE *ferr,
 	return el;
 }
 
+EditLine *
+el_init_fd(const char *prog, FILE *fin, FILE *fout, FILE *ferr,
+    int fdin, int fdout, int fderr)
+{
+	return el_init_internal(prog, fin, fout, ferr, fdin, fdout, fderr, 0);
+}
 
 /* el_end():
  *	Clean up.
@@ -166,13 +169,14 @@ el_end(EditLine *el)
 	keymacro_end(el);
 	map_end(el);
 	if (!(el->el_flags & NO_TTY))
-		tty_end(el);
+		tty_end(el, TCSAFLUSH);
 	ch_end(el);
 	read_end(el->el_read);
 	search_end(el);
 	hist_end(el);
 	prompt_end(el);
 	sig_end(el);
+	literal_end(el);
 
 	el_free(el->el_prog);
 	el_free(el->el_visual.cbuff);
@@ -320,7 +324,7 @@ el_wset(EditLine *el, int op, ...)
 		void *ptr = va_arg(ap, void *);
 
 		rv = hist_set(el, func, ptr);
-		if (!(el->el_flags & CHARSET_IS_UTF8))
+		if (MB_CUR_MAX == 1)
 			el->el_flags &= ~NARROW_HISTORY;
 		break;
 	}
@@ -550,17 +554,35 @@ el_source(EditLine *el, const char *fname)
 
 	fp = NULL;
 	if (fname == NULL) {
-		static const char elpath[] = "/.editrc";
-		size_t plen = sizeof(elpath);
+#ifdef HAVE_ISSETUGID
+		if (issetugid())
+			return -1;
 
-		if ((ptr = secure_getenv("HOME")) == NULL)
-			return -1;
-		plen += strlen(ptr);
-		if ((path = el_malloc(plen * sizeof(*path))) == NULL)
-			return -1;
-		(void)snprintf(path, plen, "%s%s", ptr, elpath);
-		fname = path;
+		if ((fname = getenv("EDITRC")) == NULL) {
+			static const char elpath[] = "/.editrc";
+			size_t plen = sizeof(elpath);
+
+			if ((ptr = getenv("HOME")) == NULL)
+				return -1;
+			plen += strlen(ptr);
+			if ((path = el_malloc(plen * sizeof(*path))) == NULL)
+				return -1;
+			(void)snprintf(path, plen, "%s%s", ptr,
+				elpath + (*ptr == '\0'));
+			fname = path;
+		}
+#else
+		/*
+		 * If issetugid() is missing, always return an error, in order
+		 * to keep from inadvertently opening up the user to a security
+		 * hole.
+		 */
+		return -1;
+#endif
 	}
+	if (fname[0] == '\0')
+		return -1;
+
 	if (fp == NULL)
 		fp = fopen(fname, "r");
 	if (fp == NULL) {

@@ -1,4 +1,4 @@
-/*	$NetBSD: history.c,v 1.57 2016/04/11 18:56:31 christos Exp $	*/
+/*	$NetBSD: history.c,v 1.62 2018/09/13 09:03:40 kre Exp $	*/
 
 /*-
  * Copyright (c) 1992, 1993
@@ -40,7 +40,7 @@
 #if 0
 static char sccsid[] = "@(#)history.c	8.1 (Berkeley) 6/4/93";
 #else
-__RCSID("$NetBSD: history.c,v 1.57 2016/04/11 18:56:31 christos Exp $");
+__RCSID("$NetBSD: history.c,v 1.62 2018/09/13 09:03:40 kre Exp $");
 #endif
 #endif /* not lint && not SCCSID */
 
@@ -143,7 +143,7 @@ static int history_getunique(TYPE(History) *, TYPE(HistEvent) *);
 static int history_set_fun(TYPE(History) *, TYPE(History) *);
 static int history_load(TYPE(History) *, const char *);
 static int history_save(TYPE(History) *, const char *);
-static int history_save_fp(TYPE(History) *, FILE *);
+static int history_save_fp(TYPE(History) *, size_t, FILE *);
 static int history_prev_event(TYPE(History) *, TYPE(HistEvent) *, int);
 static int history_next_event(TYPE(History) *, TYPE(HistEvent) *, int);
 static int history_next_string(TYPE(History) *, TYPE(HistEvent) *,
@@ -778,6 +778,7 @@ history_load(TYPE(History) *h, const char *fname)
 	char *ptr;
 	int i = -1;
 	TYPE(HistEvent) ev;
+	Char *decode_result;
 #ifndef NARROWCHAR
 	static ct_buffer_t conv;
 #endif
@@ -810,7 +811,10 @@ history_load(TYPE(History) *h, const char *fname)
 			ptr = nptr;
 		}
 		(void) strunvis(ptr, line);
-		if (HENTER(h, &ev, ct_decode_string(ptr, &conv)) == -1) {
+		decode_result = ct_decode_string(ptr, &conv);
+		if (decode_result == NULL)
+			continue;
+		if (HENTER(h, &ev, decode_result) == -1) {
 			i = -1;
 			goto oomem;
 		}
@@ -828,7 +832,7 @@ done:
  *	TYPE(History) save function
  */
 static int
-history_save_fp(TYPE(History) *h, FILE *fp)
+history_save_fp(TYPE(History) *h, size_t nelem, FILE *fp)
 {
 	TYPE(HistEvent) ev;
 	int i = -1, retval;
@@ -841,14 +845,22 @@ history_save_fp(TYPE(History) *h, FILE *fp)
 
 	if (fchmod(fileno(fp), S_IRUSR|S_IWUSR) == -1)
 		goto done;
-	if (fputs(hist_cookie, fp) == EOF)
+	if (ftell(fp) == 0 && fputs(hist_cookie, fp) == EOF)
 		goto done;
 	ptr = h_malloc((max_size = 1024) * sizeof(*ptr));
 	if (ptr == NULL)
 		goto done;
-	for (i = 0, retval = HLAST(h, &ev);
-	    retval != -1;
-	    retval = HPREV(h, &ev), i++) {
+	if (nelem != (size_t)-1) {
+		for (retval = HFIRST(h, &ev); retval != -1 && nelem-- > 0;
+		    retval = HNEXT(h, &ev))
+			continue;
+	} else
+		retval = -1;
+
+	if (retval == -1)
+		retval = HLAST(h, &ev);
+
+	for (i = 0; retval != -1; retval = HPREV(h, &ev), i++) {
 		str = ct_encode_string(ev.str, &conv);
 		len = strlen(str) * 4 + 1;
 		if (len > max_size) {
@@ -883,7 +895,7 @@ history_save(TYPE(History) *h, const char *fname)
     if ((fp = fopen(fname, "w")) == NULL)
 	return -1;
 
-    i = history_save_fp(h, fp);
+    i = history_save_fp(h, (size_t)-1, fp);
 
     (void) fclose(fp);
     return i;
@@ -1071,10 +1083,19 @@ FUNW(history)(TYPE(History) *h, TYPE(HistEvent) *ev, int fun, ...)
 		break;
 
 	case H_SAVE_FP:
-		retval = history_save_fp(h, va_arg(va, FILE *));
+		retval = history_save_fp(h, (size_t)-1, va_arg(va, FILE *));
 		if (retval == -1)
 		    he_seterrev(ev, _HE_HIST_WRITE);
 		break;
+
+	case H_NSAVE_FP:
+	{
+		size_t sz = va_arg(va, size_t);
+		retval = history_save_fp(h, sz, va_arg(va, FILE *));
+		if (retval == -1)
+		    he_seterrev(ev, _HE_HIST_WRITE);
+		break;
+	}
 
 	case H_PREV_EVENT:
 		retval = history_prev_event(h, ev, va_arg(va, int));

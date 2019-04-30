@@ -1,4 +1,4 @@
-/*	$NetBSD: readline.c,v 1.140 2017/01/09 03:09:05 christos Exp $	*/
+/*	$NetBSD: readline.c,v 1.151 2019/02/15 23:20:35 christos Exp $	*/
 
 /*-
  * Copyright (c) 1997 The NetBSD Foundation, Inc.
@@ -31,7 +31,7 @@
 
 #include "config.h"
 #if !defined(lint) && !defined(SCCSID)
-__RCSID("$NetBSD: readline.c,v 1.140 2017/01/09 03:09:05 christos Exp $");
+__RCSID("$NetBSD: readline.c,v 1.151 2019/02/15 23:20:35 christos Exp $");
 #endif /* not lint && not SCCSID */
 
 #include <sys/types.h>
@@ -76,7 +76,7 @@ static char empty[] = { '\0' };
 static char expand_chars[] = { ' ', '\t', '\n', '=', '(', '\0' };
 static char break_chars[] = { ' ', '\t', '\n', '"', '\\', '\'', '`', '@', '$',
     '>', '<', '=', ';', '|', '&', '{', '(', '\0' };
-char *rl_readline_name = empty;
+const char *rl_readline_name = empty;
 FILE *rl_instream = NULL;
 FILE *rl_outstream = NULL;
 int rl_point = 0;
@@ -84,7 +84,7 @@ int rl_end = 0;
 char *rl_line_buffer = NULL;
 rl_vcpfunc_t *rl_linefunc = NULL;
 int rl_done = 0;
-VFunction *rl_event_hook = NULL;
+rl_hook_func_t *rl_event_hook = NULL;
 KEYMAP_ENTRY_ARRAY emacs_standard_keymap,
     emacs_meta_keymap,
     emacs_ctlx_keymap;
@@ -109,7 +109,7 @@ char *history_arg_extract(int start, int end, const char *str);
 
 int rl_inhibit_completion = 0;
 int rl_attempted_completion_over = 0;
-char *rl_basic_word_break_characters = break_chars;
+const char *rl_basic_word_break_characters = break_chars;
 char *rl_completer_word_break_characters = NULL;
 char *rl_completer_quote_characters = NULL;
 rl_compentry_func_t *rl_completion_entry_function = NULL;
@@ -126,6 +126,7 @@ int readline_echoing_p = 1;
 int _rl_print_completions_horizontally = 0;
 VFunction *rl_redisplay_function = NULL;
 Function *rl_startup_hook = NULL;
+int rl_did_startup_hook = 0;
 VFunction *rl_completion_display_matches_hook = NULL;
 VFunction *rl_prep_term_function = (VFunction *)rl_prep_terminal;
 VFunction *rl_deprep_term_function = (VFunction *)rl_deprep_terminal;
@@ -153,7 +154,7 @@ int rl_completion_query_items = 100;
  * in the parsed text when it is passed to the completion function.
  * Shell uses this to help determine what kind of completing to do.
  */
-char *rl_special_prefixes = NULL;
+const char *rl_special_prefixes = NULL;
 
 /*
  * This is the character appended to the completed words if at the end of
@@ -293,7 +294,9 @@ rl_initialize(void)
 	if (tcgetattr(fileno(rl_instream), &t) != -1 && (t.c_lflag & ECHO) == 0)
 		editmode = 0;
 
-	e = el_init(rl_readline_name, rl_instream, rl_outstream, stderr);
+	e = el_init_internal(rl_readline_name, rl_instream, rl_outstream,
+	    stderr, fileno(rl_instream), fileno(rl_outstream), fileno(stderr),
+	    NO_RESET);
 
 	if (!editmode)
 		el_set(e, EL_EDITMODE, 0);
@@ -320,7 +323,7 @@ rl_initialize(void)
 		el_end(e);
 		return -1;
 	}
-	el_set(e, EL_PROMPT, _get_prompt, RL_PROMPT_START_IGNORE);
+	el_set(e, EL_PROMPT_ESC, _get_prompt, RL_PROMPT_START_IGNORE);
 	el_set(e, EL_SIGNAL, rl_catch_signals);
 
 	/* set default mode to "emacs"-style and read setting afterwards */
@@ -389,8 +392,7 @@ rl_initialize(void)
 	_resize_fun(e, &rl_line_buffer);
 	_rl_update_pos();
 
-	if (rl_startup_hook)
-		(*rl_startup_hook)(NULL, 0);
+	tty_end(e, TCSADRAIN);
 
 	return 0;
 }
@@ -412,19 +414,26 @@ readline(const char *p)
 
 	if (e == NULL || h == NULL)
 		rl_initialize();
+	if (rl_did_startup_hook == 0 && rl_startup_hook) {
+		rl_did_startup_hook = 1;
+		(*rl_startup_hook)(NULL, 0);
+	}
+	tty_init(e);
+
 
 	rl_done = 0;
 
 	(void)setjmp(topbuf);
+	buf = NULL;
 
 	/* update prompt accordingly to what has been passed */
 	if (rl_set_prompt(prompt) == -1)
-		return NULL;
+		goto out;
 
 	if (rl_pre_input_hook)
 		(*rl_pre_input_hook)(NULL, 0);
 
-	if (rl_event_hook && !(e->el_flags&NO_TTY)) {
+	if (rl_event_hook && !(e->el_flags & NO_TTY)) {
 		el_set(e, EL_GETCFN, _rl_event_read_char);
 		used_event_hook = 1;
 	}
@@ -444,7 +453,7 @@ readline(const char *p)
 
 		buf = strdup(ret);
 		if (buf == NULL)
-			return NULL;
+			goto out;
 		lastidx = count - 1;
 		if (buf[lastidx] == '\n')
 			buf[lastidx] = '\0';
@@ -454,6 +463,8 @@ readline(const char *p)
 	history(h, &ev, H_GETSIZE);
 	history_length = ev.num;
 
+out:
+	tty_end(e, TCSADRAIN);
 	return buf;
 }
 
@@ -1348,8 +1359,14 @@ read_history(const char *filename)
 		rl_initialize();
 	if (filename == NULL && (filename = _default_history_file()) == NULL)
 		return errno;
-	return history(h, &ev, H_LOAD, filename) == -1 ?
-	    (errno ? errno : EINVAL) : 0;
+	errno = 0;
+	if (history(h, &ev, H_LOAD, filename) == -1)
+	    return errno ? errno : EINVAL;
+	if (history(h, &ev, H_GETSIZE) == 0)
+		history_length = ev.num;
+	if (history_length < 0)
+		return EINVAL;
+	return 0;
 }
 
 
@@ -1369,6 +1386,28 @@ write_history(const char *filename)
 	    (errno ? errno : EINVAL) : 0;
 }
 
+int
+append_history(int n, const char *filename)
+{
+	HistEvent ev;
+	FILE *fp;
+
+	if (h == NULL || e == NULL)
+		rl_initialize();
+	if (filename == NULL && (filename = _default_history_file()) == NULL)
+		return errno;
+
+	if ((fp = fopen(filename, "a")) == NULL)
+		return errno;
+
+	if (history(h, &ev, H_NSAVE_FP, (size_t)n,  fp) == -1) {
+		int serrno = errno ? errno : EINVAL;
+		fclose(fp);
+		return serrno;
+	}
+	fclose(fp);
+	return 0;
+}
 
 /*
  * returns history ``num''th event
@@ -1555,7 +1594,7 @@ history_list(void)
 		return NULL;
 
 	if ((nlp = el_realloc(_history_listp,
-	    (size_t)history_length * sizeof(*nlp))) == NULL)
+	    ((size_t)history_length + 1) * sizeof(*nlp))) == NULL)
 		return NULL;
 	_history_listp = nlp;
 
@@ -1572,6 +1611,7 @@ history_list(void)
 		if (i++ == history_length)
 			abort();
 	} while (history(h, &ev, H_PREV) == 0);
+	_history_listp[i] = NULL;
 	return _history_listp;
 }
 
@@ -1808,18 +1848,6 @@ _el_rl_tstp(EditLine *el __attribute__((__unused__)), int ch __attribute__((__un
 	return CC_NORM;
 }
 
-/*
- * Display list of strings in columnar format on readline's output stream.
- * 'matches' is list of strings, 'len' is number of strings in 'matches',
- * 'max' is maximum length of string in 'matches'.
- */
-void
-rl_display_match_list(char **matches, int len, int max)
-{
-
-	fn_display_match_list(e, matches, (size_t)len, (size_t)max);
-}
-
 static const char *
 /*ARGSUSED*/
 _rl_completion_append_character_function(const char *dummy
@@ -1833,6 +1861,19 @@ _rl_completion_append_character_function(const char *dummy
 
 
 /*
+ * Display list of strings in columnar format on readline's output stream.
+ * 'matches' is list of strings, 'len' is number of strings in 'matches',
+ * 'max' is maximum length of string in 'matches'.
+ */
+void
+rl_display_match_list(char **matches, int len, int max)
+{
+
+	fn_display_match_list(e, matches, (size_t)len, (size_t)max,
+		_rl_completion_append_character_function);
+}
+
+/*
  * complete word at current point
  */
 /* ARGSUSED */
@@ -1840,7 +1881,7 @@ int
 rl_complete(int ignore __attribute__((__unused__)), int invoking_key)
 {
 	static ct_buffer_t wbreak_conv, sprefix_conv;
-	char *breakchars;
+	const char *breakchars;
 
 	if (h == NULL || e == NULL)
 		rl_initialize();
@@ -1926,13 +1967,14 @@ rl_read_key(void)
  * reset the terminal
  */
 /* ARGSUSED */
-void
+int
 rl_reset_terminal(const char *p __attribute__((__unused__)))
 {
 
 	if (h == NULL || e == NULL)
 		rl_initialize();
 	el_reset(e);
+	return 0;
 }
 
 
@@ -2030,8 +2072,8 @@ rl_callback_read_char(void)
 	if (done && rl_linefunc != NULL) {
 		el_set(e, EL_UNBUFFERED, 0);
 		if (done == 2) {
-		    if ((wbuf = strdup(buf)) != NULL)
-			wbuf[count] = '\0';
+			if ((wbuf = strdup(buf)) != NULL)
+				wbuf[count] = '\0';
 		} else
 			wbuf = NULL;
 		(*(void (*)(const char *))rl_linefunc)(wbuf);
@@ -2053,8 +2095,9 @@ rl_callback_handler_install(const char *prompt, rl_vcpfunc_t *linefunc)
 void
 rl_callback_handler_remove(void)
 {
-	el_set(e, EL_UNBUFFERED, 0);
 	rl_linefunc = NULL;
+	el_end(e);
+	e = NULL;
 }
 
 void
@@ -2120,7 +2163,7 @@ rl_variable_bind(const char *var, const char *value)
 	return el_set(e, EL_BIND, "", var, value, NULL) == -1 ? 1 : 0;
 }
 
-void
+int
 rl_stuff_char(int c)
 {
 	char buf[2];
@@ -2128,6 +2171,7 @@ rl_stuff_char(int c)
 	buf[0] = (char)c;
 	buf[1] = '\0';
 	el_insertstr(e, buf);
+	return 1;
 }
 
 static int
@@ -2363,4 +2407,26 @@ int
 rl_set_keyboard_input_timeout(int u __attribute__((__unused__)))
 {
 	return 0;
+}
+
+void
+rl_resize_terminal(void)
+{
+	el_resize(e);
+}
+
+void
+rl_reset_after_signal(void)
+{
+	if (rl_prep_term_function)
+		(*rl_prep_term_function)();
+}
+
+void
+rl_echo_signal_char(int sig)
+{
+	int c = tty_get_signal_character(e, sig);
+	if (c == -1)
+		return;
+	re_putc(e, c, 0);
 }
