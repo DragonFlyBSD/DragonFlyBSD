@@ -45,6 +45,7 @@ SRCS+=		chared.c \
 		history.c \
 		filecomplete.c \
 		readline.c \
+		literal.c \
 		eln.c
 
 SRCS+=		tokenizern.c historyn.c

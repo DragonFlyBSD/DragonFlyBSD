@@ -170,10 +170,18 @@ EDIT_121214 {
     rl_set_keyboard_input_timeout;
 };
 
+EDIT_121215 {
+    append_history;
+    rl_echo_signal_char;
+    rl_reset_after_signal;
+    rl_resize_terminal;
+};
+
 EDITprivate_1.0 {
     _el_fn_complete;
     _rl_abort_internal;
     _rl_print_completions_horizontally;
     _rl_qsort_string_compare;
+    rl_did_startup_hook;
     secure_getenv;
 };
