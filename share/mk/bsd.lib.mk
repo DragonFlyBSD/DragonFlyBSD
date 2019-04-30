@@ -38,7 +38,7 @@ TARGET_SHLIBDIR?=	${SHLIBDIR}
 TARGET_LIBDIR?=		${LIBDIR}/priv
 TARGET_DEBUGLIBDIR?=	${DEBUGLIBDIR:S!/debug$!/priv/debug!}
 TARGET_PROFLIBDIR?=	${PROFLIBDIR:S!/profile$!/priv/profile!}
-.if !emoty(PRIVATELIB) && ${PRIVATELIB} == "shpub"
+.if !empty(PRIVATELIB) && ${PRIVATELIB} == "shpub"
 TARGET_SHLIBDIR?=	${SHLIBDIR}
 . else
 TARGET_SHLIBDIR?=	${SHLIBDIR}/priv
