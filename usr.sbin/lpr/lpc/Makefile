@@ -5,14 +5,18 @@
 
 PROG=	lpc
 MAN=	lpc.8
-SRCS=	lpc.c cmds.c cmdtab.c movejobs.c 
+SRCS=	lpc.c cmds.c cmdtab.c movejobs.c
 BINGRP=	daemon
 BINMODE= 2555
 
 CFLAGS+= -I${.CURDIR}/../common_source
 
-DPADD=	${LIBLPR} ${LIBEDIT} ${LIBNCURSES}
-LDADD=	${LIBLPR} -lprivate_edit -lprivate_ncurses
+DPADD=	${LIBLPR}
+LDADD=	${LIBLPR}
+
+CFLAGS+=	${PRIVATELIB_CFLAGS}
+DPADD+=		${LIBEDIT} ${LIBNCURSES}
+LDADD+=		-lprivate_edit -lprivate_ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

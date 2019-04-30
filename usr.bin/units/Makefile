@@ -6,8 +6,9 @@ FILES=	units.lib
 FILESDIR=	${SHAREDIR}/misc
 .endif
 
-LDADD+=	-lprivate_edit -lprivate_ncurses
-DPADD+=	${LIBEDIT} ${LIBNCURSES}
+CFLAGS+=	${PRIVATELIB_CFLAGS}
+DPADD+=		${LIBEDIT} ${LIBNCURSES}
+LDADD+=		-lprivate_edit -lprivate_ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

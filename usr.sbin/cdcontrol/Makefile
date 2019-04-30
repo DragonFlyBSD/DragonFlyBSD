@@ -2,8 +2,9 @@
 
 PROG= cdcontrol
 
-DPADD=	${LIBEDIT} ${LIBNCURSES}
-LDADD=	-lprivate_edit -lprivate_ncurses
+CFLAGS+=	${PRIVATELIB_CFLAGS}
+DPADD+=		${LIBEDIT} ${LIBNCURSES}
+LDADD+=		-lprivate_edit -lprivate_ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

@@ -5,11 +5,14 @@ SRCS=	v.c list.c vinumparser.c vinumutil.c vext.h commands.c
 MAN=	vinum.8
 WARNS?=	2
 
-CFLAGS+=	-I${.CURDIR}/../../lib/libedit -I${.CURDIR}/../../sys
-DPADD=		${LIBEDIT} ${LIBNCURSES} ${LIBDEVSTAT}
-LDADD=		-lprivate_edit -lprivate_ncurses -ldevstat
+# for <dev/raid/vinum/vinumhdr.h>
+CFLAGS+=	-I${.CURDIR}/../../sys
+DPADD=		${LIBDEVSTAT}
+LDADD=		-ldevstat
 
-CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv
+CFLAGS+=	${PRIVATELIB_CFLAGS}
+DPADD+=		${LIBEDIT} ${LIBNCURSES}
+LDADD+=		-lprivate_edit -lprivate_ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

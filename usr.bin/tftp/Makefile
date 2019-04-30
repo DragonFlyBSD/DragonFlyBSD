@@ -2,9 +2,12 @@
 
 PROG=	tftp
 SRCS=	main.c tftp.c tftpsubs.c
-DPADD=	${LIBEDIT} ${LIBNCURSES}
-LDADD=	-lprivate_edit -lprivate_ncurses
-LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+
 NO_WARRAY_BOUNDS=
+
+CFLAGS+=	${PRIVATELIB_CFLAGS}
+DPADD+=		${LIBEDIT} ${LIBNCURSES}
+LDADD+=		-lprivate_edit -lprivate_ncurses
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

@@ -3,8 +3,10 @@
 PROG=	pppctl
 MAN=	pppctl.8
 WARNS?=	2
-LDADD+= -lprivate_edit -lprivate_ncurses
-DPADD+= ${LIBEDIT} ${LIBNCURSES}
+
+CFLAGS+=	${PRIVATELIB_CFLAGS}
+DPADD+=		${LIBEDIT} ${LIBNCURSES}
+LDADD+=		-lprivate_edit -lprivate_ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
 .include <bsd.prog.mk>

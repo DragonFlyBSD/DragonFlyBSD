@@ -34,9 +34,10 @@ CFLAGS+=	-Wno-stack-protector
 # Do not build readline support for the rescue version.
 #
 .if !defined(RESCUE)
-CFLAGS+=	-DREADLINE_SUPPORT -I${_SHLIBDIRPREFIX}/usr/include/priv
-LDADD+=		-lprivate_edit -lprivate_ncurses
+CFLAGS+=	-DREADLINE_SUPPORT
+CFLAGS+=	${PRIVATELIB_CFLAGS}
 DPADD+=		${LIBEDIT} ${LIBNCURSES}
+LDADD+=		-lprivate_edit -lprivate_ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 .endif
 

@@ -7,10 +7,14 @@ SRCS+=	progressmeter.c sftp-client.c sftp-common.c sftp-glob.c
 WARNS?=	3
 
 CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${.CURDIR}/../../crypto/openssh
-CFLAGS+=	-I${.CURDIR}/../../crypto/libressl/include
 
-DPADD=	${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ} ${LIBEDIT} ${LIBNCURSES}
-LDADD=	-lprivate_ssh -lprivate_crypto -lutil -lz -lprivate_edit -lprivate_ncurses
-LDFLAGS+=	-rpath /usr/lib/priv ${PRIVATELIB_LDFLAGS}
+DPADD=		${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ}
+LDADD=		-lprivate_ssh -lprivate_crypto -lutil -lz
+
+CFLAGS+=	${PRIVATELIB_CFLAGS}
+LDFLAGS+=	${PRIVATELIB_LDFLAGS}
+
+DPADD+=		${LIBEDIT} ${LIBNCURSES}
+LDADD+=		-lprivate_edit -lprivate_ncurses
 
 .include <bsd.prog.mk>

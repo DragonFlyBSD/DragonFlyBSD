@@ -20,13 +20,19 @@ CFLAGS+=-I${.CURDIR} -I${.OBJDIR} -I${CONTRIBDIR} \
 # Avoid symbol conflict with ncurses(lib_trace.c:void trace(unsigned))
 CFLAGS+=-Dtrace=ftp_trace
 
-LDADD=	-lprivate_edit -lprivate_ncurses -lutil
-DPADD=	${LIBEDIT} ${LIBNCURSES} ${LIBUTIL}
+LDADD=	-lutil
+DPADD=	${LIBUTIL}
 
+# for <termcap.h>
 CFLAGS+=	-I${_SHLIBDIRPREFIX}/usr/include/priv/ncurses
+
+LDADD+=		-lprivate_edit -lprivate_ncurses
+DPADD+=		${LIBEDIT} ${LIBNCURSES}
+
+CFLAGS+=	${PRIVATELIB_CFLAGS}
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
 
-CFLAGS+=	-DWITH_SSL -I${.CURDIR}/../../crypto/libressl/include
+CFLAGS+=	-DWITH_SSL
 LDADD+=		-lprivate_ssl -lprivate_crypto
 DPADD+=		${LIBSSL} ${LIBCRYPTO}
 

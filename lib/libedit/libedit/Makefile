@@ -48,6 +48,7 @@ SRCS+=		common.h emacs.h fcns.h help.h vi.h
 SRCS+=		fcns.c help.c tokenizern.c historyn.c
 
 INCS=		histedit.h
+INCSDIR=	${INCLUDEDIR}/priv
 
 MAN=		editrc.5
 

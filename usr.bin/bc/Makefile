@@ -5,6 +5,7 @@ SRCS=		bc.y scan.l tty.c y.tab.h
 CFLAGS+=	-I. -I${.CURDIR}
 WARNS?=		3
 
+CFLAGS+=	${PRIVATELIB_CFLAGS}
 DPADD=		${LIBEDIT} ${LIBNCURSES}
 LDADD=		-lprivate_edit -lprivate_ncurses
 LDFLAGS+=	${PRIVATELIB_LDFLAGS}
