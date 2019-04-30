@@ -1,4 +1,4 @@
-/*	$NetBSD: refresh.c,v 1.51 2016/05/09 21:46:56 christos Exp $	*/
+/*	$NetBSD: refresh.c,v 1.56 2019/01/04 03:03:44 uwe Exp $	*/
 
 /*-
  * Copyright (c) 1992, 1993
@@ -37,7 +37,7 @@
 #if 0
 static char sccsid[] = "@(#)refresh.c	8.1 (Berkeley) 6/4/93";
 #else
-__RCSID("$NetBSD: refresh.c,v 1.51 2016/05/09 21:46:56 christos Exp $");
+__RCSID("$NetBSD: refresh.c,v 1.56 2019/01/04 03:03:44 uwe Exp $");
 #endif
 #endif /* not lint && not SCCSID */
 
@@ -155,6 +155,35 @@ re_addc(EditLine *el, wint_t c)
 	}
 }
 
+/* re_putliteral():
+ *	Place the literal string given
+ */
+libedit_private void
+re_putliteral(EditLine *el, const wchar_t *begin, const wchar_t *end)
+{
+	coord_t *cur = &el->el_refresh.r_cursor;
+	wint_t c;
+	int sizeh = el->el_terminal.t_size.h;
+	int i, w;
+
+	c = literal_add(el, begin, end, &w);
+	if (c == 0 || w <= 0)
+		return;
+	el->el_vdisplay[cur->v][cur->h] = c;
+
+	i = w;
+	if (i > sizeh - cur->h)		/* avoid overflow */
+		i = sizeh - cur->h;
+	while (--i > 0)
+		el->el_vdisplay[cur->v][cur->h + i] = MB_FILL_CHAR;
+
+	cur->h += w;
+	if (cur->h >= sizeh) {
+		/* assure end of line */
+		el->el_vdisplay[cur->v][sizeh] = '\0';
+		re_nextline(el);
+	}
+}
 
 /* re_putc():
  *	Draw the character given
@@ -162,30 +191,30 @@ re_addc(EditLine *el, wint_t c)
 libedit_private void
 re_putc(EditLine *el, wint_t c, int shift)
 {
+	coord_t *cur = &el->el_refresh.r_cursor;
 	int i, w = wcwidth(c);
+	int sizeh = el->el_terminal.t_size.h;
+
 	ELRE_DEBUG(1, (__F, "printing %5x '%lc'\r\n", c, c));
 	if (w == -1)
 		w = 0;
 
-	while (shift && (el->el_refresh.r_cursor.h + w > el->el_terminal.t_size.h))
+	while (shift && (cur->h + w > sizeh))
 	    re_putc(el, ' ', 1);
 
-	el->el_vdisplay[el->el_refresh.r_cursor.v]
-	    [el->el_refresh.r_cursor.h] = c;
+	el->el_vdisplay[cur->v][cur->h] = c;
 	/* assumes !shift is only used for single-column chars */
 	i = w;
 	while (--i > 0)
-		el->el_vdisplay[el->el_refresh.r_cursor.v]
-		    [el->el_refresh.r_cursor.h + i] = MB_FILL_CHAR;
+		el->el_vdisplay[cur->v][cur->h + i] = MB_FILL_CHAR;
 
 	if (!shift)
 		return;
 
-	el->el_refresh.r_cursor.h += w;	/* advance to next place */
-	if (el->el_refresh.r_cursor.h >= el->el_terminal.t_size.h) {
+	cur->h += w;	/* advance to next place */
+	if (cur->h >= sizeh) {
 		/* assure end of line */
-		el->el_vdisplay[el->el_refresh.r_cursor.v][el->el_terminal.t_size.h]
-		    = '\0';
+		el->el_vdisplay[cur->v][sizeh] = '\0';
 		re_nextline(el);
 	}
 }
@@ -210,9 +239,12 @@ re_refresh(EditLine *el)
 	ELRE_DEBUG(1, (__F, "el->el_line.buffer = :%ls:\r\n",
 	    el->el_line.buffer));
 
+	literal_clear(el);
 	/* reset the Drawing cursor */
 	el->el_refresh.r_cursor.h = 0;
 	el->el_refresh.r_cursor.v = 0;
+
+	terminal_move_to_char(el, 0);
 
 	/* temporarily draw rprompt to calculate its size */
 	prompt_print(el, EL_RPROMPT);
@@ -1058,7 +1090,10 @@ re_refresh_cursor(EditLine *el)
 static void
 re_fastputc(EditLine *el, wint_t c)
 {
-	int w = wcwidth(c);
+	wchar_t *lastline;
+	int w;
+
+	w = wcwidth(c);
 	while (w > 1 && el->el_cursor.h + w > el->el_terminal.t_size.h)
 	    re_fastputc(el, ' ');
 
@@ -1080,17 +1115,18 @@ re_fastputc(EditLine *el, wint_t c)
 		 */
 		if (el->el_cursor.v + 1 >= el->el_terminal.t_size.v) {
 			int i, lins = el->el_terminal.t_size.v;
-			wchar_t *firstline = el->el_display[0];
 
+			lastline = el->el_display[0];
 			for(i = 1; i < lins; i++)
 				el->el_display[i - 1] = el->el_display[i];
 
-			re__copy_and_pad(firstline, L"", (size_t)0);
-			el->el_display[i - 1] = firstline;
+			el->el_display[i - 1] = lastline;
 		} else {
 			el->el_cursor.v++;
-			el->el_refresh.r_oldcv++;
+			lastline = el->el_display[++el->el_refresh.r_oldcv];
 		}
+		re__copy_and_pad(lastline, L"", (size_t)el->el_terminal.t_size.h);
+
 		if (EL_HAS_AUTO_MARGINS) {
 			if (EL_HAS_MAGIC_MARGINS) {
 				terminal__putc(el, ' ');
