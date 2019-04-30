@@ -75,8 +75,6 @@ extern struct lwkt_token pf_gtoken;
 #define RT_NUMFIBS		1
 #define ALTQ_IS_ENABLED(ifq)	((ifq)->altq_flags & ALTQF_ENABLED)
 
-MALLOC_DECLARE(M_PF);
-
 #define PF_MD5_DIGEST_LENGTH	16
 #ifdef MD5_DIGEST_LENGTH
 #if PF_MD5_DIGEST_LENGTH != MD5_DIGEST_LENGTH
@@ -201,6 +199,8 @@ struct pf_addr_wrap {
 };
 
 #ifdef _KERNEL
+
+MALLOC_DECLARE(M_PF);
 
 struct pfi_dynaddr {
 	TAILQ_ENTRY(pfi_dynaddr)	 entry;
