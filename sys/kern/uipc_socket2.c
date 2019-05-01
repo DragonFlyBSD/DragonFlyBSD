@@ -78,6 +78,16 @@ u_long	sb_max_adj =
 
 static	u_long sb_efficiency = 8;	/* parameter for sbreserve() */
 
+SYSCTL_NODE(_kern, KERN_IPC, ipc, CTLFLAG_RW, 0, "IPC");
+
+/*
+ * soacceptreuse allows bind() a local port (e.g. for listen() purposes)
+ * to ignore any connections still accepted from a prior listen().
+ */
+static int soacceptreuse = 1;
+SYSCTL_INT(_kern_ipc, OID_AUTO, soaccept_reuse, CTLFLAG_RW,
+    &soacceptreuse, 0, "Allow quick reuse of local port");
+
 /************************************************************************
  * signalsockbuf procedures						*
  ************************************************************************/
@@ -441,6 +451,8 @@ sonewconn_faddr(struct socket *head, int connstatus,
 		 * Set connstatus within head token, so that the accepted
 		 * socket will have connstatus (SS_ISCONNECTED) set.
 		 */
+		if (soacceptreuse)
+			connstatus |= SS_ACCEPTMECH;
 		sosetstate(so, SS_COMP | connstatus);
 	} else {
 		if (head->so_incqlen > head->so_qlimit) {
@@ -455,7 +467,7 @@ sonewconn_faddr(struct socket *head, int connstatus,
 		KKASSERT((so->so_state & (SS_INCOMP | SS_COMP)) == 0);
 		TAILQ_INSERT_TAIL(&head->so_incomp, so, so_list);
 		head->so_incqlen++;
-		sosetstate(so, SS_INCOMP);
+		sosetstate(so, SS_INCOMP | SS_ACCEPTMECH);
 	}
 	/*
 	 * Clear SS_ASSERTINPROG within head token, so that it will not
@@ -821,12 +833,6 @@ sotoxsocket(struct socket *so, struct xsocket *xso)
 	ssbtoxsockbuf(&so->so_rcv, &xso->so_rcv);
 	xso->so_uid = so->so_cred->cr_uid;
 }
-
-/*
- * Here is the definition of some of the basic objects in the kern.ipc
- * branch of the MIB.
- */
-SYSCTL_NODE(_kern, KERN_IPC, ipc, CTLFLAG_RW, 0, "IPC");
 
 /*
  * This takes the place of kern.maxsockbuf, which moved to kern.ipc.

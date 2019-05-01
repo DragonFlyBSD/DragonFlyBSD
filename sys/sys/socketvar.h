@@ -196,6 +196,7 @@ struct socket {
 #define	SS_INCOMP		0x0800	/* unaccepted, incomplete connection */
 #define	SS_COMP			0x1000	/* unaccepted, complete connection */
 #define	SS_ISDISCONNECTED	0x2000	/* socket disconnected from peer */
+#define	SS_ACCEPTMECH		0x4000	/* allow bind override vs accepted */
 
 /*
  * Externalized form of struct socket used by the sysctl(3) interface.

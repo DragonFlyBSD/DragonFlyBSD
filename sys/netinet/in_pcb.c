@@ -557,7 +557,7 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		if (so->so_cred->cr_uid != 0 &&
 		    !IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
 			t = in_pcblookup_local(porthash, sin->sin_addr, lport,
-			    INPLOOKUP_WILDCARD, cred);
+					       INPLOOKUP_WILDCARD, cred);
 			if (t &&
 			    (so->so_cred->cr_uid !=
 			     t->inp_socket->so_cred->cr_uid)) {
@@ -571,9 +571,18 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			error = EADDRNOTAVAIL;
 			goto done;
 		}
+
+		/*
+		 * When binding to a local port if the best match is against
+		 * an accepted socket we generally want to allow the binding.
+		 * This means that there is no longer any specific socket
+		 * bound or bound for listening.
+		 */
 		t = in_pcblookup_local(porthash, sin->sin_addr, lport,
-		    wild, cred);
-		if (t && !(reuseport & t->inp_socket->so_options)) {
+				       wild, cred);
+		if (t &&
+		    (reuseport & t->inp_socket->so_options) == 0 &&
+		    (t->inp_socket->so_state & SS_ACCEPTMECH) == 0) {
 			inp->inp_laddr.s_addr = INADDR_ANY;
 			error = EADDRINUSE;
 			goto done;
