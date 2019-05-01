@@ -22,6 +22,7 @@ then
 	ln -sv priv/ncurses  "$DESTDIR"/usr/include/ncurses
 	ln -sv priv/openssl  "$DESTDIR"/usr/include/openssl
 	ln -sv priv/readline "$DESTDIR"/usr/include/readline
+	ln -sv priv/histedit.h "$DESTDIR"/usr/include/histedit.h
 	# ncurses
 	ln -sv priv/libprivate_ncurses.a   "$DESTDIR"/usr/lib/libncurses.a
 	ln -sv priv/libprivate_ncurses.so  "$DESTDIR"/usr/lib/libncurses.so
@@ -45,6 +46,7 @@ then
 	rm -fv "$DESTDIR"/usr/include/ncurses
 	rm -fv "$DESTDIR"/usr/include/openssl
 	rm -fv "$DESTDIR"/usr/include/readline
+	rm -fv "$DESTDIR"/usr/include/histedit.h
 	# ncurses
 	rm -fv "$DESTDIR"/usr/lib/libncurses.a
 	rm -fv "$DESTDIR"/usr/lib/libncurses.so
