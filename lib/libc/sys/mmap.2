@@ -133,9 +133,16 @@ the space instead of overwriting the mapping.
 When used with
 .Dv MAP_STACK
 This flag creates a grow-down stack area with the specified maximum
-stack size.  New mappings may be made in the ungrown portion of the
-area only when MAP_TRYFIXED is specified, otherwise the whole area
-effectively remains reserved.
+stack size.  This flag is no longer special-cased and will be converted
+to a normal anonymous mmap(), meaning that other mmap() calls cannot
+sub-map ungrown areas returned by prior MAP_STACK maps using TRYFIXED.
+The entire area is now applicable to the mapping.
+.Pp
+Note that the kernel itself can still create auto-grow areas but will
+do so for the user stack in order to maintain backwards compatibility
+with older code that might otherwise assume it can map below the user
+stack (in particular, older pthread libraries).  This compatibility is
+deprecated and will be removed in a future release.
 .It Dv MAP_HASSEMAPHORE
 Notify the kernel that the region may contain semaphores and that special
 handling may be necessary.
