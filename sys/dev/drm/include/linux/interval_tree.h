@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2019 Matthew Dillon <dillon@backplane.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,9 +31,24 @@
 #include <linux/rbtree.h>
 
 struct interval_tree_node {
-	struct rb_node rb;
-	unsigned long start;
-	unsigned long last;
+	struct interval_tree_node *next;
+	long	atroot;
+	unsigned long start;	/* Start of interval, inclusive */
+	unsigned long last;	/* Last location _in_ interval, inclusive */
 };
+
+extern void
+interval_tree_insert(struct interval_tree_node *node, struct rb_root *root);
+
+extern void
+interval_tree_remove(struct interval_tree_node *node, struct rb_root *root);
+
+extern struct interval_tree_node *
+interval_tree_iter_first(struct rb_root *root,
+			 unsigned long start, unsigned long last);
+
+extern struct interval_tree_node *
+interval_tree_iter_next(struct interval_tree_node *node,
+			unsigned long start, unsigned long last);
 
 #endif	/* _LINUX_INTERVAL_TREE_H_ */

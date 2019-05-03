@@ -54,6 +54,7 @@ SRCS	= \
 	linux_hdmi.c \
 	linux_i2c.c \
 	linux_hrtimer.c \
+	linux_interval_tree.c \
 	linux_iomapping.c \
 	linux_irq.c \
 	linux_kobject.c \
