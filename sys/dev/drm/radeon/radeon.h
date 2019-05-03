@@ -86,7 +86,6 @@
 #include <drm/ttm/ttm_execbuf_util.h>
 
 #include <drm/drm_gem.h>
-#define __OS_HAS_AGP 0
 
 #include "radeon_family.h"
 #include "radeon_mode.h"
