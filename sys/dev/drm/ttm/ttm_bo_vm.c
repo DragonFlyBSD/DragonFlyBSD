@@ -402,6 +402,10 @@ EXPORT_SYMBOL(ttm_fbdev_mmap);
 
 #include <vm/vm_page2.h>
 
+/*
+ * NOTE: This code is fragile.  This code can only be entered with *mres
+ *	 not NULL when *mres is a placeholder page allocated by the kernel.
+ */
 static int
 ttm_bo_vm_fault_dfly(vm_object_t vm_obj, vm_ooffset_t offset,
 		     int prot, vm_page_t *mres)
@@ -409,18 +413,36 @@ ttm_bo_vm_fault_dfly(vm_object_t vm_obj, vm_ooffset_t offset,
 	struct ttm_buffer_object *bo = vm_obj->handle;
 	struct ttm_bo_device *bdev = bo->bdev;
 	struct ttm_tt *ttm = NULL;
-	vm_page_t m, oldm;
+	vm_page_t m, mtmp;
 	int ret;
 	int retval = VM_PAGER_OK;
 	struct ttm_mem_type_manager *man;
 
 	man = &bdev->man[bo->mem.mem_type];
-
-	/*kprintf("FAULT %p %p/%ld\n", vm_obj, bo, offset);*/
-
 	vm_object_pip_add(vm_obj, 1);
-	oldm = *mres;
+
+	/*
+	 * We must atomically clean up any possible placeholder page to avoid
+	 * the DRM subsystem attempting to use it.  We can determine if this
+	 * is a place holder page by checking m->valid.
+	 *
+	 * We have to do this before any potential fault_reserve_notify()
+	 * which might try to free the map (and thus deadlock on our busy
+	 * page).
+	 */
+	m = *mres;
 	*mres = NULL;
+	if (m) {
+		if (m->valid == VM_PAGE_BITS_ALL) {
+			/* actual page */
+			vm_page_wakeup(m);
+		} else {
+			/* placeholder page */
+			KKASSERT((m->flags & PG_FICTITIOUS) == 0);
+			vm_page_remove(m);
+			vm_page_free(m);
+		}
+	}
 
 retry:
 	VM_OBJECT_UNLOCK(vm_obj);
@@ -499,6 +521,8 @@ retry:
 	}
 
 	/*
+	 * Lookup the real page.
+	 *
 	 * Strictly, we're not allowed to modify vma->vm_page_prot here,
 	 * since the mmap_sem is only held in read mode. However, we
 	 * modify only the caching bits of vma->vm_page_prot and
@@ -511,7 +535,6 @@ retry:
 	 * vma->vm_page_prot when the object changes caching policy, with
 	 * the correct locks held.
 	 */
-
 	if (bo->mem.bus.is_iomem) {
 		m = vm_phys_fictitious_to_vm_page(bo->mem.bus.base +
 						  bo->mem.bus.offset + offset);
@@ -551,9 +574,12 @@ retry:
 	 */
 	m->valid = VM_PAGE_BITS_ALL;
 	*mres = m;
-	if (oldm != NULL) {
-		vm_page_remove(oldm);
-		if (m->object) {
+
+	/*
+	 * Insert the page into the object if not already inserted.
+	 */
+	if (m->object) {
+		if (m->object != vm_obj || m->pindex != OFF_TO_IDX(offset)) {
 			retval = VM_PAGER_ERROR;
 			kprintf("ttm_bo_vm_fault_dfly: m(%p) already inserted "
 				"in obj %p, attempt obj %p\n",
@@ -563,34 +589,24 @@ retry:
 			}
 			if (drm_unstall > 0)
 				--drm_unstall;
-		} else {
-			vm_page_insert(m, vm_obj, OFF_TO_IDX(offset));
 		}
-		vm_page_free(oldm);
-		oldm = NULL;
 	} else {
-		vm_page_t mtmp;
-
-		kprintf("oldm NULL\n");
-
 		mtmp = vm_page_lookup(vm_obj, OFF_TO_IDX(offset));
-		KASSERT(mtmp == NULL || mtmp == m,
-		    ("inconsistent insert bo %p m %p mtmp %p offset %jx",
-		    bo, m, mtmp, (uintmax_t)offset));
-		if (mtmp == NULL)
+		if (mtmp == NULL) {
 			vm_page_insert(m, vm_obj, OFF_TO_IDX(offset));
+		} else {
+			panic("inconsistent insert bo %p m %p mtmp %p "
+			      "offset %jx",
+			      bo, m, mtmp,
+			      (uintmax_t)offset);
+		}
 	}
-	/*vm_page_busy_try(m, FALSE);*/
 
 out_io_unlock1:
 	ttm_mem_io_unlock(man);
 out_unlock1:
 	ttm_bo_unreserve(bo);
 out_unlock2:
-	if (oldm) {
-		vm_page_remove(oldm);
-		vm_page_free(oldm);
-	}
 	vm_object_pip_wakeup(vm_obj);
 	return (retval);
 
