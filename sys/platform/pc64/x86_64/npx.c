@@ -90,8 +90,14 @@ static	void	fpurstor	(union savefpu *);
 
 uint32_t npx_mxcsr_mask = 0xFFBF;	/* this is the default */
 
-static int npx_fpu_heuristic = 32;
-SYSCTL_INT(_machdep, OID_AUTO, npx_fpu_heuristic, CTLFLAG_RW,
+/*
+ * WARNING!  This is a shim to finally fix the intel fpu exception bug.
+ *	     The value is now permanently set to 1, which forces an active
+ *	     restore on every context switch between threads.  The heuristic
+ *	     has been completely removed from master.
+ */
+static int npx_fpu_heuristic = 1;
+SYSCTL_INT(_machdep, OID_AUTO, npx_fpu_heuristic, CTLFLAG_RD,
         &npx_fpu_heuristic, 0, "FPU active restore 0=never 1=always N=after-N");
 
 
