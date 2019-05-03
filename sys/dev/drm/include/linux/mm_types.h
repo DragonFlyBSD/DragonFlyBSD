@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2018-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -38,10 +38,16 @@
 #include <linux/workqueue.h>
 #include <asm/page.h>
 
+#include <vm/vm_page.h>
+
 struct address_space;
 
 struct page {
 	struct vm_page pa_vmpage;
+};
+
+struct mm_struct {
+	struct lock mmap_sem;
 };
 
 #endif	/* _LINUX_MM_TYPES_H_ */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2017-2019 François Tigeot <ftigeot@wolfpond.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,5 +30,19 @@
 #include <linux/list.h>
 #include <linux/spinlock.h>
 #include <linux/mm_types.h>
+
+struct mmu_notifier_ops;
+
+struct mmu_notifier {
+	const struct mmu_notifier_ops *ops;
+};
+
+struct mmu_notifier_ops {
+	void (*release)(struct mmu_notifier *mn,
+			struct mm_struct *mm);
+	void (*invalidate_range_start)(struct mmu_notifier *mn,
+				       struct mm_struct *mm,
+				       unsigned long start, unsigned long end);
+};
 
 #endif	/* _LINUX_MMU_NOTIFIER_H_ */
