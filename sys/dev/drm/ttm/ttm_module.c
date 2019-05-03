@@ -35,7 +35,7 @@
 #include <drm/drm_sysfs.h>
 
 static DECLARE_WAIT_QUEUE_HEAD(exit_q);
-atomic_t device_released;
+static atomic_t device_released;
 
 #if 0
 static struct device_type ttm_drm_class_type = {

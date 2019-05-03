@@ -100,7 +100,7 @@ static int radeon_gem_set_domain(struct drm_gem_object *gobj,
 {
 	struct radeon_bo *robj;
 	uint32_t domain;
-	int r;
+	long r;
 
 	/* FIXME: reeimplement */
 	robj = gem_to_radeon_bo(gobj);
@@ -116,9 +116,12 @@ static int radeon_gem_set_domain(struct drm_gem_object *gobj,
 	}
 	if (domain == RADEON_GEM_DOMAIN_CPU) {
 		/* Asking for cpu access wait for object idle */
-		r = radeon_bo_wait(robj, NULL, false);
-		if (r) {
-			printk(KERN_ERR "Failed to wait for object !\n");
+		r = reservation_object_wait_timeout_rcu(robj->tbo.resv, true, true, 30 * HZ);
+		if (!r)
+			r = -EBUSY;
+
+		if (r < 0 && r != -EINTR) {
+			printk(KERN_ERR "Failed to wait for object: %li\n", r);
 			return r;
 		}
 	}
@@ -281,6 +284,96 @@ int radeon_gem_create_ioctl(struct drm_device *dev, void *data,
 	return 0;
 }
 
+#if 0
+int radeon_gem_userptr_ioctl(struct drm_device *dev, void *data,
+			     struct drm_file *filp)
+{
+	struct radeon_device *rdev = dev->dev_private;
+	struct drm_radeon_gem_userptr *args = data;
+	struct drm_gem_object *gobj;
+	struct radeon_bo *bo;
+	uint32_t handle;
+	int r;
+
+	if (offset_in_page(args->addr | args->size))
+		return -EINVAL;
+
+	/* reject unknown flag values */
+	if (args->flags & ~(RADEON_GEM_USERPTR_READONLY |
+	    RADEON_GEM_USERPTR_ANONONLY | RADEON_GEM_USERPTR_VALIDATE |
+	    RADEON_GEM_USERPTR_REGISTER))
+		return -EINVAL;
+
+	if (args->flags & RADEON_GEM_USERPTR_READONLY) {
+		/* readonly pages not tested on older hardware */
+		if (rdev->family < CHIP_R600)
+			return -EINVAL;
+
+	} else if (!(args->flags & RADEON_GEM_USERPTR_ANONONLY) ||
+		   !(args->flags & RADEON_GEM_USERPTR_REGISTER)) {
+
+		/* if we want to write to it we must require anonymous
+		   memory and install a MMU notifier */
+		return -EACCES;
+	}
+
+	down_read(&rdev->exclusive_lock);
+
+	/* create a gem object to contain this object in */
+	r = radeon_gem_object_create(rdev, args->size, 0,
+				     RADEON_GEM_DOMAIN_CPU, 0,
+				     false, &gobj);
+	if (r)
+		goto handle_lockup;
+
+	bo = gem_to_radeon_bo(gobj);
+	r = radeon_ttm_tt_set_userptr(bo->tbo.ttm, args->addr, args->flags);
+	if (r)
+		goto release_object;
+
+	if (args->flags & RADEON_GEM_USERPTR_REGISTER) {
+		r = radeon_mn_register(bo, args->addr);
+		if (r)
+			goto release_object;
+	}
+
+	if (args->flags & RADEON_GEM_USERPTR_VALIDATE) {
+		down_read(&current->mm->mmap_sem);
+		r = radeon_bo_reserve(bo, true);
+		if (r) {
+			up_read(&current->mm->mmap_sem);
+			goto release_object;
+		}
+
+		radeon_ttm_placement_from_domain(bo, RADEON_GEM_DOMAIN_GTT);
+		r = ttm_bo_validate(&bo->tbo, &bo->placement, true, false);
+		radeon_bo_unreserve(bo);
+		up_read(&current->mm->mmap_sem);
+		if (r)
+			goto release_object;
+	}
+
+	r = drm_gem_handle_create(filp, gobj, &handle);
+	/* drop reference from allocate - handle holds it now */
+	drm_gem_object_unreference_unlocked(gobj);
+	if (r)
+		goto handle_lockup;
+
+	args->handle = handle;
+	up_read(&rdev->exclusive_lock);
+	return 0;
+
+release_object:
+	drm_gem_object_unreference_unlocked(gobj);
+
+handle_lockup:
+	up_read(&rdev->exclusive_lock);
+	r = radeon_gem_handle_lockup(rdev, r);
+
+	return r;
+}
+#endif
+
 int radeon_gem_set_domain_ioctl(struct drm_device *dev, void *data,
 				struct drm_file *filp)
 {
@@ -366,15 +459,22 @@ int radeon_gem_wait_idle_ioctl(struct drm_device *dev, void *data,
 	struct drm_radeon_gem_wait_idle *args = data;
 	struct drm_gem_object *gobj;
 	struct radeon_bo *robj;
-	int r;
+	int r = 0;
 	uint32_t cur_placement = 0;
+	long ret;
 
 	gobj = drm_gem_object_lookup(filp, args->handle);
 	if (gobj == NULL) {
 		return -ENOENT;
 	}
 	robj = gem_to_radeon_bo(gobj);
-	r = radeon_bo_wait(robj, &cur_placement, false);
+
+	ret = reservation_object_wait_timeout_rcu(robj->tbo.resv, true, true, 30 * HZ);
+	if (ret == 0)
+		r = -EBUSY;
+	else if (ret < 0)
+		r = ret;
+
 	/* Flush HDP cache via MMIO if necessary */
 	if (rdev->asic->mmio_hdp_flush &&
 	    radeon_mem_type_to_domain(cur_placement) == RADEON_GEM_DOMAIN_VRAM)
@@ -507,9 +607,10 @@ int radeon_gem_va_ioctl(struct drm_device *dev, void *data,
 
 	switch (args->operation) {
 	case RADEON_VA_MAP:
-		if (bo_va->soffset) {
+		if (bo_va->it.start) {
 			args->operation = RADEON_VA_RESULT_VA_EXIST;
-			args->offset = bo_va->soffset;
+			args->offset = bo_va->it.start * RADEON_GPU_PAGE_SIZE;
+			radeon_bo_unreserve(rbo);
 			goto out;
 		}
 		r = radeon_vm_bo_set_addr(rdev, bo_va, args->offset, args->flags);

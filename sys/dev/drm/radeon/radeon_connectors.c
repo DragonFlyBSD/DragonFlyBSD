@@ -326,6 +326,12 @@ static void radeon_connector_get_edid(struct radeon_connector *radeon_connector)
 	}
 
 	if (!radeon_connector->edid) {
+		/* don't fetch the edid from the vbios if ddc fails and runpm is
+		 * enabled so we report disconnected.
+		 */
+		if ((rdev->flags & RADEON_IS_PX) && (radeon_runtime_pm != 0))
+			return;
+
 		if (rdev->is_atom_bios) {
 			/* some laptops provide a hardcoded edid in rom for LCDs */
 			if (((radeon_connector->base.connector_type == DRM_MODE_CONNECTOR_LVDS) ||
@@ -830,6 +836,8 @@ static int radeon_lvds_mode_valid(struct drm_connector *connector,
 static enum drm_connector_status
 radeon_lvds_detect(struct drm_connector *connector, bool force)
 {
+	struct drm_device *dev = connector->dev;
+	struct radeon_device *rdev = dev->dev_private;
 	struct radeon_connector *radeon_connector = to_radeon_connector(connector);
 	struct drm_encoder *encoder = radeon_best_single_encoder(connector);
 	enum drm_connector_status ret = connector_status_disconnected;
@@ -848,7 +856,11 @@ radeon_lvds_detect(struct drm_connector *connector, bool force)
 		/* check if panel is valid */
 		if (native_mode->hdisplay >= 320 && native_mode->vdisplay >= 240)
 			ret = connector_status_connected;
-
+		/* don't fetch the edid from the vbios if ddc fails and runpm is
+		 * enabled so we report disconnected.
+		 */
+		if ((rdev->flags & RADEON_IS_PX) && (radeon_runtime_pm != 0))
+			ret = connector_status_disconnected;
 	}
 
 	/* check for edid as well */
@@ -1636,6 +1648,11 @@ radeon_dp_detect(struct drm_connector *connector, bool force)
 			/* check if panel is valid */
 			if (native_mode->hdisplay >= 320 && native_mode->vdisplay >= 240)
 				ret = connector_status_connected;
+			/* don't fetch the edid from the vbios if ddc fails and runpm is
+			 * enabled so we report disconnected.
+			 */
+			if ((rdev->flags & RADEON_IS_PX) && (radeon_runtime_pm != 0))
+				ret = connector_status_disconnected;
 		}
 		/* eDP is always DP */
 		radeon_dig_connector->dp_sink_type = CONNECTOR_OBJECT_ID_DISPLAYPORT;

@@ -296,7 +296,8 @@ static int ttm_mem_init_dma32_zone(struct ttm_mem_global *glob,
 	zone->glob = glob;
 	glob->zone_dma32 = zone;
 	ret = kobject_init_and_add(
-		&zone->kobj, &ttm_mem_zone_kobj_type, &glob->kobj, zone->name);
+		&zone->kobj, &ttm_mem_zone_kobj_type, &glob->kobj, "%s",
+		zone->name);
 	if (unlikely(ret != 0)) {
 		kobject_put(&zone->kobj);
 		return ret;

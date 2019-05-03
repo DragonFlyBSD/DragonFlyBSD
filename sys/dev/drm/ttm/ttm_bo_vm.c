@@ -52,10 +52,8 @@ static int ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo,
 				struct vm_area_struct *vma,
 				struct vm_fault *vmf)
 {
-	struct ttm_bo_device *bdev = bo->bdev;
 	int ret = 0;
 
-	lockmgr(&bdev->fence_lock, LK_EXCLUSIVE);
 	if (likely(!test_bit(TTM_BO_PRIV_FLAG_MOVING, &bo->priv_flags)))
 		goto out_unlock;
 
@@ -89,7 +87,6 @@ static int ttm_bo_vm_fault_idle(struct ttm_buffer_object *bo,
 			VM_FAULT_NOPAGE;
 
 out_unlock:
-	lockmgr(&bdev->fence_lock, LK_RELEASE);
 	return ret;
 }
 #endif
@@ -221,9 +218,8 @@ static int ttm_bo_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 						cvma.vm_page_prot);
 	} else {
 		ttm = bo->ttm;
-		if (!(bo->mem.placement & TTM_PL_FLAG_CACHED))
-			cvma.vm_page_prot = ttm_io_prot(bo->mem.placement,
-							cvma.vm_page_prot);
+		cvma.vm_page_prot = ttm_io_prot(bo->mem.placement,
+						cvma.vm_page_prot);
 
 		/* Allocate all page at once, most common usage */
 		if (ttm->bdev->driver->ttm_tt_populate(ttm)) {
@@ -463,7 +459,6 @@ retry:
 	 * Wait for buffer data in transit, due to a pipelined
 	 * move.
 	 */
-	lockmgr(&bdev->fence_lock, LK_EXCLUSIVE);
 	if (test_bit(TTM_BO_PRIV_FLAG_MOVING, &bo->priv_flags)) {
 		/*
 		 * Here, the behavior differs between Linux and FreeBSD.
@@ -482,13 +477,10 @@ retry:
 		 * and the process to receive SIGSEGV.
 		 */
 		ret = ttm_bo_wait(bo, false, false, false);
-		lockmgr(&bdev->fence_lock, LK_RELEASE);
 		if (unlikely(ret != 0)) {
 			retval = VM_PAGER_ERROR;
 			goto out_unlock;
 		}
-	} else {
-		lockmgr(&bdev->fence_lock, LK_RELEASE);
 	}
 
 	ret = ttm_mem_io_lock(man, true);

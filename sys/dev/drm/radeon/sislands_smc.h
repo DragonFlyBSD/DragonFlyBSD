@@ -395,3 +395,4 @@ int si_write_smc_sram_dword(struct radeon_device *rdev, u32 smc_address,
 			    u32 value, u32 limit);
 
 #endif
+

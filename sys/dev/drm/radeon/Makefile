@@ -94,6 +94,10 @@ SRCS	+=								\
 	ci_dpm.c							\
 	dce6_afmt.c
 
+# add KMS driver
+SRCS+=				\
+	radeon_mn.c
+
 # async DMA block
 SRCS	+=								\
 	r600_dma.c							\

@@ -306,8 +306,10 @@ static void ttm_pool_update_free_locked(struct ttm_page_pool *pool,
  *
  * @pool: to free the pages from
  * @free_all: If set to true will free all pages in pool
+ * @gfp: GFP flags.
  **/
-static int ttm_page_pool_free(struct ttm_page_pool *pool, unsigned nr_free)
+static int ttm_page_pool_free(struct ttm_page_pool *pool, unsigned nr_free,
+			      gfp_t gfp)
 {
 	unsigned long irq_flags;
 	struct vm_page *p, *p1;
@@ -319,8 +321,7 @@ static int ttm_page_pool_free(struct ttm_page_pool *pool, unsigned nr_free)
 	if (NUM_PAGES_TO_ALLOC < nr_free)
 		npages_to_free = NUM_PAGES_TO_ALLOC;
 
-	pages_to_free = kmalloc(npages_to_free * sizeof(struct page *),
-			M_DRM, M_WAITOK);
+	pages_to_free = kmalloc(npages_to_free * sizeof(struct page *), M_DRM, gfp);
 	if (!pages_to_free) {
 		pr_err("Failed to allocate memory for pool free operation\n");
 		return 0;
@@ -394,32 +395,43 @@ out:
  *
  * XXX: (dchinner) Deadlock warning!
  *
- * ttm_page_pool_free() does memory allocation using GFP_KERNEL.  that means
- * this can deadlock when called a sc->gfp_mask that is not equal to
- * GFP_KERNEL.
+ * We need to pass sc->gfp_mask to ttm_page_pool_free().
  *
  * This code is crying out for a shrinker per pool....
  */
 static unsigned long
 ttm_pool_shrink_scan(void *arg)
 {
-	static atomic_t start_pool = ATOMIC_INIT(0);
+#ifdef __DragonFly__
+	static struct shrink_control __sc;
+	struct shrink_control *sc = &__sc;
+#endif
+	static DEFINE_MUTEX(lock);
+	static unsigned start_pool;
 	unsigned i;
-	unsigned pool_offset = atomic_add_return(1, &start_pool);
+	unsigned pool_offset;
 	struct ttm_page_pool *pool;
 	int shrink_pages = 100; /* XXXKIB */
 	unsigned long freed = 0;
 
-	pool_offset = pool_offset % NUM_POOLS;
+#ifdef __DragonFly__
+	sc->gfp_mask = M_WAITOK;
+#endif
+
+	if (!mutex_trylock(&lock))
+		return SHRINK_STOP;
+	pool_offset = ++start_pool % NUM_POOLS;
 	/* select start pool in round robin fashion */
 	for (i = 0; i < NUM_POOLS; ++i) {
 		unsigned nr_free = shrink_pages;
 		if (shrink_pages == 0)
 			break;
 		pool = &_manager->pools[(i + pool_offset)%NUM_POOLS];
-		shrink_pages = ttm_page_pool_free(pool, nr_free);
+		shrink_pages = ttm_page_pool_free(pool, nr_free,
+						  sc->gfp_mask);
 		freed += nr_free - shrink_pages;
 	}
+	mutex_unlock(&lock);
 	return freed;
 }
 
@@ -708,7 +720,7 @@ static void ttm_put_pages(struct page **pages, unsigned npages, int flags,
 	}
 	spin_unlock_irqrestore(&pool->lock, irq_flags);
 	if (npages)
-		ttm_page_pool_free(pool, npages);
+		ttm_page_pool_free(pool, npages, GFP_KERNEL);
 }
 
 /*
@@ -790,7 +802,7 @@ static int ttm_get_pages(struct page **pages, unsigned npages, int flags,
 	return 0;
 }
 
-static void ttm_page_pool_init_locked(struct ttm_page_pool *pool, int flags,
+static void ttm_page_pool_init_locked(struct ttm_page_pool *pool, gfp_t flags,
 		char *name)
 {
 	lockinit(&pool->lock, "ttmpool", 0, LK_CANRECURSE);
@@ -846,7 +858,8 @@ void ttm_page_alloc_fini(void)
 	ttm_pool_mm_shrink_fini(_manager);
 
 	for (i = 0; i < NUM_POOLS; ++i)
-		ttm_page_pool_free(&_manager->pools[i], FREE_ALL_PAGES);
+		ttm_page_pool_free(&_manager->pools[i], FREE_ALL_PAGES,
+				   GFP_KERNEL);
 
 	kobject_put(&_manager->kobj);
 	_manager = NULL;

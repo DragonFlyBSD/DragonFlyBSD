@@ -80,6 +80,7 @@ static int radeon_cs_parser_relocs(struct radeon_cs_parser *p)
 	struct radeon_cs_buckets buckets;
 	unsigned i, j;
 	bool duplicate;
+	int r;
 
 	if (p->chunk_relocs_idx == -1) {
 		return 0;
@@ -139,7 +140,7 @@ static int radeon_cs_parser_relocs(struct radeon_cs_parser *p)
 		   VRAM, also but everything into VRAM on AGP cards and older
 		   IGP chips to avoid image corruptions */
 		if (p->ring == R600_RING_TYPE_UVD_INDEX &&
-		    (i == 0 || (p->rdev->flags & RADEON_IS_AGP) ||
+		    (i == 0 || drm_pci_device_is_agp(p->rdev->ddev) ||
 		     p->rdev->family == CHIP_RS780 ||
 		     p->rdev->family == CHIP_RS880)) {
 
@@ -168,7 +169,23 @@ static int radeon_cs_parser_relocs(struct radeon_cs_parser *p)
 			p->relocs[i].allowed_domains = domain;
 		}
 
+#if 0
+		if (radeon_ttm_tt_has_userptr(p->relocs[i].robj->tbo.ttm)) {
+			uint32_t domain = p->relocs[i].prefered_domains;
+			if (!(domain & RADEON_GEM_DOMAIN_GTT)) {
+				DRM_ERROR("Only RADEON_GEM_DOMAIN_GTT is "
+					  "allowed for userptr BOs\n");
+				return -EINVAL;
+			}
+			need_mmap_lock = true;
+			domain = RADEON_GEM_DOMAIN_GTT;
+			p->relocs[i].prefered_domains = domain;
+			p->relocs[i].allowed_domains = domain;
+		}
+#endif
+
 		p->relocs[i].tv.bo = &p->relocs[i].robj->tbo;
+		p->relocs[i].tv.shared = !r->write_domain;
 		p->relocs[i].handle = r->handle;
 
 		radeon_cs_buckets_add(&buckets, &p->relocs[i].tv.head,
@@ -181,7 +198,9 @@ static int radeon_cs_parser_relocs(struct radeon_cs_parser *p)
 		p->vm_bos = radeon_vm_get_bos(p->rdev, p->ib.vm,
 					      &p->validated);
 
-	return radeon_bo_list_validate(p->rdev, &p->ticket, &p->validated, p->ring);
+	r = radeon_bo_list_validate(p->rdev, &p->ticket, &p->validated, p->ring);
+
+	return r;
 }
 
 static int radeon_cs_get_ring(struct radeon_cs_parser *p, u32 ring, s32 priority)
@@ -227,17 +246,21 @@ static int radeon_cs_get_ring(struct radeon_cs_parser *p, u32 ring, s32 priority
 	return 0;
 }
 
-static void radeon_cs_sync_rings(struct radeon_cs_parser *p)
+static int radeon_cs_sync_rings(struct radeon_cs_parser *p)
 {
-	int i;
+	struct radeon_cs_reloc *reloc;
+	int r;
 
-	for (i = 0; i < p->nrelocs; i++) {
-		if (!p->relocs[i].robj)
-			continue;
+	list_for_each_entry(reloc, &p->validated, tv.head) {
+		struct reservation_object *resv;
 
-		radeon_semaphore_sync_to(p->ib.semaphore,
-					 p->relocs[i].robj->tbo.sync_obj);
+		resv = reloc->robj->tbo.resv;
+		r = radeon_semaphore_sync_resv(p->rdev, p->ib.semaphore, resv,
+					       reloc->tv.shared);
+		if (r)
+			return r;
 	}
+	return 0;
 }
 
 /* XXX: note that this is called from the legacy UMS CS ioctl as well */
@@ -406,7 +429,7 @@ static void radeon_cs_parser_fini(struct radeon_cs_parser *parser, int error, bo
 
 		ttm_eu_fence_buffer_objects(&parser->ticket,
 					    &parser->validated,
-					    parser->ib.fence);
+					    &parser->ib.fence->base);
 	} else if (backoff) {
 		ttm_eu_backoff_reservation(&parser->ticket,
 					   &parser->validated);
@@ -447,13 +470,19 @@ static int radeon_cs_ib_chunk(struct radeon_device *rdev,
 		return r;
 	}
 
+	r = radeon_cs_sync_rings(parser);
+	if (r) {
+		if (r != -ERESTARTSYS)
+			DRM_ERROR("Failed to sync rings: %i\n", r);
+		return r;
+	}
+
 	if (parser->ring == R600_RING_TYPE_UVD_INDEX)
 		radeon_uvd_note_usage(rdev);
 	else if ((parser->ring == TN_RING_TYPE_VCE1_INDEX) ||
 		 (parser->ring == TN_RING_TYPE_VCE2_INDEX))
 		radeon_vce_note_usage(rdev);
 
-	radeon_cs_sync_rings(parser);
 	r = radeon_ib_schedule(rdev, &parser->ib, NULL, true);
 	if (r) {
 		DRM_ERROR("Failed to schedule IB !\n");
@@ -535,13 +564,19 @@ static int radeon_cs_ib_vm_chunk(struct radeon_device *rdev,
 	if (parser->ring == R600_RING_TYPE_UVD_INDEX)
 		radeon_uvd_note_usage(rdev);
 
-	lockmgr(&vm->mutex, LK_EXCLUSIVE);
+	mutex_lock(&vm->mutex);
 	r = radeon_bo_vm_update_pte(parser, vm);
 	if (r) {
 		goto out;
 	}
-	radeon_cs_sync_rings(parser);
-	radeon_semaphore_sync_to(parser->ib.semaphore, vm->fence);
+
+	r = radeon_cs_sync_rings(parser);
+	if (r) {
+		if (r != -ERESTARTSYS)
+			DRM_ERROR("Failed to sync rings: %i\n", r);
+		goto out;
+	}
+	radeon_semaphore_sync_fence(parser->ib.semaphore, vm->fence);
 
 	if ((rdev->family >= CHIP_TAHITI) &&
 	    (parser->chunk_const_ib_idx != -1)) {
@@ -551,7 +586,7 @@ static int radeon_cs_ib_vm_chunk(struct radeon_device *rdev,
 	}
 
 out:
-	lockmgr(&vm->mutex, LK_RELEASE);
+	mutex_unlock(&vm->mutex);
 	return r;
 }
 
@@ -627,13 +662,13 @@ int radeon_cs_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	struct radeon_cs_parser parser;
 	int r;
 
-	lockmgr(&rdev->exclusive_lock, LK_EXCLUSIVE);
+	down_read(&rdev->exclusive_lock);
 	if (!rdev->accel_working) {
-		lockmgr(&rdev->exclusive_lock, LK_RELEASE);
+		up_read(&rdev->exclusive_lock);
 		return -EBUSY;
 	}
 	if (rdev->in_reset) {
-		lockmgr(&rdev->exclusive_lock, LK_RELEASE);
+		up_read(&rdev->exclusive_lock);
 		r = radeon_gpu_reset(rdev);
 		if (!r)
 			r = -EAGAIN;
@@ -649,7 +684,7 @@ int radeon_cs_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	if (r) {
 		DRM_ERROR("Failed to initialize parser !\n");
 		radeon_cs_parser_fini(&parser, r, false);
-		lockmgr(&rdev->exclusive_lock, LK_RELEASE);
+		up_read(&rdev->exclusive_lock);
 		r = radeon_cs_handle_lockup(rdev, r);
 		return r;
 	}
@@ -663,7 +698,7 @@ int radeon_cs_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 
 	if (r) {
 		radeon_cs_parser_fini(&parser, r, false);
-		lockmgr(&rdev->exclusive_lock, LK_RELEASE);
+		up_read(&rdev->exclusive_lock);
 		r = radeon_cs_handle_lockup(rdev, r);
 		return r;
 	}
@@ -682,7 +717,7 @@ int radeon_cs_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	}
 out:
 	radeon_cs_parser_fini(&parser, r, true);
-	lockmgr(&rdev->exclusive_lock, LK_RELEASE);
+	up_read(&rdev->exclusive_lock);
 	r = radeon_cs_handle_lockup(rdev, r);
 	return r;
 }

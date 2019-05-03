@@ -2443,6 +2443,7 @@ dev/drm/radeon/radeon_kms.c		optional radeon drm compile-with "${NORMAL_C} -incl
 dev/drm/radeon/radeon_legacy_crtc.c	optional radeon drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/radeon/radeon_legacy_encoders.c	optional radeon drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/radeon/radeon_legacy_tv.c	optional radeon drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
+dev/drm/radeon/radeon_mn.c		optional radeon drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/radeon/radeon_object.c		optional radeon drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/radeon/radeon_pm.c		optional radeon drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/radeon/radeon_ring.c		optional radeon drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"

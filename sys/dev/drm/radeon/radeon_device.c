@@ -1267,6 +1267,7 @@ int radeon_device_init(struct radeon_device *rdev,
 	for (i = 0; i < RADEON_NUM_RINGS; i++) {
 		rdev->ring[i].idx = i;
 	}
+	rdev->fence_context = fence_context_alloc(RADEON_NUM_RINGS);
 
 	DRM_INFO("initializing kernel modesetting (%s 0x%04X:0x%04X 0x%04X:0x%04X).\n",
 		radeon_family_name[rdev->family], pdev->vendor, pdev->device,
@@ -1285,6 +1286,8 @@ int radeon_device_init(struct radeon_device *rdev,
 	lockinit(&rdev->pm.mclk_lock, "drpmml", 0, LK_CANRECURSE);
 	lockinit(&rdev->exclusive_lock, "drdel", 0, LK_CANRECURSE);
 	init_waitqueue_head(&rdev->irq.vblank_queue);
+	lockinit(&rdev->mn_lock, "drrml", 0, LK_CANRECURSE);
+	hash_init(rdev->mn_hash);
 	r = radeon_gem_init(rdev);
 	if (r)
 		return r;

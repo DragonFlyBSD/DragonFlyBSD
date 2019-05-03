@@ -27,7 +27,10 @@
 #ifndef _LINUX_SHRINKER_H_
 #define _LINUX_SHRINKER_H_
 
+#include <linux/types.h>
+
 struct shrink_control {
+	gfp_t gfp_mask;
 	unsigned long nr_to_scan;
 };
 
@@ -40,5 +43,7 @@ struct shrinker {
 };
 
 #define DEFAULT_SEEKS	2
+
+#define SHRINK_STOP	(~0UL)
 
 #endif	/* _LINUX_SHRINKER_H_ */

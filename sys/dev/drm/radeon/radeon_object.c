@@ -74,6 +74,7 @@ static void radeon_ttm_bo_destroy(struct ttm_buffer_object *tbo)
 	bo = container_of(tbo, struct radeon_bo, tbo);
 
 	radeon_update_memory_usage(bo, bo->tbo.mem.mem_type, -1);
+	radeon_mn_unregister(bo);
 
 	mutex_lock(&bo->rdev->gem.mutex);
 	list_del_init(&bo->list);
@@ -221,8 +222,8 @@ int radeon_bo_create(struct radeon_device *rdev,
 	lockmgr(&rdev->pm.mclk_lock, LK_SHARED);
 	r = ttm_bo_init(&rdev->mman.bdev, &bo->tbo, size, type,
 			&bo->placement, page_align, !kernel, NULL,
-			acc_size, sg, &radeon_ttm_bo_destroy);
-	lockmgr(&rdev->pm.mclk_lock, LK_RELEASE);
+			acc_size, sg, NULL, &radeon_ttm_bo_destroy);
+	up_read(&rdev->pm.mclk_lock);
 	if (unlikely(r != 0)) {
 		return r;
 	}
@@ -494,7 +495,7 @@ int radeon_bo_list_validate(struct radeon_device *rdev,
 	u64 bytes_moved = 0, initial_bytes_moved;
 	u64 bytes_moved_threshold = radeon_bo_get_threshold_for_moves(rdev);
 
-	r = ttm_eu_reserve_buffers(ticket, head);
+	r = ttm_eu_reserve_buffers(ticket, head, true);
 	if (unlikely(r != 0)) {
 		return r;
 	}
@@ -779,12 +780,10 @@ int radeon_bo_wait(struct radeon_bo *bo, u32 *mem_type, bool no_wait)
 	r = ttm_bo_reserve(&bo->tbo, true, no_wait, false, NULL);
 	if (unlikely(r != 0))
 		return r;
-	lockmgr(&bo->tbo.bdev->fence_lock, LK_EXCLUSIVE);
 	if (mem_type)
 		*mem_type = bo->tbo.mem.mem_type;
-	if (bo->tbo.sync_obj)
-		r = ttm_bo_wait(&bo->tbo, true, true, no_wait);
-	lockmgr(&bo->tbo.bdev->fence_lock, LK_RELEASE);
+
+	r = ttm_bo_wait(&bo->tbo, true, true, no_wait);
 	ttm_bo_unreserve(&bo->tbo);
 	return r;
 }

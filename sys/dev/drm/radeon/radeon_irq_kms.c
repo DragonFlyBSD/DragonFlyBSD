@@ -339,12 +339,10 @@ void radeon_irq_kms_sw_irq_get(struct radeon_device *rdev, int ring)
  * The software interrupt is generally used to signal a fence on
  * a particular ring.
  */
-#ifdef TODO_954605c
 bool radeon_irq_kms_sw_irq_get_delayed(struct radeon_device *rdev, int ring)
 {
 	return atomic_inc_return(&rdev->irq.ring_int[ring]) == 1;
 }
-#endif
 
 /**
  * radeon_irq_kms_sw_irq_put - disable software interrupt
