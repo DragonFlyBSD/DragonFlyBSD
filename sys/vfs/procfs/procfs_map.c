@@ -230,7 +230,7 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 #else
 			  "0x%08lx 0x%08lx %d %d %p %s%s%s %d %d "
 #endif
-			  "0x%04x %s%s%s %s %s\n",
+			  "0x%04x %s%s %s %s\n",
 			(u_long)e_start, (u_long)e_end,
 			resident, privateresident, obj,
 			(e_prot & VM_PROT_READ) ? "r" : "-",
@@ -239,7 +239,6 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 			ref_count, shadow_count, flags,
 			(e_eflags & MAP_ENTRY_COW) ? "COW" : "NCOW",
 			(e_eflags & MAP_ENTRY_NEEDS_COPY) ?" NC" : " NNC",
-			(e_eflags & MAP_ENTRY_STACK) ? " STK" : "",
 			type, fullpath);
 
 		if (freepath != NULL) {
