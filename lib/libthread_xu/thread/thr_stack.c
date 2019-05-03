@@ -29,7 +29,11 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/queue.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <sys/sysctl.h>
 #include <machine/tls.h>
+#include <machine/vmparam.h>
 #include <stdlib.h>
 #include <pthread.h>
 #include "thr_private.h"
@@ -58,61 +62,11 @@ static LIST_HEAD(, stack)	dstackq = LIST_HEAD_INITIALIZER(dstackq);
  */
 static LIST_HEAD(, stack)	mstackq = LIST_HEAD_INITIALIZER(mstackq);
 
-/**
- * Base address of the last stack allocated (including its red zone, if
- * there is one).  Stacks are allocated contiguously, starting beyond the
- * top of the main stack.  When a new stack is created, a red zone is
- * typically created (actually, the red zone is mapped with PROT_NONE) above
- * the top of the stack, such that the stack will not be able to grow all
- * the way to the bottom of the next stack.  This isn't fool-proof.  It is
- * possible for a stack to grow by a large amount, such that it grows into
- * the next stack, and as long as the memory within the red zone is never
- * accessed, nothing will prevent one thread stack from trouncing all over
- * the next.
- *
- * low memory
- *     . . . . . . . . . . . . . . . . . .
- *    |                                   |
- *    |             stack 3               | start of 3rd thread stack
- *    +-----------------------------------+
- *    |                                   |
- *    |       Red Zone (guard page)       | red zone for 2nd thread
- *    |                                   |
- *    +-----------------------------------+
- *    |  stack 2 - _thr_stack_default     | top of 2nd thread stack
- *    |                                   |
- *    |                                   |
- *    |                                   |
- *    |                                   |
- *    |             stack 2               |
- *    +-----------------------------------+ <-- start of 2nd thread stack
- *    |                                   |
- *    |       Red Zone                    | red zone for 1st thread
- *    |                                   |
- *    +-----------------------------------+
- *    |  stack 1 - _thr_stack_default     | top of 1st thread stack
- *    |                                   |
- *    |                                   |
- *    |                                   |
- *    |                                   |
- *    |             stack 1               |
- *    +-----------------------------------+ <-- start of 1st thread stack
- *    |                                   |   (initial value of last_stack)
- *    |       Red Zone                    |
- *    |                                   | red zone for main thread
- *    +-----------------------------------+
- *    | USRSTACK - _thr_stack_initial     | top of main thread stack
- *    |                                   | ^
- *    |                                   | |
- *    |                                   | |
- *    |                                   | | stack growth
- *    |                                   |
- *    +-----------------------------------+ <-- start of main thread stack
- *                                              (USRSTACK)
- * high memory
- *
+/*
+ * Thread stack base for mmap() hint, starts
+ * at _usrstack - kern.maxssiz - kern.maxthrssiz
  */
-static char *last_stack = NULL;
+static char *base_stack = NULL;
 
 /*
  * Round size up to the nearest multiple of
@@ -184,25 +138,30 @@ _thr_stack_alloc(struct pthread_attr *attr)
 	if (attr->stackaddr_attr != NULL) {
 		/* A cached stack was found.  Release the lock. */
 		THREAD_LIST_UNLOCK(curthread);
-	}
-	else {
-		/* Allocate a stack from usrstack. */
-		if (last_stack == NULL) {
-			last_stack = _usrstack - _thr_stack_initial -
-				     _thr_guard_default;
-		}
-
-		/* Allocate a new stack. */
-		stackaddr = last_stack - stacksize - guardsize;
-
+	} else {
 		/*
-		 * Even if stack allocation fails, we don't want to try to
-		 * use this location again, so unconditionally decrement
-		 * last_stack.  Under normal operating conditions, the most
-		 * likely reason for an mmap() error is a stack overflow of
-		 * the adjacent thread stack.
+		 * Calculate base_stack on first use (race ok).
+		 * If base _stack
 		 */
-		last_stack -= (stacksize + guardsize);
+		if (base_stack == NULL) {
+			int64_t maxssiz;
+			int64_t maxthrssiz;
+			struct rlimit rl;
+			size_t len;
+
+			if (getrlimit(RLIMIT_STACK, &rl) == 0)
+				maxssiz = rl.rlim_max;
+			else
+				maxssiz = MAXSSIZ;
+			len = sizeof(maxssiz);
+			sysctlbyname("kern.maxssiz", &maxssiz, &len, NULL, 0);
+			len = sizeof(maxthrssiz);
+			if (sysctlbyname("kern.maxthrssiz",
+					 &maxthrssiz, &len, NULL, 0) < 0) {
+				maxthrssiz = MAXTHRSSIZ;
+			}
+			base_stack = _usrstack - maxssiz - maxthrssiz;
+		}
 
 		/* Release the lock before mmap'ing it. */
 		THREAD_LIST_UNLOCK(curthread);
@@ -211,14 +170,15 @@ _thr_stack_alloc(struct pthread_attr *attr)
 		 * Map the stack and guard page together then split the
 		 * guard page from allocated space.
 		 *
-		 * NOTE: MAP_STACK mappings are grow-down and the
-		 * initial mapping does not actually extend to the guard
-		 * area, so creating the guard requires doing a fixed
-		 * anonymous mmap of the guard area.
+		 * We no longer use MAP_STACK and we define an area far
+		 * away from the default user stack (even though this will
+		 * cost us another few 4K page-table pages).  DFly no longer
+		 * allows new MAP_STACK mappings to be made inside ungrown
+		 * portions of existing mappings.
 		 */
-		stackaddr = mmap(stackaddr, stacksize + guardsize,
+		stackaddr = mmap(base_stack, stacksize + guardsize,
 				 PROT_READ | PROT_WRITE,
-				 MAP_STACK | MAP_TRYFIXED, -1, 0);
+				 MAP_ANON | MAP_PRIVATE, -1, 0);
 		if (stackaddr != MAP_FAILED && guardsize) {
 			if (mmap(stackaddr, guardsize, 0,
 				 MAP_ANON | MAP_FIXED, -1, 0) == MAP_FAILED) {

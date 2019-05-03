@@ -95,10 +95,15 @@ u_quad_t	maxdsiz;			/* max data size */
 u_quad_t	dflssiz;			/* initial stack size limit */
 u_quad_t	maxssiz;			/* max stack size */
 u_quad_t	sgrowsiz;			/* amount to grow stack */
+u_quad_t	maxthrssiz;			/* thread stack area */
 
 SYSCTL_PROC(_kern, OID_AUTO, vmm_guest, CTLFLAG_RD | CTLTYPE_STRING,
-    NULL, 0, sysctl_kern_vmm_guest, "A",
-    "Virtual machine guest type");
+	    NULL, 0, sysctl_kern_vmm_guest, "A",
+	    "Virtual machine guest type");
+SYSCTL_QUAD(_kern, OID_AUTO, maxssiz, CTLFLAG_RD, &maxssiz, 0,
+	    "Maximum user stack size");
+SYSCTL_QUAD(_kern, OID_AUTO, maxthrssiz, CTLFLAG_RD, &maxthrssiz, 0,
+	    "Nominal threading stack area");
 
 /*
  * These have to be allocated somewhere; allocating
@@ -220,6 +225,8 @@ init_param1(void)
 	TUNABLE_QUAD_FETCH("kern.maxssiz", &maxssiz);
 	sgrowsiz = SGROWSIZ;
 	TUNABLE_QUAD_FETCH("kern.sgrowsiz", &sgrowsiz);
+	maxthrssiz = MAXTHRSSIZ;
+	TUNABLE_QUAD_FETCH("kern.maxthrssiz", &maxthrssiz);
 }
 
 /*

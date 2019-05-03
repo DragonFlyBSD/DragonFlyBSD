@@ -132,11 +132,10 @@ the space instead of overwriting the mapping.
 .Pp
 When used with
 .Dv MAP_STACK
-this flag allows one
-.Dv MAP_STACK
-mapping to be
-made within another (typically the master user stack), as long as
-no pages have been faulted in the area requested.
+This flag creates a grow-down stack area with the specified maximum
+stack size.  New mappings may be made in the ungrown portion of the
+area only when MAP_TRYFIXED is specified, otherwise the whole area
+effectively remains reserved.
 .It Dv MAP_HASSEMAPHORE
 Notify the kernel that the region may contain semaphores and that special
 handling may be necessary.
@@ -237,17 +236,6 @@ address returned by the call.
 The entire area is reserved from the point of view of other
 .Fn mmap
 calls, even if not faulted in yet.
-.Pp
-.Em WARNING !
-We currently allow
-.Dv MAP_STACK
-mappings to provide a hint that points within an existing
-.Dv MAP_STACK
-mapping's space, and this will succeed as long as no page have been
-faulted in the area specified, but this behavior is no longer supported
-unless you also specify the
-.Dv MAP_TRYFIXED
-flag.
 .Pp
 Note that unless
 .Dv MAP_FIXED

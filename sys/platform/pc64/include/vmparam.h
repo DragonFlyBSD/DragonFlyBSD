@@ -65,6 +65,9 @@
 #ifndef	MAXSSIZ
 #define	MAXSSIZ		(512UL*1024*1024)	/* max stack size */
 #endif
+#ifndef	MAXTHRSSIZ
+#define	MAXTHRSSIZ	(128UL*1024UL*1024*1024) /* thread stack area */
+#endif
 #ifndef SGROWSIZ
 #define	SGROWSIZ	(128UL*1024)		/* amount to grow stack */
 #endif

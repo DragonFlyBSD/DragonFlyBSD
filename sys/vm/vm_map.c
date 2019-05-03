@@ -1343,11 +1343,15 @@ vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
 		/*
 		 * Determine if the proposed area would overlap the
 		 * next entry.
+		 *
+		 * When matching against a STACK entry, only allow the
+		 * memory map to intrude on the ungrown portion of the
+		 * STACK entry when MAP_TRYFIXED is set.
 		 */
 		if (entry->start >= end) {
 			if ((entry->eflags & MAP_ENTRY_STACK) == 0)
 				break;
-			if (flags & MAP_STACK)
+			if (flags & MAP_TRYFIXED)
 				break;
 			if (entry->start - entry->aux.avail_ssize >= end)
 				break;
