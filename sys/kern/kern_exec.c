@@ -847,7 +847,7 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 	 * but allow the program to adjust that (the program may desire to
 	 * use areas of the stack for executable code).
 	 */
-	error = vm_map_stack(&vmspace->vm_map, stack_addr, (vm_size_t)maxssiz,
+	error = vm_map_stack(&vmspace->vm_map, &stack_addr, (vm_size_t)maxssiz,
 			     0,
 			     VM_PROT_READ|VM_PROT_WRITE,
 			     VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE,
