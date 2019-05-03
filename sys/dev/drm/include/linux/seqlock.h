@@ -33,6 +33,22 @@
 #include <linux/compiler.h>
 #include <asm/processor.h>
 
+/*
+ * Seqlock definition from Wikipedia
+ *
+ * A seqlock consists of storage for saving a sequence number in addition to a lock.
+ * The lock is to support synchronization between two writers and the counter is for
+ * indicating consistency in readers. In addition to updating the shared data, the
+ * writer increments the sequence number, both after acquiring the lock and before
+ * releasing the lock. Readers read the sequence number before and after reading the
+ * shared data. If the sequence number is odd on either occasion, a writer had taken
+ * the lock while the data was being read and it may have changed. If the sequence
+ * numbers are different, a writer has changed the data while it was being read. In
+ * either case readers simply retry (using a loop) until they read the same even
+ * sequence number before and after.
+ *
+ */
+
 typedef struct {
 	unsigned sequence;
 	struct spinlock lock;
@@ -92,6 +108,41 @@ static inline void
 __seqcount_init(seqcount_t *s, const char *name, struct lock_class_key *key)
 {
 	s->sequence = 0;
+}
+
+static inline unsigned int
+read_seqcount_begin(const seqcount_t *s)
+{
+	unsigned int ret;
+
+	do {
+		ret = READ_ONCE(s->sequence);
+		/* If the sequence number is odd, a writer has taken the lock */
+		if ((ret & 1) == 0)
+			break;
+		cpu_pause();
+	} while (1);
+
+	cpu_lfence();
+	return ret;
+}
+
+static inline int read_seqcount_retry(const seqcount_t *s, unsigned start)
+{
+	cpu_lfence();
+	return (s->sequence != start);
+}
+
+static inline void write_seqcount_begin(seqcount_t *s)
+{
+	s->sequence++;
+	cpu_ccfence();
+}
+
+static inline void write_seqcount_end(seqcount_t *s)
+{
+	cpu_ccfence();
+	s->sequence++;
 }
 
 #endif	/* _LINUX_SEQLOCK_H_ */
