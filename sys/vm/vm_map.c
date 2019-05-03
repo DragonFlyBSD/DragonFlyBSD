@@ -1353,7 +1353,7 @@ vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
 		if (next->start >= end) {
 			if ((next->eflags & MAP_ENTRY_STACK) == 0)
 				break;
-			if (flags & MAP_STACK)
+			if (flags & MAP_TRYFIXED)
 				break;
 			if (next->start - next->aux.avail_ssize >= end)
 				break;
@@ -3751,7 +3751,7 @@ vmspace_fork_uksmap_entry(vm_map_t old_map, vm_map_t new_map,
  * No requirements.
  */
 int
-vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
+vm_map_stack (vm_map_t map, vm_offset_t *addrbos, vm_size_t max_ssize,
 	      int flags, vm_prot_t prot, vm_prot_t max, int cow)
 {
 	vm_map_entry_t	prev_entry;
@@ -3775,17 +3775,17 @@ vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
 	 * Find space for the mapping
 	 */
 	if ((flags & (MAP_FIXED | MAP_TRYFIXED)) == 0) {
-		if (vm_map_findspace(map, addrbos, max_ssize, 1,
+		if (vm_map_findspace(map, *addrbos, max_ssize, 1,
 				     flags, &tmpaddr)) {
 			vm_map_unlock(map);
 			vm_map_entry_release(count);
 			return (KERN_NO_SPACE);
 		}
-		addrbos = tmpaddr;
+		*addrbos = tmpaddr;
 	}
 
 	/* If addr is already mapped, no go */
-	if (vm_map_lookup_entry(map, addrbos, &prev_entry)) {
+	if (vm_map_lookup_entry(map, *addrbos, &prev_entry)) {
 		vm_map_unlock(map);
 		vm_map_entry_release(count);
 		return (KERN_NO_SPACE);
@@ -3812,7 +3812,7 @@ vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
 	 * when we try to grow the stack.
 	 */
 	if ((prev_entry->next != &map->header) &&
-	    (prev_entry->next->start < addrbos + max_ssize)) {
+	    (prev_entry->next->start < *addrbos + max_ssize)) {
 		vm_map_unlock(map);
 		vm_map_entry_release(count);
 		return (KERN_NO_SPACE);
@@ -3829,18 +3829,18 @@ vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
 	 * pass these values here in the insert call.
 	 */
 	rv = vm_map_insert(map, &count, NULL, NULL,
-			   0, addrbos + max_ssize - init_ssize,
-	                   addrbos + max_ssize,
+			   0, *addrbos + max_ssize - init_ssize,
+	                   *addrbos + max_ssize,
 			   VM_MAPTYPE_NORMAL,
 			   VM_SUBSYS_STACK, prot, max, cow);
 
 	/* Now set the avail_ssize amount */
 	if (rv == KERN_SUCCESS) {
 		if (prev_entry != &map->header)
-			vm_map_clip_end(map, prev_entry, addrbos + max_ssize - init_ssize, &count);
+			vm_map_clip_end(map, prev_entry, *addrbos + max_ssize - init_ssize, &count);
 		new_stack_entry = prev_entry->next;
-		if (new_stack_entry->end   != addrbos + max_ssize ||
-		    new_stack_entry->start != addrbos + max_ssize - init_ssize)
+		if (new_stack_entry->end   != *addrbos + max_ssize ||
+		    new_stack_entry->start != *addrbos + max_ssize - init_ssize)
 			panic ("Bad entry start/end for new stack entry");
 		else 
 			new_stack_entry->aux.avail_ssize = max_ssize - init_ssize;

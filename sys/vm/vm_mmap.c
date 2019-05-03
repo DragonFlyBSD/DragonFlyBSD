@@ -411,10 +411,37 @@ int
 sys_mmap(struct mmap_args *uap)
 {
 	int error;
+	int flags = uap->flags;
+	off_t upos = uap->pos;
+
+	/*
+	 * Work around fairly serious problems with trying to have an
+	 * auto-grow stack segment related to other unrelated calls to
+	 * mmap() potentially getting addresses within such segments.
+	 *
+	 * Our attempt to use TRYFIXED to mediate the problem basically
+	 * failed.  For example, rtld-elf uses it to try to optimize
+	 * shlib placement, but could run afoul of this issue.
+	 *
+	 * The only remaining true MAP_STACK we allow is the user stack as
+	 * created by the exec code.  All userland MAP_STACK's are converted
+	 * to normal mmap()s right here.
+	 */
+	if (flags & MAP_STACK) {
+		if (uap->fd != -1)
+			return (EINVAL);
+		if ((uap->prot & (PROT_READ|PROT_WRITE)) !=
+		    (PROT_READ|PROT_WRITE)) {
+			return (EINVAL);
+		}
+		flags &= ~MAP_STACK;
+		flags |= MAP_ANON;
+		upos = 0;
+	}
 
 	error = kern_mmap(curproc->p_vmspace, uap->addr, uap->len,
-			  uap->prot, uap->flags,
-			  uap->fd, uap->pos, &uap->sysmsg_resultp);
+			  uap->prot, flags,
+			  uap->fd, upos, &uap->sysmsg_resultp);
 
 	return (error);
 }
@@ -1406,7 +1433,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 				 VM_MAPTYPE_UKSMAP, VM_SUBSYS_MMAP,
 				 prot, maxprot, docow);
 	} else if (flags & MAP_STACK) {
-		rv = vm_map_stack(map, *addr, size, flags,
+		rv = vm_map_stack(map, addr, size, flags,
 				  prot, maxprot, docow);
 	} else if (flags & MAP_VPAGETABLE) {
 		rv = vm_map_find(map, object, NULL,
