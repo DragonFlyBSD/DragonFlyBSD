@@ -2363,6 +2363,11 @@ sigexit(struct lwp *lp, int sig)
 			    p->p_ucred ? p->p_ucred->cr_uid : -1,
 			    sig &~ WCOREFLAG,
 			    sig & WCOREFLAG ? " (core dumped)" : "");
+			if (kern_logsigexit > 1)
+				kprintf("DEBUG - waiting on kern.logsigexit\n");
+			while (kern_logsigexit > 1) {
+				tsleep(&kern_logsigexit, 0, "DEBUG", hz);
+			}
 		}
 	}
 	lwkt_reltoken(&p->p_token);
