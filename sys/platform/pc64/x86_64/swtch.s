@@ -542,9 +542,8 @@ ENTRY(cpu_heavy_restore)
 	testq	%r13,%r13
 	jnz	6f
 	movl	TD_FLAGS(%r12),%r13d
-	andq	$TDF_FPU_HEUR|TDF_USINGFP,%r13
-	cmpq	$TDF_FPU_HEUR|TDF_USINGFP,%r13
-	jne	6f
+	andq	$TDF_USINGFP,%r13
+	jz	6f
 	movq	%r12,%rdi		/* npxdna_quick(newtd) */
 	call	npxdna_quick
 6:

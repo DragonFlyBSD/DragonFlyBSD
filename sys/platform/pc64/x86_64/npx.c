@@ -90,11 +90,6 @@ static	void	fpurstor	(union savefpu *);
 
 uint32_t npx_mxcsr_mask = 0xFFBF;	/* this is the default */
 
-static int npx_fpu_heuristic = 32;
-SYSCTL_INT(_machdep, OID_AUTO, npx_fpu_heuristic, CTLFLAG_RW,
-        &npx_fpu_heuristic, 0, "FPU active restore 0=never 1=always N=after-N");
-
-
 /*
  * Probe the npx_mxcsr_mask as described in the intel document
  * "Intel processor identification and the CPUID instruction" Section 7
@@ -373,15 +368,6 @@ npxdna(void)
 	}
 
 	/*
-	 * Actively restore the fpu state after N npxdna faults instead of
-	 * soaking the npxdna fault overhead on each switch.
-	 */
-	if (npx_fpu_heuristic && ++td->td_fpu_heur >= npx_fpu_heuristic) {
-		td->td_fpu_heur = npx_fpu_heuristic;
-		td->td_flags |= TDF_FPU_HEUR;
-	}
-
-	/*
 	 * The setting of gd_npxthread and the call to fpurstor() must not
 	 * be preempted by an interrupt thread or we will take an npxdna
 	 * trap and potentially save our current fpstate (which is garbage)
@@ -442,19 +428,6 @@ npxdna_quick(thread_t newtd)
 		lwpsignal(newtd->td_proc, newtd->td_lwp, SIGFPE);
 	}
 	fpurstor(newtd->td_savefpu);
-
-	/*
-	 * If npx_fpu_heuristic is larger than 1 we reset the heuristic
-	 * after N switches and shift to probe mode.  Any npxdna trap will
-	 * retrigger active fpu state loading, then probe again after N
-	 * switches.
-	 *
-	 * If npx_fpu_heuristic is 1 active mode is simply left on forever.
-	 */
-	if (npx_fpu_heuristic > 1 && --newtd->td_fpu_heur <= 0) {
-		newtd->td_fpu_heur = npx_fpu_heuristic - 1;
-		newtd->td_flags &= ~TDF_FPU_HEUR;
-	}
 }
 
 /*

@@ -195,14 +195,12 @@ ASSYM(TD_NEST_COUNT, offsetof(struct thread, td_nest_count));
 ASSYM(TD_FLAGS, offsetof(struct thread, td_flags));
 ASSYM(TD_TYPE, offsetof(struct thread, td_type));
 ASSYM(TD_PREEMPTED, offsetof(struct thread, td_preempted));
-ASSYM(TD_FPU_HEUR, offsetof(struct thread, td_fpu_heur));
 
 ASSYM(TD_SAVEFPU, offsetof(struct thread, td_savefpu));
 ASSYM(TDF_RUNNING, TDF_RUNNING);
 ASSYM(TDF_USINGFP, TDF_USINGFP);
 ASSYM(TDF_KERNELFP, TDF_KERNELFP);
 ASSYM(TDF_PREEMPT_DONE, TDF_PREEMPT_DONE);
-ASSYM(TDF_FPU_HEUR, TDF_FPU_HEUR);
 
 ASSYM(FIRST_SOFTINT, FIRST_SOFTINT);
 ASSYM(MDGLOBALDATA_BASEALLOC_PAGES, MDGLOBALDATA_BASEALLOC_PAGES);

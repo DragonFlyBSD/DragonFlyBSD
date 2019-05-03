@@ -280,8 +280,7 @@ struct thread {
     int		td_type;	/* thread type, TD_TYPE_ */
     int		td_tracker;	/* for callers to debug lock counts */
     int		td_fdcache_lru;
-    int		td_fpu_heur;	/* active restore on switch heuristic */
-    int		td_unused03[2];	/* for future fields */
+    int		td_unused03[3];	/* for future fields */
     struct iosched_data td_iosdata;	/* Dynamic I/O scheduling data */
     struct timeval td_start;	/* start time for a thread/process */
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
