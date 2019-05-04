@@ -191,7 +191,7 @@
 #define HAVE_OPTRESET 1
 
 /* Define to 1 if you have the `posix_fadvise' function. */
-/* #undef HAVE_POSIX_FADVISE */
+#define HAVE_POSIX_FADVISE 1
 
 /* Define to 1 if you have the `pthread_condattr_setclock' function. */
 /* #undef HAVE_PTHREAD_CONDATTR_SETCLOCK */

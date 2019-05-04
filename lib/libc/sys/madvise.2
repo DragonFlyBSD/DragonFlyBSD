@@ -28,7 +28,7 @@
 .\"	@(#)madvise.2	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/lib/libc/sys/madvise.2,v 1.17.2.8 2003/01/06 23:33:59 trhodes Exp $
 .\"
-.Dd October 6, 2008
+.Dd May 4, 2019
 .Dt MADVISE 2
 .Os
 .Sh NAME
@@ -184,7 +184,8 @@ arguments is not valid.
 .Xr mincore 2 ,
 .Xr mprotect 2 ,
 .Xr msync 2 ,
-.Xr munmap 2
+.Xr munmap 2 ,
+.Xr posix_fadvise 3
 .Sh STANDARDS
 The
 .Fn posix_madvise

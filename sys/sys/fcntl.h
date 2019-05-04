@@ -310,6 +310,18 @@ union fcntl_dat {
 #define	S_IXOTH	0000001			/* X for other */
 #endif
 
+#if __POSIX_VISIBLE >= 200112
+/*
+ * Advice to be applied to the file data
+ */
+#define	POSIX_FADV_NORMAL	0	/* no advice */
+#define	POSIX_FADV_SEQUENTIAL	1	/* expect sequential access */
+#define	POSIX_FADV_RANDOM	2	/* expect random access */
+#define	POSIX_FADV_WILLNEED	3	/* expect access in the near future */
+#define	POSIX_FADV_DONTNEED	4	/* expect no access in the near future */
+#define	POSIX_FADV_NOREUSE	5	/* expect access only once */
+#endif
+
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 __BEGIN_DECLS
 int	open(const char *, int, ...);
@@ -321,9 +333,9 @@ int	fcntl(int, int, ...);
 #if __BSD_VISIBLE
 int	flock(int, int);
 #endif /* __BSD_VISIBLE */
-#if 0 /* XXX missing */
 #if __POSIX_VISIBLE >= 200112
 int	posix_fadvise(int, off_t, off_t, int);
+#if 0 /* XXX missing */
 int	posix_fallocate(int, off_t, off_t);
 #endif
 #endif
