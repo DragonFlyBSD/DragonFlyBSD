@@ -310,9 +310,10 @@ union fcntl_dat {
 #define	S_IXOTH	0000001			/* X for other */
 #endif
 
-#if __POSIX_VISIBLE >= 200112
+#if !defined(_KERNEL) && __POSIX_VISIBLE >= 200112
 /*
  * Advice to be applied to the file data
+ * For POSIX compliance only. DragonFly does not use this information.
  */
 #define	POSIX_FADV_NORMAL	0	/* no advice */
 #define	POSIX_FADV_SEQUENTIAL	1	/* expect sequential access */
