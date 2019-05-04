@@ -24,14 +24,16 @@
 .\"
 .\" $FreeBSD: head/lib/libc/locale/wcrtomb.3 250883 2013-05-21 19:59:37Z ed $
 .\"
-.Dd December 26, 2013
+.Dd May 4, 2019
 .Dt WCRTOMB 3
 .Os
 .Sh NAME
 .Nm wcrtomb ,
 .Nm wcrtomb_l ,
 .Nm c16rtomb ,
-.Nm c32rtomb
+.Nm c16rtomb_l ,
+.Nm c32rtomb ,
+.Nm c32rtomb_l
 .Nd "convert a wide-character code to a character (restartable)"
 .Sh LIBRARY
 .Lb libc
@@ -47,13 +49,19 @@
 .In xlocale.h
 .Ft size_t
 .Fn wcrtomb_l "char * restrict s" "wchar_t c" "mbstate_t * restrict ps" "locale_t locale"
+.Ft size_t
+.Fn c16rtomb_l "char * restrict s" "char16_t c" "mbstate_t * restrict ps" "locale_t locale"
+.Ft size_t
+.Fn c32rtomb_l "char * restrict s" "char32_t c" "mbstate_t * restrict ps" "locale_t"
 .Sh DESCRIPTION
 The
 .Fn wcrtomb ,
 .Fn wcrtomb_l ,
-.Fn c16rtomb
+.Fn c16rtomb ,
+.Fn c16rtomb_l ,
+.Fn c32rtomb ,
 and
-.Fn c32rtomb
+.Fn c32rtomb_l
 functions store a multibyte sequence representing the
 wide character
 .Fa c ,
@@ -93,12 +101,18 @@ may need to invoked multiple times before a multibyte sequence is
 returned.
 .Pp
 The
-.Fn wcrtomb_l
-function takes an explicit
+.Fn wcrtomb_l ,
+.Fn c16rtomb_l ,
+and
+.Fn c32rtomb_l
+functions take an explicit
 .Fa locale
 argument, whereas the
-.Fn wcrtomb
-function uses the current global or per-thread locale.
+.Fn wcrtomb ,
+.Fn c16rtomb ,
+and
+.Fn c32rtomb
+functions use the current global or per-thread locale.
 .Sh RETURN VALUES
 These functions return the length (in bytes) of the multibyte sequence
 needed to represent
@@ -112,9 +126,11 @@ is not a valid wide character code.
 The
 .Fn wcrtomb ,
 .Fn wcrtomb_l ,
-.Fn c16rtomb
+.Fn c16rtomb ,
+.Fn c16rtomb_l ,
+.Fn c32rtomb ,
 and
-.Fn c32rtomb
+.Fn c32rtomb_l
 functions will fail if:
 .Bl -tag -width Er
 .It Bq Er EILSEQ

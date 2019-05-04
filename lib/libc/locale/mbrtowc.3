@@ -24,14 +24,16 @@
 .\"
 .\" $FreeBSD: head/lib/libc/locale/mbrtowc.3 250883 2013-05-21 19:59:37Z ed $
 .\"
-.Dd December 26, 2013
+.Dd May 4, 2019
 .Dt MBRTOWC 3
 .Os
 .Sh NAME
 .Nm mbrtowc ,
 .Nm mbrtowc_l ,
 .Nm mbrtoc16 ,
-.Nm mbrtoc32
+.Nm mbrtoc16_l ,
+.Nm mbrtoc32 ,
+.Nm mbrtoc32_l
 .Nd "convert a character to a wide-character code (restartable)"
 .Sh LIBRARY
 .Lb libc
@@ -59,13 +61,25 @@
 .Fa "wchar_t * restrict pc" "const char * restrict s" "size_t n"
 .Fa "mbstate_t * restrict ps" "locale_t locale"
 .Fc
+.Ft size_t
+.Fo mbrtoc16_l
+.Fa "char16_t * restrict pc" "const char * restrict s" "size_t n"
+.Fa "mbstate_t * restrict ps" "locale_t locale"
+.Fc
+.Ft size_t
+.Fo mbrtoc32_l
+.Fa "char32_t * restrict pc" "const char * restrict s" "size_t n"
+.Fa "mbstate_t * restrict ps" "locale_t locale"
+.Fc
 .Sh DESCRIPTION
 The
 .Fn mbrtowc ,
 .Fn mbrtowc_l ,
-.Fn mbrtoc16
+.Fn mbrtoc16 ,
+.Fn mbrtoc16_l ,
+.Fn mbrtoc32 ,
 and
-.Fn mbrtoc32
+.Fn mbrtoc32_l
 functions inspect at most
 .Fa n
 bytes pointed to by
@@ -120,19 +134,27 @@ function may need to be invoked multiple times to convert a single
 multibyte character sequence.
 .Pp
 The
-.Fn mbrtowc_l
-function takes an explicit
+.Fn mbrtowc_l ,
+.Fn mbrtoc16_l ,
+and
+.Fn mbrtoc32_l
+functions take an explicit
 .Fa locale
 argument, whereas the
-.Fn mbrtowc
-function uses the current global or per-thread locale.
+.Fn mbrtowc ,
+.Fn mbrtoc16 ,
+and
+.Fn mbrtoc32
+functions use the current global or per-thread locale.
 .Sh RETURN VALUES
 The
 .Fn mbrtowc ,
 .Fn mbrtowc_l ,
-.Fn mbrtoc16
+.Fn mbrtoc16 ,
+.Fn mbrtoc16_l ,
+.Fn mbrtoc32 ,
 and
-.Fn mbrtoc32
+.Fn mbrtoc32_l
 functions return:
 .Bl -tag -width indent
 .It 0
@@ -162,7 +184,9 @@ bytes have been processed.
 .Pp
 The
 .Fn mbrtoc16
-function also returns:
+and
+.Fn mbrtoc16_l
+functions also return:
 .Bl -tag -width indent
 .It Po Vt size_t Pc Ns \-3
 The next character resulting from a previous call has been stored.
@@ -172,9 +196,11 @@ No bytes from the input have been consumed.
 The
 .Fn mbrtowc ,
 .Fn mbrtowc_l ,
-.Fn mbrtoc16
+.Fn mbrtoc16 ,
+.Fn mbrtoc16_l ,
+.Fn mbrtoc32 ,
 and
-.Fn mbrtoc32
+.Fn mbrtoc32_l
 functions will fail if:
 .Bl -tag -width Er
 .It Bq Er EILSEQ

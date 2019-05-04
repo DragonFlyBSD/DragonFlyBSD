@@ -125,7 +125,9 @@ MLINKS+=mbintowcr.3 mbintowcr_l.3 \
 MLINKS+=mblen.3 mblen_l.3
 MLINKS+=mbrlen.3 mbrlen_l.3
 MLINKS+=mbrtowc.3 mbrtoc16.3 \
+	mbrtowc.3 mbrtoc16_l.3 \
 	mbrtowc.3 mbrtoc32.3 \
+	mbrtowc.3 mbrtoc32_l.3 \
 	mbrtowc.3 mbrtowc_l.3
 MLINKS+=mbsinit.3 mbsinit_l.3
 MLINKS+=mbsrtowcs.3 mbsnrtowcs.3 \
@@ -137,7 +139,9 @@ MLINKS+=nl_langinfo.3 nl_langinfo_l.3
 MLINKS+=tolower.3 tolower_l.3
 MLINKS+=toupper.3 toupper_l.3
 MLINKS+=wcrtomb.3 c16rtomb.3 \
+	wcrtomb.3 c16rtomb_l.3 \
 	wcrtomb.3 c32rtomb.3 \
+	wcrtomb.3 c32rtomb_l.3 \
 	wcrtomb.3 wcrtomb_l.3
 MLINKS+=wcsftime.3 wcsftime_l.3
 MLINKS+=wcsrtombs.3 wcsnrtombs.3 \
