@@ -78,7 +78,10 @@ MLINKS+=getnetent.3 endnetent.3 \
 	getnetent.3 setnetent.3
 MLINKS+=getprotoent.3 endprotoent.3 \
 	getprotoent.3 getprotobyname.3 \
+	getprotoent.3 getprotobyname_r.3 \
 	getprotoent.3 getprotobynumber.3 \
+	getprotoent.3 getprotobynumber_r.3 \
+	getprotoent.3 getprotoent_r.3 \
 	getprotoent.3 setprotoent.3
 MLINKS+=getservent.3 endservent.3 \
 	getservent.3 getservbyname.3 \

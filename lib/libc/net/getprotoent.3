@@ -27,15 +27,17 @@
 .\"
 .\"     @(#)getprotoent.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/net/getprotoent.3,v 1.12 2007/01/09 00:28:02 imp Exp $
-.\" $DragonFly: src/lib/libc/net/getprotoent.3,v 1.3 2008/05/01 21:51:43 swildner Exp $
 .\"
-.Dd June 4, 1993
+.Dd May 4, 2019
 .Dt GETPROTOENT 3
 .Os
 .Sh NAME
 .Nm getprotoent ,
+.Nm getprotoent_r ,
 .Nm getprotobynumber ,
+.Nm getprotobynumber_r ,
 .Nm getprotobyname ,
+.Nm getprotobyname_r ,
 .Nm setprotoent ,
 .Nm endprotoent
 .Nd get protocol entry
@@ -45,10 +47,16 @@
 .In netdb.h
 .Ft struct protoent *
 .Fn getprotoent void
+.Ft int
+.Fn getprotoent_r "struct protoent *" "char *" "size_t" "struct protoent **"
 .Ft struct protoent *
 .Fn getprotobyname "const char *name"
+.Ft int
+.Fn getprotobyname_r "const char *" "struct protoent *" "char *" "size_t" "struct protoent **"
 .Ft struct protoent *
 .Fn getprotobynumber "int proto"
+.Ft int
+.Fn getprotobynumber_r "int" "struct protoent *" "char *" "size_t" "struct protoent **"
 .Ft void
 .Fn setprotoent "int stayopen"
 .Ft void
@@ -117,17 +125,62 @@ protocol number is found,
 or until
 .Dv EOF
 is encountered.
+.Pp
+The
+.Fn getprotoent_r ,
+.Fn getprotobynumber_r ,
+and
+.Fn getprotobyname_r
+functions are reentrant versions of the above functions that take a
+pointer to a
+.Vt protoent
+structure which is used to store state information.
+The structure must be zero-filled before it is used
+and should be considered opaque for the sake of portability.
+These functions also take a pointer to another
+.Vt protoent
+structure which is used to store the results of the database lookup.
 .Sh RETURN VALUES
-Null pointer
-(0) returned on
-.Dv EOF
-or error.
+The
+.Fn getprotoent ,
+.Fn getprotobynumber ,
+and
+.Fn getprotobyname
+functions return a pointer to a
+.Vt protoent
+structure on success or a null pointer if end-of-file
+is reached or an error occurs.
+.Pp
+The
+.Fn getprotoent_r ,
+.Fn getprotobynumber_r ,
+and
+.Fn getprotobyname_r
+functions return 0 on success or \-1 if end-of-file
+is reached or an error occurs.
 .Sh FILES
-.Bl -tag -width /etc/protocols -compact
+.Bl -tag -width ".Pa /etc/protocols" -compact
 .It Pa /etc/protocols
 .El
 .Sh SEE ALSO
 .Xr protocols 5
+.Sh STANDARDS
+The
+.Fn getprotoent ,
+.Fn getprotobynumber ,
+.Fn getprotobyname ,
+.Fn setprotoent ,
+and
+.Fn endprotoent
+functions conform to
+.St -p1003.1-2004 .
+.Pp
+The
+.Fn getprotoent_r ,
+.Fn getprotobynumber_r ,
+and
+.Fn getprotobyname_r
+functions are not currently standardized.
 .Sh HISTORY
 The
 .Fn getprotoent ,
@@ -138,6 +191,14 @@ and
 .Fn endprotoent
 functions appeared in
 .Bx 4.2 .
+.Pp
+The
+.Fn getprotoent_r ,
+.Fn getprotobynumber_r ,
+and
+.Fn getprotobyname_r
+functions appeared in
+.Dx 2.1 .
 .Sh BUGS
 These functions use a thread-specific data space;
 if the data is needed for future use, it should be
