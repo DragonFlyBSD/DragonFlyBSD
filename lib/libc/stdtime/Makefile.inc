@@ -9,7 +9,7 @@ SRCS+=	asctime.c difftime.c localtime.c strftime.c strptime.c timelocal.c \
 	time32.c timespec_get.c
 
 .if ${LIB} == "c"
-MAN+=	ctime.3 strftime.3 strptime.3 time2posix.3 timespec_get.3
+MAN+=	ctime.3 offtime.3 strftime.3 strptime.3 time2posix.3 timespec_get.3
 MAN+=	tzfile.5
 
 MLINKS+=ctime.3 asctime.3 \
@@ -22,6 +22,8 @@ MLINKS+=ctime.3 asctime.3 \
 	ctime.3 localtime_r.3 \
 	ctime.3 mktime.3 \
 	ctime.3 timegm.3
+MLINKS+=offtime.3 timelocal.3 \
+	offtime.3 timeoff.3
 MLINKS+=strftime.3 strftime_l.3
 MLINKS+=strptime.3 strptime_l.3
 MLINKS+=time2posix.3 posix2time.3
