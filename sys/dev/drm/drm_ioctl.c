@@ -441,8 +441,16 @@ static int drm_copy_field(char __user *buf, size_t *buf_len, const char *value)
 static int drm_version(struct drm_device *dev, void *data,
 		       struct drm_file *file_priv)
 {
+	static int drm_version_initial;
 	struct drm_version *version = data;
 	int err;
+
+	if (drm_version_initial == 0) {
+		int dummy;
+
+		++drm_version_initial;
+		tsleep(&dummy, 0, "SDELAY", hz*2);
+	}
 
 	version->version_major = dev->driver->major;
 	version->version_minor = dev->driver->minor;
