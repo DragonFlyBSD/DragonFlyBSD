@@ -26,6 +26,7 @@ MLINKS+=ypclnt.3 yp_all.3 \
 	ypclnt.3 yperr_string.3 \
 	ypclnt.3 yp_first.3 \
 	ypclnt.3 yp_get_default_domain.3 \
+	ypclnt.3 yp_maplist.3 \
 	ypclnt.3 yp_master.3 \
 	ypclnt.3 yp_match.3 \
 	ypclnt.3 yp_next.3 \
