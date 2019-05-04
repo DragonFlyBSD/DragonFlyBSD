@@ -1038,11 +1038,11 @@ void radeon_vm_bo_rmv(struct radeon_device *rdev,
 	list_del(&bo_va->bo_list);
 
 	mutex_lock(&vm->mutex);
-	interval_tree_remove(&bo_va->it, &vm->va);
-	list_del(&bo_va->vm_status);
-
+	if (bo_va->it.start || bo_va->it.last)
+		interval_tree_remove(&bo_va->it, &vm->va);
 	if (bo_va->addr) {
 		bo_va->bo = NULL;
+		list_del(&bo_va->vm_status);
 		list_add(&bo_va->vm_status, &vm->freed);
 	} else {
 		kfree(bo_va);
@@ -1158,9 +1158,9 @@ void radeon_vm_fini(struct radeon_device *rdev, struct radeon_vm *vm)
 	while (vm->va.rb_node) {
 		bo_va = container_of((void *)vm->va.rb_node, struct radeon_bo_va, it);
 #endif
-		interval_tree_remove(&bo_va->it, &vm->va);
 		r = radeon_bo_reserve(bo_va->bo, false);
 		if (!r) {
+			interval_tree_remove(&bo_va->it, &vm->va);
 			list_del_init(&bo_va->bo_list);
 			radeon_bo_unreserve(bo_va->bo);
 			kfree(bo_va);
