@@ -5,6 +5,20 @@
 # Can be overridden by makeoptions or /etc/make.conf
 KERNEL?=	kernel
 
+# If a different binutils is installed in /usr/local it probably
+# won't recognize LDVER or use the default, creating an incompatibility
+# between buildkernel and nativekernel as well as between buildkernel and
+# manual make's inside /usr/obj/usr/src/sys/KERNEL_CONFIG.
+#
+# /usr/local/bin must be removed from the path.
+#
+RMLDPATH=/usr/local/bin
+PATH:=${PATH:C/${RMLDPATH}//g}
+.export PATH
+
+fubar:
+	echo ${PATH}
+
 # build this target if none is specified on the command line
 .MAIN:	all
 
