@@ -27,7 +27,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd April 6, 2018
+.Dd May 4, 2019
 .Dt YPCLNT 3
 .Os
 .Sh NAME
@@ -35,6 +35,7 @@
 .Nm yp_bind ,
 .Nm yp_first ,
 .Nm yp_get_default_domain ,
+.Nm yp_maplist ,
 .Nm yp_master ,
 .Nm yp_match ,
 .Nm yp_next ,
@@ -58,6 +59,8 @@
 .Fn yp_first "char *indomain" "char *inmap" "char **outkey" "int *outkeylen" "char **outval" "int *outvallen"
 .Ft int
 .Fn yp_get_default_domain "char **domp"
+.Ft int
+.Fn yp_maplist "char *indomain" "struct ypmaplist **outmaplist"
 .Ft int
 .Fn yp_master "char *indomain" "char *inmap" "char **outname"
 .Ft int
@@ -277,7 +280,7 @@ returns a value of 0, and is called with the following arguments:
 .Bd -literal -offset indent
 int foreach (
 	int instatus,
-	char *inkey,
+	unsigned long *inkey,
 	int inkeylen,
 	char *inval,
 	int invallen,
@@ -330,6 +333,18 @@ something useful or simply ignore it.
 .El
 .It Fn yp_order
 Returns the order number for a map.
+.It Fn yp_maplist
+Returns a singly-linked list of the names of all the maps available in the
+named domain.
+The second argument to
+.Fn yp_maplist
+is:
+.Bd -literal -offset indent
+struct ypmaplist {
+	char *map;
+	struct ypmaplist *next;
+};
+.Ed
 .It Fn yp_master
 Returns the hostname for the machine on which the master
 .Tn YP
