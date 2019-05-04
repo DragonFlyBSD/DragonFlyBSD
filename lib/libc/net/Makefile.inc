@@ -84,8 +84,11 @@ MLINKS+=getprotoent.3 endprotoent.3 \
 	getprotoent.3 getprotoent_r.3 \
 	getprotoent.3 setprotoent.3
 MLINKS+=getservent.3 endservent.3 \
+	getservent.3 getservbyname_r.3 \
 	getservent.3 getservbyname.3 \
 	getservent.3 getservbyport.3 \
+	getservent.3 getservbyport_r.3 \
+	getservent.3 getservent_r.3 \
 	getservent.3 setservent.3
 MLINKS+=if_indextoname.3 if_freenameindex.3 \
 	if_indextoname.3 if_nameindex.3 \
