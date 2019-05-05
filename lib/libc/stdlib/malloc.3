@@ -34,7 +34,7 @@
 .\"     @(#)malloc.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdlib/malloc.3,v 1.73 2007/06/15 22:32:33 jasone Exp $
 .\"
-.Dd April 11, 2019
+.Dd May 5, 2019
 .Dt MALLOC 3
 .Os
 .Sh NAME
@@ -307,7 +307,7 @@ if ((p2 = realloc(p, newsize)) == NULL) {
 p = p2;
 size = newsize;
 .Ed
-.Sh DIAGNOSTICS
+.Sh RETURN VALUES
 If
 .Fn malloc ,
 .Fn calloc ,

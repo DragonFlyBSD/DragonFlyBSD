@@ -32,7 +32,7 @@
 .\"	@(#)regex.3	8.4 (Berkeley) 3/20/94
 .\" $FreeBSD: src/lib/libc/regex/regex.3,v 1.21 2007/01/09 00:28:04 imp Exp $
 .\"
-.Dd August 20, 2015
+.Dd May 5, 2019
 .Dt REGEX 3
 .Os
 .Sh NAME
@@ -341,7 +341,7 @@ If
 .Fn regcomp
 fails, it returns a non-zero error code;
 see
-.Sx DIAGNOSTICS .
+.Sx RETURN VALUES .
 .Pp
 The
 .Fn regexec
@@ -430,7 +430,7 @@ returns 0 for success and the non-zero code
 for failure.
 Other non-zero error codes may be returned in exceptional situations;
 see
-.Sx DIAGNOSTICS .
+.Sx RETURN VALUES .
 .Pp
 If
 .Dv REG_NOSUB
@@ -813,7 +813,7 @@ and
 beginning and ending subexpressions in obsolete
 .Pq Dq basic
 REs are anchors, not ordinary characters.
-.Sh DIAGNOSTICS
+.Sh RETURN VALUES
 Non-zero error codes from
 .Fn regcomp
 and

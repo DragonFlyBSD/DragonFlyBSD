@@ -29,9 +29,8 @@
 .\"
 .\"     @(#)getusershell.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/gen/getusershell.3,v 1.12 2007/01/09 00:27:54 imp Exp $
-.\" $DragonFly: src/lib/libc/gen/getusershell.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
 .\"
-.Dd January 16, 1999
+.Dd May 5, 2019
 .Dt GETUSERSHELL 3
 .Os
 .Sh NAME
@@ -73,15 +72,17 @@ line (opening the file if necessary);
 rewinds the file;
 .Fn endusershell
 closes it.
+.Sh RETURN VALUES
+The
+.Fn getusershell
+function returns
+.Dv NULL
+on
+.Dv EOF .
 .Sh FILES
 .Bl -tag -width /etc/shells -compact
 .It Pa /etc/shells
 .El
-.Sh DIAGNOSTICS
-The routine
-.Fn getusershell
-returns a null pointer (0) on
-.Dv EOF .
 .Sh SEE ALSO
 .Xr nsswitch.conf 5 ,
 .Xr shells 5

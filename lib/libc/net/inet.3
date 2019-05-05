@@ -27,9 +27,8 @@
 .\"
 .\"     From: @(#)inet.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/net/inet.3,v 1.36 2007/06/14 07:13:28 delphij Exp $
-.\" $DragonFly: src/lib/libc/net/inet.3,v 1.2 2003/06/17 04:26:44 dillon Exp $
 .\"
-.Dd June 14, 2007
+.Dd May 5, 2019
 .Dt INET 3
 .Os
 .Sh NAME
@@ -229,7 +228,7 @@ may be decimal, octal, or hexadecimal, as specified
 in the C language (i.e., a leading 0x or 0X implies
 hexadecimal; otherwise, a leading 0 implies octal;
 otherwise, the number is interpreted as decimal).
-.Sh DIAGNOSTICS
+.Sh RETURN VALUES
 The constant
 .Dv INADDR_NONE
 is returned by

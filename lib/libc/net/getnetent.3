@@ -27,9 +27,8 @@
 .\"
 .\"     @(#)getnetent.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/net/getnetent.3,v 1.23 2007/01/09 00:28:02 imp Exp $
-.\" $DragonFly: src/lib/libc/net/getnetent.3,v 1.2 2003/06/17 04:26:44 dillon Exp $
 .\"
-.Dd June 4, 1993
+.Dd May 5, 2019
 .Dt GETNETENT 3
 .Os
 .Sh NAME
@@ -136,17 +135,17 @@ argument
 must be
 .Dv AF_INET .
 Network numbers are supplied in host order.
+.Sh RETURN VALUES
+.Dv NULL
+returned on
+.Dv EOF
+or error.
 .Sh FILES
 .Bl -tag -width /etc/nsswitch.conf -compact
 .It Pa /etc/networks
 .It Pa /etc/nsswitch.conf
 .It Pa /etc/resolv.conf
 .El
-.Sh DIAGNOSTICS
-Null pointer
-(0) returned on
-.Dv EOF
-or error.
 .Sh SEE ALSO
 .Xr networks 5
 .Pp

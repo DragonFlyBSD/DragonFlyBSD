@@ -2,7 +2,7 @@
 .\" $NetBSD: getrpcent.3,v 1.6 1998/02/05 18:49:06 perry Exp $
 .\" $FreeBSD: src/lib/libc/rpc/getrpcent.3,v 1.18 2005/01/20 09:17:04 ru Exp $
 .\"
-.Dd February 2, 2018
+.Dd May 5, 2019
 .Dt GETRPCENT 3
 .Os
 .Sh NAME
@@ -88,16 +88,16 @@ functions
 sequentially search from the beginning
 of the file until a matching rpc program name or
 program number is found, or until end-of-file is encountered.
-.Sh FILES
-.Bl -tag -width /etc/rpc -compact
-.It Pa /etc/rpc
-.El
-.Sh DIAGNOSTICS
+.Sh RETURN VALUES
 A
 .Dv NULL
 pointer is returned on
 .Dv EOF
 or error.
+.Sh FILES
+.Bl -tag -width /etc/rpc -compact
+.It Pa /etc/rpc
+.El
 .Sh SEE ALSO
 .Xr rpc 5 ,
 .Xr rpcinfo 8 ,

@@ -28,7 +28,7 @@
 .\"     From: @(#)gethostbyname.3	8.4 (Berkeley) 5/25/95
 .\" $FreeBSD: src/lib/libc/net/gethostbyname.3,v 1.38 2007/01/09 00:28:02 imp Exp $
 .\"
-.Dd May 12, 2006
+.Dd May 5, 2019
 .Dt GETHOSTBYNAME 3
 .Os
 .Sh NAME
@@ -226,6 +226,28 @@ function returns a string which is the message text corresponding to the
 value of the
 .Fa err
 argument.
+.Sh RETURN VALUES
+Error return status from
+.Fn gethostbyname ,
+.Fn gethostbyname2
+and
+.Fn gethostbyaddr
+is indicated by return of a
+.Dv NULL
+pointer.
+The integer
+.Va h_errno
+may then be checked to see whether this is a temporary failure
+or an invalid or unknown host.
+The routine
+.Fn herror
+can be used to print an error message describing the failure.
+If its argument
+.Fa string
+is
+.Pf non- Dv NULL ,
+it is printed, followed by a colon and a space.
+The error message is printed with a trailing newline.
 .Sh FILES
 .Bl -tag -width ".Pa /etc/nsswitch.conf" -compact
 .It Pa /etc/hosts
@@ -248,29 +270,7 @@ if ((hp = gethostbyaddr((const void *)&ip,
 
 printf("name associated with %s is %s\en", ipstr, hp->h_name);
 .Ed
-.Sh DIAGNOSTICS
-Error return status from
-.Fn gethostbyname ,
-.Fn gethostbyname2
-and
-.Fn gethostbyaddr
-is indicated by return of a
-.Dv NULL
-pointer.
-The integer
-.Va h_errno
-may then be checked to see whether this is a temporary failure
-or an invalid or unknown host.
-The routine
-.Fn herror
-can be used to print an error message describing the failure.
-If its argument
-.Fa string
-is
-.Pf non- Dv NULL ,
-it is printed, followed by a colon and a space.
-The error message is printed with a trailing newline.
-.Pp
+.Sh ERRORS
 The variable
 .Va h_errno
 can have the following values:

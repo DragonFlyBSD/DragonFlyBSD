@@ -28,9 +28,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/net/inet6_rth_space.3,v 1.10 2005/07/31 03:30:44 keramida Exp $
-.\" $DragonFly: src/lib/libc/net/inet6_rth_space.3,v 1.2 2008/09/05 20:43:08 swildner Exp $
 .\"
-.Dd September 4, 2008
+.Dd May 5, 2019
 .Dt INET6_RTH_SPACE 3
 .Os
 .\"
@@ -183,12 +182,7 @@ function returns a pointer to an IPv6 address on success or
 .Dv NULL
 when an error has occurred.
 .\"
-.Sh EXAMPLES
-RFC 3542 gives extensive examples in Section 21, Appendix B.
-.Pp
-KAME also provides examples in the advapitest directory of its kit.
-.\"
-.Sh DIAGNOSTICS
+.Sh RETURN VALUES
 The
 .Fn inet6_rth_space
 and
@@ -205,6 +199,11 @@ The
 and
 .Fn inet6_rth_reverse
 functions return 0 on success, or \-1 upon an error.
+.\"
+.Sh EXAMPLES
+RFC 3542 gives extensive examples in Section 21, Appendix B.
+.Pp
+KAME also provides examples in the advapitest directory of its kit.
 .\"
 .Sh SEE ALSO
 .Rs

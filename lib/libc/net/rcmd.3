@@ -28,7 +28,7 @@
 .\"     From: @(#)rcmd.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/net/rcmd.3,v 1.27 2008/12/14 22:48:48 murray Exp $
 .\"
-.Dd December 31, 2017
+.Dd May 5, 2019
 .Dt RCMD 3
 .Os
 .Sh NAME
@@ -238,15 +238,7 @@ For
 .Fn rcmd_af ,
 .Dv PF_UNSPEC
 is also allowed.
-.Sh ENVIRONMENT
-.Bl -tag -width RSH
-.It Ev RSH
-When using the
-.Fn rcmd
-function, this variable is used as the program to run instead of
-.Xr rsh 1 Pq Pa net/bsdrcmds .
-.El
-.Sh DIAGNOSTICS
+.Sh RETURN VALUES
 The
 .Fn rcmd
 function
@@ -264,6 +256,14 @@ set according to the reason for failure.
 The error code
 .Er EAGAIN
 is overloaded to mean ``All network ports in use.''
+.Sh ENVIRONMENT
+.Bl -tag -width RSH
+.It Ev RSH
+When using the
+.Fn rcmd
+function, this variable is used as the program to run instead of
+.Xr rsh 1 Pq Pa net/bsdrcmds .
+.El
 .Sh SEE ALSO
 .Xr rlogin 1 Pq Pa net/bsdrcmds ,
 .Xr rsh 1 Pq Pa net/bsdrcmds ,
