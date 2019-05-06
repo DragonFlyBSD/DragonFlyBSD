@@ -522,6 +522,7 @@ int	 closefrom(int);
 const char *
 	 crypt_get_format(void);
 int	 crypt_set_format(const char *);
+int	 dup3(int, int, int);
 int	 eaccess(const char *, int);
 void	 endusershell(void);
 int	 exect(const char *, char * const *, char * const *);

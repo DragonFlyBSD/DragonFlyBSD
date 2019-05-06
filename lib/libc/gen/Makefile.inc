@@ -12,7 +12,7 @@ SRCS+=  _once_stub.c _pthread_stubs.c _rand48.c _spinlock_stub.c \
 	_thread_init.c alarm.c arc4random.c assert.c basename.c \
 	clock.c clock_getcpuclockid.c closedir.c confstr.c creat.c \
 	ctermid.c daemon.c devname.c dirfd.c dirname.c disklabel.c disktab.c \
-	dlfcn.c drand48.c elf_utils.c erand48.c err.c errlst.c exec.c \
+	dlfcn.c drand48.c dup3.c elf_utils.c erand48.c err.c errlst.c exec.c \
 	fdevname.c fmtcheck.c fmtmsg.c fnmatch.c fpclassify.c \
 	frexp.c fstab.c ftok.c fts.c ftw.c getbootfile.c getbsize.c \
 	getcap.c getcwd.c getdevpath.c getdomainname.c \
@@ -56,7 +56,7 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	clock_getcpuclockid.3 confstr.3 creat.3 ctermid.3 daemon.3 \
 	devname.3 directory.3 dirname.3 \
 	dladdr.3 dlinfo.3 dlopen.3 \
-	dlclose.3 dlerror.3 dlfcn.3 dlsym.3 dlvsym.3 dl_iterate_phdr.3 \
+	dlclose.3 dlerror.3 dlfcn.3 dlsym.3 dlvsym.3 dl_iterate_phdr.3 dup3.3 \
 	endutxent.3 err.3 exec.3 \
 	fmtcheck.3 fmtmsg.3 fnmatch.3 frexp.3 ftok.3 fts.3 ftw.3 \
 	getbootfile.3 getbsize.3 getcap.3 getcontext.3 getcwd.3 \

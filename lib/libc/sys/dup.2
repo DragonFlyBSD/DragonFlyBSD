@@ -27,9 +27,8 @@
 .\"
 .\"     @(#)dup.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/dup.2,v 1.9.2.6 2001/12/14 18:34:00 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/dup.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
 .\"
-.Dd June 4, 1993
+.Dd May 6, 2019
 .Dt DUP 2
 .Os
 .Sh NAME
@@ -139,7 +138,8 @@ Too many descriptors are active.
 .Xr open 2 ,
 .Xr pipe 2 ,
 .Xr socket 2 ,
-.Xr socketpair 2
+.Xr socketpair 2 ,
+.Xr dup3 3
 .Sh STANDARDS
 The
 .Fn dup

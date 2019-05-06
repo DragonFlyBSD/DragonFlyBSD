@@ -492,6 +492,10 @@ DF504.0 {
     waitid;
 };
 
+DF506.0 {
+    dup3;
+};
+
 DFprivate_1.0 {
 	/* pthread stubs */
     _pthread_atfork;
