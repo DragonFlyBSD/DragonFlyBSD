@@ -335,7 +335,7 @@ __copy_netent(struct netent *ne, struct netent *nptr, char *buf, size_t buflen)
 
 int
 getnetbyname_r(const char *name, struct netent *ne, char *buffer,
-	       size_t buflen, struct netent **result, int *h_errorp)
+	       size_t buflen, struct netent **result, int *h_errnop)
 {
 #ifdef NS_CACHING
 	static const nss_cache_info cache_info =
@@ -356,14 +356,14 @@ getnetbyname_r(const char *name, struct netent *ne, char *buffer,
 
 	rval = _nsdispatch((void *)result, dtab, NSDB_NETWORKS,
 	    "getnetbyname_r", default_src, name, ne, buffer, buflen,
-	    &ret_errno, h_errorp);
+	    &ret_errno, h_errnop);
 
 	return ((rval == NS_SUCCESS) ? 0 : -1);
 }
 
 int
 getnetbyaddr_r(uint32_t addr, int af, struct netent *ne, char *buffer,
-	       size_t buflen, struct netent **result, int *h_errorp)
+	       size_t buflen, struct netent **result, int *h_errnop)
 {
 #ifdef NS_CACHING
 	static const nss_cache_info cache_info =
@@ -384,7 +384,7 @@ getnetbyaddr_r(uint32_t addr, int af, struct netent *ne, char *buffer,
 
 	rval = _nsdispatch((void *)result, dtab, NSDB_NETWORKS,
 	    "getnetbyaddr_r", default_src, addr, af, ne, buffer, buflen,
-	    &ret_errno, h_errorp);
+	    &ret_errno, h_errnop);
 
 	return ((rval == NS_SUCCESS) ? 0 : -1);
 }
