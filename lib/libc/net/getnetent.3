@@ -28,13 +28,16 @@
 .\"     @(#)getnetent.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/net/getnetent.3,v 1.23 2007/01/09 00:28:02 imp Exp $
 .\"
-.Dd May 5, 2019
+.Dd May 6, 2019
 .Dt GETNETENT 3
 .Os
 .Sh NAME
 .Nm getnetent ,
+.Nm getnetent_r ,
 .Nm getnetbyaddr ,
+.Nm getnetbyaddr_r ,
 .Nm getnetbyname ,
+.Nm getnetbyname_r ,
 .Nm setnetent ,
 .Nm endnetent
 .Nd get network entry
@@ -44,10 +47,16 @@
 .In netdb.h
 .Ft struct netent *
 .Fn getnetent void
+.Ft int
+.Fn getnetent_r "struct netent *ne" "char *buffer" "size_t buflen" "struct netent **result" "int *h_errnop"
 .Ft struct netent *
 .Fn getnetbyname "const char *name"
+.Ft int
+.Fn getnetbyname_r "const char *name" "struct netent *ne" "char *buffer" "size_t buflen" "struct netent **result" "int *h_errnop"
 .Ft struct netent *
 .Fn getnetbyaddr "uint32_t net" "int type"
+.Ft int
+.Fn getnetbyaddr_r "uint32_t addr" "int af" "struct netent *ne" "char *buffer" "size_t buflen" "struct netent **result" "int *h_errnop"
 .Ft void
 .Fn setnetent "int stayopen"
 .Ft void
@@ -135,13 +144,41 @@ argument
 must be
 .Dv AF_INET .
 Network numbers are supplied in host order.
+.Pp
+The
+.Fn getnetent_r ,
+.Fn getnetbyaddr_r ,
+and
+.Fn getnetbyname_r
+functions are reentrant versions of the above functions that take a
+pointer to a
+.Vt netent
+structure which is used to store state information.
+The structure must be zero-filled before it is used
+and should be considered opaque for the sake of portability.
+These functions also take a pointer to another
+.Vt netent
+structure which is used to store the results of the database lookup.
 .Sh RETURN VALUES
-.Dv NULL
-returned on
-.Dv EOF
-or error.
+The
+.Fn getnetent ,
+.Fn getnetbyaddr ,
+and
+.Fn getnetbyname
+functions return a pointer to a
+.Vt netent
+structure on success or a null pointer if end-of-file
+is reached or an error occurs.
+.Pp
+The
+.Fn getnetent_r ,
+.Fn getnetbyaddr_r ,
+and
+.Fn getnetbyname_r
+functions return 0 on success or \-1 if end-of-file
+is reached or an error occurs.
 .Sh FILES
-.Bl -tag -width /etc/nsswitch.conf -compact
+.Bl -tag -width ".Pa /etc/nsswitch.conf" -compact
 .It Pa /etc/networks
 .It Pa /etc/nsswitch.conf
 .It Pa /etc/resolv.conf
@@ -150,6 +187,23 @@ or error.
 .Xr networks 5
 .Pp
 .%T RFC 1101
+.Sh STANDARDS
+The
+.Fn getnetent ,
+.Fn getnetbyaddr ,
+.Fn getnetbyname ,
+.Fn setnetent ,
+and
+.Fn endnetent
+functions conform to
+.St -p1003.1-2004 .
+.Pp
+The
+.Fn getnetent_r ,
+.Fn getnetbyaddr_r ,
+and
+.Fn getnetbyname_r
+functions are not currently standardized.
 .Sh HISTORY
 The
 .Fn getnetent ,
@@ -160,6 +214,14 @@ and
 .Fn endnetent
 functions appeared in
 .Bx 4.2 .
+.Pp
+The
+.Fn getnetent_r ,
+.Fn getnetbyaddr_r ,
+and
+.Fn getnetbyname_r
+functions appeared in
+.Dx 2.1 .
 .Sh BUGS
 The data space used by
 these functions is thread-specific; if future use requires the data, it should be
