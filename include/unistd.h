@@ -363,9 +363,6 @@ int	 chown(const char *, uid_t, gid_t);
 int	 close(int);
 int	 dup(int);
 int	 dup2(int, int);
-#if __BSD_VISIBLE
-int	 eaccess(const char *, int);
-#endif
 int	 execl(const char *, const char *, ...);
 int	 execle(const char *, const char *, ...);
 int	 execlp(const char *, const char *, ...);
@@ -525,6 +522,7 @@ int	 closefrom(int);
 const char *
 	 crypt_get_format(void);
 int	 crypt_set_format(const char *);
+int	 eaccess(const char *, int);
 void	 endusershell(void);
 int	 exect(const char *, char * const *, char * const *);
 int	 execvP(const char *, const char *, char * const *);
