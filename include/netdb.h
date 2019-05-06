@@ -286,7 +286,7 @@ int		gethostent_r(struct hostent *, char *, size_t,
 struct hostent	*getipnodebyaddr(const void *, size_t, int, int *);
 struct hostent	*getipnodebyname(const char *, int, int, int *);
 int		getnetbyaddr_r(uint32_t, int, struct netent *, char *, size_t,
-			       struct netent**, int *);
+			       struct netent **, int *);
 int		getnetbyname_r(const char *, struct netent *, char *, size_t,
 			       struct netent **, int *);
 int		getnetent_r(struct netent *, char *, size_t, struct netent **,
