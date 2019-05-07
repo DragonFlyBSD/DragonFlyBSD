@@ -388,7 +388,6 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 	struct vm_object_hash *hash;
 
 	RB_INIT(&object->rb_memq);
-	LIST_INIT(&object->shadow_head);
 	lwkt_token_init(&object->token, "vmobj");
 
 	object->type = type;
@@ -401,7 +400,6 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 		vm_object_set_flag(object, OBJ_ONEMAPPING);
 	object->paging_in_progress = 0;
 	object->resident_page_count = 0;
-	object->shadow_count = 0;
 	/* cpu localization twist */
 	object->pg_color = vm_quickcolor();
 	object->handle = NULL;
@@ -497,7 +495,7 @@ vm_object_allocate_hold(objtype_t type, vm_pindex_t size)
  * must NOT be chain locked by anyone at the time the reference is added.
  *
  * Referencing a chain-locked object can blow up the fairly sensitive
- * ref_count and shadow_count tests in the deallocator.  Most callers
+ * ref_count tests in the deallocator.  Most callers
  * will call vm_object_chain_wait() prior to calling
  * vm_object_reference_locked() to avoid the case.  The held token
  * allows the caller to pair the wait and ref.
@@ -936,7 +934,19 @@ again:
 			break;
 		}
 
+#if 0
 		/*
+		 * CODE REMOVAL IN PROGRESS.
+		 *
+		 * This code handled setting ONEMAPPING again on a DEFAULT
+		 * or SWAP object on the 2->1 transition of ref_count,
+		 *
+		 * This code also handled collapsing object chains on the
+		 * 2->1 transition when the second ref was due to a shadow.
+		 */
+		/*
+		 * The ref_count is either 1 or 2.
+		 *
 		 * Here on ref_count of one or two, which are special cases for
 		 * objects.
 		 *
@@ -1063,12 +1073,14 @@ again:
 			must_drop = 1;
 			continue;
 		}
+skip:
+		;
+#endif
 
 		/*
 		 * Drop the ref and handle termination on the 1->0 transition.
 		 * We may have blocked above so we have to recheck.
 		 */
-skip:
 		KKASSERT(object->ref_count != 0);
 		if (object->ref_count >= 2) {
 			atomic_add_int(&object->ref_count, -1);
@@ -1118,8 +1130,6 @@ skip:
 
 		if (temp) {
 			if (object->flags & OBJ_ONSHADOW) {
-				LIST_REMOVE(object, shadow_list);
-				temp->shadow_count--;
 				atomic_add_int(&temp->generation, 1);
 				vm_object_clear_flag(object, OBJ_ONSHADOW);
 			}
@@ -1972,8 +1982,7 @@ vm_object_shadow(vm_object_t *objectp, vm_ooffset_t *offset, vm_size_t length,
 	}
 
 	/*
-	 * The new object shadows the source object.  Chain wait before
-	 * adjusting shadow_count or the shadow list to avoid races.
+	 * The new object shadows the source object.
 	 *
 	 * Try to optimize the result object's page color when shadowing
 	 * in order to maintain page coloring consistency in the combined 
@@ -1992,9 +2001,6 @@ vm_object_shadow(vm_object_t *objectp, vm_ooffset_t *offset, vm_size_t length,
 	if (source) {
 		if (useshadowlist) {
 			vm_object_chain_wait(source, 0);
-			LIST_INSERT_HEAD(&source->shadow_head,
-					 result, shadow_list);
-			source->shadow_count++;
 			atomic_add_int(&source->generation, 1);
 			vm_object_set_flag(result, OBJ_ONSHADOW);
 		}
@@ -2415,15 +2421,12 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 
 			/*
 			 * Object now shadows whatever backing_object did.
-			 * Remove object from backing_object's shadow_list.
 			 *
 			 * Removing object from backing_objects shadow list
 			 * requires releasing object, which we will do below.
 			 */
 			KKASSERT(object->backing_object == backing_object);
 			if (object->flags & OBJ_ONSHADOW) {
-				LIST_REMOVE(object, shadow_list);
-				backing_object->shadow_count--;
 				atomic_add_int(&backing_object->generation, 1);
 				vm_object_clear_flag(object, OBJ_ONSHADOW);
 			}
@@ -2453,9 +2456,6 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 				if (backing_object->flags & OBJ_ONSHADOW) {
 					/* not locked exclusively if vnode */
 					KKASSERT(bbobj->type != OBJT_VNODE);
-					LIST_REMOVE(backing_object,
-						    shadow_list);
-					bbobj->shadow_count--;
 					atomic_add_int(&bbobj->generation, 1);
 					vm_object_clear_flag(backing_object,
 							     OBJ_ONSHADOW);
@@ -2465,9 +2465,6 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 			object->backing_object = bbobj;
 			if (bbobj) {
 				if (bbobj->type != OBJT_VNODE) {
-					LIST_INSERT_HEAD(&bbobj->shadow_head,
-							 object, shadow_list);
-					bbobj->shadow_count++;
 					atomic_add_int(&bbobj->generation, 1);
 					vm_object_set_flag(object,
 							   OBJ_ONSHADOW);
@@ -2554,8 +2551,6 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 			 */
 			KKASSERT(object->backing_object == backing_object);
 			if (object->flags & OBJ_ONSHADOW) {
-				LIST_REMOVE(object, shadow_list);
-				backing_object->shadow_count--;
 				atomic_add_int(&backing_object->generation, 1);
 				vm_object_clear_flag(object, OBJ_ONSHADOW);
 			}
@@ -2574,9 +2569,6 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 				if (bbobj->type != OBJT_VNODE) {
 					vm_object_chain_wait(bbobj, 0);
 					vm_object_reference_locked(bbobj);
-					LIST_INSERT_HEAD(&bbobj->shadow_head,
-							 object, shadow_list);
-					bbobj->shadow_count++;
 					atomic_add_int(&bbobj->generation, 1);
 					vm_object_set_flag(object,
 							   OBJ_ONSHADOW);
@@ -3157,10 +3149,10 @@ DB_SHOW_COMMAND(object, vm_object_print_static)
 	/*
 	 * XXX no %qd in kernel.  Truncate object->backing_object_offset.
 	 */
-	db_iprintf(" sref=%d, backing_object(%d)=(%p)+0x%lx\n",
-	    object->shadow_count, 
-	    object->backing_object ? object->backing_object->ref_count : 0,
-	    object->backing_object, (long)object->backing_object_offset);
+	db_iprintf(" backing_object(%d)=(%p)+0x%lx\n",
+	    (object->backing_object ? object->backing_object->ref_count : 0),
+	    object->backing_object,
+	    (long)object->backing_object_offset);
 
 	if (!full)
 		return;

@@ -306,13 +306,7 @@ virtual_copy_test(struct faultstate *fs)
 		return 0;
 
 	/*
-	 * Only one shadow object
-	 */
-	if (fs->object->shadow_count != 1)
-		return 0;
-
-	/*
-	 * No COW refs, except us
+	 * No refs, except us
 	 */
 	if (fs->object->ref_count != 1)
 		return 0;
@@ -616,11 +610,14 @@ RetryFault:
 	 * process is single-threaded we might as well use an exclusive
 	 * lock/chain right off the bat.
 	 */
+#if 0
+	/* WORK IN PROGRESS, CODE REMOVED */
 	if (fs.first_shared && fs.first_object->backing_object &&
 	    LIST_EMPTY(&fs.first_object->shadow_head) &&
 	    td->td_proc && td->td_proc->p_nthreads == 1) {
 		fs.first_shared = 0;
 	}
+#endif
 
 	/*
 	 * VM_FAULT_UNSWAP - swap_pager_unswapped() needs an exclusive object

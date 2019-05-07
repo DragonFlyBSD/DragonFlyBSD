@@ -1120,9 +1120,8 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 		 *	 of objects, so a shared object lock is ok for
 		 *	 VNODE objects.
 		 */
-		if ((object->ref_count > 1) || (object->shadow_count != 0)) {
+		if (object->ref_count > 1)
 			vm_object_clear_flag(object, OBJ_ONEMAPPING);
-		}
 	}
 	else if (prev_entry &&
 		 (prev_entry->eflags == protoeflags) &&
@@ -3391,10 +3390,7 @@ vm_map_split(vm_map_entry_t entry, vm_object_t oobject)
 		    oobject->backing_object_offset + IDX_TO_OFF(offidxstart);
 		nobject->backing_object = bobject;
 		if (useshadowlist) {
-			bobject->shadow_count++;
 			atomic_add_int(&bobject->generation, 1);
-			LIST_INSERT_HEAD(&bobject->shadow_head,
-					 nobject, shadow_list);
 			vm_object_clear_flag(bobject, OBJ_ONEMAPPING); /*XXX*/
 			vm_object_set_flag(nobject, OBJ_ONSHADOW);
 		}

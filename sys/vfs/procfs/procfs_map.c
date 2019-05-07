@@ -87,22 +87,19 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 
 	RB_FOREACH(entry, vm_map_rb_tree, &map->rb_root) {
 		vm_object_t obj, tobj, lobj;
-		int ref_count, shadow_count, flags;
+		int ref_count, flags;
 		vm_offset_t e_start, e_end;
 		vm_eflags_t e_eflags;
 		vm_prot_t e_prot;
-		int resident, privateresident;
+		int resident;
 		char *type;
 
-		privateresident = 0;
 		switch(entry->maptype) {
 		case VM_MAPTYPE_NORMAL:
 		case VM_MAPTYPE_VPAGETABLE:
 			obj = entry->object.vm_object;
 			if (obj != NULL) {
 				vm_object_hold(obj);
-				if (obj->shadow_count == 1)
-					privateresident = obj->resident_page_count;
 			}
 			break;
 		case VM_MAPTYPE_UKSMAP:
@@ -188,7 +185,6 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 			
 			flags = obj->flags;
 			ref_count = obj->ref_count;
-			shadow_count = obj->shadow_count;
 			vm_object_drop(obj);
 			if (vp != NULL) {
 				vn_fullpath(p, vp, &fullpath, &freepath, 1);
@@ -197,7 +193,6 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		} else {
 			flags = 0;
 			ref_count = 0;
-			shadow_count = 0;
 			switch(entry->maptype) {
 			case VM_MAPTYPE_UNSPECIFIED:
 				type = "unspec";
@@ -232,11 +227,11 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 #endif
 			  "0x%04x %s%s %s %s\n",
 			(u_long)e_start, (u_long)e_end,
-			resident, privateresident, obj,
+			resident, -1, obj,
 			(e_prot & VM_PROT_READ) ? "r" : "-",
 			(e_prot & VM_PROT_WRITE) ? "w" : "-",
 			(e_prot & VM_PROT_EXECUTE) ? "x" : "-",
-			ref_count, shadow_count, flags,
+			ref_count, 0, flags,
 			(e_eflags & MAP_ENTRY_COW) ? "COW" : "NCOW",
 			(e_eflags & MAP_ENTRY_NEEDS_COPY) ?" NC" : " NNC",
 			type, fullpath);
