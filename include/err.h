@@ -34,11 +34,10 @@
 #define	_ERR_H_
 
 /*
- * Don't use va_list in the err/warn prototypes.   Va_list is typedef'd in two
- * places (<machine/varargs.h> and <machine/stdarg.h>), so if we include one
- * of them here we may collide with the utility's includes.  It's unreasonable
- * for utilities to have to include one of them to include err.h, so we get
- * __va_list from <machine/stdint.h> and use it.
+ * Don't use va_list in the err()/warn() prototypes. Va_list is typedef'd in
+ * <stdarg.h>, so if we include it here we may collide with the utility's
+ * includes. It's unreasonable for utilities to have to include it to
+ * include err.h, so we get __va_list from <machine/stdarg.h> and use it.
  */
 #include <sys/cdefs.h>
 #include <machine/stdint.h>

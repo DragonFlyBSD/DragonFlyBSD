@@ -78,7 +78,7 @@ MLINKS+=queue.3 TAILQ_NEXT.3
 MLINKS+=queue.3 TAILQ_PREV.3
 MLINKS+=queue.3 TAILQ_REMOVE.3
 
-MLINKS+=stdarg.3 varargs.3 stdarg.3 va_arg.3 stdarg.3 va_end.3
+MLINKS+=stdarg.3 va_arg.3 stdarg.3 va_end.3
 MLINKS+=stdarg.3 va_start.3
 MLINKS+=stdarg.3 va_copy.3
 
