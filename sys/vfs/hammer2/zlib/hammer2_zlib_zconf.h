@@ -208,7 +208,7 @@ typedef uLong FAR uLongf;
 #endif
 
 #if !defined(Z_U4) && defined(STDC)
-#  include <limits.h>
+#  include <sys/limits.h>
 #  if (UINT_MAX == 0xffffffffUL)
 #    define Z_U4 unsigned
 #  elif (ULONG_MAX == 0xffffffffUL)

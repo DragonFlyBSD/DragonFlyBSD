@@ -94,6 +94,7 @@
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
  */
 
+#include "opt_swap.h"
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
@@ -108,8 +109,6 @@
 #include <sys/lock.h>
 #include <sys/kcollect.h>
 
-#include <unistd.h>
-#include "opt_swap.h"
 #include <vm/vm.h>
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>

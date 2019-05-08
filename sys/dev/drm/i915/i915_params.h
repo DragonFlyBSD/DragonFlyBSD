@@ -26,7 +26,6 @@
 #define _I915_PARAMS_H_
 
 #include <linux/cache.h> /* for __read_mostly */
-#include <stdbool.h>
 
 struct i915_params {
 	int modeset;

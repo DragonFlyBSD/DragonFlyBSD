@@ -72,7 +72,6 @@
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 #include <ddb/ddb.h>
-#include <dlfcn.h>	/* DLL */
 
 #include <sys/user.h>
 

@@ -27,14 +27,14 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/netproto/mpls/mpls.h,v 1.2 2008/07/07 23:11:54 nant Exp $
  */
 
 #ifndef _NETMPLS_MPLS_H_
 #define _NETMPLS_MPLS_H_
 
+#ifndef _KERNEL
 #include <arpa/inet.h>
+#endif
 
 #include <sys/types.h>
 
