@@ -460,6 +460,7 @@ options 	NFS			#Network filesystem
 #options 	NFS_NOSERVER		#Disable the NFS-server code.
 options 	AUTOFS			#Automounter filesystem
 options 	CD9660			#ISO 9660 filesystem
+options 	FUSE			#FUSE support module
 options		HAMMER			#HAMMER filesystem
 options		HAMMER2			#HAMMER2 filesystem
 options 	HPFS			#OS/2 File system
