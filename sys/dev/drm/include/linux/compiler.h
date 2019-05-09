@@ -62,7 +62,7 @@
 #define	unlikely(x)			__builtin_expect(!!(x), 0)
 #define typeof(x)			__typeof(x)
 
-#define __read_mostly
+/*#define __read_mostly REMOVED - defined by DFly now */
 #define __always_unused			__unused
 #define __must_check			__heedresult
 
