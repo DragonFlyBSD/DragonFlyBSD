@@ -97,18 +97,20 @@ static int spin_lock_test_mode;
 
 #ifdef DEBUG_LOCKS_LATENCY
 
-static long spinlocks_add_latency;
+__read_frequently static long spinlocks_add_latency;
 SYSCTL_LONG(_debug, OID_AUTO, spinlocks_add_latency, CTLFLAG_RW,
     &spinlocks_add_latency, 0,
     "Add spinlock latency");
 
 #endif
 
-static long spin_backoff_max = 4096;
+__read_frequently static long spin_backoff_max = 4096;
 SYSCTL_LONG(_debug, OID_AUTO, spin_backoff_max, CTLFLAG_RW,
     &spin_backoff_max, 0,
     "Spinlock exponential backoff limit");
-static long spin_window_shift = 8;	/* 1 << n clock cycles, approx */
+
+/* 1 << n clock cycles, approx */
+__read_frequently static long spin_window_shift = 8;
 SYSCTL_LONG(_debug, OID_AUTO, spin_window_shift, CTLFLAG_RW,
     &spin_window_shift, 0,
     "Spinlock TSC windowing");

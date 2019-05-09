@@ -136,7 +136,7 @@ const char *panicstr;
 int dumping;				/* system is dumping */
 static struct dumperinfo dumper;	/* selected dumper */
 
-globaldata_t panic_cpu_gd;		/* which cpu took the panic */
+__read_frequently globaldata_t panic_cpu_gd;	/* used in lock assertion */
 struct lwkt_tokref panic_tokens[LWKT_MAXTOKENS];
 int panic_tokens_count;
 

@@ -68,7 +68,7 @@ SYSCTL_PROC(_kern, OID_AUTO, cancel_test, CTLTYPE_INT|CTLFLAG_RW, 0, 0,
 
 #endif
 
-int lock_test_mode;
+__read_frequently int lock_test_mode;
 SYSCTL_INT(_debug, OID_AUTO, lock_test_mode, CTLFLAG_RW,
 	   &lock_test_mode, 0, "");
 
