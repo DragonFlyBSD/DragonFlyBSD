@@ -86,7 +86,7 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	lwkt_reltoken(&p->p_token);
 
 	RB_FOREACH(entry, vm_map_rb_tree, &map->rb_root) {
-		vm_map_backing_t *ba;
+		vm_map_backing_t ba;
 		vm_object_t obj;
 		int ref_count, flags;
 		vm_offset_t e_start, e_end;

@@ -166,8 +166,6 @@ typedef enum {
  * The offset is cumulatively added from its parent, allowing easy splits
  * and merges.
  */
-union vm_map_object;
-
 struct vm_map_backing {
 	struct vm_map_backing	*backing_ba;	/* backing store */
 
@@ -185,10 +183,10 @@ struct vm_map_backing {
 	vm_ooffset_t		offset;		/* cumulative offset */
 	long			refs;		/* shared refs */
 	uint32_t		flags;
-	uint32_t		unused01;
+	uint32_t		backing_count;	/* #entries backing us */
 };
 
-typedef struct vm_map_backing vm_map_backing_t;
+typedef struct vm_map_backing *vm_map_backing_t;
 
 #define VM_MAP_BACK_EXCL_HEUR	0x00000001U
 
@@ -213,7 +211,7 @@ struct vm_map_entry {
 	vm_offset_t start;		/* start address */
 	vm_offset_t end;		/* end address */
 	union vm_map_aux aux;		/* auxillary data */
-	vm_map_backing_t ba;		/* backing object chain */
+	struct vm_map_backing ba;	/* backing object chain */
 	vm_eflags_t eflags;		/* map entry flags */
 	vm_maptype_t maptype;		/* type of VM mapping */
 	vm_prot_t protection;		/* protection code */
@@ -222,6 +220,8 @@ struct vm_map_entry {
 	int wired_count;		/* can be paged if = 0 */
 	vm_subsys_t id;			/* subsystem id */
 };
+
+typedef struct vm_map_entry *vm_map_entry_t;
 
 #define MAPENT_FREELIST(ent)		(ent)->rb_entry.rbe_left
 
@@ -349,6 +349,8 @@ struct vm_map {
 	struct lwkt_token token;	/* Soft serializer */
 	vm_offset_t pgout_offset;	/* for RLIMIT_RSS scans */
 };
+
+typedef struct vm_map *vm_map_t;
 
 /*
  * vm_flags_t values
@@ -664,7 +666,7 @@ int vm_map_insert (vm_map_t, int *, void *, void *,
 		   vm_maptype_t, vm_subsys_t id,
 		   vm_prot_t, vm_prot_t, int);
 int vm_map_lookup (vm_map_t *, vm_offset_t, vm_prot_t,
-		vm_map_entry_t *, vm_map_backing_t **,
+		vm_map_entry_t *, struct vm_map_backing **,
 		vm_pindex_t *, vm_prot_t *, int *);
 void vm_map_lookup_done (vm_map_t, vm_map_entry_t, int);
 boolean_t vm_map_lookup_entry (vm_map_t, vm_offset_t, vm_map_entry_t *);

@@ -161,11 +161,15 @@ SYSCTL_INT(_vm, OID_AUTO, map_relock_enable, CTLFLAG_RW,
 static int vm_map_partition_enable = 1;
 SYSCTL_INT(_vm, OID_AUTO, map_partition_enable, CTLFLAG_RW,
 	   &vm_map_partition_enable, 0, "Break up larger vm_map_entry's");
+static int vm_map_backing_limit = 5;
+SYSCTL_INT(_vm, OID_AUTO, map_backing_limit, CTLFLAG_RW,
+	   &vm_map_backing_limit, 0, "ba.backing_ba link depth");
 
 static void vmspace_drop_notoken(struct vmspace *vm);
 static void vm_map_entry_shadow(vm_map_entry_t entry, int addref);
 static vm_map_entry_t vm_map_entry_create(vm_map_t map, int *);
 static void vm_map_entry_dispose (vm_map_t map, vm_map_entry_t entry, int *);
+static void vm_map_entry_dispose_ba (vm_map_backing_t ba);
 static void _vm_map_clip_end (vm_map_t, vm_map_entry_t, vm_offset_t, int *);
 static void _vm_map_clip_start (vm_map_t, vm_map_entry_t, vm_offset_t, int *);
 static void vm_map_entry_delete (vm_map_t, vm_map_entry_t, int *);
@@ -721,7 +725,7 @@ static
 void
 vm_map_entry_shadow(vm_map_entry_t entry, int addref)
 {
-	vm_map_backing_t *ba;
+	vm_map_backing_t ba;
 	vm_size_t length;
 	vm_object_t source;
 	vm_object_t result;
@@ -740,18 +744,16 @@ vm_map_entry_shadow(vm_map_entry_t entry, int addref)
 
 	/*
 	 * Don't create the new object if the old object isn't shared.
-	 * We have to chain wait before adding the reference to avoid
-	 * racing a collapse or deallocation.
 	 *
-	 * Clear OBJ_ONEMAPPING flag when shadowing.
+	 * If addref is non-zero additional ref(s) are being added (probably
+	 * for map entry fork purposes), so clear OBJ_ONEMAPPING.
 	 *
-	 * The caller owns a ref on source via *objectp which we are going
-	 * to replace.  This ref is inherited by the backing_object assignment.
-	 * from nobject and does not need to be incremented here.
-	 *
-	 * However, we add a temporary extra reference to the original source
-	 * prior to holding nobject in case we block, to avoid races where
-	 * someone else might believe that the source can be collapsed.
+	 * WARNING! Checking ref_count == 1 only works because we are testing
+	 *	    the object embedded in the entry (entry->ba.object).
+	 *	    This test DOES NOT WORK if checking an object hanging off
+	 *	    the backing chain (entry->ba.backing_ba list) because the
+	 *	    vm_map_backing might be shared, or part of a chain that
+	 *	    is shared.  Checking ba->refs is worthless.
 	 */
 	drop_source = 0;
 	if (source) {
@@ -817,6 +819,7 @@ vm_map_entry_shadow(vm_map_entry_t entry, int addref)
 	ba->refs = 1;			/* initialize ref count */
 	entry->ba.object = result;	/* new ba (at head of entry) */
 	entry->ba.backing_ba = ba;
+	entry->ba.backing_count = ba->backing_count + 1;
 	entry->ba.offset = 0;
 	entry->ba.refs = 0;
 
@@ -1070,6 +1073,33 @@ vm_map_entry_create(vm_map_t map, int *countp)
 }
 
 /*
+ * Dispose of the dynamically allocated backing_ba chain associated
+ * with a vm_map_entry.
+ *
+ * We decrement the (possibly shared) element and kfree() on the
+ * 1->0 transition.  We only iterate to the next backing_ba when
+ * the previous one went through a 1->0 transition.
+ */
+static void
+vm_map_entry_dispose_ba(vm_map_backing_t ba)
+{
+	vm_map_backing_t next;
+	long refs;
+
+	while (ba) {
+		refs = atomic_fetchadd_long(&ba->refs, -1);
+		if (refs > 1)
+			break;
+		KKASSERT(refs == 1);	/* transitioned 1->0 */
+		if (ba->object)
+			vm_object_deallocate(ba->object);
+		next = ba->backing_ba;
+		kfree(ba, M_MAP_BACKING);
+		ba = next;
+	}
+}
+
+/*
  * Dispose of a vm_map_entry that is no longer being referenced.
  *
  * No requirements.
@@ -1078,25 +1108,24 @@ static void
 vm_map_entry_dispose(vm_map_t map, vm_map_entry_t entry, int *countp)
 {
 	struct globaldata *gd = mycpu;
-	vm_map_backing_t *ba;
-	long refs;
 
 	/*
-	 * We must also dispose of the vm_map_backing, kfree()ing the
-	 * possibly shared element on the 1->0 transition.  We only iterate
-	 * to the next backing_ba when the previous one went through a
-	 * 1->0 transition.
+	 * Dispose of the base object and the backing link.
 	 */
-	while ((ba = entry->ba.backing_ba) != NULL) {
-		refs = atomic_fetchadd_long(&ba->refs, -1);
-		if (refs > 1)
-			break;
-		KKASSERT(refs == 1);	/* transitioned 1->0 */
-		if (ba->object)
-			vm_object_deallocate(ba->object);
-		entry->ba.backing_ba = ba->backing_ba;
-		kfree(ba, M_MAP_BACKING);
+	switch(entry->maptype) {
+	case VM_MAPTYPE_NORMAL:
+	case VM_MAPTYPE_VPAGETABLE:
+	case VM_MAPTYPE_SUBMAP:
+		if (entry->ba.object)
+			vm_object_deallocate(entry->ba.object);
+		break;
+	case VM_MAPTYPE_UKSMAP:
+		/* XXX TODO */
+		break;
+	default:
+		break;
 	}
+	vm_map_entry_dispose_ba(entry->ba.backing_ba);
 
 	/*
 	 * Cleanup for safety.
@@ -1349,6 +1378,7 @@ vm_map_insert(vm_map_t map, int *countp, void *map_object, void *map_aux,
 	new_entry->aux.map_aux = map_aux;
 	new_entry->ba.map_object = map_object;
 	new_entry->ba.backing_ba = NULL;
+	new_entry->ba.backing_count = 0;
 	new_entry->ba.offset = offset;
 	new_entry->ba.refs = 0;
 	new_entry->ba.flags = 0;
@@ -1645,8 +1675,6 @@ vm_map_simplify_entry(vm_map_t map, vm_map_entry_t entry, int *countp)
 			vm_map_entry_unlink(map, prev);
 			entry->start = prev->start;
 			entry->ba.offset = prev->ba.offset;
-			if (prev->ba.object)
-				vm_object_deallocate(prev->ba.object);
 			vm_map_entry_dispose(map, prev, countp);
 		}
 	}
@@ -1668,8 +1696,6 @@ vm_map_simplify_entry(vm_map_t map, vm_map_entry_t entry, int *countp)
 		    (next->wired_count == entry->wired_count)) {
 			vm_map_entry_unlink(map, next);
 			entry->end = next->end;
-			if (next->ba.object)
-				vm_object_deallocate(next->ba.object);
 			vm_map_entry_dispose(map, next, countp);
 	        }
 	}
@@ -2900,7 +2926,7 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 	vm_map_entry_t current;
 	vm_map_entry_t next;
 	vm_map_entry_t entry;
-	vm_map_backing_t *ba;
+	vm_map_backing_t ba;
 	vm_size_t size;
 	vm_object_t object;
 	vm_ooffset_t offset;
@@ -3119,20 +3145,6 @@ vm_map_entry_delete(vm_map_t map, vm_map_entry_t entry, int *countp)
 {
 	vm_map_entry_unlink(map, entry);
 	map->size -= entry->end - entry->start;
-
-	switch(entry->maptype) {
-	case VM_MAPTYPE_NORMAL:
-	case VM_MAPTYPE_VPAGETABLE:
-	case VM_MAPTYPE_SUBMAP:
-		vm_object_deallocate(entry->ba.object);
-		break;
-	case VM_MAPTYPE_UKSMAP:
-		/* XXX TODO */
-		break;
-	default:
-		break;
-	}
-
 	vm_map_entry_dispose(map, entry, countp);
 }
 
@@ -3411,43 +3423,53 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 		  vm_map_entry_t src_entry, vm_map_entry_t dst_entry)
 {
 	vm_object_t src_object;
-	vm_object_t oobject;
 
 	/*
 	 * Nothing to do for special map types
 	 */
 	if (dst_entry->maptype == VM_MAPTYPE_SUBMAP ||
-	    dst_entry->maptype == VM_MAPTYPE_UKSMAP)
+	    dst_entry->maptype == VM_MAPTYPE_UKSMAP) {
 		return;
+	}
 	if (src_entry->maptype == VM_MAPTYPE_SUBMAP ||
-	    src_entry->maptype == VM_MAPTYPE_UKSMAP)
+	    src_entry->maptype == VM_MAPTYPE_UKSMAP) {
 		return;
+	}
 
-	if (src_entry->wired_count == 0) {
+	if (src_entry->wired_count) {
 		/*
-		 * If the source entry is marked needs_copy, it is already
-		 * write-protected.
+		 * Of course, wired down pages can't be set copy-on-write.
+		 * Cause wired pages to be copied into the new map by
+		 * simulating faults (the new pages are pageable)
 		 *
-		 * To avoid interacting with a vm_fault that might have
-		 * released its vm_map, we must acquire the fronting
-		 * object.
+		 * Scrap ba.object (its ref-count has not yet been adjusted
+		 * so we can just NULL out the field).  Remove the backing
+		 * store.
+		 *
+		 * Then call vm_fault_copy_entry() to create a new object
+		 * in dst_entry and copy the wired pages from src to dst.
 		 */
-		oobject = src_entry->ba.object;
-		if (oobject)
-			vm_object_hold(oobject);
-
+		dst_entry->ba.object = NULL;
+		vm_map_entry_dispose_ba(dst_entry->ba.backing_ba);
+		dst_entry->ba.backing_ba = NULL;
+		dst_entry->ba.backing_count = 0;
+		vm_fault_copy_entry(dst_map, src_map, dst_entry, src_entry);
+	} else {
 		if ((src_entry->eflags & MAP_ENTRY_NEEDS_COPY) == 0) {
+			/*
+			 * If the source entry is not already marked NEEDS_COPY
+			 * we need to write-protect the PTEs.
+			 */
 			pmap_protect(src_map->pmap,
-			    src_entry->start,
-			    src_entry->end,
-			    src_entry->protection & ~VM_PROT_WRITE);
+				     src_entry->start,
+				     src_entry->end,
+				     src_entry->protection & ~VM_PROT_WRITE);
 		}
 
 		/*
-		 * Make a copy of the object.
-		 *
-		 * The object has been copied but we need to bump the
-		 * ref-count and then mark both entries NEEDS_COPY.
+		 * dst_entry.ba_object might be stale.  Update it (its
+		 * ref-count has not yet been updated so just overwrite
+		 * the field).
 		 *
 		 * If there is no object then we are golden.  Also, in
 		 * this situation if there are no backing_ba linkages then
@@ -3456,39 +3478,32 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 		 * ba.offset cannot otherwise be modified because it effects
 		 * the offsets for the entire backing_ba chain.
 		 */
-		KKASSERT(dst_entry->ba.object == oobject);
-		if (oobject) {
-			vm_object_reference_locked(oobject);
-			vm_object_clear_flag(oobject, OBJ_ONEMAPPING);
+		src_object = src_entry->ba.object;
 
-			src_object = src_entry->ba.object;
-			dst_entry->ba.object = src_object;
+		if (src_object) {
+			vm_object_hold(src_object);	/* for ref & flag clr */
+			vm_object_reference_locked(src_object);
+			vm_object_clear_flag(src_object, OBJ_ONEMAPPING);
+
 			src_entry->eflags |= (MAP_ENTRY_COW |
 					      MAP_ENTRY_NEEDS_COPY);
 			dst_entry->eflags |= (MAP_ENTRY_COW |
 					      MAP_ENTRY_NEEDS_COPY);
-			dst_entry->ba.offset = src_entry->ba.offset;
+			KKASSERT(dst_entry->ba.offset == src_entry->ba.offset);
+			vm_object_drop(src_object);
 		} else {
 			if (dst_entry->ba.backing_ba == NULL)
 				dst_entry->ba.offset = 0;
 		}
-		pmap_copy(dst_map->pmap, src_map->pmap, dst_entry->start,
+
+		/*
+		 * Normal, allow the backing_ba link depth to
+		 * increase.
+		 */
+		pmap_copy(dst_map->pmap, src_map->pmap,
+			  dst_entry->start,
 			  dst_entry->end - dst_entry->start,
 			  src_entry->start);
-		if (oobject)
-			vm_object_drop(oobject);
-	} else {
-		/*
-		 * Of course, wired down pages can't be set copy-on-write.
-		 * Cause wired pages to be copied into the new map by
-		 * simulating faults (the new pages are pageable)
-		 *
-		 * Scrap ba.object (its ref-count has not yet been adjusted
-		 * so we can just NULL out the field).  vm_fault_copy_entry()
-		 * will create a new object.
-		 */
-		dst_entry->ba.object = NULL;
-		vm_fault_copy_entry(dst_map, src_map, dst_entry, src_entry);
 	}
 }
 
@@ -4145,7 +4160,7 @@ vm_map_lookup(vm_map_t *var_map,		/* IN/OUT */
 	      vm_offset_t vaddr,
 	      vm_prot_t fault_typea,
 	      vm_map_entry_t *out_entry,	/* OUT */
-	      vm_map_backing_t **bap,		/* OUT */
+	      struct vm_map_backing **bap,	/* OUT */
 	      vm_pindex_t *pindex,		/* OUT */
 	      vm_prot_t *out_prot,		/* OUT */
 	      int *wflags)			/* OUT */

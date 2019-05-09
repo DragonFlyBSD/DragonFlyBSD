@@ -787,9 +787,9 @@ vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
  * Caller must hold the first object.
  */
 struct vnode *
-vnode_pager_lock(vm_map_backing_t *ba)
+vnode_pager_lock(vm_map_backing_t ba)
 {
-	vm_map_backing_t *lba;
+	vm_map_backing_t lba;
 	struct vnode *vp;
 	vm_object_t lobject;
 	int error;

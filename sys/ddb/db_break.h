@@ -47,7 +47,7 @@
  */
 
 struct db_breakpoint {
-	vm_map_t map;			/* in this map */
+	struct vm_map *map;		/* in this map */
 	db_addr_t address;		/* set here */
 	int	init_count;		/* number of times to skip bkpt */
 	int	count;			/* current count */

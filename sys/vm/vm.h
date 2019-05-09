@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 2003-2019 The DragonFly Project.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -100,15 +101,8 @@ typedef u_char vm_maptype_t;	/* type of vm_map_entry */
 #define VM_MAPTYPE_SUBMAP	3
 #define VM_MAPTYPE_UKSMAP	4	/* user-kernel shared memory */
 
-union vm_map_object;
-typedef union vm_map_object vm_map_object_t;
-
 struct vm_map_entry;
-typedef struct vm_map_entry *vm_map_entry_t;
-
 struct vm_map;
-typedef struct vm_map *vm_map_t;
-
 struct vm_object;
 typedef struct vm_object *vm_object_t;
 

@@ -77,7 +77,7 @@ struct vm_object;
  * Anonymous swap-backed kernel memory descriptor
  */
 struct kmem_anon_desc {
-	vm_map_t	map;
+	struct vm_map	*map;
 	vm_size_t	size;
 	vm_offset_t	data;
 	struct vm_object *object;
@@ -108,6 +108,6 @@ extern vm_offset_t kernel_vm_end;
 /* XXX - elsewhere? */
 struct malloc_type;
 extern void *contigmalloc_map(u_long, struct malloc_type *, int,
-		vm_paddr_t, vm_paddr_t, u_long, u_long, vm_map_t);
+		vm_paddr_t, vm_paddr_t, u_long, u_long, struct vm_map *);
 
 #endif				/* _VM_VM_KERN_H_ */

@@ -395,7 +395,7 @@ dommap(struct proc *p)
 	struct vm_map_entry entry;
 	vm_map_entry_t ken;
 	struct vm_object object;
-	vm_map_backing_t ba;
+	struct vm_map_backing ba;
 	vm_object_t objp;
 	int prot, fflags;
 

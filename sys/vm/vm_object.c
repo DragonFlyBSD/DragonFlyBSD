@@ -1725,7 +1725,7 @@ static int	vm_object_in_map (vm_object_t object);
 static int
 _vm_object_in_map(vm_map_t map, vm_object_t object, vm_map_entry_t entry)
 {
-	vm_map_backing_t *ba;
+	vm_map_backing_t ba;
 	vm_map_t tmpm;
 	vm_map_entry_t tmpe;
 	int entcount;

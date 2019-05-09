@@ -56,11 +56,12 @@
 /* use the equivalent procfs code */
 #if 0
 static int
-pread (struct proc *procp, unsigned int addr, unsigned int *retval) {
+pread (struct proc *procp, unsigned int addr, unsigned int *retval)
+{
 	int		rv;
 	vm_map_t	map, tmap;
 	vm_object_t	object;
-	vm_map_backing_t *ba;
+	vm_map_backing_t ba;
 	vm_offset_t	kva = 0;
 	int		page_offset;	/* offset into page */
 	vm_offset_t	pageno;		/* page number */
@@ -113,11 +114,12 @@ pread (struct proc *procp, unsigned int addr, unsigned int *retval) {
 }
 
 static int
-pwrite (struct proc *procp, unsigned int addr, unsigned int datum) {
+pwrite (struct proc *procp, unsigned int addr, unsigned int datum)
+{
 	int		rv;
 	vm_map_t	map, tmap;
 	vm_object_t	object;
-	vm_map_backing_t *ba;
+	vm_map_backing_t ba;
 	vm_offset_t	kva = 0;
 	int		page_offset;	/* offset into page */
 	vm_offset_t	pageno;		/* page number */

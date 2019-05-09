@@ -130,18 +130,16 @@
 
 struct faultstate {
 	vm_page_t m;
-	vm_map_backing_t *ba;
-	vm_pindex_t pindex;
+	vm_map_backing_t ba;
 	vm_prot_t prot;
 	vm_page_t first_m;
-	vm_map_backing_t *first_ba;
+	vm_map_backing_t first_ba;
 	vm_prot_t first_prot;
 	vm_map_t map;
 	vm_map_entry_t entry;
 	int lookup_still_valid;
 	int hardfault;
 	int fault_flags;
-	int map_generation;
 	int shared;
 	int msoftonly;
 	int first_shared;
@@ -211,8 +209,7 @@ release_page(struct faultstate *fs)
  * NOTE: Once unlocked any cached fs->entry becomes invalid, any reuse
  *	 requires relocking and then checking the timestamp.
  *
- * NOTE: vm_map_lock_read() does not bump fs->map->timestamp so we do
- *	 not have to update fs->map_generation here.
+ * NOTE: vm_map_lock_read() does not bump fs->map->timestamp.
  *
  * NOTE: This function can fail due to a deadlock against the caller's
  *	 holding of a vm_page BUSY.
@@ -529,7 +526,6 @@ RetryFault:
 	 *
 	 * Misc checks.  Save the map generation number to detect races.
 	 */
-	fs.map_generation = fs.map->timestamp;
 	fs.lookup_still_valid = TRUE;
 	fs.first_m = NULL;
 	fs.ba = fs.first_ba;		/* so unlock_things() works */
@@ -890,6 +886,14 @@ vm_fault_quick(struct faultstate *fs, vm_pindex_t first_pindex,
 
 	/*
 	 * Don't waste time if the object is only being used by one vm_map.
+	 *
+	 * WARNING! We can't rely on obj->ref_count here because it might
+	 *	    be part of a shared ba chain, and we can't rely on
+	 *	    ba->refs for the same reason.  The combination of it
+	 *	    being the ba embedded in the entry (aka first_ba) AND
+	 *	    ref_count == 1 would work, but OBJ_ONEMAPPING is better
+	 *	    because it will remain flagged even when ref_count > 1
+	 *	    for situations where entries are clipped.
 	 */
 	obj = fs->first_ba->object;
 	if (obj->flags & OBJ_ONEMAPPING)
@@ -1162,7 +1166,6 @@ RetryFault:
 	 *
 	 * Misc checks.  Save the map generation number to detect races.
 	 */
-	fs.map_generation = fs.map->timestamp;
 	fs.lookup_still_valid = TRUE;
 	fs.first_m = NULL;
 	fs.ba = fs.first_ba;
@@ -1450,7 +1453,6 @@ RetryFault:
 	fs.entry = &entry;
 	fs.first_prot = fault_type;
 	fs.wflags = 0;
-	/*fs.map_generation = 0; unused */
 
 	/*
 	 * Make a reference to this object to prevent its disposal while we
@@ -1734,7 +1736,7 @@ int
 vm_fault_object(struct faultstate *fs, vm_pindex_t first_pindex,
 		vm_prot_t fault_type, int allow_nofault)
 {
-	vm_map_backing_t *next_ba;
+	vm_map_backing_t next_ba;
 	vm_pindex_t pindex;
 	int error;
 
@@ -2628,12 +2630,12 @@ vm_fault_unwire(vm_map_t map, vm_map_entry_t entry)
 }
 
 /*
- * Copy all of the pages from a wired-down map entry to another.
+ * Copy all of the pages from one map entry to another.  If the source
+ * is wired down we just use vm_page_lookup().  If not we use
+ * vm_fault_object().
  *
  * The source and destination maps must be locked for write.
  * The source and destination maps token must be held
- * The source map entry must be wired down (or be a sharing map
- * entry corresponding to a main map entry that is wired down).
  *
  * No other requirements.
  *
@@ -2925,7 +2927,7 @@ static void
 vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot,
 	    int fault_flags)
 {
-	vm_map_backing_t *ba;	/* first ba */
+	vm_map_backing_t ba;	/* first ba */
 	struct lwp *lp;
 	vm_page_t m;
 	vm_offset_t addr;
@@ -2977,8 +2979,8 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot,
 	for (i = 0; i < maxpages; ++i) {
 		vm_object_t lobject;
 		vm_object_t nobject;
-		vm_map_backing_t *last_ba;	/* last ba */
-		vm_map_backing_t *next_ba;	/* last ba */
+		vm_map_backing_t last_ba;	/* last ba */
+		vm_map_backing_t next_ba;	/* last ba */
 		int allocated = 0;
 		int error;
 

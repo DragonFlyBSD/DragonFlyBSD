@@ -1192,7 +1192,7 @@ each_segment(struct proc *p, segment_callback func, void *closure, int writable)
 	vm_map_entry_t entry;
 
 	RB_FOREACH(entry, vm_map_rb_tree, &map->rb_root) {
-		vm_map_backing_t *ba;
+		vm_map_backing_t ba;
 		vm_object_t obj;
 
 		/*
