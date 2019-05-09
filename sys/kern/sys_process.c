@@ -60,6 +60,7 @@ pread (struct proc *procp, unsigned int addr, unsigned int *retval) {
 	int		rv;
 	vm_map_t	map, tmap;
 	vm_object_t	object;
+	vm_map_backing_t *ba;
 	vm_offset_t	kva = 0;
 	int		page_offset;	/* offset into page */
 	vm_offset_t	pageno;		/* page number */
@@ -77,7 +78,12 @@ pread (struct proc *procp, unsigned int addr, unsigned int *retval) {
 
 	tmap = map;
 	rv = vm_map_lookup(&tmap, pageno, VM_PROT_READ, &out_entry,
-			   &object, &pindex, &out_prot, &wflags);
+			   &ba, &pindex, &out_prot, &wflags);
+	if (ba)
+		object = ba->object;
+	else
+		object = NULL;
+
 
 	if (rv != KERN_SUCCESS)
 		return EINVAL;
@@ -111,6 +117,7 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum) {
 	int		rv;
 	vm_map_t	map, tmap;
 	vm_object_t	object;
+	vm_map_backing_t *ba;
 	vm_offset_t	kva = 0;
 	int		page_offset;	/* offset into page */
 	vm_offset_t	pageno;		/* page number */
@@ -154,7 +161,12 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum) {
 
 	tmap = map;
 	rv = vm_map_lookup(&tmap, pageno, VM_PROT_WRITE, &out_entry,
-			   &object, &pindex, &out_prot, &wflags);
+			   &ba, &pindex, &out_prot, &wflags);
+	if (ba)
+		object = ba->object;
+	else
+		object = NULL;
+
 	if (rv != KERN_SUCCESS)
 		return EINVAL;
 

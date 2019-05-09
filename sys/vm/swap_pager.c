@@ -899,6 +899,17 @@ swap_pager_haspage(vm_object_t object, vm_pindex_t pindex)
 }
 
 /*
+ * Object must be held exclusive or shared by the caller.
+ */
+boolean_t
+swap_pager_haspage_locked(vm_object_t object, vm_pindex_t pindex)
+{
+	if (swp_pager_meta_ctl(object, pindex, 0) == SWAPBLK_NONE)
+		return FALSE;
+	return TRUE;
+}
+
+/*
  * SWAP_PAGER_PAGE_UNSWAPPED() - remove swap backing store related to page
  *
  * This removes any associated swap backing store, whether valid or

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
- * Copyright (c) 2003-2017 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003-2019 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
  * The Mach Operating System project at Carnegie-Mellon University.
@@ -60,8 +60,6 @@
  *
  * any improvements or extensions that they make and grant Carnegie the
  * rights to redistribute these changes.
- *
- * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
  */
 
 /*
@@ -114,17 +112,6 @@ RB_PROTOTYPE(vm_map_rb_tree, vm_map_entry, rb_entry, rb_vm_map_compare);
 typedef u_int vm_flags_t;
 typedef u_int vm_eflags_t;
 
-/*
- * A vm_map_entry may reference an object, a submap, a uksmap, or a
- * direct user-kernel shared map.
- */
-union vm_map_object {
-	struct vm_object *vm_object;	/* object object */
-	struct vm_map *sub_map;		/* belongs to another map */
-	int	(*uksmap)(struct cdev *dev, vm_page_t fake);
-	void	*map_object;		/* generic */
-};
-
 union vm_map_aux {
 	vm_offset_t avail_ssize;	/* amt can grow if this is a stack */
 	vpte_t master_pde;		/* virtual page table root */
@@ -174,24 +161,59 @@ typedef enum {
 } vm_subsys_t;
 
 /*
- *	Address map entries consist of start and end addresses,
- *	a VM object (or sharing map) and offset into that object,
- *	and user-exported inheritance and protection information.
- *	Also included is control information for virtual copy operations.
+ * vm_map backing structure for specifying multiple backings.  This
+ * structure is NOT shared across pmaps but may be shared within a pmap.
+ * The offset is cumulatively added from its parent, allowing easy splits
+ * and merges.
+ */
+union vm_map_object;
+
+struct vm_map_backing {
+	struct vm_map_backing	*backing_ba;	/* backing store */
+
+	/*
+	 * A vm_map_entry may reference an object, a submap, a uksmap, or a
+	 * direct user-kernel shared map.
+	 */
+	union {
+		struct vm_object *object;	/* vm_object */
+		struct vm_map *sub_map;		/* belongs to another map */
+		int	(*uksmap)(struct cdev *dev, vm_page_t fake);
+		void	*map_object;		/* generic */
+	};
+
+	vm_ooffset_t		offset;		/* cumulative offset */
+	long			refs;		/* shared refs */
+	uint32_t		flags;
+	uint32_t		unused01;
+};
+
+typedef struct vm_map_backing vm_map_backing_t;
+
+#define VM_MAP_BACK_EXCL_HEUR	0x00000001U
+
+/*
+ * Address map entries consist of start and end addresses, a VM object
+ * (or sharing map) and offset into that object, and user-exported
+ * inheritance and protection information.  Also included is control
+ * information for virtual copy operations.
  *
- *	When used with MAP_STACK, avail_ssize is used to determine the
- *	limits of stack growth.
+ * The object information is now encapsulated in a vm_map_backing
+ * structure which contains the backing store chain, if any.  This
+ * structure is NOT shared.
  *
- *	When used with VM_MAPTYPE_VPAGETABLE, avail_ssize stores the
- *	page directory index.
+ * When used with MAP_STACK, avail_ssize is used to determine the limits
+ * of stack growth.
+ *
+ * When used with VM_MAPTYPE_VPAGETABLE, avail_ssize stores the page
+ * directory index.
  */
 struct vm_map_entry {
 	RB_ENTRY(vm_map_entry) rb_entry;
 	vm_offset_t start;		/* start address */
 	vm_offset_t end;		/* end address */
 	union vm_map_aux aux;		/* auxillary data */
-	union vm_map_object object;	/* object I point to */
-	vm_ooffset_t offset;		/* offset into object */
+	vm_map_backing_t ba;		/* backing object chain */
 	vm_eflags_t eflags;		/* map entry flags */
 	vm_maptype_t maptype;		/* type of VM mapping */
 	vm_prot_t protection;		/* protection code */
@@ -546,7 +568,7 @@ vmspace_president_count(struct vmspace *vmspace)
 		switch(cur->maptype) {
 		case VM_MAPTYPE_NORMAL:
 		case VM_MAPTYPE_VPAGETABLE:
-			if ((object = cur->object.vm_object) == NULL)
+			if ((object = cur->ba.object) == NULL)
 				break;
 			if (object->type != OBJT_DEFAULT &&
 			    object->type != OBJT_SWAP) {
@@ -642,7 +664,7 @@ int vm_map_insert (vm_map_t, int *, void *, void *,
 		   vm_maptype_t, vm_subsys_t id,
 		   vm_prot_t, vm_prot_t, int);
 int vm_map_lookup (vm_map_t *, vm_offset_t, vm_prot_t,
-		vm_map_entry_t *, vm_object_t *,
+		vm_map_entry_t *, vm_map_backing_t **,
 		vm_pindex_t *, vm_prot_t *, int *);
 void vm_map_lookup_done (vm_map_t, vm_map_entry_t, int);
 boolean_t vm_map_lookup_entry (vm_map_t, vm_offset_t, vm_map_entry_t *);

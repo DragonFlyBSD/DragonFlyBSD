@@ -1096,8 +1096,8 @@ cb_fpcount_segment(vm_map_entry_t entry, void *closure)
 	int *count = closure;
 	struct vnode *vp;
 
-	if (entry->object.vm_object->type == OBJT_VNODE) {
-		vp = (struct vnode *)entry->object.vm_object->handle;
+	if (entry->ba.object && entry->ba.object->type == OBJT_VNODE) {
+		vp = (struct vnode *)entry->ba.object->handle;
 		if ((vp->v_flag & VCKPT) && curproc->p_textvp == vp)
 			return (0);
 		++*count;
@@ -1132,8 +1132,8 @@ cb_put_fp(vm_map_entry_t entry, void *closure)
 	 * referencing many prior checkpoint files and that is a bit over
 	 * the top for the purpose of the checkpoint API.
 	 */
-	if (entry->object.vm_object->type == OBJT_VNODE) {
-		vp = (struct vnode *)entry->object.vm_object->handle;
+	if (entry->ba.object && entry->ba.object->type == OBJT_VNODE) {
+		vp = (struct vnode *)entry->ba.object->handle;
 		if ((vp->v_flag & VCKPT) && curproc->p_textvp == vp)
 			return (0);
 		if (vnh == fpc->vnh_max)
@@ -1192,9 +1192,8 @@ each_segment(struct proc *p, segment_callback func, void *closure, int writable)
 	vm_map_entry_t entry;
 
 	RB_FOREACH(entry, vm_map_rb_tree, &map->rb_root) {
+		vm_map_backing_t *ba;
 		vm_object_t obj;
-		vm_object_t lobj;
-		vm_object_t tobj;
 
 		/*
 		 * Don't dump inaccessible mappings, deal with legacy
@@ -1224,43 +1223,32 @@ each_segment(struct proc *p, segment_callback func, void *closure, int writable)
 			continue;
 		if (entry->maptype != VM_MAPTYPE_NORMAL)
 			continue;
-		if ((obj = entry->object.vm_object) == NULL)
-			continue;
 
 		/*
 		 * Find the bottom-most object, leaving the base object
 		 * and the bottom-most object held (but only one hold
 		 * if they happen to be the same).
 		 */
-		vm_object_hold_shared(obj);
-
-		lobj = obj;
-		while (lobj && (tobj = lobj->backing_object) != NULL) {
-			KKASSERT(tobj != obj);
-			vm_object_hold_shared(tobj);
-			if (tobj == lobj->backing_object) {
-				if (lobj != obj) {
-					vm_object_lock_swap();
-					vm_object_drop(lobj);
-				}
-				lobj = tobj;
-			} else {
-				vm_object_drop(tobj);
-			}
-		}
+		ba = &entry->ba;
+		while (ba->backing_ba)
+			ba = ba->backing_ba;
+		obj = ba->object;
 
 		/*
 		 * The callback only applies to default, swap, or vnode
 		 * objects.  Other types of objects such as memory-mapped
 		 * devices are ignored.
 		 */
-		if (lobj->type == OBJT_DEFAULT || lobj->type == OBJT_SWAP ||
-		    lobj->type == OBJT_VNODE) {
-			error = (*func)(entry, closure);
+		if (obj) {
+			vm_object_hold_shared(obj);
+
+			if (obj->type == OBJT_DEFAULT ||
+			    obj->type == OBJT_SWAP ||
+			    obj->type == OBJT_VNODE) {
+				error = (*func)(entry, closure);
+			}
+			vm_object_drop(obj);
 		}
-		if (lobj != obj)
-			vm_object_drop(lobj);
-		vm_object_drop(obj);
 	}
 	return (error);
 }

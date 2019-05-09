@@ -783,38 +783,27 @@ vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
 /*
  * Run the chain and if the bottom-most object is a vnode-type lock the
  * underlying vnode.  A locked vnode or NULL is returned.
+ *
+ * Caller must hold the first object.
  */
 struct vnode *
-vnode_pager_lock(vm_object_t object)
+vnode_pager_lock(vm_map_backing_t *ba)
 {
-	struct vnode *vp = NULL;
+	vm_map_backing_t *lba;
+	struct vnode *vp;
 	vm_object_t lobject;
-	vm_object_t tobject;
 	int error;
 
-	if (object == NULL)
-		return(NULL);
+	if (ba == NULL)
+		return NULL;
+	lba = ba;
+	while (lba->backing_ba)
+		lba = lba->backing_ba;
+	if ((lobject = lba->object) == NULL)
+		return NULL;
+	if (lba != ba)
+		vm_object_hold_shared(lobject);
 
-	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
-	lobject = object;
-
-	while (lobject->type != OBJT_VNODE) {
-		if (lobject->flags & OBJ_DEAD)
-			break;
-		tobject = lobject->backing_object;
-		if (tobject == NULL)
-			break;
-		vm_object_hold_shared(tobject);
-		if (tobject == lobject->backing_object) {
-			if (lobject != object) {
-				vm_object_lock_swap();
-				vm_object_drop(lobject);
-			}
-			lobject = tobject;
-		} else {
-			vm_object_drop(tobject);
-		}
-	}
 	while (lobject->type == OBJT_VNODE &&
 	       (lobject->flags & OBJ_DEAD) == 0) {
 		/*
@@ -831,11 +820,11 @@ vnode_pager_lock(vm_object_t object)
 				"lockstatus %d, retrying\n",
 				vp, error,
 				lockstatus(&vp->v_lock, curthread));
-			tsleep(object->handle, 0, "vnpgrl", hz);
+			tsleep(lobject->handle, 0, "vnpgrl", hz);
 		}
 		vp = NULL;
 	}
-	if (lobject != object)
+	if (lba != ba)
 		vm_object_drop(lobject);
 	return (vp);
 }

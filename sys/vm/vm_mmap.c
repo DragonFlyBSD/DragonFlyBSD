@@ -827,7 +827,7 @@ RestartScan:
 		    current->maptype != VM_MAPTYPE_VPAGETABLE) {
 			continue;
 		}
-		if (current->object.vm_object == NULL)
+		if (current->ba.object == NULL)
 			continue;
 		
 		/*
@@ -863,7 +863,8 @@ RestartScan:
 				/*
 				 * calculate the page index into the object
 				 */
-				offset = current->offset + (addr - current->start);
+				offset = current->ba.offset +
+					 (addr - current->start);
 				pindex = OFF_TO_IDX(offset);
 
 				/*
@@ -877,9 +878,8 @@ RestartScan:
 				 *     in x86 and vkernel pmap code.
 				 */
 				lwkt_gettoken(&vm_token);
-				vm_object_hold(current->object.vm_object);
-				m = vm_page_lookup(current->object.vm_object,
-						    pindex);
+				vm_object_hold(current->ba.object);
+				m = vm_page_lookup(current->ba.object, pindex);
 				if (m && m->valid) {
 					mincoreinfo = MINCORE_INCORE;
 					if (m->dirty || pmap_is_modified(m))
@@ -890,7 +890,7 @@ RestartScan:
 						mincoreinfo |= MINCORE_REFERENCED_OTHER;
 					}
 				}
-				vm_object_drop(current->object.vm_object);
+				vm_object_drop(current->ba.object);
 				lwkt_reltoken(&vm_token);
 			}
 

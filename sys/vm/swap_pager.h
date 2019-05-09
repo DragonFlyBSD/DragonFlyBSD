@@ -103,6 +103,7 @@ extern int nswap_lowat, nswap_hiwat;
 
 void swap_pager_putpages (vm_object_t, struct vm_page **, int, int, int *);
 boolean_t swap_pager_haspage (vm_object_t object, vm_pindex_t pindex);
+boolean_t swap_pager_haspage_locked (vm_object_t object, vm_pindex_t pindex);
 int swap_pager_swapoff (int devidx);
 
 int swap_pager_swp_alloc (vm_object_t, int);

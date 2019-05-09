@@ -47,8 +47,10 @@
 #include <vm/vm_object.h>
 #endif
 
+struct vm_map_backing;
+
 void vnode_pager_freepage (vm_page_t);
-struct vnode *vnode_pager_lock (vm_object_t);
+struct vnode *vnode_pager_lock (struct vm_map_backing *);
 
 /*
  * XXX Generic routines; currently called by badly written FS code; these

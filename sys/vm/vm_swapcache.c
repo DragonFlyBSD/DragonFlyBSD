@@ -1,7 +1,7 @@
 /*
  * (MPSAFE)
  *
- * Copyright (c) 2010 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2010,2019 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -78,14 +78,22 @@
 #include <sys/spinlock2.h>
 #include <vm/vm_page2.h>
 
+struct swmarker {
+	struct vm_object dummy_obj;
+	struct vm_object *save_obj;
+	vm_ooffset_t save_off;
+};
+
+typedef struct swmarker swmarker_t;
+
 /* the kernel process "vm_pageout"*/
 static int vm_swapcached_flush (vm_page_t m, int isblkdev);
 static int vm_swapcache_test(vm_page_t m);
 static int vm_swapcache_writing_heuristic(void);
 static int vm_swapcache_writing(vm_page_t marker, int count, int scount);
-static void vm_swapcache_cleaning(vm_object_t marker,
+static void vm_swapcache_cleaning(swmarker_t *marker,
 			struct vm_object_hash **swindexp);
-static void vm_swapcache_movemarker(vm_object_t marker,
+static void vm_swapcache_movemarker(swmarker_t *marker,
 			struct vm_object_hash *swindex, vm_object_t object);
 struct thread *swapcached_thread;
 
@@ -172,7 +180,7 @@ vm_swapcached_thread(void)
 	enum { SWAPC_WRITING, SWAPC_CLEANING } state = SWAPC_WRITING;
 	enum { SWAPB_BURSTING, SWAPB_RECOVERING } burst = SWAPB_BURSTING;
 	static struct vm_page page_marker[PQ_L2_SIZE];
-	static struct vm_object swmarker;
+	static swmarker_t swmarker;
 	static struct vm_object_hash *swindex;
 	int q;
 
@@ -210,10 +218,10 @@ vm_swapcached_thread(void)
 	 * Initialize our marker for the vm_object scan (SWAPC_CLEANING)
 	 */
 	bzero(&swmarker, sizeof(swmarker));
-	swmarker.type = OBJT_MARKER;
+	swmarker.dummy_obj.type = OBJT_MARKER;
 	swindex = &vm_object_hash[0];
 	lwkt_gettoken(&swindex->token);
-	TAILQ_INSERT_HEAD(&swindex->list, &swmarker, object_list);
+	TAILQ_INSERT_HEAD(&swindex->list, &swmarker.dummy_obj, object_list);
 	lwkt_reltoken(&swindex->token);
 
 	for (;;) {
@@ -324,7 +332,7 @@ vm_swapcached_thread(void)
 	}
 
 	lwkt_gettoken(&swindex->token);
-	TAILQ_REMOVE(&swindex->list, &swmarker, object_list);
+	TAILQ_REMOVE(&swindex->list, &swmarker.dummy_obj, object_list);
 	lwkt_reltoken(&swindex->token);
 }
 
@@ -693,7 +701,7 @@ vm_swapcache_test(vm_page_t m)
  */
 static
 void
-vm_swapcache_cleaning(vm_object_t marker, struct vm_object_hash **swindexp)
+vm_swapcache_cleaning(swmarker_t *marker, struct vm_object_hash **swindexp)
 {
 	vm_object_t object;
 	struct vnode *vp;
@@ -712,7 +720,7 @@ vm_swapcache_cleaning(vm_object_t marker, struct vm_object_hash **swindexp)
 
 	didmove = 0;
 outerloop:
-	while ((object = TAILQ_NEXT(marker, object_list)) != NULL) {
+	while ((object = TAILQ_NEXT(&marker->dummy_obj, object_list)) != NULL) {
 		/*
 		 * We have to skip markers.  We cannot hold/drop marker
 		 * objects!
@@ -756,10 +764,10 @@ outerloop:
 		 * Reset the object pindex stored in the marker if the
 		 * working object has changed.
 		 */
-		if (marker->backing_object != object || didmove) {
-			marker->size = 0;
-			marker->backing_object_offset = 0;
-			marker->backing_object = object;
+		if (marker->save_obj != object || didmove) {
+			marker->dummy_obj.size = 0;
+			marker->save_off = 0;
+			marker->save_obj = object;
 			didmove = 0;
 		}
 
@@ -783,7 +791,7 @@ outerloop:
 		lwkt_token_swap();
 		lwkt_reltoken(&(*swindexp)->token);
 
-		n = swap_pager_condfree(object, &marker->size,
+		n = swap_pager_condfree(object, &marker->dummy_obj.size,
 				    (count + SWAP_META_MASK) & ~SWAP_META_MASK);
 
 		vm_object_drop(object);		/* object may be invalid now */
@@ -795,7 +803,7 @@ outerloop:
 		 * the current object may no longer be on the vm_object_list.
 		 */
 		if (n <= 0 ||
-		    marker->backing_object_offset > vm_swapcache_cleanperobj) {
+		    marker->save_off > vm_swapcache_cleanperobj) {
 			vm_swapcache_movemarker(marker, *swindexp, object);
 			didmove = 1;
 		}
@@ -804,7 +812,7 @@ outerloop:
 		 * If we have exhausted our max-launder stop for now.
 		 */
 		count -= n;
-		marker->backing_object_offset += n * PAGE_SIZE;
+		marker->save_off += n * PAGE_SIZE;
 		if (count < 0)
 			goto breakout;
 	}
@@ -812,12 +820,12 @@ outerloop:
 	/*
 	 * Iterate vm_object_lists[] hash table
 	 */
-	TAILQ_REMOVE(&(*swindexp)->list, marker, object_list);
+	TAILQ_REMOVE(&(*swindexp)->list, &marker->dummy_obj, object_list);
 	lwkt_reltoken(&(*swindexp)->token);
 	if (++*swindexp >= &vm_object_hash[VMOBJ_HSIZE])
 		*swindexp = &vm_object_hash[0];
 	lwkt_gettoken(&(*swindexp)->token);
-	TAILQ_INSERT_HEAD(&(*swindexp)->list, marker, object_list);
+	TAILQ_INSERT_HEAD(&(*swindexp)->list, &marker->dummy_obj, object_list);
 
 	if (*swindexp != &vm_object_hash[0])
 		goto outerloop;
@@ -833,11 +841,12 @@ breakout:
  * the marker past it.
  */
 static void
-vm_swapcache_movemarker(vm_object_t marker, struct vm_object_hash *swindex,
+vm_swapcache_movemarker(swmarker_t *marker, struct vm_object_hash *swindex,
 			vm_object_t object)
 {
-	if (TAILQ_NEXT(marker, object_list) == object) {
-		TAILQ_REMOVE(&swindex->list, marker, object_list);
-		TAILQ_INSERT_AFTER(&swindex->list, object, marker, object_list);
+	if (TAILQ_NEXT(&marker->dummy_obj, object_list) == object) {
+		TAILQ_REMOVE(&swindex->list, &marker->dummy_obj, object_list);
+		TAILQ_INSERT_AFTER(&swindex->list, object,
+				   &marker->dummy_obj, object_list);
 	}
 }

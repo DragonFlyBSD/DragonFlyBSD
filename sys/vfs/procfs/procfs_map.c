@@ -86,7 +86,8 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	lwkt_reltoken(&p->p_token);
 
 	RB_FOREACH(entry, vm_map_rb_tree, &map->rb_root) {
-		vm_object_t obj, tobj, lobj;
+		vm_map_backing_t *ba;
+		vm_object_t obj;
 		int ref_count, flags;
 		vm_offset_t e_start, e_end;
 		vm_eflags_t e_eflags;
@@ -97,13 +98,10 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		switch(entry->maptype) {
 		case VM_MAPTYPE_NORMAL:
 		case VM_MAPTYPE_VPAGETABLE:
-			obj = entry->object.vm_object;
-			if (obj != NULL) {
-				vm_object_hold(obj);
-			}
+			ba = &entry->ba;
 			break;
 		case VM_MAPTYPE_UKSMAP:
-			obj = NULL;
+			ba = NULL;
 			break;
 		default:
 			/* ignore entry */
@@ -132,31 +130,25 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 			addr += PAGE_SIZE;
 		}
 #endif
-		if (obj) {
-			lobj = obj;
-			while ((tobj = lobj->backing_object) != NULL) {
-				KKASSERT(tobj != obj);
-				vm_object_hold(tobj);
-				if (tobj == lobj->backing_object) {
-					if (lobj != obj) {
-						vm_object_lock_swap();
-						vm_object_drop(lobj);
-					}
-					lobj = tobj;
-				} else {
-					vm_object_drop(tobj);
-				}
-			}
+		if (ba) {
+			while (ba->backing_ba)
+				ba = ba->backing_ba;
+			obj = ba->object;
+			if (obj)
+				vm_object_hold(obj);
 		} else {
-			lobj = NULL;
+			obj = NULL;
 		}
 		last_timestamp = map->timestamp;
 		vm_map_unlock(map);
 
 		freepath = NULL;
 		fullpath = "-";
-		if (lobj) {
-			switch(lobj->type) {
+		flags = 0;
+		ref_count = 0;
+
+		if (obj) {
+			switch(obj->type) {
 			default:
 			case OBJT_DEFAULT:
 				type = "default";
@@ -164,7 +156,7 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 				break;
 			case OBJT_VNODE:
 				type = "vnode";
-				vp = lobj->handle;
+				vp = obj->handle;
 				vref(vp);
 				break;
 			case OBJT_SWAP:
@@ -180,19 +172,16 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 				vp = NULL;
 				break;
 			}
-			if (lobj != obj)
-				vm_object_drop(lobj);
-			
-			flags = obj->flags;
-			ref_count = obj->ref_count;
+			if (ba->object) {
+				flags = ba->object->flags;
+				ref_count = ba->object->ref_count;
+			}
 			vm_object_drop(obj);
-			if (vp != NULL) {
+			if (vp) {
 				vn_fullpath(p, vp, &fullpath, &freepath, 1);
 				vrele(vp);
 			}
 		} else {
-			flags = 0;
-			ref_count = 0;
 			switch(entry->maptype) {
 			case VM_MAPTYPE_UNSPECIFIED:
 				type = "unspec";
@@ -227,7 +216,7 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 #endif
 			  "0x%04x %s%s %s %s\n",
 			(u_long)e_start, (u_long)e_end,
-			resident, -1, obj,
+			resident, -1, (ba ? ba->object : NULL),
 			(e_prot & VM_PROT_READ) ? "r" : "-",
 			(e_prot & VM_PROT_WRITE) ? "w" : "-",
 			(e_prot & VM_PROT_EXECUTE) ? "x" : "-",

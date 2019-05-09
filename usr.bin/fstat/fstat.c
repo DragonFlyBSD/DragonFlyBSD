@@ -395,6 +395,7 @@ dommap(struct proc *p)
 	struct vm_map_entry entry;
 	vm_map_entry_t ken;
 	struct vm_object object;
+	vm_map_backing_t ba;
 	vm_object_t objp;
 	int prot, fflags;
 
@@ -410,21 +411,33 @@ dommap(struct proc *p)
 		if (entry.maptype == VM_MAPTYPE_SUBMAP)
 			continue;
 
-		if ((objp = entry.object.vm_object) == NULL)
+		if (entry.ba.object == NULL)
 			continue;
-
-		for (; objp; objp = object.backing_object) {
-			if (!kread(objp, &object, sizeof(object))) {
+		ba = entry.ba;
+		for (;;) {
+			if ((objp = entry.ba.object) != NULL) {
+				if (!kread(objp, &object, sizeof(object))) {
+					dprintf(stderr,
+					    "can't read vm_object at %p "
+					    "for pid %d\n",
+					    (void *)objp, Pid);
+					return;
+				}
+			}
+			if (ba.backing_ba == NULL)
+				break;
+			if (!kread(ba.backing_ba, &ba, sizeof(ba))) {
 				dprintf(stderr,
-				    "can't read vm_object at %p for pid %d\n",
-				    (void *)objp, Pid);
+				    "can't read map_backing at %p "
+				    "for pid %d\n",
+				    (void *)ba.backing_ba, Pid);
 				return;
 			}
 		}
 
 		prot = entry.protection;
 		fflags = (prot & VM_PROT_READ ? FREAD : 0) |
-		    (prot & VM_PROT_WRITE ? FWRITE : 0);
+			 (prot & VM_PROT_WRITE ? FWRITE : 0);
 
 		switch (object.type) {
 		case OBJT_VNODE:

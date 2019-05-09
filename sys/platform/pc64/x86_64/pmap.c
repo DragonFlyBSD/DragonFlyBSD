@@ -2695,10 +2695,10 @@ pmap_allocpte_seg(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp,
 	    ptepindex >= pmap_pd_pindex(0) ||		/* not terminal or pt */
 	    entry->inheritance != VM_INHERIT_SHARE ||	/* not shared */
 	    entry->maptype != VM_MAPTYPE_NORMAL ||	/* weird map type */
-	    entry->object.vm_object == NULL ||		/* needs VM object */
-	    entry->object.vm_object->type == OBJT_DEVICE ||	/* ick */
-	    entry->object.vm_object->type == OBJT_MGTDEVICE ||	/* ick */
-	    (entry->offset & SEG_MASK) ||		/* must be aligned */
+	    entry->ba.object == NULL ||		/* needs VM object */
+	    entry->ba.object->type == OBJT_DEVICE ||	/* ick */
+	    entry->ba.object->type == OBJT_MGTDEVICE ||	/* ick */
+	    (entry->ba.offset & SEG_MASK) ||		/* must be aligned */
 	    (entry->start & SEG_MASK)) {
 		return(pmap_allocpte(pmap, ptepindex, pvpp));
 	}
@@ -2714,7 +2714,7 @@ pmap_allocpte_seg(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp,
 	 * If the full segment can be represented dive the VM object's
 	 * shared pmap, allocating as required.
 	 */
-	object = entry->object.vm_object;
+	object = entry->ba.object;
 
 	if (entry->protection & VM_PROT_WRITE)
 		obpmapp = &object->md.pmap_rw;

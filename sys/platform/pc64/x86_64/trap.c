@@ -817,9 +817,10 @@ out2:	;
 		("trap: critical section count mismatch! %d/%d",
 		crit_count, td->td_pri));
 	KASSERT(curstop == td->td_toks_stop,
-		("trap: extra tokens held after trap! %ld/%ld",
+		("trap: extra tokens held after trap! %ld/%ld (%s)",
 		curstop - &td->td_toks_base,
-		td->td_toks_stop - &td->td_toks_base));
+		td->td_toks_stop - &td->td_toks_base,
+		td->td_toks_stop[-1].tr_tok->t_desc));
 #endif
 }
 
@@ -910,6 +911,8 @@ trap_pfault(struct trapframe *frame, int usermode)
 	else
 		ftype = VM_PROT_READ;
 
+	lwkt_tokref_t stop = td->td_toks_stop;
+
 	if (map != &kernel_map) {
 		/*
 		 * Keep swapout from messing with us during this
@@ -928,6 +931,11 @@ trap_pfault(struct trapframe *frame, int usermode)
 		else
 			fault_flags |= VM_FAULT_NORMAL;
 		rv = vm_fault(map, va, ftype, fault_flags);
+		if (td->td_toks_stop != stop) {
+			stop = td->td_toks_stop - 1;
+			kprintf("A-HELD TOKENS DURING PFAULT td=%p(%s) map=%p va=%p ftype=%d fault_flags=%d\n", td, td->td_comm, map, (void *)va, ftype, fault_flags);
+			panic("held tokens");
+		}
 
 		PRELE(lp->lwp_proc);
 	} else {
@@ -937,6 +945,11 @@ trap_pfault(struct trapframe *frame, int usermode)
 		 */
 		fault_flags = VM_FAULT_NORMAL;
 		rv = vm_fault(map, va, ftype, VM_FAULT_NORMAL);
+		if (td->td_toks_stop != stop) {
+			stop = td->td_toks_stop - 1;
+			kprintf("B-HELD TOKENS DURING PFAULT td=%p(%s) map=%p va=%p ftype=%d fault_flags=%d\n", td, td->td_comm, map, (void *)va, ftype, VM_FAULT_NORMAL);
+			panic("held tokens");
+		}
 	}
 	if (rv == KERN_SUCCESS)
 		return (0);
