@@ -87,18 +87,18 @@
 
 static MALLOC_DEFINE(M_NETCRED, "Export Host", "Export host address structure");
 
-int numvnodes;
+__read_mostly int numvnodes;
 SYSCTL_INT(_debug, OID_AUTO, numvnodes, CTLFLAG_RD, &numvnodes, 0,
     "Number of vnodes allocated");
-int verbose_reclaims;
+__read_mostly int verbose_reclaims;
 SYSCTL_INT(_debug, OID_AUTO, verbose_reclaims, CTLFLAG_RD, &verbose_reclaims, 0,
     "Output filename of reclaimed vnode(s)");
 
-enum vtype iftovt_tab[16] = {
+__read_mostly enum vtype iftovt_tab[16] = {
 	VNON, VFIFO, VCHR, VNON, VDIR, VNON, VBLK, VNON,
 	VREG, VNON, VLNK, VNON, VSOCK, VNON, VNON, VBAD,
 };
-int vttoif_tab[9] = {
+__read_mostly int vttoif_tab[9] = {
 	0, S_IFREG, S_IFDIR, S_IFBLK, S_IFCHR, S_IFLNK,
 	S_IFSOCK, S_IFIFO, S_IFMT,
 };
@@ -107,7 +107,7 @@ static int reassignbufcalls;
 SYSCTL_INT(_vfs, OID_AUTO, reassignbufcalls, CTLFLAG_RW, &reassignbufcalls,
     0, "Number of times buffers have been reassigned to the proper list");
 
-static int check_buf_overlap = 2;	/* invasive check */
+__read_mostly static int check_buf_overlap = 2;	/* invasive check */
 SYSCTL_INT(_vfs, OID_AUTO, check_buf_overlap, CTLFLAG_RW, &check_buf_overlap,
     0, "Enable overlapping buffer checks");
 
@@ -115,7 +115,7 @@ int	nfs_mount_type = -1;
 static struct lwkt_token spechash_token;
 struct nfs_public nfs_pub;	/* publicly exported FS */
 
-int maxvnodes;
+__read_mostly int maxvnodes;
 SYSCTL_INT(_kern, KERN_MAXVNODES, maxvnodes, CTLFLAG_RW, 
 	   &maxvnodes, 0, "Maximum number of vnodes");
 
@@ -127,7 +127,7 @@ static void	vfs_free_addrlist_af (struct radix_node_head **prnh);
 static int	vfs_hang_addrlist (struct mount *mp, struct netexport *nep,
 	            const struct export_args *argp);
 
-int	prtactive = 0;		/* 1 => print out reclaim of active vnodes */
+__read_mostly int prtactive = 0; /* 1 => print out reclaim of active vnodes */
 
 /*
  * Red black tree functions
@@ -196,7 +196,7 @@ vfs_subr_init(void)
  */
 enum { TSP_SEC, TSP_HZ, TSP_USEC, TSP_NSEC };
 
-static int timestamp_precision = TSP_SEC;
+__read_mostly static int timestamp_precision = TSP_SEC;
 SYSCTL_INT(_vfs, OID_AUTO, timestamp_precision, CTLFLAG_RW,
 		&timestamp_precision, 0, "Precision of file timestamps");
 
