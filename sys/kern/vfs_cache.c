@@ -150,10 +150,11 @@ struct pcpu_ncache {
 	long			vfscache_negs;
 	long			vfscache_count;
 	long			vfscache_leafs;
+	long			numdefered;
 } __cachealign;
 
-static struct nchash_head	*nchashtbl;
-static struct pcpu_ncache	*pcpu_ncache;
+__read_mostly static struct nchash_head	*nchashtbl;
+__read_mostly static struct pcpu_ncache	*pcpu_ncache;
 static struct ncmount_cache	ncmount_cache[NCMOUNT_NUMCACHE];
 
 /*
@@ -166,39 +167,35 @@ static struct ncmount_cache	ncmount_cache[NCMOUNT_NUMCACHE];
  * 3	Force the directory scan code run as if the parent vnode did not
  *	have a namecache record, even if it does have one.
  */
-static int	ncvp_debug;
+__read_mostly static int	ncvp_debug;
 SYSCTL_INT(_debug, OID_AUTO, ncvp_debug, CTLFLAG_RW, &ncvp_debug, 0,
     "Namecache debug level (0-3)");
 
-static u_long	nchash;			/* size of hash table */
+__read_mostly static u_long nchash;		/* size of hash table */
 SYSCTL_ULONG(_debug, OID_AUTO, nchash, CTLFLAG_RD, &nchash, 0,
     "Size of namecache hash table");
 
-static int	ncnegflush = 10;	/* burst for negative flush */
+__read_mostly static int ncnegflush = 10;	/* burst for negative flush */
 SYSCTL_INT(_debug, OID_AUTO, ncnegflush, CTLFLAG_RW, &ncnegflush, 0,
     "Batch flush negative entries");
 
-static int	ncposflush = 10;	/* burst for positive flush */
+__read_mostly static int ncposflush = 10;	/* burst for positive flush */
 SYSCTL_INT(_debug, OID_AUTO, ncposflush, CTLFLAG_RW, &ncposflush, 0,
     "Batch flush positive entries");
 
-static int	ncnegfactor = 16;	/* ratio of negative entries */
+__read_mostly static int ncnegfactor = 16;	/* ratio of negative entries */
 SYSCTL_INT(_debug, OID_AUTO, ncnegfactor, CTLFLAG_RW, &ncnegfactor, 0,
     "Ratio of namecache negative entries");
 
-static int	nclockwarn;		/* warn on locked entries in ticks */
+__read_mostly static int nclockwarn;	/* warn on locked entries in ticks */
 SYSCTL_INT(_debug, OID_AUTO, nclockwarn, CTLFLAG_RW, &nclockwarn, 0,
     "Warn on locked namecache entries in ticks");
 
-static int	numdefered;		/* number of cache entries allocated */
-SYSCTL_INT(_debug, OID_AUTO, numdefered, CTLFLAG_RD, &numdefered, 0,
-    "Number of cache entries allocated");
-
-static int	ncposlimit;		/* number of cache entries allocated */
+__read_mostly static int ncposlimit;	/* number of cache entries allocated */
 SYSCTL_INT(_debug, OID_AUTO, ncposlimit, CTLFLAG_RW, &ncposlimit, 0,
     "Number of cache entries allocated");
 
-static int	ncp_shared_lock_disable = 0;
+__read_mostly static int ncp_shared_lock_disable = 0;
 SYSCTL_INT(_debug, OID_AUTO, ncp_shared_lock_disable, CTLFLAG_RW,
 	   &ncp_shared_lock_disable, 0, "Disable shared namecache locks");
 
@@ -207,7 +204,7 @@ SYSCTL_INT(_debug, OID_AUTO, vnsize, CTLFLAG_RD, 0, sizeof(struct vnode),
 SYSCTL_INT(_debug, OID_AUTO, ncsize, CTLFLAG_RD, 0, sizeof(struct namecache),
     "sizeof(struct namecache)");
 
-static int	ncmount_cache_enable = 1;
+__read_mostly static int ncmount_cache_enable = 1;
 SYSCTL_INT(_debug, OID_AUTO, ncmount_cache_enable, CTLFLAG_RW,
 	   &ncmount_cache_enable, 0, "mount point cache");
 
@@ -225,7 +222,8 @@ static void vfscache_rollup_all(void);
 #endif
 
 /*
- * The new name cache statistics
+ * The new name cache statistics (these are rolled up globals and not
+ * modified in the critical path, see struct pcpu_ncache).
  */
 SYSCTL_NODE(_vfs, OID_AUTO, cache, CTLFLAG_RW, 0, "Name cache statistics");
 static long vfscache_negs;
@@ -237,6 +235,10 @@ SYSCTL_LONG(_vfs_cache, OID_AUTO, numcache, CTLFLAG_RD, &vfscache_count, 0,
 static long vfscache_leafs;
 SYSCTL_LONG(_vfs_cache, OID_AUTO, numleafs, CTLFLAG_RD, &vfscache_leafs, 0,
     "Number of namecaches entries");
+static long	numdefered;
+SYSCTL_LONG(_debug, OID_AUTO, numdefered, CTLFLAG_RD, &numdefered, 0,
+    "Number of cache entries allocated");
+
 
 struct nchstats nchstats[SMP_MAXCPU];
 /*
@@ -2761,7 +2763,9 @@ cache_zap(struct namecache *ncp, int nonblock)
 					break;
 				refs = ncp->nc_refs;
 				ncp->nc_flag |= NCF_DEFEREDZAP;
-				++numdefered;	/* MP race ok */
+				atomic_add_long(
+				    &pcpu_ncache[mycpu->gd_cpuid].numdefered,
+				    1);
 				if (atomic_cmpset_int(&ncp->nc_refs,
 						      refs, refs - 1)) {
 					_cache_unlock(ncp);
@@ -2957,13 +2961,12 @@ cache_hysteresis(int critpath)
 	}
 
 	/*
-	 * Clean out dangling defered-zap ncps which could not
-	 * be cleanly dropped if too many build up.  Note
-	 * that numdefered is not an exact number as such ncps
-	 * can be reused and the counter is not handled in a MP
-	 * safe manner by design.
+	 * Clean out dangling defered-zap ncps which could not be cleanly
+	 * dropped if too many build up.  Note that numdefered is
+	 * heuristical.  Make sure we are real-time for the current cpu,
+	 * plus the global rollup.
 	 */
-	if (numdefered > neglimit) {
+	if (pcpu_ncache[mycpu->gd_cpuid].numdefered + numdefered > neglimit) {
 		_cache_cleandefered();
 	}
 }
@@ -3986,6 +3989,7 @@ _cache_cleandefered(void)
 	 * iterator, DESTROYED prevents matches by lookup functions.
 	 */
 	numdefered = 0;
+	pcpu_ncache[mycpu->gd_cpuid].numdefered = 0;
 	bzero(&dummy, sizeof(dummy));
 	dummy.nc_flag = NCF_DESTROYED | NCF_DUMMY;
 	dummy.nc_refs = 1;
@@ -4466,6 +4470,10 @@ vfscache_rollup_cpu(struct globaldata *gd)
 	if (pn->vfscache_negs) {
 		count = atomic_swap_long(&pn->vfscache_negs, 0);
 		atomic_add_long(&vfscache_negs, count);
+	}
+	if (pn->numdefered) {
+		count = atomic_swap_long(&pn->numdefered, 0);
+		atomic_add_long(&numdefered, count);
 	}
 }
 
