@@ -1960,9 +1960,6 @@ vm_pageout_free_page_calc(vm_size_t count)
 	if (count < vmstats.v_page_count)
 		 return 0;
 	/*
-	 * free_reserved needs to include enough for the largest swap pager
-	 * structures plus enough for any pv_entry structs when paging.
-	 *
 	 * v_free_min		normal allocations
 	 * v_free_reserved	system allocations
 	 * v_pageout_free_min	allocations by pageout daemon

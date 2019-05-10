@@ -149,10 +149,6 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 	if ((vm = p->p_vmspace) != NULL) {
 		kp->kp_vm_map_size = vm->vm_map.size;
 		kp->kp_vm_rssize = vmspace_resident_count(vm);
-#ifdef _KERNEL
-		/*XXX MP RACES */
-		/*kp->kp_vm_prssize = vmspace_president_count(vm);*/
-#endif
 		kp->kp_vm_swrss = vm->vm_swrss;
 		kp->kp_vm_tsize = btoc(vm->vm_tsize);
 		kp->kp_vm_dsize = btoc(vm->vm_dsize);

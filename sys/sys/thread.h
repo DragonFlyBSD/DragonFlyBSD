@@ -121,12 +121,12 @@ struct intrframe;
  * reduces the complexity of the token release code.
  */
 
-typedef struct lwkt_token {
+struct lwkt_token {
     long		t_count;	/* Shared/exclreq/exclusive access */
     struct lwkt_tokref	*t_ref;		/* Exclusive ref */
     long		t_collisions;	/* Collision counter */
     const char		*t_desc;	/* Descriptive name */
-} lwkt_token;
+};
 
 #define TOK_EXCLUSIVE	0x00000001	/* Exclusive lock held */
 #define TOK_EXCLREQ	0x00000002	/* Exclusive request pending */

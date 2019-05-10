@@ -63,9 +63,9 @@
  */
 
 /*
- *	Virtual memory map module definitions.
+ * Virtual memory map module definitions.  The vm_map houses the pmap
+ * structure which controls the mmu context for a process.
  */
-
 #ifndef	_VM_VM_MAP_H_
 #define	_VM_VM_MAP_H_
 
@@ -102,16 +102,12 @@
 struct vm_map_rb_tree;
 RB_PROTOTYPE(vm_map_rb_tree, vm_map_entry, rb_entry, rb_vm_map_compare);
 
-/*
- *	Types defined:
- *
- *	vm_map_t		the high-level address map data structure.
- *	vm_map_entry_t		an entry in an address map.
- */
-
 typedef u_int vm_flags_t;
 typedef u_int vm_eflags_t;
 
+/*
+ * Aux structure depends on map type and/or flags.
+ */
 union vm_map_aux {
 	vm_offset_t avail_ssize;	/* amt can grow if this is a stack */
 	vpte_t master_pde;		/* virtual page table root */
@@ -175,9 +171,9 @@ struct vm_map_backing {
 	 */
 	union {
 		struct vm_object *object;	/* vm_object */
-		struct vm_map *sub_map;		/* belongs to another map */
-		int	(*uksmap)(struct cdev *dev, vm_page_t fake);
-		void	*map_object;		/* generic */
+		struct vm_map	*sub_map;	/* belongs to another map */
+		int		(*uksmap)(struct cdev *dev, vm_page_t fake);
+		void		*map_object;	/* generic */
 	};
 
 	vm_ooffset_t		offset;		/* cumulative offset */
@@ -208,17 +204,17 @@ typedef struct vm_map_backing *vm_map_backing_t;
  */
 struct vm_map_entry {
 	RB_ENTRY(vm_map_entry) rb_entry;
-	vm_offset_t start;		/* start address */
-	vm_offset_t end;		/* end address */
+	vm_offset_t	start;		/* start address */
+	vm_offset_t	end;		/* end address */
 	union vm_map_aux aux;		/* auxillary data */
 	struct vm_map_backing ba;	/* backing object chain */
-	vm_eflags_t eflags;		/* map entry flags */
-	vm_maptype_t maptype;		/* type of VM mapping */
-	vm_prot_t protection;		/* protection code */
-	vm_prot_t max_protection;	/* maximum protection */
-	vm_inherit_t inheritance;	/* inheritance */
-	int wired_count;		/* can be paged if = 0 */
-	vm_subsys_t id;			/* subsystem id */
+	vm_eflags_t	eflags;		/* map entry flags */
+	vm_maptype_t	maptype;	/* type of VM mapping */
+	vm_prot_t	protection;	/* protection code */
+	vm_prot_t	max_protection;	/* maximum protection */
+	vm_inherit_t	inheritance;	/* inheritance */
+	int		wired_count;	/* can be paged if = 0 */
+	vm_subsys_t	id;		/* subsystem id */
 };
 
 typedef struct vm_map_entry *vm_map_entry_t;
@@ -328,24 +324,22 @@ typedef struct vm_map_freehint vm_map_freehint_t;
 RB_HEAD(vm_map_rb_tree, vm_map_entry);
 
 struct vm_map {
-	struct lock lock;		/* Lock for map data */
+	struct		lock lock;	/* Lock for map data */
 	struct vm_map_rb_tree rb_root;	/* Organize map entries */
-	vm_offset_t min_addr;		/* min address */
-	vm_offset_t max_addr;		/* max address */
-	int nentries;			/* Number of entries */
-	unsigned int timestamp;		/* Version number */
-	vm_size_t size;			/* virtual size */
-	u_char system_map;		/* Am I a system map? */
-	u_char freehint_newindex;
-	u_char unused02;
-	u_char unused03;
-	vm_flags_t flags;		/* flags for this vm_map */
+	vm_offset_t	min_addr;	/* min address */
+	vm_offset_t	max_addr;	/* max address */
+	int		nentries;	/* Number of entries */
+	unsigned int	timestamp;	/* Version number */
+	vm_size_t	size;		/* virtual size */
+	u_char		system_map;	/* Am I a system map? */
+	u_char		freehint_newindex;
+	u_char		unused02;
+	u_char		unused03;
+	vm_flags_t	flags;		/* flags for this vm_map */
 	vm_map_freehint_t freehint[VM_MAP_FFCOUNT];
-	struct pmap *pmap;		/* Physical map */
-	u_int president_cache;		/* Remember president count */
-	u_int president_ticks;		/* Save ticks for cache */
+	struct pmap	*pmap;		/* Physical map */
 	struct vm_map_ilock *ilock_base;/* interlocks */
-	struct spinlock ilock_spin;	/* interlocks (spinlock for) */
+	struct spinlock	ilock_spin;	/* interlocks (spinlock for) */
 	struct lwkt_token token;	/* Soft serializer */
 	vm_offset_t pgout_offset;	/* for RLIMIT_RSS scans */
 };
@@ -543,64 +537,6 @@ static __inline long
 vmspace_resident_count(struct vmspace *vmspace)
 {
 	return pmap_resident_count(vmspace_pmap(vmspace));
-}
-
-/*
- * Calculates the proportional RSS and returning the
- * accrued result.  This is a loose value for statistics/display
- * purposes only and will only be updated if we can acquire
- * a non-blocking map lock.
- *
- * (used by userland or the kernel)
- */
-static __inline u_int
-vmspace_president_count(struct vmspace *vmspace)
-{
-	vm_map_t map = &vmspace->vm_map;
-	vm_map_entry_t cur;
-	vm_object_t object;
-	u_int count = 0;
-
-#ifdef _KERNEL
-	if (map->president_ticks == ticks / hz || vm_map_lock_read_try(map))
-		return(map->president_cache);
-#endif
-
-	RB_FOREACH(cur, vm_map_rb_tree, &map->rb_root) {
-		switch(cur->maptype) {
-		case VM_MAPTYPE_NORMAL:
-		case VM_MAPTYPE_VPAGETABLE:
-			if ((object = cur->ba.object) == NULL)
-				break;
-			if (object->type != OBJT_DEFAULT &&
-			    object->type != OBJT_SWAP) {
-				break;
-			}
-
-#if 0
-			/*
-			 * synchronize non-zero case, contents of field
-			 * can change at any time due to pmap ops.
-			 */
-			if ((n = object->agg_pv_list_count) != 0) {
-#ifdef _KERNEL
-				cpu_ccfence();
-#endif
-				count += object->resident_page_count / n;
-			}
-#endif
-			break;
-		default:
-			break;
-		}
-	}
-#ifdef _KERNEL
-	map->president_cache = count;
-	map->president_ticks = ticks / hz;
-	vm_map_unlock_read(map);
-#endif
-
-	return(count);
 }
 
 /*

@@ -53,11 +53,12 @@
 
 static MALLOC_DEFINE(M_NFSNODE, "NFS node", "NFS node");
 
-static struct objcache *nfsnode_objcache;
-static LIST_HEAD(nfsnodehashhead, nfsnode) *nfsnodehashtbl;
-static u_long nfsnodehash;
-static lwkt_token nfsnhash_token = LWKT_TOKEN_INITIALIZER(nfsnhash_token);
+static struct lwkt_token nfsnhash_token =
+			LWKT_TOKEN_INITIALIZER(nfsnhash_token);
 static struct lock nfsnhash_lock;
+__read_mostly static struct objcache *nfsnode_objcache;
+__read_mostly static LIST_HEAD(nfsnodehashhead, nfsnode) *nfsnodehashtbl;
+__read_mostly static u_long nfsnodehash;
 
 #define TRUE	1
 #define	FALSE	0

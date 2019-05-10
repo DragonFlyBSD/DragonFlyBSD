@@ -114,11 +114,9 @@ struct	shminfo shminfo = {
  *		    or seg-faults unexpectedly.
  *
  * use-phys	    Shared memory segments are to use physical memory by
- *		    default, which allows the kernel to optimize (remove)
- *		    pv_entry management structures for the related PTEs and
- *		    prevents paging.  This has distinctly different and
- *		    usually desireable characteristics verses mmap()ing
- *		    anonymous memory.
+ *		    default, which may allow the kernel to better-optimize
+ *		    the pmap and reduce overhead.  The pages are effectively
+ *		    wired.
  */
 static int shm_allow_removed = 1;
 static int shm_use_phys = 1;

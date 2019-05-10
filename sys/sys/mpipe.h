@@ -90,7 +90,7 @@ struct malloc_pipe {
     int		total_count;	/* total outstanding allocations incl free */
     int		ary_count;	/* guarenteed allocation count */
     int		max_count;	/* maximum count (M_NOWAIT used beyond nom) */
-    lwkt_token	token;
+    struct lwkt_token token;
     void	**array;	/* array[ary_count] */
     void	(*construct)(void *buf, void *priv);
     void	(*deconstruct)(void *buf, void *priv);

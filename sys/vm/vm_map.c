@@ -741,15 +741,14 @@ vm_map_entry_shadow(vm_map_entry_t entry, int addref)
 	ba = kmalloc(sizeof(*ba), M_MAP_BACKING, M_INTWAIT); /* copied later */
 
 	/*
-	 * The ref on source is inherited when we move it into the ba.
-	 */
-	source = entry->ba.object;
-
-	/*
 	 * Don't create the new object if the old object isn't shared.
 	 *
+	 * The ref on source is inherited when we move it into the ba.
 	 * If addref is non-zero additional ref(s) are being added (probably
 	 * for map entry fork purposes), so clear OBJ_ONEMAPPING.
+	 *
+	 * Caller ensures source exists (all backing_ba's must have objects),
+	 * typically indirectly by virtue of the NEEDS_COPY flag being set.
 	 *
 	 * WARNING! Checking ref_count == 1 only works because we are testing
 	 *	    the object embedded in the entry (entry->ba.object).
@@ -758,31 +757,34 @@ vm_map_entry_shadow(vm_map_entry_t entry, int addref)
 	 *	    vm_map_backing might be shared, or part of a chain that
 	 *	    is shared.  Checking ba->refs is worthless.
 	 */
-	drop_source = 0;
-	if (source) {
-		if (source->type != OBJT_VNODE) {
-			vm_object_hold(source);
-			if (source->ref_count == 1 &&
-			    source->handle == NULL &&
-			    (source->type == OBJT_DEFAULT ||
-			     source->type == OBJT_SWAP)) {
-				if (addref) {
-					vm_object_reference_locked(source);
-					vm_object_clear_flag(source,
-							     OBJ_ONEMAPPING);
-				}
-				vm_object_drop(source);
-				kfree(ba, M_MAP_BACKING);
-				goto done;
+	source = entry->ba.object;
+	KKASSERT(source);
+
+	if (source->type != OBJT_VNODE) {
+		vm_object_hold(source);
+		if (source->ref_count == 1 &&
+		    source->handle == NULL &&
+		    (source->type == OBJT_DEFAULT ||
+		     source->type == OBJT_SWAP)) {
+			if (addref) {
+				vm_object_reference_locked(source);
+				vm_object_clear_flag(source,
+						     OBJ_ONEMAPPING);
 			}
-			/*vm_object_reference_locked(source);*/
-			vm_object_clear_flag(source, OBJ_ONEMAPPING);
-			drop_source = 1;	/* drop source at end */
-		} else {
-			/*vm_object_reference_quick(source);*/
-			vm_object_clear_flag(source, OBJ_ONEMAPPING);
+			vm_object_drop(source);
+			kfree(ba, M_MAP_BACKING);
+			goto done;
 		}
+		drop_source = 1;	/* drop source at end */
+	} else {
+		drop_source = 0;
 	}
+
+	/*
+	 * Once it becomes part of a backing_ba chain it can wind up anywhere,
+	 * drop the ONEMAPPING flag now.
+	 */
+	vm_object_clear_flag(source, OBJ_ONEMAPPING);
 
 	/*
 	 * Allocate a new object with the given length.  The new object
@@ -826,32 +828,16 @@ vm_map_entry_shadow(vm_map_entry_t entry, int addref)
 	entry->ba.offset = 0;
 	entry->ba.refs = 0;
 
-	if (source) {
-#if 0
-		/* shadowing no longer messes with generation count */
-		if (drop_source) {
-			atomic_add_int(&source->generation, 1);
-			vm_object_set_flag(result, OBJ_ONSHADOW);
-		}
-#endif
-		/* cpu localization twist */
-		result->pg_color = vm_quickcolor();
-	}
+	/* cpu localization twist */
+	result->pg_color = vm_quickcolor();
 
 	/*
 	 * Adjust the return storage.  Drop the ref on source before
 	 * returning.
 	 */
 	vm_object_drop(result);
-	if (source) {
-		if (drop_source) {
-			/*vm_object_deallocate_locked(source);*/
-			vm_object_drop(source);
-		} else {
-			/*vm_object_deallocate(source);*/
-		}
-	}
-
+	if (drop_source)
+		vm_object_drop(source);
 done:
 	entry->eflags &= ~MAP_ENTRY_NEEDS_COPY;
 }
@@ -3510,11 +3496,9 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 }
 
 /*
- * vmspace_fork:
- * Create a new process vmspace structure and vm_map
- * based on those of an existing process.  The new map
- * is based on the old map, according to the inheritance
- * values on the regions in that map.
+ * Create a vmspace for a new process and its related vm_map based on an
+ * existing vmspace.  The new map inherits information from the old map
+ * according to inheritance settings.
  *
  * The source map must not be locked.
  * No requirements.

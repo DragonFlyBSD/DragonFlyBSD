@@ -137,6 +137,7 @@ int rb_vm_page_compare(struct vm_page *, struct vm_page *);
 struct vm_page_rb_tree;
 RB_PROTOTYPE2(vm_page_rb_tree, vm_page, rb_entry,
 	      rb_vm_page_compare, vm_pindex_t);
+RB_HEAD(vm_page_rb_tree, vm_page);
 
 struct vm_page {
 	TAILQ_ENTRY(vm_page) pageq;	/* vm_page_queues[] list (P)	*/

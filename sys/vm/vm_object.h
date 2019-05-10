@@ -113,6 +113,7 @@ int rb_swblock_compare(struct swblock *, struct swblock *);
 
 RB_PROTOTYPE2(swblock_rb_tree, swblock, swb_entry, rb_swblock_compare,
 	      vm_pindex_t);
+RB_HEAD(swblock_rb_tree, swblock);
 
 enum obj_type { 
 	OBJT_DEFAULT,
@@ -129,27 +130,25 @@ typedef u_char objtype_t;
 /*
  * A VM object which represents an arbitrarily sized data store.
  *
- * LOCKING:
- *	vmobj_tokens[n] for object_list, hashed by address.
- *
- *	vm_object_hold/drop() for most vm_object related operations
- *	to avoid ref confusion in the deallocator.
+ * vm_objects are soft-locked with their token, meaning that any
+ * blocking can allow other threads to squeeze in some work.
  */
 struct vm_object {
-	TAILQ_ENTRY(vm_object) object_list; /* locked by vmobj_tokens[n] */
-	RB_HEAD(vm_page_rb_tree, vm_page) rb_memq;	/* resident pages */
-	int generation;			/* generation ID */
-	vm_pindex_t size;		/* Object size */
-	int ref_count;
-	vm_memattr_t memattr;		/* default memory attribute for pages */
-	objtype_t type;			/* type of pager */
-	u_short flags;			/* see below */
-	u_short pg_color;		/* color of first page in obj */
-	u_int paging_in_progress;	/* Paging (in or out) so don't collapse or destroy */
-	long resident_page_count;	/* number of resident pages */
-	TAILQ_ENTRY(vm_object) pager_object_list; /* list of all objects of this pager type */
-	void *handle;			/* control handle: vp, etc */
-	int hold_count;			/* count prevents destruction */
+	struct lwkt_token token;
+	TAILQ_ENTRY(vm_object) object_list;
+	struct vm_page_rb_tree rb_memq;	/* resident pages */
+	int		generation;	/* generation ID */
+	vm_pindex_t	size;		/* Object size */
+	int		ref_count;
+	vm_memattr_t	memattr;	/* default memory attribute for pages */
+	objtype_t	type;		/* type of pager */
+	u_short		flags;		/* see below */
+	u_short		pg_color;	/* color of first page in obj */
+	u_int		paging_in_progress;	/* Activity in progress */
+	long		resident_page_count;	/* number of resident pages */
+	TAILQ_ENTRY(vm_object) pager_object_list; /* optional use by pager */
+	void		*handle;	/* control handle: vp, etc */
+	int		hold_count;	/* count prevents destruction */
 	
 #if defined(DEBUG_LOCKS)
 	/* 
@@ -157,10 +156,10 @@ struct vm_object {
 	 */
 
 #define VMOBJ_DEBUG_ARRAY_SIZE		(32)
-	char debug_hold_thrs[VMOBJ_DEBUG_ARRAY_SIZE][64];
-	const char *debug_hold_file[VMOBJ_DEBUG_ARRAY_SIZE];
-	int debug_hold_line[VMOBJ_DEBUG_ARRAY_SIZE];
-	int	debug_index;
+	char		debug_hold_thrs[VMOBJ_DEBUG_ARRAY_SIZE][64];
+	const char	*debug_hold_file[VMOBJ_DEBUG_ARRAY_SIZE];
+	int		debug_hold_line[VMOBJ_DEBUG_ARRAY_SIZE];
+	int		debug_index;
 #endif
 
 	union {
@@ -181,10 +180,9 @@ struct vm_object {
 	 * store.  For vnodes the swap backing store acts as a fast
 	 * data cache but the vnode contains the official data.
 	 */
-	RB_HEAD(swblock_rb_tree, swblock) swblock_root;
-	long	swblock_count;
-	struct	lwkt_token	token;
-	struct md_object	md;	/* machine specific (typ pmap) */
+	struct swblock_rb_tree swblock_root;
+	long		swblock_count;
+	struct md_object md;		/* machine specific (typ pmap) */
 };
 
 /*
