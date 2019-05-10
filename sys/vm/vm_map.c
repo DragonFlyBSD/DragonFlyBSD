@@ -164,6 +164,9 @@ SYSCTL_INT(_vm, OID_AUTO, map_partition_enable, CTLFLAG_RW,
 static int vm_map_backing_limit = 5;
 SYSCTL_INT(_vm, OID_AUTO, map_backing_limit, CTLFLAG_RW,
 	   &vm_map_backing_limit, 0, "ba.backing_ba link depth");
+static int vm_map_backing_shadow_test = 1;
+SYSCTL_INT(_vm, OID_AUTO, map_backing_shadow_test, CTLFLAG_RW,
+	   &vm_map_backing_shadow_test, 0, "ba.object shadow test");
 
 static void vmspace_drop_notoken(struct vmspace *vm);
 static void vm_map_entry_shadow(vm_map_entry_t entry, int addref);
@@ -3284,7 +3287,6 @@ again:
 				 * When ONEMAPPING is set we can destroy the
 				 * pages underlying the entry's range.
 				 */
-				/*vm_object_collapse(object, NULL);*/
 				vm_object_page_remove(object, offidxstart,
 						      offidxend, FALSE);
 				if (object->type == OBJT_SWAP) {
@@ -3585,8 +3587,105 @@ vmspace_fork_normal_entry(vm_map_t old_map, vm_map_t new_map,
 			  vm_map_entry_t old_entry, int *countp)
 {
 	vm_map_entry_t new_entry;
+	vm_map_backing_t ba;
 	vm_object_t object;
 
+#if 0
+	/*
+	 * Any uninterrupted sequence of ba->refs == 1 in the backing_ba
+	 * list can be collapsed.  It's a good time to do this check with
+	 * regards to prior forked children likely having exited or execd.
+	 *
+	 * Only the specific page ranges within the object(s) specified by
+	 * the entry can be collapsed.
+	 *
+	 * Once we hit ba->refs > 1, or a non-anonymous-memory object,
+	 * we're done.  Even if later ba's beyond this parent ba have
+	 * a ref count of 1 the whole sub-list could be shared at the this
+	 * parent ba and so we have to stop.
+	 *
+	 * We do not have to test OBJ_ONEMAPPING here (it probably won't be
+	 * set anyway due to previous sharing of the object).  Also the objects
+	 * themselves might have a ref_count > 1 due to clips and forks
+	 * related to OTHER page ranges.  That is, the vm_object itself might
+	 * still be associated with multiple pmaps... just not this particular
+	 * page range within the object.
+	 */
+	while ((ba = old_entry->ba.backing_ba) && ba->refs == 1) {
+		if (ba.object->type != OBJT_DEFAULT &&
+		    ba.object->type != OBJT_SWAP) {
+			break;
+		}
+		object = vm_object_collapse(old_entry->ba.object, ba->object);
+		if (object == old_entry->ba.object) {
+			/*
+			 * Merged into base, remove intermediate ba.
+			 */
+			kprintf("A");
+			--old_entry->ba.backing_count;
+			old_entry->ba.backing_ba = ba->backing_ba;
+			if (ba->backing_ba)
+				ba->backing_ba->offset += ba->offset;
+			ba->backing_ba = NULL;
+			vm_map_entry_dispose_ba(ba);
+		} else if (object == ba->object) {
+			/*
+			 * Merged into intermediate ba, shift it into
+			 * the base.
+			 */
+			kprintf("B");
+			vm_object_deallocate(old_entry->ba.object);
+			--old_entry->ba.backing_count;
+			old_entry->ba.backing_ba = ba->backing_ba;
+			old_entry->ba.object = ba->object;
+			old_entry->ba.offset += ba->offset;
+			ba->object = NULL;
+			ba->backing_ba = NULL;
+			vm_map_entry_dispose_ba(ba);
+		} else {
+			break;
+		}
+	}
+#endif
+
+	/*
+	 * If the backing_ba link list gets too long then fault it
+	 * all into the head object and dispose of the list.  We do
+	 * this in old_entry prior to cloning in order to benefit both
+	 * parent and child.
+	 *
+	 * We can test our fronting object's size against its
+	 * resident_page_count for a really cheap (but probably not perfect)
+	 * all-shadowed test, allowing us to disconnect the backing_ba
+	 * link list early.
+	 */
+	object = old_entry->ba.object;
+	if (old_entry->ba.backing_ba &&
+	    (old_entry->ba.backing_count >= vm_map_backing_limit ||
+	     (vm_map_backing_shadow_test && object &&
+	      object->size == object->resident_page_count))) {
+		/*
+		 * If there are too many backing_ba linkages we
+		 * collapse everything into the head
+		 *
+		 * This will also remove all the pte's.
+		 */
+		if (old_entry->eflags & MAP_ENTRY_NEEDS_COPY)
+			vm_map_entry_shadow(old_entry, 0);
+		if (object == NULL)
+			vm_map_entry_allocate_object(old_entry);
+		if (vm_fault_collapse(old_map, old_entry) == KERN_SUCCESS) {
+			ba = old_entry->ba.backing_ba;
+			old_entry->ba.backing_ba = NULL;
+			old_entry->ba.backing_count = 0;
+			vm_map_entry_dispose_ba(ba);
+		}
+	}
+	object = NULL;	/* object variable is now invalid */
+
+	/*
+	 * Fork the entry
+	 */
 	switch (old_entry->inheritance) {
 	case VM_INHERIT_NONE:
 		break;
