@@ -93,12 +93,14 @@ static MALLOC_DEFINE(M_THREAD, "thread", "lwkt threads");
 #ifdef	INVARIANTS
 static int panic_on_cscount = 0;
 #endif
+#ifdef DEBUG_LWKT_THREAD
 static int64_t switch_count = 0;
 static int64_t preempt_hit = 0;
 static int64_t preempt_miss = 0;
 static int64_t preempt_weird = 0;
+#endif
 static int lwkt_use_spin_port;
-static struct objcache *thread_cache;
+__read_mostly static struct objcache *thread_cache;
 int cpu_mwait_spin = 0;
 
 static void lwkt_schedule_remote(void *arg, int arg2, struct intrframe *frame);
@@ -114,6 +116,7 @@ TUNABLE_INT("lwkt.use_spin_port", &lwkt_use_spin_port);
 SYSCTL_INT(_lwkt, OID_AUTO, panic_on_cscount, CTLFLAG_RW, &panic_on_cscount, 0,
     "Panic if attempting to switch lwkt's while mastering cpusync");
 #endif
+#ifdef DEBUG_LWKT_THREAD
 SYSCTL_QUAD(_lwkt, OID_AUTO, switch_count, CTLFLAG_RW, &switch_count, 0,
     "Number of switched threads");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_hit, CTLFLAG_RW, &preempt_hit, 0, 
@@ -122,20 +125,15 @@ SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_miss, CTLFLAG_RW, &preempt_miss, 0,
     "Failed preemption events");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_weird, CTLFLAG_RW, &preempt_weird, 0,
     "Number of preempted threads.");
-static int fairq_enable = 0;
-SYSCTL_INT(_lwkt, OID_AUTO, fairq_enable, CTLFLAG_RW,
-	&fairq_enable, 0, "Turn on fairq priority accumulators");
-static int fairq_bypass = -1;
-SYSCTL_INT(_lwkt, OID_AUTO, fairq_bypass, CTLFLAG_RW,
-	&fairq_bypass, 0, "Allow fairq to bypass td on token failure");
+#endif
 extern int lwkt_sched_debug;
 int lwkt_sched_debug = 0;
 SYSCTL_INT(_lwkt, OID_AUTO, sched_debug, CTLFLAG_RW,
 	&lwkt_sched_debug, 0, "Scheduler debug");
-static u_int lwkt_spin_loops = 10;
+__read_mostly static u_int lwkt_spin_loops = 10;
 SYSCTL_UINT(_lwkt, OID_AUTO, spin_loops, CTLFLAG_RW,
 	&lwkt_spin_loops, 0, "Scheduler spin loops until sorted decon");
-static int preempt_enable = 1;
+__read_mostly static int preempt_enable = 1;
 SYSCTL_INT(_lwkt, OID_AUTO, preempt_enable, CTLFLAG_RW,
 	&preempt_enable, 0, "Enable preemption");
 static int lwkt_cache_threads = 0;
@@ -804,7 +802,9 @@ haveidle:
 	 * We are responsible for marking ntd as TDF_RUNNING.
 	 */
 	KKASSERT((ntd->td_flags & TDF_RUNNING) == 0);
+#ifdef DEBUG_LWKT_THREAD
 	++switch_count;
+#endif
 	KTR_LOG(ctxsw_sw, gd->gd_cpuid, ntd);
 	ntd->td_flags |= TDF_RUNNING;
 	lwkt_switch_return(td->td_switch(ntd));
@@ -948,27 +948,39 @@ lwkt_preempt(thread_t ntd, int critcount)
 
     td = gd->gd_curthread;
     if (preempt_enable == 0) {
+#ifdef DEBUG_LWKT_THREAD
 	++preempt_miss;
+#endif
 	return;
     }
     if (ntd->td_pri <= td->td_pri) {
+#ifdef DEBUG_LWKT_THREAD
 	++preempt_miss;
+#endif
 	return;
     }
     if (td->td_critcount > critcount) {
+#ifdef DEBUG_LWKT_THREAD
 	++preempt_miss;
+#endif
 	return;
     }
     if (td->td_nest_count >= 2) {
+#ifdef DEBUG_LWKT_THREAD
 	++preempt_miss;
+#endif
 	return;
     }
     if (td->td_cscount) {
+#ifdef DEBUG_LWKT_THREAD
 	++preempt_miss;
+#endif
 	return;
     }
     if (ntd->td_gd != gd) {
+#ifdef DEBUG_LWKT_THREAD
 	++preempt_miss;
+#endif
 	return;
     }
 
@@ -983,15 +995,21 @@ lwkt_preempt(thread_t ntd, int critcount)
     KKASSERT(gd->gd_spinlocks == 0);
 
     if (TD_TOKS_HELD(ntd)) {
+#ifdef DEBUG_LWKT_THREAD
 	++preempt_miss;
+#endif
 	return;
     }
     if (td == ntd || ((td->td_flags | ntd->td_flags) & TDF_PREEMPT_LOCK)) {
+#ifdef DEBUG_LWKT_THREAD
 	++preempt_weird;
+#endif
 	return;
     }
     if (ntd->td_preempted) {
+#ifdef DEBUG_LWKT_THREAD
 	++preempt_hit;
+#endif
 	return;
     }
     KKASSERT(gd->gd_processing_ipiq == 0);
@@ -1007,7 +1025,9 @@ lwkt_preempt(thread_t ntd, int critcount)
      * A preemption must switch back to the original thread, assert the
      * case.
      */
+#ifdef DEBUG_LWKT_THREAD
     ++preempt_hit;
+#endif
     ntd->td_preempted = td;
     td->td_flags |= TDF_PREEMPT_LOCK;
     KTR_LOG(ctxsw_pre, gd->gd_cpuid, ntd);
