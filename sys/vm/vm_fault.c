@@ -148,18 +148,18 @@ struct faultstate {
 	struct vnode *vp;
 };
 
-static int debug_fault = 0;
+__read_mostly static int debug_fault = 0;
 SYSCTL_INT(_vm, OID_AUTO, debug_fault, CTLFLAG_RW, &debug_fault, 0, "");
-static int debug_cluster = 0;
+__read_mostly static int debug_cluster = 0;
 SYSCTL_INT(_vm, OID_AUTO, debug_cluster, CTLFLAG_RW, &debug_cluster, 0, "");
-static int virtual_copy_enable = 1;
+__read_mostly static int virtual_copy_enable = 1;
 SYSCTL_INT(_vm, OID_AUTO, virtual_copy_enable, CTLFLAG_RW,
 		&virtual_copy_enable, 0, "");
-int vm_shared_fault = 1;
+__read_mostly int vm_shared_fault = 1;
 TUNABLE_INT("vm.shared_fault", &vm_shared_fault);
 SYSCTL_INT(_vm, OID_AUTO, shared_fault, CTLFLAG_RW,
 		&vm_shared_fault, 0, "Allow shared token on vm_object");
-static int vm_fault_quick_enable = 0;
+__read_mostly static int vm_fault_quick_enable = 0;
 TUNABLE_INT("vm.fault_quick", &vm_fault_quick_enable);
 SYSCTL_INT(_vm, OID_AUTO, fault_quick, CTLFLAG_RW,
 		&vm_fault_quick_enable, 0, "Allow fast vm_fault shortcut");
@@ -2837,10 +2837,10 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
  * The related map must be locked.
  * No other requirements.
  */
-static int vm_prefault_pages = 8;
+__read_mostly static int vm_prefault_pages = 8;
 SYSCTL_INT(_vm, OID_AUTO, prefault_pages, CTLFLAG_RW, &vm_prefault_pages, 0,
 	   "Maximum number of pages to pre-fault");
-static int vm_fast_fault = 1;
+__read_mostly static int vm_fast_fault = 1;
 SYSCTL_INT(_vm, OID_AUTO, fast_fault, CTLFLAG_RW, &vm_fast_fault, 0,
 	   "Burst fault zero-fill regions");
 
