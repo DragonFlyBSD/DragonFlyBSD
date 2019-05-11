@@ -1104,10 +1104,10 @@ vm_map_entry_dispose(vm_map_t map, vm_map_entry_t entry, int *countp)
 	switch(entry->maptype) {
 	case VM_MAPTYPE_NORMAL:
 	case VM_MAPTYPE_VPAGETABLE:
-	case VM_MAPTYPE_SUBMAP:
 		if (entry->ba.object)
 			vm_object_deallocate(entry->ba.object);
 		break;
+	case VM_MAPTYPE_SUBMAP:
 	case VM_MAPTYPE_UKSMAP:
 		/* XXX TODO */
 		break;
@@ -3424,7 +3424,8 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 		return;
 	}
 
-	if (src_entry->wired_count) {
+	if (src_entry->wired_count &&
+	    src_entry->maptype != VM_MAPTYPE_VPAGETABLE) {
 		/*
 		 * Of course, wired down pages can't be set copy-on-write.
 		 * Cause wired pages to be copied into the new map by
@@ -3436,6 +3437,9 @@ vm_map_copy_entry(vm_map_t src_map, vm_map_t dst_map,
 		 *
 		 * Then call vm_fault_copy_entry() to create a new object
 		 * in dst_entry and copy the wired pages from src to dst.
+		 *
+		 * The fault-copy code doesn't work with virtual page
+		 * tables.
 		 */
 		dst_entry->ba.object = NULL;
 		vm_map_entry_dispose_ba(dst_entry->ba.backing_ba);
@@ -3642,9 +3646,13 @@ vmspace_fork_normal_entry(vm_map_t old_map, vm_map_t new_map,
 	 * resident_page_count for a really cheap (but probably not perfect)
 	 * all-shadowed test, allowing us to disconnect the backing_ba
 	 * link list early.
+	 *
+	 * XXX Currently doesn't work for VPAGETABLEs (the entire object
+	 *     would have to be copied).
 	 */
 	object = old_entry->ba.object;
 	if (old_entry->ba.backing_ba &&
+	    old_entry->maptype != VM_MAPTYPE_VPAGETABLE &&
 	    (old_entry->ba.backing_count >= vm_map_backing_limit ||
 	     (vm_map_backing_shadow_test && object &&
 	      object->size == object->resident_page_count))) {
