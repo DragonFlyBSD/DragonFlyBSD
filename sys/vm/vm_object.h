@@ -135,7 +135,9 @@ typedef u_char objtype_t;
  */
 struct vm_object {
 	struct lwkt_token token;
-	TAILQ_ENTRY(vm_object) object_list;
+	struct spinlock spin;		/* backing_list */
+	TAILQ_ENTRY(vm_object) object_entry;
+	TAILQ_HEAD(, vm_map_backing) backing_list;
 	struct vm_page_rb_tree rb_memq;	/* resident pages */
 	int		generation;	/* generation ID */
 	vm_pindex_t	size;		/* Object size */
@@ -146,7 +148,7 @@ struct vm_object {
 	u_short		pg_color;	/* color of first page in obj */
 	u_int		paging_in_progress;	/* Activity in progress */
 	long		resident_page_count;	/* number of resident pages */
-	TAILQ_ENTRY(vm_object) pager_object_list; /* optional use by pager */
+	TAILQ_ENTRY(vm_object) pager_object_entry; /* optional use by pager */
 	void		*handle;	/* control handle: vp, etc */
 	int		hold_count;	/* count prevents destruction */
 	

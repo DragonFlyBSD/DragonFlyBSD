@@ -385,6 +385,7 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 	RB_INIT(&object->rb_memq);
 	lwkt_token_init(&object->token, "vmobj");
 
+	TAILQ_INIT(&object->backing_list);
 	object->type = type;
 	object->size = size;
 	object->ref_count = 1;
@@ -409,7 +410,7 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 
 	hash = vmobj_hash(object);
 	lwkt_gettoken(&hash->token);
-	TAILQ_INSERT_TAIL(&hash->list, object, object_list);
+	TAILQ_INSERT_TAIL(&hash->list, object, object_entry);
 	lwkt_reltoken(&hash->token);
 }
 
@@ -506,14 +507,18 @@ VMOBJDEBUG(vm_object_reference_locked)(vm_object_t object VMOBJDBARGS)
 }
 
 /*
- * This version is only allowed for vnode objects.
+ * This version is only allowed in situations where the caller
+ * already knows that the object is deterministically referenced
+ * (usually because its taken from a ref'd vnode, or during a map_entry
+ * replication).
  */
 void
 VMOBJDEBUG(vm_object_reference_quick)(vm_object_t object VMOBJDBARGS)
 {
-	KKASSERT(object->type == OBJT_VNODE);
+	KKASSERT(object->type == OBJT_VNODE || object->ref_count > 0);
 	atomic_add_int(&object->ref_count, 1);
-	vref(object->handle);
+	if (object->type == OBJT_VNODE)
+		vref(object->handle);
 #if defined(DEBUG_LOCKS)
 	debugvm_object_add(object, file, line, 1);
 #endif
@@ -830,7 +835,7 @@ vm_object_terminate(vm_object_t object)
 	 */
 	hash = vmobj_hash(object);
 	lwkt_gettoken(&hash->token);
-	TAILQ_REMOVE(&hash->list, object, object_list);
+	TAILQ_REMOVE(&hash->list, object, object_entry);
 	lwkt_reltoken(&hash->token);
 
 	if (object->ref_count != 0) {
@@ -1828,7 +1833,7 @@ DB_SHOW_COMMAND(vmochk, vm_object_check)
 		hash = &vm_object_hash[n];
 		for (object = TAILQ_FIRST(&hash->list);
 				object != NULL;
-				object = TAILQ_NEXT(object, object_list)) {
+				object = TAILQ_NEXT(object, object_entry)) {
 			if (object->type == OBJT_MARKER)
 				continue;
 			if (object->handle != NULL ||
@@ -1935,7 +1940,7 @@ DB_SHOW_COMMAND(vmopag, vm_object_print_pages)
 		hash = &vm_object_hash[n];
 		for (object = TAILQ_FIRST(&hash->list);
 				object != NULL;
-				object = TAILQ_NEXT(object, object_list)) {
+				object = TAILQ_NEXT(object, object_entry)) {
 			vm_pindex_t idx, fidx;
 			vm_pindex_t osize;
 			vm_paddr_t pa = -1, padiff;

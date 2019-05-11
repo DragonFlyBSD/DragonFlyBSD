@@ -164,6 +164,8 @@ typedef enum {
  */
 struct vm_map_backing {
 	struct vm_map_backing	*backing_ba;	/* backing store */
+	struct vm_map_entry	*base_entry;	/* for vm_object extents */
+	TAILQ_ENTRY(vm_map_backing) entry;	/* for vm_object extents */
 
 	/*
 	 * A vm_map_entry may reference an object, a submap, a uksmap, or a
@@ -204,6 +206,7 @@ typedef struct vm_map_backing *vm_map_backing_t;
  */
 struct vm_map_entry {
 	RB_ENTRY(vm_map_entry) rb_entry;
+	struct vm_map	*map;		/* for vm_object extents */
 	vm_offset_t	start;		/* start address */
 	vm_offset_t	end;		/* end address */
 	union vm_map_aux aux;		/* auxillary data */

@@ -319,8 +319,8 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 		 * vm_object_deallocate().
 		 */
 		if (rv != KERN_SUCCESS) {
+			vm_object_deallocate_locked(object);
 			vm_object_drop(object);
-			vm_object_deallocate(object);
 			return (EINVAL);
 		}
 

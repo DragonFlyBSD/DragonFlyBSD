@@ -149,7 +149,7 @@ cdev_pager_allocate(void *handle, enum obj_type tp, struct cdev_pager_ops *ops,
 		}
 
 		TAILQ_INSERT_TAIL(&dev_pager_object_list, object,
-				  pager_object_list);
+				  pager_object_entry);
 
 		vm_object_drop(object);
 	} else {
@@ -211,7 +211,7 @@ dev_pager_dealloc(vm_object_t object)
         object->un_pager.devp.ops->cdev_pg_dtor(object->un_pager.devp.dev);
 
 	mtx_lock(&dev_pager_mtx);
-	TAILQ_REMOVE(&dev_pager_object_list, object, pager_object_list);
+	TAILQ_REMOVE(&dev_pager_object_list, object, pager_object_entry);
 	mtx_unlock(&dev_pager_mtx);
 
 	if (object->type == OBJT_DEVICE) {

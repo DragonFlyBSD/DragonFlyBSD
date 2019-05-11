@@ -2162,9 +2162,9 @@ swap_pager_swapoff(int devidx)
 		hash = &vm_object_hash[n];
 
 		lwkt_gettoken(&hash->token);
-		TAILQ_INSERT_HEAD(&hash->list, &marker, object_list);
+		TAILQ_INSERT_HEAD(&hash->list, &marker, object_entry);
 
-		while ((object = TAILQ_NEXT(&marker, object_list)) != NULL) {
+		while ((object = TAILQ_NEXT(&marker, object_entry)) != NULL) {
 			if (object->type == OBJT_MARKER)
 				goto skip;
 			if (object->type != OBJT_SWAP &&
@@ -2195,13 +2195,14 @@ swap_pager_swapoff(int devidx)
 					    &info);
 			vm_object_drop(object);
 skip:
-			if (object == TAILQ_NEXT(&marker, object_list)) {
-				TAILQ_REMOVE(&hash->list, &marker, object_list);
+			if (object == TAILQ_NEXT(&marker, object_entry)) {
+				TAILQ_REMOVE(&hash->list, &marker,
+					     object_entry);
 				TAILQ_INSERT_AFTER(&hash->list, object,
-						   &marker, object_list);
+						   &marker, object_entry);
 			}
 		}
-		TAILQ_REMOVE(&hash->list, &marker, object_list);
+		TAILQ_REMOVE(&hash->list, &marker, object_entry);
 		lwkt_reltoken(&hash->token);
 	}
 

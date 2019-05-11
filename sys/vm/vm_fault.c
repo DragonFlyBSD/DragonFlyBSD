@@ -1393,6 +1393,10 @@ vm_fault_object_page(vm_object_t object, vm_ooffset_t offset,
 	struct faultstate fs;
 	struct vm_map_entry entry;
 
+	/*
+	 * Since we aren't actually faulting the page into a
+	 * pmap we can just fake the entry.ba.
+	 */
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
 	bzero(&entry, sizeof(entry));
 	entry.maptype = VM_MAPTYPE_NORMAL;

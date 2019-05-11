@@ -205,6 +205,9 @@ efi_create_1t1_map(struct efi_md *map, int ndesc, int descsz)
 	efi_ndesc = ndesc;
 	efi_descsz = descsz;
 
+	/*
+	 * efi_obj is ref'd by cdev_pager_allocate
+	 */
 	efi_vmspace = vmspace_alloc(VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 	pmap_pinit2(vmspace_pmap(efi_vmspace));
 	efi_obj = cdev_pager_allocate(NULL, OBJT_MGTDEVICE, &efi_pager_ops,

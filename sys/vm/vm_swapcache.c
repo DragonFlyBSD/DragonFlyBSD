@@ -221,7 +221,7 @@ vm_swapcached_thread(void)
 	swmarker.dummy_obj.type = OBJT_MARKER;
 	swindex = &vm_object_hash[0];
 	lwkt_gettoken(&swindex->token);
-	TAILQ_INSERT_HEAD(&swindex->list, &swmarker.dummy_obj, object_list);
+	TAILQ_INSERT_HEAD(&swindex->list, &swmarker.dummy_obj, object_entry);
 	lwkt_reltoken(&swindex->token);
 
 	for (;;) {
@@ -332,7 +332,7 @@ vm_swapcached_thread(void)
 	}
 
 	lwkt_gettoken(&swindex->token);
-	TAILQ_REMOVE(&swindex->list, &swmarker.dummy_obj, object_list);
+	TAILQ_REMOVE(&swindex->list, &swmarker.dummy_obj, object_entry);
 	lwkt_reltoken(&swindex->token);
 }
 
@@ -720,7 +720,8 @@ vm_swapcache_cleaning(swmarker_t *marker, struct vm_object_hash **swindexp)
 
 	didmove = 0;
 outerloop:
-	while ((object = TAILQ_NEXT(&marker->dummy_obj, object_list)) != NULL) {
+	while ((object = TAILQ_NEXT(&marker->dummy_obj,
+				    object_entry)) != NULL) {
 		/*
 		 * We have to skip markers.  We cannot hold/drop marker
 		 * objects!
@@ -800,7 +801,7 @@ outerloop:
 		/*
 		 * If we have exhausted the object or deleted our per-pass
 		 * page limit then move us to the next object.  Note that
-		 * the current object may no longer be on the vm_object_list.
+		 * the current object may no longer be on the vm_object_entry.
 		 */
 		if (n <= 0 ||
 		    marker->save_off > vm_swapcache_cleanperobj) {
@@ -818,14 +819,14 @@ outerloop:
 	}
 
 	/*
-	 * Iterate vm_object_lists[] hash table
+	 * Iterate vm_object_hash[] hash table
 	 */
-	TAILQ_REMOVE(&(*swindexp)->list, &marker->dummy_obj, object_list);
+	TAILQ_REMOVE(&(*swindexp)->list, &marker->dummy_obj, object_entry);
 	lwkt_reltoken(&(*swindexp)->token);
 	if (++*swindexp >= &vm_object_hash[VMOBJ_HSIZE])
 		*swindexp = &vm_object_hash[0];
 	lwkt_gettoken(&(*swindexp)->token);
-	TAILQ_INSERT_HEAD(&(*swindexp)->list, &marker->dummy_obj, object_list);
+	TAILQ_INSERT_HEAD(&(*swindexp)->list, &marker->dummy_obj, object_entry);
 
 	if (*swindexp != &vm_object_hash[0])
 		goto outerloop;
@@ -844,9 +845,9 @@ static void
 vm_swapcache_movemarker(swmarker_t *marker, struct vm_object_hash *swindex,
 			vm_object_t object)
 {
-	if (TAILQ_NEXT(&marker->dummy_obj, object_list) == object) {
-		TAILQ_REMOVE(&swindex->list, &marker->dummy_obj, object_list);
+	if (TAILQ_NEXT(&marker->dummy_obj, object_entry) == object) {
+		TAILQ_REMOVE(&swindex->list, &marker->dummy_obj, object_entry);
 		TAILQ_INSERT_AFTER(&swindex->list, object,
-				   &marker->dummy_obj, object_list);
+				   &marker->dummy_obj, object_entry);
 	}
 }

@@ -191,6 +191,7 @@ exec_aout_imgact(struct image_params *imgp)
 		MAP_COPY_ON_WRITE | MAP_PREFAULT | MAP_PREFAULT_RELOCK);
 
 	if (error) {
+		vm_object_deallocate_locked(object);
 		vm_object_drop(object);
 		vm_map_unlock(map);
 		vm_map_entry_release(count);
@@ -208,6 +209,7 @@ exec_aout_imgact(struct image_params *imgp)
 			VM_PROT_ALL, VM_PROT_ALL,
 			MAP_COPY_ON_WRITE | MAP_PREFAULT | MAP_PREFAULT_RELOCK);
 		if (error) {
+			vm_object_deallocate_locked(object);
 			vm_object_drop(object);
 			vm_map_unlock(map);
 			vm_map_entry_release(count);
