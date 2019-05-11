@@ -1360,11 +1360,8 @@ relookup:
 			/*
 			 * There may be swap even if there is no backing page
 			 */
-			if (advise == MADV_FREE &&
-			    object->type == OBJT_SWAP &&
-			    m->object == object) {
+			if (advise == MADV_FREE && object->type == OBJT_SWAP)
 				swap_pager_freespace(object, pindex, 1);
-			}
 			continue;
 		}
 
