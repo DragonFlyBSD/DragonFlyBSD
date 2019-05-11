@@ -176,12 +176,17 @@ dump_gnuplot(kcollect_t *ary, size_t count)
 		fprintf(OutFP, "e\n");
 	}
 
+	int ncpu = 4;
+	size_t ncpu_size = sizeof(ncpu);
+	sysctlbyname("hw.ncpu", &ncpu, &ncpu_size, NULL, 0);
+
 	fprintf(OutFP, "set ylabel \"Cpu Utilization\"\n");
 	fprintf(OutFP, "set y2label \"MOps/sec (smoothed)\"\n");
 	fprintf(OutFP, "set ytics nomirror\n");
 	fprintf(OutFP, "set y2tics nomirror\n");
 	fprintf(OutFP, "set yrange [0:105]\n");
-	fprintf(OutFP, "set y2range [0:1.0]\n");
+	fprintf(OutFP, "set y2range [0:%d.0]\n",
+		(93750 * ncpu + 999999) / 1000000);
 
 	fprintf(OutFP,
 		"plot "
