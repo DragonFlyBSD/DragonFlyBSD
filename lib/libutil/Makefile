@@ -17,7 +17,6 @@ SRCS+=	gr_util.c hexdump.c
 
 INCS=	libutil.h login_cap.h
 INCSLINKS=libutil.h ${INCLUDEDIR}/util.h
-WARNS?=	3
 
 CFLAGS+= -I${.CURDIR} -I${.CURDIR}/../libc/gen/
 
