@@ -5,7 +5,6 @@ MIN_VER=	0
 
 PROG=   tcplay
 MAN=	tcplay.8
-WARNS?=	6
 
 SRCS+=		tcplay.c crc32.c safe_mem.c io.c hdr.c humanize.c
 SRCS+=		crypto.c generic_xts.c

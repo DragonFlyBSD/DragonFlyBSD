@@ -3,10 +3,11 @@
 .PATH: ${.CURDIR}/../../libc/iconv
 
 SHLIB_MAJOR= 	2
-WARNS?=		6
 CFLAGS+= 	-I${.CURDIR}/../../libc/citrus
 
 CFLAGS+=	-Dbool=_Bool
 
 LIBDIR=	 	/usr/lib/i18n
 NOPROFILE=	yes
+
+.include "../Makefile.inc"

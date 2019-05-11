@@ -3,7 +3,6 @@ MAJ_VER=	2
 MIN_VER=	0
 SHLIB_MAJOR?=	${MAJ_VER}
 SHLIB_MINOR?=	${MIN_VER}
-WARNS?=		6
 MAN=		tcplay.3
 
 MLINKS+=	tcplay.3	tc_api_init.3
