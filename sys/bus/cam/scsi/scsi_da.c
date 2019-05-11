@@ -1906,23 +1906,17 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 			}
 		}
 		kfree(csio->data_ptr, M_SCSIDA);
-		if (announce_buf[0] != '\0') {
+		if (announce_buf[0] != '\0')
 			xpt_announce_periph(periph, announce_buf);
-			/*
-			 * Create our sysctl variables, now that we know
-			 * we have successfully attached.
-			 */
-			taskqueue_enqueue(taskqueue_thread[mycpuid],
-			    &softc->sysctl_task);
-		}
 
 		if (softc->trim_max_ranges) {
-			softc->disk.d_info.d_trimflag |= DA_FLAG_CAN_TRIM;
+			info.d_trimflag |= DA_FLAG_CAN_TRIM;
 			kprintf("%s%d: supports TRIM\n",
 		   	    periph->periph_name,
 		   	    periph->unit_number);
 		}
 		softc->state = DA_STATE_NORMAL;
+
 		/*
 		 * Since our peripheral may be invalidated by an error
 		 * above or an external event, we must release our CCB
@@ -1937,6 +1931,13 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 			CAM_SIM_UNLOCK(periph->sim);
 			disk_setdiskinfo(&softc->disk, &info);
 			CAM_SIM_LOCK(periph->sim);
+
+			/*
+			 * Create our sysctl variables, now that we know
+			 * we have successfully attached.
+			 */
+			taskqueue_enqueue(taskqueue_thread[mycpuid],
+					  &softc->sysctl_task);
 		}
 		return;
 	}
