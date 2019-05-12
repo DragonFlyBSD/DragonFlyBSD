@@ -229,7 +229,6 @@ _rtld_thread_childfork(void)
 }
 
 #pragma weak _rtld_setthreaded
-int write(int, void *, size_t);
 void
 _rtld_setthreaded(void)
 {
