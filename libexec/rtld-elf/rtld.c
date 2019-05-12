@@ -4585,6 +4585,7 @@ _rtld_allocate_tls(void)
     wlock_acquire(rtld_bind_lock, &lockstate);
     new_tcb = allocate_tls(obj_list);
     lock_release(rtld_bind_lock, &lockstate);
+
     return (new_tcb);
 }
 

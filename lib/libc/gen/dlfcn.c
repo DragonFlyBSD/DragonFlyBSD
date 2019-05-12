@@ -38,6 +38,7 @@ void _rtld_thread_childfork(void);
 void _rtld_thread_init(void *);
 void _rtld_thread_postfork(void);
 void _rtld_thread_prefork(void);
+void _rtld_setthreaded(void);
 
 extern char **environ;
 
@@ -224,5 +225,12 @@ _rtld_thread_postfork(void)
 #pragma weak _rtld_thread_childfork
 void
 _rtld_thread_childfork(void)
+{
+}
+
+#pragma weak _rtld_setthreaded
+int write(int, void *, size_t);
+void
+_rtld_setthreaded(void)
 {
 }

@@ -50,6 +50,9 @@
 #include <stdio.h>
 #include <sys/file.h>
 
+#include <machine/sysarch.h>
+#include <machine/tls.h>
+
 #include "debug.h"
 #include "rtld.h"
 #include "rtld_machdep.h"
@@ -57,12 +60,13 @@
 extern pid_t __sys_getpid(void);
 
 #define WAFLAG		0x1	/* A writer holds the lock */
-#define RC_INCR		0x2	/* Adjusts count of readers desiring lock */
+#define SLFLAG		0x2	/* Sleep pending on lock */
+#define RC_INCR		0x4	/* Adjusts count of readers desiring lock */
 
 struct Struct_Lock {
 	volatile u_int lock;
-	int tid;		/* owner (exclusive) */
 	int count;		/* recursion (exclusive) */
+	void *owner;		/* owner (exclusive) - tls_get_tcb() */
 	sigset_t savesigmask;	/* first exclusive owner sets mask */
 } __cachealign;
 
@@ -78,11 +82,31 @@ rtld_lock_t	rtld_phdr_lock = &phdr_lock;
 rtld_lock_t	rtld_bind_lock = &bind_lock;
 rtld_lock_t	rtld_libc_lock = &libc_lock;
 
+static int _rtld_isthreaded;
+
+void _rtld_setthreaded(int threaded);
+
+void
+_rtld_setthreaded(int threaded)
+{
+	_rtld_isthreaded = threaded;
+}
+
+static __inline
+void *
+myid(void)
+{
+	if (_rtld_isthreaded) {
+		return(tls_get_tcb());
+	}
+	return (void *)(intptr_t)1;
+}
+
 void
 rlock_acquire(rtld_lock_t lock, RtldLockState *state)
 {
+	void *tid = myid();
 	int v;
-	int tid = 0;
 
 	v = lock->lock;
 	cpu_ccfence();
@@ -93,39 +117,46 @@ rlock_acquire(rtld_lock_t lock, RtldLockState *state)
 				break;
 			}
 		} else {
-			if (tid == 0)
-				tid = lwp_gettid();
-			if (lock->tid == tid) {
+			if (lock->owner == tid) {
 				++lock->count;
 				state->lockstate = RTLD_LOCK_WLOCKED;
 				break;
 			}
-			umtx_sleep(&lock->lock, v, 0);
-			v = lock->lock;
-			cpu_ccfence();
+			if (atomic_fcmpset_int(&lock->lock, &v, v | SLFLAG)) {
+				umtx_sleep(&lock->lock, v, 0);
+			}
 		}
+		cpu_ccfence();
 	}
 }
 
 void
 wlock_acquire(rtld_lock_t lock, RtldLockState *state)
 {
+	void *tid = myid();
 	sigset_t tmp_oldsigmask;
-	int tid = lwp_gettid();
+	int v;
 
-	if (lock->tid == tid) {
+	if (lock->owner == tid) {
 		++lock->count;
 		state->lockstate = RTLD_LOCK_WLOCKED;
 		return;
 	}
 
 	sigprocmask(SIG_BLOCK, &fullsigmask, &tmp_oldsigmask);
+	v = lock->lock;
 	for (;;) {
-		if (atomic_cmpset_acq_int(&lock->lock, 0, WAFLAG))
-			break;
-		umtx_sleep(&lock->lock, 0, 0);
+		if ((v & ~SLFLAG) == 0) {
+			if (atomic_fcmpset_int(&lock->lock, &v, WAFLAG))
+				break;
+		} else {
+			if (atomic_fcmpset_int(&lock->lock, &v, v | SLFLAG)) {
+				umtx_sleep(&lock->lock, v, 0);
+			}
+		}
+		cpu_ccfence();
 	}
-	lock->tid = tid;
+	lock->owner = tid;
 	lock->count = 1;
 	lock->savesigmask = tmp_oldsigmask;
 	state->lockstate = RTLD_LOCK_WLOCKED;
@@ -141,14 +172,18 @@ lock_release(rtld_lock_t lock, RtldLockState *state)
 		return;
 	if ((lock->lock & WAFLAG) == 0) {
 		v = atomic_fetchadd_int(&lock->lock, -RC_INCR) - RC_INCR;
-		if (v == 0)
+		if (v == SLFLAG) {
+			atomic_clear_int(&lock->lock, SLFLAG);
 			umtx_wakeup(&lock->lock, 0);
+		}
 	} else if (--lock->count == 0) {
 		tmp_oldsigmask = lock->savesigmask;
-		lock->tid = 0;
+		lock->owner = NULL;
 		v = atomic_fetchadd_int(&lock->lock, -WAFLAG) - WAFLAG;
-		if (v == 0)
+		if (v == SLFLAG) {
+			atomic_clear_int(&lock->lock, SLFLAG);
 			umtx_wakeup(&lock->lock, 0);
+		}
 		sigprocmask(SIG_SETMASK, &tmp_oldsigmask, NULL);
 	}
 	state->lockstate = RTLD_LOCK_UNLOCKED;

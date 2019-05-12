@@ -51,6 +51,7 @@ _thr_setthreaded(int threaded)
 	if (((threaded == 0) ^ (__isthreaded == 0)) == 0)
 		return (0);
 	__isthreaded = threaded;
+	_rtld_setthreaded(threaded);
 #if 0
 	/* save for later. */
 	if (threaded != 0)
